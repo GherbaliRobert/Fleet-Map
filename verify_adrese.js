@@ -14,6 +14,7 @@
 
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { puneParola } = require('./test_parola');
 
 const PORT = 3197, DIR = '.adrese-db';
 const env = {
@@ -55,10 +56,10 @@ const login = async (u, p) => {
 
   // Agenda e a unei FIRME. Super-adminul e cont de platformă, deci lucrăm cu un admin de firmă.
   const coA = await (await POST('/api/companies', { name: 'Firma A adrese' })).json();
-  await POST('/api/users', { username: 'admin.a@test.ro', password: 'Str4da-Verde-2026', full_name: 'Admin A', role: 'admin', company_id: coA.id });
+  await puneParola(await POST('/api/users', { username: 'admin.a@test.ro', full_name: 'Admin A', role: 'admin', company_id: coA.id }), 'Str4da-Verde-2026', B);
   const ckA = await login('admin.a@test.ro', 'Str4da-Verde-2026');
   const coB = await (await POST('/api/companies', { name: 'Firma B adrese' })).json();
-  await POST('/api/users', { username: 'admin.b2@test.ro', password: 'Str4da-Verde-2026', full_name: 'Admin B', role: 'admin', company_id: coB.id });
+  await puneParola(await POST('/api/users', { username: 'admin.b2@test.ro', full_name: 'Admin B', role: 'admin', company_id: coB.id }), 'Str4da-Verde-2026', B);
   const ckB = await login('admin.b2@test.ro', 'Str4da-Verde-2026');
 
   sect('1. O adresă nouă NU e confirmată');
@@ -116,7 +117,7 @@ const login = async (u, p) => {
   T('o adresă fără @ e refuzată', gresita.status === 400, gresita.status);
 
   sect('7. Cine nu administrează firma nu umblă în agendă');
-  await POST('/api/users', { username: 'disp.a@test.ro', password: 'Str4da-Verde-2026', full_name: 'Dispecer A', role: 'dispatcher', company_id: coA.id });
+  await puneParola(await POST('/api/users', { username: 'disp.a@test.ro', full_name: 'Dispecer A', role: 'dispatcher', company_id: coA.id }), 'Str4da-Verde-2026', B);
   const ckD = await login('disp.a@test.ro', 'Str4da-Verde-2026');
   if (ckD) {
     const rd = await GET('/api/company-emails', ckD);

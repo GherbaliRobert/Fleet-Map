@@ -88,7 +88,7 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     t('regulă creată pe compania aleasă', r1.status === 200 && r1.body && Number(r1.body.company_id) === Number(coB.id), JSON.stringify(r1.body));
 
     // ── Adminul companiei o VEDE (înainte era invizibilă) ──
-    await req(S, 'POST', '/api/users', { username: 'admin.unitip@test.ro', password: 'Parola123!', role: 'company_admin', company_id: coB.id, full_name: 'Admin Unitip' });
+    await puneParola((await req(S, 'POST', '/api/users', { username: 'admin.unitip@test.ro', role: 'company_admin', company_id: coB.id, full_name: 'Admin Unitip' })).data, 'Parola123!', BASE);
     const U = mkJar();
     t('adminul companiei se autentifică', (await req(U, 'POST', '/api/login', { username: 'admin.unitip@test.ro', password: 'Parola123!' })).status === 200);
     const seen = (await req(U, 'GET', '/api/alerts')).body || [];

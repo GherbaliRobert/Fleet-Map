@@ -3395,6 +3395,57 @@
    Acum sunt pastile cu numere, ca la Dispozitive — același limbaj vizual, nu unul nou. */
 .raco-filtre{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
 .raco-filtre .rax-dev-chip b{ font-weight:800; }
+/* ── Utilizatori: bara de căutare, pastilele, semnele de pe rând ─────────────────────────────────
+   Același chip ca la Dispozitive și Companii (`rax-dev-chip`) — nu inventăm o a doua pastilă. Ce e
+   propriu ecranului ăstuia sunt SEMNELE de pe om: „n-a intrat niciodată", „fără acces", „expiră în
+   3 zile". Portocaliul lor nu e decorativ: fiecare are dedesubt o propoziție cu ce ai de făcut. */
+.rau-bara{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+/* Bază DEFINITĂ (220px), nu `auto`. Cu `auto`, lățimea casetei depindea de conținutul ei, iar
+   `width:100%` al câmpului dinăuntru n-avea de ce să se agațe: caseta ieșea de 0 px și selectorul
+   de ordine lua toată bara. Se vedea urât și nu se putea scrie în ea. */
+.rau-cauta{ position:relative; flex:1 1 220px; min-width:0; }
+.rau-cauta > i{ position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:12px;
+  color:var(--text-muted); pointer-events:none; z-index:1; }
+.ra-camp .rau-cauta .rax-field{ width:100%; padding-left:31px; }
+.ra-camp .rau-bara > select{ flex:0 0 auto; width:auto; min-width:158px; max-width:210px; }
+.rau-pastile{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.rau-pastile:empty{ display:none; }
+.rau-pastile .rax-dev-chip b{ font-weight:800; }
+.rau-pastile .rax-dev-chip.atentie:not(.on){ border-color:color-mix(in srgb, var(--orange) 50%, transparent); color:var(--orange); }
+/* Conturile cu RA Insight — cifra care ajunge pe factură, deci stă sus, nu ascunsă între rânduri. */
+.rau-seats{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;
+  font-size:12.5px; color:var(--text-secondary); padding:7px 12px; border-radius:10px;
+  background:color-mix(in srgb, var(--accent) 9%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 26%, transparent); }
+.rau-seats i, .rau-seats b{ color:var(--accent); }
+.rau-seats b{ font-weight:800; }
+.rau-seats span{ color:var(--text-muted); }
+.rau-nota{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted); line-height:1.45; }
+.rau-nota i{ color:var(--accent); }
+.rau-cine{ min-width:0; }
+.rau-sus{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rau-meta{ font-size:11px; color:var(--text-muted); margin-top:3px; overflow-wrap:anywhere; }
+.rau-text-cald{ color:var(--orange); font-weight:700; }
+.rau-butoane{ display:flex; gap:6px; flex-shrink:0; align-items:center; }
+.rau-tu{ font-size:11px; color:var(--text-muted); align-self:center; }
+.user-row.rau-off{ opacity:.62; }
+.rau-semn{ font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap;
+  border:1px solid var(--border); color:var(--text-secondary); }
+.rau-semn.rau-cald{ color:var(--orange); border-color:color-mix(in srgb, var(--orange) 50%, transparent);
+  background:color-mix(in srgb, var(--orange) 10%, transparent); }
+.rau-semn.rau-rece{ color:var(--text-muted); }
+.rau-semn.rau-stins{ color:var(--red); border-color:color-mix(in srgb, var(--red) 45%, transparent); }
+.rau-sfat{ font-size:11px; line-height:1.45; margin-top:5px; color:var(--orange); }
+.rau-sfat.rau-sfat-rece{ color:var(--text-muted); }
+/* Pe telefon rândul de opt bucăți se înghesuia. Devine cartonaș: omul sus, butoanele dedesubt. */
+@media (max-width: 720px){
+  .rau-bara{ flex-wrap:wrap; }
+  .ra-camp .rau-bara > select{ width:100%; min-width:0; max-width:none; }
+  .rau-cauta{ flex:1 1 100%; }
+  .user-row{ flex-direction:column; align-items:stretch; gap:8px; }
+  .rau-butoane{ justify-content:flex-end; }
+  .rau-butoane .btn-sm{ min-height:34px; min-width:38px; justify-content:center; }
+}
 .raco-filtre .rax-dev-chip.rau:not(.on){ border-color:color-mix(in srgb, var(--red) 45%, transparent); color:var(--red); }
 .raco-filtre .rax-dev-chip.atentie:not(.on){ border-color:color-mix(in srgb, var(--orange) 50%, transparent); color:var(--orange); }
 /* Venitul lunar recurent — cifra după care se conduce afacerea, la capătul rândului de filtre. */

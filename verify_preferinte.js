@@ -17,6 +17,7 @@
 
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { puneParola } = require('./test_parola');
 
 const PORT = 3199, DIR = '.pref-db';
 const env = {
@@ -192,7 +193,7 @@ const login = async (u, p) => {
   const PUT = (u, b, c) => fetch(B + u, { method: 'PUT', headers: c ? { 'Content-Type': 'application/json', Cookie: c } : H, body: JSON.stringify(b) });
 
   const co = await (await POST('/api/companies', { name: 'Firma preferințe' })).json();
-  await POST('/api/users', { username: 'disp@pref.ro', password: 'Str4da-Verde-2026', full_name: 'Dispecer Vechi', role: 'dispatcher', company_id: co.id });
+  await puneParola(await POST('/api/users', { username: 'disp@pref.ro', full_name: 'Dispecer Vechi', role: 'dispatcher', company_id: co.id }), 'Str4da-Verde-2026', B);
   let ckD = await login('disp@pref.ro', 'Str4da-Verde-2026');
 
   sect('12. Preferințele se salvează pe cont');
@@ -214,7 +215,7 @@ const login = async (u, p) => {
   T('un om nu-și poate scoate singur filele hotărâte de firmă', d.effective.tab_camion === true, String(d.effective.tab_camion));
 
   // Preferințele sunt ale OMULUI: nu se scurg la vecin.
-  await POST('/api/users', { username: 'disp2@pref.ro', password: 'Str4da-Verde-2026', full_name: 'Alt Dispecer', role: 'dispatcher', company_id: co.id });
+  await puneParola(await POST('/api/users', { username: 'disp2@pref.ro', full_name: 'Alt Dispecer', role: 'dispatcher', company_id: co.id }), 'Str4da-Verde-2026', B);
   const ckD2 = await login('disp2@pref.ro', 'Str4da-Verde-2026');
   const d2 = await (await GET('/api/me/ui-prefs', ckD2)).json();
   T('alt om nu moștenește preferințele lui', d2.effective.tema === 'inchisa' && d2.effective.harta === 'auto',

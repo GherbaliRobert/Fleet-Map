@@ -3069,6 +3069,9 @@ async function getUsers(companyId) {
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
+      -- Data până la care are acces (conturile demo aprobate expiră). Fără ea, ecranul nu putea
+      -- spune „expiră în 3 zile" — se afla doar intrând în fișa omului.
+      u.access_until,
       c.name AS company_name,
       -- Rolul PROPRIU al firmei (dacă omul are unul) și numele lui. Fără ele, web-ul și telefonul nu știau
       -- cine are rol propriu: ecranul arăta rolul standard, iar la prima salvare omul era mutat pe el.

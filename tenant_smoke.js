@@ -1,5 +1,6 @@
 // Test de izolare multi-tenant: două companii nu își văd reciproc datele.
 const BASE = process.env.BASE || 'http://localhost:3000';
+const { puneParola } = require('./test_parola');
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'test1234';
 let pass = 0, fail = 0;
 function ok(c, m) { if (c) { pass++; console.log('  PASS', m); } else { fail++; console.log('  FAIL', m); } }
@@ -28,10 +29,13 @@ async function req(jar, method, path, body) {
   ok(A && A.id, 'companie A creată #' + (A && A.id));
   ok(B && B.id, 'companie B creată #' + (B && B.id));
   const uA = 'admin.a.' + (A.id) + '@test.ro', uB = 'admin.b.' + (B.id) + '@test.ro';
-  const ca = await req(su, 'POST', `/api/companies/${A.id}/admin`, { username: uA, password: 'Curcubeu7Vara', full_name: 'Admin A' });
-  const cb = await req(su, 'POST', `/api/companies/${B.id}/admin`, { username: uB, password: 'Curcubeu7Vara', full_name: 'Admin B' });
+  const ca = await req(su, 'POST', `/api/companies/${A.id}/admin`, { username: uA, full_name: 'Admin A' });
+  const cb = await req(su, 'POST', `/api/companies/${B.id}/admin`, { username: uB, full_name: 'Admin B' });
   ok(ca.status === 200, 'admin A creat (' + ca.status + ')');
   ok(cb.status === 200, 'admin B creat (' + cb.status + ')');
+  // Conturile se nasc FARA parola (CLAUDE.md): fiecare si-o pune din linkul primit.
+  await puneParola(ca.data, 'Curcubeu7Vara', BASE);
+  await puneParola(cb.data, 'Curcubeu7Vara', BASE);
 
   console.log('# assign seeded devices to companies (TEST111->A, TEST222->B)');
   const r1 = await req(su, 'PUT', '/api/devices/TEST111/company', { company_id: A.id });

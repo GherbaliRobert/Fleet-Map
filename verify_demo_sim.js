@@ -13,6 +13,7 @@ const os = require('os'), path = require('path'), fs = require('fs');
 const PORT = 3131, TCP = 5131;
 const DIR = path.join(os.tmpdir(), 'rax_demosim_' + Date.now());
 const B = 'http://localhost:' + PORT;
+const { puneParola } = require('./test_parola');
 let ok = 0, fail = 0, cookie = '', srv = null;
 
 const t = (n, c, d) => { if (c) { ok++; console.log('  ✅ ' + n); } else { fail++; console.log('  ❌ ' + n + (d ? ' → ' + d : '')); } };
@@ -130,7 +131,7 @@ async function nPositions(imei) {
     // ── 6. Doar super-adminul ──
     const co = (await req('POST', '/api/companies', { name: 'Firma sim' })).body;
     if (co && co.id) {
-      await req('POST', '/api/users', { username: 'sim@test.ro', password: 'Parola123!', role: 'company_admin', company_id: co.id, full_name: 'Sim Test' });
+      await puneParola((await req('POST', '/api/users', { username: 'sim@test.ro', role: 'company_admin', company_id: co.id, full_name: 'Sim Test' })).body, 'Parola123!', B);
       const superCookie = cookie; cookie = '';
       await req('POST', '/api/login', { username: 'sim@test.ro', password: 'Parola123!' });
       const forbid = await req('POST', '/api/admin/demo-sim', { on: true });

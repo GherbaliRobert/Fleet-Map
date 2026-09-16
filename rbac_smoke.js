@@ -1,6 +1,7 @@
 // Smoke test RBAC + scoping + chei API (HTTP-only).
 // Necesită: serverul pornit pe :3000 cu DB-ul PGlite deja seedat cu TEST111/TEST222.
 const BASE = process.env.BASE || 'http://localhost:3000';
+const { puneParola } = require('./test_parola');
 let pass = 0, fail = 0;
 function check(name, cond, extra) {
   if (cond) { pass++; console.log('  ✅ ' + name); }
@@ -46,8 +47,10 @@ async function api(method, path, opts = {}) {
   check('asignare TEST111 la companie', (await api('PUT', '/api/devices/TEST111/company', { cookie: admin.cookie, body: { company_id: company.id } })).status === 200);
 
   console.log('\n— Creare client în companie + acces (doar TEST111) —');
-  const create = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client.test.' + company.id + '@test.ro', password: 'Curcubeu7Vara', role: 'client', full_name: 'Client Test', company_id: company.id } });
+  const create = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client.test.' + company.id + '@test.ro', role: 'client', full_name: 'Client Test', company_id: company.id } });
   check('creare client 200', create.status === 200, create.body);
+  // Contul se naste FARA parola (CLAUDE.md): omul si-o pune din link. Proba trece pe acelasi traseu.
+  await puneParola(create.body, 'Curcubeu7Vara', BASE);
   const cid = create.body.id;
   const grant = await api('PUT', '/api/users/' + cid + '/access', { cookie: admin.cookie, body: { devices: ['TEST111'], groups: [] } });
   check('atribuire acces 200', grant.status === 200, grant.body);

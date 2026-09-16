@@ -72,23 +72,37 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
       ['abcdefghijkl', 'doar litere mici'],
       ['0123456789', 'secvență de tastatură'],
     ];
+    // Parolele nu se mai nasc la crearea contului (CLAUDE.md, „Parola nu există") — se nasc o
+    // singură dată, când omul și-o pune din link. Acolo se apasă politica, pe toate căile.
     let respinse = 0;
     for (const [p, de_ce] of slabe) {
-      const r = await req(S, 'POST', '/api/users', { username: 'u' + Math.round(p.length * 97) + '@t.ro', password: p, role: 'viewer', company_id: co.id, full_name: 'Test User' });
+      const nou = await req(S, 'POST', '/api/users', { username: 'u' + Math.round(p.length * 97) + '@t.ro', role: 'viewer', company_id: co.id, full_name: 'Test User' });
+      const jet = String((nou.body && nou.body.link) || '').split('token=')[1] || '';
+      const r = await req(jar(), 'POST', '/api/auth/set-password', { token: jet, password: p });
       if (r.status === 400) respinse++;
       else console.log('      ⚠ acceptată: „' + p + '" (' + de_ce + ')');
     }
-    t('toate parolele slabe sunt respinse la crearea contului', respinse === slabe.length, respinse + '/' + slabe.length);
+    t('toate parolele slabe sunt respinse când omul și-o pune', respinse === slabe.length, respinse + '/' + slabe.length);
 
-    const cuNume = await req(S, 'POST', '/api/users', { username: 'ionpopescu@t.ro', password: 'ionpopescu99', role: 'viewer', company_id: co.id, full_name: 'Ion Popescu' });
+    // Regula „parola nu poate conține numele de utilizator" se apasă tot acolo: ruta de
+    // set-password știe cine e omul (îl află din jeton), deci o poate verifica.
+    const nouIon = await req(S, 'POST', '/api/users', { username: 'ionpopescu@t.ro', role: 'viewer', company_id: co.id, full_name: 'Ion Popescu' });
+    const jetIon = String((nouIon.body && nouIon.body.link) || '').split('token=')[1] || '';
+    const cuNume = await req(jar(), 'POST', '/api/auth/set-password', { token: jetIon, password: 'ionpopescu99' });
     t('parola care conține numele de utilizator e respinsă', cuNume.status === 400, 'status ' + cuNume.status);
 
-    const buna = await req(S, 'POST', '/api/users', { username: 'bun@t.ro', password: 'Curcubeu7Vara', role: 'viewer', company_id: co.id, full_name: 'Om Bun' });
-    t('o parolă rezonabilă e ACCEPTATĂ (nu am blocat oamenii)', buna.status === 200 || buna.status === 201, 'status ' + buna.status + ' ' + JSON.stringify(buna.body).slice(0, 90));
-    const uid = buna.body && buna.body.id;
+    // Contul se naște FĂRĂ parolă (CLAUDE.md): omul și-o pune din link. Regulile de parolă se aplică
+    // acolo, la capătul lanțului — care e și singurul loc unde se naște o parolă în aplicație.
+    const buna = await req(S, 'POST', '/api/users', { username: 'bun@t.ro', role: 'viewer', company_id: co.id, full_name: 'Om Bun' });
+    t('contul se creează fără parolă', buna.status === 200 || buna.status === 201, 'status ' + buna.status + ' ' + JSON.stringify(buna.body).slice(0, 90));
+    const jeton = String((buna.body && buna.body.link) || '').split('token=')[1] || '';
+    t('și primește un link de setare a parolei', !!jeton, (buna.body && buna.body.link) || 'fără link');
 
-    const schimb = await req(S, 'POST', '/api/users/' + uid + '/password', { password: '1234' });
-    t('aceeași regulă se aplică și la SCHIMBAREA parolei', schimb.status === 400, 'status ' + schimb.status);
+    const slaba = await req(jar(), 'POST', '/api/auth/set-password', { token: jeton, password: '1234' });
+    t('aceeași regulă se aplică și când omul ÎȘI pune parola', slaba.status === 400, 'status ' + slaba.status);
+
+    const pusa = await req(jar(), 'POST', '/api/auth/set-password', { token: jeton, password: 'Curcubeu7Vara' });
+    t('o parolă rezonabilă e ACCEPTATĂ (nu am blocat oamenii)', pusa.status === 200, 'status ' + pusa.status);
 
     const nouLogin = await req(jar(), 'POST', '/api/login', { username: 'bun@t.ro', password: 'Curcubeu7Vara' });
     t('contul nou chiar se poate autentifica', nouLogin.status === 200, 'status ' + nouLogin.status);

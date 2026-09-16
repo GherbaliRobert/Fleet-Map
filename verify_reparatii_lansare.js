@@ -11,6 +11,7 @@ const os = require('os'), path = require('path'), fs = require('fs');
 const PORT = 3171, TCP = 5171;
 const DIR = path.join(os.tmpdir(), 'rax_rep_' + Date.now());
 const B = 'http://localhost:' + PORT;
+const { puneParola } = require('./test_parola');
 const IMEI = '860000000077701';
 let ok = 0, fail = 0, srv = null;
 
@@ -109,10 +110,11 @@ function trimiteAntet(antet, corpOctetiPeSecunda) {
     t('companie de probă creată', !!coId, JSON.stringify(co.body).slice(0, 110));
 
     const creat = await req(S, 'POST', '/api/users', {
-      username: 'sofer.plecat@firma.ro', password: 'Curcubeu7Vara', role: 'viewer',
+      username: 'sofer.plecat@firma.ro', role: 'viewer',
       full_name: 'Șofer Plecat', email: 'sofer.plecat@firma.ro',
       company_id: coId,
     });
+    await puneParola(creat.body, 'Curcubeu7Vara', B);
     const uid = creat.body && creat.body.id;
     t('cont de probă creat', !!uid, JSON.stringify(creat.body).slice(0, 100));
     const U = jar();

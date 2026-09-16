@@ -1888,6 +1888,27 @@ async function _isLastActiveSuperadmin(targetId) {
     return (r.rows[0] ? r.rows[0].n : 0) <= 1;
   } catch (e) { return false; } // la eroare NU blocăm operația (fail-open: gardă de siguranță, nu regulă de securitate)
 }
+// Fiecare firmă are nevoie de cel puțin un om care poate adăuga colegi, atribui mașini și boteza
+// roluri. Clientul nu putea rămâne pe dinafară singur (serverul îl oprește să se șteargă sau să se
+// dezactiveze pe el însuși), dar FONDATORUL putea: ștergea, dezactiva, retrograda sau muta în altă
+// firmă singurul administrator, iar firma rămânea fără nimeni — cu toate mărunțișurile ei („mi-a
+// venit un șofer nou") pe telefonul nostru. Aici se închide.
+const _ROLURI_ADMIN_FIRMA = ['admin', 'company_admin'];
+async function _adminiActiviAiFirmei(companyId) {
+  const r = await db.pool.query(
+    "SELECT COUNT(*)::int AS n FROM users WHERE company_id = $1 AND active IS NOT FALSE AND role = ANY($2::text[])",
+    [companyId, _ROLURI_ADMIN_FIRMA]);
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+async function _ultimulAdminAlFirmei(targetId) {
+  try {
+    const t = await db.getUserById(targetId);
+    if (!t || t.company_id == null || t.active === false) return false;
+    if (!_ROLURI_ADMIN_FIRMA.includes(t.role)) return false;
+    return (await _adminiActiviAiFirmei(t.company_id)) <= 1;
+  } catch (e) { return false; } // ca la super-admin: e o plasă, nu o regulă de securitate (fail-open)
+}
+const MSG_ULTIMUL_ADMIN = 'Ar rămâne o firmă fără niciun administrator — fă altul întâi.';
 async function sameCompanyUser(req, targetId) {
   if (req.isSuper) return true;
   const u = await db.getUserById(targetId);
@@ -2656,7 +2677,7 @@ app.get('/api/users/lite', requireAuth, requireAdmin, withCompany, async (req, r
 
 app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    const { password, role, email, phone } = req.body;
+    const { role, email, phone } = req.body;
     const username = normUsername(req.body.username);
     const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
     if (!username) {
@@ -2666,21 +2687,10 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     if (!EMAIL_RE.test(username)) {
       return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro)' });
     }
-    // FĂRĂ parolă = INVITAȚIE. Adminul firmei scrie adresa colegului, alege rolul, iar omul își pune
-    // singur parola din emailul primit. Așa nu mai circulă parole pe WhatsApp, iar adminul nu ajunge
-    // să știe parola nimănui. Cu parolă scrisă de mână, comportamentul rămâne cel de până acum.
-    const invitatie = !password;
-    if (invitatie) {
-      // Conturile demo nu trimit emailuri prin serverul nostru (regula din CLAUDE.md).
-      if (demoCompanyId != null && req.companyId === demoCompanyId) {
-        return res.status(400).json({ error: 'În contul demo, scrie o parolă — invitațiile pe email nu pleacă de aici.' });
-      }
-      if (!channels.emailConfigured()) {
-        return res.status(400).json({ error: 'Serverul nu are email configurat, deci invitația nu poate pleca. Scrie o parolă pentru cont.' });
-      }
-    } else {
-      const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e });
-    }
+    // PAROLA NU EXISTĂ (CLAUDE.md). Nimeni nu scrie parola altcuiva — nici noi, nici adminul firmei.
+    // Contul se naște cu o parolă aleatoare pe care n-o știe NIMENI, iar omul și-o pune singur din
+    // linkul primit. O parolă trimisă în cerere se ignoră: altfel ar fi o a doua cale spre același
+    // lucru, exact felul de portiță care ne-a mai adus ecrane vechi, nesincronizate.
     if (full_name.length < 2) {
       return res.status(400).json({ error: 'Numele afișat este obligatoriu (așa apare persoana în aplicație)' });
     }
@@ -2711,22 +2721,23 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       return res.status(409).json({ error: 'Username-ul există deja' });
     }
 
-    // La invitație, parola din bază e una aleatoare pe care n-o știe NIMENI — contul se deschide doar
-    // prin linkul din email. Fără asta, un cont „fără parolă" ar fi un cont cu parolă goală.
-    const hash = await bcrypt.hash(invitatie ? crypto.randomBytes(24).toString('hex') : password, 10);
+    // Parola din bază e una aleatoare pe care n-o știe NIMENI — contul se deschide doar prin link.
+    // Fără asta, un cont „fără parolă" ar fi un cont cu parolă goală.
+    const hash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
     // Emailul contului = username-ul. Îl salvăm explicit ca recuperarea parolei și invitațiile să aibă
     // întotdeauna o adresă, fără să depindă de un al doilea câmp completat de mână.
     const user = await db.createUser(username, hash, finalRole, { full_name, email: (email && String(email).trim()) || username, phone, company_id: companyId });
     if (slugNou) { await db.setUserRoleSlug(user.id, slugNou); user.role_slug = slugNou; }
-    let invitat = false, invitErr = null;
-    if (invitatie) {
-      const co = companyId != null ? await db.getCompanyById(companyId).catch(function () { return null; }) : null;
-      try { invitat = await sendSetPasswordEmail(req, user, { invite: true, company: co }); }
-      catch (e) { invitErr = e.message; }
-      if (!invitat) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '": ' + (invitErr || 'trimitere eșuată'));
-    }
-    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: invitatie ? invitat : undefined });
-    res.json(Object.assign({}, user, invitatie ? { invitat: invitat } : {}));
+    const co = companyId != null ? await db.getCompanyById(companyId).catch(function () { return null; }) : null;
+    // Din contul demo nu pleacă emailuri prin serverul nostru (CLAUDE.md) — dar contul se face oricum,
+    // iar linkul se întoarce pe ecran. Înainte, aici se cerea o parolă scrisă de mână.
+    const demoFaraEmail = (demoCompanyId != null && req.companyId === demoCompanyId);
+    const rez = demoFaraEmail
+      ? { trimis: false, link: await linkDeParola(req, user, { hours: 24 * 7 }), motiv: 'Din contul demo nu pleacă emailuri.' }
+      : await trimiteLinkParola(req, user, { invite: true, company: co });
+    if (!rez.trimis) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '": ' + (rez.motiv || 'trimitere eșuată'));
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: rez.trimis });
+    res.json(Object.assign({}, user, { invitat: rez.trimis, link: rez.link || undefined, motiv: rez.trimis ? undefined : rez.motiv }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2834,6 +2845,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     if ((active === false || (role && role !== 'superadmin')) && await _isLastActiveSuperadmin(id)) {
       return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l retrograda sau dezactiva.' });
     }
+    // Aceeași plasă, pentru firmele clienților: dezactivat sau coborât de pe rolul de admin.
+    if ((active === false || (role && !_ROLURI_ADMIN_FIRMA.includes(role))) && await _ultimulAdminAlFirmei(id)) {
+      return res.status(400).json({ error: MSG_ULTIMUL_ADMIN });
+    }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
     // Un super-admin e cont de PLATFORMĂ: nu rămâne legat de firma din care a fost promovat — la fel ca la creare
     // și la mutarea între firme. (Mutarea scoate și rolul propriu și accesul pe vehicule ale firmei vechi.)
@@ -2851,16 +2866,33 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
   }
 });
 
-app.post('/api/users/:id/password', requireAuth, requireAdmin, withCompany, async (req, res) => {
+// Trimite omului linkul prin care ÎȘI pune parola. UN SINGUR buton acoperă amândouă nevoile: și
+// invitația care n-a ajuns (a căzut în spam), și parola uitată. Ruta veche — „adminul scrie parola
+// altcuiva" — a fost scoasă: era singurul loc din aplicație unde cineva ajungea să știe parola unui om.
+const _linkParolaHits = new Map(); // userId -> { n, ts }
+const LINK_PAROLA_MAX = 5, LINK_PAROLA_FEREASTRA_MS = 60 * 60 * 1000;
+function _linkParolaProstit(id) {
+  const acum = Date.now();
+  const h = _linkParolaHits.get(id);
+  if (!h || acum - h.ts > LINK_PAROLA_FEREASTRA_MS) { _linkParolaHits.set(id, { n: 1, ts: acum }); return false; }
+  h.n++;
+  return h.n > LINK_PAROLA_MAX;
+}
+app.post('/api/users/:id/link-parola', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
-    const { password } = req.body;
-    { const e = verificaParola(password, null); if (e) return res.status(400).json({ error: e }); }
-    const hash = await bcrypt.hash(password, 10);
-    await db.updateUserPassword(id, hash);
-    auditReq(req, 'reset_password', 'user', id);
-    res.json({ ok: true });
+    const u = await db.getUserById(id);
+    if (!u) return res.status(404).json({ error: 'Contul nu există' });
+    if (u.active === false) return res.status(400).json({ error: 'Contul e dezactivat — activează-l întâi, altfel linkul nu funcționează.' });
+    // Fără limitare, butonul devine un robinet de emailuri către adresa cuiva — pe reputația domeniului nostru.
+    if (_linkParolaProstit(id)) return res.status(429).json({ error: 'Prea multe linkuri trimise pentru contul ăsta într-o oră. Încearcă mai târziu.' });
+    const demoFaraEmail = (demoCompanyId != null && u.company_id === demoCompanyId);
+    const rez = demoFaraEmail
+      ? { trimis: false, link: await linkDeParola(req, u, { hours: 24 * 7 }), motiv: 'Din contul demo nu pleacă emailuri.' }
+      : await trimiteLinkParola(req, u, { invite: !u.last_login, company: u.company_id != null ? await db.getCompanyById(u.company_id).catch(function () { return null; }) : null });
+    auditReq(req, 'link_parola', 'user', id, { trimis: rez.trimis });
+    res.json({ ok: true, trimis: rez.trimis, email: u.email || u.username, link: rez.link || undefined, motiv: rez.trimis ? undefined : rez.motiv });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2900,6 +2932,7 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req,
     if (await _isLastActiveSuperadmin(id)) {
       return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l șterge.' });
     }
+    if (await _ultimulAdminAlFirmei(id)) return res.status(400).json({ error: MSG_ULTIMUL_ADMIN });
     await db.deleteUser(id);
     await _taieAccesulUtilizatorului(id, 'Neautorizat'); // sesiunile și legăturile live ale omului șters
     await syncDemoSim('utilizator șters').catch(() => {}); // dacă era ultimul cont demo, simulatorul se oprește
@@ -5226,14 +5259,37 @@ function appBaseUrl(req) {
   const h = (req && req.get && req.get('host')) || 'ratrack.ro';
   return (process.env.BASE_URL || ('https://' + h)).replace(/\/$/, '');
 }
-async function sendSetPasswordEmail(req, user, opts) {
-  opts = opts || {};
-  if (!user || !user.email) return false;
-  if (!(channels.emailConfigured && channels.emailConfigured())) return false;
+// Linkul prin care omul ÎȘI pune parola. Se face într-un singur loc, fiindcă e singurul mod în care
+// se naște o parolă în RA Tracks: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există").
+async function linkDeParola(req, user, opts) {
   const token = crypto.randomBytes(32).toString('hex');
-  const hours = opts.hours || (24 * 7);
+  const hours = (opts && opts.hours) || (24 * 7);
   await db.setUserResetToken(user.id, token, Date.now() + hours * 3600 * 1000);
-  const link = appBaseUrl(req) + '/set-password.html?token=' + token;
+  return appBaseUrl(req) + '/set-password.html?token=' + token;
+}
+// Trimite linkul pe email și, dacă emailul NU poate pleca (fără SMTP, adresă lipsă, eroare de
+// trimitere), îl întoarce ca să-l ducă adminul mai departe cum poate. Înainte, contul rămânea blocat
+// și singura scăpare era să-i scrie cineva o parolă de mână — exact ce nu vrem.
+async function trimiteLinkParola(req, user, opts) {
+  opts = opts || {};
+  if (!user || !user.email) return { trimis: false, link: null, motiv: 'Contul nu are adresă de email.' };
+  const link = await linkDeParola(req, user, opts);
+  if (!(channels.emailConfigured && channels.emailConfigured())) {
+    return { trimis: false, link: link, motiv: 'Serverul nu are email configurat.' };
+  }
+  let trimis = false, motiv = null;
+  try { trimis = await _trimiteEmailulDeParola(req, user, link, opts); }
+  catch (e) { motiv = e.message; }
+  return trimis ? { trimis: true, link: null, motiv: null }
+                : { trimis: false, link: link, motiv: motiv || 'Trimiterea emailului a eșuat.' };
+}
+// Vechea poartă, păstrată pentru cine vrea doar „a plecat / n-a plecat".
+async function sendSetPasswordEmail(req, user, opts) {
+  return (await trimiteLinkParola(req, user, opts)).trimis;
+}
+async function _trimiteEmailulDeParola(req, user, link, opts) {
+  opts = opts || {};
+  const hours = opts.hours || (24 * 7);
   let subject, text;
   if (opts.invite) {
     subject = 'Invitație RA Tracks' + (opts.company ? ' — ' + opts.company.name : '');
@@ -5254,32 +5310,28 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     const companyId = parseInt(req.params.id);
     const co = await db.getCompanyById(companyId);
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    const { password } = req.body;
     const username = normUsername(req.body.username);
     const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
     if (!username) return res.status(400).json({ error: 'Emailul administratorului e obligatoriu' });
     if (!EMAIL_RE.test(username)) return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (pe ea pleacă și invitația)' });
     if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Există deja un cont cu acest email' });
     const email = (req.body.email && String(req.body.email).trim()) || username; // emailul = username-ul
-    const invite = !password; // fără parolă → invitație prin email
-    if (!invite) { const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e }); }
-    const hash = await bcrypt.hash(invite ? crypto.randomBytes(24).toString('hex') : password, 10);
+    // PAROLA NU EXISTĂ (CLAUDE.md): contul se naște cu o parolă aleatoare pe care n-o știe nimeni, iar
+    // adminul firmei și-o pune singur din link. Dacă emailul nu poate pleca, linkul se întoarce aici,
+    // ca să-l ducă fondatorul mai departe. Înainte, aici se sfătuia o parolă scrisă de mână.
+    const hash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
     const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });
-    let invited = false, inviteError = null;
-    if (invite) {
-      try { invited = await sendSetPasswordEmail(req, u, { invite: true, company: co }); }
-      catch (e) { inviteError = e.message; }
-      // Eșecul era TĂCUT: contul rămânea cu parolă random, fără email și fără cale de recuperare
-      // → cont inaccesibil, iar cel care l-a creat nu afla niciodată. Acum se vede în log + în răspuns.
-      if (!invited) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '" (companie ' + companyId + '): ' + (inviteError || (channels.emailConfigured && channels.emailConfigured() ? 'trimitere eșuată' : 'SMTP neconfigurat')));
-    }
-    auditReq(req, 'create', 'company_admin', u.id, { companyId, invited });
+    const rez = await trimiteLinkParola(req, u, { invite: true, company: co });
+    // Eșecul era TĂCUT: contul rămânea cu parolă random, fără email și fără cale de recuperare
+    // → cont inaccesibil, iar cel care l-a creat nu afla niciodată. Acum se vede în log + în răspuns.
+    if (!rez.trimis) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '" (companie ' + companyId + '): ' + (rez.motiv || 'trimitere eșuată'));
+    auditReq(req, 'create', 'company_admin', u.id, { companyId, invited: rez.trimis });
     res.json(Object.assign({}, u, {
-      invited,
+      invited: rez.trimis,
       inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()),
-      warning: (invite && !invited)
-        ? 'Contul a fost creat, dar emailul de invitație NU a putut fi trimis (SMTP neconfigurat sau eroare). Utilizatorul NU își poate seta parola — setează-i una manual sau configurează SMTP.'
-        : undefined
+      link: rez.link || undefined,
+      warning: rez.trimis ? undefined
+        : 'Emailul de invitație NU a plecat (' + (rez.motiv || 'eroare de trimitere') + '). Copiază linkul de mai jos și trimite-i-l tu — parola și-o pune tot el.'
     }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5290,9 +5342,11 @@ app.post('/api/auth/set-password', async (req, res) => {
     const token = (req.body && req.body.token) || '';
     const password = (req.body && req.body.password) || '';
     if (!token) return res.status(400).json({ error: 'Token lipsă.' });
-    { const e = verificaParola(password, null); if (e) return res.status(400).json({ error: e }); }
     const u = await db.getUserByResetToken(token);
     if (!u) return res.status(400).json({ error: 'Link invalid sau expirat. Cere o nouă invitație.' });
+    // Politica se verifică DUPĂ ce știm cine e omul: numai așa putem refuza o parolă care conține
+    // numele lui de utilizator. De când parola se naște doar aici, ăsta e singurul loc unde se apasă.
+    { const e = verificaParola(password, u.username); if (e) return res.status(400).json({ error: e }); }
     // Un cont dezactivat sau cu accesul expirat (demo) nu-și poate seta parola. Răspundem cu ACELAȘI
     // mesaj ca la un token greșit: altfel am confirma cuiva că adresa există, doar că e blocată.
     if (u.active === false || (u.access_until != null && Number(u.access_until) < Date.now())) {
@@ -5796,6 +5850,10 @@ app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, re
     // rămâne fără companie — altfel ar sări peste gating-ul de abonament + funcții. Oglindește crearea de user (400).
     if (companyId == null) return res.status(400).json({ error: 'Selectează compania pentru utilizator (un cont nu poate rămâne fără companie)' });
     if (!(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    // Mutarea golește firma la fel de bine ca ștergerea: pleacă singurul admin, rămâne nimeni.
+    if (companyId !== target.company_id && await _ultimulAdminAlFirmei(id)) {
+      return res.status(400).json({ error: MSG_ULTIMUL_ADMIN });
+    }
     await db.setUserCompany(id, companyId);
     invalidateAccessCache(id);
     auditReq(req, 'assign_company', 'user', id, { companyId });
@@ -5815,6 +5873,19 @@ app.put('/api/users/company/bulk', requireAuth, requireSuperadmin, async (req, r
     // Refuză super-adminii (același gard ca în PUT-ul single) — un singur SELECT, nu N round-trips.
     const superCount = await db.countSuperadminsInIds(ids);
     if (superCount > 0) return res.status(400).json({ error: 'Super-adminii nu pot fi mutați (' + superCount + ' detectați)' });
+    // Aceeași plasă ca la mutarea unuia singur — dar socotită pe LOT: dacă firma are doi admini și
+    // pleacă amândoi deodată, fiecare în parte pare nevinovat, iar firma rămâne goală.
+    const _pleacaDin = new Map(); // company_id -> câți admini activi ies din firmă
+    for (const id of ids) {
+      const t = await db.getUserById(id).catch(function () { return null; });
+      if (!t || t.company_id == null || t.active === false) continue;
+      if (t.company_id === companyId) continue; // rămâne unde e
+      if (!_ROLURI_ADMIN_FIRMA.includes(t.role)) continue;
+      _pleacaDin.set(t.company_id, (_pleacaDin.get(t.company_id) || 0) + 1);
+    }
+    for (const [cid, pleaca] of _pleacaDin) {
+      if ((await _adminiActiviAiFirmei(cid)) - pleaca <= 0) return res.status(400).json({ error: MSG_ULTIMUL_ADMIN });
+    }
     const moved = await db.setUsersCompanyBulk(ids, companyId);
     ids.forEach(id => invalidateAccessCache(id));
     auditReq(req, 'assign_company_bulk', 'user', null, { companyId, count: moved, ids: ids.slice(0, 50) });

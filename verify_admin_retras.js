@@ -12,6 +12,7 @@ const os = require('os'), path = require('path'), fs = require('fs');
 const PORT = 3163, TCP = 5163;
 const DIR = path.join(os.tmpdir(), 'rax_adm_' + Date.now());
 const B = 'http://localhost:' + PORT;
+const { puneParola } = require('./test_parola');
 let ok = 0, fail = 0, srv = null;
 
 const t = (n, c, d) => { if (c) { ok++; console.log('  ✅ ' + n); } else { fail++; console.log('  ❌ ' + n + (d ? ' → ' + d : '')); } };
@@ -57,8 +58,9 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
 
     // Îmi fac contul personal de super-admin, exact ca fondatorii
     const creat = await req(S, 'POST', '/api/users', {
-      username: 'robert@unitip.ro', password: 'Curcubeu7Vara', role: 'superadmin', full_name: 'Robert G',
+      username: 'robert@unitip.ro', role: 'superadmin', full_name: 'Robert G',
     });
+    await puneParola(creat.body, 'Curcubeu7Vara', B);
     t('cont personal de super-admin creat', creat.status === 200 || creat.status === 201,
       'status ' + creat.status + ' ' + JSON.stringify(creat.body).slice(0, 110));
     const P = jar();

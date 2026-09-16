@@ -73,7 +73,7 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
     const target = faraVehicul[0];
 
     // Un utilizator din compania B — rolul cel mai slab posibil
-    await req(S, 'POST', '/api/users', { username: 'spion@b.ro', password: 'Parola123!', role: 'viewer', company_id: coB.id, full_name: 'Spion B' });
+    await puneParola((await req(S, 'POST', '/api/users', { username: 'spion@b.ro', role: 'viewer', company_id: coB.id, full_name: 'Spion B' })).data, 'Parola123!', BASE);
     const U = jar();
     t('utilizator viewer din compania B autentificat', (await req(U, 'POST', '/api/login', { username: 'spion@b.ro', password: 'Parola123!' })).status === 200);
 
@@ -97,7 +97,7 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
     t('super-adminul își vede în continuare notificarea', legit.status === 200, 'status ' + legit.status);
 
     const A = jar();
-    await req(S, 'POST', '/api/users', { username: 'admin@a.ro', password: 'Parola123!', role: 'company_admin', company_id: coA.id, full_name: 'Admin A' });
+    await puneParola((await req(S, 'POST', '/api/users', { username: 'admin@a.ro', role: 'company_admin', company_id: coA.id, full_name: 'Admin A' })).data, 'Parola123!', BASE);
     await req(A, 'POST', '/api/login', { username: 'admin@a.ro', password: 'Parola123!' });
     // Notificarea de cerere demo e a PLATFORMEI (fără companie, fără utilizator), deci nici adminul unei
     // companii n-are ce căuta în ea — 404 e răspunsul corect, nu o regresie.

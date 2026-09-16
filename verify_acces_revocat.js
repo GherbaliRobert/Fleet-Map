@@ -22,6 +22,7 @@ const WebSocket = require('ws');
 const PORT = 3186, TCP = 5186; // proprii: 3196/5196 sunt ale lui verify_tacho_api.js
 const DIR = path.join(os.tmpdir(), 'rax_revocat_' + Date.now());
 const B = 'http://127.0.0.1:' + PORT;
+const { puneParola } = require('./test_parola');
 const env = Object.assign({}, process.env, {
   NODE_ENV: 'test', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_revocat', DEMO_DISABLED: 'true',
   PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR,
@@ -95,8 +96,9 @@ function legaturaToken(cheie) {
   const co = await (await cerere('POST', '/api/companies', S, { name: 'Firma Revocare SRL' })).json();
   const PAROLA = 'Str4da-Verde-2026';
   async function om(nume) {
-    const r = await cerere('POST', '/api/users', S, { username: nume + '@revocare.ro', password: PAROLA, full_name: nume, role: 'viewer', company_id: co.id });
+    const r = await cerere('POST', '/api/users', S, { username: nume + '@revocare.ro', full_name: nume, role: 'viewer', company_id: co.id });
     const b = await r.json();
+    await puneParola(b, PAROLA, B);
     const ck = await login(nume + '@revocare.ro', PAROLA);
     return { id: b.id, ck };
   }
@@ -185,12 +187,13 @@ function legaturaToken(cheie) {
 
   console.log('\n7. Drepturile tăiate ajung și în harta live deja deschisă');
   // Administratorul firmei adaugă un vehicul (intră în firma lui) și îi dă unui dispecer drept DOAR pe el.
-  await cerere('POST', '/api/users', S, { username: 'sef@revocare.ro', password: PAROLA, full_name: 'Sef', role: 'company_admin', company_id: co.id });
+  await puneParola(await (await cerere('POST', '/api/users', S, { username: 'sef@revocare.ro', full_name: 'Sef', role: 'company_admin', company_id: co.id })).json(), PAROLA, B);
   const ckSef = await login('sef@revocare.ro', PAROLA);
   const IMEI_P = '350000000009911';
   const imp = await cerere('POST', '/api/devices/import', ckSef, { rows: [{ imei: IMEI_P, name: 'Proba drepturi', plate: 'B-99-DRP' }] });
   T('administratorul firmei adaugă vehiculul', imp.status === 200, imp.status + ' ' + (await imp.clone().text()).slice(0, 120));
-  const disp = await (await cerere('POST', '/api/users', S, { username: 'dispecer@revocare.ro', password: PAROLA, full_name: 'Dispecer', role: 'dispatcher', company_id: co.id })).json();
+  const disp = await (await cerere('POST', '/api/users', S, { username: 'dispecer@revocare.ro', full_name: 'Dispecer', role: 'dispatcher', company_id: co.id })).json();
+  await puneParola(disp, PAROLA, B);
   const acc1 = await cerere('PUT', '/api/users/' + disp.id + '/access', ckSef, { devices: [IMEI_P], groups: [] });
   T('dispecerul primește drept pe vehicul', acc1.status === 200, acc1.status);
   const ckDisp = await login('dispecer@revocare.ro', PAROLA);

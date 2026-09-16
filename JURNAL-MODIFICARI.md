@@ -18,6 +18,119 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-09-16
+
+### AMÂNDOI · Parola nu mai există. Trimitem un link, omul și-o pune singur
+
+Alin, despre ecranul Utilizatori: *„PAROLA NU EXISTĂ — noi trimitem link, și adminul firmei, clientul
+își setează parola, la fel își gestionează și conturile."*
+
+**Ce era.** În două locuri se putea scrie parola altui om: o casetă la deschiderea contului și încă
+una, „Parolă nouă", în fișa lui. Adică cineva ajungea să știe parola altcuiva, iar parola aia circula
+pe telefon sau pe WhatsApp. În plus, fără server de email, aplicația **refuza** să deschidă un cont și
+te trimitea înapoi la parola scrisă de mână.
+
+**Ce e acum.** Nicio casetă de parolă, nicăieri. Contul se deschide pe o adresă de email, pleacă un
+link, omul își pune singur parola. Pe fiecare rând din listă e **un singur buton — „Trimite link de
+parolă"** — care acoperă și invitația care n-a ajuns (a căzut în spam), și parola uitată. Erau două
+nevoi și zero butoane; acum e un buton.
+
+Și lucrul care lipsea: **când emailul nu poate pleca, primești linkul pe ecran**, copiat deja, ca să
+i-l dai omului cum poți. Contul nu mai rămâne blocat din cauza unui server de email. Regula s-a mutat
+și în adâncime: ruta prin care un administrator seta parola altcuiva a fost **ștearsă de pe server**,
+nu doar ascunsă din ecran — un buton ascuns tot poate fi apăsat de cine îi știe adresa. Fiecare link
+trimis lasă un rând în jurnalul de audit, iar mai mult de cinci pe oră către același cont se refuză,
+ca butonul să nu devină un robinet de emailuri pe reputația domeniului nostru.
+
+- **Ce am schimbat:** parolele nu se mai scriu de nimeni, în afară de omul care le folosește.
+- **Ce vede fondatorul:** un buton de trimis linkul pe fiecare rând, în Utilizatori și în Conturi.
+- **Ce vede clientul:** același lucru, pentru oamenii firmei lui.
+
+### AMÂNDOI · Utilizatori: se vede cine n-a intrat, cine nu vede nimic și cine costă
+
+Opt lucruri cerute pentru cardul **Utilizatori**, într-un lot. Ecranul e ACELAȘI în amândouă
+verticalele — fondatorul îl are în Administrare, adminul firmei în **Setări → Conturi și roluri** —
+așa că fiecare schimbare a fost gândită de două ori: ce înseamnă pentru noi, ce înseamnă pentru el.
+
+**1. Contul care n-a intrat niciodată e strigat.** Înainte scria „niciodată" cu gri, la coada unui
+rând mic. Acum e un semn portocaliu, cu butonul de retrimis linkul chiar lângă el. Ăsta e lucrul care
+se strică cel mai des: invitația cade în spam, omul nu-și pune parola, și nimeni nu observă până sună.
+
+**2. Filtre rapide cu numere:** *Toți · N-au intrat niciodată · Fără acces · Dezactivate · Cu RA
+Insight · Admini*. Numerele se socotesc pe lista întreagă, nu pe ce a rămas după căutare — altfel
+„N-au intrat niciodată: 0" ar minți doar pentru că ai scris ceva în casetă. Ce nu există nu ocupă loc.
+
+**3. Căutare adevărată:** nume, email, telefon, rolul așa cum l-a botezat firma — iar la fondator și
+numele companiei. Scrisă fără diacritice găsește și cu: „stefan" îl găsește pe „Ștefan".
+
+**4. „Fără acces", scris portocaliu — dar numai la client.** Un dispecer căruia nu i-ai bifat nicio
+mașină deschide aplicația și vede un ecran gol; crede că s-a stricat și sună la suport. Acum rândul
+lui spune *„nu vede niciun vehicul — atribuie-i din Editează"*. **La fondator semnul nu se aprinde**:
+împărțirea mașinilor pe oamenii unei firme e gospodăria adminului ei, nu a noastră (decizia lui Alin).
+
+**5. Conturile cu RA Insight, numărate sus.** Bifa se dă pe om, dar suma se face pe firmă. Acum scrie
+„3 conturi cu RA Insight — la factură intră vârful lunii". O firmă putea aprinde cinci conturi fără
+să-și dea seama ce a făcut; acum vede și ea, nu doar noi.
+
+**6. „Ultima logare" pe înțeles:** *azi · ieri · acum 9 zile*, cu ora exactă rămasă la hover. După 40
+de zile de liniște se face portocaliu — iar la client scrie și ce înseamnă: *„cont nefolosit de 40 de
+zile — dezactivează-l dacă omul nu mai lucrează aici"*. Aceeași cifră, două înțelesuri: pentru noi e
+un client care se stinge, pentru el e o ușă lăsată deschisă după cineva care a plecat din firmă.
+
+**7. Cartonașul de pe „Acasă" spune starea**, nu doar numărul: sub „7 Utilizatori" scrie *„2 n-au
+intrat niciodată · 1 fără acces"* — sau *„toți au intrat"*.
+
+**8. Accesul temporar se vede în rând:** *expiră azi · expiră în 3 zile · acces până la 22.09*.
+Conturile demo aprobate expiră; până acum aflai doar intrând în fișa omului.
+
+Plus **sortare** (nume, rol, ultima logare — cine n-a intrat niciodată stă primul) și, **pe telefon**,
+fiecare om devine cartonaș, nu un rând de opt bucăți înghesuite.
+
+**Ce NU am făcut, și de ce:** fără export în Excel. La Companii avea sens, e registrul de clienți.
+Aici lista e nume, emailuri și telefoane de oameni — date personale care ies din aplicație. Dacă îl
+vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuzat de server, cu urmă
+în audit.
+
+- **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
+- **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
+- **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+### FONDATOR · O firmă nu mai poate rămâne fără niciun administrator
+
+**Ce se putea întâmpla.** Fiecare firmă are nevoie de cel puțin un om care poate adăuga colegi,
+atribui mașini și boteza roluri. Clientul nu-și putea face rău singur — serverul îl oprește să se
+șteargă sau să se dezactiveze pe el însuși. **Dar noi puteam**: puteam șterge, dezactiva, coborî de pe
+rol sau muta în altă firmă singurul administrator al unui client. Firma mergea mai departe, oamenii
+intrau, dar orice mărunțiș („mi-a venit un șofer nou") ajungea la noi pe telefon, fiindcă nu mai avea
+cine să-l facă acolo.
+
+**Ce e acum.** Serverul refuză, pe toate cele patru căi (ștergere, dezactivare, retrogradare, mutare
+— inclusiv mutarea în lot, unde doi admini plecați deodată păreau fiecare nevinovat), și spune de ce:
+*„Ar rămâne o firmă fără niciun administrator — fă altul întâi."* Cu un al doilea administrator în
+firmă, totul se deblochează: plasa oprește golirea, nu administrarea.
+
+- **Ce am schimbat:** o firmă nu mai poate rămâne fără administrator, nici din greșeala noastră.
+- **Ce vede fondatorul:** un refuz limpede, cu ce are de făcut, în loc de o firmă blocată peste o lună.
+- **Ce vede clientul:** nimic — el nu putea ajunge acolo oricum.
+
+**Ce am lăsat în urmă:** `verify_utilizatori.js` — **129 de verificări**, din care 22 pe aplicația
+pornită (contul care se naște fără parolă, parola trimisă în cerere care NU prinde, linkul, limitarea
+la al șaselea într-o oră, toate cele patru căi ale plasei, termenul de acces ajuns la ecran).
+Sabotat în cinci feluri, ca să fiu sigur că pică atunci când trebuie. Probele care își făceau conturi
+cu parolă trec acum prin **același traseu ca un om adevărat** (`test_parola.js`): creezi contul,
+primești linkul, pui parola. Așa se verifică singur, la fiecare rulare, lanțul de invitație.
+
+Plus o probă în browser adevărat (32 de verificări, amândouă verticalele și pe telefon), care a prins
+două lucruri ce nu se vedeau din fișiere: **caseta de căutare ieșea de 0 lățime** (selectorul de
+ordine lua toată bara, nu se putea scrie în ea) și **selectorul de companie reapărea în privirea
+clientului**, unde un admin de firmă n-are ce alege. Amândouă reparate.
+
+**De știut, nereparat aici:** pe telefon, pagina se trage lateral cu vreo 60 de puncte — vine din
+**bara de sus**, la fel pe ecranul de hartă, deci e mai veche decât lotul ăsta și n-am umblat la ea
+acum. Trecută la lista de dinainte de lansare.
+
+---
+
 ## 2026-09-13
 
 ### AMÂNDOI · Aplicația de telefon prinde din urmă web-ul: primul lot, tot ce era stricat — `f4e2fa4`
@@ -6552,9 +6665,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   **nu în Spam** — verifică și acolo), e gata. Dacă nu ajunge, mai sunt de pus SPF și DKIM la domeniu,
   altfel mesajele noastre vor fi tratate ca spam de Gmail și Outlook.
 
-  Aplicația **nu minte** cât timp nu e configurat: la companie nouă și la utilizator nou refuză din
-  start invitația și îți spune să scrii o parolă; la adrese de email spune că mesajul de confirmare
+  Aplicația **nu minte** cât timp nu e configurat: la adrese de email spune că mesajul de confirmare
   n-a plecat. Deci nu e periculos — dar e o promisiune pe care n-o putem ține în fața unui client.
+
+  **Actualizat 16.09** (de când parola nu mai există): contul nou **se creează oricum**, chiar fără
+  SMTP — doar că linkul de parolă ți se arată pe ecran, copiat, ca să-l duci tu omului. Nu mai există
+  varianta „scrie-i tu o parolă". Deci până punem SMTP-ul, **fiecare cont nou cere un pas manual de
+  la noi sau de la adminul firmei**; punctele 1, 2 și 3 de mai sus rămân, dar nu mai blochează nimic.
 
 
 - [ ] **(voi) Un cont de test ca utilizator obișnuit.** Testați totul ca super-admin, care trece prin
@@ -6668,6 +6785,16 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) Pe telefon, pagina se trage lateral cu vreo 60 de puncte.** Vine din **bara de sus**
+  (`.topbar-right`: butoanele și numele contului ies din ecran), nu dintr-un ecran anume — se vede la fel
+  pe hartă și în Setări. Nu e periculos, dar dă senzația de aplicație care „nu încape". Găsit la proba
+  ecranului Utilizatori, 16.09; e mai vechi decât lotul acela, de aceea n-am umblat la el atunci.
+
+- [ ] **(eu) Trei probe vechi nu mai pornesc deloc** — `verify_tenant.js`, `verify_fms.js`,
+  `verify_faza2.js`. Își fac conturi cu nume care nu sunt adrese de email („adminA123") și cu parole de
+  6 caractere, adică lucruri pe care aplicația nu le mai primește de mult. Nu sunt în poarta automată,
+  deci nu opresc nimic, dar cât timp stau stricate nu apără nimic. De adus la regulile de acum.
 
 - [ ] **(voi) Instalați aplicația de telefon 1.0.1** pe telefoanele de test și, apoi, la clienți. Protecțiile de pe
   server (fond și acord, zone, roluri, acte) merg și pe aplicația veche, dar caseta de acord, lacătul de la zonele

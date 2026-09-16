@@ -1508,7 +1508,7 @@
           <div id="admin-dash">
             <div class="adash-cards">
               <button class="adash-card" data-super data-card="companies" onclick="raxDashCard('companies', this)"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span><span class="adash-sub" id="adash-s-companies"></span></button>
-              <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users', this)"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
+              <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users', this)"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span><span class="adash-sub" id="adash-s-users"></span></button>
               <button class="adash-card" data-super data-card="devices" onclick="raxDashCard('devices', this)"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
               <button class="adash-card adash-warn" data-card="archived" onclick="raxDashCard('archived', this)"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
             </div>
@@ -1537,12 +1537,26 @@
           <div id="admin-tab-contracte" style="display:none;"></div>
           <div id="admin-tab-demoreq" style="display:none;"></div>
       <div id="admin-tab-users" class="ra-camp" style="display:none;">
+      <!-- Bara de deasupra listei: căutarea și ordinea stau în HTML (nu se redesenează), ca scrisul din
+           casetă să nu-și piardă cursorul la fiecare filtrare. Pastilele și contorul se desenează din JS. -->
+      <div class="rau-bara">
+        <div class="rau-cauta">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="search" id="users-cauta" class="rax-field" placeholder="Caută după nume, email, telefon sau rol…" autocomplete="off" oninput="_usrCauta(this.value)">
+        </div>
+        <select id="users-sort" class="rax-field" onchange="_usrSort(this.value)" aria-label="Ordinea în listă">
+          <option value="nume">Ordine: nume</option>
+          <option value="rol">Ordine: rol</option>
+          <option value="logare">Ordine: ultima logare</option>
+        </select>
+      </div>
+      <div id="users-pastile" class="rau-pastile"></div>
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
+        <!-- Nicio casetă de parolă: omul își pune singur parola, din linkul primit. Vezi CLAUDE.md. -->
         <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <input type="email" id="new-username" placeholder="Email (așa se autentifică) *" autocomplete="off" autocapitalize="none" spellcheck="false">
-          <input type="password" id="new-password" placeholder="Parolă (gol = îi trimitem invitație pe email)" autocomplete="new-password">
           <input type="text" id="new-fullname" placeholder="Nume afișat *">
           <input type="tel" id="new-phone" placeholder="Telefon">
           <select id="new-company" class="super-only"><option value="">— alege compania —</option></select>
@@ -1551,6 +1565,7 @@
             <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
             <option value="viewer">Viewer (doar se uită, la mașinile atribuite)</option>
           </select>
+          <div class="rau-nota" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</div>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
         </div>
       </div>
@@ -1583,7 +1598,8 @@
         <label class="ue-field"><span>Nume complet</span><input type="text" id="ue-fullname"></label>
         <label class="ue-field"><span>Email</span><input type="email" id="ue-email"></label>
         <label class="ue-field"><span>Telefon</span><input type="text" id="ue-phone"></label>
-        <label class="ue-field"><span>Parolă nouă (opțional)</span><input type="password" id="ue-password" placeholder="gol = neschimbat"></label>
+        <!-- Aici era „Parolă nouă". A plecat: parola o pune omul, din linkul pe care i-l trimiți din
+             listă („Trimite link de parolă"). Nimeni nu ajunge să știe parola altcuiva. -->
       </div>
       <div id="ue-access-wrap">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px;">Acces pe vehicule</div>
@@ -4015,25 +4031,126 @@ const pozitii = await r.json();</code></pre>
       var n = window.RA_ROL_NUME || {};
       return n[r] || ROLE_LABELS[r] || ({ company_admin: 'Admin companie', superadmin: 'Super-admin' }[r]) || r;
     }
+    // ── începe „lista de utilizatori" ──
+    // Zilele de liniște după care un cont se scrie portocaliu. Aceeași cifră, două înțelesuri: pentru
+    // fondator e un client care se stinge, pentru adminul firmei e o ușă lăsată deschisă după un om
+    // care a plecat. De-aia propoziția de sub listă diferă, nu culoarea.
+    var USR_LINISTE = 40;
+    var _usrQ = '', _usrSortBy = 'nume', _usrPastila = '';
+    // „Privirea clientului" = ori ești admin de firmă, ori ești fondator cu comutatorul pe Partener.
+    // Unele semne (omul fără nicio mașină atribuită) sunt gospodăria adminului de firmă, nu a noastră:
+    // el își împarte mașinile pe oameni. De-aia se aprind DOAR acolo.
+    function _usrPrivireClient() {
+      var sup = !!(currentUser && currentUser.role === 'superadmin');
+      if (!sup) return true;
+      return (typeof setPrivescCaFirma === 'function') && !!setPrivescCaFirma();
+    }
+    function _usrFaraDiacritice(s) {
+      return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+    function _usrZileDe(v) {
+      if (!v) return null;
+      var t = (typeof v === 'number') ? v : Date.parse(v);
+      if (!t || isNaN(t)) return null;
+      return Math.floor((Date.now() - t) / 86400000);
+    }
+    // „azi · ieri · acum 9 zile", nu „15.09.2026, 14:32:10". Ora exactă rămâne la hover, în titlu.
+    function _usrCandVazut(u) {
+      var z = _usrZileDe(u.last_login);
+      if (z === null) return { text: 'n-a intrat niciodată', niciodata: true, vechi: false };
+      return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + z + ' zile'), niciodata: false, vechi: z >= USR_LINISTE };
+    }
+    // „Toată flota" o spune serverul (sees_all), cu tăierile firmei omului — și pe rolul lui propriu.
+    // Calculul după rol rămâne doar pentru un server vechi: el arăta „toată flota" și unde firma tăiase dreptul.
+    function _usrVedeTot(u) {
+      return u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all
+        : (u.role === 'admin' || u.role === 'manager' || u.role === 'company_admin'));
+    }
+    function _usrFaraAcces(u) {
+      return !_usrVedeTot(u) && (Number(u.device_count) + Number(u.group_count)) === 0;
+    }
+    function _usrNiciodata(u) { return !u.last_login; }
+    // Conturile pe termen (demo aprobat) expiră. Până acum se afla doar intrând în fișa omului.
+    function _usrExpira(u) {
+      if (u.access_until == null) return null;
+      var t = Number(u.access_until);
+      if (!t || isNaN(t)) return null;
+      // Socotim în ZILE DE CALENDAR, nu în bucăți de 24 de ore: un acces care se termină diseară
+      // „expiră azi", nu „într-o zi". Așa se gândește omul care se uită la ecran.
+      var miez = function (ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+      var zile = Math.round((miez(t) - miez(Date.now())) / 86400000);
+      if (zile < 0) return { text: 'acces expirat', aproape: true };
+      if (zile === 0) return { text: 'expiră azi', aproape: true };
+      if (zile <= 3) return { text: 'expiră în ' + zile + (zile === 1 ? ' zi' : ' zile'), aproape: true };
+      return { text: 'acces până la ' + new Date(t).toLocaleDateString('ro-RO'), aproape: false };
+    }
+    function _usrPotrivit(u, q) {
+      if (!q) return true;
+      return _usrFaraDiacritice([u.username, u.full_name, u.email, u.phone, _usrRoleLabel(u.role), u.company_name].join(' ')).indexOf(q) >= 0;
+    }
+    function _usrTrece(u) {
+      switch (_usrPastila) {
+        case 'niciodata': return _usrNiciodata(u);
+        case 'faraacces': return _usrFaraAcces(u);
+        case 'dezactivate': return u.active === false;
+        case 'insight': return !!u.ai_seat;
+        case 'admini': return _USR_ADMIN_ROLES.indexOf(u.role) >= 0;
+        default: return true;
+      }
+    }
+    function _usrOrdoneaza(a, b) {
+      if (_usrSortBy === 'rol') {
+        var ra = _usrRoleLabel(a.role), rb = _usrRoleLabel(b.role);
+        if (ra !== rb) return ra.localeCompare(rb, 'ro');
+      } else if (_usrSortBy === 'logare') {
+        // Cine n-a intrat niciodată stă primul: el e omul de care trebuie să te ocupi.
+        var za = _usrZileDe(a.last_login), zb = _usrZileDe(b.last_login);
+        if (za === null && zb !== null) return -1;
+        if (zb === null && za !== null) return 1;
+        if (za !== zb) return (zb || 0) - (za || 0);
+      }
+      return String(a.full_name || a.username || '').localeCompare(String(b.full_name || b.username || ''), 'ro');
+    }
+    window._usrCauta = function (v) { _usrQ = _usrFaraDiacritice(v).trim(); renderUsersGrouped(); };
+    window._usrSort = function (v) { _usrSortBy = v || 'nume'; renderUsersGrouped(); };
+    window._usrPastilaSet = function (k) { _usrPastila = (_usrPastila === k) ? '' : k; renderUsersGrouped(); };
     function _userRowHtml(u) {
       var isSelf = u.username === currentUser.username;
-      var last = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : 'niciodată';
-      // „Toată flota" o spune serverul (sees_all), cu tăierile firmei omului — și pe rolul lui propriu. Calculul după rol
-      // rămâne doar pentru un server vechi: el arăta „toată flota" și unde firma tăiase dreptul.
-      var vedeTot = u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all
-        : (u.role === 'admin' || u.role === 'manager' || u.role === 'company_admin'));
-      var scope = vedeTot
+      var eClient = _usrPrivireClient();
+      var vaz = _usrCandVazut(u);
+      var exp = _usrExpira(u);
+      var faraAcces = _usrFaraAcces(u);
+      var semne = '';
+      if (u.active === false) semne += '<span class="rau-semn rau-stins">dezactivat</span>';
+      if (vaz.niciodata) semne += '<span class="rau-semn rau-cald">n-a intrat niciodată</span>';
+      // Gospodăria adminului de firmă: el atribuie mașinile. La fondator semnul nu se aprinde.
+      if (faraAcces && eClient) semne += '<span class="rau-semn rau-cald">fără acces</span>';
+      if (exp) semne += '<span class="rau-semn ' + (exp.aproape ? 'rau-cald' : 'rau-rece') + '">' + esc(exp.text) + '</span>';
+      var acces = _usrVedeTot(u)
         ? 'toată flota'
-        : ((Number(u.device_count) + Number(u.group_count) > 0) ? (u.device_count + ' veh. + ' + u.group_count + ' grupe') : '⚠ fără acces');
-      return '<div class="user-row" style="align-items:center;">' +
-        '<div style="min-width:0;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-          '<strong>' + esc(u.username) + '</strong>' +
-          '<span class="role ' + esc(u.role) + '">' + esc(_usrRoleLabel(u.role)) + '</span>' +
-          (u.active === false ? '<span style="color:#ef4444;font-size:11px;">(dezactivat)</span>' : '') +
-        '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' +
-          (u.full_name ? esc(u.full_name) + ' · ' : '') + esc(u.email || '') + (u.email ? ' · ' : '') + 'acces: ' + scope + ' · ultima logare: ' + last +
-        '</div></div>' +
-        '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">' +
+        : ((Number(u.device_count) + Number(u.group_count) > 0) ? (u.device_count + ' veh. + ' + u.group_count + ' grupe') : 'niciun vehicul');
+      var oraExacta = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : '';
+      var sfat = '';
+      if (faraAcces && eClient) sfat = '<div class="rau-sfat">Nu vede niciun vehicul — atribuie-i din <b>Editează</b>, altfel deschide aplicația și găsește un ecran gol.</div>';
+      else if (vaz.vechi && eClient) sfat = '<div class="rau-sfat rau-sfat-rece">Cont nefolosit de ' + _usrZileDe(u.last_login) + ' de zile — dezactivează-l dacă omul nu mai lucrează aici.</div>';
+      return '<div class="user-row' + (u.active === false ? ' rau-off' : '') + '">' +
+        '<div class="rau-cine">' +
+          '<div class="rau-sus">' +
+            '<strong>' + esc(u.full_name || u.username) + '</strong>' +
+            '<span class="role ' + esc(u.role) + '">' + esc(_usrRoleLabel(u.role)) + '</span>' +
+            semne +
+          '</div>' +
+          '<div class="rau-meta">' +
+            esc(u.username) + ' · acces: ' + esc(acces) +
+            ' · <span' + (vaz.niciodata ? ' class="rau-text-cald"' : (vaz.vechi ? ' class="rau-text-cald"' : '')) +
+            (oraExacta ? ' title="' + esc(oraExacta) + '"' : '') + '>văzut: ' + esc(vaz.text) + '</span>' +
+          '</div>' + sfat +
+        '</div>' +
+        '<div class="rau-butoane">' +
+          // Un singur buton pentru amândouă nevoile: invitația care n-a ajuns și parola uitată.
+          '<button class="btn-sm" title="' + (vaz.niciodata ? 'N-a intrat niciodată — retrimite-i linkul de parolă' : 'Trimite-i un link ca să-și pună altă parolă') + '"' +
+          ' onclick="_usrLinkParola(' + u.id + ')"' + (vaz.niciodata ? ' style="color:var(--orange);border-color:var(--orange);"' : '') + '>' +
+          '<i class="fas fa-paper-plane"></i></button>' +
           // RA Insight se plătește PE CONT. Bifa de aici e o decizie cu bani în spate, așa că scrie
           // limpede ce face, nu doar „AI" — iar conturile aprinse se văd numărate în capul listei.
           (u.role === 'superadmin' ? '' :
@@ -4042,9 +4159,33 @@ const pozitii = await r.json();</code></pre>
             ' style="' + (u.ai_seat ? 'color:var(--accent);border-color:var(--accent);' : 'opacity:.55;') + '">' +
             '<i class="fas fa-wand-magic-sparkles"></i></button>') +
           '<button class="btn-sm" onclick="openUserEdit(' + u.id + ')" title="Editează rol & acces"><i class="fas fa-user-cog"></i></button>' +
-          (isSelf ? '<span style="font-size:11px;color:var(--text-muted);align-self:center;">tu</span>' : '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>') +
+          (isSelf ? '<span class="rau-tu">tu</span>' : '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>') +
         '</div></div>';
     }
+    // Trimite linkul de parolă. Dacă emailul n-a plecat, serverul întoarce chiar linkul — îl arătăm,
+    // ca adminul să-l ducă mai departe cum poate. Contul nu mai rămâne blocat din cauza unui SMTP.
+    window._usrLinkParola = async function (id) {
+      try {
+        var r = await fetch('/api/users/' + id + '/link-parola', { method: 'POST', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (window.raxToast) raxToast(j.error || ('Eroare ' + r.status), 'error'); return; }
+        if (j.trimis) { if (window.raxToast) raxToast('Link trimis pe ' + (j.email || 'email') + ' — își pune singur parola.', 'success'); }
+        else if (j.link) await _usrAratLinkul(j.email || '', j.link, j.motiv);
+        else if (window.raxToast) raxToast(j.motiv || 'Linkul nu a putut fi trimis.', 'error');
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    // Linkul, pe ecran, când emailul n-a putut pleca. Îl copiezi și i-l dai omului cum vrei.
+    async function _usrAratLinkul(cine, link, motiv) {
+      var copiat = false;
+      try { await navigator.clipboard.writeText(link); copiat = true; } catch (e) {}
+      await raConfirm(
+        (motiv ? motiv + ' ' : '') + 'Contul există, dar linkul trebuie dus de tine. ' +
+        (copiat ? 'L-am copiat deja — trimite-i-l ' : 'Copiază-l de mai jos și trimite-i-l ') +
+        (cine ? cine : 'omului') + ' cum poți. Parola tot el și-o pune.\n\n' + link,
+        { title: 'Linkul de parolă', icon: 'fa-link', danger: false, okLabel: 'Am înțeles', cancelLabel: 'Închide' }
+      );
+    }
+    // ── sfârșit „lista de utilizatori" ──
     // Pornește/oprește RA Insight pe un cont. Se cere confirmare la PORNIRE, fiindcă se facturează.
     window.raxAiSeat = async function (id, on) {
       if (on && !await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\nSe facturează ca un cont în plus, în fiecare lună, până când îl retragi.',
@@ -4095,7 +4236,11 @@ const pozitii = await r.json();</code></pre>
       var sel = document.getElementById('new-role'); if (!sel) return;
       var isSA = sel.value === 'superadmin';
       var csel = document.getElementById('new-company');
-      if (csel) { csel.style.display = isSA ? 'none' : ''; if (isSA) csel.value = ''; }
+      // ⚠ TEMPORAR (comutatorul de privire): în privirea clientului selectorul de companie e ascuns
+      // de `_populateNewUserForm`. Aici îl reaprindeam la loc, la fiecare schimbare de rol — și
+      // reapărea „— alege compania —" pe un ecran de admin de firmă, care n-are ce alege.
+      var caFirma = (typeof setPrivescCaFirma === 'function') && setPrivescCaFirma();
+      if (csel) { csel.style.display = (isSA || caFirma) ? 'none' : ''; if (isSA) csel.value = ''; }
       var hint = document.getElementById('new-role-hint');
       if (!hint) {
         hint = document.createElement('div');
@@ -4131,9 +4276,55 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { ueUsersErr = 'Eroare de rețea la încărcarea utilizatorilor.'; ueUsersCache = []; }
       renderUsersGrouped();
     }
+    // ── începe „pastilele de utilizatori" ──
+    // Pastilele se socotesc pe lista ÎNTREAGĂ, nu pe ce a rămas după căutare — altfel „N-au intrat
+    // niciodată: 0" ar minți doar fiindcă ai scris ceva în casetă. Ce nu există nu ocupă loc pe ecran.
+    function _usrPastileHtml(toti, eClient) {
+      var def = [
+        { k: '', et: 'Toți', n: toti.length },
+        { k: 'niciodata', et: 'N-au intrat niciodată', n: toti.filter(_usrNiciodata).length, cald: true }
+      ];
+      // „Fără acces" e gospodăria adminului de firmă — el împarte mașinile pe oameni. La fondator n-are ce căuta.
+      if (eClient) def.push({ k: 'faraacces', et: 'Fără acces', n: toti.filter(_usrFaraAcces).length, cald: true });
+      def.push({ k: 'dezactivate', et: 'Dezactivate', n: toti.filter(function (u) { return u.active === false; }).length });
+      def.push({ k: 'insight', et: 'Cu RA Insight', n: toti.filter(function (u) { return !!u.ai_seat; }).length });
+      def.push({ k: 'admini', et: 'Admini', n: toti.filter(function (u) { return _USR_ADMIN_ROLES.indexOf(u.role) >= 0; }).length });
+      // Aceeași pastilă ca la Dispozitive și Companii (`rax-dev-chip`): un singur chip în toată casa.
+      return def.filter(function (p) { return p.k === '' || p.n > 0; }).map(function (p) {
+        return '<button type="button" class="rax-dev-chip' + (_usrPastila === p.k ? ' on' : '') + (p.cald && p.n ? ' atentie' : '') + '"' +
+          ' onclick="_usrPastilaSet(\'' + p.k + '\')">' + esc(p.et) + ' <b>' + p.n + '</b></button>';
+      }).join('');
+    }
+    // Conturile cu RA Insight, numărate sus: bifa se dă pe om, dar suma se face pe firmă. Fără cifra
+    // asta, o firmă putea aprinde cinci conturi fără să-și dea seama ce a făcut la factură.
+    function _usrSeatsHtml(toti) {
+      var n = toti.filter(function (u) { return !!u.ai_seat; }).length;
+      if (!n) return '';
+      return '<div class="rau-seats"><i class="fas fa-wand-magic-sparkles"></i> <b>' + n + '</b> ' +
+        (n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight') +
+        ' <span>— la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.</span></div>';
+    }
+    // Sub numărul de pe cartonașul „Utilizatori" (Acasă), starea — ca la Companii. Vezi dintr-o
+    // privire dacă e ceva de rezolvat, fără să deschizi secțiunea. „Fără acces" apare doar în
+    // privirea clientului: la fondator ar fi o grijă din gospodăria altuia.
+    function _usrCardAcasa(toti, eClient) {
+      var sub = document.getElementById('adash-s-users'); if (!sub) return;
+      var nic = toti.filter(_usrNiciodata).length;
+      var fa = eClient ? toti.filter(_usrFaraAcces).length : 0;
+      var parti = [];
+      if (nic) parti.push('<span style="color:var(--orange);">' + nic + (nic === 1 ? ' n-a intrat niciodată' : ' n-au intrat niciodată') + '</span>');
+      if (fa) parti.push('<span style="color:var(--orange);">' + fa + ' fără acces</span>');
+      sub.innerHTML = parti.length ? parti.join(' · ') : (toti.length ? 'toți au intrat' : '');
+    }
+    // ── sfârșit „pastilele de utilizatori" ──
     function renderUsersGrouped() {
       var list = document.getElementById('users-list'); if (!list) return;
-      if (ueUsersErr) { list.innerHTML = '<div class="rax-co-meta" style="color:var(--orange);padding:10px;line-height:1.5;"><i class="fas fa-triangle-exclamation"></i> ' + esc(ueUsersErr) + '</div>'; return; }
+      var pastileEl = document.getElementById('users-pastile');
+      if (ueUsersErr) {
+        if (pastileEl) pastileEl.innerHTML = '';
+        list.innerHTML = '<div class="rax-co-meta" style="color:var(--orange);padding:10px;line-height:1.5;"><i class="fas fa-triangle-exclamation"></i> ' + esc(ueUsersErr) + '</div>';
+        return;
+      }
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
       var users = ueUsersCache || [];
       // ⚠ TEMPORAR — ține de comutatorul de privire, SE SCOATE LA LANSARE odată cu el.
@@ -4147,6 +4338,12 @@ const pozitii = await r.json();</code></pre>
         users = users.filter(function (u) { return String(u.company_id) === String(_privAleasa); });
         isSuper = false; // de aici încolo se desenează ca pentru un admin de firmă
       }
+      // Lista ÎNTREAGĂ (pentru pastile și contorul de conturi) vs. ce rămâne după căutare și pastilă.
+      var eClient = !isSuper;
+      var toti = users;
+      if (pastileEl) pastileEl.innerHTML = _usrPastileHtml(toti, eClient);
+      _usrCardAcasa(toti, eClient);
+      users = toti.filter(function (u) { return _usrTrece(u) && _usrPotrivit(u, _usrQ); });
       var groups = {};
       users.forEach(function (u) {
         var key = (u.company_id != null) ? String(u.company_id) : '_none';
@@ -4158,6 +4355,7 @@ const pozitii = await r.json();</code></pre>
       var html = '';
       // ⚠ TEMPORAR (comutatorul de privire) — se scoate la lansare.
       if (_privFirme && _privFirme.length) html += setFirmaPickerHtml(_privFirme, _privAleasa);
+      html += _usrSeatsHtml(toti);
       if (isSuper && keys.length > 1) {
         // Fără stil scris de mână aici: `rax-field` e chipul casei, ținut într-un singur loc.
         html += '<div style="margin-bottom:10px;"><select class="rax-field" onchange="_usersFilter=this.value; renderUsersGrouped();" style="width:100%;">' +
@@ -4167,12 +4365,20 @@ const pozitii = await r.json();</code></pre>
       }
       var shownKeys = (_usersFilter && groups[_usersFilter]) ? [_usersFilter] : keys;
       var single = !isSuper || keys.length <= 1;
-      if (!shownKeys.length) { list.innerHTML = html + '<div class="rax-co-meta">Niciun utilizator.</div>'; return; }
+      if (!shownKeys.length) {
+        // Spune de ce e gol: „n-ai pe nimeni" și „nu s-a potrivit nimeni" sunt două lucruri diferite.
+        var gol = toti.length
+          ? 'Niciun cont nu se potrivește. Șterge din căutare sau apasă „Toți".'
+          : 'Niciun utilizator.';
+        list.innerHTML = html + '<div class="rax-co-meta">' + gol + '</div>';
+        return;
+      }
       shownKeys.forEach(function (k) {
         var g = groups[k];
         var inner = '';
-        if (g.admins.length) inner += '<div style="' + subH + '">Admini</div>' + g.admins.map(_userRowHtml).join('');
-        if (g.users.length) inner += '<div style="' + subH + '">Utilizatori</div>' + g.users.map(_userRowHtml).join('');
+        g.admins.sort(_usrOrdoneaza); g.users.sort(_usrOrdoneaza);
+        if (g.admins.length) inner += '<div style="' + subH + '">Admini</div>' + g.admins.map(function (u) { return _userRowHtml(u); }).join('');
+        if (g.users.length) inner += '<div style="' + subH + '">Utilizatori</div>' + g.users.map(function (u) { return _userRowHtml(u); }).join('');
         if (!inner) inner = '<div class="rax-co-meta" style="padding:6px 0;">Niciun utilizator.</div>';
         if (single) { html += inner; return; }
         var open = true; // grupuri DESCHISE implicit → userii (inclusiv adminii) se văd direct, nu colapsate
@@ -4198,19 +4404,17 @@ const pozitii = await r.json();</code></pre>
       // Contul se creează pe adresa de email: ea e și utilizatorul de autentificare, și adresa pe care
       // pleacă invitația / resetarea parolei. Numele afișat e cel văzut în aplicație de colegi.
       const username = document.getElementById('new-username').value.trim().toLowerCase();
-      const password = document.getElementById('new-password').value;
       const role = document.getElementById('new-role').value;
       const full_name = document.getElementById('new-fullname').value.trim();
       const phone = document.getElementById('new-phone').value.trim();
 
-      // Parola e OPȚIONALĂ: fără ea, omul primește o invitație pe email și își pune singur parola.
-      // Așa nu mai circulă parole pe telefon, iar adminul nu ajunge să știe parola nimănui.
+      // Parola NU se cere nicăieri: omul primește un link și și-o pune singur. Așa nu circulă parole pe
+      // telefon, iar cel care deschide contul nu ajunge să știe parola nimănui.
       if (!username) return alert('Scrie adresa de email a persoanei.');
       if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(username)) return alert('Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro).');
       if (full_name.length < 2) return alert('Completează numele afișat — așa apare persoana în aplicație.');
 
       const body = { username, role, full_name, email: username, phone };
-      if (password) body.password = password;
       // Cont de PLATFORMĂ: nu ține de nicio companie și vede/administrează TOT → cere confirmare explicită.
       if (role === 'superadmin') {
         if (!await raConfirm('„' + username + '" va avea acces la TOATE companiile, la toate vehiculele și la datele de facturare ale platformei — nu doar la o companie.',
@@ -4238,13 +4442,15 @@ const pozitii = await r.json();</code></pre>
       if (!res.ok) { const err = await res.json(); return alert(err.error); }
 
       const created = await res.json();
-      ['new-username','new-password','new-fullname','new-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      // Omul trebuie să afle DACĂ a plecat invitația — altfel așteaptă degeaba un email care n-a plecat.
-      if (!password && window.raxToast) {
-        raxToast(created.invitat
-          ? 'Cont creat. I-am trimis invitația pe ' + username + ' — își pune singur parola.'
-          : 'Cont creat, dar invitația NU a plecat. Trimite-i tu o parolă din „Editează", altfel nu poate intra.',
-          created.invitat ? 'success' : 'error');
+      ['new-username','new-fullname','new-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      // Omul trebuie să afle DACĂ a plecat linkul — altfel așteaptă degeaba un email care n-a plecat.
+      // Când n-a plecat, serverul întoarce chiar linkul: îl duce adminul mai departe cum poate.
+      if (created.invitat) {
+        if (window.raxToast) raxToast('Cont creat. I-am trimis linkul pe ' + username + ' — își pune singur parola.', 'success');
+      } else if (created.link) {
+        await _usrAratLinkul(username, created.link, created.motiv);
+      } else if (window.raxToast) {
+        raxToast('Cont creat, dar linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă".', 'error');
       }
       await loadUsers();
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
@@ -4293,7 +4499,6 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('ue-fullname').value = u.full_name || '';
       document.getElementById('ue-email').value = u.email || '';
       document.getElementById('ue-phone').value = u.phone || '';
-      document.getElementById('ue-password').value = '';
 
       const [devRes, grpRes, accRes] = await Promise.all([
         fetch('/api/devices'), fetch('/api/groups'), fetch('/api/users/' + id + '/access')
@@ -4361,7 +4566,6 @@ const pozitii = await r.json();</code></pre>
       const full_name = document.getElementById('ue-fullname').value.trim();
       const email = document.getElementById('ue-email').value.trim();
       const phone = document.getElementById('ue-phone').value.trim();
-      const password = document.getElementById('ue-password').value;
       const ueBody = { role, active, full_name, email, phone };
       // Rol STANDARD ales → spunem explicit că omul iese de pe rolul propriu, dacă avea unul. Serverul
       // păstrează rolul propriu când primește doar rolul standard din care derivă (așa trimite telefonul).
@@ -4373,14 +4577,6 @@ const pozitii = await r.json();</code></pre>
         body: JSON.stringify(ueBody)
       });
       if (!r.ok) { const e = await r.json(); return alert(e.error); }
-
-      if (password) {
-        r = await fetch('/api/users/' + id + '/password', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
-        });
-        if (!r.ok) { const e = await r.json(); return alert(e.error); }
-      }
 
       const deviceIds = Array.from(document.querySelectorAll('.ue-dev:checked')).map(c => c.value);
       const groupIds = Array.from(document.querySelectorAll('.ue-grp:checked')).map(c => Number(c.value));
@@ -18971,7 +19167,7 @@ const pozitii = await r.json();</code></pre>
         '<td><span class="rax-role-pill">' + esc(_raxRoleLabel(u.role)) + '</span></td>' +
         '<td class="rax-acc-login">' + (u.last_login ? new Date(u.last_login).toLocaleDateString('ro-RO') : '<span style="color:var(--text-muted)">fără login</span>') + '</td>' +
         '<td class="ta-r"><div class="rax-acc-actions">' +
-          '<button class="rax-ico-btn" title="Resetează parola" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-key"></i></button>' +
+          '<button class="rax-ico-btn" title="Trimite-i link de parolă (și-o pune singur)" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-paper-plane"></i></button>' +
           '<button class="rax-ico-btn" title="' + (active ? 'Dezactivează contul' : 'Activează contul') + '" onclick="raxToggleUserActive(' + u.id + ',' + (active ? 'false' : 'true') + ')"><i class="fas fa-' + (active ? 'user-slash' : 'user-check') + '"></i></button>' +
           '<button class="rax-ico-btn danger" title="Șterge contul" onclick="raxDeleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>' +
         '</div></td></tr>';
@@ -19005,21 +19201,13 @@ const pozitii = await r.json();</code></pre>
       }).join('');
     };
     function _raxFindUser(id) { for (var i = 0; i < _raxAccounts.length; i++) if (_raxAccounts[i].id === id) return _raxAccounts[i]; return null; }
+    // Aici se scria, până acum, parola altui om. Nu se mai scrie: îi trimitem linkul, iar parola și-o
+    // pune el. Același buton acoperă și invitația care n-a ajuns. Vezi CLAUDE.md, „Parola nu există".
     window.raxResetPassword = async function (id) {
       var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
-      // Fereastra aplicației, nu prompt-ul browserului — și fără minciuna de dinainte („min 4
-      // caractere"): serverul cere de mult 8 și încă niște reguli, deci omul scria o parolă scurtă
-      // și primea un refuz pe care nu-l înțelegea.
-      var np = await raConfirm('Omul va intra cu parola asta până și-o schimbă singur din Preferințe.', {
-        title: 'Parolă nouă pentru „' + name + '"', danger: false, icon: 'fa-key', okLabel: 'Schimbă parola',
-        field: { label: 'Parola nouă (minim 8 caractere)', type: 'password', placeholder: 'ex. Curte-Verde-2026' }
-      });
-      if (np === false) return;
-      np = String(np || '').trim();
-      if (!np) return;
-      var r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: np }) });
-      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert(e.error || ('Eroare ' + r.status)); return; }
-      alert('Parola pentru „' + name + '" a fost schimbată.');
+      if (!await raConfirm('Îi trimitem lui „' + name + '" un link pe email. Parola și-o pune singur — noi nu aflăm niciodată care e.',
+        { title: 'Trimiți linkul de parolă?', danger: false, icon: 'fa-paper-plane', okLabel: 'Trimite linkul' })) return;
+      if (window._usrLinkParola) return window._usrLinkParola(id);
     };
     window.raxToggleUserActive = async function (id, makeActive) {
       var u = _raxFindUser(id); if (!u) return;

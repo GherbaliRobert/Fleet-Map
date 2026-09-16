@@ -112,6 +112,39 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
 - Păzit de `verify_fara_planuri.js` (în `npm test`): dacă reapare un tabel de planuri, o valoare
   implicită luată din plan, Stripe, sau eticheta „Plan" pe ecran — proba pică.
 
+## Parola nu există (regulă de fond)
+
+**Nimeni nu scrie parola altcuiva.** Nici noi, nici administratorul firmei. Se deschide un cont pe o
+adresă de email, pleacă un **link cu termen**, iar omul își pune singur parola. Atât.
+
+- **Nicio casetă de parolă** în formularul de cont nou și nici în fișa omului. Un singur buton pe
+  rând — **„Trimite link de parolă"** — acoperă și invitația care n-a ajuns, și parola uitată.
+  (`POST /api/users/:id/link-parola`, limitat la 5/oră/cont, cu rând în audit.)
+- Ruta prin care un admin seta parola altcuiva (`POST /api/users/:id/password`) a fost **ștearsă**,
+  nu ascunsă din ecran. `POST /api/users` **ignoră** orice parolă primită în cerere.
+- **Când emailul nu poate pleca** (fără SMTP, eroare de trimitere, cont demo), serverul întoarce
+  **linkul** în răspuns (`{ invitat: false, link, motiv }`) și ecranul îl arată, copiat în clipboard.
+  Contul nu mai rămâne blocat, iar parola tot omul și-o pune. NU reintroduce „scrie-i tu o parolă".
+- Singurul loc din aplicație unde se naște o parolă e `POST /api/auth/set-password`. Acolo se apasă
+  politica (`verificaParola`), **cu username-ul omului** — ca să poată refuza o parolă care-l conține.
+- Excepții, amândouă la pornirea serverului, nu în interfață: contul de instalare `admin` și calea de
+  avarie `ADMIN_PASSWORD`. Plus `POST /api/me/password` — omul își schimbă **propria** parolă.
+- Probele își fac conturile pe **același traseu** (`test_parola.js` → `puneParola`). Nu adăuga o
+  portiță „doar pentru teste": ar fi exact calea paralelă pe care o evităm.
+- Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
+
+### Ultimul administrator al unei firme
+Serverul refuză **ștergerea, dezactivarea, retrogradarea și mutarea** ultimului admin activ al unei
+firme client (`_ultimulAdminAlFirmei`, inclusiv socotit pe LOT la mutarea în grup). Clientul nu putea
+ajunge acolo oricum (nu se poate șterge/dezactiva pe el însuși) — **plasa e pentru fondator**.
+
+### Ce e gospodăria clientului
+Semnul „fără acces" (om cu rol restrâns, fără nicio mașină sau grupă atribuită) și îndemnul care-l
+însoțește se aprind **DOAR în privirea clientului** (admin de firmă, sau fondator cu comutatorul pe
+Partener). Fondatorul nu administrează împărțirea mașinilor pe oamenii unei firme — decizie Alin,
+16.09. Ecranul e ACELAȘI nod în amândouă verticalele (`setImprumuta`), deci diferența se face în cod,
+nu prin două ecrane.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

@@ -16,6 +16,7 @@
 
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { puneParola } = require('./test_parola');
 
 const PORT = 3198, DIR = '.roluri-db';
 const env = {
@@ -58,8 +59,8 @@ const login = async (u, p) => {
   // O firmă, cu un admin și un manager. Managerul e cobaiul: are din start „vede toată flota",
   // „modifică flota" și „trimite comenzi".
   const co = await (await POST('/api/companies', { name: 'Firma Roluri' })).json();
-  await POST('/api/users', { username: 'admin.r@test.ro', password: 'Str4da-Verde-2026', full_name: 'Admin R', role: 'admin', company_id: co.id });
-  await POST('/api/users', { username: 'manager.r@test.ro', password: 'Str4da-Verde-2026', full_name: 'Manager R', role: 'manager', company_id: co.id });
+  await puneParola(await POST('/api/users', { username: 'admin.r@test.ro', full_name: 'Admin R', role: 'admin', company_id: co.id }), 'Str4da-Verde-2026', B);
+  await puneParola(await POST('/api/users', { username: 'manager.r@test.ro', full_name: 'Manager R', role: 'manager', company_id: co.id }), 'Str4da-Verde-2026', B);
   const ckA = await login('admin.r@test.ro', 'Str4da-Verde-2026');
   const ckM = await login('manager.r@test.ro', 'Str4da-Verde-2026');
   T('conturile de probă se autentifică', !!ckA && !!ckM);
@@ -147,7 +148,7 @@ const login = async (u, p) => {
 
   sect('7. Fiecare firmă își ajustează doar rolurile ei');
   const co2 = await (await POST('/api/companies', { name: 'Firma Roluri 2' })).json();
-  await POST('/api/users', { username: 'admin.r2@test.ro', password: 'Str4da-Verde-2026', full_name: 'Admin R2', role: 'admin', company_id: co2.id });
+  await puneParola(await POST('/api/users', { username: 'admin.r2@test.ro', full_name: 'Admin R2', role: 'admin', company_id: co2.id }), 'Str4da-Verde-2026', B);
   const ckA2 = await login('admin.r2@test.ro', 'Str4da-Verde-2026');
   await PUT('/api/company-roles/manager', { nume: 'Sef tura', taiate: ['viewReports'] }, ckA2);
   const laMine = await (await GET('/api/company-roles', ckA)).json();
@@ -158,7 +159,7 @@ const login = async (u, p) => {
     JSON.stringify(meAltaFirma.permissions));
 
   sect('8. Cine nu administrează firma nu umblă la roluri');
-  await POST('/api/users', { username: 'disp.r@test.ro', password: 'Str4da-Verde-2026', full_name: 'Dispecer R', role: 'dispatcher', company_id: co.id });
+  await puneParola(await POST('/api/users', { username: 'disp.r@test.ro', full_name: 'Dispecer R', role: 'dispatcher', company_id: co.id }), 'Str4da-Verde-2026', B);
   const ckD = await login('disp.r@test.ro', 'Str4da-Verde-2026');
   if (ckD) {
     const rd = await GET('/api/company-roles', ckD);
@@ -272,17 +273,25 @@ const login = async (u, p) => {
 
   sect('12b. Oameni adăugați prin adresa de email, cu rol de la bun început');
   // Fluxul cerut de Alin: adminul firmei scrie adresa colegului, alege rolul, iar omul își pune
-  // singur parola din emailul primit. Fără SMTP în probă, invitația NU pleacă — și tocmai asta
-  // trebuie să spună serverul, ca ecranul să nu promită un email care n-a plecat.
+  // singur parola din linkul primit. PAROLA NU EXISTĂ (CLAUDE.md) — nimeni nu scrie parola altcuiva.
+  // Fără SMTP în probă, emailul nu pleacă; atunci serverul TREBUIE să întoarcă linkul, ca adminul
+  // să-l ducă mai departe. Înainte, aici se refuza crearea și se cerea o parolă scrisă de mână.
   const faraSmtp = await POST('/api/users', { username: 'razvan.popescu@transport.ro',
     full_name: 'Razvan Popescu', role: 'dispatcher', company_id: co.id }, ckA);
-  T('fără email configurat, invitația e refuzată cu explicație', faraSmtp.status === 400, faraSmtp.status);
-  const mesaj = (await faraSmtp.json()).error || '';
-  T('și explicația spune ce să facă omul', /parol/i.test(mesaj), mesaj);
-  // Cu parolă scrisă de mână, calea veche merge neschimbată.
+  T('fără email configurat, contul se creează oricum', faraSmtp.status === 200, faraSmtp.status);
+  const rasp = await faraSmtp.json();
+  T('și serverul spune limpede că emailul n-a plecat', rasp.invitat === false, String(rasp.invitat));
+  T('dar întoarce linkul, ca să-l ducă adminul', /set-password\.html\?token=/.test(rasp.link || ''), rasp.link);
+  T('și explică de ce n-a plecat', /email/i.test(rasp.motiv || ''), rasp.motiv);
+  // O parolă trimisă în cerere se IGNORĂ: nu există a doua cale spre același lucru.
   const cuParola = await POST('/api/users', { username: 'sorin.ionut@transport.ro', password: 'Str4da-Verde-2026',
     full_name: 'Sorin Ionut', role: 'manager', company_id: co.id }, ckA);
-  T('cu parolă, contul se creează ca înainte', cuParola.status === 200, cuParola.status);
+  T('cu parolă în cerere, contul tot se creează', cuParola.status === 200, cuParola.status);
+  const sorinCreat = await cuParola.json();
+  const ckFurat = await login('sorin.ionut@transport.ro', 'Str4da-Verde-2026');
+  T('dar parola trimisă NU prinde — contul n-o știe', ckFurat === null, ckFurat ? 'a intrat!' : 'refuzat');
+  await puneParola(sorinCreat, 'Str4da-Verde-2026', B);
+  T('după ce omul își pune parola din link, intră', !!(await login('sorin.ionut@transport.ro', 'Str4da-Verde-2026')));
   const listaU = await (await GET('/api/users', ckA)).json();
   const sorin = (listaU || []).find(u => u.username === 'sorin.ionut@transport.ro');
   T('și primește rolul ales din prima', sorin && sorin.role === 'manager', sorin && sorin.role);
@@ -294,8 +303,10 @@ const login = async (u, p) => {
   const coNou = await (await POST('/api/companies', { name: 'Transport SRL' })).json();
   T('noi creăm compania', !!coNou.id, JSON.stringify(coNou).slice(0, 80));
   const adminFirma = await POST('/api/companies/' + coNou.id + '/admin',
-    { username: 'patron@transport-srl.ro', password: 'Str4da-Verde-2026' });
+    { username: 'patron@transport-srl.ro', full_name: 'Patron Transport' });
   T('și îi dăm un cont de administrator', adminFirma.status === 200, adminFirma.status);
+  // Contul de admin al firmei se naște tot fără parolă: primește linkul și și-o pune singur.
+  await puneParola(adminFirma, 'Str4da-Verde-2026', B);
   const ckP = await login('patron@transport-srl.ro', 'Str4da-Verde-2026');
   T('adminul firmei intră în contul lui', !!ckP);
   if (ckP) {
@@ -304,15 +315,15 @@ const login = async (u, p) => {
       JSON.stringify(meP.permissions));
     T('dar NU e cont de platformă', meP.isSuper === false, meP.isSuper);
     // Își face echipa singur.
-    const disp = await POST('/api/users', { username: 'razvan.popescu@transport-srl.ro', password: 'Str4da-Verde-2026',
+    const disp = await POST('/api/users', { username: 'razvan.popescu@transport-srl.ro',
       full_name: 'Razvan Popescu', role: 'dispatcher' }, ckP);
     T('își adaugă singur un dispecer', disp.status === 200, disp.status + ' ' + (await disp.clone().text()).slice(0, 70));
     // …dar nu poate crea alți administratori. Asta rămâne la noi, la semnarea contractului.
-    const altAdmin = await POST('/api/users', { username: 'sef2@transport-srl.ro', password: 'Str4da-Verde-2026',
+    const altAdmin = await POST('/api/users', { username: 'sef2@transport-srl.ro',
       full_name: 'Sef Doi', role: 'admin' }, ckP);
     const aj = await altAdmin.json();
     T('nu poate face alt ADMIN peste el', altAdmin.status !== 200 || aj.role !== 'admin', altAdmin.status + ' ' + aj.role);
-    const superNou = await POST('/api/users', { username: 'hacker@transport-srl.ro', password: 'Str4da-Verde-2026',
+    const superNou = await POST('/api/users', { username: 'hacker@transport-srl.ro',
       full_name: 'Nimeni', role: 'superadmin' }, ckP);
     const sj = await superNou.json();
     T('și cu atât mai puțin un cont de platformă', superNou.status !== 200 || sj.role !== 'superadmin', superNou.status + ' ' + sj.role);

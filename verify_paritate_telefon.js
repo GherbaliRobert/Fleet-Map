@@ -27,6 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const vm = require('vm');
+const { puneParola } = require('./test_parola');
 
 const PORT = 3247, TCP = 5247; // proprii
 const DIR = path.join(os.tmpdir(), 'rax_paritate_' + Date.now());
@@ -205,8 +206,11 @@ function formularWeb(cookie, eSuper, proprii) {
   const cheie = await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   T('asistentul AI e „configurat" (cheie de probă)', cheie.status === 200 && cheie.j.enabled === true, cheie.text.slice(0, 80));
 
+  // Contul se naște FĂRĂ parolă (CLAUDE.md): serverul întoarce linkul, iar omul își pune parola
+  // singur. Proba trece pe același traseu ca un om adevărat.
   async function om(username, role, companyId, cine) {
-    const r = await json('POST', '/api/users', cine || S, { username, password: PAROLA, full_name: username.split('@')[0], role, company_id: companyId });
+    const r = await json('POST', '/api/users', cine || S, { username, full_name: username.split('@')[0], role, company_id: companyId });
+    if (r.j && r.j.link) await puneParola(r.j, PAROLA, B);
     return r.j;
   }
   const sef = await om('sef@paritate.ro', 'admin', co.id);
@@ -535,7 +539,8 @@ function formularWeb(cookie, eSuper, proprii) {
   const sefTura = (await json('POST', '/api/company-roles', ckSef, { nume: 'Sef tura', baza: 'manager' })).j;
   const taiere = await json('PUT', '/api/company-roles/' + sefTura.rol, ckSef, { nume: 'Sef tura', taiate: ['viewAll'] });
   T('firma face rolul propriu „Sef tura" din Manager, fără „Vede toată flota"', !!sefTura.rol && taiere.status === 200 && lista(taiere.j.taiate).indexOf('viewAll') >= 0, taiere.status + ' ' + taiere.text.slice(0, 100));
-  const tura = await json('POST', '/api/users', ckSef, { username: 'tura@paritate.ro', password: PAROLA, full_name: 'Sef Tura', role: sefTura.rol });
+  const tura = await json('POST', '/api/users', ckSef, { username: 'tura@paritate.ro', full_name: 'Sef Tura', role: sefTura.rol });
+  await puneParola(tura.j, PAROLA, B);
   const accTura = await json('PUT', '/api/users/' + tura.j.id + '/access', ckSef, { devices: ['350000000024702'], groups: [] });
   const ckTura = await login('tura@paritate.ro', PAROLA);
   const telTura = await loginTelefon('tura@paritate.ro', PAROLA);
@@ -555,8 +560,9 @@ function formularWeb(cookie, eSuper, proprii) {
   const pr = await json('PUT', '/api/users/' + promovat.id, S, { role: 'superadmin' });
   const prL = lista((await json('GET', '/api/users', S)).j).find((x) => x.id === promovat.id) || {};
   T('om al firmei promovat super-admin → nu mai e legat de firmă', pr.status === 200 && prL.role === 'superadmin' && prL.company_id == null, pr.status + ' ' + prL.role + ' / ' + prL.company_id);
-  const furt = await json('POST', '/api/users/' + promovat.id + '/password', ckSef, { password: 'Alta-Parola-Lunga-2026' });
-  T('adminul firmei nu-i mai poate schimba parola contului de platformă', furt.status === 403, furt.status + ' ' + furt.text.slice(0, 60));
+  // Parola nu se mai scrie de nimeni (CLAUDE.md): ce se putea fura acum e LINKUL de parolă.
+  const furt = await json('POST', '/api/users/' + promovat.id + '/link-parola', ckSef, {});
+  T('adminul firmei nu-i mai poate cere link de parolă contului de platformă', furt.status === 403, furt.status + ' ' + furt.text.slice(0, 60));
   T('nici emailul', (await json('PUT', '/api/users/' + promovat.id, ckSef, { email: 'eu@hacker.ro' })).status === 403);
   // Date VECHI: un super-admin promovat înainte de reparație, cu firma rămasă în bază. Garda trebuie să-l apere singură.
   const vechiSuper = await om('vechi.super@paritate.ro', 'manager', co.id, ckSef);
@@ -565,7 +571,7 @@ function formularWeb(cookie, eSuper, proprii) {
   steag('');
   const vsL = lista((await json('GET', '/api/users', S)).j).find((x) => x.id === vechiSuper.id) || {};
   T('(date vechi) super-adminul are încă firma în bază', vsL.role === 'superadmin' && vsL.company_id === co.id, vsL.role + ' / ' + vsL.company_id);
-  T('adminul firmei nu-i poate schimba parola', (await json('POST', '/api/users/' + vechiSuper.id + '/password', ckSef, { password: 'Alta-Parola-Lunga-2026' })).status === 403);
+  T('adminul firmei nu-i poate cere link de parolă', (await json('POST', '/api/users/' + vechiSuper.id + '/link-parola', ckSef, {})).status === 403);
   T('nici emailul, nici accesul pe vehicule, nici să-l șteargă',
     (await json('PUT', '/api/users/' + vechiSuper.id, ckSef, { email: 'eu@hacker.ro' })).status === 403 &&
     (await json('PUT', '/api/users/' + vechiSuper.id + '/access', ckSef, { devices: [], groups: [] })).status === 403 &&

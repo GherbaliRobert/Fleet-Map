@@ -15,6 +15,7 @@ const os = require('os'), path = require('path'), fs = require('fs');
 const PORT = 3191, TCP = 5191;
 const DIR = path.join(os.tmpdir(), 'rax_exp_' + Date.now());
 const B = 'http://localhost:' + PORT;
+const { puneParola } = require('./test_parola');
 const IMEI = '860000000066601';
 let ok = 0, fail = 0, srv = null;
 
@@ -64,7 +65,7 @@ const ziPeste = (n) => new Date(Date.now() + n * 24 * 3600 * 1000).toISOString()
     await req(S, 'POST', '/api/devices', { imei: IMEI, name: 'Camion Probe', plate: 'TM 55 EXP', company_id: coId });
     // Adminul companiei — pragurile per companie se setează prin /api/companies/me/settings,
     // de către UN OM DIN COMPANIE (exact ca în producție), nu de super-admin pe altă rută.
-    await req(S, 'POST', '/api/users', { username: 'admin@expirari.ro', password: 'Curcubeu7Vara', role: 'company_admin', company_id: coId, full_name: 'Admin Expirari' });
+    await puneParola((await req(S, 'POST', '/api/users', { username: 'admin@expirari.ro', role: 'company_admin', company_id: coId, full_name: 'Admin Expirari' })).body, 'Curcubeu7Vara', B);
     const CA = jar();
     const laC = await req(CA, 'POST', '/api/login', { username: 'admin@expirari.ro', password: 'Curcubeu7Vara' });
     t('adminul companiei se autentifică', laC.status === 200, 'status ' + laC.status);

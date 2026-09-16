@@ -14,6 +14,7 @@
 
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { puneParola } = require('./test_parola');
 
 const PORT = 3194, DIR = '.istoric-db';
 const env = {
@@ -88,9 +89,10 @@ const login = async (u, p) => {
   sect('5. Un om fără drept de administrare NU vede istoricul');
   // Un cont de firmă are nevoie de firmă: super-adminul e cont de platformă, nu aparține niciuneia.
   const co = await (await POST('/api/companies', { name: 'Firma de probă istoric' })).json();
-  const cu = await POST('/api/users', { username: 'dispecer@test.ro', password: 'Str4da-Verde-2026',
+  const cu = await POST('/api/users', { username: 'dispecer@test.ro',
     full_name: 'Dispecer Test', role: 'dispatcher', company_id: co && co.id });
   T('contul de dispecer se creează', cu.status === 200, cu.status + ' ' + JSON.stringify(co).slice(0, 80));
+  await puneParola(cu, 'Str4da-Verde-2026', B);
   const ckD = await login('dispecer@test.ro', 'Str4da-Verde-2026');
   T('dispecerul se poate autentifica', !!ckD);
   if (ckD) {
@@ -102,8 +104,8 @@ const login = async (u, p) => {
   // Riscul cel mai serios al ecranului: jurnalul e comun tuturor. Filtrul pe companie îl pune
   // serverul; dacă s-ar baza pe un parametru din URL, oricine l-ar putea schimba.
   const coB = await (await POST('/api/companies', { name: 'Firma B' })).json();
-  await POST('/api/users', { username: 'admin.b@test.ro', password: 'Str4da-Verde-2026',
-    full_name: 'Admin B', role: 'admin', company_id: coB && coB.id });
+  await puneParola(await POST('/api/users', { username: 'admin.b@test.ro',
+    full_name: 'Admin B', role: 'admin', company_id: coB && coB.id }), 'Str4da-Verde-2026', B);
   const ckB = await login('admin.b@test.ro', 'Str4da-Verde-2026');
   T('adminul firmei B se autentifică', !!ckB);
   if (ckB) {
