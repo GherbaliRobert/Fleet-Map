@@ -95,35 +95,35 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
-### AMÂNDOI · Pleacă un om, vine altul în locul lui — dintr-un singur traseu
+### AMÂNDOI · Pleacă un om: „Scoate din firmă", și îți spune întâi ce avea
 
 Alin: *„Ion e manager, are cont cu RA Insight activat. Vine Georgel Popescu, și adminul firmei vrea
 să-l scoată pe Popescu și să-l bage pe Georgel. Ia vezi."*
 
-**Se putea și înainte** — dar erau **patru operații, în două locuri**, și nimic nu le lega: deschizi
-fișa lui Ion → Dezactivat → Salvează; cobori la formular → scrii Georgel → Adaugă; apeși bagheta →
-RA Insight; deschizi fișa lui Georgel → bifezi mașinile una câte una. Nimeni nu-ți spunea **ce
-avusese Ion**. Dacă era dispecer cu 6 mașini din 40, trebuia să ții minte care 6. Dacă uitai locul de
-RA Insight, Georgel nu putea întreba nimic și nu se știa de ce.
+**Se putea și înainte**, dar prost: butonul roșu de pe rând era un coș de gunoi care ștergea contul
+fără să spună nimic. Iar **nimeni nu-ți spunea ce avusese Ion.** Dacă era dispecer cu 6 mașini din 40,
+trebuia să ții minte care 6 — și nu aveai de unde, pentru că odată contul șters legăturile lui se duc
+cu el. Dacă uitai locul de RA Insight, omul nou nu putea întreba nimic și nu se știa de ce.
 
 **Ce e acum.**
 
-**1. Coșul de gunoi s-a făcut „Scoate din firmă".** Nu ștergi un rând dintr-un tabel — scoți un om
-din firmă. Contul **chiar dispare** (fereastra o spune limpede: *„dacă omul se întoarce, îi faci cont
-nou"*), iar înainte de asta ți se spune **ce avea**: *„Avea: RA Insight și 1 vehicul atribuit."*
+**1. Coșul de gunoi s-a făcut „Scoate din firmă".** Nu ștergi un rând dintr-un tabel — scoți un om din
+firmă. Contul **chiar dispare**, și fereastra o spune pe față, ca numele blând să nu ascundă ce se
+întâmplă: *„Contul lui Ștefan Marin dispare de tot. Dacă omul se întoarce, îi faci cont nou."*
 
-**2. Imediat după, te întreabă: „Îl înlocuiește cineva?"** Dacă zici da, formularul de cont nou se
-deschide cu **rolul omului plecat deja ales**, iar deasupra apare o bandă care-ți amintește pe cine
-înlocuiești. Scrii doar emailul și numele. Când apeși Adaugă, noul venit **primește singur aceleași
-mașini și grupe**, iar pentru **RA Insight ești întrebat** — ăla e bani, nu se dă din reflex.
+**2. Înainte să apeși, îți scrie ce avea — pe nume, nu pe număr.** Nu *„1 vehicul atribuit"*, ci
+*„Avea: RA Insight · 1 vehicul: B-111-AAA"*, cu numerele de înmatriculare și numele grupelor. Plus
+îndemnul: *„Notează-le acum, dacă le dai altcuiva — se șterg odată cu contul."* Lista se taie la opt,
+ca să nu umple fereastra la o firmă cu 40 de mașini.
 
-Din patru operații a rămas **una, plus un formular**.
+Ăsta e lucrul care face treaba: **adminul scoate omul și pune drepturile pe cel nou de mână**, iar
+acum are de unde să știe care erau.
 
 **3. Și o vorbă despre bani, la locul potrivit.** RA Insight se facturează pe **vârful lunii** — cel
 mai mare număr de conturi aprinse deodată. Însemna că, dacă îi dădeai lui Georgel RA Insight
-**înainte** să-l scoți pe Ion, firma avea două conturi o zi, și **luna aia se plăteau două**. Adminul
-afla abia pe factură. Acum scrie pe buton: *„Dacă înlocuiești pe cineva, scoate-l întâi pe cel care
-pleacă."* Iar traseul de înlocuire face oricum ordinea corectă.
+**înainte** să-l scoți pe Ion, firma avea două conturi o zi și **luna aia se plăteau două**. Adminul
+afla abia pe factură. Acum scrie pe butonul de aprindere: *„Dacă înlocuiești pe cineva, scoate-l întâi
+pe cel care pleacă."*
 
 **4. Un avertisment care lipsea de tot.** Un admin grăbit ar fi „predat" contul lui Ion redenumindu-l
 în Georgel. Două lucruri nu se vedeau: **istoricul rămâne pe cont** (tot ce a făcut Ion apare de acum
@@ -131,9 +131,15 @@ sub numele lui Georgel), iar **adresa cu care se autentifică NU se schimbă** d
 Georgel ar fi intrat în continuare cu `ion.popescu@firma.ro`. Acum, la o adresă schimbată pe un cont
 care a fost folosit, apare întrebarea, cu amândouă explicațiile și cu sfatul corect.
 
-- **Ce am schimbat:** scoaterea unui om și înlocuirea lui au devenit un singur traseu, care nu uită nimic.
-- **Ce vede fondatorul:** aceleași butoane — le poate folosi și el, pe orice firmă.
-- **Ce vede clientul:** exact ce-i trebuie când îi pleacă un dispecer și vine altul.
+**Ce am făcut și am scos, în aceeași zi:** întâi construisem și un traseu de *înlocuire* — „Îl
+înlocuiește cineva?", cu trecerea automată a mașinilor și a locului de RA Insight pe omul nou. Alin
+l-a oprit: *„lasă înlocuitul, nu e nevoie de înlocuire"* — adminul pune drepturile de mână. L-am scos
+de tot, ca să nu rămână un drum pe care nu-l vrea nimeni. A rămas partea care ajută: **ce avea omul,
+scris pe nume, înainte să-l scoți.**
+
+- **Ce am schimbat:** scoaterea unui om nu mai e o ștergere oarbă — spune întâi ce se pierde.
+- **Ce vede fondatorul:** același buton, pe orice firmă.
+- **Ce vede clientul:** exact ce-i trebuie când îi pleacă un dispecer: ce avea, ca să-i dea altuia.
 
 ### FONDATOR · O firmă nu mai poate rămâne fără niciun administrator
 

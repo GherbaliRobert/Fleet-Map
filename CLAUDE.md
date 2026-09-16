@@ -144,14 +144,15 @@ dezactivează. Dacă omul revine, i se face cont nou. Fereastra o spune explicit
 ascundă ce se întâmplă. Dezactivarea rămâne, în fișă (*Status cont*), pentru cazurile temporare.
 
 - Înainte de a scoate, ecranul spune **ce avea omul** (`_usrCeAvea` / `_usrCeAveaText`): RA Insight și
-  mașinile/grupele atribuite. Fără asta, cel care-i ia locul pornește gol.
-- Imediat după, **„Îl înlocuiește cineva?"**: formularul se deschide cu rolul celui plecat, iar la
-  creare noul venit primește **automat aceleași mașini și grupe**; pentru **RA Insight se cere acordul**
-  (sunt bani). Vezi `_usrInlocuire` / `_usrDuceMaiDeparte`.
-- **Nu adăuga o a doua cale de ștergere.** `deleteUser` a fost scos tocmai fiindcă sărea peste amândouă
-  pașii de mai sus.
+  mașinile/grupele atribuite, **pe nume** (numere de înmatriculare, nu IMEI-uri; lista tăiată la opt),
+  plus îndemnul de a le nota. Odată contul șters, legăturile lui se duc cu el.
+- **NU există traseu de „înlocuire" și nu se reintroduce** (decizie Alin, 16.09, după ce unul a fost
+  construit și scos în aceeași zi). Adminul scoate omul și pune drepturile pe cel nou **de mână** —
+  de-aia contează ce scrie în fereastra de mai sus. Păzit de `verify_utilizatori.js`.
+- **Nu adăuga o a doua cale de ștergere.** `deleteUser` a fost scos tocmai fiindcă sărea peste pasul
+  de mai sus.
 - **Ordinea contează la bani:** RA Insight se facturează pe vârful lunii, deci la o înlocuire se scoate
-  ÎNTÂI omul care pleacă. Scrie pe butonul de aprindere a locului; traseul de înlocuire o face singur.
+  ÎNTÂI omul care pleacă. Scrie pe butonul de aprindere a locului.
 - **Schimbarea adresei pe un cont FOLOSIT** (`last_login` scris) cere confirmare: istoricul rămâne pe
   cont, iar adresa de autentificare (`users.username`) NU se schimbă din câmpul „Email".
 

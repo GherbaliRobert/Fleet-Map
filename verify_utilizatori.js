@@ -267,30 +267,39 @@ T('și nu mai e coș de gunoi', /_usrScoate\(' \+ u\.id \+ '\)/.test(html) && !/
 T('nu mai există o a doua cale de ștergere', !/async function deleteUser/.test(html));
 T('fereastra spune limpede că nu se mai poate întoarce contul',
   /dispare de tot\. Dacă omul se întoarce, îi faci cont nou/.test(html));
-T('și îi spune adminului CE AVEA omul, înainte să-l scoată', /'\\n\\nAvea: ' \+ ce \+ '\.'/.test(html));
-// Ce avea omul, scris pe înțeles — cu acordul corect, că se citește, nu se numără.
-const cea = U._usrCeAveaText;
-T('un vehicul', cea({ devices: ['a'], groups: [] }) === '1 vehicul atribuit', cea({ devices: ['a'], groups: [] }));
-T('mai multe vehicule', cea({ devices: ['a', 'b'], groups: [] }) === '2 vehicule atribuite');
-T('o grupă', cea({ devices: [], groups: [1] }) === '1 grupă atribuită', cea({ devices: [], groups: [1] }));
-T('RA Insight plus mașini, legate cu „și"', cea({ ai: true, devices: ['a'], groups: [] }) === 'RA Insight și 1 vehicul atribuit',
-  cea({ ai: true, devices: ['a'], groups: [] }));
-T('cine n-avea nimic nu primește o propoziție goală', cea({ devices: [], groups: [] }) === '');
-T('cine vede toată flota n-are mașini de dus mai departe', /if \(!_usrVedeTot\(u\)\) \{/.test(html));
+T('și îi spune adminului CE AVEA omul, înainte să-l scoată', /'\\n\\nAvea: ' \+ ce \+ '\./.test(html));
+T('cu îndemnul de a le nota, fiindcă se șterg odată cu contul',
+  /Notează-le acum, dacă le dai altcuiva — se șterg odată cu contul/.test(html));
 
-sect('11c. Înlocuirea: cele patru operații devin una');
-T('după ce scoți omul, te întreabă cine-i ia locul', /Îl înlocuiește cineva\?/.test(html));
-T('formularul se deschide cu rolul lui deja ales', /function _usrPregatesteInlocuirea/.test(html));
-T('dar numai dacă cel care adaugă are voie să dea rolul ăla',
-  /for \(var i = 0; i < sel\.options\.length; i\+\+\)[\s\S]{0,180}_usrInlocuire\.role/.test(html));
-T('banda de deasupra formularului spune pe cine înlocuiești', /Îl înlocuiești pe <b>/.test(html));
-T('și se poate renunța', /_usrRenuntaInlocuire/.test(html));
-T('mașinile și grupele se trec singure', /users\/' \+ creat\.id \+ '\/access'/.test(html));
-T('RA Insight NU se trece singur — se cere, fiindcă e bani', /Duci mai departe RA Insight\?/.test(html));
-T('și se spune de ce nu se facturează dublu', /rămâne tot un singur cont pe factură/.test(html));
-T('la înlocuire nu se mai deschide și fișa de atribuire (ar fi de prisos)',
-  /if \(_usrInlocuire\) \{ await _usrDuceMaiDeparte\(created\); return; \}/.test(html));
-T('stilul benzii există', css.indexOf('.rau-inlocuire') >= 0);
+// Ce avea omul, scris ca să se poată pune înapoi de MÂNĂ: nu „4 vehicule", ci CARE patru.
+const cea = U._usrCeAveaText;
+T('un vehicul, cu numărul lui',
+  cea({ devices: ['i1'], numeDev: ['B-99-XYZ'], groups: [] }) === '1 vehicul: B-99-XYZ',
+  cea({ devices: ['i1'], numeDev: ['B-99-XYZ'], groups: [] }));
+T('mai multe vehicule, toate numite',
+  cea({ devices: ['i1', 'i2'], numeDev: ['B-99-XYZ', 'B-12-ABC'], groups: [] }) === '2 vehicule: B-99-XYZ, B-12-ABC');
+T('o grupă, cu numele ei',
+  cea({ devices: [], groups: [1], numeGrp: ['Depou Vest'] }) === '1 grupă: Depou Vest');
+T('RA Insight stă primul, despărțit de restul',
+  cea({ ai: true, devices: ['i1'], numeDev: ['B-99-XYZ'], groups: [] }) === 'RA Insight · 1 vehicul: B-99-XYZ',
+  cea({ ai: true, devices: ['i1'], numeDev: ['B-99-XYZ'], groups: [] }));
+T('fără nume (server vechi), cade pe IMEI, nu pe gol',
+  cea({ devices: ['350000000024702'], groups: [] }) === '1 vehicul: 350000000024702');
+T('cine n-avea nimic nu primește o propoziție goală', cea({ devices: [], groups: [] }) === '');
+T('o listă lungă se taie la opt', (function () {
+  const n = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+  const t = cea({ devices: n, numeDev: n, groups: [] });
+  return /10 vehicule: a, b, c, d, e, f, g, h și încă 2/.test(t);
+})(), cea({ devices: ['a','b','c','d','e','f','g','h','i','j'], numeDev: ['a','b','c','d','e','f','g','h','i','j'], groups: [] }));
+T('cine vede toată flota n-are mașini de notat', /if \(_usrVedeTot\(u\)\) return avea;/.test(html));
+
+sect('11c. NU există traseu de înlocuire (decizie Alin, 16.09)');
+// Adminul scoate omul și pune drepturile pe cel nou DE MÂNĂ. Un traseu care le trece singur
+// a existat o zi și a fost scos: aici se asigură că nu se întoarce pe furiș.
+T('nu mai întreabă cine-i ia locul', !/Îl înlocuiește cineva/.test(html));
+T('nu mai există banda de înlocuire', !/_usrInlocuire|_usrPregatesteInlocuirea|_usrRenuntaInlocuire/.test(html));
+T('și nici trecerea automată a drepturilor', !/_usrDuceMaiDeparte/.test(html));
+T('stilul benzii a plecat și el', css.indexOf('.rau-inlocuire') < 0);
 
 sect('11d. Două avertismente care lipseau');
 T('la aprinderea RA Insight se spune ordinea corectă la o înlocuire',

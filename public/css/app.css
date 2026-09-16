@@ -3422,14 +3422,6 @@
 .rau-seats span{ color:var(--text-muted); }
 .rau-nota{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted); line-height:1.45; }
 .rau-nota i{ color:var(--accent); }
-/* Banda de deasupra formularului, cât ține înlocuirea unui om: îți amintește pe cine înlocuiești și
-   ce urmează să-i trec noului venit. Are și „Renunț" — altfel ai rămâne prins în traseu. */
-.rau-inlocuire{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;
-  font-size:12px; line-height:1.45; padding:9px 12px; border-radius:10px;
-  background:color-mix(in srgb, var(--accent) 10%, transparent);
-  border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
-.rau-inlocuire i{ color:var(--accent); }
-.rau-inlocuire span{ flex:1 1 220px; min-width:0; }
 .rau-cine{ min-width:0; }
 .rau-sus{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .rau-meta{ font-size:11px; color:var(--text-muted); margin-top:3px; overflow-wrap:anywhere; }

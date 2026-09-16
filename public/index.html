@@ -4188,47 +4188,63 @@ const pozitii = await r.json();</code></pre>
       );
     }
 
-    // ── „Scoate din firmă" + înlocuirea omului ──────────────────────────────────────────────────
+    // ── „Scoate din firmă" ──────────────────────────────────────────────────────────────────────
     // Omul a plecat: contul DISPARE, nu se dezactivează. Dacă revine, i se face altul (decizia lui
     // Alin, 16.09). Butonul nu se mai numește „Șterge" fiindcă nu ștergi un rând dintr-un tabel —
     // scoți un om din firmă; fereastra spune însă limpede că nu se mai poate întoarce contul.
     //
-    // Înainte de a-l scoate, îi spunem adminului CE AVEA. Fără asta, cel care-i ia locul pornește gol
-    // și nimeni nu-și mai amintește care 6 mașini din 40 erau ale lui — iar locul de RA Insight se
-    // uită, omul nou nu poate întreba nimic și nu se știe de ce.
-    var _usrInlocuire = null; // ce ducem de la omul scos la cel care-i ia locul
+    // Nu există traseu de „înlocuire" (decizie Alin, 16.09): adminul scoate omul și pune drepturile
+    // pe cel nou de mână. De-aia contează CE scrie fereastra înainte — nu „4 vehicule", ci CARE
+    // patru. Odată contul șters, legăturile lui se duc cu el și nu mai are de unde să le afle.
     function _usrDinCache(id) {
       var l = ueUsersCache || [];
       for (var i = 0; i < l.length; i++) if (String(l[i].id) === String(id)) return l[i];
       return null;
     }
     async function _usrCeAvea(u) {
-      var avea = { ai: !!u.ai_seat, devices: [], groups: [] };
-      // Cine vede toată flota n-are mașini atribuite anume — n-avem ce duce mai departe.
-      if (!_usrVedeTot(u)) {
-        try {
-          var r = await fetch('/api/users/' + u.id + '/access', { credentials: 'same-origin' });
-          if (r.ok) { var a = await r.json(); avea.devices = a.devices || []; avea.groups = a.groups || []; }
-        } catch (e) {}
-      }
+      var avea = { ai: !!u.ai_seat, devices: [], groups: [], numeDev: [], numeGrp: [] };
+      // Cine vede toată flota n-are mașini atribuite anume — n-are ce să-și noteze.
+      if (_usrVedeTot(u)) return avea;
+      try {
+        var r = await fetch('/api/users/' + u.id + '/access', { credentials: 'same-origin' });
+        if (r.ok) { var a = await r.json(); avea.devices = a.devices || []; avea.groups = a.groups || []; }
+      } catch (e) {}
+      if (!avea.devices.length && !avea.groups.length) return avea;
+      // Numerele de înmatriculare, nu IMEI-urile: omul care le pune înapoi de mână le caută după număr.
+      try {
+        var p = await Promise.all([
+          avea.devices.length ? fetch('/api/devices', { credentials: 'same-origin' }).then(function (x) { return x.ok ? x.json() : []; }) : [],
+          avea.groups.length ? fetch('/api/groups', { credentials: 'same-origin' }).then(function (x) { return x.ok ? x.json() : []; }) : []
+        ]);
+        var dNume = {}; (p[0] || []).forEach(function (d) { dNume[d.imei] = d.plate || d.name || d.imei; });
+        var gNume = {}; (p[1] || []).forEach(function (g) { gNume[String(g.id)] = g.name || ('#' + g.id); });
+        avea.numeDev = avea.devices.map(function (i) { return dNume[i] || i; });
+        avea.numeGrp = avea.groups.map(function (i) { return gNume[String(i)] || ('#' + i); });
+      } catch (e) {}
       return avea;
+    }
+    // Lista se taie la opt: o firmă cu 40 de mașini ar umple fereastra și n-ar mai citi-o nimeni.
+    function _usrListaScurta(l) {
+      l = l || [];
+      return l.length <= 8 ? l.join(', ') : (l.slice(0, 8).join(', ') + ' și încă ' + (l.length - 8));
     }
     function _usrCeAveaText(avea) {
       var p = [];
       if (avea && avea.ai) p.push('RA Insight');
-      var n = (avea && avea.devices || []).length, g = (avea && avea.groups || []).length;
-      if (n) p.push(n + (n === 1 ? ' vehicul atribuit' : ' vehicule atribuite'));
-      if (g) p.push(g + (g === 1 ? ' grupă atribuită' : ' grupe atribuite'));
-      return p.join(' și ');
+      var d = (avea && avea.devices) || [], g = (avea && avea.groups) || [];
+      var nd = (avea && avea.numeDev && avea.numeDev.length) ? avea.numeDev : d;
+      var ng = (avea && avea.numeGrp && avea.numeGrp.length) ? avea.numeGrp : g;
+      if (d.length) p.push(d.length + (d.length === 1 ? ' vehicul' : ' vehicule') + ': ' + _usrListaScurta(nd));
+      if (g.length) p.push(g.length + (g.length === 1 ? ' grupă' : ' grupe') + ': ' + _usrListaScurta(ng));
+      return p.join(' · ');
     }
     window._usrScoate = async function (id) {
       var u = _usrDinCache(id); if (!u) return;
       var nume = u.full_name || u.username;
-      var avea = await _usrCeAvea(u);
-      var ce = _usrCeAveaText(avea);
+      var ce = _usrCeAveaText(await _usrCeAvea(u));
       if (!await raConfirm(
         'Contul lui „' + nume + '" dispare de tot. Dacă omul se întoarce, îi faci cont nou.' +
-        (ce ? '\n\nAvea: ' + ce + '.' : ''),
+        (ce ? '\n\nAvea: ' + ce + '.\n\nNotează-le acum, dacă le dai altcuiva — se șterg odată cu contul.' : ''),
         { title: 'Scoți pe „' + nume + '" din firmă?', okLabel: 'Scoate din firmă' })) return;
       var r = await fetch('/api/users/' + id, { method: 'DELETE', credentials: 'same-origin' });
       if (!r.ok) {
@@ -4236,78 +4252,9 @@ const pozitii = await r.json();</code></pre>
         if (window.raxToast) raxToast(e.error || ('Eroare ' + r.status), 'error');
         return;
       }
+      if (window.raxToast) raxToast('„' + nume + '" a fost scos din firmă.', 'success');
       await loadUsers();
-      // Aici se leagă cele patru operații de dinainte (scoate, adaugă, atribuie, aprinde) într-una.
-      if (!await raConfirm(
-        'Dacă da, îți deschid formularul cu rolul lui „' + nume + '" deja ales și, după ce creezi contul, ' +
-        (ce ? 'îi trec ce avea el: ' + ce + '.' : 'îi dau aceleași drepturi.'),
-        { title: 'Îl înlocuiește cineva?', danger: false, icon: 'fa-user-plus', okLabel: 'Da, îl înlocuiesc', cancelLabel: 'Nu, atât' })) return;
-      _usrInlocuire = { nume: nume, role: u.role, avea: avea };
-      _usrPregatesteInlocuirea();
     };
-    function _usrPregatesteInlocuirea() {
-      if (!_usrInlocuire) return;
-      var sel = document.getElementById('new-role');
-      if (sel) {
-        // Rolul vechi se pune doar dacă cel care adaugă are voie să-l dea (un admin de firmă nu poate
-        // face alt admin) — altfel formularul ar promite un rol pe care serverul îl coboară oricum.
-        for (var i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === _usrInlocuire.role) { sel.value = _usrInlocuire.role; break; }
-        }
-        if (typeof _usrRoleChanged === 'function') _usrRoleChanged();
-      }
-      var nota = document.getElementById('usr-inlocuire');
-      if (!nota) {
-        nota = document.createElement('div');
-        nota.id = 'usr-inlocuire';
-        nota.className = 'rau-inlocuire';
-        var form = document.querySelector('#admin-tab-users .add-user-form');
-        if (form && form.parentNode) form.parentNode.insertBefore(nota, form);
-      }
-      var ce = _usrCeAveaText(_usrInlocuire.avea);
-      nota.innerHTML = '<i class="fas fa-user-plus"></i><span>Îl înlocuiești pe <b>' + esc(_usrInlocuire.nume) + '</b>. ' +
-        'După ce creezi contul, îi trec ' + (ce ? esc(ce) : 'aceleași drepturi') + '.</span>' +
-        '<button type="button" class="btn-sm" onclick="_usrRenuntaInlocuire()">Renunț</button>';
-      nota.style.display = '';
-      var camp = document.getElementById('new-username');
-      if (camp) { try { camp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} camp.focus(); }
-    }
-    window._usrRenuntaInlocuire = function () {
-      _usrInlocuire = null;
-      var n = document.getElementById('usr-inlocuire'); if (n) n.style.display = 'none';
-    };
-    // Duce mai departe ce avea omul plecat. Mașinile se trec singure; RA Insight se cere, fiindcă e bani.
-    async function _usrDuceMaiDeparte(creat) {
-      var inl = _usrInlocuire; _usrRenuntaInlocuire();
-      if (!inl || !creat || !creat.id) return;
-      var dus = [];
-      var d = (inl.avea.devices || []), g = (inl.avea.groups || []);
-      if (d.length || g.length) {
-        try {
-          var r = await fetch('/api/users/' + creat.id + '/access', {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-            body: JSON.stringify({ devices: d, groups: g })
-          });
-          if (r.ok) dus.push(_usrCeAveaText({ devices: d, groups: g }));
-        } catch (e) {}
-      }
-      if (inl.avea.ai) {
-        // Ordinea contează la bani: cel plecat a fost scos ÎNAINTE, deci vârful lunii nu urcă la doi.
-        if (await raConfirm('„' + inl.nume + '" avea RA Insight. Îi dai și contului nou?\n\n' +
-          'Pe cel plecat l-am scos deja, deci luna asta rămâne tot un singur cont pe factură.',
-          { title: 'Duci mai departe RA Insight?', danger: false, icon: 'fa-wand-magic-sparkles', okLabel: 'Da, dă-i' })) {
-          try {
-            var r2 = await fetch('/api/users/' + creat.id + '/ai-seat', {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-              body: JSON.stringify({ on: true })
-            });
-            if (r2.ok) dus.push('RA Insight');
-          } catch (e) {}
-        }
-      }
-      if (window.raxToast && dus.length) raxToast('I-am trecut ' + dus.join(' și ') + ' de la „' + inl.nume + '".', 'success');
-      await loadUsers();
-    }
     // ── sfârșit „lista de utilizatori" ──
     // Pornește/oprește RA Insight pe un cont. Se cere confirmare la PORNIRE, fiindcă se facturează.
     window.raxAiSeat = async function (id, on) {
@@ -4581,8 +4528,6 @@ const pozitii = await r.json();</code></pre>
         raxToast('Cont creat, dar linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă".', 'error');
       }
       await loadUsers();
-      // Înlocuire: îi trecem noului venit ce avea cel plecat (mașini, grupe, RA Insight).
-      if (_usrInlocuire) { await _usrDuceMaiDeparte(created); return; }
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
       // Rolurile „scoped" au nevoie de atribuire de vehicule; super-adminul vede TOT, deci n-are ce atribui.
       if (role !== 'admin' && role !== 'manager' && role !== 'superadmin') openUserEdit(created.id);
