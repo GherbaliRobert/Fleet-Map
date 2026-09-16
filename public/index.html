@@ -1426,6 +1426,19 @@
     .rax-dev-chip { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 20px; padding: 6px 13px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .rax-dev-chip.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
     .rax-dev-chip .cnt { opacity: .75; }
+    .rax-dev-chip.atentie:not(.on) { border-color: var(--orange); color: var(--orange); }
+    /* Grup de firmă: rândul care se deschide și se închide, cu sumarul și butonul spre fișa firmei. */
+    .rax-devgr { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+    .rax-devgr-h { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer; background: var(--bg-dark); }
+    .rax-devgr-h > i { font-size: 11px; color: var(--text-muted); flex: 0 0 auto; }
+    .rax-devgr-h > strong { font-size: 13.5px; }
+    .rax-devgr-n { margin-left: auto; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+    .rax-devgr-h .rax-btn { font-size: 11px; padding: 4px 9px; flex: 0 0 auto; }
+    .rax-devgr-b { padding: 4px 10px 8px; }
+    /* Semnalul: bulina colorată + textul lui („comunică" / „tăcut de 3 ore" / „fără semnal de 2 zile").
+       Culoarea și textul vin din `agpsStare`, aceeași funcție ca la „Aparate GPS" — nu se scriu aici. */
+    .rax-dev-sem { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+    .rax-dev-sem i { font-size: 7px; vertical-align: middle; margin-right: 4px; }
     .rax-dev-search { flex: 1; min-width: 180px; margin: 0; }
     .rax-dev-alert { background: rgba(245,158,11,.12); border: 1px solid var(--orange); color: var(--orange); border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
     .rax-dev-strict { border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 10px; border: 1px solid var(--border); }
@@ -1965,9 +1978,11 @@ const pozitii = await r.json();</code></pre>
             <span class="exp-grp"><button class="btn-sm" onclick="exportVehicles('csv')" title="CSV brut, cu toate câmpurile — se poate edita și re-importa"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="btn-sm" onclick="exportVehicles('xlsx')" title="Document Excel brandat, cu situația flotei"><i class="fas fa-file-excel"></i> Excel</button>
             <button class="btn-sm" onclick="exportVehicles('pdf')" title="Document PDF brandat, cu situația flotei"><i class="fas fa-file-pdf"></i> PDF</button></span>
-            <button class="btn-sm" onclick="downloadTemplate()" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
-            <button class="btn-sm" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
-            <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
+            <!-- Aparatele le înregistrăm NOI (decizia lui Alin, 16.09): clientul își vede flota și seriile,
+                 dar nu adaugă și nu importă aparate. Serverul refuză oricum — astea doar nu mai promit. -->
+            <button class="btn-sm super-only" onclick="downloadTemplate()" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
+            <button class="btn-sm super-only" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
+            <button class="btn-sm btn-primary super-only" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
             <input type="file" id="veh-import-file" accept=".csv,text/csv" style="display:none;" onchange="importVehiclesFile(this)">
           </div>
 
@@ -6467,7 +6482,7 @@ const pozitii = await r.json();</code></pre>
           <div class="veh-c-co veh-cel veh-co-col">${esc(d.company_name || '')}</div>
           <div class="veh-c-act veh-act">
             <button class="btn-sm" title="Editează" onclick="closeAdmin();openEditModal('${esc(d.imei)}')"><i class="fas fa-pen"></i></button>
-            <button class="btn-sm ${archived ? 'btn-primary' : 'btn-danger'}" title="${archived ? 'Restaurează' : 'Arhivează'}" onclick="setVehArchive('${esc(d.imei)}', ${archived ? 'false' : 'true'})"><i class="fas fa-${archived ? 'undo' : 'archive'}"></i></button>
+            <button class="btn-sm super-only ${archived ? 'btn-primary' : 'btn-danger'}" title="${archived ? 'Restaurează' : 'Arhivează'}" onclick="setVehArchive('${esc(d.imei)}', ${archived ? 'false' : 'true'})"><i class="fas fa-${archived ? 'undo' : 'archive'}"></i></button>
           </div>
         </div>`;
       }).join('') || '<div class="veh-empty">Niciun vehicul.</div>';
@@ -16301,6 +16316,14 @@ const pozitii = await r.json();</code></pre>
           setv('edit-cons-idle', dev.consumption_idle); setv('edit-road-tax', dev.road_tax_category);
           setv('edit-cost-center', dev.cost_center); setv('edit-inventory', dev.inventory_number);
           setv('edit-gps-model', dev.gps_model); setv('edit-sim-number', dev.sim_number);
+          // Model aparat + cartelă SIM: date de ECHIPAMENT, puse de noi la instalare. Clientul le vede,
+          // nu le scrie (serverul le aruncă oricum din ce trimite un cont care nu e de platformă).
+          if (!(currentUser && currentUser.role === 'superadmin')) {
+            ['edit-gps-model', 'edit-sim-number'].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (el) { el.readOnly = true; el.title = 'Se completează la instalare, de RA Tracks.'; el.style.opacity = '.7'; }
+            });
+          }
           setv('edit-odo-base', dev.odo_base_km != null && dev.odo_base_km !== '' ? Math.round(dev.odo_base_km) : '');
           setIconPicker(dev.icon || iconFromType(dev.vehicle_type) || 'car'); setv('edit-notes', dev.notes);
           if (dev.color) setv('edit-color', dev.color);
@@ -23809,17 +23832,69 @@ const pozitii = await r.json();</code></pre>
       raxRenderDevices();
     };
     window.raxDevFilter = function (k) { _raxDevFilter = k; raxRenderDevices(); };
+    // ── începe „dispozitivele, pe firme" ───────────────────────────────────────────
+    // Lista plată de IMEI-uri a devenit GRUPURI PE FIRMĂ (decizia lui Alin, 16.09): vindem pe firme,
+    // deci vrem să vedem clienți, nu aparate. Rândul fiecărei firme spune câte are și dacă e ceva în
+    // neregulă — fără să fie nevoie s-o deschizi — și are un buton care duce direct în fișa ei.
+    //
+    // „Semnal" e o coloană NOUĂ, lângă „Stare". Sunt două adevăruri diferite:
+    //   • Stare  = ce ai hotărât TU        (activ / neasignat / arhivat)
+    //   • Semnal = ce se întâmplă în teren  (comunică / tăcut / fără semnal / nicio transmisie)
+    // Până acum, un aparat mort de o lună scria tot „activ", cu verde: starea nu știa nimic despre semnal,
+    // iar data de alături trebuia scăzută în cap, pe fiecare rând.
+    //
+    // Cuvintele și pragurile NU se inventează aici: se ia `agpsStare` din „Aparate GPS" (Setări →
+    // Evidență), scrisă o dată și cu probele ei (30 min → tăcut, 24 h → fără semnal). Două vocabulare
+    // pentru același lucru e exact greșeala cu „Admin" / „Admin companie".
+    function _raxDevSemnal(d) {
+      if (typeof agpsStare === 'function') return agpsStare(d.last_position_time, Date.now());
+      return { k: '', t: '—', c: 'var(--text-muted)' };   // ecran vechi: mai bine nimic decât o stare inventată
+    }
+    // Câte lucruri de rezolvat are firma: aparate fără semnal, care n-au transmis niciodată, sau cu
+    // problemă la montaj. Cifra asta hotărăște și dacă grupul stă deschis.
+    function _raxDevProbleme(dev) {
+      return dev.filter(function (d) {
+        if (_raxDevBucket(d) === 'archived') return false;   // arhivat = nu mai transmite, din voia noastră
+        var s = _raxDevSemnal(d);
+        return s.k === 'mut' || s.k === 'niciodata' || !!d.install_issue;
+      }).length;
+    }
+    // Grupurile, în ordinea în care te interesează: întâi aparatele care așteaptă o firmă, apoi firmele
+    // (alfabetic), la urmă arhivele.
+    function _raxDevGrupuri(rows) {
+      var g = {};
+      rows.forEach(function (d) {
+        var b = _raxDevBucket(d);
+        var k = (b === 'archived') ? '_arh' : (b === 'unassigned' ? '_neas' : ('co' + d.company_id));
+        if (!g[k]) {
+          g[k] = { k: k, coId: (k.charAt(0) === 'c' ? d.company_id : null), dev: [],
+            nume: (k === '_arh') ? 'Arhivate' : (k === '_neas') ? 'Neasignate' : (d.company_name || ('Firma #' + d.company_id)) };
+        }
+        g[k].dev.push(d);
+      });
+      var firme = Object.keys(g).filter(function (k) { return k !== '_neas' && k !== '_arh'; })
+        .sort(function (x, y) { return g[x].nume.localeCompare(g[y].nume, 'ro'); }).map(function (k) { return g[k]; });
+      return (g._neas ? [g._neas] : []).concat(firme, g._arh ? [g._arh] : []);
+    }
     window.raxRenderDevices = function () {
       var box = document.getElementById('admin-tab-devices'); if (!box) return;
       var all = _raxDevices, q = (_raxDevSearch || '').toLowerCase();
-      var counts = { all: all.length, unassigned: 0, active: 0, archived: 0 };
-      all.forEach(function (d) { counts[_raxDevBucket(d)]++; });
+      var counts = { all: all.length, unassigned: 0, active: 0, archived: 0, nosignal: 0 };
+      all.forEach(function (d) {
+        counts[_raxDevBucket(d)]++;
+        if (_raxDevBucket(d) !== 'archived' && _raxDevSemnal(d).k === 'mut') counts.nosignal++;
+      });
       var rows = all.filter(function (d) {
-        if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
+        if (_raxDevFilter === 'nosignal') {
+          if (_raxDevBucket(d) === 'archived' || _raxDevSemnal(d).k !== 'mut') return false;
+        } else if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
         if (q && !raCauta(q, d.name, d.plate, d.imei, d.company_name)) return false;
         return true;
-      }).sort(function (a, b) { return (Number(b.last_position_time) || 0) - (Number(a.last_position_time) || 0); });
-      var chip = function (k, label) { return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>'; };
+      }).sort(function (a2, b2) { return (Number(b2.last_position_time) || 0) - (Number(a2.last_position_time) || 0); });
+      var chip = function (k, label, ton) {
+        return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + (ton && counts[k] ? ' ' + ton : '') +
+          '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>';
+      };
       var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără</span>' };
       var stBadge = { active: '<span class="rax-devst active">activ</span>', unassigned: '<span class="rax-devst pend">neasignat</span>', archived: '<span class="rax-devst arch">arhivat</span>' };
       var strictBanner = _raxStrict
@@ -23835,27 +23910,64 @@ const pozitii = await r.json();</code></pre>
           }).join('') + '</div>'
         : '';
       var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
-        '<div class="rax-dev-bar">' + '<button class="rax-btn primary" style="border-radius:20px;" onclick="raxDevAddOpen()"><i class="fas fa-plus"></i> Adaugă dispozitiv</button>' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
-        '<input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
-      var body = rows.map(function (d) {
+        '<div class="rax-dev-bar">' + '<button class="rax-btn primary" style="border-radius:20px;" onclick="raxDevAddOpen()"><i class="fas fa-plus"></i> Adaugă dispozitiv</button>' +
+        chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('nosignal', 'Fără semnal', 'atentie') + chip('archived', 'Arhivate') +
+        '<input class="rax-field rax-dev-search" placeholder="\uD83D\uDD0E nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
+      var randHtml = function (d) {
         var b = _raxDevBucket(d);
         var co = (b === 'archived') ? (d.company_name ? esc(d.company_name) : '<span style="color:var(--text-muted)">—</span>')
           : '<select class="rax-dev-co" onchange="raxDevSetCompany(\'' + esc(d.imei) + '\',this.value)">' + _raxDevCoOptions(d.company_id) + '</select>';
         var iface = '<select class="rax-dev-if" title="Interfață CAN (decodare)" onchange="raxDevSetIface(\'' + esc(d.imei) + '\',this.value)">' +
           _RAX_IFACE.map(function (it) { return '<option value="' + it[0] + '"' + ((d.can_interface || '') === it[0] ? ' selected' : '') + '>' + it[1] + '</option>'; }).join('') + '</select>';
-        var lp = _raxDataOra(d.last_position_time);
+        var sem = _raxDevSemnal(d);
+        var semnal = (b === 'archived')
+          ? '<span style="color:var(--text-muted)">—</span>'
+          : '<span class="rax-dev-sem" style="color:' + sem.c + ';"><i class="fas fa-circle"></i> ' + esc(sem.t) + '</span>';
         var act = (b === 'archived')
           ? '<button class="rax-btn" onclick="raxDevRestore(\'' + esc(d.imei) + '\')"><i class="fas fa-rotate-left"></i> Restaurează</button> <button class="rax-btn" style="color:var(--red)" onclick="raxDevDelete(\'' + esc(d.imei) + '\')"><i class="fas fa-trash"></i> Șterge</button>'
           : '<button class="rax-btn" onclick="raxDevArchive(\'' + esc(d.imei) + '\',' + (b === 'unassigned' ? 'true' : 'false') + ')"><i class="fas fa-ban"></i> ' + (b === 'unassigned' ? 'Respinge' : 'Arhivează') + '</button>';
         return '<tr><td><strong>' + esc(d.name || '—') + '</strong>' + (d.plate ? '<br><span class="rax-dev-plate">' + esc(d.plate) + '</span>' : '') + '</td>' +
           '<td class="mono">' + esc(d.imei) + '</td><td>' + co + '</td>' +
           '<td>' + (canBadge[d.can_type] || '') + ' ' + iface + '</td>' +
-          '<td>' + (stBadge[b] || '') + (d.install_issue ? ' <span class="rax-devst" style="background:rgba(245,158,11,.14);color:#f59e0b;" title="' + esc((d.install_issue.note || 'Problemă la montaj') + (d.install_issue.at ? ' — ' + new Date(Number(d.install_issue.at)).toLocaleDateString('ro-RO') : '')) + '">⚠ montaj</span>' : '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
+          '<td>' + (stBadge[b] || '') + (d.install_issue ? ' <span class="rax-devst" style="background:rgba(245,158,11,.14);color:#f59e0b;" title="' + esc((d.install_issue.note || 'Problemă la montaj') + (d.install_issue.at ? ' — ' + new Date(Number(d.install_issue.at)).toLocaleDateString('ro-RO') : '')) + '">⚠ montaj</span>' : '') + '</td>' +
+          '<td>' + semnal + '</td><td class="rax-dev-lp">' + _raxDataOra(d.last_position_time) + '</td>' +
           '<td class="rax-dev-act">' + '<button class="rax-btn" title="' + (d.install_issue ? 'Anulează semnalarea „problemă la montaj"' : 'Semnalează problemă la montaj') + '" onclick="raxDevIssueToggle(\'' + esc(d.imei) + '\')" style="color:' + (d.install_issue ? '#f59e0b' : 'var(--text-muted)') + ';"><i class="fas fa-triangle-exclamation"></i></button> ' + act + '</td></tr>';
-      }).join('');
-      box.innerHTML = strictBanner + attemptsHtml + head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
-        (rows.length ? body : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-muted)">Niciun dispozitiv în filtrul curent.</td></tr>') + '</tbody></table></div>';
+      };
+      var CAP = '<thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Semnal</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead>';
+      var grupuri = _raxDevGrupuri(rows);
+      var corp;
+      if (!rows.length) {
+        corp = '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun dispozitiv în filtrul curent.</div>';
+      } else {
+        corp = grupuri.map(function (gr) {
+          var pb = _raxDevProbleme(gr.dev);
+          // Deschis sau închis: cu puține firme, toate deschise. Cu multe, închise — DAR niciodată una
+          // care are ceva de rezolvat și niciodată „Neasignate". O problemă nu stă ascunsă după un rând închis.
+          var deschis = (gr.k === '_neas') ? true : (gr.k === '_arh') ? false : (!!q || pb > 0 || grupuri.length <= 5);
+          var sumar = gr.dev.length + (gr.dev.length === 1 ? ' aparat' : ' aparate') +
+            (pb ? ' · <b style="color:var(--orange)">' + pb + (pb === 1 ? ' de rezolvat' : ' de rezolvat') + '</b>' : '');
+          return '<div class="rax-devgr">' +
+            '<div class="rax-devgr-h" onclick="_raxDevToggleGr(this)">' +
+              '<i class="fas fa-chevron-' + (deschis ? 'down' : 'right') + '"></i>' +
+              '<strong>' + esc(gr.nume) + '</strong>' +
+              '<span class="rax-devgr-n">' + sumar + '</span>' +
+              (gr.coId != null ? '<button class="rax-btn" onclick="event.stopPropagation();raxOpenCompanyDetail(' + gr.coId + ')"><i class="fas fa-building"></i> Deschide firma</button>' : '') +
+            '</div>' +
+            '<div class="rax-devgr-b" style="display:' + (deschis ? 'block' : 'none') + ';">' +
+              '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table">' + CAP + '<tbody>' + gr.dev.map(randHtml).join('') + '</tbody></table></div>' +
+            '</div></div>';
+        }).join('');
+      }
+      box.innerHTML = strictBanner + attemptsHtml + head + corp;
     };
+    window._raxDevToggleGr = function (head) {
+      var body = head.nextElementSibling; if (!body) return;
+      var ic = head.querySelector('i');
+      var acum = body.style.display === 'none';
+      body.style.display = acum ? 'block' : 'none';
+      if (ic) ic.className = 'fas fa-chevron-' + (acum ? 'down' : 'right');
+    };
+    // ── sfârșit „dispozitivele, pe firme" ──
     window.raxApproveAttempt = async function (imei) {
       // Pre-înregistrează IMEI-ul (neasignat) → intră în allow-list → acceptat la următoarea conectare
       if (await _raxDevAction('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imei: imei }) }, 'IMEI aprobat — se va conecta la următoarea încercare')) raxLoadDevices();

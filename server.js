@@ -6657,7 +6657,12 @@ app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Adăugare manuală vehicul (pre-înregistrare IMEI). Trackerul cu acel IMEI se va lega automat.
-app.post('/api/devices', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
+// APARATELE LE ÎNREGISTRĂM NOI (decizia lui Alin, 16.09). Clientul își vede aparatele și seriile,
+// dar nu le adaugă și nu umblă la ele: GPS-ul e marfa noastră, montată de instalatorii noștri, iar
+// legătura aparat ↔ firmă e o socoteală de-a noastră. Înainte, adminul firmei își putea băga singur
+// IMEI-uri (și chiar ADOPTA un aparat rămas neasignat) — adică își făcea singur flota din care
+// facturam. Nu e răutate, e pur și simplu treaba altcuiva.
+app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, res) => {
   try {
     const imei = String(req.body.imei || '').trim();
     if (!/^\d{10,20}$/.test(imei)) return res.status(400).json({ error: 'IMEI invalid (10–20 cifre)' });
@@ -6795,7 +6800,7 @@ app.get('/api/devices/template.csv', requireAuth, (req, res) => {
 });
 
 // Import în masă: rânduri parsate din CSV (frontend) → create/update după IMEI, scoped pe companie
-app.post('/api/devices/import', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
+app.post('/api/devices/import', requireAuth, requireSuperadmin, withScope, async (req, res) => {   // vezi POST /api/devices
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (!rows.length) return res.status(400).json({ error: 'Niciun rând de importat' });
@@ -6829,7 +6834,7 @@ app.post('/api/devices/import', requireAuth, requireEdit('vehicule'), withScope,
 });
 
 // API: Arhivare / restaurare vehicul
-app.put('/api/devices/:imei/status', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
+app.put('/api/devices/:imei/status', requireAuth, requireSuperadmin, withScope, async (req, res) => {   // vezi POST /api/devices
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
@@ -7159,7 +7164,9 @@ app.put('/api/devices/:imei', requireAuth, requireEdit('vehicule'), withScope, a
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
     invalidateLiveEnrichCache(); // /api/live ia identitatea din acest cache → invalidează ca să nu servească nr. vechi
     // Inventar echipament GPS (model tracker + cartelă SIM) — se completează la instalare.
-    if (req.body.gps_model !== undefined || req.body.sim_number !== undefined) {
+    // Modelul aparatului și cartela SIM sunt date de ECHIPAMENT, nu de vehicul: se completează la
+    // instalare, de noi. Clientul le vede („Aparate GPS”), dar nu le scrie.
+    if (req.isSuper && (req.body.gps_model !== undefined || req.body.sim_number !== undefined)) {
       await db.setDeviceGpsInfo(imei, req.body.gps_model, req.body.sim_number);
     }
     // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — DOAR super-admin (nu admin/user companie).
@@ -7190,7 +7197,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
     // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
-    if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; }
+    if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; delete b.gps_model; delete b.sim_number; }
     if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
     // „Km la bord" (index manual pt. mașini fără CAN): reținem valoarea veche ÎNAINTE de update, ca să (re)facem snapshot-ul
     // contorului GPS DOAR când operatorul chiar schimbă valoarea — altfel orice resalvare a fișei ar rebaza contorul și

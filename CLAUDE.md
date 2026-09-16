@@ -208,6 +208,32 @@ Partener). Fondatorul nu administrează împărțirea mașinilor pe oamenii unei
 16.09. Ecranul e ACELAȘI nod în amândouă verticalele (`setImprumuta`), deci diferența se face în cod,
 nu prin două ecrane.
 
+## Aparatele GPS le înregistrăm NOI (decizie Alin, 16.09)
+
+GPS-ul e marfa noastră, montată de instalatorii noștri, iar legătura aparat ↔ firmă e socoteala
+noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu umblă la ele.
+
+- **Doar super-admin:** `POST /api/devices`, `POST /api/devices/import`,
+  `PUT /api/devices/:imei/status` (arhivare/restaurare), `DELETE /api/devices/:imei`.
+- **`gps_model` și `sim_number`** (model aparat + cartelă SIM) sunt date de ECHIPAMENT: se scriu doar
+  de noi. Sunt aruncate din body pentru cine nu e super, pe AMÂNDOUĂ căile (`PUT /api/devices/:imei`
+  și `PUT /api/devices/:imei/details`). În fișa vehiculului i se arată, dar `readOnly`.
+- **Ce ține de VEHICUL îi rămâne** clientului: nume, număr, tip, șofer, grupă, senzori, program de
+  lucru, calibrare rezervor. E flota lui.
+- Butoanele „Adaugă vehicul", „Importă", „Șablon", „Arhivează" sunt `super-only` în ecranul lui — dar
+  asta e doar al doilea strat; refuzul vine de la server.
+- Păzit de `verify_dispozitive.js` (în `npm test`), inclusiv pe server pornit.
+
+### Ecranul „Dispozitive": Stare ≠ Semnal, și totul stă pe firme
+- **Stare** = ce am hotărât NOI (activ / neasignat / arhivat). **Semnal** = ce se întâmplă în teren.
+  Sunt două coloane, nu una: un aparat poate fi „activ" și „fără semnal de 3 zile" în același timp.
+- **Cuvintele și pragurile semnalului NU se scriu acolo:** `_raxDevSemnal` cheamă `agpsStare` din
+  „Aparate GPS" (Setări → Evidență) — 30 min → tăcut, 24 h → fără semnal. Nu face a doua listă de praguri.
+- Aparatele sunt **grupate pe firme** (`_raxDevGrupuri`): Neasignate sus, firmele alfabetic, Arhivate
+  jos. Fiecare firmă are sumar („2 aparate · 1 de rezolvat") și buton **„Deschide firma"**.
+- **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
+  rând închis e mai rea decât una scrisă urât.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

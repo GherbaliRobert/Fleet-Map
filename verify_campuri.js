@@ -70,7 +70,7 @@ T('din epoch scris ca text, la fel', _raxDataOra(String(acum)) === _raxDataOra(a
 T('din text ISO iese tot o dată', /2026/.test(_raxDataOra('2026-09-15T08:30:00Z')), _raxDataOra('2026-09-15T08:30:00Z'));
 T('din gol iese liniuță', _raxDataOra(null) === '—' && _raxDataOra('') === '—' && _raxDataOra(undefined) === '—');
 T('din gunoi iese tot liniuță, nu „Invalid Date"', _raxDataOra('cine știe ce') === '—', _raxDataOra('cine știe ce'));
-T('tabelul de dispozitive o folosește', /var lp = _raxDataOra\(d\.last_position_time\)/.test(html));
+T('tabelul de dispozitive o folosește', /_raxDataOra\(d\.last_position_time\)/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

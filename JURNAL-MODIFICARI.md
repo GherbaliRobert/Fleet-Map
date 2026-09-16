@@ -95,6 +95,84 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Dispozitive: se vede cine a amuțit, iar aparatele stau pe firme
+
+Alin: *„am stare — activ — și data ultimei poziții. Când nu mai dă semnal, apare inactiv… de ce să mă
+complic?"* Și, imediat după: *„vreau GPS-urile pe firme, cu buton de deschis firma."*
+
+**Ce era, și de ce nu mergea.** Coloana „Stare" nu știa NIMIC despre semnal. Ea spunea doar ce
+hotărâsem noi: *activ* (are firmă și nu e arhivat), *neasignat*, *arhivat*. Un aparat mort de o lună
+scria în continuare **„activ", cu verde**. Data de alături era corectă — ultima transmisie — dar ca
+să-ți dai seama dacă aparatul mai trăiește trebuia să faci o scădere în cap, **pe fiecare rând**.
+
+Iar asta e cel mai important lucru de pe ecranul ăla: **un aparat mut înseamnă un client care plătește
+și nu primește nimic.** Afli când te sună el.
+
+**Ce e acum.**
+
+**1. O coloană nouă: „Semnal".** Lângă „Stare", nu în locul ei — sunt două adevăruri diferite:
+*Stare* e ce ai hotărât tu, *Semnal* e ce se întâmplă în teren. Scrie **comunică** (verde), **tăcut de
+3 ore** (portocaliu), **fără semnal de 2 zile** (roșu) sau **nicio transmisie**. Data exactă rămâne
+alături, neatinsă.
+
+Cuvintele și pragurile **nu sunt inventate aici**: sunt exact cele din „Aparate GPS" (Setări →
+Evidență), scrise o dată, cu probele lor — 30 de minute până la „tăcut", 24 de ore până la „fără
+semnal". Două vocabulare pentru același lucru ar fi fost exact greșeala cu „Admin" / „Admin companie".
+
+**2. O pastilă nouă: „Fără semnal N".** Un clic și vezi doar aparatele mute, din toate firmele.
+Arhivatele nu se numără — pe alea le-am oprit noi.
+
+**3. Aparatele stau pe firme.** În loc de o listă plată de IMEI-uri, fiecare firmă e un rând care se
+deschide: *„Alfa Transport SRL · 2 aparate · 2 de rezolvat"* — și un buton **„Deschide firma"** care
+te duce direct în fișa ei, la contract și ofertă. Adică: *„la clientul ăsta a murit un tracker" → un
+clic → ești la el.*
+
+Sus stau **Neasignatele** (aparatele care așteaptă să le dai firma), jos **Arhivatele**, închise. Cu
+puține firme, toate deschise; cu multe, închise — **dar niciodată una care are ceva de rezolvat.** O
+problemă nu are voie să stea ascunsă după un rând închis.
+
+- **Ce am schimbat:** ecranul spune singur care client are un aparat mort.
+- **Ce vede fondatorul:** clienți, nu IMEI-uri — și o cale scurtă de la aparat la firmă.
+- **Ce vede clientul:** nimic, ecranul e strict al nostru.
+
+### FONDATOR · Aparatele le înregistrăm noi. Clientul le vede, nu le atinge
+
+Alin: *„păi cum să-și adauge clientul GPS-uri singur? Asta nu e ok — doar noi. El doar vede ce GPS-uri
+are, ce serii etc., dar nu poate edita nimic și nici să adauge."*
+
+**Ce se putea până acum.** Adminul unei firme putea, din Management → Vehicule: să adauge un aparat
+după IMEI, să importe un fișier întreg, să arhiveze aparate, și să scrie **modelul aparatului și
+numărul cartelei SIM**. Mai mult: dacă un aparat era în sistem dar fără firmă, „adaugă" al lui **îl
+adopta** la el. Adică își făcea singur flota din care facturăm.
+
+**Ce e acum.** GPS-ul e marfa noastră, montată de instalatorii noștri, iar legătura aparat ↔ firmă e
+socoteala noastră. Așa că:
+
+| | Cine |
+|---|---|
+| Adaugă un aparat / importă din fișier | **doar noi** |
+| Arhivează / restaurează / șterge un aparat | **doar noi** |
+| Scrie modelul aparatului și cartela SIM | **doar noi** |
+| Vede toate astea | **și clientul** — în fișa vehiculului, doar de citit |
+| Nume, număr, șofer, grupă, senzori, program | **clientul** — e flota lui |
+
+Refuzul vine de la **server**, nu de la ecranul care ascunde butonul. Iar ecranul lui nu mai promite
+ce serverul refuză: butoanele „Adaugă vehicul", „Importă" și „Arhivează" nu-i mai apar.
+
+- **Ce am schimbat:** aparatele intră în platformă pe o singură ușă — a noastră.
+- **Ce vede fondatorul:** la fel ca înainte, el poate tot.
+- **Ce vede clientul:** își vede aparatele și seriile, dar nu mai adaugă și nu mai umblă la ele.
+
+**Ce am lăsat în urmă:** `verify_dispozitive.js` — **59 de verificări**, din care 11 pe aplicația
+pornită (adminul firmei primește refuz pe toate cele patru căi, iar ce scrie el peste model și cartelă
+se aruncă). Sabotat în cinci feluri. Plus 11 verificări în browser adevărat, cu grupele, butonul spre
+firmă și coloana Semnal jucate pe ecran.
+
+**De știut:** căutând asta, am descoperit că **nu avem nimic pentru instalatorii parteneri** — niciun
+cont, niciun ecran, nicio cale prin care să scrie ei seriile aparatelor montate. Ce există
+(`montaj.js`) e doar partea comercială: partenerii, tarifele lor, ce facturăm clientului și ce marjă
+rămâne. Seriile ni le trimit pe WhatsApp și le batem noi de mână. Trecut la lista de dinainte de lansare.
+
 ### AMÂNDOI · Firma își face singură administratorii. Noi ieșim din drum
 
 Alin: *„dacă el, administratorul firmei, vrea să dea atribuțiile lui și unui manager, cum face? Cred
@@ -6935,6 +7013,12 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(amândoi) Instalatorii parteneri n-au nimic în aplicație.** Trimitem firma X să monteze 10
+  aparate la un client, iar ei ne trimit seriile pe WhatsApp și le batem noi de mână. Nu există cont, nu
+  există ecran, nu există scanare, iar lucrarea de montaj (din care se face factura) nu știe nimic despre
+  aparatele montate efectiv. De hotărât împreună ce le dăm — un instalator n-are ce căuta în datele
+  clientului. Găsit 16.09, căutând prin tot proiectul.
 
 - [ ] **(eu) Pe telefon, pagina se trage lateral cu vreo 60 de puncte.** Vine din **bara de sus**
   (`.topbar-right`: butoanele și numele contului ies din ecran), nu dintr-un ecran anume — se vede la fel
