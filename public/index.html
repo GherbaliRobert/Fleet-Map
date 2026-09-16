@@ -1565,7 +1565,7 @@
             <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
             <option value="viewer">Viewer (doar se uită, la mașinile atribuite)</option>
           </select>
-          <div class="rau-nota" id="usr-adauga-n" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</div>
+          <div class="rau-nota" id="usr-adauga-n" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i><span>Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</span></div>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
         </div>
       </div>
@@ -4309,12 +4309,12 @@ const pozitii = await r.json();</code></pre>
       var h = document.getElementById('usr-adauga-h');
       var nota = document.getElementById('usr-adauga-n');
       if (sup) {
-        if (h) h.textContent = 'Adaugă un coleg (RA Tracks)';
-        if (nota) nota.innerHTML = '<i class="fas fa-user-shield"></i> Cont de <b>platformă</b>: vede și administrează toate companiile, toate vehiculele, facturarea și jurnalul de audit. ' +
-          'Pentru administratorul unei firme client, mergi la <b>Companii → firma → Utilizatori</b>.';
+        if (h) h.textContent = 'Adaugă utilizator (specific pentru colegi noi RA Tracks)';
+        if (nota) nota.innerHTML = '<i class="fas fa-user-shield"></i><span>Cont de <b>platformă</b>: vede și administrează toate companiile, toate vehiculele, ' +
+          'facturarea și jurnalul de audit. Pentru administratorul unei firme client, mergi la <b>Companii → firma → Utilizatori</b>.</span>';
       } else {
         if (h) h.textContent = 'Adaugă utilizator';
-        if (nota) nota.innerHTML = '<i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.';
+        if (nota) nota.innerHTML = '<i class="fas fa-envelope-circle-check"></i><span>Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</span>';
       }
       _usrRoleChanged();
     }

@@ -349,7 +349,13 @@ T('la fondator, formularul oferă DOAR cont de platformă',
   /\[\['superadmin', 'Super-admin \(PLATFORMĂ — toate companiile\)'\]\]/.test(html));
 T('și nu mai oferă roluri de firmă client',
   !/\['company_admin', 'Admin companie \(control total\)'\]/.test(html));
-T('antetul secțiunii spune al cui e ecranul', /h\.textContent = 'Adaugă un coleg \(RA Tracks\)'/.test(html));
+T('antetul secțiunii spune pentru cine e', /h\.textContent = 'Adaugă utilizator \(specific pentru colegi noi RA Tracks\)'/.test(html));
+// Nota se rupea: `.rau-nota` e flex, iar fiecare `<b>` devenea propriul element de flex.
+T('nota stă într-un singur bloc de text, nu împrăștiată',
+  (html.match(/class="rau-nota"|nota\.innerHTML = '<i class="fas fa-(user-shield|envelope-circle-check)"><\/i><span>/g) || []).length >= 3 &&
+  !/<\/i> Cont de <b>/.test(html));
+T('și stilul o ține pe mai multe rânduri, cum trebuie',
+  /\.rau-nota\{[^}]*align-items:flex-start/.test(css) && /\.rau-nota > span\{/.test(css));
 T('și te trimite unde se face administratorul unei firme',
   /Companii → firma → Utilizatori<\/b>/.test(html));
 T('selectorul de companie nu se mai aprinde niciodată acolo',

@@ -135,8 +135,8 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
 
 ### Fiecare ecran, un singur rost (decizie Alin, 16.09)
 - **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Tracks).
-  Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă un
-  coleg (RA Tracks)". NU pune înapoi roluri de firmă client acolo.
+  Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă
+  utilizator (specific pentru colegi noi RA Tracks)". NU pune înapoi roluri de firmă client acolo.
 - **Administratorul unei firme client** se dă din **Companii → firma → fila Utilizatori**
   (`_raxCodAdminiHtml` + `raxCoAddAdmin`), pe ruta care exista deja: `POST /api/companies/:id/admin`.
   Traseul „Client nou" face UNUL, la semnare; de aici se dă al doilea sau se repară o firmă rămasă fără.

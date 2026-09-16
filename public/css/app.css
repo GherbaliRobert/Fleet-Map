@@ -3421,8 +3421,13 @@
 .rau-seats i, .rau-seats b{ color:var(--accent); }
 .rau-seats b{ font-weight:800; }
 .rau-seats span{ color:var(--text-muted); }
-.rau-nota{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted); line-height:1.45; }
-.rau-nota i{ color:var(--accent); }
+/* Nota de sub formular. `align-items:flex-start` și un `span` în jurul textului: altfel, pe o notă
+   de două rânduri, fiecare `<b>` devenea propriul element de flex și frazele se împrăștiau — partea
+   îngroșată fugea singură în dreapta, iar restul se rupea la mijloc. */
+.rau-nota{ display:flex; align-items:flex-start; gap:7px; font-size:11.5px; color:var(--text-muted); line-height:1.5; }
+.rau-nota > i{ color:var(--accent); flex:0 0 auto; margin-top:2px; }
+.rau-nota > span{ flex:1 1 auto; min-width:0; }
+.rau-nota b{ color:var(--text-secondary); font-weight:700; }
 /* ── Administratorii unei firme, în fișa ei (Companii → firma → Utilizatori) ─────────────────────
    Aici se dă dreptul de administrator unui client. În ecranul Utilizatori se fac colegii NOȘTRI —
    fiecare ecran, un singur rost. */

@@ -108,7 +108,7 @@ din față: aceeași treabă se putea face din trei locuri, fiecare cu alt conte
 **Ce e acum.** Fiecare ecran are un singur rost:
 
 - **Utilizatori, la noi** — doar **un coleg nou la RA Tracks**. Un singur rol de ales (cont de
-  platformă), fără selector de companie, cu antetul schimbat în *„Adaugă un coleg (RA Tracks)"* și cu
+  platformă), fără selector de companie, cu antetul schimbat în *„Adaugă utilizator (specific pentru colegi noi RA Tracks)"* și cu
   o vorbă care te trimite unde trebuie: *„Pentru administratorul unei firme client, mergi la Companii
   → firma → Utilizatori."*
 - **Companii → firma → Utilizatori** — acolo a apărut **„Administratorii firmei"**: îi vezi pe cei
