@@ -138,6 +138,23 @@ Serverul refuză **ștergerea, dezactivarea, retrogradarea și mutarea** ultimul
 firme client (`_ultimulAdminAlFirmei`, inclusiv socotit pe LOT la mutarea în grup). Clientul nu putea
 ajunge acolo oricum (nu se poate șterge/dezactiva pe el însuși) — **plasa e pentru fondator**.
 
+### „Scoate din firmă", nu „Șterge" (decizie Alin, 16.09)
+Butonul roșu de pe rândul omului se numește **„Scoate din firmă"** și **chiar șterge contul** — nu-l
+dezactivează. Dacă omul revine, i se face cont nou. Fereastra o spune explicit, ca numele blând să nu
+ascundă ce se întâmplă. Dezactivarea rămâne, în fișă (*Status cont*), pentru cazurile temporare.
+
+- Înainte de a scoate, ecranul spune **ce avea omul** (`_usrCeAvea` / `_usrCeAveaText`): RA Insight și
+  mașinile/grupele atribuite. Fără asta, cel care-i ia locul pornește gol.
+- Imediat după, **„Îl înlocuiește cineva?"**: formularul se deschide cu rolul celui plecat, iar la
+  creare noul venit primește **automat aceleași mașini și grupe**; pentru **RA Insight se cere acordul**
+  (sunt bani). Vezi `_usrInlocuire` / `_usrDuceMaiDeparte`.
+- **Nu adăuga o a doua cale de ștergere.** `deleteUser` a fost scos tocmai fiindcă sărea peste amândouă
+  pașii de mai sus.
+- **Ordinea contează la bani:** RA Insight se facturează pe vârful lunii, deci la o înlocuire se scoate
+  ÎNTÂI omul care pleacă. Scrie pe butonul de aprindere a locului; traseul de înlocuire o face singur.
+- **Schimbarea adresei pe un cont FOLOSIT** (`last_login` scris) cere confirmare: istoricul rămâne pe
+  cont, iar adresa de autentificare (`users.username`) NU se schimbă din câmpul „Email".
+
 ### Ce e gospodăria clientului
 Semnul „fără acces" (om cu rol restrâns, fără nicio mașină sau grupă atribuită) și îndemnul care-l
 însoțește se aprind **DOAR în privirea clientului** (admin de firmă, sau fondator cu comutatorul pe

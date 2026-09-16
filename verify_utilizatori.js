@@ -64,6 +64,7 @@ const iesire = `
     _usrPotrivit: _usrPotrivit, _usrTrece: _usrTrece, _usrOrdoneaza: _usrOrdoneaza,
     _userRowHtml: _userRowHtml, _usrPastileHtml: _usrPastileHtml, _usrSeatsHtml: _usrSeatsHtml,
     _usrCardAcasa: _usrCardAcasa, _nodAcasa: _nodAcasa, fereastra: window,
+    _usrCeAveaText: _usrCeAveaText,
     caFirma: function (v) { _PRIVESC_CA_FIRMA = !!v; },
     cine: function (u) { currentUser = u; },
     pastila: function (k) { window._usrPastilaSet(k); }
@@ -259,6 +260,47 @@ U._usrCardAcasa([om({ last_login: zile(1) })], true);
 T('când e totul în regulă, o spune', /toți au intrat/.test(U._nodAcasa.innerHTML), U._nodAcasa.innerHTML);
 U._usrCardAcasa([], true);
 T('fără niciun om, nu scrie nimic', U._nodAcasa.innerHTML === '');
+
+sect('11b. „Scoate din firmă" — omul pleacă, nu se șterge un rând din tabel');
+T('butonul de pe rând se numește „Scoate din firmă"', /title="Scoate din firmă"/.test(html));
+T('și nu mai e coș de gunoi', /_usrScoate\(' \+ u\.id \+ '\)/.test(html) && !/onclick="deleteUser\(/.test(html));
+T('nu mai există o a doua cale de ștergere', !/async function deleteUser/.test(html));
+T('fereastra spune limpede că nu se mai poate întoarce contul',
+  /dispare de tot\. Dacă omul se întoarce, îi faci cont nou/.test(html));
+T('și îi spune adminului CE AVEA omul, înainte să-l scoată', /'\\n\\nAvea: ' \+ ce \+ '\.'/.test(html));
+// Ce avea omul, scris pe înțeles — cu acordul corect, că se citește, nu se numără.
+const cea = U._usrCeAveaText;
+T('un vehicul', cea({ devices: ['a'], groups: [] }) === '1 vehicul atribuit', cea({ devices: ['a'], groups: [] }));
+T('mai multe vehicule', cea({ devices: ['a', 'b'], groups: [] }) === '2 vehicule atribuite');
+T('o grupă', cea({ devices: [], groups: [1] }) === '1 grupă atribuită', cea({ devices: [], groups: [1] }));
+T('RA Insight plus mașini, legate cu „și"', cea({ ai: true, devices: ['a'], groups: [] }) === 'RA Insight și 1 vehicul atribuit',
+  cea({ ai: true, devices: ['a'], groups: [] }));
+T('cine n-avea nimic nu primește o propoziție goală', cea({ devices: [], groups: [] }) === '');
+T('cine vede toată flota n-are mașini de dus mai departe', /if \(!_usrVedeTot\(u\)\) \{/.test(html));
+
+sect('11c. Înlocuirea: cele patru operații devin una');
+T('după ce scoți omul, te întreabă cine-i ia locul', /Îl înlocuiește cineva\?/.test(html));
+T('formularul se deschide cu rolul lui deja ales', /function _usrPregatesteInlocuirea/.test(html));
+T('dar numai dacă cel care adaugă are voie să dea rolul ăla',
+  /for \(var i = 0; i < sel\.options\.length; i\+\+\)[\s\S]{0,180}_usrInlocuire\.role/.test(html));
+T('banda de deasupra formularului spune pe cine înlocuiești', /Îl înlocuiești pe <b>/.test(html));
+T('și se poate renunța', /_usrRenuntaInlocuire/.test(html));
+T('mașinile și grupele se trec singure', /users\/' \+ creat\.id \+ '\/access'/.test(html));
+T('RA Insight NU se trece singur — se cere, fiindcă e bani', /Duci mai departe RA Insight\?/.test(html));
+T('și se spune de ce nu se facturează dublu', /rămâne tot un singur cont pe factură/.test(html));
+T('la înlocuire nu se mai deschide și fișa de atribuire (ar fi de prisos)',
+  /if \(_usrInlocuire\) \{ await _usrDuceMaiDeparte\(created\); return; \}/.test(html));
+T('stilul benzii există', css.indexOf('.rau-inlocuire') >= 0);
+
+sect('11d. Două avertismente care lipseau');
+T('la aprinderea RA Insight se spune ordinea corectă la o înlocuire',
+  /scoate-l întâi pe cel care pleacă/.test(html));
+T('schimbarea adresei unui cont FOLOSIT e oprită cu explicație',
+  /Schimbi adresa unui cont folosit\?/.test(html));
+T('și explicația spune amândouă lucrurile ascunse (istoricul + adresa de autentificare)',
+  /va apărea de acum sub numele cel nou/.test(html) && /adresa cu care se autentifică rămâne/.test(html));
+T('avertismentul apare doar la conturi care au fost folosite',
+  /_ueVechi\.last_login && email && email !== \(_ueVechi\.email \|\| ''\)/.test(html));
 
 sect('12. Bara de deasupra listei');
 T('căutarea stă în HTML, ca să nu-și piardă cursorul la fiecare literă', /id="users-cauta"/.test(html));

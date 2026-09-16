@@ -4159,7 +4159,9 @@ const pozitii = await r.json();</code></pre>
             ' style="' + (u.ai_seat ? 'color:var(--accent);border-color:var(--accent);' : 'opacity:.55;') + '">' +
             '<i class="fas fa-wand-magic-sparkles"></i></button>') +
           '<button class="btn-sm" onclick="openUserEdit(' + u.id + ')" title="Editează rol & acces"><i class="fas fa-user-cog"></i></button>' +
-          (isSelf ? '<span class="rau-tu">tu</span>' : '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>') +
+          // „Scoate din firmă", nu „Șterge": omul a plecat, nu se șterge un rând dintr-un tabel.
+          // Contul chiar dispare (fereastra o spune limpede) — dacă omul revine, i se face altul.
+          (isSelf ? '<span class="rau-tu">tu</span>' : '<button class="btn-sm btn-danger" onclick="_usrScoate(' + u.id + ')" title="Scoate din firmă"><i class="fas fa-user-minus"></i></button>') +
         '</div></div>';
     }
     // Trimite linkul de parolă. Dacă emailul n-a plecat, serverul întoarce chiar linkul — îl arătăm,
@@ -4185,10 +4187,136 @@ const pozitii = await r.json();</code></pre>
         { title: 'Linkul de parolă', icon: 'fa-link', danger: false, okLabel: 'Am înțeles', cancelLabel: 'Închide' }
       );
     }
+
+    // ── „Scoate din firmă" + înlocuirea omului ──────────────────────────────────────────────────
+    // Omul a plecat: contul DISPARE, nu se dezactivează. Dacă revine, i se face altul (decizia lui
+    // Alin, 16.09). Butonul nu se mai numește „Șterge" fiindcă nu ștergi un rând dintr-un tabel —
+    // scoți un om din firmă; fereastra spune însă limpede că nu se mai poate întoarce contul.
+    //
+    // Înainte de a-l scoate, îi spunem adminului CE AVEA. Fără asta, cel care-i ia locul pornește gol
+    // și nimeni nu-și mai amintește care 6 mașini din 40 erau ale lui — iar locul de RA Insight se
+    // uită, omul nou nu poate întreba nimic și nu se știe de ce.
+    var _usrInlocuire = null; // ce ducem de la omul scos la cel care-i ia locul
+    function _usrDinCache(id) {
+      var l = ueUsersCache || [];
+      for (var i = 0; i < l.length; i++) if (String(l[i].id) === String(id)) return l[i];
+      return null;
+    }
+    async function _usrCeAvea(u) {
+      var avea = { ai: !!u.ai_seat, devices: [], groups: [] };
+      // Cine vede toată flota n-are mașini atribuite anume — n-avem ce duce mai departe.
+      if (!_usrVedeTot(u)) {
+        try {
+          var r = await fetch('/api/users/' + u.id + '/access', { credentials: 'same-origin' });
+          if (r.ok) { var a = await r.json(); avea.devices = a.devices || []; avea.groups = a.groups || []; }
+        } catch (e) {}
+      }
+      return avea;
+    }
+    function _usrCeAveaText(avea) {
+      var p = [];
+      if (avea && avea.ai) p.push('RA Insight');
+      var n = (avea && avea.devices || []).length, g = (avea && avea.groups || []).length;
+      if (n) p.push(n + (n === 1 ? ' vehicul atribuit' : ' vehicule atribuite'));
+      if (g) p.push(g + (g === 1 ? ' grupă atribuită' : ' grupe atribuite'));
+      return p.join(' și ');
+    }
+    window._usrScoate = async function (id) {
+      var u = _usrDinCache(id); if (!u) return;
+      var nume = u.full_name || u.username;
+      var avea = await _usrCeAvea(u);
+      var ce = _usrCeAveaText(avea);
+      if (!await raConfirm(
+        'Contul lui „' + nume + '" dispare de tot. Dacă omul se întoarce, îi faci cont nou.' +
+        (ce ? '\n\nAvea: ' + ce + '.' : ''),
+        { title: 'Scoți pe „' + nume + '" din firmă?', okLabel: 'Scoate din firmă' })) return;
+      var r = await fetch('/api/users/' + id, { method: 'DELETE', credentials: 'same-origin' });
+      if (!r.ok) {
+        var e = await r.json().catch(function () { return {}; });
+        if (window.raxToast) raxToast(e.error || ('Eroare ' + r.status), 'error');
+        return;
+      }
+      await loadUsers();
+      // Aici se leagă cele patru operații de dinainte (scoate, adaugă, atribuie, aprinde) într-una.
+      if (!await raConfirm(
+        'Dacă da, îți deschid formularul cu rolul lui „' + nume + '" deja ales și, după ce creezi contul, ' +
+        (ce ? 'îi trec ce avea el: ' + ce + '.' : 'îi dau aceleași drepturi.'),
+        { title: 'Îl înlocuiește cineva?', danger: false, icon: 'fa-user-plus', okLabel: 'Da, îl înlocuiesc', cancelLabel: 'Nu, atât' })) return;
+      _usrInlocuire = { nume: nume, role: u.role, avea: avea };
+      _usrPregatesteInlocuirea();
+    };
+    function _usrPregatesteInlocuirea() {
+      if (!_usrInlocuire) return;
+      var sel = document.getElementById('new-role');
+      if (sel) {
+        // Rolul vechi se pune doar dacă cel care adaugă are voie să-l dea (un admin de firmă nu poate
+        // face alt admin) — altfel formularul ar promite un rol pe care serverul îl coboară oricum.
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === _usrInlocuire.role) { sel.value = _usrInlocuire.role; break; }
+        }
+        if (typeof _usrRoleChanged === 'function') _usrRoleChanged();
+      }
+      var nota = document.getElementById('usr-inlocuire');
+      if (!nota) {
+        nota = document.createElement('div');
+        nota.id = 'usr-inlocuire';
+        nota.className = 'rau-inlocuire';
+        var form = document.querySelector('#admin-tab-users .add-user-form');
+        if (form && form.parentNode) form.parentNode.insertBefore(nota, form);
+      }
+      var ce = _usrCeAveaText(_usrInlocuire.avea);
+      nota.innerHTML = '<i class="fas fa-user-plus"></i><span>Îl înlocuiești pe <b>' + esc(_usrInlocuire.nume) + '</b>. ' +
+        'După ce creezi contul, îi trec ' + (ce ? esc(ce) : 'aceleași drepturi') + '.</span>' +
+        '<button type="button" class="btn-sm" onclick="_usrRenuntaInlocuire()">Renunț</button>';
+      nota.style.display = '';
+      var camp = document.getElementById('new-username');
+      if (camp) { try { camp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} camp.focus(); }
+    }
+    window._usrRenuntaInlocuire = function () {
+      _usrInlocuire = null;
+      var n = document.getElementById('usr-inlocuire'); if (n) n.style.display = 'none';
+    };
+    // Duce mai departe ce avea omul plecat. Mașinile se trec singure; RA Insight se cere, fiindcă e bani.
+    async function _usrDuceMaiDeparte(creat) {
+      var inl = _usrInlocuire; _usrRenuntaInlocuire();
+      if (!inl || !creat || !creat.id) return;
+      var dus = [];
+      var d = (inl.avea.devices || []), g = (inl.avea.groups || []);
+      if (d.length || g.length) {
+        try {
+          var r = await fetch('/api/users/' + creat.id + '/access', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ devices: d, groups: g })
+          });
+          if (r.ok) dus.push(_usrCeAveaText({ devices: d, groups: g }));
+        } catch (e) {}
+      }
+      if (inl.avea.ai) {
+        // Ordinea contează la bani: cel plecat a fost scos ÎNAINTE, deci vârful lunii nu urcă la doi.
+        if (await raConfirm('„' + inl.nume + '" avea RA Insight. Îi dai și contului nou?\n\n' +
+          'Pe cel plecat l-am scos deja, deci luna asta rămâne tot un singur cont pe factură.',
+          { title: 'Duci mai departe RA Insight?', danger: false, icon: 'fa-wand-magic-sparkles', okLabel: 'Da, dă-i' })) {
+          try {
+            var r2 = await fetch('/api/users/' + creat.id + '/ai-seat', {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+              body: JSON.stringify({ on: true })
+            });
+            if (r2.ok) dus.push('RA Insight');
+          } catch (e) {}
+        }
+      }
+      if (window.raxToast && dus.length) raxToast('I-am trecut ' + dus.join(' și ') + ' de la „' + inl.nume + '".', 'success');
+      await loadUsers();
+    }
     // ── sfârșit „lista de utilizatori" ──
     // Pornește/oprește RA Insight pe un cont. Se cere confirmare la PORNIRE, fiindcă se facturează.
     window.raxAiSeat = async function (id, on) {
-      if (on && !await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\nSe facturează ca un cont în plus, în fiecare lună, până când îl retragi.',
+      // Se facturează VÂRFUL lunii — cel mai mare număr de conturi aprinse deodată. De aceea ordinea
+      // contează la o înlocuire: dacă aprinzi contul nou înainte să-l scoți pe cel plecat, firma a
+      // avut două deodată și se plătesc două. Adminul afla asta abia pe factură.
+      if (on && !await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n' +
+        'Se facturează ca un cont în plus, în fiecare lună, până când îl retragi.\n\n' +
+        'Dacă înlocuiești pe cineva: scoate-l întâi pe cel care pleacă. Altfel luna asta se socotesc două conturi, nu unul.',
         { title: 'Dai RA Insight acestui cont?', okLabel: 'Dă-i acces' })) return;
       try {
         var r = await fetch('/api/users/' + id + '/ai-seat', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ on: !!on }) });
@@ -4453,17 +4581,16 @@ const pozitii = await r.json();</code></pre>
         raxToast('Cont creat, dar linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă".', 'error');
       }
       await loadUsers();
+      // Înlocuire: îi trecem noului venit ce avea cel plecat (mașini, grupe, RA Insight).
+      if (_usrInlocuire) { await _usrDuceMaiDeparte(created); return; }
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
       // Rolurile „scoped" au nevoie de atribuire de vehicule; super-adminul vede TOT, deci n-are ce atribui.
       if (role !== 'admin' && role !== 'manager' && role !== 'superadmin') openUserEdit(created.id);
       else if (role === 'superadmin' && window.raxToast) raxToast('Cont de super-admin creat ✓ — se poate autentifica imediat', 'success');
     }
 
-    async function deleteUser(id) {
-      if (!await raConfirm('Sigur vrei să ștergi acest utilizator?', { okLabel: 'Șterge' })) return;
-      await fetch('/api/users/' + id, { method: 'DELETE' });
-      await loadUsers();
-    }
+    // (Aici era `deleteUser`. A plecat: scoaterea unui om trece prin `_usrScoate`, care întâi spune
+    //  ce avea omul și apoi întreabă cine-i ia locul. O a doua cale de ștergere ar sări peste amândouă.)
 
     // ─── Editare utilizator + acces multi-client ───
     async function openUserEdit(id) {
@@ -4567,6 +4694,18 @@ const pozitii = await r.json();</code></pre>
       const email = document.getElementById('ue-email').value.trim();
       const phone = document.getElementById('ue-phone').value.trim();
       const ueBody = { role, active, full_name, email, phone };
+      // Un cont FOLOSIT, căruia i se schimbă adresa, e aproape întotdeauna o încercare de a-l „preda"
+      // altui om. Două lucruri de spus înainte, fiindcă niciunul nu se vede: istoricul rămâne pe cont
+      // (tot ce a făcut cel vechi apare de acum sub numele celui nou), iar adresa cu care se
+      // AUTENTIFICĂ nu se schimbă de aici — rămâne tot cea veche.
+      const _ueVechi = (ueUsersCache || []).find(x => String(x.id) === String(id));
+      if (_ueVechi && _ueVechi.last_login && email && email !== (_ueVechi.email || '')) {
+        if (!await raConfirm(
+          'Asta nu face un om nou. Tot ce a făcut „' + (_ueVechi.full_name || _ueVechi.username) + '" va apărea de acum sub numele cel nou, ' +
+          'iar adresa cu care se autentifică rămâne tot „' + (_ueVechi.username || '') + '".\n\n' +
+          'Dacă a venit un coleg nou în locul lui, scoate-l din firmă și fă-i cont nou — îți trec eu drepturile.',
+          { title: 'Schimbi adresa unui cont folosit?', okLabel: 'Schimb totuși adresa' })) return;
+      }
       // Rol STANDARD ales → spunem explicit că omul iese de pe rolul propriu, dacă avea unul. Serverul
       // păstrează rolul propriu când primește doar rolul standard din care derivă (așa trimite telefonul).
       const ueOptAles = roleSel.options[roleSel.selectedIndex];
