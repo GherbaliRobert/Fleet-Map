@@ -330,7 +330,6 @@ T('și se poate face în siguranță: rolul de admin nu e ajustabil de firme',
 // Pe ecran: o singură etichetă, oricare din cele două valori ar avea rândul.
 T('pagina scrie la fel și pentru vechi, și pentru nou',
   /company_admin:'Admin companie', admin:'Admin companie'/.test(html));
-T('formularul de cont nou dă numele cel bun', /\['company_admin', 'Admin companie \(control total\)'\]/.test(html));
 T('și fișa omului la fel', /<option value="company_admin">Admin companie<\/option>/.test(html));
 T('nu mai există opțiunea veche pe ecran', !/<option value="admin">/.test(html) && !/\['admin', 'Admin companie/.test(html));
 T('pastila păstrează aceeași culoare pentru amândouă',
@@ -341,6 +340,43 @@ T('adminul de firmă nu mai deschide fișa de atribuire după creare (vede toat�
 T('telefonul scrie la fel', /company_admin: 'Admin companie', admin: 'Admin companie'/.test(tel));
 T('și nu mai oferă două opțiuni pentru același rol', !/\{ v: 'admin', baza: 'admin'/.test(tel));
 T('și vede amândouă numele ca administrator', /ADMIN_ROLES = \['company_admin', 'admin', 'superadmin'\]/.test(tel));
+
+sect('11f. Fiecare ecran, un singur rost');
+// La NOI, „Adaugă utilizator" e doar pentru un coleg nou la RA Tracks. Administratorul unei firme
+// client se dă din fișa firmei (Companii → firma → Utilizatori), iar restul oamenilor și-i face
+// adminul ei. Înainte, formularul de la noi le putea face pe toate și nu se mai știa ușa din față.
+T('la fondator, formularul oferă DOAR cont de platformă',
+  /\[\['superadmin', 'Super-admin \(PLATFORMĂ — toate companiile\)'\]\]/.test(html));
+T('și nu mai oferă roluri de firmă client',
+  !/\['company_admin', 'Admin companie \(control total\)'\]/.test(html));
+T('antetul secțiunii spune al cui e ecranul', /h\.textContent = 'Adaugă un coleg \(RA Tracks\)'/.test(html));
+T('și te trimite unde se face administratorul unei firme',
+  /Companii → firma → Utilizatori<\/b>/.test(html));
+T('selectorul de companie nu se mai aprinde niciodată acolo',
+  /if \(csel\) csel\.style\.display = 'none';/.test(html));
+T('la client au rămas cele patru roluri ale lui',
+  /\['manager', 'Manager \(toată flota, editează\)'\], \['dispatcher'/.test(html));
+
+sect('11g. Administratorul firmei se dă din fișa firmei');
+T('secțiunea există în fișa companiei', /function _raxCodAdminiHtml\(d\)/.test(html));
+T('și stă pe fila „Utilizatori" a firmei', /var cap = _raxCodAdminiHtml\(d\);/.test(html));
+T('numără doar administratorii ACTIVI',
+  /admini\.filter\(function \(u\) \{ return u\.active !== false; \}\)/.test(html));
+T('și îi și arată pe nume', /raco-admini-om/.test(html));
+T('când firma n-are niciunul, o spune și explică ce înseamnă',
+  /n-are niciun administrator activ/.test(html) && /ajung la noi/.test(html));
+T('folosește ruta care exista deja, nu una nouă',
+  /'\/api\/companies\/' \+ coId \+ '\/admin'/.test(html));
+T('cere confirmare înainte, cu ce poate omul ăla',
+  /Îți dai drept de administrator\?|Îi dai drept de administrator\?/.test(html));
+T('și spune că NU vede alte firme', /Nu va vedea alte firme/.test(html));
+T('parola tot omul și-o pune', /Primește un link pe email și își pune singur parola/.test(html));
+T('când emailul nu pleacă, folosește ACEEAȘI fereastră cu linkul',
+  /window\._usrAratLinkul = _usrAratLinkul;/.test(html) && /await window\._usrAratLinkul\(email, j\.link, j\.warning\)/.test(html));
+['.raco-admini', '.raco-admini-h', '.raco-admini-f', '.raco-admini-gol', '.raco-admini-om']
+  .forEach(function (c) { T('stilul ' + c, css.indexOf(c) >= 0); });
+T('pe telefon, formularul se așază pe verticală',
+  /\.raco-admini-f\{ flex-direction:column/.test(css));
 
 sect('12. Bara de deasupra listei');
 T('căutarea stă în HTML, ca să nu-și piardă cursorul la fiecare literă', /id="users-cauta"/.test(html));

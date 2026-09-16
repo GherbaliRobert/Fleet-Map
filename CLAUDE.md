@@ -133,6 +133,18 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   portiță „doar pentru teste": ar fi exact calea paralelă pe care o evităm.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
+### Fiecare ecran, un singur rost (decizie Alin, 16.09)
+- **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Tracks).
+  Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă un
+  coleg (RA Tracks)". NU pune înapoi roluri de firmă client acolo.
+- **Administratorul unei firme client** se dă din **Companii → firma → fila Utilizatori**
+  (`_raxCodAdminiHtml` + `raxCoAddAdmin`), pe ruta care exista deja: `POST /api/companies/:id/admin`.
+  Traseul „Client nou" face UNUL, la semnare; de aici se dă al doilea sau se repară o firmă rămasă fără.
+- **Utilizatori, în privirea CLIENTULUI** = oamenii firmei lui (manager/dispecer/client/viewer).
+- Regula de fond rămâne pe server: `COMPANY_ASSIGNABLE_ROLES` nu conține admin — **un admin de firmă
+  nu-și poate face alt admin**. Ecranele doar o oglindesc.
+- Linkul de parolă se arată cu ACEEAȘI fereastră peste tot (`window._usrAratLinkul`). Nu scrie alta.
+
 ### Administratorul unei firme are UN singur nume: `company_admin`
 A purtat două, după calea pe care era făcut (`company_admin` de la Companii → Client nou, `admin` de
 la formularul din Utilizatori). Drepturile erau identice (`ROLE_PERMISSIONS`), dar în aceeași listă

@@ -1553,7 +1553,7 @@
       <div id="users-pastile" class="rau-pastile"></div>
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
+        <div id="usr-adauga-h" style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
         <!-- Nicio casetă de parolă: omul își pune singur parola, din linkul primit. Vezi CLAUDE.md. -->
         <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <input type="email" id="new-username" placeholder="Email (așa se autentifică) *" autocomplete="off" autocapitalize="none" spellcheck="false">
@@ -1565,7 +1565,7 @@
             <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
             <option value="viewer">Viewer (doar se uită, la mașinile atribuite)</option>
           </select>
-          <div class="rau-nota" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</div>
+          <div class="rau-nota" id="usr-adauga-n" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</div>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
         </div>
       </div>
@@ -4189,6 +4189,9 @@ const pozitii = await r.json();</code></pre>
         { title: 'Linkul de parolă', icon: 'fa-link', danger: false, okLabel: 'Am înțeles', cancelLabel: 'Închide' }
       );
     }
+    // Expus: fereastra cu linkul e folosită și din Companii, la adăugarea unui administrator de firmă.
+    // O singură fereastră pentru același lucru, nu două care spun altfel.
+    window._usrAratLinkul = _usrAratLinkul;
 
     // ── „Scoate din firmă" ──────────────────────────────────────────────────────────────────────
     // Omul a plecat: contul DISPARE, nu se dezactivează. Dacă revine, i se face altul (decizia lui
@@ -4287,49 +4290,43 @@ const pozitii = await r.json();</code></pre>
       // (omul lui intră în firma în care stăm).
       var _priv = sup && setPrivescCaFirma();
       if (_priv) sup = false;
+      // Fiecare ecran, un singur rost (decizie Alin, 16.09): ecranul ăsta e pentru ECHIPA NOASTRĂ.
+      // La noi se face un coleg nou la RA Tracks — atât. Oamenii unei firme client se fac în altă
+      // parte: administratorul, din Companii → firma → Utilizatori; restul, de adminul ei, de aici,
+      // din verticala lui. Înainte, formularul de la noi le putea face pe toate, și nu se mai știa
+      // care e ușa din față.
       var sel = document.getElementById('new-role');
       if (sel) {
         var opts = sup
-          ? [['company_admin', 'Admin companie (control total)'], ['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)'], ['superadmin', '⚠ Super-admin (PLATFORMĂ — toate companiile)']]
+          ? [['superadmin', 'Super-admin (PLATFORMĂ — toate companiile)']]
           : [['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)']];
         sel.innerHTML = opts.map(function (o, i) { return '<option value="' + o[0] + '"' + (i === 0 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
         sel.onchange = _usrRoleChanged;
       }
+      // Un super-admin nu ține de nicio companie, deci selectorul de firmă n-are ce căuta aici.
       var csel = document.getElementById('new-company');
-      if (csel && _priv) csel.style.display = 'none';   // ⚠ TEMPORAR (comutatorul de privire)
-      if (csel && sup) {
-        // Cache: companiile se încarcă O SINGURĂ DATĂ per sesiune — nu /api/companies (interogare grea) la FIECARE
-        // deschidere a tabului Utilizatori (asta încetinea pagina). Reumplem dropdown-ul instant din cache.
-        if (!_newUserCompaniesCache) {
-          try { var cos = await (await fetch('/api/companies')).json(); _newUserCompaniesCache = Array.isArray(cos) ? cos : []; } catch (e) { _newUserCompaniesCache = []; }
-        }
-        csel.innerHTML = '<option value="">— alege compania —</option>' + _newUserCompaniesCache.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + _ssEsc(c.name) + '</option>'; }).join('');
+      if (csel) csel.style.display = 'none';
+      var h = document.getElementById('usr-adauga-h');
+      var nota = document.getElementById('usr-adauga-n');
+      if (sup) {
+        if (h) h.textContent = 'Adaugă un coleg (RA Tracks)';
+        if (nota) nota.innerHTML = '<i class="fas fa-user-shield"></i> Cont de <b>platformă</b>: vede și administrează toate companiile, toate vehiculele, facturarea și jurnalul de audit. ' +
+          'Pentru administratorul unei firme client, mergi la <b>Companii → firma → Utilizatori</b>.';
+      } else {
+        if (h) h.textContent = 'Adaugă utilizator';
+        if (nota) nota.innerHTML = '<i class="fas fa-envelope-circle-check"></i> Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.';
       }
       _usrRoleChanged();
     }
-    // Un super-admin e cont de PLATFORMĂ: nu aparține niciunei companii. Când e ales rolul ăsta, selectorul de
-    // companie devine fără sens (backendul îl ignoră oricum) → îl ascundem și explicăm ce înseamnă rolul.
+    // Selectorul de companie nu se mai aprinde niciodată din formularul ăsta: la noi se fac doar
+    // conturi de platformă (fără firmă), iar la client, oamenii intră automat în firma lui. Ce era
+    // aici — o casetă roșie care explica ce e un super-admin — s-a mutat sub antetul secțiunii, unde
+    // se citește o dată, nu la fiecare schimbare de rol. Confirmarea serioasă rămâne, la Adaugă.
     function _usrRoleChanged() {
-      var sel = document.getElementById('new-role'); if (!sel) return;
-      var isSA = sel.value === 'superadmin';
       var csel = document.getElementById('new-company');
-      // ⚠ TEMPORAR (comutatorul de privire): în privirea clientului selectorul de companie e ascuns
-      // de `_populateNewUserForm`. Aici îl reaprindeam la loc, la fiecare schimbare de rol — și
-      // reapărea „— alege compania —" pe un ecran de admin de firmă, care n-are ce alege.
-      var caFirma = (typeof setPrivescCaFirma === 'function') && setPrivescCaFirma();
-      if (csel) { csel.style.display = (isSA || caFirma) ? 'none' : ''; if (isSA) csel.value = ''; }
+      if (csel) { csel.style.display = 'none'; csel.value = ''; }
       var hint = document.getElementById('new-role-hint');
-      if (!hint) {
-        hint = document.createElement('div');
-        hint.id = 'new-role-hint';
-        hint.style.cssText = 'grid-column:1/-1;font-size:11.5px;line-height:1.45;padding:7px 10px;border-radius:8px;margin-top:2px;';
-        if (sel.parentNode) sel.parentNode.insertBefore(hint, sel.nextSibling);
-      }
-      hint.style.display = isSA ? '' : 'none';
-      if (isSA) {
-        hint.style.background = 'rgba(239,68,68,.12)'; hint.style.color = '#ef4444';
-        hint.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Cont de <b>platformă</b>: vede și administrează <b>toate companiile</b>, toate vehiculele, facturarea și jurnalul de audit. Nu se leagă de nicio companie.';
-      }
+      if (hint) hint.style.display = 'none';
     }
     let ueUsersErr = null;
     async function loadUsers() {
@@ -19994,10 +19991,60 @@ const pozitii = await r.json();</code></pre>
         '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;"><button class="rax-btn" style="flex:1;min-width:160px;justify-content:center;" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
         '<button class="rax-btn" style="flex:1;min-width:160px;justify-content:center;" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Module & limite</button></div>';
     }
+    // ── începe „administratorii firmei" ──
+    // AICI se dă dreptul de administrator unei firme client — nu din ecranul Utilizatori. Acolo se
+    // fac colegii NOȘTRI (conturi de platformă). Regula de fond rămâne pe server: un admin de firmă
+    // nu-și poate face alt admin, deci singura cale e prin noi. Traseul de la „Client nou" face UN
+    // administrator, la semnare; de aici se dă al doilea, sau primul unei firme rămase fără.
+    function _raxCodAdminiHtml(d) {
+      var co = (d && d.company) || {};
+      var admini = (d.users || []).filter(function (u) { return u.role === 'company_admin' || u.role === 'admin'; });
+      var activi = admini.filter(function (u) { return u.active !== false; });
+      return '<div class="raco-admini">' +
+        '<div class="raco-admini-h"><i class="fas fa-user-shield"></i> Administratorii firmei' +
+          '<span class="raco-admini-n">' + activi.length + (activi.length === 1 ? ' activ' : ' activi') + '</span></div>' +
+        (activi.length
+          ? '<div class="raco-admini-lista">' + activi.map(function (u) {
+              return '<span class="raco-admini-om">' + esc(u.full_name || u.username) + '</span>';
+            }).join('') + '</div>'
+          : '<div class="raco-admini-gol"><i class="fas fa-triangle-exclamation"></i> Firma n-are niciun administrator activ — nimeni de acolo nu poate adăuga colegi, atribui mașini sau boteza roluri. Toate mărunțișurile ajung la noi.</div>') +
+        '<div class="raco-admini-f">' +
+          '<input class="rax-field" id="rax-coadm-email" type="email" placeholder="Email (așa se autentifică) *" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+          '<input class="rax-field" id="rax-coadm-nume" type="text" placeholder="Nume afișat">' +
+          '<button class="rax-btn primary" onclick="raxCoAddAdmin(' + (co.id || 0) + ')"><i class="fas fa-user-plus"></i> Adaugă administrator</button>' +
+        '</div>' +
+        '<div class="raco-admini-s"><i class="fas fa-envelope-circle-check"></i> Primește un link pe email și își pune singur parola. Noi nu scriem parole.</div>' +
+      '</div>';
+    }
+    window.raxCoAddAdmin = async function (coId) {
+      var e = document.getElementById('rax-coadm-email'), n = document.getElementById('rax-coadm-nume');
+      var email = String((e && e.value) || '').trim().toLowerCase();
+      var nume = String((n && n.value) || '').trim();
+      if (!email) return alert('Scrie adresa de email a administratorului.');
+      if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email)) return alert('Adresa trebuie să fie un email valid (ex. ion.popescu@firma.ro).');
+      if (!await raConfirm('„' + email + '" va putea adăuga colegi, atribui mașini și boteza roluri în firma asta. Nu va vedea alte firme.',
+        { title: 'Îi dai drept de administrator?', danger: false, icon: 'fa-user-shield', okLabel: 'Adaugă administrator' })) return;
+      var r, j;
+      try {
+        r = await fetch('/api/companies/' + coId + '/admin', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify(nume ? { username: email, full_name: nume } : { username: email })
+        });
+        j = await r.json().catch(function () { return {}; });
+      } catch (err) { if (window.raxToast) raxToast('Eroare: ' + err.message, 'error'); return; }
+      if (!r.ok || (j && j.error)) { if (window.raxToast) raxToast((j && j.error) || ('Eroare ' + r.status), 'error'); return; }
+      if (j.invited) { if (window.raxToast) raxToast('Administrator adăugat. I-am trimis linkul pe ' + email + '.', 'success'); }
+      else if (j.link && window._usrAratLinkul) { await window._usrAratLinkul(email, j.link, j.warning); }
+      else if (window.raxToast) raxToast(j.warning || 'Cont creat, dar linkul nu a plecat.', 'error');
+      if (window.raxOpenCompanyDetail) raxOpenCompanyDetail(coId, 'utilizatori');
+      if (window.raxLoadCompanies) raxLoadCompanies();
+    };
+    // ── sfârșit „administratorii firmei" ──
     function _raxCodUsers(d) {
       var roleLbl = { superadmin: 'Super-admin', company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
-      if (!d.users.length) return '<div class="rax-co-meta" style="padding:16px;">Niciun utilizator în această companie.</div>';
-      return '<table class="rax-mini-table"><thead><tr><th>Utilizator</th><th>Rol</th><th>Email</th><th>Telefon</th><th>Stare</th></tr></thead><tbody>' +
+      var cap = _raxCodAdminiHtml(d);
+      if (!d.users.length) return cap + '<div class="rax-co-meta" style="padding:16px;">Niciun utilizator în această companie.</div>';
+      return cap + '<table class="rax-mini-table"><thead><tr><th>Utilizator</th><th>Rol</th><th>Email</th><th>Telefon</th><th>Stare</th></tr></thead><tbody>' +
         d.users.map(function (u) {
           return '<tr><td><strong>' + esc(u.username) + '</strong>' + (u.full_name ? '<br><span style="font-size:11px;color:var(--text-muted)">' + esc(u.full_name) + '</span>' : '') + '</td>' +
             '<td><span class="rax-role-pill">' + esc(roleLbl[u.role] || u.role) + '</span></td>' +

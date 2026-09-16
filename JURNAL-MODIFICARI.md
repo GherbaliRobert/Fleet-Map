@@ -95,6 +95,38 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Fiecare ecran, un singur rost: Utilizatori = echipa noastră, Companii = clienții
+
+Alin: *„în verticala fondatori, acest «Adaugă utilizator» este pentru a adăuga un fondator nou (coleg
+nou în firma RA Tracks)."*
+
+**Ce era.** Formularul de la baza ecranului Utilizatori, în privirea noastră, putea face **de toate**:
+administrator de firmă, manager, dispecer, client, viewer și super-admin — plus un selector „alege
+compania". Adică de acolo se putea administra gospodăria oricărui client. Nu se mai știa care e ușa
+din față: aceeași treabă se putea face din trei locuri, fiecare cu alt context.
+
+**Ce e acum.** Fiecare ecran are un singur rost:
+
+- **Utilizatori, la noi** — doar **un coleg nou la RA Tracks**. Un singur rol de ales (cont de
+  platformă), fără selector de companie, cu antetul schimbat în *„Adaugă un coleg (RA Tracks)"* și cu
+  o vorbă care te trimite unde trebuie: *„Pentru administratorul unei firme client, mergi la Companii
+  → firma → Utilizatori."*
+- **Companii → firma → Utilizatori** — acolo a apărut **„Administratorii firmei"**: îi vezi pe cei
+  activi, pe nume, și adaugi altul dintr-un email. Dacă firma n-are niciunul, scrie portocaliu de ce
+  contează: *„nimeni de acolo nu poate adăuga colegi, atribui mașini sau boteza roluri — toate
+  mărunțișurile ajung la noi."*
+- **Utilizatori, la client** — neschimbat: își face singur oamenii (manager, dispecer, client,
+  viewer), în Setări → Conturi și roluri.
+
+Administratorul nou primește, ca toată lumea, **un link pe email** și își pune singur parola; dacă
+emailul nu poate pleca, apare **aceeași fereastră cu linkul** ca peste tot — nu una nouă, care ar
+spune altfel același lucru. Iar regula de fond n-a fost atinsă: **un admin de firmă nu-și poate face
+alt admin**; asta rămâne la noi, apăsată pe server.
+
+- **Ce am schimbat:** am mutat fiecare treabă la ecranul ei, în loc să se poată face de oriunde.
+- **Ce vede fondatorul:** un formular mic, pentru echipa noastră; administratorii clienților, în fișa firmei.
+- **Ce vede clientul:** nimic schimbat — își face oamenii exact de unde îi făcea.
+
 ### AMÂNDOI · Administratorul unei firme are, în sfârșit, un singur nume
 
 Alin, uitându-se la lista de utilizatori: *„Vrei să le aduc la un singur nume? — da."*
