@@ -137,13 +137,29 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
 - **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Tracks).
   Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă
   utilizator (specific pentru colegi noi RA Tracks)". NU pune înapoi roluri de firmă client acolo.
-- **Administratorul unei firme client** se dă din **Companii → firma → fila Utilizatori**
-  (`_raxCodAdminiHtml` + `raxCoAddAdmin`), pe ruta care exista deja: `POST /api/companies/:id/admin`.
-  Traseul „Client nou" face UNUL, la semnare; de aici se dă al doilea sau se repară o firmă rămasă fără.
-- **Utilizatori, în privirea CLIENTULUI** = oamenii firmei lui (manager/dispecer/client/viewer).
-- Regula de fond rămâne pe server: `COMPANY_ASSIGNABLE_ROLES` nu conține admin — **un admin de firmă
-  nu-și poate face alt admin**. Ecranele doar o oglindesc.
+- **Utilizatori, în privirea CLIENTULUI** = oamenii firmei lui, **inclusiv alți administratori**.
+- **Companii → firma → fila Utilizatori** = doar **oglinda** (cine sunt administratorii activi) plus
+  **trusa de reparat**: formularul de adăugare (`_raxCodAdminiHtml` + `raxCoAddAdmin`, pe ruta
+  `POST /api/companies/:id/admin`) apare **NUMAI dacă firma are ZERO administratori activi** — cazul
+  pe care nimeni din interior nu-l poate rezolva (s-a sărit pasul de admin la „Client nou"). Dacă
+  firma are administratori, formularul nu se vede deloc: nu ne băgăm în gospodăria ei.
 - Linkul de parolă se arată cu ACEEAȘI fereastră peste tot (`window._usrAratLinkul`). Nu scrie alta.
+
+### Firma își face singură administratorii (decizie Alin, 16.09)
+`COMPANY_ASSIGNABLE_ROLES = ['company_admin', 'manager', 'dispatcher', 'viewer']` — adminul unei firme
+poate **crea ȘI promova** alt administrator, în firma lui, fără noi.
+
+- **E delegare, nu escaladare:** un admin are deja tot ce se poate avea într-o firmă; față de un
+  manager, diferența e doar `manageUsers` + `viewAudit`, pe care le are. Firma nu capătă nicio putere
+  nouă — o dă mai departe.
+- **Linia care contează rămâne închisă:** `superadmin` NU e în listă. Nimeni dintr-o firmă nu-și poate
+  face cont de platformă. Firmă → platformă e altă ușă; ea rămâne doar a noastră.
+- **`ROLURI_AJUSTABILE` NU se mai deduce din `COMPANY_ASSIGNABLE_ROLES`** (`['manager','dispatcher','viewer']`,
+  scris explicit): dacă firma ar putea AJUSTA rolul de administrator, și-ar putea tăia singură dreptul
+  de administrare și ar rămâne pe dinafară, fără cale de întoarcere.
+- Plasa de la ultimul administrator devine și protecția firmei față de ea însăși.
+- **„Client" a ieșit din toate formularele** — avea exact drepturile unui Viewer, iar serverul îl cobora
+  tăcut acolo. Rolul rămâne în `ROLE_PERMISSIONS` pentru conturile vechi.
 
 ### Administratorul unei firme are UN singur nume: `company_admin`
 A purtat două, după calea pe care era făcut (`company_admin` de la Companii → Client nou, `admin` de

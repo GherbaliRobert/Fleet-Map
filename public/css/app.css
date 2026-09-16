@@ -3444,9 +3444,10 @@
 .raco-admini-f{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .raco-admini-f .rax-field{ flex:1 1 180px; min-width:0; margin:0; }
 .raco-admini-f .rax-btn{ flex:0 0 auto; }
-.raco-admini-s{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-muted);
-  line-height:1.45; margin-top:8px; }
-.raco-admini-s i{ color:var(--accent); }
+.raco-admini-s{ display:flex; align-items:flex-start; gap:7px; font-size:11.5px; color:var(--text-muted);
+  line-height:1.5; margin-top:8px; }
+.raco-admini-s > i{ color:var(--accent); flex:0 0 auto; margin-top:2px; }
+.raco-admini-s > span{ flex:1 1 auto; min-width:0; }
 @media (max-width: 720px){
   .raco-admini-f{ flex-direction:column; align-items:stretch; }
   .raco-admini-f .rax-btn{ width:100%; justify-content:center; }

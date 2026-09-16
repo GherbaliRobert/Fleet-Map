@@ -1377,12 +1377,21 @@ const ROLE_PERMISSIONS = {
   viewer:     { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: false, viewAll: false, viewAudit: false }
 };
 const VALID_ROLES = Object.keys(ROLE_PERMISSIONS);
-// roluri pe care un company_admin le poate atribui (NU poate crea superadmini/alți company_admin peste el)
-// „Client" a fost scos din lista celor care se pot atribui: avea EXACT aceleași drepturi ca „Viewer",
-// iar două nume pentru același lucru îl pun pe om să ghicească. Decizia lui Alin: rămâne Viewer.
-// Rolul NU se șterge din ROLE_PERMISSIONS — conturile vechi care îl au trebuie să meargă mai departe,
-// iar drepturile lor sunt oricum identice cu ale unui viewer.
-const COMPANY_ASSIGNABLE_ROLES = ['manager', 'dispatcher', 'viewer']; // company_admin/admin se acordă DOAR de noi, la semnarea contractului (fără escaladare intra-tenant)
+// Rolurile pe care ADMINUL UNEI FIRME le poate atribui, în firma lui.
+//
+// „Client" a fost scos: avea EXACT aceleași drepturi ca „Viewer", iar două nume pentru același lucru
+// îl pun pe om să ghicească. Decizia lui Alin: rămâne Viewer. Rolul NU se șterge din ROLE_PERMISSIONS
+// — conturile vechi care îl au merg mai departe, cu drepturi identice cu ale unui viewer.
+//
+// `company_admin` E ÎN LISTĂ din 16.09 (decizia lui Alin). Adminul unei firme poate face sau promova
+// alt administrator ÎN FIRMA LUI. Nu e o escaladare, e o DELEGARE: un admin are deja tot ce se poate
+// avea într-o firmă, iar diferența față de un manager e doar „gestionează oamenii" + „vede jurnalul
+// firmei" — amândouă lucruri pe care le are deja. Înainte, pentru al doilea administrator firma
+// trebuia să ne sune pe noi, ceea ce nu apăra nimic real: doar ne băga în gospodăria clientului.
+//
+// LINIA CARE CONTEAZĂ RĂMÂNE ÎNCHISĂ: `superadmin` NU e aici. Nimeni dintr-o firmă nu-și poate face
+// cont de PLATFORMĂ (toate firmele, facturarea, jurnalul platformei). Firmă → platformă e altă ușă.
+const COMPANY_ASSIGNABLE_ROLES = ['company_admin', 'manager', 'dispatcher', 'viewer'];
 function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.viewer; }
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
 function isSuper(role) { return role === 'superadmin'; }
@@ -1392,7 +1401,10 @@ function isSuper(role) { return role === 'superadmin'; }
 // O firmă își poate RENUMI rolurile și le poate TĂIA din drepturi. Nu poate adăuga nimic: drepturile
 // de bază stau în ROLE_PERMISSIONS, iar în bază se ține doar ce s-a tăiat. Așa, orice greșeală (a
 // noastră sau a clientului) poate produce cel mult un rol cu mai PUȚINE drepturi.
-const ROLURI_AJUSTABILE = COMPANY_ASSIGNABLE_ROLES.slice(); // manager, dispecer, client, viewer
+// ATENȚIE: lista asta NU se mai deduce din cea de sus. De când firma poate ATRIBUI rolul de
+// administrator, dacă l-ar putea și AJUSTA și-ar putea tăia singură dreptul de administrare — și ar
+// rămâne pe dinafară din propriul cont, fără cale de întoarcere.
+const ROLURI_AJUSTABILE = ['manager', 'dispatcher', 'viewer'];
 // Numele standard, ca ecranul să arate „Dispecer (standard)" lângă numele ales de firmă.
 const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
 // Adminul firmei NU e ajustabil: dacă și-ar tăia dreptul de administrare, ar rămâne pe dinafară din

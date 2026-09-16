@@ -95,6 +95,45 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Firma își face singură administratorii. Noi ieșim din drum
+
+Alin: *„dacă el, administratorul firmei, vrea să dea atribuțiile lui și unui manager, cum face? Cred
+că e mai ok să-i dăm «puterea» să facă cont de administrator oricui vrea din firmă, fără să ne mai
+implice pe noi."*
+
+**Avea dreptate, și am și verificat de ce.** M-am uitat ce poate un administrator de firmă față de un
+manager. Diferența e **exact două lucruri**: *gestionează oamenii* și *vede jurnalul firmei*. În rest
+— toată flota, modificări, comenzi, rapoarte, alerte — le au amândoi.
+
+Deci când adminul face încă un admin, **firma nu capătă nicio putere pe care n-o avea**. O dă mai
+departe, altui om de la ea. E o **delegare**, nu o escaladare. Regula de dinainte nu apăra nimic real:
+apăra doar un telefon către noi.
+
+**Ce e acum.**
+
+- **Adminul unei firme poate face ȘI promova alt administrator**, singur. Are rolul în formularul de
+  cont nou și în fișa omului — deci poate ridica un manager la administrator, exact cazul din întrebare.
+- **Linia care contează rămâne închisă:** nimeni dintr-o firmă nu-și poate face **cont de platformă**
+  (toate firmele, facturarea, jurnalul nostru). Firmă → platformă e altă ușă, și rămâne doar a noastră.
+  Apăsat pe server, nu doar ascuns din ecran — proba încearcă exact asta și primește refuz.
+- **Un lucru pe care a trebuit să-l desfac cu mâna:** lista rolurilor pe care firma le poate *ajusta*
+  (renumi, tăia din drepturi) era aceeași cu lista celor pe care le poate *atribui*. Dacă le lăsam
+  legate, firma ar fi putut să-și taie singură dreptul de administrare — și ar fi rămas pe dinafară din
+  propriul cont, fără cale de întoarcere. Acum sunt două liste separate: rolul de administrator se
+  poate da, dar nu se poate ciopârți.
+- **Butonul de la noi n-a dispărut, dar s-a făcut mic.** În Companii → firma → Utilizatori vezi acum
+  **doar cine sunt administratorii**, cu o vorbă: *„Firma își face singură administratorii, din contul
+  ei. Noi intervenim doar dacă rămâne fără niciunul."* Formularul de adăugare apare **numai** la o
+  firmă cu **zero administratori activi** — singurul caz pe care nimeni din interior nu-l poate repara
+  (s-a sărit pasul de administrator la „Client nou", și firma a rămas goală).
+- **Și încă o curățenie, cât eram acolo:** rolul „Client" a ieșit din formulare. Avea **exact** drepturile
+  unui Viewer, iar serverul îl cobora tăcut acolo — alegeai „Client" și-ți ieșea „Viewer", fără ca
+  cineva să spună de ce. Conturile vechi care îl au merg mai departe, neatinse.
+
+- **Ce am schimbat:** firma nu mai depinde de noi pentru administratorii ei.
+- **Ce vede fondatorul:** în fișa firmei, doar cine sunt administratorii. Formularul, doar când e nevoie.
+- **Ce vede clientul:** poate face sau promova alt administrator, singur, ca pe orice alt cont.
+
 ### AMÂNDOI · Fiecare ecran, un singur rost: Utilizatori = echipa noastră, Companii = clienții
 
 Alin: *„în verticala fondatori, acest «Adaugă utilizator» este pentru a adăuga un fondator nou (coleg

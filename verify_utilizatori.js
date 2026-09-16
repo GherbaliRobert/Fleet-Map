@@ -39,6 +39,7 @@ function bloc(numeStart, numeSfarsit) {
 }
 const blocLista = bloc('// ── începe „lista de utilizatori" ──', '// ── sfârșit „lista de utilizatori" ──');
 const blocPastile = bloc('// ── începe „pastilele de utilizatori" ──', '// ── sfârșit „pastilele de utilizatori" ──');
+const blocAdmini = bloc('// ── începe „administratorii firmei" ──', '// ── sfârșit „administratorii firmei" ──');
 
 const mediu = `
   var window = {};
@@ -65,13 +66,13 @@ const iesire = `
     _usrPotrivit: _usrPotrivit, _usrTrece: _usrTrece, _usrOrdoneaza: _usrOrdoneaza,
     _userRowHtml: _userRowHtml, _usrPastileHtml: _usrPastileHtml, _usrSeatsHtml: _usrSeatsHtml,
     _usrCardAcasa: _usrCardAcasa, _nodAcasa: _nodAcasa, fereastra: window,
-    _usrCeAveaText: _usrCeAveaText,
+    _usrCeAveaText: _usrCeAveaText, _raxCodAdminiHtml: _raxCodAdminiHtml,
     caFirma: function (v) { _PRIVESC_CA_FIRMA = !!v; },
     cine: function (u) { currentUser = u; },
     pastila: function (k) { window._usrPastilaSet(k); }
   };
 `;
-const U = new Function(mediu + blocLista + blocPastile + iesire)();
+const U = new Function(mediu + blocLista + blocPastile + blocAdmini + iesire)();
 
 // Oameni de probă. Ziua de azi e mereu „azi", deci datele se fac relativ la ea.
 const acum = Date.now();
@@ -326,7 +327,7 @@ T('numele vechi rămâne ACCEPTAT la intrare (telefonul îl mai trimite)',
 T('rândurile vechi se mută o dată, la pornire',
   /UPDATE users SET role = 'company_admin' WHERE role = 'admin'/.test(db));
 T('și se poate face în siguranță: rolul de admin nu e ajustabil de firme',
-  /const ROLURI_AJUSTABILE = COMPANY_ASSIGNABLE_ROLES\.slice\(\)/.test(server));
+  /const ROLURI_AJUSTABILE = \['manager', 'dispatcher', 'viewer'\];/.test(server));
 // Pe ecran: o singură etichetă, oricare din cele două valori ar avea rândul.
 T('pagina scrie la fel și pentru vechi, și pentru nou',
   /company_admin:'Admin companie', admin:'Admin companie'/.test(html));
@@ -360,8 +361,27 @@ T('și te trimite unde se face administratorul unei firme',
   /Companii → firma → Utilizatori<\/b>/.test(html));
 T('selectorul de companie nu se mai aprinde niciodată acolo',
   /if \(csel\) csel\.style\.display = 'none';/.test(html));
-T('la client au rămas cele patru roluri ale lui',
-  /\['manager', 'Manager \(toată flota, editează\)'\], \['dispatcher'/.test(html));
+T('la client, formularul îi dă rolurile firmei lui',
+  /\['company_admin', 'Admin companie \(control total în firma ta\)'\], \['manager', 'Manager \(toată flota, editează\)'\]/.test(html));
+
+sect('11f-bis. Firma își face singură administratorii (decizie Alin, 16.09)');
+// Delegare, nu escaladare: un admin are deja tot ce se poate avea într-o firmă; diferența față de un
+// manager e doar „gestionează oamenii" + „vede jurnalul firmei". Înainte, pentru al doilea
+// administrator firma trebuia să ne sune — ceea ce nu apăra nimic, doar ne băga în gospodăria ei.
+T('adminul firmei poate atribui rolul de administrator',
+  /const COMPANY_ASSIGNABLE_ROLES = \['company_admin', 'manager', 'dispatcher', 'viewer'\];/.test(server));
+T('DAR nu-și poate face cont de PLATFORMĂ — linia care contează rămâne închisă',
+  !/COMPANY_ASSIGNABLE_ROLES = \[[^\]]*superadmin/.test(server));
+T('rolul de administrator NU poate fi ajustat de firmă (și-ar tăia singură dreptul)',
+  /const ROLURI_AJUSTABILE = \['manager', 'dispatcher', 'viewer'\];/.test(server) &&
+  !/ROLURI_AJUSTABILE = \[[^\]]*company_admin/.test(server));
+T('„Client" a ieșit din formulare — avea exact drepturile unui Viewer',
+  !/\['client', 'Client \(vede doar vehiculele atribuite\)'\]/.test(html) &&
+  !/\['client', 'Client'\]/.test(html));
+T('și în fișa omului adminul firmei poate PROMOVA la administrator',
+  /\['company_admin', 'Admin companie'\], \['manager', 'Manager'\], \['dispatcher', 'Dispecer'\], \['viewer', 'Viewer'\]/.test(html));
+T('plasa de la ultimul administrator rămâne — acum apără firma și de ea însăși',
+  /_ultimulAdminAlFirmei/.test(server) && /Nu te poți dezactiva sau retrograda pe tine/.test(server));
 
 sect('11g. Administratorul firmei se dă din fișa firmei');
 T('secțiunea există în fișa companiei', /function _raxCodAdminiHtml\(d\)/.test(html));
@@ -371,6 +391,18 @@ T('numără doar administratorii ACTIVI',
 T('și îi și arată pe nume', /raco-admini-om/.test(html));
 T('când firma n-are niciunul, o spune și explică ce înseamnă',
   /n-are niciun administrator activ/.test(html) && /ajung la noi/.test(html));
+// Rulat pe bune, nu doar citit: firma CU administratori nu primește formular, cea FĂRĂ — da.
+const _fisa = (u) => U._raxCodAdminiHtml({ company: { id: 7 }, users: u });
+const _cuAdmin = _fisa([{ role: 'company_admin', active: true, full_name: 'Ion Popescu', username: 'ion@f.ro' },
+                        { role: 'dispatcher', active: true, full_name: 'Alt Om', username: 'alt@f.ro' }]);
+const _faraAdmin = _fisa([{ role: 'dispatcher', active: true, full_name: 'Alt Om', username: 'alt@f.ro' },
+                          { role: 'company_admin', active: false, full_name: 'Fost Sef', username: 'fost@f.ro' }]);
+T('firma CU administratori: doar oglinda, FĂRĂ formular',
+  /Ion Popescu/.test(_cuAdmin) && !/rax-coadm-email/.test(_cuAdmin));
+T('și nota spune că firma se descurcă singură', /își face singură administratorii/.test(_cuAdmin));
+T('adminul DEZACTIVAT nu se pune la socoteală', /niciunul/.test(_faraAdmin) && !/Fost Sef/.test(_faraAdmin));
+T('firma FĂRĂ administrator: avertisment + trusa de reparat',
+  /n-are niciun administrator activ/.test(_faraAdmin) && /rax-coadm-email/.test(_faraAdmin));
 T('folosește ruta care exista deja, nu una nouă',
   /'\/api\/companies\/' \+ coId \+ '\/admin'/.test(html));
 T('cere confirmare înainte, cu ce poate omul ăla',
