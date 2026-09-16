@@ -1427,10 +1427,14 @@
     .rax-dev-chip.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
     .rax-dev-chip .cnt { opacity: .75; }
     .rax-dev-chip.atentie:not(.on) { border-color: var(--orange); color: var(--orange); }
-    /* Grup de firmă: rândul care se deschide și se închide, cu sumarul și butonul spre fișa firmei. */
-    .rax-devgr { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
-    .rax-devgr-h { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer; background: var(--bg-dark); }
-    .rax-devgr-h > i { font-size: 11px; color: var(--text-muted); flex: 0 0 auto; }
+    /* Grup de firmă: rândul care se deschide și se închide, cu sumarul și butonul spre fișa firmei.
+       Marginea e VERDE, ca la cutiile din Administrare (`.adash-continua`) — așa se vede unde începe și
+       unde se termină fiecare firmă, nu doar o linie gri peste alt gri. */
+    .rax-devgr { border: 1px solid var(--accent); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+    .rax-devgr-h { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer;
+      background: color-mix(in srgb, var(--accent) 7%, var(--bg-dark)); }
+    .rax-devgr-h:hover { background: color-mix(in srgb, var(--accent) 12%, var(--bg-dark)); }
+    .rax-devgr-h > i { font-size: 11px; color: var(--accent); flex: 0 0 auto; }
     .rax-devgr-h > strong { font-size: 13.5px; }
     .rax-devgr-n { margin-left: auto; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
     .rax-devgr-h .rax-btn { font-size: 11px; padding: 4px 9px; flex: 0 0 auto; }

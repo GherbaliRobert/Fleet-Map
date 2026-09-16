@@ -131,6 +131,9 @@ Sus stau **Neasignatele** (aparatele care așteaptă să le dai firma), jos **Ar
 puține firme, toate deschise; cu multe, închise — **dar niciodată una care are ceva de rezolvat.** O
 problemă nu are voie să stea ascunsă după un rând închis.
 
+Marginile grupurilor sunt **verzi**, ca la cutiile din Administrare — se vede dintr-o privire unde
+începe și unde se termină fiecare firmă, nu doar o linie gri peste alt gri (cerut de Alin).
+
 - **Ce am schimbat:** ecranul spune singur care client are un aparat mort.
 - **Ce vede fondatorul:** clienți, nu IMEI-uri — și o cale scurtă de la aparat la firmă.
 - **Ce vede clientul:** nimic, ecranul e strict al nostru.

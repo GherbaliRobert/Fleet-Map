@@ -136,6 +136,9 @@ T('există pe rândul firmei', /raxOpenCompanyDetail\(' \+ gr\.coId \+ '\)/.test
 T('și nu închide grupul când îl apeși', /event\.stopPropagation\(\);raxOpenCompanyDetail/.test(html));
 ['.rax-devgr', '.rax-devgr-h', '.rax-devgr-n', '.rax-devgr-b', '.rax-dev-sem']
   .forEach(function (c) { T('stilul ' + c, html.indexOf(c) >= 0); });
+T('marginea grupului e VERDE, ca la cutiile din Administrare',
+  /\.rax-devgr \{ border: 1px solid var\(--accent\)/.test(html));
+T('și rândul firmei se vede că e al casei', /\.rax-devgr-h \{[\s\S]{0,160}color-mix\(in srgb, var\(--accent\)/.test(html));
 
 sect('8. Aparatele le înregistrăm NOI (decizia lui Alin, 16.09)');
 T('adăugarea unui aparat cere super-admin',
