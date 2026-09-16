@@ -133,6 +133,23 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   portiță „doar pentru teste": ar fi exact calea paralelă pe care o evităm.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
+### Administratorul unei firme are UN singur nume: `company_admin`
+A purtat două, după calea pe care era făcut (`company_admin` de la Companii → Client nou, `admin` de
+la formularul din Utilizatori). Drepturile erau identice (`ROLE_PERMISSIONS`), dar în aceeași listă
+apăreau două etichete pentru aceeași putere.
+
+- **Se scrie `company_admin`.** `rolUnic()` preface `admin` → `company_admin` la creare ȘI la
+  modificare, înainte de orice comparație (altfel telefonul, care trimite `admin`, ar părea că
+  schimbă rolul și i-ar scoate omului rolul propriu).
+- **`admin` rămâne ACCEPTAT la intrare** și rămâne în `ROLE_PERMISSIONS` — aplicația de telefon veche
+  îl trimite încă. Nu-l scoate.
+- **Rândurile vechi s-au mutat o dată**, la pornire (`UPDATE users SET role='company_admin' WHERE
+  role='admin'`, în `db.js`). E sigur: rolul de admin NU e în `ROLURI_AJUSTABILE`, deci nu există
+  roluri proprii clădite pe el.
+- Pe ecran, **amândouă valorile scriu „Admin companie"** (`ROLE_LABELS` în web, `LIST_NAME` pe
+  telefon) și poartă aceeași pastilă (`.role.admin, .role.company_admin`).
+- Păzit de `verify_utilizatori.js`.
+
 ### Ultimul administrator al unei firme
 Serverul refuză **ștergerea, dezactivarea, retrogradarea și mutarea** ultimului admin activ al unei
 firme client (`_ultimulAdminAlFirmei`, inclusiv socotit pe LOT la mutarea în grup). Clientul nu putea

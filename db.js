@@ -1272,6 +1272,12 @@ async function initDb() {
     // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele"
     // putea întreba — adică toată firma, la prețul unui singur cont.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_seat BOOLEAN DEFAULT false');
+    // UN SINGUR NUME pentru administratorul unei firme. A purtat două, după calea pe care a fost
+    // făcut: „company_admin" (Companii → Client nou) și „admin" (formularul din Utilizatori).
+    // Drepturile erau identice, dar în aceeași listă apăreau două etichete pentru aceeași putere.
+    // Se poate face în siguranță: rolul de admin NU e ajustabil de firme, deci nu există roluri
+    // proprii clădite pe el care s-ar rupe. Rulează o dată; a doua oară nu mai are ce muta.
+    await client.query("UPDATE users SET role = 'company_admin' WHERE role = 'admin'");
 
     // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
     // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),

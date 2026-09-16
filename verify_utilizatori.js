@@ -25,6 +25,7 @@ const html = fs.readFileSync(P('public/index.html'), 'utf8');
 const server = fs.readFileSync(P('server.js'), 'utf8');
 const db = fs.readFileSync(P('db.js'), 'utf8');
 const css = fs.readFileSync(P('public/css/app.css'), 'utf8');
+const tel = fs.readFileSync(P('mobile/src/screens/AdminUsers.tsx'), 'utf8');
 
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
@@ -311,6 +312,36 @@ T('și explicația spune amândouă lucrurile ascunse (istoricul + adresa de aut
 T('avertismentul apare doar la conturi care au fost folosite',
   /_ueVechi\.last_login && email && email !== \(_ueVechi\.email \|\| ''\)/.test(html));
 
+sect('11e. Administratorul firmei are UN singur nume');
+// Purta două, după calea pe care fusese făcut: „company_admin" (Companii → Client nou) și „admin"
+// (formularul din Utilizatori). Drepturi identice, două etichete în aceeași listă, la aceeași firmă.
+T('serverul are un singur nume bun', /const ROL_ADMIN_FIRMA = 'company_admin';/.test(server));
+T('și preface vechiul nume înainte să ajungă în bază',
+  /function rolUnic\(r\) \{ return r === 'admin' \? ROL_ADMIN_FIRMA : r; \}/.test(server));
+T('la creare', /const finalRole = rolUnic\(/.test(server));
+T('și la modificare, înainte de orice comparație',
+  /if \(role !== undefined && role !== null\) role = rolUnic\(role\);/.test(server));
+T('numele vechi rămâne ACCEPTAT la intrare (telefonul îl mai trimite)',
+  /^\s+admin:\s+\{ manageUsers: true/m.test(server));
+T('rândurile vechi se mută o dată, la pornire',
+  /UPDATE users SET role = 'company_admin' WHERE role = 'admin'/.test(db));
+T('și se poate face în siguranță: rolul de admin nu e ajustabil de firme',
+  /const ROLURI_AJUSTABILE = COMPANY_ASSIGNABLE_ROLES\.slice\(\)/.test(server));
+// Pe ecran: o singură etichetă, oricare din cele două valori ar avea rândul.
+T('pagina scrie la fel și pentru vechi, și pentru nou',
+  /company_admin:'Admin companie', admin:'Admin companie'/.test(html));
+T('formularul de cont nou dă numele cel bun', /\['company_admin', 'Admin companie \(control total\)'\]/.test(html));
+T('și fișa omului la fel', /<option value="company_admin">Admin companie<\/option>/.test(html));
+T('nu mai există opțiunea veche pe ecran', !/<option value="admin">/.test(html) && !/\['admin', 'Admin companie/.test(html));
+T('pastila păstrează aceeași culoare pentru amândouă',
+  /\.user-row \.role\.admin, \.user-row \.role\.company_admin/.test(css));
+T('adminul de firmă nu mai deschide fișa de atribuire după creare (vede toată flota)',
+  /role !== 'company_admin' && role !== 'admin' && role !== 'manager'/.test(html));
+// Aplicația de telefon: același nume, și fără două opțiuni care fac același lucru.
+T('telefonul scrie la fel', /company_admin: 'Admin companie', admin: 'Admin companie'/.test(tel));
+T('și nu mai oferă două opțiuni pentru același rol', !/\{ v: 'admin', baza: 'admin'/.test(tel));
+T('și vede amândouă numele ca administrator', /ADMIN_ROLES = \['company_admin', 'admin', 'superadmin'\]/.test(tel));
+
 sect('12. Bara de deasupra listei');
 T('căutarea stă în HTML, ca să nu-și piardă cursorul la fiecare literă', /id="users-cauta"/.test(html));
 T('ordinea are cele trei feluri', /value="nume"/.test(html) && /value="rol"/.test(html) && /value="logare"/.test(html));
@@ -388,6 +419,8 @@ function gata(cod) {
   T('contul se creează fără să-i scriem parola', rSef.status === 200, rSef.status);
   const sef = await rSef.json();
   T('și primește un link de setare a parolei', /set-password\.html\?token=/.test(sef.link || ''), sef.link);
+  // Am cerut rolul VECHI („admin"); serverul trebuie să-l fi prefăcut în cel bun, singurul.
+  T('rolul vechi cerut ajunge în bază sub numele cel bun', sef.role === 'company_admin', sef.role);
   T('serverul spune că emailul nu a plecat (n-avem SMTP în probă)', sef.invitat === false);
   // O parolă trimisă în cerere se ignoră: nu există a doua cale.
   const rIgnor = await POST('/api/users', { username: 'strecurat@utiliz.ro', full_name: 'Om Strecurat', role: 'viewer', company_id: co.id, password: 'Parola-Trimisa-2026' });

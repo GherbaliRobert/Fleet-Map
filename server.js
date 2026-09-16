@@ -1894,6 +1894,13 @@ async function _isLastActiveSuperadmin(targetId) {
 // firmă singurul administrator, iar firma rămânea fără nimeni — cu toate mărunțișurile ei („mi-a
 // venit un șofer nou") pe telefonul nostru. Aici se închide.
 const _ROLURI_ADMIN_FIRMA = ['admin', 'company_admin'];
+// Administratorul unei firme a purtat DOUĂ nume, după calea pe care a fost făcut: „company_admin"
+// (Companii → Client nou) și „admin" (formularul din Utilizatori). Drepturile erau identice, dar în
+// aceeași listă apăreau două etichete pentru aceeași putere. Numele de acum e UNUL: `company_admin`.
+// `admin` rămâne acceptat la intrare (aplicația de telefon și rândurile vechi îl trimit încă), dar
+// se preface în cel bun înainte de a ajunge în bază — vezi și migrarea de la pornire.
+const ROL_ADMIN_FIRMA = 'company_admin';
+function rolUnic(r) { return r === 'admin' ? ROL_ADMIN_FIRMA : r; }
 async function _adminiActiviAiFirmei(companyId) {
   const r = await db.pool.query(
     "SELECT COUNT(*)::int AS n FROM users WHERE company_id = $1 AND active IS NOT FALSE AND role = ANY($2::text[])",
@@ -2707,8 +2714,8 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       const propriu = ((await roluriCompaniei(companyId)) || {})[role];
       if (propriu && propriu.baza) { rolCerut = propriu.baza; slugNou = role; }
     }
-    const finalRole = allowed.includes(rolCerut) ? rolCerut : 'viewer';
-    if (finalRole !== rolCerut) slugNou = null;
+    const finalRole = rolUnic(allowed.includes(rolCerut) ? rolCerut : 'viewer');
+    if (finalRole !== rolUnic(rolCerut)) slugNou = null;
     // Un super-admin e cont de PLATFORMĂ: nu aparține niciunei companii. Chiar dacă interfața trimite din
     // greșeală o companie, o ignorăm — altfel filtrele pe companie s-ar aplica peste un cont care trebuie să vadă tot.
     if (isSuper(finalRole)) companyId = null;
@@ -2791,6 +2798,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     const id = parseInt(req.params.id);
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     let { role, full_name, email, phone, active } = req.body;
+    // Un singur nume pentru administratorul firmei. Se preface AICI, înainte de orice comparație:
+    // altfel un telefon care trimite „admin" peste un cont salvat ca „company_admin" ar arăta ca o
+    // schimbare de rol și i-ar scoate omului rolul propriu, fără ca cineva să fi cerut asta.
+    if (role !== undefined && role !== null) role = rolUnic(role);
     // Doar `false` exact tăia sesiunile, dar baza accepta și 0 sau "false" ca „dezactivat": contul se dezactiva fără ca
     // sesiunile și legăturile lui să se închidă, iar gărzile (auto-dezactivare, ultimul super-admin) erau ocolite.
     if (active !== undefined && active !== null) active = !(active === false || active === 0 || active === '0' || String(active).toLowerCase() === 'false');

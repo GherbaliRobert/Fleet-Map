@@ -12,7 +12,8 @@ import './admin.css';
 const PAROLA_MIN = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 // Numele standard din listă, ca pe web (ROLE_LABELS). Numele date de firmă le bat (vin din /api/company-roles).
-const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer', superadmin: 'Super-admin' };
+// UN SINGUR NUME pentru administratorul firmei. Rândurile vechi pot avea încă „admin" — scriu la fel.
+const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer', superadmin: 'Super-admin' };
 // Explicația din paranteză din formularul de adăugare (web: #new-role). La redenumire se schimbă doar numele.
 const EXPL: Record<string, string> = { manager: 'toată flota, editează', dispatcher: 'atribuit + confirmă alerte', viewer: 'doar se uită, la mașinile atribuite' };
 // Rolurile care au „Vede toată flota" din oficiu (ROLE_PERMISSIONS.viewAll pe server). Firma îl poate tăia din manager.
@@ -104,7 +105,6 @@ export function AdminUsers() {
     if (!isSuper) return company.concat(proprii);
     return [
       { v: 'company_admin', baza: 'company_admin', label: forAdd ? 'Administrator companie (control total)' : 'Administrator companie' },
-      { v: 'admin', baza: 'admin', label: forAdd ? 'Admin (control total)' : 'Admin' },
       ...company, ...proprii,
       { v: 'superadmin', baza: 'superadmin', label: forAdd ? '⚠ Super-admin (PLATFORMĂ — toate companiile)' : '⚠ Super-admin (platformă)' },
     ];

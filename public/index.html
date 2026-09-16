@@ -1588,7 +1588,7 @@
           <select id="ue-role">
             <option value="dispatcher">Dispecer</option>
             <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
+            <option value="company_admin">Admin companie</option>
             <option value="viewer">Viewer</option>
           </select>
         </label>
@@ -3776,7 +3776,9 @@ const pozitii = await r.json();</code></pre>
       return !!(currentUser && currentUser.permissions && currentUser.permissions[perm]);
     }
 
-    const ROLE_LABELS = { admin:'Admin', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Viewer' };
+    // UN SINGUR NUME pentru administratorul firmei. Rândurile vechi din bază pot avea încă „admin";
+    // amândouă scriu la fel pe ecran, ca să nu apară două etichete pentru aceeași putere.
+    const ROLE_LABELS = { company_admin:'Admin companie', admin:'Admin companie', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Viewer' };
     let ueUsersCache = [];
 
     // ─── Administrare: taburi (super-admin) ───
@@ -4288,7 +4290,7 @@ const pozitii = await r.json();</code></pre>
       var sel = document.getElementById('new-role');
       if (sel) {
         var opts = sup
-          ? [['admin', 'Admin companie (control total)'], ['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)'], ['superadmin', '⚠ Super-admin (PLATFORMĂ — toate companiile)']]
+          ? [['company_admin', 'Admin companie (control total)'], ['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)'], ['superadmin', '⚠ Super-admin (PLATFORMĂ — toate companiile)']]
           : [['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)']];
         sel.innerHTML = opts.map(function (o, i) { return '<option value="' + o[0] + '"' + (i === 0 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
         sel.onchange = _usrRoleChanged;
@@ -4530,7 +4532,7 @@ const pozitii = await r.json();</code></pre>
       await loadUsers();
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
       // Rolurile „scoped" au nevoie de atribuire de vehicule; super-adminul vede TOT, deci n-are ce atribui.
-      if (role !== 'admin' && role !== 'manager' && role !== 'superadmin') openUserEdit(created.id);
+      if (role !== 'company_admin' && role !== 'admin' && role !== 'manager' && role !== 'superadmin') openUserEdit(created.id);
       else if (role === 'superadmin' && window.raxToast) raxToast('Cont de super-admin creat ✓ — se poate autentifica imediat', 'success');
     }
 

@@ -95,6 +95,39 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Administratorul unei firme are, în sfârșit, un singur nume
+
+Alin, uitându-se la lista de utilizatori: *„Vrei să le aduc la un singur nume? — da."*
+
+**Ce era.** Administratorul unei firme se putea face pe două căi, și fiecare îi punea alt nume:
+
+| Unde îl făceai | Cum apărea în listă |
+|---|---|
+| Companii → Client nou | **„Admin companie"** |
+| Formularul din Utilizatori | **„Admin"** |
+
+**Drepturile erau identice** — le-am comparat rând cu rând, amândouă au tot ce se poate avea într-o
+firmă. Deci n-a fost niciodată o gaură. Dar în aceeași listă, la aceeași firmă, doi oameni cu exact
+aceleași puteri apăreau cu două etichete diferite, după cum nimerise să fie făcuți. Peste un an nu
+mai știa nimeni de ce. Iar pe telefon era și mai rău: în formularul de adăugare stăteau **două
+opțiuni una sub alta**, „Administrator companie" și „Admin", care făceau exact același lucru.
+
+**Ce e acum.** Un singur nume: **„Admin companie"**. Peste tot — pe web, pe telefon, în formularul de
+cont nou, în fișa omului, pe pastila colorată de pe rând.
+
+Ca să nu se strice nimic în drum:
+
+- **numele vechi rămâne primit** — aplicația de telefon veche încă îl trimite — dar se preface în cel
+  bun **înainte** să ajungă în bază, atât la creare cât și la modificare;
+- **rândurile vechi se mută o singură dată, la prima pornire.** E sigur: rolul de administrator nu e
+  dintre cele pe care firmele le pot ajusta, deci nu există roluri proprii clădite pe el care s-ar
+  rupe;
+- pe telefon a rămas **o singură opțiune** în loc de două.
+
+- **Ce am schimbat:** un singur nume pentru aceeași putere, peste tot.
+- **Ce vede fondatorul:** „Admin companie" în orice listă, indiferent pe ce cale a fost făcut omul.
+- **Ce vede clientul:** la fel — și, pe telefon, o opțiune în loc de două care făceau același lucru.
+
 ### AMÂNDOI · Pleacă un om: „Scoate din firmă", și îți spune întâi ce avea
 
 Alin: *„Ion e manager, are cont cu RA Insight activat. Vine Georgel Popescu, și adminul firmei vrea

@@ -1704,7 +1704,8 @@
       font-weight: 600;
     }
 
-    .user-row .role.admin { background: rgba(124, 58, 237, 0.15); color: var(--purple); }
+    /* Administratorul firmei: același chip, oricare din cele două nume vechi ar avea rândul. */
+    .user-row .role.admin, .user-row .role.company_admin { background: rgba(124, 58, 237, 0.15); color: var(--purple); }
 
     .btn-sm {
       padding: 5px 10px;
