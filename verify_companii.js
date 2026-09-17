@@ -9,9 +9,9 @@
 //     dreptul `manageCompanies`, pe care îl are doar super-adminul (proba 1);
 //   • starea accesului să se afișeze greșit: „expirat" citit ca „activ" înseamnă un client care
 //     folosește platforma neplătit, sau unul plătitor blocat degeaba (proba 2);
-//   • listele să-și piardă forma. Rândurile din „Vehicule neasignate" și „Mută între companii"
-//     apăreau scrise italic și centrate fiindcă purtau `rax-co-meta` — clasa mesajului de listă
-//     GOALĂ — pe containerul întreg. Proba 3 nu mai lasă clasa aia pe containere.
+//   • listele să-și piardă forma. Rândurile din „Mută între companii" apăreau scrise italic și
+//     centrate fiindcă purtau `rax-co-meta` — clasa mesajului de listă GOALĂ — pe containerul
+//     întreg. Proba 3 nu mai lasă clasa aia pe containere.
 //
 // Codul nu se copiază aici: se decupează din public/index.html și se execută.
 
@@ -80,13 +80,11 @@ sect('3. Listele nu mai poartă clasa mesajului de listă goală');
 // containerul care ține RÂNDURILE (le scria pe toate italic, centrate).
 T('„rax-co-meta" chiar e stilul mesajului gol (italic, centrat)',
   /\.empty-state, \.rax-co-meta \{[^}]*font-style: italic/.test(html) && /\.empty-state, \.rax-co-meta \{[^}]*text-align: center/.test(html));
-const contUnass = /<div id="rax-co-unassigned"([^>]*)>/.exec(html);
 const contMove = /<div id="rax-move-list"([^>]*)>/.exec(html);
-T('containerul „Vehicule neasignate" nu mai are clasa', !!contUnass && !/rax-co-meta/.test(contUnass[1]), contUnass && contUnass[1]);
 T('containerul „Mută între companii" nu mai are clasa', !!contMove && !/rax-co-meta/.test(contMove[1]), contMove && contMove[1]);
 T('dar mesajul de listă goală o folosește în continuare',
-  /box\.innerHTML = '<div class="rax-co-meta">Niciun vehicul neasignat/.test(html));
-T('rândurile de adopție se desenează cu „raco-row" (nume la stânga)', /class="raco-row"><span class="raco-row-t">/.test(html));
+  /'<div class="rax-co-meta">Se încarcă…<\/div>'/.test(html));
+T('rândurile se desenează cu „raco-row" (nume la stânga)', /class="raco-row"><span class="raco-row-t">/.test(html));
 T('rândurile de mutare la fel', /return '<div class="raco-row">' \+\s*\n?\s*'<input type="checkbox"/.test(html));
 T('și nu mai există „neasignat" scris italic în rândurile de mutare', !/'<em>neasignat<\/em>'/.test(html));
 
@@ -102,12 +100,16 @@ T('câmpurile au aceeași formă ca în Setări (1,5px + inel la focus)',
   /\.raco \.rax-field:focus \{[^}]*box-shadow: 0 0 0 3px/.test(css));
 // Numărăm doar cartonașele din MARKUP-ul ecranului Companii. Ecranul „Contracte" își construiește
 // cartonașul din JavaScript, ca text între ghilimele — de-aia cerem să NU fie precedat de ghilimea.
-// TREI, nu patru: „Client nou" nu mai e un cartonaș care ocupă vârful ecranului permanent, ci un
-// buton în capul listei — deschizi un client o dată pe săptămână, lista o citești zilnic.
+// DOUĂ. Au fost patru, apoi trei, acum două, și de fiecare dată din același motiv — ecranul face un
+// singur lucru: ține evidența firmelor. „Client nou" a devenit buton în capul listei (deschizi un
+// client o dată pe săptămână, lista o citești zilnic), iar „Vehicule neasignate" a plecat de tot în
+// „Dispozitive" (Alin, 17.09): era a doua cale de adopție, mai săracă, rămasă de pe vremea când
+// ecranul se numea „Companii & Dispozitive". A rămas doar banda de sus, care trimite acolo —
+// regula stă în `verify_dispozitive.js`, la „într-un singur loc".
 const carduri = [...html.matchAll(/(?<!')<section class="raco-card"[ >]/g)].length;
-T('ecranul e împărțit în trei cartonașe', carduri === 3, carduri + ' cartonașe');
+T('ecranul e împărțit în două cartonașe', carduri === 2, carduri + ' cartonașe');
 const capete = [...html.matchAll(/(?<!')<div class="raco-h">\s*(?:<span>)?<i class="fas ([a-z-]+)"><\/i> ([^<]+)</g)].map(m => m[2].trim());
-T('fiecare cartonaș are titlul lui', capete.length === 3, capete.join(' | '));
+T('fiecare cartonaș are titlul lui', capete.length === 2, capete.join(' | '));
 T('„Client nou" e buton în capul listei, nu cartonaș separat',
   /id="rax-conou-btn"[^>]*onclick="raxCoNouToggle\(\)"/.test(html) && /window\.raxCoNouToggle\s*=/.test(html));
 // Emoji-ul 🔎 mai trăiește pe alte ecrane ale noastre (Facturare, Control costuri, Dispozitive,

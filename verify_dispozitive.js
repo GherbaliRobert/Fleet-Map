@@ -225,7 +225,31 @@ function gata(cod) {
   T('dar ce scrie el se aruncă — pe amândouă căile', dupa.gps_model === 'FMC650' && dupa.sim_number === '0740111222',
     dupa.gps_model + ' / ' + dupa.sim_number);
 
-  sect('11. Ce ține de VEHICUL îi rămâne — e flota lui');
+  sect('11. Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc');
+  // Pe „Companii" a stat până acum o a doua listă de aparate neasignate, cu „Adoptă"/„Respinge" —
+  // rămasă de pe vremea când ecranul se numea „Companii & Dispozitive" și le ținea pe amândouă.
+  // Apăsa ACELAȘI buton pe server ca ecranul Dispozitive, dar fără IMEI, semnal, ultima poziție sau
+  // interfață CAN — deci hotărai cu mai puțin în față. A rămas doar banda, care te trimite acolo.
+  T('nu mai există a doua listă de neasignate pe „Companii"',
+    !/id="rax-co-neasignate"/.test(html) && !/id="rax-co-unassigned"/.test(html));
+  T('și nici butoanele ei (șterse, nu ascunse)',
+    !/raxAssignDevice\s*=/.test(html) && !/raxRejectDevice\s*=/.test(html));
+  T('banda de pe „Companii" a rămas',
+    /function _coBandaNeasignate\(n\)[\s\S]{0,700}aparate așteaptă să fie adoptate/.test(html));
+  T('și trimite în „Dispozitive", nu mai jos în pagină',
+    /_coBandaNeasignate\(n\)[\s\S]{0,700}onclick="raxDevDeschideNeasignate\(\)"/.test(html) &&
+    !/raxCoSariLaNeasignate/.test(html));
+  T('acolo deschide fix filtrul de neasignate',
+    /window\.raxDevDeschideNeasignate = function \(\) \{[\s\S]{0,200}_raxDevFilter = 'unassigned';[\s\S]{0,120}raxAdminTab\('devices'\)/.test(html));
+  T('lista de neasignate se mai cere doar ca să fie NUMĂRATĂ',
+    /async function raxLoadUnassigned\(\) \{[\s\S]{0,420}\n    \}/.test(html) &&
+    !/raxLoadUnassigned\(\) \{[\s\S]{0,420}Adoptă/.test(html));
+  T('și pe ecran scrie CUM adopți, nu doar că trebuie',
+    /neasignat\(e\) s-au conectat\. Ca să adopți unul, alege-i firma în coloana <b>Companie<\/b>/.test(html));
+  T('îndemnul din fișa firmei duce tot acolo',
+    /Adoptă-le întâi din <a href="#" onclick="raxDevDeschideNeasignate\(\)/.test(html));
+
+  sect('12. Ce ține de VEHICUL îi rămâne — e flota lui');
   T('îi poate schimba numele și numărul',
     (await cere('PUT', '/api/devices/' + IMEI, { name: 'Camionul lui', plate: 'B 01 ABC' }, ckSef)).status === 200);
   const alLui = ((await (await cere('GET', '/api/devices', null, ck)).json()) || []).find(d => d.imei === IMEI) || {};

@@ -18062,14 +18062,15 @@ const pozitii = await r.json();</code></pre>
   <div class="rax-overlay" id="rax-co-overlay">
     <div class="rax-card">
       <div class="rax-head"><h3><i class="fas fa-building" style="color:var(--accent)"></i> Companii (super-admin)</h3><button class="rax-x" onclick="raxCloseCompanies()">&times;</button></div>
-      <!-- Ecranul are patru treburi diferite, deci patru cartonașe, fiecare cu titlul lui: deschizi
-           o firmă nouă, cauți printre cele existente, adopți aparatele care au început să transmită
-           singure, muți lucruri dintr-o firmă în alta. Înainte curgeau toate într-o singură fâșie.
+      <!-- Ecranul are treburile lui, fiecare în cartonașul ei, cu titlu: deschizi o firmă nouă, cauți
+           printre cele existente, muți lucruri dintr-o firmă în alta. Înainte curgeau toate într-o
+           singură fâșie. (Adopția aparatelor era a patra; a plecat în „Dispozitive" — vezi mai jos.)
            Clasa „raco" de pe corp duce cu ea limbajul vizual al secțiunii (câmpuri, butoane, tabel)
            oriunde e mutat nodul — și în panou, și în fereastra veche. -->
       <div class="rax-body raco">
         <!-- Banda de urgență: un aparat care transmite și nu e la nicio firmă înseamnă ori un client
-             care așteaptă, ori un aparat străin. Stătea a treia secțiune, jos; acum strigă de sus. -->
+             care așteaptă, ori un aparat străin. Stătea a treia secțiune, jos; acum strigă de sus și
+             te duce în „Dispozitive", pe filtrul „Neasignate", unde se și rezolvă. -->
         <div id="rax-co-alerta"></div>
         <!-- „Creează companie + admin" scria un rând în bază și trimitea o invitație. Atât. Niciun
              act, nicio durată, niciun acord GDPR — deși noi ținem datele de localizare ale
@@ -18091,11 +18092,13 @@ const pozitii = await r.json();</code></pre>
           </div>
           <div id="rax-co-list"><div class="rax-co-meta">Se încarcă…</div></div>
         </section>
-        <section class="raco-card" id="rax-co-neasignate">
-          <div class="raco-h"><i class="fas fa-inbox"></i> Vehicule neasignate</div>
-          <div class="raco-sub">Aparate care au început să transmită, dar nu sunt încă la nicio firmă. „Adoptă" le dă unei companii, „Respinge" le arhivează.</div>
-          <div id="rax-co-unassigned"><div class="rax-co-meta">—</div></div>
-        </section>
+        <!-- Aici a fost un al doilea loc de adoptat aparate neasignate („Vehicule neasignate"), rămas
+             de pe vremea când ecranul ăsta se numea „Companii & Dispozitive" și le ținea pe amândouă.
+             Ecranul Dispozitive face de atunci același lucru, mai bine: grupul „Neasignate" stă primul
+             și mereu deschis, iar pe rând vezi și IMEI-ul, și semnalul, și ultima poziție, și interfața
+             CAN. Amândouă apăsau ACELAȘI buton pe server (`PUT /api/devices/:imei/company`) — deci nu
+             era o a doua unealtă, ci aceeași, mai săracă. A rămas doar banda de sus, care te trimite
+             acolo. Decizia lui Alin, 17.09. -->
         <section class="raco-card">
           <div class="raco-h"><i class="fas fa-arrows-left-right"></i> Mută între companii</div>
           <div class="raco-sub">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
@@ -21015,7 +21018,7 @@ const pozitii = await r.json();</code></pre>
         ? '<div class="raco-msg" style="margin:-4px 0 10px;"><span style="color:var(--accent)"><i class="fas fa-tag"></i> Preț convenit: <strong>' +
           Number(c.annex.monthlyTotal).toFixed(0) + ' ' + esc(c.annex.currency || 'RON') + '/lună</strong> — venit din ofertă. Se recalculează din rândurile de mai jos când bifezi aparatele.</span></div>'
         : '';
-      if (!veh.length) return dinOferta + '<div class="rax-co-meta" style="padding:14px 0;">Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din „Vehicule neasignate", apoi treci-le aici.</div>';
+      if (!veh.length) return dinOferta + '<div class="rax-co-meta" style="padding:14px 0;">Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din <a href="#" onclick="raxDevDeschideNeasignate();return false;" style="color:var(--accent);">Dispozitive → Neasignate</a>, apoi treci-le aici.</div>';
       if (dinOferta) { /* lista de mai jos preia ștafeta */ }
       var inAnexa = {};
       ((c.annex && c.annex.vehicles) || []).forEach(function (v) { inAnexa[v.imei] = v; });
@@ -23768,48 +23771,29 @@ const pozitii = await r.json();</code></pre>
         var c = (companiesCache || []).find(function (x) { return x.id === id; }); if (c) c.auto_invoice = !!on;
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
+    // ── începe „banda de aparate neasignate" ──────────────────────────────────────────────────────
     // Banda de sus: câte aparate așteaptă să fie adoptate. Se scrie și când sunt zero (atunci se
     // golește), ca să nu rămână un avertisment vechi pe ecran după ce ai rezolvat.
+    //
+    // Adopția NU se mai face aici. Sub bandă a stat până acum o a doua listă de aparate neasignate,
+    // cu „Adoptă"/„Respinge" — rămasă de pe vremea când ecranul se numea „Companii & Dispozitive".
+    // Ecranul Dispozitive face de atunci același lucru, prin ACELAȘI buton de pe server, dar cu tot
+    // ce-ți trebuie ca să hotărăști: IMEI, semnal, ultima poziție, interfață CAN. Deci „Companii" îți
+    // SPUNE că ai ceva de rezolvat și te duce acolo; rezolvatul se face într-un singur loc.
     function _coBandaNeasignate(n) {
       var b = $('rax-co-alerta'); if (!b) return;
-      b.innerHTML = n ? '<div class="aiu-alerta warn" style="cursor:pointer;" onclick="raxCoSariLaNeasignate()">'
+      b.innerHTML = n ? '<div class="aiu-alerta warn" style="cursor:pointer;" onclick="raxDevDeschideNeasignate()">'
         + '<i class="fas fa-inbox"></i><span><b>' + (n === 1 ? 'Un aparat așteaptă să fie adoptat.' : n + ' aparate așteaptă să fie adoptate.') + '</b> '
         + (n === 1 ? 'Transmite deja, dar nu e la nicio firmă' : 'Transmit deja, dar nu sunt la nicio firmă')
-        + ' — ori e un client care așteaptă, ori un aparat străin. Apasă ca să ' + (n === 1 ? 'îl vezi' : 'le vezi') + '.</span></div>' : '';
+        + ' — ori e un client care așteaptă, ori un aparat străin. Apasă ca ' + (n === 1 ? 'să-l rezolvi' : 'să le rezolvi') + ' în Dispozitive.</span></div>' : '';
     }
-    window.raxCoSariLaNeasignate = function () {
-      var s = document.getElementById('rax-co-neasignate');
-      if (s && s.scrollIntoView) { try { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { s.scrollIntoView(); } }
-    };
     async function raxLoadUnassigned() {
-      var box = $('rax-co-unassigned');
       try {
         var list = await fetch('/api/unassigned-devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         _coBandaNeasignate(Array.isArray(list) ? list.length : 0);
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun vehicul neasignat.</div>'; return; }
-        box.innerHTML = list.map(function (d) {
-          var opts = companiesCache.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
-          return '<div class="raco-row"><span class="raco-row-t"><strong>' + esc(d.name || d.imei) + '</strong><span class="raco-row-s">' + esc(d.imei) + '</span></span>' +
-            '<select class="rax-field" id="raxasg_' + esc(d.imei) + '">' + opts + '</select>' +
-            '<button class="rax-btn primary" onclick="raxAssignDevice(\'' + esc(d.imei) + '\')" title="Adoptă — asignează la compania aleasă (devine vehicul, începe să stocheze date)"><i class="fas fa-check"></i> Adoptă</button>' +
-            '<button class="rax-btn" onclick="raxRejectDevice(\'' + esc(d.imei) + '\')" title="Respinge — arhivează și oprește stocarea datelor de la acest dispozitiv"><i class="fas fa-ban"></i> Respinge</button></div>';
-        }).join('');
-      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+      } catch (e) { _coBandaNeasignate(0); }
     }
-    window.raxAssignDevice = async function (imei) {
-      var sel = $('raxasg_' + imei); if (!sel) return;
-      await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: parseInt(sel.value) }) });
-      raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
-    };
-    // Respinge un dispozitiv neasignat → arhivare (oprește stocarea datelor; reversibil prin adopție ulterioară).
-    window.raxRejectDevice = async function (imei) {
-      if (!await raConfirm('Respingi dispozitivul ' + imei + '?\nSe arhivează și nu se mai stochează date de la el (reversibil dacă îl adopți ulterior).')) return;
-      try {
-        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'archived' }) }).then(function (x) { return x.json(); });
-        if (r && r.error) { alert(r.error); return; }
-        raxLoadUnassigned();
-      } catch (e) { alert('Eroare: ' + e.message); }
-    };
+    // ── sfârșit „banda de aparate neasignate" ──
 
     // ─── Modul „Dispozitive" (super-admin): toate / neasignate / active / arhivate + adoptă / respinge / mută / interfață CAN ───
     var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '', _raxAttempts = [], _raxStrict = false;
@@ -23846,6 +23830,12 @@ const pozitii = await r.json();</code></pre>
       raxRenderDevices();
     };
     window.raxDevFilter = function (k) { _raxDevFilter = k; raxRenderDevices(); };
+    // Chemat din banda de pe „Companii": deschide Dispozitive DIRECT pe aparatele neasignate. Filtrul
+    // se pune ÎNAINTE de a deschide secțiunea, ca randarea de după încărcare să-l prindă deja pus.
+    window.raxDevDeschideNeasignate = function () {
+      _raxDevFilter = 'unassigned';
+      if (window.raxAdminTab) raxAdminTab('devices');
+    };
     // ── începe „dispozitivele, pe firme" ───────────────────────────────────────────
     // Lista plată de IMEI-uri a devenit GRUPURI PE FIRMĂ (decizia lui Alin, 16.09): vindem pe firme,
     // deci vrem să vedem clienți, nu aparate. Rândul fiecărei firme spune câte are și dacă e ceva în
@@ -23923,7 +23913,10 @@ const pozitii = await r.json();</code></pre>
               '<button class="rax-btn" style="color:var(--text-muted)" onclick="raxDismissAttempt(\'' + esc(a.imei) + '\')"><i class="fas fa-xmark"></i> Ignoră</button></span></div>';
           }).join('') + '</div>'
         : '';
-      var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
+      // Adopția se face DOAR aici (banda de pe „Companii" trimite încoace), deci scrie pe ecran cum:
+      // alegi firma în coloana „Companie". Butonul are un nume — „Respinge" — dar adopția era doar o
+      // listă derulantă, fără nimic care s-o numească.
+      var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat. Ca să adopți unul, alege-i firma în coloana <b>Companie</b>; „Respinge" îl arhivează.</div>' : '') +
         '<div class="rax-dev-bar">' + '<button class="rax-btn primary" style="border-radius:20px;" onclick="raxDevAddOpen()"><i class="fas fa-plus"></i> Adaugă dispozitiv</button>' +
         chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('nosignal', 'Fără semnal', 'atentie') + chip('archived', 'Arhivate') +
         '<input class="rax-field rax-dev-search" placeholder="\uD83D\uDD0E nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';

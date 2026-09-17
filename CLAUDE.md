@@ -234,6 +234,21 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
   rând închis e mai rea decât una scrisă urât.
 
+### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)
+Pe „Companii" a stat un al doilea ecran de adopție („Vehicule neasignate", cu `raxAssignDevice` /
+`raxRejectDevice`), rămas de pe vremea când secțiunea se numea „Companii & Dispozitive". Apăsa
+ACELAȘI buton pe server (`PUT /api/devices/:imei/company`), dar fără IMEI, semnal, ultima poziție sau
+interfață CAN — deci hotărai cu mai puțin în față. **A fost șters, nu ascuns.**
+
+- Adopția se face DOAR în „Dispozitive", grupul **Neasignate**: alegi firma în coloana *Companie*;
+  „Respinge" arhivează. Banda de sus scrie pe ecran CUM, fiindcă adopția e o listă derulantă, nu un
+  buton cu nume.
+- Pe „Companii" a rămas **doar banda** (`_coBandaNeasignate`): spune câte aparate așteaptă și trimite
+  în Dispozitive prin **`raxDevDeschideNeasignate()`**, care pune filtrul `unassigned` ÎNAINTE de a
+  deschide secțiunea. `raxLoadUnassigned()` mai cere lista doar ca s-o NUMERE.
+- Orice îndemn de tipul „adoptă-le întâi din…" duce prin aceeași funcție. NU scrie o a doua cale.
+- Păzit de `verify_dispozitive.js` („într-un singur loc") + `verify_companii.js` (două cartonașe).
+
 ## Administrare: „Acasă" e tablou, nu loc de lucru (decizie Alin, 17.09)
 
 - **Cartonașele de pe „Acasă" sunt SUMAR**: cifra + starea, plus un rând **„Vezi detalii →"**

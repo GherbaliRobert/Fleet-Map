@@ -95,6 +95,46 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Aparatele neasignate se adoptă într-un singur loc: Dispozitive
+
+Alin, uitându-se la ecranul Companii: *„asta nu cumva ar trebui să facă parte din secțiunea
+Dispozitive? De ce este la Companii?"*
+
+**Ce era.** Pe Companii, jos, stătea un cartonaș **„Vehicule neasignate"**: o listă de aparate care au
+început să transmită dar nu sunt la nicio firmă, cu butoanele *Adoptă* și *Respinge*. Aceeași treabă
+o face de mult și ecranul **Dispozitive**, în grupul „Neasignate" de sus. Nu erau două unelte —
+era **aceeași unealtă, apăsând același buton pe server**, doar că una dintre ele îți arăta mai puțin:
+
+| | Companii → Vehicule neasignate | Dispozitive → Neasignate |
+|---|---|---|
+| Nume și IMEI | da | da |
+| Semnal (comunică / tăcut / fără semnal) | **nu** | da |
+| Ultima poziție | **nu** | da |
+| Interfață CAN | **nu** | da |
+| Semn de „problemă la montaj" | **nu** | da |
+
+Adică într-un loc hotărai orbește, în celălalt cu totul în față. Și amândouă scriau în același rând
+din bază. E aceeași poveste cu numele de mai jos: ecranul se numea cândva „Companii & Dispozitive" și
+chiar le ținea pe amândouă. Dispozitive a ieșit în pagina lui, dar bucata asta a rămas în urmă.
+
+**Ce e acum.** Cartonașul a fost **șters** (nu ascuns — codul lui nu mai există, ca să nu reapară).
+Pe Companii a rămas **banda portocalie de sus**, care spune ce e de rezolvat — *„4 aparate așteaptă
+să fie adoptate"* — și, apăsată, te duce în **Dispozitive, direct pe filtrul «Neasignate»**. Companii
+îți spune că ai ceva de făcut; Dispozitive e locul unde faci.
+
+Am adăugat și ceva ce lipsea: în Dispozitive, „Respinge" e un buton cu nume, dar **adopția era doar o
+listă derulantă**, fără nimic care s-o numească. Acum banda de acolo scrie explicit: *„Ca să adopți
+unul, alege-i firma în coloana Companie; «Respinge» îl arhivează."*
+
+**Ce NU am atins: „Mută între companii".** Aia rămâne pe Companii, și pe bună dreptate — mută
+**Vehicule, Utilizatori și Șoferi**, iar pentru ultimele două nu există alt loc în aplicație. Doar
+prima filă se suprapune cu Dispozitive, și nici aia complet: acolo muți unul câte unul, aici bifezi
+zece și le muți deodată. Ar fi fost ordine de dragul ordinii, cu o unealtă ciobită la capăt.
+
+- **Ce am schimbat:** un singur ecran unde se adoptă aparate; Companii doar te trimite acolo.
+- **Ce vede fondatorul:** cartonașul „Vehicule neasignate" a dispărut de pe Companii; banda de sus duce în Dispozitive.
+- **Ce vede clientul:** nimic — aparatele le înregistrăm și le adoptăm doar noi.
+
 ### FONDATOR · Pagina se numește ca rândul din meniu. Trei nume rămăseseră în urmă
 
 Alin: *„am dat pe cardul Companii și m-a dus în pagina «Companii & Dispozitive» — în meniul lateral am
