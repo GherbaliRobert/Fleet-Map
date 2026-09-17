@@ -21,6 +21,17 @@ Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 - **Iconuri: Font Awesome 6.5.1.** Sunt *glife de iconuri*, nu font de text — rămân pe Font Awesome (dacă le schimbi fontul, iconițele dispar).
 - (Panoul de debug pentru dezvoltatori rămâne monospace — nu e UI pentru clienți.)
 
+### Capcană: iconița colorată cu fundalul ei (verde pe verde)
+O regulă de tipul `.ceva i { color: var(--accent) }`, scrisă pentru iconița din TITLUL unei secțiuni,
+prinde și iconițele dinăuntrul **butoanelor** din acea secțiune. Pe un buton cu fundal `--accent`
+(`.rax-btn.primary`) iconița iese verde pe verde: **există, ocupă loc, dar n-o vezi** — și textul pare
+împins strâmb în buton. Așa a trăit „Client nou" din Companii (Alin, 17.09).
+
+- Regula: într-un container de butoane, iconița ia culoarea butonului — `i { color: inherit }` — și
+  doar apoi o cobori pe cele fără fundal (`.rax-btn:not(.primary) i { color: var(--text-muted) }`).
+- Când adaugi o regulă de culoare pe `i` într-un container, verifică dacă acel container ține și
+  butoane pline. Păzit punctual de `verify_companii.js`.
+
 ## Export rapoarte (Excel & PDF) — branding (OBLIGATORIU)
 
 **Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Tracks.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
@@ -254,6 +265,10 @@ interfață CAN — deci hotărai cu mai puțin în față. **A fost șters, nu 
 - **Cartonașele de pe „Acasă" sunt SUMAR**: cifra + starea, plus un rând **„Vezi detalii →"**
   (`.adash-go`). Un clic (pe rând sau pe cartonaș) duce în **pagina** secțiunii — exact unde duce și
   meniul din stânga. `raxDashCard(name)` nu face altceva decât `raxAdminTab(name)`.
+- **Toate patru arată la fel: conținut CENTRAT** (`align-items:center` + `text-align:center` pe
+  `.adash-card`), iar `.adash-go` are **`margin-top:auto`** — se lipește de fundul cartonașului.
+  Fără asta, cartonașele fără rând de stare (Dispozitive active, Arhivate) aveau „Vezi detalii" cu
+  19px mai sus decât celelalte. NU-i pune înapoi un `margin-top` fix (Alin, 17.09).
 - **O secțiune se deschide într-un SINGUR fel: pe tot ecranul.** NU reintroduce „deschide sub
   cartonașe" (fostul `subCarduri`, `#adash-bara`, `.adash-continua`, `.adash-card.deschis`). A doua
   cale înseamnă o stare de ținut minte — și de acolo a venit bug-ul cu „Dispozitive" rămas agățat sub

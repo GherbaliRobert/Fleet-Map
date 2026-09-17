@@ -147,7 +147,20 @@ T('se pune de fiecare dată când intri pe „Acasă"',
 T('și fiecare cartonaș arată spre o secțiune care are nume',
   perechi.every(p => !!NUME[p.card]), perechi.map(p => p.card + '→' + (NUME[p.card] || '?')).join(', '));
 
-console.log('\n7. Verdele din meniu stă pe pagina deschisă');
+console.log('\n7. Cele patru cartonașe arată la fel');
+// Erau aliniate la stânga, iar iconița din etichetă împingea textul cu câțiva pixeli — marginea
+// din stânga ieșea zimțată. Mai rău: cartonașele FĂRĂ rândul de stare (Dispozitive active,
+// Arhivate) aveau „Vezi detalii" cu 19px mai sus decât celelalte două — măsurat în browser
+// (233 vs. 214). Alin: „aliniază textele din carduri să fie la fel pe toate, centrare."
+const cardRegula = regula(html, '.adash-card {');
+T('conținutul cartonașului e centrat', /align-items: center/.test(cardRegula || ''), cardRegula);
+T('și textul la fel', /text-align: center/.test(cardRegula || ''));
+T('„Vezi detalii" e împins la fundul cartonașului', /#admin-dash \.adash-go\{[^}]*margin-top:auto/.test(css));
+T('deci stă pe aceeași linie oricâte rânduri are deasupra',
+  !/#admin-dash \.adash-go\{[^}]*margin-top:\s*\d/.test(css));
+T('rândul de stare dispare când e gol (altfel ar împinge degeaba)', /\.adash-sub:empty \{ display: none/.test(html));
+
+console.log('\n8. Verdele din meniu stă pe pagina deschisă');
 // Bug găsit de Alin (17.09): apăsai „Vezi detalii în Companii", ajungeai în Companii — și în meniu
 // rămânea aprins „Acasă". Erau două meniuri în cod: cel vechi, dinăuntrul panoului (`#admin-side`,
 // ascuns azi), și cel adevărat, din bara din stânga. Cartonașul îl aprindea doar pe primul.

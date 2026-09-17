@@ -98,6 +98,17 @@ T('regulile există în CSS-ul aplicației, nu împrăștiate în pagină', /\.r
 T('câmpurile au aceeași formă ca în Setări (1,5px + inel la focus)',
   /\.raco \.rax-field \{[^}]*1\.5px solid var\(--border\)/.test(css) &&
   /\.raco \.rax-field:focus \{[^}]*box-shadow: 0 0 0 3px/.test(css));
+// Iconița de pe butonul VERDE nu are voie să fie tot verde. Regula care face iconițele din capul
+// secțiunii verzi prindea și iconițele dinăuntrul butoanelor de acolo; pe „Client nou", care are
+// fundal verde, ieșea verde pe verde — invizibilă, dar ocupând loc, așa că textul părea împins
+// strâmb în buton (găsit de Alin, 17.09). Măsurat în browser: icon `rgb(63,224,125)` pe fundal
+// `rgb(63,224,125)`, pe amândouă temele.
+T('regula de titlu chiar face iconițele verzi (de-aici venea capcana)',
+  /\.raco \.raco-h i \{[^}]*color: var\(--accent\)/.test(css));
+T('dar în butoanele din cap iconița ia culoarea butonului',
+  /\.raco \.raco-h-act i \{[^}]*color: inherit/.test(css));
+T('iar pe butoanele fără fundal rămâne discretă',
+  /\.raco \.raco-h-act \.rax-btn:not\(\.primary\) i \{[^}]*color: var\(--text-muted\)/.test(css));
 // Numărăm doar cartonașele din MARKUP-ul ecranului Companii. Ecranul „Contracte" își construiește
 // cartonașul din JavaScript, ca text între ghilimele — de-aia cerem să NU fie precedat de ghilimea.
 // DOUĂ. Au fost patru, apoi trei, acum două, și de fiecare dată din același motiv — ecranul face un

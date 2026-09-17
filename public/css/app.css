@@ -2661,7 +2661,13 @@
     .raco .raco-h i { color: var(--accent); font-size: 13px; width: 16px; text-align: center; }
     /* Butoanele din capul secțiunii (Client nou, Excel) — la dreapta, pe același rând cu titlul. */
     .raco .raco-h-act { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-    .raco .raco-h-act i { width: auto; }
+    /* `color: inherit` NU e de formă. Regula de deasupra (`.raco .raco-h i`) e pentru iconița din
+       TITLUL secțiunii și o face verde — dar prindea și iconițele dinăuntrul butoanelor de aici.
+       Pe „Excel" nu se vedea (are rândul lui, de mai jos), însă „Client nou" are fundalul VERDE:
+       iconița ieșea verde pe verde, adică invizibilă. Era acolo, ocupa loc, dar n-o vedeai — de-aia
+       textul părea împins strâmb în buton (semnalat de Alin, 17.09). Acum iconița ia culoarea
+       textului butonului, oricare ar fi el. */
+    .raco .raco-h-act i { width: auto; color: inherit; }
     .raco .raco-h-act .rax-btn:not(.primary) i { color: var(--text-muted); }
     .raco .raco-sub { font-size: 11.5px; color: var(--text-muted); margin: -6px 0 12px; line-height: 1.45; }
     .raco .raco-count { font-size: 11.5px; font-weight: 700; color: var(--accent); }
@@ -3332,8 +3338,12 @@
 #admin-dash .adash-card{ position:relative; transition:border-color .15s, box-shadow .15s; }
 /* „Vezi detalii" — semnul că rândul de cifre duce undeva. Cartonașul întreg rămâne apăsabil (țintă
    mare), iar rândul ăsta spune ce se întâmplă când îl apasă: te duce în pagina secțiunii, din meniu. */
+/* `margin-top:auto` îl lipește de FUNDUL cartonașului. Fără asta, cartonașele fără rândul de stare
+   (Dispozitive active, Arhivate) îl aveau cu 19px mai sus decât celelalte două — patru rânduri
+   „Vezi detalii" la trei înălțimi diferite. Acum toate stau pe aceeași linie, oricâte rânduri au
+   deasupra. (Alin, 17.09) */
 #admin-dash .adash-go{
-  margin-top:8px; font-size:11.5px; font-weight:800; color:var(--accent);
+  margin-top:auto; padding-top:6px; font-size:11.5px; font-weight:800; color:var(--accent);
   display:inline-flex; align-items:center; gap:6px; }
 #admin-dash .adash-go i{ font-size:10px; transition:transform .15s; }
 #admin-dash .adash-card:hover .adash-go i{ transform:translateX(3px); }

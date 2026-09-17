@@ -95,6 +95,38 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Iconița de pe „Client nou" era verde pe verde. Și cartonașele s-au aliniat
+
+Alin: *„butonul Client nou din Companii se vede aiurea, refă-l"* și *„aliniază textele din carduri să
+fie la fel pe toate, centrare."*
+
+**Butonul.** L-am măsurat întâi la șase lățimi de fereastră (620–1500px): nu se taie, nu iese din
+cutie, nu se rupe pe două rânduri. Deci nu era de la aranjare. Era de la **culoare**: iconița de pe
+buton ieșea pictată `rgb(63, 224, 125)` — **exact verdele fundalului butonului**. Adică era acolo,
+ocupa locul ei, dar n-o vedeai; textul „Client nou" părea împins strâmb într-o parte.
+
+De unde venea: o regulă scrisă pentru iconița din **titlul** secțiunii („🏢 Companiile din platformă")
+le face verzi — și prindea și iconițele dinăuntrul butoanelor de lângă titlu. Pentru butonul alb
+(„Excel") exista deja o corectură; pentru cel verde, niciodată. Acum iconița ia culoarea **textului
+butonului**, oricare ar fi el.
+
+Am căutat apoi aceeași capcană **în tot panoul de administrare** — 12 ecrane × 2 teme, cu un scaner
+care compară culoarea fiecărei iconițe cu fundalul pe care stă. Mai era doar asta. (Prima variantă de
+scaner n-o prindea nici pe ea: sărea peste iconițele de lățime zero. Am reparat scanerul și l-am pus
+să demonstreze că prinde buba, înainte s-o repar.)
+
+**Cartonașele.** Două lucruri le făceau neîngrijite: textul lipit la stânga, cu iconița împingându-l
+cu câțiva pixeli (marginea ieșea zimțată), și — mai vizibil — **„Vezi detalii" stătea la înălțimi
+diferite**: cartonașele fără rând de stare (Dispozitive active, Arhivate) îl aveau cu 19px mai sus
+decât celelalte două. Măsurat, nu ghicit.
+
+Acum totul e centrat pe o axă, iar „Vezi detalii" e lipit de fundul cartonașului — deci cele patru
+rânduri sunt pe aceeași linie, oricâte rânduri au deasupra.
+
+- **Ce am schimbat:** o iconiță invizibilă a devenit vizibilă; cele patru cartonașe arată la fel.
+- **Ce vede fondatorul:** „Client nou" are iconiță; cartonașele de pe Acasă, centrate și aliniate.
+- **Ce vede clientul:** nimic — amândouă ecranele sunt ale noastre.
+
 ### AMÂNDOI · Rândul verde din meniu stă pe pagina deschisă. La client nu se mișca deloc
 
 Alin: *„dau pe cardul Companii, mă duce la Companii, dar selecția cu verde rămâne pe Acasă. Aș vrea

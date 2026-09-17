@@ -17964,7 +17964,10 @@ const pozitii = await r.json();</code></pre>
     #admin-dash { animation: adashIn .18s ease; }
     @keyframes adashIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
     .adash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-    .adash-card { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color .15s, transform .15s; font-family: inherit; }
+    /* Totul pe o singură axă, la mijloc (Alin, 17.09): cifra, eticheta, starea și „Vezi detalii" erau
+       lipite la stânga, iar iconița din etichetă împingea textul cu câțiva pixeli — patru cartonașe
+       cu marginea din stânga zimțată. Centrate, se citesc ca patru lucruri de același fel. */
+    .adash-card { display: flex; flex-direction: column; align-items: center; gap: 5px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; text-align: center; transition: border-color .15s, transform .15s; font-family: inherit; }
     .adash-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     .adash-num { font-size: 26px; font-weight: 800; color: var(--text-primary); line-height: 1; }
     .adash-lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; }
