@@ -6630,13 +6630,31 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   }
 });
 
+// Câte zile mai are istoricul unui aparat arhivat până se șterge de tot, și dacă a început deja să
+// se subțieze. Purjarea (`purgeArchivedPositions`, zilnic) șterge RÂNDURI mai vechi de
+// ARCHIVE_RETENTION_DAYS — deci istoricul se topește de la capătul vechi: începe când cea mai veche
+// poziție atinge termenul, și se termină când îl atinge și cea mai nouă. Socoteala se face AICI,
+// fiindcă termenul e o setare de server; ecranul doar arată cifra (nu-și face propria regulă).
+function _arhivaTermen(row) {
+  const zile = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
+  const ZI = 86400000, acum = Date.now();
+  const varsta = (t) => (t ? Math.floor((acum - new Date(t).getTime()) / ZI) : null);
+  const vNou = varsta(row.last_ts), vVechi = varsta(row.first_ts);
+  return {
+    ...row,
+    purge_total_zile: zile,
+    purge_zile: vNou == null ? null : Math.max(0, zile - vNou),  // până dispare TOT
+    purge_inceput: vVechi != null && vVechi >= zile              // cele mai vechi date se șterg deja
+  };
+}
+
 // Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
 app.get('/api/archived-devices', requireAuth, withScope, async (req, res) => {
   try {
     let rows = await db.getArchivedDevices();
     if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) rows = rows.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
-    res.json(rows);
+    res.json(rows.map(_arhivaTermen));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

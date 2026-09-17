@@ -95,6 +95,64 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Arhiva: butonul „Istoric" nu ducea nicăieri, iar „Restaurează" era invizibil
+
+Alin: *„hai să luăm și cardul Arhivate — ce rol are, cum ar trebui să funcționeze, unde duce și ce
+putem îmbunătăți."*
+
+**Ce e arhiva, pe scurt.** Cimitirul cu bilet de întoarcere. Când se încheie un contract, arhivezi
+aparatul: i se copiază **întâi** istoricul deoparte, abia apoi se oprește — i se taie conexiunea, iese
+din lista de aparate acceptate și dispare de pe hartă la toată lumea. De acolo îl poți restaura, îi
+poți vedea istoricul, sau îl poți șterge definitiv (ultima cere să tastezi numărul de înmatriculare).
+
+O precizare care merită spusă cum e: pozițiile unui aparat **activ** se țin 180 de zile. La arhivare se
+copiază ce a mai rămas, iar **acea copie** se ține 2 ani. Deci nu „2 ani de istoric", ci „ultimele
+~6 luni, păstrate 2 ani".
+
+**Bube găsite, două:**
+
+**1. Butonul „Istoric" nu făcea absolut nimic.** Două defecte suprapuse: scria în selectorul de vehicul
+al panoului **Hotspot** — nu al ecranului Traseu — iar lista aceea, oricum, **ascunde aparatele
+arhivate** (corect: n-au ce căuta în selectoarele de zi cu zi). Deci pe ecran scria „istoricul rămâne
+accesibil", iar singurul buton care ți-l dădea era mort. Ăsta e chiar rostul arhivării.
+
+Acum cere lista *cu* arhivate doar pentru drumul ăsta, pentru un vehicul anume, îl selectează, și scrie
+pe el **„(arhivat)"** — ca să știi de ce n-are date noi.
+
+**2. Butonul „Restaurează" era scris cu text închis pe fundal închis** — contrast 1,0 pe tema
+întunecată, măsurat. Îl puteai apăsa, dar nu-l vedeai. Aceeași boală cu iconița de la „Client nou", de
+azi-dimineață: culoarea *textului* e impusă global pentru fundal verde, dar **verdele** e rescris de
+mână pe fiecare ecran — vreo 12 copii. Ecranul care n-a prins niciuna rămâne cu text închis pe fundal
+închis. L-am pus în familia de butoane a casei, acolo unde trebuia să fie de la început.
+
+*(Am căutat cauza măsurând, nu privind: am pus browserul să-mi spună ce reguli câștigă. Prima mea
+bănuială — că lipsește o regulă globală — era greșită; am scos-o și am reparat cauza adevărată.)*
+
+**Ce am mai schimbat, din ce am discutat:**
+
+- **Cartonașul nu mai e portocaliu din construcție.** Portocaliul la noi înseamnă „ai ceva de
+  rezolvat", iar un aparat arhivat e un capăt normal de drum. Acum se aprinde **doar** când chiar e
+  ceva: istoric aproape de ștergere.
+- **Cartonașul are și rând de stare**, ca Firme și Utilizatori: *„istoric păstrat 2 ani"*, sau
+  *„2 cu istoricul pe ducă"* când e cazul.
+- **Ecranul e grupat pe firme și are căutare** — până acum era o listă plată. La trei aparate mergea,
+  la șaizeci nu mai găseai nimic. Aceleași chenare ca la „Dispozitive", cu sumar pe fiecare firmă și
+  buton „Deschide firma".
+- **Te avertizează înainte să pierzi date.** Pe fiecare rând scrie *„istoricul se șterge în N zile"*
+  când se apropie termenul, iar sus apare o bandă: *„2 aparate au istoricul pe ducă — dacă mai ai
+  nevoie de date, scoate-le acum dintr-un raport."* Până acum dispăreau tăcut, la doi ani.
+- **Textul de când lista e goală** trimitea în „Management → Vehicule". Sunt două locuri de unde se
+  arhivează; acum îl arată pe cel firesc, cu buton: „Deschide Dispozitive".
+
+Termenul se socotește pe **server**, nu în ecran — e o setare de server, iar o a doua socoteală în
+interfață s-ar desincroniza exact ca numele paginilor de azi-dimineață.
+
+Verificat pe aplicația pornită, cu aparate reale și poziții de vârste alese, pe ambele teme.
+
+- **Ce am schimbat:** arhiva își face treaba — ajungi la istoric, și afli din timp ce urmează să dispară.
+- **Ce vede fondatorul:** „Istoric" chiar deschide traseul; „Restaurează" se vede; ecran grupat pe firme, cu căutare și avertizări.
+- **Ce vede clientul:** nimic — ecranul e al nostru. (Rămâne de hotărât dacă el ar trebui să-și vadă aparatele arhivate.)
+
 ### FONDATOR · Iconița de pe „Client nou" era verde pe verde. Și cartonașele s-au aliniat
 
 Alin: *„butonul Client nou din Companii se vede aiurea, refă-l"* și *„aliniază textele din carduri să
@@ -7125,6 +7183,16 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **(voi) Clientul nu-și vede deloc aparatele arhivate.** Ecranul „Dispozitive arhivate" e doar în verticala
+  noastră. E în linie cu „aparatele le înregistrăm noi", dar dacă un client întreabă unde sunt datele de pe camionul
+  scos din flotă anul trecut, răspunsul trece obligatoriu prin noi. Îi dăm o privire doar-citire peste ale lui (fără
+  restaurare și fără ștergere), sau rămâne cum e? (ridicat 17.09, la analiza cartonașului „Arhivate")
+
+- [ ] **(eu) Fundalul verde al butonului principal e rescris de mână pe ~12 ecrane.** L-am pus în familia de butoane
+  a casei pentru ecranele de administrare, dar copiile vechi au rămas. Nu strică nimic azi — doar că următorul ecran
+  care uită o copie primește iar un buton invizibil. De curățat într-o trecere separată, cu măsurarea contrastului pe
+  amândouă temele după.
 
 - [ ] **(voi) „Rezumat raport" cere acum acord peste fond, dar nu cere loc RA Insight pe cont.** Întrebările libere
   merg doar la conturile cu RA Insight; rezumatul unui raport îl poate face oricine are voie la rapoarte, iar el se

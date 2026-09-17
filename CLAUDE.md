@@ -32,6 +32,21 @@ prinde și iconițele dinăuntrul **butoanelor** din acea secțiune. Pe un buton
 - Când adaugi o regulă de culoare pe `i` într-un container, verifică dacă acel container ține și
   butoane pline. Păzit punctual de `verify_companii.js`.
 
+### Aceeași capcană, pe BUTON: text închis pe fundal închis
+Regula globală de lizibilitate forțează pe orice `.btn-primary` textul închis `#06210F` — corect, e
+gândit pentru fundal verde. Dar **verdele nu vine de la ea**: în ecranele de administrare îl dă
+`.ra-camp .rax-btn.primary`, iar în restul aplicației e rescris de mână pe fiecare ecran
+(`#atab-vehicles`, `#atab-drivers`, `#atab-groups`, `#atab-alerts`, `#atab-maintenance`,
+`#atab-documente`, `.alr-foot`, `.mnt-foot`, `#atab-settings`, `.rol-nm-card` — vreo 12 copii).
+Un buton care nu prinde niciuna rămâne cu `background:transparent` de la `.ra-camp .btn-sm` și cu
+textul închis forțat: **contrast 1,0 pe tema întunecată** — butonul e acolo, se apasă, dar nu se vede.
+Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
+
+- Butonul principal are DOUĂ scrieri: `.rax-btn.primary` (nouă) și `.btn-sm.btn-primary` (veche, încă
+  folosită). Amândouă sunt acum în familia `.ra-camp`. Dacă adaugi un ecran, folosește-le de acolo —
+  **NU scrie a 13-a copie** de fundal verde.
+- Se prinde măsurând, nu privind: contrastul text/fundal, pe AMÂNDOUĂ temele.
+
 ## Export rapoarte (Excel & PDF) — branding (OBLIGATORIU)
 
 **Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Tracks.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
@@ -244,6 +259,25 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
   jos. Fiecare firmă are sumar („2 aparate · 1 de rezolvat") și buton **„Deschide firma"**.
 - **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
   rând închis e mai rea decât una scrisă urât.
+
+### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09)
+Arhivarea = contract încheiat: se copiază întâi istoricul în `positions_archive`, apoi se marchează
+`archived`, i se taie conexiunea, iese din allow-list și de pe harta live. Pozițiile unui aparat ACTIV
+se țin 180 de zile (`POSITION_RETENTION_DAYS`); copia din arhivă se ține **2 ani**
+(`ARCHIVE_RETENTION_DAYS`, implicit 730, purjare zilnică). Deci NU „2 ani de istoric", ci „ultimele
+~6 luni, păstrate 2 ani" — scrie-o așa oriunde o explici.
+
+- **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_inceput` pe fiecare rând
+  din `/api/archived-devices`). Ecranul doar arată cifra primită; NU-și face a doua regulă din zile.
+  Pragul de avertizare (`ARH_PRAG_ZILE = 60`) și cuvintele stau într-un singur loc, în `_arhTermen`.
+- **Butonul „Istoric"** trece prin `window._hpCerut` → `fillHistoryVehicle`, care cere lista CU
+  arhivate (`?includeArchived=1`) **doar** pentru drumul ăsta și selectează vehiculul cerut. Arhivatele
+  NU intră în selectoarele de zi cu zi. Nu scrie o a doua cale de umplut selectorul.
+- Aparatele sunt **grupate pe firme** (`_arhGrupuri`, aceleași `.rax-devgr` ca la „Dispozitive"),
+  „Fără firmă" la urmă; grup cu ceva de rezolvat = mereu deschis; există căutare.
+- Cartonașul de pe „Acasă" **nu poartă `adash-warn` din construcție** — arhivat e un capăt normal, nu
+  o problemă. Portocaliul se aprinde din `_adashArhiva`, doar când există istoric aproape de purjare.
+- Păzit de `verify_arhiva.js` (în `npm test`).
 
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)
 Pe „Companii" a stat un al doilea ecran de adopție („Vehicule neasignate", cu `raxAssignDevice` /

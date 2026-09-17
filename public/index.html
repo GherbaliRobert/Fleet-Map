@@ -1527,7 +1527,10 @@
               <button class="adash-card" data-super data-card="companies" onclick="raxDashCard('companies')"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span><span class="adash-sub" id="adash-s-companies"></span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
               <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span><span class="adash-sub" id="adash-s-users"></span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
               <button class="adash-card" data-super data-card="devices" onclick="raxDashCard('devices')"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
-              <button class="adash-card adash-warn" data-card="archived" onclick="raxDashCard('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
+              <!-- `adash-warn` (portocaliu) NU mai stă pe cartonaș din construcție: un aparat arhivat e
+                   un capăt normal de drum, nu o problemă — iar portocaliul la noi înseamnă „ai ceva de
+                   rezolvat". Se aprinde din JS, doar când chiar e ceva: istoric aproape de purjare. -->
+              <button class="adash-card" data-card="archived" onclick="raxDashCard('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span><span class="adash-sub" id="adash-s-archived"></span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
             </div>
             <!-- Cartonașele sunt SUMAR, nu loc de lucru (decizia lui Alin, 17.09): cifra și starea aici,
                  iar „Vezi detalii" te duce în pagina din meniu, unde se lucrează. Așa o secțiune se poate
@@ -3961,6 +3964,32 @@ const pozitii = await r.json();</code></pre>
               + ' · <span style="color:' + (rs ? 'var(--orange)' : 'var(--text-muted)') + ';">' + rs + (rs === 1 ? ' restanță' : ' restanțe') + '</span>'
             : 'toate în regulă';
         }
+        _adashArhiva(Number(c.archived_devices) || 0);
+      } catch (e) {}
+    }
+    // Rândul de stare al cartonașului „Arhivate" + portocaliul lui. Cifra singură nu spune nimic:
+    // ce contează la un aparat arhivat e cât mai are istoricul până se șterge definitiv (2 ani de la
+    // ultima poziție). Lista mare o cerem DOAR dacă există aparate arhivate — la zero n-are rost.
+    // Portocaliul se aprinde doar când chiar e ceva de rezolvat, nu din construcție.
+    async function _adashArhiva(n) {
+      var card = document.querySelector('#admin-dash .adash-card[data-card="archived"]');
+      var sub = document.getElementById('adash-s-archived');
+      if (card) card.classList.remove('adash-warn');
+      if (sub) sub.innerHTML = '';
+      if (!n || !sub) return;
+      try {
+        var rows = await fetch('/api/archived-devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!Array.isArray(rows)) return;
+        var peDucă = rows.filter(function (d) { return d.purge_zile != null && d.purge_zile > 0 && d.purge_zile <= ARH_PRAG_ZILE; }).length;
+        var sters = rows.filter(function (d) { return d.purge_zile != null && d.purge_zile <= 0; }).length;
+        if (peDucă) {
+          sub.innerHTML = '<span style="color:var(--orange);">' + peDucă + (peDucă === 1 ? ' cu istoricul pe ducă' : ' cu istoricul pe ducă') + '</span>';
+          if (card) card.classList.add('adash-warn');
+        } else if (sters) {
+          sub.textContent = sters + (sters === 1 ? ' fără istoric' : ' fără istoric');
+        } else {
+          sub.textContent = 'istoric păstrat 2 ani';
+        }
       } catch (e) {}
     }
     window.loadAdminDash = loadAdminDash;
@@ -3981,6 +4010,89 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Pagina „Dispozitive arhivate" ───
     var _archByImei = {}; // imei -> rândul arhivat (pentru confirmarea ștergerii definitive)
+    // ── începe „arhiva, pe firme" ─────────────────────────────────────────────────────────────────
+    // Era o listă plată, fără căutare — la trei aparate mergea, la șaizeci nu mai găseai nimic. Acum
+    // poartă același limbaj ca ecranul „Dispozitive": grupuri pe firmă (`.rax-devgr`), sumar pe grup
+    // și un grup cu ceva de rezolvat rămâne MEREU deschis. Decizia lui Alin, 17.09.
+    var _arhRows = [], _arhCauta = '';
+    // Cât mai are istoricul. Cuvintele și pragul stau AICI, într-un loc; cifra vine de la server
+    // (`purge_zile`, `purge_inceput`), fiindcă termenul e o setare de server, nu a ecranului.
+    var ARH_PRAG_ZILE = 60;
+    function _arhTermen(d) {
+      var z = d.purge_zile;
+      if (z == null) return null;                                    // n-are nicio poziție păstrată
+      if (z <= 0) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
+      if (z <= ARH_PRAG_ZILE) return { t: 'istoricul se șterge în ' + z + (z === 1 ? ' zi' : ' zile'), c: 'var(--orange)', rau: true };
+      if (d.purge_inceput) return { t: 'cele mai vechi date au început să se șteargă', c: 'var(--orange)', rau: true };
+      return null;
+    }
+    function _arhGrupuri(rows) {
+      var m = {};
+      rows.forEach(function (d) {
+        var k = d.company_id == null ? '_fara' : String(d.company_id);
+        if (!m[k]) m[k] = { k: k, nume: d.company_name || 'Fără firmă', coId: d.company_id, dev: [] };
+        m[k].dev.push(d);
+      });
+      var g = Object.keys(m).map(function (k) { return m[k]; });
+      // „Fără firmă" la urmă: restul, alfabetic. Aparatele fără firmă arhivate nu cer nimic de la nimeni.
+      g.sort(function (a, b) {
+        if (a.k === '_fara') return 1; if (b.k === '_fara') return -1;
+        return a.nume.localeCompare(b.nume, 'ro');
+      });
+      return g;
+    }
+    function _arhRandHtml(d) {
+      var fmtD = function (s) { if (!s) return '–'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return '–'; } };
+      var span = (d.first_ts && d.last_ts) ? (fmtD(d.first_ts) + ' – ' + fmtD(d.last_ts)) : '–';
+      var te = _arhTermen(d);
+      return '<div class="arch-row">'
+        + '<div class="arch-main"><div class="arch-name"><strong>' + _ssEsc(d.name || d.plate || d.imei) + '</strong>'
+        + (d.plate ? ' <span class="arch-plate">' + _ssEsc(d.plate) + '</span>' : '') + '</div>'
+        + '<div class="arch-sub">IMEI ' + _ssEsc(d.imei) + '</div></div>'
+        + '<div class="arch-meta"><div><i class="fas fa-database" style="opacity:.6;"></i> ' + (Number(d.archived_positions) || 0).toLocaleString('ro-RO') + ' poziții</div>'
+        + '<div class="arch-span">' + span + '</div>'
+        + (te ? '<div class="arch-term" style="color:' + te.c + ';"><i class="fas fa-hourglass-half"></i> ' + te.t + '</div>' : '')
+        + '</div>'
+        + '<div class="arch-actions">'
+        + '<button class="btn-sm" onclick="archViewHistory(\'' + _ssEsc(d.imei) + '\')" title="Vezi traseul istoric"><i class="fas fa-route"></i> Istoric</button>'
+        + '<button class="btn-sm btn-primary" onclick="archRestore(\'' + _ssEsc(d.imei) + '\',this)" title="Reactivează dispozitivul"><i class="fas fa-undo"></i> Restaurează</button>'
+        + '<button class="btn-sm" style="background:var(--red);border-color:var(--red);color:#fff;" onclick="archDelete(\'' + _ssEsc(d.imei) + '\',this)" title="Șterge definitiv din baza de date (ireversibil)"><i class="fas fa-trash"></i> Șterge</button>'
+        + '</div></div>';
+    }
+    function _arhRandeaza() {
+      var host = document.getElementById('admin-tab-archived'); if (!host) return;
+      var q = (_arhCauta || '').trim();
+      var rows = _arhRows.filter(function (d) {
+        return !q || (window.raCauta ? raCauta(q, d.name, d.plate, d.imei, d.company_name)
+          : (String(d.name || '') + ' ' + String(d.plate || '') + ' ' + String(d.imei) + ' ' + String(d.company_name || '')).toLowerCase().indexOf(q.toLowerCase()) >= 0);
+      });
+      var peDucă = _arhRows.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
+      var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). Istoricul lor de până atunci rămâne accesibil și e păstrat <strong>2 ani</strong>.</div>'
+        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> După termen se șterge definitiv — dacă mai ai nevoie de date, scoate-le acum dintr-un raport.</div>' : '')
+        + '<div class="rax-dev-bar"><input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / firmă" value="' + _ssEsc(_arhCauta || '') + '" oninput="_arhCautaSet(this.value)"></div>';
+      if (!rows.length) {
+        host.innerHTML = cap + '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun aparat arhivat care să se potrivească.</div>';
+        return;
+      }
+      host.innerHTML = cap + _arhGrupuri(rows).map(function (gr) {
+        var pb = gr.dev.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
+        // Un grup cu ceva de rezolvat stă MEREU deschis, oricâte firme ar fi (vezi CLAUDE.md).
+        var deschis = !!q || pb > 0 || _arhGrupuri(rows).length <= 5;
+        var sumar = gr.dev.length + (gr.dev.length === 1 ? ' aparat' : ' aparate')
+          + (pb ? ' · <b style="color:var(--orange)">' + pb + ' cu istoricul pe ducă</b>' : '');
+        return '<div class="rax-devgr">'
+          + '<div class="rax-devgr-h" onclick="_raxDevToggleGr(this)">'
+          + '<i class="fas fa-chevron-' + (deschis ? 'down' : 'right') + '"></i>'
+          + '<strong>' + _ssEsc(gr.nume) + '</strong>'
+          + '<span class="rax-devgr-n">' + sumar + '</span>'
+          + (gr.coId != null ? '<button class="rax-btn" onclick="event.stopPropagation();raxOpenCompanyDetail(' + gr.coId + ')"><i class="fas fa-building"></i> Deschide firma</button>' : '')
+          + '</div>'
+          + '<div class="rax-devgr-b" style="display:' + (deschis ? 'block' : 'none') + ';">'
+          + '<div class="arch-list">' + gr.dev.map(_arhRandHtml).join('') + '</div>'
+          + '</div></div>';
+      }).join('');
+    }
+    window._arhCautaSet = function (v) { _arhCauta = v; _arhRandeaza(); };
     async function loadArchivedDevices() {
       var host = document.getElementById('admin-tab-archived');
       if (!host) return;
@@ -3988,33 +4100,22 @@ const pozitii = await r.json();</code></pre>
       var rows = [];
       try { var r = await fetch('/api/archived-devices'); rows = await r.json(); } catch (e) { host.innerHTML = '<div style="color:#ef4444;padding:12px;">Eroare la încărcare.</div>'; return; }
       _archByImei = {}; if (Array.isArray(rows)) rows.forEach(function (d) { _archByImei[d.imei] = d; }); // pt confirmarea ștergerii
-      if (!Array.isArray(rows) || !rows.length) {
+      _arhRows = Array.isArray(rows) ? rows : [];
+      if (!_arhRows.length) {
+        _arhCauta = '';
+        // Sunt DOUĂ locuri de unde se arhivează, iar textul ăsta îl pomenea doar pe cel mai ascuns
+        // (un buton mic pe rândul vehiculului). Locul firesc e „Dispozitive", de când aparatele stau
+        // acolo grupate pe firme — deci pe el îl scriem întâi, și îl facem buton.
         host.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:36px 12px;"><i class="fas fa-box-open" style="font-size:34px;opacity:.35;"></i>'
-          + '<div style="margin-top:12px;font-weight:600;">Niciun dispozitiv arhivat</div>'
-          + '<div style="font-size:12px;margin-top:6px;">Arhivezi un dispozitiv din <strong>Management → Vehicule</strong> când se încheie un contract. Datele lui vechi se păstrează 2 ani.</div></div>';
+          + '<div style="margin-top:12px;font-weight:600;">Niciun aparat arhivat</div>'
+          + '<div style="font-size:12px;margin-top:6px;line-height:1.6;">Arhivezi un aparat când se încheie un contract: nu mai primește date, dar istoricul lui de până atunci se păstrează <strong>2 ani</strong>.</div>'
+          + '<div style="margin-top:14px;"><button class="rax-btn" onclick="raxAdminTab(\'devices\')"><i class="fas fa-microchip"></i> Deschide Dispozitive</button></div></div>';
         return;
       }
-      var fmtD = function (s) { if (!s) return '–'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return '–'; } };
-      var html = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). Istoricul vechi rămâne accesibil și e păstrat <strong>2 ani</strong>.</div>';
-      html += '<div class="arch-list">';
-      rows.forEach(function (d) {
-        var span = (d.first_ts && d.last_ts) ? (fmtD(d.first_ts) + ' – ' + fmtD(d.last_ts)) : '–';
-        html += '<div class="arch-row">'
-          + '<div class="arch-main"><div class="arch-name"><strong>' + _ssEsc(d.name || d.plate || d.imei) + '</strong>'
-          + (d.plate ? ' <span class="arch-plate">' + _ssEsc(d.plate) + '</span>' : '') + '</div>'
-          + '<div class="arch-sub">IMEI ' + _ssEsc(d.imei) + (d.company_name ? ' · ' + _ssEsc(d.company_name) : '') + '</div></div>'
-          + '<div class="arch-meta"><div><i class="fas fa-database" style="opacity:.6;"></i> ' + (Number(d.archived_positions) || 0).toLocaleString('ro-RO') + ' poziții</div>'
-          + '<div class="arch-span">' + span + '</div></div>'
-          + '<div class="arch-actions">'
-          + '<button class="btn-sm" onclick="archViewHistory(\'' + _ssEsc(d.imei) + '\')" title="Vezi traseul istoric"><i class="fas fa-route"></i> Istoric</button>'
-          + '<button class="btn-sm btn-primary" onclick="archRestore(\'' + _ssEsc(d.imei) + '\',this)" title="Reactivează dispozitivul"><i class="fas fa-undo"></i> Restaurează</button>'
-          + '<button class="btn-sm" style="background:var(--red);border-color:var(--red);color:#fff;" onclick="archDelete(\'' + _ssEsc(d.imei) + '\',this)" title="Șterge definitiv din baza de date (ireversibil)"><i class="fas fa-trash"></i> Șterge</button>'
-          + '</div></div>';
-      });
-      html += '</div>';
-      host.innerHTML = html;
+      _arhRandeaza();
     }
     window.loadArchivedDevices = loadArchivedDevices;
+    // ── sfârșit „arhiva, pe firme" ──
 
     async function archRestore(imei, btn) {
       if (!await raConfirm('Restaurezi dispozitivul?\nVa reîncepe să primească și să stocheze date GPS.')) return;
@@ -4052,17 +4153,23 @@ const pozitii = await r.json();</code></pre>
     }
     window.archDelete = archDelete;
 
+    // ── începe „istoricul unui aparat arhivat" ────────────────────────────────────────────────────
+    // Butonul „Istoric" de pe un rând arhivat. NU făcea nimic, din două motive suprapuse (găsite
+    // 17.09, la analiza cartonașului „Arhivate"):
+    //   1. scria în `#hs-imei` — selectorul de vehicul al panoului HOTSPOT, nu al ecranului Traseu
+    //      (ăla e `#history-imei`). Deci nimerea un element din altă parte, care nici nu era deschis.
+    //   2. chiar dacă l-ar fi nimerit, lista aia vine din `/api/devices`, care ASCUNDE arhivatele —
+    //      pe bună dreptate, n-au ce căuta în selectoarele de zi cu zi. Deci vehiculul n-ar fi fost
+    //      acolo oricum, iar `sel.value = imei` pe o opțiune inexistentă nu face nimic, în tăcere.
+    // Pe ecran scria „Istoricul vechi rămâne accesibil", iar singurul buton care ți-l dădea era mort.
+    // Acum cerem lista CU arhivate doar pentru drumul ăsta (`_hpCerut`), iar `fillHistoryVehicle`
+    // selectează fix vehiculul cerut. Nu se adaugă o a doua cale de umplut selectorul.
     function archViewHistory(imei) {
-      closeUsersModal();
+      window._hpCerut = String(imei);
       try { showView('traseu'); } catch (e) {}
-      setTimeout(function () {
-        try {
-          var sel = document.getElementById('hs-imei');
-          if (sel) { sel.value = imei; sel.dispatchEvent(new Event('change', { bubbles: true })); }
-        } catch (e) {}
-      }, 250);
     }
     window.archViewHistory = archViewHistory;
+    // ── sfârșit „istoricul unui aparat arhivat" ──
 
     // Ierarhie utilizatori (super-admin): Companie ▸ Admini ▸ Useri normali, cu filtru pe companie.
     var _usersFilter = '';
@@ -14811,11 +14918,17 @@ const pozitii = await r.json();</code></pre>
     async function fillHistoryVehicle() {
       const p = document.getElementById('history-panel'); if (p) p.classList.remove('hp-collapsed'); // la deschidere arată filtrele
       const sel = document.getElementById('history-imei'); if (!sel) return;
-      let list = []; try { list = await (await fetch('/api/devices')).json(); } catch (e) {}
+      // Arhivatele NU intră în selector — ar umple lista de zi cu zi cu vehicule care nu mai transmit.
+      // Singura excepție: când vii din „Dispozitive arhivate" → „Istoric", pentru UN vehicul anume.
+      const cerut = window._hpCerut ? String(window._hpCerut) : null;
+      window._hpCerut = null;
+      let list = []; try { list = await (await fetch('/api/devices' + (cerut ? '?includeArchived=1' : ''))).json(); } catch (e) {}
       const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Când lista poartă și arhivate, scrie-o pe rând: altfel n-ai cum ști de ce vehiculul ăla n-are date noi.
       sel.innerHTML = list.length
-        ? list.map(d => `<option value="${esc(d.imei)}">${esc(d.name || d.imei)}${d.plate ? ' · ' + esc(d.plate) : ''}</option>`).join('')
+        ? list.map(d => `<option value="${esc(d.imei)}">${esc(d.name || d.imei)}${d.plate ? ' · ' + esc(d.plate) : ''}${d.status === 'archived' ? ' (arhivat)' : ''}</option>`).join('')
         : '<option value="">— niciun vehicul —</option>';
+      if (cerut && list.some(d => String(d.imei) === cerut)) { selectedImei = cerut; hpChecked.clear(); hpChecked.add(cerut); }
       if (selectedImei && list.some(d => String(d.imei) === String(selectedImei))) sel.value = selectedImei;
       else if (list.length) { sel.value = list[0].imei; selectedImei = list[0].imei; }
       hpSetVehicleLabel(selectedImei);
@@ -17988,14 +18101,20 @@ const pozitii = await r.json();</code></pre>
     .adash-sec .adash-arr { font-size: 12px; opacity: .4; }
     .adash-sec:hover .adash-arr { opacity: 1; color: var(--accent); }
     /* Listă dispozitive arhivate */
-    .arch-note { font-size: 12px; color: var(--text-muted); background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
-    .arch-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+    /* Nota de lămurire era portocalie — culoarea de „ai ceva de rezolvat" pusă pe o simplă explicație.
+       Acum e neutră, iar portocaliul a rămas doar pentru ce chiar cere o mișcare: istoricul pe ducă. */
+    .arch-note { font-size: 12px; color: var(--text-muted); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.55; }
+    .arch-note-warn { color: var(--text-primary); background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); }
+    /* Fără derulare proprie: lista stă acum în grupuri pe firmă, iar zona de administrare are deja
+       derularea ei — două bare de derulare una în alta sunt o capcană, nu o comoditate. */
+    .arch-list { display: flex; flex-direction: column; gap: 8px; }
     .arch-row { display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; flex-wrap: wrap; }
     .arch-main { flex: 1; min-width: 150px; }
     .arch-plate { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: rgba(255,255,255,.08); }
     .arch-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
     .arch-meta { font-size: 12px; min-width: 110px; }
     .arch-span { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .arch-term { font-size: 11px; font-weight: 700; margin-top: 3px; }
     .arch-actions { display: flex; gap: 6px; }
     @media (max-width: 640px) {
       .adash-cards { grid-template-columns: repeat(2, 1fr); }

@@ -3299,10 +3299,16 @@
 .ra-camp .rax-ico-btn{ min-width:34px; padding:6px 9px; }
 .ra-camp .rax-btn:hover, .ra-camp .btn-sm:hover, .ra-camp .rax-ico-btn:hover{
   border-color:var(--accent); color:var(--accent); }
-.ra-camp .rax-btn.primary, .ra-camp .add-user-form button{
+/* Butonul principal are DOUĂ scrieri în casă: `.rax-btn.primary` (cea nouă) și `.btn-sm.btn-primary`
+   (cea veche, încă folosită — de pildă „Restaurează" din Dispozitive arhivate). Aici era trecută doar
+   prima, iar a doua cădea pe `background:transparent` de mai sus. Peste asta, o regulă globală de
+   lizibilitate forțează pe orice `.btn-primary` textul închis `#06210F`, gândit pentru fundal verde:
+   rezultatul era text închis pe fundal închis — contrast 1,0 pe tema întunecată, măsurat (Alin, 17.09).
+   Butonul exista, îl puteai apăsa, dar nu-l vedeai. Amândouă scrierile intră acum în aceeași familie. */
+.ra-camp .rax-btn.primary, .ra-camp .btn-sm.btn-primary, .ra-camp .add-user-form button{
   background:var(--accent); border-color:var(--accent); color:#06210f;
   box-shadow:0 2px 10px color-mix(in srgb, var(--accent) 24%, transparent); }
-.ra-camp .rax-btn.primary:hover, .ra-camp .add-user-form button:hover{
+.ra-camp .rax-btn.primary:hover, .ra-camp .btn-sm.btn-primary:hover, .ra-camp .add-user-form button:hover{
   color:#06210f; box-shadow:0 3px 14px color-mix(in srgb, var(--accent) 34%, transparent); }
 .ra-camp .rax-btn.danger, .ra-camp .rax-ico-btn.danger, .ra-camp .btn-danger{
   border-color:color-mix(in srgb, var(--red) 55%, transparent); color:var(--red); background:transparent; }
