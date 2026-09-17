@@ -248,7 +248,13 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **O SINGURĂ listă de secțiuni: `_RAX_TABURI`**, ascunsă/arătată prin `_raxAscundeTaburile(id)`.
   Erau trei, scrise de mână, iar a treia rămăsese fără `devices` și `inventar`. O secțiune nouă se
   adaugă într-un singur loc.
-- Păzit de `verify_acasa.js`.
+- **NUMELE secțiunii = numele rândului din meniu**, ținut tot într-un singur loc: **`_RAX_NUME`**.
+  Titlul paginii (`#admin-title`) și eticheta „Vezi detalii în …" de pe cartonaș (`_raxDashEtichete`)
+  se iau amândouă de acolo. Erau scrise separat și se desincronizaseră (Alin, 17.09): „Companii"
+  deschidea o pagină numită „Companii & Dispozitive", „Dispozitive" una numită „Dispozitive
+  (super-admin)" (jargon pe ecran), iar „Inventar dispozitive" lipsea din listă → pagina se numea
+  „Administrare". NU scrie numele secțiunii de mână nicăieri altundeva.
+- Păzit de `verify_acasa.js`, care compară `_RAX_NUME` cu etichetele rândurilor `goSistem('…')` din meniu.
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

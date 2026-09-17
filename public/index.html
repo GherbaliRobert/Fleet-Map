@@ -3817,6 +3817,20 @@ const pozitii = await r.json();</code></pre>
       dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare',
       demoreq: 'admin-tab-demoreq'
     };
+    // NUMELE secțiunilor — tot o singură listă, și ea. Numele de aici trebuie să fie IDENTIC cu cel
+    // scris pe rândul din meniul din stânga: e același loc, deci același nume. Erau scrise separat și
+    // rămăseseră în urmă (Alin, 17.09): din meniu apăsai „Companii" și pe pagină scria „Companii &
+    // Dispozitive" (de pe vremea când secțiunea le ținea pe amândouă), „Dispozitive" scria „Dispozitive
+    // (super-admin)" — jargon de-al nostru pe ecran — iar „Inventar dispozitive" lipsea cu totul, așa
+    // că pagina lui se numea „Administrare". Păzit de `verify_acasa.js`, care le compară cu meniul.
+    const _RAX_NUME = {
+      contracte: 'Contracte', companies: 'Companii', devices: 'Dispozitive',
+      inventar: 'Inventar dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori',
+      archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele',
+      agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport',
+      dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live',
+      demoreq: 'Cereri demo'
+    };
     // Ascunde TOATE secțiunile, lăsând-o deschisă doar pe cea cerută (sau niciuna, cu `null`).
     function _raxAscundeTaburile(deschisId) {
       Object.keys(_RAX_TABURI).forEach(function (k) {
@@ -3835,11 +3849,10 @@ const pozitii = await r.json();</code></pre>
       if ((name === 'companies' || name === 'accounts' || name === 'contracte') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
       var map = _RAX_TABURI;
-      var titles = { contracte: 'Contracte', companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       _raxAscundeTaburile(map[name]);
       _raxSideActive(name);
-      var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
+      var t = document.getElementById('admin-title'); if (t) t.textContent = _RAX_NUME[name] || 'Administrare';
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
         if (window.raxCoNouToggle) window.raxCoNouToggle(false);   // traseul „client nou" pornește strâns
@@ -3886,9 +3899,7 @@ const pozitii = await r.json();</code></pre>
     };
 
     // Acasă: arată cardurile-sumar + reîncarcă statisticile (meniul lateral rămâne mereu vizibil).
-    // ── începe „Cartonașele care se deschid pe loc" ───────────────────────────────────────────────
-    // Cartonașele de pe „Acasă" te duceau în alt ecran, iar cifrele dispăreau. Acum secțiunea se
-    // deschide CHIAR SUB ele: rămâi pe pagina de start, vezi în continuare câte companii ai, și
+    // ── începe „Cartonașele, sumar care duce în pagină" ───────────────────────────────────────────
     // Cartonașul e SUMAR, nu loc de lucru: cifra și starea stau aici, iar un clic te duce în pagina
     // secțiunii, din meniu — acolo se lucrează. Înainte, secțiunea se deschidea CHIAR SUB cartonașe, ca
     // să nu se piardă cifrele; între timp fiecare pagină și-a căpătat propriul sumar (pastile cu numere,
@@ -3898,12 +3909,25 @@ const pozitii = await r.json();</code></pre>
       if (!name) return;
       raxAdminTab(name);
     };
+    // Pe cartonaș scrie UNDE te duce, cu numele din `_RAX_NUME` — adică exact numele rândului din
+    // meniu. Nu scrie de mână numele secțiunii pe cartonaș: exact așa au ajuns pagina și meniul să
+    // se numească diferit („Dispozitive active" ducea într-o pagină numită „Dispozitive (super-admin)").
+    function _raxDashEtichete() {
+      document.querySelectorAll('#admin-dash .adash-card').forEach(function (b) {
+        var nume = _RAX_NUME[b.getAttribute('data-card')];
+        var go = b.querySelector('.adash-go');
+        if (!nume || !go) return;
+        go.textContent = 'Vezi detalii în ' + nume + ' ';
+        go.insertAdjacentHTML('beforeend', '<i class="fas fa-arrow-right"></i>');
+      });
+    }
     // ── sfârșit „Cartonașele, sumar care duce în pagină" ──
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
       _raxAscundeTaburile(null);
       _raxSideActive('dash');
       var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';
+      _raxDashEtichete();
       if (window.loadAdminDash) window.loadAdminDash();
     };
 

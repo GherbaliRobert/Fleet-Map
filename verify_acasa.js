@@ -99,6 +99,54 @@ T('nu mai există nicio listă scrisă de mână de id-uri „admin-tab-…"',
 T('„Acasă" închide orice secțiune rămasă deschisă',
   /window\.raxAdminHome = function \(\) \{[\s\S]{0,260}_raxAscundeTaburile\(null\)/.test(html));
 
+console.log('\n5. Pagina se numește ca rândul din meniu — nu altfel');
+// Bug găsit de Alin (17.09): apăsai „Companii" și ajungeai într-o pagină numită „Companii &
+// Dispozitive" (nume rămas de pe vremea când secțiunea le ținea pe amândouă); „Dispozitive" se
+// numea „Dispozitive (super-admin)" — jargon de-al nostru pe ecran; iar „Inventar dispozitive"
+// lipsea din listă, deci pagina lui se numea „Administrare". Trei nume scrise separat de meniu.
+T('numele secțiunilor stau într-o singură listă', /const _RAX_NUME = \{/.test(html));
+T('și titlul paginii se ia de acolo',
+  /textContent = _RAX_NUME\[name\] \|\| 'Administrare'/.test(html));
+T('nu mai există o listă de titluri scrisă separat', !/var titles = \{/.test(html));
+
+// citim lista din sursă și o comparăm cu rândurile din meniul din stânga
+const dinLista = (nume) => {
+  const b = (html.match(new RegExp('const ' + nume + ' = \\{([\\s\\S]*?)\\n    \\};')) || [])[1] || '';
+  const o = {};
+  b.replace(/([a-z]+)\s*:\s*'([^']*)'/g, (_, k, v) => { o[k] = v; return ''; });
+  return o;
+};
+const TABURI = dinLista('_RAX_TABURI'), NUME = dinLista('_RAX_NUME');
+T('lista de nume e citibilă', Object.keys(NUME).length > 10, String(Object.keys(NUME).length));
+T('fiecare secțiune are un nume', Object.keys(TABURI).every(k => !!NUME[k]),
+  Object.keys(TABURI).filter(k => !NUME[k]).join(', ') || '—');
+T('și niciun nume în plus, fără secțiune', Object.keys(NUME).every(k => !!TABURI[k]),
+  Object.keys(NUME).filter(k => !TABURI[k]).join(', ') || '—');
+T('niciun nume nu poartă jargon de-al nostru pe ecran',
+  Object.values(NUME).every(v => !/super[- ]?admin|tab|admin-tab/i.test(v)),
+  Object.entries(NUME).filter(([, v]) => /super[- ]?admin|tab/i.test(v)).map(([k]) => k).join(', ') || '—');
+
+// rândurile din meniul din stânga: `goSistem('x')` + eticheta scrisă pe ele
+const MENIU = {};
+(html.match(/<button class="nav-item nav-sub[\s\S]{0,220}?<\/button>/g) || []).forEach(b => {
+  const k = (b.match(/goSistem\('([a-z]+)'\)/) || [])[1];
+  const et = (b.match(/<span>([^<]+)<\/span>/) || [])[1];
+  if (k && et) MENIU[k] = et.replace(/&amp;/g, '&').trim();
+});
+T('rândurile din meniu se pot citi', Object.keys(MENIU).length >= 12, Object.keys(MENIU).join(', '));
+const nepotrivite = Object.keys(MENIU).filter(k => TABURI[k] && NUME[k] !== MENIU[k])
+  .map(k => k + ': meniu „' + MENIU[k] + '" vs. pagină „' + NUME[k] + '"');
+T('pagina poartă exact numele rândului din meniu', nepotrivite.length === 0, nepotrivite.join(' | '));
+
+console.log('\n6. Cartonașul spune UNDE te duce');
+T('eticheta de pe cartonaș se ia din aceeași listă',
+  /function _raxDashEtichete\(\)[\s\S]{0,420}_RAX_NUME\[b\.getAttribute\('data-card'\)\]/.test(html));
+T('și scrie „Vezi detalii în <secțiune>"', /'Vezi detalii în ' \+ nume/.test(html));
+T('se pune de fiecare dată când intri pe „Acasă"',
+  /window\.raxAdminHome = function \(\) \{[\s\S]{0,320}_raxDashEtichete\(\)/.test(html));
+T('și fiecare cartonaș arată spre o secțiune care are nume',
+  perechi.every(p => !!NUME[p.card]), perechi.map(p => p.card + '→' + (NUME[p.card] || '?')).join(', '));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

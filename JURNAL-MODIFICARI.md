@@ -95,6 +95,38 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Pagina se numește ca rândul din meniu. Trei nume rămăseseră în urmă
+
+Alin: *„am dat pe cardul Companii și m-a dus în pagina «Companii & Dispozitive» — în meniul lateral am
+doar Companii în Business și Dispozitive în Gestiune… adică nu știu ce s-a întâmplat. La fel, cardul
+Dispozitive active deschide «Dispozitive (super-admin)»… ceva nu mi se pare în regulă."*
+
+**Ce era.** Numele scris în capul paginii era ținut într-o listă **separată** de numele scris pe rândul
+din meniu. Aceeași secțiune, două nume, scrise în două locuri — deci au apucat să se despartă:
+
+| Apeși în meniu | Ajungeai într-o pagină numită | De ce |
+|---|---|---|
+| Companii | **Companii & Dispozitive** | Nume rămas de pe vremea când secțiunea le ținea pe amândouă. Între timp Dispozitive și-a luat pagina lui, dar numele n-a fost schimbat. |
+| Dispozitive | **Dispozitive (super-admin)** | Jargon de-al nostru ajuns pe ecran. „super-admin" e un cuvânt din codul aplicației, n-are ce căuta în titlu. |
+| Inventar dispozitive | **Administrare** | Pur și simplu lipsea din listă, iar aplicația punea numele de rezervă. |
+
+Nu era stricat nimic — ajungeai fix unde trebuia. Dar scria altceva decât apăsaseși, și de-aia ai
+avut senzația că s-a întâmplat ceva.
+
+**Ce e acum.** Numele stă **într-un singur loc** (`_RAX_NUME`), lângă lista de secțiuni pe care am
+făcut-o ieri. Capul paginii îl ia de acolo, deci nu mai are cum să scrie altceva decât rândul din
+meniu. Proba `verify_acasa.js` citește rândurile din meniu și le compară unul câte unul cu numele
+paginilor — dacă se despart iar, pică înainte să ajungă la voi.
+
+**Și pe cartonaș scrie unde te duce.** Rândul „Vezi detalii" spune acum **numele secțiunii**, luat din
+aceeași listă: *„Vezi detalii în Dispozitive"*, *„Vezi detalii în Dispozitive arhivate"*. Cartonașul se
+cheamă „Dispozitive active" fiindcă numără aparatele care merg; pagina se cheamă „Dispozitive" fiindcă
+le ține pe toate — acum îți spune el însuși unde ajungi, înainte să apeși.
+
+- **Ce am schimbat:** un singur nume per secțiune, scris o singură dată, verificat automat.
+- **Ce vede fondatorul:** capul paginii scrie exact ce scrie pe rândul din meniu; cartonașele spun unde duc.
+- **Ce vede clientul:** nimic — ecranul e al nostru.
+
 ### FONDATOR · Cartonașele de pe Acasă sunt sumar; „Vezi detalii" duce în pagină
 
 Alin: *„cardurile rămân cu cifre ca acum, orientativ, ca sumar, și buton să vezi detalii care duce în
