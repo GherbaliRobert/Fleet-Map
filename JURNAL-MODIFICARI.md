@@ -95,6 +95,27 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Bug: „Dispozitive" rămânea deschis sub cartonașele de pe Acasă
+
+Alin: *„când ies din Acasă și intru în Dispozitive sau în Inventar dispozitive, când dau înapoi la
+Acasă rămâne de unde am rămas."*
+
+**Ce se întâmpla.** Intrai din meniu în „Dispozitive", apăsai „Acasă" — și primeai cartonașele, dar
+**tabelul de dispozitive rămânea deschis dedesubt**. Cu orice altă secțiune (Utilizatori, Companii…)
+nu se întâmpla: acolo „Acasă" curăța cum trebuie.
+
+**De ce.** Lista secțiunilor din Administrare era scrisă **de trei ori, de mână**: o dată când se
+deschide o secțiune, o dată când se apasă un cartonaș, și o dată la întoarcerea pe „Acasă". A treia
+rămăsese în urmă — nu avea nici *Dispozitive*, nici *Inventar dispozitive*. Exact cele două pe care
+le-ai găsit.
+
+**Ce am făcut.** O singură listă, citită de toate trei. O secțiune nouă se adaugă acum într-un singur
+loc, iar proba pică dacă mai apare vreodată o listă scrisă de mână.
+
+- **Ce am schimbat:** „Acasă" chiar închide tot ce era deschis.
+- **Ce vede fondatorul:** nu mai rămâne un tabel agățat sub cartonașe.
+- **Ce vede clientul:** nimic — ecranul e al nostru.
+
 ### AMÂNDOI · Dispozitive: se vede cine a amuțit, iar aparatele stau pe firme
 
 Alin: *„am stare — activ — și data ultimei poziții. Când nu mai dă semnal, apare inactiv… de ce să mă

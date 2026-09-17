@@ -3807,6 +3807,25 @@ const pozitii = await r.json();</code></pre>
       var body = document.querySelector(overlaySel + ' .rax-body');
       if (body && body.parentNode !== t) t.appendChild(body);
     }
+    // O SINGURĂ listă de secțiuni din Administrare. Erau TREI, scrise de mână — în `raxAdminTab`, în
+    // `raxDashCard` și în `raxAdminHome` — iar a treia rămăsese în urmă: nu avea `devices` și `inventar`.
+    // Efectul, semnalat de Alin: intrai în „Dispozitive" din meniu, apăsai „Acasă", și tabelul rămânea
+    // deschis sub cartonașe. Acum toate trei citesc de aici; o secțiune nouă se adaugă într-un loc.
+    const _RAX_TABURI = {
+      contracte: 'admin-tab-contracte', companies: 'admin-tab-companies', devices: 'admin-tab-devices',
+      inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users',
+      archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices',
+      agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport',
+      dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare',
+      demoreq: 'admin-tab-demoreq'
+    };
+    // Ascunde TOATE secțiunile, lăsând-o deschisă doar pe cea cerută (sau niciuna, cu `null`).
+    function _raxAscundeTaburile(deschisId) {
+      Object.keys(_RAX_TABURI).forEach(function (k) {
+        var el = document.getElementById(_RAX_TABURI[k]);
+        if (el) el.style.display = (_RAX_TABURI[k] === deschisId) ? 'block' : 'none';
+      });
+    }
     function _raxSideActive(name) {
       document.querySelectorAll('#admin-side .aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-atab') === name); });
     }
@@ -3815,13 +3834,11 @@ const pozitii = await r.json();</code></pre>
     window.raxAdminTab = function (name, subCarduri) {
       if ((name === 'companies' || name === 'accounts' || name === 'contracte') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
-      var map = { contracte: 'admin-tab-contracte', companies: 'admin-tab-companies', devices: 'admin-tab-devices', inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
+      var map = _RAX_TABURI;
       var titles = { contracte: 'Contracte', companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = subCarduri ? '' : 'none';
       if (!subCarduri) _raxDashInchide();   // ieși din „Acasă" → cartonașele nu mai au nimic deschis
-      Object.keys(map).forEach(function (k) {
-        var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
-      });
+      _raxAscundeTaburile(map[name]);
       _raxSideActive(name);
       // Sub cartonașe rămâne titlul paginii („Panou administrare"); numele secțiunii apare în bara ei.
       var t = document.getElementById('admin-title'); if (t && !subCarduri) t.textContent = titles[name] || 'Administrare';
@@ -3892,10 +3909,7 @@ const pozitii = await r.json();</code></pre>
     window.raxDashCard = function (name, btn) {
       var eraDeschis = (_adashDeschis === name);
       // Închide ce era deschis: și secțiunile, și marcajul de pe cartonaș.
-      ['admin-tab-companies', 'admin-tab-devices', 'admin-tab-inventar', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived',
-       'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard', 'admin-tab-billing',
-       'admin-tab-myinvoices', 'admin-tab-costs', 'admin-tab-ofertare', 'admin-tab-contracte', 'admin-tab-demoreq']
-        .forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      _raxAscundeTaburile(null);
       _raxDashInchide();
       if (!name || eraDeschis) return;          // al doilea clic pe același cartonaș = închide
       _adashDeschis = name;
@@ -3913,8 +3927,7 @@ const pozitii = await r.json();</code></pre>
     // ── sfârșit „Cartonașele care se deschid pe loc" ──
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
-      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived', 'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard',
-       'admin-tab-billing', 'admin-tab-myinvoices', 'admin-tab-costs', 'admin-tab-ofertare', 'admin-tab-contracte', 'admin-tab-demoreq'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      _raxAscundeTaburile(null);
       _raxSideActive('dash');
       _raxDashInchide();
       var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';

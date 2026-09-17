@@ -89,6 +89,23 @@ T('fiecare are un nume de secțiune', perechi.every(p => !!p.card), JSON.stringi
 T('butonul deschide fix secțiunea lui', perechi.every(p => p.card === p.clic), JSON.stringify(perechi));
 T('secțiunile chemate există în pagină', perechi.every(p => html.indexOf('id="admin-tab-' + p.card + '"') > 0), JSON.stringify(perechi.map(p => p.card)));
 
+console.log('\nO SINGURĂ listă de secțiuni — nu trei scrise de mână');
+// Bug găsit de Alin (17.09): intrai în „Dispozitive" din meniu, apăsai „Acasă" — și tabelul rămânea
+// deschis sub cartonașe. Cauza: TREI liste de id-uri de secțiuni, scrise separat în `raxAdminTab`,
+// `raxDashCard` și `raxAdminHome`; a treia rămăsese fără `devices` și `inventar`.
+T('există o singură listă, cu numele ei', /const _RAX_TABURI = \{/.test(html));
+T('și conține ȘI dispozitivele, ȘI inventarul',
+  /_RAX_TABURI = \{[\s\S]{0,700}devices: 'admin-tab-devices'/.test(html) &&
+  /_RAX_TABURI = \{[\s\S]{0,700}inventar: 'admin-tab-inventar'/.test(html));
+T('ascunderea secțiunilor se face într-un singur loc', /function _raxAscundeTaburile\(deschisId\)/.test(html));
+T('și toate cele trei căi o folosesc', (html.match(/_raxAscundeTaburile\(/g) || []).length >= 4,
+  String((html.match(/_raxAscundeTaburile\(/g) || []).length));
+T('nu mai există nicio listă scrisă de mână de id-uri „admin-tab-…"',
+  !/\['admin-tab-[a-z]+',\s*'admin-tab-/.test(html));
+// Cele trei intrări care duc înapoi la cartonașe trebuie să curețe tot, nu doar o parte.
+T('„Acasă" închide orice secțiune rămasă deschisă',
+  /window\.raxAdminHome = function \(\) \{[\s\S]{0,260}_raxAscundeTaburile\(null\)/.test(html));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);
