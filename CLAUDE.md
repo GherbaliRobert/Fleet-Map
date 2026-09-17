@@ -234,6 +234,22 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
   rând închis e mai rea decât una scrisă urât.
 
+## Administrare: „Acasă" e tablou, nu loc de lucru (decizie Alin, 17.09)
+
+- **Cartonașele de pe „Acasă" sunt SUMAR**: cifra + starea, plus un rând **„Vezi detalii →"**
+  (`.adash-go`). Un clic (pe rând sau pe cartonaș) duce în **pagina** secțiunii — exact unde duce și
+  meniul din stânga. `raxDashCard(name)` nu face altceva decât `raxAdminTab(name)`.
+- **O secțiune se deschide într-un SINGUR fel: pe tot ecranul.** NU reintroduce „deschide sub
+  cartonașe" (fostul `subCarduri`, `#adash-bara`, `.adash-continua`, `.adash-card.deschis`). A doua
+  cale înseamnă o stare de ținut minte — și de acolo a venit bug-ul cu „Dispozitive" rămas agățat sub
+  cartonașe după „Acasă".
+- Motivul de atunci („dacă te duce în pagină, cifrele dispar") **nu mai e valabil**: fiecare pagină are
+  acum propriul sumar (pastile cu numere, venitul lunar, contorul de conturi RA Insight).
+- **O SINGURĂ listă de secțiuni: `_RAX_TABURI`**, ascunsă/arătată prin `_raxAscundeTaburile(id)`.
+  Erau trei, scrise de mână, iar a treia rămăsese fără `devices` și `inventar`. O secțiune nouă se
+  adaugă într-un singur loc.
+- Păzit de `verify_acasa.js`.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

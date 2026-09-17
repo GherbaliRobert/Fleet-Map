@@ -3326,36 +3326,17 @@
    cartonașul rămâne marcat — ca să se vadă dintr-o privire ce anume e deschis. */
 
 /* Pernă sus și în dreapta. Zona de administrare taie tot ce iese din ea, iar rândul de cartonașe
-   începea exact pe muchia ei: cartonașul se ridică 2px sub mouse și mai are și un contur de 3px
-   când e deschis, așa că marginea lui de sus era retezată — arăta ca un card tăiat. La fel pățea
-   ultimul cartonaș pe latura din dreapta. Acum au loc. */
+   începea exact pe muchia ei: cartonașul se ridică 2px sub mouse, așa că marginea lui de sus era
+   retezată — arăta ca un card tăiat. La fel pățea ultimul cartonaș pe latura din dreapta. */
 #admin-content{ padding-top:8px; padding-right:4px; }
 #admin-dash .adash-card{ position:relative; transition:border-color .15s, box-shadow .15s; }
-#admin-dash .adash-card.deschis{
-  border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
-  /* Cardul deschis stă în rând cu vecinii lui. Fără asta rămânea ridicat 2px (pe telefon, „hover"
-     rămâne lipit după atingere) și părea scos din rând. */
-  transform:none; }
-/* Legătura dintre cartonaș și secțiunea lui: o linie scurtă până la bară. Înainte era un vârf
-   plin care acoperea o bucată din conturul cardului — exact de acolo venea impresia de „tăiat". */
-#admin-dash .adash-card.deschis:after{
-  content:''; position:absolute; left:50%; bottom:-16px; width:2px; height:16px; margin-left:-1px;
-  background:var(--accent); }
-/* Bara secțiunii + secțiunea de sub ea sunt O SINGURĂ cutie. Bara ține capacul (chenar sus, stânga,
-   dreapta, colțuri rotunjite sus), iar secțiunea îl continuă și îl închide jos. Înainte, bara avea
-   chenar care se oprea în gol, iar conținutul plutea dedesubt — arăta a margine ruptă. */
-#adash-bara{
-  display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 14px;
-  background:var(--bg-dark); border:1px solid var(--accent); border-bottom:0;
-  border-radius:12px 12px 0 0; }
-.adash-continua{
-  border:1px solid var(--accent); border-top:0; border-radius:0 0 12px 12px;
-  padding:14px; margin-bottom:14px; background:var(--bg-dark); }
-/* Cutia are deja chenarul ei: cartonașele dinăuntru nu mai au nevoie de fundal peste fundal. */
-.adash-continua > .rax-card:first-child{ margin-top:0; }
-#adash-bara .nume{ flex:1; font-size:13px; font-weight:800; color:var(--accent);
-  text-transform:uppercase; letter-spacing:.4px; }
-#adash-bara .rax-btn{ padding:5px 11px; font-size:12px; }
+/* „Vezi detalii" — semnul că rândul de cifre duce undeva. Cartonașul întreg rămâne apăsabil (țintă
+   mare), iar rândul ăsta spune ce se întâmplă când îl apasă: te duce în pagina secțiunii, din meniu. */
+#admin-dash .adash-go{
+  margin-top:8px; font-size:11.5px; font-weight:800; color:var(--accent);
+  display:inline-flex; align-items:center; gap:6px; }
+#admin-dash .adash-go i{ font-size:10px; transition:transform .15s; }
+#admin-dash .adash-card:hover .adash-go i{ transform:translateX(3px); }
 
 /* ── „Flota mea, pe scurt": lista „De rezolvat" ─────────────────────────────────────────────────
    Constatările agenților, strânse pe categorii și făcute butoane: fiecare rând duce în „Agenți AI",

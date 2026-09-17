@@ -95,6 +95,35 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Cartonașele de pe Acasă sunt sumar; „Vezi detalii" duce în pagină
+
+Alin: *„cardurile rămân cu cifre ca acum, orientativ, ca sumar, și buton să vezi detalii care duce în
+paginile din meniul lateral, ca să poți efectua modificări."*
+
+**Ce era.** Același lucru se putea deschide în două feluri: apăsai cartonașul → lista apărea **sub
+cartonașe**; apăsai același nume din meniul stâng → lista ocupa **tot ecranul**. Două feluri pentru
+aceeași listă. Iar aplicația trebuia să țină minte în care din ele e — de acolo venise și bug-ul cu
+„Dispozitive" rămas agățat.
+
+**De ce se schimbă acum, și nu acum două săptămâni.** Atunci am lipit secțiunea sub cartonașe fiindcă
+altfel „te ducea în alt ecran și cifrele dispăreau". Era adevărat. Între timp, **fiecare pagină și-a
+căpătat propriul sumar**, mai bogat decât cartonașul: Companii are pastile cu numere și venitul lunar,
+Utilizatori are pastilele și contorul de conturi RA Insight, Dispozitive are pastilele (inclusiv „Fără
+semnal") și sumarul pe fiecare firmă. Deci nu mai pierzi nimic ducându-te în pagină.
+
+**Ce e acum.** Cartonașul rămâne exact cum era — cifra mare și starea dedesubt — și capătă un rând:
+**„Vezi detalii →"**. Îl apăsi (sau apăsi oriunde pe cartonaș) și ajungi în pagina secțiunii, aceeași la
+care duce și meniul din stânga. Sub cartonașe scrie ce sunt: *„Cifrele de mai sus sunt un sumar."*
+
+**Ce a plecat odată cu asta:** bara care apărea sub cartonașe cu numele secțiunii, cutia care continua
+chenarul în jos, marcajul de „cartonaș deschis" și linia de legătură dintre ele. Și, mai important,
+**a doua cale de a deschide o secțiune** — deci întreaga familie de bug-uri de mai jos nu mai are unde să
+existe. Nu pentru că am reparat-o, ci pentru că nu mai e nimic de ținut minte.
+
+- **Ce am schimbat:** un singur fel de a deschide o secțiune; cartonașele rămân tablou de bord.
+- **Ce vede fondatorul:** „Vezi detalii" pe fiecare cartonaș; în rest, aceleași pagini ca până acum.
+- **Ce vede clientul:** nimic — ecranul e al nostru.
+
 ### FONDATOR · Bug: „Dispozitive" rămânea deschis sub cartonașele de pe Acasă
 
 Alin: *„când ies din Acasă și intru în Dispozitive sau în Inventar dispozitive, când dau înapoi la

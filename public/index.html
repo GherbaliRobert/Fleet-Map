@@ -1428,7 +1428,7 @@
     .rax-dev-chip .cnt { opacity: .75; }
     .rax-dev-chip.atentie:not(.on) { border-color: var(--orange); color: var(--orange); }
     /* Grup de firmă: rândul care se deschide și se închide, cu sumarul și butonul spre fișa firmei.
-       Marginea e VERDE, ca la cutiile din Administrare (`.adash-continua`) — așa se vede unde începe și
+       Marginea e VERDE, ca la restul cutiilor din Administrare — așa se vede unde începe și
        unde se termină fiecare firmă, nu doar o linie gri peste alt gri. */
     .rax-devgr { border: 1px solid var(--accent); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
     .rax-devgr-h { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer;
@@ -1524,17 +1524,15 @@
         <div id="admin-content" class="admin-content">
           <div id="admin-dash">
             <div class="adash-cards">
-              <button class="adash-card" data-super data-card="companies" onclick="raxDashCard('companies', this)"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span><span class="adash-sub" id="adash-s-companies"></span></button>
-              <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users', this)"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span><span class="adash-sub" id="adash-s-users"></span></button>
-              <button class="adash-card" data-super data-card="devices" onclick="raxDashCard('devices', this)"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
-              <button class="adash-card adash-warn" data-card="archived" onclick="raxDashCard('archived', this)"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
+              <button class="adash-card" data-super data-card="companies" onclick="raxDashCard('companies')"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span><span class="adash-sub" id="adash-s-companies"></span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
+              <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span><span class="adash-sub" id="adash-s-users"></span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
+              <button class="adash-card" data-super data-card="devices" onclick="raxDashCard('devices')"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
+              <button class="adash-card adash-warn" data-card="archived" onclick="raxDashCard('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span><span class="adash-go">Vezi detalii <i class="fas fa-arrow-right"></i></span></button>
             </div>
-            <!-- Bara care apare DOAR când un card e deschis: spune ce s-a deschis și îl închide la loc. -->
-            <div id="adash-bara" style="display:none;">
-              <span class="nume"></span>
-              <button class="rax-btn" onclick="raxDashCard(null)"><i class="fas fa-xmark"></i> Închide</button>
-            </div>
-            <div id="adash-ajutor" style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-hand-pointer" style="margin-right:6px;"></i>Apasă pe un cartonaș ca să deschizi secțiunea chiar aici, dedesubt. Din meniul din stânga ajungi la orice altă secțiune, pe tot ecranul.</div>
+            <!-- Cartonașele sunt SUMAR, nu loc de lucru (decizia lui Alin, 17.09): cifra și starea aici,
+                 iar „Vezi detalii" te duce în pagina din meniu, unde se lucrează. Așa o secțiune se poate
+                 deschide într-un singur fel — nu mai e nimic de ținut minte, deci nici de încurcat. -->
+            <div id="adash-ajutor" style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-hand-pointer" style="margin-right:6px;"></i>Cifrele de mai sus sunt un sumar. Apasă „Vezi detalii" pe oricare ca să deschizi secțiunea întreagă, unde poți și modifica.</div>
           </div>
 
           <!-- `ra-camp` = câmpurile și butoanele dinăuntru poartă stilul casei (vezi app.css). -->
@@ -3829,24 +3827,19 @@ const pozitii = await r.json();</code></pre>
     function _raxSideActive(name) {
       document.querySelectorAll('#admin-side .aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-atab') === name); });
     }
-    // `subCarduri` = deschide secțiunea SUB cartonașele de pe „Acasă", fără să le ascundă. Așa
-    // rămâi pe pagina de start și vezi în continuare cifrele, în loc să fii dus în alt ecran.
-    window.raxAdminTab = function (name, subCarduri) {
+    // O secțiune se deschide într-un SINGUR fel: pe tot ecranul. Cartonașele de pe „Acasă" sunt sumar,
+    // nu loc de lucru — ele doar trimit aici (decizia lui Alin, 17.09). Înainte exista și o a doua cale,
+    // „deschide sub cartonașe", iar aplicația trebuia să țină minte în care din ele e; de-acolo venise și
+    // bug-ul cu „Dispozitive" rămas agățat sub cartonașe.
+    window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts' || name === 'contracte') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
       var map = _RAX_TABURI;
       var titles = { contracte: 'Contracte', companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
-      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = subCarduri ? '' : 'none';
-      if (!subCarduri) _raxDashInchide();   // ieși din „Acasă" → cartonașele nu mai au nimic deschis
+      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       _raxAscundeTaburile(map[name]);
       _raxSideActive(name);
-      // Sub cartonașe rămâne titlul paginii („Panou administrare"); numele secțiunii apare în bara ei.
-      var t = document.getElementById('admin-title'); if (t && !subCarduri) t.textContent = titles[name] || 'Administrare';
-      if (subCarduri) {
-        var bara = document.getElementById('adash-bara');
-        if (bara) { bara.style.display = 'flex'; var nm = bara.querySelector('.nume'); if (nm) nm.textContent = titles[name] || 'Administrare'; }
-        var aj = document.getElementById('adash-ajutor'); if (aj) aj.style.display = 'none';
-      }
+      var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
         if (window.raxCoNouToggle) window.raxCoNouToggle(false);   // traseul „client nou" pornește strâns
@@ -3896,40 +3889,20 @@ const pozitii = await r.json();</code></pre>
     // ── începe „Cartonașele care se deschid pe loc" ───────────────────────────────────────────────
     // Cartonașele de pe „Acasă" te duceau în alt ecran, iar cifrele dispăreau. Acum secțiunea se
     // deschide CHIAR SUB ele: rămâi pe pagina de start, vezi în continuare câte companii ai, și
-    // închizi la loc dintr-un clic. Al doilea clic pe același cartonaș îl închide.
-    var _adashDeschis = null;
-    function _raxDashInchide() {
-      _adashDeschis = null;
-      document.querySelectorAll('#admin-dash .adash-card').forEach(function (b2) { b2.classList.remove('deschis'); });
-      var bara = document.getElementById('adash-bara'); if (bara) bara.style.display = 'none';
-      var aj = document.getElementById('adash-ajutor'); if (aj) aj.style.display = '';
-      // Chenarul care continua bara în jos se ia o dată cu ea — altfel rămâne o cutie deschisă în gol.
-      document.querySelectorAll('.adash-continua').forEach(function (s) { s.classList.remove('adash-continua'); });
-    }
-    window.raxDashCard = function (name, btn) {
-      var eraDeschis = (_adashDeschis === name);
-      // Închide ce era deschis: și secțiunile, și marcajul de pe cartonaș.
-      _raxAscundeTaburile(null);
-      _raxDashInchide();
-      if (!name || eraDeschis) return;          // al doilea clic pe același cartonaș = închide
-      _adashDeschis = name;
-      raxAdminTab(name, true);                  // deschide secțiunea, dar lasă cartonașele deasupra
-      if (btn) btn.classList.add('deschis');
-      else { var b3 = document.querySelector('#admin-dash .adash-card[data-card="' + name + '"]'); if (b3) b3.classList.add('deschis'); }
-      // Bara are chenar sus/stânga/dreapta; secțiunea îl continuă și îl ÎNCHIDE dedesubt. Fără asta,
-      // chenarul pornea de sub cartonaș și se oprea în gol — arăta a margine ruptă, nu a cutie.
-      var corp = document.getElementById('admin-tab-' + name);
-      if (corp) corp.classList.add('adash-continua');
-      // Adu secțiunea sub ochi, fără să sară pagina brusc.
-      var sec = document.getElementById('adash-bara');
-      if (sec && sec.scrollIntoView) { try { sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }
+    // Cartonașul e SUMAR, nu loc de lucru: cifra și starea stau aici, iar un clic te duce în pagina
+    // secțiunii, din meniu — acolo se lucrează. Înainte, secțiunea se deschidea CHIAR SUB cartonașe, ca
+    // să nu se piardă cifrele; între timp fiecare pagină și-a căpătat propriul sumar (pastile cu numere,
+    // venitul lunar, contorul de conturi), deci motivul a dispărut — iar cu el și a doua cale de a
+    // deschide o secțiune, care trebuia ținută minte și se încurca. Decizia lui Alin, 17.09.
+    window.raxDashCard = function (name) {
+      if (!name) return;
+      raxAdminTab(name);
     };
-    // ── sfârșit „Cartonașele care se deschid pe loc" ──
+    // ── sfârșit „Cartonașele, sumar care duce în pagină" ──
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
       _raxAscundeTaburile(null);
       _raxSideActive('dash');
-      _raxDashInchide();
       var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';
       if (window.loadAdminDash) window.loadAdminDash();
     };

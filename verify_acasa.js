@@ -1,16 +1,22 @@
-// verify_acasa.js — cartonașele de pe „Acasă" (Administrare) și secțiunea care se deschide sub ele.
+// verify_acasa.js — cartonașele de pe „Acasă" (Administrare): sumar care duce în pagină.
 //
 //   node verify_acasa.js
 //
-// De ce există: zona de administrare TAIE tot ce iese din ea (are derulare proprie), iar rândul de
-// cartonașe începe chiar pe muchia ei. Cartonașul se ridică 2px sub mouse și mai are și un contur
-// de 3px cât timp e deschis — fără o pernă cel puțin la fel de mare, marginea lui de sus era
-// retezată și cardul arăta rupt. Nu e o chestie de gust: sunt cifre care trebuie să se potrivească.
+// Cum e gândit ecranul (decizia lui Alin, 17.09): cartonașele sunt **sumar**, nu loc de lucru. Cifra
+// și starea stau pe cartonaș, iar „Vezi detalii" te duce în pagina secțiunii — aceeași pagină la care
+// ajungi și din meniul din stânga. Așa o secțiune se deschide într-un SINGUR fel.
 //
-// Ce prinde: perna de sus/dreapta scoasă sau micșorată, un contur mărit fără să crească perna,
-// cardul deschis lăsat ridicat (iese din rând, iar pe telefon rămâne așa după atingere), linia de
-// legătură care nu mai ajunge la bară sau care redevine un vârf plin ce mușcă din conturul cardului,
-// și un cartonaș rămas fără butonul care deschide secțiunea.
+// Înainte exista și a doua cale: secțiunea se deschidea chiar sub cartonașe. Motivul era că altfel
+// „cifrele dispăreau" — dar între timp fiecare pagină și-a căpătat propriul sumar (pastile cu numere,
+// venitul lunar, contorul de conturi), deci motivul a dispărut. Iar a doua cale costa: aplicația
+// trebuia să țină minte în care din ele e deschisă o secțiune, și de acolo a venit bug-ul cu
+// „Dispozitive" rămas agățat sub cartonașe după ce apăsai „Acasă".
+//
+// Ce prinde proba asta:
+//   • perna de sus/dreapta scoasă (cartonașul se ridică sub mouse, iar zona taie ce iese din ea);
+//   • un cartonaș rămas fără „Vezi detalii", sau care duce în altă secțiune decât a lui;
+//   • reîntoarcerea mecanismului de „deschide sub cartonașe";
+//   • listele de secțiuni scrise de mână — cele trei care au dus la bug.
 const fs = require('fs');
 const P = (f) => require('path').join(__dirname, f);
 const css = fs.readFileSync(P('public/css/app.css'), 'utf8');
@@ -34,62 +40,50 @@ const px = (bloc, prop) => {
 };
 
 console.log('\n1. Perna care ține cartonașele întregi');
+// Zona de administrare TAIE tot ce iese din ea (are derulare proprie), iar rândul de cartonașe
+// începe chiar pe muchia ei. Cartonașul se ridică sub mouse → fără pernă, marginea lui de sus era
+// retezată și cardul arăta rupt.
 const hover = regula(html, '.adash-card:hover');
 const ridicare = (() => { const m = (hover || '').match(/translateY\(\s*(-?[\d.]+)px/); return m ? Math.abs(parseFloat(m[1])) : null; })();
-const deschis = regula(css, '#admin-dash .adash-card.deschis');
-const contur = (() => { const m = (deschis || '').match(/box-shadow\s*:\s*0\s+0\s+0\s+([\d.]+)px/); return m ? parseFloat(m[1]) : null; })();
 const zona = regula(css, '#admin-content{');
 const pernaSus = px(zona, 'padding-top');
 const pernaDreapta = px(zona, 'padding-right');
 T('cartonașul se ridică sub mouse (așa a fost gândit)', ridicare !== null && ridicare > 0, String(ridicare));
-T('cartonașul deschis are contur în jur', contur !== null && contur > 0, String(contur));
 T('zona de administrare are pernă sus', pernaSus !== null && pernaSus > 0, String(pernaSus));
 T('zona de administrare are pernă în dreapta', pernaDreapta !== null && pernaDreapta > 0, String(pernaDreapta));
-T('perna de sus acoperă și ridicarea, și conturul',
-  pernaSus !== null && ridicare !== null && contur !== null && pernaSus >= ridicare + contur,
-  'pernă ' + pernaSus + ' vs. ' + ridicare + ' + ' + contur);
-T('perna din dreapta acoperă conturul',
-  pernaDreapta !== null && contur !== null && pernaDreapta >= contur,
-  'pernă ' + pernaDreapta + ' vs. ' + contur);
+T('perna de sus acoperă ridicarea', pernaSus !== null && ridicare !== null && pernaSus >= ridicare,
+  'pernă ' + pernaSus + ' vs. ridicare ' + ridicare);
 
-console.log('\n2. Cardul deschis stă în rând cu vecinii lui');
-T('nu rămâne ridicat', /transform\s*:\s*none/.test(deschis || ''), (deschis || '').trim().slice(0, 80));
-
-console.log('\n3. Linia de legătură dintre cartonaș și secțiunea lui');
-const linie = regula(css, '#admin-dash .adash-card.deschis:after');
-const bara = regula(css, '#adash-bara{');
-const randCarduri = regula(html, '.adash-cards {');
-const golDeSus = Math.max(px(randCarduri, 'margin-bottom') || 0, px(bara, 'margin-top') || 0); // marginile vecine se contopesc
-const hLinie = px(linie, 'height'), josLinie = px(linie, 'bottom'), latLinie = px(linie, 'width');
-T('linia ajunge exact până la bară', hLinie !== null && hLinie === golDeSus, hLinie + ' vs. gol ' + golDeSus);
-T('pornește de sub cardul întreg, nu peste conturul lui', josLinie !== null && josLinie === -golDeSus, String(josLinie));
-T('e o linie subțire, nu un vârf plin care mușcă din card',
-  latLinie !== null && latLinie <= 4 && !/rotate\(/.test(linie || ''), String(latLinie));
-
-console.log('\n4. Bara secțiunii și secțiunea fac O SINGURĂ cutie');
-// Bara avea chenar sus/stânga/dreapta și se oprea în gol, iar conținutul plutea dedesubt: arăta a
-// margine ruptă. Capacul e al barei, fundul e al secțiunii — împreună închid cutia.
-const capac = regula(css, '#adash-bara{');
-const fund = regula(css, '.adash-continua{');
-T('bara nu-și mai închide chenarul jos', /border-bottom\s*:\s*0/.test(capac || ''), (capac || '').trim().slice(0, 90));
-T('bara are colțuri rotunjite doar sus', /border-radius\s*:\s*12px 12px 0 0/.test(capac || ''));
-T('secțiunea continuă chenarul', /border\s*:\s*1px solid var\(--accent\)/.test(fund || '') && /border-top\s*:\s*0/.test(fund || ''), (fund || '').trim().slice(0, 90));
-T('și îl închide jos, cu colțuri rotunjite', /border-radius\s*:\s*0 0 12px 12px/.test(fund || ''));
-T('chenarul se pune la deschiderea cartonașului', /classList\.add\('adash-continua'\)/.test(html));
-T('și se ia la închidere', /classList\.remove\('adash-continua'\)/.test(html));
-
-console.log('\n5. Fiecare cartonaș chiar deschide o secțiune');
-const carduri = html.match(/<button class="adash-card[^>]*>/g) || [];
+console.log('\n2. Cartonașul e SUMAR și spune unde duce');
+const carduri = html.match(/<button class="adash-card[^>]*>[\s\S]*?<\/button>/g) || [];
 T('sunt cele patru cartonașe', carduri.length === 4, String(carduri.length));
+T('fiecare are cifra lui', carduri.every(c => /class="adash-num"/.test(c)));
+T('și fiecare spune „Vezi detalii"', carduri.every(c => /adash-go">Vezi detalii/.test(c)),
+  carduri.filter(c => !/adash-go/.test(c)).length + ' fără');
+T('semnul „duce undeva" e o săgeată, nu un cuvânt inventat', carduri.every(c => /fa-arrow-right/.test(c)));
+T('stilul lui există', /#admin-dash \.adash-go\{/.test(css));
 const perechi = carduri.map(b => ({
   card: (b.match(/data-card="([^"]+)"/) || [])[1],
   clic: (b.match(/raxDashCard\('([^']+)'/) || [])[1]
 }));
 T('fiecare are un nume de secțiune', perechi.every(p => !!p.card), JSON.stringify(perechi));
-T('butonul deschide fix secțiunea lui', perechi.every(p => p.card === p.clic), JSON.stringify(perechi));
+T('și duce fix în secțiunea lui', perechi.every(p => p.card === p.clic), JSON.stringify(perechi));
 T('secțiunile chemate există în pagină', perechi.every(p => html.indexOf('id="admin-tab-' + p.card + '"') > 0), JSON.stringify(perechi.map(p => p.card)));
+T('cartonașul întreg rămâne apăsabil, nu doar rândul de jos', carduri.every(c => /onclick="raxDashCard\(/.test(c)));
 
-console.log('\nO SINGURĂ listă de secțiuni — nu trei scrise de mână');
+console.log('\n3. O secțiune se deschide într-un SINGUR fel');
+// Cartonașul cheamă exact ce cheamă și meniul din stânga: `raxAdminTab(nume)`. Nicio a doua cale.
+T('cartonașul cheamă aceeași funcție ca meniul',
+  /window\.raxDashCard = function \(name\) \{[\s\S]{0,200}raxAdminTab\(name\);/.test(html));
+T('deschiderea unei secțiuni ascunde cartonașele (nu le lasă deasupra)',
+  /var dash = document\.getElementById\('admin-dash'\); if \(dash\) dash\.style\.display = 'none';/.test(html));
+T('nu mai există „deschide sub cartonașe"', !/subCarduri/.test(html));
+T('nici bara cu numele secțiunii de sub ele', !/adash-bara/.test(html) && !/adash-bara/.test(css));
+T('nici cutia care continua chenarul', !/adash-continua/.test(html) && !/adash-continua/.test(css));
+T('și nici marcajul de „cartonaș deschis"', !/adash-card\.deschis/.test(css));
+T('textul de sub cartonașe spune ce fac ele', /Cifrele de mai sus sunt un sumar/.test(html));
+
+console.log('\n4. O SINGURĂ listă de secțiuni — nu trei scrise de mână');
 // Bug găsit de Alin (17.09): intrai în „Dispozitive" din meniu, apăsai „Acasă" — și tabelul rămânea
 // deschis sub cartonașe. Cauza: TREI liste de id-uri de secțiuni, scrise separat în `raxAdminTab`,
 // `raxDashCard` și `raxAdminHome`; a treia rămăsese fără `devices` și `inventar`.
@@ -98,11 +92,10 @@ T('și conține ȘI dispozitivele, ȘI inventarul',
   /_RAX_TABURI = \{[\s\S]{0,700}devices: 'admin-tab-devices'/.test(html) &&
   /_RAX_TABURI = \{[\s\S]{0,700}inventar: 'admin-tab-inventar'/.test(html));
 T('ascunderea secțiunilor se face într-un singur loc', /function _raxAscundeTaburile\(deschisId\)/.test(html));
-T('și toate cele trei căi o folosesc', (html.match(/_raxAscundeTaburile\(/g) || []).length >= 4,
+T('și ambele căi o folosesc', (html.match(/_raxAscundeTaburile\(/g) || []).length >= 3,
   String((html.match(/_raxAscundeTaburile\(/g) || []).length));
 T('nu mai există nicio listă scrisă de mână de id-uri „admin-tab-…"',
   !/\['admin-tab-[a-z]+',\s*'admin-tab-/.test(html));
-// Cele trei intrări care duc înapoi la cartonașe trebuie să curețe tot, nu doar o parte.
 T('„Acasă" închide orice secțiune rămasă deschisă',
   /window\.raxAdminHome = function \(\) \{[\s\S]{0,260}_raxAscundeTaburile\(null\)/.test(html));
 
