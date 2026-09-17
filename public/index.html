@@ -188,7 +188,7 @@
              platforma" al fondatorului, al doilea repeta „Statistici flota" de mai sus (aceleasi
              cifre, aceeasi sursa). A ramas un singur ecran de flota, cu numele lui. -->
         <!-- Setări: ultimul din verticala clientului, ca peste tot. Are pagina lui, cu capitolele ei. -->
-        <button data-vert="partener" id="nav-setari" class="nav-item" onclick="showView('settings')"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
+        <button data-vert="partener" id="nav-setari" class="nav-item" data-view="settings" onclick="showView('settings')"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
 
         <!-- Documentele legale trebuie să fie accesibile din APLICAȚIE, nu doar din subsolul paginii publice:
              un utilizator care primește cont direct (invitație / cont demo) nu trece niciodată prin landing. -->
@@ -3838,8 +3838,18 @@ const pozitii = await r.json();</code></pre>
         if (el) el.style.display = (_RAX_TABURI[k] === deschisId) ? 'block' : 'none';
       });
     }
+    // Sunt DOUĂ meniuri în cod: cel vechi, dinăuntrul panoului (`#admin-side`, ascuns azi, dar codul
+    // îl mai bifează), și cel adevărat, din bara din stânga (`#navrail`). Aici, în bară, rândurile
+    // n-au `data-atab` — le recunoaștem după ce cheamă. Aprinsul propriu-zis e în `_navAprinde`, ca
+    // să fie un singur loc (și o singură regulă despre ce rând poate fi aprins).
     function _raxSideActive(name) {
       document.querySelectorAll('#admin-side .aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-atab') === name); });
+      var cheama = (name === 'dash') ? "showView('administrare')" : "goSistem('" + name + "')";
+      var tinta = null;
+      document.querySelectorAll('#navrail .nav-item').forEach(function (n) {
+        if (!tinta && (n.getAttribute('onclick') || '').indexOf(cheama) >= 0) tinta = n;
+      });
+      if (window._navAprinde) window._navAprinde(tinta);
     }
     // O secțiune se deschide într-un SINGUR fel: pe tot ecranul. Cartonașele de pe „Acasă" sunt sumar,
     // nu loc de lucru — ele doar trimit aici (decizia lui Alin, 17.09). Înainte exista și o a doua cale,
@@ -11347,11 +11357,30 @@ const pozitii = await r.json();</code></pre>
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
     // Navighează (fn), marchează butonul activ și ține grupul deschis. fn rulează ÎNAINTE (showView resetează .active).
+    // ── începe „rândul aprins din meniu" ──────────────────────────────────────────────────────────
+    // UN SINGUR loc care mută evidențierea verde din bara din stânga. Erau trei căi de a ajunge într-o
+    // pagină și doar una dintre ele muta verdele (Alin, 17.09): apăsai „Vezi detalii în Companii" de pe
+    // un cartonaș, ajungeai în Companii, dar în meniu rămânea aprins „Acasă". Iar în verticala
+    // CLIENTULUI nu se muta niciodată: șase rânduri (Localizare, Traseu, Rapoarte, Agenți AI, Hotspot,
+    // Setări) chemau direct `showView(...)`, fără să treacă pe aici — verdele stătea pe „Localizare"
+    // orice ai fi deschis.
+    //
+    // Aprinde DOAR un rând care chiar e pe ecran: unul tăiat din rol (`display:none`) sau din cealaltă
+    // verticală (`.vert-ascuns`) nu se aprinde — și atunci nu stingem nimic. Mai bine rămâne aprins
+    // rândul de dinainte decât să nu fie aprins niciunul. (Așa, deschizând „Utilizatori" din Setările
+    // clientului, rândul „Setări" rămâne aprins: acolo chiar ești.)
+    window._navAprinde = function (el) {
+      if (!el || el.style.display === 'none' || el.closest('.vert-ascuns')) return false;
+      document.querySelectorAll('#navrail .nav-item').forEach(function (n) { n.classList.remove('active'); });
+      el.classList.add('active');
+      var g = el.closest('.nav-group'); if (g) g.classList.add('open');
+      return true;
+    };
     function navGo(btn, fn) {
       try { if (fn) fn(); } catch (e) {}
-      document.querySelectorAll('#navrail .nav-item').forEach(function (n) { n.classList.remove('active'); });
-      if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
+      window._navAprinde(btn);
     }
+    // ── sfârșit „rândul aprins din meniu" ──
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
     function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts' || tab === 'audit' || tab === 'contracte') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
@@ -11597,6 +11626,12 @@ const pozitii = await r.json();</code></pre>
         const opener = VIEW_OPENERS[name];
         if (opener && typeof window[opener] === 'function') window[opener]();
       }
+      // Rândurile din verticala clientului cheamă `showView(...)` de-a dreptul, nu prin `navGo` —
+      // de-aia verdele din meniu nu se muta niciodată acolo. Le recunoaștem după `data-view`, care
+      // era deja scris pe ele și nu-l citea nimeni. Merge și când ecranul se deschide din cod, nu
+      // doar la clic pe rând. Dacă nu există rând pentru ecranul ăsta (ex. „administrare", care are
+      // secțiuni), `_navAprinde` nu stinge nimic — aprinde apoi `_raxSideActive`, pe secțiune.
+      if (window._navAprinde) window._navAprinde(document.querySelector('#navrail .nav-item[data-view="' + name + '"]'));
       if (window.innerWidth <= 768) closeNavrail();
     }
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).

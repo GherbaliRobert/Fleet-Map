@@ -95,6 +95,39 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Rândul verde din meniu stă pe pagina deschisă. La client nu se mișca deloc
+
+Alin: *„dau pe cardul Companii, mă duce la Companii, dar selecția cu verde rămâne pe Acasă. Aș vrea
+selecția cu verde să fie pagina deschisă direct din card."*
+
+**Ce era, la voi.** Sunt **două meniuri** în cod: unul vechi, dinăuntrul panoului de administrare
+(ascuns azi, dar codul îl mai bifează), și cel adevărat, din bara din stânga. Cartonașele îl aprindeau
+doar pe cel ascuns. Deci ajungeai în Companii, iar în meniu rămânea aprins „Acasă" — meniul îți
+spunea că ești în altă parte decât erai.
+
+**Ce am găsit pe lângă, și e mai serios: la CLIENT verdele nu se muta niciodată.** Șase rânduri din
+meniul lui — *Localizare, Traseu, Rapoarte, Agenți AI, Hotspot & Rutare, Setări* — deschideau ecranul
+de-a dreptul, fără să treacă prin bucata de cod care mută evidențierea. Rezultatul: clientul intra în
+Rapoarte, în Setări, oriunde, și verdele stătea înțepenit pe „Localizare", de la prima deschidere a
+aplicației. Nu se vede din capturi de ecran și nu strică nimic — doar te minte constant despre unde
+ești. Era acolo de la început.
+
+**Ce e acum.** Un **singur loc** mută verdele, și toate căile trec prin el: clic pe un rând din meniu,
+clic pe un cartonaș din Acasă, banda de aparate neasignate, sau un ecran deschis din cod. Rândurile
+clientului sunt recunoscute după o etichetă pe care o purtau deja și pe care n-o citea nimeni.
+
+O regulă care contează: **un rând care nu e pe ecran nu se aprinde — și atunci nu se stinge nimic.**
+Când clientul deschide „Utilizatori" din Setări, în meniu nu există rând pentru Utilizatori (e un
+capitol dinăuntrul Setărilor), așa că rămâne aprins **„Setări"** — acolo chiar este. Fără regula asta
+meniul ar fi rămas cu totul stins.
+
+Verificat în browser, pe toate căile: cele patru cartonașe, cinci rânduri din meniul nostru, întoarcerea
+pe Acasă, banda de neasignate, cele patru ecrane ale clientului, plus Setări → Utilizatori.
+
+- **Ce am schimbat:** meniul arată unde ești, indiferent pe ce drum ai ajuns acolo.
+- **Ce vede fondatorul:** apeși „Vezi detalii în Companii" → în meniu se aprinde „Companii", nu „Acasă".
+- **Ce vede clientul:** verdele îl urmărește prin toate ecranele lui — până acum nu se clintea de pe „Localizare".
+
 ### FONDATOR · Aparatele neasignate se adoptă într-un singur loc: Dispozitive
 
 Alin, uitându-se la ecranul Companii: *„asta nu cumva ar trebui să facă parte din secțiunea

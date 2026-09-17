@@ -147,6 +147,33 @@ T('se pune de fiecare dată când intri pe „Acasă"',
 T('și fiecare cartonaș arată spre o secțiune care are nume',
   perechi.every(p => !!NUME[p.card]), perechi.map(p => p.card + '→' + (NUME[p.card] || '?')).join(', '));
 
+console.log('\n7. Verdele din meniu stă pe pagina deschisă');
+// Bug găsit de Alin (17.09): apăsai „Vezi detalii în Companii", ajungeai în Companii — și în meniu
+// rămânea aprins „Acasă". Erau două meniuri în cod: cel vechi, dinăuntrul panoului (`#admin-side`,
+// ascuns azi), și cel adevărat, din bara din stânga. Cartonașul îl aprindea doar pe primul.
+// Pe deasupra, în verticala CLIENTULUI verdele nu se muta NICIODATĂ: șase rânduri chemau direct
+// `showView(...)`, fără să treacă prin `navGo`, deci rămânea pe „Localizare" orice ai fi deschis.
+T('există un singur loc care mută verdele', /window\._navAprinde = function \(el\) \{/.test(html));
+T('și toate căile trec prin el',
+  /function navGo\(btn, fn\) \{[\s\S]{0,140}window\._navAprinde\(btn\)/.test(html) &&
+  /function _raxSideActive\(name\)[\s\S]{0,700}window\._navAprinde\(tinta\)/.test(html) &&
+  /window\._navAprinde\(document\.querySelector\('#navrail \.nav-item\[data-view="' \+ name \+ '"\]'\)\)/.test(html));
+T('nimeni nu mai umblă la „active" pe lângă el',
+  (html.match(/#navrail \.nav-item'\)\.forEach\(function \(n\) \{ n\.classList\.remove\('active'\)/g) || []).length === 1);
+T('un rând ascuns nu se aprinde, și atunci nu se stinge nimic',
+  /_navAprinde = function \(el\) \{\s*\n\s*if \(!el \|\| el\.style\.display === 'none' \|\| el\.closest\('\.vert-ascuns'\)\) return false;/.test(html));
+T('secțiunile de administrare se recunosc după ce cheamă rândul',
+  /var cheama = \(name === 'dash'\) \? "showView\('administrare'\)" : "goSistem\('" \+ name \+ "'\)";/.test(html));
+
+// fiecare rând din verticala clientului trebuie să fie recognoscibil: ori prin `navGo`, ori prin `data-view`
+const rail = html.slice(html.indexOf('<nav id="navrail"'), html.indexOf('</nav>', html.indexOf('<nav id="navrail"')));
+const randuri = (rail.match(/<button[^>]*class="[^"]*nav-item[^"]*"[^>]*>[\s\S]*?<\/button>/g) || [])
+  .filter(b => !/nav-group-head/.test(b));
+const orfane = randuri.filter(b => !/navGo\(this/.test(b) && !/data-view="/.test(b))
+  .map(b => (b.match(/<span>([^<]*)<\/span>/) || [])[1] || '?');
+T('niciun rând din meniu nu rămâne pe dinafară', orfane.length === 0, orfane.join(', '));
+T('„Setări" e și el recunoscut (nu trecea prin navGo)', /id="nav-setari"[^>]*data-view="settings"/.test(html));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

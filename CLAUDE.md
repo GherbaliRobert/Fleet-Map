@@ -271,6 +271,23 @@ interfață CAN — deci hotărai cu mai puțin în față. **A fost șters, nu 
   „Administrare". NU scrie numele secțiunii de mână nicăieri altundeva.
 - Păzit de `verify_acasa.js`, care compară `_RAX_NUME` cu etichetele rândurilor `goSistem('…')` din meniu.
 
+### Verdele din meniu: UN singur loc, `window._navAprinde(el)`
+Rândul aprins din bara din stânga trebuie să fie ecranul deschis, **oricum ai ajuns în el**.
+
+- Toate căile trec prin `_navAprinde`: `navGo(btn, fn)` (clic pe rând), `_raxSideActive(name)` (secțiune
+  de administrare, deci și cartonașele de pe „Acasă" și banda de neasignate) și `showView(name)`, care
+  caută rândul după **`data-view`**. Nu scrie o a doua bucată care umblă la clasa `active`.
+- **Un rând care nu e pe ecran NU se aprinde** (tăiat din rol → `display:none`, sau din cealaltă
+  verticală → `.vert-ascuns`), iar atunci `_navAprinde` **nu stinge nimic**: mai bine rămâne aprins
+  rândul de dinainte decât niciunul. Așa, deschizând „Utilizatori" din Setările clientului, rămâne
+  aprins „Setări" — acolo chiar ești.
+- În `#navrail` rândurile de administrare n-au `data-atab`: se recunosc după ce cheamă
+  (`goSistem('<nume>')`, iar „Acasă" după `showView('administrare')`). Meniul vechi `#admin-side` e
+  ascuns, dar mai e bifat în paralel — nu te baza pe el pentru nimic vizibil.
+- **Orice rând nou din meniu trebuie ori să cheme `navGo(this, …)`, ori să poarte `data-view`.** Șase
+  rânduri ale clientului (Localizare, Traseu, Rapoarte, Agenți AI, Hotspot, Setări) chemau direct
+  `showView(...)` — la client verdele stătea înțepenit pe „Localizare". Păzit de `verify_acasa.js`.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele
