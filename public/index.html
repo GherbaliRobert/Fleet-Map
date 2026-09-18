@@ -1362,12 +1362,42 @@
     .rax-cod-tab i { font-size: 12px; }
     .rax-cod-tab:hover { border-color: var(--accent); color: var(--accent); }
     .rax-cod-tab.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
-    .rax-cod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    /* Fereastra „Companie" ține o înălțime STABILĂ, indiferent de filă. Înainte sărea de la 185px
+       (Facturi, aproape goală) la 705px (Abonament) — se zbătea sub mouse la fiecare clic pe filă, iar
+       pe cea mai plină ajungea lipită de marginile ecranului și părea tăiată (Alin, 18.09).
+       Corpul are derularea lui; capul și filele stau pe loc. */
+    /* Înălțimea e FIXĂ, dar potrivită: destul cât să încapă filele obișnuite fără gol mare dedesubt,
+       iar cea plină (Abonament) se derulează. O fereastră cu filă care se zbate e mai rea decât un pic
+       de spațiu liber — ca orice fereastră de setări, își ține forma. */
+    #rax-codetail-overlay .rax-card { height: min(82vh, 620px); }
+    #rax-codetail-overlay .rax-head { flex: 0 0 auto; }
+    #rax-codetail-overlay .rax-cod-tabs { flex: 0 0 auto; }
+    #rax-codetail-overlay #rax-cod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    /* Un singur ritm pe toate filele: secțiunile se despart singure, fără distanțe scrise de mână. */
+    #rax-cod-body > .rax-cod-sect + .rax-cod-sect,
+    #rax-cod-body > .rax-cod-grid + .rax-cod-sect,
+    #rax-cod-body > .rax-cod-sect + .rax-cod-grid { margin-top: 18px; }
+    #rax-cod-body > .rax-cod-actiuni { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+      display: flex; gap: 10px; flex-wrap: wrap; }
+    #rax-cod-body > .rax-cod-actiuni .rax-btn { flex: 1 1 180px; justify-content: center; }
+    .rax-cod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; align-items: start; }
     @media (max-width: 620px) { .rax-cod-grid { grid-template-columns: 1fr; } }
     .rax-cod-sect h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
-    .rax-kv { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    /* Rândurile au aceeași înălțime în amândouă coloanele, ca valorile să stea pe aceleași linii. */
+    .rax-kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-height: 30px;
+      padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .rax-kv:last-child { border-bottom: none; }
     .rax-kv .k { color: var(--text-muted); flex: 0 0 auto; }
     .rax-kv .v { font-weight: 600; text-align: right; word-break: break-word; }
+    /* Gol cu rost: o filă goală arăta ca o aplicație stricată — un rând italic, singur, în mijloc. */
+    .rax-cod-gol { text-align: center; color: var(--text-muted); padding: 26px 14px; }
+    /* Când golul e tot ce are fila (Facturi), stă în mijloc — altfel rămânea lipit sus, cu un gol
+       mare dedesubt, și fila arăta neterminată. */
+    #rax-cod-body > .rax-cod-gol:only-child { min-height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; box-sizing: border-box; }
+    .rax-cod-gol i { font-size: 26px; opacity: .35; display: block; margin-bottom: 10px; }
+    .rax-cod-gol b { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+    .rax-cod-gol span { font-size: 12px; line-height: 1.55; }
     .rax-mini-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     .rax-mini-table th { text-align: left; padding: 7px 8px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     .rax-mini-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -20184,15 +20214,21 @@ const pozitii = await r.json();</code></pre>
       var contactsHtml = contacts.length
         ? '<table class="rax-mini-table"><thead><tr><th>Nume</th><th>Rol</th><th>Telefon</th><th>Email</th></tr></thead><tbody>' +
             contacts.map(function (p) { return '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.role || '—') + '</td><td>' + esc(p.phone || '—') + '</td><td>' + esc(p.email || '—') + '</td></tr>'; }).join('') + '</tbody></table>'
-        : '<div class="rax-co-meta">Nicio persoană de contact. Adaugă din „Editează datele companiei".</div>';
+        : '<div class="rax-cod-gol"><i class="fas fa-address-book"></i><b>Nicio persoană de contact</b>'
+          + '<span>Pe cine suni când e ceva de rezolvat? Se adaugă din „Editează datele companiei".</span></div>';
+      // Cele două coloane au același număr de rânduri, ca valorile să stea pe aceleași linii. „Acces"
+      // e al cincilea în stânga; în dreapta îi răspunde „Vehicule", care altfel nu se vedea nicăieri
+      // în fila asta, deși e primul lucru pe care-l cauți la o firmă.
+      var nrVeh = (d.vehicles || []).length;
       return '<div class="rax-cod-grid">' +
           '<div class="rax-cod-sect"><h4>Identificare</h4>' + kv('Nume', c.name) + kv('CUI / CIF', c.cui) + kv('Nr. Reg. Com.', c.reg_com) + kv('Adresă', c.address) +
             '<div class="rax-kv"><span class="k">Acces</span><span class="v" style="color:' + accColor + ';font-weight:700">' + esc(accLbl) + (until ? ' · până ' + until : '') + '</span></div></div>' +
-          '<div class="rax-cod-sect"><h4>Bancă & contact</h4>' + kv('IBAN', c.iban) + kv('Bancă', c.bank_name) + kv('Email', c.contact_email) + kv('Telefon', c.phone) + '</div>' +
+          '<div class="rax-cod-sect"><h4>Bancă &amp; contact</h4>' + kv('IBAN', c.iban) + kv('Bancă', c.bank_name) + kv('Email', c.contact_email) + kv('Telefon', c.phone) +
+            '<div class="rax-kv"><span class="k">Vehicule</span><span class="v">' + nrVeh + (nrVeh === 1 ? ' vehicul' : ' vehicule') + '</span></div></div>' +
         '</div>' +
-        '<div class="rax-cod-sect" style="margin-top:14px;"><h4>Persoane de contact</h4>' + contactsHtml + '</div>' +
-        '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;"><button class="rax-btn" style="flex:1;min-width:160px;justify-content:center;" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
-        '<button class="rax-btn" style="flex:1;min-width:160px;justify-content:center;" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Module & limite</button></div>';
+        '<div class="rax-cod-sect"><h4>Persoane de contact</h4>' + contactsHtml + '</div>' +
+        '<div class="rax-cod-actiuni"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
+        '<button class="rax-btn" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Module &amp; limite</button></div>';
     }
     // ── începe „administratorii firmei" ──
     // Din 16.09, administratorii unei firme sunt treaba FIRMEI: adminul ei poate face sau promova alt
@@ -20256,7 +20292,8 @@ const pozitii = await r.json();</code></pre>
     function _raxCodUsers(d) {
       var roleLbl = { superadmin: 'Super-admin', company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
       var cap = _raxCodAdminiHtml(d);
-      if (!d.users.length) return cap + '<div class="rax-co-meta" style="padding:16px;">Niciun utilizator în această companie.</div>';
+      if (!d.users.length) return cap + '<div class="rax-cod-gol"><i class="fas fa-users"></i><b>Niciun cont în firma asta</b>'
+        + '<span>Conturile le face administratorul firmei, din ecranul lui de Utilizatori.</span></div>';
       return cap + '<table class="rax-mini-table"><thead><tr><th>Utilizator</th><th>Rol</th><th>Email</th><th>Telefon</th><th>Stare</th></tr></thead><tbody>' +
         d.users.map(function (u) {
           return '<tr><td><strong>' + esc(u.username) + '</strong>' + (u.full_name ? '<br><span style="font-size:11px;color:var(--text-muted)">' + esc(u.full_name) + '</span>' : '') + '</td>' +
@@ -20269,7 +20306,8 @@ const pozitii = await r.json();</code></pre>
       var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără CAN</span>' };
       var cc = d.counts || {};
       var summary = '<div class="rax-can-summary"><span class="rax-can fms">' + (cc.fms || 0) + ' FMS</span><span class="rax-can can">' + (cc.can || 0) + ' CAN</span><span class="rax-can none">' + (cc.none || 0) + ' fără CAN</span></div>';
-      if (!d.vehicles.length) return summary + '<div class="rax-co-meta" style="padding:16px;">Niciun vehicul.</div>';
+      if (!d.vehicles.length) return summary + '<div class="rax-cod-gol"><i class="fas fa-car"></i><b>Niciun vehicul</b>'
+        + '<span>Aparatele le înregistrăm noi, din „Dispozitive", și le dăm firmei de acolo.</span></div>';
       return summary + '<table class="rax-mini-table"><thead><tr><th>Vehicul</th><th>Nr.</th><th>Categorie</th><th>Date</th><th>Ultima poziție</th></tr></thead><tbody>' +
         d.vehicles.map(function (v) {
           var lp = v.last_position_time ? new Date(v.last_position_time).toLocaleString('ro-RO') : '—';
@@ -20279,7 +20317,8 @@ const pozitii = await r.json();</code></pre>
         }).join('') + '</tbody></table>';
     }
     function _raxCodFacturi(d) {
-      if (!d.payments.length) return '<div class="rax-co-meta" style="padding:16px;">Nicio plată înregistrată. Înregistrează una din tabelul Companii (iconița card).</div>';
+      if (!d.payments.length) return '<div class="rax-cod-gol"><i class="fas fa-receipt"></i><b>Nicio plată înregistrată</b>'
+        + '<span>Se încasează prin transfer bancar, pe factură. Plata se trece din „Abonament &amp; plăți".</span></div>';
       var total = d.payments.reduce(function (s, p) { return s + (Number(p.amount_ron) || 0); }, 0);
       return '<div style="margin-bottom:10px;font-size:13px;font-weight:700;color:var(--accent)">Total: ' + total.toLocaleString('ro-RO') + ' lei · ' + d.payments.length + ' plăți</div>' +
         '<table class="rax-mini-table"><thead><tr><th>Data</th><th>Sumă</th><th>Perioadă</th><th>Metodă</th><th>Notă</th></tr></thead><tbody>' +

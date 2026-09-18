@@ -95,6 +95,50 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Fereastra unei firme nu se mai zbate, și filele goale au rost
+
+Alin, cu cinci capturi: *„se vede urât acest modal, cu aceste categorii… îngrămădite, fără aliniament,
+se taie de sus."*
+
+**Întâi, o corectură.** Fereastra **nu se tăia.** Am măsurat-o la șase înălțimi de ecran, de la 480 la
+900 de pixeli — de fiecare dată rămâne întreagă, cu spațiu deasupra. Ce se vedea în captură era
+decupajul pozei.
+
+**Dar am găsit ce dădea senzația**, și era real: fereastra **își schimba înălțimea la fiecare filă**.
+
+| Filă | Cât era înaltă |
+|---|---|
+| Facturi | 185px |
+| Vehicule | 259px |
+| Contract | 301px |
+| Utilizatori | 358px |
+| Detalii | 409px |
+| Abonament & plăți | **705px** |
+
+Săreai de la 185 la 705 pixeli cu un clic. Fereastra se zbătea sub mouse, iar pe fila plină ajungea
+lipită de marginile ecranului — de acolo impresia că e tăiată.
+
+**Acum își ține forma:** aceeași înălțime pe toate cele șase file. Capul și filele stau pe loc, se
+derulează doar conținutul. Ca orice fereastră de setări.
+
+**Alinierea.** În „Detalii", coloana din stânga avea cinci rânduri și cea din dreapta patru, deci
+valorile nu se potriveau pe linii. Am pus în dreapta **numărul de vehicule** — care oricum lipsea din
+fila asta, deși e primul lucru pe care-l cauți la o firmă. Acum se citesc în paralel. Rândurile au
+aceeași înălțime, iar distanțele dintre secțiuni vin din stil, nu scrise de mână la fiecare.
+
+**Filele goale.** „Facturi" arăta un singur rând italic, pierdut sus, cu gol dedesubt — semăna cu o
+aplicație stricată. Acum fiecare gol spune ce e și ce urmează:
+
+> **Nicio plată înregistrată**
+> Se încasează prin transfer bancar, pe factură. Plata se trece din „Abonament & plăți".
+
+La fel la Vehicule („aparatele le înregistrăm noi") și Utilizatori („conturile le face administratorul
+firmei"). Când golul e tot ce are fila, stă în mijloc, nu agățat sus.
+
+- **Ce am schimbat:** fereastra unei firme își ține forma, se aliniază și spune ceva și când e goală.
+- **Ce vede fondatorul:** aceeași fereastră, de oriunde o deschizi — din Companii, din Tahograf, din Dispozitive.
+- **Ce vede clientul:** nimic — fereastra e doar a noastră.
+
 ### FONDATOR · Tahograf: un cartonaș pe firmă, cu „Afișează mai mult"
 
 Alin: *„firma X (situația), firma Y (situația) — în dreptul ei cifrele, și buton «afișează mai mult»."*

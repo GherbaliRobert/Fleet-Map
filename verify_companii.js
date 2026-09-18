@@ -241,6 +241,28 @@ sect('9. Stilul listei');
 T('pe telefon lista devine cartonașe', /@media \(max-width: 860px\)\{[\s\S]{0,700}\.raco-lista thead\{ display:none/.test(css));
 T('și fiecare cifră își spune ce e', /\.raco-lista td:before\{ content:attr\(data-et\)/.test(css));
 
+sect('N. Fereastra „Companie" nu se mai zbate, și golul are rost');
+// Fereastra își schimba înălțimea la fiecare filă: 185px pe „Facturi" (aproape goală) → 705px pe
+// „Abonament & plăți". Sărea sub mouse, iar pe fila plină ajungea lipită de marginile ecranului și
+// părea tăiată de sus (Alin, 18.09). Măsurat în browser pe toate șase filele.
+T('fereastra are o înălțime fixă', /#rax-codetail-overlay \.rax-card \{ height: min\(82vh, 620px\); \}/.test(html));
+T('capul și filele stau pe loc',
+  /#rax-codetail-overlay \.rax-head \{ flex: 0 0 auto; \}/.test(html) &&
+  /#rax-codetail-overlay \.rax-cod-tabs \{ flex: 0 0 auto; \}/.test(html));
+T('doar corpul se derulează', /#rax-codetail-overlay #rax-cod-body \{ flex: 1 1 auto; min-height: 0; overflow-y: auto; \}/.test(html));
+T('secțiunile se despart din CSS, nu din margini scrise pe fiecare',
+  /#rax-cod-body > \.rax-cod-sect \+ \.rax-cod-sect/.test(html) && !/rax-cod-sect" style="margin-top:14px/.test(html));
+T('butoanele de jos au rândul lor, despărțit', /#rax-cod-body > \.rax-cod-actiuni \{[^}]*border-top/.test(html));
+T('cele două coloane din „Detalii" au același număr de rânduri (se aliniază)',
+  /<span class="k">Acces<\/span>/.test(html) && /<span class="k">Vehicule<\/span>/.test(html));
+T('rândurile au aceeași înălțime', /\.rax-kv \{[^}]*min-height: 30px/.test(html));
+T('o filă goală arată a gol, nu a aplicație stricată', (html.match(/class="rax-cod-gol"/g) || []).length >= 4);
+T('și când e singură pe filă, stă în mijloc', /#rax-cod-body > \.rax-cod-gol:only-child \{[^}]*justify-content: center/.test(html));
+T('nu mai există rânduri italice orfane în filele goale',
+  !/rax-co-meta" style="padding:16px;">Niciun utilizator/.test(html) &&
+  !/rax-co-meta" style="padding:16px;">Niciun vehicul\./.test(html) &&
+  !/rax-co-meta" style="padding:16px;">Nicio plată/.test(html));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);
