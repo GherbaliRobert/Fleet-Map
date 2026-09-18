@@ -340,6 +340,13 @@ fără coloană de firmă. Scria „Ion Popescu, termen depășit" și nu puteai
   fișa firmei.
 - `getTachoScadentar` întoarce `company_id` **și pentru vehicule** (lipsea; la gruparea pe firmă
   camioanele cădeau pe dinafară, iar firma apărea cu 0 vehicule).
+- **Un CARTONAȘ pe firmă**, nu rând de tabel (aceleași `.rax-devgr` ca la „Dispozitive"), cu buton
+  **„Afișează mai mult"** care deschide CINE anume e în urmă — nume, ce se descarcă (card / memorie),
+  câte zile. Numele vin din ruta noastră (`probleme`, cei mai răi primii, tăiate la 12 cu
+  `problemeTotal` alături). Ce e deschis se ține în `_thfDeschise`, ca redesenarea să nu închidă.
+- **Cifrele de sus se socotesc în ECRAN, din firmele arătate** — urmează filtrul. Ruta NU mai trimite
+  un `sumar`: ar fi fost două socoteli ale aceluiași lucru (una pe total, alta pe ce se vede).
+  Când e filtrat, un rând sub cifre o spune; etichetele NU se acordă cu numărul („1 firme" arată prost).
 - Păzit de `verify_tacho_fondator.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)

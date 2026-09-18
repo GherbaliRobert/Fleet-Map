@@ -95,6 +95,40 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Tahograf: un cartonaș pe firmă, cu „Afișează mai mult"
+
+Alin: *„firma X (situația), firma Y (situația) — în dreptul ei cifrele, și buton «afișează mai mult»."*
+
+**Ce era, de ieri.** Un tabel cu șase coloane. Ca să afli ce are o firmă, citeai pe orizontală. Iar
+când scria „3 termene depășite", tot trebuia să intri în firmă ca să afli **pe cine**.
+
+**Ce e acum.** Un **cartonaș pe firmă**, cu totul pe un rând: numele, dacă are modulul pornit, câți
+șoferi și câte camioane are de descărcat, ce e de rezolvat și când a intrat ultimul fișier. Aceleași
+chenare ca la „Dispozitive", ca să fie același limbaj peste tot.
+
+Iar unde e ceva de rezolvat, apare butonul **„Afișează mai mult"**. Îl apeși și se deschide dedesubt
+**cine anume**:
+
+> Ion Popescu — card șofer — *niciodată descărcat*
+> B 10 AAA — memoria vehiculului — *41 de zile întârziere*
+
+Adică poți suna clientul și să-i spui direct ce are de făcut, fără să mai intri în firma lui. Cei mai
+răi apar primii („niciodată descărcat" înaintea unei întârzieri de două zile), iar dacă sunt prea
+mulți, scrie „și încă 7 — deschide firma ca să le vezi pe toate". Ce ai deschis rămâne deschis când
+cauți sau se reîncarcă lista.
+
+**Și cifrele de sus urmăresc acum filtrul.** Până azi, dacă filtrai la o firmă, tabelul se strângea
+dar cifrele rămâneau pe totalul platformei: căutai „Alfa", vedeai un rând, și sus tot scria „2 firme
+cu modulul pornit". Era aceeași nepotrivire ca la Inventar, unde filtrai și exportul îți dădea tot.
+Acum cifrele descriu exact ce se vede, iar sub ele scrie o dată, limpede, că e o selecție.
+
+Un amănunt de scris corect: serverul nu mai trimite și el un sumar. Erau două socoteli ale aceluiași
+lucru — una pe total, alta pe ce se vede — și s-ar fi despărțit la prima schimbare de regulă.
+
+- **Ce am schimbat:** situația fiecărei firme se citește dintr-o privire, iar detaliul se cere la nevoie.
+- **Ce vede fondatorul:** cartonaș pe firmă, buton „Afișează mai mult" cu numele celor în urmă, cifre care urmează filtrul.
+- **Ce vede clientul:** nimic — ecranul lui n-a fost atins.
+
 ### FONDATOR · Tahograf: noi vedem FIRMELE, clientul își vede șoferii
 
 Alin: *„în verticala partener e ok cum le-am făcut. Aici, în varianta fondator, sunt lucruri diferite —

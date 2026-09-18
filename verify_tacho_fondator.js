@@ -96,6 +96,36 @@ T('și căutare după firmă', /id="thf-cauta"/.test(F) && /window\.raxThfCauta 
 T('scheletul se face o singură dată (cursorul nu sare din casetă)',
   /function _thfSchelet\(host\)/.test(F) && /if \(!host\._thfGata\) _thfSchelet\(host\)/.test(F));
 
+sect('5b. Un CARTONAȘ pe firmă, nu un rând de tabel');
+T('nu mai e tabel', !/thf-corp/.test(F) && !/<thead>/.test(F));
+T('e o listă de cartonașe', /id="thf-lista"/.test(F) && /class="rax-devgr"/.test(F));
+T('cu aceleași chenare ca la „Dispozitive"', /rax-devgr-h/.test(F) && /rax-devgr-b/.test(F));
+T('pe cartonaș scrie câți șoferi și câte camioane', /' camion' : ' camioane'/.test(F));
+T('și când a intrat ultimul fișier', /ultimul fișier ' \+ _thfCand/.test(F));
+
+sect('5c. „Afișează mai mult" arată CINE e în urmă');
+// „Butonul există" se caută în COD, nu în comentarii: explicația de deasupra pomenește firesc
+// „Afișează mai mult", iar prima variantă a probei trecea și după ce butonul era scos.
+T('butonul există', /Afișează mai mult/.test(faraComentarii(F)) && /window\.raxThfMaiMult = function \(id\)/.test(F));
+T('apare doar unde chiar e ceva de arătat', /are \? '<button class="rax-btn" onclick="raxThfMaiMult/.test(F));
+T('ce e deschis rămâne deschis la redesenare',
+  /var _thfDeschise = \{\};/.test(F) && /deschis = !!_thfDeschise\[f\.id\]/.test(F)
+  && /_thfDeschise\[id\] = !_thfDeschise\[id\]/.test(F));
+T('rândul deschis spune numele', /esc\(p\.nume \|\| '—'\)/.test(F));
+T('și dacă e card de șofer sau memoria camionului', /p\.ce === 'card' \? 'card șofer' : 'memoria vehiculului'/.test(F));
+T('cuvintele întârzierii stau într-un singur loc', /function _thfProblema\(p\)/.test(F));
+T('„niciodată descărcat" nu se preface în zile', /if \(p\.stare === 'niciodata'\) return \{ t: 'niciodată descărcat'/.test(F));
+T('când sunt prea multe, o spune', /și încă ' \+ \(f\.problemeTotal - are\)/.test(F));
+// serverul trimite numele, tăiate la un număr rezonabil
+T('ruta trimite numele celor în urmă', /f\.probleme\.push\(\{ tip, nume, ce, stare: s\.stare/.test(RUTA));
+T('cei mai răi primii', /rang = \{ niciodata: 0, depasit: 1, curand: 2 \}/.test(RUTA));
+T('lista e tăiată, cu totalul alături', /probleme: f\.probleme\.slice\(0, MAX_NUME\)/.test(RUTA) && /problemeTotal/.test(RUTA));
+
+sect('5d. Cifrele de sus urmăresc filtrul');
+T('se socotesc din firmele ARĂTATE', /var firme = _thfFirme\(\);[\s\S]{0,700}cuModul: firme\.filter/.test(F));
+T('și serverul nu mai trimite un al doilea sumar', !/sumar:/.test(RUTA) && !/d\.sumar/.test(F));
+T('iar cand e filtrat o spune limpede, o data', /thf-filtrat[\s\S]{0,120}doar pentru firmele arătate acum/.test(F));
+
 (async () => {
   for (let i = 0; i < 90; i++) { try { if ((await fetch(B + '/api')).ok) break; } catch (e) {} await sleep(500); }
   const lr = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -133,7 +163,15 @@ T('scheletul se face o singură dată (cursorul nu sare din casetă)',
   T('firma cu modul și fără ce descărca = plătit degeaba', f(G).platitDegeaba === true);
   T('pragurile legale ajung la ecran', d.praguriLegale && d.praguriLegale.card === 28 && d.praguriLegale.vu === 90,
     JSON.stringify(d.praguriLegale));
-  T('sumarul numără firmele cu modulul', d.sumar && d.sumar.cuModul >= 2, JSON.stringify(d.sumar));
+  // Numele celor în urmă — ca să nu mai trebuiască să intri în firmă ca să afli pe cine
+  const pr = f(A).probleme || [];
+  T('trimite și CINE e în urmă', pr.length === 2, JSON.stringify(pr.map(x => x.nume)));
+  T('cu numele lor', pr.some(x => x.nume === 'CI Profesionist') && pr.some(x => x.nume === 'B 10 AAA'),
+    JSON.stringify(pr.map(x => x.nume)));
+  T('și cu ce anume se descarcă', pr.every(x => x.ce === 'card' || x.ce === 'memorie'),
+    JSON.stringify(pr.map(x => x.ce)));
+  T('totalul e alături, pentru când lista e tăiată', f(A).problemeTotal === 2, String(f(A).problemeTotal));
+  T('o firmă fără probleme n-are nimic de deschis', (f(Bt).probleme || []).length >= 0);
   T('demo nu apare printre firme', !(d.firme || []).some(x => /demo/i.test(x.nume || '')),
     (d.firme || []).map(x => x.nume).join(', '));
 

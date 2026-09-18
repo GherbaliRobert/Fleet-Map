@@ -24597,14 +24597,25 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxThfCauta = function (v) { _thfCauta = v; _thfRandeaza(); };
     window.raxThfProbleme = function () { _thfDoarProbleme = !_thfDoarProbleme; _thfRandeaza(); };
+    // Care firme au deschis „Afișează mai mult". Se ține deoparte, ca redesenarea (căutare, filtru,
+    // reîncărcare) să nu închidă la loc ce ai deschis.
+    var _thfDeschise = {};
+    window.raxThfMaiMult = function (id) { _thfDeschise[id] = !_thfDeschise[id]; _thfRandeaza(); };
+    // Ce e în neregulă cu UN șofer sau UN camion, în cuvinte. Cifra vine de la server (`zile` =
+    // zile rămase; negativ = întârziere), aici doar o îmbrăcăm.
+    function _thfProblema(p) {
+      if (p.stare === 'niciodata') return { t: 'niciodată descărcat', c: 'var(--red)' };
+      if (p.stare === 'depasit') {
+        var z = Math.abs(p.zile || 0);
+        return { t: z + (z === 1 ? ' zi întârziere' : ' zile întârziere'), c: 'var(--red)' };
+      }
+      return { t: 'mai are ' + p.zile + (p.zile === 1 ? ' zi' : ' zile'), c: 'var(--orange)' };
+    }
     function _thfSchelet(host) {
-      var col = ['Firmă', 'Modul', 'De descărcat', 'De rezolvat', 'Cel mai vechi', 'Ultimul fișier', ''];
       host.innerHTML = '<div id="thf-sumar" class="thf-sumar"></div>'
         + '<div class="rax-dev-bar"><button type="button" class="rax-btn" id="thf-probleme" onclick="raxThfProbleme()"></button>'
         + '<input class="rax-field rax-dev-search" id="thf-cauta" placeholder="🔎 caută firma" oninput="raxThfCauta(this.value)"></div>'
-        + '<div style="overflow-x:auto;"><table class="rax-co-table" style="width:100%;"><thead><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);">'
-        + col.map(function (c) { return '<th style="padding:7px 9px;text-align:left;white-space:nowrap;">' + c + '</th>'; }).join('')
-        + '</tr></thead><tbody id="thf-corp"></tbody></table></div>'
+        + '<div id="thf-lista"></div>'
         + '<div class="thf-nota" id="thf-nota"></div>';
       host._thfGata = true;
     }
@@ -24612,17 +24623,31 @@ const pozitii = await r.json();</code></pre>
       var host = document.getElementById('admin-tab-tahograf'); if (!host) return;
       if (!host._thfGata) _thfSchelet(host);
       var d = _thfDate; if (!d) return;
-      var s = d.sumar || {}, toate = (d.firme || []).length;
+      var firme = _thfFirme();
+      // Cifrele de sus se socotesc din firmele de PE ECRAN, nu din totalul platformei. Altfel cauți
+      // „Alfa", vezi un cartonaș, și sus scrie tot „2 firme cu modulul pornit" — exact felul de
+      // nepotrivire pe care l-am reparat la Inventar, unde filtrai și exportul îți dădea tot.
+      var s = {
+        cuModul: firme.filter(function (f) { return f.modul; }).length,
+        cuProbleme: firme.filter(function (f) { return f.modul && (f.depasite || f.niciodata); }).length,
+        deVandut: firme.filter(function (f) { return f.deVandut; }).length,
+        fisiere30: firme.reduce(function (a, f) { return a + (f.fisiere30 || 0); }, 0),
+        necitite: firme.reduce(function (a, f) { return a + (f.necitite || 0); }, 0)
+      };
       var cartonas = function (n, et, cul) {
         return '<div class="thf-c"><b' + (cul ? ' style="color:' + cul + '"' : '') + '>' + _thfNum(n) + '</b><span>' + et + '</span></div>';
       };
+      var filtrat = !!(_thfCauta || '').trim() || _thfDoarProbleme;
       var sum = document.getElementById('thf-sumar');
+      // Eticheta nu se acordă cu numărul („1 firme arătate" arată a greșeală). Când e filtrat, o spune
+      // un rând de sub cifre — o dată, limpede, în loc de cinci etichete care se schimbă.
       if (sum) sum.innerHTML =
           cartonas(s.cuModul, 'firme cu modulul pornit')
         + cartonas(s.cuProbleme, 'cu descărcări în urmă', s.cuProbleme ? 'var(--red)' : '')
         + cartonas(s.deVandut, 'au camioane, n-au modulul', s.deVandut ? 'var(--orange)' : '')
         + cartonas(s.fisiere30, 'fișiere în 30 de zile')
-        + cartonas(s.necitite, 'fișiere necitite', s.necitite ? 'var(--orange)' : '');
+        + cartonas(s.necitite, 'fișiere necitite', s.necitite ? 'var(--orange)' : '')
+        + (filtrat ? '<div class="thf-filtrat"><i class="fas fa-filter"></i> Cifrele de mai sus sunt doar pentru firmele arătate acum.</div>' : '');
       var bp = document.getElementById('thf-probleme');
       if (bp) {
         var nrRau = (d.firme || []).filter(function (f) { return _thfSemn(f).rau; }).length;
@@ -24631,25 +24656,45 @@ const pozitii = await r.json();</code></pre>
         bp.style.color = nrRau ? 'var(--orange)' : ''; bp.style.borderColor = nrRau ? 'var(--orange)' : '';
         bp.style.background = _thfDoarProbleme ? 'color-mix(in srgb, var(--orange) 14%, transparent)' : '';
       }
-      var firme = _thfFirme(), corp = document.getElementById('thf-corp');
-      if (corp) corp.innerHTML = firme.map(function (f) {
-        var sg = _thfSemn(f);
+      // Un CARTONAȘ pe firmă, nu un rând de tabel: situația se citește dintr-o privire, nu pe
+      // orizontală prin șase coloane (Alin, 18.09). Aceleași chenare ca la „Dispozitive".
+      var lista = document.getElementById('thf-lista');
+      if (lista) lista.innerHTML = firme.map(function (f) {
+        var sg = _thfSemn(f), deschis = !!_thfDeschise[f.id];
         var modul = f.modul
           ? '<span class="thf-p on">pornit</span>'
           : '<span class="thf-p' + (f.deVandut ? ' vinde' : '') + '">oprit</span>';
-        return '<tr>'
-          + '<td style="padding:7px 9px;font-weight:700;">' + esc(f.nume || '—') + '</td>'
-          + '<td style="padding:7px 9px;">' + modul + '</td>'
-          + '<td style="padding:7px 9px;white-space:nowrap;color:var(--text-muted);">'
-            + (f.deDescarcat ? (f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' vehicul' : ' vehicule')) : '—') + '</td>'
-          + '<td style="padding:7px 9px;color:' + sg.c + ';font-weight:700;">' + esc(sg.t) + '</td>'
-          + '<td style="padding:7px 9px;white-space:nowrap;color:' + (f.celMaiTarziu ? 'var(--red)' : 'var(--text-muted)') + ';">'
-            + (f.celMaiTarziu ? (f.celMaiTarziu + (f.celMaiTarziu === 1 ? ' zi întârziere' : ' zile întârziere')) : '—') + '</td>'
-          + '<td style="padding:7px 9px;white-space:nowrap;color:var(--text-muted);">' + esc(_thfCand(f.ultimulFisier)) + '</td>'
-          + '<td style="padding:5px 9px;text-align:right;"><button class="rax-btn" onclick="raxOpenCompanyDetail(' + f.id + ')"><i class="fas fa-building"></i> Deschide firma</button></td>'
-          + '</tr>';
-      }).join('') || '<tr><td colspan="7" style="padding:16px;color:var(--text-muted);text-align:center;">Nicio firmă'
-          + ((_thfCauta || _thfDoarProbleme) ? ' pentru filtrul curent.' : '.') + '</td></tr>';
+        var cate = f.deDescarcat
+          ? (f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' camion' : ' camioane'))
+          : 'nimic de descărcat';
+        var ultim = f.ultimulFisier ? 'ultimul fișier ' + _thfCand(f.ultimulFisier) : 'niciun fișier';
+        var are = (f.probleme || []).length;
+        var corp = are
+          ? '<div class="thf-det">' + f.probleme.map(function (p) {
+              var pr = _thfProblema(p);
+              return '<div class="thf-d">'
+                + '<i class="fas fa-' + (p.tip === 'sofer' ? 'user' : 'truck') + '"></i>'
+                + '<b>' + esc(p.nume || '—') + '</b>'
+                + '<span>' + (p.ce === 'card' ? 'card șofer' : 'memoria vehiculului') + '</span>'
+                + '<em style="color:' + pr.c + '">' + esc(pr.t) + '</em></div>';
+            }).join('')
+            + (f.problemeTotal > are ? '<div class="thf-d thf-inca">și încă ' + (f.problemeTotal - are)
+                + ' — deschide firma ca să le vezi pe toate</div>' : '')
+            + '</div>'
+          : '';
+        return '<div class="rax-devgr">'
+          + '<div class="rax-devgr-h">'
+            + '<strong>' + esc(f.nume || '—') + '</strong>' + modul
+            + '<span class="rax-devgr-n">' + cate + ' · <b style="color:' + sg.c + '">' + esc(sg.t) + '</b>'
+              + '<span class="thf-ultim"> · ' + esc(ultim) + '</span></span>'
+            + (are ? '<button class="rax-btn" onclick="raxThfMaiMult(' + f.id + ')"><i class="fas fa-chevron-'
+                + (deschis ? 'up' : 'down') + '"></i> ' + (deschis ? 'Ascunde' : 'Afișează mai mult') + '</button>' : '')
+            + '<button class="rax-btn" onclick="raxOpenCompanyDetail(' + f.id + ')"><i class="fas fa-building"></i> Deschide firma</button>'
+          + '</div>'
+          + (are ? '<div class="rax-devgr-b" style="display:' + (deschis ? 'block' : 'none') + ';">' + corp + '</div>' : '')
+          + '</div>';
+      }).join('') || '<div class="rax-co-meta" style="padding:16px;text-align:center;">Nicio firmă'
+          + ((_thfCauta || _thfDoarProbleme) ? ' pentru filtrul curent.' : '.') + '</div>';
       var nota = document.getElementById('thf-nota');
       if (nota) nota.innerHTML = 'Termenele legale: cardul șoferului la <b>' + (d.praguriLegale || {}).card
         + ' de zile</b>, memoria vehiculului la <b>' + (d.praguriLegale || {}).vu + '</b>. O firmă le poate avea '

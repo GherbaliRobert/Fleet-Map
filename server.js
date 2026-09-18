@@ -6121,17 +6121,10 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
       });
     });
 
-    res.json({
-      praguriLegale: { card: tacho.TERMEN_CARD_ZILE, vu: tacho.TERMEN_VU_ZILE },
-      firme: lista,
-      sumar: {
-        cuModul: lista.filter(f => f.modul).length,
-        cuProbleme: lista.filter(f => f.modul && (f.depasite || f.niciodata)).length,
-        deVandut: lista.filter(f => f.deVandut).length,
-        fisiere30: lista.reduce((a, f) => a + f.fisiere30, 0),
-        necitite: lista.reduce((a, f) => a + f.necitite, 0)
-      }
-    });
+    // Fără `sumar` aici: cifrele de sus se socotesc în ecran, din firmele ARĂTATE, ca să urmeze
+    // filtrul. Dacă le-aș trimite și de aici, ar fi două socoteli ale aceluiași lucru — una pe total,
+    // alta pe ce se vede — și s-ar despărți la prima schimbare de regulă.
+    res.json({ praguriLegale: { card: tacho.TERMEN_CARD_ZILE, vu: tacho.TERMEN_VU_ZILE }, firme: lista });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
