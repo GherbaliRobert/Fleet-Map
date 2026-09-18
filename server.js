@@ -6058,19 +6058,30 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
         pragVu: prag(co, 'tacho_zile_vu', tacho.TERMEN_VU_ZILE),
         soferi: 0, vehicule: 0, depasite: 0, niciodata: 0, curand: 0,
         celMaiTarziu: 0,          // câte zile întârziere are cel mai rău rând
-        fisiere: 0, fisiere30: 0, necitite: 0, ultimulFisier: null
+        fisiere: 0, fisiere30: 0, necitite: 0, ultimulFisier: null,
+        // CINE anume e în urmă — se deschide din „Afișează mai mult". Fără nume, rândul firmei spune
+        // „3 termene depășite" și tot trebuie să intri în firmă ca să afli pe cine sunt.
+        probleme: []
       });
     }
+
+    // Cel mult atâtea nume pe firmă în deschidere; restul se numără. O listă de 200 de șoferi nu se
+    // citește oricum, iar răspunsul n-are de ce să crească nemărginit.
+    const MAX_NUME = 12;
+    const noteaza = (f, tip, nume, ce, s) => {
+      if (s.stare === 'depasit') { f.depasite++; f.celMaiTarziu = Math.max(f.celMaiTarziu, Math.abs(s.zileRamase || 0)); }
+      else if (s.stare === 'niciodata') f.niciodata++;
+      else if (s.stare === 'curand') f.curand++;
+      else return;
+      f.probleme.push({ tip, nume, ce, stare: s.stare, zile: s.zileRamase == null ? null : s.zileRamase });
+    };
 
     // Șoferii cu card de tahograf
     for (const d of scad.soferi) {
       const f = perFirma.get(d.company_id); if (!f) continue;
       if (!licenseCats.needsTacho(d.license_categories)) continue;
       f.soferi++;
-      const s = tacho.scadenta(d.ultima, f.pragCard, acum);
-      if (s.stare === 'depasit') { f.depasite++; f.celMaiTarziu = Math.max(f.celMaiTarziu, Math.abs(s.zileRamase || 0)); }
-      else if (s.stare === 'niciodata') f.niciodata++;
-      else if (s.stare === 'curand') f.curand++;
+      noteaza(f, 'sofer', d.name, 'card', tacho.scadenta(d.ultima, f.pragCard, acum));
     }
     // Vehiculele cu tahograf
     for (const v of scad.vehicule) {
@@ -6078,10 +6089,7 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
       const f = perFirma.get(v.company_id); if (!f) continue;
       if (!tacho.vehiculAreTahograf(v.vehicle_type)) continue;
       f.vehicule++;
-      const s = tacho.scadenta(v.ultima, f.pragVu, acum);
-      if (s.stare === 'depasit') { f.depasite++; f.celMaiTarziu = Math.max(f.celMaiTarziu, Math.abs(s.zileRamase || 0)); }
-      else if (s.stare === 'niciodata') f.niciodata++;
-      else if (s.stare === 'curand') f.curand++;
+      noteaza(f, 'vehicul', v.plate || v.name || v.imei, 'memorie', tacho.scadenta(v.ultima, f.pragVu, acum));
     }
     // Fișierele: câte au intrat, când a fost ultimul, câte n-au putut fi citite
     const ZI = 86400000, acum30 = Date.now() - 30 * ZI;
@@ -6096,8 +6104,14 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
 
     const lista = Array.from(perFirma.values()).map(f => {
       const deDescarcat = f.soferi + f.vehicule;
+      // Cei mai întârziați primii: „niciodată descărcat" înaintea unei întârzieri de 2 zile.
+      const rang = { niciodata: 0, depasit: 1, curand: 2 };
+      f.probleme.sort((a, b) => (rang[a.stare] - rang[b.stare]) || ((a.zile == null ? -1e9 : a.zile) - (b.zile == null ? -1e9 : b.zile)));
+      const problemeTotal = f.probleme.length;
       return Object.assign(f, {
         deDescarcat,
+        problemeTotal,
+        probleme: f.probleme.slice(0, MAX_NUME),
         // Zile de la ultimul fișier — ca să se vadă firma care plătește modulul și nu-l folosește.
         zileFaraFisier: f.ultimulFisier ? Math.floor((Date.now() - f.ultimulFisier) / ZI) : null,
         // „Are camioane, n-are modulul" = ocazie de vânzare. „Are modulul, n-are camioane" = îl plătește degeaba.
