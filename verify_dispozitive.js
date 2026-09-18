@@ -225,7 +225,27 @@ function gata(cod) {
   T('dar ce scrie el se aruncă — pe amândouă căile', dupa.gps_model === 'FMC650' && dupa.sim_number === '0740111222',
     dupa.gps_model + ' / ' + dupa.sim_number);
 
-  sect('11. Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc');
+  sect('11. Modelul și cartela se scriu CHIAR LA ÎNREGISTRARE');
+  // Se puteau scrie doar la EDITARE, deși sunt fix datele pe care le știm când punem aparatul în
+  // evidență (îl avem în mână). Efectul: orice aparat nou intra în „Inventar dispozitive" ca „fără
+  // model/SIM" și cerea imediat o a doua trecere prin fișă (Alin, 18.09).
+  const IMEI2 = '860000000099007';
+  T('le primește la înregistrare',
+    (await cere('POST', '/api/devices', { imei: IMEI2, name: 'Nou', plate: 'B 77 XYZ', gps_model: 'Teltonika FMC130', sim_number: '0740999888' })).status === 200);
+  const nou = ((await (await cere('GET', '/api/devices', null, ck)).json()) || []).find(d => d.imei === IMEI2) || {};
+  T('și chiar se salvează, din prima', nou.gps_model === 'Teltonika FMC130' && nou.sim_number === '0740999888',
+    nou.gps_model + ' / ' + nou.sim_number);
+  T('formularul chiar are câmpurile',
+    /id="radd-gps"/.test(html) && /id="radd-sim"/.test(html));
+  T('și le trimite', /body\.gps_model = gps;/.test(html) && /body\.sim_number = sim;/.test(html));
+  T('se golesc când redeschizi formularul', /'radd-plate', 'radd-gps', 'radd-sim'/.test(html));
+  T('importul în lot le are și el, pe coloane proprii',
+    /\{ h: 'model_gps', f: 'gps_model' \}, \{ h: 'cartela_sim', f: 'sim_number' \}/.test(server));
+  T('fără să se încurce cu modelul VEHICULULUI', /\{ h: 'model', f: 'model' \}/.test(server));
+  T('clientul tot nu le poate scrie la înregistrare (ușa e închisă înainte)',
+    (await cere('POST', '/api/devices', { imei: '860000000099008', gps_model: 'ALTCEVA' }, ckSef)).status === 403);
+
+  sect('12. Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc');
   // Pe „Companii" a stat până acum o a doua listă de aparate neasignate, cu „Adoptă"/„Respinge" —
   // rămasă de pe vremea când ecranul se numea „Companii & Dispozitive" și le ținea pe amândouă.
   // Apăsa ACELAȘI buton pe server ca ecranul Dispozitive, dar fără IMEI, semnal, ultima poziție sau
@@ -249,7 +269,7 @@ function gata(cod) {
   T('îndemnul din fișa firmei duce tot acolo',
     /Adoptă-le întâi din <a href="#" onclick="raxDevDeschideNeasignate\(\)/.test(html));
 
-  sect('12. Ce ține de VEHICUL îi rămâne — e flota lui');
+  sect('13. Ce ține de VEHICUL îi rămâne — e flota lui');
   T('îi poate schimba numele și numărul',
     (await cere('PUT', '/api/devices/' + IMEI, { name: 'Camionul lui', plate: 'B 01 ABC' }, ckSef)).status === 200);
   const alLui = ((await (await cere('GET', '/api/devices', null, ck)).json()) || []).find(d => d.imei === IMEI) || {};

@@ -244,6 +244,11 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **`gps_model` și `sim_number`** (model aparat + cartelă SIM) sunt date de ECHIPAMENT: se scriu doar
   de noi. Sunt aruncate din body pentru cine nu e super, pe AMÂNDOUĂ căile (`PUT /api/devices/:imei`
   și `PUT /api/devices/:imei/details`). În fișa vehiculului i se arată, dar `readOnly`.
+- **Se scriu de la ÎNREGISTRARE, nu abia la editare** (Alin, 18.09): sunt în formularul „Adaugă
+  dispozitiv" (`radd-gps`, `radd-sim`), le acceptă `POST /api/devices`, și au coloane proprii în
+  importul CSV (`model_gps`, `cartela_sim` — NU `model`, care e modelul VEHICULULUI). Înainte se puteau
+  pune doar editând fișa, deci orice aparat nou intra în „Inventar dispozitive" ca „fără model/SIM" și
+  cerea imediat o a doua trecere. Regula „doar NOI" e apărată de ușă: ambele rute sunt `requireSuperadmin`.
 - **Ce ține de VEHICUL îi rămâne** clientului: nume, număr, tip, șofer, grupă, senzori, program de
   lucru, calibrare rezervor. E flota lui.
 - Butoanele „Adaugă vehicul", „Importă", „Șablon", „Arhivează" sunt `super-only` în ecranul lui — dar

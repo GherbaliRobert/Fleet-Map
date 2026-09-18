@@ -6719,6 +6719,11 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       : req.companyId;
     const fields = {};
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
+    // Modelul aparatului și cartela SIM se scriau DOAR la editare, deși sunt exact datele pe care le
+    // știm când îl înregistrăm (îl avem în mână). Rezultatul: orice aparat nou intra în „Inventar
+    // dispozitive" ca „fără model/SIM" și cerea imediat o a doua trecere prin fișă (Alin, 18.09).
+    // Ruta e `requireSuperadmin`, deci regula „le scriem doar NOI" rămâne apărată de ușă, nu de aici.
+    ['gps_model', 'sim_number'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
     // Semnalare „problemă la montaj" direct de la adăugare (anulabilă ulterior din listă)
     const instIssue = req.body.install_issue
       ? { note: (typeof req.body.install_issue_note === 'string' && req.body.install_issue_note.trim()) ? req.body.install_issue_note.trim().slice(0, 300) : null, at: Date.now(), by: (req.session && req.session.username) || null }
@@ -6776,7 +6781,12 @@ const VEHICLE_CSV_COLS = [
   { h: 'putere_kw', f: 'power_kw' }, { h: 'cilindree', f: 'displacement' }, { h: 'sarcina_utila', f: 'payload' },
   { h: 'locuri', f: 'passenger_seats' }, { h: 'grad_poluare', f: 'emission_class' }, { h: 'anvelopa', f: 'tire_size' },
   { h: 'serie_motor', f: 'engine_serial' }, { h: 'centru_cost', f: 'cost_center' }, { h: 'nr_inventar', f: 'inventory_number' },
-  { h: 'consum_oras', f: 'consumption_city' }, { h: 'consum_afara', f: 'consumption_road' }, { h: 'consum_stationar', f: 'consumption_idle' }
+  { h: 'consum_oras', f: 'consumption_city' }, { h: 'consum_afara', f: 'consumption_road' }, { h: 'consum_stationar', f: 'consumption_idle' },
+  // Datele APARATULUI, nu ale mașinii. Lipseau, deși importul e calea prin care înregistrăm un lot
+  // întreg de trackere — deci intrau toate în inventar ca „fără model/SIM" (Alin, 18.09). Numele
+  // coloanei e `model_gps`, ca să nu se încurce cu `model`, care e modelul VEHICULULUI.
+  // Adăugare, nu schimbare: un fișier vechi, fără coloanele astea, se importă exact ca înainte.
+  { h: 'model_gps', f: 'gps_model' }, { h: 'cartela_sim', f: 'sim_number' }
 ];
 // Escapare CSV + anti-injection formule (prefix ' la valori care încep cu = + - @ — previne formula injection în Excel)
 function csvCell(v) {

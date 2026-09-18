@@ -24291,6 +24291,14 @@ const pozitii = await r.json();</code></pre>
               L('Tip vehicul', '<select id="radd-type" class="rax-field">' + typeOpts + '</select>', 'flex:1;') +
               L('Interfață CAN', '<select id="radd-if" class="rax-field">' + ifaceOpts + '</select>', 'flex:1;') +
             '</div>' +
+            // Model aparat + cartelă: sunt datele APARATULUI, singurele pe care le știm sigur în clipa în
+            // care îl punem în evidență (îl avem în mână). Lipseau din formular, deși scrie „Înregistrează
+            // un tracker nou" — rămășiță de pe vremea când ecranul adăuga VEHICULE, nu aparate. Efectul:
+            // fiecare aparat intra în inventar ca „fără model/SIM" și trebuia editat imediat (Alin, 18.09).
+            '<div style="display:flex;gap:10px;">' +
+              L('Model aparat GPS', '<input id="radd-gps" class="rax-field" placeholder="ex. Teltonika FMC130">', 'flex:1;') +
+              L('Cartelă SIM', '<input id="radd-sim" class="rax-field" inputmode="tel" placeholder="ex. 0740111222">', 'flex:1;') +
+            '</div>' +
             '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;"><input type="checkbox" id="radd-issue" onchange="var n=document.getElementById(\'radd-issue-note\');if(n)n.style.display=this.checked?\'\':\'none\';"> <b style="color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i> Problemă la montaj</b> <span style="color:var(--text-muted);font-weight:400;">(se poate anula ulterior)</span></label>' +
             '<input id="radd-issue-note" class="rax-field" placeholder="detalii (opțional) — ex. cablaj de refăcut" style="display:none;margin-top:6px;">' +
             '<div id="radd-err" style="color:var(--red);font-size:12px;margin-top:8px;min-height:14px;"></div>' +
@@ -24302,7 +24310,7 @@ const pozitii = await r.json();</code></pre>
         document.body.appendChild(ov);
         ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('open'); });
       } else {
-        ['radd-imei', 'radd-name', 'radd-plate'].forEach(function (id) { var e = document.getElementById(id); if (e) e.value = ''; });
+        ['radd-imei', 'radd-name', 'radd-plate', 'radd-gps', 'radd-sim'].forEach(function (id) { var e = document.getElementById(id); if (e) e.value = ''; });
         var co = document.getElementById('radd-co'); if (co) co.innerHTML = _raxDevCoOptions('');
         var ty = document.getElementById('radd-type'); if (ty) ty.value = '';
         var ifc = document.getElementById('radd-if'); if (ifc) ifc.value = '';
@@ -24322,6 +24330,8 @@ const pozitii = await r.json();</code></pre>
       var plate = (document.getElementById('radd-plate').value || '').trim(); if (plate) body.plate = plate;
       var type = document.getElementById('radd-type').value; if (type) body.vehicle_type = type;
       var co = document.getElementById('radd-co').value; if (co) body.company_id = parseInt(co);
+      var gps = ((document.getElementById('radd-gps') || {}).value || '').trim(); if (gps) body.gps_model = gps;
+      var sim = ((document.getElementById('radd-sim') || {}).value || '').trim(); if (sim) body.sim_number = sim;
       var isc = document.getElementById('radd-issue');
       if (isc && isc.checked) { body.install_issue = true; var _isn = (document.getElementById('radd-issue-note') || {}).value || ''; if (_isn.trim()) body.install_issue_note = _isn.trim(); }
       var iface = document.getElementById('radd-if').value;

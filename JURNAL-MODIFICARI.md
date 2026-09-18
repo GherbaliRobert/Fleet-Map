@@ -95,6 +95,34 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Modelul și cartela SIM se scriu de când înregistrăm aparatul
+
+Alin, după ce i-am spus că datele astea se pot pune abia la editare: *„adică, care e logica???"*
+
+**Nu era niciuna.** E o rămășiță. Formularul „Adaugă dispozitiv" a fost gândit pe vremea când ecranul
+adăuga **vehicule** — de-aia întreabă de nume, număr, tip de mașină. Pe 16 septembrie am hotărât că
+**aparatele le înregistrăm NOI**, ca marfă a noastră. Formularul n-a fost regândit după decizia aia.
+
+Ironia: scria pe el „Înregistrează un tracker nou după IMEI" — deci se declara formular de APARAT — și
+nu cerea exact cele două lucruri care sunt ale aparatului: **ce model e** și **ce cartelă are**. Iar
+alea sunt singurele pe care le știi sigur în clipa aia: îl ai în mână.
+
+Rezultatul: orice aparat nou intra în inventar ca „fără model/SIM", și trebuia imediat o a doua
+trecere prin fișa vehiculului ca să scrii ce aveai în față cu un minut înainte.
+
+**Ce e acum.** Formularul are două câmpuri noi — **Model aparat GPS** și **Cartelă SIM** — iar aparatul
+intră completat din prima. Am pus aceleași două date și în **importul din fișier**, pe coloane proprii
+(`model_gps`, `cartela_sim`), fiindcă pe acolo înregistrăm loturi întregi; un fișier vechi, fără
+coloanele astea, se importă exact ca înainte.
+
+Regula „doar noi le scriem" nu s-a clintit: ambele căi erau deja închise pentru client, iar proba o
+verifică din nou pe server pornit — un admin de firmă care încearcă să înregistreze un aparat cu model
+primește tot refuz.
+
+- **Ce am schimbat:** aparatul se înregistrează complet dintr-o singură trecere.
+- **Ce vede fondatorul:** două câmpuri în plus la „Adaugă dispozitiv" și două coloane în șablonul de import.
+- **Ce vede clientul:** nimic — nici înainte, nici acum nu poate înregistra aparate.
+
 ### FONDATOR · Inventar dispozitive: căutarea nu se putea folosi, iar exportul te păcălea
 
 Alin: *„din Gestiune, Inventar dispozitive — ce face, care e rolul, cum funcționează și ce trebuie
@@ -7237,11 +7265,6 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala
   noastră. Se leagă de „aparatele le înregistrăm NOI" — arhivarea e decizia noastră, deci și evidența ei.
   Dacă un client întreabă de datele unui camion scos din flotă, i le scoatem noi. Nu se mai revine la asta.
-
-- [ ] **(voi) Când înregistrăm un aparat nou nu putem scrie de la început modelul și cartela SIM.** Formularul de
-  adăugare nu le primește — se pun abia după, editând fișa vehiculului. De-aia inventarul arată aparate „fără
-  model/SIM" chiar din prima zi, deși noi știm modelul în momentul în care îl punem în evidență. Le adăugăm în
-  formularul de înregistrare? (ridicat 18.09, la analiza ecranului „Inventar dispozitive")
 
 - [ ] **(eu) Fundalul verde al butonului principal e rescris de mână pe ~12 ecrane.** L-am pus în familia de butoane
   a casei pentru ecranele de administrare, dar copiile vechi au rămas. Nu strică nimic azi — doar că următorul ecran
