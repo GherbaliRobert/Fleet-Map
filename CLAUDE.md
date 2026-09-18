@@ -159,6 +159,20 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   portiță „doar pentru teste": ar fi exact calea paralelă pe care o evităm.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
+### Suportul se face azi intrând cu contul clientului — de rezolvat (Alin, 18.09)
+Procesul de depanare hotărât: când un client spune că nu-i merge ceva, îi cerem **contul și parola** și
+intrăm cu ele ca să vedem exact ce vede el. E decizia lui Alin și merge așa deocamdată, dar are două
+costuri, notate ca să nu se uite:
+
+- **Contrazice regula de mai sus** („nimeni nu scrie și nu află parola altcuiva"). Aplicația e
+  construită ca parola să nu circule; procesul de suport o face să circule.
+- **Strică urma din audit:** intrat cu contul lui, tot ce faci se scrie în jurnal **pe numele LUI**.
+  O ștergere din greșeală apare ca fiind a clientului.
+
+Calea curată, când se va face: o **intrare de suport pe cont propriu** — super-adminul deschide
+sesiunea unei firme cu contul lui, cu rând în audit („X a intrat în suport la firma Y"), fără să afle
+nicio parolă. NU o construi din proprie inițiativă; e trecută la „De verificat înainte de lansare".
+
 ### Fiecare ecran, un singur rost (decizie Alin, 16.09)
 - **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Tracks).
   Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă
@@ -305,6 +319,28 @@ ecrane peste aceeași rută, publicuri diferite; e în regulă că sunt două, d
 - **Exportul trimite IMEI-urile de pe ecran, prin POST** (`raxInvExport` → `_inventarExport`), în ordinea
   de pe ecran. Filtrarea NU se rescrie pe server. GET-ul vechi (tot inventarul) rămâne.
 - Păzit de `verify_inventar.js` (în `npm test`).
+
+## Tahograf: două ecrane, două privirii (decizie Alin, 18.09)
+
+Fondatorul vedea **exact ecranul clientului** — același nod, mutat în panoul de administrare cu
+`_raxMountBody('#rax-tacho-overlay', 'admin-tab-tahograf')` — hrănit cu datele TUTUROR firmelor și
+fără coloană de firmă. Scria „Ion Popescu, termen depășit" și nu puteai spune al cui e.
+
+- **Clientul** păstrează ecranul lui (`atab-tacho`): scadențar, pe șofer, abateri, încărcare fișiere.
+  NU-l atinge — e bun și e gospodăria lui.
+- **Fondatorul** are ecranul LUI, pe firme (`admin-tab-tahograf` → `raxLoadTahoFirme` →
+  `GET /api/admin/tacho-overview`, super-admin): cine are modulul, cine e în urmă cu descărcările
+  (adică riscă amendă), cine plătește și n-are ce descărca, cui i-au eșuat fișierele.
+- **Regulile nu se scriu a doua oară.** Cine are card de tahograf (`licenseCats.needsTacho`), ce
+  vehicul are tahograf (`tacho.vehiculAreTahograf`) și când e depășit termenul (`tacho.scadenta`) vin
+  din aceleași funcții ca scadențarul clientului. Pragurile se citesc **pe firmă** (una precaută poate
+  avea 21 în loc de 28), din setările ei, ca în ruta clientului.
+- **Pe ecranul fondatorului NU se încarcă și NU se șterg fișiere.** Noi vedem că firma e în urmă, ea
+  rezolvă. Singura acțiune pe rând e „Deschide firma". NU duplica nici comutatorul modulului — e în
+  fișa firmei.
+- `getTachoScadentar` întoarce `company_id` **și pentru vehicule** (lipsea; la gruparea pe firmă
+  camioanele cădeau pe dinafară, iar firma apărea cu 0 vehicule).
+- Păzit de `verify_tacho_fondator.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)
 Pe „Companii" a stat un al doilea ecran de adopție („Vehicule neasignate", cu `raxAssignDevice` /

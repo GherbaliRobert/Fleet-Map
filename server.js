@@ -6020,6 +6020,107 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Tahograf, privirea FONDATORULUI: o firmă pe rând ────────────────────────────────────────────
+// Ecranul de tahograf al clientului e bun și rămâne al lui. Dar fondatorul îl vedea pe ACELAȘI ecran,
+// hrănit cu datele TUTUROR firmelor — fără coloană de firmă. Adică scria „Ion Popescu, termen
+// depășit" și nu puteai spune al cui e (Alin, 18.09).
+//
+// Aici socotim aceleași lucruri, dar STRÂNSE PE FIRMĂ. Cele trei reguli nu se rescriu: cine are card
+// de tahograf (`licenseCats.needsTacho`), ce vehicul are tahograf (`tacho.vehiculAreTahograf`) și
+// când e depășit termenul (`tacho.scadenta`) vin din aceleași funcții ca ecranul clientului. Dacă
+// s-ar scrie a doua oară aici, cele două ecrane ar începe să spună lucruri diferite despre același
+// șofer — exact greșeala reparată la „Semnal".
+app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const acum = new Date().toISOString();
+    const [companies, scad, fisiere] = await Promise.all([
+      db.getCompanies(),
+      db.getTachoScadentar(null),          // null = toate firmele
+      db.getTachoFiles(null, false)        // fără fișierele de demo
+    ]);
+
+    // Pragurile sunt PE FIRMĂ (o firmă precaută poate cere 21 de zile în loc de 28), deci se citesc
+    // din setările ei, exact ca în scadențarul clientului.
+    const prag = (co, cheie, implicit) => {
+      let s = co && co.settings;
+      if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { s = null; } }
+      const v = s && s[cheie] != null ? parseInt(s[cheie]) : NaN;
+      return (Number.isFinite(v) && v > 0 && v <= implicit) ? v : implicit;
+    };
+
+    const perFirma = new Map();
+    for (const co of companies) {
+      if (co.is_demo || co.id === demoCompanyId) continue;          // demo nu intră în flota reală
+      perFirma.set(co.id, {
+        id: co.id, nume: co.name,
+        modul: !!(plans && plans.featuresFor(co).tahograf),
+        pragCard: prag(co, 'tacho_zile_card', tacho.TERMEN_CARD_ZILE),
+        pragVu: prag(co, 'tacho_zile_vu', tacho.TERMEN_VU_ZILE),
+        soferi: 0, vehicule: 0, depasite: 0, niciodata: 0, curand: 0,
+        celMaiTarziu: 0,          // câte zile întârziere are cel mai rău rând
+        fisiere: 0, fisiere30: 0, necitite: 0, ultimulFisier: null
+      });
+    }
+
+    // Șoferii cu card de tahograf
+    for (const d of scad.soferi) {
+      const f = perFirma.get(d.company_id); if (!f) continue;
+      if (!licenseCats.needsTacho(d.license_categories)) continue;
+      f.soferi++;
+      const s = tacho.scadenta(d.ultima, f.pragCard, acum);
+      if (s.stare === 'depasit') { f.depasite++; f.celMaiTarziu = Math.max(f.celMaiTarziu, Math.abs(s.zileRamase || 0)); }
+      else if (s.stare === 'niciodata') f.niciodata++;
+      else if (s.stare === 'curand') f.curand++;
+    }
+    // Vehiculele cu tahograf
+    for (const v of scad.vehicule) {
+      if (DEMO_SET.has(v.imei)) continue;
+      const f = perFirma.get(v.company_id); if (!f) continue;
+      if (!tacho.vehiculAreTahograf(v.vehicle_type)) continue;
+      f.vehicule++;
+      const s = tacho.scadenta(v.ultima, f.pragVu, acum);
+      if (s.stare === 'depasit') { f.depasite++; f.celMaiTarziu = Math.max(f.celMaiTarziu, Math.abs(s.zileRamase || 0)); }
+      else if (s.stare === 'niciodata') f.niciodata++;
+      else if (s.stare === 'curand') f.curand++;
+    }
+    // Fișierele: câte au intrat, când a fost ultimul, câte n-au putut fi citite
+    const ZI = 86400000, acum30 = Date.now() - 30 * ZI;
+    for (const x of fisiere) {
+      const f = perFirma.get(x.company_id); if (!f) continue;
+      f.fisiere++;
+      const t = x.uploaded_at ? new Date(x.uploaded_at).getTime() : 0;
+      if (t > acum30) f.fisiere30++;
+      if (x.incredere === 'necitit') f.necitite++;
+      if (t && (!f.ultimulFisier || t > f.ultimulFisier)) f.ultimulFisier = t;
+    }
+
+    const lista = Array.from(perFirma.values()).map(f => {
+      const deDescarcat = f.soferi + f.vehicule;
+      return Object.assign(f, {
+        deDescarcat,
+        // Zile de la ultimul fișier — ca să se vadă firma care plătește modulul și nu-l folosește.
+        zileFaraFisier: f.ultimulFisier ? Math.floor((Date.now() - f.ultimulFisier) / ZI) : null,
+        // „Are camioane, n-are modulul" = ocazie de vânzare. „Are modulul, n-are camioane" = îl plătește degeaba.
+        deVandut: !f.modul && deDescarcat > 0,
+        platitDegeaba: f.modul && deDescarcat === 0,
+        ultimulFisier: f.ultimulFisier ? new Date(f.ultimulFisier).toISOString() : null
+      });
+    });
+
+    res.json({
+      praguriLegale: { card: tacho.TERMEN_CARD_ZILE, vu: tacho.TERMEN_VU_ZILE },
+      firme: lista,
+      sumar: {
+        cuModul: lista.filter(f => f.modul).length,
+        cuProbleme: lista.filter(f => f.modul && (f.depasite || f.niciodata)).length,
+        deVandut: lista.filter(f => f.deVandut).length,
+        fisiere30: lista.reduce((a, f) => a + f.fisiere30, 0),
+        necitite: lista.reduce((a, f) => a + f.necitite, 0)
+      }
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Istoricul unui șofer sau al unui vehicul + GOLURILE din arhivă (zilele pe care nu le poți dovedi).
 app.get('/api/tacho/istoric', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try {

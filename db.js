@@ -2287,8 +2287,11 @@ async function getTachoScadentar(companyId) {
     GROUP BY d.id, d.name, d.company_id, d.license_categories
     ORDER BY ultima NULLS FIRST, d.name`, pc);
 
+  // `company_id` e în SELECT ca la șoferi. Lipsea, iar când se cere scadențarul pentru TOATE firmele
+  // (privirea fondatorului) nu se putea spune al cui e camionul — vehiculele cădeau pe dinafară la
+  // gruparea pe firmă. Pentru ecranul clientului nu schimbă nimic: acolo filtrarea e deja în `WHERE`.
   const vehicule = await pool.query(`
-    SELECT dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type,
+    SELECT dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type, dv.company_id,
            MAX(COALESCE(t.period_to, t.uploaded_at::date)) AS ultima,
            COUNT(t.id) FILTER (WHERE t.id IS NOT NULL) AS fisiere
     FROM devices dv
@@ -2297,7 +2300,7 @@ async function getTachoScadentar(companyId) {
      AND t.kind IS DISTINCT FROM 'demo'
      AND COALESCE(t.incredere, 'confirmat') <> 'necitit'
     ${wDev}
-    GROUP BY dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type
+    GROUP BY dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type, dv.company_id
     ORDER BY ultima NULLS FIRST, dv.plate, dv.name`, pc);
 
   return { soferi: soferi.rows, vehicule: vehicule.rows };

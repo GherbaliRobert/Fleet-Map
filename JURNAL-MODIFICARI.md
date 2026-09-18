@@ -95,6 +95,55 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Tahograf: noi vedem FIRMELE, clientul își vede șoferii
+
+Alin: *„în verticala partener e ok cum le-am făcut. Aici, în varianta fondator, sunt lucruri diferite —
+trebuie să vedem cu totul altceva. Nu crezi?"*
+
+Ba da. Și era mai rău decât „diferit": **fondatorul vedea exact ecranul clientului.** Nu unul
+asemănător — literalmente același, mutat în panoul nostru. Iar datele veneau de la **toate firmele
+deodată**, într-un ecran făcut pentru una singură, **fără coloană de firmă**. Scria „Ion Popescu,
+termen depășit" și nu puteai spune al cui e.
+
+**Ce vede fondatorul acum.** Un ecran propriu, cu **o firmă pe rând**, și sus patru cifre care răspund
+la întrebările noastre, nu ale clientului:
+
+- câte firme au modulul pornit
+- **câte sunt în urmă cu descărcările** — tahograful e obligație legală (card la 28 de zile, memoria
+  camionului la 90). O firmă cu termene depășite riscă amendă la primul control, iar noi o vedem
+  înaintea ei. Ăsta e telefonul care merită dat.
+- **câte au camioane și n-au modulul** — alea sunt de vândut
+- **câte fișiere n-au putut fi citite** — până acum aflam doar dacă ne suna clientul
+
+Pe fiecare rând scrie ce e de rezolvat, în cuvinte: *„3 termene depășite"*, *„plătește modulul, n-are
+ce descărca"*, *„are camioane, n-are modulul"*, *„niciun fișier de 74 de zile"*. Firmele cu probleme
+stau primele — o listă de clienți se citește ca să vezi pe cine suni, nu ca să cauți o literă. Există
+și un buton „de rezolvat" care lasă pe ecran doar firmele cu ceva de făcut, plus căutare după nume.
+
+**Ce NU poate face fondatorul acolo, și e o alegere:** nu încarcă și nu șterge fișierele clientului.
+Noi vedem că firma e în urmă, ea rezolvă — aceeași regulă ca la împărțirea mașinilor pe oameni.
+Singurul buton de pe rând e „Deschide firma". (Înainte puteam șterge fișierul oricărui client dintr-o
+listă în care nu se vedea al cui e — nu cred că asta a fost intenția.)
+
+**Ce rămâne neatins:** ecranul clientului. Scadențarul lui, filele „Pe șofer" și „Abateri", încărcarea
+fișierelor — toate cum erau. Verificat după modificare că n-a mișcat nimic acolo.
+
+**Un lucru important sub capotă:** cele trei reguli — cine are card de tahograf, ce vehicul are
+tahograf, când e depășit termenul — **nu s-au scris a doua oară**. Ecranul nostru cheamă exact
+funcțiile care alimentează scadențarul clientului. Dacă le-aș fi rescris, cele două ecrane ar fi
+început să spună lucruri diferite despre același șofer — exact greșeala pe care am reparat-o ieri la
+„Semnal". Și pragurile se citesc **pe firmă**: dacă un client precaut cere 21 de zile în loc de 28,
+ecranul nostru o știe.
+
+**O bubă găsită pe drum:** interogarea scadențarului nu întorcea **firma vehiculului** (la șoferi o
+întorcea, la camioane nu). Nu se vedea până acum, fiindcă ecranul clientului e oricum al unei singure
+firme. La gruparea pe firme însă, toate camioanele cădeau pe dinafară: o firmă cu două TIR-uri apărea
+cu „0 vehicule". Reparat.
+
+- **Ce am schimbat:** fondatorul are ecranul lui, pe firme; clientul îl păstrează pe al lui.
+- **Ce vede fondatorul:** cine are modulul, cine e în urmă (și riscă amendă), cui i se poate vinde, cui i-au eșuat fișierele.
+- **Ce vede clientul:** exact ce vedea și înainte — nimic nu s-a mișcat la el.
+
 ### FONDATOR · Modelul și cartela SIM se scriu de când înregistrăm aparatul
 
 Alin, după ce i-am spus că datele astea se pot pune abia la editare: *„adică, care e logica???"*
@@ -7265,6 +7314,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala
   noastră. Se leagă de „aparatele le înregistrăm NOI" — arhivarea e decizia noastră, deci și evidența ei.
   Dacă un client întreabă de datele unui camion scos din flotă, i le scoatem noi. Nu se mai revine la asta.
+
+- [ ] **(amândoi) Suportul se face intrând cu contul clientului — cu parola lui.** Procesul hotărât de Alin (18.09):
+  când un client zice că nu-i merge ceva, îi cerem contul și parola și intrăm să vedem cu ochii lui. Merge, dar:
+  (1) contrazice regula noastră că nimeni nu află parola altcuiva, iar (2) tot ce faci acolo se scrie în jurnalul
+  de audit **pe numele lui** — o ștergere din greșeală apare ca fiind a clientului. Calea curată: o intrare de
+  suport pe contul NOSTRU, care deschide firma clientului și lasă urmă în audit, fără parole schimbate. De făcut
+  când se decide; până atunci rămâne cum e.
 
 - [ ] **(eu) Fundalul verde al butonului principal e rescris de mână pe ~12 ecrane.** L-am pus în familia de butoane
   a casei pentru ecranele de administrare, dar copiile vechi au rămas. Nu strică nimic azi — doar că următorul ecran

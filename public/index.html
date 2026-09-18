@@ -1547,7 +1547,9 @@
           <div id="admin-tab-billing" style="display:none;"></div>
           <div id="admin-tab-myinvoices" style="display:none;"></div>
           <div id="admin-tab-agents" style="display:none;"></div>
-          <div id="admin-tab-tahograf" style="display:none;"></div>
+          <!-- `ra-camp`: ecranul de tahograf al FONDATORULUI (firmele, nu șoferii) poartă stilul casei
+               — câmpuri, butoane, tabel — ca restul panoului. Ecranul CLIENTULUI e altul, în `atab-tacho`. -->
+          <div id="admin-tab-tahograf" class="ra-camp" style="display:none;"></div>
           <div id="admin-tab-etransport" style="display:none;"></div>
           <div id="admin-tab-dashboard" style="display:none;"></div>
           <div id="admin-tab-costs" style="display:none;"></div>
@@ -3893,8 +3895,10 @@ const pozitii = await r.json();</code></pre>
         // arătăm cine FOLOSEȘTE RA Insight — privire de ansamblu pe clienți.
         if (window.raxLoadAiUsage) window.raxLoadAiUsage();
       } else if (name === 'tahograf') {
-        _raxMountBody('#rax-tacho-overlay', 'admin-tab-tahograf');
-        if (window.raxLoadTacho) window.raxLoadTacho();
+        // Privirea FONDATORULUI, nu ecranul clientului: o firmă pe rând. Înainte se muta aici chiar
+        // nodul clientului (`_raxMountBody('#rax-tacho-overlay', …)`), hrănit cu datele tuturor
+        // firmelor și fără coloană de firmă — nu puteai spune al cui e șoferul întârziat (Alin, 18.09).
+        if (window.raxLoadTahoFirme) window.raxLoadTahoFirme();
       } else if (name === 'etransport') {
         _raxMountBody('#rax-et-overlay', 'admin-tab-etransport');
         if (window.raxLoadEt) window.raxLoadEt();
@@ -24544,6 +24548,124 @@ const pozitii = await r.json();</code></pre>
         '<div class="th-due-r" style="color:' + st.c + '"><b>' + mare + '</b><span>' + mic + '</span></div>' +
         '</div>';
     }
+
+    // ── începe „tahograful, pe firme" (privirea FONDATORULUI) ─────────────────────────────────────
+    // Fondatorul vedea ecranul CLIENTULUI, hrănit cu datele tuturor firmelor și fără coloană de firmă:
+    // scria „Ion Popescu — termen depășit" și nu puteai spune al cui e (Alin, 18.09). Aici nu se
+    // descarcă și nu se șterge nimic — alea rămân la client, e gospodăria lui. Noi vedem CINE are
+    // modulul, cine e în urmă cu descărcările (adică riscă amendă), cine plătește și nu-l folosește și
+    // cui i-au eșuat fișierele. Toate socotelile vin de la server, din aceleași funcții ca scadențarul
+    // clientului — ca să nu ajungem cu două ecrane care spun altceva despre același șofer.
+    var _thfDate = null, _thfCauta = '', _thfDoarProbleme = false;
+    function _thfNum(n) { return (Number(n) || 0).toLocaleString('ro-RO'); }
+    function _thfCand(iso) {
+      if (!iso) return '—';
+      var z = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+      if (z <= 0) return 'azi';
+      if (z === 1) return 'ieri';
+      if (z < 30) return 'acum ' + z + ' zile';
+      return new Date(iso).toLocaleDateString('ro-RO');
+    }
+    // Ce e de rezolvat la firma asta, într-o propoziție. Ordinea contează: amenda bate vânzarea.
+    function _thfSemn(f) {
+      if (!f.modul) return f.deVandut
+        ? { t: 'are camioane, n-are modulul', c: 'var(--text-muted)', rau: false, vanzare: true }
+        : { t: 'fără modul', c: 'var(--text-muted)', rau: false };
+      if (f.depasite) return { t: f.depasite + (f.depasite === 1 ? ' termen depășit' : ' termene depășite'), c: 'var(--red)', rau: true };
+      if (f.niciodata) return { t: f.niciodata + (f.niciodata === 1 ? ' niciodată descărcat' : ' niciodată descărcate'), c: 'var(--red)', rau: true };
+      if (f.necitite) return { t: f.necitite + (f.necitite === 1 ? ' fișier necitit' : ' fișiere necitite'), c: 'var(--orange)', rau: true };
+      if (f.platitDegeaba) return { t: 'plătește modulul, n-are ce descărca', c: 'var(--orange)', rau: true };
+      if (f.zileFaraFisier == null) return { t: 'niciun fișier încărcat', c: 'var(--orange)', rau: true };
+      if (f.zileFaraFisier > 60) return { t: 'niciun fișier de ' + f.zileFaraFisier + ' de zile', c: 'var(--orange)', rau: true };
+      if (f.curand) return { t: f.curand + ' scad în 5 zile', c: 'var(--orange)', rau: false };
+      return { t: 'la zi', c: 'var(--accent)', rau: false };
+    }
+    function _thfFirme() {
+      var q = (_thfCauta || '').trim().toLowerCase();
+      var l = ((_thfDate && _thfDate.firme) || []).filter(function (f) {
+        if (_thfDoarProbleme && !_thfSemn(f).rau) return false;
+        return !q || String(f.nume || '').toLowerCase().indexOf(q) >= 0;
+      });
+      // Problemele primele, apoi cele mai întârziate, apoi alfabetic. Nu alfabetic de la cap:
+      // o listă de clienți se citește ca să vezi pe cine suni, nu ca să cauți o literă.
+      return l.sort(function (a, b) {
+        var sa = _thfSemn(a), sb = _thfSemn(b);
+        if (sa.rau !== sb.rau) return sa.rau ? -1 : 1;
+        if (b.celMaiTarziu !== a.celMaiTarziu) return b.celMaiTarziu - a.celMaiTarziu;
+        return String(a.nume || '').localeCompare(String(b.nume || ''), 'ro');
+      });
+    }
+    window.raxThfCauta = function (v) { _thfCauta = v; _thfRandeaza(); };
+    window.raxThfProbleme = function () { _thfDoarProbleme = !_thfDoarProbleme; _thfRandeaza(); };
+    function _thfSchelet(host) {
+      var col = ['Firmă', 'Modul', 'De descărcat', 'De rezolvat', 'Cel mai vechi', 'Ultimul fișier', ''];
+      host.innerHTML = '<div id="thf-sumar" class="thf-sumar"></div>'
+        + '<div class="rax-dev-bar"><button type="button" class="rax-btn" id="thf-probleme" onclick="raxThfProbleme()"></button>'
+        + '<input class="rax-field rax-dev-search" id="thf-cauta" placeholder="🔎 caută firma" oninput="raxThfCauta(this.value)"></div>'
+        + '<div style="overflow-x:auto;"><table class="rax-co-table" style="width:100%;"><thead><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);">'
+        + col.map(function (c) { return '<th style="padding:7px 9px;text-align:left;white-space:nowrap;">' + c + '</th>'; }).join('')
+        + '</tr></thead><tbody id="thf-corp"></tbody></table></div>'
+        + '<div class="thf-nota" id="thf-nota"></div>';
+      host._thfGata = true;
+    }
+    function _thfRandeaza() {
+      var host = document.getElementById('admin-tab-tahograf'); if (!host) return;
+      if (!host._thfGata) _thfSchelet(host);
+      var d = _thfDate; if (!d) return;
+      var s = d.sumar || {}, toate = (d.firme || []).length;
+      var cartonas = function (n, et, cul) {
+        return '<div class="thf-c"><b' + (cul ? ' style="color:' + cul + '"' : '') + '>' + _thfNum(n) + '</b><span>' + et + '</span></div>';
+      };
+      var sum = document.getElementById('thf-sumar');
+      if (sum) sum.innerHTML =
+          cartonas(s.cuModul, 'firme cu modulul pornit')
+        + cartonas(s.cuProbleme, 'cu descărcări în urmă', s.cuProbleme ? 'var(--red)' : '')
+        + cartonas(s.deVandut, 'au camioane, n-au modulul', s.deVandut ? 'var(--orange)' : '')
+        + cartonas(s.fisiere30, 'fișiere în 30 de zile')
+        + cartonas(s.necitite, 'fișiere necitite', s.necitite ? 'var(--orange)' : '');
+      var bp = document.getElementById('thf-probleme');
+      if (bp) {
+        var nrRau = (d.firme || []).filter(function (f) { return _thfSemn(f).rau; }).length;
+        bp.innerHTML = '<i class="fas fa-triangle-exclamation"></i> ' + nrRau + ' de rezolvat'
+          + (_thfDoarProbleme ? ' · arăt doar pe astea' : '');
+        bp.style.color = nrRau ? 'var(--orange)' : ''; bp.style.borderColor = nrRau ? 'var(--orange)' : '';
+        bp.style.background = _thfDoarProbleme ? 'color-mix(in srgb, var(--orange) 14%, transparent)' : '';
+      }
+      var firme = _thfFirme(), corp = document.getElementById('thf-corp');
+      if (corp) corp.innerHTML = firme.map(function (f) {
+        var sg = _thfSemn(f);
+        var modul = f.modul
+          ? '<span class="thf-p on">pornit</span>'
+          : '<span class="thf-p' + (f.deVandut ? ' vinde' : '') + '">oprit</span>';
+        return '<tr>'
+          + '<td style="padding:7px 9px;font-weight:700;">' + esc(f.nume || '—') + '</td>'
+          + '<td style="padding:7px 9px;">' + modul + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;color:var(--text-muted);">'
+            + (f.deDescarcat ? (f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' vehicul' : ' vehicule')) : '—') + '</td>'
+          + '<td style="padding:7px 9px;color:' + sg.c + ';font-weight:700;">' + esc(sg.t) + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;color:' + (f.celMaiTarziu ? 'var(--red)' : 'var(--text-muted)') + ';">'
+            + (f.celMaiTarziu ? (f.celMaiTarziu + (f.celMaiTarziu === 1 ? ' zi întârziere' : ' zile întârziere')) : '—') + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;color:var(--text-muted);">' + esc(_thfCand(f.ultimulFisier)) + '</td>'
+          + '<td style="padding:5px 9px;text-align:right;"><button class="rax-btn" onclick="raxOpenCompanyDetail(' + f.id + ')"><i class="fas fa-building"></i> Deschide firma</button></td>'
+          + '</tr>';
+      }).join('') || '<tr><td colspan="7" style="padding:16px;color:var(--text-muted);text-align:center;">Nicio firmă'
+          + ((_thfCauta || _thfDoarProbleme) ? ' pentru filtrul curent.' : '.') + '</td></tr>';
+      var nota = document.getElementById('thf-nota');
+      if (nota) nota.innerHTML = 'Termenele legale: cardul șoferului la <b>' + (d.praguriLegale || {}).card
+        + ' de zile</b>, memoria vehiculului la <b>' + (d.praguriLegale || {}).vu + '</b>. O firmă le poate avea '
+        + 'scurtate în setările ei. Descărcările și fișierele rămân la client — noi vedem cine e în urmă, ca să-l sunăm.';
+    }
+    window.raxLoadTahoFirme = async function () {
+      var host = document.getElementById('admin-tab-tahograf'); if (!host) return;
+      if (!_thfDate) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>'; host._thfGata = false; }
+      try {
+        var d = await fetch('/api/admin/tacho-overview', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc(d.error) + '</div>'; host._thfGata = false; return; }
+        _thfDate = d;
+      } catch (e) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare de rețea.</div>'; host._thfGata = false; return; }
+      _thfRandeaza();
+    };
+    // ── sfârșit „tahograful, pe firme" ──
 
     async function raxLoadTacho() {
       var box = $('th-body');

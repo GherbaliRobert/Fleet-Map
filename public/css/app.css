@@ -3323,6 +3323,24 @@
 .ra-camp .rax-dev-chip:hover{ border-color:var(--accent); color:var(--accent); }
 .ra-camp .rax-dev-chip.on{ background:var(--accent); border-color:var(--accent); color:#06210f; }
 
+/* ── Tahograf, privirea fondatorului: firmele, nu șoferii ──────────────────────────────────────
+   Sumarul de sus răspunde la patru întrebări dintr-o privire: câți clienți au modulul, câți sunt în
+   urmă cu descărcările (adică riscă amendă), cui i-am putea vinde modulul, și câte fișiere n-au putut
+   fi citite. Restul e un tabel de firme, cu problemele sus. */
+.thf-sumar{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.thf-c{ flex:1 1 140px; background:var(--bg-dark); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; display:flex; flex-direction:column; gap:3px; }
+.thf-c b{ font-size:22px; font-weight:800; line-height:1; color:var(--text-primary); }
+.thf-c span{ font-size:11.5px; color:var(--text-muted); font-weight:600; line-height:1.35; }
+/* Pastila modulului: pornit = verde. Oprit la o firmă CU camioane = portocaliu, fiindcă ăla e un
+   telefon de dat, nu o stare neutră. */
+.thf-p{ font-size:11px; font-weight:800; padding:2px 9px; border-radius:20px; border:1.5px solid var(--border);
+  color:var(--text-muted); white-space:nowrap; }
+.thf-p.on{ border-color:var(--accent); color:var(--accent); }
+.thf-p.vinde{ border-color:var(--orange); color:var(--orange); }
+.thf-nota{ font-size:11px; color:var(--text-muted); margin-top:10px; line-height:1.55; }
+@media (max-width: 640px){ .thf-c{ flex-basis:100%; } }
+
 /* Butoanele din rezumat: unul principal, plin; celelalte discrete, cu contur. */
 .raof-act .rax-btn{ height:40px; border-radius:11px; font-size:13px; font-weight:700; gap:8px; }
 .raof-act .rax-btn.primary{ box-shadow:0 3px 12px color-mix(in srgb, var(--accent) 26%, transparent); }
