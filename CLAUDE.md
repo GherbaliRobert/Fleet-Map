@@ -277,6 +277,9 @@ se țin 180 de zile (`POSITION_RETENTION_DAYS`); copia din arhivă se ține **2 
   „Fără firmă" la urmă; grup cu ceva de rezolvat = mereu deschis; există căutare.
 - Cartonașul de pe „Acasă" **nu poartă `adash-warn` din construcție** — arhivat e un capăt normal, nu
   o problemă. Portocaliul se aprinde din `_adashArhiva`, doar când există istoric aproape de purjare.
+- **Clientul NU vede aparatele arhivate** (decizie Alin, 18.09, la o întrebare pusă explicit). Ecranul
+  stă doar în verticala noastră; arhivarea e decizia noastră, deci și evidența ei. Dacă un client are
+  nevoie de datele unui camion scos din flotă, i le scoatem noi. NU adăuga o privire pentru client.
 - Păzit de `verify_arhiva.js` (în `npm test`).
 
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)

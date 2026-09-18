@@ -7184,10 +7184,10 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **(voi) Clientul nu-și vede deloc aparatele arhivate.** Ecranul „Dispozitive arhivate" e doar în verticala
-  noastră. E în linie cu „aparatele le înregistrăm noi", dar dacă un client întreabă unde sunt datele de pe camionul
-  scos din flotă anul trecut, răspunsul trece obligatoriu prin noi. Îi dăm o privire doar-citire peste ale lui (fără
-  restaurare și fără ștergere), sau rămâne cum e? (ridicat 17.09, la analiza cartonașului „Arhivate")
+- [x] **HOTĂRÂT (Alin, 18.09): clientul NU vede aparatele arhivate.** Ridicasem întrebarea la analiza
+  cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala
+  noastră. Se leagă de „aparatele le înregistrăm NOI" — arhivarea e decizia noastră, deci și evidența ei.
+  Dacă un client întreabă de datele unui camion scos din flotă, i le scoatem noi. Nu se mai revine la asta.
 
 - [ ] **(eu) Fundalul verde al butonului principal e rescris de mână pe ~12 ecrane.** L-am pus în familia de butoane
   a casei pentru ecranele de administrare, dar copiile vechi au rămas. Nu strică nimic azi — doar că următorul ecran
