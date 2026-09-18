@@ -5545,26 +5545,55 @@ app.get('/api/device-inventory', requireAuth, requireFleet, async (req, res) => 
   try { res.json(await _deviceInventory(req, { includeArchived: req.query.arhivate === '1' })); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Cuvintele semnalului, pentru EXPORT. Aceleași praguri ca pe ecran (30 min → tăcut, 24 h → fără
+// semnal), ca fișierul descărcat să nu spună altceva decât tabelul din care a ieșit.
+const INV_TACUT_MIN = 30, INV_MUT_ORE = 24;
+function _invSemnalText(lastTx) {
+  if (!lastTx) return 'nicio transmisie';
+  const d = Math.max(0, Date.now() - new Date(lastTx).getTime());
+  if (d < INV_TACUT_MIN * 60000) return 'comunică';
+  const m = Math.floor(d / 60000), h = Math.floor(m / 60), z = Math.floor(h / 24);
+  const cat = m < 60 ? (m + ' min') : h < 24 ? (h + (h === 1 ? ' oră' : ' ore')) : (z + (z === 1 ? ' zi' : ' zile'));
+  return (d < INV_MUT_ORE * 3600000 ? 'tăcut de ' : 'fără semnal de ') + cat;
+}
 // Export brandat: trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo (regula din CLAUDE.md).
-app.get('/api/device-inventory/export', requireAuth, requireFleet, async (req, res) => {
+//
+// GET  = tot inventarul (link direct, compatibilitate).
+// POST = fix rândurile de pe ecran, în ordinea de pe ecran (`imeis`). Înainte exista doar GET-ul, iar
+// butonul „Exportă Excel" îl chema fără nimic: filtrai la o firmă, vedeai 3 rânduri și primeai toate
+// aparatele din toate firmele (găsit 18.09). Filtrarea NU se rescrie aici — vine gata făcută de la
+// ecran, altfel am avea două reguli de potrivire care se despart în timp.
+async function _inventarExport(req, res) {
   try {
     if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe acest server' });
-    const rows = await _deviceInventory(req);
-    const fmt = (req.query.format === 'pdf') ? 'pdf' : 'xlsx';
+    let rows = await _deviceInventory(req);
+    const cerute = Array.isArray(req.body && req.body.imeis) ? req.body.imeis.map(String) : null;
+    let doarCeVezi = false;
+    if (cerute && cerute.length) {
+      const set = new Set(cerute), pozitie = new Map(cerute.map((im, i) => [im, i]));
+      rows = rows.filter(r => set.has(String(r.imei)))
+                 .sort((a, b) => pozitie.get(String(a.imei)) - pozitie.get(String(b.imei)));
+      doarCeVezi = true;
+    }
+    const fmt = ((req.body && req.body.format) || req.query.format) === 'pdf' ? 'pdf' : 'xlsx';
     const fmtTs = function (t) { return t ? new Date(t).toLocaleString('ro-RO') : '—'; };
     const report = {
       type: 'device_inventory',
       label: 'Inventar dispozitive',
-      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + rows.length + ' dispozitive',
-      columns: ['Client', 'Nr. înmatriculare', 'IMEI', 'Model dispozitiv', 'Cartelă SIM', 'Ultima transmisie'],
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + rows.length + ' dispozitive'
+        + (doarCeVezi ? ' (selecția de pe ecran)' : ''),
+      columns: ['Firmă', 'Nr. înmatriculare', 'IMEI', 'Model dispozitiv', 'Cartelă SIM', 'Semnal', 'Ultima transmisie'],
       rows: rows.map(function (r) {
-        return [r.company_name || '—', r.plate || r.name || '—', r.imei, r.gps_model || '—', r.sim_number || '—', fmtTs(r.last_tx)];
+        return [r.company_name || '—', r.plate || r.name || '—', r.imei, r.gps_model || '—', r.sim_number || '—',
+                _invSemnalText(r.last_tx), fmtTs(r.last_tx)];
       })
     };
-    auditReq(req, 'export', 'device_inventory', null, { count: rows.length, format: fmt });
+    auditReq(req, 'export', 'device_inventory', null, { count: rows.length, format: fmt, filtrat: doarCeVezi });
     return reportExport.sendReport(res, report, fmt);
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
+}
+app.get('/api/device-inventory/export', requireAuth, requireFleet, _inventarExport);
+app.post('/api/device-inventory/export', requireAuth, requireFleet, _inventarExport);
 
 // ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
 // GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB

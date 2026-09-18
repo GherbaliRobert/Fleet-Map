@@ -282,6 +282,25 @@ se țin 180 de zile (`POSITION_RETENTION_DAYS`); copia din arhivă se ține **2 
   nevoie de datele unui camion scos din flotă, i le scoatem noi. NU adăuga o privire pentru client.
 - Păzit de `verify_arhiva.js` (în `npm test`).
 
+### Ecranul „Inventar dispozitive" (Gestiune) — registrul echipamentelor
+Un rând = un aparat, peste toate firmele: firmă, mașină, IMEI, model, cartelă, semnal. E evidența
+MĂRFII noastre. Fratele lui din verticala clientului e „Aparate GPS" (Setări → Evidență) — două
+ecrane peste aceeași rută, publicuri diferite; e în regulă că sunt două, dar TREBUIE să vorbească la fel.
+
+- **Semnalul vine tot din `agpsStare`**, ca la „Dispozitive". Ecranul avea praguri proprii (24 h / 7 zile)
+  și se contrazicea cu „Aparate GPS" în 5 din 7 cazuri (Alin, 18.09). Nu-i scrie a treia listă.
+- ⚠️ **Serverul are o a DOUA scriere a cuvintelor**, `_invSemnalText` — necesară, fiindcă fișierul
+  exportat nu poate chema funcția din pagină. Cele două sunt **legate printr-o probă** care le rulează
+  pe aceleași vechimi și cere același rezultat, cu pragurile citite DIN SURSĂ. Dacă muți un prag într-o
+  parte, `verify_inventar.js` pică. Nu scrie pragurile în probă.
+- **Scheletul (bară + cap de tabel + casete de căutare) se construiește O SINGURĂ dată** (`_invSchelet`,
+  `host._invGata`); `_invRender` schimbă doar `#inv-corp` și contoarele. Înainte se redesena tot la
+  fiecare literă și caseta își pierdea cursorul după PRIMA literă — din „Alfa" intra doar „A".
+  Un mesaj pe tot ecranul (încărcare/eroare) pune `_invGata = false`.
+- **Exportul trimite IMEI-urile de pe ecran, prin POST** (`raxInvExport` → `_inventarExport`), în ordinea
+  de pe ecran. Filtrarea NU se rescrie pe server. GET-ul vechi (tot inventarul) rămâne.
+- Păzit de `verify_inventar.js` (în `npm test`).
+
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)
 Pe „Companii" a stat un al doilea ecran de adopție („Vehicule neasignate", cu `raxAssignDevice` /
 `raxRejectDevice`), rămas de pe vremea când secțiunea se numea „Companii & Dispozitive". Apăsa

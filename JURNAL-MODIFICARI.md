@@ -95,6 +95,55 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Inventar dispozitive: căutarea nu se putea folosi, iar exportul te păcălea
+
+Alin: *„din Gestiune, Inventar dispozitive — ce face, care e rolul, cum funcționează și ce trebuie
+îmbunătățit."*
+
+**La ce e bun ecranul.** E registrul echipamentelor noastre: un rând = un aparat GPS, cu firma la care
+e, mașina pe care stă, IMEI-ul, modelul, cartela SIM și când a transmis ultima dată. Peste toate
+firmele deodată. Evidența mărfii, nu a flotei clientului.
+
+**Prima bubă: căutarea era de fapt inutilizabilă.** Am scris „Alfa" în casetă, literă cu literă, și am
+măsurat: a intrat doar **„A"**. Restul literelor s-au dus în gol. Motivul: la fiecare literă se
+redesena tot tabelul, inclusiv caseta în care scriai — deci îți sărea cursorul afară. Toate cele șase
+casete pățeau la fel. Adică ecranul avea șase casete de căutare și niciuna nu se putea folosi.
+
+Acum se redesenează **doar rândurile**; bara și casetele stau pe loc. „Alfa" intră întreg.
+
+**A doua: două vocabulare pentru același aparat.** Ecranul ăsta își socotea singur când un aparat e
+„vechi" (portocaliu peste 24h, roșu peste 7 zile), iar ecranul „Aparate GPS" socotea altfel (tăcut
+peste 30 min, fără semnal peste 24h). Le-am pus față în față pe aceleași vechimi: **5 din 7 cazuri se
+contraziceau.** Un aparat mut de trei zile era **roșu** acolo și doar portocaliu aici.
+
+Acum are o coloană **„Semnal"** care spune același lucru ca peste tot: *comunică / tăcut de 3 ore /
+fără semnal de 5 zile*. „Ultima transmisie" a rămas data simplă, fără a doua părere.
+
+**A treia: exportul nu exporta ce vedeai.** Filtrai la o firmă, vedeai 3 rânduri, apăsai „Exportă
+Excel" — și primeai **toate** aparatele, din toate firmele. Acum descarcă fix rândurile de pe ecran, în
+ordinea de pe ecran, iar în fișier scrie că e o selecție. Numele rămâne brandat, iar descărcarea se
+trece în jurnalul de audit (acum și cu mențiunea dacă a fost filtrată).
+
+**A patra: îți spunea ce lipsește și te lăsa cu asta în mână.** Scria „3 fără model/SIM" și nimic mai
+mult. Acum avertismentul e **buton** — îl apeși și rămân pe ecran doar cele incomplete — iar fiecare
+rând are o **creionaș spre fișa mașinii**, unde se completează.
+
+Mărunt: coloana se numea „Client", acum „Firmă", ca peste tot altundeva.
+
+**Ceva ce am făcut eu și merită spus.** Pentru fișierul exportat a trebuit să scriu cuvintele
+semnalului **a doua oară**, pe server — fișierul nu poate chema funcția din pagină. E exact tipul de
+dublare pe care tocmai o reparam. Ca să nu se despartă în timp, le-am legat printr-o probă care le
+rulează pe amândouă peste aceleași vechimi și cere același răspuns. Am stricat dinadins un prag pe
+server, apoi unul în pagină — proba a picat de fiecare dată.
+
+**Ceva ce am găsit și NU am schimbat:** când înregistrăm un aparat nou, formularul nu primește modelul
+și cartela SIM — se pot pune abia după, editând. De-aia apar aparate „fără model/SIM" chiar de la
+început. E de discutat separat.
+
+- **Ce am schimbat:** căutarea funcționează, semnalul e la fel peste tot, exportul e cinstit, iar de pe rând ajungi unde se repară.
+- **Ce vede fondatorul:** caseta nu-i mai sare cursorul, coloană nouă „Semnal", buton pe rând, avertisment apăsabil, export filtrat.
+- **Ce vede clientul:** nimic — ecranul e al nostru. („Aparate GPS", ecranul lui, spunea deja corect.)
+
 ### FONDATOR · Arhiva: butonul „Istoric" nu ducea nicăieri, iar „Restaurează" era invizibil
 
 Alin: *„hai să luăm și cardul Arhivate — ce rol are, cum ar trebui să funcționeze, unde duce și ce
@@ -7188,6 +7237,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala
   noastră. Se leagă de „aparatele le înregistrăm NOI" — arhivarea e decizia noastră, deci și evidența ei.
   Dacă un client întreabă de datele unui camion scos din flotă, i le scoatem noi. Nu se mai revine la asta.
+
+- [ ] **(voi) Când înregistrăm un aparat nou nu putem scrie de la început modelul și cartela SIM.** Formularul de
+  adăugare nu le primește — se pun abia după, editând fișa vehiculului. De-aia inventarul arată aparate „fără
+  model/SIM" chiar din prima zi, deși noi știm modelul în momentul în care îl punem în evidență. Le adăugăm în
+  formularul de înregistrare? (ridicat 18.09, la analiza ecranului „Inventar dispozitive")
 
 - [ ] **(eu) Fundalul verde al butonului principal e rescris de mână pe ~12 ecrane.** L-am pus în familia de butoane
   a casei pentru ecranele de administrare, dar copiile vechi au rămas. Nu strică nimic azi — doar că următorul ecran

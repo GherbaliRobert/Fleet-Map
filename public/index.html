@@ -22513,87 +22513,165 @@ const pozitii = await r.json();</code></pre>
     };
     // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
     // Un rând per echipament: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
-    var _invRows = [], _invQ = {}, _invTimer = null, _invSort = { k: 'company_name', dir: 1 };
+    // ── începe „inventarul de aparate" ────────────────────────────────────────────────────────────
+    var _invRows = [], _invQ = {}, _invTimer = null, _invSort = { k: 'company_name', dir: 1 }, _invDoarLipsa = false;
     var INV_COLS = [
-      { k: 'company_name', label: 'Client' },
+      { k: 'company_name', label: 'Firmă' },
       { k: 'plate', label: 'Nr. înmatriculare' },
       { k: 'imei', label: 'IMEI' },
       { k: 'gps_model', label: 'Model dispozitiv' },
       { k: 'sim_number', label: 'Cartelă SIM' },
+      { k: 'semnal', label: 'Semnal' },
       { k: 'last_tx', label: 'Ultima transmisie' }
     ];
-    function _invVal(r, k) { return k === 'plate' ? (r.plate || r.name || '') : (r[k] == null ? '' : String(r[k])); }
-    // Vechimea ultimei transmisii = semnal de sănătate: >7 zile e roșu (echipament mort/demontat), >24h portocaliu.
-    function _invAge(t) {
-      if (!t) return { txt: 'niciodată', col: 'var(--red)', title: 'Nu a transmis niciodată' };
-      var d = Date.now() - new Date(t).getTime(), h = d / 3600000;
-      var txt = new Date(t).toLocaleString('ro-RO');
-      if (h > 168) return { txt: txt, col: 'var(--red)', title: 'Fără transmisie de peste 7 zile' };
-      if (h > 24) return { txt: txt, col: 'var(--orange)', title: 'Fără transmisie de peste 24 de ore' };
-      return { txt: txt, col: '', title: '' };
+    // Cuvintele și pragurile semnalului NU se scriu aici: se ia `agpsStare` din „Aparate GPS" (Setări →
+    // Evidență), la fel ca la „Dispozitive". Ecranul ăsta avea a doua listă de praguri (24 h portocaliu,
+    // 7 zile roșu) și se contrazicea cu celălalt în 5 din 7 cazuri, măsurat: un aparat mut de 3 zile
+    // era ROȘU acolo și doar portocaliu aici (Alin, 18.09).
+    function _invSemnal(r) {
+      if (typeof agpsStare === 'function') return agpsStare(r.last_tx, Date.now());
+      return { k: '', t: '—', c: 'var(--text-muted)' };
     }
+    function _invData(t) { return t ? new Date(t).toLocaleString('ro-RO') : '—'; }
+    function _invVal(r, k) {
+      if (k === 'plate') return r.plate || r.name || '';
+      if (k === 'semnal') return _invSemnal(r).t;
+      if (k === 'last_tx') return _invData(r.last_tx);
+      return r[k] == null ? '' : String(r[k]);
+    }
+    function _invLipsa(r) { return !r.gps_model || !r.sim_number; }
     function _invFiltered() {
       var out = _invRows.filter(function (r) {
+        if (_invDoarLipsa && !_invLipsa(r)) return false;
         return INV_COLS.every(function (c) {
           var q = (_invQ[c.k] || '').trim().toLowerCase(); if (!q) return true;
-          var v = c.k === 'last_tx' ? _invAge(r.last_tx).txt : _invVal(r, c.k);
-          return String(v).toLowerCase().indexOf(q) >= 0;
+          return _invVal(r, c.k).toLowerCase().indexOf(q) >= 0;
         });
       });
       var k = _invSort.k, dir = _invSort.dir;
       return out.sort(function (a, b) {
-        if (k === 'last_tx') { return dir * ((a.last_tx ? new Date(a.last_tx).getTime() : 0) - (b.last_tx ? new Date(b.last_tx).getTime() : 0)); }
+        // „Semnal" se ordonează după ce se ascunde în spatele cuvintelor — ultima transmisie —
+        // altfel „fără semnal de 3 zile" ar sta lângă „fără semnal de 8 luni" doar fiindcă încep la fel.
+        if (k === 'last_tx' || k === 'semnal') {
+          return dir * ((a.last_tx ? new Date(a.last_tx).getTime() : 0) - (b.last_tx ? new Date(b.last_tx).getTime() : 0));
+        }
         return dir * _invVal(a, k).localeCompare(_invVal(b, k), 'ro', { numeric: true });
       });
     }
     window.raxInvSort = function (k) { if (_invSort.k === k) _invSort.dir = -_invSort.dir; else { _invSort.k = k; _invSort.dir = 1; } _invRender(); };
     window.raxInvSearch = function (k, v) { _invQ[k] = v; _invRender(); };
-    window.raxInvClear = function () { _invQ = {}; _invRender(); };
-    window.raxInvExport = function (fmt) { window.open('/api/device-inventory/export?format=' + (fmt || 'xlsx'), '_blank'); };
+    window.raxInvClear = function () {
+      _invQ = {}; _invDoarLipsa = false;
+      var h = document.getElementById('admin-tab-inventar');
+      if (h) h.querySelectorAll('.inv-cauta').forEach(function (i) { i.value = ''; });
+      _invRender();
+    };
+    // Avertismentul de sus („3 fără model/SIM") e un BUTON: te duce fix la ele. Îți spunea ce lipsește
+    // și te lăsa să le cauți singur printre rânduri.
+    window.raxInvDoarLipsa = function () { _invDoarLipsa = !_invDoarLipsa; _invRender(); };
+    // Exportă CE VEZI: trimite IMEI-urile rândurilor filtrate, în ordinea de pe ecran. Înainte deschidea
+    // ruta fără nimic, deci primeai tot inventarul chiar dacă filtrasei la o firmă (Alin, 18.09).
+    window.raxInvExport = async function (fmt) {
+      fmt = fmt || 'xlsx';
+      var imeis = _invFiltered().map(function (r) { return String(r.imei); });
+      try {
+        var r = await fetch('/api/device-inventory/export', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ format: fmt, imeis: imeis })
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var blob = await r.blob();
+        var nume = 'inventar.' + (fmt === 'pdf' ? 'pdf' : 'xlsx');
+        // Numele brandat vine de la server (regula casei) — îl citim din antet, nu-l inventăm aici.
+        var cd = r.headers.get('content-disposition') || '';
+        var m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+        if (m) { try { nume = decodeURIComponent(m[1]); } catch (e) { nume = m[1]; } }
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = nume; document.body.appendChild(a); a.click();
+        a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      } catch (e) { if (window.raxToast) raxToast('Exportul nu a mers: ' + e.message, 'error'); else alert('Exportul nu a mers.'); }
+    };
+    // Scheletul (bara + capul tabelului + casetele de căutare) se construiește O SINGURĂ DATĂ. Înainte
+    // se redesena tot, la fiecare literă tastată — iar caseta în care scriai era ștearsă și refăcută, deci
+    // îți sărea cursorul afară după PRIMA literă: din „Alfa" intra doar „A" (măsurat, 18.09). Acum se
+    // schimbă doar corpul tabelului și contoarele; casetele rămân pe loc, cu cursorul în ele.
+    function _invSchelet(host) {
+      var cap = INV_COLS.map(function (c) {
+        return '<th data-k="' + c.k + '" style="padding:7px 9px;text-align:left;white-space:nowrap;cursor:pointer;" onclick="raxInvSort(\'' + c.k + '\')">'
+          + c.label + ' <span class="inv-ar"></span></th>';
+      }).join('') + '<th style="padding:7px 9px;"></th>';
+      var filt = INV_COLS.map(function (c) {
+        return '<th style="padding:4px 6px;"><input class="rax-field inv-cauta" data-k="' + c.k + '" oninput="raxInvSearch(\'' + c.k + '\',this.value)" placeholder="Caută" style="width:100%;min-width:90px;font-size:11.5px;padding:5px 7px;"></th>';
+      }).join('') + '<th></th>';
+      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-clipboard-list"></i> Inventar dispozitive</div>'
+        + '<span id="inv-nr" style="font-size:11.5px;color:var(--text-muted);"></span>'
+        + '<button type="button" id="inv-lipsa" class="rax-btn" style="display:none;font-size:11px;color:var(--orange);border-color:var(--orange);" onclick="raxInvDoarLipsa()"></button>'
+        + '<div style="margin-left:auto;display:flex;gap:8px;">'
+        + '<button class="rax-btn" id="inv-sterge" style="display:none;" onclick="raxInvClear()"><i class="fas fa-xmark"></i> Șterge filtrele</button>'
+        + '<button class="rax-btn primary" onclick="raxInvExport(\'xlsx\')"><i class="fas fa-file-excel"></i> Exportă Excel</button>'
+        + '<button class="rax-btn" onclick="raxInvExport(\'pdf\')"><i class="fas fa-file-pdf"></i> PDF</button>'
+        + '</div></div>'
+        + '<div style="overflow-x:auto;"><table class="rax-co-table" style="width:100%;"><thead>'
+        + '<tr id="inv-cap" style="color:var(--text-muted);border-bottom:1px solid var(--border);">' + cap + '</tr>'
+        + '<tr>' + filt + '</tr></thead><tbody id="inv-corp"></tbody></table></div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5;">Modelul dispozitivului și cartela SIM le completăm NOI, în fișa vehiculului — nu vin de la aparat. '
+        + 'Apasă <i class="fas fa-pen"></i> pe un rând ca să deschizi fișa. Semnalul și lista se împrospătează la 60 de secunde; „Exportă" descarcă exact rândurile de pe ecran.</div>';
+      // Scheletul se reface doar după un mesaj pe tot ecranul (încărcare/eroare) — atunci punem înapoi
+      // ce era scris în casete, ca filtrul să nu se piardă tăcut după o pierdere de rețea.
+      host.querySelectorAll('.inv-cauta').forEach(function (i) { i.value = _invQ[i.getAttribute('data-k')] || ''; });
+      host._invGata = true;
+    }
     function _invRender() {
       var host = document.getElementById('admin-tab-inventar'); if (!host) return;
-      var rows = _invFiltered(), anyQ = Object.keys(_invQ).some(function (k) { return (_invQ[k] || '').trim(); });
-      var noGps = _invRows.filter(function (r) { return !r.gps_model || !r.sim_number; }).length;
-      var head = INV_COLS.map(function (c) {
-        var ar = _invSort.k === c.k ? (_invSort.dir > 0 ? ' <i class="fas fa-arrow-up" style="font-size:9px;"></i>' : ' <i class="fas fa-arrow-down" style="font-size:9px;"></i>') : '';
-        return '<th style="padding:7px 9px;text-align:left;white-space:nowrap;cursor:pointer;" onclick="raxInvSort(\'' + c.k + '\')">' + c.label + ar + '</th>';
-      }).join('');
-      var filt = INV_COLS.map(function (c) {
-        return '<th style="padding:4px 6px;"><input value="' + esc(_invQ[c.k] || '') + '" oninput="raxInvSearch(\'' + c.k + '\',this.value)" placeholder="Caută" style="width:100%;min-width:90px;font-size:11.5px;padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;"></th>';
-      }).join('');
-      var body = rows.map(function (r) {
-        var a = _invAge(r.last_tx), miss = 'color:var(--text-muted);font-style:italic;';
+      if (!host._invGata) _invSchelet(host);
+      var rows = _invFiltered();
+      var anyQ = _invDoarLipsa || Object.keys(_invQ).some(function (k) { return (_invQ[k] || '').trim(); });
+      var lipsa = _invRows.filter(_invLipsa).length;
+      var nr = document.getElementById('inv-nr');
+      if (nr) nr.textContent = rows.length + (anyQ ? ' din ' + _invRows.length : '') + ' echipamente';
+      var bl = document.getElementById('inv-lipsa');
+      if (bl) {
+        bl.style.display = lipsa ? '' : 'none';
+        bl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> ' + lipsa + ' fără model/SIM'
+          + (_invDoarLipsa ? ' · arăt doar pe astea' : '');
+        bl.style.background = _invDoarLipsa ? 'color-mix(in srgb, var(--orange) 14%, transparent)' : '';
+      }
+      var bs = document.getElementById('inv-sterge'); if (bs) bs.style.display = anyQ ? '' : 'none';
+      var cap = document.getElementById('inv-cap');
+      if (cap) cap.querySelectorAll('th[data-k]').forEach(function (th) {
+        var a = th.querySelector('.inv-ar'); if (!a) return;
+        a.innerHTML = (_invSort.k === th.getAttribute('data-k'))
+          ? '<i class="fas fa-arrow-' + (_invSort.dir > 0 ? 'up' : 'down') + '" style="font-size:9px;"></i>' : '';
+      });
+      var corp = document.getElementById('inv-corp'); if (!corp) return;
+      var miss = 'color:var(--text-muted);font-style:italic;';
+      corp.innerHTML = rows.map(function (r) {
+        var sem = _invSemnal(r);
         return '<tr>'
           + '<td style="padding:7px 9px;">' + esc(r.company_name || '—') + '</td>'
           + '<td style="padding:7px 9px;font-weight:700;">' + esc(r.plate || r.name || '—') + '</td>'
           + '<td style="padding:7px 9px;">' + esc(r.imei) + '</td>'
           + '<td style="padding:7px 9px;' + (r.gps_model ? '' : miss) + '">' + esc(r.gps_model || 'necompletat') + '</td>'
           + '<td style="padding:7px 9px;' + (r.sim_number ? '' : miss) + '">' + esc(r.sim_number || 'necompletat') + '</td>'
-          + '<td style="padding:7px 9px;white-space:nowrap;' + (a.col ? 'color:' + a.col + ';font-weight:700;' : '') + '" title="' + esc(a.title) + '">' + esc(a.txt) + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;color:' + sem.c + ';font-weight:700;">' + esc(sem.t) + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;color:var(--text-muted);">' + esc(_invData(r.last_tx)) + '</td>'
+          + '<td style="padding:5px 9px;text-align:right;"><button class="btn-sm" title="Fișa mașinii — aici se completează modelul și cartela SIM" onclick="openEditModal(\'' + esc(r.imei) + '\')"><i class="fas fa-pen"></i></button></td>'
           + '</tr>';
-      }).join('') || '<tr><td colspan="6" style="padding:16px;color:var(--text-muted);text-align:center;">Niciun dispozitiv' + (anyQ ? ' pentru filtrele curente.' : '.') + '</td></tr>';
-      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
-        + '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-clipboard-list"></i> Inventar dispozitive</div>'
-        + '<span style="font-size:11.5px;color:var(--text-muted);">' + rows.length + (anyQ ? ' din ' + _invRows.length : '') + ' echipamente</span>'
-        + (noGps ? '<span style="font-size:11px;color:var(--orange);font-weight:700;"><i class="fas fa-triangle-exclamation"></i> ' + noGps + ' fără model/SIM completat</span>' : '')
-        + '<div style="margin-left:auto;display:flex;gap:8px;">'
-        + (anyQ ? '<button class="rax-btn" onclick="raxInvClear()"><i class="fas fa-xmark"></i> Șterge filtrele</button>' : '')
-        + '<button class="rax-btn primary" onclick="raxInvExport(\'xlsx\')"><i class="fas fa-file-excel"></i> Exportă Excel</button>'
-        + '<button class="rax-btn" onclick="raxInvExport(\'pdf\')"><i class="fas fa-file-pdf"></i> PDF</button>'
-        + '</div></div>'
-        + '<div style="overflow-x:auto;"><table class="rax-co-table" style="width:100%;"><thead>'
-        + '<tr style="color:var(--text-muted);border-bottom:1px solid var(--border);">' + head + '</tr>'
-        + '<tr>' + filt + '</tr></thead><tbody>' + body + '</tbody></table></div>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5;">Modelul dispozitivului și cartela SIM se completează în fișa vehiculului (nu vin automat de la tracker). „Ultima transmisie" se împrospătează la 60 de secunde; portocaliu = peste 24h fără date, roșu = peste 7 zile.</div>';
+      }).join('') || '<tr><td colspan="' + (INV_COLS.length + 1) + '" style="padding:16px;color:var(--text-muted);text-align:center;">Niciun dispozitiv' + (anyQ ? ' pentru filtrele curente.' : '.') + '</td></tr>';
     }
+    // ── sfârșit „inventarul de aparate" ──
     window.raxLoadInventar = async function () {
       var host = document.getElementById('admin-tab-inventar'); if (!host) return;
-      if (!_invRows.length) host.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
+      // Orice mesaj scris peste tot ecranul (se încarcă / eroare) ȘTERGE scheletul — deci îl marcăm ca
+      // refăcut, altfel randarea următoare ar scrie într-un `<tbody>` care nu mai există.
+      var peTot = function (h) { host.innerHTML = h; host._invGata = false; };
+      if (!_invRows.length) peTot('<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>');
       try {
         var d = await fetch('/api/device-inventory', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (d && d.error) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc(d.error) + '</div>'; return; }
+        if (d && d.error) { peTot('<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc(d.error) + '</div>'); return; }
         _invRows = Array.isArray(d) ? d : [];
-      } catch (e) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare de rețea.</div>'; return; }
+      } catch (e) { peTot('<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare de rețea.</div>'); return; }
       _invRender();
       // reîmprospătare la 60s cât timp tabul e vizibil (trackerele transmit la ~30s; mai des ar fi risipă)
       if (_invTimer) clearInterval(_invTimer);
