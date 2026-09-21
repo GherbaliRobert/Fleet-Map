@@ -24084,7 +24084,7 @@ const pozitii = await r.json();</code></pre>
       var nLoc = Math.max(1, Math.round(Number(r.cfg.aiqSeats) || 1));
       var payload = {
         client: r.cfg.client, offerName: r.cfg.offerName, notes: r.cfg.notes,
-        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate,
+        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate, fxDate: _fxDate || null,
         lines: r.lines, monthly: r.monthly, annual: r.annual, contractTotal: r.contractTotal,
         montajLines: r.montajLines, montaj: r.montaj,
         deviceLines: r.deviceLines, hwTotal: r.hwTotal,

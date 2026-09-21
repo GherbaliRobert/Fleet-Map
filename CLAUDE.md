@@ -177,6 +177,36 @@ exact ca `_ofPropune` la cantități. Cifra N vine de la server (`_ofMeta.valabi
 pentru frază, pentru hârtie și pentru pâlnia de oferte — era scrisă de mână și în PDF (`30 *
 86400000`). **Dacă termenul nu s-a încărcat, hârtia NU inventează unul**: rândul lipsește.
 
+### Sumele se scriu ROMÂNEȘTE, peste tot pe hârtie (21.09)
+„2250.00 lei" și „1 € = 5.0000 lei" se citesc **greșit** în română: punctul e separator de MII, deci
+„5.0000" arată a cinci mii (Alin, 21.09). Pe hârtia ofertei, orice sumă trece prin `_bani(n, moneda,
+zecimale)` din `report_export.js` → `toLocaleString('ro-RO')`: **2.250,00 lei**, **1 € = 5,0785 lei**.
+
+- **Nicio sumă prin `toFixed`** direct în text. Păzit de probă.
+- Cursul se scrie cu **4 zecimale** (cum îl publică BNR) și, dacă îl știm, cu **ziua** lui
+  (`o.fxDate`). Fără dată știută, NU se inventează una.
+
+### O singură convenție de monedă pe hârtie (21.09)
+Abonamentul și montajul erau în lei cu o coloană „≈ EUR"; aparatele invers, euro cu „≈ lei". Două
+convenții pe aceeași pagină — Alin: *„nu e profesional"*. Acum, în **toate** tabelele: **lei sus,
+euro dedesubt**, în aceeași celulă. Coloana „≈ EUR" nu mai există.
+
+- `tabel(titlu, randuri, moneda)` — `moneda` spune doar **în ce vin cifrele** (device lines sunt în
+  EUR), nu cum se afișează. Conversia se face înăuntru, o dată.
+
+### Forma ofertei: cifrele întâi, explicațiile la final (21.09)
+Alin: *„«La semnarea contractului o singură dată» și «apoi în fiecare lună» nu sună deloc
+profesional. Trebuie împărțită cât mai simplu: cât îl costă pe lună și cât îl costă o dată."*
+
+Ordinea hârtiei, de sus în jos:
+1. **Două casete**: „Cost lunar" și „Cost unic, o singură dată" — cifrele mari, nimic altceva.
+2. Un rând cu totalul pe durata contractului.
+3. **Detalierea**: Abonament lunar → Echipamente → Instalare. Aceeași ordine ca anexele
+   contractului (`contract_pdf.js`: marfa înaintea manoperei) — documentele noastre nu se contrazic.
+4. **La final, ca note**: „Ce include abonamentul lunar" și „Condiții" (plată, proprietate, monedă).
+
+NU muta explicațiile înaintea cifrelor. Păzit de `verify_tarife.js`, care verifică ORDINEA.
+
 ### Oferta se DESCARCĂ, nu se printează (21.09)
 `raxOfExportPdf` deschidea o fereastră de printare din care omul salva singur un PDF. Alin: *„vreau
 să fie la fel ca la rapoarte, să-ți alegi unde o descarci. Asta înseamnă descărcare."*

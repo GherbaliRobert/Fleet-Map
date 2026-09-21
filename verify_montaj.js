@@ -126,8 +126,11 @@ T('spune limpede ce se dă o dată și ce se dă lunar',
 // Hârtia clientului s-a mutat pe server (21.09): se descarcă un fișier, nu se mai printează o
 // fereastră. Răspunsul e același, doar locul s-a schimbat.
 const REX = fs.readFileSync('./report_export.js', 'utf8');
+// Hârtia a fost regândită pe 21.09: două cifre mari sus (lunar / o singură dată), condițiile de
+// plată la final. Același răspuns, spus profesional.
 T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
-  /CUM SE PLĂTEȘTE/.test(REX) && /La semnarea contractului, o singură dată/.test(REX) && /Apoi, în fiecare lună/.test(REX));
+  /'Cost lunar'/.test(REX) && /'Cost unic, o singură dată'/.test(REX)
+  && /se facturează integral la semnarea contractului/.test(REX));
 
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.

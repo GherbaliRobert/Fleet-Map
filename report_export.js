@@ -417,16 +417,20 @@ async function sendReport(res, report, fmt) {
 //
 // Stă în fișierul ăsta, lângă `sendReport`, ca logo-ul, fonturile și regula de denumire să rămână
 // într-un singur loc — nu într-o a doua cale de export care s-ar despărți de ele.
-function _ofFmt(n, zec) { return (Number(n) || 0).toFixed(zec == null ? 2 : zec); }
-// „20 DE vehicule", dar „12 luni": numeralul cere „de" de la 20 în sus (mai exact, când ultimele
-// două cifre nu sunt între 1 și 19). Aceeași regulă ca `_rDe` din pagină — aici e al doilea loc
-// fiindcă e alt proces, nu altă socoteală.
+// ─── Sumele, scrise românește ────────────────────────────────────────────────────────────────────
+// „2250.00 lei" și „1 € = 5.0000 lei" se citesc GREȘIT în română: punctul e separator de mii, deci
+// „5.0000" arată a cinci mii (Alin, 21.09). Scrise cum trebuie: 2.250,00 lei · 1 € = 5,0785 lei.
+function _bani(n, moneda, zec) {
+  const z = zec == null ? 2 : zec;
+  return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: z, maximumFractionDigits: z })
+    + (moneda ? ' ' + moneda : '');
+}
+// Ce include abonamentul, pe fiecare mașină. Lista se scrie AICI, nu în pagină: hârtia clientului
+// are un singur autor. Modulele apar doar dacă sunt bifate — altfel am promite ce nu vindem.
 function _ofDe(n) {
   const x = Math.abs(Math.round(Number(n) || 0)); if (x === 0) return '';
   const r = x % 100; return (r >= 1 && r <= 19) ? '' : 'de ';
 }
-// Ce include abonamentul, pe fiecare mașină. Lista se scrie AICI, nu în pagină: hârtia clientului
-// are un singur autor. Modulele apar doar dacă sunt bifate — altfel am promite ce nu vindem.
 function _ofIncluse(o) {
   const L = ['monitorizare GPS în timp real, pe hartă și pe telefon'];
   if (o.cuDateMotor) L.push('date din motorul mașinii (consum, kilometraj, turație)');
@@ -443,6 +447,15 @@ function _ofIncluse(o) {
   L.push('rapoarte, alerte, actualizări și suport tehnic');
   return L;
 }
+
+// ─── Hârtia ──────────────────────────────────────────────────────────────────────────────────────
+// Structura e cea cerută de Alin (21.09): întâi CÂT COSTĂ — lunar și o singură dată, două cifre
+// mari, atât. Apoi detalierea fiecăreia. Iar explicațiile („ce include", „cum se plătește") la
+// FINAL, ca note — nu înaintea cifrelor, unde stăteau și făceau oferta greoaie.
+//
+// ⚠ Fiecare sumă apare în LEI și în EURO, peste tot, în aceeași ordine. Înainte abonamentul și
+// montajul erau în lei cu o coloană „≈ EUR", iar aparatele invers (euro cu „≈ lei") — pe aceeași
+// hârtie, două convenții. Acum: lei mare, euro dedesubt, în toate tabelele.
 function renderOfertaPdf(doc, o) {
   const left = doc.page.margins.left;
   const W = doc.page.width - left - doc.page.margins.right;
@@ -452,17 +465,18 @@ function renderOfertaPdf(doc, o) {
   const eur2lei = (v) => (Number(v) || 0) * fx;
   let y = doc.page.margins.top;
   const spatiu = (h) => { if (y + h > bottom) { doc.addPage(); y = doc.page.margins.top; } };
+  const luni = Math.max(1, Number(o.contractMonths) || 12);
+  const unicLei = (Number(o.montaj) || 0) + eur2lei(o.hwTotal);
 
-  // 1. Antet brandat — aceeași imagine ca pe rapoarte (logo ÎNCHIS, că fundalul e alb).
+  // 1. Antet brandat — logo REAL, varianta pentru fundal alb.
   const logo = _logoBuffer();
   if (logo) { try { doc.image(logo, left, y, { height: 22 }); } catch (e) {} }
-  doc.fillColor('#111').font('Nunito-Bold').fontSize(15).text('Ofertă', left, y + 3, { width: W, align: 'right', lineBreak: false });
+  doc.fillColor('#111').font('Nunito-Bold').fontSize(15).text('OFERTĂ', left, y + 3, { width: W, align: 'right', lineBreak: false });
   y += 26;
   doc.moveTo(left, y).lineTo(left + W, y).strokeColor('#3FE07D').lineWidth(2).stroke();
   y += 8;
   const azi = new Date();
   const dz = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
-  // Termenul vine de la apelant (din `OFERTA_VALABIL_ZILE`). Dacă nu-l știe, NU inventăm unul.
   const pana = Number(o.valabilZile) > 0 ? new Date(azi.getTime() + Number(o.valabilZile) * 86400000) : null;
   doc.font('Nunito').fontSize(8.5).fillColor('#6b7280')
     .text('Data: ' + dz(azi) + (pana ? '     Valabilă până: ' + dz(pana) : ''), left, y, { lineBreak: false });
@@ -478,119 +492,117 @@ function renderOfertaPdf(doc, o) {
     y += 42;
   }
 
-  // Un tabel, o singură dată scris. Coloanele: denumire, cantitate, unitar, subtotal, a doua monedă.
+  // 3. RĂSPUNSUL, în două cifre: cât dă lunar, cât dă o singură dată. Nimic altceva.
+  const caseta = (x, w, titlu, lei, subtitlu, verde) => {
+    doc.roundedRect(x, y, w, 62, 6).fillColor(verde ? '#f0fdf4' : '#f8fafc').fill();
+    doc.roundedRect(x, y, w, 62, 6).strokeColor(verde ? '#bbf7d0' : '#e5e7eb').lineWidth(1).stroke();
+    doc.fillColor('#6b7280').font('Nunito-Bold').fontSize(8)
+      .text(String(titlu).toUpperCase(), x + 11, y + 9, { width: w - 22, lineBreak: false });
+    doc.fillColor(verde ? '#16a34a' : '#111').font('Nunito-Bold').fontSize(17)
+      .text(_bani(lei, 'lei'), x + 11, y + 22, { width: w - 22, lineBreak: false, ellipsis: true });
+    doc.fillColor('#6b7280').font('Nunito').fontSize(8.5)
+      .text(_bani(lei2eur(lei), '€'), x + 11, y + 42, { width: w - 22, lineBreak: false });
+    doc.fillColor('#9ca3af').font('Nunito').fontSize(7)
+      .text(subtitlu, x + 11, y + 52, { width: w - 22, lineBreak: false, ellipsis: true });
+  };
+  const gol = 10, wc = (W - gol) / 2;
+  spatiu(76);
+  caseta(left, wc, 'Cost lunar', o.monthly,
+    'abonament pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule', true);
+  caseta(left + wc + gol, wc, 'Cost unic, o singură dată', unicLei, 'echipamente și instalare', false);
+  y += 70;
+  doc.fillColor('#4b5563').font('Nunito').fontSize(8.5)
+    .text('Total pe durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni): '
+      + _bani(o.contractTotal, 'lei') + ' (' + _bani(lei2eur(o.contractTotal), '€') + ') + costul unic de mai sus.',
+      left, y, { width: W, lineBreak: false, ellipsis: true });
+  y += 18;
+
+  // Un tabel, o singură dată scris. ORICE sumă, în lei și în euro — lei sus, euro dedesubt, în
+  // toate tabelele. `moneda` spune doar în ce monedă vin cifrele, nu cum se afișează.
   const tabel = (titlu, randuri, moneda) => {
     if (!randuri.length) return;
-    spatiu(46);
+    spatiu(52);
     doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text(String(titlu).toUpperCase(), left, y, { lineBreak: false });
     y += 13;
-    const cw = [W - 250, 44, 66, 74, 66];
-    const x = [left, left + cw[0], left + cw[0] + cw[1], left + cw[0] + cw[1] + cw[2], left + cw[0] + cw[1] + cw[2] + cw[3]];
-    const cap = ['Denumire', 'Cant.', 'Unitar', 'Subtotal', moneda === 'EUR' ? '≈ lei' : '≈ EUR'];
-    doc.font('Nunito-Bold').fontSize(7).fillColor('#6b7280');
-    cap.forEach((c, i) => doc.text(c, x[i], y, { width: cw[i], align: i ? 'right' : 'left', lineBreak: false }));
+    const cw = [W - 220, 46, 87, 87];
+    const x = [left, left + cw[0], left + cw[0] + cw[1], left + cw[0] + cw[1] + cw[2]];
+    ['Denumire', 'Cant.', 'Preț unitar', 'Total'].forEach((c, i) =>
+      doc.font('Nunito-Bold').fontSize(7).fillColor('#6b7280').text(c, x[i], y, { width: cw[i], align: i ? 'right' : 'left', lineBreak: false }));
     y += 10;
     doc.moveTo(left, y).lineTo(left + W, y).strokeColor('#e5e7eb').lineWidth(0.7).stroke();
-    y += 4;
+    y += 5;
     randuri.forEach((r) => {
-      spatiu(18);
-      const sub = moneda === 'EUR' ? _ofFmt(r.total) + ' €' : _ofFmt(r.total) + ' lei';
-      const alt = moneda === 'EUR' ? _ofFmt(eur2lei(r.total)) + ' lei' : _ofFmt(lei2eur(r.total)) + ' €';
-      const uni = moneda === 'EUR' ? _ofFmt(r.unit) + ' €' : _ofFmt(r.unit) + ' lei' + (r.perKm ? '/km' : '');
+      spatiu(24);
+      const uLei = moneda === 'EUR' ? eur2lei(r.unit) : r.unit;
+      const tLei = moneda === 'EUR' ? eur2lei(r.total) : r.total;
       doc.font('Nunito').fontSize(8.5).fillColor('#1f2937').text(String(r.label || ''), x[0], y, { width: cw[0] - 6, lineBreak: false, ellipsis: true });
       doc.text(String(r.qty || 0) + (r.perKm ? ' km' : ''), x[1], y, { width: cw[1], align: 'right', lineBreak: false });
-      doc.text(uni, x[2], y, { width: cw[2], align: 'right', lineBreak: false });
-      doc.font('Nunito-Bold').text(sub, x[3], y, { width: cw[3], align: 'right', lineBreak: false });
-      doc.font('Nunito').fillColor('#9ca3af').text(alt, x[4], y, { width: cw[4], align: 'right', lineBreak: false });
-      y += 12;
+      doc.text(_bani(uLei, 'lei') + (r.perKm ? '/km' : ''), x[2], y, { width: cw[2], align: 'right', lineBreak: false });
+      doc.font('Nunito-Bold').text(_bani(tLei, 'lei'), x[3], y, { width: cw[3], align: 'right', lineBreak: false });
+      doc.font('Nunito').fontSize(7).fillColor('#9ca3af')
+        .text(_bani(lei2eur(uLei), '€'), x[2], y + 10, { width: cw[2], align: 'right', lineBreak: false })
+        .text(_bani(lei2eur(tLei), '€'), x[3], y + 10, { width: cw[3], align: 'right', lineBreak: false });
+      y += 19;
       if (r.extra) {
-        doc.fillColor('#9ca3af').fontSize(7).text(String(r.extra), x[0] + 6, y, { width: cw[0] - 12, lineBreak: false, ellipsis: true });
-        y += 9;
+        doc.fillColor('#9ca3af').fontSize(7).text(String(r.extra), x[0] + 6, y - 7, { width: cw[0] - 12, lineBreak: false, ellipsis: true });
+        y += 6;
       }
     });
-    y += 6;
+    y += 8;
   };
 
-  // 3. RĂSPUNSUL, înaintea tabelelor: „cât dau acum, cât dau lunar". Ordinea NU e întâmplătoare —
-  // așa citește un om o ofertă, nu adunând el tabele ca să afle suma. Tabelele vin după, ca
-  // justificare. (Regula venea de pe hârtia veche; a rămas.)
-  const luni = Math.max(1, Number(o.contractMonths) || 12);
-  const unic = (Number(o.montaj) || 0) + eur2lei(o.hwTotal);
-  const dublu = (v) => _ofFmt(v) + ' lei (' + _ofFmt(lei2eur(v)) + ' €)';
+  tabel('Abonament lunar', o.lines || [], 'RON');
+  // Ordinea e aceeași ca în anexele contractului: întâi marfa, apoi manopera.
+  tabel('Echipamente — o singură dată', o.deviceLines || [], 'EUR');
+  tabel('Instalare și punere în funcțiune — o singură dată', o.montajLines || [], 'RON');
+
+  // 4. Explicațiile, la FINAL. Cifrele au fost deja date; astea le lămuresc.
   const incluse = _ofIncluse(o);
-  spatiu(70);
-  doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text('CUM SE PLĂTEȘTE', left, y, { lineBreak: false });
-  y += 14;
-  // ⚠ Înălțimea casetelor se MĂSOARĂ, nu se ghicește. Prima variantă le-a dat o înălțime fixă și
-  // textului o singură linie cu „…": rândul „Total pe 12 luni" se tăia în mijloc, iar ultimul punct
-  // din listă ieșea din chenar (văzut generând PDF-ul, 21.09). `heightOfString` spune exact cât ocupă.
-  const inalt = (txt, font, marime, latime) => {
-    doc.font(font).fontSize(marime);
-    return doc.heightOfString(txt, { width: latime });
-  };
-  let pas = 1;
-  if (unic > 0) {
-    const nota1 = 'Se facturează o singură dată. Echipamentele rămân proprietatea clientului; montajul îl facem noi, la sediul dumneavoastră.';
-    const h1 = 22 + inalt(nota1, 'Nunito', 7.5, W - 20) + 9;
-    spatiu(h1 + 8);
-    doc.roundedRect(left, y, W, h1, 5).strokeColor('#e5e7eb').lineWidth(1).stroke();
-    doc.fillColor('#111').font('Nunito-Bold').fontSize(9.5)
-      .text(pas + '. La semnarea contractului, o singură dată', left + 10, y + 7, { width: W - 160, lineBreak: false, ellipsis: true });
-    doc.text(dublu(unic), left, y + 7, { width: W - 12, align: 'right', lineBreak: false });
-    doc.fillColor('#6b7280').font('Nunito').fontSize(7.5).text(nota1, left + 10, y + 22, { width: W - 20 });
-    y += h1 + 8; pas++;
-  }
-  const nota2 = 'Abonament pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule, facturat în fiecare lună pe toată durata '
-    + 'contractului (' + luni + ' ' + _ofDe(luni) + 'luni). Total pe ' + luni + ' ' + _ofDe(luni) + 'luni: ' + dublu(o.contractTotal) + '.';
-  const hNota2 = inalt(nota2, 'Nunito', 7.5, W - 20);
-  const hIncl = 22 + hNota2 + 8 + 12 + incluse.length * 10 + 8;
-  spatiu(hIncl + 8);
-  doc.roundedRect(left, y, W, hIncl, 5).fillColor('#f0fdf4').fill();
-  doc.roundedRect(left, y, W, hIncl, 5).strokeColor('#bbf7d0').lineWidth(1).stroke();
-  doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9.5)
-    .text(pas + '. Apoi, în fiecare lună', left + 10, y + 7, { width: W - 190, lineBreak: false, ellipsis: true });
-  doc.fontSize(12).text(dublu(o.monthly), left, y + 5, { width: W - 12, align: 'right', lineBreak: false });
-  doc.fillColor('#4b5563').font('Nunito').fontSize(7.5).text(nota2, left + 10, y + 22, { width: W - 20 });
-  let yy = y + 22 + hNota2 + 6;
-  doc.fillColor('#111').font('Nunito-Bold').fontSize(8)
-    .text('Abonamentul lunar include, pentru fiecare mașină:', left + 10, yy, { lineBreak: false });
-  yy += 12;
+  spatiu(28 + incluse.length * 10);
+  doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9)
+    .text('CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL', left, y, { lineBreak: false });
+  y += 13;
   incluse.forEach((t) => {
-    doc.fillColor('#374151').font('Nunito').fontSize(7.5).text('•  ' + t, left + 14, yy, { width: W - 32, lineBreak: false, ellipsis: true });
-    yy += 10;
+    spatiu(12);
+    doc.fillColor('#374151').font('Nunito').fontSize(8).text('•  ' + t, left + 4, y, { width: W - 8, lineBreak: false, ellipsis: true });
+    y += 10;
   });
-  y += hIncl + 10;
-  // Regula RA Insight, pe hârtie — dar DOAR dacă s-a vândut. Altfel e o notă despre ce n-a cumpărat.
-  if (o.aiA && Number(o.pretCont) > 0) {
-    spatiu(24);
-    doc.fillColor('#6b7280').font('Nunito').fontSize(7)
-      .text('Prețul unui cont de RA Insight este ' + _ofFmt(o.pretCont) + ' lei/lună. Numărul de conturi se modifică oricând din aplicație, '
-        + 'iar factura urmează numărul de conturi active în luna respectivă. Când fondul de întrebări al lunii se termină, RA Insight se '
-        + 'oprește până la reînnoire — nu există costuri suplimentare.', left, y, { width: W });
-    y = doc.y + 8;
-  }
+  y += 8;
 
-  tabel('Detaliere abonament lunar', o.lines || [], 'RON');
-  if (unic > 0) {
-    tabel('Detaliere costuri unice — montaj', o.montajLines || [], 'RON');
-    tabel('Detaliere costuri unice — aparate', o.deviceLines || [], 'EUR');
+  const conditii = [
+    'Costul unic (echipamente și instalare) se facturează integral la semnarea contractului.',
+    'Abonamentul lunar se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
+    'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor. Instalarea o executăm noi, la sediul Beneficiarului.',
+    'Facturarea se face în lei. Sumele în euro sunt informative, la cursul BNR'
+      + (o.fxDate ? ' din ' + o.fxDate : '') + ': 1 € = ' + _bani(fx, 'lei', 4) + '.'
+  ];
+  if (o.aiA && Number(o.pretCont) > 0) {
+    conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
+      + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
+      + 'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.');
   }
+  spatiu(26);
+  doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text('CONDIȚII', left, y, { lineBreak: false });
+  y += 13;
+  doc.font('Nunito').fontSize(7.5);
+  conditii.forEach((t) => {
+    const h = doc.heightOfString('•  ' + t, { width: W - 8 });
+    spatiu(h + 4);
+    doc.fillColor('#4b5563').font('Nunito').fontSize(7.5).text('•  ' + t, left + 4, y, { width: W - 8 });
+    y = doc.y + 3;
+  });
 
   if (o.notes) {
-    spatiu(40);
+    y += 6;
+    const h = doc.heightOfString(String(o.notes), { width: W });
+    spatiu(h + 20);
     doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text('OBSERVAȚII', left, y, { lineBreak: false });
     y += 13;
-    doc.fillColor('#374151').font('Nunito').fontSize(8.5).text(String(o.notes), left, y, { width: W });
-    y = doc.y + 8;
+    doc.fillColor('#374151').font('Nunito').fontSize(8).text(String(o.notes), left, y, { width: W });
+    y = doc.y;
   }
-
-  spatiu(24);
-  doc.moveTo(left, y).lineTo(left + W, y).strokeColor('#e5e7eb').lineWidth(0.7).stroke();
-  y += 6;
-  doc.fillColor('#9ca3af').font('Nunito').fontSize(7.5)
-    .text('Curs BNR folosit: 1 € = ' + fx.toFixed(4) + ' lei. Sumele în euro sunt orientative — facturarea se face în lei.',
-      left, y, { width: W, lineBreak: false });
 }
+
 function ofertaToPdf(o) {
   return new Promise((resolve, reject) => {
     try {

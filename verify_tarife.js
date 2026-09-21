@@ -194,11 +194,19 @@ const PD = (function () {
   if (a < 0 || b < 0) throw new Error('nu găsesc blocul hârtiei în report_export.js');
   return rex.slice(a, b);
 })();
-T('pe hârtie: „Cum se plătește", nu „Cât plătiți"', /CUM SE PLĂTEȘTE/.test(PD) && !/Cât plătiți/.test(PD));
-T('pasul 1 e la semnarea contractului', /\. La semnarea contractului, o singură dată/.test(PD));
-T('pasul 2 e lunar, cu totalul pe contract', /\. Apoi, în fiecare lună/.test(PD) && /Total pe ' \+ luni/.test(PD));
-T('scrie că echipamentele rămân ale clientului', /rămân proprietatea clientului/.test(PD));
-T('și înșiră ce include abonamentul, pe fiecare mașină', /Abonamentul lunar include, pentru fiecare mașină/.test(PD));
+// Hârtia a fost REGÂNDITă pe 21.09, după ce Alin s-a uitat la ea: „«La semnarea contractului o
+// singură dată» și «apoi în fiecare lună» nu sună deloc profesional. Trebuie împărțită cât mai
+// simplu: cât îl costă pe lună și cât îl costă o dată." Deci: două cifre mari sus, detalierea la
+// mijloc, explicațiile („ce include", „condiții") la FINAL, ca note. Cerințele de CONȚINUT au
+// rămas toate — doar locul și cuvintele s-au schimbat.
+T('hârtia începe cu RĂSPUNSUL: cât pe lună, cât o singură dată',
+  /'Cost lunar'/.test(PD) && /'Cost unic, o singură dată'/.test(PD));
+T('și spune cât face pe toată durata contractului', /Total pe durata contractului/.test(PD));
+T('condițiile de plată sunt scrise, la final', /CONDIȚII/.test(PD)
+  && /se facturează integral la semnarea contractului/.test(PD)
+  && /se facturează în fiecare lună, pe toată durata contractului/.test(PD));
+T('scrie că echipamentele rămân ale clientului', /rămân în proprietatea Beneficiarului după achitarea lor/.test(PD));
+T('și înșiră ce include abonamentul, pe fiecare mașină', /CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL/.test(PD));
 T('lista de incluse pornește de la monitorizarea GPS', /monitorizare GPS în timp real/.test(PD));
 T('și pomenește modulele doar dacă sunt bifate',
   /if \(o\.tahograf\) L\.push/.test(PD) && /if \(o\.etransport\) L\.push/.test(PD));
@@ -225,12 +233,16 @@ T('și că la epuizare se oprește, fără costuri suplimentare', /nu există co
 T('nota apare DOAR dacă s-a vândut RA Insight', /if \(o\.aiA && Number\(o\.pretCont\) > 0\)/.test(PD));
 
 sect('3d. Hârtia se ține pe o pagină');
-T('răspunsul („cum se plătește") vine ÎNAINTEA tabelelor',
-  PD.indexOf('CUM SE PLĂTEȘTE') < PD.indexOf('Detaliere abonament lunar'), 'ordinea secțiunilor');
-T('costurile unice au titlurile lor',
-  /Detaliere costuri unice — montaj/.test(PD) && /Detaliere costuri unice — aparate/.test(PD));
-T('și apar doar dacă există ceva de plătit la început', /if \(unic > 0\) \{[\s\S]{0,120}Detaliere costuri unice/.test(PD));
-T('nu se mai repetă „Anual / Contract N luni" (e deja în caseta de plată)', !/Anual \(×12\)/.test(PD));
+T('răspunsul (cele două cifre) vine ÎNAINTEA tabelelor',
+  PD.indexOf("'Cost lunar'") < PD.indexOf("tabel('Abonament lunar'"), 'ordinea secțiunilor');
+T('iar explicațiile vin DUPĂ ele, la final',
+  PD.indexOf("tabel('Abonament lunar'") < PD.indexOf('CE INCLUDE ABONAMENTUL')
+  && PD.indexOf('CE INCLUDE ABONAMENTUL') < PD.indexOf("'CONDIȚII'"), 'ordinea explicațiilor');
+T('costurile unice au titlurile lor, separat',
+  /tabel\('Echipamente — o singură dată'/.test(PD)
+  && /tabel\('Instalare și punere în funcțiune — o singură dată'/.test(PD));
+T('și un tabel gol nu se desenează deloc', /if \(!randuri\.length\) return;/.test(PD));
+T('nu se mai repetă „Anual / Contract N luni" (e deja în casete)', !/Anual \(×12\)/.test(PD));
 
 sect('4. Moneda dublă — nicio sumă singură pe ecran');
 // Celulele de tabel din rezumat trebuie să treacă prin _celLei/_celEur (care scriu ambele monede).
@@ -256,17 +268,25 @@ const listaEur = (html.match(/var _OF_CAMP_EUR = \[([\s\S]*?)\];/) || [])[1] || 
 // Pe hârtia clientului: coloană de euro la fiecare tabel + cursul scris jos. Hârtia se face din
 // 21.09 pe server, deci `pdf` e chiar blocul de acolo (`PD`, decupat mai sus).
 const pdf = PD;
-T('PDF-ul are coloană „≈ EUR" la abonament', /'≈ lei' : '≈ EUR'/.test(pdf));
-T('PDF-ul are coloană „≈ lei" la echipamente (acolo prețul e în euro)',
-  /moneda === 'EUR' \? _ofFmt\(eur2lei\(r\.total\)\)/.test(pdf));
-T('totalul lunar din PDF are și euro', /dublu\(o\.monthly\)/.test(pdf));
-// Pe NUME, nu pe numărătoare: cele trei sume mari de pe hârtie (ce dă la început, ce dă lunar,
-// cât face pe tot contractul) trebuie să treacă fiecare prin `dublu`. Un prag de tipul „cel puțin
-// N” ar fi fost o cifră ghicită, care pică la prima rearanjare.
-T('și fiecare sumă mare de pe hârtie trece prin `dublu` (lei + euro)',
-  /const dublu = \(v\) => _ofFmt\(v\) \+ ' lei \(' \+ _ofFmt\(lei2eur\(v\)\) \+ ' €\)'/.test(pdf)
-  && /dublu\(unic\)/.test(pdf) && /dublu\(o\.monthly\)/.test(pdf) && /dublu\(o\.contractTotal\)/.test(pdf));
-T('PDF-ul spune cursul folosit și că se facturează în lei', /facturarea se face în lei/.test(pdf));
+// Alin, 21.09: „de ce la ultimele e în euro trecut prețul și la unele în lei? Nu e profesional."
+// Abonamentul și montajul erau în lei cu o coloană „≈ EUR", iar aparatele invers. Acum, în TOATE
+// tabelele: lei sus, euro dedesubt. `moneda` spune doar în ce vin cifrele, nu cum se afișează.
+// Se caută în COD, nu în comentarii: explicația de deasupra pomenește firesc vechile coloane.
+const _faraCom = (x) => x.replace(/^\s*\/\/.*$/gm, '');
+T('nu mai există două convenții pe aceeași hârtie',
+  !/≈ EUR/.test(_faraCom(pdf)) && !/≈ RON/.test(_faraCom(pdf)));
+T('în fiecare tabel, prețul unitar are și lei și euro',
+  /_bani\(uLei, 'lei'\)/.test(pdf) && /_bani\(lei2eur\(uLei\), '€'\)/.test(pdf));
+T('și totalul, la fel', /_bani\(tLei, 'lei'\)/.test(pdf) && /_bani\(lei2eur\(tLei\), '€'\)/.test(pdf));
+T('aparatele se întorc în lei, ca restul', /moneda === 'EUR' \? eur2lei\(r\.unit\) : r\.unit/.test(pdf));
+T('și cele două cifre mari au amb ele monede', /_bani\(lei, 'lei'\)/.test(pdf) && /_bani\(lei2eur\(lei\), '€'\)/.test(pdf));
+// „2250.00 lei" și „1 € = 5.0000 lei" se citesc GREȘIT în română: punctul e separator de MII.
+T('sumele se scriu românește (2.250,00 lei, nu 2250.00)',
+  /function _bani\(n, moneda, zec\)/.test(pdf) && /toLocaleString\('ro-RO'/.test(pdf));
+T('și nicio sumă nu mai scapă prin `toFixed`', !/toFixed\(2\) \+ ' lei'/.test(pdf) && !/toFixed\(2\) \+ ' €'/.test(pdf));
+T('cursul se scrie cu 4 zecimale, românește', /_bani\(fx, 'lei', 4\)/.test(pdf));
+T('și se spune DIN CE ZI e cursul, dacă îl știm', /o\.fxDate \? ' din ' \+ o\.fxDate : ''/.test(pdf));
+T('PDF-ul spune cursul folosit și că se facturează în lei', /Facturarea se face în lei/.test(pdf));
 
 sect('5. Un singur loc pentru tarifele de pornire');
 T('există _OF_PRETURI_DEF', /var _OF_PRETURI_DEF = \{/.test(html));

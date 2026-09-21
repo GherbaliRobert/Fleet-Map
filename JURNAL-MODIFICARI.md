@@ -95,6 +95,51 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Oferta, regândită: două cifre mari, sume românești, explicațiile la final
+
+Alin s-a uitat la hârtie și a pus trei degete pe ea. Toate trei erau îndreptățite.
+
+**1. „De ce la unele e prețul în euro și la altele în lei? Nu e profesional."** Avea dreptate:
+abonamentul și montajul erau în lei cu o coloană „≈ EUR", iar aparatele invers — euro cu „≈ lei".
+**Două convenții pe aceeași pagină.** Acum, în toate tabelele: **lei sus, euro dedesubt**, inclusiv
+la aparate. Coloana „≈ EUR" a dispărut — amba moneda stă acum în aceeași celulă.
+
+**2. „1 EURO = 5.0000 LEI??? Ai pus virgule multe și zerouri, dar se interpretează greșit."**
+Corect: în română punctul e separator de **mii**, deci „5.0000" se citește *cinci mii*, iar
+„2250.00 lei" nu e un număr scris românește. Toate sumele trec acum printr-o singură funcție:
+
+| Înainte | Acum |
+|---|---|
+| 2250.00 lei | **2.250,00 lei** |
+| 10020.00 lei | **10.020,00 lei** |
+| 1 € = 5.0000 lei | **1 € = 5,0785 lei** |
+
+Plus: pe hârtie scrie acum **din ce zi** e cursul BNR. Dacă nu-l știm, nu se inventează o dată.
+
+**3. „«La semnarea contractului o singură dată» și «apoi în fiecare lună» nu sună deloc
+profesional."** Nici asta nu era bine: oferta începea cu o explicație și abia apoi dădea cifrele.
+
+Acum e invers, și mult mai simplu:
+
+> **COST LUNAR** · 520,00 lei · 104,00 € — *abonament pentru 12 vehicule*
+> **COST UNIC, O SINGURĂ DATĂ** · 10.020,00 lei · 2.004,00 € — *echipamente și instalare*
+
+Două cifre, una lângă alta, înainte de orice altceva. Sub ele, totalul pe durata contractului. Apoi
+**detalierea** fiecăreia: abonamentul lunar, echipamentele, instalarea — în aceeași ordine ca
+anexele contractului. Iar explicațiile („ce include abonamentul", „condiții") au trecut **la final,
+ca note** — acolo le cauți după ce ai văzut prețul, nu înainte.
+
+Condițiile sunt scrise ca într-un act, nu ca într-un îndemn:
+
+> • Costul unic (echipamente și instalare) se facturează integral la semnarea contractului.
+> • Abonamentul lunar se facturează în fiecare lună, pe toată durata contractului (12 luni).
+> • Echipamentele rămân în proprietatea Beneficiarului după achitarea lor. Instalarea o executăm noi, la sediul Beneficiarului.
+> • Facturarea se face în lei. Sumele în euro sunt informative, la cursul BNR din 21.09.2026: 1 € = 5,0785 lei.
+
+- **Ce am schimbat:** oferta spune întâi cât costă, apoi de ce, și scrie sumele românește.
+- **Ce vede fondatorul:** același buton „Descarcă oferta" — hârtia dinlăuntru e alta.
+- **Ce vede clientul:** o ofertă pe care o poți pune pe masa unui director financiar.
+
 ### FONDATOR · „Prețurile noastre": tot ce cerem și tot ce ne costă, într-un tablou
 
 Alin: *„erau bune tarifele lunare editabile, dar nu era locul lor acolo și nu erau structurate bine.
