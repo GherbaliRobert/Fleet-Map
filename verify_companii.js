@@ -247,8 +247,8 @@ sect('N. Fereastra „Companie" nu se mai zbate, și golul are rost');
 // părea tăiată de sus (Alin, 18.09). Măsurat în browser pe toate șase filele.
 T('fereastra are o înălțime fixă', /#rax-codetail-overlay \.rax-card \{ height: min\(82vh, 620px\); \}/.test(html));
 T('capul și filele stau pe loc',
-  /#rax-codetail-overlay \.rax-head \{ flex: 0 0 auto; \}/.test(html) &&
-  /#rax-codetail-overlay \.rax-cod-tabs \{ flex: 0 0 auto; \}/.test(html));
+  /#rax-codetail-overlay \.rax-head \{[^}]*flex: 0 0 auto/.test(html) &&
+  /#rax-codetail-overlay \.rax-cod-tabs \{[^}]*flex: 0 0 auto/.test(html));
 T('doar corpul se derulează', /#rax-codetail-overlay #rax-cod-body \{[^}]*flex: 1 1 auto;[^}]*min-height: 0;[^}]*overflow-y: auto/.test(html));
 T('secțiunile se despart din CSS, nu din margini scrise pe fiecare',
   /#rax-cod-body > \.rax-cod-sect \+ \.rax-cod-sect/.test(html) && !/rax-cod-sect" style="margin-top:14px/.test(html));
@@ -280,6 +280,22 @@ T('corpul filei e o coloană, ca butoanele să poată coborî',
   /#rax-codetail-overlay #rax-cod-body \{[^}]*flex-direction: column/.test(html));
 T('butoanele stau pe FUNDUL ferestrei, nu unde se termină textul',
   /#rax-cod-body > \.rax-cod-actiuni \{[^}]*margin-top: auto/.test(html));
+
+sect('P. Capul ferestrei: o singură margine și aer între titlu și file');
+// Titlul pornea de la 17px de chenar, conținutul tot de la 17px, dar rândul de file de la 1px —
+// „Detalii" lipit de chenar. Iar între titlu și file erau ZERO pixeli, cu DOUĂ linii orizontale una
+// sub alta și butoanele strivite între ele (Alin, 18.09). Măsurat în browser.
+T('filele au aceeași margine laterală ca titlul și textul (16px)',
+  /\.rax-cod-tabs \{[^}]*padding: 14px 16px/.test(html) &&
+  /\.rax-head \{[^}]*padding: 14px 16px/.test(html) &&
+  /\.rax-body \{ padding: 14px 16px/.test(html));
+T('filele nu mai sunt lipite de chenar', !/\.rax-cod-tabs \{[^}]*padding-bottom: 10px; scrollbar/.test(html));
+T('e aer între titlu și file (îl dă padding-ul de sus al filelor)',
+  /\.rax-cod-tabs \{[^}]*padding: 14px 16px/.test(html) &&
+  /#rax-codetail-overlay \.rax-head \{[^}]*padding-bottom: 0/.test(html));
+T('o singură linie orizontală în cap, nu două',
+  /#rax-codetail-overlay \.rax-head \{[^}]*border-bottom: none/.test(html) &&
+  /\.rax-cod-tabs \{[^}]*border-bottom: 1px solid var\(--border\)/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

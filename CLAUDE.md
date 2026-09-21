@@ -202,6 +202,17 @@ fereastră, șase file. Două lucruri din ea s-au reparat pe măsurători, nu di
 - Regula generală de aici: **două coloane de text liber, una lângă alta, se ating.** Ori le dai panou,
   ori le dai o coloană de etichete de lățime fixă. Distanța dintre coloane (`gap`) nu e de ajuns —
   valoarea aliniată la dreapta mănâncă tot spațiul.
+- **Capul ferestrei are o SINGURĂ margine laterală: 16px.** `.rax-head`, `.rax-cod-tabs` și `.rax-body`
+  o poartă toate trei. Rândul de file n-avea `padding` deloc: „Detalii" pornea de la **1px** de chenar,
+  cu titlul de deasupra și conținutul de dedesubt la 17px — trei margini diferite pe trei rânduri
+  lipite unul de altul. Ce adaugi în capul ferestrei ia marginea de la ele.
+- **O singură linie orizontală în cap**, sub file (`.rax-cod-tabs`). `.rax-head` și-o scoate pe a ei
+  (`border-bottom: none`) — erau două linii una sub alta, cu butoanele strivite între ele și **zero**
+  aer sub titlu. Aerul dintre titlu și file îl dă `padding`-ul de sus al filelor, nu o margine scrisă
+  separat; `.rax-head` își pune `padding-bottom: 0` ca să nu se adune două.
+- **Ce se repară aici se MĂSOARĂ.** De trei ori la rând ochiul lui Alin a prins ceva ce arăta reparat
+  din cod: distanțele reale (margini, pas, coliziuni) se citesc din browser, pe amândouă temele, nu
+  din citit CSS.
 - Păzit de `verify_companii.js`.
 
 ### Firma își face singură administratorii (decizie Alin, 16.09)

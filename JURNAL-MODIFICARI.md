@@ -95,6 +95,35 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Capul ferestrei unei firme: filele erau lipite de chenar
+
+Alin: *„«Detalii» e lipit de chenar… sus nu sunt margini între titlul chenarului și meniu."*
+
+**Iar avea dreptate, și iar mă uitasem în altă parte.** Reparasem corpul ferestrei (coloanele,
+valorile, butoanele) și nu măsurasem deloc capul ei. Măsurat acum:
+
+| | Era | E acum |
+|---|---|---|
+| Titlul pornește de la | 17px de chenar | 17px |
+| Conținutul pornește de la | 17px | 17px |
+| **Rândul de file pornește de la** | **1px** — lipit de chenar | **17px** |
+| **Aer între titlu și file** | **0px** | 14px |
+| Linii orizontale în cap | **două**, una sub alta | una |
+
+**De unde venea.** Rândul de file n-avea niciun fel de margine laterală scrisă, deci pornea din
+chenar. Titlul de deasupra și textul de dedesubt aveau amândouă 16px. Trei rânduri lipite unul de
+altul, fiecare cu altă margine — ochiul vede asta imediat, chiar dacă nu știe să spună ce anume e
+strâmb. Pe deasupra, titlul își trăgea linie proprie și filele încă una: două linii la 46px una de
+alta, cu butoanele strivite între ele și zero aer sub titlu.
+
+**Ce am făcut:** filele au primit aceeași margine ca restul (toate trei pornesc acum din același
+loc), aer între titlu și file, și a rămas **o singură linie**, sub file. Verificat și pe ecran
+îngust, unde filele se plimbă lateral: ultima rămâne la 17px de chenar când derulezi până la capăt.
+
+- **Ce am schimbat:** capul ferestrei unei firme stă pe o singură margine, cu aer între titlu și file.
+- **Ce vede fondatorul:** titlul, filele și conținutul pornesc din același loc; o singură linie despărțitoare.
+- **Ce vede clientul:** nimic — fereastra e doar a noastră.
+
 ### FONDATOR · Fila „Detalii": coloanele se atingeau — acum au panouri
 
 Alin, după modificarea de mai jos: *„tu vezi cum se vede «Detalii» lipite… nu sunt centrate? Ce ai

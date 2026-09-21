@@ -1355,7 +1355,11 @@
     /* Filele companiei. Erau pe `flex-wrap`: la șase file, pe un ecran mai îngust, ultima sărea pe
        rândul doi și rândul de sus rămânea strâmb. Acum stau pe UN singur rând care se plimbă lateral,
        toate de aceeași înălțime — nimic nu mai sare. */
-    .rax-cod-tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0 0 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; scrollbar-width: thin; }
+    /* Rândul de file are ACEEAȘI margine ca titlul și ca textul de dedesubt (16px). Fără padding,
+       cum era, „Detalii" pornea de la 1px — lipit de chenarul ferestrei, în timp ce titlul de
+       deasupra și conținutul de dedesubt porneau de la 17px (Alin, 18.09). Trei margini diferite pe
+       trei rânduri lipite unul de altul: de-aia arăta strâmb capul ferestrei. */
+    .rax-cod-tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
     .rax-cod-tabs::-webkit-scrollbar { height: 5px; }
     .rax-cod-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     .rax-cod-tab { flex: 0 0 auto; height: 34px; box-sizing: border-box; white-space: nowrap; background: var(--bg-dark); border: 1.5px solid var(--border); color: var(--text-secondary); border-radius: 10px; padding: 0 13px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
@@ -1370,7 +1374,11 @@
        iar cea plină (Abonament) se derulează. O fereastră cu filă care se zbate e mai rea decât un pic
        de spațiu liber — ca orice fereastră de setări, își ține forma. */
     #rax-codetail-overlay .rax-card { height: min(82vh, 620px); }
-    #rax-codetail-overlay .rax-head { flex: 0 0 auto; }
+    /* Capul NU-și mai trage linie proprie: erau două linii orizontale una sub alta (una sub titlu,
+       una sub file), cu butoanele strivite între ele. Rămâne una singură, sub file — titlul și
+       filele sunt amândouă „capul ferestrei", nu două etaje. Aerul dintre ele îl dă `padding`-ul
+       de sus al filelor; era ZERO, titlul stătea direct pe butoane. */
+    #rax-codetail-overlay .rax-head { flex: 0 0 auto; border-bottom: none; padding-bottom: 0; }
     #rax-codetail-overlay .rax-cod-tabs { flex: 0 0 auto; }
     #rax-codetail-overlay #rax-cod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
     #rax-cod-body > * { flex: 0 0 auto; }
