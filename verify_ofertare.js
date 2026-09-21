@@ -131,6 +131,37 @@ T('hârtia clientului nu cheamă blocul de profit',
   !/_ofBlocProfit|_ofProfit|_costNoastre|rămâne la noi/.test(PDF));
 T('și nici nu pomenește costurile noastre', !/ne costă|Costurile noastre/.test(PDF));
 
+sect('5c. Calculatorul: butonul cinstit, textele care se scriu singure, tarifele care rămân');
+const TXT = bloc(html, '// ── începe „textele care se scriu singure"', '// ── sfârșit „textele care se scriu singure"');
+const TAR = bloc(html, '// ── începe „tarifele de listă"', '// ── sfârșit „tarifele de listă"');
+const TARS = bloc(server, '// ── începe „tarifele de listă"', '// ── sfârșit „tarifele de listă"');
+// Butonul zicea „Trimite clientului (PDF)" și NU trimitea nimic nimănui — deschide o fereastră de
+// printare. Clientul nici nu există încă la noi (Alin, 21.09).
+T('butonul spune ce face: descarcă', /Descarcă oferta \(PDF\)/.test(html));
+T('și nu mai promite că trimite', !/Trimite clientului/.test(faraComentarii(html)));
+T('scrie unde s-a dus ciorna, cu link la listă',
+  /intră în <a[^>]*raxOfLaLista\(\)[^>]*>Oferte salvate<\/a>/.test(html) && /window\.raxOfLaLista = function/.test(html));
+T('numele ofertei se scrie singur din client', /window\.raxOfNumeAuto = function/.test(TXT) && /'Ofertă ' \+ cl\.trim\(\)/.test(TXT));
+T('dar se oprește dacă scrie omul', /function _ofPropuneText\(id, val\)[\s\S]{0,200}if \(_ofAtinse\[id\]\) return;/.test(TXT));
+T('fraza de valabilitate vine de la server, nu e scrisă aici',
+  /var z = _ofMeta\.valabilZile;/.test(TXT) && !/\b30\b/.test(faraComentarii(TXT)));
+T('și hârtia folosește ACEEAȘI cifră',
+  /var validUntil = _ofMeta\.valabilZile/.test(PDF) && !/30 \* 86400000/.test(faraComentarii(PDF)));
+T('fără termen știut, hârtia nu inventează unul', /validUntil \? '<div class="muted">Valabilă până: '/.test(PDF));
+T('pasul 2 explică CAN vs FMS', /priza standard de camion/.test(html) && /modul LV-CAN200<\/b>, cumpărat și montat separat/.test(html));
+T('și de ce o mașină cu CAN are două linii de montaj', /mai are o linie de montaj deasupra — munca în plus/.test(html));
+T('serverul ține tarifele de listă', /const TARIF_CHEI = \[/.test(TARS) && /function _tarifeCurate\(b\)/.test(TARS));
+T('un tarif netrecut înseamnă „ia-l din cod", nu zero',
+  /out\[k\] = null; return;/.test(TARS) && /: null;\s*\n\s*\}\);/.test(TARS));
+T('ecranul le cere și le îmbină peste cele din cod',
+  /function _ofTarifeDeBaza\(\)[\s\S]{0,140}Object\.assign\(\{\}, _OF_PRETURI_DEF, _tarifeCurateLocal\(_tarifeLista\)\)/.test(TAR));
+T('„Ofertă nouă" pornește de la tarifele NOASTRE, nu de la cele din cod',
+  /raxOfReset = function[\s\S]{0,140}_raxOf\.prices = _ofTarifeDeBaza\(\)/.test(html));
+T('există butonul care le face tarifele casei',
+  /window\.raxOfSalveazaTarife = async function/.test(TAR) && /Salvează ca tarifele noastre/.test(html));
+T('o ofertă deschisă din listă își ține prețurile ei negociate',
+  /if \(_raxOf\.editingId == null\) _raxOf\.prices = _ofTarifeDeBaza\(\);/.test(html));
+
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));
 T('serverul nu trimite un al doilea sumar', !/sumar/.test(RUTE));
@@ -205,6 +236,16 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   await PUT('/api/admin/system-settings', { costuri_noastre: { dFmc650: -5, mGps: 'abc' } });
   const c2 = (await (await GET('/api/admin/system-settings')).json()).costuri_noastre || {};
   T('o cifră fără sens nu intră', c2.dFmc650 === null && c2.mGps === null, JSON.stringify([c2.dFmc650, c2.mGps]));
+
+  sect('7c. Tarifele noastre de listă rămân scrise');
+  const tar0 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};
+  T('la început nu e trecut niciun tarif', Object.keys(tar0).length === 0 || Object.values(tar0).every(v => v === null),
+    JSON.stringify(tar0).slice(0, 120));
+  await PUT('/api/admin/system-settings', { tarife_lista: { dFmc650: 133, mGps: 111, pPlain: '', pCan: 'abc' } });
+  const tar1 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};
+  T('ce am trecut rămâne', tar1.dFmc650 === 133 && tar1.mGps === 111, JSON.stringify({ d: tar1.dFmc650, m: tar1.mGps }));
+  T('ce am lăsat gol înseamnă „ia-l din cod", nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
+  T('și o cifră fără sens, la fel', tar1.pCan === null, JSON.stringify(tar1.pCan));
 
   sect('8. Ruta e doar a noastră');
   const { puneParola } = require('./test_parola');

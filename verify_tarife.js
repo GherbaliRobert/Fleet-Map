@@ -254,8 +254,13 @@ T('PDF-ul spune cursul folosit și că se facturează în lei', /facturarea se f
 
 sect('5. Un singur loc pentru tarifele de pornire');
 T('există _OF_PRETURI_DEF', /var _OF_PRETURI_DEF = \{/.test(html));
+// Din 21.09, „Ofertă nouă" nu mai ia direct cifrele din cod: trece prin `_ofTarifeDeBaza()`, care e
+// `_OF_PRETURI_DEF` PLUS tarifele noastre salvate pe server. Lanțul rămâne unul singur — proba îl
+// urmărește până la capăt, ca să nu apară pe drum o listă paralelă scrisă de mână.
 T('„Ofertă nouă" folosește aceeași listă, nu una paralelă',
-  /raxOfReset = function[\s\S]{0,200}_OF_PRETURI_DEF/.test(html) && !/raxOfReset = function[\s\S]{0,300}pAiA: 150/.test(html));
+  /raxOfReset = function[\s\S]{0,200}_ofTarifeDeBaza\(\)/.test(html)
+  && /function _ofTarifeDeBaza\(\)[\s\S]{0,160}_OF_PRETURI_DEF/.test(html)
+  && !/raxOfReset = function[\s\S]{0,300}pAiA: 150/.test(html));
 T('lista de pornire are și prețurile modulelor',
   /_OF_PRETURI_DEF[\s\S]{0,400}pTahograf/.test(html) && /_OF_PRETURI_DEF[\s\S]{0,400}pEtransport/.test(html));
 

@@ -95,6 +95,51 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Calculatorul de ofertă: șase lucruri, după o trecere prin el cu Alin
+
+Alin a umblat prin calculator și a pus șase întrebări. Toate aveau în spate câte ceva de reparat.
+
+**1. „Unde se duce oferta salvată? Unde văd ciorna?"** — În lista „Oferte salvate", la baza aceleiași
+pagini, ca **Ciornă**. Problema: e după șase secțiuni de formular, deci n-o vezi. Acum, sub butoane,
+scrie unde s-a dus, cu link care te duce direct la ea.
+
+**2. „«Trimite clientului» e aiurea, că noi nu avem clientul în listă."** — Avea dreptate, și mai
+rău: butonul **nu trimitea nimic nimănui**. Deschide o fereastră de printare. Numele promitea ceva ce
+aplicația nu face și nici n-ar avea cum — clientul nu există încă la noi. Acum se numește
+**„Descarcă oferta (PDF)"**, iar rândul de sub butoane spune limpede: *PDF-ul îl trimiți tu, de pe
+mailul tău.*
+
+**3. „Numele ofertei de ce-l trecem de mână?"** — Nu trebuia. Se scrie singur:
+**„Ofertă {Client} · {data}"**. Dacă scrii tu ceva, nu se mai atinge de el.
+
+**4. „Care e diferența între FMS și LV-CAN?"** — Amândouă înseamnă *date din mașină* (combustibil,
+kilometri, motor). Diferă **de unde**:
+
+| | FMS | CAN (LV-CAN) |
+|---|---|---|
+| Ce e | priza standard de camion | mașini mici și utilitare, fără FMS |
+| Modul în plus | **nu** — aparatul citește direct | **da** — LV-CAN200, cumpărat și montat |
+| Abonament | 65 lei/mașină | 45 lei/mașină |
+
+Scrie acum pe ecran, la pasul 2 — plus de ce o mașină cu CAN sau FMS are **două** linii de montaj:
+instalarea de bază, plus munca în plus. (Alin a confirmat că așa se facturează.)
+
+**5. „Prețurile de la pasul 5 — de unde sunt, cine le-a trecut?"** — Erau **scrise în codul
+aplicației**. Le puteai schimba din „Tarife (editabile)", **dar nu se țineau minte**: la „Ofertă
+nouă" sau la reîncărcarea paginii reveneau cifrele din cod. Dacă Teltonika scumpea, se umbla în cod.
+
+Acum, în josul panoului „Tarife (editabile)", un buton: **„Salvează ca tarifele noastre"**. De la ele
+pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor negociate. Un
+tarif lăsat gol înseamnă „ia-l din cod", **nu 0 lei**.
+
+**6. „La observații, mesaj automat că oferta e valabilă 30 de zile."** — Făcut. Și o corectură pe
+drum: **30 era scris în două locuri** — pe hârtie și pe server. Acum e o singură cifră, folosită de
+fraza automată, de hârtie și de pâlnia de oferte. Dacă o schimbi, se schimbă peste tot.
+
+- **Ce am schimbat:** calculatorul nu mai promite ce nu face și nu te mai pune să scrii ce poate afla singur.
+- **Ce vede fondatorul:** buton cinstit, nume și valabilitate scrise singure, tarife care rămân, și lămurirea CAN/FMS pe ecran.
+- **Ce vede clientul:** pe hârtie, valabilitatea vine acum din aceeași cifră ca restul. Altfel, nimic.
+
 ### FONDATOR · Ofertare Live: „Ce rămâne la noi" — infrastructura pentru profit
 
 Alin: *„asta e pentru noi… le vom trece noi prețurile în funcție de cum le luăm. Înainte de lansare

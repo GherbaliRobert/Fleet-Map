@@ -22158,6 +22158,43 @@ const pozitii = await r.json();</code></pre>
       ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0,
       mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2,
       dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 };
+    // ── începe „tarifele de listă" ───────────────────────────────────────────────────────────────
+    // Cifrele de mai sus sunt doar PORNIREA. Tarifele noastre adevărate se trec o dată, din „Tarife
+    // (editabile)", și se țin minte pe server. Înainte, o schimbare ținea până la „Ofertă nouă" sau
+    // până la reîncărcarea paginii — apoi reveneau cifrele scrise în cod (Alin, 21.09).
+    //
+    // O cheie nescrisă rămâne `null` pe server și înseamnă „folosește cifra din cod", nu zero.
+    var _tarifeLista = null;
+    function _ofTarifeDeBaza() { return Object.assign({}, _OF_PRETURI_DEF, _tarifeCurateLocal(_tarifeLista)); }
+    function _tarifeCurateLocal(t) {
+      var o = {}; if (!t) return o;
+      Object.keys(t).forEach(function (k) { if (t[k] != null && t[k] !== '') o[k] = Number(t[k]); });
+      return o;
+    }
+    async function _ofIncarcaTarife() {
+      if (_tarifeLista) return _tarifeLista;
+      try {
+        var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _tarifeLista = (s && s.tarife_lista) || {};
+        _costNoastre = (s && s.costuri_noastre) || _costNoastre;   // vin în același răspuns
+      } catch (e) { _tarifeLista = {}; }
+      return _tarifeLista;
+    }
+    // Salvează ce e ACUM în câmpurile de tarife ca listă a casei. De aici pornesc ofertele viitoare.
+    window.raxOfSalveazaTarife = async function () {
+      var p = _ofReadPrices(), trimit = {};
+      Object.keys(_OF_PRETURI_DEF).forEach(function (k) { trimit[k] = (p[k] == null ? null : p[k]); });
+      try {
+        var resp = await fetch('/api/admin/system-settings', { method: 'PUT',
+          headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ tarife_lista: trimit }) });
+        var j = await resp.json().catch(function () { return {}; });
+        if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+        _tarifeLista = (j.settings && j.settings.tarife_lista) || trimit;
+        if (window.raxToast) raxToast('Tarifele noastre, salvate ✓ — de aici pornesc ofertele viitoare', 'success');
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    // ── sfârșit „tarifele de listă" ──
     var _raxOf = { editingId: null, offers: [], prices: Object.assign({}, _OF_PRETURI_DEF) };
     var _OF_MONTAJ_DEF = { mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2 };
     var _OF_DEVICE_DEF = { dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 }; // EUR/buc — echipamente (cost unic)
@@ -22198,6 +22235,28 @@ const pozitii = await r.json();</code></pre>
       _ofPropuneTarife();   // modulele se vând pe vehicul → alt număr de mașini, alt preț propus
     }
     window.raxOfVehiculeSchimbate = function () { _ofCompleteazaDinVehicule(); raxOfRecalc(); };
+    // ── începe „textele care se scriu singure" ───────────────────────────────────────────────────
+    // Două câmpuri pe care aplicația le poate completa singură, dar pe care le scria omul de mână:
+    // numele ofertei și fraza cu valabilitatea (Alin, 21.09). Amândouă trec prin `_ofPropune`, deci
+    // se opresc în clipa în care scrii tu ceva acolo.
+    window.raxOfNumeAuto = function () {
+      var cl = (document.getElementById('of-cl-name') || {}).value || '';
+      if (!cl.trim()) { _ofPropuneText('of-name', ''); return; }
+      _ofPropuneText('of-name', 'Ofertă ' + cl.trim() + ' · ' + new Date().toLocaleDateString('ro-RO'));
+    };
+    function _ofPropuneText(id, val) {
+      var el = document.getElementById(id); if (!el) return;
+      if (_ofAtinse[id]) return;                       // omul a scris acolo: nu ne băgăm
+      el.value = val;
+    }
+    // Fraza cu valabilitatea. Cifra vine de la server (`_ofMeta.valabilZile`), aceeași folosită de
+    // pâlnia de oferte și de hârtie — nu e scrisă a doua oară aici.
+    function _ofTextValabilitate() {
+      var z = _ofMeta.valabilZile;
+      return z ? ('Ofertă valabilă ' + z + _raxDe(z) + 'zile de la trimitere.') : '';
+    }
+    function _ofNoteAuto() { var t = _ofTextValabilitate(); if (t) _ofPropuneText('of-notes', t); }
+    // ── sfârșit „textele care se scriu singure" ──
     function _ofReadCfg() {
       var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
       var c = function (id) { var el = document.getElementById(id); return el ? el.checked : false; };
@@ -23440,6 +23499,13 @@ const pozitii = await r.json();</code></pre>
     };
     window.raxLoadOfertare = async function () {
       var box = document.getElementById('admin-tab-ofertare'); if (!box) return;
+      // Tarifele NOASTRE și termenul de valabilitate se aduc ÎNAINTE de a desena formularul: din ele
+      // pornesc prețurile și textul automat de la „Observații". Aduse după, ar fi trebuit desenat
+      // de două ori.
+      await Promise.all([_ofIncarcaTarife(), _ofIncarcaMeta()]);
+      // O ofertă DESCHISĂ din listă vine cu prețurile ei negociate (`raxOfLoad` le-a pus deja).
+      // Una nouă pornește de la lista casei.
+      if (_raxOf.editingId == null) _raxOf.prices = _ofTarifeDeBaza();
       // Câmpurile se desenează de la zero → nimic nu mai e „scris de mână". Fără rândul ăsta,
       // urmele rămase de la oferta dinainte ar bloca completarea automată la oferta următoare.
       _ofAtinse = {};
@@ -23455,20 +23521,31 @@ const pozitii = await r.json();</code></pre>
           (desc ? '<div class="raof-d">' + desc + '</div>' : '') + inner + '</div>';
       }
       var clientCard = card('<i class="fas fa-user"></i> 1. Clientul',
-        row('Nume client', '<input id="of-cl-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Transport SRL" oninput="raxOfRecalc()">') +
+        // Numele ofertei se scrie SINGUR din numele clientului și data de azi. Era un câmp gol care
+        // te invita să tastezi ceva ce aplicația putea afla singură (Alin, 21.09). Rămâne editabil:
+        // dacă scrii tu ceva, nu se mai atinge de el (`_ofAtinse`).
+        row('Nume client', '<input id="of-cl-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Transport SRL" oninput="raxOfNumeAuto();raxOfRecalc()">') +
         row('CUI', '<input id="of-cl-cui" class="rax-field" style="width:150px;margin:0;" placeholder="RO12345678">') +
         row('Contact', '<input id="of-cl-contact" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="email / telefon">') +
-        row('Nume ofertă', '<input id="of-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Ofertă standard" oninput="raxOfRecalc()">'),
-        'Cui trimiți oferta. Numele și CUI-ul ajung pe hârtie; „Nume ofertă" e doar pentru tine, ca s-o găsești în listă.');
+        row('Nume ofertă', '<input id="of-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="se scrie singur din numele clientului" oninput="raxOfAtins(this.id);raxOfRecalc()">'),
+        'Cui trimiți oferta. Numele și CUI-ul ajung pe hârtie; „Nume ofertă" e doar pentru tine, ca s-o găsești în listă — se completează singur, dar poți scrie peste.');
       // Numerele de vehicule completează singure cantitățile de montaj și de echipamente.
       function fVeh(id, val, hint) {
         return '<input id="' + id + '" type="number" min="0" step="1" value="' + val + '" oninput="raxOfVehiculeSchimbate()" class="rax-field" style="width:80px;margin:0;">';
       }
       var vehCard = card('<i class="fas fa-car"></i> 2. Flota clientului',
         row('Total vehicule', fVeh('of-nveh', 10)) +
-        row('din care cu CAN', fVeh('of-ncan', 0), 'date motor/combustibil') +
-        row('din care cu FMS', fVeh('of-nfms', 0), 'camioane / tahograf') +
-        '<div class="raof-hint" style="margin-top:-2px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>',
+        row('din care cu CAN', fVeh('of-ncan', 0), 'mașini mici — cer modul LV-CAN200') +
+        row('din care cu FMS', fVeh('of-nfms', 0), 'camioane — citim direct, fără modul') +
+        // Diferența CAN/FMS o întreba oricine intră prima oară (Alin, 21.09). Scrisă pe ecran, nu
+        // mai trebuie ținută minte — și explică de ce o mașină cu CAN costă mai mult la montaj.
+        '<div class="raof-hint" style="margin-top:-2px;line-height:1.5;">'
+          + '<b>CAN și FMS înseamnă același lucru — date din mașină (combustibil, kilometri, motor). Diferă de unde le luăm:</b><br>'
+          + '• <b>FMS</b> = priza standard de camion. O au din fabrică, aparatul citește direct, <b>fără modul în plus</b>.<br>'
+          + '• <b>CAN</b> = mașini mici și utilitare, care n-au FMS. Cer un <b>modul LV-CAN200</b>, cumpărat și montat separat.<br>'
+          + 'De-aia fiecare mașină are „Instalare GPS", iar cea cu CAN sau FMS mai are o linie de montaj deasupra — munca în plus.'
+        + '</div>'
+        + '<div class="raof-hint" style="margin-top:6px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>',
         'De aici pornește tot: abonamentul lunar, cantitățile de montaj, aparatele de cumpărat și prețul unui cont de RA Insight.');
       var featCard = card('<i class="fas fa-puzzle-piece"></i> 3. Ce mai primește clientul',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> RA Insight</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/cont</span></div>' +
@@ -23526,12 +23603,34 @@ const pozitii = await r.json();</code></pre>
         row('Teltonika FMC150', fNum('of-dFmc150', p.dFmc150) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
         row('Teltonika FMC650', fNum('of-dFmc650', p.dFmc650) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
         row('Modul LV-CAN200', fNum('of-dLvCan', p.dLvCan) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
+        // Până acum, o schimbare aici ținea doar până la „Ofertă nouă". Butonul ăsta o face TARIFUL
+        // CASEI: de la el pornesc toate ofertele de mâine.
+        '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">' +
+          '<button class="rax-btn" onclick="raxOfSalveazaTarife()" style="width:100%;justify-content:center;">' +
+            '<i class="fas fa-floppy-disk"></i> Salvează ca tarifele noastre</button>' +
+          '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">' +
+            'Schimbările de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele ' +
+            'pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.</div>' +
+        '</div>' +
         '</div></details>';
-      var notesCard = card('<i class="fas fa-note-sticky"></i> 6. Observații', '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" placeholder="ex. Preț valabil 30 zile, instalare inclusă…"></textarea>');
+      // Valabilitatea se scrie SINGURĂ, din aceeași cifră ca pâlnia de oferte și ca hârtia. Era
+      // doar un îndemn în placeholder („ex. Preț valabil 30 zile…"), deci ajungea pe hârtie numai
+      // dacă își amintea cineva s-o scrie (Alin, 21.09).
+      var notesCard = card('<i class="fas fa-note-sticky"></i> 6. Observații',
+        '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" oninput="raxOfAtins(this.id)" placeholder="instalare inclusă, termen de livrare…"></textarea>'
+        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">'
+        + 'Prima frază se scrie singură, din termenul ofertei. Scrie peste ea dacă vrei altceva.</div>');
+      // Butonul se numea „Trimite clientului (PDF)" și NU trimitea nimic nimănui: deschide o
+      // fereastră de printare, din care salvezi PDF-ul. Numele promitea ce aplicația nu face — și
+      // nici n-ar avea cum, clientul nu există încă la noi (Alin, 21.09). Îl trimite omul, de pe
+      // mailul lui. Sub butoane scrie și unde s-a dus ciorna, fiindcă lista e jos de tot pe pagină.
       var actions = '<div class="raof-act">' +
         '<button class="rax-btn primary" onclick="raxOfSave()"><i class="fas fa-floppy-disk"></i> <span id="of-save-label">Salvează oferta</span></button>' +
-        '<button class="rax-btn" onclick="raxOfExportPdf()"><i class="fas fa-file-pdf"></i> Trimite clientului (PDF)</button>' +
-        '<button class="rax-btn" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>';
+        '<button class="rax-btn" onclick="raxOfExportPdf()"><i class="fas fa-file-pdf"></i> Descarcă oferta (PDF)</button>' +
+        '<button class="rax-btn" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>' +
+        '<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">' +
+          'Oferta salvată intră în <a href="#" onclick="event.preventDefault();raxOfLaLista()" style="color:var(--accent);font-weight:700;">Oferte salvate</a>, ' +
+          'jos pe pagină, ca <b>Ciornă</b>. PDF-ul îl trimiți tu, de pe mailul tău — clientul nu e încă la noi.</div>';
       // Antetul spune, o dată, ce e ecranul ăsta și pe unde merge oferta mai departe. Fără el,
       // cine intră prima oară vede zece câmpuri și nu știe de unde să apuce.
       var antet = '<div class="raof-head">' +
@@ -23554,6 +23653,7 @@ const pozitii = await r.json();</code></pre>
       // vehicule. La o ofertă deschisă pentru editare NU se propune nimic — acolo tot ce se vede a
       // fost hotărât deja, iar o propunere ar șterge în tăcere prețul negociat cu clientul.
       if (_raxOf.editingId == null) _ofCompleteazaDinVehicule();
+      _ofNoteAuto();            // „Ofertă valabilă N zile de la trimitere." — dacă n-a scris omul altceva
       raxOfRecalc(); raxOfLoadList();
       // Costurile noastre se aduc o dată, apoi rezumatul se redesenează cu profitul în el.
       _ofIncarcaCosturi().then(function () { try { raxOfRecalc(); } catch (e) {} });
@@ -23720,6 +23820,12 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit „pâlnia de oferte" ──
 
+    // Lista stă jos de tot, după șase secțiuni de formular. Linkul de sus te duce la ea fără să
+    // derulezi — altfel salvezi o ciornă și nu vezi unde s-a dus (Alin, 21.09).
+    window.raxOfLaLista = function () {
+      var el = document.getElementById('rax-of-list'); if (!el) return;
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
+    };
     window.raxOfLoadList = async function () {
       try { _raxOf.offers = await fetch('/api/admin/offers', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) { _raxOf.offers = []; }
       await _ofIncarcaMeta();   // cuvintele și termenul pâlniei, o singură dată
@@ -23845,7 +23951,8 @@ const pozitii = await r.json();</code></pre>
         } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; }
       };
     };
-    window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = Object.assign({}, _OF_PRETURI_DEF); raxLoadOfertare(); };
+    // „Ofertă nouă" pornește de la tarifele NOASTRE de listă, nu de la cifrele scrise în cod.
+    window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = _ofTarifeDeBaza(); raxLoadOfertare(); };
     // ── începe „Oferta pe hârtie" ────────────────────────────────────────────────────────────────
     // Hârtia pe care o citește clientul. Ordinea NU e întâmplătoare: întâi RĂSPUNSUL („cât dau
     // acum, cât dau lunar"), apoi detalierea care îl justifică. Așa citește un om o ofertă — nu
@@ -23858,7 +23965,12 @@ const pozitii = await r.json();</code></pre>
       var r = _ofCalc(); var cl = r.cfg.client || {};
       var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
       var today = new Date(); var dstr = today.toLocaleDateString('ro-RO');
-      var validUntil = new Date(today.getTime() + 30 * 86400000).toLocaleDateString('ro-RO');
+      // Termenul vine de la server (`_ofMeta.valabilZile`), ACEEAȘI cifră cu a pâlniei de oferte și
+      // cu fraza din „Observații". Era scris 30 aici, de mână — a doua copie a aceleiași reguli, care
+      // s-ar fi despărțit la prima schimbare (Alin, 21.09). Dacă nu s-a încărcat, hârtia NU inventează
+      // un termen: rândul lipsește cu totul.
+      var validUntil = _ofMeta.valabilZile
+        ? new Date(today.getTime() + _ofMeta.valabilZile * 86400000).toLocaleDateString('ro-RO') : null;
       var luni = Math.max(1, Number(r.cfg.contractMonths) || 12);
       var hwLei = r.hwTotal * _fxRate;
       var unic = r.montaj + hwLei;
@@ -23938,7 +24050,7 @@ const pozitii = await r.json();</code></pre>
 
         '<div class="head"><div class="brand"><img src="' + esc(logoUrl) + '" onerror="this.style.display=\'none\'">RA Tracks</div>' +
           '<div style="text-align:right;"><div style="font-size:17px;font-weight:800;">OFERTĂ</div>' +
-          '<div class="muted">Data: ' + dstr + '</div><div class="muted">Valabilă până: ' + validUntil + '</div></div></div>' +
+          '<div class="muted">Data: ' + dstr + '</div>' + (validUntil ? '<div class="muted">Valabilă până: ' + validUntil + '</div>' : '') + '</div></div>' +
 
         '<div class="grid2 impreuna"><div class="box"><div class="muted">Către</div>' +
           '<div style="font-weight:700;font-size:13px;">' + esc(cl.name || '—') + '</div>' +

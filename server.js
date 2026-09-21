@@ -2638,13 +2638,36 @@ function _costuriCurate(b) {
 }
 // ── sfârșit „costurile noastre" ──
 
+// ── începe „tarifele de listă" ───────────────────────────────────────────────────────────────────
+// Cât CEREM. Erau scrise în codul paginii (`_OF_PRETURI_DEF`): le puteai schimba într-o ofertă, dar
+// la „Ofertă nouă" sau la reîncărcarea paginii reveneau cifrele din cod. Dacă Teltonika scumpea, se
+// umbla în cod (Alin, 21.09). Acum se trec o dată, lângă costurile noastre, și rămân.
+//
+// O cheie NETRECUTĂ rămâne `null` și înseamnă „folosește implicitul din pagină" — NU zero. Altfel un
+// tarif uitat ar face un abonament de 0 lei fără ca nimeni să bage de seamă.
+const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'pTahograf', 'pEtransport',
+  'ret6', 'ret12', 'ret24', 'ret36', 'retCustom',
+  'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
+  'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];
+function _tarifeCurate(b) {
+  const out = {};
+  TARIF_CHEI.forEach(k => {
+    if (b[k] === '' || b[k] === null || b[k] === undefined) { out[k] = null; return; }
+    const n = parseFloat(b[k]);
+    out[k] = (Number.isFinite(n) && n >= 0 && n <= 1000000) ? Math.round(n * 100) / 100 : null;
+  });
+  return out;
+}
+// ── sfârșit „tarifele de listă" ──
+
 async function getSystemSettings() {
   if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
-  let ann = '', auto = null, off = null, spd = null, issuer = null, costuri = null;
-  try { [ann, auto, off, spd, issuer, costuri] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer'), db.getSetting('costuri_noastre')]); } catch (e) {}
+  let ann = '', auto = null, off = null, spd = null, issuer = null, costuri = null, tarife = null;
+  try { [ann, auto, off, spd, issuer, costuri, tarife] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer'), db.getSetting('costuri_noastre'), db.getSetting('tarife_lista')]); } catch (e) {}
   let issuerObj = {}; try { issuerObj = issuer ? JSON.parse(issuer) : {}; } catch (e) { issuerObj = {}; }
   let costObj = _costuriGoale(); try { if (costuri) costObj = Object.assign(_costuriGoale(), JSON.parse(costuri)); } catch (e) {}
-  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj };
+  let tarifObj = {}; try { if (tarife) tarifObj = _tarifeCurate(JSON.parse(tarife)); } catch (e) { tarifObj = {}; }
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj, tarife_lista: tarifObj };
   _sysTs = Date.now();
   return _sysCache;
 }
@@ -7824,6 +7847,10 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     // `requireSuperadmin`, iar ecranul îl arată doar în calculatorul de ofertă, nu pe hârtie.
     if (b.costuri_noastre !== undefined && b.costuri_noastre && typeof b.costuri_noastre === 'object') {
       await db.setSetting('costuri_noastre', JSON.stringify(_costuriCurate(b.costuri_noastre)));
+    }
+    // Tarifele noastre de listă — cât CEREM. Se trec o dată și pornesc fiecare ofertă nouă.
+    if (b.tarife_lista !== undefined && b.tarife_lista && typeof b.tarife_lista === 'object') {
+      await db.setSetting('tarife_lista', JSON.stringify(_tarifeCurate(b.tarife_lista)));
     }
     invalidateSystemSettings();
     auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });

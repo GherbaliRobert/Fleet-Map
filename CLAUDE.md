@@ -152,6 +152,36 @@ rezumatul ofertei + panoul `raxOfCosturi()`.
 - Aparatele se socotesc la **cursul înghețat în ofertă**, nu la cel de azi.
 - Păzit de `verify_ofertare.js`.
 
+### Tarifele de listă se ȚIN MINTE (21.09)
+`_OF_PRETURI_DEF` din pagină e doar **pornirea**. Tarifele noastre adevărate stau în setările
+sistemului, sub `tarife_lista` (super-admin), și se scriu din butonul **„Salvează ca tarifele
+noastre"**, în josul panoului „Tarife (editabile)".
+
+- Înainte, o schimbare ținea până la „Ofertă nouă" sau până la reîncărcarea paginii. Dacă Teltonika
+  scumpea, se umbla în cod.
+- **O cheie netrecută rămâne `null` = „ia-o din cod", NU zero.** Un tarif uitat ar face altfel un
+  abonament de 0 lei fără ca nimeni să bage de seamă.
+- `_ofTarifeDeBaza()` = `_OF_PRETURI_DEF` + ce e salvat pe server. `raxOfReset` pornește de acolo.
+  O ofertă **deschisă din listă** își păstrează prețurile ei negociate (`editingId != null`).
+- Perechea „cât dăm / cât cerem" stă în același loc: `costuri_noastre` + `tarife_lista`.
+
+### Ce se scrie SINGUR în calculatorul de ofertă
+Trei texte pe care aplicația le poate afla singură și pe care omul le scria de mână (Alin, 21.09):
+
+- **Numele ofertei** — „Ofertă {Client} · {data}", din `raxOfNumeAuto()`.
+- **Fraza de valabilitate** din „Observații" — „Ofertă valabilă N zile de la trimitere."
+- **Termenul de pe hârtie** (PDF) — aceeași cifră.
+
+Toate trei trec prin `_ofPropuneText`, care **se oprește dacă a scris omul acolo** (`_ofAtinse`),
+exact ca `_ofPropune` la cantități. Cifra N vine de la server (`_ofMeta.valabilZile`), una singură
+pentru frază, pentru hârtie și pentru pâlnia de oferte — era scrisă de mână și în PDF (`30 *
+86400000`). **Dacă termenul nu s-a încărcat, hârtia NU inventează unul**: rândul lipsește.
+
+### Butoanele spun ce fac
+„Trimite clientului (PDF)" **nu trimitea nimic nimănui** — deschidea o fereastră de printare, iar
+clientul nici nu există încă în aplicație când faci oferta. Se numește „Descarcă oferta (PDF)".
+Regula generală: un buton nu promite o acțiune pe care aplicația n-o face.
+
 ### Capcană: text rămas după o funcție scoasă
 Butonul „Aplică RA Insight pe companie" a stat **rupt luni de zile**: scria „· peste cotă X €/apel",
 rămășiță de pe vremea când depășirea cotei se plătea. Funcția a fost scoasă deliberat, variabila
