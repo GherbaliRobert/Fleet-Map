@@ -95,6 +95,48 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Ofertare Live: „Ce rămâne la noi" — infrastructura pentru profit
+
+Alin: *„asta e pentru noi… le vom trece noi prețurile în funcție de cum le luăm. Înainte de lansare
+vom ști, dar tu pregătește infrastructura să știm profitul nostru."*
+
+**Ce e acum.** În rezumatul ofertei, sub plată, un bloc nou — **„Ce rămâne la noi · nu apare în
+ofertă"**. Cât timp nu știm cât ne costă, **nu inventează nimic**; îți spune exact ce lipsește:
+
+> Nu pot socoti profitul până nu știu cât ne costă pe noi: **Teltonika FMC650, Instalare dispozitiv
+> GPS, SIM + servere, pe mașină/lună**. *Scrie costurile noastre.*
+
+Linkul deschide un panou cu 12 câmpuri, grupate: **aparatele** (cât dăm pe bucată, în euro),
+**montajul** (cât ne costă o operațiune, în lei) și **lunar** (cât ne costă o mașină ținută în aer —
+SIM + servere). Se trec o dată și se folosesc la fiecare ofertă.
+
+**Cu cifrele trecute**, pe o ofertă de 10 mașini (verificat de mână, nu doar pe ecran):
+
+| | Încasăm | Ne costă | Rămâne |
+|---|---|---|---|
+| La început | 7.000 lei | 4.450 lei | **2.550 lei (36%)** |
+| Lunar | 290 lei | 60 lei | **230 lei (79%)** |
+| Pe an | | | **2.760 lei** |
+
+Plus, când la început dăm mai mult decât încasăm: *„Ne întoarcem pe zero în N luni de abonament."*
+
+**Trei reguli pe care le-am pus în piatră:**
+
+1. **O cifră netrecută rămâne GOALĂ, nu zero.** „Nu știm cât ne costă" și „ne costă zero" sunt două
+   lucruri diferite. Amestecate, un aparat fără preț ar arăta profit 100% — exact genul de număr
+   frumos și fals pe care se iau decizii proaste.
+2. **Nimic din blocul ăsta nu ajunge pe hârtia clientului.** Trăiește doar în rezumatul de pe ecran;
+   hârtia se construiește din altă funcție. Verificat generând PDF-ul și căutând în el.
+3. **RA Insight nu se numără de două ori** — el are deja blocul lui, cu costul măsurat pe întrebare.
+
+**Cifrele reale le treceți voi înainte de lansare.** Azi panoul e gol, și trebuie să rămână gol până
+le știți: prețurile de achiziție la FMC130 / FMC150 / FMC650 / LV-CAN200, cât ne costă fiecare fel de
+montaj, și cât ne costă lunar o mașină. Infrastructura e gata, socoteala e verificată.
+
+- **Ce am schimbat:** fiecare ofertă poate spune cât rămâne la noi, imediat ce știm cât ne costă.
+- **Ce vede fondatorul:** un bloc „Ce rămâne la noi" în rezumat, plus panoul în care trece costurile.
+- **Ce vede clientul:** nimic — nici pe ecran, nici pe hârtie. Păzit de probă.
+
 ### FONDATOR · Ofertare Live: un buton rupt, banii ascunși și o pâlnie de vânzări
 
 Alin a cerut o trecere prin secțiune: *„ce face, ce rol are… spune-mi dacă sunt nereguli și ce am mai
@@ -7555,11 +7597,15 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **(Alin) Cât ne costă PE NOI un aparat?** Ca să poată scrie „cât rămâne la noi" pe fiecare ofertă,
-  Ofertare Live are nevoie de prețurile de ACHIZIȚIE (FMC130, FMC150, FMC650, LV-CAN200) și de costul
-  nostru real la o oră de montaj. Azi calculatorul știe doar prețurile de VÂNZARE, deci orice marjă
-  afișată ar fi inventată — de-aia nu e făcută. Când vin cifrele, e muncă de un ceas: o setare cu
-  prețurile noastre + o linie „profit" în rezumatul ofertei și în listă.
+- [ ] **(Alin) Cât ne costă PE NOI un aparat?** ✅ *Infrastructura e GATA (21.09).* În Ofertare Live,
+  blocul „Ce rămâne la noi" + panoul de costuri așteaptă cifrele. **Rămâne de completat de voi**, în
+  Ofertare Live → „Scrie costurile noastre":
+  - prețurile de ACHIZIȚIE, în euro: **FMC130, FMC150, FMC650, LV-CAN200**;
+  - cât ne costă fiecare fel de montaj, în lei: instalare GPS, cu LV-CAN, cu CAN încorporat, FMS,
+    dezinstalare, înlocuire, deplasare (lei/km);
+  - cât ne costă LUNAR o mașină ținută în aer (SIM + servere), în lei.
+  Până atunci blocul NU arată niciun profit — spune ce lipsește. Un câmp lăsat gol rămâne
+  „necunoscut", nu zero: altfel un aparat fără preț ar părea profit 100%.
 
 - [x] **HOTĂRÂT (Alin, 18.09): clientul NU vede aparatele arhivate.** Ridicasem întrebarea la analiza
   cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala

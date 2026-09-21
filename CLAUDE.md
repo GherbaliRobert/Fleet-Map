@@ -133,6 +133,25 @@ scris la salvare din `montaj + hwTotal × cursul ÎNGHEȚAT în ofertă` (nu cel
 - ⚠ Capcană de limbă: `hwTotal` e în **EURO** (aparatele se cumpără în euro), `montaj` e în **LEI**.
   Nu le aduna fără curs.
 
+### „Ce rămâne la noi" (21.09) — profitul nostru pe o ofertă
+Calculatorul știa doar cât CEREM. Costurile NOASTRE stau în setările sistemului, sub
+`costuri_noastre` (super-admin), cu chei care OGLINDESC prețurile de vânzare (`dFmc650`, `mGps`, …)
+plus `cVehLuna` (cât ne costă lunar o mașină ținută în aer). Ecranul: blocul „Ce rămâne la noi" din
+rezumatul ofertei + panoul `raxOfCosturi()`.
+
+- **O cifră netrecută rămâne `null`, NU 0.** „Nu știm cât ne costă" și „ne costă zero" sunt două
+  lucruri diferite; amestecate, un aparat fără preț ar arăta **profit 100%**. `_costuriGoale()` le
+  pune pe toate `null`, iar un câmp golit în panou le readuce la `null`.
+- **Blocul refuză să socotească** cât timp lipsește o cifră de care are nevoie pentru oferta ACEEA
+  (`_ofCostLipsa`) — și spune pe nume ce lipsește. Mai bine nimic decât un număr inventat.
+- **Nu ajunge NICIODATĂ pe hârtia clientului.** Trăiește doar în `#rax-of-summary`; PDF-ul se
+  construiește din `raxOfExportPdf`, altă funcție. Păzit de probă, care generează PDF-ul și caută în
+  el. Dacă adaugi ceva în bloc, nu-l chema din constructorul hârtiei.
+- **RA Insight se scade din venitul lunar** înainte de socoteală: are deja blocul LUI, cu costul
+  măsurat pe întrebare. Socotit și aici, l-am număra de două ori.
+- Aparatele se socotesc la **cursul înghețat în ofertă**, nu la cel de azi.
+- Păzit de `verify_ofertare.js`.
+
 ### Capcană: text rămas după o funcție scoasă
 Butonul „Aplică RA Insight pe companie" a stat **rupt luni de zile**: scria „· peste cotă X €/apel",
 rămășiță de pe vremea când depășirea cotei se plătea. Funcția a fost scoasă deliberat, variabila

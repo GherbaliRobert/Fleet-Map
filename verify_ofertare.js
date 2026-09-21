@@ -105,6 +105,32 @@ T('„Pierdută" cere un motiv', /window\.raxOfPierduta = function \(id\)[\s\S]{
 T('fereastra e una singură, refolosită', /function _ofFereastra\(titlu, ic, corp, onOk\)/.test(PAL)
   && (PAL.match(/_ofFereastra\(/g) || []).length >= 3);
 
+sect('5b. „Ce rămâne la noi" — profitul, fără să inventeze cifre');
+const PROF = bloc(html, '// ── începe „ce rămâne la noi"', '// ── sfârșit „ce rămâne la noi"');
+const COST = bloc(server, '// ── începe „costurile noastre"', '// ── sfârșit „costurile noastre"');
+T('serverul ține cheile costurilor', /const COST_CHEI_EUR = \[/.test(COST) && /const COST_CHEI_LEI = \[/.test(COST));
+// Regula care contează: o cifră netrecută rămâne GOALĂ, nu zero. „Nu știm cât ne costă" și „ne costă
+// zero" sunt două lucruri diferite — amestecate, un aparat fără preț ar arăta profit 100%.
+T('o cifră netrecută rămâne GOALĂ, nu zero', /o\[k\] = null;/.test(COST) && /=== ''[\s\S]{0,80}return;\s*\/\/ rămâne „nu știm"/.test(COST));
+T('valorile se curăță la intrare', /function _costuriCurate\(b\)/.test(COST) && /n >= 0 && n <= 1000000/.test(COST));
+T('se salvează doar de super-admin',
+  /app\.put\('\/api\/admin\/system-settings', requireAuth, requireSuperadmin/.test(server)
+  && /b\.costuri_noastre !== undefined[\s\S]{0,200}setSetting\('costuri_noastre'/.test(server));
+T('ecranul cere cifrele exact pentru oferta de față', /function _ofCostLipsa\(r, c\)/.test(PROF));
+T('și refuză să socotească până nu le are',
+  /if \(lipsa\.length\)[\s\S]{0,300}Nu pot socoti profitul până nu știu cât ne costă pe noi/.test(PROF));
+T('socoteala stă într-un singur loc', /function _ofProfit\(r, c\)/.test(PROF));
+T('aparatele se socotesc la cursul din OFERTĂ', /var fx = r\.cfg\.fxRate \|\| _fxRate/.test(PROF));
+T('RA Insight nu se numără de două ori',
+  /RA Insight[\s\S]{0,120}var incasamLunar = \(r\.monthly \|\| 0\) - lunarAi/.test(PROF));
+T('spune în cât timp ne scoatem banii', /recuperare:/.test(PROF));
+// Partea cea mai importantă: pe hârtia CLIENTULUI n-are ce căuta. PDF-ul se construiește din altă
+// funcție; proba se uită să nu ajungă vreodată să cheme blocul de profit.
+const PDF = bloc(html, 'window.raxOfExportPdf = function ()', 'window.raxDeleteCompany');
+T('hârtia clientului nu cheamă blocul de profit',
+  !/_ofBlocProfit|_ofProfit|_costNoastre|rămâne la noi/.test(PDF));
+T('și nici nu pomenește costurile noastre', !/ne costă|Costurile noastre/.test(PDF));
+
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));
 T('serverul nu trimite un al doilea sumar', !/sumar/.test(RUTE));
@@ -167,6 +193,19 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   T('o ofertă cu termen trecut rămâne „trimisa" în bază', vechi.status === 'trimisa', vechi.status);
   T('dar poartă termenul depășit', Number(vechi.valid_until) < Date.now());
 
+  sect('7b. Costurile noastre, pe server pornit');
+  const s0 = await (await GET('/api/admin/system-settings')).json();
+  const c0 = s0.costuri_noastre || {};
+  T('la început nu știm niciun cost', Object.keys(c0).length === 12 && Object.values(c0).every(v => v === null),
+    JSON.stringify(c0));
+  await PUT('/api/admin/system-settings', { costuri_noastre: { dFmc650: 78, mGps: 55, cVehLuna: 6, dFmc130: '' } });
+  const c1 = (await (await GET('/api/admin/system-settings')).json()).costuri_noastre || {};
+  T('ce am trecut se ține minte', c1.dFmc650 === 78 && c1.mGps === 55 && c1.cVehLuna === 6, JSON.stringify(c1));
+  T('iar ce am lăsat gol rămâne NECUNOSCUT, nu zero', c1.dFmc130 === null, JSON.stringify(c1.dFmc130));
+  await PUT('/api/admin/system-settings', { costuri_noastre: { dFmc650: -5, mGps: 'abc' } });
+  const c2 = (await (await GET('/api/admin/system-settings')).json()).costuri_noastre || {};
+  T('o cifră fără sens nu intră', c2.dFmc650 === null && c2.mGps === null, JSON.stringify([c2.dFmc650, c2.mGps]));
+
   sect('8. Ruta e doar a noastră');
   const { puneParola } = require('./test_parola');
   const co = (await (await POST('/api/companies', { name: 'CI Ofertare' })).json()).id;
@@ -182,6 +221,9 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
     T('nici cuvintele pâlniei', (await GET('/api/admin/offers/meta', ckSef)).status === 403);
     T('și nu poate muta o ofertă în altă stare',
       (await PUT('/api/admin/offers/' + o2.id + '/stare', { status: 'acceptata' }, ckSef)).status === 403);
+    // Cât ne costă pe NOI un aparat e cel mai sensibil număr din aplicație.
+    T('și nu află cât ne costă pe noi aparatele',
+      (await GET('/api/admin/system-settings', ckSef)).status === 403);
   }
 
   console.log('\n──────────────────────────────');

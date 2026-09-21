@@ -22443,6 +22443,159 @@ const pozitii = await r.json();</code></pre>
       if (rec && Math.abs(pret - rec) > 0.5) html += '<div style="margin-top:8px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + rec + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;">Aplică prețul propus: ' + rec + ' lei</a></div>';
       box.innerHTML = html;
     }
+    // ── începe „ce rămâne la noi" ────────────────────────────────────────────────────────────────
+    // Calculatorul știa doar cât CEREM. Cât ne costă pe noi un aparat și o instalare se trec aici,
+    // o singură dată, și de atunci fiecare ofertă spune cât rămâne (Alin, 21.09).
+    //
+    // NIMIC din blocul ăsta nu ajunge pe hârtia clientului: trăiește doar în rezumatul de pe ecran,
+    // iar PDF-ul se construiește separat, din alte funcții. Păzit de probă.
+    //
+    // O cifră netrecută rămâne GOALĂ, nu zero: „nu știm cât ne costă" și „ne costă zero" sunt două
+    // lucruri diferite. Cât timp lipsește una de care avem nevoie, blocul NU arată niciun profit —
+    // spune ce mai trebuie completat. Mai bine nimic decât un număr inventat.
+    var _costNoastre = null;
+    async function _ofIncarcaCosturi() {
+      if (_costNoastre) return _costNoastre;
+      try {
+        var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _costNoastre = (s && s.costuri_noastre) || {};
+      } catch (e) { _costNoastre = {}; }
+      return _costNoastre;
+    }
+    // Etichetele perechilor „cât cerem / cât ne costă". Numele cheilor sunt ACELEAȘI ca la prețurile
+    // de vânzare, ca să nu existe două vocabulare.
+    var _COST_CAMPURI = [
+      { grup: 'Aparate — cât dăm noi pe bucată (€)', chei: [
+        ['dFmc130', 'Teltonika FMC130'], ['dFmc150', 'Teltonika FMC150'],
+        ['dFmc650', 'Teltonika FMC650'], ['dLvCan', 'Modul LV-CAN200']] },
+      { grup: 'Montaj — cât ne costă o operațiune (lei)', chei: [
+        ['mGps', 'Instalare dispozitiv GPS'], ['mLvCan', 'Instalare cu LV-CAN'],
+        ['mCanInc', 'Instalare cu CAN încorporat'], ['mFms', 'Instalare FMS (tahograf)'],
+        ['mUninstall', 'Dezinstalare'], ['mReplace', 'Înlocuire'], ['mTravel', 'Deplasare (lei/km)']] },
+      { grup: 'Lunar — cât ne costă o mașină ținută în aer (lei)', chei: [
+        ['cVehLuna', 'SIM + servere, pe mașină/lună']] }
+    ];
+    function _ofCostLipsa(r, c) {
+      // Ce cifre CHIAR trebuie pentru oferta asta. O ofertă fără FMC650 nu are nevoie de prețul lui.
+      var cer = [];
+      var dv = r.cfg.devices || {}, mj = r.cfg.montaj || {};
+      if (dv.d130 > 0) cer.push('dFmc130'); if (dv.d150 > 0) cer.push('dFmc150');
+      if (dv.d650 > 0) cer.push('dFmc650'); if (dv.lvcan > 0) cer.push('dLvCan');
+      if (mj.qGps > 0) cer.push('mGps'); if (mj.qLvCan > 0) cer.push('mLvCan');
+      if (mj.qCanInc > 0) cer.push('mCanInc'); if (mj.qFms > 0) cer.push('mFms');
+      if (mj.qUninstall > 0) cer.push('mUninstall'); if (mj.qReplace > 0) cer.push('mReplace');
+      if (mj.kmTravel > 0) cer.push('mTravel');
+      if (r.cfg.nVeh > 0) cer.push('cVehLuna');
+      var nume = {}; _COST_CAMPURI.forEach(function (g) { g.chei.forEach(function (x) { nume[x[0]] = x[1]; }); });
+      return cer.filter(function (k) { return c[k] == null; }).map(function (k) { return nume[k] || k; });
+    }
+    // Socoteala. Tot ce se poate calcula se calculează; ce lipsește oprește blocul, nu-l falsifică.
+    function _ofProfit(r, c) {
+      if (!c) return null;
+      var fx = r.cfg.fxRate || _fxRate;
+      var dv = r.cfg.devices || {}, mj = r.cfg.montaj || {};
+      var costHwEur = (dv.d130 || 0) * (c.dFmc130 || 0) + (dv.d150 || 0) * (c.dFmc150 || 0)
+        + (dv.d650 || 0) * (c.dFmc650 || 0) + (dv.lvcan || 0) * (c.dLvCan || 0);
+      var costMontaj = (mj.qGps || 0) * (c.mGps || 0) + (mj.qLvCan || 0) * (c.mLvCan || 0)
+        + (mj.qCanInc || 0) * (c.mCanInc || 0) + (mj.qFms || 0) * (c.mFms || 0)
+        + (mj.qUninstall || 0) * (c.mUninstall || 0) + (mj.qReplace || 0) * (c.mReplace || 0)
+        + (mj.kmTravel || 0) * (c.mTravel || 0);
+      var incasamStart = (r.montaj || 0) + (r.hwTotal || 0) * fx;
+      var costStart = costMontaj + costHwEur * fx;
+      // Lunar, FĂRĂ RA Insight: acela își are blocul lui, cu costul MĂSURAT per întrebare. Socotit
+      // și aici, l-am fi numărat de două ori.
+      var lunarAi = (r.lines.find(function (l) { return /RA Insight/.test(l.label || ''); }) || {}).total || 0;
+      var incasamLunar = (r.monthly || 0) - lunarAi;
+      var costLunar = (r.cfg.nVeh || 0) * (c.cVehLuna || 0);
+      var profStart = incasamStart - costStart, profLunar = incasamLunar - costLunar;
+      return {
+        incasamStart: incasamStart, costStart: costStart, profStart: profStart,
+        marjaStart: incasamStart > 0 ? (profStart / incasamStart) * 100 : null,
+        incasamLunar: incasamLunar, costLunar: costLunar, profLunar: profLunar,
+        marjaLunar: incasamLunar > 0 ? (profLunar / incasamLunar) * 100 : null,
+        // În câte luni ne întoarcem pe zero, dacă la început am dat mai mult decât am încasat.
+        recuperare: (profStart < 0 && profLunar > 0) ? Math.ceil(-profStart / profLunar) : 0,
+        peAn: profLunar * 12, faraAi: lunarAi > 0
+      };
+    }
+    function _ofBlocProfit(r) {
+      var c = _costNoastre;
+      var cap = '<div class="raof-sec"><i class="fas fa-sack-dollar"></i> Ce rămâne la noi '
+        + '<span style="font-weight:600;color:var(--text-muted);font-size:10px;">· nu apare în ofertă</span></div>';
+      var butonul = '<a href="#" onclick="event.preventDefault();raxOfCosturi()" style="color:var(--accent);font-weight:700;">Scrie costurile noastre</a>';
+      if (!c) return cap + '<div style="font-size:11.5px;color:var(--text-muted);">Se încarcă…</div>';
+      var lipsa = _ofCostLipsa(r, c);
+      if (lipsa.length) {
+        return cap + '<div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;">'
+          + 'Nu pot socoti profitul până nu știu cât ne costă pe noi: <b>' + esc(lipsa.join(', ')) + '</b>. '
+          + butonul + '.</div>';
+      }
+      var x = _ofProfit(r, c);
+      var col = function (v) { return v > 0 ? 'var(--accent)' : (v < 0 ? 'var(--red)' : 'var(--text-muted)'); };
+      var rand = function (et, val, cul, tare) {
+        return '<div style="display:flex;justify-content:space-between;font-size:12px;'
+          + (tare ? 'font-weight:800;' : '') + '"><span style="color:var(--text-muted);">' + et + '</span>'
+          + '<b style="' + (cul ? 'color:' + cul + ';' : '') + '">' + val + '</b></div>';
+      };
+      var proc = function (m) { return m == null ? '' : ' <span style="font-weight:600;opacity:.75;">(' + m.toFixed(0) + '%)</span>'; };
+      var h = cap
+        + '<div style="margin-bottom:8px;">'
+        + rand('La început, încasăm', _fmtLei(x.incasamStart))
+        + rand('ne costă', _fmtLei(x.costStart))
+        + rand('rămâne', _fmtLei(x.profStart) + proc(x.marjaStart), col(x.profStart), true)
+        + '</div><div style="border-top:1px dashed var(--border);padding-top:8px;">'
+        + rand('Lunar, încasăm', _fmtLei(x.incasamLunar))
+        + rand('ne costă', _fmtLei(x.costLunar))
+        + rand('rămâne', _fmtLei(x.profLunar) + proc(x.marjaLunar), col(x.profLunar), true)
+        + rand('pe an', _fmtLei(x.peAn), col(x.peAn))
+        + '</div>';
+      if (x.recuperare) h += '<div style="font-size:11px;color:var(--orange);margin-top:7px;line-height:1.45;">'
+        + '<i class="fas fa-hourglass-half"></i> La început dăm mai mult decât încasăm. Ne întoarcem pe zero în <b>'
+        + x.recuperare + _raxDe(x.recuperare) + 'luni</b> de abonament.</div>';
+      if (x.faraAi) h += '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">'
+        + 'Fără RA Insight — acela are blocul lui, cu costul măsurat pe întrebare. Socotit și aici, l-am număra de două ori.</div>';
+      h += '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;">' + butonul + '</div>';
+      return h;
+    }
+    // Panoul în care se trec cifrele. Se deschide din rezumat; se salvează în setările sistemului.
+    window.raxOfCosturi = async function () {
+      var c = await _ofIncarcaCosturi();
+      var camp = function (k, et) {
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
+          + '<label for="cst-' + k + '" style="flex:1;font-size:12px;">' + esc(et) + '</label>'
+          + '<input id="cst-' + k + '" type="number" min="0" step="0.01" class="rax-field" style="width:92px;margin:0;" '
+          + 'value="' + (c[k] == null ? '' : c[k]) + '" placeholder="—"></div>';
+      };
+      var corp = '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">'
+        + 'Cât ne costă pe NOI. Se trec o dată și se folosesc la fiecare ofertă. '
+        + 'Ce lași gol rămâne necunoscut — nu se socotește ca zero.</div>'
+        + '<div style="max-height:46vh;overflow-y:auto;padding-right:4px;">'
+        + _COST_CAMPURI.map(function (g) {
+            return '<div style="font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 6px;">'
+              + esc(g.grup) + '</div>' + g.chei.map(function (x) { return camp(x[0], x[1]); }).join('');
+          }).join('')
+        + '</div>';
+      _ofFereastra('Costurile noastre', 'fa-sack-dollar', corp, async function () {
+        var trimit = {};
+        _COST_CAMPURI.forEach(function (g) { g.chei.forEach(function (x) {
+          var el = document.getElementById('cst-' + x[0]);
+          trimit[x[0]] = (el && el.value !== '') ? el.value : null;
+        }); });
+        try {
+          var resp = await fetch('/api/admin/system-settings', { method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ costuri_noastre: trimit }) });
+          var j = await resp.json().catch(function () { return {}; });
+          if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+          _costNoastre = (j.settings && j.settings.costuri_noastre) || trimit;
+          var d = document.getElementById('ra-of-dlg'); if (d) d.remove();
+          if (window.raxToast) raxToast('Costurile noastre, salvate ✓', 'success');
+          raxOfRecalc();
+        } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+      });
+    };
+    // ── sfârșit „ce rămâne la noi" ──
+
     // ─── Curs BNR (EUR→RON): ofertele arată AMBELE monede, ca să nu convertească nimeni în cap ───
     var _fxRate = Number(localStorage.getItem('raFxEur')) || 5.0, _fxDate = localStorage.getItem('raFxDate') || '';
     window.raFx = function () { return { eur: _fxRate, date: _fxDate }; }; // și pentru contorul clientului
@@ -22572,7 +22725,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:flex-end;font-size:13px;color:var(--text-muted);margin-top:-2px;">≈ <b style="color:var(--text-secondary);margin-left:4px;">' + _lei2eur(r.monthly).toFixed(2) + ' €</b>/lună</div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
-        '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) +
+        '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) + _ofBlocProfit(r) +
         '<div class="raof-curs">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
     };
     // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
@@ -23402,6 +23555,8 @@ const pozitii = await r.json();</code></pre>
       // fost hotărât deja, iar o propunere ar șterge în tăcere prețul negociat cu clientul.
       if (_raxOf.editingId == null) _ofCompleteazaDinVehicule();
       raxOfRecalc(); raxOfLoadList();
+      // Costurile noastre se aduc o dată, apoi rezumatul se redesenează cu profitul în el.
+      _ofIncarcaCosturi().then(function () { try { raxOfRecalc(); } catch (e) {} });
     };
     window.raxOfSave = async function () {
       var r = _ofCalc();

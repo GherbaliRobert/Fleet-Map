@@ -2608,12 +2608,43 @@ app.post('/api/logout', (req, res) => {
 
 // ─── Setări sistem (cheie-valoare în settings) cu cache scurt ───
 let _sysCache = null, _sysTs = 0;
+// ── începe „costurile noastre" ───────────────────────────────────────────────────────────────────
+// Cât ne costă PE NOI un aparat și o instalare. Fără ele, „profitul" de pe o ofertă ar fi inventat:
+// calculatorul știe doar prețurile de VÂNZARE (Alin, 21.09 — „pregătește infrastructura, cifrele le
+// trecem noi când le știm").
+//
+// Regula de aur: o valoare nescrisă rămâne **null**, nu 0. „Nu știm cât ne costă" și „ne costă zero"
+// sunt două lucruri diferite; dacă le-am amesteca, un aparat fără preț trecut ar arăta profit 100%.
+// Ecranul refuză să socotească până n-are toate cifrele de care are nevoie.
+//
+// Cheile OGLINDESC prețurile de vânzare din calculator (`dFmc130`, `mGps`, …), ca perechea
+// „cât cerem / cât ne costă" să se citească dintr-o privire.
+const COST_CHEI_EUR = ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];                                   // aparate, € bucata
+const COST_CHEI_LEI = ['mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',     // montaj, lei operațiunea
+                       'cVehLuna'];                                                                  // ce ne costă lunar o mașină (SIM + servere)
+function _costuriGoale() {
+  const o = {};
+  COST_CHEI_EUR.concat(COST_CHEI_LEI).forEach(k => { o[k] = null; });
+  return o;
+}
+function _costuriCurate(b) {
+  const out = _costuriGoale();
+  COST_CHEI_EUR.concat(COST_CHEI_LEI).forEach(k => {
+    if (b[k] === '' || b[k] === null || b[k] === undefined) return;   // rămâne „nu știm"
+    const n = parseFloat(b[k]);
+    if (Number.isFinite(n) && n >= 0 && n <= 1000000) out[k] = Math.round(n * 100) / 100;
+  });
+  return out;
+}
+// ── sfârșit „costurile noastre" ──
+
 async function getSystemSettings() {
   if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
-  let ann = '', auto = null, off = null, spd = null, issuer = null;
-  try { [ann, auto, off, spd, issuer] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer')]); } catch (e) {}
+  let ann = '', auto = null, off = null, spd = null, issuer = null, costuri = null;
+  try { [ann, auto, off, spd, issuer, costuri] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer'), db.getSetting('costuri_noastre')]); } catch (e) {}
   let issuerObj = {}; try { issuerObj = issuer ? JSON.parse(issuer) : {}; } catch (e) { issuerObj = {}; }
-  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj };
+  let costObj = _costuriGoale(); try { if (costuri) costObj = Object.assign(_costuriGoale(), JSON.parse(costuri)); } catch (e) {}
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj };
   _sysTs = Date.now();
   return _sysCache;
 }
@@ -7788,6 +7819,11 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
       const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : 19;
       const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), city: S(i.city, 80), county: S(i.county, 12), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40), vat_rate: vatRate, vat_payer: (i.vat_payer !== false && i.vat_payer !== 'false') };
       await db.setSetting('invoice_issuer', JSON.stringify(clean));
+    }
+    // Cât ne costă pe NOI aparatele și montajul. Nu pleacă niciodată către client: ruta e
+    // `requireSuperadmin`, iar ecranul îl arată doar în calculatorul de ofertă, nu pe hârtie.
+    if (b.costuri_noastre !== undefined && b.costuri_noastre && typeof b.costuri_noastre === 'object') {
+      await db.setSetting('costuri_noastre', JSON.stringify(_costuriCurate(b.costuri_noastre)));
     }
     invalidateSystemSettings();
     auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });
