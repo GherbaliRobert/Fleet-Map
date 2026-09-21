@@ -101,7 +101,7 @@ T('nu mai e tabel', !/thf-corp/.test(F) && !/<thead>/.test(F));
 T('e o listă de cartonașe', /id="thf-lista"/.test(F) && /class="rax-devgr"/.test(F));
 T('cu aceleași chenare ca la „Dispozitive"', /rax-devgr-h/.test(F) && /rax-devgr-b/.test(F));
 T('pe cartonaș scrie câți șoferi și câte camioane', /' camion' : ' camioane'/.test(F));
-T('și când a intrat ultimul fișier', /ultimul fișier ' \+ _thfCand/.test(F));
+T('și când a intrat ultimul fișier', /ultimul fișier ' \+ _raxCand/.test(F));
 
 sect('5c. „Afișează mai mult" arată CINE e în urmă');
 // „Butonul există" se caută în COD, nu în comentarii: explicația de deasupra pomenește firesc

@@ -3949,8 +3949,10 @@ const pozitii = await r.json();</code></pre>
         // firmelor și fără coloană de firmă — nu puteai spune al cui e șoferul întârziat (Alin, 18.09).
         if (window.raxLoadTahoFirme) window.raxLoadTahoFirme();
       } else if (name === 'etransport') {
-        _raxMountBody('#rax-et-overlay', 'admin-tab-etransport');
-        if (window.raxLoadEt) window.raxLoadEt();
+        // La fel ca la tahograf: privirea FONDATORULUI, o firmă pe rând. Înainte se muta aici chiar
+        // nodul clientului (`_raxMountBody('#rax-et-overlay', …)`), cu transporturile tuturor firmelor
+        // amestecate, fără coloană de firmă — și cu buton „Șterge" pe fiecare rând (Alin, 18.09).
+        if (window.raxLoadEtFirme) window.raxLoadEtFirme();
       } else if (name === 'dashboard') {
         if (window.raxLoadDashboard) window.raxLoadDashboard('admin-tab-dashboard');
       } else if (name === 'costs') {
@@ -24607,6 +24609,22 @@ const pozitii = await r.json();</code></pre>
         '</div>';
     }
 
+    // Două ajutoare folosite de AMÂNDOUĂ ecranele „pe firme" (tahograf și e-Transport). Stau în
+    // afara amândurora dinadins: erau scrise o dată, pe tahograf, și a doua oară s-ar fi copiat.
+    function _raxNumar(n) { return (Number(n) || 0).toLocaleString('ro-RO'); }
+    // „15 minute", dar „24 DE ore": în română, numeralul cere „de" de la 20 în sus (mai exact, când
+    // ultimele două cifre NU sunt între 1 și 19). Cifrele vin de la server și se pot schimba, deci
+    // cuvântul se potrivește singur — altfel ajungem cu „15 de minute" scris pe ecran.
+    function _raxDe(n) { var u = Math.abs(Number(n) || 0) % 100; return (u >= 1 && u <= 19) ? ' ' : ' de '; }
+    function _raxCand(iso) {
+      if (!iso) return '—';
+      var z = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+      if (z <= 0) return 'azi';
+      if (z === 1) return 'ieri';
+      if (z < 30) return 'acum ' + z + ' zile';
+      return new Date(iso).toLocaleDateString('ro-RO');
+    }
+
     // ── începe „tahograful, pe firme" (privirea FONDATORULUI) ─────────────────────────────────────
     // Fondatorul vedea ecranul CLIENTULUI, hrănit cu datele tuturor firmelor și fără coloană de firmă:
     // scria „Ion Popescu — termen depășit" și nu puteai spune al cui e (Alin, 18.09). Aici nu se
@@ -24615,15 +24633,6 @@ const pozitii = await r.json();</code></pre>
     // cui i-au eșuat fișierele. Toate socotelile vin de la server, din aceleași funcții ca scadențarul
     // clientului — ca să nu ajungem cu două ecrane care spun altceva despre același șofer.
     var _thfDate = null, _thfCauta = '', _thfDoarProbleme = false;
-    function _thfNum(n) { return (Number(n) || 0).toLocaleString('ro-RO'); }
-    function _thfCand(iso) {
-      if (!iso) return '—';
-      var z = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-      if (z <= 0) return 'azi';
-      if (z === 1) return 'ieri';
-      if (z < 30) return 'acum ' + z + ' zile';
-      return new Date(iso).toLocaleDateString('ro-RO');
-    }
     // Ce e de rezolvat la firma asta, într-o propoziție. Ordinea contează: amenda bate vânzarea.
     function _thfSemn(f) {
       if (!f.modul) return f.deVandut
@@ -24693,7 +24702,7 @@ const pozitii = await r.json();</code></pre>
         necitite: firme.reduce(function (a, f) { return a + (f.necitite || 0); }, 0)
       };
       var cartonas = function (n, et, cul) {
-        return '<div class="thf-c"><b' + (cul ? ' style="color:' + cul + '"' : '') + '>' + _thfNum(n) + '</b><span>' + et + '</span></div>';
+        return '<div class="thf-c"><b' + (cul ? ' style="color:' + cul + '"' : '') + '>' + _raxNumar(n) + '</b><span>' + et + '</span></div>';
       };
       var filtrat = !!(_thfCauta || '').trim() || _thfDoarProbleme;
       var sum = document.getElementById('thf-sumar');
@@ -24725,7 +24734,7 @@ const pozitii = await r.json();</code></pre>
         var cate = f.deDescarcat
           ? (f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' camion' : ' camioane'))
           : 'nimic de descărcat';
-        var ultim = f.ultimulFisier ? 'ultimul fișier ' + _thfCand(f.ultimulFisier) : 'niciun fișier';
+        var ultim = f.ultimulFisier ? 'ultimul fișier ' + _raxCand(f.ultimulFisier) : 'niciun fișier';
         var are = (f.probleme || []).length;
         var corp = are
           ? '<div class="thf-det">' + f.probleme.map(function (p) {
@@ -24769,6 +24778,188 @@ const pozitii = await r.json();</code></pre>
       _thfRandeaza();
     };
     // ── sfârșit „tahograful, pe firme" ──
+
+    // ── începe „e-Transportul, pe firme" (privirea FONDATORULUI) ──────────────────────────────────
+    // Aceeași poveste ca la tahograf, dar mai gravă: fondatorul primea ecranul CLIENTULUI cu
+    // transporturile TUTUROR firmelor amestecate și fără coloană de firmă — scria „Ford Transit ·
+    // UIT 3049…" și nu puteai spune al cui e. Pe deasupra, fiecare rând avea buton „Șterge", iar
+    // serverul îl lăsa pe super-admin să șteargă orice: puteai șterge dovada de conformitate ANAF a
+    // unui client de pe un ecran unde nici nu vedeai al cui e (Alin, 18.09).
+    //
+    // Aici NU se adaugă și NU se șterge niciun transport. Noi vedem CINE are modulul, cine are coduri
+    // expirate sau camioane care nu mai transmit (adică riscă amendă 20.000–100.000 lei), cine
+    // plătește modulul și nu-l folosește, și cine are mașini dar n-are modulul. Acțiunea pe firmă e
+    // una singură: „Deschide firma".
+    var _etfDate = null, _etfCauta = '', _etfDoarProbleme = false, _etfDeschise = {};
+    // Ce e de rezolvat la firma asta, într-o propoziție. Ordinea contează: amenda bate vânzarea.
+    function _etfSemn(f) {
+      if (!f.modul) return f.deVandut
+        ? { t: 'are mașini, n-are modulul', c: 'var(--text-muted)', rau: false, vanzare: true }
+        : { t: 'fără modul', c: 'var(--text-muted)', rau: false };
+      // Scurt dinadins: pe cartonaș stă imediat după „2 transporturi active", iar „2 transporturi
+      // active · 2 transporturi de rezolvat" se citea de două ori același cuvânt.
+      if (f.probleme) return { t: f.probleme + ' de rezolvat acum', c: 'var(--red)', rau: true };
+      if (f.platitDegeaba) return { t: 'plătește modulul, n-a introdus niciun cod', c: 'var(--orange)', rau: true };
+      if (f.curand) return { t: f.curand + (f.curand === 1 ? ' cod expiră curând' : ' coduri expiră curând'), c: 'var(--orange)', rau: false };
+      if (f.necunoscut) return { t: f.necunoscut + (f.necunoscut === 1 ? ' cod fără termen' : ' coduri fără termen'), c: 'var(--orange)', rau: true };
+      if (f.active) return { t: 'toate în regulă', c: 'var(--accent)', rau: false };
+      if (f.zileFaraCod == null) return { t: 'niciun cod introdus', c: 'var(--orange)', rau: true };
+      if (f.zileFaraCod > 60) return { t: 'niciun cod de ' + f.zileFaraCod + ' de zile', c: 'var(--orange)', rau: true };
+      return { t: 'niciun transport activ', c: 'var(--text-muted)', rau: false };
+    }
+    function _etfFirme() {
+      var q = (_etfCauta || '').trim().toLowerCase();
+      var l = ((_etfDate && _etfDate.firme) || []).filter(function (f) {
+        if (_etfDoarProbleme && !_etfSemn(f).rau) return false;
+        return !q || String(f.nume || '').toLowerCase().indexOf(q) >= 0;
+      });
+      // Problemele primele, apoi cele mai întârziate, apoi alfabetic — lista se citește ca să vezi
+      // pe cine suni, nu ca să cauți o literă.
+      return l.sort(function (a, b) {
+        var sa = _etfSemn(a), sb = _etfSemn(b);
+        if (sa.rau !== sb.rau) return sa.rau ? -1 : 1;
+        if (b.celMaiRau !== a.celMaiRau) return b.celMaiRau - a.celMaiRau;
+        return String(a.nume || '').localeCompare(String(b.nume || ''), 'ro');
+      });
+    }
+    window.raxEtfCauta = function (v) { _etfCauta = v; _etfRandeaza(); };
+    window.raxEtfProbleme = function () { _etfDoarProbleme = !_etfDoarProbleme; _etfRandeaza(); };
+    // Care firme au deschis „Afișează mai mult". Ținut deoparte, ca redesenarea să nu închidă la loc.
+    window.raxEtfMaiMult = function (id) { _etfDeschise[id] = !_etfDeschise[id]; _etfRandeaza(); };
+    // Ce e în neregulă cu UN transport, în cuvinte. Cifra vine de la server (`ore` = ore rămase;
+    // negativ = expirat), aici doar o îmbrăcăm.
+    function _etfProblema(p) {
+      if (p.ore == null) return { t: 'fără termen', c: 'var(--orange)' };
+      if (p.ore < 0) {
+        var o = Math.abs(p.ore);
+        return { t: o + (o === 1 ? ' oră expirat' : _raxDe(o) + 'ore expirat'), c: 'var(--red)' };
+      }
+      return { t: 'mai are ' + p.ore + (p.ore === 1 ? ' oră' : _raxDe(p.ore) + 'ore'), c: p.stare === 'problema' ? 'var(--red)' : 'var(--orange)' };
+    }
+    function _etfSchelet(host) {
+      host.innerHTML = '<div id="etf-anaf"></div>'
+        + '<div id="etf-sumar" class="thf-sumar"></div>'
+        + '<div class="rax-dev-bar"><button type="button" class="rax-btn" id="etf-probleme" onclick="raxEtfProbleme()"></button>'
+        + '<input class="rax-field rax-dev-search" id="etf-cauta" placeholder="🔎 caută firma" oninput="raxEtfCauta(this.value)"></div>'
+        + '<div id="etf-lista"></div>'
+        + '<div class="thf-nota" id="etf-nota"></div>';
+      host._etfGata = true;
+    }
+    function _etfRandeaza() {
+      var host = document.getElementById('admin-tab-etransport'); if (!host) return;
+      if (!host._etfGata) _etfSchelet(host);
+      var d = _etfDate; if (!d) return;
+      var firme = _etfFirme();
+
+      // Starea raportării către ANAF e a PLATFORMEI, nu a unei firme: tokenul e unul singur, al
+      // nostru. De-aia banda stă aici, sus, în ecranul nostru — e prima informație, nu o notă de
+      // subsol: fără token, tot ce urmează e evidență internă, nu conformitate.
+      // ⚠ Cu tokenul PORNIT, avertismentul e mai important decât liniștea: tokenul ȘI CIF-ul sunt
+      // unele singure, pe toată platforma (`ANAF_ETRANSPORT_TOKEN`, `ANAF_CIF`), deci am declara
+      // pentru toți clienții sub CIF-ul NOSTRU. E punctul E.1 din lista de dinainte de lansare, și
+      // e o greșeală pe care ecranul trebuie s-o oprească, nu s-o ascundă.
+      var ba = document.getElementById('etf-anaf');
+      if (ba) ba.innerHTML = (d.anaf && d.anaf.pornit)
+        ? '<div class="th-b b-warn" style="display:flex;margin-bottom:10px"><i class="fas fa-triangle-exclamation"></i> '
+            + 'Trimitem la ANAF' + (d.anaf.test ? ' — pe mediul de TEST, nu pe cel real' : '')
+            + ', dar sub UN SINGUR CIF: al nostru. Până când fiecare client are tokenul și CIF-ul lui, '
+            + 'nu porni modulul la clienți — ar declara sub CIF-ul nostru.</div>'
+        : '<div class="th-b b-warn" style="display:flex;margin-bottom:10px"><i class="fas fa-triangle-exclamation"></i> '
+            + 'Nu pleacă nimic la ANAF — nu e setat tokenul nostru. Pentru clienți, modulul e deocamdată '
+            + 'o evidență a codurilor UIT, nu conformitate.</div>';
+
+      // Cifrele de sus se socotesc din firmele de PE ECRAN, nu din totalul platformei — altfel cauți
+      // „Alfa", vezi un cartonaș, și sus scrie tot totalul.
+      var s = {
+        cuModul: firme.filter(function (f) { return f.modul; }).length,
+        cuProbleme: firme.filter(function (f) { return f.modul && f.probleme; }).length,
+        deVandut: firme.filter(function (f) { return f.deVandut; }).length,
+        active: firme.reduce(function (a, f) { return a + (f.active || 0); }, 0),
+        curand: firme.reduce(function (a, f) { return a + (f.curand || 0); }, 0)
+      };
+      var cartonas = function (n, et, cul) {
+        return '<div class="thf-c"><b' + (cul ? ' style="color:' + cul + '"' : '') + '>' + _raxNumar(n) + '</b><span>' + et + '</span></div>';
+      };
+      var filtrat = !!(_etfCauta || '').trim() || _etfDoarProbleme;
+      var sum = document.getElementById('etf-sumar');
+      // Eticheta nu se acordă cu numărul („1 firme" arată a greșeală). Când e filtrat, o spune un
+      // rând de sub cifre — o dată, limpede.
+      if (sum) sum.innerHTML =
+          cartonas(s.cuModul, 'firme cu modulul pornit')
+        + cartonas(s.cuProbleme, 'cu transporturi de rezolvat', s.cuProbleme ? 'var(--red)' : '')
+        + cartonas(s.deVandut, 'au mașini, n-au modulul', s.deVandut ? 'var(--orange)' : '')
+        + cartonas(s.active, 'transporturi active')
+        + cartonas(s.curand, 'coduri expiră curând', s.curand ? 'var(--orange)' : '')
+        + (filtrat ? '<div class="thf-filtrat"><i class="fas fa-filter"></i> Cifrele de mai sus sunt doar pentru firmele arătate acum.</div>' : '');
+      var bp = document.getElementById('etf-probleme');
+      if (bp) {
+        var nrRau = (d.firme || []).filter(function (f) { return _etfSemn(f).rau; }).length;
+        bp.innerHTML = '<i class="fas fa-triangle-exclamation"></i> ' + nrRau + ' de rezolvat'
+          + (_etfDoarProbleme ? ' · arăt doar pe astea' : '');
+        bp.style.color = nrRau ? 'var(--orange)' : ''; bp.style.borderColor = nrRau ? 'var(--orange)' : '';
+        bp.style.background = _etfDoarProbleme ? 'color-mix(in srgb, var(--orange) 14%, transparent)' : '';
+      }
+      // Un CARTONAȘ pe firmă, aceleași chenare ca la „Dispozitive" și la tahograf.
+      var lista = document.getElementById('etf-lista');
+      if (lista) lista.innerHTML = firme.map(function (f) {
+        var sg = _etfSemn(f), deschis = !!_etfDeschise[f.id];
+        var modul = f.modul
+          ? '<span class="thf-p on">pornit</span>'
+          : '<span class="thf-p' + (f.deVandut ? ' vinde' : '') + '">oprit</span>';
+        var cate = f.active
+          ? (f.active + (f.active === 1 ? ' transport activ' : ' transporturi active'))
+          : 'niciun transport activ';
+        // Când firma n-a introdus niciun cod, o spune deja semnul din stânga („n-a introdus niciun
+        // cod" / „fără modul"). Scris și aici, cartonașul se termina cu „… niciun cod · niciun cod".
+        var ultim = f.ultimul ? 'ultimul cod ' + _raxCand(f.ultimul) : '';
+        var are = (f.lista || []).length;
+        var corp = are
+          ? '<div class="thf-det">' + f.lista.map(function (p) {
+              var pr = _etfProblema(p);
+              return '<div class="thf-d">'
+                + '<i class="fas fa-truck-fast"></i>'
+                + '<b>' + esc(p.vehicul || '—') + '</b>'
+                + '<span>UIT ' + esc(p.uit || '—') + ((p.motive && p.motive.length) ? ' · ' + esc(p.motive.join(' · ')) : '') + '</span>'
+                + '<em style="color:' + pr.c + '">' + esc(pr.t) + '</em></div>';
+            }).join('')
+            + (f.problemeTotal > are ? '<div class="thf-d thf-inca">și încă ' + (f.problemeTotal - are)
+                + ' — deschide firma ca să le vezi pe toate</div>' : '')
+            + '</div>'
+          : '';
+        return '<div class="rax-devgr">'
+          + '<div class="rax-devgr-h">'
+            + '<strong>' + esc(f.nume || '—') + '</strong>' + modul
+            + '<span class="rax-devgr-n">' + cate + ' · <b style="color:' + sg.c + '">' + esc(sg.t) + '</b>'
+              + (ultim ? '<span class="thf-ultim"> · ' + esc(ultim) + '</span>' : '') + '</span>'
+            + (are ? '<button class="rax-btn" onclick="raxEtfMaiMult(' + f.id + ')"><i class="fas fa-chevron-'
+                + (deschis ? 'up' : 'down') + '"></i> ' + (deschis ? 'Ascunde' : 'Afișează mai mult') + '</button>' : '')
+            + '<button class="rax-btn" onclick="raxOpenCompanyDetail(' + f.id + ')"><i class="fas fa-building"></i> Deschide firma</button>'
+          + '</div>'
+          + (are ? '<div class="rax-devgr-b" style="display:' + (deschis ? 'block' : 'none') + ';">' + corp + '</div>' : '')
+          + '</div>';
+      }).join('') || '<div class="rax-co-meta" style="padding:16px;text-align:center;">Nicio firmă'
+          + ((_etfCauta || _etfDoarProbleme) ? ' pentru filtrul curent.' : '.') + '</div>';
+      var nota = document.getElementById('etf-nota');
+      var pr = d.praguri || {};
+      // Toate cifrele de mai jos vin din răspunsul serverului (deci din `etransport.js`). Nicio
+      // durată scrisă aici: „codul ține 5 zile" e lege, nu decor de ecran.
+      if (nota) nota.innerHTML = 'Codul UIT ține <b>' + pr.zileNational + ' zile</b> (' + pr.zileIntracomunitar
+        + ' la achiziții intracomunitare), iar un camion care tace mai mult de <b>' + pr.tacereMinute
+        + _raxDe(pr.tacereMinute) + 'minute</b> intră la „de rezolvat". „Expiră curând" = sub <b>'
+        + pr.curandOre + _raxDe(pr.curandOre) + 'ore</b>. '
+        + 'Codurile și transporturile rămân la client — noi vedem cine e în urmă, ca să-l sunăm.';
+    }
+    window.raxLoadEtFirme = async function () {
+      var host = document.getElementById('admin-tab-etransport'); if (!host) return;
+      if (!_etfDate) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>'; host._etfGata = false; }
+      try {
+        var d = await fetch('/api/admin/etransport-overview', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc(d.error) + '</div>'; host._etfGata = false; return; }
+        _etfDate = d;
+      } catch (e) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare de rețea.</div>'; host._etfGata = false; return; }
+      _etfRandeaza();
+    };
+    // ── sfârșit „e-Transportul, pe firme" ──
 
     async function raxLoadTacho() {
       var box = $('th-body');
@@ -25095,9 +25286,13 @@ const pozitii = await r.json();</code></pre>
 
       // Banda de sus spune dacă pleacă ceva spre ANAF. E prima informație, nu o notă de subsol:
       // fără token, tot ce urmează e evidență internă, nu conformitate.
+      // Scrisă în cuvintele CLIENTULUI. Zicea „lipsește tokenul" — jargon, și suna a vina lui:
+      // tokenul ANAF e unul singur, al platformei, deci e treaba NOASTRĂ (Alin, 18.09). Dar banda NU
+      // se scoate: dacă raportarea nu merge, omul trebuie s-o afle — altfel crede că e în regulă la
+      // ANAF fiindcă îi vede camioanele transmițând. Starea tehnică o vedem noi, în ecranul nostru.
       $('rax-et-anaf').innerHTML = d.anaf && d.anaf.pornit
-        ? '<div class="th-b b-ok" style="display:flex;margin-bottom:10px"><i class="fas fa-tower-broadcast"></i> Trimitem pozițiile la ANAF' + (d.anaf.test ? ' — pe mediul de TEST, nu pe cel real' : '') + '</div>'
-        : '<div class="th-b b-warn" style="display:flex;margin-bottom:10px"><i class="fas fa-triangle-exclamation"></i> Nu trimitem nimic la ANAF — lipsește tokenul. Aici ții evidența codurilor și a termenelor, dar raportarea nu e pornită.</div>';
+        ? '<div class="th-b b-ok" style="display:flex;margin-bottom:10px"><i class="fas fa-tower-broadcast"></i> Raportăm pozițiile la ANAF pentru tine' + (d.anaf.test ? ' — deocamdată pe mediul de test al ANAF, nu pe cel real' : '') + '</div>'
+        : '<div class="th-b b-warn" style="display:flex;margin-bottom:10px"><i class="fas fa-triangle-exclamation"></i> Raportarea către ANAF nu e pornită încă — ne ocupăm noi de ea. Până atunci, aici ții evidența codurilor UIT și a termenelor.</div>';
 
       var probleme = (d.active || []).filter(function (x) { return x.stare === 'problema'; });
       var curand = (d.active || []).filter(function (x) { return x.stare === 'curand'; });

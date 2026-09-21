@@ -92,13 +92,25 @@ function gata(code) {
   // evidență internă, nu conformitate. Dacă ecranul ar tăcea, omul ar crede că e raportat.
   T('răspunsul spune că ANAF e oprit', d0.anaf && d0.anaf.pornit === false, JSON.stringify(d0.anaf));
   const html = fs.readFileSync('./public/index.html', 'utf8');
-  T('interfața are un mesaj pentru cazul ăsta', /Nu trimitem nimic la ANAF/.test(html));
+  // Textul e scris în cuvintele CLIENTULUI din 18.09: zicea „lipsește tokenul", care e jargon și
+  // suna a vina lui — tokenul ANAF e al platformei. Regula păzită aici e aceeași: ecranul TREBUIE
+  // s-o spună, într-o bandă de avertizare, nu într-o notă de subsol.
+  T('interfața are un mesaj pentru cazul ăsta', /Raportarea către ANAF nu e pornită încă/.test(html));
   T('și nu-l ascunde într-o notă de subsol (e o bandă de avertizare)',
-    /b-warn[^]{0,120}Nu trimitem nimic la ANAF/.test(html));
+    /b-warn[^]{0,160}Raportarea către ANAF nu e pornită încă/.test(html));
 
   sect('4. Transportul se leagă de un vehicul real din flotă');
-  const veh = { imei: '7711000000001', plate: 'CJ 99 ETR', vehicle_type: 'Camion' };
+  // Vehiculul e al unei FIRME. Un transport fără firmă n-ar fi al nimănui: n-ar apărea nici în
+  // lista clientului (căutată pe firmă), nici în privirea noastră pe firme, iar la ANAF n-ar avea
+  // CIF sub care să fie declarat.
+  const coId = (await (await POST('/api/companies', { name: 'CI Etr Transport' })).json()).id;
+  const veh = { imei: '7711000000001', plate: 'CJ 99 ETR', vehicle_type: 'Camion', company_id: coId };
   await POST('/api/devices', veh);
+  const faraFirma = { imei: '7711000000009', plate: 'CJ 11 ORF', vehicle_type: 'Camion' };
+  await POST('/api/devices', faraFirma);
+  const orfan = await POST('/api/etransport', { uit: '3010000003', imei: faraFirma.imei });
+  T('vehicul neatribuit unei firme → transport refuzat, nu salvat orfan', orfan.status === 400,
+    orfan.status + ' ' + JSON.stringify(await orfan.json().catch(() => ({}))));
   const rauImei = await POST('/api/etransport', { uit: '3010000001', imei: '000000000000999' });
   T('IMEI inexistent → refuzat', rauImei.status === 400, rauImei.status);
   const rauDrv = await POST('/api/etransport', { uit: '3010000002', imei: veh.imei, driver_id: 999999 });

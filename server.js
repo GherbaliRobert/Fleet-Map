@@ -6128,6 +6128,111 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── începe „e-Transportul, pe firme" (privirea FONDATORULUI) ─────────────────────────────────────
+// Fondatorul vedea ecranul CLIENTULUI, hrănit cu transporturile TUTUROR firmelor și fără coloană de
+// firmă: scria „Ford Transit · UIT 3049…" și nu puteai spune al cui e (Alin, 18.09). Mai rău decât
+// la tahograf: pe fiecare rând era buton „Șterge", iar `ownsRow` întoarce `true` pentru super-admin —
+// adică puteai șterge dovada de conformitate ANAF a unui client de pe un ecran unde nici nu vedeai
+// al cui e. Aici NU se adaugă și NU se șterge nimic: singura acțiune pe firmă e „Deschide firma".
+//
+// Regulile (termen UIT, tăcerea vehiculului, starea transportului) vin din `etransport.js` —
+// ACELEAȘI funcții ca scadențarul clientului. Fără asta am ajunge cu două ecrane care spun altceva
+// despre același transport.
+app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const acum = new Date().toISOString();
+    const anafPornit = etransportEnabled();
+    const [companies, rows, devices] = await Promise.all([
+      db.getCompanies(),
+      db.getEtransportScadentar(null),   // null = toate firmele
+      db.getDevicesLite()
+    ]);
+
+    const perFirma = new Map();
+    for (const co of companies) {
+      if (co.is_demo || co.id === demoCompanyId) continue;      // demo nu intră în flota reală
+      perFirma.set(co.id, {
+        id: co.id, nume: co.name,
+        modul: !!(plans && plans.featuresFor(co).etransport),
+        vehicule: 0,
+        active: 0, probleme: 0, curand: 0, ok: 0, necunoscut: 0, incheiate: 0,
+        ultimul: null,        // când a intrat ultimul cod UIT
+        celMaiRau: 0,         // cele mai multe ore de întârziere de pe un transport
+        // CARE transporturi sunt problema — se deschid din „Afișează mai mult". Fără ele, cartonașul
+        // scrie „3 de rezolvat" și tot trebuie să intri în firmă ca să afli care.
+        lista: []
+      });
+    }
+    for (const d of devices) {
+      if (DEMO_SET.has(d.imei)) continue;
+      const f = perFirma.get(d.company_id); if (!f) continue;
+      if ((d.status || 'active') === 'active') f.vehicule++;
+    }
+
+    // Cel mult atâtea transporturi pe firmă în deschidere; restul se numără.
+    const MAX_NUME = 12;
+    for (const t of rows) {
+      const f = perFirma.get(t.company_id); if (!f) continue;
+      if (t.imei && DEMO_SET.has(t.imei)) continue;
+      // „Ultima poziție" = cea mai nouă dintre ce scrie în bază și ce e în memorie — exact ca în
+      // scadențarul clientului, altfel ecranul nostru ar spune altceva decât al lui despre același camion.
+      const lp = t.imei ? livePositions.get(t.imei) : null;
+      if (lp && lp.timestamp) {
+        const a = t.ultima_pozitie ? new Date(t.ultima_pozitie).getTime() : 0;
+        if (new Date(lp.timestamp).getTime() > a) t.ultima_pozitie = lp.timestamp;
+      }
+      const c = t.created_at ? new Date(t.created_at).getTime() : 0;
+      if (c && (!f.ultimul || c > f.ultimul)) f.ultimul = c;
+      if ((t.status || 'activ') !== 'activ') { f.incheiate++; continue; }
+      f.active++;
+      const s = etr.stareTransport(t, acum, anafPornit);
+      if (s.stare === 'problema') f.probleme++;
+      else if (s.stare === 'curand') f.curand++;
+      else if (s.stare === 'necunoscut') f.necunoscut++;
+      else f.ok++;
+      if (s.stare === 'problema' || s.stare === 'curand') {
+        if (s.oreRamase != null && s.oreRamase < 0) f.celMaiRau = Math.max(f.celMaiRau, Math.abs(s.oreRamase));
+        f.lista.push({
+          uit: t.uit, vehicul: t.vehicul || t.vehicul_nume || t.plate || t.imei || '—',
+          stare: s.stare, ore: s.oreRamase, motive: s.motive
+        });
+      }
+    }
+
+    const ZI = 86400000;
+    const lista = Array.from(perFirma.values()).map(f => {
+      // Cele mai rele primele: o problemă înaintea unui cod care expiră mâine.
+      const rang = { problema: 0, curand: 1 };
+      f.lista.sort((a, b) => (rang[a.stare] - rang[b.stare]) || ((a.ore == null ? -1e9 : a.ore) - (b.ore == null ? -1e9 : b.ore)));
+      return Object.assign(f, {
+        problemeTotal: f.lista.length,
+        lista: f.lista.slice(0, MAX_NUME),
+        zileFaraCod: f.ultimul ? Math.floor((Date.now() - f.ultimul) / ZI) : null,
+        // „Are mașini, n-are modulul" = ocazie de vânzare. „Are modulul, n-a introdus niciun cod" = îl plătește degeaba.
+        deVandut: !f.modul && f.vehicule > 0,
+        platitDegeaba: f.modul && f.active === 0 && f.incheiate === 0,
+        ultimul: f.ultimul ? new Date(f.ultimul).toISOString() : null
+      });
+    });
+
+    // Fără `sumar` aici: cifrele de sus se socotesc în ECRAN, din firmele arătate, ca să urmeze
+    // filtrul (aceeași regulă ca la tahograf). Două socoteli ale aceluiași lucru s-ar despărți.
+    res.json({
+      // Tokenul ANAF e UNUL, al platformei — nu al fiecărei firme. Deci starea raportării e o
+      // informație de-a NOASTRĂ, nu una pe care clientul s-o poată rezolva.
+      anaf: { pornit: anafPornit, test: anafPornit && anaf.cfg().test },
+      // Toate cifrele legale vin de aici, din `etransport.js`. Ecranul nu-și scrie niciuna: altfel
+      // „codul ține 5 zile" ar exista în două locuri și s-ar despărți la prima schimbare de lege.
+      praguri: {
+        tacereMinute: etr.TACERE_MINUTE, curandOre: etr.CURAND_ORE,
+        zileNational: etr.ZILE_NATIONAL, zileIntracomunitar: etr.ZILE_INTRACOMUNITAR
+      },
+      firme: lista
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ── sfârșit „e-Transportul, pe firme" ──
+
 // Istoricul unui șofer sau al unui vehicul + GOLURILE din arhivă (zilele pe care nu le poți dovedi).
 app.get('/api/tacho/istoric', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
@@ -6268,9 +6373,10 @@ app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeatu
     if (!b.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' });
     // Vehiculul se ALEGE din flotă, nu se tastează. Un IMEI scris de mână greșit înseamnă un
     // transport care nu se leagă de nicio mașină: nu-i poți vedea pozițiile și n-ai ce raporta.
+    let dev = null;
     if (b.imei) {
       if (!canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
-      const dev = await db.getDeviceFull(b.imei);
+      dev = await db.getDeviceFull(b.imei);
       if (!dev) return res.status(400).json({ error: 'Vehiculul ales nu există' });
       b.plate = dev.plate || b.plate || null;
     }
@@ -6283,7 +6389,20 @@ app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeatu
     // a celor 5 zile rămâne de confirmat cu ANAF (vezi etransport.js), iar dacă omul o corectează,
     // valoarea lui câștigă. O aplicație n-are voie să ghicească tăcut un termen care aduce amendă.
     if (!b.valabil_pana) b.valabil_pana = etr.valabilPana(b.start_at || new Date().toISOString(), b.tip_operatiune);
-    const tr = await db.createEtransport(b, req.companyId);
+    // Un transport TREBUIE să fie al unei firme. Super-adminul n-are companie proprie, deci o cerere
+    // venită de la el scria rândul cu `company_id = NULL`: nu apărea nici la client (lista lui se
+    // caută pe firmă), nici în privirea noastră pe firme — dată invizibilă, pierdută în bază
+    // (găsit 18.09, când ecranul fondatorului încă avea formular de adăugare). Firma se ia de pe
+    // vehiculul ales; dacă nu se poate, cererea se refuză pe față, nu se salvează orfan.
+    let coId = req.companyId;
+    if (coId == null) coId = (b.company_id != null && String(b.company_id) !== '' ? parseInt(b.company_id) : null);
+    if (coId == null && dev) coId = dev.company_id;
+    if (coId == null) return res.status(400).json({
+      error: dev
+        ? 'Vehiculul ales nu e atribuit niciunei firme. Atribuie-l întâi în „Dispozitive".'
+        : 'Transportul trebuie să fie al unei firme — alege vehiculul.'
+    });
+    const tr = await db.createEtransport(b, coId);
     auditReq(req, 'create', 'etransport', tr.id, { uit: b.uit });
     res.json(tr);
   } catch (e) { res.status(500).json({ error: e.message }); }

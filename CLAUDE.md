@@ -379,6 +379,42 @@ fără coloană de firmă. Scria „Ion Popescu, termen depășit" și nu puteai
   Când e filtrat, un rând sub cifre o spune; etichetele NU se acordă cu numărul („1 firme" arată prost).
 - Păzit de `verify_tacho_fondator.js` (în `npm test`), inclusiv pe server pornit.
 
+## e-Transport: două ecrane, două priviri (decizie Alin, 18.09)
+
+Aceeași poveste ca la tahograf, dar mai gravă. Fondatorul primea ecranul CLIENTULUI, mutat cu
+`_raxMountBody('#rax-et-overlay', 'admin-tab-etransport')`, hrănit cu transporturile TUTUROR firmelor
+și fără coloană de firmă: scria „Ford Transit · UIT 3049…" și nu puteai spune al cui e. **Peste asta,
+fiecare rând avea buton „Șterge", iar `ownsRow` întoarce `true` pentru super-admin** — se putea
+șterge dovada de conformitate ANAF a unui client de pe un ecran unde nici nu vedeai al cui e.
+
+- **Clientul** păstrează ecranul lui (`atab-etransport`): coduri UIT, termene, adaugă/șterge. E al lui.
+- **Fondatorul** are ecranul LUI, pe firme (`admin-tab-etransport` → `raxLoadEtFirme` →
+  `GET /api/admin/etransport-overview`, super-admin): cine are modulul, cine are coduri expirate sau
+  camioane care nu mai transmit, cine plătește modulul și nu-l folosește, cine are mașini fără modul.
+- **Pe ecranul fondatorului NU se adaugă și NU se șterge niciun transport.** Singura acțiune pe firmă
+  e „Deschide firma". NU reintroduce formularul și nici butonul „Șterge".
+- **Regulile nu se scriu a doua oară:** starea unui transport vine din `etr.stareTransport`, iar
+  duratele legale (5 / 15 zile, 15 min de tăcere, 24 h „curând") se TRIMIT de la server, din
+  `etransport.js`. Ecranul nu scrie nicio cifră de-a lui — nici măcar în textul explicativ de jos.
+- **Un transport TREBUIE să aibă o firmă.** `POST /api/etransport` folosea `req.companyId`, care la
+  super-admin e null: rândul se scria cu `company_id = NULL` și dispărea din amândouă ecranele (nu-l
+  vedea nici clientul, care caută pe firmă, nici noi, care grupăm pe firmă). Acum firma se ia de pe
+  vehiculul ales sau din `company_id`, iar fără niciuna cererea se REFUZĂ, nu se salvează orfan.
+- **Tokenul ANAF e UNUL, al platformei** (`ANAF_ETRANSPORT_TOKEN`), nu al fiecărei firme. Deci starea
+  raportării e informație de-a NOASTRĂ: banda stă sus în ecranul fondatorului. La client a rămas —
+  altfel ar crede că e în regulă la ANAF fiindcă își vede camioanele transmițând — dar rescrisă în
+  cuvintele lui („ne ocupăm noi de ea"), fără „lipsește tokenul", care suna a vina lui.
+  ⚠ **De confirmat înainte de lansare:** declarația se depune pe CUI-ul CLIENTULUI, cu tokenul
+  NOSTRU. Trebuie verificat dacă ANAF cere împuternicire în SPV per client. Fără ea, modulul e doar
+  un registru intern. E în lista de dinainte de lansare.
+- Păzit de `verify_etransport_fondator.js` (în `npm test`), inclusiv pe server pornit.
+
+### Cuvintele care se acordă cu cifra: `_raxDe(n)`
+„15 minute", dar „24 **de** ore". Cifrele vin de la server și se pot schimba, deci „de" se pune din
+cod, nu scris de mână: `_raxDe(n)` întoarce ' ' sau ' de ' (regula: fără „de" când ultimele două
+cifre sunt între 1 și 19). Tot din familia asta: `_raxNumar` și `_raxCand`, folosite de AMÂNDOUĂ
+ecranele „pe firme" — stau în afara amândurora ca să nu se copieze a doua oară.
+
 ### Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc (decizie Alin, 17.09)
 Pe „Companii" a stat un al doilea ecran de adopție („Vehicule neasignate", cu `raxAssignDevice` /
 `raxRejectDevice`), rămas de pe vremea când secțiunea se numea „Companii & Dispozitive". Apăsa

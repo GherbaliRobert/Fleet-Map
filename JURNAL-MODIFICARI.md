@@ -95,6 +95,56 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · e-Transport: noi vedem FIRMELE, clientul își vede transporturile
+
+Alin: *„ce îmi arată în ecranul fondator îmi arată și în ecranul partener… un partener trebuie să
+vadă situația pe firma lui, noi trebuie să vedem ca la cardul de tahograf."*
+
+**Ce era.** Exact aceeași poveste ca la tahograf: un singur ecran, mutat în amândouă verticalele.
+Fondatorul primea ecranul clientului, hrănit cu transporturile **tuturor** firmelor și **fără coloană
+de firmă** — scria „Ford Transit · UIT 3049…" și nu puteai spune al cui e.
+
+**Dar aici era mai rău, din două motive găsite citind codul:**
+
+1. **Pe fiecare rând era buton „Șterge"**, iar serverul îl lăsa: pentru super-admin nu verifica a cui
+   e linia. Adică se putea șterge **dovada de conformitate ANAF a unui client** de pe un ecran unde
+   nici nu vedeai al cui e. Tot acolo era și formularul de adăugat transport.
+2. **Un transport adăugat de noi se scria cu firma GOALĂ.** Super-adminul n-are companie proprie, iar
+   codul lua firma de la cont. Rândul intra în bază fără firmă și **dispărea din amândouă ecranele**:
+   nu-l vedea clientul (lista lui se caută pe firmă) și nu-l vedeam nici noi. Dată pierdută, tăcut.
+
+**Ce e acum.**
+
+- **Clientul rămâne cu ecranul lui, neatins** — codurile lui, termenele lui, adaugă și șterge. E
+  gospodăria lui.
+- **Noi avem ecranul nostru: un cartonaș pe firmă**, exact ca la tahograf. În dreptul fiecăreia: dacă
+  are modulul pornit, câte transporturi active, câte sunt de rezolvat acum, când a intrat ultimul cod.
+- **„Afișează mai mult"** deschide **care** transport e problema: mașina, codul UIT, și de ce —
+  *„TM 04 TRB · UIT 3049217845612 · cod UIT expirat · nicio poziție de la vehicul — 49 de ore expirat"*.
+- **Nu se adaugă și nu se șterge nimic de la noi.** Singurul buton pe firmă: „Deschide firma".
+- **Un transport fără firmă e refuzat**, nu salvat orfan. Firma se ia de pe mașina aleasă.
+- Cifrele de sus se socotesc din firmele arătate, deci urmează căutarea și filtrul.
+
+**Banda ANAF a fost mutată acolo unde îi e locul.** Tokenul ANAF e **unul singur, al platformei** —
+nu al fiecărei firme. Deci starea raportării e informația **noastră**, nu una pe care clientul s-o
+poată rezolva. Acum:
+
+> ⚠ Nu pleacă nimic la ANAF — nu e setat tokenul nostru. Pentru clienți, modulul e deocamdată o
+> evidență a codurilor UIT, nu conformitate.
+
+Iar dacă tokenul **se pornește**, banda nu ne liniștește, ci **ne oprește**: CIF-ul e tot unul singur,
+deci am declara pentru toți clienții sub CIF-ul nostru. Scrie negru pe alb „nu porni modulul la
+clienți". E punctul E.1 din lista de dinainte de lansare, adus pe ecran ca să nu se poată uita.
+
+La client banda **a rămas** — dacă raportarea nu merge, omul trebuie s-o afle, altfel crede că e în
+regulă la ANAF fiindcă își vede camioanele transmițând — dar rescrisă în cuvintele lui: *„Raportarea
+către ANAF nu e pornită încă — ne ocupăm noi de ea."* Înainte zicea „lipsește tokenul", care e jargon
+și suna a vina lui.
+
+- **Ce am schimbat:** e-Transportul are două ecrane, ca tahograful: firmele la noi, transporturile la client.
+- **Ce vede fondatorul:** un cartonaș pe firmă, cu ce e de rezolvat și de ce; nimic de șters, nimic de adăugat.
+- **Ce vede clientul:** același ecran ca până acum, cu o singură frază schimbată — cea despre ANAF, acum în cuvintele lui.
+
 ### FONDATOR · Capul ferestrei unei firme: filele erau lipite de chenar
 
 Alin: *„«Detalii» e lipit de chenar… sus nu sunt margini între titlul chenarului și meniu."*
@@ -7649,6 +7699,17 @@ ordinea în care contează:
   ⚠ **De când modulul e în calculatorul de ofertare (cu preț pe vehicul), E.1 blochează o VÂNZARE,
   nu doar o funcție.** Poți pune e-Transportul în ofertă și în contract, dar nu-l porni la client
   până nu are token propriu — altfel ar declara la ANAF sub CIF-ul nostru.
+  ✅ *18.09 — avertismentul a ajuns PE ECRAN.* Banda de sus din „e-Transport" (privirea fondatorului)
+  o spune de fiecare dată când deschizi secțiunea: fără token, „modulul e deocamdată o evidență a
+  codurilor"; cu tokenul pornit, „sub UN SINGUR CIF: al nostru — nu porni modulul la clienți".
+  Punctul rămâne DESCHIS: ecranul doar împiedică greșeala, nu o rezolvă.
+
+- [ ] **E.1b — (eu, 5 minute) De verificat dacă au rămas transporturi FĂRĂ FIRMĂ în baza reală.**
+  Până pe 18.09, un transport adăugat de pe ecranul fondatorului se scria cu `company_id = NULL` și
+  devenea invizibil: nu-l vedea nici clientul (lista lui se caută pe firmă), nici noi. Scrierea a
+  fost oprită, dar rândurile vechi, dacă există, sunt tot acolo.
+  `SELECT id, uit, imei, created_at FROM etransport WHERE company_id IS NULL;` — dacă ies rânduri,
+  se leagă de firma vehiculului lor (sau se șterg, dacă erau doar probe de-ale noastre).
 
 - [ ] **E.2 — (eu) Mecanismul de trimitere nu verifică prospețimea poziției.** Ecranul o verifică
   deja; worker-ul care trimite la ANAF ia ultima poziție știută chiar dacă e veche de o oră — adică
