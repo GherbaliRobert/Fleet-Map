@@ -23574,44 +23574,55 @@ const pozitii = await r.json();</code></pre>
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>'),
         'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.');
+      // Cantitatea și PREȚUL, unul lângă altul, pe același rând. Tariful era scris ca etichetă
+      // moartă („buc · 120€") și se schimba dintr-un panou pliat, mai jos — te uitai la o linie și
+      // trebuia să cauți în altă parte ca s-o schimbi (Alin, 21.09). `step` 0,01: prețurile au
+      // bani, iar cu pasul implicit browserul refuză „12,50".
+      function qp(idQ, idP, pret, um, umPret) {
+        return fNum(idQ, '', '', 70) + '<span class="um">' + um + '</span>'
+          + '<span style="opacity:.45;font-size:11px;">×</span>'
+          + fNum(idP, pret, '', 78, 0.01) + '<span class="um">' + umPret + '</span>';
+      }
+      // Același buton, oriunde ai schimba un tarif. Cheamă aceeași funcție: citește TOATE câmpurile
+      // de preț de pe ecran și le face tarifele casei.
+      function butonTarife(text) {
+        return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">'
+          + '<button class="rax-btn" onclick="raxOfSalveazaTarife()" style="width:100%;justify-content:center;">'
+            + '<i class="fas fa-floppy-disk"></i> Salvează ca tarifele noastre</button>'
+          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">' + text + '</div></div>';
+      }
+      var deTarife = 'Prețurile de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele '
+        + 'pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.';
       var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> 4. Montajul',
-        row('Instalare dispozitiv GPS', fNum('of-qGps', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Instalare LV-CAN', fNum('of-qLvCan', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Instalare CAN încorporat', fNum('of-qCanInc', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Instalare FMS (tahograf)', fNum('of-qFms', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Dezinstalare echipament', fNum('of-qUninstall', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Înlocuire echipament', fNum('of-qReplace', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Deplasare', fNum('of-kmTravel', '') + '<span class="um">km</span>'),
-        'Manopera, plătită o singură dată. Se completează singură din flotă. Noi o facturăm clientului; cu instalatorul ne socotim separat, în fișa de montaj a firmei.');
-      function buc(eur) { return '<span style="font-size:11px;color:var(--text-muted);">buc · ' + eur + '€</span>'; }
+        row('Instalare dispozitiv GPS', qp('of-qGps', 'of-mGps', p.mGps, 'buc', 'lei/buc')) +
+        row('Instalare LV-CAN', qp('of-qLvCan', 'of-mLvCan', p.mLvCan, 'buc', 'lei/buc')) +
+        row('Instalare CAN încorporat', qp('of-qCanInc', 'of-mCanInc', p.mCanInc, 'buc', 'lei/buc')) +
+        row('Instalare FMS (tahograf)', qp('of-qFms', 'of-mFms', p.mFms, 'buc', 'lei/buc')) +
+        row('Dezinstalare echipament', qp('of-qUninstall', 'of-mUninstall', p.mUninstall, 'buc', 'lei/buc')) +
+        row('Înlocuire echipament', qp('of-qReplace', 'of-mReplace', p.mReplace, 'buc', 'lei/buc')) +
+        row('Deplasare', qp('of-kmTravel', 'of-mTravel', p.mTravel, 'km', 'lei/km')) +
+        '<div class="raof-hint" style="margin-top:-2px;line-height:1.5;">'
+          + '<b>Fiecare mașină are „Instalare dispozitiv GPS" — treaba de bază.</b> Cea cu CAN sau cu FMS '
+          + 'mai are un rând deasupra: munca în plus (modulul LV-CAN legat la magistrală, respectiv priza '
+          + 'de tahograf). Nu e aceeași manoperă plătită de două ori, sunt două operațiuni.'
+        + '</div>' + butonTarife(deTarife),
+        'Manopera, plătită o singură dată. Cantitățile se completează singure din flotă. Noi o facturăm clientului; cu instalatorul ne socotim separat, în fișa de montaj a firmei.');
       var deviceCard = card('<i class="fas fa-microchip"></i> 5. Aparatele',
-        row('Teltonika FMC130', fNum('of-dq130', '') + buc(p.dFmc130)) +
-        row('Teltonika FMC150', fNum('of-dq150', '') + buc(p.dFmc150)) +
-        row('Teltonika FMC650', fNum('of-dq650', '') + buc(p.dFmc650)) +
-        row('Modul LV-CAN200', fNum('of-dqLvCan', '') + '<span class="um">buc · ' + p.dLvCan + '€ (extra, la FMC130/650)</span>'),
+        row('Teltonika FMC130', qp('of-dq130', 'of-dFmc130', p.dFmc130, 'buc', '€/buc')) +
+        row('Teltonika FMC150', qp('of-dq150', 'of-dFmc150', p.dFmc150, 'buc', '€/buc')) +
+        row('Teltonika FMC650', qp('of-dq650', 'of-dFmc650', p.dFmc650, 'buc', '€/buc')) +
+        row('Modul LV-CAN200', qp('of-dqLvCan', 'of-dLvCan', p.dLvCan, 'buc', '€/buc'), 'extra, la FMC130/650') +
+        butonTarife(deTarife),
         'Marfa pe care o cumpără clientul, o singură dată. Prețurile sunt în euro (așa le luăm și noi), iar pe hârtie apar și în lei, la cursul BNR.');
-      var priceCard = '<details style="margin-bottom:14px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:8px 0;"><i class="fas fa-sliders"></i> Tarife (editabile)</summary><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:6px;">' +
-        row('Vehicul GPS (fără CAN)', fNum('of-pPlain', p.pPlain) + lei()) + row('Vehicul CAN', fNum('of-pCan', p.pCan) + lei()) + row('Vehicul FMS', fNum('of-pFms', p.pFms) + lei()) +
-        '<div style="font-size:10.5px;color:var(--text-muted);margin:2px 0 8px;">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", direct lângă comutator.</div>' +
-        row('Retenție 12 luni', fNum('of-ret12', p.ret12) + lei()) + row('Retenție 24 luni', fNum('of-ret24', p.ret24) + lei()) + row('Retenție 36 luni', fNum('of-ret36', p.ret36) + lei()) + row('Retenție custom', fNum('of-retCustom', p.retCustom) + lei()) +
-        '<div style="border-top:1px solid var(--border);margin:6px 0 8px;padding-top:8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">Montaj (cost unic)</div>' +
-        row('Instalare GPS', fNum('of-mGps', p.mGps) + leiU('buc')) + row('Instalare LV-CAN', fNum('of-mLvCan', p.mLvCan) + leiU('buc')) + row('Instalare CAN încorporat', fNum('of-mCanInc', p.mCanInc) + leiU('buc')) +
-        row('Instalare FMS', fNum('of-mFms', p.mFms) + leiU('buc')) + row('Dezinstalare', fNum('of-mUninstall', p.mUninstall) + leiU('buc')) + row('Înlocuire', fNum('of-mReplace', p.mReplace) + leiU('buc')) +
-        row('Deplasare', fNum('of-mTravel', p.mTravel) + leiU('km')) +
-        '<div style="border-top:1px solid var(--border);margin:6px 0 8px;padding-top:8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">Echipamente (EUR/buc)</div>' +
-        row('Teltonika FMC130', fNum('of-dFmc130', p.dFmc130) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
-        row('Teltonika FMC150', fNum('of-dFmc150', p.dFmc150) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
-        row('Teltonika FMC650', fNum('of-dFmc650', p.dFmc650) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
-        row('Modul LV-CAN200', fNum('of-dLvCan', p.dLvCan) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
-        // Până acum, o schimbare aici ținea doar până la „Ofertă nouă". Butonul ăsta o face TARIFUL
-        // CASEI: de la el pornesc toate ofertele de mâine.
-        '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">' +
-          '<button class="rax-btn" onclick="raxOfSalveazaTarife()" style="width:100%;justify-content:center;">' +
-            '<i class="fas fa-floppy-disk"></i> Salvează ca tarifele noastre</button>' +
-          '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">' +
-            'Schimbările de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele ' +
-            'pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.</div>' +
-        '</div>' +
+      // Montajul și aparatele NU mai sunt aici: prețul lor stă acum lângă cantitatea lui, la pașii
+      // 4 și 5, unde te uiți oricum (Alin, 21.09). Aici rămân tarifele care n-au pas propriu:
+      // abonamentul lunar pe mașină și păstrarea datelor. NU aduce înapoi câmpurile mutate — ar fi
+      // două casete cu același nume, iar `_ofReadPrices` ar citi-o pe prima găsită.
+      var priceCard = '<details style="margin-bottom:14px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:8px 0;"><i class="fas fa-sliders"></i> Tarife lunare (editabile)</summary><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:6px;">' +
+        row('Vehicul GPS (fără CAN)', fNum('of-pPlain', p.pPlain, '', 84, 0.01) + lei()) + row('Vehicul CAN', fNum('of-pCan', p.pCan, '', 84, 0.01) + lei()) + row('Vehicul FMS', fNum('of-pFms', p.pFms, '', 84, 0.01) + lei()) +
+        '<div style="font-size:10.5px;color:var(--text-muted);margin:2px 0 8px;">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", direct lângă comutator. Montajul e la pasul 4, aparatele la pasul 5.</div>' +
+        row('Retenție 12 luni', fNum('of-ret12', p.ret12, '', 84, 0.01) + lei()) + row('Retenție 24 luni', fNum('of-ret24', p.ret24, '', 84, 0.01) + lei()) + row('Retenție 36 luni', fNum('of-ret36', p.ret36, '', 84, 0.01) + lei()) + row('Retenție custom', fNum('of-retCustom', p.retCustom, '', 84, 0.01) + lei()) +
+        butonTarife(deTarife) +
         '</div></details>';
       // Valabilitatea se scrie SINGURĂ, din aceeași cifră ca pâlnia de oferte și ca hârtia. Era
       // doar un îndemn în placeholder („ex. Preț valabil 30 zile…"), deci ajungea pe hârtie numai
@@ -23630,7 +23641,7 @@ const pozitii = await r.json();</code></pre>
         '<button class="rax-btn" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>' +
         '<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">' +
           'Oferta salvată intră în <a href="#" onclick="event.preventDefault();raxOfLaLista()" style="color:var(--accent);font-weight:700;">Oferte salvate</a>, ' +
-          'jos pe pagină, ca <b>Ciornă</b>. PDF-ul îl trimiți tu, de pe mailul tău — clientul nu e încă la noi.</div>';
+          'sus pe pagină, ca <b>Ciornă</b> — te ducem acolo după ce salvezi. PDF-ul îl trimiți tu, de pe mailul tău: clientul nu e încă la noi.</div>';
       // Antetul spune, o dată, ce e ecranul ăsta și pe unde merge oferta mai departe. Fără el,
       // cine intră prima oară vede zece câmpuri și nu știe de unde să apuce.
       var antet = '<div class="raof-head">' +
@@ -23644,11 +23655,15 @@ const pozitii = await r.json();</code></pre>
             '<span class="raof-pas"><i class="fas fa-4"></i> Deschizi clientul din ea</span>' +
           '</div>' +
         '</div></div>';
+      // Lista de oferte a urcat SUS, sub antet. Stătea la baza paginii, după șase secțiuni de
+      // formular: salvai o ciornă și nu vedeai unde s-a dus (Alin, 21.09). Sus, e primul lucru pe
+      // care-l vezi când intri — pâlnia de vânzări, apoi calculatorul pentru una nouă.
       box.innerHTML = antet +
+        '<div id="rax-of-list" style="margin-bottom:22px;"></div>' +
         '<div class="raof-grid">' +
           '<div>' + clientCard + vehCard + featCard + montajCard + deviceCard + priceCard + notesCard + '</div>' +
           '<div><div class="raof-rez"><div class="raof-t"><i class="fas fa-receipt"></i> Rezumatul ofertei</div><div id="rax-of-summary"></div>' + actions + '</div></div>' +
-        '</div><div id="rax-of-list" style="margin-top:22px;"></div>';
+        '</div>';
       // Ofertă NOUĂ: cantitățile ȘI prețurile modulelor se propun din start, din numărul de
       // vehicule. La o ofertă deschisă pentru editare NU se propune nimic — acolo tot ce se vede a
       // fost hotărât deja, iar o propunere ar șterge în tăcere prețul negociat cu clientul.
@@ -23676,6 +23691,9 @@ const pozitii = await r.json();</code></pre>
         _raxOf.editingId = j.id || _raxOf.editingId;
         var lbl = document.getElementById('of-save-label'); if (lbl) lbl.textContent = 'Actualizează oferta';
         raxOfLoadList();
+        // După salvare te duce SUS, la listă, ca să vezi unde a intrat ciorna. Altfel rămâneai jos,
+        // lângă butoane, și te întrebai dacă s-a salvat ceva (Alin, 21.09).
+        raxOfLaLista();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     // ── începe „pâlnia de oferte" ────────────────────────────────────────────────────────────────
@@ -23954,158 +23972,51 @@ const pozitii = await r.json();</code></pre>
     // „Ofertă nouă" pornește de la tarifele NOASTRE de listă, nu de la cifrele scrise în cod.
     window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = _ofTarifeDeBaza(); raxLoadOfertare(); };
     // ── începe „Oferta pe hârtie" ────────────────────────────────────────────────────────────────
-    // Hârtia pe care o citește clientul. Ordinea NU e întâmplătoare: întâi RĂSPUNSUL („cât dau
-    // acum, cât dau lunar"), apoi detalierea care îl justifică. Așa citește un om o ofertă — nu
-    // adună el tabele ca să afle suma.
+    // Oferta se DESCARCĂ, ca un raport: apeși butonul, îți cade un fișier și-l pui unde vrei
+    // (Alin, 21.09 — „asta înseamnă descărcare"). Înainte se deschidea o fereastră de printare din
+    // care salvai tu un PDF; nu era o descărcare, era o rugăminte către browser.
     //
-    // ⚠ Se ține pe O PAGINĂ. Înainte se ducea pe două și se rupea fix prin mijlocul casetei de
-    // plată: titlul rămânea jos pe pagina 1, sumele treceau pe 2. De aceea: spații strânse, iar
-    // fiecare bucată care trebuie citită împreună poartă clasa „impreuna" (nu se taie între pagini).
-    window.raxOfExportPdf = function () {
-      var r = _ofCalc(); var cl = r.cfg.client || {};
-      var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
-      var today = new Date(); var dstr = today.toLocaleDateString('ro-RO');
-      // Termenul vine de la server (`_ofMeta.valabilZile`), ACEEAȘI cifră cu a pâlniei de oferte și
-      // cu fraza din „Observații". Era scris 30 aici, de mână — a doua copie a aceleiași reguli, care
-      // s-ar fi despărțit la prima schimbare (Alin, 21.09). Dacă nu s-a încărcat, hârtia NU inventează
-      // un termen: rândul lipsește cu totul.
-      var validUntil = _ofMeta.valabilZile
-        ? new Date(today.getTime() + _ofMeta.valabilZile * 86400000).toLocaleDateString('ro-RO') : null;
-      var luni = Math.max(1, Number(r.cfg.contractMonths) || 12);
-      var hwLei = r.hwTotal * _fxRate;
-      var unic = r.montaj + hwLei;
-
-      // Orice sumă, în lei ȘI în euro — euro într-o coloană a lui, gri.
-      var eur = function (lei) { return '<td class="e">' + (lei / _fxRate).toFixed(2) + ' €</td>'; };
-      var ron = function (e2) { return '<td class="e">' + (e2 * _fxRate).toFixed(2) + ' lei</td>'; };
-      var dubluLei = function (v) { return v.toFixed(2) + ' lei <span class="ge">(' + (v / _fxRate).toFixed(2) + ' €)</span>'; };
-      var cap = function (t) { return '<tr><th>' + t + '</th><th class="c">Cant.</th><th class="r">Unitar</th><th class="r">Subtotal</th><th class="r">≈ EUR</th></tr>'; };
-
-      var randAbo = r.lines.map(function (l) {
-        return '<tr><td>' + esc(l.label) + (l.extra ? '<div class="sub">' + esc(l.extra) + '</div>' : '') +
-          '</td><td class="c">' + l.qty + '</td><td class="r">' + l.unit.toFixed(2) + ' lei</td>' +
-          '<td class="r b">' + l.total.toFixed(2) + ' lei</td>' + eur(l.total) + '</tr>';
-      }).join('');
-      var randMontaj = r.montajLines.map(function (l) {
-        return '<tr><td>' + esc(l.label) + '</td><td class="c">' + l.qty + (l.perKm ? ' km' : '') +
-          '</td><td class="r">' + l.unit.toFixed(2) + ' lei' + (l.perKm ? '/km' : '') + '</td>' +
-          '<td class="r b">' + l.total.toFixed(2) + ' lei</td>' + eur(l.total) + '</tr>';
-      }).join('');
-      var randEchip = r.deviceLines.map(function (l) {
-        return '<tr><td>' + esc(l.label) + '</td><td class="c">' + l.qty + '</td><td class="r">' + l.unit.toFixed(2) + ' €</td>' +
-          '<td class="r b">' + l.total.toFixed(2) + ' €</td>' + ron(l.total) + '</tr>';
-      }).join('');
-
-      // Ce intră în abonamentul fiecărei mașini — scris pe litere, nu lăsat la ghicit.
-      var incl = ['monitorizare GPS în timp real, pe hartă și pe telefon'];
-      if (r.nCan > 0 || r.nFms > 0) incl.push('date din motorul mașinii (consum, kilometraj, turație)');
-      if (r.cfg.tahograf) incl.push('modulul Tahograf — citirea fișierelor .DDD și termenele legale');
-      if (r.cfg.etransport) incl.push('modulul e-Transport — coduri UIT și raportarea poziției la ANAF');
-      // RA Insight se vinde pe CONT, iar întrebările conturilor intră într-un fond comun al firmei.
-      // Pe hârtie scrie exact asta: și câte conturi, și cât e fondul.
-      var nLocP = Math.max(1, Math.round(Number(r.cfg.aiqSeats) || 1));
-      var fondP = (Number(r.cfg.aiqN) > 0) ? nLocP * Math.round(Number(r.cfg.aiqN)) : 0;
-      if (r.cfg.aiA) incl.push('RA Insight pe ' + nLocP + ' ' + (nLocP === 1 ? 'cont' : 'conturi') +
-        (fondP > 0 ? ' — ' + fondP + ' ' + _rDe(fondP) + 'întrebări pe lună, dintr-un fond comun al firmei' : ' — întrebări nelimitate'));
-      if (r.cfg.agenti) incl.push('cei 6 agenți automați care urmăresc singuri flota și anunță problemele');
-      incl.push('păstrarea datelor pe ' + _ofRetLabel(r.cfg));
-      incl.push('rapoarte, alerte, actualizări și suport tehnic');
-
-      var config = (function () {
-        var f = [];
-        if (r.nPlain > 0) f.push(r.nPlain + ' cu GPS');
-        if (r.nCan > 0) f.push(r.nCan + ' cu date din motor (CAN)');
-        if (r.nFms > 0) f.push(r.nFms + ' camioane cu tahograf (FMS)');
-        return f.length > 1 ? ' — ' + f.join(' · ') : '';
-      })();
-
-      var CSS = '*{box-sizing:border-box;margin:0;padding:0;}' +
-        'body{font-family:"Nunito",-apple-system,sans-serif;color:#1a2235;padding:16px 20px;max-width:820px;margin:0 auto;font-size:12px;line-height:1.35;}' +
-        '.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #16a34a;padding-bottom:9px;margin-bottom:11px;}' +
-        '.brand{font-size:21px;font-weight:800;color:#16a34a;display:flex;align-items:center;gap:6px;}.brand img{height:30px;}' +
-        '.muted{color:#667085;font-size:11px;}.ge{color:#667085;font-weight:600;}.sub{font-size:10.5px;color:#667085;}' +
-        'h2{font-size:12.5px;margin:8px 0 3px;color:#16a34a;text-transform:uppercase;letter-spacing:.4px;}' +
-        'table{width:100%;border-collapse:collapse;margin:4px 0 0;}' +
-        'th{background:#f1f5f9;text-align:left;padding:4px 8px;font-size:9.5px;text-transform:uppercase;color:#475569;font-weight:700;}' +
-        'td{padding:3.5px 8px;border-bottom:1px solid #e9edf2;}' +
-        '.c{text-align:center;}.r{text-align:right;}.b{font-weight:700;}.e{text-align:right;color:#667085;font-size:10.5px;}' +
-        '.tot{text-align:right;font-size:13px;font-weight:800;color:#1a2235;margin-top:3px;}' +
-        '.box{border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px;}' +
-        '.grid2{display:flex;gap:12px;margin-bottom:2px;}.grid2>div{flex:1;}' +
-        '.plata{border:1.5px solid #16a34a;border-radius:10px;padding:8px 11px;margin-bottom:5px;}' +
-        '.plata.unu{border-color:#cbd5e1;}' +
-        '.pcap{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;margin-bottom:3px;}' +
-        '.pcap b:first-child{font-size:12.5px;}.pcap b:last-child{font-size:15px;white-space:nowrap;}' +
-        '.prand{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:2px;}' +
-        'ul{margin:1px 0 0 14px;}li{font-size:10.6px;line-height:1.25;}' +
-        '.foot{margin-top:6px;font-size:9.5px;color:#667085;border-top:1px solid #e2e8f0;padding-top:6px;line-height:1.45;}' +
-        '.impreuna{page-break-inside:avoid;break-inside:avoid;}' +
-        'h2{page-break-after:avoid;break-after:avoid;}' +
-        '@page{size:A4;margin:10mm 9mm;}' +
-        '@media print{.noprint{display:none;}body{padding:0;max-width:none;}}';
-
-      var html = '<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>Ofertă ' + esc(cl.name || 'RA Tracks') + '</title>' +
-        '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">' +
-        '<style>' + CSS + '</style></head><body>' +
-
-        '<div class="head"><div class="brand"><img src="' + esc(logoUrl) + '" onerror="this.style.display=\'none\'">RA Tracks</div>' +
-          '<div style="text-align:right;"><div style="font-size:17px;font-weight:800;">OFERTĂ</div>' +
-          '<div class="muted">Data: ' + dstr + '</div>' + (validUntil ? '<div class="muted">Valabilă până: ' + validUntil + '</div>' : '') + '</div></div>' +
-
-        '<div class="grid2 impreuna"><div class="box"><div class="muted">Către</div>' +
-          '<div style="font-weight:700;font-size:13px;">' + esc(cl.name || '—') + '</div>' +
-          (cl.cui ? '<div class="muted">CUI: ' + esc(cl.cui) + '</div>' : '') +
-          (cl.contact ? '<div class="muted">' + esc(cl.contact) + '</div>' : '') + '</div>' +
-          '<div class="box"><div class="muted">Configurație</div>' +
-          '<div>' + r.cfg.nVeh + ' ' + _rDe(r.cfg.nVeh) + 'vehicule' + config + '</div>' +
-          '<div class="muted">Păstrare date: ' + _ofRetLabel(r.cfg) + (r.cfg.aiA ? ' · RA Insight inclus' : '') + '</div></div></div>' +
-
-        // ── RĂSPUNSUL, primul ──
-        '<h2>Cum se plătește</h2>' +
-        (unic > 0 ?
-          '<div class="plata unu impreuna">' +
-            '<div class="pcap"><b>1. La semnarea contractului, o singură dată</b><b>' + dubluLei(unic) + '</b></div>' +
-            (r.hwTotal > 0 ? '<div class="prand"><span class="muted">Echipamente și module</span><span>' + dubluLei(hwLei) + '</span></div>' : '') +
-            (r.montaj > 0 ? '<div class="prand"><span class="muted">Montaj și punere în funcțiune</span><span>' + dubluLei(r.montaj) + '</span></div>' : '') +
-            '<div class="muted" style="margin-top:5px;">Se facturează o singură dată. Echipamentele rămân proprietatea clientului; montajul îl facem noi, la sediul dumneavoastră.</div>' +
-          '</div>' : '') +
-        '<div class="plata impreuna">' +
-          '<div class="pcap"><b style="color:#16a34a;">' + (unic > 0 ? '2' : '1') + '. Apoi, în fiecare lună</b><b style="color:#16a34a;">' + dubluLei(r.monthly) + '</b></div>' +
-          '<div class="muted" style="margin-bottom:4px;">Abonament pentru ' + r.cfg.nVeh + ' ' + _rDe(r.cfg.nVeh) + 'vehicule, facturat lunar pe toată durata contractului (' + luni + ' ' + _rDe(luni) + 'luni). Total pe ' + luni + ' ' + _rDe(luni) + 'luni: ' + dubluLei(r.monthly * luni) + '.</div>' +
-          '<div style="font-size:11.5px;"><b>Abonamentul lunar include, pentru fiecare mașină:</b>' +
-          '<ul>' + incl.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' +
-          // Regula conturilor, scrisă pe hârtie: fără ea, clientul n-ar ști de ce factura din
-          // noiembrie e alta decât cea din octombrie.
-          ((r.cfg.aiA && Number(r.p.pAiA) > 0)
-            ? '<div class="muted" style="margin-top:5px;font-size:10.5px;">Prețul unui cont de RA Insight este ' +
-              Number(r.p.pAiA).toFixed(2) + ' lei/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. ' +
-              'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.</div>'
-            : '') +
-        '</div>' +
-
-        // ── DETALIEREA, pe urmă ──
-        '<div class="impreuna"><h2>Detaliere abonament lunar</h2>' +
-          '<table><thead>' + cap('Componentă') + '</thead><tbody>' + randAbo + '</tbody></table>' +
-          '<div class="tot">Total lunar: ' + dubluLei(r.monthly) + '</div></div>' +
-
-        (unic > 0 ? '<h2>Detaliere costuri unice</h2>' +
-          (r.hwTotal > 0 ? '<div class="impreuna"><div class="muted" style="margin-top:5px;font-weight:700;">Echipamente</div>' +
-            '<table><thead><tr><th>Echipament</th><th class="c">Cant.</th><th class="r">Unitar</th><th class="r">Subtotal</th><th class="r">≈ RON</th></tr></thead>' +
-            '<tbody>' + randEchip + '</tbody></table>' +
-            '<div class="tot" style="font-size:12px;">Total echipamente: ' + r.hwTotal.toFixed(2) + ' € <span class="ge">(' + hwLei.toFixed(2) + ' lei)</span></div></div>' : '') +
-          (r.montaj > 0 ? '<div class="impreuna"><div class="muted" style="margin-top:7px;font-weight:700;">Montaj și punere în funcțiune</div>' +
-            '<table><thead>' + cap('Operațiune') + '</thead><tbody>' + randMontaj + '</tbody></table>' +
-            '<div class="tot" style="font-size:12px;">Total montaj: ' + dubluLei(r.montaj) + '</div></div>' : '') : '') +
-
-        (r.cfg.notes ? '<div class="impreuna"><h2>Observații</h2><div class="box">' + esc(r.cfg.notes).replace(/\n/g, '<br>') + '</div></div>' : '') +
-
-        '<div class="foot">RA Tracks · ratrack.ro · Prețurile nu includ TVA. Sumele în euro sunt informative, la cursul BNR din ' + (_fxDate || dstr) + ': 1 € = ' + _fxRate.toFixed(4) + ' lei; facturarea se face în lei.</div>' +
-        '<div class="noprint" style="margin-top:18px;text-align:center;"><button onclick="window.print()" style="background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">🖨 Printează / Salvează PDF</button></div>' +
-        '</body></html>';
-
-      var w = window.open('', '_blank', 'width=880,height=980');
-      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile pentru PDF', 'error'); return; }
-      w.document.open(); w.document.write(html); w.document.close();
+    // Hârtia se face pe SERVER (`report_export.js` → `sendOfertaPdf`), acolo unde stau logo-ul,
+    // fonturile cu diacritice și regula de denumire a fișierelor. O a doua cale de export, scrisă
+    // aici, s-ar fi despărțit de ele — exact ce spune regula casei despre rapoarte.
+    //
+    // Ecranul trimite CIFRELE pe care le-a socotit (nu se socotesc a doua oară pe server), iar
+    // numele fișierului îl citim din antetul răspunsului — nu-l inventăm aici.
+    window.raxOfExportPdf = async function () {
+      var r = _ofCalc();
+      // Se trimit FAPTELE, nu frazele: câte mașini, ce module are bifate, câte conturi de RA
+      // Insight. Textele pe care le citește clientul se scriu pe server, într-un singur loc — dacă
+      // le-aș compune aici, hârtia ar avea două autori.
+      var nLoc = Math.max(1, Math.round(Number(r.cfg.aiqSeats) || 1));
+      var payload = {
+        client: r.cfg.client, offerName: r.cfg.offerName, notes: r.cfg.notes,
+        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate,
+        lines: r.lines, monthly: r.monthly, annual: r.annual, contractTotal: r.contractTotal,
+        montajLines: r.montajLines, montaj: r.montaj,
+        deviceLines: r.deviceLines, hwTotal: r.hwTotal,
+        nVeh: r.cfg.nVeh, cuDateMotor: (r.nCan > 0 || r.nFms > 0),
+        tahograf: !!r.cfg.tahograf, etransport: !!r.cfg.etransport, agenti: !!r.cfg.agenti,
+        aiA: !!r.cfg.aiA, aiqConturi: nLoc, aiqFond: _aiqFond(nLoc, r.cfg.aiqN),
+        pretCont: Number(r.p.pAiA) || 0, retentie: _ofRetLabel(r.cfg)
+      };
+      try {
+        var resp = await fetch('/api/admin/offers/pdf', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var blob = await resp.blob();
+        var nume = 'ofertă.pdf';
+        var cd = resp.headers.get('content-disposition') || '';
+        var m = cd.match(/filename\*?=(?:UTF-8\'\')?"?([^";]+)"?/i);
+        if (m) { try { nume = decodeURIComponent(m[1]); } catch (e) { nume = m[1]; } }
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = nume; document.body.appendChild(a); a.click();
+        a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        if (window.raxToast) raxToast('Oferta s-a descărcat ✓', 'success');
+      } catch (e) {
+        if (window.raxToast) raxToast('Descărcarea nu a mers: ' + e.message, 'error');
+      }
     };
     // ── sfârșit „Oferta pe hârtie" ──
     window.raxDeleteCompany = async function (id) {
@@ -25062,7 +24973,12 @@ const pozitii = await r.json();</code></pre>
     // „15 minute", dar „24 DE ore": în română, numeralul cere „de" de la 20 în sus (mai exact, când
     // ultimele două cifre NU sunt între 1 și 19). Cifrele vin de la server și se pot schimba, deci
     // cuvântul se potrivește singur — altfel ajungem cu „15 de minute" scris pe ecran.
-    function _raxDe(n) { var u = Math.abs(Number(n) || 0) % 100; return (u >= 1 && u <= 19) ? ' ' : ' de '; }
+    //
+    // Regula NU se scrie a doua oară: e deja în `_rDe`, folosit de calculatorul de ofertă. Aici doar
+    // i se pune spațiul din față, fiindcă la ofertă se scrie „12 ' + _rDe(12) + 'luni" (spațiul e în
+    // șir), iar la ecranele pe firme se scrie „12' + _raxDe(12) + 'luni". Aceeași socoteală, o
+    // singură dată. (Scrisesem întâi o copie a ei — prinsă recitind, 21.09.)
+    function _raxDe(n) { return ' ' + _rDe(n); }
     function _raxCand(iso) {
       if (!iso) return '—';
       var z = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);

@@ -182,17 +182,31 @@ T('în aplicație: două blocuri, o dată și lunar', /La semnare, o singură da
 T('spune că se facturează o singură dată, la semnare', /Se facturează o singură dată, la semnarea contractului/.test(PL));
 T('spune că abonamentul e lunar, pe toată durata contractului', /facturat în fiecare lună, pe toată durata contractului/.test(PL));
 T('și cât face pe tot contractul', /Pe ' \+ luni \+ ' ' \+ _rDe\(luni\) \+ 'luni/.test(PL));
-const PD = html.slice(html.indexOf('window.raxOfExportPdf'), html.indexOf('window.raxDeleteCompany'));
-T('pe hârtie: „Cum se plătește", nu „Cât plătiți"', /<h2>Cum se plătește<\/h2>/.test(PD) && !/<h2>Cât plătiți<\/h2>/.test(PD));
-T('pasul 1 e la semnarea contractului', /La semnarea contractului, o singură dată/.test(PD));
-T('pasul 2 e lunar, cu totalul pe contract', /Apoi, în fiecare lună/.test(PD) && /Total pe ' \+ luni/.test(PD));
+// ── Hârtia clientului s-a mutat pe SERVER (21.09): se descarcă un fișier, nu se mai deschide o
+// fereastră de printare. Cerințele de CONȚINUT au rămas aceleași — doar locul s-a schimbat, deci
+// probele se uită acum în `report_export.js`. Ce NU mai are sens sunt regulile CSS de rupere între
+// pagini (`page-break-inside`): în PDF paginile le face `spatiu()`, care mută blocul întreg pe
+// pagina următoare dacă nu încape. Acolo se uită proba acum.
+const PD = (function () {
+  const rex = fs.readFileSync('./report_export.js', 'utf8');
+  const a = rex.indexOf('// ─── începe „oferta, ca fișier descărcat"');
+  const b = rex.indexOf('// ─── sfârșit „oferta, ca fișier descărcat"');
+  if (a < 0 || b < 0) throw new Error('nu găsesc blocul hârtiei în report_export.js');
+  return rex.slice(a, b);
+})();
+T('pe hârtie: „Cum se plătește", nu „Cât plătiți"', /CUM SE PLĂTEȘTE/.test(PD) && !/Cât plătiți/.test(PD));
+T('pasul 1 e la semnarea contractului', /\. La semnarea contractului, o singură dată/.test(PD));
+T('pasul 2 e lunar, cu totalul pe contract', /\. Apoi, în fiecare lună/.test(PD) && /Total pe ' \+ luni/.test(PD));
 T('scrie că echipamentele rămân ale clientului', /rămân proprietatea clientului/.test(PD));
 T('și înșiră ce include abonamentul, pe fiecare mașină', /Abonamentul lunar include, pentru fiecare mașină/.test(PD));
 T('lista de incluse pornește de la monitorizarea GPS', /monitorizare GPS în timp real/.test(PD));
 T('și pomenește modulele doar dacă sunt bifate',
-  /if \(r\.cfg\.tahograf\) incl\.push/.test(PD) && /if \(r\.cfg\.etransport\) incl\.push/.test(PD));
-T('blocurile nu se mai rup între pagini', /\.plata\{page-break-inside:avoid;break-inside:avoid;\}|table,\.box,\.plata\{page-break-inside:avoid/.test(PD + html));
-T('nici titlul nu rămâne singur la baza paginii', /h2\{page-break-after:avoid/.test(html));
+  /if \(o\.tahograf\) L\.push/.test(PD) && /if \(o\.etransport\) L\.push/.test(PD));
+T('blocurile nu se rup între pagini (în PDF o face `spatiu`)',
+  /const spatiu = \(h\) => \{ if \(y \+ h > bottom\) \{ doc\.addPage\(\)/.test(PD));
+T('și fiecare bucată care se citește împreună cere loc ÎNAINTE să se deseneze',
+  (PD.match(/spatiu\(/g) || []).length >= 6, String((PD.match(/spatiu\(/g) || []).length));
+
 // „20 de vehicule", dar „12 luni"
 const DE = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
 T('„20 de vehicule"', DE(20) === 'de ');
@@ -203,24 +217,20 @@ T('„1 vehicul"', DE(1) === '');
 T('zero nu devine „0 de vehicule"', DE(0) === '');
 
 sect('3c-bis. RA Insight pe hârtia clientului');
-T('scrie pe câte CONTURI se dă', /RA Insight pe ' \+ nLocP/.test(PD), 'lipsește numărul de conturi');
+T('scrie pe câte CONTURI se dă', /'RA Insight pe ' \+ n \+ ' ' \+ \(n === 1 \? 'cont' : 'conturi'\)/.test(PD), 'lipsește numărul de conturi');
 T('și cât e fondul comun de întrebări', /dintr-un fond comun al firmei/.test(PD));
 T('scrie prețul unui cont, ca regula să fie pe hârtie', /Prețul unui cont de RA Insight este /.test(PD));
 T('și că numărul de conturi se schimbă din aplicație', /Numărul de conturi se modifică oricând din aplicație/.test(PD));
 T('și că la epuizare se oprește, fără costuri suplimentare', /nu există costuri suplimentare/.test(PD));
-T('nota apare DOAR dacă s-a vândut RA Insight', /r\.cfg\.aiA && Number\(r\.p\.pAiA\) > 0/.test(PD));
+T('nota apare DOAR dacă s-a vândut RA Insight', /if \(o\.aiA && Number\(o\.pretCont\) > 0\)/.test(PD));
 
 sect('3d. Hârtia se ține pe o pagină');
 T('răspunsul („cum se plătește") vine ÎNAINTEA tabelelor',
-  PD.indexOf('Cum se plătește') < PD.indexOf('Detaliere abonament lunar'), 'ordinea secțiunilor');
-T('costurile unice sunt sub un singur titlu', /<h2>Detaliere costuri unice<\/h2>/.test(PD));
-T('fiecare bucată care se citește împreună e marcată', (PD.match(/impreuna/g) || []).length >= 6,
-  String((PD.match(/impreuna/g) || []).length));
-T('marcajul chiar oprește ruperea între pagini', /\.impreuna\{page-break-inside:avoid;break-inside:avoid;\}/.test(PD));
-T('un titlu nu rămâne singur la baza paginii', /h2\{page-break-after:avoid;break-after:avoid;\}/.test(PD));
-T('regulile de pagină NU stau doar în @media print (le sare pdf-ul din browser)',
-  PD.indexOf('.impreuna{page-break-inside') < PD.indexOf('@media print'));
-T('nu se mai repetă „Anual / Contract N luni" (e deja în caseta de plată)', !/Anual: ' \+ r\.annual/.test(PD));
+  PD.indexOf('CUM SE PLĂTEȘTE') < PD.indexOf('Detaliere abonament lunar'), 'ordinea secțiunilor');
+T('costurile unice au titlurile lor',
+  /Detaliere costuri unice — montaj/.test(PD) && /Detaliere costuri unice — aparate/.test(PD));
+T('și apar doar dacă există ceva de plătit la început', /if \(unic > 0\) \{[\s\S]{0,120}Detaliere costuri unice/.test(PD));
+T('nu se mai repetă „Anual / Contract N luni" (e deja în caseta de plată)', !/Anual \(×12\)/.test(PD));
 
 sect('4. Moneda dublă — nicio sumă singură pe ecran');
 // Celulele de tabel din rezumat trebuie să treacă prin _celLei/_celEur (care scriu ambele monede).
@@ -243,13 +253,19 @@ const listaEur = (html.match(/var _OF_CAMP_EUR = \[([\s\S]*?)\];/) || [])[1] || 
 ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'].forEach(function (k) {
   T('aparatul „' + k + '" are echivalent în lei', listaEur.indexOf("'" + k + "'") >= 0);
 });
-// Pe hârtia clientului (PDF-ul ofertei): coloană de euro la fiecare tabel + cursul scris jos
-const pdf = html.slice(html.indexOf('window.raxOfExportPdf'), html.indexOf('window.raxDeleteCompany'));
-T('PDF-ul are coloană „≈ EUR" la abonament', /≈ EUR/.test(pdf));
-T('PDF-ul are coloană „≈ RON" la echipamente', /≈ RON/.test(pdf));
-T('totalul lunar din PDF are și euro', /Total lunar: ' \+ dubluLei\(r\.monthly\)/.test(pdf));
-T('și fiecare sumă de pe hârtie trece prin dubluLei (lei + euro)',
-  /var dubluLei = function \(v\) \{ return v\.toFixed\(2\) \+ ' lei[\s\S]{0,90}_fxRate/.test(pdf));
+// Pe hârtia clientului: coloană de euro la fiecare tabel + cursul scris jos. Hârtia se face din
+// 21.09 pe server, deci `pdf` e chiar blocul de acolo (`PD`, decupat mai sus).
+const pdf = PD;
+T('PDF-ul are coloană „≈ EUR" la abonament', /'≈ lei' : '≈ EUR'/.test(pdf));
+T('PDF-ul are coloană „≈ lei" la echipamente (acolo prețul e în euro)',
+  /moneda === 'EUR' \? _ofFmt\(eur2lei\(r\.total\)\)/.test(pdf));
+T('totalul lunar din PDF are și euro', /dublu\(o\.monthly\)/.test(pdf));
+// Pe NUME, nu pe numărătoare: cele trei sume mari de pe hârtie (ce dă la început, ce dă lunar,
+// cât face pe tot contractul) trebuie să treacă fiecare prin `dublu`. Un prag de tipul „cel puțin
+// N” ar fi fost o cifră ghicită, care pică la prima rearanjare.
+T('și fiecare sumă mare de pe hârtie trece prin `dublu` (lei + euro)',
+  /const dublu = \(v\) => _ofFmt\(v\) \+ ' lei \(' \+ _ofFmt\(lei2eur\(v\)\) \+ ' €\)'/.test(pdf)
+  && /dublu\(unic\)/.test(pdf) && /dublu\(o\.monthly\)/.test(pdf) && /dublu\(o\.contractTotal\)/.test(pdf));
 T('PDF-ul spune cursul folosit și că se facturează în lei', /facturarea se face în lei/.test(pdf));
 
 sect('5. Un singur loc pentru tarifele de pornire');
@@ -389,8 +405,9 @@ const ctr = fs.readFileSync('./contracts.js', 'utf8');
 T('prețul contului se îngheață în anexă', /out\.aiSeatPriceRON = Math\.round/.test(ctr));
 T('împreună cu câte întrebări aduce', /out\.aiQuestionsPerSeat = /.test(ctr));
 T('și vine din ofertă', /aiSeatPriceRON: _cfgOf\.aiA \?/.test(server));
-T('aceeași regulă e scrisă și pe ofertă', /Prețul unui cont de RA Insight este /.test(html) &&
-  /nu există costuri suplimentare/.test(html));
+// Regula stă pe hârtia clientului, care din 21.09 se face pe server.
+T('aceeași regulă e scrisă și pe ofertă', /Prețul unui cont de RA Insight este /.test(PD) &&
+  /nu există costuri suplimentare/.test(PD));
 
 sect('6e. Ofertare Live — câmpuri, bife și butoane');
 const css2 = fs.readFileSync('./public/css/app.css', 'utf8');

@@ -123,8 +123,11 @@ T('care adună MONTAJUL și ECHIPAMENTELE', /var unic = \(r\.montaj \|\| 0\) \+ 
 T('cu echipamentele transformate în lei', /var hwLei = \(r\.hwTotal \|\| 0\) \* _fxRate;/.test(html));
 T('spune limpede ce se dă o dată și ce se dă lunar',
   /La semnare, o singură dată/.test(html) && /Apoi, lunar/.test(html));
+// Hârtia clientului s-a mutat pe server (21.09): se descarcă un fișier, nu se mai printează o
+// fereastră. Răspunsul e același, doar locul s-a schimbat.
+const REX = fs.readFileSync('./report_export.js', 'utf8');
 T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
-  /<h2>Cum se plătește<\/h2>/.test(html) && /La semnarea contractului, o singură dată/.test(html) && /Apoi, în fiecare lună/.test(html));
+  /CUM SE PLĂTEȘTE/.test(REX) && /La semnarea contractului, o singură dată/.test(REX) && /Apoi, în fiecare lună/.test(REX));
 
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.

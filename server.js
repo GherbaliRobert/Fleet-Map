@@ -12851,6 +12851,18 @@ const OFERTA_MOTIVE_PIERDUT = [
 app.get('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listOffers()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Oferta ca FIȘIER descărcat, nu ca fereastră de printare (Alin, 21.09: „la fel ca la rapoarte").
+// Cifrele vin de pe ecran, socotite acolo — ruta doar le pune pe hârtie. E un document, nu un rând
+// în bază: nu se salvează nimic aici. Termenul de valabilitate îl pune SERVERUL, din aceeași
+// constantă ca pâlnia, ca hârtia să nu poată spune alt termen decât ecranul.
+app.post('/api/admin/offers/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Descărcarea nu e disponibilă pe serverul ăsta.' });
+    const o = req.body || {};
+    o.valabilZile = OFERTA_VALABIL_ZILE;
+    await reportExport.sendOfertaPdf(res, o);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Cuvintele și termenul, pentru ecran. ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA oricărei
 // `/api/admin/offers/:id`.
 app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => {

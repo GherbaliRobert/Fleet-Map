@@ -95,6 +95,49 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Oferta se DESCARCĂ, lista urcă sus, tarifele se schimbă unde se folosesc
+
+Alin, în continuarea trecerii prin calculator: *„tarife editabile, buton, și la punctul 4 la montaj,
+că e esențial"* … *„când salvezi o ofertă, meniul de jos să se ducă sus de tot. Și vreau, când dai
+descarcă oferta, să fie la fel ca la rapoarte — să-ți alegi unde o descarci. Asta înseamnă descărcare."*
+
+**1. Prețul stă acum lângă cantitatea lui.** La pasul 4 (Montajul) și 5 (Aparatele), fiecare rând are
+acum **cantitate × preț**, amândouă editabile, cu butonul „Salvează ca tarifele noastre" chiar în
+cartea aia. Înainte tariful era o etichetă moartă („buc · 120€") și se schimba dintr-un panou pliat,
+mai jos: te uitai la o linie și trebuia să cauți în altă parte ca s-o schimbi.
+
+Câmpurile s-au **mutat**, nu s-au copiat — două casete cu același nume ar fi rupt socoteala. În
+panoul pliat au rămas doar tarifele care n-au pas propriu: abonamentul lunar și păstrarea datelor.
+Prețurile primesc și pas zecimal, altfel browserul refuza „12,50".
+
+**2. Lista de oferte a urcat sus**, sub antet. Stătea la baza paginii, după șase secțiuni de
+formular. Acum e primul lucru pe care-l vezi când intri: pâlnia de vânzări, apoi calculatorul pentru
+una nouă. Iar **după ce salvezi, te duce acolo** — să vezi unde a intrat ciorna.
+
+**3. Oferta se DESCARCĂ, ca un raport.** Până acum se deschidea o fereastră de printare din care
+salvai tu un PDF. Nu era o descărcare, era o rugăminte către browser. Acum apeși butonul și **îți
+cade un fișier**, cu numele casei:
+
+> `RA-Tracks - Ofertă Transbet Logistic SRL - 21.09.2026.pdf`
+
+Hârtia se face pe **server**, în `report_export.js`, lângă cea a rapoartelor — acolo unde stau
+logo-ul, fonturile cu diacritice și regula de denumire. O a doua cale de export, scrisă în pagină,
+s-ar fi despărțit de ele.
+
+Am și **desenat PDF-ul și m-am uitat la el**, nu l-am presupus: o pagină, antet cu logo, firma,
+abonamentul lunar, caseta verde cu totalul, montajul, aparatele, „de plată la început", observațiile
+și cursul BNR. Toate sumele în lei și în euro.
+
+- **Ce am schimbat:** tarifele se schimbă unde se folosesc, lista e sus, iar oferta chiar se descarcă.
+- **Ce vede fondatorul:** preț lângă cantitate la pașii 4 și 5, pâlnia sus, un fișier PDF la un clic.
+- **Ce vede clientul:** aceeași ofertă, pe o hârtie făcută acum de server, cu marca noastră pe ea.
+
+**⚠ Un lucru găsit pe drum, care NU e de la mine:** fișierele de logo (`public/logo.png` și
+`public/logo-light.png`) scriu **„RA | traks"**, nu „RA Tracks". Ele ajung pe **fiecare** PDF și
+Excel trimis clienților. Aplicația scrie „Tracks" peste tot în interfață, iar domeniul e ratrack.ro —
+deci undeva e o nepotrivire. E trecută la „De verificat înainte de lansare"; nu am atins fișierele,
+fiindcă e o hotărâre de brand, nu de cod.
+
 ### FONDATOR · Calculatorul de ofertă: șase lucruri, după o trecere prin el cu Alin
 
 Alin a umblat prin calculator și a pus șase întrebări. Toate aveau în spate câte ceva de reparat.
@@ -7641,6 +7684,14 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **(Alin) Logo-ul scrie „traks", nu „Tracks".** `public/logo.png` și `public/logo-light.png` au
+  în ele textul **„RA | traks"**. Imaginile astea intră pe **fiecare** raport PDF, pe fiecare Excel și
+  pe oferta descărcată — adică pe tot ce ajunge la client. În interfață scrie „RA Tracks", domeniul e
+  ratrack.ro, iar în aplicație logo-ul e scris cu litere (`.ralogo .raw` = „Tracks"), deci arată
+  altfel decât imaginea. Ori e o scriere de brand voită și atunci o lăsăm peste tot la fel, ori e o
+  greșeală veche în fișier și trebuie refăcute cele două imagini. **Nu am atins fișierele** — e
+  hotărâre de brand, nu de cod (găsit 21.09, uitându-mă la PDF-ul ofertei).
 
 - [ ] **(Alin) Cât ne costă PE NOI un aparat?** ✅ *Infrastructura e GATA (21.09).* În Ofertare Live,
   blocul „Ce rămâne la noi" + panoul de costuri așteaptă cifrele. **Rămâne de completat de voi**, în

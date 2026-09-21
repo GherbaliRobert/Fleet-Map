@@ -124,12 +124,19 @@ T('aparatele se socotesc la cursul din OFERTĂ', /var fx = r\.cfg\.fxRate \|\| _
 T('RA Insight nu se numără de două ori',
   /RA Insight[\s\S]{0,120}var incasamLunar = \(r\.monthly \|\| 0\) - lunarAi/.test(PROF));
 T('spune în cât timp ne scoatem banii', /recuperare:/.test(PROF));
-// Partea cea mai importantă: pe hârtia CLIENTULUI n-are ce căuta. PDF-ul se construiește din altă
-// funcție; proba se uită să nu ajungă vreodată să cheme blocul de profit.
-const PDF = bloc(html, 'window.raxOfExportPdf = function ()', 'window.raxDeleteCompany');
-T('hârtia clientului nu cheamă blocul de profit',
-  !/_ofBlocProfit|_ofProfit|_costNoastre|rămâne la noi/.test(PDF));
-T('și nici nu pomenește costurile noastre', !/ne costă|Costurile noastre/.test(PDF));
+// Partea cea mai importantă: pe hârtia CLIENTULUI n-are ce căuta. Din 21.09 hârtia se face pe
+// SERVER (`renderOfertaPdf`), deci acolo se uită proba — plus la ce TRIMITE ecranul: dacă profitul
+// n-ajunge în pachet, n-are cum să apară pe hârtie.
+const PDFSRV = bloc(fs.readFileSync(P('report_export.js'), 'utf8'),
+  '// ─── începe „oferta, ca fișier descărcat"', '// ─── sfârșit „oferta, ca fișier descărcat"');
+const PDFOF = bloc(html, '// ── începe „Oferta pe hârtie"', '// ── sfârșit „Oferta pe hârtie"');
+// „Detaliere costuri unice" sunt costurile CLIENTULUI — alea au ce căuta pe hârtie. Se caută
+// exact ce NU trebuie să ajungă acolo: cifrele NOASTRE. (Prima variantă căuta doar „costuri" și
+// se împiedica de titlul de secțiune.)
+T('hârtia nu știe nimic despre costurile noastre',
+  !/_costNoastre|costuri_noastre|cVehLuna|profit|rămâne la noi|ne costă/i.test(PDFSRV));
+T('și ecranul nici nu i le trimite',
+  !/costuri|profit|cVehLuna/i.test(PDFOF));
 
 sect('5c. Calculatorul: butonul cinstit, textele care se scriu singure, tarifele care rămân');
 const TXT = bloc(html, '// ── începe „textele care se scriu singure"', '// ── sfârșit „textele care se scriu singure"');
@@ -145,9 +152,8 @@ T('numele ofertei se scrie singur din client', /window\.raxOfNumeAuto = function
 T('dar se oprește dacă scrie omul', /function _ofPropuneText\(id, val\)[\s\S]{0,200}if \(_ofAtinse\[id\]\) return;/.test(TXT));
 T('fraza de valabilitate vine de la server, nu e scrisă aici',
   /var z = _ofMeta\.valabilZile;/.test(TXT) && !/\b30\b/.test(faraComentarii(TXT)));
-T('și hârtia folosește ACEEAȘI cifră',
-  /var validUntil = _ofMeta\.valabilZile/.test(PDF) && !/30 \* 86400000/.test(faraComentarii(PDF)));
-T('fără termen știut, hârtia nu inventează unul', /validUntil \? '<div class="muted">Valabilă până: '/.test(PDF));
+T('și hârtia folosește ACEEAȘI cifră (o pune serverul, din constantă)',
+  /o\.valabilZile = OFERTA_VALABIL_ZILE;/.test(server) && !/30 \* 86400000/.test(faraComentarii(PDFSRV)));
 T('pasul 2 explică CAN vs FMS', /priza standard de camion/.test(html) && /modul LV-CAN200<\/b>, cumpărat și montat separat/.test(html));
 T('și de ce o mașină cu CAN are două linii de montaj', /mai are o linie de montaj deasupra — munca în plus/.test(html));
 T('serverul ține tarifele de listă', /const TARIF_CHEI = \[/.test(TARS) && /function _tarifeCurate\(b\)/.test(TARS));
@@ -161,6 +167,47 @@ T('există butonul care le face tarifele casei',
   /window\.raxOfSalveazaTarife = async function/.test(TAR) && /Salvează ca tarifele noastre/.test(html));
 T('o ofertă deschisă din listă își ține prețurile ei negociate',
   /if \(_raxOf\.editingId == null\) _raxOf\.prices = _ofTarifeDeBaza\(\);/.test(html));
+
+sect('5d. Oferta se DESCARCĂ, ca un raport');
+// Se „descărca" deschizând o fereastră de printare din care salvai tu un PDF. Nu era o descărcare,
+// era o rugăminte către browser (Alin, 21.09: „asta înseamnă descărcare").
+T('nu mai deschide o fereastră de printare', !/window\.open/.test(PDFOF) && !/window\.print/.test(PDFOF));
+T('cere fișierul de la server', /fetch\('\/api\/admin\/offers\/pdf'/.test(PDFOF));
+T('și îl salvează ca fișier', /a\.download = nume/.test(PDFOF) && /URL\.createObjectURL\(blob\)/.test(PDFOF));
+T('numele vine din antetul răspunsului, nu inventat în pagină', /content-disposition/i.test(PDFOF));
+T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
+T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));
+T('cu logo-ul pentru fundal alb, ca rapoartele', /const logo = _logoBuffer\(\)/.test(PDFSRV));
+T('fără termen știut, hârtia NU inventează unul',
+  /Number\(o\.valabilZile\) > 0 \? new Date/.test(PDFSRV) && /pana \? '     Valabilă până: '/.test(PDFSRV));
+T('ruta e doar a noastră',
+  /app\.post\('\/api\/admin\/offers\/pdf', requireAuth, requireSuperadmin/.test(server));
+T('termenul îl pune SERVERUL, din aceeași constantă', /o\.valabilZile = OFERTA_VALABIL_ZILE;/.test(server));
+
+sect('5e. Tarifele se schimbă acolo unde se folosesc');
+T('cantitatea și prețul stau pe același rând', /function qp\(idQ, idP, pret, um, umPret\)/.test(html));
+T('montajul are prețul lângă cantitate', /row\('Instalare dispozitiv GPS', qp\('of-qGps', 'of-mGps'/.test(html));
+T('aparatele, la fel', /row\('Teltonika FMC650', qp\('of-dq650', 'of-dFmc650'/.test(html));
+T('prețurile primesc pas zecimal (altfel browserul refuză „12,50")',
+  /fNum\(idP, pret, '', 78, 0\.01\)/.test(html));
+T('butonul de salvare e scris o dată și refolosit',
+  /function butonTarife\(text\)/.test(html) && (html.match(/butonTarife\(deTarife\)/g) || []).length >= 3);
+// Mutarea, nu copierea: două casete cu același nume ar face `_ofReadPrices` să citească prima găsită.
+const deDouaOri = ['mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
+  'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan', 'pPlain', 'pCan', 'pFms']
+  .filter(k => (html.match(new RegExp("'of-" + k + "'", 'g')) || []).length !== 1);
+T('niciun câmp de preț nu apare de două ori', deDouaOri.length === 0, deDouaOri.join(','));
+T('panoul pliat a rămas doar cu tarifele lunare',
+  /Tarife lunare \(editabile\)/.test(html));
+
+sect('5f. Lista de oferte e SUS, și te duce la ea după salvare');
+// ⚠ `indexOf` întoarce -1 când nu găsește — iar -1 e „mai mic" decât orice. Prima variantă a probei
+// trecea liniștită și dacă lista dispărea cu totul. De-aia se cere ÎNTÂI ca amândouă să existe.
+const iLista = html.indexOf("'<div id=\"rax-of-list\" style=\"margin-bottom:22px;\"></div>' +");
+const iGrila = html.indexOf("'<div class=\"raof-grid\">' +");
+T('lista se desenează înaintea calculatorului', iLista >= 0 && iGrila >= 0 && iLista < iGrila,
+  'listă la ' + iLista + ', grilă la ' + iGrila);
+T('după salvare sare la ea', /raxOfLoadList\(\);[\s\S]{0,220}raxOfLaLista\(\);/.test(html));
 
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));
@@ -247,6 +294,26 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   T('ce am lăsat gol înseamnă „ia-l din cod", nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
   T('și o cifră fără sens, la fel', tar1.pCan === null, JSON.stringify(tar1.pCan));
 
+  sect('7d. Pe server pornit: oferta chiar vine ca fișier');
+  const pdfResp = await POST('/api/admin/offers/pdf', {
+    client: { name: 'CI Transbet SRL', cui: 'RO123', contact: 'birou@ci.ro' },
+    notes: 'Ofertă valabilă 30 de zile de la trimitere.', contractMonths: 12, fxRate: 5.05,
+    lines: [{ label: 'Vehicule GPS (fără CAN)', qty: 10, unit: 29, total: 290 }],
+    monthly: 290, annual: 3480, contractTotal: 3480,
+    montajLines: [{ label: 'Instalare dispozitiv GPS', qty: 10, unit: 100, total: 1000 }], montaj: 1000,
+    deviceLines: [{ label: 'Teltonika FMC650', qty: 10, unit: 120, total: 1200 }], hwTotal: 1200
+  });
+  T('ruta răspunde', pdfResp.status === 200, 'a dat ' + pdfResp.status);
+  T('trimite un PDF', /application\/pdf/.test(pdfResp.headers.get('content-type') || ''),
+    pdfResp.headers.get('content-type'));
+  const cd = pdfResp.headers.get('content-disposition') || '';
+  T('ca DESCĂRCARE, nu ca pagină deschisă', /^attachment;/.test(cd), cd.slice(0, 60));
+  T('cu numele brandat al casei', /RA-Tracks - Ofert/.test(cd) && /CI Transbet SRL/.test(decodeURIComponent(cd)),
+    cd.slice(0, 120));
+  const buf = Buffer.from(await pdfResp.arrayBuffer());
+  T('și e un PDF adevărat, nu o pagină de eroare', buf.slice(0, 5).toString() === '%PDF-' && buf.length > 3000,
+    buf.slice(0, 5).toString() + ' · ' + buf.length + ' octeți');
+
   sect('8. Ruta e doar a noastră');
   const { puneParola } = require('./test_parola');
   const co = (await (await POST('/api/companies', { name: 'CI Ofertare' })).json()).id;
@@ -265,6 +332,8 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
     // Cât ne costă pe NOI un aparat e cel mai sensibil număr din aplicație.
     T('și nu află cât ne costă pe noi aparatele',
       (await GET('/api/admin/system-settings', ckSef)).status === 403);
+    T('și nu-și poate scoate singur o ofertă pe hârtie',
+      (await POST('/api/admin/offers/pdf', { client: { name: 'X' } }, ckSef)).status === 403);
   }
 
   console.log('\n──────────────────────────────');

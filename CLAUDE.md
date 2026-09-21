@@ -177,6 +177,32 @@ exact ca `_ofPropune` la cantități. Cifra N vine de la server (`_ofMeta.valabi
 pentru frază, pentru hârtie și pentru pâlnia de oferte — era scrisă de mână și în PDF (`30 *
 86400000`). **Dacă termenul nu s-a încărcat, hârtia NU inventează unul**: rândul lipsește.
 
+### Oferta se DESCARCĂ, nu se printează (21.09)
+`raxOfExportPdf` deschidea o fereastră de printare din care omul salva singur un PDF. Alin: *„vreau
+să fie la fel ca la rapoarte, să-ți alegi unde o descarci. Asta înseamnă descărcare."*
+
+- Hârtia se face pe **SERVER**: `report_export.js` → `renderOfertaPdf` / `sendOfertaPdf`, lângă cea a
+  rapoartelor. Acolo stau logo-ul (`logo-light.png`, pentru fundal alb), fonturile cu diacritice
+  (DejaVu sub aliasul „Nunito") și `contentDisposition`. **NU scrie o a doua cale de export în
+  pagină** — s-ar despărți de ele, exact ce spune regula rapoartelor.
+- Numele urmează regula casei: `RA-Tracks - Ofertă {client} - {data}.pdf`.
+- Ecranul trimite CIFRELE deja socotite (`POST /api/admin/offers/pdf`, super-admin) — nu se
+  recalculează pe server. E un document, nu un rând în bază: **nu se salvează nimic** acolo.
+- Termenul de valabilitate îl pune **serverul**, din `OFERTA_VALABIL_ZILE`, ca hârtia să nu poată
+  spune alt termen decât ecranul. Fără el, rândul lipsește — nu se inventează o dată.
+- Descărcarea în pagină e aceeași ca la Inventar: `blob` + `<a download>`, cu numele **citit din
+  antetul răspunsului**, nu inventat local.
+
+### Prețul stă lângă cantitatea lui (21.09)
+La pașii 4 (Montajul) și 5 (Aparatele), fiecare rând are **cantitate × preț**, amândouă editabile
+(`qp()`), cu butonul „Salvează ca tarifele noastre" în aceeași carte (`butonTarife()`, scris o dată).
+
+- Câmpurile de preț s-au **MUTAT** din panoul pliat, nu s-au copiat. Două casete cu același `id` ar
+  face `_ofReadPrices` să citească prima găsită. În panoul „Tarife lunare (editabile)" au rămas doar
+  abonamentul pe mașină și păstrarea datelor — alea n-au pas propriu.
+- Prețurile au `step` 0,01: cu pasul implicit (1), browserul refuză „12,50". Vezi și regula despre
+  `fNum` de mai sus.
+
 ### Butoanele spun ce fac
 „Trimite clientului (PDF)" **nu trimitea nimic nimănui** — deschidea o fereastră de printare, iar
 clientul nici nu există încă în aplicație când faci oferta. Se numește „Descarcă oferta (PDF)".
