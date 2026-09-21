@@ -197,8 +197,29 @@ const deDouaOri = ['mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace'
   'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan', 'pPlain', 'pCan', 'pFms']
   .filter(k => (html.match(new RegExp("'of-" + k + "'", 'g')) || []).length !== 1);
 T('niciun câmp de preț nu apare de două ori', deDouaOri.length === 0, deDouaOri.join(','));
-T('panoul pliat a rămas doar cu tarifele lunare',
-  /Tarife lunare \(editabile\)/.test(html));
+// ⚠ Prima variantă a probei căuta textul „Tarife lunare (editabile)" — care a rămas în comentariul
+// care explică de ce panoul a fost scos. Trecea degeaba. Acum se verifică LOCUL fiecărui preț:
+// trebuie să fie în cartea lucrului pe care-l prețuiește, iar panoul pliat să nu mai existe deloc.
+// ⚠ Se caută ÎNCEPÂND de la cartea respectivă, nu de la capul fișierului: `of-pAiA` apare întâi
+// în `_ofReadCfg`, cu mii de rânduri mai sus, iar un `indexOf` de la zero găsea acolo și striga
+// degeaba. Ce ne interesează e unde e DESENAT câmpul.
+const carte = (nume) => html.indexOf('var ' + nume + ' = card(');
+const undeE = (id, de) => html.indexOf("'of-" + id + "'", carte(de));
+const PASI = [
+  ['pPlain', 'vehCard', 'featCard'], ['pCan', 'vehCard', 'featCard'], ['pFms', 'vehCard', 'featCard'],
+  ['pAiA', 'featCard', 'montajCard'], ['ret12', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
+  ['ret36', 'featCard', 'montajCard'], ['retCustom', 'featCard', 'montajCard'],
+  ['mGps', 'montajCard', 'deviceCard'], ['mLvCan', 'montajCard', 'deviceCard'],
+  ['mCanInc', 'montajCard', 'deviceCard'], ['mFms', 'montajCard', 'deviceCard'],
+  ['mUninstall', 'montajCard', 'deviceCard'], ['mReplace', 'montajCard', 'deviceCard'],
+  ['mTravel', 'montajCard', 'deviceCard'],
+];
+const razlete = PASI.filter(([id, de, pana]) => { const i = undeE(id, de); return !(i > carte(de) && i < carte(pana)); });
+T('fiecare preț stă în cartea lucrului pe care-l prețuiește', razlete.length === 0,
+  razlete.map(x => x[0]).join(','));
+T('prețurile aparatelor stau la pasul 5', ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan']
+  .every(k => { const i = undeE(k, 'deviceCard'); return i > carte('deviceCard') && i < html.indexOf('var priceCard'); }));
+T('panoul pliat cu tarife a dispărut cu totul', /var priceCard = '';/.test(html) && !/<details[^>]*>[\s\S]{0,200}Tarife lunare/.test(html));
 
 sect('5f. Lista de oferte e SUS, și te duce la ea după salvare');
 // ⚠ `indexOf` întoarce -1 când nu găsește — iar -1 e „mai mic" decât orice. Prima variantă a probei
@@ -208,6 +229,27 @@ const iGrila = html.indexOf("'<div class=\"raof-grid\">' +");
 T('lista se desenează înaintea calculatorului', iLista >= 0 && iGrila >= 0 && iLista < iGrila,
   'listă la ' + iLista + ', grilă la ' + iGrila);
 T('după salvare sare la ea', /raxOfLoadList\(\);[\s\S]{0,220}raxOfLaLista\(\);/.test(html));
+
+sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
+// Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe
+// fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât de Alin:
+// „«RA Tracks» trebuie să scrie"). Refăcute cu `tools/make-logo.js`, din marcă + Nunito ExtraBold —
+// fix fontul cu care aplicația scrie cuvântul în antet.
+T('unealta care le desenează există', fs.existsSync(P('tools/make-logo.js')));
+const MKLOGO = fs.readFileSync(P('tools/make-logo.js'), 'utf8');
+T('și scrie „Tracks", nu altceva', /const CUV[A-ZÂ]+ = 'Tracks';/.test(MKLOGO), (MKLOGO.match(/const CUV\S* = '[^']*'/) || [])[0]);
+T('cuvântul se scrie cu fontul casei (Nunito ExtraBold), ca în antetul aplicației',
+  /Nunito-ExtraBold\.ttf/.test(MKLOGO) && fs.existsSync(P('fonts/Nunito-ExtraBold.ttf')));
+T('marca („RA" + bara verde) rămâne desenul original, nu se rescrie',
+  /logo-mark\.png/.test(MKLOGO) && /logo-mark-light\.png/.test(MKLOGO));
+// ⚠ Raportul 694×135 (5,14:1) NU e estetică: `xlPlaceLogo` pune imaginea în Excel cu mărime FIXĂ
+// (180×35). Alt raport = logo turtit în fiecare fișier Excel trimis unui client.
+const pngDim = (f) => { const d = fs.readFileSync(P(f)).slice(16, 24); return [d.readUInt32BE(0), d.readUInt32BE(4)]; };
+['public/logo.png', 'public/logo-light.png'].forEach((f) => {
+  const [w, h] = pngDim(f);
+  T(f.replace('public/', '') + ' are 694×135, ca așezarea din Excel să rămână dreaptă', w === 694 && h === 135, w + '×' + h);
+});
+T('Excel-ul pune logo-ul la același raport', /ext: \{ width: 180, height: 35 \}/.test(fs.readFileSync(P('report_export.js'), 'utf8')));
 
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));

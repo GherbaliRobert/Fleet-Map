@@ -95,6 +95,62 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Logo-ul scrie „RA Tracks", nu „traks"
+
+Alin, scurt și limpede: *„«RA Tracks» trebuie să scrie."*
+
+Fișierele `public/logo.png` și `public/logo-light.png` aveau în ele **„RA | traks"**. Ele ajung pe
+**fiecare** raport PDF, pe fiecare Excel, pe contract și pe oferta descărcată — adică pe tot ce
+ajunge la client. În aplicație scria „Tracks" peste tot, iar domeniul e ratrack.ro: imaginea spunea
+altceva decât tot restul.
+
+**Ce am făcut.** Marca („RA" cu triunghiul verde și bara) e desen — a rămas neatinsă. Cuvântul e
+scris acum cu **Nunito ExtraBold**, adică FIX fontul cu care aplicația îl scrie în antet. Așa logo-ul
+din fișier și cel din pagină sunt același lucru, nu două variante care seamănă.
+
+S-a refăcut și **coperta de share** (`og-cover.png`), care era construită din logo-ul vechi.
+
+Am lăsat în repo unealta care le desenează — `tools/make-logo.js` — ca să se poată reface dacă se
+schimbă marca sau cuvântul. Nu ghicește nimic: caută singură mărimea literelor până cuvântul intră
+exact în lățimea rămasă.
+
+⚠ **Dimensiunea a rămas 694×135, dinadins.** Nu e estetică: `xlPlaceLogo` pune imaginea în Excel cu
+o mărime FIXĂ (180×35, același raport). Alt raport ar fi însemnat logo turtit în fiecare fișier
+Excel trimis unui client. Păzit de probă.
+
+- **Ce am schimbat:** marca de pe toate hârtiile scrie acum numele adevărat.
+- **Ce vede fondatorul:** logo-ul corect în antetul aplicației și pe fiecare export.
+- **Ce vede clientul:** același lucru, pe rapoarte, oferte și contracte.
+
+### FONDATOR · Toate prețurile stau lângă lucrul pe care-l prețuiesc
+
+Alin: *„am nevoie să am tarife la categoriile unde prețurile se vor schimba. Să nu mai lucrez în cod,
+vreau să le editez când găsesc aparate mai ieftine / mai scumpe, instalatori mai ieftini sau mai
+scumpi, ca, calculatorul de oferte să-mi calculeze după prețurile editate de mine."*
+
+Montajul și aparatele le mutasem deja la pașii 4 și 5. Rămăsese însă un panou **pliat, la coada
+paginii**, cu prețul lunar pe mașină și cu păstrarea datelor — adică exact cel mai important preț din
+toată oferta, ascuns.
+
+**Acum nu mai există niciun panou de tarife.** Fiecare preț stă lângă lucrul lui:
+
+| Prețul | Unde e acum |
+|---|---|
+| Cât costă o mașină pe lună (fără CAN / cu CAN / cu FMS) | **2. Flota clientului**, sub numărul de mașini |
+| Păstrarea datelor (12 / 24 / 36 / custom) | **3. Ce mai primește clientul**, sub alegerea duratei |
+| Prețul unui cont de RA Insight | **3.**, lângă comutatorul lui (era deja acolo) |
+| Montajul, pe operațiune | **4. Montajul**, lângă cantitate |
+| Aparatele, pe bucată | **5. Aparatele**, lângă cantitate |
+
+Toate **19** sunt câmpuri în care scrii direct, și fiecare carte are butonul **„Salvează ca tarifele
+noastre"** — apeși oriunde, se salvează toate. Verificat pe viu: am schimbat prețul pe mașină de la
+29 la 39 și totalul lunar a trecut de la 290 la 390 lei; am salvat, am reîncărcat pagina de la zero
+și cifrele erau acolo.
+
+- **Ce am schimbat:** nu mai trebuie umblat în cod ca să schimbi un preț, și nu mai cauți prețul în altă parte decât linia pe care o privești.
+- **Ce vede fondatorul:** toate tarifele, editabile, la locul lor; ofertele viitoare pornesc de la ele.
+- **Ce vede clientul:** nimic — el vede doar prețul final.
+
 ### FONDATOR · Oferta se DESCARCĂ, lista urcă sus, tarifele se schimbă unde se folosesc
 
 Alin, în continuarea trecerii prin calculator: *„tarife editabile, buton, și la punctul 4 la montaj,
@@ -7685,13 +7741,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **(Alin) Logo-ul scrie „traks", nu „Tracks".** `public/logo.png` și `public/logo-light.png` au
-  în ele textul **„RA | traks"**. Imaginile astea intră pe **fiecare** raport PDF, pe fiecare Excel și
-  pe oferta descărcată — adică pe tot ce ajunge la client. În interfață scrie „RA Tracks", domeniul e
-  ratrack.ro, iar în aplicație logo-ul e scris cu litere (`.ralogo .raw` = „Tracks"), deci arată
-  altfel decât imaginea. Ori e o scriere de brand voită și atunci o lăsăm peste tot la fel, ori e o
-  greșeală veche în fișier și trebuie refăcute cele două imagini. **Nu am atins fișierele** — e
-  hotărâre de brand, nu de cod (găsit 21.09, uitându-mă la PDF-ul ofertei).
+- [x] **REZOLVAT (21.09): logo-ul scrie „RA Tracks".** Fișierele `public/logo.png` și
+  `public/logo-light.png` aveau în ele „RA | traks" și ajungeau pe fiecare raport, Excel, contract
+  și ofertă. Refacute din marca originală + cuvântul scris cu Nunito ExtraBold (fontul casei), cu
+  `tools/make-logo.js`. S-a refacut și coperta de share (`og-cover.png`). Dimensiunea a rămas
+  694×135, fiindcă așezarea din Excel are raportul fix.
 
 - [ ] **(Alin) Cât ne costă PE NOI un aparat?** ✅ *Infrastructura e GATA (21.09).* În Ofertare Live,
   blocul „Ce rămâne la noi" + panoul de costuri așteaptă cifrele. **Rămâne de completat de voi**, în

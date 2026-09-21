@@ -23514,6 +23514,25 @@ const pozitii = await r.json();</code></pre>
       function row(label, inner, hint) { return '<div class="raof-r"><span>' + label + '</span>' + inner + (hint ? '<span class="raof-hint">' + hint + '</span>' : '') + '</div>'; }
       function lei() { return '<span class="um">lei/lună</span>'; }
       function leiU(u) { return '<span class="um">lei/' + u + '</span>'; }
+      // Cantitatea și PREȚUL, unul lângă altul, pe același rând. Tariful era scris ca etichetă
+      // moartă („buc · 120€") și se schimba dintr-un panou pliat, mai jos — te uitai la o linie și
+      // trebuia să cauți în altă parte ca s-o schimbi (Alin, 21.09). `step` 0,01: prețurile au
+      // bani, iar cu pasul implicit browserul refuză „12,50".
+      function qp(idQ, idP, pret, um, umPret) {
+        return fNum(idQ, '', '', 70) + '<span class="um">' + um + '</span>'
+          + '<span style="opacity:.45;font-size:11px;">×</span>'
+          + fNum(idP, pret, '', 78, 0.01) + '<span class="um">' + umPret + '</span>';
+      }
+      // Același buton, oriunde ai schimba un tarif. Cheamă aceeași funcție: citește TOATE câmpurile
+      // de preț de pe ecran și le face tarifele casei.
+      function butonTarife(text) {
+        return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">'
+          + '<button class="rax-btn" onclick="raxOfSalveazaTarife()" style="width:100%;justify-content:center;">'
+            + '<i class="fas fa-floppy-disk"></i> Salvează ca tarifele noastre</button>'
+          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">' + text + '</div></div>';
+      }
+      var deTarife = 'Prețurile de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele '
+        + 'pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.';
       // Fiecare carte are titlu ȘI o propoziție care spune la ce folosește — ecranul ăsta e cel în
       // care se hotărăsc banii, nu e loc de ghicit ce face fiecare câmp.
       function card(title, inner, desc) {
@@ -23545,7 +23564,17 @@ const pozitii = await r.json();</code></pre>
           + '• <b>CAN</b> = mașini mici și utilitare, care n-au FMS. Cer un <b>modul LV-CAN200</b>, cumpărat și montat separat.<br>'
           + 'De-aia fiecare mașină are „Instalare GPS", iar cea cu CAN sau FMS mai are o linie de montaj deasupra — munca în plus.'
         + '</div>'
-        + '<div class="raof-hint" style="margin-top:6px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>',
+        + '<div class="raof-hint" style="margin-top:6px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>'
+        // Prețul lunar pe mașină stătea într-un panou PLIAT, la coada paginii — cel mai important
+        // preț din ofertă, ascuns (Alin, 21.09). Acum stă lângă numărul de mașini, adică lângă
+        // lucrul pe care îl prețuiește.
+        + '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">'
+          + '<div style="font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Cât costă o mașină pe lună</div>'
+          + row('Fără CAN', fNum('of-pPlain', p.pPlain, '', 84, 0.01) + lei())
+          + row('Cu CAN', fNum('of-pCan', p.pCan, '', 84, 0.01) + lei())
+          + row('Cu FMS (camion)', fNum('of-pFms', p.pFms, '', 84, 0.01) + lei())
+          + '<div class="raof-hint" style="margin-top:-2px;">Tahograful și e-Transportul, dacă le bifezi la pasul 3, se adaugă peste prețurile astea — nu ca linie separată pe factură.</div>'
+        + '</div>' + butonTarife(deTarife),
         'De aici pornește tot: abonamentul lunar, cantitățile de montaj, aparatele de cumpărat și prețul unui cont de RA Insight.');
       var featCard = card('<i class="fas fa-puzzle-piece"></i> 3. Ce mai primește clientul',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> RA Insight</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/cont</span></div>' +
@@ -23572,27 +23601,18 @@ const pozitii = await r.json();</code></pre>
         '<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:10px;padding:9px 11px;background:var(--bg-panel);border-radius:9px;"><input type="checkbox" id="of-agenti" checked onchange="raxOfRecalc()" style="margin-top:2px;">' +
           '<span><b>Cei 6 agenți automați — incluși, 0 lei</b><br><span style="font-size:11px;color:var(--text-muted);">RA Watch (offline, furt combustibil, ralanti) · RA Dispatch (vehicule disponibile) · RA Care (ITP, RCA, revizii) · RA Optimize (eco-driving) · RA Compliance (ore de condus) · RA Client (raport zilnic). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</span></span></label>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
-        row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>'),
+        row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>')
+        // Prețul păstrării datelor stă lângă alegerea ei, nu într-un panou pliat la coada paginii.
+        // Cele 6 luni sunt incluse în abonament, deci n-au preț de scris.
+        + '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">'
+          + '<div style="font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Cât costă păstrarea datelor, pe lună</div>'
+          + row('12 luni', fNum('of-ret12', p.ret12, '', 84, 0.01) + lei())
+          + row('24 luni', fNum('of-ret24', p.ret24, '', 84, 0.01) + lei())
+          + row('36 luni', fNum('of-ret36', p.ret36, '', 84, 0.01) + lei())
+          + row('Custom', fNum('of-retCustom', p.retCustom, '', 84, 0.01) + lei())
+          + '<div class="raof-hint" style="margin-top:-2px;">Primele 6 luni sunt incluse în abonament. Se adaugă doar tariful treptei alese mai sus.</div>'
+        + '</div>' + butonTarife(deTarife),
         'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.');
-      // Cantitatea și PREȚUL, unul lângă altul, pe același rând. Tariful era scris ca etichetă
-      // moartă („buc · 120€") și se schimba dintr-un panou pliat, mai jos — te uitai la o linie și
-      // trebuia să cauți în altă parte ca s-o schimbi (Alin, 21.09). `step` 0,01: prețurile au
-      // bani, iar cu pasul implicit browserul refuză „12,50".
-      function qp(idQ, idP, pret, um, umPret) {
-        return fNum(idQ, '', '', 70) + '<span class="um">' + um + '</span>'
-          + '<span style="opacity:.45;font-size:11px;">×</span>'
-          + fNum(idP, pret, '', 78, 0.01) + '<span class="um">' + umPret + '</span>';
-      }
-      // Același buton, oriunde ai schimba un tarif. Cheamă aceeași funcție: citește TOATE câmpurile
-      // de preț de pe ecran și le face tarifele casei.
-      function butonTarife(text) {
-        return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">'
-          + '<button class="rax-btn" onclick="raxOfSalveazaTarife()" style="width:100%;justify-content:center;">'
-            + '<i class="fas fa-floppy-disk"></i> Salvează ca tarifele noastre</button>'
-          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">' + text + '</div></div>';
-      }
-      var deTarife = 'Prețurile de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele '
-        + 'pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.';
       var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> 4. Montajul',
         row('Instalare dispozitiv GPS', qp('of-qGps', 'of-mGps', p.mGps, 'buc', 'lei/buc')) +
         row('Instalare LV-CAN', qp('of-qLvCan', 'of-mLvCan', p.mLvCan, 'buc', 'lei/buc')) +
@@ -23614,19 +23634,11 @@ const pozitii = await r.json();</code></pre>
         row('Modul LV-CAN200', qp('of-dqLvCan', 'of-dLvCan', p.dLvCan, 'buc', '€/buc'), 'extra, la FMC130/650') +
         butonTarife(deTarife),
         'Marfa pe care o cumpără clientul, o singură dată. Prețurile sunt în euro (așa le luăm și noi), iar pe hârtie apar și în lei, la cursul BNR.');
-      // Montajul și aparatele NU mai sunt aici: prețul lor stă acum lângă cantitatea lui, la pașii
-      // 4 și 5, unde te uiți oricum (Alin, 21.09). Aici rămân tarifele care n-au pas propriu:
-      // abonamentul lunar pe mașină și păstrarea datelor. NU aduce înapoi câmpurile mutate — ar fi
-      // două casete cu același nume, iar `_ofReadPrices` ar citi-o pe prima găsită.
-      var priceCard = '<details style="margin-bottom:14px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:8px 0;"><i class="fas fa-sliders"></i> Tarife lunare (editabile)</summary><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:6px;">' +
-        row('Vehicul GPS (fără CAN)', fNum('of-pPlain', p.pPlain, '', 84, 0.01) + lei()) + row('Vehicul CAN', fNum('of-pCan', p.pCan, '', 84, 0.01) + lei()) + row('Vehicul FMS', fNum('of-pFms', p.pFms, '', 84, 0.01) + lei()) +
-        '<div style="font-size:10.5px;color:var(--text-muted);margin:2px 0 8px;">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", direct lângă comutator. Montajul e la pasul 4, aparatele la pasul 5.</div>' +
-        row('Retenție 12 luni', fNum('of-ret12', p.ret12, '', 84, 0.01) + lei()) + row('Retenție 24 luni', fNum('of-ret24', p.ret24, '', 84, 0.01) + lei()) + row('Retenție 36 luni', fNum('of-ret36', p.ret36, '', 84, 0.01) + lei()) + row('Retenție custom', fNum('of-retCustom', p.retCustom, '', 84, 0.01) + lei()) +
-        butonTarife(deTarife) +
-        '</div></details>';
-      // Valabilitatea se scrie SINGURĂ, din aceeași cifră ca pâlnia de oferte și ca hârtia. Era
-      // doar un îndemn în placeholder („ex. Preț valabil 30 zile…"), deci ajungea pe hârtie numai
-      // dacă își amintea cineva s-o scrie (Alin, 21.09).
+      // Panoul pliat „Tarife lunare (editabile)" a DISPĂRUT. Toate prețurile stau acum lângă
+      // lucrul pe care îl prețuiesc: abonamentul pe mașină la pasul 2, păstrarea datelor la 3,
+      // montajul la 4, aparatele la 5, prețul unui cont de RA Insight lângă comutatorul lui.
+      // Un panou separat însemna: te uiți la o linie, cauți prețul în altă parte (Alin, 21.09).
+      var priceCard = '';
       var notesCard = card('<i class="fas fa-note-sticky"></i> 6. Observații',
         '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" oninput="raxOfAtins(this.id)" placeholder="instalare inclusă, termen de livrare…"></textarea>'
         + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">'

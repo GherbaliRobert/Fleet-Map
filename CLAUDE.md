@@ -193,15 +193,40 @@ să fie la fel ca la rapoarte, să-ți alegi unde o descarci. Asta înseamnă de
 - Descărcarea în pagină e aceeași ca la Inventar: `blob` + `<a download>`, cu numele **citit din
   antetul răspunsului**, nu inventat local.
 
-### Prețul stă lângă cantitatea lui (21.09)
-La pașii 4 (Montajul) și 5 (Aparatele), fiecare rând are **cantitate × preț**, amândouă editabile
-(`qp()`), cu butonul „Salvează ca tarifele noastre" în aceeași carte (`butonTarife()`, scris o dată).
+### Fiecare preț stă lângă lucrul pe care-l prețuiește (21.09)
+**NU mai există panou de tarife.** Alin: *„să nu mai lucrez în cod, vreau să le editez când găsesc
+aparate mai ieftine sau instalatori mai scumpi."* Toate cele 19 prețuri sunt câmpuri, în cartea lor:
 
-- Câmpurile de preț s-au **MUTAT** din panoul pliat, nu s-au copiat. Două casete cu același `id` ar
-  face `_ofReadPrices` să citească prima găsită. În panoul „Tarife lunare (editabile)" au rămas doar
-  abonamentul pe mașină și păstrarea datelor — alea n-au pas propriu.
-- Prețurile au `step` 0,01: cu pasul implicit (1), browserul refuză „12,50". Vezi și regula despre
-  `fNum` de mai sus.
+| Preț | Cartea |
+|---|---|
+| lunar pe mașină (`pPlain`, `pCan`, `pFms`) | **2. Flota clientului** |
+| păstrarea datelor (`ret12/24/36/Custom`) | **3. Ce mai primește clientul** |
+| un cont de RA Insight (`pAiA`) | **3.**, lângă comutator |
+| montajul (`mGps`, `mLvCan`, …) | **4. Montajul**, prin `qp()`, lângă cantitate |
+| aparatele (`dFmc130`, …) | **5. Aparatele**, prin `qp()`, lângă cantitate |
+
+- Câmpurile s-au **MUTAT**, nu copiat. Două casete cu același `id` ar face `_ofReadPrices` să
+  citească prima găsită. `var priceCard = ''` a rămas gol dinadins — nu-l umple la loc.
+- Butonul „Salvează ca tarifele noastre" (`butonTarife()`, scris o dată) apare în fiecare carte și
+  cheamă aceeași funcție: citește TOATE câmpurile de preț de pe ecran.
+- Prețurile au `step` 0,01: cu pasul implicit (1), browserul refuză „12,50".
+- Păzit de `verify_ofertare.js`, care verifică **poziția** fiecărui preț în fișier (între `var
+  xCard = card(` și următoarea), nu doar existența lui.
+
+### Logo-ul scrie „RA Tracks" — și se REFACE, nu se desenează de mână (21.09)
+`public/logo.png` și `public/logo-light.png` aveau în ele **„RA | traks"** și ajungeau pe fiecare
+raport, Excel, contract și ofertă. Acum se generează cu **`tools/make-logo.js`**: marca originală
+(`logo-mark*.png`, desen — neatinsă) + cuvântul scris cu **Nunito ExtraBold**, fontul cu care
+aplicația îl scrie în antet (`.ralogo .raw`).
+
+- ⚠ **Dimensiunea rămâne 694×135.** `xlPlaceLogo` pune imaginea în Excel cu mărime FIXĂ (180×35 =
+  același raport 5,14:1). Alt raport = logo turtit în fiecare Excel trimis unui client. Unealta
+  caută singură mărimea literelor ca să intre exact în lățimea rămasă.
+- `tools/make-logo.js` e unealtă de DEZVOLTARE (are nevoie de Playwright, care nu e dependință a
+  proiectului). Rezultatul — cele două PNG-uri — intră în repo.
+- `public/og-cover.png` se reface din logo, cu `tools/make-og-cover.js`. Dacă schimbi logo-ul,
+  rulează-l și pe ăla.
+- Păzit de `verify_ofertare.js` (cuvântul, fontul, dimensiunile).
 
 ### Butoanele spun ce fac
 „Trimite clientului (PDF)" **nu trimitea nimic nimănui** — deschidea o fereastră de printare, iar
