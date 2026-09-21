@@ -570,11 +570,20 @@ function renderOfertaPdf(doc, o) {
   y += 8;
 
   const conditii = [
-    'Costul unic (echipamente și instalare) se facturează integral la semnarea contractului.',
+    // Nu la semnarea contractului — Alin, 21.09: „costul unic nu-l facturăm la semnare, ci după ce
+    // vin echipamentele și după ce le instalăm". Aceeași formulare ca în anexa contractului
+    // („la livrare și la execuție"), ca actele noastre să nu se contrazică.
+    'Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune. Costul unic nu face parte din abonamentul lunar.',
     'Abonamentul lunar se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
     'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor. Instalarea o executăm noi, la sediul Beneficiarului.',
-    'Facturarea se face în lei. Sumele în euro sunt informative, la cursul BNR'
-      + (o.fxDate ? ' din ' + o.fxDate : '') + ': 1 € = ' + _bani(fx, 'lei', 4) + '.'
+    // „Cursul BNR" se scrie DOAR dacă de la BNR vine. Când n-a putut fi preluat, folosim o valoare
+    // de rezervă — și atunci hârtia spune „curs de referință", nu pune numele BNR pe o cifră care nu e
+    // a lui. Pe ecran, fondatorul vede un avertisment înainte să trimită oferta.
+    (o.fxSursa === 'BNR'
+      ? 'Facturarea se face în lei. Sumele în euro sunt informative, la cursul BNR'
+        + (o.fxDate ? ' din ' + o.fxDate : '') + ': 1 € = ' + _bani(fx, 'lei', 4) + '.'
+      : 'Facturarea se face în lei. Sumele în euro sunt orientative, la un curs de referință de 1 € = '
+        + _bani(fx, 'lei', 4) + '.')
   ];
   if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')

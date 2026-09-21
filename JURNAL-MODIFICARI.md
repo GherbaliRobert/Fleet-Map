@@ -95,6 +95,40 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Cursul cinstit și când se facturează cu adevărat costul unic
+
+Două corecturi de la Alin, pe aceeași hârtie.
+
+**1. „Nu mai pune 1 euro = 5.000 lei, pune cursul BNR real."** Avea dreptate de două ori:
+
+- **De ce apărea 5,0000:** BNR nu poate fi accesat din cutia mea de probe (blocat de proxy). Pe
+  ratrack.ro se ia cursul adevărat. PDF-ul pe care i-l trimisesem era din cutia mea.
+- **Dar problema de fond rămânea:** hârtia scria **„cursul BNR"** peste o valoare de rezervă. Adică
+  punea numele Băncii Naționale pe o cifră care nu e a ei. Dacă BNR ar pica și la noi, o ofertă
+  ar pleca la client cu o minciună mică pe ea.
+
+Acum: numele BNR se scrie **doar dacă de la BNR vine** cursul. Când nu, hârtia zice „la un curs de
+referință", fără să pomenească BNR — iar **pe ecran, înainte să trimiți oferta**, scrie portocaliu:
+
+> ⚠ Cursul BNR nu a putut fi preluat. Sumele în euro folosesc un curs de rezervă: 1 € = 5,0000 lei.
+> Verifică înainte de a trimite oferta.
+
+Tot aici: **și ecranul scria „6240 lei"**, nu „6.240 lei". Acum toate sumele din calculator trec
+prin aceeași funcție ca cele de pe hârtie.
+
+**2. „Costul unic nu-l facturăm la semnarea contractului, ci după ce vin echipamentele și după ce
+le instalăm."** Corect — și, mai mult, **anexa contractului spunea deja asta** („la livrare și la
+execuție"). Oferta o contrazicea. Acum spun același lucru:
+
+> • Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune. Costul unic
+> nu face parte din abonamentul lunar.
+
+Am pus și o probă care **leagă cele două acte**: dacă unul se schimbă și celălalt nu, pică.
+
+- **Ce am schimbat:** hârtia nu mai poate numi „BNR" o cifră de rezervă, iar facturarea scrie ce se întâmplă de fapt.
+- **Ce vede fondatorul:** un avertisment portocaliu când cursul nu e cel real, și sume scrise românește pe tot ecranul.
+- **Ce vede clientul:** condiții de plată care se potrivesc cu contractul pe care îl va semna.
+
 ### FONDATOR · Oferta, regândită: două cifre mari, sume românești, explicațiile la final
 
 Alin s-a uitat la hârtie și a pus trei degete pe ea. Toate trei erau îndreptățite.

@@ -130,7 +130,11 @@ const REX = fs.readFileSync('./report_export.js', 'utf8');
 // plată la final. Același răspuns, spus profesional.
 T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
   /'Cost lunar'/.test(REX) && /'Cost unic, o singură dată'/.test(REX)
-  && /se facturează integral la semnarea contractului/.test(REX));
+  && /Echipamentele se facturează la livrare/.test(REX));
+// Oferta și anexa contractului spun ACELAȘI lucru despre când se plătește costul unic: la livrare
+// și la execuție. Două acte ale noastre n-au voie să se contrazică (Alin, 21.09).
+T('și oferta nu contrazice anexa contractului',
+  /la livrare și la execuție/.test(cpdf) && /se facturează la livrare, iar instalarea după punerea în funcțiune/.test(REX));
 
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.

@@ -263,6 +263,20 @@ T('zero n-are echivalent de arătat', /if \(!Number\.isFinite\(v\) \|\| v <= 0\)
 T('și coloana rămâne dreaptă, oricât de lung ar fi textul',
   /\.rax-pret-c\{[^}]*flex-direction:column/.test(fs.readFileSync(P('public/css/app.css'), 'utf8')));
 
+sect('5f-ter. Cursul: românește, și cinstit despre unde vine');
+// „1 € = 5.0000 lei" e scris greșit (punctul e separator de MII în română) ȘI e o cifră de
+// rezervă purtând numele BNR. Amândouă reparate (Alin, 21.09).
+T('ecranul știe de unde vine cursul', /var _fxSursa = localStorage\.getItem\('raFxSursa'\)/.test(html)
+  && /_fxSursa = f\.source \|\| ''/.test(html));
+T('și îl trimite mai departe, către hârtie', /fxSursa: _fxSursa \|\| null/.test(html));
+T('când nu e de la BNR, ecranul te avertizează îNAINTE să trimiți oferta',
+  /Cursul BNR nu a putut fi preluat[\s\S]{0,160}Verifică înainte de a trimite oferta/.test(html));
+T('sumele de pe ecran se scriu românește (6.240, nu 6240)',
+  /function _roNum\(v, zec\)/.test(html) && /toLocaleString\('ro-RO'/.test(html));
+T('și nicio celulă de bani nu mai scapă prin `toFixed\(0\)`',
+  !/function _fmtLei\(v\) \{ return \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html)
+  && !/var sus = \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html));
+
 sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
 // Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe
 // fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât de Alin:

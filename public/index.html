@@ -22734,22 +22734,34 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Curs BNR (EUR→RON): ofertele arată AMBELE monede, ca să nu convertească nimeni în cap ───
     var _fxRate = Number(localStorage.getItem('raFxEur')) || 5.0, _fxDate = localStorage.getItem('raFxDate') || '';
-    window.raFx = function () { return { eur: _fxRate, date: _fxDate }; }; // și pentru contorul clientului
+    // DE UNDE vine cursul: 'BNR' sau 'fallback' (valoarea de rezervă din setarea serverului). Ecranul
+    // ȘI hârtia trebuie să știe: altfel scriem „cursul BNR: 1 € = 5,0000 lei" peste o cifră inventată,
+    // iar clientul primește o ofertă cu o minciună mică pe ea (Alin, 21.09).
+    var _fxSursa = localStorage.getItem('raFxSursa') || '';
+    window.raFx = function () { return { eur: _fxRate, date: _fxDate, sursa: _fxSursa }; }; // și pentru contorul clientului
     (async function () {
       try {
         var f = await fetch('/api/fx', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (f && f.eur > 1) {
-          _fxRate = f.eur; _fxDate = f.date || '';
-          try { localStorage.setItem('raFxEur', String(f.eur)); localStorage.setItem('raFxDate', _fxDate); } catch (e) {}
+          _fxRate = f.eur; _fxDate = f.date || ''; _fxSursa = f.source || '';
+          try { localStorage.setItem('raFxEur', String(f.eur)); localStorage.setItem('raFxDate', _fxDate);
+                localStorage.setItem('raFxSursa', _fxSursa); } catch (e) {}
           if (document.getElementById('rax-of-summary')) { try { raxOfRecalc(); } catch (e) {} }
         }
       } catch (e) {}
     })();
     function _lei2eur(v) { return (Number(v) || 0) / _fxRate; }
     function _eur2lei(v) { return (Number(v) || 0) * _fxRate; }
+    // Sumele se scriu ROMÂNEȘTE și pe ecran: „6.240 lei", nu „6240 lei". Punctul e separator de MII
+    // în română; scris altfel, numărul se citește greșit (Alin, 21.09 — despre hârtie, dar ecranul
+    // avea aceeași problemă).
+    function _roNum(v, zec) {
+      var z = zec == null ? 0 : zec;
+      return (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: z, maximumFractionDigits: z });
+    }
     // „150 lei (30 €)" — moneda principală + echivalentul, discret.
-    function _fmtLei(v) { return (Number(v) || 0).toFixed(0) + ' lei <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _lei2eur(v).toFixed(v < 100 ? 1 : 0) + ' €)</span>'; }
-    function _fmtEur(v) { return (Number(v) || 0).toFixed(0) + ' € <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _eur2lei(v).toFixed(0) + ' lei)</span>'; }
+    function _fmtLei(v) { return _roNum(v) + ' lei <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _roNum(_lei2eur(v), Math.abs(v) < 100 ? 1 : 0) + ' €)</span>'; }
+    function _fmtEur(v) { return _roNum(v) + ' € <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _roNum(_eur2lei(v)) + ' lei)</span>'; }
     // „20 de vehicule", dar „12 luni". Regula limbii române: numerele care se termină în 1–19 merg
     // fără „de", restul cu. Fără asta, oferta trimisă unui client scrie „20 vehicule" — o greșeală
     // mică, dar pe hârtia după care te judecă cineva care nu te cunoaște.
@@ -22760,15 +22772,15 @@ const pozitii = await r.json();</code></pre>
     // Aceleași sume, dar pentru celule de tabel: moneda a doua stă DEDESUBT, mică și gri — pe un
     // rând de tabel n-are loc alături, iar regula casei e că orice sumă se vede în amândouă.
     function _celLei(v, mic, sufix) {
-      var sus = (Number(v) || 0).toFixed(0) + ' lei' + (sufix || '');
+      var sus = _roNum(v) + ' lei' + (sufix || '');
       // `nowrap`: fără el, „45 lei" se rupea în două rânduri în coloana îngustă „Unit.".
       return (mic ? '<span style="color:var(--text-muted);white-space:nowrap;">' + sus + '</span>' : '<b style="white-space:nowrap;">' + sus + '</b>') +
-        '<div style="font-weight:400;color:var(--text-muted);font-size:.78em;line-height:1.2;opacity:.8;">' + _lei2eur(v).toFixed(Math.abs(v) < 100 ? 1 : 0) + ' €</div>';
+        '<div style="font-weight:400;color:var(--text-muted);font-size:.78em;line-height:1.2;opacity:.8;">' + _roNum(_lei2eur(v), Math.abs(v) < 100 ? 1 : 0) + ' €</div>';
     }
     function _celEur(v, mic) {
-      var sus = (Number(v) || 0).toFixed(0) + ' €';
+      var sus = _roNum(v) + ' €';
       return (mic ? '<span style="color:var(--text-muted);white-space:nowrap;">' + sus + '</span>' : '<b style="white-space:nowrap;">' + sus + '</b>') +
-        '<div style="font-weight:400;color:var(--text-muted);font-size:.78em;line-height:1.2;opacity:.8;">' + _eur2lei(v).toFixed(0) + ' lei</div>';
+        '<div style="font-weight:400;color:var(--text-muted);font-size:.78em;line-height:1.2;opacity:.8;">' + _roNum(_eur2lei(v)) + ' lei</div>';
     }
     // Câmpurile de tarif: lângă fiecare, echivalentul în cealaltă monedă, gri. Se pun din cod (nu în
     // marcaj) ca să nu trebuiască atinse cele ~20 de rânduri de formular și ca valoarea să se
@@ -22862,7 +22874,13 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
         '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) + _ofBlocProfit(r) +
-        '<div class="raof-curs">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
+        // Cursul: scris românește (5,2100, nu 5.2100) ȘI cinstit despre unde s-a luat. Când nu e de la
+        // BNR, e o valoare de rezervă — se spune, ca să nu pleci cu ea în ofertă fără să știi.
+        + (_fxSursa === 'BNR'
+            ? '<div class="raof-curs">Curs BNR: 1 € = ' + _roNum(_fxRate, 4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + '</div>'
+            : '<div class="raof-curs" style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> '
+              + 'Cursul BNR nu a putut fi preluat. Sumele în euro folosesc un curs de rezervă: 1 € = '
+              + _roNum(_fxRate, 4) + ' lei. Verifică înainte de a trimite oferta.</div>');
     };
     // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
     // Un rând per echipament: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
@@ -24084,7 +24102,7 @@ const pozitii = await r.json();</code></pre>
       var nLoc = Math.max(1, Math.round(Number(r.cfg.aiqSeats) || 1));
       var payload = {
         client: r.cfg.client, offerName: r.cfg.offerName, notes: r.cfg.notes,
-        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate, fxDate: _fxDate || null,
+        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate, fxDate: _fxDate || null, fxSursa: _fxSursa || null,
         lines: r.lines, monthly: r.monthly, annual: r.annual, contractTotal: r.contractTotal,
         montajLines: r.montajLines, montaj: r.montaj,
         deviceLines: r.deviceLines, hwTotal: r.hwTotal,

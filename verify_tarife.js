@@ -203,7 +203,7 @@ T('hârtia începe cu RĂSPUNSUL: cât pe lună, cât o singură dată',
   /'Cost lunar'/.test(PD) && /'Cost unic, o singură dată'/.test(PD));
 T('și spune cât face pe toată durata contractului', /Total pe durata contractului/.test(PD));
 T('condițiile de plată sunt scrise, la final', /CONDIȚII/.test(PD)
-  && /se facturează integral la semnarea contractului/.test(PD)
+  && /Echipamentele se facturează la livrare/.test(PD)
   && /se facturează în fiecare lună, pe toată durata contractului/.test(PD));
 T('scrie că echipamentele rămân ale clientului', /rămân în proprietatea Beneficiarului după achitarea lor/.test(PD));
 T('și înșiră ce include abonamentul, pe fiecare mașină', /CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL/.test(PD));
@@ -287,6 +287,17 @@ T('și nicio sumă nu mai scapă prin `toFixed`', !/toFixed\(2\) \+ ' lei'/.test
 T('cursul se scrie cu 4 zecimale, românește', /_bani\(fx, 'lei', 4\)/.test(pdf));
 T('și se spune DIN CE ZI e cursul, dacă îl știm', /o\.fxDate \? ' din ' \+ o\.fxDate : ''/.test(pdf));
 T('PDF-ul spune cursul folosit și că se facturează în lei', /Facturarea se face în lei/.test(pdf));
+// Alin, 21.09: „costul unic nu-l facturăm la semnarea contractului, ci după ce vin echipamentele
+// și după ce le instalăm". Aceeași formulare ca în anexa contractului, ca actele să nu se bat cap în cap.
+T('costul unic se facturează la LIVRARE și la punerea în funcțiune, nu la semnare',
+  /Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune/.test(pdf)
+  && !/se facturează integral la semnarea contractului/.test(pdf));
+T('și spune că nu intră în abonament', /nu face parte din abonamentul lunar/.test(pdf));
+// „Cursul BNR" se scrie DOAR dacă de la BNR vine. Altfel am pune numele BNR pe o cifră de rezervă.
+T('numele BNR se pune doar pe un curs luat CHIAR de la BNR',
+  /o\.fxSursa === 'BNR'[\s\S]{0,200}la cursul BNR/.test(pdf));
+T('iar când nu e de la BNR, hârtia zice „curs de referință"',
+  /la un curs de referință de 1 € = /.test(pdf));
 
 sect('5. Un singur loc pentru tarifele de pornire');
 T('există _OF_PRETURI_DEF', /var _OF_PRETURI_DEF = \{/.test(html));
