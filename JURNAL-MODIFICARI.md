@@ -95,6 +95,55 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Ofertare Live: un buton rupt, banii ascunși și o pâlnie de vânzări
+
+Alin a cerut o trecere prin secțiune: *„ce face, ce rol are… spune-mi dacă sunt nereguli și ce am mai
+putea adăuga să ne ajute pe noi."* Am umblat prin ea și am pornit-o în browser. Trei lucruri.
+
+**1. Un buton care nu făcea nimic.** În lista de oferte salvate, butonul ✨ „Aplică RA Insight pe
+companie" **nu deschidea nimic** la ofertele cu pachet de întrebări — adică exact cazul obișnuit. La
+cele cu „nelimitat" mergea, de-aia n-a sărit în ochi luni de zile.
+
+Cauza: rămăsese în text bucata *„· peste cotă X €/apel"*, de pe vremea când depășirea cotei se
+plătea. Funcția aceea a fost **scoasă deliberat** (nu arătăm clientului prețuri pe întrebare),
+variabila a plecat cu ea, **textul a rămas** — și crăpa la fiecare apăsare.
+
+Acum fereastra scrie ce se întâmplă cu adevărat: *„fondul lunii e «conturi aprinse × 100». Când se
+termină, RA Insight se oprește până luna următoare, fără cost în plus."*
+
+**2. Lista ascundea cel mai mare număr din afacere.** Arăta doar abonamentul lunar. Pentru o ofertă de
+10 mașini scria **290 lei/lună** și tăcea despre **7.000 de lei la început** (montaj + aparate). Acum
+sunt două coloane — „Lunar" și „La început" — amândouă **în lei și în euro**, la cursul înghețat în
+ofertă, nu la cel de azi. Ofertele salvate mai demult arată o liniuță, nu un „0 lei" mincinos;
+deschide-le și salvează-le din nou ca să apară.
+
+**3. O ofertă n-avea nici stare, nici termen.** Nu știai care e trimisă, care e acceptată, care e
+moartă de trei luni, și nici până când mai ține prețul. Acum lista e o **pâlnie de vânzări**:
+
+> **0** în ciornă · **1** în așteptare · **0** expiră în 7 zile · **1** cu termen depășit ·
+> **1** acceptată în ultima lună · **1** pierdută în ultima lună
+
+Pe fiecare rând, o pastilă de stare și pașii care au sens din starea ei: o ciornă are „Am trimis-o",
+una trimisă are „Acceptată" și „Pierdută", una decisă are „Redeschide". *O ciornă nu se poate pierde
+— n-ai trimis-o.*
+
+- **Când o marchezi trimisă**, se pune un termen (30 de zile, propus, îl poți schimba). Data
+  trimiterii o scrie **serverul**, nu browserul: e un fapt, nu o părere.
+- **Când o pierzi, ești întrebat de ce** — dintr-o listă fixă (prea scump / a ales alt furnizor / a
+  amânat / nu mai are nevoie / n-a mai răspuns / altul) plus un rând liber pentru amănunte
+  („la 24 lei/mașină la X"). E fixă dinadins: peste un an vrem să **numărăm** unde pierdem, nu să
+  citim o sută de propoziții.
+- **„Expirată" nu se ține în bază** — se socotește din termen, de fiecare dată. O stare scrisă s-ar fi
+  învechit tăcut dacă nu trecea nimeni pe la ecran o lună.
+
+- **Ce am schimbat:** un buton rupt a fost reparat, banii de la început se văd, iar ofertele au stare și termen.
+- **Ce vede fondatorul:** lista de oferte a devenit o pâlnie — știi pe cine să suni și până când ții prețul.
+- **Ce vede clientul:** nimic — secțiunea e doar a noastră.
+
+**Ce NU am făcut, și de ce:** *cât rămâne la noi* (marja pe ofertă). În calculator sunt doar prețurile
+de VÂNZARE ale aparatelor, nu și cât dăm noi pe ele. Fără prețurile de achiziție, orice marjă afișată
+ar fi inventată. E trecută la „De verificat înainte de lansare".
+
 ### FONDATOR · e-Transport: noi vedem FIRMELE, clientul își vede transporturile
 
 Alin: *„ce îmi arată în ecranul fondator îmi arată și în ecranul partener… un partener trebuie să
@@ -7505,6 +7554,12 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **(Alin) Cât ne costă PE NOI un aparat?** Ca să poată scrie „cât rămâne la noi" pe fiecare ofertă,
+  Ofertare Live are nevoie de prețurile de ACHIZIȚIE (FMC130, FMC150, FMC650, LV-CAN200) și de costul
+  nostru real la o oră de montaj. Azi calculatorul știe doar prețurile de VÂNZARE, deci orice marjă
+  afișată ar fi inventată — de-aia nu e făcută. Când vin cifrele, e muncă de un ceas: o setare cu
+  prețurile noastre + o linie „profit" în rezumatul ofertei și în listă.
 
 - [x] **HOTĂRÂT (Alin, 18.09): clientul NU vede aparatele arhivate.** Ridicasem întrebarea la analiza
   cartonașului „Arhivate"; răspunsul e nu. Rămâne cum e: ecranul „Dispozitive arhivate" stă doar în verticala

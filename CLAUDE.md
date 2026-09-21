@@ -106,6 +106,43 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
 
+### Pâlnia de oferte (21.09) — stările stau pe SERVER
+O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.
+
+- **Cuvintele nu se scriu în pagină.** `OFERTA_STARI`, `OFERTA_VALABIL_ZILE` și `OFERTA_MOTIVE_PIERDUT`
+  stau în `server.js` și se cer prin `GET /api/admin/offers/meta`. Ecranul NU ține nici măcar o
+  valoare „de rezervă" pentru termen (`valabilZile: null`) — ar fi fost a doua copie a regulii; dacă
+  ruta nu răspunde, fereastra nu propune nicio dată și serverul pune termenul obișnuit.
+- **„Expirată" NU e o stare din bază** — se socotește din `valid_until` la fiecare desenare
+  (`_ofStare`). O stare scrisă s-ar învechi tăcut dacă nu trece nimeni pe la ecran o lună. Serverul
+  refuză `status: 'expirata'`.
+- **Datele le scrie serverul**, nu ecranul: `sent_at` la „trimisă", `decided_at` la „acceptată/pierdută".
+  „Când a fost trimisă" e un fapt, nu o părere a browserului care a apăsat butonul.
+- **„Pierdută" CERE un motiv** (server: 400 fără el), dintr-o listă FIXĂ — ca peste un an să putem
+  NUMĂRA unde pierdem. Textul liber stă alături, pentru amănunte.
+- **Butoanele de pe rând se aleg din stare**: o ciornă n-are „Pierdută" (n-ai pierdut ce n-ai trimis).
+- Păzit de `verify_ofertare.js` (în `npm test`), inclusiv pe server pornit.
+
+### Banii unei oferte: DOUĂ sume, nu una
+`monthly_total` singur ascundea cel mai mare număr din afacere: lista scria „290 lei/lună" și tăcea
+despre cele **7.000 de lei de la semnare** (montaj + aparate). Există acum `offers.once_total`, în lei,
+scris la salvare din `montaj + hwTotal × cursul ÎNGHEȚAT în ofertă` (nu cel de azi).
+
+- Ambele sume se arată **în lei ȘI euro**, ca tot restul secțiunii, la cursul din ofertă.
+- Ofertele de dinainte de 21.09 n-au numărul: arată o **liniuță**, nu „0 lei". Se umple resalvându-le.
+- ⚠ Capcană de limbă: `hwTotal` e în **EURO** (aparatele se cumpără în euro), `montaj` e în **LEI**.
+  Nu le aduna fără curs.
+
+### Capcană: text rămas după o funcție scoasă
+Butonul „Aplică RA Insight pe companie" a stat **rupt luni de zile**: scria „· peste cotă X €/apel",
+rămășiță de pe vremea când depășirea cotei se plătea. Funcția a fost scoasă deliberat, variabila
+(`priceEur`) a plecat cu ea, textul a rămas — și fereastra crăpa cu `priceEur is not defined`. Mergea
+doar la ofertele „nelimitat", care sar peste ramura aia, **de-aia n-a sărit în ochi**.
+
+- Când scoți o funcție, caută-i și **cuvintele**, nu doar codul.
+- O ramură care se execută rar (`n > 0`) poate fi moartă fără ca nimeni să observe. Ecranele se
+  probează cu AMÂNDOUĂ felurile de date, nu doar cu cel care iese la o apăsare.
+
 ### Reguli de respectat aici
 - **Numele/descrierile agenților au o SINGURĂ sursă: `AGP_META`** (expus ca `window.AGP_META`).
   Panoul Administrare le citește de acolo. NU rescrie liste paralele de `labels`/`descs` — exact așa

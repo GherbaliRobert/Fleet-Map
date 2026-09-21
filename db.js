@@ -956,6 +956,19 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_offers_created ON offers(created_at DESC)`);
+    // Banii de la ÎNCEPUT (montaj + aparate), în lei. `monthly_total` singur ascundea cel mai mare
+    // număr din afacere: lista scria „290 lei/lună" și tăcea despre cele 7.000 de lei de la semnare
+    // (Alin, 21.09). Se scrie la salvare; ofertele mai vechi îl au gol până sunt resalvate.
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS once_total NUMERIC(12,2)`);
+    // Pâlnia de vânzări. O ofertă trăia fără stare și fără termen: nu știai care e trimisă, care e
+    // moartă de trei luni și până când mai ține prețul (Alin, 21.09). `status` e ciornă/trimisă/
+    // acceptată/pierdută — „expirată" NU se scrie aici, se socotește din `valid_until`, ca să nu
+    // existe o stare care rămâne în urmă dacă nu trece nimeni pe la ea.
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS status VARCHAR(16) DEFAULT 'ciorna'`);
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS valid_until BIGINT`);
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS sent_at BIGINT`);
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS decided_at BIGINT`);
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS lost_reason TEXT`);
     // ─── Contractele cu clienții ───────────────────────────────────────────────────────────────
     // Până acum „contract" era doar o vorbă prin comentarii: o firmă se năștea cu un buton, fără
     // niciun act în spate. Aici stă dosarul juridic: cine a semnat, de când, pe cât timp, cu ce
@@ -1762,23 +1775,43 @@ async function getOfferById(id) {
 async function createOffer(o) {
   const now = Date.now();
   const r = await pool.query(
-    `INSERT INTO offers (name, client_name, client_cui, client_contact, config, monthly_total, currency, notes, created_by, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) RETURNING *`,
-    [o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.currency || 'RON', o.notes || null, o.created_by || null, now]
+    `INSERT INTO offers (name, client_name, client_cui, client_contact, config, monthly_total, once_total, currency, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11) RETURNING *`,
+    [o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.once_total || 0, o.currency || 'RON', o.notes || null, o.created_by || null, now]
   );
   return r.rows[0];
 }
 async function updateOffer(id, o) {
   const now = Date.now();
   const r = await pool.query(
-    `UPDATE offers SET name=$2, client_name=$3, client_cui=$4, client_contact=$5, config=$6, monthly_total=$7, currency=$8, notes=$9, updated_at=$10 WHERE id=$1 RETURNING *`,
-    [id, o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.currency || 'RON', o.notes || null, now]
+    `UPDATE offers SET name=$2, client_name=$3, client_cui=$4, client_contact=$5, config=$6, monthly_total=$7, once_total=$8, currency=$9, notes=$10, updated_at=$11 WHERE id=$1 RETURNING *`,
+    [id, o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.once_total || 0, o.currency || 'RON', o.notes || null, now]
   );
   return r.rows[0] || null;
 }
 async function deleteOffer(id) {
   await pool.query('DELETE FROM offers WHERE id = $1', [id]);
   return { ok: true };
+}
+// Mută oferta în altă stare. Datele (`sent_at`, `decided_at`) se scriu AICI, nu se trimit de pe
+// ecran: „când a fost trimisă" e un fapt, nu o părere a browserului care a apăsat butonul.
+// Regulile stau în JS, nu în `CASE WHEN` pe același parametru: scrise în SQL, baza nu putea deduce
+// tipul lui `$2` (folosit și ca valoare de coloană, și în două comparații) și pica cu „inconsistent
+// types deduced for parameter $2". Așa se și citesc mai ușor.
+async function setOfferStatus(id, status, extra) {
+  const e = extra || {}, now = Date.now();
+  const cur = await pool.query('SELECT sent_at, valid_until FROM offers WHERE id = $1', [id]);
+  if (!cur.rows[0]) return null;
+  const sentAt = status === 'trimisa' ? now : cur.rows[0].sent_at;
+  const decided = (status === 'acceptata' || status === 'pierduta') ? now : null;
+  const lost = status === 'pierduta' ? (e.lost_reason || null) : null;
+  const valid = e.valid_until != null ? Number(e.valid_until) : cur.rows[0].valid_until;
+  const r = await pool.query(
+    `UPDATE offers SET status = $2, valid_until = $3, sent_at = $4, decided_at = $5,
+       lost_reason = $6, updated_at = $7 WHERE id = $1 RETURNING *`,
+    [id, status, valid, sentAt, decided, lost, now]
+  );
+  return r.rows[0] || null;
 }
 // ─── Contracte ───────────────────────────────────────────────────────────────────────────────
 // Coloanele de fișier (file_b64 / gdpr_b64) sunt GRELE — un PDF scanat poate avea megaocteți. Nu
@@ -4461,7 +4494,7 @@ module.exports = {
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
-  listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
+  listOffers, getOfferById, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
   contracteInVigoare, contracteToate, firmeFaraContract, legOferta,

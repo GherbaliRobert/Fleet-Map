@@ -12766,13 +12766,64 @@ app.post('/api/admin/demo-sim', requireAuth, requireSuperadmin, async (req, res)
 });
 
 // ─── Ofertare Live: CRUD oferte salvate (super-admin) ───
+// ── începe „pâlnia de oferte" ────────────────────────────────────────────────────────────────────
+// O ofertă trăia fără stare și fără termen: nu știai care e trimisă, care e acceptată, care e moartă
+// de trei luni, și nici până când mai ține prețul (Alin, 21.09). Cele patru stări, cât ține o ofertă
+// și motivele pentru care se pierde stau AICI, într-un singur loc, și se trimit ecranului — ca să nu
+// existe o a doua listă de cuvinte scrisă în pagină.
+const OFERTA_STARI = ['ciorna', 'trimisa', 'acceptata', 'pierduta'];
+// Cât ține o ofertă, dacă nu-i pui tu alt termen. 30 de zile: destul cât să se gândească, destul de
+// scurt cât prețul să nu fie de pe altă lună (cursul BNR e înghețat în ofertă, costurile noastre nu).
+const OFERTA_VALABIL_ZILE = 30;
+// Lista e FIXĂ dinadins: peste un an vrem să putem NUMĂRA de ce pierdem, nu să citim o sută de
+// propoziții diferite. Textul liber rămâne alături, pentru amănunte.
+const OFERTA_MOTIVE_PIERDUT = [
+  { cod: 'pret', et: 'Prea scump' },
+  { cod: 'concurent', et: 'A ales alt furnizor' },
+  { cod: 'amanat', et: 'A amânat investiția' },
+  { cod: 'nevoie', et: 'Nu mai are nevoie' },
+  { cod: 'tacere', et: 'Nu a mai răspuns' },
+  { cod: 'altul', et: 'Altul' },
+];
 app.get('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listOffers()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Cuvintele și termenul, pentru ecran. ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA oricărei
+// `/api/admin/offers/:id`.
+app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => {
+  res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT });
+});
+// Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
+// server, la fel ca oriunde altundeva unde un fapt se naște dintr-o apăsare de buton.
+app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const b = req.body || {};
+    const stare = String(b.status || '');
+    if (!OFERTA_STARI.includes(stare)) return res.status(400).json({ error: 'Stare necunoscută' });
+    const o = await db.getOfferById(id); if (!o) return res.status(404).json({ error: 'Oferta nu există' });
+    const extra = {};
+    if (stare === 'trimisa') {
+      // Termenul se pune ACUM dacă nu există deja unul: o ofertă trimisă fără termen e o ofertă care
+      // nu expiră niciodată, adică exact ce vrem să nu mai avem.
+      extra.valid_until = b.valid_until != null ? Number(b.valid_until)
+        : (o.valid_until || (Date.now() + OFERTA_VALABIL_ZILE * 86400000));
+    } else if (b.valid_until != null) extra.valid_until = Number(b.valid_until);
+    if (stare === 'pierduta') {
+      const cod = String(b.lost_reason || '').trim();
+      if (!cod) return res.status(400).json({ error: 'Spune de ce s-a pierdut — altfel nu învățăm nimic din ea.' });
+      extra.lost_reason = cod.slice(0, 400);
+    }
+    const out = await db.setOfferStatus(id, stare, extra);
+    auditReq(req, 'offer_status', 'offer', id, { status: stare, lost_reason: extra.lost_reason || null });
+    res.json(out);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ── sfârșit „pâlnia de oferte" ──
 app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const b = req.body || {};
-    const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
+    const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
     auditReq(req, 'create', 'offer', o.id, { name: o.name });
     res.json(o);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -12781,7 +12832,7 @@ app.put('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, res
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const b = req.body || {};
-    const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, currency: b.currency, notes: b.notes });
+    const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes });
     if (!o) return res.status(404).json({ error: 'Oferta nu există' });
     auditReq(req, 'update', 'offer', id, { name: o.name });
     res.json(o);

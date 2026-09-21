@@ -23406,7 +23406,12 @@ const pozitii = await r.json();</code></pre>
     window.raxOfSave = async function () {
       var r = _ofCalc();
       if (!r.cfg.client.name && !r.cfg.offerName) { if (window.raxToast) raxToast('Pune un nume de client sau de ofertă', 'error'); return; }
-      var payload = { name: r.cfg.offerName || ('Ofertă ' + (r.cfg.client.name || '')), client_name: r.cfg.client.name, client_cui: r.cfg.client.cui, client_contact: r.cfg.client.contact, config: { cfg: r.cfg, prices: r.p }, monthly_total: r.monthly, currency: 'RON', notes: r.cfg.notes };
+      // Banii de la ÎNCEPUT, în lei: montajul (deja în lei) + aparatele (în euro, la cursul ÎNGHEȚAT
+      // în ofertă, nu la cel de azi). Se salvează ca număr propriu, ca lista să-l poată arăta fără
+      // să redeschidă fiecare ofertă. Înainte lista scria doar abonamentul lunar și tăcea despre
+      // suma cea mare de la semnare (Alin, 21.09).
+      var onceLei = Math.round(((r.montaj || 0) + (r.hwTotal || 0) * (r.cfg.fxRate || _fxRate)) * 100) / 100;
+      var payload = { name: r.cfg.offerName || ('Ofertă ' + (r.cfg.client.name || '')), client_name: r.cfg.client.name, client_cui: r.cfg.client.cui, client_contact: r.cfg.client.contact, config: { cfg: r.cfg, prices: r.p }, monthly_total: r.monthly, once_total: onceLei, currency: 'RON', notes: r.cfg.notes };
       try {
         var url = '/api/admin/offers' + (_raxOf.editingId ? '/' + _raxOf.editingId : '');
         var resp = await fetch(url, { method: _raxOf.editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
@@ -23418,15 +23423,172 @@ const pozitii = await r.json();</code></pre>
         raxOfLoadList();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
+    // ── începe „pâlnia de oferte" ────────────────────────────────────────────────────────────────
+    // O ofertă avea doar nume, client și o sumă. Nu știai care e trimisă, care e acceptată, care e
+    // moartă de trei luni, și nici până când mai ține prețul (Alin, 21.09). Acum lista e o pâlnie:
+    // ciornă → trimisă → acceptată / pierdută, cu termen și cu motivul pierderii.
+    //
+    // „Expirată" NU e o stare ținută în bază: se socotește din termen, de fiecare dată când se
+    // desenează. O stare scrisă s-ar fi învechit tăcut dacă nu trecea nimeni pe la ecran o lună.
+    // GOL dinadins: termenul și motivele vin de la server. O valoare „de rezervă" scrisă aici ar fi
+    // fost a doua copie a aceleiași reguli — exact ce am scos din alte ecrane. Dacă nu s-au încărcat,
+    // fereastra nu propune nicio dată, iar serverul pune termenul obișnuit.
+    var _ofMeta = { valabilZile: null, motivePierdut: [], stari: [] };
+    async function _ofIncarcaMeta() {
+      if ((_ofMeta.motivePierdut || []).length) return;
+      try {
+        var m = await fetch('/api/admin/offers/meta', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (m && m.motivePierdut) _ofMeta = m;
+      } catch (e) {}
+    }
+    var _OF_ET = {
+      ciorna:    { et: 'Ciornă',    c: 'var(--text-muted)', ic: 'fa-pen-ruler' },
+      trimisa:   { et: 'Trimisă',   c: 'var(--orange)',     ic: 'fa-paper-plane' },
+      expirata:  { et: 'Expirată',  c: 'var(--red)',        ic: 'fa-hourglass-end' },
+      acceptata: { et: 'Acceptată', c: 'var(--accent)',     ic: 'fa-circle-check' },
+      pierduta:  { et: 'Pierdută',  c: 'var(--text-muted)', ic: 'fa-circle-xmark' }
+    };
+    function _ofStare(o) {
+      var s = o.status || 'ciorna';
+      if (s === 'trimisa' && o.valid_until && Number(o.valid_until) < Date.now()) return 'expirata';
+      return s;
+    }
+    function _ofZile(o) {
+      if (!o.valid_until) return null;
+      return Math.ceil((Number(o.valid_until) - Date.now()) / 86400000);
+    }
+    // Pastila de stare + termenul, într-o propoziție. Tot ce scrie aici vine din starea socotită
+    // mai sus — nicio a doua regulă despre „ce e expirat".
+    function _ofPastila(o) {
+      var s = _ofStare(o), m = _OF_ET[s] || _OF_ET.ciorna, z = _ofZile(o), sub = '';
+      if (s === 'trimisa' && z != null) sub = z <= 0 ? 'expiră azi' : ('mai are ' + z + (z === 1 ? ' zi' : _raxDe(z) + 'zile'));
+      else if (s === 'expirata' && z != null) sub = 'de ' + Math.abs(z) + _raxDe(Math.abs(z)) + 'zile';
+      else if (s === 'pierduta' && o.lost_reason) sub = String(o.lost_reason).slice(0, 40);
+      return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:' + m.c + ';">'
+        + '<i class="fas ' + m.ic + '"></i>' + m.et + '</span>'
+        + (sub ? '<br><span style="font-size:10px;color:var(--text-muted);">' + esc(sub) + '</span>' : '');
+    }
+    // O fereastră mică, refolosită de „Trimisă" și de „Pierdută". Erau pe cale să devină două
+    // copii ale aceluiași bloc de 15 rânduri.
+    function _ofFereastra(titlu, ic, corp, onOk) {
+      var ex = document.getElementById('ra-of-dlg'); if (ex) ex.remove();
+      var ov = document.createElement('div'); ov.id = 'ra-of-dlg';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);padding:20px;';
+      ov.innerHTML = '<div style="background:var(--bg-card,#fff);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:430px;width:100%;padding:22px;font-family:inherit;">'
+        + '<div style="font-size:15px;font-weight:800;margin-bottom:12px;"><i class="fas ' + ic + '" style="color:var(--accent);"></i> ' + titlu + '</div>'
+        + corp
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">'
+        + '<button class="rax-btn" onclick="document.getElementById(\'ra-of-dlg\').remove()">Anulează</button>'
+        + '<button class="rax-btn primary" id="ra-of-dlg-ok"><i class="fas fa-check"></i> Gata</button></div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+      document.getElementById('ra-of-dlg-ok').onclick = function () { onOk(ov); };
+    }
+    async function _ofSchimbaStarea(id, status, extra) {
+      try {
+        var resp = await fetch('/api/admin/offers/' + id + '/stare', { method: 'PUT',
+          headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify(Object.assign({ status: status }, extra || {})) });
+        var j = await resp.json().catch(function () { return {}; });
+        if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return false; }
+        var e = document.getElementById('ra-of-dlg'); if (e) e.remove();
+        if (window.raxToast) raxToast('Ofertă marcată „' + (_OF_ET[status] || {}).et + '" ✓', 'success');
+        raxOfLoadList();
+        return true;
+      } catch (err) { if (window.raxToast) raxToast('Eroare: ' + err.message, 'error'); return false; }
+    }
+    window.raxOfTrimisa = function (id) {
+      var zile = _ofMeta.valabilZile;
+      var pana = zile ? new Date(Date.now() + zile * 86400000).toISOString().slice(0, 10) : '';
+      _ofFereastra('Am trimis oferta', 'fa-paper-plane',
+        '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Până când ține prețul? '
+        + (zile
+            ? 'Implicit ' + zile + _raxDe(zile) + 'zile — destul cât să se gândească, destul de scurt cât să nu fie prețul de pe altă lună.'
+            : 'Lasă gol și se pune termenul obișnuit.')
+        + '</div><input type="date" id="ra-of-dlg-pana" class="rax-field" style="width:100%;" value="' + pana + '">',
+        function () {
+          var v = (document.getElementById('ra-of-dlg-pana') || {}).value;
+          var t = v ? new Date(v + 'T23:59:59').getTime() : null;
+          _ofSchimbaStarea(id, 'trimisa', t ? { valid_until: t } : {});
+        });
+    };
+    window.raxOfAcceptata = function (id) { _ofSchimbaStarea(id, 'acceptata'); };
+    window.raxOfRedeschide = function (id) { _ofSchimbaStarea(id, 'ciorna'); };
+    window.raxOfPierduta = function (id) {
+      // Motivele vin de la server, dintr-o listă FIXĂ: peste un an vrem să putem NUMĂRA de ce
+      // pierdem, nu să citim o sută de propoziții diferite. Textul liber rămâne alături.
+      var opt = (_ofMeta.motivePierdut || []).map(function (m) { return '<option value="' + esc(m.cod) + '">' + esc(m.et) + '</option>'; }).join('');
+      _ofFereastra('De ce am pierdut-o?', 'fa-circle-xmark',
+        '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">Se scrie ca să putem număra, peste un an, unde pierdem cel mai des.</div>'
+        + '<select id="ra-of-dlg-motiv" class="rax-field" style="width:100%;margin-bottom:8px;">' + opt + '</select>'
+        + '<input id="ra-of-dlg-liber" class="rax-field" style="width:100%;" placeholder="amănunte (opțional) — ex. „la 24 lei/mașină la X"">',
+        function () {
+          var cod = (document.getElementById('ra-of-dlg-motiv') || {}).value || '';
+          var lib = ((document.getElementById('ra-of-dlg-liber') || {}).value || '').trim();
+          var et = ((_ofMeta.motivePierdut || []).find(function (m) { return m.cod === cod; }) || {}).et || cod;
+          _ofSchimbaStarea(id, 'pierduta', { lost_reason: et + (lib ? ' — ' + lib : '') });
+        });
+    };
+    // Butoanele de pe rând: doar pașii care au sens din starea de acum. O ofertă acceptată n-are
+    // buton „Acceptă", iar una în ciornă n-are „Pierdută" — n-ai pierdut ce n-ai trimis.
+    function _ofButoaneStare(o) {
+      var s = _ofStare(o);
+      var b = function (fn, et, cul) {
+        return ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;' + (cul ? 'color:' + cul + ';' : '') + '" onclick="' + fn + '(' + o.id + ')">' + et + '</button>';
+      };
+      if (s === 'ciorna') return b('raxOfTrimisa', 'Am trimis-o');
+      if (s === 'trimisa' || s === 'expirata') return b('raxOfAcceptata', 'Acceptată', 'var(--accent)') + b('raxOfPierduta', 'Pierdută');
+      return b('raxOfRedeschide', 'Redeschide');
+    }
+    // Cifrele de sus se socotesc din ofertele ARĂTATE, ca peste tot în administrare.
+    //
+    // Etichetele sunt alese ca să NU aibă nevoie de acord cu numărul — „1 trimise" arată a greșeală.
+    // „în așteptare" și „cu termen depășit" merg și la unu, și la o sută. Unde n-a mers („acceptată"
+    // / „acceptate"), se acordă pe loc; e o singură excepție, nu merită un ajutor global.
+    function _ofPalnieHtml(rows) {
+      var n = function (st) { return rows.filter(function (o) { return _ofStare(o) === st; }).length; };
+      var LUNA = 30 * 86400000, acum = Date.now();
+      var deLuna = function (st) { return rows.filter(function (o) { return _ofStare(o) === st && o.decided_at && (acum - Number(o.decided_at)) < LUNA; }).length; };
+      var acceptate = deLuna('acceptata'), pierdute = deLuna('pierduta');
+      var expiraCurand = rows.filter(function (o) { var z = _ofZile(o); return _ofStare(o) === 'trimisa' && z != null && z <= 7; }).length;
+      var c = function (nr, et, cul) {
+        return '<div class="thf-c"><b' + (cul && nr ? ' style="color:' + cul + '"' : '') + '>' + _raxNumar(nr) + '</b><span>' + et + '</span></div>';
+      };
+      return '<div class="thf-sumar" style="margin-bottom:10px;">'
+        + c(n('ciorna'), 'în ciornă')
+        + c(n('trimisa'), 'în așteptare', 'var(--orange)')
+        + c(expiraCurand, 'expiră în 7 zile', 'var(--red)')
+        + c(n('expirata'), 'cu termen depășit', 'var(--red)')
+        + c(acceptate, (acceptate === 1 ? 'acceptată' : 'acceptate') + ' în ultima lună', 'var(--accent)')
+        + c(pierdute, (pierdute === 1 ? 'pierdută' : 'pierdute') + ' în ultima lună')
+        + '</div>';
+    }
+    // ── sfârșit „pâlnia de oferte" ──
+
     window.raxOfLoadList = async function () {
       try { _raxOf.offers = await fetch('/api/admin/offers', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) { _raxOf.offers = []; }
+      await _ofIncarcaMeta();   // cuvintele și termenul pâlniei, o singură dată
       raxOfRenderList();
     };
     window.raxOfRenderList = function () {
       var host = document.getElementById('rax-of-list'); if (!host) return;
       var rows = _raxOf.offers || [];
       if (!rows.length) { host.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Oferte salvate</div><div class="rax-co-meta">Nicio ofertă salvată încă.</div>'; return; }
-      host.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Oferte salvate (' + rows.length + ')</div><table class="rax-co-table"><thead><tr><th>Ofertă</th><th>Client</th><th class="num">Lunar</th><th>Data</th><th></th></tr></thead><tbody>' +
+      // Două coloane de bani, nu una. „La început" (montaj + aparate) e de obicei suma CEA MARE —
+      // 7.000 de lei lângă 290 lei/lună — și lipsea cu totul din listă. Amândouă în lei ȘI euro, ca
+      // tot restul secțiunii (Alin, 21.09).
+      //
+      // Cursul e cel ÎNGHEȚAT în ofertă, nu cel de azi. Dacă lipsește (ofertă veche), cel de azi —
+      // dar atunci euro e o aproximare, nu suma din hârtia semnată.
+      var fxOf = function (o) { return ((o.config && o.config.cfg && o.config.cfg.fxRate) || _fxRate); };
+      var bani = function (lei, fx) {
+        var l = Number(lei) || 0;
+        return '<b>' + l.toLocaleString('ro-RO', { maximumFractionDigits: 0 }) + ' lei</b>'
+          + '<br><span style="font-size:10px;color:var(--text-muted);">' + (l / (fx || _fxRate)).toLocaleString('ro-RO', { maximumFractionDigits: 0 }) + ' €</span>';
+      };
+      host.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Oferte salvate (' + rows.length + ')</div>'
+        + _ofPalnieHtml(rows)
+        + '<table class="rax-co-table"><thead><tr><th>Ofertă</th><th>Client</th><th>Stare</th><th class="num">Lunar</th><th class="num">La început</th><th>Data</th><th></th></tr></thead><tbody>' +
         rows.map(function (o) {
           var hasAi = !!((o.config && o.config.cfg && o.config.cfg.aiA));
           var applyBtn = hasAi ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOfApply(' + o.id + ')" title="Aplică pachetul RA Insight pe o companie"><i class="fas fa-wand-magic-sparkles"></i></button>' : '';
@@ -23438,7 +23600,15 @@ const pozitii = await r.json();</code></pre>
             : ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="coNouDinOferta(' + o.id + ')" title="Deschide un client pornind de la oferta asta — datele și prețul vin singure"><i class="fas fa-user-plus"></i></button>';
           return '<tr><td><b>' + esc(o.name || '—') + '</b>' + (hasAi ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;vertical-align:middle;">AI</span>' : '') +
             (devenit ? '<br><span style="font-size:10px;color:var(--accent);font-weight:700;"><i class="fas fa-check"></i> a devenit client</span>' : '') +
-            '</td><td>' + esc(o.client_name || '—') + '</td><td class="num"><b>' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '</b></td><td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
+            '</td><td>' + esc(o.client_name || '—') + '</td>'
+            + '<td>' + _ofPastila(o) + '</td>'
+            + '<td class="num">' + bani(o.monthly_total, fxOf(o)) + '</td>'
+            // Ofertele salvate înainte de 21.09 n-au numărul ăsta. Se scrie o liniuță cinstită, cu
+            // ce e de făcut ca să apară — nu un „0 lei", care ar fi o minciună.
+            + '<td class="num">' + (o.once_total != null && Number(o.once_total) > 0
+                ? bani(o.once_total, fxOf(o))
+                : '<span style="color:var(--text-muted);" title="Ofertă salvată înainte ca suma asta să se rețină. Deschide-o și salveaz-o din nou.">—</span>') + '</td>'
+            + '<td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + _ofButoaneStare(o) + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('') + '</tbody></table>';
     };
     window.raxOfLoad = function (id) {
@@ -23479,8 +23649,10 @@ const pozitii = await r.json();</code></pre>
     window.raxOfApply = async function (id) {
       var o = (_raxOf.offers || []).find(function (x) { return x.id === id; }); if (!o) return;
       var cfg = (o.config && o.config.cfg) || {};
+      // `aiqN` = câte întrebări aduce UN CONT pe lună (din 11.09 RA Insight se vinde pe cont, nu pe
+      // firmă). Fondul lunii = conturi aprinse × atâtea. 0 = nelimitat.
       var n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
-      var pachet = n > 0 ? (n + ' apeluri/lună') : 'apeluri nelimitate';
+      var pachet = n > 0 ? (n + ' întrebări pe cont/lună') : 'întrebări nelimitate';
       var cos = [];
       try { cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
       cos = (Array.isArray(cos) ? cos : []).filter(function (c) { return !c.is_demo; });
@@ -23491,7 +23663,15 @@ const pozitii = await r.json();</code></pre>
       var opts = cos.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name || ('#' + c.id)) + '</option>'; }).join('');
       ov.innerHTML = '<div style="background:var(--bg-card,#fff);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:430px;width:100%;padding:22px;font-family:inherit;">'
         + '<div style="font-size:15px;font-weight:800;margin-bottom:4px;"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Aplică RA Insight pe companie</div>'
-        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Din oferta <b>' + esc(o.name || '—') + '</b>: <b style="color:var(--accent);">' + pachet + '</b>' + (n > 0 ? ' · peste cotă ' + priceEur.toFixed(2) + ' €/apel' : '') + '. Se activează modulul și se scrie cota pe compania aleasă.</div>'
+        // ⚠ Aici a stat, până pe 21.09, „· peste cotă X €/apel" — o rămășiță de pe vremea când
+        // depășirea se plătea. Funcția a fost scoasă deliberat (nu arătăm clientului prețuri pe
+        // întrebare), variabila a plecat cu ea, TEXTUL a rămas: butonul crăpa cu `priceEur is not
+        // defined` și fereastra nu se mai deschidea deloc — dar numai la ofertele cu pachet, adică
+        // exact cazul obișnuit. La cele „nelimitat" mergea, de-aia n-a sărit în ochi.
+        // Acum scrie ce se întâmplă cu adevărat la epuizare: se oprește, fără cost în plus.
+        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Din oferta <b>' + esc(o.name || '—') + '</b>: <b style="color:var(--accent);">' + pachet + '</b>'
+          + (n > 0 ? ' — fondul lunii e „conturi aprinse × ' + n + '". Când se termină, RA Insight se oprește până luna următoare, fără cost în plus.' : '.')
+          + ' Se activează modulul și se scrie cota pe compania aleasă.</div>'
         + '<select id="ra-of-apply-co" class="rax-field" style="width:100%;margin-bottom:16px;">' + opts + '</select>'
         + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
         + '<button class="rax-btn" onclick="document.getElementById(\'ra-of-apply\').remove()">Anulează</button>'
@@ -23506,7 +23686,7 @@ const pozitii = await r.json();</code></pre>
           var j = await resp.json().catch(function () { return {}; });
           if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; return; }
           ov.remove();
-          if (window.raxToast) raxToast('RA Insight aplicat pe ' + (j.company || 'companie') + ' ✓ (' + (j.unlimited ? 'nelimitat' : j.quota + ' apeluri/lună') + ')', 'success');
+          if (window.raxToast) raxToast('RA Insight aplicat pe ' + (j.company || 'companie') + ' ✓ (' + (j.unlimited ? 'nelimitat' : j.quota + ' întrebări pe cont') + ')', 'success');
         } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; }
       };
     };
