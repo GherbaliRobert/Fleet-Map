@@ -127,6 +127,10 @@ Două lucruri gândite dinadins:
 - **O ofertă deschisă din listă NU-și pierde prețurile negociate** când schimbi lista casei. Doar o
   ofertă nouă pornește de la cifrele noi.
 
+**Și moneda dublă, peste tot.** Regula casei — nicio sumă nu stă singură pe ecran — se aplică acum
+și aici: sub fiecare cifră scrie echivalentul în cealaltă monedă (29 lei ≈ 5,8 €; 135 € ≈ 675 lei),
+la cursul BNR al zilei. În formular, la pașii 2–5, era deja așa; în tablou lipsea.
+
 - **Ce am schimbat:** lista de prețuri a casei are un loc al ei, cu marja la vedere.
 - **Ce vede fondatorul:** butonul „Prețurile noastre" în capul secțiunii Ofertare Live.
 - **Ce vede clientul:** nimic — nici prețurile de listă, nici costurile noastre nu ies din verticala noastră.

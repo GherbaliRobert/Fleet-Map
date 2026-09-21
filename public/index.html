@@ -22654,13 +22654,16 @@ const pozitii = await r.json();</code></pre>
       // Un rând: eticheta, cât cerem, cât ne costă, cât rămâne. Marja se socotește pe loc, pe măsură
       // ce scrii — ăsta e tot rostul tabloului: să vezi pe ce câștigi și pe ce nu.
       var rand = function (kP, et, kC, um) {
+        // Sub fiecare cifră, echivalentul în cealaltă monedă — aceeași regulă a casei ca în
+        // formular și ca în rezumat: nicio sumă nu stă singură pe ecran (Alin, 21.09).
         var cel = function (id, val, activ) {
-          return activ
-            ? '<input id="' + id + '" type="number" min="0" step="0.01" class="rax-field" oninput="raxOfPretMarja()" '
-              + 'style="width:82px;margin:0;text-align:right;" value="' + (val == null || val === '' ? '' : val) + '" placeholder="—">'
-            : '<span style="width:82px;display:inline-block;"></span>';
+          if (!activ) return '<span class="rax-pret-c"></span>';
+          return '<span class="rax-pret-c">'
+            + '<input id="' + id + '" type="number" min="0" step="0.01" class="rax-field" oninput="raxOfPretMarja()" '
+            + 'style="width:82px;margin:0;text-align:right;" value="' + (val == null || val === '' ? '' : val) + '" placeholder="—">'
+            + '<em id="eq-' + id + '"></em></span>';
         };
-        return '<div class="rax-pret-r" data-p="' + (kP || '') + '" data-c="' + (kC || '') + '">'
+        return '<div class="rax-pret-r" data-p="' + (kP || '') + '" data-c="' + (kC || '') + '" data-um="' + esc(um) + '">'
           + '<span class="et">' + esc(et) + '</span>'
           + cel('tp-' + kP, kP ? pret[kP] : null, !!kP)
           + cel('tc-' + kC, kC ? c[kC] : null, !!kC)
@@ -22704,12 +22707,23 @@ const pozitii = await r.json();</code></pre>
     // privire asupra a două cifre pe care le ai deja în față.
     window.raxOfPretMarja = function () {
       document.querySelectorAll('#ra-of-dlg .rax-pret-r').forEach(function (r) {
-        var kP = r.getAttribute('data-p'), kC = r.getAttribute('data-c');
+        var kP = r.getAttribute('data-p'), kC = r.getAttribute('data-c'), um = r.getAttribute('data-um');
         var b = r.querySelector('.mj'); if (!b) return;
         var a = kP ? document.getElementById('tp-' + kP) : null;
         var d = kC ? document.getElementById('tc-' + kC) : null;
         var vp = (a && a.value !== '') ? parseFloat(a.value) : null;
         var vc = (d && d.value !== '') ? parseFloat(d.value) : null;
+        // Echivalentul de sub fiecare cifră. Grupul spune în ce monedă e scrisă („lei" sau „€"),
+        // deci se întoarce în cealaltă. Zero n-are echivalent de arătat.
+        var ech = function (id, v) {
+          var e = document.getElementById('eq-' + id); if (!e) return;
+          if (!Number.isFinite(v) || v <= 0) { e.textContent = ''; return; }
+          e.textContent = (um === '€')
+            ? '≈ ' + _eur2lei(v).toFixed(v < 20 ? 1 : 0) + ' lei'
+            : '≈ ' + _lei2eur(v).toFixed(v < 100 ? 1 : 0) + ' €';
+        };
+        if (a) ech('tp-' + kP, vp);
+        if (d) ech('tc-' + kC, vc);
         if (vp == null || vc == null || !Number.isFinite(vp) || !Number.isFinite(vc)) { b.textContent = ''; b.style.color = ''; return; }
         var m = vp - vc;
         b.textContent = (m > 0 ? '+' : '') + (Math.round(m * 100) / 100) + (vp > 0 ? ' · ' + Math.round((m / vp) * 100) + '%' : '');

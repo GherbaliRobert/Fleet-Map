@@ -254,6 +254,14 @@ T('o ofertă deschisă din listă NU-și pierde prețurile negociate când se sc
   /if \(_raxOf\.editingId == null\) raxLoadOfertare\(\); else raxOfRecalc\(\);/.test(PROF));
 T('se ajunge la el dintr-un buton, din capul secțiunii',
   /<button class="rax-btn" onclick="raxOfPreturi\(\)">/.test(html));
+// Regula casei: nicio sumă nu stă singură pe ecran. În formular o pune `_ofEuroLangaTarife`; în
+// tablou, fiecare cifră își poartă echivalentul dedesubt (Alin, 21.09).
+T('fiecare cifră din tablou are loc pentru echivalent', /<em id="eq-' \+ id \+ '"><\/em>/.test(PROF));
+T('și se socotește în cealaltă monedă, după moneda grupului',
+  /um === '€'[\s\S]{0,140}_eur2lei\(v\)[\s\S]{0,120}_lei2eur\(v\)/.test(PROF));
+T('zero n-are echivalent de arătat', /if \(!Number\.isFinite\(v\) \|\| v <= 0\) \{ e\.textContent = ''; return; \}/.test(PROF));
+T('și coloana rămâne dreaptă, oricât de lung ar fi textul',
+  /\.rax-pret-c\{[^}]*flex-direction:column/.test(fs.readFileSync(P('public/css/app.css'), 'utf8')));
 
 sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
 // Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe
