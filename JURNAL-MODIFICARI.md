@@ -95,6 +95,42 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · „Prețurile noastre": tot ce cerem și tot ce ne costă, într-un tablou
+
+Alin: *„erau bune tarifele lunare editabile, dar nu era locul lor acolo și nu erau structurate bine.
+Nu crezi că ar fi ok să le aducem iarăși, dar sub o formă mai bine structurată?"*
+
+**Întâi o lămurire:** tarifele nu dispăruseră. Mutasem prețul lunar pe mașină la pasul 2 și păstrarea
+datelor la pasul 3 — sunt tot editabile. Ce dispăruse era *panoul*. Am scris prost în mesaj.
+
+**Dar întrebarea arăta ceva ce chiar lipsea.** Prețul la locul lui e bun **când faci o ofertă**. Când
+îți **actualizezi lista** („am găsit aparate mai ieftine", „s-a scumpit instalatorul"), vrei altceva:
+să le vezi pe toate deodată — și, mai ales, **cu ce ne costă pe noi alături**.
+
+Ăsta e tabloul nou, deschis dintr-un buton în capul secțiunii:
+
+| | cerem | ne costă | rămâne |
+|---|---|---|---|
+| Instalare dispozitiv GPS | 120 lei | 70 lei | **+50 · 42%** |
+| Teltonika FMC650 | 135 € | 88 € | **+47 · 35%** |
+
+Cinci grupuri: **abonamentul lunar pe mașină** (inclusiv modulele care se adaugă și cât ne costă o
+mașină ținută în aer), **păstrarea datelor**, **RA Insight**, **montajul** pe operațiune,
+**aparatele** pe bucată. 21 de prețuri și 12 costuri, într-un singur ecran.
+
+**Cât rămâne se socotește cât scrii** — ăsta e tot rostul: vezi pe loc pe ce câștigi și pe ce nu.
+Unde nu știm costul, **nu scrie nimic** — nu o marjă de 100% care ar fi o minciună.
+
+Două lucruri gândite dinadins:
+- **O singură apăsare salvează și prețurile, și costurile.** Erau două ferestre despre bani; acum e
+  una. Perechea „cât cerem / cât ne costă" nu mai stă în locuri diferite.
+- **O ofertă deschisă din listă NU-și pierde prețurile negociate** când schimbi lista casei. Doar o
+  ofertă nouă pornește de la cifrele noi.
+
+- **Ce am schimbat:** lista de prețuri a casei are un loc al ei, cu marja la vedere.
+- **Ce vede fondatorul:** butonul „Prețurile noastre" în capul secțiunii Ofertare Live.
+- **Ce vede clientul:** nimic — nici prețurile de listă, nici costurile noastre nu ies din verticala noastră.
+
 ### AMÂNDOI · Logo-ul scrie „RA Tracks", nu „traks"
 
 Alin, scurt și limpede: *„«RA Tracks» trebuie să scrie."*

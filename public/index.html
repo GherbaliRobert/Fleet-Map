@@ -22521,19 +22521,46 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { _costNoastre = {}; }
       return _costNoastre;
     }
-    // Etichetele perechilor „cât cerem / cât ne costă". Numele cheilor sunt ACELEAȘI ca la prețurile
-    // de vânzare, ca să nu existe două vocabulare.
-    var _COST_CAMPURI = [
-      { grup: 'Aparate — cât dăm noi pe bucată (€)', chei: [
-        ['dFmc130', 'Teltonika FMC130'], ['dFmc150', 'Teltonika FMC150'],
-        ['dFmc650', 'Teltonika FMC650'], ['dLvCan', 'Modul LV-CAN200']] },
-      { grup: 'Montaj — cât ne costă o operațiune (lei)', chei: [
-        ['mGps', 'Instalare dispozitiv GPS'], ['mLvCan', 'Instalare cu LV-CAN'],
-        ['mCanInc', 'Instalare cu CAN încorporat'], ['mFms', 'Instalare FMS (tahograf)'],
-        ['mUninstall', 'Dezinstalare'], ['mReplace', 'Înlocuire'], ['mTravel', 'Deplasare (lei/km)']] },
-      { grup: 'Lunar — cât ne costă o mașină ținută în aer (lei)', chei: [
-        ['cVehLuna', 'SIM + servere, pe mașină/lună']] }
+    // ── Lista noastră de prețuri, într-un singur tablou ─────────────────────────────────────────
+    // În ofertă, fiecare preț se schimbă la locul lui (pașii 2–5) — acolo îl folosești. Dar când îți
+    // ACTUALIZEZI prețurile de listă („am găsit aparate mai ieftine", „s-a scumpit instalatorul"),
+    // vrei să le vezi pe TOATE deodată, cu ce ne costă pe noi alături (Alin, 21.09). Ăsta e locul.
+    //
+    // Un rând = [cheia prețului CERUT, eticheta, cheia COSTULUI nostru]. Cheile sunt ACELEAȘI ca la
+    // prețurile din formular, ca să nu existe două vocabulare. `null` = rândul n-are perechea aia.
+    var _PRET_GRUPURI = [
+      { t: 'Abonament lunar, pe mașină', um: 'lei', randuri: [
+        ['pPlain', 'Vehicul fără CAN', null],
+        ['pCan', 'Vehicul cu CAN', null],
+        ['pFms', 'Vehicul cu FMS (camion)', null],
+        ['pTahograf', 'Modul Tahograf — se adaugă la mașină', null],
+        ['pEtransport', 'Modul e-Transport — se adaugă la mașină', null],
+        [null, 'Ce ne costă o mașină pe lună (SIM + servere)', 'cVehLuna']] },
+      { t: 'Păstrarea datelor', um: 'lei', nota: 'Primele 6 luni sunt incluse în abonament.', randuri: [
+        ['ret12', '12 luni', null], ['ret24', '24 luni', null],
+        ['ret36', '36 luni', null], ['retCustom', 'Custom', null]] },
+      { t: 'RA Insight', um: 'lei', nota: 'Cât ne costă o întrebare e MĂSURAT în aplicație și se vede la pasul 3, lângă comutator — nu se trece de mână aici.', randuri: [
+        ['pAiA', 'Un cont, pe lună', null]] },
+      { t: 'Montaj, pe operațiune', um: 'lei', randuri: [
+        ['mGps', 'Instalare dispozitiv GPS', 'mGps'],
+        ['mLvCan', 'Instalare cu LV-CAN', 'mLvCan'],
+        ['mCanInc', 'Instalare cu CAN încorporat', 'mCanInc'],
+        ['mFms', 'Instalare FMS (tahograf)', 'mFms'],
+        ['mUninstall', 'Dezinstalare', 'mUninstall'],
+        ['mReplace', 'Înlocuire', 'mReplace'],
+        ['mTravel', 'Deplasare (pe km)', 'mTravel']] },
+      { t: 'Aparate, pe bucată', um: '€', randuri: [
+        ['dFmc130', 'Teltonika FMC130', 'dFmc130'],
+        ['dFmc150', 'Teltonika FMC150', 'dFmc150'],
+        ['dFmc650', 'Teltonika FMC650', 'dFmc650'],
+        ['dLvCan', 'Modul LV-CAN200', 'dLvCan']] }
     ];
+    // Numele pe înțeles ale cheilor de cost — pentru rândul „nu pot socoti profitul până nu știu…".
+    function _costNume() {
+      var m = {};
+      _PRET_GRUPURI.forEach(function (g) { g.randuri.forEach(function (r) { if (r[2]) m[r[2]] = r[1]; }); });
+      return m;
+    }
     function _ofCostLipsa(r, c) {
       // Ce cifre CHIAR trebuie pentru oferta asta. O ofertă fără FMC650 nu are nevoie de prețul lui.
       var cer = [];
@@ -22545,7 +22572,7 @@ const pozitii = await r.json();</code></pre>
       if (mj.qUninstall > 0) cer.push('mUninstall'); if (mj.qReplace > 0) cer.push('mReplace');
       if (mj.kmTravel > 0) cer.push('mTravel');
       if (r.cfg.nVeh > 0) cer.push('cVehLuna');
-      var nume = {}; _COST_CAMPURI.forEach(function (g) { g.chei.forEach(function (x) { nume[x[0]] = x[1]; }); });
+      var nume = _costNume();
       return cer.filter(function (k) { return c[k] == null; }).map(function (k) { return nume[k] || k; });
     }
     // Socoteala. Tot ce se poate calcula se calculează; ce lipsește oprește blocul, nu-l falsifică.
@@ -22581,7 +22608,7 @@ const pozitii = await r.json();</code></pre>
       var c = _costNoastre;
       var cap = '<div class="raof-sec"><i class="fas fa-sack-dollar"></i> Ce rămâne la noi '
         + '<span style="font-weight:600;color:var(--text-muted);font-size:10px;">· nu apare în ofertă</span></div>';
-      var butonul = '<a href="#" onclick="event.preventDefault();raxOfCosturi()" style="color:var(--accent);font-weight:700;">Scrie costurile noastre</a>';
+      var butonul = '<a href="#" onclick="event.preventDefault();raxOfPreturi()" style="color:var(--accent);font-weight:700;">Prețurile noastre</a>';
       if (!c) return cap + '<div style="font-size:11.5px;color:var(--text-muted);">Se încarcă…</div>';
       var lipsa = _ofCostLipsa(r, c);
       if (lipsa.length) {
@@ -22617,40 +22644,76 @@ const pozitii = await r.json();</code></pre>
       return h;
     }
     // Panoul în care se trec cifrele. Se deschide din rezumat; se salvează în setările sistemului.
-    window.raxOfCosturi = async function () {
+    window.raxOfPreturi = async function () {
+      // Aduc AMBELE: ce cerem (`tarife_lista`) și ce ne costă (`costuri_noastre`). Vin din același
+      // răspuns al serverului, deci un singur drum.
       var c = await _ofIncarcaCosturi();
-      var camp = function (k, et) {
-        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
-          + '<label for="cst-' + k + '" style="flex:1;font-size:12px;">' + esc(et) + '</label>'
-          + '<input id="cst-' + k + '" type="number" min="0" step="0.01" class="rax-field" style="width:92px;margin:0;" '
-          + 'value="' + (c[k] == null ? '' : c[k]) + '" placeholder="—"></div>';
+      await _ofIncarcaTarife();
+      var pret = _ofTarifeDeBaza();
+
+      // Un rând: eticheta, cât cerem, cât ne costă, cât rămâne. Marja se socotește pe loc, pe măsură
+      // ce scrii — ăsta e tot rostul tabloului: să vezi pe ce câștigi și pe ce nu.
+      var rand = function (kP, et, kC, um) {
+        var cel = function (id, val, activ) {
+          return activ
+            ? '<input id="' + id + '" type="number" min="0" step="0.01" class="rax-field" oninput="raxOfPretMarja()" '
+              + 'style="width:82px;margin:0;text-align:right;" value="' + (val == null || val === '' ? '' : val) + '" placeholder="—">'
+            : '<span style="width:82px;display:inline-block;"></span>';
+        };
+        return '<div class="rax-pret-r" data-p="' + (kP || '') + '" data-c="' + (kC || '') + '">'
+          + '<span class="et">' + esc(et) + '</span>'
+          + cel('tp-' + kP, kP ? pret[kP] : null, !!kP)
+          + cel('tc-' + kC, kC ? c[kC] : null, !!kC)
+          + '<b class="mj" style="width:64px;text-align:right;font-size:11px;"></b></div>';
       };
-      var corp = '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">'
-        + 'Cât ne costă pe NOI. Se trec o dată și se folosesc la fiecare ofertă. '
-        + 'Ce lași gol rămâne necunoscut — nu se socotește ca zero.</div>'
-        + '<div style="max-height:46vh;overflow-y:auto;padding-right:4px;">'
-        + _COST_CAMPURI.map(function (g) {
-            return '<div style="font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 6px;">'
-              + esc(g.grup) + '</div>' + g.chei.map(function (x) { return camp(x[0], x[1]); }).join('');
+      var corp = '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">'
+        + 'Prețurile de listă ale casei. De la ele pornește fiecare ofertă nouă — ofertele deja salvate '
+        + 'își păstrează prețurile lor. Ce lași gol la „ne costă" rămâne <b>necunoscut</b>, nu zero.</div>'
+        + '<div class="rax-pret-cap"><span class="et"></span><span>cerem</span><span>ne costă</span><b>rămâne</b></div>'
+        + '<div style="max-height:52vh;overflow-y:auto;padding-right:4px;">'
+        + _PRET_GRUPURI.map(function (g) {
+            return '<div class="rax-pret-g">' + esc(g.t) + ' <em>' + esc(g.um) + '</em></div>'
+              + g.randuri.map(function (r) { return rand(r[0], r[1], r[2], g.um); }).join('')
+              + (g.nota ? '<div class="rax-pret-n">' + esc(g.nota) + '</div>' : '');
           }).join('')
         + '</div>';
-      _ofFereastra('Costurile noastre', 'fa-sack-dollar', corp, async function () {
-        var trimit = {};
-        _COST_CAMPURI.forEach(function (g) { g.chei.forEach(function (x) {
-          var el = document.getElementById('cst-' + x[0]);
-          trimit[x[0]] = (el && el.value !== '') ? el.value : null;
+      _ofFereastra('Prețurile noastre', 'fa-tags', corp, async function () {
+        var tarife = {}, costuri = {};
+        _PRET_GRUPURI.forEach(function (g) { g.randuri.forEach(function (r) {
+          if (r[0]) { var a = document.getElementById('tp-' + r[0]); tarife[r[0]] = (a && a.value !== '') ? a.value : null; }
+          if (r[2]) { var b = document.getElementById('tc-' + r[2]); costuri[r[2]] = (b && b.value !== '') ? b.value : null; }
         }); });
         try {
           var resp = await fetch('/api/admin/system-settings', { method: 'PUT',
             headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-            body: JSON.stringify({ costuri_noastre: trimit }) });
+            body: JSON.stringify({ tarife_lista: tarife, costuri_noastre: costuri }) });
           var j = await resp.json().catch(function () { return {}; });
           if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
-          _costNoastre = (j.settings && j.settings.costuri_noastre) || trimit;
+          _tarifeLista = (j.settings && j.settings.tarife_lista) || tarife;
+          _costNoastre = (j.settings && j.settings.costuri_noastre) || costuri;
           var d = document.getElementById('ra-of-dlg'); if (d) d.remove();
-          if (window.raxToast) raxToast('Costurile noastre, salvate ✓', 'success');
-          raxOfRecalc();
+          if (window.raxToast) raxToast('Prețurile noastre, salvate ✓', 'success');
+          // Oferta de pe ecran pornește de la lista nouă — DOAR dacă e una nouă. Una deschisă din
+          // listă are prețuri negociate, pe care o listă schimbată n-are voie să le calce.
+          if (_raxOf.editingId == null) raxLoadOfertare(); else raxOfRecalc();
         } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+      });
+      raxOfPretMarja();
+    };
+    // Cât rămâne pe fiecare rând, cât scrii. Se socotește AICI, nu se ține minte nicăieri: e doar o
+    // privire asupra a două cifre pe care le ai deja în față.
+    window.raxOfPretMarja = function () {
+      document.querySelectorAll('#ra-of-dlg .rax-pret-r').forEach(function (r) {
+        var kP = r.getAttribute('data-p'), kC = r.getAttribute('data-c');
+        var b = r.querySelector('.mj'); if (!b) return;
+        var a = kP ? document.getElementById('tp-' + kP) : null;
+        var d = kC ? document.getElementById('tc-' + kC) : null;
+        var vp = (a && a.value !== '') ? parseFloat(a.value) : null;
+        var vc = (d && d.value !== '') ? parseFloat(d.value) : null;
+        if (vp == null || vc == null || !Number.isFinite(vp) || !Number.isFinite(vc)) { b.textContent = ''; b.style.color = ''; return; }
+        var m = vp - vc;
+        b.textContent = (m > 0 ? '+' : '') + (Math.round(m * 100) / 100) + (vp > 0 ? ' · ' + Math.round((m / vp) * 100) + '%' : '');
+        b.style.color = m > 0 ? 'var(--accent)' : (m < 0 ? 'var(--red)' : 'var(--text-muted)');
       });
     };
     // ── sfârșit „ce rămâne la noi" ──
@@ -23666,6 +23729,11 @@ const pozitii = await r.json();</code></pre>
             '<span class="raof-pas"><i class="fas fa-3"></i> Trimiți PDF-ul</span>' +
             '<span class="raof-pas"><i class="fas fa-4"></i> Deschizi clientul din ea</span>' +
           '</div>' +
+          // Lista de prețuri a casei, la un clic din capul secțiunii. În ofertă schimbi un preț la
+          // locul lui; aici le vezi pe TOATE deodată, cu ce ne costă alături — când îți actualizezi
+          // lista, nu când faci o ofertă (Alin, 21.09).
+          '<div style="margin-top:12px;"><button class="rax-btn" onclick="raxOfPreturi()">' +
+            '<i class="fas fa-tags"></i> Prețurile noastre</button></div>' +
         '</div></div>';
       // Lista de oferte a urcat SUS, sub antet. Stătea la baza paginii, după șase secțiuni de
       // formular: salvai o ciornă și nu vedeai unde s-a dus (Alin, 21.09). Sus, e primul lucru pe

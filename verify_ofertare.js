@@ -230,6 +230,31 @@ T('lista se desenează înaintea calculatorului', iLista >= 0 && iGrila >= 0 && 
   'listă la ' + iLista + ', grilă la ' + iGrila);
 T('după salvare sare la ea', /raxOfLoadList\(\);[\s\S]{0,220}raxOfLaLista\(\);/.test(html));
 
+sect('5f-bis. „Prețurile noastre": tot ce cerem și tot ce ne costă, într-un tablou');
+// În ofertă schimbi un preț la locul lui (pașii 2–5). Dar când îți ACTUALIZEZI lista („am găsit
+// aparate mai ieftine"), vrei să le vezi pe toate deodată, cu ce ne costă alături (Alin, 21.09).
+T('lista de prețuri e scrisă într-un singur loc', /var _PRET_GRUPURI = \[/.test(PROF));
+const grupuri = (PROF.match(/\{ t: '/g) || []).length;
+T('cu cele cinci grupuri', grupuri === 5, String(grupuri));
+T('un rând e [cât cerem, eticheta, cât ne costă]', /\['pPlain', 'Vehicul fără CAN', null\]/.test(PROF)
+  && /\['mGps', 'Instalare dispozitiv GPS', 'mGps'\]/.test(PROF));
+T('numele din „nu pot socoti profitul" vin din ACEEAȘI listă',
+  /function _costNume\(\)/.test(PROF) && /var nume = _costNume\(\);/.test(PROF));
+T('tabloul salvează prețurile ȘI costurile într-o singură apăsare',
+  /body: JSON\.stringify\(\{ tarife_lista: tarife, costuri_noastre: costuri \}\)/.test(PROF));
+T('cât rămâne se socotește pe loc, nu se ține minte', /window\.raxOfPretMarja = function/.test(PROF)
+  && !/marja_/.test(html));
+T('iar unde nu știm costul, NU se scrie nicio marjă',
+  /if \(vp == null \|\| vc == null[\s\S]{0,120}b\.textContent = ''/.test(PROF));
+// Casetele tabloului au nume proprii (`tp-` / `tc-`): dacă ar folosi `of-…`, ar fi două casete cu
+// același id cât timp fereastra e deschisă, iar `_ofReadPrices` ar citi-o pe prima găsită.
+T('casetele tabloului nu se ciocnesc cu cele din formular',
+  /'tp-' \+ kP/.test(PROF) && /'tc-' \+ kC/.test(PROF) && !/id="of-/.test(PROF));
+T('o ofertă deschisă din listă NU-și pierde prețurile negociate când se schimbă lista',
+  /if \(_raxOf\.editingId == null\) raxLoadOfertare\(\); else raxOfRecalc\(\);/.test(PROF));
+T('se ajunge la el dintr-un buton, din capul secțiunii',
+  /<button class="rax-btn" onclick="raxOfPreturi\(\)">/.test(html));
+
 sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
 // Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe
 // fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât de Alin:

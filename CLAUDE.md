@@ -213,6 +213,23 @@ aparate mai ieftine sau instalatori mai scumpi."* Toate cele 19 prețuri sunt c�
 - Păzit de `verify_ofertare.js`, care verifică **poziția** fiecărui preț în fișier (între `var
   xCard = card(` și următoarea), nu doar existența lui.
 
+### „Prețurile noastre" — un tablou, două coloane (21.09)
+Prețul la locul lui e bun **când faci o ofertă**. Când îți **actualizezi lista de prețuri**, vrei
+altceva: toate deodată, cu ce ne costă alături. `raxOfPreturi()` — buton în capul secțiunii.
+
+- **`_PRET_GRUPURI` e singura listă**: un rând = `[cheia prețului CERUT, eticheta, cheia COSTULUI]`,
+  cu `null` unde rândul n-are perechea. Numele din „nu pot socoti profitul până nu știu…"
+  (`_ofCostLipsa`) se iau tot de acolo, prin `_costNume()` — nu există a doua hartă de etichete.
+- **O singură apăsare salvează `tarife_lista` ȘI `costuri_noastre`.** Erau două ferestre despre bani.
+- **Marja se socotește pe loc** (`raxOfPretMarja`), nu se ține minte nicăieri — e doar o privire
+  asupra a două cifre pe care le ai deja în față. Unde costul lipsește, **nu se scrie nicio marjă**:
+  aceeași regulă ca la blocul „Ce rămâne la noi" (un zero presupus ar arăta 100% profit).
+- **Casetele au nume proprii** (`tp-…` / `tc-…`), NU `of-…`: altfel, cât timp fereastra e deschisă,
+  ar exista două casete cu același `id` și `_ofReadPrices` ar citi-o pe prima găsită.
+- **O ofertă deschisă din listă NU se rescrie** când salvezi lista (`editingId != null` → doar
+  recalc). Prețurile ei sunt negociate cu clientul.
+- Păzit de `verify_ofertare.js`.
+
 ### Logo-ul scrie „RA Tracks" — și se REFACE, nu se desenează de mână (21.09)
 `public/logo.png` și `public/logo-light.png` aveau în ele **„RA | traks"** și ajungeau pe fiecare
 raport, Excel, contract și ofertă. Acum se generează cu **`tools/make-logo.js`**: marca originală
