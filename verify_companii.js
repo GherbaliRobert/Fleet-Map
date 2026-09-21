@@ -249,19 +249,37 @@ T('fereastra are o înălțime fixă', /#rax-codetail-overlay \.rax-card \{ heig
 T('capul și filele stau pe loc',
   /#rax-codetail-overlay \.rax-head \{ flex: 0 0 auto; \}/.test(html) &&
   /#rax-codetail-overlay \.rax-cod-tabs \{ flex: 0 0 auto; \}/.test(html));
-T('doar corpul se derulează', /#rax-codetail-overlay #rax-cod-body \{ flex: 1 1 auto; min-height: 0; overflow-y: auto; \}/.test(html));
+T('doar corpul se derulează', /#rax-codetail-overlay #rax-cod-body \{[^}]*flex: 1 1 auto;[^}]*min-height: 0;[^}]*overflow-y: auto/.test(html));
 T('secțiunile se despart din CSS, nu din margini scrise pe fiecare',
   /#rax-cod-body > \.rax-cod-sect \+ \.rax-cod-sect/.test(html) && !/rax-cod-sect" style="margin-top:14px/.test(html));
 T('butoanele de jos au rândul lor, despărțit', /#rax-cod-body > \.rax-cod-actiuni \{[^}]*border-top/.test(html));
 T('cele două coloane din „Detalii" au același număr de rânduri (se aliniază)',
   /<span class="k">Acces<\/span>/.test(html) && /<span class="k">Vehicule<\/span>/.test(html));
-T('rândurile au aceeași înălțime', /\.rax-kv \{[^}]*min-height: 30px/.test(html));
+T('rândurile au aceeași înălțime', /\.rax-kv \{[^}]*min-height: 36px/.test(html));
 T('o filă goală arată a gol, nu a aplicație stricată', (html.match(/class="rax-cod-gol"/g) || []).length >= 4);
 T('și când e singură pe filă, stă în mijloc', /#rax-cod-body > \.rax-cod-gol:only-child \{[^}]*justify-content: center/.test(html));
 T('nu mai există rânduri italice orfane în filele goale',
   !/rax-co-meta" style="padding:16px;">Niciun utilizator/.test(html) &&
   !/rax-co-meta" style="padding:16px;">Niciun vehicul\./.test(html) &&
   !/rax-co-meta" style="padding:16px;">Nicio plată/.test(html));
+
+sect('O. Fila „Detalii": coloanele nu se mai ating, valorile stau pe o verticală');
+// Înălțimea fusese reparată, dar fila tot arăta înghesuită (Alin, 18.09). Măsurat în browser, pe
+// firma „Compania mea": valoarea din coloana stângă ajungea la 22px de eticheta coloanei drepte —
+// „Compania mea" și „IBAN" se citeau ca un singur rând. Iar valorile, fiind împinse la marginea din
+// dreapta, porneau din TREI locuri diferite (597 / 634 / 676px): nicio coloană de urmărit cu ochiul.
+// Pe deasupra, butoanele se opreau unde se termina textul, cu 118px de gol sub ele.
+T('fiecare secțiune stă în panoul ei (asta desparte coloanele)',
+  /\.rax-cod-sect \{[^}]*background: var\(--bg-dark\)[^}]*border: 1px solid var\(--border\)[^}]*border-radius/.test(html));
+T('cele două panouri se termină la aceeași înălțime', /\.rax-cod-grid \{[^}]*align-items: stretch/.test(html));
+T('rândul e o GRILĂ cu eticheta de lățime fixă', /\.rax-kv \{[^}]*display: grid[^}]*grid-template-columns: 104px/.test(html));
+T('valoarea nu mai e împinsă la marginea din dreapta',
+  !/\.rax-kv \{[^}]*justify-content: space-between/.test(html) &&
+  !/\.rax-kv \.v \{[^}]*text-align: right/.test(html));
+T('corpul filei e o coloană, ca butoanele să poată coborî',
+  /#rax-codetail-overlay #rax-cod-body \{[^}]*flex-direction: column/.test(html));
+T('butoanele stau pe FUNDUL ferestrei, nu unde se termină textul',
+  /#rax-cod-body > \.rax-cod-actiuni \{[^}]*margin-top: auto/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

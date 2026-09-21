@@ -1372,29 +1372,40 @@
     #rax-codetail-overlay .rax-card { height: min(82vh, 620px); }
     #rax-codetail-overlay .rax-head { flex: 0 0 auto; }
     #rax-codetail-overlay .rax-cod-tabs { flex: 0 0 auto; }
-    #rax-codetail-overlay #rax-cod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    #rax-codetail-overlay #rax-cod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+    #rax-cod-body > * { flex: 0 0 auto; }
     /* Un singur ritm pe toate filele: secțiunile se despart singure, fără distanțe scrise de mână. */
     #rax-cod-body > .rax-cod-sect + .rax-cod-sect,
     #rax-cod-body > .rax-cod-grid + .rax-cod-sect,
-    #rax-cod-body > .rax-cod-sect + .rax-cod-grid { margin-top: 18px; }
-    #rax-cod-body > .rax-cod-actiuni { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+    #rax-cod-body > .rax-cod-sect + .rax-cod-grid { margin-top: 16px; }
+    /* Butoanele stau pe FUNDUL ferestrei, ca la orice fereastră de setări. Înainte se opreau unde se
+       termina textul, cu 118px de gol sub ele, și fila părea neterminată (Alin, 18.09). */
+    #rax-cod-body > .rax-cod-actiuni { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border);
       display: flex; gap: 10px; flex-wrap: wrap; }
     #rax-cod-body > .rax-cod-actiuni .rax-btn { flex: 1 1 180px; justify-content: center; }
-    .rax-cod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; align-items: start; }
+    /* Fiecare secțiune stă în panoul EI. Înainte erau două coloane de text liber, la 22px una de
+       alta: valoarea din stânga („Compania mea") ajungea lipită de eticheta din dreapta („IBAN") și
+       se citeau ca un singur rând (Alin, 18.09). Panoul face despărțirea fără să tragă linii. */
+    .rax-cod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
     @media (max-width: 620px) { .rax-cod-grid { grid-template-columns: 1fr; } }
-    .rax-cod-sect h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
-    /* Rândurile au aceeași înălțime în amândouă coloanele, ca valorile să stea pe aceleași linii. */
-    .rax-kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-height: 30px;
-      padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-    .rax-kv:last-child { border-bottom: none; }
-    .rax-kv .k { color: var(--text-muted); flex: 0 0 auto; }
-    .rax-kv .v { font-weight: 600; text-align: right; word-break: break-word; }
+    .rax-cod-sect { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .rax-cod-sect h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin: 0 0 6px; font-weight: 700; }
+    /* Rândul e o GRILĂ, nu „eticheta la stânga, valoarea la dreapta". Eticheta are lățime fixă, deci
+       toate valorile pornesc de pe ACEEAȘI verticală. Aliniate la dreapta cum erau, porneau din trei
+       locuri diferite (597 / 634 / 676px) și nu aveai ce urmări cu ochiul. */
+    .rax-kv { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px; align-items: baseline;
+      min-height: 36px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .rax-kv:last-child { border-bottom: none; padding-bottom: 0; }
+    .rax-kv .k { color: var(--text-muted); }
+    .rax-kv .v { font-weight: 600; word-break: break-word; }
     /* Gol cu rost: o filă goală arăta ca o aplicație stricată — un rând italic, singur, în mijloc. */
     .rax-cod-gol { text-align: center; color: var(--text-muted); padding: 26px 14px; }
     /* Când golul e tot ce are fila (Facturi), stă în mijloc — altfel rămânea lipit sus, cu un gol
        mare dedesubt, și fila arăta neterminată. */
-    #rax-cod-body > .rax-cod-gol:only-child { min-height: 100%; display: flex; flex-direction: column;
+    #rax-cod-body > .rax-cod-gol:only-child { flex: 1 1 auto; display: flex; flex-direction: column;
       align-items: center; justify-content: center; box-sizing: border-box; }
+    /* Golul dinăuntrul unui panou (Persoane de contact) nu mai are nevoie de aer propriu — îl dă panoul. */
+    .rax-cod-sect > .rax-cod-gol { padding: 14px 10px 6px; }
     .rax-cod-gol i { font-size: 26px; opacity: .35; display: block; margin-bottom: 10px; }
     .rax-cod-gol b { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
     .rax-cod-gol span { font-size: 12px; line-height: 1.55; }

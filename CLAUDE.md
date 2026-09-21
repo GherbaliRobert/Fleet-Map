@@ -185,6 +185,25 @@ nicio parolă. NU o construi din proprie inițiativă; e trecută la „De verif
   firma are administratori, formularul nu se vede deloc: nu ne băgăm în gospodăria ei.
 - Linkul de parolă se arată cu ACEEAȘI fereastră peste tot (`window._usrAratLinkul`). Nu scrie alta.
 
+### Fereastra „Companie" (`#rax-codetail-overlay`) — capcanele ei, măsurate
+Se deschide din Companii (clic pe firmă), din „Deschide firma" (Dispozitive, Tahograf) — o singură
+fereastră, șase file. Două lucruri din ea s-au reparat pe măsurători, nu din ochi (Alin, 18.09):
+
+- **Înălțime fixă** (`height: min(82vh, 620px)`), cap și file `flex:0 0 auto`, corpul cu derularea lui.
+  Înainte sărea de la 185px (Facturi) la 705px (Abonament) la fiecare clic pe filă.
+- **Coloanele din „Detalii" NU se despart cu spațiu, ci cu PANOURI** (`.rax-cod-sect` are fundal,
+  chenar, colțuri). Cât timp rândul a fost `display:flex; justify-content:space-between` cu valoarea
+  `text-align:right`, valoarea coloanei stângi ajungea la **22px** de eticheta coloanei drepte —
+  „Compania mea" și „IBAN" se citeau ca un singur rând — iar valorile porneau din **trei** locuri
+  diferite (597 / 634 / 676px). Acum `.rax-kv` e **grilă cu eticheta de lățime fixă** (`104px`), deci
+  toate valorile cad pe aceeași verticală. **Nu pune înapoi `space-between` / `text-align:right`.**
+- **Butoanele filei stau pe FUNDUL ferestrei** (`margin-top:auto` în corpul făcut coloană). Se opreau
+  unde se termina textul, cu 118px de alb sub ele, și fila părea neterminată.
+- Regula generală de aici: **două coloane de text liber, una lângă alta, se ating.** Ori le dai panou,
+  ori le dai o coloană de etichete de lățime fixă. Distanța dintre coloane (`gap`) nu e de ajuns —
+  valoarea aliniată la dreapta mănâncă tot spațiul.
+- Păzit de `verify_companii.js`.
+
 ### Firma își face singură administratorii (decizie Alin, 16.09)
 `COMPANY_ASSIGNABLE_ROLES = ['company_admin', 'manager', 'dispatcher', 'viewer']` — adminul unei firme
 poate **crea ȘI promova** alt administrator, în firma lui, fără noi.

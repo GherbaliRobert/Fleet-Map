@@ -95,6 +95,45 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Fila „Detalii": coloanele se atingeau — acum au panouri
+
+Alin, după modificarea de mai jos: *„tu vezi cum se vede «Detalii» lipite… nu sunt centrate? Ce ai
+făcut, că nu mi se pare nimic schimbat."*
+
+**Avea dreptate, și reparasem altceva.** Modificarea de dinainte oprise fereastra din sărit — lucru
+real, dar nu ăsta îl deranja. Înghesuiala din „Detalii" rămăsese neatinsă. Am măsurat-o, și se vede
+de ce ochiul lui a prins-o:
+
+| Ce am măsurat | Înainte | Acum |
+|---|---|---|
+| „Compania mea" (stânga) ⟷ „IBAN" (dreapta) | **22px** | **50px**, plus chenar între ele |
+| De unde pornesc valorile dintr-o coloană | **3 locuri** (597 / 634 / 676px) | **unul singur** (400px) |
+| Pas între rânduri | 30px | 36px |
+| Gol alb sub butoane | **118px** | 15px |
+
+**De unde venea.** Rândul era scris „eticheta la stânga, valoarea la dreapta, împinse una de alta".
+Pe două coloane alăturate asta înseamnă că valoarea coloanei stângi fuge exact spre eticheta coloanei
+drepte — și se opresc la 22 de pixeli una de alta. Citeai „Compania mea IBAN" ca pe un singur rând.
+Iar valorile, lipite de marginea din dreapta, porneau fiecare din alt loc: nu aveai nicio coloană de
+urmărit cu ochiul. Exact „îngrămădite, fără aliniament".
+
+**Ce am făcut:**
+
+- **Fiecare secțiune stă acum în panoul ei** — fundal ușor, chenar, colțuri rotunde. Coloanele nu mai
+  sunt două blocuri de text alăturate, ci două cutii. Nu se mai pot atinge.
+- **Valorile stau pe o singură verticală.** Eticheta are lățime fixă, valoarea începe după ea. Le
+  citești în jos, ca pe o listă, nu le cauți pe fiecare rând.
+- **Rândurile au aer** (36px în loc de 30) și cele două panouri se termină la aceeași înălțime.
+- **Butoanele au coborât pe fundul ferestrei**, cu o linie deasupra. Înainte se opreau unde se termina
+  textul și lăsau 118px de alb sub ele — fila părea neterminată.
+
+Verificat pe toate cele șase file și pe amândouă temele (deschisă și închisă): fereastra rămâne la
+620px peste tot, nimic nu iese din ecran.
+
+- **Ce am schimbat:** fila „Detalii" a unei firme se citește pe coloane, nu ghicind.
+- **Ce vede fondatorul:** datele firmei în două panouri curate, cu butoanele jos, ca la orice fereastră de setări.
+- **Ce vede clientul:** nimic — fereastra e doar a noastră.
+
 ### FONDATOR · Fereastra unei firme nu se mai zbate, și filele goale au rost
 
 Alin, cu cinci capturi: *„se vede urât acest modal, cu aceste categorii… îngrămădite, fără aliniament,
