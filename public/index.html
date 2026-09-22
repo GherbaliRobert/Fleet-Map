@@ -22286,7 +22286,12 @@ const pozitii = await r.json();</code></pre>
         retTier: g('of-ret') || '6', retCustomMonths: Math.max(0, Math.round(_ofN(g('of-retcustom-m')))),
         // Cursul zilei se salvează ODATĂ cu oferta: anexa contractului îl îngheață, ca hârtia
         // semnată să nu spună altă sumă peste o lună, când se schimbă cursul.
-        fxRate: _fxRate,
+        //
+        // Se îngheață și DE UNDE vine (`fxSursa`) și DIN CE ZI (`fxDate`), nu doar cifra: altfel,
+        // previzualizând peste o lună o ofertă veche, hârtia ar lua data de AZI și ar pune-o lângă
+        // un curs de acum o lună. Ofertele salvate mai devreme n-au câmpurile astea — atunci hârtia
+        // nu scrie nicio dată, nu inventează una (regula casei).
+        fxRate: _fxRate, fxDate: _fxDate || null, fxSursa: _fxSursa || null,
         contractMonths: Math.max(1, Math.round(_ofN(g('of-contract')) || 12)), notes: g('of-notes'),
         montaj: {
           qGps: Math.max(0, Math.round(_ofN(g('of-qGps')))), qLvCan: Math.max(0, Math.round(_ofN(g('of-qLvCan')))),
@@ -22325,8 +22330,11 @@ const pozitii = await r.json();</code></pre>
     }
     function _ofRetAddon(cfg, p) { return cfg.retTier === '12' ? p.ret12 : cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : cfg.retTier === 'custom' ? p.retCustom : p.ret6; }
     function _ofRetLabel(cfg) { return cfg.retTier === 'custom' ? ((cfg.retCustomMonths || 0) + ' luni') : (cfg.retTier + ' luni'); }
-    function _ofCalc() {
-      var p = _ofReadPrices(); var cfg = _ofReadCfg();
+    // Fără argumente, socotește ce e pe ECRAN (cazul obișnuit). Cu argumente, socotește o ofertă
+    // SALVATĂ, fără să atingă formularul — așa poate „Vezi hârtia" să deschidă o ofertă din listă
+    // peste o alta pe care o ai în lucru, fără s-o calce.
+    function _ofCalc(cfgIn, pIn) {
+      var p = pIn || _ofReadPrices(); var cfg = cfgIn || _ofReadCfg();
       var nCan = Math.min(cfg.nCan, cfg.nVeh); var nFms = Math.min(cfg.nFms, Math.max(0, cfg.nVeh - nCan)); var nPlain = Math.max(0, cfg.nVeh - nCan - nFms);
       var lines = [];
       // ── Modulele NU se facturează separat (hotărât cu Alin, 10.09: „nu le taxăm separat, nu
@@ -22977,6 +22985,19 @@ const pozitii = await r.json();</code></pre>
     // Avertismentul de sus („3 fără model/SIM") e un BUTON: te duce fix la ele. Îți spunea ce lipsește
     // și te lăsa să le cauți singur printre rânduri.
     window.raxInvDoarLipsa = function () { _invDoarLipsa = !_invDoarLipsa; _invRender(); };
+    // Numele fișierului descărcat, citit din antetul răspunsului. UN SINGUR loc: îl folosesc și
+    // Inventarul, și hârtia ofertei.
+    //
+    // ⚠ Antetul poartă numele de DOUĂ ori: `filename="…"`, curățat de diacritice pentru browserele
+    // vechi, și `filename*=UTF-8''…`, cel adevărat. Regula veche prindea prima potrivire, adică pe
+    // cea ciuntită: fișierul se salva „RA-Tracks - Oferta …", nu „Ofertă" (găsit 22.09, probând
+    // previzualizarea). Se cere ÎNTÂI varianta UTF-8, și abia dacă lipsește se ia cealaltă.
+    function _numeDinAntet(resp, implicit) {
+      var cd = (resp.headers.get('content-disposition') || '');
+      var m = cd.match(/filename\*=\s*UTF-8''([^;]+)/i) || cd.match(/filename=\s*"?([^";]+)"?/i);
+      if (!m) return implicit;
+      try { return decodeURIComponent(m[1]).trim(); } catch (e) { return String(m[1]).trim(); }
+    }
     // Exportă CE VEZI: trimite IMEI-urile rândurilor filtrate, în ordinea de pe ecran. Înainte deschidea
     // ruta fără nimic, deci primeai tot inventarul chiar dacă filtrasei la o firmă (Alin, 18.09).
     window.raxInvExport = async function (fmt) {
@@ -22989,11 +23010,8 @@ const pozitii = await r.json();</code></pre>
         });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var blob = await r.blob();
-        var nume = 'inventar.' + (fmt === 'pdf' ? 'pdf' : 'xlsx');
         // Numele brandat vine de la server (regula casei) — îl citim din antet, nu-l inventăm aici.
-        var cd = r.headers.get('content-disposition') || '';
-        var m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-        if (m) { try { nume = decodeURIComponent(m[1]); } catch (e) { nume = m[1]; } }
+        var nume = _numeDinAntet(r, 'inventar.' + (fmt === 'pdf' ? 'pdf' : 'xlsx'));
         var url = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = url; a.download = nume; document.body.appendChild(a); a.click();
         a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
@@ -24031,7 +24049,11 @@ const pozitii = await r.json();</code></pre>
           var ofBtn = devenit
             ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOpenCompanyDetail(' + o.company_id + ', \'contract\')" title="Deschide dosarul clientului"><i class="fas fa-file-signature"></i></button>'
             : ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="coNouDinOferta(' + o.id + ')" title="Deschide un client pornind de la oferta asta — datele și prețul vin singure"><i class="fas fa-user-plus"></i></button>';
-          return '<tr><td><b>' + esc(o.name || '—') + '</b>' + (hasAi ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;vertical-align:middle;">AI</span>' : '') +
+          // Numele și pastila „AI" stau într-o cutie FLEX, aliniate pe mijloc. Cu `vertical-align`
+          // pastila (9,5px, cu chenar) cădea vizibil sub linia numelui — `vertical-align:middle`
+          // aliniază față de LINIA DE BAZĂ plus jumătate din înălțimea literei mici, nu față de
+          // mijlocul rândului, și cu două mărimi de text diferite se vede (Alin, 22.09).
+          return '<tr><td><span style="display:inline-flex;align-items:center;gap:6px;"><b>' + esc(o.name || '—') + '</b>' + (hasAi ? '<span style="font-size:9.5px;font-weight:700;line-height:1.35;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;">AI</span>' : '') + '</span>' +
             (devenit ? '<br><span style="font-size:10px;color:var(--accent);font-weight:700;"><i class="fas fa-check"></i> a devenit client</span>' : '') +
             '</td><td>' + esc(o.client_name || '—') + '</td>'
             + '<td>' + _ofPastila(o) + '</td>'
@@ -24041,7 +24063,12 @@ const pozitii = await r.json();</code></pre>
             + '<td class="num">' + (o.once_total != null && Number(o.once_total) > 0
                 ? bani(o.once_total, fxOf(o))
                 : '<span style="color:var(--text-muted);" title="Ofertă salvată înainte ca suma asta să se rețină. Deschide-o și salveaz-o din nou.">—</span>') + '</td>'
-            + '<td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + _ofButoaneStare(o) + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button> <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
+            + '<td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + _ofButoaneStare(o)
+            // „Vezi hârtia" stă PRIMUL dintre butoanele mici: te uiți la ofertă înainte de a face
+            // ceva cu ea. Deschide ACEEAȘI hârtie pe care o descarci — aceeași rută, aceeași
+            // funcție — ca previzualizarea să nu poată arăta altceva decât fișierul trimis.
+            + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfPreview(' + o.id + ')" title="Vezi oferta pe hârtie, fără s-o descarci"><i class="fas fa-eye"></i></button>'
+            + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button> <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('') + '</tbody></table>';
     };
     window.raxOfLoad = function (id) {
@@ -24091,15 +24118,17 @@ const pozitii = await r.json();</code></pre>
     //
     // Ecranul trimite CIFRELE pe care le-a socotit (nu se socotesc a doua oară pe server), iar
     // numele fișierului îl citim din antetul răspunsului — nu-l inventăm aici.
-    window.raxOfExportPdf = async function () {
-      var r = _ofCalc();
-      // Se trimit FAPTELE, nu frazele: câte mașini, ce module are bifate, câte conturi de RA
-      // Insight. Textele pe care le citește clientul se scriu pe server, într-un singur loc — dacă
-      // le-aș compune aici, hârtia ar avea două autori.
+    // Se trimit FAPTELE, nu frazele: câte mașini, ce module are bifate, câte conturi de RA Insight.
+    // Textele pe care le citește clientul se scriu pe server, într-un singur loc — dacă le-aș
+    // compune aici, hârtia ar avea doi autori.
+    function _ofPayload(r) {
       var nLoc = Math.max(1, Math.round(Number(r.cfg.aiqSeats) || 1));
-      var payload = {
+      return {
         client: r.cfg.client, offerName: r.cfg.offerName, notes: r.cfg.notes,
-        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate, fxDate: _fxDate || null, fxSursa: _fxSursa || null,
+        contractMonths: r.cfg.contractMonths, fxRate: r.cfg.fxRate || _fxRate,
+        // Cursul ofertei își poartă ziua și sursa LUI. La ofertele vechi lipsesc: atunci hârtia
+        // nu scrie nicio dată și nu pune numele BNR pe cifră — nu se inventează niciuna.
+        fxDate: r.cfg.fxDate || null, fxSursa: r.cfg.fxSursa || null,
         lines: r.lines, monthly: r.monthly, annual: r.annual, contractTotal: r.contractTotal,
         montajLines: r.montajLines, montaj: r.montaj,
         deviceLines: r.deviceLines, hwTotal: r.hwTotal,
@@ -24108,24 +24137,79 @@ const pozitii = await r.json();</code></pre>
         aiA: !!r.cfg.aiA, aiqConturi: nLoc, aiqFond: _aiqFond(nLoc, r.cfg.aiqN),
         pretCont: Number(r.p.pAiA) || 0, retentie: _ofRetLabel(r.cfg)
       };
+    }
+    // O SINGURĂ cale către hârtie, cu două capete: o descarci, sau te uiți la ea. Previzualizarea
+    // NU redesenează nimic în pagină — cere serverului exact fișierul pe care l-ai descărca, ca
+    // ce vezi să fie ce pleacă la client (Alin, 22.09).
+    async function _ofHartie(r, previzualizare) {
       try {
         var resp = await fetch('/api/admin/offers/pdf', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin', body: JSON.stringify(payload)
+          credentials: 'same-origin', body: JSON.stringify(_ofPayload(r))
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var blob = await resp.blob();
-        var nume = 'ofertă.pdf';
-        var cd = resp.headers.get('content-disposition') || '';
-        var m = cd.match(/filename\*?=(?:UTF-8\'\')?"?([^";]+)"?/i);
-        if (m) { try { nume = decodeURIComponent(m[1]); } catch (e) { nume = m[1]; } }
-        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        var nume = _numeDinAntet(resp, 'ofertă.pdf');
+        var url = URL.createObjectURL(blob);
+        if (previzualizare) { _ofArataHartia(url, nume); return; }
+        var a = document.createElement('a');
         a.href = url; a.download = nume; document.body.appendChild(a); a.click();
         a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
         if (window.raxToast) raxToast('Oferta s-a descărcat ✓', 'success');
       } catch (e) {
-        if (window.raxToast) raxToast('Descărcarea nu a mers: ' + e.message, 'error');
+        if (window.raxToast) raxToast((previzualizare ? 'Nu s-a putut deschide oferta: ' : 'Descărcarea nu a mers: ') + e.message, 'error');
       }
+    }
+    // Fereastra de previzualizare. Numele fișierului e cel din antetul răspunsului, nu unul compus
+    // aici — ca să vezi negru pe alb sub ce nume pleacă.
+    function _ofArataHartia(url, nume) {
+      var vechi = document.getElementById('ra-of-viz'); if (vechi) vechi.remove();
+      var ov = document.createElement('div'); ov.id = 'ra-of-viz';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);padding:24px;';
+      ov.innerHTML = '<div style="background:var(--bg-card,#fff);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.45);width:min(980px,100%);height:min(88vh,100%);display:flex;flex-direction:column;overflow:hidden;">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);">'
+        + '<div style="font-size:13.5px;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+        + '<i class="fas fa-file-pdf" style="color:var(--accent);"></i> ' + esc(nume) + '</div>'
+        + '<button class="rax-btn primary" id="ra-of-viz-dl" style="padding:6px 12px;font-size:12px;"><i class="fas fa-download"></i> Descarcă</button>'
+        + '<button class="rax-btn" id="ra-of-viz-x" style="padding:6px 12px;font-size:12px;"><i class="fas fa-xmark"></i> Închide</button>'
+        + '</div>'
+        + '<iframe src="' + url + '" style="flex:1;width:100%;border:0;background:#fff;"></iframe>'
+        // Plasa: nu orice browser desenează un PDF în pagină (unele îl dau direct la descărcat).
+        // Atunci rămâne o casetă goală — și omul crede că oferta e stricată, deși fișierul e întreg.
+        // Linkul îl deschide în fila lui, unde îl ia browserul cum știe el. E o ancoră obișnuită,
+        // nu o fereastră deschisă din cod: hârtia tot de la server vine, ca la descărcare.
+        + '<div style="padding:8px 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);">'
+        + 'Nu se vede hârtia? Browserul tău nu o desenează aici — '
+        + '<a href="' + url + '" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">deschide-o într-o filă nouă</a>.'
+        + '</div></div>';
+      document.body.appendChild(ov);
+      var inchide = function () {
+        ov.remove(); document.removeEventListener('keydown', peEsc);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+      };
+      var peEsc = function (e) { if (e.key === 'Escape') inchide(); };
+      document.addEventListener('keydown', peEsc);
+      ov.addEventListener('click', function (e) { if (e.target === ov) inchide(); });
+      document.getElementById('ra-of-viz-x').onclick = inchide;
+      document.getElementById('ra-of-viz-dl').onclick = function () {
+        var a = document.createElement('a'); a.href = url; a.download = nume;
+        document.body.appendChild(a); a.click(); a.remove();
+        if (window.raxToast) raxToast('Oferta s-a descărcat ✓', 'success');
+      };
+    }
+    window.raxOfExportPdf = function () { return _ofHartie(_ofCalc(), false); };
+    // „Vezi hârtia", din lista de oferte. Socotește din ce s-a SALVAT în ofertă (cifre și prețuri
+    // negociate, la cursul ei înghețat), nu din ce e pe ecran — deci nu-ți strică oferta în lucru.
+    window.raxOfPreview = function (id) {
+      var o = (_raxOf.offers || []).find(function (x) { return x.id === id; });
+      if (!o) { if (window.raxToast) raxToast('Oferta nu mai e în listă', 'error'); return; }
+      var cfg = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '6', contractMonths: 12 },
+        (o.config && o.config.cfg) || {});
+      if (!cfg.client || !cfg.client.name) cfg.client = { name: o.client_name, cui: o.client_cui, contact: o.client_contact };
+      if (!cfg.offerName) cfg.offerName = o.name;
+      // Un tarif lipsă dintr-o ofertă veche se ia din lista casei — altfel ar ieși NaN pe hârtie.
+      var p = Object.assign({}, _ofTarifeDeBaza(), (o.config && o.config.prices) || {});
+      return _ofHartie(_ofCalc(cfg, p), true);
     };
     // ── sfârșit „Oferta pe hârtie" ──
     window.raxDeleteCompany = async function (id) {

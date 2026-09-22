@@ -43,7 +43,10 @@ const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfReca
 // „de" din „20 de vehicule" și fondul de întrebări stau în afara blocului decupat (în aplicație sunt
 // în aceeași pagină); aici se dau ca argumente, ca socoteala să ruleze la fel.
 const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_rDe', '_aiqFond',
+// `_fxDate` / `_fxSursa` stau, ca `_fxRate`, în afara blocului decupat: oferta îngheață nu doar
+// CIFRA cursului, ci și ziua și sursa lui (22.09). Fără ele aici, decupajul cade cu
+// „_fxDate is not defined" — semn că blocul a început să citească o variabilă nouă din pagină.
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_aiqFond',
   decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc, _raxOf: _raxOf, _OF_PRETURI_DEF: _OF_PRETURI_DEF };');
 function calculator(campuri) {
   const val = Object.assign({}, campuri);
@@ -54,7 +57,7 @@ function calculator(campuri) {
       return (typeof v === 'boolean') ? { type: 'checkbox', checked: v, value: '' } : { value: String(v) };
     }
   };
-  return CALC(doc, {}, () => {}, 5.0, _rDe, M._aiqFond);
+  return CALC(doc, {}, () => {}, 5.0, '21.09.2026', 'BNR', _rDe, M._aiqFond);
 }
 // O flotă obișnuită, pe care se sprijină probele de mai jos.
 function flota(peste) {
@@ -207,7 +210,17 @@ T('condițiile de plată sunt scrise, la final', /CONDIȚII/.test(PD)
   && /se facturează în fiecare lună, pe toată durata contractului/.test(PD));
 T('scrie că echipamentele rămân ale clientului', /rămân în proprietatea Beneficiarului după achitarea lor/.test(PD));
 T('și înșiră ce include abonamentul, pe fiecare mașină', /CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL/.test(PD));
-T('lista de incluse pornește de la monitorizarea GPS', /monitorizare GPS în timp real/.test(PD));
+T('lista de incluse pornește de la monitorizarea GPS', /Monitorizare GPS în timp real/.test(PD));
+// Fiecare rând e o propoziție de sine stătătoare, cu MAJUSCULĂ la început — e o ofertă comercială
+// trimisă unui client, nu o listă de bifat (Alin, 22.09). Se verifică DOAR textele care ÎNCEP un
+// rând (primul din listă + primul argument al fiecărui `L.push`), nu bucățile lipite după ele.
+const _inc = (PD.match(/function _ofIncluse\(o\) \{[\s\S]*?\n\}/) || [''])[0];
+const _incStart = [(_inc.match(/const L = \['([^']+)'/) || [, ''])[1]]
+  .concat([...(_inc.matchAll(/L\.push\('([^']{6,})'/g))].map((m) => m[1]))
+  .filter(Boolean);
+T('fiecare rând din „ce include" începe cu majusculă',
+  _incStart.length >= 7 && _incStart.every((s) => /^[A-ZĂÂÎȘȚ]/.test(s)),
+  _incStart.filter((s) => !/^[A-ZĂÂÎȘȚ]/.test(s)).join(' · ') || (_incStart.length + ' rânduri'));
 T('și pomenește modulele doar dacă sunt bifate',
   /if \(o\.tahograf\) L\.push/.test(PD) && /if \(o\.etransport\) L\.push/.test(PD));
 T('blocurile nu se rup între pagini (în PDF o face `spatiu`)',
@@ -225,8 +238,8 @@ T('„1 vehicul"', DE(1) === '');
 T('zero nu devine „0 de vehicule"', DE(0) === '');
 
 sect('3c-bis. RA Insight pe hârtia clientului');
-T('scrie pe câte CONTURI se dă', /'RA Insight pe ' \+ n \+ ' ' \+ \(n === 1 \? 'cont' : 'conturi'\)/.test(PD), 'lipsește numărul de conturi');
-T('și cât e fondul comun de întrebări', /dintr-un fond comun al firmei/.test(PD));
+T('scrie pe câte CONTURI se dă', /'RA Insight, pe ' \+ n \+ ' ' \+ \(n === 1 \? 'cont' : 'conturi'\)/.test(PD), 'lipsește numărul de conturi');
+T('și cât e fondul comun de întrebări', /dintr-un fond comun al companiei/.test(PD));
 T('scrie prețul unui cont, ca regula să fie pe hârtie', /Prețul unui cont de RA Insight este /.test(PD));
 T('și că numărul de conturi se schimbă din aplicație', /Numărul de conturi se modifică oricând din aplicație/.test(PD));
 T('și că la epuizare se oprește, fără costuri suplimentare', /nu există costuri suplimentare/.test(PD));

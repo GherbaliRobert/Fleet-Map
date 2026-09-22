@@ -340,6 +340,31 @@ aplicația îl scrie în antet (`.ralogo .raw`).
   rulează-l și pe ăla.
 - Păzit de `verify_ofertare.js` (cuvântul, fontul, dimensiunile).
 
+### „Vezi hârtia": previzualizarea NU e a doua hârtie (22.09)
+Butonul-ochi de pe rândul ofertei deschide oferta pe hârtie, fără s-o descarce și fără s-o încarce
+în calculator. Regulile lui:
+
+- **Aceeași cale, două capete.** `_ofHartie(r, previzualizare)` cere serverului exact fișierul care
+  s-ar descărca; `_ofPayload(r)` compune cifrele într-un singur loc. În toată pagina există o
+  SINGURĂ cerere `fetch('/api/admin/offers/pdf')` — păzit prin numărare. Altfel previzualizarea
+  s-ar putea despărți de descărcare, exact cum s-au despărțit cândva căile de export.
+- **`_ofCalc(cfgIn, pIn)`** socotește o ofertă SALVATĂ când primește argumente, ecranul când nu.
+  Așa te uiți la o ofertă veche fără să-ți calci oferta în lucru. Un tarif lipsă dintr-o ofertă
+  veche se ia din lista casei (`_ofTarifeDeBaza()`) — altfel iese `NaN` pe hârtie.
+- ⚠ **CSP:** `frame-src 'self' blob:` e OBLIGATORIU. Fără el cadrele cad pe `default-src 'self'`,
+  care nu cuprinde `blob:`, iar fereastra rămâne o cutie goală **în orice browser**. Nu-l scoate.
+  `frame-ancestors 'none'` rămâne — noi tot nu putem fi încadrați de alții.
+- Rămâne și plasa „deschide-o într-o filă nouă", pentru browserele fără cititor de PDF. E o ancoră
+  obișnuită, nu `window.open`: regula „oferta se descarcă, nu se printează" stă în picioare.
+
+### Numele fișierului descărcat: `_numeDinAntet(resp, implicit)` (22.09)
+Antetul `content-disposition` poartă numele de DOUĂ ori: `filename="…"`, curățat de diacritice
+pentru browserele vechi, și `filename*=UTF-8''…`, cel adevărat. Regula veche prindea prima
+potrivire — deci fișierul se salva „RA-Tracks - **Oferta** …", nu „Ofertă".
+
+- Se cere ÎNTÂI varianta UTF-8. Un singur cititor, folosit de Inventar ȘI de hârtia ofertei.
+- Orice descărcare nouă îl folosește. NU scrie a treia expresie de citit antetul.
+
 ### Butoanele spun ce fac
 „Trimite clientului (PDF)" **nu trimitea nimic nimănui** — deschidea o fereastră de printare, iar
 clientul nici nu există încă în aplicație când faci oferta. Se numește „Descarcă oferta (PDF)".

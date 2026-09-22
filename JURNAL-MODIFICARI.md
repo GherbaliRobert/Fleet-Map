@@ -95,6 +95,57 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · „Vezi hârtia" din lista de oferte, pastila AI pe mijloc, enumerarea scrisă ca lumea
+
+Trei lucruri cerute uitându-te la lista de oferte.
+
+**1. Buton de previzualizare.** Pe fiecare rând din „Oferte salvate" e acum un **ochi**, primul dintre
+butoanele mici: îți deschide oferta pe hârtie, întreagă, fără s-o descarci și fără s-o încarci în
+calculator. Are „Descarcă" și „Închide" (sau tasta Esc).
+
+Două lucruri contează la el, și amândouă sunt reguli, nu amănunte:
+
+- **Nu e o a doua hârtie.** Previzualizarea cere serverului **exact fișierul** pe care l-ai
+  descărca — aceeași funcție, aceeași rută. Nu se poate întâmpla să vezi una și să pleci cu alta.
+- **Nu-ți calcă oferta din formular.** Socotește din ce s-a salvat în oferta aia (cifrele și
+  prețurile negociate, la cursul ei înghețat), nu din ce ai pe ecran. Poți să te uiți la o ofertă
+  veche în timp ce lucrezi la alta.
+
+**Două defecte reale, găsite probând-o** — niciunul nu se vedea din citit cod:
+
+- **Hârtia nu se desena deloc.** Politica de securitate a aplicației nu spunea nimic despre ce are
+  voie să apară într-un cadru, așa că browserul refuza să afișeze fișierul primit de la noi. Ar fi
+  fost o casetă goală **în orice browser**, nu doar la mine. Reparat, cu o portiță îngustă: se
+  acceptă doar fișiere născute din codul paginii noastre, nimic din afară.
+- **Numele fișierului își pierdea diacritica.** Se salva „RA-Tracks - **Oferta** …" în loc de
+  „Ofertă". Serverul trimite numele de două ori — o dată curățat, pentru browsere vechi, și o dată
+  întreg — iar noi îl citeam pe primul. Acum se cere întâi cel întreg. Aceeași reparație folosește
+  și exportul din Inventar, care avea exact aceeași scăpare.
+
+**2. Pastila „AI" stă pe mijlocul numelui.** Cădea cu câțiva pixeli mai jos. Motivul: alinierea
+folosită („middle") nu înseamnă mijlocul rândului, ci ceva socotit față de linia de bază — iar cu
+două mărimi de text diferite se vede. Acum numele și pastila stau într-o cutie care le centrează
+una pe alta. Măsurat: **0 pixeli diferență**.
+
+**3. „Ce include abonamentul lunar" — scris ca într-o ofertă, nu ca într-o listă de bifat.** Fiecare
+rând începe acum cu majusculă și e o propoziție de sine stătătoare. Și amănuntele vin după două
+puncte, nu după o linie de pauză, care făcea fraza să pară o notiță:
+
+> • Monitorizare GPS în timp real, pe hartă și pe telefon
+> • Date preluate direct din calculatorul de bord: consum, kilometraj, turație
+> • Modulul Tahograf: descărcarea fișierelor .DDD și urmărirea termenelor legale
+> • Modulul e-Transport: generarea codurilor UIT și raportarea poziției către ANAF
+> • RA Insight, pe 3 conturi: 150 de întrebări pe lună, dintr-un fond comun al companiei
+> • Cei șase agenți automați care supraveghează flota și semnalează abaterile
+> • Păstrarea datelor istorice timp de 12 luni
+> • Rapoarte, alerte, actualizări ale aplicației și asistență tehnică
+
+- **Ce am schimbat:** te poți uita la o ofertă înainte s-o trimiți, pastila stă drept, iar hârtia e
+  scrisă mai îngrijit.
+- **Ce vede fondatorul:** butonul cu ochi pe fiecare rând, rândul aliniat, și oferta curată la PDF.
+- **Ce vede clientul:** hârtia — singurul lucru din tot lotul ăsta care ajunge la el. Enumerarea
+  scrisă ca lumea, și numele fișierului cu diacritica la locul ei.
+
 ### AMÂNDOI · Poarta de dinaintea livrării era moartă de o săptămână. Am repus-o pe picioare
 
 **Cum a ieșit la iveală.** Am vrut să verific că modificarea de azi a ajuns pe ratrack.ro. N-am

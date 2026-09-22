@@ -60,7 +60,7 @@ T('ruta de pe server a plecat odată cu el', !/apply-to-company/.test(faraComent
 T('`priceEur` a dispărut din pagină', !/priceEur/.test(faraComentarii(html)));
 T('nu mai există preț pe întrebare nicăieri', !/€\/apel/.test(faraComentarii(html)));
 // Pastila „AI" de pe rând rămâne — ea doar SPUNE că oferta include RA Insight, nu face nimic.
-T('pastila „AI" rămâne pe rând', /hasAi \? ' <span[\s\S]{0,220}>AI<\/span>/.test(html));
+T('pastila „AI" rămâne pe rând', /hasAi \? '<span[\s\S]{0,220}>AI<\/span>/.test(html));
 T('iar ce s-a vândut se aprinde la SEMNARE, într-un singur loc',
   /await _aplicaOfertaPeFirma\(id, oferta\)/.test(server)
   && (server.match(/_aplicaOfertaPeFirma\(/g) || []).length === 2);
@@ -181,7 +181,15 @@ sect('5d. Oferta se DESCARCĂ, ca un raport');
 T('nu mai deschide o fereastră de printare', !/window\.open/.test(PDFOF) && !/window\.print/.test(PDFOF));
 T('cere fișierul de la server', /fetch\('\/api\/admin\/offers\/pdf'/.test(PDFOF));
 T('și îl salvează ca fișier', /a\.download = nume/.test(PDFOF) && /URL\.createObjectURL\(blob\)/.test(PDFOF));
-T('numele vine din antetul răspunsului, nu inventat în pagină', /content-disposition/i.test(PDFOF));
+T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAntet\(resp, 'ofertă\.pdf'\)/.test(PDFOF));
+// Antetul poartă numele de două ori: unul curățat de diacritice (pentru browsere vechi) și cel
+// adevărat, `filename*=UTF-8''`. Regula veche prindea prima potrivire, deci fișierul se salva
+// „RA-Tracks - Oferta …" în loc de „Ofertă". Un singur cititor, folosit și de Inventar.
+T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
+  /function _numeDinAntet\(resp, implicit\)/.test(html)
+  && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
+  && (html.match(/_numeDinAntet\(/g) || []).length === 3
+  && !/filename\\\*\?=\(\?:UTF-8/.test(html));
 T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
 T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));
 T('cu logo-ul pentru fundal alb, ca rapoartele', /const logo = _logoBuffer\(\)/.test(PDFSRV));
@@ -190,6 +198,52 @@ T('fără termen știut, hârtia NU inventează unul',
 T('ruta e doar a noastră',
   /app\.post\('\/api\/admin\/offers\/pdf', requireAuth, requireSuperadmin/.test(server));
 T('termenul îl pune SERVERUL, din aceeași constantă', /o\.valabilZile = OFERTA_VALABIL_ZILE;/.test(server));
+
+sect('5d-bis. „Vezi hârtia": te uiți la ofertă fără s-o descarci (22.09)');
+// Butonul de previzualizare din lista de oferte. Regula: previzualizarea NU are voie să deseneze
+// altceva decât fișierul care pleacă la client — deci trece prin ACEEAȘI funcție și aceeași rută.
+T('butonul e pe rândul ofertei', /onclick="raxOfPreview\(' \+ o\.id \+ '\)"/.test(html));
+T('descărcarea și previzualizarea sunt aceeași cale, cu două capete',
+  /async function _ofHartie\(r, previzualizare\)/.test(PDFOF)
+  && /window\.raxOfExportPdf = function \(\) \{ return _ofHartie\(_ofCalc\(\), false\); \}/.test(PDFOF)
+  && /return _ofHartie\(_ofCalc\(cfg, p\), true\)/.test(PDFOF));
+// O singură cerere de PDF în toată pagina: dacă apare a doua, previzualizarea s-ar putea despărți
+// de descărcare exact cum s-au despărțit cândva cele două căi de export.
+T('o SINGURĂ cerere de PDF în pagină',
+  (html.match(/fetch\('\/api\/admin\/offers\/pdf'/g) || []).length === 1);
+T('și cifrele se compun într-un singur loc', /function _ofPayload\(r\)/.test(PDFOF)
+  && (PDFOF.match(/_ofPayload\(/g) || []).length === 2);
+// Previzualizarea unei oferte din listă NU are voie să calce oferta din formular.
+T('socotește din oferta SALVATĂ, nu din ecran', /function _ofCalc\(cfgIn, pIn\)/.test(html)
+  && /var p = pIn \|\| _ofReadPrices\(\); var cfg = cfgIn \|\| _ofReadCfg\(\);/.test(html));
+T('un tarif lipsă dintr-o ofertă veche se ia din lista casei, nu iese NaN',
+  /Object\.assign\(\{\}, _ofTarifeDeBaza\(\), \(o\.config && o\.config\.prices\) \|\| \{\}\)/.test(PDFOF));
+// ⚠ Politica de securitate a aplicației N-AVEA `frame-src`, deci cadrele cădeau pe
+// `default-src 'self'` — care nu cuprinde `blob:`. Fereastra rămânea o cutie goală în ORICE
+// browser, nu doar în cel de probe (găsit 22.09, uitându-mă de ce nu se desena hârtia).
+T('politica de securitate lasă hârtia să se vadă în pagină',
+  /"frame-src 'self' blob:"/.test(server));
+T('dar nu ne face și pe noi încadrabili de alții', /"frame-ancestors 'none'"/.test(server));
+// Plasa, pentru browserele care nu desenează PDF-uri deloc: o ancoră obișnuită, nu o fereastră
+// deschisă din cod (regula „oferta se descarcă, nu se printează" rămâne în picioare).
+T('și, dacă tot nu se vede, un link către o filă nouă',
+  /deschide-o într-o filă nouă/.test(PDFOF) && /target="_blank" rel="noopener"/.test(PDFOF));
+T('fereastra se închide și eliberează fișierul din memorie',
+  /URL\.revokeObjectURL\(url\)/.test(PDFOF) && /e\.key === 'Escape'/.test(PDFOF));
+// Oferta își îngheață și ZIUA cursului, nu doar cifra: altfel, deschisă peste o lună, hârtia ar
+// pune data de azi lângă un curs de acum o lună.
+T('oferta îngheață ziua și sursa cursului, nu doar cifra',
+  /fxRate: _fxRate, fxDate: _fxDate \|\| null, fxSursa: _fxSursa \|\| null,/.test(html));
+T('iar hârtia le ia din ofertă, nu de pe ecran',
+  /fxDate: r\.cfg\.fxDate \|\| null, fxSursa: r\.cfg\.fxSursa \|\| null,/.test(PDFOF));
+
+sect('5d-ter. Pastila „AI" stă pe mijlocul numelui');
+// Cu `vertical-align:middle`, o pastilă de 9,5px cu chenar cade vizibil sub linia numelui: acel
+// „middle" e față de linia de bază plus jumătate din litera mică, nu față de mijlocul rândului.
+T('numele și pastila stau într-o cutie flex, aliniate pe mijloc',
+  /display:inline-flex;align-items:center;gap:6px;"><b>' \+ esc\(o\.name/.test(html));
+T('pastila nu se mai sprijină pe `vertical-align`',
+  !/border-radius:4px;padding:0 4px;vertical-align:middle;">AI</.test(html));
 
 sect('5e. Tarifele se schimbă acolo unde se folosesc');
 T('cantitatea și prețul stau pe același rând', /function qp\(idQ, idP, pret, um, umPret\)/.test(html));
@@ -440,6 +494,10 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
     deviceLines: [{ label: 'Teltonika FMC650', qty: 10, unit: 120, total: 1200 }], hwTotal: 1200
   });
   T('ruta răspunde', pdfResp.status === 200, 'a dat ' + pdfResp.status);
+  // Și pe server PORNIT: antetul chiar iese cu `frame-src`, nu doar scris în cod.
+  const antetCsp = (await GET('/app')).headers.get('content-security-policy') || '';
+  T('antetul trimis de server lasă hârtia în cadru', /frame-src [^;]*blob:/.test(antetCsp),
+    (antetCsp.match(/frame-src[^;]*/) || ['lipsește'])[0]);
   T('trimite un PDF', /application\/pdf/.test(pdfResp.headers.get('content-type') || ''),
     pdfResp.headers.get('content-type'));
   const cd = pdfResp.headers.get('content-disposition') || '';

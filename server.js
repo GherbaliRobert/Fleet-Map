@@ -1184,6 +1184,11 @@ const CSP = [
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https: wss:",
   "worker-src 'self' blob:",
+  // Fără rândul ăsta, cadrele cad pe `default-src 'self'`, care NU cuprinde `blob:` — iar
+  // previzualizarea ofertei (hârtia primită de la server, ținută în memoria paginii) rămânea o
+  // cutie goală, în ORICE browser. Nu deschide nimic din afară: un `blob:` se poate naște doar din
+  // codul paginii noastre, iar `frame-ancestors 'none'` ne ține în continuare pe noi neîncadrabili.
+  "frame-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "object-src 'none'",

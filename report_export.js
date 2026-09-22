@@ -431,20 +431,24 @@ function _ofDe(n) {
   const x = Math.abs(Math.round(Number(n) || 0)); if (x === 0) return '';
   const r = x % 100; return (r >= 1 && r <= 19) ? '' : 'de ';
 }
+// Fiecare rând începe cu MAJUSCULĂ și e o propoziție de sine stătătoare — e o ofertă comercială,
+// nu o listă de bifat (Alin, 22.09: „pune și tu începuturile enumerărilor cu majuscule, scrie mai
+// profesionist descrierile alea"). Unde e nevoie de un amănunt, se pune după DOUĂ PUNCTE, nu după
+// o linie de pauză: linia de pauză face fraza să pară o notiță, nu un serviciu vândut.
 function _ofIncluse(o) {
-  const L = ['monitorizare GPS în timp real, pe hartă și pe telefon'];
-  if (o.cuDateMotor) L.push('date din motorul mașinii (consum, kilometraj, turație)');
-  if (o.tahograf) L.push('modulul Tahograf — citirea fișierelor .DDD și termenele legale');
-  if (o.etransport) L.push('modulul e-Transport — coduri UIT și raportarea poziției la ANAF');
+  const L = ['Monitorizare GPS în timp real, pe hartă și pe telefon'];
+  if (o.cuDateMotor) L.push('Date preluate direct din calculatorul de bord: consum, kilometraj, turație');
+  if (o.tahograf) L.push('Modulul Tahograf: descărcarea fișierelor .DDD și urmărirea termenelor legale');
+  if (o.etransport) L.push('Modulul e-Transport: generarea codurilor UIT și raportarea poziției către ANAF');
   if (o.aiA) {
     const n = Math.max(1, Number(o.aiqConturi) || 1), f = Number(o.aiqFond) || 0;
-    L.push('RA Insight pe ' + n + ' ' + (n === 1 ? 'cont' : 'conturi')
-      + (f > 0 ? ' — ' + f + ' ' + _ofDe(f) + 'întrebări pe lună, dintr-un fond comun al firmei'
-               : ' — întrebări nelimitate'));
+    L.push('RA Insight, pe ' + n + ' ' + (n === 1 ? 'cont' : 'conturi') + ': '
+      + (f > 0 ? f + ' ' + _ofDe(f) + 'întrebări pe lună, dintr-un fond comun al companiei'
+               : 'întrebări nelimitate'));
   }
-  if (o.agenti) L.push('cei 6 agenți automați care urmăresc singuri flota și anunță problemele');
-  if (o.retentie) L.push('păstrarea datelor pe ' + o.retentie);
-  L.push('rapoarte, alerte, actualizări și suport tehnic');
+  if (o.agenti) L.push('Cei șase agenți automați care supraveghează flota și semnalează abaterile');
+  if (o.retentie) L.push('Păstrarea datelor istorice timp de ' + o.retentie);
+  L.push('Rapoarte, alerte, actualizări ale aplicației și asistență tehnică');
   return L;
 }
 
