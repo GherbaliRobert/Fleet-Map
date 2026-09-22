@@ -40,43 +40,53 @@ jobs:
           # în 20 de secunde, la FIECARE împingere, timp de 36 de commit-uri. Nimic din ce urmează
           # (unit, smoke, securitate) n-a mai rulat în tot acest timp. Păzit de `verify_poarta.js`.
 
-      # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, consum, taxe de drum
+      # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, consum, taxe de drum.
+      # Rulează toate și cade la final, ca la pasul 4: o probă picată nu le ascunde pe celelalte.
       - name: Unit tests (codec + agenți + consum)
         run: |
-          node test_codec8e.js
-          node test_agents.js
-          node verify_fueltheft.js
-          node verify_fuel_parcare.js
-          node verify_fuel_alarma.js
-          node verify_can_report.js
-          node verify_tollro.js
-          node verify_io_map.js
-          node tools/gen-can-icons.js --check
+          rele=""
+          s() { echo "── $* ──"; node "$@" || rele="$rele $1"; }
+          s test_codec8e.js
+          s test_agents.js
+          s verify_fueltheft.js
+          s verify_fuel_parcare.js
+          s verify_fuel_alarma.js
+          s verify_can_report.js
+          s verify_tollro.js
+          s verify_io_map.js
+          s tools/gen-can-icons.js --check
+          if [ -n "$rele" ]; then echo "::error::Probe unitare picate:$rele"; exit 1; fi
 
       # 3) Smoke — server embedded (PGlite + SEED_TEST): izolare multi-tenant + RBAC
       - name: Smoke tests (server)
         run: npm test
 
       # 4) Securitate — fiecare suită apără o reparație care a fost cândva o gaură REALĂ.
-      # Rulează în serie (fiecare pornește propriul server, pe porturi proprii) și cade la primul
-      # eșec. Fără ele, poarta de dinaintea livrării ar fi verificat doar sintaxa și izolarea
-      # între companii — adică nimic din ce s-a reparat aici.
+      # Fără ele, poarta de dinaintea livrării ar fi verificat doar sintaxa și izolarea între
+      # companii — adică nimic din ce s-a reparat aici.
+      #
+      # ⚠ Rulează TOATE, apoi cade la final cu lista celor picate. Cu `set -e` se oprea la prima:
+      # o suită învechită ascundea celelalte nouă, iar raportul spunea doar numele ei. Exact boala
+      # care a ținut poarta moartă o săptămână, la scară mai mică (22.09).
       - name: Securitate (autentificare, IDOR, ingest, notificări, GDPR)
         run: |
-          set -e
-          node verify_push_viteza.js        # comutatorul stins chiar stinge push-ul (2 motoare, 1 preferință)
-          node verify_auth_hardening.js     # politica de parole + adresa IP care nu se poate falsifica
-          node verify_acces_revocat.js      # cont dezactivat/șters/expirat: sesiunea și harta live se închid pe loc
-          node verify_paritate_telefon.js   # telefonul (și cel vechi): zone și roluri neșterse, fondul RA Insight respectat, tokenii ascunși
-          node verify_restaurare.js         # backup → restaurare pe bază goală: legături, facturi, criptat/necriptat, --wipe
-          node verify_notif_idor.js         # notificarea altei companii nu se poate citi după id
-          node verify_ack_durabil.js        # confirmarea către tracker vine DUPĂ scriere (zero poziții pierdute)
-          node verify_admin_retras.js       # contul de instalare se retrage, dar nu ne închide afară
-          node verify_reparatii_lansare.js  # plafon TCP, resetare parolă, cache reguli, export/ștergere GDPR
-          node verify_docscan.js            # citirea actelor: PDF gratuit, propuneri, nimic salvat singur
-          node verify_docparse_acte.js      # extragerea din acte, pe forme reale de așezare în pagină
-          node verify_expirari.js           # alertele de expirare: prag configurabil, dedup, fără-dată vizibil
-          node verify_follow.js             # „merg după el": distanța, direcția, formatarea (fără server)
+          rele=""
+          s() { echo "── $1 ──"; node "$1" || rele="$rele $1"; }
+          s verify_push_viteza.js        # comutatorul stins chiar stinge push-ul (2 motoare, 1 preferință)
+          s verify_auth_hardening.js     # politica de parole + adresa IP care nu se poate falsifica
+          s verify_acces_revocat.js      # cont dezactivat/șters/expirat: sesiunea și harta live se închid pe loc
+          s verify_paritate_telefon.js   # telefonul (și cel vechi): zone și roluri neșterse, fondul RA Insight respectat, tokenii ascunși
+          s verify_restaurare.js         # backup → restaurare pe bază goală: legături, facturi, criptat/necriptat, --wipe
+          s verify_notif_idor.js         # notificarea altei companii nu se poate citi după id
+          s verify_ack_durabil.js        # confirmarea către tracker vine DUPĂ scriere (zero poziții pierdute)
+          s verify_admin_retras.js       # contul de instalare se retrage, dar nu ne închide afară
+          s verify_reparatii_lansare.js  # plafon TCP, resetare parolă, cache reguli, export/ștergere GDPR
+          s verify_docscan.js            # citirea actelor: PDF gratuit, propuneri, nimic salvat singur
+          s verify_docparse_acte.js      # extragerea din acte, pe forme reale de așezare în pagină
+          s verify_expirari.js           # alertele de expirare: prag configurabil, dedup, fără-dată vizibil
+          s verify_follow.js             # „merg după el": distanța, direcția, formatarea (fără server)
+          if [ -n "$rele" ]; then echo "::error::Suite de securitate picate:$rele"; exit 1; fi
+          echo "Toate suitele de securitate trec ✓"
 
       # NOTĂ test-debt: phase2-7_smoke, ws_smoke și verify_{sys,io,fms,tenant,faza2}
       # NU sunt încă în CI — au eșecuri de asserțiune pre-existente sau hardcodează portul 3000.

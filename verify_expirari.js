@@ -77,20 +77,33 @@ const ziPeste = (n) => new Date(Date.now() + n * 24 * 3600 * 1000).toISOString()
       return list.filter(n => n.type === 'document_expiry' && (!filtru || JSON.stringify(n).includes(filtru)));
     };
 
-    // ── 1. Implicitul neschimbat: act care expiră în 15 zile → NIMIC (pragul implicit e 7) ──
+    // ── 1. Implicitul ACTELOR e 30 de zile — același număr care colorează lista ──
+    //
+    // ⚠ Proba cerea până acum implicitul VECHI (7) și aștepta TĂCERE la 15 zile. Între timp pragul
+    // actelor a primit cheia lui, `docDaysLead`, cu implicitul 30 — tocmai fiindcă lista se colora
+    // la 30 de zile, iar telefonul suna abia la 7: trei săptămâni în care actul era galben pe ecran
+    // și nimeni nu era anunțat. Deci răspunsul corect la 15 zile e ACUM o alertă (găsit 22.09).
+    // `careDaysLead` a rămas ce a fost — pragul MENTENANȚEI — și nu mai mișcă actele.
     await req(S, 'POST', '/api/documents', { imei: IMEI, doc_type: 'RCA', expiry_date: ziPeste(15), issuer: 'OMNIASIG' });
     let r1 = await ruleaza();
     t('declanșatorul manual răspunde', r1.status === 200, 'status ' + r1.status);
     await sleep(1200);
-    t('15 zile + prag implicit (7) → nicio alertă', (await notificari('RCA')).length === 0,
+    t('15 zile + implicitul actelor (30) → alertă, ca în listă', (await notificari('RCA')).length === 1,
       JSON.stringify((await notificari('RCA')).map(n => n.title)));
 
-    // ── 2. careDaysLead=30 pe companie → același act ALERTEAZĂ acum ──
-    const setat = await req(CA, 'PUT', '/api/companies/me/settings', { alert_thresholds: { careDaysLead: 30 } });
-    t('careDaysLead=30 setat pe companie', setat.status === 200, 'status ' + setat.status);
+    // ── 2. Pragul se mută pe companie, în AMBELE sensuri ──
+    // Coborât la 7, un act la 15 zile tace; urcat la loc, alertează. Un act NOU la fiecare pas, ca
+    // să nu răspundă dedup-ul în locul pragului.
+    const setat = await req(CA, 'PUT', '/api/companies/me/settings', { alert_thresholds: { docDaysLead: 7 } });
+    t('docDaysLead=7 setat pe companie', setat.status === 200, 'status ' + setat.status);
+    await req(S, 'POST', '/api/documents', { imei: IMEI, doc_type: 'ROVINIETA', expiry_date: ziPeste(15) });
     await ruleaza(); await sleep(1200);
-    const dupaPrag = await notificari('RCA');
-    t('cu careDaysLead=30, actul la 15 zile ALERTEAZĂ', dupaPrag.length === 1, 'găsite: ' + dupaPrag.length);
+    t('cu docDaysLead=7, actul la 15 zile TACE', (await notificari('ROVINIETA')).length === 0,
+      'găsite: ' + (await notificari('ROVINIETA')).length);
+    await req(CA, 'PUT', '/api/companies/me/settings', { alert_thresholds: { docDaysLead: 30 } });
+    await ruleaza(); await sleep(1200);
+    const dupaPrag = await notificari('ROVINIETA');
+    t('urcat la 30, ACELAȘI act alertează', dupaPrag.length === 1, 'găsite: ' + dupaPrag.length);
 
     // ── 3. Dedup: a doua rulare NU dublează ──
     await ruleaza(); await sleep(1200);

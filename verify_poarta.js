@@ -33,12 +33,15 @@ const sect = (s) => console.log('\n' + s);
 sect('1. Fiecare fișier numit în poartă există');
 T('fișierul porții există', fs.existsSync(CI));
 const ci = fs.existsSync(CI) ? fs.readFileSync(CI, 'utf8') : '';
-// Rândurile din `run:` care cheamă node pe un fișier: `node x.js`, `node --check x.js`,
-// `node tools/x.js --check`. Comentariile din YAML (#) se sar — acolo se POMENESC nume șterse.
+// Rândurile din `run:` care cheamă o probă. Două forme, amândouă folosite:
+//   `node x.js`, `node --check x.js`, `node tools/x.js --check`
+//   `s x.js` — ajutorul care rulează TOATE probele pasului și cade abia la final, ca una picată
+//              să nu le ascundă pe celelalte.
+// Comentariile din YAML (#) se sar: acolo se POMENESC nume șterse, tocmai ca să se știe de ce.
 const numite = [];
 ci.split('\n').forEach((rand) => {
   const curat = rand.replace(/#.*$/, '');
-  const m = curat.match(/^\s*node\s+(?:--check\s+)?([A-Za-z0-9_./-]+\.js)/);
+  const m = curat.match(/^\s*(?:node\s+(?:--check\s+)?|s\s+)([A-Za-z0-9_./-]+\.js)/);
   if (m) numite.push(m[1]);
 });
 T('poarta chiar cheamă probe (nu s-a golit lista)', numite.length >= 20, numite.length + ' fișiere');

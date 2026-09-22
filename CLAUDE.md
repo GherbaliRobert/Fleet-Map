@@ -76,9 +76,11 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
   trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**.
-- **O probă picată nu înseamnă cod stricat.** De două ori aici, proba cerea regula VECHE
-  (adminul firmei să-și înregistreze aparate — interzis din 16.09). Întâi întreabă care e regula de
-  azi; abia apoi decide cine greșește, codul sau proba.
+- **O probă picată nu înseamnă cod stricat.** De trei ori aici, proba cerea regula VECHE: adminul
+  firmei să-și înregistreze aparate (interzis din 16.09) și preavizul actelor de 7 zile (urcat de
+  atunci la 30, `DOC_DAYS_LEAD`, ca telefonul să sune când se colorează lista). Întâi întreabă care
+  e regula de azi; abia apoi decide cine greșește, codul sau proba. Iar când o rescrii, **rescrie-o
+  pe regula nouă** — nu-i slăbi asertul ca să treacă.
 
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).

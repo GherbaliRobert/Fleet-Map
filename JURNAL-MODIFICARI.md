@@ -126,8 +126,8 @@ invizibil. N-ar fi trecut niciodată, pe nicio descărcare curată.
    PRIMA, ca data viitoare mesajul să spună pe nume ce lipsește. E și în `npm test`, deci se prinde
    pe calculatorul meu, înainte de a ajunge pe GitHub.
 
-**Și ce am găsit sub ea, odată repornită.** Douăsprezece din treisprezece suite de securitate trec.
-Două erau stricate **de la ele**, nu din aplicație, și le-am reparat:
+**Și ce am găsit sub ea, odată repornită.** Din cele treisprezece suite de securitate, **patru erau
+picate**. Trei erau stricate **de la ele**, nu din aplicație, și le-am reparat:
 
 - **Izolarea notificărilor între companii** (`verify_notif_idor.js`) raporta „4 din 5 trecute" și
   părea aproape bună. De fapt **crăpa** înainte de verificarea care contează: cea care încearcă
@@ -137,8 +137,14 @@ Două erau stricate **de la ele**, nu din aplicație, și le-am reparat:
   înregistra singur un aparat GPS. Din 16.09 **nu mai poate** — e decizia voastră, aparatele le
   înregistrăm noi. Proba cerea vechea regulă. Rescrisă pe cea nouă: aparatul îl punem noi, îl dăm
   pe firmă, iar firma îl împarte pe oameni. **42 din 42.**
+- **Alertele de expirare** (`verify_expirari.js`) cereau ca un act care expiră peste 15 zile să NU
+  vă anunțe, fiindcă pe vremuri preavizul era de 7 zile. L-am urcat de atunci la **30** — tocmai
+  fiindcă lista colora actul galben cu o lună înainte, iar telefonul suna abia cu o săptămână
+  înainte: trei săptămâni în care actul se vedea pe ecran și nimeni nu era anunțat. Proba cerea
+  tăcerea veche. Rescrisă pe regula de azi, și întărită: verifică pragul **în ambele sensuri**
+  (coborât la 7 tace, urcat la 30 alertează). **14 din 14.**
 
-A treisprezecea are 17 verificări picate, despre plata peste cotă la RA Insight — funcție pe care am
+A patra are 17 verificări picate, despre plata peste cotă la RA Insight — funcție pe care am
 scos-o deliberat pe 11.09. E trecută la **„De verificat înainte de lansare"**: sunt verificări
 despre bani, se înlocuiesc cu voi de față, nu se șterg în trecere.
 
