@@ -21,6 +21,7 @@ jobs:
       # 1) Lint — syntax check pe TOATE modulele core (catch rapid regresii de sintaxă)
       - name: Lint (syntax check)
         run: |
+          node verify_poarta.js
           node --check server.js
           node --check db.js
           node --check codec8e.js
@@ -32,16 +33,18 @@ jobs:
           node --check report_schedules.js
           node --check channels.js
           node --check ai.js
-          node --check billing.js
           node --check tacho.js
           node --check geocode.js
+          # ⚠ NU adăuga aici un fișier fără să-l ai în depozit. `billing.js` a rămas scris în lista
+          # asta după ce a fost ȘTERS odată cu Stripe (15.09) — și poarta a picat la PRIMUL rând,
+          # în 20 de secunde, la FIECARE împingere, timp de 36 de commit-uri. Nimic din ce urmează
+          # (unit, smoke, securitate) n-a mai rulat în tot acest timp. Păzit de `verify_poarta.js`.
 
-      # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, billing (HMAC webhook)
-      - name: Unit tests (codec + agenți + billing)
+      # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, consum, taxe de drum
+      - name: Unit tests (codec + agenți + consum)
         run: |
           node test_codec8e.js
           node test_agents.js
-          node test_billing.js
           node verify_fueltheft.js
           node verify_fuel_parcare.js
           node verify_fuel_alarma.js

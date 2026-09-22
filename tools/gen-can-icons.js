@@ -58,7 +58,10 @@ function construieste(icoane) {
     'module.exports = { ICOANE, svg };',
     '',
   ];
-  return antet.concat(randuri, subsol).join('\r\n');
+  // LF, ca tot restul depozitului. A scris CRLF, iar `can_icons.js` e stocat cu LF: deci `--check`
+  // pica pe o descărcare curată ORICÂND, comparând 167 de rânduri identice care difereau doar prin
+  // caracterul de sfârșit de rând. Al doilea gard mort din poartă (găsit 22.09).
+  return antet.concat(randuri, subsol).join('\n');
 }
 
 const continut = construieste(citesteDesene());

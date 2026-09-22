@@ -95,6 +95,59 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### AMÂNDOI · Poarta de dinaintea livrării era moartă de o săptămână. Am repus-o pe picioare
+
+**Cum a ieșit la iveală.** Am vrut să verific că modificarea de azi a ajuns pe ratrack.ro. N-am
+putut (cutia mea de probe n-are voie la site), așa că m-am uitat pe GitHub — și acolo, la fiecare
+împingere, **ecusonul era roșu**. Nu de azi: **de 36 de commit-uri, adică o săptămână întreagă.**
+
+**Ce se întâmpla.** Înainte de a livra ceva, un robot al GitHub rulează toate probele noastre:
+verificarea de sintaxă, probele unitare, bateria mare (`npm test`, ~40 de suite) și treisprezece
+suite de **securitate** — izolarea între companii, revocarea accesului, parolele, GDPR-ul. Prima
+linie din listă era:
+
+> `node --check billing.js`
+
+`billing.js` fusese **șters** pe 15.09, odată cu Stripe. Numele lui a rămas scris în listă. Cum
+prima linie cade, **restul nu se mai execută deloc**: poarta murea în 20 de secunde și nimic nu mai
+era verificat. Arăta ca o poartă. Nu mai apăra nimic.
+
+**Al doilea gard mort, găsit în aceeași trecere.** Unealta care ține pictogramele de pe telefon
+sincronizate cu cele de pe web scria sfârșiturile de rând într-un fel, iar fișierul din depozit e
+salvat în celălalt. Verificarea compara 167 de rânduri **identice** și pica pe un caracter
+invizibil. N-ar fi trecut niciodată, pe nicio descărcare curată.
+
+**Ce am reparat.**
+
+1. Poarta nu mai numește fișierul șters; proba lui, rămasă și ea orfană, a plecat de tot.
+2. Unealta de pictograme scrie ca restul depozitului. Verificarea trece fără să atingă niciun desen.
+3. **O probă nouă, `verify_poarta.js`**, care păzește exact felul ăsta de moarte tăcută: citește
+   lista porții și cere ca fiecare fișier numit acolo să existe și să se poată porni. Rulează
+   PRIMA, ca data viitoare mesajul să spună pe nume ce lipsește. E și în `npm test`, deci se prinde
+   pe calculatorul meu, înainte de a ajunge pe GitHub.
+
+**Și ce am găsit sub ea, odată repornită.** Douăsprezece din treisprezece suite de securitate trec.
+Două erau stricate **de la ele**, nu din aplicație, și le-am reparat:
+
+- **Izolarea notificărilor între companii** (`verify_notif_idor.js`) raporta „4 din 5 trecute" și
+  părea aproape bună. De fapt **crăpa** înainte de verificarea care contează: cea care încearcă
+  efectiv să citească notificările altei firme. Acum rulează, și **11 din 11 trec** — inclusiv
+  bucla care cere pe rând id-urile 1–40 și nu primește nimic.
+- **Tăierea accesului** (`verify_acces_revocat.js`) cerea ca administratorul unei firme să-și poată
+  înregistra singur un aparat GPS. Din 16.09 **nu mai poate** — e decizia voastră, aparatele le
+  înregistrăm noi. Proba cerea vechea regulă. Rescrisă pe cea nouă: aparatul îl punem noi, îl dăm
+  pe firmă, iar firma îl împarte pe oameni. **42 din 42.**
+
+A treisprezecea are 17 verificări picate, despre plata peste cotă la RA Insight — funcție pe care am
+scos-o deliberat pe 11.09. E trecută la **„De verificat înainte de lansare"**: sunt verificări
+despre bani, se înlocuiesc cu voi de față, nu se șterg în trecere.
+
+- **Ce am schimbat:** poarta care verifică totul înainte de livrare funcționează din nou, și nu mai
+  poate muri în tăcere.
+- **Ce vede fondatorul:** ecusonul de pe GitHub redevine util. Dacă e roșu, chiar e ceva stricat.
+- **Ce vede clientul:** nimic direct — dar o săptămână de modificări a ajuns la el fără ca probele
+  de securitate să fi rulat vreodată pe ele. Le-am rulat acum, pe toate: nicio gaură nouă.
+
 ### FONDATOR · Cursul rămâne cel pus de tine, butonul ✨ a plecat, iar „client nou din ofertă" chiar deschide formularul
 
 Trei lucruri, toate din aceeași trecere prin Ofertare Live.
@@ -7755,6 +7808,21 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(eu) Proba de paritate cu telefonul mai cere o funcție pe care am scos-o singuri.** Găsită
+  pe 22.09, după ce poarta de pe GitHub a fost repusă pe picioare (vezi intrarea de la ziua aia).
+  Din cele treisprezece suite de securitate, douăsprezece trec. A treisprezecea,
+  `verify_paritate_telefon.js`, are **17 verificări picate din 130** — toate despre același lucru:
+  **plata peste cotă la RA Insight**. Pe 11.09 am hotărât deliberat că, la epuizarea fondului lunar,
+  RA Insight **se oprește** — fără „mai vrei? costă atât", ca să nu vadă clientul prețuri pe
+  întrebare. Serverul face exact asta. Proba încă cere vechiul traseu („cere acordul", „cu acordul
+  dat, întrebarea pleacă").
+
+  **Nu e un defect în aplicație** — e o probă rămasă în urma unei decizii. Dar nu e nici o
+  ștersătură pe care s-o fac în trecere: sunt paisprezece verificări despre bani și despre ce
+  ajunge pe factura clientului, și ar trebui **înlocuite** cu ce apărăm acum („la epuizare se
+  oprește, la fel pe web și pe telefon, și nimic nu trece tăcut pe factură") — nu doar tăiate.
+  Un test de bani șters în grabă e mai rău decât unul roșu. De făcut cu voi de față.
 
 - [ ] **(eu) Restaurarea unui backup MARE încă ține tot fișierul în memorie.** Singura problemă din revizia adversă
   pe care n-am reparat-o pe 12.09, fiindcă cere rescrierea restaurării pe bucăți (zile, nu ore). Azi merge; dar peste

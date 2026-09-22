@@ -222,7 +222,13 @@ function formularWeb(cookie, eSuper, proprii) {
   T('administratorul altei firme intră pe web', !!ckAlt);
   // Fără niciun vehicul, RA Insight se oprește înainte de model („n-am ce analiza") și proba n-ar
   // mai vedea regula fondului pe calea aceea.
-  const imp = await json('POST', '/api/devices/import', ckSef, { rows: [{ imei: '350000000024701', name: 'Camion Paritate', plate: 'AR-01-PAR' }] });
+  //
+  // ⚠ Aparatul îl înregistrăm NOI și îl dăm pe firmă (decizia lui Alin, 16.09 — GPS-ul e marfa
+  // noastră, `POST /api/devices/import` e `requireSuperadmin`). Proba îl cerea de pe contul
+  // ADMINULUI FIRMEI și aștepta 200; de pe 16.09 răspunsul corect e 403, iar de-aici cădea tot
+  // restul suitei — mașini, acte, agenți — 30 de verificări dintr-un singur rând de pregătire.
+  const imp = await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000024701', name: 'Camion Paritate', plate: 'AR-01-PAR' }] });
+  await json('PUT', '/api/devices/350000000024701/company', S, { company_id: co.id });
   T('firma are un vehicul (RA Insight are ce analiza)', imp.status === 200, imp.status + ' ' + imp.text.slice(0, 80));
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -482,7 +488,8 @@ function formularWeb(cookie, eSuper, proprii) {
   // ───────────────────────────────────────────────────────────────────────────────────────────────
   console.log('\n5. Găurile găsite la integrare: acte, agenți live, roluri la creare, locuri RA Insight');
   const lista = (x) => (Array.isArray(x) ? x : []);
-  const imp2 = await json('POST', '/api/devices/import', ckSef, { rows: [{ imei: '350000000024702', name: 'Duba Paritate', plate: 'AR-02-PAR' }] });
+  const imp2 = await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000024702', name: 'Duba Paritate', plate: 'AR-02-PAR' }] });
+  await json('PUT', '/api/devices/350000000024702/company', S, { company_id: co.id });
   T('firma are și a doua mașină', imp2.status === 200, imp2.status + ' ' + imp2.text.slice(0, 80));
   const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
   // Actul primei mașini e expirat intenționat: îl folosește și RA Care, mai jos.

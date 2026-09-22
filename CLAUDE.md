@@ -59,6 +59,27 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 - Ambele descărcări (raport live ȘI Istoric rapoarte) trec prin același `sendReport` → o singură modificare acoperă tot. NU adăuga căi paralele de export care sar peste el.
 - Excepție: exportul CSV brut de traseu GPS (`traseu_<imei>.csv` din `server.js`) nu e un „raport" și nu intră sub regula asta.
 
+## Poarta de dinaintea livrării (`.github/workflows/ci.yml`) — să nu moară în tăcere
+
+Pe GitHub, fiecare împingere trece prin patru pași, **în serie, cu oprire la primul eșec**: Lint →
+Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pas oprește tot restul.**
+
+- **Așa a stat roșie o săptămână** (36 de commit-uri, 15–22.09): `node --check billing.js`, după ce
+  `billing.js` fusese șters odată cu Stripe. Cădea în 20 de secunde; nici `npm test`, nici probele
+  de securitate n-au mai rulat în tot acest timp. Nimeni nu se uită la un ecuson care e mereu roșu.
+- **`verify_poarta.js` păzește asta acum** și rulează PRIMA (și în `npm test`): fiecare fișier numit
+  în `ci.yml` trebuie să existe și fiecare `require('./…')` dinăuntrul lor trebuie să ducă undeva.
+  Când scoți un modul, **caută-i numele și în poartă** — nu doar în cod.
+- **Fișierele generate se compară octet cu octet.** `tools/gen-can-icons.js` scria CRLF, depozitul
+  ține LF: `--check` pica pe 167 de rânduri identice. Orice unealtă care generează un fișier din
+  depozit scrie **LF**.
+- **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
+  părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
+  trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**.
+- **O probă picată nu înseamnă cod stricat.** De două ori aici, proba cerea regula VECHE
+  (adminul firmei să-și înregistreze aparate — interzis din 16.09). Întâi întreabă care e regula de
+  azi; abia apoi decide cine greșește, codul sau proba.
+
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).

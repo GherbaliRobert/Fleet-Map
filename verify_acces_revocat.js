@@ -186,12 +186,22 @@ function legaturaToken(cheie) {
   T('cheia revocată nu mai deschide o legătură nouă', (await asteapta(() => L6b.inchisa, 6000)) && !L6b.init);
 
   console.log('\n7. Drepturile tăiate ajung și în harta live deja deschisă');
-  // Administratorul firmei adaugă un vehicul (intră în firma lui) și îi dă unui dispecer drept DOAR pe el.
+  // Aparatul îl înregistrăm NOI și îl dăm pe firmă (decizia lui Alin, 16.09 — GPS-ul e marfa
+  // noastră). Abia apoi administratorul firmei îi dă unui dispecer drept DOAR pe el: împărțirea
+  // mașinilor pe oameni rămâne gospodăria lui.
+  //
+  // ⚠ Proba cerea până acum importul de pe contul ADMINULUI FIRMEI și aștepta 200. De pe 16.09
+  // ruta e `requireSuperadmin`, deci răspunsul corect e 403 — proba pica pe regula cea nouă, nu pe
+  // un defect. N-a sărit în ochi fiindcă poarta de pe GitHub era oricum roșie de la primul rând.
   await puneParola(await (await cerere('POST', '/api/users', S, { username: 'sef@revocare.ro', full_name: 'Sef', role: 'company_admin', company_id: co.id })).json(), PAROLA, B);
   const ckSef = await login('sef@revocare.ro', PAROLA);
   const IMEI_P = '350000000009911';
-  const imp = await cerere('POST', '/api/devices/import', ckSef, { rows: [{ imei: IMEI_P, name: 'Proba drepturi', plate: 'B-99-DRP' }] });
-  T('administratorul firmei adaugă vehiculul', imp.status === 200, imp.status + ' ' + (await imp.clone().text()).slice(0, 120));
+  const imp = await cerere('POST', '/api/devices/import', S, { rows: [{ imei: IMEI_P, name: 'Proba drepturi', plate: 'B-99-DRP' }] });
+  T('aparatul se înregistrează de la noi (nu de la client)', imp.status === 200, imp.status + ' ' + (await imp.clone().text()).slice(0, 120));
+  const adopt = await cerere('PUT', '/api/devices/' + IMEI_P + '/company', S, { company_id: co.id });
+  T('și se dă pe firma clientului', adopt.status === 200, adopt.status + ' ' + (await adopt.clone().text()).slice(0, 120));
+  T('adminul firmei NU-și poate înregistra singur aparate',
+    (await cerere('POST', '/api/devices/import', ckSef, { rows: [{ imei: '350000000009912' }] })).status === 403);
   const disp = await (await cerere('POST', '/api/users', S, { username: 'dispecer@revocare.ro', full_name: 'Dispecer', role: 'dispatcher', company_id: co.id })).json();
   await puneParola(disp, PAROLA, B);
   const acc1 = await cerere('PUT', '/api/users/' + disp.id + '/access', ckSef, { devices: [IMEI_P], groups: [] });
