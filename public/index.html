@@ -19807,10 +19807,19 @@ const pozitii = await r.json();</code></pre>
       coNouRandeaza();
     }
     window.coNouIaOferta = function (id) { if (!id) { _coNou.offerId = null; _coNou.offerTotal = null; coNouRandeaza(); return; } _coIaOferta(id); };
-    // Apelat din ecranul „Ofertare Live": sari în Companii cu traseul deja pornit pe oferta aia.
+    // Apelat din ecranul „Ofertare Live": sari în Companii cu FORMULARUL deschis pe oferta aia.
+    //
+    // ⚠ Ordinea contează. `raxAdminTab('companies')` ÎNCHIDE cutia „client nou" (pagina pornește
+    // strânsă, că lista o citești zilnic și un client deschizi o dată pe săptămână). Cât timp
+    // formularul se desena ÎNAINTE — și pe deasupra dintr-un `setTimeout` de 250ms ghicit — ajungea
+    // într-o cutie cu `display:none`: omul nimerea în lista de firme și configura totul de mână,
+    // deși datele ofertei erau deja puse dedesubt, nevăzute (Alin, 22.09).
     window.coNouDinOferta = function (offerId) {
       if (window.raxAdminTab) raxAdminTab('companies');
-      setTimeout(function () { coNouStart(offerId); }, 250);
+      coNouStart(offerId);                                  // umple pașii din ofertă
+      if (window.raxCoNouToggle) raxCoNouToggle(true);      // ...și DESCHIDE cutia, după ce fila a închis-o
+      var box = document.getElementById('rax-conou-box');
+      if (box) { try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { box.scrollIntoView(); } }
     };
     function coNouRandeaza() {
       var box = document.getElementById('rax-conou'); if (!box) return;
@@ -22165,6 +22174,8 @@ const pozitii = await r.json();</code></pre>
     //
     // O cheie nescrisă rămâne `null` pe server și înseamnă „folosește cifra din cod", nu zero.
     var _tarifeLista = null;
+    // Cursul nostru, ținut minte pe server. `null` = nu l-am pus, deci se ia de la BNR.
+    var _cursNostru = null, _cursNostruData = '';
     function _ofTarifeDeBaza() { return Object.assign({}, _OF_PRETURI_DEF, _tarifeCurateLocal(_tarifeLista)); }
     function _tarifeCurateLocal(t) {
       var o = {}; if (!t) return o;
@@ -22176,6 +22187,8 @@ const pozitii = await r.json();</code></pre>
       try {
         var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         _tarifeLista = (s && s.tarife_lista) || {};
+        _cursNostru = (s && s.curs_eur) != null ? s.curs_eur : null;
+        _cursNostruData = (s && s.curs_eur_data) || '';
         _costNoastre = (s && s.costuri_noastre) || _costNoastre;   // vin în același răspuns
       } catch (e) { _tarifeLista = {}; }
       return _tarifeLista;
@@ -22529,6 +22542,12 @@ const pozitii = await r.json();</code></pre>
     // Un rând = [cheia prețului CERUT, eticheta, cheia COSTULUI nostru]. Cheile sunt ACELEAȘI ca la
     // prețurile din formular, ca să nu existe două vocabulare. `null` = rândul n-are perechea aia.
     var _PRET_GRUPURI = [
+      // Cursul nostru, pus de mână — rămâne până îl schimbăm. `curs` e un rând special: nu e nici
+      // tarif, nici cost, ci schimbul dintre cele două monede. De-aia are cheia lui, nu una din
+      // `tarife_lista` (Alin, 21.09: „lasă BNR, nu poți pune un alt curs care să rămână?").
+      { t: 'Curs euro', um: 'lei', curs: true,
+        nota: 'Rămâne până îl schimbi. Îl folosesc toate ofertele, ecranul și hârtia. Lasă gol ca să-l luăm de la BNR.',
+        randuri: [['cursEur', '1 € = … lei', null]] },
       { t: 'Abonament lunar, pe mașină', um: 'lei', randuri: [
         ['pPlain', 'Vehicul fără CAN', null],
         ['pCan', 'Vehicul cu CAN', null],
@@ -22665,7 +22684,7 @@ const pozitii = await r.json();</code></pre>
         };
         return '<div class="rax-pret-r" data-p="' + (kP || '') + '" data-c="' + (kC || '') + '" data-um="' + esc(um) + '">'
           + '<span class="et">' + esc(et) + '</span>'
-          + cel('tp-' + kP, kP ? pret[kP] : null, !!kP)
+          + cel('tp-' + kP, kP === 'cursEur' ? _cursNostru : (kP ? pret[kP] : null), !!kP)
           + cel('tc-' + kC, kC ? c[kC] : null, !!kC)
           + '<b class="mj" style="width:64px;text-align:right;font-size:11px;"></b></div>';
       };
@@ -22682,18 +22701,30 @@ const pozitii = await r.json();</code></pre>
         + '</div>';
       _ofFereastra('Prețurile noastre', 'fa-tags', corp, async function () {
         var tarife = {}, costuri = {};
+        var cursNou;
         _PRET_GRUPURI.forEach(function (g) { g.randuri.forEach(function (r) {
+          if (r[0] === 'cursEur') {
+            // Cursul nu e tarif: pleacă pe cheia lui, iar serverul îi scrie și ziua.
+            var e = document.getElementById('tp-cursEur'); cursNou = (e && e.value !== '') ? e.value : '';
+            return;
+          }
           if (r[0]) { var a = document.getElementById('tp-' + r[0]); tarife[r[0]] = (a && a.value !== '') ? a.value : null; }
           if (r[2]) { var b = document.getElementById('tc-' + r[2]); costuri[r[2]] = (b && b.value !== '') ? b.value : null; }
         }); });
         try {
           var resp = await fetch('/api/admin/system-settings', { method: 'PUT',
             headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-            body: JSON.stringify({ tarife_lista: tarife, costuri_noastre: costuri }) });
+            body: JSON.stringify({ tarife_lista: tarife, costuri_noastre: costuri, curs_eur: cursNou }) });
           var j = await resp.json().catch(function () { return {}; });
           if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
           _tarifeLista = (j.settings && j.settings.tarife_lista) || tarife;
           _costNoastre = (j.settings && j.settings.costuri_noastre) || costuri;
+          // Cursul schimbat mișcă TOATE sumele de pe ecran, deci se ia din răspuns, nu din ce am trimis.
+          if (j.settings) {
+            _cursNostru = j.settings.curs_eur != null ? j.settings.curs_eur : null;
+            _cursNostruData = j.settings.curs_eur_data || '';
+            if (_cursNostru > 1) { _fxRate = _cursNostru; _fxDate = _cursNostruData; _fxSursa = 'manual'; }
+          }
           var d = document.getElementById('ra-of-dlg'); if (d) d.remove();
           if (window.raxToast) raxToast('Prețurile noastre, salvate ✓', 'success');
           // Oferta de pe ecran pornește de la lista nouă — DOAR dacă e una nouă. Una deschisă din
@@ -22873,14 +22904,20 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:flex-end;font-size:13px;color:var(--text-muted);margin-top:-2px;">≈ <b style="color:var(--text-secondary);margin-left:4px;">' + _lei2eur(r.monthly).toFixed(2) + ' €</b>/lună</div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
-        '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) + _ofBlocProfit(r) +
-        // Cursul: scris românește (5,2100, nu 5.2100) ȘI cinstit despre unde s-a luat. Când nu e de la
-        // BNR, e o valoare de rezervă — se spune, ca să nu pleci cu ea în ofertă fără să știi.
-        + (_fxSursa === 'BNR'
-            ? '<div class="raof-curs">Curs BNR: 1 € = ' + _roNum(_fxRate, 4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + '</div>'
+        '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) + _ofBlocProfit(r)
+        // Cursul: scris românește (5,2100, nu 5.2100) ȘI cinstit despre unde vine. Rândul de dinainte
+        // NU se mai termină cu „+": era unul aici și unul la începutul bucății ăsteia, deci `a + +(…)`
+        // — plus unar pe un șir, adică NaN. Rândul cu cursul scria „NaN" pe ecran (găsit 22.09).
+        + (_fxSursa === 'manual'
+            ? '<div class="raof-curs">Cursul tău: 1 € = ' + _roNum(_fxRate, 4) + ' lei'
+              + (_fxDate ? ' · pus pe ' + _fxDate : '')
+              + ' · <a href="#" onclick="event.preventDefault();raxOfPreturi()" style="color:var(--accent);font-weight:700;">schimbă</a></div>'
+            : _fxSursa === 'BNR'
+            ? '<div class="raof-curs">Curs BNR: 1 € = ' + _roNum(_fxRate, 4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '')
+              + ' · <a href="#" onclick="event.preventDefault();raxOfPreturi()" style="color:var(--accent);font-weight:700;">pune cursul tău</a></div>'
             : '<div class="raof-curs" style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> '
               + 'Cursul BNR nu a putut fi preluat. Sumele în euro folosesc un curs de rezervă: 1 € = '
-              + _roNum(_fxRate, 4) + ' lei. Verifică înainte de a trimite oferta.</div>');
+              + _roNum(_fxRate, 4) + ' lei. <a href="#" onclick="event.preventDefault();raxOfPreturi()" style="color:var(--orange);font-weight:700;text-decoration:underline;">Pune cursul tău</a>, ca să nu depindem de BNR.</div>');
     };
     // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
     // Un rând per echipament: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
@@ -23981,8 +24018,13 @@ const pozitii = await r.json();</code></pre>
         + _ofPalnieHtml(rows)
         + '<table class="rax-co-table"><thead><tr><th>Ofertă</th><th>Client</th><th>Stare</th><th class="num">Lunar</th><th class="num">La început</th><th>Data</th><th></th></tr></thead><tbody>' +
         rows.map(function (o) {
+          // Pastila „AI" spune doar că oferta include RA Insight. Butonul ✨ de lângă ea — „aplică
+          // pachetul pe o companie" — a fost SCOS pe 22.09: o ofertă se face înainte ca firma să
+          // existe în aplicație, iar când devine client, contractul din ofertă aprinde singur ce s-a
+          // vândut (`_aplicaOfertaPeFirma`, chemat la semnare). Butonul cerea să alegi firma dintr-o
+          // listă, pe un ecran unde clientul încă nu e — deci ori nu-l găseai, ori aplicai oferta
+          // unuia greșit. Cota se pune oricum din fișa firmei, „Abonament & plăți" (Alin, 22.09).
           var hasAi = !!((o.config && o.config.cfg && o.config.cfg.aiA));
-          var applyBtn = hasAi ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOfApply(' + o.id + ')" title="Aplică pachetul RA Insight pe o companie"><i class="fas fa-wand-magic-sparkles"></i></button>' : '';
           // O ofertă e făcută ca să devină client. Dacă a devenit, se vede și duci direct în dosarul
           // lui; dacă nu, un buton deschide traseul „client nou" cu datele ofertei deja puse.
           var devenit = !!o.contract_id;
@@ -23999,7 +24041,7 @@ const pozitii = await r.json();</code></pre>
             + '<td class="num">' + (o.once_total != null && Number(o.once_total) > 0
                 ? bani(o.once_total, fxOf(o))
                 : '<span style="color:var(--text-muted);" title="Ofertă salvată înainte ca suma asta să se rețină. Deschide-o și salveaz-o din nou.">—</span>') + '</td>'
-            + '<td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + _ofButoaneStare(o) + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
+            + '<td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + _ofButoaneStare(o) + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button> <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('') + '</tbody></table>';
     };
     window.raxOfLoad = function (id) {
@@ -24035,51 +24077,6 @@ const pozitii = await r.json();</code></pre>
     window.raxOfDelete = async function (id) {
       if (!await raConfirm('Ștergi această ofertă?', { okLabel: 'Șterge' })) return;
       try { await fetch('/api/admin/offers/' + id, { method: 'DELETE', credentials: 'same-origin' }); if (window.raxToast) raxToast('Ofertă ștearsă ✓', 'success'); if (_raxOf.editingId === id) raxOfReset(); else raxOfLoadList(); } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
-    };
-    // Aplică pachetul RA Insight dintr-o ofertă direct pe o companie (activează modulul + scrie cota).
-    window.raxOfApply = async function (id) {
-      var o = (_raxOf.offers || []).find(function (x) { return x.id === id; }); if (!o) return;
-      var cfg = (o.config && o.config.cfg) || {};
-      // `aiqN` = câte întrebări aduce UN CONT pe lună (din 11.09 RA Insight se vinde pe cont, nu pe
-      // firmă). Fondul lunii = conturi aprinse × atâtea. 0 = nelimitat.
-      var n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
-      var pachet = n > 0 ? (n + ' întrebări pe cont/lună') : 'întrebări nelimitate';
-      var cos = [];
-      try { cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
-      cos = (Array.isArray(cos) ? cos : []).filter(function (c) { return !c.is_demo; });
-      if (!cos.length) { if (window.raxToast) raxToast('Nicio companie disponibilă', 'error'); return; }
-      var ex = document.getElementById('ra-of-apply'); if (ex) ex.remove();
-      var ov = document.createElement('div'); ov.id = 'ra-of-apply';
-      ov.style.cssText = 'position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);padding:20px;';
-      var opts = cos.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name || ('#' + c.id)) + '</option>'; }).join('');
-      ov.innerHTML = '<div style="background:var(--bg-card,#fff);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:430px;width:100%;padding:22px;font-family:inherit;">'
-        + '<div style="font-size:15px;font-weight:800;margin-bottom:4px;"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Aplică RA Insight pe companie</div>'
-        // ⚠ Aici a stat, până pe 21.09, „· peste cotă X €/apel" — o rămășiță de pe vremea când
-        // depășirea se plătea. Funcția a fost scoasă deliberat (nu arătăm clientului prețuri pe
-        // întrebare), variabila a plecat cu ea, TEXTUL a rămas: butonul crăpa cu `priceEur is not
-        // defined` și fereastra nu se mai deschidea deloc — dar numai la ofertele cu pachet, adică
-        // exact cazul obișnuit. La cele „nelimitat" mergea, de-aia n-a sărit în ochi.
-        // Acum scrie ce se întâmplă cu adevărat la epuizare: se oprește, fără cost în plus.
-        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Din oferta <b>' + esc(o.name || '—') + '</b>: <b style="color:var(--accent);">' + pachet + '</b>'
-          + (n > 0 ? ' — fondul lunii e „conturi aprinse × ' + n + '". Când se termină, RA Insight se oprește până luna următoare, fără cost în plus.' : '.')
-          + ' Se activează modulul și se scrie cota pe compania aleasă.</div>'
-        + '<select id="ra-of-apply-co" class="rax-field" style="width:100%;margin-bottom:16px;">' + opts + '</select>'
-        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
-        + '<button class="rax-btn" onclick="document.getElementById(\'ra-of-apply\').remove()">Anulează</button>'
-        + '<button class="rax-btn primary" id="ra-of-apply-ok"><i class="fas fa-check"></i> Aplică</button></div></div>';
-      document.body.appendChild(ov);
-      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
-      document.getElementById('ra-of-apply-ok').onclick = async function () {
-        var cid = document.getElementById('ra-of-apply-co').value;
-        this.disabled = true; this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se aplică…';
-        try {
-          var resp = await fetch('/api/admin/offers/' + id + '/apply-to-company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: cid }) });
-          var j = await resp.json().catch(function () { return {}; });
-          if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; return; }
-          ov.remove();
-          if (window.raxToast) raxToast('RA Insight aplicat pe ' + (j.company || 'companie') + ' ✓ (' + (j.unlimited ? 'nelimitat' : j.quota + ' întrebări pe cont') + ')', 'success');
-        } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; }
-      };
     };
     // „Ofertă nouă" pornește de la tarifele NOASTRE de listă, nu de la cifrele scrise în cod.
     window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = _ofTarifeDeBaza(); raxLoadOfertare(); };

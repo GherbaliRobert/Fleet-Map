@@ -2662,12 +2662,15 @@ function _tarifeCurate(b) {
 
 async function getSystemSettings() {
   if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
-  let ann = '', auto = null, off = null, spd = null, issuer = null, costuri = null, tarife = null;
-  try { [ann, auto, off, spd, issuer, costuri, tarife] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer'), db.getSetting('costuri_noastre'), db.getSetting('tarife_lista')]); } catch (e) {}
+  let ann = '', auto = null, off = null, spd = null, issuer = null, costuri = null, tarife = null, curs = null, cursD = null;
+  try { [ann, auto, off, spd, issuer, costuri, tarife, curs, cursD] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer'), db.getSetting('costuri_noastre'), db.getSetting('tarife_lista'), db.getSetting('curs_eur'), db.getSetting('curs_eur_data')]); } catch (e) {}
   let issuerObj = {}; try { issuerObj = issuer ? JSON.parse(issuer) : {}; } catch (e) { issuerObj = {}; }
   let costObj = _costuriGoale(); try { if (costuri) costObj = Object.assign(_costuriGoale(), JSON.parse(costuri)); } catch (e) {}
   let tarifObj = {}; try { if (tarife) tarifObj = _tarifeCurate(JSON.parse(tarife)); } catch (e) { tarifObj = {}; }
-  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj, tarife_lista: tarifObj };
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj, tarife_lista: tarifObj,
+    // Cursul NOSTRU, pus de mana, cu ziua in care l-am pus. Ramane pana il schimbam (Alin, 21.09:
+    // „lasa BNR, nu poti pune un alt curs care sa ramana?"). Gol = il luam de la BNR.
+    curs_eur: (Number(curs) > 1 && Number(curs) < 100) ? Number(curs) : null, curs_eur_data: cursD || null };
   _sysTs = Date.now();
   return _sysCache;
 }
@@ -3542,9 +3545,22 @@ async function fxEurRon() {
   if (!_fx.fetchedAt) _fx.fetchedAt = Date.now(); // nu insista la fiecare cerere dacă BNR e jos
   return _fx;
 }
+// Ce curs se folosește, în ordinea asta:
+//   1. cursul NOSTRU, dacă l-am pus (rămâne până îl schimbăm — Alin, 21.09: „lasă BNR, nu poți pune
+//      un alt curs care să rămână?");
+//   2. cursul BNR, dacă l-am putut lua;
+//   3. valoarea de rezervă din setarea serverului.
+// `source` spune CARE dintre ele e — ecranul și hârtia n-au voie să-l numească „BNR" pe al nostru.
+// `bnr` merge alături ca REPER, ca să se vadă pe ecran dacă cursul nostru a rămas în urmă.
 app.get('/api/fx', requireAuth, async (req, res) => {
-  try { const f = await fxEurRon(); res.json({ eur: f.eur, date: f.date, source: f.source }); }
-  catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback' }); }
+  try {
+    const f = await fxEurRon();
+    const reper = f.source === 'BNR' ? { eur: f.eur, date: f.date } : null;
+    let man = null, manD = null;
+    try { const st = await getSystemSettings(); man = st.curs_eur; manD = st.curs_eur_data; } catch (e) {}
+    if (man > 1 && man < 100) return res.json({ eur: man, date: manD || null, source: 'manual', bnr: reper });
+    res.json({ eur: f.eur, date: f.date, source: f.source, bnr: reper });
+  } catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback', bnr: null }); }
 });
 // ── începe „Socoteala RA Insight pe o firmă" ─────────────────────────────────────────────────────
 // Din 11.09 RA Insight se vinde pe CONT, nu pe firmă: fondul lunii = conturi aprinse × întrebări pe
@@ -5082,8 +5098,8 @@ app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (re
 });
 
 // Ce s-a vândut într-o ofertă se aprinde pe firmă: RA Insight + cota de întrebări, cu prețul peste
-// cotă negociat acolo. UN SINGUR loc, folosit și de „client nou din ofertă", și de butonul „Aplică"
-// din lista de oferte — ca să nu existe două liste care se desincronizează.
+// cotă negociat acolo. UN SINGUR loc, chemat din „client nou din ofertă" la semnarea contractului —
+// ca să nu existe două liste care se desincronizează.
 //
 // ⚠ Tahograful și e-Transportul NU se aprind singure, chiar dacă sunt vândute în ofertă. Decizia e
 // veche și rămâne bună: partea lor de „descărcare la distanță" încă întoarce date demonstrative, iar
@@ -7851,6 +7867,17 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     // Tarifele noastre de listă — cât CEREM. Se trec o dată și pornesc fiecare ofertă nouă.
     if (b.tarife_lista !== undefined && b.tarife_lista && typeof b.tarife_lista === 'object') {
       await db.setSetting('tarife_lista', JSON.stringify(_tarifeCurate(b.tarife_lista)));
+    }
+    // Cursul nostru. Se ține minte ȘI ziua în care l-ai pus — altfel, peste trei luni, n-ai de unde
+    // să știi dacă mai e bun. Gol = îl luăm de la BNR.
+    if (b.curs_eur !== undefined) {
+      const cv = parseFloat(b.curs_eur);
+      if (b.curs_eur === '' || b.curs_eur === null) { await db.setSetting('curs_eur', ''); await db.setSetting('curs_eur_data', ''); }
+      else if (Number.isFinite(cv) && cv > 1 && cv < 100) {
+        await db.setSetting('curs_eur', String(Math.round(cv * 10000) / 10000));
+        const dd = new Date(), pp = (x) => String(x).padStart(2, '0');
+        await db.setSetting('curs_eur_data', pp(dd.getDate()) + '.' + pp(dd.getMonth() + 1) + '.' + dd.getFullYear());
+      }
     }
     invalidateSystemSettings();
     auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });
@@ -12921,22 +12948,11 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Aplică pachetul RA Insight dintr-o ofertă direct pe o companie (după semnare). Așa cota vândută
-// în ofertă NU mai trebuie recopiată manual în fișa clientului — se activează modulul + se scrie cota.
-app.post('/api/admin/offers/:id/apply-to-company', requireAuth, requireSuperadmin, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID ofertă invalid' });
-    const companyId = parseInt((req.body || {}).company_id); if (!Number.isFinite(companyId)) return res.status(400).json({ error: 'Alege o companie' });
-    const offer = await db.getOfferById(id); if (!offer) return res.status(404).json({ error: 'Oferta nu există' });
-    const company = await db.getCompanyById(companyId); if (!company) return res.status(404).json({ error: 'Compania nu există' });
-    const cfg = (offer.config && offer.config.cfg) || {};
-    if (!cfg.aiA) return res.status(400).json({ error: 'Oferta nu include RA Insight — nu e nimic de aplicat.' });
-    const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
-    await _aplicaOfertaPeFirma(companyId, offer);   // aceeași regulă ca la contractul din ofertă
-    auditReq(req, 'apply_offer', 'company', companyId, { offer_id: id, quota: n });
-    res.json({ ok: true, company: company.name, quota: n, unlimited: n === 0 });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// ⚠ Aici a stat, până pe 22.09, `POST /api/admin/offers/:id/apply-to-company` — ușa butonului ✨ din
+// lista de oferte. A plecat cu el: ce s-a vândut într-o ofertă se aprinde SINGUR pe firmă la
+// semnarea contractului (`_aplicaOfertaPeFirma`, mai sus), deci ruta era a doua cale spre același
+// lucru, pe un ecran unde clientul de obicei nici nu există încă. Nu o reintroduce; cota se pune și
+// din fișa firmei, „Abonament & plăți".
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).
 // Super-adminul (fără companie proprie) folosește în continuare Facturarea completă; aici primește listă goală.
 app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {

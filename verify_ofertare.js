@@ -48,15 +48,22 @@ const PAL = bloc(html, '// ── începe „pâlnia de oferte"', '// ── sf�
 const RUTE = bloc(server, '// ── începe „pâlnia de oferte"', '// ── sfârșit „pâlnia de oferte"');
 const faraComentarii = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-sect('1. Butonul „Aplică RA Insight" nu mai e rupt');
-// Se caută în TOT fișierul, dar doar în COD: variabila nu trebuie să mai existe nicăieri, nici
-// într-o altă copie — iar comentariile o pomenesc firesc, explicând ce s-a stricat.
+sect('1. Butonul ✨ „Aplică RA Insight pe companie" a fost SCOS de tot');
+// Pe 21.09 a fost reparat (crăpa cu `priceEur is not defined`). Pe 22.09 a plecat cu totul: era o a
+// DOUA cale spre ceva ce se întâmplă singur la semnare — contractul făcut din ofertă aprinde ce s-a
+// vândut (`_aplicaOfertaPeFirma`) — iar el o cerea pe un ecran unde clientul de obicei nici nu
+// există încă în aplicație. Deci ori nu-l găseai în listă, ori aplicai oferta altcuiva (Alin, 22.09).
+T('butonul nu mai e pe rândul ofertei', !/raxOfApply/.test(html));
+T('și nici fereastra lui', !/ra-of-apply/.test(html));
+T('ruta de pe server a plecat odată cu el', !/apply-to-company/.test(faraComentarii(server)));
+// Regula pentru care a existat proba asta rămâne: când scoți o funcție, îi scoți și CUVINTELE.
 T('`priceEur` a dispărut din pagină', !/priceEur/.test(faraComentarii(html)));
-T('nu mai există preț pe întrebare în fereastră', !/€\/apel/.test(faraComentarii(html)));
-T('scrie ce se întâmplă de fapt la epuizare',
-  /RA Insight se oprește până luna următoare, fără cost în plus/.test(html));
-T('și vorbește pe CONT, cum se vinde din 11.09',
-  /întrebări pe cont\/lună/.test(html) && !/apeluri\/lună/.test(faraComentarii(html)));
+T('nu mai există preț pe întrebare nicăieri', !/€\/apel/.test(faraComentarii(html)));
+// Pastila „AI" de pe rând rămâne — ea doar SPUNE că oferta include RA Insight, nu face nimic.
+T('pastila „AI" rămâne pe rând', /hasAi \? ' <span[\s\S]{0,220}>AI<\/span>/.test(html));
+T('iar ce s-a vândut se aprinde la SEMNARE, într-un singur loc',
+  /await _aplicaOfertaPeFirma\(id, oferta\)/.test(server)
+  && (server.match(/_aplicaOfertaPeFirma\(/g) || []).length === 2);
 
 sect('2. Banii de la ÎNCEPUT se văd în listă');
 T('coloana există', /<th class="num">La început<\/th>/.test(html));
@@ -235,13 +242,17 @@ sect('5f-bis. „Prețurile noastre": tot ce cerem și tot ce ne costă, într-u
 // aparate mai ieftine"), vrei să le vezi pe toate deodată, cu ce ne costă alături (Alin, 21.09).
 T('lista de prețuri e scrisă într-un singur loc', /var _PRET_GRUPURI = \[/.test(PROF));
 const grupuri = (PROF.match(/\{ t: '/g) || []).length;
-T('cu cele cinci grupuri', grupuri === 5, String(grupuri));
+// Cinci grupuri de tarife + rândul special al cursului (de pe 22.09), care nu e nici tarif, nici cost.
+T('cu cele cinci grupuri de tarife, plus cursul', grupuri === 6, String(grupuri));
+T('iar cursul stă PRIMUL, că mișcă toate celelalte cifre',
+  PROF.indexOf("{ t: 'Curs euro'") > 0
+  && PROF.indexOf("{ t: 'Curs euro'") < PROF.indexOf("{ t: 'Abonament lunar, pe mașină'"));
 T('un rând e [cât cerem, eticheta, cât ne costă]', /\['pPlain', 'Vehicul fără CAN', null\]/.test(PROF)
   && /\['mGps', 'Instalare dispozitiv GPS', 'mGps'\]/.test(PROF));
 T('numele din „nu pot socoti profitul" vin din ACEEAȘI listă',
   /function _costNume\(\)/.test(PROF) && /var nume = _costNume\(\);/.test(PROF));
-T('tabloul salvează prețurile ȘI costurile într-o singură apăsare',
-  /body: JSON\.stringify\(\{ tarife_lista: tarife, costuri_noastre: costuri \}\)/.test(PROF));
+T('tabloul salvează prețurile, costurile ȘI cursul într-o singură apăsare',
+  /body: JSON\.stringify\(\{ tarife_lista: tarife, costuri_noastre: costuri, curs_eur: cursNou \}\)/.test(PROF));
 T('cât rămâne se socotește pe loc, nu se ține minte', /window\.raxOfPretMarja = function/.test(PROF)
   && !/marja_/.test(html));
 T('iar unde nu știm costul, NU se scrie nicio marjă',
@@ -270,12 +281,48 @@ T('ecranul știe de unde vine cursul', /var _fxSursa = localStorage\.getItem\('r
   && /_fxSursa = f\.source \|\| ''/.test(html));
 T('și îl trimite mai departe, către hârtie', /fxSursa: _fxSursa \|\| null/.test(html));
 T('când nu e de la BNR, ecranul te avertizează îNAINTE să trimiți oferta',
-  /Cursul BNR nu a putut fi preluat[\s\S]{0,160}Verifică înainte de a trimite oferta/.test(html));
+  /Cursul BNR nu a putut fi preluat[\s\S]{0,240}curs de rezervă/.test(html));
+// Și nu te lasă doar cu avertismentul: îți dă și ce ai de făcut, pe loc.
+T('și îți arată pe loc ce ai de făcut', /Cursul BNR nu a putut fi preluat[\s\S]{0,420}Pune cursul tău/.test(html));
 T('sumele de pe ecran se scriu românește (6.240, nu 6240)',
   /function _roNum\(v, zec\)/.test(html) && /toLocaleString\('ro-RO'/.test(html));
 T('și nicio celulă de bani nu mai scapă prin `toFixed\(0\)`',
   !/function _fmtLei\(v\) \{ return \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html)
   && !/var sus = \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html));
+// De pe 22.09 cursul poate fi AL NOSTRU: pus de mână, ținut minte pe server, rămâne până îl
+// schimbăm (Alin: „lasă BNR, nu poți pune un alt curs care să rămână?"). BNR rămâne rezerva.
+T('serverul ține minte cursul nostru, cu ziua în care l-am pus',
+  /curs_eur: \(Number\(curs\) > 1 && Number\(curs\) < 100\)/.test(server)
+  && /setSetting\('curs_eur_data'/.test(server));
+T('`/api/fx` îl dă înaintea celui de la BNR',
+  /if \(man > 1 && man < 100\) return res\.json\(\{ eur: man[\s\S]{0,90}source: 'manual'/.test(server));
+T('dar trimite BNR alături, ca REPER — să se vadă dacă al nostru a rămas în urmă',
+  /const reper = f\.source === 'BNR' \? \{ eur: f\.eur, date: f\.date \} : null/.test(server));
+T('ecranul spune al CUI e cursul — nu pune numele BNR pe al nostru',
+  /_fxSursa === 'manual'[\s\S]{0,180}Cursul tău: 1 € = /.test(html));
+T('și se pune din tabloul de prețuri, primul rând',
+  /\{ t: 'Curs euro'[\s\S]{0,420}\['cursEur'/.test(html));
+T('cursul nu pleacă în `tarife_lista`, are cheia lui',
+  /if \(r\[0\] === 'cursEur'\)[\s\S]{0,900}curs_eur: cursNou/.test(html)
+  && !/tarife\[r\[0\]\][\s\S]{0,40}cursEur/.test(html));
+// ⚠ Rândul cursului a scris „NaN" o zi întreagă: un „+" rămas la capătul rândului de dinainte,
+// peste „+" -ul de la începutul ăstuia — adică `a + +('<div…>')`, plus UNAR pe un șir. Se prinde
+// căutând forma, nu locul: în pagină nu există rând care se termină cu „+" urmat de rând care începe cu „+".
+T('niciun „+" rămas peste altul (așa s-a născut „NaN"-ul de sub rezumat)',
+  !/\+[ \t]*\r?\n\s*\+[^+]/.test(html.replace(/^\s*\/\/.*$/gm, '')));
+
+sect('5f-quater. „Client nou din ofertă" chiar DESCHIDE formularul');
+// Butonul din lista de oferte te ducea în Companii și te lăsa acolo: pașii se desenau, cu datele
+// ofertei deja puse, dar într-o cutie cu `display:none`. Adică exact ce spunea Alin pe 22.09 —
+// „mă duce în companii, dar mai departe tot manual configurez".
+T('fila Companii pornește cu cutia strânsă (așa e gândită)',
+  /raxAdminTab = function[\s\S]{0,900}window\.raxCoNouToggle\(false\)/.test(html));
+T('deci traseul din ofertă o deschide DUPĂ ce a schimbat fila',
+  /coNouStart\(offerId\);[\s\S]{0,260}raxCoNouToggle\(true\)/.test(html));
+T('și nu mai ghicește un număr de milisecunde',
+  !/setTimeout\(function \(\) \{ coNouStart\(offerId\); \}, \d+\)/.test(html));
+T('iar formularul ajunge sub ochii tăi, fără să derulezi',
+  /getElementById\('rax-conou-box'\);[\s\S]{0,200}scrollIntoView/.test(html));
 
 sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
 // Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe

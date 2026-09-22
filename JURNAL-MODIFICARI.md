@@ -95,6 +95,45 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Cursul rămâne cel pus de tine, butonul ✨ a plecat, iar „client nou din ofertă" chiar deschide formularul
+
+Trei lucruri, toate din aceeași trecere prin Ofertare Live.
+
+**1. „Lasă BNR, nu poți pune un alt curs care să rămână?"** Ba da. Cursul euro e acum **al tău**: îl
+scrii o dată, în tabloul **„Prețurile noastre"** (primul rând, deasupra tarifelor), și **rămâne** —
+nu se mai schimbă singur de la o zi la alta și nu mai depinde de BNR. Îl folosesc toate ofertele,
+ecranul și hârtia, deopotrivă.
+
+- Lângă el scrie **ziua în care l-ai pus** („Cursul tău: 1 € = 5,2100 lei · pus pe 22.09.2026"),
+  ca peste trei luni să-ți dai seama singur dacă a mai rămas bun.
+- BNR nu dispare: rămâne rezerva, pentru când n-ai pus nimic. Iar dacă nici BNR nu răspunde, rândul
+  portocaliu de avertisment îți dă acum și **ce ai de făcut** — un link care deschide tabloul.
+- Ecranul **nu-i mai spune „curs BNR" cursului tău**. Fiecare cifră spune de unde vine.
+- Tot aici, o reparație: rândul de sub rezumat scria pur și simplu **„NaN"** — o greșeală de-a mea,
+  intrată ieri cu hârtia cea nouă (un semn „+" rămas peste altul). Acum e o probă care caută forma
+  asta de greșeală în toată pagina, nu doar în rândul ăla.
+
+**2. „Butonul ✨ nu-și are rostul aici în ofertă."** Ai dreptate, și motivul e mai adânc decât părea:
+o ofertă se face **înainte** ca firma să existe în aplicație, iar butonul îți cerea tocmai s-o alegi
+dintr-o listă de firme. Deci ori n-o găseai, ori aplicai oferta altcuiva. În plus, **era de prisos**:
+când oferta devine contract, ce s-a vândut se aprinde singur pe firmă. A plecat de tot — butonul,
+fereastra lui și ușa de pe server. Pastila „AI" de pe rând rămâne; ea doar spune că oferta include
+RA Insight. Cota se pune oricând din fișa firmei, „Abonament & plăți".
+
+**3. „Mă duce în Companii, dar mai departe tot manual configurez."** Aici aveai dreptate pe de-a
+întregul, și era mai rău decât se vedea: aplicația **completa** formularul cu datele ofertei — CUI,
+denumire, email, durata contractului, prețul — dar îl desena **într-o cutie ascunsă**. Munca se făcea,
+pur și simplu n-o vedea nimeni. Acum butonul te duce în Companii **cu formularul deschis, la pasul 1,
+sus pe ecran**, cu toate datele deja în el și cu rândul verde: *„Datele clientului și prețul de 290
+lei/lună vin din ofertă — nu le mai scrii încă o dată."*
+
+- **Ce am schimbat:** cursul se pune o dată și rămâne; un buton care încurca a plecat; traseul
+  ofertă → client nu se mai oprește la jumătate.
+- **Ce vede fondatorul:** toate trei. Cursul lui în tabloul de prețuri, un rând de butoane mai
+  curat pe fiecare ofertă, și formularul de client nou care se deschide singur, plin.
+- **Ce vede clientul:** nimic — secțiunea e doar a noastră. Indirect: oferta pe care o primește
+  poartă cursul pe care l-am hotărât noi, nu cel care s-a nimerit în ziua aia.
+
 ### FONDATOR · Cursul cinstit și când se facturează cu adevărat costul unic
 
 Două corecturi de la Alin, pe aceeași hârtie.

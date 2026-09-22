@@ -94,8 +94,8 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 
-- **Monedă dublă:** toate sumele apar în lei ȘI euro, la **cursul BNR** al zilei (`GET /api/fx` →
-  `nbrfxrates.xml`, cache 12h, rezervă `EUR_RON_RATE`, implicit 5.0). Clientul are `window.raFx()`.
+- **Monedă dublă:** toate sumele apar în lei ȘI euro, la cursul dat de `GET /api/fx`. Clientul are
+  `window.raFx()` → `{ eur, date, sursa }`.
 - **RA Insight** (fostul „Asistent AI") se vinde cu **pachet de apeluri**: 50/100/150/200/nelimitat.
   Alegerea pachetului completează automat prețul propus (`AIQ_PRICE` = 19/29/49/59 lei), calculat ca
   ~1,5× costul din scenariul negru → profit garantat chiar și la un client care pune numai apeluri grele.
@@ -260,6 +260,48 @@ altceva: toate deodată, cu ce ne costă alături. `raxOfPreturi()` — buton î
   recalc). Prețurile ei sunt negociate cu clientul.
 - Păzit de `verify_ofertare.js`.
 
+### Cursul euro e AL NOSTRU, și rămâne (22.09)
+Alin: *„lasă BNR, nu poți pune un alt curs care să rămână?"* Ba da. Cursul se scrie o dată, în
+tabloul „Prețurile noastre", și ține până îl schimbăm.
+
+- Trăiește în setările sistemului, sub `curs_eur` (+ `curs_eur_data`, ziua în care l-am pus, scrisă
+  de SERVER la salvare — nu de ecran). Nu e tarif și nu e cost: are cheia lui, **nu** intră în
+  `tarife_lista`. În `_PRET_GRUPURI` e rândul special `cursEur`, pus PRIMUL fiindcă mișcă toate
+  celelalte cifre.
+- **Ordinea în `/api/fx`:** cursul nostru → BNR → rezerva din cod (`EUR_RON_FALLBACK`). Răspunsul
+  poartă `source` (`manual` / `BNR` / `fallback`) **și** `bnr`, cursul BNR alături, ca reper — să se
+  vadă pe ecran dacă al nostru a rămas în urmă.
+- **Numele „BNR" se scrie DOAR pe cifra BNR.** Pe ecran: „Cursul tău: …" / „Curs BNR: …"; pe hârtie,
+  `report_export.js` pune numele BNR numai când `o.fxSursa === 'BNR'`, altfel „un curs de referință".
+- O ofertă salvată își ÎNGHEAȚĂ cursul (`config.cfg.fxRate`). Lista și hârtia socotesc la el, nu la
+  cel de azi.
+- ⚠ În cutia de probe BNR e blocat de proxy — de-aia apare „5,0000" și avertismentul portocaliu.
+  Pe ratrack.ro se ia cursul adevărat. Nu „repara" asta în cod.
+
+### Butonul ✨ „Aplică RA Insight pe companie" — SCOS, nu ascuns (22.09)
+Alin: *„nu își are rostul aici în ofertă."* Avea dreptate, și motivul e mai adânc: oferta se face
+**înainte** ca firma să existe în aplicație, iar butonul îți cerea tocmai s-o alegi dintr-o listă de
+firme. Peste asta, era de prisos: ce s-a vândut se aprinde **singur la semnare**.
+
+- `_aplicaOfertaPeFirma` are acum **un singur apelant**: contractul făcut din ofertă. Păzit prin
+  numărare (`verify_tarife.js`, `verify_ofertare.js`) — dacă apare al doilea, proba pică.
+- Au plecat toate trei: butonul, fereastra (`raxOfApply`) și ruta
+  (`POST /api/admin/offers/:id/apply-to-company`). Nu le reintroduce; cota se pune din fișa firmei,
+  „Abonament & plăți" (`rax-aiq-n`).
+- **Pastila „AI" de pe rând rămâne** — ea doar spune că oferta include RA Insight, nu face nimic.
+
+### „Client nou din ofertă": ordinea contează (22.09)
+`coNouDinOferta(offerId)` deschide fila Companii ȘI formularul. Ordinea NU e negociabilă:
+`raxAdminTab('companies')` → `coNouStart(offerId)` → `raxCoNouToggle(true)` → `scrollIntoView`.
+
+- `raxAdminTab('companies')` **închide** cutia „client nou" (pagina pornește strânsă, dinadins). Cât
+  timp formularul se desena înainte — și dintr-un `setTimeout(…, 250)` ghicit — ajungea într-o cutie
+  cu `display:none`: aplicația completa tot (CUI, denumire, email, durata, prețul) și nu vedea nimeni.
+  Alin, 22.09: *„mă duce în companii, dar mai departe tot manual configurez."*
+- Regula generală: **nu desena într-un nod pe care fila tocmai l-a ascuns.** Deschide-l după, și nu
+  aștepta milisecunde — cutia e în HTML-ul paginii, e acolo imediat.
+- Păzit de `verify_ofertare.js`.
+
 ### Logo-ul scrie „RA Tracks" — și se REFACE, nu se desenează de mână (21.09)
 `public/logo.png` și `public/logo-light.png` aveau în ele **„RA | traks"** și ajungeau pe fiecare
 raport, Excel, contract și ofertă. Acum se generează cu **`tools/make-logo.js`**: marca originală
@@ -289,6 +331,17 @@ doar la ofertele „nelimitat", care sar peste ramura aia, **de-aia n-a sărit �
 - Când scoți o funcție, caută-i și **cuvintele**, nu doar codul.
 - O ramură care se execută rar (`n > 0`) poate fi moartă fără ca nimeni să observe. Ecranele se
   probează cu AMÂNDOUĂ felurile de date, nu doar cu cel care iese la o apăsare.
+- (Butonul a fost reparat pe 21.09 și **scos cu totul pe 22.09** — vezi mai sus. Lecția rămâne.)
+
+### Capcană: un „+" rămas peste altul = `NaN` pe ecran
+Rândul cu cursul, de sub rezumatul ofertei, a scris o zi întreagă **„NaN"**. Cauza: rândul de
+dinainte se termina cu `+` ȘI bucata următoare începea cu `+` — adică `a + +('<div…>')`, plus **unar**
+pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
+
+- În pagină nu există rând care se termină cu `+` urmat de rând care începe cu `+`. Se caută forma,
+  nu locul: `verify_ofertare.js` scanează TOT fișierul (fără comentarii).
+- De reținut: o greșeală de concatenare nu crapă nimic. Nu se prinde din citit cod — se prinde
+  uitându-te la ecranul desenat.
 
 ### Reguli de respectat aici
 - **Numele/descrierile agenților au o SINGURĂ sursă: `AGP_META`** (expus ca `window.AGP_META`).
