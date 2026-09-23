@@ -119,15 +119,55 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 
 - **Monedă dublă:** toate sumele apar în lei ȘI euro, la cursul dat de `GET /api/fx`. Clientul are
   `window.raFx()` → `{ eur, date, sursa }`.
-- **RA Insight** (fostul „Asistent AI") se vinde cu **pachet de apeluri**: 50/100/150/200/nelimitat.
-  Alegerea pachetului completează automat prețul propus (`AIQ_PRICE` = 19/29/49/59 lei), calculat ca
-  ~1,5× costul din scenariul negru → profit garantat chiar și la un client care pune numai apeluri grele.
-  `AIQ_SUGGEST` = pragul minim sub care apare avertisment.
-- **Costul real** e măsurat, nu presupus: `AIQ_COST_LEI` ≈ 0,04 lei/apel (bucla agentului CU prompt caching).
-  Blocul arată „Ne costă / la uz intens / Profitul nostru / minim garantat / pe an".
+- **RA Insight se vinde pe CONT**, iar prețul contului depinde DOAR de mărimea flotei — vezi
+  „Cum se tarifează RA Insight" mai jos. (⚠ Paragraful vechi de aici descria pachete de apeluri cu
+  `AIQ_PRICE` = 19/29/49/59 și `AIQ_SUGGEST`. **Nu mai există în cod** din 11.09, când s-a trecut pe
+  cont; nota a rămas în urmă până pe 23.09.)
 - **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
+
+### Cum se tarifează RA Insight (socotit cu Alin, 23.09)
+
+**Prețul unui CONT depinde DOAR de câte mașini are firma**, în cinci trepte (`AIQ_PRET_LOC`).
+Numărul de întrebări pe cont (`aiqN`) e un buton SEPARAT: **nu schimbă prețul**, schimbă doar cât ne
+costă pe noi. Confuzia „50 de întrebări = 19 lei" e firească și greșită — 19 lei e treapta 26–50 de
+mașini, oricâte întrebări ar avea contul.
+
+| Flota | Un cont |
+|---|---|
+| ≤ 10 | 12 lei |
+| 11–25 | 15 lei |
+| 26–50 | 19 lei |
+| 51–100 | 25 lei |
+| > 100 | 35 lei |
+
+**Ce ne costă o întrebare:** `0,030 lei + 0,00028 × nVehicule` (`_aiqCost`) — măsurat în septembrie
+pe aplicația pornită, cu Haiku 4.5 și prompt caching. Crește cu flota fiindcă fiecare mașină adaugă
+~41 de tokeni la starea live, recitiți la fiecare rundă. **Scenariul negru** (`AIQ_GREU = 2,5`):
+clientul pune numai întrebări care storc tot ȘI consumă fondul până la ultima.
+
+**Ce rămâne dintr-un cont, pe lună, în scenariul negru:**
+
+| Flota | Cont | la 50 întrebări | la 100 întrebări | zero la |
+|---|---|---|---|---|
+| 10 | 12 | 7,90 | 3,80 | 146 |
+| 25 | 15 | 10,38 | 5,75 | 162 |
+| 26 | 19 | 14,34 | 9,68 | 203 |
+| 50 | 19 | 13,50 | 8,00 | 172 |
+| 100 | 25 | 17,75 | 10,50 | 172 |
+| 200 | 35 | 24,25 | 13,50 | 162 |
+
+- **Marja e cea mai bună imediat DUPĂ o treaptă, cea mai slabă imediat ÎNAINTE** (26 de mașini: 9,68
+  lei; 25 de mașini: 5,75 — pentru o mașină în minus). Prețul urcă în trepte, costul crește lin.
+  Punctele subțiri sunt fix **10, 25, 50 și 100** de mașini.
+- ⚠ **Formula de cost e o dreaptă, dar măsurătoarea se aplatizează sus:** la 200 de mașini formula
+  zice 0,086 lei, măsurat e 0,0521. Deci la flote mari suntem MAI în siguranță decât arată tabelul.
+  Nu „corecta" formula ca să fie mai strânsă — marja de siguranță e deliberată.
+- ⚠ **Fondul e COMUN pe firmă** (`conturi × aiqN`). Un om poate mânca partea colegilor, deci
+  scenariul negru e mai ușor de atins la nivel de firmă decât pe cont. E argumentul pentru prudență.
+- **Dacă se trece la 100 de întrebări:** merge peste tot (rămân 3,80–20 lei), dar sub 25 de mașini e
+  strâmt. Ori 100 de la 26 în sus și 75 sub, ori se ridică primele două trepte la 14 și 17 lei.
 
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.

@@ -97,6 +97,77 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
+### FONDATOR · Cât câștigăm din RA Insight, pe flote — socotit, scris, salvat
+
+Alin: *„vreau să știu cum calculăm în funcție de flote, ca să și salvăm asta."*
+
+**Întâi o lămurire.** „50 de întrebări = 19 lei" nu e cum funcționează, și e o confuzie firească:
+
+- **19 lei e prețul unui CONT**, și depinde DOAR de câte mașini are firma.
+- **50 e câte întrebări aduce contul** în fondul lunar. **Nu are preț lipit de ea.** Poți s-o muți
+  la 100 fără să schimbi tariful.
+
+(Vechea listă de pachete — 50/100/150/200 la 19/29/49/59 lei — nu mai există în cod din 11 septembrie.
+Notele proiectului încă o descriau; le-am corectat.)
+
+**Cât cerem, pe cont, pe lună:**
+
+| Flota firmei | Un cont costă |
+|---|---|
+| până la 10 mașini | 12 lei |
+| 11 – 25 | 15 lei |
+| 26 – 50 | 19 lei |
+| 51 – 100 | 25 lei |
+| peste 100 | 35 lei |
+
+**De ce crește cu flota:** fiecare întrebare trimite modelului starea întregii flote, iar fiecare
+mașină în plus adaugă vreo 41 de „cuvinte" care se recitesc la fiecare pas al răspunsului. Măsurat
+în septembrie, pe aplicația pornită: **3 bani + 0,028 bani × numărul de mașini**, la o întrebare.
+
+**Cât ne rămâne, în cazul cel mai negru** (clientul pune numai întrebări care storc tot și consumă
+fondul până la ultima):
+
+| Flota | Cont | cu 50 întrebări | cu 100 întrebări | ieșim pe zero la |
+|---|---|---|---|---|
+| 5 | 12 lei | 8,08 lei | 4,15 lei | 152 |
+| 10 | 12 lei | 7,90 lei | 3,80 lei | 146 |
+| 14 | 15 lei | 10,76 lei | 6,52 lei | 176 |
+| 20 | 15 lei | 10,55 lei | 6,10 lei | 168 |
+| 25 | 15 lei | 10,38 lei | 5,75 lei | 162 |
+| 26 | 19 lei | 14,34 lei | 9,68 lei | 203 |
+| 30 | 19 lei | 14,20 lei | 9,40 lei | 197 |
+| 40 | 19 lei | 13,85 lei | 8,70 lei | 184 |
+| 50 | 19 lei | 13,50 lei | 8,00 lei | 172 |
+| 51 | 25 lei | 19,46 lei | 13,93 lei | 225 |
+| 75 | 25 lei | 18,63 lei | 12,25 lei | 196 |
+| 100 | 25 lei | 17,75 lei | 10,50 lei | 172 |
+| 101 | 35 lei | 27,71 lei | 20,43 lei | 240 |
+| 150 | 35 lei | 26,00 lei | 17,00 lei | 194 |
+| 200 | 35 lei | 24,25 lei | 13,50 lei | 162 |
+
+**Ce se vede din tabel, și merită ținut minte:**
+
+1. **Câștigăm cel mai bine imediat DUPĂ o treaptă și cel mai prost imediat ÎNAINTE.** La 26 de
+   mașini ne rămân 9,68 lei; la 25, doar 5,75 — pentru o singură mașină în minus. Se întâmplă
+   pentru că prețul urcă în trepte, dar costul crește lin. Punctele subțiri sunt fix la **10, 25,
+   50 și 100** de mașini.
+2. **Cifrele de mai sus sunt cazul cel mai negru.** La un client obișnuit ne costă de 2,5 ori mai
+   puțin — la 100 de întrebări și 50 de mașini, 4,40 lei în loc de 11, deci ne rămân 14,60 din 19.
+3. **La flote mari suntem mai în siguranță decât arată tabelul.** Formula noastră de cost e o
+   dreaptă, dar măsurătoarea reală se aplatizează: la 200 de mașini formula zice 0,086 lei, în
+   realitate e 0,052. Marja de siguranță e lăsată dinadins.
+4. **Fondul e comun pe firmă.** 3 conturi × 100 = 300 de întrebări într-o oală. Un om poate mânca
+   partea colegilor, deci cazul negru e mai ușor de atins la nivel de firmă decât pe cont.
+
+**Dacă trecem la 100 de întrebări pe cont:** merge peste tot. Ne costă, la un client cu 3 conturi și
+50 de mașini, **198 de lei pe an** în cel mai rău caz — pentru asta îi dublăm ce primește. Singura
+zonă incomodă e sub 25 de mașini. Două variante: ori 100 de la 26 de mașini în sus și 75 sub, ori
+100 pentru toți dar cu primele două trepte ridicate la 14 și 17 lei.
+
+- **Ce am schimbat:** nimic în aplicație — o socoteală, scrisă ca să n-o mai facem de la zero.
+- **Ce vede fondatorul:** tabelul, în notele proiectului, lângă regula de tarifare.
+- **Ce vede clientul:** nimic.
+
 ### FONDATOR · Oferta nu mai pare săracă: 16 rânduri în loc de 8, toate adevărate
 
 Alin, uitându-se la lista „Ce include abonamentul lunar": *„oare să mai adăugăm chestii? Reale
