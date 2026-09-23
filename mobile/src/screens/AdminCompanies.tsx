@@ -100,13 +100,19 @@ export function AdminCompanies() {
     if (name.length < 2) { showToast('Nume prea scurt.', true); return; }
     setSaving(true);
     try {
-      // Serverul schimbă DOAR câmpurile primite (de pe 23.09). Datele juridice (CUI, Reg. Com., adresă, IBAN,
-      // bancă) se editează doar pe web, deci nu se trimit: nu le poate goli și nici scrie peste o corectură
-      // făcută între timp pe web.
+      // Datele juridice (CUI, Reg. Com., adresă, IBAN, bancă) se editează doar pe web, dar se trimit înapoi
+      // neschimbate: serverul de dinainte de 23.09 golea orice câmp lipsă din corp, iar aplicația poate ajunge pe
+      // telefoane înaintea serverului nou. Se recitesc chiar acum; dacă nu se pot citi, NU salvăm — mai bine un
+      // „încearcă din nou" decât valori vechi scrise peste o corectură făcută între timp pe web.
+      let proaspat: any = null;
+      try { const o: any = await Api.companyOverview(id); if (esteFirma(o, id)) proaspat = o.company; } catch { /* tratat mai jos */ }
+      if (!proaspat) { showToast('Nu am putut citi fișa firmei. Încearcă din nou.', true); return; }
       await Api.updateCompany(id, {
         name,
         contact_email: String(form.contact_email || '').trim() || null,
         phone: String(form.phone || '').trim() || null,
+        cui: proaspat.cui ?? null, reg_com: proaspat.reg_com ?? null, address: proaspat.address ?? null,
+        iban: proaspat.iban ?? null, bank_name: proaspat.bank_name ?? null,
       });
       // Limita AI se trimite doar dacă s-a schimbat. Gol = nelimitat (ca pe web).
       const v = String(form.ai_limit ?? '').trim();
