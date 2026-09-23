@@ -61,8 +61,10 @@ T('`priceEur` a dispărut din pagină', !/priceEur/.test(faraComentarii(html)));
 T('nu mai există preț pe întrebare nicăieri', !/€\/apel/.test(faraComentarii(html)));
 // Pastila „AI" de pe rând rămâne — ea doar SPUNE că oferta include RA Insight, nu face nimic.
 T('pastila „AI" rămâne pe rând', /hasAi \? '<span[\s\S]{0,220}>AI<\/span>/.test(html));
-T('iar ce s-a vândut se aprinde la SEMNARE, într-un singur loc',
-  /await _aplicaOfertaPeFirma\(id, oferta\)/.test(server)
+// (23.09) Se aprinde când contractul se face DIN ofertă — ca ciornă, nu abia la semnare — și primește
+// acum și socoteala ofertei (prețul pe mașină), ca să scrie pe firmă și prețul de facturare.
+T('iar ce s-a vândut se aprinde când contractul se face din ofertă, într-un singur loc',
+  /await _aplicaOfertaPeFirma\(id, oferta, dinOferta\)/.test(server)
   && (server.match(/_aplicaOfertaPeFirma\(/g) || []).length === 2);
 
 sect('2. Banii de la ÎNCEPUT se văd în listă');
@@ -193,7 +195,8 @@ T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAnte
 T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
   /function _numeDinAntet\(resp, implicit\)/.test(html)
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
-  && (html.match(/_numeDinAntet\(/g) || []).length === 3
+  // Patru locuri: cititorul însuși, Inventarul, hârtia ofertei și hârtia contractelor (23.09).
+  && (html.match(/_numeDinAntet\(/g) || []).length === 4
   && !/filename\\\*\?=\(\?:UTF-8/.test(html));
 T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
 T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));

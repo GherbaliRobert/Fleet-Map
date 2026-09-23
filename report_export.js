@@ -690,4 +690,4 @@ async function sendOfertaPdf(res, o) {
 }
 // ─── sfârșit „oferta, ca fișier descărcat" ──
 
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf };
+module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition };

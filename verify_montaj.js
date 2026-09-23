@@ -101,11 +101,24 @@ T('la fel și fiecare echipament', M.ECHIPAMENTE.every(e => !!e.ofertaQ && !!e.o
 // Costul partenerului NU vine din ofertă: acolo nu există. Se completează după ce știm cine execută.
 T('costul partenerului NU se ia din ofertă', !/costPartener: pret/.test(server));
 T('GDPR-ul se mută la Anexa 3 când există montaj',
-  /'ANEXA nr\. ' \+ \(areMontaj \? 3 : 2\) \+ ' — Acord de prelucrare/.test(cpdf));
+  /const nrGdpr = areMontaj \? 3 : 2;/.test(cpdf) && /'ANEXA nr\. ' \+ nrGdpr \+ ' — Acord de prelucrare/.test(cpdf));
+// Și TEXTUL contractului trimite la numărul ăsta (23.09): scria mereu „Anexa nr. 2 — Acord", deși cu
+// montaj acordul se tipărea ca Anexa nr. 3.
+T('iar textul contractului trimite la aceeași anexă, nu la „nr. 2" scris de mână',
+  /cele din Anexa nr\. ' \+ nrGdpr \+ ' — Acord de prelucrare/.test(cpdf) && !/cele din Anexa nr\. 2 — Acord/.test(cpdf)
+  && /'Anexei nr\. ' \+ nrGdpr/.test(cpdf) && !/potrivit Anexei nr\. 2,/.test(cpdf));
 T('anexa de montaj se scrie pe contract, nu pe lucrare',
   /ALTER TABLE contracts ADD COLUMN IF NOT EXISTS montaj JSONB/.test(dbjs));
-T('și se completează la salvarea lucrării, din partea clientului',
-  /await db\.setContractMontaj\(m\.contract_id, montaj\.facAnexaMontaj\(rd, 'RON'\)\)/.test(server));
+// (23.09) Lucrarea scrie în anexă DOAR cât contractul nu e semnat, din TOATE lucrările lui adunate
+// (nu din ultima), iar aparatele vândute rămân. Înainte orice lucrare salvată rescria anexa — și a
+// unui contract semnat — și ștergea din ea echipamentele.
+const bucMontaj = server.slice(server.indexOf("app.post('/api/companies/:id/montaje'"), server.indexOf("app.delete('/api/montaje/:id'"));
+T('lucrarea NU atinge anexa unui contract semnat',
+  /if \(c && \(c\.status === 'activ' \|\| c\.status === 'incheiat'\)\) anexa = 'semnat';/.test(bucMontaj));
+T('la unul nesemnat, anexa se face din TOATE lucrările contractului',
+  /await db\.montajeContract\(c\.id\)/.test(bucMontaj) && /adunat\[k\]\.buc \+= Number\(r\.buc\) \|\| 0;/.test(bucMontaj));
+T('și aparatele vândute rămân în anexă', /noua\.echipamente = echip;/.test(bucMontaj));
+T('ecranul spune ce s-a întâmplat cu anexa', /j\.anexa === 'semnat'/.test(html) && /Anexa nr\. 2 rămâne cum s-a semnat/.test(html));
 T('totalul lunar din Anexa 1 NU include montajul',
   !/monthlyTotal[\s\S]{0,80}montaj/.test(fs.readFileSync('./contracts.js', 'utf8')));
 
@@ -173,12 +186,16 @@ T('o lucrare fără nicio linie e refuzată', /Nicio linie de montaj/.test(serve
 T('ștergerea partenerului nu șterge lucrările', !/ON DELETE CASCADE[\s\S]{0,80}montaje/.test(dbjs));
 
 sect('6. Ce se vede pe ecran');
-T('în fila Contract e secțiunea de montaj', /Anexa nr\. 2 — montaj \(cost unic\)/.test(html));
+T('în fila Contract e secțiunea de montaj', /Anexa nr\. 2 — echipamente și montaj \(cost unic\)/.test(html));
+T('și anexa însăși se vede, nu doar lucrările', /function _raxCtrAnexa2\(m\)/.test(html));
 T('scrie cine vede ce', /În contract intră <b>doar prețul către client<\/b>/.test(html));
 T('formularul are amândouă coloanele', /data-mo="pc"/.test(html) && /data-mo="cp"/.test(html));
 T('marja se arată pe loc, cât scrii', /window\.raxMontajTotal = function/.test(html));
 T('o marjă negativă se vede roșu', /marja < 0 \? 'var\(--red\)' : 'var\(--accent\)'/.test(html));
 T('prețul clientului se propune din tarifele ofertei', /function _raxMontTarifeOferta\(\)/.test(html));
+// (23.09) Se citea `window._raxOf`, care nu există (e închisă în pagină): casetele ieșeau goale.
+T('...din anexa contractului, apoi din tarifele casei — nu dintr-o variabilă care nu există',
+  !/window\._raxOf/.test(html.replace(/^\s*\/\/.*$/gm, '')) && /var p = _ofTarifeDeBaza\(\);/.test(html));
 T('costul partenerului se propune din tarifele LUI', /var tarifeLui = part\.tarife \|\| \{\};/.test(html));
 T('partenerii se administrează în ecranul nostru de contracte', /Parteneri de montaj/.test(html));
 T('și scrie negru pe alb că nu-i vede clientul',

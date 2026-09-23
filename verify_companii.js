@@ -147,9 +147,17 @@ const co = new Function('window', 'document', 'esc', '$', 'companiesCache', 'dos
 const F = (o) => Object.assign({ id: 1, name: 'Transport Rapid SRL', plan: 'standard', device_count: 2,
   user_count: 1, paid_total: 0, is_demo: false, access: { status: 'active' }, dosar: null, neplata: null,
   ultimaActivitate: Date.now() }, o);
-T('firma cu dosarul incomplet se recunoaște', co.faraContract(F({ dosar: { text: 'contractul' } })) === true);
-T('cea cu dosarul complet, nu', co.faraContract(F({ dosar: { eticheta: 'complet' } })) === false);
-T('demo-ul nu intră la „fără contract"', co.faraContract(F({ is_demo: true, dosar: { text: 'x' } })) === false);
+// „Fără contract" = nicio hârtie în vigoare sau pe drum (23.09). Înainte însemna „lipsește ceva din
+// dosar", deci o firmă cu contract SEMNAT căreia îi lipsea doar scanul apărea „fără contract", iar
+// Companii și Contracte numărau diferit aceeași întrebare.
+T('firma fără niciun contract e „fără contract"', co.faraContract(F({ dosar: { nivel: 'lipsa', text: 'contractul' } })) === true);
+T('cea cu contract semnat, dar fără scan, NU e „fără contract"',
+  co.faraContract(F({ dosar: { nivel: 'incomplet', text: 'contractul semnat (PDF)' } })) === false);
+T('nici cea cu contract în lucru', co.faraContract(F({ dosar: { nivel: 'nesemnat', eticheta: 'în lucru' } })) === false);
+T('cea cu contract ÎNCHEIAT care încă intră în aplicație, DA', co.faraContract(F({ dosar: { nivel: 'incheiat' }, access: { status: 'active' } })) === true);
+T('dar nu și cea care nu mai intră (s-a despărțit de noi)', co.faraContract(F({ dosar: { nivel: 'incheiat' }, access: { status: 'expired' } })) === false);
+T('cea cu dosarul complet, nu', co.faraContract(F({ dosar: { nivel: 'ok', eticheta: 'în regulă' } })) === false);
+T('demo-ul nu intră la „fără contract"', co.faraContract(F({ is_demo: true, dosar: { nivel: 'lipsa', text: 'x' } })) === false);
 T('restanța în derulare se recunoaște', co.restanta(F({ neplata: { faza: 'avertisment', zilePanaLaSuspendare: 5 } })) === true);
 T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } })) === true);
 const filtruLiniste = co.filtre.filter(f => f.id === 'liniste')[0].f;

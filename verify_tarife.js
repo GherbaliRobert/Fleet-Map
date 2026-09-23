@@ -463,8 +463,8 @@ T('alegerea altui pachet lasă propunerea să scrie iar prețul',
 sect('6b. Ce s-a vândut se și activează pe firmă');
 // Gaura: un client deschis DIN OFERTĂ primea contractul cu prețul corect, dar în fișa firmei nu se
 // scria nimic — fără cotă înseamnă NELIMITAT. Vindeai 50 de întrebări/lună și livrai nelimitat.
-T('există o singură funcție care duce oferta pe firmă', /async function _aplicaOfertaPeFirma\(companyId, oferta\)/.test(server));
-T('contractul făcut din ofertă o cheamă', /_aplicaOfertaPeFirma\(id, oferta\)/.test(server));
+T('există o singură funcție care duce oferta pe firmă', /async function _aplicaOfertaPeFirma\(companyId, oferta, dinOferta\)/.test(server));
+T('contractul făcut din ofertă o cheamă', /_aplicaOfertaPeFirma\(id, oferta, dinOferta\)/.test(server));
 // Și e SINGURUL loc care o cheamă (de pe 22.09). Butonul ✨ din lista de oferte era al doilea: o
 // aplica pe o firmă aleasă dintr-o listă, pe un ecran unde clientul de obicei nici nu există încă.
 // A plecat cu tot cu ruta lui — ce s-a vândut se aprinde la SEMNARE, nu dintr-un buton.

@@ -1816,11 +1816,15 @@ async function setOfferStatus(id, status, extra) {
 // ─── Contracte ───────────────────────────────────────────────────────────────────────────────
 // Coloanele de fișier (file_b64 / gdpr_b64) sunt GRELE — un PDF scanat poate avea megaocteți. Nu
 // se aduc niciodată în liste, doar la descărcarea explicită a actului. De asta există `_FARA_FISIERE`.
+// `luni_prelungite` = lunile adăugate prin acte adiționale SEMNATE. Contractul semnat nu se atinge,
+// deci capătul adevărat se socotește din el + actele lui (vezi `sfarsitContract` în contracts.js).
+const _LUNI_PRELUNGITE = `(SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
+     WHERE a.contract_id = contracts.id AND a.status = 'activ')::int AS luni_prelungite`;
 const _FARA_FISIERE = `id, company_id, number, status, signed_at, start_at, months, end_at,
   auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes,
   created_by, created_at, updated_at,
   (file_b64 IS NOT NULL) AS has_file, file_name, file_mime,
-  (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime`;
+  (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime, ${_LUNI_PRELUNGITE}`;
 async function listContracts(companyId) {
   const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1 ORDER BY created_at DESC`, [companyId]);
   return r.rows;
@@ -1882,7 +1886,16 @@ async function setContractFile(id, care, f) {
   );
   return getContractById(id);
 }
-async function deleteContract(id) { await pool.query('DELETE FROM contracts WHERE id = $1', [id]); return { ok: true }; }
+// Ștergerea unei ciorne nu are voie să lase legături rupte (găsit 23.09: oferta rămânea „a devenit
+// client" cu un contract care nu mai exista). Oferta și lucrările de montaj rămân — doar se
+// dezleagă; actele adiționale nesemnate ale ciornei pleacă odată cu ea.
+async function deleteContract(id) {
+  await pool.query('UPDATE offers SET contract_id = NULL, updated_at = $2 WHERE contract_id = $1', [id, Date.now()]);
+  await pool.query('UPDATE montaje SET contract_id = NULL, updated_at = $2 WHERE contract_id = $1', [id, Date.now()]);
+  await pool.query("DELETE FROM acte_aditionale WHERE contract_id = $1 AND status <> 'activ'", [id]);
+  await pool.query('DELETE FROM contracts WHERE id = $1', [id]);
+  return { ok: true };
+}
 // Numerotare: RAT-C-<an>-<4 cifre>, continuă de la ce există deja în anul curent.
 async function nextContractNumber(an) {
   const y = an || new Date().getFullYear();
@@ -1900,7 +1913,7 @@ async function contractsByCompany() {
   const r = await pool.query(
     `SELECT DISTINCT ON (company_id) company_id, id, number, status, start_at, end_at, months,
        auto_renew, notice_days, signed_at, ended_at, client_rep, gdpr,
-       (file_b64 IS NOT NULL) AS has_file, (gdpr_b64 IS NOT NULL) AS has_gdpr_file, annex
+       (file_b64 IS NOT NULL) AS has_file, (gdpr_b64 IS NOT NULL) AS has_gdpr_file, annex, ${_LUNI_PRELUNGITE}
      FROM contracts ORDER BY company_id, ${_ORDINE_CONTRACT} ASC, created_at DESC`);
   const m = {};
   for (const row of r.rows) m[row.company_id] = row;
@@ -2016,6 +2029,10 @@ async function upsertMontaj(m) {
   return getMontaj(r.rows[0].id);
 }
 async function deleteMontaj(id) { await pool.query('DELETE FROM montaje WHERE id = $1', [id]); return { ok: true }; }
+async function montajeContract(contractId) {
+  const r = await pool.query('SELECT id, items FROM montaje WHERE contract_id = $1 ORDER BY created_at ASC', [contractId]);
+  return r.rows;
+}
 // Anexa nr. 2 (montajul semnat) se scrie pe contract, separat de lucrare.
 async function setContractMontaj(contractId, anexa) {
   const r = await pool.query('UPDATE contracts SET montaj = $2, updated_at = $3 WHERE id = $1 RETURNING id',
@@ -2030,7 +2047,14 @@ async function contracteToate(limita) {
     `SELECT c.id, c.company_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at,
             c.auto_renew, c.notice_days, c.ended_at, c.client_rep, c.gdpr, c.annex, c.created_at,
             (c.file_b64 IS NOT NULL) AS has_file, (c.gdpr_b64 IS NOT NULL) AS has_gdpr_file,
-            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo
+            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo,
+            (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
+              WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite,
+            -- O prelungire deja pornită (act nesemnat încă): pe listă scrie „prelungire în lucru",
+            -- nu încă un buton „Reînnoiește" care ar face al doilea act pentru același termen.
+            (SELECT a.number FROM acte_aditionale a
+              WHERE a.contract_id = c.id AND a.status <> 'activ' AND COALESCE(a.luni_noi, 0) > 0
+              ORDER BY a.nr_ordine DESC LIMIT 1) AS prelungire_in_lucru
        FROM contracts c JOIN companies co ON co.id = c.company_id
       ORDER BY c.created_at DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
   return r.rows;
@@ -2081,7 +2105,9 @@ async function setCompanySuspend(id, date) {
 async function contracteInVigoare() {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
-            c.notice_days, co.name AS company_name, co.contact_email
+            c.notice_days, co.name AS company_name, co.contact_email,
+            (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
+              WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite
        FROM contracts c JOIN companies co ON co.id = c.company_id
       WHERE c.status = 'activ' AND COALESCE(co.is_demo, false) = false`);
   return r.rows;
@@ -4496,7 +4522,7 @@ module.exports = {
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
-  updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
+  updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany, montajeContract,
   contracteInVigoare, contracteToate, firmeFaraContract, legOferta,
   listActe, getAct, getActFile, urmatorulNrAct, upsertAct, setActFile, deleteAct,
   listParteneriMontaj, upsertPartenerMontaj, deletePartenerMontaj,

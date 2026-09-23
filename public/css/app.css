@@ -2709,6 +2709,10 @@
 
     /* Tabelul companiilor: cap cu fundal, rânduri cu aer, numele firmei = intrarea în ea. */
     .raco .rax-co-table { border-radius: 12px; overflow: hidden; }
+    /* Butoanele de pe rândul unui contract (Vezi / Descarcă / Reînnoiește): mai mici decât cele din
+       formulare, pe un rând, fără să împingă tabelul în lățime. */
+    .raco .ctre-act { display: flex; gap: 6px; flex-wrap: wrap; }
+    .raco .ctre-act .rax-btn { padding: 6px 10px; font-size: 11.5px; }
     .raco .rax-co-table th { background: var(--bg-dark); padding: 10px 12px; font-weight: 800; border-bottom: 1.5px solid var(--border); }
     .raco .rax-co-table td { padding: 12px; }
     .raco .rax-co-table tbody tr:last-child td { border-bottom: none; }

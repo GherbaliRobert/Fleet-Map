@@ -2199,7 +2199,7 @@ async function contractExpiryTick() {
         (dPreaviz ? (a.preavizTrecut
           ? ' Termenul de preaviz (' + dPreaviz + ') a trecut deja.'
           : ' Ultima zi de preaviz: ' + dPreaviz + '.') : '') +
-        ' Deschide Companii → firma → Contract pentru act nou sau prelungire.';
+        ' Deschide Contracte și apasă „Reînnoiește" pe rândul lui: se face actul adițional de prelungire.';
       const n = await db.createNotification({
         type: 'contract_expira', severity: a.trecut ? 'critical' : 'warning',
         companyId: null, userId: null, imei: null,
@@ -4436,8 +4436,9 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
         features: plans ? plans.featuresFor(c) : null,
         access: acc,
         neplata: np.faza === 'ok' ? null : np,
-        dosar: contracte.stareDosar(c, contract, Date.now()),
-        contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contract.end_at } : null,
+        dosar: contracte.stareDosar(c, contract, acum),
+        // Capătul de AZI (cu prelungirile semnate / termenul curent la reînnoirea automată).
+        contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contracte.sfarsitCurent(contract, acum) } : null,
         ultimaActivitate: activitate[c.id] || null,
         admin: admini[c.id] || null
       });
@@ -4464,7 +4465,12 @@ function _venitLunar(c, nrCan, conturi) {
   // CEL MULT luna asta — aceeași regulă ca pe factură.
   const q = _aiQuotaFromSettings(c && c.settings);
   const nConturi = Math.max(Number(conturi) || 0, _seatsPeakLuna(c));
-  if (q.seatPriceRON > 0 && nConturi > 0) lei += nConturi * q.seatPriceRON;
+  if (q.seatPriceRON > 0 && nConturi > 0) {
+    lei += nConturi * q.seatPriceRON;
+    // Pe factură, suma fixă veche „Asistent AI" NU mai apare când RA Insight se facturează pe cont
+    // (vezi buildInvoiceLines). Fără scăderea asta, registrul ar fi numărat-o de două ori.
+    lei -= Number(p.breakdown && p.breakdown.aiAssistant) || 0;
+  }
   return Math.round(lei * 100) / 100;
 }
 // ── sfârșit „Venitul lunar pe firmă" ──
@@ -4798,14 +4804,59 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     // Dosarul juridic vine în același apel ca restul: fila „Contract" nu trebuie să mai ceară o dată.
     let contract = null, istoric = [];
     try { [contract, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]); } catch (e) {}
+    const acum = Date.now();
+    // Contract vs. factură: ce s-a SEMNAT (anexa în vigoare, cu actele adiționale semnate) lângă ce
+    // s-ar FACTURA luna asta. Factura se socotește cu exact funcția facturii, nu cu o copie — altfel
+    // ecranul ar putea spune „se potrivește" despre o factură care iese altfel.
+    let comparatie = null, prelungireInLucru = null;
+    if (contract && contract.status !== 'incheiat') {
+      try {
+        const acte = await db.listActe(contract.id);
+        const pl = acte.filter(function (a) { return a.status !== 'activ' && Number(a.luni_noi) > 0; }).pop();
+        if (pl) prelungireInLucru = { id: pl.id, number: pl.number, status: pl.status };
+        const anexa = contracte.anexaInVigoare(contract, acte) || {};
+        const bc = await _companyBillCounts(company);
+        const f = buildInvoiceLines(company, bc, features, 0);
+        const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
+        const suma = function (l, k) { return l.reduce(function (s, x) { return s + (Number(x[k]) || 0); }, 0); };
+        const cuAparate = (anexa.vehicles || []).length > 0;
+        const servicii = anexa.servicii || [];
+        const liniiMasini = f.lines.filter(function (l) { return /^(Abonament|Supliment)/.test(l.desc); });
+        const liniiAi = f.lines.filter(function (l) { return /^(RA Insight|Asistent AI)/.test(l.desc); });
+        // Pe bucăți, nu pe total: RA Insight se facturează după conturile FOLOSITE în lună (clientul le
+        // aprinde și le stinge singur), deci totalul ar da mereu „nu se potrivește" din motive normale.
+        comparatie = {
+          masini: {
+            contract: { lei: r2((Number(anexa.monthlyTotal) || 0) - suma(servicii, 'total')),
+              nr: cuAparate ? anexa.vehicles.length : suma(anexa.vehiculeOferta || [], 'cant'),
+              dinOferta: !cuAparate && (anexa.vehiculeOferta || []).length > 0 },
+            factura: { lei: r2(suma(liniiMasini, 'net')), nr: (bc.none || 0) + (bc.can || 0) + (bc.fms || 0) }
+          },
+          raInsight: (Number(anexa.aiSeatPriceRON) > 0 || liniiAi.length) ? {
+            contractPretCont: Number(anexa.aiSeatPriceRON) || null,
+            contractConturi: suma(servicii.filter(function (x) { return x.fel === 'ai'; }), 'cant'),
+            facturaConturi: bc.raInsight ? bc.raInsight.seats : 0,
+            facturaPretCont: bc.raInsight ? bc.raInsight.seatPriceRON : 0,
+            facturaLei: r2(suma(liniiAi, 'net'))
+          } : null,
+          // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură (ex. păstrarea
+          // datelor 24 de luni: vândută, semnată, dar nici facturată, nici livrată încă).
+          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && !x.inclus && Number(x.total) > 0; })
+            .map(function (x) { return { nume: x.nume, lei: r2(x.total) }; }),
+          total: { contract: r2(anexa.monthlyTotal), factura: r2(f.subtotal) }
+        };
+      } catch (e) { /* fără comparație, restul fișei merge */ }
+    }
     // Starea de plată a firmei: aceeași regulă ca gardul de acces, ca ecranul să nu spună altceva.
     let npFirma = { faza: 'ok' };
-    try { npFirma = neplata.stareNeplata(await db.facturiNeachitate(id), Date.now()); } catch (e) {}
+    try { npFirma = neplata.stareNeplata(await db.facturiNeachitate(id), acum); } catch (e) {}
     res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, offer, price, features,
       neplata: npFirma.faza === 'ok' ? null : npFirma,
       ai_quota: _aiQuotaFromSettings(company.settings),
-      contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, Date.now()),
-      preaviz_pana: contracte.ultimaZiDePreaviz(contract),
+      contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, acum),
+      sfarsit: contracte.sfarsitCurent(contract, acum),
+      preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
+      comparatie: comparatie, prelungire_in_lucru: prelungireInLucru,
       numar_propus: contract ? null : await db.nextContractNumber().catch(function () { return null; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4840,6 +4891,15 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
 const CONTRACT_STARI = ['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'];
 const CONTRACT_MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 const CONTRACT_MAX_B = 4 * 1024 * 1024; // 4 MB per act (limita de body e 6 MB)
+// Numele fișierului în antetul descărcării: o dată fără diacritice (pentru browserele vechi) și o
+// dată cel adevărat, UTF-8 — aceeași regulă ca la rapoarte și oferte. Pagina citește ÎNTÂI varianta
+// UTF-8 (`_numeDinAntet`), deci „Transport Țăndărei SRL" ajunge pe disc cu diacriticele lui. Până
+// pe 23.09 contractele puneau numele doar codat („RA%20TRAKS…"), fără variantă UTF-8.
+function _antetDescarcare(nume) {
+  if (reportExport && reportExport.contentDisposition) return reportExport.contentDisposition(nume);
+  const ascii = String(nume || 'fisier').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '').replace(/["\\]/g, '');
+  return 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(nume || 'fisier');
+}
 
 // Un id care nu e număr nu trebuie să ajungă până la baza de date: acolo dă eroare 500 („invalid
 // input syntax for type integer"), adică „s-a stricat serverul", când de fapt cererea era greșită.
@@ -4920,16 +4980,28 @@ app.get('/api/contracts/:id/acte', requireAuth, requireSuperadmin, async (req, r
     res.json(await db.listActe(id));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// O anexă nouă de aparate, într-un act, păstrează serviciile lunare ale anexei în vigoare (RA Insight,
+// păstrarea datelor) dacă ecranul trimite doar aparatele — altfel actul ar tăia din preț în tăcere.
+async function _anexaActCuServicii(contract, anexa) {
+  if (!anexa || typeof anexa !== 'object') return anexa;
+  const acte = await db.listActe(contract.id).catch(function () { return []; });
+  return Object.assign({}, contracte.dinAnexaDePastrat(contracte.anexaInVigoare(contract, acte)), anexa);
+}
 app.post('/api/contracts/:id/acte', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
-    // Nu se face act adițional la ceva ce încă nu s-a semnat: acolo se schimbă contractul în sine.
-    if (c.status === 'ciorna' || c.status === 'aprobat') {
-      return res.status(400).json({ error: 'Contractul nu e semnat încă — modifică-l direct, nu prin act adițional.' });
+    // Actul adițional schimbă un contract SEMNAT și în vigoare. La unul nesemnat (inclusiv „trimis",
+    // încă nesemnat de client) se schimbă contractul însuși; la unul încheiat nu mai ai ce schimba.
+    if (c.status !== 'activ') {
+      return res.status(400).json({ error: c.status === 'incheiat'
+        ? 'Contractul e încheiat — nu i se mai adaugă acte. Pentru o relație nouă, fă un contract nou.'
+        : 'Contractul nu e semnat încă — modifică-l direct, nu prin act adițional.' });
     }
     const nr = await db.urmatorulNrAct(id);
-    const date = _actDinCerere(req.body || {});
+    const b = Object.assign({}, req.body || {});
+    b.annex = await _anexaActCuServicii(c, b.annex);
+    const date = _actDinCerere(b);
     if (!date.number) date.number = (c.number || 'contract') + '/A' + nr;
     date.contract_id = id; date.company_id = c.company_id; date.nr_ordine = nr;
     date.created_by = req.auth && req.auth.userId;
@@ -4942,7 +5014,28 @@ app.put('/api/acte/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const vechi = await db.getAct(id); if (!vechi) return res.status(404).json({ error: 'Act inexistent' });
-    const date = _actDinCerere(Object.assign({}, vechi, req.body || {}));
+    const b = Object.assign({}, req.body || {});
+    // Un act SEMNAT nu se mai rescrie și nu se mai întoarce la „în lucru" — la fel ca contractul.
+    // Se mai poate trece doar data semnării (dacă a fost uitată) și notițele noastre.
+    if (vechi.status === 'activ') {
+      if (b.status != null && b.status !== 'activ') {
+        return res.status(400).json({ error: 'Actul e semnat — nu se mai întoarce la „în lucru".' });
+      }
+      const inainte = _actDinCerere(vechi), dupa = _actDinCerere(Object.assign({}, vechi, b));
+      const schimbate = ['number', 'obiect', 'start_at', 'luni_noi'].filter(function (k) {
+        return JSON.stringify(inainte[k]) !== JSON.stringify(dupa[k]);
+      });
+      if (b.annex !== undefined) schimbate.push('annex');
+      if (b.montaj !== undefined) schimbate.push('montaj');
+      if (schimbate.length) {
+        return res.status(400).json({ error: 'Actul e semnat și nu se mai schimbă. Ce se mai schimbă se scrie într-un act nou.', campuri: schimbate });
+      }
+    }
+    if (b.annex !== undefined) {
+      const c = await db.getContractById(vechi.contract_id);
+      if (c) b.annex = await _anexaActCuServicii(c, b.annex);
+    }
+    const date = _actDinCerere(Object.assign({}, vechi, b));
     date.id = id;
     const a = await db.upsertAct(date);
     auditReq(req, 'update', 'act_aditional', id, { status: date.status });
@@ -4982,7 +5075,7 @@ app.get('/api/acte/:id/file', requireAuth, requireSuperadmin, async (req, res) =
     const f = await db.getActFile(id);
     if (!f || !f.b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
     res.setHeader('Content-Type', f.mime || 'application/octet-stream');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(f.name || 'act') + '"');
+    res.setHeader('Content-Disposition', _antetDescarcare(f.name || 'act'));
     res.send(Buffer.from(f.b64, 'base64'));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4995,9 +5088,18 @@ app.get('/api/acte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) =>
     const co = await db.getCompanyById(a.company_id);
     if (!c || !co) return res.status(404).json({ error: 'Contract sau companie inexistentă' });
     const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    // O prelungire scrie pe hârtie data până la care ține contractul DUPĂ ea: capătul de azi (cu
+    // prelungirile semnate ÎNAINTEA actului ăstuia) + lunile lui.
+    let panaLa = null;
+    if (a.luni_noi) {
+      const acte = await db.listActe(c.id).catch(function () { return []; });
+      const inainte = acte.filter(function (x) { return x.status === 'activ' && (Number(x.nr_ordine) || 0) < (Number(a.nr_ordine) || 0); })
+        .reduce(function (s, x) { return s + (Number(x.luni_noi) || 0); }, 0);
+      panaLa = contracte.sfarsitContract(Object.assign({}, c, { luni_prelungite: inainte + Number(a.luni_noi) }));
+    }
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(contractPdf.numeFisier(a, co, 'Act aditional')) + '"');
-    contractPdf.actPdf({ act: a, contract: c, firma: co, emitent: emitent }).pipe(res);
+    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(a, co, 'Act aditional')));
+    contractPdf.actPdf({ act: a, contract: c, firma: co, emitent: emitent, panaLa: panaLa }).pipe(res);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -5067,12 +5169,38 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
       notes: b.notes ? String(b.notes).slice(0, 2000) : null,
       created_by: req.auth && req.auth.userId
     });
-    // Montajul convenit intră și în ANEXA nr. 2 a contractului — dar numai partea clientului.
+    // Anexa nr. 2 a contractului: DOAR partea clientului și DOAR cât contractul nu e semnat.
+    //   • Semnat → anexa e ce s-a semnat; lucrarea e doar execuția ei. Montaj în plus = act adițional.
+    //   • Nesemnat → anexa se face din TOATE lucrările contractului, adunate, nu din ultima salvată
+    //     (două lucrări, 3 + 2 montaje, lăsau în anexă doar 2). Aparatele vândute rămân cum erau:
+    //     până pe 23.09 orice lucrare salvată le ștergea din anexă (găsit pe viu).
+    let anexa = null;
     if (m && m.contract_id) {
-      try { await db.setContractMontaj(m.contract_id, montaj.facAnexaMontaj(rd, 'RON')); } catch (e) {}
+      try {
+        const c = await db.getContractById(m.contract_id);
+        if (c && (c.status === 'activ' || c.status === 'incheiat')) anexa = 'semnat';
+        else if (c) {
+          const adunat = {};
+          (await db.montajeContract(c.id)).forEach(function (x) {
+            (x.items || []).forEach(function (r) {
+              const k = r.tip + '|' + (r.pretClient == null ? '' : r.pretClient);
+              if (!adunat[k]) adunat[k] = { tip: r.tip, buc: 0, pretClient: r.pretClient };
+              adunat[k].buc += Number(r.buc) || 0;
+            });
+          });
+          const noua = montaj.facAnexaMontaj(montaj.randuri(Object.keys(adunat).map(function (k) { return adunat[k]; })), 'RON');
+          const echip = c.montaj && c.montaj.echipamente;
+          if (echip) {
+            noua.echipamente = echip;
+            noua.totalUnicLei = Math.round((noua.totalClient + (Number(echip.totalLei) || 0)) * 100) / 100;
+          }
+          await db.setContractMontaj(c.id, noua);
+          anexa = 'actualizata';
+        }
+      } catch (e) {}
     }
     auditReq(req, b.id ? 'update' : 'create', 'montaj', m.id, { company_id: id, total_client: s.totalClient });
-    res.json(Object.assign({}, m, { socoteala: s }));
+    res.json(Object.assign({}, m, { socoteala: s, anexa: anexa }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5089,17 +5217,35 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
 app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const [lista, fara] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract()]);
+    const [lista, fara, firme, curente, facturi] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract(),
+      db.getCompanies(), db.contractsByCompany(), db.facturiNeachitateToate().catch(function () { return {}; })]);
     const acum = Date.now();
+    // Firmele care au avut contract, s-a ÎNCHEIAT, dar intră în aplicație în continuare: lucrează
+    // fără act, exact ca una fără niciun contract — deci se văd lângă ele, nu doar la „Încheiate".
+    // „Intră" = aceeași socoteală ca registrul de clienți: nesuspendată de noi, nici pentru neplată,
+    // și cu abonamentul neexpirat.
+    const incheiateCuAcces = (firme || []).filter(function (co) {
+      const c = curente[co.id];
+      if (co.is_demo || !c || c.status !== 'incheiat' || co.suspended_at != null) return false;
+      if (neplata.stareNeplata(facturi[co.id] || [], acum).faza === 'suspendat') return false;
+      return companyAccessStatus(co).status !== 'expired';
+    }).map(function (co) { return { id: co.id, name: co.name, cui: co.cui }; });
     res.json({
       contracte: lista.map(function (c) {
         const firma = { is_demo: c.is_demo, cui: c.cui, address: c.address, legal_rep: c.legal_rep };
         return Object.assign({}, c, {
           dosar: contracte.stareDosar(firma, c, acum),
-          preaviz_pana: contracte.ultimaZiDePreaviz(c)
+          // Capătul de AZI: cu prelungirile semnate și, la cele care se reînnoiesc singure, termenul curent.
+          sfarsit: contracte.sfarsitCurent(c, acum),
+          preaviz_pana: contracte.ultimaZiDePreaviz(c, acum),
+          // Alarma de expirare, cu ACEEAȘI regulă ca notificarea zilnică (`deAnuntat`). Nu se citește
+          // din starea dosarului: acolo „dosar incomplet" (ex. lipsește scanul) ascundea expirarea, și
+          // un contract care se termina peste 40 de zile nu apărea nicăieri pe ecran (găsit 23.09).
+          alarma: contracte.deAnuntat(c, acum)
         });
       }),
-      fara_contract: fara
+      fara_contract: fara,
+      incheiate_cu_acces: incheiateCuAcces
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5110,27 +5256,35 @@ app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id);
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const [curent, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]);
+    const acum = Date.now();
     res.json({
       company: co,
       contract: curent,
       istoric: istoric,
-      dosar: contracte.stareDosar(co, curent, Date.now()),
-      preaviz_pana: contracte.ultimaZiDePreaviz(curent),
+      dosar: contracte.stareDosar(co, curent, acum),
+      sfarsit: contracte.sfarsitCurent(curent, acum),
+      preaviz_pana: contracte.ultimaZiDePreaviz(curent, acum),
       numar_propus: curent ? null : await db.nextContractNumber()
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Ce s-a vândut într-o ofertă se aprinde pe firmă: RA Insight + cota de întrebări, cu prețul peste
-// cotă negociat acolo. UN SINGUR loc, chemat din „client nou din ofertă" la semnarea contractului —
-// ca să nu existe două liste care se desincronizează.
+// Ce s-a vândut într-o ofertă se aprinde pe firmă: RA Insight + cota de întrebări, plus PREȚUL DE
+// FACTURARE (preț pe mașină, după fel). UN SINGUR loc, chemat când contractul se face din ofertă
+// („client nou din ofertă") — ca să nu existe două liste care se desincronizează.
+//
+// ⚠ Contractul se face din ofertă ca CIORNĂ, deci RA Insight se aprinde de la ciornă, nu de la
+// semnare: clientul îl poate încerca de cum primește contul. Se facturează abia după, pe conturi.
 //
 // ⚠ Tahograful și e-Transportul NU se aprind singure, chiar dacă sunt vândute în ofertă. Decizia e
 // veche și rămâne bună: partea lor de „descărcare la distanță" încă întoarce date demonstrative, iar
 // e-Transportul n-are token propriu pe companie (vezi E.1 din lista de dinainte de lansare). Un
 // client care plătește nu trebuie să dea peste date fabricate crezând că sunt reale. Se pornesc de
 // mână, deliberat, când sunt gata — de aceea le și întoarcem, ca să fie spuse omului.
-async function _aplicaOfertaPeFirma(companyId, oferta) {
+// `dinOferta` = socoteala ofertei, făcută în pagină cu ACEEAȘI funcție care a făcut oferta
+// (`_ofCalc`): prețul unei mașini de fiecare fel, cu modulele incluse. Nu se refac regulile aici —
+// ar fi a doua scriere a lor, care se desparte de prima la prima schimbare de preț.
+async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
   const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
   const deAprinsManual = [];
   if (cfg.tahograf) deAprinsManual.push('tahograf');
@@ -5145,9 +5299,37 @@ async function _aplicaOfertaPeFirma(companyId, oferta) {
     // La epuizare se oprește și se propune un cont în plus. Nu există cost suplimentar.
     patch.ai_quota = n > 0 ? { questionsPerSeat: n, seatPriceRON: seatPrice } : null;
   }
-  if (!Object.keys(patch).length) return { patch: null, deAprinsManual };
-  await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
-  return { patch, deAprinsManual };
+  // Prețul de facturare. Până pe 23.09 nu se scria: firma deschisă din ofertă avea 0 lei în
+  // „Abonament & plăți", iar prețul se tasta a doua oară, de mână (exact ce promitea că nu mai faci).
+  // Se scrie DOAR dacă firma n-are deja un preț — unul negociat separat nu se calcă.
+  let pretScris = null;
+  const u = dinOferta && dinOferta.unitati;
+  const lei = function (v) { const x = Number(v); return (v != null && v !== '' && Number.isFinite(x) && x >= 0) ? Math.round(x * 100) / 100 : null; };
+  if (u && lei(u.plain) != null) {
+    const co = await db.getCompanyById(companyId);
+    if (co && plans && !plans.ofertaFirmei(co)) {
+      pretScris = {
+        name: String(oferta.name || 'Ofertă').slice(0, 60),
+        priceNoneRON: lei(u.plain), priceCanRON: lei(u.can), priceFmsRON: lei(u.fms), canImeis: null,
+        basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null, aiAssistantRON: null, aiAgentsRON: null,
+        pricePerVehicleRON: null, flatPriceRON: null, vehicleLimit: null,
+        note: ('Din oferta #' + oferta.id + (oferta.name ? ' — ' + oferta.name : '')).slice(0, 300)
+      };
+      await db.setCompanyOferta(companyId, pretScris);
+    }
+  }
+  if (Object.keys(patch).length) await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
+  return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris };
+}
+// Rândurile de preț lunar ale ofertei, pentru anexa contractului: mașinile (pe feluri) și serviciile
+// (RA Insight, păstrarea datelor, agenții incluși). Vin din pagină, socotite de `_ofCalc`; aici doar
+// se verifică să se adune la suma pe care a acceptat-o clientul. Dacă nu se adună (o ofertă foarte
+// veche, socotită după alte reguli), NU le folosim: rămâne suma acceptată, nu una recalculată azi.
+function _randuriLunareDinOferta(oferta, dinOferta) {
+  if (!dinOferta || !Array.isArray(dinOferta.vehicule) || !Array.isArray(dinOferta.servicii)) return null;
+  const suma = dinOferta.vehicule.concat(dinOferta.servicii).reduce(function (s, r) { return s + (Number(r && r.total) || 0); }, 0);
+  if (Math.abs(suma - (Number(oferta.monthly_total) || 0)) > 0.02) return null;
+  return { vehiculeOferta: dinOferta.vehicule, servicii: dinOferta.servicii };
 }
 app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -5156,9 +5338,21 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     if (co.is_demo) return res.status(400).json({ error: 'Compania demo nu are contract.' });
     const date = _contractDinCerere(req.body || {});
+    // Un contract NOU se naște în lucru (sau direct semnat, pentru un act deja semnat pe hârtie) —
+    // niciodată „încheiat".
+    if (date.status === 'incheiat') return res.status(400).json({ error: 'Un contract nou nu se poate naște încheiat.' });
+    // Unul singur deodată: cât firma are un contract în lucru sau în vigoare, al doilea ar fi o dublură.
+    // Prelungirea se face prin act adițional („Reînnoiește"), iar un contract nou după ce primul s-a încheiat.
+    const curent = await db.getCompanyContract(id);
+    if (curent && curent.status !== 'incheiat') {
+      return res.status(409).json({ error: curent.status === 'activ'
+        ? 'Firma are deja un contract în vigoare (' + (curent.number || 'fără număr') + '). Pentru prelungire folosește „Reînnoiește"; pentru alte schimbări, un act adițional.'
+        : 'Firma are deja un contract în lucru (' + (curent.number || 'fără număr') + ').' });
+    }
     if (!date.number) date.number = await db.nextContractNumber();
     date.company_id = id;
     date.created_by = req.user ? req.user.id : null;
+    const dinOferta = (req.body && req.body.din_oferta && typeof req.body.din_oferta === 'object') ? req.body.din_oferta : null;
     // Din ofertă direct în contract: prețul convenit intră în anexă fără să-l mai scrie nimeni a
     // doua oară. Aparatele NU vin din ofertă (acolo sunt doar numere: „10 vehicule, din care 3 cu
     // CAN"), ci se bifează în fila „Contract" după ce aparatele adevărate sunt adoptate.
@@ -5169,8 +5363,12 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
       if (oferta && !date.annex) {
         const _cfgOf = (oferta.config && oferta.config.cfg) || {};
         const _prOf = (oferta.config && oferta.config.prices) || {};
+        const rl = _randuriLunareDinOferta(oferta, dinOferta);
         date.annex = contracte.facAnexa([], {
           monthlyTotal: Number(oferta.monthly_total) || 0, currency: oferta.currency || 'RON',
+          // Din ce se face suma lunară, rând cu rând — ca hârtia s-o poată spune și ca bifarea
+          // aparatelor să nu mai taie RA Insight și păstrarea datelor din preț.
+          vehiculeOferta: rl ? rl.vehiculeOferta : null, servicii: rl ? rl.servicii : null,
           // Prețul unui cont de RA Insight ajunge în contract, ca regula să fie semnată, nu presupusă.
           aiSeatPriceRON: _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
           aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0
@@ -5187,12 +5385,17 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     const c = await db.createContract(date);
     if (oferta) {
       try { await db.legOferta(oferta.id, { company_id: id, contract_id: c.id }); } catch (e) {}
+      // Oferta care a devenit contract e o ofertă CÂȘTIGATĂ. Până pe 23.09 rămânea „trimisă" și, după
+      // 30 de zile, „expirată" — deși era client: pâlnia număra un câștig drept pierdere. Data o
+      // scrie serverul (`decided_at`), ca la orice decizie.
+      if (oferta.status !== 'acceptata') { try { await db.setOfferStatus(oferta.id, 'acceptata', {}); } catch (e) {} }
       // CE S-A VÂNDUT SE ȘI ACTIVEAZĂ. Până acum, un client deschis din ofertă primea contractul cu
       // prețul corect, dar în fișa firmei nu se scria NIMIC: modulele rămâneau stinse, iar cota RA
       // Insight lipsea — adică „fără cotă", adică NELIMITAT. Vindeai 50 de întrebări pe lună și
       // livrai nelimitat, în tăcere. Acum oferta acceptată aprinde exact ce scrie în ea.
       try {
-        const ap = await _aplicaOfertaPeFirma(id, oferta);
+        const ap = await _aplicaOfertaPeFirma(id, oferta, dinOferta);
+        if (ap && ap.pretScris) auditReq(req, 'update', 'oferta', id, { din_oferta: oferta.id, pret: ap.pretScris.priceNoneRON });
         // Modulele vândute care NU se pot aprinde singure: nu tăcem, punem o notificare pentru noi.
         if (ap && ap.deAprinsManual.length) {
           const et = { tahograf: 'Tahograf', etransport: 'e-Transport' };
@@ -5200,7 +5403,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
             type: 'module_de_pornit', severity: 'warning', companyId: null, userId: null,
             title: 'De pornit manual: ' + ap.deAprinsManual.map(k => et[k] || k).join(' și '),
             body: 'Contractul firmei „' + co.name + '" include ' + ap.deAprinsManual.map(k => et[k] || k).join(' și ') +
-              '. Modulele nu se aprind singure (încă dau date demonstrative, iar e-Transportul are nevoie de tokenul ANAF al clientului). Pornește-le din fișa companiei când sunt gata.',
+              '. Modulele nu se aprind singure (tahograful încă dă date demonstrative la descărcarea la distanță, iar raportarea e-Transport la ANAF pe CUI-ul clientului e încă de confirmat). Pornește-le din fișa companiei când sunt gata.',
             data: { company_id: id, module: ap.deAprinsManual }
           }).catch(function () {});
         }
@@ -5214,19 +5417,99 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── începe „Contractul semnat se încuie" ─────────────────────────────────────────────────────────
+// Regula scrisă pe ecran de la început („Contractul semnat nu se mai schimbă") NU era apărată de
+// nimic (găsit 23.09, pe viu): anexa unui contract semnat se rescria fără act adițional, iar lista
+// „Unde e contractul" îl dădea înapoi la „în lucru" — de unde butonul „Șterge" îl făcea să dispară.
+// Acum drumul are un singur sens după semnare, iar ce s-a semnat nu se mai atinge.
+//   • nesemnat (în lucru / aprobat / trimis): se lucrează liber, înainte și înapoi; poate fi semnat;
+//   • semnat: rămâne semnat sau se încheie — atât;
+//   • încheiat: rămâne încheiat (o relație nouă = un contract nou).
+const _STARI_NESEMNAT = ['ciorna', 'aprobat', 'trimis'];
+function _trecereContract(din, spre) {
+  if (din === spre) return null;
+  if (din === 'incheiat') return 'Contractul e încheiat și rămâne așa. Pentru o relație nouă, fă un contract nou.';
+  if (din === 'activ') return spre === 'incheiat' ? null
+    : 'Contractul e semnat — nu se mai întoarce la „în lucru". Ce se schimbă se scrie într-un act adițional.';
+  if (spre === 'incheiat') return 'Un contract nesemnat nu se încheie. Dacă nu mai e de actualitate, șterge-l.';
+  return null;
+}
+// Ce mai are voie să se schimbe la un contract SEMNAT: data semnării (dacă a fost uitată la
+// semnare), notițele noastre și încheierea (cu motivul ei). Restul E actul semnat.
+function _campuriSchimbateDupaSemnare(vechi, b) {
+  const inainte = _contractDinCerere(vechi), dupa = _contractDinCerere(Object.assign({}, vechi, b));
+  const schimbate = ['number', 'start_at', 'months', 'auto_renew', 'notice_days', 'client_rep', 'our_rep'].filter(function (k) {
+    return JSON.stringify(inainte[k]) !== JSON.stringify(dupa[k]);
+  });
+  if (inainte.gdpr.kind !== dupa.gdpr.kind) schimbate.push('gdpr');
+  if (b.annex !== undefined) schimbate.push('annex');
+  if (b.montaj !== undefined) schimbate.push('montaj');
+  return schimbate;
+}
 app.put('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const vechi = await db.getContractById(id);
     if (!vechi) return res.status(404).json({ error: 'Contract inexistent' });
-    const date = _contractDinCerere(Object.assign({}, vechi, req.body || {}));
+    const b = Object.assign({}, req.body || {});
+    const stareNoua = CONTRACT_STARI.indexOf(b.status) >= 0 ? b.status : vechi.status;
+    const greseala = _trecereContract(vechi.status, stareNoua);
+    if (greseala) return res.status(400).json({ error: greseala });
+    if (vechi.status === 'activ' || vechi.status === 'incheiat') {
+      const schimbate = _campuriSchimbateDupaSemnare(vechi, b);
+      if (schimbate.length) {
+        return res.status(400).json({ campuri: schimbate,
+          error: 'Contractul e semnat și nu se mai schimbă. Mașini noi, alt preț sau o prelungire se fac printr-un act adițional.' });
+      }
+    }
+    // „Salvează anexa" trimite doar aparatele. Serviciile lunare (RA Insight, păstrarea datelor) și
+    // regula RA Insight rămân din anexa de dinainte — până pe 23.09 fiecare salvare le ștergea.
+    if (b.annex && typeof b.annex === 'object') b.annex = Object.assign({}, contracte.dinAnexaDePastrat(vechi.annex), b.annex);
+    const date = _contractDinCerere(Object.assign({}, vechi, b));
+    date.status = stareNoua;
     // „Încheiat" fără dată de încetare n-are sens — pune ziua de azi, ca să nu rămână o gaură în act.
     if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
     if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
     const c = await db.updateContract(id, date);
-    if (date.client_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [vechi.company_id, JSON.stringify(date.client_rep)]); } catch (e) {} }
-    auditReq(req, 'update', 'contract', id, { status: date.status, number: date.number });
+    if (date.client_rep && _STARI_NESEMNAT.indexOf(vechi.status) >= 0) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [vechi.company_id, JSON.stringify(date.client_rep)]); } catch (e) {} }
+    auditReq(req, 'update', 'contract', id, { status: date.status, number: date.number, din: vechi.status });
     res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ── sfârșit „Contractul semnat se încuie" ──
+
+// ─── Reînnoirea: prelungirea unui contract care se apropie de capăt ─────────────────────────────
+// Contractul semnat scrie singur cum se continuă: „Contractul nu se prelungește automat. Continuarea
+// relației după împlinirea termenului se face prin act adițional scris." Butonul „Reînnoiește" face
+// exact actul ăsta, cu textul și datele puse, ca ciornă. De acolo merge pe drumul oricărui act
+// (aprobat → trimis → semnat). Capătul contractului se mută abia când actul e SEMNAT — până atunci
+// alarma rămâne aprinsă, fiindcă o prelungire nesemnată nu prelungește nimic.
+app.post('/api/contracts/:id/reinnoire', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    if (c.status !== 'activ') return res.status(400).json({ error: 'Se reînnoiește doar un contract semnat și în vigoare.' });
+    const capat = contracte.sfarsitContract(c);
+    if (!capat) return res.status(400).json({ error: 'Contractul e pe durată nedeterminată — n-are un capăt de mutat.' });
+    const luni = Math.max(1, Math.min(120, parseInt(req.body && req.body.luni, 10) || Number(c.months) || 12));
+    const acte = await db.listActe(id);
+    const inLucru = acte.filter(function (a) { return a.status !== 'activ' && Number(a.luni_noi) > 0; }).pop();
+    if (inLucru) {
+      return res.status(409).json({ act: inLucru,
+        error: 'Există deja o prelungire în lucru (' + (inLucru.number || ('A' + inLucru.nr_ordine)) + '). Du-o până la semnare sau șterge-o.' });
+    }
+    const panaLa = contracte.sfarsitContract(Object.assign({}, c, { luni_prelungite: (Number(c.luni_prelungite) || 0) + luni }));
+    const zi = function (ms) { return new Date(ms).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
+    const nr = await db.urmatorulNrAct(id);
+    const a = await db.upsertAct({
+      contract_id: id, company_id: c.company_id, nr_ordine: nr, number: (c.number || 'contract') + '/A' + nr,
+      status: 'ciorna', start_at: capat, luni_noi: luni,
+      obiect: 'Se prelungește durata contractului cu ' + contracte.numar(luni, 'lună', 'luni') + ', de la ' + zi(capat) +
+        ' până la ' + zi(panaLa) + '. Prețurile și celelalte clauze ale contractului și ale anexelor sale rămân neschimbate.',
+      created_by: req.auth && req.auth.userId
+    });
+    auditReq(req, 'create', 'act_aditional', a.id, { contract_id: id, number: a.number, prelungire_luni: luni });
+    res.json({ act: a, de_la: capat, pana_la: panaLa });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -5272,7 +5555,7 @@ app.get('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req, r
     if (!f || !f.b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
     const buf = Buffer.from(f.b64, 'base64');
     res.setHeader('Content-Type', f.mime || 'application/octet-stream');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(f.name || 'act') + '"');
+    res.setHeader('Content-Disposition', _antetDescarcare(f.name || 'act'));
     res.send(buf);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5298,7 +5581,7 @@ app.get('/api/contracts/:id/pdf', requireAuth, requireSuperadmin, async (req, re
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const emitent = ((await getSystemSettings()).invoice_issuer) || {};
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(contractPdf.numeFisier(c, co)) + '"');
+    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(c, co)));
     const doc = contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent });
     doc.pipe(res);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -12035,6 +12318,12 @@ async function _companyBillCounts(company) {
   return { none, can, fms, raInsight };
 }
 // Construiește liniile de factură din motorul de preț (plans.computeCompanyPrice → breakdown) + TVA per linie.
+//
+// ⚠ Numele modelelor (`oferta`, `trepte`, `fix`) sunt cele pe care le dă plans.js. Pe 15.09, la
+// scoaterea planurilor, motorul le-a redenumit (erau direct / tiered / flat) și factura a rămas să
+// le caute pe cele vechi: cădea mereu pe ultima ramură, care punea pe factură DOAR mașinile fără
+// CAN. 2 fără CAN + 3 cu CAN ieșeau 58 de lei în loc de 193. verify_factura.js leagă acum lista
+// de aici de numele din plans.js și compară factura cu registrul pe mai multe flote.
 function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   const p = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : { model: 'preset', monthlyTotal: 0, breakdown: { counts: billCounts } };
   const bd = p.breakdown || {}; const cnt = bd.counts || billCounts || {};
@@ -12047,15 +12336,15 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
     const vat = Math.round(total * vr) / 100;
     lines.push({ desc, qty: q, unitPrice: unit, vatRate: vr, net: total, vat, gross: Math.round((total + vat) * 100) / 100 });
   };
-  if (p.model === 'direct') {
+  if (p.model === 'oferta') {
     add('Abonament monitorizare GPS (fără CAN)', cnt.none, bd.base);
     add('Abonament monitorizare GPS cu CAN', cnt.can, bd.canAddon);
     add('Abonament monitorizare GPS + FMS/tahograf', cnt.fms, bd.fmsAddon);
-  } else if (p.model === 'tiered') {
+  } else if (p.model === 'trepte') {
     add('Abonament monitorizare GPS — bază/vehicul', cnt.total, bd.base);
     add('Supliment CAN', cnt.can, bd.canAddon);
     add('Supliment FMS/tahograf', cnt.fms, bd.fmsAddon);
-  } else if (p.model === 'flat') {
+  } else if (p.model === 'fix') {
     add('Abonament monitorizare flotă GPS', 1, bd.base);
   } else {
     add('Abonament monitorizare GPS', cnt.total, bd.base);

@@ -97,6 +97,91 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
+### AMÂNDOI · Contracte: se reînnoiesc dintr-un buton, cel semnat nu se mai atinge, prețul nu se mai pierde pe drum
+
+Alin: *„în contracte trebuie să avem și buton de reînnoire pentru cele existente, cu alarmă când sunt
+aproape de expirare, + buton de previzualizare contract și buton de descărcare, + ce ai propus de
+reparat tu."*
+
+**Ce e nou în ecranul Contracte**
+
+- **Alarma.** Sus, o bandă portocalie: *„Un contract se apropie de capăt și nu se reînnoiește
+  singur"* — firma, ziua în care se termină, câte zile mai are și ultima zi de preaviz. Lângă fiecare,
+  butonul **„Reînnoiește"**. Folosește aceeași regulă ca notificarea zilnică (60 de zile înainte).
+- **„Reînnoiește"** întreabă cu câte luni prelungești și face **actul adițional de prelungire**, gata
+  scris: *„Se prelungește durata contractului cu 12 luni, de la 02.11.2026 până la 02.11.2027. Prețurile
+  și celelalte clauze rămân neschimbate."* E exact ce spune contractul semnat: continuarea se face prin
+  act adițional. Actul merge apoi pe drumul lui (aprobă → trimis → semnat), cu câte un buton. **Când
+  actul e semnat, contractul ține până la noua dată și alarma se stinge singură.**
+- **„Vezi" și „Descarcă"** pe fiecare rând. „Vezi" deschide contractul într-o fereastră, fără să-l
+  descarce; „Descarcă" îl salvează. La fel și la actele adiționale, în fișa firmei.
+- Banda roșie arată acum și firmele cu contractul **încheiat** care intră în continuare în aplicație:
+  lucrează fără contract, exact ca cele care n-au avut niciodată.
+
+**Ce era stricat și e reparat** (fiecare găsit pe viu, cu o firmă de probă)
+
+1. **Durata din ofertă nu ajungea în contract.** Ofertă pe 24 de luni → contract pe 12. N-a mers
+   niciodată: se citea un câmp cu alt nume.
+2. **Prețul de facturare nu venea din ofertă.** Firma deschisă din ofertă avea 0 lei în „Abonament &
+   plăți". Acum prețul pe mașină (29 fără CAN, 45 cu CAN…) se scrie singur pe firmă.
+3. **Contractul pierdea bani la bifarea aparatelor**: 271 → 193 de lei. Plecau RA Insight și păstrarea
+   datelor, și de pe hârtie. Acum anexa are două părți, mașinile și **serviciile lunare**, amândouă
+   semnate. Totalul rămâne 271.
+4. **Un contract SEMNAT se putea schimba și șterge.** Anexa se rescria fără act adițional, iar lista
+   de stări îl dădea înapoi la „în lucru", de unde butonul „Șterge" îl făcea să dispară. Acum, odată
+   semnat, contractul se arată doar de citit. Mașini noi, alt preț sau o prelungire se fac prin act
+   adițional. La fel pentru actul adițional semnat.
+5. **Hârtia trimitea la anexa greșită**: scria „acordul GDPR e Anexa nr. 2", deși, cu montaj, acordul
+   era tipărit ca Anexa nr. 3. Tot pe hârtie: *„planul contractat"* a devenit *„incluse în abonament"*,
+   RA Insight nelimitat nu mai apare ca „50 de întrebări", iar „24 luni" se scrie „24 de luni".
+6. **O lucrare de montaj ștergea aparatele vândute din Anexa nr. 2** și putea rescrie anexa unui
+   contract semnat. Acum nu atinge un contract semnat, iar la unul nesemnat adună toate lucrările, nu
+   doar ultima.
+7. **Oferta care devenise client rămânea „trimisă"**, apoi „expirată". Acum trece singură pe „acceptată".
+8. **La un contract care se reînnoiește singur, în anul doi**, ecranul arăta ca „ultimă zi de preaviz"
+   o dată de anul trecut. Acum arată termenul de acum și următoarea zi de preaviz care se mai poate prinde.
+9. **„Fără contract" însemna două lucruri**: în Companii, „lipsește ceva din dosar". O firmă cu contract
+   semnat căreia îi lipsea doar scanul apărea „fără contract". Acum înseamnă același lucru peste tot.
+10. **La o lucrare de montaj nouă, prețul pentru client nu se mai propunea** (casete goale). Acum se ia
+    din anexa contractului, apoi din tarifele noastre.
+
+**Nou în fișa firmei:** un chenar *„Contractul și factura spun același lucru / nu spun"*, care pune
+contractul lângă factura lunii, pe bucăți: mașinile, RA Insight și ce e în contract dar nu ajunge pe
+factură. De exemplu: *„Păstrare date 24 de luni (50 de lei) e în contract, dar nu ajunge pe factură"*.
+
+**Probe:** 58 din 58 pe aplicația pornită, capăt la capăt (ofertă făcută în calculator → client nou →
+contract → aparate → factură → semnare → reînnoire → încheiere). `verify_contracte.js` a crescut de la
+193 la **285 de verificări**, inclusiv pe server pornit. Am stricat dinadins 10 reguli; toate au fost prinse.
+Butoanele au contrastul măsurat pe ambele teme. Butonul verde din ferestrele de confirmare avea text
+alb pe verde (contrast 1,7); acum are text închis (9,9), ca restul butoanelor.
+
+- **Ce am schimbat:** reînnoire dintr-un buton + alarmă, Vezi/Descarcă, contractul semnat încuiat,
+  prețul care trece singur din ofertă în contract și pe firmă, hârtia contractului, comparația cu factura.
+- **Ce vede fondatorul:** ecranul Contracte cu alarmă și butoane; o fișă de contract care spune ce
+  urmează, se încuie la semnare și arată dacă factura se potrivește cu contractul.
+- **Ce vede clientul:** în aplicație, nimic. **Pe hârtie**, contractul și actele pe care le semnează:
+  trimit la anexa corectă, arată pe rânduri ce plătește lunar și nu mai conțin cuvântul „plan".
+
+### AMÂNDOI · Factura lunară punea pe factură doar mașinile FĂRĂ CAN
+
+**Găsit urmărind banii de la ofertă la factură.** 2 mașini fără CAN × 29 + 3 cu CAN × 45 + 2 conturi RA
+Insight × 14 fac **221 de lei** pe lună. Factura ieșea **86**: mașinile cu CAN lipseau cu totul.
+
+**De ce:** pe 15.09, când am scos planurile, calculul prețului și-a schimbat trei nume („direct" a
+devenit „oferta"…), iar factura le căuta în continuare pe cele vechi. Greșeala a fost a mea, din acea
+modificare. Nicio probă nu verifica factura, iar registrul de clienți socotea corect, deci niciun ecran
+nu arăta diferența.
+
+**Nu s-a emis nicio factură între timp** (Alin: *„nu am facturat niciodată"*), deci nu e nimic de
+stornat. Acum factura și registrul dau aceeași sumă. O probă nouă, `verify_factura.js` (32 de
+verificări, în `npm test`), le compară pe 12 feluri de flote și citește numele direct din calculul
+prețului: dacă se mai redenumesc vreodată, pică pe loc. Tot acolo s-a găsit o dublură: suma fixă
+veche „Asistent AI" era numărată în registru și când firma plătea RA Insight pe cont. Reparat.
+
+- **Ce am schimbat:** factura citește numele corecte; registrul și factura socotesc la fel.
+- **Ce vede fondatorul:** ciorna facturii are abonamentul întreg, pe rânduri (fără CAN / cu CAN / FMS).
+- **Ce vede clientul:** factura corectă, când va începe facturarea.
+
 ### AMÂNDOI · RA Insight, verificat de la ofertă până la factură — și ce era stricat pe drum
 
 Alin: *„în Ofertare Live, în logica aplicației, e așa cum am modificat? Asigură-te că totul e ok și
@@ -8265,6 +8350,26 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **(voi) Ce se întâmplă cu datele după încetarea contractului.** Hârtia (acordul GDPR din
+  contract) promite: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem.
+  Aplicația ține istoricul unui aparat arhivat **2 ani**. Legea (GDPR, art. 28) ne cere să le ștergem
+  sau să le dăm înapoi. Nu ne obligă să le păstrăm; legea contabilității ne obligă doar la contract
+  și facturi (10 ani). Trebuie aduse la un singur răspuns: ori aplicația șterge după 30 de zile, ori
+  contractul spune 2 ani (și clientul o cere în scris). De confirmat cu un jurist. (23.09)
+
+- [ ] **(voi) Păstrarea datelor 24 / 36 de luni: se vinde, se semnează, dar nu se livrează.** Oferta o
+  vinde (+50 / +100 de lei pe lună), contractul o scrie acum pe rând, dar aplicația păstrează 6 luni
+  pentru toată lumea și nu o pune pe factură. Fișa firmei o arată ca „în contract, dar nu ajunge pe
+  factură". Ori o livrăm (păstrare pe firmă, cere lucru pe bază), ori o scoatem din ofertă. (23.09)
+
+- [ ] **(voi) Numele fișierului contractului.** Se descarcă „RA TRAKS-Contract RAT-C-… - Firma.pdf",
+  cum ai cerut pe 09.09. Între timp logo-ul a devenit „RA Tracks", iar ofertele și rapoartele se cheamă
+  „RA-Tracks - …". Îl aliniem? E o singură linie. (23.09)
+
+- [ ] **(voi) Contractele și firmele făcute ÎNAINTE de 23.09.** Au anexa veche (doar suma) și firma fără
+  preț de facturare, dacă au venit dintr-o ofertă. Chenarul „Contractul și factura" din fișa firmei le
+  arată pe fiecare. Prețul se completează din „Abonament & plăți", firmă cu firmă. (23.09)
 
 - [x] **REZOLVAT (21.09): logo-ul scrie „RA Tracks".** Fișierele `public/logo.png` și
   `public/logo-light.png` aveau în ele „RA | traks" și ajungeau pe fiecare raport, Excel, contract

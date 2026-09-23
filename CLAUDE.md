@@ -506,6 +506,84 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
   (cotă fixă pe firmă), rămâne respectată pentru contractele deja semnate. Fără nimic = nelimitat.
   Locul de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori**.
 
+## Contracte — dosarul juridic (reguli din 23.09)
+
+Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locul de lucru e fila
+**Contract** din fișa firmei. NU scrie un al doilea editor de contract — fiecare rând duce în fișă.
+
+### Drumul prețului: ofertă → contract → firmă → factură, fără retastare
+- „Client nou din ofertă" trimite odată cu contractul **socoteala ofertei**, făcută în pagină cu
+  ACEEAȘI funcție care a făcut oferta (`_coSocotealaOfertei` → `_ofCalc`, din ce s-a SALVAT):
+  `unitati` (prețul unei mașini de fiecare fel, cu modulele) + rândurile lunare. Serverul NU refăce
+  regulile ofertei — ar fi a doua scriere a lor.
+- `_aplicaOfertaPeFirma(companyId, oferta, dinOferta)` — **un singur apelant** (contractul din ofertă):
+  RA Insight + cota, și **prețul de facturare** (`custom_plan`), scris DOAR dacă firma n-are deja unul.
+  Până pe 23.09 firma din ofertă avea 0 lei în „Abonament & plăți".
+- Durata din ofertă stă în `cfg.contractMonths` (NU `cfg.contract`, care n-a existat niciodată).
+- Oferta devenită contract trece singură pe **„acceptată"** (`decided_at` scris de server).
+
+### Anexa nr. 1 are DOUĂ părți, amândouă semnate
+`annex = { vehicles, vehiculeOferta, servicii, monthlyTotal, aiSeatPriceRON, aiQuestionsPerSeat }`
+(`contracts.js` → `facAnexa`).
+- `vehicles` = aparatele bifate; cât lista e goală, ține loc `vehiculeOferta` (câte mașini de fiecare fel).
+- `servicii` = ce se plătește lunar fără să țină de o mașină: RA Insight, păstrarea datelor, agenții
+  (incluși, 0 lei). Fiecare rând are `fel` (`ai` / `ret` / `agenti` / `plain` / `can` / `fms`).
+- **Totalul se socotește din rânduri.** „Salvează anexa" trimite doar aparatele; serverul păstrează
+  restul (`dinAnexaDePastrat`). Până pe 23.09 totalul cădea de la 271 la 193 de lei la prima bifare.
+- `aiQuestionsPerSeat: 0` = **nelimitat** (ca pe firmă). NU pune `|| 50` de rezervă.
+- Rândurile din ofertă se folosesc doar dacă se adună la suma acceptată (`_randuriLunareDinOferta`).
+
+### Contractul SEMNAT se încuie (și actul adițional semnat)
+- Drumul: nesemnat (în lucru ⇄ aprobat ⇄ trimis) → semnat → încheiat. **Semnat nu se mai întoarce**,
+  **încheiat rămâne încheiat**, un nesemnat nu se „încheie" (se șterge). `_trecereContract` pe server.
+- După semnare se mai poate schimba DOAR: data semnării, notițele, încheierea cu motivul ei
+  (`_campuriSchimbateDupaSemnare`). Orice altceva → 400, „act adițional".
+- Semnarea și încheierea se fac din butonul mare, care întreabă; lista „Unde e contractul" are doar
+  pașii nesemnați. Fila arată un contract semnat **de citit**, fără formular.
+- Acte adiționale DOAR la un contract `activ`. Un act semnat nu se rescrie și nu se șterge.
+- Un singur contract deodată (409); după unul încheiat se face unul NOU (butonul e în fișă).
+- Ștergerea unei ciorne dezleagă oferta și lucrările de montaj (`deleteContract`).
+
+### Anexa nr. 2 (montaj + echipamente) și lucrările
+- Lucrarea de montaj scrie în anexă DOAR cât contractul e nesemnat, din **toate** lucrările lui adunate
+  (nu din ultima), și **păstrează echipamentele**. La un contract semnat nu atinge anexa.
+- Prețul pentru client la o lucrare nouă se propune din anexă, apoi din tarifele casei (`_ofTarifeDeBaza`).
+
+### Capătul contractului, reînnoirea, alarma
+- Capătul adevărat = start + luni + **lunile din actele SEMNATE** (`luni_prelungite`, din bază) —
+  `sfarsitContract`. La cele care se reînnoiesc singure, termenul CURENT (`sfarsitCurent`), iar
+  preavizul arătat e mereu unul care se mai poate prinde (`ultimaZiDePreaviz`).
+- **„Reînnoiește"** (`POST /api/contracts/:id/reinnoire`) face actul adițional de prelungire, ca
+  ciornă, cu textul și datele puse de server. Capătul se mută abia când actul e SEMNAT. A doua
+  apăsare cât unul e în lucru → 409. Contractul pe hârtie o spune singur: „continuarea … prin act adițional".
+- **Alarma** din ecran (banda portocalie + filtrul „Expiră curând") folosește `deAnuntat` — aceeași
+  regulă ca notificarea zilnică — NU starea dosarului („dosar incomplet" ascundea expirarea).
+- Banda roșie: firme fără niciun contract + firme cu contract **încheiat** care încă intră în aplicație.
+  „Fără contract" din Companii înseamnă același lucru (`_coEsteFaraContract`).
+
+### Hârtia
+- Numărul anexei GDPR (`nrGdpr`: 3 cu montaj, 2 fără) e folosit și în TEXTUL contractului (VI, VII).
+- Fără cuvântul „plan"; numerele cu „de" prin `contracts.numar` („24 de luni", „100 de întrebări").
+- „Vezi" / „Descarcă": `raxHartie(url, previzualizare, ce)` — o singură cerere, fereastra
+  `_ofArataHartia`, numele din antet (`_numeDinAntet`). Antetul îl scrie `_antetDescarcare`
+  (ASCII + `filename*` UTF-8). Numele rămâne „RA TRAKS-Contract …" (cerut de Alin pe 09.09) până
+  hotărăște altfel.
+- ⚠ În cutia de probe Chromium salvează „download" în loc de un nume cu diacritice: cutia n-are
+  limba UTF-8. Pornește browserul cu `LANG=C.UTF-8`. Nu e o problemă a aplicației.
+
+### Contract ↔ factură
+Fila Contract pune **pe bucăți** contractul lângă factura lunii, calculată cu `buildInvoiceLines`
+(nu cu o copie): mașinile, RA Insight (se facturează după conturile folosite — deci nu se compară
+totalul), și ce e în contract dar nu ajunge pe factură (`nefacturate`, ex. păstrarea datelor).
+
+### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
+- **Datele după încetare:** hârtia (Anexa GDPR) promite ștergere după 30 de zile; aplicația ține
+  istoricul arhivat 2 ani. Legea (GDPR art. 28) cere ștergere/returnare, fără obligație de păstrare.
+- **Păstrarea datelor 24/36 de luni** se vinde și se semnează, dar aplicația ține 6 luni pentru toți
+  și nu o facturează. Ori se livrează (retenție pe firmă), ori nu se mai vinde.
+- Numele fișierului contractului („RA TRAKS-Contract" vs „RA-Tracks - Contract").
+- Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`.
+
 ## RA Tracks NU funcționează pe planuri (regulă de fond)
 
 **Nu există pachete de-a gata și nu vor exista.** Fiecare client primește o **ofertă** făcută pe ce
@@ -523,6 +601,11 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
   al unui vehicul — altă noțiune, rămâne.
 - Păzit de `verify_fara_planuri.js` (în `npm test`): dacă reapare un tabel de planuri, o valoare
   implicită luată din plan, Stripe, sau eticheta „Plan" pe ecran — proba pică.
+- ⚠ **Factura citește NUMELE modelelor din `plans.js`** (`oferta` / `trepte` / `fix`). Pe 15.09 au
+  fost redenumite (din direct / tiered / flat), factura a rămas pe cele vechi și 8 zile a pus pe
+  factură DOAR mașinile fără CAN (221 de lei → 86). Nu s-a emis nicio factură între timp. Registrul
+  și factura trebuie să dea aceeași sumă: păzit de `verify_factura.js`, care citește numele din
+  plans.js și compară factura cu registrul pe 12 feluri de flote.
 
 ## Parola nu există (regulă de fond)
 

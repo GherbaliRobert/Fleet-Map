@@ -148,24 +148,68 @@ function _tabelAnexa(doc, anexa) {
     doc.x = left;
     doc.y = y + h + 4;
   }
-  rand(cap, true);
   const veh = (anexa && anexa.vehicles) || [];
-  if (!veh.length) {
+  const vehOferta = (anexa && anexa.vehiculeOferta) || [];
+  const servicii = (anexa && anexa.servicii) || [];
+  const moneda = (anexa && anexa.currency) || 'RON';
+  if (veh.length) {
+    rand(cap, true);
+    veh.forEach(function (v) {
+      rand([v.name || v.imei, v.plate,
+        { t: v.gpsModel || 'model necompletat', sub: 'IMEI ' + v.imei },
+        v.can ? 'DA' : 'nu',
+        v.monthlyRON == null ? '—' : _bani(v.monthlyRON, moneda)]);
+    });
+  } else if (vehOferta.length) {
+    // Aparatele nu sunt încă adoptate: hârtia spune câte mașini de fiecare fel și la ce preț, cum
+    // s-a convenit în ofertă. Lista cu IMEI-uri vine la bifarea aparatelor.
+    _tabelLunar(doc, 'Vehicule monitorizate', vehOferta, moneda);
+    doc.font('Nunito').fontSize(8).fillColor(GRI)
+      .text('Aparatele (model și IMEI) se trec în anexă după montaj; prețul pe vehicul rămâne cel de mai sus.', left, doc.y, { width: w });
+    doc.x = left; doc.y += 6;
+  } else {
+    rand(cap, true);
     doc.x = left;
     _p(doc, 'Nu au fost trecute aparate în anexă la momentul generării. Anexa se completează în aplicație, la fila „Contract" a firmei, după ce aparatele sunt adoptate.');
-    return;
   }
-  const moneda = (anexa && anexa.currency) || 'RON';
-  veh.forEach(function (v) {
-    rand([v.name || v.imei, v.plate,
-      { t: v.gpsModel || 'model necompletat', sub: 'IMEI ' + v.imei },
-      v.can ? 'DA' : 'nu',
-      v.monthlyRON == null ? '—' : _bani(v.monthlyRON, moneda)]);
-  });
+  // Ce se plătește lunar fără să țină de o mașină: conturile RA Insight, păstrarea datelor, agenții
+  // (incluși). Până pe 23.09 nu apăreau deloc: totalul le cuprindea, dar hârtia nu spunea pentru ce.
+  if (servicii.length) _tabelLunar(doc, 'Servicii lunare', servicii, moneda);
+  if (!veh.length && !vehOferta.length && !servicii.length && !(anexa && Number(anexa.monthlyTotal) > 0)) return;
   doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU)
     .text('Total abonament lunar: ' + _bani(anexa.monthlyTotal, moneda) + ' (fără TVA)', left, doc.y + 4, { width: w, align: 'right' });
   doc.x = left;
   doc.y += 10;
+}
+// Un tabel de rânduri lunare (nume · cantitate · preț · total). Aceleași reguli ca restul: fiecare
+// scriere își dă poziția, textul se taie măsurat.
+function _tabelLunar(doc, titlu, randuri, moneda) {
+  const { left, w } = _ST(doc);
+  const col = [w * 0.52, w * 0.12, w * 0.18, w * 0.18];
+  function rand(valori, gros, sub) {
+    const h = sub ? 28 : 18;
+    _incape(doc, h + 16);
+    const y = doc.y;
+    let x = left;
+    valori.forEach(function (v, i) {
+      doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+      doc.text(_taie(doc, v, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: i === 0 ? 'left' : 'right' });
+      x += col[i];
+    });
+    if (sub) {
+      doc.font('Nunito').fontSize(7.5).fillColor(GRI)
+        .text(_taie(doc, sub, col[0] - 8), left + 4, y + 15, { width: col[0] - 8, lineBreak: false });
+    }
+    doc.moveTo(left, y + h).lineTo(left + w, y + h).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left; doc.y = y + h + 4;
+  }
+  rand([titlu, 'Cantitate', 'Preț unitar', 'Total / lună'], true);
+  randuri.forEach(function (r) {
+    rand([r.nume, String(r.cant == null ? 1 : r.cant),
+      r.inclus ? 'inclus' : (r.pret == null ? '—' : _bani(r.pret, moneda)),
+      r.inclus ? 'inclus' : _bani(r.total, moneda)], false, r.detaliu || null);
+  });
+  doc.x = left; doc.y += 4;
 }
 // Tabelul montajului. Aceleași reguli ca la Anexa 1: fiecare scriere își dă poziția, textul se
 // taie măsurat. Patru coloane, fiindcă aici nu e nimic de justificat cu CAN — e o lucrare și un preț.
@@ -261,6 +305,14 @@ function scrieContract(doc, date) {
   const clientRep = contract.client_rep || firma.legal_rep || {};
   const ourRep = contract.our_rep || {};
   const gdprAnexa = !(contract.gdpr && contract.gdpr.kind === 'separat');
+  // Anexa nr. 2 e montajul (costurile unice), dacă există; atunci acordul GDPR e Anexa nr. 3. Textul
+  // contractului trimite la acord prin numărul ĂSTA — până pe 23.09 scria mereu „Anexa nr. 2", deși,
+  // cu montaj, acordul se tipărea ca Anexa nr. 3: un act semnat care trimitea la anexa greșită.
+  const mont = contract.montaj;
+  const echip = mont && mont.echipamente;
+  const areEchip = !!(echip && (echip.items || []).length);
+  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));
+  const nrGdpr = areMontaj ? 3 : 2;
   const luni = contract.months;
   const sfarsit = contract.end_at || C.calcSfarsit(contract.start_at, luni);
   const preaviz = contract.notice_days == null ? 30 : contract.notice_days;
@@ -285,27 +337,34 @@ function scrieContract(doc, date) {
 
   _titlu(doc, 'II. OBIECTUL CONTRACTULUI');
   _p(doc, 'Prestatorul pune la dispoziția Beneficiarului serviciul de monitorizare prin GPS a vehiculelor acestuia, prin platforma RA Tracks, împreună cu funcțiile activate în contul Beneficiarului. Aparatele și vehiculele care fac obiectul contractului sunt cele din Anexa nr. 1, parte integrantă din prezentul contract.');
-  _p(doc, 'Serviciul cuprinde: colectarea și stocarea datelor de poziție transmise de aparate, afișarea lor în aplicație, rapoartele și alertele disponibile în planul contractat, precum și asistență tehnică pe durata contractului.');
+  _p(doc, 'Serviciul cuprinde: colectarea și stocarea datelor de poziție transmise de aparate, afișarea lor în aplicație, rapoartele și alertele incluse în abonament, precum și asistență tehnică pe durata contractului.');
 
   _titlu(doc, 'III. DURATA CONTRACTULUI');
   _p(doc, 'Contractul intră în vigoare la data de ' + _data(contract.start_at) +
-    (luni ? ' și se încheie pe o durată de ' + luni + ' luni, până la data de ' + _data(sfarsit) + '.'
+    (luni ? ' și se încheie pe o durată de ' + C.numar(luni, 'lună', 'luni') + ', până la data de ' + _data(sfarsit) + '.'
           : ' și se încheie pe durată nedeterminată.'));
   _p(doc, contract.auto_renew !== false
     ? 'La împlinirea termenului, contractul se prelungește automat pe perioade succesive egale, dacă niciuna dintre părți nu îl denunță în scris cu cel puțin ' + preaviz + ' de zile înainte de expirare.'
     : 'Contractul nu se prelungește automat. Continuarea relației după împlinirea termenului se face prin act adițional scris.');
 
   _titlu(doc, 'IV. PREȚUL ȘI MODALITATEA DE PLATĂ');
-  _p(doc, 'Prețul serviciilor este de ' + _bani(anexa.monthlyTotal, anexa.currency) + ' pe lună, fără TVA, conform Anexei nr. 1. ' +
+  const areServicii = (anexa.servicii || []).length > 0;
+  _p(doc, 'Prețul serviciilor este de ' + _bani(anexa.monthlyTotal, anexa.currency) + ' pe lună, fără TVA, conform Anexei nr. 1' +
+    (areServicii ? ', și cuprinde abonamentul vehiculelor și serviciile lunare enumerate acolo. ' : '. ') +
     (em.vat_payer === false ? 'Prestatorul nu este plătitor de TVA.' : 'La preț se adaugă TVA în cota legală de ' + cotaTva + '%.'));
   // RA Insight se vinde pe CONT, iar numărul de conturi îl schimbă clientul singur, din aplicație.
   // Fără clauza asta, factura din noiembrie ar putea fi alta decât cea din octombrie fără ca omul să
   // fi semnat nimic — și ar avea dreptate să întrebe de ce.
   if (Number(anexa.aiSeatPriceRON) > 0) {
+    const nIntrebari = Math.max(0, Math.round(Number(anexa.aiQuestionsPerSeat) || 0));
     _p(doc, 'Prețul unui cont de RA Insight este de ' + _bani(anexa.aiSeatPriceRON, anexa.currency) + ' pe lună, fără TVA. ' +
-      'Numărul de conturi se modifică oricând de către Beneficiar, din aplicație, iar factura urmează numărul de conturi active în luna respectivă. ' +
-      'Fiecare cont aduce ' + (Number(anexa.aiQuestionsPerSeat) || 50) + ' de întrebări pe lună, într-un fond comun al Beneficiarului; ' +
-      'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.');
+      'Numărul de conturi se modifică oricând de către Beneficiar, din aplicație, iar factura urmează numărul de conturi active în luna respectivă' +
+      (areServicii ? ' (numărul din Anexa nr. 1 e cel de la semnare). ' : '. ') +
+      // 0 = NELIMITAT, exact ca pe firmă. Înainte un 0 se scria „50 de întrebări".
+      (nIntrebari > 0
+        ? 'Fiecare cont aduce ' + C.numar(nIntrebari, 'întrebare', 'întrebări') + ' pe lună, într-un fond comun al Beneficiarului; ' +
+          'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.'
+        : 'Numărul de întrebări nu este limitat.'));
   }
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
@@ -317,12 +376,13 @@ function scrieContract(doc, date) {
   _titlu(doc, 'VI. PROTECȚIA DATELOR CU CARACTER PERSONAL');
   _p(doc, 'În privința datelor personale prelucrate prin platformă (date de localizare ale vehiculelor și, după caz, ale conducătorilor auto), Beneficiarul are calitatea de OPERATOR, iar Prestatorul pe cea de PERSOANĂ ÎMPUTERNICITĂ, în sensul Regulamentului (UE) 2016/679 (GDPR).');
   _p(doc, gdprAnexa
-    ? 'Condițiile prelucrării sunt cele din Anexa nr. 2 — Acord de prelucrare a datelor, parte integrantă din prezentul contract.'
+    ? 'Condițiile prelucrării sunt cele din Anexa nr. ' + nrGdpr + ' — Acord de prelucrare a datelor, parte integrantă din prezentul contract.'
     : 'Condițiile prelucrării sunt stabilite printr-un acord de prelucrare a datelor semnat separat de părți, care completează prezentul contract.');
 
   _titlu(doc, 'VII. ÎNCETAREA CONTRACTULUI');
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
-  _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit Anexei nr. 2, respectiv acordului de prelucrare.');
+  _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
+    (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
 
   _titlu(doc, 'VIII. DISPOZIȚII FINALE');
   _p(doc, 'Modificarea contractului se face prin act adițional scris, semnat de ambele părți. Litigiile se soluționează pe cale amiabilă, iar în lipsa unei înțelegeri, de instanțele competente de la sediul Prestatorului. Contractul se completează cu prevederile legislației române în vigoare.');
@@ -344,10 +404,6 @@ function scrieContract(doc, date) {
   // ── Anexa 2: montajul, dacă s-a convenit. COST UNIC, separat de abonamentul lunar. ──
   // Aici apare DOAR prețul către client. Cât ne cere partenerul care execută nu are ce căuta pe
   // hârtia asta și nici nu ajunge până aici: `facAnexaMontaj` nu-l copiază.
-  const mont = contract.montaj;
-  const echip = mont && mont.echipamente;
-  const areEchip = !!(echip && (echip.items || []).length);
-  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));
   if (areMontaj) {
     doc.addPage();
     const AM = _ST(doc);
@@ -382,7 +438,7 @@ function scrieContract(doc, date) {
     doc.addPage();
     const A2 = _ST(doc);
     // Numărul anexei se mută dacă există montaj: GDPR-ul e mereu ULTIMA anexă.
-    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. ' + (areMontaj ? 3 : 2) + ' — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. ' + nrGdpr + ' — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A2.left, doc.y + 2, { width: A2.w });
     doc.x = A2.left; doc.y += 12;
@@ -456,7 +512,10 @@ function scrieAct(doc, date) {
   _p(doc, act.obiect || '____________________________________________________________________');
   _p(doc, 'Modificările produc efecte începând cu data de ' + _data(act.start_at) + '.');
   if (act.luni_noi) {
-    _p(doc, 'Durata contractului se prelungește cu ' + act.luni_noi + ' luni de la data de mai sus.');
+    // Cu data până la care ține contractul DUPĂ prelungire (o dă serverul, din capătul de azi). Textul
+    // vechi — „cu N luni de la data de mai sus" — lăsa de ghicit de la ce dată se numără.
+    _p(doc, 'Durata contractului se prelungește cu ' + C.numar(act.luni_noi, 'lună', 'luni') +
+      (date.panaLa ? ', până la data de ' + _data(date.panaLa) + '.' : '.'));
   }
 
   _titlu(doc, 'III. CELELALTE CLAUZE');

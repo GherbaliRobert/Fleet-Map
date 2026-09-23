@@ -139,7 +139,9 @@ T('anexă semnată odată cu contractul înseamnă acord', C.areGdpr({ gdpr: { k
 T('act separat, urcat ca fișier, înseamnă acord', C.areGdpr({ gdpr: { kind: 'separat' }, has_gdpr_file: true }) === true);
 T('act separat DOAR bifat nu înseamnă nimic', C.areGdpr({ gdpr: { kind: 'separat' }, signed_at: start }) === false);
 
-const preaviz = C.ultimaZiDePreaviz({ start_at: start, months: 12, notice_days: 30 });
+// Cu data dată (ACUM), nu cu ceasul de azi: un contract care se reînnoiește singur își mută termenul
+// odată cu timpul, iar proba ar fi picat singură din 2027.
+const preaviz = C.ultimaZiDePreaviz({ start_at: start, months: 12, notice_days: 30 }, ACUM);
 T('ultima zi de preaviz e cu 30 de zile înainte de sfârșit',
   Math.round((C.calcSfarsit(start, 12) - preaviz) / ZI) === 30, String(preaviz));
 
@@ -371,8 +373,10 @@ T('sunt legate de contract și de firmă', /contract_id INTEGER NOT NULL,\s*\n\s
 T('se numerotează per contract (A1, A2…), nu global',
   /async function urmatorulNrAct\(contractId\)[\s\S]{0,220}MAX\(nr_ordine\), 0\) \+ 1/.test(dbjs));
 T('numărul se propune ca „<contract>/A<n>"', /date\.number = \(c\.number \|\| 'contract'\) \+ '\/A' \+ nr;/.test(server));
-T('NU se face act adițional la un contract nesemnat',
-  /if \(c\.status === 'ciorna' \|\| c\.status === 'aprobat'\)[\s\S]{0,180}modifică-l direct, nu prin act adițional/.test(server));
+// (23.09) Mai strict: act adițional DOAR la un contract semnat și în vigoare. „Trimis" e tot nesemnat
+// (clientul n-a semnat încă), iar unui contract încheiat nu mai ai ce-i schimba.
+T('NU se face act adițional decât la un contract semnat și în vigoare',
+  /if \(c\.status !== 'activ'\) \{[\s\S]{0,400}modifică-l direct, nu prin act adițional/.test(server));
 T('un act adițional SEMNAT nu se șterge', /Un act adițional semnat nu se șterge/.test(server));
 T('are PDF propriu', /app\.get\('\/api\/acte\/:id\/pdf', requireAuth, requireSuperadmin/.test(server));
 T('și se descarcă tot brandat', /contractPdf\.numeFisier\(a, co, 'Act aditional'\)/.test(server));
@@ -391,7 +395,9 @@ T('anexele se repetă DOAR dacă se schimbă',
 T('anexa nouă spune limpede că o înlocuiește pe cea veche',
   /înlocuiește Anexa nr\. 1 a contractului nr\./.test(cpdf));
 T('în ecran, actele apar doar la contractele semnate',
-  /if \(c\.status === 'activ' \|\| c\.status === 'trimis' \|\| c\.status === 'incheiat'\) \{/.test(html));
+  /var semnat = c\.status === 'activ' \|\| c\.status === 'incheiat';/.test(html) &&
+  /if \(semnat\) \{\s*\n\s*h \+= '<div class="raco-h2" style="margin-top:22px;">Acte adiționale<\/div>'/.test(html));
+T('și „Act adițional nou" doar la unul în vigoare', /var inVigoare = _raxCtr && _raxCtr\.contract && _raxCtr\.contract\.status === 'activ';/.test(html));
 T('și se explică de ce există', /Contractul semnat nu se mai schimbă\. Când clientul mai cumpără mașini/.test(html));
 T('nu se salvează un act fără să scrie ce schimbă', /Scrie ce se schimbă — asta ajunge pe hârtie/.test(html));
 
@@ -449,6 +455,237 @@ T('blocul părților scrie toate rândurile, chiar goale (linie punctată, nu r�
   scrieri.filter(w => w.t === 'IBAN').length === 2 && scrieri.filter(w => w.t === '____________').length > 0);
 T('contractul are patru pagini: actul, restul, Anexa 1, Anexa 2', carton._pagini === 4, carton._pagini + ' pagini');
 
-console.log('\n──────────────────────────────');
-console.log(ok + ' verificări trecute, ' + rele + ' picate');
-process.exit(rele ? 1 : 0);
+sect('9. Capătul contractului: prelungirile semnate, termenul curent, preavizul (23.09)');
+// Un act de prelungire nu atinge rândul contractului (ce s-a semnat rămâne), deci capătul adevărat se
+// SOCOTEȘTE: start + luni + lunile din actele semnate.
+const ian31 = Date.parse('2026-01-31T00:00:00Z');
+const cuPrel = { start_at: ian31, months: 1, end_at: C.calcSfarsit(ian31, 1), luni_prelungite: 1 };
+T('prelungirea se socotește de la început (31 ian + 1 + 1 = 31 martie, nu 28)',
+  new Date(C.sfarsitContract(cuPrel)).getUTCDate() === 31 && new Date(C.sfarsitContract(cuPrel)).getUTCMonth() === 2,
+  new Date(C.sfarsitContract(cuPrel)).toISOString().slice(0, 10));
+T('fără prelungiri, capătul e cel scris', C.sfarsitContract({ start_at: start, months: 12, end_at: 123 }) === 123);
+T('pe durată nedeterminată nu există capăt', C.sfarsitContract({ start_at: start, months: null }) === null);
+// Reînnoirea automată: „pe perioade succesive egale", cum scrie în contract.
+const doiAni = ACUM - 400 * ZI;
+const auto = { status: 'activ', start_at: doiAni, months: 12, end_at: C.calcSfarsit(doiAni, 12), auto_renew: true, notice_days: 30 };
+T('la reînnoirea automată, termenul CURENT e în viitor (nu cel de acum un an)',
+  C.sfarsitCurent(auto, ACUM) > ACUM && C.sfarsitCurent(auto, ACUM) === C.calcSfarsit(C.calcSfarsit(doiAni, 12), 12),
+  new Date(C.sfarsitCurent(auto, ACUM)).toISOString().slice(0, 10));
+T('un contract care NU se reînnoiește rămâne cu capătul lui, chiar trecut',
+  C.sfarsitCurent(Object.assign({}, auto, { auto_renew: false }), ACUM) === auto.end_at);
+T('ultima zi de preaviz, la reînnoire automată, e în viitor', C.ultimaZiDePreaviz(auto, ACUM) > ACUM,
+  new Date(C.ultimaZiDePreaviz(auto, ACUM)).toISOString().slice(0, 10));
+// Termenul de acum se termină în 20 de zile, preavizul lui (30) a trecut: următoarea ocazie de a-l
+// opri e înaintea termenului URMĂTOR — nu o zi din trecut.
+const aproape = Object.assign({}, auto, { start_at: ACUM - 365 * ZI + 20 * ZI, end_at: null });
+T('dacă preavizul termenului de acum a trecut, se arată cel al termenului următor',
+  C.ultimaZiDePreaviz(aproape, ACUM) > ACUM && C.ultimaZiDePreaviz(aproape, ACUM) > C.sfarsitCurent(aproape, ACUM) - 30 * ZI,
+  new Date(C.ultimaZiDePreaviz(aproape, ACUM)).toISOString().slice(0, 10));
+const expiraCurand = { status: 'activ', start_at: ACUM - 365 * ZI + 40 * ZI, months: 12, auto_renew: false, notice_days: 30 };
+T('la 40 de zile de capăt, alarma sună', !!C.deAnuntat(expiraCurand, ACUM));
+T('după o prelungire SEMNATĂ de 12 luni, alarma tace', C.deAnuntat(Object.assign({}, expiraCurand, { luni_prelungite: 12 }), ACUM) === null);
+T('și dosarul arată capătul mutat', C.stareDosar(FIRMA, Object.assign({}, ACTIV, expiraCurand, { luni_prelungite: 12, end_at: null }), ACUM).zileRamase > 365);
+T('numerele se scriu ca lumea: 1 lună, 12 luni, 24 de luni, 100 de întrebări, 101 întrebări',
+  C.numar(1, 'lună', 'luni') === '1 lună' && C.numar(12, 'lună', 'luni') === '12 luni' && C.numar(24, 'lună', 'luni') === '24 de luni' &&
+  C.numar(100, 'întrebare', 'întrebări') === '100 de întrebări' && C.numar(101, 'întrebare', 'întrebări') === '101 întrebări');
+
+sect('10. Anexa: mașinile ȘI serviciile lunare, amândouă semnate (23.09)');
+const SERV = [{ fel: 'ai', nume: 'RA Insight — 2 conturi', cant: 2, pret: 14, total: 28 },
+  { fel: 'agenti', nume: 'Agenți automați (6) — incluși', cant: 1, pret: 0, total: 0, inclus: true },
+  { fel: 'ret', nume: 'Păstrare date 24 de luni', cant: 1, pret: 50, total: 50 }];
+const VO = [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 2, pret: 29, total: 58 }, { fel: 'can', nume: 'Vehicule cu CAN', cant: 3, pret: 45, total: 135 }];
+const dinOf = C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiSeatPriceRON: 14, aiQuestionsPerSeat: 100 });
+T('din ofertă: totalul = mașinile din ofertă + serviciile', dinOf.monthlyTotal === 271, String(dinOf.monthlyTotal));
+T('și ține minte din ce se face', dinOf.servicii.length === 3 && dinOf.vehiculeOferta.length === 2);
+const cuAparate = C.facAnexa([{ imei: '1', monthlyRON: 29 }, { imei: '2', monthlyRON: 29 }, { imei: '3', monthlyRON: 45 }, { imei: '4', monthlyRON: 45 }, { imei: '5', monthlyRON: 45 }],
+  Object.assign({ currency: 'RON' }, C.dinAnexaDePastrat(dinOf)));
+T('după bifarea aparatelor, totalul NU mai cade la 193 (serviciile rămân)', cuAparate.monthlyTotal === 271, String(cuAparate.monthlyTotal));
+T('și regula RA Insight rămâne', cuAparate.aiSeatPriceRON === 14 && cuAparate.aiQuestionsPerSeat === 100);
+T('ce se păstrează la re-salvare NU sunt aparatele sau totalul vechi',
+  !('vehicles' in C.dinAnexaDePastrat(dinOf)) && !('monthlyTotal' in C.dinAnexaDePastrat(dinOf)));
+T('RA Insight nelimitat (0) rămâne 0 pe hârtie, nu „50"',
+  C.facAnexa([], { monthlyTotal: 14, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 }).aiQuestionsPerSeat === 0);
+T('o anexă veche (doar suma) își păstrează suma', C.facAnexa([], { monthlyTotal: 271 }).monthlyTotal === 271);
+T('un rând inclus nu adaugă bani', C.facAnexa([], { servicii: [SERV[1]] }).monthlyTotal === 0);
+T('felul rândului se păstrează (pentru comparația cu factura)', dinOf.servicii[0].fel === 'ai');
+const actSemnatCuAnexa = { status: 'activ', nr_ordine: 2, annex: { vehicles: [{ imei: '9' }], monthlyTotal: 99 } };
+T('anexa în vigoare e a ultimului act SEMNAT care a schimbat aparatele',
+  C.anexaInVigoare({ annex: dinOf }, [{ status: 'ciorna', nr_ordine: 3, annex: { vehicles: [{ imei: '8' }] } }, actSemnatCuAnexa]).monthlyTotal === 99);
+T('fără acte, e cea din contract', C.anexaInVigoare({ annex: dinOf }, []).monthlyTotal === 271);
+
+sect('11. Contractul semnat se încuie (23.09)');
+// Regula era scrisă pe ecran („Contractul semnat nu se mai schimbă"), dar nu o apăra nimic: anexa
+// unui contract semnat se rescria, iar lista de stări îl dădea înapoi la „în lucru" — de unde butonul
+// „Șterge" îl făcea să dispară. Funcția de trecere se decupează din server și se rulează.
+const mTr = /function _trecereContract\(din, spre\) \{[\s\S]*?\n\}/.exec(server);
+T('găsesc regula de trecere pe server', !!mTr);
+if (mTr) {
+  const tr = new Function(mTr[0] + '\nreturn _trecereContract;')();
+  T('nesemnat → semnat: se poate', tr('trimis', 'activ') === null && tr('ciorna', 'activ') === null);
+  T('nesemnat înainte și înapoi: se poate', tr('trimis', 'ciorna') === null && tr('aprobat', 'trimis') === null);
+  T('semnat → „în lucru": NU', !!tr('activ', 'ciorna') && !!tr('activ', 'aprobat') && !!tr('activ', 'trimis'));
+  T('semnat → încheiat: da', tr('activ', 'incheiat') === null);
+  T('încheiat → orice altceva: NU', !!tr('incheiat', 'activ') && !!tr('incheiat', 'ciorna'));
+  T('nesemnat → încheiat: NU (o ciornă se șterge, nu se încheie)', !!tr('ciorna', 'incheiat') && !!tr('trimis', 'incheiat'));
+}
+T('după semnare, serverul refuză schimbarea actului (anexe, durată, părți)',
+  /if \(vechi\.status === 'activ' \|\| vechi\.status === 'incheiat'\) \{\s*\n\s*const schimbate = _campuriSchimbateDupaSemnare\(vechi, b\);/.test(server) &&
+  /if \(b\.annex !== undefined\) schimbate\.push\('annex'\);/.test(server));
+T('„Salvează anexa" nu mai șterge serviciile lunare',
+  /b\.annex = Object\.assign\(\{\}, contracte\.dinAnexaDePastrat\(vechi\.annex\), b\.annex\);/.test(server));
+T('un act adițional semnat se încuie la fel', /Actul e semnat și nu se mai schimbă/.test(server) && /Actul e semnat — nu se mai întoarce la „în lucru"/.test(server));
+T('al doilea contract, cât primul e în lucru sau în vigoare, e refuzat', /if \(curent && curent\.status !== 'incheiat'\) \{\s*\n\s*return res\.status\(409\)/.test(server));
+T('un contract nou nu se naște încheiat', /Un contract nou nu se poate naște încheiat/.test(server));
+T('ștergerea unei ciorne dezleagă oferta și lucrările', /UPDATE offers SET contract_id = NULL/.test(dbjs) && /UPDATE montaje SET contract_id = NULL/.test(dbjs));
+// În ecran: lista de stări NU mai are „semnat" și „încheiat" (se fac doar din butonul mare, care întreabă),
+// iar un contract semnat se arată de citit, fără formular.
+T('lista de stări are doar pașii nesemnați', /\['ciorna', 'aprobat', 'trimis'\]\.map\(function \(k\) \{\s*\n\s*return '<option value="' \+ k \+ '"' \+ \(c\.status === k/.test(html));
+const bucSemnat = (/function _raxCtrDateSemnate\(c\) \{[\s\S]*?\n    \}/.exec(html) || [''])[0];
+T('contractul semnat se arată fără formular de editat', !!bucSemnat && !/ct-nr|ct-months|ct-renew|ct-status/.test(bucSemnat) && /nu se mai modifică/.test(bucSemnat));
+T('semnarea întreabă întâi (după ea nu mai are întoarcere)', /Marchezi contractul SEMNAT de amândoi\?/.test(html));
+
+sect('12. De la ofertă la factură, fără retastare (23.09)');
+T('durata vine din ofertă (`contractMonths`, nu un câmp care n-a existat)', /var luni = parseInt\(cfgO\.contractMonths \|\| cfgO\.contract, 10\);/.test(html));
+T('socoteala ofertei pleacă la server odată cu contractul', /din_oferta: ofAleasa \? _coSocotealaOfertei\(ofAleasa\) : null,/.test(html));
+T('...făcută cu ACEEAȘI funcție care a făcut oferta', /var r = _ofCalc\(cfg, Object\.assign\(\{\}, _ofTarifeDeBaza\(\), o\.config\.prices \|\| \{\}\)\);/.test(html));
+T('prețul de facturare se scrie pe firmă DOAR dacă n-are deja unul', /if \(co && plans && !plans\.ofertaFirmei\(co\)\) \{/.test(server));
+T('rândurile se folosesc doar dacă se adună la suma acceptată de client', /if \(Math\.abs\(suma - \(Number\(oferta\.monthly_total\) \|\| 0\)\) > 0\.02\) return null;/.test(server));
+T('oferta devenită contract trece singură pe „acceptată"', /if \(oferta\.status !== 'acceptata'\) \{ try \{ await db\.setOfferStatus\(oferta\.id, 'acceptata', \{\}\); \} catch \(e\) \{\} \}/.test(server));
+T('fișa pune contractul lângă factura calculată cu funcția facturii', /const f = buildInvoiceLines\(company, bc, features, 0\);/.test(server));
+
+sect('13. Reînnoirea și alarma (23.09)');
+T('„Reînnoiește" are ruta lui, doar a noastră', /app\.post\('\/api\/contracts\/:id\/reinnoire', requireAuth, requireSuperadmin/.test(server));
+T('se reînnoiește doar un contract semnat', /Se reînnoiește doar un contract semnat și în vigoare\./.test(server));
+T('o a doua apăsare nu face al doilea act', /Există deja o prelungire în lucru/.test(server));
+T('actul pornește ca ciornă, de la capătul de azi', /status: 'ciorna', start_at: capat, luni_noi: luni,/.test(server));
+T('alarma din ecran folosește regula notificării, nu starea dosarului', /alarma: contracte\.deAnuntat\(c, acum\)/.test(server) &&
+  /var expira = _raxCtre\.tot\.filter\(function \(c\) \{ return !!c\.alarma; \}\)/.test(html));
+T('banda de alarmă are butonul „Reînnoiește"', /function _ctreBenzi\(\)[\s\S]{0,3200}raxCtrReinnoieste\(/.test(html));
+T('și pe fiecare rând: Vezi și Descarcă, prin aceeași cale ca oferta', /_raxHartieBtn\('\/api\/contracts\/' \+ c\.id \+ '\/pdf', 'Contractul', true\)/.test(html) &&
+  /var nume = _numeDinAntet\(resp, 'contract\.pdf'\);/.test(html));
+T('notificarea zilnică trimite la „Reînnoiește"', /apasă „Reînnoiește" pe rândul lui/.test(server));
+T('firmele cu contract încheiat care încă intră apar lângă cele fără contract', /incheiate_cu_acces: incheiateCuAcces/.test(server));
+
+sect('14. Hârtia: anexele numerotate corect, fără „plan", nelimitat ca nelimitat (23.09)');
+const texte = [];
+const cartonTot = Object.assign({}, carton, { _pagini: 1, x: 50, y: 50,
+  text(t, x, y, o) { texte.push(String(t == null ? '' : t)); if (typeof y === 'number') this.y = y + 11; else this.y += 11; return this; },
+  addPage() { this._pagini++; this.y = 50; return this; } });
+CP.scrieContract(cartonTot, {
+  contract: { number: 'RAT-C-2026-0009', status: 'aprobat', signed_at: start2, start_at: start2, months: 24,
+    end_at: C.calcSfarsit(start2, 24), auto_renew: false, notice_days: 30, gdpr: { kind: 'anexa' },
+    annex: C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 }),
+    montaj: { items: [{ tip: 'gps', eticheta: 'Instalare dispozitiv GPS', um: 'buc', buc: 5, pretClient: 100, total: 500 }], totalClient: 500, currency: 'RON' } },
+  firma: { name: 'Transport Zebra SRL', cui: 'RO1' }, emitent: { name: 'RA TRACKS SRL', vat_rate: 19 }
+});
+const tot = texte.join(' ');
+T('cu montaj, textul trimite la acordul GDPR ca Anexa nr. 3', /cele din Anexa nr\. 3 — Acord de prelucrare/.test(tot) && /ANEXA nr\. 3 — Acord de prelucrare/.test(tot));
+T('și nicăieri la „Anexa nr. 2" pentru acord', !/Anexa nr\. 2 — Acord/.test(tot) && !/Anexei nr\. 2/.test(tot));
+T('cuvântul „plan" nu apare pe contract', !/\bplan(ul)?\b/i.test(tot));
+T('RA Insight nelimitat se scrie „nelimitat"', /Numărul de întrebări nu este limitat\./.test(tot) && !/aduce 50/.test(tot));
+T('durata: „24 de luni"', /durată de 24 de luni/.test(tot));
+T('Anexa 1 are și serviciile lunare', texte.indexOf('Servicii lunare') >= 0 && texte.some(t => /^RA Insight — 2 conturi/.test(t)) && texte.some(t => /^Păstrare date 24 de luni/.test(t)));
+T('și mașinile din ofertă, cât aparatele nu sunt bifate', texte.indexOf('Vehicule monitorizate') >= 0 && texte.some(t => /^Vehicule cu CAN/.test(t)));
+T('prețul spune că le cuprinde', /cuprinde abonamentul vehiculelor și serviciile lunare/.test(tot));
+const texteAct = [];
+CP.scrieAct(Object.assign({}, cartonTot, { text(t, x, y) { texteAct.push(String(t == null ? '' : t)); if (typeof y === 'number') this.y = y + 11; else this.y += 11; return this; } }),
+  { act: { number: 'RAT-C-2026-0009/A1', status: 'ciorna', luni_noi: 12, start_at: C.calcSfarsit(start2, 24), obiect: 'Se prelungește.' },
+    contract: { number: 'RAT-C-2026-0009', signed_at: start2 }, firma: { name: 'Transport Zebra SRL' }, emitent: {}, panaLa: C.calcSfarsit(start2, 36) });
+T('actul de prelungire spune până când ține contractul', texteAct.some(t => /se prelungește cu 12 luni, până la data de /.test(t)));
+
+// ─── 15. Pe server pornit: regulile care contează, încercate de-adevăratelea ──────────────────
+const { spawn } = require('child_process');
+const PORT = 3221, DIR = '.ctr-ci-db';
+const envS = { ...process.env, NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234',
+  SESSION_SECRET: 'ci_ctr', PORT: String(PORT), TCP_PORT: '5221', PGLITE_DIR: DIR + '/pgdata' };
+delete envS.ANTHROPIC_API_KEY;
+try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
+const srv = spawn(process.execPath, ['server.js'], { env: envS, stdio: ['ignore', 'ignore', 'inherit'] });
+const B = 'http://127.0.0.1:' + PORT;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function gata() {
+  try { srv.kill(); } catch (e) {}
+  try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
+  console.log('\n──────────────────────────────');
+  console.log(ok + ' verificări trecute, ' + rele + ' picate');
+  process.exit(rele ? 1 : 0);
+}
+(async () => {
+  let pornit = false;
+  for (let i = 0; i < 240; i++) { try { if ((await fetch(B + '/api')).ok) { pornit = true; break; } } catch (e) {} await sleep(500); }
+  sect('15. Pe server pornit');
+  T('serverul pornește', pornit);
+  if (!pornit) return gata();
+  const lg = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'test1234' }) });
+  const ck = (lg.headers.getSetCookie ? lg.headers.getSetCookie() : [lg.headers.get('set-cookie')]).filter(Boolean).map(c => c.split(';')[0]).join('; ');
+  const R = async (m, u, body, cookie) => {
+    const r = await fetch(B + u, { method: m, headers: Object.assign({ 'Content-Type': 'application/json' }, { Cookie: cookie === undefined ? ck : cookie }), body: body ? JSON.stringify(body) : undefined });
+    let j = null; try { j = await r.json(); } catch (e) {}
+    return { s: r.status, j: j };
+  };
+  // Oferta și clientul, ca din „Client nou din ofertă" (cu socoteala pe care o trimite ecranul).
+  const of = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă', client_name: 'CI Contract SRL', monthly_total: 271, currency: 'RON',
+    config: { cfg: { aiA: true, aiqN: 100, aiqSeats: 2, aiqSeat: 14, contractMonths: 24, montaj: {}, devices: {} }, prices: { pAiA: 14 } } })).j;
+  await R('PUT', '/api/admin/offers/' + of.id + '/stare', { status: 'trimisa' });
+  const co = (await R('POST', '/api/companies', { name: 'CI Contract SRL' })).j;
+  const c1 = await R('POST', '/api/companies/' + co.id + '/contract', { offer_id: of.id, months: 24,
+    din_oferta: { unitati: { plain: 29, can: 45, fms: 65 }, vehicule: VO, servicii: SERV } });
+  T('contractul din ofertă se face', c1.s === 200 && c1.j.annex && c1.j.annex.monthlyTotal === 271, c1.s + ' ' + JSON.stringify(c1.j && c1.j.annex && c1.j.annex.monthlyTotal));
+  const ov = (await R('GET', '/api/companies/' + co.id + '/overview')).j;
+  T('prețul de facturare e scris pe firmă', ov.offer && ov.offer.priceNoneRON === 29 && ov.offer.priceCanRON === 45, JSON.stringify(ov.offer));
+  const oferte = (await R('GET', '/api/admin/offers')).j;
+  T('oferta e „acceptată"', (oferte.find(o => o.id === of.id) || {}).status === 'acceptata');
+  T('al doilea contract e refuzat', (await R('POST', '/api/companies/' + co.id + '/contract', { status: 'ciorna' })).s === 409);
+  const cid = c1.j.id;
+  T('act adițional la un contract nesemnat: refuzat', (await R('POST', '/api/contracts/' + cid + '/acte', { obiect: 'x' })).s === 400);
+  const an = await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [{ imei: '1', monthlyRON: 29 }, { imei: '2', monthlyRON: 29 }, { imei: '3', monthlyRON: 45 }, { imei: '4', monthlyRON: 45 }, { imei: '5', monthlyRON: 45 }], currency: 'RON' } });
+  T('„Salvează anexa" păstrează serviciile și totalul', an.s === 200 && an.j.annex.monthlyTotal === 271 && an.j.annex.aiSeatPriceRON === 14, JSON.stringify(an.j && an.j.annex && an.j.annex.monthlyTotal));
+  const semn = await R('PUT', '/api/contracts/' + cid, { status: 'activ', signed_at: Date.now() });
+  T('se semnează', semn.s === 200 && semn.j.status === 'activ');
+  T('anexa semnată nu se mai rescrie', (await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [], currency: 'RON' } })).s === 400);
+  T('durata semnată nu se mai schimbă', (await R('PUT', '/api/contracts/' + cid, { months: 36 })).s === 400);
+  T('nu se mai întoarce la „în lucru"', (await R('PUT', '/api/contracts/' + cid, { status: 'ciorna' })).s === 400);
+  T('și nu se șterge', (await R('DELETE', '/api/contracts/' + cid)).s === 400);
+  T('data semnării se poate corecta', (await R('PUT', '/api/contracts/' + cid, { signed_at: Date.now() - 86400000 })).s === 200);
+  // Reînnoirea, pe un contract care se termină peste 40 de zile și nu se reînnoiește singur.
+  const co2 = (await R('POST', '/api/companies', { name: 'CI Reînnoire SRL' })).j;
+  const st2 = Date.now() - 365 * ZI + 40 * ZI;
+  const c2 = (await R('POST', '/api/companies/' + co2.id + '/contract', { status: 'activ', signed_at: st2, start_at: st2, months: 12, auto_renew: false })).j;
+  let lista = (await R('GET', '/api/contracts')).j;
+  T('contractul care se termină apare la alarmă', !!(lista.contracte.find(x => x.id === c2.id) || {}).alarma);
+  const capInainte = (lista.contracte.find(x => x.id === c2.id) || {}).sfarsit;
+  const rn = await R('POST', '/api/contracts/' + c2.id + '/reinnoire', { luni: 12 });
+  T('„Reînnoiește" face actul de prelungire, ciornă', rn.s === 200 && rn.j.act.status === 'ciorna' && rn.j.act.luni_noi === 12);
+  T('a doua apăsare e refuzată', (await R('POST', '/api/contracts/' + c2.id + '/reinnoire', { luni: 12 })).s === 409);
+  lista = (await R('GET', '/api/contracts')).j;
+  T('cât actul nu e semnat, capătul nu se mută', (lista.contracte.find(x => x.id === c2.id) || {}).sfarsit === capInainte);
+  for (const st of ['aprobat', 'trimis', 'activ']) await R('PUT', '/api/acte/' + rn.j.act.id, { status: st });
+  lista = (await R('GET', '/api/contracts')).j;
+  const dupa = lista.contracte.find(x => x.id === c2.id) || {};
+  T('semnat actul, capătul se mută cu un an și alarma tace',
+    Math.round((dupa.sfarsit - capInainte) / ZI) >= 365 && !dupa.alarma, Math.round((dupa.sfarsit - capInainte) / ZI) + ' zile');
+  T('actul semnat nu se mai rescrie', (await R('PUT', '/api/acte/' + rn.j.act.id, { luni_noi: 36 })).s === 400);
+  T('și nu se șterge', (await R('DELETE', '/api/acte/' + rn.j.act.id)).s === 400);
+  // Încheierea: definitivă; o relație nouă = contract nou.
+  T('se încheie', (await R('PUT', '/api/contracts/' + c2.id, { status: 'incheiat', ended_reason: 'CI' })).s === 200);
+  T('un contract încheiat nu se redeschide', (await R('PUT', '/api/contracts/' + c2.id, { status: 'activ' })).s === 400);
+  lista = (await R('GET', '/api/contracts')).j;
+  T('firma cu contract încheiat și acces apare lângă cele fără contract', (lista.incheiate_cu_acces || []).some(x => x.id === co2.id));
+  T('după încheiere se poate face un contract NOU', (await R('POST', '/api/companies/' + co2.id + '/contract', { status: 'ciorna', months: 12 })).s === 200);
+  // Ștergerea unei ciorne din ofertă nu lasă oferta legată de un contract care nu mai există.
+  const of3 = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă 3', client_name: 'CI Ciornă SRL', monthly_total: 50, config: { cfg: {}, prices: {} } })).j;
+  const co3 = (await R('POST', '/api/companies', { name: 'CI Ciornă SRL' })).j;
+  const c3 = (await R('POST', '/api/companies/' + co3.id + '/contract', { offer_id: of3.id })).j;
+  T('ciorna se șterge', (await R('DELETE', '/api/contracts/' + c3.id)).s === 200);
+  T('iar oferta nu mai arată spre ea', ((await R('GET', '/api/admin/offers')).j.find(o => o.id === of3.id) || {}).contract_id == null);
+  // Totul e al fondatorilor.
+  const { puneParola } = require('./test_parola');
+  const sef = (await R('POST', '/api/users', { username: 'sef@ci-ctr.ro', full_name: 'Șef CI', role: 'company_admin', company_id: co.id })).j;
+  await puneParola(sef, 'Str4da-Verde-2026', B);
+  const l2 = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'sef@ci-ctr.ro', password: 'Str4da-Verde-2026' }) });
+  const ckSef = (l2.headers.getSetCookie ? l2.headers.getSetCookie() : [l2.headers.get('set-cookie')]).filter(Boolean).map(c => c.split(';')[0]).join('; ');
+  T('clientul nu poate reînnoi singur', (await R('POST', '/api/contracts/' + cid + '/reinnoire', { luni: 12 }, ckSef)).s === 403);
+  T('și nu-și vede contractele prin ruta noastră', (await R('GET', '/api/contracts', null, ckSef)).s === 403);
+  gata();
+})().catch((e) => { console.log('  ✗ EROARE: ' + e.message); rele++; gata(); });
+
