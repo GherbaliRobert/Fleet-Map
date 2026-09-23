@@ -97,7 +97,7 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
-### AMÂNDOI · Aplicația de telefon 1.0.2: adusă la zi cu tot ce s-a schimbat pe server de pe 13.09 — `în lucru`
+### AMÂNDOI · Aplicația de telefon 1.0.2: adusă la zi cu tot ce s-a schimbat pe server de pe 13.09 — `c4f3e2e`
 
 Între 13 și 23 septembrie au intrat pe server și pe web 59 de schimbări; doar două atinseseră telefonul. Unele
 **stricaseră** aplicația de telefon fără să se vadă: parola se scria printr-o funcție care nu mai există, câmpul
