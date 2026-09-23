@@ -87,10 +87,14 @@ T('text în loc de număr → costul de bază, nu NaN', M._aiqCost('multe') === 
 T('scenariul negru e mai scump, dar nu de 5 ori (aia era presupunerea veche)', M.AIQ_GREU > 1.5 && M.AIQ_GREU < 3, M.AIQ_GREU);
 
 sect('2. RA Insight se vinde pe CONT, iar prețul unui cont crește cu flota');
-// Hotărât cu Alin, 11.09: 1 cont = 15 lei, 3 conturi = 45. Întrebările conturilor intră într-un
-// FOND COMUN al firmei, ca să nu rămână unul blocat în timp ce colegul are cota nefolosită.
-T('la 8 vehicule, un cont costă 12 lei', M._aiqPretLoc(8) === 12, M._aiqPretLoc(8));
-T('la 20 de vehicule, 15 lei', M._aiqPretLoc(20) === 15, M._aiqPretLoc(20));
+// Hotărât cu Alin, 11.09: se vinde pe CONT, nu pe firmă. Întrebările conturilor intră într-un FOND
+// COMUN al firmei, ca să nu rămână unul blocat în timp ce colegul are cota nefolosită.
+//
+// ⚠ Primele două trepte au urcat pe 23.09 (12 → 14, 15 → 17), odată cu trecerea la 100 de
+// întrebări pe cont: dublarea fondului dubla și costul, iar la flotele mici treapta era deja
+// stoarsă (la 10 mașini rămâneau 3,80 lei dintr-un cont de 12, în scenariul negru).
+T('la 8 vehicule, un cont costă 14 lei', M._aiqPretLoc(8) === 14, M._aiqPretLoc(8));
+T('la 20 de vehicule, 17 lei', M._aiqPretLoc(20) === 17, M._aiqPretLoc(20));
 T('la 50, 19 lei', M._aiqPretLoc(50) === 19, M._aiqPretLoc(50));
 T('la 100, 25 lei', M._aiqPretLoc(100) === 25, M._aiqPretLoc(100));
 T('peste 100, 35 lei', M._aiqPretLoc(250) === 35, M._aiqPretLoc(250));
@@ -99,19 +103,40 @@ T('prețul unui cont nu scade niciodată când crește flota',
 T('fără vehicule, tot are un preț (nu 0)', M._aiqPretLoc(0) > 0, M._aiqPretLoc(0));
 T('text în loc de număr nu dă NaN', Number.isFinite(M._aiqPretLoc('multe')));
 // Fondul comun
-T('3 conturi × 50 = 150 de întrebări pe lună', M._aiqFond(3, 50) === 150, M._aiqFond(3, 50));
-T('un cont singur = 50', M._aiqFond(1, 50) === 50);
+T('3 conturi × 100 = 300 de întrebări pe lună', M._aiqFond(3, 100) === 300, M._aiqFond(3, 100));
+T('un cont singur = 100', M._aiqFond(1, 100) === 100);
 T('„nelimitat" (0 pe cont) nu dă fond', M._aiqFond(3, 0) === 0);
-T('conturi lipsă nu dau fond negativ', M._aiqFond(-2, 50) === 0, M._aiqFond(-2, 50));
+T('conturi lipsă nu dau fond negativ', M._aiqFond(-2, 100) === 0, M._aiqFond(-2, 100));
 // Regula de bază a afacerii: ce cerem acoperă ce ne costă, la orice flotă și oricâte conturi.
+// ⚠ Se socotește pe pachetul pe care îl VINDEM (100 din 23.09), nu pe unul mai mic — altfel proba
+// ar trece liniștită pe o cifră pe care n-o mai dăm nimănui.
+const PACHET = 100;
 [10, 20, 50, 100, 200].forEach(function (v) {
   [1, 3, 5].forEach(function (c) {
-    const fond = M._aiqFond(c, 50);
+    const fond = M._aiqFond(c, PACHET);
     const cost = fond * M._aiqCost(v) * M.AIQ_GREU;
     const pret = M._aiqPretLoc(v) * c;
     T('preț > cost la uz intens (' + v + ' vehicule, ' + c + ' conturi)', pret > cost * 1.5,
       pret + ' lei vs cost ' + cost.toFixed(1));
   });
+});
+// Pachetul propus în formular trebuie să fie CHIAR cel pe care l-am socotit mai sus. Dacă cineva
+// mută selectorul pe altă valoare și uită socoteala, proba spune.
+T('formularul propune exact pachetul socotit (' + PACHET + ')',
+  new RegExp('<option value="' + PACHET + '" selected>').test(html),
+  (html.match(/<option value="\d+" selected>/) || ['lipsește'])[0]);
+// Pragul de liniște: la pachetul vândut, în scenariul NEGRU, dintr-un cont trebuie să rămână cel
+// puțin atât — la ORICE flotă, inclusiv la cele mici, unde treapta e stoarsă.
+//
+// ⚠ 5,50 lei, nu 7. Când am propus treptele 14/17 i-am spus lui Alin că „nicio flotă nu coboară
+// sub 7 lei" — GREȘIT: cu 14, la 10 mașini rămân 5,80. Pentru 7+ peste tot, prima treaptă ar
+// trebui 16 (atunci minimul e 7,75, la 25 de mașini). S-a rămas pe 14/17; pragul de aici e cel pe
+// care grila îl ține cu adevărat, nu cel pe care l-am promis eu din calcul greșit.
+const PRAG_RAMANE = 5.5;
+[1, 5, 10, 11, 25, 26, 50, 51, 100, 101, 200].forEach(function (v) {
+  const ramane = M._aiqPretLoc(v) - PACHET * M._aiqCost(v) * M.AIQ_GREU;
+  T('la ' + v + ' vehicule rămân cel puțin ' + PRAG_RAMANE + ' lei dintr-un cont', ramane >= PRAG_RAMANE,
+    ramane.toFixed(2) + ' lei din ' + M._aiqPretLoc(v));
 });
 
 sect('3. Tahograf și e-Transport intră ÎN abonamentul mașinii, nu ca linie separată');

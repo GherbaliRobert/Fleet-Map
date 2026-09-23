@@ -134,40 +134,53 @@ Numărul de întrebări pe cont (`aiqN`) e un buton SEPARAT: **nu schimbă preț
 costă pe noi. Confuzia „50 de întrebări = 19 lei" e firească și greșită — 19 lei e treapta 26–50 de
 mașini, oricâte întrebări ar avea contul.
 
+**Pachetul vândut e 100 de întrebări pe cont** (era 50 până pe 23.09). Selectorul din ofertă
+pornește pe 100; 150 și 200 rămân în listă, dar se dau negociat, cu ochii pe blocul de cost.
+
 | Flota | Un cont |
 |---|---|
-| ≤ 10 | 12 lei |
-| 11–25 | 15 lei |
+| ≤ 10 | **14 lei** |
+| 11–25 | **17 lei** |
 | 26–50 | 19 lei |
 | 51–100 | 25 lei |
 | > 100 | 35 lei |
+
+⚠ Primele două trepte au urcat pe 23.09 (12 → 14, 15 → 17) **odată cu** trecerea la 100 de
+întrebări: dublarea fondului dubla și costul, iar la flotele mici treapta era deja stoarsă. Cele de
+sus n-au avut nevoie. **Nu cobora treptele fără să refaci socoteala de mai jos.**
 
 **Ce ne costă o întrebare:** `0,030 lei + 0,00028 × nVehicule` (`_aiqCost`) — măsurat în septembrie
 pe aplicația pornită, cu Haiku 4.5 și prompt caching. Crește cu flota fiindcă fiecare mașină adaugă
 ~41 de tokeni la starea live, recitiți la fiecare rundă. **Scenariul negru** (`AIQ_GREU = 2,5`):
 clientul pune numai întrebări care storc tot ȘI consumă fondul până la ultima.
 
-**Ce rămâne dintr-un cont, pe lună, în scenariul negru:**
+**Ce rămâne dintr-un cont, pe lună, la 100 de întrebări, în scenariul negru:**
 
-| Flota | Cont | la 50 întrebări | la 100 întrebări | zero la |
-|---|---|---|---|---|
-| 10 | 12 | 7,90 | 3,80 | 146 |
-| 25 | 15 | 10,38 | 5,75 | 162 |
-| 26 | 19 | 14,34 | 9,68 | 203 |
-| 50 | 19 | 13,50 | 8,00 | 172 |
-| 100 | 25 | 17,75 | 10,50 | 172 |
-| 200 | 35 | 24,25 | 13,50 | 162 |
+| Flota | Cont | rămâne | ieșim pe zero la |
+|---|---|---|---|
+| 10 | 14 lei | **5,80 lei** | 170 |
+| 25 | 17 lei | **7,75 lei** | 183 |
+| 26 | 19 lei | **9,68 lei** | 203 |
+| 50 | 19 lei | **8,00 lei** | 172 |
+| 100 | 25 lei | **10,50 lei** | 172 |
+| 200 | 35 lei | **13,50 lei** | 162 |
 
 - **Marja e cea mai bună imediat DUPĂ o treaptă, cea mai slabă imediat ÎNAINTE** (26 de mașini: 9,68
-  lei; 25 de mașini: 5,75 — pentru o mașină în minus). Prețul urcă în trepte, costul crește lin.
+  lei; 25 de mașini: 7,75 — pentru o mașină în minus). Prețul urcă în trepte, costul crește lin.
   Punctele subțiri sunt fix **10, 25, 50 și 100** de mașini.
+- **Minimul grilei e 5,80 lei, la 10 mașini.** ⚠ Când am propus treptele 14/17 i-am spus lui Alin că
+  „nicio flotă nu coboară sub 7 lei" — **greșit**: pentru 7+ peste tot, prima treaptă ar trebui 16
+  (atunci minimul e 7,75). S-a rămas pe 14/17, cu cifra adevărată scrisă aici. Pragul din
+  `verify_tarife.js` (`PRAG_RAMANE = 5.5`) e cel pe care grila îl ține cu adevărat.
 - ⚠ **Formula de cost e o dreaptă, dar măsurătoarea se aplatizează sus:** la 200 de mașini formula
   zice 0,086 lei, măsurat e 0,0521. Deci la flote mari suntem MAI în siguranță decât arată tabelul.
   Nu „corecta" formula ca să fie mai strânsă — marja de siguranță e deliberată.
 - ⚠ **Fondul e COMUN pe firmă** (`conturi × aiqN`). Un om poate mânca partea colegilor, deci
   scenariul negru e mai ușor de atins la nivel de firmă decât pe cont. E argumentul pentru prudență.
-- **Dacă se trece la 100 de întrebări:** merge peste tot (rămân 3,80–20 lei), dar sub 25 de mașini e
-  strâmt. Ori 100 de la 26 în sus și 75 sub, ori se ridică primele două trepte la 14 și 17 lei.
+- **Peste fond NU se vinde nimic.** Când fondul se termină, RA Insight se oprește până luna
+  următoare. Serverul aruncă din setări comutatoarele vechi (`overage`, `overagePriceEur`,
+  `extraAcceptedMonth`), iar un `acceptExtra` trimis de un ecran vechi e **ignorat** — păzit de
+  `verify_paritate_telefon.js`, care insistă de trei ori și verifică să nu treacă nimic.
 
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.

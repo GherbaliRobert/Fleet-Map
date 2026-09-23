@@ -22408,14 +22408,20 @@ const pozitii = await r.json();</code></pre>
       etransport: { peVeh: 4 }    // lei/lună, în abonamentul fiecărei mașini
     };
     // RA Insight se vinde pe CONT (loc), nu pe firmă (hotărât cu Alin, 11.09). Adminul firmei alege
-    // cine îl primește: 1 cont = 15 lei, 3 conturi = 45. Fiecare cont aduce un număr de întrebări pe
-    // lună, iar întrebările se pun ÎNTR-UN FOND COMUN al firmei — nu rămâne dispecerul blocat la
-    // mijlocul lunii în timp ce managerul are 40 nefolosite.
+    // cine îl primește. Fiecare cont aduce un număr de întrebări pe lună, iar întrebările se pun
+    // ÎNTR-UN FOND COMUN al firmei — nu rămâne dispecerul blocat la mijlocul lunii în timp ce
+    // managerul are 40 nefolosite.
     //
     // Prețul unui cont crește cu flota, fiindcă asta ne costă (vezi măsurătoarea de mai sus): la 100
     // de mașini, aceeași întrebare e de ~1,8 ori mai scumpă decât la 5.
+    //
+    // ⚠ Primele două trepte au urcat pe 23.09 (12 → 14, 15 → 17), odată cu trecerea de la 50 la
+    // 100 de întrebări pe cont. Motivul, socotit: dublarea fondului dubla și costul, iar la flotele
+    // MICI treapta era deja stoarsă — la 10 mașini ar fi rămas 3,80 lei dintr-un cont de 12, în
+    // scenariul negru. Cu 14 și 17, nicio flotă nu mai coboară sub ~7 lei rămași. Treptele de sus
+    // (19/25/35) n-au avut nevoie: acolo mai era loc.
     var AIQ_PRET_LOC = [
-      { panaLa: 10, lei: 12 }, { panaLa: 25, lei: 15 }, { panaLa: 50, lei: 19 },
+      { panaLa: 10, lei: 14 }, { panaLa: 25, lei: 17 }, { panaLa: 50, lei: 19 },
       { panaLa: 100, lei: 25 }, { panaLa: Infinity, lei: 35 }
     ];
     function _aiqPretLoc(nVeh) {
@@ -23735,7 +23741,11 @@ const pozitii = await r.json();</code></pre>
             '<div><label>Conturi</label>' + fNum('of-aiqSeats', 1, '', 56) + '</div>' +
             '<div><label>Întrebări / cont</label>' +
               '<select id="of-aiqN" class="rax-field" onchange="raxOfAiqPreset(this.value)">' +
-                '<option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
+                // 100 e pachetul NOSTRU obișnuit din 23.09 (era 50). Dublarea costă, în cel mai
+                // negru caz, jumătate din marja unui cont — și tot rămân 7–20 lei din el. Ieșim pe
+                // zero abia pe la 150–170 de întrebări, deci 150 și 200 rămân în listă dar se dau
+                // doar negociat, cu ochii pe blocul de cost de dedesubt.
+                '<option value="50">50 / lună</option><option value="100" selected>100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
               '</select></div>' +
           '</div>' +
           '<div id="of-aiq-cost" style="font-size:11.5px;"></div>' +

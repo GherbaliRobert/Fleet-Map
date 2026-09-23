@@ -97,6 +97,67 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
+### FONDATOR · RA Insight trece la 100 de întrebări pe cont. Și proba, rescrisă pe regula de azi
+
+Două lucruri, hotărâte după socoteala de mai jos.
+
+**1. Fiecare cont aduce acum 100 de întrebări pe lună**, nu 50. Selectorul din calculatorul de
+ofertă pornește pe 100; 150 și 200 rămân în listă, dar se dau negociat.
+
+**2. Primele două trepte de preț au urcat:** contul costă **14 lei** la flotele de până la 10 mașini
+(era 12) și **17 lei** între 11 și 25 (era 15). Treptele de sus — 19, 25, 35 — rămân cum erau: acolo
+mai era loc.
+
+De ce împreună: dublarea fondului dublează și cât ne costă, iar la flotele mici treapta era deja
+stoarsă. Cu 12 lei și 100 de întrebări, la 10 mașini ne-ar fi rămas 3,80 lei dintr-un cont.
+
+**Ce rămâne acum dintr-un cont, pe lună, în cazul cel mai negru:**
+
+| Flota | Cont | Rămâne | Ieșim pe zero la |
+|---|---|---|---|
+| 10 mașini | 14 lei | 5,80 lei | 170 întrebări |
+| 25 | 17 lei | 7,75 lei | 183 |
+| 26 | 19 lei | 9,68 lei | 203 |
+| 50 | 19 lei | 8,00 lei | 172 |
+| 100 | 25 lei | 10,50 lei | 172 |
+| 200 | 35 lei | 13,50 lei | 162 |
+
+**⚠ O greșeală de-a mea, pe care o scriu ca s-o știți.** Când am propus treptele 14 și 17, am spus
+că „nicio flotă nu coboară sub 7 lei rămași". **Nu e adevărat.** Cu 14 lei, la 10 mașini rămân
+**5,80**. Pentru 7 lei peste tot, prima treaptă ar trebui să fie **16**, nu 14 — atunci minimul ar
+fi 7,75. Am rămas pe 14/17 cum ați cerut; dacă vreți 16, e o singură cifră de schimbat.
+
+---
+
+**Și partea a doua: proba de paritate cu telefonul, rescrisă.** Era singura suită de securitate
+roșie, cu 17 verificări picate din 130. Niciuna nu era un defect în aplicație — toate cereau reguli
+pe care voi le-ați schimbat deliberat:
+
+- **15 cereau plata peste cotă la RA Insight**, funcție scoasă pe 11 septembrie. Acum proba verifică
+  regula de azi, și e țintită pe ce contează: **un `acceptExtra` trimis de un ecran vechi, de
+  telefonul neactualizat sau de mână trebuie IGNORAT**. Dacă ar trece, un client ar plăti o
+  întrebare pe care nimeni nu i-a cerut-o. Proba insistă de trei ori și verifică să nu treacă nimic
+  — nici pe „Asistent AI", nici pe RA Insight, nici pe „Rezumat raport".
+- **Una cerea ca adminul unei firme să NU poată face alt administrator** — dar voi ați hotărât pe
+  16 septembrie că poate. Rescrisă: verifică acum că **poate** face un administrator, dar **nu poate**
+  face un cont de platformă. Aia e linia care contează.
+- **Una era o cifră învechită** dintr-o socoteală („3 apeluri"), rămasă de pe vremea când acordul
+  lăsa întrebările să treacă. Acum se citește, nu se scrie de mână.
+
+Am prins și o probă **goală**: una dintre verificările pe care tocmai le scrisesem nu putea pica
+niciodată, fiindcă ruta pe care o interoga normalizează răspunsul. Am descoperit-o stricând regula
+dinadins și văzând că proba tace. Rescrisă ca să muște.
+
+**Rezultatul: 131 din 131.** Toate cele treisprezece suite de securitate trec. Ecusonul de pe GitHub
+redevine verde prima oară de pe 15 septembrie.
+
+- **Ce am schimbat:** 100 de întrebări pe cont, două trepte de preț în sus, și poarta de securitate
+  complet verde.
+- **Ce vede fondatorul:** în calculatorul de ofertă, pachetul pornește pe 100, iar prețul propus la
+  flotele mici e 14 / 17 lei.
+- **Ce vede clientul:** primește dublu față de înainte. Pe hârtie scrie numărul adevărat de întrebări
+  din fondul lui. Când fondul se termină, RA Insight se oprește — fără nicio surpriză pe factură.
+
 ### FONDATOR · Cât câștigăm din RA Insight, pe flote — socotit, scris, salvat
 
 Alin: *„vreau să știu cum calculăm în funcție de flote, ca să și salvăm asta."*
@@ -7985,20 +8046,10 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### A. Blocante — fără astea nu dăm drumul
 
-- [ ] **(eu) Proba de paritate cu telefonul mai cere o funcție pe care am scos-o singuri.** Găsită
-  pe 22.09, după ce poarta de pe GitHub a fost repusă pe picioare (vezi intrarea de la ziua aia).
-  Din cele treisprezece suite de securitate, douăsprezece trec. A treisprezecea,
-  `verify_paritate_telefon.js`, are **17 verificări picate din 130** — toate despre același lucru:
-  **plata peste cotă la RA Insight**. Pe 11.09 am hotărât deliberat că, la epuizarea fondului lunar,
-  RA Insight **se oprește** — fără „mai vrei? costă atât", ca să nu vadă clientul prețuri pe
-  întrebare. Serverul face exact asta. Proba încă cere vechiul traseu („cere acordul", „cu acordul
-  dat, întrebarea pleacă").
-
-  **Nu e un defect în aplicație** — e o probă rămasă în urma unei decizii. Dar nu e nici o
-  ștersătură pe care s-o fac în trecere: sunt paisprezece verificări despre bani și despre ce
-  ajunge pe factura clientului, și ar trebui **înlocuite** cu ce apărăm acum („la epuizare se
-  oprește, la fel pe web și pe telefon, și nimic nu trece tăcut pe factură") — nu doar tăiate.
-  Un test de bani șters în grabă e mai rău decât unul roșu. De făcut cu voi de față.
+- [x] **REZOLVAT (23.09): proba de paritate cu telefonul.** Cerea plata peste cotă la RA Insight —
+  funcție scoasă deliberat pe 11.09. Rescrisă pe regula de azi („la epuizare se oprește"), plus două
+  verificări rămase și ele în urma unor decizii (rolul de administrator, o cifră dintr-o socoteală).
+  **131 din 131**, și toate cele treisprezece suite de securitate trec. Vezi intrarea de la 23.09.
 
 - [ ] **(eu) Restaurarea unui backup MARE încă ține tot fișierul în memorie.** Singura problemă din revizia adversă
   pe care n-am reparat-o pe 12.09, fiindcă cere rescrierea restaurării pe bucăți (zile, nu ore). Azi merge; dar peste
