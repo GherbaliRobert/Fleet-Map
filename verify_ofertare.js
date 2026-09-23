@@ -163,7 +163,12 @@ T('și hârtia folosește ACEEAȘI cifră (o pune serverul, din constantă)',
   /o\.valabilZile = OFERTA_VALABIL_ZILE;/.test(server) && !/30 \* 86400000/.test(faraComentarii(PDFSRV)));
 T('pasul 2 explică CAN vs FMS', /priza standard de camion/.test(html) && /modul LV-CAN200<\/b>, cumpărat și montat separat/.test(html));
 T('și de ce o mașină cu CAN are două linii de montaj', /mai are o linie de montaj deasupra — munca în plus/.test(html));
-T('serverul ține tarifele de listă', /const TARIF_CHEI = \[/.test(TARS) && /function _tarifeCurate\(b\)/.test(TARS));
+T('serverul ține tarifele de listă', /const TARIF_CHEI = \[/.test(TARS) && /function _tarifeCurate\(b, existent\)/.test(TARS));
+// ⚠ Și le ÎMBINĂ, nu le rescrie: o cheie netrimisă își păstrează valoarea. Sunt două căi de salvare
+// (tabloul „Prețurile noastre" și butonul din cărți) cu chei diferite; rescrierea făcea ca a doua să
+// șteargă pe tăcute ce salvase prima — de pildă grila RA Insight (23.09).
+T('și le ÎMBINĂ: o cheie netrimisă își păstrează valoarea',
+  /if \(!\(k in b\)\) \{ out\[k\] = \(vechi\[k\] != null/.test(TARS));
 T('un tarif netrecut înseamnă „ia-l din cod", nu zero',
   /out\[k\] = null; return;/.test(TARS) && /: null;\s*\n\s*\}\);/.test(TARS));
 T('ecranul le cere și le îmbină peste cele din cod',
@@ -483,6 +488,17 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   T('ce am trecut rămâne', tar1.dFmc650 === 133 && tar1.mGps === 111, JSON.stringify({ d: tar1.dFmc650, m: tar1.mGps }));
   T('ce am lăsat gol înseamnă „ia-l din cod", nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
   T('și o cifră fără sens, la fel', tar1.pCan === null, JSON.stringify(tar1.pCan));
+  // Două căi de salvare, chei diferite: tabloul „Prețurile noastre" (cu grila RA Insight) și butonul
+  // „Salvează ca tarifele noastre" din cărți (fără ea). A doua NU are voie s-o șteargă pe prima.
+  await PUT('/api/admin/system-settings', { tarife_lista: { aiqPana10: 22, aiqPana25: 18 } });
+  await PUT('/api/admin/system-settings', { tarife_lista: { pPlain: 31, mGps: 115 } });   // ca din cărți
+  const tar2 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};
+  T('grila RA Insight din tablou supraviețuiește unei salvări din cărți',
+    tar2.aiqPana10 === 22 && tar2.aiqPana25 === 18, JSON.stringify({ a10: tar2.aiqPana10, a25: tar2.aiqPana25 }));
+  T('iar salvarea din cărți și-a scris cifrele ei', tar2.pPlain === 31 && tar2.mGps === 115,
+    JSON.stringify({ p: tar2.pPlain, m: tar2.mGps }));
+  T('și ce se salvase înainte, netrimis acum, a rămas', tar2.dFmc650 === 133, JSON.stringify(tar2.dFmc650));
+  T('prețul unic vechi al contului (pAiA) nu mai e în listă', !('pAiA' in tar2));
 
   sect('7d. Pe server pornit: oferta chiar vine ca fișier');
   const pdfResp = await POST('/api/admin/offers/pdf', {

@@ -35,7 +35,7 @@ function decupez(nume) {
   return html.slice(a, b);
 }
 const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfRecalc', '_lei2eur',
-  decupez('Tarife după mărimea flotei') + '\n; return { _aiqCost, _aiqPretLoc, _aiqFond, _modVeh, AIQ_PRET_LOC, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModul, _ofHintAiq };')(
+  decupez('Tarife după mărimea flotei') + '\n; return { _aiqCost, _aiqPretLoc, _aiqFond, _aiqAplicaLista, _modVeh, AIQ_PRET_LOC, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModul, _ofHintAiq };')(
   { getElementById: () => null }, (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; },
   () => {}, {}, () => {}, (v) => v / 5);
 
@@ -139,6 +139,48 @@ const PRAG_RAMANE = 5.5;
     ramane.toFixed(2) + ' lei din ' + M._aiqPretLoc(v));
 });
 
+// ── Grila se poate schimba din „Prețurile noastre" (23.09) ──────────────────────────────────────
+// Până atunci, „Prețurile noastre" avea un singur rând de RA Insight („Un cont, pe lună"), iar grila
+// îl călca: scriai 22 de lei și oferta tot 14 propunea. Acum rândurile de acolo SUNT treptele.
+T('fiecare treaptă are cheia ei, ca s-o poată ține minte lista casei',
+  M.AIQ_PRET_LOC.map((x) => x.cheie).join(',') === 'aiqPana10,aiqPana25,aiqPana50,aiqPana100,aiqPeste100',
+  M.AIQ_PRET_LOC.map((x) => x.cheie).join(','));
+M._aiqAplicaLista({ aiqPana10: 22, aiqPana50: 30 });
+T('un preț salvat pentru o treaptă AJUNGE în propunere', M._aiqPretLoc(8) === 22 && M._aiqPretLoc(40) === 30,
+  M._aiqPretLoc(8) + ' / ' + M._aiqPretLoc(40));
+T('treptele nesalvate rămân pe prețul din cod', M._aiqPretLoc(20) === 17 && M._aiqPretLoc(250) === 35,
+  M._aiqPretLoc(20) + ' / ' + M._aiqPretLoc(250));
+M._aiqAplicaLista({ aiqPana10: 0, aiqPana25: '', aiqPana50: null, aiqPana100: 'abc' });
+T('o treaptă golită, pusă pe 0 sau pe text se întoarce la cod — NU dă conturi pe gratis',
+  M._aiqPretLoc(8) === 14 && M._aiqPretLoc(20) === 17 && M._aiqPretLoc(40) === 19 && M._aiqPretLoc(80) === 25,
+  [8, 20, 40, 80].map((v) => M._aiqPretLoc(v)).join(' / '));
+M._aiqAplicaLista(null);
+T('fără listă, grila e exact cea din cod', [8, 20, 40, 80, 250].map((v) => M._aiqPretLoc(v)).join(',') === '14,17,19,25,35');
+
+// Rândul mort a plecat de peste tot: din lista de pornire, din tablou și de pe server.
+const plasa = Number((html.match(/^\s*pAiA: (\d+),/m) || [, 'NaN'])[1]);
+T('plasa din tarifele de pornire = prima treaptă a grilei (nu se pot despărți)',
+  plasa === M.AIQ_PRET_LOC[0].implicit, plasa + ' vs ' + M.AIQ_PRET_LOC[0].implicit);
+T('iar „Prețurile noastre" NU mai are rândul mort „Un cont, pe lună"', !/\['pAiA', 'Un cont, pe lună'/.test(html));
+T('și nici în lista pe care o ține minte serverul',
+  !/'pAiA'/.test((server.match(/const TARIF_CHEI = \[([\s\S]*?)\];/) || ['', ''])[1])
+  && ['aiqPana10', 'aiqPana25', 'aiqPana50', 'aiqPana100', 'aiqPeste100'].every((k) =>
+    (server.match(/const TARIF_CHEI = \[([\s\S]*?)\];/) || ['', ''])[1].indexOf("'" + k + "'") >= 0));
+T('grila se reîncarcă după fiecare încărcare și salvare a listei',
+  (html.match(/_aiqAplicaLista\(_tarifeLista\)/g) || []).length === 3);
+
+// Serverul NU mai rescrie toată lista la fiecare salvare: sunt două căi de salvare (tabloul și
+// butonul din cărți) care trimit chei diferite, iar a doua ar fi șters grila primei, pe tăcute.
+const curat = new Function('TARIF_CHEI', server.slice(server.indexOf('function _tarifeCurate('),
+  server.indexOf('\n}', server.indexOf('function _tarifeCurate(')) + 2) + '; return _tarifeCurate;')(
+  eval((server.match(/const TARIF_CHEI = (\[[\s\S]*?\]);/) || [, '[]'])[1]));
+const salvat = curat({ aiqPana10: 22, pPlain: 31 }, {});
+const apoi = curat({ pPlain: 33, mGps: 120 }, salvat);
+T('o salvare care nu trimite grila NU o șterge', apoi.aiqPana10 === 22, JSON.stringify(apoi.aiqPana10));
+T('dar schimbă ce i s-a trimis', apoi.pPlain === 33 && apoi.mGps === 120, apoi.pPlain + ' / ' + apoi.mGps);
+T('iar o cheie trimisă GOALĂ se întoarce la cod', curat({ aiqPana10: '' }, apoi).aiqPana10 === null);
+T('o cheie veche (pAiA) cade la prima salvare', !('pAiA' in curat({}, { pAiA: 15, pPlain: 29 })));
+
 sect('3. Tahograf și e-Transport intră ÎN abonamentul mașinii, nu ca linie separată');
 // Hotărârea lui Alin (10.09): „nu le taxăm separat, nu abuzăm". Deci tariful lor pe vehicul se
 // adaugă în prețul lunar al mașinii, iar în ofertă NU apare niciun rând de „modul".
@@ -179,16 +221,24 @@ T('cu amândouă: 45 + 5 + 4 = 54 lei/mașină', linie(ambele, 'CAN').unit === 5
 T('scrie amândouă sub mașină', /tahograf și e-Transport/.test(linie(ambele, 'CAN').extra || ''), linie(ambele, 'CAN').extra);
 
 // RA Insight RĂMÂNE linie separată — e un pachet de întrebări, cu cotă lunară.
-const cuAi = calculator(flota({ 'of-aiA': true }))._ofCalc();
+// Prețul contului se dă EXPLICIT, cum e în formular (câmpul e umplut din grilă). Proba socotește
+// „conturi × preț", nu se sprijină pe o valoare de rezervă.
+const cuAi = calculator(flota({ 'of-aiA': true, 'of-pAiA': 15 }))._ofCalc();
 T('RA Insight rămâne linie de sine stătătoare', !!linie(cuAi, 'RA Insight'), cuAi.lines.map(l => l.label).join(' | '));
 T('și scrie câte CONTURI se vând', /RA Insight — 1 cont/.test(linie(cuAi, 'RA Insight').label), linie(cuAi, 'RA Insight').label);
 T('iar dedesubt, fondul comun de întrebări',
   /50 de întrebări pe lună, în comun/.test(linie(cuAi, 'RA Insight').extra || ''), linie(cuAi, 'RA Insight').extra);
 // Mai multe conturi: prețul se înmulțește, fondul la fel.
-const cuAi3 = calculator(flota({ 'of-aiA': true, 'of-aiqSeats': 3 }))._ofCalc();
+const cuAi3 = calculator(flota({ 'of-aiA': true, 'of-aiqSeats': 3, 'of-pAiA': 15 }))._ofCalc();
 T('3 conturi × 15 lei = 45 lei/lună', linie(cuAi3, 'RA Insight').total === 45, linie(cuAi3, 'RA Insight').total);
 T('și fondul devine 150 de întrebări', /150 de întrebări/.test(linie(cuAi3, 'RA Insight').extra || ''), linie(cuAi3, 'RA Insight').extra);
 T('eticheta zice „3 conturi", nu „3 cont"', /3 conturi/.test(linie(cuAi3, 'RA Insight').label));
+// ⚠ Plasa: dacă cineva GOLEȘTE câmpul de preț, socoteala cade pe `_OF_PRETURI_DEF.pAiA`. Am scos-o o
+// dată (23.09) și totalul ofertei a ieșit NaN. Nu o scoate fără să pui altă plasă.
+const golit = calculator(flota({ 'of-aiA': true }))._ofCalc();
+T('câmpul de preț golit NU dă NaN — cade pe plasă',
+  Number.isFinite(linie(golit, 'RA Insight').total) && Number.isFinite(golit.monthly),
+  linie(golit, 'RA Insight').total + ' / ' + golit.monthly);
 T('totalul lunar crește cu cele 3 conturi', cuAi3.monthly === cuAi.monthly + 30, cuAi.monthly + ' → ' + cuAi3.monthly);
 // „Nelimitat" (0 întrebări pe cont) se vede ca atare, nu ca „0 întrebări".
 const cuAiNel = calculator(flota({ 'of-aiA': true, 'of-aiqN': 0 }))._ofCalc();
@@ -484,7 +534,18 @@ T('poarta fondului e chemată din toate căile de AI',
   String((server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
 T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
 // Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
-T('bara propune contul în plus', /Un cont în plus aduce încă ' \+ window\._raxNrI\(q\.questionsPerSeat \|\| 50\)/.test(html));
+T('bara propune contul în plus', /'Un cont în plus aduce încă ' \+ window\._raxNrI\(peCont\)/.test(html));
+// ⚠ Dar DOAR pe regula pe cont. Pe cota fixă veche, un cont în plus nu aduce nimic — iar „|| 50"-ul
+// de rezervă promitea tocmai asta, și pe web, și pe server, și pe telefon (găsit 23.09).
+T('și numai unde e adevărat (regula pe cont), fără „50" pus de rezervă',
+  /var inPlus = peCont > 0 \?/.test(html) && !/questionsPerSeat \|\| 50/.test(html)
+  && !/questionsPerSeat \|\| 50/.test(server)
+  && !/perSeat \|\| 50/.test(fs.readFileSync('./mobile/src/components/ChatScreen.tsx', 'utf8')));
+// „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește
+// nimic — RA Insight se oprește. Citit de un client, „extra" suna a factură în plus.
+T('la fond epuizat, clientul vede „oprit", nu „extra"',
+  !/fa-circle-exclamation"><\/i> extra</.test(html) && /oprit până pe ' \+ reset/.test(html));
+T('și i se spune că NU plătește nimic în plus', /fără niciun cost în plus/.test(html));
 T('oferta acceptată nu mai scrie niciun preț pe întrebare',
   /patch\.ai_quota = n > 0 \? \{ questionsPerSeat: n, seatPriceRON: seatPrice \} : null;/.test(server));
 T('factura are UN singur rând de RA Insight', /RA Insight — conturi \(/.test(server) &&

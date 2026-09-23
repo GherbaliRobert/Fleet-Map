@@ -97,6 +97,66 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
+### AMÂNDOI · RA Insight, verificat de la ofertă până la factură — și ce era stricat pe drum
+
+Alin: *„în Ofertare Live, în logica aplicației, e așa cum am modificat? Asigură-te că totul e ok și
+funcționează. Fă o analiză cum trebuie și explică, că nu înțeleg."*
+
+**Cum merg banii, pe scurt, de la ofertă la factură:**
+
+1. **În calculator**, spui câte mașini are clientul. Aplicația propune singură prețul unui cont de
+   RA Insight din grilă (14 / 17 / 19 / 25 / 35 lei, după flotă) și pornește pe 100 de întrebări.
+2. **Oferta salvată** ține minte trei lucruri: câte conturi, câte întrebări pe cont, cât costă un cont.
+3. **Contractul făcut din ofertă** le scrie în anexă și **aprinde RA Insight pe firmă**, cu exact
+   regula din ofertă. Nimeni nu mai retastează nimic.
+4. **Adminul firmei** alege din „Utilizatori" cine primește RA Insight. Fiecare om aprins = un cont.
+5. **Fondul lunii** = conturi aprinse × întrebări pe cont. Două conturi × 100 = 200 de întrebări,
+   într-o oală comună a firmei.
+6. **Când fondul se termină, RA Insight se oprește** până pe 1 ale lunii. Nu se vinde nimic peste.
+7. **Pe factură** intră conturile × prețul unui cont — două conturi × 17 lei = 34 de lei pe lună.
+
+**Am verificat fiecare pas pe aplicația pornită**, cu o ofertă adevărată făcută din calculator,
+transformată în contract, cu doi oameni aprinși și 200 de întrebări consumate una câte una:
+**39 din 39 de verificări trec.** Cifrele ies exact: 17 lei propus, 200 de întrebări în fond,
+întrebarea 201 refuzată fără să ajungă la model, 34 de lei în venitul lunar.
+
+**Ce era stricat, găsit pe drum:**
+
+- **Un buton care nu făcea nimic.** În „Prețurile noastre", rândul „RA Insight · Un cont, pe lună"
+  **nu ajungea în ofertă**: am pus 22 de lei acolo și oferta tot 14 a propus. Grila pe flote îl
+  călca pe tăcute. Acum, în locul lui, stau **cele cinci trepte ale grilei**, și chiar ajung în
+  ofertă — le schimbi fără să umbli în cod, cum ai cerut pe 21.09.
+- **Două salvări care se ștergeau una pe alta.** Serverul rescria TOATĂ lista de prețuri la fiecare
+  salvare, iar „Salvează ca tarifele noastre" din cărțile ofertei și tabloul „Prețurile noastre"
+  trimit liste diferite. Cu grila nouă, butonul din cărți ar fi șters-o fără să spună nimic. Acum
+  fiecare salvare schimbă doar ce trimite.
+- **Clientul vedea „extra"** în portocaliu când i se termina fondul — cuvânt rămas de pe vremea când
+  peste fond se plătea. Citit de un client, suna a factură în plus. Acum scrie **„oprit până pe
+  1 octombrie"** și, în explicație, **„fără niciun cost în plus"**.
+- **„Un cont în plus aduce încă 50 de întrebări"** — scris ca rezervă, pe web, pe server ȘI pe
+  telefon. La firmele pe regula veche (cotă fixă, contracte de dinainte de 11.09), un cont în plus
+  **nu aduce nimic**, deci fraza promitea ceva fals. Acum apare doar unde e adevărată, cu cifra
+  adevărată a firmei.
+- **Resturi nefolosite** de pe vremea prețurilor pe întrebare (un curs și două funcții de bani, în
+  ecranul clientului). Șterse.
+
+**⚠ De știut despre clienții existenți:** schimbarea la 100 de întrebări și la treptele 14/17 se
+aplică **ofertelor noi**. Clienții deja semnați își păstrează ce au semnat (de pildă 50 de întrebări
+și prețul vechi) — e corect, e contractul lor. Dacă vreți să-i treceți și pe ei, se face din fișa
+firmei, „Abonament & plăți", firmă cu firmă.
+
+**⚠ Telefonul:** reparația frazei „încă 50" e în codul aplicației de telefon, dar ajunge pe telefoane
+abia cu **următorul APK**. Pe telefon mai stă și toată interfața veche de plată peste fond — nu se
+aprinde niciodată (serverul nu-i mai trimite nimic), dar e bine curățată la același APK. Am trecut-o
+la „De verificat înainte de lansare".
+
+- **Ce am schimbat:** grila RA Insight se editează din „Prețurile noastre"; salvările nu se mai
+  calcă; ecranul clientului nu mai sugerează costuri care nu există.
+- **Ce vede fondatorul:** în „Prețurile noastre", cinci rânduri pentru RA Insight (câte unul pe
+  treaptă de flotă) în loc de unul care nu făcea nimic.
+- **Ce vede clientul:** la fond epuizat, „oprit până pe …" și „fără niciun cost în plus", în loc de
+  „extra"; iar promisiunea cu contul în plus apare doar când e adevărată.
+
 ### FONDATOR · RA Insight trece la 100 de întrebări pe cont. Și proba, rescrisă pe regula de azi
 
 Două lucruri, hotărâte după socoteala de mai jos.
@@ -8045,6 +8105,18 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(eu) Următorul APK: curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
+  stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),
+  „X întrebări în plus", „peste fond: X lei/întrebare", eticheta „extra". **Nu se aprinde niciodată**
+  — serverul nu-i mai trimite niciunul dintre câmpurile alea (verificat 23.09) — dar e exact capcana
+  „text rămas după o funcție scoasă". Fraza falsă „un cont în plus aduce încă 50" e deja reparată în
+  cod; ajunge pe telefoane odată cu APK-ul. Nu cere niciun APK separat: se face la următorul.
+
+- [ ] **(voi) Clienții deja semnați rămân pe regula veche de RA Insight.** Trecerea la 100 de întrebări
+  și la treptele 14/17 (23.09) se aplică ofertelor NOI. Cine a semnat înainte își păstrează ce a
+  semnat — e contractul lui. De hotărât: îi lăsați așa, sau le dați și lor 100 de întrebări (se face
+  din fișa firmei, „Abonament & plăți", firmă cu firmă)?
 
 - [x] **REZOLVAT (23.09): proba de paritate cu telefonul.** Cerea plata peste cotă la RA Insight —
   funcție scoasă deliberat pe 11.09. Rescrisă pe regula de azi („la epuizare se oprește"), plus două

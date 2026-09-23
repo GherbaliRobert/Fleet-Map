@@ -182,6 +182,30 @@ clientul pune numai întrebări care storc tot ȘI consumă fondul până la ult
   `extraAcceptedMonth`), iar un `acceptExtra` trimis de un ecran vechi e **ignorat** — păzit de
   `verify_paritate_telefon.js`, care insistă de trei ori și verifică să nu treacă nimic.
 
+**Grila se editează din „Prețurile noastre" (23.09).** Fiecare treaptă din `AIQ_PRET_LOC` are
+`implicit` (prețul din cod), `lei` (cel folosit acum) și `cheie` (`aiqPana10`, `aiqPana25`,
+`aiqPana50`, `aiqPana100`, `aiqPeste100`), salvată în `tarife_lista`. `_aiqAplicaLista(t)` pune
+lista peste grilă — chemată la încărcare și după AMBELE salvări. Treaptă golită, 0 sau text → înapoi
+la `implicit`, **niciodată la 0** (ar da conturi pe gratis). Granițele (10/25/50/100) NU se editează.
+
+- ⚠ **Rândul vechi „Un cont, pe lună" (`pAiA`) a fost un buton MORT**: grila îl călca pe tăcute
+  (22 de lei salvați → oferta tot 14 propunea). A ieșit din `_PRET_GRUPURI` și din `TARIF_CHEI`.
+  Nu-l pune la loc — prețul contului e grila, nu o cifră.
+- ⚠ **`_OF_PRETURI_DEF.pAiA = 14` rămâne, dar ca PLASĂ, nu ca preț de listă.** Câmpul `of-pAiA` e
+  umplut din grilă; dacă cineva îl golește, socoteala cade pe plasă. Am scos-o o dată și totalul a
+  ieșit NaN. E legată printr-o probă de `AIQ_PRET_LOC[0].implicit`.
+- **Ce vede clientul la fond epuizat:** „**oprit** până pe …" și „fără niciun cost în plus". NU
+  „extra" — rămăsese de pe vremea când peste fond se plătea și suna a factură în plus.
+- **„Un cont în plus aduce încă N"** se scrie DOAR pe regula pe cont (`questionsPerSeat > 0`), cu
+  cifra firmei. Pe cota fixă veche un cont în plus nu aduce nimic; un `|| 50` de rezervă promitea
+  asta pe web, pe server ȘI pe telefon. NU pune o cifră de rezervă în fraza asta.
+- **Clienții deja semnați își păstrează regula** (de ex. 50 de întrebări, prețul vechi). Trecerea la
+  100 și la 14/17 e pentru ofertele NOI. Se schimbă firmă cu firmă, din „Abonament & plăți".
+- ⚠ **Telefonul** (`mobile/src/components/ChatScreen.tsx`) mai are interfața veche de plată peste
+  fond. Nu se aprinde (serverul nu mai trimite `overage*` / `needsExtraConsent`), dar se curăță la
+  următorul APK — e pe lista de dinainte de lansare.
+- Păzit capăt la capăt de `verify_tarife.js` și `verify_ofertare.js`; cele de bani, pe server pornit.
+
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.
 
@@ -237,6 +261,11 @@ noastre"**, în josul panoului „Tarife (editabile)".
   scumpea, se umbla în cod.
 - **O cheie netrecută rămâne `null` = „ia-o din cod", NU zero.** Un tarif uitat ar face altfel un
   abonament de 0 lei fără ca nimeni să bage de seamă.
+- ⚠ **O salvare schimbă DOAR ce trimite** (`_tarifeCurate(b, existent)`, 23.09). Trimisă cu valoare
+  → se scrie; trimisă goală → `null`; **netrimisă → rămâne cum era**. Până atunci fiecare salvare
+  rescria toată lista, iar cele două căi (tabloul „Prețurile noastre" și butonul din cărți) trimit
+  chei diferite: butonul din cărți ar fi șters grila RA Insight pe tăcute. Serverul citește lista
+  existentă DIRECT din bază, nu din cache-ul de 15 s al lui `getSystemSettings()`.
 - `_ofTarifeDeBaza()` = `_OF_PRETURI_DEF` + ce e salvat pe server. `raxOfReset` pornește de acolo.
   O ofertă **deschisă din listă** își păstrează prețurile ei negociate (`editingId != null`).
 - Perechea „cât dăm / cât cerem" stă în același loc: `costuri_noastre` + `tarife_lista`.

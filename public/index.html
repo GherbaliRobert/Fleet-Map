@@ -18887,7 +18887,9 @@ const pozitii = await r.json();</code></pre>
 
     // ── AI ──
     var SUGG = ['Unde sunt vehiculele acum?', 'Ce probleme are flota?', 'Km — săptămâna asta', 'Consum — 30 zile'];
-    // ─── Contor întrebări (ca la Claude): cât mai ai din luna curentă + ce te costă peste cotă ───
+    // ─── Contor întrebări (ca la Claude): cât mai ai din luna curentă ───
+    // (Până pe 23.09 titlul spunea „+ ce te costă peste cotă". Peste cotă nu mai costă nimic, fiindcă
+    // nu mai există nimic peste cotă: la epuizare RA Insight se oprește. Vezi CLAUDE.md.)
     window.raxLoadQuota = async function () {
       var box = $('rax-ai-quota'); if (!box) return;
       var q = null;
@@ -18901,13 +18903,16 @@ const pozitii = await r.json();</code></pre>
       var over = q.remaining <= 0;
       var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
       var head, sub;
-      // Sumele se arată în LEI (moneda clientului) cu echivalentul în € — curs BNR.
-      var fx = (window.raFx ? window.raFx().eur : 5.0);
-      var lei = function (eur) { return (eur * fx).toFixed(2).replace('.', ',') + ' lei'; };
-      var both = function (eur) { return lei(eur) + ' <span style="opacity:.65;">(' + eur.toFixed(2).replace('.', ',') + ' €)</span>'; };
+      // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont (`questionsPerSeat`). La o
+      // firmă pe forma VECHE (cotă fixă), un cont în plus nu aduce nicio întrebare — iar „|| 50"-ul
+      // de rezervă de aici îi promitea tocmai asta (găsit 23.09). Fără regula pe cont, fraza lipsește.
+      var peCont = Number(q.questionsPerSeat) || 0;
+      var inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + window._raxNrI(peCont) + ' pe lună.' : '';
       if (over) {
         head = '<b>Fondul lunii s-a terminat</b>';
-        sub = 'Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.';
+        // Data stă deja în eticheta portocalie („oprit până pe …"); aici ar fi fost a doua oară, pe
+        // rândul imediat de dedesubt. Rândul spune doar ce poate face omul — dacă poate face ceva.
+        sub = inPlus || ('Se reînnoiește pe ' + reset + '.');
       } else {
         head = '<b>' + q.remaining + '</b> din ' + window._raxNrI(q.questions) + ' rămase' +
           (q.seats > 1 ? ' <span style="opacity:.7;">· fond comun, ' + q.seats + ' conturi</span>' : '');
@@ -18917,7 +18922,10 @@ const pozitii = await r.json();</code></pre>
       box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
       box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:5px;">'
         + '<span style="color:var(--text-secondary);">' + head + '</span>'
-        + (over ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-exclamation"></i> extra</span>' : '')
+        // „oprit", nu „extra": „extra" rămăsese de pe vremea când, peste fond, clientul PLĂTEA în
+        // plus. Acum nu plătește nimic — RA Insight doar se oprește. Citit de un client, „extra"
+        // ar fi sunat a factură în plus (găsit 23.09).
+        + (over ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-pause"></i> oprit până pe ' + reset + '</span>' : '')
         + '</div>'
         + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';transition:width .3s;"></div></div>'
         + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;">' + sub + '</div>'
@@ -18926,9 +18934,12 @@ const pozitii = await r.json();</code></pre>
         + '<div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;margin-top:4px;padding-left:2px;">'
         + '• O întrebare pusă aici = 1, oricât de complicat e răspunsul.<br>'
         + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
-        + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + window._raxNrI(q.questionsPerSeat || q.questions) + '.<br>'
+        + (peCont > 0
+            ? '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + window._raxNrI(peCont) + '.<br>'
+            : '• Fondul e al firmei: ' + window._raxNrI(q.questions) + ' pe lună.<br>')
         + '• Se reînnoiește pe ' + reset + '.'
-        + '<br>• Când se termină, un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.'
+        + '<br>• Când se termină, RA Insight se oprește până la reînnoire — fără niciun cost în plus.'
+        + (inPlus ? '<br>• ' + inPlus : '')
         + '</div></details>';
     };
     window.raxToggleAI = function () {
@@ -20503,7 +20514,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">RA Insight — conturi și fond de întrebări</div>' +
           '<div class="rax-abo-grid">' +
             '<div class="rax-abo-f"><label>Întrebări / cont / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questionsPerSeat || s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
-            '<div class="rax-abo-f"><label>Preț / cont (lei/lună)</label><input type="number" id="rax-aiq-s" min="0" max="100000" step="1" value="' + (s.aiQuota.seatPriceRON || '') + '" placeholder="ex. 15"></div>' +
+            '<div class="rax-abo-f"><label>Preț / cont (lei/lună)</label><input type="number" id="rax-aiq-s" min="0" max="100000" step="1" value="' + (s.aiQuota.seatPriceRON || '') + '" placeholder="ex. 17"></div>' +
           '</div>' +
           // „Poate depăși" e o alegere cu bani în spate, deci scrie CE se întâmplă în fiecare caz.
           '<div class="hint" style="margin-bottom:8px;">Când fondul lunii se termină, RA Insight se oprește până pe 1. Nu există cost suplimentar și nici prețuri pe întrebare — cine vrea mai mult, mai adaugă un cont.</div>' +
@@ -22161,7 +22172,7 @@ const pozitii = await r.json();</code></pre>
     // cea de-a doua rămăsese în urmă: pAiA 150 lei și niciun preț pentru module. Un singur loc.
     var _OF_PRETURI_DEF = {
       pPlain: 29, pCan: 45, pFms: 65,
-      pAiA: 15,                        // lei/CONT de RA Insight, pe lună
+      pAiA: 14,                        // DOAR plasă (= prima treaptă a grilei); vezi `AIQ_PRET_LOC`
       pAiAg: 0,                        // agenții nu se facturează
       pTahograf: 5, pEtransport: 4,    // lei/VEHICUL/lună — intră în abonamentul mașinii
       ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0,
@@ -22187,6 +22198,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         _tarifeLista = (s && s.tarife_lista) || {};
+        _aiqAplicaLista(_tarifeLista);   // treptele RA Insight salvate în „Prețurile noastre"
         _cursNostru = (s && s.curs_eur) != null ? s.curs_eur : null;
         _cursNostruData = (s && s.curs_eur_data) || '';
         _costNoastre = (s && s.costuri_noastre) || _costNoastre;   // vin în același răspuns
@@ -22204,6 +22216,7 @@ const pozitii = await r.json();</code></pre>
         var j = await resp.json().catch(function () { return {}; });
         if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
         _tarifeLista = (j.settings && j.settings.tarife_lista) || trimit;
+        _aiqAplicaLista(_tarifeLista);
         if (window.raxToast) raxToast('Tarifele noastre, salvate ✓ — de aici pornesc ofertele viitoare', 'success');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
@@ -22420,10 +22433,38 @@ const pozitii = await r.json();</code></pre>
     // MICI treapta era deja stoarsă — la 10 mașini ar fi rămas 3,80 lei dintr-un cont de 12, în
     // scenariul negru. Cu 14 și 17, nicio flotă nu mai coboară sub ~7 lei rămași. Treptele de sus
     // (19/25/35) n-au avut nevoie: acolo mai era loc.
+    //
+    // `implicit` = prețul din cod; `lei` = cel folosit acum. Se pot schimba din „Prețurile noastre"
+    // (Alin, 21.09: „să nu mai lucrez în cod"), fiecare treaptă cu cheia ei (`cheie`), salvată în
+    // `tarife_lista`. Granițele (10/25/50/100 de mașini) NU se editează: ele vin din curba de cost
+    // măsurată, nu din piață.
+    //
+    // ⚠ Până pe 23.09, „Prețurile noastre" avea un singur rând, „Un cont, pe lună" (`pAiA`) — iar
+    // grila îl călca pe tăcute: scriai 22 de lei acolo și oferta tot 14 propunea. Un buton care nu
+    // face nimic e mai rău decât niciun buton. Acum rândurile de acolo SUNT treptele grilei.
     var AIQ_PRET_LOC = [
-      { panaLa: 10, lei: 14 }, { panaLa: 25, lei: 17 }, { panaLa: 50, lei: 19 },
-      { panaLa: 100, lei: 25 }, { panaLa: Infinity, lei: 35 }
+      { panaLa: 10, implicit: 14, cheie: 'aiqPana10' }, { panaLa: 25, implicit: 17, cheie: 'aiqPana25' },
+      { panaLa: 50, implicit: 19, cheie: 'aiqPana50' }, { panaLa: 100, implicit: 25, cheie: 'aiqPana100' },
+      { panaLa: Infinity, implicit: 35, cheie: 'aiqPeste100' }
     ];
+    AIQ_PRET_LOC.forEach(function (s) { s.lei = s.implicit; });
+    // ⚠ `_OF_PRETURI_DEF.pAiA` (14) NU e un preț de listă și nu se mai salvează nicăieri (serverul
+    // nu-l mai ține în `tarife_lista`). E doar PLASA: câmpul `of-pAiA` e umplut din grilă de îndată
+    // ce se știe flota, dar dacă cineva îl golește de mână, socoteala ar citi `undefined` și totalul
+    // ofertei ar ieși NaN. Am scos-o o dată (23.09) și a picat exact asta. E legată printr-o probă
+    // de prima treaptă de aici, ca să nu se poată despărți de grilă.
+    // Pune peste grilă prețurile salvate în „Prețurile noastre". O treaptă netrecută (sau golită)
+    // se întoarce la prețul din cod — niciodată la 0, care ar da conturi pe gratis.
+    function _aiqAplicaLista(t) {
+      AIQ_PRET_LOC.forEach(function (s) {
+        var v = t ? Number(t[s.cheie]) : NaN;
+        s.lei = (t && t[s.cheie] != null && Number.isFinite(v) && v > 0) ? v : s.implicit;
+      });
+    }
+    function _aiqTreapta(cheie) {
+      for (var i = 0; i < AIQ_PRET_LOC.length; i++) if (AIQ_PRET_LOC[i].cheie === cheie) return AIQ_PRET_LOC[i];
+      return null;
+    }
     function _aiqPretLoc(nVeh) {
       var v = Math.max(0, Number(nVeh) || 0);
       for (var i = 0; i < AIQ_PRET_LOC.length; i++) if (v <= AIQ_PRET_LOC[i].panaLa) return AIQ_PRET_LOC[i].lei;
@@ -22572,8 +22613,14 @@ const pozitii = await r.json();</code></pre>
       { t: 'Păstrarea datelor', um: 'lei', nota: 'Primele 6 luni sunt incluse în abonament.', randuri: [
         ['ret12', '12 luni', null], ['ret24', '24 luni', null],
         ['ret36', '36 luni', null], ['retCustom', 'Custom', null]] },
-      { t: 'RA Insight', um: 'lei', nota: 'Cât ne costă o întrebare e MĂSURAT în aplicație și se vede la pasul 3, lângă comutator — nu se trece de mână aici.', randuri: [
-        ['pAiA', 'Un cont, pe lună', null]] },
+      // Treptele GRILEI, nu un preț unic: prețul contului depinde de mărimea flotei. Cheile sunt
+      // cele din `AIQ_PRET_LOC` (`cheie`), iar ce scrii aici chiar ajunge în ofertă (23.09).
+      { t: 'RA Insight — un cont, pe lună, după flota clientului', um: 'lei', nota: 'Fiecare cont aduce 100 de întrebări pe lună. Cât ne costă o întrebare e MĂSURAT în aplicație și se vede la pasul 3, lângă comutator — nu se trece de mână aici.', randuri: [
+        ['aiqPana10', 'Până la 10 mașini', null],
+        ['aiqPana25', '11 – 25 de mașini', null],
+        ['aiqPana50', '26 – 50 de mașini', null],
+        ['aiqPana100', '51 – 100 de mașini', null],
+        ['aiqPeste100', 'Peste 100 de mașini', null]] },
       { t: 'Montaj, pe operațiune', um: 'lei', randuri: [
         ['mGps', 'Instalare dispozitiv GPS', 'mGps'],
         ['mLvCan', 'Instalare cu LV-CAN', 'mLvCan'],
@@ -22698,7 +22745,7 @@ const pozitii = await r.json();</code></pre>
         };
         return '<div class="rax-pret-r" data-p="' + (kP || '') + '" data-c="' + (kC || '') + '" data-um="' + esc(um) + '">'
           + '<span class="et">' + esc(et) + '</span>'
-          + cel('tp-' + kP, kP === 'cursEur' ? _cursNostru : (kP ? pret[kP] : null), !!kP)
+          + cel('tp-' + kP, kP === 'cursEur' ? _cursNostru : (_aiqTreapta(kP) ? _aiqTreapta(kP).lei : (kP ? pret[kP] : null)), !!kP)
           + cel('tc-' + kC, kC ? c[kC] : null, !!kC)
           + '<b class="mj" style="width:64px;text-align:right;font-size:11px;"></b></div>';
       };
@@ -22732,6 +22779,7 @@ const pozitii = await r.json();</code></pre>
           var j = await resp.json().catch(function () { return {}; });
           if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
           _tarifeLista = (j.settings && j.settings.tarife_lista) || tarife;
+          _aiqAplicaLista(_tarifeLista);   // grila RA Insight se schimbă chiar acum, nu la reîncărcare
           _costNoastre = (j.settings && j.settings.costuri_noastre) || costuri;
           // Cursul schimbat mișcă TOATE sumele de pe ecran, deci se ia din răspuns, nu din ce am trimis.
           if (j.settings) {

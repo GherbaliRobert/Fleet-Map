@@ -178,7 +178,10 @@ export function AiQuotaBar({ q, fx, boxStyle }: { q: AiQuota | null; fx: number;
       ? <>Întrebările în plus intră pe factura lunii: {lei(pretEur)}/întrebare
           {peste > 0 ? <> · până acum <b>{lei(costEur)}</b> <span style={{ opacity: 0.65 }}>({fmtEur(costEur)})</span></> : ' · ți se cere acordul o dată'}
           {aleMele > 0 ? ' · ai folosit tu ' + aleMele : ''}</>
-      : <>Se reînnoiește pe {reset}. Un cont în plus aduce încă {nDe(perSeat || 50, 'întrebări')} pe lună.</>;
+      // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont. La o firmă pe cota fixă
+      // veche, un cont în plus nu aduce nimic — iar „|| 50" îi promitea tocmai asta (găsit 23.09,
+      // aceeași scăpare ca pe web). Fără regula pe cont, fraza lipsește.
+      : <>Se reînnoiește pe {reset}. RA Insight se oprește până atunci, fără niciun cost în plus.{perSeat > 0 ? <> Un cont în plus aduce încă {nDe(perSeat, 'întrebări')} pe lună.</> : null}</>;
   } else {
     head = <><b>{remaining}</b> din {nDe(questions, 'întrebări')} rămase{seats > 1 ? <span style={{ opacity: 0.7 }}> · fond comun, {seats} conturi</span> : null}</>;
     sub = <>Se reînnoiește pe {reset}{aleMele > 0 ? ' · ai folosit tu ' + aleMele : ''}{q.overage ? ' · peste fond: ' + lei(pretEur) + '/întrebare' : ''}</>;
@@ -206,7 +209,7 @@ export function AiQuotaBar({ q, fx, boxStyle }: { q: AiQuota | null; fx: number;
           • Se reînnoiește pe {reset}.<br />
           • {q.overage
             ? <>Peste fond: {lei(pretEur)} de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).</>
-            : <>Când se termină, un cont în plus aduce încă {nDe(perSeat || 50, 'întrebări')} pe lună.</>}
+            : <>Când se termină, RA Insight se oprește până la reînnoire — fără niciun cost în plus.{perSeat > 0 ? <> Un cont în plus aduce încă {nDe(perSeat, 'întrebări')} pe lună.</> : null}</>}
         </div>
       </details>
     </div>

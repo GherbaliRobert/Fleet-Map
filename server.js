@@ -2650,18 +2650,32 @@ function _costuriCurate(b) {
 //
 // O cheie NETRECUTĂ rămâne `null` și înseamnă „folosește implicitul din pagină" — NU zero. Altfel un
 // tarif uitat ar face un abonament de 0 lei fără ca nimeni să bage de seamă.
-const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'pTahograf', 'pEtransport',
+// ⚠ `pAiA` NU mai e aici (23.09). Era „prețul unui cont de RA Insight" ca tarif de listă, dar
+// prețul contului îl dă GRILA pe mărimea flotei (`AIQ_PRET_LOC` din pagină), care călca pe tăcute
+// orice cifră salvată aici: Alin putea scrie 22 de lei în „Prețurile noastre" și oferta tot 14
+// propunea. Acum se salvează chiar treptele grilei — cele cinci chei `aiq…` de mai jos.
+const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiAg', 'pTahograf', 'pEtransport',
+  'aiqPana10', 'aiqPana25', 'aiqPana50', 'aiqPana100', 'aiqPeste100',
   'ret6', 'ret12', 'ret24', 'ret36', 'retCustom',
   'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
   'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];
-function _tarifeCurate(b) {
+// `existent` = lista salvată până acum. O cheie care NU vine în cerere își păstrează valoarea.
+//
+// ⚠ Înainte, fiecare salvare RESCRIA toată lista: orice cheie netrimisă devenea `null` („ia-o din
+// cod"). Cât timp o singură fereastră salva totul, n-a contat. Dar sunt DOUĂ căi de salvare —
+// tabloul „Prețurile noastre" și butonul „Salvează ca tarifele noastre" din cărțile ofertei — și
+// fiecare trimite alte chei. Butonul din cărți ar fi șters grila RA Insight din tablou, pe tăcute.
+// Acum: trimisă cu valoare → se scrie; trimisă goală → `null` (ia-o din cod); netrimisă → rămâne.
+function _tarifeCurate(b, existent) {
   const out = {};
+  const vechi = existent || {};
   TARIF_CHEI.forEach(k => {
+    if (!(k in b)) { out[k] = (vechi[k] != null && Number.isFinite(Number(vechi[k]))) ? Number(vechi[k]) : null; return; }
     if (b[k] === '' || b[k] === null || b[k] === undefined) { out[k] = null; return; }
     const n = parseFloat(b[k]);
     out[k] = (Number.isFinite(n) && n >= 0 && n <= 1000000) ? Math.round(n * 100) / 100 : null;
   });
-  return out;
+  return out;   // doar cheile din TARIF_CHEI: una scoasă (ca `pAiA`) cade singură la prima salvare
 }
 // ── sfârșit „tarifele de listă" ──
 
@@ -3485,8 +3499,13 @@ async function _fondEpuizat(req) {
       '• Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse' +
       (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
       '• Se reînnoiește pe **' + reinnoire + '**.\n' +
-      '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.*\n\n' +
-      'Ai nevoie de mai multe? **Un cont în plus aduce încă ' + (st.questionsPerSeat || 50) + _deNr(st.questionsPerSeat || 50) + 'întrebări pe lună** —se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
+      '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.*' +
+      // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont. La o firmă pe forma VECHE
+      // (cotă fixă, `questions`), un cont în plus NU aduce nicio întrebare — iar fraza, cu „50" pus
+      // de rezervă, îi promitea exact asta (găsit 23.09). Acum se spune doar unde e adevărat.
+      (st.questionsPerSeat > 0
+        ? '\n\nAi nevoie de mai multe? **Un cont în plus aduce încă ' + st.questionsPerSeat + _deNr(st.questionsPerSeat) + 'întrebări pe lună** — se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
+        : '\n\nAi nevoie de mai multe? Cere-i administratorului firmei să ne scrie.')
   };
 }
 // „10 întrebări", dar „50 de întrebări": de la 20 în sus româna cere „de" (la fel ca nDe() din aplicația de telefon).
@@ -7871,7 +7890,12 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     }
     // Tarifele noastre de listă — cât CEREM. Se trec o dată și pornesc fiecare ofertă nouă.
     if (b.tarife_lista !== undefined && b.tarife_lista && typeof b.tarife_lista === 'object') {
-      await db.setSetting('tarife_lista', JSON.stringify(_tarifeCurate(b.tarife_lista)));
+      // Se citește DIRECT din bază, nu din `getSystemSettings()`: aia ține 15 secunde în memorie, iar
+      // două salvări la rând (tabloul, apoi un buton din cărți) ar fi pornit a doua de la o listă
+      // veche și ar fi pierdut prima.
+      let existent = {};
+      try { const raw = await db.getSetting('tarife_lista'); if (raw) existent = JSON.parse(raw) || {}; } catch (e) { existent = {}; }
+      await db.setSetting('tarife_lista', JSON.stringify(_tarifeCurate(b.tarife_lista, existent)));
     }
     // Cursul nostru. Se ține minte ȘI ziua în care l-ai pus — altfel, peste trei luni, n-ai de unde
     // să știi dacă mai e bun. Gol = îl luăm de la BNR.
