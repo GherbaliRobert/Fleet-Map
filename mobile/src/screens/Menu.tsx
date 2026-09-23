@@ -1,5 +1,6 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
+import { App as CapApp } from '@capacitor/app';
 import { me, theme, toggleTheme, logout, showToast, ecranAscuns, type EcranCheie } from '../app/store';
 import { Api } from '../api/endpoints';
 import { API_BASE } from '../api/client'; // documentele legale sunt servite de server, nu împachetate în APK
@@ -14,6 +15,12 @@ export function Menu() {
   const [support, setSupport] = useState(false);
   const [msg, setMsg] = useState('');
   const [sending, setSending] = useState(false);
+  // Versiunea REALĂ a APK-ului (din build.gradle → variables.gradle), nu una scrisă de mână: după ea
+  // verificăm ce aplicație are un client instalată. În browser nu există → subsolul rămâne fără versiune.
+  const [versiune, setVersiune] = useState('');
+  useEffect(() => {
+    CapApp.getInfo().then((i) => setVersiune(String(i.version || '').replace(/-debug$/, ''))).catch(() => {});
+  }, []);
 
   function item(icon: IconName, label: string, onClick: () => void, right?: any, cls = '') {
     return (
@@ -23,9 +30,6 @@ export function Menu() {
         {right != null ? <span class="rt">{right}</span> : <Icon name="chevronR" size={18} color="var(--text-muted)" />}
       </button>
     );
-  }
-  function soon(icon: IconName, label: string) {
-    return <div class="mn-item mn-soon"><Icon name={icon} size={20} class="ic" /><span class="lbl">{label}</span><span class="tag">în curând</span></div>;
   }
 
   async function sendSupport() {
@@ -43,6 +47,10 @@ export function Menu() {
   // Titlul „Administrare" apare doar dacă a rămas măcar un rând sub el.
   const FLOTA: EcranCheie[] = ['soferi', 'grupe', 'mentenanta', 'documente', 'vehicule', 'alerte'];
   const areAdmin = !!perms.manageUsers || vede('hotspot') || (!!perms.manageFleet && FLOTA.some(vede));
+  // Modulele se pornesc pe firmă, din ofertă. Oprit → rândul dispare (ca pe web), nu mai scrie „în curând":
+  // modulul există și se vinde, deci „în curând" era o promisiune falsă. Aceeași regulă ca pe web: ascuns doar
+  // când e oprit explicit (super-adminul n-are firmă, deci nicio listă de module — le vede pe toate).
+  const modul = (k: string) => u?.features?.[k] !== false;
 
   return (
     <div class="screen">
@@ -63,13 +71,10 @@ export function Menu() {
         {u?.features?.agents !== false && perms.viewReports && vede('insight') && item('shield', 'Agenți AI', () => loc.route('/ai-agents'))}
 
         <div class="mn-sec">Module</div>
-        {vede('etransport') && (u?.features?.etransport
-          ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
-          : soon('truck', 'e-Transport (ANAF)'))}
-        {vede('tollro') && (u?.features?.etoll
-          ? item('route', 'Taxa de drum (TollRo)', () => loc.route('/etoll'))
-          : soon('route', 'Taxa de drum (TollRo)'))}
-        {u?.features?.tahograf && vede('tahograf') && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
+        {/* Tahograf și e-Transport cer pe server dreptul de rapoarte: fără el, rândul ducea într-un „Acces interzis". */}
+        {perms.viewReports && modul('etransport') && vede('etransport') && item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))}
+        {modul('etoll') && vede('tollro') && item('route', 'Taxa de drum (TollRo)', () => loc.route('/etoll'))}
+        {perms.viewReports && modul('tahograf') && vede('tahograf') && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
         {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
         {perms.viewReports && vede('hotspot') && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 
@@ -78,10 +83,10 @@ export function Menu() {
             <div class="mn-sec">Administrare</div>
             {perms.manageFleet && vede('soferi') && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
             {perms.manageFleet && vede('grupe') && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
-            {vede('hotspot') && item('mapPin', 'Zone (geofence)', () => loc.route('/admin/geofences'))}
+            {vede('hotspot') && item('mapPin', 'Zone', () => loc.route('/admin/geofences'))}
             {perms.manageFleet && vede('mentenanta') && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
             {perms.manageFleet && vede('documente') && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
-            {perms.manageFleet && vede('vehicule') && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
+            {perms.manageFleet && vede('vehicule') && item('truck', 'Vehicule', () => loc.route('/vehicles'))}
             {perms.manageFleet && vede('alerte') && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
             {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}
             {perms.manageUsers && item('report', u?.isSuper ? 'Facturare' : 'Facturile mele', () => loc.route('/billing'))}
@@ -94,7 +99,7 @@ export function Menu() {
             <div class="mn-sec">Platformă (super-admin)</div>
             {item('chart', 'Dashboard platformă', () => loc.route('/admin/platform'))}
             {item('layers', 'Companii', () => loc.route('/admin/companies'))}
-            {item('cpu', 'Dispozitive (toate)', () => loc.route('/admin/devices'))}
+            {item('cpu', 'Dispozitive', () => loc.route('/admin/devices'))}
             {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
             {item('zap', 'Control costuri', () => loc.route('/admin/costs'))}
             {/* Tokeni, cereri și modelul AI: informație doar pentru noi (pe web ecranul a ieșit din meniul clientului). */}
@@ -119,7 +124,7 @@ export function Menu() {
             <span aria-hidden="true">·</span>
             <a href={API_BASE + '/confidentialitate.html'} target="_blank" rel="noopener" style="color:var(--text-muted)">Confidențialitate</a>
           </div>
-          RA Tracks · v0.1
+          RA Tracks{versiune ? ' · v' + versiune : ''}
         </div>
       </div>
 

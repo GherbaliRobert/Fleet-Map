@@ -18,6 +18,7 @@ export function PlatformDashboard() {
   const [errs, setErrs] = useState<any[] | null>(null);
   const [bk, setBk] = useState<any | null>(null);
   const [hl, setHl] = useState<any | null>(null);
+  const [mrr, setMrr] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [bkBusy, setBkBusy] = useState(false);
@@ -30,6 +31,9 @@ export function PlatformDashboard() {
     Api.adminErrors(20).then(setErrs).catch(() => setErrs([]));
     Api.backupStatus().then(setBk).catch(() => {});
     Api.adminHealth().then(setHl).catch(() => {});
+    // Venitul lunar exact, cu motorul facturii (aceeași cifră ca registrul de clienți de pe web).
+    // Cifra din /overview e o estimare (toate mașinile socotite „fără CAN") — rămâne doar ca rezervă.
+    Api.companiesMrr().then(setMrr).catch(() => setMrr(null));
   }
   useEffect(reload, []);
 
@@ -54,6 +58,8 @@ export function PlatformDashboard() {
   const HCOL: Record<string, string> = { ok: 'var(--accent)', warn: '#f59e0b', crit: 'var(--red)', info: 'var(--text-muted)' };
 
   const rev = ov?.revenue || {};
+  const mrrLei = mrr && mrr.totalLei != null ? n(mrr.totalLei) : n(rev.mrr);
+  const leiFmt = (v: number) => v.toLocaleString('ro-RO', { maximumFractionDigits: 0 }) + ' lei';
   const health = ov?.totals?.health || ov?.platform?.health || {};
 
   return (
@@ -75,10 +81,11 @@ export function PlatformDashboard() {
             </div>
 
             <div class="pf-card">
-              <h3>Venituri (estimat)</h3>
-              <div class="adm-kv"><span class="k">MRR (lunar)</span><span>{n(rev.mrr).toLocaleString('ro-RO')} lei</span></div>
-              <div class="adm-kv"><span class="k">ARR (anual)</span><span>{n(rev.arr).toLocaleString('ro-RO')} lei</span></div>
-              <div class="adm-kv"><span class="k">Abonamente active</span><span>{n(rev.active_subs)}</span></div>
+              <h3>Venituri (din oferte, fără TVA)</h3>
+              <div class="adm-kv"><span class="k">MRR (lunar)</span><span>{leiFmt(mrrLei)}</span></div>
+              <div class="adm-kv"><span class="k">ARR (anual)</span><span>{leiFmt(mrrLei * 12)}</span></div>
+              <div class="adm-kv"><span class="k">Firme cu ofertă</span><span>{n(rev.cu_oferta)}</span></div>
+              <div class="adm-kv"><span class="k">Fără ofertă (0 lei)</span><span style={n(rev.fara_oferta) > 0 ? 'color:var(--orange)' : ''}>{n(rev.fara_oferta)}</span></div>
             </div>
 
             <div class="pf-card">

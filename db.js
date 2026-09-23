@@ -2132,10 +2132,20 @@ async function createCompany(data) {
   return r.rows[0];
 }
 async function updateCompany(id, data) {
-  await pool.query(
-    `UPDATE companies SET name=COALESCE($2,name), contact_email=$3, phone=$4, plan=COALESCE($5,plan), active=COALESCE($6,active), cui=$7, reg_com=$8, address=$9, iban=$10, bank_name=$11, contacts=COALESCE($12, contacts) WHERE id=$1`,
-    [id, data.name || null, data.contact_email || null, data.phone || null, data.plan || null, (data.active === undefined ? null : data.active), data.cui || null, data.reg_com || null, data.address || null, data.iban || null, data.bank_name || null, (data.contacts !== undefined ? JSON.stringify(data.contacts) : null)]
-  );
+  // Se schimbă DOAR câmpurile trimise. Înainte, o cheie lipsă din corp ștergea valoarea: aplicația de telefon 1.0.1
+  // trimitea doar numele, emailul și telefonul, iar „Salvează datele" golea CUI-ul, Reg. Com., adresa, IBAN-ul și banca.
+  // O cheie trimisă goală golește în continuare câmpul (așa lucrează formularul de pe web).
+  const d = data || {};
+  const are = (k) => Object.prototype.hasOwnProperty.call(d, k);
+  const sets = [], params = [id];
+  const pune = (sql, val) => { params.push(val); sets.push(sql.replace('?', '$' + params.length)); };
+  if (are('name') && d.name) pune('name=?', d.name);
+  for (const k of ['contact_email', 'phone', 'cui', 'reg_com', 'address', 'iban', 'bank_name']) if (are(k)) pune(k + '=?', d[k] || null);
+  if (are('plan') && d.plan) pune('plan=?', d.plan);
+  if (are('active') && d.active !== undefined && d.active !== null) pune('active=?', d.active);
+  if (are('contacts') && d.contacts !== undefined) pune('contacts=?', JSON.stringify(d.contacts));
+  if (!sets.length) return;
+  await pool.query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$1', params);
 }
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul

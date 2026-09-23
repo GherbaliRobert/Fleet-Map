@@ -17,6 +17,25 @@ const ACCESS: Record<string, [string, string]> = {
   grace: ['⚠ De plătit (grație)', 'var(--yellow)'],
   expired: ['🚫 Restant / suspendat', 'var(--red)'],
 };
+// Starea unei firme în lista super-adminului, ca pe web (_raxAccessCell): un client suspendat se vede ca
+// SUSPENDAT, cu motivul — trei cauze diferite, care se rezolvă altfel fiecare — iar o restanță în
+// derulare arată câte zile mai are până la suspendare. Întoarce [text, culoare, ordine în listă].
+function accessOf(c: any): [string, string, number] {
+  const a = (c && c.access) || {};
+  const np = (c && c.neplata) || null;
+  const fact = np && np.factura && np.factura.numar ? ' · factura ' + np.factura.numar : '';
+  if (a.status === 'expired') {
+    const et = a.motiv === 'manual' ? 'Oprit de noi' : (a.motiv === 'neplata' ? 'Suspendat — neplată' : 'Suspendat — abonament');
+    return ['🚫 ' + et + fact, 'var(--red)', 0];
+  }
+  if (np && np.faza === 'avertisment') {
+    const z = Math.max(0, Number(np.zilePanaLaSuspendare) || 0);
+    return ['⚠ Restanță · ' + z + (z === 1 ? ' zi' : ' zile') + ' până la suspendare' + fact, 'var(--orange)', 0.5];
+  }
+  const sm = ACCESS[a.status] || ACCESS.unlimited;
+  const rank: Record<string, number> = { grace: 1, active: 2, unlimited: 3 };
+  return [sm[0], sm[1], rank[a.status] ?? 4];
+}
 const INV_ST: Record<string, [string, string]> = {
   draft: ['Ciornă', 'var(--text-muted)'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'],
   paid: ['Plătită', 'var(--green)'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'],
@@ -41,17 +60,10 @@ export function Billing() {
   );
 }
 
-// Plată card REALĂ (Stripe) pentru factura fiscală neachitată. Butonul apare DOAR când există
-// factură de plătit ȘI Stripe e configurat — altfel afișăm datele pentru transfer bancar (fără buton mort).
-async function payNow(id: number) {
-  try {
-    const r: any = await Api.invoicePayLink(id);
-    if (r && r.url) { window.open(r.url, '_blank'); return; }
-    showToast('Link de plată indisponibil', true);
-  } catch (e: any) { showToast(e?.message || 'Eroare la generarea linkului', true); }
-}
+// Plata se face DOAR prin transfer bancar, pe factură (decizia din 15.09: Stripe și plata cu cardul
+// au fost scoase de tot, cu tot cu linkul de plată). Ca pe web (raxPayCta): fără buton de plată.
 
-// ─── Admin firmă: status abonament + facturile proprii + buton plată (pregătit) ───
+// ─── Admin firmă: status abonament + facturile proprii + datele pentru transfer bancar ───
 function MyBilling() {
   const [data, setData] = useState<any | null>(null);
   const [err, setErr] = useState('');
@@ -71,9 +83,7 @@ function MyBilling() {
       <div class="bill-banner" style={`border-left:4px solid ${sm[1]}`}>
         <div class="st" style={`color:${sm[1]}`}>{sm[0]}</div>
         {a.access_until ? <div class="sub">Acces până la <b>{fmtD(a.access_until)}</b></div> : null}
-        {data.unpaidInvoice && data.billingEnabled ? (
-          <button class="btn btn-primary" style="margin-top:12px;width:auto" onClick={() => payNow(data.unpaidInvoice.id)}><Icon name="report" size={16} color="#06210f" /> Plătește cu cardul</button>
-        ) : data.unpaidInvoice ? (
+        {data.unpaidInvoice ? (
           <div class="sub" style="margin-top:8px;line-height:1.5">Plata se face prin <b>transfer bancar</b>{(data.issuer && (data.issuer.iban || data.issuer.bank)) ? ' în contul ' + [data.issuer.bank, data.issuer.iban].filter(Boolean).join(' · ') : ' — datele de plată sunt pe factură'}.</div>
         ) : null}
       </div>
@@ -116,6 +126,7 @@ function SuperBilling() {
   useEffect(() => { reload(); }, []);
 
   async function runAuto() {
+    if (!confirm('Rulezi facturarea automată acum?\nEmite facturile lunii pentru companiile cu auto-facturare activă (dacă e ziua de facturare și nu au deja factură pe luna curentă).')) return;
     setRunning(true);
     try { const r = await Api.billingRunAuto(); const n = ((r && r.issued) || []).length; showToast(n ? (n + ' facturi emise automat') : 'Nicio factură de emis acum'); reload(); }
     catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setRunning(false); }
@@ -127,8 +138,7 @@ function SuperBilling() {
 
   if (companies == null) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
 
-  const rank: Record<string, number> = { expired: 0, grace: 1, active: 2, unlimited: 3 };
-  const cos = companies.slice().sort((a, b) => (rank[(a.access || {}).status] ?? 4) - (rank[(b.access || {}).status] ?? 4));
+  const cos = companies.slice().sort((a, b) => accessOf(a)[2] - accessOf(b)[2]);
   const coById = (id: number) => companies.find((c) => c.id === id) || {};
   const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--green)' : 'var(--text-muted)'}`}>{l}</span>;
 
@@ -143,7 +153,7 @@ function SuperBilling() {
       {cfg && (
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">
           <span style="font-size:12px;font-weight:700"><Icon name="report" size={13} color="var(--accent)" /> Auto:</span>
-          {badge(!!cfg.email, 'Email')}{badge(!!cfg.efactura, 'e-Factura' + (cfg.efactura && cfg.efacturaTest ? ' TEST' : ''))}{badge(!!cfg.stripe, 'Stripe')}
+          {badge(!!cfg.email, 'Email')}{badge(!!cfg.efactura, 'e-Factura' + (cfg.efactura && cfg.efacturaTest ? ' TEST' : ''))}
           <button class="btn" style="margin-left:auto;padding:5px 10px;font-size:12px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary)" disabled={running} onClick={runAuto}>{running ? '…' : 'Rulează acum'}</button>
         </div>
       )}
@@ -151,8 +161,8 @@ function SuperBilling() {
       <div class="mn-sec">Status facturare companii</div>
       <div class="adm-list">
         {cos.map((c) => {
-          const sm = ACCESS[(c.access || {}).status] || ACCESS.unlimited;
-          const until = (c.access || {}).access_until;
+          const sm = accessOf(c);
+          const until = (c.access || {}).status !== 'expired' ? (c.access || {}).access_until : null;
           return (
             <div class="adm-item" style="cursor:default">
               <span class="ic-wrap"><Icon name="truck" size={19} /></span>
@@ -198,7 +208,8 @@ function FiscalRow({ v, onClick }: { v: any; onClick: () => void }) {
   );
 }
 
-// Detaliu factură FISCALĂ + acțiuni (marchează plătită / trimite ANAF / link plată card).
+// Detaliu factură FISCALĂ + acțiuni (marchează plătită / trimite ANAF / anulează). Cele cu efect pe bani
+// cer confirmare, cu aceleași cuvinte ca pe web — nu se pot desface dintr-o atingere.
 function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: () => void; onChanged: () => void }) {
   const iss = inv.issuer || {}, cl = inv.client || {};
   const st = INV_ST[inv.status] || INV_ST.issued;
@@ -206,12 +217,13 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: ()
   const [busy, setBusy] = useState('');
   const lines: any[] = Array.isArray(inv.lines) ? inv.lines : [];
   async function act(kind: string) {
+    if (kind === 'paid' && !confirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.')) return;
+    if (kind === 'cancel' && !confirm('Anulezi această factură? (pentru facturi plătite se folosește storno)')) return;
     setBusy(kind);
     try {
       if (kind === 'paid') { await Api.invoiceSetStatus(inv.id, 'paid'); showToast('Factură plătită'); onChanged(); }
       else if (kind === 'cancel') { await Api.invoiceSetStatus(inv.id, 'canceled'); showToast('Factură anulată'); onChanged(); }
       else if (kind === 'anaf') { const r = await Api.invoiceEfacturaSend(inv.id); showToast('Trimisă la ANAF (index ' + (r.index || '') + ')'); onChanged(); }
-      else if (kind === 'card') { const r = await Api.invoicePayLink(inv.id); if (r.url) window.open(r.url, '_blank'); }
     } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setBusy(''); }
   }
   return (
@@ -239,7 +251,6 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: ()
           <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-primary" disabled={!!busy} onClick={() => act('paid')}><Icon name="check" size={15} color="#06210f" /> Plătită</button>}
             {inv.status !== 'canceled' && inv.efactura_status !== 'validated' && <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : 'Trimite ANAF'}</button>}
-            {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" disabled={!!busy} onClick={() => act('card')}>Link card</button>}
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-danger-ghost" disabled={!!busy} onClick={() => act('cancel')}>Anulează</button>}
           </div>
         </div>

@@ -19,7 +19,8 @@ function fmt(d: string) { const [y, m, da] = d.split('-'); return `${da}.${m}.${
 
 export function AdminDocuments() {
   const loc = useLocation();
-  const canWrite = !!me.value?.permissions?.manageFleet;
+  // Firma poate tăia unui rol editarea actelor separat de „modifică flota" (editariTaiate) — serverul refuză atunci.
+  const canWrite = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('documente');
   const today = new Date().toISOString().slice(0, 10);
   const vlist = vehicles.value;
   const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (v.name || v.plate || imei) : imei; };

@@ -4,25 +4,63 @@ import { me, showToast } from '../app/store';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { UserVehicleAccess } from '../components/UserVehicleAccess';
+import { LinkParolaSheet, pregatesteLinkul } from '../components/LinkParolaSheet';
 import type { AccessTarget } from '../components/UserVehicleAccess';
 import './detail.css';
 import './admin.css';
 
-// Parola scrisă de admin: aceeași limită ca pe server (PAROLA_MIN din server.js). Fără parolă = invitație pe email.
-const PAROLA_MIN = 10;
+// PAROLA NU EXISTĂ (decizie 16.09): nimeni nu scrie parola altcuiva. Contul se deschide pe o adresă de email,
+// omul primește un link și își pune singur parola. Dacă emailul nu poate pleca, serverul întoarce linkul și îl
+// arătăm pe ecran, ca adminul să-l ducă mai departe. Un singur buton pe rând: „Trimite link de parolă".
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 // Numele standard din listă, ca pe web (ROLE_LABELS). Numele date de firmă le bat (vin din /api/company-roles).
 // UN SINGUR NUME pentru administratorul firmei. Rândurile vechi pot avea încă „admin" — scriu la fel.
 const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer', superadmin: 'Super-admin' };
 // Explicația din paranteză din formularul de adăugare (web: #new-role). La redenumire se schimbă doar numele.
-const EXPL: Record<string, string> = { manager: 'toată flota, editează', dispatcher: 'atribuit + confirmă alerte', viewer: 'doar se uită, la mașinile atribuite' };
+const EXPL: Record<string, string> = { manager: 'toată flota, editează', dispatcher: 'atribuit + confirmă alerte', viewer: 'vede doar vehiculele atribuite' };
 // Rolurile care au „Vede toată flota" din oficiu (ROLE_PERMISSIONS.viewAll pe server). Firma îl poate tăia din manager.
 const VIEW_ALL_BASE = ['superadmin', 'company_admin', 'admin', 'manager'];
 const ADMIN_ROLES = ['company_admin', 'admin', 'superadmin'];
+// Zilele de liniște după care „văzut" se scrie portocaliu (USR_LINISTE pe web).
+const LINISTE_ZILE = 40;
+const LINK_SFAT_NOU = 'Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.';
 
 type RoleOpt = { v: string; label: string; baza: string; propriu?: boolean };
 type Notice = { text: string; err?: boolean; retry?: { label: string; run: () => void } };
 type InviteNote = { text: string; err: boolean } | null;
+type LinkSheet = { email: string; link: string; motiv?: string; copiat: boolean; after?: () => void };
+type Scoate = { u: any; ce: string; gata: boolean; err?: string };
+
+function zileDe(v: any): number | null {
+  if (!v) return null;
+  const t = typeof v === 'number' ? v : Date.parse(v);
+  if (!t || isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+// „azi · ieri · acum 9 zile", ca pe web (_usrCandVazut).
+function candVazut(u: any) {
+  const z = zileDe(u.last_login);
+  if (z === null) return { text: 'n-a intrat niciodată', niciodata: true, vechi: false, zile: 0 };
+  return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + z + ' zile'), niciodata: false, vechi: z >= LINISTE_ZILE, zile: z };
+}
+// Accesul pe termen (conturile demo aprobate), în ZILE DE CALENDAR, ca pe web (_usrExpira).
+function expira(u: any): { text: string; aproape: boolean } | null {
+  if (u.access_until == null) return null;
+  const t = Number(u.access_until);
+  if (!t || isNaN(t)) return null;
+  const miez = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const zile = Math.round((miez(t) - miez(Date.now())) / 86400000);
+  if (zile < 0) return { text: 'acces expirat', aproape: true };
+  if (zile === 0) return { text: 'expiră azi', aproape: true };
+  if (zile <= 3) return { text: 'expiră în ' + zile + (zile === 1 ? ' zi' : ' zile'), aproape: true };
+  return { text: 'acces până la ' + new Date(t).toLocaleDateString('ro-RO'), aproape: false };
+}
+// Lista din „Avea: …" se taie la opt, ca pe web (_usrListaScurta).
+function listaScurta(l: string[]) {
+  return l.length <= 8 ? l.join(', ') : (l.slice(0, 8).join(', ') + ' și încă ' + (l.length - 8));
+}
+const PILL_CALD = 'background:rgba(249,115,22,.14);color:var(--orange)';
+const BTN_GHOST = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
 
 export function AdminUsers() {
   const loc = useLocation();
@@ -35,14 +73,15 @@ export function AdminUsers() {
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   // Erorile din formular stau în foaie până le închide omul (pe web: alert). Un toast de 2-3 secunde
-  // pierdea exact mesajele de citit, ex. „Serverul nu are email configurat… Scrie o parolă pentru cont."
+  // pierdea exact mesajele de citit.
   const [formErr, setFormErr] = useState('');
-  const [confirmDel, setConfirmDel] = useState<any | null>(null);
+  const [scoate, setScoate] = useState<Scoate | null>(null);
   const [accessFor, setAccessFor] = useState<AccessTarget | null>(null);
   const [seatBusy, setSeatBusy] = useState<number | null>(null);
+  const [linkBusy, setLinkBusy] = useState<number | null>(null);
+  const [linkSheet, setLinkSheet] = useState<LinkSheet | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [cos, setCos] = useState<any[] | null>(null); // super-admin: companiile pentru contul nou (o singură încărcare)
   const [coFilter, setCoFilter] = useState('');
 
   async function reload() {
@@ -85,55 +124,56 @@ export function AdminUsers() {
     const d = r && Array.isArray(r.drepturi) ? r.drepturi.find((x: any) => x.cheie === 'viewAll') : null;
     return !(d && d.are === false);
   }
+  // Serverul socotește „vede toată flota" cu tăierile firmei omului (sees_all) — singura sursă corectă pentru
+  // super-admin, care nu primește rolurile altor firme. Calculul local rămâne doar pentru un server vechi.
+  const vedeTot = (u: any) => u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all : seesAll(userRoleKey(u), u.role));
+  const faraAcces = (u: any) => !vedeTot(u) && (Number(u.device_count) || 0) + (Number(u.group_count) || 0) === 0;
   function accessText(u: any) {
-    // Serverul socotește „vede toată flota" cu tăierile firmei omului (sees_all) — singura sursă corectă pentru
-    // super-admin, care nu primește rolurile altor firme. Calculul local rămâne doar pentru un server vechi.
-    if (u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all : seesAll(userRoleKey(u), u.role))) return 'toată flota';
+    if (vedeTot(u)) return 'toată flota';
     const dc = Number(u.device_count) || 0, gc = Number(u.group_count) || 0;
-    return dc + gc > 0 ? dc + ' veh. + ' + gc + ' grupe' : '⚠ fără acces';
+    return dc + gc > 0 ? dc + ' veh. + ' + gc + ' grupe' : 'niciun vehicul';
   }
-  // Rolurile pe care serverul le acceptă de la contul ăsta: adminul firmei → manager/dispecer/viewer + rolurile
-  // proprii; super-adminul → toate cele standard. „Client" nu se mai oferă (aceleași drepturi ca Viewer).
+  // Rolurile pe care serverul le acceptă de la contul ăsta (COMPANY_ASSIGNABLE_ROLES / VALID_ROLES):
+  //  • adminul firmei → Admin companie (delegare în firma lui, decizie 16.09) + manager/dispecer/viewer + rolurile
+  //    proprii. Contul de PLATFORMĂ nu i se oferă — și serverul îl refuză.
+  //  • super-adminul, la ADĂUGARE → doar cont de platformă: ecranul ăsta e, la noi, pentru un coleg nou la RA Tracks.
+  //    Administratorul unei firme client se face din Companii → firma → Utilizatori; restul, de adminul ei.
+  //  • super-adminul, la EDITARE → toate rolurile standard, ca pe web.
+  // „Client" nu se mai oferă (aceleași drepturi ca Viewer).
   function roleOptions(forAdd: boolean): RoleOpt[] {
+    if (isSuper && forAdd) return [{ v: 'superadmin', baza: 'superadmin', label: 'Super-admin (PLATFORMĂ — toate companiile)' }];
     const std = (k: string, short: string): RoleOpt => {
       const n = (byKey[k] && byKey[k].nume) || short;
       return { v: k, baza: k, label: forAdd && EXPL[k] ? n + ' (' + EXPL[k] + ')' : n };
     };
+    const admin: RoleOpt = { v: 'company_admin', baza: 'company_admin', label: forAdd ? 'Admin companie (control total în firma ta)' : 'Admin companie' };
     const company = [std('manager', 'Manager'), std('dispatcher', 'Dispecer'), std('viewer', 'Viewer')];
     const proprii: RoleOpt[] = roles.filter((r) => r && r.propriu && r.baza)
       .map((r) => ({ v: r.rol, baza: r.baza, label: (r.nume || r.numeStandard || r.rol) + ' (rol propriu)', propriu: true }));
-    if (!isSuper) return company.concat(proprii);
-    return [
-      { v: 'company_admin', baza: 'company_admin', label: forAdd ? 'Administrator companie (control total)' : 'Administrator companie' },
-      ...company, ...proprii,
-      { v: 'superadmin', baza: 'superadmin', label: forAdd ? '⚠ Super-admin (PLATFORMĂ — toate companiile)' : '⚠ Super-admin (platformă)' },
-    ];
+    const firma = [admin, ...company, ...proprii];
+    if (!isSuper) return firma;
+    return [...firma, { v: 'superadmin', baza: 'superadmin', label: '⚠ Super-admin (platformă)' }];
   }
 
-  async function ensureCompanies() {
-    if (cos) return;
-    try {
-      const l = await Api.companies();
-      setCos((Array.isArray(l) ? l : []).filter((c: any) => !c.is_demo).sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || ''), 'ro')));
-    } catch { setCos([]); }
-  }
   function openNew() {
-    setForm({ username: '', password: '', full_name: '', phone: '', role: 'viewer', company_id: isSuper && coFilter && coFilter !== '_none' ? coFilter : '' });
+    setForm({ username: '', full_name: '', phone: '', role: isSuper ? 'superadmin' : 'viewer' });
     setFormErr('');
     setEditing({});
     setNotice(null);
-    if (isSuper) ensureCompanies();
   }
   function openEdit(u: any) {
-    setForm({ username: u.username, full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: userRoleKey(u), active: u.active !== false, password: '' });
+    setForm({ username: u.username, full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: userRoleKey(u), active: u.active !== false });
     setFormErr('');
     setEditing(u);
   }
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const isEdit = editing && editing.id != null;
   const isSelf = isEdit && editing.username === myUsername;
-  const isAdminRole = isEdit && ADMIN_ROLES.includes(editing.role);
-  const lockRole = isAdminRole && !isSuper; // super-adminul POATE schimba rolul oricui; adminul firmei nu poate atinge rolurile admin
+  // Adminul firmei poate schimba și rolul altui admin din firma lui (delegare, 16.09); serverul oprește retrogradarea
+  // propriului cont și golirea firmei de administratori. Doar un cont de platformă rămâne neatins pentru el.
+  // Un cont de platformă nu se coboară pe un rol de firmă (ar rămâne fără firmă, adică fără niciun filtru) — nici de
+  // super-admin; serverul refuză oricum. Se face cont nou în firma potrivită.
+  const lockRole = isEdit && editing.role === 'superadmin';
   const initialRole = isEdit ? userRoleKey(editing) : null;
   const baseRoles = roleOptions(!isEdit);
   // Rolul curent al omului, când nu e printre cele oferite (ex. rolul propriu al altei firme, văzut de super-admin).
@@ -143,6 +183,41 @@ export function AdminUsers() {
   const optOf = (key: string) => roleOpts.find((r) => r.v === key);
   const formBase = (optOf(form.role) || { baza: baseOf(form.role) }).baza;
   const targetOf = (u: any): AccessTarget => ({ id: u.id, username: u.username, full_name: u.full_name, company_id: u.company_id });
+
+  // ── Linkul de parolă ──────────────────────────────────────────────────────────────────────────
+  // Când emailul n-a putut pleca, linkul apare pe ecran, copiat deja (ca pe web, _usrAratLinkul).
+  // `after` = ce se deschide după ce omul a închis foaia (ex. alegerea vehiculelor pentru contul nou).
+  async function aratLinkul(email: string, link: string, motiv?: string, after?: () => void) {
+    const l = await pregatesteLinkul({ email, link, motiv });
+    setLinkSheet({ email, link, motiv, copiat: !!l.copiat, after });
+  }
+  function inchideLinkul() {
+    const a = linkSheet && linkSheet.after;
+    setLinkSheet(null);
+    if (a) a();
+  }
+  // Un singur buton pentru amândouă nevoile: invitația care n-a ajuns și parola uitată (ca pe web, _usrLinkParola).
+  // Pornit din foaia „Editează", refuzul (429 după 5 pe oră, cont dezactivat) rămâne în foaie până îl închide omul;
+  // un toast de 2-3 secunde pierdea exact propozițiile astea. De pe rândul din listă rămâne toastul.
+  async function trimiteLink(u: any, dinFoaie?: boolean) {
+    if (!u || u.id == null) return;
+    const spune = (msg: string) => { if (dinFoaie) setFormErr(msg); else showToast(msg, true); };
+    if (dinFoaie) setFormErr('');
+    setLinkBusy(u.id);
+    try {
+      const j = await Api.linkParola(u.id);
+      if (j && j.trimis) showToast('Link trimis pe ' + (j.email || 'email') + ' — își pune singur parola.');
+      else if (j && j.link) await aratLinkul(j.email || u.email || u.username, j.link, j.motiv);
+      else spune((j && j.motiv) || 'Linkul nu a putut fi trimis.');
+    } catch (e: any) { spune(e?.message || 'Linkul nu a putut fi trimis.'); } // 429 / cont dezactivat: textul serverului
+    finally { setLinkBusy(null); }
+  }
+  // Ce s-a întâmplat cu linkul contului nou — același text în anunțul de pe ecran și în cel cu reîncercarea rolului.
+  function inviteNoteOf(created: any, username: string): InviteNote {
+    if (created && created.invitat) return { text: 'I-am trimis linkul pe ' + username + ' — își pune singur parola.', err: false };
+    if (created && created.link) return { text: 'Linkul de parolă nu a plecat pe email — ți l-am arătat pe ecran, ca să i-l dai tu.', err: true };
+    return { text: 'Linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă”.', err: true };
+  }
 
   // Rolul propriu n-a putut fi pus pe contul nou: mesajul rămâne pe ecran, cu buton de reîncercare.
   function roleRetryNotice(t: AccessTarget, opt: RoleOpt, why: string, invite: InviteNote) {
@@ -170,13 +245,22 @@ export function AdminUsers() {
     const full_name = String(form.full_name || '').trim();
     const username = String(form.username || '').trim().toLowerCase();
     if (!isEdit) {
-      // Contul se creează pe adresa de email: ea e utilizatorul de autentificare ȘI adresa pe care pleacă invitația.
+      // Contul se creează pe adresa de email: ea e utilizatorul de autentificare ȘI adresa pe care pleacă linkul.
       if (!username) { setFormErr('Scrie adresa de email a persoanei.'); return; }
       if (!EMAIL_RE.test(username)) { setFormErr('Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro).'); return; }
     }
     if (full_name.length < 2) { setFormErr('Completează numele afișat — așa apare persoana în aplicație.'); return; }
-    if (form.password && String(form.password).length < PAROLA_MIN) { setFormErr('Parola trebuie să aibă minim ' + PAROLA_MIN + ' caractere.'); return; }
-    if (!isEdit && isSuper && form.role !== 'superadmin' && !form.company_id) { setFormErr('Selectează compania pentru noul cont.'); return; }
+    if (isEdit) {
+      // Un cont FOLOSIT, căruia i se schimbă adresa, e aproape întotdeauna o încercare de a-l „preda" altui om.
+      // Istoricul rămâne pe cont, iar adresa de autentificare NU se schimbă de aici (ca pe web).
+      const emailNou = String(form.email || '').trim();
+      if (editing.last_login && emailNou && emailNou !== (editing.email || '')) {
+        const nume = editing.full_name || editing.username;
+        if (!confirm('Schimbi adresa unui cont folosit?\n\nAsta nu face un om nou. Tot ce a făcut „' + nume + '” va apărea de acum sub numele cel nou, '
+          + 'iar adresa cu care se autentifică rămâne tot „' + editing.username + '”.\n\n'
+          + 'Dacă a venit un coleg nou în locul lui, scoate-l din firmă, fă-i cont nou și pune-i drepturile de mână.')) return;
+      }
+    }
     // Acordarea rolului de platformă e ireversibilă din perspectiva datelor văzute → confirmare explicită.
     if (form.role === 'superadmin' && (!isEdit || editing.role !== 'superadmin')) {
       const who = isEdit ? editing.username : username;
@@ -185,7 +269,8 @@ export function AdminUsers() {
     setSaving(true);
     try {
       if (isEdit) {
-        const body: any = { full_name, email: form.email || null, phone: form.phone || null, active: form.active };
+        // Emailul pleacă TĂIAT (ca pe web): un spațiu scăpat ar ajunge în bază, iar linkul de parolă ar pleca pe o adresă greșită.
+        const body: any = { full_name, email: String(form.email || '').trim() || null, phone: form.phone || null, active: form.active };
         // Rolul pleacă DOAR dacă adminul l-a schimbat: altfel o simplă corectură de telefon ar muta un om de pe
         // rolul propriu pe cel standard (sau ar fi refuzată ca „Rol invalid" la rolurile pe care nu le poate atinge).
         if (!lockRole && !isSelf && form.role !== initialRole) {
@@ -197,10 +282,6 @@ export function AdminUsers() {
           if (!(ales && ales.propriu)) body.role_slug = null;
         }
         await Api.updateUser(editing.id, body);
-        if (form.password) {
-          try { await Api.setUserPassword(editing.id, form.password); }
-          catch (e: any) { setFormErr('Datele s-au salvat, dar parola nu: ' + (e?.message || 'eroare')); setSaving(false); await reload(); return; }
-        }
         showToast('Salvat');
         setEditing(null); await reload();
       } else {
@@ -209,14 +290,12 @@ export function AdminUsers() {
         // Rolul propriu se pune în doi pași (serverul nu-l primește la creare): contul pornește ca Viewer — cele mai
         // puține drepturi, iar fără vehicule atribuite nu vede nicio mașină — și abia apoi primește rolul propriu.
         // Dacă al doilea pas cade (ex. fără semnal), omul NU rămâne pe rolul de bază cu toate drepturile lui.
+        // Fără parolă și fără companie: super-adminul face de aici doar conturi de platformă, iar contul unui admin
+        // de firmă intră automat în firma lui (o pune serverul).
         const body: any = { username, role: propriu ? 'viewer' : form.role, full_name, email: username, phone: form.phone || null };
-        if (form.password) body.password = form.password;
-        if (isSuper && form.role !== 'superadmin') body.company_id = parseInt(form.company_id, 10);
         const created: any = await Api.createUser(body);
-        // Omul trebuie să afle DACĂ a plecat invitația — altfel așteaptă degeaba un email care n-a plecat.
-        const invite: InviteNote = form.password ? null : (created && created.invitat
-          ? { text: 'I-am trimis invitația pe ' + username + ' — își pune singur parola.', err: false }
-          : { text: 'Invitația NU a plecat. Trimite-i tu o parolă din „Editează", altfel nu poate intra.', err: true });
+        // Omul trebuie să afle DACĂ a plecat linkul — altfel așteaptă degeaba un email care n-a plecat.
+        const invite = inviteNoteOf(created, username);
         const target: AccessTarget = { id: created && created.id, username, full_name, company_id: created && created.company_id };
         let roleErr = '';
         if (propriu && created && created.id != null) {
@@ -227,33 +306,91 @@ export function AdminUsers() {
         if (roleErr) {
           roleRetryNotice(target, opt!, roleErr, invite);
           await reload();
+          if (created && created.link) await aratLinkul(username, created.link, created.motiv);
           return;
-        }
-        if (invite) {
-          setNotice({ text: invite.err ? 'Cont creat, dar invitația NU a plecat. Trimite-i tu o parolă din „Editează", altfel nu poate intra.' : 'Cont creat. ' + invite.text, err: invite.err });
-        } else if (form.role === 'superadmin') {
-          showToast('Cont de super-admin creat ✓ — se poate autentifica imediat');
-        } else {
-          showToast('Utilizator creat');
         }
         const role = form.role;
         await reload();
-        // Rolurile fără „Vede toată flota" au nevoie de vehicule atribuite: deschidem direct alegerea lor (ca pe web).
-        if (created && created.id != null && role !== 'superadmin' && !seesAll(role, opt ? opt.baza : role)) setAccessFor(target);
+        // Rolurile fără „Vede toată flota" au nevoie de vehicule atribuite: deschidem alegerea lor (ca pe web) —
+        // DUPĂ foaia cu linkul, dacă apare, ca să nu se suprapună.
+        const needsAccess = created && created.id != null && role !== 'superadmin' && !seesAll(role, opt ? opt.baza : role);
+        const deschideAcces = needsAccess ? () => setAccessFor(target) : undefined;
+        if (created && created.invitat) {
+          setNotice({ text: 'Cont creat. ' + invite!.text, err: false });
+          if (deschideAcces) deschideAcces();
+        } else if (created && created.link) {
+          setNotice(null);
+          await aratLinkul(username, created.link, created.motiv, deschideAcces);
+        } else {
+          setNotice({ text: 'Cont creat, dar linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă”.', err: true });
+          if (deschideAcces) deschideAcces();
+        }
       }
     } catch (e: any) { setFormErr(e?.message || 'Eroare la salvare'); }
     finally { setSaving(false); }
   }
-  async function doDelete(u: any) {
+
+  // ── „Scoate din firmă" ──────────────────────────────────────────────────────────────────────
+  // Contul DISPARE (nu se dezactivează); dacă omul revine, i se face altul. Nu există traseu de „înlocuire"
+  // (decizie 16.09): adminul pune drepturile pe omul nou de mână — de-aia fereastra spune întâi CE avea omul,
+  // pe nume (numere de înmatriculare, grupe), fiindcă după ștergere legăturile se duc cu contul.
+  async function ceAvea(u: any): Promise<string> {
+    const p: string[] = [];
+    if (u.ai_seat) p.push('RA Insight');
+    if (vedeTot(u)) return p.join(' · '); // cine vede toată flota n-are mașini atribuite anume
+    let devices: string[] = [], groups: number[] = [];
+    try {
+      const a = await Api.userAccess(u.id);
+      devices = ((a && a.devices) || []).map(String);
+      groups = ((a && a.groups) || []).map(Number);
+    } catch { /* fără listă: fereastra spune doar ce știe */ }
+    let numeDev: string[] = devices, numeGrp: string[] = groups.map((g) => '#' + g);
+    if (devices.length || groups.length) {
+      try {
+        const [dl, gl] = await Promise.all([
+          devices.length ? Api.devices().catch(() => [] as any[]) : Promise.resolve([] as any[]),
+          groups.length ? Api.groupsAll().catch(() => [] as any[]) : Promise.resolve([] as any[]),
+        ]);
+        const dN: Record<string, string> = {};
+        (Array.isArray(dl) ? dl : []).forEach((d: any) => { if (d && d.imei) dN[String(d.imei)] = d.plate || d.name || d.imei; });
+        const gN: Record<string, string> = {};
+        (Array.isArray(gl) ? gl : []).forEach((g: any) => { if (g && g.id != null) gN[String(g.id)] = g.name || ('#' + g.id); });
+        numeDev = devices.map((i) => dN[i] || i);
+        numeGrp = groups.map((i) => gN[String(i)] || ('#' + i));
+      } catch { /* rămân IMEI-urile / numerele grupelor */ }
+    }
+    if (devices.length) p.push(devices.length + (devices.length === 1 ? ' vehicul' : ' vehicule') + ': ' + listaScurta(numeDev));
+    if (groups.length) p.push(groups.length + (groups.length === 1 ? ' grupă' : ' grupe') + ': ' + listaScurta(numeGrp));
+    return p.join(' · ');
+  }
+  async function deschideScoate(u: any) {
+    setScoate({ u, ce: '', gata: false });
+    const ce = await ceAvea(u);
+    setScoate((prev) => (prev && prev.u.id === u.id ? { u, ce, gata: true } : prev));
+  }
+  async function doScoate(u: any) {
+    const nume = u.full_name || u.username;
     setSaving(true);
-    try { await Api.deleteUser(u.id); showToast('Șters'); setConfirmDel(null); setEditing(null); await reload(); }
-    catch (e: any) { showToast(e?.message || 'Eroare la ștergere', true); }
+    setScoate((prev) => (prev ? { ...prev, err: '' } : prev));
+    try {
+      await Api.deleteUser(u.id);
+      showToast('„' + nume + '” a fost scos din firmă.');
+      setScoate(null); setEditing(null); await reload();
+    } catch (e: any) {
+      // Refuzul (ex. ultimul admin al firmei) e o propoziție de citit: rămâne în foaie, care rămâne deschisă.
+      const msg = e?.message || 'Eroare la scoaterea din firmă';
+      setScoate((prev) => (prev && prev.u.id === u.id ? { ...prev, err: msg } : prev));
+    }
     finally { setSaving(false); }
   }
+
   // RA Insight se plătește PE CONT → confirmare la pornire (se facturează), fără confirmare la oprire. Ca pe web.
+  // Se facturează VÂRFUL lunii: la o înlocuire, ordinea contează.
   async function toggleSeat(u: any) {
     const on = !u.ai_seat;
-    if (on && !confirm('Dai RA Insight acestui cont?\n\nContul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\nSe facturează ca un cont în plus, în fiecare lună, până când îl retragi.')) return;
+    if (on && !confirm('Dai RA Insight acestui cont?\n\nContul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n'
+      + 'Se facturează ca un cont în plus, în fiecare lună, până când îl retragi.\n\n'
+      + 'Dacă înlocuiești pe cineva: scoate-l întâi pe cel care pleacă. Altfel luna asta se socotesc două conturi, nu unul.')) return;
     setSeatBusy(u.id);
     try {
       const j = await Api.setUserAiSeat(u.id, on);
@@ -276,10 +413,13 @@ export function AdminUsers() {
   }, [items]);
   const coKeys = Object.keys(coGroups).sort((a, b) => coGroups[a].name.localeCompare(coGroups[b].name, 'ro'));
   const shownItems = (items || []).filter((u) => !isSuper || !coFilter || (u.company_id != null ? String(u.company_id) : '_none') === coFilter);
+  // Conturile cu RA Insight, numărate pe lista ÎNTREAGĂ (nu pe cea filtrată), ca pe web (_usrSeatsHtml).
+  const seatCount = (items || []).filter((u) => !!u.ai_seat).length;
 
   const accessBlock = isEdit && form.role !== 'superadmin' && !ADMIN_ROLES.includes(formBase);
   const editDc = isEdit ? (Number(editing.device_count) || 0) : 0;
   const editGc = isEdit ? (Number(editing.group_count) || 0) : 0;
+  const editNiciodata = isEdit && !editing.last_login;
 
   return (
     <div class="screen">
@@ -315,20 +455,56 @@ export function AdminUsers() {
             </select>
           </div>
         )}
+        {seatCount > 0 && (
+          <div style="display:flex;gap:8px;align-items:flex-start;margin:0 2px 10px;font-size:12.5px;line-height:1.45;color:var(--text-muted)">
+            <Icon name="sparkles" size={15} color="var(--accent)" style="flex:0 0 auto;margin-top:2px" />
+            <span><b style="color:var(--text-primary)">{seatCount}</b> {seatCount === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight'} — la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.</span>
+          </div>
+        )}
         {items != null && shownItems.length === 0 && !err && <div class="adm-empty"><Icon name="user" size={40} class="ic" /><div>Niciun utilizator.</div></div>}
         {items != null && shownItems.length > 0 && (
           <div class="adm-list">
             {shownItems.map((u) => {
-              const noAccess = accessText(u).startsWith('⚠');
+              const vaz = candVazut(u);
+              const exp = expira(u);
+              // „Fără acces" e gospodăria adminului de firmă (el împarte mașinile) — la fondator semnul nu se aprinde.
+              // Pe un cont DEZACTIVAT sfaturile n-au rost („atribuie-i vehicule", „dezactivează-l"): acolo tac.
+              const activ = u.active !== false;
+              const faraAccesClient = !isSuper && activ && faraAcces(u);
+              const sfat = faraAccesClient
+                ? 'Nu vede niciun vehicul — atribuie-i din Editează, altfel deschide aplicația și găsește un ecran gol.'
+                : (vaz.vechi && !isSuper && activ ? 'Cont nefolosit de ' + vaz.zile + ' de zile — dezactivează-l dacă omul nu mai lucrează aici.' : '');
+              const semne = u.active === false || vaz.niciodata || faraAccesClient || !!exp;
               return (
-                <div class="adm-item" role="button" tabIndex={0} style="cursor:pointer" onClick={() => openEdit(u)}>
+                <div class="adm-item" role="button" tabIndex={0} style={'cursor:pointer' + (u.active === false ? ';opacity:.72' : '')} onClick={() => openEdit(u)}>
                   <span class="ic-wrap"><Icon name="user" size={19} /></span>
                   <span class="mid">
                     <div class="nm">{u.full_name || u.username}</div>
                     <div class="sub">{u.username} · {listLabel(u)}</div>
-                    <div class="sub" style={noAccess ? 'color:var(--orange)' : ''}>{isSuper && u.company_name ? u.company_name + ' · ' : ''}acces: {accessText(u)}</div>
+                    {semne && (
+                      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+                        {u.active === false && <span class="adm-pill bad">dezactivat</span>}
+                        {vaz.niciodata && <span class="adm-pill" style={PILL_CALD}>n-a intrat niciodată</span>}
+                        {faraAccesClient && <span class="adm-pill" style={PILL_CALD}>fără acces</span>}
+                        {exp && <span class="adm-pill" style={exp.aproape ? PILL_CALD : ''}>{exp.text}</span>}
+                      </div>
+                    )}
+                    <div class="sub" style="white-space:normal">
+                      {isSuper && u.company_name ? u.company_name + ' · ' : ''}
+                      <span style={faraAccesClient ? 'color:var(--orange)' : ''}>acces: {accessText(u)}</span>
+                      {!vaz.niciodata && <> · <span style={vaz.vechi ? 'color:var(--orange)' : ''}>văzut: {vaz.text}</span></>}
+                    </div>
+                    {sfat && <div style={'margin-top:4px;font-size:12px;line-height:1.4;color:' + (faraAccesClient ? 'var(--orange)' : 'var(--text-muted)')}>{sfat}</div>}
                   </span>
                   <span class="rt">
+                    <button type="button"
+                      aria-label={vaz.niciodata ? 'N-a intrat niciodată — retrimite-i linkul de parolă' : 'Trimite-i un link ca să-și pună altă parolă'}
+                      title={vaz.niciodata ? 'N-a intrat niciodată — retrimite-i linkul de parolă' : 'Trimite-i un link ca să-și pună altă parolă'}
+                      disabled={linkBusy === u.id}
+                      onClick={(e) => { e.stopPropagation(); trimiteLink(u); }}
+                      style={'width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid ' + (vaz.niciodata ? 'var(--orange);color:var(--orange)' : 'var(--border);color:var(--text-muted)')}>
+                      {linkBusy === u.id ? <div class="spin" style="width:14px;height:14px;border-width:2px" /> : <Icon name="mail" size={17} />}
+                    </button>
                     {u.role !== 'superadmin' && (
                       <button type="button"
                         aria-label={u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai'}
@@ -339,7 +515,6 @@ export function AdminUsers() {
                         {seatBusy === u.id ? <div class="spin" style="width:14px;height:14px;border-width:2px" /> : <Icon name="sparkles" size={17} />}
                       </button>
                     )}
-                    <span class={'adm-pill ' + (u.active !== false ? 'ok' : 'bad')}>{u.active !== false ? 'activ' : 'inactiv'}</span>
                     <Icon name="chevronR" size={18} color="var(--text-muted)" />
                   </span>
                 </div>
@@ -354,19 +529,16 @@ export function AdminUsers() {
       {editing && (
         <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setEditing(null); }}>
           <div class="sheet">
-            <div class="sheet-h"><b><Icon name="user" size={18} color="var(--accent)" /> {isEdit ? 'Editează utilizator' : 'Adaugă utilizator'}</b><button class="h-btn" onClick={() => setEditing(null)}><Icon name="x" /></button></div>
+            <div class="sheet-h"><b><Icon name="user" size={18} color="var(--accent)" /> {isEdit ? 'Editează utilizator' : (isSuper ? 'Adaugă utilizator (specific pentru colegi noi RA Tracks)' : 'Adaugă utilizator')}</b><button class="h-btn" onClick={() => setEditing(null)}><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
                 {isEdit ? (
                   <div class="fld"><label>Utilizator</label><input value={form.username} disabled style="opacity:.6" /></div>
                 ) : (
-                  <>
-                    <div class="fld"><label>Email (așa se autentifică) <span class="req">*</span></label><input type="email" value={form.username} onInput={(e) => setF('username', (e.target as HTMLInputElement).value)} placeholder="ion.popescu@firma.ro" autocapitalize="none" autocomplete="off" spellcheck={false} /></div>
-                    <div class="fld"><label>Parolă (opțional)</label>
-                      <input type="password" value={form.password} onInput={(e) => setF('password', (e.target as HTMLInputElement).value)} placeholder="gol = îi trimitem invitație pe email" autocomplete="new-password" />
-                      <div class="muted" style="font-size:11.5px;line-height:1.4">Fără parolă, persoana primește pe email o invitație și își pune singură parola. Dacă scrii o parolă, trebuie să aibă minim {PAROLA_MIN} caractere.</div>
-                    </div>
-                  </>
+                  <div class="fld"><label>Email (așa se autentifică) <span class="req">*</span></label>
+                    <input type="email" value={form.username} onInput={(e) => setF('username', (e.target as HTMLInputElement).value)} placeholder="ion.popescu@firma.ro" autocapitalize="none" autocomplete="off" spellcheck={false} />
+                    <div class="muted" style="font-size:11.5px;line-height:1.4">{LINK_SFAT_NOU}</div>
+                  </div>
                 )}
                 <div class="fld"><label>Nume afișat <span class="req">*</span></label><input value={form.full_name} onInput={(e) => setF('full_name', (e.target as HTMLInputElement).value)} placeholder="Ion Popescu" /></div>
                 {isEdit && (
@@ -375,14 +547,6 @@ export function AdminUsers() {
                 <div class="frm-row">
                   <div class="fld"><label>Telefon</label><input type="tel" value={form.phone} onInput={(e) => setF('phone', (e.target as HTMLInputElement).value)} /></div>
                 </div>
-                {!isEdit && isSuper && form.role !== 'superadmin' && (
-                  <div class="fld"><label>Compania <span class="req">*</span></label>
-                    <select value={form.company_id} onChange={(e) => setF('company_id', (e.target as HTMLSelectElement).value)}>
-                      <option value="">{cos == null ? 'Se încarcă…' : '— alege compania —'}</option>
-                      {(cos || []).map((c: any) => <option value={String(c.id)}>{c.name}</option>)}
-                    </select>
-                  </div>
-                )}
                 <div class="fld"><label>Rol</label>
                   {lockRole ? (
                     <input value={listLabel(editing)} disabled style="opacity:.6" />
@@ -394,6 +558,11 @@ export function AdminUsers() {
                   {form.role === 'superadmin' && (
                     <div style="background:rgba(239,68,68,.12);color:var(--red);border-radius:8px;padding:7px 10px;margin-top:6px;font-size:11.5px;line-height:1.45">
                       Cont de <b>platformă</b>: vede și administrează <b>toate companiile</b>, toate vehiculele, facturarea și jurnalul de audit. Nu se leagă de nicio companie.
+                    </div>
+                  )}
+                  {!isEdit && isSuper && (
+                    <div class="muted" style="font-size:11.5px;line-height:1.4;margin-top:4px">
+                      Pentru administratorul unei firme client, mergi la <b>Companii → firma → Utilizatori</b> (de pe web).
                     </div>
                   )}
                 </div>
@@ -418,8 +587,15 @@ export function AdminUsers() {
                   )
                 )}
                 {isEdit && (
-                  <div class="fld"><label>Parolă nouă (opțional)</label>
-                    <input type="password" value={form.password} onInput={(e) => setF('password', (e.target as HTMLInputElement).value)} placeholder="gol = neschimbat" autocomplete="new-password" />
+                  <div class="fld"><label>Parola</label>
+                    <button type="button" disabled={linkBusy === editing.id} onClick={() => trimiteLink(editing, true)}
+                      style={'display:flex;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid ' + (editNiciodata ? 'var(--orange)' : 'var(--border)') + ';border-radius:10px;padding:11px 12px;font-size:14.5px;font-weight:700;color:' + (editNiciodata ? 'var(--orange)' : 'var(--text-primary)') + ';text-align:left'}>
+                      {linkBusy === editing.id ? <div class="spin" style="width:16px;height:16px;border-width:2px" /> : <Icon name="mail" size={18} color={editNiciodata ? 'var(--orange)' : 'var(--accent)'} />}
+                      <span style="flex:1;min-width:0">Trimite link de parolă</span>
+                    </button>
+                    <div class="muted" style="font-size:11.5px;line-height:1.4">
+                      {editNiciodata ? 'N-a intrat niciodată — retrimite-i linkul de parolă.' : 'Trimite-i un link ca să-și pună altă parolă.'} Își pune singur parola; noi nu scriem parole.
+                    </div>
                   </div>
                 )}
                 {isEdit && !isSelf && (
@@ -439,7 +615,11 @@ export function AdminUsers() {
                   </div>
                 )}
                 <div class="frm-actions">
-                  {isEdit && !isSelf && <button class="btn btn-danger-ghost" disabled={saving} onClick={() => setConfirmDel(editing)}><Icon name="trash" size={16} /></button>}
+                  {isEdit && !isSelf && (
+                    <button class="btn btn-danger-ghost" disabled={saving} onClick={() => deschideScoate(editing)} style="font-size:14px">
+                      <Icon name="logout" size={16} /> Scoate din firmă
+                    </button>
+                  )}
                   <button class="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Se salvează…' : 'Salvează'}</button>
                 </div>
               </div>
@@ -452,20 +632,42 @@ export function AdminUsers() {
         <UserVehicleAccess user={accessFor} isSuper={isSuper} onClose={() => setAccessFor(null)} onSaved={() => { reload(); }} />
       )}
 
-      {confirmDel && (
-        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setConfirmDel(null); }}>
-          <div class="sheet">
-            <div class="sheet-h"><b>Confirmare ștergere</b><button class="h-btn" onClick={() => setConfirmDel(null)}><Icon name="x" /></button></div>
-            <div class="sheet-body">
-              <p style="margin:0 0 16px;font-size:14.5px">Sigur ștergi utilizatorul „<b>{confirmDel.username}</b>”? Acțiunea nu poate fi anulată.</p>
-              <div class="frm-actions">
-                <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setConfirmDel(null)}>Anulează</button>
-                <button class="btn btn-danger-ghost" disabled={saving} onClick={() => doDelete(confirmDel)}>{saving ? '…' : 'Șterge'}</button>
+      {scoate && (() => {
+        const nume = scoate.u.full_name || scoate.u.username;
+        return (
+          <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setScoate(null); }}>
+            <div class="sheet">
+              <div class="sheet-h"><b>Scoți pe „{nume}” din firmă?</b><button class="h-btn" onClick={() => setScoate(null)} aria-label="Închide"><Icon name="x" /></button></div>
+              <div class="sheet-body">
+                <p style="margin:0 0 12px;font-size:14.5px;line-height:1.5">Contul lui „<b>{nume}</b>” dispare de tot. Dacă omul se întoarce, îi faci cont nou.</p>
+                {!scoate.gata && (
+                  <div class="muted" style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px">
+                    <div class="spin" style="width:14px;height:14px;border-width:2px" /> Se caută ce avea…
+                  </div>
+                )}
+                {scoate.gata && scoate.ce && (
+                  <div style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:var(--bg-dark);border:1px solid var(--border);font-size:13.5px;line-height:1.5">
+                    <div><b>Avea:</b> {scoate.ce}.</div>
+                    <div class="muted" style="margin-top:6px;font-size:12.5px">Notează-le acum, dacă le dai altcuiva — se șterg odată cu contul.</div>
+                  </div>
+                )}
+                {scoate.err && (
+                  <div role="alert" style="display:flex;gap:8px;align-items:flex-start;padding:10px 11px;margin:0 0 12px;border-radius:10px;font-size:13px;line-height:1.45;border:1px solid var(--red);background:rgba(240,90,90,.10);color:var(--text-primary)">
+                    <Icon name="alert" size={17} color="var(--red)" />
+                    <span style="flex:1;min-width:0">{scoate.err}</span>
+                  </div>
+                )}
+                <div class="frm-actions">
+                  <button class="btn" style={BTN_GHOST} onClick={() => setScoate(null)}>Anulează</button>
+                  <button class="btn btn-danger-ghost" disabled={saving || !scoate.gata} onClick={() => doScoate(scoate.u)}>{saving ? '…' : 'Scoate din firmă'}</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {linkSheet && <LinkParolaSheet data={linkSheet} onClose={inchideLinkul} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import { vehicles, offlineMinutes, me, showToast, refreshVehicles, ecranAscuns } from '../app/store';
 import { Api } from '../api/endpoints';
@@ -97,7 +97,13 @@ export function VehicleDetail() {
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const canManage = !!me.value?.permissions?.manageFleet;
+  // Pe lângă „modifică flota", firma poate tăia unui rol anume editarea vehiculelor (editariTaiate din
+  // /api/me). Serverul refuză atunci salvarea fișei — deci creionul nu apare, ca omul să nu completeze un
+  // formular întreg și să primească „Acces interzis" la final.
+  const canManage = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('vehicule');
+  // Același lucru pentru acte: firma poate tăia editarea documentelor separat de cea a fișei. Serverul
+  // refuză atunci adăugarea, modificarea, ștergerea și scanarea actelor (requireEdit('documente')).
+  const docsTaiate = (me.value?.editariTaiate || []).includes('documente');
   const [editOpen, setEditOpen] = useState(false);
   const [ef, setEf] = useState<Record<string, any>>({});
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -134,11 +140,21 @@ export function VehicleDetail() {
   }
   // Deschiderea automată așteaptă fișa completă (openEdit citește din `full`); altfel formularul
   // s-ar deschide gol și ar salva peste datele vehiculului cu câmpuri necompletate.
+  // O singură dată pe deschidere: fără gardă, foaia se redeschidea după fiecare salvare (se schimbă `full`) și la
+  // fiecare revenire în aplicație (se reîmprospătează `me`).
+  const docsDeschise = useRef(false);
   useEffect(() => {
-    if (!_cerutDocs || !full || editOpen || !canManage || ecranAscuns('documente')) return;
+    if (docsDeschise.current || !_cerutDocs || !me.value || ecranAscuns('documente')) return;
+    // Fără creion (rolul nu poate edita fișa), foaia de editare — unde stau actele — nu se deschide.
+    // Butonul din notificare („Documentele vehiculului", „Completează") ar fi lăsat omul pe fișă, fără
+    // nimic deschis. Îl ducem la ecranul „Documente vehicule": acolo le vede (și le modifică, dacă rolul
+    // lui are voie). Înlocuim adresa, ca „Înapoi" să ducă la notificare, nu iar aici.
+    if (!canManage) { docsDeschise.current = true; loc.route('/admin/documents', true); return; }
+    if (!full || editOpen) return;
+    docsDeschise.current = true;
     openEdit();
     setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
-  }, [full, _cerutDocs]);
+  }, [full, _cerutDocs, me.value]);
 
   function setEF(k: string, val: any) { setEf((p) => ({ ...p, [k]: val })); }
 
@@ -339,7 +355,8 @@ export function VehicleDetail() {
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Timp de conducere</span><span class="val">{fmtDuration(daily?.movingTime)}</span></div>
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Staționare (motor pornit)</span><span class="val">{fmtDuration(daily?.stoppedTime)}</span></div>
           <div class="d-stat"><Icon name="mapPin" size={18} class="ic" /><span class="lbl">Opriri</span><span class="val">{daily?.stops ?? 0}</span></div>
-          {daily?.fuelConsumed != null && <div class="d-stat"><Icon name="droplet" size={18} class="ic" /><span class="lbl">{daily.fuelEstimated ? 'Consum estimat azi' : 'Consum azi (senzor)'}</span><span class="val">{daily.fuelConsumed} L</span></div>}
+          {daily?.fuelConsumed != null && <div class="d-stat"><Icon name="droplet" size={18} class="ic" /><span class="lbl">{/* Cuvintele de pe web: „Consum azi", cu „(est.)" doar când e estimat. Fără „(senzor)" — cifra vine
+              din contorul de combustibil al mașinii, nu dintr-o sondă — și fără „CAN", care pentru client e jargon. */}{daily.fuelEstimated ? 'Consum azi (est.)' : 'Consum azi'}</span><span class="val">{daily.fuelConsumed} L</span></div>}
           {daily?.lastIgnitionOn && <div class="d-stat"><Icon name="zap" size={18} class="ic" /><span class="lbl">Ultim contact pornit</span><span class="val" style="font-size:13px">{fmtDateTime(daily.lastIgnitionOn)}</span></div>}
           <div class="d-gauge">
             <div class="d-stat" style="border:none;padding-bottom:6px"><Icon name="gauge" size={18} class="ic" /><span class="lbl">Viteză</span><span class="val">{daily?.maxSpeed || 0} km/h</span></div>
@@ -416,7 +433,14 @@ export function VehicleDetail() {
                 {/* Actele vehiculului + scanarea lor. setFisa varsă propunerile confirmate direct în
                     formularul de deasupra (ef) — aceleași câmpuri, aceeași salvare, nicio cale nouă. */}
                 {/* Fără ecranul „Documente" în rolul omului, serverul refuză lista — iar blocul ar spune fals „niciun act". */}
-                {!ecranAscuns('documente') && <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />}
+                {/* Cu editarea actelor tăiată din rol, blocul ar oferi scanare, adăugare, modificare și
+                    ștergere — toate refuzate de server cu „Acces interzis". În locul lui, o notă scurtă. */}
+                {!ecranAscuns('documente') && (docsTaiate
+                  ? <div class="veh-docs" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-muted);line-height:1.5">
+                    <div style="font-weight:700;color:var(--text-secondary);margin-bottom:4px"><Icon name="fileBar" size={13} /> Documente vehicul</div>
+                    Rolul tău nu poate modifica actele. Le vezi în Meniu → Documente vehicule.
+                  </div>
+                  : <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />)}
               </div>
             </div>
           </div>

@@ -3,6 +3,8 @@ import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { me, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
+import { LinkParolaSheet, pregatesteLinkul } from '../components/LinkParolaSheet';
+import type { LinkParola } from '../components/LinkParolaSheet';
 import './detail.css';
 import './admin.css';
 
@@ -29,6 +31,7 @@ export function DemoRequests() {
   const [approving, setApproving] = useState<any | null>(null);
   const [hours, setHours] = useState(168); // implicit 7 zile
   const [sim, setSim] = useState<any | null>(null);
+  const [link, setLink] = useState<LinkParola | null>(null);
 
   function reload() {
     setErr('');
@@ -58,7 +61,14 @@ export function DemoRequests() {
       const r: any = await Api.approveDemoRequest(approving.id, { hours });
       // „Acordat" nu înseamnă și „a plecat emailul": dacă SMTP nu e configurat, o spunem explicit.
       const lbl = r?.duration || (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore');
-      showToast(r?.warning ? ('Acces acordat, DAR: ' + r.warning) : ('Acces acordat: ' + lbl + ' ✓'), !!r?.warning);
+      // Emailul n-a plecat, dar serverul a întors linkul de parolă (de la 23.09): îl arătăm, copiat deja, ca să-l
+      // duci tu omului. Fără link (server vechi) rămâne avertismentul.
+      if (r?.link) {
+        showToast('Acces acordat: ' + lbl + ' — linkul de parolă trebuie dus de tine.', true);
+        setLink(await pregatesteLinkul({ email: r.email || r.username || approving.email, link: r.link, motiv: r.motiv }));
+      } else {
+        showToast(r?.warning ? ('Acces acordat, DAR: ' + r.warning) : ('Acces acordat: ' + lbl + ' ✓'), !!r?.warning);
+      }
       setApproving(null); reload();
     } catch (e: any) { showToast(e?.message || 'Nu s-a putut aproba', true); }
     finally { setBusy(false); }
@@ -172,6 +182,8 @@ export function DemoRequests() {
           </div>
         </div>
       )}
+
+      {link && <LinkParolaSheet data={link} onClose={() => setLink(null)} />}
     </div>
   );
 }

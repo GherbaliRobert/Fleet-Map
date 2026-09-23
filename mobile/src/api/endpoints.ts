@@ -10,6 +10,7 @@ export interface Me {
   isSuper?: boolean; company?: { id: number; name: string; is_demo?: boolean } | null;
   features?: Record<string, boolean>; sys?: { announcement?: string; offline_minutes?: number }; offline_minutes?: number;
   ecraneAscunse?: string[]; // ecranele tăiate de firmă din rolul omului (chei din ECRANE, server.js)
+  editariTaiate?: string[]; // ce NU are voie să modifice rolul (chei din EDITARI, server.js; ex. 'vehicule')
 }
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
@@ -91,13 +92,17 @@ export const Api = {
   driversLite: () => api<any[]>('/api/drivers/lite'),
   companies: () => api<any[]>('/api/companies'), // super-admin: pentru etichete + filtru pe companie
   // ── Super-admin: Companii (CRUD + abonament/features/plăți = și „Conturi & Abonamente" + „config Agenți AI") ──
+  // NU chema din telefon: firma nouă se deschide de pe web, „Client nou" (firmă + contract + administrator).
+  // Doar cu numele, firma ar rămâne fără niciun administrator. Rămâne aici doar pentru că ruta există.
   createCompany: (b: any) => api<any>('/api/companies', { method: 'POST', body: b }),
   updateCompany: (id: number, b: any) => api<any>(`/api/companies/${id}`, { method: 'PUT', body: b }),
   deleteCompany: (id: number) => api<any>(`/api/companies/${id}`, { method: 'DELETE' }),
   companyOverview: (id: number) => api<any>(`/api/companies/${id}/overview`),
   setCompanyFeatures: (id: number, features: Record<string, boolean>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
-  setCompanyAiLimit: (id: number, limit: number) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
-  setCompanyPlan: (id: number, plan: string) => api<any>(`/api/companies/${id}/plan`, { method: 'PUT', body: { plan } }),
+  // Limita VECHE de întrebări AI pe lună (null = nelimitat). Contează doar la firmele fără fond RA Insight pe cont.
+  setCompanyAiLimit: (id: number, limit: number | null) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
+  // Venitul lunar pe firmă + total, socotit pe server cu motorul facturii (același ca registrul de clienți).
+  companiesMrr: () => api<{ firme: Record<string, number>; totalLei: number }>('/api/companies/mrr'),
   companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
   setCompanyAccess: (id: number, until: number) => api<any>(`/api/companies/${id}/access`, { method: 'PUT', body: { until } }),
   // ── Super-admin: Dashboard platformă ──
@@ -165,6 +170,8 @@ export const Api = {
   setDemoSim: (b: any) => api<any>('/api/admin/demo-sim', { method: 'POST', body: b }),
   // ── Super-admin: Ofertare Live ──
   offers: () => api<any[]>('/api/admin/offers'),
+  // NU chema din telefon: ofertele se fac și se modifică DOAR de pe web. Forma veche a calculatorului
+  // de pe telefon strica ofertele făcute pe web (C-03). Rămân aici doar pentru că ruta există pe server.
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),
   updateOffer: (id: number, b: any) => api<any>(`/api/admin/offers/${id}`, { method: 'PUT', body: b }),
   deleteOffer: (id: number) => api<any>(`/api/admin/offers/${id}`, { method: 'DELETE' }),
@@ -173,10 +180,11 @@ export const Api = {
   unassignedDevices: () => api<any[]>('/api/unassigned-devices'),
   createDevice: (fields: any) => api<any>('/api/devices', { method: 'POST', body: fields }), // super: pre-înregistrează IMEI în allow-list (mod strict)
   moveDevice: (imei: string, company_id: number | null) => api<any>(`/api/devices/${encodeURIComponent(imei)}/company`, { method: 'PUT', body: { company_id } }),
-  // ── Dispozitive arhivate (super: toate; admin: ale companiei) ──
+  // ── Dispozitive arhivate — DOAR super-admin (hotărât 18.09: clientul nu-și vede aparatele arhivate) ──
   archivedDevices: () => api<any[]>('/api/archived-devices'),
   restoreDevice: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/status`, { method: 'PUT', body: { status: 'active' } }),
-  deleteDevice: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}`, { method: 'DELETE' }),
+  // `confirmare` = ce a tastat omul (numărul sau IMEI-ul), trimis în body ca serverul să-l poată verifica și el.
+  deleteDevice: (imei: string, confirmare?: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}`, { method: 'DELETE', body: confirmare ? { confirmare } : undefined }),
   // ── Facturare ──
   payments: (limit = 500) => api<{ payments: any[]; total: number }>(`/api/payments?limit=${limit}`), // super-admin: toate plățile + total
   recordPayment: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/payment`, { method: 'POST', body: b }),
@@ -188,7 +196,6 @@ export const Api = {
   issueInvoice: (b: any) => api<any>('/api/invoices', { method: 'POST', body: b }),
   invoiceSetStatus: (id: number, status: string) => api<any>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),
-  invoicePayLink: (id: number) => api<{ url: string }>(`/api/invoices/${id}/pay-link`, { method: 'POST', body: {} }),
   billingConfig: () => api<any>('/api/admin/billing/config'),
   billingRunAuto: () => api<any>('/api/admin/billing/run-auto', { method: 'POST', body: {} }),
   companyBillingConfig: (id: number, b: any) => api<any>(`/api/companies/${id}/billing-config`, { method: 'PUT', body: b }),
@@ -225,6 +232,9 @@ export const Api = {
   updateGeofence: (id: number, b: any) => api<any>(`/api/geofences/${id}`, { method: 'PUT', body: b }),
   deleteGeofence: (id: number) => api<any>(`/api/geofences/${id}`, { method: 'DELETE' }),
   etransport: () => api<any[]>('/api/etransport'),
+  // Scadențarul e-Transport; telefonul îi citește deocamdată doar `anaf` ({ pornit, test }): dacă pleacă
+  // ceva spre ANAF. Aceeași sursă ca banda de pe web — fără ea, clientul ar crede că e în regulă la ANAF.
+  etransportScadentar: () => api<{ anaf?: { pornit: boolean; test?: boolean } } & Record<string, any>>('/api/etransport/scadentar'),
   tachoFiles: () => api<any[]>('/api/tacho'),
   tachoFile: (id: number) => api<any>(`/api/tacho/${id}`),
   // „Cine trebuie descărcat următorul" — aceeași rută pe care o folosește web-ul, cu aceleași filtre
@@ -243,8 +253,10 @@ export const Api = {
   createUser: (b: any) => api('/api/users', { method: 'POST', body: b }),
   updateUser: (id: number, b: any) => api(`/api/users/${id}`, { method: 'PUT', body: b }),
   deleteUser: (id: number) => api(`/api/users/${id}`, { method: 'DELETE' }),
-  // Parola pusă de admin (aceeași regulă de lungime ca la creare — o verifică serverul).
-  setUserPassword: (id: number, password: string) => api(`/api/users/${id}/password`, { method: 'POST', body: { password } }),
+  // Linkul prin care omul ÎȘI pune parola: invitația care n-a ajuns ȘI parola uitată, un singur buton (ca pe web).
+  // Dacă emailul nu poate pleca, serverul întoarce chiar linkul, ca adminul să-l ducă mai departe. Parola n-o mai
+  // scrie nimeni în locul omului — ruta veche (/password) a fost scoasă de pe server. 429 după 5 linkuri pe oră.
+  linkParola: (id: number) => api<{ ok: boolean; trimis: boolean; email?: string; link?: string; motiv?: string }>(`/api/users/${id}/link-parola`, { method: 'POST', body: {} }),
   // Vehiculele și grupele atribuite unui cont (dispecer, viewer, rol fără „Vede toată flota").
   // ATENȚIE: /access = vehicule; termenul unui cont demo e pe /access-until (altă rută, doar super-admin).
   userAccess: (id: number) => api<{ devices: string[]; groups: number[] }>(`/api/users/${id}/access`),
@@ -267,11 +279,11 @@ export const Api = {
   runReportSchedule: (id: number) => api<{ ok?: boolean; rows?: number; recipients?: string[]; emailSent?: boolean; historyId?: number | null; reason?: string }>(`/api/report-schedules/${id}/run`, { method: 'POST', body: {} }),
   aiStatus: () => api<{ enabled: boolean; model?: string }>('/api/ai/status'),
   aiUsageStats: (days: number) => api<{ days: number; enabled: boolean; model?: string; usage: { kind: string; input_tokens: number; output_tokens: number; calls: number; last_used: string | null }[] }>(`/api/ai/usage-stats?days=${days}`),
-  // acceptExtra: omul a apăsat „Am înțeles, continuă" în caseta costului suplimentar (needsExtraConsent), ca pe web.
-  aiChat: (message: string, history?: { role: string; content: string }[], acceptExtra?: boolean) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; source?: string; disabled?: boolean; limited?: boolean; needsExtraConsent?: boolean; cost?: { fond?: number; folosite?: number; conturi?: number; peCont?: number; pretLei?: number; pretEur?: number; reinnoire?: string } }>('/api/ai/chat', { method: 'POST', body: acceptExtra ? { message, history, acceptExtra: true } : { message, history } }),
-  reportsAgent: (message: string, acceptExtra?: boolean) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; sources?: any[]; disabled?: boolean; limited?: boolean; needsExtraConsent?: boolean; cost?: { fond?: number; folosite?: number; conturi?: number; peCont?: number; pretLei?: number; pretEur?: number; reinnoire?: string } }>('/api/ai/reports-agent', { method: 'POST', body: acceptExtra ? { message, acceptExtra: true } : { message } }), // RA Insight — mod AI (text liber, opțional)
+  // Fond epuizat: serverul răspunde cu limited + fondEpuizat și explicația în `reply` (fără niciun cost în plus).
+  aiChat: (message: string, history?: { role: string; content: string }[]) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; source?: string; disabled?: boolean; limited?: boolean; fondEpuizat?: { fond?: number; conturi?: number; peCont?: number; reinnoire?: string } }>('/api/ai/chat', { method: 'POST', body: { message, history } }),
+  reportsAgent: (message: string) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; sources?: any[]; disabled?: boolean; limited?: boolean; fondEpuizat?: { fond?: number; conturi?: number; peCont?: number; reinnoire?: string } }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
   // Contorul RA Insight (aceeași sursă ca bara de pe web): fondul firmei, cât a pus omul, reînnoirea, locul pe cont.
-  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; overage?: boolean; overagePriceEur?: number; overageCount?: number; overageCostEur?: number; periodEnd?: string }>('/api/ai/quota', { timeoutMs: 20000 }),
+  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string }>('/api/ai/quota', { timeoutMs: 20000 }),
   fx: () => api<{ eur: number; date?: string | null; source?: string }>('/api/fx', { timeoutMs: 20000 }), // curs BNR EUR→RON
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
   insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),

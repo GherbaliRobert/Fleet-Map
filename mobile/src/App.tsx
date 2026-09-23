@@ -63,12 +63,12 @@ function doarSuper(Ecran: ComponentType<any>, titlu: string): ComponentType<any>
 }
 const P = {
   route: pazit('traseu', RouteScreen, 'Traseu'),
-  stats: pazit('statistici', Stats, 'Statistici', true),
+  stats: pazit('statistici', Stats, 'Statistici flotă', true),
   reports: pazit('rapoarte', Reports, 'Rapoarte', true),
   fuelstats: pazit('statistici', FuelStats, 'Statistici consum'),
   schedules: pazit('programari', ReportSchedules, 'Rapoarte programate'),
   hotspot: pazit('hotspot', Hotspot, 'Hotspot & Rutare'),
-  geofences: pazit('hotspot', AdminGeofences, 'Zone (geofence)'), // zonele stau pe server sub ecranul „hotspot"
+  geofences: pazit('hotspot', AdminGeofences, 'Zone'), // zonele stau pe server sub ecranul „hotspot"
   drivers: pazit('soferi', AdminDrivers, 'Șoferi'),
   groups: pazit('grupe', AdminGroups, 'Grupe'),
   alerts: pazit('alerte', AdminAlerts, 'Alerte'),
@@ -80,6 +80,16 @@ const P = {
   aiChat: pazit('insight', AiChat, 'Asistent AI'),   // /api/ai stă pe server sub ecranul „insight"
   aiAgents: pazit('insight', AiAgents, 'Agenți AI'),
   aiStats: doarSuper(AiAssistants, 'Asistenți AI'),
+  // Ecranele platformei: în meniu apar doar la super-admin, dar la adresă se putea ajunge și altfel (buton,
+  // notificare) și dădeai în „Acces interzis". Aparatele — inclusiv cele ARHIVATE — sunt ale noastre:
+  // hotărât pe 18.09 că clientul nu-și vede aparatele arhivate.
+  devices: doarSuper(AdminDevices, 'Dispozitive'),
+  archived: doarSuper(AdminArchived, 'Dispozitive arhivate'),
+  companies: doarSuper(AdminCompanies, 'Companii'),
+  platform: doarSuper(PlatformDashboard, 'Dashboard platformă'),
+  costs: doarSuper(CostControl, 'Control costuri'),
+  offers: doarSuper(Offers, 'Ofertare Live'),
+  demoRequests: doarSuper(DemoRequests, 'Cereri demo'),
 };
 
 export function App() {
@@ -150,13 +160,13 @@ function Shell() {
         <Route path="/admin/documents" component={P.documents} />
         <Route path="/admin/webhooks" component={AdminWebhooks} />
         <Route path="/billing" component={Billing} />
-        <Route path="/admin/companies" component={AdminCompanies} />
-        <Route path="/admin/devices" component={AdminDevices} />
-        <Route path="/admin/archived" component={AdminArchived} />
-        <Route path="/admin/platform" component={PlatformDashboard} />
-        <Route path="/admin/costs" component={CostControl} />
-        <Route path="/admin/offers" component={Offers} />
-        <Route path="/admin/demo-requests" component={DemoRequests} />
+        <Route path="/admin/companies" component={P.companies} />
+        <Route path="/admin/devices" component={P.devices} />
+        <Route path="/admin/archived" component={P.archived} />
+        <Route path="/admin/platform" component={P.platform} />
+        <Route path="/admin/costs" component={P.costs} />
+        <Route path="/admin/offers" component={P.offers} />
+        <Route path="/admin/demo-requests" component={P.demoRequests} />
         <Route path="/dispatch" component={Dispatch} />
         <Route path="/admin/geofences" component={P.geofences} />
         <Route path="/hotspot" component={P.hotspot} />

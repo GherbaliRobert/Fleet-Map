@@ -38,7 +38,7 @@ export function Stats() {
 
   return (
     <div class="screen">
-      <header class="app-header"><div class="h-title">Statistici</div></header>
+      <header class="app-header"><div class="h-title">Statistici flotă</div></header>
       <div class="st-tabs">
         {TABS.map((t) => <button class={'st-tab' + (tab === t.k ? ' on' : '')} onClick={() => setTab(t.k)}>{t.label}</button>)}
       </div>

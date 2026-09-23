@@ -682,6 +682,69 @@ function formularWeb(cookie, eSuper, proprii) {
   T('și nici aici `acceptExtra` nu deschide nimic',
     rezOk.j.summary !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteR, rezOk.text.slice(0, 100));
 
+  // ───────────────────────────────────────────────────────────────────────────────────────────────
+  // APK-ul 1.0.1 rămâne pe telefoane săptămâni întregi, iar serverul s-a schimbat sub el (planuri scoase,
+  // ofertare nouă, parolele înlocuite de link). Ce poate strica de acolo se oprește AICI, nu în aplicația nouă.
+  console.log('\n7. Aplicația veche (1.0.1) nu mai poate strica nimic');
+  const telS = await loginTelefon('admin', 'test1234');
+  T('super-adminul intră și pe telefon', !!telS);
+  // Firma: „Salvează datele" de pe telefonul vechi trimite doar numele, emailul și telefonul.
+  await json('PUT', '/api/companies/' + co.id, S, { name: 'Firma Paritate SRL', cui: 'RO123456', reg_com: 'J02/1/2020', address: 'Str. Probei 2, Arad', iban: 'RO49AAAA1B31007593840000', bank_name: 'Banca Probei', contact_email: 'contact@paritate.ro', phone: '0257000000' });
+  const faraCampuri = await json('PUT', '/api/companies/' + co.id, telS, { name: 'Firma Paritate SRL', contact_email: 'nou@paritate.ro', phone: '0257111111' });
+  const coDupa = lista((await json('GET', '/api/companies', S)).j).find((x) => x.id === co.id) || {};
+  T('salvarea firmei cu doar nume/email/telefon NU mai șterge CUI, Reg. Com., adresa, IBAN, banca',
+    faraCampuri.status === 200 && coDupa.cui === 'RO123456' && coDupa.reg_com === 'J02/1/2020' && coDupa.address === 'Str. Probei 2, Arad' && coDupa.iban === 'RO49AAAA1B31007593840000' && coDupa.bank_name === 'Banca Probei',
+    JSON.stringify({ cui: coDupa.cui, reg: coDupa.reg_com, iban: coDupa.iban, bank: coDupa.bank_name }));
+  T('iar ce s-a trimis se schimbă', coDupa.contact_email === 'nou@paritate.ro' && coDupa.phone === '0257111111', coDupa.contact_email + ' ' + coDupa.phone);
+  const golit = await json('PUT', '/api/companies/' + co.id, S, { iban: null, bank_name: '' });
+  const coGol = lista((await json('GET', '/api/companies', S)).j).find((x) => x.id === co.id) || {};
+  T('un câmp trimis gol (formularul web) se golește în continuare', golit.status === 200 && coGol.iban == null && coGol.bank_name == null && coGol.cui === 'RO123456', JSON.stringify({ iban: coGol.iban, bank: coGol.bank_name, cui: coGol.cui }));
+
+  // Ofertele: calculatorul vechi de pe telefon nu mai scrie nimic.
+  const ofWeb = await json('POST', '/api/admin/offers', S, { name: 'Oferta proba web', config: { cfg: { aiA: true, aiqN: 100 } } });
+  T('pe web oferta se salvează ca înainte', ofWeb.status === 200 && !!ofWeb.j.id, ofWeb.status + ' ' + ofWeb.text.slice(0, 80));
+  const ofTel = await json('POST', '/api/admin/offers', telS, { name: 'Oferta din telefonul vechi', config: { cfg: { aiA: true } } });
+  const ofTelPut = await json('PUT', '/api/admin/offers/' + ofWeb.j.id, telS, { name: 'Suprascrisă de telefon', config: { cfg: {} } });
+  const ofDupa = lista((await json('GET', '/api/admin/offers', S)).j).find((x) => x.id === ofWeb.j.id) || {};
+  T('de pe telefon (cheie), oferta nu se mai creează și nu se mai suprascrie', ofTel.status === 409 && ofTelPut.status === 409 && ofDupa.name === 'Oferta proba web', ofTel.status + ' / ' + ofTelPut.status + ' / ' + ofDupa.name);
+  T('și primește explicația', /aplicația web/.test(ofTel.j.error || ''), ofTel.j.error);
+
+  // Parola altcuiva nu se mai scrie: APK-ul vechi primește un mesaj, nu o eroare goală, și nu se schimbă nimic.
+  const pw = await json('POST', '/api/users/' + ion.id + '/password', telSef, { password: 'Alta-Parola-Lunga-2026' });
+  T('„Parolă nouă" din APK-ul vechi: 404 cu explicație, nu „Eroare 404"', pw.status === 404 && /Trimite link de parolă/.test(pw.j.error || ''), pw.status + ' ' + pw.text.slice(0, 100));
+  T('și parola omului a rămas cea veche', !!(await login('ion@paritate.ro', PAROLA)));
+
+  // Cont nou cu parolă scrisă, din aplicația veche: refuzat cu explicație (serverul ar fi ignorat parola în tăcere).
+  const cuParola = await json('POST', '/api/users', telSef, { username: 'cu.parola@paritate.ro', password: 'Str4da-Verde-2026', full_name: 'Cu Parola', role: 'viewer' });
+  T('cont nou cu parolă din aplicația veche: refuzat, cu explicația linkului', cuParola.status === 409 && /link/.test(cuParola.j.error || ''), cuParola.status + ' ' + cuParola.text.slice(0, 90));
+  T('și contul nu s-a creat', !lista((await json('GET', '/api/users', ckSef)).j).some((x) => x.username === 'cu.parola@paritate.ro'));
+
+  // Un cont de platformă nu se coboară pe un rol de firmă (ar rămâne fără firmă, adică fără filtru).
+  const plat = await json('POST', '/api/users', S, { username: 'coleg.nou@ratrack.ro', full_name: 'Coleg Nou', role: 'superadmin' });
+  const cobor = await json('PUT', '/api/users/' + plat.j.id, S, { role: 'viewer' });
+  const platDupa = lista((await json('GET', '/api/users', S)).j).find((x) => x.id === plat.j.id) || {};
+  T('contul de platformă nu poate fi coborât pe un rol de firmă', !!plat.j.id && cobor.status === 400 && platDupa.role === 'superadmin', cobor.status + ' ' + platDupa.role + ' ' + cobor.text.slice(0, 80));
+
+  // Tahograf: aplicația veche îi dădea fondatorului formularul, iar fișierul ieșea fără firmă.
+  const upTel = await json('POST', '/api/tacho/upload', telS, { filename: 'x.ddd', b64: Buffer.from('proba-fisier').toString('base64'), imei: '350000000024701' });
+  T('fondatorul nu mai încarcă tahograf din telefon', upTel.status === 403 && /firma/.test(upTel.j.error || ''), upTel.status + ' ' + upTel.text.slice(0, 80));
+
+  // Aparate: unul arhivat nu se mută (se restaurează întâi).
+  const arh = await json('PUT', '/api/devices/350000000024702/status', S, { status: 'archived' });
+  const mut = await json('PUT', '/api/devices/350000000024702/company', telS, { company_id: co2.id });
+  T('un aparat arhivat nu se mai mută în altă firmă', arh.status === 200 && mut.status === 409, arh.status + ' / ' + mut.status + ' ' + mut.text.slice(0, 80));
+  await json('PUT', '/api/devices/350000000024702/status', S, { status: 'active' });
+
+  // Limita AI veche e în întrebări, nu în tokeni (APK-ul vechi scria „tok/lună").
+  const lim = await json('PUT', '/api/companies/' + co.id + '/ai-limit', telS, { limit: 1000000 });
+  T('limita AI absurdă (un milion) e refuzată, cu explicația', lim.status === 400 && /întrebări/.test(lim.j.error || ''), lim.status + ' ' + lim.text.slice(0, 80));
+
+  // Agenții: fără cuvântul „plan" (planurile au fost scoase pe 15.09).
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { enabled_agents: [] });
+  const agOff = await json('POST', '/api/agents/run', ckSef, { agent: 'all' });
+  const agUnul = await json('POST', '/api/agents/run', ckSef, { agent: 'care' });
+  T('agenții opriți: mesajul nu mai vorbește de „plan"', !/plan/i.test(agOff.text) && !/plan/i.test(agUnul.text) && /opri/.test(agOff.text + agUnul.text), agOff.text.slice(0, 90) + ' | ' + agUnul.text.slice(0, 90));
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

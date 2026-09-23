@@ -29,8 +29,14 @@ export function Tahograf() {
   const [detail, setDetail] = useState<any | null>(null);
   const [ist, setIst] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // Ecranul ăsta e al FIRMEI. Super-adminul primea aici datele tuturor firmelor, amestecate și fără
+  // coloană de firmă („Ion Popescu — termen depășit" și nu se vedea al cui e). Pe web, fondatorul are
+  // ecranul lui, pe firme (AI & Module → Tahograf); aici îi spunem unde e, în loc să-i arătăm amestecul.
+  const isSuper = !!me.value?.isSuper;
   // ── încărcare .DDD ──
-  const canWrite = !!me.value?.permissions?.manageFleet;
+  // Fondatorul NU încarcă fișierele clientului (decizia din 18.09: „e gospodăria clientului"). Pe lângă
+  // asta, un fișier urcat de super-admin se scria fără firmă: nu-l mai vedea nimeni în listă.
+  const canWrite = !!me.value?.permissions?.manageFleet && !isSuper;
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [up, setUp] = useState<{ open: boolean; drv: string; veh: string; file: File | null; busy: boolean; msg: any }>(
     { open: false, drv: '', veh: '', file: null, busy: false, msg: null });
@@ -79,10 +85,15 @@ export function Tahograf() {
   }
 
   useEffect(() => {
-    const nuEActiv = (e: any) => e?.status === 403;
+    if (isSuper) return; // fondatorul vede nota de mai jos, nu datele tuturor firmelor amestecate
+    // Planurile nu mai există (26.08) — modulele se pornesc din ofertă. Și nu orice 403 e „modul oprit":
+    // un rol fără dreptul de rapoarte primește tot 403, dar cu alt motiv.
+    const motiv = (e: any) => e?.status !== 403 ? (e?.message || 'Eroare la încărcare')
+      : e?.message === 'feature_disabled' ? 'Modulul Tahograf nu e pornit pentru firma ta.'
+        : 'Rolul tău nu are acces la acest ecran.';
     Api.tachoScadentar()
       .then(setDue)
-      .catch((e: any) => { setErr(nuEActiv(e) ? 'Modulul tahograf nu este activ pe planul companiei tale.' : (e?.message || 'Eroare la încărcare')); setDue({}); });
+      .catch((e: any) => { setErr(motiv(e)); setDue({}); });
     Api.tachoFiles()
       .then((d) => setItems(Array.isArray(d) ? d : []))
       .catch(() => setItems([]));
@@ -203,6 +214,24 @@ export function Tahograf() {
   const depasite = soferi.concat(vehicule).filter((x: any) => x.stare === 'depasit');
   const niciodata = soferi.concat(vehicule).filter((x: any) => x.stare === 'niciodata');
 
+  if (isSuper) {
+    return (
+      <div class="screen">
+        <header class="app-header">
+          <button class="h-btn" onClick={() => loc.route('/meniu')}><Icon name="chevronL" /></button>
+          <div class="h-title">Tahograf</div>
+          <div style="width:36px" />
+        </header>
+        <div class="content has-tabbar" style="padding-bottom:24px">
+          <div class="th-note">
+            Aici e ecranul firmei. Situația pe firme (cine e în urmă cu descărcările, cine are modulul) o vezi pe web, în <b>AI & Module → Tahograf</b>.
+            <br /><br />Fișierele le încarcă firma.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div class="screen">
       <header class="app-header">
@@ -253,7 +282,7 @@ export function Tahograf() {
         )}
 
         {!err && tab === 'files' && items == null && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
-        {!err && tab === 'files' && items != null && items.length === 0 && <div class="adm-empty"><Icon name="disc" size={40} class="ic" /><div>Niciun fișier tahograf încărcat. Încarcă .DDD din aplicația web.</div></div>}
+        {!err && tab === 'files' && items != null && items.length === 0 && <div class="adm-empty"><Icon name="disc" size={40} class="ic" /><div>Niciun fișier tahograf încărcat.{canWrite ? ' Îl încarci din fila „De descărcat”, jos.' : ''}</div></div>}
         {!err && tab === 'files' && items != null && items.length > 0 && (
           <div class="adm-list">
             {items.map((f) => {

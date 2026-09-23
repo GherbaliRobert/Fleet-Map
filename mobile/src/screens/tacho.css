@@ -10,6 +10,15 @@
 .th-badge.warn { border-color: rgba(245,180,60,.42); color: #f5b43c; background: rgba(245,180,60,.09); }
 .th-badge.ok { border-color: rgba(63,224,125,.4); color: var(--accent); background: rgba(63,224,125,.09); }
 .th-badge svg { flex: 0 0 auto; }
+/* Tema luminoasă: chihlimbarul #f5b43c și verdele de brand, scrise ca TEXT pe fundal alb, ies la ~1,6:1 —
+   practic invizibile (tocmai banda ANAF de la e-Transport, pe care omul trebuie s-o citească). Pe alb
+   folosim nuanțe mai adânci, ca web-ul (#0E7A3C la verde); pe tema închisă rămân culorile de brand. */
+:root[data-theme="light"] .th-badge.warn,
+:root[data-theme="light"] .th-gh.warn,
+:root[data-theme="light"] .th-excl.name,
+:root[data-theme="light"] .th-gap b { color: #b45309; }
+:root[data-theme="light"] .th-badge.ok,
+:root[data-theme="light"] .th-gh { color: #0E7A3C; }
 
 .th-gh { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin: 16px 0 8px; }
 .th-gh em { margin-left: auto; font-style: normal; font-weight: 700; color: var(--text-muted); text-transform: none; letter-spacing: 0; }

@@ -2772,6 +2772,9 @@ app.get('/api/users/lite', requireAuth, requireAdmin, withCompany, async (req, r
 
 app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
+    // Parola nu se mai scrie (16.09). Aplicația de telefon veche o trimite și spune „cont creat" — dar parola aia nu
+    // există nicăieri, iar linkul de parolă nu i-l arată. Mai bine un refuz cu explicație decât un cont blocat.
+    if (req.auth && req.auth.viaApiKey && req.body && req.body.password) return res.status(409).json({ error: 'Parola nu se mai scrie de aici. Actualizează aplicația — omul primește un link și își pune singur parola.' });
     const { role, email, phone } = req.body;
     const username = normUsername(req.body.username);
     const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
@@ -2931,6 +2934,11 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     // și când s-a schimbat doar numărul de telefon). Nu e o schimbare de rol: nu se validează ca atribuire
     // nouă și, mai ales, NU mută omul de pe rolul propriu pe cel standard, cu mai multe drepturi.
     const rolNeschimbat = role !== undefined && role !== null && role === tinta.role;
+    // Un cont de platformă nu ține de nicio firmă. Coborât pe un rol de firmă, ar rămâne FĂRĂ firmă — adică fără niciun
+    // filtru, cu datele tuturor. Se face cont nou în firma potrivită.
+    if (role && !rolNeschimbat && !isSuper(role) && tinta.company_id == null) {
+      return res.status(400).json({ error: 'Un cont de platformă nu ține de nicio firmă. Scoate-l și fă-i cont nou în firma potrivită.' });
+    }
     const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
     if (role !== undefined && role !== null && !rolNeschimbat && !allowed.includes(role)) {
       return res.status(400).json({ error: 'Rol invalid' });
@@ -2995,6 +3003,12 @@ app.post('/api/users/:id/link-parola', requireAuth, requireAdmin, withCompany, a
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+// Piatră de hotar pentru APK-urile vechi (1.0.1 are încă „Parolă nouă"): ruta de scris parola altcuiva NU
+// mai există și nu setează NIMIC — doar răspunde 404 cu o explicație, ca adminul să afle că trebuie să
+// actualizeze aplicația, în loc de un „Eroare 404" gol. Scrisă ca regex ca să nu reapară drumul vechi în cod.
+app.post(/^\/api\/users\/\d+\/password\/?$/, requireAuth, (req, res) => {
+  res.status(404).json({ error: 'Parola nu se mai scrie de aici. Actualizează aplicația — fiecare om are butonul „Trimite link de parolă".' });
 });
 
 app.get('/api/users/:id/access', requireAuth, requireAdmin, withCompany, async (req, res) => {
@@ -3416,6 +3430,8 @@ app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (re
   try {
     const id = parseInt(req.params.id);
     if (!(await db.getCompanyById(id))) return res.status(404).json({ error: 'Companie inexistentă' });
+    const _lim = req.body.limit;
+    if (_lim != null && _lim !== '' && Number(_lim) > 100000) return res.status(400).json({ error: 'Limita e în întrebări pe lună, nu în tokeni.' });
     await db.setCompanyAiLimit(id, req.body.limit);
     auditReq(req, 'set_ai_limit', 'company', id, { limit: req.body.limit });
     res.json({ ok: true });
@@ -3499,7 +3515,7 @@ async function _fondEpuizat(req) {
       '• Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse' +
       (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
       '• Se reînnoiește pe **' + reinnoire + '**.\n' +
-      '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.*' +
+      '• Întrebările rapide rămân gratuite: unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.' +
       // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont. La o firmă pe forma VECHE
       // (cotă fixă, `questions`), un cont în plus NU aduce nicio întrebare — iar fraza, cu „50" pus
       // de rezervă, îi promitea exact asta (găsit 23.09). Acum se spune doar unde e adevărat.
@@ -3810,7 +3826,7 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
     const st = await aiQuotaState(a.companyId, a.userId);
     // Are omul ăsta loc de RA Insight? Bara se arată doar cui îl are.
     let loc = true;
-    try { if (a.companyId != null && a.userId != null) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat); } } catch (e) {}
+    try { if (a.companyId != null && a.userId != null && !isSuper(a.role)) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat); } } catch (e) {}
     res.json(Object.assign({ ok: true, seat: loc }, st));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4260,8 +4276,8 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
     // GATE: agentul cerut trebuie să fie activ pentru compania de stocare (plan + override)
     const enabled = await _getEnabledAgents(storeCompany);
-    if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
-    if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
+    if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" e oprit pentru firma asta.' });
+    if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Agenții AI sunt opriți pentru firma asta.' });
     const alertThresholds = await _getAlertThresholds(storeCompany);
     const _coFP = await db.getCompanyById(storeCompany).then(function (c) { return effectiveFuelPrices(c && c.settings).motorina; }).catch(function () { return null; });
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds, fuelPrice: _coFP || 7.5 };
@@ -5731,7 +5747,7 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
       inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()),
       link: rez.link || undefined,
       warning: rez.trimis ? undefined
-        : 'Emailul de invitație NU a plecat (' + (rez.motiv || 'eroare de trimitere') + '). Copiază linkul de mai jos și trimite-i-l tu — parola și-o pune tot el.'
+        : 'Emailul de invitație NU a plecat (' + String(rez.motiv || 'eroare de trimitere').replace(/\.+\s*$/, '') + '). Copiază linkul de mai jos și trimite-i-l tu — parola și-o pune tot el.'
     }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5858,6 +5874,12 @@ app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, r
 app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const companyId = req.body.company_id != null ? parseInt(req.body.company_id) : null;
+    // Un aparat arhivat se restaurează întâi; un aparat real nu intră în compania demo (APK-ul 1.0.1 le oferea pe amândouă).
+    const _dev = await db.getDeviceFull(req.params.imei).catch(() => null);
+    if (_dev && _dev.status === 'archived') return res.status(409).json({ error: 'Aparatul e arhivat — restaurează-l întâi.' });
+    if (companyId != null && demoCompanyId != null && companyId === demoCompanyId && !DEMO_SET.has(req.params.imei)) {
+      return res.status(400).json({ error: 'Compania demo e doar pentru vehiculele simulate.' });
+    }
     await db.setDeviceCompany(req.params.imei, companyId);
     invalidateAccessCache(); _devCompanyCache.delete(req.params.imei); refreshWsScope();
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
@@ -6642,6 +6664,9 @@ app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, 
 });
 app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
+    // Hotărât 18.09: fondatorul nu încarcă fișierele clientului. APK-ul 1.0.1 îi dădea totuși formularul, iar fișierul
+    // ieșea fără firmă: șoferul clientului apărea „descărcat", deși fișierul nu era în arhiva lui.
+    if (req.isSuper && req.auth && req.auth.viaApiKey) return res.status(403).json({ error: 'Fișierele le încarcă firma.' });
     const { filename, b64, imei, driverId } = req.body;
     if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
     const buf = Buffer.from(b64, 'base64');
@@ -7321,6 +7346,9 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
     const companyId = req.isSuper
       ? (req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null)
       : req.companyId;
+    if (companyId != null && demoCompanyId != null && companyId === demoCompanyId && !DEMO_SET.has(imei)) {
+      return res.status(400).json({ error: 'Compania demo e doar pentru vehiculele simulate.' });
+    }
     const fields = {};
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
     // Modelul aparatului și cartela SIM se scriau DOAR la editare, deși sunt exact datele pe care le
@@ -13110,13 +13138,22 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     try { await db.pool.query('UPDATE users SET demo_request_id = $2 WHERE id = $1', [u.id, id]); } catch (e) {}
     invalidateAccessCache(u.id); roleCache.delete(u.id); // altfel cache-ul de 30s ar întârzia accesul
 
-    let invited = false;
-    try { invited = await sendSetPasswordEmail(req, Object.assign({}, u, { email: uname }), { invite: true }); } catch (e) {}
+    // Aceeași regulă ca la orice cont nou (16.09): dacă emailul nu poate pleca, linkul se ÎNTOARCE, ca să-l ducă
+    // fondatorul mai departe. Înainte, aici se spunea „trimite-i manual linkul de resetare", fără niciun link.
+    // `warning` rămâne pentru ecranele care nu arată linkul (web-ul de azi, APK-urile vechi): le trimite la butonul
+    // „Trimite link de parolă" din Utilizatori, care există pe web și pe telefon.
+    let rez = { trimis: false, link: null, motiv: null };
+    try { rez = await trimiteLinkParola(req, Object.assign({}, u, { email: uname }), { invite: true }); }
+    catch (e) { rez = { trimis: false, link: null, motiv: e.message }; }
+    const invited = !!rez.trimis;
     await db.updateDemoRequest(id, { status: 'approved', user_id: u.id, approved_by: getAuth(req).userId, access_until: until });
     await syncDemoSim('cerere demo aprobată').catch(() => {}); // contul nou → vehiculele demo trebuie să se miște
-    auditReq(req, 'approve', 'demo_request', id, { user: uname, hours: hours });
-    res.json({ ok: true, username: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: _demoDurationLabel(hours), accessUntil: until, created: created, invited: invited,
-      warning: invited ? null : 'Contul e activ, dar emailul cu linkul de setare a parolei NU a putut fi trimis (SMTP neconfigurat). Trimite-i manual linkul de resetare.' });
+    auditReq(req, 'approve', 'demo_request', id, { user: uname, hours: hours, invitat: invited });
+    res.json({ ok: true, username: uname, email: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: _demoDurationLabel(hours), accessUntil: until, created: created, invited: invited,
+      link: invited ? undefined : (rez.link || undefined),
+      motiv: invited ? undefined : (rez.motiv || 'Emailul nu a plecat.'),
+      warning: invited ? null
+        : 'Contul e activ, dar linkul de parolă NU a plecat pe email (' + String(rez.motiv || 'trimitere eșuată').replace(/\.+\s*$/, '') + '). Trimite-i-l din Utilizatori, cu „Trimite link de parolă" (pe web sau în aplicația actualizată).' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/admin/demo-requests/:id/reject', requireAuth, requireSuperadmin, async (req, res) => {
@@ -13242,6 +13279,9 @@ app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (re
 // ── sfârșit „pâlnia de oferte" ──
 app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try {
+  // Ofertele se fac DOAR pe web. APK-ul 1.0.1 are încă calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei,
+  // fără conturi RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
+  if (req.auth && req.auth.viaApiKey) return res.status(409).json({ error: 'Ofertele se fac acum din aplicația web. Pe telefon doar le vezi — actualizează aplicația.' });
     const b = req.body || {};
     const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
     auditReq(req, 'create', 'offer', o.id, { name: o.name });
@@ -13250,6 +13290,9 @@ app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) =
 });
 app.put('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
+  // Ofertele se fac DOAR pe web. APK-ul 1.0.1 are încă calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei,
+  // fără conturi RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
+  if (req.auth && req.auth.viaApiKey) return res.status(409).json({ error: 'Ofertele se fac acum din aplicația web. Pe telefon doar le vezi — actualizează aplicația.' });
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const b = req.body || {};
     const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes });

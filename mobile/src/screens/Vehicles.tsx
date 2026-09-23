@@ -46,7 +46,7 @@ export function Vehicles() {
   return (
     <div class="screen">
       <header class="app-header">
-        <div class="h-title">Autovehicule</div>
+        <div class="h-title">Vehicule</div>
         <button class="h-btn" onClick={() => setShowMap((m) => !m)} aria-label="hartă/listă">
           <Icon name={showMap ? 'list' : 'map'} />
         </button>

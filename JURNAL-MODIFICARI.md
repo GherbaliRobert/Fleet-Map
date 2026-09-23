@@ -97,6 +97,73 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-23
 
+### AMÂNDOI · Aplicația de telefon 1.0.2: adusă la zi cu tot ce s-a schimbat pe server de pe 13.09 — `în lucru`
+
+Între 13 și 23 septembrie au intrat pe server și pe web 59 de schimbări; doar două atinseseră telefonul. Unele
+**stricaseră** aplicația de telefon fără să se vadă: parola se scria printr-o funcție care nu mai există, câmpul
+„Plan" chema o rută ștearsă, iar calculatorul de oferte din iulie putea strica o ofertă făcută pe web. Lotul ăsta
+repară tot ce era stricat sau spunea ceva fals. Ce **lipsește** încă de pe telefon (ecrane noi de pe web) e scris la
+final și vine în lotul următor.
+
+Telefoanele păstrează săptămâni întregi aplicația veche (1.0.1). Ce putea strica ea — date, bani, fișiere — e
+oprit acum **pe server**, ca să nu depindă de cine a actualizat.
+
+Verificat: probele automate (proba de paritate a crescut la 145 de verificări, cu o secțiune nouă pentru aplicația
+veche) și o revizie adversă pe tot ansamblul.
+
+**Utilizatori — parola nu se mai scrie nici de pe telefon (AMÂNDOI)**
+- Caseta „Parolă nouă" (dădea „Eroare 404") a plecat. Pe fiecare rând e butonul cu plicul, „Trimite link de
+  parolă": retrimite invitația sau ajută la parola uitată. Dacă emailul nu poate pleca, **linkul apare pe ecran,
+  copiat deja**, cu „Copiază" și „Trimite" (WhatsApp, SMS…).
+- Contul nou nu mai cere parolă; serverul o ignora oricum, iar contul rămânea cu o parolă pe care n-o știa nimeni.
+- Adminul firmei își poate face de pe telefon alt „Admin companie" (singurul nume al rolului), ca pe web.
+- La noi, „Adaugă utilizator" face doar colegi RA Tracks; administratorul unei firme se face din Companii.
+- „Scoate din firmă" spune întâi ce avea omul (RA Insight, mașini, grupe); lista arată „n-a intrat niciodată",
+  „dezactivat", „expiră în N zile", „văzut: azi".
+- La aprobarea unui demo, când emailul nu pleacă, primești linkul pe ecran (înainte: „trimite-i manual linkul",
+  fără link).
+
+**RA Insight pe telefon — fără urme de plată peste fond (CLIENT)**
+Caseta de acord, „extra" și „lei/întrebare" au plecat (plata peste fond nu mai există din 14.09). Bara spune, ca pe
+web, „oprit până pe 1 octombrie" și „fără niciun cost în plus"; „un cont în plus aduce încă N întrebări" apare doar
+când e adevărat, cu cifra firmei. Mesajele nu mai vorbesc de „plan".
+
+**Partea noastră pe telefon (FONDATOR)**
+- **Companii:** „Salvează datele" **ștergea CUI-ul, Reg. Com., adresa, IBAN-ul și banca** firmei. Reparat pe
+  telefon și pe server (vezi mai jos). Câmpul „Plan" a plecat; apare abonamentul din ofertă. „Limită AI" e în
+  întrebări, nu în tokeni. Fișa arată doar administratorii firmei.
+- **Ofertare:** telefonul doar arată ofertele (stare, zile rămase, sume în lei și €); calculatorul din iulie
+  (Asistent AI 150 lei, agenți 300 lei) a plecat. Ofertele se fac pe web.
+- **Facturare:** fără „Link card" și Stripe; „Plătită", „Anulează" și „Rulează acum" cer confirmare.
+- **Dashboard platformă:** „Abonamente active" arăta mereu 0; acum venitul vine din oferte, socotit ca factura.
+- **Tahograf și e-Transport:** nu-ți mai arată datele tuturor firmelor amestecate; o notă te trimite la ecranul pe
+  firme de pe web. Nu mai încarci fișiere de tahograf (le încarcă firma, cum ați hotărât pe 18.09).
+- **Dispozitive:** semnalul pe fiecare aparat, arhivatele marcate, fără firma demo, model și cartelă SIM la
+  adăugare. Ștergerea definitivă a unui aparat arhivat cere numărul de înmatriculare tastat.
+
+**Pentru client, în rest (CLIENT)**
+- e-Transport spune cinstit dacă pleacă ceva la ANAF („Raportarea către ANAF nu e pornită încă").
+- Meniul nu mai promite module „în curând"; un modul oprit pur și simplu nu apare.
+- Fișa mașinii nu mai arată creionul când firma a tăiat rolului editarea vehiculelor (dădea „Acces interzis" la
+  salvare). Paginile se numesc ca rândurile din meniu, iar jos în meniu scrie versiunea reală.
+
+**Pe server, pentru aplicația veche (AMÂNDOI)**
+- Salvarea unei firme schimbă **doar câmpurile trimise**: aplicația veche nu mai poate goli datele juridice.
+- Ofertele nu se mai pot crea sau suprascrie de pe telefon (aplicația veche primește explicația).
+- „Parolă nouă" din aplicația veche primește un mesaj care spune ce să facă, nu „Eroare 404"; un cont nou cu parolă
+  scrisă e refuzat cu explicația linkului (înainte, contul se crea cu o parolă pe care n-o știa nimeni).
+- Un cont de platformă nu mai poate fi coborât pe un rol de firmă: ar fi rămas fără firmă, adică fără niciun filtru.
+- Fondatorul nu mai poate încărca din aplicația veche fișiere de tahograf: fișierul ieșea fără firmă, iar șoferul
+  clientului apărea „descărcat" fără ca fișierul să fie în arhiva lui.
+- Nici la înregistrare un aparat real nu mai intră în compania demo.
+- Un aparat arhivat nu se mai mută; o limită AI absurdă (un milion, scrisă ca „tokeni") e refuzată; mesajele
+  agenților nu mai spun „plan".
+
+- **Ce am schimbat:** aplicația de telefon 1.0.2 + protecții pe server pentru cea veche.
+- **Ce vede fondatorul:** ecranele noastre de pe telefon fără butoane care dau eroare și fără date amestecate.
+- **Ce vede clientul:** adminul firmei își aduce oameni noi de pe telefon (cu link), RA Insight fără sume, meniul
+  doar cu ce are.
+
 ### AMÂNDOI · Contracte: se reînnoiesc dintr-un buton, cel semnat nu se mai atinge, prețul nu se mai pierde pe drum
 
 Alin: *„în contracte trebuie să avem și buton de reînnoire pentru cele existente, cu alarmă când sunt
@@ -8191,7 +8258,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### A. Blocante — fără astea nu dăm drumul
 
-- [ ] **(eu) Următorul APK: curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
+- [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),
   „X întrebări în plus", „peste fond: X lei/întrebare", eticheta „extra". **Nu se aprinde niciodată**
   — serverul nu-i mai trimite niciunul dintre câmpurile alea (verificat 23.09) — dar e exact capcana
@@ -8482,6 +8549,30 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### C. De reparat înainte de clienți reali
 
+- [ ] **(voi) Instalați aplicația de telefon 1.0.2.** Pe telefoanele cu 1.0.1, „Parolă nouă" și calculatorul de
+  oferte sunt oprite de server (primesc o explicație), dar adminul firmei nu vede linkul de parolă și nu poate
+  aduce un om nou până nu actualizează.
+
+- [ ] **(eu, pe web) Rămășițe găsite pe web la aducerea telefonului la zi (23.09).** Nu le-am atins, ca să nu calc
+  peste lucrul din `index.html`: „Abonamente active" din Dashboard platformă arată mereu 0 (citește un câmp scos
+  odată cu planurile); pagina „Agenți AI" și panoul RA Insight încă spun că agenții se pornesc „pe oferta ta
+  personalizată"; confirmarea la schimbarea emailului promite „îți trec eu drepturile" (traseul acela a fost scos pe
+  16.09); sfaturile „fără acces" / „cont nefolosit" apar și pe conturi dezactivate; aprobarea unui demo nu arată
+  linkul pe care îl întoarce acum serverul.
+
+- [ ] **(voi) Aparatele arhivate se văd încă la client, pe web.** Ați hotărât pe 18.09 că nu; pe telefon s-a
+  respectat. Pe web, Setări → Aparate GPS are încă fila „Arhivate", iar lista vine de pe o rută deschisă oricui.
+  Închiderea rutei ar strica acea filă, deci întâi fila, apoi ruta.
+
+- [ ] **(eu) Data de sfârșit a unui contract depinde de ora serverului.** `contracts.js` adună lunile pe ora
+  locală: pe server (UTC) iese corect, dar pe un calculator pe ora României 31 ian + 2 luni dă 30 martie (proba
+  `verify_contracte.js` pică aici local, nu și pe GitHub). De trecut pe calcul în UTC, ca să nu depindă de mașină.
+
+- [ ] **(eu) Lotul 2 de paritate pe telefon — ce lipsește încă de pe web.** Fișa firmei (oferta, cota RA Insight,
+  administratorii, datele juridice), Contracte, Ofertare nouă, „Client nou", Tahograf/e-Transport pe firme,
+  Inventar dispozitive, filtrele din Utilizatori, „Contul meu" (schimbarea propriei parole), scadențarul
+  e-Transport la client, Statistici flotă complet.
+
 - [ ] **(amândoi) Instalatorii parteneri n-au nimic în aplicație.** Trimitem firma X să monteze 10
   aparate la un client, iar ei ne trimit seriile pe WhatsApp și le batem noi de mână. Nu există cont, nu
   există ecran, nu există scanare, iar lucrarea de montaj (din care se face factura) nu știe nimic despre
@@ -8533,7 +8624,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   separat — vezi „Ofertare Live".
 
 
-- [ ] **(eu) Eticheta falsă „Consum azi (senzor)" din aplicația de telefon.** Fișa vehiculului o
+- [x] **REZOLVAT (23.09, APK 1.0.2): eticheta falsă „Consum azi (senzor)" din aplicația de telefon** — scrie acum „Consum azi", ca pe web. Fișa vehiculului o
   afișează MEREU, inclusiv pe mașini fără niciun senzor, fiindcă ruta nu întoarce niciodată câmpul pe
   care se bazează. E o minciună pe ecran, exact genul pe care nu ni-l permitem.
 

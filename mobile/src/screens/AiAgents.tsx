@@ -33,6 +33,16 @@ const CHECKS: Record<string, string> = {
   client: 'activitatea zilei și concluziile celorlalți agenți',
 };
 
+// Planurile nu mai există, dar serverul mai trimite două texte cu „plan" când agenții sunt opriți pe firmă
+// (rularea tuturor fără niciun agent activ și 403 la un agent oprit între timp). Până se schimbă și acolo,
+// telefonul le spune ca restul aplicației. Orice alt mesaj trece neschimbat.
+function faraPlan(msg: string | undefined | null): string | undefined {
+  if (!msg) return undefined;
+  if (/niciun agent activ/i.test(msg)) return 'Agenții AI sunt opriți pentru firma asta.';
+  if (/nu e inclus în planul/i.test(msg)) return 'Agentul ăsta e oprit pentru firma asta.';
+  return msg;
+}
+
 type AgentMeta = { key: string; name: string; role?: string; desc: string };
 type ClientSummary = {
   fleetSize: number; active: number; unused: number; totalKm: number; ydKm: number | null; pct: number | null;
@@ -168,10 +178,10 @@ export function AiAgents() {
       if (k === 'all') setSummary(r.aiSummary || null);
       // „stored" = constatări NOI salvate; agenții live nu se salvează → numărul corespunde listei de mai jos.
       const n = r.stored || 0;
-      showToast(r.message || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'Verificare terminată · nicio semnalare nouă'));
+      showToast(faraPlan(r.message) || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'Verificare terminată · nicio semnalare nouă'));
       if (k === 'all') refreshLive(agents.map((a) => a.key));
       await loadFindings();
-    } catch (e: any) { setErr(e?.message || 'Rulare eșuată'); showToast(e?.message || 'Rulare eșuată', true); }
+    } catch (e: any) { const m = faraPlan(e?.message) || 'Rulare eșuată'; setErr(m); showToast(m, true); }
     finally { setRunning(''); }
   }
 
@@ -494,7 +504,7 @@ export function AiAgents() {
           </div>
         ) : null}
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
-          {agents.length === 0 && !err ? <div class="center-msg">Agenții AI nu sunt activați pentru compania ta. Scrie-ne și configurăm agenții pentru flota ta — activarea se face de către echipa RA Tracks, pe oferta ta personalizată.</div> : null}
+          {agents.length === 0 && !err ? <div class="center-msg">Agenții AI sunt opriți pentru firma asta. Scrie-ne dacă vrei să-i pornim.</div> : null}
           {agents.map((a) => {
             const fs = findingsOf(a.key);
             return (
