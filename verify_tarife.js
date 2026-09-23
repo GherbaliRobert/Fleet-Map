@@ -221,6 +221,54 @@ const _incStart = [(_inc.match(/const L = \['([^']+)'/) || [, ''])[1]]
 T('fiecare rând din „ce include" începe cu majusculă',
   _incStart.length >= 7 && _incStart.every((s) => /^[A-ZĂÂÎȘȚ]/.test(s)),
   _incStart.filter((s) => !/^[A-ZĂÂÎȘȚ]/.test(s)).join(' · ') || (_incStart.length + ' rânduri'));
+
+// ── Lista bogată (23.09) — Alin: „oare să mai adăugăm chestii? reale bineîntelese. Să nu pară
+// săracă oferta?" Lista a trecut de la 8 la 16 rânduri. Regula: fiecare rând trebuie să existe în
+// aplicație ASTĂZI — e o promisiune într-un act semnat, nu un text de reclamă.
+[
+  ['Istoricul deplasărilor', 'ecranul Traseu + rapoartele Traseu/Staționări'],
+  ['Rapoarte programate', 'report_schedules.js'],
+  ['Zone pe hartă', 'geofence + raportul Vizite în zone'],
+  ['Evidența actelor', 'Documente + Mentenanță + alerta document_expiry'],
+  ['Conturi pentru oamenii firmei', 'rolurile + ACL pe vehicule/grupe'],
+  ['Aplicație de telefon (Android)', 'mobile/ (Capacitor + Android)'],
+].forEach(([t, de]) => T('scrie „' + t + '…" (' + de + ')', _inc.indexOf(t) > 0));
+
+// Ce NU promitem, deliberat. Taxa de drum: modulul e scris, dar grila legală s-a mutat de trei ori
+// și încă nu e în vigoare — pe o hârtie semnată n-are ce căuta ceva ce poate lipsi la semnare.
+T('NU promite taxa de drum pe hârtia clientului', !/[Tt]ollRo|taxa de drum|Taxa de drum/.test(_inc));
+
+// ⚠ Cifrele din listă NU se scriu de mână. Numărul de rapoarte se NUMARĂ din catalog: dacă mai
+// adăugăm sau scoatem rapoarte, hârtia urmează singură, iar rotunjirea în JOS o ține cinstită.
+T('numărul de rapoarte se numără din catalog, nu se scrie',
+  /Object\.keys\(require\('\.\/reports\.js'\)\.REPORTS \|\| \{\}\)\.length/.test(PD));
+T('și se rotunjește în JOS, ca „peste N" să rămână adevărat', /Math\.floor\(n \/ 10\) \* 10/.test(PD));
+T('iar dacă catalogul nu se poate citi, rândul LIPSEȘTE (nu se inventează o cifră)',
+  /catch \(e\) \{ return 0; \}/.test(PD) && /if \(nR\) L\.push/.test(PD));
+const nRapCatalog = Object.keys(require('./reports.js').REPORTS || {}).length;
+T('catalogul are cel puțin atâtea rapoarte cât scrie hârtia', nRapCatalog >= 30, nRapCatalog + ' rapoarte');
+
+// Alertele NU se pot număra de pe server: `ALERT_TYPES` trăiește în pagină. Deci cifra e scrisă o
+// dată, într-o constantă, ȘI LEGATĂ AICI de lista adevărată — dacă adăugăm un tip de alertă și
+// uităm hârtia, proba pică.
+const nAlerteEcran = ((html.match(/const ALERT_TYPES = \[([\s\S]*?)\n\s*\];/) || [, ''])[1]
+  .match(/\{ v:'/g) || []).length;
+const nAlerteHartie = parseInt((PD.match(/const N_ALERTE = (\d+);/) || [, '0'])[1], 10);
+T('cifra alertelor de pe hârtie e ACEEAȘI cu lista din aplicație',
+  nAlerteEcran >= 10 && nAlerteHartie === nAlerteEcran,
+  nAlerteHartie + ' pe hârtie vs ' + nAlerteEcran + ' în aplicație');
+
+// Rândurile se încadrează, nu se taie. Erau desenate cu `ellipsis: true` și un pas fix de 10pt:
+// la prima propoziție mai lungă, clientul ar fi primit o promisiune retezată cu „…".
+// Comentariile se scot: cel care explică DE CE am renunțat la tăiere pomenește chiar cuvintele
+// tăierii (`ellipsis: true`). A treia oară când mă lovește asta — o probă se uită la COD, nu la note.
+const _desen = PD.slice(PD.indexOf('const incluse = _ofIncluse(o)'), PD.indexOf("const conditii = ["))
+  .replace(/^\s*\/\/.*$/gm, '');
+T('rândurile listei se încadrează, nu se taie cu „…"',
+  /heightOfString/.test(_desen) && !/ellipsis: true/.test(_desen) && !/lineBreak: false, ellipsis/.test(_desen));
+T('și fiecare ÎȘI cere locul, după înălțimea lui măsurată', /spatiu\(h \+ 2\)/.test(_desen));
+T('fontul se pune ÎNAINTE de măsurat (altfel locul cerut nu e locul ocupat)',
+  /doc\.font\('Nunito'\)\.fontSize\(8\);\s*\n\s*const h = doc\.heightOfString/.test(_desen));
 T('și pomenește modulele doar dacă sunt bifate',
   /if \(o\.tahograf\) L\.push/.test(PD) && /if \(o\.etransport\) L\.push/.test(PD));
 T('blocurile nu se rup între pagini (în PDF o face `spatiu`)',

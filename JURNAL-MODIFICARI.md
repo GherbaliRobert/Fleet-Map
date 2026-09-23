@@ -95,6 +95,54 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+## 2026-09-23
+
+### FONDATOR · Oferta nu mai pare săracă: 16 rânduri în loc de 8, toate adevărate
+
+Alin, uitându-se la lista „Ce include abonamentul lunar": *„oare să mai adăugăm chestii? Reale
+bineînțeles. Să nu pară săracă oferta?"*
+
+Avea dreptate — oferta promitea vreo jumătate din ce livrăm. M-am uitat **în aplicație**, nu în
+capul meu, și am adăugat doar ce există astăzi:
+
+| Rândul nou | De unde știu că e real |
+|---|---|
+| Istoricul deplasărilor: traseul, opririle, staționările | ecranul Traseu + rapoartele Traseu / Staționări |
+| Peste 30 de rapoarte, în Excel și PDF | catalogul are **33**, în 6 categorii |
+| Rapoarte programate, trimise singure pe email | săptămânal / lunar, cu fișierul atașat |
+| 16 tipuri de alerte | lista de alerte din aplicație are exact 16 |
+| Zone pe hartă, cu alertă la intrare și ieșire | zonele + raportul „Vizite în zone" |
+| Evidența actelor și a reviziilor, cu anunț înainte | Documente + Mentenanță + alerta de expirare |
+| Conturi pentru oamenii firmei, cu roluri și acces pe mașini | 4 roluri + acces pe vehicule/grupe; nu costă în plus, prețul e pe mașină |
+| Aplicație de telefon (Android) | aplicația pe care o livrăm deja |
+
+Chiar și cea mai simplă ofertă — GPS curat, fără module — are acum **10 rânduri** în loc de 3.
+
+**Ce am lăsat DELIBERAT pe dinafară**, deși există:
+
+- **Taxa de drum (TollRo).** Modulul e scris, dar grila legală s-a mutat de trei ori și încă nu e în
+  vigoare. Pe o hârtie semnată n-are ce căuta ceva ce poate lipsi chiar la data semnării.
+- **Rapoartele CAN și de senzori** (10 din cele 33). Sunt reale, dar numai pentru mașinile care au
+  CAN sau senzorul respectiv. Rândul despre datele din calculatorul de bord apare deja **doar** când
+  oferta chiar are așa mașini — acolo le e locul, nu într-o promisiune generală.
+
+**Cifrele nu se scriu de mână.** „Peste 30 de rapoarte" se **numără** din catalog și se rotunjește
+în jos, deci rămâne adevărat și dacă mai scoatem unul, iar dacă trecem de 40 se schimbă singur. Dacă
+din orice motiv catalogul nu poate fi citit, **rândul lipsește** — nu apare o cifră inventată. „16
+tipuri de alerte" nu se poate număra de pe server (lista trăiește în pagină), așa că e legat printr-o
+probă: adaugi o alertă și uiți hârtia — proba pică.
+
+**Și o reparație găsită pe drum.** Rândurile listei erau desenate cu tăiere: dacă unul nu încăpea pe
+lățime, se termina cu „…". Cu frazele scurte de până acum nu s-a văzut niciodată; cu cele noi,
+clientul ar fi primit o promisiune retezată. Acum se încadrează pe rândul următor, ca la „Condiții".
+Cel mai lung rând ocupă **86%** din lățime — măsurat, nu presupus.
+
+- **Ce am schimbat:** oferta spune ce facem cu adevărat, fără să promită nimic în plus.
+- **Ce vede fondatorul:** o ofertă care nu mai arată subțire când o trimite.
+- **Ce vede clientul:** hârtia. 16 rânduri în loc de 8, niciunul tăiat.
+
+## 2026-09-22
+
 ### FONDATOR · „Vezi hârtia" din lista de oferte, pastila AI pe mijloc, enumerarea scrisă ca lumea
 
 Trei lucruri cerute uitându-te la lista de oferte.

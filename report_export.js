@@ -435,9 +435,44 @@ function _ofDe(n) {
 // nu o listă de bifat (Alin, 22.09: „pune și tu începuturile enumerărilor cu majuscule, scrie mai
 // profesionist descrierile alea"). Unde e nevoie de un amănunt, se pune după DOUĂ PUNCTE, nu după
 // o linie de pauză: linia de pauză face fraza să pară o notiță, nu un serviciu vândut.
+//
+// ⚠ NIMIC pe lista asta nu se scrie „ca să sune bine". E o promisiune într-un act semnat, deci
+// fiecare rând trebuie să existe în aplicație ASTĂZI. Ce am lăsat deliberat pe dinafară (Alin,
+// 23.09, când a cerut lista mai bogată):
+//   • Taxa de drum (TollRo) — modulul e scris, dar grila legală s-a mutat de trei ori și încă nu e
+//     în vigoare. Nu promitem pe hârtie semnată ceva ce poate lipsi la data semnării.
+//   • Rapoartele CAN și de senzori (10 din cele 33) — reale, dar numai pentru mașinile care au
+//     CAN sau senzorul respectiv. Locul lor e rândul condiționat de mai jos, nu unul general.
+//
+// Cifrele NU se scriu de mână: numărul de rapoarte se NUMĂRĂ din catalog, iar numărul de alerte e
+// legat printr-o probă de `ALERT_TYPES` din pagină (nu se poate cere de aici — trăiește în browser).
+const N_ALERTE = 16;   // ALERT_TYPES din public/index.html · păzit de verify_tarife.js
+function _nRapoarte() {
+  // Rotunjit în JOS la zece: „Peste 30" rămâne adevărat și dacă mai scoatem un raport, iar dacă
+  // urcăm peste 40 se schimbă singur. Dacă din orice motiv catalogul nu se poate citi, rândul
+  // lipsește cu totul — mai bine tăcere decât o cifră inventată pe hârtia clientului.
+  try {
+    const n = Object.keys(require('./reports.js').REPORTS || {}).length;
+    return n >= 10 ? Math.floor(n / 10) * 10 : 0;
+  } catch (e) { return 0; }
+}
 function _ofIncluse(o) {
   const L = ['Monitorizare GPS în timp real, pe hartă și pe telefon'];
+  L.push('Istoricul deplasărilor: traseul pe hartă, opririle și staționările, pe zile');
   if (o.cuDateMotor) L.push('Date preluate direct din calculatorul de bord: consum, kilometraj, turație');
+  const nR = _nRapoarte();
+  // ⚠ Rândul ăsta e cel mai lung din listă. Scris cu enumerarea în paranteză ajungea la 492pt din
+  // 515 disponibili — 96% din lățime, adică o vorbă în plus și trecea pe două rânduri. Mutat în
+  // forma casei (amănuntul după DOUĂ PUNCTE) și scurtat, ca să rămână aer.
+  if (nR) L.push('Peste ' + nR + ' ' + _ofDe(nR) + 'rapoarte, descărcabile în Excel și PDF: foaie de '
+    + 'parcurs, consum, depășiri de viteză, pontaj șofer');
+  L.push('Rapoarte programate, trimise singure pe email');
+  L.push(N_ALERTE + ' tipuri de alerte: viteză, ralanti, scădere de combustibil, pornire și oprire '
+    + 'motor, supraîncărcare, expirări');
+  L.push('Zone pe hartă, cu alertă la intrarea și la ieșirea din ele');
+  L.push('Evidența actelor și a reviziilor (ITP, RCA, service), cu anunț înainte de expirare');
+  L.push('Conturi pentru oamenii firmei, cu roluri și acces pe anumite mașini sau grupe');
+  L.push('Aplicație de telefon (Android), cu aceleași date ca în calculator');
   if (o.tahograf) L.push('Modulul Tahograf: descărcarea fișierelor .DDD și urmărirea termenelor legale');
   if (o.etransport) L.push('Modulul e-Transport: generarea codurilor UIT și raportarea poziției către ANAF');
   if (o.aiA) {
@@ -448,7 +483,7 @@ function _ofIncluse(o) {
   }
   if (o.agenti) L.push('Cei șase agenți automați care supraveghează flota și semnalează abaterile');
   if (o.retentie) L.push('Păstrarea datelor istorice timp de ' + o.retentie);
-  L.push('Rapoarte, alerte, actualizări ale aplicației și asistență tehnică');
+  L.push('Actualizările aplicației și asistență tehnică, incluse');
   return L;
 }
 
@@ -562,14 +597,20 @@ function renderOfertaPdf(doc, o) {
 
   // 4. Explicațiile, la FINAL. Cifrele au fost deja date; astea le lămuresc.
   const incluse = _ofIncluse(o);
-  spatiu(28 + incluse.length * 10);
+  spatiu(28);
   doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9)
     .text('CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL', left, y, { lineBreak: false });
   y += 13;
+  // ⚠ Rândurile se ÎNCADREAZĂ, nu se taie. Erau desenate cu `lineBreak: false, ellipsis: true` și
+  // un pas fix de 10pt: cât timp lista avea fraze scurte mergea, dar la prima propoziție mai lungă
+  // clientul ar fi primit o promisiune retezată cu „…" (găsit 23.09, la lista cea nouă). Aceeași
+  // rețetă ca la CONDIȚII, mai jos: măsoară cu FONTUL DEJA PUS, cere locul, apoi desenează.
   incluse.forEach((t) => {
-    spatiu(12);
-    doc.fillColor('#374151').font('Nunito').fontSize(8).text('•  ' + t, left + 4, y, { width: W - 8, lineBreak: false, ellipsis: true });
-    y += 10;
+    doc.font('Nunito').fontSize(8);
+    const h = doc.heightOfString('•  ' + t, { width: W - 8 });
+    spatiu(h + 2);
+    doc.fillColor('#374151').text('•  ' + t, left + 4, y, { width: W - 8 });
+    y = doc.y + 2;
   });
   y += 8;
 
@@ -599,9 +640,12 @@ function renderOfertaPdf(doc, o) {
   y += 13;
   doc.font('Nunito').fontSize(7.5);
   conditii.forEach((t) => {
+    // Fontul se pune ÎNAINTE de măsurat: `heightOfString` socotește cu fontul curent, iar dacă
+    // desenezi apoi cu altul, locul cerut nu e locul ocupat.
+    doc.font('Nunito').fontSize(7.5);
     const h = doc.heightOfString('•  ' + t, { width: W - 8 });
     spatiu(h + 4);
-    doc.fillColor('#4b5563').font('Nunito').fontSize(7.5).text('•  ' + t, left + 4, y, { width: W - 8 });
+    doc.fillColor('#4b5563').text('•  ' + t, left + 4, y, { width: W - 8 });
     y = doc.y + 3;
   });
 

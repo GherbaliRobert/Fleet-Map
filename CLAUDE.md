@@ -340,6 +340,25 @@ aplicația îl scrie în antet (`.ralogo .raw`).
   rulează-l și pe ăla.
 - Păzit de `verify_ofertare.js` (cuvântul, fontul, dimensiunile).
 
+### „Ce include abonamentul lunar" — o promisiune, nu o reclamă (23.09)
+Alin: *„oare să mai adăugăm chestii? Reale bineînțeles."* Lista a trecut de la 8 la 16 rânduri
+(`_ofIncluse` în `report_export.js`). Regulile ei:
+
+- **Fiecare rând trebuie să existe în aplicație ASTĂZI.** E o promisiune într-un act semnat.
+- **Cifrele se NUMĂRĂ, nu se scriu.** „Peste N rapoarte" iese din `require('./reports.js').REPORTS`,
+  rotunjit în JOS la zece — rămâne adevărat dacă mai scoatem unul, se schimbă singur dacă trecem de
+  40. Catalogul necitibil → **rândul lipsește**, nu apare o cifră inventată.
+- **`N_ALERTE` e singura cifră scrisă de mână**, fiindcă `ALERT_TYPES` trăiește în pagină și serverul
+  n-o poate cere. E LEGATĂ printr-o probă de lista adevărată: adaugi un tip de alertă și uiți hârtia
+  → `verify_tarife.js` pică. NU schimba cifra fără să schimbi lista (sau invers).
+- **Ce NU promitem, deliberat:** taxa de drum (TollRo — grila legală încă nu e în vigoare) și
+  rapoartele CAN/senzori (reale, dar doar pentru mașinile care au CAN sau senzorul; locul lor e
+  rândul condiționat de `cuDateMotor`). Păzit de probă.
+- **Rândurile se ÎNCADREAZĂ, nu se taie.** Erau desenate cu `lineBreak: false, ellipsis: true` și un
+  pas fix de 10pt — la prima frază mai lungă, clientul ar fi primit o promisiune retezată cu „…".
+  Acum: pune fontul → `heightOfString` → `spatiu(h + 2)` → desenează → `y = doc.y + 2`, ca la
+  CONDIȚII. ⚠ Fontul se pune **înainte** de măsurat, altfel locul cerut nu e locul ocupat.
+
 ### „Vezi hârtia": previzualizarea NU e a doua hârtie (22.09)
 Butonul-ochi de pe rândul ofertei deschide oferta pe hârtie, fără s-o descarce și fără s-o încarce
 în calculator. Regulile lui:
