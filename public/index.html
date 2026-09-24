@@ -20624,8 +20624,8 @@ const pozitii = await r.json();</code></pre>
       if (!Number.isFinite(pret) || pret < 0) { toast('Preț invalid.', 'error'); return; }
       // O păstrare coborâtă ȘTERGE date, iar ele nu se mai pot aduce înapoi. Se spune pe față, înainte.
       if (luni < inainte.luni) {
-        var da = await raConfirm('Scazi păstrarea istoricului de la ' + inainte.luni + ' la ' + luni + ' luni.\n\n' +
-          'Tot istoricul firmei mai vechi de ' + luni + ' luni — poziții, curse, alerte — se șterge definitiv la următoarea rulare, în câteva ore. Nu se mai poate aduce înapoi.',
+        var da = await raConfirm('Scazi păstrarea istoricului de la ' + inainte.luni + _raxDe(inainte.luni) + 'luni la ' + luni + _raxDe(luni) + 'luni.\n\n' +
+          'Tot istoricul firmei mai vechi de ' + luni + _raxDe(luni) + 'luni — poziții, curse, alerte — se șterge definitiv la următoarea rulare, în câteva ore. Nu se mai poate aduce înapoi.',
           { title: 'Se șterg date', okLabel: 'Scad și șterg' });
         if (!da) return;
       }
