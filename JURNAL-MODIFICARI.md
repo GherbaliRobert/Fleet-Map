@@ -97,6 +97,30 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-24
 
+### FONDATOR · Drumul clientului: o linie de pași, cu butonul pasului următor
+
+Alin: *„pare alambicat, trec din aia, ies în aia; trebuie să ușurăm asta."* Drumul unui client avea opt
+opriri în cinci ecrane (Ofertare, Companii, fișa firmei, Dispozitive, Facturare) și nimic nu spunea unde
+ești pe el.
+
+**Acum, în fișa firmei, sus pe fila Contract, e drumul întreg:**
+**Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima factură.**
+Pașii făcuți sunt bifați (cu ziua sau cu numărul: „pe 24.09", „2 aparate"), iar sub ei scrie **pasul
+următor, cu butonul lui**: „Aprobă contractul", „Trimite la semnat", „E semnat", „Programează montajul"
+(deschide direct formularul lucrării), „Adoptă aparatele" (te duce în Dispozitive, pe grupul Neasignate —
+tot singurul loc de adopție, cum ai hotărât pe 17.09), „Emite prima factură" (fereastra facturii, cu firma
+deja aleasă). Un contract fără montaj sau făcut fără ofertă sare peste pașii ăia („nu e cazul").
+
+**Și în lista Contracte**, după semnare, sub stare scrie ce urmează („urmează: montajul · 3/6 pași"), cu
+același buton. Nu mai trebuie să știi pe de rost ordinea.
+
+Probat pe server pornit: proba parcurge TOT drumul, de la ofertă la prima factură, și cere la fiecare pas
+butonul potrivit (`verify_drum.js`, 34 de verificări).
+
+- **Ce am schimbat:** drumul clientului, socotit într-un singur loc, arătat în fișa firmei și în Contracte.
+- **Ce vede fondatorul:** unde e fiecare client și ce are de făcut mai departe, cu butonul pe loc.
+- **Ce vede clientul:** nimic.
+
 ### AMÂNDOI · Contracte: fiecare lipsă își are butonul, chiar pe rând — și contractul pleacă pe email
 
 Alin: *„buton de trimitere fix acolo unde lipsește."* Lista din Contracte spunea ce lipsește dintr-un

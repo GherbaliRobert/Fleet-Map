@@ -4879,6 +4879,8 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       sfarsit: contracte.sfarsitCurent(contract, acum),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
       comparatie: comparatie, prelungire_in_lucru: prelungireInLucru,
+      drum: contract && contract.status !== 'incheiat' ? _drumContract(contract, await db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })) : null,
+      trimite_pe_email: !!(mailer && mailer.enabled()),
       date_dupa_incetare_zile: contracte.ZILE_DATE_DUPA_INCETARE,
       numar_propus: contract ? null : await db.nextContractNumber().catch(function () { return null; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5238,10 +5240,18 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
 
 // Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
+// Drumul unui contract, din numărătorile adunate o dată (`db.drumDateToate`). Fără ele → fără drum,
+// nu un drum inventat.
+function _drumContract(c, dd) {
+  if (!c || !dd) return null;
+  return contracte.drumulClientului({ contract: c, areOferta: !!dd.oferte[c.id],
+    montaje: dd.montaje[c.id] || { total: 0, executate: 0 }, aparate: dd.aparate[c.company_id] || 0, facturi: dd.facturi[c.company_id] || 0 });
+}
 app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const [lista, fara, firme, curente, facturi] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract(),
-      db.getCompanies(), db.contractsByCompany(), db.facturiNeachitateToate().catch(function () { return {}; })]);
+    const [lista, fara, firme, curente, facturi, drumDate] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract(),
+      db.getCompanies(), db.contractsByCompany(), db.facturiNeachitateToate().catch(function () { return {}; }),
+      db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })]);
     const acum = Date.now();
     // Firmele care au avut contract, s-a ÎNCHEIAT, dar intră în aplicație în continuare: lucrează
     // fără act, exact ca una fără niciun contract — deci se văd lângă ele, nu doar la „Încheiate".
@@ -5264,7 +5274,10 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
           // Alarma de expirare, cu ACEEAȘI regulă ca notificarea zilnică (`deAnuntat`). Nu se citește
           // din starea dosarului: acolo „dosar incomplet" (ex. lipsește scanul) ascundea expirarea, și
           // un contract care se termina peste 40 de zile nu apărea nicăieri pe ecran (găsit 23.09).
-          alarma: contracte.deAnuntat(c, acum)
+          alarma: contracte.deAnuntat(c, acum),
+          // Unde e clientul pe drum (ofertă → trimis → semnat → montaj → aparate → prima factură) și
+          // care e pasul următor — aceeași regulă ca în fișa firmei (`drumulClientului`).
+          drum: _drumContract(c, drumDate)
         });
       }),
       fara_contract: fara,

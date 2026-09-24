@@ -648,6 +648,22 @@ Alin: *„buton de trimitere fix acolo unde lipsește."* În lista Contracte, pe
   care scrie DOAR ce primește. Orice formular nou care completează o parte din firmă o folosește pe ea.
 - Păzit de `verify_lipsuri.js` (în `npm test`), cu un server de email FALS: emailul chiar pleacă, cu PDF.
 
+### Drumul clientului (Alin, 24.09: „pare alambicat, trec din aia, ies în aia")
+O linie de pași: **Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima factură**.
+- **O singură regulă:** `contracts.drumulClientului({ contract, areOferta, montaje, aparate, facturi })` →
+  `{ pasi: [{cheie, eticheta, stare, detaliu}], urmatorul, gata, din }`. Stări: `gata` / `acum` (primul
+  nefăcut — ăsta are butonul) / `urmeaza` / `nu_e_cazul` (fără montaj vândut, fără ofertă). Încheiat → fără „acum".
+- Numărătorile vin toate deodată din `db.drumDateToate` (aparate nearhivate, facturi care nu-s ciornă sau
+  anulate, lucrări executate, oferta legată). Serverul le pune ca `drum` și în lista `/api/contracts`, și în
+  fișa firmei (`_drumContract`) — ACEEAȘI socoteală. NU socoti drumul în pagină.
+- Pe ecran: `_raxDrumHtml` sus pe fila Contract; `_ctrePasHtml` în listă (după semnare arată pasul drumului).
+  Butoanele: `_drumButon` — montaj → `raxDrumMontaj` (deschide formularul lucrării), aparate →
+  `raxDrumAparate` → `raxDevDeschideNeasignate()` (**adopția rămâne într-un singur loc**, decizia din 17.09 —
+  NU pune a doua cale de adopție în fișă), factura → `raxOpenGenInvoice(companyId)`.
+- Butoanele din fișă și din listă sunt ACELEAȘI funcții (`raxCtre…`); `_ctreGasit` găsește contractul și din
+  fișă, iar `_ctreDupa` redesenează ce e deschis (fișa și/sau lista).
+- Păzit de `verify_drum.js` (în `npm test`), care parcurge tot drumul pe server pornit.
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - (nimic deschis aici acum)
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,

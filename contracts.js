@@ -349,6 +349,50 @@ function facAnexa(vehicule, pret) {
   return out;
 }
 
+// ─── Drumul clientului: de la ofertă la prima factură (Alin, 24.09) ──────────────────────────────
+// Alin: „pare alambicat, trec din aia, ies în aia". Drumul avea opt opriri în cinci ecrane și nimic
+// nu spunea UNDE ești pe el. Acum e o singură linie de pași, socotită AICI (o singură regulă, pentru
+// fișa firmei și pentru lista Contracte), fiecare pas cu butonul lui pe ecran.
+//
+// Stări: 'gata' · 'acum' (primul pas nefăcut — ăsta are butonul) · 'urmeaza' · 'nu_e_cazul' (ex. un
+// contract fără montaj, sau făcut fără ofertă). Un contract încheiat n-are „acum": drumul s-a terminat.
+const PASI_DRUM = [
+  ['oferta', 'Oferta'], ['trimis', 'Trimis la semnat'], ['semnat', 'Semnat'],
+  ['montaj', 'Montajul'], ['aparate', 'Aparatele la firmă'], ['factura', 'Prima factură']
+];
+const MONTAJ_EXECUTAT = ['executat', 'facturat_de_partener', 'facturat_clientului'];
+// d = { contract, areOferta, montaje: { total, executate }, aparate: N, facturi: N }
+function drumulClientului(d) {
+  const c = d && d.contract;
+  if (!c) return null;
+  const st = c.status;
+  const semnat = st === 'activ' || st === 'incheiat';
+  const trimis = semnat || st === 'trimis';
+  const mo = d.montaje || { total: 0, executate: 0 };
+  const anexa2 = c.montaj || {};
+  const cuMontaj = ((anexa2.items || []).length > 0) || (((anexa2.echipamente || {}).items || []).length > 0) || mo.total > 0;
+  const nAp = Number(d.aparate) || 0, nFa = Number(d.facturi) || 0;
+  const zi = function (ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : ''; };
+  const stari = {
+    oferta: d.areOferta ? ['gata', 'din ofertă'] : ['nu_e_cazul', 'fără ofertă'],
+    trimis: trimis ? ['gata', c.sent_at ? 'pe ' + zi(c.sent_at) + (c.sent_to ? ', la ' + c.sent_to : '') : ''] : ['urmeaza', st === 'ciorna' ? 'întâi se aprobă' : ''],
+    semnat: semnat ? ['gata', c.signed_at ? 'pe ' + zi(c.signed_at) : ''] : ['urmeaza', ''],
+    montaj: !cuMontaj ? ['nu_e_cazul', 'fără montaj'] : (mo.executate > 0
+      ? ['gata', numar(mo.executate, 'lucrare executată', 'lucrări executate')]
+      : ['urmeaza', mo.total ? numar(mo.total, 'lucrare programată', 'lucrări programate') : 'nicio lucrare încă']),
+    aparate: nAp > 0 ? ['gata', numar(nAp, 'aparat', 'aparate')] : ['urmeaza', 'niciun aparat încă'],
+    factura: nFa > 0 ? ['gata', numar(nFa, 'factură', 'facturi')] : ['urmeaza', '']
+  };
+  const pasi = PASI_DRUM.map(function (p) { return { cheie: p[0], eticheta: p[1], stare: stari[p[0]][0], detaliu: stari[p[0]][1] }; });
+  let urmatorul = null;
+  if (st !== 'incheiat') {
+    const p = pasi.filter(function (x) { return x.stare === 'urmeaza'; })[0];
+    if (p) { p.stare = 'acum'; urmatorul = p.cheie; }
+  }
+  const socotiti = pasi.filter(function (x) { return x.stare !== 'nu_e_cazul'; });
+  return { pasi: pasi, urmatorul: urmatorul, gata: socotiti.filter(function (x) { return x.stare === 'gata'; }).length, din: socotiti.length };
+}
+
 // Ce trebuie păstrat dintr-o anexă când se re-salvează DOAR lista de aparate: serviciile lunare,
 // compoziția din ofertă și regula RA Insight. Ecranul trimite doar aparatele — fără asta, fiecare
 // „Salvează anexa" ștergea restul.
@@ -373,6 +417,7 @@ function anexaInVigoare(contract, acte) {
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
   LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
+  PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare
 };

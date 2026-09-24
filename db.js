@@ -2066,7 +2066,7 @@ async function contracteToate(limita) {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at,
             c.auto_renew, c.notice_days, c.ended_at, c.client_rep, c.gdpr, c.annex, c.created_at,
-            c.sent_at, c.sent_to,
+            c.sent_at, c.sent_to, c.montaj,
             (c.file_b64 IS NOT NULL) AS has_file, (c.gdpr_b64 IS NOT NULL) AS has_gdpr_file,
             co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo, co.contact_email, co.reg_com,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
@@ -2079,6 +2079,27 @@ async function contracteToate(limita) {
        FROM contracts c JOIN companies co ON co.id = c.company_id
       ORDER BY c.created_at DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
   return r.rows;
+}
+// Ce trebuie ca să se socotească drumul fiecărui client (contracts.js → `drumulClientului`), pentru
+// TOATE firmele deodată: patru numărători, nu câte o cerere pe rând de listă.
+async function drumDateToate(executate) {
+  const [ap, fa, mo, of] = await Promise.all([
+    pool.query(`SELECT company_id, COUNT(*)::int AS n FROM devices
+                 WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' GROUP BY company_id`),
+    pool.query(`SELECT company_id, COUNT(*)::int AS n FROM invoices
+                 WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled' GROUP BY company_id`),
+    pool.query(`SELECT contract_id, COUNT(*)::int AS total,
+                       COUNT(*) FILTER (WHERE status = ANY($1::varchar[]))::int AS executate
+                  FROM montaje WHERE contract_id IS NOT NULL GROUP BY contract_id`, [executate]),
+    pool.query(`SELECT DISTINCT contract_id FROM offers WHERE contract_id IS NOT NULL`)
+  ]);
+  const harta = function (rows, k, v) { const o = {}; rows.forEach(function (r) { o[r[k]] = v ? v(r) : r.n; }); return o; };
+  return {
+    aparate: harta(ap.rows, 'company_id'),
+    facturi: harta(fa.rows, 'company_id'),
+    montaje: harta(mo.rows, 'contract_id', function (r) { return { total: r.total, executate: r.executate }; }),
+    oferte: harta(of.rows, 'contract_id', function () { return true; })
+  };
 }
 // Firmele care n-au NICIUN contract — ele sunt gaura din dosar, nu contractele existente.
 async function firmeFaraContract() {
@@ -4646,6 +4667,7 @@ module.exports = {
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
+  drumDateToate,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
