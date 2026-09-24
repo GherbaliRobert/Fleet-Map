@@ -187,7 +187,8 @@ sect('6. Venitul lunar — aceeași socoteală ca pe factură');
 const bucataQ = taie(server, 'function _aiQuotaFromSettings(settings) {', '\n// ─── Câte conturi');
 const bucataL = taie(server, 'function _lunaAcum()', '\nasync function _urcaSeatsPeak');
 const bucataV = taie(server, '// ── începe „Venitul lunar pe firmă"', '// ── sfârșit „Venitul lunar pe firmă" ──');
-const _venitLunar = new Function('plans', bucataQ + '\n' + bucataL + '\n' + bucataV + '\n; return _venitLunar;')(require('./plans.js'));
+// `contracte` = regula păstrării istoricului (24.09): 24/36 de luni plătite intră și în venitul lunar.
+const _venitLunar = new Function('plans', 'contracte', bucataQ + '\n' + bucataL + '\n' + bucataV + '\n; return _venitLunar;')(require('./plans.js'), require('./contracts.js'));
 const LUNA = new Date().toISOString().slice(0, 7);
 const firmaPret = (o) => ({ id: 1, name: 'X', custom_plan: o, settings: {} });
 T('preț pe vehicul × vehicule', _venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 }, 0) === 90,

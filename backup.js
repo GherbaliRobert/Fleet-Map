@@ -482,7 +482,7 @@ async function runScheduledBackup(db, commit) {
 //
 // `positions` e exclusă deliberat din dump-ul logic de mai sus: la 2000 de vehicule înseamnă milioane de
 // rânduri pe zi, imposibil de serializat într-un singur JSON în procesul aplicației. Dar asta lăsa o gaură
-// reală: retenția șterge la 180 de zile, iar dacă snapshot-urile Railway au o fereastră mai scurtă (de regulă
+// reală: istoricul se șterge după contract (12 luni incluse, 24/36 plătite), iar dacă snapshot-urile Railway au o fereastră mai scurtă (de regulă
 // zile, nu luni), datele dispăreau DEFINITIV fără nicio copie.
 // Aici exportăm ziua-cu-ziua, în NDJSON gzip (+ criptat cu aceeași parolă), citit în loturi ca să nu ținem
 // niciodată o zi întreagă în memorie. ~30 B/rând comprimat → o zi de flotă mare intră în zeci de MB.

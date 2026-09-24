@@ -335,7 +335,7 @@ aparate mai ieftine sau instalatori mai scumpi."* Toate cele 19 prețuri sunt c�
 | Preț | Cartea |
 |---|---|
 | lunar pe mașină (`pPlain`, `pCan`, `pFms`) | **2. Flota clientului** |
-| păstrarea datelor (`ret12/24/36/Custom`) | **3. Ce mai primește clientul** |
+| păstrarea datelor (`ret24/36/Custom`; 12 luni sunt incluse, fără preț) | **3. Ce mai primește clientul** |
 | un cont de RA Insight (`pAiA`) | **3.**, lângă comutator |
 | montajul (`mGps`, `mLvCan`, …) | **4. Montajul**, prin `qp()`, lângă cantitate |
 | aparatele (`dFmc130`, …) | **5. Aparatele**, prin `qp()`, lângă cantitate |
@@ -587,9 +587,45 @@ fără cerere, se șterg. Alin: *„exact așa facem"*. Aplicația le ținea 2 a
   pozițiile GPS ale clientului (contractul și facturile NOASTRE: 10 ani, legea contabilității).
 - La încheierea contractului, fila și fereastra de confirmare amintesc: arhivează aparatele firmei.
 
+### Păstrarea istoricului: 12 luni pentru toți, 24/36 plătite (decizie Alin, 24.09)
+Alin: *„12 luni pentru toți și păstrăm 24/36 de luni ca opțiune plătită."* Hotărât după ce am MĂSURAT pe
+aplicația pornită (PostgreSQL + TimescaleDB, aparate virtuale Codec 8E): istoricul mai vechi de 7 zile iese
+de 14–19 ori mai mic; 6 luni în plus costă ~7 bani/lună la un camion (~0,25 GB pe 12 luni), ~3 bani la o
+mașină mică. Până pe 24.09 aplicația ținea 6 luni pentru toți, iar 24/36 se vindeau, se semnau și nu se
+livrau, nici nu se facturau.
+
+- **Regula stă în `contracts.js`:** `LUNI_ISTORIC_INCLUSE = 12`, `LUNI_ISTORIC_MAX = 60`,
+  `pastrareFirma(settings)` (citește `settings.pastrare = { luni, pretRON }`), `curataPastrare(b)`.
+  NU o face variabilă de mediu — e promisiune semnată.
+- **`pastrareFirma` întoarce `null` pe setări stricate** → ștergerea SARE peste firmă. Nu o „coborî" la 12
+  în caz de dubiu: o firmă care a plătit 36 de luni și-ar pierde istoricul fără cale de întoarcere.
+- **Ștergerea (`stergeIstoriculVechi`, server.js, la 6 ore, rulează MEREU)** merge mașină cu mașină, după
+  `imei` (coloana după care comprimă TimescaleDB — o ștergere după `company_id` ar desface tot istoricul
+  comprimat al zilei). Poziții, curse, alerte. Pe loturi după TIMP, NU după `ctid` (pe hypertable `ctid` nu
+  e unic între bucăți). La final, pe Timescale, `drop_chunks` pentru ce e mai vechi decât cea mai lungă
+  păstrare din platformă. Rând în audit. De mână: `POST /api/admin/istoric/sterge-vechi`.
+- **Politica TimescaleDB de ștergere se SCOATE la pornire** (`remove_retention_policy`) și NU se pune alta:
+  ea știe o singură vârstă pentru toți (era 180 de zile) și ar tăia ce am promis. `add_retention_policy` cu
+  `if_not_exists` n-ar fi schimbat una existentă. Dacă scoaterea eșuează → roșu în „Stare producție".
+- **`POSITION_RETENTION_DAYS` e RETRASĂ** — nu se mai citește nicăieri. Setată → rând portocaliu în „Stare
+  producție" până e ștearsă din Railway. NU o reintroduce.
+- **Oferta:** pornește pe „12 luni (incluse)"; `ret6`/`ret12` au ieșit din tarife (12 sunt gratis). În pagină
+  `_OF_LUNI_INCLUSE` / `_OF_LUNI_MAX` sunt scrise o dată și LEGATE printr-o probă de cele din contracts.js.
+  Rândul `fel: 'ret'` poartă `luni`; „Client nou din ofertă" îl duce la server (`_pastrareDinOferta`), care îl
+  scrie pe firmă (`_aplicaOfertaPeFirma`) și în anexă (`annex.pastrareLuni`, păstrat de `dinAnexaDePastrat`).
+  O ofertă de 12 luni NU coboară o firmă care are mai mult.
+- **Factura și registrul** adună același rând („Păstrarea istoricului — 24 de luni"), din aceeași regulă
+  (`buildInvoiceLines` + `_venitLunar`). `verify_factura.js` le compară.
+- **Coborârea se face doar de mână**, din „Abonament & plăți", cu confirmare pe față („se șterg date") și
+  rând în audit de la cât la cât.
+- **Hârtia:** contractul (VI + acordul GDPR, pct. 2) și oferta („Păstrarea istoricului: N luni de la
+  înregistrare", mereu) spun cifra după care chiar se șterge. Anexa semnată bate setarea de azi a firmei.
+- Păzit de `verify_pastrare.js` (în `npm test`, inclusiv pe server pornit cu `POSITION_RETENTION_DAYS=180`
+  setată dinadins — istoricul de 7 luni trebuie să rămână).
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- **Păstrarea datelor 24/36 de luni** se vinde și se semnează, dar aplicația ține 6 luni pentru toți
-  și nu o facturează. Ori se livrează (retenție pe firmă), ori nu se mai vinde.
+- **Cât ținem jurnalul de audit** — pagina de confidențialitate scrie încă „[ex. 12 luni]", iar aplicația
+  nu-l șterge deloc.
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).
 
@@ -790,7 +826,8 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 ### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09; termenul schimbat pe 24.09)
 Arhivarea = contract încheiat: se copiază întâi istoricul în `positions_archive`, apoi se marchează
 `archived` (cu **ziua arhivării**, `devices.archived_at`), i se taie conexiunea, iese din allow-list și
-de pe harta live. Pozițiile unui aparat ACTIV se țin 180 de zile (`POSITION_RETENTION_DAYS`).
+de pe harta live. Pozițiile unui aparat ACTIV se țin cât scrie în contractul firmei (12 luni incluse, 24/36
+plătite) — vezi „Păstrarea istoricului", mai jos.
 
 - **Istoricul unui aparat arhivat se mai ține 30 de zile de la arhivare** (`ZILE_DATE_DUPA_INCETARE`,
   cum scrie în contract), apoi `stergeIstoricArhivate` (zilnic; de mână: `POST /api/admin/arhiva/sterge-istoric`)

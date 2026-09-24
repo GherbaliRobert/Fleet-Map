@@ -129,5 +129,5 @@ Trimite prin SMS adresa serverului (host + portul TCP public):
 - [ ] `ADMIN_PASSWORD` schimbat (sau schimbă parola admin din interfață după primul login).
 - [ ] `COOKIE_SECURE=true` (e deja setat în compose; necesită HTTPS).
 - [ ] Backup periodic al volumului `gpsdata`.
-- [ ] (Opțional) `POSITION_RETENTION_DAYS` ca să nu crească baza la nesfârșit.
+- [ ] Istoricul se șterge singur după contractul fiecărei firme (12 luni incluse) — nu mai e nimic de setat.
 - [ ] (Opțional) SMTP / Telegram / VAPID pentru notificări — vezi `.env.example`.

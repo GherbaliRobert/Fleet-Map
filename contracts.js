@@ -35,6 +35,51 @@ const PRAG_EXPIRA_ZILE = 60;
 // păstrăm pozițiile GPS ale clientului. NU o face variabilă de mediu: e o promisiune semnată.
 const ZILE_DATE_DUPA_INCETARE = 30;
 
+// Cât se păstrează ISTORICUL (poziții, curse, alerte) cât contractul e în vigoare — decizie Alin,
+// 24.09, după ce am măsurat costul pe aplicația pornită: 12 luni pentru TOȚI, incluse în abonament.
+// Mai mult (24 sau 36 de luni, ori alt număr) se vinde în ofertă, se scrie pe firmă și se facturează:
+// `settings.pastrare = { luni, pretRON }`. Aplicația șterge după regula firmei, nu după o cifră globală.
+// Până pe 24.09 ținea 6 luni pentru toți, iar 24/36 de luni se vindeau și se semnau fără să se livreze.
+// NU o face variabilă de mediu: e o promisiune semnată (vezi `POSITION_RETENTION_DAYS`, retrasă).
+const LUNI_ISTORIC_INCLUSE = 12;
+// Plafon de bun-simț pentru „alt număr de luni": o greșeală de tastare (360 în loc de 36) n-ar trebui
+// să țină datele de localizare ale unor oameni 30 de ani.
+const LUNI_ISTORIC_MAX = 60;
+
+// Regula de păstrare a unei firme, din setările ei. Întoarce `null` dacă setările NU se pot citi:
+// ștergerea automată sare atunci peste firmă, în loc s-o coboare pe tăcute la 12 luni — o firmă care
+// a plătit 36 de luni și-ar pierde istoricul din cauza unui rând stricat în bază, și nu mai există cale
+// de întoarcere. Fără nimic scris = cele 12 luni incluse.
+function pastrareFirma(settings) {
+  let s = settings;
+  if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { return null; } }
+  if (s != null && typeof s !== 'object') return null;
+  const p = (s && s.pastrare) || null;
+  const luni = p ? Math.round(Number(p.luni)) : NaN;
+  if (!Number.isFinite(luni) || luni <= LUNI_ISTORIC_INCLUSE) {
+    return { luni: LUNI_ISTORIC_INCLUSE, pretRON: 0, platita: false };
+  }
+  const pret = Number(p.pretRON);
+  return {
+    luni: Math.min(luni, LUNI_ISTORIC_MAX),
+    pretRON: Number.isFinite(pret) && pret > 0 ? Math.round(pret * 100) / 100 : 0,
+    platita: true
+  };
+}
+// Ce se scrie pe firmă, din ce trimite ecranul „Abonament & plăți" sau din oferta acceptată.
+// `null` = înapoi la cele 12 luni incluse (cheia se scoate). Orice nu e un număr de luni valid → `undefined`
+// (cererea se refuză, nu se ghicește).
+function curataPastrare(b) {
+  if (b === null) return null;
+  if (!b || typeof b !== 'object') return undefined;
+  const luni = Math.round(Number(b.luni));
+  if (!Number.isFinite(luni) || luni < 1) return undefined;
+  if (luni <= LUNI_ISTORIC_INCLUSE) return null;
+  if (luni > LUNI_ISTORIC_MAX) return undefined;
+  const pret = Number(b.pretRON);
+  return { luni: luni, pretRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0 };
+}
+
 // Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
 // trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
 // Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
@@ -290,6 +335,10 @@ function facAnexa(vehicule, pret) {
     // rezervă din vremea pachetului de 50): hârtia promitea 50, iar firma primea nelimitat.
     out.aiQuestionsPerSeat = Math.max(0, Math.round(Number(pret.aiQuestionsPerSeat) || 0));
   }
+  // Câte luni se păstrează istoricul intră în ce se SEMNEAZĂ: hârtia o spune, iar peste un an cifra
+  // din contract nu trebuie să depindă de ce scrie azi pe firmă. Doar peste cele 12 incluse.
+  const pl = Math.round(Number(pret && pret.pastrareLuni));
+  if (Number.isFinite(pl) && pl > LUNI_ISTORIC_INCLUSE) out.pastrareLuni = Math.min(pl, LUNI_ISTORIC_MAX);
   return out;
 }
 
@@ -299,7 +348,7 @@ function facAnexa(vehicule, pret) {
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
-  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'currency'].forEach(function (k) {
+  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'pastrareLuni', 'currency'].forEach(function (k) {
     if (a[k] != null) out[k] = a[k];
   });
   return out;
@@ -316,6 +365,7 @@ function anexaInVigoare(contract, acte) {
 
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
+  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare
 };

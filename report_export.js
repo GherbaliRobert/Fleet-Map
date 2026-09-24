@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const contracte = require('./contracts');   // regulile promise pe hârtie (ex. câte luni se păstrează istoricul)
 
 // Logo RA Tracks pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
 // ATENȚIE la denumire: „logo.png" e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
@@ -459,6 +460,10 @@ function _nRapoarte() {
 function _ofIncluse(o) {
   const L = ['Monitorizare GPS în timp real, pe hartă și pe telefon'];
   L.push('Istoricul deplasărilor: traseul pe hartă, opririle și staționările, pe zile');
+  // Cât se păstrează: 12 luni pentru toți, incluse, sau cât s-a cumpărat în ofertă (24.09). Rândul e
+  // MEREU pe hârtie. Dacă un ecran vechi nu trimite cifra, se scrie regula casei — niciodată mai puțin
+  // decât ține aplicația (până pe 24.09 hârtia putea scrie „6 luni" sau „24 de luni" — nelivrate).
+  L.push('Păstrarea istoricului: ' + (o.retentie || contracte.numar(contracte.LUNI_ISTORIC_INCLUSE, 'lună', 'luni')) + ' de la înregistrare');
   if (o.cuDateMotor) L.push('Date preluate direct din calculatorul de bord: consum, kilometraj, turație');
   const nR = _nRapoarte();
   // ⚠ Rândul ăsta e cel mai lung din listă. Scris cu enumerarea în paranteză ajungea la 492pt din
@@ -482,7 +487,6 @@ function _ofIncluse(o) {
                : 'întrebări nelimitate'));
   }
   if (o.agenti) L.push('Cei șase agenți automați care supraveghează flota și semnalează abaterile');
-  if (o.retentie) L.push('Păstrarea datelor istorice timp de ' + o.retentie);
   L.push('Actualizările aplicației și asistență tehnică, incluse');
   return L;
 }

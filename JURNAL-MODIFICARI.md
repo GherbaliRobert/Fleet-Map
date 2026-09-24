@@ -97,6 +97,53 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-24
 
+### AMÂNDOI · Istoricul: 12 luni pentru toți, 24 sau 36 de luni se vând — și chiar se țin
+
+Alin: *„12 luni pentru toți și păstrăm 24/36 de luni ca opțiune plătită."* Hotărât după ce am
+**măsurat** costul pe aplicația pornită, ca la RA Insight: 6 luni în plus de istoric costă cam
+**7 bani pe lună la un camion** (compresia face datele mai vechi de o săptămână de 14–19 ori mai mici).
+
+**Ce era.** Aplicația ținea istoricul **6 luni pentru toată lumea**. Oferta vindea însă 12, 24 și 36 de
+luni, iar contractul le semna. Nicio ștergere nu știa de ele și nicio factură nu le punea: clientul
+care plătea 24 de luni primea tot 6, și nici nu i se cerea banul.
+
+**Ce e acum.**
+- **12 luni sunt incluse pentru toți.** Oferta pornește pe „12 luni (incluse)"; varianta de 6 nu mai
+  există. Pe hârtia ofertei scrie mereu cât se păstrează istoricul.
+- **24 sau 36 de luni (sau alt număr) se vând în ofertă**, ca preț pe firmă, pe lună (50 / 100 de lei
+  din lista noastră). Când oferta devine contract, lunile se scriu **singure** pe firmă și în anexa
+  contractului — nu le mai tastează nimeni.
+- **Aplicația chiar le ține.** Ștergerea istoricului vechi (poziții, curse, alerte) merge acum după
+  firma fiecărei mașini, la câteva ore: ce e mai vechi decât scrie în contract se șterge, restul
+  rămâne. O firmă cu 36 de luni își vede și anul de acum doi ani; una pe cele 12 incluse, doar ultimul an.
+- **Ajung pe factură.** Rândul „Păstrarea istoricului — 24 de luni" apare pe factură și în venitul
+  lunar din lista de companii, cu aceeași sumă.
+- **Se schimbă din fișa firmei**, „Abonament & plăți" → „Păstrarea istoricului". Dacă cineva o
+  **coboară**, aplicația întreabă întâi, pe față: *„se șterg date, nu se mai pot aduce înapoi"*. Și
+  scrie în jurnalul de audit de la cât la cât și cine.
+- **Contractul spune cifra** (la protecția datelor și în acordul GDPR), iar fila „Contract" pune una
+  lângă alta: ce scrie în contract, cât ține aplicația și ce iese pe factură.
+- **Ștergerea veche la 180 de zile s-a scos.** Pe serverul cu TimescaleDB era o regulă a bazei de
+  date, o singură vârstă pentru toți; lăsată pe loc, ar fi tăiat la 6 luni ce promitem un an. Se scoate
+  singură la prima pornire. Variabila `POSITION_RETENTION_DAYS` nu mai e citită — dacă a rămas în
+  Railway, „Stare producție" o arată cu portocaliu, ca s-o ștergi.
+- **Un defect vechi, prins pe drum:** butonul „Șterge definitiv" al unui aparat arhivat putea șterge,
+  pe TimescaleDB, și poziții ale **altor** mașini (ștergea după un număr de rând care se repetă între
+  bucățile tabelului). Acum șterge după timp, doar mașina lui.
+- Pagina publică de confidențialitate avea un loc gol: *„Pozițiile/istoricul: [ex. 12 luni]"*. Scrie
+  acum regula adevărată, plus cele 30 de zile de după încetare.
+
+Probat pe server pornit (`verify_pastrare.js`, 84 de verificări) și pe o bază TimescaleDB ca în
+producție, cu date comprimate: politica veche dispare la pornire, iar 15.000 de poziții vechi se
+șterg în jumătate de secundă, fără erori.
+
+- **Ce am schimbat:** păstrarea istoricului după contractul fiecărei firme (12 luni incluse, 24/36 plătite),
+  oferta, factura, contractul, fișa firmei, ștergerea automată.
+- **Ce vede fondatorul:** în ofertă, „12 luni (incluse)" + prețurile pentru 24/36; în fișa firmei, blocul
+  „Păstrarea istoricului"; pe factură, rândul lui; în „Stare producție", rândul „Păstrarea istoricului".
+- **Ce vede clientul:** pe ofertă și pe contract, câte luni i se păstrează istoricul; în aplicație, istoric
+  pe 12 luni (sau cât a cumpărat) în loc de 6.
+
 ### AMÂNDOI · Datele unui client se șterg la 30 de zile după încetare, cum scrie în contract
 
 Alin: *„Hârtia promite ștergerea lor după 30 de zile, cum cere și legea — exact așa facem."*
@@ -8397,10 +8444,16 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   așa facem"*. Aplicația face acum ce scrie în contract (vezi intrarea de la 24.09). De confirmat
   totuși cu un jurist, la citirea întregului contract înainte de lansare.
 
-- [ ] **(voi) Păstrarea datelor 24 / 36 de luni: se vinde, se semnează, dar nu se livrează.** Oferta o
-  vinde (+50 / +100 de lei pe lună), contractul o scrie acum pe rând, dar aplicația păstrează 6 luni
-  pentru toată lumea și nu o pune pe factură. Fișa firmei o arată ca „în contract, dar nu ajunge pe
-  factură". Ori o livrăm (păstrare pe firmă, cere lucru pe bază), ori o scoatem din ofertă. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): păstrarea istoricului.** Alin: *„12 luni pentru toți și păstrăm
+  24/36 de luni ca opțiune plătită."* Aplicația ține acum exact cât scrie în contractul fiecărei firme și
+  pune opțiunea pe factură (vezi intrarea de la 24.09).
+  - [ ] **(voi) Șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu mai e citită, dar
+    „Stare producție" o arată cu portocaliu cât timp stă acolo.
+  - [ ] **(voi) Verifică în „Stare producție" rândul „TimescaleDB (compresie poziții)"** — verde = datele
+    vechi se comprimă (costul măsurat: ~7 bani pe lună în plus la un camion, pentru 6 luni în plus).
+    Portocaliu = totul ocupă de ~17 ori mai mult; atunci mutarea pe o bază cu TimescaleDB e prima grijă.
+  - [ ] **(voi) Pagina de confidențialitate mai are un loc gol:** *„Jurnale de audit: [ex. 12 luni]"*.
+    Azi jurnalul de audit nu se șterge deloc. Hotărâți o cifră (și o facem), sau scriem „pe durata contractului".
 
 - [x] **HOTĂRÂT ȘI FĂCUT (24.09): numele fișierului contractului** — „RA-Tracks - Contract …".
 

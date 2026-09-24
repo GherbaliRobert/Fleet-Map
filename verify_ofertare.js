@@ -276,7 +276,7 @@ const carte = (nume) => html.indexOf('var ' + nume + ' = card(');
 const undeE = (id, de) => html.indexOf("'of-" + id + "'", carte(de));
 const PASI = [
   ['pPlain', 'vehCard', 'featCard'], ['pCan', 'vehCard', 'featCard'], ['pFms', 'vehCard', 'featCard'],
-  ['pAiA', 'featCard', 'montajCard'], ['ret12', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
+  ['pAiA', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
   ['ret36', 'featCard', 'montajCard'], ['retCustom', 'featCard', 'montajCard'],
   ['mGps', 'montajCard', 'deviceCard'], ['mLvCan', 'montajCard', 'deviceCard'],
   ['mCanInc', 'montajCard', 'deviceCard'], ['mFms', 'montajCard', 'deviceCard'],
@@ -286,6 +286,10 @@ const PASI = [
 const razlete = PASI.filter(([id, de, pana]) => { const i = undeE(id, de); return !(i > carte(de) && i < carte(pana)); });
 T('fiecare preț stă în cartea lucrului pe care-l prețuiește', razlete.length === 0,
   razlete.map(x => x[0]).join(','));
+// 12 luni de istoric sunt INCLUSE pentru toți (24.09): n-au preț, deci nici câmp de preț. Un câmp
+// `of-ret12` rămas pe ecran ar fi un preț pe care nu-l citește nimeni — sau, mai rău, unul care se
+// adună pe tăcute la o ofertă de 12 luni.
+T('12 luni de istoric n-au câmp de preț (sunt incluse)', !/'of-ret12'|'of-ret6'|of-ret12"/.test(html));
 T('prețurile aparatelor stau la pasul 5', ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan']
   .every(k => { const i = undeE(k, 'deviceCard'); return i > carte('deviceCard') && i < html.indexOf('var priceCard'); }));
 T('panoul pliat cu tarife a dispărut cu totul', /var priceCard = '';/.test(html) && !/<details[^>]*>[\s\S]{0,200}Tarife lunare/.test(html));

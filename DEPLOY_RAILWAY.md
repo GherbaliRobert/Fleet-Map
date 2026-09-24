@@ -62,7 +62,7 @@ cade automat pe Postgres simplu, fără să crape):
 | `BACKUP_S3_SECRET` | secret access key | |
 | `BACKUP_S3_REGION` | `auto` pentru R2 | la AWS: regiunea reală |
 | `BACKUP_PASSPHRASE` | frază lungă, păstrată separat de Railway | dump-ul conține hash-uri de parole, chei API și date de clienți — fără ea pleacă **necriptat** |
-| `POSITION_RETENTION_DAYS` | `180` | ⚠ **cu atât mai necesară cu cât TimescaleDB LIPSEȘTE** (invers față de ce scria aici înainte). Cu Timescale activ, retenția vine din politica lui. Fără Timescale — cazul Postgres-ului Railway — singura ștergere e cea de rezervă din `server.js`, iar ea rulează **doar dacă variabila e setată explicit** (`parseInt` fără valoare implicită). Nesetată + fără Timescale = tabela `positions` crește la nesfârșit. |
+| ~~`POSITION_RETENTION_DAYS`~~ | — | **Retrasă pe 24.09 — șterge-o dacă e setată.** Istoricul se păstrează după contractul fiecărei firme (12 luni incluse, 24/36 unde s-au plătit, din „Abonament & plăți"), iar aplicația șterge singură, mașină cu mașină, pe orice bază (cu sau fără TimescaleDB). Cât timp variabila mai e în Railway, „Stare producție" o arată cu portocaliu. |
 
 ### 3c. Comunicare cu clienții (fără ele nu poți face onboarding)
 
@@ -179,7 +179,7 @@ După ce adaugi variabilele → **Redeploy**, apoi verifică în *„Stare produ
 În tab-ul **Deployments → Logs** ar trebui să vezi:
 ```
 [DB] PostgreSQL (DATABASE_URL) — mod scalabil
-[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție 180z   (doar varianta B)
+[DB] TimescaleDB activ: hypertable positions + compresie >7z (ștergerea istoricului: după regula fiecărei firme)   (doar varianta B)
 [AUTH] Utilizator super-admin creat (admin)
 [PUSH] Web Push activ (VAPID configurat)
   RA Tracks Server — PORNIT

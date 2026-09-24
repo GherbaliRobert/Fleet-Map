@@ -11,7 +11,7 @@ let pool, poolIngest, _pglite = null;
 // (previne duplicate la retry tracker când ACK-ul e pierdut). Setat în initDb; dacă crearea eșuează → false → INSERT simplu.
 let positionsUniqueIdx = false;
 // Starea REALĂ a TimescaleDB. Fără extensie, `positions` rămâne un tabel Postgres obișnuit: fără compresie
-// și fără retenție automată — adică promisiunea „180 zile istoric, storage sub control" nu se ține.
+// și fără retenție automată — adică storage-ul nu mai e sub control (ștergerea după contract o face acum aplicația, vezi `stergeIstoricMaiVechiDe`).
 // Până acum asta se vedea doar într-un `console.warn` de la boot; acum e interogabilă (/api/admin/health).
 let _timescale = { attempted: false, enabled: false, retentionDays: null, compressAfterDays: null, reason: USE_PG ? null : 'PGlite local — Timescale nu se aplică' };
 function getTimescaleStatus() { return Object.assign({ usePg: USE_PG }, _timescale); }
@@ -199,7 +199,7 @@ async function initDb() {
 
     // ─── Arhivă poziții: istoricul „înghețat" al dispozitivelor arhivate (contract încheiat) ───
     // La arhivare copiem aici pozițiile dispozitivului (archiveDevicePositions). `positions` rămâne pe retenția
-    // scurtă (180z, active). Copia din arhivă ține cât clientul poate cere datele înapoi: 30 de zile de la
+    // contractului (12 luni incluse, 24/36 plătite). Copia din arhivă ține cât clientul poate cere datele înapoi: 30 de zile de la
     // arhivare (vezi `stergeIstoricAparat`), apoi se șterge, împreună cu restul istoricului aparatului.
     // Astfel „memoria veche" NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
     await client.query(`
@@ -234,13 +234,19 @@ async function initDb() {
         await client.query("SELECT create_hypertable('positions','timestamp', if_not_exists => TRUE, migrate_data => TRUE)");
         await client.query("ALTER TABLE positions SET (timescaledb.compress, timescaledb.compress_segmentby = 'imei')");
         await client.query("SELECT add_compression_policy('positions', INTERVAL '7 days', if_not_exists => TRUE)");
-        const retDays = parseInt(process.env.POSITION_RETENTION_DAYS) || 180;
-        await client.query("SELECT add_retention_policy('positions', INTERVAL '" + retDays + " days', if_not_exists => TRUE)");
-        _timescale = { attempted: true, enabled: true, retentionDays: retDays, compressAfterDays: 7, reason: null };
-        console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție ' + retDays + 'z');
+        // Ștergerea pozițiilor vechi NU mai e treaba unei politici Timescale: ea știe o singură vârstă
+        // pentru toată lumea (era 180 de zile), iar istoricul se păstrează acum după contractul fiecărei
+        // firme — 12 luni incluse, 24/36 unde s-au plătit (24.09). Ștergerea o face `stergeIstoriculVechi`
+        // din server.js, mașină cu mașină. Politica veche se SCOATE: lăsată pe loc, ar tăia la 6 luni exact
+        // ce am promis că ținem un an. `if_not_exists` n-ar fi ajutat — nu schimbă o politică existentă.
+        let politicaVeche = null;
+        try { await client.query("SELECT remove_retention_policy('positions', if_exists => TRUE)"); }
+        catch (e) { politicaVeche = e.message; console.error('[DB] ⚠ Politica Timescale de ștergere NU s-a putut scoate:', e.message); }
+        _timescale = { attempted: true, enabled: true, retentionDays: null, compressAfterDays: 7, reason: null, politicaVeche: politicaVeche };
+        console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z (ștergerea istoricului: după regula fiecărei firme)');
       } catch (e) {
         // Degradare TĂCUTĂ până acum: fără Timescale nu există NICI compresie, NICI ștergere automată a
-        // pozițiilor vechi → storage-ul crește la nesfârșit, iar „retenția 180 zile" promisă nu se aplică.
+        // pozițiilor vechi → storage-ul crește la nesfârșit, (Ștergerea istoricului după contract merge și fără Timescale — o face aplicația.)
         // Reținem motivul ca să apară în /api/admin/health, nu doar într-o linie de log de la boot.
         _timescale = { attempted: true, enabled: false, retentionDays: null, compressAfterDays: null, reason: e.message };
         console.warn('[DB] ⚠ TimescaleDB indisponibil → Postgres simplu: FĂRĂ compresie și FĂRĂ retenție automată pe positions —', e.message);
@@ -2636,15 +2642,11 @@ async function getArchivedImeis() {
 async function deleteDeviceCompletely(imei) {
   // Pozițiile se șterg pe loturi: un vehicul cu ani de istoric înseamnă milioane de rânduri, iar aici
   // ștergerea e declanșată dintr-un click în interfață — adică exact în timpul unei zile de lucru.
+  // Loturile merg după TIMP (`_stergeImeiPeLoturi`), nu după `ctid`: până pe 24.09 aici scria
+  // `WHERE ctid IN (SELECT ctid … WHERE imei = $1)`, iar pe hypertable `ctid` NU e unic între bucăți —
+  // același (pagină, rând) există în fiecare bucată, deci ștergerea putea lovi pozițiile ALTOR mașini.
   for (const t of ['positions', 'positions_archive']) {
-    try {
-      for (;;) {
-        const r = await pool.query(`DELETE FROM ${t} WHERE ctid IN (SELECT ctid FROM ${t} WHERE imei = $1 LIMIT ${BATCH_ROWS})`, [imei]);
-        const n = r.affectedRows || (r.rowCount || 0);
-        if (n < BATCH_ROWS) break;
-        if (BATCH_PAUSE_MS) await new Promise(res => setTimeout(res, BATCH_PAUSE_MS));
-      }
-    } catch (e) { /* tabel inexistent */ }
+    try { await _stergeImeiPeLoturi(t, imei); } catch (e) { /* tabel inexistent */ }
   }
   const tables = ['notifications', 'agent_findings', 'vehicle_documents',
     'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
@@ -2957,7 +2959,7 @@ async function setDevicesCompanyBulk(imeis, companyId) {
 async function getDeviceHistory(imei, from, to, limit) {
   const lim = Math.min(Math.max(parseInt(limit) || 50000, 1), 200000); // plafon dur anti-OOM
   // UNION cu positions_archive: dispozitivele arhivate își păstrează istoricul acolo chiar după ce pozițiile vii
-  // expiră din hypertable (retenție 180z). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
+  // expiră din hypertable (după contractul firmei: 12 luni incluse). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
   // (imediat după arhivare datele sunt în ambele tabele). Activele normale: positions_archive e gol → doar positions.
   const result = await pool.query(`
     SELECT DISTINCT ON (timestamp) timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
@@ -3675,7 +3677,7 @@ async function archiveDevicePositions(imei) {
 // unui aparat ESTE încetarea pentru el, deci ceasul pornește din `devices.archived_at`.
 //
 // Se șterge TOT istoricul de localizare al aparatului, nu doar copia din arhivă: pozițiile lui stau
-// și în `positions` (cele vii se țin 180 de zile), iar cursele și alertele poartă locuri și adrese.
+// și în `positions` (cele vii se țin cât scrie în contract: 12 luni incluse), iar cursele și alertele poartă locuri și adrese.
 async function aparateCuIstoricDeSters(arhivateInainteDe) {
   const r = await pool.query(
     `SELECT imei FROM devices WHERE status = 'archived' AND archived_at IS NOT NULL
@@ -3708,6 +3710,59 @@ async function stergeIstoricAparat(imei) {
   await incearca('alerte', async function () { const r = await pool.query('DELETE FROM alert_history WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
   if (!out.erori.length) await pool.query('UPDATE devices SET istoric_sters_at = $2 WHERE imei = $1', [imei, Date.now()]);
   return out;
+}
+
+// ─── Păstrarea istoricului, după regula fiecărei firme (24.09) ────────────────────────────────────
+// 12 luni incluse pentru toți, mai mult unde s-a plătit (contracts.js → `pastrareFirma`). Ștergerea se
+// face MAȘINĂ CU MAȘINĂ, după `imei`: pe TimescaleDB `imei` e coloana după care se împart bucățile
+// comprimate, deci se desfac doar bucățile mașinii respective, nu ale tuturor. O ștergere după firmă
+// (`company_id`) ar fi desfăcut tot istoricul comprimat al zilei, al tuturor clienților.
+//
+// Aparatele cu tot istoricul deja șters (arhivate de peste 30 de zile) nu mai au ce pierde.
+async function aparatePentruPastrare() {
+  const r = await pool.query(
+    `SELECT d.imei, d.company_id, c.settings
+       FROM devices d LEFT JOIN companies c ON c.id = d.company_id
+      WHERE d.istoric_sters_at IS NULL
+      ORDER BY d.imei`);   // ordine fixă: o rulare neterminată se reia de unde a rămas
+  return r.rows;
+}
+// Șterge istoricul unei mașini mai vechi de `luni` luni: poziții, curse, alerte. Pragul se socotește în
+// bază (`NOW() - luni`), ca aceeași clipă să fie folosită de toate trei. Pozițiile merg pe loturi după
+// TIMP (nu după `ctid`), cu buget: `pana` = până când avem voie să lucrăm la rularea asta.
+async function stergeIstoricMaiVechiDe(imei, luni, opts) {
+  const pana = (opts && opts.pana) || (Date.now() + BATCH_BUDGET_MS);
+  const lot = (opts && opts.lot) || BATCH_ROWS;
+  const out = { pozitii: 0, curse: 0, alerte: 0, loturi: 0, epuizat: false };
+  const PRAG = `NOW() - make_interval(months => $2::int)`;
+  for (;;) {
+    if (Date.now() >= pana) { out.epuizat = true; break; }
+    const lim = await pool.query(
+      `SELECT timestamp AS t FROM positions WHERE imei = $1 AND timestamp < ${PRAG} ORDER BY timestamp OFFSET $3 LIMIT 1`,
+      [imei, luni, lot]);
+    const r = lim.rows[0]
+      ? await pool.query(`DELETE FROM positions WHERE imei = $1 AND timestamp <= $3 AND timestamp < ${PRAG}`, [imei, luni, lim.rows[0].t])
+      : await pool.query(`DELETE FROM positions WHERE imei = $1 AND timestamp < ${PRAG}`, [imei, luni]);
+    out.pozitii += r.affectedRows || r.rowCount || 0;
+    out.loturi++;
+    if (!lim.rows[0]) break;                                     // ultimul lot: nu mai e nimic sub prag
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });   // lasă ingestul să respire
+  }
+  if (!out.epuizat) {
+    const c = await pool.query(`DELETE FROM trips WHERE imei = $1 AND start_time < ${PRAG}`, [imei, luni]);
+    out.curse = c.affectedRows || c.rowCount || 0;
+    const a = await pool.query(`DELETE FROM alert_history WHERE imei = $1 AND triggered_at < ${PRAG}`, [imei, luni]);
+    out.alerte = a.affectedRows || a.rowCount || 0;
+  }
+  return out;
+}
+// Pe TimescaleDB, bucățile de tabel mai vechi decât cea mai lungă păstrare din platformă se scot
+// întregi — nicio firmă nu mai are nevoie de ele, iar după ștergerea mașină cu mașină rămân goale.
+// Pe Postgres simplu / PGlite nu există bucăți: ștergerea mașină cu mașină e tot ce trebuie.
+async function scoateBucatiMaiVechiDe(luni) {
+  if (!_timescale.enabled) return 0;
+  const r = await pool.query(`SELECT drop_chunks('positions', older_than => make_interval(months => $1::int)) AS b`, [luni]);
+  return r.rows.length;
 }
 
 // IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
@@ -4645,7 +4700,7 @@ module.exports = {
   cleanupExpiredSessions,
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
-  aparateCuIstoricDeSters, stergeIstoricAparat,
+  aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
   getArchivedImeis,
   countArchivedPositions,
   getArchivedDevices,

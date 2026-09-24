@@ -319,6 +319,11 @@ function scrieContract(doc, date) {
   const termenPlata = firma.payment_term_days == null ? 15 : firma.payment_term_days;
   const ziFactura = firma.billing_day || 1;
   const cotaTva = em.vat_rate == null ? 19 : em.vat_rate;
+  // Cât se păstrează istoricul: cât scrie în anexa semnată (dacă s-a cumpărat mai mult), altfel regula
+  // de azi a firmei, altfel cele 12 luni incluse. Aceeași cifră după care aplicația chiar șterge
+  // (contracts.js → `pastrareFirma`) — hârtia și aplicația nu au voie să spună lucruri diferite.
+  const _pf = C.pastrareFirma(firma && firma.settings);
+  const luniIstoric = Number(anexa.pastrareLuni) || (_pf ? _pf.luni : C.LUNI_ISTORIC_INCLUSE);
 
   _antet(doc, contract, ciorna);
 
@@ -378,6 +383,8 @@ function scrieContract(doc, date) {
   _p(doc, gdprAnexa
     ? 'Condițiile prelucrării sunt cele din Anexa nr. ' + nrGdpr + ' — Acord de prelucrare a datelor, parte integrantă din prezentul contract.'
     : 'Condițiile prelucrării sunt stabilite printr-un acord de prelucrare a datelor semnat separat de părți, care completează prezentul contract.');
+  _p(doc, 'Cât contractul e în vigoare, istoricul vehiculelor (pozițiile, cursele și alertele) se păstrează ' +
+    C.numar(luniIstoric, 'lună', 'luni') + ' de la înregistrare, apoi se șterge automat. Beneficiarul își poate descărca oricând rapoartele de care are nevoie pentru o perioadă mai lungă.');
 
   _titlu(doc, 'VII. ÎNCETAREA CONTRACTULUI');
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
@@ -445,7 +452,8 @@ function scrieContract(doc, date) {
     _titlu(doc, '1. Rolurile părților');
     _p(doc, 'Beneficiarul, în calitate de OPERATOR, stabilește scopurile și mijloacele prelucrării. Prestatorul, în calitate de PERSOANĂ ÎMPUTERNICITĂ, prelucrează datele numai la instrucțiunile documentate ale Operatorului, cuprinse în prezentul acord și în contract.');
     _titlu(doc, '2. Obiectul, durata și scopul prelucrării');
-    _p(doc, 'Obiectul: furnizarea serviciului de monitorizare GPS. Durata: pe toată durata contractului. Scopul: urmărirea vehiculelor Operatorului, întocmirea rapoartelor de activitate și a alertelor, în interesul legitim al acestuia de administrare a flotei.');
+    _p(doc, 'Obiectul: furnizarea serviciului de monitorizare GPS. Durata: pe toată durata contractului; istoricul se păstrează ' +
+      C.numar(luniIstoric, 'lună', 'luni') + ' de la înregistrare, apoi se șterge automat. Scopul: urmărirea vehiculelor Operatorului, întocmirea rapoartelor de activitate și a alertelor, în interesul legitim al acestuia de administrare a flotei.');
     _titlu(doc, '3. Categoriile de date și de persoane vizate');
     _p(doc, 'Date: poziție geografică, viteză, trasee, opriri, consum și date tehnice transmise de aparat, iar acolo unde Operatorul le introduce — numele conducătorului auto, datele permisului și ale cardului de tahograf. Persoane vizate: angajații și colaboratorii Operatorului care conduc vehiculele monitorizate.');
     _titlu(doc, '4. Obligațiile Persoanei împuternicite');

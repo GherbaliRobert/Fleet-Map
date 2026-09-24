@@ -22,8 +22,10 @@ Trei lucruri decid dacă merge, și niciunul nu e scris pe paginile de prezentar
    containerele și baza ta? De asta depinde cât rămâne pe tine.
 
 **Dimensionare.** Discul unui VPS e FIX — plin înseamnă bază oprită, deci poziții pierdute. Vestea
-bună: pe Postgres propriu se activează singur TimescaleDB, care comprimă cu ~85–90% și șterge
-automat ce e mai vechi de `POSITION_RETENTION_DAYS`. Deci nu dimensiona pentru cifra brută.
+bună: pe Postgres propriu se activează singur TimescaleDB, care comprimă istoricul mai vechi de 7 zile
+de 14–19 ori (măsurat pe 24.09), iar aplicația șterge singură ce e mai vechi decât contractul fiecărei
+firme (12 luni incluse, 24/36 unde s-au plătit). Deci nu dimensiona pentru cifra brută: un camion care
+transmite la 10 secunde ocupă ~0,25 GB pe 12 luni, o mașină mică ~0,1 GB.
 Ia RAM cu rezervă: preprocesarea și mentenanța bazei cer mai mult decât rularea obișnuită.
 
 ---
@@ -108,7 +110,7 @@ Trebuie să vezi **exact** astea două:
 
 ```
 [DB] PostgreSQL (DATABASE_URL) — mod scalabil (SSL: off)
-[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție 180z
+[DB] TimescaleDB activ: hypertable positions + compresie >7z (ștergerea istoricului: după regula fiecărei firme)
 ```
 
 Al doilea rând e cel important. Dacă în locul lui apare

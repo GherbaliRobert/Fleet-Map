@@ -611,7 +611,7 @@
    },
    {
     "k": "Retenție poziții",
-    "v": "180 zile (compresie după 7 zile), configurabilă via POSITION_RETENTION_DAYS"
+    "v": "12 luni pentru toți, 24 sau 36 de luni la cerere (compresie după 7 zile)"
    },
    {
     "k": "Rapoarte",

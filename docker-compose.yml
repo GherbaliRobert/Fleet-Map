@@ -12,7 +12,7 @@ services:
       - COOKIE_SECURE=true
       - SESSION_SECRET=${SESSION_SECRET:?set SESSION_SECRET in .env}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      # opțional: NOTIFY_EXPIRY_DAYS, SMTP_*, TELEGRAM_*, NOTIFY_WEBHOOK_URL, POSITION_RETENTION_DAYS
+      # opțional: NOTIFY_EXPIRY_DAYS, SMTP_*, TELEGRAM_*, NOTIFY_WEBHOOK_URL
     volumes:
       - gpsdata:/app/data          # baza PGlite + secrete + chei VAPID (persistent)
     ports:

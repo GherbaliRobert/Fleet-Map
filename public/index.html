@@ -19838,9 +19838,9 @@ const pozitii = await r.json();</code></pre>
     function _coSocotealaOfertei(o) {
       if (!o || !o.config || !o.config.cfg) return null;
       try {
-        var cfg = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '6', contractMonths: 12 }, o.config.cfg);
+        var cfg = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '12', contractMonths: 12 }, o.config.cfg);
         var r = _ofCalc(cfg, Object.assign({}, _ofTarifeDeBaza(), o.config.prices || {}));
-        var rand = function (l) { return { fel: l.fel || null, nume: l.label, detaliu: l.extra || null, cant: l.qty, pret: l.unit, total: l.total, inclus: !!l.inclus }; };
+        var rand = function (l) { return { fel: l.fel || null, nume: l.label, detaliu: l.extra || null, cant: l.qty, pret: l.unit, total: l.total, inclus: !!l.inclus, luni: l.luni || null }; };
         var deMasini = function (l) { return l.fel === 'plain' || l.fel === 'can' || l.fel === 'fms'; };
         return { unitati: r.unitati, vehicule: r.lines.filter(deMasini).map(rand),
           servicii: r.lines.filter(function (l) { return !deMasini(l); }).map(rand) };
@@ -20437,6 +20437,8 @@ const pozitii = await r.json();</code></pre>
         id: c.id, vehicles: vehicles, canImeis: s,
         feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
         aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0 }, d.ai_quota || {}),
+        // Păstrarea istoricului firmei și cifrele regulii (incluse / cel mult) — amândouă de la server.
+        pastrare: d.pastrare || null, pastrareRegula: d.pastrare_regula || null,
         offer: {
           name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
           aiAssistantRON: pick(o.aiAssistantRON), aiAgentsRON: pick(o.aiAgentsRON),
@@ -20565,6 +20567,7 @@ const pozitii = await r.json();</code></pre>
           '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează</button>' +
           '<div class="hint" style="margin-top:6px;">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>' +
         '</div></div>';
+      html += _raxPastrareHtml(s);
       html += '<div class="rax-abo-sect"><h4>Preț lunar estimat</h4><div id="rax-abo-preview"></div></div>';
       html += '<div class="rax-abo-sect"><h4>Înregistrează plată</h4>' +
         '<div class="rax-abo-grid">' +
@@ -20579,6 +20582,65 @@ const pozitii = await r.json();</code></pre>
       setTimeout(raxAboRecalc, 0);
       return html;
     }
+    // ── Păstrarea istoricului (24.09) ─────────────────────────────────────────────────────────────
+    // 12 luni sunt incluse pentru toți. Mai mult (24 / 36 de luni, sau alt număr) se vinde în ofertă și
+    // se scrie singur pe firmă la contract; aici se vede și se schimbă de mână. Ce scrie aici chiar se
+    // ține: aplicația șterge tot ce e mai vechi, mașină cu mașină, și pune rândul pe factură.
+    // Cifrele regulii (câte sunt incluse, cel mult câte) vin de la server — ecranul nu le scrie a doua oară.
+    function _raxPastrareHtml(s) {
+      var R = s.pastrareRegula, P = s.pastrare;
+      if (!R || !P) return '';
+      var inc = R.incluse, custom = P.platita && P.luni !== 24 && P.luni !== 36;
+      var sel = custom ? 'alt' : String(P.platita ? P.luni : inc);
+      var opt = function (v, t) { return '<option value="' + v + '"' + (sel === v ? ' selected' : '') + '>' + t + '</option>'; };
+      return '<div class="rax-abo-sect"><h4>Păstrarea istoricului</h4>' +
+        '<div class="rax-abo-grid">' +
+          '<div class="rax-abo-f"><label>Cât se păstrează</label><select id="rax-past-luni" class="rax-field" style="margin:0;" onchange="raxPastAlege()">' +
+            opt(String(inc), inc + ' luni (incluse)') + opt('24', '24 de luni') + opt('36', '36 de luni') + opt('alt', 'Alt număr de luni…') +
+          '</select></div>' +
+          '<div class="rax-abo-f" id="rax-past-alt-wrap"' + (custom ? '' : ' style="display:none;"') + '><label>Luni</label><input type="number" id="rax-past-alt" min="' + (inc + 1) + '" max="' + R.max + '" step="1" value="' + (custom ? P.luni : '') + '" placeholder="ex. 48"></div>' +
+          '<div class="rax-abo-f" id="rax-past-pret-wrap"' + (P.platita ? '' : ' style="display:none;"') + '><label>Preț (lei/lună, pe firmă)</label><input type="number" id="rax-past-pret" min="0" step="0.01" value="' + (P.platita ? P.pretRON : '') + '" placeholder="ex. 50"></div>' +
+        '</div>' +
+        '<div class="hint" style="margin:8px 0;">' + inc + ' luni sunt incluse pentru toți. Mai mult se plătește lunar și apare pe factură. Aplicația șterge singură tot ce e mai vechi decât scrie aici, la câteva ore.</div>' +
+        '<button class="rax-btn primary" onclick="raxSavePastrare(this)"><i class="fas fa-floppy-disk"></i> Salvează</button></div>';
+    }
+    window.raxPastAlege = function () {
+      var R = (_raxAbo && _raxAbo.pastrareRegula) || {};
+      var v = (document.getElementById('rax-past-luni') || {}).value;
+      var alt = document.getElementById('rax-past-alt-wrap'), pret = document.getElementById('rax-past-pret-wrap');
+      if (alt) alt.style.display = v === 'alt' ? '' : 'none';
+      if (pret) pret.style.display = v === String(R.incluse) ? 'none' : '';
+    };
+    window.raxSavePastrare = async function (btn) {
+      if (!_raxAbo || !_raxAbo.pastrareRegula) return;
+      var R = _raxAbo.pastrareRegula, inainte = _raxAbo.pastrare || { luni: R.incluse };
+      var toast = window.raxToast || function (m) { alert(m); };
+      var v = (document.getElementById('rax-past-luni') || {}).value;
+      var luni = v === 'alt' ? Math.round(Number((document.getElementById('rax-past-alt') || {}).value)) : Number(v);
+      if (!Number.isFinite(luni) || luni < 1 || luni > R.max) { toast('Alege un număr de luni, cel mult ' + R.max + '.', 'error'); return; }
+      if (luni < R.incluse) luni = R.incluse;
+      var pEl = document.getElementById('rax-past-pret');
+      var pret = luni > R.incluse ? Number((pEl && pEl.value !== '') ? pEl.value : 0) : 0;
+      if (!Number.isFinite(pret) || pret < 0) { toast('Preț invalid.', 'error'); return; }
+      // O păstrare coborâtă ȘTERGE date, iar ele nu se mai pot aduce înapoi. Se spune pe față, înainte.
+      if (luni < inainte.luni) {
+        var da = await raConfirm('Scazi păstrarea istoricului de la ' + inainte.luni + ' la ' + luni + ' luni.\n\n' +
+          'Tot istoricul firmei mai vechi de ' + luni + ' luni — poziții, curse, alerte — se șterge definitiv la următoarea rulare, în câteva ore. Nu se mai poate aduce înapoi.',
+          { title: 'Se șterg date', okLabel: 'Scad și șterg' });
+        if (!da) return;
+      }
+      if (btn) btn.disabled = true;
+      try {
+        var j = await fetch('/api/companies/' + _raxAbo.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ pastrare: luni > R.incluse ? { luni: luni, pretRON: pret } : null }) }).then(function (r) { return r.json(); });
+        if (j.error) { toast(j.error, 'error'); if (btn) btn.disabled = false; return; }
+        _raxAbo.pastrare = j.pastrare || _raxAbo.pastrare;
+        toast(j.pastrare && j.pastrare.platita
+          ? ('Salvat: istoricul se păstrează ' + j.pastrare.luni + _raxDe(j.pastrare.luni) + 'luni, ' + j.pastrare.pretRON + ' lei/lună ✓')
+          : ('Salvat: cele ' + R.incluse + ' luni incluse ✓'), 'success');
+        raxOpenCompanyDetail(_raxAbo.id, 'abonament');
+      } catch (e) { toast('Eroare: ' + e.message, 'error'); if (btn) btn.disabled = false; }
+    };
     function _raxAboReadFields() {
       if (!_raxAbo) return;
       ['priceNoneRON', 'priceCanRON', 'aiAssistantRON', 'aiAgentsRON', 'pricePerVehicleRON', 'flatPriceRON', 'vehicleLimit'].forEach(function (k) {
@@ -20594,6 +20656,7 @@ const pozitii = await r.json();</code></pre>
       var canN = _raxAboCanCount(), totalN = _raxAbo.vehicles.length, noneN = Math.max(0, totalN - canN);
       var pr = _raxClientPrice({ none: noneN, can: canN }, _raxAbo.offer, _raxAbo.feats);
       _raxAbo._price = pr;
+      var pastLei = (_raxAbo.pastrare && _raxAbo.pastrare.platita) ? (Number(_raxAbo.pastrare.pretRON) || 0) : 0;
       var box = document.getElementById('rax-abo-preview');
       if (box) {
         var ln = function (label, val, dim) { return '<div class="rax-abo-ln' + (dim ? ' dim' : '') + '"><span>' + label + '</span><span>' + val.toLocaleString('ro-RO') + ' lei</span></div>'; };
@@ -20605,10 +20668,12 @@ const pozitii = await r.json();</code></pre>
           if (pr.aiA) rows += ln('+ Asistent AI', pr.aiA);
           if (pr.aiAg) rows += ln('+ Agenți AI', pr.aiAg);
         } else { rows += ln('Preset · ' + pr.n.total + ' vehicule', pr.none); }
-        box.innerHTML = rows + '<div class="rax-abo-ln total"><span>Total / lună</span><span>' + pr.total.toLocaleString('ro-RO') + ' lei</span></div>';
+        // Păstrarea istoricului peste cele incluse se facturează lunar, pe firmă — deci intră în estimare.
+        if (pastLei) rows += ln('+ Păstrarea istoricului · ' + _raxAbo.pastrare.luni + _raxDe(_raxAbo.pastrare.luni) + 'luni', pastLei);
+        box.innerHTML = rows + '<div class="rax-abo-ln total"><span>Total / lună</span><span>' + (pr.total + pastLei).toLocaleString('ro-RO') + ' lei</span></div>';
       }
       var ov = document.getElementById('rax-abo-override'), amt = document.getElementById('rax-abo-amount'), mo = document.getElementById('rax-abo-months');
-      if (amt && (!ov || !ov.checked)) { var months = Math.max(1, parseInt(mo && mo.value) || 1); amt.value = (pr.total * months).toFixed(2); }
+      if (amt && (!ov || !ov.checked)) { var months = Math.max(1, parseInt(mo && mo.value) || 1); amt.value = ((pr.total + pastLei) * months).toFixed(2); }
     };
     window.raxAboToggleOverride = function (on) { var amt = document.getElementById('rax-abo-amount'); if (amt) { amt.disabled = !on; if (!on) raxAboRecalc(); } };
     window.raxAboSaveOffer = function (btn) {
@@ -21048,12 +21113,26 @@ const pozitii = await r.json();</code></pre>
           'Trece aparatele în anexă, mai jos' + (_raxCtr.contract && (_raxCtr.contract.status === 'activ' || _raxCtr.contract.status === 'incheiat') ? ' — la un contract semnat, printr-un act adițional.' : '.') + '</div></div>';
       }
       var nrMasini = function (n) { n = Number(n) || 0; return n === 1 ? '1 mașină' : n + _raxDe(n) + 'mașini'; };
+      // Păstrarea istoricului: câte luni scrie în contract, câte ține aplicația (după asta ȘTERGE) și ce
+      // ajunge pe factură. Se spune și în căsuța de mai jos, de dinainte de montaj: istoricul curge de la
+      // primul aparat, deci regula trebuie să fie bună din prima zi.
+      var ps = cmp.pastrare;
+      var luniTxt = function (n) { return n + _raxDe(n) + 'luni'; };
+      var psLinie = ps ? '<div>Păstrarea istoricului: contractul <b>' + luniTxt(ps.contractLuni) + '</b>' + (ps.contractLei ? ', ' + _lei(ps.contractLei) + ' pe lună' : '') +
+        ' · aplicația ține <b>' + (ps.firmaLuni != null ? luniTxt(ps.firmaLuni) : '—') + '</b>' + (ps.facturaLei ? ' · pe factură ' + _lei(ps.facturaLei) : '') + '</div>' : '';
+      var psProbleme = [];
+      if (ps) {
+        if (ps.firmaLuni != null && ps.firmaLuni < ps.contractLuni) psProbleme.push('Păstrarea istoricului: contractul promite ' + luniTxt(ps.contractLuni) + ', dar pe firmă sunt trecute doar ' + luniTxt(ps.firmaLuni) + ' — aplicația ar șterge mai devreme. Pune ' + luniTxt(ps.contractLuni) + ' în „Abonament & plăți".');
+        else if (ps.firmaLuni != null && ps.firmaLuni > ps.contractLuni) psProbleme.push('Păstrarea istoricului: pe firmă sunt trecute ' + luniTxt(ps.firmaLuni) + ', contractul spune ' + luniTxt(ps.contractLuni) + '.');
+        if (Math.abs((Number(ps.facturaLei) || 0) - (Number(ps.contractLei) || 0)) >= 0.01) psProbleme.push('Păstrarea istoricului: contractul spune ' + _lei(ps.contractLei) + ' pe lună, factura ar pune ' + _lei(ps.facturaLei) + '.');
+      }
       // Imediat după „Client nou din ofertă" firma n-are încă aparate: factura n-ar avea mașini, dar
       // asta e drumul firesc, nu o nepotrivire. Se spune pe față, fără alarmă.
       if (!m.factura.nr && m.contract.dinOferta) {
-        return '<div class="raco-dosbox" style="margin:12px 0;"><strong>Factura pornește după montaj</strong>' +
+        return '<div class="raco-dosbox' + (psProbleme.length ? ' warn' : '') + '" style="margin:12px 0;"><strong>Factura pornește după montaj</strong>' +
           '<div>Contractul spune ' + nrMasini(m.contract.nr) + ', ' + _lei(m.contract.lei) + ' pe lună (din ofertă). Firma n-are încă aparate adoptate, ' +
-          'deci luna asta n-ar avea ce factura pentru mașini. Când le treci în anexă, cele două se pun una lângă alta aici.</div></div>';
+          'deci luna asta n-ar avea ce factura pentru mașini. Când le treci în anexă, cele două se pun una lângă alta aici.</div>' + psLinie +
+          (psProbleme.length ? '<div style="margin-top:6px;">' + psProbleme.map(function (p) { return '• ' + esc(p); }).join('<br>') + '</div>' : '') + '</div>';
       }
       var probleme = [];
       var difNr = (Number(m.factura.nr) || 0) - (Number(m.contract.nr) || 0);
@@ -21067,6 +21146,8 @@ const pozitii = await r.json();</code></pre>
         probleme.push('RA Insight: în contract un cont costă ' + _lei(ai.contractPretCont) + ', pe firmă e trecut ' + _lei(ai.facturaPretCont) + '.');
       }
       nef.forEach(function (x) { probleme.push('„' + x.nume + '" (' + _lei(x.lei) + ' pe lună) e în contract, dar nu ajunge pe factură.'); });
+      // Dacă firma ține mai puțin decât s-a semnat, pierdem date promise (socotit mai sus, o dată).
+      probleme = probleme.concat(psProbleme);
       var bine = !probleme.length;
       return '<div class="raco-dosbox ' + (bine ? 'ok' : 'warn') + '" style="margin:12px 0;">' +
         '<strong>' + (bine ? 'Contractul și factura spun același lucru' : 'Contractul și factura nu spun același lucru') + '</strong>' +
@@ -21074,6 +21155,7 @@ const pozitii = await r.json();</code></pre>
           'factura de luna asta <b>' + _lei(m.factura.lei) + '</b> (' + nrMasini(m.factura.nr) + ')</div>' +
         (ai ? '<div>RA Insight: ' + (ai.contractPretCont ? _lei(ai.contractPretCont) + ' pe cont în contract' : 'nu e în contract') + ' · ' +
           'acum ' + (ai.facturaConturi === 1 ? '1 cont activ' : (ai.facturaConturi || 0) + ' conturi active') + ' — se facturează după câte conturi folosește clientul în lună.</div>' : '') +
+        psLinie +
         (probleme.length ? '<div style="margin-top:6px;">' + probleme.map(function (p) { return '• ' + esc(p); }).join('<br>') + '</div>' : '') +
       '</div>';
     }
@@ -22518,7 +22600,9 @@ const pozitii = await r.json();</code></pre>
       pAiA: 14,                        // DOAR plasă (= prima treaptă a grilei); vezi `AIQ_PRET_LOC`
       pAiAg: 0,                        // agenții nu se facturează
       pTahograf: 5, pEtransport: 4,    // lei/VEHICUL/lună — intră în abonamentul mașinii
-      ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0,
+      // Păstrarea istoricului: 12 luni sunt incluse pentru TOȚI (24.09), deci n-au preț. Se vinde doar
+      // ce e peste: 24 / 36 de luni sau alt număr (lei/lună pe FIRMĂ, nu pe mașină).
+      ret24: 50, ret36: 100, retCustom: 0,
       mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2,
       dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 };
     // ── începe „tarifele de listă" ───────────────────────────────────────────────────────────────
@@ -22570,7 +22654,7 @@ const pozitii = await r.json();</code></pre>
     function _ofN(v) { v = parseFloat(v); return Number.isFinite(v) ? v : 0; }
     function _ofReadPrices() {
       var p = _raxOf.prices;
-      ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'pTahograf', 'pEtransport', 'ret6', 'ret12', 'ret24', 'ret36', 'retCustom', 'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel', 'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'].forEach(function (k) {
+      ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'pTahograf', 'pEtransport', 'ret24', 'ret36', 'retCustom', 'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel', 'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'].forEach(function (k) {
         var el = document.getElementById('of-' + k); if (el && el.value !== '') p[k] = _ofN(el.value);
       });
       return p;
@@ -22639,7 +22723,7 @@ const pozitii = await r.json();</code></pre>
         // Câte conturi de RA Insight se vând și cât costă unul — se scriu pe firmă la semnare.
         aiqSeats: Math.max(1, Math.round(_ofN(g('of-aiqSeats')) || 1)),
         aiqSeat: Math.max(0, _ofN((document.getElementById('of-pAiA') || {}).value)),
-        retTier: g('of-ret') || '6', retCustomMonths: Math.max(0, Math.round(_ofN(g('of-retcustom-m')))),
+        retTier: g('of-ret') || '12', retCustomMonths: Math.max(0, Math.round(_ofN(g('of-retcustom-m')))),
         // Cursul zilei se salvează ODATĂ cu oferta: anexa contractului îl îngheață, ca hârtia
         // semnată să nu spună altă sumă peste o lună, când se schimbă cursul.
         //
@@ -22684,8 +22768,21 @@ const pozitii = await r.json();</code></pre>
       add('Modul LV-CAN200', dv.lvcan, p.dLvCan);
       return L;
     }
-    function _ofRetAddon(cfg, p) { return cfg.retTier === '12' ? p.ret12 : cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : cfg.retTier === 'custom' ? p.retCustom : p.ret6; }
-    function _ofRetLabel(cfg) { var n = cfg.retTier === 'custom' ? (cfg.retCustomMonths || 0) : Number(cfg.retTier); return n + _raxDe(n) + 'luni'; }
+    // Păstrarea istoricului (24.09): 12 luni pentru TOȚI, incluse; se plătește doar ce e peste.
+    // Cifra e a serverului (`LUNI_ISTORIC_INCLUSE` din contracts.js, după ea se șterge istoricul); aici
+    // e scrisă o dată, fiindcă socoteala e pe loc, și LEGATĂ printr-o probă de cea de pe server.
+    var _OF_LUNI_INCLUSE = 12, _OF_LUNI_MAX = 60;   // păzit de verify_pastrare.js
+    // Câte luni cere oferta. Ofertele vechi („6 luni (inclus)") și orice număr sub prag urcă la cele 12
+    // incluse — aplicația oricum nu mai ține mai puțin.
+    function _ofRetLuni(cfg) {
+      var n = cfg.retTier === 'custom' ? Math.round(Number(cfg.retCustomMonths) || 0) : Number(cfg.retTier);
+      return (n > _OF_LUNI_INCLUSE) ? Math.min(n, _OF_LUNI_MAX) : _OF_LUNI_INCLUSE;
+    }
+    function _ofRetAddon(cfg, p) {
+      if (_ofRetLuni(cfg) <= _OF_LUNI_INCLUSE) return 0;
+      return cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : (p.retCustom || 0);
+    }
+    function _ofRetLabel(cfg) { var n = _ofRetLuni(cfg); return n + _raxDe(n) + 'luni'; }
     // Fără argumente, socotește ce e pe ECRAN (cazul obișnuit). Cu argumente, socotește o ofertă
     // SALVATĂ, fără să atingă formularul — așa poate „Vezi hârtia" să deschidă o ofertă din listă
     // peste o alta pe care o ai în lucru, fără s-o calce.
@@ -22730,7 +22827,8 @@ const pozitii = await r.json();</code></pre>
       // Cei șase agenți sunt INCLUȘI, fără bani: rulează pe reguli fixe, nu ne costă nimic. Îi
       // trecem totuși în ofertă, cu 0 lei — altfel dăm șase lucruri pe gratis fără ca omul să afle.
       if (cfg.agenti) lines.push({ fel: 'agenti', label: 'Agenți automați (6) — incluși', qty: 1, unit: 0, total: 0, inclus: true });
-      var retA = _ofRetAddon(cfg, p); if (retA > 0) lines.push({ fel: 'ret', label: 'Păstrare date ' + _ofRetLabel(cfg), qty: 1, unit: retA, total: retA });
+      // `luni` merge mai departe, la contract și pe firmă: după el se șterge istoricul și se facturează.
+      var retA = _ofRetAddon(cfg, p); if (retA > 0) lines.push({ fel: 'ret', luni: _ofRetLuni(cfg), label: 'Păstrare date ' + _ofRetLabel(cfg), qty: 1, unit: retA, total: retA });
       var monthly = lines.reduce(function (s, l) { return s + l.total; }, 0);
       var montajLines = _ofMontajLines(cfg, p);
       var montaj = montajLines.reduce(function (s, l) { return s + l.total; }, 0);
@@ -22958,9 +23056,9 @@ const pozitii = await r.json();</code></pre>
         ['pTahograf', 'Modul Tahograf — se adaugă la mașină', null],
         ['pEtransport', 'Modul e-Transport — se adaugă la mașină', null],
         [null, 'Ce ne costă o mașină pe lună (SIM + servere)', 'cVehLuna']] },
-      { t: 'Păstrarea datelor', um: 'lei', nota: 'Primele 6 luni sunt incluse în abonament.', randuri: [
-        ['ret12', '12 luni', null], ['ret24', '24 luni', null],
-        ['ret36', '36 luni', null], ['retCustom', 'Custom', null]] },
+      { t: 'Păstrarea datelor', um: 'lei', nota: 'Primele 12 luni sunt incluse pentru toți. Prețul e pe firmă, pe lună.', randuri: [
+        ['ret24', '24 de luni', null], ['ret36', '36 de luni', null],
+        ['retCustom', 'Alt număr de luni', null]] },
       // Treptele GRILEI, nu un preț unic: prețul contului depinde de mărimea flotei. Cheile sunt
       // cele din `AIQ_PRET_LOC` (`cheie`), iar ce scrii aici chiar ajunge în ofertă (23.09).
       { t: 'RA Insight — un cont, pe lună, după flota clientului', um: 'lei', nota: 'Fiecare cont aduce 100 de întrebări pe lună. Cât ne costă o întrebare e MĂSURAT în aplicație și se vede la pasul 3, lângă comutator — nu se trece de mână aici.', randuri: [
@@ -23226,7 +23324,7 @@ const pozitii = await r.json();</code></pre>
     // Câmpurile de tarif: lângă fiecare, echivalentul în cealaltă monedă, gri. Se pun din cod (nu în
     // marcaj) ca să nu trebuiască atinse cele ~20 de rânduri de formular și ca valoarea să se
     // actualizeze la fiecare tastă.
-    var _OF_CAMP_LEI = ['pPlain', 'pCan', 'pFms', 'pAiA', 'pTahograf', 'pEtransport', 'ret12', 'ret24', 'ret36', 'retCustom',
+    var _OF_CAMP_LEI = ['pPlain', 'pCan', 'pFms', 'pAiA', 'pTahograf', 'pEtransport', 'ret24', 'ret36', 'retCustom',
       'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel'];
     var _OF_CAMP_EUR = ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];
     function _ofEuroLangaTarife() {
@@ -24156,17 +24254,16 @@ const pozitii = await r.json();</code></pre>
         // Cei șase agenți: incluși, fără bani, dar SCRIȘI în ofertă. Altfel dăm valoare pe degeaba.
         '<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:10px;padding:9px 11px;background:var(--bg-panel);border-radius:9px;"><input type="checkbox" id="of-agenti" checked onchange="raxOfRecalc()" style="margin-top:2px;">' +
           '<span><b>Cei 6 agenți automați — incluși, 0 lei</b><br><span style="font-size:11px;color:var(--text-muted);">RA Watch (offline, furt combustibil, ralanti) · RA Dispatch (vehicule disponibile) · RA Care (ITP, RCA, revizii) · RA Optimize (eco-driving) · RA Compliance (ore de condus) · RA Client (raport zilnic). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</span></span></label>' +
-        row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
+        row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="12">12 luni (incluse)</option><option value="24">24 de luni</option><option value="36">36 de luni</option><option value="custom">Alt număr de luni…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>')
         // Prețul păstrării datelor stă lângă alegerea ei, nu într-un panou pliat la coada paginii.
-        // Cele 6 luni sunt incluse în abonament, deci n-au preț de scris.
+        // Cele 12 luni sunt incluse pentru toți (24.09), deci n-au preț de scris.
         + '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">'
           + '<div style="font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Cât costă păstrarea datelor, pe lună</div>'
-          + row('12 luni', fNum('of-ret12', p.ret12, '', 84, 0.01) + lei())
-          + row('24 luni', fNum('of-ret24', p.ret24, '', 84, 0.01) + lei())
-          + row('36 luni', fNum('of-ret36', p.ret36, '', 84, 0.01) + lei())
-          + row('Custom', fNum('of-retCustom', p.retCustom, '', 84, 0.01) + lei())
-          + '<div class="raof-hint" style="margin-top:-2px;">Primele 6 luni sunt incluse în abonament. Se adaugă doar tariful treptei alese mai sus.</div>'
+          + row('24 de luni', fNum('of-ret24', p.ret24, '', 84, 0.01) + lei())
+          + row('36 de luni', fNum('of-ret36', p.ret36, '', 84, 0.01) + lei())
+          + row('Alt număr de luni', fNum('of-retCustom', p.retCustom, '', 84, 0.01) + lei())
+          + '<div class="raof-hint" style="margin-top:-2px;">Primele 12 luni sunt incluse pentru toți. Se adaugă doar tariful treptei alese mai sus — un preț pe firmă, nu pe mașină. După semnare, aplicația păstrează exact cât scrie aici.</div>'
         + '</div>' + butonTarife(deTarife),
         'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.');
       var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> 4. Montajul',
@@ -24495,7 +24592,7 @@ const pozitii = await r.json();</code></pre>
         };
         set('of-cl-name', (cfg.client && cfg.client.name) || o.client_name); set('of-cl-cui', (cfg.client && cfg.client.cui) || o.client_cui); set('of-cl-contact', (cfg.client && cfg.client.contact) || o.client_contact);
         set('of-name', cfg.offerName || o.name); set('of-nveh', cfg.nVeh); set('of-ncan', cfg.nCan); set('of-nfms', cfg.nFms);
-        set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
+        set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', (cfg.retTier === '24' || cfg.retTier === '36' || cfg.retTier === 'custom') ? cfg.retTier : '12'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
         if (cfg.aiqN != null) set('of-aiqN', String(cfg.aiqN));   // câte întrebări aduce un cont
         if (cfg.aiqSeats != null) set('of-aiqSeats', cfg.aiqSeats);   // câte conturi s-au vândut
         var mj = cfg.montaj || {};
@@ -24611,7 +24708,7 @@ const pozitii = await r.json();</code></pre>
     window.raxOfPreview = function (id) {
       var o = (_raxOf.offers || []).find(function (x) { return x.id === id; });
       if (!o) { if (window.raxToast) raxToast('Oferta nu mai e în listă', 'error'); return; }
-      var cfg = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '6', contractMonths: 12 },
+      var cfg = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '12', contractMonths: 12 },
         (o.config && o.config.cfg) || {});
       if (!cfg.client || !cfg.client.name) cfg.client = { name: o.client_name, cui: o.client_cui, contact: o.client_contact };
       if (!cfg.offerName) cfg.offerName = o.name;

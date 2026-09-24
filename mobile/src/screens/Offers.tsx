@@ -13,8 +13,8 @@ import './detail.css';
 // între web și APK. Endpoint-uri /api/admin/offers* sunt requireSuperadmin.
 function num(v: any) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
 function r2(x: number) { return Math.round(x * 100) / 100; }
-const DEF_PRICES = { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret12: 0, ret24: 50, ret36: 100, retCustom: 0, mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2, dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 };
-const DEF_CFG = { clName: '', clCui: '', clContact: '', offerName: '', nVeh: '10', nCan: '0', nFms: '0', aiA: false, aiAg: false, retTier: '6', retCustomMonths: '', contractMonths: '12', notes: '', qGps: '', qLvCan: '', qCanInc: '', qFms: '', qUninstall: '', qReplace: '', kmTravel: '', dq130: '', dq150: '', dq650: '', dqLvCan: '' };
+const DEF_PRICES = { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret24: 50, ret36: 100, retCustom: 0, mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2, dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 };
+const DEF_CFG = { clName: '', clCui: '', clContact: '', offerName: '', nVeh: '10', nCan: '0', nFms: '0', aiA: false, aiAg: false, retTier: '12', retCustomMonths: '', contractMonths: '12', notes: '', qGps: '', qLvCan: '', qCanInc: '', qFms: '', qUninstall: '', qReplace: '', kmTravel: '', dq130: '', dq150: '', dq650: '', dqLvCan: '' };
 
 type Line = { label: string; qty: number; unit: number; total: number; perKm?: boolean };
 
@@ -30,8 +30,11 @@ function calc(cfg: any, p: any) {
   addL('Vehicule cu FMS (camioane)', nFms, p.pFms);
   if (cfg.aiA) lines.push({ label: 'Asistent AI', qty: 1, unit: p.pAiA, total: p.pAiA });
   if (cfg.aiAg) lines.push({ label: 'Agenți AI', qty: 1, unit: p.pAiAg, total: p.pAiAg });
-  const retA = cfg.retTier === '12' ? p.ret12 : cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : cfg.retTier === 'custom' ? p.retCustom : 0;
-  const retLabel = cfg.retTier === 'custom' ? ((Math.round(num(cfg.retCustomMonths)) || 0) + ' luni') : (cfg.retTier + ' luni');
+  // Păstrarea istoricului (24.09): 12 luni incluse pentru toți; se plătește doar ce e peste (ca pe web).
+  const retN = cfg.retTier === 'custom' ? Math.round(num(cfg.retCustomMonths)) : num(cfg.retTier);
+  const retLuni = retN > 12 ? Math.min(retN, 60) : 12;
+  const retA = retLuni <= 12 ? 0 : cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : (p.retCustom || 0);
+  const retLabel = retLuni + (retLuni % 100 >= 1 && retLuni % 100 <= 19 ? ' luni' : ' de luni');
   if (retA > 0) lines.push({ label: 'Păstrare date ' + retLabel, qty: 1, unit: retA, total: retA });
   const monthly = lines.reduce((s, l) => s + l.total, 0);
   const m: Line[] = [];
@@ -166,12 +169,12 @@ export function Offers() {
           <div class="frm-row">
             <div class="fld"><label>Păstrare date</label>
               <select value={cfg.retTier} onChange={(e: any) => sc('retTier', e.target.value)}>
-                <option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option>
+                <option value="12">12 luni (incluse)</option><option value="24">24 de luni</option><option value="36">36 de luni</option><option value="custom">Alt număr de luni…</option>
               </select>
             </div>
             <div class="fld"><label>Contract (luni)</label>{fNum('contractMonths')}</div>
           </div>
-          {cfg.retTier === 'custom' && <div class="fld"><label>Păstrare — luni custom</label>{fNum('retCustomMonths', 'ex: 18')}</div>}
+          {cfg.retTier === 'custom' && <div class="fld"><label>Păstrare — câte luni</label>{fNum('retCustomMonths', 'ex: 18')}</div>}
 
           <div class="adm-sec2">Montaj (cost unic, opțional)</div>
           <div class="frm-row">
@@ -201,8 +204,7 @@ export function Offers() {
             <div class="pf-card">
               <div class="frm-row"><div class="fld"><label>Vehicul GPS</label>{pNum('pPlain')}</div><div class="fld"><label>Vehicul CAN</label>{pNum('pCan')}</div><div class="fld"><label>Vehicul FMS</label>{pNum('pFms')}</div></div>
               <div style="font-size:11px;color:var(--text-muted);margin:2px 0 6px">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", lângă comutator.</div>
-              <div class="frm-row"><div class="fld"><label>Ret. 12l</label>{pNum('ret12')}</div><div class="fld"><label>Ret. 24l</label>{pNum('ret24')}</div><div class="fld"><label>Ret. 36l</label>{pNum('ret36')}</div></div>
-              <div class="fld"><label>Retenție custom (lei/lună)</label>{pNum('retCustom')}</div>
+              <div class="frm-row"><div class="fld"><label>Păstrare 24 l</label>{pNum('ret24')}</div><div class="fld"><label>Păstrare 36 l</label>{pNum('ret36')}</div><div class="fld"><label>Alt nr. (lei/lună)</label>{pNum('retCustom')}</div></div>
               <div class="adm-sec2" style="margin-top:8px">Montaj (lei/buc · deplasare lei/km)</div>
               <div class="frm-row"><div class="fld"><label>GPS</label>{pNum('mGps')}</div><div class="fld"><label>LV-CAN</label>{pNum('mLvCan')}</div><div class="fld"><label>CAN înc.</label>{pNum('mCanInc')}</div></div>
               <div class="frm-row"><div class="fld"><label>FMS</label>{pNum('mFms')}</div><div class="fld"><label>Dezinst.</label>{pNum('mUninstall')}</div><div class="fld"><label>Înlocuire</label>{pNum('mReplace')}</div></div>
@@ -265,7 +267,7 @@ function mapInCfg(c: any) {
   const st = (x: any) => (x || x === 0 ? String(x) : '');
   return {
     nVeh: String(c.nVeh ?? 10), nCan: String(c.nCan ?? 0), nFms: String(c.nFms ?? 0), aiA: !!c.aiA, aiAg: !!c.aiAg,
-    retTier: c.retTier || '6', retCustomMonths: st(c.retCustomMonths), contractMonths: String(c.contractMonths ?? 12),
+    retTier: (c.retTier === '24' || c.retTier === '36' || c.retTier === 'custom') ? c.retTier : '12', retCustomMonths: st(c.retCustomMonths), contractMonths: String(c.contractMonths ?? 12),
     qGps: st(mj.qGps), qLvCan: st(mj.qLvCan), qCanInc: st(mj.qCanInc),
     qFms: st(mj.qFms), qUninstall: st(mj.qUninstall), qReplace: st(mj.qReplace), kmTravel: st(mj.kmTravel),
     dq130: st(dv.d130), dq150: st(dv.d150), dq650: st(dv.d650), dqLvCan: st(dv.lvcan),

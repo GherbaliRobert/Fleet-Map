@@ -287,16 +287,20 @@ async function syncDemoSim(reason) {
 }
 function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning() }); }
 
-// Rezultatul ULTIMEI rulări de retenție. „Variabila e setată" nu înseamnă „ștergerea chiar funcționează":
-// până acum eroarea era înghițită tăcut, deci o retenție moartă arăta identic cu una sănătoasă.
-let _retentionLast = null;
-function _retentionSummary() {
-  if (!_retentionLast) return 'încă nicio rulare de la pornire';
-  if (_retentionLast.error) return 'ULTIMA RULARE A EȘUAT: ' + _retentionLast.error;
-  const h = Math.round((Date.now() - _retentionLast.at) / 360000) / 10;
-  if (!_retentionLast.rows) return 'ultima rulare acum ' + h + 'h: nimic de șters';
-  return 'ultima rulare acum ' + h + 'h: ' + _retentionLast.rows + ' rânduri în ' + _retentionLast.batches + ' loturi'
-    + (_retentionLast.exhausted ? ' (buget epuizat — continuă la următoarea)' : '');
+// Rezultatul ULTIMEI rulări a ștergerii istoricului vechi (`stergeIstoriculVechi`). O ștergere care nu
+// rulează arată identic cu una sănătoasă — singurul semn ar fi baza care crește — deci o spunem pe ecran.
+let _pastrareUltima = null;
+function _pastrareRezumat() {
+  const u = _pastrareUltima;
+  if (!u) return 'încă nicio rulare de la pornire';
+  if (u.error) return 'ULTIMA RULARE A EȘUAT: ' + u.error;
+  const r = u.raport || {};
+  const h = Math.round((Date.now() - u.at) / 360000) / 10;
+  const sters = (r.pozitii || 0) + (r.curse || 0) + (r.alerte || 0);
+  return 'ultima rulare acum ' + h + 'h: ' + (sters ? (r.pozitii + ' poziții, ' + r.curse + ' curse, ' + r.alerte + ' alerte, la ' + r.masini + ' mașini') : 'nimic de șters')
+    + (r.erori ? ' · ' + r.erori + ' mașini amânate (' + r.primaEroare + ')' : '')
+    + (r.sarite ? ' · ' + r.sarite + ' mașini sărite: setările firmei nu se pot citi' : '')
+    + (r.epuizat ? ' · buget de timp epuizat — continuă la următoarea' : '');
 }
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
@@ -2656,7 +2660,8 @@ function _costuriCurate(b) {
 // propunea. Acum se salvează chiar treptele grilei — cele cinci chei `aiq…` de mai jos.
 const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiAg', 'pTahograf', 'pEtransport',
   'aiqPana10', 'aiqPana25', 'aiqPana50', 'aiqPana100', 'aiqPeste100',
-  'ret6', 'ret12', 'ret24', 'ret36', 'retCustom',
+  // `ret6` / `ret12` au ieșit pe 24.09: 12 luni de istoric sunt incluse pentru toți, deci n-au preț.
+  'ret24', 'ret36', 'retCustom',
   'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
   'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];
 // `existent` = lista salvată până acum. O cheie care NU vine în cerere își păstrează valoarea.
@@ -4471,6 +4476,9 @@ function _venitLunar(c, nrCan, conturi) {
     // (vezi buildInvoiceLines). Fără scăderea asta, registrul ar fi numărat-o de două ori.
     lei -= Number(p.breakdown && p.breakdown.aiAssistant) || 0;
   }
+  // Păstrarea istoricului peste cele 12 luni incluse — același rând ca pe factură (`buildInvoiceLines`).
+  const past = contracte.pastrareFirma(c && c.settings);
+  if (past && past.platita) lei += past.pretRON;
   return Math.round(lei * 100) / 100;
 }
 // ── sfârșit „Venitul lunar pe firmă" ──
@@ -4823,6 +4831,9 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const servicii = anexa.servicii || [];
         const liniiMasini = f.lines.filter(function (l) { return /^(Abonament|Supliment)/.test(l.desc); });
         const liniiAi = f.lines.filter(function (l) { return /^(RA Insight|Asistent AI)/.test(l.desc); });
+        const liniiPastrare = f.lines.filter(function (l) { return /^Păstrarea istoricului/.test(l.desc); });
+        const retContract = servicii.filter(function (x) { return x.fel === 'ret'; });
+        const pastrareFirma = contracte.pastrareFirma(company.settings);
         // Pe bucăți, nu pe total: RA Insight se facturează după conturile FOLOSITE în lună (clientul le
         // aprinde și le stinge singur), deci totalul ar da mereu „nu se potrivește" din motive normale.
         comparatie = {
@@ -4839,9 +4850,17 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
             facturaPretCont: bc.raInsight ? bc.raInsight.seatPriceRON : 0,
             facturaLei: r2(suma(liniiAi, 'net'))
           } : null,
-          // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură (ex. păstrarea
-          // datelor 24 de luni: vândută, semnată, dar nici facturată, nici livrată încă).
-          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && !x.inclus && Number(x.total) > 0; })
+          // Păstrarea istoricului: câte luni scrie în contract, câte ține aplicația pentru firmă (după
+          // asta șterge) și ce ajunge pe factură. Trei cifre care trebuie să spună același lucru.
+          pastrare: (retContract.length || liniiPastrare.length || Number(anexa.pastrareLuni) > 0 || (pastrareFirma && pastrareFirma.platita)) ? {
+            contractLuni: Number(anexa.pastrareLuni) || contracte.LUNI_ISTORIC_INCLUSE,
+            contractLei: r2(suma(retContract, 'total')),
+            firmaLuni: pastrareFirma ? pastrareFirma.luni : null,
+            facturaLei: r2(suma(liniiPastrare, 'net'))
+          } : null,
+          // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură. (Păstrarea datelor
+          // a stat aici până pe 24.09 — vândută, semnată, dar nici facturată, nici livrată; are acum rândul ei.)
+          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && x.fel !== 'ret' && !x.inclus && Number(x.total) > 0; })
             .map(function (x) { return { nume: x.nume, lei: r2(x.total) }; }),
           total: { contract: r2(anexa.monthlyTotal), factura: r2(f.subtotal) }
         };
@@ -4853,6 +4872,9 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, offer, price, features,
       neplata: npFirma.faza === 'ok' ? null : npFirma,
       ai_quota: _aiQuotaFromSettings(company.settings),
+      // Păstrarea istoricului firmei + cifrele regulii, ca ecranul să nu le scrie a doua oară.
+      pastrare: contracte.pastrareFirma(company.settings),
+      pastrare_regula: { incluse: contracte.LUNI_ISTORIC_INCLUSE, max: contracte.LUNI_ISTORIC_MAX },
       contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, acum),
       sfarsit: contracte.sfarsitCurent(contract, acum),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
@@ -5319,8 +5341,23 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
       await db.setCompanyOferta(companyId, pretScris);
     }
   }
+  // Păstrarea istoricului peste cele 12 luni incluse se vinde în ofertă, deci se scrie pe firmă odată cu
+  // restul — de aici o citesc ștergerea automată și factura. Cele 12 incluse nu scriu nimic și NU coboară
+  // o firmă care are deja mai mult: o coborâre șterge date, deci se face doar de mână, cu confirmare.
+  const pastrare = _pastrareDinOferta(oferta, dinOferta);
+  if (pastrare) patch.pastrare = pastrare;
   if (Object.keys(patch).length) await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
   return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris };
+}
+// Păstrarea istoricului vândută într-o ofertă: `{ luni, pretRON }`, sau `null` dacă oferta a rămas pe
+// cele 12 luni incluse. Lunile = ce s-a ales în ofertă; prețul = rândul socotit de pagină (`_ofCalc`,
+// `fel: 'ret'`), adică exact suma acceptată de client. Serverul nu refăce socoteala ofertei.
+function _pastrareDinOferta(oferta, dinOferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  const ret = (dinOferta && Array.isArray(dinOferta.servicii))
+    ? dinOferta.servicii.find(function (x) { return x && x.fel === 'ret'; }) : null;
+  const luni = Number(ret && ret.luni) || Number(cfg.retTier === 'custom' ? cfg.retCustomMonths : cfg.retTier) || 0;
+  return contracte.curataPastrare({ luni: luni, pretRON: ret ? ret.total : 0 }) || null;
 }
 // Rândurile de preț lunar ale ofertei, pentru anexa contractului: mașinile (pe feluri) și serviciile
 // (RA Insight, păstrarea datelor, agenții incluși). Vin din pagină, socotite de `_ofCalc`; aici doar
@@ -5372,7 +5409,9 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           vehiculeOferta: rl ? rl.vehiculeOferta : null, servicii: rl ? rl.servicii : null,
           // Prețul unui cont de RA Insight ajunge în contract, ca regula să fie semnată, nu presupusă.
           aiSeatPriceRON: _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
-          aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0
+          aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0,
+          // Câte luni se păstrează istoricul, dacă s-a cumpărat mai mult decât cele 12 incluse: se semnează.
+          pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null
         });
       }
       // Montajul și echipamentele sunt deja socotite în ofertă — le ducem în Anexa nr. 2, ca să nu
@@ -7316,6 +7355,102 @@ if (process.env.SEED_TEST === '1') {
       const b = req.body || {};
       await db.pool.query('UPDATE devices SET archived_at = $2 WHERE imei = $1', [String(b.imei || ''), Date.now() - (Number(b.zile) || 0) * 86400000]);
       res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+}
+
+// ─── Păstrarea istoricului cât contractul e în vigoare (decizie Alin, 24.09) ─────────────────────
+// 12 luni pentru TOȚI, incluse în abonament; mai mult unde firma a plătit (`settings.pastrare`, scris
+// din oferta acceptată sau din „Abonament & plăți"). Până pe 24.09 o singură vârstă, 180 de zile, pentru
+// toată lumea (politica TimescaleDB sau `POSITION_RETENTION_DAYS`) — iar 24/36 de luni se vindeau și se
+// semnau fără să se livreze.
+//
+// Mașină cu mașină, după regula firmei ei. Unde setările unei firme nu se pot citi, mașinile ei se SAR:
+// mai bine ținem o zi în plus decât să ștergem ce a plătit cineva. Aceeași regulă pe TimescaleDB,
+// Postgres simplu și PGlite. Rularea are buget de timp; ce nu apucă, continuă la următoarea.
+// De unde reia rularea următoare, dacă asta n-a apucat toate mașinile (bugetul de timp s-a terminat).
+// Fără el, o rulare lungă s-ar opri mereu la aceleași mașini, iar cele de la coadă n-ar ajunge niciodată.
+let _pastrareDeLa = 0;
+async function stergeIstoriculVechi(opts) {
+  const start = Date.now();
+  const pana = start + ((opts && opts.bugetMs) || 10 * 60 * 1000);
+  const raport = { aparate: 0, masini: 0, pozitii: 0, curse: 0, alerte: 0, sarite: 0, erori: 0, primaEroare: null,
+    firmePlatite: 0, maxLuni: contracte.LUNI_ISTORIC_INCLUSE, bucati: 0, epuizat: false };
+  try {
+    const aparate = await db.aparatePentruPastrare();
+    raport.aparate = aparate.length;
+    const platite = new Set();
+    const n = aparate.length, dela = n ? (_pastrareDeLa % n) : 0;
+    for (let k = 0; k < n; k++) {
+      const a = aparate[(dela + k) % n];
+      if (Date.now() >= pana) { raport.epuizat = true; _pastrareDeLa = (dela + k) % n; break; }
+      const p = contracte.pastrareFirma(a.settings);
+      if (!p) { raport.sarite++; raport.maxLuni = contracte.LUNI_ISTORIC_MAX; continue; }
+      if (p.platita && a.company_id != null) platite.add(a.company_id);
+      if (p.luni > raport.maxLuni) raport.maxLuni = p.luni;
+      try {
+        const r = await db.stergeIstoricMaiVechiDe(a.imei, p.luni, { pana: pana });
+        raport.pozitii += r.pozitii; raport.curse += r.curse; raport.alerte += r.alerte;
+        if (r.pozitii || r.curse || r.alerte) raport.masini++;
+        if (r.epuizat) { raport.epuizat = true; _pastrareDeLa = (dela + k) % n; break; }
+      } catch (e) {
+        // O mașină care nu merge nu oprește restul; se reîncearcă la rularea următoare.
+        raport.erori++; if (!raport.primaEroare) raport.primaEroare = a.imei + ': ' + e.message;
+      }
+    }
+    if (!raport.epuizat) _pastrareDeLa = 0;
+    raport.firmePlatite = platite.size;
+    // Bucățile de tabel mai vechi decât cea mai lungă păstrare din platformă nu mai sunt ale nimănui.
+    // DOAR după o trecere completă: altfel `maxLuni` n-a văzut toate firmele și ar putea fi prea mic.
+    if (!raport.epuizat && raport.aparate) {
+      try { raport.bucati = await db.scoateBucatiMaiVechiDe(raport.maxLuni); }
+      catch (e) { raport.erori++; if (!raport.primaEroare) raport.primaEroare = 'bucăți vechi: ' + e.message; }
+    }
+    raport.ms = Date.now() - start;
+    _pastrareUltima = { at: Date.now(), raport: raport, error: null };
+  } catch (e) {
+    _pastrareUltima = { at: Date.now(), raport: raport, error: e.message };
+    throw e;
+  }
+  if (raport.pozitii || raport.curse || raport.alerte) {
+    console.log('[PĂSTRARE] Istoric mai vechi decât contractul, șters: ' + raport.pozitii + ' poziții, ' + raport.curse +
+      ' curse, ' + raport.alerte + ' alerte, la ' + raport.masini + ' mașini' + (raport.epuizat ? ' (continuă la rularea următoare)' : ''));
+    // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_vechi', entityId: null, details: raport, ip: null, companyId: null }); } catch (e) {}
+  }
+  if (raport.erori) console.warn('[PĂSTRARE] ' + raport.erori + ' mașini amânate: ' + raport.primaEroare);
+  return raport;
+}
+// Rulare de mână (super-admin): nu aștepți șase ore ca să vezi ce face.
+app.post('/api/admin/istoric/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeIstoriculVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Doar pentru probe (SEED_TEST=1): pune istoric de acum N luni (poziții, o cursă, o alertă), ca proba
+// să nu aștepte un an.
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/istoric-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const imei = String(b.imei || ''), luni = Math.max(0, parseInt(b.luni) || 0), n = Math.max(1, Math.min(5000, parseInt(b.n) || 10));
+      const cand = `(NOW() - make_interval(months => $2::int, days => 1))::timestamp`;
+      await db.pool.query(
+        `INSERT INTO positions (imei, timestamp, latitude, longitude, speed, io_data)
+         SELECT $1, ${cand} - (g * interval '1 minute'), 45.75, 21.21, 30, '{}'::jsonb FROM generate_series(1, $3::int) g
+         ON CONFLICT DO NOTHING`, [imei, luni, n]);
+      await db.pool.query(`INSERT INTO trips (imei, start_time, end_time) VALUES ($1, ${cand}, ${cand} + interval '30 minutes')`, [imei, luni]);
+      await db.pool.query(`INSERT INTO alert_history (imei, triggered_at, data) VALUES ($1, ${cand}, '{}'::jsonb)`, [imei, luni]);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.post('/api/test/istoric-numar', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const imei = String((req.body || {}).imei || '');
+      const q = async (s) => Number((await db.pool.query(s, [imei])).rows[0].n) || 0;
+      res.json({
+        pozitii: await q('SELECT COUNT(*)::int AS n FROM positions WHERE imei = $1'),
+        curse: await q('SELECT COUNT(*)::int AS n FROM trips WHERE imei = $1'),
+        alerte: await q('SELECT COUNT(*)::int AS n FROM alert_history WHERE imei = $1')
+      });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 }
@@ -12063,6 +12198,14 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   } else if (body.ai_quota === null && opts && opts.allowFeatures) {
     delete next.ai_quota; // fără cotă = nelimitat
   }
+  // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
+  // `null` sau 12 luni și mai puțin = înapoi la cele 12 incluse. Un număr stricat nu ajunge aici: ruta
+  // îl refuză înainte (400) — nu se ghicește o regulă după care se șterg date.
+  if (body.pastrare !== undefined && opts && opts.allowFeatures) {
+    const p = contracte.curataPastrare(body.pastrare);
+    if (p === null) delete next.pastrare;
+    else if (p) next.pastrare = p;
+  }
   // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
     next.alert_thresholds = _mergeAlertThresholds(cur.alert_thresholds, body.alert_thresholds);
@@ -12091,9 +12234,22 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
-    auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null });
+    const b = req.body || {};
+    let pastrareInainte = null;
+    if (b.pastrare !== undefined) {
+      if (contracte.curataPastrare(b.pastrare) === undefined) {
+        return res.status(400).json({ error: 'Păstrarea istoricului: alege un număr de luni, cel mult ' + contracte.LUNI_ISTORIC_MAX + '.' });
+      }
+      pastrareInainte = contracte.pastrareFirma(await db.getCompanySettings(id));
+    }
+    const next = await _applyCompanySettingsPatch(id, b, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
+    const det = { keys: Object.keys(b) };
+    // O păstrare coborâtă ȘTERGE date la următoarea rulare: se scrie în jurnal de la cât la cât, ca să
+    // se poată spune oricând cine a hotărât și când.
+    if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni };
+    auditReq(req, 'update', 'company_settings', id, det);
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null,
+      pastrare: contracte.pastrareFirma(next) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Catalog IO Teltonika (138 ID-uri din wiki + override-uri globale super-admin) ─────────
@@ -12399,6 +12555,11 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   }
   add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
+  // Păstrarea istoricului peste cele 12 luni incluse (24/36 de luni, vândute în ofertă). Până pe 24.09
+  // se vindea și se semna, dar nu ajungea pe nicio factură — și nici nu se livra. Registrul de venituri
+  // (`_venitLunar`) adună exact același rând, din aceeași regulă.
+  const past = contracte.pastrareFirma(company && company.settings);
+  if (past && past.platita) add('Păstrarea istoricului — ' + contracte.numar(past.luni, 'lună', 'luni'), 1, past.pretRON);
   const subtotal = Math.round(lines.reduce((s, l) => s + l.net, 0) * 100) / 100;
   const vatAmount = Math.round(lines.reduce((s, l) => s + l.vat, 0) * 100) / 100;
   return { lines, subtotal, vatAmount, total: Math.round((subtotal + vatAmount) * 100) / 100, model: p.model };
@@ -12623,26 +12784,34 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     }
   } catch (e) {}
 
-  // Retenția pozițiilor are DOUĂ căi: politica TimescaleDB (dacă extensia există) SAU ștergerea de rezervă
-  // din server.js — dar aceasta din urmă rulează NUMAI dacă POSITION_RETENTION_DAYS e setat explicit
-  // (nu are valoare implicită). Fără niciuna, `positions` crește la nesfârșit. Raportăm separat de compresie.
-  const _posRet = parseInt(process.env.POSITION_RETENTION_DAYS);
-  const _fallbackArmed = Number.isFinite(_posRet) && _posRet > 0;
+  // Compresia și ștergerea istoricului vechi sunt DOUĂ lucruri: compresia o face TimescaleDB (dacă
+  // există), ștergerea o face aplicația, după regula fiecărei firme (12 luni incluse, 24/36 plătite).
   if (ts && ts.usePg) {
+    // Măsurat pe 24.09, pe aplicația pornită: istoricul mai vechi de 7 zile iese de 14–19 ori mai mic.
     add('timescale', 'TimescaleDB (compresie poziții)', ts.enabled ? 'ok' : 'warn',
       ts.enabled ? ('activ · compresie după ' + ts.compressAfterDays + ' zile')
-                 : ('INACTIV → pozițiile se stochează NECOMPRIMAT (Timescale comprimă ~85-90%): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
-    const retOk = ts.enabled || _fallbackArmed;
-    add('retention', 'Ștergerea automată a pozițiilor vechi', retOk ? 'ok' : 'crit',
-      ts.enabled ? ('politică TimescaleDB · ' + ts.retentionDays + ' zile')
-        : (_fallbackArmed ? ('ștergere de rezervă activă · ' + _posRet + ' zile, pe loturi, la 6 ore · ' + _retentionSummary())
-          : 'NIMIC nu șterge pozițiile vechi: Timescale e inactiv, iar POSITION_RETENTION_DAYS nu e setat → tabela `positions` crește la nesfârșit, iar „180 zile istoric" din materiale nu se respectă. Remediu imediat: setează POSITION_RETENTION_DAYS=180.'));
+                 : ('INACTIV → pozițiile se stochează NECOMPRIMAT (cu Timescale ies de 14–19 ori mai mici, măsurat): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
+  }
+  {
+    const _u = _pastrareUltima;
+    const _nivel = (ts && ts.politicaVeche) ? 'crit' : (!_u ? 'info' : (_u.error ? 'crit' : ((_u.raport && (_u.raport.erori || _u.raport.sarite)) ? 'warn' : 'ok')));
+    add('retention', 'Păstrarea istoricului', _nivel,
+      ((ts && ts.politicaVeche) ? 'politica veche TimescaleDB (o singură vârstă pentru toți) N-A PUTUT FI SCOASĂ — ar șterge sub ce scrie în contracte: ' + ts.politicaVeche + ' · ' : '')
+      + contracte.LUNI_ISTORIC_INCLUSE + ' luni pentru toți, incluse; mai mult doar unde firma a plătit'
+      + (_u && _u.raport && _u.raport.firmePlatite ? ' (' + _u.raport.firmePlatite + (_u.raport.firmePlatite === 1 ? ' firmă' : ' firme') + ')' : '')
+      + ' · ' + _pastrareRezumat());
+  }
+  // Variabila veche hotăra o singură vârstă pentru toată lumea. Nu mai e citită — dar dacă a rămas
+  // în Railway, cineva ar putea crede că încă ea hotărăște. Se spune pe ecran, până e ștearsă.
+  if (isSet(process.env.POSITION_RETENTION_DAYS)) {
+    add('retention_env', 'Variabilă veche: POSITION_RETENTION_DAYS', 'warn',
+      'nu mai e folosită — istoricul se păstrează după contractul fiecărei firme. Șterge-o din Railway (Variables), ca să nu încurce.');
   }
   add('backup_offsite', 'Backup off-site (S3/R2)', bk.s3Configured ? (bk.protected ? 'ok' : 'warn') : 'crit',
     bk.s3Configured ? (bk.protected ? ('ultima copie: ' + (bk.at || '—')) : 'configurat, dar ultima rulare nu a urcat nimic')
                     : 'BACKUP_S3_* nesetat → datele de business NU sunt salvate nicăieri în afara containerului');
   // Telemetria NU intră în dump-ul logic (e prea mare) — se arhivează separat, zi cu zi. Fără ea, retenția
-  // de 180 de zile ar fi însemnat pierdere definitivă dacă fereastra de snapshot-uri a bazei e mai scurtă.
+  // după contract (12 luni incluse) ar fi însemnat pierdere definitivă dacă fereastra de snapshot-uri a bazei e mai scurtă.
   const bp = backup.positionsStatus();
   add('backup_positions', 'Arhivă poziții (telemetrie)', !bp.enabled ? 'warn' : (bp.error ? 'crit' : (bp.at ? 'ok' : 'info')),
     !bp.enabled ? 'BACKUP_S3_* nesetat → pozițiile șterse de retenție NU au nicio copie; verifică separat ce fereastră de snapshot-uri are baza'
@@ -14048,7 +14217,7 @@ async function start() {
     try {
       if (backup.backupDue(Date.now())) await backup.runScheduledBackup(db, COMMIT_VER);
       // Arhivarea POZIȚIILOR: doar cu bucket configurat; exportă zilele complete rămase, deci până ajunge
-      // retenția la ele (180 de zile implicit) copia există de mult. Fără ea, retenția ar fi pierdere definitivă.
+      // ștergerea după contract la ele (12 luni incluse) copia există de mult. Fără ea, retenția ar fi pierdere definitivă.
       if (backup.s3Configured() && backup.positionsExportDue(Date.now())) await backup.runPositionsExport(db);
     } catch (e) { /* fiecare copie își scrie singură eroarea în starea ei */ }
     finally { _copieInCurs = false; }
@@ -14101,23 +14270,13 @@ async function start() {
       .catch(() => {});
   }, 6 * 60 * 60 * 1000);
 
-  // ─── Retenție poziții (opțională: setează POSITION_RETENTION_DAYS) ───
-  // Rulează la 6 ore, nu zilnic: fiecare rulare are atunci puțin de șters, iar bugetul de timp per rulare
-  // (RETENTION_BUDGET_MS) e suficient. Prima rulare e amânată — la pornire serverul are deja de încărcat
-  // istoricul în memorie și de acceptat conexiunile trackerelor.
-  const retentionDays = parseInt(process.env.POSITION_RETENTION_DAYS);
-  if (retentionDays > 0) {
-    const runRetention = () => db.deleteOldPositionsDetail(retentionDays)
-      .then(r => {
-        _retentionLast = { at: Date.now(), rows: r.total, batches: r.loturi, exhausted: r.epuizat, error: null };
-        if (r.total) console.log('[RETENȚIE] Șterse ' + r.total + ' poziții mai vechi de ' + retentionDays + ' zile, în ' + r.loturi + ' loturi' + (r.epuizat ? ' (buget de timp epuizat — se continuă la rularea următoare)' : ''));
-      })
-      // Înghițirea tăcută de până acum era exact greșeala care face ca „nu se șterge nimic" să treacă
-      // neobservat luni de zile: singurul semn ar fi fost creșterea bazei.
-      .catch(e => { _retentionLast = { at: Date.now(), rows: 0, batches: 0, exhausted: false, error: e.message }; console.warn('[RETENȚIE] eșuat:', e.message); });
-    setTimeout(runRetention, 60 * 1000);
-    setInterval(runRetention, 6 * 60 * 60 * 1000);
-  }
+  // ─── Păstrarea istoricului: după regula fiecărei firme (12 luni incluse, 24/36 plătite) ───
+  // Rulează mereu, pe orice bază (înainte doar cu POSITION_RETENTION_DAYS setat, altfel tabela creștea la
+  // nesfârșit). La 6 ore, nu zilnic: fiecare rulare are atunci puțin de șters. Prima e amânată — la
+  // pornire serverul are de încărcat istoricul în memorie și de primit conexiunile trackerelor.
+  const runPastrare = () => stergeIstoriculVechi().catch(e => console.warn('[PĂSTRARE] eșuat:', e.message));
+  setTimeout(runPastrare, 60 * 1000);
+  setInterval(runPastrare, 6 * 60 * 60 * 1000);
 
   // Istoricul aparatelor arhivate se șterge la 30 de zile de la arhivare (Anexa GDPR din contract).
   // Rulează zilnic, pe PG și pe PGlite. Vezi `stergeIstoricArhivate`.
