@@ -4857,6 +4857,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       sfarsit: contracte.sfarsitCurent(contract, acum),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
       comparatie: comparatie, prelungire_in_lucru: prelungireInLucru,
+      date_dupa_incetare_zile: contracte.ZILE_DATE_DUPA_INCETARE,
       numar_propus: contract ? null : await db.nextContractNumber().catch(function () { return null; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5098,7 +5099,7 @@ app.get('/api/acte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) =>
       panaLa = contracte.sfarsitContract(Object.assign({}, c, { luni_prelungite: inainte + Number(a.luni_noi) }));
     }
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(a, co, 'Act aditional')));
+    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(a, co, 'Act adițional')));
     contractPdf.actPdf({ act: a, contract: c, firma: co, emitent: emitent, panaLa: panaLa }).pipe(res);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -7263,22 +7264,60 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   }
 });
 
-// Câte zile mai are istoricul unui aparat arhivat până se șterge de tot, și dacă a început deja să
-// se subțieze. Purjarea (`purgeArchivedPositions`, zilnic) șterge RÂNDURI mai vechi de
-// ARCHIVE_RETENTION_DAYS — deci istoricul se topește de la capătul vechi: începe când cea mai veche
-// poziție atinge termenul, și se termină când îl atinge și cea mai nouă. Socoteala se face AICI,
-// fiindcă termenul e o setare de server; ecranul doar arată cifra (nu-și face propria regulă).
+// Câte zile mai are istoricul unui aparat arhivat până se șterge. Regula e a CONTRACTULUI (Anexa
+// GDPR): la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem — iar arhivarea
+// aparatului e încetarea pentru el. Deci ceasul pornește din ziua arhivării (`archived_at`), NU din
+// vârsta pozițiilor (așa era până pe 24.09, cu 2 ani). Socoteala se face AICI, cu cifra din
+// contracts.js; ecranul doar o arată (nu-și face propria regulă).
 function _arhivaTermen(row) {
-  const zile = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
+  const zile = contracte.ZILE_DATE_DUPA_INCETARE;
   const ZI = 86400000, acum = Date.now();
-  const varsta = (t) => (t ? Math.floor((acum - new Date(t).getTime()) / ZI) : null);
-  const vNou = varsta(row.last_ts), vVechi = varsta(row.first_ts);
-  return {
-    ...row,
+  const arhivat = row.archived_at != null ? Number(row.archived_at) : null;
+  const sters = row.istoric_sters_at != null;
+  const la = arhivat != null ? arhivat + zile * ZI : null;
+  return Object.assign({}, row, {
     purge_total_zile: zile,
-    purge_zile: vNou == null ? null : Math.max(0, zile - vNou),  // până dispare TOT
-    purge_inceput: vVechi != null && vVechi >= zile              // cele mai vechi date se șterg deja
-  };
+    purge_la: la,                                                            // ziua ștergerii
+    purge_zile: sters ? 0 : (la == null ? null : Math.max(0, Math.ceil((la - acum) / ZI))),
+    istoric_sters: sters
+  });
+}
+
+// ─── Ștergerea istoricului, la 30 de zile după încetare ──────────────────────────────────────────
+// Contractul (Anexa GDPR, pct. 7) promite: la încetare, clientul are 30 de zile să ceară datele
+// înapoi; fără cerere, se șterg. Aplicația le ținea 2 ani — până pe 24.09 (Alin: „exact așa facem").
+// Se șterge tot istoricul de localizare al aparatului (poziții vii + arhivă + curse + alerte). Rândul
+// aparatului rămâne, marcat „istoric șters", ca să se vadă ce s-a întâmplat.
+async function stergeIstoricArhivate() {
+  const zile = contracte.ZILE_DATE_DUPA_INCETARE;
+  const lista = await db.aparateCuIstoricDeSters(Date.now() - zile * 86400000);
+  const raport = { verificate: lista.length, sterse: [], amanate: [] };
+  for (const imei of lista) {
+    const r = await db.stergeIstoricAparat(imei);
+    if (r.erori.length) { raport.amanate.push({ imei: imei, erori: r.erori }); console.warn('[ARHIVĂ] ' + imei + ': ' + r.erori.join('; ')); }
+    else {
+      raport.sterse.push(Object.assign({ imei: imei }, r));
+      console.log('[ARHIVĂ] Istoric șters (' + zile + ' zile de la arhivare) ' + imei + ': ' + r.pozitii + ' poziții, ' +
+        r.arhiva + ' din arhivă, ' + r.curse + ' curse, ' + r.alerte + ' alerte');
+      // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
+      try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_aparat', entityId: imei, details: r, ip: null, companyId: null }); } catch (e) {}
+    }
+  }
+  return raport;
+}
+// Rulare de mână (super-admin), ca la ceasul contractelor: nu aștepți o zi ca să vezi ce face.
+app.post('/api/admin/arhiva/sterge-istoric', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeIstoricArhivate()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Doar pentru probe (SEED_TEST=1): mută ziua arhivării în urmă, ca proba să nu aștepte 30 de zile.
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/arhivat-de', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      await db.pool.query('UPDATE devices SET archived_at = $2 WHERE imei = $1', [String(b.imei || ''), Date.now() - (Number(b.zile) || 0) * 86400000]);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
 }
 
 // Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
@@ -14080,12 +14119,10 @@ async function start() {
     setInterval(runRetention, 6 * 60 * 60 * 1000);
   }
 
-  // Retenție ARHIVĂ (positions_archive): dispozitivele arhivate se păstrează 2 ani (730z), apoi se purjează.
-  // Rulează mereu (PG + PGlite). Configurabil prin ARCHIVE_RETENTION_DAYS.
-  const archiveRetentionDays = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
-  const runArchivePurge = () => db.purgeArchivedPositions(archiveRetentionDays)
-    .then(n => { if (n) console.log(`[ARHIVĂ] Purjate ${n} poziții arhivate mai vechi de ${archiveRetentionDays} zile`); })
-    .catch(e => console.warn('[ARHIVĂ] purge skip:', e.message));
+  // Istoricul aparatelor arhivate se șterge la 30 de zile de la arhivare (Anexa GDPR din contract).
+  // Rulează zilnic, pe PG și pe PGlite. Vezi `stergeIstoricArhivate`.
+  const runArchivePurge = () => stergeIstoricArhivate()
+    .catch(e => console.warn('[ARHIVĂ] ștergere amânată:', e.message));
   setTimeout(runArchivePurge, 10000);
   setInterval(runArchivePurge, 24 * 60 * 60 * 1000);
 

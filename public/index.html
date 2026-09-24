@@ -4023,9 +4023,10 @@ const pozitii = await r.json();</code></pre>
       } catch (e) {}
     }
     // Rândul de stare al cartonașului „Arhivate" + portocaliul lui. Cifra singură nu spune nimic:
-    // ce contează la un aparat arhivat e cât mai are istoricul până se șterge definitiv (2 ani de la
-    // ultima poziție). Lista mare o cerem DOAR dacă există aparate arhivate — la zero n-are rost.
-    // Portocaliul se aprinde doar când chiar e ceva de rezolvat, nu din construcție.
+    // ce contează la un aparat arhivat e cât mai are istoricul până se șterge definitiv (30 de zile de
+    // la arhivare, cum scrie în contract — cifra vine de la server). Lista mare o cerem DOAR dacă
+    // există aparate arhivate — la zero n-are rost. Portocaliul se aprinde doar când chiar e ceva de
+    // rezolvat, nu din construcție.
     async function _adashArhiva(n) {
       var card = document.querySelector('#admin-dash .adash-card[data-card="archived"]');
       var sub = document.getElementById('adash-s-archived');
@@ -4035,15 +4036,16 @@ const pozitii = await r.json();</code></pre>
       try {
         var rows = await fetch('/api/archived-devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (!Array.isArray(rows)) return;
-        var peDucă = rows.filter(function (d) { return d.purge_zile != null && d.purge_zile > 0 && d.purge_zile <= ARH_PRAG_ZILE; }).length;
-        var sters = rows.filter(function (d) { return d.purge_zile != null && d.purge_zile <= 0; }).length;
+        var peDucă = rows.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
+        var sters = rows.filter(function (d) { return !!d.istoric_sters; }).length;
         if (peDucă) {
-          sub.innerHTML = '<span style="color:var(--orange);">' + peDucă + (peDucă === 1 ? ' cu istoricul pe ducă' : ' cu istoricul pe ducă') + '</span>';
+          sub.innerHTML = '<span style="color:var(--orange);">' + peDucă + ' cu istoricul pe ducă</span>';
           if (card) card.classList.add('adash-warn');
-        } else if (sters) {
-          sub.textContent = sters + (sters === 1 ? ' fără istoric' : ' fără istoric');
+        } else if (sters === rows.length) {
+          sub.textContent = sters === 1 ? 'istoricul s-a șters' : 'istoricul lor s-a șters';
         } else {
-          sub.textContent = 'istoric păstrat 2 ani';
+          var zp = (rows[0] && rows[0].purge_total_zile) || 0;
+          sub.textContent = zp ? 'istoric păstrat ' + _arhZile(zp) + ' de la arhivare' : '';
         }
       } catch (e) {}
     }
@@ -4070,16 +4072,19 @@ const pozitii = await r.json();</code></pre>
     // poartă același limbaj ca ecranul „Dispozitive": grupuri pe firmă (`.rax-devgr`), sumar pe grup
     // și un grup cu ceva de rezolvat rămâne MEREU deschis. Decizia lui Alin, 17.09.
     var _arhRows = [], _arhCauta = '';
-    // Cât mai are istoricul. Cuvintele și pragul stau AICI, într-un loc; cifra vine de la server
-    // (`purge_zile`, `purge_inceput`), fiindcă termenul e o setare de server, nu a ecranului.
-    var ARH_PRAG_ZILE = 60;
+    // Cât mai are istoricul. Cuvintele și pragul stau AICI, într-un loc; cifrele vin de la server
+    // (`purge_zile`, `purge_la`, `istoric_sters`), socotite din ziua arhivării și termenul din contract
+    // (30 de zile, apoi se șterge). Ecranul nu-și face a doua regulă din zile.
+    var ARH_PRAG_ZILE = 7;
+    function _arhZile(n) { n = Number(n) || 0; var r = n % 100; return n === 1 ? '1 zi' : n + ((r >= 1 && r <= 19) ? ' zile' : ' de zile'); }
     function _arhTermen(d) {
+      if (d.istoric_sters) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
       var z = d.purge_zile;
-      if (z == null) return null;                                    // n-are nicio poziție păstrată
-      if (z <= 0) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
-      if (z <= ARH_PRAG_ZILE) return { t: 'istoricul se șterge în ' + z + (z === 1 ? ' zi' : ' zile'), c: 'var(--orange)', rau: true };
-      if (d.purge_inceput) return { t: 'cele mai vechi date au început să se șteargă', c: 'var(--orange)', rau: true };
-      return null;
+      if (z == null) return null;                                    // fără ziua arhivării: nu inventăm un termen
+      var zi = d.purge_la ? new Date(Number(d.purge_la)).toLocaleDateString('ro-RO') : '';
+      if (z <= 0) return { t: 'istoricul se șterge azi', c: 'var(--orange)', rau: true };
+      return { t: 'istoricul se șterge pe ' + zi + ' (în ' + _arhZile(z) + ')',
+        c: z <= ARH_PRAG_ZILE ? 'var(--orange)' : 'var(--text-muted)', rau: z <= ARH_PRAG_ZILE };
     }
     function _arhGrupuri(rows) {
       var m = {};
@@ -4122,8 +4127,11 @@ const pozitii = await r.json();</code></pre>
           : (String(d.name || '') + ' ' + String(d.plate || '') + ' ' + String(d.imei) + ' ' + String(d.company_name || '')).toLowerCase().indexOf(q.toLowerCase()) >= 0);
       });
       var peDucă = _arhRows.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
-      var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). Istoricul lor de până atunci rămâne accesibil și e păstrat <strong>2 ani</strong>.</div>'
-        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> După termen se șterge definitiv — dacă mai ai nevoie de date, scoate-le acum dintr-un raport.</div>' : '')
+      var zPastrare = (_arhRows[0] && _arhRows[0].purge_total_zile) || 0;
+      var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). '
+          + (zPastrare ? 'Istoricul lor se mai păstrează <strong>' + _arhZile(zPastrare) + '</strong> de la arhivare — cât clientul poate cere datele înapoi — apoi se șterge definitiv, cum scrie în contract.' : '')
+          + '</div>'
+        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.</div>' : '')
         + '<div class="rax-dev-bar"><input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / firmă" value="' + _ssEsc(_arhCauta || '') + '" oninput="_arhCautaSet(this.value)"></div>';
       if (!rows.length) {
         host.innerHTML = cap + '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun aparat arhivat care să se potrivească.</div>';
@@ -4163,7 +4171,7 @@ const pozitii = await r.json();</code></pre>
         // acolo grupate pe firme — deci pe el îl scriem întâi, și îl facem buton.
         host.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:36px 12px;"><i class="fas fa-box-open" style="font-size:34px;opacity:.35;"></i>'
           + '<div style="margin-top:12px;font-weight:600;">Niciun aparat arhivat</div>'
-          + '<div style="font-size:12px;margin-top:6px;line-height:1.6;">Arhivezi un aparat când se încheie un contract: nu mai primește date, dar istoricul lui de până atunci se păstrează <strong>2 ani</strong>.</div>'
+          + '<div style="font-size:12px;margin-top:6px;line-height:1.6;">Arhivezi un aparat când se încheie un contract: nu mai primește date, iar istoricul lui se mai păstrează cât scrie în contract — cât clientul poate cere datele înapoi — apoi se șterge.</div>'
           + '<div style="margin-top:14px;"><button class="rax-btn" onclick="raxAdminTab(\'devices\')"><i class="fas fa-microchip"></i> Deschide Dispozitive</button></div></div>';
         return;
       }
@@ -21127,6 +21135,12 @@ const pozitii = await r.json();</code></pre>
       }
       if (c.status === 'activ' && d && d.prelungire_in_lucru) explic += ' Prelungirea e pornită: actul ' + (d.prelungire_in_lucru.number || '') + ', mai jos — du-l până la semnare.';
       if (c.status === 'incheiat' && c.ended_at) explic += ' Data încetării: ' + _zile(c.ended_at) + '.';
+      // Ce urmează după încetare: aparatele se arhivează, iar istoricul lor se mai ține cât scrie în
+      // contract (cifra vine de la server), apoi se șterge singur.
+      if (c.status === 'incheiat' && d && d.date_dupa_incetare_zile) {
+        explic += ' Arhivează aparatele firmei din „Dispozitive": din ziua aceea istoricul lor se mai păstrează ' +
+          d.date_dupa_incetare_zile + _raxDe(d.date_dupa_incetare_zile) + 'zile — cât clientul poate cere datele înapoi — apoi se șterge singur, cum scrie în contract.';
+      }
       var eticheta = c.status === 'ciorna' ? 'ciorna' : 'contractul';
       return '<div class="raco-urmeaza">' +
         '<div class="raco-urmeaza-t">' + esc(explic) + '</div>' +
@@ -21153,7 +21167,9 @@ const pozitii = await r.json();</code></pre>
       }
       var motiv = null;
       if (stareNoua === 'incheiat') {
-        motiv = await raConfirm('Marchezi contractul ÎNCHEIAT? Se trece data de azi ca dată a încetării. Un contract încheiat nu mai poate fi redeschis.',
+        var zDate = window._raxCod && window._raxCod.date_dupa_incetare_zile;
+        motiv = await raConfirm('Marchezi contractul ÎNCHEIAT? Se trece data de azi ca dată a încetării. Un contract încheiat nu mai poate fi redeschis.' +
+          (zDate ? '\n\nApoi arhivează aparatele firmei din „Dispozitive": istoricul lor se mai păstrează ' + zDate + _raxDe(zDate) + 'zile, apoi se șterge, cum scrie în contract.' : ''),
           { okLabel: 'Încheie contractul', field: { label: 'Motivul încetării (rămâne în dosar)', placeholder: 'ex. denunțare cu preaviz' } });
         if (motiv === false) return;
       }

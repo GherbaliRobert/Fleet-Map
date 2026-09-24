@@ -199,7 +199,8 @@ async function initDb() {
 
     // ─── Arhivă poziții: istoricul „înghețat" al dispozitivelor arhivate (contract încheiat) ───
     // La arhivare copiem aici pozițiile dispozitivului (archiveDevicePositions). `positions` rămâne pe retenția
-    // scurtă (180z, active), iar `positions_archive` e păstrată mai mult (purgeArchivedPositions → 2 ani).
+    // scurtă (180z, active). Copia din arhivă ține cât clientul poate cere datele înapoi: 30 de zile de la
+    // arhivare (vezi `stergeIstoricAparat`), apoi se șterge, împreună cu restul istoricului aparatului.
     // Astfel „memoria veche" NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
     await client.query(`
       CREATE TABLE IF NOT EXISTS positions_archive (
@@ -366,6 +367,15 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_at TIMESTAMPTZ;
       END $$
     `);
+    // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
+    // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
+    // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
+    // `istoric_sters_at` = când s-a șters, ca ecranul să poată spune „s-a șters pe …".
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS archived_at BIGINT`);
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS istoric_sters_at BIGINT`);
+    // Aparatele arhivate ÎNAINTE de regula asta (24.09) n-au ziua scrisă: primesc ziua de azi, deci
+    // toate cele 30 de zile — nimic nu se șterge pe nepusă masă la prima pornire.
+    await client.query(`UPDATE devices SET archived_at = $1 WHERE status = 'archived' AND archived_at IS NULL`, [Date.now()]);
 
     // Tabela geofences (zone geografice)
     await client.query(`
@@ -2709,7 +2719,9 @@ async function createDevice(imei, fields, companyId) {
 // Arhivare / restaurare vehicul (status = 'active' | 'archived')
 async function setDeviceStatus(imei, status) {
   const s = status === 'archived' ? 'archived' : 'active';
-  await pool.query('UPDATE devices SET status = $2 WHERE imei = $1', [imei, s]);
+  // La arhivare pornește ceasul celor 30 de zile; la restaurare se oprește (aparatul e iar în contract).
+  await pool.query('UPDATE devices SET status = $2, archived_at = $3, istoric_sters_at = NULL WHERE imei = $1',
+    [imei, s, s === 'archived' ? Date.now() : null]);
 }
 
 async function updateTruckConfig(imei, config) {
@@ -3657,11 +3669,46 @@ async function archiveDevicePositions(imei) {
   return r.affectedRows || r.rowCount || 0;
 }
 
-// Purjează arhiva mai veche de N zile (politică aleasă: arhivate 2 ani = 730z).
-// Tot pe loturi. Aici indexul dedicat pe `timestamp` e obligatoriu: singurul index existent era
-// (imei, timestamp), iar un index compus care începe cu `imei` NU ajută la `WHERE timestamp < …` —
-// fără el, fiecare lot ar fi făcut seq scan și lotizarea ar fi ieșit mai rea decât ștergerea monolitică.
-async function purgeArchivedPositions(days, opts) { return (await _deleteOldBatched('positions_archive', days, opts)).total; }
+// ─── Istoricul unui aparat arhivat se șterge la 30 de zile de la arhivare (24.09) ─────────────────
+// Până pe 24.09 arhiva se ținea 2 ani, ștearsă după vârsta pozițiilor. Contractul (Anexa GDPR) spune
+// altceva: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem. Arhivarea
+// unui aparat ESTE încetarea pentru el, deci ceasul pornește din `devices.archived_at`.
+//
+// Se șterge TOT istoricul de localizare al aparatului, nu doar copia din arhivă: pozițiile lui stau
+// și în `positions` (cele vii se țin 180 de zile), iar cursele și alertele poartă locuri și adrese.
+async function aparateCuIstoricDeSters(arhivateInainteDe) {
+  const r = await pool.query(
+    `SELECT imei FROM devices WHERE status = 'archived' AND archived_at IS NOT NULL
+        AND archived_at < $1 AND istoric_sters_at IS NULL`, [arhivateInainteDe]);
+  return r.rows.map(function (x) { return x.imei; });
+}
+// Pe loturi, după TIMP, nu după `ctid`: pe tabelele împărțite în bucăți (hypertable) `ctid` nu e unic
+// între bucăți, deci un „DELETE … WHERE ctid IN (…)" ar putea lovi rânduri străine.
+async function _stergeImeiPeLoturi(tabel, imei) {
+  let total = 0;
+  for (;;) {
+    const prag = await pool.query(`SELECT timestamp AS t FROM ${tabel} WHERE imei = $1 ORDER BY timestamp OFFSET $2 LIMIT 1`, [imei, BATCH_ROWS]);
+    if (!prag.rows[0]) {
+      const r = await pool.query(`DELETE FROM ${tabel} WHERE imei = $1`, [imei]);
+      return total + (r.affectedRows || r.rowCount || 0);
+    }
+    const r = await pool.query(`DELETE FROM ${tabel} WHERE imei = $1 AND timestamp <= $2`, [imei, prag.rows[0].t]);
+    total += r.affectedRows || r.rowCount || 0;
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });   // lasă ingestul să respire
+  }
+}
+// Întoarce ce s-a șters, pe feluri. Aparatul se marchează „istoric șters" DOAR dacă toate au mers —
+// altfel mâine se încearcă din nou, nu se lasă ceva pe jumătate crezând că e gata.
+async function stergeIstoricAparat(imei) {
+  const out = { pozitii: 0, arhiva: 0, curse: 0, alerte: 0, erori: [] };
+  const incearca = async function (cheie, fn) { try { out[cheie] = await fn(); } catch (e) { out.erori.push(cheie + ': ' + e.message); } };
+  await incearca('pozitii', function () { return _stergeImeiPeLoturi('positions', imei); });
+  await incearca('arhiva', function () { return _stergeImeiPeLoturi('positions_archive', imei); });
+  await incearca('curse', async function () { const r = await pool.query('DELETE FROM trips WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
+  await incearca('alerte', async function () { const r = await pool.query('DELETE FROM alert_history WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
+  if (!out.erori.length) await pool.query('UPDATE devices SET istoric_sters_at = $2 WHERE imei = $1', [imei, Date.now()]);
+  return out;
+}
 
 // IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
 async function getArchivedImeis() {
@@ -3678,7 +3725,7 @@ async function countArchivedPositions(imei) {
 // Dispozitivele arhivate + numărul de poziții păstrate în arhivă (pentru pagina „Dispozitive arhivate").
 async function getArchivedDevices() {
   const r = await pool.query(`
-    SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen,
+    SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen, d.archived_at, d.istoric_sters_at,
            c.name AS company_name,
            COALESCE(a.n, 0) AS archived_positions, a.first_ts, a.last_ts
     FROM devices d
@@ -4598,7 +4645,7 @@ module.exports = {
   cleanupExpiredSessions,
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
-  purgeArchivedPositions,
+  aparateCuIstoricDeSters, stergeIstoricAparat,
   getArchivedImeis,
   countArchivedPositions,
   getArchivedDevices,

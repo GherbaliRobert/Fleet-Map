@@ -95,6 +95,48 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+## 2026-09-24
+
+### AMÂNDOI · Datele unui client se șterg la 30 de zile după încetare, cum scrie în contract
+
+Alin: *„Hârtia promite ștergerea lor după 30 de zile, cum cere și legea — exact așa facem."*
+
+**Ce era.** Contractul promitea: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le
+ștergem. Aplicația ținea însă istoricul aparatelor arhivate **2 ani**. Hârtia spunea una, aplicația
+făcea alta.
+
+**Ce e acum.**
+- Când arhivezi aparatul unui client (adică se încheie contractul pentru el), aplicația **își notează
+  ziua**. Din ziua aceea, istoricul se mai păstrează **30 de zile**: e timpul în care clientul poate
+  cere datele înapoi. Le scoți din „Istoric" → Export CSV, sau dintr-un raport.
+- **În ziua 31 se șterge singur TOT istoricul aparatului**: pozițiile, cursele (au adrese) și alertele.
+  Înainte se ștergea doar copia din arhivă, iar pozițiile rămâneau încă luni întregi în tabelul
+  obișnuit. Fiecare ștergere lasă un rând în jurnalul de audit, ca să se poată dovedi.
+- Pe ecranul „Dispozitive arhivate" fiecare aparat scrie **ziua exactă** a ștergerii: *„istoricul se
+  șterge pe 24.10.2026 (în 30 de zile)"*. În ultima săptămână textul devine portocaliu. După
+  ștergere, aparatul rămâne pe listă cu *„istoricul s-a șters"*.
+- Dacă **restaurezi** un aparat, ceasul se oprește: e iar în contract.
+- Cifra de 30 stă într-un singur loc. O citesc aceeași și hârtia contractului, și ștergerea, și ecranele.
+- Când apeși „Încheie contractul", aplicația îți amintește să arhivezi aparatele firmei.
+- Aparatele arhivate dinainte au primit ziua de azi, deci toate cele 30 de zile. Nimic nu s-a șters
+  pe nepusă masă.
+
+- **Ce am schimbat:** ștergerea istoricului la 30 de zile de la arhivare (era 2 ani).
+- **Ce vede fondatorul:** pe „Dispozitive arhivate", ziua în care se șterge fiecare istoric; pe
+  cartonașul de pe „Acasă", „istoric păstrat 30 de zile de la arhivare".
+- **Ce vede clientul:** nimic în aplicație. Pe hârtie, contractul spune aceeași cifră pe care o și aplicăm.
+
+### AMÂNDOI · Contractul se descarcă „RA-Tracks - Contract …"
+
+Alin a ales numele casei. Fișierul se cheamă acum **„RA-Tracks - Contract RAT-C-2026-0001 - Transport
+Alfa SRL.pdf"**, la fel ca rapoartele și ofertele. Actul adițional se cheamă „RA-Tracks - Act adițional …",
+cu diacritice. Pe drum am mai reparat ceva: numărul actului conține „/" („…/A1"), iar browserul
+îl strica în numele fișierului. Acum „/" se înlocuiește curat.
+
+- **Ce am schimbat:** numele fișierelor de contract și act adițional.
+- **Ce vede fondatorul:** fișierele descărcate se cheamă ca restul documentelor noastre.
+- **Ce vede clientul:** același nume pe fișierul pe care îl primește.
+
 ## 2026-09-23
 
 ### AMÂNDOI · Contracte: se reînnoiesc dintr-un buton, cel semnat nu se mai atinge, prețul nu se mai pierde pe drum
@@ -8351,25 +8393,19 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **(voi) Ce se întâmplă cu datele după încetarea contractului.** Hârtia (acordul GDPR din
-  contract) promite: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem.
-  Aplicația ține istoricul unui aparat arhivat **2 ani**. Legea (GDPR, art. 28) ne cere să le ștergem
-  sau să le dăm înapoi. Nu ne obligă să le păstrăm; legea contabilității ne obligă doar la contract
-  și facturi (10 ani). Trebuie aduse la un singur răspuns: ori aplicația șterge după 30 de zile, ori
-  contractul spune 2 ani (și clientul o cere în scris). De confirmat cu un jurist. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): datele după încetare — 30 de zile, apoi se șterg.** Alin: *„exact
+  așa facem"*. Aplicația face acum ce scrie în contract (vezi intrarea de la 24.09). De confirmat
+  totuși cu un jurist, la citirea întregului contract înainte de lansare.
 
 - [ ] **(voi) Păstrarea datelor 24 / 36 de luni: se vinde, se semnează, dar nu se livrează.** Oferta o
   vinde (+50 / +100 de lei pe lună), contractul o scrie acum pe rând, dar aplicația păstrează 6 luni
   pentru toată lumea și nu o pune pe factură. Fișa firmei o arată ca „în contract, dar nu ajunge pe
   factură". Ori o livrăm (păstrare pe firmă, cere lucru pe bază), ori o scoatem din ofertă. (23.09)
 
-- [ ] **(voi) Numele fișierului contractului.** Se descarcă „RA TRAKS-Contract RAT-C-… - Firma.pdf",
-  cum ai cerut pe 09.09. Între timp logo-ul a devenit „RA Tracks", iar ofertele și rapoartele se cheamă
-  „RA-Tracks - …". Îl aliniem? E o singură linie. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): numele fișierului contractului** — „RA-Tracks - Contract …".
 
-- [ ] **(voi) Contractele și firmele făcute ÎNAINTE de 23.09.** Au anexa veche (doar suma) și firma fără
-  preț de facturare, dacă au venit dintr-o ofertă. Chenarul „Contractul și factura" din fișa firmei le
-  arată pe fiecare. Prețul se completează din „Abonament & plăți", firmă cu firmă. (23.09)
+- [x] **NU E CAZUL (24.09): contractele făcute înainte de 23.09.** Alin: *„nu e nimic oficial, n-am
+  dat drumul la aplicație"*. Nu există clienți reali cu contracte vechi, deci nu e nimic de completat.
 
 - [x] **REZOLVAT (21.09): logo-ul scrie „RA Tracks".** Fișierele `public/logo.png` și
   `public/logo-light.png` aveau în ele „RA | traks" și ajungeau pe fiecare raport, Excel, contract

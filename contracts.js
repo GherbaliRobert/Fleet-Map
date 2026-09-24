@@ -27,6 +27,14 @@ LIPSURI.forEach(function (l) { ETICHETE[l[0]] = l[1]; });
 // Câte zile înainte de expirare începem să atragem atenția.
 const PRAG_EXPIRA_ZILE = 60;
 
+// Cât mai ținem datele unui client după încetare: 30 de zile, în care el poate cere să le primească
+// înapoi; apoi se șterg. Așa scrie în Anexa GDPR a contractului, și așa face aplicația (arhivarea unui
+// aparat = încetarea pentru el). O SINGURĂ cifră, citită și de hârtie, și de ștergerea automată, și de
+// ecran — hotărât cu Alin pe 24.09 („exact așa facem"), după ce aplicația ținea istoricul 2 ani.
+// GDPR, art. 28: la încetare, împuternicitul șterge sau returnează datele; nicio lege nu ne obligă să
+// păstrăm pozițiile GPS ale clientului. NU o face variabilă de mediu: e o promisiune semnată.
+const ZILE_DATE_DUPA_INCETARE = 30;
+
 // Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
 // trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
 // Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
@@ -307,7 +315,7 @@ function anexaInVigoare(contract, acte) {
 }
 
 module.exports = {
-  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ETICHETE_STARE, URMATORUL_PAS, numar,
+  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare
 };

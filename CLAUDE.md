@@ -566,8 +566,9 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 - Fără cuvântul „plan"; numerele cu „de" prin `contracts.numar` („24 de luni", „100 de întrebări").
 - „Vezi" / „Descarcă": `raxHartie(url, previzualizare, ce)` — o singură cerere, fereastra
   `_ofArataHartia`, numele din antet (`_numeDinAntet`). Antetul îl scrie `_antetDescarcare`
-  (ASCII + `filename*` UTF-8). Numele rămâne „RA TRAKS-Contract …" (cerut de Alin pe 09.09) până
-  hotărăște altfel.
+  (ASCII + `filename*` UTF-8). Numele: **„RA-Tracks - Contract {număr} - {firmă}.pdf"** (Alin, 24.09),
+  ca rapoartele și ofertele; actul: „RA-Tracks - Act adițional …". Caracterele interzise (inclusiv
+  „/" din numărul actului, „…/A1") se scot din TOT numele (`numeFisier`).
 - ⚠ În cutia de probe Chromium salvează „download" în loc de un nume cu diacritice: cutia n-are
   limba UTF-8. Pornește browserul cu `LANG=C.UTF-8`. Nu e o problemă a aplicației.
 
@@ -576,13 +577,21 @@ Fila Contract pune **pe bucăți** contractul lângă factura lunii, calculată 
 (nu cu o copie): mașinile, RA Insight (se facturează după conturile folosite — deci nu se compară
 totalul), și ce e în contract dar nu ajunge pe factură (`nefacturate`, ex. păstrarea datelor).
 
+### Datele după încetare: 30 de zile, apoi se șterg (decizie Alin, 24.09)
+Hârtia (Anexa GDPR, pct. 7) promite: la încetare, clientul are 30 de zile să ceară datele înapoi;
+fără cerere, se șterg. Alin: *„exact așa facem"*. Aplicația le ținea 2 ani — acum face ce scrie.
+- **Cifra stă într-un singur loc:** `ZILE_DATE_DUPA_INCETARE = 30` în `contracts.js`, citită de hârtie,
+  de ștergerea automată și (prin server) de ecrane. NU o face variabilă de mediu: e promisiune semnată.
+- Arhivarea unui aparat ESTE încetarea pentru el (`devices.archived_at`); detalii la „Dispozitive
+  arhivate", mai jos. Legea (GDPR art. 28) cere ștergere/returnare; nicio lege nu ne obligă să păstrăm
+  pozițiile GPS ale clientului (contractul și facturile NOASTRE: 10 ani, legea contabilității).
+- La încheierea contractului, fila și fereastra de confirmare amintesc: arhivează aparatele firmei.
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- **Datele după încetare:** hârtia (Anexa GDPR) promite ștergere după 30 de zile; aplicația ține
-  istoricul arhivat 2 ani. Legea (GDPR art. 28) cere ștergere/returnare, fără obligație de păstrare.
 - **Păstrarea datelor 24/36 de luni** se vinde și se semnează, dar aplicația ține 6 luni pentru toți
   și nu o facturează. Ori se livrează (retenție pe firmă), ori nu se mai vinde.
-- Numele fișierului contractului („RA TRAKS-Contract" vs „RA-Tracks - Contract").
-- Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`.
+- Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
+  `verify_arhiva.js` (inclusiv pe server pornit).
 
 ## RA Tracks NU funcționează pe planuri (regulă de fond)
 
@@ -778,16 +787,25 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
   rând închis e mai rea decât una scrisă urât.
 
-### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09)
+### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09; termenul schimbat pe 24.09)
 Arhivarea = contract încheiat: se copiază întâi istoricul în `positions_archive`, apoi se marchează
-`archived`, i se taie conexiunea, iese din allow-list și de pe harta live. Pozițiile unui aparat ACTIV
-se țin 180 de zile (`POSITION_RETENTION_DAYS`); copia din arhivă se ține **2 ani**
-(`ARCHIVE_RETENTION_DAYS`, implicit 730, purjare zilnică). Deci NU „2 ani de istoric", ci „ultimele
-~6 luni, păstrate 2 ani" — scrie-o așa oriunde o explici.
+`archived` (cu **ziua arhivării**, `devices.archived_at`), i se taie conexiunea, iese din allow-list și
+de pe harta live. Pozițiile unui aparat ACTIV se țin 180 de zile (`POSITION_RETENTION_DAYS`).
 
-- **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_inceput` pe fiecare rând
-  din `/api/archived-devices`). Ecranul doar arată cifra primită; NU-și face a doua regulă din zile.
-  Pragul de avertizare (`ARH_PRAG_ZILE = 60`) și cuvintele stau într-un singur loc, în `_arhTermen`.
+- **Istoricul unui aparat arhivat se mai ține 30 de zile de la arhivare** (`ZILE_DATE_DUPA_INCETARE`,
+  cum scrie în contract), apoi `stergeIstoricArhivate` (zilnic; de mână: `POST /api/admin/arhiva/sterge-istoric`)
+  șterge TOT istoricul de localizare al aparatului: pozițiile **vii** (`positions`), copia din arhivă,
+  cursele și alertele — cu rând în audit. Aparatul rămâne pe listă, cu `istoric_sters_at`.
+  Până pe 24.09: arhiva se ținea 2 ani, ștearsă după vârsta pozițiilor, iar pozițiile vii nu se atingeau.
+- ⚠ Ștergerea merge **pe loturi după timp, NU după `ctid`**: pe hypertable, `ctid` nu e unic între
+  bucăți. Un aparat se marchează „șters" doar dacă au mers toate ștergerile; altfel se reîncearcă mâine.
+- Restaurarea oprește ceasul (`archived_at = NULL`). Aparatele arhivate înainte de 24.09 au primit
+  ziua de 24.09 — nimic nu s-a șters pe nepusă masă la prima pornire.
+- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Export CSV, sau un raport.
+- **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_la`, `istoric_sters` pe
+  fiecare rând din `/api/archived-devices`). Ecranul doar arată ce primește; NU-și face a doua regulă
+  din zile. Pragul de avertizare (`ARH_PRAG_ZILE = 7`, ultima săptămână) și cuvintele stau într-un
+  singur loc, în `_arhTermen`.
 - **Butonul „Istoric"** trece prin `window._hpCerut` → `fillHistoryVehicle`, care cere lista CU
   arhivate (`?includeArchived=1`) **doar** pentru drumul ăsta și selectează vehiculul cerut. Arhivatele
   NU intră în selectoarele de zi cu zi. Nu scrie o a doua cale de umplut selectorul.

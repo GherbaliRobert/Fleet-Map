@@ -455,7 +455,10 @@ function scrieContract(doc, date) {
     _titlu(doc, '6. Încălcări de securitate');
     _p(doc, 'Prestatorul îl înștiințează pe Operator fără întârziere nejustificată, în cel mult 24 de ore de la luarea la cunoștință, despre orice încălcare a securității datelor, cu informațiile de care dispune la acel moment.');
     _titlu(doc, '7. Soarta datelor la încetare');
-    _p(doc, 'La încetarea contractului, Prestatorul șterge sau restituie datele, la alegerea Operatorului exprimată în scris în termen de 30 de zile de la încetare. În lipsa unei opțiuni, datele se șterg după expirarea acestui termen, cu excepția celor pe care legea îl obligă să le păstreze.');
+    // Cifra e ACEEAȘI cu cea după care aplicația șterge singură istoricul (contracts.js) — hârtia și
+    // aplicația nu au voie să promită lucruri diferite (până pe 24.09 aplicația ținea 2 ani).
+    _p(doc, 'La încetarea contractului, Prestatorul șterge sau restituie datele, la alegerea Operatorului exprimată în scris în termen de ' +
+      C.numar(C.ZILE_DATE_DUPA_INCETARE, 'zi', 'zile') + ' de la încetare. În lipsa unei opțiuni, datele se șterg după expirarea acestui termen, cu excepția celor pe care legea îl obligă să le păstreze.');
     _titlu(doc, '8. Transferuri în afara Uniunii Europene');
     _p(doc, 'Datele se prelucrează și se stochează pe teritoriul Uniunii Europene. Orice transfer în afara UE se face doar cu garanțiile prevăzute de GDPR și cu informarea prealabilă a Operatorului.');
     _semnaturi(doc, em.name, firma.name);
@@ -582,12 +585,16 @@ function contractPdf(date) {
   return doc;
 }
 
-// Numele fișierului descărcat. Alin, 09.09: „să apară ca nume, RA TRAKS-Contract".
-// (Rapoartele folosesc „RA-Tracks - Raport …", vezi CLAUDE.md — aici e forma cerută pentru acte.)
+// Numele fișierului descărcat, după regula casei (ca rapoartele și ofertele): „RA-Tracks - Contract
+// RAT-C-2026-0001 - Transport Alfa SRL.pdf". Hotărât de Alin pe 24.09 (pe 09.09 ceruse „RA
+// TRAKS-Contract", de pe vremea când și logo-ul scria „traks").
+// Caracterele interzise în numele de fișier se scot din TOT numele, nu doar din firmă: numărul unui
+// act adițional are „/" („RAT-C-2026-0001/A1"), iar browserul îl transforma cum voia el.
 function numeFisier(contract, firma, fel) {
-  const nr = (contract && contract.number) || 'ciorna';
-  const cine = String((firma && firma.name) || '').replace(/[\\/:*?"<>|]+/g, '').trim();
-  return 'RA TRAKS-' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
+  const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
+  const nr = curat((contract && contract.number) || 'ciornă');
+  const cine = curat(firma && firma.name);
+  return 'RA-Tracks - ' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
 }
 
 module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier };
