@@ -20758,6 +20758,7 @@ const pozitii = await r.json();</code></pre>
         _raxCtre.tot = j.contracte || [];
         _raxCtre.fara = j.fara_contract || [];
         _raxCtre.incheiate = j.incheiate_cu_acces || [];
+        _raxCtre.trimite = !!j.trimite_pe_email;
       } catch (e) { _raxCtre.tot = []; _raxCtre.fara = []; _raxCtre.incheiate = []; }
       raxRenderContracte();
     };
@@ -20802,6 +20803,177 @@ const pozitii = await r.json();</code></pre>
       }
       return h;
     }
+    // ─── Butonul fiecărei lipse, chiar pe etichetă (Alin, 24.09) ───────────────────────────────
+    // „Buton de trimitere fix acolo unde lipsește." Lista spunea CE lipsește, dar ca să rezolvi
+    // intrai în fișa firmei și căutai câmpul. Acum fiecare lipsă își are butonul, pe rândul ei:
+    //   • ce completăm NOI (CUI, sediu, reprezentant) → „Completează", o fereastră mică, cu ANAF;
+    //   • pasul contractului → „Aprobă" → „Trimite la semnat" (pleacă pe email, cu PDF-ul) → „E semnat";
+    //   • ce vine de la CLIENT după semnare (actul scanat, acordul GDPR) → „Încarcă".
+    // Regulile (ce lipsește, ce stare urmează) stau pe server; aici doar se desenează butoanele.
+    var CTRE_FIRMA = ['cui', 'sediu', 'reprezentant'];
+    function _ctreLipsuriHtml(c) {
+      var l = (c.dosar && c.dosar.lipsuri) || [];
+      var etich = function (k) { return ({ cui: 'CUI-ul firmei', sediu: 'sediul', reprezentant: 'reprezentantul legal', semnatura: 'data semnării', actul: 'contractul semnat (PDF)', gdpr: 'acordul GDPR' })[k] || k; };
+      var h = '';
+      var firma = l.filter(function (k) { return CTRE_FIRMA.indexOf(k) >= 0; });
+      if (firma.length) {
+        h += '<div class="ctre-lipsa"><span>lipsește ' + esc(firma.map(etich).join(', ')) + '</span>' +
+          '<button class="rax-btn" onclick="raxCtreCompleteaza(' + c.company_id + ')"><i class="fas fa-pen-to-square"></i> Completează</button></div>';
+      }
+      if (l.indexOf('semnatura') >= 0) h += '<div class="ctre-lipsa"><span>lipsește data semnării</span><button class="rax-btn" onclick="raxCtreData(' + c.id + ')"><i class="fas fa-calendar-check"></i> Pune data</button></div>';
+      if (l.indexOf('actul') >= 0) h += '<div class="ctre-lipsa"><span>lipsește contractul semnat (PDF)</span><button class="rax-btn" onclick="raxCtreIncarca(' + c.id + ', \'contract\')"><i class="fas fa-upload"></i> Încarcă semnat</button></div>';
+      if (l.indexOf('gdpr') >= 0) h += '<div class="ctre-lipsa"><span>lipsește acordul GDPR semnat</span><button class="rax-btn" onclick="raxCtreIncarca(' + c.id + ', \'gdpr\')"><i class="fas fa-upload"></i> Încarcă acordul</button></div>';
+      return h;
+    }
+    // Pasul următor al contractului, sub stare. Fără SMTP pe server, „Trimite la semnat" ar minți —
+    // atunci butonul e „Am trimis-o" (o descarci de alături și o trimiți tu).
+    function _ctrePasHtml(c) {
+      if (c.status === 'ciorna') return '<button class="rax-btn primary ctre-pas" onclick="raxCtreAproba(' + c.id + ')"><i class="fas fa-check"></i> Aprobă</button>';
+      if (c.status === 'aprobat') {
+        return _raxCtre.trimite
+          ? '<button class="rax-btn primary ctre-pas" onclick="raxCtreTrimite(' + c.id + ')"><i class="fas fa-paper-plane"></i> Trimite la semnat</button>'
+          : '<button class="rax-btn primary ctre-pas" title="Emailul nu e configurat pe server: descarcă contractul și trimite-l tu" onclick="raxCtreAmTrimis(' + c.id + ')"><i class="fas fa-paper-plane"></i> Am trimis-o</button>';
+      }
+      if (c.status === 'trimis') {
+        return (c.sent_at ? '<span class="raco-until">trimis pe ' + _zile(c.sent_at) + (c.sent_to ? ' la ' + esc(c.sent_to) : '') + '</span>' : '') +
+          '<button class="rax-btn primary ctre-pas" onclick="raxCtreSemnat(' + c.id + ')"><i class="fas fa-file-signature"></i> E semnat</button>' +
+          (_raxCtre.trimite ? '<button class="rax-btn ctre-pas" onclick="raxCtreTrimite(' + c.id + ')"><i class="fas fa-rotate-right"></i> Retrimite</button>' : '');
+      }
+      return '';
+    }
+    function _ctreGasit(id) { return (_raxCtre.tot || []).filter(function (x) { return x.id === id; })[0] || null; }
+    var _ctreToast = function (m, fel) { (window.raxToast || function (x) { alert(x); })(m, fel); };
+    async function _ctrePut(id, corp, ok) {
+      try {
+        var r = await fetch('/api/contracts/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { _ctreToast(j.error || ('Eroare ' + r.status), 'error'); return false; }
+        if (ok) _ctreToast(ok, 'success');
+        raxLoadContracte();
+        return true;
+      } catch (e) { _ctreToast('Eroare: ' + e.message, 'error'); return false; }
+    }
+    window.raxCtreAproba = async function (id) {
+      var c = _ctreGasit(id); if (!c) return;
+      if (!await raConfirm('Aprobi contractul ' + (c.number || '') + '?\n\nDin clipa asta hârtia nu mai e ciornă: se poate trimite la semnat.', { danger: false, okLabel: 'Aprobă' })) return;
+      _ctrePut(id, { status: 'aprobat' }, 'Contract aprobat ✓ — urmează „Trimite la semnat"');
+    };
+    window.raxCtreAmTrimis = async function (id) {
+      if (!await raConfirm('L-ai trimis tu clientului (email, WhatsApp)?\n\nContractul trece pe „trimis la client". Când vine semnat, apeși „E semnat" și îl încarci.', { danger: false, okLabel: 'Da, l-am trimis' })) return;
+      _ctrePut(id, { status: 'trimis' }, 'Marcat „trimis la client" ✓');
+    };
+    window.raxCtreTrimite = async function (id) {
+      var c = _ctreGasit(id); if (!c) return;
+      var catre = await raConfirm('Contractul ' + (c.number || '') + ' pleacă pe email, cu PDF-ul atașat, ca să-l semneze. Răspunsul lor — contractul semnat — vine la adresa noastră.\n\nCând îl primești, apeși „E semnat" și îl încarci.',
+        { title: 'Trimite la semnat', icon: 'fa-paper-plane', danger: false, okLabel: 'Trimite', field: { label: 'Adresa clientului', value: c.contact_email || '', placeholder: 'contact@firma.ro' } });
+      if (catre === false) return;
+      try {
+        var r = await fetch('/api/contracts/' + id + '/trimite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ catre: String(catre || '').trim() }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) {
+          // Goluri pe hârtie → deschide direct completarea, nu doar un mesaj.
+          if (j.lipsuri && j.lipsuri.length) { _ctreToast(j.error, 'error'); return raxCtreCompleteaza(c.company_id); }
+          _ctreToast(j.error || ('Eroare ' + r.status), 'error'); return;
+        }
+        _ctreToast('Trimis la ' + j.trimis_la + ' ✓', 'success');
+        raxLoadContracte();
+      } catch (e) { _ctreToast('Eroare: ' + e.message, 'error'); }
+    };
+    // Un fișier ales de om (PDF, JPG, PNG, cel mult 4 MB), ca text base64 — aceeași formă ca în fila Contract.
+    function _ctreAlegeFisier() {
+      return new Promise(function (resolve) {
+        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.pdf,.jpg,.jpeg,.png';
+        inp.onchange = function () {
+          var f = inp.files && inp.files[0]; if (!f) return resolve(null);
+          if (f.size > 4 * 1024 * 1024) { _ctreToast('Fișierul depășește 4 MB.', 'error'); return resolve(null); }
+          var fr = new FileReader();
+          fr.onload = function () { resolve({ name: f.name, b64: String(fr.result).split(',').pop() }); };
+          fr.onerror = function () { resolve(null); };
+          fr.readAsDataURL(f);
+        };
+        inp.click();
+      });
+    }
+    async function _ctreUrca(id, care, f) {
+      var r = await fetch('/api/contracts/' + id + '/file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+        body: JSON.stringify({ care: care, name: f.name, b64: f.b64 }) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok) { _ctreToast(j.error || ('Eroare ' + r.status), 'error'); return false; }
+      return true;
+    }
+    window.raxCtreIncarca = async function (id, care) {
+      var f = await _ctreAlegeFisier(); if (!f) return;
+      if (await _ctreUrca(id, care, f)) { _ctreToast((care === 'gdpr' ? 'Acordul GDPR' : 'Contractul semnat') + ' e în dosar ✓', 'success'); raxLoadContracte(); }
+    };
+    // „E semnat": se încarcă actul semnat venit de la client și contractul trece în vigoare, cu ziua
+    // semnării. Semnat nu se mai întoarce — de aceea întreabă întâi, ca butonul mare din fila Contract.
+    window.raxCtreSemnat = async function (id) {
+      var c = _ctreGasit(id); if (!c) return;
+      var zi = await raConfirm('Contractul ' + (c.number || '') + ' e semnat de amândoi?\n\nAlegi fișierul semnat primit de la client. Din clipa asta contractul nu se mai modifică: orice schimbare se face prin act adițional.',
+        { danger: false, icon: 'fa-file-signature', okLabel: 'Alege fișierul semnat', field: { label: 'Data semnării', type: 'date', value: new Date().toISOString().slice(0, 10) } });
+      if (zi === false) return;
+      var f = await _ctreAlegeFisier(); if (!f) return;
+      if (!await _ctreUrca(id, 'contract', f)) return;
+      var ms = /^\d{4}-\d{2}-\d{2}$/.test(String(zi)) ? Date.parse(zi + 'T12:00:00') : Date.now();
+      _ctrePut(id, { status: 'activ', signed_at: ms }, 'Contract semnat și în dosar ✓');
+    };
+    window.raxCtreData = async function (id) {
+      var zi = await raConfirm('Ce zi a fost semnat contractul?', { danger: false, icon: 'fa-calendar-check', okLabel: 'Salvează', field: { label: 'Data semnării', type: 'date', value: new Date().toISOString().slice(0, 10) } });
+      if (zi === false || !/^\d{4}-\d{2}-\d{2}$/.test(String(zi))) return;
+      _ctrePut(id, { signed_at: Date.parse(zi + 'T12:00:00') }, 'Data semnării pusă ✓');
+    };
+    // „Completează": fereastra mică a datelor din dosar, cu „Preia de la ANAF". Scrie DOAR ce e aici
+    // (ruta `/dosar`), fără să atingă telefonul, IBAN-ul sau celelalte date ale firmei.
+    window.raxCtreCompleteaza = function (companyId) {
+      var c = (_raxCtre.tot || []).filter(function (x) { return x.company_id === companyId; })[0] || {};
+      var rep = c.legal_rep || c.client_rep || {};
+      var ov = document.getElementById('rax-dosar-overlay');
+      if (!ov) { ov = document.createElement('div'); ov.id = 'rax-dosar-overlay'; ov.className = 'rax-overlay'; document.body.appendChild(ov); }
+      var camp = function (id, et, v, ph) { return '<label class="raco-f"><span>' + et + '</span><input class="rax-field" id="' + id + '" value="' + esc(v || '') + '" placeholder="' + esc(ph || '') + '"></label>'; };
+      ov.innerHTML = '<div class="rax-card" style="max-width:560px;"><div class="rax-head"><h3><i class="fas fa-pen-to-square" style="color:var(--accent)"></i> Datele firmei pentru contract</h3>' +
+        '<button class="rax-x" onclick="raxCtreCompleteazaInchide()">&times;</button></div><div class="rax-body raco">' +
+        '<div class="raco-2"><label class="raco-f"><span>CUI / CIF</span><div class="raco-cui"><input class="rax-field" id="dz-cui" value="' + esc(c.cui || '') + '" placeholder="RO12345678">' +
+          '<button class="rax-btn" type="button" onclick="raxCtreAnaf()"><i class="fas fa-cloud-arrow-down"></i> ANAF</button></div></label>' +
+          camp('dz-name', 'Denumire', c.company_name, 'Transport Alfa SRL') + '</div>' +
+        '<div class="raco-2">' + camp('dz-reg', 'Nr. Reg. Com.', c.reg_com, 'J40/1234/2020') + camp('dz-addr', 'Sediu', c.address, 'Str. …, oraș, județ') + '</div>' +
+        '<div class="raco-2">' + camp('dz-rep', 'Reprezentant legal', rep.name, 'nume și prenume') + camp('dz-reprole', 'Funcția', rep.role, 'Administrator') + '</div>' +
+        camp('dz-email', 'Email (aici pleacă contractul)', c.contact_email, 'contact@firma.ro') +
+        '<div id="dz-msg" class="raco-msg"></div>' +
+        '<div class="raco-nav"><button class="rax-btn" onclick="raxCtreCompleteazaInchide()">Renunț</button>' +
+        '<button class="rax-btn primary" onclick="raxCtreCompleteazaSalveaza(' + companyId + ')"><i class="fas fa-check"></i> Salvează</button></div>' +
+        '</div></div>';
+      ov.classList.add('open');
+      var p = document.getElementById(c.cui ? 'dz-addr' : 'dz-cui'); if (p) p.focus();
+    };
+    window.raxCtreCompleteazaInchide = function () { var ov = document.getElementById('rax-dosar-overlay'); if (ov) ov.classList.remove('open'); };
+    window.raxCtreAnaf = async function () {
+      var cui = (document.getElementById('dz-cui') || {}).value || '', m = document.getElementById('dz-msg');
+      if (!cui.trim()) { if (m) m.innerHTML = '<span style="color:var(--red)">Scrie întâi CUI-ul.</span>'; return; }
+      if (m) m.textContent = 'Caut la ANAF…';
+      try {
+        var r = await fetch('/api/anaf/firma?cui=' + encodeURIComponent(cui.trim()), { credentials: 'same-origin' });
+        var a = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(a.error || 'Nu am găsit firma la ANAF.') + '</span>'; return; }
+        var pune = function (id, v) { var e = document.getElementById(id); if (e && v) e.value = v; };
+        pune('dz-name', a.name); pune('dz-reg', a.reg_com); pune('dz-addr', a.address); pune('dz-cui', a.cui);
+        if (m) m.innerHTML = '<span style="color:var(--accent)"><i class="fas fa-check"></i> Preluat de la ANAF</span>' +
+          ((a.radiata || a.inactiva) ? '<div style="color:var(--red);font-weight:700;margin-top:4px;">⚠ ' + (a.radiata ? 'firma apare RADIATĂ la ANAF' : 'firma e declarată INACTIVĂ') + '</div>' : '');
+      } catch (e) { if (m) m.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
+    };
+    window.raxCtreCompleteazaSalveaza = async function (companyId) {
+      var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+      var corp = { cui: v('dz-cui'), name: v('dz-name'), reg_com: v('dz-reg'), address: v('dz-addr'), contact_email: v('dz-email'),
+        legal_rep: v('dz-rep') ? { name: v('dz-rep'), role: v('dz-reprole') } : null };
+      var m = document.getElementById('dz-msg');
+      try {
+        var r = await fetch('/api/companies/' + companyId + '/dosar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(j.error || ('Eroare ' + r.status)) + '</span>'; return; }
+        raxCtreCompleteazaInchide();
+        _ctreToast('Datele firmei sunt în dosar ✓', 'success');
+        raxLoadContracte();
+      } catch (e) { if (m) m.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
+    };
     // Scheletul (benzile, filtrele, căutarea, partenerii) se face O SINGURĂ dată; căutarea și filtrele
     // redesenează doar lista. Înainte se redesena tot la fiecare literă: caseta își pierdea cursorul
     // după prima literă (aceeași capcană ca la Inventar), iar partenerii se cereau iar de la server.
@@ -20859,11 +21031,12 @@ const pozitii = await r.json();</code></pre>
             var total = c.annex && c.annex.monthlyTotal ? Number(c.annex.monthlyTotal) : null;
             var dos = c.dosar || {};
             // La un contract nesemnat, „Stare" spune deja unde e; „Dosar" spune doar ce LIPSEȘTE
-            // (înainte scria „în lucru" în amândouă coloanele, una lângă alta).
+            // (înainte scria „în lucru" în amândouă coloanele, una lângă alta). Fiecare lipsă vine cu
+            // butonul ei, chiar pe rând (Alin, 24.09) — nu mai intri în fișă ca s-o cauți.
+            var lipsuriHtml = _ctreLipsuriHtml(c);
             var dosCel = dos.nivel === 'nesemnat'
-              ? (dos.text ? '<span class="raco-pill warn">lipsește ceva</span><span class="raco-until">' + esc(dos.text) + '</span>' : '<span class="raco-until">—</span>')
-              : '<span class="raco-pill ' + (DOSAR_FEL[dos.nivel] || '') + '">' + esc(dos.eticheta || '—') + '</span>' +
-                (dos.text ? '<span class="raco-until">' + esc(dos.text) + '</span>' : '');
+              ? (lipsuriHtml || '<span class="raco-until">—</span>')
+              : '<span class="raco-pill ' + (DOSAR_FEL[dos.nivel] || '') + '">' + esc(dos.eticheta || '—') + '</span>' + lipsuriHtml;
             return '<tr>' +
               '<td><a href="#" class="rax-co-open" onclick="raxOpenCompanyDetail(' + c.company_id + ', \'contract\');return false;"><strong>' + esc(c.company_name) + '</strong></a>' +
                 (c.cui ? '<span class="raco-until">' + esc(c.cui) + '</span>' : '') + '</td>' +
@@ -20872,7 +21045,7 @@ const pozitii = await r.json();</code></pre>
                   : (c.months ? c.months + _raxDe(Number(c.months)) + 'luni' : 'nedeterminat') + '<span class="raco-until">fără dată de început</span>') +
                 (c.start_at ? (c.auto_renew === false ? '<span class="raco-until">nu se reînnoiește</span>' : (c.sfarsit ? '<span class="raco-until">se reînnoiește singur</span>' : '')) : '') + '</td>' +
               '<td class="num">' + (total ? total.toLocaleString('ro-RO') + ' lei' : '—') + '</td>' +
-              '<td><span class="raco-pill ' + st[1] + '">' + st[0] + '</span></td>' +
+              '<td><span class="raco-pill ' + st[1] + '">' + st[0] + '</span><div class="ctre-pasi">' + _ctrePasHtml(c) + '</div></td>' +
               '<td>' + dosCel + '</td>' +
               '<td><div class="ctre-act">' + _raxHartieBtn('/api/contracts/' + c.id + '/pdf', 'Contractul', true) +
                 (_raxCtrDeReinnoit(c, c.sfarsit, c.prelungire_in_lucru)

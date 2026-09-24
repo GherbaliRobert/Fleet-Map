@@ -145,6 +145,16 @@ T('ecranul cere confirmare la o coborâre (șterge date)', /if \(luni < inainte\
 T('contractul și factura se compară și la păstrare', /var ps = cmp\.pastrare;/.test(html) && /pastrare: \(retContract\.length/.test(server));
 T('păstrarea NU mai apare ca „în contract, dar nu pe factură"', /x\.fel !== 'ai' && x\.fel !== 'ret'/.test(server));
 
+sect('6b. Jurnalul de audit: 12 luni, apoi se șterge (Alin, 24.09)');
+T('cifra e 12 luni, într-un singur loc', C.LUNI_JURNAL_AUDIT === 12);
+const conf = fs.readFileSync('./public/confidentialitate.html', 'utf8');
+const lAudit = parseInt(((conf.match(/Jurnalul de audit[^<]*<b>(\d+) luni<\/b>/) || [])[1]), 10);
+T('pagina de confidențialitate spune ACEEAȘI cifră', lAudit === C.LUNI_JURNAL_AUDIT, lAudit + ' vs ' + C.LUNI_JURNAL_AUDIT);
+T('...și nu mai are locuri goale „[ex. …]"', !/\[ex\./.test(conf));
+T('...iar istoricul scrie tot regula adevărată (12 luni)', /Pozițiile și istoricul vehiculelor[^<]*<b>12 luni<\/b>/.test(conf));
+T('ștergerea jurnalului rulează zilnic', /const runAuditPurge = \(\) => stergeAuditVechi\(\)/.test(server) && /setInterval\(runAuditPurge, 24 \* 60 \* 60 \* 1000\)/.test(server));
+T('...și citește cifra din contracts.js', /const luni = contracte\.LUNI_JURNAL_AUDIT;/.test(server));
+
 // ─── 7. Pe server pornit ─────────────────────────────────────────────────────────────────────
 // Variabila veche e SETATĂ la 180, dinadins: istoricul de 7 luni trebuie să rămână (12 luni incluse),
 // iar „Stare producție" trebuie să spună că variabila nu mai e folosită.
@@ -239,6 +249,14 @@ function gata() {
     ovD.comparatie.pastrare.firmaLuni === 24 && ovD.comparatie.pastrare.facturaLei === 50 && ovD.comparatie.pastrare.contractLei === 50,
     JSON.stringify(ovD.comparatie && ovD.comparatie.pastrare));
   T('păstrarea nu mai stă la „nefacturate"', ovD.comparatie && !(ovD.comparatie.nefacturate || []).some((x) => /Păstrare/.test(x.nume)));
+
+  // Jurnalul de audit: un rând de acum 13 luni pleacă, unul de acum 11 rămâne.
+  const vechi = ((await R('POST', '/api/test/audit-vechi', { luni: 13, eticheta: 'vechi' })).j || {}).id;
+  const nou = ((await R('POST', '/api/test/audit-vechi', { luni: 11, eticheta: 'nou' })).j || {}).id;
+  const ra = (await R('POST', '/api/admin/audit/sterge-vechi')).j || {};
+  T('jurnalul: rândul de acum 13 luni se șterge', !!vechi && ((await R('POST', '/api/test/audit-exista', { id: vechi })).j || {}).exista === false, JSON.stringify(ra));
+  T('...cel de acum 11 luni rămâne', !!nou && ((await R('POST', '/api/test/audit-exista', { id: nou })).j || {}).exista === true);
+  T('...și ștergerea spune câte a șters, după regula de 12 luni', ra.sterse >= 1 && ra.luni === 12, JSON.stringify(ra));
 
   // Stare producție
   const h = (await R('GET', '/api/admin/health')).j || {};

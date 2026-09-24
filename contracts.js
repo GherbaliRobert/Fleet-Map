@@ -80,6 +80,13 @@ function curataPastrare(b) {
   return { luni: luni, pretRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0 };
 }
 
+// Cât se ține JURNALUL DE AUDIT (cine a făcut ce în aplicație): 12 luni, apoi se șterge singur. Decizie
+// Alin, 24.09: „șterge-l la 12 luni dacă nu avem restricții legale". Nu avem: nicio lege nu cere o
+// durată pentru jurnalul unei aplicații (GDPR cere doar să nu ținem date mai mult decât e nevoie).
+// Documentele cu termen legal stau în tabelele LOR și nu sunt atinse: facturile (legea contabilității)
+// și contractele. Cifra e scrisă și pe pagina publică de confidențialitate — legată printr-o probă.
+const LUNI_JURNAL_AUDIT = 12;
+
 // Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
 // trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
 // Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
@@ -365,7 +372,7 @@ function anexaInVigoare(contract, acte) {
 
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
-  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare,
+  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare
 };

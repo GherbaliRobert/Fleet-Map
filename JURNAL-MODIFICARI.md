@@ -97,6 +97,50 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-24
 
+### AMÂNDOI · Contracte: fiecare lipsă își are butonul, chiar pe rând — și contractul pleacă pe email
+
+Alin: *„buton de trimitere fix acolo unde lipsește."* Lista din Contracte spunea ce lipsește dintr-un
+dosar („lipsește: CUI-ul firmei, acordul GDPR"), dar ca să rezolvi intrai în fișa firmei, pe fila
+Contract, și căutai câmpul. Iar „trimis la client" era doar o bifă: contractul îl descărcai și îl
+trimiteai tu, din afara aplicației.
+
+**Acum, pe fiecare rând:**
+- **Sub stare, pasul următor:** „Aprobă" (contract în lucru) → **„Trimite la semnat"** (aprobat) →
+  **„E semnat"** (trimis). „Trimite la semnat" pleacă pe **email**, la adresa firmei, cu contractul
+  **atașat în PDF** — același PDF ca la „Descarcă". Răspunsul clientului (contractul semnat) vine la
+  adresa noastră. Starea devine singură „trimis", cu ziua și adresa. „Retrimite" rămâne la îndemână.
+- **„E semnat"** îți cere ziua semnării și fișierul semnat primit de la client, apoi trece contractul
+  în vigoare.
+- **La „Dosar", fiecare lipsă cu butonul ei:** datele firmei → **„Completează"** (o fereastră mică,
+  cu „Preia de la ANAF", reprezentant și email); actul semnat → **„Încarcă semnat"**; acordul GDPR
+  separat → **„Încarcă acordul"**; data semnării → **„Pune data"**.
+- **Contractul nu pleacă cu goluri.** Fără CUI, sediu sau reprezentant, „Trimite" refuză și îți deschide
+  direct „Completează". O ciornă nu pleacă deloc — întâi „Aprobă".
+- **Fără email configurat pe server**, butonul nu minte: în loc de „Trimite la semnat" scrie „Am trimis-o"
+  (o descarci de alături și o trimiți tu).
+- Pe drum am prins o capcană veche: salvarea obișnuită a datelor unei firme **golea câmpurile netrimise**
+  (telefon, IBAN). „Completează" are calea ei, care scrie doar ce completezi.
+
+Probat cu un server de email fals: emailul chiar pleacă, cu PDF-ul atașat și cu răspunsul către noi
+(`verify_lipsuri.js`, 45 de verificări).
+
+- **Ce am schimbat:** butoanele de pe lipsuri și pașii contractului, în lista Contracte; trimiterea pe email.
+- **Ce vede fondatorul:** în Contracte, pe fiecare rând, butonul care rezolvă lipsa sau duce contractul
+  mai departe — fără să mai intre în fișa firmei.
+- **Ce vede clientul:** un email cu contractul atașat, de semnat, la care răspunde direct nouă.
+
+### AMÂNDOI · Jurnalul de audit: 12 luni, apoi se șterge
+
+Alin: *„șterge-l la 12 luni dacă nu avem restricții legale."* Nu avem: nicio lege nu cere o durată
+pentru jurnalul unei aplicații, iar GDPR cere să nu ținem date mai mult decât e nevoie. Facturile și
+contractele, care au termene legale, stau în locul lor și nu sunt atinse.
+
+- **Ce am schimbat:** jurnalul de audit se șterge singur după 12 luni (zilnic); pagina de confidențialitate
+  scrie „12 luni" în locul golului „[ex. 12 luni]".
+- **Ce vede fondatorul:** jurnalul arată ultimul an.
+- **Ce vede clientul (administratorul firmei):** jurnalul firmei lui arată ultimul an; pe pagina publică,
+  regula scrisă.
+
 ### AMÂNDOI · Istoricul: 12 luni pentru toți, 24 sau 36 de luni se vând — și chiar se țin
 
 Alin: *„12 luni pentru toți și păstrăm 24/36 de luni ca opțiune plătită."* Hotărât după ce am
@@ -8452,8 +8496,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   - [ ] **(voi) Verifică în „Stare producție" rândul „TimescaleDB (compresie poziții)"** — verde = datele
     vechi se comprimă (costul măsurat: ~7 bani pe lună în plus la un camion, pentru 6 luni în plus).
     Portocaliu = totul ocupă de ~17 ori mai mult; atunci mutarea pe o bază cu TimescaleDB e prima grijă.
-  - [ ] **(voi) Pagina de confidențialitate mai are un loc gol:** *„Jurnale de audit: [ex. 12 luni]"*.
-    Azi jurnalul de audit nu se șterge deloc. Hotărâți o cifră (și o facem), sau scriem „pe durata contractului".
+  - [x] **HOTĂRÂT ȘI FĂCUT (24.09): jurnalul de audit — 12 luni**, apoi se șterge singur. Alin: *„șterge-l la
+    12 luni dacă nu avem restricții legale"* (nu avem). Pagina de confidențialitate scrie acum regula.
+  - [ ] **(voi) SMTP pe server**: fără el, „Trimite la semnat" din Contracte devine „Am trimis-o" (îl trimiteți
+    voi). Cu el pus, contractul pleacă singur pe email, cu PDF-ul atașat, iar răspunsul vine la adresa de
+    facturare din „Date emitent".
 
 - [x] **HOTĂRÂT ȘI FĂCUT (24.09): numele fișierului contractului** — „RA-Tracks - Contract …".
 

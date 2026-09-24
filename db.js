@@ -1021,6 +1021,10 @@ async function initDb() {
     // Anexa nr. 2 a contractului: montajul, așa cum a fost semnat. DOAR partea clientului
     // (ce-i facturăm lui). Costul partenerului stă în `montaje`, care nu ajunge niciodată pe hârtie.
     await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS montaj JSONB`);
+    // Când și la ce adresă a plecat contractul la semnat, din butonul „Trimite la semnat" (24.09).
+    // Scrise de SERVER, după ce emailul chiar a plecat — nu de ecran.
+    await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_at BIGINT`);
+    await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_to VARCHAR(200)`);
     // ─── Montajul: partenerii care execută și lucrările propriu-zise ──────────────────────────
     // Montajul îl vindem noi, îl execută firma X. X ne facturează pe noi, noi facturăm clientul.
     // Clientul nu vede niciodată firma X — de asta partenerul stă într-o tabelă separată, la care
@@ -1837,7 +1841,7 @@ async function setOfferStatus(id, status, extra) {
 const _LUNI_PRELUNGITE = `(SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
      WHERE a.contract_id = contracts.id AND a.status = 'activ')::int AS luni_prelungite`;
 const _FARA_FISIERE = `id, company_id, number, status, signed_at, start_at, months, end_at,
-  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes,
+  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes, sent_at, sent_to,
   created_by, created_at, updated_at,
   (file_b64 IS NOT NULL) AS has_file, file_name, file_mime,
   (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime, ${_LUNI_PRELUNGITE}`;
@@ -2062,8 +2066,9 @@ async function contracteToate(limita) {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at,
             c.auto_renew, c.notice_days, c.ended_at, c.client_rep, c.gdpr, c.annex, c.created_at,
+            c.sent_at, c.sent_to,
             (c.file_b64 IS NOT NULL) AS has_file, (c.gdpr_b64 IS NOT NULL) AS has_gdpr_file,
-            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo,
+            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo, co.contact_email, co.reg_com,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite,
             -- O prelungire deja pornită (act nesemnat încă): pe listă scrie „prelungire în lucru",
@@ -2152,6 +2157,18 @@ async function updateCompany(id, data) {
     `UPDATE companies SET name=COALESCE($2,name), contact_email=$3, phone=$4, plan=COALESCE($5,plan), active=COALESCE($6,active), cui=$7, reg_com=$8, address=$9, iban=$10, bank_name=$11, contacts=COALESCE($12, contacts) WHERE id=$1`,
     [id, data.name || null, data.contact_email || null, data.phone || null, data.plan || null, (data.active === undefined ? null : data.active), data.cui || null, data.reg_com || null, data.address || null, data.iban || null, data.bank_name || null, (data.contacts !== undefined ? JSON.stringify(data.contacts) : null)]
   );
+}
+// Completează dosarul firmei DOAR cu ce se trimite. `updateCompany` de mai sus rescrie tot rândul
+// (un câmp netrimis devine gol) — de-aia butonul „Completează" din Contracte are calea lui, care nu
+// atinge emailul, telefonul sau IBAN-ul când completezi doar CUI-ul (24.09).
+async function completeazaDosarFirma(id, d) {
+  const set = [], val = [id];
+  const pune = function (col, v) { val.push(v); set.push(col + ' = $' + val.length); };
+  ['name', 'cui', 'reg_com', 'address', 'contact_email'].forEach(function (k) { if (d[k] !== undefined) pune(k, d[k]); });
+  if (d.legal_rep !== undefined) pune('legal_rep', d.legal_rep ? JSON.stringify(d.legal_rep) : null);
+  if (!set.length) return false;
+  await pool.query('UPDATE companies SET ' + set.join(', ') + ' WHERE id = $1', val);
+  return true;
 }
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
@@ -3765,6 +3782,22 @@ async function scoateBucatiMaiVechiDe(luni) {
   return r.rows.length;
 }
 
+// Jurnalul de audit mai vechi de `luni` luni (contracts.js → `LUNI_JURNAL_AUDIT`). Pe loturi, după `id`
+// (tabelă obișnuită, nu hypertable), ca o primă rulare cu ani de jurnal să nu țină baza ocupată.
+async function stergeAuditMaiVechiDe(luni) {
+  let total = 0;
+  for (;;) {
+    const r = await pool.query(
+      `DELETE FROM audit_log WHERE id IN (
+         SELECT id FROM audit_log WHERE created_at < NOW() - make_interval(months => $1::int) ORDER BY id LIMIT ${BATCH_ROWS})`, [luni]);
+    const n = r.affectedRows || r.rowCount || 0;
+    total += n;
+    if (n < BATCH_ROWS) break;
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });
+  }
+  return total;
+}
+
 // IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
 async function getArchivedImeis() {
   const r = await pool.query(`SELECT imei FROM devices WHERE status = 'archived'`);
@@ -4612,7 +4645,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
-  getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
@@ -4701,6 +4734,7 @@ module.exports = {
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
   aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
+  stergeAuditMaiVechiDe,
   getArchivedImeis,
   countArchivedPositions,
   getArchivedDevices,

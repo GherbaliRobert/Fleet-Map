@@ -5268,7 +5268,10 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
         });
       }),
       fara_contract: fara,
-      incheiate_cu_acces: incheiateCuAcces
+      incheiate_cu_acces: incheiateCuAcces,
+      // Butonul „Trimite la semnat" chiar trimite doar cu SMTP pus. Fără el, ecranul spune pe față
+      // „descarcă și trimite tu" — un buton nu promite ce aplicația nu face.
+      trimite_pe_email: !!(mailer && mailer.enabled())
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5607,6 +5610,96 @@ app.delete('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req
     if (!out) return res.status(404).json({ error: 'Contract inexistent' });
     auditReq(req, 'delete', 'contract', id, { care: care, fisier: true });
     res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Butoanele de pe lipsuri (Contracte, 24.09) ─────────────────────────────────────────────────
+// Alin: „butonul fix acolo unde lipsește". Lista spunea CE lipsește, dar ca să rezolvi intrai în fișa
+// firmei, pe fila Contract, și căutai câmpul. Acum fiecare lipsă are butonul ei, chiar pe etichetă.
+
+// „Completează": datele firmei din dosar (CUI, denumire, Reg. Com., sediu, email, reprezentant).
+// Scrie DOAR ce se trimite (`completeazaDosarFirma`) — `PUT /api/companies/:id` rescrie tot rândul.
+app.put('/api/companies/:id/dosar', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const b = req.body || {}, d = {};
+    const text = function (v, max) { return String(v == null ? '' : v).trim().slice(0, max) || null; };
+    if (b.name !== undefined) { d.name = text(b.name, 200); if (!d.name) return res.status(400).json({ error: 'Denumirea firmei nu poate rămâne goală.' }); }
+    if (b.cui !== undefined) d.cui = text(b.cui, 20);
+    if (b.reg_com !== undefined) d.reg_com = text(b.reg_com, 40);
+    if (b.address !== undefined) d.address = text(b.address, 300);
+    if (b.contact_email !== undefined) {
+      d.contact_email = text(b.contact_email, 200);
+      if (d.contact_email && !_EMAIL_RE.test(d.contact_email)) return res.status(400).json({ error: 'Adresa de email nu arată a email.' });
+    }
+    if (b.legal_rep !== undefined) {
+      const r = b.legal_rep || {};
+      d.legal_rep = text(r.name, 120) ? { name: text(r.name, 120), role: text(r.role, 80) } : null;
+    }
+    await db.completeazaDosarFirma(id, d);
+    auditReq(req, 'update', 'company', id, { dosar: Object.keys(d) });
+    const dupa = await db.getCompanyById(id);
+    res.json({ ok: true, company: { id: id, name: dupa.name, cui: dupa.cui, reg_com: dupa.reg_com, address: dupa.address, contact_email: dupa.contact_email, legal_rep: dupa.legal_rep } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+const _EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+function _pdfInBuffer(doc) {
+  return new Promise(function (resolve, reject) {
+    const bucati = [];
+    doc.on('data', function (b) { bucati.push(b); });
+    doc.on('end', function () { resolve(Buffer.concat(bucati)); });
+    doc.on('error', reject);
+  });
+}
+// „Trimite la semnat": contractul APROBAT pleacă pe email la client, cu PDF-ul atașat — același PDF
+// ca la „Descarcă" (`contractPdf`, nu o copie). Starea devine singură „trimis", cu ziua și adresa,
+// scrise de server DUPĂ ce emailul chiar a plecat. Răspunsul omului (contractul semnat) vine la noi
+// (`replyTo` = emailul nostru de facturare). Fără SMTP, butonul nu minte: spune că nu poate trimite.
+app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    if (c.status === 'ciorna') return res.status(400).json({ error: 'Contractul e încă în lucru. Aprobă-l întâi — o ciornă nu pleacă la semnat.' });
+    if (c.status !== 'aprobat' && c.status !== 'trimis') return res.status(400).json({ error: 'Contractul e deja semnat — nu mai e nimic de trimis la semnat.' });
+    const co = await db.getCompanyById(c.company_id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    // Pe hârtie n-au voie să rămână goluri: fără CUI, sediu sau reprezentant, contractul pleacă cu „________".
+    const lipsuri = contracte.stareDosar(co, c, Date.now()).lipsuri.filter(function (k) { return ['cui', 'sediu', 'reprezentant'].indexOf(k) >= 0; });
+    if (lipsuri.length) {
+      return res.status(400).json({ lipsuri: lipsuri,
+        error: 'Pe contract ar rămâne goluri: lipsește ' + lipsuri.map(function (k) { return contracte.ETICHETE[k] || k; }).join(', ') + '. Completează-le întâi.' });
+    }
+    const catre = String((req.body && req.body.catre) || co.contact_email || '').trim();
+    if (!catre) return res.status(400).json({ error: 'Firma n-are adresă de email. Scrie adresa la care trimitem contractul.' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
+    if (!mailer || !mailer.enabled()) {
+      return res.status(503).json({ faraEmail: true,
+        error: 'Emailul nu e configurat pe server (SMTP), deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis".' });
+    }
+    const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    const pdf = await _pdfInBuffer(contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent }));
+    const noi = emitent.name || 'RA Tracks';
+    const r = await mailer.send({
+      to: catre,
+      replyTo: emitent.email || undefined,
+      subject: 'Contractul ' + (c.number || '') + ' — de semnat · ' + noi,
+      html: '<p>Bună ziua,</p>' +
+        '<p>Vă trimitem atașat contractul de prestări servicii nr. <b>' + _he(c.number || '') + '</b> pentru monitorizarea GPS a flotei <b>' + _he(co.name || '') + '</b>, împreună cu anexele lui.</p>' +
+        '<p>Vă rugăm să-l semnați și să ni-l trimiteți înapoi — scanat sau fotografiat — ca răspuns la acest email.</p>' +
+        '<p>Vă mulțumim,<br>' + _he(noi) + (emitent.phone ? '<br>' + _he(emitent.phone) : '') + '</p>',
+      text: 'Bună ziua,\n\nVă trimitem atașat contractul nr. ' + (c.number || '') + ' pentru monitorizarea GPS a flotei ' + (co.name || '') +
+        '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\nVă mulțumim,\n' + noi,
+      attachments: [{ filename: contractPdf.numeFisier(c, co), content: pdf, contentType: 'application/pdf' }]
+    });
+    if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
+    const acum = Date.now();
+    await db.pool.query(`UPDATE contracts SET status = 'trimis', sent_at = $2, sent_to = $3, updated_at = $2 WHERE id = $1`, [id, acum, catre]);
+    // Firma fără email îl primește pe cel la care tocmai am trimis — altfel îl tastăm iar data viitoare.
+    if (!co.contact_email) { try { await db.completeazaDosarFirma(co.id, { contact_email: catre }); } catch (e) {} }
+    auditReq(req, 'send', 'contract', id, { catre: catre, din: c.status });
+    res.json({ ok: true, trimis_la: catre, sent_at: acum, status: 'trimis' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -7421,6 +7514,21 @@ async function stergeIstoriculVechi(opts) {
   if (raport.erori) console.warn('[PĂSTRARE] ' + raport.erori + ' mașini amânate: ' + raport.primaEroare);
   return raport;
 }
+// Jurnalul de audit se ține 12 luni, apoi se șterge (contracts.js → `LUNI_JURNAL_AUDIT`; decizie Alin,
+// 24.09). Până atunci nu se ștergea deloc, iar pagina de confidențialitate scria „[ex. 12 luni]".
+async function stergeAuditVechi() {
+  const luni = contracte.LUNI_JURNAL_AUDIT;
+  const n = await db.stergeAuditMaiVechiDe(luni);
+  if (n) {
+    console.log('[AUDIT] Șterse ' + n + ' rânduri de jurnal mai vechi de ' + luni + ' luni');
+    // Un singur rând NOU, care spune că s-au șters cele vechi — se poate dovedi, nu doar afirma.
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'jurnal_audit', entityId: null, details: { randuri: n, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
+  }
+  return { sterse: n, luni: luni };
+}
+app.post('/api/admin/audit/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeAuditVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Rulare de mână (super-admin): nu aștepți șase ore ca să vezi ce face.
 app.post('/api/admin/istoric/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await stergeIstoriculVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7440,6 +7548,23 @@ if (process.env.SEED_TEST === '1') {
       await db.pool.query(`INSERT INTO trips (imei, start_time, end_time) VALUES ($1, ${cand}, ${cand} + interval '30 minutes')`, [imei, luni]);
       await db.pool.query(`INSERT INTO alert_history (imei, triggered_at, data) VALUES ($1, ${cand}, '{}'::jsonb)`, [imei, luni]);
       res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Un rând de jurnal de acum N luni, ca proba să nu aștepte un an.
+  app.post('/api/test/audit-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const r = await db.pool.query(
+        `INSERT INTO audit_log (username, action, entity, entity_id, created_at)
+         VALUES ('proba', 'update', 'proba', $2, (NOW() - make_interval(months => $1::int, days => 1))::timestamp) RETURNING id`,
+        [Math.max(0, parseInt(b.luni) || 0), String(b.eticheta || '')]);
+      res.json({ id: r.rows[0].id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.post('/api/test/audit-exista', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const r = await db.pool.query('SELECT COUNT(*)::int AS n FROM audit_log WHERE id = $1', [parseInt((req.body || {}).id) || 0]);
+      res.json({ exista: r.rows[0].n > 0 });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/test/istoric-numar', requireAuth, requireSuperadmin, async (req, res) => {
@@ -14284,6 +14409,11 @@ async function start() {
     .catch(e => console.warn('[ARHIVĂ] ștergere amânată:', e.message));
   setTimeout(runArchivePurge, 10000);
   setInterval(runArchivePurge, 24 * 60 * 60 * 1000);
+
+  // Jurnalul de audit: 12 luni, apoi se șterge (zilnic). Vezi `stergeAuditVechi`.
+  const runAuditPurge = () => stergeAuditVechi().catch(e => console.warn('[AUDIT] ștergere amânată:', e.message));
+  setTimeout(runAuditPurge, 90 * 1000);
+  setInterval(runAuditPurge, 24 * 60 * 60 * 1000);
 
   // Workere Faza 4: detecție automată curse + alerte expirare documente
   setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);

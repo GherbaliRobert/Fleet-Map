@@ -623,9 +623,33 @@ livrau, nici nu se facturau.
 - Păzit de `verify_pastrare.js` (în `npm test`, inclusiv pe server pornit cu `POSITION_RETENTION_DAYS=180`
   setată dinadins — istoricul de 7 luni trebuie să rămână).
 
+### Jurnalul de audit: 12 luni (decizie Alin, 24.09)
+*„Șterge-l la 12 luni dacă nu avem restricții legale."* Nu avem: nicio lege nu cere o durată pentru jurnalul
+unei aplicații. Facturile și contractele (cu termene legale) stau în tabelele LOR și nu sunt atinse.
+- Cifra: `LUNI_JURNAL_AUDIT = 12` în `contracts.js`, legată printr-o probă de pagina de confidențialitate.
+- Ștergerea: `stergeAuditVechi` (zilnic; de mână `POST /api/admin/audit/sterge-vechi`), pe loturi după `id`,
+  cu UN rând nou în audit care spune câte s-au șters. Păzit de `verify_pastrare.js`.
+
+### Butonul fiecărei lipse, chiar pe rând (Contracte, 24.09)
+Alin: *„buton de trimitere fix acolo unde lipsește."* În lista Contracte, pe fiecare rând:
+- **Sub stare, pasul următor** (`_ctrePasHtml`): „Aprobă" → „Trimite la semnat" → „E semnat" (+ „Retrimite").
+- **La „Dosar", fiecare lipsă cu butonul ei** (`_ctreLipsuriHtml`): CUI/sediu/reprezentant → „Completează"
+  (fereastra `raxCtreCompleteaza`, cu ANAF); actul → „Încarcă semnat"; GDPR separat → „Încarcă acordul";
+  data semnării → „Pune data". Regulile (ce lipsește) rămân pe server, în `stareDosar`.
+- **„Trimite la semnat"** = `POST /api/contracts/:id/trimite`: email cu PDF-ul atașat — ACELAȘI `contractPdf`
+  ca la „Descarcă" —, `replyTo` = emailul nostru din „Date emitent". Starea devine „trimis" + `sent_at` /
+  `sent_to`, scrise de server DUPĂ ce emailul a plecat. Refuză: ciorna (aprobă întâi), golurile de pe hârtie
+  (CUI, sediu, reprezentant — și deschide „Completează"), adresa stricată. Firma fără email îl primește pe
+  cel la care s-a trimis.
+- **Fără SMTP, butonul NU minte**: devine „Am trimis-o" (`trimite_pe_email` vine de la server în lista
+  contractelor). Ruta răspunde 503 cu `faraEmail`.
+- ⚠ **`PUT /api/companies/:id` (`updateCompany`) rescrie TOT rândul** — un câmp netrimis devine gol
+  (telefon, IBAN). „Completează" are ruta lui, `PUT /api/companies/:id/dosar` → `completeazaDosarFirma`,
+  care scrie DOAR ce primește. Orice formular nou care completează o parte din firmă o folosește pe ea.
+- Păzit de `verify_lipsuri.js` (în `npm test`), cu un server de email FALS: emailul chiar pleacă, cu PDF.
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- **Cât ținem jurnalul de audit** — pagina de confidențialitate scrie încă „[ex. 12 luni]", iar aplicația
-  nu-l șterge deloc.
+- (nimic deschis aici acum)
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).
 
