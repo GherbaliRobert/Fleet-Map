@@ -21439,9 +21439,10 @@ const pozitii = await r.json();</code></pre>
           return '<tr><td style="white-space:nowrap;">' + (m.data_lucrare ? _zile(m.data_lucrare) : '<span class="raco-until">fără dată</span>') + '</td>' +
             '<td>' + esc(m.company_name || '—') + '</td><td>' + (m.partener_nume ? esc(m.partener_nume) : '<span class="raco-until">neales</span>') + '</td>' +
             '<td style="font-size:12px;">' + esc(ce(m)) + '</td>' +
-            '<td class="num">' + _lei(m.total_client) + '</td><td class="num">' + _lei(m.total_partener) + '</td><td class="num" style="color:var(--accent);font-weight:700;">' + _lei(m.marja) + '</td>' +
+            // Sumele și butonul stau pe un rând: „80,00 / lei" rupt în două se citea greu.
+            '<td class="num" style="white-space:nowrap;">' + _lei(m.total_client) + '</td><td class="num" style="white-space:nowrap;">' + _lei(m.total_partener) + '</td><td class="num" style="white-space:nowrap;color:var(--accent);font-weight:700;">' + _lei(m.marja) + '</td>' +
             '<td><span class="raco-pill">' + esc(stari[m.status] || m.status) + '</span></td>' +
-            '<td><button class="rax-btn ctre-pas" onclick="raxOpenCompanyDetail(' + m.company_id + ', \'contract\')"><i class="fas fa-up-right-from-square"></i> La client</button></td></tr>';
+            '<td style="white-space:nowrap;"><button class="rax-btn ctre-pas" onclick="raxOpenCompanyDetail(' + m.company_id + ', \'contract\')"><i class="fas fa-up-right-from-square"></i> La client</button></td></tr>';
         }).join('') + '</tbody></table></div>';
       return h + '</section>';
     }
