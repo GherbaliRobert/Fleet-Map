@@ -30,9 +30,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
-- [ ] **Alin: demontarea la finalul unei închirieri — cine o plătește? Întrebat pe 25.09.** Contractul
-  spune acum doar că clientul pune mașinile la dispoziție în 15 zile. Propunerea mea: noi, fără cost, când
-  contractul ajunge la termen; clientul, la tariful de dezinstalare, dacă pleacă înainte de termen.
+- [ ] **Alin: demontarea când clientul pleacă ÎNAINTE de termen — o plătește el?** La termen e hotărât
+  (25.09): **noi, fără cost** — scris în contract și pe ofertă. Rămâne cazul plecării mai devreme; propunerea
+  mea: o plătește clientul, la tariful de dezinstalare (pe lângă chiria lunilor rămase).
 - [ ] **Contabilul: aparatele închiriate. Adăugat pe 25.09.** Rămân ale noastre, deci intră în evidența
   firmei (mijloace fixe sau obiecte de inventar, cu amortizarea lor), iar pe factură apare rândul „Chirie
   echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
@@ -129,6 +129,28 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
 ## 2026-09-25
+
+### AMÂNDOI · Cartea „5. Aparatele", mai simplă — și demontarea la termen o facem noi, gratis
+
+Alin: *„nu am văzut că apare scris automat… văd un pic că e complicată secțiunea asta 5, mă induce în
+eroare. Fă-o mai simplă."* Iar despre demontare a ales: *„noi, fără cost, când contractul ajunge la
+termen, pentru că aparatul e al nostru și îl vrem înapoi"*.
+
+- **De ce nu apărea chiria:** ea se propune din „Prețurile noastre" → „ne costă", iar pe ratrack.ro
+  acolo nu e trecut încă cât vă costă aparatele. Acum, lângă fiecare aparat închiriat, scrie ori „ne
+  costă 100 €", ori, cu portocaliu, **„trece cât ne costă"** — un link direct acolo. Caseta goală nu mai
+  tace.
+- **Un singur preț pe rând:** la „Clientul cumpără", prețul aparatului (€/buc); la „Clientul
+  închiriază", chiria (lei/lună). Nu mai stau trei casete una lângă alta. Prețul de vânzare rămâne în
+  spate, ca valoare a aparatului dacă nu se returnează.
+- Textul de sub rânduri: două propoziții, nu un paragraf.
+- **Demontarea:** la sfârșitul contractului o facem noi, fără cost — scris în contract și pe ofertă.
+
+- **Ce am schimbat:** cartea 5 arată un preț pe rând și spune de unde vine chiria; demontarea la termen e
+  gratuită, pe hârtie.
+- **Ce vede fondatorul:** o carte mai simplă, cu linkul spre „Prețurile noastre" unde lipsește costul.
+- **Ce vede clientul:** pe ofertă și în contract, că la sfârșitul contractului demontarea o facem noi,
+  fără cost.
 
 ### AMÂNDOI · Aparatele se pot și închiria, iar noi avem stocul nostru de echipamente
 

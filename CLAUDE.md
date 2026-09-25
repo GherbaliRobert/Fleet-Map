@@ -765,8 +765,13 @@ revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU �
   (`PUT /api/devices/:imei/company`) și cele două căi din `POST /api/devices`. Aparatul din stoc trece pe
   „montat", al nostru dacă firma închiriază (`chirieFirma`), vândut dacă nu. Un IMEI necunoscut stocului nu
   se atinge, iar o eroare de stoc nu oprește înregistrarea.
-- **De hotărât (întrebat pe 25.09):** demontarea la final — cine o plătește. Contractul spune doar că
-  vehiculele se pun la dispoziție în 15 zile.
+- **Cartea „5. Aparatele": UN preț pe rând** (`devRand`, Alin 25.09: „mă induce în eroare, fă-o mai
+  simplă"): prețul de vânzare (`.of-cump-f`) la „cumpără", chiria (`.of-chirie-f`) la „închiriază" —
+  comutatorul ascunde una, arată cealaltă. Prețul de vânzare rămâne (ascuns) ca VALOARE a aparatului.
+  Lângă chirie, `of-chcost-*`: „ne costă X €" sau linkul „trece cât ne costă" (fără cost, chiria nu se
+  propune și caseta nu trebuie să tacă). NU pune la loc trei casete pe rând.
+- **Demontarea la termen o facem NOI, fără cost** (decizie Alin, 25.09) — scris în contract (VII) și pe
+  ofertă (condiții). **De hotărât:** plecarea ÎNAINTE de termen (e pe lista „De amintit").
 - Păzit de `verify_stoc_chirie.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)

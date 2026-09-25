@@ -23436,10 +23436,8 @@ const pozitii = await r.json();</code></pre>
       var ch = _ofMeta.chirie;
       h.innerHTML = !ch
         ? '<span style="color:var(--orange);">Regulile închirierii nu s-au încărcat de pe server — chiria nu se poate propune acum.</span>'
-        : '<b>La închiriere, aparatele rămân ale noastre</b> și ne revin la final. Chiria se propune singură: cât ne costă aparatul '
-          + '(„Prețurile noastre" → „ne costă") ÷ lunile contractului (minim ' + ch.luniMin + _raxDe(ch.luniMin) + 'luni) + '
-          + Math.round(ch.marja * 100) + '%. O poți schimba. Prețul în euro rămâne <b>valoarea aparatului</b>: cât plătește clientul dacă nu-l returnează. '
-          + 'Montajul se plătește la semnare, ca la cumpărare.';
+        : '<b>Închiriere:</b> aparatele rămân ale noastre și ne revin la final. Contract de minim ' + ch.luniMin + _raxDe(ch.luniMin)
+          + 'luni; montajul se plătește la semnare. Chiria se propune din cât ne costă aparatul — o poți schimba.';
     }
     // Chiria propusă, din ce NE COSTĂ aparatul (Prețurile noastre → „ne costă", în euro), la cursul ofertei.
     // Ca la cantități: o casetă în care ai scris tu nu se mai atinge.
@@ -23447,11 +23445,21 @@ const pozitii = await r.json();</code></pre>
       if (!_ofInchiriere()) return;
       var c = _costNoastre || {};
       var luni = Math.round(_ofN((document.getElementById('of-contract') || {}).value)) || 0;
+      var idQ = { d130: 'of-dq130', d150: 'of-dq150', d650: 'of-dq650', lvcan: 'of-dqLvCan' };
       _OF_CHIRIE.forEach(function (x) {
-        var id = 'of-' + x[0], el = document.getElementById(id); if (!el || _ofAtinse[id]) return;
+        var id = 'of-' + x[0], el = document.getElementById(id); if (!el) return;
         var costEur = c[x[2]];
-        var v = costEur == null ? null : _ofChirieLunara(Number(costEur) * _fxRate, luni);
-        el.value = v ? String(v) : '';
+        if (!_ofAtinse[id]) {
+          var v = costEur == null ? null : _ofChirieLunara(Number(costEur) * _fxRate, luni);
+          el.value = v ? String(v) : '';
+        }
+        // Lângă chirie: de unde vine. Fără costul aparatului, chiria nu se poate propune — spunem pe loc
+        // de ce e goală caseta și unde se trece (Alin, 25.09: „nu am văzut că apare scris automat").
+        var info = document.getElementById('of-chcost-' + x[0]); if (!info) return;
+        var q = _ofN((document.getElementById(idQ[x[1]]) || {}).value);
+        info.innerHTML = !(q > 0) ? ''
+          : costEur != null ? 'ne costă ' + esc(String(costEur)) + ' €'
+          : '<a href="#" onclick="event.preventDefault();raxOfPreturi()" style="color:var(--orange);font-weight:700;">trece cât ne costă</a>';
       });
     }
     // Comutatorul „Clientul cumpără / Clientul închiriază", din cartea „5. Aparatele".
@@ -23460,6 +23468,7 @@ const pozitii = await r.json();</code></pre>
       var el = document.getElementById('of-echipMod'); if (el) el.value = inch ? 'inchiriaza' : 'cumpara';
       document.querySelectorAll('#of-echip-seg .rax-btn').forEach(function (b) { b.classList.toggle('primary', b.getAttribute('data-mod') === (inch ? 'inchiriaza' : 'cumpara')); });
       document.querySelectorAll('.of-chirie-f').forEach(function (x) { x.style.display = inch ? 'inline-flex' : 'none'; });
+      document.querySelectorAll('.of-cump-f').forEach(function (x) { x.style.display = inch ? 'none' : 'inline-flex'; });
       var h = document.getElementById('of-chirie-hint'); if (h) { h.style.display = inch ? 'block' : 'none'; _ofChirieHint(); }
       // Închirierea cere o durată minimă: aparatul își scoate banii din chirie, în timp.
       var ch = _ofMeta.chirie, ct = document.getElementById('of-contract');
@@ -25114,12 +25123,18 @@ const pozitii = await r.json();</code></pre>
           + 'de tahograf). Nu e aceeași manoperă plătită de două ori, sunt două operațiuni.'
         + '</div>' + butonTarife(deTarife),
         'Manopera, plătită o singură dată. Cantitățile se completează singure din flotă. Noi o facturăm clientului; cu instalatorul ne socotim separat, în fișa de montaj a firmei.');
-      // Chiria pe aparat (lei/lună), vizibilă doar când clientul ÎNCHIRIAZĂ (25.09). Se propune singură din
-      // ce ne costă aparatul; dacă scrii tu altceva, rămâne ce ai scris (ca la cantități).
-      function chF(id, val) {
-        return '<span class="of-chirie-f" style="display:none;align-items:center;gap:4px;margin-left:6px;">'
-          + '<span style="font-size:11px;color:var(--text-muted);">chirie</span>'
-          + fNum(id, val == null ? '' : val, '', 66, 0.01) + '<span class="um">lei/lună</span></span>';
+      // Un aparat = un rând: câte bucăți × UN preț. La „cumpără", prețul de vânzare (€/buc); la „închiriază",
+      // chiria (lei/lună). Doar unul se vede deodată: trei casete pe rând (cantitate, preț, chirie) îl
+      // încurcau pe Alin (25.09: „mă induce în eroare un pic, fă-o mai simplă"). Prețul de vânzare rămâne
+      // și la închiriere — ascuns — fiindcă e valoarea aparatului dacă nu se returnează. Lângă chirie scrie
+      // cât ne costă aparatul, sau un link să-l treci: fără el chiria nu se poate propune.
+      function devRand(eticheta, idQ, idP, pret, idCh, chirie, hint) {
+        return row(eticheta,
+          fNum(idQ, '', '', 70) + '<span class="um">buc</span><span style="opacity:.45;font-size:11px;">×</span>'
+          + '<span class="of-cump-f" style="display:inline-flex;align-items:center;gap:6px;">' + fNum(idP, pret, '', 78, 0.01) + '<span class="um">€/buc</span></span>'
+          + '<span class="of-chirie-f" style="display:none;align-items:center;gap:6px;">' + fNum(idCh, chirie == null ? '' : chirie, '', 78, 0.01) + '<span class="um">lei/lună</span>'
+          + '<span class="of-ch-cost" id="' + idCh.replace('of-', 'of-chcost-') + '" style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;"></span></span>',
+          hint);
       }
       var deviceCard = card('<i class="fas fa-microchip"></i> 5. Aparatele',
         '<input type="hidden" id="of-echipMod" value="cumpara">' +
@@ -25127,13 +25142,13 @@ const pozitii = await r.json();</code></pre>
           '<button type="button" class="rax-btn primary" data-mod="cumpara" onclick="raxOfEchipMod(\'cumpara\')"><i class="fas fa-cart-shopping"></i> Clientul cumpără</button>' +
           '<button type="button" class="rax-btn" data-mod="inchiriaza" onclick="raxOfEchipMod(\'inchiriaza\')"><i class="fas fa-key"></i> Clientul închiriază</button>' +
         '</div>' +
-        row('Teltonika FMC130', qp('of-dq130', 'of-dFmc130', p.dFmc130, 'buc', '€/buc') + chF('of-chFmc130', p.chFmc130)) +
-        row('Teltonika FMC150', qp('of-dq150', 'of-dFmc150', p.dFmc150, 'buc', '€/buc') + chF('of-chFmc150', p.chFmc150)) +
-        row('Teltonika FMC650', qp('of-dq650', 'of-dFmc650', p.dFmc650, 'buc', '€/buc') + chF('of-chFmc650', p.chFmc650)) +
-        row('Modul LV-CAN200', qp('of-dqLvCan', 'of-dLvCan', p.dLvCan, 'buc', '€/buc') + chF('of-chLvCan', p.chLvCan), 'extra, la FMC130/650') +
+        devRand('Teltonika FMC130', 'of-dq130', 'of-dFmc130', p.dFmc130, 'of-chFmc130', p.chFmc130) +
+        devRand('Teltonika FMC150', 'of-dq150', 'of-dFmc150', p.dFmc150, 'of-chFmc150', p.chFmc150) +
+        devRand('Teltonika FMC650', 'of-dq650', 'of-dFmc650', p.dFmc650, 'of-chFmc650', p.chFmc650) +
+        devRand('Modul LV-CAN200', 'of-dqLvCan', 'of-dLvCan', p.dLvCan, 'of-chLvCan', p.chLvCan, 'extra, la FMC130/650') +
         '<div id="of-chirie-hint" class="raof-hint" style="display:none;line-height:1.5;margin-top:4px;"></div>' +
         butonTarife(deTarife),
-        'Aparatele: clientul le cumpără (o singură dată) sau le închiriază de la noi (lunar — rămân ale noastre și ne revin la final). Prețurile sunt în euro, așa le luăm și noi; pe hârtie apar și în lei.');
+        'Clientul le cumpără (plătește o dată) sau le închiriază (plătește lunar, iar aparatele rămân ale noastre).');
       // Panoul pliat „Tarife lunare (editabile)" a DISPĂRUT. Toate prețurile stau acum lângă
       // lucrul pe care îl prețuiesc: abonamentul pe mașină la pasul 2, păstrarea datelor la 3,
       // montajul la 4, aparatele la 5, prețul unui cont de RA Insight lângă comutatorul lui.

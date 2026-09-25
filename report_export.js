@@ -649,7 +649,7 @@ function renderOfertaPdf(doc, o) {
     conditii.splice(2, 1,
       'Aparatele sunt închiriate și rămân proprietatea RA Tracks pe toată durata contractului. Chiria lor se facturează lunar, pe rând separat, împreună cu abonamentul.',
       'Durata minimă a contractului este de ' + lMin + ' ' + _ofDe(lMin) + 'luni. Dacă se încheie mai devreme, se datorează chiria aparatelor pentru lunile rămase până la ' + lMin + '.',
-      'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
+      'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. La sfârșitul contractului, demontarea o facem noi, fără cost. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
   }
   if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')

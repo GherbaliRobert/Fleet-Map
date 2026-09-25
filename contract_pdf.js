@@ -423,8 +423,10 @@ function scrieContract(doc, date) {
   if (chirieA) {
     _p(doc, 'Dacă Beneficiarul denunță contractul înainte de împlinirea duratei minime de ' + C.numar(luniMinCh, 'lună', 'luni') +
       ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia.');
+    // Demontarea la termen o facem NOI, fără cost (decizie Alin, 25.09: „aparatul e al nostru și îl vrem înapoi").
     _p(doc, 'La încetarea contractului, Beneficiarul restituie aparatele închiriate: pune vehiculele la dispoziția Prestatorului pentru demontare în cel mult ' +
-      C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. Aparatele nerestituite sau deteriorate din culpa Beneficiarului se plătesc la valoarea din Anexa nr. 1.');
+      C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar. ' +
+      'Aparatele nerestituite sau deteriorate din culpa Beneficiarului se plătesc la valoarea din Anexa nr. 1.');
   }
 
   _titlu(doc, 'VIII. DISPOZIȚII FINALE');

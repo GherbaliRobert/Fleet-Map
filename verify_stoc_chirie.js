@@ -84,7 +84,13 @@ const faraCh = calcul({ 'of-echipMod': 'inchiriaza' });
 T('aparat închiriat fără chirie trecută: NU e socotit la 0 lei, ci semnalat', faraCh.chirieLipsa.indexOf('Teltonika FMC130') >= 0 && !faraCh.lines.some((l) => l.fel === 'chirie') && faraCh.monthly === 290);
 T('...iar salvarea și hârtia refuză o astfel de ofertă', /window\.raxOfSave = async function \(\) \{[\s\S]{0,400}if \(!_ofChirieOk\(r\)\) return;/.test(html) && /async function _ofHartie\(r, previzualizare\) \{\s*\n\s*if \(!_ofChirieOk\(r\)\) return;/.test(html));
 T('comutatorul „Clientul cumpără / Clientul închiriază" e în cartea 5', /id="of-echipMod" value="cumpara"/.test(html) && /raxOfEchipMod\(\\'inchiriaza\\'\)/.test(html) && /Clientul închiriază/.test(html));
-T('fiecare aparat are caseta lui de chirie (lei/lună)', ['of-chFmc130', 'of-chFmc150', 'of-chFmc650', 'of-chLvCan'].every((id) => html.indexOf("chF('" + id + "'") > 0));
+const carte5 = html.slice(html.indexOf('var deviceCard = card('), html.indexOf('var priceCard'));
+T('fiecare aparat are caseta lui de chirie (lei/lună), în cartea 5', ['of-chFmc130', 'of-chFmc150', 'of-chFmc650', 'of-chLvCan'].every((id) => carte5.indexOf("'" + id + "'") > 0));
+// Alin (25.09): „mă induce în eroare un pic, fă-o mai simplă" — un singur preț pe rând, după alegere.
+const comut = html.slice(html.indexOf('window.raxOfEchipMod = function'), html.indexOf('// ── sfârșit „închirierea aparatelor" ──'));
+T('pe un rând se vede UN preț: vânzare la „cumpără", chirie la „închiriază"', /\.of-chirie-f'\)\.forEach\(function \(x\) \{ x\.style\.display = inch \? 'inline-flex' : 'none'; \}\)/.test(comut) &&
+  /\.of-cump-f'\)\.forEach\(function \(x\) \{ x\.style\.display = inch \? 'none' : 'inline-flex'; \}\)/.test(comut));
+T('lângă chirie: cât ne costă aparatul, sau linkul să-l treci (altfel caseta goală nu spune de ce)', /ne costă ' \+ esc\(String\(costEur\)\) \+ ' €'/.test(html) && /trece cât ne costă<\/a>/.test(html));
 T('hârtia află că e închiriere', /inchiriere: !!r\.inchiriere/.test(html));
 T('oferta redeschisă revine pe cum s-a salvat', /raxOfEchipMod\(cfg\.echipMod === 'inchiriaza' \? 'inchiriaza' : 'cumpara'\)/.test(html));
 T('lista de oferte arată pastila „închiriere"', /areChirie \? '<span[^>]*>închiriere<\/span>'/.test(html));
@@ -118,6 +124,7 @@ T('ÎNCHIRIAZĂ: costul unic e doar instalarea (1.000 lei)', /instalare \(aparat
 T('ÎNCHIRIAZĂ: aparatele rămân proprietatea RA Tracks, chiria pe rând separat', /rămân proprietatea RA Tracks pe toată durata contractului/.test(hInch) && /pe rând separat/.test(hInch));
 T('ÎNCHIRIAZĂ: durata minimă de 24 de luni și chiria lunilor rămase', /Durata minimă a contractului este de 24 de luni/.test(hInch) && /lunile rămase până la 24/.test(hInch));
 T('ÎNCHIRIAZĂ: returul în 15 zile, nereturnatul se plătește', /demontare în cel mult 15 zile/.test(hInch) && /nereturnate sau deteriorate se plătesc/.test(hInch));
+T('ÎNCHIRIAZĂ: la sfârșitul contractului demontarea o facem noi, fără cost (Alin, 25.09)', /La sfârșitul contractului, demontarea o facem noi, fără cost/.test(hInch));
 T('ÎNCHIRIAZĂ: nu mai scrie „rămân în proprietatea Beneficiarului"', !/rămân în proprietatea Beneficiarului/.test(hInch));
 T('termenele de pe hârtie le pune serverul (ruta PDF)', /o\.chirieLuniMin = contracte\.CHIRIE_LUNI_MIN; o\.chirieZileRetur = contracte\.CHIRIE_ZILE_RETUR;/.test(server));
 
@@ -163,6 +170,7 @@ T('IV: aparatele sunt date în folosință și rămân proprietatea Prestatorulu
 T('IV: durata minimă de 24 de luni', /Durata minimă a contractului este de 24 de luni/.test(ctInch));
 T('VII: plecarea înainte de termen → chiria lunilor rămase', /datorează chiria aparatelor închiriate pentru lunile rămase/.test(ctInch));
 T('VII: returul în 15 zile, nerestituitul se plătește la valoarea din anexă', /demontare în cel mult 15 zile/.test(ctInch) && /la valoarea din Anexa nr\. 1/.test(ctInch));
+T('VII: la termen, demontarea o face Prestatorul, fără cost (Alin, 25.09)', /La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar/.test(ctInch));
 T('Anexa nr. 1: „Aparate închiriate — proprietatea Prestatorului", cu valoarea', /Aparate închiriate — proprietatea Prestatorului/.test(ctInch) && /275,00 RON/.test(ctInch));
 T('Anexa nr. 2 fără aparate vândute se numește „Montaj (costuri unice)"', /ANEXA nr\. 2 — Montaj \(costuri unice\)/.test(ctInch) && !/Echipamentele rămân în proprietatea Beneficiarului/.test(ctInch));
 T('contractul de CUMPĂRARE nu pomenește închirierea', !/închiriate|Durata minimă/.test(ctCump));

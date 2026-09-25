@@ -256,7 +256,10 @@ T('pastila nu se mai sprijină pe `vertical-align`',
 sect('5e. Tarifele se schimbă acolo unde se folosesc');
 T('cantitatea și prețul stau pe același rând', /function qp\(idQ, idP, pret, um, umPret\)/.test(html));
 T('montajul are prețul lângă cantitate', /row\('Instalare dispozitiv GPS', qp\('of-qGps', 'of-mGps'/.test(html));
-T('aparatele, la fel', /row\('Teltonika FMC650', qp\('of-dq650', 'of-dFmc650'/.test(html));
+// Aparatele au rândul lor, `devRand` (25.09): cantitatea × UN preț pe același rând — vânzarea la „cumpără",
+// chiria la „închiriază". Regula e aceeași: prețul stă lângă cantitate.
+T('aparatele, la fel', /devRand\('Teltonika FMC650', 'of-dq650', 'of-dFmc650'/.test(html) &&
+  /function devRand\(eticheta, idQ, idP, pret, idCh, chirie, hint\) \{\s*\n\s*return row\(eticheta,\s*\n\s*fNum\(idQ,[\s\S]{0,260}fNum\(idP, pret,/.test(html));
 T('prețurile primesc pas zecimal (altfel browserul refuză „12,50")',
   /fNum\(idP, pret, '', 78, 0\.01\)/.test(html));
 T('butonul de salvare e scris o dată și refolosit',
