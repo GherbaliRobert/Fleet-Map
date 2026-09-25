@@ -188,6 +188,7 @@ let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const contracte = require('./contracts');           // dosarul juridic al firmelor client (reguli curate)
 const neplata = require('./neplata');               // ce se întâmplă când nu se plătește la termen (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
+const stocMod = require('./stoc');                  // stocul nostru de echipamente: unde e fiecare, al cui e (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
@@ -4479,6 +4480,9 @@ function _venitLunar(c, nrCan, conturi) {
   // Păstrarea istoricului peste cele 12 luni incluse — același rând ca pe factură (`buildInvoiceLines`).
   const past = contracte.pastrareFirma(c && c.settings);
   if (past && past.platita) lei += past.pretRON;
+  // Chiria echipamentelor — același rând ca pe factură.
+  const chirie = contracte.chirieFirma(c && c.settings);
+  if (chirie) lei += chirie.totalRON;
   return Math.round(lei * 100) / 100;
 }
 // ── sfârșit „Venitul lunar pe firmă" ──
@@ -4875,6 +4879,8 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       // Păstrarea istoricului firmei + cifrele regulii, ca ecranul să nu le scrie a doua oară.
       pastrare: contracte.pastrareFirma(company.settings),
       pastrare_regula: { incluse: contracte.LUNI_ISTORIC_INCLUSE, max: contracte.LUNI_ISTORIC_MAX },
+      // Chiria echipamentelor (25.09): rândurile pe care le pune factura, din contract. `null` = nu închiriază.
+      chirie: contracte.chirieFirma(company.settings),
       contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, acum),
       sfarsit: contracte.sfarsitCurent(contract, acum),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
@@ -4971,13 +4977,35 @@ function _montajDinOferta(oferta) {
   const rdMontaj = montaj.TIPURI
     .map(function (t) { return { tip: t.k, buc: cfg.montaj ? cfg.montaj[t.ofertaQ] : 0, pretClient: pret[t.oferta] }; })
     .filter(function (r) { return Number(r.buc) > 0; });
-  const rdEchip = montaj.ECHIPAMENTE
+  // La ÎNCHIRIERE aparatele nu se vând: nu intră în costurile unice. Rămân ale noastre și stau în
+  // Anexa nr. 1, cu chiria lor (vezi `_chirieDinOferta`).
+  const rdEchip = cfg.echipMod === 'inchiriaza' ? [] : montaj.ECHIPAMENTE
     .map(function (e) { return { tip: e.k, buc: cfg.devices ? cfg.devices[e.ofertaQ] : 0, pretEur: pret[e.oferta] }; })
     .filter(function (r) { return Number(r.buc) > 0; });
   if (!rdMontaj.length && !rdEchip.length) return null;
   // Cursul se îngheață în anexă: hârtia semnată nu are voie să spună altă sumă peste o lună.
   const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
   return montaj.facAnexaCosturiUnice(montaj.randuri(rdMontaj), montaj.randuriEchip(rdEchip), curs, 'RON');
+}
+// Echipamentele ÎNCHIRIATE dintr-o ofertă (25.09): ce aparate, câte, chiria lunară a fiecăruia (cea
+// SALVATĂ în ofertă, negociată cu clientul) și valoarea lui — prețul de vânzare, la cursul înghețat în
+// ofertă: cât plătește clientul dacă nu-l returnează. `null` = oferta e cu aparate cumpărate.
+// Nu se socotește nimic din nou: se citesc cifrele pe care clientul le-a acceptat.
+function _chirieDinOferta(oferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  if (cfg.echipMod !== 'inchiriaza') return null;
+  const pret = (oferta.config && oferta.config.prices) || {};
+  const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
+  const aparate = montaj.ECHIPAMENTE.map(function (e) {
+    const cant = Math.round(Number(cfg.devices && cfg.devices[e.ofertaQ]) || 0);
+    const chirie = Number(pret[e.chirie]);
+    if (!(cant > 0) || !(chirie > 0)) return null;
+    const valEur = Number(pret[e.oferta]);
+    return { tip: e.k, nume: e.et, cant: cant, chirie: Math.round(chirie * 100) / 100,
+      valoare: valEur > 0 ? Math.round(valEur * curs * 100) / 100 : null };
+  }).filter(Boolean);
+  if (!aparate.length) return null;
+  return { aparate: aparate, randuri: aparate.map(function (a) { return { tip: a.tip, nume: a.nume, cant: a.cant, pret: a.chirie }; }) };
 }
 
 // ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
@@ -5378,6 +5406,167 @@ app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (r
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Stocul nostru de echipamente (Gestiune → Stoc echipamente, 25.09) ──────────────────────────
+// Alin: „noi trebuie să avem un stoc de echipamente, de GPS-uri, LV-CAN-uri". Aparatele închiriate
+// rămân ALE NOASTRE și stau la clienți, deci trebuie să știm oricând unde e fiecare. Strict ale noastre:
+// ce avem în depozit și cât ne-a costat nu iese niciodată printr-o rută de client. Regulile (pe unde
+// poate merge o bucată, alertele) stau în stoc.js; aici doar se aplică.
+const STOC_PRAGURI_CHEIE = 'stoc_praguri';
+async function _stocPraguri() {
+  try { const v = await db.getSetting(STOC_PRAGURI_CHEIE); return v ? JSON.parse(v) : {}; } catch (e) { return {}; }
+}
+function _cine(req) { return (req.session && req.session.username) || (req.auth && req.auth.username) || null; }
+app.get('/api/stoc', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [rows, incheiate, praguri] = await Promise.all([db.listStoc(), db.firmeCuContractIncheiat(), _stocPraguri()]);
+    res.json({
+      aparate: rows, sumar: stocMod.sumar(rows), alerte: stocMod.alerte(rows, praguri, incheiate),
+      praguri: { minim: praguri.minim || {}, zileInstalator: Number(praguri.zileInstalator) || stocMod.ZILE_LA_INSTALATOR },
+      tipuri: montaj.ECHIPAMENTE.map(function (e) { return { k: e.k, et: e.et, cost: e.oferta }; }),
+      stari: stocMod.ETICHETE_STARE, treceri: stocMod.TRECERI
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Intrare în stoc: un model, seriile lui (una pe rând) și/sau câte bucăți FĂRĂ serie, cu cât ne-a costat
+// una și de la cine. Fiecare bucată intră în depozit, a noastră.
+app.post('/api/stoc/intrare', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const tip = String(b.tip || '');
+    if (!montaj.echipament(tip)) return res.status(400).json({ error: 'Alege modelul aparatului.' });
+    const serii = stocMod.serii(b.serii);
+    const faraSerie = Math.max(0, Math.min(500, parseInt(b.buc, 10) || 0));
+    if (!serii.length && !faraSerie) return res.status(400).json({ error: 'Scrie seriile (una pe rând) sau câte bucăți intră fără serie.' });
+    if (serii.length + faraSerie > 500) return res.status(400).json({ error: 'Cel mult 500 de bucăți deodată.' });
+    const exista = await db.seriiExistenteInStoc(serii);
+    if (exista.length) return res.status(409).json({ serii: exista, error: (exista.length === 1 ? 'Seria ' : 'Seriile ') + exista.slice(0, 8).join(', ') + (exista.length > 8 ? '…' : '') + (exista.length === 1 ? ' e deja în stoc.' : ' sunt deja în stoc.') });
+    let cost = null;
+    if (b.cost_eur !== undefined && b.cost_eur !== null && b.cost_eur !== '') {
+      cost = Number(b.cost_eur);
+      if (!Number.isFinite(cost) || cost < 0 || cost > 100000) return res.status(400).json({ error: 'Costul unei bucăți nu e un număr bun.' });
+      cost = Math.round(cost * 100) / 100;
+    }
+    const furnizor = b.furnizor ? String(b.furnizor).trim().slice(0, 160) : null;
+    const zi = b.achizitionat_la ? Number(b.achizitionat_la) : null;
+    const baza = { tip: tip, cost_eur: cost, furnizor: furnizor, achizitionat_la: Number.isFinite(zi) && zi > 0 ? zi : null, created_by: req.auth && req.auth.userId };
+    const bucati = serii.map(function (sr) { return Object.assign({ serie: sr }, baza); });
+    for (let i = 0; i < faraSerie; i++) bucati.push(Object.assign({ serie: null }, baza));
+    const ids = await db.adaugaStoc(bucati, _cine(req));
+    auditReq(req, 'create', 'stoc', null, { tip: tip, buc: ids.length, cost_eur: cost });
+    res.json({ ok: true, adaugate: ids.length, ids: ids });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Mutarea uneia sau a mai multor bucăți. Fiecare bucată trece doar pe drumurile din stoc.js; ce nu se
+// poate se spune pe nume, bucată cu bucată, iar restul se mută.
+app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).map(function (x) { return parseInt(x, 10); }).filter(Number.isFinite).slice(0, 500);
+    if (!ids.length) return res.status(400).json({ error: 'Alege ce muți.' });
+    const stare = String(b.stare || '');
+    if (stocMod.STARI.indexOf(stare) < 0) return res.status(400).json({ error: 'Unde se mută? Alege o stare din listă.' });
+    let companyId = null, partenerId = null, firma = null;
+    if (stare === 'instalator') {
+      partenerId = parseInt(b.partener_id, 10);
+      if (!Number.isFinite(partenerId) || !(await db.getPartenerMontaj(partenerId))) return res.status(400).json({ error: 'Alege instalatorul la care pleacă.' });
+    }
+    if (stare === 'montat') {
+      companyId = parseInt(b.company_id, 10);
+      firma = Number.isFinite(companyId) ? await db.getCompanyById(companyId) : null;
+      if (!firma) return res.status(400).json({ error: 'Alege firma la care e montat.' });
+    }
+    // Al cui e, montat la client: dacă ai spus tu, cum ai spus; altfel după contractul firmei — o firmă
+    // care închiriază primește aparate ale NOASTRE, una care cumpără le primește ale ei.
+    const propCerut = (b.proprietar === 'ra' || b.proprietar === 'client') ? b.proprietar : null;
+    const nota = b.nota ? String(b.nota).trim().slice(0, 300) : null;
+    const mutate = [], refuzate = [];
+    for (const id of ids) {
+      const x = await db.getStoc(id);
+      if (!x) { refuzate.push({ id: id, motiv: 'nu mai există' }); continue; }
+      if (!stocMod.poateTrece(x.stare, stare)) {
+        refuzate.push({ id: id, serie: x.serie, motiv: 'e ' + (stocMod.ETICHETE_STARE[x.stare] || x.stare) + ' — de acolo nu poate ajunge „' + stocMod.ETICHETE_STARE[stare] + '"' });
+        continue;
+      }
+      const m = { stare: stare, cine: _cine(req), nota: nota, company_id: x.company_id, partener_id: x.partener_id, proprietar: x.proprietar };
+      if (stare === 'depozit') { m.company_id = null; m.partener_id = null; m.proprietar = 'ra'; }
+      else if (stare === 'instalator') { m.company_id = null; m.partener_id = partenerId; m.proprietar = 'ra'; }
+      else if (stare === 'montat') { m.company_id = companyId; m.partener_id = null; m.proprietar = propCerut || (contracte.chirieFirma(firma.settings) ? 'ra' : 'client'); }
+      else if (stare === 'retur') { m.partener_id = null; }
+      else if (stare === 'casat') { m.company_id = null; m.partener_id = null; }
+      await db.mutaStoc(id, m);
+      mutate.push(id);
+    }
+    if (!mutate.length) return res.status(400).json({ refuzate: refuzate, error: 'Nimic nu s-a mutat: ' + refuzate.map(function (r) { return (r.serie || '#' + r.id) + ' ' + r.motiv; }).slice(0, 4).join('; ') + '.' });
+    auditReq(req, 'update', 'stoc', null, { stare: stare, buc: mutate.length, company_id: companyId, partener_id: partenerId });
+    res.json({ ok: true, mutate: mutate.length, refuzate: refuzate });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA `/api/stoc/:id`, altfel „praguri" ar fi citit ca id.
+// Pragurile: stocul minim pe model (sub el, e timpul să comandăm) și câte zile poate sta o bucată la instalator.
+app.put('/api/stoc/praguri', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {}, minim = {};
+    Object.keys(b.minim || {}).forEach(function (tip) {
+      if (!montaj.echipament(tip)) return;
+      const n = parseInt(b.minim[tip], 10);
+      if (Number.isFinite(n) && n > 0 && n <= 10000) minim[tip] = n;
+    });
+    const zile = parseInt(b.zileInstalator, 10);
+    const out = { minim: minim, zileInstalator: Number.isFinite(zile) && zile >= 1 && zile <= 365 ? zile : stocMod.ZILE_LA_INSTALATOR };
+    await db.setSetting(STOC_PRAGURI_CHEIE, JSON.stringify(out));
+    auditReq(req, 'update', 'stoc_praguri', null, out);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Corecturi de evidență: seria, costul, furnizorul, notițele.
+app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
+    const b = req.body || {}, f = {};
+    if (b.serie !== undefined) {
+      f.serie = String(b.serie || '').trim().slice(0, 60) || null;
+      if (f.serie && f.serie !== x.serie) { const alta = await db.stocDupaSerie(f.serie); if (alta) return res.status(409).json({ error: 'Seria ' + f.serie + ' e deja în stoc.' }); }
+    }
+    if (b.cost_eur !== undefined) {
+      if (b.cost_eur === null || b.cost_eur === '') f.cost_eur = null;
+      else { const c = Number(b.cost_eur); if (!Number.isFinite(c) || c < 0 || c > 100000) return res.status(400).json({ error: 'Costul nu e un număr bun.' }); f.cost_eur = Math.round(c * 100) / 100; }
+    }
+    if (b.furnizor !== undefined) f.furnizor = b.furnizor ? String(b.furnizor).trim().slice(0, 160) : null;
+    if (b.note !== undefined) f.note = b.note ? String(b.note).trim().slice(0, 1000) : null;
+    const out = await db.editStoc(id, f);
+    auditReq(req, 'update', 'stoc', id, { campuri: Object.keys(f) });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Se șterge DOAR o bucată trecută din greșeală: încă în depozit și fără nicio mutare. Una cu istoric
+// e marfă care a trăit — se trece pe „casat", ca urma să rămână.
+app.delete('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
+    if (x.stare !== 'depozit' || (x.istoric || []).length > 1) return res.status(400).json({ error: 'Bucata are deja istoric — nu se șterge. Dacă nu mai e bună, treci-o pe „casat".' });
+    await db.stergeStoc(id);
+    auditReq(req, 'delete', 'stoc', id, { tip: x.tip, serie: x.serie });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Legătura automată: un aparat din stoc, legat de o firmă în „Dispozitive" (înregistrat pe ea sau
+// adoptat), trece singur pe „montat la client". Al cui e se ia din contractul firmei: firma care
+// închiriază primește aparate ale NOASTRE. Un aparat necunoscut stocului nu se atinge; o eroare aici
+// nu oprește înregistrarea aparatului (stocul e evidență, nu poartă).
+async function _stocLaFirma(imei, companyId, cine) {
+  try {
+    if (!imei || companyId == null) return null;
+    const x = await db.stocDupaSerie(String(imei));
+    if (!x || (x.stare !== 'depozit' && x.stare !== 'instalator')) return null;
+    const co = await db.getCompanyById(companyId); if (!co) return null;
+    return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null,
+      proprietar: contracte.chirieFirma(co.settings) ? 'ra' : 'client', cine: cine || null,
+      nota: 'automat: aparatul a fost legat de firmă în „Dispozitive"' });
+  } catch (e) { console.warn('[STOC] legarea de firmă:', e.message); return null; }
+}
+
 // Lucrările de montaj ale unei firme + socoteala (cât încasăm, cât plătim, cât rămâne).
 app.get('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -5575,6 +5764,13 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
   // o firmă care are deja mai mult: o coborâre șterge date, deci se face doar de mână, cu confirmare.
   const pastrare = _pastrareDinOferta(oferta, dinOferta);
   if (pastrare) patch.pastrare = pastrare;
+  // Chiria echipamentelor (25.09): de aici o citesc factura și registrul. Ca prețul, se scrie DOAR dacă
+  // firma n-are deja o chirie — una negociată separat nu se calcă.
+  const chirie = _chirieDinOferta(oferta);
+  if (chirie) {
+    const coCh = await db.getCompanyById(companyId);
+    if (coCh && !contracte.chirieFirma(coCh.settings)) patch.chirie = { randuri: chirie.randuri };
+  }
   if (Object.keys(patch).length) await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
   return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris };
 }
@@ -5627,6 +5823,13 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     const offerId = parseInt(req.body && req.body.offer_id, 10);
     if (Number.isFinite(offerId)) {
       try { oferta = await db.getOfferById(offerId); } catch (e) {}
+      // Oferta cu aparate închiriate cere cel puțin 24 de luni: aparatul își scoate banii din chirie, în
+      // timp. „Nedeterminată" rămâne voie — clauza de durată minimă din contract o acoperă.
+      const _ch = oferta ? _chirieDinOferta(oferta) : null;
+      if (_ch && date.months != null && Number(date.months) < contracte.CHIRIE_LUNI_MIN) {
+        return res.status(400).json({ error: 'Oferta e cu echipamente închiriate: contractul se face pe cel puțin ' +
+          contracte.numar(contracte.CHIRIE_LUNI_MIN, 'lună', 'luni') + '.' });
+      }
       if (oferta && !date.annex) {
         const _cfgOf = (oferta.config && oferta.config.cfg) || {};
         const _prOf = (oferta.config && oferta.config.prices) || {};
@@ -5640,7 +5843,9 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           aiSeatPriceRON: _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
           aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0,
           // Câte luni se păstrează istoricul, dacă s-a cumpărat mai mult decât cele 12 incluse: se semnează.
-          pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null
+          pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null,
+          // Aparatele ÎNCHIRIATE: ale noastre, cu chiria și valoarea lor — pentru clauze (25.09).
+          chirie: _ch ? { aparate: _ch.aparate } : null
         });
       }
       // Montajul și echipamentele sunt deja socotite în ofertă — le ducem în Anexa nr. 2, ca să nu
@@ -6220,6 +6425,8 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
     await db.setDeviceCompany(req.params.imei, companyId);
     invalidateAccessCache(); _devCompanyCache.delete(req.params.imei); refreshWsScope();
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
+    // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc).
+    if (companyId != null) await _stocLaFirma(req.params.imei, companyId, _cine(req));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -7876,6 +8083,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       const _pa = livePositions.get(imei);
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
       auditReq(req, 'adopt', 'device', imei, { companyId: adoptCompany });
+      await _stocLaFirma(imei, adoptCompany, _cine(req));
       return res.json({ ok: true, adopted: true, imei });
     }
 
@@ -7895,6 +8103,8 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       broadcastWs({ type: 'position', data: _pos });
     }
     auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
+    // Înregistrat direct pe o firmă → aparatul din stocul nostru trece pe „montat la client".
+    if (companyId != null) await _stocLaFirma(imei, companyId, _cine(req));
     res.json({ ok: true, imei });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -12557,6 +12767,13 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     if (p === null) delete next.pastrare;
     else if (p) next.pastrare = p;
   }
+  // Chiria echipamentelor (25.09) — se scrie din contractul făcut pe o ofertă cu închiriere. STRICT
+  // super-admin, ca tot ce ține de bani.
+  if (body.chirie !== undefined && opts && opts.allowFeatures) {
+    const ch = contracte.curataChirie(body.chirie);
+    if (ch === null) delete next.chirie;
+    else if (ch) next.chirie = ch;
+  }
   // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
     next.alert_thresholds = _mergeAlertThresholds(cur.alert_thresholds, body.alert_thresholds);
@@ -12911,6 +13128,10 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   // (`_venitLunar`) adună exact același rând, din aceeași regulă.
   const past = contracte.pastrareFirma(company && company.settings);
   if (past && past.platita) add('Păstrarea istoricului — ' + contracte.numar(past.luni, 'lună', 'luni'), 1, past.pretRON);
+  // Chiria echipamentelor (25.09): pe rând separat, doar la firmele care închiriază — un rând pe model,
+  // exact cum scrie în contract. Registrul (`_venitLunar`) adună aceeași sumă, din aceeași regulă.
+  const chirie = contracte.chirieFirma(company && company.settings);
+  if (chirie) chirie.randuri.forEach(function (r) { add('Chirie echipament — ' + r.nume, r.cant, r.cant * r.pret); });
   const subtotal = Math.round(lines.reduce((s, l) => s + l.net, 0) * 100) / 100;
   const vatAmount = Math.round(lines.reduce((s, l) => s + l.vat, 0) * 100) / 100;
   return { lines, subtotal, vatAmount, total: Math.round((subtotal + vatAmount) * 100) / 100, model: p.model };
@@ -13764,13 +13985,17 @@ app.post('/api/admin/offers/pdf', requireAuth, requireSuperadmin, async (req, re
     if (!reportExport) return res.status(503).json({ error: 'Descărcarea nu e disponibilă pe serverul ăsta.' });
     const o = req.body || {};
     o.valabilZile = OFERTA_VALABIL_ZILE;
+    // La închiriere, durata minimă și termenul de retur le scrie serverul, din aceleași cifre ca contractul.
+    o.chirieLuniMin = contracte.CHIRIE_LUNI_MIN; o.chirieZileRetur = contracte.CHIRIE_ZILE_RETUR;
     await reportExport.sendOfertaPdf(res, o);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Cuvintele și termenul, pentru ecran. ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA oricărei
 // `/api/admin/offers/:id`.
 app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => {
-  res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT });
+  res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT,
+    // Închirierea (25.09): durata minimă și marja se socotesc în pagină, dar cifrele vin DE AICI.
+    chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR } });
 });
 // Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
 // server, la fel ca oriunde altundeva unde un fapt se naște dintr-o apăsare de buton.

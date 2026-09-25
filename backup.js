@@ -39,6 +39,9 @@ const BUSINESS_TABLES = [
   'contracts', 'acte_aditionale', 'montaje', 'montaj_parteneri', 'company_roles', 'company_emails',
   // Contractele cu partenerii de montaj (24.09): și ele țin fișierul SEMNAT (file_b64), care nu se poate reface.
   'montaj_contracte',
+  // Stocul nostru de echipamente (25.09): ce aparate avem, unde e fiecare și al cui e. Fără el, după o
+  // restaurare n-am mai ști ce aparate închiriate stau la clienți — adică marfa noastră.
+  'stoc_echipamente',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —

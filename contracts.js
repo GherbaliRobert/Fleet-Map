@@ -87,6 +87,59 @@ function curataPastrare(b) {
 // și contractele. Cifra e scrisă și pe pagina publică de confidențialitate — legată printr-o probă.
 const LUNI_JURNAL_AUDIT = 12;
 
+// ─── Echipamentele ÎNCHIRIATE (decizie Alin, 25.09) ──────────────────────────────────────────────
+// Nu orice client vrea să cumpere aparatele. Cine le închiriază plătește la semnare doar montajul, iar
+// lunar, pe lângă abonament, chiria aparatelor — pe rând separat, pe factură. Aparatele rămân ALE
+// NOASTRE (stoc RA Tracks) și ne revin la final. Regulile, hotărâte de Alin:
+//   • durata minimă a contractului: 24 de luni — aparatul își scoate banii din chirie, în timp;
+//   • chiria = ce ne-a costat aparatul ÷ lunile contractului, plus 50% (riscul și banii dați înainte);
+//   • montajul se plătește la semnare, ca la cumpărare;
+//   • la final, aparatele se returnează (vehiculele puse la dispoziție pentru demontare, în 15 zile).
+// Cifrele stau AICI, o dată. Pagina le cere prin `/api/admin/offers/meta`; hârtia ofertei și contractul
+// le citesc de aici. NU le face variabile de mediu: sunt promisiuni scrise pe hârtie.
+const CHIRIE_LUNI_MIN = 24;
+const CHIRIE_MARJA = 0.5;
+const CHIRIE_ZILE_RETUR = 15;
+// Chiria pe lună a UNUI aparat, în lei. Rotunjită la leu, dar niciodată sub costul curat pe lună
+// (cost ÷ luni, rotunjit în sus): rotunjirea nu are voie să ne mănânce banii aparatului. Fără cost
+// știut → `null`: nu inventăm o chirie (ar ieși un aparat dat aproape pe gratis).
+function chirieLunara(costLei, luni) {
+  const c = Number(costLei);
+  if (!Number.isFinite(c) || c <= 0) return null;
+  const n = Math.max(CHIRIE_LUNI_MIN, Math.round(Number(luni) || 0));
+  return Math.max(Math.ceil(c / n), Math.round((c / n) * (1 + CHIRIE_MARJA)));
+}
+// Chiria scrisă pe FIRMĂ (`settings.chirie`), după care se face factura și registrul. Rândurile sunt
+// cele din contract: { tip, nume, cant, pret }. `null` = firma nu închiriază nimic. Setări stricate →
+// `null` (nu se facturează o chirie ghicită).
+function chirieFirma(settings) {
+  let s = settings;
+  if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { return null; } }
+  const ch = s && typeof s === 'object' ? s.chirie : null;
+  if (!ch || !Array.isArray(ch.randuri)) return null;
+  const randuri = ch.randuri.map(_randChirie).filter(Boolean);
+  if (!randuri.length) return null;
+  const total = randuri.reduce(function (t, r) { return t + r.cant * r.pret; }, 0);
+  return { randuri: randuri, totalRON: Math.round(total * 100) / 100, luniMin: CHIRIE_LUNI_MIN };
+}
+function _randChirie(r) {
+  if (!r || typeof r !== 'object') return null;
+  const cant = Math.round(Number(r.cant));
+  const pret = Number(r.pret);
+  const nume = String(r.nume || '').trim().slice(0, 120);
+  if (!nume || !Number.isFinite(cant) || cant < 1 || !Number.isFinite(pret) || pret <= 0) return null;
+  return { tip: r.tip ? String(r.tip).replace(/[^a-z0-9]/g, '').slice(0, 20) || null : null, nume: nume, cant: cant, pret: Math.round(pret * 100) / 100 };
+}
+// Ce se scrie pe firmă. `null` = firma nu mai închiriază (cheia se scoate); ceva stricat → `undefined`
+// (cererea se refuză, nu se ghicește).
+function curataChirie(b) {
+  if (b === null) return null;
+  if (!b || typeof b !== 'object' || !Array.isArray(b.randuri)) return undefined;
+  const randuri = b.randuri.map(_randChirie);
+  if (!randuri.length || randuri.some(function (r) { return !r; })) return undefined;
+  return { randuri: randuri };
+}
+
 // Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
 // trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
 // Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
@@ -346,6 +399,21 @@ function facAnexa(vehicule, pret) {
   // din contract nu trebuie să depindă de ce scrie azi pe firmă. Doar peste cele 12 incluse.
   const pl = Math.round(Number(pret && pret.pastrareLuni));
   if (Number.isFinite(pl) && pl > LUNI_ISTORIC_INCLUSE) out.pastrareLuni = Math.min(pl, LUNI_ISTORIC_MAX);
+  // Echipamentele ÎNCHIRIATE (25.09): ce aparate ale NOASTRE stau la client, cu chiria și valoarea lor
+  // (cât plătește dacă nu le returnează). Chiria e deja în `servicii` (rândurile `fel: 'chirie'`), deci
+  // și în total; lista de aici e pentru clauze: proprietatea, returul, durata minimă.
+  const ch = pret && pret.chirie;
+  if (ch && Array.isArray(ch.aparate)) {
+    const r2 = function (v) { return Math.round(v * 100) / 100; };
+    const ap = ch.aparate.map(function (a) {
+      const cant = Math.round(Number(a && a.cant)), chirie = Number(a && a.chirie), val = Number(a && a.valoare);
+      const nume = String((a && a.nume) || '').trim().slice(0, 120);
+      if (!nume || !(cant >= 1) || !(chirie > 0)) return null;
+      return { tip: a.tip ? String(a.tip).replace(/[^a-z0-9]/g, '').slice(0, 20) || null : null, nume: nume, cant: cant,
+        chirie: r2(chirie), valoare: Number.isFinite(val) && val > 0 ? r2(val) : null };
+    }).filter(Boolean);
+    if (ap.length) out.chirie = { luniMin: CHIRIE_LUNI_MIN, aparate: ap };
+  }
   return out;
 }
 
@@ -399,7 +467,7 @@ function drumulClientului(d) {
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
-  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'pastrareLuni', 'currency'].forEach(function (k) {
+  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
     if (a[k] != null) out[k] = a[k];
   });
   return out;
@@ -417,6 +485,7 @@ function anexaInVigoare(contract, acte) {
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
   LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
+  CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare

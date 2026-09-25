@@ -731,6 +731,44 @@ Parteneri · Contracte cu partenerii · Lucrări.
   DOAR lucrările lui — nu flota/pozițiile clientului, nu prețul pentru client, nu marja, nu alți parteneri.
 - Păzit de `verify_montaj_sectiune.js` (în `npm test`), pe server pornit, cu server de email FALS.
 
+### Aparatele ÎNCHIRIATE și stocul nostru (decizie Alin, 25.09)
+Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze"* + *„trebuie să
+avem un stoc de echipamente"*. Hotărât: **24 de luni minim, 50% marjă, montajul la semnare, aparatele ne
+revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU închiriază, momentan).
+
+- **Regulile stau în `contracts.js`:** `CHIRIE_LUNI_MIN = 24`, `CHIRIE_MARJA = 0.5`, `CHIRIE_ZILE_RETUR = 15`,
+  `chirieLunara(costLei, luni)` = cost ÷ max(luni, 24) × 1,5, rotunjit la leu, niciodată sub cost ÷ luni
+  (rotunjit în sus); fără cost → `null` (nu inventăm o chirie). NU le face variabile de mediu.
+- **Pagina** socotește chiria pe loc cu `_ofChirieLunara`, cu cifrele venite din `/api/admin/offers/meta`
+  (`_ofMeta.chirie`) — LEGATĂ printr-o probă de `chirieLunara` (54 de cazuri). Pagina NU scrie 24 / 50%.
+  Cheile (`_OF_CHIRIE`: `chFmc130`… ↔ `d130`… ↔ `dFmc130`…) oglindesc `montaj.ECHIPAMENTE` (`chirie`).
+- **În ofertă:** `cfg.echipMod = 'cumpara' | 'inchiriaza'`. La închiriere: `deviceLines = []`, `hwTotal = 0`
+  (costul unic = doar montajul), iar chiria intră în `lines` cu `fel: 'chirie'` (deci în `monthly`, în
+  anexă, pe hârtie). Chiria propusă din `costuri_noastre` (ne costă, în €) × curs; casetă atinsă = nu se
+  rescrie. Aparat fără chirie → `chirieLipsa`, iar `raxOfSave` și `_ofHartie` refuză (`_ofChirieOk`). NU-l
+  socoti la 0 lei. Durata urcă la minim.
+- **Contractul din ofertă:** `_chirieDinOferta(oferta)` citește ce s-a SALVAT (cantitate, chiria negociată,
+  valoarea = prețul de vânzare × cursul înghețat) — nu recalculează. Contract < 24 de luni → 400.
+  `annex.chirie = { luniMin, aparate }` (păstrat de `dinAnexaDePastrat`); Anexa nr. 2 fără aparate vândute se
+  numește „Montaj (costuri unice)". Clauzele stau în `scrieContract` (IV + VII + Anexa nr. 1), numai când
+  `annex.chirie` există.
+- **Pe firmă:** `settings.chirie = { randuri: [{ tip, nume, cant, pret }] }`, scris de `_aplicaOfertaPeFirma`
+  DOAR dacă firma n-are deja una; citit cu `contracte.chirieFirma(settings)`. **Factura (`buildInvoiceLines`)
+  și registrul (`_venitLunar`) adună același rând** — „Chirie echipament — {model}". Doar super-admin îl
+  scrie (`_applyCompanySettingsPatch`, `allowFeatures`); în „Abonament & plăți" doar se vede.
+- **Stocul (Gestiune → Stoc echipamente, `admin-tab-stoc`, `raxLoadStoc`):** tabela `stoc_echipamente`, un
+  rând = o bucată (`stare` = unde e, `proprietar` = 'ra' / 'client', `istoric` adăugat la fiecare mutare).
+  Regulile (treceri, sumar, alerte) stau în **`stoc.js`**, curate. Rutele `/api/stoc*` = `requireSuperadmin`;
+  `/api/stoc/praguri` stă ÎNAINTEA `/api/stoc/:id`. Se șterge doar o bucată fără mutări; restul → „casat".
+  În `BUSINESS_TABLES`. Căutarea redesenează doar `#stoc-tabel` (capcana de la Inventar).
+- **Legătura automată `_stocLaFirma(imei, companyId)`:** chemată din TREI locuri — adopția din „Neasignate"
+  (`PUT /api/devices/:imei/company`) și cele două căi din `POST /api/devices`. Aparatul din stoc trece pe
+  „montat", al nostru dacă firma închiriază (`chirieFirma`), vândut dacă nu. Un IMEI necunoscut stocului nu
+  se atinge, iar o eroare de stoc nu oprește înregistrarea.
+- **De hotărât (întrebat pe 25.09):** demontarea la final — cine o plătește. Contractul spune doar că
+  vehiculele se pun la dispoziție în 15 zile.
+- Păzit de `verify_stoc_chirie.js` (în `npm test`), inclusiv pe server pornit.
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - (nimic deschis aici acum)
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,

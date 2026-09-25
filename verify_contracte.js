@@ -346,9 +346,12 @@ if (grupBiz) {
 }
 T('ecranul „Contracte" are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
 T('și se încarcă la deschiderea filei', /name === 'contracte'\) \{\s*\n\s*if \(window\.raxLoadContracte\)/.test(html));
+// Paza se citește din pagină și se verifică secțiune cu secțiune: lista a crescut (Montaj 24.09, Stoc 25.09)
+// și o căutare a textului exact pica la fiecare secțiune nouă, deși paza era întreagă.
+const _garda = (html.match(/window\.raxAdminTab = function \(name\) \{\s*\n\s*if \(\(([^)]*)\) && !can\('manageCompanies'\)\)/) || [])[1] || '';
 T('e strict al fondatorilor, ca și Companii',
-  /name === 'accounts' \|\| name === 'contracte' \|\| name === 'montaj'\) && !can\('manageCompanies'\)/.test(html) &&
-  /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html));
+  ['companies', 'accounts', 'contracte', 'montaj', 'stoc'].every(function (n) { return _garda.indexOf("name === '" + n + "'") >= 0; }) &&
+  /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html), _garda);
 T('ruta care dă toate contractele cere super-admin',
   /app\.get\('\/api\/contracts', requireAuth, requireSuperadmin/.test(server));
 T('ruta trimite și firmele FĂRĂ contract — aia e gaura adevărată',

@@ -65,7 +65,9 @@ T('fiecare cere super-admin', rute.every(r => /requireSuperadmin/.test(r[3])), r
 T('și autentificare', rute.every(r => /requireAuth/.test(r[3])));
 
 sect('4. Costurile UNICE (echipamente + montaj) sunt separate de abonament');
-T('anexa are și marfa, și manopera', /ANEXA nr\. 2 — Echipamente și montaj \(costuri unice\)/.test(cpdf));
+// Cu aparate VÂNDUTE anexa e „Echipamente și montaj"; la ÎNCHIRIERE (25.09) aparatele nu se vând, deci
+// anexa rămâne doar cu montajul și se numește „Montaj" (verify_stoc_chirie.js citește hârtia desenată).
+T('anexa are și marfa, și manopera', /'ANEXA nr\. 2 — ' \+ \(areEchip \? 'Echipamente și montaj' : 'Montaj'\) \+ ' \(costuri unice\)'/.test(cpdf));
 T('și scrie limpede că nu fac parte din abonament',
   /se plătesc O SINGURĂ DATĂ, la livrare și la execuție, și NU fac parte din abonamentul lunar/.test(cpdf));
 T('marfa e primul tabel, manopera al doilea', /A\. Echipamente livrate/.test(cpdf) && /B\. Montaj și punere în funcțiune/.test(cpdf));

@@ -1086,6 +1086,26 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mcontracte_partener ON montaj_contracte(partener_id, created_at DESC)`);
+    // ─── Stocul NOSTRU de echipamente (Alin, 25.09) ───────────────────────────────────────────────
+    // Un rând = o bucată (aparat GPS, modul LV-CAN), cu seria ei. `stare` = unde e (depozit, la
+    // instalator, montat, returnat, defect, casat); `proprietar` = al cui e ('ra' = al nostru, în stoc
+    // sau închiriat; 'client' = vândut). `istoric` = fiecare mutare, cu ziua și cine a făcut-o. Regulile
+    // (pe unde poate merge o bucată, alertele) stau în stoc.js.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stoc_echipamente (
+        id SERIAL PRIMARY KEY,
+        tip VARCHAR(30) NOT NULL,
+        serie VARCHAR(60),
+        stare VARCHAR(16) NOT NULL DEFAULT 'depozit',
+        proprietar VARCHAR(10) NOT NULL DEFAULT 'ra',
+        company_id INTEGER, partener_id INTEGER,
+        cost_eur NUMERIC(10,2), furnizor VARCHAR(160), achizitionat_la BIGINT,
+        stare_din BIGINT, note TEXT, istoric JSONB DEFAULT '[]'::jsonb,
+        created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stoc_serie ON stoc_echipamente(serie) WHERE serie IS NOT NULL`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_stoc_stare ON stoc_echipamente(stare, tip)`);
     // ─── Acte adiționale ──────────────────────────────────────────────────────────────────────
     // Un contract semnat NU se mai schimbă — asta e tot rostul unei semnături. Când clientul mai
     // cumpără mașini, mai vrea un modul sau se schimbă prețul, se face un ACT ADIȚIONAL: o hârtie
@@ -2117,6 +2137,84 @@ async function toateLucrarileMontaj(limita) {
   return r.rows;
 }
 async function deletePartenerMontaj(id) { await pool.query('DELETE FROM montaj_parteneri WHERE id = $1', [id]); return { ok: true }; }
+
+// ─── Stocul de echipamente (25.09) ───────────────────────────────────────────────────────────────
+// Regulile (pe unde poate merge o bucată, alertele) stau în stoc.js; aici doar se citește și se scrie.
+// Fiecare mutare se ADAUGĂ în `istoric` (ziua, starea, la cine, cine a mutat) — nu se rescrie nimic.
+const _STOC_COL = `s.id, s.tip, s.serie, s.stare, s.proprietar, s.company_id, s.partener_id, s.cost_eur, s.furnizor,
+  s.achizitionat_la, s.stare_din, s.note, s.istoric, s.created_at, s.updated_at`;
+function _stocRow(x) {
+  if (!x) return null;
+  ['achizitionat_la', 'stare_din', 'created_at', 'updated_at'].forEach(function (k) { x[k] = x[k] == null ? null : Number(x[k]); });
+  x.cost_eur = x.cost_eur == null ? null : Number(x.cost_eur);
+  x.company_id = x.company_id == null ? null : Number(x.company_id);
+  x.partener_id = x.partener_id == null ? null : Number(x.partener_id);
+  x.istoric = Array.isArray(x.istoric) ? x.istoric : [];
+  return x;
+}
+async function listStoc() {
+  const r = await pool.query(
+    `SELECT ${_STOC_COL}, co.name AS company_name, p.name AS partener_nume
+       FROM stoc_echipamente s LEFT JOIN companies co ON co.id = s.company_id LEFT JOIN montaj_parteneri p ON p.id = s.partener_id
+      ORDER BY s.tip, s.serie NULLS LAST, s.id`);
+  return r.rows.map(_stocRow);
+}
+async function getStoc(id) {
+  const r = await pool.query(`SELECT ${_STOC_COL} FROM stoc_echipamente s WHERE s.id = $1`, [id]);
+  return _stocRow(r.rows[0]);
+}
+async function stocDupaSerie(serie) {
+  if (!serie) return null;
+  const r = await pool.query(`SELECT ${_STOC_COL} FROM stoc_echipamente s WHERE s.serie = $1`, [String(serie)]);
+  return _stocRow(r.rows[0]);
+}
+async function seriiExistenteInStoc(serii) {
+  if (!serii || !serii.length) return [];
+  const r = await pool.query('SELECT serie FROM stoc_echipamente WHERE serie = ANY($1::text[])', [serii]);
+  return r.rows.map(function (x) { return x.serie; });
+}
+// Intrare în stoc: fiecare bucată intră în DEPOZIT, a noastră. `bucati` = [{ tip, serie, cost_eur, … }].
+async function adaugaStoc(bucati, cine) {
+  const acum = Date.now(), ids = [];
+  for (const b of (bucati || [])) {
+    const ist = [{ la: acum, stare: 'depozit', cine: cine || null, nota: 'intrare în stoc' + (b.furnizor ? ', de la ' + b.furnizor : '') }];
+    const r = await pool.query(
+      `INSERT INTO stoc_echipamente (tip, serie, stare, proprietar, cost_eur, furnizor, achizitionat_la, stare_din, note, istoric, created_by, created_at, updated_at)
+       VALUES ($1, $2, 'depozit', 'ra', $3, $4, $5, $6, $7, $8::jsonb, $9, $6, $6) RETURNING id`,
+      [b.tip, b.serie || null, b.cost_eur == null ? null : b.cost_eur, b.furnizor || null, b.achizitionat_la || acum, acum,
+        b.note || null, JSON.stringify(ist), b.created_by || null]);
+    ids.push(r.rows[0].id);
+  }
+  return ids;
+}
+// O mutare: unde ajunge bucata, la cine, al cui e — și un rând nou în istoric.
+async function mutaStoc(id, m) {
+  const acum = Date.now();
+  const ent = { la: acum, stare: m.stare, company_id: m.company_id == null ? null : m.company_id, partener_id: m.partener_id == null ? null : m.partener_id,
+    proprietar: m.proprietar, cine: m.cine || null, nota: m.nota || null };
+  const r = await pool.query(
+    `UPDATE stoc_echipamente SET stare = $2, company_id = $3, partener_id = $4, proprietar = $5, stare_din = $6, updated_at = $6,
+            istoric = COALESCE(istoric, '[]'::jsonb) || $7::jsonb
+      WHERE id = $1 RETURNING id`,
+    [id, m.stare, ent.company_id, ent.partener_id, m.proprietar, acum, JSON.stringify([ent])]);
+  return r.rows[0] ? getStoc(id) : null;
+}
+// Corecturi de evidență (o serie greșită, costul, furnizorul, notițe). Se scrie DOAR ce vine.
+async function editStoc(id, f) {
+  const chei = ['serie', 'cost_eur', 'furnizor', 'note', 'achizitionat_la'].filter(function (k) { return f[k] !== undefined; });
+  if (!chei.length) return getStoc(id);
+  const params = [id, Date.now()];
+  const set = chei.map(function (k) { params.push(f[k]); return k + ' = $' + params.length; });
+  await pool.query('UPDATE stoc_echipamente SET updated_at = $2, ' + set.join(', ') + ' WHERE id = $1', params);
+  return getStoc(id);
+}
+async function stergeStoc(id) { await pool.query('DELETE FROM stoc_echipamente WHERE id = $1', [id]); return { ok: true }; }
+// Firmele al căror contract s-a ÎNCHEIAT (niciunul în lucru sau în vigoare): acolo aparatele NOASTRE
+// trebuie recuperate.
+async function firmeCuContractIncheiat() {
+  const r = await pool.query(`SELECT company_id FROM contracts GROUP BY company_id HAVING bool_and(status = 'incheiat')`);
+  return r.rows.map(function (x) { return Number(x.company_id); });
+}
 
 // Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat).
 async function listMontaje(companyId) {
@@ -4774,6 +4872,7 @@ module.exports = {
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
   stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
+  listStoc, getStoc, stocDupaSerie, seriiExistenteInStoc, adaugaStoc, mutaStoc, editStoc, stergeStoc, firmeCuContractIncheiat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,

@@ -25,6 +25,17 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 - [ ] **Un jurist** să citească ambele contracte, cu clienții și cu partenerii de montaj (plus acordurile
   GDPR din anexe), înainte de primul semnat. Se schimbă într-un singur loc: `contract_pdf.js`.
+  **Din 25.09, și clauzele de închiriere** (aparatele ale noastre, 24 de luni minim, chiria lunilor rămase,
+  returul în 15 zile, valoarea aparatelor nereturnate).
+- [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
+  Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
+  spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
+- [ ] **Alin: demontarea la finalul unei închirieri — cine o plătește? Întrebat pe 25.09.** Contractul
+  spune acum doar că clientul pune mașinile la dispoziție în 15 zile. Propunerea mea: noi, fără cost, când
+  contractul ajunge la termen; clientul, la tariful de dezinstalare, dacă pleacă înainte de termen.
+- [ ] **Contabilul: aparatele închiriate. Adăugat pe 25.09.** Rămân ale noastre, deci intră în evidența
+  firmei (mijloace fixe sau obiecte de inventar, cu amortizarea lor), iar pe factură apare rândul „Chirie
+  echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
 - [ ] **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
   contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
   facturile.
@@ -116,6 +127,62 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+## 2026-09-25
+
+### AMÂNDOI · Aparatele se pot și închiria, iar noi avem stocul nostru de echipamente
+
+Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze de la noi pe
+toată durata contractului"* — și, pentru asta, *„trebuie să avem un stoc de echipamente, de GPS-uri,
+LV-CAN-uri"*. Hotărât cu el: **24 de luni minim, 50% marjă, montajul la semnare, aparatele ne revin la
+final, chiria pe rând separat pe factură, o singură alegere pe ofertă.**
+
+**1. Oferta: „Clientul cumpără" sau „Clientul închiriază"** (cartea „5. Aparatele")
+- La închiriere, costul unic rămâne **doar montajul**; lunar apare **chiria aparatelor**, un rând pe model.
+- Chiria se propune singură: cât ne costă aparatul („Prețurile noastre" → „ne costă") ÷ lunile
+  contractului (minim 24) + 50%. Exemplu: un aparat care ne costă 45 € (225 lei) → **14 lei pe lună**.
+  Se poate schimba de mână, când negociezi.
+- Durata contractului urcă singură la 24 de luni.
+- Un aparat închiriat fără chirie **nu se socotește la 0 lei**: rezumatul arată cu roșu ce lipsește, iar
+  oferta nu se salvează și nu se descarcă până nu completezi.
+- „Ce rămâne la noi" arată în câte luni ne întoarcem banii dați pe aparate.
+- În lista de oferte, o pastilă portocalie „închiriere".
+
+**2. Hârtiile**
+- **Oferta:** tabelul „Chiria echipamentelor — lunar", iar la condiții: aparatele rămân ale RA Tracks,
+  durata minimă de 24 de luni, returul în 15 zile.
+- **Contractul:** clauzele de închiriere — aparatele sunt ale noastre, chiria stă pe rând separat, 24 de
+  luni minim; dacă pleacă mai devreme, plătește chiria lunilor rămase; la final pune mașinile la
+  dispoziție pentru demontare, în 15 zile; ce nu returnează se plătește la valoarea din anexă. În Anexa
+  nr. 1, lista aparatelor închiriate, cu valoarea fiecăruia.
+- Un contract mai scurt de 24 de luni pe o ofertă cu închiriere **nu se poate face** (serverul refuză).
+
+**3. Factura:** rând separat, lună de lună — „Chirie echipament — Teltonika FMC650" — doar la firmele
+care închiriază. Registrul de venituri adună exact aceeași sumă. În fișa firmei, la „Abonament & plăți",
+se vede chiria (doar de citit: alte aparate sau alt preț înseamnă act adițional).
+
+**4. Stocul: Gestiune → Stoc echipamente** (rând nou în meniu, sub „Inventar dispozitive")
+- **Fiecare bucată** (GPS, modul LV-CAN), cu seria ei, cât ne-a costat și de la cine: **unde e** (în
+  depozit, la instalator, montat la client, returnat, defect, casat) și **al cui e** (al nostru sau vândut).
+- Sus: câte ai din fiecare model, și „De făcut": un model sub stocul minim („e timpul să comanzi"),
+  bucăți uitate la instalator de peste 14 zile, aparate ale noastre la firme cu contractul încheiat
+  („de recuperat").
+- Butoane: „Intrare în stoc" (seriile una pe rând; costul se propune din „Prețurile noastre"), „Stoc
+  minim", „Mută" (una sau mai multe bucăți, cu instalatorul sau firma). Clic pe serie = istoricul ei.
+- **Legătura automată:** când un aparat din stoc e legat de o firmă în „Dispozitive" (înregistrat pe ea
+  sau adoptat), trece singur pe „montat la client" — **al nostru** dacă firma închiriază, **vândut** dacă
+  nu. Un aparat necunoscut stocului se înregistrează ca înainte: stocul e evidență, nu poartă.
+- O bucată se șterge doar dacă a fost trecută din greșeală; una care a fost pe undeva se trece pe „casat".
+- Stocul intră în copia de siguranță zilnică.
+
+Probat: `verify_stoc_chirie.js`, 97 de verificări, cu server pornit (ofertă cu închiriere → contract →
+firmă → factură → stoc), plus sabotaj (scoasă chiria de pe factură și paza de 24 de luni → 8 picate).
+
+- **Ce am schimbat:** închirierea aparatelor, de la ofertă la factură, și stocul nostru de echipamente.
+- **Ce vede fondatorul:** comutatorul din ofertă, pastila „închiriere", secțiunea „Stoc echipamente",
+  chiria în fișa firmei.
+- **Ce vede clientul:** oferta și contractul cu condițiile de închiriere, iar pe factură rândul „Chirie
+  echipament". Stocul nu-l vede.
 
 ## 2026-09-24
 

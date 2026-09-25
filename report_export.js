@@ -509,7 +509,12 @@ function renderOfertaPdf(doc, o) {
   let y = doc.page.margins.top;
   const spatiu = (h) => { if (y + h > bottom) { doc.addPage(); y = doc.page.margins.top; } };
   const luni = Math.max(1, Number(o.contractMonths) || 12);
-  const unicLei = (Number(o.montaj) || 0) + eur2lei(o.hwTotal);
+  // Închirierea (25.09): aparatele nu se vând, deci costul unic e doar montajul, iar chiria lor intră
+  // lunar, pe rândurile `fel: 'chirie'`. Termenele (durata minimă, returul) le pune SERVERUL (ruta PDF).
+  const inchiriere = !!o.inchiriere;
+  const chirieLines = (o.lines || []).filter((l) => l && l.fel === 'chirie');
+  const abonLines = (o.lines || []).filter((l) => !l || l.fel !== 'chirie');
+  const unicLei = (Number(o.montaj) || 0) + (inchiriere ? 0 : eur2lei(o.hwTotal));
 
   // 1. Antet brandat — logo REAL, varianta pentru fundal alb.
   const logo = _logoBuffer();
@@ -551,8 +556,8 @@ function renderOfertaPdf(doc, o) {
   const gol = 10, wc = (W - gol) / 2;
   spatiu(76);
   caseta(left, wc, 'Cost lunar', o.monthly,
-    'abonament pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule', true);
-  caseta(left + wc + gol, wc, 'Cost unic, o singură dată', unicLei, 'echipamente și instalare', false);
+    (inchiriere ? 'abonament și chiria aparatelor, ' : 'abonament ') + 'pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule', true);
+  caseta(left + wc + gol, wc, 'Cost unic, o singură dată', unicLei, inchiriere ? 'instalare (aparatele sunt închiriate)' : 'echipamente și instalare', false);
   y += 70;
   doc.fillColor('#4b5563').font('Nunito').fontSize(8.5)
     .text('Total pe durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni): '
@@ -594,9 +599,11 @@ function renderOfertaPdf(doc, o) {
     y += 8;
   };
 
-  tabel('Abonament lunar', o.lines || [], 'RON');
+  tabel('Abonament lunar', abonLines, 'RON');
+  // La închiriere, chiria aparatelor are tabelul ei, lunar — aceleași rânduri ca pe factură.
+  if (inchiriere) tabel('Chiria echipamentelor — lunar', chirieLines, 'RON');
   // Ordinea e aceeași ca în anexele contractului: întâi marfa, apoi manopera.
-  tabel('Echipamente — o singură dată', o.deviceLines || [], 'EUR');
+  if (!inchiriere) tabel('Echipamente — o singură dată', o.deviceLines || [], 'EUR');
   tabel('Instalare și punere în funcțiune — o singură dată', o.montajLines || [], 'RON');
 
   // 4. Explicațiile, la FINAL. Cifrele au fost deja date; astea le lămuresc.
@@ -634,6 +641,16 @@ function renderOfertaPdf(doc, o) {
       : 'Facturarea se face în lei. Sumele în euro sunt orientative, la un curs de referință de 1 € = '
         + _bani(fx, 'lei', 4) + '.')
   ];
+  // La închiriere, cele două condiții despre CUMPĂRAREA aparatelor se înlocuiesc cu regulile închirierii.
+  // Cifrele (24 de luni, 15 zile) vin de la server, din aceleași constante ca și contractul.
+  if (inchiriere) {
+    const lMin = Math.max(1, Number(o.chirieLuniMin) || 24), zRet = Math.max(1, Number(o.chirieZileRetur) || 15);
+    conditii.splice(0, 1, 'Instalarea se facturează o singură dată, după punerea în funcțiune. Aparatele nu se cumpără: sunt închiriate.');
+    conditii.splice(2, 1,
+      'Aparatele sunt închiriate și rămân proprietatea RA Tracks pe toată durata contractului. Chiria lor se facturează lunar, pe rând separat, împreună cu abonamentul.',
+      'Durata minimă a contractului este de ' + lMin + ' ' + _ofDe(lMin) + 'luni. Dacă se încheie mai devreme, se datorează chiria aparatelor pentru lunile rămase până la ' + lMin + '.',
+      'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
+  }
   if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
       + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
@@ -694,4 +711,5 @@ async function sendOfertaPdf(res, o) {
 }
 // ─── sfârșit „oferta, ca fișier descărcat" ──
 
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition };
+// `renderOfertaPdf` e exportat pentru probe (verify_stoc_chirie.js citește textul hârtiei cu un document de carton).
+module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf };

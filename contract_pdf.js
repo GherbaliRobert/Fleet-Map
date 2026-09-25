@@ -268,6 +268,29 @@ function _tabelEchip(doc, echip) {
     .text('Curs de schimb folosit în prezenta anexă: 1 EUR = ' + Number(echip.curs).toFixed(4) + ' lei.', left, doc.y + 3, { width: w, align: 'right' });
   doc.x = left; doc.y += 14;
 }
+// Aparatele ÎNCHIRIATE (25.09): ale Prestatorului, date în folosință. Chiria e deja în tabelul lunar de
+// mai sus; aici e lista lor, cu valoarea care se plătește dacă un aparat nu se returnează.
+function _tabelChirie(doc, chirie) {
+  const { left, w } = _ST(doc);
+  const col = [w * 0.46, w * 0.14, w * 0.2, w * 0.2];
+  function rand(valori, gros) {
+    _incape(doc, 34);
+    const y = doc.y;
+    doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+    let x = left;
+    valori.forEach(function (v, i) {
+      doc.text(_taie(doc, v, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: i === 0 ? 'left' : 'right' });
+      x += col[i];
+    });
+    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left; doc.y = y + 22;
+  }
+  rand(['Aparat', 'Cant.', 'Chirie / lună / buc.', 'Valoare / buc.'], true);
+  (chirie.aparate || []).forEach(function (a) {
+    rand([a.nume, a.cant + ' buc', _bani(a.chirie, 'RON'), a.valoare == null ? '—' : _bani(a.valoare, 'RON')]);
+  });
+  doc.x = left; doc.y += 6;
+}
 function _semnaturi(doc, numePrestator, numeBeneficiar) {
   const { left, w } = _ST(doc);
   _incape(doc, 120);
@@ -371,6 +394,13 @@ function scrieContract(doc, date) {
           'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.'
         : 'Numărul de întrebări nu este limitat.'));
   }
+  // Aparatele ÎNCHIRIATE (25.09): ale Prestatorului, cu chiria pe rând separat și durata minimă.
+  const chirieA = anexa.chirie && (anexa.chirie.aparate || []).length ? anexa.chirie : null;
+  const luniMinCh = chirieA ? (Number(chirieA.luniMin) || C.CHIRIE_LUNI_MIN) : 0;
+  if (chirieA) {
+    _p(doc, 'Aparatele de monitorizare enumerate în Anexa nr. 1, la „Aparate închiriate", sunt date Beneficiarului în folosință, cu chirie, și rămân proprietatea Prestatorului pe toată durata contractului. ' +
+      'Chiria lunară este cuprinsă în prețul de mai sus și apare pe factură pe rând separat. Durata minimă a contractului este de ' + C.numar(luniMinCh, 'lună', 'luni') + '.');
+  }
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
 
@@ -390,6 +420,12 @@ function scrieContract(doc, date) {
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
   _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
     (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
+  if (chirieA) {
+    _p(doc, 'Dacă Beneficiarul denunță contractul înainte de împlinirea duratei minime de ' + C.numar(luniMinCh, 'lună', 'luni') +
+      ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia.');
+    _p(doc, 'La încetarea contractului, Beneficiarul restituie aparatele închiriate: pune vehiculele la dispoziția Prestatorului pentru demontare în cel mult ' +
+      C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. Aparatele nerestituite sau deteriorate din culpa Beneficiarului se plătesc la valoarea din Anexa nr. 1.');
+  }
 
   _titlu(doc, 'VIII. DISPOZIȚII FINALE');
   _p(doc, 'Modificarea contractului se face prin act adițional scris, semnat de ambele părți. Litigiile se soluționează pe cale amiabilă, iar în lipsa unei înțelegeri, de instanțele competente de la sediul Prestatorului. Contractul se completează cu prevederile legislației române în vigoare.');
@@ -405,6 +441,11 @@ function scrieContract(doc, date) {
     .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A1.left, doc.y + 2, { width: A1.w });
   doc.x = A1.left; doc.y += 12;
   _tabelAnexa(doc, anexa);
+  if (chirieA) {
+    _titlu(doc, 'Aparate închiriate — proprietatea Prestatorului');
+    _tabelChirie(doc, chirieA);
+    _p(doc, 'Aparatele de mai sus rămân proprietatea Prestatorului. Chiria lor e cuprinsă în prețul lunar de mai sus; valoarea se plătește doar dacă un aparat nu se restituie la încetare sau e deteriorat din culpa Beneficiarului.');
+  }
   _p(doc, 'Modificarea listei de mai sus (adăugarea sau scoaterea unui vehicul) se face prin act adițional sau prin anexă nouă, semnată de ambele părți.');
   _semnaturi(doc, em.name, firma.name);
 
@@ -415,7 +456,7 @@ function scrieContract(doc, date) {
     doc.addPage();
     const AM = _ST(doc);
     doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
-      .text('ANEXA nr. 2 — Echipamente și montaj (costuri unice)', AM.left, doc.y, { width: AM.w });
+      .text('ANEXA nr. 2 — ' + (areEchip ? 'Echipamente și montaj' : 'Montaj') + ' (costuri unice)', AM.left, doc.y, { width: AM.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
     doc.x = AM.left; doc.y += 12;
@@ -436,7 +477,9 @@ function scrieContract(doc, date) {
           left, doc.y + 6, { width: w, align: 'right' });
       doc.x = left; doc.y += 16;
     }
-    _p(doc, 'Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor. Lucrările de montaj se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
+    _p(doc, (areEchip ? 'Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor. '
+      : (chirieA ? 'Aparatele montate sunt cele închiriate din Anexa nr. 1 și rămân proprietatea Prestatorului. ' : '')) +
+      'Lucrările de montaj se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
     _semnaturi(doc, em.name, firma.name);
   }
 
