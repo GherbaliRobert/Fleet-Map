@@ -2,6 +2,18 @@
 
 Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 
+## De amintit lui Alin — la fiecare raport (OBLIGATORIU)
+
+Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă într-un singur loc: secțiunea
+**„De amintit — ce așteaptă după voi"**, sus în `JURNAL-MODIFICARI.md`.
+
+- **La finalul fiecărui răspuns care raportează o lucrare terminată**, citește secțiunea și amintește-i
+  lui Alin, pe scurt (un rând pe punct), punctele **NEBIFATE**. Nu le repeta când răspunsul e doar o
+  întrebare sau o lămurire scurtă.
+- Când Alin spune că unul e făcut, **bifează-l acolo cu data**. Nu scoate și nu bifa nimic fără el.
+- Ce găsești nou de felul ăsta (un lucru pe care doar ei îl pot face: un cont, o cheie, o hârtie, o
+  decizie) intră în aceeași listă, cu data, și îi spui în răspuns că l-ai adăugat.
+
 ## Font / Tipografie (OBLIGATORIU)
 
 **Fontul standard, peste tot, este `Nunito`** — în aplicație ȘI pe paginile publice. Orice modificare de UI se face sub acest font; nu introduce alt font pentru text.

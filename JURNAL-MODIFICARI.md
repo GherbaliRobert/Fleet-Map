@@ -18,6 +18,28 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## De amintit — ce așteaptă după voi
+
+Alin (25.09): *„astea notează-le și să mi le reamintești."* Vi le amintesc la fiecare raport, până le
+bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nimic de pe listă fără voi.
+
+- [ ] **Un jurist** să citească ambele contracte, cu clienții și cu partenerii de montaj (plus acordurile
+  GDPR din anexe), înainte de primul semnat. Se schimbă într-un singur loc: `contract_pdf.js`.
+- [ ] **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
+  contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
+  facturile.
+- [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
+  nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri.
+- [ ] **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
+  nicăieri; „Stare producție" o arată portocaliu cât timp stă acolo.
+- [ ] **Robert: e-Factura (ANAF). Adăugat pe 25.09, găsit când am explicat „Prima factură".** Fără
+  tokenul ANAF, facturile emise în aplicație **nu ajung deloc la ANAF**. Cu token, dar fără
+  `ANAF_EFACTURA_TEST=false`, ajung în mediul de **PROBĂ** al ANAF, nu în cel real — aplicația
+  pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
+  `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
+
+---
+
 ## 2026-09-16
 
 ### AMÂNDOI · Parola nu mai există. Trimitem un link, omul și-o pune singur
@@ -8476,6 +8498,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 - [ ] **(voi) „Date emitent" completate.** Contractul ia datele noastre (denumire, CUI, Reg. Com.,
   sediu, IBAN, bancă) din aceeași setare ca facturile. Cât timp e goală, la „PRESTATOR" în contract
   apar linii punctate.
+
+- [ ] **(voi — Robert) e-Factura: facturile trebuie să ajungă la ANAF, în mediul REAL (25.09).**
+  Aplicația trimite singură fiecare factură la ANAF, dar numai dacă are tokenul (`ANAF_EFACTURA_TOKEN`
+  + `ANAF_CIF`). Fără el, factura se emite în aplicație și **rămâne la noi** — la ANAF nu ajunge nimic.
+  Iar `ANAF_EFACTURA_TEST` e implicit „true": cu token pus, dar fără `ANAF_EFACTURA_TEST=false`,
+  facturile merg în mediul de **probă** al ANAF, unde nu contează. Pașii: tokenul din SPV → cele trei
+  variabile pe Railway → o factură de probă → verificată în SPV că a intrat.
 
 - [ ] **(eu, pe server) Preluarea de la ANAF, încercată pe viu.** Citirea răspunsului e probată, dar
   cererea în sine n-a putut fi încercată din cutia de dezvoltare (rețeaua către ANAF e închisă
