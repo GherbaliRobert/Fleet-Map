@@ -337,6 +337,9 @@ if (grupBiz) {
   // randuri[0] e chiar titlul grupei („Business"); pașii încep de la al doilea.
   T('primele trei rânduri sunt exact pașii, în ordine',
     randuri.slice(1, 4).join(' → ') === 'Ofertare Live → Contracte → Companii', randuri.join(' · '));
+  // Montajul are secțiunea lui din 24.09 și stă unde îi e locul pe drum: după client, înaintea facturii.
+  T('Montaj vine după Companii și înaintea Facturării (ofertă → contract → client → montaj → factură)',
+    randuri.slice(3, 6).join(' → ') === 'Companii → Montaj → Facturare', randuri.join(' · '));
   T('Companii a plecat din Gestiune', !/data-group="gestiune"[\s\S]*?<span>Companii<\/span>/.test(html.slice(0, html.indexOf('data-group="module"'))));
   T('Gestiune a rămas cu aparatele și oamenii',
     /data-group="gestiune"[\s\S]{0,900}?<span>Dispozitive<\/span>[\s\S]{0,900}?<span>Utilizatori<\/span>/.test(html));
@@ -344,7 +347,7 @@ if (grupBiz) {
 T('ecranul „Contracte" are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
 T('și se încarcă la deschiderea filei', /name === 'contracte'\) \{\s*\n\s*if \(window\.raxLoadContracte\)/.test(html));
 T('e strict al fondatorilor, ca și Companii',
-  /name === 'accounts' \|\| name === 'contracte'\) && !can\('manageCompanies'\)/.test(html) &&
+  /name === 'accounts' \|\| name === 'contracte' \|\| name === 'montaj'\) && !can\('manageCompanies'\)/.test(html) &&
   /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html));
 T('ruta care dă toate contractele cere super-admin',
   /app\.get\('\/api\/contracts', requireAuth, requireSuperadmin/.test(server));

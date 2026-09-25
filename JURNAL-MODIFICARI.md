@@ -97,6 +97,72 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-24
 
+### FONDATOR · Montaj: secțiune separată, cu parteneri, contracte de colaborare și toate lucrările
+
+Alin: *„în Business, secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la fel ca
+la clienți. Logica din spate o va face Robert în interfața lor."* Și despre contract: *„fă-l tu."*
+
+**Ce era.** Partenerii de montaj stăteau la coada ecranului Contracte, printre contractele clienților:
+un nume, un CUI și tarifele. Fără contract cu ei, fără datele care trebuie pe o hârtie (sediu,
+reprezentant, IBAN), iar lucrările se vedeau doar intrând în fișa fiecărui client, pe rând.
+
+**Ce e acum:** în meniul Business, imediat sub Companii, rândul **Montaj**, cu trei file.
+
+1. **Parteneri** — fișa completă a firmei care montează: CUI cu „Preia de la ANAF", Reg. Com., sediu,
+   reprezentant, email (acolo pleacă contractul), telefon, IBAN, bancă, zona în care lucrează și cât ne
+   cere pe fiecare fel de lucrare. Pe fiecare rând scrie dacă are contract; dacă n-are, butonul
+   **„Fă contract"** e chiar acolo.
+2. **Contracte cu partenerii** — același drum ca la clienți: în lucru → aprobat → trimis la semnat
+   (pe email, cu PDF-ul atașat) → semnat → încheiat. Aceleași butoane pe rând („Aprobă", „Trimite la
+   semnat", „E semnat"), fiecare lipsă cu butonul ei („Completează", „Încarcă semnat"). Semnat =
+   încuiat: alte tarife sau altă durată înseamnă contract nou. Sus, o bandă cu partenerii fără contract.
+3. **Lucrări** — toate montajele, de la toți clienții, într-o singură listă: ziua, clientul, partenerul,
+   ce s-a montat, cât plătește clientul, cât ne costă partenerul și **cât rămâne la noi**, cu totalul
+   sus și filtre pe stare și pe partener. O lucrare se programează tot din fișa clientului (de acolo
+   intră în contractul lui); aici e privirea de sus, cu butonul „La client".
+
+**Contractul l-am scris eu, cum ai cerut.** Se numește „Contract de colaborare": partenerul e
+PRESTATORUL, noi suntem BENEFICIARUL — banii merg invers față de clienți, el ne facturează pe noi.
+Ce scrie în el, pe scurt:
+- ce face și unde (zona lui);
+- cum comandăm și cum confirmă el lucrarea: numărul mașinii, seria aparatului, poze; lucrarea e
+  primită când aparatul transmite;
+- plata: el facturează lunar ce a executat, noi plătim în termenul ales de tine (30 de zile, dacă nu
+  schimbi);
+- aparatele sunt ale noastre, predate pe proces-verbal; ce pierde din vina lui, plătește;
+- garanție la montaj: 12 luni;
+- **nu ne ia clienții**: 12 luni după încetare nu le oferă direct aceleași servicii și nu le spune
+  prețurile noastre;
+- **datele clienților**: el vede adresele și oamenii clienților noștri, deci legea îl face
+  „subîmputernicitul" nostru — Anexa nr. 2 e acordul pe care GDPR îl cere pentru asta;
+- Anexa nr. 1: tarifele lui, **înghețate în ziua în care faci contractul**. Dacă între timp își schimbă
+  prețurile, bifezi „Reia tarifele de azi" — doar cât contractul nu e semnat.
+
+⚠ E scris de mine, nu de un avocat. Cât nu e aprobat, pe fiecare pagină scrie „CIORNĂ". De citit de
+un jurist înainte de primul semnat — l-am trecut în lista de lansare, lângă contractul clienților.
+
+**Ce NU am făcut, dinadins:** contul partenerului în aplicație — ce vede el, ce bifează la o lucrare,
+cum își trimite pozele. E partea lui Robert, „în interfața lor". Fișa, contractul și lista lucrărilor
+sunt gata să-l primească.
+
+**Pe drum, o capcană reparată:** salvarea unui partener fără CUI în cerere (de pildă un ecran vechi,
+care trimite doar numele și tarifele) îi **ștergea** CUI-ul, persoana de contact și notițele. Acum se
+scrie doar ce trimiți. A prins-o proba nouă, nu ochiul.
+
+**Și una prinsă de proba copiilor de siguranță:** tabela nouă cu contractele partenerilor nu intra în
+backup. Adică un contract semnat și urcat în aplicație s-ar fi pierdut la prima restaurare. Acum intră,
+ca și contractele clienților.
+
+Probat pe server pornit, cu un server de email fals: partener nou, contractul pe tot drumul, emailul
+chiar pleacă cu PDF-ul atașat, semnat = încuiat, al doilea contract refuzat, lista lucrărilor cu ce
+rămâne la noi (`verify_montaj_sectiune.js`). Și pe ecran, pe ambele teme: nimic sub pragul de contrast.
+
+- **Ce am schimbat:** partenerii de montaj au secțiunea lor (Business → Montaj), cu fișă completă,
+  contract de colaborare și lista tuturor lucrărilor.
+- **Ce vede fondatorul:** rândul „Montaj" în meniu, sub Companii; ecranul Contracte are acum doar
+  contractele clienților.
+- **Ce vede clientul:** nimic. Pentru el montăm noi — partenerul nu apare nicăieri în aplicația lui.
+
 ### FONDATOR · Drumul clientului: o linie de pași, cu butonul pasului următor
 
 Alin: *„pare alambicat, trec din aia, ies în aia; trebuie să ușurăm asta."* Drumul unui client avea opt
@@ -8390,6 +8456,16 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   a acordului GDPR (Anexa nr. 2), cu clauze obișnuite pentru genul ăsta de serviciu — dar scrise de
   mine, nu de un avocat. Pe fiecare pagină scrie „CIORNĂ, a se verifica juridic înainte de semnare",
   tocmai ca să nu plece așa la client. Se schimbă într-un singur loc: `contract_pdf.js`.
+  **Din 24.09, și contractul de colaborare cu partenerii de montaj** (Business → Montaj), cu acordul lui
+  de subîmputernicire GDPR (Anexa nr. 2) și clauza „nu ne ia clienții 12 luni". Tot acolo:
+  `scrieContractMontaj`.
+
+- [ ] **(voi — Robert) Contul partenerului de montaj: vede DOAR lucrările lui.** Când partenerul primește
+  cont în RA Tracks, e a treia privire, după fondator și client. Trei lucruri pe care nu trebuie să le
+  vadă niciodată: **flota și pozițiile clientului** (el montează aparatul, nu-l urmărește), **prețul
+  cerut clientului** și **ce rămâne la noi** (fila Lucrări le are pe amândouă, e a noastră) și
+  **ceilalți parteneri**. Contractul lui (Anexa nr. 2) îi dă date ale clienților doar „pentru lucrarea
+  comandată" — contul trebuie să spună același lucru.
 
 - [ ] **(voi) „Date emitent" completate.** Contractul ia datele noastre (denumire, CUI, Reg. Com.,
   sediu, IBAN, bancă) din aceeași setare ca facturile. Cât timp e goală, la „PRESTATOR" în contract

@@ -37,6 +37,8 @@ const BUSINESS_TABLES = [
   // actele adiționale, montajele și partenerii, rolurile tăiate ale firmelor (fără ele, după o restaurare oamenii ar primi
   // înapoi drepturile tăiate) și agenda de emailuri a firmelor. verify_copii.js pică dacă un tabel nou nu e clasificat.
   'contracts', 'acte_aditionale', 'montaje', 'montaj_parteneri', 'company_roles', 'company_emails',
+  // Contractele cu partenerii de montaj (24.09): și ele țin fișierul SEMNAT (file_b64), care nu se poate reface.
+  'montaj_contracte',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —

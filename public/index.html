@@ -166,6 +166,7 @@
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('ofertare'); })"><i class="fas fa-tag"></i><span>Ofertare Live</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('contracte'); })"><i class="fas fa-file-signature"></i><span>Contracte</span></button>
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('montaj'); })"><i class="fas fa-screwdriver-wrench"></i><span>Montaj</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('billing'); })"><i class="fas fa-file-invoice-dollar"></i><span>Facturare</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('accounts'); })"><i class="fas fa-users-gear"></i><span>Conturi &amp; Abonamente</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('dashboard'); })"><i class="fas fa-chart-line"></i><span>Dashboard platformă</span></button>
@@ -1604,6 +1605,7 @@
           <div id="admin-tab-costs" style="display:none;"></div>
           <div id="admin-tab-ofertare" class="ra-camp" style="display:none;"></div>
           <div id="admin-tab-contracte" style="display:none;"></div>
+          <div id="admin-tab-montaj" style="display:none;"></div>
           <div id="admin-tab-demoreq" style="display:none;"></div>
       <div id="admin-tab-users" class="ra-camp" style="display:none;">
       <!-- Bara de deasupra listei: căutarea și ordinea stau în HTML (nu se redesenează), ca scrisul din
@@ -3864,7 +3866,7 @@ const pozitii = await r.json();</code></pre>
     // Efectul, semnalat de Alin: intrai în „Dispozitive" din meniu, apăsai „Acasă", și tabelul rămânea
     // deschis sub cartonașe. Acum toate trei citesc de aici; o secțiune nouă se adaugă într-un loc.
     const _RAX_TABURI = {
-      contracte: 'admin-tab-contracte', companies: 'admin-tab-companies', devices: 'admin-tab-devices',
+      contracte: 'admin-tab-contracte', montaj: 'admin-tab-montaj', companies: 'admin-tab-companies', devices: 'admin-tab-devices',
       inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users',
       archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices',
       agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport',
@@ -3878,7 +3880,7 @@ const pozitii = await r.json();</code></pre>
     // (super-admin)" — jargon de-al nostru pe ecran — iar „Inventar dispozitive" lipsea cu totul, așa
     // că pagina lui se numea „Administrare". Păzit de `verify_acasa.js`, care le compară cu meniul.
     const _RAX_NUME = {
-      contracte: 'Contracte', companies: 'Companii', devices: 'Dispozitive',
+      contracte: 'Contracte', montaj: 'Montaj', companies: 'Companii', devices: 'Dispozitive',
       inventar: 'Inventar dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori',
       archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele',
       agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport',
@@ -3910,7 +3912,7 @@ const pozitii = await r.json();</code></pre>
     // „deschide sub cartonașe", iar aplicația trebuia să țină minte în care din ele e; de-acolo venise și
     // bug-ul cu „Dispozitive" rămas agățat sub cartonașe.
     window.raxAdminTab = function (name) {
-      if ((name === 'companies' || name === 'accounts' || name === 'contracte') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
+      if ((name === 'companies' || name === 'accounts' || name === 'contracte' || name === 'montaj') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
       var map = _RAX_TABURI;
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
@@ -3959,6 +3961,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadCosts) window.raxLoadCosts();
       } else if (name === 'contracte') {
         if (window.raxLoadContracte) window.raxLoadContracte();
+      } else if (name === 'montaj') {
+        if (window.raxLoadMontaj) window.raxLoadMontaj();
       } else if (name === 'ofertare') {
         if (window.raxLoadOfertare) window.raxLoadOfertare();
       } else if (name === 'demoreq') {
@@ -21063,9 +21067,10 @@ const pozitii = await r.json();</code></pre>
             '<div class="raco-search"><i class="fas fa-magnifying-glass"></i>' +
               '<input class="rax-field" id="ctre-cauta" placeholder="Caută după client, număr de contract sau CUI…" value="' + esc(_raxCtre.cauta) + '" oninput="raxCtreCauta(this.value)"></div>' +
             '<div id="ctre-lista"></div>' +
-          '</section>' + _raxParteneriHtml() + '</div>';
+          '</section></div>';
+        // Partenerii de montaj NU mai stau aici (Alin, 24.09: „nu-i văd rostul în Contracte"): au
+        // secțiunea lor, Business → Montaj, cu contractele lor și cu toate lucrările.
         box._ctreGata = true;
-        raxParteneriIncarca();
       }
       var tot = _raxCtre.tot, q = _raxCtre.cauta, f = _raxCtre.filtru;
       var nr = function (stare) { return tot.filter(function (c) { return c.status === stare; }).length; };
@@ -21133,74 +21138,313 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('ctre-lista').innerHTML = h;
     };
 
-    // ─── Partenerii de montaj ────────────────────────────────────────────────────────────────
-    // Firmele care execută montajul în locul nostru. Stau aici, în ecranul nostru de contracte, și
-    // NU apar nicăieri în ce vede clientul: pentru el montăm noi. Tarifele lor se propun singure
-    // când faci o lucrare, ca să nu le cauți prin emailuri de fiecare dată.
+    // ─── Secțiunea „Montaj" (Business, 24.09) ──────────────────────────────────────────────────
+    // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la
+    // fel ca la clienți. Logica din spate o va face Robert în interfața lor — vor avea și ei cont."
+    // Partenerii stăteau la coada ecranului Contracte, printre contractele clienților, fără contract și
+    // fără date juridice. Acum au secțiunea lor, cu trei file: Parteneri · Contracte cu partenerii ·
+    // Lucrări (toate, de la toți clienții). Clientul nu vede nimic de aici — pentru el montăm noi.
+    // Contul partenerului în aplicație (ce vede el, ce bifează) îl face Robert.
     var _raxPart = { lista: [], edit: null };
-    window.raxParteneriIncarca = async function () {
-      try { _raxPart.lista = await fetch('/api/montaj/parteneri', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
-      catch (e) { _raxPart.lista = []; }
-      var b = document.getElementById('rax-parteneri'); if (b) b.innerHTML = _raxParteneriCorp();
+    var _raxMj = { fila: 'parteneri', contracte: [], faraContract: [], lucrari: [], stari: {}, trimite: false, editC: null, fStare: '', fPart: '' };
+    var MJ_FILE = [['parteneri', 'Parteneri'], ['contracte', 'Contracte cu partenerii'], ['lucrari', 'Lucrări']];
+    window.raxLoadMontaj = async function () {
+      var box = document.getElementById('admin-tab-montaj'); if (!box) return;
+      if (!document.getElementById('mj-corp')) box.innerHTML = '<div class="raco"><div class="raco-seg" id="mj-file"></div><div id="mj-corp"><div class="rax-co-meta">Se încarcă…</div></div></div>';
+      var get = function (u) { return fetch(u, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return null; }); };
+      var r = await Promise.all([get('/api/montaj/parteneri'), get('/api/montaj/contracte'), get('/api/montaj/lucrari')]);
+      _raxPart.lista = Array.isArray(r[0]) ? r[0] : [];
+      _raxMj.contracte = (r[1] && r[1].contracte) || [];
+      _raxMj.faraContract = (r[1] && r[1].fara_contract) || [];
+      _raxMj.trimite = !!(r[1] && r[1].trimite_pe_email);
+      _raxMj.lucrari = (r[2] && r[2].lucrari) || [];
+      _raxMj.stari = (r[2] && r[2].stari) || {};
+      _mjDeseneaza();
     };
-    function _raxParteneriHtml() {
-      return '<section class="raco-card">' +
-        '<div class="raco-h"><i class="fas fa-screwdriver-wrench"></i> Parteneri de montaj</div>' +
-        '<div class="raco-sub">Firmele care montează în locul nostru. Clientul nu le vede niciodată — pentru el montăm noi. Tarifele scrise aici se propun singure la fiecare lucrare.</div>' +
-        '<div id="rax-parteneri"><div class="rax-co-meta">Se încarcă…</div></div></section>';
+    // Partenerii se reîncarcă din secțiunea lor (numele vechi rămâne pentru apelurile existente).
+    window.raxParteneriIncarca = function () { return raxLoadMontaj(); };
+    window.raxMjFila = function (f) { _raxMj.fila = f; _raxMj.editC = null; _mjDeseneaza(); };
+    function _mjDeseneaza() {
+      var file = document.getElementById('mj-file'), corp = document.getElementById('mj-corp'); if (!file || !corp) return;
+      var nr = { parteneri: _raxPart.lista.length, contracte: _raxMj.contracte.length, lucrari: _raxMj.lucrari.length };
+      file.innerHTML = MJ_FILE.map(function (x) {
+        return '<button class="rax-btn' + (_raxMj.fila === x[0] ? ' primary' : '') + '" onclick="raxMjFila(\'' + x[0] + '\')">' + x[1] + ' · ' + nr[x[0]] + '</button>';
+      }).join('');
+      if (_raxMj.fila === 'contracte') corp.innerHTML = _mjContracteHtml();
+      else if (_raxMj.fila === 'lucrari') corp.innerHTML = _mjLucrariHtml();
+      else corp.innerHTML = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-screwdriver-wrench"></i> Parteneri de montaj</div>' +
+        '<div class="raco-sub">Firmele care montează în locul nostru. Clientul nu le vede niciodată — pentru el montăm noi. Tarifele scrise aici se propun singure la fiecare lucrare și intră în contractul cu partenerul.</div>' +
+        '<div id="rax-parteneri">' + _raxParteneriCorp() + '</div></section>';
+    }
+    function _mjContractulPartenerului(pid) {
+      return _raxMj.contracte.filter(function (c) { return c.partener_id === pid && c.status !== 'incheiat'; })[0] || null;
+    }
+    // Aceleași stări ca la clienți, cu un singur cuvânt schimbat: contractul unui partener nu pleacă „la client".
+    function _mjStare(status) {
+      if (status === 'trimis') return ['trimis la partener', CTR_STARI.trimis[1]];
+      return CTR_STARI[status] || CTR_STARI.ciorna;
     }
     function _raxParteneriCorp() {
       if (_raxPart.edit) {
-        var e = _raxPart.edit;
-        return '<div class="raco-2">' + _f('Firma care montează', 'pt-name', e.name, 'ex. Instal GPS Vest SRL') + _f('CUI', 'pt-cui', e.cui, 'RO12345678') + '</div>' +
-          _f('Contact', 'pt-contact', e.contact, 'nume · telefon · email') +
-          '<div class="raco-h2">Cât ne cere, pe lucrare (lei)</div>' +
+        var e = _raxPart.edit, rep = e.legal_rep || {};
+        return '<div class="raco-2"><label class="raco-f"><span>CUI / CIF</span><div class="raco-cui"><input class="rax-field" id="pt-cui" value="' + esc(e.cui || '') + '" placeholder="RO12345678">' +
+            '<button class="rax-btn" type="button" onclick="raxPartAnaf()"><i class="fas fa-cloud-arrow-down"></i> ANAF</button></div></label>' +
+            _f('Firma care montează', 'pt-name', e.name, 'ex. Instal GPS Vest SRL') + '</div>' +
+          '<div class="raco-2">' + _f('Nr. Reg. Com.', 'pt-reg', e.reg_com, 'J35/1234/2020') + _f('Sediu', 'pt-addr', e.address, 'Str. …, oraș, județ') + '</div>' +
+          '<div class="raco-2">' + _f('Reprezentant legal', 'pt-rep', rep.name, 'nume și prenume') + _f('Funcția', 'pt-reprole', rep.role, 'Administrator') + '</div>' +
+          '<div class="raco-2">' + _f('Email (aici pleacă contractul)', 'pt-email', e.email, 'office@firma.ro') + _f('Telefon', 'pt-phone', e.phone, '07xx xxx xxx') + '</div>' +
+          '<div class="raco-2">' + _f('IBAN', 'pt-iban', e.iban, 'RO…') + _f('Banca', 'pt-bank', e.bank, '') + '</div>' +
+          '<div class="raco-2">' + _f('Zona în care lucrează', 'pt-zona', e.zona, 'ex. Timiș, Arad, Hunedoara') + _f('Persoana de contact', 'pt-contact', e.contact, 'nume · telefon') + '</div>' +
+          '<div id="pt-msg" class="raco-msg"></div>' +
+          '<div class="raco-h2">Cât ne cere, pe lucrare (lei, fără TVA)</div>' +
           '<div class="raco-mont-cap" style="grid-template-columns:1fr 96px;"><span>Lucrare</span><span>Tarif</span></div>' +
           MONTAJ_TIPURI.map(function (t) {
             var v = (e.tarife || {})[t[0]];
             return '<div class="raco-mont-r" style="grid-template-columns:1fr 96px;"><span>' + t[1] + ' <em>(' + t[2] + ')</em></span>' +
-              '<input class="rax-field" type="number" min="0" step="1" data-pt="' + t[0] + '" value="' + esc(v == null ? '' : v) + '" placeholder="lei"></div>';
+              '<input class="rax-field" type="number" min="0" step="0.01" data-pt="' + t[0] + '" value="' + esc(v == null ? '' : v) + '" placeholder="lei"></div>';
           }).join('') +
           '<div class="raco-nav"><button class="rax-btn" onclick="raxPartRenunt()">Renunț</button>' +
           '<button class="rax-btn primary" onclick="raxPartSalveaza()"><i class="fas fa-check"></i> Salvează partenerul</button></div>';
       }
       var h = _raxPart.lista.length
         ? _raxPart.lista.map(function (p) {
-            var n = Object.keys(p.tarife || {}).length;
+            var n = Object.keys(p.tarife || {}).length, c = _mjContractulPartenerului(p.id);
+            var st = c ? _mjStare(c.status) : null;
             return '<div class="raco-row"><span class="raco-row-t"><strong>' + esc(p.name) + '</strong>' + (p.active === false ? ' <span class="raco-pill">inactiv</span>' : '') +
-              '<span class="raco-row-s">' + (p.cui ? esc(p.cui) + ' · ' : '') + (p.contact ? esc(p.contact) + ' · ' : '') +
-              (n ? n + ' tarife scrise' : 'fără tarife scrise') + '</span></span>' +
-              '<button class="rax-btn" onclick="raxPartEdit(' + p.id + ')"><i class="fas fa-pen"></i></button>' +
-              '<button class="rax-btn" onclick="raxPartSterge(' + p.id + ')"><i class="fas fa-trash"></i></button></div>';
+              (st ? ' <span class="raco-pill ' + st[1] + '">contract: ' + st[0] + '</span>' : ' <span class="raco-pill warn">fără contract</span>') +
+              '<span class="raco-row-s">' + [p.cui, p.zona, p.email, (n ? n + ' tarife scrise' : 'fără tarife scrise')].filter(Boolean).map(esc).join(' · ') + '</span></span>' +
+              (c ? '' : '<button class="rax-btn primary ctre-pas" onclick="raxMjContractNou(' + p.id + ')"><i class="fas fa-file-circle-plus"></i> Fă contract</button>') +
+              '<button class="rax-btn" title="Editează" onclick="raxPartEdit(' + p.id + ')"><i class="fas fa-pen"></i></button>' +
+              '<button class="rax-btn" title="Șterge" onclick="raxPartSterge(' + p.id + ')"><i class="fas fa-trash"></i></button></div>';
           }).join('')
         : '<div class="rax-co-meta" style="padding:12px 0;">Niciun partener de montaj încă.</div>';
       return h + '<button class="rax-btn" style="margin-top:10px;" onclick="raxPartEdit(0)"><i class="fas fa-plus"></i> Partener nou</button>';
     }
     window.raxPartEdit = function (id) {
       _raxPart.edit = id ? JSON.parse(JSON.stringify(_raxPart.lista.filter(function (x) { return x.id === id; })[0] || {})) : { id: 0, tarife: {} };
-      var b = document.getElementById('rax-parteneri'); if (b) b.innerHTML = _raxParteneriCorp();
+      if (_raxMj.fila !== 'parteneri') { _raxMj.fila = 'parteneri'; _mjDeseneaza(); }
+      var b = document.getElementById('rax-parteneri'); if (b) { b.innerHTML = _raxParteneriCorp(); b.scrollIntoView({ block: 'start' }); }
     };
     window.raxPartRenunt = function () { _raxPart.edit = null; var b = document.getElementById('rax-parteneri'); if (b) b.innerHTML = _raxParteneriCorp(); };
+    window.raxPartAnaf = async function () {
+      var cui = (document.getElementById('pt-cui') || {}).value || '', m = document.getElementById('pt-msg');
+      if (!cui.trim()) { if (m) m.innerHTML = '<span style="color:var(--red)">Scrie întâi CUI-ul.</span>'; return; }
+      if (m) m.textContent = 'Caut la ANAF…';
+      try {
+        var r = await fetch('/api/anaf/firma?cui=' + encodeURIComponent(cui.trim()), { credentials: 'same-origin' });
+        var a = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(a.error || 'Nu am găsit firma la ANAF.') + '</span>'; return; }
+        var pune = function (id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
+        pune('pt-name', a.name); pune('pt-reg', a.reg_com); pune('pt-addr', a.address); pune('pt-cui', a.cui);
+        if (m) m.innerHTML = '<span style="color:var(--accent)"><i class="fas fa-check"></i> Preluat de la ANAF</span>' +
+          ((a.radiata || a.inactiva) ? '<div style="color:var(--red);font-weight:700;margin-top:4px;">⚠ ' + (a.radiata ? 'firma apare RADIATĂ la ANAF' : 'firma e declarată INACTIVĂ') + '</div>' : '');
+      } catch (e) { if (m) m.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
+    };
     window.raxPartSalveaza = async function () {
       var v = function (id) { var x = document.getElementById(id); return x ? x.value.trim() : ''; };
       var tarife = {};
       document.querySelectorAll('#rax-parteneri input[data-pt]').forEach(function (i) {
         if (i.value !== '') tarife[i.getAttribute('data-pt')] = parseFloat(i.value);
       });
+      var m = document.getElementById('pt-msg');
       try {
         var j = await fetch('/api/montaj/parteneri', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-          body: JSON.stringify({ id: _raxPart.edit.id || null, name: v('pt-name'), cui: v('pt-cui'), contact: v('pt-contact'), tarife: tarife }) }).then(function (r) { return r.json(); });
-        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+          body: JSON.stringify({ id: _raxPart.edit.id || null, name: v('pt-name'), cui: v('pt-cui'), contact: v('pt-contact'), tarife: tarife,
+            reg_com: v('pt-reg'), address: v('pt-addr'), email: v('pt-email'), phone: v('pt-phone'), iban: v('pt-iban'), bank: v('pt-bank'), zona: v('pt-zona'),
+            legal_rep: v('pt-rep') ? { name: v('pt-rep'), role: v('pt-reprole') } : null }) }).then(function (r) { return r.json(); });
+        if (j.error) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; else (window.raxToast || alert)(j.error, 'error'); return; }
         _raxPart.edit = null;
         (window.raxToast || function () {})('Partener salvat ✓', 'success');
-        raxParteneriIncarca();
+        raxLoadMontaj();
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
     window.raxPartSterge = async function (id) {
       if (!await raConfirm('Ștergi partenerul? Lucrările deja salvate rămân, dar fără numele lui.')) return;
-      try { await fetch('/api/montaj/parteneri/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxParteneriIncarca(); }
+      try { await fetch('/api/montaj/parteneri/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxLoadMontaj(); }
       catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
+
+    // ── Fila „Contracte cu partenerii": același drum ca la clienți ──
+    var MJ_LIPSA = { cui: 'CUI-ul', sediu: 'sediul', reprezentant: 'reprezentantul', email: 'emailul', tarife: 'tarifele', actul: 'contractul semnat (PDF)' };
+    function _mjPasHtml(c) {
+      if (c.status === 'ciorna') return '<button class="rax-btn primary ctre-pas" onclick="raxMjAproba(' + c.id + ')"><i class="fas fa-check"></i> Aprobă</button>';
+      if (c.status === 'aprobat') return _raxMj.trimite
+        ? '<button class="rax-btn primary ctre-pas" onclick="raxMjTrimite(' + c.id + ')"><i class="fas fa-paper-plane"></i> Trimite la semnat</button>'
+        : '<button class="rax-btn primary ctre-pas" title="Emailul nu e configurat pe server: descarcă contractul și trimite-l tu" onclick="raxMjAmTrimis(' + c.id + ')"><i class="fas fa-paper-plane"></i> Am trimis-o</button>';
+      if (c.status === 'trimis') return (c.sent_at ? '<span class="raco-until">trimis pe ' + _zile(c.sent_at) + (c.sent_to ? ' la ' + esc(c.sent_to) : '') + '</span>' : '') +
+        '<button class="rax-btn primary ctre-pas" onclick="raxMjSemnat(' + c.id + ')"><i class="fas fa-file-signature"></i> E semnat</button>' +
+        (_raxMj.trimite ? '<button class="rax-btn ctre-pas" onclick="raxMjTrimite(' + c.id + ')"><i class="fas fa-rotate-right"></i> Retrimite</button>' : '');
+      return '';
+    }
+    function _mjLipsuriHtml(c) {
+      var l = c.lipsuri || [], h = '';
+      var firma = l.filter(function (k) { return ['cui', 'sediu', 'reprezentant', 'email', 'tarife'].indexOf(k) >= 0; });
+      if (firma.length) h += '<div class="ctre-lipsa"><span>lipsește ' + esc(firma.map(function (k) { return MJ_LIPSA[k]; }).join(', ')) + '</span>' +
+        '<button class="rax-btn" onclick="raxPartEdit(' + c.partener_id + ')"><i class="fas fa-pen-to-square"></i> Completează</button></div>';
+      if (l.indexOf('actul') >= 0) h += '<div class="ctre-lipsa"><span>lipsește contractul semnat (PDF)</span><button class="rax-btn" onclick="raxMjIncarca(' + c.id + ')"><i class="fas fa-upload"></i> Încarcă semnat</button></div>';
+      return h || '<span class="raco-until">—</span>';
+    }
+    function _mjContracteHtml() {
+      var h = '';
+      if (_raxMj.faraContract.length) {
+        h += '<div class="raco-dosbox warn" style="margin-bottom:12px;"><strong>Parteneri fără contract</strong><div>' +
+          _raxMj.faraContract.map(function (p) { return '<b>' + esc(p.name) + '</b> <button class="rax-btn ctre-pas" onclick="raxMjContractNou(' + p.id + ')"><i class="fas fa-file-circle-plus"></i> Fă contract</button>'; }).join(' · ') + '</div></div>';
+      }
+      h += '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-file-signature"></i> Contracte cu partenerii</div>' +
+        '<div class="raco-sub">Același drum ca la clienți: în lucru → aprobat → trimis la semnat → semnat. Partenerul e PRESTATORUL, noi BENEFICIARUL; tarifele lui intră în Anexa nr. 1, iar Anexa nr. 2 e acordul GDPR (el vede date ale clienților noștri).</div>';
+      if (!_raxMj.contracte.length) return h + '<div class="rax-co-meta" style="padding:16px;">Niciun contract cu un partener încă. Se face din fila Parteneri („Fă contract").</div></section>';
+      h += '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Partener</th><th>Contract</th><th>Perioada</th><th>Stare</th><th>Ce lipsește</th><th>Contractul</th></tr></thead><tbody>' +
+        _raxMj.contracte.map(function (c) {
+          var st = _mjStare(c.status), semnat = c.status === 'activ' || c.status === 'incheiat';
+          return '<tr><td><strong>' + esc(c.partener_name || '') + '</strong>' + (c.cui ? '<span class="raco-until">' + esc(c.cui) + '</span>' : '') + '</td>' +
+            '<td style="white-space:nowrap;">' + esc(c.number || '—') + '</td>' +
+            '<td>' + (c.start_at ? _zile(c.start_at) + ' → ' + (c.sfarsit ? _zile(c.sfarsit) : 'nedeterminat') : (c.months ? c.months + _raxDe(Number(c.months)) + 'luni' : 'nedeterminat') + '<span class="raco-until">fără dată de început</span>') + '</td>' +
+            '<td><span class="raco-pill ' + st[1] + '">' + st[0] + '</span><div class="ctre-pasi">' + _mjPasHtml(c) + '</div></td>' +
+            '<td>' + (c.status === 'incheiat' ? '<span class="raco-until">—</span>' : _mjLipsuriHtml(c)) + '</td>' +
+            '<td><div class="ctre-act">' + _raxHartieBtn('/api/montaj/contracte/' + c.id + '/pdf', 'Contractul', true) +
+              (semnat ? (c.status === 'activ' ? '<button class="rax-btn" onclick="raxMjIncheie(' + c.id + ')"><i class="fas fa-flag-checkered"></i> Încheie</button>' : '')
+                : '<button class="rax-btn" onclick="raxMjEdit(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button>' +
+                  '<button class="rax-btn" onclick="raxMjSterge(' + c.id + ')"><i class="fas fa-trash"></i></button>') +
+            '</div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      if (_raxMj.editC) h += _mjEditHtml(_raxMj.editC);
+      return h + '</section>';
+    }
+    function _mjEditHtml(c) {
+      var rep = c.our_rep || {};
+      return '<div class="raco-urmeaza" id="mj-edit" style="margin-top:14px;"><div class="raco-h2" style="margin-top:0;">Contractul ' + esc(c.number || '') + ' — ' + esc(c.partener_name || '') + '</div>' +
+        '<div class="raco-2"><label class="raco-f"><span>Durata</span><select class="rax-field" id="mj-luni">' + _ctrLuniOptiuni(c.months == null ? '' : c.months) + '</select></label>' +
+          '<label class="raco-f"><span>La termen</span><select class="rax-field" id="mj-renew"><option value="1"' + (c.auto_renew !== false ? ' selected' : '') + '>se reînnoiește singur</option><option value="0"' + (c.auto_renew === false ? ' selected' : '') + '>se oprește</option></select></label></div>' +
+        '<div class="raco-2">' + _f('Preaviz de denunțare (zile)', 'mj-preaviz', c.notice_days == null ? 30 : c.notice_days, '30', 'number') + _f('Plata facturii lui (zile)', 'mj-plata', c.plata_zile == null ? 30 : c.plata_zile, '30', 'number') + '</div>' +
+        '<div class="raco-2">' + _f('Începe la', 'mj-start', c.start_at ? new Date(Number(c.start_at)).toISOString().slice(0, 10) : '', '', 'date') + _f('Zona', 'mj-zona', c.zona, 'ex. Timiș, Arad') + '</div>' +
+        '<div class="raco-2">' + _f('Cine semnează la noi', 'mj-our', rep.name, 'nume și prenume') + _f('Funcția', 'mj-ourrole', rep.role, 'Administrator') + '</div>' +
+        '<label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:6px 0 10px;"><input type="checkbox" id="mj-retarif"> Reia tarifele de azi ale partenerului în Anexa nr. 1</label>' +
+        '<div class="raco-nav"><button class="rax-btn" onclick="raxMjEditRenunt()">Renunț</button><button class="rax-btn primary" onclick="raxMjEditSalveaza(' + c.id + ')"><i class="fas fa-check"></i> Salvează contractul</button></div></div>';
+    }
+    function _mjGasit(id) { return _raxMj.contracte.filter(function (x) { return x.id === id; })[0] || null; }
+    async function _mjPut(id, corp, ok) {
+      try {
+        var r = await fetch('/api/montaj/contracte/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); return false; }
+        if (ok) (window.raxToast || function () {})(ok, 'success');
+        _raxMj.editC = null; raxLoadMontaj();
+        return true;
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); return false; }
+    }
+    window.raxMjContractNou = async function (partenerId) {
+      try {
+        var r = await fetch('/api/montaj/contracte', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ partener_id: partenerId, months: 12, auto_renew: true, notice_days: 30, plata_zile: 30 }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); return; }
+        (window.raxToast || function () {})('Contractul ' + (j.number || '') + ' e în lucru ✓', 'success');
+        _raxMj.fila = 'contracte'; _raxMj.editC = null; await raxLoadMontaj();
+        raxMjEdit(j.id);
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxMjEdit = function (id) { _raxMj.editC = _mjGasit(id); _mjDeseneaza(); var e = document.getElementById('mj-edit'); if (e) e.scrollIntoView({ block: 'center' }); };
+    window.raxMjEditRenunt = function () { _raxMj.editC = null; _mjDeseneaza(); };
+    window.raxMjEditSalveaza = function (id) {
+      var v = function (x) { var el = document.getElementById(x); return el ? el.value : ''; };
+      var zi = v('mj-start');
+      _mjPut(id, { months: v('mj-luni') === '' ? null : parseInt(v('mj-luni'), 10), auto_renew: v('mj-renew') !== '0',
+        notice_days: parseInt(v('mj-preaviz'), 10), plata_zile: parseInt(v('mj-plata'), 10), zona: v('mj-zona'),
+        start_at: /^\d{4}-\d{2}-\d{2}$/.test(zi) ? Date.parse(zi + 'T12:00:00') : null,
+        our_rep: v('mj-our') ? { name: v('mj-our'), role: v('mj-ourrole') } : null,
+        tarife_din_partener: !!(document.getElementById('mj-retarif') || {}).checked }, 'Contract salvat ✓');
+    };
+    window.raxMjAproba = async function (id) {
+      var c = _mjGasit(id); if (!c) return;
+      if (!await raConfirm('Aprobi contractul ' + (c.number || '') + ' cu ' + (c.partener_name || 'partenerul') + '?\n\nDin clipa asta hârtia nu mai e ciornă: se poate trimite la semnat.', { danger: false, okLabel: 'Aprobă' })) return;
+      _mjPut(id, { status: 'aprobat' }, 'Contract aprobat ✓ — urmează „Trimite la semnat"');
+    };
+    window.raxMjAmTrimis = async function (id) {
+      if (!await raConfirm('L-ai trimis tu partenerului?\n\nContractul trece pe „trimis". Când vine semnat, apeși „E semnat" și îl încarci.', { danger: false, okLabel: 'Da, l-am trimis' })) return;
+      _mjPut(id, { status: 'trimis' }, 'Marcat „trimis" ✓');
+    };
+    window.raxMjTrimite = async function (id) {
+      var c = _mjGasit(id); if (!c) return;
+      var catre = await raConfirm('Contractul ' + (c.number || '') + ' pleacă pe email la ' + (c.partener_name || 'partener') + ', cu PDF-ul atașat. Răspunsul lui — contractul semnat — vine la adresa noastră.',
+        { title: 'Trimite la semnat', icon: 'fa-paper-plane', danger: false, okLabel: 'Trimite', field: { label: 'Adresa partenerului', value: c.email || '', placeholder: 'office@firma.ro' } });
+      if (catre === false) return;
+      try {
+        var r = await fetch('/api/montaj/contracte/' + id + '/trimite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ catre: String(catre || '').trim() }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); if (j.lipsuri && j.lipsuri.length) raxPartEdit(c.partener_id); return; }
+        (window.raxToast || function () {})('Trimis la ' + j.trimis_la + ' ✓', 'success');
+        raxLoadMontaj();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    async function _mjUrca(id, f) {
+      var r = await fetch('/api/montaj/contracte/' + id + '/file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ name: f.name, b64: f.b64 }) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); return false; }
+      return true;
+    }
+    window.raxMjIncarca = async function (id) {
+      var f = await _ctreAlegeFisier(); if (!f) return;
+      if (await _mjUrca(id, f)) { (window.raxToast || function () {})('Contractul semnat e în dosar ✓', 'success'); raxLoadMontaj(); }
+    };
+    window.raxMjSemnat = async function (id) {
+      var c = _mjGasit(id); if (!c) return;
+      var zi = await raConfirm('Contractul ' + (c.number || '') + ' e semnat de amândoi?\n\nAlegi fișierul semnat primit de la partener. Din clipa asta contractul nu se mai modifică.',
+        { danger: false, icon: 'fa-file-signature', okLabel: 'Alege fișierul semnat', field: { label: 'Data semnării', type: 'date', value: new Date().toISOString().slice(0, 10) } });
+      if (zi === false) return;
+      var f = await _ctreAlegeFisier(); if (!f) return;
+      if (!await _mjUrca(id, f)) return;
+      _mjPut(id, { status: 'activ', signed_at: /^\d{4}-\d{2}-\d{2}$/.test(String(zi)) ? Date.parse(zi + 'T12:00:00') : Date.now() }, 'Contract semnat și în dosar ✓');
+    };
+    window.raxMjIncheie = async function (id) {
+      var motiv = await raConfirm('Închei contractul cu partenerul? Se trece data de azi ca dată a încetării. Lucrările deja comandate se execută și se plătesc.',
+        { okLabel: 'Încheie contractul', field: { label: 'Motivul încetării (rămâne în dosar)', placeholder: 'ex. denunțare cu preaviz' } });
+      if (motiv === false) return;
+      _mjPut(id, { status: 'incheiat', ended_reason: motiv || null }, 'Contract încheiat');
+    };
+    window.raxMjSterge = async function (id) {
+      if (!await raConfirm('Ștergi ciorna contractului? Partenerul rămâne, doar hârtia asta dispare.')) return;
+      try {
+        var r = await fetch('/api/montaj/contracte/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); return; }
+        raxLoadMontaj();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+
+    // ── Fila „Lucrări": toate montajele, de la toți clienții ──
+    // Se EDITEAZĂ tot din fișa clientului (fila Contract) — de acolo iau prețul pentru client și intră
+    // în Anexa nr. 2. Aici e privirea de sus: ce e de programat, cine execută, cât rămâne la noi.
+    window.raxMjFiltru = function (k, v) { _raxMj[k] = v; _mjDeseneaza(); };
+    function _mjLucrariHtml() {
+      var toate = _raxMj.lucrari, stari = _raxMj.stari || {};
+      var lista = toate.filter(function (m) {
+        if (_raxMj.fStare && m.status !== _raxMj.fStare) return false;
+        if (_raxMj.fPart && String(m.partener_id || '') !== _raxMj.fPart) return false;
+        return true;
+      });
+      var ce = function (m) {
+        return (m.items || []).map(function (r) { var t = MONTAJ_TIPURI.filter(function (x) { return x[0] === r.tip; })[0]; return (r.buc || 0) + '× ' + (t ? t[1] : r.tip); }).join(', ');
+      };
+      var suma = function (k) { return lista.reduce(function (s, m) { return s + (Number(m[k]) || 0); }, 0); };
+      var optStari = '<option value="">toate stările</option>' + Object.keys(stari).map(function (k) { return '<option value="' + k + '"' + (_raxMj.fStare === k ? ' selected' : '') + '>' + esc(stari[k]) + '</option>'; }).join('');
+      var optPart = '<option value="">toți partenerii</option>' + _raxPart.lista.map(function (p) { return '<option value="' + p.id + '"' + (_raxMj.fPart === String(p.id) ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('');
+      var h = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-wrench"></i> Lucrările de montaj</div>' +
+        '<div class="raco-sub">Toate lucrările, de la toți clienții. Se programează și se editează din fișa clientului (fila Contract) — de acolo intră în contractul lui.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px;"><select class="rax-field" style="width:auto;margin:0;" onchange="raxMjFiltru(\'fStare\', this.value)">' + optStari + '</select>' +
+          '<select class="rax-field" style="width:auto;margin:0;" onchange="raxMjFiltru(\'fPart\', this.value)">' + optPart + '</select></div>';
+      if (!lista.length) return h + '<div class="rax-co-meta" style="padding:16px;">' + (toate.length ? 'Nicio lucrare pentru filtrul ăsta.' : 'Nicio lucrare de montaj încă. Se face din fișa clientului, fila Contract.') + '</div></section>';
+      h += '<div class="raco-sub" style="margin-bottom:8px;">' + lista.length + (lista.length === 1 ? ' lucrare' : _raxDe(lista.length) + 'lucrări') + ' · clientul plătește <b>' + _lei(suma('total_client')) + '</b> · partenerii ne costă <b>' + _lei(suma('total_partener')) + '</b> · rămâne la noi <b style="color:var(--accent)">' + _lei(suma('marja')) + '</b></div>' +
+        '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Data</th><th>Client</th><th>Partener</th><th>Lucrarea</th><th class="num">Clientul plătește</th><th class="num">Ne costă</th><th class="num">Rămâne</th><th>Stare</th><th></th></tr></thead><tbody>' +
+        lista.map(function (m) {
+          return '<tr><td style="white-space:nowrap;">' + (m.data_lucrare ? _zile(m.data_lucrare) : '<span class="raco-until">fără dată</span>') + '</td>' +
+            '<td>' + esc(m.company_name || '—') + '</td><td>' + (m.partener_nume ? esc(m.partener_nume) : '<span class="raco-until">neales</span>') + '</td>' +
+            '<td style="font-size:12px;">' + esc(ce(m)) + '</td>' +
+            '<td class="num">' + _lei(m.total_client) + '</td><td class="num">' + _lei(m.total_partener) + '</td><td class="num" style="color:var(--accent);font-weight:700;">' + _lei(m.marja) + '</td>' +
+            '<td><span class="raco-pill">' + esc(stari[m.status] || m.status) + '</span></td>' +
+            '<td><button class="rax-btn ctre-pas" onclick="raxOpenCompanyDetail(' + m.company_id + ', \'contract\')"><i class="fas fa-up-right-from-square"></i> La client</button></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      return h + '</section>';
+    }
 
     // ─── Fila „Contract": dosarul juridic al unei firme ──────────────────────────────────────
     // Ce se poate face aici: scrii datele actului (număr, durată, reînnoire, preaviz, cine

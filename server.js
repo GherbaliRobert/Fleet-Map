@@ -5140,20 +5140,224 @@ app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, re
     const b = req.body || {};
     const nume = String(b.name || '').trim();
     if (nume.length < 2) return res.status(400).json({ error: 'Numele partenerului e prea scurt.' });
-    const tarife = {};
+    // Tarifele se scriu doar dacă au venit (o salvare fără ele nu le șterge).
+    let tarife;
     if (b.tarife && typeof b.tarife === 'object') {
+      tarife = {};
       for (const t of montaj.TIPURI) {
         const v = b.tarife[t.k];
         if (v != null && v !== '') { const n = Number(v); if (Number.isFinite(n) && n >= 0) tarife[t.k] = n; }
       }
     }
-    const p = await db.upsertPartenerMontaj({
-      id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
-      cui: b.cui ? String(b.cui).slice(0, 40) : null, contact: b.contact ? String(b.contact).slice(0, 200) : null,
-      tarife: tarife, active: b.active !== false, notes: b.notes ? String(b.notes).slice(0, 2000) : null
+    // Datele juridice ale partenerului (pentru contractul de colaborare, 24.09). Se scriu doar dacă au
+    // venit în cerere — un ecran vechi care trimite doar numele și tarifele nu le golește.
+    const juridic = {};
+    const txt = function (v, max) { return String(v == null ? '' : v).trim().slice(0, max) || null; };
+    [['reg_com', 40], ['address', 300], ['phone', 40], ['iban', 60], ['bank', 120], ['zona', 300]].forEach(function (x) {
+      if (b[x[0]] !== undefined) juridic[x[0]] = txt(b[x[0]], x[1]);
     });
+    if (b.email !== undefined) {
+      juridic.email = txt(b.email, 200);
+      if (juridic.email && !_EMAIL_RE.test(juridic.email)) return res.status(400).json({ error: 'Adresa de email a partenerului nu arată a email.' });
+    }
+    if (b.legal_rep !== undefined) {
+      const r = b.legal_rep || {};
+      juridic.legal_rep = txt(r.name, 120) ? { name: txt(r.name, 120), role: txt(r.role, 80) } : null;
+    }
+    const p = await db.upsertPartenerMontaj(Object.assign({
+      id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
+      // `undefined` = n-a venit în cerere → rămâne cum era (vezi `upsertPartenerMontaj`).
+      cui: b.cui === undefined ? undefined : (b.cui ? String(b.cui).slice(0, 40) : null),
+      contact: b.contact === undefined ? undefined : (b.contact ? String(b.contact).slice(0, 200) : null),
+      tarife: tarife, active: b.active === undefined ? undefined : b.active !== false,
+      notes: b.notes === undefined ? undefined : (b.notes ? String(b.notes).slice(0, 2000) : null)
+    }, juridic));
     auditReq(req, b.id ? 'update' : 'create', 'montaj_partener', p.id, { name: p.name });
     res.json(p);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── Contractele cu partenerii de montaj (Alin, 24.09: „semnăm contracte fix la fel ca la clienți") ──
+// Același drum ca la clienți: în lucru ⇄ aprobat ⇄ trimis → semnat → încheiat, cu aceleași reguli de
+// trecere (`_trecereContract`). Invers la bani: partenerul (PRESTATOR) ne facturează pe noi (BENEFICIAR).
+// Anexa nr. 1 = tarifele lui, înghețate la creare; după semnare contractul NU se mai rescrie.
+// Contul partenerului în aplicație (ce vede, ce bifează el) îl face Robert, în interfața lor.
+const _MC_DUPA_SEMNARE = ['signed_at', 'notes', 'status', 'ended_reason'];
+function _lipsuriPartener(p, c) {
+  const l = [];
+  if (!p || !p.cui) l.push('cui');
+  if (!p || !p.address) l.push('sediu');
+  const rep = (c && c.partner_rep) || (p && p.legal_rep);
+  if (!rep || !rep.name) l.push('reprezentant');
+  if (!p || !p.email) l.push('email');
+  if (c && !Object.keys(c.tarife || {}).length) l.push('tarife');
+  if (c && c.status === 'activ' && !c.has_file) l.push('actul');
+  return l;
+}
+function _mcDinCerere(b, vechi) {
+  const v = Object.assign({}, vechi || {}, b || {});
+  const luni = (v.months === '' || v.months == null) ? null : Math.max(0, Math.min(240, parseInt(v.months) || 0)) || null;
+  const start = v.start_at ? Number(v.start_at) : null;
+  const rep = function (r) { r = r || {}; const n = String(r.name || '').trim().slice(0, 120); return n ? { name: n, role: String(r.role || '').trim().slice(0, 80) || null } : null; };
+  return {
+    partener_id: v.partener_id, number: v.number || null,
+    status: CONTRACT_STARI.indexOf(v.status) >= 0 ? v.status : 'ciorna',
+    signed_at: v.signed_at ? Number(v.signed_at) : null, start_at: start, months: luni,
+    end_at: contracte.calcSfarsit(start, luni), auto_renew: v.auto_renew !== false,
+    notice_days: v.notice_days == null ? 30 : Math.max(0, Math.min(365, parseInt(v.notice_days) || 0)),
+    plata_zile: v.plata_zile == null ? 30 : Math.max(0, Math.min(120, parseInt(v.plata_zile) || 0)),
+    ended_at: v.ended_at ? Number(v.ended_at) : null, ended_reason: v.ended_reason ? String(v.ended_reason).slice(0, 500) : null,
+    our_rep: rep(v.our_rep), partner_rep: rep(v.partner_rep),
+    tarife: (v.tarife && typeof v.tarife === 'object') ? v.tarife : {},
+    zona: v.zona ? String(v.zona).slice(0, 300) : null, notes: v.notes ? String(v.notes).slice(0, 4000) : null
+  };
+}
+app.get('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [lista, parteneri] = await Promise.all([db.listContracteMontaj(), db.listParteneriMontaj()]);
+    const pe = {}; parteneri.forEach(function (p) { pe[p.id] = p; });
+    const acum = Date.now();
+    res.json({
+      contracte: lista.map(function (c) { return Object.assign({}, c, { lipsuri: _lipsuriPartener(pe[c.partener_id], c), sfarsit: contracte.sfarsitCurent(c, acum) }); }),
+      // Partenerii fără niciun contract — gaura, ca la clienți.
+      fara_contract: parteneri.filter(function (p) { return p.active !== false && !lista.some(function (c) { return c.partener_id === p.id; }); })
+        .map(function (p) { return { id: p.id, name: p.name }; }),
+      trimite_pe_email: !!(mailer && mailer.enabled())
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const p = await db.getPartenerMontaj(parseInt(b.partener_id, 10));
+    if (!p) return res.status(404).json({ error: 'Partenerul nu există.' });
+    const ale = (await db.listContracteMontaj()).filter(function (c) { return c.partener_id === p.id && c.status !== 'incheiat'; });
+    if (ale.length) return res.status(409).json({ error: 'Partenerul are deja un contract ' + (ale[0].status === 'activ' ? 'în vigoare' : 'în lucru') + ' (' + (ale[0].number || '') + ').' });
+    const date = _mcDinCerere(Object.assign({ status: 'ciorna' }, b, { partener_id: p.id,
+      // Anexa nr. 1 = tarifele de AZI ale partenerului, înghețate; zona și reprezentantul, din fișa lui.
+      tarife: Object.assign({}, p.tarife || {}), zona: b.zona !== undefined ? b.zona : p.zona,
+      partner_rep: b.partner_rep !== undefined ? b.partner_rep : p.legal_rep }));
+    if (date.status !== 'ciorna' && date.status !== 'activ') date.status = 'ciorna';
+    date.number = await db.nextContractMontajNumber();
+    date.created_by = req.auth && req.auth.userId;
+    const c = await db.salveazaContractMontaj(null, date);
+    auditReq(req, 'create', 'contract_montaj', c.id, { partener: p.id, number: c.number });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const vechi = await db.getContractMontaj(id); if (!vechi) return res.status(404).json({ error: 'Contract inexistent' });
+    const b = Object.assign({}, req.body || {});
+    const stareNoua = CONTRACT_STARI.indexOf(b.status) >= 0 ? b.status : vechi.status;
+    const greseala = _trecereContract(vechi.status, stareNoua);
+    if (greseala) return res.status(400).json({ error: greseala });
+    if (vechi.status === 'activ' || vechi.status === 'incheiat') {
+      const alte = Object.keys(b).filter(function (k) { return _MC_DUPA_SEMNARE.indexOf(k) < 0; });
+      if (alte.length) return res.status(400).json({ campuri: alte, error: 'Contractul e semnat și nu se mai schimbă. Alte tarife sau altă durată se fac printr-un contract nou.' });
+    }
+    // „Reia tarifele partenerului": Anexa nr. 1 se reface din fișa lui — doar cât contractul e nesemnat.
+    if (b.tarife_din_partener && vechi.status !== 'activ' && vechi.status !== 'incheiat') {
+      const p = await db.getPartenerMontaj(vechi.partener_id); b.tarife = Object.assign({}, (p && p.tarife) || {});
+    }
+    delete b.tarife_din_partener; delete b.partener_id; delete b.number;
+    const date = _mcDinCerere(b, vechi);
+    date.status = stareNoua;
+    if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
+    if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
+    const c = await db.salveazaContractMontaj(id, date);
+    auditReq(req, 'update', 'contract_montaj', id, { status: date.status, din: vechi.status });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractMontaj(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    if (c.status === 'activ' || c.status === 'incheiat') return res.status(400).json({ error: 'Un contract semnat nu se șterge — se încheie.' });
+    await db.stergeContractMontaj(id);
+    auditReq(req, 'delete', 'contract_montaj', id, { number: c.number });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function _mcHartie(id) {
+  const c = await db.getContractMontaj(id); if (!c) return null;
+  const p = await db.getPartenerMontaj(c.partener_id); if (!p) return null;
+  const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+  const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
+  return { c: c, p: p, emitent: emitent, nume: 'RA-Tracks - Contract montaj ' + curat(c.number || 'ciornă') + (p.name ? ' - ' + curat(p.name) : '') + '.pdf' };
+}
+app.get('/api/montaj/contracte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const h = await _mcHartie(id); if (!h) return res.status(404).json({ error: 'Contract inexistent' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', _antetDescarcare(h.nume));
+    contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }).pipe(res);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/montaj/contracte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractMontaj(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    const nume = String((req.body && req.body.name) || '').slice(0, 200);
+    const b64 = String((req.body && req.body.b64) || '').replace(/^data:[^;]+;base64,/, '');
+    if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
+    const mime = CONTRACT_MIME[(nume.split('.').pop() || '').toLowerCase()];
+    if (!mime) return res.status(400).json({ error: 'Se acceptă doar PDF, JPG sau PNG.' });
+    if (Buffer.byteLength(b64, 'base64') > CONTRACT_MAX_B) return res.status(413).json({ error: 'Fișierul depășește 4 MB.' });
+    const out = await db.setContractMontajFile(id, { b64: b64, name: nume, mime: mime });
+    auditReq(req, 'upload', 'contract_montaj', id, { name: nume });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/montaj/contracte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const f = await db.getContractMontajFile(id);
+    if (!f || !f.b64) return res.status(404).json({ error: 'Contractul nu are fișier atașat' });
+    res.setHeader('Content-Type', f.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', _antetDescarcare(f.name || 'contract'));
+    res.send(Buffer.from(f.b64, 'base64'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Trimite la semnat" — ca la clienți: email cu PDF-ul atașat, răspunsul vine la noi.
+app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const h = await _mcHartie(id); if (!h) return res.status(404).json({ error: 'Contract inexistent' });
+    if (h.c.status === 'ciorna') return res.status(400).json({ error: 'Contractul e încă în lucru. Aprobă-l întâi — o ciornă nu pleacă la semnat.' });
+    if (h.c.status !== 'aprobat' && h.c.status !== 'trimis') return res.status(400).json({ error: 'Contractul e deja semnat — nu mai e nimic de trimis la semnat.' });
+    const goluri = _lipsuriPartener(h.p, h.c).filter(function (k) { return ['cui', 'sediu', 'reprezentant'].indexOf(k) >= 0; });
+    if (goluri.length) return res.status(400).json({ lipsuri: goluri, error: 'Pe contract ar rămâne goluri: lipsește ' + goluri.map(function (k) { return ({ cui: 'CUI-ul', sediu: 'sediul', reprezentant: 'reprezentantul' })[k]; }).join(', ') + '. Completează-le în fișa partenerului.' });
+    const catre = String((req.body && req.body.catre) || h.p.email || '').trim();
+    if (!catre) return res.status(400).json({ error: 'Partenerul n-are adresă de email. Scrie adresa la care trimitem contractul.' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
+    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server (SMTP). Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
+    const pdf = await _pdfInBuffer(contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }));
+    const noi = h.emitent.name || 'RA Tracks';
+    const r = await mailer.send({ to: catre, replyTo: h.emitent.email || undefined,
+      subject: 'Contractul de colaborare ' + (h.c.number || '') + ' — de semnat · ' + noi,
+      html: '<p>Bună ziua,</p><p>Vă trimitem atașat contractul de colaborare nr. <b>' + _he(h.c.number || '') + '</b> pentru lucrările de montaj, cu anexele lui (tarifele și acordul de prelucrare a datelor).</p>' +
+        '<p>Vă rugăm să-l semnați și să ni-l trimiteți înapoi — scanat sau fotografiat — ca răspuns la acest email.</p><p>Vă mulțumim,<br>' + _he(noi) + '</p>',
+      text: 'Bună ziua,\n\nVă trimitem atașat contractul de colaborare nr. ' + (h.c.number || '') + '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\n' + noi,
+      attachments: [{ filename: h.nume, content: pdf, contentType: 'application/pdf' }] });
+    if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
+    const acum = await db.marcheazaContractMontajTrimis(id, catre);
+    auditReq(req, 'send', 'contract_montaj', id, { catre: catre });
+    res.json({ ok: true, trimis_la: catre, sent_at: acum, status: 'trimis' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Toate lucrările, de la toți clienții — fila „Lucrări" din Montaj. Marja se socotește aici, o dată.
+app.get('/api/montaj/lucrari', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const rows = await db.toateLucrarileMontaj(req.query.limit);
+    res.json({ stari: montaj.ETICHETE_STARE, lucrari: rows.map(function (m) {
+      const c = Number(m.total_client) || 0, p = Number(m.total_partener) || 0;
+      return Object.assign({}, m, { marja: Math.round((c - p) * 100) / 100 });
+    }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (req, res) => {

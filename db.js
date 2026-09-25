@@ -1060,6 +1060,32 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
+    // ─── Montaj ca secțiune a ei (24.09): partenerii au contract cu noi, ca și clienții ─────────
+    // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri și semnăm contracte fix
+    // la fel ca la clienți". Pentru hârtie trebuie datele juridice ale partenerului — ca la o firmă client.
+    for (const col of ['reg_com VARCHAR(40)', 'address VARCHAR(300)', 'email VARCHAR(200)', 'phone VARCHAR(40)',
+      'iban VARCHAR(60)', 'bank VARCHAR(120)', 'legal_rep JSONB', 'zona VARCHAR(300)']) {
+      await client.query('ALTER TABLE montaj_parteneri ADD COLUMN IF NOT EXISTS ' + col);
+    }
+    // Contractul de colaborare cu un partener de montaj. Același drum ca la clienți (în lucru ⇄ aprobat
+    // ⇄ trimis → semnat → încheiat), dar invers la bani: EL ne facturează pe NOI. `tarife` = Anexa nr. 1,
+    // înghețată la creare din tarifele partenerului; după semnare se schimbă doar prin act nou.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS montaj_contracte (
+        id SERIAL PRIMARY KEY,
+        partener_id INTEGER NOT NULL,
+        number VARCHAR(60),
+        status VARCHAR(16) NOT NULL DEFAULT 'ciorna',
+        signed_at BIGINT, start_at BIGINT, months INTEGER, end_at BIGINT,
+        auto_renew BOOLEAN DEFAULT true, notice_days INTEGER DEFAULT 30, plata_zile INTEGER DEFAULT 30,
+        ended_at BIGINT, ended_reason TEXT,
+        our_rep JSONB, partner_rep JSONB, tarife JSONB, zona VARCHAR(300),
+        file_b64 TEXT, file_name VARCHAR(200), file_mime VARCHAR(80),
+        sent_at BIGINT, sent_to VARCHAR(200),
+        notes TEXT, created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mcontracte_partener ON montaj_contracte(partener_id, created_at DESC)`);
     // ─── Acte adiționale ──────────────────────────────────────────────────────────────────────
     // Un contract semnat NU se mai schimbă — asta e tot rostul unei semnături. Când clientul mai
     // cumpără mașini, mai vrea un modul sau se schimbă prețul, se face un ACT ADIȚIONAL: o hârtie
@@ -1998,18 +2024,97 @@ async function listParteneriMontaj() {
 }
 async function upsertPartenerMontaj(p) {
   const now = Date.now();
+  // Se scrie DOAR ce vine în cerere (`undefined` = rămâne cum era). Până pe 24.09 o salvare fără CUI —
+  // doar numele și tarifele — golea CUI-ul, contactul și notele (aceeași capcană ca `updateCompany`).
+  const chei = ['cui', 'contact', 'tarife', 'active', 'notes', 'reg_com', 'address', 'email', 'phone', 'iban', 'bank', 'legal_rep', 'zona']
+    .filter(function (k) { return p[k] !== undefined; });
+  const val = function (k) {
+    if (k === 'tarife') return JSON.stringify(p.tarife || {});
+    if (k === 'legal_rep') return p.legal_rep ? JSON.stringify(p.legal_rep) : null;
+    if (k === 'active') return p.active !== false;
+    return p[k] || null;
+  };
   if (p.id) {
-    const r = await pool.query(
-      `UPDATE montaj_parteneri SET name=$2, cui=$3, contact=$4, tarife=$5, active=$6, notes=$7, updated_at=$8
-         WHERE id=$1 RETURNING *`,
-      [p.id, p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+    const params = [p.id, p.name, now];
+    const set = chei.map(function (k) { params.push(val(k)); return k + '=$' + params.length; });
+    const r = await pool.query('UPDATE montaj_parteneri SET name=$2, updated_at=$3' + (set.length ? ', ' + set.join(', ') : '') + ' WHERE id=$1 RETURNING *', params);
     return r.rows[0] || null;
   }
+  const cols = ['name', 'created_at', 'updated_at'].concat(chei);
+  const params = [p.name, now, now].concat(chei.map(val));
   const r = await pool.query(
-    `INSERT INTO montaj_parteneri (name, cui, contact, tarife, active, notes, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *`,
-    [p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+    `INSERT INTO montaj_parteneri (${cols.join(', ')}) VALUES (${params.map(function (x, i) { return '$' + (i + 1); }).join(', ')}) RETURNING *`, params);
   return r.rows[0];
+}
+async function getPartenerMontaj(id) {
+  const r = await pool.query('SELECT * FROM montaj_parteneri WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+
+// ─── Contractele cu partenerii de montaj (24.09) ─────────────────────────────────────────────────
+const _MC_COL = `c.id, c.partener_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at, c.auto_renew,
+  c.notice_days, c.plata_zile, c.ended_at, c.ended_reason, c.our_rep, c.partner_rep, c.tarife, c.zona,
+  (c.file_b64 IS NOT NULL) AS has_file, c.file_name, c.sent_at, c.sent_to, c.notes, c.created_at, c.updated_at`;
+async function listContracteMontaj() {
+  const r = await pool.query(
+    `SELECT ${_MC_COL}, p.name AS partener_name, p.cui, p.address, p.email, p.legal_rep, p.reg_com
+       FROM montaj_contracte c JOIN montaj_parteneri p ON p.id = c.partener_id
+      ORDER BY c.created_at DESC`);
+  return r.rows;
+}
+async function getContractMontaj(id) {
+  const r = await pool.query(`SELECT ${_MC_COL} FROM montaj_contracte c WHERE c.id = $1`, [id]);
+  return r.rows[0] || null;
+}
+async function nextContractMontajNumber(an) {
+  const y = an || new Date().getFullYear();
+  const r = await pool.query(`SELECT number FROM montaj_contracte WHERE number LIKE $1`, ['RAT-M-' + y + '-%']);
+  let max = 0;
+  for (const row of r.rows) { const m = /-(\d+)$/.exec(row.number || ''); if (m) max = Math.max(max, parseInt(m[1], 10) || 0); }
+  return 'RAT-M-' + y + '-' + String(max + 1).padStart(4, '0');
+}
+async function salveazaContractMontaj(id, c) {
+  const now = Date.now();
+  const v = [c.partener_id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
+    c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false, c.notice_days == null ? 30 : c.notice_days,
+    c.plata_zile == null ? 30 : c.plata_zile, c.ended_at || null, c.ended_reason || null,
+    _J(c.our_rep), _J(c.partner_rep), _J(c.tarife), c.zona || null, c.notes || null, now];
+  if (id) {
+    const r = await pool.query(
+      `UPDATE montaj_contracte SET partener_id=$2, number=$3, status=$4, signed_at=$5, start_at=$6, months=$7, end_at=$8,
+         auto_renew=$9, notice_days=$10, plata_zile=$11, ended_at=$12, ended_reason=$13, our_rep=$14, partner_rep=$15,
+         tarife=$16, zona=$17, notes=$18, updated_at=$19 WHERE id=$1 RETURNING id`, [id].concat(v));
+    return r.rows[0] ? getContractMontaj(id) : null;
+  }
+  const r = await pool.query(
+    `INSERT INTO montaj_contracte (partener_id, number, status, signed_at, start_at, months, end_at, auto_renew, notice_days,
+       plata_zile, ended_at, ended_reason, our_rep, partner_rep, tarife, zona, notes, updated_at, created_by, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$18) RETURNING id`, v.concat([c.created_by || null]));
+  return getContractMontaj(r.rows[0].id);
+}
+async function stergeContractMontaj(id) { await pool.query('DELETE FROM montaj_contracte WHERE id = $1', [id]); return { ok: true }; }
+async function setContractMontajFile(id, f) {
+  await pool.query('UPDATE montaj_contracte SET file_b64=$2, file_name=$3, file_mime=$4, updated_at=$5 WHERE id=$1',
+    [id, f && f.b64 ? f.b64 : null, f && f.name ? f.name : null, f && f.mime ? f.mime : null, Date.now()]);
+  return getContractMontaj(id);
+}
+async function getContractMontajFile(id) {
+  const r = await pool.query('SELECT file_b64 AS b64, file_name AS name, file_mime AS mime FROM montaj_contracte WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function marcheazaContractMontajTrimis(id, catre) {
+  const acum = Date.now();
+  await pool.query(`UPDATE montaj_contracte SET status = 'trimis', sent_at = $2, sent_to = $3, updated_at = $2 WHERE id = $1`, [id, acum, catre]);
+  return acum;
+}
+// Toate lucrările de montaj, de la toți clienții — lista din secțiunea Montaj.
+async function toateLucrarileMontaj(limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.total_client, m.total_partener,
+            m.status, m.factura_partener, m.created_at, co.name AS company_name, p.name AS partener_nume
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      ORDER BY COALESCE(m.data_lucrare, m.created_at) DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
+  return r.rows;
 }
 async function deletePartenerMontaj(id) { await pool.query('DELETE FROM montaj_parteneri WHERE id = $1', [id]); return { ok: true }; }
 
@@ -4667,7 +4772,8 @@ module.exports = {
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
-  drumDateToate,
+  drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
+  stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,

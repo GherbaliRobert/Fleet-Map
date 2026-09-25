@@ -664,6 +664,40 @@ O linie de pași: **Oferta → Trimis la semnat → Semnat → Montajul → Apar
   fișă, iar `_ctreDupa` redesenează ce e deschis (fișa și/sau lista).
 - Păzit de `verify_drum.js` (în `npm test`), care parcurge tot drumul pe server pornit.
 
+### Montaj — secțiunea partenerilor (Business, 24.09)
+Alin: *„secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la fel ca la clienți.
+Logica din spate o va face Robert în interfața lor."* Rândul „Montaj" stă în meniu **imediat după
+Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Trei file (`MJ_FILE`):
+Parteneri · Contracte cu partenerii · Lucrări.
+
+- **Partenerii stau DOAR aici.** Au ieșit din ecranul Contracte (acolo sunt doar contractele clienților).
+  `raxParteneriIncarca` a rămas ca nume vechi și cheamă `raxLoadMontaj`.
+- **Fișa partenerului** (`montaj_parteneri`): CUI + ANAF, reg_com, address, legal_rep, email, phone, iban,
+  bank, zona, tarife. ⚠ **`upsertPartenerMontaj` scrie DOAR cheile primite** (`undefined` = rămâne cum era):
+  o salvare fără CUI îi ștergea CUI-ul, contactul și notițele. Ruta trimite `undefined` pentru ce n-a venit.
+- **Contractul cu partenerul** (`montaj_contracte`, număr `RAT-M-AAAA-NNNN`): aceleași stări și aceeași
+  regulă de trecere ca la clienți (`_trecereContract`), un singur contract nesfârșit pe partener (409),
+  semnat = încuiat (`_MC_DUPA_SEMNARE`: doar data semnării, notițele, încheierea). Ciorna se șterge,
+  semnatul se încheie. **Tarifele (Anexa nr. 1) se ÎNGHEAȚĂ la creare**, din fișa partenerului; „Reia
+  tarifele de azi" (`tarife_din_partener`) merge doar cât e nesemnat. Lipsurile (`_lipsuriPartener`) și
+  „Trimite la semnat" (email + PDF, refuză cu goluri pe hârtie, 503 `faraEmail` fără SMTP) urmează ACELAȘI
+  model ca la clienți. Stările se scriu cu `_mjStare` („trimis la **partener**", nu „la client").
+  `montaj_contracte` e în `BUSINESS_TABLES` (`backup.js`): ține fișierul SEMNAT, care nu se poate reface.
+- **Hârtia** (`contract_pdf.js` → `scrieContractMontaj` / `contractMontajPdf`): „Contract de colaborare",
+  partenerul = PRESTATOR, noi = BENEFICIAR (banii merg invers). Clauzele care contează: el ne facturează
+  lunar, recepția = aparatul transmite, aparatele sunt ale noastre, garanție 12 luni, nesolicitarea
+  clienților 12 luni, și **SUBÎMPUTERNICIT GDPR** (art. 28 alin. 4, Anexa nr. 2) — vede date ale
+  clienților noștri. Nume: „RA-Tracks - Contract montaj {nr} - {partener}.pdf". Scris de noi, nu de un
+  jurist: e pe lista de lansare.
+- **Lucrările se EDITEAZĂ doar din fișa clientului** (fila Contract) — de acolo iau prețul pentru client și
+  intră în Anexa nr. 2 a contractului lui. Fila „Lucrări" e privirea de sus (`GET /api/montaj/lucrari`,
+  marja socotită pe server), cu buton „La client". NU pune un al doilea formular de lucrare aici.
+- **Clientul nu vede nimic de aici.** Toate rutele `/api/montaj/*` sunt `requireSuperadmin`: cât ne cere
+  partenerul e exact diferența din care trăim.
+- **Contul partenerului în aplicație = Robert.** NU-l construi din proprie inițiativă. Când se face: vede
+  DOAR lucrările lui — nu flota/pozițiile clientului, nu prețul pentru client, nu marja, nu alți parteneri.
+- Păzit de `verify_montaj_sectiune.js` (în `npm test`), pe server pornit, cu server de email FALS.
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - (nimic deschis aici acum)
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
