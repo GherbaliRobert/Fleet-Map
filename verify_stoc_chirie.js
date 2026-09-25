@@ -115,7 +115,7 @@ const bazaOf = { client: { name: 'Transport Zebra SRL' }, contractMonths: 24, fx
   montajLines: [{ label: 'Instalare dispozitiv GPS', qty: 10, unit: 100, total: 1000 }], montaj: 1000,
   deviceLines: [{ label: 'Teltonika FMC130', qty: 10, unit: 55, total: 550 }], hwTotal: 550, chirieLuniMin: 24, chirieZileRetur: 15 };
 const hCump = hartie(bazaOf);
-const hInch = hartie(Object.assign({}, bazaOf, { inchiriere: true, deviceLines: [], hwTotal: 0, monthly: 430, contractTotal: 10320,
+const hInch = hartie(Object.assign({}, bazaOf, { inchiriere: true, tarifDemontare: 60, deviceLines: [], hwTotal: 0, monthly: 430, contractTotal: 10320,
   lines: bazaOf.lines.concat([{ fel: 'chirie', label: 'Chirie Teltonika FMC130', qty: 10, unit: 14, total: 140 }]) }));
 T('CUMPĂRĂ: hârtia rămâne neschimbată (echipamente o singură dată, facturate la livrare)', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se facturează la livrare/.test(hCump) && !/proprietatea RA Tracks/.test(hCump));
 T('ÎNCHIRIAZĂ: tabelul „Chiria echipamentelor — lunar"', /CHIRIA ECHIPAMENTELOR — LUNAR/.test(hInch) && /Chirie Teltonika FMC130/.test(hInch));
@@ -123,6 +123,8 @@ T('ÎNCHIRIAZĂ: fără tabel de echipamente vândute', !/ECHIPAMENTE — O SING
 T('ÎNCHIRIAZĂ: costul unic e doar instalarea (1.000 lei)', /instalare \(aparatele sunt închiriate\)/.test(hInch) && /1\.000,00 lei/.test(hInch));
 T('ÎNCHIRIAZĂ: aparatele rămân proprietatea RA Tracks, chiria pe rând separat', /rămân proprietatea RA Tracks pe toată durata contractului/.test(hInch) && /pe rând separat/.test(hInch));
 T('ÎNCHIRIAZĂ: durata minimă de 24 de luni și chiria lunilor rămase', /Durata minimă a contractului este de 24 de luni/.test(hInch) && /lunile rămase până la 24/.test(hInch));
+T('ÎNCHIRIAZĂ: plecarea mai devreme plătește și demontarea, cu cifra (60 lei/aparat)', /și demontarea lor, de 60,00 lei pe aparat/.test(hInch));
+T('hârtia primește tariful de dezinstalare din ofertă', /tarifDemontare: Number\(r\.p\.mUninstall\) \|\| null/.test(html));
 T('ÎNCHIRIAZĂ: returul în 15 zile, nereturnatul se plătește', /demontare în cel mult 15 zile/.test(hInch) && /nereturnate sau deteriorate se plătesc/.test(hInch));
 T('ÎNCHIRIAZĂ: la sfârșitul contractului demontarea o facem noi, fără cost (Alin, 25.09)', /La sfârșitul contractului, demontarea o facem noi, fără cost/.test(hInch));
 T('ÎNCHIRIAZĂ: nu mai scrie „rămân în proprietatea Beneficiarului"', !/rămân în proprietatea Beneficiarului/.test(hInch));
@@ -148,10 +150,11 @@ const zi = Date.parse('2026-09-25T12:00:00Z');
 const anexaInch = C.facAnexa([], {
   vehiculeOferta: [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 10, pret: 29, total: 290 }],
   servicii: [{ fel: 'chirie', nume: 'Chirie Teltonika FMC130', cant: 10, pret: 14, total: 140 }],
-  chirie: { aparate: [{ tip: 'fmc130', nume: 'Teltonika FMC130', cant: 10, chirie: 14, valoare: 275 }] }
+  chirie: { aparate: [{ tip: 'fmc130', nume: 'Teltonika FMC130', cant: 10, chirie: 14, valoare: 275 }], tarifDemontare: 60 }
 });
 T('anexa: totalul lunar cuprinde chiria (290 + 140)', anexaInch.monthlyTotal === 430, anexaInch.monthlyTotal);
 T('anexa: lista aparatelor închiriate, cu valoarea lor, și durata minimă', anexaInch.chirie && anexaInch.chirie.luniMin === 24 && anexaInch.chirie.aparate[0].valoare === 275);
+T('anexa: tariful de dezinstalare (pentru plecarea înainte de termen)', anexaInch.chirie.tarifDemontare === 60);
 T('anexa re-salvată (aparatele bifate) păstrează închirierea', C.dinAnexaDePastrat(anexaInch).chirie && C.facAnexa([], C.dinAnexaDePastrat(anexaInch)).chirie.aparate.length === 1);
 function contractText(anexa, montaj) {
   const c = cartonContract();
@@ -169,6 +172,7 @@ const ctCump = contractText(C.facAnexa([], { vehiculeOferta: [{ fel: 'plain', nu
 T('IV: aparatele sunt date în folosință și rămân proprietatea Prestatorului', /rămân proprietatea Prestatorului pe toată durata contractului/.test(ctInch) && /pe rând separat/.test(ctInch));
 T('IV: durata minimă de 24 de luni', /Durata minimă a contractului este de 24 de luni/.test(ctInch));
 T('VII: plecarea înainte de termen → chiria lunilor rămase', /datorează chiria aparatelor închiriate pentru lunile rămase/.test(ctInch));
+T('VII: ...și demontarea, pe care o plătește el, la tariful din contract (Alin, 25.09)', /precum și demontarea lor, la tariful de 60,00 RON pe aparat, fără TVA/.test(ctInch));
 T('VII: returul în 15 zile, nerestituitul se plătește la valoarea din anexă', /demontare în cel mult 15 zile/.test(ctInch) && /la valoarea din Anexa nr\. 1/.test(ctInch));
 T('VII: la termen, demontarea o face Prestatorul, fără cost (Alin, 25.09)', /La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar/.test(ctInch));
 T('Anexa nr. 1: „Aparate închiriate — proprietatea Prestatorului", cu valoarea', /Aparate închiriate — proprietatea Prestatorului/.test(ctInch) && /275,00 RON/.test(ctInch));
@@ -270,7 +274,7 @@ function gata() {
   const cfg = { echipMod: 'inchiriaza', nVeh: 3, nCan: 0, nFms: 0, contractMonths: 24, fxRate: 5, retTier: '12',
     client: { name: 'Transport Zebra SRL' }, devices: { d130: 3 }, montaj: { qGps: 3 } };
   const of = (await R('POST', '/api/admin/offers', { name: 'Ofertă Zebra (închiriere)', client_name: 'Transport Zebra SRL',
-    config: { cfg: cfg, prices: { pPlain: 29, chFmc130: 14, dFmc130: 55, mGps: 100 } }, monthly_total: 129, once_total: 300, currency: 'RON' })).j || {};
+    config: { cfg: cfg, prices: { pPlain: 29, chFmc130: 14, dFmc130: 55, mGps: 100, mUninstall: 60 } }, monthly_total: 129, once_total: 300, currency: 'RON' })).j || {};
   T('oferta cu închiriere se salvează', of.id > 0, JSON.stringify(of));
   const co = (await R('POST', '/api/companies', { name: 'Transport Zebra SRL' })).j;
   const dinOf = { unitati: { plain: 29, can: 45, fms: 65 },
@@ -283,6 +287,7 @@ function gata() {
   const c = ct.j || {};
   T('anexa nr. 1: chiria pe rândul ei, în totalul lunar (87 + 42)', c.annex && c.annex.monthlyTotal === 129 && (c.annex.servicii || []).some((r) => r.fel === 'chirie' && r.total === 42), JSON.stringify(c.annex));
   T('anexa nr. 1: aparatele închiriate, cu valoarea lor (55 € × 5 = 275 lei)', c.annex && c.annex.chirie && c.annex.chirie.aparate[0].cant === 3 && c.annex.chirie.aparate[0].valoare === 275);
+  T('anexa nr. 1: tariful de dezinstalare din ofertă (60 lei), pentru plecarea înainte de termen', c.annex && c.annex.chirie && c.annex.chirie.tarifDemontare === 60, JSON.stringify(c.annex && c.annex.chirie));
   T('anexa nr. 2: doar montajul — aparatele nu se vând', c.montaj && (c.montaj.items || []).length === 1 && !((c.montaj.echipamente || {}).items || []).length, JSON.stringify(c.montaj));
   const ov = (await R('GET', '/api/companies/' + co.id + '/overview')).j || {};
   T('pe firmă: chiria scrisă din contract (3 × 14 = 42 lei/lună)', ov.chirie && ov.chirie.totalRON === 42 && ov.chirie.randuri[0].cant === 3, JSON.stringify(ov.chirie));

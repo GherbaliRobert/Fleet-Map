@@ -412,7 +412,10 @@ function facAnexa(vehicule, pret) {
       return { tip: a.tip ? String(a.tip).replace(/[^a-z0-9]/g, '').slice(0, 20) || null : null, nume: nume, cant: cant,
         chirie: r2(chirie), valoare: Number.isFinite(val) && val > 0 ? r2(val) : null };
     }).filter(Boolean);
-    if (ap.length) out.chirie = { luniMin: CHIRIE_LUNI_MIN, aparate: ap };
+    // Tariful de dezinstalare, pe aparat: îl plătește clientul care pleacă înainte de durata minimă (Alin,
+    // 25.09). La termen, demontarea o facem noi, fără cost. Fără tarif știut → `null` (clauza spune regula).
+    const dem = Number(ch.tarifDemontare);
+    if (ap.length) out.chirie = { luniMin: CHIRIE_LUNI_MIN, aparate: ap, tarifDemontare: Number.isFinite(dem) && dem > 0 ? r2(dem) : null };
   }
   return out;
 }

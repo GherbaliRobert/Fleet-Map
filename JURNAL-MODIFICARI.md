@@ -30,9 +30,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
-- [ ] **Alin: demontarea când clientul pleacă ÎNAINTE de termen — o plătește el?** La termen e hotărât
-  (25.09): **noi, fără cost** — scris în contract și pe ofertă. Rămâne cazul plecării mai devreme; propunerea
-  mea: o plătește clientul, la tariful de dezinstalare (pe lângă chiria lunilor rămase).
+- [x] **HOTĂRÂT (25.09): demontarea la închiriere.** La termen o facem noi, fără cost; dacă clientul
+  pleacă înainte de 24 de luni, o plătește el, la tariful de dezinstalare din ofertă, pe lângă chiria
+  lunilor rămase. Scris în contract și pe ofertă.
 - [ ] **Contabilul: aparatele închiriate. Adăugat pe 25.09.** Rămân ale noastre, deci intră în evidența
   firmei (mijloace fixe sau obiecte de inventar, cu amortizarea lor), iar pe factură apare rândul „Chirie
   echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
@@ -129,6 +129,17 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
 ## 2026-09-25
+
+### AMÂNDOI · Cine pleacă înainte de 24 de luni plătește și demontarea
+
+Alin a ales „da": un client care închiriază și pleacă înainte de durata minimă plătește chiria lunilor
+rămase **și demontarea aparatelor**, la tariful de dezinstalare din ofertă (implicit 60 de lei pe aparat).
+La sfârșitul contractului, demontarea rămâne a noastră, fără cost.
+
+- **Ce am schimbat:** clauza din contract (VII) și condiția de pe ofertă spun acum și demontarea, cu cifra
+  pe aparat, luată din ofertă și trecută în Anexa nr. 1.
+- **Ce vede fondatorul:** nimic nou pe ecran; tariful e cel din „Dezinstalare echipament", la pasul 4.
+- **Ce vede clientul:** pe ofertă și în contract, cât costă demontarea dacă pleacă mai devreme.
 
 ### AMÂNDOI · Cartea „5. Aparatele", mai simplă — și demontarea la termen o facem noi, gratis
 

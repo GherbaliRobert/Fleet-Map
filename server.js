@@ -5005,7 +5005,11 @@ function _chirieDinOferta(oferta) {
       valoare: valEur > 0 ? Math.round(valEur * curs * 100) / 100 : null };
   }).filter(Boolean);
   if (!aparate.length) return null;
-  return { aparate: aparate, randuri: aparate.map(function (a) { return { tip: a.tip, nume: a.nume, cant: a.cant, pret: a.chirie }; }) };
+  // Tariful de dezinstalare din ofertă: îl plătește clientul care pleacă ÎNAINTE de durata minimă (decizie
+  // Alin, 25.09). La termen, demontarea o facem noi, fără cost.
+  const dem = Number(pret.mUninstall);
+  return { aparate: aparate, tarifDemontare: dem > 0 ? Math.round(dem * 100) / 100 : null,
+    randuri: aparate.map(function (a) { return { tip: a.tip, nume: a.nume, cant: a.cant, pret: a.chirie }; }) };
 }
 
 // ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
@@ -5845,7 +5849,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           // Câte luni se păstrează istoricul, dacă s-a cumpărat mai mult decât cele 12 incluse: se semnează.
           pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null,
           // Aparatele ÎNCHIRIATE: ale noastre, cu chiria și valoarea lor — pentru clauze (25.09).
-          chirie: _ch ? { aparate: _ch.aparate } : null
+          chirie: _ch ? { aparate: _ch.aparate, tarifDemontare: _ch.tarifDemontare } : null
         });
       }
       // Montajul și echipamentele sunt deja socotite în ofertă — le ducem în Anexa nr. 2, ca să nu

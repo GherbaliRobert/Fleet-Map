@@ -770,8 +770,10 @@ revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU �
   comutatorul ascunde una, arată cealaltă. Prețul de vânzare rămâne (ascuns) ca VALOARE a aparatului.
   Lângă chirie, `of-chcost-*`: „ne costă X €" sau linkul „trece cât ne costă" (fără cost, chiria nu se
   propune și caseta nu trebuie să tacă). NU pune la loc trei casete pe rând.
-- **Demontarea la termen o facem NOI, fără cost** (decizie Alin, 25.09) — scris în contract (VII) și pe
-  ofertă (condiții). **De hotărât:** plecarea ÎNAINTE de termen (e pe lista „De amintit").
+- **Demontarea (decizie Alin, 25.09):** la termen o facem NOI, fără cost; clientul care pleacă ÎNAINTE de
+  durata minimă o plătește el, la tariful de dezinstalare din ofertă (`mUninstall` → `annex.chirie.
+  tarifDemontare`, trimis și pe hârtia ofertei ca `tarifDemontare`), pe lângă chiria lunilor rămase.
+  Scris în contract (VII) și în condițiile ofertei. Fără tarif știut, clauza spune regula, nu inventează o cifră.
 - Păzit de `verify_stoc_chirie.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)

@@ -421,8 +421,11 @@ function scrieContract(doc, date) {
   _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
     (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
   if (chirieA) {
+    // Plecarea înainte de termen: chiria lunilor rămase + demontarea, pe care o plătește el (Alin, 25.09).
+    const tDem = Number(chirieA.tarifDemontare) > 0 ? Number(chirieA.tarifDemontare) : null;
     _p(doc, 'Dacă Beneficiarul denunță contractul înainte de împlinirea duratei minime de ' + C.numar(luniMinCh, 'lună', 'luni') +
-      ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia.');
+      ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia, precum și demontarea lor, ' +
+      (tDem ? 'la tariful de ' + _bani(tDem, 'RON') + ' pe aparat, fără TVA.' : 'la tariful de dezinstalare al Prestatorului.'));
     // Demontarea la termen o facem NOI, fără cost (decizie Alin, 25.09: „aparatul e al nostru și îl vrem înapoi").
     _p(doc, 'La încetarea contractului, Beneficiarul restituie aparatele închiriate: pune vehiculele la dispoziția Prestatorului pentru demontare în cel mult ' +
       C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar. ' +

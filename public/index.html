@@ -25512,8 +25512,9 @@ const pozitii = await r.json();</code></pre>
         tahograf: !!r.cfg.tahograf, etransport: !!r.cfg.etransport, agenti: !!r.cfg.agenti,
         aiA: !!r.cfg.aiA, aiqConturi: nLoc, aiqFond: _aiqFond(nLoc, r.cfg.aiqN),
         pretCont: Number(r.p.pAiA) || 0, retentie: _ofRetLabel(r.cfg),
-        // Închirierea: aparatele nu se vând; condițiile (24 de luni, returul) le scrie serverul.
-        inchiriere: !!r.inchiriere
+        // Închirierea: aparatele nu se vând; condițiile (24 de luni, returul) le scrie serverul. Tariful de
+        // dezinstalare: îl plătește clientul care pleacă înainte de termen (Alin, 25.09).
+        inchiriere: !!r.inchiriere, tarifDemontare: Number(r.p.mUninstall) || null
       };
     }
     // O SINGURĂ cale către hârtie, cu două capete: o descarci, sau te uiți la ea. Previzualizarea
