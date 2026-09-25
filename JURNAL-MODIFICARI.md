@@ -153,6 +153,12 @@ scrie doar ce trimiți. A prins-o proba nouă, nu ochiul.
 backup. Adică un contract semnat și urcat în aplicație s-ar fi pierdut la prima restaurare. Acum intră,
 ca și contractele clienților.
 
+**Și una prinsă la recitire:** butonul de ștergere a unui partener îi lua cu el și contractul semnat —
+din listă dispărea cu totul, iar hârtia nu se mai deschidea. Acum **un partener cu contract semnat nu
+se șterge**: în fișa lui e un câmp nou, **„Stare: activ / inactiv — nu mai lucrăm cu el"**. Un partener
+inactiv nu se mai propune la lucrările noi și nu mai apare la „fără contract", dar tot ce a semnat
+rămâne în dosar. Unul adăugat din greșeală (fără contract, sau doar cu o ciornă) se șterge ca înainte.
+
 Probat pe server pornit, cu un server de email fals: partener nou, contractul pe tot drumul, emailul
 chiar pleacă cu PDF-ul atașat, semnat = încuiat, al doilea contract refuzat, lista lucrărilor cu ce
 rămâne la noi (`verify_montaj_sectiune.js`). Și pe ecran, pe ambele teme: nimic sub pragul de contrast.

@@ -21195,6 +21195,10 @@ const pozitii = await r.json();</code></pre>
           '<div class="raco-2">' + _f('Email (aici pleacă contractul)', 'pt-email', e.email, 'office@firma.ro') + _f('Telefon', 'pt-phone', e.phone, '07xx xxx xxx') + '</div>' +
           '<div class="raco-2">' + _f('IBAN', 'pt-iban', e.iban, 'RO…') + _f('Banca', 'pt-bank', e.bank, '') + '</div>' +
           '<div class="raco-2">' + _f('Zona în care lucrează', 'pt-zona', e.zona, 'ex. Timiș, Arad, Hunedoara') + _f('Persoana de contact', 'pt-contact', e.contact, 'nume · telefon') + '</div>' +
+          // „Inactiv" e capătul unui partener cu istoric: cel cu contract semnat nu se șterge (hârtia rămâne în dosar).
+          '<div class="raco-2"><label class="raco-f"><span>Stare</span><select class="rax-field" id="pt-activ">' +
+            '<option value="1"' + (e.active !== false ? ' selected' : '') + '>activ</option>' +
+            '<option value="0"' + (e.active === false ? ' selected' : '') + '>inactiv — nu mai lucrăm cu el</option></select></label></div>' +
           '<div id="pt-msg" class="raco-msg"></div>' +
           '<div class="raco-h2">Cât ne cere, pe lucrare (lei, fără TVA)</div>' +
           '<div class="raco-mont-cap" style="grid-template-columns:1fr 96px;"><span>Lucrare</span><span>Tarif</span></div>' +
@@ -21250,7 +21254,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var j = await fetch('/api/montaj/parteneri', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
           body: JSON.stringify({ id: _raxPart.edit.id || null, name: v('pt-name'), cui: v('pt-cui'), contact: v('pt-contact'), tarife: tarife,
-            reg_com: v('pt-reg'), address: v('pt-addr'), email: v('pt-email'), phone: v('pt-phone'), iban: v('pt-iban'), bank: v('pt-bank'), zona: v('pt-zona'),
+            reg_com: v('pt-reg'), address: v('pt-addr'), email: v('pt-email'), phone: v('pt-phone'), iban: v('pt-iban'), bank: v('pt-bank'), zona: v('pt-zona'), active: v('pt-activ') !== '0',
             legal_rep: v('pt-rep') ? { name: v('pt-rep'), role: v('pt-reprole') } : null }) }).then(function (r) { return r.json(); });
         if (j.error) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; else (window.raxToast || alert)(j.error, 'error'); return; }
         _raxPart.edit = null;
@@ -21259,9 +21263,13 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
     window.raxPartSterge = async function (id) {
-      if (!await raConfirm('Ștergi partenerul? Lucrările deja salvate rămân, dar fără numele lui.')) return;
-      try { await fetch('/api/montaj/parteneri/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxLoadMontaj(); }
-      catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+      if (!await raConfirm('Ștergi partenerul? Lucrările deja salvate rămân, dar fără numele lui, iar contractele lui nesemnate se șterg și ele.\n\nUn partener cu contract semnat nu se șterge — hârtia rămâne în dosar. Pe el îl treci pe „inactiv", din fișa lui.')) return;
+      try {
+        var r = await fetch('/api/montaj/parteneri/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || ('Eroare ' + r.status), 'error'); return; }
+        raxLoadMontaj();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
 
     // ── Fila „Contracte cu partenerii": același drum ca la clienți ──
@@ -22053,7 +22061,8 @@ const pozitii = await r.json();</code></pre>
       var h = '<div class="raco-2">' +
           '<label class="raco-f"><span>Cine execută</span><select class="rax-field" id="mo-part" onchange="raxMontajPartener(this.value)">' +
             '<option value="">— fără partener ales —</option>' +
-            _raxMont.parteneri.map(function (p) {
+            // Un partener „inactiv" (nu mai lucrăm cu el) nu se mai propune; rămâne doar pe lucrările lui.
+            _raxMont.parteneri.filter(function (p) { return p.active !== false || p.id === e.partener_id; }).map(function (p) {
               return '<option value="' + p.id + '"' + (e.partener_id === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
             }).join('') + '</select></label>' +
           _f('Data lucrării', 'mo-data', e.data_lucrare ? _inputZi(e.data_lucrare) : '', '', 'date') +

@@ -30,6 +30,9 @@ T('fișa partenerului are datele juridice și ANAF', ['pt-reg', 'pt-addr', 'pt-r
 T('lucrările se editează tot din fișa clientului (aici doar „La client")', /raxOpenCompanyDetail\(' \+ m\.company_id \+ ', \\'contract\\'\)/.test(html));
 const blocMj = html.slice(html.indexOf('// ─── Secțiunea „Montaj"'), html.indexOf('// ─── Fila „Contract": dosarul juridic'));
 T('contractul unui partener e „trimis la partener", nu „la client"', /'trimis la partener'/.test(blocMj) && !/CTR_STARI\[c\.status\]/.test(blocMj));
+T('fișa partenerului are „Stare": activ / inactiv, și se trimite la salvare', /id="pt-activ"/.test(blocMj) && /active: v\('pt-activ'\) !== '0'/.test(blocMj));
+T('ștergerea arată refuzul serverului (nu tace)', /raxPartSterge[\s\S]{0,700}if \(!r\.ok\)/.test(blocMj));
+T('un partener inactiv nu se mai propune la o lucrare nouă', /_raxMont\.parteneri\.filter\(function \(p\) \{ return p\.active !== false \|\| p\.id === e\.partener_id; \}\)/.test(html));
 ['/api/montaj/contracte', '/api/montaj/contracte/:id', '/api/montaj/contracte/:id/pdf', '/api/montaj/contracte/:id/trimite', '/api/montaj/lucrari'].forEach((r) => {
   const re = new RegExp("app\\.(get|post|put|delete)\\('" + r.replace(/\//g, '\\/') + "', requireAuth, requireSuperadmin");
   T('ruta ' + r + ' e doar a noastră', re.test(server));
@@ -184,5 +187,21 @@ function gata() {
 
   T('„Încheie", cu motivul', (await R('PUT', '/api/montaj/contracte/' + c.id, { status: 'incheiat', ended_reason: 'denunțare' })).s === 200);
   T('după încheiere se poate face un contract nou', (await R('POST', '/api/montaj/contracte', { partener_id: p0.id })).s === 200);
+
+  // Un partener cu contract SEMNAT nu se șterge: lista contractelor se leagă de partener, deci fără el
+  // contractul semnat ar dispărea din ecran. Se trece pe „inactiv".
+  const del0 = await R('DELETE', '/api/montaj/parteneri/' + p0.id);
+  T('partenerul cu contract semnat NU se șterge (409)', del0.s === 409 && /inactiv/.test((del0.j && del0.j.error) || ''), del0.s + ' ' + JSON.stringify(del0.j));
+  T('...iar contractul lui semnat rămâne în listă', ((await R('GET', '/api/montaj/contracte')).j.contracte || []).some((x) => x.id === c.id));
+  const ina = (await R('POST', '/api/montaj/parteneri', { id: p0.id, name: 'Instal GPS Vest SRL', active: false })).j || {};
+  T('„inactiv" se ține minte, fără să-i golească fișa', ina.active === false && ina.cui === 'RO111' && ina.email === 'office@instal.ro', JSON.stringify(ina));
+  const p3 = (await R('POST', '/api/montaj/parteneri', { name: 'Montaj Rapid SRL' })).j;
+  const c3 = (await R('POST', '/api/montaj/contracte', { partener_id: p3.id })).j || {};
+  const del3 = await R('DELETE', '/api/montaj/parteneri/' + p3.id);
+  T('partenerul doar cu o ciornă se șterge, și ciorna odată cu el', del3.s === 200 && del3.j.contracte_sterse === 1 &&
+    !((await R('GET', '/api/montaj/contracte')).j.contracte || []).some((x) => x.id === c3.id), del3.s + ' ' + JSON.stringify(del3.j));
+  T('fișa unui partener șters între timp → 404, nu eroare de program', (await R('POST', '/api/montaj/parteneri', { id: p3.id, name: 'Montaj Rapid SRL' })).s === 404);
+  const p4 = (await R('POST', '/api/montaj/parteneri', { name: 'Fost Partener SRL', active: false })).j;
+  T('un partener inactiv nu mai apare la „fără contract"', !(((await R('GET', '/api/montaj/contracte')).j.fara_contract) || []).some((x) => x.id === p4.id));
   gata();
 })().catch((e) => { console.log('✗ EROARE', e); rele++; gata(); });

@@ -683,6 +683,10 @@ Parteneri · Contracte cu partenerii · Lucrări.
   „Trimite la semnat" (email + PDF, refuză cu goluri pe hârtie, 503 `faraEmail` fără SMTP) urmează ACELAȘI
   model ca la clienți. Stările se scriu cu `_mjStare` („trimis la **partener**", nu „la client").
   `montaj_contracte` e în `BUSINESS_TABLES` (`backup.js`): ține fișierul SEMNAT, care nu se poate reface.
+- **Partenerul cu contract semnat (activ / încheiat) NU se șterge** (409): se trece pe „inactiv" (`pt-activ`).
+  `listContracteMontaj` face JOIN pe partener — fără el, contractul semnat ar dispărea din ecran. Contractele
+  lui nesemnate pleacă odată cu el. Inactivul nu se mai propune la lucrări noi (rămâne pe cele vechi) și
+  iese din banda „fără contract".
 - **Hârtia** (`contract_pdf.js` → `scrieContractMontaj` / `contractMontajPdf`): „Contract de colaborare",
   partenerul = PRESTATOR, noi = BENEFICIAR (banii merg invers). Clauzele care contează: el ne facturează
   lunar, recepția = aparatul transmite, aparatele sunt ale noastre, garanție 12 luni, nesolicitarea

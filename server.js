@@ -5172,6 +5172,8 @@ app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, re
       tarife: tarife, active: b.active === undefined ? undefined : b.active !== false,
       notes: b.notes === undefined ? undefined : (b.notes ? String(b.notes).slice(0, 2000) : null)
     }, juridic));
+    // Fișa unui partener șters între timp (altă filă, alt coleg): „nu există", nu o eroare de program.
+    if (!p) return res.status(404).json({ error: 'Partenerul nu mai există — poate a fost șters între timp. Reîncarcă pagina.' });
     auditReq(req, b.id ? 'update' : 'create', 'montaj_partener', p.id, { name: p.name });
     res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5363,9 +5365,16 @@ app.get('/api/montaj/lucrari', requireAuth, requireSuperadmin, async (req, res) 
 app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
+    // Un partener cu contract SEMNAT nu se șterge: hârtia e act juridic și rămâne în dosar, iar lista
+    // contractelor se leagă de partener — fără el, contractul semnat ar dispărea din ecran. Se trece pe
+    // „inactiv". Contractele nesemnate pleacă odată cu el (un nesemnat se șterge oricum, ca la clienți).
+    const ale = (await db.listContracteMontaj()).filter(function (c) { return c.partener_id === id; });
+    const semnat = ale.filter(function (c) { return c.status === 'activ' || c.status === 'incheiat'; })[0];
+    if (semnat) return res.status(409).json({ error: 'Partenerul are contractul semnat ' + (semnat.number || '') + ' — nu se șterge, hârtia rămâne în dosar. Trece-l pe „inactiv" din fișa lui.' });
+    for (const c of ale) await db.stergeContractMontaj(c.id);
     await db.deletePartenerMontaj(id);
-    auditReq(req, 'delete', 'montaj_partener', id);
-    res.json({ ok: true });
+    auditReq(req, 'delete', 'montaj_partener', id, { contracte_nesemnate: ale.length });
+    res.json({ ok: true, contracte_sterse: ale.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
