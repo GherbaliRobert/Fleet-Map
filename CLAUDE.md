@@ -2,6 +2,23 @@
 
 Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 
+## Cum îi explici lui Alin (OBLIGATORIU)
+
+Alin (25.09): *„când îmi expui ceva, fă structurat frumos, să înțeleg... să nu te întreb de câteva ori
+același lucru. Memorează asta."* Și înainte: *„stai un pic că deja mă bagi în ceață. Hai s-o luăm pas
+cu pas."*
+
+- **Răspunsul întâi** (da / nu / cifra), explicația după. La o întrebare de da sau nu: da sau nu, plus
+  cel mult o frază.
+- **Structurat:** titluri scurte, pași numerotați, tabele pentru comparații. Un subiect pe rând — nu
+  amesteca trei lucruri într-un răspuns.
+- **Complet din prima**, ca să nu trebuiască să întrebe iar: ce se întâmplă, ce face el, unde apasă.
+- **Pe limba lui:** fără jargon, fără nume de fișiere sau de funcții în explicații (ele stau în jurnal).
+  Exemple cu cifre, în lei.
+- **Când e de hotărât ceva:** opțiunile numerotate, cu recomandarea mea spusă direct, iar întrebările
+  pentru el la final, numerotate, ca să poată răspunde „1: da, 2: 36 de luni".
+- Când simte că se încurcă, **o luăm pas cu pas**: un pas, confirmarea lui, apoi următorul.
+
 ## De amintit lui Alin — la fiecare raport (OBLIGATORIU)
 
 Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă într-un singur loc: secțiunea
