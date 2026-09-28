@@ -52,6 +52,7 @@ const BACKUP_EXCLUDED = {
   error_log: 'jurnal de erori: regenerabil și voluminos',
   user_sessions: 'sesiuni deschise: se refac la autentificare, iar în copie ar fi chei de acces',
   user_presence: 'prezența oamenilor în aplicație: date despre activitate, nu le păstrăm în copii',
+  liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
 };
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext

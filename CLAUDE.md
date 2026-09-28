@@ -797,8 +797,49 @@ FMS → FMC650 + Modulul Tahograf (card 28 / tahograf 90 de zile) + e-Transport,
   portocaliu închis `#c2410c` pe tema deschisă.
 - Păzit de `verify_sugestii_oferta.js` (în `npm test`).
 
+### „Mașinile clientului" — ce aparat merge pe ce mașină, din listele Teltonika (Alin, 28.09)
+Alin: *„o listă cu model și an de fabricație, ca să vedem ce se potrivește exact — Dacia, Logan 2, 2024,
+benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu reguli ghicite). Secțiunea stă
+în Ofertare Live între „1. Clientul" și „2. Flota clientului".
+
+- **Regula stă în `compatibilitate.js`, curată:** `citesteFoi` (foile deja citite → rânduri normalizate),
+  `potriveste` (o mașină pe o listă), `recomanda` (aparatul), `dateCitite`, `lipesteDinExcel`. Singurul loc
+  care atinge Excel-ul e `citesteExcel` (ExcelJS), la coada fișierului. **Pagina NU potrivește nimic**:
+  cere `POST /api/admin/masini/potrivire` și `/lipeste` (câte o singură cerere în pagină — păzit prin numărare).
+- **Cum se citesc listele** (verificat pe cele din 2025): LV-CAN200 / ALL-CAN300 — o foaie pe fel (Cars,
+  Trucks…), antet pe rândul 2, anii „2016>", „+" **albastru** = depinde de dotare, portocaliu = lipsește cu
+  cititorul fără contact, legenda jos (se sare). FMX150 — antet pe rândul 3, deasupra grupul „Standard" /
+  „Extended" (**extinșii nu se numără**: se cer separat de la Teltonika), anii „2013-2016" / „2017+",
+  „+*" = experimental, „+" pe **galben** = lipsește cu ECAN02.
+- **Alegerea rândului, în ordine:** modelul cel mai PRECIS (bază inclusă în ce a scris omul: „Sandero
+  Stepway" înaintea „Sandero"); anul — la rânduri „de la", câștigă **cel mai nou start ≤ anul** (lista
+  adaugă un rând la generația nouă fără să-l închidă pe cel vechi: „LOGAN II 2013>" cuprinde și 2024!);
+  combustibilul (electric/hibrid = obligatoriu, GPL doar la egalitate); generația scrisă de om; variantele.
+  Un cuvânt în plus pe rândul din listă **cu cifre** („ACTROS MP5", „GOLF 7") = generație → se ia, dar
+  „de verificat"; **fără cifre** („LOGAN VAN", „TRANSIT CUSTOM") = alt model → doar sugestie.
+- **Nu se aleg niciodată:** volan pe dreapta, alte piețe (`…MARKET`, `LATAM`, regiunea FMX150 ≠ Global).
+- **Mărcile scrise altfel** (MERCEDES / Mercedes-Benz, VW / Volkswagen) se unesc în `MARCI_ALIAS`.
+- **Recomandarea:** camion/autobuz → FMC650 (priza FMS; notă: verifică priza și tahograful); utilaj pe lista
+  FMC150 → FMC150, altfel FMC130 (ALL-CAN300 nu e în ofertă); „doar poziție" → FMC130; pe ambele liste →
+  întâi potrivirea SIGURĂ, apoi cea care citește mai mult (`scorDate`), abia apoi comutatorul de la pasul 4.
+  `note` = de verificat (portocaliu), `info` = bine de știut (gri) — NU le amesteca.
+- **Pașii 2 și 4 citesc din listă când are rânduri** (`_ofRecAcum` → `_ofRecDinMasini`, aceeași formă ca
+  `_ofRecomandare`). „Trece în ofertă" = `raxOfAplicaRecomandarea`, care la listă pune și pasul 2.
+- **Listele** stau în `liste_compat` (una pe fel, înlocuită la încărcare, cache în memorie `_compatCache`).
+  Până se încarcă una, serverul ia **copia de pornire** `liste/teltonika.json.gz` (≈ 100 KB), făcută cu
+  `tools/liste-teltonika.js` din fișierele trimise de Alin — aceeași funcție de citire ca la încărcare.
+  Tabela e în `BACKUP_EXCLUDED` (se reîncarcă). Încărcarea vine **CRUDĂ** (`express.raw`, octet-stream,
+  15 MB): ALL-CAN300 are 5,3 MB și în base64 ar trece de limita JSON de 6 MB.
+- **Lista mașinilor se salvează în ofertă** (`cfg.masini`, `cfg.masiniMotor`) și **nu ajunge pe hârtie**
+  (`_ofPayload` n-o citește). Pe PDF doar dacă hotărăște Alin (recomandarea din 28.09: nu, deocamdată).
+- Casetele nu se redesenează la răspunsul serverului (doar rezultatele și sumarul) — capcana de la Inventar.
+- Culorile de stare au pereche pe tema deschisă (verdele casei pe alb = 1,7). Măsurat pe ambele teme.
+- Păzit de `verify_masini_client.js` (în `npm test`): foi de probă cu forma listelor, listele adevărate,
+  pagina, server pornit (încărcare de listă nouă cu un Excel făcut în probă).
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - Completarea automată din ofertă să urmeze recomandarea (azi o pune doar butonul) — vezi mai sus.
+- Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
 - Rânduri de preț pentru accesorii (ECAN02, cititor de card, blocarea pornirii).
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).

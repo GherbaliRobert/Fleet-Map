@@ -189,6 +189,7 @@ const contracte = require('./contracts');           // dosarul juridic al firmel
 const neplata = require('./neplata');               // ce se întâmplă când nu se plătește la termen (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
 const stocMod = require('./stoc');                  // stocul nostru de echipamente: unde e fiecare, al cui e (reguli curate)
+const compat = require('./compatibilitate');        // ce aparat merge pe ce mașină, după listele Teltonika (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
@@ -14054,6 +14055,122 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ── începe „mașinile clientului" (28.09) ──────────────────────────────────────────────────────────
+// Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact".
+// Regula stă în compatibilitate.js; aici doar listele și ușile. Listele sunt în bază (`liste_compat`),
+// câte una pe fel; până se încarcă una din aplicație, se folosește copia de pornire din depozit
+// (liste/teltonika.json.gz — listele trimise de Alin pe 28.09, făcută cu tools/liste-teltonika.js).
+// Totul e al NOSTRU (super-admin): e o unealtă de ofertare, clientul nu vede nimic de aici.
+let _compatCache = null;
+function _compatPornire() {
+  try { return JSON.parse(require('zlib').gunzipSync(fs.readFileSync(path.join(__dirname, 'liste', 'teltonika.json.gz'))).toString('utf8')); }
+  catch (e) { return {}; }
+}
+async function _compatListe() {
+  if (_compatCache) return _compatCache;
+  const dinBaza = await db.listeCompat().catch(() => []);
+  let pornire = null;
+  const out = {};
+  for (const tip of Object.keys(compat.LISTE)) {
+    let l = dinBaza.find((x) => x.tip === tip), sursa = 'incarcata';
+    if (!l) {
+      pornire = pornire || _compatPornire();
+      const s = pornire[tip];
+      if (s && Array.isArray(s.randuri)) { l = { fisier: s.fisier, data_lista: s.data, randuri: s.randuri, incarcat_la: null }; sursa = 'pornire'; }
+    }
+    if (!l) continue;
+    out[tip] = {
+      meta: { tip, nume: compat.LISTE[tip].nume, pentru: compat.LISTE[tip].pentru, fisier: l.fisier || null,
+        data: l.data_lista || null, n: l.randuri.length, incarcat_la: l.incarcat_la || null, sursa },
+      peMarca: compat.pregateste(l.randuri),
+    };
+  }
+  _compatCache = out;
+  return out;
+}
+function _compatMeta(L) {
+  return Object.keys(compat.LISTE).map((t) => L[t] ? L[t].meta : { tip: t, nume: compat.LISTE[t].nume, pentru: compat.LISTE[t].pentru, lipsa: true });
+}
+// Ce trimitem ecranului dintr-o potrivire: doar ce se arată, nu rândurile întregi din listă.
+function _compatPentruEcran(p, comb) {
+  const e = p.ales;
+  return { stare: p.stare, model: e ? e.model : null, ani: e ? compat.aniText(e.de, e.pana) : null,
+    program: e && e.program || null, can: e && e.can || null, fel: e && e.fel || null,
+    citeste: e ? compat.dateCitite(e, comb) : null,
+    variante: (p.variante || []).map((v) => v.model + (v.program ? ' · program ' + v.program : '')),
+    alteModele: p.alteModele || [], aniPeLista: p.aniPeLista || [], note: p.note || [], info: p.info || [] };
+}
+app.get('/api/admin/masini/liste', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ liste: _compatMeta(L), combustibili: compat.COMBUSTIBILI, aparate: compat.APARATE });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// O listă nouă, din Excel-ul Teltonika. Fișierul vine CRUD (nu base64 în JSON): lista ALL-CAN300 are
+// peste 5 MB, iar JSON-ul aplicației se oprește la 6 MB — în base64 ar fi trecut de el.
+app.post('/api/admin/masini/liste', requireAuth, requireSuperadmin, express.raw({ type: 'application/octet-stream', limit: '15mb' }), async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege fișierul Excel al listei.' });
+    let fisier = 'lista.xlsx';
+    try { fisier = decodeURIComponent(String(req.get('x-fisier') || '')).replace(/[\\/]/g, '').slice(0, 200) || fisier; } catch (e) { /* nume stricat: rămâne cel implicit */ }
+    let r;
+    try { r = await compat.citesteExcel(buf, fisier); } catch (e) { return res.status(400).json({ error: e.message }); }
+    const data = compat.dataDinNume(fisier);
+    await db.puneListaCompat({ tip: r.tip, fisier, data_lista: data, randuri: r.randuri, incarcat_de: req.auth && req.auth.userId });
+    _compatCache = null;
+    auditReq(req, 'upload', 'lista_compat', null, { tip: r.tip, fisier, n: r.randuri.length });
+    const L = await _compatListe();
+    res.json({ ok: true, tip: r.tip, nume: compat.LISTE[r.tip].nume, n: r.randuri.length, data, liste: _compatMeta(L) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/admin/masini/marci', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ marci: compat.marci(Object.values(L).map((x) => x.peMarca)) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/admin/masini/modele', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ modele: compat.modele(Object.values(L).map((x) => x.peMarca), String(req.query.marca || '').slice(0, 60)).slice(0, 300) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Lista de mașini lipită din Excel-ul clientului, desfăcută în rânduri. Regula stă în compatibilitate.js
+// (`lipesteDinExcel`), nu în pagină: o singură citire a coloanelor.
+app.post('/api/admin/masini/lipeste', requireAuth, requireSuperadmin, (req, res) => {
+  try {
+    const r = compat.lipesteDinExcel(String((req.body && req.body.text) || '').slice(0, 200000));
+    res.json({ masini: r.masini.slice(0, 500), sarite: r.sarite.slice(0, 20), nSarite: r.sarite.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Potrivirea unui lot de mașini. `pref` = ce alegi când mașina e pe AMBELE liste (comutatorul de la
+// pasul 4), `vreaMotor` = clientul vrea consum / rezervor / kilometri, nu doar poziția.
+app.post('/api/admin/masini/potrivire', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const vehicule = Array.isArray(b.vehicule) ? b.vehicule.slice(0, 500) : [];
+    const pref = b.pref === 'fmc150' ? 'fmc150' : 'lvcan', vreaMotor = b.vreaMotor !== false;
+    const L = await _compatListe();
+    const rezultate = vehicule.map((v) => {
+      v = v || {};
+      const m = { marca: String(v.marca || '').trim().slice(0, 60), model: String(v.model || '').trim().slice(0, 80),
+        an: Number(v.an) > 1900 && Number(v.an) < 2200 ? Math.round(Number(v.an)) : null,
+        combustibil: compat.COMBUSTIBILI[v.combustibil] ? v.combustibil : '' };
+      if (!m.marca || !m.model) return null;
+      const pot = {};
+      for (const t of Object.keys(compat.LISTE)) {
+        pot[t] = L[t] ? compat.potriveste(L[t].peMarca, m) : { stare: 'nu', ales: null, variante: [], alteModele: [], note: ['lista nu e încărcată'] };
+      }
+      const rec = compat.recomanda(pot, { pref, vreaMotor, combustibil: m.combustibil, an: m.an });
+      const liste = {};
+      for (const t of Object.keys(pot)) liste[t] = _compatPentruEcran(pot[t], m.combustibil);
+      return { rec, liste };
+    });
+    res.json({ rezultate, aparate: compat.APARATE });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ── sfârșit „mașinile clientului" ──
 // ⚠ Aici a stat, până pe 22.09, `POST /api/admin/offers/:id/apply-to-company` — ușa butonului ✨ din
 // lista de oferte. A plecat cu el: ce s-a vândut într-o ofertă se aprinde SINGUR pe firmă la
 // semnarea contractului (`_aplicaOfertaPeFirma`, mai sus), deci ruta era a doua cale spre același

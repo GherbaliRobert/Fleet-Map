@@ -1106,6 +1106,18 @@ async function initDb() {
     `);
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stoc_serie ON stoc_echipamente(serie) WHERE serie IS NOT NULL`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_stoc_stare ON stoc_echipamente(stare, tip)`);
+    // ─── Listele Teltonika: ce aparat merge pe ce mașină (28.09) ──────────────────────────────────
+    // Un rând = o listă (LV-CAN200, FMC150, ALL-CAN300), cu toate mașinile ei, deja citite din Excel
+    // (compatibilitate.js). O listă nouă o înlocuiește pe cea veche. Până se încarcă una, serverul
+    // folosește copia de pornire din depozit (liste/teltonika.json.gz).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS liste_compat (
+        tip VARCHAR(10) PRIMARY KEY,
+        fisier TEXT, data_lista VARCHAR(10), n INTEGER NOT NULL DEFAULT 0,
+        randuri JSONB NOT NULL DEFAULT '[]'::jsonb,
+        incarcat_la BIGINT, incarcat_de INTEGER
+      )
+    `);
     // ─── Acte adiționale ──────────────────────────────────────────────────────────────────────
     // Un contract semnat NU se mai schimbă — asta e tot rostul unei semnături. Când clientul mai
     // cumpără mașini, mai vrea un modul sau se schimbă prețul, se face un ACT ADIȚIONAL: o hârtie
@@ -2209,6 +2221,24 @@ async function editStoc(id, f) {
   return getStoc(id);
 }
 async function stergeStoc(id) { await pool.query('DELETE FROM stoc_echipamente WHERE id = $1', [id]); return { ok: true }; }
+
+// ─── Listele Teltonika (28.09) ────────────────────────────────────────────────────────────────────
+async function listeCompat() {
+  const r = await pool.query('SELECT tip, fisier, data_lista, n, randuri, incarcat_la, incarcat_de FROM liste_compat');
+  return r.rows.map((x) => Object.assign({}, x, {
+    randuri: typeof x.randuri === 'string' ? JSON.parse(x.randuri) : (x.randuri || []),
+    incarcat_la: x.incarcat_la != null ? Number(x.incarcat_la) : null,
+  }));
+}
+async function puneListaCompat(l) {
+  await pool.query(
+    `INSERT INTO liste_compat (tip, fisier, data_lista, n, randuri, incarcat_la, incarcat_de)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+     ON CONFLICT (tip) DO UPDATE SET fisier = EXCLUDED.fisier, data_lista = EXCLUDED.data_lista, n = EXCLUDED.n,
+       randuri = EXCLUDED.randuri, incarcat_la = EXCLUDED.incarcat_la, incarcat_de = EXCLUDED.incarcat_de`,
+    [l.tip, l.fisier || null, l.data_lista || null, (l.randuri || []).length, JSON.stringify(l.randuri || []), Date.now(), l.incarcat_de || null]);
+  return { ok: true };
+}
 // Firmele al căror contract s-a ÎNCHEIAT (niciunul în lucru sau în vigoare): acolo aparatele NOASTRE
 // trebuie recuperate.
 async function firmeCuContractIncheiat() {
@@ -4873,6 +4903,7 @@ module.exports = {
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
   stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
   listStoc, getStoc, stocDupaSerie, seriiExistenteInStoc, adaugaStoc, mutaStoc, editStoc, stergeStoc, firmeCuContractIncheiat,
+  listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,

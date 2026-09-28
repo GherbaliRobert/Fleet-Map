@@ -135,6 +135,45 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-28
 
+### FONDATOR · Ofertare Live: „Mașinile clientului" — scrii marca, modelul și anul, îți spune ce aparat merge
+
+Alin: *„să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact — Dacia,
+Logan 2, 2024, benzină + GPL — și calculatorul să-mi recomande ce echipament i se potrivește."* A ales
+lista oficială Teltonika (varianta 1) și ne-a trimis cele trei fișiere: LV-CAN200 (iulie 2025, 2.924 de
+vehicule), FMC150 (decembrie 2025, 2.159) și ALL-CAN300 (martie 2025, 4.199).
+
+**Unde:** Ofertare Live, o secțiune nouă între „1. Clientul" și „2. Flota clientului".
+
+**Cum merge:**
+1. Scrii mașinile clientului, câte un rând: marcă, model, an, combustibil, câte bucăți. Casetele îți
+   propun mărcile și modelele din liste. Sau apeși **„Lipește din Excel"** și lipești lista clientului.
+2. Pe fiecare rând apare: **ce aparat merge** (FMC130 + LV-CAN200, FMC150, FMC650 sau FMC130 doar pentru
+   poziție), **ce date se citesc** (rezervor, consum, kilometri, GPL, baterie), pe ce rând din listă
+   (cu programul, pentru instalator) și cât e de sigur: *se potrivește* / *de verificat* / *nu e pe liste*.
+3. Poți schimba aparatul pe orice rând („Aparatul pus în ofertă").
+4. **„Trece în ofertă"** pune la pasul 2 câte mașini sunt (cu CAN, cu FMS) și la pașii 4 și 5 aparatele
+   și montajul. Prețurile nu se schimbă.
+
+**Exemplul lui Alin, pe listele adevărate:** Dacia Logan 2024, benzină + GPL → **FMC130 + LV-CAN200**,
+programul 13732. Citește rezervorul, consumul, kilometrii și **GPL-ul** (nivel și consum). FMC150 nu-l
+are (lista lui se oprește la Logan din 2020). Și scrie „de verificat": un Logan din 2024 e generația III,
+nu 2.
+
+**Cum alege:**
+- Anul contează cel mai mult: un rând „din 2013" și unul „din 2021" → pentru 2024 se ia cel din 2021.
+- Modelul mai precis întâi („Sandero Stepway" nu se confundă cu „Sandero"); „Logan" nu devine „Logan Van".
+- Electric și hibrid au programe separate, nu se amestecă. Volan pe dreapta și alte piețe nu se aleg.
+- Camion → FMC650 (priza FMS), cu îndemnul de a verifica priza și tahograful. Tractor de pe lista FMC150 → FMC150.
+- Mașina e pe ambele liste → întâi cea sigură, apoi cea care citește mai mult, apoi comutatorul de la pasul 4.
+
+**Listele noi:** Teltonika le actualizează din când în când. Din „Listele Teltonika" (link în secțiune)
+vezi ce e încărcat și încarci fișierul nou; aplicația recunoaște singură ce listă e.
+
+- **Ce am schimbat:** calculatorul de ofertă știe, din listele oficiale, ce aparat merge pe fiecare mașină.
+- **Ce vede fondatorul:** secțiunea „Mașinile clientului" și fereastra „Listele Teltonika".
+- **Ce vede clientul:** nimic. Lista nu apare pe oferta PDF — deocamdată, cum am recomandat pe 28.09.
+  Rămâne salvată în ofertă, ca s-o regăsești la redeschidere.
+
 ### FONDATOR · Ofertare Live: sugestii — ce aparat și ce montaj pentru ce mașină, doar pentru tine
 
 Alin (vineri, 25.09): *„sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul… să părem
