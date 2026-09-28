@@ -14143,7 +14143,12 @@ app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, 
   try {
     if (!reportExport) return res.status(503).json({ error: 'Exportul Excel nu e disponibil pe server.' });
     const L = await _compatListe();
-    const s = await reportExport.sablonMasiniXlsx({ marci: compat.marci(Object.values(L).map((x) => x.peMarca)) });
+    // Mărcile și, pe fiecare, modelele ei — ca listele din șablon să se strângă după primele litere.
+    const liste = Object.values(L).map((x) => x.peMarca);
+    const marci = compat.marci(liste);
+    const perechi = [];
+    for (const m of marci) for (const mo of compat.modele(liste, m)) perechi.push([m, mo]);
+    const s = await reportExport.sablonMasiniXlsx({ marci, perechi });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', _antetDescarcare(s.nume));
     res.send(s.buffer);

@@ -134,6 +134,29 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-28
 
+### AMÂNDOI · Șablonul: marca și modelul se caută după primele litere
+
+Alin, cu o captură din Excel: *„când scrii litera a, de exemplu, nu-ți dă mărcile cu a... pe măsură ce
+scrii ar trebui filtrarea să-ți sugereze."*
+
+**De ce nu mergea:** o listă de ales obișnuită nu se strânge în Excel. Doar Microsoft 365 nou o filtrează
+cât scrii, și atunci caută literele **oriunde** în nume („a" găsește aproape toate cele 352 de mărci). Iar o
+marcă scrisă care nu era în listă deschidea o fereastră de avertizare — de-aia părea că „se blochează".
+
+**Ce e acum:**
+- **Marca:** scrii primele litere (ex. „da"), apeși Enter, apoi săgeata din celulă → vezi doar mărcile care
+  încep așa (DAF, Dacia, Daihatsu…). Merge în orice Excel, fără macro-uri (care i-ar cere clientului să
+  „activeze conținutul").
+- **Modelul are și el listă:** doar modelele mărcii de pe rând (Dacia → Bigster, Dokker, Duster, Jogger…),
+  strânse la fel după primele litere („lo" → Lodgy, Logan, Logan MCV…). Modelele sunt scrise ca în listele
+  Teltonika, deci calculatorul le găsește mai sigur.
+- Nicio fereastră de eroare la marcă și model: o marcă veche (Aro) tot trebuie să intre, o verifică
+  calculatorul la încărcare. Când dai clic pe o celulă, un mesaj mic spune ce să faci.
+
+- **Ce am schimbat:** listele din șablon se strâng după ce scrii; modelul are listă pe marcă.
+- **Ce vede fondatorul:** nimic nou în aplicație; „Descarcă șablonul" dă șablonul nou.
+- **Ce vede clientul:** șablonul Excel, cu listele care îl ajută să scrie marca și modelul corect.
+
 ### AMÂNDOI · „Mașinile clientului": un șablon Excel de descărcat și de încărcat, în locul lipirii
 
 Alin: *„Lipește din Excel nu e ok. Vreau buton de export a unui șablon fix, cu ce trebuie să identifice

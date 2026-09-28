@@ -816,8 +816,19 @@ benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu re
     (`report_export.js` → `sablonMasiniXlsx`, cu logo, lângă celelalte Excel-uri) și se citește după ele
     (`citesteSablon`: capul de tabel se caută după NUME, oriunde ar fi; rândul fără marcă/model nu intră;
     anul/combustibilul/bucățile greșite se spun pe rândul din Excel). `GET` / `POST /api/admin/masini/sablon`.
-  - Mărcile: listă de ales pe o foaie ascunsă („Marci"), cu `errorStyle: 'warning'` (se poate scrie alta);
-    combustibilul DOAR din listă (cuvintele din `COMBUSTIBILI`).
+  - **Marca și modelul: liste care se STRÂNG după primele litere** (Alin, 28.09: „când scrii litera a, nu-ți
+    dă mărcile cu a"). O listă simplă nu se filtrează în Excel (doar Microsoft 365 nou, și atunci caută
+    literele ORIUNDE în nume). Lista e o FORMULĂ: `OFFSET(Marci!$A$1, MATCH(A8&"*",…)-1, 0, COUNTIF(…), 1)` —
+    „da" + Enter + săgeata → doar ce începe cu „da". Modelul: foaia ascunsă „Modele" (marcă | model | cheie
+    `MARCĂ|MODEL`), formula caută `$A8&"|"&B8&"*"` → modelele mărcii de pe rând. Fără potrivire: un singur
+    rând, `SABLON_FARA_SUGESTII`, pe care citirea îl socotește model LIPSĂ.
+  - ⚠ Formula cere ca numele cu același început să stea unul după altul: listele se ordonează pe LITERE MARI,
+    după cod (nu `localeCompare`). Referințele sunt RELATIVE la primul rând (A8) — Excel le mută singur.
+    Maxim 255 de caractere pe formulă. Fără macro-uri (clientul ar trebui să „activeze conținutul").
+  - Marca și modelul NU au fereastră de eroare (`showErrorMessage: false`: o marcă veche tot intră; o verifică
+    calculatorul); fiecare coloană are un mesaj la clic (`prompt`). Combustibilul DOAR din listă.
+  - Păzit de `verify_masini_client.js`, care socotește ce arată săgeata ca formula, pe FIECARE literă și
+    pe FIECARE marcă din șablonul descărcat.
   - ⚠ **Validările se pun pe INTERVAL, o dată pe coloană** (`ws.dataValidations.add('A7:A506', …)`), NU
     celulă cu celulă: ExcelJS le strânge atunci în intervale ordonate ca text (A10 înaintea lui A7) și scoate
     intervale care se SUPRAPUN — Excel poate zice că fișierul e stricat. Păzit: proba citește XML-ul brut.

@@ -731,7 +731,8 @@ async function sablonMasiniXlsx(opt) {
   const scrie = (text, font) => { const c = ws.getCell(r, 1); c.value = text; c.font = font; r++; };
   scrie('Mașinile flotei — pentru oferta RA Tracks', { bold: true, size: 14 });
   scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți", câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
-  scrie('Marca și combustibilul se aleg din listă (săgeata din celulă). „An fabricație" = anul mașinii, de ex. 2024. Exemplu: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('Marca și modelul: scrieți primele litere (ex. „da"), apăsați Enter, apoi săgeata din celulă — lista arată doar ce începe așa. La model, doar modelele mărcii scrise. Combustibilul se alege din listă.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('„An fabricație" = anul mașinii, de ex. 2024. Exemplu de rând: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
   r++;
   const antet = r;
   col.forEach((c, i) => {
@@ -745,28 +746,57 @@ async function sablonMasiniXlsx(opt) {
   });
   ws.getRow(antet).height = 20;
   ws.views = [{ state: 'frozen', ySplit: antet }];
-  // Lista mărcilor, pe o foaie ascunsă (o listă de ales lungă nu încape în formula celulei).
-  let formulaMarci = null;
+  // ── Lista de ales care se STRÂNGE după primele litere (Alin, 28.09: „când scrii litera a, nu-ți dă
+  // mărcile cu a... pe măsură ce scrii ar trebui să-ți sugereze"). O listă simplă de 352 de mărci nu se
+  // filtrează în Excel: doar Microsoft 365 nou o filtrează cât scrii, și atunci caută literele ORIUNDE în
+  // nume („a" găsește aproape tot). Aici lista e o FORMULĂ care pornește de la ce e scris în celulă:
+  // „da" + Enter → săgeata arată doar mărcile care ÎNCEP cu „da". Merge în orice Excel (din 2007), fără
+  // macro-uri. Condiția ei: lista e ordonată, ca toate numele cu același început să stea unul după altul —
+  // de-aia se ordonează aici, pe litere mari, nu după alfabetul românesc (care ar putea sări peste semne).
+  // Celula NU refuză ce nu e pe listă (o marcă veche, Aro, tot trebuie să intre; calculatorul o verifică).
+  const ord = (a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0);
+  const idx = (cheie) => col.findIndex((c) => c.cheie === cheie);
+  const litera = (j) => String.fromCharCode(65 + j);
+  const L = { marca: litera(idx('marca')), model: litera(idx('model')) }, r1 = antet + 1;
+  let formulaMarci = null, formulaModele = null;
   if (marci.length) {
+    const lista = marci.map((m) => ({ m, k: String(m).toUpperCase() })).sort(ord);
     const wm = wb.addWorksheet('Marci', { state: 'hidden' });
-    marci.forEach((m, i) => { wm.getCell(i + 1, 1).value = m; });
-    formulaMarci = 'Marci!$A$1:$A$' + marci.length;
+    lista.forEach((x, i) => { wm.getCell(i + 1, 1).value = x.m; });
+    const zona = 'Marci!$A$1:$A$' + lista.length, cauta = L.marca + r1 + '&"*"';
+    formulaMarci = 'OFFSET(Marci!$A$1,IFERROR(MATCH(' + cauta + ',' + zona + ',0)-1,0),0,IF(COUNTIF(' + zona + ',' + cauta + ')=0,'
+      + lista.length + ',COUNTIF(' + zona + ',' + cauta + ')),1)';
+  }
+  // Modelele, pe marcă: rânduri „marcă | model", ordonate, iar lista modelului arată doar modelele mărcii
+  // din aceeași linie, strânse după primele litere scrise. Fără marcă (sau fără potrivire): un singur rând,
+  // care spune să scrie modelul — citirea șablonului îl ignoră (`SABLON_FARA_SUGESTII`).
+  const perechi = ((opt && opt.perechi) || []).filter((p) => p && p[0] && p[1])
+    .map((p) => ({ m: p[0], mo: p[1], k: String(p[0]).toUpperCase() + '|' + String(p[1]).toUpperCase() })).sort(ord);
+  if (perechi.length) {
+    const wmo = wb.addWorksheet('Modele', { state: 'hidden' });
+    wmo.getCell(1, 2).value = compat.SABLON_FARA_SUGESTII;
+    perechi.forEach((p, i) => { wmo.getCell(i + 2, 1).value = p.m; wmo.getCell(i + 2, 2).value = p.mo; wmo.getCell(i + 2, 3).value = p.k; });
+    const zona = 'Modele!$C$2:$C$' + (perechi.length + 1), cauta = '$' + L.marca + r1 + '&"|"&' + L.model + r1 + '&"*"';
+    formulaModele = 'OFFSET(Modele!$B$1,IFERROR(MATCH(' + cauta + ',' + zona + ',0),0),0,MAX(1,COUNTIF(' + zona + ',' + cauta + ')),1)';
   }
   const comb = '"' + Object.values(compat.COMBUSTIBILI).join(',') + '"';
+  const indemn = (titlu, text) => ({ showInputMessage: true, promptTitle: titlu, prompt: text });
   const reguli = {
-    marca: formulaMarci ? { type: 'list', allowBlank: true, formulae: [formulaMarci], showErrorMessage: true, errorStyle: 'warning',
-      errorTitle: 'Marcă', error: 'Marca nu e pe listele Teltonika. O puteți lăsa așa — o verificăm noi.' } : null,
-    an: { type: 'whole', operator: 'between', allowBlank: true, formulae: [1950, 2100], showErrorMessage: true,
-      errorTitle: 'An fabricație', error: 'Scrieți anul fabricației, de ex. 2024.' },
-    combustibil: { type: 'list', allowBlank: true, formulae: [comb], showErrorMessage: true,
-      errorTitle: 'Combustibil', error: 'Alegeți combustibilul din listă.' },
-    buc: { type: 'whole', operator: 'greaterThanOrEqual', allowBlank: true, formulae: [1], showErrorMessage: true,
-      errorTitle: 'Bucăți', error: 'Câte mașini: un număr întreg, de la 1 în sus.' },
+    marca: formulaMarci ? Object.assign({ type: 'list', allowBlank: true, formulae: [formulaMarci], showErrorMessage: false },
+      indemn('Marcă', 'Scrieți primele litere (ex. da), apăsați Enter, apoi săgeata: vedeți doar mărcile care încep așa. Dacă marca nu e în listă, scrieți-o întreagă.')) : null,
+    model: formulaModele ? Object.assign({ type: 'list', allowBlank: true, formulae: [formulaModele], showErrorMessage: false },
+      indemn('Model', 'Întâi marca. Apoi primele litere ale modelului, Enter și săgeata: vedeți doar modelele mărcii. Dacă nu-l găsiți, scrieți-l întreg.')) : null,
+    an: Object.assign({ type: 'whole', operator: 'between', allowBlank: true, formulae: [1950, 2100], showErrorMessage: true,
+      errorTitle: 'An fabricație', error: 'Scrieți anul fabricației, de ex. 2024.' }, indemn('An fabricație', 'Anul mașinii, de ex. 2024.')),
+    combustibil: Object.assign({ type: 'list', allowBlank: true, formulae: [comb], showErrorMessage: true,
+      errorTitle: 'Combustibil', error: 'Alegeți combustibilul din listă.' }, indemn('Combustibil', 'Alegeți din listă (săgeata din celulă).')),
+    buc: Object.assign({ type: 'whole', operator: 'greaterThanOrEqual', allowBlank: true, formulae: [1], showErrorMessage: true,
+      errorTitle: 'Bucăți', error: 'Câte mașini: un număr întreg, de la 1 în sus.' }, indemn('Bucăți', 'Câte mașini sunt de felul acesta.')),
   };
   // O regulă pe COLOANĂ, pe tot intervalul (A7:A506), nu pe fiecare celulă. Puse celulă cu celulă, ExcelJS le
   // strânge în intervale citind adresele ca text (A10 înaintea lui A7) și scoate intervale care se
   // SUPRAPUN (A7:A506 și A10:A506) — Excel poate spune atunci că fișierul e stricat. Găsit pe 28.09.
-  const litera = (j) => String.fromCharCode(65 + j);
+  // Formulele de mai sus au referințe RELATIVE la primul rând (A7): Excel le mută singur pe fiecare rând.
   col.forEach((c, j) => {
     if (reguli[c.cheie]) ws.dataValidations.add(litera(j) + (antet + 1) + ':' + litera(j) + (antet + compat.SABLON_MAX), reguli[c.cheie]);
   });

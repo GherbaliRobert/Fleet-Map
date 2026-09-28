@@ -182,6 +182,8 @@ T('rândul fără model NU intră și se spune pe rândul lui din Excel', !sb.ma
 T('anul greșit / combustibilul necunoscut / bucăți 0 → spuse pe nume, rândul rămâne',
   sb.probleme.some((x) => x.rand === 11 && /anul/.test(x.ce)) && sb.probleme.some((x) => x.rand === 12 && /combustibilul/.test(x.ce))
   && sb.probleme.some((x) => x.rand === 12 && /bucăți/.test(x.ce)) && sb.masini.find((m) => m.marca === 'Kia').buc === 1);
+const cuIndemn = C.citesteSablon([{ nume: 'X', randuri: [rand(antetS), rand(['Dacia', C.SABLON_FARA_SUGESTII, '2024']), rand(['Ford', 'Transit'])] }]);
+T('îndemnul listei de modele, ales din greșeală, e citit ca model LIPSĂ', cuIndemn.masini.length === 1 && cuIndemn.masini[0].marca === 'Ford' && cuIndemn.probleme.some((x) => x.rand === 2 && /modelul/.test(x.ce)), JSON.stringify(cuIndemn));
 const invers = C.citesteSablon([{ nume: 'X', randuri: [rand(['Bucăți', 'Combustibil', 'An fabricație', 'Model', 'Marcă']), rand(['2', 'electric', '2023', 'Spring', 'Dacia'])] }]);
 T('coloanele se găsesc după nume, oricum ar fi mutate', invers.masini[0].marca === 'Dacia' && invers.masini[0].buc === 2 && invers.masini[0].combustibil === 'electric');
 err = ''; try { C.citesteSablon(foiLv); } catch (e) { err = e.message; }
@@ -310,16 +312,40 @@ function gata() {
   // A10:A506), iar Excel poate spune atunci că fișierul e stricat. Trebuie o regulă pe coloană, atât.
   const xmlFoaie = await (await require('jszip').loadAsync(bufSablon)).file('xl/worksheets/sheet1.xml').async('string');
   const sq = (xmlFoaie.match(/<dataValidation [^>]*sqref="[^"]+"/g) || []).map((x) => x.match(/sqref="([^"]+)"/)[1]);
-  T('...o regulă pe coloană, fără intervale care se suprapun', sq.join() === ['A', 'C', 'D', 'E'].map((l) => l + (rAntet + 1) + ':' + l + (rAntet + C.SABLON_MAX)).join(), sq.join());
+  T('...o regulă pe coloană, fără intervale care se suprapun', sq.join() === ['A', 'B', 'C', 'D', 'E'].map((l) => l + (rAntet + 1) + ':' + l + (rAntet + C.SABLON_MAX)).join(), sq.join());
   T('...cu capul de tabel: cele cinci coloane, în ordine', rAntet > 0 && [1, 2, 3, 4, 5].map((c) => String(wsS.getCell(rAntet, c).value)).join(' · ') === 'Marcă · Model · An fabricație · Combustibil · Bucăți');
   T('...cu logo-ul RA Tracks sus', !!wsS && wsS.getImages().length >= 1);
   const vComb = wsS && wsS.getCell(rAntet + 1, 4).dataValidation, vAn = wsS && wsS.getCell(rAntet + 1, 3).dataValidation, vMarca = wsS && wsS.getCell(rAntet + 1, 1).dataValidation;
   T('...combustibilul DOAR din listă (aceleași cuvinte ca în calculator)', !!vComb && vComb.type === 'list' && vComb.errorStyle !== 'warning'
     && vComb.formulae[0] === '"' + Object.values(C.COMBUSTIBILI).join(',') + '"', JSON.stringify(vComb));
   T('...anul: număr întreg între 1950 și 2100', !!vAn && vAn.type === 'whole' && String(vAn.formulae) === '1950,2100', JSON.stringify(vAn));
-  const wm = wbS.getWorksheet('Marci');
-  T('...marca: listă de ales din listele Teltonika (pe o foaie ascunsă), dar se poate scrie și alta',
-    !!vMarca && vMarca.type === 'list' && vMarca.errorStyle === 'warning' && !!wm && wm.state === 'hidden' && wm.getColumn(1).values.includes('Dacia'), JSON.stringify(vMarca));
+  const wm = wbS.getWorksheet('Marci'), wmo = wbS.getWorksheet('Modele'), vModel = wsS && wsS.getCell(rAntet + 1, 2).dataValidation;
+  const r1 = rAntet + 1, fMarca = String((vMarca && vMarca.formulae && vMarca.formulae[0]) || ''), fModel = String((vModel && vModel.formulae && vModel.formulae[0]) || '');
+  // Alin, 28.09: „când scrii litera a, nu-ți dă mărcile cu a — pe măsură ce scrii ar trebui să-ți sugereze".
+  // O listă simplă nu se strânge în Excel; asta e o FORMULĂ pornită de la ce e scris în celulă.
+  T('...marca: lista se strânge după ce e scris în celulă (formulă pe foaia ascunsă, cu rândul relativ)',
+    !!vMarca && vMarca.type === 'list' && /^OFFSET\(Marci!\$A\$1,/.test(fMarca) && fMarca.indexOf('MATCH(A' + r1 + '&"*"') > 0 && !!wm && wm.state === 'hidden', fMarca);
+  T('...și nu te oprește cu o fereastră de eroare când scrii o marcă care nu e pe listă (Aro)', !!vMarca && !vMarca.showErrorMessage && vMarca.showInputMessage && /primele litere/.test(vMarca.prompt || ''));
+  T('...modelul: lista arată modelele mărcii din același rând, strânse după primele litere',
+    !!vModel && vModel.type === 'list' && fModel.indexOf('$A' + r1 + '&"|"&B' + r1 + '&"*"') > 0 && /Modele!\$C\$2:\$C\$\d+/.test(fModel) && !!wmo && wmo.state === 'hidden' && !vModel.showErrorMessage, fModel);
+  T('...formulele încap în Excel (maxim 255 de caractere)', fMarca.length > 0 && fMarca.length <= 255 && fModel.length > 0 && fModel.length <= 255, fMarca.length + ' / ' + fModel.length);
+  // Ce arată săgeata, socotit exact ca formula: MATCH(x&"*") = primul rând care ÎNCEPE cu x (fără majuscule),
+  // COUNTIF = câte încep așa. Formula e bună doar dacă toate numele cu același început stau unul după altul.
+  const incepe = (v, x) => String(v).toUpperCase().startsWith(String(x).toUpperCase());
+  const marciS = (wm ? wm.getColumn(1).values : []).filter((v) => v != null).map(String);
+  const sageataMarca = (x) => { const i = marciS.findIndex((v) => incepe(v, x)), c = marciS.filter((v) => incepe(v, x)).length; const s0 = i >= 0 ? i : 0; return marciS.slice(s0, s0 + (c === 0 ? marciS.length : c)); };
+  T('„da" + săgeata → doar mărcile care încep cu „da"', sageataMarca('da').length >= 2 && sageataMarca('da').every((v) => incepe(v, 'da')) && sageataMarca('da').includes('Dacia'), sageataMarca('da').join(', '));
+  T('...la fiecare literă, exact mărcile cu litera aceea (lista e ordonată cum cere formula)',
+    'abcdefghijklmnopqrstuvwxyz'.split('').every((l) => { const s = sageataMarca(l), toate = marciS.filter((v) => incepe(v, l)); return !toate.length || (s.length === toate.length && s.every((v) => incepe(v, l))); }));
+  T('...fără nimic scris, sau ceva ce nu e pe listă → toată lista', sageataMarca('').length === marciS.length && sageataMarca('Aro-X').length === marciS.length && marciS.length > 300);
+  const chei = [], modeleS = [];
+  if (wmo) for (let i = 2; i <= wmo.rowCount; i++) { chei.push(String(wmo.getCell(i, 3).value || '')); modeleS.push(String(wmo.getCell(i, 2).value || '')); }
+  const sageataModel = (marca, x) => { const k = marca + '|' + x, i = chei.findIndex((v) => incepe(v, k)), c = chei.filter((v) => incepe(v, k)).length; return i >= 0 ? modeleS.slice(i, i + Math.max(1, c)) : [String(wmo.getCell(1, 2).value)]; };
+  T('Dacia + „lo" → Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', ') === 'Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', '));
+  T('...Dacia fără nimic scris la model → toate modelele Daciei', sageataModel('Dacia', '').length === 12 && sageataModel('Dacia', '').includes('Duster'));
+  T('...pe FIECARE marcă, exact modelele ei (lista e ordonată cum cere formula)',
+    marciS.every((m) => { const s = sageataModel(m, ''); const ale = chei.filter((k) => incepe(k, m + '|')).length; return ale === 0 || s.length === ale; }));
+  T('...fără marcă → un singur rând care spune să scrie modelul (și nu e citit ca model)', sageataModel('', '').join() === C.SABLON_FARA_SUGESTII && sageataModel('Aro', '').join() === C.SABLON_FARA_SUGESTII);
   T('...pregătit pentru ' + C.SABLON_MAX + ' de rânduri', !!wsS && !!wsS.getCell(rAntet + C.SABLON_MAX, 4).dataValidation && !wsS.getCell(rAntet + C.SABLON_MAX + 1, 4).dataValidation);
   [['Dacia', 'Logan', 2024, 'benzină + GPL', 5], ['Volvo', 'FH', 2020, 'motorină', 2], ['Renault', null, 2020, 'motorină', 1]]
     .forEach((v, i) => { v.forEach((x, j) => { if (x != null) wsS.getCell(rAntet + 1 + i, j + 1).value = x; }); });

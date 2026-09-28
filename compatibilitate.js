@@ -483,6 +483,9 @@ const SABLON_COLOANE = [
   { cheie: 'buc', et: 'Bucăți', lat: 10, alias: ['BUCATI', 'BUC', 'NR', 'NUMAR', 'CANTITATE'] },
 ];
 const SABLON_MAX = 500;   // rânduri de mașini citite dintr-un șablon (și rânduri pregătite în el)
+// Ce arată lista modelului când n-are ce propune (marca nescrisă sau necunoscută). Dacă cineva îl alege din
+// greșeală, citirea îl socotește model LIPSĂ — nu „un model numit așa".
+const SABLON_FARA_SUGESTII = '(fără sugestii — scrieți modelul)';
 function combustibilDin(t) {
   const s = norm(t);
   if (!s) return '';
@@ -513,6 +516,7 @@ function citesteSablon(foi) {
       for (let i = r + 1; i < randuri.length; i++) {
         const rand = randuri[i] || [], nr = i + 1;
         const v = { marca: val(rand, 'marca'), model: val(rand, 'model'), an: val(rand, 'an'), comb: val(rand, 'combustibil'), buc: val(rand, 'buc') };
+        if (v.model === SABLON_FARA_SUGESTII) v.model = '';                                // îndemnul listei, nu un model
         if (!v.marca && !v.model && !v.an && !v.comb && !v.buc) continue;                  // rând gol
         if (!v.marca || !v.model) { probleme.push({ rand: nr, ce: !v.marca && !v.model ? 'lipsesc marca și modelul' : (!v.marca ? 'lipsește marca' : 'lipsește modelul') + ' — rândul nu l-am luat' }); continue; }
         if (masini.length >= SABLON_MAX) { probleme.push({ rand: nr, ce: 'am citit doar primele ' + SABLON_MAX + ' de mașini' }); break; }
@@ -532,7 +536,7 @@ module.exports = {
   LISTE, APARATE, COMBUSTIBILI, FEL_ET, VARIANTE, MAX_RANDURI_LISTA,
   norm, cheieMarca, ani, aniText, descompuneModel, codCelula, coloanaDate,
   citesteFoi, dataDinNume, pregateste, potriveste, recomanda, dateCitite, marci, modele,
-  SABLON_COLOANE, SABLON_MAX, citesteSablon, combustibilDin,
+  SABLON_COLOANE, SABLON_MAX, SABLON_FARA_SUGESTII, citesteSablon, combustibilDin,
 };
 
 // ─── Excel → foi (singurul loc care atinge fișierul) ──────────────────────────────────────────────
