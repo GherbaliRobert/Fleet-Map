@@ -48,9 +48,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `ANAF_EFACTURA_TEST=false`, ajung în mediul de **PROBĂ** al ANAF, nu în cel real — aplicația
   pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
-- [ ] **Alin: completarea automată din ofertă să urmeze recomandarea? Adăugat pe 28.09.** Azi, din numărul
-  de mașini, pune FMC650 la toate. Recomandarea pune FMC130 la mașinile fără CAN și la cele cu CAN (plus
-  modulul LV-CAN200), iar FMC650 doar la camioane. Deocamdată o pune doar butonul „Aplică recomandarea".
+- [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
+  FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
 - [ ] **Alin: rânduri de preț pentru accesorii? Adăugat pe 28.09.** Cititorul ECAN02 (mașini în garanție),
   cititorul de card al șoferului, blocarea pornirii n-au rând în ofertă; azi se scriu la „Observații".
 
@@ -135,6 +134,50 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 
 ## 2026-09-28
 
+### AMÂNDOI · „Mașinile clientului": un șablon Excel de descărcat și de încărcat, în locul lipirii
+
+Alin: *„Lipește din Excel nu e ok. Vreau buton de export a unui șablon fix, cu ce trebuie să identifice
+calculatorul nostru, și buton de încărcare a șablonului."* Coloanele, hotărâte cu el: **Marcă, Model, An
+fabricație, Combustibil, Bucăți** — fără număr de înmatriculare (la ofertă clientul nu vrea mereu să-l dea).
+
+**Cum merge:**
+1. **„Descarcă șablonul"** → fișierul *RA-Tracks - Șablon mașini client.xlsx*: logo-ul nostru sus, două
+   rânduri de explicație cu un exemplu, apoi tabelul cu cele cinci coloane, pregătit pentru 500 de rânduri.
+   - Marca se alege dintr-o listă (mărcile de pe listele Teltonika); se poate scrie și alta — Excel doar
+     avertizează, fiindcă o marcă veche (Aro) tot trebuie să poată intra.
+   - Combustibilul se alege **doar** din listă: benzină, motorină, benzină + GPL, hibrid, electric.
+   - Anul: între 1950 și 2100; bucățile: de la 1 în sus. Altceva, Excel îl refuză cu un mesaj pe înțeles.
+2. Îl trimiți clientului (sau îl completezi tu).
+3. **„Încarcă șablonul"** → mașinile intră în listă și se caută fiecare, ca până acum. Dacă lista avea deja
+   mașini, te întreabă întâi dacă le înlocuiește. Ce n-a mers se spune **pe rândul din Excel**: „Rândul 9:
+   lipsește modelul — rândul nu l-am luat", „Rândul 11: anul «anul trecut» nu e un an".
+
+„Lipește din Excel" a fost **scos** (butonul, ușa de pe server și regula), nu ascuns.
+
+**Găsit pe drum:** biblioteca de Excel scria regulile de validare pe intervale care se suprapun (A7:A506 și
+A10:A506). Excel poate spune atunci „am găsit o problemă în fișier". Acum e o singură regulă pe coloană;
+o probă citește fișierul brut și pică dacă reapar suprapunerile.
+
+- **Ce am schimbat:** un șablon fix pentru mașinile clientului, de descărcat și de încărcat.
+- **Ce vede fondatorul:** butoanele „Descarcă șablonul" și „Încarcă șablonul" în „Mașinile clientului".
+- **Ce vede clientul:** șablonul Excel pe care i-l trimiți, cu logo-ul nostru. În aplicație, nimic.
+
+### AMÂNDOI · Oferta pune singură aparatele corecte: FMC130 la mașini, FMC650 doar la camioane
+
+Alin, la întrebarea „să pună oferta singură aparatele după recomandare?": *„DA"*.
+
+**Ce era:** din numerele de la pasul 2, calculatorul punea la pasul 5 **FMC650 — aparatul de camion — la
+toate mașinile**. Corect ieșea doar dacă apăsai „Aplică recomandarea" la pasul 4. La 100 de mașini (80 cu
+CAN, 20 de camioane): 16.800 € la aparate în loc de 11.600 € — **5.200 € în plus** pentru client.
+
+**Ce e acum:** aceeași regulă ca recomandarea, din prima: FMC130 la mașinile fără CAN și la cele cu CAN (cu
+modulul LV-CAN200 — sau FMC150, dacă comutatorul de la pasul 4 e pe FMC150), FMC650 doar la camioanele cu
+FMS, iar montajul pe măsură. Ce ai scris tu de mână într-o casetă rămâne. Ofertele deja salvate nu se schimbă.
+
+- **Ce am schimbat:** completarea automată a cantităților urmează recomandarea.
+- **Ce vede fondatorul:** pasul 5 iese direct cu aparatele potrivite; „Oferta urmează recomandarea".
+- **Ce vede clientul:** oferta pe care o primește are aparatele potrivite pentru mașinile lui.
+
 ### FONDATOR · Ofertare Live: „Mașinile clientului" — scrii marca, modelul și anul, îți spune ce aparat merge
 
 Alin: *„să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact — Dacia,
@@ -146,7 +189,8 @@ vehicule), FMC150 (decembrie 2025, 2.159) și ALL-CAN300 (martie 2025, 4.199).
 
 **Cum merge:**
 1. Scrii mașinile clientului, câte un rând: marcă, model, an, combustibil, câte bucăți. Casetele îți
-   propun mărcile și modelele din liste. Sau apeși **„Lipește din Excel"** și lipești lista clientului.
+   propun mărcile și modelele din liste. (Lipirea din Excel de aici a fost înlocuită în aceeași zi cu
+   șablonul — vezi mai sus.)
 2. Pe fiecare rând apare: **ce aparat merge** (FMC130 + LV-CAN200, FMC150, FMC650 sau FMC130 doar pentru
    poziție), **ce date se citesc** (rezervor, consum, kilometri, GPL, baterie), pe ce rând din listă
    (cu programul, pentru instalator) și cât e de sigur: *se potrivește* / *de verificat* / *nu e pe liste*.

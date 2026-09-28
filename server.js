@@ -14136,12 +14136,26 @@ app.get('/api/admin/masini/modele', requireAuth, requireSuperadmin, async (req, 
     res.json({ modele: compat.modele(Object.values(L).map((x) => x.peMarca), String(req.query.marca || '').slice(0, 60)).slice(0, 300) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Lista de mașini lipită din Excel-ul clientului, desfăcută în rânduri. Regula stă în compatibilitate.js
-// (`lipesteDinExcel`), nu în pagină: o singură citire a coloanelor.
-app.post('/api/admin/masini/lipeste', requireAuth, requireSuperadmin, (req, res) => {
+// Șablonul mașinilor (Alin, 28.09: „buton de export a unui șablon fix... și buton de încărcare"). În locul
+// „Lipește din Excel", care a fost SCOS. GET = îl descarci (cu logo, cu listele de ales), POST = încarci
+// șablonul completat și primești mașinile + ce n-a mers, pe rând. Coloanele: compatibilitate.SABLON_COLOANE.
+app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const r = compat.lipesteDinExcel(String((req.body && req.body.text) || '').slice(0, 200000));
-    res.json({ masini: r.masini.slice(0, 500), sarite: r.sarite.slice(0, 20), nSarite: r.sarite.length });
+    if (!reportExport) return res.status(503).json({ error: 'Exportul Excel nu e disponibil pe server.' });
+    const L = await _compatListe();
+    const s = await reportExport.sablonMasiniXlsx({ marci: compat.marci(Object.values(L).map((x) => x.peMarca)) });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', _antetDescarcare(s.nume));
+    res.send(s.buffer);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/masini/sablon', requireAuth, requireSuperadmin, express.raw({ type: 'application/octet-stream', limit: '5mb' }), async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege șablonul completat (fișierul Excel).' });
+    let r;
+    try { r = await compat.citesteSablonExcel(buf); } catch (e) { return res.status(400).json({ error: e.message }); }
+    res.json({ masini: r.masini, probleme: r.probleme.slice(0, 50), nProbleme: r.probleme.length });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Potrivirea unui lot de mașini. `pref` = ce alegi când mașina e pe AMBELE liste (comutatorul de la

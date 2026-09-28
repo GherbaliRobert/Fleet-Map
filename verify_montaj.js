@@ -154,11 +154,27 @@ T('și oferta nu contrazice anexa contractului',
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.
 T('cantitățile se completează din numărul de vehicule', /function _ofCompleteazaDinVehicule\(\)/.test(html));
-T('un GPS de montat și un aparat de cumpărat, per vehicul',
-  /_ofPropune\('of-qGps', nVeh\);/.test(html) && /_ofPropune\('of-dq650', nVeh\);/.test(html));
-T('LV-CAN doar la vehiculele cu CAN',
-  /_ofPropune\('of-qLvCan', nCan\);/.test(html) && /_ofPropune\('of-dqLvCan', nCan\);/.test(html));
-T('FMS doar la cele cu FMS', /_ofPropune\('of-qFms', nFms\);/.test(html));
+// Regula din 28.09 (Alin: „DA — oferta iese corectă din prima"): completarea folosește ACEEAȘI regulă ca
+// recomandarea de la pasul 4 — FMC130 la mașini, FMC650 doar la camioane. Până atunci punea FMC650 (aparatul
+// de camion) la toate. Rulată, nu citită din text.
+const _srcOf = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
+const _completeaza = new Function('document', '_ofN', '_ofCanMod', '_ofAtinse', '_ofPropuneTarife',
+  _srcOf('function _ofRecomandare(', 'function _ofRecAcum(') + _srcOf('function _ofPropune(id, val) {', '// Ce se propune, din câte vehicule')
+  + _srcOf('function _ofCompleteazaDinVehicule() {', 'window.raxOfVehiculeSchimbate = function') + '; return _ofCompleteazaDinVehicule;');
+function completare(nVeh, nCan, nFms, atinse, dinainte) {
+  const f = { 'of-nveh': { value: String(nVeh) }, 'of-ncan': { value: String(nCan) }, 'of-nfms': { value: String(nFms) } };
+  Object.keys(dinainte || {}).forEach((k) => { f[k] = { value: String(dinainte[k]) }; });
+  const doc = { getElementById: (id) => f[id] || (f[id] = { value: '' }) };
+  _completeaza(doc, (v) => { v = parseFloat(v); return Number.isFinite(v) ? v : 0; }, 'lvcan', atinse || {}, () => {})();
+  const v = (id) => Number(f[id].value || 0);
+  return { qGps: v('of-qGps'), qLvCan: v('of-qLvCan'), qFms: v('of-qFms'), d130: v('of-dq130'), d650: v('of-dq650'), lvcan: v('of-dqLvCan') };
+}
+const c20 = completare(20, 20, 0), c100 = completare(100, 80, 20);
+T('un GPS de montat pe fiecare vehicul; FMC130 la mașini, FMC650 doar la camioane',
+  c20.qGps === 20 && c20.d130 === 20 && c20.d650 === 0 && c100.qGps === 100 && c100.d130 === 80 && c100.d650 === 20, JSON.stringify([c20, c100]));
+T('LV-CAN doar la vehiculele cu CAN', c20.qLvCan === 20 && c20.lvcan === 20 && c100.qLvCan === 80 && c100.lvcan === 80);
+T('FMS doar la cele cu FMS', c100.qFms === 20 && c20.qFms === 0);
+T('...și ce ai scris tu rămâne (rulat)', completare(10, 0, 0, { 'of-dq650': true }, { 'of-dq650': 7 }).d650 === 7);
 T('DAR nu se calcă peste ce ai scris tu', /if \(_ofAtinse\[id\]\) return;/.test(html));
 T('un câmp devine „al tău" când scrii în el', /oninput="raxOfAtins\(this\.id\);raxOfRecalc\(\)"/.test(html));
 T('și scrie pe ecran cum funcționează', /se completează singure din numerele astea/.test(html));

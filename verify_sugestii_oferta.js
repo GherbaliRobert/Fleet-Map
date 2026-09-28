@@ -51,7 +51,21 @@ const aplica = html.slice(html.indexOf('window.raxOfAplicaRecomandarea = functio
 T('„Aplică" pune cantitățile la pașii 4 și 5', ['of-dq130', 'of-dq150', 'of-dq650', 'of-dqLvCan', 'of-qGps', 'of-qLvCan', 'of-qCanInc', 'of-qFms'].every((id) => aplica.indexOf("pune('" + id + "'") >= 0));
 T('...și le ține minte ca „scrise de mână" (un număr de mașini schimbat după nu le calcă)', /_ofAtinse\[id\] = true;/.test(aplica));
 T('...fără să atingă prețurile', !/of-dFmc|of-mGps|of-pPlain/.test(aplica));
-T('completarea automată a rămas cum era (sfaturile nu schimbă nimic fără apăsare)', /_ofPropune\('of-dq650', nVeh\);/.test(html));
+// Alin, 28.09: „DA — oferta iese corectă din prima". Completarea automată folosește ACEEAȘI regulă (rulată aici).
+const srcOf = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
+const completeaza = new Function('document', '_ofN', '_ofCanMod', '_ofAtinse', '_ofPropuneTarife',
+  srcOf('function _ofRecomandare(', 'function _ofRecAcum(') + srcOf('function _ofPropune(id, val) {', '// Ce se propune, din câte vehicule')
+  + srcOf('function _ofCompleteazaDinVehicule() {', 'window.raxOfVehiculeSchimbate = function') + '; return _ofCompleteazaDinVehicule;');
+const umple = (nVeh, nCan, nFms, canMod) => {
+  const f = { 'of-nveh': { value: String(nVeh) }, 'of-ncan': { value: String(nCan) }, 'of-nfms': { value: String(nFms) } };
+  completeaza({ getElementById: (id) => f[id] || (f[id] = { value: '' }) }, (v) => { v = parseFloat(v); return Number.isFinite(v) ? v : 0; }, canMod, {}, () => {})();
+  const v = (id) => Number(f[id].value || 0);
+  return { d130: v('of-dq130'), d150: v('of-dq150'), d650: v('of-dq650'), lvcan: v('of-dqLvCan'), qGps: v('of-qGps'), qLvCan: v('of-qLvCan'), qCanInc: v('of-qCanInc'), qFms: v('of-qFms') };
+};
+T('completarea automată pune recomandarea: 100 (80 cu CAN, 20 camioane) → 80 × FMC130 + 80 × LV-CAN200 + 20 × FMC650',
+  eq(umple(100, 80, 20, 'lvcan'), { d130: 80, d150: 0, d650: 20, lvcan: 80, qGps: 100, qLvCan: 80, qCanInc: 0, qFms: 20 }), JSON.stringify(umple(100, 80, 20, 'lvcan')));
+T('...și cu comutatorul pe FMC150: 80 × FMC150, instalare CAN încorporat', eq(umple(100, 80, 20, 'fmc150'), { d130: 0, d150: 80, d650: 20, lvcan: 0, qGps: 100, qLvCan: 0, qCanInc: 80, qFms: 20 }));
+T('comutatorul reface cantitățile neatinse', /window\.raxOfCanMod = function \(m\) \{[^\n]*_ofCompleteazaDinVehicule\(\);/.test(html));
 
 sect('4. Nimic din sfaturi nu ajunge pe hârtia clientului');
 const payload = html.slice(html.indexOf('function _ofPayload(r) {'), html.indexOf('async function _ofHartie('));

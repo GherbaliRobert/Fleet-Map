@@ -713,4 +713,69 @@ async function sendOfertaPdf(res, o) {
 // ─── sfârșit „oferta, ca fișier descărcat" ──
 
 // `renderOfertaPdf` e exportat pentru probe (verify_stoc_chirie.js citește textul hârtiei cu un document de carton).
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf };
+// ─── Șablonul „Mașinile clientului" (28.09) ──────────────────────────────────────────────────────
+// Alin: „vreau buton de export a unui șablon fix, cu ce trebuie să identifice calculatorul nostru, și buton
+// de încărcare a șablonului". Îl trimitem CLIENTULUI, deci poartă logo-ul și numele casei, ca rapoartele.
+// Coloanele și combustibilii vin din compatibilitate.js — de acolo îl citește și încărcarea, deci șablonul
+// și citirea lui nu se pot despărți. Mărcile (lista de ales) vin de la server, din listele Teltonika.
+//   • marca: listă de ales, dar se poate scrie și alta (avertisment, nu interdicție — Aro nu e pe liste);
+//   • combustibilul: DOAR din listă (altfel „diesel", „motorina", „M" — trei feluri de a scrie același lucru);
+//   • anul și bucățile: numere întregi, cu mesaj pe înțeles când nu sunt.
+async function sablonMasiniXlsx(opt) {
+  const compat = require('./compatibilitate');
+  const marci = (opt && opt.marci) || [];
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Tracks';
+  const col = compat.SABLON_COLOANE, n = col.length;
+  const ws = wb.addWorksheet('Mașini');
+  let r = xlPlaceLogo(ws, xlLogoId(wb));
+  const scrie = (text, font) => { const c = ws.getCell(r, 1); c.value = text; c.font = font; r++; };
+  scrie('Mașinile flotei — pentru oferta RA Tracks', { bold: true, size: 14 });
+  scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți", câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('Marca și combustibilul se aleg din listă (săgeata din celulă). „An fabricație" = anul mașinii, de ex. 2024. Exemplu: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
+  r++;
+  const antet = r;
+  col.forEach((c, i) => {
+    const cell = ws.getCell(antet, i + 1);
+    cell.value = c.et;
+    cell.font = { bold: true, color: { argb: 'FF06210F' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3FE07D' } };
+    cell.border = { bottom: { style: 'thin', color: { argb: 'FF2BB763' } } };
+    cell.alignment = { vertical: 'middle' };
+    ws.getColumn(i + 1).width = c.lat;
+  });
+  ws.getRow(antet).height = 20;
+  ws.views = [{ state: 'frozen', ySplit: antet }];
+  // Lista mărcilor, pe o foaie ascunsă (o listă de ales lungă nu încape în formula celulei).
+  let formulaMarci = null;
+  if (marci.length) {
+    const wm = wb.addWorksheet('Marci', { state: 'hidden' });
+    marci.forEach((m, i) => { wm.getCell(i + 1, 1).value = m; });
+    formulaMarci = 'Marci!$A$1:$A$' + marci.length;
+  }
+  const comb = '"' + Object.values(compat.COMBUSTIBILI).join(',') + '"';
+  const reguli = {
+    marca: formulaMarci ? { type: 'list', allowBlank: true, formulae: [formulaMarci], showErrorMessage: true, errorStyle: 'warning',
+      errorTitle: 'Marcă', error: 'Marca nu e pe listele Teltonika. O puteți lăsa așa — o verificăm noi.' } : null,
+    an: { type: 'whole', operator: 'between', allowBlank: true, formulae: [1950, 2100], showErrorMessage: true,
+      errorTitle: 'An fabricație', error: 'Scrieți anul fabricației, de ex. 2024.' },
+    combustibil: { type: 'list', allowBlank: true, formulae: [comb], showErrorMessage: true,
+      errorTitle: 'Combustibil', error: 'Alegeți combustibilul din listă.' },
+    buc: { type: 'whole', operator: 'greaterThanOrEqual', allowBlank: true, formulae: [1], showErrorMessage: true,
+      errorTitle: 'Bucăți', error: 'Câte mașini: un număr întreg, de la 1 în sus.' },
+  };
+  // O regulă pe COLOANĂ, pe tot intervalul (A7:A506), nu pe fiecare celulă. Puse celulă cu celulă, ExcelJS le
+  // strânge în intervale citind adresele ca text (A10 înaintea lui A7) și scoate intervale care se
+  // SUPRAPUN (A7:A506 și A10:A506) — Excel poate spune atunci că fișierul e stricat. Găsit pe 28.09.
+  const litera = (j) => String.fromCharCode(65 + j);
+  col.forEach((c, j) => {
+    if (reguli[c.cheie]) ws.dataValidations.add(litera(j) + (antet + 1) + ':' + litera(j) + (antet + compat.SABLON_MAX), reguli[c.cheie]);
+  });
+  const chenar = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+  for (let i = 1; i <= 40; i++) {   // primele rânduri cu chenar, ca să arate a tabel
+    col.forEach((c, j) => { ws.getCell(antet + i, j + 1).border = { top: chenar, left: chenar, bottom: chenar, right: chenar }; });
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  return { buffer: Buffer.from(buf), nume: 'RA-Tracks - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
+}
+
+module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx };

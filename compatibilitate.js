@@ -470,9 +470,19 @@ function modele(listePregatite, marca) {
   return [...s].sort((a, b) => a.localeCompare(b, 'ro', { numeric: true }));
 }
 
-// ─── Lipit din Excel-ul clientului ────────────────────────────────────────────────────────────────
-// Coloanele, în ordinea asta: Marcă · Model · An · Combustibil · Bucăți. Separate cu Tab (cum le copiază
-// Excel-ul), cu „;" sau cu „,". Rândul de antet se sare. Ce nu e mașină se sare, dar se numără.
+// ─── Șablonul „Mașinile clientului" (28.09) ──────────────────────────────────────────────────────
+// Alin: „LIPEȘTE DIN EXCEL nu e ok. Vreau buton de export a unui șablon fix, cu ce trebuie să identifice
+// calculatorul nostru, și buton de încărcare a șablonului." Coloanele stau AICI, o dată: după ele se face
+// șablonul (report_export.js → `sablonMasiniXlsx`) și tot după ele se citește fișierul completat. Capul de
+// tabel se caută după NUME, nu după rând — dacă cineva mută un rând de explicație, șablonul tot se citește.
+const SABLON_COLOANE = [
+  { cheie: 'marca', et: 'Marcă', lat: 20, alias: ['MARCA'] },
+  { cheie: 'model', et: 'Model', lat: 24, alias: ['MODEL', 'MODELUL'] },
+  { cheie: 'an', et: 'An fabricație', lat: 15, alias: ['AN FABRICATIE', 'ANUL FABRICATIEI', 'AN', 'ANUL'] },
+  { cheie: 'combustibil', et: 'Combustibil', lat: 18, alias: ['COMBUSTIBIL', 'CARBURANT'] },
+  { cheie: 'buc', et: 'Bucăți', lat: 10, alias: ['BUCATI', 'BUC', 'NR', 'NUMAR', 'CANTITATE'] },
+];
+const SABLON_MAX = 500;   // rânduri de mașini citite dintr-un șablon (și rânduri pregătite în el)
 function combustibilDin(t) {
   const s = norm(t);
   if (!s) return '';
@@ -483,48 +493,62 @@ function combustibilDin(t) {
   if (/BENZIN|PETROL|GASOLINE|TSI|TCE/.test(s)) return 'benzina';
   return '';
 }
-function lipesteDinExcel(text) {
-  const out = [], sarite = [];
-  const linii = String(text || '').split(/\r?\n/);
-  for (const l of linii) {
-    if (!l.trim()) continue;
-    const sep = l.indexOf('\t') >= 0 ? '\t' : (l.indexOf(';') >= 0 ? ';' : ',');
-    const c = l.split(sep).map((x) => x.trim());
-    if (/^marc|^brand|^make/i.test(c[0] || '') || /^model$/i.test(c[1] || '')) continue;   // antetul
-    const marca = c[0] || '', model = c[1] || '';
-    if (!marca || !model) { sarite.push(l.trim()); continue; }
-    let an = null, comb = '', buc = 1;
-    c.slice(2).forEach((x) => {
-      if (an == null && /^(19[5-9]\d|20\d\d)$/.test(x)) { an = Number(x); return; }
-      const cb = combustibilDin(x); if (!comb && cb) { comb = cb; return; }
-      if (/^\d{1,4}$/.test(x) && Number(x) > 0) buc = Number(x);
-    });
-    out.push({ marca, model, an, combustibil: comb, buc });
+// Citește șablonul completat (foile, ca la listele Teltonika). Întoarce mașinile și, pe rând, ce n-a mers:
+// { masini: [{ marca, model, an, combustibil, buc, rand }], probleme: [{ rand, ce }] }. Rândul fără marcă
+// sau fără model NU intră (n-avem ce căuta); la an, combustibil sau bucăți greșite rândul intră, fără
+// valoarea greșită, și se spune pe nume. Rândul = numărul din Excel, ca omul să-l găsească.
+function citesteSablon(foi) {
+  for (const foaie of foi || []) {
+    const randuri = foaie.randuri || [];
+    for (let r = 0; r < Math.min(randuri.length, 30); r++) {
+      const col = {};
+      (randuri[r] || []).forEach((c, i) => {
+        const n = norm(txt(c));
+        const sc = SABLON_COLOANE.find((x) => x.alias.includes(n));
+        if (sc && col[sc.cheie] == null) col[sc.cheie] = i;
+      });
+      if (col.marca == null || col.model == null) continue;
+      const masini = [], probleme = [];
+      const val = (rand, k) => (col[k] == null ? '' : txt(rand[col[k]]));
+      for (let i = r + 1; i < randuri.length; i++) {
+        const rand = randuri[i] || [], nr = i + 1;
+        const v = { marca: val(rand, 'marca'), model: val(rand, 'model'), an: val(rand, 'an'), comb: val(rand, 'combustibil'), buc: val(rand, 'buc') };
+        if (!v.marca && !v.model && !v.an && !v.comb && !v.buc) continue;                  // rând gol
+        if (!v.marca || !v.model) { probleme.push({ rand: nr, ce: !v.marca && !v.model ? 'lipsesc marca și modelul' : (!v.marca ? 'lipsește marca' : 'lipsește modelul') + ' — rândul nu l-am luat' }); continue; }
+        if (masini.length >= SABLON_MAX) { probleme.push({ rand: nr, ce: 'am citit doar primele ' + SABLON_MAX + ' de mașini' }); break; }
+        const m = { marca: v.marca.slice(0, 60), model: v.model.slice(0, 80), an: null, combustibil: '', buc: 1, rand: nr };
+        if (v.an) { const a = Number(String(v.an).replace(/\.0+$/, '')); if (Number.isInteger(a) && a >= 1950 && a <= 2100) m.an = a; else probleme.push({ rand: nr, ce: 'anul „' + v.an + '" nu e un an (ex. 2024)' }); }
+        if (v.comb) { m.combustibil = combustibilDin(v.comb); if (!m.combustibil) probleme.push({ rand: nr, ce: 'combustibilul „' + v.comb + '" nu-l recunosc' }); }
+        if (v.buc) { const b = Number(String(v.buc).replace(/\.0+$/, '')); if (Number.isInteger(b) && b >= 1 && b <= 10000) m.buc = b; else probleme.push({ rand: nr, ce: 'bucăți „' + v.buc + '" — am pus 1' }); }
+        masini.push(m);
+      }
+      return { masini, probleme };
+    }
   }
-  return { masini: out, sarite };
+  throw new Error('Nu găsesc capul de tabel al șablonului (' + SABLON_COLOANE.map((x) => x.et).join(' · ') + '). Descarcă șablonul din calculator și completează-l pe el.');
 }
 
 module.exports = {
   LISTE, APARATE, COMBUSTIBILI, FEL_ET, VARIANTE, MAX_RANDURI_LISTA,
   norm, cheieMarca, ani, aniText, descompuneModel, codCelula, coloanaDate,
   citesteFoi, dataDinNume, pregateste, potriveste, recomanda, dateCitite, marci, modele,
-  lipesteDinExcel, combustibilDin,
+  SABLON_COLOANE, SABLON_MAX, citesteSablon, combustibilDin,
 };
 
 // ─── Excel → foi (singurul loc care atinge fișierul) ──────────────────────────────────────────────
 // Culorile care contează: litera albastră (depinde de dotare), portocalie (lipsește cu cititorul fără
 // contact) și fundalul galben (lipsește cu ECAN02). Restul formatării nu spune nimic.
-async function citesteExcel(buffer, numeFisier) {
+async function foiDinExcel(buffer, maxRanduri, mesaj) {
   const ExcelJS = require('exceljs');
   const wb = new ExcelJS.Workbook();
-  try { await wb.xlsx.load(buffer); } catch (e) { throw new Error('Nu pot deschide fișierul: trebuie să fie un Excel (.xlsx) de pe site-ul Teltonika.'); }
+  try { await wb.xlsx.load(buffer); } catch (e) { throw new Error(mesaj); }
   const culoare = (c) => String((c && c.argb) || '').toUpperCase().slice(-6);
   const foi = [];
   wb.eachSheet((ws) => {
     // Doar celulele care EXISTĂ (`eachCell`): cerute una câte una, pe toate cele ~130 de coloane,
     // citirea listei ALL-CAN300 dura o jumătate de minut.
     const randuri = [];
-    const maxR = Math.min(ws.rowCount, MAX_RANDURI_LISTA + 20);
+    const maxR = Math.min(ws.rowCount, maxRanduri);
     for (let r = 1; r <= maxR; r++) {
       const cel = [];
       ws.getRow(r).eachCell({ includeEmpty: false }, (cell, c) => {
@@ -539,6 +563,13 @@ async function citesteExcel(buffer, numeFisier) {
     }
     foi.push({ nume: ws.name, randuri });
   });
-  return citesteFoi(foi, numeFisier);
+  return foi;
+}
+async function citesteExcel(buffer, numeFisier) {
+  return citesteFoi(await foiDinExcel(buffer, MAX_RANDURI_LISTA + 20, 'Nu pot deschide fișierul: trebuie să fie un Excel (.xlsx) de pe site-ul Teltonika.'), numeFisier);
+}
+async function citesteSablonExcel(buffer) {
+  return citesteSablon(await foiDinExcel(buffer, SABLON_MAX + 60, 'Nu pot deschide fișierul: trebuie să fie șablonul Excel (.xlsx) descărcat din calculator.'));
 }
 module.exports.citesteExcel = citesteExcel;
+module.exports.citesteSablonExcel = citesteSablonExcel;

@@ -787,10 +787,13 @@ FMS → FMC650 + Modulul Tahograf (card 28 / tahograf 90 de zile) + e-Transport,
   acolo, prin `_ofRecAcum()`. NU scrie a doua socoteală a recomandării.
 - **Nu ajunge pe hârtie.** `_ofPayload` nu trimite nimic din sfaturi, iar `report_export.js` nu le are
   cuvintele. Dacă adaugi un sfat, nu-l chema din constructorul hârtiei.
-- **Completarea automată a cantităților NU s-a schimbat** (FMC650 la toate mașinile, din `_ofPropune`).
-  Doar butonul „Aplică recomandarea în ofertă" (`raxOfAplicaRecomandarea`) pune cifrele și le marchează
-  atinse (`_ofAtinse`), ca un număr de mașini schimbat după să nu le calce. Prețurile nu se ating.
-  Dacă și completarea automată să urmeze recomandarea e decizia lui Alin (în lista „De amintit").
+- **Completarea automată folosește ACEEAȘI regulă** (decizia lui Alin, 28.09: „DA — oferta iese corectă din
+  prima"): `_ofCompleteazaDinVehicule` cheamă `_ofRecomandare` și propune, prin `_ofPropune`, toate cele 8
+  cantități (FMC130 / FMC150 / FMC650 / LV-CAN200 + montajul). Până atunci punea FMC650 — aparatul de
+  camion — la TOATE mașinile (100 de mașini, 80 mici: 5.200 € în plus). Comutatorul CAN (`raxOfCanMod`)
+  reface cantitățile neatinse. Ce e atins de mână rămâne; ofertele salvate nu se ating. NU reintroduce
+  „FMC650 la toate". Butonul „Aplică recomandarea" (`raxOfAplicaRecomandarea`) repune recomandarea peste
+  ce ai scris de mână. Păzit, rulat, de `verify_montaj.js` și `verify_sugestii_oferta.js`.
 - **Accesoriile** (ECAN02, cititor de card, blocarea pornirii) n-au rând de preț: sfatul trimite la
   pasul 6, „Observații". Rândurile lor noi = decizia lui Alin, tot în listă.
 - Contrastul casetei s-a MĂSURAT pe ambele teme: eticheta pe `--text-secondary`, diferențele (`.dif`)
@@ -803,9 +806,22 @@ benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu re
 în Ofertare Live între „1. Clientul" și „2. Flota clientului".
 
 - **Regula stă în `compatibilitate.js`, curată:** `citesteFoi` (foile deja citite → rânduri normalizate),
-  `potriveste` (o mașină pe o listă), `recomanda` (aparatul), `dateCitite`, `lipesteDinExcel`. Singurul loc
-  care atinge Excel-ul e `citesteExcel` (ExcelJS), la coada fișierului. **Pagina NU potrivește nimic**:
-  cere `POST /api/admin/masini/potrivire` și `/lipeste` (câte o singură cerere în pagină — păzit prin numărare).
+  `potriveste` (o mașină pe o listă), `recomanda` (aparatul), `dateCitite`, `citesteSablon`. Singurul loc
+  care atinge Excel-ul e `foiDinExcel` (ExcelJS), la coada fișierului. **Pagina NU potrivește nimic**:
+  cere `POST /api/admin/masini/potrivire` și `/sablon` (păzit prin numărare).
+- **Șablonul mașinilor (Alin, 28.09: „Lipește din Excel nu e ok — vreau buton de export a unui șablon
+  fix… și de încărcare").** Lipirea a fost SCOASĂ (buton, rută, regulă) — nu o pune la loc.
+  - Coloanele stau într-un singur loc: `SABLON_COLOANE` (Marcă, Model, An fabricație, Combustibil,
+    Bucăți — hotărâte cu Alin, fără nr. de înmatriculare). Șablonul se face din ele
+    (`report_export.js` → `sablonMasiniXlsx`, cu logo, lângă celelalte Excel-uri) și se citește după ele
+    (`citesteSablon`: capul de tabel se caută după NUME, oriunde ar fi; rândul fără marcă/model nu intră;
+    anul/combustibilul/bucățile greșite se spun pe rândul din Excel). `GET` / `POST /api/admin/masini/sablon`.
+  - Mărcile: listă de ales pe o foaie ascunsă („Marci"), cu `errorStyle: 'warning'` (se poate scrie alta);
+    combustibilul DOAR din listă (cuvintele din `COMBUSTIBILI`).
+  - ⚠ **Validările se pun pe INTERVAL, o dată pe coloană** (`ws.dataValidations.add('A7:A506', …)`), NU
+    celulă cu celulă: ExcelJS le strânge atunci în intervale ordonate ca text (A10 înaintea lui A7) și scoate
+    intervale care se SUPRAPUN — Excel poate zice că fișierul e stricat. Păzit: proba citește XML-ul brut.
+  - Încărcarea peste o listă plină întreabă întâi (`raConfirm`); problemele se arată pe rând.
 - **Cum se citesc listele** (verificat pe cele din 2025): LV-CAN200 / ALL-CAN300 — o foaie pe fel (Cars,
   Trucks…), antet pe rândul 2, anii „2016>", „+" **albastru** = depinde de dotare, portocaliu = lipsește cu
   cititorul fără contact, legenda jos (se sare). FMX150 — antet pe rândul 3, deasupra grupul „Standard" /
@@ -838,7 +854,6 @@ benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu re
   pagina, server pornit (încărcare de listă nouă cu un Excel făcut în probă).
 
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- Completarea automată din ofertă să urmeze recomandarea (azi o pune doar butonul) — vezi mai sus.
 - Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
 - Rânduri de preț pentru accesorii (ECAN02, cititor de card, blocarea pornirii).
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
