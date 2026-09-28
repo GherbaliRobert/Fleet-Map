@@ -776,8 +776,30 @@ revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU �
   Scris în contract (VII) și în condițiile ofertei. Fără tarif știut, clauza spune regula, nu inventează o cifră.
 - Păzit de `verify_stoc_chirie.js` (în `npm test`), inclusiv pe server pornit.
 
+### Sugestiile din Ofertare Live — doar pentru noi (Alin, 25.09; livrate 28.09)
+Alin: *„sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul… clientul nu o vede în
+ofertă, dar o văd eu și mă dirijează."* Regula (căutată pe net, 25.09): fără CAN → FMC130; cu CAN →
+FMC130 + LV-CAN200 (cele mai multe modele) sau FMC150 (CAN integrat, mai puține modele); camioane cu
+FMS → FMC650 + Modulul Tahograf (card 28 / tahograf 90 de zile) + e-Transport, dacă e cazul.
+
+- **O singură regulă: `_ofRecomandare(nVeh, nCan, nFms, canMod)`** (blocul „recomandarea pentru flotă").
+  Caseta de la pasul 2 (`#of-sfat-flota`) și tabelul de la pasul 4 (`#of-sfat-montaj`) citesc amândouă de
+  acolo, prin `_ofRecAcum()`. NU scrie a doua socoteală a recomandării.
+- **Nu ajunge pe hârtie.** `_ofPayload` nu trimite nimic din sfaturi, iar `report_export.js` nu le are
+  cuvintele. Dacă adaugi un sfat, nu-l chema din constructorul hârtiei.
+- **Completarea automată a cantităților NU s-a schimbat** (FMC650 la toate mașinile, din `_ofPropune`).
+  Doar butonul „Aplică recomandarea în ofertă" (`raxOfAplicaRecomandarea`) pune cifrele și le marchează
+  atinse (`_ofAtinse`), ca un număr de mașini schimbat după să nu le calce. Prețurile nu se ating.
+  Dacă și completarea automată să urmeze recomandarea e decizia lui Alin (în lista „De amintit").
+- **Accesoriile** (ECAN02, cititor de card, blocarea pornirii) n-au rând de preț: sfatul trimite la
+  pasul 6, „Observații". Rândurile lor noi = decizia lui Alin, tot în listă.
+- Contrastul casetei s-a MĂSURAT pe ambele teme: eticheta pe `--text-secondary`, diferențele (`.dif`)
+  portocaliu închis `#c2410c` pe tema deschisă.
+- Păzit de `verify_sugestii_oferta.js` (în `npm test`).
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- (nimic deschis aici acum)
+- Completarea automată din ofertă să urmeze recomandarea (azi o pune doar butonul) — vezi mai sus.
+- Rânduri de preț pentru accesorii (ECAN02, cititor de card, blocarea pornirii).
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).
 

@@ -23476,6 +23476,91 @@ const pozitii = await r.json();</code></pre>
       raxOfRecalc();
     };
     // ── sfârșit „închirierea aparatelor" ──
+    // ── începe „recomandarea pentru flotă" (25.09) ──────────────────────────────────────────────────
+    // Alin: „sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul... să părem
+    // profesioniști. Clientul nu o vede în ofertă, dar o văd eu și mă dirijează." Regulile, din ce
+    // recomandă Teltonika pentru fiecare aparat și din lege (căutate pe 25.09):
+    //   • fără CAN (doar poziție și trasee)   → FMC130 + „Instalare dispozitiv GPS";
+    //   • cu CAN (mașini mici, utilitare)     → FMC130 + modul LV-CAN200: merge pe cele mai multe modele,
+    //     iar modulul ține magistrala mașinii separată de aparat. SAU FMC150 (CAN integrat): un singur
+    //     aparat, mai ieftin, dar lista lui de modele e mai scurtă — se verifică modelul întâi;
+    //   • cu FMS (camioane)                    → FMC650 + „Instalare FMS"; plus Modulul Tahograf (legea:
+    //     cardul la 28 de zile, tahograful la 90) și e-Transport (transport internațional / mărfuri cu risc).
+    // NIMIC de aici nu ajunge pe hârtia clientului: `_ofPayload` nu trimite sfaturile. Completarea automată
+    // a cantităților NU se schimbă din sfaturi — doar butonul „Aplică recomandarea" pune cifrele.
+    var _ofCanMod = 'lvcan';   // cum citim CAN-ul la mașinile mici: 'lvcan' (FMC130 + LV-CAN200) sau 'fmc150'
+    function _ofRecomandare(nVeh, nCan, nFms, canMod) {
+      nVeh = Math.max(0, Math.round(Number(nVeh) || 0));
+      nCan = Math.min(Math.max(0, Math.round(Number(nCan) || 0)), nVeh);
+      nFms = Math.min(Math.max(0, Math.round(Number(nFms) || 0)), nVeh - nCan);
+      var nPlain = nVeh - nCan - nFms, cu150 = canMod === 'fmc150';
+      return {
+        nPlain: nPlain, nCan: nCan, nFms: nFms, canMod: cu150 ? 'fmc150' : 'lvcan',
+        aparate: { d130: nPlain + (cu150 ? 0 : nCan), d150: cu150 ? nCan : 0, d650: nFms, lvcan: cu150 ? 0 : nCan },
+        montaj: { qGps: nVeh, qLvCan: cu150 ? 0 : nCan, qCanInc: cu150 ? nCan : 0, qFms: nFms },
+        tahograf: nFms > 0, etransport: nFms > 0
+      };
+    }
+    function _ofRecAcum() {
+      var g = function (id) { return _ofN((document.getElementById(id) || {}).value); };
+      return _ofRecomandare(g('of-nveh'), g('of-ncan'), g('of-nfms'), _ofCanMod);
+    }
+    // Pasul 2: ce aparat se potrivește fiecărui fel de mașină, și de ce.
+    function _ofSfatFlota() {
+      var el = document.getElementById('of-sfat-flota'); if (!el) return;
+      var R = _ofRecAcum(), L = [];
+      if (R.nPlain) L.push('<li><b>' + R.nPlain + ' fără CAN → FMC130.</b> Poziție, trasee, opriri, contact pornit/oprit, viteză. Nu citește consumul din motor.</li>');
+      if (R.nCan) L.push('<li><b>' + R.nCan + ' cu CAN → ' + (R.canMod === 'fmc150' ? 'FMC150 (CAN integrat)' : 'FMC130 + modul LV-CAN200') + '.</b> '
+        + 'Citește din calculatorul mașinii ce e în rezervor, consumul, kilometrajul, turația. '
+        + (R.canMod === 'fmc150'
+          ? 'Un singur aparat și mai ieftin, dar merge pe mai puține modele: verifică modelul mașinii în lista Teltonika înainte de ofertă.'
+          : 'Merge pe cele mai multe modele, iar modulul ține magistrala mașinii separată de aparat. Mai ieftin: FMC150, dacă modelul e pe lista lui.')
+        + ' Mașini în garanție: citire fără tăiat fire (cititorul ECAN02) — încă nu are rând de preț; îl treci la pasul 6, „Observații".</li>');
+      if (R.nFms) L.push('<li><b>' + R.nFms + ' camioane cu FMS → FMC650.</b> Citește direct din priza de camion consumul, kilometrajul, orele de motor. '
+        + 'Propune și <b>Modulul Tahograf</b> (pasul 3): legea cere descărcarea cardului șoferului la 28 de zile și a tahografului la 90, altfel amendă. '
+        + 'Dacă face transport internațional sau mărfuri cu risc fiscal: <b>e-Transport</b>.</li>');
+      el.innerHTML = L.length ? '<span class="tag"><i class="fas fa-lightbulb"></i> Ce recomanzi · doar pentru tine, nu apare în ofertă</span><ul>' + L.join('') + '</ul>' : '';
+      el.style.display = L.length ? 'block' : 'none';
+    }
+    // Pasul 4: recomandarea pentru toată flota (aparate + montaj), lângă ce e ACUM în ofertă, cu un buton
+    // care o pune. Cifrele din ofertă nu se ating fără apăsare.
+    function _ofSfatMontaj() {
+      var el = document.getElementById('of-sfat-montaj'); if (!el) return;
+      var R = _ofRecAcum();
+      if (!(R.nPlain + R.nCan + R.nFms)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      var g = function (id) { return Math.round(_ofN((document.getElementById(id) || {}).value)); };
+      var acum = { d130: g('of-dq130'), d150: g('of-dq150'), d650: g('of-dq650'), lvcan: g('of-dqLvCan'),
+        qGps: g('of-qGps'), qLvCan: g('of-qLvCan'), qCanInc: g('of-qCanInc'), qFms: g('of-qFms') };
+      var rec = Object.assign({}, R.aparate, R.montaj), difera = false;
+      var rand = function (et, k) {
+        var r = rec[k], a = acum[k]; if (!r && !a) return '';
+        if (r !== a) difera = true;
+        return '<tr><td>' + et + '</td><td class="num"><b>' + r + '</b></td><td class="num' + (r === a ? '' : ' dif') + '">' + a + '</td></tr>';
+      };
+      var rows = rand('Teltonika FMC130', 'd130') + rand('Teltonika FMC150', 'd150') + rand('Teltonika FMC650', 'd650') + rand('Modul LV-CAN200', 'lvcan')
+        + rand('Instalare dispozitiv GPS', 'qGps') + rand('Instalare LV-CAN', 'qLvCan') + rand('Instalare CAN încorporat', 'qCanInc') + rand('Instalare FMS', 'qFms');
+      var seg = function (m, t) { return '<button type="button" class="rax-btn' + (R.canMod === m ? ' primary' : '') + '" style="padding:4px 10px;font-size:11.5px;" onclick="raxOfCanMod(\'' + m + '\')">' + t + '</button>'; };
+      el.innerHTML = '<span class="tag"><i class="fas fa-lightbulb"></i> Recomandarea pentru flota asta · doar pentru tine</span>'
+        + (R.nCan ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0 6px;"><span>Mașinile cu CAN:</span>' + seg('lvcan', 'FMC130 + LV-CAN200') + seg('fmc150', 'FMC150 (CAN integrat)') + '</div>' : '')
+        + '<table class="rax-co-table" style="margin:4px 0 8px;"><thead><tr><th>Aparat / lucrare</th><th class="num">Recomandat</th><th class="num">În ofertă</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        + (difera
+          ? '<button type="button" class="rax-btn primary" onclick="raxOfAplicaRecomandarea()"><i class="fas fa-wand-magic-sparkles"></i> Aplică recomandarea în ofertă</button>'
+            + '<div style="margin-top:4px;">Pune cantitățile de mai sus la pașii 4 și 5. Prețurile nu se schimbă.</div>'
+          : '<div style="color:var(--accent);font-weight:700;"><i class="fas fa-check"></i> Oferta urmează recomandarea.</div>');
+      el.style.display = 'block';
+    }
+    window.raxOfCanMod = function (m) { _ofCanMod = m === 'fmc150' ? 'fmc150' : 'lvcan'; raxOfRecalc(); };
+    // Pune recomandarea în ofertă. Cifrele puse așa se țin minte ca „scrise de mână": un număr de mașini
+    // schimbat după nu le mai calcă (regula casei) — recomandarea arată diferența, iar butonul o repune.
+    window.raxOfAplicaRecomandarea = function () {
+      var R = _ofRecAcum();
+      var pune = function (id, v) { var el = document.getElementById(id); if (!el) return; el.value = v > 0 ? String(v) : ''; _ofAtinse[id] = true; };
+      pune('of-dq130', R.aparate.d130); pune('of-dq150', R.aparate.d150); pune('of-dq650', R.aparate.d650); pune('of-dqLvCan', R.aparate.lvcan);
+      pune('of-qGps', R.montaj.qGps); pune('of-qLvCan', R.montaj.qLvCan); pune('of-qCanInc', R.montaj.qCanInc); pune('of-qFms', R.montaj.qFms);
+      raxOfRecalc();
+      if (window.raxToast) raxToast('Recomandarea e în ofertă (pașii 4 și 5) ✓', 'success');
+    };
+    // ── sfârșit „recomandarea pentru flotă" ──
     // ─── Completarea din numărul de vehicule ─────────────────────────────────────────────────
     // Spui „20 de vehicule, 20 cu CAN" sus, apoi trebuia să scrii iar 20 la Instalare GPS, 20 la
     // Instalare LV-CAN, 20 la FMC650, 20 la LV-CAN200. Același număr de patru ori — iar dacă uitai
@@ -24218,6 +24303,7 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxOfRecalc = function () {
       _ofChiriePropune();   // la închiriere: chiria propusă din costul aparatului, unde n-ai scris tu
+      _ofSfatFlota(); _ofSfatMontaj();   // sfaturile doar pentru noi (pașii 2 și 4) — nu ajung pe hârtie
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
       var aq = document.getElementById('of-aiq-wrap'); if (aq) aq.style.display = r.cfg.aiA ? 'block' : 'none'; // cota apare doar dacă Asistentul AI e inclus
@@ -25049,6 +25135,17 @@ const pozitii = await r.json();</code></pre>
         row('Total vehicule', fVeh('of-nveh', 10)) +
         row('din care cu CAN', fVeh('of-ncan', 0), 'mașini mici — cer modul LV-CAN200') +
         row('din care cu FMS', fVeh('of-nfms', 0), 'camioane — citim direct, fără modul') +
+        // Sfaturile (25.09): ce aparat recomandăm pentru fiecare fel de mașină. Doar pentru noi.
+        '<div id="of-sfat-flota" class="raof-sfat" style="display:none;"></div>' +
+        '<details class="raof-intrebari"><summary><i class="fas fa-circle-question"></i> Întrebări de pus clientului înainte de ofertă</summary><ol>'
+          + '<li>Ce mașini are — marca, modelul, anul? (citirea CAN se verifică pe model)</li>'
+          + '<li>Vrea să vadă consumul real și ce e în rezervor, sau doar unde sunt mașinile?</li>'
+          + '<li>Are camioane cu tahograf digital? Cine descarcă acum cardurile și tahografele?</li>'
+          + '<li>Face transport internațional sau mărfuri cu risc fiscal? (e-Transport)</li>'
+          + '<li>Mașinile sunt în garanție? (atunci citim CAN-ul fără tăiat fire)</li>'
+          + '<li>Unde se face montajul și câte mașini pot sta în aceeași zi? (deplasarea, programarea în loturi)</li>'
+          + '<li>Vrea să știe cine conduce fiecare mașină sau să blocheze pornirea de la distanță? (accesorii — încă nu au rând de preț; se trec la pasul 6)</li>'
+        + '</ol></details>' +
         // Diferența CAN/FMS o întreba oricine intră prima oară (Alin, 21.09). Scrisă pe ecran, nu
         // mai trebuie ținută minte — și explică de ce o mașină cu CAN costă mai mult la montaj.
         '<div class="raof-hint" style="margin-top:-2px;line-height:1.5;">'
@@ -25109,14 +25206,24 @@ const pozitii = await r.json();</code></pre>
           + '<div class="raof-hint" style="margin-top:-2px;">Primele 12 luni sunt incluse pentru toți. Se adaugă doar tariful treptei alese mai sus — un preț pe firmă, nu pe mașină. După semnare, aplicația păstrează exact cât scrie aici.</div>'
         + '</div>' + butonTarife(deTarife),
         'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.');
+      // Sub fiecare rând: CÂND se folosește (25.09) — doar pentru noi, ca oferta să aibă lucrările potrivite.
+      function cand(t) { return '<div class="raof-sub">' + t + '</div>'; }
       var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> 4. Montajul',
+        '<div id="of-sfat-montaj" class="raof-sfat" style="display:none;margin-top:0;"></div>' +
         row('Instalare dispozitiv GPS', qp('of-qGps', 'of-mGps', p.mGps, 'buc', 'lei/buc')) +
+        cand('La fiecare vehicul: aparatul, alimentarea, antenele, montaj ascuns și proba de transmisie.') +
         row('Instalare LV-CAN', qp('of-qLvCan', 'of-mLvCan', p.mLvCan, 'buc', 'lei/buc')) +
+        cand('La mașinile cu CAN citit prin modulul LV-CAN200 (cu FMC130).') +
         row('Instalare CAN încorporat', qp('of-qCanInc', 'of-mCanInc', p.mCanInc, 'buc', 'lei/buc')) +
+        cand('La mașinile cu FMC150 (CAN integrat): legarea aparatului la magistrala mașinii.') +
         row('Instalare FMS (tahograf)', qp('of-qFms', 'of-mFms', p.mFms, 'buc', 'lei/buc')) +
+        cand('La camioanele cu FMC650: legarea la priza FMS a camionului.') +
         row('Dezinstalare echipament', qp('of-qUninstall', 'of-mUninstall', p.mUninstall, 'buc', 'lei/buc')) +
+        cand('Doar când scoatem aparate vechi — de la alt furnizor sau mutate de pe altă mașină.') +
         row('Înlocuire echipament', qp('of-qReplace', 'of-mReplace', p.mReplace, 'buc', 'lei/buc')) +
+        cand('Aparat defect sau schimbare de model: o intervenție pe o mașină deja montată.') +
         row('Deplasare', qp('of-kmTravel', 'of-mTravel', p.mTravel, 'km', 'lei/km')) +
+        cand('Km dus-întors până la client, când montajul nu e în orașul instalatorului. La flote mari, programează montajul în loturi, la sediul clientului: cam 30–40 de minute pe mașină.') +
         '<div class="raof-hint" style="margin-top:-2px;line-height:1.5;">'
           + '<b>Fiecare mașină are „Instalare dispozitiv GPS" — treaba de bază.</b> Cea cu CAN sau cu FMS '
           + 'mai are un rând deasupra: munca în plus (modulul LV-CAN legat la magistrală, respectiv priza '

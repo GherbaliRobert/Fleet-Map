@@ -3664,3 +3664,22 @@
   .aiu-cap{ flex-wrap:wrap; }
   .aiu-nume{ flex:1 1 100%; }
 }
+
+/* ── Sugestiile din Ofertare Live (25.09) — doar pentru noi, nu ajung pe hârtia clientului ── */
+.raof-sfat{ margin:10px 0 6px; padding:10px 12px; border-radius:10px; background:var(--bg-panel); border-left:3px solid var(--accent);
+  font-size:11.5px; line-height:1.55; color:var(--text-secondary); }
+.raof-sfat b{ color:var(--text-primary); }
+/* Textul etichetei în gri închis (verdele deschis pe alb abia se citea: 1,7); becul rămâne verde. */
+.raof-sfat .tag{ display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-secondary); margin-bottom:4px; }
+.raof-sfat .tag i{ color:var(--accent); }
+/* Cifra din ofertă care diferă de recomandare: portocaliu — mai închis pe tema deschisă (3,6 → peste 4,5). */
+.raof-sfat .dif{ color:var(--orange); font-weight:800; }
+body:not(.dark) .raof-sfat .dif{ color:#c2410c; }
+.raof-sfat ul{ margin:2px 0 0 16px; padding:0; }
+.raof-sfat li{ margin:3px 0; }
+.raof-sfat .rax-co-table{ font-size:11.5px; }
+.raof-sub{ font-size:10.5px; color:var(--text-secondary); line-height:1.45; margin:-5px 0 10px 161px; }
+.raof-intrebari{ margin:4px 0 10px; font-size:11.5px; color:var(--text-secondary); }
+.raof-intrebari summary{ cursor:pointer; font-weight:700; color:var(--text-primary); }
+.raof-intrebari ol{ margin:6px 0 0 18px; padding:0; line-height:1.55; }
+@media (max-width:640px){ .raof-sub{ margin-left:0; } }

@@ -48,6 +48,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `ANAF_EFACTURA_TEST=false`, ajung în mediul de **PROBĂ** al ANAF, nu în cel real — aplicația
   pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
+- [ ] **Alin: completarea automată din ofertă să urmeze recomandarea? Adăugat pe 28.09.** Azi, din numărul
+  de mașini, pune FMC650 la toate. Recomandarea pune FMC130 la mașinile fără CAN și la cele cu CAN (plus
+  modulul LV-CAN200), iar FMC650 doar la camioane. Deocamdată o pune doar butonul „Aplică recomandarea".
+- [ ] **Alin: rânduri de preț pentru accesorii? Adăugat pe 28.09.** Cititorul ECAN02 (mașini în garanție),
+  cititorul de card al șoferului, blocarea pornirii n-au rând în ofertă; azi se scriu la „Observații".
 
 ---
 
@@ -127,6 +132,48 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+## 2026-09-28
+
+### FONDATOR · Ofertare Live: sugestii — ce aparat și ce montaj pentru ce mașină, doar pentru tine
+
+Alin (vineri, 25.09): *„sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul… să părem
+profesioniști. Clientul nu o vede în ofertă, dar o văd eu și mă dirijează mai bine. Caută și pe net."*
+
+**Ce am căutat** (ce recomandă producătorul fiecărui aparat, ce cere legea la camioane, cum se face montajul):
+- **FMC130** — aparatul de bază: poziție, trasee, contact, viteză. Pentru date din motor are nevoie de
+  **modulul LV-CAN200**, care merge pe cele mai multe modele (în jur de 1.500) și ține instalația mașinii
+  separată de aparat.
+- **FMC150** — CAN integrat: un singur aparat, mai ieftin, dar pe mai puține modele (în jur de 600). Se
+  verifică modelul mașinii întâi.
+- **FMC650** — pentru camioane: citește priza FMS și poate descărca tahograful de la distanță.
+- **ECAN02** — citește CAN-ul fără tăiat fire: pentru mașinile în garanție.
+- **Tahograful:** cardul șoferului se descarcă la cel mult 28 de zile, tahograful la cel mult 90 — altfel amendă.
+- **e-Transport:** transporturile internaționale și mărfurile cu risc fiscal, cu amenzi mari.
+- **Montajul:** cam 20–40 de minute pe mașină, ascuns, cu proba de transmisie la final.
+
+**Ce apare în calculator** (nimic din toate astea nu ajunge pe oferta clientului):
+1. **Pasul 2, „Flota clientului":** sub numerele de mașini, caseta **„Ce recomanzi"** — pentru fiecare fel
+   de mașină, ce aparat și de ce. Plus o listă pliată, **„Întrebări de pus clientului înainte de ofertă"**
+   (7 întrebări: ce mașini are, dacă vrea consumul real, tahograf, e-Transport, garanție, unde se face
+   montajul, accesorii).
+2. **Pasul 4, „Montajul":** sus, **„Recomandarea pentru flota asta"** — un tabel cu ce recomandăm și ce e
+   acum în ofertă (diferențele cu portocaliu), un comutator pentru mașinile cu CAN (FMC130 + LV-CAN200 sau
+   FMC150) și butonul **„Aplică recomandarea în ofertă"**, care pune cantitățile la pașii 4 și 5. Prețurile
+   nu se schimbă. Sub fiecare rând de montaj, un rând mic: **când se folosește**.
+
+**Exemplu — 100 de mașini, 80 cu CAN, 20 de camioane:** recomandarea e 80 × FMC130 + 80 × LV-CAN200 +
+20 × FMC650, iar la montaj 100 × GPS, 80 × LV-CAN, 20 × FMS. Completarea automată de azi pune FMC650 la
+toate cele 100: tabelul arată diferența, butonul o repune.
+
+**Ce NU s-a schimbat:** completarea automată a cantităților a rămas cum era. Doar butonul schimbă
+cifrele. Dacă și completarea automată trebuie să urmeze recomandarea, e decizia lui Alin (în lista de sus).
+Accesoriile (ECAN02, cititorul de card al șoferului, blocarea pornirii) n-au încă rând de preț în ofertă;
+sfatul spune să fie trecute la pasul 6, „Observații".
+
+- **Ce am schimbat:** calculatorul de ofertă sfătuiește: ce aparat, ce montaj, ce să-l întrebi pe client.
+- **Ce vede fondatorul:** casetele de sfat la pașii 2 și 4, butonul „Aplică recomandarea", întrebările.
+- **Ce vede clientul:** nimic. Ce pleacă spre hârtia ofertei nu cuprinde sfaturile (păzit de probă).
 
 ## 2026-09-25
 
