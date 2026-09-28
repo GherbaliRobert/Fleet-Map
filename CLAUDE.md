@@ -794,8 +794,12 @@ FMS → FMC650 + Modulul Tahograf (card 28 / tahograf 90 de zile) + e-Transport,
   reface cantitățile neatinse. Ce e atins de mână rămâne; ofertele salvate nu se ating. NU reintroduce
   „FMC650 la toate". Butonul „Aplică recomandarea" (`raxOfAplicaRecomandarea`) repune recomandarea peste
   ce ai scris de mână. Păzit, rulat, de `verify_montaj.js` și `verify_sugestii_oferta.js`.
-- **Accesoriile** (ECAN02, cititor de card, blocarea pornirii) n-au rând de preț: sfatul trimite la
-  pasul 6, „Observații". Rândurile lor noi = decizia lui Alin, tot în listă.
+- **Accesoriile** (ECAN02, cititor de card, blocarea pornirii) rămân **DOAR ca sfat**, fără rând de preț
+  (decizia lui Alin, 28.09, varianta 2): apar în „Ce recomanzi" și în întrebările 5 și 7 de la pasul 2,
+  iar când un client le cere se scriu la pasul 6, „Observații". NU le face rânduri de preț din proprie
+  inițiativă — se fac când avem prețurile de la furnizor și un client care le vrea. (Ideea lor a fost a
+  mea, din cercetarea din 25.09; Alin a întrebat „de unde ți-a venit ideea" — explică-le ÎNAINTE de a
+  întreba ceva despre ele.)
 - Contrastul casetei s-a MĂSURAT pe ambele teme: eticheta pe `--text-secondary`, diferențele (`.dif`)
   portocaliu închis `#c2410c` pe tema deschisă.
 - Păzit de `verify_sugestii_oferta.js` (în `npm test`).
@@ -866,7 +870,6 @@ benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu re
 
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
-- Rânduri de preț pentru accesorii (ECAN02, cititor de card, blocarea pornirii).
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).
 

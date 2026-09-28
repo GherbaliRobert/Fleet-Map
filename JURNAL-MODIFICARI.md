@@ -50,8 +50,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
 - [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
   FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
-- [ ] **Alin: rânduri de preț pentru accesorii? Adăugat pe 28.09.** Cititorul ECAN02 (mașini în garanție),
-  cititorul de card al șoferului, blocarea pornirii n-au rând în ofertă; azi se scriu la „Observații".
+- [x] **HOTĂRÂT (28.09): accesoriile rămân doar ca sfat, fără rând de preț.** Alin a ales varianta 2.
+  Cititorul ECAN02, cititorul de card al șoferului și blocarea pornirii apar doar la pasul 2 (în „Ce
+  recomanzi" și în întrebările pentru client); când un client le cere, se scriu la „Observații". Rândurile
+  de preț se fac abia când avem prețurile lor de la furnizor și un client care le vrea.
 
 ---
 
