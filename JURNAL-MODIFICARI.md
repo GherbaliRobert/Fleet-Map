@@ -54,6 +54,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Cititorul ECAN02, cititorul de card al șoferului și blocarea pornirii apar doar la pasul 2 (în „Ce
   recomanzi" și în întrebările pentru client); când un client le cere, se scriu la „Observații". Rândurile
   de preț se fac abia când avem prețurile lor de la furnizor și un client care le vrea.
+- [ ] **Voi: de la ce zi plătește clientul abonamentul unei mașini. Adăugat pe 28.09, găsit când am
+  explicat ce urmează după semnare (exemplul cu 50 de GPS-uri).** Contractul nu spune. Aplicația, dacă e
+  bifat „Auto" la facturare, ia luna ÎNTREAGĂ și numără aparatele aflate pe firmă în clipa aceea, montate
+  sau nu. De ales: pe zile, din ziua în care aparatul transmite prima dată (recomandarea mea), sau din luna
+  de după montaj (luna montajului gratuită). Ce hotărâți se scrie și în contract.
 
 ---
 
@@ -8696,6 +8701,20 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(eu) Facturarea: trei probleme găsite pe 28.09, probate pe server pornit.** Aștept „da"-ul lui
+  Alin ca să le repar.
+  1. **„Plătită" poate bloca un client care a plătit tot.** Plata unei facturi pune firmei o dată de
+     „acces până la" (sfârșitul lunii de pe factură), iar la 15 zile după ea accesul se taie, cu mesajul
+     „Abonament suspendat pentru neplată". E un ceas vechi, rămas lângă regula din 09.09. Probat: factură
+     pe iulie, plătită → clientul blocat pe loc. Lună de lună, ceasul cere plata cu o zi ÎNAINTEA
+     scadenței facturii (ziua 1 + 15 zile de termen = scadența pe 16, ceasul se oprește pe 15). Dacă
+     o factură lunară nu se emite, clientul se blochează fără să datoreze nimic.
+  2. **O factură făcută de mână într-o lună oprește factura automată a acelei luni**, fără niciun semn.
+     Probat: factură pentru un aparat → abonamentul lunii n-a mai plecat.
+  3. **Factura automată nu știe de montaj.** Ia luna întreagă și numără ce e pe firmă în clipa aceea.
+     Probat: 3 aparate trecute pe firmă, niciunul montat → factură pe toată luna. Se repară după ce
+     hotărâți de la ce zi se plătește abonamentul (lista „De amintit").
 
 - [ ] **(eu) Următorul APK: curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),
