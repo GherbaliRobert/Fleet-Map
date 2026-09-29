@@ -94,6 +94,17 @@ T('la fel și suspendarea/reactivarea manuală',
 sect('4. Avertismentele: patru, nu mai multe, și nu de două ori');
 T('treptele sunt 0, 5, 10 și 13 zile', N.TREPTE.map(t => t.zi).join(',') === '0,5,10,13', N.TREPTE.map(t => t.zi).join(','));
 T('ultimul avertisment e cel mai apăsat', N.TREPTE[N.TREPTE.length - 1].fel === 'critical');
+// Titlul și textul aceluiași anunț spun ACEEAȘI cifră (29.09: titlul zicea „10 zile", textul „11 zile").
+N.TREPTE.filter(t => t.zi > 0).forEach(function (t) {
+  [0.05, 0.5, 0.95].forEach(function (f) {
+    const s = st(t.zi + f), m = N.mesajClient(s, t), n = (m.match(/achitați în (\d+) zi/) || [])[1];
+    T('ziua ' + (t.zi + f) + ': titlul „' + t.titlu + '" spune aceeași cifră ca textul (' + n + ')',
+      n && new RegExp('\\b' + n + ' (de )?zi').test(t.titlu), m);
+  });
+});
+T('titlurile: 11, 6 și 3 zile până la suspendare (suspendarea vine în ziua 16)',
+  N.TREPTE.map(t => t.titlu).join(' | ') === 'Factura a depășit termenul de plată | Factură neachitată — 11 zile până la suspendare | Factură neachitată — 6 zile până la suspendare | Ultimul avertisment — accesul se suspendă în 3 zile',
+  N.TREPTE.map(t => t.titlu).join(' | '));
 T('în ziua 0 sună prima treaptă', N.treaptaDeAnuntat(0).zi === 0);
 T('în ziua 4 tot prima rămâne (nu se sare)', N.treaptaDeAnuntat(4).zi === 0);
 T('în ziua 5 urcă la a doua', N.treaptaDeAnuntat(5).zi === 5);

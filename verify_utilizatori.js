@@ -112,6 +112,25 @@ T('nici în compania demo nu se mai cere o parolă scrisă de mână',
   !/În contul demo, scrie o parolă/.test(server));
 T('contul de admin al unei firme urmează aceeași regulă',
   !/setează-i una manual/.test(server) && /companies\/:id\/admin[\s\S]{0,3000}trimiteLinkParola/.test(server));
+// „Client nou" (Companii), găsit pe 29.09: fără email pe server, linkul întors de server era ARUNCAT, iar
+// panoul scria „Fără administrator încă" — deși contul exista și nimeni nu mai avea cum să-i pună parola.
+const _coCre = (html.match(/window\.coNouCreeaza = async function \(\) \{[\s\S]*?\n    \};\n/) || [''])[0];
+T('„Client nou": când invitația nu pleacă, linkul se ține și se arată pe loc',
+  /adminLink = a\.link;/.test(_coCre) && /if \(adminLink\) window\.coNouArataLinkul\(\);/.test(_coCre), _coCre.length);
+T('„Client nou": contul există și fără email — panoul nu mai spune „Fără administrator"',
+  /adminOk = s\.admin\.username;/.test(_coCre) && !/else if \(a && a\.warning\) \{ _coMsg\(a\.warning, true\); \}/.test(_coCre));
+T('„Client nou": linkul se arată cu fereastra comună, nu cu una nouă',
+  /window\.coNouArataLinkul = function \(\) \{[\s\S]{0,200}window\._usrAratLinkul\(g\.admin, g\.adminLink, g\.adminMotiv\)/.test(html));
+// Pagina pe care omul își pune parola cere ce cere serverul (scria „min 6", serverul cere 10).
+{
+  const setp = fs.readFileSync(P('public/set-password.html'), 'utf8');
+  const pmin = Number((server.match(/const PAROLA_MIN = (\d+);/) || [])[1]);
+  const minl = (setp.match(/minlength="(\d+)"/g) || []).map((x) => Number(x.replace(/\D/g, '')));
+  const jsMin = Number((setp.match(/p1\.length < (\d+)/) || [])[1]);
+  T('pagina de parolă cere minim ' + pmin + ' caractere, exact ca serverul',
+    pmin >= 10 && minl.length === 2 && minl.every((n) => n === pmin) && jsMin === pmin && setp.indexOf('minim ' + pmin + ' caractere') >= 0,
+    JSON.stringify({ pmin: pmin, minlength: minl, js: jsMin }));
+}
 
 sect('3. Ultimul administrator al unei firme');
 T('există plasa', /async function _ultimulAdminAlFirmei\(targetId\)/.test(server));

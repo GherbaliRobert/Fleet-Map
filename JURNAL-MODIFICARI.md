@@ -73,6 +73,31 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-29
 
+### AMÂNDOI · Drumul unui client nou, reparat în trei locuri
+
+Găsite când am scris, pentru Alin, tot drumul unui client, de la prima întâlnire la banii încasați, și l-am
+rulat pe aplicația pornită (51 de verificări, toate trecute după reparații).
+
+1. **„Client nou din ofertă", fără email pe server.** Contul administratorului se făcea, dar linkul de
+   parolă se pierdea, iar panoul scria „Fără administrator încă". Pe ratrack.ro emailul nu e pus încă, deci
+   așa ar fi pățit **fiecare** client nou: contul exista, dar nimeni nu mai avea linkul. Acum fereastra cu
+   linkul apare singură (aceeași ca peste tot, cu linkul deja copiat), iar panoul spune „Contul lui … e
+   făcut, dar invitația n-a plecat pe email", cu butonul „Arată linkul de parolă". Tot acolo, rândul „Mai
+   departe" spune drumul de azi: aprobi contractul, îl trimiți la semnat, apoi proforma și montajul; aparatele
+   pe firmă abia după montaj. (Scria „adoptă aparatele clientului" — exact capcana abonamentului pornit de pe
+   birou.)
+2. **Pagina pe care clientul își pune parola** cerea „minim 6 caractere", dar serverul cere 10, de cel puțin
+   două feluri. Clientul scria o parolă de 8 și primea eroare. Acum pagina cere ce cere serverul; cifra e
+   legată printr-o probă de cea din server.
+3. **Avertismentele de neplată** aveau titlul „10 zile până la suspendare", iar dedesubt „achitați în 11
+   zile". Suspendarea vine în ziua 16 după scadență, deci 11 era corect. Titlurile se socotesc acum din ziua
+   suspendării: **11, 6 și 3 zile**. Zilele în care pleacă avertismentele nu s-au schimbat (0, 5, 10, 13).
+
+- **Ce am schimbat:** panoul „Client nou", pagina de parolă, titlurile avertismentelor.
+- **Ce vede fondatorul:** linkul de parolă al clientului, pe ecran, când emailul nu pleacă.
+- **Ce vede clientul:** regula adevărată a parolei; avertismente cu aceeași cifră în titlu și în text.
+
+
 ### AMÂNDOI · Factura pe zile: cantitatea × prețul dă acum valoarea (10 × 24,68 = 246,80)
 
 Găsit când am rulat scenariul complet cerut de Alin (Transport SRL, 50 de mașini, contract semnat pe 4

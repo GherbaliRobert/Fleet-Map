@@ -20023,9 +20023,12 @@ const pozitii = await r.json();</code></pre>
           '<li>Firma e creată' + (g.cui ? ', cu CUI ' + esc(g.cui) : '') + '.</li>' +
           '<li>' + (g.contract ? ('Contractul <strong>' + esc(g.contract) + '</strong> e salvat, în lucru.' +
             (g.offerTotal ? ' Prețul din ofertă (' + Number(g.offerTotal).toFixed(0) + ' lei/lună) e trecut în anexă și scris pe firmă, pentru factură.' : '')) : 'Fără contract încă.') + '</li>' +
-          '<li>' + (g.admin ? 'Invitația a plecat la <strong>' + esc(g.admin) + '</strong> — își pune singur parola.' : 'Fără administrator încă.') + '</li>' +
+          '<li>' + (!g.admin ? 'Fără administrator încă.'
+            : g.adminLink ? 'Contul lui <strong>' + esc(g.admin) + '</strong> e făcut, dar invitația n-a plecat pe email. ' +
+                '<button class="rax-btn" style="padding:3px 9px;font-size:12px;" onclick="coNouArataLinkul()"><i class="fas fa-link"></i> Arată linkul de parolă</button> — i-l trimiți tu; parola și-o pune el.'
+            : 'Invitația a plecat la <strong>' + esc(g.admin) + '</strong> — își pune singur parola.') + '</li>' +
         '</ul>' +
-        '<div class="raco-sub" style="margin:10px 0 12px;">Mai departe: adoptă aparatele clientului, apoi treci-le în anexa contractului și descarcă ciorna de semnat.</div>' +
+        '<div class="raco-sub" style="margin:10px 0 12px;">Mai departe, în dosar: aprobă contractul și trimite-l la semnat. După semnare: proforma pentru aparate, apoi montajul — aparatele le treci pe firmă abia după ce sunt montate.</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
           (g.contractId ? '<button class="rax-btn primary" onclick="raxOpenCompanyDetail(' + g.id + ', \'contract\')"><i class="fas fa-file-signature"></i> Deschide dosarul</button>' : '') +
           '<button class="rax-btn" onclick="coNouRenunta()">Deschid alt client</button>' +
@@ -20033,6 +20036,11 @@ const pozitii = await r.json();</code></pre>
     }
     window.coNouStart = coNouStart;
     window.coNouRenunta = function () { _coNou = null; coNouRandeaza(); };
+    // Linkul de parolă al administratorului, când emailul n-a plecat: ACEEAȘI fereastră ca peste tot.
+    window.coNouArataLinkul = function () {
+      var g = _coNou && _coNou.gata;
+      if (g && g.adminLink && window._usrAratLinkul) window._usrAratLinkul(g.admin, g.adminLink, g.adminMotiv);
+    };
     function _coCiteste() {
       var s = _coNou, v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
       if (s.pas === 1) {
@@ -20102,21 +20110,30 @@ const pozitii = await r.json();</code></pre>
               gdpr: { kind: c.gdpr_kind } }) }).then(function (r) { return r.json(); });
           if (ct && ct.id) { contractId = ct.id; numar = ct.number; }
         }
-        var adminOk = null;
+        var adminOk = null, adminLink = null, adminMotiv = null;
         if (s.admin.username) {
           // Fără parolă, mereu: pleacă invitația și omul își pune singur parola.
           var a = await fetch('/api/companies/' + co.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
             body: JSON.stringify({ username: s.admin.username }) }).then(function (r) { return r.json(); });
           if (a && a.error) { _coMsg('Firma e creata, dar contul de admin nu: ' + a.error, true); }
-          else if (a && a.warning) { _coMsg(a.warning, true); }
-          else { adminOk = s.admin.username; }
+          else {
+            // Contul EXISTĂ și când emailul n-a plecat (fără SMTP): atunci serverul întoarce linkul, iar
+            // linkul îl duci tu. Până pe 29.09 linkul era aruncat, iar panoul scria „Fără administrator
+            // încă" — deși contul era făcut și nimeni nu mai avea cum să-i pună parola.
+            adminOk = s.admin.username;
+            if (a && !a.invited && a.link) {
+              adminLink = a.link;
+              adminMotiv = a.inviteEmailConfigured ? 'Emailul de invitație n-a putut pleca.' : 'Serverul nu are email configurat, deci invitația n-a plecat.';
+            }
+          }
         }
         s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk,
-          offerTotal: s.offerId ? s.offerTotal : null };
+          adminLink: adminLink, adminMotiv: adminMotiv, offerTotal: s.offerId ? s.offerTotal : null };
         _coOferte = null;  // o ofertă tocmai a devenit client — lista trebuie recitită
         s.lucrez = false;
         coNouRandeaza();
         raxLoadCompanies();
+        if (adminLink) window.coNouArataLinkul();
       } catch (e) {
         s.lucrez = false; if (btn) btn.disabled = false;
         _coMsg('Eroare: ' + e.message, true);

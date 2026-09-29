@@ -17,13 +17,19 @@ const ZILE_GRATIE = 15;
 // În a câta zi de la scadență se taie accesul. (15 zile de grație ⇒ a 16-a zi.)
 const ZI_SUSPENDARE = ZILE_GRATIE + 1;
 
+// „11 zile", „1 zi", „20 de zile" — cifra vine din regulă, deci și „de" se pune din cod.
+function zile(n) { const r = n % 100; return n === 1 ? '1 zi' : n + ((r >= 1 && r <= 19) ? ' zile' : ' de zile'); }
+
 // Când sună clopoțelul, în zile de la scadență. Patru avertismente, nu mai multe: peste asta,
 // oamenii încep să le ignore, iar noi ne obișnuim să le vedem — și atunci nu mai valorează nimic.
+// Câte zile mai are omul se SOCOTEȘTE din ziua suspendării (29.09): titlurile erau scrise de mână
+// („10 zile", „5 zile") ca și cum suspendarea ar veni în ziua 15, iar textul de dedesubt spunea,
+// corect, „achitați în 11 zile" — două cifre diferite în același anunț.
 const TREPTE = [
   { zi: 0,  fel: 'info',     titlu: 'Factura a depășit termenul de plată' },
-  { zi: 5,  fel: 'warning',  titlu: 'Factură neachitată — 10 zile până la suspendare' },
-  { zi: 10, fel: 'warning',  titlu: 'Factură neachitată — 5 zile până la suspendare' },
-  { zi: 13, fel: 'critical', titlu: 'Ultimul avertisment — accesul se suspendă în 3 zile' }
+  { zi: 5,  fel: 'warning',  titlu: 'Factură neachitată — ' + zile(ZI_SUSPENDARE - 5) + ' până la suspendare' },
+  { zi: 10, fel: 'warning',  titlu: 'Factură neachitată — ' + zile(ZI_SUSPENDARE - 10) + ' până la suspendare' },
+  { zi: 13, fel: 'critical', titlu: 'Ultimul avertisment — accesul se suspendă în ' + zile(ZI_SUSPENDARE - 13) }
 ];
 
 // O factură contează la neplată doar dacă e emisă și încă neachitată. Ciornele nu obligă pe nimeni,

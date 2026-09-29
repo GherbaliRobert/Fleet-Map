@@ -914,6 +914,12 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   sfârșitul perioadei ei, iar la 15 zile după ea firma se bloca — pe o lună trecută, pe loc. Coloana
   `companies.access_until` a rămas în bază, dar **nu mai taie nimic**. NU reintroduce un ceas pe perioade plătite.
 - „Plătită" = `db.payInvoiceAtomic` (plata + starea facturii, într-o tranzacție) + `_invalidateAccessCache`.
+- **Titlurile avertismentelor de neplată se socotesc din `ZI_SUSPENDARE`** (11, 6 și 3 zile, în zilele 5, 10,
+  13). Erau scrise de mână („10 zile", „5 zile") și contraziceau textul de dedesubt. NU le scrie cu cifre.
+- **Firma nouă are factura automată OPRITĂ** (`auto_invoice` = false în bază, pe toate căile de creare), iar
+  ziua de facturare (1) și termenul (15 zile) nu au casetă pe ecran. Se pornește din Facturare → „Status
+  facturare companii" → „Auto". „Drumul clientului" nu o cere: „Prima factură" se bifează și cu factura
+  aparatelor. (Întrebare pusă lui Alin pe 29.09: s-o pornească singură „Client nou din ofertă"?)
 - `POST /api/companies/:id/payment` = **încasare fără factură** (sumă obligatorie), fără luni și fără acces.
 
 ### Abonamentul pe zile (`abonament.js`, curat)
@@ -1007,6 +1013,11 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   avarie `ADMIN_PASSWORD`. Plus `POST /api/me/password` — omul își schimbă **propria** parolă.
 - Probele își fac conturile pe **același traseu** (`test_parola.js` → `puneParola`). Nu adăuga o
   portiță „doar pentru teste": ar fi exact calea paralelă pe care o evităm.
+- **„Client nou" (Companii) arată și el linkul** (`coNouArataLinkul` → `_usrAratLinkul`). Până pe 29.09 îl
+  arunca și scria „Fără administrator încă", deși contul exista — fără SMTP, fiecare client nou rămânea fără
+  cale de a-și pune parola. Orice ecran nou care face conturi arată linkul întors de server.
+- **Pagina `set-password.html` cere `PAROLA_MIN`** (10), exact ca serverul — scria „min 6". Legate prin
+  `verify_utilizatori.js`; dacă schimbi cifra într-o parte, proba pică.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Suportul se face azi intrând cu contul clientului — de rezolvat (Alin, 18.09)
