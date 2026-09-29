@@ -227,10 +227,16 @@ function gata() {
   T('...iar istoricul de 13 luni al firmei se șterge', (await nr('B')).pozitii === 40);
   T('firma cu 36 de luni nu e atinsă de coborârea alteia', (await nr('C')).pozitii === 80);
 
-  // Factura: C are 36 de luni la 100 de lei → rândul ei.
+  // Factura: C are 36 de luni la 100 de lei → rândul ei. De pe 28.09 tot ce ține de firmă (și păstrarea)
+  // pornește cu prima mașină care transmite pe firmă; aparatele de aici au doar istoric pus direct în bază,
+  // deci le punem ziua de pornire acum două luni — factura lunii le ia întregi (o pornire de luna trecută
+  // ar aduce pe factură și zilele ei).
+  const _l = new Date(); const _t = new Date(_l.getFullYear(), _l.getMonth() - 2, 1);
+  const _zi = _t.getFullYear() + '-' + String(_t.getMonth() + 1).padStart(2, '0') + '-01';
+  for (const k of ['A', 'C']) await R('PUT', '/api/devices/' + imei[k] + '/abonament', { de_la: _zi });
   const dr = (await R('POST', '/api/invoices/draft', { companyId: fC.id })).j || {};
   const rP = (dr.lines || []).filter((l) => /^Păstrarea istoricului/.test(l.desc))[0];
-  T('pe factură: „Păstrarea istoricului — 36 de luni", 100 de lei', !!rP && rP.desc === 'Păstrarea istoricului — 36 de luni' && rP.net === 100, JSON.stringify(dr.lines));
+  T('pe factură: „Păstrarea istoricului — 36 de luni", 100 de lei, pe luna întreagă', !!rP && /^Păstrarea istoricului — 36 de luni — [a-z]+ \d{4}$/.test(rP.desc) && rP.net === 100, JSON.stringify(dr.lines));
   const drA = (await R('POST', '/api/invoices/draft', { companyId: fA.id })).j || {};
   T('firma pe cele 12 incluse n-are rând de păstrare', !(drA.lines || []).some((l) => /^Păstrarea istoricului/.test(l.desc)));
 

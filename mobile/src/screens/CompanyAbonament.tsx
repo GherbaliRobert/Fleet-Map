@@ -20,18 +20,10 @@ import './companii.css';
 //     CAN), pe când factura (_companyBillCounts) pune FMS-urile separat, la prețul FMS, oricum ar fi
 //     bifate. La o firmă cu FMS cele două pot ieși diferit — se spune pe ecran. (Cerere către server:
 //     overview.price din numărătoarea facturii.)
-//   • înregistrarea unei plăți.
+//   • (înregistrarea unei plăți cu „luni de acces" a plecat pe 29.09: plata se trece pe factură.)
 
-const METODE = [{ v: 'transfer', l: 'Transfer bancar' }, { v: 'cash', l: 'Numerar' }, { v: 'card', l: 'Card' }, { v: 'manual', l: 'Manual / altul' }];
 const s = (v: any) => (v != null ? String(v) : '');
 function lei2(v: any) { return (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' lei'; }
-// Suma unei plăți = abonamentul lunar de pe server × lunile alese (ca pe web). Fără ofertă → gol.
-function sumaAuto(ov: any, luni: any): string {
-  const pl = Number(ov && ov.price && ov.price.monthlyTotal) || 0;
-  if (!ov || !ov.offer || pl <= 0) return '';
-  const m = Math.max(1, parseInt(luni) || 1);
-  return (Math.round(pl * m * 100) / 100).toFixed(2);
-}
 function formaOfertei(ov: any) {
   const o = (ov && ov.offer) || {};
   return { name: o.name || '', priceNoneRON: s(o.priceNoneRON), priceCanRON: s(o.priceCanRON), aiAssistantRON: s(o.aiAssistantRON), aiAgentsRON: s(o.aiAgentsRON), note: o.note || '' };
@@ -53,7 +45,6 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
   const q0 = ov.ai_quota || {};
   const [aiqN, setAiqN] = useState(s(q0.questionsPerSeat || q0.questions || ''));
   const [aiqS, setAiqS] = useState(s(q0.seatPriceRON || ''));
-  const [pay, setPay] = useState({ months: '1', amount: sumaAuto(ov, 1), touched: false, method: 'transfer', note: '' });
   const [susp, setSusp] = useState<{ cere: boolean; motiv: string }>({ cere: false, motiv: '' });
   const [reactivez, setReactivez] = useState(false);
   const [busy, setBusy] = useState('');
@@ -66,7 +57,6 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
     setFeats(Object.assign({ ai_assistant: false, agents: false }, ov.features || {}));
     const q = ov.ai_quota || {};
     if (!aiqAtins.current) { setAiqN(s(q.questionsPerSeat || q.questions || '')); setAiqS(s(q.seatPriceRON || '')); }
-    setPay((p) => (p.touched ? p : { ...p, amount: sumaAuto(ov, p.months) }));
   }, [ov]);
 
   const so = (k: string, v: string) => { ofAtins.current = true; setOf((p) => ({ ...p, [k]: v })); setModificat(true); };
@@ -78,7 +68,7 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
   let titlu = '', fel = '', text = '';
   if (a.status === 'expired') {
     fel = 'bad';
-    titlu = manual ? 'Acces oprit de noi' : (a.motiv === 'neplata' ? 'Acces suspendat pentru neplată' : 'Acces suspendat — abonament expirat');
+    titlu = manual ? 'Acces oprit de noi' : 'Acces suspendat pentru neplată';
     if (manual && co.suspend_reason) text = 'Motivul scris: „' + co.suspend_reason + '".';
     else if (np && np.factura) text = 'Factura ' + (np.factura.numar || '') + ' e neachitată de ' + np.zile + de(np.zile) + 'zile.';
     text += (text ? ' ' : '') + 'Clientul nu poate intra deloc. Aparatele transmit mai departe, datele nu se pierd.';
@@ -87,8 +77,9 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
     titlu = 'Factură restantă — ' + np.zilePanaLaSuspendare + de(np.zilePanaLaSuspendare) + 'zile până la suspendare';
     text = 'Factura ' + ((np.factura || {}).numar || '') + ' a fost scadentă acum ' + np.zile + de(np.zile) + 'zile. Suspendarea vine singură dacă nu se plătește.';
   } else {
-    fel = ({ unlimited: '', active: 'ok', grace: 'warn', expired: 'bad' } as Record<string, string>)[a.status] || '';
-    titlu = a.status === 'grace' ? 'Abonament în grație' : (a.status === 'unlimited' ? 'Acces nelimitat' : 'Acces în regulă');
+    // Fără „nelimitat" și fără „abonament în grație": ceasul pe perioade plătite a plecat pe 29.09.
+    fel = a.status === 'active' ? 'ok' : '';
+    titlu = 'Acces în regulă';
     text = 'Nicio factură restantă.';
   }
   async function suspenda(pornit: boolean) {
@@ -163,19 +154,6 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
   const aiqAcum = Number(q.questionsPerSeat) > 0
     ? q.questionsPerSeat + de(q.questionsPerSeat) + 'întrebări/cont' + (Number(q.seatPriceRON) > 0 ? ' · ' + lei2(q.seatPriceRON) + '/cont' : '')
     : (Number(q.questions) > 0 ? q.questions + de(q.questions) + 'întrebări/lună, fond fix vechi pe firmă' : 'nelimitat');
-
-  // ── Plata ──
-  async function inregistreazaPlata() {
-    const amt = String(pay.amount ?? '').trim();
-    setBusy('plata');
-    try {
-      await Api.recordPayment(id, { months: Math.max(1, parseInt(pay.months) || 1), amount: amt !== '' ? amt : null, method: pay.method || 'transfer', note: pay.note.trim() || null });
-      showToast('Plată înregistrată ✓');
-      setPay({ months: '1', amount: '', touched: false, method: 'transfer', note: '' });
-      onReload();
-    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
-    finally { setBusy(''); }
-  }
 
   const pr = ov.price || null;
   const bc = ov.billCounts || {};
@@ -322,28 +300,11 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
         {modificat && <div class="co-msg" style="color:var(--co-warn);font-weight:700">Ai schimbat oferta — apasă „Salvează oferta" ca să vezi prețul nou.</div>}
       </div>
 
-      {/* Plata */}
+      {/* Plățile (29.09): se trec PE FACTURĂ. Formularul „Înregistrează plata + extinde accesul" (luni × preț)
+          a plecat odată cu ceasul vechi „acces până la", care bloca clienți care plătiseră tot. */}
       <div class="fm-card pad">
-        <h3 style="margin-top:0">Înregistrează plată</h3>
-        <div class="frm">
-          <div class="frm-row">
-            <div class="fld"><label>Luni</label><input type="number" inputMode="numeric" min="1" max="36" value={pay.months}
-              onInput={(e: any) => { const v = e.target.value; setPay((p) => ({ ...p, months: v, amount: p.touched ? p.amount : sumaAuto(ov, v) })); }} /></div>
-            <div class="fld"><label>Sumă (RON)</label><input type="number" inputMode="decimal" min="0" step="0.01" value={pay.amount} placeholder="opțional"
-              onInput={(e: any) => { const v = e.target.value; setPay((p) => ({ ...p, amount: v, touched: true })); }} /></div>
-          </div>
-          {ov.offer && <div class="co-note" style="margin:0">Suma = prețul lunar de mai sus × lunile alese{nFms > 0 ? ' (nu suma facturii — vezi nota despre FMS)' : ''}. O poți modifica.</div>}
-          <div class="frm-row">
-            <div class="fld"><label>Metodă</label>
-              <select value={pay.method} onChange={(e: any) => setPay((p) => ({ ...p, method: e.target.value }))}>
-                {METODE.map((m) => <option value={m.v}>{m.l}</option>)}
-              </select></div>
-            <div class="fld"><label>Notă (nr. factură)</label><input value={pay.note} placeholder="ex. F 2026-0123"
-              onInput={(e: any) => { const v = e.target.value; setPay((p) => ({ ...p, note: v })); }} /></div>
-          </div>
-          <button class="btn btn-primary" disabled={busy === 'plata'} onClick={inregistreazaPlata}>
-            <Icon name="coins" size={16} color="#06210F" /> {busy === 'plata' ? 'Se înregistrează…' : 'Înregistrează plata + extinde accesul'}</button>
-        </div>
+        <h3 style="margin-top:0">Plăți</h3>
+        <div class="co-note" style="margin:0">Plata se trece pe factură: Facturare → factura → „Plătită". Accesul clientului se oprește doar pentru o factură neplătită la 15 zile după scadență — nu mai există „acces până la".</div>
       </div>
 
       {reactivez && (

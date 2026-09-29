@@ -135,7 +135,7 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
 - **Expirarea** e per utilizator (`users.access_until`, epoch ms) și se verifică pe **toate** căile de
   autentificare: `/api/login`, `/api/mobile/login`, cheie API/token mobil, WebSocket, plus per-request în
   `refreshAuth` (sesiunea deschisă nu se invalidează singură — cookie 24h). Cutoff HARD: NU refolosi
-  `companyAccessStatus`, care acordă 15 zile de grație.
+  regula de acces a FIRMEI (`stareAcces`), care numără 15 zile de grație după scadența unei facturi.
 - **Conturile demo nu pot trimite emailuri prin serverul nostru** (`_demoBlocked`): fără rapoarte programate
   și fără formularul de suport — altfel demo-ul devine releu de spam pe reputația domeniului.
 - **`DEMO_DISABLED=true` NU mai șterge nimic.** De când demo-ul se acordă la cerere, compania demo e parte din
@@ -689,7 +689,8 @@ O linie de pași: **Oferta → Trimis la semnat → Semnat → Montajul → Apar
 - Pe ecran: `_raxDrumHtml` sus pe fila Contract; `_ctrePasHtml` în listă (după semnare arată pasul drumului).
   Butoanele: `_drumButon` — montaj → `raxDrumMontaj` (deschide formularul lucrării), aparate →
   `raxDrumAparate` → `raxDevDeschideNeasignate()` (**adopția rămâne într-un singur loc**, decizia din 17.09 —
-  NU pune a doua cale de adopție în fișă), factura → `raxOpenGenInvoice(companyId)`.
+  NU pune a doua cale de adopție în fișă), factura → `raxOpenGenInvoice(companyId, 'unica')` (prima factură
+  de după montaj e cea unică: aparate + montaj, din contract; abonamentul pleacă singur, pe zile).
 - Butoanele din fișă și din listă sunt ACELEAȘI funcții (`raxCtre…`); `_ctreGasit` găsește contractul și din
   fișă, iar `_ctreDupa` redesenează ce e deschis (fișa și/sau lista).
 - Păzit de `verify_drum.js` (în `npm test`), care parcurge tot drumul pe server pornit.
@@ -896,6 +897,76 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
   factură DOAR mașinile fără CAN (221 de lei → 86). Nu s-a emis nicio factură între timp. Registrul
   și factura trebuie să dea aceeași sumă: păzit de `verify_factura.js`, care citește numele din
   plans.js și compară factura cu registrul pe 12 feluri de flote.
+
+## Facturarea: abonamentul pe zile, facturile unice, proforma, accesul (Alin, 28–29.09)
+
+Alin: „1. A" (abonamentul pe zile, din prima transmisie), „2. da" (repară problemele de facturare), „3. da la
+amândouă" (trecerea în bloc + factura unică din contract). Toate trei probate înainte pe server pornit.
+
+### Accesul unei firme se oprește DOAR pentru neplată sau de mână
+- **O singură regulă: `stareAcces(co, facturi, acum)`** (server.js) → `active` / `grace` (factură trecută de
+  scadență, în cele 15 zile, cu `mesaj` din `neplata.mesajClient`) / `expired` (`motiv`: `neplata` | `manual`).
+  `_accessStatusCached`, listele de firme, exportul registrului, cartonașul de pe „Acasă", `/api/me`,
+  „Facturile mele" — toate trec prin ea.
+- **Ceasul vechi „acces până la" a fost SCOS** (`companyAccessStatus`, `GRACE_DAYS`, `billingReminderTick`
+  cu anunțul lui orar, ruta `PUT /api/companies/:id/access`, `setCompanyAccessUntil`, formularul „Înregistrează
+  plata + extinde accesul"). Bloca clienți care plătiseră tot: „Plătită" pe o factură punea `access_until` =
+  sfârșitul perioadei ei, iar la 15 zile după ea firma se bloca — pe o lună trecută, pe loc. Coloana
+  `companies.access_until` a rămas în bază, dar **nu mai taie nimic**. NU reintroduce un ceas pe perioade plătite.
+- „Plătită" = `db.payInvoiceAtomic` (plata + starea facturii, într-o tranzacție) + `_invalidateAccessCache`.
+- `POST /api/companies/:id/payment` = **încasare fără factură** (sumă obligatorie), fără luni și fără acces.
+
+### Abonamentul pe zile (`abonament.js`, curat)
+- **Factura lunii M** = M întreagă pentru aparatele pornite înainte de 1 M + zilele din M-1 pentru cele pornite
+  în M-1 (din ziua pornirii). Ce ține de firmă (RA Insight, păstrare, chirie, tarif fix) — la fel, de la prima
+  mașină pornită. Pornirea dintr-o lună se facturează ÎNTOTDEAUNA pe factura lunii următoare, oricare ar fi
+  ziua de facturare: nicio zi de două ori, niciuna pierdută.
+- **`devices.abonament_de_la`** (ms) se scrie la PRIMUL pachet primit după ce aparatul e pe o firmă client
+  (`_pornesteAbonamentul`, după scrierea reușită în ingest + în `/api/test/simulate`); `db.pornesteAbonamentul`
+  nu suprascrie. Neasignat / demo / arhivat → nu pornește. `setDeviceCompany` o ȘTERGE când firma se schimbă.
+  Corectura noastră: `PUT /api/devices/:imei/abonament` (super, audit, fără zile din viitor).
+- **Migrarea o singură dată** (`migreazaPornireaAbonamentelor`, marcaj `abonament_pornire_migrat`): aparatele
+  care transmiteau deja primesc o zi din trecut → plătesc luna întreagă, ca înainte. NU o rula a doua oară.
+- Prețurile: `_liniiAbonament` cheamă **`buildInvoiceLines`** (aceeași funcție dintotdeauna) — pe o lună cu
+  toate mașinile pornite, suma e IDENTICĂ cu factura veche și cu registrul. `buildInvoiceLines` rămâne și
+  pentru „Contract ↔ factură" și registru (luna întreagă). Rândurile pe zile: `abonament.scaleaza`.
+- Hârtia spune regula: contractul (IV) și condițiile ofertei. Nu promite altceva decât face aplicația.
+
+### Fiecare factură știe ce e (`invoices.fel`, `luna`)
+- `fel` = `abonament` (cu `luna` 'AAAA-LL') | `unica` | NULL (factură veche, de dinainte de 28.09).
+- **Factura automată** caută DOAR abonamentul lunii (`db.abonamentLuna`, inclusiv anulat — ce ai anulat nu se
+  reemite singur). Regula veche („orice factură în lună") a rămas doar pentru facturile VECHI, ca luna trecerii
+  să nu se factureze de două ori. Până atunci, o factură pentru un aparat oprea în tăcere abonamentul lunii.
+- **De mână:** a doua factură de abonament pe aceeași lună → **409** cu numărul celei existente; după anulare
+  se poate reface. Fără `fel` (telefonul vechi) serverul îl deduce din rânduri („Abonament…"/„Supliment…").
+
+### Factura unică și proforma
+- `POST /api/invoices/draft { fel: 'unica' }` întoarce `dinContract` (`_unicaDinContract`): **aparatele din
+  Anexa nr. 2 la cursul ÎNGHEȚAT acolo** + **lucrările de montaj executate și nefacturate** (cantitățile
+  reale). La o factură FISCALĂ, lucrările trimise în `montaje` trec pe `facturat_clientului`
+  (`db.marcheazaMontajeFacturate`) și nu mai sunt propuse.
+- **Proforma:** `tip: 'proforma'`, serie proprie `PF_SERIES` (implicit „PF") — NU ia numere din șirul fiscal.
+  Fără ANAF și fără XML (refuz 400), nu intră în neplată, nici în „Prima factură" din drum (`drumDateToate`),
+  nici în venituri. `PUT /api/invoices/:id/status {paid}` pe o proformă = **„Încasată"**: emite factura fiscală
+  (seria RAT, aceleași rânduri, `din_proforma`), o marchează plătită atomic, iar proforma primește
+  `factura_id`. A doua apăsare nu face a doua factură; proforma încasată nu se anulează.
+- Hârtia proformei: „FACTURĂ PROFORMĂ" + „document fără valoare fiscală" (`_invFiscalHtml`, același șablon).
+- Ce fel de factură se emite la încasarea unui avans (de avans / finală) = întrebare pentru contabil, în
+  „De amintit". Nu schimba forma fără răspunsul lui.
+
+### Trecerea mai multor aparate pe firmă
+- `PUT /api/devices/company-bulk { company_id, imeis }` și `PUT /api/devices/:imei/company` trec AMÂNDOUĂ
+  prin **`_trecePeFirma`** (o singură funcție: firma, cache-urile, pornirea abonamentului, stocul, auditul).
+- Pe ecran, DOAR în „Dispozitive → Neasignate" (bife + bara `_raxDevBaraBloc`) — adopția rămâne într-un
+  singur loc (17.09). NU pune bife de adopție în altă parte.
+
+### Ce vede clientul
+- „Facturile mele" (`GET /api/billing/my-invoices`) = **documentele adevărate** ale firmei (facturi + proforme,
+  fără ciorne), tipărite cu `_invFiscalHtml`. NU mai arăta plăți cu număr inventat (`_raxInvNo` — scos: făcea
+  „RAT-AAAA-000{id plată}", care se putea bate cap în cap cu o factură adevărată). Răspunsul mai poartă
+  `amount_ron` doar pentru telefonul vechi, până la APK.
+- Păzit de `verify_abonament.js` (în `npm test`, inclusiv pe server pornit), `verify_neplata.js`,
+  `verify_companii.js`, `verify_factura.js`.
 
 ## Parola nu există (regulă de fond)
 

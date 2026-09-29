@@ -3714,3 +3714,26 @@ body:not(.dark) .raof-ms-not{ color:#c2410c; }
 .raof-ms-sumar b{ color:var(--text-primary); }
 .raof-ms-sumar .rax-btn{ align-self:flex-start; }
 @media (max-width:640px){ .raof-ms-link{ margin-left:0; } }
+
+/* ─── „Generează factură" (28.09): ce facturezi (abonament / unică) și ce document (factură / proformă) ───
+   Două cartonașe apăsabile, cu o frază sub nume — alegerea are bani în spate, deci spune ce face. */
+.rax-gi-fel{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rax-gi-fel button{ display:flex; flex-direction:column; gap:2px; text-align:left; padding:9px 12px; border-radius:10px;
+  border:1px solid var(--border); background:var(--bg-dark); color:var(--text-primary); cursor:pointer; font-family:inherit; }
+.rax-gi-fel button b{ font-size:13px; font-weight:700; }
+.rax-gi-fel button span{ font-size:11.5px; color:var(--text-secondary); line-height:1.35; }
+.rax-gi-fel button.on{ border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.rax-gi-avert{ font-size:12px; line-height:1.45; color:var(--orange); background:rgba(245,158,11,.10);
+  border:1px solid rgba(245,158,11,.35); border-radius:8px; padding:8px 10px; margin-bottom:8px; }
+body:not(.dark) .rax-gi-avert{ color:#9a3412; }
+@media (max-width:520px){ .rax-gi-fel{ grid-template-columns:1fr; } }
+/* Fereastra stă direct în <body>, în afara `.ra-camp`, deci regula casei pentru butonul stins nu o prinde:
+   „Aparatele din contract" apăsat o dată trebuie să se VADĂ stins (măsurat pe captură, 29.09). */
+#rax-geninv-overlay .rax-btn:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+
+/* „Dispozitive" → Neasignate: bife pe rânduri + trecerea în bloc pe o firmă (28.09) */
+.rax-dev-bulk{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 10px; margin:6px 0 8px;
+  border:1px dashed var(--border); border-radius:10px; font-size:12.5px; }
+.rax-dev-bulk select{ margin:0; width:auto; min-width:180px; height:32px; }
+.rax-dev-abo{ display:block; font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; }
+.rax-dev-abo button{ border:0; background:none; padding:0 0 0 4px; color:var(--text-muted); cursor:pointer; font-family:inherit; }

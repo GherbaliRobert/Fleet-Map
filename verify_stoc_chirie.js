@@ -291,6 +291,13 @@ function gata() {
   T('anexa nr. 2: doar montajul — aparatele nu se vând', c.montaj && (c.montaj.items || []).length === 1 && !((c.montaj.echipamente || {}).items || []).length, JSON.stringify(c.montaj));
   const ov = (await R('GET', '/api/companies/' + co.id + '/overview')).j || {};
   T('pe firmă: chiria scrisă din contract (3 × 14 = 42 lei/lună)', ov.chirie && ov.chirie.totalRON === 42 && ov.chirie.randuri[0].cant === 3, JSON.stringify(ov.chirie));
+  // De pe 28.09 abonamentul — și chiria, ca tot ce ține de firmă — pornește cu PRIMA mașină care transmite
+  // pe firmă (regula pe zile, abonament.js). Punem o mașină care transmite, pornită acum două luni (luna
+  // trecută ar intra și ea pe factură, cu zilele ei): factura lunii o ia întreagă, cu chiria alături.
+  await R('POST', '/api/devices', { imei: '860000000000777', company_id: co.id, name: 'Duba chirie' });
+  await R('POST', '/api/test/simulate', { imei: '860000000000777' });
+  const _luna = new Date(); const _trec = new Date(_luna.getFullYear(), _luna.getMonth() - 2, 1);
+  await R('PUT', '/api/devices/860000000000777/abonament', { de_la: _trec.getFullYear() + '-' + String(_trec.getMonth() + 1).padStart(2, '0') + '-01' });
   const fa = (await R('POST', '/api/invoices/draft', { companyId: co.id })).j || {};
   const rf = (fa.lines || []).filter((l) => /^Chirie echipament — Teltonika FMC130/.test(l.desc))[0];
   T('factura: rând separat „Chirie echipament", 3 × 14 lei', rf && rf.qty === 3 && rf.net === 42, JSON.stringify(fa.lines));

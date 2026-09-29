@@ -26,7 +26,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Un jurist** să citească ambele contracte, cu clienții și cu partenerii de montaj (plus acordurile
   GDPR din anexe), înainte de primul semnat. Se schimbă într-un singur loc: `contract_pdf.js`.
   **Din 25.09, și clauzele de închiriere** (aparatele ale noastre, 24 de luni minim, chiria lunilor rămase,
-  returul în 15 zile, valoarea aparatelor nereturnate).
+  returul în 15 zile, valoarea aparatelor nereturnate). **Din 29.09, și clauza nouă din IV:** abonamentul
+  fiecărui vehicul pornește la prima transmisie a aparatului, prima lună pe zile.
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -54,11 +55,17 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Cititorul ECAN02, cititorul de card al șoferului și blocarea pornirii apar doar la pasul 2 (în „Ce
   recomanzi" și în întrebările pentru client); când un client le cere, se scriu la „Observații". Rândurile
   de preț se fac abia când avem prețurile lor de la furnizor și un client care le vrea.
-- [ ] **Voi: de la ce zi plătește clientul abonamentul unei mașini. Adăugat pe 28.09, găsit când am
-  explicat ce urmează după semnare (exemplul cu 50 de GPS-uri).** Contractul nu spune. Aplicația, dacă e
-  bifat „Auto" la facturare, ia luna ÎNTREAGĂ și numără aparatele aflate pe firmă în clipa aceea, montate
-  sau nu. De ales: pe zile, din ziua în care aparatul transmite prima dată (recomandarea mea), sau din luna
-  de după montaj (luna montajului gratuită). Ce hotărâți se scrie și în contract.
+- [x] **HOTĂRÂT (28.09): de la ce zi plătește clientul abonamentul unei mașini.** Alin: „1. A" — pe zile,
+  din ziua în care aparatul montat transmite prima dată; prima lună pe factura lunii următoare. Făcut pe
+  29.09, scris și în contract (IV) și în condițiile ofertei.
+- [ ] **Voi: regulile de plată pentru aparate și montaj. Adăugat pe 29.09, din exemplul cu Transport SRL.**
+  Proforma pentru aparate la semnare, cât avans, de când curg cele 30 de zile (de la încasare), ce facem dacă
+  nu plătește, când se facturează montajul. Propunerea mea e în răspunsul din 29.09; după ce hotărâți, o
+  scriu în contract și în ofertă (și o citește juristul).
+- [ ] **Contabilul: proforma și factura de după ea. Adăugat pe 29.09.** Aplicația face acum proforme (serie
+  proprie, PF-…, fără ANAF), iar la încasare emite singură factura fiscală, cu aceleași rânduri, marcată
+  plătită. De întrebat: la un avans încasat înainte de livrare se emite „factură de avans" și apoi factura
+  finală, sau direct factura finală? Și în ce termen, ca să nu întârziem la ANAF.
 
 ---
 
@@ -251,6 +258,126 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+### AMÂNDOI · „Plătită" nu mai blochează clienți: accesul se oprește doar pentru neplată sau de mână
+
+Alin, la „Repar cele 3 probleme?": *„da"*.
+
+**Ce era:** marcarea unei facturi ca plătită punea firmei o dată de „acces până la" (sfârșitul lunii de pe
+factură), iar la 15 zile după ea accesul se tăia, cu mesajul „Abonament suspendat pentru neplată". Un ceas
+vechi, rămas lângă regula din 09.09. Probat pe 28.09: factură pe iulie, **plătită** → clientul blocat pe loc.
+Lună de lună, ceasul cerea plata cu o zi ÎNAINTEA scadenței facturii. Și trimitea, la fiecare oră, un anunț
+„abonamentul a expirat, 15 zile de grație" care contrazicea scadența de pe factură.
+
+**Ce e acum:**
+- Accesul se oprește **doar** în două cazuri: o factură neplătită la **15 zile după scadență** (cu cele patru
+  avertismente de până atunci) sau când îl oprești tu, cu motiv. Regula stă într-un singur loc.
+- „Plătită" scrie încasarea **o dată cu factura** (plata și starea, deodată) — nu mai atinge accesul.
+- A plecat tot ce ținea de ceasul vechi: coloana „Acces până", „∞ Nelimitat", „în grație", anunțul orar,
+  ruta prin care se punea de mână data de acces, formularul „Înregistrează plata + extinde accesul" din
+  „Abonament & plăți".
+- „Înregistrează plată" a devenit **„Încasare fără factură"**: doar o sumă primită, fără luni de acces.
+  Plata unei facturi se trece de pe factură, cu ✓.
+- Tabelul din Facturare arată acum **„Plăți"** (la zi / restanță, cu zilele până la suspendare / suspendat)
+  și **„Factura restantă"** (numărul și scadența), cu buton direct la facturile firmei.
+
+- **Ce am schimbat:** regula accesului (doar neplată sau de mână); plata scrisă odată cu factura.
+- **Ce vede fondatorul:** Facturare fără „Acces până"; „Încasare fără factură"; fila Facturi din fișa firmei.
+- **Ce vede clientul:** banda portocalie apare doar când are o factură restantă, cu ziua până la care o
+  poate plăti. Un client care a plătit nu mai e blocat niciodată de un calendar.
+
+### AMÂNDOI · Abonamentul pe zile, din ziua în care aparatul transmite prima dată
+
+Alin, la „De la ce zi plătește clientul abonamentul unei mașini?": *„1. A"* — pe zile, din prima transmisie.
+
+**Regula:** factura lunii (de ex. noiembrie) cuprinde:
+1. **noiembrie întreg** pentru fiecare mașină pornită înainte de 1 noiembrie;
+2. **zilele din octombrie** pentru mașinile pornite în octombrie, din ziua pornirii până pe 31.
+
+Exemplul tău — 50 de mașini cu CAN (45 lei), montate 10–14 octombrie, câte 10 pe zi: factura din
+1 noiembrie = 50 × 45 = **2.250 lei** pentru noiembrie + **1.451,61 lei** pentru zilele din octombrie
+(10 mașini × 22 de zile, 10 × 21, … 10 × 18), fiecare zi de montaj pe rândul ei. Octombrie nu mai are
+factură de abonament separată.
+
+**Cum „pornește" o mașină:** la **primul pachet** primit după ce aparatul e pe firma clientului. Un aparat
+trecut pe firmă, dar nemontat, nu transmite → nu plătește. Ziua apare pe rândul aparatului, în Dispozitive
+(„abonament din 10.10.2026"), și se poate corecta de mână (✎) — de exemplu dacă a transmis de pe masa de
+probă. Mutat pe altă firmă → pornește din nou la prima transmisie acolo.
+
+**Ce ține de firmă** (RA Insight, păstrarea istoricului, chiria, tariful fix) pornește **cu prima mașină**,
+tot pe zile.
+
+**Aparatele care transmiteau deja** (la prima pornire după schimbare) rămân pe luna întreagă, ca până acum —
+fără zile socotite a doua oară pentru o lună deja facturată.
+
+**Și problema 2:** fiecare factură știe acum ce e — **abonamentul unei luni** sau **factură unică**.
+Factura automată caută doar abonamentul lunii, deci o factură pentru aparate emisă pe 5 martie nu mai oprește
+abonamentul din martie. O lună de abonament se facturează **o singură dată**: a doua, de mână, se refuză cu
+numărul celei existente; după anulare, o poți reface.
+
+**Pe hârtie:** contractul (capitolul IV) și condițiile ofertei spun regula, cu aceleași cuvinte.
+
+- **Ce am schimbat:** factura de abonament se face pe zile, din prima transmisie; facturile au fel și lună.
+- **Ce vede fondatorul:** în „Generează factură", ce intră (câte mașini întregi, câte pe zile, câte nu
+  transmit încă); ziua de pornire pe fiecare aparat, în Dispozitive.
+- **Ce vede clientul:** pe factură, rânduri cu luna („— noiembrie 2026") și cu zilele de la montaj
+  („— 10–31.10.2026 (22 de zile)"). Nu plătește nimic pentru o mașină încă nemontată.
+
+### FONDATOR · Factura unică, completată din contract — și proforma
+
+Alin, la „Două scurtături… le fac?": *„da la amândouă"*.
+
+**„Generează factură"** întreabă întâi **ce facturezi**:
+- **Abonamentul unei luni** — alegi luna, rândurile vin pe regula pe zile.
+- **Factură unică** (aparate, montaj) — alegi **Factură fiscală** sau **Proformă**, apoi apeși:
+  - **„Aparatele din contract"** — cantitățile și prețurile din Anexa nr. 2, la **cursul înghețat** acolo
+    (ex. 50 × 55 € × 5,0785 = 279,32 lei bucata);
+  - **„Montajul executat pe …"** — din lucrările de montaj terminate, cu **cantitățile reale** (dacă s-au
+    montat 48 din 50, se facturează 48). Pusă pe o factură fiscală, lucrarea trece singură pe „facturat
+    clientului" și nu mai e propusă a doua oară.
+  Un buton apăsat o dată se stinge — aceleași aparate de două ori ar fi o greșeală.
+
+**Proforma:** serie proprie (**PF-2026-00001**), ca să nu facă găuri în șirul facturilor fiscale; nu merge la
+ANAF; nu suspendă pe nimeni dacă nu e plătită (e o cerere de plată, nu o factură); nu bifează „Prima factură"
+din drumul clientului. Când intră banii, apeși **✓ „Încasată"** → se emite pe loc **factura fiscală** (seria
+RAT), cu aceleași rânduri, marcată plătită, legată de proformă. Pe hârtie scrie „FACTURĂ PROFORMĂ" și „document
+fără valoare fiscală".
+
+**Fișa firmei → fila Facturi** arată acum documentele firmei (facturi și proforme, cu starea lor și ✓), nu
+doar plățile, plus două butoane: „Factură unică / proformă" și „Abonamentul unei luni". Butonul „Emite prima
+factură" din drumul clientului deschide direct factura unică.
+
+- **Ce am schimbat:** factura unică și proforma, completate din contract și din lucrări.
+- **Ce vede fondatorul:** „Generează factură" cu cele două alegeri; fila Facturi din fișa firmei.
+- **Ce vede clientul:** proforma și factura, în „Facturile mele". Nimic de lucrat.
+
+### FONDATOR · Mai multe aparate pe firmă dintr-o apăsare
+
+Tot „da"-ul de la scurtături. În **Dispozitive → Neasignate** fiecare rând are o **bifă**, iar sus o bară:
+„Toate (N) · X bifate · [alege firma] · **Trece pe firmă**". 50 de aparate = o apăsare, nu 50 de alegeri.
+
+Adopția rămâne **într-un singur loc** (aici), iar serverul folosește aceeași regulă ca la un singur aparat.
+Fereastra de confirmare spune că abonamentul fiecăruia pornește la prima transmisie — deci poți trece pe firmă
+mașinile pe măsură ce le montează instalatorul.
+
+- **Ce am schimbat:** bife + trecerea în bloc în „Neasignate".
+- **Ce vede fondatorul:** bara de trecere în bloc, deasupra aparatelor neasignate.
+- **Ce vede clientul:** mașinile apar pe hartă, ca până acum, când transmit.
+
+### CLIENT · „Facturile mele" arată facturile adevărate
+
+**Ce era:** clientul vedea aici **plățile** noastre, îmbrăcate în „Factură RAT-2026-000{id plată}" — un număr
+**inventat** din id-ul plății, care se putea bate cap în cap cu numărul unei facturi adevărate. Facturile
+fiscale nu le putea deschide deloc. La fel, registrul nostru de încasări avea coloana „Nr. factură" cu numere
+inventate.
+
+**Acum:** clientul vede **documentele emise pe firma lui** — facturi și proforme, cu numărul lor, data,
+scadența, suma și starea (de plată / restantă / plătită / anulată) — și le deschide cu **aceeași hârtie** ca
+noi. Registrul nostru se numește „Plăți / încasări": data, firma, suma, pentru ce.
+
+- **Ce am schimbat:** lista clientului citește facturile; numerele inventate au plecat.
+- **Ce vede fondatorul:** registrul de încasări fără numere de factură inventate.
+- **Ce vede clientul:** facturile și proformele lui, adevărate. (Pe telefon, de la următorul APK.)
 
 ## 2026-09-28
 
@@ -8882,19 +9009,17 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### A. Blocante — fără astea nu dăm drumul
 
-- [ ] **(eu) Facturarea: trei probleme găsite pe 28.09, probate pe server pornit.** Aștept „da"-ul lui
-  Alin ca să le repar.
-  1. **„Plătită" poate bloca un client care a plătit tot.** Plata unei facturi pune firmei o dată de
-     „acces până la" (sfârșitul lunii de pe factură), iar la 15 zile după ea accesul se taie, cu mesajul
-     „Abonament suspendat pentru neplată". E un ceas vechi, rămas lângă regula din 09.09. Probat: factură
-     pe iulie, plătită → clientul blocat pe loc. Lună de lună, ceasul cere plata cu o zi ÎNAINTEA
-     scadenței facturii (ziua 1 + 15 zile de termen = scadența pe 16, ceasul se oprește pe 15). Dacă
-     o factură lunară nu se emite, clientul se blochează fără să datoreze nimic.
-  2. **O factură făcută de mână într-o lună oprește factura automată a acelei luni**, fără niciun semn.
-     Probat: factură pentru un aparat → abonamentul lunii n-a mai plecat.
-  3. **Factura automată nu știe de montaj.** Ia luna întreagă și numără ce e pe firmă în clipa aceea.
-     Probat: 3 aparate trecute pe firmă, niciunul montat → factură pe toată luna. Se repară după ce
-     hotărâți de la ce zi se plătește abonamentul (lista „De amintit").
+- [x] **REZOLVAT (29.09): facturarea — cele trei probleme găsite pe 28.09.** Alin: „2. Repar? — da".
+  1. „Plătită" nu mai pune „acces până la": accesul se oprește DOAR pentru o factură neplătită la 15 zile
+     după scadență sau de mână. Probat: factură pe o lună trecută, plătită → clientul intră.
+  2. O factură unică (aparate, montaj) nu mai oprește abonamentul automat al lunii. Probat.
+  3. Factura automată ia doar mașinile care transmit, pe zile de la montaj (decizia 1:A). Probat.
+  Vezi intrarea din 29.09.
+
+- [ ] **(eu) APK-ul de după 1.0.3: ecranele de facturare de pe telefon.** Sursa e pregătită (29.09): fără „acces
+  până la", fără plăți cu număr de factură inventat, fără butonul mort de plată cu cardul, clientul își vede
+  documentele adevărate. Până la APK, telefonul vechi arată lista clientului cu sumele, dar cu numere
+  vechi, inventate — se rezolvă la instalarea APK-ului nou, nu cere nimic separat.
 
 - [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),

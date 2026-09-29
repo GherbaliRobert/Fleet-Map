@@ -106,21 +106,22 @@ export function sorteaza(rows: any[], s: { col: ColSort; dir: number }, mrr: any
 // Fel de pastilă: '' (gri) · 'ok' (verde) · 'warn' (portocaliu) · 'bad' (roșu).
 export type Fel = '' | 'ok' | 'warn' | 'bad';
 
-// Accesul, ca pe web (_raxAccessCell): un client suspendat se vede SUSPENDAT, cu motivul — trei cauze,
-// care se rezolvă altfel fiecare — iar o restanță în derulare arată câte zile mai are.
+// Accesul, ca pe web (_raxAccessCell): un client suspendat se vede SUSPENDAT, cu motivul — două cauze
+// (neplată, oprit de noi), care se rezolvă altfel fiecare — iar o restanță în derulare arată câte zile mai
+// are. Fără „nelimitat" și fără „până la": ceasul pe perioade plătite a plecat pe 29.09 (bloca clienți
+// care plătiseră tot) — accesul ține doar de facturile neplătite.
 export function accesPastila(c: any): { et: string; fel: Fel; sub: string } {
   const a = (c && c.access) || {};
   const np = (c && c.neplata) || null;
   if (a.status === 'expired') {
-    const et = a.motiv === 'manual' ? 'oprit de noi' : (a.motiv === 'neplata' ? 'suspendat — neplată' : 'suspendat — abonament');
+    const et = a.motiv === 'manual' ? 'oprit de noi' : 'suspendat — neplată';
     return { et, fel: 'bad', sub: np && np.factura ? 'factura ' + (np.factura.numar || '') : '' };
   }
   if (np && np.faza === 'avertisment') {
     return { et: 'restanță · ' + np.zilePanaLaSuspendare + ' zile', fel: 'warn', sub: 'factura ' + ((np.factura && np.factura.numar) || '') };
   }
-  const map: Record<string, [string, Fel]> = { unlimited: ['nelimitat', ''], active: ['activ', 'ok'], grace: ['în grație', 'warn'] };
-  const m = map[a.status] || map.unlimited;
-  return { et: m[0], fel: m[1], sub: a.access_until ? 'până ' + dataRo(a.access_until) : '' };
+  if (a.status === 'active') return { et: 'activ', fel: 'ok', sub: '' };
+  return { et: '—', fel: '', sub: '' };
 }
 
 // „Ultima activitate": liniștea prea lungă e un client care se stinge.
@@ -153,12 +154,14 @@ export function dosarPastila(dosar: any): { et: string; fel: Fel; titlu: string 
   };
 }
 
-// Accesul în fila Detalii (_raxCodDetalii): eticheta lungă + culoarea.
+// Accesul în fila Detalii (_raxCodDetalii): eticheta lungă + culoarea. Aceleași cuvinte ca pe web (29.09).
 export function accesDetalii(a: any): { et: string; culoare: string } {
   a = a || {};
-  const et = ({ unlimited: 'Nelimitat', active: 'Activ', grace: 'În grație (expirat — 15 zile)', expired: 'Expirat' } as Record<string, string>)[a.status] || (a.status || '—');
+  const np = a.neplata || null;
+  const et = a.status === 'expired' ? (a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată')
+    : (a.status === 'grace' ? 'Restanță — ' + (np ? np.zilePanaLaSuspendare + ' zile până la suspendare' : 'factură neachitată') : 'Activ');
   const culoare = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--co-warn)' : 'var(--co-ok)');
-  return { et: et + (a.access_until ? ' · până ' + dataRo(a.access_until) : ''), culoare };
+  return { et, culoare };
 }
 
 // Rolurile, cu numele de pe web (_raxCodUsers).

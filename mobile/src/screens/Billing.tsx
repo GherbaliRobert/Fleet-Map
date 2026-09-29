@@ -10,32 +10,35 @@ import './billing.css';
 const fmtD = (ts: any) => (ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—');
 const fmtMoney = (v: any) => (v != null ? Number(v).toLocaleString('ro-RO') + ' lei' : '—');
 const money2 = (v: any) => (Math.round((Number(v) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const invNo = (p: any) => 'RAT-' + new Date(Number(p.paid_at || p.created_at || Date.now())).getFullYear() + '-' + String(p.id).padStart(5, '0');
+// Accesul unei firme se oprește DOAR pentru o factură neplătită la 15 zile după scadență, sau de mână
+// (decizie Alin, 28.09). Nu mai există „acces până la" și nici „nelimitat": ceasul vechi pe perioade
+// plătite bloca clienți care plătiseră tot. (Tot de atunci: plățile NU mai primesc un număr de factură
+// inventat — „RAT-AAAA-000{id plată}" se putea bate cap în cap cu numărul unei facturi adevărate.)
 const ACCESS: Record<string, [string, string]> = {
-  unlimited: ['∞ Nelimitat', 'var(--text-muted)'],
-  active: ['● Activ / plătit', 'var(--green)'],
-  grace: ['⚠ De plătit (grație)', 'var(--yellow)'],
-  expired: ['🚫 Restant / suspendat', 'var(--red)'],
+  active: ['● La zi', 'var(--green)'],
+  grace: ['⚠ Restanță', 'var(--yellow)'],
+  expired: ['🚫 Suspendat', 'var(--red)'],
 };
 // Starea unei firme în lista super-adminului, ca pe web (_raxAccessCell): un client suspendat se vede ca
-// SUSPENDAT, cu motivul — trei cauze diferite, care se rezolvă altfel fiecare — iar o restanță în
-// derulare arată câte zile mai are până la suspendare. Întoarce [text, culoare, ordine în listă].
+// SUSPENDAT, cu motivul — două cauze (neplată, oprit de noi), care se rezolvă altfel fiecare — iar o restanță
+// în derulare arată câte zile mai are până la suspendare. Întoarce [text, culoare, ordine în listă].
+// (Al treilea motiv, „abonament expirat", a plecat pe 29.09 odată cu ceasul „acces până la".)
 function accessOf(c: any): [string, string, number] {
   const a = (c && c.access) || {};
-  const np = (c && c.neplata) || null;
+  const np = (c && c.neplata) || a.neplata || null;
   const fact = np && np.factura && np.factura.numar ? ' · factura ' + np.factura.numar : '';
   if (a.status === 'expired') {
-    const et = a.motiv === 'manual' ? 'Oprit de noi' : (a.motiv === 'neplata' ? 'Suspendat — neplată' : 'Suspendat — abonament');
+    const et = a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată';
     return ['🚫 ' + et + fact, 'var(--red)', 0];
   }
   if (np && np.faza === 'avertisment') {
     const z = Math.max(0, Number(np.zilePanaLaSuspendare) || 0);
     return ['⚠ Restanță · ' + z + (z === 1 ? ' zi' : ' zile') + ' până la suspendare' + fact, 'var(--orange)', 0.5];
   }
-  const sm = ACCESS[a.status] || ACCESS.unlimited;
-  const rank: Record<string, number> = { grace: 1, active: 2, unlimited: 3 };
-  return [sm[0], sm[1], rank[a.status] ?? 4];
+  const sm = ACCESS[a.status] || ACCESS.active;
+  return [sm[0], sm[1], a.status === 'grace' ? 1 : 2];
 }
+const TIP: Record<string, string> = { invoice: 'Factură', proforma: 'Proformă', credit_note: 'Storno' };
 const INV_ST: Record<string, [string, string]> = {
   draft: ['Ciornă', 'var(--text-muted)'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'],
   paid: ['Plătită', 'var(--green)'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'],
@@ -76,13 +79,13 @@ function MyBilling() {
   if (err) return <div class="content has-tabbar"><div class="adm-empty" style="color:var(--red)">{err}</div></div>;
   if (!data) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
   const a = data.access || {};
-  const sm = ACCESS[a.status] || ACCESS.unlimited;
+  const sm = ACCESS[a.status] || ACCESS.active;
   const inv: any[] = data.invoices || [];
   return (
     <div class="content has-tabbar" style="padding-bottom:96px">
       <div class="bill-banner" style={`border-left:4px solid ${sm[1]}`}>
         <div class="st" style={`color:${sm[1]}`}>{sm[0]}</div>
-        {a.access_until ? <div class="sub">Acces până la <b>{fmtD(a.access_until)}</b></div> : null}
+        {a.status === 'grace' && a.mesaj ? <div class="sub" style="line-height:1.5">{a.mesaj}</div> : null}
         {data.unpaidInvoice ? (
           <div class="sub" style="margin-top:8px;line-height:1.5">Plata se face prin <b>transfer bancar</b>{(data.issuer && (data.issuer.iban || data.issuer.bank)) ? ' în contul ' + [data.issuer.bank, data.issuer.iban].filter(Boolean).join(' · ') : ' — datele de plată sunt pe factură'}.</div>
         ) : null}
@@ -90,8 +93,8 @@ function MyBilling() {
       <div class="mn-sec">Facturile mele</div>
       {inv.length === 0
         ? <div class="adm-empty">Nicio factură emisă încă.</div>
-        : <div class="adm-list">{inv.map((p) => <InvoiceRow p={p} onClick={() => setView(p)} />)}</div>}
-      {view && <InvoiceSheet p={view} co={data.company} iss={data.issuer} onClose={() => setView(null)} />}
+        : <div class="adm-list">{inv.map((v) => <FiscalRow v={v} onClick={() => setView(v)} />)}</div>}
+      {view && <FiscalInvoiceSheet inv={view} readOnly onClose={() => setView(null)} onChanged={() => setView(null)} />}
     </div>
   );
 }
@@ -104,7 +107,6 @@ function SuperBilling() {
   const [issuer, setIssuer] = useState<any>({});
   const [cfg, setCfg] = useState<any>(null);
   const [pay, setPay] = useState<any | null>(null);
-  const [view, setView] = useState<any | null>(null);    // plată (document intern)
   const [fview, setFview] = useState<any | null>(null);   // factură fiscală
   const [gen, setGen] = useState(false);
   const [editIss, setEditIss] = useState(false);
@@ -139,7 +141,6 @@ function SuperBilling() {
   if (companies == null) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
 
   const cos = companies.slice().sort((a, b) => accessOf(a)[2] - accessOf(b)[2]);
-  const coById = (id: number) => companies.find((c) => c.id === id) || {};
   const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--green)' : 'var(--text-muted)'}`}>{l}</span>;
 
   return (
@@ -162,13 +163,12 @@ function SuperBilling() {
       <div class="adm-list">
         {cos.map((c) => {
           const sm = accessOf(c);
-          const until = (c.access || {}).status !== 'expired' ? (c.access || {}).access_until : null;
           return (
             <div class="adm-item" style="cursor:default">
               <span class="ic-wrap"><Icon name="truck" size={19} /></span>
-              <span class="mid"><div class="nm">{c.name}</div><div class="sub" style={`color:${sm[1]}`}>{sm[0]}{until ? ' · până ' + fmtD(until) : ''}</div></span>
+              <span class="mid"><div class="nm">{c.name}</div><div class="sub" style={`color:${sm[1]}`}>{sm[0]}</div></span>
               <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);margin-right:6px" onClick={(e: any) => e.stopPropagation()}><input type="checkbox" checked={c.auto_invoice === true} onChange={(e: any) => toggleAuto(c.id, e.target.checked)} />auto</label>
-              <button class="btn btn-primary" style="padding:6px 11px;font-size:12px" onClick={() => setPay({ companyId: c.id })}>Plată</button>
+              <button class="btn btn-primary" style="padding:6px 11px;font-size:12px" onClick={() => setPay({ companyId: c.id })}>Încasare</button>
             </div>
           );
         })}
@@ -181,13 +181,12 @@ function SuperBilling() {
 
       <div class="mn-sec">Plăți / încasări</div>
       {pays.length === 0
-        ? <div class="adm-empty">Nicio plată înregistrată.</div>
-        : <div class="adm-list">{pays.map((p) => <InvoiceRow p={p} sub={p.company_name} onClick={() => setView(p)} />)}</div>}
+        ? <div class="adm-empty">Nicio încasare înregistrată.</div>
+        : <div class="adm-list">{pays.map((p) => <PaymentRow p={p} />)}</div>}
 
       {gen && <GenerateInvoiceSheet companies={companies} onClose={() => setGen(false)} onIssued={() => { setGen(false); reload(); }} />}
       {fview && <FiscalInvoiceSheet inv={fview} onClose={() => setFview(null)} onChanged={() => { setFview(null); reload(); }} />}
       {pay && <RecordPaymentSheet companies={companies} preset={pay.companyId} onClose={() => setPay(null)} onSaved={() => { setPay(null); reload(); }} />}
-      {view && <InvoiceSheet p={view} co={coById(view.company_id)} iss={issuer} onClose={() => setView(null)} />}
       {editIss && <IssuerSheet issuer={issuer} onClose={() => setEditIss(false)} onSaved={(iss: any) => { setIssuer(iss); setEditIss(false); }} />}
     </div>
   );
@@ -200,7 +199,7 @@ function FiscalRow({ v, onClick }: { v: any; onClick: () => void }) {
     <button class="adm-item" onClick={onClick}>
       <span class="ic-wrap"><Icon name="report" size={19} /></span>
       <span class="mid">
-        <div class="nm">{v.full_number} · {v.company_name || ('#' + v.company_id)}</div>
+        <div class="nm">{TIP[v.type] || 'Factură'} {v.full_number}{v.company_name ? ' · ' + v.company_name : ''}</div>
         <div class="sub"><span style={`color:${st[1]};font-weight:700`}>● {st[0]}</span>{ef ? <span style={`color:${ef[1]}`}> · {ef[0]}</span> : null}</div>
       </span>
       <span class="rt"><b>{money2(v.total)} lei</b><Icon name="chevronR" size={18} color="var(--text-muted)" /></span>
@@ -209,15 +208,18 @@ function FiscalRow({ v, onClick }: { v: any; onClick: () => void }) {
 }
 
 // Detaliu factură FISCALĂ + acțiuni (marchează plătită / trimite ANAF / anulează). Cele cu efect pe bani
-// cer confirmare, cu aceleași cuvinte ca pe web — nu se pot desface dintr-o atingere.
-function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: () => void; onChanged: () => void }) {
+// cer confirmare, cu aceleași cuvinte ca pe web — nu se pot desface dintr-o atingere. `readOnly` = privirea clientului.
+function FiscalInvoiceSheet({ inv, onClose, onChanged, readOnly }: { inv: any; onClose: () => void; onChanged: () => void; readOnly?: boolean }) {
   const iss = inv.issuer || {}, cl = inv.client || {};
   const st = INV_ST[inv.status] || INV_ST.issued;
   const ef = EF_ST[inv.efactura_status];
   const [busy, setBusy] = useState('');
   const lines: any[] = Array.isArray(inv.lines) ? inv.lines : [];
   async function act(kind: string) {
-    if (kind === 'paid' && !confirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.')) return;
+    // „Plătită" nu mai prelungește niciun acces (29.09); pe o proformă înseamnă „Încasată" și emite factura fiscală.
+    if (kind === 'paid' && !confirm(inv.type === 'proforma'
+      ? 'Proforma e ÎNCASATĂ? Se emite acum factura fiscală, cu aceleași rânduri, marcată plătită.'
+      : 'Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea. Dacă firma era oprită pentru neplată, accesul revine pe loc.')) return;
     if (kind === 'cancel' && !confirm('Anulezi această factură? (pentru facturi plătite se folosește storno)')) return;
     setBusy(kind);
     try {
@@ -229,7 +231,7 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: ()
   return (
     <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div class="sheet">
-        <div class="sheet-h"><b><Icon name="report" size={18} color="var(--accent)" /> {inv.full_number}</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
+        <div class="sheet-h"><b><Icon name="report" size={18} color="var(--accent)" /> {TIP[inv.type] || 'Factură'} {inv.full_number}</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
         <div class="sheet-body">
           <div class="bill-doc">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -248,11 +250,11 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: ()
             <div class="bill-total"><span>Total de plată</span><b>{money2(inv.total)} lei</b></div>
             <div class="bill-kv" style="margin-top:6px"><span>Scadență</span><b>{fmtD(inv.due_date)}</b></div>
           </div>
-          <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
-            {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-primary" disabled={!!busy} onClick={() => act('paid')}><Icon name="check" size={15} color="#06210f" /> Plătită</button>}
-            {inv.status !== 'canceled' && inv.efactura_status !== 'validated' && <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : 'Trimite ANAF'}</button>}
+          {!readOnly && <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
+            {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-primary" disabled={!!busy} onClick={() => act('paid')}><Icon name="check" size={15} color="#06210f" /> {inv.type === 'proforma' ? 'Încasată' : 'Plătită'}</button>}
+            {inv.type !== 'proforma' && inv.status !== 'canceled' && inv.efactura_status !== 'validated' && <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : 'Trimite ANAF'}</button>}
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-danger-ghost" disabled={!!busy} onClick={() => act('cancel')}>Anulează</button>}
-          </div>
+          </div>}
         </div>
       </div>
     </div>
@@ -282,7 +284,7 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
   async function calc() {
     if (!cid) { showToast('Alege o companie', true); return; }
     setLoading(true); setDraft(null); setLines([]);
-    try { const d = await Api.invoiceDraft(parseInt(cid)); setDraft(d); setLines((d.lines || []).map(recalc)); }
+    try { const d = await Api.invoiceDraft(parseInt(cid), yr + '-' + String(mon).padStart(2, '0')); setDraft(d); setLines((d.lines || []).map(recalc)); }
     catch (e: any) { showToast(e?.message || 'Eroare la calcul', true); } finally { setLoading(false); }
   }
   async function issue() {
@@ -291,7 +293,9 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
     if (!(draft?.issuer && draft.issuer.name && draft.issuer.cui)) { showToast('Completează „Date emitent" (nume + CUI)', true); return; }
     setSaving(true);
     const ps = new Date(yr, mon - 1, 1).getTime(), pe = new Date(yr, mon, 0, 23, 59, 0).getTime();
-    try { const r = await Api.issueInvoice({ companyId: parseInt(cid), periodStart: ps, periodEnd: pe, lines: valid }); showToast('Factură emisă: ' + ((r.invoice && r.invoice.full_number) || '')); onIssued(); }
+    // Felul facturii îl deduce serverul din rânduri („Abonament…" = abonamentul lunii; altfel factură unică),
+    // iar luna o trimitem noi — o lună de abonament se facturează o singură dată (serverul refuză dublura).
+    try { const r = await Api.issueInvoice({ companyId: parseInt(cid), periodStart: ps, periodEnd: pe, luna: yr + '-' + String(mon).padStart(2, '0'), lines: valid }); showToast('Factură emisă: ' + ((r.invoice && r.invoice.full_number) || '')); onIssued(); }
     catch (e: any) { showToast(e?.message || 'Eroare la emitere', true); } finally { setSaving(false); }
   }
   const qbtn = 'padding:6px 9px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
@@ -336,49 +340,16 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
   );
 }
 
-function InvoiceRow({ p, sub, onClick }: { p: any; sub?: string; onClick: () => void }) {
+// Un rând din registrul încasărilor: data, firma, suma, pentru ce. FĂRĂ număr de factură inventat.
+function PaymentRow({ p }: { p: any }) {
   return (
-    <button class="adm-item" onClick={onClick}>
+    <div class="adm-item" style="cursor:default">
       <span class="ic-wrap"><Icon name="report" size={19} /></span>
       <span class="mid">
-        <div class="nm">{invNo(p)}{sub ? ' · ' + sub : ''}</div>
-        <div class="sub">{fmtD(p.period_start)} → {fmtD(p.period_end)}</div>
+        <div class="nm">{p.company_name || ('#' + p.company_id)}</div>
+        <div class="sub">{fmtD(p.paid_at || p.created_at)} · {p.note || 'încasare fără factură'}</div>
       </span>
-      <span class="rt"><b>{fmtMoney(p.amount_ron)}</b><Icon name="chevronR" size={18} color="var(--text-muted)" /></span>
-    </button>
-  );
-}
-
-// Detaliu plată (document intern) — echivalentul mobil al documentului printabil de pe web.
-function InvoiceSheet({ p, co, iss, onClose }: { p: any; co: any; iss: any; onClose: () => void }) {
-  co = co || {}; iss = iss || {};
-  const kv = (k: string, v: any) => (v ? <div class="bill-kv"><span>{k}</span><b>{v}</b></div> : null);
-  return (
-    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div class="sheet">
-        <div class="sheet-h"><b><Icon name="report" size={18} color="var(--accent)" /> Plată {invNo(p)}</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
-        <div class="sheet-body">
-          <div class="bill-doc">
-            <div class="bill-sec">Emitent</div>
-            <div class="bill-party"><b>{iss.name || '(date emitent necompletate)'}</b>
-              {iss.cui ? <div>CUI: {iss.cui}</div> : null}
-              {iss.address ? <div>{iss.address}</div> : null}
-              {iss.iban ? <div>IBAN: {iss.iban}{iss.bank ? ' · ' + iss.bank : ''}</div> : null}
-            </div>
-            <div class="bill-sec">Client</div>
-            <div class="bill-party"><b>{co.name || p.company_name || '—'}</b>
-              {co.cui ? <div>CUI: {co.cui}</div> : null}
-              {co.address ? <div>{co.address}</div> : null}
-            </div>
-            <div class="bill-sec">Detalii</div>
-            {kv('Data', fmtD(p.paid_at || p.created_at))}
-            {kv('Perioadă', fmtD(p.period_start) + ' → ' + fmtD(p.period_end))}
-            {kv('Metodă', p.method || 'manual')}
-            {kv('Notă', p.note)}
-            <div class="bill-total"><span>Total</span><b>{fmtMoney(p.amount_ron)}</b></div>
-          </div>
-        </div>
-      </div>
+      <span class="rt"><b>{fmtMoney(p.amount_ron)}</b></span>
     </div>
   );
 }
@@ -386,7 +357,7 @@ function InvoiceSheet({ p, co, iss, onClose }: { p: any; co: any; iss: any; onCl
 const METHODS = [{ v: 'transfer', l: 'Transfer bancar' }, { v: 'cash', l: 'Numerar' }, { v: 'card', l: 'Card' }, { v: 'manual', l: 'Alta' }];
 function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
   const opts = (companies || []).filter((c: any) => !c.is_demo);
-  const [form, setForm] = useState<any>({ company_id: preset || (opts[0] && opts[0].id) || '', months: 1, amount: '', method: 'transfer', note: '' });
+  const [form, setForm] = useState<any>({ company_id: preset || (opts[0] && opts[0].id) || '', amount: '', method: 'transfer', note: '' });
   const [saving, setSaving] = useState(false);
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   async function save() {
@@ -394,8 +365,8 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
     if (!cid) { showToast('Alege o companie', true); return; }
     setSaving(true);
     try {
-      await Api.recordPayment(cid, { months: parseInt(form.months) || 1, amount: (form.amount || '').trim() || null, method: form.method, note: (form.note || '').trim() || null });
-      showToast('Plată înregistrată');
+      await Api.recordPayment(cid, { amount: (form.amount || '').trim() || null, method: form.method, note: (form.note || '').trim() || null });
+      showToast('Încasare înregistrată');
       onSaved();
     } catch (e: any) { showToast(e?.message || 'Eroare la înregistrare', true); }
     finally { setSaving(false); }
@@ -403,7 +374,7 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
   return (
     <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div class="sheet">
-        <div class="sheet-h"><b><Icon name="plus" size={18} color="var(--accent)" /> Înregistrează plată</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
+        <div class="sheet-h"><b><Icon name="plus" size={18} color="var(--accent)" /> Încasare fără factură</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
         <div class="sheet-body">
           <div class="frm">
             <div class="fld"><label>Companie</label>
@@ -411,10 +382,8 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
                 {opts.map((c: any) => <option value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div class="frm-row">
-              <div class="fld"><label>Prelungește (luni)</label><input type="number" min="1" max="36" value={form.months} onInput={(e) => setF('months', (e.target as HTMLInputElement).value)} /></div>
-              <div class="fld"><label>Sumă (lei)</label><input value={form.amount} onInput={(e) => setF('amount', (e.target as HTMLInputElement).value)} placeholder="ex: 1500" /></div>
-            </div>
+            <div class="fld"><label>Sumă încasată (lei)</label><input value={form.amount} onInput={(e) => setF('amount', (e.target as HTMLInputElement).value)} placeholder="ex: 1500 sau 1.234,56" /></div>
+            <div class="sub" style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:-4px 0 8px">Doar o sumă primită fără factură. Plata unei facturi se trece de pe factură („Plătită").</div>
             <div class="fld"><label>Metodă</label>
               <select value={form.method} onChange={(e) => setF('method', (e.target as HTMLSelectElement).value)}>
                 {METHODS.map((m) => <option value={m.v}>{m.l}</option>)}

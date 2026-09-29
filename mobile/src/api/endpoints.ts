@@ -305,7 +305,8 @@ export const Api = {
   // ── Facturi FISCALE (super-admin) ──
   invoices: () => api<{ invoices: any[] }>('/api/invoices'),
   invoice: (id: number) => api<any>(`/api/invoices/${id}`),
-  invoiceDraft: (companyId: number) => api<any>('/api/invoices/draft', { method: 'POST', body: { companyId } }),
+  // `luna` ('AAAA-LL'): abonamentul lunii alese, pe zile de la montaj (28.09). Fără ea, luna de azi.
+  invoiceDraft: (companyId: number, luna?: string) => api<any>('/api/invoices/draft', { method: 'POST', body: { companyId, luna } }),
   issueInvoice: (b: any) => api<any>('/api/invoices', { method: 'POST', body: b }),
   invoiceSetStatus: (id: number, status: string) => api<any>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),

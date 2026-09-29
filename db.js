@@ -743,6 +743,7 @@ async function initDb() {
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS work_schedule JSONB;   -- program de lucru (override pe grup)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS work_schedule JSONB;         -- program de lucru (override pe vehicul)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS install_issue JSONB;         -- semnalare „problemă la montaj" {note, at, by} / NULL
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS abonament_de_la BIGINT;      -- ziua în care pornește abonamentul: prima transmisie pe firmă (28.09)
         ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_km INTEGER;     -- recurență: următoarea scadență la +N km după „efectuat"
         ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_months INTEGER; -- recurență: următoarea scadență la +N luni după „efectuat"
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
@@ -855,6 +856,20 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status, due_date)`);
+    // Ce fel de document e (28.09). Până atunci factura automată socotea „e deja facturată luna?" după
+    // ORICE factură emisă în lună — deci o factură pentru un aparat vândut oprea, în tăcere, abonamentul
+    // lunii. Acum se știe care e abonamentul și pe ce lună, și care e o factură unică (aparate, montaj).
+    //   fel:          'abonament' | 'unica' | NULL (factură veche, de dinainte de 28.09)
+    //   luna:         'AAAA-LL' — luna de abonament acoperită (doar la fel='abonament')
+    //   din_proforma: factura fiscală emisă la încasarea unei proforme (id-ul proformei)
+    //   factura_id:   proforma încasată → factura fiscală născută din ea
+    for (const q of [
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS fel VARCHAR(16)`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS luna VARCHAR(7)`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS din_proforma INTEGER`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS factura_id INTEGER`
+    ]) await client.query(q);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_abonament ON invoices(company_id, fel, luna)`);
     // Contor serie de facturi (per serie+an) — sursă ATOMICĂ pt. numerotare secvențială fără găuri/duplicate.
     await client.query(`
       CREATE TABLE IF NOT EXISTS invoice_counters (
@@ -1626,10 +1641,10 @@ async function setCompanyOferta(id, oferta) {
   await pool.query('UPDATE companies SET custom_plan = $2 WHERE id = $1',
     [id, oferta ? JSON.stringify(oferta) : null]);
 }
-// ─── Acces & plăți (înregistrate de super-admin) ───
-async function setCompanyAccessUntil(id, untilMs) {
-  await pool.query('UPDATE companies SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
-}
+// ─── Plăți (înregistrate de super-admin) ───
+// O plată e doar un rând în registrul încasărilor. Până pe 28.09 scria și `companies.access_until`
+// (sfârșitul perioadei plătite), iar la 15 zile după data aia firma se bloca — chiar dacă plătise tot.
+// Ceasul ăla a fost scos; accesul ține DOAR de facturile neplătite (server.js → `stareAcces`).
 async function recordPayment(p) {
   const now = Date.now();
   const r = await pool.query(
@@ -1637,7 +1652,6 @@ async function recordPayment(p) {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [p.companyId, (p.amountRon != null ? p.amountRon : null), p.periodStart || null, p.periodEnd || null, p.method || 'manual', p.note || null, p.paidAt || now, p.createdBy || null, now]
   );
-  if (p.periodEnd) await setCompanyAccessUntil(p.companyId, p.periodEnd);
   return r.rows[0];
 }
 async function getPayments(companyId, limit) {
@@ -1678,12 +1692,13 @@ async function nextInvoiceNumber(series, year) {
 async function createInvoice(inv) {
   const now = Date.now();
   const r = await pool.query(
-    `INSERT INTO invoices (company_id, series, number, year, full_number, type, status, issue_date, due_date, period_start, period_end, currency, subtotal, vat_amount, total, lines, issuer, client, note, created_by, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$21) RETURNING *`,
+    `INSERT INTO invoices (company_id, series, number, year, full_number, type, status, issue_date, due_date, period_start, period_end, currency, subtotal, vat_amount, total, lines, issuer, client, note, created_by, created_at, updated_at, fel, luna, din_proforma)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$21,$22,$23,$24) RETURNING *`,
     [inv.companyId, inv.series || 'RAT', inv.number, inv.year, inv.fullNumber || null, inv.type || 'invoice', inv.status || 'draft',
       inv.issueDate || now, inv.dueDate || null, inv.periodStart || null, inv.periodEnd || null, inv.currency || 'RON',
       _r2(inv.subtotal), _r2(inv.vatAmount), _r2(inv.total), JSON.stringify(inv.lines || []),
-      inv.issuer ? JSON.stringify(inv.issuer) : null, inv.client ? JSON.stringify(inv.client) : null, inv.note || null, inv.createdBy || null, now]
+      inv.issuer ? JSON.stringify(inv.issuer) : null, inv.client ? JSON.stringify(inv.client) : null, inv.note || null, inv.createdBy || null, now,
+      inv.fel || null, inv.luna || null, inv.dinProforma || null]
   );
   return r.rows[0];
 }
@@ -1703,10 +1718,64 @@ async function getInvoices(opts) {
      ${where} ORDER BY i.year DESC, i.number DESC LIMIT $${args.length}`, args);
   return r.rows;
 }
+// Abonamentul unei luni e deja facturat? Orice factură de abonament pe luna aceea contează — și cea
+// anulată: dacă ai anulat-o, vrei s-o refaci tu, nu s-o reemită ceasul automat peste câteva ore.
+// `doarValide` = doar cele neanulate (emiterea de mână refuză un DUBLU, dar lasă o refacere după anulare).
+async function abonamentLuna(companyId, luna, doarValide) {
+  const r = await pool.query(
+    `SELECT id, full_number, status FROM invoices
+      WHERE company_id = $1 AND type = 'invoice' AND fel = 'abonament' AND luna = $2
+        ${doarValide ? "AND status IS DISTINCT FROM 'canceled'" : ''}
+      ORDER BY id LIMIT 1`, [companyId, luna]);
+  return r.rows[0] || null;
+}
+// Ziua în care pornește abonamentul unei mașini: la PRIMA transmisie după ce aparatul a ajuns pe o firmă
+// client (nu demo), nearhivat. Nu suprascrie o zi deja scrisă. Întoarce `true` dacă aparatul are acum ziua
+// (scrisă acum sau de dinainte), `false` dacă n-are firmă (stă în „Neasignate") — atunci nu pornește nimic.
+async function pornesteAbonamentul(imei, ms, demoCompanyId) {
+  const r = await pool.query(
+    `UPDATE devices SET abonament_de_la = COALESCE(abonament_de_la, $2)
+      WHERE imei = $1 AND company_id IS NOT NULL AND status IS DISTINCT FROM 'archived'
+        AND ($3::int IS NULL OR company_id <> $3)
+        AND company_id IN (SELECT id FROM companies WHERE COALESCE(is_demo, false) = false)
+      RETURNING abonament_de_la`, [String(imei), Math.round(Number(ms) || Date.now()), demoCompanyId == null ? null : Number(demoCompanyId)]);
+  return r.rows.length > 0;
+}
+// Corectura noastră, de mână (ex. aparatul a transmis de pe masa de probă, deja trecut pe firmă). null = pornește iar
+// la următoarea transmisie.
+async function setAbonamentDeLa(imei, ms) {
+  const r = await pool.query('UPDATE devices SET abonament_de_la = $2 WHERE imei = $1 RETURNING imei, abonament_de_la',
+    [String(imei), ms == null ? null : Math.round(Number(ms))]);
+  return r.rows[0] || null;
+}
+// O SINGURĂ DATĂ, la prima pornire după 28.09: aparatele care transmiteau deja pe firmele clienților primesc
+// o zi de pornire DIN TRECUT (cel mai devreme dintre ziua înregistrării și începutul lunii de acum două luni).
+// Așa, pentru ele nu se schimbă nimic: plătesc luna întreagă, ca până acum — fără „zile" socotite a doua oară
+// pentru o lună deja facturată pe regula veche. Aparatele trecute pe firmă care n-au transmis niciodată
+// rămân fără zi: pornesc la prima transmisie, adică la montaj — exact ce s-a hotărât.
+async function migreazaPornireaAbonamentelor() {
+  try {
+    if (await getSetting('abonament_pornire_migrat')) return 0;
+    const acum = new Date();
+    const prag = new Date(acum.getFullYear(), acum.getMonth() - 2, 1).getTime();
+    const r = await pool.query(
+      `UPDATE devices d
+          SET abonament_de_la = LEAST((EXTRACT(EPOCH FROM COALESCE(d.created_at, NOW())) * 1000)::bigint, $1)
+        WHERE d.abonament_de_la IS NULL AND d.company_id IS NOT NULL
+          AND d.status IS DISTINCT FROM 'archived'
+          AND EXISTS (SELECT 1 FROM positions p WHERE p.imei = d.imei)
+        RETURNING d.imei`, [prag]);
+    await setSetting('abonament_pornire_migrat', String(Date.now()));
+    const n = (r.rows || []).length;   // `rowCount` lipsește în PGlite
+    if (n) console.log('[DB] Abonament pe zile: ' + n + ' aparate care transmiteau deja păstrează luna întreagă');
+    return n;
+  } catch (e) { console.warn('[DB] migrarea pornirii abonamentelor:', e.message); return 0; }
+}
 // Actualizare parțială controlată (stare / e-Factura / legătură plată). NU atinge liniile/emitentul o dată emise (imutabile).
 async function updateInvoice(id, f) {
   const map = { status: 'status', efacturaStatus: 'efactura_status', efacturaId: 'efactura_id', efacturaError: 'efactura_error',
-    stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note' };
+    stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note',
+    facturaId: 'factura_id' };
   const sets = [], args = [id];
   for (const k of Object.keys(map)) { if (f[k] !== undefined) { args.push(f[k]); sets.push(map[k] + ' = $' + args.length); } }
   if (!sets.length) return getInvoice(id);
@@ -1731,14 +1800,15 @@ async function payInvoiceAtomic(invoiceId, payment, invoiceFields) {
     const pay = pr.rows[0];
     const f = Object.assign({ status: 'paid', paidAt: now, paymentId: pay.id }, invoiceFields || {});
     const map = { status: 'status', efacturaStatus: 'efactura_status', efacturaId: 'efactura_id', efacturaError: 'efactura_error',
-      stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note' };
+      stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note',
+      facturaId: 'factura_id' };
     const sets = [], args = [invoiceId];
     for (const k of Object.keys(map)) { if (f[k] !== undefined) { args.push(f[k]); sets.push(map[k] + ' = $' + args.length); } }
     args.push(now); sets.push('updated_at = $' + args.length);
     const ir = await client.query(`UPDATE invoices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, args);
     await client.query('COMMIT');
-    // accesul companiei se prelungește DUPĂ commit (nu face parte din consistența contabilă)
-    if (payment.periodEnd) { try { await setCompanyAccessUntil(payment.companyId, payment.periodEnd); } catch (e) {} }
+    // (Aici se prelungea „accesul până la" — ceasul vechi, scos pe 28.09. Plata nu mai atinge accesul:
+    //  o factură plătită iese singură din socoteala neplății.)
     return { payment: pay, invoice: ir.rows[0] || null };
   } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
   finally { client.release(); }
@@ -2282,6 +2352,17 @@ async function upsertMontaj(m) {
   return getMontaj(r.rows[0].id);
 }
 async function deleteMontaj(id) { await pool.query('DELETE FROM montaje WHERE id = $1', [id]); return { ok: true }; }
+// Lucrările puse pe o factură FISCALĂ a clientului trec pe „facturat clientului" — ca aceeași lucrare să nu
+// mai fie propusă pe o a doua factură. Doar cele executate (sau deja facturate nouă de partener).
+async function marcheazaMontajeFacturate(companyId, ids) {
+  const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
+  if (!lista.length) return 0;
+  const r = await pool.query(
+    `UPDATE montaje SET status = 'facturat_clientului', updated_at = $3
+      WHERE company_id = $1 AND id = ANY($2::int[]) AND status IN ('executat', 'facturat_de_partener') RETURNING id`,
+    [companyId, lista, Date.now()]);
+  return (r.rows || []).length;   // `rowCount` lipsește în PGlite — numărăm rândurile întoarse
+}
 async function montajeContract(contractId) {
   const r = await pool.query('SELECT id, items FROM montaje WHERE contract_id = $1 ORDER BY created_at ASC', [contractId]);
   return r.rows;
@@ -2320,7 +2401,8 @@ async function drumDateToate(executate) {
     pool.query(`SELECT company_id, COUNT(*)::int AS n FROM devices
                  WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' GROUP BY company_id`),
     pool.query(`SELECT company_id, COUNT(*)::int AS n FROM invoices
-                 WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled' GROUP BY company_id`),
+                 WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled'
+                   AND type IS DISTINCT FROM 'proforma' GROUP BY company_id`),   // proforma e cerere de plată, nu factură
     pool.query(`SELECT contract_id, COUNT(*)::int AS total,
                        COUNT(*) FILTER (WHERE status = ANY($1::varchar[]))::int AS executate
                   FROM montaje WHERE contract_id IS NOT NULL GROUP BY contract_id`, [executate]),
@@ -2460,7 +2542,12 @@ async function _purgeDeviceFeed(imeis) {
 }
 
 async function setDeviceCompany(imei, companyId) {
-  await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
+  // Altă firmă = alt abonament: ziua de pornire se șterge și se pune din nou la prima transmisie pe firma
+  // nouă (28.09). Pe aceeași firmă (o salvare repetată) nu se atinge.
+  await pool.query(
+    `UPDATE devices SET abonament_de_la = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE abonament_de_la END,
+            company_id = $2::int
+      WHERE imei = $1`, [imei, companyId || null]);
   await _purgeDeviceFeed([imei]);
 }
 // Adopție ATOMICĂ: setează compania DOAR dacă device-ul e încă neasignat (company_id NULL). Întoarce true dacă
@@ -2987,6 +3074,11 @@ async function setDeviceGroup(imei, groupId) {
   await pool.query('UPDATE devices SET group_id = $2 WHERE imei = $1', [imei, groupId || null]);
 }
 
+// Un aparat, cu câmpurile de care au nevoie trecerea pe firmă și abonamentul (fără poziție).
+async function getDeviceByImei(imei) {
+  const r = await pool.query('SELECT imei, company_id, status, abonament_de_la, created_at FROM devices WHERE imei = $1', [String(imei)]);
+  return r.rows[0] || null;
+}
 // Adăugare manuală vehicul (pre-înregistrare IMEI înainte să se conecteze trackerul)
 async function deviceExists(imei) {
   const r = await pool.query('SELECT 1 FROM devices WHERE imei = $1', [imei]);
@@ -4919,8 +5011,10 @@ module.exports = {
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
-  setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
+  recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
+  abonamentLuna, pornesteAbonamentul, setAbonamentDeLa, migreazaPornireaAbonamentelor,
+  marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer, setOfferStatus,

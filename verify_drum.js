@@ -46,7 +46,9 @@ T('montaj → „Programează montajul" (deschide formularul lucrării)', /raxDr
 T('aparate → „Adoptă aparatele", tot prin SINGURUL loc de adopție (decizie 17.09)',
   /raxDrumAparate\(\)/.test(fnBtn) && /raxDevDeschideNeasignate\(\)/.test(html.slice(html.indexOf('window.raxDrumAparate'), html.indexOf('window.raxDrumFactura'))) &&
   !/\/company'/.test(html.slice(html.indexOf('function _drumButon('), html.indexOf('window.raxDrumFactura'))));
-T('factura → „Emite prima factură", cu firma deja aleasă', /raxOpenGenInvoice\(companyId\)/.test(html.slice(html.indexOf('window.raxDrumFactura'), html.indexOf('window.raxDrumFactura') + 500)));
+// De pe 28.09 prima factură se deschide pe „factură unică" (aparate + montaj, din contract): abonamentul
+// pleacă singur, luna următoare, cu zilele de la montaj.
+T('factura → „Emite prima factură", cu firma deja aleasă, pe factura unică', /raxOpenGenInvoice\(companyId, 'unica'\)/.test(html.slice(html.indexOf('window.raxDrumFactura'), html.indexOf('window.raxDrumFactura') + 700)));
 T('„Aprobă" din fișă salvează întâi formularul (raxCtrTreci)', /inFisa \? 'raxCtrTreci\(\\'aprobat\\'\)'/.test(fnBtn));
 T('butoanele din fișă reîmprospătează fișa, nu doar lista', /function _ctreDupa\(\)/.test(html) && /raxOpenCompanyDetail\(_raxCtr\.id, 'contract'\)/.test(html.slice(html.indexOf('function _ctreDupa()'), html.indexOf('function _ctreDupa()') + 400)));
 

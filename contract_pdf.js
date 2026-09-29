@@ -401,6 +401,11 @@ function scrieContract(doc, date) {
     _p(doc, 'Aparatele de monitorizare enumerate în Anexa nr. 1, la „Aparate închiriate", sunt date Beneficiarului în folosință, cu chirie, și rămân proprietatea Prestatorului pe toată durata contractului. ' +
       'Chiria lunară este cuprinsă în prețul de mai sus și apare pe factură pe rând separat. Durata minimă a contractului este de ' + C.numar(luniMinCh, 'lună', 'luni') + '.');
   }
+  // De la ce zi se plătește (decizie Alin, 28.09): prima transmisie a aparatului montat, prima lună pe zile.
+  // Exact ce face factura (abonament.js) — contractul nu promite altceva decât face aplicația.
+  _p(doc, 'Abonamentul fiecărui vehicul începe din ziua în care echipamentul montat pe acesta transmite prima dată date către platformă. ' +
+    'Pentru luna în care începe, abonamentul se datorează proporțional cu zilele rămase din lună și se facturează împreună cu luna următoare; ' +
+    'de atunci, fiecare factură cuprinde luna în curs, integral. Serviciile lunare care nu țin de un anumit vehicul încep odată cu primul vehicul monitorizat.');
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
 

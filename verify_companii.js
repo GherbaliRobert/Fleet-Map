@@ -56,23 +56,27 @@ const a1 = html.indexOf('    function _raxAccessCell(c) {');
 const a2 = html.indexOf('\n    }', a1) + 6;
 T('găsesc funcția care desenează starea', a1 > 0, 'a1=' + a1);
 if (a1 > 0) {
-  const cel = new Function(html.slice(a1, a2) + '\n; return _raxAccessCell;')();
-  const stare = (s, until) => cel({ access: { status: s, access_until: until } });
-  // De la 09.09, un client oprit se vede ca SUSPENDAT, cu motivul (abonament / neplată / oprit de
-  // noi) — trei cauze care se rezolvă altfel. Roșul rămâne, cuvântul „expirat" nu mai spunea tot.
-  T('un client oprit iese roșu', /raco-pill bad/.test(stare('expired')), stare('expired'));
-  T('și scrie că e SUSPENDAT, cu motivul', /suspendat/.test(stare('expired')), stare('expired'));
-  T('„grație" iese portocaliu (pastila warn)', /raco-pill warn/.test(stare('grace')), stare('grace'));
+  const escP = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const cel = new Function('esc', html.slice(a1, a2) + '\n; return _raxAccessCell;')(escP);
+  // Din 28.09 accesul are TREI stări, fără dată „până la": activ, restanță (în cele 15 zile de după
+  // scadență, cu numărătoarea inversă) și suspendat (neplată sau oprit de noi). Ceasul vechi pe perioade
+  // plătite — „nelimitat", „în grație", „activ până la …" — a fost scos: bloca clienți care plătiseră tot.
+  const stare = (s, motiv) => cel({ access: { status: s, motiv: motiv } });
+  const restanta = { faza: 'avertisment', zilePanaLaSuspendare: 6, factura: { numar: 'RAT-2026-00007' } };
+  const inRestanta = cel({ access: { status: 'grace', motiv: 'neplata' }, neplata: restanta });
+  T('un client oprit iese roșu', /raco-pill bad/.test(stare('expired', 'neplata')), stare('expired', 'neplata'));
+  T('și scrie că e SUSPENDAT, cu motivul (neplată)', /suspendat — neplată/.test(stare('expired', 'neplata')), stare('expired', 'neplata'));
+  T('sau că l-am oprit noi', /oprit de noi/.test(stare('expired', 'manual')), stare('expired', 'manual'));
+  T('restanța iese portocaliu, cu zilele până la suspendare și factura', /raco-pill warn/.test(inRestanta) && /6 zile/.test(inRestanta) && /RAT-2026-00007/.test(inRestanta), inRestanta);
   T('„activ" iese verde (pastila ok)', /raco-pill ok/.test(stare('active')), stare('active'));
-  T('„nelimitat" rămâne neutru', /class="raco-pill "/.test(stare('unlimited')), stare('unlimited'));
   T('o stare necunoscută NU se dă drept activă', !/raco-pill ok/.test(stare('habarnam')), stare('habarnam'));
-  T('data până când e valabil apare când există', /până /.test(stare('active', Date.parse('2026-07-10'))), stare('active', Date.parse('2026-07-10')));
-  T('și lipsește când nu există', !/până /.test(stare('active')), stare('active'));
+  T('nu mai există „până la …" pe pastilă (ceasul vechi)', !/până /.test(stare('active')) && !/până /.test(inRestanta), stare('active'));
   // Fiecare stare pe care o poate trimite serverul trebuie să aibă pastila ei.
   const dinServer = [...server.matchAll(/status\s*[:=]\s*'(unlimited|active|grace|expired)'/g)].map(m => m[1]);
   const unice = [...new Set(dinServer)];
   T('serverul chiar trimite stările astea', unice.length >= 3, unice.join(', '));
-  unice.forEach(s => T('starea „' + s + '" are pastila ei', /raco-pill/.test(stare(s)), stare(s)));
+  T('și nu mai trimite „nelimitat"', unice.indexOf('unlimited') < 0, unice.join(', '));
+  unice.forEach(s => T('starea „' + s + '" are pastila ei', /raco-pill/.test(s === 'grace' ? inRestanta : stare(s)), stare(s)));
 }
 
 sect('3. Listele nu mai poartă clasa mesajului de listă goală');

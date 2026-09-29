@@ -630,7 +630,9 @@ function renderOfertaPdf(doc, o) {
     // vin echipamentele și după ce le instalăm". Aceeași formulare ca în anexa contractului
     // („la livrare și la execuție"), ca actele noastre să nu se contrazică.
     'Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune. Costul unic nu face parte din abonamentul lunar.',
-    'Abonamentul lunar se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
+    // De la ce zi plătește clientul o mașină (decizie Alin, 28.09): din ziua în care aparatul montat pe ea
+    // transmite prima dată. Aceeași regulă ca în contract (IV) și ca factura (abonament.js).
+    'Abonamentul fiecărei mașini începe din ziua în care aparatul montat pe ea transmite prima dată; prima lună se plătește pe zile, pe factura lunii următoare. Apoi se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
     'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor. Instalarea o executăm noi, la sediul Beneficiarului.',
     // „Cursul BNR" se scrie DOAR dacă de la BNR vine. Când n-a putut fi preluat, folosim o valoare
     // de rezervă — și atunci hârtia spune „curs de referință", nu pune numele BNR pe o cifră care nu e
