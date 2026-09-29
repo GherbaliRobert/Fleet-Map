@@ -340,6 +340,9 @@ function scrieContract(doc, date) {
   const sfarsit = contract.end_at || C.calcSfarsit(contract.start_at, luni);
   const preaviz = contract.notice_days == null ? 30 : contract.notice_days;
   const termenPlata = firma.payment_term_days == null ? 15 : firma.payment_term_days;
+  // Tariful de deplasare din Anexa nr. 2, dacă s-a convenit: clauza cu mașinile neaduse la montaj îl citează.
+  const _rDepl = ((mont && mont.items) || []).filter(function (r) { return r.tip === 'deplasare' && Number(r.pretClient) > 0; })[0] || null;
+  const tarifKm = _rDepl ? Number(_rDepl.pretClient) : null;
   const ziFactura = firma.billing_day || 1;
   const cotaTva = em.vat_rate == null ? 19 : em.vat_rate;
   // Cât se păstrează istoricul: cât scrie în anexa semnată (dacă s-a cumpărat mai mult), altfel regula
@@ -408,10 +411,30 @@ function scrieContract(doc, date) {
     'de atunci, fiecare factură cuprinde luna în curs, integral. Serviciile lunare care nu țin de un anumit vehicul încep odată cu primul vehicul monitorizat.');
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
+  // Costurile UNICE din Anexa nr. 2 (decizie Alin, 29.09): aparatele integral în avans, pe proformă; montajul
+  // după executare, pe vehiculele montate efectiv. Aceleași cuvinte ca în Anexa nr. 2 și în ofertă.
+  if (areMontaj) {
+    const inTermen = termenPlata > 0 ? 'în termen de ' + C.numar(termenPlata, 'zi', 'zile') + ' de la semnare' : 'la semnare';
+    _p(doc, areEchip
+      ? 'Echipamentele din Anexa nr. 2 se plătesc integral în avans, pe baza facturii proforme emise la semnarea contractului, ' + inTermen +
+        '; factura fiscală se emite la încasare. Montajul se facturează după executare, pentru vehiculele montate efectiv.'
+      : 'Montajul din Anexa nr. 2 se facturează după executare, pentru vehiculele montate efectiv.');
+  }
 
   _titlu(doc, 'V. OBLIGAȚIILE PĂRȚILOR');
   _p(doc, 'Prestatorul se obligă: să asigure funcționarea platformei și accesul Beneficiarului la datele proprii; să păstreze confidențialitatea datelor Beneficiarului; să asigure asistență tehnică în timpul programului de lucru; să anunțe din timp lucrările planificate care afectează serviciul.');
   _p(doc, 'Beneficiarul se obligă: să achite prețul la termenele convenite; să folosească platforma potrivit legii și scopului declarat; să își informeze proprii angajați despre monitorizarea vehiculelor, potrivit legislației muncii și protecției datelor; să anunțe Prestatorul despre modificările din flotă care afectează Anexa nr. 1.');
+  // Termenul nostru curge de la ÎNCASAREA avansului, nu de la semnare (decizie Alin, 29.09: „2. DA").
+  if (areEchip) {
+    _p(doc, 'Prestatorul livrează și montează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') +
+      ' de la încasarea avansului, la datele de montaj convenite cu Beneficiarul.');
+  }
+  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA"): termenul se prelungește, drumul în plus se plătește.
+  if (areMontaj) {
+    _p(doc, 'Beneficiarul pune vehiculele la dispoziție la datele de montaj convenite. Dacă un vehicul nu este disponibil, termenul de montaj se prelungește cu zilele de întârziere, ' +
+      'iar deplasarea suplimentară a echipei de montaj se facturează separat' + (tarifKm ? ', la tariful de ' + _bani(tarifKm, 'RON') + ' pe kilometru, fără TVA.' : '.') +
+      ' Abonamentul vehiculelor nemontate nu începe până la montaj.');
+  }
 
   _titlu(doc, 'VI. PROTECȚIA DATELOR CU CARACTER PERSONAL');
   _p(doc, 'În privința datelor personale prelucrate prin platformă (date de localizare ale vehiculelor și, după caz, ale conducătorilor auto), Beneficiarul are calitatea de OPERATOR, iar Prestatorul pe cea de PERSOANĂ ÎMPUTERNICITĂ, în sensul Regulamentului (UE) 2016/679 (GDPR).');
@@ -425,6 +448,11 @@ function scrieContract(doc, date) {
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
   _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
     (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
+  // Avansul care nu vine (decizie Alin, 29.09: „2. DA"): nu comandăm nimic și nimeni nu rămâne legat.
+  if (areEchip) {
+    _p(doc, 'Dacă avansul pentru echipamente nu este plătit în ' + C.numar(C.AVANS_ZILE_RENUNTARE, 'zi', 'zile') +
+      ' de la semnare, oricare parte poate renunța la contract, fără penalități, printr-o notificare scrisă.');
+  }
   if (chirieA) {
     // Plecarea înainte de termen: chiria lunilor rămase + demontarea, pe care o plătește el (Alin, 25.09).
     const tDem = Number(chirieA.tarifDemontare) > 0 ? Number(chirieA.tarifDemontare) : null;
@@ -470,7 +498,10 @@ function scrieContract(doc, date) {
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
     doc.x = AM.left; doc.y += 12;
-    _p(doc, 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ, la livrare și la execuție, și NU fac parte din abonamentul lunar din Anexa nr. 1.');
+    // Aceleași cuvinte ca în capitolul IV și în ofertă (decizie Alin, 29.09): aparatele în avans, montajul după.
+    _p(doc, areEchip
+      ? 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ și NU fac parte din abonamentul lunar din Anexa nr. 1: echipamentele (A), integral în avans, pe baza facturii proforme; montajul (B), după executare, pentru vehiculele montate efectiv.'
+      : 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ, după executare, pentru vehiculele montate efectiv, și NU fac parte din abonamentul lunar din Anexa nr. 1.');
     // Marfa întâi, manopera după: așa se citește o factură și așa se înțelege devizul.
     if (areEchip) {
       _titlu(doc, 'A. Echipamente livrate');

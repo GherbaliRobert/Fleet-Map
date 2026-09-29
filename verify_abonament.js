@@ -159,6 +159,76 @@ sect('5. Pe hârtie: contractul și oferta spun regula');
   T('oferta: aceeași regulă, în condiții', /Abonamentul fiecărei mașini începe din ziua în care aparatul montat pe ea transmite prima dată; prima lună se plătește pe zile/.test(rep));
 }
 
+sect('5b. Plata aparatelor și montajul (Alin, 29.09: „1.A, 2.DA, 3.DA")');
+{
+  const CP = require('./contract_pdf.js');
+  const RE = require('./report_export.js');
+  const MJ = require('./montaj.js');
+  T('cifrele stau într-un singur loc: 30 de zile de la încasare, 30 de zile pentru avans',
+    contracte.MONTAJ_ZILE_DUPA_AVANS === 30 && contracte.AVANS_ZILE_RENUNTARE === 30);
+  // Hârtiile se desenează pe un „carton" care ține minte doar textul — ce ar citi clientul.
+  const carton = () => {
+    const texte = [];
+    const d = {
+      page: { width: 595.28, height: 841.89, margins: { top: 50, bottom: 50, left: 50, right: 50 } }, x: 50, y: 50,
+      font() { return d; }, fontSize() { return d; }, fillColor() { return d; }, strokeColor() { return d; }, lineWidth() { return d; },
+      moveTo() { return d; }, lineTo() { return d; }, stroke() { return d; }, image() { return d; }, roundedRect() { return d; }, fill() { return d; },
+      widthOfString(x) { return String(x == null ? '' : x).length * 4.6; }, heightOfString() { return 10; },
+      addPage() { d.y = 50; return d; }, moveDown(n) { d.y += 12 * (n == null ? 1 : n); return d; },
+      text(t, x, y) { texte.push(String(t == null ? '' : t)); if (typeof y === 'number') d.y = y + 11; else d.y += 11; return d; }
+    };
+    return { d, texte };
+  };
+  const zi = Date.parse('2026-10-01T09:00:00Z');
+  const contract = (montaj) => {
+    const c = carton();
+    CP.scrieContract(c.d, {
+      contract: { number: 'RAT-C-2026-0050', status: 'aprobat', signed_at: zi, start_at: zi, months: 24, end_at: contracte.calcSfarsit(zi, 24), auto_renew: true, notice_days: 30,
+        gdpr: { kind: 'anexa' }, annex: contracte.facAnexa([], { vehiculeOferta: [{ fel: 'can', nume: 'Vehicule GPS cu CAN', cant: 50, pret: 45, total: 2250 }] }), montaj: montaj || null },
+      firma: { name: 'Transport SRL', cui: 'RO12345678', address: 'Str. Exemplu 1', payment_term_days: 15, billing_day: 1 },
+      emitent: { name: 'RA TRACKS SRL', cui: 'RO44556677', vat_rate: 19 }
+    });
+    return c.texte.join(' ¦ ');
+  };
+  const cuAparate = MJ.facAnexaCosturiUnice(MJ.randuri([{ tip: 'gps', buc: 50, pretClient: 100 }, { tip: 'lvcan', buc: 50, pretClient: 60 }, { tip: 'deplasare', buc: 120, pretClient: 2 }]),
+    MJ.randuriEchip([{ tip: 'fmc130', buc: 50, pretEur: 55 }, { tip: 'lvcan200', buc: 50, pretEur: 60 }]), 5, 'RON');
+  const doarMontaj = MJ.facAnexaCosturiUnice(MJ.randuri([{ tip: 'gps', buc: 50, pretClient: 100 }]), [], 5, 'RON');
+  const tA = contract(cuAparate), tM = contract(doarMontaj), t0 = contract(null);
+  T('IV: aparatele integral în avans, pe proformă, în 15 zile de la semnare; factura fiscală la încasare',
+    /Echipamentele din Anexa nr\. 2 se plătesc integral în avans, pe baza facturii proforme emise la semnarea contractului, în termen de 15 zile de la semnare; factura fiscală se emite la încasare\./.test(tA));
+  T('IV: montajul după executare, pe vehiculele montate efectiv', /Montajul se facturează după executare, pentru vehiculele montate efectiv\./.test(tA));
+  T('V: livrarea și montajul în 30 de zile de la ÎNCASAREA avansului (nu de la semnare)',
+    /livrează și montează echipamentele din Anexa nr\. 2 în cel mult 30 de zile de la încasarea avansului/.test(tA));
+  T('V: vehiculul neadus la montaj → termenul se prelungește, drumul în plus la tariful din anexă (2 lei/km)',
+    /Dacă un vehicul nu este disponibil, termenul de montaj se prelungește cu zilele de întârziere/.test(tA) && /la tariful de 2,00 RON pe kilometru, fără TVA/.test(tA));
+  T('V: și abonamentul unei mașini nemontate nu începe', /Abonamentul vehiculelor nemontate nu începe până la montaj/.test(tA));
+  T('VII: avansul neplătit în 30 de zile → oricare parte poate renunța, fără penalități',
+    /Dacă avansul pentru echipamente nu este plătit în 30 de zile de la semnare, oricare parte poate renunța la contract, fără penalități/.test(tA));
+  T('Anexa nr. 2: aparatele (A) în avans, pe proformă; montajul (B) după executare',
+    /echipamentele \(A\), integral în avans, pe baza facturii proforme; montajul \(B\), după executare/.test(tA));
+  T('fără aparate vândute (doar montaj): fără avans, fără termen de la încasare, fără renunțare — dar cu mașinile neaduse',
+    !/integral în avans/.test(tM) && !/de la încasarea avansului/.test(tM) && !/Dacă avansul/.test(tM)
+    && /Dacă un vehicul nu este disponibil/.test(tM) && /deplasarea suplimentară a echipei de montaj se facturează separat\./.test(tM)
+    && /se plătesc O SINGURĂ DATĂ, după executare, pentru vehiculele montate efectiv/.test(tM));
+  T('fără montaj deloc: nicio clauză de montaj', !/Dacă un vehicul nu este disponibil|integral în avans|Dacă avansul/.test(t0));
+  // Oferta spune aceleași lucruri, cu aceleași cifre.
+  const oferta = (o) => { const c = carton(); RE.renderOfertaPdf(c.d, o); return c.texte.join(' ¦ '); };
+  const baza = { client: { name: 'Transport SRL' }, contractMonths: 24, fxRate: 5, fxSursa: 'BNR', nVeh: 50,
+    lines: [{ fel: 'can', label: 'Vehicule GPS cu CAN', qty: 50, unit: 45, total: 2250 }], monthly: 2250, contractTotal: 54000,
+    montajLines: [{ label: 'Instalare dispozitiv GPS', qty: 50, unit: 100, total: 5000 }], montaj: 5000,
+    deviceLines: [{ label: 'Teltonika FMC130', qty: 50, unit: 55, total: 2750 }], hwTotal: 2750, chirieLuniMin: 24, chirieZileRetur: 15 };
+  const oC = oferta(baza);
+  const oFaraMontaj = oferta(Object.assign({}, baza, { montajLines: [], montaj: 0 }));
+  const oInch = oferta(Object.assign({}, baza, { inchiriere: true, tarifDemontare: 60, deviceLines: [], hwTotal: 0 }));
+  T('oferta: aparatele în avans, pe proformă; montajul în 30 de zile de la încasare',
+    /Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult 30 de zile de la încasare\./.test(oC));
+  T('oferta: mașinile neaduse la montaj, imediat după plata costului unic',
+    /Mașinile se pun la dispoziție în zilele de montaj stabilite\. Dacă o mașină lipsește, termenul se prelungește/.test(oC)
+    && oC.indexOf('Echipamentele se plătesc integral în avans') < oC.indexOf('Mașinile se pun la dispoziție') && oC.indexOf('Mașinile se pun la dispoziție') < oC.indexOf('Abonamentul fiecărei mașini începe'));
+  T('oferta fără montaj: fără clauza mașinilor neaduse', !/Mașinile se pun la dispoziție/.test(oFaraMontaj));
+  T('oferta cu închiriere: fără avans pentru aparate, dar cu mașinile neaduse (are montaj)', !/se plătesc integral în avans/.test(oInch) && /Mașinile se pun la dispoziție/.test(oInch));
+}
+
 // ─── 6. Pe server pornit: tot drumul ────────────────────────────────────────────────────────
 const PORT = 3237, DIR = '.abonament-ci-db';
 const envS = { ...process.env, NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_abonament',

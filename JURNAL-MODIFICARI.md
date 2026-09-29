@@ -26,8 +26,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Un jurist** să citească ambele contracte, cu clienții și cu partenerii de montaj (plus acordurile
   GDPR din anexe), înainte de primul semnat. Se schimbă într-un singur loc: `contract_pdf.js`.
   **Din 25.09, și clauzele de închiriere** (aparatele ale noastre, 24 de luni minim, chiria lunilor rămase,
-  returul în 15 zile, valoarea aparatelor nereturnate). **Din 29.09, și clauza nouă din IV:** abonamentul
-  fiecărui vehicul pornește la prima transmisie a aparatului, prima lună pe zile.
+  returul în 15 zile, valoarea aparatelor nereturnate). **Din 29.09, și clauzele noi:** abonamentul
+  fiecărui vehicul pornește la prima transmisie a aparatului, prima lună pe zile (IV); aparatele în avans,
+  pe proformă (IV + Anexa nr. 2); montajul în 30 de zile de la încasare și mașinile neaduse (V); renunțarea
+  dacă avansul nu vine în 30 de zile (VII).
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -58,10 +60,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [x] **HOTĂRÂT (28.09): de la ce zi plătește clientul abonamentul unei mașini.** Alin: „1. A" — pe zile,
   din ziua în care aparatul montat transmite prima dată; prima lună pe factura lunii următoare. Făcut pe
   29.09, scris și în contract (IV) și în condițiile ofertei.
-- [ ] **Voi: regulile de plată pentru aparate și montaj. Adăugat pe 29.09, din exemplul cu Transport SRL.**
-  Proforma pentru aparate la semnare, cât avans, de când curg cele 30 de zile (de la încasare), ce facem dacă
-  nu plătește, când se facturează montajul. Propunerea mea e în răspunsul din 29.09; după ce hotărâți, o
-  scriu în contract și în ofertă (și o citește juristul).
+- [x] **HOTĂRÂT (29.09): regulile de plată pentru aparate și montaj.** Alin: „1.A, 2.DA, 3.DA" — aparatele
+  integral în avans, pe proformă; montajul după executare; livrarea și montajul în 30 de zile de la
+  încasare; avansul neplătit în 30 de zile → oricare parte poate renunța; mașinile neaduse la montaj
+  prelungesc termenul, iar drumul în plus se plătește. Scrise în contract și în ofertă pe 29.09.
 - [ ] **Contabilul: proforma și factura de după ea. Adăugat pe 29.09.** Aplicația face acum proforme (serie
   proprie, PF-…, fără ANAF), iar la încasare emite singură factura fiscală, cu aceleași rânduri, marcată
   plătită. De întrebat: la un avans încasat înainte de livrare se emite „factură de avans" și apoi factura
@@ -258,6 +260,29 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+### AMÂNDOI · Contractul și oferta: aparatele în avans, montajul în 30 de zile de la încasare
+
+Alin, la cele trei întrebări: *„1.A, 2.DA, 3.DA"*.
+
+**Ce scrie acum, în contract (și la fel în ofertă):**
+1. **Aparatele** se plătesc **integral în avans**, pe proformă, la semnare (în termenul de plată al firmei,
+   de obicei 15 zile). Factura fiscală se emite la încasare — din aplicație, cu ✓ „Încasată" pe proformă.
+2. **Montajul** se facturează **după executare**, doar pentru mașinile montate de fapt.
+3. **Livrarea și montajul: în cel mult 30 de zile de la încasarea avansului** — nu de la semnare. Nu
+   promitem nimic pe bani pe care nu i-am primit.
+4. **Dacă avansul nu vine în 30 de zile de la semnare, oricare parte poate renunța**, fără penalități.
+5. **Mașinile neaduse la montaj:** termenul se prelungește cu zilele pierdute, drumul în plus al echipei se
+   plătește (la tariful de deplasare din anexă, dacă e trecut), iar **abonamentul unei mașini nemontate nu
+   începe**.
+
+La închiriere nu se schimbă nimic: aparatele nu se cumpără, deci nici avans nu există; clauza cu mașinile
+neaduse se aplică și acolo. Cifrele de 30 de zile stau într-un singur loc, de unde le citesc și contractul,
+și oferta. **A înlocuit regula din 21.09** („echipamentele se facturează la livrare").
+
+- **Ce am schimbat:** textul contractului (IV, V, VII, Anexa nr. 2) și condițiile ofertei.
+- **Ce vede fondatorul:** contractul și oferta descărcate spun regulile noi.
+- **Ce vede clientul:** aceleași reguli, pe hârtia pe care o semnează. Juristul le citește (e pe listă).
 
 ### FONDATOR · Poarta de pe GitHub, verde din nou (iconițele telefonului)
 

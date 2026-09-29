@@ -281,7 +281,7 @@ T('hârtia începe cu RĂSPUNSUL: cât pe lună, cât o singură dată',
   /'Cost lunar'/.test(PD) && /'Cost unic, o singură dată'/.test(PD));
 T('și spune cât face pe toată durata contractului', /Total pe durata contractului/.test(PD));
 T('condițiile de plată sunt scrise, la final', /CONDIȚII/.test(PD)
-  && /Echipamentele se facturează la livrare/.test(PD)
+  && /Echipamentele se plătesc integral în avans, pe proformă/.test(PD)
   && /se facturează în fiecare lună, pe toată durata contractului/.test(PD));
 T('scrie că echipamentele rămân ale clientului', /rămân în proprietatea Beneficiarului după achitarea lor/.test(PD));
 T('și înșiră ce include abonamentul, pe fiecare mașină', /CE INCLUDE ABONAMENTUL LUNAR, PENTRU FIECARE VEHICUL/.test(PD));
@@ -423,10 +423,14 @@ T('și nicio sumă nu mai scapă prin `toFixed`', !/toFixed\(2\) \+ ' lei'/.test
 T('cursul se scrie cu 4 zecimale, românește', /_bani\(fx, 'lei', 4\)/.test(pdf));
 T('și se spune DIN CE ZI e cursul, dacă îl știm', /o\.fxDate \? ' din ' \+ o\.fxDate : ''/.test(pdf));
 T('PDF-ul spune cursul folosit și că se facturează în lei', /Facturarea se face în lei/.test(pdf));
-// Alin, 21.09: „costul unic nu-l facturăm la semnarea contractului, ci după ce vin echipamentele
-// și după ce le instalăm". Aceeași formulare ca în anexa contractului, ca actele să nu se bat cap în cap.
-T('costul unic se facturează la LIVRARE și la punerea în funcțiune, nu la semnare',
-  /Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune/.test(pdf)
+// Alin, 29.09 („1.A, 2.DA"): aparatele se plătesc integral în AVANS, pe proformă, iar termenul nostru de
+// livrare și montaj curge de la ÎNCASARE; instalarea se facturează după punerea în funcțiune. (A înlocuit
+// regula din 21.09, „echipamentele la livrare": nu comandăm aparate pe banii noștri.) Aceeași formulare ca
+// în anexa contractului, ca actele să nu se bată cap în cap.
+T('aparatele în avans, pe proformă; termenul de la încasare; instalarea după punerea în funcțiune',
+  /Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult /.test(pdf)
+  && /zile de la încasare\. Instalarea se facturează după punerea în funcțiune, pe mașinile montate efectiv/.test(pdf)
+  && /contracte\.MONTAJ_ZILE_DUPA_AVANS/.test(pdf)
   && !/se facturează integral la semnarea contractului/.test(pdf));
 T('și spune că nu intră în abonament', /nu face parte din abonamentul lunar/.test(pdf));
 // „Cursul BNR" se scrie DOAR dacă de la BNR vine. Altfel am pune numele BNR pe o cifră de rezervă.

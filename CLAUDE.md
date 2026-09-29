@@ -954,6 +954,20 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - Ce fel de factură se emite la încasarea unui avans (de avans / finală) = întrebare pentru contabil, în
   „De amintit". Nu schimba forma fără răspunsul lui.
 
+### Aparatele VÂNDUTE: avans pe proformă, montajul în 30 de zile de la încasare (Alin, 29.09)
+„1.A, 2.DA, 3.DA". A înlocuit regula din 21.09 („echipamentele se facturează la livrare").
+- Aparatele se plătesc **integral în avans, pe proformă**, la semnare (termenul de plată al firmei); montajul
+  **după executare**, pe mașinile montate efectiv.
+- Livrarea și montajul: în cel mult **`MONTAJ_ZILE_DUPA_AVANS` = 30** de zile de la **încasarea** avansului;
+  avansul neplătit în **`AVANS_ZILE_RENUNTARE` = 30** de zile de la semnare → oricare parte poate renunța.
+  Cifrele stau în `contracts.js`; contractul și oferta le citesc de acolo. NU le face variabile de mediu.
+- Mașinile neaduse la montaj: termenul se prelungește, drumul în plus se plătește (tariful de deplasare din
+  Anexa nr. 2, dacă există), iar abonamentul unei mașini nemontate nu începe (regula pe zile, mai sus).
+- Unde stau: contract IV (plata), V (termenul + mașinile neaduse), VII (renunțarea), Anexa nr. 2 (fraza de
+  sus); oferta: prima condiție + cea despre mașini (a doua, doar dacă oferta are montaj). La închiriere nu
+  există avans. Păzit de `verify_abonament.js` (5b, hârtiile desenate), `verify_montaj.js`, `verify_tarife.js`,
+  `verify_stoc_chirie.js`.
+
 ### Trecerea mai multor aparate pe firmă
 - `PUT /api/devices/company-bulk { company_id, imeis }` și `PUT /api/devices/:imei/company` trec AMÂNDOUĂ
   prin **`_trecePeFirma`** (o singură funcție: firma, cache-urile, pornirea abonamentului, stocul, auditul).

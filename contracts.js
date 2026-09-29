@@ -100,6 +100,14 @@ const LUNI_JURNAL_AUDIT = 12;
 const CHIRIE_LUNI_MIN = 24;
 const CHIRIE_MARJA = 0.5;
 const CHIRIE_ZILE_RETUR = 15;
+
+// Aparatele VÂNDUTE (decizie Alin, 29.09: „1.A, 2.DA, 3.DA"). Se plătesc integral în AVANS, pe proformă;
+// montajul, după executare, pe mașinile montate efectiv. Termenul nostru curge de la ÎNCASARE, nu de la
+// semnare — nu promitem nimic pe bani pe care nu i-am primit. Dacă avansul nu vine, oricare parte poate
+// renunța, fără penalități. Contractul și oferta citesc cifrele de aici; NU le face variabile de mediu:
+// sunt promisiuni semnate.
+const MONTAJ_ZILE_DUPA_AVANS = 30;   // livrarea și montajul: în cel mult atâtea zile de la încasarea avansului
+const AVANS_ZILE_RENUNTARE = 30;     // avansul neplătit în atâtea zile de la semnare → oricare parte poate renunța
 // Chiria pe lună a UNUI aparat, în lei. Rotunjită la leu, dar niciodată sub costul curat pe lună
 // (cost ÷ luni, rotunjit în sus): rotunjirea nu are voie să ne mănânce banii aparatului. Fără cost
 // știut → `null`: nu inventăm o chirie (ar ieși un aparat dat aproape pe gratis).
@@ -489,6 +497,7 @@ module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
   LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
   CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
+  MONTAJ_ZILE_DUPA_AVANS, AVANS_ZILE_RENUNTARE,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare

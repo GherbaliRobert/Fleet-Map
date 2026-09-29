@@ -625,11 +625,14 @@ function renderOfertaPdf(doc, o) {
   });
   y += 8;
 
+  const zMontaj = contracte.MONTAJ_ZILE_DUPA_AVANS;
   const conditii = [
-    // Nu la semnarea contractului — Alin, 21.09: „costul unic nu-l facturăm la semnare, ci după ce
-    // vin echipamentele și după ce le instalăm". Aceeași formulare ca în anexa contractului
-    // („la livrare și la execuție"), ca actele noastre să nu se contrazică.
-    'Echipamentele se facturează la livrare, iar instalarea după punerea în funcțiune. Costul unic nu face parte din abonamentul lunar.',
+    // Aparatele, în AVANS, pe proformă; montajul, după executare (decizie Alin, 29.09: „1.A, 2.DA"). A înlocuit
+    // regula din 21.09 („la livrare"): nu comandăm aparate pe banii noștri. Termenul curge de la ÎNCASARE.
+    // Aceleași cuvinte ca în contract (IV, V) și în Anexa nr. 2 — actele noastre nu se contrazic.
+    'Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult '
+      + zMontaj + ' ' + _ofDe(zMontaj) + 'zile de la încasare. Instalarea se facturează după punerea în funcțiune, pe mașinile montate efectiv. '
+      + 'Costul unic nu face parte din abonamentul lunar.',
     // De la ce zi plătește clientul o mașină (decizie Alin, 28.09): din ziua în care aparatul montat pe ea
     // transmite prima dată. Aceeași regulă ca în contract (IV) și ca factura (abonament.js).
     'Abonamentul fiecărei mașini începe din ziua în care aparatul montat pe ea transmite prima dată; prima lună se plătește pe zile, pe factura lunii următoare. Apoi se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
@@ -658,6 +661,12 @@ function renderOfertaPdf(doc, o) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
       + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
       + 'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.');
+  }
+  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA") — doar dacă oferta are montaj. Pusă ULTIMA în
+  // cod, pe locul 2: imediat după plata costului unic, înaintea abonamentului și a RA Insight.
+  if ((o.montajLines || []).length || Number(o.montaj) > 0) {
+    conditii.splice(1, 0, 'Mașinile se pun la dispoziție în zilele de montaj stabilite. Dacă o mașină lipsește, termenul se prelungește, '
+      + 'iar drumul în plus al echipei de montaj se plătește separat. Abonamentul unei mașini nemontate nu începe.');
   }
   spatiu(26);
   doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text('CONDIȚII', left, y, { lineBreak: false });

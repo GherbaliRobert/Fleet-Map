@@ -117,7 +117,9 @@ const bazaOf = { client: { name: 'Transport Zebra SRL' }, contractMonths: 24, fx
 const hCump = hartie(bazaOf);
 const hInch = hartie(Object.assign({}, bazaOf, { inchiriere: true, tarifDemontare: 60, deviceLines: [], hwTotal: 0, monthly: 430, contractTotal: 10320,
   lines: bazaOf.lines.concat([{ fel: 'chirie', label: 'Chirie Teltonika FMC130', qty: 10, unit: 14, total: 140 }]) }));
-T('CUMPĂRĂ: hârtia rămâne neschimbată (echipamente o singură dată, facturate la livrare)', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se facturează la livrare/.test(hCump) && !/proprietatea RA Tracks/.test(hCump));
+// Din 29.09 aparatele cumpărate se plătesc în AVANS, pe proformă (decizie Alin, „1.A"); restul hârtiei e același.
+T('CUMPĂRĂ: echipamente o singură dată, plătite în avans, pe proformă', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se plătesc integral în avans, pe proformă/.test(hCump) && !/proprietatea RA Tracks/.test(hCump));
+T('ÎNCHIRIAZĂ: fără avans pentru aparate (nu se cumpără)', !/se plătesc integral în avans/.test(hInch));
 T('ÎNCHIRIAZĂ: tabelul „Chiria echipamentelor — lunar"', /CHIRIA ECHIPAMENTELOR — LUNAR/.test(hInch) && /Chirie Teltonika FMC130/.test(hInch));
 T('ÎNCHIRIAZĂ: fără tabel de echipamente vândute', !/ECHIPAMENTE — O SINGURĂ DATĂ/.test(hInch));
 T('ÎNCHIRIAZĂ: costul unic e doar instalarea (1.000 lei)', /instalare \(aparatele sunt închiriate\)/.test(hInch) && /1\.000,00 lei/.test(hInch));

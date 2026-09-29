@@ -68,8 +68,11 @@ sect('4. Costurile UNICE (echipamente + montaj) sunt separate de abonament');
 // Cu aparate VÂNDUTE anexa e „Echipamente și montaj"; la ÎNCHIRIERE (25.09) aparatele nu se vând, deci
 // anexa rămâne doar cu montajul și se numește „Montaj" (verify_stoc_chirie.js citește hârtia desenată).
 T('anexa are și marfa, și manopera', /'ANEXA nr\. 2 — ' \+ \(areEchip \? 'Echipamente și montaj' : 'Montaj'\) \+ ' \(costuri unice\)'/.test(cpdf));
-T('și scrie limpede că nu fac parte din abonament',
-  /se plătesc O SINGURĂ DATĂ, la livrare și la execuție, și NU fac parte din abonamentul lunar/.test(cpdf));
+// Când se plătește fiecare parte (decizie Alin, 29.09: „1.A"): aparatele integral în avans, pe proformă;
+// montajul după executare, pe vehiculele montate efectiv. (Până atunci: „la livrare și la execuție".)
+T('și scrie limpede că nu fac parte din abonament — aparatele în avans, montajul după',
+  /se plătesc O SINGURĂ DATĂ și NU fac parte din abonamentul lunar din Anexa nr\. 1: echipamentele \(A\), integral în avans, pe baza facturii proforme; montajul \(B\), după executare, pentru vehiculele montate efectiv/.test(cpdf)
+  && /se plătesc O SINGURĂ DATĂ, după executare, pentru vehiculele montate efectiv, și NU fac parte din abonamentul lunar/.test(cpdf));
 T('marfa e primul tabel, manopera al doilea', /A\. Echipamente livrate/.test(cpdf) && /B\. Montaj și punere în funcțiune/.test(cpdf));
 T('când sunt amândouă, apare un TOTAL de plată o singură dată', /TOTAL de plată o singură dată/.test(cpdf));
 T('scrie și că echipamentele rămân ale clientului după plată',
@@ -145,11 +148,14 @@ const REX = fs.readFileSync('./report_export.js', 'utf8');
 // plată la final. Același răspuns, spus profesional.
 T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
   /'Cost lunar'/.test(REX) && /'Cost unic, o singură dată'/.test(REX)
-  && /Echipamentele se facturează la livrare/.test(REX));
-// Oferta și anexa contractului spun ACELAȘI lucru despre când se plătește costul unic: la livrare
-// și la execuție. Două acte ale noastre n-au voie să se contrazică (Alin, 21.09).
+  && /Echipamentele se plătesc integral în avans, pe proformă/.test(REX));
+// Oferta și anexa contractului spun ACELAȘI lucru despre când se plătește costul unic: aparatele în avans,
+// pe proformă, montajul după executare (Alin, 29.09; înainte: „la livrare și la execuție", 21.09). Două
+// acte ale noastre n-au voie să se contrazică.
 T('și oferta nu contrazice anexa contractului',
-  /la livrare și la execuție/.test(cpdf) && /se facturează la livrare, iar instalarea după punerea în funcțiune/.test(REX));
+  /integral în avans, pe baza facturii proforme/.test(cpdf) && /Echipamentele se plătesc integral în avans, pe proformă/.test(REX)
+  && /montajul \(B\), după executare, pentru vehiculele montate efectiv/.test(cpdf) && /Instalarea se facturează după punerea în funcțiune, pe mașinile montate efectiv/.test(REX)
+  && !/la livrare și la execuție/.test(cpdf) && !/Echipamentele se facturează la livrare/.test(REX));
 
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.
