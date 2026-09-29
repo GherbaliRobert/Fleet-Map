@@ -1,0 +1,119 @@
+/* Ecranele fondatorului pe telefon (lotul 2b): Acasă, Dispozitive, Arhivate, Inventar, Tahograf și e-Transport
+   pe firme, Utilizare RA Insight, Chei API, Jurnal audit. Același limbaj ca pe web (.rax-devgr, .thf-*, .aiu-*),
+   pe o singură coloană, cu ținte de atingere mari.
+   Verdele aplicației (#3FE07D) nu e redefinit pe tema luminoasă: pe alb, scrisul mic verde nu se citește. De aceea
+   orice text verde de aici folosește --fd-ok (mai închis pe luminos), la fel portocaliul mic (--fd-warn). */
+:root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: var(--red); }
+:root[data-theme="light"] { --fd-ok: #0E7A3C; --fd-warn: #b45309; --fd-bad: #b91c1c; }
+
+.fd-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 0 0 10px; }
+.fd-note b { color: var(--text-secondary); }
+.fd-sec { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--fd-ok); margin: 16px 2px 8px; display: flex; align-items: center; gap: 6px; }
+
+/* Benzi: o propoziție care trebuie văzută, nu căutată. */
+.fd-band { display: flex; gap: 9px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border-radius: 10px; margin-bottom: 10px;
+  border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-primary); }
+.fd-band > svg { flex: 0 0 auto; margin-top: 2px; }
+.fd-band.warn { border-color: color-mix(in srgb, var(--orange) 55%, transparent); background: color-mix(in srgb, var(--orange) 10%, transparent); }
+.fd-band.warn > svg { color: var(--fd-warn); }
+.fd-band.bad { border-color: color-mix(in srgb, var(--red) 55%, transparent); background: color-mix(in srgb, var(--red) 9%, transparent); }
+.fd-band.bad > svg { color: var(--fd-bad); }
+.fd-band.ok { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.fd-band.ok > svg { color: var(--fd-ok); }
+.fd-band.tap { width: 100%; text-align: left; font-family: inherit; }
+
+/* Pastile cu număr (filtre). Rândul se derulează pe orizontală dacă nu încap. */
+.fd-chips { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: none; }
+.fd-chips::-webkit-scrollbar { display: none; }
+.fd-chip { flex: 0 0 auto; min-height: 38px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-panel);
+  color: var(--text-secondary); font-size: 13px; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fd-chip .cnt { font-size: 11.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--bg-dark); color: var(--text-muted); }
+.fd-chip.on { border-color: var(--accent); color: var(--fd-ok); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.fd-chip.on .cnt { color: var(--fd-ok); }
+.fd-chip.atentie { color: var(--fd-warn); border-color: color-mix(in srgb, var(--orange) 60%, transparent); }
+.fd-chip.atentie .cnt { color: var(--fd-warn); }
+
+/* Căutarea */
+.fd-search { width: 100%; box-sizing: border-box; min-height: 44px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 0 12px; font-size: 15px; font-family: inherit; margin-bottom: 10px; }
+.fd-search:focus { outline: none; border-color: var(--accent); }
+
+/* Butoane mici, dar încă de atins cu degetul. */
+.fd-btn { min-height: 38px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary);
+  font-size: 12.5px; font-weight: 700; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.fd-btn:disabled { opacity: .55; }
+.fd-btn.acc { color: var(--fd-ok); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.fd-btn.primary { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.fd-btn.warn { color: var(--fd-warn); border-color: color-mix(in srgb, var(--orange) 60%, transparent); }
+.fd-btn.warn.on { background: color-mix(in srgb, var(--orange) 14%, transparent); }
+.fd-btn.danger { color: var(--fd-bad); border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+.fd-btn.muted { color: var(--text-muted); }
+.fd-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fd-acts .fd-btn { flex: 1 1 auto; }
+
+/* Un grup pe firmă (Dispozitive, Arhivate) — ca .rax-devgr de pe web. */
+.fd-gr { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.fd-gr-h { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 10px 12px; text-align: left; font-family: inherit;
+  background: transparent; border: none; color: var(--text-primary); }
+.fd-gr-h .ttl { flex: 1; min-width: 0; }
+.fd-gr-h .ttl b { display: block; font-size: 14.5px; font-weight: 800; overflow-wrap: anywhere; }
+.fd-gr-h .ttl span { display: block; font-size: 12.5px; color: var(--text-muted); margin-top: 1px; }
+.fd-gr-h .ttl span b { display: inline; font-size: inherit; color: var(--fd-warn); }
+.fd-gr-bar { display: flex; gap: 8px; padding: 0 12px 10px; }
+.fd-gr-b { border-top: 1px solid var(--border); }
+.fd-rand { display: flex; gap: 10px; align-items: flex-start; width: 100%; padding: 11px 12px; text-align: left; font-family: inherit; background: transparent;
+  border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.fd-rand:last-child { border-bottom: none; }
+.fd-rand .mid { flex: 1; min-width: 0; }
+.fd-rand .nm { font-weight: 700; font-size: 14px; overflow-wrap: anywhere; }
+.fd-rand .sub { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+.fd-rand .rt { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.fd-inca { padding: 10px 12px; font-size: 12.5px; color: var(--text-muted); font-style: italic; }
+
+/* Pastile mici de stare */
+.fd-pill { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--bg-dark); color: var(--text-muted); white-space: nowrap; border: 1px solid var(--border); }
+.fd-pill.on { color: var(--fd-ok); border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.fd-pill.warn { color: var(--fd-warn); border-color: color-mix(in srgb, var(--orange) 55%, transparent); background: color-mix(in srgb, var(--orange) 10%, transparent); }
+.fd-pill.bad { color: var(--fd-bad); border-color: color-mix(in srgb, var(--red) 55%, transparent); background: color-mix(in srgb, var(--red) 9%, transparent); }
+
+/* Cifrele mari de sus (Tahograf, e-Transport, RA Insight, Acasă) */
+.fd-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.fd-kpi { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; min-width: 0; }
+.fd-kpi .v { font-size: 22px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.fd-kpi .v .mic { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+.fd-kpi .l { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.35; }
+.fd-kpi .cap { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.fd-kpi .sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+.fd-kpi .jos { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); line-height: 1.4; }
+.fd-kpi.lat { grid-column: 1 / -1; }
+.fd-kpi.ok { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.fd-kpi.warn { border-color: color-mix(in srgb, var(--orange) 55%, transparent); }
+.fd-kpi.bad { border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+.fd-filtrat { grid-column: 1 / -1; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+
+/* Bara unui fond (RA Insight) */
+.fd-fond { height: 7px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 5px; }
+.fd-fond > div { height: 100%; }
+
+/* Cartonașul unei firme (Tahograf, e-Transport, RA Insight) */
+.fd-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.fd-card-h { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.fd-card-h .nm { flex: 1 1 auto; min-width: 0; font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+.fd-card .meta { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; overflow-wrap: anywhere; }
+.fd-card .semn { font-weight: 800; }
+.fd-det { margin-top: 10px; border-top: 1px solid var(--border); }
+.fd-d { display: flex; gap: 9px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.fd-d:last-child { border-bottom: none; }
+.fd-d .mid { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fd-d .mid span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.fd-d em { font-style: normal; font-weight: 800; font-size: 12.5px; text-align: right; flex: 0 0 auto; max-width: 42%; }
+
+/* Tabelul pe luni al istoricului RA Insight: pe telefon, un rând = o lună, pe două linii. */
+.fd-luna { display: flex; flex-direction: column; gap: 3px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.fd-luna:last-child { border-bottom: none; }
+.fd-luna .r1 { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 13.5px; }
+.fd-luna .r2 { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-muted); }
+.fd-luna.est .r1 span:first-child { color: var(--fd-warn); }
+
+/* Codul unei chei API (se arată o singură dată) */
+.fd-cheie { font-size: 13px; word-break: break-all; color: var(--fd-ok); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 8px 0; user-select: all; -webkit-user-select: all; }

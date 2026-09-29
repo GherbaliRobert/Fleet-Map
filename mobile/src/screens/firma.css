@@ -1,0 +1,112 @@
+/* Administrarea firmei pe telefon (lotul 2): Roluri, Adrese de email, Istoric activitate, Aparate GPS,
+   Afișaj pentru toți. Clase proprii (prefix fm-), ca să nu calce `.chip` din admin.css sau din global.css.
+   Culorile vin DOAR din tokenurile temei; verdele aplicației nu e redefinit pe tema luminoasă, deci unde
+   scrie text verde pe alb se folosește --fm-ok (mai închis pe luminos). */
+
+:root { --fm-ok: var(--accent); }
+:root[data-theme="light"] { --fm-ok: #0E7A3C; }
+
+.fm-note { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); margin: 0 2px 12px; }
+.fm-note b { color: var(--text-primary); }
+.fm-foot { font-size: 12px; line-height: 1.5; color: var(--text-muted); margin: 14px 2px 4px; }
+.fm-foot b { color: var(--text-secondary); }
+
+/* Anunțul de sus (verde = gata, roșu = refuz) — rămâne până îl închide omul. */
+.fm-msg { display: flex; gap: 9px; align-items: flex-start; padding: 11px 12px; margin-bottom: 12px; border-radius: 10px;
+  font-size: 13px; line-height: 1.45; border: 1px solid var(--fm-ok); background: rgba(63,224,125,.10); color: var(--text-primary); }
+.fm-msg.rau { border-color: var(--red); background: rgba(240,90,90,.10); }
+.fm-msg > span { flex: 1; min-width: 0; }
+.fm-msg .fm-x { color: var(--text-muted); display: flex; padding: 2px; }
+
+/* Pastile (filtre, file, alegeri). Ținta de atingere: 38px. */
+.fm-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.fm-chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-left: -2px; margin-right: -2px; -webkit-overflow-scrolling: touch; }
+.fm-chips.scroll::-webkit-scrollbar { display: none; }
+.fm-chip { flex: 0 0 auto; min-height: 38px; padding: 0 13px; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 999px; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.fm-chip b { color: var(--text-primary); }
+.fm-chip.on { background: rgba(63,224,125,.16); border-color: var(--accent); color: var(--fm-ok); }
+.fm-chip.on b { color: var(--fm-ok); }
+.fm-chip.cald { border-color: var(--orange); color: var(--orange); }
+.fm-chip.cald b { color: var(--orange); }
+
+/* Căutare + select pe un rând */
+.fm-bar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.fm-in { width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 12px; font-size: 15px; }
+.fm-in:focus { outline: none; border-color: var(--accent); }
+.fm-search { position: relative; }
+.fm-search .fm-in { padding-left: 38px; }
+.fm-search .ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+
+/* Titluri de grup în liste */
+.fm-sec { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--fm-ok); margin: 14px 2px 7px; }
+.fm-sec.co { color: var(--text-primary); font-size: 13px; letter-spacing: 0; text-transform: none; margin-top: 18px; }
+
+/* Cartonașe de sumar (Aparate GPS) */
+.fm-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.fm-kpi { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 11px 10px; }
+.fm-kpi b { display: block; font-size: 22px; font-weight: 800; color: var(--text-primary); }
+.fm-kpi span { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+
+/* Rândurile listelor */
+.fm-list { display: flex; flex-direction: column; gap: 8px; }
+.fm-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; color: var(--text-primary); }
+.fm-row.on { border-color: var(--accent); }
+.fm-row .mid { flex: 1; min-width: 0; }
+.fm-row .nm { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-row .sub { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; overflow-wrap: anywhere; }
+.fm-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }
+.fm-pill { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid currentColor; white-space: nowrap; }
+.fm-pill.plin { border: none; background: var(--bg-dark); color: var(--text-muted); }
+
+/* Butoane mici, dar cu țintă de atingere de 40px */
+.fm-btn { min-height: 40px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 10px;
+  font-size: 13.5px; font-weight: 700; }
+.fm-btn.acc { color: var(--fm-ok); border-color: var(--accent); }
+.fm-btn.rau { color: var(--red); border-color: var(--red); background: transparent; }
+.fm-btn:disabled { opacity: .55; }
+.fm-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Comutator pe tot rândul: se atinge oriunde pe rând, nu doar pe butonaș */
+.fm-tgl { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 2px;
+  border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.fm-tgl:last-child { border-bottom: none; }
+.fm-tgl .lbl { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 700; line-height: 1.35; }
+.fm-tgl .lbl small { display: block; font-size: 12.5px; font-weight: 400; color: var(--text-muted); margin-top: 3px; line-height: 1.45; }
+.fm-tgl.taiat .lbl { color: var(--text-muted); }
+.fm-tgl:disabled { opacity: .6; }
+
+.fm-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 4px 14px; margin-bottom: 12px; }
+.fm-card.pad { padding: 14px; }
+.fm-card h3 { font-size: 12.5px; margin: 10px 0 6px; color: var(--fm-ok); text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 7px; }
+
+.fm-empty { text-align: center; color: var(--text-muted); padding: 40px 18px; font-size: 13.5px; line-height: 1.5; }
+.fm-empty b { display: block; color: var(--text-primary); font-size: 15px; margin: 10px 0 4px; }
+
+/* Istoric activitate */
+.fm-zi { font-size: 12px; font-weight: 800; color: var(--text-secondary); margin: 16px 2px 6px; }
+.fm-act { display: flex; align-items: flex-start; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.fm-act .ic-w { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; background: var(--bg-panel); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; }
+.fm-act .t { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.fm-act .o { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); padding-top: 2px; }
+.fm-prez-r { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.fm-prez-r:last-of-type { border-bottom: none; }
+.fm-prez-n { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.fm-prez-n span { color: var(--text-muted); font-size: 12.5px; white-space: nowrap; }
+.fm-prez-b { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.fm-prez-b .bar { flex: 1; height: 7px; border-radius: 999px; background: var(--bg-dark); overflow: hidden; }
+.fm-prez-b .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.fm-prez-b .pct { font-size: 12px; font-weight: 800; color: var(--text-secondary); min-width: 36px; text-align: right; }
+
+/* Roluri: alegerea rolului de pornire (Rol nou) */
+.fm-baza { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; padding: 12px 13px; border-radius: 12px;
+  background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }
+.fm-baza.on { border-color: var(--accent); background: rgba(63,224,125,.10); }
+.fm-baza b { font-size: 14.5px; }
+.fm-baza span { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }

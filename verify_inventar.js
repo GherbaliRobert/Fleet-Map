@@ -84,12 +84,35 @@ for (const [et, ore] of cazuri) {
 }
 T('aceleași cuvinte, pe toate vechimile', nepotriviri.length === 0, nepotriviri.join(' | '));
 
+// A treia scriere: aplicația de telefon (mobile/src/lib/semnal.ts), folosită de Dispozitive, Inventar și Aparate
+// GPS pe telefon. Aceeași probă: se rulează pe aceleași vechimi și trebuie să spună exact ce spune pagina.
+let ts = null;
+try { ts = require(P('mobile/node_modules/typescript')); } catch (e) { try { ts = require('typescript'); } catch (e2) {} }
+T('TypeScript disponibil pentru a citi semnal.ts', !!ts, 'rulează o dată npm install în mobile/');
+if (ts) {
+  const srcTel = fs.readFileSync(P('mobile/src/lib/semnal.ts'), 'utf8');
+  const js = ts.transpileModule(srcTel, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const mod = { exports: {} };
+  new Function('module', 'exports', 'require', js)(mod, mod.exports, require);
+  const tel = mod.exports;
+  T('pragurile telefonului = ale paginii',
+    'var AGPS_TACUT_MIN = ' + tel.TACUT_MIN + ';var AGPS_MUT_ORE = ' + tel.MUT_ORE + ';' === declPag, tel.TACUT_MIN + ' / ' + tel.MUT_ORE + ' vs ' + declPag);
+  const nepTel = [];
+  for (const [et, ore] of cazuri) {
+    const t = ore == null ? null : new Date(acum - ore * ORA).toISOString();
+    const a = pagina(t, acum).t, c = tel.stareAparat(t, acum).t;
+    if (a !== c) nepTel.push(et + ': ecran „' + a + '" vs. telefon „' + c + '"');
+  }
+  T('telefonul spune aceleași cuvinte, pe toate vechimile', nepTel.length === 0, nepTel.join(' | '));
+}
+
 sect('4. Exportul descarcă exact ce e pe ecran');
 T('trimite rândurile filtrate, nu o cerere goală',
   /var imeis = _invFiltered\(\)\.map\(function \(r\) \{ return String\(r\.imei\); \}\);/.test(B));
 T('prin POST, ca să încapă oricâte', /method: 'POST'[\s\S]{0,200}JSON\.stringify\(\{ format: fmt, imeis: imeis \}\)/.test(B));
-T('serverul primește POST', /app\.post\('\/api\/device-inventory\/export', requireAuth, requireFleet, _inventarExport\)/.test(server));
-T('și GET-ul vechi merge mai departe (link direct)', /app\.get\('\/api\/device-inventory\/export', requireAuth, requireFleet, _inventarExport\)/.test(server));
+// withScope (24.09): fără el, firma omului rămânea necunoscută și inventarul pornea de la TOATE firmele.
+T('serverul primește POST', /app\.post\('\/api\/device-inventory\/export', requireAuth, requireFleet, withScope, _inventarExport\)/.test(server));
+T('și GET-ul vechi merge mai departe (link direct)', /app\.get\('\/api\/device-inventory\/export', requireAuth, requireFleet, withScope, _inventarExport\)/.test(server));
 T('păstrează ORDINEA de pe ecran', /pozitie = new Map\(cerute\.map\(\(im, i\) => \[im, i\]\)\)/.test(server));
 T('filtrarea NU se rescrie pe server', !/toLowerCase\(\)\.indexOf/.test(server.slice(server.indexOf('async function _inventarExport'), server.indexOf('app.get(\'/api/device-inventory/export\''))));
 T('numele fișierului rămâne brandat (trece prin sendReport)', /return reportExport\.sendReport\(res, report, fmt\)/.test(server));

@@ -257,7 +257,7 @@
     if (!v.aplicabil) {
       dr = '<b class="pal">—</b>';
     } else if (!c || c.stare === 'asteapta') {
-      dr = '<b class="pal">—</b><span>neCalculat</span>';
+      dr = '<b class="pal">—</b><span>necalculat</span>';
     } else if (c.stare === 'lucreaza') {
       dr = '<b class="pal"><i class="fas fa-spinner fa-spin"></i></b><span>se calculează</span>';
     } else if (c.stare === 'eroare') {

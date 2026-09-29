@@ -64,3 +64,55 @@
    care ar arăta în stânga ar sugera „înapoi", nu „desfășurat". */
 .th-up-ch { display: flex; transition: transform .15s; }
 .th-up-ch.on { transform: rotate(90deg); }
+
+/* ── Tahograf: „Pe șofer" și „Abateri" (aceleași file ca pe web) ── */
+/* Cartonașul unui șofer: câte fișiere, câte zile citite, abaterile și termenul — dintr-o privire. */
+.th-card { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; font-family: inherit; color: var(--text-primary); }
+.th-card:active { border-color: var(--accent); }
+.th-card .ic { flex: 0 0 auto; opacity: .75; }
+.th-card .mid { flex: 1; min-width: 0; }
+.th-card .nm { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.th-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.th-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.th-pill { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--bg-dark); color: var(--text-muted); white-space: nowrap; }
+.th-pill.p-red { background: rgba(240,90,90,.14); color: var(--red); }
+.th-pill.p-orange { background: rgba(245,180,60,.16); color: #f5b43c; }
+.th-pill.p-green { background: rgba(63,224,125,.14); color: var(--accent); }
+.th-pill.p-dim { background: var(--bg-dark); color: var(--text-muted); }
+
+/* Un rând de abatere: regula, cine, data, cât s-a măsurat. */
+.th-row { display: flex; gap: 10px; align-items: flex-start; background: var(--bg-card); border: 1px solid var(--border); border-left-width: 3px;
+  border-radius: 11px; padding: 10px 12px; margin-bottom: 7px; }
+.th-row.s-over { border-left-color: var(--red); }
+.th-row.s-soon { border-left-color: #f5b43c; }
+.th-row > svg { flex: 0 0 auto; margin-top: 2px; }
+.th-row .t { flex: 1; min-width: 0; }
+.th-row .t b { display: block; font-size: 13.5px; line-height: 1.35; }
+.th-row .t span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.th-row .adm-pill { flex: 0 0 auto; }
+
+/* Istoricul unui șofer: rândul fișierului + „Șterge" (doar cine poate modifica flota). */
+.th-fis { display: flex; align-items: stretch; gap: 6px; margin-bottom: 8px; }
+.th-fis .th-due { margin-bottom: 0; flex: 1; min-width: 0; }
+.th-del { flex: 0 0 auto; width: 46px; display: flex; align-items: center; justify-content: center; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 12px; color: var(--red); }
+.th-del:active { border-color: var(--red); }
+
+/* ── e-Transport: scadențarul (grupat după urgență, ca pe web) ── */
+.th-due.neutral { border-left-color: var(--border); }
+.th-et-uit { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: .02em; margin-left: 5px; }
+.th-due .sub.th-et-mut { color: var(--red); white-space: normal; font-weight: 700; }
+.th-et-nou { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 14px; }
+.th-et-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: -4px; }
+.th-conf { font-size: 14px; line-height: 1.5; color: var(--text-secondary); margin-bottom: 14px; }
+.th-conf b { color: var(--text-primary); }
+.th-btns { display: flex; gap: 8px; }
+.th-btns .btn { flex: 1; }
+.btn.th-danger { background: var(--red); color: #fff; }
+.btn.th-sec { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }
+
+:root[data-theme="light"] .th-pill.p-orange { color: #b45309; }
+:root[data-theme="light"] .th-pill.p-green { color: #0E7A3C; }
+/* Patru file pe un ecran de telefon: textul se strânge puțin, ca „De descărcat" să încapă întreg. */
+.th-tabs.patru .th-tab { font-size: 12.5px; padding: 9px 3px; min-height: 40px; white-space: nowrap; }

@@ -6,8 +6,10 @@ import { Icon } from '../components/Icon';
 import { UserVehicleAccess } from '../components/UserVehicleAccess';
 import { LinkParolaSheet, pregatesteLinkul } from '../components/LinkParolaSheet';
 import type { AccessTarget } from '../components/UserVehicleAccess';
+import { faraDiacritice } from '../components/FirmaUi'; // aduce și firma.css (.fm-chip, .fm-in, .fm-sec)
 import './detail.css';
 import './admin.css';
+import { nrDe } from '../lib/numar';
 
 // PAROLA NU EXISTĂ (decizie 16.09): nimeni nu scrie parola altcuiva. Contul se deschide pe o adresă de email,
 // omul primește un link și își pune singur parola. Dacă emailul nu poate pleca, serverul întoarce linkul și îl
@@ -41,7 +43,7 @@ function zileDe(v: any): number | null {
 function candVazut(u: any) {
   const z = zileDe(u.last_login);
   if (z === null) return { text: 'n-a intrat niciodată', niciodata: true, vechi: false, zile: 0 };
-  return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + z + ' zile'), niciodata: false, vechi: z >= LINISTE_ZILE, zile: z };
+  return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + nrDe(z, 'zi', 'zile')), niciodata: false, vechi: z >= LINISTE_ZILE, zile: z };
 }
 // Accesul pe termen (conturile demo aprobate), în ZILE DE CALENDAR, ca pe web (_usrExpira).
 function expira(u: any): { text: string; aproape: boolean } | null {
@@ -83,6 +85,10 @@ export function AdminUsers() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [coFilter, setCoFilter] = useState('');
+  // Bara de deasupra listei, ca pe web: căutare, ordine și pastilele cu numere.
+  const [cauta, setCauta] = useState('');
+  const [ordine, setOrdine] = useState<'nume' | 'rol' | 'logare'>('nume');
+  const [pastila, setPastila] = useState('');
 
   async function reload() {
     setErr('');
@@ -359,7 +365,7 @@ export function AdminUsers() {
         numeGrp = groups.map((i) => gN[String(i)] || ('#' + i));
       } catch { /* rămân IMEI-urile / numerele grupelor */ }
     }
-    if (devices.length) p.push(devices.length + (devices.length === 1 ? ' vehicul' : ' vehicule') + ': ' + listaScurta(numeDev));
+    if (devices.length) p.push(nrDe(devices.length, 'vehicul', 'vehicule') + ': ' + listaScurta(numeDev));
     if (groups.length) p.push(groups.length + (groups.length === 1 ? ' grupă' : ' grupe') + ': ' + listaScurta(numeGrp));
     return p.join(' · ');
   }
@@ -412,9 +418,58 @@ export function AdminUsers() {
     return g;
   }, [items]);
   const coKeys = Object.keys(coGroups).sort((a, b) => coGroups[a].name.localeCompare(coGroups[b].name, 'ro'));
-  const shownItems = (items || []).filter((u) => !isSuper || !coFilter || (u.company_id != null ? String(u.company_id) : '_none') === coFilter);
+  const coKey = (u: any) => (u.company_id != null ? String(u.company_id) : '_none');
   // Conturile cu RA Insight, numărate pe lista ÎNTREAGĂ (nu pe cea filtrată), ca pe web (_usrSeatsHtml).
   const seatCount = (items || []).filter((u) => !!u.ai_seat).length;
+
+  // ── Căutare, ordine, pastile, Admini/Utilizatori (ca pe web: _usrPotrivit, _usrTrece, _usrOrdoneaza) ──
+  // Pastilele se socotesc pe lista ÎNTREAGĂ, nu pe ce a rămas după căutare — altfel „N-au intrat niciodată: 0"
+  // ar minți doar fiindcă ai scris ceva în casetă. O pastilă cu 0 nu ocupă loc. „Fără acces" e gospodăria
+  // adminului de firmă (el împarte mașinile) — la noi nu apare.
+  const toti = items || [];
+  const eAdmin = (u: any) => ADMIN_ROLES.includes(u.role);
+  const trece = (u: any) => {
+    switch (pastila) {
+      case 'niciodata': return !u.last_login;
+      case 'faraacces': return faraAcces(u);
+      case 'dezactivate': return u.active === false;
+      case 'insight': return !!u.ai_seat;
+      case 'admini': return eAdmin(u);
+      default: return true;
+    }
+  };
+  // Fără diacritice: „stefan" îl găsește pe „Ștefan"; prinde și numele rolului dat de firmă (listLabel știe de rolul propriu).
+  const q = faraDiacritice(cauta).trim();
+  const potrivit = (u: any) => !q || faraDiacritice([u.username, u.full_name, u.email, u.phone, listLabel(u), u.company_name].join(' ')).indexOf(q) >= 0;
+  const zileLogare = (u: any) => zileDe(u.last_login);
+  const ordoneaza = (a: any, b: any) => {
+    if (ordine === 'rol') {
+      const ra = listLabel(a), rb = listLabel(b);
+      if (ra !== rb) return String(ra).localeCompare(String(rb), 'ro');
+    } else if (ordine === 'logare') {
+      // Cine n-a intrat niciodată stă primul: el e omul de care trebuie să te ocupi.
+      const za = zileLogare(a), zb = zileLogare(b);
+      if (za === null && zb !== null) return -1;
+      if (zb === null && za !== null) return 1;
+      if (za !== zb) return (zb || 0) - (za || 0);
+    }
+    return String(a.full_name || a.username || '').localeCompare(String(b.full_name || b.username || ''), 'ro');
+  };
+  const pastile: { k: string; et: string; n: number; cald?: boolean }[] = [
+    { k: '', et: 'Toți', n: toti.length },
+    { k: 'niciodata', et: 'N-au intrat niciodată', n: toti.filter((u) => !u.last_login).length, cald: true },
+    ...(!isSuper ? [{ k: 'faraacces', et: 'Fără acces', n: toti.filter(faraAcces).length, cald: true }] : []),
+    { k: 'dezactivate', et: 'Dezactivate', n: toti.filter((u) => u.active === false).length },
+    { k: 'insight', et: 'Cu RA Insight', n: toti.filter((u) => !!u.ai_seat).length },
+    { k: 'admini', et: 'Admini', n: toti.filter(eAdmin).length },
+  ].filter((p) => p.k === '' || p.n > 0);
+  const shownItems = toti.filter((u) => (!isSuper || !coFilter || coKey(u) === coFilter) && trece(u) && potrivit(u));
+  // La noi, cu mai multe firme și fără filtru, lista se împarte întâi pe firme; altfel o singură grupă.
+  const peFirme = isSuper && !coFilter && coKeys.length > 1;
+  const grupe = (peFirme ? coKeys : ['_toti']).map((k) => {
+    const l = peFirme ? shownItems.filter((u) => coKey(u) === k) : shownItems;
+    return { k, nume: peFirme ? coGroups[k].name : '', admini: l.filter(eAdmin).sort(ordoneaza), useri: l.filter((u) => !eAdmin(u)).sort(ordoneaza) };
+  }).filter((g) => g.admini.length + g.useri.length > 0);
 
   const accessBlock = isEdit && form.role !== 'superadmin' && !ADMIN_ROLES.includes(formBase);
   const editDc = isEdit ? (Number(editing.device_count) || 0) : 0;
@@ -447,6 +502,31 @@ export function AdminUsers() {
         )}
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
+        {items != null && toti.length > 0 && (
+          <>
+            <div class="fm-bar">
+              <div class="fm-search">
+                <Icon name="search" size={17} class="ic" />
+                <input class="fm-in" type="search" value={cauta} placeholder="Caută după nume, email, telefon sau rol…"
+                  onInput={(e) => setCauta((e.target as HTMLInputElement).value)} autocapitalize="none" autocomplete="off" spellcheck={false} />
+              </div>
+              <select class="fm-in" value={ordine} onChange={(e) => setOrdine((e.target as HTMLSelectElement).value as any)} aria-label="Ordinea în listă">
+                <option value="nume">Ordine: nume</option>
+                <option value="rol">Ordine: rol</option>
+                <option value="logare">Ordine: ultima logare</option>
+              </select>
+            </div>
+            <div class="fm-chips">
+              {pastile.map((p) => (
+                <button type="button" aria-pressed={pastila === p.k}
+                  class={'fm-chip' + (pastila === p.k ? ' on' : (p.cald && p.n ? ' cald' : ''))}
+                  onClick={() => setPastila(pastila === p.k ? '' : p.k)}>
+                  {p.et} <b>{p.n}</b>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         {isSuper && coKeys.length > 1 && (
           <div class="adm-filter">
             <select value={coFilter} onChange={(e) => setCoFilter((e.target as HTMLSelectElement).value)}>
@@ -461,10 +541,20 @@ export function AdminUsers() {
             <span><b style="color:var(--text-primary)">{seatCount}</b> {seatCount === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight'} — la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.</span>
           </div>
         )}
-        {items != null && shownItems.length === 0 && !err && <div class="adm-empty"><Icon name="user" size={40} class="ic" /><div>Niciun utilizator.</div></div>}
-        {items != null && shownItems.length > 0 && (
+        {/* Spune de ce e gol: „n-ai pe nimeni" și „nu s-a potrivit nimeni" sunt două lucruri diferite. */}
+        {items != null && shownItems.length === 0 && !err && (
+          <div class="adm-empty"><Icon name="user" size={40} class="ic" />
+            <div>{toti.length ? 'Niciun cont nu se potrivește. Șterge din căutare sau apasă „Toți”.' : 'Niciun utilizator.'}</div>
+          </div>
+        )}
+        {items != null && shownItems.length > 0 && grupe.map((g) => (
+          <>
+            {g.nume && <div class="fm-sec co">{g.nume}</div>}
+            {([['Admini', g.admini], ['Utilizatori', g.useri]] as [string, any[]][]).filter(([, l]) => l.length > 0).map(([titlu, l]) => (
+          <>
+          <div class="fm-sec">{titlu}</div>
           <div class="adm-list">
-            {shownItems.map((u) => {
+            {l.map((u) => {
               const vaz = candVazut(u);
               const exp = expira(u);
               // „Fără acces" e gospodăria adminului de firmă (el împarte mașinile) — la fondator semnul nu se aprinde.
@@ -479,7 +569,10 @@ export function AdminUsers() {
                 <div class="adm-item" role="button" tabIndex={0} style={'cursor:pointer' + (u.active === false ? ';opacity:.72' : '')} onClick={() => openEdit(u)}>
                   <span class="ic-wrap"><Icon name="user" size={19} /></span>
                   <span class="mid">
-                    <div class="nm">{u.full_name || u.username}</div>
+                    <div class="nm" style="display:flex;align-items:center;gap:6px">
+                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis">{u.full_name || u.username}</span>
+                      {u.username === myUsername && <span class="adm-pill ok" style="flex:0 0 auto;color:var(--fm-ok)">tu</span>}
+                    </div>
                     <div class="sub">{u.username} · {listLabel(u)}</div>
                     {semne && (
                       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
@@ -521,7 +614,10 @@ export function AdminUsers() {
               );
             })}
           </div>
-        )}
+          </>
+            ))}
+          </>
+        ))}
       </div>
 
       <button class="fab" onClick={openNew} aria-label="Adaugă utilizator"><Icon name="plus" size={26} color="#06210f" /></button>
@@ -576,7 +672,7 @@ export function AdminUsers() {
                         style="display:flex;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-size:14.5px;font-weight:700;color:var(--text-primary);text-align:left">
                         <Icon name="car" size={18} color="var(--accent)" />
                         <span style="flex:1;min-width:0">
-                          {editDc + editGc > 0 ? editDc + (editDc === 1 ? ' vehicul' : ' vehicule') + ' + ' + editGc + (editGc === 1 ? ' grupă' : ' grupe') : 'Niciun vehicul atribuit'}
+                          {editDc + editGc > 0 ? nrDe(editDc, 'vehicul', 'vehicule') + ' + ' + nrDe(editGc, 'grupă', 'grupe') : 'Niciun vehicul atribuit'}
                         </span>
                         <Icon name="chevronR" size={18} color="var(--text-muted)" />
                       </button>

@@ -1,0 +1,159 @@
+/* Flota administrată (Mentenanță, Documente, Șoferi, Grupe, Alerte) — aspectul comun al listelor,
+   pe o singură coloană, cu ținte de atingere mari. Culorile vin din token-uri (temă închisă + deschisă). */
+
+/* Culorile de STARE folosite ca TEXT („la zi", „făcută", „curând", titluri de secțiune). Pe tema închisă
+   sunt verdele accent și chihlimbarul de până acum; pe tema DESCHISĂ, verdele accent (#3FE07D) și
+   chihlimbarul deschis ar ieși pe alb la ~1,5–2:1 — de necitit. Acolo le închidem (ca în contulmeu.css,
+   etoll.css, firma.css). Le pot folosi și stilurile inline din componente: color:var(--fl-ok). */
+:root { --fl-ok: var(--accent); --fl-warn: #f5b43c; }
+:root[data-theme="light"] { --fl-ok: #0E7A3C; --fl-warn: #b45309; }
+
+/* Familiile de culoare ale iconițelor — aceleași ca pe web (.f-* din public/index.html). */
+.f-zone    { --fc: #3FE07D; --fb: rgba(63, 224, 125, .14); }
+.f-danger  { --fc: #F87171; --fb: rgba(220, 38, 38, .14); }
+.f-fuel    { --fc: #38BDF8; --fb: rgba(3, 105, 161, .18); }
+.f-load    { --fc: #A78BFA; --fb: rgba(109, 40, 217, .18); }
+.f-service { --fc: #FBBF24; --fb: rgba(245, 158, 11, .15); }
+.f-neutral { --fc: #94A3B8; --fb: rgba(100, 116, 139, .16); }
+:root[data-theme="light"] .f-zone { --fc: #0E7A3C; }
+:root[data-theme="light"] .f-danger { --fc: #DC2626; --fb: rgba(220, 38, 38, .11); }
+:root[data-theme="light"] .f-fuel { --fc: #0369A1; --fb: rgba(3, 105, 161, .12); }
+:root[data-theme="light"] .f-load { --fc: #6D28D9; --fb: rgba(109, 40, 217, .12); }
+:root[data-theme="light"] .f-service { --fc: #B45309; --fb: rgba(245, 158, 11, .14); }
+:root[data-theme="light"] .f-neutral { --fc: #64748B; --fb: rgba(100, 116, 139, .12); }
+
+/* File (De făcut / Făcute / Intervale …) */
+.fl-seg { display: flex; gap: 6px; margin-bottom: 10px; }
+.fl-seg button {
+  flex: 1; min-height: 40px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 10px; padding: 6px 4px; font-size: 13px; font-weight: 700; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.fl-seg button.on { background: var(--accent); border-color: var(--accent); color: #06210F; }
+
+.fl-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.fl-search { flex: 1; position: relative; }
+.fl-search input {
+  width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 11px 12px 11px 36px; font-size: 14.5px; font-family: inherit;
+}
+.fl-search input:focus { outline: none; border-color: var(--accent); }
+.fl-search .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; display: flex; }
+.fl-count { font-size: 12.5px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+
+/* Cardurile de cost */
+.fl-costs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.fl-cost { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 9px 10px; min-width: 0; }
+.fl-cost .l { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-cost .v { font-size: 17px; font-weight: 800; color: var(--fl-ok); margin-top: 2px; white-space: nowrap; }
+.fl-cost .v small { font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
+.fl-cost.tot .v { color: var(--text-primary); }
+
+/* Banda de sus: cât de rău stai, în cuvinte */
+.fl-banner { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 11px 12px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.45; border: 1px solid transparent; }
+.fl-banner .ic { flex: 0 0 auto; display: flex; margin-top: 1px; }
+.fl-banner.s-over { background: rgba(240, 90, 90, .12); border-color: rgba(240, 90, 90, .35); color: var(--text-primary); }
+.fl-banner.s-over .ic { color: var(--red); }
+.fl-banner.s-soon { background: rgba(245, 180, 60, .12); border-color: rgba(245, 180, 60, .35); color: var(--text-primary); }
+.fl-banner.s-soon .ic { color: var(--fl-warn); }
+.fl-banner.s-done { background: rgba(63, 224, 125, .1); border-color: rgba(63, 224, 125, .3); color: var(--text-primary); }
+.fl-banner.s-done .ic { color: var(--fl-ok); }
+.fl-banner .pl { font-weight: 800; }
+.fl-banner .rest { color: var(--text-muted); font-size: 12.5px; margin-top: 3px; }
+
+/* O mașină (sau o grupă, sau un tip de alertă), cu rândurile ei dedesubt */
+.fl-list { display: flex; flex-direction: column; gap: 9px; }
+.fl-g { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.fl-gh { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 12px; background: transparent; border: none; color: var(--text-primary); text-align: left; font-family: inherit; }
+.fl-caret { display: flex; color: var(--text-muted); transition: transform .15s; flex: 0 0 auto; }
+.fl-g.open .fl-caret { transform: rotate(90deg); }
+.fl-gt { flex: 1; min-width: 0; }
+.fl-gp { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-gm { font-size: 12px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-gn { flex: 0 0 auto; font-size: 11.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: var(--bg-dark); color: var(--text-muted); white-space: nowrap; }
+.fl-gn.al { background: rgba(240, 90, 90, .16); color: var(--red); }
+.fl-gn.soon { background: rgba(245, 180, 60, .16); color: var(--fl-warn); }
+.fl-gn.ok { background: rgba(63, 224, 125, .14); color: var(--fl-ok); }
+.fl-gb { border-top: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.fl-sub { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin: 6px 4px 0; }
+
+/* Un rând: lucrare / act / regulă */
+.fl-r { background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 10px; padding: 10px 10px 8px; }
+.fl-r.s-over { border-left-color: var(--red); }
+.fl-r.s-soon { border-left-color: var(--fl-warn); }
+.fl-r.s-done { border-left-color: var(--fl-ok); }
+.fl-r.dn { opacity: .92; }
+.fl-r.off { opacity: .62; }
+.fl-rh { display: flex; gap: 10px; align-items: flex-start; }
+.fl-ic { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--fc, var(--fl-ok)); background: var(--fb, var(--bg-panel)); }
+.fl-rt { flex: 1; min-width: 0; }
+.fl-rn { font-weight: 700; font-size: 14px; line-height: 1.3; word-break: break-word; }
+.fl-rs { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; word-break: break-word; }
+.fl-rep { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; }
+.fl-rf { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.fl-lei { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-right: auto; }
+.fl-lei small { font-size: 10.5px; color: var(--text-muted); font-weight: 700; }
+
+.fl-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto; background: var(--bg-panel); color: var(--text-secondary); }
+.fl-pill.s-over { background: rgba(240, 90, 90, .16); color: var(--red); }
+.fl-pill.s-soon { background: rgba(245, 180, 60, .16); color: var(--fl-warn); }
+.fl-pill.s-done { background: rgba(63, 224, 125, .14); color: var(--fl-ok); }
+.fl-pill.s-none { background: var(--bg-panel); color: var(--text-muted); }
+.fl-pill.s-blue { background: rgba(96, 165, 250, .14); color: #93c5fd; }
+:root[data-theme="light"] .fl-pill.s-blue { color: #1d4ed8; }
+
+/* Butoanele de pe rând: pătrate de 40px, ușor de nimerit cu degetul */
+.fl-ab { min-width: 40px; height: 40px; border-radius: 10px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; font-size: 13px; font-weight: 700; font-family: inherit; }
+.fl-ab.pri { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.fl-ab.dang { color: var(--red); }
+.fl-ab:disabled { opacity: .55; }
+
+.fl-warn { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding: 8px 9px; border-radius: 9px; background: rgba(245, 180, 60, .1); border: 1px dashed rgba(245, 180, 60, .45); font-size: 12.5px; color: var(--text-secondary); }
+.fl-warn .ic { color: var(--fl-warn); display: flex; }
+.fl-warn span { flex: 1 1 160px; }
+
+.fl-empty { text-align: center; color: var(--text-muted); padding: 40px 16px; font-size: 14px; line-height: 1.5; }
+.fl-empty .ic { opacity: .45; margin-bottom: 10px; display: flex; justify-content: center; }
+.fl-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 2px 2px 12px; }
+
+/* Formulare: comutatorul de mod, casetele de grup, propunerea aplicației */
+.fl-fs { border: 1px solid var(--border); border-radius: 12px; padding: 11px; display: flex; flex-direction: column; gap: 10px; }
+.fl-fs-t { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--fl-ok); }
+.fl-hint { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+.fl-prop { border: 1px solid var(--accent); background: rgba(63, 224, 125, .07); border-radius: 12px; padding: 11px 12px; font-size: 13px; line-height: 1.5; }
+.fl-prop-t { font-weight: 800; color: var(--fl-ok); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.fl-prop ul { margin: 4px 0 0; padding-left: 20px; }
+.fl-prop .f { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.fl-btn2 { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }
+.fl-ro { font-size: 14.5px; font-weight: 700; padding: 11px 12px; border-radius: 10px; background: var(--bg-dark); border: 1px solid var(--border); }
+
+/* Tabelele doar-de-citit (Intervale, Acte cerute), pe cartonașe */
+.fl-tb { display: flex; flex-direction: column; gap: 8px; }
+.fl-tr { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 11px; }
+.fl-tr-h { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 14px; margin-bottom: 7px; }
+.fl-tr-c { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.fl-tc { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 6px 7px; min-width: 0; }
+.fl-tc .l { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-tc .v { font-size: 12.5px; font-weight: 700; margin-top: 2px; line-height: 1.3; }
+.fl-tc.cu { border-color: var(--fl-ok); }
+.fl-tc.cu .v { color: var(--fl-ok); }
+
+/* Chip de vehicul (grupe, șoferi) */
+.fl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 4px 0 9px; border-radius: 9px; background: var(--bg-dark); border: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fl-chip .x { width: 32px; height: 32px; border: none; background: transparent; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.fl-chip.nx { padding-right: 9px; }
+
+/* Avatar șofer */
+.fl-av { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff; object-fit: cover; }
+.fl-av.c1 { background: #0E7A3C; } .fl-av.c2 { background: #0369A1; } .fl-av.c3 { background: #6D28D9; } .fl-av.c4 { background: #B45309; } .fl-av.c5 { background: #475569; }
+.fl-tag { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 6px; margin-left: 6px; vertical-align: 2px; }
+.fl-tag.pro { background: rgba(63, 224, 125, .16); color: var(--fl-ok); }
+.fl-tag.basic { background: var(--bg-panel); color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* Text de stare în componente (în loc de culori scrise inline, care n-aveau variantă pentru tema deschisă) */
+.fl-t-ok { color: var(--fl-ok); }
+.fl-t-warn { color: var(--fl-warn); }
+
+/* Poza actului, deschisă în foaie */
+.fl-img { width: 100%; border-radius: 10px; display: block; }

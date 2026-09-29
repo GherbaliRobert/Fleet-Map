@@ -1,0 +1,144 @@
+/* Companii (fondatori): registrul de clienți, fișa firmei, Client nou, Mută între companii.
+   Clase proprii (prefix co-), peste cele comune din firma.css (fm-*). Culorile de STARE folosite ca TEXT
+   se închid pe tema deschisă: verdele accent (#3FE07D) și portocaliul ar ieși pe alb de necitit. */
+
+:root { --co-ok: var(--accent); --co-warn: var(--orange); }
+:root[data-theme="light"] { --co-ok: #0E7A3C; --co-warn: #b45309; }
+
+.co-page { padding: 14px 14px calc(28px + var(--sab)); }
+
+/* Banda portocalie de sus (aparate neadoptate) */
+.co-banda { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; margin-bottom: 12px;
+  padding: 11px 12px; border-radius: 12px; border: 1px solid var(--orange); color: var(--text-primary);
+  background: rgba(249,115,22,.10); font-size: 13px; line-height: 1.45; }
+.co-banda b { color: var(--co-warn); }
+
+.co-acts { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.co-acts .fm-btn { flex: 1 1 auto; }
+.co-mrr { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin: 0 2px 10px; color: var(--text-secondary); }
+.co-mrr b { color: var(--co-ok); font-size: 15px; }
+
+/* Pastilele de sortare: un rând care se derulează */
+.co-sort { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
+.co-sort::-webkit-scrollbar { display: none; }
+.co-sort button { flex: 0 0 auto; min-height: 34px; padding: 0 11px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+.co-sort button.on { color: var(--co-ok); border-color: var(--accent); }
+.co-sort .lbl { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted);
+  align-self: center; flex: 0 0 auto; padding-right: 2px; }
+
+/* Cartonașul unei firme din registru */
+.co-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
+.co-card-h { display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left; color: var(--text-primary); }
+.co-card-h .nm { flex: 1; min-width: 0; font-weight: 800; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.co-card-h .nm small { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-top: 2px; }
+.co-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.co-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.co-cell .l { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.co-cell .v { font-size: 13.5px; font-weight: 700; margin-top: 2px; line-height: 1.35; overflow-wrap: anywhere; }
+.co-cell .v small { display: block; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+.co-cell .v.cald { color: var(--co-warn); }
+.co-cell .v.muted { color: var(--text-muted); font-weight: 600; }
+
+/* Pastile */
+.co-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px;
+  background: var(--bg-dark); color: var(--text-muted); white-space: nowrap; max-width: 100%; }
+.co-pill.ok { background: rgba(63,224,125,.14); color: var(--co-ok); }
+.co-pill.warn { background: rgba(245,158,11,.16); color: var(--co-warn); }
+.co-pill.bad { background: rgba(240,90,90,.16); color: var(--red); }
+button.co-pill { min-height: 30px; }
+.co-tag { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 5px; border: 1px solid var(--border); color: var(--text-muted); }
+.co-tag.demo { border-color: #a78bfa; color: #a78bfa; }
+:root[data-theme="light"] .co-tag.demo { border-color: #6d28d9; color: #6d28d9; }
+
+/* Capul fișei firmei */
+.co-head { margin-bottom: 12px; }
+.co-head .t { font-size: 19px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.co-head .s { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+/* Filele fișei: un rând care se derulează, ținte de 40px */
+.co-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 -14px 12px; padding: 0 14px 4px; -webkit-overflow-scrolling: touch; }
+.co-tabs::-webkit-scrollbar { display: none; }
+.co-tabs button { flex: 0 0 auto; min-height: 40px; padding: 0 13px; border-radius: 10px; font-size: 13.5px; font-weight: 700;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+.co-tabs button.on { background: var(--accent); border-color: var(--accent); color: #06210F; }
+
+/* Cutiile de stare (acces, contract ↔ factură, dosar) */
+.co-box { border-radius: 12px; padding: 11px 12px; margin-bottom: 12px; font-size: 13px; line-height: 1.5;
+  border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-primary); }
+.co-box > strong { display: block; font-size: 14px; margin-bottom: 3px; }
+.co-box.ok { border-color: var(--accent); background: rgba(63,224,125,.08); }
+.co-box.ok > strong { color: var(--co-ok); }
+.co-box.warn { border-color: var(--orange); background: rgba(249,115,22,.08); }
+.co-box.warn > strong { color: var(--co-warn); }
+.co-box.bad { border-color: var(--red); background: rgba(240,90,90,.08); }
+.co-box.bad > strong { color: var(--red); }
+.co-box .d { color: var(--text-secondary); margin-top: 3px; }
+
+/* Rânduri cheie–valoare pe două linii (valori lungi: adresă, IBAN) */
+.co-kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.co-kv:last-child { border-bottom: none; }
+.co-kv .k { color: var(--text-muted); flex: 0 0 auto; }
+.co-kv .v { font-weight: 700; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.co-kv .v.gol { color: var(--text-muted); font-weight: 600; }
+
+/* Un rând de listă în fișă (om, vehicul, plată, persoană de contact) */
+.co-row { padding: 11px 0; border-bottom: 1px solid var(--border); }
+.co-row:last-child { border-bottom: none; }
+.co-row .a { display: flex; align-items: center; gap: 8px; }
+.co-row .a b { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.co-row .s { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.45; overflow-wrap: anywhere; }
+
+/* Insigna de date a vehiculului (FMS / CAN / fără CAN) */
+.co-can { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+.co-can.fms { background: rgba(167,139,250,.18); color: #a78bfa; }
+.co-can.can { background: rgba(56,189,248,.16); color: #38bdf8; }
+.co-can.none { background: var(--bg-dark); color: var(--text-muted); }
+:root[data-theme="light"] .co-can.fms { color: #6d28d9; }
+:root[data-theme="light"] .co-can.can { color: #0369a1; }
+
+/* Bifă pe tot rândul (vehicule cu CAN, semnatari, mutări) */
+.co-chk { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 11px 2px; border-bottom: 1px solid var(--border);
+  color: var(--text-primary); font-size: 14px; }
+.co-chk:last-child { border-bottom: none; }
+.co-chk .bx { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 6px; border: 2px solid var(--border-light); display: flex; align-items: center; justify-content: center; }
+.co-chk.on .bx { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.co-chk .mid { flex: 1; min-width: 0; }
+.co-chk .mid small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+/* Prețul lunar (socotit de server) */
+.co-ln { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 6px 0; }
+.co-ln.tot { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 9px; font-weight: 800; font-size: 15px; }
+.co-ln.tot span:last-child { color: var(--co-ok); }
+
+/* Pașii din Client nou */
+.co-pasi { display: flex; gap: 6px; margin-bottom: 14px; }
+.co-pas { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 8px; border-radius: 10px;
+  background: var(--bg-panel); border: 1px solid var(--border); font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+.co-pas .n { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-dark); font-size: 12px; }
+.co-pas.acum { border-color: var(--accent); color: var(--text-primary); }
+.co-pas.acum .n { background: var(--accent); color: #06210F; }
+.co-pas.gata { color: var(--co-ok); }
+.co-pas.gata .n { background: rgba(63,224,125,.18); color: var(--co-ok); }
+.co-pas span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.co-msg { font-size: 13px; line-height: 1.45; margin-top: 6px; }
+.co-msg.bun { color: var(--co-ok); }
+.co-msg.rau { color: var(--red); font-weight: 700; }
+.co-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 5px; }
+.co-nav { display: flex; gap: 10px; margin-top: 16px; }
+.co-nav .btn { flex: 1; }
+.co-gata ul { margin: 8px 0 0 18px; font-size: 13.5px; line-height: 1.55; }
+.co-gata ul li { margin-bottom: 4px; }
+
+/* Bara de jos din „Mută între companii" */
+.co-bulk { position: sticky; bottom: 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+  margin-top: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -6px 18px rgba(0,0,0,.18); }
+.co-bulk .r { display: flex; gap: 8px; align-items: center; }
+.co-sel { width: 100%; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 10px 11px; font-size: 14px; min-height: 42px; }
+
+/* Pastila de filtru cu ton roșu (Fără contract, Suspendate) — portocaliul e .fm-chip.cald din firma.css */
+.fm-chip.co-rau { border-color: var(--red); color: var(--red); }
+.fm-chip.co-rau b { color: var(--red); }

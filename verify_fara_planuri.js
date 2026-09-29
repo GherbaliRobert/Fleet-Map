@@ -75,9 +75,27 @@ const vizibil = html
 const gasite = [];
 // „Plan service / mentenanță" e cu totul altceva (planul de revizii al unui vehicul) — nu-l vânăm.
 const fara = vizibil.replace(/Plan service[^<]*/g, '');
-[/>\s*Plan\b/g, /'Plan'/g, /"Plan"/g, /Plan curent/g, /Plan \/ abonament/g, /planul t[ăa]u/gi, /alege[a-z]* un plan/gi]
-  .forEach(function (re) { const m = fara.match(re); if (m) gasite.push.apply(gasite, m); });
+// „în plan" / „planul firmei" au scăpat pe 24.09 în „Utilizare RA Insight" (web ȘI telefon) — de-aia sunt aici.
+const TIPARE = [/>\s*Plan\b/g, /'Plan'/g, /"Plan"/g, /Plan curent/g, /Plan \/ abonament/g, /planul t[ăa]u/gi,
+  /alege[a-z]* un plan/gi, /în plan\b/gi, /planul (companiei|firmei)/gi];
+TIPARE.forEach(function (re) { const m = fara.match(re); if (m) gasite.push.apply(gasite, m); });
 T('nicio etichetă „Plan" rămasă în interfață', gasite.length === 0, gasite.join(' | '));
+
+// Aplicația de telefon: aceleași tipare, pe fiecare ecran. Comentariile se scot; „Plan service / mentenanță"
+// rămâne (e planul de revizii al unui vehicul, altă noțiune).
+const gasiteTel = [];
+(function citeste(dir) {
+  for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = require('path').join(dir, f.name);
+    if (f.isDirectory()) { citeste(p); continue; }
+    if (!/\.tsx?$/.test(f.name)) continue;
+    const src = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').filter(function (r) { return !/^\s*(\/\/|\*)/.test(r); }).join('\n')
+      .replace(/Plan service[^<'"`]*/g, '');
+    TIPARE.forEach(function (re) { (src.match(re) || []).forEach(function (m) { gasiteTel.push(f.name + ': ' + m); }); });
+  }
+})(P('mobile/src'));
+T('nici pe telefon', gasiteTel.length === 0, gasiteTel.join(' | '));
 T('ecranul clientului vorbește despre contract, nu despre plan',
   /Abonamentul t[ăa]u e cel din contract/.test(html));
 T('fișa firmei arată „Oferta firmei", nu „Plan / abonament"',

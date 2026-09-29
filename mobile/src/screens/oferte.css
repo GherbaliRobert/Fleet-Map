@@ -1,0 +1,110 @@
+/* Ofertare Live pe telefon (fondatori): lista cu pâlnia, calculatorul și „Prețurile noastre".
+   Verdele mic pe fundal ALB nu se citește (#3FE07D pe alb): pe tema deschisă folosim verdele închis,
+   ca restul ecranelor de fondator (firma.css, flota.css). */
+.of-scr { --of-ok: var(--accent); --of-warn: var(--orange); }
+:root[data-theme="light"] .of-scr { --of-ok: #0E7A3C; --of-warn: #b45309; }
+
+/* Capul listei: ce e ecranul + cei patru pași (textul web-ului) */
+.of-cap { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px; margin-bottom: 12px; }
+.of-cap p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+.of-pasi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.of-pas { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--bg-dark); border: 1px solid var(--border); }
+.of-pas b { color: var(--of-ok); }
+.of-cap-btn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.of-b { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: 700; font-family: inherit; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }
+.of-b.pri { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.of-b.ok { color: var(--of-ok); }
+.of-b.rau { color: var(--red); }
+.of-b:disabled { opacity: .55; }
+
+/* Pâlnia: șase cifre, câte două pe rând */
+.of-palnie { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.of-c { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.of-c b { display: block; font-size: 22px; font-weight: 800; line-height: 1.1; }
+.of-c span { font-size: 12px; color: var(--text-muted); }
+
+/* Un rând din listă */
+.of-rand { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px; }
+.of-acts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border); }
+.of-acts .of-b { min-height: 40px; padding: 8px 11px; font-size: 13px; }
+.of-acts .of-ic { width: 42px; padding: 8px 0; }
+.of-ai { font-size: 9.5px; font-weight: 700; line-height: 1.35; color: var(--of-ok); border: 1px solid var(--of-ok); border-radius: 4px; padding: 0 4px; }
+
+/* Calculatorul: cărțile numerotate, ca pe web */
+.of-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.of-t { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--of-ok); margin-bottom: 5px; }
+.of-d { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); margin-bottom: 12px; }
+.of-sub { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--of-ok); margin: 14px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.of-camp { margin-bottom: 11px; }
+.of-camp > label { display: block; font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px; }
+.of-camp .of-lin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.of-in { box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 10px;
+  padding: 10px 12px; font-size: 16px; font-family: inherit; min-height: 44px; }
+.of-in:focus { outline: none; border-color: var(--accent); }
+.of-in.lat { width: 100%; }
+.of-in.nr { width: 104px; text-align: right; }
+.of-in.mic { width: 84px; text-align: right; }
+select.of-in { padding-right: 8px; }
+textarea.of-in { width: 100%; min-height: 78px; resize: vertical; }
+.of-um { font-size: 12.5px; color: var(--text-muted); }
+.of-eq { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.of-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 5px; }
+.of-x { font-size: 12px; opacity: .5; }
+.of-tgl { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.of-tgl .lbl { flex: 1; font-size: 14.5px; font-weight: 700; }
+.of-tgl .lbl small { display: block; font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 1px; }
+.of-tgl button { background: none; border: none; padding: 4px 0; }
+.of-q { margin: 2px 0 12px; padding: 12px; border-left: 2px solid var(--of-ok); background: var(--bg-dark); border-radius: 0 10px 10px 0; }
+.of-q2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.of-q2 label { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; }
+.of-q2 .of-in { width: 100%; }
+.of-agenti { display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px; border-radius: 10px; background: var(--bg-dark); margin: 6px 0 12px; }
+.of-agenti b { font-size: 14px; }
+.of-agenti small { display: block; font-size: 12px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
+.of-tarife { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.of-tarife .of-b { width: 100%; }
+.of-rez { background: var(--bg-panel); border: 1.5px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.of-rez .of-t { margin-bottom: 10px; }
+.of-act { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.of-act .of-b { width: 100%; min-height: 48px; font-size: 15px; }
+.of-rec { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+
+/* HTML-ul scris de pagina web (rezumatul, costul RA Insight, rândurile de sub module). Clasele sunt ale
+   web-ului — le repetăm aici cât să arate la fel pe ecranul îngust. Culorile vin din stilurile lui, pe
+   variabilele temei; pe tema deschisă verdele și portocaliul se închid, ca textul mic să se citească. */
+:root[data-theme="light"] .of-web, :root[data-theme="light"] .of-hintweb { --accent: #0E7A3C; --orange: #b45309; }
+.of-web { font-size: 13px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.of-web a[data-act], .of-hintweb a[data-act] { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.of-web .rax-co-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.of-web .rax-co-table th { text-align: left; padding: 7px 6px; color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.of-web .rax-co-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.of-web .rax-co-table th.num, .of-web .rax-co-table td.num { text-align: right; }
+.of-web .rax-co-table td.num { font-weight: 700; }
+.of-web .raof-sec { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; margin: 17px 0 6px; flex-wrap: wrap; }
+.of-web .raof-tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.of-web .raof-tot .et { font-size: 13px; color: var(--text-muted); }
+.of-web .raof-tot .val { font-size: 19px; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
+.of-web .raof-plata { margin-top: 16px; border: 1.5px solid var(--accent); border-radius: 13px; padding: 13px 14px; }
+.of-web .raof-plata .raof-t { font-size: 11.5px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+.of-web .raof-plata .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.of-web .raof-plata .cap .n { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
+.of-web .raof-plata .cap .s { font-size: 18px; font-weight: 800; white-space: nowrap; }
+.of-web .raof-curs { margin-top: 11px; font-size: 12px; color: var(--text-muted); text-align: right; }
+.of-hintweb { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 2px 0 10px; }
+.of-hintweb:empty { display: none; }
+
+/* Prețurile noastre: fiecare rând = eticheta, apoi cerem / ne costă / rămâne */
+.op-cap { display: grid; grid-template-columns: 1fr 1fr 74px; gap: 8px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); padding: 0 0 6px; position: sticky; top: 0; background: var(--bg-darkest); z-index: 1; }
+.op-cap b { text-align: right; }
+.op-g { font-size: 11.5px; font-weight: 800; color: var(--of-ok); text-transform: uppercase; letter-spacing: .4px; margin: 16px 0 8px; }
+.op-g em { font-style: normal; font-weight: 700; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.op-r { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 11px; padding: 10px 11px; margin-bottom: 7px; }
+.op-r .et { font-size: 13.5px; font-weight: 700; margin-bottom: 7px; }
+.op-grid { display: grid; grid-template-columns: 1fr 1fr 74px; gap: 8px; align-items: start; }
+.op-c { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.op-c .of-in { width: 100%; text-align: right; }
+.op-c em { font-style: normal; font-size: 11px; color: var(--text-muted); text-align: right; min-height: 14px; }
+.op-mj { text-align: right; font-size: 13px; font-weight: 800; padding-top: 12px; white-space: nowrap; }
+.op-n { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 2px 0 4px; }
+.op-over { position: fixed; inset: 0; z-index: 1200; background: var(--bg-darkest); display: flex; flex-direction: column; }

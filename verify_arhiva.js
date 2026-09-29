@@ -48,7 +48,9 @@ T('nu lasă cererea agățată pentru data viitoare', /window\._hpCerut = null;/
 T('îl și selectează', /if \(cerut && list\.some\([\s\S]{0,80}selectedImei = cerut/.test(fnFill));
 T('scrie pe rând că e arhivat (altfel n-ai ști de ce n-are date noi)',
   /d\.status === 'archived' \? ' \(arhivat\)' : ''/.test(fnFill));
-T('serverul chiar știe să includă arhivatele', /if \(!req\.query\.includeArchived\) devices = devices\.filter\(d => d\.status !== 'archived'\)/.test(server));
+// La cerere, și DOAR nouă: clientul nu vede aparatele arhivate (hotărât 18.09, aplicat pe server 29.09).
+T('serverul chiar știe să includă arhivatele (doar pentru noi)', /if \(!\(req\.query\.includeArchived && req\.isSuper\)\) devices = devices\.filter\(d => d\.status !== 'archived'\)/.test(server));
+T('„Dispozitive arhivate" e o rută doar a noastră', /app\.get\('\/api\/archived-devices', requireAuth, requireSuperadmin, withScope/.test(server));
 
 sect('2. Termenul de păstrare e socotit pe SERVER, nu în ecran');
 T('există funcția care-l socotește', /function _arhivaTermen\(row\)/.test(server));

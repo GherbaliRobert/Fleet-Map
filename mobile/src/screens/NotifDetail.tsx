@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import L from 'leaflet';
 import { Api } from '../api/endpoints';
-import { refreshUnread, showToast, ecranAscuns } from '../app/store';
+import { refreshUnread, showToast, ecranAscuns, roster, vehicles } from '../app/store';
 import { Icon } from '../components/Icon';
 import { aduActul, deschideInAfara } from '../components/VehicleDocs';
 import './admin.css';
 import './route.css';
+import './flota.css'; // --fl-ok / --fl-warn: verde și chihlimbar citibile și pe tema deschisă
+import { nrDe } from '../lib/numar';
 
 // Detaliu eveniment: harta segmentului de drum + poziția + adresa unde s-a întâmplat notificarea.
 const SEV: Record<string, string> = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' };
@@ -32,6 +34,16 @@ export function NotifDetail() {
       if (x && (x.type === 'report_ready' || x.type === 'report_error')) {
         const hid = x.data && x.data.historyId != null ? x.data.historyId : '';
         loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
+        return;
+      }
+      // „Contract care expiră" (ceasul zilnic, doar la noi) → fișa de contract a firmei, unde e „Reînnoiește".
+      // Înlocuiește adresa, ca „Înapoi" să nu te întoarcă aici și de aici iar în fișă.
+      // Detaliul nu se mai desenează, deci n-ar avea butonul „Marchează citit": deschiderea o marchează
+      // citită (e doar o înștiințare, a noastră), altfel rămânea necitită până la „Marchează toate".
+      if (x && x.type === 'contract_expira') {
+        if (!x.acknowledged) Api.ackNotification(Number(id)).then(() => refreshUnread()).catch(() => {});
+        const cid = x.data && x.data.companyId != null ? x.data.companyId : '';
+        loc.route('/admin/contracts' + (cid !== '' ? '/' + cid : ''), true);
         return;
       }
       setD(x); setAcked(!!x.acknowledged);
@@ -246,8 +258,11 @@ export function NotifDetail() {
   // Scadente: zilele se recalculeaza pe server LA ZI (o notificare de acum doua saptamani spunea
   // „mai ai 30 de zile" cand mai erau 16).
   const dLoc = (x: string) => { try { return new Date(x).toLocaleDateString('ro-RO'); } catch { return String(x || '—'); } };
-  const zileTxt = (z: number) => (z < 0 ? 'EXPIRAT de ' + (-z) + (z === -1 ? ' zi' : ' zile') : z === 0 ? 'EXPIRĂ ASTĂZI' : 'mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + z + ' zile'));
+  const zileTxt = (z: number) => (z < 0 ? 'EXPIRAT de ' + nrDe(-z, 'zi', 'zile') : z === 0 ? 'EXPIRĂ ASTĂZI' : 'mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + nrDe(z, 'zi', 'zile')));
   const zileCol = (z: number | null | undefined) => (z == null ? 'var(--text-muted)' : z <= 3 ? 'var(--red)' : z <= 14 ? '#f59e0b' : 'var(--accent)');
+  // Aceeași culoare, pentru TEXT: pe tema deschisă verdele și chihlimbarul se închid (flota.css), altfel
+  // n-ar fi citibile pe alb. zileCol rămâne pentru chenarul colorat (îi lipim transparența în hex).
+  const zileTxtCol = (z: number | null | undefined) => (z == null ? 'var(--text-muted)' : z <= 3 ? 'var(--red)' : z <= 14 ? 'var(--fl-warn)' : 'var(--fl-ok)');
   const scad: any = d ? (d.document || d.driverDoc || null) : null;
   const hhmm = (iso: string) => {
     const dt = new Date(iso);
@@ -277,13 +292,13 @@ export function NotifDetail() {
               : <div class="adm-empty" style="padding:24px">Fără poziție GPS pentru acest eveniment.</div>}
             {scad && scad.days != null && (
               <div style={'text-align:center;padding:14px 12px;border-radius:14px;margin-bottom:12px;border:1px solid ' + zileCol(scad.days) + '55;background:' + zileCol(scad.days) + '14'}>
-                <div style={'font-size:19px;font-weight:800;color:' + zileCol(scad.days)}>{zileTxt(scad.days)}</div>
+                <div style={'font-size:19px;font-weight:800;color:' + zileTxtCol(scad.days)}>{zileTxt(scad.days)}</div>
                 {scad.expiryDate && <div style="font-size:12px;color:var(--text-muted);margin-top:3px">până la {dLoc(scad.expiryDate)}</div>}
               </div>
             )}
             {d.documentsFaraData && d.documentsFaraData.length > 0 && (
               <div style="border:1px solid #f59e0b55;background:#f59e0b14;border-radius:14px;padding:12px;margin-bottom:12px">
-                <div style="font-weight:700;color:#f59e0b;margin-bottom:6px;font-size:12.5px">Acte fără dată de expirare — nu ești alertat pentru ele</div>
+                <div style="font-weight:700;color:var(--fl-warn);margin-bottom:6px;font-size:12.5px">Acte fără dată de expirare — nu ești alertat pentru ele</div>
                 {d.documentsFaraData.map((x: any) => (
                   <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:12.5px">
                     <span><b>{String(x.docType || 'act').toUpperCase()}</b>{x.number ? ' · ' + x.number : ''}{x.vehicle ? <span style="color:var(--text-muted)"> — {x.vehicle}</span> : null}</span>
@@ -293,18 +308,18 @@ export function NotifDetail() {
               </div>
             )}
             <div class="pf-card">
-              <div class="adm-kv"><span class="k">Vehicul</span><span>{d.vehicle || d.imei || '—'}</span></div>
+              <div class="adm-kv"><span class="k">Vehicul</span><span>{numeCuNumar(d)}</span></div>
               <div class="adm-kv"><span class="k">Când</span><span>{new Date(d.at).toLocaleString('ro-RO')}</span></div>
               {isIdle && d.idle ? <div class="adm-kv"><span class="k">Staționare de la</span><span style="font-weight:700">{hhmm(d.idle.start)}</span></div> : null}
               {isIdle && d.idle ? (
-                <div class="adm-kv"><span class="k">Până la</span><span style={d.idle.ongoing ? 'color:#f59e0b;font-weight:700' : 'font-weight:700'}>
+                <div class="adm-kv"><span class="k">Până la</span><span style={d.idle.ongoing ? 'color:var(--fl-warn);font-weight:700' : 'font-weight:700'}>
                   {d.idle.end ? hhmm(d.idle.end)
                     : d.idle.ongoing ? 'acum — încă staționează'
                     : 'necunoscut'}
                 </span></div>
               ) : null}
               {isIdle && d.idle && d.idle.minutes ? (
-                <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:#f59e0b;font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
+                <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:var(--fl-warn);font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
               ) : null}
               {isIdle && d.idle && d.idle.fuelL != null ? (
                 <div class="adm-kv"><span class="k">Carburant irosit pe staționare</span><span style="font-weight:700">{(d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L' + (d.idle.fuelEstimated ? ' (estimat)' : ' (senzor)')}</span></div>
@@ -317,17 +332,17 @@ export function NotifDetail() {
               ) : null}
               {!isIdle && !isFuel && !isScadenta && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {!isIdle && !isFuel && !isScadenta && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
-              {isTens && d.voltage != null ? <div class="adm-kv"><span class="k">Tensiune măsurată</span><span style="color:#f59e0b;font-weight:800">{String(d.voltage).replace('.', ',')} V</span></div> : null}
+              {isTens && d.voltage != null ? <div class="adm-kv"><span class="k">Tensiune măsurată</span><span style="color:var(--fl-warn);font-weight:800">{String(d.voltage).replace('.', ',')} V</span></div> : null}
               {isZona && d.geofence ? <div class="adm-kv"><span class="k">Zona</span><span style="font-weight:700">{d.geofence.name || ('#' + d.geofence.id)}</span></div> : null}
               {d.document ? <div class="adm-kv"><span class="k">Act</span><span style="font-weight:700">{String(d.document.docType || 'Document').toUpperCase()}{d.document.number ? ' · ' + d.document.number : ''}</span></div> : null}
               {d.document && d.document.issuer ? <div class="adm-kv"><span class="k">Emis de</span><span style="text-align:right;max-width:60%">{d.document.issuer}</span></div> : null}
               {d.document && d.document.issueDate ? <div class="adm-kv"><span class="k">Data emiterii</span><span>{dLoc(d.document.issueDate)}</span></div> : null}
-              {d.document ? <div class="adm-kv"><span class="k">Expiră la</span><span style={'font-weight:700;color:' + (d.document.expiryDate ? zileCol(d.document.days) : 'var(--red)')}>{d.document.expiryDate ? dLoc(d.document.expiryDate) : 'fără dată — nu ești alertat'}</span></div> : null}
+              {d.document ? <div class="adm-kv"><span class="k">Expiră la</span><span style={'font-weight:700;color:' + (d.document.expiryDate ? zileTxtCol(d.document.days) : 'var(--red)')}>{d.document.expiryDate ? dLoc(d.document.expiryDate) : 'fără dată — nu ești alertat'}</span></div> : null}
               {d.document && d.document.cost != null ? <div class="adm-kv"><span class="k">Cost</span><span>{Number(d.document.cost).toFixed(2).replace('.', ',')} lei</span></div> : null}
               {d.driverDoc ? <div class="adm-kv"><span class="k">Șofer</span><span style="font-weight:700">{d.driverDoc.name || '—'}</span></div> : null}
               {d.driverDoc && d.driverDoc.number ? <div class="adm-kv"><span class="k">Permis nr.</span><span>{d.driverDoc.number}</span></div> : null}
-              {d.driverDoc && d.driverDoc.phone ? <div class="adm-kv"><span class="k">Telefon</span><a href={'tel:' + d.driverDoc.phone} style="color:var(--accent)">{d.driverDoc.phone}</a></div> : null}
-              {d.driverDoc ? <div class="adm-kv"><span class="k">Expiră la</span><span style={'font-weight:700;color:' + zileCol(d.driverDoc.days)}>{d.driverDoc.expiryDate ? dLoc(d.driverDoc.expiryDate) : '—'}</span></div> : null}
+              {d.driverDoc && d.driverDoc.phone ? <div class="adm-kv"><span class="k">Telefon</span><a href={'tel:' + d.driverDoc.phone} style="color:var(--fl-ok)">{d.driverDoc.phone}</a></div> : null}
+              {d.driverDoc ? <div class="adm-kv"><span class="k">Expiră la</span><span style={'font-weight:700;color:' + zileTxtCol(d.driverDoc.days)}>{d.driverDoc.expiryDate ? dLoc(d.driverDoc.expiryDate) : '—'}</span></div> : null}
               {d.event && !isScadenta && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>
@@ -341,7 +356,7 @@ export function NotifDetail() {
             {actPoza && <img src={actPoza} alt="Actul" style="display:block;max-width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--border)" onClick={veziActul} />}
             <div style="display:flex;gap:8px;margin-top:14px;align-items:stretch">
               {acked
-                ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--accent);font-weight:600;font-size:12.5px;border:1px solid var(--border);border-radius:12px;padding:10px 6px"><Icon name="check" size={14} /> Citit</div>
+                ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--fl-ok);font-weight:600;font-size:12.5px;border:1px solid var(--border);border-radius:12px;padding:10px 6px"><Icon name="check" size={14} /> Citit</div>
                 : <button class="btn btn-primary" style="flex:1;padding:10px 6px;font-size:12.5px;border-radius:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? '…' : 'Marchează citit'}</button>}
               {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="mapPin" size={13} /> Maps</a> : null}
               {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" href={'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="eye" size={13} /> Street View</a> : null}
@@ -351,4 +366,15 @@ export function NotifDetail() {
       </div>
     </div>
   );
+}
+
+// Numele singur nu identifică mașina: poți avea trei „Dacia Logan 3" în flotă. Punem și numărul de
+// înmatriculare, luat din flota încărcată (serverul trimite în notificare doar numele) — ca pe web.
+// Dacă numele conține deja numărul, nu-l repetăm. Vehicul nemaiîncărcat (arhivat) → rămâne numele.
+function numeCuNumar(d: any): string {
+  const nume = String(d?.vehicle || d?.imei || '—');
+  if (!d?.imei) return nume;
+  const v: any = roster.value.find((x) => x.imei === d.imei) || vehicles.value.find((x) => x.imei === d.imei);
+  const nr = v && v.plate ? String(v.plate).trim() : '';
+  return nr && nume.indexOf(nr) < 0 ? nume + ' · ' + nr : nume;
 }

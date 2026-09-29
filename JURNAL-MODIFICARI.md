@@ -18,6 +18,108 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-09-29
+
+### AMÂNDOI · Aplicația de telefon 1.0.3: ecranele care lipseau față de web (lotul 2) — `HASH`
+
+Pe 13.09 am numărat vreo 63 de lucruri de pe web care nu erau pe telefon. Lotul 1 (aplicațiile 1.0.1 și 1.0.2)
+a reparat ce era **stricat**. Lotul ăsta aduce ecranele care **lipseau**: cele ale clientului și, cum ați hotărât,
+**și toate ecranele noastre**. Rămân deoparte, tot cum ați hotărât: traseul pe mai multe mașini deodată, importul
+din fișier (doar pe web) și semnalul „sunt în aplicație" trimis de pe telefon.
+
+Regula de la oferte și bani a rămas aceeași: **telefonul nu socotește bani**. Oferta o socotește serverul, cu chiar
+calculatorul paginii web. Unde telefonul mai ține o copie (câteva cifre la RA Insight, etichetele contractelor), o
+probă automată o compară cu web-ul și pică la prima diferență.
+
+Verificat: tipurile, toate probele (paritatea cu telefonul 163 de verificări, contractele pe telefon 107,
+calculatorul de ofertă comparat cu web-ul la leu pe cinci oferte, cifrele RA Insight pe ~25.000 de comparații, cele
+13 suite de securitate din poartă), o revizie adversă pe fiecare zonă și una de integrare pe tot lotul. Revizia de
+integrare a găsit 15 probleme (13 distincte) — toate reparate mai jos, fiecare legată de o probă unde se putea.
+APK-ul 1.0.3 e construit și copiat pe Desktop (`RA-Tracks-1.0.3-debug.apk`).
+
+**Pentru client (CLIENT)**
+- **Contul meu:** numele, telefonul și parola (cu parola de acum, ca pe web). Tema și harta se țin minte pe cont:
+  ce alegi pe laptop găsești și pe telefon. Ecranul de pornire ales („Rapoarte", „Statistici") se aplică și pe
+  telefon. Sus în meniu scrie numele tău și rolul, cu numele pe care i l-a dat firma.
+- **Administrarea firmei:** ecrane noi Roluri, Adrese de email, Istoric activitate, Aparate GPS, Afișaj pentru toți.
+  Utilizatorii au căutare, ordine și pastilele „n-au intrat niciodată", „fără acces", „dezactivate".
+  Istoricul spune cinstit că „cât stau oamenii în aplicație" numără doar web-ul.
+- **Flota:** Mentenanța arată ca pe web și nu mai mută o lucrare făcută pe ziua de azi. Documentele arată toată
+  flota, cu ce lipsește, și citesc actul cu numărul de pe el (actul altei mașini nu mai intră tăcut pe mașina
+  deschisă). La șoferi, o corectură de pe telefon **nu mai șterge poza** pusă pe web. Grupele își mută mașinile de
+  pe telefon. Alertele sunt grupate pe tip, cu pragul la vedere. Fișa mașinii are acum și lucrările de service.
+- **Harta și mașinile:** căutarea stă și pe hartă; alegi ce mașini vezi (pastila „3/12", cu banda „N ascunse");
+  cadranele numără ca pe web; mașinile apropiate se strâng într-o bulă. Traseul are interval „de la / până la",
+  culori după viteză, aliniere pe drumuri și export CSV/KML. Lista de vehicule se descarcă (Excel, PDF, CSV). În
+  fișă: Config Camion și sondele, toate cele 23 de categorii și pictograma; modelul GPS și cartela SIM doar de citit.
+- **Module:** Taxa de drum („O cursă nouă" și „Ce a costat până acum"), e-Transport pe urgență cu adăugare și
+  ștergere, Tahograf cu „Pe șofer", „Abateri" și ștergerea unui fișier pus greșit, Statistici flotă ca pe web, toate
+  pragurile agenților.
+- **Meniul:** Tahograf, e-Transport și Taxa de drum le văd pe telefon doar administratorul și managerul, ca pe web.
+  Dispecerul și rolul de vizualizare nu le mai văd (le vedeau doar pe telefon).
+- Pe fișa mașinii, dispecerul și rolul de vizualizare nu mai văd cartela SIM și costurile firmei.
+
+**Pentru noi (FONDATOR)**
+- **Meniul nostru** are grupele de pe web: Gestiune, AI & Module, Business, Sistem. Ecran nou „Acasă", cu cele patru
+  cartonașe.
+- **Companii:** registrul de clienți (filtre, căutare, sortare, venit lunar, Excel). Fișa firmei pe file: Detalii,
+  Utilizatori, Vehicule, Facturi, Abonament & plăți, Contract. Suspendarea cere motiv. **Client nou** în trei pași
+  (firma de la ANAF, contractul, administratorul cu link). **Mută între companii.**
+- **Ofertare Live:** calculatorul întreg, pe telefon. Telefonul trimite ce e scris, serverul rulează calculatorul
+  paginii web și întoarce sumele. Lista are pâlnia și pașii ofertei; „Prețurile noastre" e și pe telefon.
+- **Contracte:** lista cu alarmele de expirare și „Reînnoiește"; fișa de contract cu pașii, anexele, actele
+  adiționale, montajul și actele semnate (poză sau PDF). Notificarea „contract care expiră" deschide contractul.
+- **Operațiuni:** Dispozitive pe firme (plus aparatele necunoscute de aprobat), Arhiva pe firme cu „Istoric",
+  Inventar cu modelul și cartela SIM completabile, Tahograf și e-Transport pe firme, Utilizare RA Insight, Chei API,
+  Jurnal audit. La Agenți AI alegi firma, ca pragurile să nu schimbe din greșeală toată platforma.
+
+**Pe web, la noi (FONDATOR)**
+- **Prețul FMS nu se mai șterge.** „Salvează oferta" din fișa firmei („Abonament & plăți") nu trimitea înapoi prețul
+  pentru camioanele FMS. După prima salvare de pe web, ele se facturau la prețul CAN (de exemplu, 5 camioane facturate
+  cu 45 de lei în loc de 70: 125 de lei pe lună pierduți). **Atinge factura.** Telefonul îl păstra, deci suma depindea de pe ce ecran salvai ultima dată.
+- **Datele contractului nu mai alunecă o zi.** Data semnării, data de început, datele actelor adiționale și ale
+  lucrărilor de montaj apăreau cu o zi mai devreme, iar o salvare fără nicio schimbare le muta înapoi cu încă o zi.
+- Ofertare Live: linkul cu prețul recomandat pentru RA Insight scria în câmp **totalul pe toate conturile**, deși
+  câmpul e „lei pe cont" (la 3 conturi, un clic tripla prețul). O ofertă redeschisă își pierdea Tahograful,
+  e-Transportul și agenții, iar „Actualizează" scria apoi un abonament mai mic.
+- Utilizare RA Insight: cartonașele firmelor foloseau alt curs decât totalurile, când cursul nostru e altul decât cel
+  BNR. Acum toate sumele în euro folosesc același curs, ca pe telefon. Tot acolo, „nu are RA Insight **în plan**" a
+  devenit „**în ofertă**".
+- „Mută între companii" nu mai listează aparatele arhivate: nu se mută, se restaurează întâi.
+
+**Pe web, la client (CLIENT)**
+- e-Transport: termenul propus pentru un cod UIT ieșea cu o zi mai devreme decât regula serverului.
+- **Aparatele arhivate nu se mai văd la client**, cum ați hotărât pe 18.09: au plecat fila „Arhivate" din „Vehicule"
+  și cea din „Aparate GPS". Istoricul unui camion scos din flotă i-l dăm noi, la cerere.
+
+**Pe server (AMÂNDOI)**
+- **Gaură reparată:** inventarul de aparate dădea oricărui administrator de firmă **aparatele tuturor clienților**
+  (număr de înmatriculare, IMEI, cartela SIM, numele firmei), inclusiv pe web, în „Aparate GPS". Acum fiecare își
+  vede doar aparatele lui; noi vedem tot.
+- Aparatele arhivate nu mai ajung la client pe nicio cale: lista de vehicule (chiar dacă le cere), exporturile Excel,
+  PDF și CSV. Lista „Dispozitive arhivate" e acum doar a noastră.
+- Mutarea mai multor aparate deodată respectă regulile mutării unuia singur: un aparat arhivat nu se mută, iar un
+  aparat real nu intră în compania demo. „Bifează tot" de pe telefon le muta și pe cele arhivate.
+- Cartonașul „Alerte" număra alertele tuturor firmelor. Acum le numără doar pe ale celui care se uită.
+- Ofertele se salvează de pe telefon doar din aplicația 1.0.3. Aplicațiile 1.0.1 și 1.0.2 primesc în continuare
+  „ofertele se fac din web", ca să nu strice o ofertă.
+- Fișa firmei trimite prețul propus pe fiecare mașină, pentru Anexa nr. 1 de pe telefon.
+
+**Pe telefon, prinse la revizia de pe tot lotul (AMÂNDOI)**
+- Lista de mașini, ținută minte un minut ca ecranele să nu o ceară de cinci ori, trecea de la un cont la altul. Un
+  fondator care ieșea și intra pe un cont de client vedea, la Documente sau Mentenanță, flota de dinainte.
+- Pragul recomandat al unui agent se poate acum fixa pentru firmă. Caseta stătea deja pe el, deci alegerea lui nu
+  schimba nimic. Același lucru la „Praguri", în Agenți AI.
+- Verdele se citește și pe tema deschisă: pe hartă (alegerea mașinilor), la e-Transport și la Tahograf.
+- „20 **de** zile", nu „20 zile", pe toate ecranele noi.
+- Rapoartele descărcate de pe telefon au numele casei, „RA-Tracks - Raport … - data", ca pe web.
+
+- **Ce am schimbat:** aplicația de telefon 1.0.3 (lotul 2 de paritate), reparații pe server (aparatele altor firme,
+  arhivatele, mutarea în lot) și pe web (prețul FMS, datele contractului, cursul RA Insight).
+- **Ce vede fondatorul:** pe telefon, tot ce avea pe web: companii, oferte, contracte, aparate, bani. Pe web, prețul
+  FMS rămâne la salvare și datele contractului nu mai sar.
+- **Ce vede clientul:** pe telefon, tot ce are pe web. Nu mai vede aparatele altor firme și nici pe cele arhivate.
+
 ## 2026-09-16
 
 ### AMÂNDOI · Parola nu mai există. Trimitem un link, omul și-o pune singur
@@ -8418,6 +8520,17 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
+- [ ] **(voi) Cinci întrebări rămase de la lotul 2 pe telefon (29.09).** Până hotărâți, am lăsat varianta prudentă:
+  1. **Intervalele de service și „Acte cerute"** se pot doar citi pe telefon; cifrele se schimbă de pe web. Rămâne așa?
+  2. **Dispecerul nu vede Tahograf, e-Transport și Taxa de drum**, nici pe web, nici (de acum) pe telefon. Pe telefon
+     le vedea. Vreți să le vadă? Se hotărăște o dată, pentru amândouă.
+  3. **Statistici flotă pe telefon** și-a pierdut filele vechi (Expirare documente, Fără transmisie, Grupuri), ca să
+     fie ca pe web. Actele sunt în Documente, grupele în Grupe. E bine așa?
+  4. **„Prețurile noastre" salvat cu o ofertă NOUĂ deschisă** o ia pe aceea de la capăt, cu prețurile noi (la fel pe
+     web). O ofertă deja salvată nu se atinge. Vreți altfel?
+  5. **Aceeași ofertă, pe web și pe telefon, puse una lângă alta.** Proba compară cifrele la leu pe cinci oferte,
+     dar merită o trecere de mână, cu PDF-urile alături. Orice diferență e o greșeală.
+
 - [ ] **(voi) Ce se întâmplă cu datele după încetarea contractului.** Hârtia (acordul GDPR din
   contract) promite: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem.
   Aplicația ține istoricul unui aparat arhivat **2 ani**. Legea (GDPR, art. 28) ne cere să le ștergem
@@ -8549,6 +8662,40 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### C. De reparat înainte de clienți reali
 
+- [ ] **(voi) Instalați aplicația de telefon 1.0.3.** Ofertele se salvează de pe telefon doar din ea; 1.0.1 și 1.0.2
+  primesc în continuare „ofertele se fac din web". Restul ecranelor noi apar tot doar după instalare.
+
+- [x] **REZOLVAT (29.09): prețul FMS nu se mai pierde la „Salvează oferta" din fișa firmei, pe web.** Mașinile FMS
+  se facturau la prețul CAN după prima salvare de pe web. Păzit de `verify_paritate_telefon.js`.
+  **(voi) De verificat pe producție:** o firmă cu camioane FMS salvată de pe web de la 23.09 până ajunge reparația
+  pe ratrack.ro poate avea deja prețul FMS gol. Se vede în „Abonament & plăți": dacă factura camioanelor FMS e la prețul CAN, se repune prețul.
+
+- [x] **REZOLVAT (29.09): datele contractului, pe web, nu mai apar cu o zi mai devreme** (și nu mai alunecă la
+  salvare); la fel termenul propus la e-Transport. Păzit și pe ora României, nu doar pe cea a serverului.
+  **(voi) De verificat pe producție:** contractele salvate de pe web până ajunge reparația pe ratrack.ro pot avea data semnării sau de
+  început cu o zi (sau mai multe) mai devreme decât cea de pe hârtie. De comparat cu actele semnate.
+
+- [ ] **(voi) Clientul nu mai vede vehiculele arhivate, nici pe web (29.09).** Hotărârea voastră din 18.09 era aplicată
+  doar pe telefon; pe web, „Vehicule" avea fila „Arhivate", iar exporturile le cuprindeau. Acum au plecat peste tot.
+  Un client care se uita acolo o să observe. Istoricul unui camion arhivat îl mai poate cere doar prin noi.
+  (Tehnic, serverul încă îi dă traseul unui aparat arhivat dacă îi știe IMEI-ul — n-are niciun buton pentru asta.)
+
+- [ ] **(eu) Parola schimbată nu scoate afară celelalte sesiuni.** Un telefon pierdut rămâne logat până la 90 de zile
+  după ce omul își schimbă parola din „Contul meu". Parola nouă ar trebui să închidă tot, în afară de sesiunea de acum.
+
+- [ ] **(eu) Patru reguli de pe server, găsite la lotul 2 (24.09):** un rol căruia firma i-a tăiat „Editare grupe"
+  poate totuși modifica grupe (serverul verifică doar „poate modifica flota"); o lucrare de service pusă de noi se
+  salvează fără firmă, deci firma n-o vede; logările de pe telefon nu apar în „Istoric activitate" al firmei; la Taxa
+  de drum, pe web, o remorcă sau un utilaj cu masă în fișă primește nota falsă „Se taxează cu…".
+
+- [x] **REZOLVAT (29.09): texte rămase în urmă, pe web.** La parola nouă scrie „minim 10 caractere, litere și cifre"
+  (cât cere serverul, nu 8); nota „cât stau oamenii" spune că numără doar aplicația web; „7 zile", nu „7 de zile";
+  „necalculat" la Taxa de drum.
+
+- [ ] **(eu) Câteva cifre RA Insight se socotesc încă pe telefon** (marja, media pe cont, costul pe întrebare,
+  tendința). Sunt o copie a formulelor de pe web, legată de proba `verify_insight_bani.js`, care pică la prima
+  diferență. Curat ar fi să le trimită serverul gata socotite, ca venitul și costul.
+
 - [ ] **(voi) Instalați aplicația de telefon 1.0.2.** Pe telefoanele cu 1.0.1, „Parolă nouă" și calculatorul de
   oferte sunt oprite de server (primesc o explicație), dar adminul firmei nu vede linkul de parolă și nu poate
   aduce un om nou până nu actualizează.
@@ -8560,18 +8707,17 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   16.09); sfaturile „fără acces" / „cont nefolosit" apar și pe conturi dezactivate; aprobarea unui demo nu arată
   linkul pe care îl întoarce acum serverul.
 
-- [ ] **(voi) Aparatele arhivate se văd încă la client, pe web.** Ați hotărât pe 18.09 că nu; pe telefon s-a
-  respectat. Pe web, Setări → Aparate GPS are încă fila „Arhivate", iar lista vine de pe o rută deschisă oricui.
-  Închiderea rutei ar strica acea filă, deci întâi fila, apoi ruta.
+- [x] **REZOLVAT (29.09): aparatele arhivate nu se mai văd la client, pe web.** Fila „Arhivate" din Setări → Aparate
+  GPS a plecat de la client, iar ruta nu-i mai trimite nici arhivatele, nici — mai grav — aparatele altor firme,
+  pe care le dădea oricui. Vezi intrarea de la 29.09.
 
 - [ ] **(eu) Data de sfârșit a unui contract depinde de ora serverului.** `contracts.js` adună lunile pe ora
   locală: pe server (UTC) iese corect, dar pe un calculator pe ora României 31 ian + 2 luni dă 30 martie (proba
   `verify_contracte.js` pică aici local, nu și pe GitHub). De trecut pe calcul în UTC, ca să nu depindă de mașină.
 
-- [ ] **(eu) Lotul 2 de paritate pe telefon — ce lipsește încă de pe web.** Fișa firmei (oferta, cota RA Insight,
-  administratorii, datele juridice), Contracte, Ofertare nouă, „Client nou", Tahograf/e-Transport pe firme,
-  Inventar dispozitive, filtrele din Utilizatori, „Contul meu" (schimbarea propriei parole), scadențarul
-  e-Transport la client, Statistici flotă complet.
+- [x] **REZOLVAT (29.09, APK 1.0.3): lotul 2 de paritate pe telefon.** Toate ecranele din listă au ajuns pe telefon.
+  Rămân deoparte, cum ați hotărât: traseul pe mai multe mașini deodată, importul din fișier (doar web) și semnalul
+  „sunt în aplicație" de pe telefon.
 
 - [ ] **(amândoi) Instalatorii parteneri n-au nimic în aplicație.** Trimitem firma X să monteze 10
   aparate la un client, iar ei ne trimit seriile pe WhatsApp și le batem noi de mână. Nu există cont, nu
@@ -8602,8 +8748,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   deodată, când mai e o singură întrebare în fond, poate trece peste fond fără casetă. De rezervat întrebarea
   înainte de a o trimite la model.
 
-- [ ] **(eu) Super-adminul pe telefon, la Agenți AI: fără alegerea companiei.** Vede constatările tuturor firmelor
-  amestecate și nu vede a cui e una înainte s-o închidă (butonul „Toate văzute" e ascuns pentru super-admin).
+- [x] **REZOLVAT (29.09, APK 1.0.3): super-adminul pe telefon, la Agenți AI, alege compania.** Lângă fiecare
+  constatare scrie a cui e, iar pragurile spun limpede dacă se aplică unei firme sau tuturor.
 
 - [ ] **(eu) Limita veche de AI lasă cererea să treacă dacă baza nu răspunde** (la rezumatul de raport și la
   rezumatul agenților). Fondul RA Insight nu mai are problema asta; căile vechi da.

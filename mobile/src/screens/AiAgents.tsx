@@ -3,7 +3,10 @@ import { useLocation } from 'preact-iso';
 import { Api, type AgentFinding } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import { me, showToast } from '../app/store';
+import { PRAGURI } from './Settings'; // aceeași listă de praguri ca în Setări (AGP_THRESH de pe web) — nu a doua copie
 import './reports.css';
+import './admin.css'; // .fld (foaia „Praguri")
+import './detail.css'; // .sheet*
 
 // Pagina „Agenți AI" — oglinda paginii de pe web (public/index.html: renderAgentsPage / agpOpen / agpLiveRefresh).
 // Agenții „live" calculează starea de ACUM la cerere, NU se salvează pe server și NU pornesc AI-ul plătit.
@@ -33,8 +36,8 @@ const CHECKS: Record<string, string> = {
   client: 'activitatea zilei și concluziile celorlalți agenți',
 };
 
-// Planurile nu mai există, dar serverul mai trimite două texte cu „plan" când agenții sunt opriți pe firmă
-// (rularea tuturor fără niciun agent activ și 403 la un agent oprit între timp). Până se schimbă și acolo,
+// Planurile nu mai există. Serverul de dinainte de 23.09 trimitea două texte cu „plan" când agenții sunt opriți pe firmă
+// (rularea tuturor fără niciun agent activ și 403 la un agent oprit între timp). Cât mai rulează el undeva,
 // telefonul le spune ca restul aplicației. Orice alt mesaj trece neschimbat.
 function faraPlan(msg: string | undefined | null): string | undefined {
   if (!msg) return undefined;
@@ -102,9 +105,32 @@ const SPIN_SM = 'display:inline-block;width:14px;height:14px;border-width:2px;ve
 export function AiAgents() {
   const loc = useLocation();
   const openKey = String(((loc.query || {}) as any).agent || '');
-  // Super-adminul primește constatările TUTUROR firmelor (serverul nu filtrează fără companyId), iar pe telefon
-  // nu există selectorul de companie de pe web → fără „Toate văzute", ca să nu închidă alertele clienților dintr-o apăsare.
+  // Super-adminul primește constatările TUTUROR firmelor când n-a ales o firmă (serverul nu filtrează fără companyId).
+  // Ca pe web (setSuperCompany), alege firma sus: constatările, starea live, rularea și pragurile merg pe ea
+  // (`?firma=<id>`, ca să rămână aleasă și când deschizi un agent). Fără firmă, „Toate văzute" stă ascuns — n-ar
+  // închide dintr-o apăsare alertele mai multor clienți — și lângă fiecare semnalare scrie a cui e.
   const isSuper = !!me.value?.isSuper;
+  const coQ = String(((loc.query || {}) as any).firma || '');
+  const coId: number | null = isSuper && /^\d+$/.test(coQ) ? Number(coQ) : null;
+  const [firme, setFirme] = useState<{ id: number; name: string }[]>([]);
+  const numeFirma = (id: any) => {
+    if (id == null) return 'fără firmă';
+    const x = firme.find((c) => c.id === Number(id));
+    return x ? x.name : 'Firma #' + id;
+  };
+  const numeFirmaSauToate = (id: number | null) => (id == null ? 'Toate companiile' : numeFirma(id));
+  const adresa = (agent: string, firma: number | null) => {
+    const p: string[] = [];
+    if (agent) p.push('agent=' + encodeURIComponent(agent));
+    if (firma != null) p.push('firma=' + firma);
+    return '/ai-agents' + (p.length ? '?' + p.join('&') : '');
+  };
+  // Foaia „Praguri" a unui agent (doar fondatorul; clientul își are pragurile în Setări companie).
+  const [prag, setPrag] = useState<string | null>(null);
+  const [thr, setThr] = useState<Record<string, any>>({});
+  const [thrOrig, setThrOrig] = useState<Record<string, any>>({});
+  const [thrStare, setThrStare] = useState<'' | 'load' | 'err' | 'save'>('');
+  const fSeq = useRef(0);
   const [agents, setAgents] = useState<AgentMeta[]>([]);
   const [runInfo, setRunInfo] = useState<{ lastRun: string | null; auto: boolean }>({ lastRun: null, auto: true });
   const [findings, setFindings] = useState<AgentFinding[]>([]);
@@ -121,19 +147,30 @@ export function AiAgents() {
   const ready = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  async function loadFindings() { try { const l = await Api.agentFindings(); setFindings(Array.isArray(l) ? l : []); } catch { /* */ } }
+  // Firma aleasă ACUM. Funcțiile de mai jos pot fi chemate dintr-o randare mai veche (ex. „Rulează" pornit
+  // înainte să schimbi firma): citesc firma de aici, la momentul apelului, nu pe cea prinsă la pornire.
+  const coRef = useRef<number | null>(coId);
+  coRef.current = coId;
+
+  // Un răspuns sosit după ce ai schimbat firma nu are voie să pună pe ecran constatările firmei de dinainte.
+  async function loadFindings() {
+    const my = ++fSeq.current;
+    const co = coRef.current;
+    try { const l = await Api.agentFindings(co); if (fSeq.current === my && coRef.current === co) setFindings(Array.isArray(l) ? l : []); } catch { /* */ }
+  }
 
   // Starea de ACUM a agenților live, din același endpoint ca web-ul (fără salvare, fără AI).
   function refreshLive(keys: string[]) {
+    const co = coRef.current;
     return Promise.all(keys.filter(isLive).map(async (k) => {
       const my = (seq.current[k] = (seq.current[k] || 0) + 1);
       setLiveBusy((b) => ({ ...b, [k]: true }));
       let next: LiveState;
       try {
-        const d: any = await Api.agentLive(k);
+        const d: any = await Api.agentLive(k, co);
         next = { ...(d || {}), findings: Array.isArray(d && d.findings) ? d.findings : [] };
       } catch (e: any) { next = { findings: [], error: e?.message || 'Nu am putut verifica acum' }; }
-      if (seq.current[k] !== my) return; // între timp a pornit o verificare mai nouă
+      if (seq.current[k] !== my || coRef.current !== co) return; // între timp: o verificare mai nouă sau altă firmă
       setLive((cur) => ({ ...cur, [k]: next }));
       setLiveBusy((b) => ({ ...b, [k]: false }));
     }));
@@ -154,7 +191,18 @@ export function AiAgents() {
       ready.current = true;
       refreshLive(keys); // la deschiderea paginii, ca pe web — nu doar după „Rulează"
     })();
+    if (isSuper) Api.companies().then((cs) => setFirme((cs || []).map((c: any) => ({ id: Number(c.id), name: c.name || '#' + c.id })))).catch(() => {});
   }, []);
+
+  // Altă firmă aleasă sus → constatările și starea de acum se recitesc pentru ea (ca renderAgentsPage pe web).
+  const coPrima = useRef(coId);
+  useEffect(() => {
+    if (coPrima.current === coId) return; // prima randare: le-a încărcat deja efectul de mai sus
+    coPrima.current = coId;
+    setFindings([]); setLive({}); setSummary(null); setPrag(null);
+    loadFindings();
+    refreshLive(agents.map((a) => a.key));
+  }, [coId]);
 
   // Deschiderea unui agent live recitește starea lui (ca pe web: „se actualizează când deschizi pagina").
   useEffect(() => {
@@ -162,7 +210,7 @@ export function AiAgents() {
     if (ready.current && isLive(openKey) && agents.some((a) => a.key === openKey)) refreshLive([openKey]);
   }, [openKey]);
 
-  const openAgent = (k: string) => loc.route('/ai-agents?agent=' + encodeURIComponent(k));
+  const openAgent = (k: string) => loc.route(adresa(k, coId));
   const nameOf = (k?: string) => (agents.find((a) => a.key === k) || { name: k || 'Agent' }).name;
 
   async function run(k: string) {
@@ -171,8 +219,18 @@ export function AiAgents() {
     if (isLive(k)) { setRunning(k); await refreshLive([k]); setRunning(''); return; }
     setRunning(k);
     if (k === 'all') setSummary(null);
+    // Firma pe care pornește rularea. Dacă o schimbi cât rulează, rezultatul NU se pune peste firma nouă
+    // (rezumatul AI, constatările și starea de acum ar fi ale altui client, iar „Toate văzute" le-ar închide
+    // pe ale lui) — spunem doar că rularea s-a terminat și pentru cine.
+    const co = coRef.current;
+    const alta = () => coRef.current !== co;
     try {
-      const r = await Api.runAgents(k);
+      const r = await Api.runAgents(k, undefined, co);
+      if (alta()) {
+        const n = r.stored || 0;
+        showToast(numeFirmaSauToate(co) + ': ' + (faraPlan(r.message) || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'verificare terminată · nicio semnalare nouă')));
+        return;
+      }
       const now = Date.now();
       setLastRun((cur) => { const n = { ...cur }; (k === 'all' ? agents.map((a) => a.key) : [k]).forEach((x) => { n[x] = now; }); return n; });
       if (k === 'all') setSummary(r.aiSummary || null);
@@ -181,7 +239,11 @@ export function AiAgents() {
       showToast(faraPlan(r.message) || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'Verificare terminată · nicio semnalare nouă'));
       if (k === 'all') refreshLive(agents.map((a) => a.key));
       await loadFindings();
-    } catch (e: any) { const m = faraPlan(e?.message) || 'Rulare eșuată'; setErr(m); showToast(m, true); }
+    } catch (e: any) {
+      const m = faraPlan(e?.message) || 'Rulare eșuată';
+      if (alta()) { showToast(numeFirmaSauToate(co) + ': ' + m, true); return; }
+      setErr(m); showToast(m, true);
+    }
     finally { setRunning(''); }
   }
 
@@ -205,7 +267,7 @@ export function AiAgents() {
 
   async function ackAll(list: AgentFinding[]) {
     const news = list.filter((f) => f.id != null && isNew(f));
-    if (!news.length || ackBusy || isSuper) return;
+    if (!news.length || ackBusy || (isSuper && coId == null)) return;
     if (!confirm(`Marchezi toate cele ${news.length} semnalări ca văzute?`)) return;
     setAckBusy(true);
     const results = await Promise.all(news.map((f) => Api.agentFindingAction(f.id as number, 'ack').then(() => true).catch(() => false)));
@@ -226,6 +288,45 @@ export function AiAgents() {
       showToast('Mentenanță marcată ca efectuată ✓');
       if (f.id != null) act(f, 'ack', true); else refreshLive(['care']); // agent live → recitim starea de acum
     } catch (e: any) { showToast(e?.message || 'Eroare la marcarea mentenanței', true); }
+  }
+
+  // ── Pragurile unui agent (doar fondatorul), ca pe web (agpSettings / agpSaveThresholds) ──
+  // Cu o firmă aleasă: pragurile EI (/companies/:id/settings). Fără firmă: baza platformei (/companies/me/settings,
+  // care la super-admin scrie alert_thresholds_global — pentru TOATE firmele fără praguri proprii); foaia o spune.
+  // Se trimit doar pragurile schimbate aici (ca în Setări companie), ca să nu calce un prag pus între timp pe web.
+  const campuri = (k: string) => (PRAGURI.find((g) => g.agent === k) || { campuri: [] as typeof PRAGURI[number]['campuri'] }).campuri;
+  const brut = (v: any) => (v == null ? '' : String(v));
+  async function deschidePraguri(k: string) {
+    setPrag(k); setThr({}); setThrOrig({}); setThrStare('load');
+    // Pragurile citite pentru o firmă nu au voie să ajungă în foaia deschisă între timp pentru alta: o salvare
+    // ar compara cu pragurile greșite și ar scrie în firma nouă.
+    const co = coRef.current;
+    try {
+      const s: any = co != null ? await Api.companySettingsOf(co) : await Api.companySettings();
+      if (coRef.current !== co) return;
+      const t = Object.assign({}, s && s.alert_thresholds);
+      setThr(t); setThrOrig(t); setThrStare('');
+    } catch { if (coRef.current === co) setThrStare('err'); }
+  }
+  async function salveazaPraguri() {
+    if (!prag) return;
+    const schimbate = campuri(prag).filter((t) => brut(thr[t.k]) !== brut(thrOrig[t.k]));
+    if (!schimbate.length) { showToast('Nimic de salvat — n-ai schimbat niciun prag'); return; }
+    const clean: Record<string, number | null> = {};
+    for (const t of schimbate) {
+      const v = thr[t.k];
+      if (v === '' || v == null) { clean[t.k] = null; continue; } // gol = revine la implicit (ex. furt: dezactivat)
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < t.min || n > t.max) { showToast('Valori invalide — verifică intervalele.', true); return; }
+      clean[t.k] = Math.round(n);
+    }
+    setThrStare('save');
+    try {
+      if (coId != null) await Api.saveCompanySettingsOf(coId, { alert_thresholds: clean });
+      else await Api.saveCompanySettings({ alert_thresholds: clean });
+      showToast(coId != null ? 'Praguri salvate pentru compania selectată ✓' : 'Praguri salvate ✓');
+      setPrag(null); setThrStare('');
+    } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); setThrStare(''); }
   }
 
   // ── Date derivate ──
@@ -315,7 +416,11 @@ export function AiAgents() {
           <span style="font-weight:800;font-size:13.5px;flex:1;min-width:0">{f.title}</span>
         </div>
         {f.body ? <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45">{f.body}</div> : null}
-        <div style="font-size:11px;color:var(--text-muted);margin-top:5px">{showAgent ? nameOf(f.agent) + ' · ' : ''}{ago(f.created_at)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:5px">
+          {/* „Toate companiile": a cui e semnalarea, scris lângă ea. */}
+          {isSuper && coId == null ? <b style="color:var(--text-secondary)">{numeFirma((f as any).company_id)} · </b> : null}
+          {showAgent ? nameOf(f.agent) + ' · ' : ''}{ago(f.created_at)}
+        </div>
         <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
           <button onClick={() => act(f, 'ack')} style={BTN + ';min-width:90px'}><Icon name="check" size={13} /> Am văzut</button>
           <button onClick={() => act(f, 'dismiss')} style={BTN + ';color:var(--text-muted)'}><Icon name="x" size={13} /> Ignoră</button>
@@ -397,12 +502,13 @@ export function AiAgents() {
     );
   }
 
-  // Doar pentru super-admin: explică de ce lipsește „Toate văzute" pe telefon.
-  const superNote = isSuper ? (
+  // Doar pentru super-admin pe „Toate companiile": explică de ce lipsește „Toate văzute".
+  const superNote = isSuper && coId == null ? (
     <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-bottom:8px">
-      {ic('alertO')} Ca super-admin vezi aici semnalările tuturor firmelor, iar pe telefon nu poți alege compania. De aceea le închizi una câte una, ca să nu marchezi din greșeală alertele unui client.
+      {ic('alertO')} Vezi semnalările tuturor firmelor, cu numele firmei lângă fiecare. Ca să le marchezi pe toate văzute dintr-o apăsare, alege întâi firma sus — așa nu închizi din greșeală alertele altui client.
     </div>
   ) : null;
+  const poateToate = !isSuper || coId != null;
 
   const okBox = (t: string, b: string) => (
     <div style={PANEL}>
@@ -447,10 +553,16 @@ export function AiAgents() {
               <Icon name="compass" size={14} color="var(--accent)" /> Dispecerizare — alege o destinație
             </button>
           ) : null}
+          {/* Pragurile: la fondator, pe firma aleasă sus (sau baza platformei). Clientul le are în Setări companie. */}
+          {isSuper ? (
+            <button onClick={() => deschidePraguri(k)} style={BTN + ';flex:0 0 auto;padding:9px 12px;font-size:12.5px'}>
+              <Icon name="settings" size={14} /> Praguri
+            </button>
+          ) : null}
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div class="rp-table-title" style="flex:1;margin:0">{lv ? FEED_HEAD[k] || 'Stare acum' : 'Verificări & alerte'}</div>
-          {!lv && fs.length > 1 && !isSuper ? (
+          {!lv && fs.length > 1 && poateToate ? (
             <button disabled={ackBusy} onClick={() => ackAll(fs)} style={BTN + ';flex:0 0 auto;padding:5px 10px'}>
               {ackBusy ? <span class="spin" style={SPIN_SM} /> : <><Icon name="check" size={13} color="var(--accent)" /> Toate văzute ({fs.length})</>}
             </button>
@@ -531,7 +643,7 @@ export function AiAgents() {
           <>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
               <div class="rp-table-title" style="flex:1;margin:0">Constatări recente ({recent.length})</div>
-              {recent.length > 1 && !isSuper ? (
+              {recent.length > 1 && poateToate ? (
                 <button disabled={ackBusy} onClick={() => ackAll(recent)} style={BTN + ';flex:0 0 auto;padding:5px 10px'}>
                   {ackBusy ? <span class="spin" style={SPIN_SM} /> : <><Icon name="check" size={13} color="var(--accent)" /> Toate văzute ({recent.length})</>}
                 </button>
@@ -554,6 +666,19 @@ export function AiAgents() {
         <div class="h-title">{openMeta ? openMeta.name : 'Agenți AI'}</div>
       </header>
       <div class="content has-tabbar" style="padding:14px" ref={contentRef}>
+        {/* Fondatorul alege firma CHIAR AICI, deasupra agenților (ca pe web): constatările și pragurile sunt pe firmă. */}
+        {isSuper && (
+          <div style={PANEL + ';margin-bottom:12px'}>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:var(--text-muted)">
+              <span><Icon name="building" size={13} style="vertical-align:-2px" /> Pentru ce companie vezi agenții și setezi pragurile</span>
+              <select value={coId != null ? String(coId) : ''} onChange={(e: any) => loc.route(adresa(openKey, e.target.value ? Number(e.target.value) : null), true)}
+                style="min-height:44px;width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);padding:0 10px;font-size:15px;font-family:inherit">
+                <option value="">Toate companiile</option>
+                {firme.map((c) => <option value={String(c.id)}>{c.name}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
         {loading ? <div class="center-msg"><div class="spin" style="margin:0 auto" /></div> : (
           <>
             {err && <div class="center-msg" style="color:var(--red)">{err}</div>}
@@ -561,6 +686,72 @@ export function AiAgents() {
           </>
         )}
       </div>
+
+      {prag && (() => {
+        const lista = campuri(prag);
+        const numeAg = nameOf(prag);
+        const schimbate = lista.filter((t) => brut(thr[t.k]) !== brut(thrOrig[t.k])).length;
+        return (
+          <div class="sheet-ov" onClick={(e: any) => { if (e.target === e.currentTarget && thrStare !== 'save') setPrag(null); }}>
+            <div class="sheet">
+              <div class="sheet-h">
+                <b><Icon name="settings" size={18} color="var(--accent)" /> {numeAg} — praguri</b>
+                <button class="h-btn" onClick={() => setPrag(null)} aria-label="Închide"><Icon name="x" /></button>
+              </div>
+              <div class="sheet-body">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Când te alertează acest agent</div>
+                {/* Pe cine se aplică — spus EXPLICIT (ca _agpScopeNote pe web). */}
+                {coId != null ? (
+                  <div style="margin-bottom:12px;padding:9px 11px;border-radius:9px;font-size:12.5px;line-height:1.45;border:1px solid color-mix(in srgb, var(--accent) 50%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--text-primary)">
+                    <Icon name="building" size={13} style="vertical-align:-2px;margin-right:4px" /> Se aplică doar companiei <b>{numeFirma(coId)}</b>.
+                  </div>
+                ) : (
+                  <div style="margin-bottom:12px;padding:9px 11px;border-radius:9px;font-size:12.5px;line-height:1.45;border:1px solid color-mix(in srgb, var(--orange) 55%, transparent);background:color-mix(in srgb, var(--orange) 11%, transparent);color:var(--text-primary)">
+                    <Icon name="alert" size={13} color="var(--orange)" style="vertical-align:-2px;margin-right:4px" />
+                    Nicio companie selectată: modifici <b>baza platformei</b>, valabilă pentru TOATE companiile care n-au praguri proprii. Alege o companie din selectorul de sus dacă vrei să schimbi doar pentru ea.
+                  </div>
+                )}
+                {thrStare === 'load' && <div class="spin" style="margin:14px auto" />}
+                {thrStare === 'err' && <div style="color:var(--red);font-size:13px">Nu s-au putut citi pragurile.</div>}
+                {thrStare !== 'load' && thrStare !== 'err' && (lista.length === 0 ? (
+                  <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.55;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+                    {prag === 'client'
+                      ? 'Sinteza zilei curente — se recalculează când deschizi pagina sau apeși „Rulează". Nu are praguri proprii: preia pragurile celorlalți agenți, fiindcă le rezumă concluziile.'
+                      : 'Acest agent nu are praguri de reglat.'}
+                  </div>
+                ) : (
+                  <div class="frm">
+                    {lista.map((t) => {
+                      const salvat = thr[t.k];
+                      // Nesetat → „Implicit", nu valoarea recomandată: altfel alegerea ei nu schimba nimic și pragul
+                      // nu se putea fixa (ca în Setări companie, găsit 24.09).
+                      const unset = (salvat == null || salvat === '') && t.def !== '';
+                      const v = unset ? '' : (salvat == null || salvat === '' ? String(t.def) : String(salvat));
+                      const opts = t.options.slice();
+                      if (unset) opts.unshift(['', coId != null ? 'Implicit (pragul de bază al platformei)' : 'Implicit (cel recomandat)']);
+                      else if (!opts.some(([o]) => String(o) === v)) opts.unshift([v === '' ? '' : Number(v), v + ' (curent)']);
+                      return (
+                        <div class="fld">
+                          <label style="color:var(--text-primary)">{t.label} <span style="color:var(--text-muted);font-weight:600">({t.unit})</span>
+                            {(salvat == null || salvat === '') && <span style="margin-left:6px;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap">implicit</span>}
+                          </label>
+                          <select value={v} onChange={(e: any) => setThr({ ...thr, [t.k]: e.target.value })}>
+                            {opts.map(([o, l]) => <option value={String(o)}>{l}</option>)}
+                          </select>
+                          <span style="font-size:11.5px;color:var(--text-muted);line-height:1.45">{t.hint}</span>
+                        </div>
+                      );
+                    })}
+                    <button class="btn btn-primary btn-block" disabled={thrStare === 'save'} onClick={salveazaPraguri}>
+                      {thrStare === 'save' ? 'Se salvează…' : schimbate ? 'Salvează (' + schimbate + ')' : 'Salvează'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

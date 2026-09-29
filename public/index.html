@@ -2023,7 +2023,8 @@ const pozitii = await r.json();</code></pre>
         </style>
         <div id="atab-vehicles" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
-            <div class="veh-seg">
+            <!-- Doar la noi: clientul nu vede vehiculele arhivate (hotărât 18.09), iar serverul nici nu i le trimite. -->
+            <div class="veh-seg super-only">
               <button id="veh-tab-active" class="btn-sm btn-primary" onclick="setVehScope('active')">Active</button>
               <button id="veh-tab-archived" class="btn-sm" onclick="setVehScope('archived')">Arhivate</button>
             </div>
@@ -5218,7 +5219,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="pref-t">Schimbă-ți parola</div>' +
           '<div class="pref-form">' +
             camp('pref-p0', 'Parola de acum', '', 'password', '', ' autocomplete="current-password"') +
-            camp('pref-p1', 'Parola nouă', '', 'password', 'minim 8 caractere', ' autocomplete="new-password"') +
+            camp('pref-p1', 'Parola nouă', '', 'password', 'minim 10 caractere, litere și cifre', ' autocomplete="new-password"') +
             camp('pref-p2', 'Încă o dată parola nouă', '', 'password', '', ' autocomplete="new-password"') +
           '</div>' +
           '<div class="pref-act"><button class="btn-sm btn-primary" onclick="prefSchimbParola(this)"><i class="fas fa-key"></i> Schimbă parola</button>' +
@@ -5619,22 +5620,28 @@ const pozitii = await r.json();</code></pre>
       var nOk = stari.filter(function (s) { return s.k === 'ok'; }).length;
       var nRau = montate.length - nOk;
       var arata = { sim: true, companie: !!(window.currentUser && window.currentUser.isSuper) }; // scris pe window peste tot: așa se poate rula și în probe, fără browser
+      // Aparatele arhivate sunt evidența NOASTRĂ (hotărât 18.09): clientul nu le vede, iar serverul nici nu i le
+      // mai trimite (29.09). Fără fila asta la el — altfel ar rămâne o filă mereu goală, cu „0 arhivate".
+      var cuArhive = arata.companie;
+      if (!cuArhive && _agps.fila === 'arhivate') _agps.fila = 'montate';
 
       var h = '<div class="ag-sumar">' +
         agpsCard(montate.length, 'aparate montate') +
         agpsCard(nOk, 'comunică acum', 'var(--accent)') +
         agpsCard(nRau, nRau === 1 ? 'nu transmite' : 'nu transmit', nRau ? 'var(--orange)' : null) +
-        agpsCard(arhivate.length, 'arhivate') +
+        (cuArhive ? agpsCard(arhivate.length, 'arhivate') : '') +
         '</div>';
 
       h += '<div class="ag-bar">' +
         (_agps.fila === 'montate'
           ? '<input class="ag-cauta" type="search" placeholder="Caută număr, IMEI, model, cartelă…" value="' + esc(_agps.cauta) + '" oninput="agpsCauta(this.value)">'
           : '<span style="flex:1"></span>') +
-        '<span class="ag-file">' +
-          '<button class="' + (_agps.fila === 'montate' ? 'on' : '') + '" onclick="agpsFila(\'montate\')">Montate</button>' +
-          '<button class="' + (_agps.fila === 'arhivate' ? 'on' : '') + '" onclick="agpsFila(\'arhivate\')">Arhivate</button>' +
-        '</span>' +
+        (cuArhive
+          ? '<span class="ag-file">' +
+              '<button class="' + (_agps.fila === 'montate' ? 'on' : '') + '" onclick="agpsFila(\'montate\')">Montate</button>' +
+              '<button class="' + (_agps.fila === 'arhivate' ? 'on' : '') + '" onclick="agpsFila(\'arhivate\')">Arhivate</button>' +
+            '</span>'
+          : '') +
         (_agps.fila === 'montate'
           ? '<a class="btn-sm" href="/api/device-inventory/export?format=xlsx"><i class="fas fa-file-excel"></i> Excel</a>' +
             '<a class="btn-sm" href="/api/device-inventory/export?format=pdf"><i class="fas fa-file-pdf"></i> PDF</a>'
@@ -5780,9 +5787,10 @@ const pozitii = await r.json();</code></pre>
     // Cât stă fiecare în aplicație, ca procent din tot timpul echipei. Procentul e cel cerut de Alin:
     // „să vadă adminul cât petrec utilizatorii". Ora exactă rămâne alături, ca procentul să nu poată
     // fi citit greșit — 50% dintr-o oră totală nu e același lucru cu 50% din o sută de ore.
+    function istZileDe(n) { var r = Math.abs(Number(n) || 0) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; } // „7 zile”, „30 de zile”
     function istPrezentaHtml(p, zile) {
       var cap = '<div class="ist-prez-h"><i class="fas fa-hourglass-half"></i> Cât stau oamenii în aplicație' +
-        '<span>· ultimele ' + zile + ' de zile</span></div>';
+        '<span>· ultimele ' + zile + istZileDe(zile) + 'zile</span></div>';
       if (!p || !p.oameni || !p.oameni.length) {
         return '<div class="ist-prez">' + cap +
           '<div class="ist-prez-gol">Încă nu s-a strâns nimic. Măsurarea pornește odată cu prima intrare în aplicație de acum înainte.</div></div>';
@@ -5792,7 +5800,7 @@ const pozitii = await r.json();</code></pre>
         var pct = total ? Math.round(o.minute / total * 100) : 0;
         return '<div class="ist-prez-r">' +
           '<div class="ist-prez-n"><b>' + esc(o.full_name || o.username) + '</b>' +
-            '<span>' + istOre(o.minute) + ' · ' + o.zile + (o.zile === 1 ? ' zi' : ' zile') + '</span></div>' +
+            '<span>' + istOre(o.minute) + ' · ' + o.zile + (o.zile === 1 ? ' zi' : istZileDe(o.zile) + 'zile') + '</span></div>' +
           '<div class="ist-prez-b"><i style="width:' + Math.max(pct, 2) + '%"></i></div>' +
           '<div class="ist-prez-p">' + pct + '%</div>' +
           '</div>';
@@ -5800,7 +5808,7 @@ const pozitii = await r.json();</code></pre>
       return '<div class="ist-prez">' + cap + randuri +
         '<div class="ist-prez-nota">Se numără doar timpul cu aplicația <b>deschisă și în față</b>, în pași de ' +
         (p.pasMinute || 5) + ' minute. O filă lăsată deschisă în spate nu se pune la socoteală. ' +
-        'Procentul e din totalul echipei, pe perioada aleasă.</div></div>';
+        'Procentul e din totalul echipei, pe perioada aleasă. Se numără <b>doar aplicația web</b>: cine lucrează numai de pe telefon nu apare aici.</div></div>';
     }
     function istRender() {
       var host = document.getElementById('ist-host'); if (!host) return;
@@ -6638,6 +6646,7 @@ const pozitii = await r.json();</code></pre>
       // esc local: cel global e definit în IIFE-ul celui de-al doilea <script>, deci nu e vizibil aici. Escapăm și ' (context onclick).
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const q = (document.getElementById('veh-search').value || '').toLowerCase();
+      if (vehScope === 'archived' && !(currentUser && currentUser.isSuper)) vehScope = 'active'; // un cont schimbat pe aceeași pagină
       let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
       const _coF = document.getElementById('veh-co-filter'); const _fco = (currentUser && currentUser.isSuper && _coF && _coF.value) ? String(_coF.value) : '';
       if (_fco) rows = rows.filter(d => String(d.company_id) === _fco);
@@ -20431,6 +20440,9 @@ const pozitii = await r.json();</code></pre>
         aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0 }, d.ai_quota || {}),
         offer: {
           name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
+          // Prețul FMS n-are casetă aici, dar TREBUIE trimis înapoi: serverul înlocuiește toată oferta, iar fără
+          // el camioanele FMS se facturau la prețul CAN după prima salvare (găsit 24.09; telefonul îl păstra).
+          priceFmsRON: pick(o.priceFmsRON),
           aiAssistantRON: pick(o.aiAssistantRON), aiAgentsRON: pick(o.aiAgentsRON),
           pricePerVehicleRON: pick(o.pricePerVehicleRON), flatPriceRON: pick(o.flatPriceRON), vehicleLimit: pick(o.vehicleLimit), note: o.note || ''
         }
@@ -20887,7 +20899,13 @@ const pozitii = await r.json();</code></pre>
     // contract semnat — ăla se încheie, nu dispare (regula stă pe server, nu doar aici).
     var _raxCtr = null;
     function _zile(ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO') : '—'; }
-    function _inputZi(ms) { if (!ms) return ''; var d = new Date(Number(ms)); return isNaN(d) ? '' : d.toISOString().slice(0, 10); }
+    // Ziua LOCALĂ, pereche cu `_zi` (care salvează miezul nopții LOCAL). Era ziua UTC: în România orice dată
+    // apărea cu o zi mai devreme, iar o salvare fără nicio schimbare o muta înapoi cu încă o zi (găsit 24.09).
+    function _inputZi(ms) {
+      if (!ms) return '';
+      var d = new Date(Number(ms));
+      return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
     // Drumul contractului. Cuvintele de aici trebuie să fie IDENTICE cu cele din contracts.js
     // (`ETICHETE_STARE` și `URMATORUL_PAS`) — verify_contracte.js pică dacă se despart.
     var CTR_STARI = {
@@ -21149,7 +21167,7 @@ const pozitii = await r.json();</code></pre>
         var zi = (document.getElementById('ct-signed') || {}).value;
         if (!await raConfirm('Marchezi contractul SEMNAT de amândoi?\n\nDin clipa asta contractul și anexele lui nu se mai modifică: orice schimbare (mașini noi, alt preț, prelungire) se face prin act adițional.' +
           (zi ? '' : '\n\nData semnării nu e scrisă — pun data de azi.'), { danger: false, okLabel: 'Da, e semnat' })) return;
-        if (!zi) { var e = document.getElementById('ct-signed'); if (e) e.value = new Date().toISOString().slice(0, 10); }
+        if (!zi) { var e = document.getElementById('ct-signed'); if (e) e.value = _inputZi(Date.now()); }
       }
       var motiv = null;
       if (stareNoua === 'incheiat') {
@@ -21260,7 +21278,7 @@ const pozitii = await r.json();</code></pre>
         if (!await raConfirm('Marchezi actul ' + (a.number || '') + ' SEMNAT de amândoi?\n\nDin clipa asta nu se mai modifică.' +
           (a.luni_noi ? ' Contractul se prelungește cu ' + a.luni_noi + _raxDe(Number(a.luni_noi)) + 'luni.' : '') +
           (a.signed_at ? '' : '\n\nData semnării nu e scrisă — pun data de azi.'), { danger: false, okLabel: 'Da, e semnat' })) return;
-        if (!a.signed_at) trup.signed_at = _zi(new Date().toISOString().slice(0, 10));
+        if (!a.signed_at) trup.signed_at = _zi(_inputZi(Date.now()));
       }
       try {
         var r = await fetch('/api/acte/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(trup) });
@@ -22898,8 +22916,10 @@ const pozitii = await r.json();</code></pre>
           + '</div>';
         if (pret < sug) html += '<div style="margin-top:7px;color:var(--orange);font-weight:700;line-height:1.45;"><i class="fas fa-triangle-exclamation"></i> Sub pragul minim de ' + sug + ' lei.</div>';
       }
-      var rec = _aiqPretLoc(nVeh) * nLoc;
-      if (rec && Math.abs(pret - rec) > 0.5) html += '<div style="margin-top:8px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + rec + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;">Aplică prețul propus: ' + rec + ' lei</a></div>';
+      // În câmp intră prețul unui CONT (câmpul e „lei/cont"); totalul pe toate conturile se spune doar
+      // în etichetă. Scria totalul în câmp: la 3 conturi, un clic triplica prețul fiecărui cont.
+      var recCont = _aiqPretLoc(nVeh), rec = recCont * nLoc;
+      if (rec && Math.abs(pret - rec) > 0.5) html += '<div style="margin-top:8px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + recCont + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;">Aplică prețul propus: ' + recCont + ' lei/cont' + (nLoc > 1 ? ' (' + rec + ' lei pe ' + nLoc + ' conturi)' : '') + '</a></div>';
       box.innerHTML = html;
     }
     // ── începe „ce rămâne la noi" ────────────────────────────────────────────────────────────────
@@ -23499,7 +23519,11 @@ const pozitii = await r.json();</code></pre>
     // pe firmă. Acum se vinde pe CONT, iar fondul lunii = conturi × întrebări pe cont. Panoul ăsta arată
     // aceeași socoteală după care se face factura, o firmă pe cartonaș, desfăcut: cine are cont, cine
     // chiar întreabă, ce încasăm, ce ne costă și ce rămâne. Fără să deschizi nimic și fără să aduni în cap.
-    function _aiuFx() { return (window.raFx ? (window.raFx().eur || 5) : 5); }
+    // Cursul e CEL DIN RĂSPUNSUL SERVERULUI (`fxEur`), cu care au fost socotite și totalurile lui. Cartonașele
+    // luau cursul paginii, deci cu un curs al nostru pus diferit de BNR panoul amesteca două cursuri — iar
+    // telefonul, care folosește doar `fxEur`, arăta alte sume decât web-ul (găsit 24.09).
+    var _aiuFxResp = null;
+    function _aiuFx() { return _aiuFxResp || (window.raFx ? (window.raFx().eur || 5) : 5); }
     // Sumele mici au nevoie de bani (0,35 lei), cele mari nu (45 lei) — și niciuna de zerouri de
     // umplutură: „9.00 €" arată a formular, nu a socoteală.
     function _aiuNr(v) {
@@ -23529,7 +23553,7 @@ const pozitii = await r.json();</code></pre>
         // „0 conturi × 50 = 0 întrebări" e o socoteală care nu spune nimic. Adevărul e altul:
         // firma a cumpărat RA Insight și nu l-a dat nimănui — nu poate întreba nimeni, nu se
         // facturează nimic. Ăsta e un telefon de dat, nu un rând de tabel.
-        l.push('Firma are RA Insight în plan, dar <b>nu a dat niciun cont</b> — deocamdată nu poate întreba nimeni și nu se facturează nimic.');
+        l.push('Firma are RA Insight în ofertă, dar <b>nu a dat niciun cont</b> — deocamdată nu poate întreba nimeni și nu se facturează nimic.');
         l.push('Un cont ar aduce ' + window._raxNrI(r.peCont) + ' pe lună' + (r.pretCont > 0 ? ', la ' + _aiuLei(r.pretCont) : '') + '. Se aprinde din <b>Utilizatori</b>, de administratorul firmei.');
       } else if (r.peCont > 0) {
         l.push('<b>' + r.conturi + '</b> ' + (r.conturi === 1 ? 'cont' : 'conturi') + ' × <b>' + window._raxNrI(r.peCont)
@@ -23543,7 +23567,7 @@ const pozitii = await r.json();</code></pre>
       } else if (r.enabled) {
         l.push('<span style="color:var(--orange);">Fără fond stabilit — întreabă <b>nelimitat</b>, pe banii noștri.</span> Se pune din Conturi &amp; Abonamente.');
       } else {
-        l.push('Firma nu are RA Insight în plan.');
+        l.push('Firma nu are RA Insight în ofertă.');
       }
       return l.map(function (x) { return '<div style="margin:3px 0;">• ' + x + '</div>'; }).join('');
     }
@@ -23911,7 +23935,8 @@ const pozitii = await r.json();</code></pre>
       try { d = await fetch('/api/admin/ai-usage', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
       if (!d || d.error) { box.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc((d && d.error) || 'indisponibil') + '</div>'; return; }
       var s = d.summary || {}, rows = d.rows || [];
-      var fx = Number(d.fxEur) || _aiuFx();
+      _aiuFxResp = Number(d.fxEur) || null;
+      var fx = _aiuFx();
       // Desfăcute din start firmele care CHIAR au RA Insight — pentru ele venim aici. Restul, strânse.
       var carduri = rows.map(function (r) { return _aiuCard(r, !!(r.enabled || r.used > 0)); }).join('')
         || '<div class="rax-co-meta" style="padding:14px;">Nicio companie.</div>';
@@ -24479,7 +24504,12 @@ const pozitii = await r.json();</code></pre>
         };
         set('of-cl-name', (cfg.client && cfg.client.name) || o.client_name); set('of-cl-cui', (cfg.client && cfg.client.cui) || o.client_cui); set('of-cl-contact', (cfg.client && cfg.client.contact) || o.client_contact);
         set('of-name', cfg.offerName || o.name); set('of-nveh', cfg.nVeh); set('of-ncan', cfg.nCan); set('of-nfms', cfg.nFms);
-        set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
+        set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg);
+        // Modulele vândute (se salvează în `cfg`). Fără ele, oferta redeschisă pierdea Tahograful și
+        // e-Transportul, iar „Actualizează" scria un abonament mai mic. O ofertă veche fără câmp rămâne
+        // cum pornește formularul (`set` sare peste gol).
+        set('of-tahograf', cfg.tahograf); set('of-etransport', cfg.etransport); set('of-agenti', cfg.agenti);
+        set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
         if (cfg.aiqN != null) set('of-aiqN', String(cfg.aiqN));   // câte întrebări aduce un cont
         if (cfg.aiqSeats != null) set('of-aiqSeats', cfg.aiqSeats);   // câte conturi s-au vândut
         var mj = cfg.montaj || {};
@@ -25356,7 +25386,8 @@ const pozitii = await r.json();</code></pre>
       devices: {
         label: 'vehicule', idKey: 'imei', empty: 'Niciun vehicul.',
         // /lite = doar coloane esențiale (fără poziție live + io_data JSONB) → payload ~10× mai mic la 1000+ vehicule.
-        url: '/api/devices/lite?includeArchived=1',
+        // Fără arhivate: un aparat arhivat nu se mută (serverul îl refuză, și în lot), se restaurează întâi.
+        url: '/api/devices/lite',
         moveUrl: function (id) { return '/api/devices/' + encodeURIComponent(id) + '/company'; },
         bulkUrl: '/api/devices/company/bulk', bulkIdsKey: 'imeis',
         name: function (d) { return d.name || d.imei; },
@@ -26286,8 +26317,13 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       if (stip) stip.innerHTML = _etTipuri.map(function (t) { return '<option value="' + esc(t.cod) + '">' + esc(t.label) + ' (' + t.zile + ' zile)</option>'; }).join('');
       var s = $('rax-et-start');
-      if (s && !s.value) s.value = new Date().toISOString().slice(0, 10);
+      if (s && !s.value) s.value = _etZiLocala(new Date());
       raxEtRecalc();
+    }
+    // Ziua din calendarul omului, nu ziua UTC: `toISOString` întorcea, în România, ziua de DINAINTE — deci
+    // termenul propus ieșea cu o zi mai devreme decât regula serverului (etransport.js: start + zile).
+    function _etZiLocala(d) {
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
     }
 
     // Propune termenul din data de start + zilele tipului ales. Rămâne editabil — vezi comentariul
@@ -26298,7 +26334,7 @@ const pozitii = await r.json();</code></pre>
       if (!t || !start) return;
       var d = new Date(start + 'T00:00:00');
       d.setDate(d.getDate() + t.zile);
-      $('rax-et-pana').value = d.toISOString().slice(0, 10);
+      $('rax-et-pana').value = _etZiLocala(d);
       $('rax-et-hint').textContent = 'Propus: ' + t.zile + ' zile de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.';
     };
 

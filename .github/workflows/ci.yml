@@ -16,7 +16,11 @@ jobs:
           node-version: '20'
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          # verify_insight_bani.js (din `npm test`) citește o bucată din aplicația de telefon, scrisă în
+          # TypeScript. Aplicația de telefon nu se instalează aici — punem doar compilatorul.
+          npm install --no-save typescript@5
 
       # 1) Lint — syntax check pe TOATE modulele core (catch rapid regresii de sintaxă)
       - name: Lint (syntax check)

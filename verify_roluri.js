@@ -396,8 +396,9 @@ const login = async (u, p) => {
   // Parola pusă de administrator: tot fereastra aplicației, și fără regula falsă de dinainte.
   T('resetarea parolei nu mai trece prin prompt-ul browserului',
     !/var np = prompt\('Parolă nouă pentru/.test(html));
-  T('și nu mai promite „minim 4 caractere", când serverul cere 8',
-    !/min 4 caractere/.test(html) && /minim 8 caractere/.test(html));
+  // Regula de azi (verificaParola): minim 10 caractere și două feluri de caractere. „8" a rămas în urmă o vreme.
+  T('și nu mai promite „minim 4" sau „minim 8 caractere", când serverul cere 10',
+    !/min 4 caractere/.test(html) && !/minim 8 caractere/.test(html) && /minim 10 caractere/.test(html));
 
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');

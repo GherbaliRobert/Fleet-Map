@@ -7,6 +7,11 @@ export const API_BASE = Capacitor.isNativePlatform()
   ? ((import.meta as any).env.VITE_API_BASE || NATIVE_BASE)
   : ((import.meta as any).env.VITE_API_BASE || ''); // browser dev: gol → proxy Vite pe /api
 
+// Versiunea aplicației, trimisă serverului în `X-RA-App`. Serverul lasă să scrie oferte DOAR aplicația care
+// are calculatorul nou (1.0.3+, socotit pe server); cele vechi (1.0.1/1.0.2) n-au antetul și sunt refuzate
+// cu explicație. Se ține la zi cu `appVersionName` din android/variables.gradle.
+export const APP_VERSIUNE = '1.0.3';
+
 let _token: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
 export function setAuthToken(t: string | null) { _token = t; }
@@ -32,7 +37,7 @@ export async function api<T = any>(
 ): Promise<T> {
   const method = opts.method || 'GET';
   const url = API_BASE + path;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-RA-App': APP_VERSIUNE };
   if (opts.auth !== false && _token) headers['Authorization'] = 'Bearer ' + _token;
   const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
 

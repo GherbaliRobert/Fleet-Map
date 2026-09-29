@@ -1,0 +1,78 @@
+/* statsflota.css — „Statistici flotă" pe telefon: același ecran ca pe web (openDashboard), pe o coloană. */
+.sf { padding: 12px 14px 24px; }
+.sf-h { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-muted); margin: 18px 0 9px; }
+.sf-h em { margin-left: auto; font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 11.5px; }
+.sf-h .sf-link { margin-left: auto; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  font-family: inherit; font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: 0; text-transform: none; }
+
+/* Cartonașele de sus, 2 pe rând. */
+.sf-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.sf-kpi { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 12px; padding: 11px 12px;
+  min-width: 0; text-align: left; font-family: inherit; color: var(--text-primary); }
+.sf-kpi.lat { grid-column: 1 / -1; }
+.sf-kpi .l { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+.sf-kpi .n { font-size: 24px; font-weight: 800; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.sf-kpi .n small { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-left: 3px; }
+.sf-kpi .s { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; overflow-wrap: anywhere; }
+button.sf-kpi:active { border-color: var(--accent); }
+
+/* Bara de stare + rândurile care duc la lista de vehicule filtrată. */
+.sf-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--bg-dark); }
+.sf-bar span { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; min-width: 3px; white-space: nowrap; overflow: hidden; }
+.sf-stari { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+.sf-stare { display: flex; align-items: center; gap: 9px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 11px; font-family: inherit; color: var(--text-primary); text-align: left; min-height: 46px; }
+.sf-stare:active { border-color: var(--accent); }
+.sf-stare i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.sf-stare span { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.sf-stare span small { display: block; font-size: 10.5px; font-weight: 600; color: var(--text-muted); line-height: 1.3; margin-top: 1px; }
+.sf-stare b { font-size: 16px; font-weight: 800; }
+
+/* Agenții AI. */
+.sf-ag { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--bg-card); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 11px; padding: 11px 12px; margin-bottom: 7px; font-family: inherit; color: var(--text-primary); min-height: 52px; }
+.sf-ag.bad { border-left-color: var(--red); }
+.sf-ag.warn { border-left-color: var(--orange); }
+.sf-ag .t { flex: 1; min-width: 0; }
+.sf-ag .t b { display: block; font-size: 14px; }
+.sf-ag .t small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+button.sf-ag:active { border-color: var(--accent); }
+.sf-liniste { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; padding: 10px 12px; border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text-primary); }
+.sf-liniste.oprit { border-color: color-mix(in srgb, var(--orange) 30%, transparent); background: color-mix(in srgb, var(--orange) 8%, transparent); }
+.sf-liniste > svg { flex: 0 0 auto; margin-top: 1px; }
+.sf-veghe { background: var(--bg-card); border: 1px solid var(--border); border-radius: 11px; padding: 11px 12px; margin-top: 8px; }
+.sf-veghe .cap { font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 6px; }
+.sf-veghe .r { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); padding: 4px 0; }
+.sf-veghe .r b { color: var(--text-primary); }
+
+/* Top-uri: bară de progres pe vehicul. */
+.sf-prog { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 6px 12px; }
+.sf-prog-r { padding: 8px 0; }
+.sf-prog-r .t { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.sf-prog-r .t span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sf-prog-r .t b { flex: 0 0 auto; font-weight: 800; }
+.sf-prog-r .tr { height: 5px; border-radius: 3px; background: var(--bg-dark); overflow: hidden; margin-top: 5px; }
+.sf-prog-r .tr i { display: block; height: 100%; border-radius: 3px; }
+.sf-est { font-size: 9.5px; font-weight: 700; opacity: .75; margin-left: 3px; }
+.sf-gol { font-size: 12.5px; color: var(--text-muted); padding: 8px 2px; }
+
+.sf-chart .rc-card { margin: 0; }
+
+/* Flota: un rând pe vehicul, cu cifrele zilei. */
+.sf-veh { display: block; width: 100%; text-align: left; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 11px 12px; margin-bottom: 8px; font-family: inherit; color: var(--text-primary); }
+.sf-veh:active { border-color: var(--accent); }
+.sf-veh-h { display: flex; align-items: center; gap: 8px; }
+.sf-veh-h b { font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-veh-h .pl { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.sf-pill { margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.sf-pill i { width: 7px; height: 7px; border-radius: 50%; }
+.sf-veh-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; margin-top: 9px; }
+.sf-veh-g span { min-width: 0; }
+.sf-veh-g em { display: block; font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
+.sf-veh-g b { display: block; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sf-veh-g b.gol { color: var(--text-muted); font-weight: 600; }
+
+.sf-chart .rc-title { display: none; } /* titlul stă deasupra, ca la celelalte secțiuni */

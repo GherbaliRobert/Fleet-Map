@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
-import { vehicles, offlineMinutes, me, showToast, refreshVehicles, ecranAscuns } from '../app/store';
+import { vehicles, offlineMinutes, me, showToast, refreshVehicles, ecranAscuns, uiPrefs } from '../app/store';
 import { Api } from '../api/endpoints';
 import type { DeviceFull, DailyStats, NotificationItem } from '../api/endpoints';
 import { reverseGeocode } from '../api/geocode';
@@ -10,8 +10,17 @@ import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
 import { MapModal } from '../components/MapModal';
 import { WorkSchedEditor } from '../components/WorkSchedEditor';
-import { VehicleSpecsView, VehicleSpecsForm, specsFromFull } from '../components/VehicleSpecs';
+import {
+  VehicleSpecsView, VehicleSpecsForm, specsFromFull, specsDeTrimis,
+  ConfigCamionForm, camionDinFull, camionDeTrimis, CHEI_CAMION, CHEI_GREUTATI_CAMION,
+} from '../components/VehicleSpecs';
+import { TIPURI_CU_AXE } from '../components/vehCategorii';
+import {
+  SondaSimplaForm, SondeAvansatForm, SenzoriVedere, calibDinFull, calibDeTrimis, sondeDinServer, sondeDeTrimis,
+  type RandCal, type SondaEdit,
+} from '../components/FisaSonde';
 import { VehicleDocs } from '../components/VehicleDocs';
+import { VehicleService } from '../components/VehicleService';
 import { CanFlags } from '../components/CanFlags';
 import { CanTellTales } from '../components/CanTellTales';
 import './detail.css';
@@ -94,6 +103,9 @@ export function VehicleDetail() {
   const [daily, setDaily] = useState<DailyStats | null>(null);
   const [sheet, setSheet] = useState<'' | 'can' | 'sensors' | 'tacho'>('');
   const [sensors, setSensors] = useState<any[] | null>(null);
+  // Lista de sonde a venit CHIAR de la server (nu e goală din cauza unei erori). Fără asta, o eroare de rețea
+  // ar arăta „nicio sondă", iar o sondă adăugată apoi ar înlocui, la salvare, sondele care n-au apucat să vină.
+  const [sensorsOk, setSensorsOk] = useState(false);
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -109,24 +121,65 @@ export function VehicleDetail() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
+  // Filele tehnice din foaia de editare (Config Camion, Sonda combustibil, Sonde avansat). Se trimit la server
+  // DOAR dacă omul a schimbat ceva în ele — rutele lor înlocuiesc tot, deci un apel inutil e un risc inutil.
+  const camInit = useRef<Record<string, string>>({});
+  const [calRows, setCalRowsRaw] = useState<RandCal[]>([]);
+  const [calDirty, setCalDirty] = useState(false);
+  const [sondeEdit, setSondeEditRaw] = useState<SondaEdit[] | null>(null);
+  const [sondeDirty, setSondeDirty] = useState(false);
+  function setCalRows(r: RandCal[]) { setCalRowsRaw(r); setCalDirty(true); }
+  function setSondeEdit(l: SondaEdit[]) { setSondeEditRaw(l); setSondeDirty(true); }
 
   // Venit din notificarea de scadență („ITP expiră în 3 zile") → deschidem direct editarea, unde
   // stau actele. Fără asta, notificarea te lăsa în fișă și porneai să cauți butonul de editare.
   const _cerutDocs = new URLSearchParams((loc.url || '').split('?')[1] || '').get('edit') === 'docs';
 
-  function loadFull() { Api.deviceFull(imei).then(setFull).catch(() => {}); }
+  // Ruterul (preact-iso) PĂSTREAZĂ ecranul ăsta când se schimbă doar :imei (ex. atingi o notificare despre
+  // mașina B cât stai pe fișa mașinii A). Fără gardă, un răspuns întârziat pentru A ar ateriza peste B — iar
+  // „Salvează" ar scrie fișa și sondele lui A pe vehiculul B. `imeiCur` e vehiculul afișat ACUM.
+  const imeiCur = useRef(imei);
+  imeiCur.current = imei;
+  const incaAici = (i: string) => imeiCur.current === i;
+  function loadFull() {
+    const i = imei;
+    Api.deviceFull(i).then((r) => { if (incaAici(i)) setFull(r); }).catch(() => {});
+  }
+  function loadSensors() {
+    const i = imei;
+    Api.fuelSensors(i).then((r) => { if (!incaAici(i)) return; setSensors(Array.isArray(r) ? r : (r?.sensors || [])); setSensorsOk(true); })
+      .catch(() => { if (!incaAici(i)) return; setSensors([]); setSensorsOk(false); });
+  }
   useEffect(() => {
+    // Alt vehicul → uităm tot ce ținea de cel dinainte, ÎNAINTE de a cere datele noului vehicul.
+    setFull(null); setSensors(null); setSensorsOk(false); setDaily(null); setAddr('');
+    setEditOpen(false); setEf({}); setSheet(''); setNavOpen(false); setShowMap(false);
+    setCalRowsRaw([]); setCalDirty(false); setSondeEditRaw(null); setSondeDirty(false);
+    camInit.current = {};
+    docsDeschise.current = false;
+    const i = imei;
     loadFull();
-    Api.dailyStats(imei).then(setDaily).catch(() => {});
+    Api.dailyStats(i).then((d) => { if (incaAici(i)) setDaily(d); }).catch(() => {});
     // Senzori: încarcă din start ca să ascundem butonul dacă vehiculul N-ARE senzori configurați
-    Api.fuelSensors(imei).then((r) => setSensors(Array.isArray(r) ? r : (r?.sensors || []))).catch(() => setSensors([]));
+    loadSensors();
     // Notificări (alerte active pe acest vehicul) → pastile de avertizare în fișă, ca pe web
     Api.notifications().then((l) => setNotifs(Array.isArray(l) ? l : [])).catch(() => {});
   }, [imei]);
 
   function openEdit() {
+    // Fără fișa completă, formularul ar porni gol și „Salvează" ar goli toate câmpurile vehiculului.
+    // `full.imei !== imei`: fișa de pe ecran e încă a vehiculului dinainte (cel nou se încarcă) — formularul
+    // ar porni cu datele altei mașini.
+    if (!full || String(full.imei) !== String(imei)) { showToast('Se încarcă fișa vehiculului…'); loadFull(); return; }
+    // Config Camion: valorile de acum (inclusiv sarcinile pe axe), ca obiectul trimis să fie mereu întreg.
+    const cam = camionDinFull(full);
+    camInit.current = cam;
+    setCalRowsRaw(calibDinFull((full as any).tank_calibration).map((p) => ({ v: String(p.voltage), l: String(p.liters) })));
+    setCalDirty(false);
+    setSondeEditRaw(sensorsOk && sensors ? sondeDinServer(sensors) : null);
+    setSondeDirty(false);
     // Fișa COMPLETĂ (~35 câmpuri) + cele două atribuiri, care merg pe rute separate.
-    setEf(Object.assign(specsFromFull(full), {
+    setEf(Object.assign(specsFromFull(full), cam, {
       name: full?.name || v?.name || '',
       plate: full?.plate || v?.plate || '',
       vehicle_type: (full as any)?.vehicle_type || v?.vehicle_type || '',
@@ -150,7 +203,8 @@ export function VehicleDetail() {
     // nimic deschis. Îl ducem la ecranul „Documente vehicule": acolo le vede (și le modifică, dacă rolul
     // lui are voie). Înlocuim adresa, ca „Înapoi" să ducă la notificare, nu iar aici.
     if (!canManage) { docsDeschise.current = true; loc.route('/admin/documents', true); return; }
-    if (!full || editOpen) return;
+    // Fișa încă a vehiculului dinainte (s-a schimbat :imei) → așteptăm fișa noului vehicul.
+    if (!full || String(full.imei) !== String(imei) || editOpen) return;
     docsDeschise.current = true;
     openEdit();
     setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
@@ -158,19 +212,44 @@ export function VehicleDetail() {
 
   function setEF(k: string, val: any) { setEf((p) => ({ ...p, [k]: val })); }
 
+  // Sondele pot sosi după ce ai deschis deja foaia de editare — le punem atunci în formular.
+  useEffect(() => {
+    if (editOpen && sondeEdit === null && sensorsOk && sensors) setSondeEditRaw(sondeDinServer(sensors));
+  }, [editOpen, sensors, sensorsOk]);
+
+  // ── Ce file tehnice are vehiculul ăsta (ca pe web, aplicaVizibilitateTaburi) ──
+  // „Config Camion": doar la categoriile cu axe și dacă firma n-a scos fila (Afișaj pentru toți → tab_camion).
+  // „Sonda combustibil" + „Sonde (avansat)": doar dacă mașina ARE deja sonde sau o calibrare și firma n-a scos
+  // filele (tab_sonde). Montarea primei sonde rămâne la noi, la instalare.
+  const prefs = uiPrefs.value || {};
+  const tankCal = calibDinFull((full as any)?.tank_calibration);
+  const areSonde = (!!sensors && sensors.length > 0) || tankCal.length > 0;
+  const arataSonde = prefs.tab_sonde !== false && areSonde;
+  const arataCamionLa = (tip: any) => prefs.tab_camion !== false && TIPURI_CU_AXE.includes(String(tip || ''));
+  const arataCamionEdit = arataCamionLa(ef.vehicle_type);
+
   async function saveEdit() {
     setSavingEdit(true);
     try {
       // Fișa completă merge pe /details — ruta scurtă (/api/devices/:imei) salvează DOAR nume/număr/tip.
       // Câmpurile rezervate super-adminului sunt oricum eliminate din body pe server dacă nu ai dreptul.
-      const spec: any = specsFromFull(ef);
+      // Modelul GPS și cartela SIM NU pleacă de aici (sunt doar de citit).
+      const spec: any = specsDeTrimis(ef);
       spec.name = ef.name || null; spec.plate = ef.plate || null; spec.vehicle_type = ef.vehicle_type || null;
       await Api.updateDeviceDetails(imei, spec);
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
       if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
+      // Config Camion: obiectul ÎNTREG (ruta suprascrie toate cele șase coloane), doar dacă fila se vede și
+      // s-a schimbat ceva în ea. Tara și masele au plecat deja, identic, pe /details.
+      if (arataCamionEdit && CHEI_CAMION.some((k) => String(ef[k] ?? '') !== String(camInit.current[k] ?? ''))) {
+        await Api.saveTruckConfig(imei, camionDeTrimis(ef));
+      }
+      if (arataSonde && calDirty) await Api.saveTankCalibration(imei, calibDeTrimis(calRows));
+      if (arataSonde && sondeDirty && sensorsOk && sondeEdit) await Api.saveFuelSensors(imei, sondeDeTrimis(sondeEdit));
       showToast('Vehicul actualizat');
       setEditOpen(false);
       loadFull();
+      if (arataSonde && sondeDirty) loadSensors();
       refreshVehicles();
     } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
     finally { setSavingEdit(false); }
@@ -179,8 +258,9 @@ export function VehicleDetail() {
   useEffect(() => {
     // Adresa COMPLETĂ (stradă nr, cartier, localitate, comună, județ): în fișa unui vehicul, doar numele
     // localității nu ajută pe cine trebuie să ajungă acolo.
-    if (v && v.latitude != null && v.longitude != null) reverseGeocode(v.latitude, v.longitude, 'full').then(setAddr).catch(() => {});
-  }, [v?.latitude, v?.longitude]);
+    const i = imei;
+    if (v && v.latitude != null && v.longitude != null) reverseGeocode(v.latitude, v.longitude, 'full').then((a) => { if (incaAici(i)) setAddr(a); }).catch(() => {});
+  }, [imei, v?.latitude, v?.longitude]);
 
   const s = v ? statusOf(v, off) : null;
   const io = v?.io || {};
@@ -241,7 +321,11 @@ export function VehicleDetail() {
 
   function openSensors() {
     setSheet('sensors');
-    if (sensors === null) Api.fuelSensors(imei).then((r) => setSensors(Array.isArray(r) ? r : (r?.sensors || []))).catch(() => setSensors([]));
+    if (sensors === null) {
+      const i = imei;
+      Api.fuelSensors(i).then((r) => { if (incaAici(i)) setSensors(Array.isArray(r) ? r : (r?.sensors || [])); })
+        .catch(() => { if (incaAici(i)) setSensors([]); });
+    }
   }
 
   return (
@@ -250,7 +334,7 @@ export function VehicleDetail() {
         <button class="h-btn" onClick={() => loc.route('/vehicles')}><Icon name="chevronL" /></button>
         <div class="h-title">{v?.name || full?.name || imei}</div>
         {canManage
-          ? <button class="h-btn" onClick={openEdit} aria-label="Editează vehicul"><Icon name="edit" size={20} /></button>
+          ? <button class="h-btn" onClick={openEdit} aria-label="Editează vehicul" style={full ? '' : 'opacity:.45'}><Icon name="edit" size={20} /></button>
           : <div style="width:36px" />}
       </header>
 
@@ -302,10 +386,13 @@ export function VehicleDetail() {
         <CanTellTales io={io} />
 
         <div class="d-actions">
-          <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
-          <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
+          {/* Cu ecranul „Traseu" / „Rapoarte" tăiat din rol, serverul refuză istoricul / rapoartele — butonul
+              ar duce într-o eroare. Ca pe web, nu mai apare. */}
+          {!ecranAscuns('traseu') && <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>}
+          {!ecranAscuns('rapoarte') && <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>}
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/can`)}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
-          {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
+          {/* „Are sonde" = sonde configurate SAU o calibrare simplă (voltaj → litri), ca pe web. */}
+          {areSonde && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
           {me.value?.features?.tahograf && tachoOk && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
           {/* „Merg după el" — navigatia obisnuita te duce unde ERA masina; asta arata unde e ACUM. */}
           <button class="d-act" disabled={!ll} onClick={() => loc.route('/vehicles/' + imei + '/follow')}><Icon name="compass" size={18} class="ic" /> Merg după el</button>
@@ -347,7 +434,9 @@ export function VehicleDetail() {
         </div>
 
         {/* Fișa tehnică — arată doar secțiunile care au ceva completat, ca să nu umple ecranul cu liniuțe. */}
-        <VehicleSpecsView full={full} />
+        {/* Echipamentul GPS (SIM) și „Config camion" (costuri) — doar pentru cine are „modifică flota", ca pe web. */}
+        <VehicleSpecsView full={full} admin={!!me.value?.permissions?.manageFleet}
+          camion={!!me.value?.permissions?.manageFleet && arataCamionLa((full as any)?.vehicle_type)} />
 
         <div class="card d-stats">
           <h3>Activitate astăzi</h3>
@@ -379,9 +468,7 @@ export function VehicleDetail() {
             </div>
             <div class="sheet-body">
               {sheet === 'can' && <><CanFlags io={io} /><CanList io={io} adblueOk={adblueOk} showRaw={isSuper} /></>}
-              {sheet === 'sensors' && (sensors === null ? <div class="spin" style="margin:20px auto" /> : sensors.length ? sensors.map((sn: any, i) => (
-                <div class="kv"><span class="k">{sn.type || sn.name || `Senzor ${i + 1}`}</span><span class="v">{sn.id || sn.io || '—'}</span></div>
-              )) : <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>)}
+              {sheet === 'sensors' && (sensors === null ? <div class="spin" style="margin:20px auto" /> : <SenzoriVedere sensors={sensors} calib={tankCal} />)}
               {sheet === 'tacho' && <TachoLive io={io} />}
             </div>
           </div>
@@ -399,7 +486,44 @@ export function VehicleDetail() {
               <div class="frm">
                 {/* Fișa tehnică, pe secțiuni pliabile — „Identificare" (nume, număr, tip, marcă, VIN…) e deschisă
                     implicit, restul se deschid la nevoie, ca formularul să nu fie un perete de 35 de câmpuri. */}
-                <VehicleSpecsForm val={ef} set={setEF} isSuper={!!me.value?.isSuper} />
+                <VehicleSpecsForm val={ef} set={setEF} isSuper={!!me.value?.isSuper} ascunde={arataCamionEdit ? CHEI_GREUTATI_CAMION : []} />
+                {/* Filele tehnice de pe web, ca secțiuni pliabile. Apar exact când apar și pe web. */}
+                {arataCamionEdit && (
+                  <details style="border:1px solid var(--border);border-radius:11px;margin-bottom:9px;overflow:hidden">
+                    <summary style="padding:11px 13px;cursor:pointer;font-size:13px;font-weight:700;background:var(--bg-dark);display:flex;align-items:center;gap:8px">
+                      <Icon name="truck" size={15} color="var(--accent)" /> Config Camion
+                    </summary>
+                    <div style="padding:11px 13px 4px"><ConfigCamionForm val={ef} set={setEF} /></div>
+                  </details>
+                )}
+                {arataSonde && (
+                  <details style="border:1px solid var(--border);border-radius:11px;margin-bottom:9px;overflow:hidden">
+                    <summary style="padding:11px 13px;cursor:pointer;font-size:13px;font-weight:700;background:var(--bg-dark);display:flex;align-items:center;gap:8px">
+                      <Icon name="droplet" size={15} color="var(--accent)" /> Sonda combustibil
+                    </summary>
+                    <div style="padding:11px 13px 12px"><SondaSimplaForm rows={calRows} setRows={setCalRows} /></div>
+                  </details>
+                )}
+                {arataSonde && (
+                  <details style="border:1px solid var(--border);border-radius:11px;margin-bottom:9px;overflow:hidden">
+                    <summary style="padding:11px 13px;cursor:pointer;font-size:13px;font-weight:700;background:var(--bg-dark);display:flex;align-items:center;gap:8px">
+                      <Icon name="gauge" size={15} color="var(--accent)" /> Sonde (avansat)
+                    </summary>
+                    <div style="padding:11px 13px 12px">
+                      {sondeEdit
+                        ? <SondeAvansatForm list={sondeEdit} setList={setSondeEdit} />
+                        : sensors === null
+                          ? <div class="spin" style="margin:12px auto" />
+                          : <div style="font-size:12.5px;color:var(--orange);line-height:1.5">
+                            Nu s-au putut încărca sondele, deci nu le poți modifica acum.
+                            <button type="button" onClick={() => loadSensors()}
+                              style="display:block;margin-top:8px;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;font-family:inherit">
+                              Reîncearcă
+                            </button>
+                          </div>}
+                    </div>
+                  </details>
+                )}
                 <div class="fld"><label>Șofer alocat</label>
                   <select value={ef.driver_id} onChange={(e) => setEF('driver_id', (e.target as HTMLSelectElement).value)}>
                     <option value="">Nealocat</option>
@@ -441,6 +565,8 @@ export function VehicleDetail() {
                     Rolul tău nu poate modifica actele. Le vezi în Meniu → Documente vehicule.
                   </div>
                   : <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />)}
+                {/* Fila „Service" de pe web = mentenanța acestei mașini. Se ascunde singură când rolul n-are ecranul Mentenanță. */}
+                <VehicleService imei={imei} />
               </div>
             </div>
           </div>

@@ -2,9 +2,34 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { me, vehicles, showToast } from '../app/store';
 import { Api } from '../api/endpoints';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
+import { Grupa } from '../components/FlotaUi';
 import './detail.css';
 import './admin.css';
+import './flota.css';
+
+// Iconița și familia de culoare a fiecărui tip — ca pe web (ALERT_META), ca tipurile să se recunoască
+// dintr-o privire: vitezometru roșu la viteză, picătură la combustibil, pin la zone, cheie la service.
+const ALERT_META: Record<string, { i: IconName; f: string }> = {
+  overspeed: { i: 'gauge', f: 'f-danger' },
+  engine_temp: { i: 'coolantTemp', f: 'f-danger' },
+  dtc_error: { i: 'alert', f: 'f-danger' },
+  fuel_drop: { i: 'droplet', f: 'f-fuel' },
+  pto_active: { i: 'gears', f: 'f-fuel' },
+  geofence_enter: { i: 'mapPin', f: 'f-zone' },
+  geofence_exit: { i: 'logout', f: 'f-zone' },
+  ignition_on: { i: 'ignitionKey', f: 'f-zone' },
+  ignition_off: { i: 'key', f: 'f-neutral' },
+  overload_legal: { i: 'truck', f: 'f-load' },
+  overload_construct: { i: 'truck', f: 'f-load' },
+  axle_overload: { i: 'truck', f: 'f-load' },
+  document_expiry: { i: 'fileBar', f: 'f-load' },
+  brake_pad_wear: { i: 'brakePad', f: 'f-service' },
+  service_due: { i: 'wrench', f: 'f-service' },
+  idle_engine: { i: 'clock', f: 'f-service' },
+};
+// Pragul regulii, scris scurt pentru pastilă. Unitatea ține de câmpul din condiție (web: COND_UNIT).
+const COND_UNIT: Record<string, string> = { maxSpeed: ' km/h', dropLiters: ' L', maxTemp: ' °C', maxKg: ' kg', minPercent: '%', warnKm: ' km', idleMinutes: ' min', warnDays: ' zile' };
 
 // Tipuri de alertă (prag numeric / zonă geofence / limite pe axe / fără câmpuri). Paritate cu web.
 // `empty` = ce face motorul de alerte când pragul e GOL, dacă NU folosește valoarea implicită (`def`).
@@ -12,23 +37,26 @@ import './admin.css';
 type AField = { k: string; label: string; def?: number; geofence?: boolean; empty?: string; offWhenEmpty?: boolean };
 type AType = { v: string; label: string; fields: AField[]; axles?: boolean };
 const OFF = { empty: 'gol = dezactivat', offWhenEmpty: true };
+// ORDINEA e cea de pe web (ALERT_TYPES din public/index.html): web-ul folosește aceeași listă și pentru
+// alegerea tipului în formular, și pentru ordinea grupelor din listă — așa că același cont vede tipurile
+// în aceeași ordine pe ambele. Un tip nou pe web se adaugă aici în același loc.
 const ALERT_TYPES: AType[] = [
   // Viteză goală: serverul folosește pragul minim (50) plus marja (10) → alertă peste 60 km/h, nu peste 90.
   { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90, empty: 'gol = alertă peste 60 km/h' }] },
   { v: 'fuel_drop', label: 'Scădere combustibil (furt)', fields: [{ k: 'dropLiters', label: 'Scădere minimă (L)', def: 10, ...OFF }] },
-  { v: 'geofence_enter', label: 'Intrare în zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
-  { v: 'geofence_exit', label: 'Ieșire din zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
   { v: 'ignition_on', label: 'Pornire motor', fields: [] },
   { v: 'ignition_off', label: 'Oprire motor', fields: [] },
+  { v: 'geofence_enter', label: 'Intrare în zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
+  { v: 'geofence_exit', label: 'Ieșire din zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
   { v: 'engine_temp', label: 'Temperatură motor mare', fields: [{ k: 'maxTemp', label: 'Temp max (°C)', def: 105, ...OFF }] },
   { v: 'dtc_error', label: 'Erori motor (DTC)', fields: [] },
-  { v: 'service_due', label: 'Service aproape', fields: [{ k: 'warnKm', label: 'Avertizare sub (km)', def: 1000 }] },
-  { v: 'brake_pad_wear', label: 'Uzură plăcuțe frână', fields: [{ k: 'minPercent', label: 'Prag minim (%)', def: 20 }] },
-  { v: 'pto_active', label: 'PTO activat', fields: [] },
   { v: 'overload_legal', label: 'Supraîncărcare (legal)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 40000, ...OFF }] },
   { v: 'overload_construct', label: 'Supraîncărcare (constructiv)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 44000, ...OFF }] },
   // Fără tipul ăsta, o regulă de pe axe deschisă pe telefon ar fi apărut ca „Depășire viteză".
   { v: 'axle_overload', label: 'Supraîncărcare pe axă', axles: true, fields: [] },
+  { v: 'pto_active', label: 'PTO activat', fields: [] },
+  { v: 'brake_pad_wear', label: 'Uzură plăcuțe frână', fields: [{ k: 'minPercent', label: 'Prag minim (%)', def: 20 }] },
+  { v: 'service_due', label: 'Service aproape', fields: [{ k: 'warnKm', label: 'Avertizare sub (km)', def: 1000 }] },
   { v: 'idle_engine', label: 'Staționare cu motor pornit (ralanti)', fields: [{ k: 'idleMinutes', label: 'Minute consecutive', def: 15 }] },
   { v: 'document_expiry', label: 'Expirare documente', fields: [{ k: 'warnDays', label: 'Avertizare cu (zile) înainte', def: 30 }] },
 ];
@@ -41,6 +69,18 @@ function condOf(a: any): Record<string, any> {
   let c = a?.condition;
   if (typeof c === 'string') { try { c = JSON.parse(c); } catch { c = null; } }
   return (c && typeof c === 'object' && !Array.isArray(c)) ? c : {};
+}
+// „90 km/h", „10 L", „15 min", „30 zile", „3 axe" — sau, cinstit, „fără prag · nu sună" acolo unde un
+// prag gol înseamnă că regula nu trimite nimic (combustibil, temperatură, greutate).
+function pragText(a: any): string {
+  const c = condOf(a);
+  const t = ALERT_TYPES.find((x) => x.v === a.type);
+  if (t && t.fields.some((f) => f.offWhenEmpty && (c[f.k] === null || c[f.k] === undefined || c[f.k] === ''))) return 'fără prag · nu sună';
+  for (const k of Object.keys(COND_UNIT)) {
+    if (c[k] !== undefined && c[k] !== null && c[k] !== '') return c[k] + COND_UNIT[k];
+  }
+  if (c.axleLimits && typeof c.axleLimits === 'object' && Object.keys(c.axleLimits).length) return Object.keys(c.axleLimits).length + ' axe';
+  return '';
 }
 // Valorile formularului pentru un tip. Fără regulă sursă → valorile implicite (regulă nouă).
 // Cu regulă sursă → valorile ei. Un prag gol rămâne GOL, nu primește valoarea implicită: la combustibil,
@@ -63,12 +103,18 @@ function formCond(t: AType, src: Record<string, any> | null): Record<string, any
 
 export function AdminAlerts() {
   const loc = useLocation();
-  const canWrite = !!me.value?.permissions?.manageFleet;
+  // Pe lângă „modifică flota", firma poate tăia unui rol editarea alertelor (editariTaiate 'alerte');
+  // serverul refuză atunci adăugarea, pornirea/oprirea, modificarea și ștergerea (requireEdit('alerte')).
+  // Fără verificarea asta, butoanele ar arăta că merg și fiecare apăsare ar da „Acces interzis".
+  const canWrite = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('alerte');
   // Super-adminul nu are companie proprie. Fără o alegere explicită, regula s-ar salva „fără companie":
   // s-ar declanșa pentru flotele TUTUROR clienților și n-ar apărea în lista niciunuia dintre ei.
   const isSuper = !!me.value?.isSuper;
   const vlist = vehicles.value;
-  const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (v.name || v.plate || imei) : imei; };
+  // Mașina se recunoaște după NUMĂR (ca pe web): numărul, altfel numele, altfel IMEI-ul.
+  const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (String(v.plate || '').trim() || v.name || imei) : imei; };
+  // Tipul desfăcut în listă. null = nimic ales încă (un singur tip se deschide singur); '' = închis explicit.
+  const [openType, setOpenType] = useState<string | null>(null);
 
   const [items, setItems] = useState<any[] | null>(null);
   const [geofences, setGeofences] = useState<any[]>([]);
@@ -245,41 +291,74 @@ export function AdminAlerts() {
         {items != null && items.length === 0 && !err && (
           <div class="adm-empty"><Icon name="alert" size={40} class="ic" /><div>Nicio regulă de alertă definită.</div></div>
         )}
-        {items != null && items.length > 0 && (
-          <div class="adm-list">
-            {items.map((a) => (
-              <div class="adm-item">
-                <span class="ic-wrap" style={a.enabled ? undefined : 'opacity:.5'}><Icon name="alert" size={19} /></span>
-                <span class="mid" style={a.enabled ? undefined : 'opacity:.6'}>
-                  <div class="nm">{a.name}</div>
-                  <div class="sub">
-                    {typeLabel(a.type)}{zoneText(a)} · {a.imei
-                      ? vname(a.imei)
-                      : (a.company_id != null
-                        ? 'Toate vehiculele' + (isSuper ? ' · ' + coName(a.company_id) : '')
-                        : <span style="color:var(--orange,#f59e0b)">TOATE companiile</span>)}
-                  </div>
-                </span>
-                <span class="rt">
-                  {canWrite ? (
-                    <button
-                      class={'sw' + (a.enabled ? ' on' : '')}
-                      role="switch"
-                      aria-checked={!!a.enabled}
-                      aria-label={a.enabled ? 'Activă — apasă ca s-o oprești' : 'Oprită — apasă ca s-o pornești'}
-                      disabled={toggling.has(a.id)}
-                      onClick={() => toggleEnabled(a)}
-                    />
-                  ) : (
-                    <span class={'adm-pill ' + (a.enabled ? 'ok' : '')}>{a.enabled ? 'activă' : 'oprită'}</span>
-                  )}
-                  {canWrite && <button class="icon-btn-sm" aria-label="Modifică" onClick={() => openEdit(a)}><Icon name="edit" size={17} /></button>}
-                  {canWrite && <button class="icon-btn-sm danger" aria-label="Șterge" onClick={() => setConfirmDel(a)}><Icon name="trash" size={17} /></button>}
-                </span>
+        {items != null && items.length > 0 && (() => {
+          // Grupate pe TIP, în ordinea de pe web (ALERT_TYPES de sus): tipurile înrudite (intrare/ieșire zonă) rămân vecine, iar
+          // ordinea nu sare de la o încărcare la alta. Un tip necunoscut telefonului merge la coadă.
+          const byType: Record<string, any[]> = {};
+          items.forEach((a) => { (byType[a.type] = byType[a.type] || []).push(a); });
+          const order = ALERT_TYPES.map((t) => t.v).filter((v) => byType[v]);
+          Object.keys(byType).forEach((v) => { if (order.indexOf(v) < 0) order.push(v); });
+          // Cu un singur tip, îl deschidem singuri: n-are rost o apăsare ca să vezi tot ce ai.
+          const deschis = openType === null && order.length === 1 ? order[0] : openType;
+          return (
+            <>
+              <div class="fl-count" style="margin:0 2px 10px">{items.length}{items.length === 1 ? ' regulă' : ' reguli'}</div>
+              <div class="fl-list">
+                {order.map((tp) => {
+                  const rules = byType[tp];
+                  const m = ALERT_META[tp] || { i: 'bell' as IconName, f: 'f-neutral' };
+                  const nOff = rules.filter((a) => !a.enabled).length;
+                  const open = deschis === tp;
+                  return (
+                    <Grupa open={open} onToggle={() => setOpenType(open ? '' : tp)}
+                      lead={<span class={'fl-ic ' + m.f}><Icon name={m.i} size={17} /></span>}
+                      title={typeLabel(tp)}
+                      sub={<>{rules.length}{rules.length === 1 ? ' regulă' : ' reguli'}{nOff ? <span style="color:var(--orange,#f59e0b)"> · {nOff}{nOff === 1 ? ' oprită' : ' oprite'}</span> : null}</>}>
+                      {rules.map((a) => {
+                        const prag = pragText(a);
+                        const z = zoneText(a).replace(/^ · /, '');
+                        return (
+                          <div class={'fl-r' + (a.enabled ? '' : ' off')}>
+                            <div class="fl-rh">
+                              <div class="fl-rt">
+                                {/* Pentru cine: NUMĂRUL mașinii; compania, în paranteză, doar la super-admin. */}
+                                <div class="fl-rs" style="margin:0 0 2px;font-weight:700;color:var(--text-secondary)">
+                                  {a.imei
+                                    ? <>{vname(a.imei)}{isSuper && a.company_id != null ? <span style="font-weight:400;color:var(--text-muted)"> ({coName(a.company_id)})</span> : null}</>
+                                    : (a.company_id != null
+                                      ? <>Toate vehiculele{isSuper ? <span style="font-weight:400;color:var(--text-muted)"> ({coName(a.company_id)})</span> : null}</>
+                                      : <span style="color:var(--orange,#f59e0b)"><Icon name="alert" size={12} /> Toate companiile</span>)}
+                                </div>
+                                <div class="fl-rn">{a.name}</div>
+                                {z ? <div class="fl-rs"><Icon name="mapPin" size={12} /> {z}</div> : null}
+                              </div>
+                              {prag ? <span class={'fl-pill' + (prag.indexOf('nu sună') >= 0 ? ' s-soon' : '')}>{prag}</span> : null}
+                            </div>
+                            <div class="fl-rf">
+                              <span style="margin-right:auto;font-size:12.5px;color:var(--text-muted)">{a.enabled ? 'activă' : 'oprită'}</span>
+                              {canWrite && (
+                                <button
+                                  class={'sw' + (a.enabled ? ' on' : '')}
+                                  role="switch"
+                                  aria-checked={!!a.enabled}
+                                  aria-label={a.enabled ? 'Activă — apasă ca s-o oprești' : 'Oprită — apasă ca s-o pornești'}
+                                  disabled={toggling.has(a.id)}
+                                  onClick={() => toggleEnabled(a)}
+                                />
+                              )}
+                              {canWrite && <button class="fl-ab" aria-label="Modifică" onClick={() => openEdit(a)}><Icon name="edit" size={16} /></button>}
+                              {canWrite && <button class="fl-ab dang" aria-label="Șterge" onClick={() => setConfirmDel(a)}><Icon name="trash" size={16} /></button>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </Grupa>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          );
+        })()}
       </div>
 
       {canWrite && <button class="fab" onClick={openAdd} aria-label="Adaugă alertă"><Icon name="plus" size={26} color="#06210f" /></button>}
@@ -366,9 +445,9 @@ export function AdminAlerts() {
                   <select value={form.imei} onChange={(e) => setForm((p: any) => ({ ...p, imei: (e.target as HTMLSelectElement).value }))}>
                     <option value="">{form.co && form.co !== '__all__' ? 'Toate vehiculele companiei' : 'Toate vehiculele'}</option>
                     {imeiMissing && <option value={form.imei}>{vname(form.imei)}</option>}
-                    {formVehicles.slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei)).map((v: any) => (
+                    {formVehicles.slice().sort((a, b) => vname(a.imei).localeCompare(vname(b.imei), 'ro')).map((v: any) => (
                       <option value={v.imei}>
-                        {(v.name || v.plate || v.imei) + (v.company_id == null ? ' — fără companie'
+                        {vname(v.imei) + (v.plate && v.name ? ' · ' + v.name : '') + (v.company_id == null ? ' — fără companie'
                           : (isSuper && form.co === '__all__' && v.company_name ? ' — ' + v.company_name : ''))}
                       </option>
                     ))}

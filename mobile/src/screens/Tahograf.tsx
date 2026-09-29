@@ -3,10 +3,13 @@ import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { me, showToast } from '../app/store';
+import { areFlota, FaraDreptFlota } from './modulGarda';
 import './detail.css';
 import './admin.css';
 import './reports.css';
 import './tacho.css';
+import './flota.css'; // --fl-ok: verdele care se citește și pe tema deschisă
+import { nrDe } from '../lib/numar';
 
 function fmtDate(s: string | null) { if (!s) return '—'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch { return String(s).slice(0, 10); } }
 // Pe telefon rândul e îngust: „2026-07-31" tăia sfârșitul subtitlului. Data scurtă, românește.
@@ -18,11 +21,22 @@ function hm(min: number) { if (min == null) return '—'; const h = Math.floor(m
 
 // Aceleași stări ca pe web: depășit / niciodată descărcat = roșu, aproape = portocaliu, restul verde.
 function stareCls(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'over' : s === 'curand' ? 'soon' : 'ok'; }
-function stareCol(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'var(--red)' : s === 'curand' ? '#f5b43c' : 'var(--accent)'; }
+function stareCol(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'var(--red)' : s === 'curand' ? 'var(--orange)' : 'var(--fl-ok)'; }
+function starePill(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'p-red' : s === 'curand' ? 'p-orange' : 'p-dim'; }
+// Data unei abateri: zi calendaristică („2026-07-31") sau o săptămână („săpt. 31") — a doua se scrie ca atare.
+function ziAbatere(s: any) { return /^\d{4}-\d{2}-\d{2}/.test(String(s || '')) ? ziScurta(String(s)) : String(s || ''); }
+const necititF = (f: any) => (f.incredere || (f.parsed && f.parsed.incredere)) === 'necitit';
 
 export function Tahograf() {
+  // Pe web Tahograful stă în „Management", pe care o vede doar cine poate modifica flota.
+  if (!areFlota()) return <FaraDreptFlota titlu="Tahograf" />;
+  return <TahografEcran />;
+}
+
+function TahografEcran() {
   const loc = useLocation();
-  const [tab, setTab] = useState<'due' | 'files'>('due');
+  // Aceleași file ca pe web (De descărcat / Pe șofer / Abateri) + „Fișiere", lista completă de pe telefon.
+  const [tab, setTab] = useState<'due' | 'drv' | 'inf' | 'files'>('due');
   const [due, setDue] = useState<any | null>(null);
   const [items, setItems] = useState<any[] | null>(null);
   const [err, setErr] = useState('');
@@ -69,7 +83,7 @@ export function Tahograf() {
       } else if (p.incredere === 'partial') {
         setUpF({ busy: false, file: null, msg: { t: 'warn', s: 'Înregistrat. ' + (p.parseNote || '') } });
       } else {
-        setUpF({ busy: false, file: null, msg: { t: 'ok', s: 'Citit ✓ — ' + ((p.totals && p.totals.zile) || 0) + ' zile, ' + ((p.totals && p.totals.infractiuni) || 0) + ' abateri.' } });
+        setUpF({ busy: false, file: null, msg: { t: 'ok', s: 'Citit ✓ — ' + nrDe((p.totals && p.totals.zile) || 0, 'zi', 'zile') + ', ' + nrDe((p.totals && p.totals.infractiuni) || 0, 'abatere', 'abateri') + '.' } });
         showToast('Fișier încărcat');
       }
       if (fileRef.current) fileRef.current.value = '';
@@ -107,9 +121,26 @@ export function Tahograf() {
   }
   // Istoricul unui șofer / vehicul + GOLURILE: zilele pe care nu le poți dovedi la un control.
   async function openIstoric(driverId: number | null, imei: string | null, titlu: string) {
-    setIst({ loading: true, titlu });
-    try { setIst({ ...(await Api.tachoIstoric(driverId, imei)), titlu }); }
-    catch (e: any) { setIst({ titlu, eroare: e?.message || 'Eroare la încărcare' }); }
+    setIst({ loading: true, titlu, driverId, imei });
+    try { setIst({ ...(await Api.tachoIstoric(driverId, imei)), titlu, driverId, imei }); }
+    catch (e: any) { setIst({ titlu, driverId, imei, eroare: e?.message || 'Eroare la încărcare' }); }
+  }
+
+  // Un fișier legat de omul greșit se scoate din istoric. Pe web se șterge pe loc; pe telefon cerem
+  // confirmare — o atingere din greșeală n-are voie să piardă o descărcare care contează la control.
+  const [delF, setDelF] = useState<any | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  async function confirmaStergere() {
+    if (!delF) return;
+    setDelBusy(true);
+    try {
+      await Api.deleteTacho(delF.id);
+      showToast('Fișier șters');
+      setDelF(null);
+      reload();
+      if (ist) openIstoric(ist.driverId ?? null, ist.imei ?? null, ist.titlu);
+    } catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge', true); }
+    finally { setDelBusy(false); }
   }
 
   function randDue(x: any, imei: string | null, sub: string, ic: 'user' | 'truck') {
@@ -158,7 +189,7 @@ export function Tahograf() {
   // marchează „necitit" ce nu e tahograf — nu extensia din nume.
   function randIncarcare() {
     const M = up.msg;
-    const cul = M && (M.t === 'ok' ? 'var(--accent)' : M.t === 'bad' ? 'var(--red)' : M.t === 'warn' ? '#f5b43c' : 'var(--text-muted)');
+    const cul = M && (M.t === 'ok' ? 'var(--fl-ok)' : M.t === 'bad' ? 'var(--red)' : M.t === 'warn' ? 'var(--orange)' : 'var(--text-muted)');
     return (
       <div class="th-up">
         <button class="th-up-h" onClick={() => setUpF({ open: !up.open, msg: null })}>
@@ -214,6 +245,82 @@ export function Tahograf() {
   const depasite = soferi.concat(vehicule).filter((x: any) => x.stare === 'depasit');
   const niciodata = soferi.concat(vehicule).filter((x: any) => x.stare === 'niciodata');
 
+  // ── „Pe șofer": un cartonaș pe om — câte fișiere, câte zile s-au citit, abaterile, termenul ──
+  // Se socotește din fișierele deja încărcate (driver_id + totals), fără nicio rută nouă. Fișierele necitite
+  // nu dau cifre: „N fișiere, niciunul citit" spune pe șleau că n-avem date, în loc să pară că avem.
+  function randSoferi() {
+    const fis = items || [];
+    return (
+      <>
+        {soferi.length
+          ? soferi.map((x: any) => {
+              const ale = fis.filter((f: any) => f.driver_id === x.id);
+              const citite = ale.filter((f: any) => !necititF(f));
+              const t = citite.reduce((a: any, f: any) => {
+                const tt = (f.parsed && f.parsed.totals) || {};
+                a.zile += tt.zile || 0; a.inf += tt.infractiuni || 0; a.grave += tt.infractiuniGrave || 0;
+                return a;
+              }, { zile: 0, inf: 0, grave: 0 });
+              const sub = !ale.length ? 'niciun fișier'
+                : !citite.length ? (ale.length === 1 ? '1 fișier, dar nu s-a putut citi' : ale.length + ' fișiere, niciunul citit')
+                : nrDe(ale.length, 'fișier', 'fișiere') + ' · ' + nrDe(t.zile, 'zi citită', 'zile citite');
+              return (
+                <button class="th-card" onClick={() => openIstoric(x.id, null, x.nume)}>
+                  <Icon name="user" size={19} class="ic" />
+                  <span class="mid">
+                    <div class="nm">{x.nume}</div>
+                    <div class="sub">{sub}</div>
+                    <div class="th-pills">
+                      {t.grave > 0 && <span class="th-pill p-red">{t.grave} {t.grave === 1 ? 'gravă' : 'grave'}</span>}
+                      {t.inf - t.grave > 0 && <span class="th-pill p-orange">{t.inf - t.grave} {t.inf - t.grave === 1 ? 'serioasă' : 'serioase'}</span>}
+                      {!t.inf && citite.length > 0 && <span class="th-pill p-green">fără abateri</span>}
+                      <span class={'th-pill ' + starePill(x.stare)}>{x.text}</span>
+                    </div>
+                  </span>
+                  <Icon name="chevronR" size={16} color="var(--text-muted)" />
+                </button>
+              );
+            })
+          : <div class="th-note">Niciun șofer profesionist. Aici apar doar șoferii cu card de tahograf, adică cei cu o categorie de marfă sau persoane pe permis (C, C1, CE, D, D1, DE).</div>}
+        {randExcluse(true, false)}
+      </>
+    );
+  }
+
+  // ── „Abateri": toate abaterile din fișierele CITITE, grave întâi. Un fișier necitit nu dă abateri. ──
+  function randAbateri() {
+    const toate: { cine: string; data: any; regula: string; val: any; grav: string }[] = [];
+    (items || []).forEach((f: any) => {
+      if (necititF(f)) return;
+      const p = f.parsed || {};
+      (Array.isArray(p.infringements) ? p.infringements : []).forEach((i: any) => {
+        toate.push({ cine: f.driver_name || f.filename, data: i.date, regula: i.rule || i.text || 'Abatere', val: i.value, grav: i.severity });
+      });
+    });
+    if (!toate.length) return <div class="th-badge ok"><Icon name="check" size={15} /> Nicio abatere în fișierele citite</div>;
+    const grup = (nivel: string, titlu: string, sub: string, cls: string, col: string) => {
+      const l = toate.filter((x) => x.grav === nivel);
+      if (!l.length) return null;
+      return (
+        <>
+          <div class={'th-gh' + (nivel === 'gravă' ? '' : ' warn')} style={nivel === 'gravă' ? 'color:var(--red)' : undefined}><Icon name="alert" size={14} /> {titlu}{sub ? <em>{sub}</em> : null}</div>
+          {l.map((x) => (
+            <div class={'th-row ' + cls}>
+              <Icon name={nivel === 'gravă' ? 'alert' : 'alertO'} size={17} color={col} />
+              <span class="t"><b>{x.regula}</b><span>{[x.cine, ziAbatere(x.data), x.val != null && x.val !== '' ? 'măsurat ' + x.val : null].filter(Boolean).join(' · ')}</span></span>
+            </div>
+          ))}
+        </>
+      );
+    };
+    return (
+      <>
+        {grup('gravă', 'Grave', 'risc de amendă la control', 's-over', 'var(--red)')}
+        {grup('serioasă', 'Serioase', '', 's-soon', 'var(--orange)')}
+      </>
+    );
+  }
+
   if (isSuper) {
     return (
       <div class="screen">
@@ -224,9 +331,10 @@ export function Tahograf() {
         </header>
         <div class="content has-tabbar" style="padding-bottom:24px">
           <div class="th-note">
-            Aici e ecranul firmei. Situația pe firme (cine e în urmă cu descărcările, cine are modulul) o vezi pe web, în <b>AI & Module → Tahograf</b>.
+            Aici e ecranul firmei. Situația pe firme (cine e în urmă cu descărcările, cine are modulul) o vezi în <b>AI & Module → Tahograf</b>.
             <br /><br />Fișierele le încarcă firma.
           </div>
+          <button class="btn btn-primary btn-block" style="margin-top:12px" onClick={() => loc.route('/admin/tahograf-firme')}>Deschide Tahograf pe firme</button>
         </div>
       </div>
     );
@@ -242,15 +350,17 @@ export function Tahograf() {
       <div class="content has-tabbar" style="padding-bottom:24px">
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {!err && (
-          <div class="th-tabs">
+          <div class="th-tabs patru">
             <button class={'th-tab' + (tab === 'due' ? ' on' : '')} onClick={() => setTab('due')}>De descărcat</button>
+            <button class={'th-tab' + (tab === 'drv' ? ' on' : '')} onClick={() => setTab('drv')}>Pe șofer</button>
+            <button class={'th-tab' + (tab === 'inf' ? ' on' : '')} onClick={() => setTab('inf')}>Abateri</button>
             <button class={'th-tab' + (tab === 'files' ? ' on' : '')} onClick={() => setTab('files')}>Fișiere</button>
           </div>
         )}
 
-        {!err && tab === 'due' && due == null && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
-        {!err && tab === 'due' && due != null && (
-          <>
+        {!err && due == null && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
+        {/* Rezumatul (cine e în urmă, cine n-a fost descărcat niciodată) stă pe TOATE filele, ca pe web. */}
+        {!err && due != null && (
             <div class="th-sum">
               {depasite.length > 0 && <div class="th-badge bad"><Icon name="alert" size={15} /> Termen depășit: {nume(depasite)}</div>}
               {niciodata.length > 0 && <div class="th-badge bad"><Icon name="ban" size={15} /> Niciodată descărcat: {nume(niciodata)}</div>}
@@ -263,7 +373,13 @@ export function Tahograf() {
                   : <div class="th-badge warn"><Icon name="alert" size={15} /> Nimic de descărcat — niciun șofer cu card de tahograf și niciun vehicul cu tahograf</div>
               )}
             </div>
+        )}
 
+        {!err && tab === 'drv' && due != null && (items == null ? <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div> : randSoferi())}
+        {!err && tab === 'inf' && (items == null ? <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div> : randAbateri())}
+
+        {!err && tab === 'due' && due != null && (
+          <>
             <div class="th-gh"><Icon name="idCard" size={14} /> Carduri de șofer <em>la {due.praguri?.card} de zile</em></div>
             {soferi.length
               ? soferi.map((x: any) => randDue(x, null, (x.categorii ? x.categorii + ' · ' : '') + (x.ultima ? 'ultima descărcare ' + ziScurta(x.ultima) : 'nicio descărcare'), 'user'))
@@ -333,14 +449,17 @@ export function Tahograf() {
                     // neutru, ca pe web — nu e o problemă, dar nici o dovadă că totul e în regulă.
                     const citit = !necitit && !!tt.zile;
                     return (
-                      <button class={'th-due' + (necitit ? ' over' : citit ? ' ok' : '')} onClick={() => open(f.id)}>
-                        <Icon name={necitit ? 'ban' : 'disc'} size={18} class="ic" />
-                        <span class="mid">
-                          <div class="nm">{f.filename}</div>
-                          <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile} zile · ${Math.round((tt.conducereMin || 0) / 60)}h condus` : ' · activitatea nu se analizează încă'}</div>
-                        </span>
-                        <Icon name="chevronR" size={16} color="var(--text-muted)" />
-                      </button>
+                      <div class="th-fis">
+                        <button class={'th-due' + (necitit ? ' over' : citit ? ' ok' : '')} onClick={() => open(f.id)}>
+                          <Icon name={necitit ? 'ban' : 'disc'} size={18} class="ic" />
+                          <span class="mid">
+                            <div class="nm">{f.filename}</div>
+                            <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile} zile · ${Math.round((tt.conducereMin || 0) / 60)}h condus` : ' · activitatea nu se analizează încă'}</div>
+                          </span>
+                          <Icon name="chevronR" size={16} color="var(--text-muted)" />
+                        </button>
+                        {canWrite && <button class="th-del" aria-label="Șterge fișierul" onClick={() => setDelF(f)}><Icon name="trash" size={18} /></button>}
+                      </div>
                     );
                   })}
                   {(ist.goluri || []).length > 0 && (
@@ -349,7 +468,7 @@ export function Tahograf() {
                       <div class="th-gh warn"><Icon name="alert" size={14} /> Zile pe care nu le poți dovedi</div>
                       {ist.goluri.map((g: any) => (
                         <div class="th-gap">
-                          <Icon name="calendar" size={17} color="#f5b43c" />
+                          <Icon name="calendar" size={17} color="var(--orange)" />
                           <span><b>{g.zile} {g.zile === 1 ? 'zi lipsă' : 'zile lipsă'}</b><span>{ziScurta(g.de)} → {ziScurta(g.pana)} — nu există nicio descărcare pentru perioada asta</span></span>
                         </div>
                       ))}
@@ -386,10 +505,10 @@ export function Tahograf() {
                 const citit = !!t.zile;
                 return (
                   <>
-                    {p.kind && <div class="muted" style="font-size:12.5px;margin:0 0 10px">{p.kind}{detail.driver_name && detail.filename ? ' · ' + detail.filename : ''}</div>}
+                    {p.kind && <div class="muted" style="font-size:12.5px;margin:0 0 10px">{p.kind}{detail.driver_name && detail.filename ? ' · ' + detail.filename : ''}{citit ? ' · ' + t.zile + (t.zile === 1 ? ' zi citită' : ' zile citite') : ''}</div>}
                     {p.parseNote && (
                       <div class="th-gap" style="margin-bottom:12px">
-                        <Icon name="alertO" size={17} color="#f5b43c" />
+                        <Icon name="alertO" size={17} color="var(--orange)" />
                         <span><b>De reținut</b><span>{p.parseNote}</span></span>
                       </div>
                     )}
@@ -398,10 +517,11 @@ export function Tahograf() {
                     )}
                     {citit && (
                       <div class="rp-summary" style="margin-bottom:14px">
-                        <div class="rp-kpi"><div class="v">{hm(t.conducereMin || 0)}</div><div class="l">Conducere</div></div>
+                        {/* Aceleași patru cifre ca pe web: condus, alte munci, odihnă, km. */}
+                        <div class="rp-kpi"><div class="v">{hm(t.conducereMin || 0)}</div><div class="l">Condus</div></div>
+                        <div class="rp-kpi"><div class="v">{hm(t.muncaMin || 0)}</div><div class="l">Alte munci</div></div>
                         <div class="rp-kpi"><div class="v">{hm(t.odihnaMin || 0)}</div><div class="l">Odihnă</div></div>
                         <div class="rp-kpi"><div class="v">{t.km != null ? Math.round(t.km) : '—'}</div><div class="l">km</div></div>
-                        <div class="rp-kpi"><div class="v">{t.zile}</div><div class="l">Zile</div></div>
                       </div>
                     )}
                     {(citit || infr.length > 0) && (
@@ -412,7 +532,9 @@ export function Tahograf() {
                           : <div class="np-sub">{infr.map((i: any) => (
                               <div style="display:flex;gap:8px;align-items:flex-start">
                                 <span class={'adm-pill ' + (i.severity === 'gravă' ? 'bad' : 'warn')} style="flex:0 0 auto">{i.severity || 'minoră'}</span>
-                                <span style="font-size:13px">{i.text || i.rule || i.type || 'Abatere'}{i.date ? ' · ' + fmtDate(i.date) : ''}</span>
+                                {/* Valoarea măsurată spune CÂT de gravă a fost depășirea (ex. cât a condus fără pauză). */}
+                                <span style="font-size:13px;line-height:1.4"><b style="font-weight:700">{i.rule || i.text || i.type || 'Abatere'}</b>
+                                  <span class="muted" style="display:block;font-size:12px">{[ziAbatere(i.date), i.value != null && i.value !== '' ? 'măsurat ' + i.value : null].filter(Boolean).join(' · ')}</span></span>
                               </div>
                             ))}</div>}
                       </div>
@@ -420,6 +542,24 @@ export function Tahograf() {
                   </>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {delF && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !delBusy) setDelF(null); }}>
+          <div class="sheet">
+            <div class="sheet-h"><b><Icon name="trash" size={18} color="var(--red)" /> Șterge fișierul</b><button class="h-btn" onClick={() => setDelF(null)} aria-label="Închide"><Icon name="x" /></button></div>
+            <div class="sheet-body">
+              <div class="th-conf">
+                Ștergi <b>{delF.filename}</b>{ist && ist.titlu ? <> din istoricul lui <b>{ist.titlu}</b></> : null}? Fișierul dispare din arhivă
+                și nu mai contează ca descărcare. Dacă ține de alt om sau de alt vehicul, încarcă-l din nou, legat de cine trebuie.
+              </div>
+              <div class="th-btns">
+                <button class="btn th-sec" disabled={delBusy} onClick={() => setDelF(null)}>Renunță</button>
+                <button class="btn th-danger" disabled={delBusy} onClick={confirmaStergere}>{delBusy ? 'Se șterge…' : 'Șterge'}</button>
+              </div>
             </div>
           </div>
         </div>

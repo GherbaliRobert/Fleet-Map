@@ -2,6 +2,7 @@ import { LocationProvider, Router, Route, useLocation } from 'preact-iso';
 import { useEffect } from 'preact/hooks';
 import type { ComponentType } from 'preact';
 import { token, authReady, bootstrap, toastMsg, startLive, stopLive, refreshUnread, refreshMe, me, ecranAscuns, type EcranCheie } from './app/store';
+import { ecranPornireCerut } from './app/store';
 import { Icon } from './components/Icon';
 import { App as CapApp } from '@capacitor/app';
 import { initPush } from './lib/push';
@@ -34,18 +35,41 @@ import { AdminDocuments } from './screens/AdminDocuments';
 import { AdminWebhooks } from './screens/AdminWebhooks';
 import { Billing } from './screens/Billing';
 import { AdminCompanies } from './screens/AdminCompanies';
+import { CompanySheet } from './screens/CompanySheet';
+import { ClientNou } from './screens/ClientNou';
+import { MutaCompanii } from './screens/MutaCompanii';
 import { AdminDevices } from './screens/AdminDevices';
 import { AdminArchived } from './screens/AdminArchived';
 import { PlatformDashboard } from './screens/PlatformDashboard';
 import { CostControl } from './screens/CostControl';
 import { Offers } from './screens/Offers';
+import { OfferCalc } from './screens/OfferCalc';   // calculatorul — socotit pe server, cu codul paginii web
+import { OurPrices } from './screens/OurPrices';   // „Prețurile noastre": cât cerem, cât ne costă, cursul
 import { DemoRequests } from './screens/DemoRequests';
+// Operațiunile fondatorului (lotul 2b, F4): Acasă, Inventar, Tahograf și e-Transport pe firme, RA Insight, Chei API, Jurnal audit.
+import { FounderHome } from './screens/FounderHome';
+import { DeviceInventory } from './screens/DeviceInventory';
+import { TachoOverview } from './screens/TachoOverview';
+import { EtransportOverview } from './screens/EtransportOverview';
+import { AiUsage } from './screens/AiUsage';
+import { ApiKeys } from './screens/ApiKeys';
+import { AuditLog } from './screens/AuditLog';
+import { Contracts } from './screens/Contracts';
+import { ContractDetail } from './screens/ContractDetail';
 import { Dispatch } from './screens/Dispatch';
 import { AdminGeofences } from './screens/AdminGeofences';
 import { Hotspot } from './screens/Hotspot';
 import { EToll } from './screens/EToll';
 import { Settings } from './screens/Settings';
 import { NotifDetail } from './screens/NotifDetail';
+// Administrarea firmei (lotul 2). Fiecare ecran își are poarta înăuntru (poartaFirma): dreptul cerut ca rândul
+// din meniu, iar contul de platformă (fără firmă) primește explicația, nu un formular care nu se poate salva.
+import { AdminRoles } from './screens/AdminRoles';
+import { AdminEmails } from './screens/AdminEmails';
+import { ActivityLog } from './screens/ActivityLog';
+import { AparateGps } from './screens/AparateGps';
+import { TeamDisplay } from './screens/TeamDisplay';
+import { ContulMeu } from './screens/ContulMeu';
 
 // ── Ecranele tăiate din rol ──
 // Firma poate ascunde unui rol anumite ecrane (câmpul `ecraneAscunse` din /api/me). Din meniu și din bara
@@ -86,10 +110,25 @@ const P = {
   devices: doarSuper(AdminDevices, 'Dispozitive'),
   archived: doarSuper(AdminArchived, 'Dispozitive arhivate'),
   companies: doarSuper(AdminCompanies, 'Companii'),
+  companySheet: doarSuper(CompanySheet, 'Companii'),   // fișa firmei, pe file
+  clientNou: doarSuper(ClientNou, 'Client nou'),       // firmă + contract + administrator
+  mutaCompanii: doarSuper(MutaCompanii, 'Mută între companii'),
   platform: doarSuper(PlatformDashboard, 'Dashboard platformă'),
   costs: doarSuper(CostControl, 'Control costuri'),
   offers: doarSuper(Offers, 'Ofertare Live'),
+  offerCalc: doarSuper(OfferCalc, 'Ofertare Live'),
+  ourPrices: doarSuper(OurPrices, 'Prețurile noastre'),
   demoRequests: doarSuper(DemoRequests, 'Cereri demo'),
+  founderHome: doarSuper(FounderHome, 'Acasă'),
+  inventory: doarSuper(DeviceInventory, 'Inventar dispozitive'),
+  tachoFirme: doarSuper(TachoOverview, 'Tahograf'),
+  etransportFirme: doarSuper(EtransportOverview, 'e-Transport'),
+  aiUsage: doarSuper(AiUsage, 'Utilizare RA Insight'),
+  // Serverul lasă cheile API și adminului de firmă (requireAdmin), dar pe telefon ecranul e al nostru: cheile le dăm noi.
+  apiKeys: doarSuper(ApiKeys, 'Chei API'),
+  audit: doarSuper(AuditLog, 'Jurnal audit'),
+  contracts: doarSuper(Contracts, 'Contracte'),
+  contractDetail: doarSuper(ContractDetail, 'Contracte'),
 };
 
 export function App() {
@@ -124,6 +163,18 @@ function Shell() {
     return () => { stopLive(); clearInterval(unreadTimer); h.then((x) => x.remove()); };
   }, [token.value]);
 
+  // „Ecranul cu care se deschide aplicația" (Contul meu → Afișaj): store-ul îl cere O SINGURĂ DATĂ, după
+  // pornirea la rece sau după autentificare, când sosesc preferințele contului. Îl deschidem doar dacă omul e
+  // încă pe ecranul de pornire („/", sau „/vehicles" unde îl duce Login). Un tap pe notificare repornește
+  // aplicația direct pe fișa mașinii sau pe Notificări — aceea câștigă. La revenirea din fundal nu se cere nimic.
+  const ecranCerut = ecranPornireCerut.value;
+  useEffect(() => {
+    if (!ecranCerut) return;
+    ecranPornireCerut.value = null;
+    const p = loc.path || '/';
+    if (p === '/' || p === '/vehicles') loc.route(ecranCerut, true);
+  }, [ecranCerut]);
+
   if (!authReady.value) return <Splash />;
   if (!token.value) return <Login />;
 
@@ -150,7 +201,13 @@ function Shell() {
         <Route path="/admin/maintenance" component={P.maintenance} />
         <Route path="/admin/alerts" component={P.alerts} />
         <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/roles" component={AdminRoles} />
+        <Route path="/admin/emails" component={AdminEmails} />
+        <Route path="/admin/activity" component={ActivityLog} />
+        <Route path="/admin/aparate" component={AparateGps} />
+        <Route path="/admin/afisaj" component={TeamDisplay} />
         <Route path="/notif-prefs" component={NotifPrefs} />
+        <Route path="/cont" component={ContulMeu} />
         <Route path="/report-schedules" component={P.schedules} />
         <Route path="/ai" component={P.aiChat} />
         <Route path="/ai-stats" component={P.aiStats} />
@@ -161,12 +218,28 @@ function Shell() {
         <Route path="/admin/webhooks" component={AdminWebhooks} />
         <Route path="/billing" component={Billing} />
         <Route path="/admin/companies" component={P.companies} />
+        <Route path="/admin/companies/:id" component={P.companySheet} />
+        <Route path="/admin/client-nou" component={P.clientNou} />
+        <Route path="/admin/muta" component={P.mutaCompanii} />
         <Route path="/admin/devices" component={P.devices} />
         <Route path="/admin/archived" component={P.archived} />
         <Route path="/admin/platform" component={P.platform} />
         <Route path="/admin/costs" component={P.costs} />
         <Route path="/admin/offers" component={P.offers} />
+        {/* Ordinea contează: rutele cu nume fix înaintea celei cu :id (routerul ia prima potrivire). */}
+        <Route path="/admin/offers/noua" component={P.offerCalc} />
+        <Route path="/admin/offers/preturi" component={P.ourPrices} />
+        <Route path="/admin/offers/:id" component={P.offerCalc} />
         <Route path="/admin/demo-requests" component={P.demoRequests} />
+        <Route path="/admin/home" component={P.founderHome} />
+        <Route path="/admin/inventory" component={P.inventory} />
+        <Route path="/admin/tahograf-firme" component={P.tachoFirme} />
+        <Route path="/admin/etransport-firme" component={P.etransportFirme} />
+        <Route path="/admin/ai-usage" component={P.aiUsage} />
+        <Route path="/admin/apikeys" component={P.apiKeys} />
+        <Route path="/admin/audit" component={P.audit} />
+        <Route path="/admin/contracts" component={P.contracts} />
+        <Route path="/admin/contracts/:companyId" component={P.contractDetail} />
         <Route path="/dispatch" component={Dispatch} />
         <Route path="/admin/geofences" component={P.geofences} />
         <Route path="/hotspot" component={P.hotspot} />

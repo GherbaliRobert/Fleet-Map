@@ -1,0 +1,84 @@
+/* Localizare pe telefon: căutarea (mereu la vedere), pastila „N/T vehicule", banda „N vehicule alese"
+   și foaia cu bife. Aceleași roluri ca bara de sus de pe web (public/css/map-tools.css), croite pe deget:
+   ținte de cel puțin 44 px, nimic ascuns după „hover". */
+
+.loc-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; }
+.loc-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: var(--bg-dark);
+  border: 1px solid var(--border); border-radius: 10px; padding: 0 4px 0 12px; height: 44px; }
+.loc-search > svg { color: var(--text-muted); flex: 0 0 auto; }
+.loc-search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text-primary);
+  font-size: 15px; height: 100%; }
+.loc-x { flex: 0 0 auto; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: var(--text-muted); border-radius: 8px; }
+.loc-x:active { background: var(--bg-card); }
+
+/* Pastila rămâne VERDE și când vezi doar o parte din flotă (ca pe web): a alege e normal, nu o problemă.
+   Câte sunt ascunse spune banda de dedesubt. */
+.loc-pill { flex: 0 0 auto; height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;
+  border: none; border-radius: 10px; background: var(--accent); color: #06210F; font-weight: 800; font-size: 14px;
+  box-shadow: 0 2px 8px rgba(63,224,125,.28); font-variant-numeric: tabular-nums; }
+.loc-pill .tot { opacity: .65; font-weight: 700; }
+
+.loc-selbar { display: flex; align-items: center; gap: 8px; margin: 0 14px 6px; padding: 6px 6px 6px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); font-size: 13px; font-weight: 700;
+  color: var(--text-secondary); }
+.loc-selbar > svg { color: var(--accent); flex: 0 0 auto; }
+.loc-selbar span { flex: 1; min-width: 0; }
+.loc-selbar button { flex: 0 0 auto; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); font-weight: 800; font-size: 13px; }
+
+/* ─── Foaia „Vehicule pe hartă" ─── */
+.loc-sheet .sheet { max-height: 88vh; }
+.loc-sh-cnt { font-size: 13px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.loc-sh-tools { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.loc-sh-btns { display: flex; gap: 8px; }
+.loc-sh-btns button { flex: 1; min-height: 42px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-primary); font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.loc-sh-btns button svg { color: var(--accent); }
+.loc-sh-note { font-size: 12px; color: var(--text-muted); text-align: center; padding: 12px 4px; }
+
+.loc-row { display: flex; align-items: center; min-height: 48px; border-bottom: 1px solid var(--border); }
+.loc-cb { flex: 0 0 auto; width: 46px; height: 48px; display: flex; align-items: center; justify-content: center; }
+.loc-cb input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+.loc-name { flex: 1; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 8px; text-align: left;
+  background: transparent; border: none; color: var(--text-primary); font-size: 14.5px; font-weight: 600; padding: 0 4px; }
+.loc-name .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-name .plate { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: var(--accent); background: rgba(63,224,125,.12);
+  padding: 2px 7px; border-radius: 5px; }
+.loc-name .go { margin-left: auto; flex: 0 0 auto; color: var(--text-muted); display: inline-flex; }
+.loc-grp { border-bottom: 1px solid var(--border); }
+.loc-grp .loc-row { border-bottom: none; }
+.loc-grp .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.loc-grp .cnt { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--text-muted); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+.loc-grp .exp { flex: 0 0 auto; width: 44px; height: 48px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: var(--text-muted); }
+.loc-grp .exp svg { transition: transform .15s ease; }
+.loc-grp .exp.open svg { transform: rotate(90deg); }
+.loc-grp-veh { padding-left: 22px; }
+.loc-grp-veh .loc-row:last-child { border-bottom: none; }
+
+/* ─── Foaia „Exportă" ─── */
+.loc-exp { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 12px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); color: var(--text-primary); text-align: left; }
+.loc-exp > svg { color: var(--accent); flex: 0 0 auto; }
+.loc-exp b { display: block; font-size: 15px; }
+.loc-exp small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.loc-exp:disabled { opacity: .6; }
+.loc-exp .spin { margin-left: auto; width: 18px; height: 18px; border-width: 2px; }
+.loc-exp-note { font-size: 12px; color: var(--text-muted); line-height: 1.45; margin: 4px 2px 0; }
+
+/* ─── Bula „vehicule apropiate" pe hartă ─── */
+.vmk-bubble { min-width: 38px; height: 38px; padding: 0 8px; border-radius: 19px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #06210F; font-weight: 800; font-size: 15px; border: 3px solid rgba(255,255,255,.9);
+  box-shadow: 0 3px 12px rgba(0,0,0,.4); cursor: pointer; font-variant-numeric: tabular-nums; }
+
+/* Tema deschisă: verdele aplicației (#3FE07D) pe alb are contrast ~1,7:1 — textul nu se citește. Ca în
+   flota.css / contulmeu.css / firma.css, textele verzi iau nuanța închisă. Butoanele PLINE (fundal verde,
+   text închis) rămân cum sunt: acolo contrastul e bun. */
+:root[data-theme="light"] .loc-selbar > svg,
+:root[data-theme="light"] .loc-sh-btns button svg,
+:root[data-theme="light"] .loc-exp > svg { color: #0E7A3C; }
+:root[data-theme="light"] .loc-selbar button { color: #0E7A3C; border-color: #0E7A3C; }
+:root[data-theme="light"] .loc-sh-cnt,
+:root[data-theme="light"] .loc-name .plate { color: #0E7A3C; }

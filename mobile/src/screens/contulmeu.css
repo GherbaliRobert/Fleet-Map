@@ -1,0 +1,40 @@
+/* „Contul meu" — datele omului, parola lui și alegerile de afișaj care stau pe CONT (ca pe web).
+   Totul e prefixat cu .cm-: CSS-ul importat de un ecran e global în aplicație. */
+.cm-content { padding: 12px 14px calc(28px + var(--sab)); }
+.cm-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin: 0 0 12px; }
+.cm-card .fld input:disabled { opacity: .65; }
+.cm-help { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+.cm-act { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.cm-act .btn { min-height: 46px; }
+.cm-msg { font-size: 13px; font-weight: 700; color: var(--text-muted); line-height: 1.4; flex: 1 1 160px; }
+.cm-msg.bun { color: var(--accent); }
+.cm-msg.rau { color: var(--red); }
+
+/* O preferință = titlu + de unde vine valoarea + explicație + variantele, ca butoane mari (degetul, nu mouse-ul). */
+.cm-pref { padding: 12px 0; border-top: 1px solid var(--border); }
+.cm-pref.first { border-top: none; padding-top: 2px; }
+.cm-pt { font-weight: 700; font-size: 14.5px; color: var(--text-primary); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.cm-src { font-size: 11.5px; font-weight: 700; }
+.cm-pd { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin: 3px 0 10px; }
+.cm-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-opt {
+  min-height: 44px; padding: 0 14px;
+  background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 10px; font-size: 14px; font-weight: 700; font-family: inherit;
+}
+.cm-opt.on { background: rgba(63,224,125,.16); border-color: var(--accent); color: var(--accent); }
+.cm-opt:disabled { opacity: .6; }
+.cm-load { text-align: center; color: var(--text-muted); font-size: 13px; padding: 14px 0; }
+
+/* De unde vine valoarea: tu / firma / din fabrică (ca prefSursa de pe web). */
+.cm-src.user { color: var(--accent); }
+.cm-src.company { color: var(--orange); }
+.cm-src.app { color: var(--text-muted); }
+
+/* Tema deschisă: --accent rămâne verdele de brand (#3FE07D), care pe alb abia se citește (~1,7:1).
+   Textul verde de pe ecranul ăsta trece pe verdele adânc, ca webul și celelalte ecrane (#0E7A3C). */
+:root[data-theme="light"] .cm-msg.bun,
+:root[data-theme="light"] .cm-src.user,
+:root[data-theme="light"] .cm-card h3 { color: #0E7A3C; }
+:root[data-theme="light"] .cm-opt.on { color: #0E7A3C; border-color: #0E7A3C; background: rgba(14,122,60,.10); }

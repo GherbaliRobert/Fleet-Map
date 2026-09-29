@@ -9,7 +9,10 @@ import { fmtAgo } from '../lib/format';
 import { MAP_LAYER_DEFAULT, MAP_LAYER_ORDER, loadMapLayer, saveMapLayer, type MapLayerKey } from '../lib/mapLayer';
 import { createVehicleLayer, type VehicleLayer } from './vehicle3d';
 import { markerTopSvg } from './VehicleTop';
-import { vehCatOf } from './VehicleArt';
+import { vehCatDin } from './vehCategorii';
+import { uiPrefs, urcaUiPrefs, showToast } from '../app/store';
+import { VehicleCard } from './VehicleCard';
+import './locFlota.css'; // .vmk-bubble
 
 const HEX: Record<Status, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 
@@ -60,7 +63,56 @@ function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
   const label = esc(v.plate || v.name || '');
   const lbl = label ? `<div class="vmk-label">${label}</div>` : '';
   if (use3d) return `<div class="vmk-inner vmk-3d">${lbl}</div>`;
-  return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerTopSvg(vehCatOf(v as any), HEX[st.status], v.angle || 0)}</div></div>`;
+  return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerTopSvg(vehCatDin(v as any), HEX[st.status], v.angle || 0)}</div></div>`;
+}
+// Mașina de pe butonul „mod de afișare": exact desenul de pe hartă (silueta văzută de sus, verde de brand),
+// dar FĂRĂ elipsa de umbră — ea așază vehiculul pe teren pe hartă, într-un buton mic doar îngroașă conturul.
+// Ca pe web (_mapStyleCarSvg): butonul arată stilul pe care îl primești, nu o săgeată care nu mai există.
+const BTN_CAR_SVG = markerTopSvg('car', '#3FE07D', 0, 24).replace(/<ellipse\b[^>]*opacity="0\.25"[^>]*\/>/, '');
+
+// „Vehicule apropiate": mașini la cel mult 100 m una de alta intră în aceeași bulă (același prag ca pe web,
+// _proximityClusters). Distanța e pe teren, nu pe ecran — bula nu se desface doar pentru că mărești harta.
+function distM(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (bLat - aLat) * r, dLng = (bLng - aLng) * r;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * r) * Math.cos(bLat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+// Același rezultat ca bucla „fiecare cu fiecare" de pe web, dar căutarea vecinilor trece printr-o grilă de
+// celule de ~maxM: harta se redesenează la fiecare poziție live, iar la sute de mașini bucla simplă ar îngheța
+// telefonul. Pentru un vehicul-sămânță i intră în bulă toți j de după el, încă nefolosiți, aflați la ≤ maxM.
+function grupeApropiate(vs: Position[], maxM = 100): { key: string; imeis: string[]; lat: number; lng: number }[] {
+  const pts = vs.filter((v) => v.latitude != null && v.longitude != null);
+  const folosit = new Set<string>();
+  const out: { key: string; imeis: string[]; lat: number; lng: number }[] = [];
+  if (pts.length < 2) return out;
+  // Celula pe longitudine se socotește la latitudinea cea mai mare (acolo gradul e cel mai scurt) → o celulă
+  // are mereu cel puțin maxM pe ambele axe, deci vecinii stau în cele 3×3 celule din jur.
+  const latMax = Math.min(85, Math.max(...pts.map((p) => Math.abs(p.latitude!))));
+  const cLat = maxM / 111320, cLng = maxM / (111320 * Math.max(0.1, Math.cos(latMax * Math.PI / 180)));
+  const celula = (p: Position) => [Math.floor(p.latitude! / cLat), Math.floor(p.longitude! / cLng)];
+  const grila = new Map<string, number[]>();
+  pts.forEach((p, idx) => { const [a, b] = celula(p); const k = a + ':' + b; (grila.get(k) || grila.set(k, []).get(k)!).push(idx); });
+  for (let i = 0; i < pts.length; i++) {
+    if (folosit.has(pts[i].imei)) continue;
+    const cl = [pts[i]]; folosit.add(pts[i].imei);
+    const [a, b] = celula(pts[i]);
+    const vecini: number[] = [];
+    for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) { const l = grila.get((a + da) + ':' + (b + db)); if (l) vecini.push(...l); }
+    vecini.sort((x, y) => x - y);
+    for (const j of vecini) {
+      if (j <= i || folosit.has(pts[j].imei)) continue;
+      if (distM(pts[i].latitude!, pts[i].longitude!, pts[j].latitude!, pts[j].longitude!) <= maxM) { cl.push(pts[j]); folosit.add(pts[j].imei); }
+    }
+    if (cl.length >= 2) {
+      const imeis = cl.map((x) => x.imei);
+      out.push({
+        key: imeis.slice().sort().join(','), imeis,
+        lat: cl.reduce((a, x) => a + x.latitude!, 0) / cl.length, lng: cl.reduce((a, x) => a + x.longitude!, 0) / cl.length,
+      });
+    }
+  }
+  return out;
 }
 function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   // Numărul de înmatriculare primul: el e identitatea vehiculului, nu numele (care se repetă).
@@ -78,12 +130,30 @@ const TOUR3D: { e: string; t: string; d: string }[] = [
   { e: '🎯', t: 'Localizare și dâră', d: 'Apasă <b>📍</b> ca să-ți vezi <b>poziția</b>. Apasă o mașină pentru <b>detalii</b>. Dâra colorată arată pe unde a trecut recent.' },
 ];
 
-export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, onFocus }: {
+export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq, follow, onFocus, grupareOprita }: {
   vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean; onFocus?: (imei: string) => void;
+  // focusSeq: crește la fiecare „arată pe hartă" — harta se recentrează și când ceri a doua oară același vehicul.
+  // grupareOprita: e activă o alegere de vehicule → fără bule (ca pe web: gruparea se oprește singură).
+  focusSeq?: number; grupareOprita?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; pop: maplibregl.Popup }>>(new Map());
+  const bule = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; imeis: string[] }>>(new Map());
+  const lastFocusSeq = useRef<number | undefined>(undefined);
+  // „Unește mașinile apropiate": preferința de pe cont (uneste_masini, implicit oprită), ca pe web. Butonul o
+  // schimbă pe loc aici și o urcă pe cont; până sosesc preferințele contului, rămâne oprită.
+  const [grupareLocal, setGrupareLocal] = useState<boolean | null>(null);
+  const grupare = grupareLocal != null ? grupareLocal : !!(uiPrefs.value && uiPrefs.value.uneste_masini === true);
+  function toggleGrupare() {
+    // Cu vehicule alese, bulele stau oprite oricum — apăsarea n-ar schimba nimic pe hartă, doar ar muta în
+    // tăcere preferința contului. Pe telefon nu există „hover", deci motivul se spune, nu stă într-un `title`.
+    if (grupareOprita) { showToast('Bulele stau oprite cât ai vehicule alese. Apasă „Arată tot".'); return; }
+    const nv = !grupare;
+    setGrupareLocal(nv);
+    urcaUiPrefs({ uneste_masini: nv });
+  }
+  const [bulaDeschisa, setBulaDeschisa] = useState<string[] | null>(null); // IMEI-urile din bula atinsă
   const fitted = useRef(false);
   const userMoved = useRef(false);   // a atins omul harta? → nu-i mai luăm camera cu încadrarea automată
   const prevFollow = useRef(false);
@@ -100,7 +170,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
   const [use3d, setUse3d] = useState<boolean>(false);
   function toggle3d() {
     const nv = !use3d;
-    try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {}
+    try { localStorage.setItem('mapStyle', nv ? '3d' : '2d'); } catch {}
     setUse3d(nv);
     if (nv) { try { if (!localStorage.getItem('ra3dTourSeen')) setTour(0); } catch {} } // instructaj o singură dată, DOAR la activarea 3D
   }
@@ -205,7 +275,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
     return () => {
       if (watchId.current) { try { Geolocation.clearWatch({ id: watchId.current }); } catch {} watchId.current = null; }
       viewerMarker.current = null;
-      try { map.remove(); } catch {} mapRef.current = null; markers.current.clear(); fitted.current = false; ready.current = false;
+      try { map.remove(); } catch {} mapRef.current = null; markers.current.clear(); bule.current.clear(); fitted.current = false; ready.current = false;
     };
   }, []);
 
@@ -244,6 +314,38 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
       }
       for (const [imei, rec] of markers.current) if (!seen.has(imei)) { rec.mk.remove(); markers.current.delete(imei); }
 
+      // Bulele „vehicule apropiate" (doar în 2D: în 3D mașinile sunt modele, nu markerele de aici).
+      // Vehiculul cerut explicit („arată pe hartă") rămâne mereu în afara bulei — l-ai cerut ca să-l vezi.
+      const grupeAcum = (grupare && !grupareOprita && !use3d)
+        ? grupeApropiate(focusImei ? vehicles.filter((x) => x.imei !== focusImei) : vehicles) : [];
+      const grupate = new Set<string>();
+      for (const g of grupeAcum) for (const i of g.imeis) grupate.add(i);
+      for (const [imei, rec] of markers.current) {
+        const ascuns = grupate.has(imei);
+        rec.el.style.display = ascuns ? 'none' : '';
+        if (ascuns && rec.pop.isOpen()) { try { rec.pop.remove(); } catch { /* */ } }
+      }
+      const buleVazute = new Set<string>();
+      for (const g of grupeAcum) {
+        buleVazute.add(g.key);
+        let b = bule.current.get(g.key);
+        if (!b) {
+          const el = document.createElement('div');
+          el.className = 'vmk-bubble';
+          el.setAttribute('role', 'button');
+          const mk = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([g.lng, g.lat]).addTo(map);
+          const rec = { mk, el, imeis: g.imeis };
+          el.addEventListener('click', (ev) => { ev.stopPropagation(); setBulaDeschisa(rec.imeis.slice()); });
+          bule.current.set(g.key, rec);
+          b = rec;
+        }
+        b.imeis = g.imeis;
+        b.mk.setLngLat([g.lng, g.lat]);
+        b.el.textContent = String(g.imeis.length);
+        b.el.setAttribute('aria-label', g.imeis.length + ' vehicule apropiate');
+      }
+      for (const [k, b] of bule.current) if (!buleVazute.has(k)) { b.mk.remove(); bule.current.delete(k); }
+
       // Modelele 3D reale (strat Three.js): ascunde-le în 2D, randează-le în 3D
       _syncRef.current = () => { if (layerRef.current) { layerRef.current.setVisible(use3d); layerRef.current.sync(vehicles, use3d, offlineMin); } };
       _syncRef.current();
@@ -255,8 +357,9 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
       const styleChanged = prevStyle.current !== null && prevStyle.current !== use3d; prevStyle.current = use3d;
       if (styleChanged) { prevFollow.current = !!follow; return; }
 
-      if (focusImei && lastFocus.current !== focusImei) {
+      if (focusImei && (lastFocus.current !== focusImei || lastFocusSeq.current !== focusSeq)) {
         lastFocus.current = focusImei; // focusează O DATĂ per selecție, nu la fiecare update live
+        lastFocusSeq.current = focusSeq;
         const fv = vehicles.find((x) => x.imei === focusImei);
         if (fv && fv.latitude != null && fv.longitude != null) { map.easeTo({ center: [fv.longitude, fv.latitude], zoom: 15, duration: 500 }); fitted.current = true; }
       } else if (follow && n) {
@@ -272,14 +375,22 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
       }
       prevFollow.current = !!follow;
     } catch { /* hartă în curs de demontare */ }
-  }, [vehicles, focusImei, follow, use3d]);
+  }, [vehicles, focusImei, focusSeq, follow, use3d, grupare, grupareOprita]);
+
+  // Bula deschisă rămâne vie: vehiculele din ea vin din lista curentă (viteze, stări), cele plecate dispar.
+  const dinBula = bulaDeschisa ? vehicles.filter((v) => bulaDeschisa.includes(v.imei)) : [];
 
   return (
     <>
       <div ref={ref} class="vmap" />
-      <button type="button" onClick={toggle3d} aria-label="Comută iconițe 3D" title="Iconițe 3D"
-        style={'position:absolute;top:10px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (use3d ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
-        {use3d ? '🚚' : '▲'}
+      {/* Modul de afișare: butonul arată CHIAR stilul de pe hartă — silueta văzută de sus în 2D, cubul în 3D (ca pe web). */}
+      <button type="button" onClick={toggle3d}
+        aria-label={use3d ? 'Afișare vehicule: 3D (apasă pentru pictograme)' : 'Afișare vehicule: pictograme (apasă pentru 3D)'}
+        title={use3d ? 'Afișare vehicule: 3D' : 'Afișare vehicule: pictograme'}
+        style={'position:absolute;top:10px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid ' + (use3d ? 'var(--accent)' : 'var(--border)') + ';background:var(--bg-card);color:' + (use3d ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0'}>
+        {use3d
+          ? <Icon name="cube" size={19} color="currentColor" />
+          : <span style="display:inline-flex;line-height:0" dangerouslySetInnerHTML={{ __html: BTN_CAR_SVG }} />}
       </button>
       <button type="button" onClick={locateMe} aria-label="Unde sunt eu" title="Poziția mea"
         style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (locating ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
@@ -289,6 +400,38 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
         style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (layer !== MAP_LAYER_DEFAULT ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         {MTILES[layer]?.icon || '🗺️'}
       </button>
+      {/* „Unește mașinile apropiate" — doar în 2D (în 3D mașinile sunt modele, nu markere). Cât e activă o
+          alegere de vehicule, gruparea stă oprită, ca pe web; atingerea butonului spune de ce (mesaj pe ecran). */}
+      {!use3d && (
+        <button type="button" onClick={toggleGrupare}
+          aria-pressed={grupare}
+          aria-label={grupare ? 'Vehicule unite în bule (apasă pentru a le desface)' : 'Unește vehiculele apropiate într-o bulă'}
+          title={grupare ? (grupareOprita ? 'Bulele stau oprite cât ai vehicule alese' : 'Vehicule unite în bule') : 'Unește vehiculele apropiate'}
+          style={'position:absolute;top:148px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid ' + (grupare ? 'var(--accent)' : 'var(--border)') + ';background:' + (grupare ? 'var(--accent)' : 'var(--bg-card)') + ';color:' + (grupare ? '#06210F' : 'var(--text-primary)') + ';opacity:' + (grupare && grupareOprita ? '.55' : '1') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0'}>
+          <Icon name="bubbles" size={19} color="currentColor" />
+        </button>
+      )}
+      {bulaDeschisa && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) setBulaDeschisa(null); }}
+          style="position:absolute;inset:0;z-index:2500;background:rgba(6,10,14,.5);display:flex;align-items:flex-end">
+          <div style="width:100%;max-height:75%;display:flex;flex-direction:column;background:var(--bg-panel);border-top-left-radius:18px;border-top-right-radius:18px;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.4)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <Icon name="bubbles" size={17} color="var(--accent)" />
+              <b style="font-size:15px;flex:1">Vehicule apropiate ({dinBula.length})</b>
+              <button onClick={() => setBulaDeschisa(null)} aria-label="Închide" style="width:40px;height:40px;background:transparent;border:none;color:var(--text-muted);font-size:22px">×</button>
+            </div>
+            <div style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0">
+              {dinBula.length
+                ? dinBula.map((v) => <VehicleCard v={v} offlineMin={offlineMin} onClick={() => { setBulaDeschisa(null); onSelectRef.current(v.imei); }} />)
+                : <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:14px">Vehiculele s-au îndepărtat între timp.</div>}
+            </div>
+            <button onClick={() => { setBulaDeschisa(null); if (grupare) toggleGrupare(); }}
+              style="margin-top:10px;min-height:44px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:800;font-size:14px;font-family:inherit">
+              Arată-le separat pe hartă
+            </button>
+          </div>
+        </div>
+      )}
       {layerSheet && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setLayerSheet(false); }}
           style="position:absolute;inset:0;z-index:2500;background:rgba(6,10,14,.5);display:flex;align-items:flex-end">

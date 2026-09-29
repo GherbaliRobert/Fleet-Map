@@ -745,6 +745,72 @@ function formularWeb(cookie, eSuper, proprii) {
   const agUnul = await json('POST', '/api/agents/run', ckSef, { agent: 'care' });
   T('agenții opriți: mesajul nu mai vorbește de „plan"', !/plan/i.test(agOff.text) && !/plan/i.test(agUnul.text) && /opri/.test(agOff.text + agUnul.text), agOff.text.slice(0, 90) + ' | ' + agUnul.text.slice(0, 90));
 
+  // ───────────────────────────────────────────────────────────────────────────────────────────────
+  console.log('\n8. Inventarul de aparate e al firmei (lotul 2, 24.09)');
+  // Rutele nu treceau prin withScope: firma omului era necunoscută, adică „toate firmele".
+  await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000024799', name: 'Camion Alta Firma', plate: 'AR-99-ALT' }] });
+  await json('PUT', '/api/devices/350000000024799/company', S, { company_id: co2.id });
+  const invSef = await json('GET', '/api/device-inventory?arhivate=1', ckSef);
+  const imeiSef = lista(invSef.j).map((r) => r.imei);
+  T('adminul firmei vede în inventar doar aparatele firmei lui', invSef.status === 200 && imeiSef.length > 0 && imeiSef.indexOf('350000000024799') < 0 && lista(invSef.j).every((r) => r.company_id === co.id),
+    invSef.status + ' ' + imeiSef.join(','));
+  const invTel = await json('GET', '/api/device-inventory', telSef);
+  T('și de pe telefon', invTel.status === 200 && lista(invTel.j).every((r) => r.company_id === co.id), invTel.status + ' ' + lista(invTel.j).map((r) => r.company_id).join(','));
+  const invS = await json('GET', '/api/device-inventory', S);
+  T('fondatorul le vede pe toate', lista(invS.j).some((r) => r.imei === '350000000024799'));
+  // Exportul trece prin aceeași funcție (_deviceInventory); aici verificăm doar că ruta trece prin withScope
+  // (fără ea, firma omului rămânea necunoscută și exportul pornea de la toate aparatele).
+  const expSef = await cerere('POST', '/api/device-inventory/export', ckSef, { format: 'xlsx' });
+  T('exportul inventarului merge pentru adminul firmei', expSef.status === 200, expSef.status);
+
+  console.log('\n9. Aparatele arhivate sunt evidența NOASTRĂ (hotărât 18.09), pe toate căile (29.09)');
+  // 350000000024702 e în firma clientului (secțiunea 7). Îl arhivăm și încercăm fiecare drum al clientului.
+  const IM = '350000000024702';
+  await json('PUT', '/api/devices/' + IM + '/status', S, { status: 'archived' });
+  const devArh = await json('GET', '/api/devices?includeArchived=1', ckSef);
+  T('clientul nu primește arhivatele din lista de vehicule, nici când le cere', devArh.status === 200 && !lista(devArh.j).some((d) => d.imei === IM), devArh.status);
+  const liteArh = await json('GET', '/api/devices/lite?includeArchived=1', telSef);
+  T('nici din lista scurtă, de pe telefon', liteArh.status === 200 && !lista(liteArh.j).some((d) => d.imei === IM), liteArh.status);
+  const arhCli = await json('GET', '/api/archived-devices', ckSef);
+  T('„Dispozitive arhivate" e doar a noastră', arhCli.status === 403, arhCli.status);
+  const arhS = await json('GET', '/api/archived-devices', S);
+  T('noi o vedem, cu aparatul arhivat', arhS.status === 200 && lista(arhS.j).some((d) => d.imei === IM), arhS.status);
+  const devS = await json('GET', '/api/devices?includeArchived=1', S);
+  T('noi primim arhivatele când le cerem', lista(devS.j).some((d) => d.imei === IM));
+  const csvCli = await json('GET', '/api/devices/export.csv', ckSef);
+  T('CSV-ul clientului nu conține arhivatul', csvCli.status === 200 && csvCli.text.length > 0 && csvCli.text.indexOf(IM) < 0, csvCli.status);
+  // Mutarea în lot avea regulile rutei de câte unul? Nu: „Bifează tot" muta și arhivatele.
+  const bulk = await json('PUT', '/api/devices/company/bulk', S, { imeis: [IM], company_id: co2.id });
+  T('nici în lot nu se mută un aparat arhivat', bulk.status === 409 && (bulk.j.arhivate || []).indexOf(IM) >= 0, bulk.status + ' ' + bulk.text.slice(0, 80));
+  const dupaBulk = lista((await json('GET', '/api/devices?includeArchived=1', S)).j).find((d) => d.imei === IM) || {};
+  T('și aparatul a rămas la firma lui', dupaBulk.company_id === co.id, dupaBulk.company_id);
+  await json('PUT', '/api/devices/' + IM + '/status', S, { status: 'active' });
+  const demoCo = lista((await json('GET', '/api/companies', S)).j).find((c) => c.is_demo);
+  if (demoCo) {
+    const bd = await json('PUT', '/api/devices/company/bulk', S, { imeis: ['350000000024799'], company_id: demoCo.id });
+    T('nici în lot un aparat real nu intră în compania demo', bd.status === 400, bd.status + ' ' + bd.text.slice(0, 80));
+  }
+
+  console.log('\n10. Web: prețul FMS rămâne la salvare, ziua contractului nu alunecă (24.09)');
+  T('salvarea abonamentului de pe web trimite înapoi prețul FMS', /priceFmsRON: pick\(o\.priceFmsRON\)/.test(HTML));
+  // Data se scrie ca miezul nopții LOCAL (`_zi`) și trebuie citită tot ca zi LOCALĂ (`_inputZi`). Cu ziua UTC,
+  // în România fiecare dată apărea cu o zi mai devreme, iar o salvare fără schimbări o muta înapoi cu o zi.
+  const fZi = (HTML.match(/function _zi\(v\) \{[^\n]*\}/) || [])[0];
+  const iIz = HTML.indexOf('function _inputZi(ms) {');
+  const fIz = iIz < 0 ? '' : HTML.slice(iIz, HTML.indexOf('\n    }', iIz) + 6);
+  T('găsesc _zi și _inputZi în pagină', !!fZi && !!fIz);
+  if (fZi && fIz) {
+    const dus = new Function(fZi + '\n' + fIz + '; return function (z) { return _inputZi(_zi(z)); };')();
+    const alunecate = ['2026-01-01', '2026-03-29', '2026-03-31', '2026-10-25', '2026-12-31'].filter((z) => dus(z) !== z);
+    T('o dată scrisă și citită înapoi rămâne aceeași zi', alunecate.length === 0, alunecate.map((z) => z + '→' + dus(z)).join(', '));
+    // Proba rulează și pe ora României, nu doar pe cea a mașinii (pe GitHub, UTC — acolo greșeala nu se vedea).
+    const { execFileSync } = require('child_process');
+    const cod = fZi + '\n' + fIz + '\nconst z=["2026-01-01","2026-03-31","2026-10-25"];process.stdout.write(z.every(x=>_inputZi(_zi(x))===x)?"da":"nu");';
+    let peRo = '';
+    try { peRo = execFileSync(process.execPath, ['-e', cod], { env: Object.assign({}, process.env, { TZ: 'Europe/Bucharest' }) }).toString(); } catch (e) { peRo = 'eroare'; }
+    T('și pe ora României', peRo === 'da', peRo);
+  }
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

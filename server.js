@@ -1238,7 +1238,7 @@ if (API_CORS_ORIGIN) {
   app.use('/api', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', API_CORS_ORIGIN);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key, X-RA-App'); // X-RA-App: versiunea aplicației de telefon
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -3592,15 +3592,22 @@ async function fxEurRon() {
 //   3. valoarea de rezervă din setarea serverului.
 // `source` spune CARE dintre ele e — ecranul și hârtia n-au voie să-l numească „BNR" pe al nostru.
 // `bnr` merge alături ca REPER, ca să se vadă pe ecran dacă cursul nostru a rămas în urmă.
+// O singură socoteală a cursului, folosită de `/api/fx` ȘI de calculatorul de ofertă de pe server
+// (`/api/admin/offers/calc`) — ca telefonul să vadă exact cursul pe care îl vede web-ul. `res` e
+// răspunsul rutei sau, pentru calculator, `{ json: (x) => x }` (întoarce obiectul, nu-l trimite).
+async function _fxPentruEcran(res) {
+  const f = await fxEurRon();
+  const reper = f.source === 'BNR' ? { eur: f.eur, date: f.date } : null;
+  let man = null, manD = null;
+  try { const st = await getSystemSettings(); man = st.curs_eur; manD = st.curs_eur_data; } catch (e) {}
+  if (man > 1 && man < 100) return res.json({ eur: man, date: manD || null, source: 'manual', bnr: reper });
+  return res.json({ eur: f.eur, date: f.date, source: f.source, bnr: reper });
+}
+const FX_REZERVA = () => ({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback', bnr: null });
 app.get('/api/fx', requireAuth, async (req, res) => {
   try {
-    const f = await fxEurRon();
-    const reper = f.source === 'BNR' ? { eur: f.eur, date: f.date } : null;
-    let man = null, manD = null;
-    try { const st = await getSystemSettings(); man = st.curs_eur; manD = st.curs_eur_data; } catch (e) {}
-    if (man > 1 && man < 100) return res.json({ eur: man, date: manD || null, source: 'manual', bnr: reper });
-    res.json({ eur: f.eur, date: f.date, source: f.source, bnr: reper });
-  } catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback', bnr: null }); }
+    await _fxPentruEcran(res);
+  } catch (e) { res.json(FX_REZERVA()); }
 });
 // ── începe „Socoteala RA Insight pe o firmă" ─────────────────────────────────────────────────────
 // Din 11.09 RA Insight se vinde pe CONT, nu pe firmă: fondul lunii = conturi aprinse × întrebări pe
@@ -4806,6 +4813,17 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           bill_can: canSet ? canSet.has(d.imei) : (ct !== 'none'), // „cu CAN" pt. facturare: override manual sau auto
           last_position_time: d.last_position_time || d.last_seen || null
         };
+      })
+      // Prețul propus pe aparat, pentru Anexa nr. 1 a unui contract nesemnat: aceeași regulă ca pe web
+      // (_raxCtrPretSugerat) — cu CAN → prețul cu CAN, FMS → prețul FMS, altfel fără CAN, iar vechiul preț unic ca rezervă.
+      // Stă AICI, o dată, ca telefonul să nu scrie o a doua copie a regulii (și să nu salveze aparate fără preț).
+      .map(v => {
+        const o = offer || {};
+        let p = v.bill_can ? (o.priceCanRON != null ? o.priceCanRON : o.priceNoneRON) : o.priceNoneRON;
+        if (v.can_type === 'fms' && o.priceFmsRON != null) p = o.priceFmsRON;
+        if (p == null && o.pricePerVehicleRON != null) p = o.pricePerVehicleRON;
+        v.pret_sugerat = (p == null || p === '') ? null : Number(p);
+        return v;
       });
     const counts = {
       users: users.length, vehicles: vehicles.length, payments: payments.length,
@@ -5931,14 +5949,20 @@ function _invScope(req) {
   return req.isSuper ? null : req.companyId;
 }
 async function _deviceInventory(req, opts) {
-  const rows = await db.getDeviceInventory(_invScope(req), opts);
+  // Fără firmă cunoscută și fără cont de platformă nu se dă nimic: înainte, rutele nu treceau prin withScope, deci
+  // req.companyId era gol — adică „toate firmele" — iar un admin de firmă primea aparatele TUTUROR clienților.
+  if (!req.isSuper && req.companyId == null) return [];
+  // Aparatele arhivate sunt doar ale noastre (hotărât 18.09): clientul nu le vede.
+  const o = Object.assign({}, opts || {}, { includeArchived: !!(req.isSuper && opts && opts.includeArchived) });
+  const rows = await db.getDeviceInventory(_invScope(req), o);
   // Demo NU intră în inventarul flotei reale (regula din CLAUDE.md), exceptând chiar compania demo.
   return rows.filter(function (r) {
+    if (req.allowedImeis != null && !req.allowedImeis.has(r.imei)) return false; // doar mașinile pe care omul le vede
     if (req.companyId === demoCompanyId) return true;
     return !DEMO_SET.has(r.imei);
   });
 }
-app.get('/api/device-inventory', requireAuth, requireFleet, async (req, res) => {
+app.get('/api/device-inventory', requireAuth, requireFleet, withScope, async (req, res) => {
   // ?arhivate=1 → și aparatele scoase din flotă. Ecranul „Aparate GPS" din Setări le cere pe toate
   // o dată și le desparte pe file; inventarul vechi nu trimite parametrul, deci rămâne cum era.
   try { res.json(await _deviceInventory(req, { includeArchived: req.query.arhivate === '1' })); }
@@ -5991,8 +6015,8 @@ async function _inventarExport(req, res) {
     return reportExport.sendReport(res, report, fmt);
   } catch (e) { res.status(500).json({ error: e.message }); }
 }
-app.get('/api/device-inventory/export', requireAuth, requireFleet, _inventarExport);
-app.post('/api/device-inventory/export', requireAuth, requireFleet, _inventarExport);
+app.get('/api/device-inventory/export', requireAuth, requireFleet, withScope, _inventarExport);
+app.post('/api/device-inventory/export', requireAuth, requireFleet, withScope, _inventarExport);
 
 // ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
 // GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB
@@ -6280,6 +6304,14 @@ app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req,
     if (imeis.length > 1000) return res.status(400).json({ error: 'Prea multe IMEI-uri (max 1000 per cerere)' });
     const companyId = req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null;
     if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    // Aceleași două reguli ca la mutarea unui singur aparat (mai sus). Fără ele, „Bifează tot" din telefon muta
+    // și aparatele arhivate, pe care ruta de câte unul le refuză (găsit 24.09).
+    const _ceMut = new Set(imeis);
+    const _arhivate = (await db.getDevicesLite()).filter(d => _ceMut.has(String(d.imei)) && d.status === 'archived').map(d => String(d.imei));
+    if (_arhivate.length) return res.status(409).json({ error: 'Aparate arhivate — restaurează-le întâi: ' + _arhivate.slice(0, 10).join(', ') + (_arhivate.length > 10 ? ' și încă ' + (_arhivate.length - 10) : ''), arhivate: _arhivate });
+    if (companyId != null && demoCompanyId != null && companyId === demoCompanyId && imeis.some(im => !DEMO_SET.has(im))) {
+      return res.status(400).json({ error: 'Compania demo e doar pentru vehiculele simulate.' });
+    }
     const moved = await db.setDevicesCompanyBulk(imeis, companyId);
     invalidateAccessCache();
     imeis.forEach(im => _devCompanyCache.delete(im));
@@ -7279,7 +7311,8 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
     // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
-    if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
+    // — dar numai la noi: clientul NU vede aparatele arhivate (hotărât 18.09), oricum ar cere.
+    if (!(req.query.includeArchived && req.isSuper)) devices = devices.filter(d => d.status !== 'archived');
     // Overlay „moved_at" (memoria de mișcare) din snapshot-ul live → statusul are histerezis chiar de la prima încărcare.
     for (const d of devices) { const lp = livePositions.get(d.imei); if (lp && lp.moved_at) d.moved_at = lp.moved_at; }
     res.json(devices);
@@ -7307,7 +7340,8 @@ function _arhivaTermen(row) {
 }
 
 // Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
-app.get('/api/archived-devices', requireAuth, withScope, async (req, res) => {
+// Doar a noastră: arhivarea e decizia noastră, deci și evidența ei (18.09). Toate ecranele care o cer sunt ale fondatorilor.
+app.get('/api/archived-devices', requireAuth, requireSuperadmin, withScope, async (req, res) => {
   try {
     let rows = await db.getArchivedDevices();
     if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
@@ -7325,7 +7359,7 @@ app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
     let devices = await db.getDevicesLite();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
-    if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
+    if (!(req.query.includeArchived && req.isSuper)) devices = devices.filter(d => d.status !== 'archived'); // arhivatele: doar la noi (18.09)
     res.json(devices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -7433,6 +7467,7 @@ app.get('/api/devices/export.csv', requireAuth, withScope, async (req, res) => {
     let devices = await db.getDevices();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
+    if (!req.isSuper) devices = devices.filter(d => d.status !== 'archived'); // arhivatele: doar la noi (18.09)
     const header = VEHICLE_CSV_COLS.map(c => c.h).join(',');
     const lines = devices.map(d => VEHICLE_CSV_COLS.map(c => csvCell(d[c.f])).join(','));
     const csv = '﻿' + [header, ...lines].join('\r\n'); // BOM → Excel deschide UTF-8 cu diacritice
@@ -7451,7 +7486,8 @@ app.get('/api/devices/export', requireAuth, withScope, async (req, res) => {
     let devices = await db.getDevices();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
-    const archived = String(req.query.scope || '') === 'archived';
+    // „Vehicule arhivate" e documentul nostru; clientul primește mereu situația flotei active (18.09).
+    const archived = req.isSuper && String(req.query.scope || '') === 'archived';
     devices = devices.filter(d => archived ? d.status === 'archived' : d.status !== 'archived');
     // Numele șoferilor, ca documentul să nu arate un id de bază de date
     const drvName = {};
@@ -8569,8 +8605,9 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
 
     // Get recent alerts
     try {
-      const alertRows = await db.getAlertHistory(20);
-      totalAlerts = alertRows ? alertRows.length : 0;
+      // Doar alertele mașinilor pe care omul le vede: înainte se numărau ultimele 20 de pe TOATĂ platforma.
+      const alertRows = await db.getAlertHistory(500);
+      totalAlerts = (alertRows || []).filter(function (r) { return r && r.imei && canAccessImei(req, String(r.imei)); }).slice(0, 20).length;
     } catch (e) { /* no alerts table yet */ }
 
     res.json({
@@ -13277,25 +13314,44 @@ app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ── sfârșit „pâlnia de oferte" ──
+// ── începe „poarta telefonului la oferte" ──
+// APK-ul 1.0.1 (și 1.0.2) are calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei, fără conturi
+// RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
+// De aceea, până pe 24.09, NICIO cerere cu cheie (telefonul) nu putea scrie o ofertă.
+//
+// Din 1.0.3, telefonul are calculatorul web-ului — socotit PE SERVER (`/api/admin/offers/calc`), nu în
+// aplicație — și se recunoaște prin antetul `X-RA-App: 1.0.3` (sau mai mare). Numai el trece. Aplicațiile
+// vechi n-au antetul și primesc în continuare explicația. Web-ul (cu cookie) nu e atins.
+function _telefonCuOfertare(req) {
+  const m = String(req.get('X-RA-App') || '').trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return false;
+  const a = +m[1], b = +m[2], c = +m[3];
+  return a > 1 || (a === 1 && (b > 0 || c >= 3));
+}
+function _telefonVechi(req) { return !!(req.auth && req.auth.viaApiKey && !_telefonCuOfertare(req)); }
+const OFERTA_TELEFON_VECHI = 'Ofertele se fac acum din aplicația web. Pe telefon doar le vezi — actualizează aplicația.';
+// Prețurile se păstrează în ofertă doar ca numere (vezi `_ofPreturiCurate`, mai jos): un text acolo ajunge
+// nescăpat în formularul web și în calculatorul de pe server. Restul configurației rămâne cum a venit.
+function _ofConfigCurat(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c) || c.prices == null) return c;
+  return Object.assign({}, c, { prices: _ofPreturiCurate(c.prices) });
+}
+// ── sfârșit „poarta telefonului la oferte" ──
 app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-  // Ofertele se fac DOAR pe web. APK-ul 1.0.1 are încă calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei,
-  // fără conturi RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
-  if (req.auth && req.auth.viaApiKey) return res.status(409).json({ error: 'Ofertele se fac acum din aplicația web. Pe telefon doar le vezi — actualizează aplicația.' });
+  if (_telefonVechi(req)) return res.status(409).json({ error: OFERTA_TELEFON_VECHI });
     const b = req.body || {};
-    const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
+    const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: _ofConfigCurat(b.config), monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
     auditReq(req, 'create', 'offer', o.id, { name: o.name });
     res.json(o);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-  // Ofertele se fac DOAR pe web. APK-ul 1.0.1 are încă calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei,
-  // fără conturi RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
-  if (req.auth && req.auth.viaApiKey) return res.status(409).json({ error: 'Ofertele se fac acum din aplicația web. Pe telefon doar le vezi — actualizează aplicația.' });
+  if (_telefonVechi(req)) return res.status(409).json({ error: OFERTA_TELEFON_VECHI });
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const b = req.body || {};
-    const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes });
+    const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: _ofConfigCurat(b.config), monthly_total: b.monthly_total, once_total: b.once_total, currency: b.currency, notes: b.notes });
     if (!o) return res.status(404).json({ error: 'Oferta nu există' });
     auditReq(req, 'update', 'offer', id, { name: o.name });
     res.json(o);
@@ -13308,6 +13364,398 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
     auditReq(req, 'delete', 'offer', id, {});
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ── începe „Ofertare pe server" ──────────────────────────────────────────────────────────────────
+// Calculatorul de ofertă de pe telefon NU are socoteala lui (regula casei: nicio regulă de bani scrisă a
+// doua oară). Nici serverul nu o copiază: ia din public/index.html EXACT bucățile după care lucrează
+// ecranul „Ofertare Live" — calculatorul (`_ofCalc`), grila RA Insight, textele care se scriu singure,
+// formularul, rezumatul, „Ce rămâne la noi", plicul pentru hârtie — și le rulează aici, într-un vm, pe
+// un DOM de carton. Telefonul îi trimite ce e în câmpuri și ce a atins omul; serverul „apasă" în pagină
+// exact ce ar apăsa omul pe web (aceleași funcții `oninput`/`onchange` din formular) și întoarce ce ar
+// fi scris pagina: sumele, rezumatul, propunerile, corpul salvării și al PDF-ului.
+//
+// Dacă web-ul își schimbă calculatorul, telefonul se schimbă odată cu el — fără nicio linie scrisă
+// pe telefon. Proba `verify_oferta_telefon.js` compară ce întoarce ruta cu blocul rulat direct.
+//
+// ⚠ Bucățile se caută după reperele din pagină (vezi `_ofDecupeaza`). Dacă un reper se mută sau se
+// redenumește, ruta răspunde cu eroare (nu cu cifre greșite), iar proba pică.
+const _ofVm = require('vm');
+let _ofPagina = null;            // Promise<{ ctx, ver }> — pagina pregătită o singură dată
+let _ofDom = null;               // DOM-ul de carton al cererii de acum (id → element)
+let _ofPrins = null;             // ce „trimite" pagina (fetch, mesaje, ferestre), prins în loc să plece
+let _ofTimere = [];              // setTimeout-urile paginii, rulate de noi, în ordine
+let _ofAsteapta = [];            // desenarea formularului e async (`raxLoadOfertare`) — o așteptăm
+let _ofCoada = Promise.resolve(); // o singură socoteală odată: pagina are o singură stare
+const _ofHandlere = new Map();   // `oninput`-urile formularului, compilate o dată
+// Data de azi, ca în browserul fondatorului. Serverul merge pe UTC (primele rânduri din fișier), iar
+// pagina scrie numele ofertei cu `toLocaleDateString('ro-RO')`: între miezul nopții și 03:00, ora
+// României, oferta făcută pe telefon ar fi purtat data de ieri. Rulat în vm, schimbă DOAR `Date`-ul
+// paginii (vm-ul are `Date`-ul lui), nu al serverului; un fus cerut anume de pagină rămâne al ei.
+// (Un singur șir, pe un rând: proba `verify_oferta_telefon.js` îl rulează și ea, pe UTC.)
+const _OF_ORA_RO = "(function (D) { ['toLocaleDateString', 'toLocaleTimeString', 'toLocaleString'].forEach(function (f) { var o = D.prototype[f]; D.prototype[f] = function (l, opt) { return o.call(this, l, Object.assign({ timeZone: 'Europe/Bucharest' }, opt || {})); }; }); })(Date);";
+
+function _ofDecupeaza(html) {
+  const intre = (a, b) => {
+    const i = html.indexOf(a); if (i < 0) throw new Error('nu găsesc în index.html: ' + a);
+    const j = html.indexOf(b, i + a.length); if (j < 0) throw new Error('nu găsesc în index.html: ' + b);
+    return html.slice(i, j);
+  };
+  const rand = (a) => intre(a, '\n');    // o funcție scrisă pe un singur rând
+  return [
+    rand('function esc(s) {'),
+    rand('function _raxDe(n) {'),
+    rand('function _raxNumar(n) {'),
+    intre('// ── începe „Calculatorul de ofertă"', '// ── sfârșit „Calculatorul de ofertă" ──'),
+    // Grila RA Insight + propunerea prețului + costul pe întrebare (până la „ce rămâne la noi").
+    intre('// ── începe „Tarife după mărimea flotei"', '// ── începe „ce rămâne la noi"'),
+    intre('// ── începe „ce rămâne la noi"', '// ── sfârșit „ce rămâne la noi" ──'),
+    // Sumele scrise românește, „Cum se plătește" și rezumatul (`raxOfRecalc`).
+    intre('function _lei2eur(v)', '// ─── Inventar dispozitive GPS'),
+    // Formularul (`raxLoadOfertare`) și salvarea (`raxOfSave`).
+    intre('window.raxLoadOfertare = async function', '// ── începe „pâlnia de oferte"'),
+    // Termenul ofertei + deschiderea unei oferte salvate (`raxOfLoad`) și „Ofertă nouă" (`raxOfReset`).
+    intre('// ── începe „pâlnia de oferte"', '// ── începe „Oferta pe hârtie"'),
+    intre('// ── începe „Oferta pe hârtie"', '// ── sfârșit „Oferta pe hârtie" ──'),
+    // Ce duce contractul făcut din ofertă (prețul pe mașină + rândurile anexei).
+    intre('function _coSocotealaOfertei(o)', '// Durata în lista de alegere:'),
+  ].join('\n;\n');
+}
+
+function _ofEntitati(s) { return String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); }
+function _ofAtr(atr, nume) { const m = (' ' + (atr || '')).match(new RegExp('\\s' + nume + '="([^"]*)"')); return m ? _ofEntitati(m[1]) : null; }
+function _ofAreAtr(atr, nume) { return new RegExp('\\s' + nume + '(?=[\\s>/]|$)').test(' ' + String(atr || '').replace(/="[^"]*"/g, '=""') + ' '); }
+
+// Un element de carton: exact cât folosește pagina din el. `value` se poartă ca în browser: un
+// <select> ține doar valori din opțiunile lui, un câmp numeric refuză textul.
+function _ofNod(dom, tag, id) {
+  let val = '', html = '', optiuni = null, ales = -1;
+  const e = {
+    tagName: String(tag || 'div').toUpperCase(), id: id || '', type: '', style: {}, dataset: {}, textContent: '',
+    checked: false, disabled: false, className: '', _atr: '', _la: '',
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    addEventListener() {}, removeEventListener() {}, scrollIntoView() {}, focus() {}, blur() {}, click() {},
+    remove() { if (e.id && dom.get(e.id) === e) dom.delete(e.id); },
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    setAttribute(k, v) { if (k === 'id') e.id = String(v); else e[k] = v; },
+    getAttribute(k) { return e[k] == null ? null : String(e[k]); },
+    appendChild(c) { if (c && c.id) dom.set(c.id, c); return c; },
+  };
+  e.parentNode = { appendChild: e.appendChild, insertBefore: e.appendChild, removeChild() {} };
+  Object.defineProperty(e, 'options', { get() { return optiuni || []; } });
+  Object.defineProperty(e, 'value', {
+    enumerable: true,
+    get() { return optiuni ? (ales >= 0 && optiuni[ales] ? optiuni[ales].value : '') : val; },
+    set(v) {
+      const s = v == null ? '' : String(v);
+      if (optiuni) { ales = optiuni.findIndex((o) => o.value === s); return; }
+      val = (e.type === 'number' && s !== '' && !/^-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(s)) ? '' : s;
+    },
+  });
+  Object.defineProperty(e, 'innerHTML', {
+    enumerable: true,
+    get() { return html; },
+    // Formularul se desenează ca în browser: HTML-ul scris în cutie devine elemente, pe loc.
+    set(h) { html = String(h == null ? '' : h); if (e.id === 'admin-tab-ofertare') _ofDeseneaza(dom, html); },
+  });
+  e._alege = (lista, idx) => { optiuni = lista; ales = idx; };
+  return e;
+}
+// HTML-ul formularului → elementele lui (doar cele cu `id`, singurele pe care pagina le caută).
+function _ofDeseneaza(dom, html) {
+  const cutie = dom.get('admin-tab-ofertare');
+  dom.clear(); if (cutie) dom.set('admin-tab-ofertare', cutie);
+  const re = /<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g; let m;
+  while ((m = re.exec(html))) {
+    const tag = m[1].toLowerCase(), atr = m[2];
+    const id = _ofAtr(atr, 'id'); if (!id) continue;
+    const e = _ofNod(dom, tag, id);
+    e._atr = atr;
+    e._la = _ofAtr(atr, 'oninput') || _ofAtr(atr, 'onchange') || '';
+    if (tag === 'input') {
+      e.type = (_ofAtr(atr, 'type') || 'text').toLowerCase();
+      if (e.type === 'checkbox') e.checked = _ofAreAtr(atr, 'checked'); else e.value = _ofAtr(atr, 'value') || '';
+    } else if (tag === 'select') {
+      e.type = 'select-one';
+      const fin = html.indexOf('</select>', re.lastIndex);
+      const corp = html.slice(re.lastIndex, fin < 0 ? html.length : fin);
+      const opt = []; let ales = 0; const ro = /<option\b([^>]*)>([^<]*)<\/option>/g; let o;
+      while ((o = ro.exec(corp))) { if (_ofAreAtr(o[1], 'selected')) ales = opt.length; opt.push({ value: _ofAtr(o[1], 'value') || '', text: _ofEntitati(o[2]) }); }
+      e._alege(opt, opt.length ? ales : -1);
+    } else if (tag === 'textarea') {
+      e.type = 'textarea';
+      const fin = html.indexOf('</textarea>', re.lastIndex);
+      e.value = _ofEntitati(html.slice(re.lastIndex, fin < 0 ? re.lastIndex : fin));
+    } else if (/display\s*:\s*none/.test(_ofAtr(atr, 'style') || '')) e.style.display = 'none';
+    dom.set(id, e);
+  }
+}
+const _ofDocument = {
+  getElementById: (id) => (_ofDom && _ofDom.get(String(id))) || null,
+  createElement: (tag) => _ofNod(_ofDom || new Map(), tag, ''),
+  querySelector: () => null, querySelectorAll: () => [],
+  addEventListener() {}, removeEventListener() {},
+  body: { appendChild() {}, removeChild() {} },
+};
+function _ofPregateste() {
+  if (_ofPagina) return _ofPagina;
+  _ofPagina = (async () => {
+    const cod = _ofDecupeaza(fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8'));
+    const ctx = {
+      console, document: _ofDocument,
+      // Nimic din pagină nu pleacă nicăieri: cererile se PRIND (corpul lor e chiar ce ne trebuie) și
+      // rămân fără răspuns, deci funcțiile paginii se opresc acolo.
+      fetch: (url, opt) => {
+        if (_ofPrins) {
+          let corp = null; try { corp = opt && typeof opt.body === 'string' ? JSON.parse(opt.body) : null; } catch (e) { corp = null; }
+          _ofPrins.cereri.push({ url: String(url), metoda: String((opt && opt.method) || 'GET').toUpperCase(), corp });
+        }
+        return new Promise(() => {});
+      },
+      raxToast: (text, fel) => { if (_ofPrins) _ofPrins.mesaje.push({ text: String(text), fel: fel || '' }); },
+      raConfirm: async () => false,
+      setTimeout: (fn) => { if (typeof fn === 'function') _ofTimere.push(fn); return _ofTimere.length; },
+      clearTimeout: () => {},
+      localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+      _fxRate: EUR_RON_FALLBACK, _fxDate: '', _fxSursa: '',
+    };
+    ctx.window = ctx;
+    _ofVm.createContext(ctx);
+    _ofVm.runInContext(_OF_ORA_RO, ctx);
+    _ofVm.runInContext(cod, ctx, { filename: 'public/index.html (Ofertare Live)' });
+    // Lista de oferte și derularea paginii n-au ce căuta aici: pagina le-ar cere de la /api.
+    ctx.raxOfLoadList = function () {}; ctx.raxOfLaLista = function () {};
+    // „Prețurile noastre" deschide o fereastră: îi prindem conținutul (valorile de acum).
+    ctx._ofFereastra = function (titlu, ic, corp) { if (_ofPrins) _ofPrins.ferestre.push({ titlu: String(titlu), corp: String(corp) }); };
+    // Formularul se desenează async: îl urmărim, ca să-l putem aștepta.
+    const deseneaza = ctx.raxLoadOfertare;
+    ctx.raxLoadOfertare = function () { const p = deseneaza.apply(this, arguments); _ofAsteapta.push(p); return p; };
+    return { ctx, ver: crypto.createHash('sha1').update(cod).digest('hex').slice(0, 10) };
+  })();
+  _ofPagina.catch(() => { _ofPagina = null; });   // reperele lipsă: se reîncearcă la cererea următoare
+  return _ofPagina;
+}
+// Așteaptă ce a pornit pagina (desenarea formularului), apoi rulează timerele ei (`raxOfLoad` pune
+// câmpurile ofertei salvate după 40 ms — aici, imediat după desenare, în aceeași ordine).
+async function _ofGata() {
+  for (let i = 0; i < 20 && (_ofAsteapta.length || _ofTimere.length); i++) {
+    const p = _ofAsteapta.splice(0); await _ofCuTermen(Promise.all(p));
+    const t = _ofTimere.splice(0); t.forEach((fn) => fn());
+  }
+}
+// Plasa: dacă pagina ajunge să aștepte o cerere (pe care n-o lăsăm să plece), socoteala nu atârnă — și nici
+// coada din spatele ei. Cade cu un mesaj, iar cererea următoare pornește curat.
+function _ofCuTermen(p, ms) {
+  let t;
+  return Promise.race([p, new Promise((_, rau) => { t = setTimeout(() => rau(new Error('pagina de ofertare n-a terminat (așteaptă ceva de la server)')), ms || 4000); })])
+    .finally(() => clearTimeout(t));
+}
+// Comenzile formularului (`oninput`/`onchange`), luate o dată dintr-o desenare CURATĂ: prețurile scrise în
+// cod, fără nicio ofertă din bază și fără lista casei. Formularul are mereu aceleași comenzi — diferă doar
+// valorile din câmpuri — deci o comandă care nu e în listă a intrat din DATE (un „preț" care închide
+// ghilimelele și își scrie singur un `oninput`), nu din pagină. Aia nu se rulează: vm-ul NU e o cutie
+// închisă (are obiectele serverului în el), deci un cod străin rulat aici ar ajunge la tot procesul.
+const _ofComenzi = new WeakMap();   // ctx → Set de comenzi
+async function _ofComenziCurate(P) {
+  if (_ofComenzi.has(P)) return;
+  P._tarifeLista = {}; P._ofAtinse = {}; P._costNoastre = {};
+  P._ofMeta = { stari: OFERTA_STARI.slice(), valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT.map((x) => Object.assign({}, x)) };
+  P._raxOf = { editingId: null, offers: [], prices: P._ofTarifeDeBaza() };
+  P.raxLoadOfertare(); await _ofGata();
+  const s = new Set(); _ofDom.forEach((e) => { if (e._la) s.add(e._la); });
+  if (!s.size) throw new Error('formularul de ofertare nu s-a desenat');
+  _ofComenzi.set(P, s);
+}
+function _ofHandler(ctx, cod) {
+  const voie = _ofComenzi.get(ctx);
+  if (!voie || !voie.has(cod)) throw new Error('un câmp al ofertei are o comandă care nu e a paginii — refuzată');
+  let fn = _ofHandlere.get(cod);
+  if (!fn) { fn = _ofVm.compileFunction(cod, ['event'], { parsingContext: ctx }); _ofHandlere.set(cod, fn); }
+  return fn;
+}
+// HTML-ul paginii, fără ce nu merge pe telefon: iconițele Font Awesome (goale acolo) și `onclick`-urile.
+// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre" și
+// „pune prețul propus" (cu valoarea lui și cu dacă se socotește scris de mână).
+function _ofCurat(h) {
+  return String(h || '')
+    .replace(/<i class="fas [^"]*"[^>]*><\/i>\s?/g, '')
+    .replace(/<a\b([^>]*)>/g, (m, atr) => {
+      const la = _ofAtr(atr, 'onclick') || '', stil = _ofAtr(atr, 'style');
+      let act = '';
+      if (/raxOfPreturi\(/.test(la)) act = ' data-act="preturi"';
+      else {
+        const v = la.match(/getElementById\('of-pAiA'\)[\s\S]*?\.value=\s*([\d.]+)/);
+        if (v) act = ' data-act="pret" data-val="' + v[1] + '"' + (/raxOfAtins/.test(la) ? ' data-atins="1"' : '');
+      }
+      return '<a' + act + (stil ? ' style="' + stil.replace(/"/g, '&quot;') + '"' : '') + '>';
+    })
+    .replace(/\son[a-z]+="[^"]*"/gi, '')
+    .replace(/\shref="[^"]*"/gi, '')
+    .replace(/<\/?(script|iframe|object|embed|form)\b[^>]*>/gi, '');
+}
+// Prețurile unei oferte: DOAR numere (sau gol, `null`, cum le lasă web-ul). Pagina le scrie în formular
+// fără să le curețe (`value="…"`), deci un „preț" text ar putea închide ghilimelele și aduce o comandă a
+// lui în câmp — care aici, pe server, s-ar rula. Un text care nu e număr cade: rămâne tariful casei.
+function _ofPreturiCurate(pr) {
+  const o = {};
+  if (!pr || typeof pr !== 'object' || Array.isArray(pr)) return o;
+  Object.keys(pr).forEach((k) => {
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k)) return;
+    const v = pr[k];
+    if (v === null || (typeof v === 'string' && v.trim() === '')) { o[k] = null; return; }
+    if (typeof v !== 'number' && typeof v !== 'string') return;
+    const n = Number(v);
+    if (Number.isFinite(n)) o[k] = n;
+  });
+  return o;
+}
+// Oferta din bază, cum o vede pagina (ca din `/api/admin/offers`) — cu prețurile curățate.
+function _ofPentruPagina(o) {
+  const x = JSON.parse(JSON.stringify(o));
+  if (typeof x.config === 'string') { try { x.config = JSON.parse(x.config); } catch (e) { x.config = {}; } }
+  if (!x.config || typeof x.config !== 'object' || Array.isArray(x.config)) x.config = {};
+  if (x.config.prices != null) x.config.prices = _ofPreturiCurate(x.config.prices);
+  return x;
+}
+// cerere = { nou | incarca | campuri, atinse, schimbate | hartie | contract | preturi }; oferta = rândul din bază sau null.
+async function _ofSocoteste(cerere, oferta, st, fx) {
+  const { ctx: P, ver } = await _ofPregateste();
+  const b = cerere || {};
+  const lucrez = async () => {
+    const curat = () => {
+      _ofDom = new Map(); _ofDom.set('admin-tab-ofertare', _ofNod(_ofDom, 'div', 'admin-tab-ofertare'));
+      _ofTimere = []; _ofAsteapta = [];
+      _ofPrins = { cereri: [], mesaje: [], ferestre: [] };
+    };
+    curat();
+    try {
+      // Prima socoteală: întâi lista comenzilor paginii (vezi `_ofComenziCurate`), apoi de la zero.
+      if (!_ofComenzi.has(P)) { await _ofComenziCurate(P); curat(); }
+      // Ce știe pagina de la server: cursul, lista casei (cu treptele RA Insight), costurile, termenul.
+      P._fxRate = fx.eur; P._fxDate = fx.date || ''; P._fxSursa = fx.source || '';
+      P._tarifeLista = (st && st.tarife_lista) || {};
+      P._aiqAplicaLista(P._tarifeLista);
+      P._cursNostru = st && st.curs_eur != null ? st.curs_eur : null;
+      P._cursNostruData = (st && st.curs_eur_data) || '';
+      P._costNoastre = (st && st.costuri_noastre) || {};
+      P._ofMeta = { stari: OFERTA_STARI.slice(), valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT.map((x) => Object.assign({}, x)) };
+      P._ofAtinse = {};
+      const pag = oferta ? _ofPentruPagina(oferta) : null;
+      P._raxOf = { editingId: null, offers: pag ? [pag] : [], prices: P._ofTarifeDeBaza() };
+      const el = (id) => _ofDom.get(id) || null;
+      const out = { calcVer: ver, fx: { eur: P._fxRate, date: P._fxDate || null, sursa: P._fxSursa || null } };
+
+      let mod = null;
+      if (b.incarca && pag) {
+        // Creionul din listă: `raxOfLoad` pune oferta în formular și marchează totul „scris de mână".
+        P.raxOfLoad(pag.id); await _ofGata(); mod = 'incarca';
+      } else if (b.campuri && typeof b.campuri === 'object') {
+        // Formularul de pe telefon, cu ce a atins omul; apoi „apăsăm" câmpurile schimbate, în ordine.
+        if (pag) {
+          P._raxOf.editingId = pag.id;
+          P._raxOf.prices = Object.assign({}, P._ofTarifeDeBaza(), (pag.config && pag.config.prices) || {});
+        }
+        P.raxLoadOfertare(); await _ofGata();
+        const pune = (k, v) => {
+          const e = el('of-' + k); if (!e || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return null;
+          if (e.type === 'checkbox') e.checked = (v === true || v === 'true' || v === 1 || v === '1');
+          else e.value = v == null ? '' : String(v).slice(0, 2000);
+          return e;
+        };
+        Object.keys(b.campuri).slice(0, 200).forEach((k) => pune(k, b.campuri[k]));
+        P._ofAtinse = {};
+        (Array.isArray(b.atinse) ? b.atinse : []).slice(0, 200).forEach((k) => { if (el('of-' + k)) P._ofAtinse['of-' + k] = true; });
+        (Array.isArray(b.schimbate) ? b.schimbate : []).slice(0, 100).forEach((k) => {
+          // Valoarea scrisă de om se pune din nou înainte de „apăsare": un câmp schimbat mai devreme în
+          // aceeași rundă (ex. numărul de mașini) i-ar fi putut scrie o propunere peste.
+          const e = (k in b.campuri) ? pune(k, b.campuri[k]) : el('of-' + k); if (!e || !e._la) return;
+          _ofHandler(P, e._la).call(e, { target: e, preventDefault() {} });
+        });
+        await _ofGata(); mod = 'formular';
+      } else if (b.nou) {
+        P.raxOfReset(); await _ofGata(); mod = 'nou';
+      }
+
+      if (mod) {
+        P.raxOfRecalc();
+        const r = P._ofCalc();
+        out.campuri = {}; out.formular = [];
+        _ofDom.forEach((e, id) => {
+          if (!/^of-/.test(id) || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return;
+          const k = id.slice(3);
+          out.campuri[k] = e.type === 'checkbox' ? !!e.checked : e.value;
+          out.formular.push({ k, tip: e.type, pas: _ofAtr(e._atr, 'step'), placeholder: _ofAtr(e._atr, 'placeholder'),
+            atinge: /raxOfAtins\(/.test(e._la), optiuni: e.options.length ? e.options.map((o) => ({ v: o.value, et: o.text })) : undefined });
+        });
+        out.atinse = Object.keys(P._ofAtinse || {}).filter((k) => P._ofAtinse[k] && /^of-/.test(k) && el(k)).map((k) => k.slice(3));
+        out.r = JSON.parse(JSON.stringify(r));
+        const cutie = (id) => _ofCurat((el(id) || {}).innerHTML || '');
+        out.html = { rezumat: cutie('rax-of-summary'), aiA: cutie('of-mod-hint-aiA'), tahograf: cutie('of-mod-hint-tahograf'),
+          etransport: cutie('of-mod-hint-etransport'), aiqCost: cutie('of-aiq-cost') };
+        out.arata = { aiq: ((el('of-aiq-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none' };
+        out.echiv = {};
+        _ofDom.forEach((e, id) => { if (/^eurx-/.test(id)) out.echiv[id.slice(5)] = String(e.textContent || ''); });
+        // Salvarea, PDF-ul și „Salvează ca tarifele noastre": corpul pe care l-ar trimite pagina.
+        _ofPrins.cereri = []; _ofPrins.mesaje = [];
+        P.raxOfSave();
+        const s = _ofPrins.cereri[0];
+        out.salvare = s ? { metoda: s.metoda, url: s.url, corp: s.corp } : null;
+        out.salvareEroare = s ? null : ((_ofPrins.mesaje[0] || {}).text || 'Oferta nu se poate salva.');
+        _ofPrins.cereri = []; P.raxOfExportPdf();
+        out.hartie = (_ofPrins.cereri[0] || {}).corp || null;
+        _ofPrins.cereri = []; P.raxOfSalveazaTarife();
+        out.salvareTarife = (_ofPrins.cereri[0] || {}).corp || null;
+      }
+      if (b.hartie && pag) {
+        // „Vezi hârtia" / „Descarcă" din listă: din ce s-a SALVAT în ofertă, la cursul ei înghețat.
+        _ofPrins.cereri = []; P.raxOfPreview(pag.id);
+        out.hartieSalvata = (_ofPrins.cereri[0] || {}).corp || null;
+      }
+      if (b.contract && pag) out.pentruContract = JSON.parse(JSON.stringify(P._coSocotealaOfertei(pag)));
+      if (b.preturi) {
+        _ofPrins.ferestre = [];
+        await _ofCuTermen(P.raxOfPreturi());
+        const f = _ofPrins.ferestre[0];
+        const valori = { tp: {}, tc: {} };
+        const ri = /<input\b([^>]*)>/g; let m;
+        while (f && (m = ri.exec(f.corp))) {
+          const id = _ofAtr(m[1], 'id') || ''; const v = _ofAtr(m[1], 'value');
+          const x = id.match(/^(tp|tc)-(.+)$/); if (!x) continue;
+          valori[x[1]][x[2]] = (v == null || v === '') ? null : Number(v);
+        }
+        out.preturi = { grupuri: JSON.parse(JSON.stringify(P._PRET_GRUPURI)), valori };
+      }
+      return out;
+    } finally { _ofPrins = null; }
+  };
+  const p = _ofCoada.then(lucrez, lucrez);
+  _ofCoada = p.catch(() => {});
+  return p;
+}
+// ── sfârșit „Ofertare pe server" ──
+// Calculatorul de ofertă, pentru telefon (și pentru orice alt ecran care n-are pagina web în el).
+// Doar noi: sumele, costurile noastre și profitul nu ies din `requireSuperadmin`.
+//   { nou: true }                                   → „Ofertă nouă": formularul de la zero, din lista casei
+//   { offer_id, incarca: true }                     → creionul: oferta salvată, pusă în formular
+//   { campuri, atinse, schimbate, offer_id? }        → formularul de pe telefon, după ce omul a scris
+//   { offer_id, hartie: true }                      → plicul pentru PDF-ul ofertei SALVATE („Vezi hârtia")
+//   { offer_id, contract: true }                    → ce duce contractul făcut din ofertă (`pentruContract`)
+//   { preturi: true }                               → „Prețurile noastre": rândurile și valorile de acum
+app.post('/api/admin/offers/calc', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    let oferta = null;
+    if (b.offer_id != null && b.offer_id !== '') {
+      const id = parseInt(b.offer_id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+      oferta = await db.getOfferById(id); if (!oferta) return res.status(404).json({ error: 'Oferta nu există' });
+    }
+    if ((b.incarca || b.hartie || b.contract) && !oferta) return res.status(400).json({ error: 'Spune ce ofertă.' });
+    if (b.campuri != null && (typeof b.campuri !== 'object' || Array.isArray(b.campuri))) return res.status(400).json({ error: 'Câmpurile ofertei lipsesc.' });
+    const [st, fx] = await Promise.all([getSystemSettings(), _fxPentruEcran({ json: (x) => x }).catch(FX_REZERVA)]);
+    res.json(await _ofSocoteste(b, oferta, st, fx));
+  } catch (err) {
+    console.error('[ofertare] calculatorul de pe server:', err && err.message);
+    res.status(500).json({ error: 'Calculatorul de ofertă nu a mers: ' + (err && err.message) });
+  }
 });
 // ⚠ Aici a stat, până pe 22.09, `POST /api/admin/offers/:id/apply-to-company` — ușa butonului ✨ din
 // lista de oferte. A plecat cu el: ce s-a vândut într-o ofertă se aprinde SINGUR pe firmă la

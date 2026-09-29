@@ -1,0 +1,145 @@
+/* Contracte (fondatori) pe telefon — lista tuturor contractelor, fișa de contract a unei firme, actele
+   adiționale, anexele și montajul. Clase proprii (prefix ctr-), ca să nu calce stilurile altor ecrane.
+   Culorile vin DOAR din tokenurile temei. Verdele aplicației (#3FE07D) nu se citește ca text mic pe alb,
+   deci pe tema luminoasă textul verde/chihlimbar trece pe variante mai închise (--ctr-ok / --ctr-warn). */
+
+:root { --ctr-ok: var(--accent); --ctr-warn: #f5b43c; }
+:root[data-theme="light"] { --ctr-ok: #0E7A3C; --ctr-warn: #b45309; }
+
+.ctr-wrap { padding: 12px 14px calc(40px + var(--sab)); display: flex; flex-direction: column; gap: 12px; }
+
+/* Benzile de sus (roșu = firme fără contract, portocaliu = alarma) și cutiile de stare din fișă */
+.ctr-band { border: 1px solid var(--border); border-left-width: 4px; border-radius: 12px; padding: 12px 13px;
+  background: var(--bg-panel); font-size: 13.5px; line-height: 1.5; color: var(--text-primary); }
+.ctr-band.bad { border-color: var(--red); background: rgba(240, 90, 90, .09); }
+.ctr-band.warn { border-color: var(--ctr-warn); background: rgba(245, 180, 60, .11); }
+.ctr-band.ok { border-color: var(--ctr-ok); background: rgba(63, 224, 125, .09); }
+.ctr-band-t { display: flex; align-items: flex-start; gap: 7px; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.ctr-band-t + .ctr-band-t { margin-top: 10px; }
+.ctr-band p { margin: 4px 0 0; }
+.ctr-names { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.ctr-name { min-height: 34px; padding: 0 11px; display: inline-flex; align-items: center; border-radius: 9px;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; font-weight: 700; }
+.ctr-name.more { background: transparent; border-style: dashed; color: var(--text-muted); font-weight: 600; }
+.ctr-alarm { padding: 10px 0 0; margin-top: 8px; border-top: 1px solid var(--border); }
+.ctr-band-t + .ctr-alarm { border-top: 0; margin-top: 4px; padding-top: 4px; }
+
+/* Pastile (starea contractului, dosarul) */
+.ctr-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 800; padding: 3px 9px;
+  border-radius: 999px; background: var(--bg-dark); color: var(--text-secondary); border: 1px solid var(--border); white-space: nowrap; }
+.ctr-pill.ok { background: rgba(63, 224, 125, .14); color: var(--ctr-ok); border-color: transparent; }
+.ctr-pill.warn { background: rgba(245, 180, 60, .16); color: var(--ctr-warn); border-color: transparent; }
+.ctr-pill.bad { background: rgba(240, 90, 90, .14); color: var(--red); border-color: transparent; }
+
+/* Filtrele: un rând care derulează lateral. Ținta de atingere: 38px. */
+.ctr-chips { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ctr-chips::-webkit-scrollbar { display: none; }
+.ctr-chip { flex: 0 0 auto; min-height: 38px; padding: 0 13px; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 999px; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.ctr-chip b { color: var(--text-primary); }
+.ctr-chip.on { background: rgba(63, 224, 125, .16); border-color: var(--accent); color: var(--ctr-ok); }
+.ctr-chip.on b { color: var(--ctr-ok); }
+
+.ctr-search { position: relative; }
+.ctr-search input { width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 10px; padding: 12px 12px 12px 38px; font-size: 15px; font-family: inherit; }
+.ctr-search input:focus { outline: none; border-color: var(--accent); }
+.ctr-search .ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+
+/* Titluri */
+.ctr-h { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--text-primary); margin: 6px 2px 0; }
+.ctr-h .ic { color: var(--ctr-ok); }
+.ctr-h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ctr-ok); margin: 16px 2px 0; }
+.ctr-sub { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); margin: 0 2px; }
+.ctr-sub b { color: var(--text-secondary); }
+.ctr-empty { font-size: 13.5px; line-height: 1.5; color: var(--text-muted); padding: 10px 2px; }
+.ctr-err { font-size: 13.5px; color: var(--red); padding: 10px 2px; }
+
+/* Cardul unui contract din listă */
+.ctr-list { display: flex; flex-direction: column; gap: 8px; }
+.ctr-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px 12px; display: flex; flex-direction: column; }
+.ctr-card-h { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; color: var(--text-primary); min-height: 44px; padding: 2px 0 8px; }
+.ctr-card-h .mid { flex: 1; min-width: 0; }
+.ctr-card-h .nm { font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+.ctr-small { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; line-height: 1.4; font-weight: 500; }
+.ctr-kv { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 13.5px; padding: 6px 0; border-top: 1px solid var(--border); }
+.ctr-kv .k { color: var(--text-muted); flex: 0 0 auto; }
+.ctr-kv .v { text-align: right; min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--text-primary); }
+.ctr-kv .v .ctr-pill { margin-left: 4px; }
+
+/* Butoane: mari, ca degetul să nu rateze */
+.ctr-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ctr-btn { min-height: 40px; padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+  font-size: 13.5px; font-weight: 700; }
+.ctr-btn.pri { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.ctr-btn.danger { background: transparent; border-color: var(--red); color: var(--red); }
+.ctr-btn.wide { flex: 1 1 100%; }
+.ctr-btn:disabled, .ctr-btn.is-busy { opacity: .6; }
+.ctr-btn.is-busy { pointer-events: none; }
+label.ctr-btn { cursor: pointer; }
+
+/* Rândurile din fișă (acte, lucrări, anexa de citit, parteneri) */
+.ctr-row { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 11px; }
+.ctr-row-top { display: flex; align-items: flex-start; gap: 10px; }
+.ctr-row-t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; color: var(--text-primary); }
+.ctr-row-t b { font-weight: 800; }
+.ctr-row-s { display: block; font-size: 12.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.45; font-weight: 500; }
+.ctr-row-v { flex: 0 0 auto; font-weight: 700; font-size: 13.5px; text-align: right; white-space: nowrap; color: var(--text-primary); }
+.ctr-row .ctr-btns { margin-top: 4px; }
+
+/* Capul fișei + cutia „ce urmează" */
+.ctr-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ctr-cap b { font-size: 17px; font-weight: 800; }
+.ctr-cap .per { font-size: 13px; color: var(--text-muted); flex: 1 1 100%; }
+.ctr-urm { background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 13px; }
+.ctr-urm-t { font-size: 13.5px; line-height: 1.55; color: var(--text-primary); }
+
+/* Panourile unui contract semnat (de citit) */
+.ctr-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px 4px; }
+.ctr-panel h4 { margin: 0 0 2px; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.ctr-panel .ctr-kv:first-of-type { border-top: 0; }
+
+/* Formulare (în fișă și în foi) */
+.ctr-frm { display: flex; flex-direction: column; gap: 12px; }
+.ctr-semn { display: flex; flex-direction: column; gap: 6px; }
+.ctr-semn-b { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 11px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-dark); font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+.ctr-semn-b input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--accent); }
+.ctr-msg { font-size: 13px; line-height: 1.45; color: var(--red); }
+.ctr-msg.ok { color: var(--ctr-ok); }
+.ctr-hint { font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+
+/* Anexa nr. 1: aparatul cu bifă și prețul lui */
+.ctr-chk { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 11px; }
+.ctr-chk.on { border-color: var(--accent); }
+.ctr-chk > input[type="checkbox"] { width: 22px; height: 22px; flex: 0 0 22px; accent-color: var(--accent); }
+.ctr-chk .mid { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; color: var(--text-primary); }
+.ctr-price { width: 86px; flex: 0 0 86px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 9px; padding: 10px 8px; font-size: 15px; font-family: inherit; text-align: right; }
+.ctr-price:focus { outline: none; border-color: var(--accent); }
+/* Bifat, dar fără preț: s-ar salva cu 0 lei — caseta se vede roșie până se completează. */
+.ctr-price.lipsa, .ctr-mont-3 input.lipsa { border-color: var(--red); }
+.ctr-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--ctr-ok); }
+
+/* Totalul de sub o listă (informativ — suma adevărată o face serverul la salvare) */
+.ctr-total { font-size: 13.5px; line-height: 1.5; padding: 10px 12px; border-radius: 10px; background: var(--bg-dark); border: 1px dashed var(--border-light); color: var(--text-primary); }
+.ctr-total b { font-weight: 800; }
+.ctr-ok-txt { color: var(--ctr-ok); }
+.ctr-bad-txt { color: var(--red); }
+.ctr-warn-txt { color: var(--ctr-warn); }
+
+/* Montajul: 7 lucrări, fiecare cu Cant. / Preț client / Cost partener */
+.ctr-mont { display: flex; flex-direction: column; gap: 8px; }
+.ctr-mont-r { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; }
+.ctr-mont-r .t { font-size: 13.5px; font-weight: 700; margin-bottom: 6px; color: var(--text-primary); }
+.ctr-mont-r .t em { font-style: normal; color: var(--text-muted); font-weight: 600; }
+.ctr-mont-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.ctr-mont-3 label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-muted); font-weight: 700; min-width: 0; }
+.ctr-mont-3 input { width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 8px; padding: 10px 8px; font-size: 15px; font-family: inherit; }
+.ctr-mont-3 input:focus { outline: none; border-color: var(--accent); }
+.ctr-mont-1 { display: grid; grid-template-columns: 1fr 96px; gap: 8px; align-items: center; }
+.ctr-mont-1 input { width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 8px; padding: 10px 8px; font-size: 15px; font-family: inherit; text-align: right; }
