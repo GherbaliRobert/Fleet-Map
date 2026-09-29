@@ -20023,6 +20023,7 @@ const pozitii = await r.json();</code></pre>
           '<li>Firma e creată' + (g.cui ? ', cu CUI ' + esc(g.cui) : '') + '.</li>' +
           '<li>' + (g.contract ? ('Contractul <strong>' + esc(g.contract) + '</strong> e salvat, în lucru.' +
             (g.offerTotal ? ' Prețul din ofertă (' + Number(g.offerTotal).toFixed(0) + ' lei/lună) e trecut în anexă și scris pe firmă, pentru factură.' : '')) : 'Fără contract încă.') + '</li>' +
+          (g.autoFactura ? '<li>Factura automată e pornită: abonamentul pleacă singur pe 1 a lunii, de la prima mașină care transmite.</li>' : '') +
           '<li>' + (!g.admin ? 'Fără administrator încă.'
             : g.adminLink ? 'Contul lui <strong>' + esc(g.admin) + '</strong> e făcut, dar invitația n-a plecat pe email. ' +
                 '<button class="rax-btn" style="padding:3px 9px;font-size:12px;" onclick="coNouArataLinkul()"><i class="fas fa-link"></i> Arată linkul de parolă</button> — i-l trimiți tu; parola și-o pune el.'
@@ -20098,7 +20099,7 @@ const pozitii = await r.json();</code></pre>
         await fetch('/api/companies/' + co.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
           body: JSON.stringify({ cui: s.firma.cui, reg_com: s.firma.reg_com, address: s.firma.address,
             contact_email: s.firma.contact_email, phone: s.firma.phone }) }).catch(function () {});
-        var c = s.contract, contractId = null, numar = null;
+        var c = s.contract, contractId = null, numar = null, autoFactura = false;
         if (c.rep_name || c.signed_at || c.start_at || c.number || s.offerId) {
           var ofAleasa = s.offerId ? (_coOferte || []).filter(function (x) { return String(x.id) === String(s.offerId); })[0] : null;
           var ct = await fetch('/api/companies/' + co.id + '/contract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
@@ -20108,7 +20109,7 @@ const pozitii = await r.json();</code></pre>
               auto_renew: !!c.auto_renew, notice_days: parseInt(c.notice_days) || 30,
               client_rep: { name: c.rep_name, role: c.rep_role }, our_rep: { name: c.our_name, role: c.our_role },
               gdpr: { kind: c.gdpr_kind } }) }).then(function (r) { return r.json(); });
-          if (ct && ct.id) { contractId = ct.id; numar = ct.number; }
+          if (ct && ct.id) { contractId = ct.id; numar = ct.number; autoFactura = !!ct.auto_factura; }
         }
         var adminOk = null, adminLink = null, adminMotiv = null;
         if (s.admin.username) {
@@ -20128,7 +20129,7 @@ const pozitii = await r.json();</code></pre>
           }
         }
         s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk,
-          adminLink: adminLink, adminMotiv: adminMotiv, offerTotal: s.offerId ? s.offerTotal : null };
+          adminLink: adminLink, adminMotiv: adminMotiv, offerTotal: s.offerId ? s.offerTotal : null, autoFactura: autoFactura };
         _coOferte = null;  // o ofertă tocmai a devenit client — lista trebuie recitită
         s.lucrez = false;
         coNouRandeaza();
@@ -26217,7 +26218,9 @@ const pozitii = await r.json();</code></pre>
           '<div class="row vat"><span>TVA</span><b>' + _invMoney(inv.vat_amount) + ' lei</b></div>' +
           '<div class="grand"><span>TOTAL DE PLATĂ</span><span>' + _invMoney(inv.total) + ' lei</span></div>' +
         '</div></div>' +
-        '<div class="pay">Perioada: ' + _invFmtD(inv.period_start) + ' → ' + _invFmtD(inv.period_end) + (inv.note ? ' · ' + esc(inv.note) : '') + '</div>' +
+        (inv.fel === 'unica' || pf
+          ? (inv.note ? '<div class="pay"><b>Mențiuni:</b> ' + esc(inv.note) + '</div>' : '')
+          : '<div class="pay">Perioada: ' + _invFmtD(inv.period_start) + ' → ' + _invFmtD(inv.period_end) + (inv.note ? ' · ' + esc(inv.note) : '') + '</div>') +
         (pf
           ? '<div class="foot">Proformă emisă din platforma RA Tracks. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.</div>'
           : '<div class="foot">Factură emisă electronic din platforma RA Tracks. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' + (inv.din_proforma ? ' Emisă la încasarea unei proforme.' : '') + '</div>') +
@@ -26384,7 +26387,7 @@ const pozitii = await r.json();</code></pre>
         _giState = { companyId: cid, fel: d.fel || _giFel, luna: d.luna || null, lines: (d.lines || []).slice(), issuer: d.issuer || {},
           vatRate: d.vatRate != null ? d.vatRate : 19, client: d.client || {}, deja: d.deja || null,
           aparateIntregi: d.aparateIntregi || 0, aparatePeZile: d.aparatePeZile || 0, aparateNepornite: d.aparateNepornite || 0,
-          dinContract: d.dinContract || null, montaje: [], puse: {} };
+          dinContract: d.dinContract || null, montaje: [], puse: {}, zileMontaj: [], nota: '' };
         if (!(_giState.issuer && _giState.issuer.name && _giState.issuer.cui)) {
           res.innerHTML = '<div style="background:var(--bg-dark);border:1px dashed var(--border);border-radius:10px;padding:12px;font-size:12.5px;color:#f59e0b;">⚠ Completează întâi <b>Date emitent</b> (nume + CUI) — sunt obligatorii pe factură. <button class="rax-btn" style="margin-left:6px;" onclick="document.getElementById(\'rax-geninv-overlay\').classList.remove(\'open\');raxEditIssuer()">Date emitent</button></div>';
           return;
@@ -26425,9 +26428,35 @@ const pozitii = await r.json();</code></pre>
     window._giPuneLucrare = function (id) {
       if (!_giState || !_giState.dinContract || _giState.puse['lucrare:' + id]) return;
       var j = (_giState.dinContract.lucrari || []).filter(function (x) { return x.id === id; })[0]; if (!j) return;
-      j.linii.forEach(function (r) { var l = { desc: r.desc, qty: r.qty, unitPrice: r.unitPrice }; _giRecalcLine(l); _giState.lines.push(l); });
+      _giStrangeLucrarea(_giState, j);
       _giState.montaje.push(id); _giState.puse['lucrare:' + id] = true; _giRenderLines();
     };
+    // ── începe „factura montajului, strânsă" ──
+    // Alin, 29.09: „da". Factura montajului avea câte o pereche de rânduri pentru FIECARE zi de montaj (6 rânduri
+    // pentru 3 zile, fără dată), iar clientul vedea trei rânduri „Instalare dispozitiv GPS" fără să știe de ce.
+    // Acum: un rând pe fel de lucrare (35 × montaj GPS, 35 × montaj LV-CAN), iar zilele lucrărilor merg dedesubt,
+    // în mențiunile facturii. Se adună doar rândurile cu ACEEAȘI denumire și ACELAȘI preț: o zi cu alt preț
+    // (negociat altfel) rămâne pe rândul ei — nu amestecăm două prețuri într-unul.
+    function _giStrangeLucrarea(S, j) {
+      (j.linii || []).forEach(function (r) {
+        var l = S.lines.filter(function (x) { return x._montaj && x.desc === r.desc && Number(x.unitPrice) === Number(r.unitPrice); })[0];
+        if (l) l.qty = (Number(l.qty) || 0) + (Number(r.qty) || 0);
+        else { l = { desc: r.desc, qty: Number(r.qty) || 0, unitPrice: Number(r.unitPrice) || 0, _montaj: true }; S.lines.push(l); }
+        _giRecalcLine(l);
+      });
+      S.zileMontaj = (S.zileMontaj || []).concat([{ data: j.data || null, masini: Number(j.masini) || 0 }])
+        .sort(function (a, b) { return (Number(a.data) || 0) - (Number(b.data) || 0); });
+      S.nota = _giNotaMontaj(S.zileMontaj);
+    }
+    // „Montaj executat pe 15.01.2027 (10 mașini), 25.01.2027 (10 mașini) și 30.01.2027 (15 mașini)."
+    function _giNotaMontaj(zile) {
+      var z = (zile || []).filter(function (x) { return x && x.data; }).map(function (x) {
+        return _invFmtD(x.data) + (x.masini ? ' (' + x.masini + (x.masini === 1 ? ' mașină' : _raxDe(x.masini) + 'mașini') + ')' : '');
+      });
+      if (!z.length) return '';
+      return 'Montaj executat pe ' + (z.length === 1 ? z[0] : z.slice(0, -1).join(', ') + ' și ' + z[z.length - 1]) + '.';
+    }
+    // ── sfârșit „factura montajului, strânsă" ──
     function _giRenderLines() {
       var res = document.getElementById('rax-gi-result'); if (!res || !_giState) return;
       var S = _giState, abo = S.fel === 'abonament';
@@ -26457,7 +26486,9 @@ const pozitii = await r.json();</code></pre>
         ? '<div class="rax-co-meta" style="padding:10px 0;">' + (abo ? 'Nimic de facturat pe luna asta: nicio mașină pornită. Aparatele pornesc la prima transmisie, adică după montaj.' : 'Niciun rând încă.') + '</div>'
         : '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Descriere</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Preț unit.</th><th style="text-align:right;">Valoare</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       var eticheta = _giTip === 'proforma' ? 'Emite proforma' : 'Emite factura';
-      res.innerHTML = cap + gol +
+      var mentiuni = abo ? '' : '<div style="margin-top:8px;"><label for="rax-gi-nota" style="font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:3px;">Mențiuni pe factură (apar sub rânduri)</label>' +
+        '<input class="rax-field" id="rax-gi-nota" style="margin:0;" maxlength="500" value="' + esc(S.nota || '') + '" oninput="_giState.nota=this.value"></div>';
+      res.innerHTML = cap + gol + mentiuni +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:6px;"><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="rax-btn" onclick="_giAdd()"><i class="fas fa-plus"></i> Linie liberă</button></div>' +
           '<div style="text-align:right;font-size:12.5px;"><span style="color:var(--text-muted);">Net </span><b>' + _invMoney(sub) + '</b> · <span style="color:var(--text-muted);">TVA </span><b>' + _invMoney(vat) + '</b> · <span style="color:var(--text-muted);">Total </span><b style="color:var(--accent);font-size:15px;">' + _invMoney(sub + vat) + ' lei</b></div></div>' +
         (_giTip === 'proforma' ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși ✓ „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div>' : '') +
@@ -26474,7 +26505,8 @@ const pozitii = await r.json();</code></pre>
       if (!lines.length) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Adaugă cel puțin o linie validă.</span>'; return; }
       var eticheta = _giTip === 'proforma' ? 'Emite proforma' : 'Emite factura';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se emite…'; }
-      var body = { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.montaje || [] };
+      var body = { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.montaje || [],
+        note: (_giState.fel === 'unica' && String(_giState.nota || '').trim()) ? String(_giState.nota).trim().slice(0, 500) : null };
       try {
         var r = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
         var j = await r.json().catch(function () { return {}; });

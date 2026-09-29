@@ -68,10 +68,38 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   proprie, PF-…, fără ANAF), iar la încasare emite singură factura fiscală, cu aceleași rânduri, marcată
   plătită. De întrebat: la un avans încasat înainte de livrare se emite „factură de avans" și apoi factura
   finală, sau direct factura finală? Și în ce termen, ca să nu întârziem la ANAF.
+- [ ] **Voi: „Date emitent" cu datele reale ale RA Tracks. Adăugat pe 29.09.** Facturare → „Date emitent":
+  numele firmei, CUI, Reg. Com., adresa, IBAN, banca, cota de TVA. Fără nume și CUI nu pleacă nicio factură,
+  nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
 
 ---
 
 ## 2026-09-29
+
+### AMÂNDOI · Hotărârile din 29.09: factura automată pornește singură; factura montajului, strânsă
+
+Alin, la întrebările de ieri: *„1: da"*, *„3: da"*. (Întrebarea 2 — facturile făcute de mână să plece singure
+la ANAF și la client — a rămas de lămurit; n-am făcut nimic la ea.)
+
+1. **Factura automată pornește singură la „Client nou din ofertă".** Până acum orice firmă nouă avea „Auto"
+   oprit, iar dacă uitai bifa din Facturare, abonamentul nu se factura niciodată — și nimic nu-ți amintea.
+   Acum pornește odată cu prețul din ofertă. Nu grăbește nimic: cât nu transmite nicio mașină, nu se emite
+   nicio factură. La un client care avea deja un preț (negociat separat) nu se schimbă nimic. Panoul „Client
+   nou" o spune pe față: „Factura automată e pornită…".
+2. **Factura montajului: un rând pe fel de lucrare, zilele dedesubt.** Trei zile de montaj dădeau 6 rânduri,
+   fără dată. Acum: „Instalare dispozitiv GPS — 35 × 100 lei" și „Instalare modul LV-CAN — 35 × 60 lei", iar
+   sub rânduri, la „Mențiuni": „Montaj executat pe 15.01.2027 (10 mașini), 25.01.2027 (10 mașini) și
+   30.01.2027 (15 mașini)." Mențiunea se poate corecta în fereastră, înainte de emitere. O zi cu alt preț
+   rămâne pe rândul ei (nu amestecăm două prețuri).
+3. **Pe hârtia facturii unice și a proformei** nu mai scrie „Perioada: 30.01.2027 → 30.01.2027" (o perioadă
+   de o zi, fără rost); acolo stau mențiunile. Facturile de abonament își păstrează perioada.
+
+- **Ce am schimbat:** pornirea facturii automate la prima ofertă a firmei; rândurile și mențiunile facturii de
+  montaj; hârtia facturii unice.
+- **Ce vede fondatorul:** „Client nou" spune că factura automată e pornită; în „Generează factură", lucrările
+  alese se adună pe rânduri, iar dedesubt apare caseta „Mențiuni pe factură", completată singură.
+- **Ce vede clientul:** factura montajului cu două rânduri clare și zilele montajului scrise dedesubt.
+
 
 ### AMÂNDOI · Drumul unui client nou, reparat în trei locuri
 

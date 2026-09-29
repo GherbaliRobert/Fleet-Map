@@ -147,6 +147,32 @@ sect('4. Pe ecran');
   T('la factura unică: factură fiscală SAU proformă', /data-tip="invoice"/.test(modal) && /data-tip="proforma"/.test(modal));
   T('rândurile unice se iau din contract și din lucrările executate', /_giPuneContract\('aparate'\)/.test(modal) && /_giPuneLucrare\(/.test(modal));
   T('un buton apăsat o dată se stinge (aceleași aparate de două ori ar fi o greșeală)', /puse\[cheie\] \? 'disabled/.test(modal));
+  // Hotărârea lui Alin (29.09, „da"): factura montajului STRÂNSĂ — un rând pe fel de lucrare, zilele dedesubt.
+  // Codul adevărat din pagină, decupat și rulat pe cele trei zile de montaj din exemplu (apăsate în altă ordine).
+  {
+    const bloc = taie(html, '// ── începe „factura montajului, strânsă" ──', '// ── sfârșit „factura montajului, strânsă" ──');
+    const zi = (an, l, z) => new Date(an, l - 1, z, 19, 0).getTime();
+    const fmtD = (t) => { const d = new Date(Number(t)); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); };
+    const de = (n) => { const r = n % 100; return ' ' + ((r >= 1 && r <= 19) ? '' : 'de '); };
+    const S = { lines: [], vatRate: 21 };
+    const f = new Function('_giState', '_invFmtD', '_raxDe',
+      'function _giRecalcLine(l) { var vr = (_giState.vatRate || 0); l.net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; l.vat = Math.round(l.net * vr) / 100; }\n' +
+      bloc + '\nreturn { _giStrangeLucrarea: _giStrangeLucrarea, _giNotaMontaj: _giNotaMontaj };')(S, fmtD, de);
+    const lucr = (d, n, pretGps) => ({ data: d, masini: n, linii: [{ desc: 'Instalare dispozitiv GPS', qty: n, unitPrice: pretGps || 100 }, { desc: 'Instalare modul LV-CAN', qty: n, unitPrice: 60 }] });
+    [lucr(zi(2027, 1, 30), 15), lucr(zi(2027, 1, 15), 10), lucr(zi(2027, 1, 25), 10)].forEach((j) => f._giStrangeLucrarea(S, j));
+    T('trei zile de montaj → DOUĂ rânduri: 35 × montaj GPS și 35 × montaj LV-CAN (5.600 lei)',
+      S.lines.length === 2 && S.lines[0].qty === 35 && S.lines[0].net === 3500 && S.lines[1].qty === 35 && S.lines[1].net === 2100, JSON.stringify(S.lines));
+    T('zilele merg dedesubt, în ordinea lor, cu câte mașini: „15.01.2027 (10 mașini), 25.01.2027 (10 mașini) și 30.01.2027 (15 mașini)"',
+      S.nota === 'Montaj executat pe 15.01.2027 (10 mașini), 25.01.2027 (10 mașini) și 30.01.2027 (15 mașini).', S.nota);
+    f._giStrangeLucrarea(S, lucr(zi(2027, 2, 10), 20, 90));
+    T('o zi cu alt preț rămâne pe rândul ei (nu amestecăm 100 și 90 de lei), iar „20 de mașini" se scrie cu „de"',
+      S.lines.length === 3 && S.lines[0].qty === 35 && S.lines[2].unitPrice === 90 && S.lines[2].qty === 20 && / și 10\.02\.2027 \(20 de mașini\)\.$/.test(S.nota), JSON.stringify(S.lines.map((l) => l.qty + '×' + l.unitPrice)) + ' | ' + S.nota);
+    T('o singură zi: „Montaj executat pe 15.01.2027 (10 mașini)."', f._giNotaMontaj([{ data: zi(2027, 1, 15), masini: 10 }]) === 'Montaj executat pe 15.01.2027 (10 mașini).');
+  }
+  T('mențiunea se poate corecta în fereastră și pleacă odată cu factura', /id="rax-gi-nota"/.test(modal + html) && /note: \(_giState\.fel === 'unica' && String\(_giState\.nota \|\| ''\)\.trim\(\)\)/.test(html));
+  T('pe hârtie, la factura unică și la proformă: „Mențiuni", nu „Perioada" (o perioadă de o zi n-avea sens)',
+    /\(inv\.fel === 'unica' \|\| pf\s*\?\s*\(inv\.note \? '<div class="pay"><b>Mențiuni:<\/b> '/.test(html));
+  T('serverul spune câte mașini s-au montat în fiecare zi (pentru mențiune)', /linii: linii, masini: masini \|\| null,/.test(server));
   T('ecranul spune câte aparate de pe firmă nu transmit încă (și de ce nu intră)', /nu transmit încă: nu intră pe factură/.test(modal));
   T('și avertizează când luna e deja facturată', /Luna asta e deja facturată/.test(modal));
   T('emiterea trimite felul, luna, tipul și lucrările', /fel: _giState\.fel, luna: _giState\.luna, tip: _giState\.fel === 'unica' \? _giTip : 'invoice', lines: lines, montaje:/.test(html));

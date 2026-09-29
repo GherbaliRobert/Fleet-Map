@@ -5782,7 +5782,7 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
   // Prețul de facturare. Până pe 23.09 nu se scria: firma deschisă din ofertă avea 0 lei în
   // „Abonament & plăți", iar prețul se tasta a doua oară, de mână (exact ce promitea că nu mai faci).
   // Se scrie DOAR dacă firma n-are deja un preț — unul negociat separat nu se calcă.
-  let pretScris = null;
+  let pretScris = null, autoPornit = false;
   const u = dinOferta && dinOferta.unitati;
   const lei = function (v) { const x = Number(v); return (v != null && v !== '' && Number.isFinite(x) && x >= 0) ? Math.round(x * 100) / 100 : null; };
   if (u && lei(u.plain) != null) {
@@ -5796,6 +5796,15 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
         note: ('Din oferta #' + oferta.id + (oferta.name ? ' — ' + oferta.name : '')).slice(0, 300)
       };
       await db.setCompanyOferta(companyId, pretScris);
+      // Factura automată pornește odată cu prețul (Alin, 29.09: „da"). Până atunci, firma nouă din ofertă avea
+      // „Auto" OPRIT (așa e în bază, la orice firmă nouă), iar dacă uitai bifa din Facturare, abonamentul nu se
+      // factura niciodată — și nimic nu-ți amintea: „Drumul clientului" bifa „Prima factură" deja cu factura
+      // aparatelor. Pornită devreme nu grăbește nimic: cât nicio mașină nu transmite, nu se emite nimic.
+      // Doar la PRIMA ofertă a firmei (fără preț până acum): unui client vechi nu-i schimbăm ce am ales pentru el.
+      if (!co.auto_invoice) {
+        await db.pool.query('UPDATE companies SET auto_invoice = true WHERE id = $1', [companyId]);
+        autoPornit = true;
+      }
     }
   }
   // Păstrarea istoricului peste cele 12 luni incluse se vinde în ofertă, deci se scrie pe firmă odată cu
@@ -5811,7 +5820,7 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
     if (coCh && !contracte.chirieFirma(coCh.settings)) patch.chirie = { randuri: chirie.randuri };
   }
   if (Object.keys(patch).length) await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
-  return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris };
+  return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris, autoPornit };
 }
 // Păstrarea istoricului vândută într-o ofertă: `{ luni, pretRON }`, sau `null` dacă oferta a rămas pe
 // cele 12 luni incluse. Lunile = ce s-a ales în ofertă; prețul = rândul socotit de pagină (`_ofCalc`,
@@ -5896,6 +5905,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
       }
     }
     const c = await db.createContract(date);
+    let autoFactura = false;
     if (oferta) {
       try { await db.legOferta(oferta.id, { company_id: id, contract_id: c.id }); } catch (e) {}
       // Oferta care a devenit contract e o ofertă CÂȘTIGATĂ. Până pe 23.09 rămânea „trimisă" și, după
@@ -5909,6 +5919,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
       try {
         const ap = await _aplicaOfertaPeFirma(id, oferta, dinOferta);
         if (ap && ap.pretScris) auditReq(req, 'update', 'oferta', id, { din_oferta: oferta.id, pret: ap.pretScris.priceNoneRON });
+        if (ap && ap.autoPornit) { autoFactura = true; auditReq(req, 'billing-config', 'company', id, { auto_invoice: true, din_oferta: oferta.id }); }
         // Modulele vândute care NU se pot aprinde singure: nu tăcem, punem o notificare pentru noi.
         if (ap && ap.deAprinsManual.length) {
           const et = { tahograf: 'Tahograf', etransport: 'e-Transport' };
@@ -5926,7 +5937,8 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
     if (date.client_rep && !co.legal_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
     auditReq(req, 'create', 'contract', c.id, { company_id: id, number: c.number });
-    res.json(c);
+    // `auto_factura`: ecranul „Client nou" spune că abonamentul pleacă singur doar când chiar s-a pornit.
+    res.json(autoFactura ? Object.assign({}, c, { auto_factura: true }) : c);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -13363,9 +13375,14 @@ async function _unicaDinContract(companyId) {
   const lucrari = await db.listMontaje(companyId);
   (lucrari || []).forEach(function (j) {
     if (['executat', 'facturat_de_partener'].indexOf(j.status) < 0) return;
-    const linii = (_jsonSigur(j.items) || []).filter(function (r) { return Number(r.buc) > 0 && Number(r.pretClient) > 0; })
+    const items = _jsonSigur(j.items) || [];
+    const linii = items.filter(function (r) { return Number(r.buc) > 0 && Number(r.pretClient) > 0; })
       .map(function (r) { const t = montaj.tip(r.tip); return { desc: t ? t.et : r.tip, qty: Number(r.buc), unitPrice: Number(r.pretClient) }; });
-    if (linii.length) out.lucrari.push({ id: j.id, data: j.data_lucrare || null, status: j.status, partener: j.partener_nume || null, linii: linii,
+    // Câte mașini s-au montat în ziua aceea — pentru mențiunea de pe factură („15.01.2027 (10 mașini)"):
+    // cel mai mare număr dintre lucrările făcute pe mașină (aparat, adaptor, CAN, FMS), nu suma lor.
+    const masini = items.filter(function (r) { return ['gps', 'lvcan', 'caninc', 'fms'].indexOf(r.tip) >= 0; })
+      .reduce(function (m, r) { return Math.max(m, Number(r.buc) || 0); }, 0);
+    if (linii.length) out.lucrari.push({ id: j.id, data: j.data_lucrare || null, status: j.status, partener: j.partener_nume || null, linii: linii, masini: masini || null,
       total: Math.round(linii.reduce(function (x, l) { return x + l.qty * l.unitPrice; }, 0) * 100) / 100 });
   });
   return out;
@@ -13461,7 +13478,7 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
       companyId: id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
       type: tip, status: 'issued', issueDate: now, dueDate: now + termDays * 86400000, periodStart: periodStart, periodEnd: periodEnd, currency: 'RON',
       subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines,
-      issuer: iss, client: _clientSnapshot(co), note: (b.note || null), createdBy: req.auth && req.auth.userId,
+      issuer: iss, client: _clientSnapshot(co), note: (b.note ? String(b.note).slice(0, 500) : null), createdBy: req.auth && req.auth.userId,
       fel: fel, luna: luna
     });
     let montajeFacturate = 0;

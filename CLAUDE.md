@@ -916,10 +916,11 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - „Plătită" = `db.payInvoiceAtomic` (plata + starea facturii, într-o tranzacție) + `_invalidateAccessCache`.
 - **Titlurile avertismentelor de neplată se socotesc din `ZI_SUSPENDARE`** (11, 6 și 3 zile, în zilele 5, 10,
   13). Erau scrise de mână („10 zile", „5 zile") și contraziceau textul de dedesubt. NU le scrie cu cifre.
-- **Firma nouă are factura automată OPRITĂ** (`auto_invoice` = false în bază, pe toate căile de creare), iar
-  ziua de facturare (1) și termenul (15 zile) nu au casetă pe ecran. Se pornește din Facturare → „Status
-  facturare companii" → „Auto". „Drumul clientului" nu o cere: „Prima factură" se bifează și cu factura
-  aparatelor. (Întrebare pusă lui Alin pe 29.09: s-o pornească singură „Client nou din ofertă"?)
+- **Factura automată pornește SINGURĂ la prima ofertă a firmei** (Alin, 29.09: „da"). În bază, orice firmă
+  nouă are `auto_invoice` = false; `_aplicaOfertaPeFirma` o pornește DOAR când scrie prețul (firma n-avea
+  unul), iar contractul răspunde cu `auto_factura: true`, ca ecranul „Client nou" s-o spună. Un client cu preț
+  deja (negociat separat) își păstrează „Auto" cum era. Ziua de facturare (1) și termenul (15 zile) n-au
+  casetă pe ecran. Păzit de `verify_contracte.js` (pe server pornit, ambele cazuri).
 - `POST /api/companies/:id/payment` = **încasare fără factură** (sumă obligatorie), fără luni și fără acces.
 
 ### Abonamentul pe zile (`abonament.js`, curat)
@@ -963,6 +964,13 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   (seria RAT, aceleași rânduri, `din_proforma`), o marchează plătită atomic, iar proforma primește
   `factura_id`. A doua apăsare nu face a doua factură; proforma încasată nu se anulează.
 - Hârtia proformei: „FACTURĂ PROFORMĂ" + „document fără valoare fiscală" (`_invFiscalHtml`, același șablon).
+- **Factura montajului e STRÂNSĂ** (Alin, 29.09: „da"): lucrările alese în „Generează factură" se adună pe
+  rânduri (aceeași denumire ȘI același preț — alt preț = rând separat), iar zilele lor intră în mențiuni:
+  „Montaj executat pe 15.01.2027 (10 mașini), … și 30.01.2027 (15 mașini)." O SINGURĂ regulă, în pagină:
+  `_giStrangeLucrarea` / `_giNotaMontaj` (între sentinele „factura montajului, strânsă"); câte mașini pe zi
+  vine de la server (`masini` în `_unicaDinContract`). Mențiunea pleacă în `note` și se poate corecta.
+- **Pe hârtie, factura unică și proforma NU scriu „Perioada"** (era ziua emiterii de două ori), ci „Mențiuni:";
+  abonamentul își păstrează perioada. Păzit de `verify_abonament.js` (codul paginii, decupat și rulat).
 - Ce fel de factură se emite la încasarea unui avans (de avans / finală) = întrebare pentru contabil, în
   „De amintit". Nu schimba forma fără răspunsul lui.
 

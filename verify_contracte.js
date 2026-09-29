@@ -646,6 +646,20 @@ function gata() {
   T('contractul din ofertă se face', c1.s === 200 && c1.j.annex && c1.j.annex.monthlyTotal === 271, c1.s + ' ' + JSON.stringify(c1.j && c1.j.annex && c1.j.annex.monthlyTotal));
   const ov = (await R('GET', '/api/companies/' + co.id + '/overview')).j;
   T('prețul de facturare e scris pe firmă', ov.offer && ov.offer.priceNoneRON === 29 && ov.offer.priceCanRON === 45, JSON.stringify(ov.offer));
+  // Hotărârea lui Alin (29.09, „da"): factura automată pornește singură, odată cu prețul din prima ofertă.
+  T('factura automată a pornit singură, odată cu prețul (și răspunsul o spune)',
+    c1.j.auto_factura === true && ov.company && ov.company.auto_invoice === true, JSON.stringify({ raspuns: c1.j.auto_factura, firma: ov.company && ov.company.auto_invoice }));
+  // Un client care avea deja un preț (negociat separat) și „Auto" oprit: nu-i schimbăm alegerea.
+  const coV = (await R('POST', '/api/companies', { name: 'CI Client Vechi SRL' })).j;
+  await R('PUT', '/api/companies/' + coV.id + '/oferta', { oferta: { name: 'Negociat', priceNoneRON: 25, priceCanRON: 40, priceFmsRON: 60 } });
+  const ofV = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă 2', client_name: 'CI Client Vechi SRL', monthly_total: 90, currency: 'RON',
+    config: { cfg: { contractMonths: 24, montaj: {}, devices: {} }, prices: {} } })).j;
+  const cV = await R('POST', '/api/companies/' + coV.id + '/contract', { offer_id: ofV.id, months: 24,
+    din_oferta: { unitati: { plain: 29, can: 45, fms: 65 }, vehicule: [], servicii: [] } });
+  const ovV = (await R('GET', '/api/companies/' + coV.id + '/overview')).j;
+  T('la un client care avea deja preț, „Auto" rămâne cum l-am lăsat (oprit), iar prețul lui nu se calcă',
+    cV.s === 200 && !cV.j.auto_factura && ovV.company && ovV.company.auto_invoice === false && ovV.offer && ovV.offer.priceNoneRON === 25,
+    JSON.stringify({ s: cV.s, auto: ovV.company && ovV.company.auto_invoice, pret: ovV.offer && ovV.offer.priceNoneRON }));
   const oferte = (await R('GET', '/api/admin/offers')).j;
   T('oferta e „acceptată"', (oferte.find(o => o.id === of.id) || {}).status === 'acceptata');
   T('al doilea contract e refuzat', (await R('POST', '/api/companies/' + co.id + '/contract', { status: 'ciorna' })).s === 409);
