@@ -76,7 +76,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-29
 
-### FONDATOR · Aplicația de telefon 1.0.4: ce a apărut pe web între 24 și 28.09 (lotul 3) — `HASH`
+### FONDATOR · Aplicația de telefon 1.0.4: ce a apărut pe web între 24 și 28.09 (lotul 3) — `b61925f`
 
 Pe telefon au ajuns ecranele și funcțiile de pe web din 24–28.09: stocul de echipamente, secțiunea Montaj,
 drumul clientului cu butonul fiecărei lipse, „Trimite la semnat", închirierea, păstrarea istoricului pe firmă,
