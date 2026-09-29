@@ -5,6 +5,8 @@ import { showToast } from '../app/store';
 import { raCauta } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { AntetFondator, Banda, GrupFirma, adresaFirmei } from '../components/FondatorUi';
+import { Confirma } from '../components/FlotaUi';
+import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './admin.css';
 import './detail.css'; // .sheet*
 import './fondator.css';
@@ -50,6 +52,13 @@ export function AdminArchived() {
   // pe telefon ar fi șters tot istoricul unui client, fără cale de întoarcere.
   const [del, setDel] = useState<any | null>(null);
   const [scris, setScris] = useState('');
+  // Restaurarea se întreabă în foaia de confirmare a aplicației (ca pe web, raConfirm), nu în fereastra gri a sistemului.
+  const [restaur, setRestaur] = useState<any | null>(null);
+
+  // Butonul „înapoi" de pe Android închide foaia deschisă, nu ecranul arhivei de sub ea. Cât se lucrează, rămâne.
+  // (Cele două foi nu se deschid niciodată deodată.)
+  useInapoiInchide(!!restaur, () => { if (busy) return false; setRestaur(null); return true; });
+  useInapoiInchide(!!del, () => { if (busy) return false; setDel(null); return true; });
 
   function reload() {
     setErr('');
@@ -59,10 +68,9 @@ export function AdminArchived() {
 
   async function restore(imei: string) {
     // Restaurarea repornește aparatul: reintră în lista celor acceptate și începe iar să stocheze date.
-    if (!confirm('Restaurezi dispozitivul?\nVa reîncepe să primească și să stocheze date GPS.')) return;
     setBusy(imei);
-    try { await Api.restoreDevice(imei); showToast('Dispozitiv restaurat'); reload(); }
-    catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setBusy(''); }
+    try { await Api.restoreDevice(imei); showToast('Dispozitiv restaurat'); setRestaur(null); reload(); }
+    catch (e: any) { showToast(e?.message || 'Eroare la restaurare.', true); } finally { setBusy(''); }
   }
 
   // „Istoric": Traseul aparatului, pe o perioadă care se TERMINĂ la ultima lui poziție — altfel „Azi" ar fi gol.
@@ -105,7 +113,7 @@ export function AdminArchived() {
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" class="fd-btn" onClick={() => istoric(d)}><Icon name="route" size={14} /> Istoric</button>
           {/* „Restaurează" plin, ca pe web (btn-primary): scris verde pe fundalul deschis ieșea invizibil. */}
-          <button type="button" class="fd-btn primary" disabled={busy === d.imei} onClick={() => restore(d.imei)}><Icon name="refresh" size={14} /> Restaurează</button>
+          <button type="button" class="fd-btn primary" disabled={busy === d.imei} onClick={() => setRestaur(d)}><Icon name="refresh" size={14} /> Restaurează</button>
           <button type="button" class="fd-btn danger" disabled={busy === d.imei} onClick={() => { setDel(d); setScris(''); }}><Icon name="trash" size={14} /> Șterge</button>
         </div>
       </div>
@@ -122,7 +130,7 @@ export function AdminArchived() {
           <div class="adm-empty">
             <Icon name="archive" size={40} class="ic" />
             <div style="font-weight:700">Niciun aparat arhivat</div>
-            <div style="font-size:12.5px;margin-top:6px;line-height:1.6">Arhivezi un aparat când se încheie un contract: nu mai primește date, iar istoricul lui se mai păstrează cât scrie în contract (cât clientul poate cere datele înapoi), apoi se șterge definitiv.</div>
+            <div style="font-size:12.5px;margin-top:6px;line-height:1.6">Arhivezi un aparat când se încheie un contract: nu mai primește date, iar istoricul lui se mai păstrează cât scrie în contract — cât clientul poate cere datele înapoi — apoi se șterge.</div>
             <button type="button" class="fd-btn" style="margin-top:14px" onClick={() => loc.route('/admin/devices')}><Icon name="cpu" size={14} /> Deschide Dispozitive</button>
           </div>
         )}
@@ -133,7 +141,7 @@ export function AdminArchived() {
             </div>
             {peDuca > 0 && (
               <Banda ton="warn" icon="clock">
-                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric", sau dintr-un raport.
+                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.
               </Banda>
             )}
             <input class="fd-search" value={q} onInput={(e: any) => setQ(e.target.value)} placeholder="Caută nume / număr / IMEI / firmă…" />
@@ -155,10 +163,15 @@ export function AdminArchived() {
         )}
       </div>
 
+      {restaur && (
+        <Confirma title="Restaurezi dispozitivul?" okLabel="Restaurează" busy={busy === restaur.imei}
+          text={(restaur.name || restaur.plate || restaur.imei) + (restaur.name && restaur.plate ? ' · ' + restaur.plate : '') + '\nVa reîncepe să primească și să stocheze date GPS.'}
+          onOk={() => restore(restaur.imei)} onCancel={() => { if (!busy) setRestaur(null); }} />
+      )}
       {del && (
         <div class="sheet-ov" onClick={(e: any) => { if (e.target === e.currentTarget && !busy) setDel(null); }}>
           <div class="sheet">
-            <div class="sheet-h"><b><Icon name="trash" size={18} color="var(--red)" /> Ștergere definitivă</b><button class="h-btn" onClick={() => setDel(null)} aria-label="Închide"><Icon name="x" /></button></div>
+            <div class="sheet-h"><b><Icon name="trash" size={18} color="var(--red)" /> Ștergere definitivă</b><button class="h-btn" onClick={() => { if (!busy) setDel(null); }} aria-label="Închide"><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
                 <div style="font-size:13.5px;line-height:1.55">

@@ -76,6 +76,62 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-29
 
+### FONDATOR · Aplicația de telefon 1.0.4: ce a apărut pe web între 24 și 28.09 (lotul 3) — `HASH`
+
+Pe telefon au ajuns ecranele și funcțiile de pe web din 24–28.09: stocul de echipamente, secțiunea Montaj,
+drumul clientului cu butonul fiecărei lipse, „Trimite la semnat", închirierea, păstrarea istoricului pe firmă,
+sugestiile și „Mașinile clientului" din Ofertare. Aproape tot e al nostru (fondatori); clientul nu vede nimic nou.
+
+**Peste lucrul lui Alin, fără să-l atingem.** Pe 29.09 Alin a publicat 6 schimbări (facturare pe zile, proformă,
+„Plătită" fără ceasul de acces, contractul cu avans, „Client nou"). Lotul 3 s-a pus PESTE ele. Unde ne-am
+întâlnit (Facturare și „Abonament & plăți" pe telefon), a rămas tot ce a făcut Alin; peste, au rămas doar culorile
+lizibile pe tema deschisă, „înapoi" care întreabă înainte să piardă ce ai scris și cota de TVA luată din ciorna
+facturii. Ce am găsit în zonele lui NU am reparat: e mai jos, la „De verificat", ca listă pentru el.
+
+Verificat: tipurile, probele (contractele pe telefon 225, calculatorul de ofertă 135, arhiva 13, „Mașinile
+clientului" 128 — proba lui Alin, neschimbată), o revizie adversă pe fiecare zonă și una de integrare pe tot lotul.
+
+**Gestiune**
+- **Stoc echipamente** (rând nou, între „Inventar dispozitive" și „Dispozitive arhivate"): câte bucăți avem pe
+  fiecare model, banda „De făcut" (sub minim, uitate la instalator, de recuperat), fiecare bucată cu seria, locul și
+  proprietarul. Se fac de pe telefon: intrarea în stoc, stocul minim, mutarea (una sau mai multe bucăți) și
+  ștergerea unei bucăți trecute din greșeală. Regulile (unde poate ajunge o bucată) le spune serverul.
+
+**Business**
+- **Montaj** (rând nou, sub Companii), cu cele trei file de pe web: Parteneri (fișa completă, cu ANAF și „inactiv"),
+  Contracte cu partenerii (tot drumul, până la semnat, cu „Trimite la semnat" pe email și butonul fiecărei lipse,
+  inclusiv „Reia tarifele") și Lucrări (toate montajele, cu ce rămâne la noi). Partenerii au ieșit din Contracte.
+- **Contracte:** „Drumul clientului" (Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima
+  factură) sus în dosar și în fișa firmei, cu butonul pasului; pe fiecare rând pasul următor și butonul fiecărei
+  lipse (Completează cu ANAF, Pune data, Încarcă semnat, Încarcă acordul); „Trimite la semnat" pe email, cu „Am
+  trimis-o" când serverul n-are email. Dosarul salvează întâi ce ai scris înainte de trimitere sau semnare.
+  La încheiere, amintirea: arhivează aparatele — istoricul se mai ține 30 de zile. La închiriere, sub durată scrie
+  minimul de 24 de luni.
+- **„Abonament & plăți":** păstrarea istoricului pe firmă (12 incluse, 24/36/alt număr plătite; scăderea întreabă
+  pe față „Se șterg date"), aparatele închiriate (doar de citit) și totalul lunar care cuprinde păstrarea și chiria.
+- **Ofertare Live:** „Mașinile clientului" (marca, modelul, anul → ce aparat merge, „Trece în ofertă", șablonul de
+  descărcat și de încărcat, listele Teltonika), sugestiile de la pașii 2 și 4 (cu alegerea FMC130 + LV-CAN200 /
+  FMC150 și „Aplică recomandarea"), pastila „închiriere" în lista de oferte. Toate le socotește serverul, cu pagina web.
+- **Arhiva:** „se șterge pe … (în N zile)", ca pe web; „Restaurează" întreabă în fereastra aplicației.
+
+**Prinse la revizii (pe telefon)**
+- Un Excel mic, făcut anume, se putea „umfla" la încărcarea șablonului de pe telefon până oprea serverul. Pe calea
+  telefonului se numără acum octeții dezarhivați înainte de citire (un șablon adevărat are câțiva MB).
+- Fila deschisă în fișa firmei se ține minte: după „Aparatele la firmă" sau „Deschide Stoc echipamente", „înapoi"
+  te aduce pe fila de pe care ai plecat. Săgeata din antet la Facturare, Dispozitive, Stoc și Montaj te duce de unde
+  ai venit, ca „înapoi" de pe telefon.
+- La „Trimite la semnat" refuzat pentru goluri, fișa partenerului de montaj se deschide singură, ca pe web.
+- Scris lizibil pe ambele teme: „Rămâne" (Montaj), istoricul unei bucăți (Stoc), pastilele roșii pe tema închisă.
+
+**Pentru client (CLIENT)** — un singur lucru: pe o factură emisă de pe telefon, cota de TVA e cea din „Date emitent".
+La prima calculare, telefonul refăcea liniile cu 19% oricare ar fi fost cota (la 21%, factura ar fi plecat cu 19%).
+
+- **Ce am schimbat:** aplicația de telefon 1.0.4 (lotul 3 de paritate); pe server doar calculatorul de ofertă pentru
+  telefon și calea telefonului la șablonul mașinilor. Nimic din ce a făcut Alin.
+- **Ce vede fondatorul:** pe telefon, stocul, montajul, drumul clientului, închirierea, păstrarea și „Mașinile
+  clientului", ca pe web.
+- **Ce vede clientul:** nimic nou; o factură făcută de pe telefon are TVA-ul corect.
+
 ### AMÂNDOI · Hotărârile din 29.09: factura automată pornește singură; factura montajului, strânsă
 
 Alin, la întrebările de ieri: *„1: da"*, *„3: da"*. (Întrebarea 2 — facturile făcute de mână să plece singure
@@ -9452,12 +9508,44 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### C. De reparat înainte de clienți reali
 
-- [ ] **(eu) Lotul 3 de paritate pe telefon: ce a apărut pe web între 24 și 28.09.** A venit odată cu aducerea la zi
-  din 29.09 și n-are încă ecran pe telefon: **Stoc echipamente**; **Montaj** ca secțiune separată (parteneri,
-  contracte de colaborare, lucrări); **drumul clientului** (linia de pași din fișa firmei) și butoanele fiecărei
-  lipse din Contracte, cu „Trimite la semnat"; **păstrarea istoricului pe firmă**, în „Abonament & plăți" (24/36 de
-  luni); la Ofertare, **„Mașinile clientului"**, sugestiile și șablonul mașinilor. Oferta cu închiriere se face
-  deja și de pe telefon.
+- [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
+  lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
+
+- [ ] **(voi) Instalați aplicația de telefon 1.0.4.** Ecranele lotului 3 apar doar în ea. Încărcarea unei liste
+  Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
+
+- [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
+  fiecare e scrisă și reparația propusă; le face sesiunea lui sau le facem noi, cum hotărâți.
+  1. **Securitate, urgent:** un Excel mic, făcut anume, se „umflă" la citire la sute de MB și poate opri serverul
+     întreg (toate firmele, până repornește Railway). Pe web: „Încarcă șablonul" (fișierul vine de la client) și
+     încărcarea listelor Teltonika. Reparația: la citire, înainte de ExcelJS, se numără octeții dezarhivați, cu un
+     plafon (50 MB șablonul, 120 MB lista — măsurat: listele reale ajung la 10 MB). Pe calea telefonului am pus-o.
+  2. **Reprezentantul legal nu ajunge pe contract:** „Client nou" lăsat fără nume salvează doar funcția;
+     „Completează" pune numele pe firmă, dar hârtia îl ia de pe contract (gol), iar următorul „Aprobă" copiază
+     înapoi reprezentantul gol peste firmă. Contractul pleacă la semnat fără nume (web și telefon).
+  3. **Închirierea:** minimul de 24 de luni e păzit doar la crearea contractului; din formularul dosarului se poate
+     salva pe 12 luni, iar hârtia spune și „12 luni", și „durata minimă e de 24 de luni".
+  4. **Chiria apare fals ca „nu ajunge pe factură"** în cutia „Contractul și factura", la fiecare client care
+     închiriază (factura chiar o pune). Pe web și pe telefon, fiindcă lista vine de la server.
+  5. **Scăderea păstrării istoricului** („se șterg date") e întrebată doar pe ecran; serverul acceptă orice scădere.
+  6. **Mutarea mai multor aparate deodată** (și „Trece pe firmă" în bloc, dacă folosește aceeași cale) nu leagă
+     stocul: aparatul rămâne „la instalator" în Stoc echipamente.
+  7. **Web, „Completează" deschis din fișa firmei** (după „Trimite la semnat" refuzat), cu lista Contracte
+     neîncărcată: pornește GOL și, la salvare, poate șterge sediul, emailul, Reg. Com. și reprezentantul firmei.
+  8. **Web, fila Contract din fișa firmei:** „Trimite la semnat", „Am trimis-o" și „E semnat" nu salvează întâi
+     ce ai scris (pe telefon, da); „E semnat" propune ziua de azi peste data deja scrisă.
+  9. **Web, contractele cu partenerii:** lipsa „tarifele" trimite la „Completează", care n-o poate închide (pe
+     telefon e butonul „Reia tarifele").
+  10. **Facturi:** serverul ia cota de TVA de pe fiecare rând trimis de ecran; mai sigur, din „Date emitent".
+  11. **Web, „Stare producție":** „1 lucruri de verificat".
+  12. **Paritatea pe telefon a lucrului lui Alin din 29.09 — încă nefăcută:** factura unică / proforma completată
+      din contract și din lucrări (cu „Mențiuni pe factură"); fila Facturi din fișa firmei (documentele, cu ✓);
+      „Trece pe firmă" în bloc în Dispozitive → Neasignate; ziua de pornire a abonamentului pe fiecare aparat (✎).
+      Până atunci, „Emite prima factură" de pe telefon deschide „Generează factură" obișnuit, nu factura unică.
+
+- [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
+  telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon
+  cu o cotă diferită, se verifică și, la nevoie, se face storno.
 
 - [ ] **(voi) Instalați aplicația de telefon 1.0.3.** Ofertele se salvează de pe telefon doar din ea; 1.0.1 și 1.0.2
   primesc în continuare „ofertele se fac din web". Restul ecranelor noi apar tot doar după instalare.

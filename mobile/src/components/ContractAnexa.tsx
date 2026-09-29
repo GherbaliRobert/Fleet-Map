@@ -13,7 +13,7 @@ import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
-import { lei, nrAparate, nrMasini, verdictComparatie } from '../lib/contracte';
+import { RUTA_NEASIGNATE, lei, nrAparate, nrMasini, verdictComparatie } from '../lib/contracte';
 import { Icon } from './Icon';
 import '../screens/contracte.css';
 
@@ -31,11 +31,17 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
     );
   }
   // Imediat după „Client nou din ofertă" firma n-are încă aparate: drumul firesc, nu o nepotrivire.
+  // Păstrarea istoricului se spune și aici: istoricul curge de la primul aparat, deci regula trebuie să fie
+  // bună din prima zi — cu o nepotrivire acolo, cutia se face portocalie (ca pe web).
   if (v.fel === 'dupaMontaj') {
     return (
-      <div class="ctr-band">
+      <div class={'ctr-band' + (v.probleme.length ? ' warn' : '')}>
         <div class="ctr-band-t">Factura pornește după montaj</div>
         <div>Contractul spune {nrMasini(m.contract.nr)}, {lei(m.contract.lei)} pe lună (din ofertă). Firma n-are încă aparate adoptate, deci luna asta n-ar avea ce factura pentru mașini. Când le treci în anexă, cele două se pun una lângă alta aici.</div>
+        <RandPastrare t={v.pastrare} />
+        {v.probleme.length > 0 && (
+          <div style="margin-top:6px">{v.probleme.map((p) => <div>• {p}</div>)}</div>
+        )}
       </div>
     );
   }
@@ -47,11 +53,19 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
       {ai && (
         <div style="margin-top:4px">RA Insight: {ai.contractPretCont ? lei(ai.contractPretCont) + ' pe cont în contract' : 'nu e în contract'} · acum {ai.facturaConturi === 1 ? '1 cont activ' : (ai.facturaConturi || 0) + ' conturi active'} — se facturează după câte conturi folosește clientul în lună.</div>
       )}
+      <RandPastrare t={v.pastrare} />
       {v.probleme.length > 0 && (
         <div style="margin-top:6px">{v.probleme.map((p) => <div>• {p}</div>)}</div>
       )}
     </div>
   );
+}
+
+// „Păstrarea istoricului: contractul **24 de luni** · aplicația ține **12 luni**": bucățile dintre ** se
+// îngroașă, ca pe web. Rândul îl scrie verdictComparatie (lib/contracte.ts), din cifrele serverului.
+function RandPastrare({ t }: { t: string }) {
+  if (!t) return null;
+  return <div style="margin-top:4px">{t.split('**').map((x, i) => (i % 2 ? <b>{x}</b> : x))}</div>;
 }
 
 // Un rând de citit: titlu, dedesubt detaliul, în dreapta suma.
@@ -129,7 +143,8 @@ export function AnexaEditor({ contract, vehicles, onSalvat }: { contract: any; v
         {dinOferta}
         <div class="ctr-empty">
           Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din{' '}
-          <button class="ctr-name" style="min-height:30px;display:inline-flex" onClick={() => loc.route('/admin/devices')}>Dispozitive → Neasignate</button>
+          {/* Cu filtrul „Neasignate" pus ÎNAINTE de deschidere, ca raxDevDeschideNeasignate pe web. Adopția rămâne acolo. */}
+          <button class="ctr-name" style="min-height:30px;display:inline-flex" onClick={() => loc.route(RUTA_NEASIGNATE)}>Dispozitive → Neasignate</button>
           , apoi treci-le aici.
         </div>
         {servicii}

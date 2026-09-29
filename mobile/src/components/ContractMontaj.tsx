@@ -50,11 +50,16 @@ export function Anexa2({ m }: { m: any }) {
 }
 
 type Linie = { buc: string; pc: string; cp: string };
-type Edit = { id: number; partener: string; data: string; stare: string; factura: string; linii: Record<string, Linie> };
+// `p0` = partenerul salvat pe lucrare când s-a deschis foaia: un partener „inactiv" rămâne în listă DOAR pe ea.
+type Edit = { id: number; partener: string; p0: string; data: string; stare: string; factura: string; linii: Record<string, Linie> };
 const s = (v: any) => (v == null || v === '' ? '' : String(v));
+// „Programează montajul" din Drumul clientului cere formularul unei lucrări NOI, deschis (web: raxDrumMontaj →
+// raxMontajEdit(0)). `deschideNoua` e un bilet: un număr nou = o deschidere. Biletul folosit se ține minte AICI,
+// în afara bucății, ca fișa reîncărcată (care o face din nou) să nu redeschidă formularul.
+let biletFolosit = 0;
 
-export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
-  companyId: number; contract: any; tarifeCasa: Record<string, any> | null | undefined; onSalvat: () => void;
+export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat, deschideNoua }: {
+  companyId: number; contract: any; tarifeCasa: Record<string, any> | null | undefined; onSalvat: () => void; deschideNoua?: number;
 }) {
   const [lucrari, setLucrari] = useState<any[] | null>(null);
   const [parteneri, setParteneri] = useState<any[]>([]);
@@ -114,7 +119,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
       const r = puse[k] || {};
       linii[k] = { buc: s(r.buc), pc: r.pretClient != null ? s(r.pretClient) : s(tc[k]), cp: r.costPartener != null ? s(r.costPartener) : s(tp[k]) };
     });
-    const e: Edit = { id: m ? Number(m.id) : 0, partener: pid, data: m && m.data_lucrare ? inputZi(m.data_lucrare) : '',
+    const e: Edit = { id: m ? Number(m.id) : 0, partener: pid, p0: pid, data: m && m.data_lucrare ? inputZi(m.data_lucrare) : '',
       stare: (m && m.status) || 'de_programat', factura: (m && m.factura_partener) || '', linii };
     start.current = JSON.stringify(e);
     setMsg('');
@@ -129,6 +134,12 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
     return true;
   }
   useInapoiInchide(!!edit, inchide);
+  // Biletul drumului: după ce lucrările și partenerii au sosit (lista „Cine execută" e plină), o singură dată.
+  useEffect(() => {
+    if (!deschideNoua || deschideNoua === biletFolosit || lucrari == null) return;
+    biletFolosit = deschideNoua;
+    if (!edit) deschide(null);
+  }, [deschideNoua, lucrari]);
   // Alt partener: ce s-a scris pe rândurile cu bucăți rămâne; restul se propune din nou (ca pe web).
   function schimbaPartener(pid: string) {
     setEdit((e) => {
@@ -243,7 +254,11 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
                 <div class="fld"><label>Cine execută</label>
                   <select value={edit.partener} onChange={(e: any) => schimbaPartener(e.target.value)}>
                     <option value="">— fără partener ales —</option>
-                    {parteneri.map((p) => <option value={String(p.id)}>{p.name}</option>)}
+                    {/* Un partener „inactiv" (nu mai lucrăm cu el) nu se mai propune; rămâne doar pe lucrările lui (ca pe
+                        web). Filtrul stă aici, nu în listă: tarifeLui() citește tarifele și pe o lucrare veche. */}
+                    {parteneri.filter((p) => p.active !== false || String(p.id) === edit.p0).map((p) => (
+                      <option value={String(p.id)}>{p.name + (p.active === false ? ' — inactiv' : '')}</option>
+                    ))}
                   </select>
                 </div>
                 <div class="fld"><label>Data lucrării</label><input type="date" value={edit.data} onInput={(e: any) => sf('data', e.target.value)} /></div>

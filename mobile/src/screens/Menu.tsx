@@ -128,6 +128,8 @@ export function Menu() {
             {item('cpu', 'Dispozitive', () => loc.route('/admin/devices'))}
             {item('user', 'Utilizatori', () => loc.route('/admin/users'))}
             {item('clipboard', 'Inventar dispozitive', () => loc.route('/admin/inventory'))}
+            {/* Stocul NOSTRU de echipamente (depozit → instalator → client), ca pe web, între Inventar și Arhivate. */}
+            {item('boxes', 'Stoc echipamente', () => loc.route('/admin/stoc'))}
             {/* Cutie, nu coș de gunoi: arhivarea nu șterge nimic. */}
             {item('archive', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
 
@@ -142,6 +144,8 @@ export function Menu() {
             {/* Ca pe web (Business: Ofertare Live → Contracte → Companii): pasul dintre ofertă și client. */}
             {item('fileSignature', 'Contracte', () => loc.route('/admin/contracts'))}
             {item('building', 'Companii', () => loc.route('/admin/companies'))}
+            {/* Ca pe web: „Montaj" imediat sub Companii — partenerii, contractele cu ei, toate lucrările. */}
+            {item('wrench', 'Montaj', () => loc.route('/admin/montaj'))}
             {item('report', 'Facturare', () => loc.route('/billing'))}
             {item('chart', 'Dashboard platformă', () => loc.route('/admin/platform'))}
             {item('coins', 'Control costuri', () => loc.route('/admin/costs'))}

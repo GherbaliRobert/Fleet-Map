@@ -1,3 +1,9 @@
+/* „Trimisă" și „e-Factura: trimisă" (starea oricărei facturi urcate la ANAF) sunt scris albastru. Pe tema închisă
+   rămâne albastrul de pe web (#38BDF8); pe cea luminoasă, el iese pe alb la contrast 2,1 și nu se citește — acolo
+   se ia albastrul închis pe care flota.css îl folosește deja pe luminos (#0369A1: 5,9 pe alb, 5,4 pe #f1f5f9). */
+:root { --bill-trimisa: #38BDF8; }
+:root[data-theme="light"] { --bill-trimisa: #0369A1; }
+
 .bill-banner { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 6px; }
 .bill-banner .st { font-weight: 800; font-size: 16px; line-height: 1.2; }
 .bill-banner .sub { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
@@ -11,4 +17,6 @@
 .bill-kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .bill-kv span { color: var(--text-muted); }
 .bill-kv b { text-align: right; }
-.bill-total { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--green); border-radius: 9px; padding: 10px 14px; margin-top: 14px; font-size: 16px; font-weight: 800; color: var(--green); }
+/* Totalul e scris verde: --fl-ok (flota.css) e verdele aplicației pe tema închisă și unul închis pe cea
+   luminoasă — pe alb, #3FE07D ieșea la contrast 1,6 și totalul facturii nu se citea. */
+.bill-total { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--fl-ok, var(--green)); border-radius: 9px; padding: 10px 14px; margin-top: 14px; font-size: 16px; font-weight: 800; color: var(--fl-ok, var(--green)); }

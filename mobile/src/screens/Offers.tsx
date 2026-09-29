@@ -204,6 +204,8 @@ export function Offers() {
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <b style="font-size:14px">{o.name || '—'}</b>
                   {cfg.aiA ? <span class="of-ai">AI</span> : null}
+                  {/* Aparate închiriate: alt fel de bani (lunar, nu la semnare) — se vede din listă, fără s-o deschizi. */}
+                  {cfg.echipMod === 'inchiriaza' ? <span class="of-chirie" title="Aparatele sunt închiriate: rămân ale noastre, chiria se plătește lunar">închiriere</span> : null}
                 </div>
                 <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">{(o.client_name || '—') + ' · ' + fmtD(o.created_at)}</div>
                 {devenit ? <div style="font-size:11.5px;color:var(--of-ok);font-weight:700;margin-top:3px"><Icon name="check" size={11} color="var(--of-ok)" /> a devenit client</div> : null}

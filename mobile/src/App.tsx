@@ -49,6 +49,7 @@ import { DemoRequests } from './screens/DemoRequests';
 // Operațiunile fondatorului (lotul 2b, F4): Acasă, Inventar, Tahograf și e-Transport pe firme, RA Insight, Chei API, Jurnal audit.
 import { FounderHome } from './screens/FounderHome';
 import { DeviceInventory } from './screens/DeviceInventory';
+import { StocEchipamente } from './screens/StocEchipamente';
 import { TachoOverview } from './screens/TachoOverview';
 import { EtransportOverview } from './screens/EtransportOverview';
 import { AiUsage } from './screens/AiUsage';
@@ -56,6 +57,7 @@ import { ApiKeys } from './screens/ApiKeys';
 import { AuditLog } from './screens/AuditLog';
 import { Contracts } from './screens/Contracts';
 import { ContractDetail } from './screens/ContractDetail';
+import { Montaj } from './screens/Montaj';   // Business → Montaj: parteneri, contractele cu ei, toate lucrările
 import { Dispatch } from './screens/Dispatch';
 import { AdminGeofences } from './screens/AdminGeofences';
 import { Hotspot } from './screens/Hotspot';
@@ -121,6 +123,7 @@ const P = {
   demoRequests: doarSuper(DemoRequests, 'Cereri demo'),
   founderHome: doarSuper(FounderHome, 'Acasă'),
   inventory: doarSuper(DeviceInventory, 'Inventar dispozitive'),
+  stoc: doarSuper(StocEchipamente, 'Stoc echipamente'),   // stocul nostru: ce avem, unde e, al cui e
   tachoFirme: doarSuper(TachoOverview, 'Tahograf'),
   etransportFirme: doarSuper(EtransportOverview, 'e-Transport'),
   aiUsage: doarSuper(AiUsage, 'Utilizare RA Insight'),
@@ -129,6 +132,8 @@ const P = {
   audit: doarSuper(AuditLog, 'Jurnal audit'),
   contracts: doarSuper(Contracts, 'Contracte'),
   contractDetail: doarSuper(ContractDetail, 'Contracte'),
+  // Partenerii de montaj și cât ne cer: exact diferența din care trăim. Clientul nu vede nimic de aici.
+  montaj: doarSuper(Montaj, 'Montaj'),
 };
 
 export function App() {
@@ -233,6 +238,7 @@ function Shell() {
         <Route path="/admin/demo-requests" component={P.demoRequests} />
         <Route path="/admin/home" component={P.founderHome} />
         <Route path="/admin/inventory" component={P.inventory} />
+        <Route path="/admin/stoc" component={P.stoc} />
         <Route path="/admin/tahograf-firme" component={P.tachoFirme} />
         <Route path="/admin/etransport-firme" component={P.etransportFirme} />
         <Route path="/admin/ai-usage" component={P.aiUsage} />
@@ -240,6 +246,7 @@ function Shell() {
         <Route path="/admin/audit" component={P.audit} />
         <Route path="/admin/contracts" component={P.contracts} />
         <Route path="/admin/contracts/:companyId" component={P.contractDetail} />
+        <Route path="/admin/montaj" component={P.montaj} />
         <Route path="/dispatch" component={Dispatch} />
         <Route path="/admin/geofences" component={P.geofences} />
         <Route path="/hotspot" component={P.hotspot} />

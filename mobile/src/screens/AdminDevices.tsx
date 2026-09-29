@@ -240,7 +240,7 @@ export function AdminDevices() {
 
   return (
     <div class="screen">
-      <AntetFondator titlu="Dispozitive" onBack={() => loc.route('/meniu')}
+      <AntetFondator titlu="Dispozitive" onBack={() => (history.length > 1 ? history.back() : loc.route('/meniu'))}
         dreapta={<button class="h-btn" onClick={openAdd} aria-label="Adaugă dispozitiv"><Icon name="plus" /></button>} />
       <div class="content has-tabbar" style="padding-bottom:24px">
         {/* Modul strict: starea recepției, spusă o dată, sus. */}
@@ -358,7 +358,7 @@ export function AdminDevices() {
                     <span style="font-size:11.5px;color:var(--text-muted);line-height:1.45">
                       {sel.company_id == null
                         ? 'Un aparat străin sau greșit: nu mai primește date. Se poate restaura din Dispozitive arhivate.'
-                        : 'La încheierea contractului: nu mai primește date, dar istoricul de până acum se păstrează. Reversibil din Dispozitive arhivate.'}
+                        : 'La încheierea contractului: nu mai primește date, iar istoricul lui se mai păstrează cât scrie în contract — cât clientul poate cere datele înapoi — apoi se șterge definitiv. Aparatul se poate restaura din Dispozitive arhivate.'}
                     </span>
                   </div>
                 )}

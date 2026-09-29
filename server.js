@@ -14612,8 +14612,11 @@ function _ofHandler(ctx, cod) {
   return fn;
 }
 // HTML-ul paginii, fără ce nu merge pe telefon: iconițele Font Awesome (goale acolo) și `onclick`-urile.
-// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre" și
-// „pune prețul propus" (cu valoarea lui și cu dacă se socotește scris de mână).
+// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre",
+// „pune prețul propus" (cu valoarea lui și cu dacă se socotește scris de mână) și „Poate e: …" (modelul
+// propus pentru o mașină din „Mașinile clientului"). La fel butoanele sfaturilor (29.09): comutatorul CAN
+// și „Aplică recomandarea" / „Trece în ofertă" — telefonul le trimite înapoi, serverul le apasă în pagină.
+function _ofAtrScris(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function _ofCurat(h) {
   return String(h || '')
     .replace(/<i class="fas [^"]*"[^>]*><\/i>\s?/g, '')
@@ -14622,10 +14625,22 @@ function _ofCurat(h) {
       let act = '';
       if (/raxOfPreturi\(/.test(la)) act = ' data-act="preturi"';
       else {
+        const md = la.match(/raxOfMsModelAles\(\s*\d+\s*,\s*'([\s\S]*)'\s*\)\s*;?\s*$/);
         const v = la.match(/getElementById\('of-pAiA'\)[\s\S]*?\.value=\s*([\d.]+)/);
-        if (v) act = ' data-act="pret" data-val="' + v[1] + '"' + (/raxOfAtins/.test(la) ? ' data-atins="1"' : '');
+        if (md) act = ' data-act="model" data-val="' + _ofAtrScris(md[1]) + '"';
+        else if (v) act = ' data-act="pret" data-val="' + v[1] + '"' + (/raxOfAtins/.test(la) ? ' data-atins="1"' : '');
       }
       return '<a' + act + (stil ? ' style="' + stil.replace(/"/g, '&quot;') + '"' : '') + '>';
+    })
+    .replace(/<button\b([^>]*)>/g, (m, atr) => {
+      const la = _ofAtr(atr, 'onclick') || '';
+      const cm = la.match(/raxOfCanMod\('(lvcan|fmc150)'\)/);
+      const act = cm ? ' data-act="canMod" data-val="' + cm[1] + '"' : (/raxOfAplicaRecomandarea\(\)/.test(la) ? ' data-act="aplicaRec"' : '');
+      if (!act) return m;   // alt buton: ca până acum (i se scot doar comenzile, mai jos)
+      // Fără stilul din pagină (butoane mici, de birou): telefonul le dă mărimea lui. Rămâne clasa — „primary"
+      // e alegerea de acum a comutatorului — și `disabled` („Trece în ofertă" cât se mai caută).
+      const cls = _ofAtr(atr, 'class');
+      return '<button type="button"' + act + (cls ? ' class="' + _ofAtrScris(cls) + '"' : '') + (_ofAreAtr(atr, 'disabled') ? ' disabled' : '') + '>';
     })
     .replace(/\son[a-z]+="[^"]*"/gi, '')
     .replace(/\shref="[^"]*"/gi, '')
@@ -14647,12 +14662,32 @@ function _ofPreturiCurate(pr) {
   });
   return o;
 }
+// „Mașinile clientului", cum le trimite telefonul (sau cum stau în oferta din bază): doar câmpurile unui rând
+// al paginii (`_ofMsDinCfg`), cu lungimi de om, un combustibil și un aparat din listele serverului — nimic
+// altceva nu intră în pagină. Rândurile pe jumătate scrise rămân (omul abia le scrie); se numără doar cele cu
+// marcă și model, ca pe web.
+function _ofMasiniCurate(lista) {
+  const are = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+  return (Array.isArray(lista) ? lista : []).slice(0, 500).map((m) => {
+    m = (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+    const an = Math.round(Number(m.an)), buc = Math.round(Number(m.buc));
+    return {
+      marca: String(m.marca == null ? '' : m.marca).slice(0, 60),
+      model: String(m.model == null ? '' : m.model).slice(0, 80),
+      an: Number.isFinite(an) && an > 0 && an < 10000 ? an : '',
+      combustibil: are(compat.COMBUSTIBILI, m.combustibil) ? m.combustibil : '',
+      buc: Number.isFinite(buc) && buc >= 1 ? Math.min(buc, 100000) : 1,
+      aparat: are(compat.APARATE, m.aparat) ? m.aparat : '',
+    };
+  });
+}
 // Oferta din bază, cum o vede pagina (ca din `/api/admin/offers`) — cu prețurile curățate.
 function _ofPentruPagina(o) {
   const x = JSON.parse(JSON.stringify(o));
   if (typeof x.config === 'string') { try { x.config = JSON.parse(x.config); } catch (e) { x.config = {}; } }
   if (!x.config || typeof x.config !== 'object' || Array.isArray(x.config)) x.config = {};
   if (x.config.prices != null) x.config.prices = _ofPreturiCurate(x.config.prices);
+  if (x.config.cfg && typeof x.config.cfg === 'object' && Array.isArray(x.config.cfg.masini)) x.config.cfg.masini = _ofMasiniCurate(x.config.cfg.masini);
   return x;
 }
 // cerere = { nou | incarca | campuri, atinse, schimbate | hartie | contract | preturi }; oferta = rândul din bază sau null.
@@ -14684,17 +14719,43 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
       P._raxOf = { editingId: null, offers: pag ? [pag] : [], prices: P._ofTarifeDeBaza() };
       const el = (id) => _ofDom.get(id) || null;
       const out = { calcVer: ver, fx: { eur: P._fxRate, date: P._fxDate || null, sursa: P._fxSursa || null } };
+      // „Mașinile clientului" și comutatorul CAN (28.09) sunt stare a PAGINII (`_ofMasini`, `_ofMsMotor`,
+      // `_ofCanMod` — variabile globale ale ei), iar pagina de aici e UNA, a tuturor cererilor. Deci se pun la
+      // FIECARE cerere: altfel o salvare ar fi dus lista rămasă de la cererea dinainte — a altei oferte, sau
+      // nimic, dacă între timp cineva a apăsat „Ofertă nouă" (găsit la lotul 3, 29.09).
+      //   • lista: cea trimisă de telefon; dacă nu trimite (aplicația 1.0.3), cea salvată în ofertă; altfel goală.
+      //   • comutatorul CAN: al telefonului, „FMC130 + LV-CAN200" dacă nu spune (ca la deschiderea paginii).
+      // ⚠ Regula ține pentru ORICE variabilă globală a paginii care păstrează stare între apăsări: pe web trăiește
+      // cât pagina, aici ar trece de la o cerere la alta — deci de la o ofertă la alta. Una nouă se pune tot aici.
+      const cfgPag = (pag && pag.config && pag.config.cfg) || {};
+      const L = await _compatListe().catch(() => ({}));
+      P._ofCanMod = b.canMod === 'fmc150' ? 'fmc150' : 'lvcan';
+      P._ofMsMeta = JSON.parse(JSON.stringify({ liste: _compatMeta(L), combustibili: compat.COMBUSTIBILI, aparate: compat.APARATE }));
+      P._ofMsMarci = [];   // mărcile pentru completare nu-i trebuie paginii de aici: telefonul le cere singur
+      P._ofMsDinCfg(_ofMasiniCurate(Array.isArray(b.masini) ? b.masini : cfgPag.masini));
+      P._ofMsMotor = b.masiniMotor != null ? b.masiniMotor !== false : cfgPag.masiniMotor !== false;
+      // Ce ar fi întors `POST /api/admin/masini/potrivire` pentru rândurile de acum — ACEEAȘI funcție ca ruta
+      // (`_compatPotrivire`) —, pus în pagină unde l-ar fi pus răspunsul ei (`_ofMsRez`). Cererea pe care o
+      // face pagina singură rămâne prinsă, fără răspuns, ca toate celelalte.
+      const potriveste = () => {
+        const rows = (P._ofMasini || []).filter((m) => P._ofMsValid(m));
+        const rez = _compatPotrivire(L, rows.map((m) => ({ marca: m.marca, model: m.model, an: Number(m.an) || null, combustibil: m.combustibil || '' })), P._ofCanMod, P._ofMsMotor);
+        const o = {};
+        rows.forEach((m, i) => { if (rez[i]) o[m.id] = rez[i]; });
+        P._ofMsRez = o;
+      };
 
       let mod = null;
       if (b.incarca && pag) {
         // Creionul din listă: `raxOfLoad` pune oferta în formular și marchează totul „scris de mână".
-        P.raxOfLoad(pag.id); await _ofGata(); mod = 'incarca';
+        P.raxOfLoad(pag.id); await _ofGata(); potriveste(); mod = 'incarca';
       } else if (b.campuri && typeof b.campuri === 'object') {
         // Formularul de pe telefon, cu ce a atins omul; apoi „apăsăm" câmpurile schimbate, în ordine.
         if (pag) {
           P._raxOf.editingId = pag.id;
           P._raxOf.prices = Object.assign({}, P._ofTarifeDeBaza(), (pag.config && pag.config.prices) || {});
         }
+        potriveste();
         P.raxLoadOfertare(); await _ofGata();
         const pune = (k, v) => {
           const e = el('of-' + k); if (!e || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return null;
@@ -14710,14 +14771,27 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         }
         (Array.isArray(b.schimbate) ? b.schimbate : []).slice(0, 100).forEach((k) => {
           if (k === 'echipMod') return;
+          // Comutatorul CAN de la pasul 4: butonul paginii (reface cantitățile neatinse pe alegerea nouă).
+          if (k === 'canMod') { if (typeof P.raxOfCanMod === 'function') P.raxOfCanMod(P._ofCanMod); return; }
+          // Casetele listei de mașini nu se „apasă": lista vine întreagă (`masini`), iar comenzile lor ar
+          // șterge rezultatele și ar aștepta un răspuns care aici nu vine.
+          if (/^ms-/.test(String(k))) return;
           // Valoarea scrisă de om se pune din nou înainte de „apăsare": un câmp schimbat mai devreme în
           // aceeași rundă (ex. numărul de mașini) i-ar fi putut scrie o propunere peste.
           const e = (k in b.campuri) ? pune(k, b.campuri[k]) : el('of-' + k); if (!e || !e._la) return;
           _ofHandler(P, e._la).call(e, { target: e, preventDefault() {} });
         });
-        await _ofGata(); mod = 'formular';
+        await _ofGata();
+        // „Aplică recomandarea în ofertă" (pasul 4) / „Trece în ofertă" (lista mașinilor): același buton al
+        // paginii, apăsat DUPĂ ce s-a scris tot ce a scris omul. Mesajul lui ajunge pe telefon.
+        if (b.aplicaRecomandarea === true && typeof P.raxOfAplicaRecomandarea === 'function') {
+          _ofPrins.mesaje = [];
+          P.raxOfAplicaRecomandarea(); await _ofGata();
+          out.mesaj = (_ofPrins.mesaje[0] || {}).text || null;
+        }
+        mod = 'formular';
       } else if (b.nou) {
-        P.raxOfReset(); await _ofGata(); mod = 'nou';
+        P.raxOfReset(); await _ofGata(); potriveste(); mod = 'nou';
       }
 
       if (mod) {
@@ -14725,7 +14799,8 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         const r = P._ofCalc();
         out.campuri = {}; out.formular = [];
         _ofDom.forEach((e, id) => {
-          if (!/^of-/.test(id) || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return;
+          // Casetele listei de mașini (`of-ms-*`) nu sunt câmpuri ale ofertei: lista are drumul ei (`out.masini`).
+          if (!/^of-/.test(id) || /^of-ms-/.test(id) || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return;
           const k = id.slice(3);
           out.campuri[k] = e.type === 'checkbox' ? !!e.checked : e.value;
           out.formular.push({ k, tip: e.type, pas: _ofAtr(e._atr, 'step'), placeholder: _ofAtr(e._atr, 'placeholder'),
@@ -14746,14 +14821,38 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         ['chFmc130', 'chFmc150', 'chFmc650', 'chLvCan'].forEach((k) => { out.chcost[k] = cutie('of-chcost-' + k); });
         out.echiv = {};
         _ofDom.forEach((e, id) => { if (/^eurx-/.test(id)) out.echiv[id.slice(5)] = String(e.textContent || ''); });
+        // Sfaturile doar pentru noi (25.09): „Ce recomanzi" de la pasul 2 și „Recomandarea pentru flota asta"
+        // de la pasul 4, cu comutatorul CAN și „Aplică recomandarea". Le-a scris `raxOfRecalc`, mai sus.
+        // Nu ajung pe hârtie: plicul PDF-ului e `_ofPayload`, care nu le are.
+        out.html.sfatFlota = cutie('of-sfat-flota');
+        out.html.sfatMontaj = cutie('of-sfat-montaj');
+        out.canMod = P._ofCanMod;
+        // „Mașinile clientului": rândurile (ca telefonul să le arate la deschidere), și, pe fiecare, ce a scris
+        // pagina sub el — fără lista de alegere a aparatului, pe care telefonul o face nativă, din `aparate`.
+        const alege = '<div class="raof-ms-alege">';
+        out.masini = {
+          lista: (P._ofMasini || []).map((m) => ({ marca: String(m.marca || ''), model: String(m.model || ''), an: m.an ? String(m.an) : '',
+            combustibil: String(m.combustibil || ''), buc: String(P._ofMsBuc(m)), aparat: String(m.aparat || '') })),
+          motor: !!P._ofMsMotor,
+          randuri: (P._ofMasini || []).map((m) => {
+            const h = String(P._ofMsRezHtml(m) || ''), i = h.indexOf(alege), R = (P._ofMsRez || {})[m.id];
+            return { rez: _ofCurat(i >= 0 ? h.slice(0, i) : h),
+              rec: R && R.rec ? { aparat: String(R.rec.aparat || ''), et: String(P._ofMsEtAparat(R.rec.aparat)) } : null };
+          }),
+          sumar: _ofCurat(P._ofMsSumarHtml()),
+          aparate: Object.keys(compat.APARATE).map((k) => ({ k, et: compat.APARATE[k].et })),
+          combustibili: Object.keys(compat.COMBUSTIBILI).map((k) => ({ k, et: compat.COMBUSTIBILI[k] })),
+        };
         // Salvarea, PDF-ul și „Salvează ca tarifele noastre": corpul pe care l-ar trimite pagina.
         _ofPrins.cereri = []; _ofPrins.mesaje = [];
         P.raxOfSave();
         const s = _ofPrins.cereri[0];
         out.salvare = s ? { metoda: s.metoda, url: s.url, corp: s.corp } : null;
         out.salvareEroare = s ? null : ((_ofPrins.mesaje[0] || {}).text || 'Oferta nu se poate salva.');
-        _ofPrins.cereri = []; P.raxOfExportPdf();
+        // PDF-ul: când pagina refuză (ex. aparate închiriate fără chirie), ce ar fi scris ea pe ecran.
+        _ofPrins.cereri = []; _ofPrins.mesaje = []; P.raxOfExportPdf();
         out.hartie = (_ofPrins.cereri[0] || {}).corp || null;
+        out.hartieEroare = out.hartie ? null : ((_ofPrins.mesaje[0] || {}).text || null);
         _ofPrins.cereri = []; P.raxOfSalveazaTarife();
         out.salvareTarife = (_ofPrins.cereri[0] || {}).corp || null;
       }
@@ -14908,9 +15007,41 @@ app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, 
     res.send(s.buffer);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Fișierul vine CRUD de pe web. Telefonul (lotul 3, 29.09) îl trimite în JSON, ca base64 — `{ fisier, b64 }`:
+// cererile aplicației pleacă prin stratul nativ, care poartă text, nu un fișier. Același cititor, aceeași limită
+// de 5 MB; un șablon completat are câteva sute de KB, deci încape lejer în JSON (limita lui e 6 MB).
+const SABLON_MAX_OCTETI = 5 * 1024 * 1024;
+// true dacă arhiva, dezarhivată de-adevăratelea (nu după mărimea declarată, care poate minți), rămâne sub `buget`.
+// Se oprește la depășire și nu ține nimic în memorie. JSZip vine cu ExcelJS (același pe care îl folosește citirea).
+async function _sablonNuSeUmfla(buf, buget) {
+  let JSZip;
+  try { JSZip = require('jszip'); }
+  catch (e) { JSZip = require(require.resolve('jszip', { paths: [path.dirname(require.resolve('exceljs'))] })); }
+  let zip;
+  try { zip = await JSZip.loadAsync(buf); } catch (e) { return false; }
+  let total = 0;
+  for (const f of Object.values(zip.files)) {
+    if (f.dir) continue;
+    const bun = await new Promise((gata) => {
+      const h = f.internalStream('uint8array');
+      h.on('data', (b) => { total += b.length; if (total > buget) { h.pause(); gata(false); } })
+        .on('error', () => gata(false)).on('end', () => gata(true)).resume();
+    });
+    if (!bun) return false;
+  }
+  return true;
+}
 app.post('/api/admin/masini/sablon', requireAuth, requireSuperadmin, express.raw({ type: 'application/octet-stream', limit: '5mb' }), async (req, res) => {
   try {
-    const buf = req.body;
+    let buf = req.body;
+    if (!Buffer.isBuffer(buf) && buf && typeof buf === 'object' && typeof buf.b64 === 'string') {
+      buf = Buffer.from(buf.b64, 'base64');
+      if (buf.length > SABLON_MAX_OCTETI) return res.status(413).json({ error: 'Șablonul are peste 5 MB — nu e cel trimis de noi.' });
+      // Calea telefonului: un .xlsx e o ARHIVĂ, iar 5 MB arhivați se pot umfla la dezarhivare la sute de MB, în
+      // procesul care primește și pozițiile GPS (găsit la revizia lotului 3, 29.09). Se numără octeții dezarhivați
+      // înainte de citire; un șablon completat are câțiva MB. (Calea web, CRUDĂ, e a lui Alin — semnalată, neatinsă.)
+      if (!(await _sablonNuSeUmfla(buf, 50 * 1024 * 1024))) return res.status(400).json({ error: 'Nu pot deschide fișierul: trebuie să fie șablonul Excel (.xlsx) descărcat din calculator.' });
+    }
     if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege șablonul completat (fișierul Excel).' });
     let r;
     try { r = await compat.citesteSablonExcel(buf); } catch (e) { return res.status(400).json({ error: e.message }); }
@@ -14919,28 +15050,41 @@ app.post('/api/admin/masini/sablon', requireAuth, requireSuperadmin, express.raw
 });
 // Potrivirea unui lot de mașini. `pref` = ce alegi când mașina e pe AMBELE liste (comutatorul de la
 // pasul 4), `vreaMotor` = clientul vrea consum / rezervor / kilometri, nu doar poziția.
+// O SINGURĂ scriere, pentru ruta de mai jos ȘI pentru calculatorul de pe server (`_ofSocoteste`, al
+// telefonului): pagina rulată acolo primește exact ce i-ar fi dat ruta. Telefonul trimite lista la fiecare
+// socoteală, deci rezultatul unei mașini se ține minte (pe listele de acum: o listă nouă le uită pe toate).
+const _compatPotCache = new WeakMap();   // listele (L) → Map(mașină → rezultat, ca text)
+function _compatPotrivire(L, vehicule, pref, vreaMotor) {
+  pref = pref === 'fmc150' ? 'fmc150' : 'lvcan'; vreaMotor = vreaMotor !== false;
+  let tinut = _compatPotCache.get(L);
+  if (!tinut) { tinut = new Map(); _compatPotCache.set(L, tinut); }
+  return (Array.isArray(vehicule) ? vehicule.slice(0, 500) : []).map((v) => {
+    v = v || {};
+    const m = { marca: String(v.marca || '').trim().slice(0, 60), model: String(v.model || '').trim().slice(0, 80),
+      an: Number(v.an) > 1900 && Number(v.an) < 2200 ? Math.round(Number(v.an)) : null,
+      combustibil: compat.COMBUSTIBILI[v.combustibil] ? v.combustibil : '' };
+    if (!m.marca || !m.model) return null;
+    const cheie = JSON.stringify([pref, vreaMotor, m.marca, m.model, m.an, m.combustibil]);
+    const dinainte = tinut.get(cheie);
+    if (dinainte) return JSON.parse(dinainte);
+    const pot = {};
+    for (const t of Object.keys(compat.LISTE)) {
+      pot[t] = L[t] ? compat.potriveste(L[t].peMarca, m) : { stare: 'nu', ales: null, variante: [], alteModele: [], note: ['lista nu e încărcată'] };
+    }
+    const rec = compat.recomanda(pot, { pref, vreaMotor, combustibil: m.combustibil, an: m.an });
+    const liste = {};
+    for (const t of Object.keys(pot)) liste[t] = _compatPentruEcran(pot[t], m.combustibil);
+    const text = JSON.stringify({ rec, liste });
+    if (tinut.size >= 5000) tinut.clear();
+    tinut.set(cheie, text);
+    return JSON.parse(text);
+  });
+}
 app.post('/api/admin/masini/potrivire', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const b = req.body || {};
-    const vehicule = Array.isArray(b.vehicule) ? b.vehicule.slice(0, 500) : [];
-    const pref = b.pref === 'fmc150' ? 'fmc150' : 'lvcan', vreaMotor = b.vreaMotor !== false;
     const L = await _compatListe();
-    const rezultate = vehicule.map((v) => {
-      v = v || {};
-      const m = { marca: String(v.marca || '').trim().slice(0, 60), model: String(v.model || '').trim().slice(0, 80),
-        an: Number(v.an) > 1900 && Number(v.an) < 2200 ? Math.round(Number(v.an)) : null,
-        combustibil: compat.COMBUSTIBILI[v.combustibil] ? v.combustibil : '' };
-      if (!m.marca || !m.model) return null;
-      const pot = {};
-      for (const t of Object.keys(compat.LISTE)) {
-        pot[t] = L[t] ? compat.potriveste(L[t].peMarca, m) : { stare: 'nu', ales: null, variante: [], alteModele: [], note: ['lista nu e încărcată'] };
-      }
-      const rec = compat.recomanda(pot, { pref, vreaMotor, combustibil: m.combustibil, an: m.an });
-      const liste = {};
-      for (const t of Object.keys(pot)) liste[t] = _compatPentruEcran(pot[t], m.combustibil);
-      return { rec, liste };
-    });
-    res.json({ rezultate, aparate: compat.APARATE });
+    res.json({ rezultate: _compatPotrivire(L, b.vehicule, b.pref, b.vreaMotor), aparate: compat.APARATE });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ── sfârșit „mașinile clientului" ──

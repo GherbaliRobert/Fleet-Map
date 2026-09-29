@@ -3,10 +3,12 @@ import { useLocation, useRoute } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from '../components/Icon';
+import { MasiniClient, MS_GOL, semnMs, type Optiune, type RandMs, type RezMs } from '../components/MasiniClient';
 import { salveazaPostDeLaServer } from '../lib/descarcaPost';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { OurPrices } from './OurPrices';
 import './admin.css';
+import './detail.css';
 import './oferte.css';
 
 // Super-admin: Ofertare Live — calculatorul, pe telefon (/admin/offers/noua și /admin/offers/:id).
@@ -20,8 +22,14 @@ import './oferte.css';
 //
 // Regula câmpurilor atinse (ca pe web, `_ofAtinse`): ce ai scris tu nu mai e completat din numărul de mașini.
 // Pe o ofertă deschisă din listă, tot ce era salvat e „scris de mână" — prețurile negociate nu se calcă.
+//
+// Sugestiile doar pentru noi (lotul 3, 29.09 — pe web din 25–28.09) vin tot din pagină: „Ce recomanzi" (pasul 2),
+// „Recomandarea pentru flota asta" cu comutatorul CAN și „Aplică recomandarea" (pasul 4), „Mașinile clientului".
+// Butoanele lor nu fac nimic aici: telefonul le trimite înapoi (`canMod`, `aplicaRecomandarea`), iar serverul le
+// apasă în pagină. Comutatorul CAN și lista mașinilor sunt starea ECRANULUI (ca pe web): pleacă la fiecare socoteală.
 type Meta = { k: string; tip: string; pas?: string | null; placeholder?: string | null; atinge?: boolean; optiuni?: { v: string; et: string }[] };
 type Rasp = any;
+type CanMod = 'lvcan' | 'fmc150';
 
 const DE_TARIFE = 'Prețurile de aici țin doar pentru oferta asta. Apasă butonul ca să rămână: de la ele pornesc toate ofertele viitoare. Ofertele deja salvate își păstrează prețurile lor.';
 const curataNr = (v: string) => v.replace(/,/g, '.').replace(/[^0-9.]/g, '');
@@ -51,6 +59,24 @@ export function OfferCalc() {
   const resRef = useRef<Rasp | null>(null);
   const viuRef = useRef(true);
   const genRef = useRef(0);   // „Ofertă nouă" / altă ofertă: răspunsurile rămase pe drum nu mai au voie să scrie
+
+  // „Mașinile clientului" și comutatorul CAN — starea ecranului, trimisă la fiecare socoteală.
+  const [ms, setMs] = useState<RandMs[]>([]);
+  const msRef = useRef<RandMs[]>([]);
+  const [msMotor, setMsMotor] = useState(true);
+  const msMotorRef = useRef(true);
+  const [canMod, setCanMod] = useState<CanMod>('lvcan');
+  const canModRef = useRef<CanMod>('lvcan');
+  const [msRez, setMsRez] = useState<Record<number, RezMs>>({});
+  const [msSumar, setMsSumar] = useState('');
+  const [msOpt, setMsOpt] = useState<{ aparate: Optiune[]; combustibili: Optiune[] }>({ aparate: [], combustibili: [] });
+  const idMsRef = useRef(0);
+  // Serverul știe de listă (răspunsul are `masini`). Fără asta telefonul NU trimite lista: una goală ar șterge-o
+  // pe cea salvată în ofertă (lotul 3, L5-01 — o salvare ducea lista rămasă de la ALTĂ cerere, sau nimic).
+  const areListaRef = useRef(false);
+  const [areLista, setAreLista] = useState(false);
+  const aplicaRef = useRef(false);          // „Aplică recomandarea" / „Trece în ofertă" pleacă la socoteala următoare
+  const aplicaInCursRef = useRef(false);    // …și nu de două ori, la două atingeri repezi
   useEffect(() => () => { viuRef.current = false; clearTimeout(ceasRef.current); }, []);
 
   function aplica(j: Rasp, tot: boolean) {
@@ -63,17 +89,60 @@ export function OfferCalc() {
     if (!viuRef.current) return;
     setCamp(nou); setRes(j);
   }
-  async function porneste(corp: any) {
+  // Ce a scris pagina sub fiecare mașină trimisă, pus pe rândul ei (după id, nu după poziție: între timp omul
+  // poate fi adăugat sau scos un rând), cu semnătura de la trimitere — un rând schimbat de atunci arată „caut…".
+  function aplicaMs(j: Rasp, trimise: { id: number; sig: string }[]) {
+    const m = j && j.masini;
+    if (!m || !viuRef.current) return;
+    const rez: Record<number, RezMs> = {};
+    (Array.isArray(m.randuri) ? m.randuri : []).forEach((x: any, i: number) => {
+      const t = trimise[i]; if (!t || !x) return;
+      rez[t.id] = { rez: String(x.rez || ''), rec: x.rec ? { aparat: String(x.rec.aparat || ''), et: String(x.rec.et || '') } : null, sig: t.sig };
+    });
+    setMsRez(rez);
+    setMsSumar(String(m.sumar || ''));
+    setMsOpt({ aparate: Array.isArray(m.aparate) ? m.aparate : [], combustibili: Array.isArray(m.combustibili) ? m.combustibili : [] });
+  }
+  const trimiseAcum = () => msRef.current.map((r) => ({ id: r.id, sig: semnMs(r, msMotorRef.current, canModRef.current) }));
+  function puneMs(rows: RandMs[]) { msRef.current = rows; setMs(rows); }
+
+  // `pastreaza`: după „Prețurile noastre", o ofertă nouă pornește din lista nouă de prețuri, dar lista mașinilor și
+  // comutatorul CAN rămân — ca pe web, unde sunt starea paginii și redesenarea formularului nu le atinge.
+  async function porneste(corp: any, pastreaza?: { masini: RandMs[]; motor: boolean; canMod: CanMod }) {
     const gen = ++genRef.current;
     resRef.current = null;
     setErr(''); setCamp(null); setRes(null);
     clearTimeout(ceasRef.current);
     schimbateRef.current = []; scriseAcumRef.current = new Set(); murdarRef.current = false;
+    aplicaRef.current = false; areListaRef.current = false; setAreLista(false);
+    canModRef.current = 'lvcan'; setCanMod('lvcan');
+    setMsRez({}); setMsSumar('');
     try {
       const j = await Api.offerCalc(corp);
       if (gen !== genRef.current) return;
       campRef.current = {};
       aplica(j, true);
+      const m = j && j.masini;
+      areListaRef.current = !!m; setAreLista(!!m);
+      if (!m) { puneMs([]); return; }
+      if (pastreaza) {
+        puneMs(pastreaza.masini);
+        msMotorRef.current = pastreaza.motor; setMsMotor(pastreaza.motor);
+        canModRef.current = pastreaza.canMod; setCanMod(pastreaza.canMod);
+        aplicaMs(j, []);
+        // Cantitățile neatinse se propun pe comutatorul păstrat, ca pe web (`_ofCompleteazaDinVehicule` cu `_ofCanMod`).
+        if (pastreaza.canMod === 'fmc150') schimbateRef.current.push('canMod');
+        murdarRef.current = true; laCoada();
+        return;
+      }
+      puneMs((Array.isArray(m.lista) ? m.lista : []).map((x: any) => ({
+        id: ++idMsRef.current, marca: String(x.marca || ''), model: String(x.model || ''), an: String(x.an || ''),
+        combustibil: String(x.combustibil || ''), buc: String(x.buc || '1'), aparat: String(x.aparat || ''),
+      })));
+      msMotorRef.current = m.motor !== false; setMsMotor(msMotorRef.current);
+      const cm: CanMod = j.canMod === 'fmc150' ? 'fmc150' : 'lvcan';
+      canModRef.current = cm; setCanMod(cm);
+      aplicaMs(j, trimiseAcum());
     } catch (e: any) {
       if (gen !== genRef.current) return;
       setErr(e?.status === 403 ? 'Acces interzis.' : (e?.status === 404 ? 'Oferta nu mai există.' : (e?.message || 'Eroare la încărcare')));
@@ -88,18 +157,36 @@ export function OfferCalc() {
     const gen = genRef.current;
     const schimbate = schimbateRef.current.splice(0);
     scriseAcumRef.current = new Set();
-    const corp: any = { campuri: { ...campRef.current }, atinse: atinseRef.current.slice(), schimbate };
+    const corp: any = { campuri: { ...campRef.current }, atinse: atinseRef.current.slice(), schimbate, canMod: canModRef.current };
     if (idOf) corp.offer_id = idOf;
+    // Lista mașinilor pleacă ÎNTREAGĂ, la fiecare socoteală: pagina de pe server e una singură, a tuturor
+    // cererilor, deci nu ține minte nimic de la o cerere la alta.
+    let trimise: { id: number; sig: string }[] | null = null;
+    if (areListaRef.current) {
+      corp.masini = msRef.current.map((r) => ({ marca: r.marca, model: r.model, an: r.an, combustibil: r.combustibil, buc: r.buc, aparat: r.aparat }));
+      corp.masiniMotor = msMotorRef.current;
+      trimise = trimiseAcum();
+    }
+    const aplicRec = aplicaRef.current;
+    aplicaRef.current = false;
+    if (aplicRec) { corp.aplicaRecomandarea = true; aplicaInCursRef.current = true; }
     setLucreaza(true);
     return Api.offerCalc(corp)
-      .then((j: Rasp) => { if (gen === genRef.current) aplica(j, false); return j; })
+      .then((j: Rasp) => {
+        if (gen === genRef.current) {
+          aplica(j, false);
+          if (trimise) aplicaMs(j, trimise);
+          if (aplicRec && j && j.mesaj) showToast(j.mesaj);
+        }
+        return j;
+      })
       .catch((e: any) => {
         // Nu s-a socotit: ce s-a scris rămâne de trimis, iar Salvează / PDF nu pleacă cu sume vechi.
         if (gen === genRef.current) { murdarRef.current = true; schimbateRef.current = schimbate.concat(schimbateRef.current.filter((x) => schimbate.indexOf(x) < 0)); }
         showToast('Socoteala nu a mers: ' + (e?.message || 'eroare'), true);
         return null;
       })
-      .finally(() => { if (viuRef.current) setLucreaza(false); });
+      .finally(() => { if (aplicRec) aplicaInCursRef.current = false; if (viuRef.current) setLucreaza(false); });
   }
   function laCoada(): Promise<any> {
     coadaRef.current = coadaRef.current.then(trimiteAcum, trimiteAcum);
@@ -123,16 +210,52 @@ export function OfferCalc() {
     murdarRef.current = true;
     programeaza();
   }
-  // Linkurile din textul paginii: „Prețurile noastre" și „pune prețul propus" (cu sau fără „scris de mână").
+  // Comutatorul CAN de la pasul 4: butonul paginii (`raxOfCanMod`), apăsat de server. Reface cantitățile neatinse
+  // și, la lista mașinilor, alege între listele Teltonika la mașinile care sunt pe amândouă.
+  function comutaCan(v: any) {
+    const m: CanMod = v === 'fmc150' ? 'fmc150' : 'lvcan';
+    canModRef.current = m; setCanMod(m);
+    schimbateRef.current = schimbateRef.current.filter((x) => x !== 'canMod'); schimbateRef.current.push('canMod');
+    murdarRef.current = true;
+    proaspat();
+  }
+  // „Aplică recomandarea în ofertă" (pasul 4) și „Trece în ofertă" (lista mașinilor): același buton al paginii.
+  // Pleacă odată cu tot ce e pe ecran, deci recomandarea e cea de ACUM, nu cea de la ultimul răspuns.
+  function aplicaRecomandarea() {
+    if (aplicaRef.current || aplicaInCursRef.current) return;
+    aplicaRef.current = true;
+    murdarRef.current = true;
+    proaspat();
+  }
+  // Linkurile și butoanele din textul paginii: „Prețurile noastre", „pune prețul propus" (cu sau fără „scris de
+  // mână"), comutatorul CAN și „Aplică recomandarea". Semnele (`data-act`) le pune serverul (`_ofCurat`).
   function laClic(e: any) {
     const t: any = e.target;
-    const a = t && t.closest ? t.closest('a[data-act]') : null;
+    const a = t && t.closest ? t.closest('[data-act]') : null;
     if (!a) return;
     e.preventDefault();
     const act = a.getAttribute('data-act');
     if (act === 'preturi') setPreturi(true);
     else if (act === 'pret') schimba('pAiA', String(a.getAttribute('data-val') || ''), a.getAttribute('data-atins') === '1');
+    else if (act === 'canMod') comutaCan(a.getAttribute('data-val'));
+    else if (act === 'aplicaRec' && !a.disabled) aplicaRecomandarea();
   }
+
+  // ── „Mașinile clientului": rândurile sunt ale telefonului; potrivirea o face serverul ─────────────────
+  function marcheazaMs() { murdarRef.current = true; programeaza(); }
+  function campMs(id: number, c: 'marca' | 'model' | 'an' | 'combustibil' | 'buc' | 'aparat', val: string) {
+    puneMs(msRef.current.map((r) => (r.id === id ? { ...r, [c]: val } : r)));
+    marcheazaMs();
+  }
+  function adaugaMs() { puneMs(msRef.current.concat([{ id: ++idMsRef.current, ...MS_GOL }])); marcheazaMs(); }
+  function scoateMs(id: number) { puneMs(msRef.current.filter((r) => r.id !== id)); marcheazaMs(); }
+  function motorMs(v: boolean) { msMotorRef.current = v; setMsMotor(v); marcheazaMs(); }
+  function inlocuiesteMs(lista: Omit<RandMs, 'id'>[]) {
+    puneMs(lista.map((x) => ({ id: ++idMsRef.current, ...x })));
+    murdarRef.current = true; proaspat();
+  }
+  // O listă Teltonika nouă: serverul a uitat rezultatele vechi, deci le cerem din nou pe toate.
+  function listeNoiMs() { setMsRez({}); murdarRef.current = true; proaspat(); }
 
   async function salveaza() {
     setBusy('salvez');
@@ -156,7 +279,8 @@ export function OfferCalc() {
     try {
       const j = await proaspat();
       if (!j) return;
-      if (!j.hartie) { showToast('Oferta nu s-a putut pregăti.', true); return; }
+      // Când pagina refuză hârtia (ex. aparate închiriate fără chirie), ce ar fi scris ea pe ecran.
+      if (!j.hartie) { showToast(j.hartieEroare || 'Oferta nu s-a putut pregăti.', true); return; }
       await salveazaPostDeLaServer('/api/admin/offers/pdf', j.hartie, 'Ofertă.pdf');
       showToast('Oferta s-a descărcat ✓');
     } catch (e: any) { showToast('Descărcarea nu a mers: ' + (e?.message || 'eroare'), true); }
@@ -187,7 +311,8 @@ export function OfferCalc() {
   // una deschisă din listă își păstrează prețurile negociate, doar se socotește din nou (cursul, costurile).
   function dupaPreturi() {
     setPreturi(false);
-    if (idOf) { murdarRef.current = true; laCoada(); } else porneste({ nou: true });
+    if (idOf) { murdarRef.current = true; laCoada(); }
+    else porneste({ nou: true }, areListaRef.current ? { masini: msRef.current, motor: msMotorRef.current, canMod: canModRef.current } : undefined);
   }
   useInapoiInchide(preturi, () => { setPreturi(false); return true; });
 
@@ -215,17 +340,19 @@ export function OfferCalc() {
     <div class="of-camp"><label>{et}</label><div class="of-lin">{inner}</div>{hint && <div class="of-hint">{hint}</div>}</div>
   );
   const pret = (et: string, k: string, um: string) => rand(et, <>{nr(k, 'nr', et)}<span class="of-um">{um}</span>{echiv(k)}</>);
-  // Cantitatea și prețul pe același rând, ca pe web.
+  // Cantitatea și prețul pe același rând, ca pe web. `hint` = când se folosește lucrarea (pasul 4, ca `cand()` pe web).
   const qp = (et: string, kq: string, kp: string, umq: string, ump: string, hint?: string) => rand(et, <>
     {nr(kq, 'mic', et + ' — cantitate')}<span class="of-um">{umq}</span><span class="of-x">×</span>
     {nr(kp, 'nr', et + ' — preț')}<span class="of-um">{ump}</span>{echiv(kp)}
   </>, hint);
   const inch = v('echipMod') === 'inchiriaza';
+  // Lângă chirie: cât ne costă aparatul, sau linkul „trece cât ne costă" (deschide „Prețurile noastre", singurul
+  // loc din care se poate propune chiria).
   const ap = (et: string, kq: string, kp: string, kch: string, hint?: string) => rand(et, <>
     {nr(kq, 'mic', et + ' — cantitate')}<span class="of-um">buc</span><span class="of-x">×</span>
     {inch
       ? <>{nr(kch, 'nr', et + ' — chirie')}<span class="of-um">lei/lună</span>
-          {res && res.chcost && res.chcost[kch] ? <span class="of-eq" dangerouslySetInnerHTML={{ __html: res.chcost[kch] }} /> : null}</>
+          {res && res.chcost && res.chcost[kch] ? <span class="of-eq" onClick={laClic} dangerouslySetInnerHTML={{ __html: res.chcost[kch] }} /> : null}</>
       : <>{nr(kp, 'nr', et + ' — preț')}<span class="of-um">€/buc</span>{echiv(kp)}</>}
   </>, hint);
   const web = (h: string | undefined, cls = 'of-hintweb') => <div class={cls} onClick={laClic} dangerouslySetInnerHTML={{ __html: h || '' }} />;
@@ -272,12 +399,34 @@ export function OfferCalc() {
               {rand('Nume ofertă', txt('name', 'Nume ofertă'))}
             </>)}
 
+          {/* Între pașii 1 și 2, ca pe web: lista mașinilor completează pasul 2 (și 4, 5) la „Trece în ofertă". */}
+          {areLista && (
+            <MasiniClient randuri={ms} rez={msRez} motor={msMotor} canMod={canMod} sumar={msSumar}
+              aparate={msOpt.aparate} combustibili={msOpt.combustibili}
+              onCamp={campMs} onAdauga={adaugaMs} onScoate={scoateMs} onMotor={motorMs}
+              onInlocuieste={inlocuiesteMs} onAplica={aplicaRecomandarea} onListeNoi={listeNoiMs} />
+          )}
+
           {card('2. Flota clientului', 'car',
             'De aici pornește tot: abonamentul lunar, cantitățile de montaj, aparatele de cumpărat și prețul unui cont de RA Insight.',
             <>
               {rand('Total vehicule', nr('nveh', 'nr', 'Total vehicule'))}
               {rand('din care cu CAN', nr('ncan', 'nr', 'din care cu CAN'), 'mașini mici — cer modul LV-CAN200')}
               {rand('din care cu FMS', nr('nfms', 'nr', 'din care cu FMS'), 'camioane — citim direct, fără modul')}
+              {/* „Ce recomanzi" — doar pentru noi, nu ajunge pe hârtie. Scris de pagină (`_ofSfatFlota`). */}
+              {web(res && res.html && res.html.sfatFlota, 'of-sfat')}
+              <details class="of-intrebari">
+                <summary>Întrebări de pus clientului înainte de ofertă</summary>
+                <ol>
+                  <li>Ce mașini are — marca, modelul, anul? (citirea CAN se verifică pe model)</li>
+                  <li>Vrea să vadă consumul real și ce e în rezervor, sau doar unde sunt mașinile?</li>
+                  <li>Are camioane cu tahograf digital? Cine descarcă acum cardurile și tahografele?</li>
+                  <li>Face transport internațional sau mărfuri cu risc fiscal? (e-Transport)</li>
+                  <li>Mașinile sunt în garanție? (atunci citim CAN-ul fără tăiat fire)</li>
+                  <li>Unde se face montajul și câte mașini pot sta în aceeași zi? (deplasarea, programarea în loturi)</li>
+                  <li>Vrea să știe cine conduce fiecare mașină sau să blocheze pornirea de la distanță? (accesorii — încă nu au rând de preț; se trec la pasul 6)</li>
+                </ol>
+              </details>
               <div class="of-hint" style="line-height:1.55">
                 <b>CAN și FMS înseamnă același lucru — date din mașină (combustibil, kilometri, motor). Diferă de unde le luăm:</b><br />
                 • <b>FMS</b> = priza standard de camion. O au din fabrică, aparatul citește direct, <b>fără modul în plus</b>.<br />
@@ -337,13 +486,15 @@ export function OfferCalc() {
           {card('4. Montajul', 'wrench',
             'Manopera, plătită o singură dată. Cantitățile se completează singure din flotă. Noi o facturăm clientului; cu instalatorul ne socotim separat, în fișa de montaj a firmei.',
             <>
-              {qp('Instalare dispozitiv GPS', 'qGps', 'mGps', 'buc', 'lei/buc')}
-              {qp('Instalare LV-CAN', 'qLvCan', 'mLvCan', 'buc', 'lei/buc')}
-              {qp('Instalare CAN încorporat', 'qCanInc', 'mCanInc', 'buc', 'lei/buc')}
-              {qp('Instalare FMS (tahograf)', 'qFms', 'mFms', 'buc', 'lei/buc')}
-              {qp('Dezinstalare echipament', 'qUninstall', 'mUninstall', 'buc', 'lei/buc')}
-              {qp('Înlocuire echipament', 'qReplace', 'mReplace', 'buc', 'lei/buc')}
-              {qp('Deplasare', 'kmTravel', 'mTravel', 'km', 'lei/km')}
+              {/* „Recomandarea pentru flota asta" (Recomandat / În ofertă), cu comutatorul CAN și „Aplică recomandarea". */}
+              {web(res && res.html && res.html.sfatMontaj, 'of-sfat')}
+              {qp('Instalare dispozitiv GPS', 'qGps', 'mGps', 'buc', 'lei/buc', 'La fiecare vehicul: aparatul, alimentarea, antenele, montaj ascuns și proba de transmisie.')}
+              {qp('Instalare LV-CAN', 'qLvCan', 'mLvCan', 'buc', 'lei/buc', 'La mașinile cu CAN citit prin modulul LV-CAN200 (cu FMC130).')}
+              {qp('Instalare CAN încorporat', 'qCanInc', 'mCanInc', 'buc', 'lei/buc', 'La mașinile cu FMC150 (CAN integrat): legarea aparatului la magistrala mașinii.')}
+              {qp('Instalare FMS (tahograf)', 'qFms', 'mFms', 'buc', 'lei/buc', 'La camioanele cu FMC650: legarea la priza FMS a camionului.')}
+              {qp('Dezinstalare echipament', 'qUninstall', 'mUninstall', 'buc', 'lei/buc', 'Doar când scoatem aparate vechi — de la alt furnizor sau mutate de pe altă mașină.')}
+              {qp('Înlocuire echipament', 'qReplace', 'mReplace', 'buc', 'lei/buc', 'Aparat defect sau schimbare de model: o intervenție pe o mașină deja montată.')}
+              {qp('Deplasare', 'kmTravel', 'mTravel', 'km', 'lei/km', 'Km dus-întors până la client, când montajul nu e în orașul instalatorului. La flote mari, programează montajul în loturi, la sediul clientului: cam 30–40 de minute pe mașină.')}
               <div class="of-hint" style="line-height:1.55">
                 <b>Fiecare mașină are „Instalare dispozitiv GPS" — treaba de bază.</b> Cea cu CAN sau cu FMS mai are un rând
                 deasupra: munca în plus (modulul LV-CAN legat la magistrală, respectiv priza de tahograf). Nu e aceeași

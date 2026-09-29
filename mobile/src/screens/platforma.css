@@ -1,0 +1,6 @@
+/* Dashboard platformă (fondator). Titlurile cartonașelor și cifrele mari de sus sunt SCRIS verde: pe tema
+   luminoasă, verdele aplicației (#3FE07D) pe alb iese la contrast 1,6 și nu se citește. Aici iau --fd-ok
+   (fondator.css): același verde pe tema închisă, unul închis pe cea luminoasă.
+   Doar pe ecranul ăsta (.pf-dash): .pf-card și .pf-kpi stau și pe ecrane ale clientului, cu regulile lor. */
+.pf-dash .pf-card h3,
+.pf-dash .pf-kpi .v { color: var(--fd-ok); }

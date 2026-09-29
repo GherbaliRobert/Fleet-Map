@@ -2,24 +2,32 @@
 //
 // Sus, ce trebuie FĂCUT: banda roșie (firme fără niciun contract, sau cu contractul încheiat care intră
 // totuși în aplicație) și banda portocalie (alarma: contracte care nu se reînnoiesc singure și se apropie
-// de capăt, cu „Reînnoiește"). Dedesubt, lista cu filtre și căutare, apoi partenerii de montaj.
+// de capăt, cu „Reînnoiește"). Dedesubt, lista cu filtre și căutare. Pe fiecare contract, ca pe web (24.09):
+// sub stare, PASUL URMĂTOR cu butonul lui (Aprobă → Trimite la semnat → E semnat; după semnare, pasul din
+// drumul clientului), iar la „Dosar", FIECARE LIPSĂ cu butonul ei (Completează, Pune data, Încarcă). Acțiunile
+// sunt aceleași ca în dosarul firmei (usePasiContract).
+// Partenerii de montaj NU mai stau aici (Alin, 24.09: „nu-i văd rostul în Contracte"): au secțiunea lor,
+// Business → Montaj.
 //
-// Telefonul NU socotește capete de contract, zile rămase sau preaviz: le arată cum le dă serverul
-// (`sfarsit`, `preaviz_pana`, `alarma` = contracts.deAnuntat, pragul de 60 de zile). Aici
-// `prelungire_in_lucru` e un ȘIR (numărul actului); în fișa firmei (/overview) e un obiect.
+// Telefonul NU socotește capete de contract, zile rămase, preaviz, lipsuri sau pași: le arată cum le dă
+// serverul (`sfarsit`, `preaviz_pana`, `alarma` = contracts.deAnuntat, `dosar.lipsuri`, `drum`,
+// `trimite_pe_email`). Aici `prelungire_in_lucru` e un ȘIR (numărul actului); în fișa firmei (/overview) e un obiect.
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { CapEcran, HartieBtns, Pill, useReinnoire } from '../components/ContractUi';
-import { ParteneriMontaj } from '../components/ParteneriMontaj';
+import { usePasiContract } from '../components/ContractPasi';
 import { CTR_STARI, DOSAR_FEL, de, deReinnoit, luniText, zile, zileText } from '../lib/contracte';
+import { rutaDosar } from '../lib/companii';
 import './admin.css';
 import './detail.css';
 import './contracte.css';
 
-type Lista = { tot: any[]; fara: any[]; inc: any[] };
+// `trimite` = serverul poate trimite pe email (SMTP pus) — altfel „Trimite la semnat" devine „Am trimis-o".
+type Lista = { tot: any[]; fara: any[]; inc: any[]; trimite: boolean };
 const DE_SEMNAT = ['ciorna', 'aprobat', 'trimis'];
+type Pasi = ReturnType<typeof usePasiContract>;
 
 export function Contracts() {
   const loc = useLocation();
@@ -31,14 +39,17 @@ export function Contracts() {
   function incarca() {
     setErr('');
     Api.contracts()
-      .then((j: any) => setD({ tot: (j && j.contracte) || [], fara: (j && j.fara_contract) || [], inc: (j && j.incheiate_cu_acces) || [] }))
-      .catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare')); setD({ tot: [], fara: [], inc: [] }); });
+      .then((j: any) => setD({ tot: (j && j.contracte) || [], fara: (j && j.fara_contract) || [], inc: (j && j.incheiate_cu_acces) || [],
+        trimite: !!(j && j.trimite_pe_email) }))
+      .catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare')); setD({ tot: [], fara: [], inc: [], trimite: false }); });
   }
   useEffect(incarca, []);
 
-  const fisa = (companyId: any) => loc.route('/admin/contracts/' + companyId);
+  const fisa = (companyId: any) => loc.route(rutaDosar(companyId));
   // După „Reînnoiește", ca pe web: fișa de contract a firmei, unde actul de prelungire așteaptă aprobarea.
   const { cere: reinnoieste, ui: uiReinnoire } = useReinnoire((cid) => fisa(cid));
+  // Pașii și lipsurile de pe fiecare rând. După orice acțiune, lista se reîncarcă (ca _ctreDupa pe web).
+  const pasi = usePasiContract({ trimitePeEmail: !!(d && d.trimite), laSchimbat: incarca });
 
   const tot = d ? d.tot : [];
   const q = cauta.trim().toLowerCase();
@@ -93,17 +104,15 @@ export function Contracts() {
                 <div class="ctr-empty">{tot.length ? 'Niciun contract pentru filtrul ăsta.' : 'Niciun contract încă. Se face din „Client nou" (Companii) sau din fila „Contract" a unei firme.'}</div>
               ) : (
                 <div class="ctr-list">
-                  {lista.map((c) => <CardContract c={c} fisa={fisa} reinnoieste={reinnoieste} />)}
+                  {lista.map((c) => <CardContract c={c} fisa={fisa} reinnoieste={reinnoieste} pasi={pasi} />)}
                 </div>
               )}
-
-              <div style="height:6px" />
-              <ParteneriMontaj />
             </>
           )}
         </div>
       </div>
       {uiReinnoire}
+      {pasi.ui}
     </div>
   );
 }
@@ -175,15 +184,17 @@ function Benzi({ d, fisa, reinnoieste }: { d: Lista; fisa: (id: any) => void; re
   );
 }
 
-// ── Un contract din listă: firma (deschide fișa de contract), numărul, perioada, lunar, stare, dosar ──
-function CardContract({ c, fisa, reinnoieste }: { c: any; fisa: (id: any) => void; reinnoieste: (c: any, sfarsit: any) => void }) {
+// ── Un contract din listă: firma (deschide fișa de contract), pasul următor, numărul, perioada, lunar, dosar ──
+function CardContract({ c, fisa, reinnoieste, pasi }: { c: any; fisa: (id: any) => void; reinnoieste: (c: any, sfarsit: any) => void; pasi: Pasi }) {
   const st = CTR_STARI[c.status] || CTR_STARI.ciorna;
   const total = c.annex && c.annex.monthlyTotal ? Number(c.annex.monthlyTotal) : null;
   const dos = c.dosar || {};
-  // La un contract nesemnat, „Stare" spune deja unde e; „Dosar" spune doar ce LIPSEȘTE.
+  // La un contract nesemnat, „Stare" spune deja unde e; „Dosar" spune doar ce LIPSEȘTE — fiecare lipsă cu
+  // butonul ei, chiar pe rând (Alin, 24.09). La unul semnat: pastila dosarului, apoi lipsurile.
+  const linii = pasi.lipsuri(c);
   const dosar = dos.nivel === 'nesemnat'
-    ? (dos.text ? <><Pill fel="warn">lipsește ceva</Pill><span class="ctr-small">{dos.text}</span></> : <span>—</span>)
-    : <><Pill fel={DOSAR_FEL[dos.nivel] || ''}>{dos.eticheta || '—'}</Pill>{dos.text ? <span class="ctr-small">{dos.text}</span> : null}</>;
+    ? (linii ? null : <span>—</span>)
+    : <Pill fel={DOSAR_FEL[dos.nivel] || ''}>{dos.eticheta || '—'}</Pill>;
   const perioada = c.start_at
     ? <>{zile(c.start_at) + ' → ' + (c.sfarsit ? zile(c.sfarsit) : 'nedeterminat')}
         {c.auto_renew === false ? <span class="ctr-small">nu se reînnoiește</span> : (c.sfarsit ? <span class="ctr-small">se reînnoiește singur</span> : null)}</>
@@ -198,10 +209,14 @@ function CardContract({ c, fisa, reinnoieste }: { c: any; fisa: (id: any) => voi
         <Pill fel={st[1]}>{st[0]}</Pill>
         <Icon name="chevronR" size={18} color="var(--text-muted)" />
       </button>
+      {pasi.pas(c)}
       <div class="ctr-kv"><span class="k">Contract</span><span class="v">{c.number || '—'}{c.luni_prelungite ? <span class="ctr-small">{'prelungit ' + luniText(Number(c.luni_prelungite))}</span> : null}</span></div>
       <div class="ctr-kv"><span class="k">Perioada</span><span class="v">{perioada}</span></div>
       <div class="ctr-kv"><span class="k">Lunar</span><span class="v">{total ? total.toLocaleString('ro-RO') + ' lei' : '—'}</span></div>
-      <div class="ctr-kv"><span class="k">Dosar</span><span class="v">{dosar}</span></div>
+      <div class="ctr-dos">
+        <div class="ctr-kv"><span class="k">Dosar</span><span class="v">{dosar}</span></div>
+        {linii}
+      </div>
       <div class="ctr-btns">
         <HartieBtns path={'/api/contracts/' + c.id + '/pdf'} ce="Contractul" nume="contract.pdf" />
         {deReinnoit(c, c.sfarsit, c.prelungire_in_lucru) && (

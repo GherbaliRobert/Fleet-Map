@@ -3,7 +3,12 @@ import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from '../components/Icon';
+import { nrDe } from '../lib/numar';
 import './admin.css';
+// --fd-ok / --fd-warn / --fd-bad: verdele, portocaliul și roșul SCRISULUI, mai închise pe tema luminoasă.
+// Pe alb, textul mic în verdele aplicației (#3FE07D) sau în chihlimbar (#f59e0b) nu se citește.
+import './fondator.css';
+import './platforma.css';   // titlurile cartonașelor și cifrele mari, pe --fd-ok (doar sub .pf-dash)
 
 // Super-admin: dashboard platformă (venituri + sănătate flotă + server + erori). Toate endpoint-urile requireSuperadmin.
 function n(v: any, d = 0) { return (v == null || isNaN(Number(v))) ? d : Number(v); }
@@ -55,6 +60,7 @@ export function PlatformDashboard() {
     }
     catch (e: any) { showToast(e?.message || 'Eroare backup', true); } finally { setBkBusy(false); }
   }
+  // Punctele colorate pot rămâne în culorile aplicației (sunt pete, nu scris). Pentru TEXT se folosesc --fd-*.
   const HCOL: Record<string, string> = { ok: 'var(--accent)', warn: '#f59e0b', crit: 'var(--red)', info: 'var(--text-muted)' };
 
   const rev = ov?.revenue || {};
@@ -69,8 +75,8 @@ export function PlatformDashboard() {
         <div class="h-title">Dashboard platformă</div>
         <button class="h-btn" onClick={reload} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
-      <div class="content has-tabbar" style="padding-bottom:24px">
-        {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
+      <div class="content has-tabbar pf-dash" style="padding-bottom:24px">
+        {err && <div class="adm-empty" style="color:var(--fd-bad)">{err}</div>}
         {!err && (
           <>
             <div class="pf-kpis">
@@ -85,13 +91,15 @@ export function PlatformDashboard() {
               <div class="adm-kv"><span class="k">MRR (lunar)</span><span>{leiFmt(mrrLei)}</span></div>
               <div class="adm-kv"><span class="k">ARR (anual)</span><span>{leiFmt(mrrLei * 12)}</span></div>
               <div class="adm-kv"><span class="k">Firme cu ofertă</span><span>{n(rev.cu_oferta)}</span></div>
-              <div class="adm-kv"><span class="k">Fără ofertă (0 lei)</span><span style={n(rev.fara_oferta) > 0 ? 'color:var(--orange)' : ''}>{n(rev.fara_oferta)}</span></div>
+              <div class="adm-kv"><span class="k">Fără ofertă (0 lei)</span><span style={n(rev.fara_oferta) > 0 ? 'color:var(--fd-warn)' : ''}>{n(rev.fara_oferta)}</span></div>
             </div>
 
             <div class="pf-card">
               <h3>Sănătate flotă</h3>
-              <div class="adm-kv"><span class="k">Online acum</span><span style="color:var(--accent)">{n(health.online)}</span></div>
-              <div class="adm-kv"><span class="k">Offline 30+ zile</span><span style="color:var(--red)">{n(health.offline30)}</span></div>
+              <div class="adm-kv"><span class="k">Online acum</span><span style="color:var(--fd-ok)">{n(health.online)}</span></div>
+              {/* `offline30` e un nume vechi: serverul numără aparatele fără date de peste O ORĂ (ageMin > 60), iar web-ul
+                  scrie „Offline >1h”. „30+ zile” făcea dintr-o flotă parcată peste noapte zeci de aparate „mute de o lună”. */}
+              <div class="adm-kv"><span class="k">{'Offline > 1 oră'}</span><span style="color:var(--fd-bad)">{n(health.offline30)}</span></div>
               <div class="adm-kv"><span class="k">Semnal slab</span><span>{n(health.weak_signal)}</span></div>
               <div class="adm-kv"><span class="k">GSM mediu</span><span>{n(health.avg_gsm)}</span></div>
               <div class="adm-kv"><span class="k">Sateliți medii</span><span>{n(health.avg_sats)}</span></div>
@@ -114,11 +122,11 @@ export function PlatformDashboard() {
               {bk ? (
                 <>
                   <div class="adm-kv"><span class="k">Ultimul automat</span><span>{bk.ok === false ? 'EȘUAT' : (bk.at ? fmtDT(bk.at) : 'nerulat încă')}</span></div>
-                  <div class="adm-kv"><span class="k">Destinație</span><span style={'color:' + (bk.offsite ? 'var(--accent)' : 'var(--red)')}>{bk.offsite ? 'off-site (S3) ✓' : (bk.s3Configured ? 'S3 configurat, dar ultima rulare n-a urcat' : 'nicăieri — S3 neconfigurat')}</span></div>
-                  <div class="adm-kv"><span class="k">Datele sunt protejate</span><span style={'color:' + (bk.protected ? 'var(--accent)' : 'var(--red)')}>{bk.protected ? 'da' : 'NU'}</span></div>
+                  <div class="adm-kv"><span class="k">Destinație</span><span style={'color:' + (bk.offsite ? 'var(--fd-ok)' : 'var(--fd-bad)')}>{bk.offsite ? 'off-site (S3) ✓' : (bk.s3Configured ? 'S3 configurat, dar ultima rulare n-a urcat' : 'nicăieri — S3 neconfigurat')}</span></div>
+                  <div class="adm-kv"><span class="k">Datele sunt protejate</span><span style={'color:' + (bk.protected ? 'var(--fd-ok)' : 'var(--fd-bad)')}>{bk.protected ? 'da' : 'NU'}</span></div>
                   {bk.sizeBytes ? <div class="adm-kv"><span class="k">Dimensiune</span><span>{Math.round(bk.sizeBytes / 1024)} KB{bk.encrypted ? ' · 🔒 criptat' : ' · necriptat'}</span></div> : null}
-                  {bk.warning ? <div style="color:var(--red);font-size:12px;line-height:1.45;padding:6px 0">⚠ {bk.warning}</div> : null}
-                  {bk.error ? <div style="color:var(--red);font-size:12px;padding:4px 0">{bk.error}</div> : null}
+                  {bk.warning ? <div style="color:var(--fd-bad);font-size:12px;line-height:1.45;padding:6px 0">⚠ {bk.warning}</div> : null}
+                  {bk.error ? <div style="color:var(--fd-bad);font-size:12px;padding:4px 0">{bk.error}</div> : null}
                 </>
               ) : <div class="spin" style="margin:8px auto" />}
               <button class="btn btn-primary" style="margin-top:10px" disabled={bkBusy} onClick={runBackup}>{bkBusy ? 'Se rulează…' : 'Rulează backup off-site acum'}</button>
@@ -131,9 +139,12 @@ export function PlatformDashboard() {
                 {(() => {
                   const nCrit = hl.checks.filter((c: any) => c.level === 'crit').length;
                   const nWarn = hl.checks.filter((c: any) => c.level === 'warn').length;
-                  const txt = nCrit ? (nCrit + (nCrit === 1 ? ' problemă critică' : ' probleme critice') + (nWarn ? ' · ' + nWarn + ' de verificat' : ''))
-                    : (nWarn ? (nWarn + ' lucruri de verificat') : 'Totul e configurat pentru producție');
-                  const col = nCrit ? 'var(--red)' : (nWarn ? '#f59e0b' : 'var(--accent)');
+                  // Aceleași cuvinte ca pe web (raxRenderHealth), cu acordul numerelor: „1 lucru de verificat",
+                  // nu „1 lucruri" — cât timp POSITION_RETENTION_DAYS a rămas în Railway, rândul ei e adesea singurul.
+                  const deVerificat = nrDe(nWarn, 'lucru', 'lucruri') + ' de verificat';
+                  const txt = nCrit ? (nrDe(nCrit, 'problemă critică', 'probleme critice') + ' de rezolvat înainte de lansare' + (nWarn ? ' · ' + deVerificat : ''))
+                    : (nWarn ? deVerificat : 'Totul e configurat pentru producție');
+                  const col = nCrit ? 'var(--fd-bad)' : (nWarn ? 'var(--fd-warn)' : 'var(--fd-ok)');
                   return <div style={'font-size:12.5px;font-weight:700;color:' + col + ';padding:2px 0 8px'}>{txt}</div>;
                 })()}
                 {hl.checks.map((c: any) => (
@@ -150,12 +161,12 @@ export function PlatformDashboard() {
                   <div style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)">
                     <span style={'width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto;background:' + (w.lastError ? 'var(--red)' : (w.running ? '#f59e0b' : 'var(--accent)'))} />
                     <div style="min-width:0;flex:1">
-                      <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">{w.label}{w.running ? ' (rulează acum)' : ''}</div>
+                      <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">{w.label}{w.running ? <span style="color:var(--fd-warn);font-weight:600"> (rulează acum)</span> : ''}</div>
                       <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:1px">
                         {w.lastAt ? fmtDT(w.lastAt) : 'încă n-a rulat'}
                         {w.lastMs != null ? ' · ' + (w.lastMs > 1000 ? Math.round(w.lastMs / 100) / 10 + 's' : w.lastMs + 'ms') : ''}
-                        {w.skipped ? ' · ' + w.skipped + ' ture sărite' : ''}
-                        {w.lastError ? ' · ' + w.lastError : ''}
+                        {w.skipped ? <span style="color:var(--fd-warn)">{' · ' + nrDe(w.skipped, 'tură sărită', 'ture sărite') + ' (rulare încă în curs)'}</span> : ''}
+                        {w.lastError ? <span style="color:var(--fd-bad)">{' · ' + w.lastError}</span> : ''}
                       </div>
                     </div>
                   </div>
@@ -170,7 +181,7 @@ export function PlatformDashboard() {
               {errs && errs.length === 0 && <div style="color:var(--text-muted);font-size:13px">Nicio eroare recentă. 👍</div>}
               {errs && errs.map((e: any) => (
                 <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px">
-                  <div style="color:var(--red);font-weight:600">{(e.method || '') + ' ' + (e.route || '') + (e.status ? ' · ' + e.status : '')}</div>
+                  <div style="color:var(--fd-bad);font-weight:600">{(e.method || '') + ' ' + (e.route || '') + (e.status ? ' · ' + e.status : '')}</div>
                   <div style="color:var(--text-muted)">{e.message}</div>
                   <div style="color:var(--text-muted);font-size:11px">{fmtDT(e.created_at)}</div>
                 </div>

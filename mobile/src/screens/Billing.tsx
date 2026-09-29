@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { me, showToast } from '../app/store';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
+import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './detail.css';
 import './admin.css';
 import './billing.css';
+// --fl-ok / --fl-warn: verdele și chihlimbarul SCRISULUI, închise pe tema luminoasă. Pe alb, verdele aplicației
+// (#3FE07D) și galbenul ies la contrast 1,6–2,9 — „● Activ / plătit" sau totalul facturii nu se citeau.
+import './flota.css';
+// --fd-warn: portocaliul SCRISULUI din ecranele fondatorului — pe tema închisă același portocaliu de până acum, pe
+// cea luminoasă unul închis (#b45309: 5,0 pe alb). „⚠ Restanță · N zile până la suspendare" era --orange: 3,6 pe alb.
+import './fondator.css';
 
 const fmtD = (ts: any) => (ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—');
 const fmtMoney = (v: any) => (v != null ? Number(v).toLocaleString('ro-RO') + ' lei' : '—');
@@ -15,8 +22,8 @@ const money2 = (v: any) => (Math.round((Number(v) || 0) * 100) / 100).toLocaleSt
 // plătite bloca clienți care plătiseră tot. (Tot de atunci: plățile NU mai primesc un număr de factură
 // inventat — „RAT-AAAA-000{id plată}" se putea bate cap în cap cu numărul unei facturi adevărate.)
 const ACCESS: Record<string, [string, string]> = {
-  active: ['● La zi', 'var(--green)'],
-  grace: ['⚠ Restanță', 'var(--yellow)'],
+  active: ['● La zi', 'var(--fl-ok)'],
+  grace: ['⚠ Restanță', 'var(--fl-warn)'],
   expired: ['🚫 Suspendat', 'var(--red)'],
 };
 // Starea unei firme în lista super-adminului, ca pe web (_raxAccessCell): un client suspendat se vede ca
@@ -33,32 +40,38 @@ function accessOf(c: any): [string, string, number] {
   }
   if (np && np.faza === 'avertisment') {
     const z = Math.max(0, Number(np.zilePanaLaSuspendare) || 0);
-    return ['⚠ Restanță · ' + z + (z === 1 ? ' zi' : ' zile') + ' până la suspendare' + fact, 'var(--orange)', 0.5];
+    return ['⚠ Restanță · ' + z + (z === 1 ? ' zi' : ' zile') + ' până la suspendare' + fact, 'var(--fd-warn)', 0.5];
   }
   const sm = ACCESS[a.status] || ACCESS.active;
   return [sm[0], sm[1], a.status === 'grace' ? 1 : 2];
 }
 const TIP: Record<string, string> = { invoice: 'Factură', proforma: 'Proformă', credit_note: 'Storno' };
+// Albastrul „trimisă" vine din --bill-trimisa (billing.css): #38BDF8 ca pe web pe tema închisă, închis pe cea luminoasă.
 const INV_ST: Record<string, [string, string]> = {
-  draft: ['Ciornă', 'var(--text-muted)'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'],
-  paid: ['Plătită', 'var(--green)'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'],
+  draft: ['Ciornă', 'var(--text-muted)'], issued: ['Emisă', 'var(--fl-ok)'], sent: ['Trimisă', 'var(--bill-trimisa)'],
+  paid: ['Plătită', 'var(--fl-ok)'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'],
 };
 const EF_ST: Record<string, [string, string]> = {
-  uploaded: ['e-Factura: trimisă', '#38BDF8'], validated: ['e-Factura: validată ANAF', 'var(--green)'],
-  error: ['e-Factura: eroare', 'var(--red)'], pending: ['e-Factura: în lucru', 'var(--yellow)'],
+  uploaded: ['e-Factura: trimisă', 'var(--bill-trimisa)'], validated: ['e-Factura: validată ANAF', 'var(--fl-ok)'],
+  error: ['e-Factura: eroare', 'var(--red)'], pending: ['e-Factura: în lucru', 'var(--fl-warn)'],
 };
 
 export function Billing() {
   const loc = useLocation();
   const isSuper = !!me.value?.isSuper;
+  // „Emite prima factură" din Drumul clientului (fișa firmei → Contract) vine pe /billing?factura=<id firmă>
+  // și deschide „Generează factură" cu firma deja aleasă — ca pe web (raxDrumFactura → raxOpenGenInvoice(id)).
+  // Doar la noi: clientul își vede facturile, nu le emite.
+  const facturaPentru = isSuper ? parseInt(String(((loc.query || {}) as any).factura || '')) || null : null;
   return (
     <div class="screen">
       <header class="app-header">
-        <button class="h-btn" onClick={() => loc.route('/meniu')}><Icon name="chevronL" /></button>
+        {/* Ca „înapoi" de pe Android: de unde ai venit (meniul, sau contractul — „Emite prima factură" din drumul clientului). */}
+        <button class="h-btn" onClick={() => (history.length > 1 ? history.back() : loc.route('/meniu'))} aria-label="Înapoi"><Icon name="chevronL" /></button>
         <div class="h-title">{isSuper ? 'Facturare' : 'Facturile mele'}</div>
         <div style="width:36px" />
       </header>
-      {isSuper ? <SuperBilling /> : <MyBilling />}
+      {isSuper ? <SuperBilling facturaPentru={facturaPentru} /> : <MyBilling />}
     </div>
   );
 }
@@ -100,7 +113,8 @@ function MyBilling() {
 }
 
 // ─── Super-admin: status companii + facturi FISCALE + plăți + automatizare + date emitent ───
-function SuperBilling() {
+function SuperBilling({ facturaPentru }: { facturaPentru: number | null }) {
+  const loc = useLocation();
   const [companies, setCompanies] = useState<any[] | null>(null);
   const [pays, setPays] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -108,9 +122,23 @@ function SuperBilling() {
   const [cfg, setCfg] = useState<any>(null);
   const [pay, setPay] = useState<any | null>(null);
   const [fview, setFview] = useState<any | null>(null);   // factură fiscală
-  const [gen, setGen] = useState(false);
+  const [gen, setGen] = useState<{ cid: number | null } | null>(null);   // „Generează factură", cu firma aleasă sau nu
   const [editIss, setEditIss] = useState(false);
   const [running, setRunning] = useState(false);
+  const cerutaFolosita = useRef(false);
+
+  // Venit din Drumul clientului: fereastra se deschide o singură dată, după ce avem lista de firme. Adresa se
+  // curăță ÎNAINTE de a deschide fereastra (foaia își pune intrarea în istoric pe adresa de atunci), ca o
+  // întoarcere pe ecran să nu redeschidă fereastra. O firmă care nu e în lista de facturare (ștearsă între
+  // timp, sau firma demo) NU deschide fereastra pe altă firmă: ar fi prea ușor de emis factura greșitului.
+  useEffect(() => {
+    if (!facturaPentru || companies == null || cerutaFolosita.current) return;
+    cerutaFolosita.current = true;
+    loc.route('/billing', true);
+    if (!companies.length) return;   // lista n-a venit: eroarea s-a spus deja
+    if (!companies.some((c) => c.id === facturaPentru)) { showToast('Firma nu se găsește în lista de facturare.', true); return; }
+    setGen({ cid: facturaPentru });
+  }, [facturaPentru, companies]);
 
   async function reload() {
     try {
@@ -141,12 +169,12 @@ function SuperBilling() {
   if (companies == null) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
 
   const cos = companies.slice().sort((a, b) => accessOf(a)[2] - accessOf(b)[2]);
-  const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--green)' : 'var(--text-muted)'}`}>{l}</span>;
+  const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--fl-ok)' : 'var(--text-muted)'}`}>{l}</span>;
 
   return (
     <div class="content has-tabbar" style="padding-bottom:96px">
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button class="btn btn-primary" style="flex:1" onClick={() => setGen(true)}><Icon name="report" size={16} color="#06210f" /> Generează factură</button>
+        <button class="btn btn-primary" style="flex:1" onClick={() => setGen({ cid: null })}><Icon name="report" size={16} color="#06210f" /> Generează factură</button>
         <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setPay({})}><Icon name="plus" size={16} /></button>
         <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setEditIss(true)}><Icon name="settings" size={16} /></button>
       </div>
@@ -184,7 +212,7 @@ function SuperBilling() {
         ? <div class="adm-empty">Nicio încasare înregistrată.</div>
         : <div class="adm-list">{pays.map((p) => <PaymentRow p={p} />)}</div>}
 
-      {gen && <GenerateInvoiceSheet companies={companies} onClose={() => setGen(false)} onIssued={() => { setGen(false); reload(); }} />}
+      {gen && <GenerateInvoiceSheet companies={companies} preset={gen.cid} onClose={() => setGen(null)} onIssued={() => { setGen(null); reload(); }} />}
       {fview && <FiscalInvoiceSheet inv={fview} onClose={() => setFview(null)} onChanged={() => { setFview(null); reload(); }} />}
       {pay && <RecordPaymentSheet companies={companies} preset={pay.companyId} onClose={() => setPay(null)} onSaved={() => { setPay(null); reload(); }} />}
       {editIss && <IssuerSheet issuer={issuer} onClose={() => setEditIss(false)} onSaved={(iss: any) => { setIssuer(iss); setEditIss(false); }} />}
@@ -214,6 +242,7 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged, readOnly }: { inv: any; o
   const st = INV_ST[inv.status] || INV_ST.issued;
   const ef = EF_ST[inv.efactura_status];
   const [busy, setBusy] = useState('');
+  useInapoiInchide(true, () => { if (busy) return false; onClose(); return true; });
   const lines: any[] = Array.isArray(inv.lines) ? inv.lines : [];
   async function act(kind: string) {
     // „Plătită" nu mai prelungește niciun acces (29.09); pe o proformă înseamnă „Încasată" și emite factura fiscală.
@@ -262,19 +291,33 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged, readOnly }: { inv: any; o
 }
 
 // Generează + emite o factură fiscală: companie + lună → draft (linii EDITABILE + montaj/dispozitiv) → emite.
-function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
+// `preset` = firma deja aleasă (pasul „Prima factură" din Drumul clientului); fără ea, prima firmă din listă.
+// Liniile le socotește serverul (/api/invoices/draft) — inclusiv „Păstrarea istoricului — …" și „Chirie
+// echipament — …" la firmele care le au; telefonul doar le arată și le lasă de editat, ca pe web.
+function GenerateInvoiceSheet({ companies, preset, onClose, onIssued }: any) {
   const opts = (companies || []).filter((c: any) => !c.is_demo);
   const now = new Date();
   const MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
-  const [cid, setCid] = useState<string>(String((opts[0] && opts[0].id) || ''));
+  const ales = preset != null && opts.some((c: any) => c.id === preset) ? preset : (opts[0] && opts[0].id);
+  const [cid, setCid] = useState<string>(String(ales || ''));
   const [mon, setMon] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
   const [draft, setDraft] = useState<any | null>(null);   // { issuer, client, vatRate }
   const [lines, setLines] = useState<any[]>([]);
+  const liniiServer = useRef('[]');   // liniile cum au venit de la /api/invoices/draft — „înapoi" întreabă doar dacă s-au schimbat
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi" de pe Android (ca foile
+  // vecine): o linie scrisă de mână („Montaj", cu preț) nu se mai pierde dintr-o atingere. Cât se emite, rămâne.
+  function inchide(): boolean {
+    if (saving) return false;
+    if (draft != null && JSON.stringify(lines) !== liniiServer.current && !confirm('Închizi fără să emiți factura?\n\nCe ai schimbat sau adăugat la liniile facturii se pierde.')) return false;
+    onClose();
+    return true;
+  }
+  useInapoiInchide(true, inchide);
   const vr = draft?.vatRate != null ? draft.vatRate : 19;
-  const recalc = (l: any) => { const net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; return { ...l, net, vat: Math.round(net * vr) / 100, vatRate: vr }; };
+  const recalc = (l: any, rata: number = vr) => { const net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; return { ...l, net, vat: Math.round(net * rata) / 100, vatRate: rata }; };
   const subtotal = lines.reduce((s, l) => s + (Number(l.net) || 0), 0);
   const vatTotal = lines.reduce((s, l) => s + (Number(l.vat) || 0), 0);
   const setLine = (i: number, k: string, v: any) => setLines((ls) => ls.map((l, idx) => idx === i ? recalc({ ...l, [k]: k === 'desc' ? v : (Number(v) || 0) }) : l));
@@ -283,8 +326,18 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
 
   async function calc() {
     if (!cid) { showToast('Alege o companie', true); return; }
-    setLoading(true); setDraft(null); setLines([]);
-    try { const d = await Api.invoiceDraft(parseInt(cid), yr + '-' + String(mon).padStart(2, '0')); setDraft(d); setLines((d.lines || []).map(recalc)); }
+    setLoading(true); setDraft(null); setLines([]); liniiServer.current = '[]';
+    try {
+      // Luna aleasă: abonamentul ei, pe zile de la montaj (28.09). Fără ea, serverul ia luna de azi.
+      const d = await Api.invoiceDraft(parseInt(cid), yr + '-' + String(mon).padStart(2, '0'));
+      // Cota de TVA e cea a ciornei primite ACUM (din „Date emitent"), nu `vr` din randarea în care s-a apăsat
+      // butonul: la prima calculare pentru o firmă ciorna era încă goală și `vr` ieșea 19 (implicitul). Iar serverul
+      // emite cu cota scrisă pe fiecare linie — la o cotă de 21% factura ar fi plecat cu 19%.
+      const rata = d && d.vatRate != null ? Number(d.vatRate) : 19;
+      const ls = (d.lines || []).map((l: any) => recalc(l, rata));
+      liniiServer.current = JSON.stringify(ls);
+      setDraft(d); setLines(ls);
+    }
     catch (e: any) { showToast(e?.message || 'Eroare la calcul', true); } finally { setLoading(false); }
   }
   async function issue() {
@@ -300,19 +353,19 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
   }
   const qbtn = 'padding:6px 9px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
   return (
-    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) inchide(); }}>
       <div class="sheet">
-        <div class="sheet-h"><b><Icon name="report" size={18} color="var(--accent)" /> Generează factură</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
+        <div class="sheet-h"><b><Icon name="report" size={18} color="var(--accent)" /> Generează factură</b><button class="h-btn" onClick={() => inchide()} aria-label="Închide"><Icon name="x" /></button></div>
         <div class="sheet-body">
           <div class="frm">
             <div class="fld"><label>Companie (client)</label>
-              <select value={cid} onChange={(e: any) => { setCid(e.target.value); setDraft(null); setLines([]); }}>{opts.map((c: any) => <option value={c.id}>{c.name}</option>)}</select>
+              <select value={cid} onChange={(e: any) => { setCid(e.target.value); setDraft(null); setLines([]); liniiServer.current = '[]'; }}>{opts.map((c: any) => <option value={c.id}>{c.name}</option>)}</select>
             </div>
             <div class="frm-row">
               <div class="fld"><label>Luna</label><select value={String(mon)} onChange={(e: any) => setMon(parseInt(e.target.value))}>{MON.map((m, i) => <option value={i + 1}>{m}</option>)}</select></div>
               <div class="fld"><label>An</label><select value={String(yr)} onChange={(e: any) => setYr(parseInt(e.target.value))}>{[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => <option value={y}>{y}</option>)}</select></div>
             </div>
-            <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--accent)" disabled={loading} onClick={calc}>{loading ? 'Se calculează…' : 'Calculează liniile'}</button>
+            <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--fl-ok)" disabled={loading} onClick={calc}>{loading ? 'Se calculează…' : 'Calculează liniile'}</button>
             {draft && (
               <div style="margin-top:12px">
                 <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">Client: <b>{draft.client?.name}</b> · TVA {vr}% · editează liniile / adaugă montaj & dispozitiv</div>
@@ -354,11 +407,24 @@ function PaymentRow({ p }: { p: any }) {
   );
 }
 
+// Amprenta unui formular, ca foaia să știe dacă omul a schimbat ceva: valorile ca text (o casetă întoarce „19", nu
+// 19), ca o cifră scrisă la loc la fel să nu treacă drept schimbare.
+const amprenta = (f: any) => JSON.stringify(Object.keys(f || {}).sort().map((k) => [k, f[k] == null ? '' : String(f[k])]));
+
 const METHODS = [{ v: 'transfer', l: 'Transfer bancar' }, { v: 'cash', l: 'Numerar' }, { v: 'card', l: 'Card' }, { v: 'manual', l: 'Alta' }];
 function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
   const opts = (companies || []).filter((c: any) => !c.is_demo);
-  const [form, setForm] = useState<any>({ company_id: preset || (opts[0] && opts[0].id) || '', amount: '', method: 'transfer', note: '' });
+  const [form, setForm] = useState<any>(() => ({ company_id: preset || (opts[0] && opts[0].id) || '', amount: '', method: 'transfer', note: '' }));
+  const start = useRef(amprenta(form));   // formularul cum s-a deschis
   const [saving, setSaving] = useState(false);
+  // Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: suma și nota scrise nu se pierd dintr-o atingere.
+  function inchide(): boolean {
+    if (saving) return false;
+    if (amprenta(form) !== start.current && !confirm('Închizi fără să înregistrezi plata?\n\nCe ai scris la plată se pierde.')) return false;
+    onClose();
+    return true;
+  }
+  useInapoiInchide(true, inchide);
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   async function save() {
     const cid = parseInt(form.company_id);
@@ -372,9 +438,9 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
     finally { setSaving(false); }
   }
   return (
-    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) inchide(); }}>
       <div class="sheet">
-        <div class="sheet-h"><b><Icon name="plus" size={18} color="var(--accent)" /> Încasare fără factură</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
+        <div class="sheet-h"><b><Icon name="plus" size={18} color="var(--accent)" /> Încasare fără factură</b><button class="h-btn" onClick={() => inchide()} aria-label="Închide"><Icon name="x" /></button></div>
         <div class="sheet-body">
           <div class="frm">
             <div class="fld"><label>Companie</label>
@@ -401,8 +467,17 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
 }
 
 function IssuerSheet({ issuer, onClose, onSaved }: any) {
-  const [form, setForm] = useState<any>({ name: '', cui: '', reg_com: '', address: '', city: '', county: '', iban: '', bank: '', email: '', phone: '', vat_rate: 19, vat_payer: true, ...(issuer || {}) });
+  const [form, setForm] = useState<any>(() => ({ name: '', cui: '', reg_com: '', address: '', city: '', county: '', iban: '', bank: '', email: '', phone: '', vat_rate: 19, vat_payer: true, ...(issuer || {}) }));
+  const start = useRef(amprenta(form));   // datele cum s-au deschis
   const [saving, setSaving] = useState(false);
+  // Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: datele emitentului schimbate nu se pierd pe tăcute.
+  function inchide(): boolean {
+    if (saving) return false;
+    if (amprenta(form) !== start.current && !confirm('Închizi fără să salvezi?\n\nCe ai schimbat la datele emitentului se pierde.')) return false;
+    onClose();
+    return true;
+  }
+  useInapoiInchide(true, inchide);
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   async function save() {
     setSaving(true);
@@ -417,9 +492,9 @@ function IssuerSheet({ issuer, onClose, onSaved }: any) {
     <div class="fld"><label>{label}</label><input value={form[k]} onInput={(e) => setF(k, (e.target as HTMLInputElement).value)} placeholder={ph} /></div>
   );
   return (
-    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) inchide(); }}>
       <div class="sheet">
-        <div class="sheet-h"><b><Icon name="settings" size={18} color="var(--accent)" /> Date emitent factură</b><button class="h-btn" onClick={onClose}><Icon name="x" /></button></div>
+        <div class="sheet-h"><b><Icon name="settings" size={18} color="var(--accent)" /> Date emitent factură</b><button class="h-btn" onClick={() => inchide()} aria-label="Închide"><Icon name="x" /></button></div>
         <div class="sheet-body">
           <div class="muted" style="font-size:12px;margin-bottom:10px">Aceste date apar ca EMITENT (Furnizor) pe facturile fiscale emise.</div>
           <div class="frm">

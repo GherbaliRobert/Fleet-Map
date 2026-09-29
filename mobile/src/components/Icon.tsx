@@ -16,6 +16,8 @@ export type IconName =
   | 'warehouse' | 'puzzle' | 'briefcase' | 'archive' | 'clipboard' | 'building' | 'copy' | 'book'
   // Ofertare Live (fondatori): „Prețurile noastre" (eticheta de preț) și „Client nou din ofertă".
   | 'tag' | 'userPlus'
+  // Stoc echipamente (fondatori): cutiile stivuite (fa-boxes-stacked de pe web) și „Mută" (fa-right-left).
+  | 'boxes' | 'swap'
   // Steaguri CAN (vezi can_flags.js, campul `mi`) — martori de bord, usi, lumini, transmisie.
   | 'key' | 'doorOpen' | 'lock' | 'unlock' | 'bulb' | 'shield' | 'gears' | 'fan' | 'play' | 'ban'
   | 'hand' | 'foot' | 'reverse' | 'parking' | 'circleDot' | 'arrowRight' | 'arrowDown'
@@ -98,6 +100,8 @@ const P: Record<IconName, string> = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
   tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><path d="M7.5 7.5h.01"/>',
   userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  boxes: '<rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><rect x="8" y="3" width="8" height="8" rx="1"/><path d="M7 13v3M17 13v3M12 3v3"/>',
+  swap: '<path d="M4 7h14M14 3l4 4-4 4M20 17H6M10 13l-4 4 4 4"/>',
 
   // ─── Bord: uși și capace (mașina văzută de sus, ca în fișa Teltonika) ───
   // Caroseria e aceeași în toate patru; se schimbă doar ușa deschisă, ca ochiul să prindă imediat

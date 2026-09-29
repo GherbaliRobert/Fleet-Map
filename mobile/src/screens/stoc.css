@@ -1,0 +1,70 @@
+/* „Stoc echipamente" (Gestiune, fondatori) — stocul NOSTRU de aparate, pe telefon. Ca pe web (_stocDeseneaza), pe o
+   singură coloană: sumarul pe modele, banda „De făcut", butoanele, căutarea, filele cu contor, apoi un cartonaș pe
+   bucată. Culorile mici (verde / portocaliu / roșu) vin din --fd-ok / --fd-warn / --fd-bad (fondator.css), care se
+   închid pe tema luminoasă: verdele aplicației, scris mic pe alb, nu se citește. Fontul se moștenește (Nunito). */
+
+.st-h { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; margin: 6px 2px 4px; color: var(--text-primary); }
+.st-h svg { color: var(--fd-ok); flex: 0 0 auto; }
+
+/* Sumarul pe modele: cifra mare verde; portocalie (cu chenarul) când modelul e sub minim. */
+.fd-kpi.st-kpi .v .mic { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+.fd-kpi.st-kpi .cap { text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--text-primary); }
+.fd-kpi.st-kpi .comanda { color: var(--fd-warn); font-weight: 800; }
+
+/* Banda „De făcut": un rând pe fel de alertă. */
+.st-dof b.t { display: block; margin-bottom: 2px; }
+.st-dof .r { margin-top: 3px; }
+
+/* Cartonașul unei bucăți */
+.st-list { display: flex; flex-direction: column; gap: 8px; }
+.st-card { display: flex; gap: 4px; align-items: flex-start; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px 10px 4px; }
+.st-card.ales { border-color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Casat = pus deoparte, dar tot de citit: doar chenarul se schimbă (întrerupt). NU opacitate și NU alt fundal — cu
+   .72 modelul și rândul „Al cui” coborau la 2,8:1 pe luminoasă, iar pe --bg-dark scrisul mic cade sub 4,5:1. Pe web
+   rândul casat e desenat la fel ca celelalte. */
+.st-card.casat { border-style: dashed; border-color: var(--border-light); }
+/* Bifa: ținta întreagă de 44px, nu doar pătrățelul. */
+.st-bifa { flex: 0 0 44px; width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.st-bifa input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.st-bifa input:disabled { opacity: .35; }
+.st-mid { flex: 1; min-width: 0; padding-top: 4px; }
+.st-r1 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.st-model { font-size: 12.5px; font-weight: 700; color: var(--text-muted); overflow-wrap: anywhere; }
+.st-cost { font-size: 13px; font-weight: 800; color: var(--text-primary); white-space: nowrap; flex: 0 0 auto; }
+.st-serie { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; min-height: 40px; padding: 0; margin: 0 0 2px; background: transparent;
+  border: none; color: var(--text-primary); font-family: inherit; font-size: 15px; font-weight: 800; text-align: left; overflow-wrap: anywhere; }
+.st-serie span { overflow-wrap: anywhere; min-width: 0; }
+.st-serie svg { flex: 0 0 auto; color: var(--text-muted); }
+.st-serie.fara span { font-style: italic; font-weight: 700; color: var(--text-secondary); }
+.st-unde { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.st-unde .det { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; min-width: 0; }
+.st-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.45; overflow-wrap: anywhere; }
+.st-sub .inch { color: var(--fd-warn); font-weight: 800; }
+.st-acts { display: flex; gap: 8px; margin-top: 8px; }
+.st-acts .fd-btn { min-height: 40px; }
+
+/* Istoricul bucății, cel mai nou sus. */
+.st-ist { margin-top: 8px; padding: 8px 10px; border-radius: 9px; background: var(--bg-dark); border: 1px solid var(--border);
+  font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }   /* --text-muted pe --bg-dark: 4,34:1 pe tema deschisă */
+.st-ist .e { padding: 3px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.st-ist .e:last-child { border-bottom: none; }
+.st-ist .e b { color: var(--text-primary); }
+/* Fără opacitate pe nume: orice opacitate îl coboară sub 4,5:1 pe --bg-dark (măsurat 29.09). */
+.st-ist .ttl { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 3px; }
+
+.st-gol { text-align: center; color: var(--text-muted); padding: 26px 16px; font-size: 13.5px; line-height: 1.5; background: var(--bg-panel);
+  border: 1px dashed var(--border); border-radius: 12px; }
+
+/* Bara bucăților alese, lipită de fundul ecranului (pe ecranul ăsta nu e bara de file de jos). */
+.st-selbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px calc(10px + var(--sab)); background: var(--bg-panel); border-top: 2px solid var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .25); }
+.st-selbar .n { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 800; color: var(--text-primary); }
+.st-selbar .fd-btn { min-height: 44px; }
+.st-loc-bara { height: 76px; }
+
+/* Formularele din foi */
+.st-err { font-size: 13px; line-height: 1.45; color: var(--fd-bad); font-weight: 700; background: color-mix(in srgb, var(--red) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 45%, transparent); border-radius: 9px; padding: 8px 10px; }
+.st-hint { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+.st-hint.warn { color: var(--fd-warn); font-weight: 700; }
+.fld textarea.st-serii { min-height: 110px; }

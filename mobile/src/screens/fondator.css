@@ -3,7 +3,8 @@
    pe o singură coloană, cu ținte de atingere mari.
    Verdele aplicației (#3FE07D) nu e redefinit pe tema luminoasă: pe alb, scrisul mic verde nu se citește. De aceea
    orice text verde de aici folosește --fd-ok (mai închis pe luminos), la fel portocaliul mic (--fd-warn). */
-:root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: var(--red); }
+/* Roșul SCRISULUI pe tema închisă e mai deschis decât --red: pastila mică („casat", „defect") avea 4,36:1 (29.09). */
+:root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: #f87171; }
 :root[data-theme="light"] { --fd-ok: #0E7A3C; --fd-warn: #b45309; --fd-bad: #b91c1c; }
 
 .fd-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 0 0 10px; }

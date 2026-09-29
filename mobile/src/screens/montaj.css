@@ -1,0 +1,38 @@
+/* Montaj (fondatori, Business) pe telefon — Parteneri · Contracte cu partenerii · Lucrări. Clase proprii (prefix mj-);
+   restul vine din contracte.css (ctr-), aceleași cartonașe, pastile și butoane ca la contractele clienților.
+   Culorile vin DOAR din tokenurile temei; verdele de text trece prin --ctr-ok (mai închis pe tema deschisă),
+   pentru că verdele aplicației nu se citește ca text mic pe alb. Fontul se moștenește (Nunito). */
+
+/* Pastilele de lângă numele partenerului: „inactiv", „contract: …" / „fără contract" */
+.mj-pastile { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+
+/* Banda „Parteneri fără contract": un rând pe partener, numele în stânga, butonul în dreapta */
+.mj-fara { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0 0; margin-top: 7px;
+  border-top: 1px solid var(--border); }
+.ctr-band-t + .mj-fara { border-top: 0; margin-top: 2px; }
+.mj-fara b { min-width: 0; overflow-wrap: anywhere; font-weight: 800; }
+.mj-fara .ctr-btn { flex: 0 0 auto; }
+
+/* Ce lipsește dintr-un contract: fiecare lipsă cu butonul ei, chiar pe rând */
+.mj-lipsuri { display: flex; flex-direction: column; gap: 6px; padding: 7px 0 2px; border-top: 1px solid var(--border); }
+.mj-lipsuri .k { font-size: 13.5px; color: var(--text-muted); }
+.mj-lipsa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(245, 180, 60, .10); border: 1px solid rgba(245, 180, 60, .35); }
+.mj-lipsa > span { flex: 1 1 100%; font-size: 13.5px; font-weight: 700; color: var(--ctr-warn); line-height: 1.4; }
+/* Sub o lipsă care nu se mai poate închide de aici (contract semnat): de ce — fără buton și fără culoarea de alarmă.
+   --text-secondary, nu --text-muted: pe fundalul chihlimbar al temei deschise, gri-ul deschis nu trece de 4,5:1. */
+.mj-lipsa > span.mj-lipsa-nota { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+
+/* Pasul următor al contractului (Aprobă → Trimite la semnat / Am trimis-o → E semnat) */
+.mj-pas { display: flex; flex-direction: column; gap: 2px; padding: 8px 0 0; border-top: 1px solid var(--border); }
+.mj-pas .ctr-btns { margin-top: 4px; }
+
+/* Filtrele din fila Lucrări: două liste, una lângă alta */
+.mj-filtre { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mj-filtre select { width: 100%; box-sizing: border-box; min-height: 44px; background: var(--bg-panel); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 10px; padding: 0 10px; font-size: 14.5px; font-family: inherit; }
+.mj-filtre select:focus { outline: none; border-color: var(--accent); }
+
+/* Suma de pe o lucrare: „Rămâne" bătut în verde (sigur pe ambele teme) */
+/* Cu `.ctr-kv .v` în față: altfel regula din contracte.css (0,2,0) câștiga și „Rămâne" ieșea ca „Ne costă". */
+.ctr-kv .v.mj-rama { color: var(--ctr-ok); font-weight: 800; }

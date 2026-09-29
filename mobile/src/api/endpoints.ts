@@ -153,7 +153,14 @@ export const Api = {
   // ── Super-admin: Contracte, acte adiționale, montaj (aceleași rute ca web-ul; toate requireSuperadmin) ──
   // Regulile (ce se poate schimba după semnare, textul prelungirii, anexa, marja) stau pe SERVER.
   // Telefonul trimite ce s-a scris și arată răspunsul — inclusiv refuzurile, cu vorbele serverului.
-  contracts: () => api<{ contracte: any[]; fara_contract: any[]; incheiate_cu_acces: any[] }>('/api/contracts'),
+  contracts: () => api<{ contracte: any[]; fara_contract: any[]; incheiate_cu_acces: any[]; trimite_pe_email?: boolean }>('/api/contracts'),
+  // „Trimite la semnat": emailul cu PDF-ul (același contractPdf ca „Descarcă") îl trimite SERVERUL; tot el scrie
+  // „trimis", ziua și adresa. Refuză ciorna, golurile de pe hârtie, adresa stricată și lipsa SMTP (503).
+  trimiteContract: (id: number, catre: string) =>
+    api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/contracts/${id}/trimite`, { method: 'POST', body: { catre } }),
+  // „Completează": datele firmei din dosar. Scrie DOAR cheile trimise (NU PUT /api/companies/:id, care golește ce vine gol).
+  completeazaDosar: (companyId: number, b: { name?: string; cui?: string; reg_com?: string; address?: string; contact_email?: string; legal_rep?: { name: string; role: string } | null }) =>
+    api<{ ok: boolean; company: any }>(`/api/companies/${companyId}/dosar`, { method: 'PUT', body: b }),
   createContract: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/contract`, { method: 'POST', body: b }),
   updateContract: (id: number, b: any) => api<any>(`/api/contracts/${id}`, { method: 'PUT', body: b }),
   deleteContract: (id: number) => api<any>(`/api/contracts/${id}`, { method: 'DELETE' }),
@@ -174,6 +181,16 @@ export const Api = {
   companyMontaje: (companyId: number) => api<any[]>(`/api/companies/${companyId}/montaje`),
   saveMontaj: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/montaje`, { method: 'POST', body: b }),
   deleteMontaj: (id: number) => api<any>(`/api/montaje/${id}`, { method: 'DELETE' }),
+  // Secțiunea „Montaj" (Business): contractele de colaborare cu partenerii + toate lucrările, de la toți clienții.
+  // Trecerile, ce lipsește și marja stau pe server; PDF-ul și actul semnat merg prin salveazaDeLaServer (HartieBtns).
+  montajContracte: () => api<{ contracte: any[]; fara_contract: { id: number; name: string }[]; trimite_pe_email: boolean }>('/api/montaj/contracte'),
+  createMontajContract: (b: any) => api<any>('/api/montaj/contracte', { method: 'POST', body: b }),
+  updateMontajContract: (id: number, b: any) => api<any>(`/api/montaj/contracte/${id}`, { method: 'PUT', body: b }),
+  deleteMontajContract: (id: number) => api<any>(`/api/montaj/contracte/${id}`, { method: 'DELETE' }),
+  uploadMontajContractFile: (id: number, b: { name: string; b64: string }) => api<any>(`/api/montaj/contracte/${id}/file`, { method: 'POST', body: b }),
+  sendMontajContract: (id: number, b: { catre: string }) =>
+    api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/montaj/contracte/${id}/trimite`, { method: 'POST', body: b }),
+  montajLucrari: () => api<{ stari: Record<string, string>; lucrari: any[] }>('/api/montaj/lucrari'),
   setCompanyFeatures: (id: number, features: Record<string, boolean>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
   // Limita VECHE de întrebări AI pe lună (null = nelimitat). Contează doar la firmele fără fond RA Insight pe cont.
   setCompanyAiLimit: (id: number, limit: number | null) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
@@ -264,6 +281,15 @@ export const Api = {
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),
   updateOffer: (id: number, b: any) => api<any>(`/api/admin/offers/${id}`, { method: 'PUT', body: b }),
   deleteOffer: (id: number) => api<any>(`/api/admin/offers/${id}`, { method: 'DELETE' }),
+  // „Mașinile clientului" (Ofertare Live, doar noi): mărcile / modelele pentru completare, listele Teltonika și
+  // șablonul. Potrivirea NU se cere de aici: calculatorul o face pe server, cu lista trimisă la fiecare socoteală.
+  masiniMarci: () => api<{ marci: string[] }>('/api/admin/masini/marci'),
+  masiniModele: (marca: string) => api<{ modele: string[] }>('/api/admin/masini/modele?marca=' + encodeURIComponent(marca)),
+  masiniListe: () => api<{ liste: any[]; combustibili: Record<string, string>; aparate: Record<string, { et: string }> }>('/api/admin/masini/liste'),
+  // Șablonul completat de client, citit de server — în JSON, ca base64 (stratul nativ poartă text). Descărcarea lui
+  // trece prin salveazaDeLaServer; o listă Teltonika nouă, prea mare pentru JSON, prin lib/trimiteFisier.ts.
+  masiniSablonCiteste: (b: { fisier: string; b64: string }) =>
+    api<{ masini: any[]; probleme: { rand: number; ce: string }[]; nProbleme: number }>('/api/admin/masini/sablon', { method: 'POST', body: b, timeoutMs: 60000 }),
   // ── Super-admin: Dispozitive (global) ──
   adminDevices: () => api<any[]>('/api/admin/devices'),
   unassignedDevices: () => api<any[]>('/api/unassigned-devices'),
@@ -284,6 +310,16 @@ export const Api = {
   // Inventarul aparatelor, din TOATE firmele (la super-admin). Modelul și cartela se scriu pe /details (updateDeviceDetails),
   // care schimbă doar câmpurile trimise — NU pe PUT /devices/:imei, care rescrie numele și numărul.
   deviceInventory: () => api<any[]>('/api/device-inventory'),
+  // Stocul NOSTRU de echipamente (Gestiune → Stoc echipamente), doar la noi. Regulile (pe unde poate merge o bucată,
+  // sumarul, alertele) le socotește serverul (stoc.js); telefonul arată ce primește. Seriile pleacă TEXTUL scris.
+  stoc: () => api<any>('/api/stoc'),
+  stocIntrare: (b: { tip: string; serii: string; buc: string; cost_eur: string; furnizor: string }) =>
+    api<{ ok: boolean; adaugate: number; ids: number[] }>('/api/stoc/intrare', { method: 'POST', body: b }),
+  stocMuta: (b: { ids: number[]; stare: string; partener_id?: number | null; company_id?: number | null; proprietar?: 'ra' | 'client' | null; nota?: string }) =>
+    api<{ ok: boolean; mutate: number; refuzate: { id: number; serie?: string | null; motiv: string }[] }>('/api/stoc/muta', { method: 'POST', body: b }),
+  stocPraguri: (b: { minim: Record<string, string>; zileInstalator: string }) =>
+    api<{ minim: Record<string, number>; zileInstalator: number }>('/api/stoc/praguri', { method: 'PUT', body: b }),
+  stocSterge: (id: number) => api<{ ok: boolean }>(`/api/stoc/${id}`, { method: 'DELETE' }),
   // Tahograf și e-Transport, privirea noastră: o firmă pe rând. Doar citire — noi nu încărcăm și nu ștergem nimic.
   tachoOverview: () => api<{ praguriLegale: { card: number; vu: number }; firme: any[] }>('/api/admin/tacho-overview'),
   etransportOverview: () => api<{ anaf: { pornit: boolean; test?: boolean }; praguri: { tacereMinute: number; curandOre: number; zileNational: number; zileIntracomunitar: number }; firme: any[] }>('/api/admin/etransport-overview'),

@@ -1,8 +1,8 @@
 /* Ofertare Live pe telefon (fondatori): lista cu pâlnia, calculatorul și „Prețurile noastre".
    Verdele mic pe fundal ALB nu se citește (#3FE07D pe alb): pe tema deschisă folosim verdele închis,
    ca restul ecranelor de fondator (firma.css, flota.css). */
-.of-scr { --of-ok: var(--accent); --of-warn: var(--orange); }
-:root[data-theme="light"] .of-scr { --of-ok: #0E7A3C; --of-warn: #b45309; }
+.of-scr { --of-ok: var(--accent); --of-warn: var(--orange); --of-rau: #f87171; }
+:root[data-theme="light"] .of-scr { --of-ok: #0E7A3C; --of-warn: #b45309; --of-rau: #b91c1c; }
 
 /* Capul listei: ce e ecranul + cei patru pași (textul web-ului) */
 .of-cap { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px; margin-bottom: 12px; }
@@ -30,6 +30,8 @@
 .of-acts .of-b { min-height: 40px; padding: 8px 11px; font-size: 13px; }
 .of-acts .of-ic { width: 42px; padding: 8px 0; }
 .of-ai { font-size: 9.5px; font-weight: 700; line-height: 1.35; color: var(--of-ok); border: 1px solid var(--of-ok); border-radius: 4px; padding: 0 4px; }
+/* Aparate închiriate (25.09): alt fel de bani (lunar, nu la semnare), vizibil fără să deschizi oferta. */
+.of-chirie { font-size: 9.5px; font-weight: 700; line-height: 1.35; color: var(--of-warn); border: 1px solid var(--of-warn); border-radius: 4px; padding: 0 4px; }
 
 /* Calculatorul: cărțile numerotate, ca pe web */
 .of-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
@@ -73,9 +75,13 @@ textarea.of-in { width: 100%; min-height: 78px; resize: vertical; }
 /* HTML-ul scris de pagina web (rezumatul, costul RA Insight, rândurile de sub module). Clasele sunt ale
    web-ului — le repetăm aici cât să arate la fel pe ecranul îngust. Culorile vin din stilurile lui, pe
    variabilele temei; pe tema deschisă verdele și portocaliul se închid, ca textul mic să se citească. */
-:root[data-theme="light"] .of-web, :root[data-theme="light"] .of-hintweb { --accent: #0E7A3C; --orange: #b45309; }
+/* (Sfaturile și lista mașinilor NU intră aici: n-au culori scrise în HTML, iar butonul lor plin stă pe `--accent` —
+   închis pe tema deschisă, ar fi ieșit text închis pe verde închis, contrast 3,1. Culorile lor sunt mai jos.) */
+:root[data-theme="light"] .of-web, :root[data-theme="light"] .of-hintweb, :root[data-theme="light"] .of-eq { --accent: #0E7A3C; --orange: #b45309; }
 .of-web { font-size: 13px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
-.of-web a[data-act], .of-hintweb a[data-act] { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.of-web a[data-act], .of-hintweb a[data-act], .of-eq a[data-act] { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+/* „trece cât ne costă", lângă chirie: o țintă de deget, nu un cuvânt de 12px. */
+.of-eq a[data-act] { display: inline-block; padding: 8px 2px; white-space: normal; }
 .of-web .rax-co-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .of-web .rax-co-table th { text-align: left; padding: 7px 6px; color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .of-web .rax-co-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -111,3 +117,80 @@ textarea.of-in { width: 100%; min-height: 78px; resize: vertical; }
 /* „Clientul cumpără / închiriază" (cartea 5): două butoane pe un rând, cel ales plin. */
 .of-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .of-seg .of-b { min-height: 42px; padding: 8px 10px; font-size: 13px; }
+
+/* Sugestiile doar pentru noi (pe web din 25.09): „Ce recomanzi" (pasul 2) și „Recomandarea pentru flota asta"
+   (pasul 4, cu comutatorul CAN și „Aplică recomandarea"). HTML-ul e al paginii web, curățat pe server; aici doar
+   mărimea de telefon și culori citibile pe AMBELE teme (pe fundalul deschis: verde și portocaliu închise). */
+.of-sfat { margin: 8px 0 12px; padding: 11px 12px; border-radius: 10px; background: var(--bg-dark); border-left: 3px solid var(--of-ok);
+  font-size: 13px; line-height: 1.55; color: var(--text-secondary); overflow-wrap: anywhere; }
+.of-sfat:empty { display: none; }
+.of-sfat b { color: var(--text-primary); }
+.of-sfat .tag { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary); margin-bottom: 5px; }
+.of-sfat ul { margin: 2px 0 0 18px; padding: 0; }
+.of-sfat li { margin: 5px 0; }
+.of-sfat .dif { color: var(--of-warn); font-weight: 800; }
+.of-sfat .ok { color: var(--of-ok); font-weight: 700; margin-top: 2px; }
+.of-sfat .rax-co-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.of-sfat .rax-co-table th { text-align: left; padding: 6px 4px; color: var(--text-secondary); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); }
+.of-sfat .rax-co-table td { padding: 8px 4px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.of-sfat .rax-co-table .num { text-align: right; white-space: nowrap; }
+/* Butoanele sfaturilor (comutatorul CAN, „Aplică recomandarea", „Trece în ofertă"): mărime de deget. Cel plin =
+   alegerea de acum / pasul de făcut; verdele lui vine de aici, cu textul închis pe el (ca `.of-b.pri`). */
+.of-sfat .rax-btn, .of-ms-sumar .rax-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 9px 12px;
+  border-radius: 10px; font-size: 13.5px; font-weight: 700; font-family: inherit; line-height: 1.25; text-align: center;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary); }
+.of-sfat .rax-btn.primary, .of-ms-sumar .rax-btn.primary { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.of-sfat .rax-btn:disabled, .of-ms-sumar .rax-btn:disabled { opacity: .55; }
+.of-sfat div > .rax-btn { flex: 1 1 140px; }   /* comutatorul: două butoane care umplu rândul */
+.of-sfat > .rax-btn, .of-ms-sumar .rax-btn { width: 100%; margin-top: 4px; }
+
+/* „Întrebări de pus clientului" (pasul 2): pliate, ca pe web. */
+.of-intrebari { margin: 2px 0 10px; font-size: 13px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; }
+.of-intrebari summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 700; color: var(--text-primary); list-style: none; }
+.of-intrebari summary::-webkit-details-marker { display: none; }
+.of-intrebari summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary); transform: rotate(45deg) translateY(-3px); transition: transform .15s; flex: 0 0 auto; }
+.of-intrebari[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+.of-intrebari ol { margin: 0 0 12px 20px; padding: 0; line-height: 1.6; }
+.of-intrebari li { margin: 3px 0; }
+
+/* „Mașinile clientului": un rând = o mașină, cu rezultatul serverului sub ea. Culorile de stare au pereche pe tema
+   deschisă (≥ 4,5 pe fundalul rândului, #f1f5f9). */
+.of-ms-tag { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary); margin-left: 4px; }
+.of-ms-rand { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 10px; margin-bottom: 9px; }
+.of-ms-l1 { display: flex; gap: 8px; align-items: flex-start; }
+.of-ms-l1 .of-ic { width: 44px; flex: 0 0 44px; padding: 0; }
+.of-ms-c { position: relative; flex: 1; min-width: 0; margin-bottom: 8px; }
+.of-ms-l3 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.of-ms-an { width: 84px; text-align: right; }
+.of-ms-comb { flex: 1 1 130px; min-width: 0; }
+.of-ms-buc { display: inline-flex; align-items: center; gap: 6px; }
+.of-ms-buc .of-in { width: 70px; text-align: right; }
+.of-ms-sug { margin-top: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); max-height: 232px; overflow-y: auto; }
+.of-ms-sug button { display: block; width: 100%; text-align: left; min-height: 44px; padding: 10px 12px; font-size: 15px; font-family: inherit;
+  background: none; border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.of-ms-sug button:last-child { border-bottom: none; }
+.of-ms-rez { font-size: 13px; line-height: 1.55; margin-top: 9px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.of-ms-rez b { color: var(--text-primary); }
+.of-ms-caut { display: inline-flex; align-items: center; gap: 7px; }
+.of-ms-rez .raof-ms-st { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 12px; margin-right: 6px; }
+.of-ms-rez .raof-ms-st.da { color: var(--of-ok); }
+.of-ms-rez .raof-ms-st.nes { color: var(--of-warn); }
+.of-ms-rez .raof-ms-st.nu, .of-scr .raof-ms-lipsa { color: var(--of-rau); }
+.of-scr .raof-ms-mic { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.of-ms-rez .raof-ms-not { font-size: 12px; line-height: 1.5; color: var(--of-warn); margin-top: 3px; }
+/* „Poate e: …" — modelele propuse de server, ca ținte de deget. */
+.of-ms-rez a[data-act="model"] { display: inline-block; margin: 4px 4px 0 0; padding: 7px 10px; border: 1px solid var(--of-ok); border-radius: 999px;
+  color: var(--of-ok); font-weight: 700; text-decoration: none; cursor: pointer; }
+.of-ms-alege { display: flex; flex-direction: column; gap: 4px; margin-top: 9px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.of-ms-act { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 10px; }
+.of-ms-act .of-b { font-size: 13px; padding: 8px 9px; text-align: center; }
+.of-b.dis { opacity: .55; pointer-events: none; }
+.of-ms-sumar .raof-ms-sumar { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.of-ms-sumar .raof-ms-sumar b { color: var(--text-primary); }
+.of-ms-prob { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+.of-ms-prob b { color: var(--text-primary); }
+/* „Listele Teltonika": o listă pe rând, într-o singură coloană (două coloane de text liber se ating). */
+.of-lt-r { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.of-lt-r > small, .of-lt-n small { display: block; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-top: 2px; }
+.of-lt-n { margin-top: 6px; }
+.of-link { color: var(--of-ok); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }

@@ -870,6 +870,21 @@ benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu re
 - Păzit de `verify_masini_client.js` (în `npm test`): foi de probă cu forma listelor, listele adevărate,
   pagina, server pornit (încărcare de listă nouă cu un Excel făcut în probă).
 
+### Telefonul și Ofertare Live (APK 1.0.3+, lotul 3 — 29.09)
+Telefonul NU socotește nimic din ofertă: `POST /api/admin/offers/calc` rulează în server, într-un vm, chiar
+bucățile paginii (`_ofDecupeaza` le taie după repere) pe un DOM de carton (`_ofNod`). De aici, ce trebuie știut
+când schimbi pagina de ofertă pe web:
+- **O funcție de DOM nouă folosită de pagină** (ex. `parentNode.querySelector`, 25.09) trebuie să existe și în
+  `_ofNod` — altfel ruta dă 500 și telefonul nu mai poate face oferte. `verify_oferta_telefon.js` pică atunci.
+- **Butoanele paginii fără `oninput`** (`raxOfEchipMod`, `raxOfCanMod`, `raxOfAplicaRecomandarea`) sunt „apăsate"
+  explicit în `_ofSocoteste`; `_ofMeta` trebuie să aibă tot ce dă `/api/admin/offers/meta` (ex. `chirie`).
+- **„Mașinile clientului" pe telefon:** pagina din vm nu primește răspunsuri la `fetch`, deci serverul îi pune
+  singur rezultatul potrivirii (`_compatPotrivire` — ACEEAȘI funcție ca ruta `/api/admin/masini/potrivire`).
+  Lista mașinilor vine de la telefon la fiecare socoteală (`_ofMasiniCurate`), altfel o salvare ar lua lista altei
+  oferte (pagina din vm e una, a tuturor cererilor).
+- Șablonul se încarcă de pe telefon în JSON (`{ fisier, b64 }`), pe aceeași rută; pe calea asta se numără octeții
+  dezarhivați înainte de citire (`_sablonNuSeUmfla`, 50 MB).
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,

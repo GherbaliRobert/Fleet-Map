@@ -8,10 +8,13 @@ import { LinkParolaSheet, pregatesteLinkul, type LinkParola } from '../component
 import { CompanyEditSheet, CompanyConfigSheet } from '../components/CompanyEdit';
 // Comparația contract ↔ factură: o singură bucată, a ecranelor Contracte (aceeași și în dosarul firmei).
 import { Comparatie } from '../components/ContractAnexa';
+// Drumul clientului și butoanele lui: aceleași bucăți ca în dosar și în lista Contracte.
+import { DrumClient } from '../components/ContractDrum';
+import { lipsuriFirma, randDinFisa, usePasiContract } from '../components/ContractPasi';
 import { CompanyAbonament } from './CompanyAbonament';
-import { CTR_STARI, CTR_EXPLIC, DOSAR_FEL, zile } from '../lib/contracte';
+import { CTR_STARI, CTR_EXPLIC, DOSAR_FEL, dupaIncetare, zile } from '../lib/contracte';
 import {
-  accesDetalii, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, nrPlati, nrUseri, nrVeh, ROL_ET, rutaDosar,
+  accesDetalii, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, nrPlati, nrUseri, nrVeh, ROL_ET, rutaDosar, rutaFisa,
 } from '../lib/companii';
 import './admin.css';
 import './detail.css';
@@ -59,6 +62,9 @@ export function CompanySheet() {
   }
   useEffect(() => { setOv(null); incarca(); return () => { cur.current = null; }; }, [id]);
   useEffect(() => { if (FILE.some((f) => f.k === filaCeruta)) setFila(filaCeruta); }, [filaCeruta]);
+  // Fila aleasă intră în ADRESĂ (înlocuiește intrarea, nu adaugă una): butoanele care pleacă din fișă — pașii din
+  // drumul clientului, „Deschide Stoc echipamente" — te aduc, la „înapoi", pe fila de pe care ai plecat, nu pe Detalii.
+  const alegeFila = (k: string) => { setFila(k); if (k !== filaCeruta) loc.route(rutaFisa(id, k), true); };
 
   const o = esteFirma(ov, id) ? ov : null;
   const co = (o && o.company) || {};
@@ -98,12 +104,12 @@ export function CompanySheet() {
               <div class="co-tags">
                 {co.is_demo ? <span class="co-tag demo">DEMO</span> : null}
                 {co.active === false ? <span class="co-tag">inactiv</span> : null}
-                {dos && <button class={'co-pill ' + dos.fel} title={dos.titlu} onClick={() => setFila('contract')}><Icon name="fileSignature" size={12} />{dos.et}</button>}
+                {dos && <button class={'co-pill ' + dos.fel} title={dos.titlu} onClick={() => alegeFila('contract')}><Icon name="fileSignature" size={12} />{dos.et}</button>}
               </div>
             </div>
             <div class="co-tabs" role="tablist">
               {FILE.map((f) => (
-                <button role="tab" aria-selected={fila === f.k} class={fila === f.k ? 'on' : ''} onClick={() => setFila(f.k)}>
+                <button role="tab" aria-selected={fila === f.k} class={fila === f.k ? 'on' : ''} onClick={() => alegeFila(f.k)}>
                   <Icon name={f.ic} size={15} />{f.et}
                 </button>
               ))}
@@ -114,7 +120,7 @@ export function CompanySheet() {
             {fila === 'vehicule' && <Vehicule o={o} />}
             {fila === 'facturi' && <Facturi o={o} />}
             {fila === 'abonament' && <CompanyAbonament ov={o} onReload={incarca} />}
-            {fila === 'contract' && <Contract o={o} onDosar={() => loc.route(rutaDosar(id))} />}
+            {fila === 'contract' && <Contract o={o} onDosar={() => loc.route(rutaDosar(id))} onReload={incarca} />}
           </>
         )}
       </div>
@@ -122,7 +128,7 @@ export function CompanySheet() {
       {o && foaie === 'edit' && <CompanyEditSheet company={co} onClose={() => setFoaie('')} onSaved={() => { setFoaie(''); incarca(); }} />}
       {o && foaie === 'config' && (
         <CompanyConfigSheet companyId={id} areFond={areFond} onClose={() => setFoaie('')} onChanged={incarca}
-          onOferta={() => { setFoaie(''); setFila('abonament'); }} />
+          onOferta={() => { setFoaie(''); alegeFila('abonament'); }} />
       )}
       {o && foaie === 'sterge' && (
         <Confirma title={'Șterge compania „' + (co.name || '') + '"?'} danger busy={stergBusy} okLabel="Șterge definitiv"
@@ -332,24 +338,37 @@ function Facturi({ o }: { o: any }) {
   );
 }
 
-// ─── Contract: rezumatul dosarului + comparația cu factura; dosarul întreg e în ecranele Contracte ───
-function Contract({ o, onDosar }: { o: any; onDosar: () => void }) {
+// ─── Contract: rezumatul dosarului + drumul clientului + comparația cu factura; dosarul întreg e în ecranele
+// Contracte. Ca fila Contract de pe web (_raxCodContract): cutia dosarului → drumul (cu butonul pasului
+// următor) → capul contractului. Butoanele sunt ACELEAȘI ca în listă și în dosar; după o apăsare, fișa se reîncarcă.
+function Contract({ o, onDosar, onReload }: { o: any; onDosar: () => void; onReload: () => void }) {
   const co = o.company || {};
   const c = o.contract || null;
   const dos = o.dosar || {};
+  const pasi = usePasiContract({ trimitePeEmail: !!o.trimite_pe_email, laSchimbat: onReload });
   if (co.is_demo) return <div class="fm-empty">Compania demo nu are contract.</div>;
   const semnat = !!(c && (c.status === 'activ' || c.status === 'incheiat'));
   const st = c ? (CTR_STARI[c.status] || CTR_STARI.ciorna) : null;
+  const rand = randDinFisa(o);
+  // Un contract încheiat: CE URMEAZĂ — aparatele se arhivează, istoricul lor se mai ține cât scrie în contract.
+  const explic = c && CTR_EXPLIC[c.status] ? CTR_EXPLIC[c.status] + (c.status === 'incheiat' ? dupaIncetare(o.date_dupa_incetare_zile) : '') : '';
   return (
     <>
-      {/* Ce lipsește — sus de tot: apare doar când chiar lipsește ceva sau expiră. */}
+      {/* Ce lipsește — sus de tot: apare doar când chiar lipsește ceva sau expiră. CUI-ul, sediul și reprezentantul
+          se completează pe loc (cu ANAF). */}
       {dos.nivel && dos.nivel !== 'demo' && (dos.text || dos.nivel === 'expira') && (
         <div class={'co-box ' + (DOSAR_FEL[dos.nivel] || '')}>
           <strong>{dos.eticheta || ''}</strong>
           {dos.text ? <div>Lipsește: {dos.text}</div> : null}
           {o.preaviz_pana && c && c.status === 'activ' ? <div>Ultima zi în care se poate anunța rezilierea: <b>{zile(o.preaviz_pana)}</b></div> : null}
+          {lipsuriFirma(rand).length > 0 && (
+            <div class="fm-btns" style="margin-top:8px">
+              <button class="fm-btn" onClick={() => pasi.completeaza(rand)}><Icon name="edit" size={15} /> Completează</button>
+            </div>
+          )}
         </div>
       )}
+      {c && o.drum ? <div style="margin-bottom:12px"><DrumClient drum={o.drum} buton={(k) => pasi.butonDrum(k, rand)} /></div> : null}
       {!c ? (
         <div class="fm-card pad">
           <div style="font-size:14px;margin-bottom:10px">Firma asta nu are încă niciun contract.</div>
@@ -363,7 +382,7 @@ function Contract({ o, onDosar }: { o: any; onDosar: () => void }) {
               <b style="font-size:15px">{c.number || 'fără număr'}</b>
             </div>
             <div class="co-note" style="font-size:13px">{zile(c.start_at) + ' → ' + (o.sfarsit ? zile(o.sfarsit) : 'nedeterminat')}</div>
-            {CTR_EXPLIC[c.status] ? <div class="co-note">{CTR_EXPLIC[c.status]}</div> : null}
+            {explic ? <div class="co-note">{explic}</div> : null}
             {o.prelungire_in_lucru ? <div class="co-note">Prelungire în lucru: {o.prelungire_in_lucru.number || '—'}.</div> : null}
           </div>
           {c.status !== 'incheiat' && <Comparatie cmp={o.comparatie} semnat={semnat} />}
@@ -371,6 +390,7 @@ function Contract({ o, onDosar }: { o: any; onDosar: () => void }) {
           <div class="co-note">În dosar: anexele, actele adiționale, montajul, actele semnate și PDF-ul contractului.</div>
         </>
       )}
+      {pasi.ui}
     </>
   );
 }

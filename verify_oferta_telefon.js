@@ -18,7 +18,13 @@
 //      făcut din ea și „Prețurile noastre" vin tot din pagină;
 //   5. ruta e doar a noastră (un administrator de firmă primește 403);
 //   6. (revizia din 24.09) modulele vândute se redeschid bifate, „Aplică prețul propus" pune prețul unui
-//      cont, numele ofertei poartă data României, iar un „preț" text din bază nu ajunge să ruleze pe server.
+//      cont, numele ofertei poartă data României, iar un „preț" text din bază nu ajunge să ruleze pe server;
+//   7. (lotul 3, 29.09) sugestiile doar pentru noi (pasul 2, pasul 4, comutatorul CAN, „Aplică
+//      recomandarea"), „Mașinile clientului" (serverul caută, telefonul arată; „Trece în ofertă"), lista
+//      salvată cu oferta EI oricâte cereri ar trece între timp, refuzul hârtiei la chirie lipsă, șablonul
+//      mașinilor urcat în JSON — și că telefonul nu hotărăște nimic singur;
+//   8. o listă Teltonika nouă, urcată de pe telefon: mărcile și modelele propuse o cuprind (telefonul le cere
+//      din nou după încărcare, ca pagina web).
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -425,6 +431,199 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   } catch (e) { zi = 'eroare: ' + e.message; }
   finally { if (tzInainte === undefined) delete process.env.TZ; else process.env.TZ = tzInainte; }
   T('pe un server UTC, la 01:30 ora României, pagina scrie data de azi (24.09), nu de ieri', zi === '24.09.2026' && ziFara === '23.09.2026', zi + ' / fără: ' + ziFara);
+
+  // ─── Lotul 3 (29.09): sugestiile, comutatorul CAN, „Mașinile clientului", închirierea ────────────────
+  const calc = (b) => json('POST', '/api/admin/offers/calc', telNou, b);
+  const faraCod = (h) => !/onclick=|href=|class="fas |<script/i.test(String(h || ''));
+  sect('9. Sugestiile doar pentru noi: pasul 2, pasul 4, comutatorul CAN, „Aplică recomandarea"');
+  const s0 = (await calc({ nou: true })).j;
+  const s1 = (await calc({ campuri: Object.assign({}, s0.campuri, { nveh: '12', ncan: '5', nfms: '3', qGps: '3' }), atinse: ['qGps'], schimbate: ['nveh', 'ncan', 'nfms'] })).j;
+  const sf = String((s1.html && s1.html.sfatFlota) || ''), sm = String((s1.html && s1.html.sfatMontaj) || '');
+  T('pasul 2, „Ce recomanzi": un rând pe fel de mașină, scris de pagină (4 fără CAN, 5 cu CAN, 3 camioane)',
+    /Ce recomanzi · doar pentru tine, nu apare în ofertă/.test(sf) && /<b>4 fără CAN → FMC130\.<\/b>/.test(sf) && /<b>5 cu CAN → FMC130 \+ modul LV-CAN200\.<\/b>/.test(sf) && /<b>3 camioane cu FMS → FMC650\.<\/b>/.test(sf), sf.slice(0, 160));
+  T('pasul 4, „Recomandarea pentru flota asta": tabelul Recomandat / În ofertă, cu diferența marcată', /Recomandarea pentru flota asta · doar pentru tine/.test(sm) && /<th class="num">Recomandat<\/th><th class="num">În ofertă<\/th>/.test(sm)
+    && /Instalare dispozitiv GPS<\/td><td class="num"><b>12<\/b><\/td><td class="num dif">3</.test(sm), sm.slice(0, 160));
+  T('comutatorul CAN și „Aplică recomandarea" ajung pe telefon ca butoane-semn (fără comenzile paginii)',
+    /<button type="button" data-act="canMod" data-val="lvcan" class="rax-btn primary">FMC130 \+ LV-CAN200<\/button>/.test(sm) && /data-act="canMod" data-val="fmc150" class="rax-btn">FMC150 \(CAN integrat\)</.test(sm)
+      && /<button type="button" data-act="aplicaRec" class="rax-btn primary">Aplică recomandarea în ofertă<\/button>/.test(sm) && faraCod(sf + sm), sm.slice(sm.indexOf('<div'), sm.indexOf('<div') + 200));
+  const s2 = (await calc({ campuri: s1.campuri, atinse: s1.atinse, schimbate: ['canMod'], canMod: 'fmc150' })).j;
+  const q2 = s2.campuri || {};
+  T('comutatorul pe FMC150: cantitățile neatinse trec pe FMC150 + CAN încorporat, cea scrisă de mână rămâne',
+    s2.canMod === 'fmc150' && q2.dq150 === '5' && q2.qCanInc === '5' && q2.dqLvCan === '' && q2.qLvCan === '' && q2.dq130 === '4' && q2.qGps === '3',
+    JSON.stringify({ canMod: s2.canMod, d130: q2.dq130, d150: q2.dq150, lv: q2.dqLvCan, qLv: q2.qLvCan, qCi: q2.qCanInc, qGps: q2.qGps }));
+  T('...și alegerea se vede plină pe butonul ei', /data-val="fmc150" class="rax-btn primary"/.test(s2.html.sfatMontaj) && /data-val="lvcan" class="rax-btn">/.test(s2.html.sfatMontaj));
+  const s3 = (await calc({ campuri: s2.campuri, atinse: s2.atinse, schimbate: [] })).j;
+  T('comutatorul nu rămâne agățat în pagina serverului: o cerere fără el pornește pe „FMC130 + LV-CAN200"', s3.canMod === 'lvcan' && /data-val="lvcan" class="rax-btn primary"/.test(s3.html.sfatMontaj), s3.canMod);
+  const s4 = (await calc({ campuri: s2.campuri, atinse: s2.atinse, schimbate: [], canMod: 'fmc150', aplicaRecomandarea: true })).j;
+  const q4 = s4.campuri || {};
+  T('„Aplică recomandarea": pune cantitățile recomandate la pașii 4 și 5 (GPS 12), cu mesajul paginii',
+    q4.qGps === '12' && q4.dq150 === '5' && q4.qCanInc === '5' && q4.dq650 === '3' && q4.qFms === '3' && s4.mesaj === 'Recomandarea e în ofertă (pașii 4 și 5) ✓',
+    JSON.stringify({ qGps: q4.qGps, d150: q4.dq150, mesaj: s4.mesaj }));
+  T('...le ține minte ca „scrise de mână", iar recomandarea spune că oferta o urmează',
+    ['dq130', 'dq150', 'dq650', 'dqLvCan', 'qGps', 'qLvCan', 'qCanInc', 'qFms'].every((k) => lista(s4.atinse).includes(k)) && /<div class="ok">Oferta urmează recomandarea\.<\/div>/.test(s4.html.sfatMontaj), JSON.stringify(s4.atinse));
+  T('...fără să atingă prețurile', q4.mGps === s2.campuri.mGps && q4.dFmc150 === s2.campuri.dFmc150 && q4.pPlain === s2.campuri.pPlain);
+  T('sfaturile NU ajung pe hârtie și nici în salvare', !/Recomand|doar pentru tine|Ce recomanzi|Întrebări de pus/.test(JSON.stringify(s4.hartie) + JSON.stringify(s4.salvare || s4.salvareEroare)));
+
+  sect('10. „Mașinile clientului": serverul caută, telefonul doar arată');
+  const MS = [
+    { marca: 'Dacia', model: 'Logan 2', an: '2024', combustibil: 'gpl', buc: '3', aparat: '' },
+    { marca: 'Volvo', model: 'FH', an: '2020', combustibil: 'motorina', buc: '2', aparat: '' },
+    { marca: 'Ford', model: 'Transit', an: '', combustibil: '', buc: '1', aparat: '' },
+    { marca: 'VW', model: '', an: '', combustibil: '', buc: '1', aparat: '' },   // pe jumătate scris
+  ];
+  const m1 = (await calc({ campuri: s0.campuri, atinse: [], schimbate: [], masini: MS, masiniMotor: true, canMod: 'lvcan' })).j;
+  const R1 = lista(m1.masini && m1.masini.randuri);
+  T('fiecare rând primește rezultatul lui (aparat recomandat + ce a scris pagina sub el)', R1.length === 4 && R1[0].rec && R1[0].rec.aparat === 'fmc130_lvcan' && R1[0].rec.et === 'FMC130 + LV-CAN200'
+    && R1[1].rec && R1[1].rec.aparat === 'fmc650' && R1[3].rec === null && /Scrie marca și modelul/.test(R1[3].rez), JSON.stringify(R1.map((x) => x.rec)));
+  const pot = await json('POST', '/api/admin/masini/potrivire', S, { pref: 'lvcan', vreaMotor: true, vehicule: MS.map((m) => ({ marca: m.marca, model: m.model, an: Number(m.an) || null, combustibil: m.combustibil })) });
+  T('o singură regulă: aparatul e cel dat de ruta de potrivire, pe aceleași mașini', pot.status === 200 && R1.every((x, i) => (x.rec ? x.rec.aparat : null) === ((pot.j.rezultate[i] || {}).rec || {}).aparat || (x.rec === null && pot.j.rezultate[i] === null)),
+    JSON.stringify(lista(pot.j.rezultate).map((x) => x && x.rec && x.rec.aparat)));
+  const rezTot = R1.map((x) => x.rez).join('');
+  T('ce se citește și pe ce rând din listă — în cuvintele paginii', /citește: rezervor ✓/.test(rezTot) && /LV-CAN200: LOGAN \(III\) \(LPG\), din 2021 · program 13732/.test(rezTot) && /class="raof-ms-st nes">de verificat/.test(rezTot), R1[0].rez.slice(0, 200));
+  T('„Poate e: …" vine ca semn (modelul propus), nu ca o comandă a paginii', /<a data-act="model" data-val="Logan VAN">Logan VAN<\/a>/.test(rezTot) && faraCod(rezTot), (rezTot.match(/Poate e:[^\n]{0,160}/) || ['—'])[0]);
+  T('lista de alegere a aparatului NU vine în HTML (telefonul o face nativă, din `aparate`)', !/raof-ms-alege|<select/.test(rezTot)
+    && egal(lista(m1.masini.aparate).map((a) => a.k), ['fmc130', 'fmc130_lvcan', 'fmc150', 'fmc650']) && lista(m1.masini.combustibili).length === 5 && m1.masini.combustibili[2].et === 'benzină + GPL');
+  T('sumarul, cu „Trece în ofertă" ca semn: 6 mașini, 4 de verificat', /<b>6 mașini<\/b>: 4 × FMC130 \+ LV-CAN200 · 2 × FMC650 \(camion, FMS\)/.test(m1.masini.sumar) && /4 de verificat/.test(m1.masini.sumar)
+    && /<button type="button" data-act="aplicaRec" class="rax-btn primary">Trece în ofertă<\/button>/.test(m1.masini.sumar) && faraCod(m1.masini.sumar), m1.masini.sumar.slice(0, 200));
+  T('pașii 2 și 4 citesc din listă când are mașini', /Ce recomanzi, din lista mașinilor/.test(m1.html.sfatFlota) && /Recomandarea din lista mașinilor/.test(m1.html.sfatMontaj) && /pașii 2, 4 și 5/.test(m1.html.sfatMontaj));
+  T('rândurile se întorc cum au venit (și cel pe jumătate scris), ca telefonul să le poată arăta', egal(lista(m1.masini.lista).map((x) => [x.marca, x.model, x.an, x.buc]), MS.map((x) => [x.marca, x.model, x.an, x.buc])) && m1.masini.motor === true);
+  const m2 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MS, masiniMotor: true, canMod: 'lvcan', aplicaRecomandarea: true })).j;
+  const c2 = m2.campuri || {};
+  T('„Trece în ofertă": pasul 2 din listă (6 mașini, 4 cu CAN, 2 cu FMS), pașii 4 și 5 din aparatele alese',
+    c2.nveh === '6' && c2.ncan === '4' && c2.nfms === '2' && c2.dq130 === '4' && c2.dqLvCan === '4' && c2.dq650 === '2' && c2.qGps === '6' && m2.mesaj === 'Mașinile sunt în ofertă (pașii 2, 4 și 5) ✓',
+    JSON.stringify({ nveh: c2.nveh, ncan: c2.ncan, nfms: c2.nfms, d130: c2.dq130, lv: c2.dqLvCan, d650: c2.dq650, mesaj: m2.mesaj }));
+  const MSmana = MS.map((m, i) => (i === 2 ? Object.assign({}, m, { aparat: 'fmc130' }) : m));
+  const m3 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MSmana, masiniMotor: true, aplicaRecomandarea: true })).j;
+  T('aparatul ales de mână bate recomandarea (Transit → FMC130, doar poziție)', m3.campuri.ncan === '3' && /1 × FMC130 \(doar poziție\)/.test(m3.masini.sumar), m3.campuri.ncan + ' / ' + m3.masini.sumar.slice(0, 120));
+  const m4 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MS, masiniMotor: false })).j;
+  T('„date din motor" oprit: mașina mică primește FMC130 (doar poziție)', lista(m4.masini.randuri)[0].rec.aparat === 'fmc130' && m4.masini.motor === false, JSON.stringify(lista(m4.masini.randuri)[0].rec));
+  const otravaMs = [{ marca: '<img src=x onerror=alert(1)>', model: 'X"><script>alert(1)</script>', an: '2020', combustibil: 'kerosen', buc: '-4', aparat: 'rachetă' }];
+  const r5 = await calc({ campuri: s0.campuri, atinse: [], schimbate: [], masini: otravaMs });
+  const m5 = r5.j;
+  const tot5 = JSON.stringify([m5.masini && m5.masini.randuri, m5.masini && m5.masini.sumar, m5.html]);
+  const l5 = (m5.masini && m5.masini.lista || [])[0] || {};
+  T('ce scrie omul nu ajunge ca HTML: marca și modelul ies scăpate, combustibilul / aparatul străine cad, bucățile urcă la 1',
+    r5.status === 200 && !/<img|<script/i.test(tot5) && l5.combustibil === '' && l5.aparat === '' && l5.buc === '1', tot5.slice(0, 200));
+
+  sect('11. Lista mașinilor se salvează cu oferta EI, oricâte cereri ar trece între timp (L5-01)');
+  const MSa = [MS[0], MS[1], MS[3]];   // Logan ×3, Volvo ×2 și un rând pe jumătate scris (nu se salvează)
+  const pa = (await calc({ campuri: Object.assign({}, s0.campuri, { 'cl-name': 'Firma A' }), atinse: [], schimbate: ['cl-name'], masini: MSa, masiniMotor: false })).j;
+  const cfgA = pa.salvare && pa.salvare.corp && pa.salvare.corp.config && pa.salvare.corp.config.cfg;
+  T('salvarea duce lista (doar rândurile întregi) și „date din motor"', !!cfgA && lista(cfgA.masini).length === 2 && cfgA.masini[0].model === 'Logan 2' && cfgA.masini[0].buc === 3 && cfgA.masiniMotor === false,
+    JSON.stringify(cfgA && { m: cfgA.masini, mo: cfgA.masiniMotor }));
+  const idA = (await json('POST', '/api/admin/offers', telNou, pa.salvare.corp)).j.id;
+  const pb = (await calc({ campuri: Object.assign({}, s0.campuri, { 'cl-name': 'Firma B' }), atinse: [], schimbate: ['cl-name'], masini: [{ marca: 'Skoda', model: 'Octavia', an: '2021', combustibil: 'benzina', buc: '7' }] })).j;
+  const idB = (await json('POST', '/api/admin/offers', telNou, pb.salvare.corp)).j.id;
+  const listaA = cfgA.masini;
+  const incA2 = (await calc({ offer_id: idA, incarca: true })).j;
+  T('oferta redeschisă își aduce lista, cu rezultatele ei', egal(lista(incA2.masini && incA2.masini.lista).map((x) => [x.marca, x.model, x.an, x.buc]), [['Dacia', 'Logan 2', '2024', '3'], ['Volvo', 'FH', '2020', '2']])
+    && incA2.masini.motor === false && lista(incA2.masini.randuri)[1].rec.aparat === 'fmc650', JSON.stringify(incA2.masini && incA2.masini.lista));
+  // Între deschidere și salvare trece altcineva pe la calculator: „Ofertă nouă"…
+  await calc({ nou: true });
+  const dupaNou = (await calc({ offer_id: idA, campuri: incA2.campuri, atinse: incA2.atinse, schimbate: [] })).j;   // telefonul 1.0.3: fără `masini`
+  const cN = dupaNou.salvare && dupaNou.salvare.corp.config.cfg;
+  T('după o „Ofertă nouă" în altă parte, salvarea ofertei A duce tot lista ei (nu una goală)', !!cN && egal(cN.masini, listaA) && cN.masiniMotor === false, JSON.stringify(cN && { m: cN.masini, mo: cN.masiniMotor }));
+  // …sau deschide oferta B.
+  await calc({ offer_id: idB, incarca: true });
+  const dupaB = (await calc({ offer_id: idA, campuri: incA2.campuri, atinse: incA2.atinse, schimbate: [] })).j;
+  const cB = dupaB.salvare && dupaB.salvare.corp.config.cfg;
+  T('după ce altcineva deschide oferta B, salvarea ofertei A NU duce mașinile lui B', !!cB && egal(cB.masini, listaA) && !/Octavia/.test(JSON.stringify(cB.masini)), JSON.stringify(cB && cB.masini));
+  const golita = (await calc({ offer_id: idA, campuri: incA2.campuri, atinse: incA2.atinse, schimbate: [], masini: [], masiniMotor: true })).j;
+  T('lista golită chiar de pe telefon rămâne goală (hotărârea omului)', egal(golita.salvare.corp.config.cfg.masini, []) && golita.salvare.corp.config.cfg.masiniMotor === true);
+  const s7 = (await json('PUT', '/api/admin/offers/' + idA, telNou, dupaB.salvare.corp));
+  const inapoiA = lista((await json('GET', '/api/admin/offers', S)).j).find((o) => o.id === idA) || {};
+  // (Baza ține JSON-ul cu cheile în ordinea EI — se compară câmp cu câmp, nu textul.)
+  const campuriMs = (l) => lista(l).map((x) => [x.marca, x.model, x.an, x.combustibil, x.buc, x.aparat]);
+  T('și, salvată, oferta A își păstrează lista în bază', s7.status === 200 && egal(campuriMs(inapoiA.config && inapoiA.config.cfg && inapoiA.config.cfg.masini), campuriMs(listaA)),
+    s7.status + ' ' + diferenta(campuriMs(inapoiA.config && inapoiA.config.cfg && inapoiA.config.cfg.masini), campuriMs(listaA)));
+
+  sect('12. Închirierea: hârtia refuzată spune de ce; șablonul mașinilor de pe telefon');
+  const ch = (await calc({ campuri: Object.assign({}, s0.campuri, { echipMod: 'inchiriaza', dq130: '5' }), atinse: ['dq130'], schimbate: ['echipMod'] })).j;
+  T('aparate închiriate fără chirie: PDF-ul e refuzat cu mesajul paginii, nu cu unul general', ch.hartie === null && ch.hartieEroare === 'Lipsește chiria pentru: Teltonika FMC130 (pasul 5).', JSON.stringify({ h: ch.hartie, e: ch.hartieEroare }));
+  T('...iar o ofertă obișnuită n-are niciun refuz', !!s1.hartie && s1.hartieEroare === null);
+  T('„trece cât ne costă", lângă chirie, e un semn spre „Prețurile noastre"', /^<a data-act="preturi"[^>]*>trece cât ne costă<\/a>$/.test(String(ch.chcost && ch.chcost.chFmc130)), ch.chcost && ch.chcost.chFmc130);
+  const ExcelJS = require('exceljs');
+  const rsab = await fetch(B + '/api/admin/masini/sablon', { headers: { Authorization: 'Bearer ' + tel.token } });
+  const cdSab = rsab.headers.get('content-disposition') || '';
+  T('telefonul descarcă șablonul de la server, cu numele casei', rsab.status === 200 && decodeURIComponent((cdSab.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') === 'RA-Tracks - Șablon mașini client.xlsx', rsab.status + ' ' + cdSab);
+  const wbS = new ExcelJS.Workbook(); await wbS.xlsx.load(Buffer.from(await rsab.arrayBuffer()));
+  const wsS = wbS.getWorksheet('Mașini');
+  let rA = 0; for (let i = 1; i <= 12 && wsS && !rA; i++) if (String(wsS.getCell(i, 1).value) === 'Marcă') rA = i;
+  [['Dacia', 'Logan', 2024, 'benzină + GPL', 5], ['Volvo', 'FH', 2020, 'motorină', 2], ['Renault', null, 2020, 'motorină', 1]]
+    .forEach((vv, i) => vv.forEach((x, j) => { if (x != null) wsS.getCell(rA + 1 + i, j + 1).value = x; }));
+  const b64 = Buffer.from(await wbS.xlsx.writeBuffer()).toString('base64');
+  const sj = await json('POST', '/api/admin/masini/sablon', telNou, { fisier: 'Flota Firma A.xlsx', b64 });
+  T('șablonul completat urcă de pe telefon în JSON (base64) și se citește cu același cititor', sj.status === 200 && lista(sj.j.masini).length === 2 && sj.j.masini[0].combustibil === 'gpl' && sj.j.masini[0].buc === 5
+    && sj.j.probleme.some((x) => x.rand === rA + 3 && /modelul/.test(x.ce)), sj.status + ' ' + sj.text.slice(0, 160));
+  const sjRau = await json('POST', '/api/admin/masini/sablon', telNou, { fisier: 'x.xlsx', b64: Buffer.from('nu e excel').toString('base64') });
+  const sjGol = await json('POST', '/api/admin/masini/sablon', telNou, { fisier: 'x.xlsx' });
+  T('...un fișier care nu e Excel → 400 pe înțeles; fără fișier → 400', sjRau.status === 400 && /șablonul Excel/.test(sjRau.j.error || '') && sjGol.status === 400 && /Alege șablonul/.test(sjGol.j.error || ''), sjRau.text + ' / ' + sjGol.text);
+  T('...și tot doar al nostru', (await json('POST', '/api/admin/masini/sablon', { token: telSef.token, app: '1.0.4' }, { fisier: 'x.xlsx', b64 })).status === 403);
+  // Un .xlsx e o arhivă: ~300 KB arhivat, 300 MB dezarhivat. Pe calea telefonului se numără octeții dezarhivați
+  // înainte de citire — altfel un fișier trimis de un client putea opri serverul (găsit 29.09).
+  const JSZipB = require('jszip');
+  const zb = new JSZipB();
+  zb.file('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>');
+  zb.file('xl/umflat.xml', Buffer.alloc(300 * 1024 * 1024, 0x20));
+  const bomba = await zb.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+  const tB = Date.now();
+  const sjBomba = await json('POST', '/api/admin/masini/sablon', telNou, { fisier: 'flota.xlsx', b64: bomba.toString('base64') });
+  T('...un Excel mic care se umflă la dezarhivare e refuzat pe calea telefonului, repede, și serverul răspunde mai departe',
+    sjBomba.status === 400 && /șablonul Excel/.test(sjBomba.j.error || '') && Date.now() - tB < 15000 && (await fetch(B + '/api')).ok, sjBomba.status + ' · ' + (Date.now() - tB) + ' ms');
+
+  sect('13. Telefonul arată ce vine de la server — nu hotărăște nimic singur');
+  const calcTel2 = citeste('mobile/src/screens/OfferCalc.tsx'), msTel = citeste('mobile/src/components/MasiniClient.tsx');
+  const epTel = citeste('mobile/src/api/endpoints.ts'), trimTel = citeste('mobile/src/lib/trimiteFisier.ts');
+  T('calculatorul trimite lista, comutatorul și „Aplică recomandarea" la fiecare socoteală',
+    /corp\.masini = msRef\.current\.map/.test(calcTel2) && /corp\.masiniMotor = /.test(calcTel2) && /canMod: canModRef\.current/.test(calcTel2) && /corp\.aplicaRecomandarea = true/.test(calcTel2));
+  T('...dar NU trimite o listă pe care serverul nu i-a dat-o (una goală ar șterge lista ofertei)', /if \(areListaRef\.current\) \{\s*corp\.masini/.test(calcTel2));
+  T('arată sfaturile, refuzul hârtiei și linkul de lângă chirie, din răspunsul serverului',
+    /res\.html\.sfatFlota/.test(calcTel2) && /res\.html\.sfatMontaj/.test(calcTel2) && /j\.hartieEroare/.test(calcTel2) && /class="of-eq" onClick=\{laClic\}/.test(calcTel2)
+      && /closest\('\[data-act\]'\)/.test(calcTel2) && /act === 'canMod'/.test(calcTel2) && /act === 'aplicaRec'/.test(calcTel2));
+  const liWeb = ((HTML.match(/<details class="raof-intrebari">[\s\S]*?<\/details>/) || [''])[0].match(/<li>([^<]*)<\/li>/g) || []).map((x) => x.replace(/<\/?li>/g, ''));
+  const liTel = ((calcTel2.match(/<details class="of-intrebari">[\s\S]*?<\/details>/) || [''])[0].match(/<li>([^<]*)<\/li>/g) || []).map((x) => x.replace(/<\/?li>/g, ''));
+  T('cele 7 întrebări de pus clientului, cuvânt cu cuvânt ca pe web', liWeb.length === 7 && egal(liTel, liWeb), JSON.stringify(liTel.filter((x) => liWeb.indexOf(x) < 0)));
+  const candWeb = (HTML.slice(HTML.indexOf('var montajCard = card('), HTML.indexOf('var deviceCard = card(')).match(/cand\('([^']*)'\)/g) || []).map((x) => x.slice(6, -2));
+  T('sub fiecare lucrare de montaj, când se folosește — aceleași 7 texte ca pe web', candWeb.length === 7 && candWeb.every((t) => calcTel2.indexOf("'" + t + "'") >= 0), JSON.stringify(candWeb.filter((t) => calcTel2.indexOf("'" + t + "'") < 0)));
+  T('lista mașinilor nu alege aparate și nu caută singură în listele Teltonika (nici potrivire, nici reguli)',
+    !!msTel && !/masini\/potrivire|fmc130_lvcan|'fmc650'|_ofRecDinMasini|_ofRecomandare|recomanda\(/.test(msTel + calcTel2));
+  T('șablonul: descărcat de la server (numele din antet), urcat în JSON pe ușa lui; lista Teltonika — crud, pe ușa web-ului',
+    /salveazaDeLaServer\('\/api\/admin\/masini\/sablon', 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(msTel) && /masiniSablonCiteste\(/.test(msTel)
+      && /masiniSablonCiteste: [\s\S]{0,200}'\/api\/admin\/masini\/sablon', \{ method: 'POST'/.test(epTel) && /trimiteFisierCrud\('\/api\/admin\/masini\/liste'/.test(msTel)
+      && /dataType: 'file'/.test(trimTel) && /'X-Fisier': encodeURIComponent\(f\.name\)/.test(msTel));
+  T('...și întreabă înainte să înlocuiască o listă începută', /fel: 'inlocuieste'/.test(msTel) && /'Lista are deja ' \+ nrDe\(foaie\.acum, 'mașină', 'mașini'\)/.test(msTel));
+  T('lista de oferte arată pastila „închiriere"', /cfg\.echipMod === 'inchiriaza' \? <span class="of-chirie"[^>]*>închiriere<\/span>/.test(citeste('mobile/src/screens/Offers.tsx')));
+
+  // La urmă: o listă nouă schimbă potrivirile, deci n-are voie să atingă verificările de mai sus.
+  sect('14. O listă Teltonika nouă, urcată de pe telefon: mărcile și modelele propuse o cuprind');
+  // Pe web, `raxOfListaIncarca` uită mărcile și modelele ținute minte și le cere din nou. Telefonul le ținea pe
+  // cele de la deschidere: o marcă aflată doar în lista nouă nu era propusă până nu redeschideai calculatorul.
+  const incWeb = HTML.slice(HTML.indexOf('window.raxOfListaIncarca = async function'), HTML.indexOf('// ── sfârșit „mașinile clientului" ──'));
+  const incTel = msTel.slice(msTel.indexOf('async function incarcaLista('), msTel.indexOf('const inchideFoaia'));
+  T('după încărcare, telefonul cere din nou mărcile și uită modelele ținute minte — ca pagina web',
+    /_ofMsMarci = null; _ofMsModele = \{\}/.test(incWeb) && /modele\.current = \{\}/.test(incTel) && /incarcaMarci\(\);[\s\S]*p\.onListeNoi\(\)/.test(incTel)
+      && /function incarcaMarci\(\) \{[\s\S]{0,120}Api\.masiniMarci\(\)[\s\S]{0,40}g === genMarci\.current/.test(msTel)
+      && /c = modele\.current;[\s\S]{0,160}c\[m\] = Array\.isArray/.test(msTel));
+  const ANTET_LV = ['NO', 'Brand', 'Model', 'year', 'program №', 'program date', 'Number of CAN BUSes to be connected', 'Flags', 'Ignition',
+    'Engine is working on LPG', 'Total mileage of the vehicle (dashboard)', 'Vehicle mileage - (counted)', 'Total fuel consumption',
+    'Total fuel consumption - (counted)', 'Fuel level (in percent)', 'Total LPG use – (counted)', 'LPG level (in percent)', 'HV battery level'];
+  const wbL = new ExcelJS.Workbook(), wsL = wbL.addWorksheet('Cars');
+  wsL.addRow([]); wsL.addRow(ANTET_LV); wsL.addRow([]);
+  for (let i = 1; i <= 24; i++) wsL.addRow([i, 'TELPROBA', 'ZETA' + i, '2020>', String(91000 + i), 'from 2026-01-01', '1', '+', '+', '', '+', '', '', '+', '+', '', '', '']);
+  const xlsxL = Buffer.from(await wbL.xlsx.writeBuffer());
+  const marciInainte = lista((await json('GET', '/api/admin/masini/marci', telNou)).j.marci);
+  // Exact cererea telefonului (`trimiteFisierCrud`): crud, cu cheia lui și antetul aplicației, pe ușa web-ului.
+  const upL = await fetch(B + '/api/admin/masini/liste', { method: 'POST', body: xlsxL, headers: { 'Content-Type': 'application/octet-stream',
+    'X-RA-App': '1.0.4', Authorization: 'Bearer ' + tel.token, 'X-Fisier': encodeURIComponent('LV-CAN200_list_2026_09_01_en.xlsx') } });
+  const jL = await upL.json().catch(() => ({}));
+  T('lista urcă de pe telefon și răspunsul aduce listele de acum (foaia „Listele Teltonika" se reface din el)',
+    upL.status === 200 && jL.tip === 'lvcan' && jL.n === 24 && lista(jL.liste).some((l) => l.tip === 'lvcan' && l.sursa === 'incarcata' && l.n === 24),
+    upL.status + ' ' + JSON.stringify(jL).slice(0, 200));
+  const marciDupa = lista((await json('GET', '/api/admin/masini/marci', telNou)).j.marci);
+  const modeleDupa = lista((await json('GET', '/api/admin/masini/modele?marca=' + encodeURIComponent('Telproba'), telNou)).j.modele);
+  T('...mărcile cerute din nou o cuprind pe cea care e doar în lista nouă', !marciInainte.includes('Telproba') && marciDupa.includes('Telproba'),
+    JSON.stringify({ inainte: marciInainte.includes('Telproba'), dupa: marciDupa.filter((x) => /^Te/.test(x)) }));
+  T('...și modelele ei', modeleDupa.length === 24 && modeleDupa[0] === 'ZETA1' && modeleDupa.includes('ZETA24'), JSON.stringify(modeleDupa.slice(0, 5)));
 
   console.log('\n' + (rele ? '✗ ' + rele + ' verificări au picat' : '✓ toate cele ' + ok + ' verificări au trecut'));
   gata(rele ? 1 : 0);

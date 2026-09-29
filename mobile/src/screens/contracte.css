@@ -130,6 +130,35 @@ label.ctr-btn { cursor: pointer; }
 .ctr-bad-txt { color: var(--red); }
 .ctr-warn-txt { color: var(--ctr-warn); }
 
+/* Drumul clientului (24.09): șase pași într-o coloană; pasul „acum" are chenarul aplicației, iar dedesubt
+   „Pasul următor" cu butonul lui. Stările vin de la server; aici doar culorile. Bifa verde trece pe --ctr-ok,
+   mai închis pe tema luminoasă (verdele aplicației pe alb nu se citește). */
+.ctr-drum { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
+.ctr-drum-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 14px; color: var(--text-primary); }
+.ctr-drum-cap b { font-weight: 800; }
+.ctr-drum-cap span { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+.ctr-drum-pasi { display: flex; flex-direction: column; gap: 3px; }
+.ctr-drum-pas { display: flex; align-items: flex-start; gap: 10px; padding: 7px 9px; border-radius: 10px; border: 1px solid transparent; color: var(--text-muted); }
+.ctr-drum-pas .ic { flex: 0 0 20px; margin-top: 1px; }
+.ctr-drum-pas .t { display: flex; flex-direction: column; min-width: 0; }
+.ctr-drum-pas .e { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--text-primary); }
+.ctr-drum-pas .d { font-size: 12.5px; line-height: 1.35; color: var(--text-muted); overflow-wrap: anywhere; }
+.ctr-drum-pas.gata { color: var(--ctr-ok); }
+.ctr-drum-pas.acum { color: var(--ctr-ok); border-color: var(--accent); background: rgba(63, 224, 125, .09); }
+.ctr-drum-pas.urmeaza .e, .ctr-drum-pas.nu_e_cazul .e { color: var(--text-muted); font-weight: 600; }
+.ctr-drum-urm { margin-top: 10px; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border); font-size: 13.5px; line-height: 1.45; color: var(--text-primary); }
+.ctr-drum-urm b { font-weight: 800; }
+
+/* Lista Contracte (24.09): sub stare, pasul următor cu butonul lui; la „Dosar", fiecare lipsă cu butonul ei. */
+.ctr-pas { display: flex; flex-direction: column; gap: 2px; padding: 0 0 10px; }
+.ctr-pas .ctr-btns { margin-top: 4px; }
+.ctr-rand { flex: 1 1 100%; }
+.ctr-dos { border-top: 1px solid var(--border); padding: 6px 0 2px; }
+.ctr-dos .ctr-kv { border-top: 0; padding: 0; }
+.ctr-lipsa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+.ctr-lipsa > span { flex: 1 1 100%; }
+.ctr-band .ctr-btns { margin-top: 8px; }
+
 /* Montajul: 7 lucrări, fiecare cu Cant. / Preț client / Cost partener */
 .ctr-mont { display: flex; flex-direction: column; gap: 8px; }
 .ctr-mont-r { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; }

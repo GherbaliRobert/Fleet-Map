@@ -8,19 +8,33 @@
 //
 // Tot ce e dată de capăt, preaviz, dosar, comparația cu factura sau textul prelungirii vine de la SERVER
 // (/api/companies/:id/overview). Telefonul doar le pune pe ecran.
+//
+// Sus, sub ce lipsește, „Drumul clientului" (24.09): ofertă → trimis la semnat → semnat → montaj → aparate →
+// prima factură, cu butonul pasului următor — pașii îi socotește serverul (`drum`), butoanele sunt aceleași ca
+// în lista Contracte (usePasiContract). `?lucrare=noua` în adresă (venit din listă sau din fișa firmei, pasul
+// „Montajul") deschide formularul unei lucrări de montaj noi.
+//
+// Ce e scris în „Datele contractului" și nesalvat NU se pierde (29.09): pașii din drum care lucrează pe contractul
+// salvat („Trimite la semnat", „Am trimis-o", „E semnat") îl salvează întâi, iar o reîncărcare după o acțiune de
+// alături (montaj, anexă, „Completează", un act, un fișier) îl lasă pe ecran.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
+import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { AlegeFisier, CapEcran, DescarcaFisier, HartieBtns, Pill, useReinnoire, type FisierAles } from '../components/ContractUi';
 import { AnexaCitita, AnexaEditor, Comparatie } from '../components/ContractAnexa';
 import { ContractActe } from '../components/ContractActe';
 import { Anexa2, ContractMontaj } from '../components/ContractMontaj';
+import { DrumClient } from '../components/ContractDrum';
+import { lipsuriFirma, randDinFisa, usePasiContract } from '../components/ContractPasi';
 import {
-  CTR_EXPLIC, CTR_PAS, CTR_STARI, DOSAR_FEL, azi, deReinnoit, inputZi, luniOptiuni, luniText, rolNostru, semnatariDin, zi, zile,
+  CTR_EXPLIC, CTR_PAS, CTR_STARI, DOSAR_FEL, azi, deReinnoit, dupaIncetare, dupaIncetareConfirm, inputZi, luniOptiuni, luniText, rolNostru,
+  semnatariDin, zi, zile,
 } from '../lib/contracte';
+import { rutaDosar } from '../lib/companii';
 import './admin.css';
 import './detail.css';
 import './contracte.css';
@@ -48,6 +62,16 @@ function formDin(c: any, noi: string[] | null): Form {
     endreason: (c && c.ended_reason) || '',
   };
 }
+// Fișa se reîncarcă după fiecare acțiune de alături (o lucrare de montaj, anexa, „Completează", un act, un fișier).
+// Ce ai scris în „Datele contractului" și n-ai salvat NU se pierde atunci: un câmp schimbat de tine (față de cum
+// venise, `vechi`) rămâne cum l-ai scris, unul neatins ia valoarea proaspătă de la server (`nou`). Starea vine MEREU
+// de la server: ea se schimbă doar prin pașii contractului, iar o stare veche ținută pe ecran l-ar întoarce din drum
+// la următoarea salvare. Corpul e JavaScript curat, ca `verify_contracte_telefon.js` să-l poată rula.
+function cuCeAiScris(nou: any, acum: any, vechi: any): Form {
+  const out = Object.assign({}, nou);
+  Object.keys(nou).forEach(function (k) { if (k !== 'status' && acum[k] !== vechi[k]) out[k] = acum[k]; });
+  return out;
+}
 
 export function ContractDetail() {
   const loc = useLocation();
@@ -63,22 +87,42 @@ export function ContractDetail() {
   const [dialog, setDialog] = useState<'' | 'semnat' | 'incheiat' | 'sterge' | 'scoate-contract' | 'scoate-gdpr'>('');
   const [urca, setUrca] = useState('');
   const [versiune, setVersiune] = useState(0); // schimbată la fiecare reîncărcare: secțiunile de sub fișă pornesc din nou
+  // Biletul pentru formularul unei lucrări de montaj noi (pasul „Montajul" din drum). Un număr nou = o deschidere.
+  const [bilet, setBilet] = useState(0);
+  const lucrareNoua = String(((loc.query || {}) as any).lucrare || '') === 'noua';
   const cur = useRef(companyId);
   cur.current = companyId;
+  // Venit cu `?lucrare=noua`: se cere formularul, apoi adresa se curăță — o întoarcere pe ecran nu-l redeschide.
+  useEffect(() => {
+    if (!lucrareNoua) return;
+    setBilet(Date.now());
+    loc.route(rutaDosar(companyId), true);
+  }, [companyId, lucrareNoua]);
 
-  function incarca() {
+  // Formularul cum a venit la ultima încărcare, și al cărui contract e — ca reîncărcarea să știe ce ai schimbat tu.
+  const baza = useRef<{ id: any; f: Form } | null>(null);
+  // `pastreaza`: după o acțiune de alături, ce ai scris și n-ai salvat rămâne pe ecran (cuCeAiScris). Fără el (prima
+  // încărcare, „Reîncarcă", după o salvare, un contract nou sau șters) formularul se ia întreg de la server.
+  // Întoarce fișa proaspătă (sau null), ca pasul de după o salvare să lucreze pe ea (salveazaIntai).
+  function incarca(pastreaza?: boolean): Promise<any | null> {
     const id = companyId;
     setErr('');
-    Api.companyOverview(id).then((o: any) => {
-      if (cur.current !== id) return; // răspuns întârziat pentru altă firmă
-      if (o && o.error) { setErr(o.error); return; }
+    return Api.companyOverview(id).then((o: any) => {
+      if (cur.current !== id) return null; // răspuns întârziat pentru altă firmă
+      if (o && o.error) { setErr(o.error); return null; }
+      const k = o && o.contract;
+      const nou = k ? formDin(k, noi) : null;
+      const b = baza.current;
+      const pastrat = !!(pastreaza && nou && b && b.id === k.id);
       setD(o);
-      setForm(o && o.contract ? formDin(o.contract, noi) : null);
-      setAtinsNoi(false);
-      setMsg('');
+      setForm((f) => (pastrat && f && b && nou ? cuCeAiScris(nou, f, b.f) : nou));
+      baza.current = nou ? { id: k.id, f: nou } : null;
+      if (!pastrat) { setAtinsNoi(false); setMsg(''); }
       setVersiune((v) => v + 1);
-    }).catch((e: any) => { if (cur.current === id) setErr(e?.message || 'Eroare la încărcare'); });
+      return o;
+    }).catch((e: any) => { if (cur.current === id) setErr(e?.message || 'Eroare la încărcare'); return null; });
   }
+  const reincarca = () => { incarca(true); };
   useEffect(() => { setD(null); incarca(); }, [companyId]);
   // Cine semnează din partea noastră: conturile de super-admin active (numele nu se scriu în cod).
   useEffect(() => {
@@ -97,15 +141,31 @@ export function ContractDetail() {
   }, [noi, d]);
 
   const inapoi = () => { if (history.length > 1) history.back(); else loc.route('/admin/contracts'); };
-  const { cere: reinnoieste, ui: uiReinnoire } = useReinnoire((cid) => { if (cid === companyId) incarca(); else loc.route('/admin/contracts/' + cid); });
+  const { cere: reinnoieste, ui: uiReinnoire } = useReinnoire((cid) => { if (cid === companyId) reincarca(); else loc.route(rutaDosar(cid)); });
+  // Butoanele drumului și „Completează" — aceleași ca în lista Contracte. Aici „Aprobă contractul" salvează întâi
+  // formularul (ca raxCtrTreci pe web), „Trimite la semnat" / „Am trimis-o" / „E semnat" la fel (salveazaIntai),
+  // iar „Programează montajul" deschide formularul lucrării pe loc. După „Completează" (datele firmei), ce ai scris
+  // în formularul contractului rămâne.
+  const pasi = usePasiContract({
+    trimitePeEmail: !!(d && d.trimite_pe_email),
+    laSchimbat: reincarca,
+    aproba: () => treci('aprobat'),
+    montajNou: () => setBilet(Date.now()),
+    salveazaIntai,
+  });
+  // „Înapoi" pe Android închide întrebarea deschisă a dosarului (semnat, încheiat, șterge, scoate fișierul), nu
+  // ecranul — ca întrebările din listă și din fișa firmei. Cât se salvează, rămâne deschisă.
+  useInapoiInchide(!!dialog, () => { if (busy) return false; setDialog(''); return true; });
 
   const c = d && d.contract;
   const semnat = !!c && (c.status === 'activ' || c.status === 'incheiat');
   const sf = (k: keyof Form, v: any) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
   // ── Salvarea (butonul formularului și, înainte de pasul următor, butonul mare) ──
-  async function salveaza(stareNoua?: string, motiv?: string | null, semnatAzi?: string) {
-    if (!c || !form || busy) return;
+  // Întoarce fișa proaspătă după salvare, sau null dacă salvarea n-a mers (mesajul e pe ecran). Butoanele rămân
+  // blocate până sosește fișa, ca pasul de după să nu lucreze pe contractul de dinainte.
+  async function salveaza(stareNoua?: string, motiv?: string | null, semnatAzi?: string): Promise<any | null> {
+    if (!c || !form || busy) return null;
     const signed = semnatAzi || form.signed;
     let trup: any;
     if (semnat) {
@@ -128,19 +188,37 @@ export function ContractDetail() {
     setBusy(true); setMsg('');
     try {
       await Api.updateContract(Number(c.id), trup);
-      showToast('Contract salvat ✓');
-      setDialog('');
-      incarca();
     } catch (e: any) {
       const t = e?.message || 'Eroare';
       setMsg(t); setDialog('');
       showToast(t, true); // butonul mare e sus, mesajul de sub formular poate fi în afara ecranului
-    } finally { setBusy(false); }
+      setBusy(false);
+      return null;
+    }
+    showToast('Contract salvat ✓');
+    setDialog('');
+    try { return await incarca(); } finally { setBusy(false); }
   }
   // Pasul următor. Semnarea și încheierea întreabă întâi.
   function treci(stare: string) {
     if (stare === 'activ' || stare === 'incheiat') { setDialog(stare === 'activ' ? 'semnat' : 'incheiat'); return; }
     salveaza(stare);
+  }
+  // Ce scrie în „Datele contractului" și nu e încă pe server. Starea nu contează (o hotărăște pasul). Semnatarii
+  // noștri PROPUȘI (contract fără semnatari scriși) contează: se văd pe ecran, deci trebuie să ajungă și pe hârtie.
+  function nesalvat(): boolean {
+    if (!c || !form || semnat) return false;
+    const s = formDin(c, []);
+    return (Object.keys(s) as (keyof Form)[]).some((k) => k !== 'status' && form[k] !== s[k]);
+  }
+  // „Trimite la semnat" (PDF-ul emailat se face din contractul SALVAT), „Am trimis-o" și „E semnat" (după semnare
+  // numărul, datele și semnatarii nu se mai schimbă decât prin act adițional) salvează ÎNTÂI ce e scris aici — ca
+  // „Aprobă contractul" și butonul din „ce urmează" (web: raxCtrTreci → raxCtrSalveaza). Starea rămâne cea de acum;
+  // o schimbă pasul. Foaia pasului primește contractul proaspăt; dacă salvarea n-a mers, nu se deschide.
+  async function salveazaIntai(rand: any): Promise<any | null> {
+    if (!nesalvat()) return rand;
+    const o = await salveaza(c.status);
+    return o && o.contract ? randDinFisa(o) : null;
   }
   async function creeaza() {
     if (busy) return;
@@ -161,14 +239,14 @@ export function ContractDetail() {
   async function urcaFisier(care: string, f: FisierAles) {
     if (!c) return;
     setUrca(care);
-    try { await Api.uploadContractFile(Number(c.id), { care, name: f.name, b64: f.b64 }); showToast('Act urcat ✓'); incarca(); }
+    try { await Api.uploadContractFile(Number(c.id), { care, name: f.name, b64: f.b64 }); showToast('Act urcat ✓'); reincarca(); }
     catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setUrca(''); }
   }
   async function scoateFisier(care: string) {
     if (!c || busy) return;
     setBusy(true);
-    try { await Api.deleteContractFile(Number(c.id), care); setDialog(''); incarca(); }
+    try { await Api.deleteContractFile(Number(c.id), care); setDialog(''); reincarca(); }
     catch (e: any) { showToast('Eroare: ' + (e?.message || ''), true); }
     finally { setBusy(false); }
   }
@@ -194,7 +272,8 @@ export function ContractDetail() {
       )}
       {dialog === 'incheiat' && (
         <Confirma title="Încheie contractul" danger busy={busy} okLabel="Încheie contractul"
-          text="Marchezi contractul ÎNCHEIAT? Se trece data de azi ca dată a încetării. Un contract încheiat nu mai poate fi redeschis."
+          text={'Marchezi contractul ÎNCHEIAT? Se trece data de azi ca dată a încetării. Un contract încheiat nu mai poate fi redeschis.' +
+            dupaIncetareConfirm(d && d.date_dupa_incetare_zile)}
           field={{ label: 'Motivul încetării (rămâne în dosar)', placeholder: 'ex. denunțare cu preaviz' }}
           onOk={(v) => salveaza('incheiat', v || '')} onCancel={() => { if (!busy) setDialog(''); }} />
       )}
@@ -208,18 +287,28 @@ export function ContractDetail() {
           text="Scoți fișierul din dosar? Datele contractului rămân."
           onOk={() => scoateFisier(dialog === 'scoate-gdpr' ? 'gdpr' : 'contract')} onCancel={() => { if (!busy) setDialog(''); }} />
       )}
+      {pasi.ui}
     </div>
   );
 
   // ── Fișa, de sus în jos, în ordinea de pe web ──
   function fisa() {
     const dos = d.dosar || {};
+    // Contractul (sau doar firma, fără contract) în forma unui rând din lista Contracte — pentru butoane.
+    const rand = randDinFisa(d);
+    // CUI, sediu, reprezentant: le completăm noi, pe loc („Completează", cu ANAF). Ce lipsește spune serverul.
+    const deCompletat = lipsuriFirma(rand).length > 0;
     // Ce lipsește — sus de tot, și doar când chiar lipsește ceva sau expiră.
     const cutieDosar = dos.nivel && dos.nivel !== 'demo' && (dos.text || dos.nivel === 'expira') ? (
       <div class={'ctr-band ' + (DOSAR_FEL[dos.nivel] || '')}>
         <div class="ctr-band-t">{dos.eticheta || ''}</div>
         {dos.text && <div>Lipsește: {dos.text}</div>}
         {d.preaviz_pana && c && c.status === 'activ' && <div>Ultima zi în care se poate anunța rezilierea: <b>{zile(d.preaviz_pana)}</b></div>}
+        {deCompletat && (
+          <div class="ctr-btns">
+            <button class="ctr-btn" onClick={() => pasi.completeaza(rand)}><Icon name="edit" size={15} /> Completează</button>
+          </div>
+        )}
       </div>
     ) : null;
 
@@ -237,6 +326,8 @@ export function ContractDetail() {
     return (
       <>
         {cutieDosar}
+        {/* Unde e clientul pe drum și butonul pasului următor (ca pe web: cutia dosarului → drumul → capul). */}
+        <DrumClient drum={d.drum} buton={(k) => pasi.butonDrum(k, rand)} />
         <div class="ctr-cap">
           <Pill fel={st[1]}>{st[0]}</Pill>
           <b>{c.number || 'fără număr'}</b>
@@ -256,7 +347,7 @@ export function ContractDetail() {
         ) : (
           <>
             <div class="ctr-sub">Bifează aparatele care intră în contract și scrie abonamentul lunar al fiecăruia. E o fotografie a înțelegerii: dacă mâine clientul mai adaugă un vehicul, anexa semnată rămâne ce s-a semnat.</div>
-            <AnexaEditor key={'anx-' + versiune} contract={c} vehicles={d.vehicles || []} onSalvat={incarca} />
+            <AnexaEditor key={'anx-' + versiune} contract={c} vehicles={d.vehicles || []} onSalvat={reincarca} />
           </>
         )}
 
@@ -265,7 +356,7 @@ export function ContractDetail() {
           <>
             <div class="ctr-h2">Acte adiționale</div>
             <div class="ctr-sub">Contractul semnat nu se mai schimbă. Când clientul mai cumpără mașini, vrea alt modul, se schimbă prețul sau se prelungește contractul, se face un act adițional — o hârtie nouă, agățată de contract, care spune ce se schimbă și de când.</div>
-            <ContractActe key={'acte-' + versiune} contract={c} vehicles={d.vehicles || []} onFisa={incarca} />
+            <ContractActe key={'acte-' + versiune} contract={c} vehicles={d.vehicles || []} onFisa={reincarca} />
           </>
         )}
 
@@ -277,7 +368,7 @@ export function ContractDetail() {
           {' În contract intră '}<b>doar prețul către client</b>{'. Cât ne cere partenerul rămâne aici, la noi, ca să vedem marja.'}
         </div>
         <Anexa2 m={c.montaj} />
-        <ContractMontaj key={'mont-' + versiune} companyId={companyId} contract={c} tarifeCasa={d.tarife_montaj} onSalvat={incarca} />
+        <ContractMontaj key={'mont-' + versiune} companyId={companyId} contract={c} tarifeCasa={d.tarife_montaj} onSalvat={reincarca} deschideNoua={bilet} />
 
         <div class="ctr-h2">Actele semnate</div>
         <div class="ctr-list">
@@ -324,6 +415,10 @@ export function ContractDetail() {
     }
     if (c.status === 'activ' && prel) explic += ' Prelungirea e pornită: actul ' + (prel.number || '') + ', mai jos — du-l până la semnare.';
     if (c.status === 'incheiat' && c.ended_at) explic += ' Data încetării: ' + zile(c.ended_at) + '.';
+    // După încetare: aparatele se arhivează, iar istoricul lor se mai ține cât scrie în contract (cifra o dă
+    // serverul), apoi se șterge singur.
+    const arhiveaza = c.status === 'incheiat' ? dupaIncetare(d.date_dupa_incetare_zile) : '';
+    explic += arhiveaza;
     const deRe = deReinnoit(c, d.sfarsit, prel);
     return (
       <div class="ctr-urm">
@@ -332,6 +427,7 @@ export function ContractDetail() {
           {deRe && <button class="ctr-btn pri" onClick={() => reinnoieste(c, d.sfarsit)}><Icon name="refresh" size={15} /> Reînnoiește</button>}
           {pas && <button class={'ctr-btn' + (deRe ? '' : ' pri')} disabled={busy} onClick={() => treci(pas[0])}><Icon name="arrowRight" size={15} /> {pas[1]}</button>}
           {c.status === 'incheiat' && <button class="ctr-btn pri" disabled={busy} onClick={creeaza}><Icon name="fileSignature" size={15} /> Fă un contract nou</button>}
+          {arhiveaza && <button class="ctr-btn" onClick={() => loc.route('/admin/devices')}><Icon name="cpu" size={15} /> Deschide Dispozitive</button>}
           <HartieBtns path={'/api/contracts/' + c.id + '/pdf'} ce="Contractul" nume="contract.pdf"
             veziEticheta={c.status === 'ciorna' ? 'Vezi ciorna' : 'Vezi contractul'} descEticheta="Descarcă (PDF)" />
           {!semnat && <button class="ctr-btn danger" disabled={busy} onClick={() => setDialog('sterge')}><Icon name="trash" size={15} /> Șterge contractul</button>}
@@ -345,6 +441,7 @@ export function ContractDetail() {
     if (!form) return null;
     const lista = noi || [];
     const alesi = semnatariDin(form.our);
+    const chirieLuniMin = Number(c.annex && c.annex.chirie && c.annex.chirie.luniMin) || 0;
     function bifa(n: string) {
       const acum = lista.filter((x) => alesi.indexOf(x) >= 0);
       const noua = lista.filter((x) => (x === n ? acum.indexOf(n) < 0 : acum.indexOf(x) >= 0));
@@ -364,6 +461,11 @@ export function ContractDetail() {
           <select value={form.months} onChange={(e: any) => sf('months', e.target.value)}>
             {luniOptiuni(c.months).map(([v, et]) => <option value={v}>{et}</option>)}
           </select>
+          {/* Aparate închiriate (25.09): contractul ține cel puțin cât scrie în anexă (`annex.chirie.luniMin`, pus de
+              server). Regula o păzește serverul; aici doar se spune, cu cifra lui. */}
+          {chirieLuniMin > 0 && (
+            <div class="ctr-hint" style="margin-top:4px">Aparatele sunt închiriate: contractul se face pe cel puțin {luniText(chirieLuniMin)} (sau pe durată nedeterminată).</div>
+          )}
         </div>
         <div class="fld"><label>La termen</label>
           <select value={form.renew} onChange={(e: any) => sf('renew', e.target.value)}>
