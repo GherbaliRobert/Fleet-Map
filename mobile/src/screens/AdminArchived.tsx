@@ -13,19 +13,17 @@ import { nrDe } from '../lib/numar';
 // Dispozitive arhivate — DOAR super-admin (hotărât 18.09: clientul nu-și vede aparatele arhivate; ruta e
 // păzită și în App.tsx). Ca pe web (_arhRandeaza): grupate pe firme, cu „Deschide firma", „Istoric" (traseul
 // aparatului arhivat), „Restaurează" și ștergerea definitivă cu numărul tastat. Termenul vine de la server.
-const PRAG_ZILE = 60;
-function termen(d: any): { t: string; c: string; rau: boolean } | null {
+// Din 24.09 istoricul unui aparat arhivat se șterge la 30 de zile de la arhivare (cum scrie în contract), nu
+// după 2 ani. Aceleași cuvinte și același prag ca pe web (_arhTermen, ARH_PRAG_ZILE); cifrele — ziua ștergerii,
+// zilele rămase, „șters" — le socotește serverul.
+export const PRAG_ZILE = 7;
+export function termen(d: any): { t: string; c: string; rau: boolean } | null {
+  if (d.istoric_sters) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
   const z = d.purge_zile;
-  if (z == null) return null; // n-are nicio poziție păstrată
-  if (z <= 0) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
-  if (z <= PRAG_ZILE) return { t: 'istoricul se șterge în ' + nrDe(z, 'zi', 'zile'), c: 'var(--fd-warn)', rau: true };
-  if (d.purge_inceput) return { t: 'cele mai vechi date au început să se șteargă', c: 'var(--fd-warn)', rau: true };
-  return null;
-}
-// „2 ani" din numărul de zile trimis de server (implicit 730), ca nota să nu mintă dacă termenul se schimbă.
-function durata(zile: number): string {
-  if (zile % 365 === 0) { const a = zile / 365; return a === 1 ? '1 an' : a + ' ani'; }
-  return zile + ' de zile';
+  if (z == null) return null; // fără ziua arhivării: nu inventăm un termen
+  const zi = d.purge_la ? new Date(Number(d.purge_la)).toLocaleDateString('ro-RO') : '';
+  if (z <= 0) return { t: 'istoricul se șterge azi', c: 'var(--fd-warn)', rau: true };
+  return { t: 'istoricul se șterge pe ' + zi + ' (în ' + nrDe(z, 'zi', 'zile') + ')', c: z <= PRAG_ZILE ? 'var(--fd-warn)' : 'var(--text-muted)', rau: z <= PRAG_ZILE };
 }
 function zi(s: any) { if (!s) return '–'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch { return '–'; } }
 
@@ -89,7 +87,7 @@ export function AdminArchived() {
   const toate = items || [];
   const shown = toate.filter((d) => raCauta(q, d.name, d.plate, d.imei, d.company_name));
   const peDuca = toate.filter((d) => { const t = termen(d); return t && t.rau; }).length;
-  const totalZile = Number((toate[0] && toate[0].purge_total_zile) || 730);
+  const totalZile = Number((toate[0] && toate[0].purge_total_zile) || 0);
   const grup = grupuri(shown);
 
   function rand(d: any) {
@@ -124,18 +122,18 @@ export function AdminArchived() {
           <div class="adm-empty">
             <Icon name="archive" size={40} class="ic" />
             <div style="font-weight:700">Niciun aparat arhivat</div>
-            <div style="font-size:12.5px;margin-top:6px;line-height:1.6">Arhivezi un aparat când se încheie un contract: nu mai primește date, dar istoricul lui de până atunci se păstrează <b>{durata(totalZile)}</b>.</div>
+            <div style="font-size:12.5px;margin-top:6px;line-height:1.6">Arhivezi un aparat când se încheie un contract: nu mai primește date, iar istoricul lui se mai păstrează cât scrie în contract (cât clientul poate cere datele înapoi), apoi se șterge definitiv.</div>
             <button type="button" class="fd-btn" style="margin-top:14px" onClick={() => loc.route('/admin/devices')}><Icon name="cpu" size={14} /> Deschide Dispozitive</button>
           </div>
         )}
         {items != null && items.length > 0 && (
           <>
             <div class="fd-note">
-              Dispozitivele arhivate <b>nu mai primesc date noi</b> (contract încheiat). Istoricul lor de până atunci rămâne accesibil și e păstrat <b>{durata(totalZile)}</b>.
+              Dispozitivele arhivate <b>nu mai primesc date noi</b> (contract încheiat).{totalZile ? <> Istoricul lor se mai păstrează <b>{nrDe(totalZile, 'zi', 'zile')}</b> de la arhivare — cât clientul poate cere datele înapoi — apoi se șterge definitiv, cum scrie în contract.</> : null}
             </div>
             {peDuca > 0 && (
               <Banda ton="warn" icon="clock">
-                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> După termen se șterge definitiv — dacă mai ai nevoie de date, scoate-le acum dintr-un raport.
+                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric", sau dintr-un raport.
               </Banda>
             )}
             <input class="fd-search" value={q} onInput={(e: any) => setQ(e.target.value)} placeholder="Caută nume / număr / IMEI / firmă…" />

@@ -188,6 +188,8 @@ let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const contracte = require('./contracts');           // dosarul juridic al firmelor client (reguli curate)
 const neplata = require('./neplata');               // ce se întâmplă când nu se plătește la termen (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
+const stocMod = require('./stoc');                  // stocul nostru de echipamente: unde e fiecare, al cui e (reguli curate)
+const compat = require('./compatibilitate');        // ce aparat merge pe ce mașină, după listele Teltonika (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
@@ -287,16 +289,20 @@ async function syncDemoSim(reason) {
 }
 function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning() }); }
 
-// Rezultatul ULTIMEI rulări de retenție. „Variabila e setată" nu înseamnă „ștergerea chiar funcționează":
-// până acum eroarea era înghițită tăcut, deci o retenție moartă arăta identic cu una sănătoasă.
-let _retentionLast = null;
-function _retentionSummary() {
-  if (!_retentionLast) return 'încă nicio rulare de la pornire';
-  if (_retentionLast.error) return 'ULTIMA RULARE A EȘUAT: ' + _retentionLast.error;
-  const h = Math.round((Date.now() - _retentionLast.at) / 360000) / 10;
-  if (!_retentionLast.rows) return 'ultima rulare acum ' + h + 'h: nimic de șters';
-  return 'ultima rulare acum ' + h + 'h: ' + _retentionLast.rows + ' rânduri în ' + _retentionLast.batches + ' loturi'
-    + (_retentionLast.exhausted ? ' (buget epuizat — continuă la următoarea)' : '');
+// Rezultatul ULTIMEI rulări a ștergerii istoricului vechi (`stergeIstoriculVechi`). O ștergere care nu
+// rulează arată identic cu una sănătoasă — singurul semn ar fi baza care crește — deci o spunem pe ecran.
+let _pastrareUltima = null;
+function _pastrareRezumat() {
+  const u = _pastrareUltima;
+  if (!u) return 'încă nicio rulare de la pornire';
+  if (u.error) return 'ULTIMA RULARE A EȘUAT: ' + u.error;
+  const r = u.raport || {};
+  const h = Math.round((Date.now() - u.at) / 360000) / 10;
+  const sters = (r.pozitii || 0) + (r.curse || 0) + (r.alerte || 0);
+  return 'ultima rulare acum ' + h + 'h: ' + (sters ? (r.pozitii + ' poziții, ' + r.curse + ' curse, ' + r.alerte + ' alerte, la ' + r.masini + ' mașini') : 'nimic de șters')
+    + (r.erori ? ' · ' + r.erori + ' mașini amânate (' + r.primaEroare + ')' : '')
+    + (r.sarite ? ' · ' + r.sarite + ' mașini sărite: setările firmei nu se pot citi' : '')
+    + (r.epuizat ? ' · buget de timp epuizat — continuă la următoarea' : '');
 }
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
@@ -2656,7 +2662,8 @@ function _costuriCurate(b) {
 // propunea. Acum se salvează chiar treptele grilei — cele cinci chei `aiq…` de mai jos.
 const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiAg', 'pTahograf', 'pEtransport',
   'aiqPana10', 'aiqPana25', 'aiqPana50', 'aiqPana100', 'aiqPeste100',
-  'ret6', 'ret12', 'ret24', 'ret36', 'retCustom',
+  // `ret6` / `ret12` au ieșit pe 24.09: 12 luni de istoric sunt incluse pentru toți, deci n-au preț.
+  'ret24', 'ret36', 'retCustom',
   'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
   'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];
 // `existent` = lista salvată până acum. O cheie care NU vine în cerere își păstrează valoarea.
@@ -4494,6 +4501,12 @@ function _venitLunar(c, nrCan, conturi) {
     // (vezi buildInvoiceLines). Fără scăderea asta, registrul ar fi numărat-o de două ori.
     lei -= Number(p.breakdown && p.breakdown.aiAssistant) || 0;
   }
+  // Păstrarea istoricului peste cele 12 luni incluse — același rând ca pe factură (`buildInvoiceLines`).
+  const past = contracte.pastrareFirma(c && c.settings);
+  if (past && past.platita) lei += past.pretRON;
+  // Chiria echipamentelor — același rând ca pe factură.
+  const chirie = contracte.chirieFirma(c && c.settings);
+  if (chirie) lei += chirie.totalRON;
   return Math.round(lei * 100) / 100;
 }
 // ── sfârșit „Venitul lunar pe firmă" ──
@@ -4857,6 +4870,9 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const servicii = anexa.servicii || [];
         const liniiMasini = f.lines.filter(function (l) { return /^(Abonament|Supliment)/.test(l.desc); });
         const liniiAi = f.lines.filter(function (l) { return /^(RA Insight|Asistent AI)/.test(l.desc); });
+        const liniiPastrare = f.lines.filter(function (l) { return /^Păstrarea istoricului/.test(l.desc); });
+        const retContract = servicii.filter(function (x) { return x.fel === 'ret'; });
+        const pastrareFirma = contracte.pastrareFirma(company.settings);
         // Pe bucăți, nu pe total: RA Insight se facturează după conturile FOLOSITE în lună (clientul le
         // aprinde și le stinge singur), deci totalul ar da mereu „nu se potrivește" din motive normale.
         comparatie = {
@@ -4873,9 +4889,17 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
             facturaPretCont: bc.raInsight ? bc.raInsight.seatPriceRON : 0,
             facturaLei: r2(suma(liniiAi, 'net'))
           } : null,
-          // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură (ex. păstrarea
-          // datelor 24 de luni: vândută, semnată, dar nici facturată, nici livrată încă).
-          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && !x.inclus && Number(x.total) > 0; })
+          // Păstrarea istoricului: câte luni scrie în contract, câte ține aplicația pentru firmă (după
+          // asta șterge) și ce ajunge pe factură. Trei cifre care trebuie să spună același lucru.
+          pastrare: (retContract.length || liniiPastrare.length || Number(anexa.pastrareLuni) > 0 || (pastrareFirma && pastrareFirma.platita)) ? {
+            contractLuni: Number(anexa.pastrareLuni) || contracte.LUNI_ISTORIC_INCLUSE,
+            contractLei: r2(suma(retContract, 'total')),
+            firmaLuni: pastrareFirma ? pastrareFirma.luni : null,
+            facturaLei: r2(suma(liniiPastrare, 'net'))
+          } : null,
+          // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură. (Păstrarea datelor
+          // a stat aici până pe 24.09 — vândută, semnată, dar nici facturată, nici livrată; are acum rândul ei.)
+          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && x.fel !== 'ret' && !x.inclus && Number(x.total) > 0; })
             .map(function (x) { return { nume: x.nume, lei: r2(x.total) }; }),
           total: { contract: r2(anexa.monthlyTotal), factura: r2(f.subtotal) }
         };
@@ -4887,10 +4911,18 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, offer, price, features,
       neplata: npFirma.faza === 'ok' ? null : npFirma,
       ai_quota: _aiQuotaFromSettings(company.settings),
+      // Păstrarea istoricului firmei + cifrele regulii, ca ecranul să nu le scrie a doua oară.
+      pastrare: contracte.pastrareFirma(company.settings),
+      pastrare_regula: { incluse: contracte.LUNI_ISTORIC_INCLUSE, max: contracte.LUNI_ISTORIC_MAX },
+      // Chiria echipamentelor (25.09): rândurile pe care le pune factura, din contract. `null` = nu închiriază.
+      chirie: contracte.chirieFirma(company.settings),
       contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, acum),
       sfarsit: contracte.sfarsitCurent(contract, acum),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract, acum),
       comparatie: comparatie, prelungire_in_lucru: prelungireInLucru,
+      drum: contract && contract.status !== 'incheiat' ? _drumContract(contract, await db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })) : null,
+      trimite_pe_email: !!(mailer && mailer.enabled()),
+      date_dupa_incetare_zile: contracte.ZILE_DATE_DUPA_INCETARE,
       numar_propus: contract ? null : await db.nextContractNumber().catch(function () { return null; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4980,13 +5012,39 @@ function _montajDinOferta(oferta) {
   const rdMontaj = montaj.TIPURI
     .map(function (t) { return { tip: t.k, buc: cfg.montaj ? cfg.montaj[t.ofertaQ] : 0, pretClient: pret[t.oferta] }; })
     .filter(function (r) { return Number(r.buc) > 0; });
-  const rdEchip = montaj.ECHIPAMENTE
+  // La ÎNCHIRIERE aparatele nu se vând: nu intră în costurile unice. Rămân ale noastre și stau în
+  // Anexa nr. 1, cu chiria lor (vezi `_chirieDinOferta`).
+  const rdEchip = cfg.echipMod === 'inchiriaza' ? [] : montaj.ECHIPAMENTE
     .map(function (e) { return { tip: e.k, buc: cfg.devices ? cfg.devices[e.ofertaQ] : 0, pretEur: pret[e.oferta] }; })
     .filter(function (r) { return Number(r.buc) > 0; });
   if (!rdMontaj.length && !rdEchip.length) return null;
   // Cursul se îngheață în anexă: hârtia semnată nu are voie să spună altă sumă peste o lună.
   const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
   return montaj.facAnexaCosturiUnice(montaj.randuri(rdMontaj), montaj.randuriEchip(rdEchip), curs, 'RON');
+}
+// Echipamentele ÎNCHIRIATE dintr-o ofertă (25.09): ce aparate, câte, chiria lunară a fiecăruia (cea
+// SALVATĂ în ofertă, negociată cu clientul) și valoarea lui — prețul de vânzare, la cursul înghețat în
+// ofertă: cât plătește clientul dacă nu-l returnează. `null` = oferta e cu aparate cumpărate.
+// Nu se socotește nimic din nou: se citesc cifrele pe care clientul le-a acceptat.
+function _chirieDinOferta(oferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  if (cfg.echipMod !== 'inchiriaza') return null;
+  const pret = (oferta.config && oferta.config.prices) || {};
+  const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
+  const aparate = montaj.ECHIPAMENTE.map(function (e) {
+    const cant = Math.round(Number(cfg.devices && cfg.devices[e.ofertaQ]) || 0);
+    const chirie = Number(pret[e.chirie]);
+    if (!(cant > 0) || !(chirie > 0)) return null;
+    const valEur = Number(pret[e.oferta]);
+    return { tip: e.k, nume: e.et, cant: cant, chirie: Math.round(chirie * 100) / 100,
+      valoare: valEur > 0 ? Math.round(valEur * curs * 100) / 100 : null };
+  }).filter(Boolean);
+  if (!aparate.length) return null;
+  // Tariful de dezinstalare din ofertă: îl plătește clientul care pleacă ÎNAINTE de durata minimă (decizie
+  // Alin, 25.09). La termen, demontarea o facem noi, fără cost.
+  const dem = Number(pret.mUninstall);
+  return { aparate: aparate, tarifDemontare: dem > 0 ? Math.round(dem * 100) / 100 : null,
+    randuri: aparate.map(function (a) { return { tip: a.tip, nume: a.nume, cant: a.cant, pret: a.chirie }; }) };
 }
 
 // ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
@@ -5132,7 +5190,7 @@ app.get('/api/acte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) =>
       panaLa = contracte.sfarsitContract(Object.assign({}, c, { luni_prelungite: inainte + Number(a.luni_noi) }));
     }
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(a, co, 'Act aditional')));
+    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeFisier(a, co, 'Act adițional')));
     contractPdf.actPdf({ act: a, contract: c, firma: co, emitent: emitent, panaLa: panaLa }).pipe(res);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5149,30 +5207,404 @@ app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, re
     const b = req.body || {};
     const nume = String(b.name || '').trim();
     if (nume.length < 2) return res.status(400).json({ error: 'Numele partenerului e prea scurt.' });
-    const tarife = {};
+    // Tarifele se scriu doar dacă au venit (o salvare fără ele nu le șterge).
+    let tarife;
     if (b.tarife && typeof b.tarife === 'object') {
+      tarife = {};
       for (const t of montaj.TIPURI) {
         const v = b.tarife[t.k];
         if (v != null && v !== '') { const n = Number(v); if (Number.isFinite(n) && n >= 0) tarife[t.k] = n; }
       }
     }
-    const p = await db.upsertPartenerMontaj({
-      id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
-      cui: b.cui ? String(b.cui).slice(0, 40) : null, contact: b.contact ? String(b.contact).slice(0, 200) : null,
-      tarife: tarife, active: b.active !== false, notes: b.notes ? String(b.notes).slice(0, 2000) : null
+    // Datele juridice ale partenerului (pentru contractul de colaborare, 24.09). Se scriu doar dacă au
+    // venit în cerere — un ecran vechi care trimite doar numele și tarifele nu le golește.
+    const juridic = {};
+    const txt = function (v, max) { return String(v == null ? '' : v).trim().slice(0, max) || null; };
+    [['reg_com', 40], ['address', 300], ['phone', 40], ['iban', 60], ['bank', 120], ['zona', 300]].forEach(function (x) {
+      if (b[x[0]] !== undefined) juridic[x[0]] = txt(b[x[0]], x[1]);
     });
+    if (b.email !== undefined) {
+      juridic.email = txt(b.email, 200);
+      if (juridic.email && !_EMAIL_RE.test(juridic.email)) return res.status(400).json({ error: 'Adresa de email a partenerului nu arată a email.' });
+    }
+    if (b.legal_rep !== undefined) {
+      const r = b.legal_rep || {};
+      juridic.legal_rep = txt(r.name, 120) ? { name: txt(r.name, 120), role: txt(r.role, 80) } : null;
+    }
+    const p = await db.upsertPartenerMontaj(Object.assign({
+      id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
+      // `undefined` = n-a venit în cerere → rămâne cum era (vezi `upsertPartenerMontaj`).
+      cui: b.cui === undefined ? undefined : (b.cui ? String(b.cui).slice(0, 40) : null),
+      contact: b.contact === undefined ? undefined : (b.contact ? String(b.contact).slice(0, 200) : null),
+      tarife: tarife, active: b.active === undefined ? undefined : b.active !== false,
+      notes: b.notes === undefined ? undefined : (b.notes ? String(b.notes).slice(0, 2000) : null)
+    }, juridic));
+    // Fișa unui partener șters între timp (altă filă, alt coleg): „nu există", nu o eroare de program.
+    if (!p) return res.status(404).json({ error: 'Partenerul nu mai există — poate a fost șters între timp. Reîncarcă pagina.' });
     auditReq(req, b.id ? 'update' : 'create', 'montaj_partener', p.id, { name: p.name });
     res.json(p);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── Contractele cu partenerii de montaj (Alin, 24.09: „semnăm contracte fix la fel ca la clienți") ──
+// Același drum ca la clienți: în lucru ⇄ aprobat ⇄ trimis → semnat → încheiat, cu aceleași reguli de
+// trecere (`_trecereContract`). Invers la bani: partenerul (PRESTATOR) ne facturează pe noi (BENEFICIAR).
+// Anexa nr. 1 = tarifele lui, înghețate la creare; după semnare contractul NU se mai rescrie.
+// Contul partenerului în aplicație (ce vede, ce bifează el) îl face Robert, în interfața lor.
+const _MC_DUPA_SEMNARE = ['signed_at', 'notes', 'status', 'ended_reason'];
+function _lipsuriPartener(p, c) {
+  const l = [];
+  if (!p || !p.cui) l.push('cui');
+  if (!p || !p.address) l.push('sediu');
+  const rep = (c && c.partner_rep) || (p && p.legal_rep);
+  if (!rep || !rep.name) l.push('reprezentant');
+  if (!p || !p.email) l.push('email');
+  if (c && !Object.keys(c.tarife || {}).length) l.push('tarife');
+  if (c && c.status === 'activ' && !c.has_file) l.push('actul');
+  return l;
+}
+function _mcDinCerere(b, vechi) {
+  const v = Object.assign({}, vechi || {}, b || {});
+  const luni = (v.months === '' || v.months == null) ? null : Math.max(0, Math.min(240, parseInt(v.months) || 0)) || null;
+  const start = v.start_at ? Number(v.start_at) : null;
+  const rep = function (r) { r = r || {}; const n = String(r.name || '').trim().slice(0, 120); return n ? { name: n, role: String(r.role || '').trim().slice(0, 80) || null } : null; };
+  return {
+    partener_id: v.partener_id, number: v.number || null,
+    status: CONTRACT_STARI.indexOf(v.status) >= 0 ? v.status : 'ciorna',
+    signed_at: v.signed_at ? Number(v.signed_at) : null, start_at: start, months: luni,
+    end_at: contracte.calcSfarsit(start, luni), auto_renew: v.auto_renew !== false,
+    notice_days: v.notice_days == null ? 30 : Math.max(0, Math.min(365, parseInt(v.notice_days) || 0)),
+    plata_zile: v.plata_zile == null ? 30 : Math.max(0, Math.min(120, parseInt(v.plata_zile) || 0)),
+    ended_at: v.ended_at ? Number(v.ended_at) : null, ended_reason: v.ended_reason ? String(v.ended_reason).slice(0, 500) : null,
+    our_rep: rep(v.our_rep), partner_rep: rep(v.partner_rep),
+    tarife: (v.tarife && typeof v.tarife === 'object') ? v.tarife : {},
+    zona: v.zona ? String(v.zona).slice(0, 300) : null, notes: v.notes ? String(v.notes).slice(0, 4000) : null
+  };
+}
+app.get('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [lista, parteneri] = await Promise.all([db.listContracteMontaj(), db.listParteneriMontaj()]);
+    const pe = {}; parteneri.forEach(function (p) { pe[p.id] = p; });
+    const acum = Date.now();
+    res.json({
+      contracte: lista.map(function (c) { return Object.assign({}, c, { lipsuri: _lipsuriPartener(pe[c.partener_id], c), sfarsit: contracte.sfarsitCurent(c, acum) }); }),
+      // Partenerii fără niciun contract — gaura, ca la clienți.
+      fara_contract: parteneri.filter(function (p) { return p.active !== false && !lista.some(function (c) { return c.partener_id === p.id; }); })
+        .map(function (p) { return { id: p.id, name: p.name }; }),
+      trimite_pe_email: !!(mailer && mailer.enabled())
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const p = await db.getPartenerMontaj(parseInt(b.partener_id, 10));
+    if (!p) return res.status(404).json({ error: 'Partenerul nu există.' });
+    const ale = (await db.listContracteMontaj()).filter(function (c) { return c.partener_id === p.id && c.status !== 'incheiat'; });
+    if (ale.length) return res.status(409).json({ error: 'Partenerul are deja un contract ' + (ale[0].status === 'activ' ? 'în vigoare' : 'în lucru') + ' (' + (ale[0].number || '') + ').' });
+    const date = _mcDinCerere(Object.assign({ status: 'ciorna' }, b, { partener_id: p.id,
+      // Anexa nr. 1 = tarifele de AZI ale partenerului, înghețate; zona și reprezentantul, din fișa lui.
+      tarife: Object.assign({}, p.tarife || {}), zona: b.zona !== undefined ? b.zona : p.zona,
+      partner_rep: b.partner_rep !== undefined ? b.partner_rep : p.legal_rep }));
+    if (date.status !== 'ciorna' && date.status !== 'activ') date.status = 'ciorna';
+    date.number = await db.nextContractMontajNumber();
+    date.created_by = req.auth && req.auth.userId;
+    const c = await db.salveazaContractMontaj(null, date);
+    auditReq(req, 'create', 'contract_montaj', c.id, { partener: p.id, number: c.number });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const vechi = await db.getContractMontaj(id); if (!vechi) return res.status(404).json({ error: 'Contract inexistent' });
+    const b = Object.assign({}, req.body || {});
+    const stareNoua = CONTRACT_STARI.indexOf(b.status) >= 0 ? b.status : vechi.status;
+    const greseala = _trecereContract(vechi.status, stareNoua);
+    if (greseala) return res.status(400).json({ error: greseala });
+    if (vechi.status === 'activ' || vechi.status === 'incheiat') {
+      const alte = Object.keys(b).filter(function (k) { return _MC_DUPA_SEMNARE.indexOf(k) < 0; });
+      if (alte.length) return res.status(400).json({ campuri: alte, error: 'Contractul e semnat și nu se mai schimbă. Alte tarife sau altă durată se fac printr-un contract nou.' });
+    }
+    // „Reia tarifele partenerului": Anexa nr. 1 se reface din fișa lui — doar cât contractul e nesemnat.
+    if (b.tarife_din_partener && vechi.status !== 'activ' && vechi.status !== 'incheiat') {
+      const p = await db.getPartenerMontaj(vechi.partener_id); b.tarife = Object.assign({}, (p && p.tarife) || {});
+    }
+    delete b.tarife_din_partener; delete b.partener_id; delete b.number;
+    const date = _mcDinCerere(b, vechi);
+    date.status = stareNoua;
+    if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
+    if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
+    const c = await db.salveazaContractMontaj(id, date);
+    auditReq(req, 'update', 'contract_montaj', id, { status: date.status, din: vechi.status });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractMontaj(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    if (c.status === 'activ' || c.status === 'incheiat') return res.status(400).json({ error: 'Un contract semnat nu se șterge — se încheie.' });
+    await db.stergeContractMontaj(id);
+    auditReq(req, 'delete', 'contract_montaj', id, { number: c.number });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function _mcHartie(id) {
+  const c = await db.getContractMontaj(id); if (!c) return null;
+  const p = await db.getPartenerMontaj(c.partener_id); if (!p) return null;
+  const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+  const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
+  return { c: c, p: p, emitent: emitent, nume: 'RA-Tracks - Contract montaj ' + curat(c.number || 'ciornă') + (p.name ? ' - ' + curat(p.name) : '') + '.pdf' };
+}
+app.get('/api/montaj/contracte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const h = await _mcHartie(id); if (!h) return res.status(404).json({ error: 'Contract inexistent' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', _antetDescarcare(h.nume));
+    contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }).pipe(res);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/montaj/contracte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractMontaj(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    const nume = String((req.body && req.body.name) || '').slice(0, 200);
+    const b64 = String((req.body && req.body.b64) || '').replace(/^data:[^;]+;base64,/, '');
+    if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
+    const mime = CONTRACT_MIME[(nume.split('.').pop() || '').toLowerCase()];
+    if (!mime) return res.status(400).json({ error: 'Se acceptă doar PDF, JPG sau PNG.' });
+    if (Buffer.byteLength(b64, 'base64') > CONTRACT_MAX_B) return res.status(413).json({ error: 'Fișierul depășește 4 MB.' });
+    const out = await db.setContractMontajFile(id, { b64: b64, name: nume, mime: mime });
+    auditReq(req, 'upload', 'contract_montaj', id, { name: nume });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/montaj/contracte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const f = await db.getContractMontajFile(id);
+    if (!f || !f.b64) return res.status(404).json({ error: 'Contractul nu are fișier atașat' });
+    res.setHeader('Content-Type', f.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', _antetDescarcare(f.name || 'contract'));
+    res.send(Buffer.from(f.b64, 'base64'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Trimite la semnat" — ca la clienți: email cu PDF-ul atașat, răspunsul vine la noi.
+app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const h = await _mcHartie(id); if (!h) return res.status(404).json({ error: 'Contract inexistent' });
+    if (h.c.status === 'ciorna') return res.status(400).json({ error: 'Contractul e încă în lucru. Aprobă-l întâi — o ciornă nu pleacă la semnat.' });
+    if (h.c.status !== 'aprobat' && h.c.status !== 'trimis') return res.status(400).json({ error: 'Contractul e deja semnat — nu mai e nimic de trimis la semnat.' });
+    const goluri = _lipsuriPartener(h.p, h.c).filter(function (k) { return ['cui', 'sediu', 'reprezentant'].indexOf(k) >= 0; });
+    if (goluri.length) return res.status(400).json({ lipsuri: goluri, error: 'Pe contract ar rămâne goluri: lipsește ' + goluri.map(function (k) { return ({ cui: 'CUI-ul', sediu: 'sediul', reprezentant: 'reprezentantul' })[k]; }).join(', ') + '. Completează-le în fișa partenerului.' });
+    const catre = String((req.body && req.body.catre) || h.p.email || '').trim();
+    if (!catre) return res.status(400).json({ error: 'Partenerul n-are adresă de email. Scrie adresa la care trimitem contractul.' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
+    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server (SMTP). Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
+    const pdf = await _pdfInBuffer(contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }));
+    const noi = h.emitent.name || 'RA Tracks';
+    const r = await mailer.send({ to: catre, replyTo: h.emitent.email || undefined,
+      subject: 'Contractul de colaborare ' + (h.c.number || '') + ' — de semnat · ' + noi,
+      html: '<p>Bună ziua,</p><p>Vă trimitem atașat contractul de colaborare nr. <b>' + _he(h.c.number || '') + '</b> pentru lucrările de montaj, cu anexele lui (tarifele și acordul de prelucrare a datelor).</p>' +
+        '<p>Vă rugăm să-l semnați și să ni-l trimiteți înapoi — scanat sau fotografiat — ca răspuns la acest email.</p><p>Vă mulțumim,<br>' + _he(noi) + '</p>',
+      text: 'Bună ziua,\n\nVă trimitem atașat contractul de colaborare nr. ' + (h.c.number || '') + '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\n' + noi,
+      attachments: [{ filename: h.nume, content: pdf, contentType: 'application/pdf' }] });
+    if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
+    const acum = await db.marcheazaContractMontajTrimis(id, catre);
+    auditReq(req, 'send', 'contract_montaj', id, { catre: catre });
+    res.json({ ok: true, trimis_la: catre, sent_at: acum, status: 'trimis' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Toate lucrările, de la toți clienții — fila „Lucrări" din Montaj. Marja se socotește aici, o dată.
+app.get('/api/montaj/lucrari', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const rows = await db.toateLucrarileMontaj(req.query.limit);
+    res.json({ stari: montaj.ETICHETE_STARE, lucrari: rows.map(function (m) {
+      const c = Number(m.total_client) || 0, p = Number(m.total_partener) || 0;
+      return Object.assign({}, m, { marja: Math.round((c - p) * 100) / 100 });
+    }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
+    // Un partener cu contract SEMNAT nu se șterge: hârtia e act juridic și rămâne în dosar, iar lista
+    // contractelor se leagă de partener — fără el, contractul semnat ar dispărea din ecran. Se trece pe
+    // „inactiv". Contractele nesemnate pleacă odată cu el (un nesemnat se șterge oricum, ca la clienți).
+    const ale = (await db.listContracteMontaj()).filter(function (c) { return c.partener_id === id; });
+    const semnat = ale.filter(function (c) { return c.status === 'activ' || c.status === 'incheiat'; })[0];
+    if (semnat) return res.status(409).json({ error: 'Partenerul are contractul semnat ' + (semnat.number || '') + ' — nu se șterge, hârtia rămâne în dosar. Trece-l pe „inactiv" din fișa lui.' });
+    for (const c of ale) await db.stergeContractMontaj(c.id);
     await db.deletePartenerMontaj(id);
-    auditReq(req, 'delete', 'montaj_partener', id);
+    auditReq(req, 'delete', 'montaj_partener', id, { contracte_nesemnate: ale.length });
+    res.json({ ok: true, contracte_sterse: ale.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Stocul nostru de echipamente (Gestiune → Stoc echipamente, 25.09) ──────────────────────────
+// Alin: „noi trebuie să avem un stoc de echipamente, de GPS-uri, LV-CAN-uri". Aparatele închiriate
+// rămân ALE NOASTRE și stau la clienți, deci trebuie să știm oricând unde e fiecare. Strict ale noastre:
+// ce avem în depozit și cât ne-a costat nu iese niciodată printr-o rută de client. Regulile (pe unde
+// poate merge o bucată, alertele) stau în stoc.js; aici doar se aplică.
+const STOC_PRAGURI_CHEIE = 'stoc_praguri';
+async function _stocPraguri() {
+  try { const v = await db.getSetting(STOC_PRAGURI_CHEIE); return v ? JSON.parse(v) : {}; } catch (e) { return {}; }
+}
+function _cine(req) { return (req.session && req.session.username) || (req.auth && req.auth.username) || null; }
+app.get('/api/stoc', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [rows, incheiate, praguri] = await Promise.all([db.listStoc(), db.firmeCuContractIncheiat(), _stocPraguri()]);
+    res.json({
+      aparate: rows, sumar: stocMod.sumar(rows), alerte: stocMod.alerte(rows, praguri, incheiate),
+      praguri: { minim: praguri.minim || {}, zileInstalator: Number(praguri.zileInstalator) || stocMod.ZILE_LA_INSTALATOR },
+      tipuri: montaj.ECHIPAMENTE.map(function (e) { return { k: e.k, et: e.et, cost: e.oferta }; }),
+      stari: stocMod.ETICHETE_STARE, treceri: stocMod.TRECERI
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Intrare în stoc: un model, seriile lui (una pe rând) și/sau câte bucăți FĂRĂ serie, cu cât ne-a costat
+// una și de la cine. Fiecare bucată intră în depozit, a noastră.
+app.post('/api/stoc/intrare', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const tip = String(b.tip || '');
+    if (!montaj.echipament(tip)) return res.status(400).json({ error: 'Alege modelul aparatului.' });
+    const serii = stocMod.serii(b.serii);
+    const faraSerie = Math.max(0, Math.min(500, parseInt(b.buc, 10) || 0));
+    if (!serii.length && !faraSerie) return res.status(400).json({ error: 'Scrie seriile (una pe rând) sau câte bucăți intră fără serie.' });
+    if (serii.length + faraSerie > 500) return res.status(400).json({ error: 'Cel mult 500 de bucăți deodată.' });
+    const exista = await db.seriiExistenteInStoc(serii);
+    if (exista.length) return res.status(409).json({ serii: exista, error: (exista.length === 1 ? 'Seria ' : 'Seriile ') + exista.slice(0, 8).join(', ') + (exista.length > 8 ? '…' : '') + (exista.length === 1 ? ' e deja în stoc.' : ' sunt deja în stoc.') });
+    let cost = null;
+    if (b.cost_eur !== undefined && b.cost_eur !== null && b.cost_eur !== '') {
+      cost = Number(b.cost_eur);
+      if (!Number.isFinite(cost) || cost < 0 || cost > 100000) return res.status(400).json({ error: 'Costul unei bucăți nu e un număr bun.' });
+      cost = Math.round(cost * 100) / 100;
+    }
+    const furnizor = b.furnizor ? String(b.furnizor).trim().slice(0, 160) : null;
+    const zi = b.achizitionat_la ? Number(b.achizitionat_la) : null;
+    const baza = { tip: tip, cost_eur: cost, furnizor: furnizor, achizitionat_la: Number.isFinite(zi) && zi > 0 ? zi : null, created_by: req.auth && req.auth.userId };
+    const bucati = serii.map(function (sr) { return Object.assign({ serie: sr }, baza); });
+    for (let i = 0; i < faraSerie; i++) bucati.push(Object.assign({ serie: null }, baza));
+    const ids = await db.adaugaStoc(bucati, _cine(req));
+    auditReq(req, 'create', 'stoc', null, { tip: tip, buc: ids.length, cost_eur: cost });
+    res.json({ ok: true, adaugate: ids.length, ids: ids });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Mutarea uneia sau a mai multor bucăți. Fiecare bucată trece doar pe drumurile din stoc.js; ce nu se
+// poate se spune pe nume, bucată cu bucată, iar restul se mută.
+app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).map(function (x) { return parseInt(x, 10); }).filter(Number.isFinite).slice(0, 500);
+    if (!ids.length) return res.status(400).json({ error: 'Alege ce muți.' });
+    const stare = String(b.stare || '');
+    if (stocMod.STARI.indexOf(stare) < 0) return res.status(400).json({ error: 'Unde se mută? Alege o stare din listă.' });
+    let companyId = null, partenerId = null, firma = null;
+    if (stare === 'instalator') {
+      partenerId = parseInt(b.partener_id, 10);
+      if (!Number.isFinite(partenerId) || !(await db.getPartenerMontaj(partenerId))) return res.status(400).json({ error: 'Alege instalatorul la care pleacă.' });
+    }
+    if (stare === 'montat') {
+      companyId = parseInt(b.company_id, 10);
+      firma = Number.isFinite(companyId) ? await db.getCompanyById(companyId) : null;
+      if (!firma) return res.status(400).json({ error: 'Alege firma la care e montat.' });
+    }
+    // Al cui e, montat la client: dacă ai spus tu, cum ai spus; altfel după contractul firmei — o firmă
+    // care închiriază primește aparate ale NOASTRE, una care cumpără le primește ale ei.
+    const propCerut = (b.proprietar === 'ra' || b.proprietar === 'client') ? b.proprietar : null;
+    const nota = b.nota ? String(b.nota).trim().slice(0, 300) : null;
+    const mutate = [], refuzate = [];
+    for (const id of ids) {
+      const x = await db.getStoc(id);
+      if (!x) { refuzate.push({ id: id, motiv: 'nu mai există' }); continue; }
+      if (!stocMod.poateTrece(x.stare, stare)) {
+        refuzate.push({ id: id, serie: x.serie, motiv: 'e ' + (stocMod.ETICHETE_STARE[x.stare] || x.stare) + ' — de acolo nu poate ajunge „' + stocMod.ETICHETE_STARE[stare] + '"' });
+        continue;
+      }
+      const m = { stare: stare, cine: _cine(req), nota: nota, company_id: x.company_id, partener_id: x.partener_id, proprietar: x.proprietar };
+      if (stare === 'depozit') { m.company_id = null; m.partener_id = null; m.proprietar = 'ra'; }
+      else if (stare === 'instalator') { m.company_id = null; m.partener_id = partenerId; m.proprietar = 'ra'; }
+      else if (stare === 'montat') { m.company_id = companyId; m.partener_id = null; m.proprietar = propCerut || (contracte.chirieFirma(firma.settings) ? 'ra' : 'client'); }
+      else if (stare === 'retur') { m.partener_id = null; }
+      else if (stare === 'casat') { m.company_id = null; m.partener_id = null; }
+      await db.mutaStoc(id, m);
+      mutate.push(id);
+    }
+    if (!mutate.length) return res.status(400).json({ refuzate: refuzate, error: 'Nimic nu s-a mutat: ' + refuzate.map(function (r) { return (r.serie || '#' + r.id) + ' ' + r.motiv; }).slice(0, 4).join('; ') + '.' });
+    auditReq(req, 'update', 'stoc', null, { stare: stare, buc: mutate.length, company_id: companyId, partener_id: partenerId });
+    res.json({ ok: true, mutate: mutate.length, refuzate: refuzate });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA `/api/stoc/:id`, altfel „praguri" ar fi citit ca id.
+// Pragurile: stocul minim pe model (sub el, e timpul să comandăm) și câte zile poate sta o bucată la instalator.
+app.put('/api/stoc/praguri', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {}, minim = {};
+    Object.keys(b.minim || {}).forEach(function (tip) {
+      if (!montaj.echipament(tip)) return;
+      const n = parseInt(b.minim[tip], 10);
+      if (Number.isFinite(n) && n > 0 && n <= 10000) minim[tip] = n;
+    });
+    const zile = parseInt(b.zileInstalator, 10);
+    const out = { minim: minim, zileInstalator: Number.isFinite(zile) && zile >= 1 && zile <= 365 ? zile : stocMod.ZILE_LA_INSTALATOR };
+    await db.setSetting(STOC_PRAGURI_CHEIE, JSON.stringify(out));
+    auditReq(req, 'update', 'stoc_praguri', null, out);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Corecturi de evidență: seria, costul, furnizorul, notițele.
+app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
+    const b = req.body || {}, f = {};
+    if (b.serie !== undefined) {
+      f.serie = String(b.serie || '').trim().slice(0, 60) || null;
+      if (f.serie && f.serie !== x.serie) { const alta = await db.stocDupaSerie(f.serie); if (alta) return res.status(409).json({ error: 'Seria ' + f.serie + ' e deja în stoc.' }); }
+    }
+    if (b.cost_eur !== undefined) {
+      if (b.cost_eur === null || b.cost_eur === '') f.cost_eur = null;
+      else { const c = Number(b.cost_eur); if (!Number.isFinite(c) || c < 0 || c > 100000) return res.status(400).json({ error: 'Costul nu e un număr bun.' }); f.cost_eur = Math.round(c * 100) / 100; }
+    }
+    if (b.furnizor !== undefined) f.furnizor = b.furnizor ? String(b.furnizor).trim().slice(0, 160) : null;
+    if (b.note !== undefined) f.note = b.note ? String(b.note).trim().slice(0, 1000) : null;
+    const out = await db.editStoc(id, f);
+    auditReq(req, 'update', 'stoc', id, { campuri: Object.keys(f) });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Se șterge DOAR o bucată trecută din greșeală: încă în depozit și fără nicio mutare. Una cu istoric
+// e marfă care a trăit — se trece pe „casat", ca urma să rămână.
+app.delete('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
+    if (x.stare !== 'depozit' || (x.istoric || []).length > 1) return res.status(400).json({ error: 'Bucata are deja istoric — nu se șterge. Dacă nu mai e bună, treci-o pe „casat".' });
+    await db.stergeStoc(id);
+    auditReq(req, 'delete', 'stoc', id, { tip: x.tip, serie: x.serie });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Legătura automată: un aparat din stoc, legat de o firmă în „Dispozitive" (înregistrat pe ea sau
+// adoptat), trece singur pe „montat la client". Al cui e se ia din contractul firmei: firma care
+// închiriază primește aparate ale NOASTRE. Un aparat necunoscut stocului nu se atinge; o eroare aici
+// nu oprește înregistrarea aparatului (stocul e evidență, nu poartă).
+async function _stocLaFirma(imei, companyId, cine) {
+  try {
+    if (!imei || companyId == null) return null;
+    const x = await db.stocDupaSerie(String(imei));
+    if (!x || (x.stare !== 'depozit' && x.stare !== 'instalator')) return null;
+    const co = await db.getCompanyById(companyId); if (!co) return null;
+    return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null,
+      proprietar: contracte.chirieFirma(co.settings) ? 'ra' : 'client', cine: cine || null,
+      nota: 'automat: aparatul a fost legat de firmă în „Dispozitive"' });
+  } catch (e) { console.warn('[STOC] legarea de firmă:', e.message); return null; }
+}
 
 // Lucrările de montaj ale unei firme + socoteala (cât încasăm, cât plătim, cât rămâne).
 app.get('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5249,10 +5681,18 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
 
 // Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
+// Drumul unui contract, din numărătorile adunate o dată (`db.drumDateToate`). Fără ele → fără drum,
+// nu un drum inventat.
+function _drumContract(c, dd) {
+  if (!c || !dd) return null;
+  return contracte.drumulClientului({ contract: c, areOferta: !!dd.oferte[c.id],
+    montaje: dd.montaje[c.id] || { total: 0, executate: 0 }, aparate: dd.aparate[c.company_id] || 0, facturi: dd.facturi[c.company_id] || 0 });
+}
 app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const [lista, fara, firme, curente, facturi] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract(),
-      db.getCompanies(), db.contractsByCompany(), db.facturiNeachitateToate().catch(function () { return {}; })]);
+    const [lista, fara, firme, curente, facturi, drumDate] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract(),
+      db.getCompanies(), db.contractsByCompany(), db.facturiNeachitateToate().catch(function () { return {}; }),
+      db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })]);
     const acum = Date.now();
     // Firmele care au avut contract, s-a ÎNCHEIAT, dar intră în aplicație în continuare: lucrează
     // fără act, exact ca una fără niciun contract — deci se văd lângă ele, nu doar la „Încheiate".
@@ -5275,11 +5715,17 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
           // Alarma de expirare, cu ACEEAȘI regulă ca notificarea zilnică (`deAnuntat`). Nu se citește
           // din starea dosarului: acolo „dosar incomplet" (ex. lipsește scanul) ascundea expirarea, și
           // un contract care se termina peste 40 de zile nu apărea nicăieri pe ecran (găsit 23.09).
-          alarma: contracte.deAnuntat(c, acum)
+          alarma: contracte.deAnuntat(c, acum),
+          // Unde e clientul pe drum (ofertă → trimis → semnat → montaj → aparate → prima factură) și
+          // care e pasul următor — aceeași regulă ca în fișa firmei (`drumulClientului`).
+          drum: _drumContract(c, drumDate)
         });
       }),
       fara_contract: fara,
-      incheiate_cu_acces: incheiateCuAcces
+      incheiate_cu_acces: incheiateCuAcces,
+      // Butonul „Trimite la semnat" chiar trimite doar cu SMTP pus. Fără el, ecranul spune pe față
+      // „descarcă și trimite tu" — un buton nu promite ce aplicația nu face.
+      trimite_pe_email: !!(mailer && mailer.enabled())
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5352,8 +5798,30 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
       await db.setCompanyOferta(companyId, pretScris);
     }
   }
+  // Păstrarea istoricului peste cele 12 luni incluse se vinde în ofertă, deci se scrie pe firmă odată cu
+  // restul — de aici o citesc ștergerea automată și factura. Cele 12 incluse nu scriu nimic și NU coboară
+  // o firmă care are deja mai mult: o coborâre șterge date, deci se face doar de mână, cu confirmare.
+  const pastrare = _pastrareDinOferta(oferta, dinOferta);
+  if (pastrare) patch.pastrare = pastrare;
+  // Chiria echipamentelor (25.09): de aici o citesc factura și registrul. Ca prețul, se scrie DOAR dacă
+  // firma n-are deja o chirie — una negociată separat nu se calcă.
+  const chirie = _chirieDinOferta(oferta);
+  if (chirie) {
+    const coCh = await db.getCompanyById(companyId);
+    if (coCh && !contracte.chirieFirma(coCh.settings)) patch.chirie = { randuri: chirie.randuri };
+  }
   if (Object.keys(patch).length) await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
   return { patch: Object.keys(patch).length ? patch : null, deAprinsManual, pretScris };
+}
+// Păstrarea istoricului vândută într-o ofertă: `{ luni, pretRON }`, sau `null` dacă oferta a rămas pe
+// cele 12 luni incluse. Lunile = ce s-a ales în ofertă; prețul = rândul socotit de pagină (`_ofCalc`,
+// `fel: 'ret'`), adică exact suma acceptată de client. Serverul nu refăce socoteala ofertei.
+function _pastrareDinOferta(oferta, dinOferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  const ret = (dinOferta && Array.isArray(dinOferta.servicii))
+    ? dinOferta.servicii.find(function (x) { return x && x.fel === 'ret'; }) : null;
+  const luni = Number(ret && ret.luni) || Number(cfg.retTier === 'custom' ? cfg.retCustomMonths : cfg.retTier) || 0;
+  return contracte.curataPastrare({ luni: luni, pretRON: ret ? ret.total : 0 }) || null;
 }
 // Rândurile de preț lunar ale ofertei, pentru anexa contractului: mașinile (pe feluri) și serviciile
 // (RA Insight, păstrarea datelor, agenții incluși). Vin din pagină, socotite de `_ofCalc`; aici doar
@@ -5394,6 +5862,13 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     const offerId = parseInt(req.body && req.body.offer_id, 10);
     if (Number.isFinite(offerId)) {
       try { oferta = await db.getOfferById(offerId); } catch (e) {}
+      // Oferta cu aparate închiriate cere cel puțin 24 de luni: aparatul își scoate banii din chirie, în
+      // timp. „Nedeterminată" rămâne voie — clauza de durată minimă din contract o acoperă.
+      const _ch = oferta ? _chirieDinOferta(oferta) : null;
+      if (_ch && date.months != null && Number(date.months) < contracte.CHIRIE_LUNI_MIN) {
+        return res.status(400).json({ error: 'Oferta e cu echipamente închiriate: contractul se face pe cel puțin ' +
+          contracte.numar(contracte.CHIRIE_LUNI_MIN, 'lună', 'luni') + '.' });
+      }
       if (oferta && !date.annex) {
         const _cfgOf = (oferta.config && oferta.config.cfg) || {};
         const _prOf = (oferta.config && oferta.config.prices) || {};
@@ -5405,7 +5880,11 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           vehiculeOferta: rl ? rl.vehiculeOferta : null, servicii: rl ? rl.servicii : null,
           // Prețul unui cont de RA Insight ajunge în contract, ca regula să fie semnată, nu presupusă.
           aiSeatPriceRON: _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
-          aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0
+          aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0,
+          // Câte luni se păstrează istoricul, dacă s-a cumpărat mai mult decât cele 12 incluse: se semnează.
+          pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null,
+          // Aparatele ÎNCHIRIATE: ale noastre, cu chiria și valoarea lor — pentru clauze (25.09).
+          chirie: _ch ? { aparate: _ch.aparate, tarifDemontare: _ch.tarifDemontare } : null
         });
       }
       // Montajul și echipamentele sunt deja socotite în ofertă — le ducem în Anexa nr. 2, ca să nu
@@ -5601,6 +6080,96 @@ app.delete('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req
     if (!out) return res.status(404).json({ error: 'Contract inexistent' });
     auditReq(req, 'delete', 'contract', id, { care: care, fisier: true });
     res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Butoanele de pe lipsuri (Contracte, 24.09) ─────────────────────────────────────────────────
+// Alin: „butonul fix acolo unde lipsește". Lista spunea CE lipsește, dar ca să rezolvi intrai în fișa
+// firmei, pe fila Contract, și căutai câmpul. Acum fiecare lipsă are butonul ei, chiar pe etichetă.
+
+// „Completează": datele firmei din dosar (CUI, denumire, Reg. Com., sediu, email, reprezentant).
+// Scrie DOAR ce se trimite (`completeazaDosarFirma`) — `PUT /api/companies/:id` rescrie tot rândul.
+app.put('/api/companies/:id/dosar', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const b = req.body || {}, d = {};
+    const text = function (v, max) { return String(v == null ? '' : v).trim().slice(0, max) || null; };
+    if (b.name !== undefined) { d.name = text(b.name, 200); if (!d.name) return res.status(400).json({ error: 'Denumirea firmei nu poate rămâne goală.' }); }
+    if (b.cui !== undefined) d.cui = text(b.cui, 20);
+    if (b.reg_com !== undefined) d.reg_com = text(b.reg_com, 40);
+    if (b.address !== undefined) d.address = text(b.address, 300);
+    if (b.contact_email !== undefined) {
+      d.contact_email = text(b.contact_email, 200);
+      if (d.contact_email && !_EMAIL_RE.test(d.contact_email)) return res.status(400).json({ error: 'Adresa de email nu arată a email.' });
+    }
+    if (b.legal_rep !== undefined) {
+      const r = b.legal_rep || {};
+      d.legal_rep = text(r.name, 120) ? { name: text(r.name, 120), role: text(r.role, 80) } : null;
+    }
+    await db.completeazaDosarFirma(id, d);
+    auditReq(req, 'update', 'company', id, { dosar: Object.keys(d) });
+    const dupa = await db.getCompanyById(id);
+    res.json({ ok: true, company: { id: id, name: dupa.name, cui: dupa.cui, reg_com: dupa.reg_com, address: dupa.address, contact_email: dupa.contact_email, legal_rep: dupa.legal_rep } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+const _EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+function _pdfInBuffer(doc) {
+  return new Promise(function (resolve, reject) {
+    const bucati = [];
+    doc.on('data', function (b) { bucati.push(b); });
+    doc.on('end', function () { resolve(Buffer.concat(bucati)); });
+    doc.on('error', reject);
+  });
+}
+// „Trimite la semnat": contractul APROBAT pleacă pe email la client, cu PDF-ul atașat — același PDF
+// ca la „Descarcă" (`contractPdf`, nu o copie). Starea devine singură „trimis", cu ziua și adresa,
+// scrise de server DUPĂ ce emailul chiar a plecat. Răspunsul omului (contractul semnat) vine la noi
+// (`replyTo` = emailul nostru de facturare). Fără SMTP, butonul nu minte: spune că nu poate trimite.
+app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    if (c.status === 'ciorna') return res.status(400).json({ error: 'Contractul e încă în lucru. Aprobă-l întâi — o ciornă nu pleacă la semnat.' });
+    if (c.status !== 'aprobat' && c.status !== 'trimis') return res.status(400).json({ error: 'Contractul e deja semnat — nu mai e nimic de trimis la semnat.' });
+    const co = await db.getCompanyById(c.company_id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    // Pe hârtie n-au voie să rămână goluri: fără CUI, sediu sau reprezentant, contractul pleacă cu „________".
+    const lipsuri = contracte.stareDosar(co, c, Date.now()).lipsuri.filter(function (k) { return ['cui', 'sediu', 'reprezentant'].indexOf(k) >= 0; });
+    if (lipsuri.length) {
+      return res.status(400).json({ lipsuri: lipsuri,
+        error: 'Pe contract ar rămâne goluri: lipsește ' + lipsuri.map(function (k) { return contracte.ETICHETE[k] || k; }).join(', ') + '. Completează-le întâi.' });
+    }
+    const catre = String((req.body && req.body.catre) || co.contact_email || '').trim();
+    if (!catre) return res.status(400).json({ error: 'Firma n-are adresă de email. Scrie adresa la care trimitem contractul.' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
+    if (!mailer || !mailer.enabled()) {
+      return res.status(503).json({ faraEmail: true,
+        error: 'Emailul nu e configurat pe server (SMTP), deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis".' });
+    }
+    const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    const pdf = await _pdfInBuffer(contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent }));
+    const noi = emitent.name || 'RA Tracks';
+    const r = await mailer.send({
+      to: catre,
+      replyTo: emitent.email || undefined,
+      subject: 'Contractul ' + (c.number || '') + ' — de semnat · ' + noi,
+      html: '<p>Bună ziua,</p>' +
+        '<p>Vă trimitem atașat contractul de prestări servicii nr. <b>' + _he(c.number || '') + '</b> pentru monitorizarea GPS a flotei <b>' + _he(co.name || '') + '</b>, împreună cu anexele lui.</p>' +
+        '<p>Vă rugăm să-l semnați și să ni-l trimiteți înapoi — scanat sau fotografiat — ca răspuns la acest email.</p>' +
+        '<p>Vă mulțumim,<br>' + _he(noi) + (emitent.phone ? '<br>' + _he(emitent.phone) : '') + '</p>',
+      text: 'Bună ziua,\n\nVă trimitem atașat contractul nr. ' + (c.number || '') + ' pentru monitorizarea GPS a flotei ' + (co.name || '') +
+        '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\nVă mulțumim,\n' + noi,
+      attachments: [{ filename: contractPdf.numeFisier(c, co), content: pdf, contentType: 'application/pdf' }]
+    });
+    if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
+    const acum = Date.now();
+    await db.pool.query(`UPDATE contracts SET status = 'trimis', sent_at = $2, sent_to = $3, updated_at = $2 WHERE id = $1`, [id, acum, catre]);
+    // Firma fără email îl primește pe cel la care tocmai am trimis — altfel îl tastăm iar data viitoare.
+    if (!co.contact_email) { try { await db.completeazaDosarFirma(co.id, { contact_email: catre }); } catch (e) {} }
+    auditReq(req, 'send', 'contract', id, { catre: catre, din: c.status });
+    res.json({ ok: true, trimis_la: catre, sent_at: acum, status: 'trimis' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -5901,6 +6470,8 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
     await db.setDeviceCompany(req.params.imei, companyId);
     invalidateAccessCache(); _devCompanyCache.delete(req.params.imei); refreshWsScope();
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
+    // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc).
+    if (companyId != null) await _stocLaFirma(req.params.imei, companyId, _cine(req));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -7321,22 +7892,188 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   }
 });
 
-// Câte zile mai are istoricul unui aparat arhivat până se șterge de tot, și dacă a început deja să
-// se subțieze. Purjarea (`purgeArchivedPositions`, zilnic) șterge RÂNDURI mai vechi de
-// ARCHIVE_RETENTION_DAYS — deci istoricul se topește de la capătul vechi: începe când cea mai veche
-// poziție atinge termenul, și se termină când îl atinge și cea mai nouă. Socoteala se face AICI,
-// fiindcă termenul e o setare de server; ecranul doar arată cifra (nu-și face propria regulă).
+// Câte zile mai are istoricul unui aparat arhivat până se șterge. Regula e a CONTRACTULUI (Anexa
+// GDPR): la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem — iar arhivarea
+// aparatului e încetarea pentru el. Deci ceasul pornește din ziua arhivării (`archived_at`), NU din
+// vârsta pozițiilor (așa era până pe 24.09, cu 2 ani). Socoteala se face AICI, cu cifra din
+// contracts.js; ecranul doar o arată (nu-și face propria regulă).
 function _arhivaTermen(row) {
-  const zile = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
+  const zile = contracte.ZILE_DATE_DUPA_INCETARE;
   const ZI = 86400000, acum = Date.now();
-  const varsta = (t) => (t ? Math.floor((acum - new Date(t).getTime()) / ZI) : null);
-  const vNou = varsta(row.last_ts), vVechi = varsta(row.first_ts);
-  return {
-    ...row,
+  const arhivat = row.archived_at != null ? Number(row.archived_at) : null;
+  const sters = row.istoric_sters_at != null;
+  const la = arhivat != null ? arhivat + zile * ZI : null;
+  return Object.assign({}, row, {
     purge_total_zile: zile,
-    purge_zile: vNou == null ? null : Math.max(0, zile - vNou),  // până dispare TOT
-    purge_inceput: vVechi != null && vVechi >= zile              // cele mai vechi date se șterg deja
-  };
+    purge_la: la,                                                            // ziua ștergerii
+    purge_zile: sters ? 0 : (la == null ? null : Math.max(0, Math.ceil((la - acum) / ZI))),
+    istoric_sters: sters
+  });
+}
+
+// ─── Ștergerea istoricului, la 30 de zile după încetare ──────────────────────────────────────────
+// Contractul (Anexa GDPR, pct. 7) promite: la încetare, clientul are 30 de zile să ceară datele
+// înapoi; fără cerere, se șterg. Aplicația le ținea 2 ani — până pe 24.09 (Alin: „exact așa facem").
+// Se șterge tot istoricul de localizare al aparatului (poziții vii + arhivă + curse + alerte). Rândul
+// aparatului rămâne, marcat „istoric șters", ca să se vadă ce s-a întâmplat.
+async function stergeIstoricArhivate() {
+  const zile = contracte.ZILE_DATE_DUPA_INCETARE;
+  const lista = await db.aparateCuIstoricDeSters(Date.now() - zile * 86400000);
+  const raport = { verificate: lista.length, sterse: [], amanate: [] };
+  for (const imei of lista) {
+    const r = await db.stergeIstoricAparat(imei);
+    if (r.erori.length) { raport.amanate.push({ imei: imei, erori: r.erori }); console.warn('[ARHIVĂ] ' + imei + ': ' + r.erori.join('; ')); }
+    else {
+      raport.sterse.push(Object.assign({ imei: imei }, r));
+      console.log('[ARHIVĂ] Istoric șters (' + zile + ' zile de la arhivare) ' + imei + ': ' + r.pozitii + ' poziții, ' +
+        r.arhiva + ' din arhivă, ' + r.curse + ' curse, ' + r.alerte + ' alerte');
+      // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
+      try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_aparat', entityId: imei, details: r, ip: null, companyId: null }); } catch (e) {}
+    }
+  }
+  return raport;
+}
+// Rulare de mână (super-admin), ca la ceasul contractelor: nu aștepți o zi ca să vezi ce face.
+app.post('/api/admin/arhiva/sterge-istoric', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeIstoricArhivate()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Doar pentru probe (SEED_TEST=1): mută ziua arhivării în urmă, ca proba să nu aștepte 30 de zile.
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/arhivat-de', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      await db.pool.query('UPDATE devices SET archived_at = $2 WHERE imei = $1', [String(b.imei || ''), Date.now() - (Number(b.zile) || 0) * 86400000]);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+}
+
+// ─── Păstrarea istoricului cât contractul e în vigoare (decizie Alin, 24.09) ─────────────────────
+// 12 luni pentru TOȚI, incluse în abonament; mai mult unde firma a plătit (`settings.pastrare`, scris
+// din oferta acceptată sau din „Abonament & plăți"). Până pe 24.09 o singură vârstă, 180 de zile, pentru
+// toată lumea (politica TimescaleDB sau `POSITION_RETENTION_DAYS`) — iar 24/36 de luni se vindeau și se
+// semnau fără să se livreze.
+//
+// Mașină cu mașină, după regula firmei ei. Unde setările unei firme nu se pot citi, mașinile ei se SAR:
+// mai bine ținem o zi în plus decât să ștergem ce a plătit cineva. Aceeași regulă pe TimescaleDB,
+// Postgres simplu și PGlite. Rularea are buget de timp; ce nu apucă, continuă la următoarea.
+// De unde reia rularea următoare, dacă asta n-a apucat toate mașinile (bugetul de timp s-a terminat).
+// Fără el, o rulare lungă s-ar opri mereu la aceleași mașini, iar cele de la coadă n-ar ajunge niciodată.
+let _pastrareDeLa = 0;
+async function stergeIstoriculVechi(opts) {
+  const start = Date.now();
+  const pana = start + ((opts && opts.bugetMs) || 10 * 60 * 1000);
+  const raport = { aparate: 0, masini: 0, pozitii: 0, curse: 0, alerte: 0, sarite: 0, erori: 0, primaEroare: null,
+    firmePlatite: 0, maxLuni: contracte.LUNI_ISTORIC_INCLUSE, bucati: 0, epuizat: false };
+  try {
+    const aparate = await db.aparatePentruPastrare();
+    raport.aparate = aparate.length;
+    const platite = new Set();
+    const n = aparate.length, dela = n ? (_pastrareDeLa % n) : 0;
+    for (let k = 0; k < n; k++) {
+      const a = aparate[(dela + k) % n];
+      if (Date.now() >= pana) { raport.epuizat = true; _pastrareDeLa = (dela + k) % n; break; }
+      const p = contracte.pastrareFirma(a.settings);
+      if (!p) { raport.sarite++; raport.maxLuni = contracte.LUNI_ISTORIC_MAX; continue; }
+      if (p.platita && a.company_id != null) platite.add(a.company_id);
+      if (p.luni > raport.maxLuni) raport.maxLuni = p.luni;
+      try {
+        const r = await db.stergeIstoricMaiVechiDe(a.imei, p.luni, { pana: pana });
+        raport.pozitii += r.pozitii; raport.curse += r.curse; raport.alerte += r.alerte;
+        if (r.pozitii || r.curse || r.alerte) raport.masini++;
+        if (r.epuizat) { raport.epuizat = true; _pastrareDeLa = (dela + k) % n; break; }
+      } catch (e) {
+        // O mașină care nu merge nu oprește restul; se reîncearcă la rularea următoare.
+        raport.erori++; if (!raport.primaEroare) raport.primaEroare = a.imei + ': ' + e.message;
+      }
+    }
+    if (!raport.epuizat) _pastrareDeLa = 0;
+    raport.firmePlatite = platite.size;
+    // Bucățile de tabel mai vechi decât cea mai lungă păstrare din platformă nu mai sunt ale nimănui.
+    // DOAR după o trecere completă: altfel `maxLuni` n-a văzut toate firmele și ar putea fi prea mic.
+    if (!raport.epuizat && raport.aparate) {
+      try { raport.bucati = await db.scoateBucatiMaiVechiDe(raport.maxLuni); }
+      catch (e) { raport.erori++; if (!raport.primaEroare) raport.primaEroare = 'bucăți vechi: ' + e.message; }
+    }
+    raport.ms = Date.now() - start;
+    _pastrareUltima = { at: Date.now(), raport: raport, error: null };
+  } catch (e) {
+    _pastrareUltima = { at: Date.now(), raport: raport, error: e.message };
+    throw e;
+  }
+  if (raport.pozitii || raport.curse || raport.alerte) {
+    console.log('[PĂSTRARE] Istoric mai vechi decât contractul, șters: ' + raport.pozitii + ' poziții, ' + raport.curse +
+      ' curse, ' + raport.alerte + ' alerte, la ' + raport.masini + ' mașini' + (raport.epuizat ? ' (continuă la rularea următoare)' : ''));
+    // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_vechi', entityId: null, details: raport, ip: null, companyId: null }); } catch (e) {}
+  }
+  if (raport.erori) console.warn('[PĂSTRARE] ' + raport.erori + ' mașini amânate: ' + raport.primaEroare);
+  return raport;
+}
+// Jurnalul de audit se ține 12 luni, apoi se șterge (contracts.js → `LUNI_JURNAL_AUDIT`; decizie Alin,
+// 24.09). Până atunci nu se ștergea deloc, iar pagina de confidențialitate scria „[ex. 12 luni]".
+async function stergeAuditVechi() {
+  const luni = contracte.LUNI_JURNAL_AUDIT;
+  const n = await db.stergeAuditMaiVechiDe(luni);
+  if (n) {
+    console.log('[AUDIT] Șterse ' + n + ' rânduri de jurnal mai vechi de ' + luni + ' luni');
+    // Un singur rând NOU, care spune că s-au șters cele vechi — se poate dovedi, nu doar afirma.
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'jurnal_audit', entityId: null, details: { randuri: n, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
+  }
+  return { sterse: n, luni: luni };
+}
+app.post('/api/admin/audit/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeAuditVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Rulare de mână (super-admin): nu aștepți șase ore ca să vezi ce face.
+app.post('/api/admin/istoric/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeIstoriculVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Doar pentru probe (SEED_TEST=1): pune istoric de acum N luni (poziții, o cursă, o alertă), ca proba
+// să nu aștepte un an.
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/istoric-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const imei = String(b.imei || ''), luni = Math.max(0, parseInt(b.luni) || 0), n = Math.max(1, Math.min(5000, parseInt(b.n) || 10));
+      const cand = `(NOW() - make_interval(months => $2::int, days => 1))::timestamp`;
+      await db.pool.query(
+        `INSERT INTO positions (imei, timestamp, latitude, longitude, speed, io_data)
+         SELECT $1, ${cand} - (g * interval '1 minute'), 45.75, 21.21, 30, '{}'::jsonb FROM generate_series(1, $3::int) g
+         ON CONFLICT DO NOTHING`, [imei, luni, n]);
+      await db.pool.query(`INSERT INTO trips (imei, start_time, end_time) VALUES ($1, ${cand}, ${cand} + interval '30 minutes')`, [imei, luni]);
+      await db.pool.query(`INSERT INTO alert_history (imei, triggered_at, data) VALUES ($1, ${cand}, '{}'::jsonb)`, [imei, luni]);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Un rând de jurnal de acum N luni, ca proba să nu aștepte un an.
+  app.post('/api/test/audit-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      const r = await db.pool.query(
+        `INSERT INTO audit_log (username, action, entity, entity_id, created_at)
+         VALUES ('proba', 'update', 'proba', $2, (NOW() - make_interval(months => $1::int, days => 1))::timestamp) RETURNING id`,
+        [Math.max(0, parseInt(b.luni) || 0), String(b.eticheta || '')]);
+      res.json({ id: r.rows[0].id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.post('/api/test/audit-exista', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const r = await db.pool.query('SELECT COUNT(*)::int AS n FROM audit_log WHERE id = $1', [parseInt((req.body || {}).id) || 0]);
+      res.json({ exista: r.rows[0].n > 0 });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.post('/api/test/istoric-numar', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const imei = String((req.body || {}).imei || '');
+      const q = async (s) => Number((await db.pool.query(s, [imei])).rows[0].n) || 0;
+      res.json({
+        pozitii: await q('SELECT COUNT(*)::int AS n FROM positions WHERE imei = $1'),
+        curse: await q('SELECT COUNT(*)::int AS n FROM trips WHERE imei = $1'),
+        alerte: await q('SELECT COUNT(*)::int AS n FROM alert_history WHERE imei = $1')
+      });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
 }
 
 // Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
@@ -7413,6 +8150,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       const _pa = livePositions.get(imei);
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
       auditReq(req, 'adopt', 'device', imei, { companyId: adoptCompany });
+      await _stocLaFirma(imei, adoptCompany, _cine(req));
       return res.json({ ok: true, adopted: true, imei });
     }
 
@@ -7432,6 +8170,8 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       broadcastWs({ type: 'position', data: _pos });
     }
     auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
+    // Înregistrat direct pe o firmă → aparatul din stocul nostru trece pe „montat la client".
+    if (companyId != null) await _stocLaFirma(imei, companyId, _cine(req));
     res.json({ ok: true, imei });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -12089,6 +12829,21 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   } else if (body.ai_quota === null && opts && opts.allowFeatures) {
     delete next.ai_quota; // fără cotă = nelimitat
   }
+  // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
+  // `null` sau 12 luni și mai puțin = înapoi la cele 12 incluse. Un număr stricat nu ajunge aici: ruta
+  // îl refuză înainte (400) — nu se ghicește o regulă după care se șterg date.
+  if (body.pastrare !== undefined && opts && opts.allowFeatures) {
+    const p = contracte.curataPastrare(body.pastrare);
+    if (p === null) delete next.pastrare;
+    else if (p) next.pastrare = p;
+  }
+  // Chiria echipamentelor (25.09) — se scrie din contractul făcut pe o ofertă cu închiriere. STRICT
+  // super-admin, ca tot ce ține de bani.
+  if (body.chirie !== undefined && opts && opts.allowFeatures) {
+    const ch = contracte.curataChirie(body.chirie);
+    if (ch === null) delete next.chirie;
+    else if (ch) next.chirie = ch;
+  }
   // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
     next.alert_thresholds = _mergeAlertThresholds(cur.alert_thresholds, body.alert_thresholds);
@@ -12117,9 +12872,22 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
-    auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null });
+    const b = req.body || {};
+    let pastrareInainte = null;
+    if (b.pastrare !== undefined) {
+      if (contracte.curataPastrare(b.pastrare) === undefined) {
+        return res.status(400).json({ error: 'Păstrarea istoricului: alege un număr de luni, cel mult ' + contracte.LUNI_ISTORIC_MAX + '.' });
+      }
+      pastrareInainte = contracte.pastrareFirma(await db.getCompanySettings(id));
+    }
+    const next = await _applyCompanySettingsPatch(id, b, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
+    const det = { keys: Object.keys(b) };
+    // O păstrare coborâtă ȘTERGE date la următoarea rulare: se scrie în jurnal de la cât la cât, ca să
+    // se poată spune oricând cine a hotărât și când.
+    if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni };
+    auditReq(req, 'update', 'company_settings', id, det);
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null,
+      pastrare: contracte.pastrareFirma(next) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Catalog IO Teltonika (138 ID-uri din wiki + override-uri globale super-admin) ─────────
@@ -12425,6 +13193,15 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   }
   add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
+  // Păstrarea istoricului peste cele 12 luni incluse (24/36 de luni, vândute în ofertă). Până pe 24.09
+  // se vindea și se semna, dar nu ajungea pe nicio factură — și nici nu se livra. Registrul de venituri
+  // (`_venitLunar`) adună exact același rând, din aceeași regulă.
+  const past = contracte.pastrareFirma(company && company.settings);
+  if (past && past.platita) add('Păstrarea istoricului — ' + contracte.numar(past.luni, 'lună', 'luni'), 1, past.pretRON);
+  // Chiria echipamentelor (25.09): pe rând separat, doar la firmele care închiriază — un rând pe model,
+  // exact cum scrie în contract. Registrul (`_venitLunar`) adună aceeași sumă, din aceeași regulă.
+  const chirie = contracte.chirieFirma(company && company.settings);
+  if (chirie) chirie.randuri.forEach(function (r) { add('Chirie echipament — ' + r.nume, r.cant, r.cant * r.pret); });
   const subtotal = Math.round(lines.reduce((s, l) => s + l.net, 0) * 100) / 100;
   const vatAmount = Math.round(lines.reduce((s, l) => s + l.vat, 0) * 100) / 100;
   return { lines, subtotal, vatAmount, total: Math.round((subtotal + vatAmount) * 100) / 100, model: p.model };
@@ -12649,26 +13426,34 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     }
   } catch (e) {}
 
-  // Retenția pozițiilor are DOUĂ căi: politica TimescaleDB (dacă extensia există) SAU ștergerea de rezervă
-  // din server.js — dar aceasta din urmă rulează NUMAI dacă POSITION_RETENTION_DAYS e setat explicit
-  // (nu are valoare implicită). Fără niciuna, `positions` crește la nesfârșit. Raportăm separat de compresie.
-  const _posRet = parseInt(process.env.POSITION_RETENTION_DAYS);
-  const _fallbackArmed = Number.isFinite(_posRet) && _posRet > 0;
+  // Compresia și ștergerea istoricului vechi sunt DOUĂ lucruri: compresia o face TimescaleDB (dacă
+  // există), ștergerea o face aplicația, după regula fiecărei firme (12 luni incluse, 24/36 plătite).
   if (ts && ts.usePg) {
+    // Măsurat pe 24.09, pe aplicația pornită: istoricul mai vechi de 7 zile iese de 14–19 ori mai mic.
     add('timescale', 'TimescaleDB (compresie poziții)', ts.enabled ? 'ok' : 'warn',
       ts.enabled ? ('activ · compresie după ' + ts.compressAfterDays + ' zile')
-                 : ('INACTIV → pozițiile se stochează NECOMPRIMAT (Timescale comprimă ~85-90%): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
-    const retOk = ts.enabled || _fallbackArmed;
-    add('retention', 'Ștergerea automată a pozițiilor vechi', retOk ? 'ok' : 'crit',
-      ts.enabled ? ('politică TimescaleDB · ' + ts.retentionDays + ' zile')
-        : (_fallbackArmed ? ('ștergere de rezervă activă · ' + _posRet + ' zile, pe loturi, la 6 ore · ' + _retentionSummary())
-          : 'NIMIC nu șterge pozițiile vechi: Timescale e inactiv, iar POSITION_RETENTION_DAYS nu e setat → tabela `positions` crește la nesfârșit, iar „180 zile istoric" din materiale nu se respectă. Remediu imediat: setează POSITION_RETENTION_DAYS=180.'));
+                 : ('INACTIV → pozițiile se stochează NECOMPRIMAT (cu Timescale ies de 14–19 ori mai mici, măsurat): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
+  }
+  {
+    const _u = _pastrareUltima;
+    const _nivel = (ts && ts.politicaVeche) ? 'crit' : (!_u ? 'info' : (_u.error ? 'crit' : ((_u.raport && (_u.raport.erori || _u.raport.sarite)) ? 'warn' : 'ok')));
+    add('retention', 'Păstrarea istoricului', _nivel,
+      ((ts && ts.politicaVeche) ? 'politica veche TimescaleDB (o singură vârstă pentru toți) N-A PUTUT FI SCOASĂ — ar șterge sub ce scrie în contracte: ' + ts.politicaVeche + ' · ' : '')
+      + contracte.LUNI_ISTORIC_INCLUSE + ' luni pentru toți, incluse; mai mult doar unde firma a plătit'
+      + (_u && _u.raport && _u.raport.firmePlatite ? ' (' + _u.raport.firmePlatite + (_u.raport.firmePlatite === 1 ? ' firmă' : ' firme') + ')' : '')
+      + ' · ' + _pastrareRezumat());
+  }
+  // Variabila veche hotăra o singură vârstă pentru toată lumea. Nu mai e citită — dar dacă a rămas
+  // în Railway, cineva ar putea crede că încă ea hotărăște. Se spune pe ecran, până e ștearsă.
+  if (isSet(process.env.POSITION_RETENTION_DAYS)) {
+    add('retention_env', 'Variabilă veche: POSITION_RETENTION_DAYS', 'warn',
+      'nu mai e folosită — istoricul se păstrează după contractul fiecărei firme. Șterge-o din Railway (Variables), ca să nu încurce.');
   }
   add('backup_offsite', 'Backup off-site (S3/R2)', bk.s3Configured ? (bk.protected ? 'ok' : 'warn') : 'crit',
     bk.s3Configured ? (bk.protected ? ('ultima copie: ' + (bk.at || '—')) : 'configurat, dar ultima rulare nu a urcat nimic')
                     : 'BACKUP_S3_* nesetat → datele de business NU sunt salvate nicăieri în afara containerului');
   // Telemetria NU intră în dump-ul logic (e prea mare) — se arhivează separat, zi cu zi. Fără ea, retenția
-  // de 180 de zile ar fi însemnat pierdere definitivă dacă fereastra de snapshot-uri a bazei e mai scurtă.
+  // după contract (12 luni incluse) ar fi însemnat pierdere definitivă dacă fereastra de snapshot-uri a bazei e mai scurtă.
   const bp = backup.positionsStatus();
   add('backup_positions', 'Arhivă poziții (telemetrie)', !bp.enabled ? 'warn' : (bp.error ? 'crit' : (bp.at ? 'ok' : 'info')),
     !bp.enabled ? 'BACKUP_S3_* nesetat → pozițiile șterse de retenție NU au nicio copie; verifică separat ce fereastră de snapshot-uri are baza'
@@ -13279,13 +14064,17 @@ app.post('/api/admin/offers/pdf', requireAuth, requireSuperadmin, async (req, re
     if (!reportExport) return res.status(503).json({ error: 'Descărcarea nu e disponibilă pe serverul ăsta.' });
     const o = req.body || {};
     o.valabilZile = OFERTA_VALABIL_ZILE;
+    // La închiriere, durata minimă și termenul de retur le scrie serverul, din aceleași cifre ca contractul.
+    o.chirieLuniMin = contracte.CHIRIE_LUNI_MIN; o.chirieZileRetur = contracte.CHIRIE_ZILE_RETUR;
     await reportExport.sendOfertaPdf(res, o);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Cuvintele și termenul, pentru ecran. ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA oricărei
 // `/api/admin/offers/:id`.
 app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => {
-  res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT });
+  res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT,
+    // Închirierea (25.09): durata minimă și marja se socotesc în pagină, dar cifrele vin DE AICI.
+    chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR } });
 });
 // Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
 // server, la fel ca oriunde altundeva unde un fapt se naște dintr-o apăsare de buton.
@@ -13440,7 +14229,8 @@ function _ofNod(dom, tag, id) {
     getAttribute(k) { return e[k] == null ? null : String(e[k]); },
     appendChild(c) { if (c && c.id) dom.set(c.id, c); return c; },
   };
-  e.parentNode = { appendChild: e.appendChild, insertBefore: e.appendChild, removeChild() {} };
+  // `querySelector` pe părinte: pagina îl cere de la 25.09 (caseta de chirie de lângă prețul aparatului).
+  e.parentNode = { appendChild: e.appendChild, insertBefore: e.appendChild, removeChild() {}, querySelector() { return null; }, querySelectorAll() { return []; } };
   Object.defineProperty(e, 'options', { get() { return optiuni || []; } });
   Object.defineProperty(e, 'value', {
     enumerable: true,
@@ -13637,7 +14427,9 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
       P._cursNostru = st && st.curs_eur != null ? st.curs_eur : null;
       P._cursNostruData = (st && st.curs_eur_data) || '';
       P._costNoastre = (st && st.costuri_noastre) || {};
-      P._ofMeta = { stari: OFERTA_STARI.slice(), valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT.map((x) => Object.assign({}, x)) };
+      P._ofMeta = { stari: OFERTA_STARI.slice(), valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT.map((x) => Object.assign({}, x)),
+        // Închirierea (25.09): aceleași cifre ca `GET /api/admin/offers/meta`, pe care o citește pagina web.
+        chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR } };
       P._ofAtinse = {};
       const pag = oferta ? _ofPentruPagina(oferta) : null;
       P._raxOf = { editingId: null, offers: pag ? [pag] : [], prices: P._ofTarifeDeBaza() };
@@ -13664,7 +14456,11 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         Object.keys(b.campuri).slice(0, 200).forEach((k) => pune(k, b.campuri[k]));
         P._ofAtinse = {};
         (Array.isArray(b.atinse) ? b.atinse : []).slice(0, 200).forEach((k) => { if (el('of-' + k)) P._ofAtinse['of-' + k] = true; });
+        if ((Array.isArray(b.schimbate) ? b.schimbate : []).includes('echipMod') && typeof P.raxOfEchipMod === 'function') {
+          P.raxOfEchipMod(String(b.campuri.echipMod) === 'inchiriaza' ? 'inchiriaza' : 'cumpara');
+        }
         (Array.isArray(b.schimbate) ? b.schimbate : []).slice(0, 100).forEach((k) => {
+          if (k === 'echipMod') return;
           // Valoarea scrisă de om se pune din nou înainte de „apăsare": un câmp schimbat mai devreme în
           // aceeași rundă (ex. numărul de mașini) i-ar fi putut scrie o propunere peste.
           const e = (k in b.campuri) ? pune(k, b.campuri[k]) : el('of-' + k); if (!e || !e._la) return;
@@ -13691,7 +14487,14 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         const cutie = (id) => _ofCurat((el(id) || {}).innerHTML || '');
         out.html = { rezumat: cutie('rax-of-summary'), aiA: cutie('of-mod-hint-aiA'), tahograf: cutie('of-mod-hint-tahograf'),
           etransport: cutie('of-mod-hint-etransport'), aiqCost: cutie('of-aiq-cost') };
-        out.arata = { aiq: ((el('of-aiq-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none' };
+        out.arata = { aiq: ((el('of-aiq-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none',
+          inchiriere: typeof P._ofInchiriere === 'function' ? !!P._ofInchiriere() : false };
+        // Închirierea: explicația de sub aparate și, lângă fiecare chirie, cât ne costă aparatul (din pagină).
+        // (Chiria propusă o pune deja `raxOfRecalc`, mai sus; aici doar textul explicației, scris de butonul web.)
+        if (out.arata.inchiriere && typeof P._ofChirieHint === 'function') P._ofChirieHint();
+        out.html.chirieHint = out.arata.inchiriere ? cutie('of-chirie-hint') : '';
+        out.chcost = {};
+        ['chFmc130', 'chFmc150', 'chFmc650', 'chLvCan'].forEach((k) => { out.chcost[k] = cutie('of-chcost-' + k); });
         out.echiv = {};
         _ofDom.forEach((e, id) => { if (/^eurx-/.test(id)) out.echiv[id.slice(5)] = String(e.textContent || ''); });
         // Salvarea, PDF-ul și „Salvează ca tarifele noastre": corpul pe care l-ar trimite pagina.
@@ -13757,6 +14560,141 @@ app.post('/api/admin/offers/calc', requireAuth, requireSuperadmin, async (req, r
     res.status(500).json({ error: 'Calculatorul de ofertă nu a mers: ' + (err && err.message) });
   }
 });
+// ── începe „mașinile clientului" (28.09) ──────────────────────────────────────────────────────────
+// Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact".
+// Regula stă în compatibilitate.js; aici doar listele și ușile. Listele sunt în bază (`liste_compat`),
+// câte una pe fel; până se încarcă una din aplicație, se folosește copia de pornire din depozit
+// (liste/teltonika.json.gz — listele trimise de Alin pe 28.09, făcută cu tools/liste-teltonika.js).
+// Totul e al NOSTRU (super-admin): e o unealtă de ofertare, clientul nu vede nimic de aici.
+let _compatCache = null;
+function _compatPornire() {
+  try { return JSON.parse(require('zlib').gunzipSync(fs.readFileSync(path.join(__dirname, 'liste', 'teltonika.json.gz'))).toString('utf8')); }
+  catch (e) { return {}; }
+}
+async function _compatListe() {
+  if (_compatCache) return _compatCache;
+  const dinBaza = await db.listeCompat().catch(() => []);
+  let pornire = null;
+  const out = {};
+  for (const tip of Object.keys(compat.LISTE)) {
+    let l = dinBaza.find((x) => x.tip === tip), sursa = 'incarcata';
+    if (!l) {
+      pornire = pornire || _compatPornire();
+      const s = pornire[tip];
+      if (s && Array.isArray(s.randuri)) { l = { fisier: s.fisier, data_lista: s.data, randuri: s.randuri, incarcat_la: null }; sursa = 'pornire'; }
+    }
+    if (!l) continue;
+    out[tip] = {
+      meta: { tip, nume: compat.LISTE[tip].nume, pentru: compat.LISTE[tip].pentru, fisier: l.fisier || null,
+        data: l.data_lista || null, n: l.randuri.length, incarcat_la: l.incarcat_la || null, sursa },
+      peMarca: compat.pregateste(l.randuri),
+    };
+  }
+  _compatCache = out;
+  return out;
+}
+function _compatMeta(L) {
+  return Object.keys(compat.LISTE).map((t) => L[t] ? L[t].meta : { tip: t, nume: compat.LISTE[t].nume, pentru: compat.LISTE[t].pentru, lipsa: true });
+}
+// Ce trimitem ecranului dintr-o potrivire: doar ce se arată, nu rândurile întregi din listă.
+function _compatPentruEcran(p, comb) {
+  const e = p.ales;
+  return { stare: p.stare, model: e ? e.model : null, ani: e ? compat.aniText(e.de, e.pana) : null,
+    program: e && e.program || null, can: e && e.can || null, fel: e && e.fel || null,
+    citeste: e ? compat.dateCitite(e, comb) : null,
+    variante: (p.variante || []).map((v) => v.model + (v.program ? ' · program ' + v.program : '')),
+    alteModele: p.alteModele || [], aniPeLista: p.aniPeLista || [], note: p.note || [], info: p.info || [] };
+}
+app.get('/api/admin/masini/liste', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ liste: _compatMeta(L), combustibili: compat.COMBUSTIBILI, aparate: compat.APARATE });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// O listă nouă, din Excel-ul Teltonika. Fișierul vine CRUD (nu base64 în JSON): lista ALL-CAN300 are
+// peste 5 MB, iar JSON-ul aplicației se oprește la 6 MB — în base64 ar fi trecut de el.
+app.post('/api/admin/masini/liste', requireAuth, requireSuperadmin, express.raw({ type: 'application/octet-stream', limit: '15mb' }), async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege fișierul Excel al listei.' });
+    let fisier = 'lista.xlsx';
+    try { fisier = decodeURIComponent(String(req.get('x-fisier') || '')).replace(/[\\/]/g, '').slice(0, 200) || fisier; } catch (e) { /* nume stricat: rămâne cel implicit */ }
+    let r;
+    try { r = await compat.citesteExcel(buf, fisier); } catch (e) { return res.status(400).json({ error: e.message }); }
+    const data = compat.dataDinNume(fisier);
+    await db.puneListaCompat({ tip: r.tip, fisier, data_lista: data, randuri: r.randuri, incarcat_de: req.auth && req.auth.userId });
+    _compatCache = null;
+    auditReq(req, 'upload', 'lista_compat', null, { tip: r.tip, fisier, n: r.randuri.length });
+    const L = await _compatListe();
+    res.json({ ok: true, tip: r.tip, nume: compat.LISTE[r.tip].nume, n: r.randuri.length, data, liste: _compatMeta(L) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/admin/masini/marci', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ marci: compat.marci(Object.values(L).map((x) => x.peMarca)) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/admin/masini/modele', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const L = await _compatListe();
+    res.json({ modele: compat.modele(Object.values(L).map((x) => x.peMarca), String(req.query.marca || '').slice(0, 60)).slice(0, 300) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Șablonul mașinilor (Alin, 28.09: „buton de export a unui șablon fix... și buton de încărcare"). În locul
+// „Lipește din Excel", care a fost SCOS. GET = îl descarci (cu logo, cu listele de ales), POST = încarci
+// șablonul completat și primești mașinile + ce n-a mers, pe rând. Coloanele: compatibilitate.SABLON_COLOANE.
+app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul Excel nu e disponibil pe server.' });
+    const L = await _compatListe();
+    // Mărcile și, pe fiecare, modelele ei — ca listele din șablon să se strângă după primele litere.
+    const liste = Object.values(L).map((x) => x.peMarca);
+    const marci = compat.marci(liste);
+    const perechi = [];
+    for (const m of marci) for (const mo of compat.modele(liste, m)) perechi.push([m, mo]);
+    const s = await reportExport.sablonMasiniXlsx({ marci, perechi });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', _antetDescarcare(s.nume));
+    res.send(s.buffer);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/masini/sablon', requireAuth, requireSuperadmin, express.raw({ type: 'application/octet-stream', limit: '5mb' }), async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege șablonul completat (fișierul Excel).' });
+    let r;
+    try { r = await compat.citesteSablonExcel(buf); } catch (e) { return res.status(400).json({ error: e.message }); }
+    res.json({ masini: r.masini, probleme: r.probleme.slice(0, 50), nProbleme: r.probleme.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Potrivirea unui lot de mașini. `pref` = ce alegi când mașina e pe AMBELE liste (comutatorul de la
+// pasul 4), `vreaMotor` = clientul vrea consum / rezervor / kilometri, nu doar poziția.
+app.post('/api/admin/masini/potrivire', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const vehicule = Array.isArray(b.vehicule) ? b.vehicule.slice(0, 500) : [];
+    const pref = b.pref === 'fmc150' ? 'fmc150' : 'lvcan', vreaMotor = b.vreaMotor !== false;
+    const L = await _compatListe();
+    const rezultate = vehicule.map((v) => {
+      v = v || {};
+      const m = { marca: String(v.marca || '').trim().slice(0, 60), model: String(v.model || '').trim().slice(0, 80),
+        an: Number(v.an) > 1900 && Number(v.an) < 2200 ? Math.round(Number(v.an)) : null,
+        combustibil: compat.COMBUSTIBILI[v.combustibil] ? v.combustibil : '' };
+      if (!m.marca || !m.model) return null;
+      const pot = {};
+      for (const t of Object.keys(compat.LISTE)) {
+        pot[t] = L[t] ? compat.potriveste(L[t].peMarca, m) : { stare: 'nu', ales: null, variante: [], alteModele: [], note: ['lista nu e încărcată'] };
+      }
+      const rec = compat.recomanda(pot, { pref, vreaMotor, combustibil: m.combustibil, an: m.an });
+      const liste = {};
+      for (const t of Object.keys(pot)) liste[t] = _compatPentruEcran(pot[t], m.combustibil);
+      return { rec, liste };
+    });
+    res.json({ rezultate, aparate: compat.APARATE });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ── sfârșit „mașinile clientului" ──
 // ⚠ Aici a stat, până pe 22.09, `POST /api/admin/offers/:id/apply-to-company` — ușa butonului ✨ din
 // lista de oferte. A plecat cu el: ce s-a vândut într-o ofertă se aprinde SINGUR pe firmă la
 // semnarea contractului (`_aplicaOfertaPeFirma`, mai sus), deci ruta era a doua cale spre același
@@ -14500,7 +15438,7 @@ async function start() {
     try {
       if (backup.backupDue(Date.now())) await backup.runScheduledBackup(db, COMMIT_VER);
       // Arhivarea POZIȚIILOR: doar cu bucket configurat; exportă zilele complete rămase, deci până ajunge
-      // retenția la ele (180 de zile implicit) copia există de mult. Fără ea, retenția ar fi pierdere definitivă.
+      // ștergerea după contract la ele (12 luni incluse) copia există de mult. Fără ea, retenția ar fi pierdere definitivă.
       if (backup.s3Configured() && backup.positionsExportDue(Date.now())) await backup.runPositionsExport(db);
     } catch (e) { /* fiecare copie își scrie singură eroarea în starea ei */ }
     finally { _copieInCurs = false; }
@@ -14553,32 +15491,25 @@ async function start() {
       .catch(() => {});
   }, 6 * 60 * 60 * 1000);
 
-  // ─── Retenție poziții (opțională: setează POSITION_RETENTION_DAYS) ───
-  // Rulează la 6 ore, nu zilnic: fiecare rulare are atunci puțin de șters, iar bugetul de timp per rulare
-  // (RETENTION_BUDGET_MS) e suficient. Prima rulare e amânată — la pornire serverul are deja de încărcat
-  // istoricul în memorie și de acceptat conexiunile trackerelor.
-  const retentionDays = parseInt(process.env.POSITION_RETENTION_DAYS);
-  if (retentionDays > 0) {
-    const runRetention = () => db.deleteOldPositionsDetail(retentionDays)
-      .then(r => {
-        _retentionLast = { at: Date.now(), rows: r.total, batches: r.loturi, exhausted: r.epuizat, error: null };
-        if (r.total) console.log('[RETENȚIE] Șterse ' + r.total + ' poziții mai vechi de ' + retentionDays + ' zile, în ' + r.loturi + ' loturi' + (r.epuizat ? ' (buget de timp epuizat — se continuă la rularea următoare)' : ''));
-      })
-      // Înghițirea tăcută de până acum era exact greșeala care face ca „nu se șterge nimic" să treacă
-      // neobservat luni de zile: singurul semn ar fi fost creșterea bazei.
-      .catch(e => { _retentionLast = { at: Date.now(), rows: 0, batches: 0, exhausted: false, error: e.message }; console.warn('[RETENȚIE] eșuat:', e.message); });
-    setTimeout(runRetention, 60 * 1000);
-    setInterval(runRetention, 6 * 60 * 60 * 1000);
-  }
+  // ─── Păstrarea istoricului: după regula fiecărei firme (12 luni incluse, 24/36 plătite) ───
+  // Rulează mereu, pe orice bază (înainte doar cu POSITION_RETENTION_DAYS setat, altfel tabela creștea la
+  // nesfârșit). La 6 ore, nu zilnic: fiecare rulare are atunci puțin de șters. Prima e amânată — la
+  // pornire serverul are de încărcat istoricul în memorie și de primit conexiunile trackerelor.
+  const runPastrare = () => stergeIstoriculVechi().catch(e => console.warn('[PĂSTRARE] eșuat:', e.message));
+  setTimeout(runPastrare, 60 * 1000);
+  setInterval(runPastrare, 6 * 60 * 60 * 1000);
 
-  // Retenție ARHIVĂ (positions_archive): dispozitivele arhivate se păstrează 2 ani (730z), apoi se purjează.
-  // Rulează mereu (PG + PGlite). Configurabil prin ARCHIVE_RETENTION_DAYS.
-  const archiveRetentionDays = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
-  const runArchivePurge = () => db.purgeArchivedPositions(archiveRetentionDays)
-    .then(n => { if (n) console.log(`[ARHIVĂ] Purjate ${n} poziții arhivate mai vechi de ${archiveRetentionDays} zile`); })
-    .catch(e => console.warn('[ARHIVĂ] purge skip:', e.message));
+  // Istoricul aparatelor arhivate se șterge la 30 de zile de la arhivare (Anexa GDPR din contract).
+  // Rulează zilnic, pe PG și pe PGlite. Vezi `stergeIstoricArhivate`.
+  const runArchivePurge = () => stergeIstoricArhivate()
+    .catch(e => console.warn('[ARHIVĂ] ștergere amânată:', e.message));
   setTimeout(runArchivePurge, 10000);
   setInterval(runArchivePurge, 24 * 60 * 60 * 1000);
+
+  // Jurnalul de audit: 12 luni, apoi se șterge (zilnic). Vezi `stergeAuditVechi`.
+  const runAuditPurge = () => stergeAuditVechi().catch(e => console.warn('[AUDIT] ștergere amânată:', e.message));
+  setTimeout(runAuditPurge, 90 * 1000);
+  setInterval(runAuditPurge, 24 * 60 * 60 * 1000);
 
   // Workere Faza 4: detecție automată curse + alerte expirare documente
   setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);

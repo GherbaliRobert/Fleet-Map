@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const plans = require('./plans.js');
+const contracte = require('./contracts.js');   // regula păstrării istoricului (24.09) — factura o citește de acolo
 
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) ok++; else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
@@ -40,14 +41,14 @@ T('și le caută pe toate cele cu rânduri proprii (ofertă, trepte, fix)',
   ['oferta', 'trepte', 'fix'].every(m => cautate.indexOf(m) >= 0), cautate.join(', '));
 
 sect('2. Factura și registrul, pe aceleași flote');
-const build = new Function('plans', bucataF + '\nreturn buildInvoiceLines;')(plans);
+const build = new Function('plans', 'contracte', bucataF + '\nreturn buildInvoiceLines;')(plans, contracte);
 const bucataQ = taie(server, 'function _aiQuotaFromSettings(settings) {', '\n// ─── Câte conturi');
 const bucataL = taie(server, 'function _lunaAcum()', '\nasync function _urcaSeatsPeak');
 const bucataV = taie(server, '// ── începe „Venitul lunar pe firmă"', '// ── sfârșit „Venitul lunar pe firmă" ──');
-const venit = new Function('plans', bucataQ + '\n' + bucataL + '\n' + bucataV + '\n; return _venitLunar;')(plans);
+const venit = new Function('plans', 'contracte', bucataQ + '\n' + bucataL + '\n' + bucataV + '\n; return _venitLunar;')(plans, contracte);
 
-const firma = (plan, quota, features) => ({ id: 1, name: 'Transport Probă SRL', custom_plan: plan,
-  settings: Object.assign({}, quota ? { ai_quota: quota } : {}, features ? { features: features } : {}) });
+const firma = (plan, quota, features, pastrare) => ({ id: 1, name: 'Transport Probă SRL', custom_plan: plan,
+  settings: Object.assign({}, quota ? { ai_quota: quota } : {}, features ? { features: features } : {}, pastrare ? { pastrare: pastrare } : {}) });
 // Conturile RA Insight intră pe factură prin billCounts.raInsight, exact cum le pune _companyBillCounts.
 const factura = (co, nr, conturi) => {
   const q = (co.settings && co.settings.ai_quota) || {};
@@ -68,7 +69,13 @@ const CAZURI = [
   // Suma fixă veche „Asistent AI" și conturile nu se adună: când se facturează pe cont, suma fixă tace.
   ['Asistent AI vechi + conturi: se facturează doar conturile', firma({ priceNoneRON: 30, aiAssistantRON: 150 }, { questionsPerSeat: 50, seatPriceRON: 15 }, { ai_assistant: true }), { none: 2, can: 0, fms: 0 }, 2, 90],
   ['Asistent AI vechi, fără conturi: se facturează suma fixă', firma({ priceNoneRON: 30, aiAssistantRON: 150 }, null, { ai_assistant: true }), { none: 2, can: 0, fms: 0 }, 0, 210],
-  ['fără ofertă pe firmă: zero, nu un preț inventat', { id: 9, name: 'X', settings: {} }, { none: 4, can: 1, fms: 0 }, 0, 0]
+  ['fără ofertă pe firmă: zero, nu un preț inventat', { id: 9, name: 'X', settings: {} }, { none: 4, can: 1, fms: 0 }, 0, 0],
+  // Păstrarea istoricului peste cele 12 luni incluse (24.09): până atunci se vindea, se semna și nu
+  // ajungea pe nicio factură. Acum e un rând al ei, pe factură ȘI în registru.
+  ['păstrarea istoricului 24 de luni × 50 lei se adaugă', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 24, pretRON: 50 }), { none: 2, can: 3, fms: 0 }, 0, 243],
+  ['...36 de luni, cu RA Insight alături', firma({ priceNoneRON: 29, priceCanRON: 45 }, { questionsPerSeat: 100, seatPriceRON: 14 }, null, { luni: 36, pretRON: 100 }), { none: 2, can: 3, fms: 0 }, 2, 321],
+  ['12 luni sunt incluse: nu se facturează nimic în plus', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 12, pretRON: 50 }), { none: 2, can: 3, fms: 0 }, 0, 193],
+  ['24 de luni date gratis (0 lei): fără rând', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 24, pretRON: 0 }), { none: 2, can: 3, fms: 0 }, 0, 193]
 ];
 for (const [nume, co, nr, conturi, astept] of CAZURI) {
   const f = factura(co, nr, conturi);
@@ -87,6 +94,11 @@ T('mașinile cu CAN au rândul lor, cu cantitatea și prețul lor',
 T('conturile de RA Insight au rândul lor', !!rand(/RA Insight/) && rand(/RA Insight/).net === 28);
 T('TVA-ul se pune pe fiecare rând', f1.lines.every(l => Math.abs(l.vat - Math.round(l.net * 19) / 100) < 0.005));
 T('totalul = fără TVA + TVA', Math.abs(f1.total - (f1.subtotal + f1.vatAmount)) < 0.005);
+const f2 = factura(firma({ priceNoneRON: 29 }, null, null, { luni: 24, pretRON: 50 }), { none: 1, can: 0, fms: 0 }, 0);
+const rp = f2.lines.filter(l => /^Păstrarea istoricului/.test(l.desc))[0];
+T('păstrarea istoricului are rândul ei, cu lunile scrise corect („24 de luni")',
+  !!rp && rp.desc === 'Păstrarea istoricului — 24 de luni' && rp.qty === 1 && rp.net === 50, JSON.stringify(rp));
+T('și factura citește regula din contracts.js, nu una a ei', /contracte\.pastrareFirma\(company/.test(bucataF) && /contracte\.pastrareFirma\(c /.test(bucataV));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

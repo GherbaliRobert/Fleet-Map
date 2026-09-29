@@ -37,6 +37,11 @@ const BUSINESS_TABLES = [
   // actele adiționale, montajele și partenerii, rolurile tăiate ale firmelor (fără ele, după o restaurare oamenii ar primi
   // înapoi drepturile tăiate) și agenda de emailuri a firmelor. verify_copii.js pică dacă un tabel nou nu e clasificat.
   'contracts', 'acte_aditionale', 'montaje', 'montaj_parteneri', 'company_roles', 'company_emails',
+  // Contractele cu partenerii de montaj (24.09): și ele țin fișierul SEMNAT (file_b64), care nu se poate reface.
+  'montaj_contracte',
+  // Stocul nostru de echipamente (25.09): ce aparate avem, unde e fiecare și al cui e. Fără el, după o
+  // restaurare n-am mai ști ce aparate închiriate stau la clienți — adică marfa noastră.
+  'stoc_echipamente',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —
@@ -47,6 +52,7 @@ const BACKUP_EXCLUDED = {
   error_log: 'jurnal de erori: regenerabil și voluminos',
   user_sessions: 'sesiuni deschise: se refac la autentificare, iar în copie ar fi chei de acces',
   user_presence: 'prezența oamenilor în aplicație: date despre activitate, nu le păstrăm în copii',
+  liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
 };
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext
@@ -482,7 +488,7 @@ async function runScheduledBackup(db, commit) {
 //
 // `positions` e exclusă deliberat din dump-ul logic de mai sus: la 2000 de vehicule înseamnă milioane de
 // rânduri pe zi, imposibil de serializat într-un singur JSON în procesul aplicației. Dar asta lăsa o gaură
-// reală: retenția șterge la 180 de zile, iar dacă snapshot-urile Railway au o fereastră mai scurtă (de regulă
+// reală: istoricul se șterge după contract (12 luni incluse, 24/36 plătite), iar dacă snapshot-urile Railway au o fereastră mai scurtă (de regulă
 // zile, nu luni), datele dispăreau DEFINITIV fără nicio copie.
 // Aici exportăm ziua-cu-ziua, în NDJSON gzip (+ criptat cu aceeași parolă), citit în loturi ca să nu ținem
 // niciodată o zi întreagă în memorie. ~30 B/rând comprimat → o zi de flotă mare intră în zeci de MB.

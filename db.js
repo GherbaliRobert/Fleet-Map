@@ -11,7 +11,7 @@ let pool, poolIngest, _pglite = null;
 // (previne duplicate la retry tracker când ACK-ul e pierdut). Setat în initDb; dacă crearea eșuează → false → INSERT simplu.
 let positionsUniqueIdx = false;
 // Starea REALĂ a TimescaleDB. Fără extensie, `positions` rămâne un tabel Postgres obișnuit: fără compresie
-// și fără retenție automată — adică promisiunea „180 zile istoric, storage sub control" nu se ține.
+// și fără retenție automată — adică storage-ul nu mai e sub control (ștergerea după contract o face acum aplicația, vezi `stergeIstoricMaiVechiDe`).
 // Până acum asta se vedea doar într-un `console.warn` de la boot; acum e interogabilă (/api/admin/health).
 let _timescale = { attempted: false, enabled: false, retentionDays: null, compressAfterDays: null, reason: USE_PG ? null : 'PGlite local — Timescale nu se aplică' };
 function getTimescaleStatus() { return Object.assign({ usePg: USE_PG }, _timescale); }
@@ -199,7 +199,8 @@ async function initDb() {
 
     // ─── Arhivă poziții: istoricul „înghețat" al dispozitivelor arhivate (contract încheiat) ───
     // La arhivare copiem aici pozițiile dispozitivului (archiveDevicePositions). `positions` rămâne pe retenția
-    // scurtă (180z, active), iar `positions_archive` e păstrată mai mult (purgeArchivedPositions → 2 ani).
+    // contractului (12 luni incluse, 24/36 plătite). Copia din arhivă ține cât clientul poate cere datele înapoi: 30 de zile de la
+    // arhivare (vezi `stergeIstoricAparat`), apoi se șterge, împreună cu restul istoricului aparatului.
     // Astfel „memoria veche" NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
     await client.query(`
       CREATE TABLE IF NOT EXISTS positions_archive (
@@ -233,13 +234,19 @@ async function initDb() {
         await client.query("SELECT create_hypertable('positions','timestamp', if_not_exists => TRUE, migrate_data => TRUE)");
         await client.query("ALTER TABLE positions SET (timescaledb.compress, timescaledb.compress_segmentby = 'imei')");
         await client.query("SELECT add_compression_policy('positions', INTERVAL '7 days', if_not_exists => TRUE)");
-        const retDays = parseInt(process.env.POSITION_RETENTION_DAYS) || 180;
-        await client.query("SELECT add_retention_policy('positions', INTERVAL '" + retDays + " days', if_not_exists => TRUE)");
-        _timescale = { attempted: true, enabled: true, retentionDays: retDays, compressAfterDays: 7, reason: null };
-        console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție ' + retDays + 'z');
+        // Ștergerea pozițiilor vechi NU mai e treaba unei politici Timescale: ea știe o singură vârstă
+        // pentru toată lumea (era 180 de zile), iar istoricul se păstrează acum după contractul fiecărei
+        // firme — 12 luni incluse, 24/36 unde s-au plătit (24.09). Ștergerea o face `stergeIstoriculVechi`
+        // din server.js, mașină cu mașină. Politica veche se SCOATE: lăsată pe loc, ar tăia la 6 luni exact
+        // ce am promis că ținem un an. `if_not_exists` n-ar fi ajutat — nu schimbă o politică existentă.
+        let politicaVeche = null;
+        try { await client.query("SELECT remove_retention_policy('positions', if_exists => TRUE)"); }
+        catch (e) { politicaVeche = e.message; console.error('[DB] ⚠ Politica Timescale de ștergere NU s-a putut scoate:', e.message); }
+        _timescale = { attempted: true, enabled: true, retentionDays: null, compressAfterDays: 7, reason: null, politicaVeche: politicaVeche };
+        console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z (ștergerea istoricului: după regula fiecărei firme)');
       } catch (e) {
         // Degradare TĂCUTĂ până acum: fără Timescale nu există NICI compresie, NICI ștergere automată a
-        // pozițiilor vechi → storage-ul crește la nesfârșit, iar „retenția 180 zile" promisă nu se aplică.
+        // pozițiilor vechi → storage-ul crește la nesfârșit, (Ștergerea istoricului după contract merge și fără Timescale — o face aplicația.)
         // Reținem motivul ca să apară în /api/admin/health, nu doar într-o linie de log de la boot.
         _timescale = { attempted: true, enabled: false, retentionDays: null, compressAfterDays: null, reason: e.message };
         console.warn('[DB] ⚠ TimescaleDB indisponibil → Postgres simplu: FĂRĂ compresie și FĂRĂ retenție automată pe positions —', e.message);
@@ -366,6 +373,15 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_at TIMESTAMPTZ;
       END $$
     `);
+    // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
+    // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
+    // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
+    // `istoric_sters_at` = când s-a șters, ca ecranul să poată spune „s-a șters pe …".
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS archived_at BIGINT`);
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS istoric_sters_at BIGINT`);
+    // Aparatele arhivate ÎNAINTE de regula asta (24.09) n-au ziua scrisă: primesc ziua de azi, deci
+    // toate cele 30 de zile — nimic nu se șterge pe nepusă masă la prima pornire.
+    await client.query(`UPDATE devices SET archived_at = $1 WHERE status = 'archived' AND archived_at IS NULL`, [Date.now()]);
 
     // Tabela geofences (zone geografice)
     await client.query(`
@@ -1005,6 +1021,10 @@ async function initDb() {
     // Anexa nr. 2 a contractului: montajul, așa cum a fost semnat. DOAR partea clientului
     // (ce-i facturăm lui). Costul partenerului stă în `montaje`, care nu ajunge niciodată pe hârtie.
     await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS montaj JSONB`);
+    // Când și la ce adresă a plecat contractul la semnat, din butonul „Trimite la semnat" (24.09).
+    // Scrise de SERVER, după ce emailul chiar a plecat — nu de ecran.
+    await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_at BIGINT`);
+    await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_to VARCHAR(200)`);
     // ─── Montajul: partenerii care execută și lucrările propriu-zise ──────────────────────────
     // Montajul îl vindem noi, îl execută firma X. X ne facturează pe noi, noi facturăm clientul.
     // Clientul nu vede niciodată firma X — de asta partenerul stă într-o tabelă separată, la care
@@ -1040,6 +1060,64 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
+    // ─── Montaj ca secțiune a ei (24.09): partenerii au contract cu noi, ca și clienții ─────────
+    // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri și semnăm contracte fix
+    // la fel ca la clienți". Pentru hârtie trebuie datele juridice ale partenerului — ca la o firmă client.
+    for (const col of ['reg_com VARCHAR(40)', 'address VARCHAR(300)', 'email VARCHAR(200)', 'phone VARCHAR(40)',
+      'iban VARCHAR(60)', 'bank VARCHAR(120)', 'legal_rep JSONB', 'zona VARCHAR(300)']) {
+      await client.query('ALTER TABLE montaj_parteneri ADD COLUMN IF NOT EXISTS ' + col);
+    }
+    // Contractul de colaborare cu un partener de montaj. Același drum ca la clienți (în lucru ⇄ aprobat
+    // ⇄ trimis → semnat → încheiat), dar invers la bani: EL ne facturează pe NOI. `tarife` = Anexa nr. 1,
+    // înghețată la creare din tarifele partenerului; după semnare se schimbă doar prin act nou.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS montaj_contracte (
+        id SERIAL PRIMARY KEY,
+        partener_id INTEGER NOT NULL,
+        number VARCHAR(60),
+        status VARCHAR(16) NOT NULL DEFAULT 'ciorna',
+        signed_at BIGINT, start_at BIGINT, months INTEGER, end_at BIGINT,
+        auto_renew BOOLEAN DEFAULT true, notice_days INTEGER DEFAULT 30, plata_zile INTEGER DEFAULT 30,
+        ended_at BIGINT, ended_reason TEXT,
+        our_rep JSONB, partner_rep JSONB, tarife JSONB, zona VARCHAR(300),
+        file_b64 TEXT, file_name VARCHAR(200), file_mime VARCHAR(80),
+        sent_at BIGINT, sent_to VARCHAR(200),
+        notes TEXT, created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mcontracte_partener ON montaj_contracte(partener_id, created_at DESC)`);
+    // ─── Stocul NOSTRU de echipamente (Alin, 25.09) ───────────────────────────────────────────────
+    // Un rând = o bucată (aparat GPS, modul LV-CAN), cu seria ei. `stare` = unde e (depozit, la
+    // instalator, montat, returnat, defect, casat); `proprietar` = al cui e ('ra' = al nostru, în stoc
+    // sau închiriat; 'client' = vândut). `istoric` = fiecare mutare, cu ziua și cine a făcut-o. Regulile
+    // (pe unde poate merge o bucată, alertele) stau în stoc.js.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stoc_echipamente (
+        id SERIAL PRIMARY KEY,
+        tip VARCHAR(30) NOT NULL,
+        serie VARCHAR(60),
+        stare VARCHAR(16) NOT NULL DEFAULT 'depozit',
+        proprietar VARCHAR(10) NOT NULL DEFAULT 'ra',
+        company_id INTEGER, partener_id INTEGER,
+        cost_eur NUMERIC(10,2), furnizor VARCHAR(160), achizitionat_la BIGINT,
+        stare_din BIGINT, note TEXT, istoric JSONB DEFAULT '[]'::jsonb,
+        created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stoc_serie ON stoc_echipamente(serie) WHERE serie IS NOT NULL`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_stoc_stare ON stoc_echipamente(stare, tip)`);
+    // ─── Listele Teltonika: ce aparat merge pe ce mașină (28.09) ──────────────────────────────────
+    // Un rând = o listă (LV-CAN200, FMC150, ALL-CAN300), cu toate mașinile ei, deja citite din Excel
+    // (compatibilitate.js). O listă nouă o înlocuiește pe cea veche. Până se încarcă una, serverul
+    // folosește copia de pornire din depozit (liste/teltonika.json.gz).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS liste_compat (
+        tip VARCHAR(10) PRIMARY KEY,
+        fisier TEXT, data_lista VARCHAR(10), n INTEGER NOT NULL DEFAULT 0,
+        randuri JSONB NOT NULL DEFAULT '[]'::jsonb,
+        incarcat_la BIGINT, incarcat_de INTEGER
+      )
+    `);
     // ─── Acte adiționale ──────────────────────────────────────────────────────────────────────
     // Un contract semnat NU se mai schimbă — asta e tot rostul unei semnături. Când clientul mai
     // cumpără mașini, mai vrea un modul sau se schimbă prețul, se face un ACT ADIȚIONAL: o hârtie
@@ -1821,7 +1899,7 @@ async function setOfferStatus(id, status, extra) {
 const _LUNI_PRELUNGITE = `(SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
      WHERE a.contract_id = contracts.id AND a.status = 'activ')::int AS luni_prelungite`;
 const _FARA_FISIERE = `id, company_id, number, status, signed_at, start_at, months, end_at,
-  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes,
+  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes, sent_at, sent_to,
   created_by, created_at, updated_at,
   (file_b64 IS NOT NULL) AS has_file, file_name, file_mime,
   (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime, ${_LUNI_PRELUNGITE}`;
@@ -1978,20 +2056,195 @@ async function listParteneriMontaj() {
 }
 async function upsertPartenerMontaj(p) {
   const now = Date.now();
+  // Se scrie DOAR ce vine în cerere (`undefined` = rămâne cum era). Până pe 24.09 o salvare fără CUI —
+  // doar numele și tarifele — golea CUI-ul, contactul și notele (aceeași capcană ca `updateCompany`).
+  const chei = ['cui', 'contact', 'tarife', 'active', 'notes', 'reg_com', 'address', 'email', 'phone', 'iban', 'bank', 'legal_rep', 'zona']
+    .filter(function (k) { return p[k] !== undefined; });
+  const val = function (k) {
+    if (k === 'tarife') return JSON.stringify(p.tarife || {});
+    if (k === 'legal_rep') return p.legal_rep ? JSON.stringify(p.legal_rep) : null;
+    if (k === 'active') return p.active !== false;
+    return p[k] || null;
+  };
   if (p.id) {
-    const r = await pool.query(
-      `UPDATE montaj_parteneri SET name=$2, cui=$3, contact=$4, tarife=$5, active=$6, notes=$7, updated_at=$8
-         WHERE id=$1 RETURNING *`,
-      [p.id, p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+    const params = [p.id, p.name, now];
+    const set = chei.map(function (k) { params.push(val(k)); return k + '=$' + params.length; });
+    const r = await pool.query('UPDATE montaj_parteneri SET name=$2, updated_at=$3' + (set.length ? ', ' + set.join(', ') : '') + ' WHERE id=$1 RETURNING *', params);
     return r.rows[0] || null;
   }
+  const cols = ['name', 'created_at', 'updated_at'].concat(chei);
+  const params = [p.name, now, now].concat(chei.map(val));
   const r = await pool.query(
-    `INSERT INTO montaj_parteneri (name, cui, contact, tarife, active, notes, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *`,
-    [p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+    `INSERT INTO montaj_parteneri (${cols.join(', ')}) VALUES (${params.map(function (x, i) { return '$' + (i + 1); }).join(', ')}) RETURNING *`, params);
   return r.rows[0];
 }
+async function getPartenerMontaj(id) {
+  const r = await pool.query('SELECT * FROM montaj_parteneri WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+
+// ─── Contractele cu partenerii de montaj (24.09) ─────────────────────────────────────────────────
+const _MC_COL = `c.id, c.partener_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at, c.auto_renew,
+  c.notice_days, c.plata_zile, c.ended_at, c.ended_reason, c.our_rep, c.partner_rep, c.tarife, c.zona,
+  (c.file_b64 IS NOT NULL) AS has_file, c.file_name, c.sent_at, c.sent_to, c.notes, c.created_at, c.updated_at`;
+async function listContracteMontaj() {
+  const r = await pool.query(
+    `SELECT ${_MC_COL}, p.name AS partener_name, p.cui, p.address, p.email, p.legal_rep, p.reg_com
+       FROM montaj_contracte c JOIN montaj_parteneri p ON p.id = c.partener_id
+      ORDER BY c.created_at DESC`);
+  return r.rows;
+}
+async function getContractMontaj(id) {
+  const r = await pool.query(`SELECT ${_MC_COL} FROM montaj_contracte c WHERE c.id = $1`, [id]);
+  return r.rows[0] || null;
+}
+async function nextContractMontajNumber(an) {
+  const y = an || new Date().getFullYear();
+  const r = await pool.query(`SELECT number FROM montaj_contracte WHERE number LIKE $1`, ['RAT-M-' + y + '-%']);
+  let max = 0;
+  for (const row of r.rows) { const m = /-(\d+)$/.exec(row.number || ''); if (m) max = Math.max(max, parseInt(m[1], 10) || 0); }
+  return 'RAT-M-' + y + '-' + String(max + 1).padStart(4, '0');
+}
+async function salveazaContractMontaj(id, c) {
+  const now = Date.now();
+  const v = [c.partener_id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
+    c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false, c.notice_days == null ? 30 : c.notice_days,
+    c.plata_zile == null ? 30 : c.plata_zile, c.ended_at || null, c.ended_reason || null,
+    _J(c.our_rep), _J(c.partner_rep), _J(c.tarife), c.zona || null, c.notes || null, now];
+  if (id) {
+    const r = await pool.query(
+      `UPDATE montaj_contracte SET partener_id=$2, number=$3, status=$4, signed_at=$5, start_at=$6, months=$7, end_at=$8,
+         auto_renew=$9, notice_days=$10, plata_zile=$11, ended_at=$12, ended_reason=$13, our_rep=$14, partner_rep=$15,
+         tarife=$16, zona=$17, notes=$18, updated_at=$19 WHERE id=$1 RETURNING id`, [id].concat(v));
+    return r.rows[0] ? getContractMontaj(id) : null;
+  }
+  const r = await pool.query(
+    `INSERT INTO montaj_contracte (partener_id, number, status, signed_at, start_at, months, end_at, auto_renew, notice_days,
+       plata_zile, ended_at, ended_reason, our_rep, partner_rep, tarife, zona, notes, updated_at, created_by, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$18) RETURNING id`, v.concat([c.created_by || null]));
+  return getContractMontaj(r.rows[0].id);
+}
+async function stergeContractMontaj(id) { await pool.query('DELETE FROM montaj_contracte WHERE id = $1', [id]); return { ok: true }; }
+async function setContractMontajFile(id, f) {
+  await pool.query('UPDATE montaj_contracte SET file_b64=$2, file_name=$3, file_mime=$4, updated_at=$5 WHERE id=$1',
+    [id, f && f.b64 ? f.b64 : null, f && f.name ? f.name : null, f && f.mime ? f.mime : null, Date.now()]);
+  return getContractMontaj(id);
+}
+async function getContractMontajFile(id) {
+  const r = await pool.query('SELECT file_b64 AS b64, file_name AS name, file_mime AS mime FROM montaj_contracte WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function marcheazaContractMontajTrimis(id, catre) {
+  const acum = Date.now();
+  await pool.query(`UPDATE montaj_contracte SET status = 'trimis', sent_at = $2, sent_to = $3, updated_at = $2 WHERE id = $1`, [id, acum, catre]);
+  return acum;
+}
+// Toate lucrările de montaj, de la toți clienții — lista din secțiunea Montaj.
+async function toateLucrarileMontaj(limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.total_client, m.total_partener,
+            m.status, m.factura_partener, m.created_at, co.name AS company_name, p.name AS partener_nume
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      ORDER BY COALESCE(m.data_lucrare, m.created_at) DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
+  return r.rows;
+}
 async function deletePartenerMontaj(id) { await pool.query('DELETE FROM montaj_parteneri WHERE id = $1', [id]); return { ok: true }; }
+
+// ─── Stocul de echipamente (25.09) ───────────────────────────────────────────────────────────────
+// Regulile (pe unde poate merge o bucată, alertele) stau în stoc.js; aici doar se citește și se scrie.
+// Fiecare mutare se ADAUGĂ în `istoric` (ziua, starea, la cine, cine a mutat) — nu se rescrie nimic.
+const _STOC_COL = `s.id, s.tip, s.serie, s.stare, s.proprietar, s.company_id, s.partener_id, s.cost_eur, s.furnizor,
+  s.achizitionat_la, s.stare_din, s.note, s.istoric, s.created_at, s.updated_at`;
+function _stocRow(x) {
+  if (!x) return null;
+  ['achizitionat_la', 'stare_din', 'created_at', 'updated_at'].forEach(function (k) { x[k] = x[k] == null ? null : Number(x[k]); });
+  x.cost_eur = x.cost_eur == null ? null : Number(x.cost_eur);
+  x.company_id = x.company_id == null ? null : Number(x.company_id);
+  x.partener_id = x.partener_id == null ? null : Number(x.partener_id);
+  x.istoric = Array.isArray(x.istoric) ? x.istoric : [];
+  return x;
+}
+async function listStoc() {
+  const r = await pool.query(
+    `SELECT ${_STOC_COL}, co.name AS company_name, p.name AS partener_nume
+       FROM stoc_echipamente s LEFT JOIN companies co ON co.id = s.company_id LEFT JOIN montaj_parteneri p ON p.id = s.partener_id
+      ORDER BY s.tip, s.serie NULLS LAST, s.id`);
+  return r.rows.map(_stocRow);
+}
+async function getStoc(id) {
+  const r = await pool.query(`SELECT ${_STOC_COL} FROM stoc_echipamente s WHERE s.id = $1`, [id]);
+  return _stocRow(r.rows[0]);
+}
+async function stocDupaSerie(serie) {
+  if (!serie) return null;
+  const r = await pool.query(`SELECT ${_STOC_COL} FROM stoc_echipamente s WHERE s.serie = $1`, [String(serie)]);
+  return _stocRow(r.rows[0]);
+}
+async function seriiExistenteInStoc(serii) {
+  if (!serii || !serii.length) return [];
+  const r = await pool.query('SELECT serie FROM stoc_echipamente WHERE serie = ANY($1::text[])', [serii]);
+  return r.rows.map(function (x) { return x.serie; });
+}
+// Intrare în stoc: fiecare bucată intră în DEPOZIT, a noastră. `bucati` = [{ tip, serie, cost_eur, … }].
+async function adaugaStoc(bucati, cine) {
+  const acum = Date.now(), ids = [];
+  for (const b of (bucati || [])) {
+    const ist = [{ la: acum, stare: 'depozit', cine: cine || null, nota: 'intrare în stoc' + (b.furnizor ? ', de la ' + b.furnizor : '') }];
+    const r = await pool.query(
+      `INSERT INTO stoc_echipamente (tip, serie, stare, proprietar, cost_eur, furnizor, achizitionat_la, stare_din, note, istoric, created_by, created_at, updated_at)
+       VALUES ($1, $2, 'depozit', 'ra', $3, $4, $5, $6, $7, $8::jsonb, $9, $6, $6) RETURNING id`,
+      [b.tip, b.serie || null, b.cost_eur == null ? null : b.cost_eur, b.furnizor || null, b.achizitionat_la || acum, acum,
+        b.note || null, JSON.stringify(ist), b.created_by || null]);
+    ids.push(r.rows[0].id);
+  }
+  return ids;
+}
+// O mutare: unde ajunge bucata, la cine, al cui e — și un rând nou în istoric.
+async function mutaStoc(id, m) {
+  const acum = Date.now();
+  const ent = { la: acum, stare: m.stare, company_id: m.company_id == null ? null : m.company_id, partener_id: m.partener_id == null ? null : m.partener_id,
+    proprietar: m.proprietar, cine: m.cine || null, nota: m.nota || null };
+  const r = await pool.query(
+    `UPDATE stoc_echipamente SET stare = $2, company_id = $3, partener_id = $4, proprietar = $5, stare_din = $6, updated_at = $6,
+            istoric = COALESCE(istoric, '[]'::jsonb) || $7::jsonb
+      WHERE id = $1 RETURNING id`,
+    [id, m.stare, ent.company_id, ent.partener_id, m.proprietar, acum, JSON.stringify([ent])]);
+  return r.rows[0] ? getStoc(id) : null;
+}
+// Corecturi de evidență (o serie greșită, costul, furnizorul, notițe). Se scrie DOAR ce vine.
+async function editStoc(id, f) {
+  const chei = ['serie', 'cost_eur', 'furnizor', 'note', 'achizitionat_la'].filter(function (k) { return f[k] !== undefined; });
+  if (!chei.length) return getStoc(id);
+  const params = [id, Date.now()];
+  const set = chei.map(function (k) { params.push(f[k]); return k + ' = $' + params.length; });
+  await pool.query('UPDATE stoc_echipamente SET updated_at = $2, ' + set.join(', ') + ' WHERE id = $1', params);
+  return getStoc(id);
+}
+async function stergeStoc(id) { await pool.query('DELETE FROM stoc_echipamente WHERE id = $1', [id]); return { ok: true }; }
+
+// ─── Listele Teltonika (28.09) ────────────────────────────────────────────────────────────────────
+async function listeCompat() {
+  const r = await pool.query('SELECT tip, fisier, data_lista, n, randuri, incarcat_la, incarcat_de FROM liste_compat');
+  return r.rows.map((x) => Object.assign({}, x, {
+    randuri: typeof x.randuri === 'string' ? JSON.parse(x.randuri) : (x.randuri || []),
+    incarcat_la: x.incarcat_la != null ? Number(x.incarcat_la) : null,
+  }));
+}
+async function puneListaCompat(l) {
+  await pool.query(
+    `INSERT INTO liste_compat (tip, fisier, data_lista, n, randuri, incarcat_la, incarcat_de)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+     ON CONFLICT (tip) DO UPDATE SET fisier = EXCLUDED.fisier, data_lista = EXCLUDED.data_lista, n = EXCLUDED.n,
+       randuri = EXCLUDED.randuri, incarcat_la = EXCLUDED.incarcat_la, incarcat_de = EXCLUDED.incarcat_de`,
+    [l.tip, l.fisier || null, l.data_lista || null, (l.randuri || []).length, JSON.stringify(l.randuri || []), Date.now(), l.incarcat_de || null]);
+  return { ok: true };
+}
+// Firmele al căror contract s-a ÎNCHEIAT (niciunul în lucru sau în vigoare): acolo aparatele NOASTRE
+// trebuie recuperate.
+async function firmeCuContractIncheiat() {
+  const r = await pool.query(`SELECT company_id FROM contracts GROUP BY company_id HAVING bool_and(status = 'incheiat')`);
+  return r.rows.map(function (x) { return Number(x.company_id); });
+}
 
 // Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat).
 async function listMontaje(companyId) {
@@ -2046,8 +2299,9 @@ async function contracteToate(limita) {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at,
             c.auto_renew, c.notice_days, c.ended_at, c.client_rep, c.gdpr, c.annex, c.created_at,
+            c.sent_at, c.sent_to, c.montaj,
             (c.file_b64 IS NOT NULL) AS has_file, (c.gdpr_b64 IS NOT NULL) AS has_gdpr_file,
-            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo,
+            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo, co.contact_email, co.reg_com,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite,
             -- O prelungire deja pornită (act nesemnat încă): pe listă scrie „prelungire în lucru",
@@ -2058,6 +2312,27 @@ async function contracteToate(limita) {
        FROM contracts c JOIN companies co ON co.id = c.company_id
       ORDER BY c.created_at DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
   return r.rows;
+}
+// Ce trebuie ca să se socotească drumul fiecărui client (contracts.js → `drumulClientului`), pentru
+// TOATE firmele deodată: patru numărători, nu câte o cerere pe rând de listă.
+async function drumDateToate(executate) {
+  const [ap, fa, mo, of] = await Promise.all([
+    pool.query(`SELECT company_id, COUNT(*)::int AS n FROM devices
+                 WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' GROUP BY company_id`),
+    pool.query(`SELECT company_id, COUNT(*)::int AS n FROM invoices
+                 WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled' GROUP BY company_id`),
+    pool.query(`SELECT contract_id, COUNT(*)::int AS total,
+                       COUNT(*) FILTER (WHERE status = ANY($1::varchar[]))::int AS executate
+                  FROM montaje WHERE contract_id IS NOT NULL GROUP BY contract_id`, [executate]),
+    pool.query(`SELECT DISTINCT contract_id FROM offers WHERE contract_id IS NOT NULL`)
+  ]);
+  const harta = function (rows, k, v) { const o = {}; rows.forEach(function (r) { o[r[k]] = v ? v(r) : r.n; }); return o; };
+  return {
+    aparate: harta(ap.rows, 'company_id'),
+    facturi: harta(fa.rows, 'company_id'),
+    montaje: harta(mo.rows, 'contract_id', function (r) { return { total: r.total, executate: r.executate }; }),
+    oferte: harta(of.rows, 'contract_id', function () { return true; })
+  };
 }
 // Firmele care n-au NICIUN contract — ele sunt gaura din dosar, nu contractele existente.
 async function firmeFaraContract() {
@@ -2146,6 +2421,18 @@ async function updateCompany(id, data) {
   if (are('contacts') && d.contacts !== undefined) pune('contacts=?', JSON.stringify(d.contacts));
   if (!sets.length) return;
   await pool.query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$1', params);
+}
+// Completează dosarul firmei DOAR cu ce se trimite — butonul „Completează" din Contracte (24.09). Scrisă când
+// `updateCompany` rescria tot rândul; de la APK 1.0.2 (23.09) și aceea schimbă doar cheile trimise, dar o cheie
+// trimisă GOALĂ o golește. Aici golul nu atinge nimic din ce nu e în formular (emailul, telefonul, IBAN-ul).
+async function completeazaDosarFirma(id, d) {
+  const set = [], val = [id];
+  const pune = function (col, v) { val.push(v); set.push(col + ' = $' + val.length); };
+  ['name', 'cui', 'reg_com', 'address', 'contact_email'].forEach(function (k) { if (d[k] !== undefined) pune(k, d[k]); });
+  if (d.legal_rep !== undefined) pune('legal_rep', d.legal_rep ? JSON.stringify(d.legal_rep) : null);
+  if (!set.length) return false;
+  await pool.query('UPDATE companies SET ' + set.join(', ') + ' WHERE id = $1', val);
+  return true;
 }
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
@@ -2636,15 +2923,11 @@ async function getArchivedImeis() {
 async function deleteDeviceCompletely(imei) {
   // Pozițiile se șterg pe loturi: un vehicul cu ani de istoric înseamnă milioane de rânduri, iar aici
   // ștergerea e declanșată dintr-un click în interfață — adică exact în timpul unei zile de lucru.
+  // Loturile merg după TIMP (`_stergeImeiPeLoturi`), nu după `ctid`: până pe 24.09 aici scria
+  // `WHERE ctid IN (SELECT ctid … WHERE imei = $1)`, iar pe hypertable `ctid` NU e unic între bucăți —
+  // același (pagină, rând) există în fiecare bucată, deci ștergerea putea lovi pozițiile ALTOR mașini.
   for (const t of ['positions', 'positions_archive']) {
-    try {
-      for (;;) {
-        const r = await pool.query(`DELETE FROM ${t} WHERE ctid IN (SELECT ctid FROM ${t} WHERE imei = $1 LIMIT ${BATCH_ROWS})`, [imei]);
-        const n = r.affectedRows || (r.rowCount || 0);
-        if (n < BATCH_ROWS) break;
-        if (BATCH_PAUSE_MS) await new Promise(res => setTimeout(res, BATCH_PAUSE_MS));
-      }
-    } catch (e) { /* tabel inexistent */ }
+    try { await _stergeImeiPeLoturi(t, imei); } catch (e) { /* tabel inexistent */ }
   }
   const tables = ['notifications', 'agent_findings', 'vehicle_documents',
     'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
@@ -2719,7 +3002,9 @@ async function createDevice(imei, fields, companyId) {
 // Arhivare / restaurare vehicul (status = 'active' | 'archived')
 async function setDeviceStatus(imei, status) {
   const s = status === 'archived' ? 'archived' : 'active';
-  await pool.query('UPDATE devices SET status = $2 WHERE imei = $1', [imei, s]);
+  // La arhivare pornește ceasul celor 30 de zile; la restaurare se oprește (aparatul e iar în contract).
+  await pool.query('UPDATE devices SET status = $2, archived_at = $3, istoric_sters_at = NULL WHERE imei = $1',
+    [imei, s, s === 'archived' ? Date.now() : null]);
 }
 
 async function updateTruckConfig(imei, config) {
@@ -2955,7 +3240,7 @@ async function setDevicesCompanyBulk(imeis, companyId) {
 async function getDeviceHistory(imei, from, to, limit) {
   const lim = Math.min(Math.max(parseInt(limit) || 50000, 1), 200000); // plafon dur anti-OOM
   // UNION cu positions_archive: dispozitivele arhivate își păstrează istoricul acolo chiar după ce pozițiile vii
-  // expiră din hypertable (retenție 180z). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
+  // expiră din hypertable (după contractul firmei: 12 luni incluse). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
   // (imediat după arhivare datele sunt în ambele tabele). Activele normale: positions_archive e gol → doar positions.
   const result = await pool.query(`
     SELECT DISTINCT ON (timestamp) timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
@@ -3667,11 +3952,115 @@ async function archiveDevicePositions(imei) {
   return r.affectedRows || r.rowCount || 0;
 }
 
-// Purjează arhiva mai veche de N zile (politică aleasă: arhivate 2 ani = 730z).
-// Tot pe loturi. Aici indexul dedicat pe `timestamp` e obligatoriu: singurul index existent era
-// (imei, timestamp), iar un index compus care începe cu `imei` NU ajută la `WHERE timestamp < …` —
-// fără el, fiecare lot ar fi făcut seq scan și lotizarea ar fi ieșit mai rea decât ștergerea monolitică.
-async function purgeArchivedPositions(days, opts) { return (await _deleteOldBatched('positions_archive', days, opts)).total; }
+// ─── Istoricul unui aparat arhivat se șterge la 30 de zile de la arhivare (24.09) ─────────────────
+// Până pe 24.09 arhiva se ținea 2 ani, ștearsă după vârsta pozițiilor. Contractul (Anexa GDPR) spune
+// altceva: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem. Arhivarea
+// unui aparat ESTE încetarea pentru el, deci ceasul pornește din `devices.archived_at`.
+//
+// Se șterge TOT istoricul de localizare al aparatului, nu doar copia din arhivă: pozițiile lui stau
+// și în `positions` (cele vii se țin cât scrie în contract: 12 luni incluse), iar cursele și alertele poartă locuri și adrese.
+async function aparateCuIstoricDeSters(arhivateInainteDe) {
+  const r = await pool.query(
+    `SELECT imei FROM devices WHERE status = 'archived' AND archived_at IS NOT NULL
+        AND archived_at < $1 AND istoric_sters_at IS NULL`, [arhivateInainteDe]);
+  return r.rows.map(function (x) { return x.imei; });
+}
+// Pe loturi, după TIMP, nu după `ctid`: pe tabelele împărțite în bucăți (hypertable) `ctid` nu e unic
+// între bucăți, deci un „DELETE … WHERE ctid IN (…)" ar putea lovi rânduri străine.
+async function _stergeImeiPeLoturi(tabel, imei) {
+  let total = 0;
+  for (;;) {
+    const prag = await pool.query(`SELECT timestamp AS t FROM ${tabel} WHERE imei = $1 ORDER BY timestamp OFFSET $2 LIMIT 1`, [imei, BATCH_ROWS]);
+    if (!prag.rows[0]) {
+      const r = await pool.query(`DELETE FROM ${tabel} WHERE imei = $1`, [imei]);
+      return total + (r.affectedRows || r.rowCount || 0);
+    }
+    const r = await pool.query(`DELETE FROM ${tabel} WHERE imei = $1 AND timestamp <= $2`, [imei, prag.rows[0].t]);
+    total += r.affectedRows || r.rowCount || 0;
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });   // lasă ingestul să respire
+  }
+}
+// Întoarce ce s-a șters, pe feluri. Aparatul se marchează „istoric șters" DOAR dacă toate au mers —
+// altfel mâine se încearcă din nou, nu se lasă ceva pe jumătate crezând că e gata.
+async function stergeIstoricAparat(imei) {
+  const out = { pozitii: 0, arhiva: 0, curse: 0, alerte: 0, erori: [] };
+  const incearca = async function (cheie, fn) { try { out[cheie] = await fn(); } catch (e) { out.erori.push(cheie + ': ' + e.message); } };
+  await incearca('pozitii', function () { return _stergeImeiPeLoturi('positions', imei); });
+  await incearca('arhiva', function () { return _stergeImeiPeLoturi('positions_archive', imei); });
+  await incearca('curse', async function () { const r = await pool.query('DELETE FROM trips WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
+  await incearca('alerte', async function () { const r = await pool.query('DELETE FROM alert_history WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
+  if (!out.erori.length) await pool.query('UPDATE devices SET istoric_sters_at = $2 WHERE imei = $1', [imei, Date.now()]);
+  return out;
+}
+
+// ─── Păstrarea istoricului, după regula fiecărei firme (24.09) ────────────────────────────────────
+// 12 luni incluse pentru toți, mai mult unde s-a plătit (contracts.js → `pastrareFirma`). Ștergerea se
+// face MAȘINĂ CU MAȘINĂ, după `imei`: pe TimescaleDB `imei` e coloana după care se împart bucățile
+// comprimate, deci se desfac doar bucățile mașinii respective, nu ale tuturor. O ștergere după firmă
+// (`company_id`) ar fi desfăcut tot istoricul comprimat al zilei, al tuturor clienților.
+//
+// Aparatele cu tot istoricul deja șters (arhivate de peste 30 de zile) nu mai au ce pierde.
+async function aparatePentruPastrare() {
+  const r = await pool.query(
+    `SELECT d.imei, d.company_id, c.settings
+       FROM devices d LEFT JOIN companies c ON c.id = d.company_id
+      WHERE d.istoric_sters_at IS NULL
+      ORDER BY d.imei`);   // ordine fixă: o rulare neterminată se reia de unde a rămas
+  return r.rows;
+}
+// Șterge istoricul unei mașini mai vechi de `luni` luni: poziții, curse, alerte. Pragul se socotește în
+// bază (`NOW() - luni`), ca aceeași clipă să fie folosită de toate trei. Pozițiile merg pe loturi după
+// TIMP (nu după `ctid`), cu buget: `pana` = până când avem voie să lucrăm la rularea asta.
+async function stergeIstoricMaiVechiDe(imei, luni, opts) {
+  const pana = (opts && opts.pana) || (Date.now() + BATCH_BUDGET_MS);
+  const lot = (opts && opts.lot) || BATCH_ROWS;
+  const out = { pozitii: 0, curse: 0, alerte: 0, loturi: 0, epuizat: false };
+  const PRAG = `NOW() - make_interval(months => $2::int)`;
+  for (;;) {
+    if (Date.now() >= pana) { out.epuizat = true; break; }
+    const lim = await pool.query(
+      `SELECT timestamp AS t FROM positions WHERE imei = $1 AND timestamp < ${PRAG} ORDER BY timestamp OFFSET $3 LIMIT 1`,
+      [imei, luni, lot]);
+    const r = lim.rows[0]
+      ? await pool.query(`DELETE FROM positions WHERE imei = $1 AND timestamp <= $3 AND timestamp < ${PRAG}`, [imei, luni, lim.rows[0].t])
+      : await pool.query(`DELETE FROM positions WHERE imei = $1 AND timestamp < ${PRAG}`, [imei, luni]);
+    out.pozitii += r.affectedRows || r.rowCount || 0;
+    out.loturi++;
+    if (!lim.rows[0]) break;                                     // ultimul lot: nu mai e nimic sub prag
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });   // lasă ingestul să respire
+  }
+  if (!out.epuizat) {
+    const c = await pool.query(`DELETE FROM trips WHERE imei = $1 AND start_time < ${PRAG}`, [imei, luni]);
+    out.curse = c.affectedRows || c.rowCount || 0;
+    const a = await pool.query(`DELETE FROM alert_history WHERE imei = $1 AND triggered_at < ${PRAG}`, [imei, luni]);
+    out.alerte = a.affectedRows || a.rowCount || 0;
+  }
+  return out;
+}
+// Pe TimescaleDB, bucățile de tabel mai vechi decât cea mai lungă păstrare din platformă se scot
+// întregi — nicio firmă nu mai are nevoie de ele, iar după ștergerea mașină cu mașină rămân goale.
+// Pe Postgres simplu / PGlite nu există bucăți: ștergerea mașină cu mașină e tot ce trebuie.
+async function scoateBucatiMaiVechiDe(luni) {
+  if (!_timescale.enabled) return 0;
+  const r = await pool.query(`SELECT drop_chunks('positions', older_than => make_interval(months => $1::int)) AS b`, [luni]);
+  return r.rows.length;
+}
+
+// Jurnalul de audit mai vechi de `luni` luni (contracts.js → `LUNI_JURNAL_AUDIT`). Pe loturi, după `id`
+// (tabelă obișnuită, nu hypertable), ca o primă rulare cu ani de jurnal să nu țină baza ocupată.
+async function stergeAuditMaiVechiDe(luni) {
+  let total = 0;
+  for (;;) {
+    const r = await pool.query(
+      `DELETE FROM audit_log WHERE id IN (
+         SELECT id FROM audit_log WHERE created_at < NOW() - make_interval(months => $1::int) ORDER BY id LIMIT ${BATCH_ROWS})`, [luni]);
+    const n = r.affectedRows || r.rowCount || 0;
+    total += n;
+    if (n < BATCH_ROWS) break;
+    if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });
+  }
+  return total;
+}
 
 // IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
 async function getArchivedImeis() {
@@ -3688,7 +4077,7 @@ async function countArchivedPositions(imei) {
 // Dispozitivele arhivate + numărul de poziții păstrate în arhivă (pentru pagina „Dispozitive arhivate").
 async function getArchivedDevices() {
   const r = await pool.query(`
-    SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen,
+    SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen, d.archived_at, d.istoric_sters_at,
            c.name AS company_name,
            COALESCE(a.n, 0) AS archived_positions, a.first_ts, a.last_ts
     FROM devices d
@@ -4520,7 +4909,11 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
-  getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
+  drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
+  stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
+  listStoc, getStoc, stocDupaSerie, seriiExistenteInStoc, adaugaStoc, mutaStoc, editStoc, stergeStoc, firmeCuContractIncheiat,
+  listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
@@ -4608,7 +5001,8 @@ module.exports = {
   cleanupExpiredSessions,
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
-  purgeArchivedPositions,
+  aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
+  stergeAuditMaiVechiDe,
   getArchivedImeis,
   countArchivedPositions,
   getArchivedDevices,

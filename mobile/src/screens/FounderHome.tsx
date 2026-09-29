@@ -4,14 +4,16 @@ import type { ComponentChildren } from 'preact';
 import { Api } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import { AntetFondator } from '../components/FondatorUi';
+import { termen } from './AdminArchived';
+import { nrDe } from '../lib/numar';
 import './admin.css';
 import './fondator.css';
 
 // „Acasă" (Gestiune) — cele 4 cartonașe-sumar ale fondatorului, ca pe web (loadAdminDash): cifra, dedesubt starea
-// („1 fără contract · 0 restanțe", „2 n-au intrat niciodată", „istoric păstrat 2 ani"), iar „Vezi detalii în <rândul
+// („1 fără contract · 0 restanțe", „2 n-au intrat niciodată", „istoric păstrat 30 de zile de la arhivare"), iar „Vezi detalii în <rândul
 // din meniu>" duce în pagina unde se lucrează. Cartonașul e SUMAR, nu loc de lucru (hotărât 17.09). Portocaliul se
 // aprinde doar când chiar e ceva de rezolvat. Cifrele vin de la server (/api/admin/counts).
-const PRAG_ZILE = 60; // același prag ca în Dispozitive arhivate: „pe ducă" = se șterge în cel mult atâtea zile
+// „Pe ducă" = ACEEAȘI regulă ca în Dispozitive arhivate (și ca pe web, _adashArhiva): nu a doua copie.
 
 type Card = { cheie: string; icon: IconName; titlu: string; ruta: string; meniu: string };
 // „Vezi detalii în …" scrie EXACT numele rândului din meniu (ca _RAX_NUME pe web), ca să nu se despartă.
@@ -38,11 +40,12 @@ export function FounderHome() {
       if (!n) { setSubArh(null); return; }
       Api.archivedDevices().then((rows) => {
         if (!Array.isArray(rows)) return;
-        const peDuca = rows.filter((d: any) => d.purge_zile != null && d.purge_zile > 0 && d.purge_zile <= PRAG_ZILE).length;
-        const sters = rows.filter((d: any) => d.purge_zile != null && d.purge_zile <= 0).length;
+        const peDuca = rows.filter((d: any) => { const t = termen(d); return t && t.rau; }).length;
+        const sters = rows.filter((d: any) => !!d.istoric_sters).length;
+        const zp = Number((rows[0] && rows[0].purge_total_zile) || 0);
         if (peDuca) setSubArh({ t: <span style="color:var(--fd-warn)">{peDuca} cu istoricul pe ducă</span>, warn: true });
-        else if (sters) setSubArh({ t: sters + ' fără istoric', warn: false });
-        else setSubArh({ t: 'istoric păstrat 2 ani', warn: false });
+        else if (sters && sters === rows.length) setSubArh({ t: sters === 1 ? 'istoricul s-a șters' : 'istoricul lor s-a șters', warn: false });
+        else setSubArh(zp ? { t: 'istoric păstrat ' + nrDe(zp, 'zi', 'zile') + ' de la arhivare', warn: false } : null);
       }).catch(() => setSubArh(null));
     }).catch((e: any) => setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare de rețea.')));
     // Cine n-a intrat niciodată (last_login lipsă) — ușa pe care n-a trecut nimeni: invitația a căzut în spam.

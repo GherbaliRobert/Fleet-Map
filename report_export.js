@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const contracte = require('./contracts');   // regulile promise pe hârtie (ex. câte luni se păstrează istoricul)
 
 // Logo RA Tracks pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
 // ATENȚIE la denumire: „logo.png" e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
@@ -459,6 +460,10 @@ function _nRapoarte() {
 function _ofIncluse(o) {
   const L = ['Monitorizare GPS în timp real, pe hartă și pe telefon'];
   L.push('Istoricul deplasărilor: traseul pe hartă, opririle și staționările, pe zile');
+  // Cât se păstrează: 12 luni pentru toți, incluse, sau cât s-a cumpărat în ofertă (24.09). Rândul e
+  // MEREU pe hârtie. Dacă un ecran vechi nu trimite cifra, se scrie regula casei — niciodată mai puțin
+  // decât ține aplicația (până pe 24.09 hârtia putea scrie „6 luni" sau „24 de luni" — nelivrate).
+  L.push('Păstrarea istoricului: ' + (o.retentie || contracte.numar(contracte.LUNI_ISTORIC_INCLUSE, 'lună', 'luni')) + ' de la înregistrare');
   if (o.cuDateMotor) L.push('Date preluate direct din calculatorul de bord: consum, kilometraj, turație');
   const nR = _nRapoarte();
   // ⚠ Rândul ăsta e cel mai lung din listă. Scris cu enumerarea în paranteză ajungea la 492pt din
@@ -482,7 +487,6 @@ function _ofIncluse(o) {
                : 'întrebări nelimitate'));
   }
   if (o.agenti) L.push('Cei șase agenți automați care supraveghează flota și semnalează abaterile');
-  if (o.retentie) L.push('Păstrarea datelor istorice timp de ' + o.retentie);
   L.push('Actualizările aplicației și asistență tehnică, incluse');
   return L;
 }
@@ -505,7 +509,12 @@ function renderOfertaPdf(doc, o) {
   let y = doc.page.margins.top;
   const spatiu = (h) => { if (y + h > bottom) { doc.addPage(); y = doc.page.margins.top; } };
   const luni = Math.max(1, Number(o.contractMonths) || 12);
-  const unicLei = (Number(o.montaj) || 0) + eur2lei(o.hwTotal);
+  // Închirierea (25.09): aparatele nu se vând, deci costul unic e doar montajul, iar chiria lor intră
+  // lunar, pe rândurile `fel: 'chirie'`. Termenele (durata minimă, returul) le pune SERVERUL (ruta PDF).
+  const inchiriere = !!o.inchiriere;
+  const chirieLines = (o.lines || []).filter((l) => l && l.fel === 'chirie');
+  const abonLines = (o.lines || []).filter((l) => !l || l.fel !== 'chirie');
+  const unicLei = (Number(o.montaj) || 0) + (inchiriere ? 0 : eur2lei(o.hwTotal));
 
   // 1. Antet brandat — logo REAL, varianta pentru fundal alb.
   const logo = _logoBuffer();
@@ -547,8 +556,8 @@ function renderOfertaPdf(doc, o) {
   const gol = 10, wc = (W - gol) / 2;
   spatiu(76);
   caseta(left, wc, 'Cost lunar', o.monthly,
-    'abonament pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule', true);
-  caseta(left + wc + gol, wc, 'Cost unic, o singură dată', unicLei, 'echipamente și instalare', false);
+    (inchiriere ? 'abonament și chiria aparatelor, ' : 'abonament ') + 'pentru ' + (o.nVeh || 0) + ' ' + _ofDe(o.nVeh) + 'vehicule', true);
+  caseta(left + wc + gol, wc, 'Cost unic, o singură dată', unicLei, inchiriere ? 'instalare (aparatele sunt închiriate)' : 'echipamente și instalare', false);
   y += 70;
   doc.fillColor('#4b5563').font('Nunito').fontSize(8.5)
     .text('Total pe durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni): '
@@ -590,9 +599,11 @@ function renderOfertaPdf(doc, o) {
     y += 8;
   };
 
-  tabel('Abonament lunar', o.lines || [], 'RON');
+  tabel('Abonament lunar', abonLines, 'RON');
+  // La închiriere, chiria aparatelor are tabelul ei, lunar — aceleași rânduri ca pe factură.
+  if (inchiriere) tabel('Chiria echipamentelor — lunar', chirieLines, 'RON');
   // Ordinea e aceeași ca în anexele contractului: întâi marfa, apoi manopera.
-  tabel('Echipamente — o singură dată', o.deviceLines || [], 'EUR');
+  if (!inchiriere) tabel('Echipamente — o singură dată', o.deviceLines || [], 'EUR');
   tabel('Instalare și punere în funcțiune — o singură dată', o.montajLines || [], 'RON');
 
   // 4. Explicațiile, la FINAL. Cifrele au fost deja date; astea le lămuresc.
@@ -630,6 +641,17 @@ function renderOfertaPdf(doc, o) {
       : 'Facturarea se face în lei. Sumele în euro sunt orientative, la un curs de referință de 1 € = '
         + _bani(fx, 'lei', 4) + '.')
   ];
+  // La închiriere, cele două condiții despre CUMPĂRAREA aparatelor se înlocuiesc cu regulile închirierii.
+  // Cifrele (24 de luni, 15 zile) vin de la server, din aceleași constante ca și contractul.
+  if (inchiriere) {
+    const lMin = Math.max(1, Number(o.chirieLuniMin) || 24), zRet = Math.max(1, Number(o.chirieZileRetur) || 15);
+    conditii.splice(0, 1, 'Instalarea se facturează o singură dată, după punerea în funcțiune. Aparatele nu se cumpără: sunt închiriate.');
+    conditii.splice(2, 1,
+      'Aparatele sunt închiriate și rămân proprietatea RA Tracks pe toată durata contractului. Chiria lor se facturează lunar, pe rând separat, împreună cu abonamentul.',
+      'Durata minimă a contractului este de ' + lMin + ' ' + _ofDe(lMin) + 'luni. Dacă se încheie mai devreme, se datorează chiria aparatelor pentru lunile rămase până la ' + lMin
+        + ' și demontarea lor' + (Number(o.tarifDemontare) > 0 ? ', de ' + _bani(o.tarifDemontare, 'lei') + ' pe aparat.' : '.'),
+      'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. La sfârșitul contractului, demontarea o facem noi, fără cost. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
+  }
   if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
       + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
@@ -690,4 +712,100 @@ async function sendOfertaPdf(res, o) {
 }
 // ─── sfârșit „oferta, ca fișier descărcat" ──
 
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition };
+// `renderOfertaPdf` e exportat pentru probe (verify_stoc_chirie.js citește textul hârtiei cu un document de carton).
+// ─── Șablonul „Mașinile clientului" (28.09) ──────────────────────────────────────────────────────
+// Alin: „vreau buton de export a unui șablon fix, cu ce trebuie să identifice calculatorul nostru, și buton
+// de încărcare a șablonului". Îl trimitem CLIENTULUI, deci poartă logo-ul și numele casei, ca rapoartele.
+// Coloanele și combustibilii vin din compatibilitate.js — de acolo îl citește și încărcarea, deci șablonul
+// și citirea lui nu se pot despărți. Mărcile (lista de ales) vin de la server, din listele Teltonika.
+//   • marca: listă de ales, dar se poate scrie și alta (avertisment, nu interdicție — Aro nu e pe liste);
+//   • combustibilul: DOAR din listă (altfel „diesel", „motorina", „M" — trei feluri de a scrie același lucru);
+//   • anul și bucățile: numere întregi, cu mesaj pe înțeles când nu sunt.
+async function sablonMasiniXlsx(opt) {
+  const compat = require('./compatibilitate');
+  const marci = (opt && opt.marci) || [];
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Tracks';
+  const col = compat.SABLON_COLOANE, n = col.length;
+  const ws = wb.addWorksheet('Mașini');
+  let r = xlPlaceLogo(ws, xlLogoId(wb));
+  const scrie = (text, font) => { const c = ws.getCell(r, 1); c.value = text; c.font = font; r++; };
+  scrie('Mașinile flotei — pentru oferta RA Tracks', { bold: true, size: 14 });
+  scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți", câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('Marca și modelul: scrieți primele litere (ex. „da"), apăsați Enter, apoi săgeata din celulă — lista arată doar ce începe așa. La model, doar modelele mărcii scrise. Combustibilul se alege din listă.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('„An fabricație" = anul mașinii, de ex. 2024. Exemplu de rând: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
+  r++;
+  const antet = r;
+  col.forEach((c, i) => {
+    const cell = ws.getCell(antet, i + 1);
+    cell.value = c.et;
+    cell.font = { bold: true, color: { argb: 'FF06210F' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3FE07D' } };
+    cell.border = { bottom: { style: 'thin', color: { argb: 'FF2BB763' } } };
+    cell.alignment = { vertical: 'middle' };
+    ws.getColumn(i + 1).width = c.lat;
+  });
+  ws.getRow(antet).height = 20;
+  ws.views = [{ state: 'frozen', ySplit: antet }];
+  // ── Lista de ales care se STRÂNGE după primele litere (Alin, 28.09: „când scrii litera a, nu-ți dă
+  // mărcile cu a... pe măsură ce scrii ar trebui să-ți sugereze"). O listă simplă de 352 de mărci nu se
+  // filtrează în Excel: doar Microsoft 365 nou o filtrează cât scrii, și atunci caută literele ORIUNDE în
+  // nume („a" găsește aproape tot). Aici lista e o FORMULĂ care pornește de la ce e scris în celulă:
+  // „da" + Enter → săgeata arată doar mărcile care ÎNCEP cu „da". Merge în orice Excel (din 2007), fără
+  // macro-uri. Condiția ei: lista e ordonată, ca toate numele cu același început să stea unul după altul —
+  // de-aia se ordonează aici, pe litere mari, nu după alfabetul românesc (care ar putea sări peste semne).
+  // Celula NU refuză ce nu e pe listă (o marcă veche, Aro, tot trebuie să intre; calculatorul o verifică).
+  const ord = (a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0);
+  const idx = (cheie) => col.findIndex((c) => c.cheie === cheie);
+  const litera = (j) => String.fromCharCode(65 + j);
+  const L = { marca: litera(idx('marca')), model: litera(idx('model')) }, r1 = antet + 1;
+  let formulaMarci = null, formulaModele = null;
+  if (marci.length) {
+    const lista = marci.map((m) => ({ m, k: String(m).toUpperCase() })).sort(ord);
+    const wm = wb.addWorksheet('Marci', { state: 'hidden' });
+    lista.forEach((x, i) => { wm.getCell(i + 1, 1).value = x.m; });
+    const zona = 'Marci!$A$1:$A$' + lista.length, cauta = L.marca + r1 + '&"*"';
+    formulaMarci = 'OFFSET(Marci!$A$1,IFERROR(MATCH(' + cauta + ',' + zona + ',0)-1,0),0,IF(COUNTIF(' + zona + ',' + cauta + ')=0,'
+      + lista.length + ',COUNTIF(' + zona + ',' + cauta + ')),1)';
+  }
+  // Modelele, pe marcă: rânduri „marcă | model", ordonate, iar lista modelului arată doar modelele mărcii
+  // din aceeași linie, strânse după primele litere scrise. Fără marcă (sau fără potrivire): un singur rând,
+  // care spune să scrie modelul — citirea șablonului îl ignoră (`SABLON_FARA_SUGESTII`).
+  const perechi = ((opt && opt.perechi) || []).filter((p) => p && p[0] && p[1])
+    .map((p) => ({ m: p[0], mo: p[1], k: String(p[0]).toUpperCase() + '|' + String(p[1]).toUpperCase() })).sort(ord);
+  if (perechi.length) {
+    const wmo = wb.addWorksheet('Modele', { state: 'hidden' });
+    wmo.getCell(1, 2).value = compat.SABLON_FARA_SUGESTII;
+    perechi.forEach((p, i) => { wmo.getCell(i + 2, 1).value = p.m; wmo.getCell(i + 2, 2).value = p.mo; wmo.getCell(i + 2, 3).value = p.k; });
+    const zona = 'Modele!$C$2:$C$' + (perechi.length + 1), cauta = '$' + L.marca + r1 + '&"|"&' + L.model + r1 + '&"*"';
+    formulaModele = 'OFFSET(Modele!$B$1,IFERROR(MATCH(' + cauta + ',' + zona + ',0),0),0,MAX(1,COUNTIF(' + zona + ',' + cauta + ')),1)';
+  }
+  const comb = '"' + Object.values(compat.COMBUSTIBILI).join(',') + '"';
+  const indemn = (titlu, text) => ({ showInputMessage: true, promptTitle: titlu, prompt: text });
+  const reguli = {
+    marca: formulaMarci ? Object.assign({ type: 'list', allowBlank: true, formulae: [formulaMarci], showErrorMessage: false },
+      indemn('Marcă', 'Scrieți primele litere (ex. da), apăsați Enter, apoi săgeata: vedeți doar mărcile care încep așa. Dacă marca nu e în listă, scrieți-o întreagă.')) : null,
+    model: formulaModele ? Object.assign({ type: 'list', allowBlank: true, formulae: [formulaModele], showErrorMessage: false },
+      indemn('Model', 'Întâi marca. Apoi primele litere ale modelului, Enter și săgeata: vedeți doar modelele mărcii. Dacă nu-l găsiți, scrieți-l întreg.')) : null,
+    an: Object.assign({ type: 'whole', operator: 'between', allowBlank: true, formulae: [1950, 2100], showErrorMessage: true,
+      errorTitle: 'An fabricație', error: 'Scrieți anul fabricației, de ex. 2024.' }, indemn('An fabricație', 'Anul mașinii, de ex. 2024.')),
+    combustibil: Object.assign({ type: 'list', allowBlank: true, formulae: [comb], showErrorMessage: true,
+      errorTitle: 'Combustibil', error: 'Alegeți combustibilul din listă.' }, indemn('Combustibil', 'Alegeți din listă (săgeata din celulă).')),
+    buc: Object.assign({ type: 'whole', operator: 'greaterThanOrEqual', allowBlank: true, formulae: [1], showErrorMessage: true,
+      errorTitle: 'Bucăți', error: 'Câte mașini: un număr întreg, de la 1 în sus.' }, indemn('Bucăți', 'Câte mașini sunt de felul acesta.')),
+  };
+  // O regulă pe COLOANĂ, pe tot intervalul (A7:A506), nu pe fiecare celulă. Puse celulă cu celulă, ExcelJS le
+  // strânge în intervale citind adresele ca text (A10 înaintea lui A7) și scoate intervale care se
+  // SUPRAPUN (A7:A506 și A10:A506) — Excel poate spune atunci că fișierul e stricat. Găsit pe 28.09.
+  // Formulele de mai sus au referințe RELATIVE la primul rând (A7): Excel le mută singur pe fiecare rând.
+  col.forEach((c, j) => {
+    if (reguli[c.cheie]) ws.dataValidations.add(litera(j) + (antet + 1) + ':' + litera(j) + (antet + compat.SABLON_MAX), reguli[c.cheie]);
+  });
+  const chenar = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+  for (let i = 1; i <= 40; i++) {   // primele rânduri cu chenar, ca să arate a tabel
+    col.forEach((c, j) => { ws.getCell(antet + i, j + 1).border = { top: chenar, left: chenar, bottom: chenar, right: chenar }; });
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  return { buffer: Buffer.from(buf), nume: 'RA-Tracks - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
+}
+
+module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx };

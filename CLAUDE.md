@@ -2,6 +2,35 @@
 
 Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 
+## Cum îi explici lui Alin (OBLIGATORIU)
+
+Alin (25.09): *„când îmi expui ceva, fă structurat frumos, să înțeleg... să nu te întreb de câteva ori
+același lucru. Memorează asta."* Și înainte: *„stai un pic că deja mă bagi în ceață. Hai s-o luăm pas
+cu pas."*
+
+- **Răspunsul întâi** (da / nu / cifra), explicația după. La o întrebare de da sau nu: da sau nu, plus
+  cel mult o frază.
+- **Structurat:** titluri scurte, pași numerotați, tabele pentru comparații. Un subiect pe rând — nu
+  amesteca trei lucruri într-un răspuns.
+- **Complet din prima**, ca să nu trebuiască să întrebe iar: ce se întâmplă, ce face el, unde apasă.
+- **Pe limba lui:** fără jargon, fără nume de fișiere sau de funcții în explicații (ele stau în jurnal).
+  Exemple cu cifre, în lei.
+- **Când e de hotărât ceva:** opțiunile numerotate, cu recomandarea mea spusă direct, iar întrebările
+  pentru el la final, numerotate, ca să poată răspunde „1: da, 2: 36 de luni".
+- Când simte că se încurcă, **o luăm pas cu pas**: un pas, confirmarea lui, apoi următorul.
+
+## De amintit lui Alin — la fiecare raport (OBLIGATORIU)
+
+Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă într-un singur loc: secțiunea
+**„De amintit — ce așteaptă după voi"**, sus în `JURNAL-MODIFICARI.md`.
+
+- **La finalul fiecărui răspuns care raportează o lucrare terminată**, citește secțiunea și amintește-i
+  lui Alin, pe scurt (un rând pe punct), punctele **NEBIFATE**. Nu le repeta când răspunsul e doar o
+  întrebare sau o lămurire scurtă.
+- Când Alin spune că unul e făcut, **bifează-l acolo cu data**. Nu scoate și nu bifa nimic fără el.
+- Ce găsești nou de felul ăsta (un lucru pe care doar ei îl pot face: un cont, o cheie, o hârtie, o
+  decizie) intră în aceeași listă, cu data, și îi spui în răspuns că l-ai adăugat.
+
 ## Font / Tipografie (OBLIGATORIU)
 
 **Fontul standard, peste tot, este `Nunito`** — în aplicație ȘI pe paginile publice. Orice modificare de UI se face sub acest font; nu introduce alt font pentru text.
@@ -335,7 +364,7 @@ aparate mai ieftine sau instalatori mai scumpi."* Toate cele 19 prețuri sunt c�
 | Preț | Cartea |
 |---|---|
 | lunar pe mașină (`pPlain`, `pCan`, `pFms`) | **2. Flota clientului** |
-| păstrarea datelor (`ret12/24/36/Custom`) | **3. Ce mai primește clientul** |
+| păstrarea datelor (`ret24/36/Custom`; 12 luni sunt incluse, fără preț) | **3. Ce mai primește clientul** |
 | un cont de RA Insight (`pAiA`) | **3.**, lângă comutator |
 | montajul (`mGps`, `mLvCan`, …) | **4. Montajul**, prin `qp()`, lângă cantitate |
 | aparatele (`dFmc130`, …) | **5. Aparatele**, prin `qp()`, lângă cantitate |
@@ -566,8 +595,9 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 - Fără cuvântul „plan"; numerele cu „de" prin `contracts.numar` („24 de luni", „100 de întrebări").
 - „Vezi" / „Descarcă": `raxHartie(url, previzualizare, ce)` — o singură cerere, fereastra
   `_ofArataHartia`, numele din antet (`_numeDinAntet`). Antetul îl scrie `_antetDescarcare`
-  (ASCII + `filename*` UTF-8). Numele rămâne „RA TRAKS-Contract …" (cerut de Alin pe 09.09) până
-  hotărăște altfel.
+  (ASCII + `filename*` UTF-8). Numele: **„RA-Tracks - Contract {număr} - {firmă}.pdf"** (Alin, 24.09),
+  ca rapoartele și ofertele; actul: „RA-Tracks - Act adițional …". Caracterele interzise (inclusiv
+  „/" din numărul actului, „…/A1") se scot din TOT numele (`numeFisier`).
 - ⚠ În cutia de probe Chromium salvează „download" în loc de un nume cu diacritice: cutia n-are
   limba UTF-8. Pornește browserul cu `LANG=C.UTF-8`. Nu e o problemă a aplicației.
 
@@ -576,13 +606,273 @@ Fila Contract pune **pe bucăți** contractul lângă factura lunii, calculată 
 (nu cu o copie): mașinile, RA Insight (se facturează după conturile folosite — deci nu se compară
 totalul), și ce e în contract dar nu ajunge pe factură (`nefacturate`, ex. păstrarea datelor).
 
+### Datele după încetare: 30 de zile, apoi se șterg (decizie Alin, 24.09)
+Hârtia (Anexa GDPR, pct. 7) promite: la încetare, clientul are 30 de zile să ceară datele înapoi;
+fără cerere, se șterg. Alin: *„exact așa facem"*. Aplicația le ținea 2 ani — acum face ce scrie.
+- **Cifra stă într-un singur loc:** `ZILE_DATE_DUPA_INCETARE = 30` în `contracts.js`, citită de hârtie,
+  de ștergerea automată și (prin server) de ecrane. NU o face variabilă de mediu: e promisiune semnată.
+- Arhivarea unui aparat ESTE încetarea pentru el (`devices.archived_at`); detalii la „Dispozitive
+  arhivate", mai jos. Legea (GDPR art. 28) cere ștergere/returnare; nicio lege nu ne obligă să păstrăm
+  pozițiile GPS ale clientului (contractul și facturile NOASTRE: 10 ani, legea contabilității).
+- La încheierea contractului, fila și fereastra de confirmare amintesc: arhivează aparatele firmei.
+
+### Păstrarea istoricului: 12 luni pentru toți, 24/36 plătite (decizie Alin, 24.09)
+Alin: *„12 luni pentru toți și păstrăm 24/36 de luni ca opțiune plătită."* Hotărât după ce am MĂSURAT pe
+aplicația pornită (PostgreSQL + TimescaleDB, aparate virtuale Codec 8E): istoricul mai vechi de 7 zile iese
+de 14–19 ori mai mic; 6 luni în plus costă ~7 bani/lună la un camion (~0,25 GB pe 12 luni), ~3 bani la o
+mașină mică. Până pe 24.09 aplicația ținea 6 luni pentru toți, iar 24/36 se vindeau, se semnau și nu se
+livrau, nici nu se facturau.
+
+- **Regula stă în `contracts.js`:** `LUNI_ISTORIC_INCLUSE = 12`, `LUNI_ISTORIC_MAX = 60`,
+  `pastrareFirma(settings)` (citește `settings.pastrare = { luni, pretRON }`), `curataPastrare(b)`.
+  NU o face variabilă de mediu — e promisiune semnată.
+- **`pastrareFirma` întoarce `null` pe setări stricate** → ștergerea SARE peste firmă. Nu o „coborî" la 12
+  în caz de dubiu: o firmă care a plătit 36 de luni și-ar pierde istoricul fără cale de întoarcere.
+- **Ștergerea (`stergeIstoriculVechi`, server.js, la 6 ore, rulează MEREU)** merge mașină cu mașină, după
+  `imei` (coloana după care comprimă TimescaleDB — o ștergere după `company_id` ar desface tot istoricul
+  comprimat al zilei). Poziții, curse, alerte. Pe loturi după TIMP, NU după `ctid` (pe hypertable `ctid` nu
+  e unic între bucăți). La final, pe Timescale, `drop_chunks` pentru ce e mai vechi decât cea mai lungă
+  păstrare din platformă. Rând în audit. De mână: `POST /api/admin/istoric/sterge-vechi`.
+- **Politica TimescaleDB de ștergere se SCOATE la pornire** (`remove_retention_policy`) și NU se pune alta:
+  ea știe o singură vârstă pentru toți (era 180 de zile) și ar tăia ce am promis. `add_retention_policy` cu
+  `if_not_exists` n-ar fi schimbat una existentă. Dacă scoaterea eșuează → roșu în „Stare producție".
+- **`POSITION_RETENTION_DAYS` e RETRASĂ** — nu se mai citește nicăieri. Setată → rând portocaliu în „Stare
+  producție" până e ștearsă din Railway. NU o reintroduce.
+- **Oferta:** pornește pe „12 luni (incluse)"; `ret6`/`ret12` au ieșit din tarife (12 sunt gratis). În pagină
+  `_OF_LUNI_INCLUSE` / `_OF_LUNI_MAX` sunt scrise o dată și LEGATE printr-o probă de cele din contracts.js.
+  Rândul `fel: 'ret'` poartă `luni`; „Client nou din ofertă" îl duce la server (`_pastrareDinOferta`), care îl
+  scrie pe firmă (`_aplicaOfertaPeFirma`) și în anexă (`annex.pastrareLuni`, păstrat de `dinAnexaDePastrat`).
+  O ofertă de 12 luni NU coboară o firmă care are mai mult.
+- **Factura și registrul** adună același rând („Păstrarea istoricului — 24 de luni"), din aceeași regulă
+  (`buildInvoiceLines` + `_venitLunar`). `verify_factura.js` le compară.
+- **Coborârea se face doar de mână**, din „Abonament & plăți", cu confirmare pe față („se șterg date") și
+  rând în audit de la cât la cât.
+- **Hârtia:** contractul (VI + acordul GDPR, pct. 2) și oferta („Păstrarea istoricului: N luni de la
+  înregistrare", mereu) spun cifra după care chiar se șterge. Anexa semnată bate setarea de azi a firmei.
+- Păzit de `verify_pastrare.js` (în `npm test`, inclusiv pe server pornit cu `POSITION_RETENTION_DAYS=180`
+  setată dinadins — istoricul de 7 luni trebuie să rămână).
+
+### Jurnalul de audit: 12 luni (decizie Alin, 24.09)
+*„Șterge-l la 12 luni dacă nu avem restricții legale."* Nu avem: nicio lege nu cere o durată pentru jurnalul
+unei aplicații. Facturile și contractele (cu termene legale) stau în tabelele LOR și nu sunt atinse.
+- Cifra: `LUNI_JURNAL_AUDIT = 12` în `contracts.js`, legată printr-o probă de pagina de confidențialitate.
+- Ștergerea: `stergeAuditVechi` (zilnic; de mână `POST /api/admin/audit/sterge-vechi`), pe loturi după `id`,
+  cu UN rând nou în audit care spune câte s-au șters. Păzit de `verify_pastrare.js`.
+
+### Butonul fiecărei lipse, chiar pe rând (Contracte, 24.09)
+Alin: *„buton de trimitere fix acolo unde lipsește."* În lista Contracte, pe fiecare rând:
+- **Sub stare, pasul următor** (`_ctrePasHtml`): „Aprobă" → „Trimite la semnat" → „E semnat" (+ „Retrimite").
+- **La „Dosar", fiecare lipsă cu butonul ei** (`_ctreLipsuriHtml`): CUI/sediu/reprezentant → „Completează"
+  (fereastra `raxCtreCompleteaza`, cu ANAF); actul → „Încarcă semnat"; GDPR separat → „Încarcă acordul";
+  data semnării → „Pune data". Regulile (ce lipsește) rămân pe server, în `stareDosar`.
+- **„Trimite la semnat"** = `POST /api/contracts/:id/trimite`: email cu PDF-ul atașat — ACELAȘI `contractPdf`
+  ca la „Descarcă" —, `replyTo` = emailul nostru din „Date emitent". Starea devine „trimis" + `sent_at` /
+  `sent_to`, scrise de server DUPĂ ce emailul a plecat. Refuză: ciorna (aprobă întâi), golurile de pe hârtie
+  (CUI, sediu, reprezentant — și deschide „Completează"), adresa stricată. Firma fără email îl primește pe
+  cel la care s-a trimis.
+- **Fără SMTP, butonul NU minte**: devine „Am trimis-o" (`trimite_pe_email` vine de la server în lista
+  contractelor). Ruta răspunde 503 cu `faraEmail`.
+- ⚠ **`PUT /api/companies/:id` (`updateCompany`) schimbă cheile TRIMISE, iar una trimisă goală golește
+  câmpul** (de la 23.09; înainte rescria tot rândul). „Completează" are ruta lui, `PUT /api/companies/:id/dosar`
+  → `completeazaDosarFirma`, care scrie DOAR ce primește. Orice formular nou care completează o parte din
+  firmă o folosește pe ea.
+- Păzit de `verify_lipsuri.js` (în `npm test`), cu un server de email FALS: emailul chiar pleacă, cu PDF.
+
+### Drumul clientului (Alin, 24.09: „pare alambicat, trec din aia, ies în aia")
+O linie de pași: **Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima factură**.
+- **O singură regulă:** `contracts.drumulClientului({ contract, areOferta, montaje, aparate, facturi })` →
+  `{ pasi: [{cheie, eticheta, stare, detaliu}], urmatorul, gata, din }`. Stări: `gata` / `acum` (primul
+  nefăcut — ăsta are butonul) / `urmeaza` / `nu_e_cazul` (fără montaj vândut, fără ofertă). Încheiat → fără „acum".
+- Numărătorile vin toate deodată din `db.drumDateToate` (aparate nearhivate, facturi care nu-s ciornă sau
+  anulate, lucrări executate, oferta legată). Serverul le pune ca `drum` și în lista `/api/contracts`, și în
+  fișa firmei (`_drumContract`) — ACEEAȘI socoteală. NU socoti drumul în pagină.
+- Pe ecran: `_raxDrumHtml` sus pe fila Contract; `_ctrePasHtml` în listă (după semnare arată pasul drumului).
+  Butoanele: `_drumButon` — montaj → `raxDrumMontaj` (deschide formularul lucrării), aparate →
+  `raxDrumAparate` → `raxDevDeschideNeasignate()` (**adopția rămâne într-un singur loc**, decizia din 17.09 —
+  NU pune a doua cale de adopție în fișă), factura → `raxOpenGenInvoice(companyId)`.
+- Butoanele din fișă și din listă sunt ACELEAȘI funcții (`raxCtre…`); `_ctreGasit` găsește contractul și din
+  fișă, iar `_ctreDupa` redesenează ce e deschis (fișa și/sau lista).
+- Păzit de `verify_drum.js` (în `npm test`), care parcurge tot drumul pe server pornit.
+
+### Montaj — secțiunea partenerilor (Business, 24.09)
+Alin: *„secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la fel ca la clienți.
+Logica din spate o va face Robert în interfața lor."* Rândul „Montaj" stă în meniu **imediat după
+Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Trei file (`MJ_FILE`):
+Parteneri · Contracte cu partenerii · Lucrări.
+
+- **Partenerii stau DOAR aici.** Au ieșit din ecranul Contracte (acolo sunt doar contractele clienților).
+  `raxParteneriIncarca` a rămas ca nume vechi și cheamă `raxLoadMontaj`.
+- **Fișa partenerului** (`montaj_parteneri`): CUI + ANAF, reg_com, address, legal_rep, email, phone, iban,
+  bank, zona, tarife. ⚠ **`upsertPartenerMontaj` scrie DOAR cheile primite** (`undefined` = rămâne cum era):
+  o salvare fără CUI îi ștergea CUI-ul, contactul și notițele. Ruta trimite `undefined` pentru ce n-a venit.
+- **Contractul cu partenerul** (`montaj_contracte`, număr `RAT-M-AAAA-NNNN`): aceleași stări și aceeași
+  regulă de trecere ca la clienți (`_trecereContract`), un singur contract nesfârșit pe partener (409),
+  semnat = încuiat (`_MC_DUPA_SEMNARE`: doar data semnării, notițele, încheierea). Ciorna se șterge,
+  semnatul se încheie. **Tarifele (Anexa nr. 1) se ÎNGHEAȚĂ la creare**, din fișa partenerului; „Reia
+  tarifele de azi" (`tarife_din_partener`) merge doar cât e nesemnat. Lipsurile (`_lipsuriPartener`) și
+  „Trimite la semnat" (email + PDF, refuză cu goluri pe hârtie, 503 `faraEmail` fără SMTP) urmează ACELAȘI
+  model ca la clienți. Stările se scriu cu `_mjStare` („trimis la **partener**", nu „la client").
+  `montaj_contracte` e în `BUSINESS_TABLES` (`backup.js`): ține fișierul SEMNAT, care nu se poate reface.
+- **Partenerul cu contract semnat (activ / încheiat) NU se șterge** (409): se trece pe „inactiv" (`pt-activ`).
+  `listContracteMontaj` face JOIN pe partener — fără el, contractul semnat ar dispărea din ecran. Contractele
+  lui nesemnate pleacă odată cu el. Inactivul nu se mai propune la lucrări noi (rămâne pe cele vechi) și
+  iese din banda „fără contract".
+- **Hârtia** (`contract_pdf.js` → `scrieContractMontaj` / `contractMontajPdf`): „Contract de colaborare",
+  partenerul = PRESTATOR, noi = BENEFICIAR (banii merg invers). Clauzele care contează: el ne facturează
+  lunar, recepția = aparatul transmite, aparatele sunt ale noastre, garanție 12 luni, nesolicitarea
+  clienților 12 luni, și **SUBÎMPUTERNICIT GDPR** (art. 28 alin. 4, Anexa nr. 2) — vede date ale
+  clienților noștri. Nume: „RA-Tracks - Contract montaj {nr} - {partener}.pdf". Scris de noi, nu de un
+  jurist: e pe lista de lansare.
+- **Lucrările se EDITEAZĂ doar din fișa clientului** (fila Contract) — de acolo iau prețul pentru client și
+  intră în Anexa nr. 2 a contractului lui. Fila „Lucrări" e privirea de sus (`GET /api/montaj/lucrari`,
+  marja socotită pe server), cu buton „La client". NU pune un al doilea formular de lucrare aici.
+- **Clientul nu vede nimic de aici.** Toate rutele `/api/montaj/*` sunt `requireSuperadmin`: cât ne cere
+  partenerul e exact diferența din care trăim.
+- **Contul partenerului în aplicație = Robert.** NU-l construi din proprie inițiativă. Când se face: vede
+  DOAR lucrările lui — nu flota/pozițiile clientului, nu prețul pentru client, nu marja, nu alți parteneri.
+- Păzit de `verify_montaj_sectiune.js` (în `npm test`), pe server pornit, cu server de email FALS.
+
+### Aparatele ÎNCHIRIATE și stocul nostru (decizie Alin, 25.09)
+Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze"* + *„trebuie să
+avem un stoc de echipamente"*. Hotărât: **24 de luni minim, 50% marjă, montajul la semnare, aparatele ne
+revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU închiriază, momentan).
+
+- **Regulile stau în `contracts.js`:** `CHIRIE_LUNI_MIN = 24`, `CHIRIE_MARJA = 0.5`, `CHIRIE_ZILE_RETUR = 15`,
+  `chirieLunara(costLei, luni)` = cost ÷ max(luni, 24) × 1,5, rotunjit la leu, niciodată sub cost ÷ luni
+  (rotunjit în sus); fără cost → `null` (nu inventăm o chirie). NU le face variabile de mediu.
+- **Pagina** socotește chiria pe loc cu `_ofChirieLunara`, cu cifrele venite din `/api/admin/offers/meta`
+  (`_ofMeta.chirie`) — LEGATĂ printr-o probă de `chirieLunara` (54 de cazuri). Pagina NU scrie 24 / 50%.
+  Cheile (`_OF_CHIRIE`: `chFmc130`… ↔ `d130`… ↔ `dFmc130`…) oglindesc `montaj.ECHIPAMENTE` (`chirie`).
+- **În ofertă:** `cfg.echipMod = 'cumpara' | 'inchiriaza'`. La închiriere: `deviceLines = []`, `hwTotal = 0`
+  (costul unic = doar montajul), iar chiria intră în `lines` cu `fel: 'chirie'` (deci în `monthly`, în
+  anexă, pe hârtie). Chiria propusă din `costuri_noastre` (ne costă, în €) × curs; casetă atinsă = nu se
+  rescrie. Aparat fără chirie → `chirieLipsa`, iar `raxOfSave` și `_ofHartie` refuză (`_ofChirieOk`). NU-l
+  socoti la 0 lei. Durata urcă la minim.
+- **Contractul din ofertă:** `_chirieDinOferta(oferta)` citește ce s-a SALVAT (cantitate, chiria negociată,
+  valoarea = prețul de vânzare × cursul înghețat) — nu recalculează. Contract < 24 de luni → 400.
+  `annex.chirie = { luniMin, aparate }` (păstrat de `dinAnexaDePastrat`); Anexa nr. 2 fără aparate vândute se
+  numește „Montaj (costuri unice)". Clauzele stau în `scrieContract` (IV + VII + Anexa nr. 1), numai când
+  `annex.chirie` există.
+- **Pe firmă:** `settings.chirie = { randuri: [{ tip, nume, cant, pret }] }`, scris de `_aplicaOfertaPeFirma`
+  DOAR dacă firma n-are deja una; citit cu `contracte.chirieFirma(settings)`. **Factura (`buildInvoiceLines`)
+  și registrul (`_venitLunar`) adună același rând** — „Chirie echipament — {model}". Doar super-admin îl
+  scrie (`_applyCompanySettingsPatch`, `allowFeatures`); în „Abonament & plăți" doar se vede.
+- **Stocul (Gestiune → Stoc echipamente, `admin-tab-stoc`, `raxLoadStoc`):** tabela `stoc_echipamente`, un
+  rând = o bucată (`stare` = unde e, `proprietar` = 'ra' / 'client', `istoric` adăugat la fiecare mutare).
+  Regulile (treceri, sumar, alerte) stau în **`stoc.js`**, curate. Rutele `/api/stoc*` = `requireSuperadmin`;
+  `/api/stoc/praguri` stă ÎNAINTEA `/api/stoc/:id`. Se șterge doar o bucată fără mutări; restul → „casat".
+  În `BUSINESS_TABLES`. Căutarea redesenează doar `#stoc-tabel` (capcana de la Inventar).
+- **Legătura automată `_stocLaFirma(imei, companyId)`:** chemată din TREI locuri — adopția din „Neasignate"
+  (`PUT /api/devices/:imei/company`) și cele două căi din `POST /api/devices`. Aparatul din stoc trece pe
+  „montat", al nostru dacă firma închiriază (`chirieFirma`), vândut dacă nu. Un IMEI necunoscut stocului nu
+  se atinge, iar o eroare de stoc nu oprește înregistrarea.
+- **Cartea „5. Aparatele": UN preț pe rând** (`devRand`, Alin 25.09: „mă induce în eroare, fă-o mai
+  simplă"): prețul de vânzare (`.of-cump-f`) la „cumpără", chiria (`.of-chirie-f`) la „închiriază" —
+  comutatorul ascunde una, arată cealaltă. Prețul de vânzare rămâne (ascuns) ca VALOARE a aparatului.
+  Lângă chirie, `of-chcost-*`: „ne costă X €" sau linkul „trece cât ne costă" (fără cost, chiria nu se
+  propune și caseta nu trebuie să tacă). NU pune la loc trei casete pe rând.
+- **Demontarea (decizie Alin, 25.09):** la termen o facem NOI, fără cost; clientul care pleacă ÎNAINTE de
+  durata minimă o plătește el, la tariful de dezinstalare din ofertă (`mUninstall` → `annex.chirie.
+  tarifDemontare`, trimis și pe hârtia ofertei ca `tarifDemontare`), pe lângă chiria lunilor rămase.
+  Scris în contract (VII) și în condițiile ofertei. Fără tarif știut, clauza spune regula, nu inventează o cifră.
+- Păzit de `verify_stoc_chirie.js` (în `npm test`), inclusiv pe server pornit.
+
+### Sugestiile din Ofertare Live — doar pentru noi (Alin, 25.09; livrate 28.09)
+Alin: *„sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul… clientul nu o vede în
+ofertă, dar o văd eu și mă dirijează."* Regula (căutată pe net, 25.09): fără CAN → FMC130; cu CAN →
+FMC130 + LV-CAN200 (cele mai multe modele) sau FMC150 (CAN integrat, mai puține modele); camioane cu
+FMS → FMC650 + Modulul Tahograf (card 28 / tahograf 90 de zile) + e-Transport, dacă e cazul.
+
+- **O singură regulă: `_ofRecomandare(nVeh, nCan, nFms, canMod)`** (blocul „recomandarea pentru flotă").
+  Caseta de la pasul 2 (`#of-sfat-flota`) și tabelul de la pasul 4 (`#of-sfat-montaj`) citesc amândouă de
+  acolo, prin `_ofRecAcum()`. NU scrie a doua socoteală a recomandării.
+- **Nu ajunge pe hârtie.** `_ofPayload` nu trimite nimic din sfaturi, iar `report_export.js` nu le are
+  cuvintele. Dacă adaugi un sfat, nu-l chema din constructorul hârtiei.
+- **Completarea automată folosește ACEEAȘI regulă** (decizia lui Alin, 28.09: „DA — oferta iese corectă din
+  prima"): `_ofCompleteazaDinVehicule` cheamă `_ofRecomandare` și propune, prin `_ofPropune`, toate cele 8
+  cantități (FMC130 / FMC150 / FMC650 / LV-CAN200 + montajul). Până atunci punea FMC650 — aparatul de
+  camion — la TOATE mașinile (100 de mașini, 80 mici: 5.200 € în plus). Comutatorul CAN (`raxOfCanMod`)
+  reface cantitățile neatinse. Ce e atins de mână rămâne; ofertele salvate nu se ating. NU reintroduce
+  „FMC650 la toate". Butonul „Aplică recomandarea" (`raxOfAplicaRecomandarea`) repune recomandarea peste
+  ce ai scris de mână. Păzit, rulat, de `verify_montaj.js` și `verify_sugestii_oferta.js`.
+- **Accesoriile** (ECAN02, cititor de card, blocarea pornirii) rămân **DOAR ca sfat**, fără rând de preț
+  (decizia lui Alin, 28.09, varianta 2): apar în „Ce recomanzi" și în întrebările 5 și 7 de la pasul 2,
+  iar când un client le cere se scriu la pasul 6, „Observații". NU le face rânduri de preț din proprie
+  inițiativă — se fac când avem prețurile de la furnizor și un client care le vrea. (Ideea lor a fost a
+  mea, din cercetarea din 25.09; Alin a întrebat „de unde ți-a venit ideea" — explică-le ÎNAINTE de a
+  întreba ceva despre ele.)
+- Contrastul casetei s-a MĂSURAT pe ambele teme: eticheta pe `--text-secondary`, diferențele (`.dif`)
+  portocaliu închis `#c2410c` pe tema deschisă.
+- Păzit de `verify_sugestii_oferta.js` (în `npm test`).
+
+### „Mașinile clientului" — ce aparat merge pe ce mașină, din listele Teltonika (Alin, 28.09)
+Alin: *„o listă cu model și an de fabricație, ca să vedem ce se potrivește exact — Dacia, Logan 2, 2024,
+benzină + GPL"*. A ales **lista oficială Teltonika** (nu una a noastră, nu reguli ghicite). Secțiunea stă
+în Ofertare Live între „1. Clientul" și „2. Flota clientului".
+
+- **Regula stă în `compatibilitate.js`, curată:** `citesteFoi` (foile deja citite → rânduri normalizate),
+  `potriveste` (o mașină pe o listă), `recomanda` (aparatul), `dateCitite`, `citesteSablon`. Singurul loc
+  care atinge Excel-ul e `foiDinExcel` (ExcelJS), la coada fișierului. **Pagina NU potrivește nimic**:
+  cere `POST /api/admin/masini/potrivire` și `/sablon` (păzit prin numărare).
+- **Șablonul mașinilor (Alin, 28.09: „Lipește din Excel nu e ok — vreau buton de export a unui șablon
+  fix… și de încărcare").** Lipirea a fost SCOASĂ (buton, rută, regulă) — nu o pune la loc.
+  - Coloanele stau într-un singur loc: `SABLON_COLOANE` (Marcă, Model, An fabricație, Combustibil,
+    Bucăți — hotărâte cu Alin, fără nr. de înmatriculare). Șablonul se face din ele
+    (`report_export.js` → `sablonMasiniXlsx`, cu logo, lângă celelalte Excel-uri) și se citește după ele
+    (`citesteSablon`: capul de tabel se caută după NUME, oriunde ar fi; rândul fără marcă/model nu intră;
+    anul/combustibilul/bucățile greșite se spun pe rândul din Excel). `GET` / `POST /api/admin/masini/sablon`.
+  - **Marca și modelul: liste care se STRÂNG după primele litere** (Alin, 28.09: „când scrii litera a, nu-ți
+    dă mărcile cu a"). O listă simplă nu se filtrează în Excel (doar Microsoft 365 nou, și atunci caută
+    literele ORIUNDE în nume). Lista e o FORMULĂ: `OFFSET(Marci!$A$1, MATCH(A8&"*",…)-1, 0, COUNTIF(…), 1)` —
+    „da" + Enter + săgeata → doar ce începe cu „da". Modelul: foaia ascunsă „Modele" (marcă | model | cheie
+    `MARCĂ|MODEL`), formula caută `$A8&"|"&B8&"*"` → modelele mărcii de pe rând. Fără potrivire: un singur
+    rând, `SABLON_FARA_SUGESTII`, pe care citirea îl socotește model LIPSĂ.
+  - ⚠ Formula cere ca numele cu același început să stea unul după altul: listele se ordonează pe LITERE MARI,
+    după cod (nu `localeCompare`). Referințele sunt RELATIVE la primul rând (A8) — Excel le mută singur.
+    Maxim 255 de caractere pe formulă. Fără macro-uri (clientul ar trebui să „activeze conținutul").
+  - Marca și modelul NU au fereastră de eroare (`showErrorMessage: false`: o marcă veche tot intră; o verifică
+    calculatorul); fiecare coloană are un mesaj la clic (`prompt`). Combustibilul DOAR din listă.
+  - Păzit de `verify_masini_client.js`, care socotește ce arată săgeata ca formula, pe FIECARE literă și
+    pe FIECARE marcă din șablonul descărcat.
+  - ⚠ **Validările se pun pe INTERVAL, o dată pe coloană** (`ws.dataValidations.add('A7:A506', …)`), NU
+    celulă cu celulă: ExcelJS le strânge atunci în intervale ordonate ca text (A10 înaintea lui A7) și scoate
+    intervale care se SUPRAPUN — Excel poate zice că fișierul e stricat. Păzit: proba citește XML-ul brut.
+  - Încărcarea peste o listă plină întreabă întâi (`raConfirm`); problemele se arată pe rând.
+- **Cum se citesc listele** (verificat pe cele din 2025): LV-CAN200 / ALL-CAN300 — o foaie pe fel (Cars,
+  Trucks…), antet pe rândul 2, anii „2016>", „+" **albastru** = depinde de dotare, portocaliu = lipsește cu
+  cititorul fără contact, legenda jos (se sare). FMX150 — antet pe rândul 3, deasupra grupul „Standard" /
+  „Extended" (**extinșii nu se numără**: se cer separat de la Teltonika), anii „2013-2016" / „2017+",
+  „+*" = experimental, „+" pe **galben** = lipsește cu ECAN02.
+- **Alegerea rândului, în ordine:** modelul cel mai PRECIS (bază inclusă în ce a scris omul: „Sandero
+  Stepway" înaintea „Sandero"); anul — la rânduri „de la", câștigă **cel mai nou start ≤ anul** (lista
+  adaugă un rând la generația nouă fără să-l închidă pe cel vechi: „LOGAN II 2013>" cuprinde și 2024!);
+  combustibilul (electric/hibrid = obligatoriu, GPL doar la egalitate); generația scrisă de om; variantele.
+  Un cuvânt în plus pe rândul din listă **cu cifre** („ACTROS MP5", „GOLF 7") = generație → se ia, dar
+  „de verificat"; **fără cifre** („LOGAN VAN", „TRANSIT CUSTOM") = alt model → doar sugestie.
+- **Nu se aleg niciodată:** volan pe dreapta, alte piețe (`…MARKET`, `LATAM`, regiunea FMX150 ≠ Global).
+- **Mărcile scrise altfel** (MERCEDES / Mercedes-Benz, VW / Volkswagen) se unesc în `MARCI_ALIAS`.
+- **Recomandarea:** camion/autobuz → FMC650 (priza FMS; notă: verifică priza și tahograful); utilaj pe lista
+  FMC150 → FMC150, altfel FMC130 (ALL-CAN300 nu e în ofertă); „doar poziție" → FMC130; pe ambele liste →
+  întâi potrivirea SIGURĂ, apoi cea care citește mai mult (`scorDate`), abia apoi comutatorul de la pasul 4.
+  `note` = de verificat (portocaliu), `info` = bine de știut (gri) — NU le amesteca.
+- **Pașii 2 și 4 citesc din listă când are rânduri** (`_ofRecAcum` → `_ofRecDinMasini`, aceeași formă ca
+  `_ofRecomandare`). „Trece în ofertă" = `raxOfAplicaRecomandarea`, care la listă pune și pasul 2.
+- **Listele** stau în `liste_compat` (una pe fel, înlocuită la încărcare, cache în memorie `_compatCache`).
+  Până se încarcă una, serverul ia **copia de pornire** `liste/teltonika.json.gz` (≈ 100 KB), făcută cu
+  `tools/liste-teltonika.js` din fișierele trimise de Alin — aceeași funcție de citire ca la încărcare.
+  Tabela e în `BACKUP_EXCLUDED` (se reîncarcă). Încărcarea vine **CRUDĂ** (`express.raw`, octet-stream,
+  15 MB): ALL-CAN300 are 5,3 MB și în base64 ar trece de limita JSON de 6 MB.
+- **Lista mașinilor se salvează în ofertă** (`cfg.masini`, `cfg.masiniMotor`) și **nu ajunge pe hârtie**
+  (`_ofPayload` n-o citește). Pe PDF doar dacă hotărăște Alin (recomandarea din 28.09: nu, deocamdată).
+- Casetele nu se redesenează la răspunsul serverului (doar rezultatele și sumarul) — capcana de la Inventar.
+- Culorile de stare au pereche pe tema deschisă (verdele casei pe alb = 1,7). Măsurat pe ambele teme.
+- Păzit de `verify_masini_client.js` (în `npm test`): foi de probă cu forma listelor, listele adevărate,
+  pagina, server pornit (încărcare de listă nouă cu un Excel făcut în probă).
+
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
-- **Datele după încetare:** hârtia (Anexa GDPR) promite ștergere după 30 de zile; aplicația ține
-  istoricul arhivat 2 ani. Legea (GDPR art. 28) cere ștergere/returnare, fără obligație de păstrare.
-- **Păstrarea datelor 24/36 de luni** se vinde și se semnează, dar aplicația ține 6 luni pentru toți
-  și nu o facturează. Ori se livrează (retenție pe firmă), ori nu se mai vinde.
-- Numele fișierului contractului („RA TRAKS-Contract" vs „RA-Tracks - Contract").
-- Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`.
+- Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
+- Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
+  `verify_arhiva.js` (inclusiv pe server pornit).
 
 ## RA Tracks NU funcționează pe planuri (regulă de fond)
 
@@ -778,16 +1068,26 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - **Un grup cu ceva de rezolvat stă MEREU deschis**, oricâte firme ar fi. O problemă ascunsă după un
   rând închis e mai rea decât una scrisă urât.
 
-### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09)
+### Ecranul „Dispozitive arhivate" (decizie Alin, 17.09; termenul schimbat pe 24.09)
 Arhivarea = contract încheiat: se copiază întâi istoricul în `positions_archive`, apoi se marchează
-`archived`, i se taie conexiunea, iese din allow-list și de pe harta live. Pozițiile unui aparat ACTIV
-se țin 180 de zile (`POSITION_RETENTION_DAYS`); copia din arhivă se ține **2 ani**
-(`ARCHIVE_RETENTION_DAYS`, implicit 730, purjare zilnică). Deci NU „2 ani de istoric", ci „ultimele
-~6 luni, păstrate 2 ani" — scrie-o așa oriunde o explici.
+`archived` (cu **ziua arhivării**, `devices.archived_at`), i se taie conexiunea, iese din allow-list și
+de pe harta live. Pozițiile unui aparat ACTIV se țin cât scrie în contractul firmei (12 luni incluse, 24/36
+plătite) — vezi „Păstrarea istoricului", mai jos.
 
-- **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_inceput` pe fiecare rând
-  din `/api/archived-devices`). Ecranul doar arată cifra primită; NU-și face a doua regulă din zile.
-  Pragul de avertizare (`ARH_PRAG_ZILE = 60`) și cuvintele stau într-un singur loc, în `_arhTermen`.
+- **Istoricul unui aparat arhivat se mai ține 30 de zile de la arhivare** (`ZILE_DATE_DUPA_INCETARE`,
+  cum scrie în contract), apoi `stergeIstoricArhivate` (zilnic; de mână: `POST /api/admin/arhiva/sterge-istoric`)
+  șterge TOT istoricul de localizare al aparatului: pozițiile **vii** (`positions`), copia din arhivă,
+  cursele și alertele — cu rând în audit. Aparatul rămâne pe listă, cu `istoric_sters_at`.
+  Până pe 24.09: arhiva se ținea 2 ani, ștearsă după vârsta pozițiilor, iar pozițiile vii nu se atingeau.
+- ⚠ Ștergerea merge **pe loturi după timp, NU după `ctid`**: pe hypertable, `ctid` nu e unic între
+  bucăți. Un aparat se marchează „șters" doar dacă au mers toate ștergerile; altfel se reîncearcă mâine.
+- Restaurarea oprește ceasul (`archived_at = NULL`). Aparatele arhivate înainte de 24.09 au primit
+  ziua de 24.09 — nimic nu s-a șters pe nepusă masă la prima pornire.
+- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Export CSV, sau un raport.
+- **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_la`, `istoric_sters` pe
+  fiecare rând din `/api/archived-devices`). Ecranul doar arată ce primește; NU-și face a doua regulă
+  din zile. Pragul de avertizare (`ARH_PRAG_ZILE = 7`, ultima săptămână) și cuvintele stau într-un
+  singur loc, în `_arhTermen`.
 - **Butonul „Istoric"** trece prin `window._hpCerut` → `fillHistoryVehicle`, care cere lista CU
   arhivate (`?includeArchived=1`) **doar** pentru drumul ăsta și selectează vehiculul cerut. Arhivatele
   NU intră în selectoarele de zi cu zi. Nu scrie o a doua cale de umplut selectorul.

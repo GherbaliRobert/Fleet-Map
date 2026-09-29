@@ -46,7 +46,7 @@ function _incape(doc, inaltime) {
   if (doc.y > doc.page.height - doc.page.margins.bottom - inaltime) { doc.addPage(); return true; }
   return false;
 }
-function _antet(doc, contract, ciorna) {
+function _antet(doc, contract, ciorna, titlu, subtitlu) {
   const { left, w } = _ST(doc);
   const sus = doc.page.margins.top;
   const lg = _logo();
@@ -59,9 +59,9 @@ function _antet(doc, contract, ciorna) {
   doc.moveTo(left, yLinie).lineTo(left + w, yLinie).strokeColor(VERDE).lineWidth(2).stroke();
   doc.y = yLinie + 14;
   doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(15)
-    .text('CONTRACT DE PRESTĂRI SERVICII', left, doc.y, { width: w, align: 'center' });
+    .text(titlu || 'CONTRACT DE PRESTĂRI SERVICII', left, doc.y, { width: w, align: 'center' });
   doc.font('Nunito').fontSize(9).fillColor(GRI)
-    .text('monitorizare GPS a flotei prin platforma RA Tracks', left, doc.y + 2, { width: w, align: 'center' });
+    .text(subtitlu || 'monitorizare GPS a flotei prin platforma RA Tracks', left, doc.y + 2, { width: w, align: 'center' });
   if (ciorna) {
     doc.fillColor('#b45309').font('Nunito-Bold').fontSize(8.5)
       .text('CIORNĂ — generată automat din datele din aplicație. A se verifica juridic înainte de semnare.',
@@ -268,6 +268,29 @@ function _tabelEchip(doc, echip) {
     .text('Curs de schimb folosit în prezenta anexă: 1 EUR = ' + Number(echip.curs).toFixed(4) + ' lei.', left, doc.y + 3, { width: w, align: 'right' });
   doc.x = left; doc.y += 14;
 }
+// Aparatele ÎNCHIRIATE (25.09): ale Prestatorului, date în folosință. Chiria e deja în tabelul lunar de
+// mai sus; aici e lista lor, cu valoarea care se plătește dacă un aparat nu se returnează.
+function _tabelChirie(doc, chirie) {
+  const { left, w } = _ST(doc);
+  const col = [w * 0.46, w * 0.14, w * 0.2, w * 0.2];
+  function rand(valori, gros) {
+    _incape(doc, 34);
+    const y = doc.y;
+    doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+    let x = left;
+    valori.forEach(function (v, i) {
+      doc.text(_taie(doc, v, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: i === 0 ? 'left' : 'right' });
+      x += col[i];
+    });
+    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left; doc.y = y + 22;
+  }
+  rand(['Aparat', 'Cant.', 'Chirie / lună / buc.', 'Valoare / buc.'], true);
+  (chirie.aparate || []).forEach(function (a) {
+    rand([a.nume, a.cant + ' buc', _bani(a.chirie, 'RON'), a.valoare == null ? '—' : _bani(a.valoare, 'RON')]);
+  });
+  doc.x = left; doc.y += 6;
+}
 function _semnaturi(doc, numePrestator, numeBeneficiar) {
   const { left, w } = _ST(doc);
   _incape(doc, 120);
@@ -319,6 +342,11 @@ function scrieContract(doc, date) {
   const termenPlata = firma.payment_term_days == null ? 15 : firma.payment_term_days;
   const ziFactura = firma.billing_day || 1;
   const cotaTva = em.vat_rate == null ? 19 : em.vat_rate;
+  // Cât se păstrează istoricul: cât scrie în anexa semnată (dacă s-a cumpărat mai mult), altfel regula
+  // de azi a firmei, altfel cele 12 luni incluse. Aceeași cifră după care aplicația chiar șterge
+  // (contracts.js → `pastrareFirma`) — hârtia și aplicația nu au voie să spună lucruri diferite.
+  const _pf = C.pastrareFirma(firma && firma.settings);
+  const luniIstoric = Number(anexa.pastrareLuni) || (_pf ? _pf.luni : C.LUNI_ISTORIC_INCLUSE);
 
   _antet(doc, contract, ciorna);
 
@@ -366,6 +394,13 @@ function scrieContract(doc, date) {
           'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.'
         : 'Numărul de întrebări nu este limitat.'));
   }
+  // Aparatele ÎNCHIRIATE (25.09): ale Prestatorului, cu chiria pe rând separat și durata minimă.
+  const chirieA = anexa.chirie && (anexa.chirie.aparate || []).length ? anexa.chirie : null;
+  const luniMinCh = chirieA ? (Number(chirieA.luniMin) || C.CHIRIE_LUNI_MIN) : 0;
+  if (chirieA) {
+    _p(doc, 'Aparatele de monitorizare enumerate în Anexa nr. 1, la „Aparate închiriate", sunt date Beneficiarului în folosință, cu chirie, și rămân proprietatea Prestatorului pe toată durata contractului. ' +
+      'Chiria lunară este cuprinsă în prețul de mai sus și apare pe factură pe rând separat. Durata minimă a contractului este de ' + C.numar(luniMinCh, 'lună', 'luni') + '.');
+  }
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
 
@@ -378,11 +413,24 @@ function scrieContract(doc, date) {
   _p(doc, gdprAnexa
     ? 'Condițiile prelucrării sunt cele din Anexa nr. ' + nrGdpr + ' — Acord de prelucrare a datelor, parte integrantă din prezentul contract.'
     : 'Condițiile prelucrării sunt stabilite printr-un acord de prelucrare a datelor semnat separat de părți, care completează prezentul contract.');
+  _p(doc, 'Cât contractul e în vigoare, istoricul vehiculelor (pozițiile, cursele și alertele) se păstrează ' +
+    C.numar(luniIstoric, 'lună', 'luni') + ' de la înregistrare, apoi se șterge automat. Beneficiarul își poate descărca oricând rapoartele de care are nevoie pentru o perioadă mai lungă.');
 
   _titlu(doc, 'VII. ÎNCETAREA CONTRACTULUI');
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
   _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
     (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
+  if (chirieA) {
+    // Plecarea înainte de termen: chiria lunilor rămase + demontarea, pe care o plătește el (Alin, 25.09).
+    const tDem = Number(chirieA.tarifDemontare) > 0 ? Number(chirieA.tarifDemontare) : null;
+    _p(doc, 'Dacă Beneficiarul denunță contractul înainte de împlinirea duratei minime de ' + C.numar(luniMinCh, 'lună', 'luni') +
+      ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia, precum și demontarea lor, ' +
+      (tDem ? 'la tariful de ' + _bani(tDem, 'RON') + ' pe aparat, fără TVA.' : 'la tariful de dezinstalare al Prestatorului.'));
+    // Demontarea la termen o facem NOI, fără cost (decizie Alin, 25.09: „aparatul e al nostru și îl vrem înapoi").
+    _p(doc, 'La încetarea contractului, Beneficiarul restituie aparatele închiriate: pune vehiculele la dispoziția Prestatorului pentru demontare în cel mult ' +
+      C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar. ' +
+      'Aparatele nerestituite sau deteriorate din culpa Beneficiarului se plătesc la valoarea din Anexa nr. 1.');
+  }
 
   _titlu(doc, 'VIII. DISPOZIȚII FINALE');
   _p(doc, 'Modificarea contractului se face prin act adițional scris, semnat de ambele părți. Litigiile se soluționează pe cale amiabilă, iar în lipsa unei înțelegeri, de instanțele competente de la sediul Prestatorului. Contractul se completează cu prevederile legislației române în vigoare.');
@@ -398,6 +446,11 @@ function scrieContract(doc, date) {
     .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A1.left, doc.y + 2, { width: A1.w });
   doc.x = A1.left; doc.y += 12;
   _tabelAnexa(doc, anexa);
+  if (chirieA) {
+    _titlu(doc, 'Aparate închiriate — proprietatea Prestatorului');
+    _tabelChirie(doc, chirieA);
+    _p(doc, 'Aparatele de mai sus rămân proprietatea Prestatorului. Chiria lor e cuprinsă în prețul lunar de mai sus; valoarea se plătește doar dacă un aparat nu se restituie la încetare sau e deteriorat din culpa Beneficiarului.');
+  }
   _p(doc, 'Modificarea listei de mai sus (adăugarea sau scoaterea unui vehicul) se face prin act adițional sau prin anexă nouă, semnată de ambele părți.');
   _semnaturi(doc, em.name, firma.name);
 
@@ -408,7 +461,7 @@ function scrieContract(doc, date) {
     doc.addPage();
     const AM = _ST(doc);
     doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
-      .text('ANEXA nr. 2 — Echipamente și montaj (costuri unice)', AM.left, doc.y, { width: AM.w });
+      .text('ANEXA nr. 2 — ' + (areEchip ? 'Echipamente și montaj' : 'Montaj') + ' (costuri unice)', AM.left, doc.y, { width: AM.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
     doc.x = AM.left; doc.y += 12;
@@ -429,7 +482,9 @@ function scrieContract(doc, date) {
           left, doc.y + 6, { width: w, align: 'right' });
       doc.x = left; doc.y += 16;
     }
-    _p(doc, 'Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor. Lucrările de montaj se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
+    _p(doc, (areEchip ? 'Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor. '
+      : (chirieA ? 'Aparatele montate sunt cele închiriate din Anexa nr. 1 și rămân proprietatea Prestatorului. ' : '')) +
+      'Lucrările de montaj se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
     _semnaturi(doc, em.name, firma.name);
   }
 
@@ -445,7 +500,8 @@ function scrieContract(doc, date) {
     _titlu(doc, '1. Rolurile părților');
     _p(doc, 'Beneficiarul, în calitate de OPERATOR, stabilește scopurile și mijloacele prelucrării. Prestatorul, în calitate de PERSOANĂ ÎMPUTERNICITĂ, prelucrează datele numai la instrucțiunile documentate ale Operatorului, cuprinse în prezentul acord și în contract.');
     _titlu(doc, '2. Obiectul, durata și scopul prelucrării');
-    _p(doc, 'Obiectul: furnizarea serviciului de monitorizare GPS. Durata: pe toată durata contractului. Scopul: urmărirea vehiculelor Operatorului, întocmirea rapoartelor de activitate și a alertelor, în interesul legitim al acestuia de administrare a flotei.');
+    _p(doc, 'Obiectul: furnizarea serviciului de monitorizare GPS. Durata: pe toată durata contractului; istoricul se păstrează ' +
+      C.numar(luniIstoric, 'lună', 'luni') + ' de la înregistrare, apoi se șterge automat. Scopul: urmărirea vehiculelor Operatorului, întocmirea rapoartelor de activitate și a alertelor, în interesul legitim al acestuia de administrare a flotei.');
     _titlu(doc, '3. Categoriile de date și de persoane vizate');
     _p(doc, 'Date: poziție geografică, viteză, trasee, opriri, consum și date tehnice transmise de aparat, iar acolo unde Operatorul le introduce — numele conducătorului auto, datele permisului și ale cardului de tahograf. Persoane vizate: angajații și colaboratorii Operatorului care conduc vehiculele monitorizate.');
     _titlu(doc, '4. Obligațiile Persoanei împuternicite');
@@ -455,7 +511,10 @@ function scrieContract(doc, date) {
     _titlu(doc, '6. Încălcări de securitate');
     _p(doc, 'Prestatorul îl înștiințează pe Operator fără întârziere nejustificată, în cel mult 24 de ore de la luarea la cunoștință, despre orice încălcare a securității datelor, cu informațiile de care dispune la acel moment.');
     _titlu(doc, '7. Soarta datelor la încetare');
-    _p(doc, 'La încetarea contractului, Prestatorul șterge sau restituie datele, la alegerea Operatorului exprimată în scris în termen de 30 de zile de la încetare. În lipsa unei opțiuni, datele se șterg după expirarea acestui termen, cu excepția celor pe care legea îl obligă să le păstreze.');
+    // Cifra e ACEEAȘI cu cea după care aplicația șterge singură istoricul (contracts.js) — hârtia și
+    // aplicația nu au voie să promită lucruri diferite (până pe 24.09 aplicația ținea 2 ani).
+    _p(doc, 'La încetarea contractului, Prestatorul șterge sau restituie datele, la alegerea Operatorului exprimată în scris în termen de ' +
+      C.numar(C.ZILE_DATE_DUPA_INCETARE, 'zi', 'zile') + ' de la încetare. În lipsa unei opțiuni, datele se șterg după expirarea acestui termen, cu excepția celor pe care legea îl obligă să le păstreze.');
     _titlu(doc, '8. Transferuri în afara Uniunii Europene');
     _p(doc, 'Datele se prelucrează și se stochează pe teritoriul Uniunii Europene. Orice transfer în afara UE se face doar cu garanțiile prevăzute de GDPR și cu informarea prealabilă a Operatorului.');
     _semnaturi(doc, em.name, firma.name);
@@ -582,12 +641,157 @@ function contractPdf(date) {
   return doc;
 }
 
-// Numele fișierului descărcat. Alin, 09.09: „să apară ca nume, RA TRAKS-Contract".
-// (Rapoartele folosesc „RA-Tracks - Raport …", vezi CLAUDE.md — aici e forma cerută pentru acte.)
+// Numele fișierului descărcat, după regula casei (ca rapoartele și ofertele): „RA-Tracks - Contract
+// RAT-C-2026-0001 - Transport Alfa SRL.pdf". Hotărât de Alin pe 24.09 (pe 09.09 ceruse „RA
+// TRAKS-Contract", de pe vremea când și logo-ul scria „traks").
+// Caracterele interzise în numele de fișier se scot din TOT numele, nu doar din firmă: numărul unui
+// act adițional are „/" („RAT-C-2026-0001/A1"), iar browserul îl transforma cum voia el.
 function numeFisier(contract, firma, fel) {
-  const nr = (contract && contract.number) || 'ciorna';
-  const cine = String((firma && firma.name) || '').replace(/[\\/:*?"<>|]+/g, '').trim();
-  return 'RA TRAKS-' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
+  const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
+  const nr = curat((contract && contract.number) || 'ciornă');
+  const cine = curat(firma && firma.name);
+  return 'RA-Tracks - ' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
 }
 
-module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier };
+// ─── Contractul de colaborare cu un PARTENER DE MONTAJ (24.09) ──────────────────────────────────
+// Alin: „semnăm contracte cu partenerii fix la fel ca la clienți", iar textul „fă-l tu". Aici banii
+// merg invers: partenerul (PRESTATOR) execută lucrări pentru noi (BENEFICIAR) și ne facturează pe noi.
+// Clientul nu apare pe hârtie și nu vede niciodată partenerul — pentru el montăm noi.
+// Ce contează juridic: partenerul intră la clienți și vede date ale lor (adrese, persoane de contact,
+// mașini), deci e SUBÎMPUTERNICIT GDPR al nostru (art. 28 alin. 4) — Anexa nr. 2. Tarifele sunt Anexa
+// nr. 1, înghețate la creare. De citit de un jurist înainte de primul semnat (în jurnal, la lansare).
+const montajMod = require('./montaj');
+function _tabelTarife(doc, tarife) {
+  const { left, w } = _ST(doc);
+  const t = tarife || {};
+  const randuri = montajMod.TIPURI.filter(function (x) { return t[x.k] != null && t[x.k] !== ''; });
+  if (!randuri.length) {
+    _p(doc, 'Tarifele se stabilesc în scris, pentru fiecare comandă, înainte de executarea lucrării.');
+    return;
+  }
+  const c1 = left, c2 = left + w * 0.62, c3 = left + w * 0.74, lat3 = w * 0.26;
+  _incape(doc, 40);
+  let y = doc.y;
+  doc.font('Nunito-Bold').fontSize(9).fillColor(NEGRU);
+  doc.text('Lucrare', c1, y, { width: w * 0.6, lineBreak: false });
+  doc.text('U.M.', c2, y, { width: w * 0.1, lineBreak: false });
+  doc.text('Tarif (lei, fără TVA)', c3, y, { width: lat3, align: 'right', lineBreak: false });
+  y += 14;
+  doc.moveTo(left, y - 3).lineTo(left + w, y - 3).strokeColor(LINIE).lineWidth(0.8).stroke();
+  doc.font('Nunito').fontSize(9).fillColor('#1f2937');
+  randuri.forEach(function (r) {
+    _incape(doc, 20);
+    doc.text(r.et, c1, y, { width: w * 0.6, lineBreak: false });
+    doc.text(r.um === 'km' ? 'km' : 'buc.', c2, y, { width: w * 0.1, lineBreak: false });
+    doc.text(_bani(t[r.k], 'lei'), c3, y, { width: lat3, align: 'right', lineBreak: false });
+    y += 13;
+  });
+  doc.x = left; doc.y = y + 6;
+}
+function scrieContractMontaj(doc, date) {
+  const c = date.contract || {}, p = date.partener || {}, em = date.emitent || {};
+  const { left } = _ST(doc);
+  const ciorna = c.status === 'ciorna';
+  const luni = c.months, sfarsit = c.end_at || C.calcSfarsit(c.start_at, luni);
+  const preaviz = c.notice_days == null ? 30 : c.notice_days;
+  const plata = c.plata_zile == null ? 30 : c.plata_zile;
+  const repP = c.partner_rep || p.legal_rep || {}, repN = c.our_rep || {};
+  const zona = String(c.zona || p.zona || '').trim();
+
+  _antet(doc, c, ciorna, 'CONTRACT DE COLABORARE', 'servicii de montaj pentru echipamente de monitorizare GPS');
+
+  _titlu(doc, 'I. PĂRȚILE CONTRACTANTE');
+  _parte(doc, 'PRESTATOR', {
+    name: p.name, cui: p.cui, reg_com: p.reg_com, address: p.address, iban: p.iban, bank: p.bank,
+    email: p.email, phone: p.phone, rep: [repP.name, repP.role].filter(Boolean).join(', ')
+  });
+  _parte(doc, 'BENEFICIAR', {
+    name: em.name, cui: em.cui, reg_com: em.reg_com,
+    address: [em.address, em.city, em.county].filter(Boolean).join(', '),
+    iban: em.iban, bank: em.bank, email: em.email, phone: em.phone,
+    rep: [repN.name, repN.role].filter(Boolean).join(', ')
+  });
+
+  _titlu(doc, 'II. OBIECTUL CONTRACTULUI');
+  _p(doc, 'Prestatorul execută, la comanda Beneficiarului, lucrări de montaj, demontaj, înlocuire și verificare a echipamentelor de monitorizare GPS (aparate de urmărire, module de citire a datelor din calculatorul de bord, conexiuni la tahograf) pe vehiculele clienților Beneficiarului' +
+    (zona ? ', în zona: ' + zona + '.' : ', pe teritoriul României.'));
+  _p(doc, 'Prestatorul lucrează ca subcontractant al Beneficiarului: față de clienți, lucrarea este a Beneficiarului, iar Prestatorul se prezintă ca montator al acestuia.');
+
+  _titlu(doc, 'III. COMANDA ȘI EXECUȚIA LUCRĂRILOR');
+  _p(doc, '1. Fiecare lucrare se comandă de Beneficiar în scris (email sau aplicația Beneficiarului), cu: clientul, adresa, persoana de contact, vehiculele, echipamentele și data propusă.');
+  _p(doc, '2. Prestatorul confirmă comanda sau propune o altă dată în cel mult două zile lucrătoare și execută lucrarea la data convenită cu clientul.');
+  _p(doc, '3. Montajul se face după instrucțiunile tehnice ale Beneficiarului și ale producătorului echipamentului, fără a afecta funcționarea sau garanția vehiculului.');
+  _p(doc, '4. La final, Prestatorul confirmă execuția către Beneficiar, cu: numărul de înmatriculare al vehiculului, seria (IMEI) aparatului montat, locul de montaj și fotografii ale instalației. Lucrarea se consideră recepționată după ce Beneficiarul verifică transmisia aparatului.');
+
+  _titlu(doc, 'IV. PREȚUL ȘI PLATA');
+  _p(doc, 'Tarifele sunt cele din Anexa nr. 1, în lei, fără TVA. Deplasarea se plătește pe kilometru, numai când a fost comandată. Tarifele se pot schimba doar prin act adițional scris.');
+  _p(doc, 'Prestatorul facturează lunar lucrările executate și recepționate în luna anterioară, cu lista lor (data, clientul, vehiculul, lucrarea). Beneficiarul plătește în termen de ' + C.numar(plata, 'zi', 'zile') + ' de la primirea facturii, prin transfer bancar în contul Prestatorului indicat mai sus.');
+
+  _titlu(doc, 'V. ECHIPAMENTELE');
+  _p(doc, 'Echipamentele de montat sunt proprietatea Beneficiarului sau a clientului acestuia. Prestatorul le primește pe bază de proces-verbal, le păstrează în siguranță până la montaj și returnează Beneficiarului echipamentele demontate sau nefolosite. Pentru echipamentele pierdute sau deteriorate din culpa sa, Prestatorul plătește valoarea lor de achiziție.');
+
+  _titlu(doc, 'VI. CALITATE, GARANȚIE ȘI RĂSPUNDERE');
+  _p(doc, 'Prestatorul garantează manopera timp de 12 luni de la recepție. Defectele de montaj se remediază gratuit, în cel mult cinci zile lucrătoare de la anunțarea lor. Prestatorul răspunde pentru pagubele produse vehiculelor sau clienților din culpa sa și respectă regulile de securitate și sănătate în muncă pentru personalul propriu.');
+
+  _titlu(doc, 'VII. CLIENȚII BENEFICIARULUI');
+  _p(doc, 'Pe durata contractului și 12 luni după încetarea lui, Prestatorul nu oferă direct clienților Beneficiarului, cunoscuți prin acest contract, servicii de monitorizare GPS sau de montaj pentru aceleași vehicule și nu le comunică prețurile Beneficiarului.');
+
+  _titlu(doc, 'VIII. CONFIDENȚIALITATE ȘI DATE PERSONALE');
+  _p(doc, 'Pentru executarea lucrărilor, Prestatorul primește date ale clienților Beneficiarului (denumirea, adresa, persoana de contact, vehiculele). Le folosește numai pentru lucrarea comandată, le păstrează confidențiale și le șterge după încheierea lucrării. În privința datelor cu caracter personal, Prestatorul are calitatea de SUBÎMPUTERNICIT al Beneficiarului, în condițiile din Anexa nr. 2 — Acord de prelucrare a datelor, parte integrantă din prezentul contract.');
+
+  _titlu(doc, 'IX. DURATA ȘI ÎNCETAREA');
+  _p(doc, 'Contractul intră în vigoare la data de ' + _data(c.start_at || c.signed_at) +
+    (luni ? ' și se încheie pe o durată de ' + C.numar(luni, 'lună', 'luni') + ', până la data de ' + _data(sfarsit) + '.' : ' și se încheie pe durată nedeterminată.'));
+  if (luni) {
+    _p(doc, c.auto_renew !== false
+      ? 'La împlinirea termenului, contractul se prelungește automat pe perioade succesive egale, dacă niciuna dintre părți nu îl denunță în scris cu cel puțin ' + C.numar(preaviz, 'zi', 'zile') + ' înainte de expirare.'
+      : 'Contractul nu se prelungește automat. Continuarea colaborării după împlinirea termenului se face prin act adițional scris.');
+  }
+  _p(doc, 'Contractul încetează: prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + C.numar(preaviz, 'zi', 'zile') + ' comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile. Lucrările comandate înainte de încetare se execută și se plătesc potrivit contractului.');
+
+  _titlu(doc, 'X. DISPOZIȚII FINALE');
+  _p(doc, 'Modificarea contractului se face prin act adițional scris, semnat de ambele părți. Litigiile se soluționează pe cale amiabilă, iar în lipsa unei înțelegeri, de instanțele competente de la sediul Beneficiarului. Contractul se completează cu prevederile legislației române în vigoare.');
+  _p(doc, 'Încheiat astăzi, ' + _data(c.signed_at) + ', în două exemplare originale, câte unul pentru fiecare parte.');
+  _semnaturi(doc, p.name, em.name);
+
+  // ── Anexa nr. 1: tarifele ──
+  doc.addPage();
+  const A1 = _ST(doc);
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 1 — Tarifele lucrărilor', A1.left, doc.y, { width: A1.w });
+  doc.font('Nunito').fontSize(8.5).fillColor(GRI).text('la contractul de colaborare nr. ' + _sauLinie(c.number) + ' din ' + _data(c.signed_at), A1.left, doc.y + 2, { width: A1.w });
+  doc.x = A1.left; doc.y += 12;
+  _tabelTarife(doc, c.tarife);
+
+  // ── Anexa nr. 2: acordul de subîmputernicire (GDPR) ──
+  doc.addPage();
+  const A2 = _ST(doc);
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
+  doc.font('Nunito').fontSize(8.5).fillColor(GRI).text('la contractul de colaborare nr. ' + _sauLinie(c.number) + ' din ' + _data(c.signed_at), A2.left, doc.y + 2, { width: A2.w });
+  doc.x = A2.left; doc.y += 12;
+  _titlu(doc, '1. Rolurile părților');
+  _p(doc, 'Clienții Beneficiarului sunt OPERATORI ai datelor, Beneficiarul este PERSOANA LOR ÎMPUTERNICITĂ, iar Prestatorul este SUBÎMPUTERNICIT al Beneficiarului, în sensul art. 28 alin. (4) din Regulamentul (UE) 2016/679 (GDPR), în condițiile contractelor Beneficiarului cu clienții săi.');
+  _titlu(doc, '2. Obiectul, durata și scopul');
+  _p(doc, 'Obiectul și scopul: executarea lucrărilor de montaj comandate de Beneficiar. Durata: pe durata fiecărei lucrări comandate.');
+  _titlu(doc, '3. Datele și persoanele vizate');
+  _p(doc, 'Date: denumirea și adresa clientului, numele și telefonul persoanei de contact, numerele de înmatriculare ale vehiculelor, seriile echipamentelor. Persoane vizate: angajații și colaboratorii clienților (persoane de contact, conducători auto).');
+  _titlu(doc, '4. Obligațiile Prestatorului');
+  _p(doc, 'Prestatorul: prelucrează datele numai la instrucțiunile documentate ale Beneficiarului; asigură confidențialitatea persoanelor care au acces la date; ia măsuri de securitate potrivite; nu folosește alți subîmputerniciți fără acordul scris al Beneficiarului; nu transferă datele în afara Uniunii Europene; îl înștiințează pe Beneficiar fără întârziere nejustificată, în cel mult 24 de ore, despre orice încălcare a securității datelor; îl sprijină la răspunsurile către persoanele vizate și pune la dispoziție informațiile necesare pentru a dovedi respectarea acestor obligații.');
+  _titlu(doc, '5. Soarta datelor');
+  _p(doc, 'După încheierea fiecărei lucrări, și cel târziu la încetarea contractului, Prestatorul șterge datele primite și confirmă ștergerea în scris, la cererea Beneficiarului.');
+  _semnaturi(doc, p.name, em.name);
+}
+function contractMontajPdf(date) {
+  const doc = new PDFDocument({ size: 'A4', margin: 50,
+    info: { Title: 'Contract de colaborare ' + ((date.contract && date.contract.number) || ''), Author: 'RA Tracks' } });
+  try {
+    doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
+    doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));
+  } catch (e) {
+    try { doc.registerFont('Nunito', 'Helvetica'); doc.registerFont('Nunito-Bold', 'Helvetica-Bold'); } catch (e2) {}
+  }
+  scrieContractMontaj(doc, date);
+  doc.end();
+  return doc;
+}
+
+module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier, contractMontajPdf, scrieContractMontaj };

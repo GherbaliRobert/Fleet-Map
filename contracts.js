@@ -27,6 +27,119 @@ LIPSURI.forEach(function (l) { ETICHETE[l[0]] = l[1]; });
 // Câte zile înainte de expirare începem să atragem atenția.
 const PRAG_EXPIRA_ZILE = 60;
 
+// Cât mai ținem datele unui client după încetare: 30 de zile, în care el poate cere să le primească
+// înapoi; apoi se șterg. Așa scrie în Anexa GDPR a contractului, și așa face aplicația (arhivarea unui
+// aparat = încetarea pentru el). O SINGURĂ cifră, citită și de hârtie, și de ștergerea automată, și de
+// ecran — hotărât cu Alin pe 24.09 („exact așa facem"), după ce aplicația ținea istoricul 2 ani.
+// GDPR, art. 28: la încetare, împuternicitul șterge sau returnează datele; nicio lege nu ne obligă să
+// păstrăm pozițiile GPS ale clientului. NU o face variabilă de mediu: e o promisiune semnată.
+const ZILE_DATE_DUPA_INCETARE = 30;
+
+// Cât se păstrează ISTORICUL (poziții, curse, alerte) cât contractul e în vigoare — decizie Alin,
+// 24.09, după ce am măsurat costul pe aplicația pornită: 12 luni pentru TOȚI, incluse în abonament.
+// Mai mult (24 sau 36 de luni, ori alt număr) se vinde în ofertă, se scrie pe firmă și se facturează:
+// `settings.pastrare = { luni, pretRON }`. Aplicația șterge după regula firmei, nu după o cifră globală.
+// Până pe 24.09 ținea 6 luni pentru toți, iar 24/36 de luni se vindeau și se semnau fără să se livreze.
+// NU o face variabilă de mediu: e o promisiune semnată (vezi `POSITION_RETENTION_DAYS`, retrasă).
+const LUNI_ISTORIC_INCLUSE = 12;
+// Plafon de bun-simț pentru „alt număr de luni": o greșeală de tastare (360 în loc de 36) n-ar trebui
+// să țină datele de localizare ale unor oameni 30 de ani.
+const LUNI_ISTORIC_MAX = 60;
+
+// Regula de păstrare a unei firme, din setările ei. Întoarce `null` dacă setările NU se pot citi:
+// ștergerea automată sare atunci peste firmă, în loc s-o coboare pe tăcute la 12 luni — o firmă care
+// a plătit 36 de luni și-ar pierde istoricul din cauza unui rând stricat în bază, și nu mai există cale
+// de întoarcere. Fără nimic scris = cele 12 luni incluse.
+function pastrareFirma(settings) {
+  let s = settings;
+  if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { return null; } }
+  if (s != null && typeof s !== 'object') return null;
+  const p = (s && s.pastrare) || null;
+  const luni = p ? Math.round(Number(p.luni)) : NaN;
+  if (!Number.isFinite(luni) || luni <= LUNI_ISTORIC_INCLUSE) {
+    return { luni: LUNI_ISTORIC_INCLUSE, pretRON: 0, platita: false };
+  }
+  const pret = Number(p.pretRON);
+  return {
+    luni: Math.min(luni, LUNI_ISTORIC_MAX),
+    pretRON: Number.isFinite(pret) && pret > 0 ? Math.round(pret * 100) / 100 : 0,
+    platita: true
+  };
+}
+// Ce se scrie pe firmă, din ce trimite ecranul „Abonament & plăți" sau din oferta acceptată.
+// `null` = înapoi la cele 12 luni incluse (cheia se scoate). Orice nu e un număr de luni valid → `undefined`
+// (cererea se refuză, nu se ghicește).
+function curataPastrare(b) {
+  if (b === null) return null;
+  if (!b || typeof b !== 'object') return undefined;
+  const luni = Math.round(Number(b.luni));
+  if (!Number.isFinite(luni) || luni < 1) return undefined;
+  if (luni <= LUNI_ISTORIC_INCLUSE) return null;
+  if (luni > LUNI_ISTORIC_MAX) return undefined;
+  const pret = Number(b.pretRON);
+  return { luni: luni, pretRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0 };
+}
+
+// Cât se ține JURNALUL DE AUDIT (cine a făcut ce în aplicație): 12 luni, apoi se șterge singur. Decizie
+// Alin, 24.09: „șterge-l la 12 luni dacă nu avem restricții legale". Nu avem: nicio lege nu cere o
+// durată pentru jurnalul unei aplicații (GDPR cere doar să nu ținem date mai mult decât e nevoie).
+// Documentele cu termen legal stau în tabelele LOR și nu sunt atinse: facturile (legea contabilității)
+// și contractele. Cifra e scrisă și pe pagina publică de confidențialitate — legată printr-o probă.
+const LUNI_JURNAL_AUDIT = 12;
+
+// ─── Echipamentele ÎNCHIRIATE (decizie Alin, 25.09) ──────────────────────────────────────────────
+// Nu orice client vrea să cumpere aparatele. Cine le închiriază plătește la semnare doar montajul, iar
+// lunar, pe lângă abonament, chiria aparatelor — pe rând separat, pe factură. Aparatele rămân ALE
+// NOASTRE (stoc RA Tracks) și ne revin la final. Regulile, hotărâte de Alin:
+//   • durata minimă a contractului: 24 de luni — aparatul își scoate banii din chirie, în timp;
+//   • chiria = ce ne-a costat aparatul ÷ lunile contractului, plus 50% (riscul și banii dați înainte);
+//   • montajul se plătește la semnare, ca la cumpărare;
+//   • la final, aparatele se returnează (vehiculele puse la dispoziție pentru demontare, în 15 zile).
+// Cifrele stau AICI, o dată. Pagina le cere prin `/api/admin/offers/meta`; hârtia ofertei și contractul
+// le citesc de aici. NU le face variabile de mediu: sunt promisiuni scrise pe hârtie.
+const CHIRIE_LUNI_MIN = 24;
+const CHIRIE_MARJA = 0.5;
+const CHIRIE_ZILE_RETUR = 15;
+// Chiria pe lună a UNUI aparat, în lei. Rotunjită la leu, dar niciodată sub costul curat pe lună
+// (cost ÷ luni, rotunjit în sus): rotunjirea nu are voie să ne mănânce banii aparatului. Fără cost
+// știut → `null`: nu inventăm o chirie (ar ieși un aparat dat aproape pe gratis).
+function chirieLunara(costLei, luni) {
+  const c = Number(costLei);
+  if (!Number.isFinite(c) || c <= 0) return null;
+  const n = Math.max(CHIRIE_LUNI_MIN, Math.round(Number(luni) || 0));
+  return Math.max(Math.ceil(c / n), Math.round((c / n) * (1 + CHIRIE_MARJA)));
+}
+// Chiria scrisă pe FIRMĂ (`settings.chirie`), după care se face factura și registrul. Rândurile sunt
+// cele din contract: { tip, nume, cant, pret }. `null` = firma nu închiriază nimic. Setări stricate →
+// `null` (nu se facturează o chirie ghicită).
+function chirieFirma(settings) {
+  let s = settings;
+  if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { return null; } }
+  const ch = s && typeof s === 'object' ? s.chirie : null;
+  if (!ch || !Array.isArray(ch.randuri)) return null;
+  const randuri = ch.randuri.map(_randChirie).filter(Boolean);
+  if (!randuri.length) return null;
+  const total = randuri.reduce(function (t, r) { return t + r.cant * r.pret; }, 0);
+  return { randuri: randuri, totalRON: Math.round(total * 100) / 100, luniMin: CHIRIE_LUNI_MIN };
+}
+function _randChirie(r) {
+  if (!r || typeof r !== 'object') return null;
+  const cant = Math.round(Number(r.cant));
+  const pret = Number(r.pret);
+  const nume = String(r.nume || '').trim().slice(0, 120);
+  if (!nume || !Number.isFinite(cant) || cant < 1 || !Number.isFinite(pret) || pret <= 0) return null;
+  return { tip: r.tip ? String(r.tip).replace(/[^a-z0-9]/g, '').slice(0, 20) || null : null, nume: nume, cant: cant, pret: Math.round(pret * 100) / 100 };
+}
+// Ce se scrie pe firmă. `null` = firma nu mai închiriază (cheia se scoate); ceva stricat → `undefined`
+// (cererea se refuză, nu se ghicește).
+function curataChirie(b) {
+  if (b === null) return null;
+  if (!b || typeof b !== 'object' || !Array.isArray(b.randuri)) return undefined;
+  const randuri = b.randuri.map(_randChirie);
+  if (!randuri.length || randuri.some(function (r) { return !r; })) return undefined;
+  return { randuri: randuri };
+}
+
 // Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
 // trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
 // Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
@@ -282,7 +395,73 @@ function facAnexa(vehicule, pret) {
     // rezervă din vremea pachetului de 50): hârtia promitea 50, iar firma primea nelimitat.
     out.aiQuestionsPerSeat = Math.max(0, Math.round(Number(pret.aiQuestionsPerSeat) || 0));
   }
+  // Câte luni se păstrează istoricul intră în ce se SEMNEAZĂ: hârtia o spune, iar peste un an cifra
+  // din contract nu trebuie să depindă de ce scrie azi pe firmă. Doar peste cele 12 incluse.
+  const pl = Math.round(Number(pret && pret.pastrareLuni));
+  if (Number.isFinite(pl) && pl > LUNI_ISTORIC_INCLUSE) out.pastrareLuni = Math.min(pl, LUNI_ISTORIC_MAX);
+  // Echipamentele ÎNCHIRIATE (25.09): ce aparate ale NOASTRE stau la client, cu chiria și valoarea lor
+  // (cât plătește dacă nu le returnează). Chiria e deja în `servicii` (rândurile `fel: 'chirie'`), deci
+  // și în total; lista de aici e pentru clauze: proprietatea, returul, durata minimă.
+  const ch = pret && pret.chirie;
+  if (ch && Array.isArray(ch.aparate)) {
+    const r2 = function (v) { return Math.round(v * 100) / 100; };
+    const ap = ch.aparate.map(function (a) {
+      const cant = Math.round(Number(a && a.cant)), chirie = Number(a && a.chirie), val = Number(a && a.valoare);
+      const nume = String((a && a.nume) || '').trim().slice(0, 120);
+      if (!nume || !(cant >= 1) || !(chirie > 0)) return null;
+      return { tip: a.tip ? String(a.tip).replace(/[^a-z0-9]/g, '').slice(0, 20) || null : null, nume: nume, cant: cant,
+        chirie: r2(chirie), valoare: Number.isFinite(val) && val > 0 ? r2(val) : null };
+    }).filter(Boolean);
+    // Tariful de dezinstalare, pe aparat: îl plătește clientul care pleacă înainte de durata minimă (Alin,
+    // 25.09). La termen, demontarea o facem noi, fără cost. Fără tarif știut → `null` (clauza spune regula).
+    const dem = Number(ch.tarifDemontare);
+    if (ap.length) out.chirie = { luniMin: CHIRIE_LUNI_MIN, aparate: ap, tarifDemontare: Number.isFinite(dem) && dem > 0 ? r2(dem) : null };
+  }
   return out;
+}
+
+// ─── Drumul clientului: de la ofertă la prima factură (Alin, 24.09) ──────────────────────────────
+// Alin: „pare alambicat, trec din aia, ies în aia". Drumul avea opt opriri în cinci ecrane și nimic
+// nu spunea UNDE ești pe el. Acum e o singură linie de pași, socotită AICI (o singură regulă, pentru
+// fișa firmei și pentru lista Contracte), fiecare pas cu butonul lui pe ecran.
+//
+// Stări: 'gata' · 'acum' (primul pas nefăcut — ăsta are butonul) · 'urmeaza' · 'nu_e_cazul' (ex. un
+// contract fără montaj, sau făcut fără ofertă). Un contract încheiat n-are „acum": drumul s-a terminat.
+const PASI_DRUM = [
+  ['oferta', 'Oferta'], ['trimis', 'Trimis la semnat'], ['semnat', 'Semnat'],
+  ['montaj', 'Montajul'], ['aparate', 'Aparatele la firmă'], ['factura', 'Prima factură']
+];
+const MONTAJ_EXECUTAT = ['executat', 'facturat_de_partener', 'facturat_clientului'];
+// d = { contract, areOferta, montaje: { total, executate }, aparate: N, facturi: N }
+function drumulClientului(d) {
+  const c = d && d.contract;
+  if (!c) return null;
+  const st = c.status;
+  const semnat = st === 'activ' || st === 'incheiat';
+  const trimis = semnat || st === 'trimis';
+  const mo = d.montaje || { total: 0, executate: 0 };
+  const anexa2 = c.montaj || {};
+  const cuMontaj = ((anexa2.items || []).length > 0) || (((anexa2.echipamente || {}).items || []).length > 0) || mo.total > 0;
+  const nAp = Number(d.aparate) || 0, nFa = Number(d.facturi) || 0;
+  const zi = function (ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : ''; };
+  const stari = {
+    oferta: d.areOferta ? ['gata', 'din ofertă'] : ['nu_e_cazul', 'fără ofertă'],
+    trimis: trimis ? ['gata', c.sent_at ? 'pe ' + zi(c.sent_at) + (c.sent_to ? ', la ' + c.sent_to : '') : ''] : ['urmeaza', st === 'ciorna' ? 'întâi se aprobă' : ''],
+    semnat: semnat ? ['gata', c.signed_at ? 'pe ' + zi(c.signed_at) : ''] : ['urmeaza', ''],
+    montaj: !cuMontaj ? ['nu_e_cazul', 'fără montaj'] : (mo.executate > 0
+      ? ['gata', numar(mo.executate, 'lucrare executată', 'lucrări executate')]
+      : ['urmeaza', mo.total ? numar(mo.total, 'lucrare programată', 'lucrări programate') : 'nicio lucrare încă']),
+    aparate: nAp > 0 ? ['gata', numar(nAp, 'aparat', 'aparate')] : ['urmeaza', 'niciun aparat încă'],
+    factura: nFa > 0 ? ['gata', numar(nFa, 'factură', 'facturi')] : ['urmeaza', '']
+  };
+  const pasi = PASI_DRUM.map(function (p) { return { cheie: p[0], eticheta: p[1], stare: stari[p[0]][0], detaliu: stari[p[0]][1] }; });
+  let urmatorul = null;
+  if (st !== 'incheiat') {
+    const p = pasi.filter(function (x) { return x.stare === 'urmeaza'; })[0];
+    if (p) { p.stare = 'acum'; urmatorul = p.cheie; }
+  }
+  const socotiti = pasi.filter(function (x) { return x.stare !== 'nu_e_cazul'; });
+  return { pasi: pasi, urmatorul: urmatorul, gata: socotiti.filter(function (x) { return x.stare === 'gata'; }).length, din: socotiti.length };
 }
 
 // Ce trebuie păstrat dintr-o anexă când se re-salvează DOAR lista de aparate: serviciile lunare,
@@ -291,7 +470,7 @@ function facAnexa(vehicule, pret) {
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
-  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'currency'].forEach(function (k) {
+  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
     if (a[k] != null) out[k] = a[k];
   });
   return out;
@@ -307,7 +486,10 @@ function anexaInVigoare(contract, acte) {
 }
 
 module.exports = {
-  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ETICHETE_STARE, URMATORUL_PAS, numar,
+  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
+  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
+  CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
+  PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare
 };

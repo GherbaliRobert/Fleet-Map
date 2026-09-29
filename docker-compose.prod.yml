@@ -60,8 +60,8 @@ services:
       - PG_POOL_MAX=${PG_POOL_MAX:-24}
       - SESSION_SECRET=${SESSION_SECRET:?pune SESSION_SECRET in .env}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?pune ADMIN_PASSWORD in .env}
-      # Câte zile de poziții păstrăm. TimescaleDB o aplică singur, ca politică pe tabelă.
-      - POSITION_RETENTION_DAYS=${POSITION_RETENTION_DAYS:-180}
+      # Cât se păstrează istoricul NU se mai pune aici: 12 luni pentru toți, mai mult unde firma a plătit
+      # (Abonament & plăți). Aplicația șterge singură, mașină cu mașină. POSITION_RETENTION_DAYS e retrasă.
       # Adresa reală a clientului. NU o pune pe „true" decât dacă traficul chiar vine prin Cloudflare,
       # altfel oricine își poate falsifica adresa IP într-un antet.
       - TRUST_CF_IP=${TRUST_CF_IP:-false}

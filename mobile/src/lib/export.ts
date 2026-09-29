@@ -27,7 +27,7 @@ export async function exportHistoryReport(id: number, type: string, format: 'pdf
 // ─── Un fișier făcut de SERVER: contractul, actul adițional, oferta, factura, un scan urcat ─────
 // UN SINGUR drum pentru toate hârtiile, ca pe web (`raxHartie`): telefonul nu desenează niciun PDF,
 // ci cere fișierul generatorului de pe server și i-l predă telefonului sub numele din ANTETUL
-// răspunsului („RA TRAKS-Contract RAT-C-2026-0001 - Firma.pdf"), nu sub unul compus aici.
+// răspunsului („RA-Tracks - Contract RAT-C-2026-0001 - Firma.pdf"), nu sub unul compus aici.
 //   • Cererea trece prin stratul nativ, cu tokenul: un <a href> nu cară tokenul, iar un fetch() din
 //     pagină e blocat (serverul nu trimite antete CORS — verificat 13.09, vezi VehicleDocs.tsx).
 //   • `deschide` = „Vezi": foaia telefonului se deschide ca s-o citești (vizualizatorul de PDF-uri);

@@ -195,8 +195,9 @@ T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAnte
 T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
   /function _numeDinAntet\(resp, implicit\)/.test(html)
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
-  // Patru locuri: cititorul însuși, Inventarul, hârtia ofertei și hârtia contractelor (23.09).
-  && (html.match(/_numeDinAntet\(/g) || []).length === 4
+  // Cinci locuri: cititorul însuși, Inventarul, hârtia ofertei, hârtia contractelor (23.09) și șablonul
+  // mașinilor clientului (28.09). O descărcare nouă îl folosește pe el — și se adaugă aici.
+  && (html.match(/_numeDinAntet\(/g) || []).length === 5 && /_numeDinAntet\(r, 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(html)
   && !/filename\\\*\?=\(\?:UTF-8/.test(html));
 T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
 T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));
@@ -256,7 +257,10 @@ T('pastila nu se mai sprijină pe `vertical-align`',
 sect('5e. Tarifele se schimbă acolo unde se folosesc');
 T('cantitatea și prețul stau pe același rând', /function qp\(idQ, idP, pret, um, umPret\)/.test(html));
 T('montajul are prețul lângă cantitate', /row\('Instalare dispozitiv GPS', qp\('of-qGps', 'of-mGps'/.test(html));
-T('aparatele, la fel', /row\('Teltonika FMC650', qp\('of-dq650', 'of-dFmc650'/.test(html));
+// Aparatele au rândul lor, `devRand` (25.09): cantitatea × UN preț pe același rând — vânzarea la „cumpără",
+// chiria la „închiriază". Regula e aceeași: prețul stă lângă cantitate.
+T('aparatele, la fel', /devRand\('Teltonika FMC650', 'of-dq650', 'of-dFmc650'/.test(html) &&
+  /function devRand\(eticheta, idQ, idP, pret, idCh, chirie, hint\) \{\s*\n\s*return row\(eticheta,\s*\n\s*fNum\(idQ,[\s\S]{0,260}fNum\(idP, pret,/.test(html));
 T('prețurile primesc pas zecimal (altfel browserul refuză „12,50")',
   /fNum\(idP, pret, '', 78, 0\.01\)/.test(html));
 T('butonul de salvare e scris o dată și refolosit',
@@ -276,7 +280,7 @@ const carte = (nume) => html.indexOf('var ' + nume + ' = card(');
 const undeE = (id, de) => html.indexOf("'of-" + id + "'", carte(de));
 const PASI = [
   ['pPlain', 'vehCard', 'featCard'], ['pCan', 'vehCard', 'featCard'], ['pFms', 'vehCard', 'featCard'],
-  ['pAiA', 'featCard', 'montajCard'], ['ret12', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
+  ['pAiA', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
   ['ret36', 'featCard', 'montajCard'], ['retCustom', 'featCard', 'montajCard'],
   ['mGps', 'montajCard', 'deviceCard'], ['mLvCan', 'montajCard', 'deviceCard'],
   ['mCanInc', 'montajCard', 'deviceCard'], ['mFms', 'montajCard', 'deviceCard'],
@@ -286,6 +290,10 @@ const PASI = [
 const razlete = PASI.filter(([id, de, pana]) => { const i = undeE(id, de); return !(i > carte(de) && i < carte(pana)); });
 T('fiecare preț stă în cartea lucrului pe care-l prețuiește', razlete.length === 0,
   razlete.map(x => x[0]).join(','));
+// 12 luni de istoric sunt INCLUSE pentru toți (24.09): n-au preț, deci nici câmp de preț. Un câmp
+// `of-ret12` rămas pe ecran ar fi un preț pe care nu-l citește nimeni — sau, mai rău, unul care se
+// adună pe tăcute la o ofertă de 12 luni.
+T('12 luni de istoric n-au câmp de preț (sunt incluse)', !/'of-ret12'|'of-ret6'|of-ret12"/.test(html));
 T('prețurile aparatelor stau la pasul 5', ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan']
   .every(k => { const i = undeE(k, 'deviceCard'); return i > carte('deviceCard') && i < html.indexOf('var priceCard'); }));
 T('panoul pliat cu tarife a dispărut cu totul', /var priceCard = '';/.test(html) && !/<details[^>]*>[\s\S]{0,200}Tarife lunare/.test(html));

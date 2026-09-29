@@ -28,11 +28,12 @@ const TIPURI = [
 // Echipamentele VÂNDUTE clientului (cost unic, în EURO — așa le cumpărăm și noi). Sunt un lucru
 // diferit de montaj: aparatul e marfă, montajul e manoperă. Pe hârtie stau în aceeași anexă de
 // costuri unice, dar în două tabele, ca să se vadă ce e marfă și ce e muncă.
+// `chirie` = cheia CHIRIEI lunare a aparatului în ofertă (lei/lună/buc), când clientul închiriază (25.09).
 const ECHIPAMENTE = [
-  { k: 'fmc130', et: 'Teltonika FMC130',  oferta: 'dFmc130', ofertaQ: 'd130' },
-  { k: 'fmc150', et: 'Teltonika FMC150',  oferta: 'dFmc150', ofertaQ: 'd150' },
-  { k: 'fmc650', et: 'Teltonika FMC650',  oferta: 'dFmc650', ofertaQ: 'd650' },
-  { k: 'lvcan200', et: 'Modul LV-CAN200', oferta: 'dLvCan',  ofertaQ: 'lvcan' }
+  { k: 'fmc130', et: 'Teltonika FMC130',  oferta: 'dFmc130', ofertaQ: 'd130',  chirie: 'chFmc130' },
+  { k: 'fmc150', et: 'Teltonika FMC150',  oferta: 'dFmc150', ofertaQ: 'd150',  chirie: 'chFmc150' },
+  { k: 'fmc650', et: 'Teltonika FMC650',  oferta: 'dFmc650', ofertaQ: 'd650',  chirie: 'chFmc650' },
+  { k: 'lvcan200', et: 'Modul LV-CAN200', oferta: 'dLvCan',  ofertaQ: 'lvcan', chirie: 'chLvCan' }
 ];
 const CHEI_ECHIP = ECHIPAMENTE.map(function (e) { return e.k; });
 function echipament(k) { return ECHIPAMENTE.filter(function (e) { return e.k === k; })[0] || null; }

@@ -17,13 +17,14 @@ function _transport() {
 }
 function fromAddr() { return process.env.SMTP_FROM || ('RA Tracks <' + (process.env.SMTP_USER || 'noreply@ratrack.ro') + '>'); }
 
-// send({to, subject, html, text, attachments}) → { ok, id? , error? }. Nu aruncă (best-effort).
+// send({to, subject, html, text, attachments, replyTo}) → { ok, id? , error? }. Nu aruncă (best-effort).
+// `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
 async function send(m) {
   const tx = _transport();
   if (!tx) return { ok: false, error: 'SMTP neconfigurat' };
   if (!m || !m.to) return { ok: false, error: 'Fără destinatar' };
   try {
-    const info = await tx.sendMail({ from: fromAddr(), to: m.to, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments });
+    const info = await tx.sendMail({ from: fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments });
     return { ok: true, id: info && info.messageId };
   } catch (e) { return { ok: false, error: e.message }; }
 }

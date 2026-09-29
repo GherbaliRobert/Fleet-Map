@@ -2713,6 +2713,27 @@
        formulare, pe un rând, fără să împingă tabelul în lățime. */
     .raco .ctre-act { display: flex; gap: 6px; flex-wrap: wrap; }
     .raco .ctre-act .rax-btn { padding: 6px 10px; font-size: 11.5px; }
+    /* Butonul fiecărei lipse și pasul următor, chiar pe rând (24.09). Aceeași mărime ca „Vezi/Descarcă",
+       ca rândul să rămână o singură familie de butoane. */
+    .raco .ctre-pasi { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+    .raco .ctre-pasi .raco-until { width: 100%; margin-top: 0; }
+    .raco .ctre-pas, .raco .ctre-lipsa .rax-btn { padding: 6px 10px; font-size: 11.5px; }
+    .raco .ctre-lipsa { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 5px; font-size: 11.5px; color: var(--text-muted); }
+    /* Drumul clientului (24.09): o linie de pași, cu pasul „acum" scos în față și butonul lui dedesubt. */
+    .raco .drum { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel, var(--bg-dark)); padding: 12px 14px; margin: 0 0 14px; }
+    .raco .drum-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; font-size: 12.5px; }
+    .raco .drum-cap span { color: var(--text-muted); font-size: 11.5px; }
+    .raco .drum-pasi { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+    .raco .drum-pas { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 9px; border: 1px solid transparent; min-width: 0; }
+    .raco .drum-pas i { font-size: 14px; color: var(--text-muted); }
+    .raco .drum-pas .drum-e { font-size: 11.5px; font-weight: 700; color: var(--text-primary); line-height: 1.25; }
+    .raco .drum-pas .drum-d { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; overflow-wrap: anywhere; }
+    .raco .drum-gata i { color: var(--accent); }
+    .raco .drum-acum { border-color: var(--accent); background: var(--bg-card); }
+    .raco .drum-acum i { color: var(--accent); }
+    .raco .drum-urmeaza .drum-e, .raco .drum-nu_e_cazul .drum-e { color: var(--text-muted); font-weight: 600; }
+    .raco .drum-urm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between; margin-top: 10px; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border); font-size: 12.5px; }
+    @media (max-width: 720px) { .raco .drum-pasi { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .raco .rax-co-table th { background: var(--bg-dark); padding: 10px 12px; font-weight: 800; border-bottom: 1.5px solid var(--border); }
     .raco .rax-co-table td { padding: 12px; }
     .raco .rax-co-table tbody tr:last-child td { border-bottom: none; }
@@ -3643,3 +3664,53 @@
   .aiu-cap{ flex-wrap:wrap; }
   .aiu-nume{ flex:1 1 100%; }
 }
+
+/* ── Sugestiile din Ofertare Live (25.09) — doar pentru noi, nu ajung pe hârtia clientului ── */
+.raof-sfat{ margin:10px 0 6px; padding:10px 12px; border-radius:10px; background:var(--bg-panel); border-left:3px solid var(--accent);
+  font-size:11.5px; line-height:1.55; color:var(--text-secondary); }
+.raof-sfat b{ color:var(--text-primary); }
+/* Textul etichetei în gri închis (verdele deschis pe alb abia se citea: 1,7); becul rămâne verde. */
+.raof-sfat .tag{ display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-secondary); margin-bottom:4px; }
+.raof-sfat .tag i{ color:var(--accent); }
+/* Cifra din ofertă care diferă de recomandare: portocaliu — mai închis pe tema deschisă (3,6 → peste 4,5). */
+.raof-sfat .dif{ color:var(--orange); font-weight:800; }
+body:not(.dark) .raof-sfat .dif{ color:#c2410c; }
+.raof-sfat ul{ margin:2px 0 0 16px; padding:0; }
+.raof-sfat li{ margin:3px 0; }
+.raof-sfat .rax-co-table{ font-size:11.5px; }
+.raof-sub{ font-size:10.5px; color:var(--text-secondary); line-height:1.45; margin:-5px 0 10px 161px; }
+.raof-intrebari{ margin:4px 0 10px; font-size:11.5px; color:var(--text-secondary); }
+.raof-intrebari summary{ cursor:pointer; font-weight:700; color:var(--text-primary); }
+.raof-intrebari ol{ margin:6px 0 0 18px; padding:0; line-height:1.55; }
+@media (max-width:640px){ .raof-sub{ margin-left:0; } }
+/* Verdele casei (#3FE07D) pe alb are contrast 1,7 — ca TEXT, pe tema deschisă, se folosește verdele închis. */
+.raof-sfat .ok{ color:var(--accent); font-weight:700; }
+body:not(.dark) .raof-sfat .ok{ color:#15803d; }
+/* „Mașinile clientului" (28.09): un rând = o mașină, cu rezultatul sub ea. Culorile de stare au pereche
+   pe tema deschisă (măsurate, ≥ 4,5 pe fundalul rândului). */
+.raof-ms-tag{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-secondary); margin-left:6px; }
+.raof-ms-motor{ display:flex; align-items:center; gap:8px; font-size:12.5px; margin:0 0 10px; cursor:pointer; color:var(--text-primary); }
+.raof-ms-rand{ border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin-bottom:8px; background:var(--bg-panel); }
+.raof-ms-campuri{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.raof-ms-campuri .rax-field{ margin:0; }
+.raof-ms-rez{ font-size:11.5px; line-height:1.55; margin-top:7px; color:var(--text-secondary); }
+.raof-ms-rez b{ color:var(--text-primary); }
+.raof-ms-st{ display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:11px; margin-right:6px; }
+.raof-ms-st.da{ color:var(--accent); }
+.raof-ms-st.nes{ color:var(--orange); }
+.raof-ms-st.nu, .raof-ms-lipsa{ color:#f87171; }
+body:not(.dark) .raof-ms-st.da{ color:#15803d; }
+body:not(.dark) .raof-ms-st.nes{ color:#c2410c; }
+body:not(.dark) .raof-ms-st.nu, body:not(.dark) .raof-ms-lipsa{ color:#b91c1c; }
+.raof-ms-mic{ font-size:10.5px; color:var(--text-secondary); line-height:1.5; }
+.raof-ms-mic a, .raof-ms-link{ color:var(--accent); font-weight:700; text-decoration:none; }
+body:not(.dark) .raof-ms-mic a, body:not(.dark) .raof-ms-link{ color:#15803d; }
+.raof-ms-not{ font-size:10.5px; line-height:1.5; color:var(--orange); margin-top:2px; }
+body:not(.dark) .raof-ms-not{ color:#c2410c; }
+.raof-ms-alege{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; font-size:11px; color:var(--text-secondary); }
+.raof-ms-act{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:4px 0 8px; }
+.raof-ms-link{ font-size:12px; margin-left:auto; }
+.raof-ms-sumar{ border-top:1px solid var(--border); margin-top:6px; padding-top:10px; display:flex; flex-direction:column; gap:8px; font-size:12px; color:var(--text-secondary); }
+.raof-ms-sumar b{ color:var(--text-primary); }
+.raof-ms-sumar .rax-btn{ align-self:flex-start; }
+@media (max-width:640px){ .raof-ms-link{ margin-left:0; } }

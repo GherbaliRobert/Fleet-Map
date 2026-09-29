@@ -18,6 +18,50 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## De amintit — ce așteaptă după voi
+
+Alin (25.09): *„astea notează-le și să mi le reamintești."* Vi le amintesc la fiecare raport, până le
+bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nimic de pe listă fără voi.
+
+- [ ] **Un jurist** să citească ambele contracte, cu clienții și cu partenerii de montaj (plus acordurile
+  GDPR din anexe), înainte de primul semnat. Se schimbă într-un singur loc: `contract_pdf.js`.
+  **Din 25.09, și clauzele de închiriere** (aparatele ale noastre, 24 de luni minim, chiria lunilor rămase,
+  returul în 15 zile, valoarea aparatelor nereturnate).
+- [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
+  Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
+  spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
+- [x] **HOTĂRÂT (25.09): demontarea la închiriere.** La termen o facem noi, fără cost; dacă clientul
+  pleacă înainte de 24 de luni, o plătește el, la tariful de dezinstalare din ofertă, pe lângă chiria
+  lunilor rămase. Scris în contract și pe ofertă.
+- [ ] **Contabilul: aparatele închiriate. Adăugat pe 25.09.** Rămân ale noastre, deci intră în evidența
+  firmei (mijloace fixe sau obiecte de inventar, cu amortizarea lor), iar pe factură apare rândul „Chirie
+  echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
+- [ ] **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
+  contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
+  facturile.
+- [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
+  nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri.
+- [ ] **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
+  nicăieri; „Stare producție" o arată portocaliu cât timp stă acolo.
+- [ ] **Robert: e-Factura (ANAF). Adăugat pe 25.09, găsit când am explicat „Prima factură".** Fără
+  tokenul ANAF, facturile emise în aplicație **nu ajung deloc la ANAF**. Cu token, dar fără
+  `ANAF_EFACTURA_TEST=false`, ajung în mediul de **PROBĂ** al ANAF, nu în cel real — aplicația
+  pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
+  `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
+- [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
+  FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
+- [x] **HOTĂRÂT (28.09): accesoriile rămân doar ca sfat, fără rând de preț.** Alin a ales varianta 2.
+  Cititorul ECAN02, cititorul de card al șoferului și blocarea pornirii apar doar la pasul 2 (în „Ce
+  recomanzi" și în întrebările pentru client); când un client le cere, se scriu la „Observații". Rândurile
+  de preț se fac abia când avem prețurile lor de la furnizor și un client care le vrea.
+- [ ] **Voi: de la ce zi plătește clientul abonamentul unei mașini. Adăugat pe 28.09, găsit când am
+  explicat ce urmează după semnare (exemplul cu 50 de GPS-uri).** Contractul nu spune. Aplicația, dacă e
+  bifat „Auto" la facturare, ia luna ÎNTREAGĂ și numără aparatele aflate pe firmă în clipa aceea, montate
+  sau nu. De ales: pe zile, din ziua în care aparatul transmite prima dată (recomandarea mea), sau din luna
+  de după montaj (luna montajului gratuită). Ce hotărâți se scrie și în contract.
+
+---
+
 ## 2026-09-29
 
 ### AMÂNDOI · Aplicația de telefon 1.0.3: ecranele care lipseau față de web (lotul 2) — `192e77a`
@@ -114,6 +158,17 @@ APK-ul 1.0.3 e construit și copiat pe Desktop (`RA-Tracks-1.0.3-debug.apk`).
 - „20 **de** zile", nu „20 zile", pe toate ecranele noi.
 - Rapoartele descărcate de pe telefon au numele casei, „RA-Tracks - Raport … - data", ca pe web.
 
+**După aducerea la zi cu GitHub (AMÂNDOI)** — pe 29.09 am adus aici cele 19 schimbări făcute între 24 și 28.09
+(închirierea aparatelor, stocul, montajul, păstrarea istoricului, ștergerea la 30 de zile). Telefonul a trebuit
+pus în acord cu ele:
+- **Calculatorul de ofertă de pe telefon** urmează regulile noi ale paginii web: 12 luni de păstrare incluse (a
+  plecat rândul „12 luni" cu preț și fraza „primele 6 luni"), iar la aparate se alege **„Clientul cumpără /
+  Clientul închiriază"**, cu chiria pe fiecare aparat și explicația închirierii. Propunerile de aparate (FMC130 la
+  mașini, FMC650 doar la camioane) vin tot din pagina web. Fără reparația asta, calculul de pe server cădea pe
+  pagina nouă, deci telefonul n-ar fi putut face nicio ofertă.
+- **Arhiva pe telefon** spune ce spune web-ul: „istoricul se șterge pe 12.10 (în 13 zile)", portocaliu în ultima
+  săptămână. Scria încă „istoric păstrat 2 ani".
+
 - **Ce am schimbat:** aplicația de telefon 1.0.3 (lotul 2 de paritate), reparații pe server (aparatele altor firme,
   arhivatele, mutarea în lot) și pe web (prețul FMS, datele contractului, cursul RA Insight).
 - **Ce vede fondatorul:** pe telefon, tot ce avea pe web: companii, oferte, contracte, aparate, bani. Pe web, prețul
@@ -196,6 +251,473 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
+
+## 2026-09-28
+
+### AMÂNDOI · Șablonul: marca și modelul se caută după primele litere
+
+Alin, cu o captură din Excel: *„când scrii litera a, de exemplu, nu-ți dă mărcile cu a... pe măsură ce
+scrii ar trebui filtrarea să-ți sugereze."*
+
+**De ce nu mergea:** o listă de ales obișnuită nu se strânge în Excel. Doar Microsoft 365 nou o filtrează
+cât scrii, și atunci caută literele **oriunde** în nume („a" găsește aproape toate cele 352 de mărci). Iar o
+marcă scrisă care nu era în listă deschidea o fereastră de avertizare — de-aia părea că „se blochează".
+
+**Ce e acum:**
+- **Marca:** scrii primele litere (ex. „da"), apeși Enter, apoi săgeata din celulă → vezi doar mărcile care
+  încep așa (DAF, Dacia, Daihatsu…). Merge în orice Excel, fără macro-uri (care i-ar cere clientului să
+  „activeze conținutul").
+- **Modelul are și el listă:** doar modelele mărcii de pe rând (Dacia → Bigster, Dokker, Duster, Jogger…),
+  strânse la fel după primele litere („lo" → Lodgy, Logan, Logan MCV…). Modelele sunt scrise ca în listele
+  Teltonika, deci calculatorul le găsește mai sigur.
+- Nicio fereastră de eroare la marcă și model: o marcă veche (Aro) tot trebuie să intre, o verifică
+  calculatorul la încărcare. Când dai clic pe o celulă, un mesaj mic spune ce să faci.
+
+- **Ce am schimbat:** listele din șablon se strâng după ce scrii; modelul are listă pe marcă.
+- **Ce vede fondatorul:** nimic nou în aplicație; „Descarcă șablonul" dă șablonul nou.
+- **Ce vede clientul:** șablonul Excel, cu listele care îl ajută să scrie marca și modelul corect.
+
+### AMÂNDOI · „Mașinile clientului": un șablon Excel de descărcat și de încărcat, în locul lipirii
+
+Alin: *„Lipește din Excel nu e ok. Vreau buton de export a unui șablon fix, cu ce trebuie să identifice
+calculatorul nostru, și buton de încărcare a șablonului."* Coloanele, hotărâte cu el: **Marcă, Model, An
+fabricație, Combustibil, Bucăți** — fără număr de înmatriculare (la ofertă clientul nu vrea mereu să-l dea).
+
+**Cum merge:**
+1. **„Descarcă șablonul"** → fișierul *RA-Tracks - Șablon mașini client.xlsx*: logo-ul nostru sus, două
+   rânduri de explicație cu un exemplu, apoi tabelul cu cele cinci coloane, pregătit pentru 500 de rânduri.
+   - Marca se alege dintr-o listă (mărcile de pe listele Teltonika); se poate scrie și alta — Excel doar
+     avertizează, fiindcă o marcă veche (Aro) tot trebuie să poată intra.
+   - Combustibilul se alege **doar** din listă: benzină, motorină, benzină + GPL, hibrid, electric.
+   - Anul: între 1950 și 2100; bucățile: de la 1 în sus. Altceva, Excel îl refuză cu un mesaj pe înțeles.
+2. Îl trimiți clientului (sau îl completezi tu).
+3. **„Încarcă șablonul"** → mașinile intră în listă și se caută fiecare, ca până acum. Dacă lista avea deja
+   mașini, te întreabă întâi dacă le înlocuiește. Ce n-a mers se spune **pe rândul din Excel**: „Rândul 9:
+   lipsește modelul — rândul nu l-am luat", „Rândul 11: anul «anul trecut» nu e un an".
+
+„Lipește din Excel" a fost **scos** (butonul, ușa de pe server și regula), nu ascuns.
+
+**Găsit pe drum:** biblioteca de Excel scria regulile de validare pe intervale care se suprapun (A7:A506 și
+A10:A506). Excel poate spune atunci „am găsit o problemă în fișier". Acum e o singură regulă pe coloană;
+o probă citește fișierul brut și pică dacă reapar suprapunerile.
+
+- **Ce am schimbat:** un șablon fix pentru mașinile clientului, de descărcat și de încărcat.
+- **Ce vede fondatorul:** butoanele „Descarcă șablonul" și „Încarcă șablonul" în „Mașinile clientului".
+- **Ce vede clientul:** șablonul Excel pe care i-l trimiți, cu logo-ul nostru. În aplicație, nimic.
+
+### AMÂNDOI · Oferta pune singură aparatele corecte: FMC130 la mașini, FMC650 doar la camioane
+
+Alin, la întrebarea „să pună oferta singură aparatele după recomandare?": *„DA"*.
+
+**Ce era:** din numerele de la pasul 2, calculatorul punea la pasul 5 **FMC650 — aparatul de camion — la
+toate mașinile**. Corect ieșea doar dacă apăsai „Aplică recomandarea" la pasul 4. La 100 de mașini (80 cu
+CAN, 20 de camioane): 16.800 € la aparate în loc de 11.600 € — **5.200 € în plus** pentru client.
+
+**Ce e acum:** aceeași regulă ca recomandarea, din prima: FMC130 la mașinile fără CAN și la cele cu CAN (cu
+modulul LV-CAN200 — sau FMC150, dacă comutatorul de la pasul 4 e pe FMC150), FMC650 doar la camioanele cu
+FMS, iar montajul pe măsură. Ce ai scris tu de mână într-o casetă rămâne. Ofertele deja salvate nu se schimbă.
+
+- **Ce am schimbat:** completarea automată a cantităților urmează recomandarea.
+- **Ce vede fondatorul:** pasul 5 iese direct cu aparatele potrivite; „Oferta urmează recomandarea".
+- **Ce vede clientul:** oferta pe care o primește are aparatele potrivite pentru mașinile lui.
+
+### FONDATOR · Ofertare Live: „Mașinile clientului" — scrii marca, modelul și anul, îți spune ce aparat merge
+
+Alin: *„să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact — Dacia,
+Logan 2, 2024, benzină + GPL — și calculatorul să-mi recomande ce echipament i se potrivește."* A ales
+lista oficială Teltonika (varianta 1) și ne-a trimis cele trei fișiere: LV-CAN200 (iulie 2025, 2.924 de
+vehicule), FMC150 (decembrie 2025, 2.159) și ALL-CAN300 (martie 2025, 4.199).
+
+**Unde:** Ofertare Live, o secțiune nouă între „1. Clientul" și „2. Flota clientului".
+
+**Cum merge:**
+1. Scrii mașinile clientului, câte un rând: marcă, model, an, combustibil, câte bucăți. Casetele îți
+   propun mărcile și modelele din liste. (Lipirea din Excel de aici a fost înlocuită în aceeași zi cu
+   șablonul — vezi mai sus.)
+2. Pe fiecare rând apare: **ce aparat merge** (FMC130 + LV-CAN200, FMC150, FMC650 sau FMC130 doar pentru
+   poziție), **ce date se citesc** (rezervor, consum, kilometri, GPL, baterie), pe ce rând din listă
+   (cu programul, pentru instalator) și cât e de sigur: *se potrivește* / *de verificat* / *nu e pe liste*.
+3. Poți schimba aparatul pe orice rând („Aparatul pus în ofertă").
+4. **„Trece în ofertă"** pune la pasul 2 câte mașini sunt (cu CAN, cu FMS) și la pașii 4 și 5 aparatele
+   și montajul. Prețurile nu se schimbă.
+
+**Exemplul lui Alin, pe listele adevărate:** Dacia Logan 2024, benzină + GPL → **FMC130 + LV-CAN200**,
+programul 13732. Citește rezervorul, consumul, kilometrii și **GPL-ul** (nivel și consum). FMC150 nu-l
+are (lista lui se oprește la Logan din 2020). Și scrie „de verificat": un Logan din 2024 e generația III,
+nu 2.
+
+**Cum alege:**
+- Anul contează cel mai mult: un rând „din 2013" și unul „din 2021" → pentru 2024 se ia cel din 2021.
+- Modelul mai precis întâi („Sandero Stepway" nu se confundă cu „Sandero"); „Logan" nu devine „Logan Van".
+- Electric și hibrid au programe separate, nu se amestecă. Volan pe dreapta și alte piețe nu se aleg.
+- Camion → FMC650 (priza FMS), cu îndemnul de a verifica priza și tahograful. Tractor de pe lista FMC150 → FMC150.
+- Mașina e pe ambele liste → întâi cea sigură, apoi cea care citește mai mult, apoi comutatorul de la pasul 4.
+
+**Listele noi:** Teltonika le actualizează din când în când. Din „Listele Teltonika" (link în secțiune)
+vezi ce e încărcat și încarci fișierul nou; aplicația recunoaște singură ce listă e.
+
+- **Ce am schimbat:** calculatorul de ofertă știe, din listele oficiale, ce aparat merge pe fiecare mașină.
+- **Ce vede fondatorul:** secțiunea „Mașinile clientului" și fereastra „Listele Teltonika".
+- **Ce vede clientul:** nimic. Lista nu apare pe oferta PDF — deocamdată, cum am recomandat pe 28.09.
+  Rămâne salvată în ofertă, ca s-o regăsești la redeschidere.
+
+### FONDATOR · Ofertare Live: sugestii — ce aparat și ce montaj pentru ce mașină, doar pentru tine
+
+Alin (vineri, 25.09): *„sugestii să-mi arate ce să selectez mai bine pentru ce vrea clientul… să părem
+profesioniști. Clientul nu o vede în ofertă, dar o văd eu și mă dirijează mai bine. Caută și pe net."*
+
+**Ce am căutat** (ce recomandă producătorul fiecărui aparat, ce cere legea la camioane, cum se face montajul):
+- **FMC130** — aparatul de bază: poziție, trasee, contact, viteză. Pentru date din motor are nevoie de
+  **modulul LV-CAN200**, care merge pe cele mai multe modele (în jur de 1.500) și ține instalația mașinii
+  separată de aparat.
+- **FMC150** — CAN integrat: un singur aparat, mai ieftin, dar pe mai puține modele (în jur de 600). Se
+  verifică modelul mașinii întâi.
+- **FMC650** — pentru camioane: citește priza FMS și poate descărca tahograful de la distanță.
+- **ECAN02** — citește CAN-ul fără tăiat fire: pentru mașinile în garanție.
+- **Tahograful:** cardul șoferului se descarcă la cel mult 28 de zile, tahograful la cel mult 90 — altfel amendă.
+- **e-Transport:** transporturile internaționale și mărfurile cu risc fiscal, cu amenzi mari.
+- **Montajul:** cam 20–40 de minute pe mașină, ascuns, cu proba de transmisie la final.
+
+**Ce apare în calculator** (nimic din toate astea nu ajunge pe oferta clientului):
+1. **Pasul 2, „Flota clientului":** sub numerele de mașini, caseta **„Ce recomanzi"** — pentru fiecare fel
+   de mașină, ce aparat și de ce. Plus o listă pliată, **„Întrebări de pus clientului înainte de ofertă"**
+   (7 întrebări: ce mașini are, dacă vrea consumul real, tahograf, e-Transport, garanție, unde se face
+   montajul, accesorii).
+2. **Pasul 4, „Montajul":** sus, **„Recomandarea pentru flota asta"** — un tabel cu ce recomandăm și ce e
+   acum în ofertă (diferențele cu portocaliu), un comutator pentru mașinile cu CAN (FMC130 + LV-CAN200 sau
+   FMC150) și butonul **„Aplică recomandarea în ofertă"**, care pune cantitățile la pașii 4 și 5. Prețurile
+   nu se schimbă. Sub fiecare rând de montaj, un rând mic: **când se folosește**.
+
+**Exemplu — 100 de mașini, 80 cu CAN, 20 de camioane:** recomandarea e 80 × FMC130 + 80 × LV-CAN200 +
+20 × FMC650, iar la montaj 100 × GPS, 80 × LV-CAN, 20 × FMS. Completarea automată de azi pune FMC650 la
+toate cele 100: tabelul arată diferența, butonul o repune.
+
+**Ce NU s-a schimbat:** completarea automată a cantităților a rămas cum era. Doar butonul schimbă
+cifrele. Dacă și completarea automată trebuie să urmeze recomandarea, e decizia lui Alin (în lista de sus).
+Accesoriile (ECAN02, cititorul de card al șoferului, blocarea pornirii) n-au încă rând de preț în ofertă;
+sfatul spune să fie trecute la pasul 6, „Observații".
+
+- **Ce am schimbat:** calculatorul de ofertă sfătuiește: ce aparat, ce montaj, ce să-l întrebi pe client.
+- **Ce vede fondatorul:** casetele de sfat la pașii 2 și 4, butonul „Aplică recomandarea", întrebările.
+- **Ce vede clientul:** nimic. Ce pleacă spre hârtia ofertei nu cuprinde sfaturile (păzit de probă).
+
+## 2026-09-25
+
+### AMÂNDOI · Cine pleacă înainte de 24 de luni plătește și demontarea
+
+Alin a ales „da": un client care închiriază și pleacă înainte de durata minimă plătește chiria lunilor
+rămase **și demontarea aparatelor**, la tariful de dezinstalare din ofertă (implicit 60 de lei pe aparat).
+La sfârșitul contractului, demontarea rămâne a noastră, fără cost.
+
+- **Ce am schimbat:** clauza din contract (VII) și condiția de pe ofertă spun acum și demontarea, cu cifra
+  pe aparat, luată din ofertă și trecută în Anexa nr. 1.
+- **Ce vede fondatorul:** nimic nou pe ecran; tariful e cel din „Dezinstalare echipament", la pasul 4.
+- **Ce vede clientul:** pe ofertă și în contract, cât costă demontarea dacă pleacă mai devreme.
+
+### AMÂNDOI · Cartea „5. Aparatele", mai simplă — și demontarea la termen o facem noi, gratis
+
+Alin: *„nu am văzut că apare scris automat… văd un pic că e complicată secțiunea asta 5, mă induce în
+eroare. Fă-o mai simplă."* Iar despre demontare a ales: *„noi, fără cost, când contractul ajunge la
+termen, pentru că aparatul e al nostru și îl vrem înapoi"*.
+
+- **De ce nu apărea chiria:** ea se propune din „Prețurile noastre" → „ne costă", iar pe ratrack.ro
+  acolo nu e trecut încă cât vă costă aparatele. Acum, lângă fiecare aparat închiriat, scrie ori „ne
+  costă 100 €", ori, cu portocaliu, **„trece cât ne costă"** — un link direct acolo. Caseta goală nu mai
+  tace.
+- **Un singur preț pe rând:** la „Clientul cumpără", prețul aparatului (€/buc); la „Clientul
+  închiriază", chiria (lei/lună). Nu mai stau trei casete una lângă alta. Prețul de vânzare rămâne în
+  spate, ca valoare a aparatului dacă nu se returnează.
+- Textul de sub rânduri: două propoziții, nu un paragraf.
+- **Demontarea:** la sfârșitul contractului o facem noi, fără cost — scris în contract și pe ofertă.
+
+- **Ce am schimbat:** cartea 5 arată un preț pe rând și spune de unde vine chiria; demontarea la termen e
+  gratuită, pe hârtie.
+- **Ce vede fondatorul:** o carte mai simplă, cu linkul spre „Prețurile noastre" unde lipsește costul.
+- **Ce vede clientul:** pe ofertă și în contract, că la sfârșitul contractului demontarea o facem noi,
+  fără cost.
+
+### AMÂNDOI · Aparatele se pot și închiria, iar noi avem stocul nostru de echipamente
+
+Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze de la noi pe
+toată durata contractului"* — și, pentru asta, *„trebuie să avem un stoc de echipamente, de GPS-uri,
+LV-CAN-uri"*. Hotărât cu el: **24 de luni minim, 50% marjă, montajul la semnare, aparatele ne revin la
+final, chiria pe rând separat pe factură, o singură alegere pe ofertă.**
+
+**1. Oferta: „Clientul cumpără" sau „Clientul închiriază"** (cartea „5. Aparatele")
+- La închiriere, costul unic rămâne **doar montajul**; lunar apare **chiria aparatelor**, un rând pe model.
+- Chiria se propune singură: cât ne costă aparatul („Prețurile noastre" → „ne costă") ÷ lunile
+  contractului (minim 24) + 50%. Exemplu: un aparat care ne costă 45 € (225 lei) → **14 lei pe lună**.
+  Se poate schimba de mână, când negociezi.
+- Durata contractului urcă singură la 24 de luni.
+- Un aparat închiriat fără chirie **nu se socotește la 0 lei**: rezumatul arată cu roșu ce lipsește, iar
+  oferta nu se salvează și nu se descarcă până nu completezi.
+- „Ce rămâne la noi" arată în câte luni ne întoarcem banii dați pe aparate.
+- În lista de oferte, o pastilă portocalie „închiriere".
+
+**2. Hârtiile**
+- **Oferta:** tabelul „Chiria echipamentelor — lunar", iar la condiții: aparatele rămân ale RA Tracks,
+  durata minimă de 24 de luni, returul în 15 zile.
+- **Contractul:** clauzele de închiriere — aparatele sunt ale noastre, chiria stă pe rând separat, 24 de
+  luni minim; dacă pleacă mai devreme, plătește chiria lunilor rămase; la final pune mașinile la
+  dispoziție pentru demontare, în 15 zile; ce nu returnează se plătește la valoarea din anexă. În Anexa
+  nr. 1, lista aparatelor închiriate, cu valoarea fiecăruia.
+- Un contract mai scurt de 24 de luni pe o ofertă cu închiriere **nu se poate face** (serverul refuză).
+
+**3. Factura:** rând separat, lună de lună — „Chirie echipament — Teltonika FMC650" — doar la firmele
+care închiriază. Registrul de venituri adună exact aceeași sumă. În fișa firmei, la „Abonament & plăți",
+se vede chiria (doar de citit: alte aparate sau alt preț înseamnă act adițional).
+
+**4. Stocul: Gestiune → Stoc echipamente** (rând nou în meniu, sub „Inventar dispozitive")
+- **Fiecare bucată** (GPS, modul LV-CAN), cu seria ei, cât ne-a costat și de la cine: **unde e** (în
+  depozit, la instalator, montat la client, returnat, defect, casat) și **al cui e** (al nostru sau vândut).
+- Sus: câte ai din fiecare model, și „De făcut": un model sub stocul minim („e timpul să comanzi"),
+  bucăți uitate la instalator de peste 14 zile, aparate ale noastre la firme cu contractul încheiat
+  („de recuperat").
+- Butoane: „Intrare în stoc" (seriile una pe rând; costul se propune din „Prețurile noastre"), „Stoc
+  minim", „Mută" (una sau mai multe bucăți, cu instalatorul sau firma). Clic pe serie = istoricul ei.
+- **Legătura automată:** când un aparat din stoc e legat de o firmă în „Dispozitive" (înregistrat pe ea
+  sau adoptat), trece singur pe „montat la client" — **al nostru** dacă firma închiriază, **vândut** dacă
+  nu. Un aparat necunoscut stocului se înregistrează ca înainte: stocul e evidență, nu poartă.
+- O bucată se șterge doar dacă a fost trecută din greșeală; una care a fost pe undeva se trece pe „casat".
+- Stocul intră în copia de siguranță zilnică.
+
+Probat: `verify_stoc_chirie.js`, 97 de verificări, cu server pornit (ofertă cu închiriere → contract →
+firmă → factură → stoc), plus sabotaj (scoasă chiria de pe factură și paza de 24 de luni → 8 picate).
+
+- **Ce am schimbat:** închirierea aparatelor, de la ofertă la factură, și stocul nostru de echipamente.
+- **Ce vede fondatorul:** comutatorul din ofertă, pastila „închiriere", secțiunea „Stoc echipamente",
+  chiria în fișa firmei.
+- **Ce vede clientul:** oferta și contractul cu condițiile de închiriere, iar pe factură rândul „Chirie
+  echipament". Stocul nu-l vede.
+
+## 2026-09-24
+
+### FONDATOR · Montaj: secțiune separată, cu parteneri, contracte de colaborare și toate lucrările
+
+Alin: *„în Business, secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la fel ca
+la clienți. Logica din spate o va face Robert în interfața lor."* Și despre contract: *„fă-l tu."*
+
+**Ce era.** Partenerii de montaj stăteau la coada ecranului Contracte, printre contractele clienților:
+un nume, un CUI și tarifele. Fără contract cu ei, fără datele care trebuie pe o hârtie (sediu,
+reprezentant, IBAN), iar lucrările se vedeau doar intrând în fișa fiecărui client, pe rând.
+
+**Ce e acum:** în meniul Business, imediat sub Companii, rândul **Montaj**, cu trei file.
+
+1. **Parteneri** — fișa completă a firmei care montează: CUI cu „Preia de la ANAF", Reg. Com., sediu,
+   reprezentant, email (acolo pleacă contractul), telefon, IBAN, bancă, zona în care lucrează și cât ne
+   cere pe fiecare fel de lucrare. Pe fiecare rând scrie dacă are contract; dacă n-are, butonul
+   **„Fă contract"** e chiar acolo.
+2. **Contracte cu partenerii** — același drum ca la clienți: în lucru → aprobat → trimis la semnat
+   (pe email, cu PDF-ul atașat) → semnat → încheiat. Aceleași butoane pe rând („Aprobă", „Trimite la
+   semnat", „E semnat"), fiecare lipsă cu butonul ei („Completează", „Încarcă semnat"). Semnat =
+   încuiat: alte tarife sau altă durată înseamnă contract nou. Sus, o bandă cu partenerii fără contract.
+3. **Lucrări** — toate montajele, de la toți clienții, într-o singură listă: ziua, clientul, partenerul,
+   ce s-a montat, cât plătește clientul, cât ne costă partenerul și **cât rămâne la noi**, cu totalul
+   sus și filtre pe stare și pe partener. O lucrare se programează tot din fișa clientului (de acolo
+   intră în contractul lui); aici e privirea de sus, cu butonul „La client".
+
+**Contractul l-am scris eu, cum ai cerut.** Se numește „Contract de colaborare": partenerul e
+PRESTATORUL, noi suntem BENEFICIARUL — banii merg invers față de clienți, el ne facturează pe noi.
+Ce scrie în el, pe scurt:
+- ce face și unde (zona lui);
+- cum comandăm și cum confirmă el lucrarea: numărul mașinii, seria aparatului, poze; lucrarea e
+  primită când aparatul transmite;
+- plata: el facturează lunar ce a executat, noi plătim în termenul ales de tine (30 de zile, dacă nu
+  schimbi);
+- aparatele sunt ale noastre, predate pe proces-verbal; ce pierde din vina lui, plătește;
+- garanție la montaj: 12 luni;
+- **nu ne ia clienții**: 12 luni după încetare nu le oferă direct aceleași servicii și nu le spune
+  prețurile noastre;
+- **datele clienților**: el vede adresele și oamenii clienților noștri, deci legea îl face
+  „subîmputernicitul" nostru — Anexa nr. 2 e acordul pe care GDPR îl cere pentru asta;
+- Anexa nr. 1: tarifele lui, **înghețate în ziua în care faci contractul**. Dacă între timp își schimbă
+  prețurile, bifezi „Reia tarifele de azi" — doar cât contractul nu e semnat.
+
+⚠ E scris de mine, nu de un avocat. Cât nu e aprobat, pe fiecare pagină scrie „CIORNĂ". De citit de
+un jurist înainte de primul semnat — l-am trecut în lista de lansare, lângă contractul clienților.
+
+**Ce NU am făcut, dinadins:** contul partenerului în aplicație — ce vede el, ce bifează la o lucrare,
+cum își trimite pozele. E partea lui Robert, „în interfața lor". Fișa, contractul și lista lucrărilor
+sunt gata să-l primească.
+
+**Pe drum, o capcană reparată:** salvarea unui partener fără CUI în cerere (de pildă un ecran vechi,
+care trimite doar numele și tarifele) îi **ștergea** CUI-ul, persoana de contact și notițele. Acum se
+scrie doar ce trimiți. A prins-o proba nouă, nu ochiul.
+
+**Și una prinsă de proba copiilor de siguranță:** tabela nouă cu contractele partenerilor nu intra în
+backup. Adică un contract semnat și urcat în aplicație s-ar fi pierdut la prima restaurare. Acum intră,
+ca și contractele clienților.
+
+**Și una prinsă la recitire:** butonul de ștergere a unui partener îi lua cu el și contractul semnat —
+din listă dispărea cu totul, iar hârtia nu se mai deschidea. Acum **un partener cu contract semnat nu
+se șterge**: în fișa lui e un câmp nou, **„Stare: activ / inactiv — nu mai lucrăm cu el"**. Un partener
+inactiv nu se mai propune la lucrările noi și nu mai apare la „fără contract", dar tot ce a semnat
+rămâne în dosar. Unul adăugat din greșeală (fără contract, sau doar cu o ciornă) se șterge ca înainte.
+
+Probat pe server pornit, cu un server de email fals: partener nou, contractul pe tot drumul, emailul
+chiar pleacă cu PDF-ul atașat, semnat = încuiat, al doilea contract refuzat, lista lucrărilor cu ce
+rămâne la noi (`verify_montaj_sectiune.js`). Și pe ecran, pe ambele teme: nimic sub pragul de contrast.
+
+- **Ce am schimbat:** partenerii de montaj au secțiunea lor (Business → Montaj), cu fișă completă,
+  contract de colaborare și lista tuturor lucrărilor.
+- **Ce vede fondatorul:** rândul „Montaj" în meniu, sub Companii; ecranul Contracte are acum doar
+  contractele clienților.
+- **Ce vede clientul:** nimic. Pentru el montăm noi — partenerul nu apare nicăieri în aplicația lui.
+
+### FONDATOR · Drumul clientului: o linie de pași, cu butonul pasului următor
+
+Alin: *„pare alambicat, trec din aia, ies în aia; trebuie să ușurăm asta."* Drumul unui client avea opt
+opriri în cinci ecrane (Ofertare, Companii, fișa firmei, Dispozitive, Facturare) și nimic nu spunea unde
+ești pe el.
+
+**Acum, în fișa firmei, sus pe fila Contract, e drumul întreg:**
+**Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima factură.**
+Pașii făcuți sunt bifați (cu ziua sau cu numărul: „pe 24.09", „2 aparate"), iar sub ei scrie **pasul
+următor, cu butonul lui**: „Aprobă contractul", „Trimite la semnat", „E semnat", „Programează montajul"
+(deschide direct formularul lucrării), „Adoptă aparatele" (te duce în Dispozitive, pe grupul Neasignate —
+tot singurul loc de adopție, cum ai hotărât pe 17.09), „Emite prima factură" (fereastra facturii, cu firma
+deja aleasă). Un contract fără montaj sau făcut fără ofertă sare peste pașii ăia („nu e cazul").
+
+**Și în lista Contracte**, după semnare, sub stare scrie ce urmează („urmează: montajul · 3/6 pași"), cu
+același buton. Nu mai trebuie să știi pe de rost ordinea.
+
+Probat pe server pornit: proba parcurge TOT drumul, de la ofertă la prima factură, și cere la fiecare pas
+butonul potrivit (`verify_drum.js`, 34 de verificări).
+
+- **Ce am schimbat:** drumul clientului, socotit într-un singur loc, arătat în fișa firmei și în Contracte.
+- **Ce vede fondatorul:** unde e fiecare client și ce are de făcut mai departe, cu butonul pe loc.
+- **Ce vede clientul:** nimic.
+
+### AMÂNDOI · Contracte: fiecare lipsă își are butonul, chiar pe rând — și contractul pleacă pe email
+
+Alin: *„buton de trimitere fix acolo unde lipsește."* Lista din Contracte spunea ce lipsește dintr-un
+dosar („lipsește: CUI-ul firmei, acordul GDPR"), dar ca să rezolvi intrai în fișa firmei, pe fila
+Contract, și căutai câmpul. Iar „trimis la client" era doar o bifă: contractul îl descărcai și îl
+trimiteai tu, din afara aplicației.
+
+**Acum, pe fiecare rând:**
+- **Sub stare, pasul următor:** „Aprobă" (contract în lucru) → **„Trimite la semnat"** (aprobat) →
+  **„E semnat"** (trimis). „Trimite la semnat" pleacă pe **email**, la adresa firmei, cu contractul
+  **atașat în PDF** — același PDF ca la „Descarcă". Răspunsul clientului (contractul semnat) vine la
+  adresa noastră. Starea devine singură „trimis", cu ziua și adresa. „Retrimite" rămâne la îndemână.
+- **„E semnat"** îți cere ziua semnării și fișierul semnat primit de la client, apoi trece contractul
+  în vigoare.
+- **La „Dosar", fiecare lipsă cu butonul ei:** datele firmei → **„Completează"** (o fereastră mică,
+  cu „Preia de la ANAF", reprezentant și email); actul semnat → **„Încarcă semnat"**; acordul GDPR
+  separat → **„Încarcă acordul"**; data semnării → **„Pune data"**.
+- **Contractul nu pleacă cu goluri.** Fără CUI, sediu sau reprezentant, „Trimite" refuză și îți deschide
+  direct „Completează". O ciornă nu pleacă deloc — întâi „Aprobă".
+- **Fără email configurat pe server**, butonul nu minte: în loc de „Trimite la semnat" scrie „Am trimis-o"
+  (o descarci de alături și o trimiți tu).
+- Pe drum am prins o capcană veche: salvarea obișnuită a datelor unei firme **golea câmpurile netrimise**
+  (telefon, IBAN). „Completează" are calea ei, care scrie doar ce completezi.
+
+Probat cu un server de email fals: emailul chiar pleacă, cu PDF-ul atașat și cu răspunsul către noi
+(`verify_lipsuri.js`, 45 de verificări).
+
+- **Ce am schimbat:** butoanele de pe lipsuri și pașii contractului, în lista Contracte; trimiterea pe email.
+- **Ce vede fondatorul:** în Contracte, pe fiecare rând, butonul care rezolvă lipsa sau duce contractul
+  mai departe — fără să mai intre în fișa firmei.
+- **Ce vede clientul:** un email cu contractul atașat, de semnat, la care răspunde direct nouă.
+
+### AMÂNDOI · Jurnalul de audit: 12 luni, apoi se șterge
+
+Alin: *„șterge-l la 12 luni dacă nu avem restricții legale."* Nu avem: nicio lege nu cere o durată
+pentru jurnalul unei aplicații, iar GDPR cere să nu ținem date mai mult decât e nevoie. Facturile și
+contractele, care au termene legale, stau în locul lor și nu sunt atinse.
+
+- **Ce am schimbat:** jurnalul de audit se șterge singur după 12 luni (zilnic); pagina de confidențialitate
+  scrie „12 luni" în locul golului „[ex. 12 luni]".
+- **Ce vede fondatorul:** jurnalul arată ultimul an.
+- **Ce vede clientul (administratorul firmei):** jurnalul firmei lui arată ultimul an; pe pagina publică,
+  regula scrisă.
+
+### AMÂNDOI · Istoricul: 12 luni pentru toți, 24 sau 36 de luni se vând — și chiar se țin
+
+Alin: *„12 luni pentru toți și păstrăm 24/36 de luni ca opțiune plătită."* Hotărât după ce am
+**măsurat** costul pe aplicația pornită, ca la RA Insight: 6 luni în plus de istoric costă cam
+**7 bani pe lună la un camion** (compresia face datele mai vechi de o săptămână de 14–19 ori mai mici).
+
+**Ce era.** Aplicația ținea istoricul **6 luni pentru toată lumea**. Oferta vindea însă 12, 24 și 36 de
+luni, iar contractul le semna. Nicio ștergere nu știa de ele și nicio factură nu le punea: clientul
+care plătea 24 de luni primea tot 6, și nici nu i se cerea banul.
+
+**Ce e acum.**
+- **12 luni sunt incluse pentru toți.** Oferta pornește pe „12 luni (incluse)"; varianta de 6 nu mai
+  există. Pe hârtia ofertei scrie mereu cât se păstrează istoricul.
+- **24 sau 36 de luni (sau alt număr) se vând în ofertă**, ca preț pe firmă, pe lună (50 / 100 de lei
+  din lista noastră). Când oferta devine contract, lunile se scriu **singure** pe firmă și în anexa
+  contractului — nu le mai tastează nimeni.
+- **Aplicația chiar le ține.** Ștergerea istoricului vechi (poziții, curse, alerte) merge acum după
+  firma fiecărei mașini, la câteva ore: ce e mai vechi decât scrie în contract se șterge, restul
+  rămâne. O firmă cu 36 de luni își vede și anul de acum doi ani; una pe cele 12 incluse, doar ultimul an.
+- **Ajung pe factură.** Rândul „Păstrarea istoricului — 24 de luni" apare pe factură și în venitul
+  lunar din lista de companii, cu aceeași sumă.
+- **Se schimbă din fișa firmei**, „Abonament & plăți" → „Păstrarea istoricului". Dacă cineva o
+  **coboară**, aplicația întreabă întâi, pe față: *„se șterg date, nu se mai pot aduce înapoi"*. Și
+  scrie în jurnalul de audit de la cât la cât și cine.
+- **Contractul spune cifra** (la protecția datelor și în acordul GDPR), iar fila „Contract" pune una
+  lângă alta: ce scrie în contract, cât ține aplicația și ce iese pe factură.
+- **Ștergerea veche la 180 de zile s-a scos.** Pe serverul cu TimescaleDB era o regulă a bazei de
+  date, o singură vârstă pentru toți; lăsată pe loc, ar fi tăiat la 6 luni ce promitem un an. Se scoate
+  singură la prima pornire. Variabila `POSITION_RETENTION_DAYS` nu mai e citită — dacă a rămas în
+  Railway, „Stare producție" o arată cu portocaliu, ca s-o ștergi.
+- **Un defect vechi, prins pe drum:** butonul „Șterge definitiv" al unui aparat arhivat putea șterge,
+  pe TimescaleDB, și poziții ale **altor** mașini (ștergea după un număr de rând care se repetă între
+  bucățile tabelului). Acum șterge după timp, doar mașina lui.
+- Pagina publică de confidențialitate avea un loc gol: *„Pozițiile/istoricul: [ex. 12 luni]"*. Scrie
+  acum regula adevărată, plus cele 30 de zile de după încetare.
+
+Probat pe server pornit (`verify_pastrare.js`, 84 de verificări) și pe o bază TimescaleDB ca în
+producție, cu date comprimate: politica veche dispare la pornire, iar 15.000 de poziții vechi se
+șterg în jumătate de secundă, fără erori.
+
+- **Ce am schimbat:** păstrarea istoricului după contractul fiecărei firme (12 luni incluse, 24/36 plătite),
+  oferta, factura, contractul, fișa firmei, ștergerea automată.
+- **Ce vede fondatorul:** în ofertă, „12 luni (incluse)" + prețurile pentru 24/36; în fișa firmei, blocul
+  „Păstrarea istoricului"; pe factură, rândul lui; în „Stare producție", rândul „Păstrarea istoricului".
+- **Ce vede clientul:** pe ofertă și pe contract, câte luni i se păstrează istoricul; în aplicație, istoric
+  pe 12 luni (sau cât a cumpărat) în loc de 6.
+
+### AMÂNDOI · Datele unui client se șterg la 30 de zile după încetare, cum scrie în contract
+
+Alin: *„Hârtia promite ștergerea lor după 30 de zile, cum cere și legea — exact așa facem."*
+
+**Ce era.** Contractul promitea: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le
+ștergem. Aplicația ținea însă istoricul aparatelor arhivate **2 ani**. Hârtia spunea una, aplicația
+făcea alta.
+
+**Ce e acum.**
+- Când arhivezi aparatul unui client (adică se încheie contractul pentru el), aplicația **își notează
+  ziua**. Din ziua aceea, istoricul se mai păstrează **30 de zile**: e timpul în care clientul poate
+  cere datele înapoi. Le scoți din „Istoric" → Export CSV, sau dintr-un raport.
+- **În ziua 31 se șterge singur TOT istoricul aparatului**: pozițiile, cursele (au adrese) și alertele.
+  Înainte se ștergea doar copia din arhivă, iar pozițiile rămâneau încă luni întregi în tabelul
+  obișnuit. Fiecare ștergere lasă un rând în jurnalul de audit, ca să se poată dovedi.
+- Pe ecranul „Dispozitive arhivate" fiecare aparat scrie **ziua exactă** a ștergerii: *„istoricul se
+  șterge pe 24.10.2026 (în 30 de zile)"*. În ultima săptămână textul devine portocaliu. După
+  ștergere, aparatul rămâne pe listă cu *„istoricul s-a șters"*.
+- Dacă **restaurezi** un aparat, ceasul se oprește: e iar în contract.
+- Cifra de 30 stă într-un singur loc. O citesc aceeași și hârtia contractului, și ștergerea, și ecranele.
+- Când apeși „Încheie contractul", aplicația îți amintește să arhivezi aparatele firmei.
+- Aparatele arhivate dinainte au primit ziua de azi, deci toate cele 30 de zile. Nimic nu s-a șters
+  pe nepusă masă.
+
+- **Ce am schimbat:** ștergerea istoricului la 30 de zile de la arhivare (era 2 ani).
+- **Ce vede fondatorul:** pe „Dispozitive arhivate", ziua în care se șterge fiecare istoric; pe
+  cartonașul de pe „Acasă", „istoric păstrat 30 de zile de la arhivare".
+- **Ce vede clientul:** nimic în aplicație. Pe hârtie, contractul spune aceeași cifră pe care o și aplicăm.
+
+### AMÂNDOI · Contractul se descarcă „RA-Tracks - Contract …"
+
+Alin a ales numele casei. Fișierul se cheamă acum **„RA-Tracks - Contract RAT-C-2026-0001 - Transport
+Alfa SRL.pdf"**, la fel ca rapoartele și ofertele. Actul adițional se cheamă „RA-Tracks - Act adițional …",
+cu diacritice. Pe drum am mai reparat ceva: numărul actului conține „/" („…/A1"), iar browserul
+îl strica în numele fișierului. Acum „/" se înlocuiește curat.
+
+- **Ce am schimbat:** numele fișierelor de contract și act adițional.
+- **Ce vede fondatorul:** fișierele descărcate se cheamă ca restul documentelor noastre.
+- **Ce vede clientul:** același nume pe fișierul pe care îl primește.
 
 ## 2026-09-23
 
@@ -8360,6 +8882,20 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### A. Blocante — fără astea nu dăm drumul
 
+- [ ] **(eu) Facturarea: trei probleme găsite pe 28.09, probate pe server pornit.** Aștept „da"-ul lui
+  Alin ca să le repar.
+  1. **„Plătită" poate bloca un client care a plătit tot.** Plata unei facturi pune firmei o dată de
+     „acces până la" (sfârșitul lunii de pe factură), iar la 15 zile după ea accesul se taie, cu mesajul
+     „Abonament suspendat pentru neplată". E un ceas vechi, rămas lângă regula din 09.09. Probat: factură
+     pe iulie, plătită → clientul blocat pe loc. Lună de lună, ceasul cere plata cu o zi ÎNAINTEA
+     scadenței facturii (ziua 1 + 15 zile de termen = scadența pe 16, ceasul se oprește pe 15). Dacă
+     o factură lunară nu se emite, clientul se blochează fără să datoreze nimic.
+  2. **O factură făcută de mână într-o lună oprește factura automată a acelei luni**, fără niciun semn.
+     Probat: factură pentru un aparat → abonamentul lunii n-a mai plecat.
+  3. **Factura automată nu știe de montaj.** Ia luna întreagă și numără ce e pe firmă în clipa aceea.
+     Probat: 3 aparate trecute pe firmă, niciunul montat → factură pe toată luna. Se repară după ce
+     hotărâți de la ce zi se plătește abonamentul (lista „De amintit").
+
 - [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),
   „X întrebări în plus", „peste fond: X lei/întrebare", eticheta „extra". **Nu se aprinde niciodată**
@@ -8402,10 +8938,27 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   a acordului GDPR (Anexa nr. 2), cu clauze obișnuite pentru genul ăsta de serviciu — dar scrise de
   mine, nu de un avocat. Pe fiecare pagină scrie „CIORNĂ, a se verifica juridic înainte de semnare",
   tocmai ca să nu plece așa la client. Se schimbă într-un singur loc: `contract_pdf.js`.
+  **Din 24.09, și contractul de colaborare cu partenerii de montaj** (Business → Montaj), cu acordul lui
+  de subîmputernicire GDPR (Anexa nr. 2) și clauza „nu ne ia clienții 12 luni". Tot acolo:
+  `scrieContractMontaj`.
+
+- [ ] **(voi — Robert) Contul partenerului de montaj: vede DOAR lucrările lui.** Când partenerul primește
+  cont în RA Tracks, e a treia privire, după fondator și client. Trei lucruri pe care nu trebuie să le
+  vadă niciodată: **flota și pozițiile clientului** (el montează aparatul, nu-l urmărește), **prețul
+  cerut clientului** și **ce rămâne la noi** (fila Lucrări le are pe amândouă, e a noastră) și
+  **ceilalți parteneri**. Contractul lui (Anexa nr. 2) îi dă date ale clienților doar „pentru lucrarea
+  comandată" — contul trebuie să spună același lucru.
 
 - [ ] **(voi) „Date emitent" completate.** Contractul ia datele noastre (denumire, CUI, Reg. Com.,
   sediu, IBAN, bancă) din aceeași setare ca facturile. Cât timp e goală, la „PRESTATOR" în contract
   apar linii punctate.
+
+- [ ] **(voi — Robert) e-Factura: facturile trebuie să ajungă la ANAF, în mediul REAL (25.09).**
+  Aplicația trimite singură fiecare factură la ANAF, dar numai dacă are tokenul (`ANAF_EFACTURA_TOKEN`
+  + `ANAF_CIF`). Fără el, factura se emite în aplicație și **rămâne la noi** — la ANAF nu ajunge nimic.
+  Iar `ANAF_EFACTURA_TEST` e implicit „true": cu token pus, dar fără `ANAF_EFACTURA_TEST=false`,
+  facturile merg în mediul de **probă** al ANAF, unde nu contează. Pașii: tokenul din SPV → cele trei
+  variabile pe Railway → o factură de probă → verificată în SPV că a intrat.
 
 - [ ] **(eu, pe server) Preluarea de la ANAF, încercată pe viu.** Citirea răspunsului e probată, dar
   cererea în sine n-a putut fi încercată din cutia de dezvoltare (rețeaua către ANAF e închisă
@@ -8531,25 +9084,28 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   5. **Aceeași ofertă, pe web și pe telefon, puse una lângă alta.** Proba compară cifrele la leu pe cinci oferte,
      dar merită o trecere de mână, cu PDF-urile alături. Orice diferență e o greșeală.
 
-- [ ] **(voi) Ce se întâmplă cu datele după încetarea contractului.** Hârtia (acordul GDPR din
-  contract) promite: la încetare, clientul are 30 de zile să ceară datele înapoi, apoi le ștergem.
-  Aplicația ține istoricul unui aparat arhivat **2 ani**. Legea (GDPR, art. 28) ne cere să le ștergem
-  sau să le dăm înapoi. Nu ne obligă să le păstrăm; legea contabilității ne obligă doar la contract
-  și facturi (10 ani). Trebuie aduse la un singur răspuns: ori aplicația șterge după 30 de zile, ori
-  contractul spune 2 ani (și clientul o cere în scris). De confirmat cu un jurist. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): datele după încetare — 30 de zile, apoi se șterg.** Alin: *„exact
+  așa facem"*. Aplicația face acum ce scrie în contract (vezi intrarea de la 24.09). De confirmat
+  totuși cu un jurist, la citirea întregului contract înainte de lansare.
 
-- [ ] **(voi) Păstrarea datelor 24 / 36 de luni: se vinde, se semnează, dar nu se livrează.** Oferta o
-  vinde (+50 / +100 de lei pe lună), contractul o scrie acum pe rând, dar aplicația păstrează 6 luni
-  pentru toată lumea și nu o pune pe factură. Fișa firmei o arată ca „în contract, dar nu ajunge pe
-  factură". Ori o livrăm (păstrare pe firmă, cere lucru pe bază), ori o scoatem din ofertă. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): păstrarea istoricului.** Alin: *„12 luni pentru toți și păstrăm
+  24/36 de luni ca opțiune plătită."* Aplicația ține acum exact cât scrie în contractul fiecărei firme și
+  pune opțiunea pe factură (vezi intrarea de la 24.09).
+  - [ ] **(voi) Șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu mai e citită, dar
+    „Stare producție" o arată cu portocaliu cât timp stă acolo.
+  - [ ] **(voi) Verifică în „Stare producție" rândul „TimescaleDB (compresie poziții)"** — verde = datele
+    vechi se comprimă (costul măsurat: ~7 bani pe lună în plus la un camion, pentru 6 luni în plus).
+    Portocaliu = totul ocupă de ~17 ori mai mult; atunci mutarea pe o bază cu TimescaleDB e prima grijă.
+  - [x] **HOTĂRÂT ȘI FĂCUT (24.09): jurnalul de audit — 12 luni**, apoi se șterge singur. Alin: *„șterge-l la
+    12 luni dacă nu avem restricții legale"* (nu avem). Pagina de confidențialitate scrie acum regula.
+  - [ ] **(voi) SMTP pe server**: fără el, „Trimite la semnat" din Contracte devine „Am trimis-o" (îl trimiteți
+    voi). Cu el pus, contractul pleacă singur pe email, cu PDF-ul atașat, iar răspunsul vine la adresa de
+    facturare din „Date emitent".
 
-- [ ] **(voi) Numele fișierului contractului.** Se descarcă „RA TRAKS-Contract RAT-C-… - Firma.pdf",
-  cum ai cerut pe 09.09. Între timp logo-ul a devenit „RA Tracks", iar ofertele și rapoartele se cheamă
-  „RA-Tracks - …". Îl aliniem? E o singură linie. (23.09)
+- [x] **HOTĂRÂT ȘI FĂCUT (24.09): numele fișierului contractului** — „RA-Tracks - Contract …".
 
-- [ ] **(voi) Contractele și firmele făcute ÎNAINTE de 23.09.** Au anexa veche (doar suma) și firma fără
-  preț de facturare, dacă au venit dintr-o ofertă. Chenarul „Contractul și factura" din fișa firmei le
-  arată pe fiecare. Prețul se completează din „Abonament & plăți", firmă cu firmă. (23.09)
+- [x] **NU E CAZUL (24.09): contractele făcute înainte de 23.09.** Alin: *„nu e nimic oficial, n-am
+  dat drumul la aplicație"*. Nu există clienți reali cu contracte vechi, deci nu e nimic de completat.
 
 - [x] **REZOLVAT (21.09): logo-ul scrie „RA Tracks".** Fișierele `public/logo.png` și
   `public/logo-light.png` aveau în ele „RA | traks" și ajungeau pe fiecare raport, Excel, contract
@@ -8661,6 +9217,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) Lotul 3 de paritate pe telefon: ce a apărut pe web între 24 și 28.09.** A venit odată cu aducerea la zi
+  din 29.09 și n-are încă ecran pe telefon: **Stoc echipamente**; **Montaj** ca secțiune separată (parteneri,
+  contracte de colaborare, lucrări); **drumul clientului** (linia de pași din fișa firmei) și butoanele fiecărei
+  lipse din Contracte, cu „Trimite la semnat"; **păstrarea istoricului pe firmă**, în „Abonament & plăți" (24/36 de
+  luni); la Ofertare, **„Mașinile clientului"**, sugestiile și șablonul mașinilor. Oferta cu închiriere se face
+  deja și de pe telefon.
 
 - [ ] **(voi) Instalați aplicația de telefon 1.0.3.** Ofertele se salvează de pe telefon doar din ea; 1.0.1 și 1.0.2
   primesc în continuare „ofertele se fac din web". Restul ecranelor noi apar tot doar după instalare.

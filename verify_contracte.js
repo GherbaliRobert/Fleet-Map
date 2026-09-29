@@ -258,7 +258,14 @@ T('și că trebuie verificată juridic', /A se verifica juridic înainte de semn
 // contractul e APROBAT, hârtia e curată și se poate printa. Semnul rămâne doar cât e în lucru.
 T('semnul de ciornă apare DOAR cât contractul e în lucru', /const ciorna = contract\.status === 'ciorna';/.test(cpdf));
 T('foloseşte logo-ul pentru fundal alb (vezi CLAUDE.md)', /logo-light\.png/.test(cpdf));
-T('numele fișierului e brandat', /'RA TRAKS-' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
+// Numele fișierului, după regula casei (Alin, 24.09: „RA-Tracks - Contract"). Rulat, nu doar citit.
+const numeF = require('./contract_pdf').numeFisier;
+T('numele fișierului e brandat ca restul casei',
+  numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }) === 'RA-Tracks - Contract RAT-C-2026-0001 - Transport Țăndărei SRL.pdf',
+  numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }));
+T('actul adițional nu mai are „/" în nume (numărul lui e „…/A1")',
+  !/\//.test(numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional')), numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional'));
+T('vechiul „RA TRAKS" a plecat', !/RA TRAKS/.test(cpdf));
 T('rolurile GDPR sunt scrise corect: clientul operator, noi împuternicit',
   /Beneficiarul are calitatea de OPERATOR, iar Prestatorul pe cea de PERSOANĂ ÎMPUTERNICITĂ/.test(cpdf));
 T('anexa GDPR dispare dacă acordul e act separat', /const gdprAnexa = !\(contract\.gdpr && contract\.gdpr\.kind === 'separat'\);/.test(cpdf));
@@ -330,15 +337,21 @@ if (grupBiz) {
   // randuri[0] e chiar titlul grupei („Business"); pașii încep de la al doilea.
   T('primele trei rânduri sunt exact pașii, în ordine',
     randuri.slice(1, 4).join(' → ') === 'Ofertare Live → Contracte → Companii', randuri.join(' · '));
+  // Montajul are secțiunea lui din 24.09 și stă unde îi e locul pe drum: după client, înaintea facturii.
+  T('Montaj vine după Companii și înaintea Facturării (ofertă → contract → client → montaj → factură)',
+    randuri.slice(3, 6).join(' → ') === 'Companii → Montaj → Facturare', randuri.join(' · '));
   T('Companii a plecat din Gestiune', !/data-group="gestiune"[\s\S]*?<span>Companii<\/span>/.test(html.slice(0, html.indexOf('data-group="module"'))));
   T('Gestiune a rămas cu aparatele și oamenii',
     /data-group="gestiune"[\s\S]{0,900}?<span>Dispozitive<\/span>[\s\S]{0,900}?<span>Utilizatori<\/span>/.test(html));
 }
 T('ecranul „Contracte" are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
 T('și se încarcă la deschiderea filei', /name === 'contracte'\) \{\s*\n\s*if \(window\.raxLoadContracte\)/.test(html));
+// Paza se citește din pagină și se verifică secțiune cu secțiune: lista a crescut (Montaj 24.09, Stoc 25.09)
+// și o căutare a textului exact pica la fiecare secțiune nouă, deși paza era întreagă.
+const _garda = (html.match(/window\.raxAdminTab = function \(name\) \{\s*\n\s*if \(\(([^)]*)\) && !can\('manageCompanies'\)\)/) || [])[1] || '';
 T('e strict al fondatorilor, ca și Companii',
-  /name === 'accounts' \|\| name === 'contracte'\) && !can\('manageCompanies'\)/.test(html) &&
-  /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html));
+  ['companies', 'accounts', 'contracte', 'montaj', 'stoc'].every(function (n) { return _garda.indexOf("name === '" + n + "'") >= 0; }) &&
+  /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html), _garda);
 T('ruta care dă toate contractele cere super-admin',
   /app\.get\('\/api\/contracts', requireAuth, requireSuperadmin/.test(server));
 T('ruta trimite și firmele FĂRĂ contract — aia e gaura adevărată',
@@ -361,7 +374,7 @@ T('lista vine tot din conturile de super-admin, nu din nume scrise în cod',
   /x\.role === 'superadmin' && x\.active !== false/.test(html));
 T('câmpul rămâne editabil (se poate semna și prin împuternicit)', /id="' \+ idPrefix \+ '-our"/.test(html));
 // Numele fișierului descărcat, cerut de Alin.
-T('contractul se descarcă „RA TRAKS-Contract …"', /return 'RA TRAKS-' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
+T('contractul se descarcă „RA-Tracks - Contract …"', /return 'RA-Tracks - ' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
 // Amânarea scadenței: Alin, 09.09 — „nu înțeleg, nu vreau să existe asta". Scoasă de tot.
 T('nu mai există rută de amânare a scadenței', !/\/api\/invoices\/:id\/due/.test(server));
 T('și nici funcția din spate', !/'set_due', 'invoice'/.test(server));
@@ -379,7 +392,7 @@ T('NU se face act adițional decât la un contract semnat și în vigoare',
   /if \(c\.status !== 'activ'\) \{[\s\S]{0,400}modifică-l direct, nu prin act adițional/.test(server));
 T('un act adițional SEMNAT nu se șterge', /Un act adițional semnat nu se șterge/.test(server));
 T('are PDF propriu', /app\.get\('\/api\/acte\/:id\/pdf', requireAuth, requireSuperadmin/.test(server));
-T('și se descarcă tot brandat', /contractPdf\.numeFisier\(a, co, 'Act aditional'\)/.test(server));
+T('și se descarcă tot brandat, cu diacritice', /contractPdf\.numeFisier\(a, co, 'Act adițional'\)/.test(server));
 T('actul semnat se poate urca înapoi', /app\.post\('\/api\/acte\/:id\/file', requireAuth, requireSuperadmin/.test(server));
 T('toate rutele de acte sunt ale fondatorilor',
   [...server.matchAll(/app\.(get|post|put|delete)\('(\/api\/acte[^']*|\/api\/contracts\/:id\/acte)'([^\n]*)/g)]

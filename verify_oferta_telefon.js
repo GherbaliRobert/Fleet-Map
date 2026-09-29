@@ -143,7 +143,7 @@ function flota(peste) {
     'of-aiA': false, 'of-tahograf': false, 'of-etransport': false, 'of-agenti': true,
     // `of-pAiA` e mereu în formularul web (umplut din grilă): `cfg.aiqSeat` se citește din el chiar și
     // cu RA Insight oprit. Fără el aici, blocul direct ar citi 0, iar pagina (și ruta) 14.
-    'of-pAiA': 14, 'of-aiqN': 100, 'of-aiqSeats': 1, 'of-ret': '6', 'of-retcustom-m': 0, 'of-contract': 12, 'of-notes': 'Ofertă valabilă 30 de zile de la trimitere.',
+    'of-pAiA': 14, 'of-aiqN': 100, 'of-aiqSeats': 1, 'of-ret': '12', 'of-retcustom-m': 0, 'of-contract': 12, 'of-notes': 'Ofertă valabilă 30 de zile de la trimitere.',
     'of-qGps': 0, 'of-qLvCan': 0, 'of-qCanInc': 0, 'of-qFms': 0, 'of-qUninstall': 0, 'of-qReplace': 0, 'of-kmTravel': 0,
     'of-dq130': 0, 'of-dq150': 0, 'of-dq650': 0, 'of-dqLvCan': 0,
   }, peste || {});
@@ -209,7 +209,8 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     !/onclick=|href=|class="fas /.test(JSON.stringify(nou.j.html)) && /data-act="preturi"/.test(nou.j.html.rezumat));
   T('opțiunile listelor vin din formularul web (pachetele RA Insight, păstrarea datelor)',
     egal((nou.j.formular.find((x) => x.k === 'aiqN') || {}).optiuni, [{ v: '50', et: '50 / lună' }, { v: '100', et: '100 / lună' }, { v: '150', et: '150 / lună' }, { v: '200', et: '200 / lună' }, { v: '0', et: 'nelimitat' }])
-      && (nou.j.formular.find((x) => x.k === 'ret') || {}).optiuni.length === 5,
+      // păstrarea: 12 luni (incluse), 24, 36, alt număr — fără „6 luni" (24.09)
+      && egal(((nou.j.formular.find((x) => x.k === 'ret') || {}).optiuni || []).map((o) => o.v), ['12', '24', '36', 'custom']),
     JSON.stringify((nou.j.formular.find((x) => x.k === 'aiqN') || {}).optiuni));
   T('câmpurile de preț primesc zecimale (pasul web 0,01), iar cele atinse de mână se știu',
     (nou.j.formular.find((x) => x.k === 'pPlain') || {}).pas === '0.01' && (nou.j.formular.find((x) => x.k === 'qGps') || {}).atinge === true
@@ -219,24 +220,34 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
 
   sect('2. Ce se completează singur — și ce nu');
   const c0 = nou.j.campuri;
-  T('oferta nouă pornește cu 10 vehicule și propunerile din ele', c0.nveh === '10' && c0.qGps === '10' && c0.dq650 === '10' && c0.qLvCan === '' && c0.pAiA === '14', JSON.stringify({ nveh: c0.nveh, qGps: c0.qGps, dq650: c0.dq650, pAiA: c0.pAiA }));
+  // 28.09 (Alin: „DA"): la mașini se propune FMC130 (cu LV-CAN200 la cele cu CAN); FMC650 doar la camioane.
+  T('oferta nouă pornește cu 10 vehicule și propunerile din ele (10 × FMC130, niciun FMC650)', c0.nveh === '10' && c0.qGps === '10' && c0.dq130 === '10' && !Number(c0.dq650) && c0.qLvCan === '' && c0.pAiA === '14', JSON.stringify({ nveh: c0.nveh, qGps: c0.qGps, dq130: c0.dq130, dq650: c0.dq650, pAiA: c0.pAiA }));
   T('fraza cu valabilitatea se scrie singură, din termenul serverului', c0.notes === 'Ofertă valabilă 30 de zile de la trimitere.', c0.notes);
   T('„Salvează oferta" fără client și fără nume: mesajul paginii', nou.j.salvare === null && nou.j.salvareEroare === 'Pune un nume de client sau de ofertă', nou.j.salvareEroare);
   const ev = await json('POST', '/api/admin/offers/calc', telNou, {
     campuri: Object.assign({}, c0, { nveh: '20', ncan: '5', qGps: '3', 'cl-name': 'Zebra' }), atinse: [], schimbate: ['qGps', 'nveh', 'ncan', 'cl-name'] });
   const c1 = ev.j.campuri || {};
-  T('mașinile schimbate completează cantitățile neatinse (LV-CAN 5, FMC650 20, LV-CAN200 5)', c1.qLvCan === '5' && c1.dq650 === '20' && c1.dqLvCan === '5', JSON.stringify({ qLvCan: c1.qLvCan, dq650: c1.dq650, dqLvCan: c1.dqLvCan }));
+  T('mașinile schimbate completează cantitățile neatinse (LV-CAN 5, FMC130 20, LV-CAN200 5)', c1.qLvCan === '5' && c1.dq130 === '20' && !Number(c1.dq650) && c1.dqLvCan === '5', JSON.stringify({ qLvCan: c1.qLvCan, dq130: c1.dq130, dq650: c1.dq650, dqLvCan: c1.dqLvCan }));
   T('dar „Instalare GPS", scris de mână (3), rămâne 3', c1.qGps === '3' && lista(ev.j.atinse).includes('qGps'), c1.qGps + ' / ' + JSON.stringify(ev.j.atinse));
   T('prețul contului RA Insight urcă pe treapta flotei (20 de mașini → 17 lei)', c1.pAiA === '17', c1.pAiA);
   // Data de AZI la noi, nu a serverului (care merge pe UTC): între 00:00 și 03:00, ora României, ar fi ieșit ieri.
   const aziRo = new Date().toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' });
   T('numele ofertei se scrie din client și data de azi, după ora României', c1.name === 'Ofertă Zebra · ' + aziRo, c1.name + ' vs ' + aziRo);
   const ev2 = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, c1, { pAiA: '30', nveh: '60' }), atinse: lista(ev.j.atinse).concat(['pAiA']), schimbate: ['nveh'] });
-  T('un preț RA Insight negociat nu mai e călcat de numărul de mașini', ev2.j.campuri.pAiA === '30' && ev2.j.campuri.dq650 === '60', ev2.j.campuri.pAiA + ' / ' + ev2.j.campuri.dq650);
+  T('un preț RA Insight negociat nu mai e călcat de numărul de mașini', ev2.j.campuri.pAiA === '30' && ev2.j.campuri.dq130 === '60', ev2.j.campuri.pAiA + ' / ' + ev2.j.campuri.dq130);
   const ev3 = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, ev2.j.campuri, { aiA: true, aiqN: '50' }), atinse: ev2.j.atinse, schimbate: ['aiA', 'aiqN'] });
   T('alt pachet de întrebări = altă propunere de preț (ca pe web): 60 de mașini → 25 lei', ev3.j.campuri.pAiA === '25' && !lista(ev3.j.atinse).includes('pAiA'), ev3.j.campuri.pAiA + ' / ' + JSON.stringify(ev3.j.atinse));
   T('costul RA Insight și profitul vin din pagină, doar pentru noi', /Ne costă/.test(ev3.j.html.aiqCost) && /Profitul nostru/.test(ev3.j.html.aiqCost) && ev3.j.arata.aiq === true, ev3.j.html.aiqCost.slice(0, 120));
   T('și sub RA Insight scrie cât iese pe lună', /lei × 1 cont = /.test(ev3.j.html.aiA), ev3.j.html.aiA);
+  const CTR = require('./contracts');
+  const inch = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign(faraPrefix(flota({ 'of-dq130': 20 })), { echipMod: 'inchiriaza', contract: '12' }), atinse: [], schimbate: ['echipMod'] });
+  const ic = (inch.j && inch.j.campuri) || {};
+  T('„Clientul închiriază": durata urcă la minimul închirierii, ca la apăsarea butonului pe web', inch.status === 200 && ic.echipMod === 'inchiriaza' && ic.contract === String(CTR.CHIRIE_LUNI_MIN) && inch.j.arata && inch.j.arata.inchiriere === true,
+    inch.status + ' ' + JSON.stringify({ mod: ic.echipMod, contract: ic.contract, arata: inch.j.arata }));
+  T('explicația închirierii vine din pagină, cu durata minimă', /Închiriere:/.test((inch.j.html && inch.j.html.chirieHint) || '') && new RegExp(CTR.CHIRIE_LUNI_MIN + ' de luni').test(inch.j.html.chirieHint), (inch.j.html && inch.j.html.chirieHint || '').slice(0, 120));
+  T('fără costul aparatului, chiria nu se inventează: lângă ea scrie ce lipsește', ic.chFmc130 === '' && /trece cât ne costă/.test((inch.j.chcost && inch.j.chcost.chFmc130) || ''), JSON.stringify({ ch: ic.chFmc130, cost: inch.j.chcost && inch.j.chcost.chFmc130 }));
+  const cump = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, ic, { echipMod: 'cumpara' }), atinse: inch.j.atinse, schimbate: ['echipMod'] });
+  T('și înapoi la „Clientul cumpără"', cump.j.campuri && cump.j.campuri.echipMod === 'cumpara' && cump.j.arata.inchiriere === false && !cump.j.html.chirieHint, cump.j.campuri && cump.j.campuri.echipMod);
   T('lângă fiecare preț, echivalentul în euro', /€/.test(ev3.j.echiv.pPlain || '') && /lei/.test(ev3.j.echiv.dFmc650 || ''), JSON.stringify(ev3.j.echiv).slice(0, 120));
   // „Aplică prețul propus" pune în câmp prețul unui CONT (câmpul e lei/cont), nu totalul pe toate conturile.
   const trei = await json('POST', '/api/admin/offers/calc', telNou, { campuri: faraPrefix(flota({ 'of-aiA': true, 'of-aiqSeats': 3, 'of-pAiA': 14 })), atinse: [], schimbate: [] });
@@ -281,7 +292,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     JSON.stringify({ qGps: dupaMasini.j.campuri.qGps, pCan: dupaMasini.j.campuri.pCan, dq650: dupaMasini.j.campuri.dq650 }));
   // Hârtia ofertei SALVATE: din ce s-a salvat, la cursul ei înghețat — aceeași socoteală ca pe web.
   const salvata = (lista((await json('GET', '/api/admin/offers', S)).j).find((o) => o.id === idTel)) || {};
-  const cfgS = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '6', contractMonths: 12 }, salvata.config.cfg);
+  const cfgS = Object.assign({ nVeh: 0, nCan: 0, nFms: 0, retTier: '12', contractMonths: 12 }, salvata.config.cfg);
   const pS = Object.assign({}, calculator({})._ofCalc().p, salvata.config.prices);
   const dirS = calculator({});
   const hS = JSON.parse(JSON.stringify(dirS._ofPayload(dirS._ofCalc(cfgS, pS))));

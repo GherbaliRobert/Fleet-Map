@@ -220,6 +220,14 @@ export function OfferCalc() {
     {nr(kq, 'mic', et + ' — cantitate')}<span class="of-um">{umq}</span><span class="of-x">×</span>
     {nr(kp, 'nr', et + ' — preț')}<span class="of-um">{ump}</span>{echiv(kp)}
   </>, hint);
+  const inch = v('echipMod') === 'inchiriaza';
+  const ap = (et: string, kq: string, kp: string, kch: string, hint?: string) => rand(et, <>
+    {nr(kq, 'mic', et + ' — cantitate')}<span class="of-um">buc</span><span class="of-x">×</span>
+    {inch
+      ? <>{nr(kch, 'nr', et + ' — chirie')}<span class="of-um">lei/lună</span>
+          {res && res.chcost && res.chcost[kch] ? <span class="of-eq" dangerouslySetInnerHTML={{ __html: res.chcost[kch] }} /> : null}</>
+      : <>{nr(kp, 'nr', et + ' — preț')}<span class="of-um">€/buc</span>{echiv(kp)}</>}
+  </>, hint);
   const web = (h: string | undefined, cls = 'of-hintweb') => <div class={cls} onClick={laClic} dangerouslySetInnerHTML={{ __html: h || '' }} />;
   // O funcție, nu un element: același element pus în patru cărți ar fi un singur nod mutat dintr-una în alta.
   const butonTarife = () => (
@@ -315,14 +323,14 @@ export function OfferCalc() {
                 </span>
               </div>
               {rand('Păstrare date', <>{sel('ret', 'Păstrare date', 'lat')}</>)}
-              {res && res.arata && res.arata.retCustom && rand('Custom', <>{nr('retcustom-m', 'nr', 'Luni de păstrare')}<span class="of-um">luni</span></>)}
+              {res && res.arata && res.arata.retCustom && rand('Câte luni', <>{nr('retcustom-m', 'nr', 'Luni de păstrare')}<span class="of-um">luni</span></>)}
               {rand('Durată contract', <>{nr('contract', 'nr', 'Durată contract')}<span class="of-um">luni</span></>)}
               <div class="of-sub">Cât costă păstrarea datelor, pe lună</div>
-              {pret('12 luni', 'ret12', 'lei/lună')}
-              {pret('24 luni', 'ret24', 'lei/lună')}
-              {pret('36 luni', 'ret36', 'lei/lună')}
-              {pret('Custom', 'retCustom', 'lei/lună')}
-              <div class="of-hint">Primele 6 luni sunt incluse în abonament. Se adaugă doar tariful treptei alese mai sus.</div>
+              {/* 12 luni sunt incluse pentru toți (24.09), deci n-au preț de scris — ca pe web. */}
+              {pret('24 de luni', 'ret24', 'lei/lună')}
+              {pret('36 de luni', 'ret36', 'lei/lună')}
+              {pret('Alt număr de luni', 'retCustom', 'lei/lună')}
+              <div class="of-hint">Primele 12 luni sunt incluse pentru toți. Se adaugă doar tariful treptei alese mai sus — un preț pe firmă, nu pe mașină. După semnare, aplicația păstrează exact cât scrie aici.</div>
               {butonTarife()}
             </>)}
 
@@ -345,12 +353,17 @@ export function OfferCalc() {
             </>)}
 
           {card('5. Aparatele', 'cpu',
-            'Marfa pe care o cumpără clientul, o singură dată. Prețurile sunt în euro (așa le luăm și noi), iar pe hârtie apar și în lei, la cursul BNR.',
+            'Clientul le cumpără (plătește o dată) sau le închiriază (plătește lunar, iar aparatele rămân ale noastre).',
             <>
-              {qp('Teltonika FMC130', 'dq130', 'dFmc130', 'buc', '€/buc')}
-              {qp('Teltonika FMC150', 'dq150', 'dFmc150', 'buc', '€/buc')}
-              {qp('Teltonika FMC650', 'dq650', 'dFmc650', 'buc', '€/buc')}
-              {qp('Modul LV-CAN200', 'dqLvCan', 'dLvCan', 'buc', '€/buc', 'extra, la FMC130/650')}
+              <div class="of-seg">
+                <button class={'of-b' + (!inch ? ' pri' : '')} onClick={() => schimba('echipMod', 'cumpara')} aria-pressed={!inch}><Icon name="tag" size={16} /> Clientul cumpără</button>
+                <button class={'of-b' + (inch ? ' pri' : '')} onClick={() => schimba('echipMod', 'inchiriaza')} aria-pressed={inch}><Icon name="key" size={16} /> Clientul închiriază</button>
+              </div>
+              {ap('Teltonika FMC130', 'dq130', 'dFmc130', 'chFmc130')}
+              {ap('Teltonika FMC150', 'dq150', 'dFmc150', 'chFmc150')}
+              {ap('Teltonika FMC650', 'dq650', 'dFmc650', 'chFmc650')}
+              {ap('Modul LV-CAN200', 'dqLvCan', 'dLvCan', 'chLvCan', 'extra, la FMC130/650')}
+              {inch && web(res && res.html && res.html.chirieHint)}
               {butonTarife()}
             </>)}
 
