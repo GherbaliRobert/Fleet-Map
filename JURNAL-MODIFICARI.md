@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-29
 
-### AMÂNDOI · Aplicația de telefon 1.0.3: ecranele care lipseau față de web (lotul 2) — `HASH`
+### AMÂNDOI · Aplicația de telefon 1.0.3: ecranele care lipseau față de web (lotul 2) — `192e77a`
 
 Pe 13.09 am numărat vreo 63 de lucruri de pe web care nu erau pe telefon. Lotul 1 (aplicațiile 1.0.1 și 1.0.2)
 a reparat ce era **stricat**. Lotul ăsta aduce ecranele care **lipseau**: cele ale clientului și, cum ați hotărât,
