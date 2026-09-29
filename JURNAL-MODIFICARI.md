@@ -259,6 +259,17 @@ vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuz
 - **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
 - **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
+### FONDATOR · Poarta de pe GitHub, verde din nou (iconițele telefonului)
+
+Commit-ul cu telefonul 1.0.3 (`312f04b`) a picat pe GitHub la pasul „Unit": aplicația de telefon a primit 16
+iconițe noi (fișier, descarcă, cameră, arhivă, clădire…), iar copia lor din server (`can_icons.js`, făcută de
+o unealtă din `Icon.tsx`) n-a fost refăcută. Poarta le compară octet cu octet și s-a oprit acolo — deci nici
+probele de server, nici cele de securitate n-au mai rulat pe commit-ul acela. Am rulat unealta
+(`node tools/gen-can-icons.js`): 163 de iconițe, la zi.
+
+- **Ce am schimbat:** am refăcut fișierul generat; nimic altceva.
+- **Ce vede fondatorul:** poarta verde. **Ce vede clientul:** nimic.
+
 ### AMÂNDOI · „Plătită" nu mai blochează clienți: accesul se oprește doar pentru neplată sau de mână
 
 Alin, la „Repar cele 3 probleme?": *„da"*.
