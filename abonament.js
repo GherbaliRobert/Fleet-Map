@@ -86,13 +86,16 @@ function imparte(aparate, an, luna) {
   };
 }
 
-// Un rând de factură luat pe o parte din lună: aceeași cantitate, valoarea înmulțită cu fracția, rotunjit la ban.
+// Un rând de factură luat pe o parte din lună: aceeași cantitate; prețul UNEI bucăți × fracția, rotunjit la ban,
+// iar valoarea = cantitate × preț. Până pe 29.09 se rotunjea valoarea rândului, iar factura scria
+// „10 × 24,68 = 246,77" — cantitatea înmulțită cu prețul nu dădea valoarea, nici pe hârtie, nici în e-Factura.
 function scaleaza(linie, fractie, sufix, cotaTva) {
   const vr = Number(cotaTva) || 0;
-  const net = Math.round((Number(linie.net) || 0) * fractie * 100) / 100;
   const qty = Number(linie.qty) > 0 ? Number(linie.qty) : 1;
+  const unitPrice = Math.round(((Number(linie.net) || 0) / qty) * fractie * 100) / 100;
+  const net = Math.round(unitPrice * qty * 100) / 100;
   const vat = Math.round(net * vr) / 100;
-  return { desc: String(linie.desc || '') + (sufix || ''), qty: qty, unitPrice: Math.round((net / qty) * 100) / 100,
+  return { desc: String(linie.desc || '') + (sufix || ''), qty: qty, unitPrice: unitPrice,
     vatRate: vr, net: net, vat: vat, gross: Math.round((net + vat) * 100) / 100 };
 }
 

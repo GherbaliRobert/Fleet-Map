@@ -70,7 +70,16 @@ sect('1. Regula pe zile (abonament.js)');
   T('luna se scrie cu numele ei („noiembrie 2026")', A.numeLuna(2026, 11) === 'noiembrie 2026');
   T('cheia lunii „2026-11" se citește înapoi', JSON.stringify(A.dinCheie('2026-11')) === JSON.stringify({ an: 2026, luna: 11 }) && A.dinCheie('2026-13') === null && A.dinCheie('x') === null);
   const sc = A.scaleaza({ desc: 'Abonament', qty: 2, net: 90, vat: 17.1 }, 22 / 31, ' — zile', 19);
-  T('un rând pe zile: aceeași cantitate, valoarea × fracția, rotunjit la ban', sc.qty === 2 && sc.net === 63.87 && sc.unitPrice === 31.94 && sc.vat === 12.14, JSON.stringify(sc));
+  T('un rând pe zile: aceeași cantitate, prețul bucății × fracția (45 × 22/31 = 31,94), valoarea = 2 × 31,94 = 63,88', sc.qty === 2 && sc.unitPrice === 31.94 && sc.net === 63.88 && sc.vat === 12.14, JSON.stringify(sc));
+  // Pe factură, cantitatea înmulțită cu prețul TREBUIE să dea valoarea (29.09: scria „10 × 24,68 = 246,77").
+  const stramb = [];
+  [2, 7, 10, 15, 35].forEach(function (q) { [28, 29, 30, 31].forEach(function (zl) { for (let z = 1; z <= zl; z++) {
+    [29, 45, 65, 14.5].forEach(function (pret) {
+      const r = A.scaleaza({ desc: 'x', qty: q, net: q * pret }, z / zl, '', 21);
+      if (Math.round(r.qty * r.unitPrice * 100) / 100 !== r.net || Math.abs(r.net - q * pret * z / zl) > q * 0.005 + 1e-9) stramb.push(q + '×' + pret + ' ' + z + '/' + zl + ' → ' + r.qty + '×' + r.unitPrice + '=' + r.net);
+    });
+  } }); });
+  T('pe orice rând pe zile (5 cantități × 4 luni × fiecare zi × 4 prețuri): cantitate × preț = valoare, la ban', stramb.length === 0, stramb.slice(0, 5).join(' | '));
 }
 
 sect('2. Factura lunii, pe server (bucata adevărată din server.js, cu plans.js adevărat)');
@@ -93,10 +102,11 @@ sect('2. Factura lunii, pe server (bucata adevărată din server.js, cu plans.js
   const p = f._liniiAbonament(firma, flota, 2026, 11, feat, 19, null);
   T('factura din noiembrie: 50 × 45 lei pe noiembrie întreg', p.lines.some((l) => l.desc === 'Abonament monitorizare GPS cu CAN — noiembrie 2026' && l.qty === 50 && l.net === 2250), JSON.stringify(p.lines[0]));
   const z10 = p.lines.filter((l) => /10–31\.10\.2026 \(22 de zile\)/.test(l.desc))[0];
-  T('+ cele montate pe 10 oct.: 10 × 45 × 22/31 = 319,35 lei', z10 && z10.qty === 10 && z10.net === 319.35, JSON.stringify(z10));
+  T('+ cele montate pe 10 oct.: 10 × (45 × 22/31 = 31,94) = 319,40 lei', z10 && z10.qty === 10 && z10.unitPrice === 31.94 && z10.net === 319.4, JSON.stringify(z10));
   const z14 = p.lines.filter((l) => /14–31\.10\.2026 \(18 zile\)/.test(l.desc))[0];
-  T('+ cele montate pe 14 oct.: 18 zile („18 zile", fără „de")', z14 && z14.qty === 10 && z14.net === 261.29, JSON.stringify(z14));
-  T('octombrie pe zile = 1.451,61 lei, noiembrie = 2.250 lei', Math.abs(p.subtotal - (2250 + 1451.61)) < 0.02, p.subtotal);
+  T('+ cele montate pe 14 oct.: 18 zile („18 zile", fără „de"), 10 × 26,13 = 261,30', z14 && z14.qty === 10 && z14.unitPrice === 26.13 && z14.net === 261.3, JSON.stringify(z14));
+  T('octombrie pe zile = 1.451,60 lei (319,40 + 304,80 + 290,30 + 275,80 + 261,30), noiembrie = 2.250 lei', p.subtotal === 3701.6, p.subtotal);
+  T('pe fiecare rând al facturii: cantitate × preț = valoare', p.lines.every((l) => Math.round(l.qty * l.unitPrice * 100) / 100 === l.net), p.lines.map((l) => l.qty + '×' + l.unitPrice + '=' + l.net).join(' | '));
   T('perioada de pe factură începe pe 10 octombrie', new Date(p.periodStart).getDate() === 10 && new Date(p.periodStart).getMonth() === 9);
   const oct = f._liniiAbonament(firma, flota, 2026, 10, feat, 19, null);
   T('factura din octombrie (luna montajului) nu are nimic: zilele merg pe noiembrie', oct.lines.length === 0 && oct.total === 0);

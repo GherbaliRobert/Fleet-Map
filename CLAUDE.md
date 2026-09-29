@@ -930,6 +930,12 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - Prețurile: `_liniiAbonament` cheamă **`buildInvoiceLines`** (aceeași funcție dintotdeauna) — pe o lună cu
   toate mașinile pornite, suma e IDENTICĂ cu factura veche și cu registrul. `buildInvoiceLines` rămâne și
   pentru „Contract ↔ factură" și registru (luna întreagă). Rândurile pe zile: `abonament.scaleaza`.
+- **Pe rândul pe zile se rotunjește PREȚUL unei mașini** (45 × 17/31 = 24,68), iar valoarea = cantitate × preț
+  (10 × 24,68 = 246,80). Până pe 29.09 se rotunjea valoarea și factura scria „10 × 24,68 = 246,77" — pe hârtie
+  și în e-Factura. NU întoarce la rotunjirea valorii. Păzit de `verify_abonament.js` (fiecare zi, 4 luni, 4 prețuri).
+- Scenariul complet (semnare în ianuarie, montaj întins pe februarie, neplata) a fost rulat pe server pornit cu
+  ceasul mutat, 41 de verificări: facturile din 1 februarie (1.966,90 lei) și 1 martie (2.708,10 lei) sunt cele
+  pe care le-a emis aplicația.
 - Hârtia spune regula: contractul (IV) și condițiile ofertei. Nu promite altceva decât face aplicația.
 
 ### Fiecare factură știe ce e (`invoices.fel`, `luna`)

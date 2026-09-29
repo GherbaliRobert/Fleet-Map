@@ -73,6 +73,26 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-29
 
+### AMÂNDOI · Factura pe zile: cantitatea × prețul dă acum valoarea (10 × 24,68 = 246,80)
+
+Găsit când am rulat scenariul complet cerut de Alin (Transport SRL, 50 de mașini, contract semnat pe 4
+ianuarie, montajul întins până în februarie, apoi o factură neplătită), pe aplicația pornită, cu ceasul mutat
+zi de zi. 41 de verificări, toate trecute — iar asta a fost singura strâmbătate.
+
+**Ce era:** pe rândurile pe zile se rotunjea **valoarea** rândului, iar prețul se socotea după ea. Factura din
+1 februarie scria „10 × 24,68 = 246,77": un contabil înmulțește și îi iese 246,80. La fel pleca și la ANAF.
+
+**Ce e acum:** se rotunjește **prețul unei mașini** (45 lei × 17 zile din 31 = 24,68 lei), iar valoarea e
+cantitatea × prețul: 10 × 24,68 = **246,80 lei**. Diferența e de câțiva bani pe factură (în scenariu, factura
+din 1 februarie: 1.966,90 lei fără TVA, în loc de 1.966,93). Rândurile de lună întreagă nu se schimbă deloc.
+
+Tot aici: un bloc din 16.09 stătea, în jurnal, în mijlocul zilei de azi (intrările de pe 29.09 păreau scrise
+pe 16.09). L-am mutat la locul lui, neschimbat.
+
+- **Ce am schimbat:** felul în care se rotunjește rândul pe zile. Proba îl verifică pe fiecare zi a patru luni.
+- **Ce vede fondatorul:** facturile pe zile se verifică cu ochiul, rând cu rând.
+- **Ce vede clientul:** aceleași facturi, cu socoteala corectă pe fiecare rând.
+
 ### AMÂNDOI · Aplicația de telefon 1.0.3: ecranele care lipseau față de web (lotul 2) — `192e77a`
 
 Pe 13.09 am numărat vreo 63 de lucruri de pe web care nu erau pe telefon. Lotul 1 (aplicațiile 1.0.1 și 1.0.2)
@@ -184,83 +204,6 @@ pus în acord cu ele:
   FMS rămâne la salvare și datele contractului nu mai sar.
 - **Ce vede clientul:** pe telefon, tot ce are pe web. Nu mai vede aparatele altor firme și nici pe cele arhivate.
 
-## 2026-09-16
-
-### AMÂNDOI · Parola nu mai există. Trimitem un link, omul și-o pune singur
-
-Alin, despre ecranul Utilizatori: *„PAROLA NU EXISTĂ — noi trimitem link, și adminul firmei, clientul
-își setează parola, la fel își gestionează și conturile."*
-
-**Ce era.** În două locuri se putea scrie parola altui om: o casetă la deschiderea contului și încă
-una, „Parolă nouă", în fișa lui. Adică cineva ajungea să știe parola altcuiva, iar parola aia circula
-pe telefon sau pe WhatsApp. În plus, fără server de email, aplicația **refuza** să deschidă un cont și
-te trimitea înapoi la parola scrisă de mână.
-
-**Ce e acum.** Nicio casetă de parolă, nicăieri. Contul se deschide pe o adresă de email, pleacă un
-link, omul își pune singur parola. Pe fiecare rând din listă e **un singur buton — „Trimite link de
-parolă"** — care acoperă și invitația care n-a ajuns (a căzut în spam), și parola uitată. Erau două
-nevoi și zero butoane; acum e un buton.
-
-Și lucrul care lipsea: **când emailul nu poate pleca, primești linkul pe ecran**, copiat deja, ca să
-i-l dai omului cum poți. Contul nu mai rămâne blocat din cauza unui server de email. Regula s-a mutat
-și în adâncime: ruta prin care un administrator seta parola altcuiva a fost **ștearsă de pe server**,
-nu doar ascunsă din ecran — un buton ascuns tot poate fi apăsat de cine îi știe adresa. Fiecare link
-trimis lasă un rând în jurnalul de audit, iar mai mult de cinci pe oră către același cont se refuză,
-ca butonul să nu devină un robinet de emailuri pe reputația domeniului nostru.
-
-- **Ce am schimbat:** parolele nu se mai scriu de nimeni, în afară de omul care le folosește.
-- **Ce vede fondatorul:** un buton de trimis linkul pe fiecare rând, în Utilizatori și în Conturi.
-- **Ce vede clientul:** același lucru, pentru oamenii firmei lui.
-
-### AMÂNDOI · Utilizatori: se vede cine n-a intrat, cine nu vede nimic și cine costă
-
-Opt lucruri cerute pentru cardul **Utilizatori**, într-un lot. Ecranul e ACELAȘI în amândouă
-verticalele — fondatorul îl are în Administrare, adminul firmei în **Setări → Conturi și roluri** —
-așa că fiecare schimbare a fost gândită de două ori: ce înseamnă pentru noi, ce înseamnă pentru el.
-
-**1. Contul care n-a intrat niciodată e strigat.** Înainte scria „niciodată" cu gri, la coada unui
-rând mic. Acum e un semn portocaliu, cu butonul de retrimis linkul chiar lângă el. Ăsta e lucrul care
-se strică cel mai des: invitația cade în spam, omul nu-și pune parola, și nimeni nu observă până sună.
-
-**2. Filtre rapide cu numere:** *Toți · N-au intrat niciodată · Fără acces · Dezactivate · Cu RA
-Insight · Admini*. Numerele se socotesc pe lista întreagă, nu pe ce a rămas după căutare — altfel
-„N-au intrat niciodată: 0" ar minți doar pentru că ai scris ceva în casetă. Ce nu există nu ocupă loc.
-
-**3. Căutare adevărată:** nume, email, telefon, rolul așa cum l-a botezat firma — iar la fondator și
-numele companiei. Scrisă fără diacritice găsește și cu: „stefan" îl găsește pe „Ștefan".
-
-**4. „Fără acces", scris portocaliu — dar numai la client.** Un dispecer căruia nu i-ai bifat nicio
-mașină deschide aplicația și vede un ecran gol; crede că s-a stricat și sună la suport. Acum rândul
-lui spune *„nu vede niciun vehicul — atribuie-i din Editează"*. **La fondator semnul nu se aprinde**:
-împărțirea mașinilor pe oamenii unei firme e gospodăria adminului ei, nu a noastră (decizia lui Alin).
-
-**5. Conturile cu RA Insight, numărate sus.** Bifa se dă pe om, dar suma se face pe firmă. Acum scrie
-„3 conturi cu RA Insight — la factură intră vârful lunii". O firmă putea aprinde cinci conturi fără
-să-și dea seama ce a făcut; acum vede și ea, nu doar noi.
-
-**6. „Ultima logare" pe înțeles:** *azi · ieri · acum 9 zile*, cu ora exactă rămasă la hover. După 40
-de zile de liniște se face portocaliu — iar la client scrie și ce înseamnă: *„cont nefolosit de 40 de
-zile — dezactivează-l dacă omul nu mai lucrează aici"*. Aceeași cifră, două înțelesuri: pentru noi e
-un client care se stinge, pentru el e o ușă lăsată deschisă după cineva care a plecat din firmă.
-
-**7. Cartonașul de pe „Acasă" spune starea**, nu doar numărul: sub „7 Utilizatori" scrie *„2 n-au
-intrat niciodată · 1 fără acces"* — sau *„toți au intrat"*.
-
-**8. Accesul temporar se vede în rând:** *expiră azi · expiră în 3 zile · acces până la 22.09*.
-Conturile demo aprobate expiră; până acum aflai doar intrând în fișa omului.
-
-Plus **sortare** (nume, rol, ultima logare — cine n-a intrat niciodată stă primul) și, **pe telefon**,
-fiecare om devine cartonaș, nu un rând de opt bucăți înghesuite.
-
-**Ce NU am făcut, și de ce:** fără export în Excel. La Companii avea sens, e registrul de clienți.
-Aici lista e nume, emailuri și telefoane de oameni — date personale care ies din aplicație. Dacă îl
-vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuzat de server, cu urmă
-în audit.
-
-- **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
-- **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
-- **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
-
 ### AMÂNDOI · Contractul și oferta: aparatele în avans, montajul în 30 de zile de la încasare
 
 Alin, la cele trei întrebări: *„1.A, 2.DA, 3.DA"*.
@@ -331,7 +274,7 @@ Alin, la „De la ce zi plătește clientul abonamentul unei mașini?": *„1. A
 2. **zilele din octombrie** pentru mașinile pornite în octombrie, din ziua pornirii până pe 31.
 
 Exemplul tău — 50 de mașini cu CAN (45 lei), montate 10–14 octombrie, câte 10 pe zi: factura din
-1 noiembrie = 50 × 45 = **2.250 lei** pentru noiembrie + **1.451,61 lei** pentru zilele din octombrie
+1 noiembrie = 50 × 45 = **2.250 lei** pentru noiembrie + **1.451,60 lei** pentru zilele din octombrie
 (10 mașini × 22 de zile, 10 × 21, … 10 × 18), fiecare zi de montaj pe rândul ei. Octombrie nu mai are
 factură de abonament separată.
 
@@ -2610,6 +2553,83 @@ clientului**, unde un admin de firmă n-are ce alege. Amândouă reparate.
 acum. Trecută la lista de dinainte de lansare.
 
 ---
+
+## 2026-09-16
+
+### AMÂNDOI · Parola nu mai există. Trimitem un link, omul și-o pune singur
+
+Alin, despre ecranul Utilizatori: *„PAROLA NU EXISTĂ — noi trimitem link, și adminul firmei, clientul
+își setează parola, la fel își gestionează și conturile."*
+
+**Ce era.** În două locuri se putea scrie parola altui om: o casetă la deschiderea contului și încă
+una, „Parolă nouă", în fișa lui. Adică cineva ajungea să știe parola altcuiva, iar parola aia circula
+pe telefon sau pe WhatsApp. În plus, fără server de email, aplicația **refuza** să deschidă un cont și
+te trimitea înapoi la parola scrisă de mână.
+
+**Ce e acum.** Nicio casetă de parolă, nicăieri. Contul se deschide pe o adresă de email, pleacă un
+link, omul își pune singur parola. Pe fiecare rând din listă e **un singur buton — „Trimite link de
+parolă"** — care acoperă și invitația care n-a ajuns (a căzut în spam), și parola uitată. Erau două
+nevoi și zero butoane; acum e un buton.
+
+Și lucrul care lipsea: **când emailul nu poate pleca, primești linkul pe ecran**, copiat deja, ca să
+i-l dai omului cum poți. Contul nu mai rămâne blocat din cauza unui server de email. Regula s-a mutat
+și în adâncime: ruta prin care un administrator seta parola altcuiva a fost **ștearsă de pe server**,
+nu doar ascunsă din ecran — un buton ascuns tot poate fi apăsat de cine îi știe adresa. Fiecare link
+trimis lasă un rând în jurnalul de audit, iar mai mult de cinci pe oră către același cont se refuză,
+ca butonul să nu devină un robinet de emailuri pe reputația domeniului nostru.
+
+- **Ce am schimbat:** parolele nu se mai scriu de nimeni, în afară de omul care le folosește.
+- **Ce vede fondatorul:** un buton de trimis linkul pe fiecare rând, în Utilizatori și în Conturi.
+- **Ce vede clientul:** același lucru, pentru oamenii firmei lui.
+
+### AMÂNDOI · Utilizatori: se vede cine n-a intrat, cine nu vede nimic și cine costă
+
+Opt lucruri cerute pentru cardul **Utilizatori**, într-un lot. Ecranul e ACELAȘI în amândouă
+verticalele — fondatorul îl are în Administrare, adminul firmei în **Setări → Conturi și roluri** —
+așa că fiecare schimbare a fost gândită de două ori: ce înseamnă pentru noi, ce înseamnă pentru el.
+
+**1. Contul care n-a intrat niciodată e strigat.** Înainte scria „niciodată" cu gri, la coada unui
+rând mic. Acum e un semn portocaliu, cu butonul de retrimis linkul chiar lângă el. Ăsta e lucrul care
+se strică cel mai des: invitația cade în spam, omul nu-și pune parola, și nimeni nu observă până sună.
+
+**2. Filtre rapide cu numere:** *Toți · N-au intrat niciodată · Fără acces · Dezactivate · Cu RA
+Insight · Admini*. Numerele se socotesc pe lista întreagă, nu pe ce a rămas după căutare — altfel
+„N-au intrat niciodată: 0" ar minți doar pentru că ai scris ceva în casetă. Ce nu există nu ocupă loc.
+
+**3. Căutare adevărată:** nume, email, telefon, rolul așa cum l-a botezat firma — iar la fondator și
+numele companiei. Scrisă fără diacritice găsește și cu: „stefan" îl găsește pe „Ștefan".
+
+**4. „Fără acces", scris portocaliu — dar numai la client.** Un dispecer căruia nu i-ai bifat nicio
+mașină deschide aplicația și vede un ecran gol; crede că s-a stricat și sună la suport. Acum rândul
+lui spune *„nu vede niciun vehicul — atribuie-i din Editează"*. **La fondator semnul nu se aprinde**:
+împărțirea mașinilor pe oamenii unei firme e gospodăria adminului ei, nu a noastră (decizia lui Alin).
+
+**5. Conturile cu RA Insight, numărate sus.** Bifa se dă pe om, dar suma se face pe firmă. Acum scrie
+„3 conturi cu RA Insight — la factură intră vârful lunii". O firmă putea aprinde cinci conturi fără
+să-și dea seama ce a făcut; acum vede și ea, nu doar noi.
+
+**6. „Ultima logare" pe înțeles:** *azi · ieri · acum 9 zile*, cu ora exactă rămasă la hover. După 40
+de zile de liniște se face portocaliu — iar la client scrie și ce înseamnă: *„cont nefolosit de 40 de
+zile — dezactivează-l dacă omul nu mai lucrează aici"*. Aceeași cifră, două înțelesuri: pentru noi e
+un client care se stinge, pentru el e o ușă lăsată deschisă după cineva care a plecat din firmă.
+
+**7. Cartonașul de pe „Acasă" spune starea**, nu doar numărul: sub „7 Utilizatori" scrie *„2 n-au
+intrat niciodată · 1 fără acces"* — sau *„toți au intrat"*.
+
+**8. Accesul temporar se vede în rând:** *expiră azi · expiră în 3 zile · acces până la 22.09*.
+Conturile demo aprobate expiră; până acum aflai doar intrând în fișa omului.
+
+Plus **sortare** (nume, rol, ultima logare — cine n-a intrat niciodată stă primul) și, **pe telefon**,
+fiecare om devine cartonaș, nu un rând de opt bucăți înghesuite.
+
+**Ce NU am făcut, și de ce:** fără export în Excel. La Companii avea sens, e registrul de clienți.
+Aici lista e nume, emailuri și telefoane de oameni — date personale care ies din aplicație. Dacă îl
+vrem vreodată, se face cu aceleași reguli ca la Companii: doar fondator, refuzat de server, cu urmă
+în audit.
+
+- **Ce am schimbat:** lista de utilizatori a devenit un ecran care spune singur ce e de rezolvat.
+- **Ce vede fondatorul:** cine n-a activat contul, cine e dezactivat, cine costă bani pe RA Insight.
+- **Ce vede clientul:** în plus, cine dintre oamenii lui nu vede nicio mașină și cine nu mai intră.
 
 ## 2026-09-13
 
