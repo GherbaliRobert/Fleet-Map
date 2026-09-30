@@ -200,8 +200,9 @@ function Shell() {
 
   // Ramele benzii (.ba-cadru / .ba-corp) stau MEREU acolo, cu sau fără bandă: dacă ar apărea doar odată cu ea,
   // ecranul deschis s-ar reîncărca de la zero (și și-ar pierde ce era scris în el) când sosește profilul.
-  // Butonul spre facturi: doar cine are „Facturile mele" în meniu (aceeași condiție) și nu e deja acolo.
-  const spreFacturi = banda && me.value?.permissions?.manageUsers && path !== '/billing' ? () => loc.route('/billing') : undefined;
+  // Butonul spre facturi: doar pe banda de RESTANȚĂ, doar cine are „Facturile mele" în meniu (aceeași condiție) și nu
+  // e deja acolo. Pe banda roșie nu stă (ca pe web): contul suspendat iese din aplicație la următoarea pornire.
+  const spreFacturi = banda && banda.fel === 'restanta' && me.value?.permissions?.manageUsers && path !== '/billing' ? () => loc.route('/billing') : undefined;
 
   return (
     <>

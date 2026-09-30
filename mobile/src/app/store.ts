@@ -46,6 +46,8 @@ export async function toggleTheme() {
 export const token = signal<string | null>(null);
 export const me = signal<Me | null>(null);
 export const authReady = signal(false);
+// Mesajul pe care ecranul de autentificare îl arată o dată, după ce pornirea a scos un cont oprit (vezi accesOprit).
+export const mesajLaIntrare = signal<string | null>(null);
 export const livePos = signal<Position[]>([]);  // feed live (din /api/live + WS) — doar vehiculele care transmit
 export const roster = signal<Position[]>([]);   // TOATE vehiculele înregistrate (din /api/devices) → apar și cele fără transmisie
 // Flota afișată = pozițiile live + vehiculele înregistrate care NU sunt în live (marcate „fără transmisie")
@@ -91,6 +93,16 @@ export function accesFirma(m: unknown): AccesFirma | null {
 // Îl folosesc banda roșie și anunțul venit pe fluxul live. (Până la 1.0.5 anunțul spunea „verifică
 // factura/abonamentul", de dinainte de 28.09.)
 export const MESAJ_ACCES_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
+// La PORNIREA aplicației, contul unei firme oprite (neplată sau de noi) nu mai intră — ca pe web (checkAuth,
+// public/index.html; hotărât pe 30.09: „la fel ca și pe web"). Sesiunea de pe telefon se închide, iar ecranul de
+// autentificare arată mesajul pe care îl dă și serverul când refuză intrarea (MESAJ_SUSPENDAT, server.js) — legat
+// printr-o probă de amândouă. Cu aplicația DEJA deschisă rămâne banda roșie, tot ca pe web, până la următoarea pornire.
+export const MESAJ_SUSPENDAT_LA_INTRARE = 'Abonament suspendat pentru neplată. Contactați furnizorul.';
+// Aceeași condiție ca pe web: accesul „expired", iar contul nu e de platformă.
+export function accesOprit(m: unknown): boolean {
+  const a = accesFirma(m);
+  return !!a && a.status === 'expired' && !(m as { isSuper?: boolean }).isSuper;
+}
 
 export const offlineMinutes = computed(() =>
   (me.value && ((me.value as any).sys?.offline_minutes ?? (me.value as any).offline_minutes)) || 65
@@ -115,7 +127,16 @@ export async function bootstrap() {
     token.value = t; setAuthToken(t);
     me.value = await loadUser<Me>();
     // Salvăm și copia locală: la o pornire fără rețea, ecranele tăiate rămân ascunse (nu doar până la /api/me).
-    try { me.value = await Api.me(); await saveUser(me.value); } catch { /* token invalid → onUnauthorized curăță */ }
+    let proaspat: Me | null = null;
+    try { proaspat = await Api.me(); me.value = proaspat; await saveUser(proaspat); } catch { /* token invalid → onUnauthorized curăță */ }
+    // Firma e oprită: contul nu intră (ca pe web). Doar pe profilul PROASPĂT — copia veche de pe telefon, de la o
+    // pornire fără rețea, nu scoate pe nimeni afară.
+    if (proaspat && accesOprit(proaspat)) {
+      await logout();
+      mesajLaIntrare.value = MESAJ_SUSPENDAT_LA_INTRARE;
+      authReady.value = true;
+      return;
+    }
     // Preferințele de pe cont (temă, hartă, ecranul de pornire) înainte de primul ecran — ascuns sub animația
     // de pornire. Plafon de 2,5 s: pe rețea proastă nu ținem omul pe ecranul de încărcare; se aplică la sosire.
     await Promise.race([syncUiPrefs(true), new Promise((r) => setTimeout(r, 2500))]);

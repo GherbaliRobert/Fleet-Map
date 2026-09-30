@@ -1224,19 +1224,69 @@ async function pachetBanda() {
   T('nota noastră (access.nota) nu e citită nicăieri pe telefon', !/\.nota\b/.test(bandaCod) && !/\.nota\b/.test(faraComentarii(store)) && !/\.nota\b/.test(faraComentarii(app)));
   T('vorbele vechi „verifică factura/abonamentul" nu mai sunt în telefon', !fisiereTel.some((x) => /verifică factura\/abonamentul/.test(x.src)));
 
+  sect('5.2b La pornire, contul unei firme oprite iese din aplicație — ca pe web (checkAuth, rulată; hotărât pe 30.09)');
+  // Web: checkAuth, rulată cu un fetch „de carton": cere /api/me; la o firmă oprită cheamă /api/logout și scrie
+  // mesajul pe ecranul de autentificare, fără să intre în aplicație (showApp).
+  const pornireCod = functie(html, 'async function checkAuth()');
+  async function webPornire(data) {
+    const cereri = [], el = { textContent: '', style: {} };
+    const ctx = {
+      fetch: async (url) => { cereri.push(url); return url === '/api/me' ? { ok: true, json: async () => data } : { ok: true, json: async () => ({}) }; },
+      document: { getElementById: (id) => (id === 'login-error' ? el : null) },
+      intrat: false,
+    };
+    ctx.showApp = () => { ctx.intrat = true; };
+    vm.runInNewContext(pornireCod + '\nthis.__run = checkAuth;', ctx);
+    await ctx.__run();
+    return { iese: cereri.indexOf('/api/logout') >= 0, intra: ctx.intrat, mesaj: el.style.display === 'block' ? el.textContent : '' };
+  }
+  T('găsesc checkAuth în pagină; accesOprit și mesajul de la pornire în telefon',
+    !!pornireCod && typeof ST.accesOprit === 'function' && typeof ST.MESAJ_SUSPENDAT_LA_INTRARE === 'string' && ST.MESAJ_SUSPENDAT_LA_INTRARE.length > 0);
+  for (const [nume] of scenarii) {
+    for (const [rol, isSuper] of [['om al firmei', false], ['super-admin', true]]) {
+      const m = { username: 'x', isSuper, access: stari[nume] };
+      const w = await webPornire(m), iese = ST.accesOprit(m);
+      T('pornire · ' + nume + ' · ' + rol + ': ' + (iese ? 'iese, cu mesajul' : 'intră') + ' — la fel ca pe web',
+        w.iese === iese && w.intra === !iese && (iese ? w.mesaj === ST.MESAJ_SUSPENDAT_LA_INTRARE : w.mesaj === ''), J(w));
+    }
+  }
+  for (const m of ciudate) {
+    if (m == null) continue;   // un profil lipsă nu scoate pe nimeni (pe telefon, pornirea fără rețea)
+    const w = await webPornire(m);
+    T('pornire · forma ' + J(m) + ' → la fel ca pe web', w.iese === ST.accesOprit(m), J(w));
+  }
+  const mesajServer = (/const MESAJ_SUSPENDAT = '([^']+)';/.exec(server) || [])[1];
+  T('mesajul de la pornire = cel cu care serverul refuză intrarea (MESAJ_SUSPENDAT) = cel de pe web',
+    !!mesajServer && mesajServer === ST.MESAJ_SUSPENDAT_LA_INTRARE && (await webPornire({ access: { status: 'expired' } })).mesaj === mesajServer, mesajServer);
+  const boot = functie(store, 'export async function bootstrap()');
+  const iMe = boot.indexOf('proaspat = await Api.me();'), iOprit = boot.indexOf('if (proaspat && accesOprit(proaspat)) {');
+  const ramura = iOprit >= 0 ? functie(boot.slice(iOprit), 'if (proaspat && accesOprit(proaspat))') : '';
+  const pas = (s) => ramura.indexOf(s);
+  T('pornirea: DOAR profilul proaspăt (de la server) scoate contul — nu copia de pe telefon; înainte de preferințe și de primul ecran',
+    /let proaspat: Me \| null = null;/.test(boot) && iMe > 0 && iOprit > iMe && boot.indexOf('syncUiPrefs(true)') > iOprit
+    && !/proaspat = await loadUser/.test(boot));
+  T('…și scoate cum trebuie: se deloghează, lasă mesajul pentru ecranul de autentificare, termină pornirea, iese',
+    pas('await logout();') > 0 && pas('mesajLaIntrare.value = MESAJ_SUSPENDAT_LA_INTRARE;') > pas('await logout();')
+    && pas('authReady.value = true;') > pas('mesajLaIntrare.value') && pas('return;') > pas('authReady.value = true;'), ramura);
+  const ecranLogin = citeste('mobile/src/screens/Login.tsx');
+  T('ecranul de autentificare arată mesajul o singură dată (îl ia la deschidere, apoi îl golește)',
+    /const \[err, setErr\] = useState\(mesajLaIntrare\.value \|\| ''\);/.test(ecranLogin) && /useEffect\(\(\) => \{ mesajLaIntrare\.value = null; \}, \[\]\);/.test(ecranLogin)
+    && /\{err && <div/.test(ecranLogin));
+
   // Componenta desenată (vnode-uri): clasa, rolul, iconița, textul, butonul.
   function text(v) { if (v == null || v === false || v === true) return ''; if (typeof v === 'string' || typeof v === 'number') return String(v); if (Array.isArray(v)) return v.map(text).join(''); return text(v.props && v.props.children); }
   function gaseste(v, f) { if (!v || typeof v !== 'object') return null; if (Array.isArray(v)) { for (const x of v) { const r = gaseste(x, f); if (r) return r; } return null; } if (f(v)) return v; return gaseste(v.props && v.props.children, f); }
   const vR = BA.BandaAcces({ banda: BA.bandaAcces({ access: g3 }) });
-  const vS = BA.BandaAcces({ banda: BA.bandaAcces({ access: stari['oprită de noi, cu notă internă'] }), onFacturi: () => 'ok' });
+  const vRb = BA.BandaAcces({ banda: BA.bandaAcces({ access: g3 }), onFacturi: () => 'ok' });
+  const vS = BA.BandaAcces({ banda: BA.bandaAcces({ access: stari['oprită de noi, cu notă internă'] }) });
   T('fără bandă nu se desenează nimic', BA.BandaAcces({ banda: null }) === null);
-  T('restanța: portocaliu (ba-restanta), anunț liniștit (role=status), iconița „alert", textul serverului, fără buton',
+  T('restanța: portocaliu (ba-restanta), anunț liniștit (role=status), iconița „alert", textul serverului, fără buton când nu i se dă',
     / ba-restanta$/.test(vR.props.class) && vR.props.role === 'status' && !!gaseste(vR, (x) => x.type === IconStub && x.props.name === 'alert')
     && text(vR) === g3.mesaj && !gaseste(vR, (x) => x.type === 'button'), J(vR).slice(0, 400));
-  const btn = gaseste(vS, (x) => x.type === 'button');
-  T('suspendat: roșu (ba-suspendat), anunț urgent (role=alert), iconița „ban", textul de pe web', / ba-suspendat$/.test(vS.props.class) && vS.props.role === 'alert'
-    && !!gaseste(vS, (x) => x.type === IconStub && x.props.name === 'ban') && text(vS).indexOf(ST.MESAJ_ACCES_SUSPENDAT) === 0);
-  T('butonul spre facturi spune ce face („Vezi facturile") și cheamă ce i s-a dat', btn && text(btn) === 'Vezi facturile' && btn.props.onClick() === 'ok' && btn.props.type === 'button');
+  const btn = gaseste(vRb, (x) => x.type === 'button');
+  T('suspendat: roșu (ba-suspendat), anunț urgent (role=alert), iconița „ban", textul de pe web, fără buton (ca pe web)', / ba-suspendat$/.test(vS.props.class) && vS.props.role === 'alert'
+    && !!gaseste(vS, (x) => x.type === IconStub && x.props.name === 'ban') && text(vS) === ST.MESAJ_ACCES_SUSPENDAT && !gaseste(vS, (x) => x.type === 'button'));
+  T('butonul spre facturi (pe restanță) spune ce face („Vezi facturile") și cheamă ce i s-a dat', btn && text(btn) === 'Vezi facturile' && btn.props.onClick() === 'ok' && btn.props.type === 'button');
   const icoane = citeste('mobile/src/components/Icon.tsx');
   T('iconițele folosite există în Icon.tsx', /\|\s*'ban'/.test(icoane) && /\|\s*'alert'/.test(icoane) && /\bban:\s*'/.test(icoane) && /\balert:\s*'/.test(icoane));
 
@@ -1325,9 +1375,9 @@ async function pachetBanda() {
     && /<\/Router>\n\s*<\/div>\{\/\* \.ba-corp \*\/\}\n\s*<\/div>\{\/\* \.ba-cadru \*\/\}\n\s*\{showTabs && <TabBar \/>\}/.test(shell));
   T('importul componentei în App', /import \{ BandaAcces, bandaAcces, verificaAccesul, ACCES_VERIFICARE_MS \} from '\.\/components\/BandaAcces';/.test(app));
   const meniu = citeste('mobile/src/screens/Menu.tsx');
-  T('butonul spre facturi: aceeași condiție ca rândul „Facturile mele" din meniu, și nu când ești deja acolo',
+  T('butonul spre facturi: DOAR pe banda de restanță (pe cea roșie nu, ca pe web), cu aceeași condiție ca rândul „Facturile mele" din meniu, și nu când ești deja acolo',
     /perms\.manageUsers && !u\?\.isSuper && item\('report', 'Facturile mele', \(\) => loc\.route\('\/billing'\)\)/.test(meniu)
-    && /const spreFacturi = banda && me\.value\?\.permissions\?\.manageUsers && path !== '\/billing' \? \(\) => loc\.route\('\/billing'\) : undefined;/.test(shell));
+    && /const spreFacturi = banda && banda\.fel === 'restanta' && me\.value\?\.permissions\?\.manageUsers && path !== '\/billing' \? \(\) => loc\.route\('\/billing'\) : undefined;/.test(shell));
   const cssFara = faraComentariiCss(css);
   T('nimic din bandă nu plutește peste ecran (fără fixed/absolute)', !/position\s*:\s*(fixed|absolute|sticky)/.test(cssFara));
   T('fără culori scrise de mână, fără alt font', !/#[0-9a-f]{3,8}\b|rgba?\(/i.test(cssFara) && !/font-family/.test(cssFara));
@@ -1428,7 +1478,8 @@ async function pachetBanda() {
       && J(runWS(meD2.j)) === J(bD2) && !/NOTA-INTERNA/.test(J(bD2)), J(meD2.j.access));
     const live = await D('GET', '/api/live');
     T('suspendat: restul ecranelor primesc refuz (402) — banda e explicația', live.s === 402 && live.j && live.j.access_expired === true);
-    T('suspendat: adminul își poate deschide facturile de pe bandă', (await A('GET', '/api/billing/my-invoices')).s === 200);
+    T('suspendat, cu aplicația deschisă: adminul își poate deschide facturile (din meniu)', (await A('GET', '/api/billing/my-invoices')).s === 200);
+    T('suspendat: la următoarea pornire, profilul proaspăt îl scoate din aplicație (ca pe web)', ST.accesOprit(meD2.j) === true && ST.accesOprit(meD) === false);
     const msgS = await fluxLive(lD.j.token);
     T('suspendat: fluxul live răspunde „access_expired"', msgS && msgS.type === 'error' && msgS.data && msgS.data.error === 'access_expired', J(msgS));
     const w2 = wsLab(); w2.me.value = meD; // profilul vechi, din restanță
@@ -1444,6 +1495,7 @@ async function pachetBanda() {
     T('…iar cu profilul la zi nu reîncarcă nimic', (await incarcaBanda(LV).verificaAccesul()) === false && LV.cereri === 0);
     const lD3 = await autentificareTelefon('dispecer.restanta@exemplu.ro', PAROLA);
     T('suspendat: o autentificare NOUĂ e refuzată cu mesajul serverului (ecranul de autentificare îl arată)', lD3.s === 402 && lD3.j && typeof lD3.j.error === 'string' && lD3.j.error.length > 0);
+    T('…același mesaj pe care telefonul îl arată când pornirea scoate contul', lD3.j && lD3.j.error === ST.MESAJ_SUSPENDAT_LA_INTRARE, lD3.j && lD3.j.error);
 
     // Reactivarea: banda roșie nu rămâne agățată.
     await R('PUT', '/api/companies/' + co.id + '/suspend', { suspend: false });
@@ -1451,7 +1503,9 @@ async function pachetBanda() {
     T('reactivată: fluxul live pornește din nou (init)', msgR && msgR.type === 'init');
     const w3 = wsLab(); w3.me.value = meD2.j; // telefonul încă ține profilul „suspendat"
     w3.__applyWs(msgR);
-    T('…telefonul cere profilul, iar noul profil stinge banda roșie (rămâne restanța)', w3.cereri === 1 && (BA.bandaAcces((await D('GET', '/api/me')).j) || {}).fel === 'restanta');
+    const meD3 = (await D('GET', '/api/me')).j;
+    T('…telefonul cere profilul, iar noul profil stinge banda roșie (rămâne restanța)', w3.cereri === 1 && (BA.bandaAcces(meD3) || {}).fel === 'restanta');
+    T('reactivată: pornirea nu mai scoate pe nimeni', ST.accesOprit(meD3) === false);
 
     // Plata: nicio bandă.
     const pl = await R('PUT', '/api/invoices/' + fac.j.invoice.id + '/status', { status: 'paid' });

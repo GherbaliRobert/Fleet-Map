@@ -8,9 +8,10 @@
 //     regula de neplată se schimbă pe server, banda spune singură cifrele noi;
 //   • suspendat (orice altă stare decât activ / restanță): roșu, cu textul de pe web (MESAJ_ACCES_SUSPENDAT, în store);
 //   • super-adminul (contul de platformă) n-o vede niciodată; nici cine n-are firmă (`access` lipsă).
-// Contul suspendat NU e scos afară (pe web, da): rămâne înăuntru, cu banda roșie, ca să-și poată vedea facturile —
-// serverul lasă deschise /api/me și facturile (ACCESS_FREE). Cine are „Facturile mele" în meniu (dreptul de
-// administrare a utilizatorilor, aceeași condiție ca rândul din meniu) primește pe bandă și butonul spre ele.
+// Contul suspendat, ca pe web (hotărât pe 30.09): la PORNIREA aplicației iese afară, cu mesajul serverului pe ecranul
+// de autentificare (store.ts, accesOprit); cu aplicația deja deschisă vede banda roșie până la următoarea pornire.
+// Pe banda de RESTANȚĂ, cine are „Facturile mele" în meniu (dreptul de administrare a utilizatorilor, aceeași condiție
+// ca rândul din meniu) primește și butonul spre ele (App.tsx) — singurul lucru în plus față de web.
 // Ce NU se arată niciodată: `access.nota` (motivul scris de noi la o oprire de mână) — e o notă internă.
 //
 // Banda stă în fluxul paginii (App.tsx → Shell): sus, sub bara telefonului, deasupra titlului ecranului — ca pe web,

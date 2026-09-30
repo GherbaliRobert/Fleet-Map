@@ -1031,8 +1031,12 @@ facturarea pe web:
   se rescrie; o lucrare scoasă de pe factură NU pleacă în `montaje`; avertismente pentru luna care n-a început, aparatele
   deja pe o proformă și montajul pus pe proformă. Când Alin le repară pe server/web, telefonul poate rămâne cum e.
 - **Banda de acces** (`components/BandaAcces.tsx`, în `App.tsx`) arată `access.mesaj` de la server — telefonul NU
-  socotește zile sau sume; `access.nota` (motivul nostru intern) nu se arată niciodată. Contul suspendat rămâne în
-  aplicație, cu „Vezi facturile" (rutele de facturi sunt în `ACCESS_FREE`).
+  socotește zile sau sume; `access.nota` (motivul nostru intern) nu se arată niciodată.
+- **Contul suspendat, ca pe web** (hotărât pe 30.09: „la fel ca și pe web"; APK 1.0.6): la PORNIRE iese din aplicație
+  (`bootstrap` → `accesOprit`, doar pe profilul proaspăt de la server), iar ecranul de autentificare arată
+  `MESAJ_SUSPENDAT_LA_INTRARE` = `MESAJ_SUSPENDAT` de pe server = textul din `checkAuth` de pe web (legate prin probă,
+  care rulează `checkAuth`). Cu aplicația deschisă: banda roșie, fără buton. „Vezi facturile" stă DOAR pe banda de
+  restanță — singurul lucru în plus față de web.
 
 ## Parola nu există (regulă de fond)
 

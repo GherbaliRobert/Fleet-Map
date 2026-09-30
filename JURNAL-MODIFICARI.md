@@ -78,6 +78,24 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-30
 
+### CLIENT · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web — `HASH`
+
+Hotărât pe 30.09: „la fel ca și pe web". Până acum, pe telefon, contul unei firme suspendate rămânea înăuntru, cu
+banda roșie și butonul „Vezi facturile". Acum telefonul face exact ce face web-ul:
+1. **La pornirea aplicației**, un cont al unei firme oprite (pentru neplată sau de noi) iese afară, iar ecranul de
+   autentificare scrie „Abonament suspendat pentru neplată. Contactați furnizorul." — același mesaj pe care îl dă
+   serverul când refuză intrarea și pe care îl scrie web-ul.
+2. **Cu aplicația deja deschisă**, apare banda roșie (fără buton), până la următoarea pornire — tot ca pe web.
+3. **Banda portocalie (restanță)** rămâne cum era, iar adminul firmei are pe ea „Vezi facturile" — singurul lucru în
+   plus față de web.
+
+Pornirea fără rețea nu scoate pe nimeni afară: hotărăște doar răspunsul proaspăt de la server, nu copia de pe telefon.
+
+- **Ce am schimbat:** aplicația de telefon 1.0.6 (pornirea, ecranul de autentificare, banda). Proba telefonului rulează
+  acum și pornirea de pe web, pe aceleași stări, și cere același rezultat (496 de verificări).
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** o firmă suspendată nu mai intră din telefon; vede mesajul pe ecranul de autentificare, ca pe web.
+
 ### AMÂNDOI · Aplicația de telefon 1.0.5: facturarea lui Alin din 29.09, adusă pe telefon (lotul 4) — `5b97118`
 
 Pe 29.09 Alin a schimbat facturarea pe web (factura unică și proforma, abonamentul pe zile, fila Facturi din fișa
@@ -128,7 +146,7 @@ de montaj rămâne; o lucrare scoasă de pe factură nu mai trece pe „facturat
 - **Ce vede clientul:** banda de restanță / suspendare pe telefon, pentru oricine din firmă; „Facturile mele" mai clare.
 
 Verificat: tipurile, proba nouă (458), probele telefonului și toată poarta de pe GitHub; banda, văzută în aplicația
-pornită, pe ambele teme, la lățimea unui telefon (375px). Suspendat, contul rămâne înăuntru ca să-și vadă facturile.
+pornită, pe ambele teme, la lățimea unui telefon (375px). Suspendat, contul rămâne înăuntru ca să-și vadă facturile. (Schimbat în 1.0.6: acum iese afară, ca pe web — vezi mai sus.)
 
 ## 2026-09-29
 
@@ -9567,7 +9585,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
 
-- [ ] **(voi) Instalați aplicația de telefon 1.0.5** (cuprinde tot din 1.0.4). Ecranele loturilor 3 și 4 apar doar în ea. Încărcarea unei liste
+- [ ] **(voi) Instalați aplicația de telefon 1.0.6** (cuprinde tot din 1.0.4 și 1.0.5). Ecranele loturilor 3 și 4 apar doar în ea. Încărcarea unei liste
   Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
 
 - [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
@@ -9630,7 +9648,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   11. **Aparat șters definitiv și înregistrat din nou:** abonamentul nu mai pornește până la următoarea repornire.
   11b. **Harta live merge mai departe după suspendare** (găsit la lotul 4, 30.09): o legătură live deschisă ÎNAINTE de
       suspendare primește pozițiile flotei până se reconectează (web și telefon). Reparația: verificarea periodică a
-      legăturilor să le închidă pe cele ale firmelor oprite (telefonul 1.0.5 aprinde atunci banda roșie pe loc).
+      legăturilor să le închidă pe cele ale firmelor oprite (telefonul, de la 1.0.5, aprinde atunci banda roșie pe loc).
   **Ecrane web**
   12. **Din fișa firmei, „Factură unică / proformă" și „Abonamentul unei luni"** pot deschide fereastra în spatele fișei
       (nu se vede nimic) sau fără nicio firmă în listă.
@@ -9649,8 +9667,9 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
     singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.
   - Telefoanele vechi (1.0.3) mai au „Înregistrează plata + extinde accesul": serverul o scrie ca încasare fără
     factură, iar factura rămâne neplătită → clientul se poate suspenda deși a plătit. Plasa: toate telefoanele noastre
-    pe 1.0.5; opțional, serverul să refuze cererea veche.
-  - **Contul suspendat: pe web e scos din aplicație, pe telefon (1.0.5) rămâne înăuntru**, cu banda roșie și „Vezi
+    pe 1.0.6; opțional, serverul să refuze cererea veche.
+  - ~~Contul suspendat: pe web e scos din aplicație, pe telefon (1.0.5) rămâne înăuntru~~ — **HOTĂRÂT (30.09): „la fel ca
+    și pe web"; făcut în telefonul 1.0.6.** Era: cu banda roșie și „Vezi
     facturile" (serverul oprește oricum restul, iar facturile rămân deschise). Recomandarea noastră: la fel și pe web —
     omul își vede factura pe care trebuie s-o plătească. Dacă Alin vrea altfel, pe telefon e o schimbare de un rând.
   - „Mută între companii" cu mai multe aparate (web și telefon) ocolește regula lui „Trece pe firmă" (punctul 5):

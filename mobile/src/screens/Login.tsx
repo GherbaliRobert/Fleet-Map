@@ -1,6 +1,6 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
-import { login } from '../app/store';
+import { login, mesajLaIntrare } from '../app/store';
 import { api } from '../api/client';
 
 export function Login() {
@@ -8,7 +8,9 @@ export function Login() {
   const [u, setU] = useState('');
   const [p, setP] = useState('');
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  // Pornirea a scos un cont al unei firme oprite (store.ts, accesOprit): mesajul se arată aici o singură dată, ca pe web.
+  const [err, setErr] = useState(mesajLaIntrare.value || '');
+  useEffect(() => { mesajLaIntrare.value = null; }, []);
   const [info, setInfo] = useState('');
   const [forgot, setForgot] = useState(false);
   const [email, setEmail] = useState('');
