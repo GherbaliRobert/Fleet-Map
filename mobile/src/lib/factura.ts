@@ -249,7 +249,7 @@ export function metodaText(m: any): string {
 
 // Întrebarea de dinainte de ✓ și butonul ei — aceleași cuvinte ca pe web (raxInvoiceMarkPaid), scrise O SINGURĂ dată
 // pe telefon: le folosesc și Facturare (fereastra documentului), și fișa firmei (fila Facturi).
-export const INTREB_PROFORMA = 'Proforma e ÎNCASATĂ? Se emite acum factura fiscală, cu aceleași rânduri, marcată plătită. Proforma rămâne legată de ea.';
+export const INTREB_PROFORMA = 'Proforma e ÎNCASATĂ? Se emite acum factura fiscală, cu aceleași rânduri, marcată plătită, și pleacă singură: clientului (în aplicație și pe email, cu PDF) și la ANAF. Proforma rămâne legată de ea.';
 export const INTREB_FACTURA = 'Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea. Dacă firma era oprită pentru neplată, accesul revine pe loc.';
 export const OK_PROFORMA = 'Încasată — emite factura';
 export const OK_FACTURA = 'Marchează plătită';

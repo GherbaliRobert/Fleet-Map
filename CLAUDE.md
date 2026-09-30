@@ -1001,6 +1001,8 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - **Emailul atașează ACELAȘI PDF** (`_pdfInBuffer(facturaPdf.facturaPdf(…))`) — clientul primește exact ce
   descarcă.
 - „CUI: RO…" doar la plătitorul de TVA (`cuiAfisat(cui, vat_payer)`), la fel ca în e-Factura.
+- Telefonul (`DocumentFactura.tsx`) își desenează încă foaia lui, pe ecran; „Descarcă" pe telefon se leagă de
+  aceleași două rute, la APK-ul următor. NU face o a doua hârtie PDF pentru telefon.
 
 ### Orice factură pleacă SINGURĂ, pe o singură cale: `_trimiteFactura(inv, co, iss)` (Alin, 30.09)
 - Chemată din TREI locuri: factura automată a lunii, `POST /api/invoices` (de mână: unică, montaj, proformă) și

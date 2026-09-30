@@ -110,7 +110,10 @@ facturile netrimise sau respinse. Pe una deja trimisă ar fi pus aceeași factur
 clientului — serverul refuză și el.
 
 - **Ce am schimbat:** o singură cale de trimitere pentru toate facturile; hârtia facturii, făcută pe server
-  (ca la contracte și oferte), în locul ferestrei de printare; plasa de la ANAF.
+  (ca la contracte și oferte), în locul ferestrei de printare; plasa de la ANAF. Pe telefon (sursa, ajunge cu
+  APK-ul următor): întrebarea de la „Încasată" și butonul ANAF, la fel ca pe web — proba lui Robert
+  (`verify_facturare_telefon.js`) le ține legate. Tot aici se închid trei găsiri ale lui Robert din 29.09 (hârtia
+  facturii pe server, „Mută între companii", drumul care nu știa de avans) — bifate la „De verificat".
 - **Ce vede fondatorul:** după „Emite", mesajul cu ce a plecat; „Vezi" / „Descarcă" pe fiecare rând; butonul
   ANAF doar unde mai e ceva de trimis.
 - **Ce vede clientul:** anunțul în aplicație, emailul cu PDF-ul (când e pus emailul) și „Descarcă" în
@@ -9338,9 +9341,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   până la", fără plăți cu număr de factură inventat, fără butonul mort de plată cu cardul, clientul își vede
   documentele adevărate. Până la APK, telefonul vechi arată lista clientului cu sumele, dar cu numere
   vechi, inventate — se rezolvă la instalarea APK-ului nou, nu cere nimic separat.
-  **Din 30.09, tot la acest APK:** pe telefon, butonul „Trimite ANAF" apare și pe o factură deja trimisă
-  (serverul o refuză, cu mesaj — nu se dublează nimic), iar „Vezi / Descarcă" PDF-ul facturii există doar pe
-  web. Trimiterea automată (anunț, email, ANAF) merge și pentru facturile emise de pe telefon: o face serverul.
+  **Din 30.09, tot la acest APK:** butonul „Trimite ANAF" nu mai apare pe o factură deja trimisă (sursa e
+  gata; telefoanele de azi îl mai arată, dar serverul refuză a doua trimitere, cu mesaj — nu se dublează nimic),
+  iar întrebarea de la „Încasată" spune că factura pleacă singură. „Descarcă" PDF-ul facturii există deocamdată
+  doar pe web (rutele sunt gata pe server). Trimiterea automată (anunț, email, ANAF) merge și pentru facturile
+  emise de pe telefon: o face serverul.
 
 - [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),
@@ -9684,8 +9689,9 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   4. **Chiria apare fals ca „nu ajunge pe factură"** în cutia „Contractul și factura", la fiecare client care
      închiriază (factura chiar o pune). Pe web și pe telefon, fiindcă lista vine de la server.
   5. **Scăderea păstrării istoricului** („se șterg date") e întrebată doar pe ecran; serverul acceptă orice scădere.
-  6. **Mutarea mai multor aparate deodată** (și „Trece pe firmă" în bloc, dacă folosește aceeași cale) nu leagă
-     stocul: aparatul rămâne „la instalator" în Stoc echipamente.
+  6. ~~**Mutarea mai multor aparate deodată** (și „Trece pe firmă" în bloc, dacă folosește aceeași cale) nu leagă
+     stocul: aparatul rămâne „la instalator" în Stoc echipamente.~~ — **FĂCUT (30.09):** „Mută între companii" trece
+     acum prin aceeași funcție ca adopția („Trece pe firmă" trecea deja): stocul, abonamentul, auditul.
   7. **Web, „Completează" deschis din fișa firmei** (după „Trimite la semnat" refuzat), cu lista Contracte
      neîncărcată: pornește GOL și, la salvare, poate șterge sediul, emailul, Reg. Com. și reprezentantul firmei.
   8. **Web, fila Contract din fișa firmei:** „Trimite la semnat", „Am trimis-o" și „E semnat" nu salvează întâi
@@ -9707,17 +9713,19 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   **Bani — se poate factura de două ori sau pierde o sumă**
   1. **Factura unică nu ține minte ce s-a facturat.** După proforma aparatelor (încasată), fereastra propune din nou
      „Aparatele din contract"; montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
-     facturat" redeschide o lucrare deja facturată clientului. Drumul clientului nu știe de avans: după factura
-     aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj. (web + telefon, vine de la server)
+     facturat" redeschide o lucrare deja facturată clientului. ~~Drumul clientului nu știe de avans: după factura
+     aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e FĂCUTĂ (30.09):**
+     pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul de 30 de zile
+     de la avans. Restul punctului rămâne. (web + telefon, vine de la server)
   2. **Montajul marcat „facturat" fără să fie pe factură:** o lucrare scoasă de pe factură (rând șters sau cantitate
      scăzută) rămâne marcată și scrisă la „Mențiuni"; anularea facturii nu o redeschide.
   3. **Lunile de dinainte de 28.09 se pot factura de două ori:** „Abonamentul unei luni" nu vede facturile vechi (fără
      „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie.
   4. **Aparat schimbat pe aceeași mașină:** zilele din luna schimbării se plătesc de două ori (aparatul vechi a plătit
      luna în avans, cel nou intră cu zilele lui).
-  5. **„Mută între companii" cu mai multe aparate deodată** (web și telefon, ruta veche): nu șterge ziua de pornire a
+  5. ~~**„Mută între companii" cu mai multe aparate deodată** (web și telefon, ruta veche): nu șterge ziua de pornire a
      abonamentului de la firma veche — firma nouă plătește luna întreagă, chiar pentru o mașină nemontată — și nu
-     leagă stocul (punctul 6 de mai sus).
+     leagă stocul (punctul 6 de mai sus).~~ — **FĂCUT (30.09)**, pe server, deci și pentru telefon.
   6. **Abonamentul emis înainte să înceapă luna** (ex. pe 28.10 pentru noiembrie) pierde mașinile montate până pe 1:
      ≈ 48 de lei pe fiecare, niciodată facturați.
   7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura.
@@ -9745,16 +9753,19 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       refuzul la intrare spune „Abonament suspendat pentru neplată" și la o oprire făcută de noi; banda spune
       „Accesul este suspendat…" — două formulări pentru aceeași stare, prima cu un cuvânt vechi.
   **De hotărât cu Alin (ating serverul lui):**
-  - Clientul nu-și poate salva factura de pe telefon: hârtia facturii există doar în pagina web. Recomandarea: o
-    singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.
+  - ~~Clientul nu-și poate salva factura de pe telefon: hârtia facturii există doar în pagina web. Recomandarea: o
+    singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.~~ — **FĂCUT pe
+    server (30.09):** `GET /api/invoices/:id/pdf` (noi) și `GET /api/billing/my-invoices/:id/pdf` (administratorul
+    firmei, doar documentele lui). Web-ul le folosește deja; telefonului îi rămâne butonul „Descarcă" (APK).
   - Telefoanele vechi (1.0.3) mai au „Înregistrează plata + extinde accesul": serverul o scrie ca încasare fără
     factură, iar factura rămâne neplătită → clientul se poate suspenda deși a plătit. Plasa: toate telefoanele noastre
     pe 1.0.5; opțional, serverul să refuze cererea veche.
   - **Contul suspendat: pe web e scos din aplicație, pe telefon (1.0.5) rămâne înăuntru**, cu banda roșie și „Vezi
     facturile" (serverul oprește oricum restul, iar facturile rămân deschise). Recomandarea noastră: la fel și pe web —
     omul își vede factura pe care trebuie s-o plătească. Dacă Alin vrea altfel, pe telefon e o schimbare de un rând.
-  - „Mută între companii" cu mai multe aparate (web și telefon) ocolește regula lui „Trece pe firmă" (punctul 5):
-    pe telefon N-am ocolit-o separat, ca cele două să nu se despartă — se repară o dată, pe server.
+  - ~~„Mută între companii" cu mai multe aparate (web și telefon) ocolește regula lui „Trece pe firmă" (punctul 5):
+    pe telefon N-am ocolit-o separat, ca cele două să nu se despartă — se repară o dată, pe server.~~ — **FĂCUT pe
+    server (30.09)**; telefonul n-are nimic de schimbat.
 
 - [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
   telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon
