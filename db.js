@@ -382,6 +382,11 @@ async function initDb() {
     // Aparatele arhivate ÎNAINTE de regula asta (24.09) n-au ziua scrisă: primesc ziua de azi, deci
     // toate cele 30 de zile — nimic nu se șterge pe nepusă masă la prima pornire.
     await client.query(`UPDATE devices SET archived_at = $1 WHERE status = 'archived' AND archived_at IS NULL`, [Date.now()]);
+    // „Aparate noi transmit" (30.09): când am anunțat că aparatul (încă fără firmă) a început să transmită, și ce
+    // firmă am propus atunci. Un aparat se anunță o singură dată; ecranul bifează la un clic toate aparatele propuse
+    // pentru aceeași firmă, chiar dacă au venit în mai multe anunțuri.
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS anuntat_nou_la BIGINT`);
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS anuntat_firma INTEGER`);
 
     // Tabela geofences (zone geografice)
     await client.query(`
@@ -1079,7 +1084,10 @@ async function initDb() {
     // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri și semnăm contracte fix
     // la fel ca la clienți". Pentru hârtie trebuie datele juridice ale partenerului — ca la o firmă client.
     for (const col of ['reg_com VARCHAR(40)', 'address VARCHAR(300)', 'email VARCHAR(200)', 'phone VARCHAR(40)',
-      'iban VARCHAR(60)', 'bank VARCHAR(120)', 'legal_rep JSONB', 'zona VARCHAR(300)']) {
+      'iban VARCHAR(60)', 'bank VARCHAR(120)', 'legal_rep JSONB', 'zona VARCHAR(300)',
+      // Cât de des ne facturează instalatorul ('lunar' / 'saptamanal'; gol = lunar). În același ritm facturăm și noi
+      // montajul clientului (Alin, 30.09: „ca să nu fim pe pierdere"). Regula stă în montaj.js.
+      'ritm_facturare VARCHAR(12)']) {
       await client.query('ALTER TABLE montaj_parteneri ADD COLUMN IF NOT EXISTS ' + col);
     }
     // Contractul de colaborare cu un partener de montaj. Același drum ca la clienți (în lucru ⇄ aprobat
@@ -1101,6 +1109,8 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mcontracte_partener ON montaj_contracte(partener_id, created_at DESC)`);
+    // Ritmul în care ne facturează partenerul, ÎNGHEȚAT la creare din fișa lui, ca tarifele: hârtia semnată îl spune.
+    await client.query(`ALTER TABLE montaj_contracte ADD COLUMN IF NOT EXISTS ritm_facturare VARCHAR(12)`);
     // ─── Stocul NOSTRU de echipamente (Alin, 25.09) ───────────────────────────────────────────────
     // Un rând = o bucată (aparat GPS, modul LV-CAN), cu seria ei. `stare` = unde e (depozit, la
     // instalator, montat, returnat, defect, casat); `proprietar` = al cui e ('ra' = al nostru, în stoc
@@ -2128,12 +2138,13 @@ async function upsertPartenerMontaj(p) {
   const now = Date.now();
   // Se scrie DOAR ce vine în cerere (`undefined` = rămâne cum era). Până pe 24.09 o salvare fără CUI —
   // doar numele și tarifele — golea CUI-ul, contactul și notele (aceeași capcană ca `updateCompany`).
-  const chei = ['cui', 'contact', 'tarife', 'active', 'notes', 'reg_com', 'address', 'email', 'phone', 'iban', 'bank', 'legal_rep', 'zona']
+  const chei = ['cui', 'contact', 'tarife', 'active', 'notes', 'reg_com', 'address', 'email', 'phone', 'iban', 'bank', 'legal_rep', 'zona', 'ritm_facturare']
     .filter(function (k) { return p[k] !== undefined; });
   const val = function (k) {
     if (k === 'tarife') return JSON.stringify(p.tarife || {});
     if (k === 'legal_rep') return p.legal_rep ? JSON.stringify(p.legal_rep) : null;
     if (k === 'active') return p.active !== false;
+    if (k === 'ritm_facturare') return p.ritm_facturare === 'saptamanal' ? 'saptamanal' : 'lunar';
     return p[k] || null;
   };
   if (p.id) {
@@ -2155,7 +2166,7 @@ async function getPartenerMontaj(id) {
 
 // ─── Contractele cu partenerii de montaj (24.09) ─────────────────────────────────────────────────
 const _MC_COL = `c.id, c.partener_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at, c.auto_renew,
-  c.notice_days, c.plata_zile, c.ended_at, c.ended_reason, c.our_rep, c.partner_rep, c.tarife, c.zona,
+  c.notice_days, c.plata_zile, c.ended_at, c.ended_reason, c.our_rep, c.partner_rep, c.tarife, c.zona, c.ritm_facturare,
   (c.file_b64 IS NOT NULL) AS has_file, c.file_name, c.sent_at, c.sent_to, c.notes, c.created_at, c.updated_at`;
 async function listContracteMontaj() {
   const r = await pool.query(
@@ -2180,18 +2191,19 @@ async function salveazaContractMontaj(id, c) {
   const v = [c.partener_id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
     c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false, c.notice_days == null ? 30 : c.notice_days,
     c.plata_zile == null ? 30 : c.plata_zile, c.ended_at || null, c.ended_reason || null,
-    _J(c.our_rep), _J(c.partner_rep), _J(c.tarife), c.zona || null, c.notes || null, now];
+    _J(c.our_rep), _J(c.partner_rep), _J(c.tarife), c.zona || null, c.notes || null, now,
+    c.ritm_facturare === 'saptamanal' ? 'saptamanal' : 'lunar'];
   if (id) {
     const r = await pool.query(
       `UPDATE montaj_contracte SET partener_id=$2, number=$3, status=$4, signed_at=$5, start_at=$6, months=$7, end_at=$8,
          auto_renew=$9, notice_days=$10, plata_zile=$11, ended_at=$12, ended_reason=$13, our_rep=$14, partner_rep=$15,
-         tarife=$16, zona=$17, notes=$18, updated_at=$19 WHERE id=$1 RETURNING id`, [id].concat(v));
+         tarife=$16, zona=$17, notes=$18, updated_at=$19, ritm_facturare=$20 WHERE id=$1 RETURNING id`, [id].concat(v));
     return r.rows[0] ? getContractMontaj(id) : null;
   }
   const r = await pool.query(
     `INSERT INTO montaj_contracte (partener_id, number, status, signed_at, start_at, months, end_at, auto_renew, notice_days,
-       plata_zile, ended_at, ended_reason, our_rep, partner_rep, tarife, zona, notes, updated_at, created_by, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$18) RETURNING id`, v.concat([c.created_by || null]));
+       plata_zile, ended_at, ended_reason, our_rep, partner_rep, tarife, zona, notes, updated_at, ritm_facturare, created_by, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$18) RETURNING id`, v.concat([c.created_by || null]));
   return getContractMontaj(r.rows[0].id);
 }
 async function stergeContractMontaj(id) { await pool.query('DELETE FROM montaj_contracte WHERE id = $1', [id]); return { ok: true }; }
@@ -2291,6 +2303,67 @@ async function editStoc(id, f) {
   return getStoc(id);
 }
 async function stergeStoc(id) { await pool.query('DELETE FROM stoc_echipamente WHERE id = $1', [id]); return { ok: true }; }
+// IMEI-urile trackerelor din stoc (Alin, 30.09: aparatul intră în aplicație o singură dată, în Stoc). Un tracker casat nu
+// mai are ce transmite, deci nu mai e primit.
+async function stocImeiuri(tipuri) {
+  const r = await pool.query(`SELECT serie FROM stoc_echipamente WHERE tip = ANY($1::text[]) AND stare <> 'casat' AND serie IS NOT NULL`, [tipuri || []]);
+  return r.rows.map(function (x) { return x.serie; });
+}
+// Bucățile din stoc pentru mai multe serii deodată, cu instalatorul la care stau (pentru „aparate noi transmit").
+async function stocDupaSerii(serii) {
+  if (!serii || !serii.length) return [];
+  const r = await pool.query(
+    `SELECT s.tip, s.serie, s.stare, s.partener_id, p.name AS partener_nume FROM stoc_echipamente s
+       LEFT JOIN montaj_parteneri p ON p.id = s.partener_id WHERE s.serie = ANY($1::text[])`, [serii.map(String)]);
+  return r.rows.map(function (x) { return Object.assign({}, x, { partener_id: x.partener_id == null ? null : Number(x.partener_id) }); });
+}
+// ─── „Aparate noi transmit" (30.09) ──────────────────────────────────────────────────────────────
+// Aparatele fără firmă, nearhivate, încă neanunțate, care s-au conectat în ultimele 24 de ore.
+async function aparateNoiDeAnuntat() {
+  const r = await pool.query(
+    `SELECT imei FROM devices WHERE company_id IS NULL AND status IS DISTINCT FROM 'archived' AND anuntat_nou_la IS NULL
+        AND last_seen IS NOT NULL AND last_seen > NOW() - INTERVAL '24 hours' ORDER BY imei`);
+  return r.rows.map(function (x) { return x.imei; });
+}
+// Dintre IMEI-urile date, cele care sunt ACUM în „Neasignate" (există, fără firmă, nearhivate) — și dacă au transmis.
+async function aparateInNeasignate(imeis) {
+  if (!imeis || !imeis.length) return [];
+  const r = await pool.query(
+    `SELECT imei, (last_seen IS NOT NULL) AS transmite FROM devices
+      WHERE imei = ANY($1::text[]) AND company_id IS NULL AND status IS DISTINCT FROM 'archived'`, [imeis.map(String)]);
+  return r.rows;
+}
+async function marcheazaAparateAnuntate(imeis, companyId, cand) {
+  if (!imeis || !imeis.length) return 0;
+  const r = await pool.query('UPDATE devices SET anuntat_nou_la = $2, anuntat_firma = $3 WHERE imei = ANY($1::text[]) RETURNING imei',
+    [imeis.map(String), cand || Date.now(), companyId == null ? null : companyId]);
+  return r.rows.length;
+}
+// O singură dată: aparatele care erau deja fără firmă înainte de anunț nu se anunță ca „noi" la prima pornire.
+async function migreazaAparateNoiAnuntate() {
+  try {
+    if (await getSetting('aparate_noi_migrat')) return 0;
+    const r = await pool.query('UPDATE devices SET anuntat_nou_la = $1 WHERE company_id IS NULL AND anuntat_nou_la IS NULL RETURNING imei', [Date.now()]);
+    await setSetting('aparate_noi_migrat', String(Date.now()));
+    return r.rows.length;
+  } catch (e) { console.warn('[DB] migrarea anunțului „aparate noi":', e.message); return 0; }
+}
+// Modelul aparatului, pus din stoc când trackerul se conectează prima dată — doar dacă nu l-a scris nimeni.
+async function puneModelGpsDacaLipseste(imei, model) {
+  if (!imei || !model) return false;
+  const r = await pool.query(`UPDATE devices SET gps_model = $2 WHERE imei = $1 AND (gps_model IS NULL OR gps_model = '') RETURNING imei`, [imei, model]);
+  return r.rows.length > 0;
+}
+// Lucrările MONTATE și încă nefacturate clientului, cu ritmul instalatorului — din ele se socotește ce e de facturat
+// (montaj.deFacturatMontaj). Fără zi scrisă se ia ziua în care a fost trecută „montată".
+async function lucrariMontateNefacturate() {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.partener_id, COALESCE(m.data_lucrare, m.updated_at, m.created_at) AS data_lucrare, m.items,
+            m.total_client, m.status, co.name AS company_name, p.name AS partener_nume, p.ritm_facturare
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      WHERE m.status IN ('executat', 'facturat_de_partener') ORDER BY m.company_id, m.data_lucrare`);
+  return r.rows;
+}
 
 // ─── Listele Teltonika (28.09) ────────────────────────────────────────────────────────────────────
 async function listeCompat() {
@@ -5022,6 +5095,8 @@ module.exports = {
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
   stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
   listStoc, getStoc, stocDupaSerie, seriiExistenteInStoc, adaugaStoc, mutaStoc, editStoc, stergeStoc, firmeCuContractIncheiat,
+  stocImeiuri, stocDupaSerii, aparateNoiDeAnuntat, aparateInNeasignate, marcheazaAparateAnuntate, migreazaAparateNoiAnuntate,
+  puneModelGpsDacaLipseste, lucrariMontateNefacturate,
   listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,

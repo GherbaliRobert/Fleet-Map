@@ -761,7 +761,13 @@ function scrieContractMontaj(doc, date) {
 
   _titlu(doc, 'IV. PREȚUL ȘI PLATA');
   _p(doc, 'Tarifele sunt cele din Anexa nr. 1, în lei, fără TVA. Deplasarea se plătește pe kilometru, numai când a fost comandată. Tarifele se pot schimba doar prin act adițional scris.');
-  _p(doc, 'Prestatorul facturează lunar lucrările executate și recepționate în luna anterioară, cu lista lor (data, clientul, vehiculul, lucrarea). Beneficiarul plătește în termen de ' + C.numar(plata, 'zi', 'zile') + ' de la primirea facturii, prin transfer bancar în contul Prestatorului indicat mai sus.');
+  // Ritmul facturării (30.09): cel din fișa partenerului, înghețat în contract la creare, ca tarifele. În același
+  // ritm facturăm noi montajul clientului (montaj.deFacturatMontaj) — hârtia spune ce face aplicația.
+  const saptamanal = c.ritm_facturare === 'saptamanal';
+  _p(doc, 'Prestatorul facturează ' + (saptamanal
+    ? 'săptămânal lucrările executate și recepționate în săptămâna anterioară (de luni până duminică)'
+    : 'lunar lucrările executate și recepționate în luna anterioară') +
+    ', cu lista lor (data, clientul, vehiculul, lucrarea). Beneficiarul plătește în termen de ' + C.numar(plata, 'zi', 'zile') + ' de la primirea facturii, prin transfer bancar în contul Prestatorului indicat mai sus.');
 
   _titlu(doc, 'V. ECHIPAMENTELE');
   _p(doc, 'Echipamentele de montat sunt proprietatea Beneficiarului sau a clientului acestuia. Prestatorul le primește pe bază de proces-verbal, le păstrează în siguranță până la montaj și returnează Beneficiarului echipamentele demontate sau nefolosite. Pentru echipamentele pierdute sau deteriorate din culpa sa, Prestatorul plătește valoarea lor de achiziție.');

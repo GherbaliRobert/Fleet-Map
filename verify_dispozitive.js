@@ -259,8 +259,9 @@ function gata(cod) {
   T('și trimite în „Dispozitive", nu mai jos în pagină',
     /_coBandaNeasignate\(n\)[\s\S]{0,700}onclick="raxDevDeschideNeasignate\(\)"/.test(html) &&
     !/raxCoSariLaNeasignate/.test(html));
+  // (30.09: primește, opțional, ce să bifeze — anunțul „aparate noi transmit"; filtrul se pune tot înainte de deschidere.)
   T('acolo deschide fix filtrul de neasignate',
-    /window\.raxDevDeschideNeasignate = function \(\) \{[\s\S]{0,200}_raxDevFilter = 'unassigned';[\s\S]{0,120}raxAdminTab\('devices'\)/.test(html));
+    /window\.raxDevDeschideNeasignate = function \((?:pune)?\) \{[\s\S]{0,200}_raxDevFilter = 'unassigned';[\s\S]{0,260}raxAdminTab\('devices'\)/.test(html));
   T('lista de neasignate se mai cere doar ca să fie NUMĂRATĂ',
     /async function raxLoadUnassigned\(\) \{[\s\S]{0,420}\n    \}/.test(html) &&
     !/raxLoadUnassigned\(\) \{[\s\S]{0,420}Adoptă/.test(html));

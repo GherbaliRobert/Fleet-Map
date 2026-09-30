@@ -29,10 +29,12 @@ const TIPURI = [
 // diferit de montaj: aparatul e marfă, montajul e manoperă. Pe hârtie stau în aceeași anexă de
 // costuri unice, dar în două tabele, ca să se vadă ce e marfă și ce e muncă.
 // `chirie` = cheia CHIRIEI lunare a aparatului în ofertă (lei/lună/buc), când clientul închiriază (25.09).
+// `transmite` = aparatul are IMEI și se conectează singur la server (trackerele). Modulul LV-CAN nu transmite:
+// stă lângă tracker și are doar o serie.
 const ECHIPAMENTE = [
-  { k: 'fmc130', et: 'Teltonika FMC130',  oferta: 'dFmc130', ofertaQ: 'd130',  chirie: 'chFmc130' },
-  { k: 'fmc150', et: 'Teltonika FMC150',  oferta: 'dFmc150', ofertaQ: 'd150',  chirie: 'chFmc150' },
-  { k: 'fmc650', et: 'Teltonika FMC650',  oferta: 'dFmc650', ofertaQ: 'd650',  chirie: 'chFmc650' },
+  { k: 'fmc130', et: 'Teltonika FMC130',  oferta: 'dFmc130', ofertaQ: 'd130',  chirie: 'chFmc130', transmite: true },
+  { k: 'fmc150', et: 'Teltonika FMC150',  oferta: 'dFmc150', ofertaQ: 'd150',  chirie: 'chFmc150', transmite: true },
+  { k: 'fmc650', et: 'Teltonika FMC650',  oferta: 'dFmc650', ofertaQ: 'd650',  chirie: 'chFmc650', transmite: true },
   { k: 'lvcan200', et: 'Modul LV-CAN200', oferta: 'dLvCan',  ofertaQ: 'lvcan', chirie: 'chLvCan' }
 ];
 const CHEI_ECHIP = ECHIPAMENTE.map(function (e) { return e.k; });
@@ -245,9 +247,180 @@ function scaleazaLaMontate(items, masini) {
   }).filter(function (r) { return !(PE_MASINA.indexOf(r.tip) >= 0 && !(r.buc > 0)); });
 }
 
+// ─── Zilele, fără ceasul serverului ──────────────────────────────────────────────────────────────
+// Regulile de mai jos lucrează pe ZILE scrise 'AAAA-LL-ZZ' (ziua din calendarul României, pe care o dă serverul),
+// ca să nu depindă de fusul orar al mașinii pe care rulează: 22.09 e 22.09 și la 23:30, și la 00:30.
+const ZI_MS = 86400000;
+const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+function _ziMs(zi) { const p = String(zi || '').split('-').map(Number); return Date.UTC(p[0], (p[1] || 1) - 1, p[2] || 1); }
+function _zi(ms) { const d = new Date(ms); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
+function _zileIntre(de, pana) { return Math.round((_ziMs(pana) - _ziMs(de)) / ZI_MS); }
+function _zzll(ms) { const d = new Date(ms); return String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+function _zzllaa(ms) { return _zzll(ms) + '.' + new Date(ms).getUTCFullYear(); }
+function _bani(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// ─── Aparatele GPS intră o singură dată: în Stoc, cu IMEI-ul (Alin, 30.09: „da") ───────────────────
+// Doar trackerele TRANSMIT, deci doar ele au IMEI. Un GPS trecut în Stoc cu IMEI-ul e primit la conectare fără să
+// mai fie scris și în Dispozitive, iar când transmite prima dată apare singur la Dispozitive → Neasignate. La un
+// tracker, seria din stoc ESTE IMEI-ul (15 cifre, pe eticheta aparatului): altă serie n-ar putea fi recunoscută
+// niciodată la conectare, deci se refuză la intrare, nu se descoperă peste o lună.
+function transmite(tipEchip) { const e = echipament(tipEchip); return !!(e && e.transmite); }
+function esteImei(s) { return /^\d{10,20}$/.test(String(s == null ? '' : s)); }
+function seriiFaraImei(tipEchip, serii) {
+  return transmite(tipEchip) ? (serii || []).filter(function (s) { return !esteImei(s); }) : [];
+}
+
+// ─── „Aparate noi transmit" (Alin, 30.09: „pregătește-l ca notificare, să fie funcțional atunci când face Robert") ───
+// Un aparat din „Neasignate" care începe să transmită e, aproape sigur, unul abia montat. Dacă uiți să-l treci pe firmă,
+// clientul nu-și vede mașina, iar abonamentul ei nu pornește. Anunțul îți propune și firma: montajul din calendar din
+// ziua aceea sau din cele DOUĂ dinainte (instalatorul poate întârzia), la instalatorul la care stă aparatul în stoc.
+// Propunerea e doar o bifă pusă pe ecran; trecerea pe firmă o faci tu, în Dispozitive → Neasignate.
+const ZILE_POTRIVIRE_MONTAJ = 2;
+// Montajul la care se potrivește un aparat, sau null când nu se poate spune sigur.
+//   aparat = { imei, zi }          — ziua în care a început să transmită;
+//   stoc   = { stare, partener_id } — unde e în stocul nostru (null dacă nu e acolo);
+//   lucrari = [{ id, company_id, company_name, partener_id, partener_nume, zi, status, masini }].
+// Mai bine nicio propunere decât una greșită: la două firme posibile, sau când stocul spune alt instalator decât cel
+// din calendar, nu se propune nimic.
+function propuneFirma(aparat, stoc, lucrari) {
+  const cu = function (l) { return _zileIntre(l.zi, aparat.zi); };
+  const aproape = (lucrari || []).filter(function (l) {
+    if (!l || l.company_id == null || !l.zi) return false;
+    // O lucrare „de programat" n-are încă o zi hotărâtă: nu spune unde s-a montat ceva.
+    if (l.status !== 'programat' && STARI_MONTATE.indexOf(l.status) < 0) return false;
+    const z = cu(l);
+    return z >= 0 && z <= ZILE_POTRIVIRE_MONTAJ;
+  });
+  const alese = (stoc && stoc.partener_id != null)
+    ? aproape.filter(function (l) { return l.partener_id === stoc.partener_id; })
+    : aproape;
+  const firme = {};
+  alese.forEach(function (l) { firme[l.company_id] = true; });
+  if (Object.keys(firme).length !== 1) return null;
+  return alese.slice().sort(function (a, b) { return cu(a) - cu(b) || (Number(b.masini) || 0) - (Number(a.masini) || 0); })[0];
+}
+// Aparatele noi, pe loturi: unul pe fiecare firmă propusă, plus unul „fără firmă", la urmă.
+function grupeazaAparateNoi(aparate, stocDupaImei, lucrari) {
+  const grupuri = {}, ordine = [];
+  (aparate || []).forEach(function (a) {
+    const l = propuneFirma(a, (stocDupaImei || {})[a.imei] || null, lucrari);
+    const k = l ? 'c' + l.company_id : 'fara';
+    if (!grupuri[k]) {
+      grupuri[k] = {
+        company_id: l ? l.company_id : null, company_name: l ? (l.company_name || null) : null,
+        partener_id: l && l.partener_id != null ? l.partener_id : null, partener_nume: l ? (l.partener_nume || null) : null,
+        lucrare_id: l ? l.id : null, zi_lucrare: l ? l.zi : null, masini: l ? (Number(l.masini) || 0) : 0, imeis: []
+      };
+      ordine.push(k);
+    }
+    grupuri[k].imeis.push(a.imei);
+  });
+  return ordine.sort(function (x, y) { return (x === 'fara') - (y === 'fara'); }).map(function (k) { return grupuri[k]; });
+}
+// Textul anunțului. o = { n, firma, instalator, ziLucrare, azi, sursa, nuTransmit }:
+//   sursa 'semnal'     — aplicația a văzut aparatele transmițând (azi);
+//   sursa 'instalator' — raportul instalatorului (partea lui Robert): firma și instalatorul sunt știute.
+function anuntAparateNoi(o) {
+  const n = Math.max(0, Math.floor(Number(o && o.n) || 0));
+  const nu = Math.max(0, Math.floor(Number(o && o.nuTransmit) || 0));
+  const firma = (o && o.firma) || null, inst = (o && o.instalator) || null;
+  const unu = n === 1;
+  const gasesti = n
+    ? (unu ? 'Îl găsești la Dispozitive → Neasignate: apasă aici și e deja bifat' : 'Le găsești la Dispozitive → Neasignate: apasă aici și sunt deja bifate') +
+      (firma ? ', cu firma aleasă. Verifici și apeși „Trece pe firmă".' : '. Alegi firma și apeși „Trece pe firmă".')
+    : '';
+  const deCe = n ? (unu ? ' Până atunci clientul nu-l vede, iar abonamentul lui nu pornește.' : ' Până atunci clientul nu le vede, iar abonamentul lor nu pornește.') : '';
+  if (o && o.sursa === 'instalator') {
+    const tot = n + nu;
+    const titlu = (inst || 'Instalatorul') + ' a montat ' + _cate(tot, 'aparat', 'aparate') + (firma ? ' la ' + firma : '');
+    const lipsa = !nu ? '' : !n
+      ? 'Niciunul nu transmite încă: apar la Dispozitive → Neasignate când pornesc, și atunci primești alt anunț.'
+      : ' ' + (nu === 1 ? 'Unul nu transmite încă: apare acolo când pornește.' : _cate(nu, 'aparat', 'aparate') + ' nu transmit încă: apar acolo când pornesc.');
+    return { titlu: titlu, corp: (gasesti + deCe + lipsa).trim() };
+  }
+  const titlu = (unu ? 'Un aparat nou transmite' : _cate(n, 'aparat nou', 'aparate noi') + ' transmit') + (firma ? ' — ' + firma : '');
+  let unde = '';
+  if (firma) {
+    const z = (o.ziLucrare && o.azi) ? _zileIntre(o.ziLucrare, o.azi) : 0;
+    const cand = z <= 0 ? 'Azi e programat' : z === 1 ? 'Ieri a fost programat' : 'Pe ' + _zzll(_ziMs(o.ziLucrare)) + ' a fost programat';
+    unde = cand + ' montajul la ' + firma + (inst ? ' (' + inst + ')' : '') + '. ';
+  } else {
+    unde = 'Nu e niciun montaj în calendar, azi sau în ultimele ' + _cate(ZILE_POTRIVIRE_MONTAJ, 'zi', 'zile') + ', care să ' + (unu ? 'i se potrivească' : 'li se potrivească') + '. ';
+  }
+  return { titlu: titlu, corp: unde + gasesti + deCe };
+}
+
+// ─── Factura montajului, în ritmul instalatorului (Alin, 30.09) ──────────────────────────────────
+// „Dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… dacă ne facturează la lună, facturăm și
+// noi la lună — ca să nu fim pe pierdere. Depinde mult de instalator." DOAR la montaj: abonamentul rămâne lunar.
+// Ritmul stă pe fișa instalatorului (implicit lunar). O lucrare montată devine „de facturat" când se ÎNCHEIE perioada
+// ei — săptămâna (luni–duminică) sau luna calendaristică —, iar lucrările unui client din perioadele încheiate merg pe
+// o singură factură. Lucrările fără instalator (făcute de noi) merg lunar.
+const RITMURI = { lunar: 'lunar', saptamanal: 'săptămânal' };
+const FACTURARE_RITM = { lunar: 'facturare lunară', saptamanal: 'facturare săptămânală' };
+function ritmFacturare(v) { return v === 'saptamanal' ? 'saptamanal' : 'lunar'; }
+// Perioada în care cade ziua `zi`: { ritm, de, pana (inclusiv), gataDin (ziua de după), eticheta }.
+function perioadaFacturare(zi, ritm) {
+  const t = _ziMs(zi);
+  if (ritmFacturare(ritm) === 'saptamanal') {
+    const de = t - ((new Date(t).getUTCDay() + 6) % 7) * ZI_MS;   // lunea
+    const pana = de + 6 * ZI_MS;                                  // duminica
+    const eticheta = new Date(de).getUTCFullYear() !== new Date(pana).getUTCFullYear() ? _zzllaa(de) + '–' + _zzllaa(pana)
+      : new Date(de).getUTCMonth() !== new Date(pana).getUTCMonth() ? _zzll(de) + '–' + _zzllaa(pana)
+        : String(new Date(de).getUTCDate()).padStart(2, '0') + '–' + _zzllaa(pana);
+    return { ritm: 'saptamanal', de: _zi(de), pana: _zi(pana), gataDin: _zi(pana + ZI_MS), eticheta: eticheta };
+  }
+  const d = new Date(t), y = d.getUTCFullYear(), m = d.getUTCMonth();
+  const de = Date.UTC(y, m, 1), urm = Date.UTC(y, m + 1, 1);
+  return { ritm: 'lunar', de: _zi(de), pana: _zi(urm - ZI_MS), gataDin: _zi(urm), eticheta: LUNI[m] + ' ' + y };
+}
+// Ce e de facturat clientului din montaj, în ziua `azi`. `lucrari` = cele MONTATE și încă nefacturate clientului,
+// cu prețul lor și ritmul instalatorului: [{ id, company_id, company_name, partener_nume, ritm, zi, total_client, masini }].
+// → { gata: [pe firmă], inCurs: [pe firmă] }; o firmă = { company_id, company_name, lucrari: [id], total, masini,
+//    perioade: [{ de, pana, eticheta, ritm, instalator }], gataDin, ultimaPerioada, text }.
+function deFacturatMontaj(lucrari, azi) {
+  const gata = {}, inCurs = {};
+  (lucrari || []).forEach(function (l) {
+    if (!l || l.company_id == null || !l.zi || !(Number(l.total_client) > 0)) return;
+    const p = perioadaFacturare(l.zi, l.ritm);
+    const tinta = String(azi) >= p.gataDin ? gata : inCurs;
+    const k = String(l.company_id);
+    const g = tinta[k] || (tinta[k] = { company_id: l.company_id, company_name: l.company_name || null, lucrari: [], total: 0, masini: 0, perioade: [], gataDin: null, ultimaPerioada: null });
+    g.lucrari.push(l.id);
+    g.total = Math.round((g.total + Number(l.total_client)) * 100) / 100;
+    g.masini += Math.floor(Number(l.masini) || 0);
+    const inst = l.partener_nume || null;
+    if (!g.perioade.some(function (x) { return x.de === p.de && x.ritm === p.ritm && x.instalator === inst; })) {
+      g.perioade.push({ de: p.de, pana: p.pana, eticheta: p.eticheta, ritm: p.ritm, instalator: inst });
+    }
+    if (!g.gataDin || p.gataDin < g.gataDin) g.gataDin = p.gataDin;
+    if (!g.ultimaPerioada || p.pana > g.ultimaPerioada) g.ultimaPerioada = p.pana;
+  });
+  const lista = function (o, inLucru) {
+    return Object.keys(o).map(function (k) { return o[k]; }).map(function (g) {
+      g.perioade.sort(function (a, b) { return a.de < b.de ? -1 : a.de > b.de ? 1 : 0; });
+      g.lucrari.sort(function (a, b) { return a - b; });
+      const cine = g.masini ? _cate(g.masini, 'mașină montată', 'mașini montate') : 'Lucrări de montaj';
+      const cand = g.perioade.map(function (p) { return p.eticheta + ' (' + [p.instalator, FACTURARE_RITM[p.ritm]].filter(Boolean).join(' · ') + ')'; });
+      g.text = cine + ' în ' + (cand.length === 1 ? cand[0] : cand.slice(0, -1).join(', ') + ' și ' + cand[cand.length - 1]) +
+        (inLucru ? ' — se facturează de pe ' + _zzllaa(_ziMs(g.gataDin)) : '');
+      return g;
+    }).sort(function (a, b) { return String(a.company_name || '').localeCompare(String(b.company_name || ''), 'ro'); });
+  };
+  return { gata: lista(gata, false), inCurs: lista(inCurs, true) };
+}
+// Anunțul către noi: o firmă are montaj de facturat. Aceleași cuvinte ca rândul din Facturare.
+function anuntMontajDeFacturat(g) {
+  return { titlu: 'Montaj de facturat: ' + (g.company_name || ('firma #' + g.company_id)),
+    corp: g.text + ' — ' + _bani(g.total) + ' lei fără TVA. Apasă aici: factura e pregătită, cu lucrările puse. O verifici („Previzualizează") și apeși „Emite factura".' };
+}
+
 module.exports = {
   TIPURI, CHEI, STARI, ETICHETE_STARE, ECHIPAMENTE, CHEI_ECHIP,
   tip, echipament, randuri, randuriEchip, calc,
   facAnexaMontaj, facAnexaEchip, facAnexaCosturiUnice, pretDinOferta,
-  PE_MASINA, STARI_PROGRAMATE, STARI_MONTATE, deProgramat, lucrareaZilei, scaleazaLaMontate
+  PE_MASINA, STARI_PROGRAMATE, STARI_MONTATE, deProgramat, lucrareaZilei, scaleazaLaMontate,
+  transmite, esteImei, seriiFaraImei,
+  ZILE_POTRIVIRE_MONTAJ, propuneFirma, grupeazaAparateNoi, anuntAparateNoi,
+  RITMURI, FACTURARE_RITM, ritmFacturare, perioadaFacturare, deFacturatMontaj, anuntMontajDeFacturat
 };

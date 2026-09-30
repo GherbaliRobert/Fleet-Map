@@ -446,14 +446,23 @@ function _verificaReceptia() {
 // (în memorie) ca super-adminul să-l poată aproba dacă e legitim. Dezactivabil cu STRICT_DEVICES=false. Implicit ACTIV.
 const STRICT_DEVICES = process.env.STRICT_DEVICES !== 'false' && process.env.STRICT_DEVICES !== '0';
 const registeredImeis = new Set(); // allow-list: IMEI-uri pre-înregistrate + neARHIVATE
+// A doua jumătate a listei (Alin, 30.09: aparatul intră în aplicație O SINGURĂ DATĂ, în Stoc): trackerele din stocul
+// nostru, cu IMEI-ul ca serie. Nu mai trebuie scrise și în Dispozitive: la prima conectare se face singur rândul lui,
+// fără firmă, și apare la Dispozitive → Neasignate. Un IMEI străin (nici în Dispozitive, nici în Stoc) e refuzat ca
+// până acum. Se ține în pas cu stocul la fiecare intrare, corectură, mutare pe „casat" și ștergere.
+const stocImeis = new Set();
 let registeredLoaded = false;
 async function loadRegisteredImeis() {
   try {
     const r = await db.pool.query("SELECT imei FROM devices WHERE status IS DISTINCT FROM 'archived'");
-    registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei)); registeredLoaded = true;
-    console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
+    const s = await db.stocImeiuri(montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).map(function (e) { return e.k; }));
+    registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei));
+    stocImeis.clear(); s.filter(montaj.esteImei).forEach(function (x) { stocImeis.add(x); });
+    registeredLoaded = true;
+    console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate + ${stocImeis.size} în stoc (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
   } catch (e) { console.error('[STRICT] loadRegisteredImeis:', e.message); }
 }
+function _imeiPrimit(imei) { return registeredImeis.has(imei) || stocImeis.has(imei); }
 // ─── Ziua în care pornește abonamentul unei mașini (decizie Alin, 28.09: „pe zile, din ziua în care aparatul
 //     transmite prima dată") ───
 // `devices.abonament_de_la` se scrie la PRIMUL pachet primit după ce aparatul a ajuns pe o firmă client (nu
@@ -778,7 +787,7 @@ const tcpServer = net.createServer((socket) => {
         // MOD STRICT: doar IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neRESPINSE. Necunoscut/respins → drop + jurnal,
         // fără creare de rând sau stocare de poziții. Guard: dacă lista încă nu s-a încărcat (fereastra de la boot),
         // NU bloca — evită să pici toate device-urile la pornire.
-        if (STRICT_DEVICES && registeredLoaded && (!registeredImeis.has(imei) || archivedImeis.has(imei))) {
+        if (STRICT_DEVICES && registeredLoaded && (!_imeiPrimit(imei) || archivedImeis.has(imei))) {
           console.warn(`[TCP] IMEI neînregistrat/respins ${imei} de la ${clientAddr} — respins (mod strict)`);
           ingestStats.rejects++;
           addDebugEntry({ event: 'reject', imei, address: clientAddr, reason: 'not_registered' });
@@ -807,9 +816,11 @@ const tcpServer = net.createServer((socket) => {
         socket.write(Buffer.from([0x01]));
         ingestStats.acks++;
 
-        // Înregistrează dispozitivul în DB — asincron, nu blochează handshake-ul
+        // Înregistrează dispozitivul în DB — asincron, nu blochează handshake-ul. Un tracker venit din stoc își
+        // primește aici rândul (fără firmă → Dispozitive → Neasignate) și modelul din stoc. Anunțul „aparate noi
+        // transmit" îl dă `aparateNoiTick`, pe loturi — nu fiecare aparat, pe loc.
         db.upsertDevice(imei)
-          .then(r => { if (r && r.created) notifyNewDeviceConnected(imei, clientAddr); })
+          .then(r => { if (r && r.created) _aparatNouDinStoc(imei); })
           .catch(e => console.error(`[TCP] upsertDevice ${imei}: ${e.message}`));
 
         // Init mirror connection to Traccar/OpenRemote if enabled
@@ -5312,6 +5323,8 @@ app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, re
       const r = b.legal_rep || {};
       juridic.legal_rep = txt(r.name, 120) ? { name: txt(r.name, 120), role: txt(r.role, 80) } : null;
     }
+    // Cât de des ne facturează (30.09). În același ritm facturăm montajul clientului — vezi montaj.deFacturatMontaj.
+    if (b.ritm_facturare !== undefined) juridic.ritm_facturare = montaj.ritmFacturare(b.ritm_facturare);
     const p = await db.upsertPartenerMontaj(Object.assign({
       id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
       // `undefined` = n-a venit în cerere → rămâne cum era (vezi `upsertPartenerMontaj`).
@@ -5358,6 +5371,7 @@ function _mcDinCerere(b, vechi) {
     ended_at: v.ended_at ? Number(v.ended_at) : null, ended_reason: v.ended_reason ? String(v.ended_reason).slice(0, 500) : null,
     our_rep: rep(v.our_rep), partner_rep: rep(v.partner_rep),
     tarife: (v.tarife && typeof v.tarife === 'object') ? v.tarife : {},
+    ritm_facturare: montaj.ritmFacturare(v.ritm_facturare),
     zona: v.zona ? String(v.zona).slice(0, 300) : null, notes: v.notes ? String(v.notes).slice(0, 4000) : null
   };
 }
@@ -5384,7 +5398,8 @@ app.post('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, re
     if (ale.length) return res.status(409).json({ error: 'Partenerul are deja un contract ' + (ale[0].status === 'activ' ? 'în vigoare' : 'în lucru') + ' (' + (ale[0].number || '') + ').' });
     const date = _mcDinCerere(Object.assign({ status: 'ciorna' }, b, { partener_id: p.id,
       // Anexa nr. 1 = tarifele de AZI ale partenerului, înghețate; zona și reprezentantul, din fișa lui.
-      tarife: Object.assign({}, p.tarife || {}), zona: b.zona !== undefined ? b.zona : p.zona,
+      // Ritmul facturării lui se îngheață la fel: hârtia semnată îl spune (cap. „Prețul și plata").
+      tarife: Object.assign({}, p.tarife || {}), ritm_facturare: montaj.ritmFacturare(p.ritm_facturare), zona: b.zona !== undefined ? b.zona : p.zona,
       partner_rep: b.partner_rep !== undefined ? b.partner_rep : p.legal_rep }));
     if (date.status !== 'ciorna' && date.status !== 'activ') date.status = 'ciorna';
     date.number = await db.nextContractMontajNumber();
@@ -5409,6 +5424,7 @@ app.put('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req,
     // „Reia tarifele partenerului": Anexa nr. 1 se reface din fișa lui — doar cât contractul e nesemnat.
     if (b.tarife_din_partener && vechi.status !== 'activ' && vechi.status !== 'incheiat') {
       const p = await db.getPartenerMontaj(vechi.partener_id); b.tarife = Object.assign({}, (p && p.tarife) || {});
+      b.ritm_facturare = montaj.ritmFacturare(p && p.ritm_facturare);
     }
     delete b.tarife_din_partener; delete b.partener_id; delete b.number;
     const date = _mcDinCerere(b, vechi);
@@ -5558,6 +5574,10 @@ app.post('/api/stoc/intrare', requireAuth, requireSuperadmin, async (req, res) =
     const faraSerie = Math.max(0, Math.min(500, parseInt(b.buc, 10) || 0));
     if (!serii.length && !faraSerie) return res.status(400).json({ error: 'Scrie seriile (una pe rând) sau câte bucăți intră fără serie.' });
     if (serii.length + faraSerie > 500) return res.status(400).json({ error: 'Cel mult 500 de bucăți deodată.' });
+    // La un GPS, seria E IMEI-ul: după el îl recunoaștem când se conectează. Altă serie n-ar fi primită niciodată.
+    const faraImei = montaj.seriiFaraImei(tip, serii);
+    if (faraImei.length) return res.status(400).json({ serii: faraImei, error: 'La aparatele GPS, seria e IMEI-ul (15 cifre, scris pe eticheta aparatului). ' +
+      (faraImei.length === 1 ? '„' + faraImei[0] + '" nu e un IMEI.' : 'Nu sunt IMEI-uri: ' + faraImei.slice(0, 6).join(', ') + (faraImei.length > 6 ? '…' : '') + '.') });
     const exista = await db.seriiExistenteInStoc(serii);
     if (exista.length) return res.status(409).json({ serii: exista, error: (exista.length === 1 ? 'Seria ' : 'Seriile ') + exista.slice(0, 8).join(', ') + (exista.length > 8 ? '…' : '') + (exista.length === 1 ? ' e deja în stoc.' : ' sunt deja în stoc.') });
     let cost = null;
@@ -5572,8 +5592,10 @@ app.post('/api/stoc/intrare', requireAuth, requireSuperadmin, async (req, res) =
     const bucati = serii.map(function (sr) { return Object.assign({ serie: sr }, baza); });
     for (let i = 0; i < faraSerie; i++) bucati.push(Object.assign({ serie: null }, baza));
     const ids = await db.adaugaStoc(bucati, _cine(req));
+    // Trackerele intră din clipa asta în lista celor primite la conectare: nu se mai scriu și în Dispozitive.
+    if (montaj.transmite(tip)) serii.forEach(function (s) { stocImeis.add(s); deviceAttempts.delete(s); });
     auditReq(req, 'create', 'stoc', null, { tip: tip, buc: ids.length, cost_eur: cost });
-    res.json({ ok: true, adaugate: ids.length, ids: ids });
+    res.json({ ok: true, adaugate: ids.length, ids: ids, primite_la_conectare: montaj.transmite(tip) ? serii.length : 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Mutarea uneia sau a mai multor bucăți. Fiecare bucată trece doar pe drumurile din stoc.js; ce nu se
@@ -5614,6 +5636,7 @@ app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
       else if (stare === 'retur') { m.partener_id = null; }
       else if (stare === 'casat') { m.company_id = null; m.partener_id = null; }
       await db.mutaStoc(id, m);
+      if (stare === 'casat' && x.serie) stocImeis.delete(x.serie);   // un tracker casat nu mai are ce transmite
       mutate.push(id);
     }
     if (!mutate.length) return res.status(400).json({ refuzate: refuzate, error: 'Nimic nu s-a mutat: ' + refuzate.map(function (r) { return (r.serie || '#' + r.id) + ' ' + r.motiv; }).slice(0, 4).join('; ') + '.' });
@@ -5647,6 +5670,7 @@ app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
     if (b.serie !== undefined) {
       f.serie = String(b.serie || '').trim().slice(0, 60) || null;
       if (f.serie && f.serie !== x.serie) { const alta = await db.stocDupaSerie(f.serie); if (alta) return res.status(409).json({ error: 'Seria ' + f.serie + ' e deja în stoc.' }); }
+      if (f.serie && montaj.seriiFaraImei(x.tip, [f.serie]).length) return res.status(400).json({ error: 'La aparatele GPS, seria e IMEI-ul (15 cifre, scris pe eticheta aparatului). „' + f.serie + '" nu e un IMEI.' });
     }
     if (b.cost_eur !== undefined) {
       if (b.cost_eur === null || b.cost_eur === '') f.cost_eur = null;
@@ -5655,6 +5679,11 @@ app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
     if (b.furnizor !== undefined) f.furnizor = b.furnizor ? String(b.furnizor).trim().slice(0, 160) : null;
     if (b.note !== undefined) f.note = b.note ? String(b.note).trim().slice(0, 1000) : null;
     const out = await db.editStoc(id, f);
+    // Seria corectată la un tracker: IMEI-ul vechi nu mai e primit, cel nou da.
+    if (f.serie !== undefined && montaj.transmite(x.tip)) {
+      if (x.serie) stocImeis.delete(x.serie);
+      if (f.serie && x.stare !== 'casat') stocImeis.add(f.serie);
+    }
     auditReq(req, 'update', 'stoc', id, { campuri: Object.keys(f) });
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5667,6 +5696,7 @@ app.delete('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => 
     const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
     if (x.stare !== 'depozit' || (x.istoric || []).length > 1) return res.status(400).json({ error: 'Bucata are deja istoric — nu se șterge. Dacă nu mai e bună, treci-o pe „casat".' });
     await db.stergeStoc(id);
+    if (x.serie) stocImeis.delete(x.serie);   // trecut din greșeală → nici primit la conectare
     auditReq(req, 'delete', 'stoc', id, { tip: x.tip, serie: x.serie });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5892,6 +5922,48 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
     res.json({ ok: true, lucrare: u, inapoi_la_programat: Math.max(0, inainte - (dupa.buc || 0)) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ─── Montajul de facturat, în ritmul instalatorului (Alin, 30.09) ─────────────────────────────────
+// „Dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… ca să nu fim pe pierdere." DOAR montajul;
+// abonamentul rămâne lunar. Regula (perioada, ce e gata) stă în montaj.js; aici doar se adună lucrările.
+async function _deFacturatMontaj(acum) {
+  const rows = await db.lucrariMontateNefacturate();
+  const lucrari = rows.map(function (l) {
+    const items = Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || []);
+    // Câte mașini: cel mai mare număr dintre lucrările făcute pe mașină (aparat, adaptor, CAN, FMS), nu suma lor.
+    const masini = items.filter(function (r) { return r && montaj.PE_MASINA.indexOf(r.tip) >= 0; })
+      .reduce(function (m, r) { return Math.max(m, Number(r.buc) || 0); }, 0);
+    return { id: l.id, company_id: l.company_id, company_name: l.company_name, partener_nume: l.partener_nume || null,
+      ritm: l.ritm_facturare, zi: _ziRo(l.data_lucrare), total_client: Number(l.total_client) || 0, masini: masini };
+  });
+  return montaj.deFacturatMontaj(lucrari, _ziRo(acum || Date.now()));
+}
+app.get('/api/montaj/de-facturat', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await _deFacturatMontaj(Date.now())); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Anunțul: o dată pe firmă și pe perioada încheiată (cheia are ultima zi a perioadei). Dacă nu facturezi, perioada
+// următoare îți amintește din nou — cu tot ce s-a adunat. Doar la noi (super-admini), între 8 și 20.
+async function montajDeFacturatTick(acum) {
+  acum = acum || Date.now();
+  const raport = { gata: 0, anuntate: [] };
+  const ora = Number(new Date(acum).toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', hourCycle: 'h23' }));
+  if (!(ora >= 8 && ora < 20)) return raport;
+  let d;
+  try { d = await _deFacturatMontaj(acum); } catch (e) { return raport; }
+  raport.gata = d.gata.length;
+  let supers = null;
+  for (const g of d.gata) {
+    try {
+      const cheie = 'montaj_de_facturat:' + g.company_id + ':' + g.ultimaPerioada;
+      if (await db.notificationKeyExists(cheie, 24 * 120)) continue;
+      if (!supers) { try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) { supers = []; } }
+      const t = montaj.anuntMontajDeFacturat(g);
+      await _anuntaSuperadmini(supers, 'montaj_de_facturat', 'info', t.titlu, t.corp, { key: cheie, company_id: g.company_id, lucrari: g.lucrari });
+      raport.anuntate.push(g.company_id);
+    } catch (e) { /* per firmă, ca la celelalte ceasuri */ }
+  }
+  return raport;
+}
 
 // Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
@@ -6691,6 +6763,8 @@ app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, r
 // de trecerea unuia și de trecerea mai multora deodată (28.09) — adopția rămâne într-un singur loc.
 async function _trecePeFirma(req, imei, companyId) {
   await db.setDeviceCompany(imei, companyId);
+  // Propunerea din anunțul „aparate noi transmit" și-a făcut treaba (sau a fost ocolită): nu mai rămâne agățată.
+  try { await db.pool.query('UPDATE devices SET anuntat_firma = NULL WHERE imei = $1', [imei]); } catch (e) {}
   _devCompanyCache.delete(imei);
   _uitaPornirea(imei);   // abonamentul pornește din nou la prima transmisie pe firma nouă (dacă firma s-a schimbat)
   auditReq(req, 'assign_company', 'device', imei, { companyId });
@@ -6788,7 +6862,10 @@ app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) =
         abonament_de_la: d.abonament_de_la != null ? Number(d.abonament_de_la) : null,
         last_position_time: d.last_position_time || d.last_seen || null,
         created_at: d.created_at || null,
-        install_issue: d.install_issue || null
+        install_issue: d.install_issue || null,
+        // Firma propusă de anunțul „aparate noi transmit" (30.09), cât aparatul e încă fără firmă: la clicul pe anunț,
+        // ecranul bifează toate aparatele propuse pentru aceeași firmă, chiar dacă au venit în loturi diferite.
+        anuntat_firma: d.company_id == null && d.anuntat_firma != null ? Number(d.anuntat_firma) : null
       }));
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -11964,27 +12041,93 @@ async function deliverUserEvent(user, ev, p) {
   if (p && (p.push || (p.push == null && ev.severity === 'critical'))) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
 }
 
-// ─── Dispozitiv NOU conectat → anunță super-adminul ───
-// La prima conectare a unui tracker neînregistrat, super-adminul primește o notificare (in-app + push)
-// de unde poate ADOPTA dispozitivul (îl asignează unei companii = îl transformă în vehicul și stochează
-// datele) sau îl poate RESPINGE (arhivare → se oprește stocarea). O singură dată per IMEI (dedup 24h).
-async function notifyNewDeviceConnected(imei, address) {
+// ─── „Aparate noi transmit" (Alin, 30.09: „da, pregătește-l ca notificare, să fie funcțional atunci când face Robert") ───
+// Un aparat fără firmă care începe să transmită e, aproape sigur, unul abia montat. Dacă uiți să-l treci pe firmă,
+// clientul nu-și vede mașina, iar abonamentul ei nu pornește. Anunțul merge DOAR la noi (super-admini); clientul nu
+// vede nimic până nu trecem aparatele pe firma lui.
+//
+// UN singur loc care anunță: `anuntaAparateNoi`. Azi îl cheamă semnalul (`aparateNoiTick`, mai jos). Când Robert face
+// raportul instalatorului, îl cheamă și raportul, cu firma, instalatorul și lucrarea știute:
+//     anuntaAparateNoi({ imeis, companyId, partenerId, lucrareId, sursa: 'instalator' })
+// Un aparat se anunță o singură dată (`devices.anuntat_nou_la`), deci raportul și semnalul nu se dublează.
+// Anunțul vechi („Dispozitiv nou conectat", la fiecare aparat, pe loc) a fost înlocuit de ăsta.
+async function _aparatNouDinStoc(imei) {
   try {
-    const key = 'newdev:' + imei;
-    if (await db.notificationKeyExists(key, 24)) return; // deja anunțat în ultimele 24h
-    const title = 'Dispozitiv nou conectat';
-    const body = 'IMEI ' + imei + ' transmite date dar nu e asociat niciunui vehicul. Adoptă-l (creează vehicul) sau respinge-l din „Companii → Vehicule neasignate".';
-    const saved = await db.createNotification({ type: 'device_new', severity: 'info', imei, title, body, data: { key, imei, address: address || null }, userId: null, companyId: null });
-    // Pentru un device orfan (companie NULL), getUsersForImei întoarce DOAR superadminii.
-    let supers = [];
-    try { supers = await db.getUsersForImei(imei); } catch (_) {}
-    for (const u of supers) {
-      if (u.role !== 'superadmin') continue; // strict: doar platforma află de orfani
-      try { broadcastWsToUser(u.id, { type: 'notification', data: saved }); } catch (_) {}
-      sendPushToUser(u.id, { title, body, imei, data: { type: 'device_new', imei } }).catch(() => {});
-    }
-    console.log('[TCP] Dispozitiv nou ' + imei + ' (' + (address || '?') + ') → notificat super-admin');
-  } catch (e) { console.error('[TCP] notifyNewDeviceConnected ' + imei + ': ' + e.message); }
+    const x = await db.stocDupaSerie(String(imei));
+    const e = x && montaj.echipament(x.tip);
+    if (e && e.transmite) await db.puneModelGpsDacaLipseste(imei, e.et);
+  } catch (e) { /* modelul se poate scrie și de mână, din fișă */ }
+}
+async function anuntaAparateNoi(o) {
+  const imeis = Array.from(new Set(((o && o.imeis) || []).map(String))).filter(function (i) { return !DEMO_SET.has(i); });
+  if (!imeis.length) return { anuntate: 0 };
+  const acum = (o && o.acum) || Date.now();
+  // Doar ce e ACUM în „Neasignate" se poate trece pe firmă; restul (încă neconectat) se spune pe nume.
+  const inNeas = await db.aparateInNeasignate(imeis);
+  const transmit = inNeas.filter(function (x) { return x.transmite; }).map(function (x) { return x.imei; });
+  const sursa = o && o.sursa === 'instalator' ? 'instalator' : 'semnal';
+  const nuTransmit = sursa === 'instalator' ? imeis.length - transmit.length : 0;
+  if (!transmit.length && !nuTransmit) return { anuntate: 0 };
+  const companyId = o && o.companyId != null ? Number(o.companyId) : null;
+  const [co, part, lucrare] = await Promise.all([
+    companyId != null ? db.getCompanyById(companyId).catch(function () { return null; }) : null,
+    o && o.partenerId != null ? db.getPartenerMontaj(Number(o.partenerId)).catch(function () { return null; }) : null,
+    o && o.lucrareId != null ? db.getMontaj(Number(o.lucrareId)).catch(function () { return null; }) : null
+  ]);
+  const t = montaj.anuntAparateNoi({ n: transmit.length, nuTransmit: nuTransmit, sursa: sursa,
+    firma: co ? co.name : null, instalator: part ? part.name : null,
+    ziLucrare: lucrare && lucrare.data_lucrare ? _ziRo(lucrare.data_lucrare) : null, azi: _ziRo(acum) });
+  let supers = [];
+  try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+  const n = await _anuntaSuperadmini(supers, 'aparate_noi', 'info', t.titlu, t.corp, {
+    key: 'aparate_noi:' + acum + ':' + (companyId == null ? '-' : companyId), imeis: transmit, nu_transmit: nuTransmit,
+    company_id: co ? co.id : null, partener_id: part ? part.id : null, lucrare_id: lucrare ? lucrare.id : null, sursa: sursa });
+  await db.marcheazaAparateAnuntate(transmit, co ? co.id : null, acum);
+  return { anuntate: transmit.length, nu_transmit: nuTransmit, notificare: n && n.id };
+}
+// Loturile: aparatele noi, fiecare cu firma propusă din calendar (montaj.grupeazaAparateNoi).
+async function _grupuriAparateNoi(imeis, acum) {
+  const azi = _ziRo(acum), ZI = 86400000;
+  const [stoc, brute] = await Promise.all([
+    db.stocDupaSerii(imeis).catch(function () { return []; }),
+    db.lucrariMontajIntre(acum - (montaj.ZILE_POTRIVIRE_MONTAJ + 2) * ZI, acum + 2 * ZI).catch(function () { return []; })
+  ]);
+  const peImei = {};
+  stoc.forEach(function (x) { peImei[x.serie] = x; });
+  const lucrari = brute.filter(function (l) { return l.data_lucrare; }).map(function (l) {
+    const items = Array.isArray(l.items) ? l.items : [];
+    const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
+    return { id: l.id, company_id: l.company_id, company_name: l.company_name, partener_id: l.partener_id, partener_nume: l.partener_nume,
+      zi: _ziRo(l.data_lucrare), status: l.status, masini: gps ? Number(gps.buc) || 0 : 0 };
+  });
+  return montaj.grupeazaAparateNoi(imeis.map(function (i) { return { imei: i, zi: azi }; }), peImei, lucrari);
+}
+// Semnalul: la câteva minute, aparatele fără firmă care au început să transmită. Un lot pleacă după 20 de minute fără
+// niciun aparat nou în el (montajul unei zile vine mașină cu mașină), cel târziu la 3 ore după primul — sau imediat,
+// când s-au adunat toate mașinile programate în ziua aceea la firma propusă.
+const APARATE_NOI_LINISTE_MS = 20 * 60 * 1000;
+const APARATE_NOI_MAX_MS = 3 * 60 * 60 * 1000;
+const _aparateNoiVazut = new Map();   // imei → când l-am văzut prima oară; în memorie (la repornire, lotul se reia)
+async function aparateNoiTick(acum) {
+  acum = acum || Date.now();
+  const raport = { deAnuntat: 0, anuntate: [] };
+  let imeis = [];
+  try { imeis = (await db.aparateNoiDeAnuntat()).filter(function (i) { return !DEMO_SET.has(i); }); } catch (e) { return raport; }
+  for (const k of Array.from(_aparateNoiVazut.keys())) if (imeis.indexOf(k) < 0) _aparateNoiVazut.delete(k);
+  imeis.forEach(function (i) { if (!_aparateNoiVazut.has(i)) _aparateNoiVazut.set(i, acum); });
+  raport.deAnuntat = imeis.length;
+  if (!imeis.length) return raport;
+  for (const g of await _grupuriAparateNoi(imeis, acum)) {
+    const vazut = g.imeis.map(function (i) { return _aparateNoiVazut.get(i) || acum; });
+    const ultim = Math.max.apply(null, vazut), prim = Math.min.apply(null, vazut);
+    const toate = g.masini > 0 && g.imeis.length >= g.masini;
+    if (!(toate || acum - ultim >= APARATE_NOI_LINISTE_MS || acum - prim >= APARATE_NOI_MAX_MS)) continue;
+    try {
+      const r = await anuntaAparateNoi({ imeis: g.imeis, companyId: g.company_id, partenerId: g.partener_id, lucrareId: g.lucrare_id, sursa: 'semnal', acum: acum });
+      if (r.anuntate) { raport.anuntate.push({ company_id: g.company_id, imeis: g.imeis }); g.imeis.forEach(function (i) { _aparateNoiVazut.delete(i); }); }
+    } catch (e) { console.warn('[APARATE NOI]', e.message); }
+  }
+  return raport;
 }
 
 // ─── Webhooks outbound (integrare ERP/TMS) ───
@@ -15580,6 +15723,20 @@ if (process.env.SEED_TEST === '1') {
 }
 // Endpoint de test (DOAR cu SEED_TEST=1) — simulează o poziție live pentru a declanșa evenimente
 if (process.env.SEED_TEST === '1') {
+  // Probele rulează ceasurile noi cu ceasul mutat (`acum`), ca să nu aștepte 20 de minute sau o săptămână.
+  app.post('/api/test/ceasuri', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {}, acum = Number(b.acum) || Date.now();
+      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Raportul instalatorului, până îl face Robert: aceeași funcție pe care o va chema el.
+  app.post('/api/test/aparate-montate', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {};
+      res.json(await anuntaAparateNoi({ imeis: b.imeis, companyId: b.company_id, partenerId: b.partener_id, lucrareId: b.lucrare_id, sursa: 'instalator', acum: Number(b.acum) || Date.now() }));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.post('/api/test/simulate', requireAuth, async (req, res) => {
     try {
       const { imei, io, speed, name, ts, lat, lng } = req.body;
@@ -15913,6 +16070,7 @@ async function start() {
   await db.initDb();
   await loadRegisteredImeis(); // allow-list mod strict — ÎNAINTE de a porni serverul TCP (altfel s-ar bloca la boot)
   await db.migreazaPornireaAbonamentelor();   // o singură dată: aparatele care transmiteau deja rămân pe luna întreagă
+  await db.migreazaAparateNoiAnuntate();      // o singură dată: ce era deja în „Neasignate" nu se anunță ca „nou" (30.09)
   await _incarcaAbonamente();  // ce aparate au deja ziua de pornire a abonamentului (factura pe zile, 28.09)
   initVapid();
   initFcm();
@@ -16261,6 +16419,12 @@ async function start() {
   // verificare la 2 minute după pornire, ca să nu se piardă nimic dacă serverul se repornește des.
   setTimeout(() => contractExpiryTick().then(r => { if (r && r.anuntate && r.anuntate.length) console.log('[CONTRACTE] ' + r.anuntate.length + ' contracte aproape de expirare — anunțate'); }).catch(() => {}), 120 * 1000);
   setInterval(() => contractExpiryTick().catch(() => {}), 24 * 60 * 60 * 1000);
+  // „Aparate noi transmit" (30.09): la 3 minute — loturile se strâng singure (20 de minute fără un aparat nou).
+  setInterval(() => aparateNoiTick().catch(() => {}), 3 * 60 * 1000);
+  // Montajul de facturat (30.09): o dată pe oră, iar anunțul pleacă o singură dată pe firmă și pe perioada încheiată,
+  // între 8 și 20 (o săptămână se încheie duminică la miezul nopții — anunțul vine luni dimineață, nu noaptea).
+  setTimeout(() => montajDeFacturatTick().catch(() => {}), 4 * 60 * 1000);
+  setInterval(() => montajDeFacturatTick().catch(() => {}), 60 * 60 * 1000);
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);

@@ -43,7 +43,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
   facturile.
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
-  nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri.
+  nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
+  lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
 - [ ] **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
   nicăieri; „Stare producție" o arată portocaliu cât timp stă acolo.
 - [ ] **Robert: e-Factura (ANAF). Adăugat pe 25.09, găsit când am explicat „Prima factură".** Fără
@@ -80,10 +81,99 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
+- [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
+  Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
+  socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
 
 ---
 
 ## 2026-09-30
+
+### FONDATOR · Aparatele intră în aplicație o singură dată: în Stoc, cu IMEI-ul
+
+Alin: *„Aparatele intră o singură dată, în Stoc, cu IMEI-ul, și apar singure la Neasignate? — da. Și apoi le dăm
+instalatorului, primim notificare că au fost instalate, le găsim în Dispozitive și de acolo le asignăm."*
+
+- **Înainte:** IMEI-ul se scria de două ori, o dată în Stoc și o dată în Dispozitive („Adaugă dispozitiv"). Fără al
+  doilea pas, aparatul montat era refuzat la conectare: serverul primește doar aparatele pe care le cunoaște.
+- **Acum:** un GPS trecut în Stoc cu IMEI-ul e primit la conectare. Când e montat și transmite prima dată, apare
+  singur la Dispozitive → Neasignate, cu modelul luat din stoc (ex. „Teltonika FMC130").
+- La un GPS, **seria din Stoc trebuie să fie IMEI-ul** (15 cifre, de pe eticheta aparatului). Altceva se refuză pe
+  loc, cu numele seriei greșite — altfel aparatul n-ar fi fost recunoscut niciodată. Modulele LV-CAN au serie liberă.
+- Un aparat **casat** sau **șters** din stoc nu mai e primit. O serie corectată: cea veche nu mai e primită, cea nouă da.
+- Un aparat străin (nici în Stoc, nici în Dispozitive) e refuzat, ca până acum.
+- „Adaugă dispozitiv" din Dispozitive rămâne, pentru aparatele care nu trec prin stocul nostru.
+
+- **Ce am schimbat:** lista aparatelor primite la conectare cuprinde și stocul; IMEI-ul verificat la intrarea în stoc.
+- **Ce vede fondatorul:** în Stoc, textul „Un GPS trecut aici cu IMEI-ul nu se mai scrie și în Dispozitive…"; aparatele
+  apar singure la Neasignate când transmit.
+- **Ce vede clientul:** nimic nou (își vede aparatele după ce le trecem pe firma lui, ca până acum).
+
+
+### FONDATOR · Anunțul „aparate noi transmit" — gata acum, și gata pentru raportul lui Robert
+
+Alin: *„da, pregătește-l ca notificare, să fie funcțional atunci când face Robert"*.
+
+- **Ce face:** când aparate fără firmă încep să transmită, primiți un singur anunț (în aplicație și pe telefon), de
+  exemplu: **„2 aparate noi transmit — Transport SRL"**, cu textul „Azi e programat montajul la Transport SRL
+  (Ionescu Montaj SRL). Le găsești la Dispozitive → Neasignate: apasă aici și sunt deja bifate, cu firma aleasă…".
+- **Firma o propune calendarul:** montajul programat azi (sau cu una-două zile înainte) la instalatorul la care stau
+  aparatele în stoc. Când nu se poate spune sigur (două firme posibile, alt instalator decât cel din calendar),
+  anunțul nu propune nicio firmă — mai bine nimic decât o firmă greșită.
+- **Pe loturi, nu la fiecare aparat:** anunțul pleacă după 20 de minute fără alt aparat nou, sau pe loc când s-au
+  adunat toate mașinile programate în ziua aceea. Un aparat se anunță o singură dată.
+- **Apeși pe anunț** → Dispozitive → Neasignate, cu aparatele bifate și firma aleasă jos, plus rândul „Firma e propusă
+  de montajul din calendar". Verifici și apeși „Trece pe firmă" (tot tu, cu confirmare — anunțul nu mută nimic singur).
+- **Pentru Robert:** raportul instalatorului („am montat IMEI-ul X pe mașina Y") va chema același anunț, cu firma și
+  instalatorul știute: „Ionescu a montat 10 aparate la Transport SRL". E scris în nota pentru el.
+- Ce era deja în Neasignate înainte de azi nu se anunță ca „nou". Anunțul vechi „Dispozitiv nou conectat" (un mesaj
+  pe fiecare aparat, cu un drum spre un ecran care nu mai există) a plecat.
+
+- **Ce am schimbat:** anunțul, propunerea firmei, bifarea la clic.
+- **Ce vede fondatorul:** anunțul și aparatele bifate în Neasignate.
+- **Ce vede clientul:** nimic — anunțul e doar al nostru.
+
+
+### AMÂNDOI · Factura montajului, în ritmul instalatorului (săptămânal sau lunar)
+
+Alin: *„dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… dacă ne facturează la lună,
+facturăm și noi la lună — ca să nu fim pe pierdere. Depinde mult de instalator. Notează asta, dar doar la montaj."*
+
+- **Doar montajul.** Abonamentul rămâne lunar, pe 1, ca până acum.
+- **În fișa instalatorului:** „Ne facturează: lunar / săptămânal" (necompletat = lunar).
+- **Când e gata o factură:** la sfârșitul săptămânii instalatorului (luni–duminică) sau al lunii, cu toate zilele de
+  montaj din ea, pe o singură factură. Exemplu: Ionescu (săptămânal) montează 10 mașini marți și 15 joi → luni
+  dimineață: „Montaj de facturat: Transport SRL — 25 de mașini montate în 21–27.09.2026 — 3.750,00 lei fără TVA".
+- **Unde îl vezi:** Facturare are acum a treia secțiune, **„Montaj de facturat"**: ce e gata (cu „Pregătește factura")
+  și ce e în curs (cu ziua de la care se facturează). Plus un anunț, dimineața (între 8 și 20), o dată pe perioadă.
+- **„Pregătește factura"** deschide fereastra facturii cu lucrările puse și zilele în mențiuni. O verifici
+  („Previzualizează") și apeși „Emite factura". Nu pleacă nimic singur.
+- Dacă nu facturezi, perioada următoare îți amintește din nou, cu tot ce s-a adunat.
+- **Contractul cu instalatorul** spune acum ritmul lui: „Prestatorul facturează săptămânal lucrările… din săptămâna
+  anterioară (de luni până duminică)" sau „lunar…". Ritmul se îngheață în contract la creare, ca tarifele.
+
+- **Ce am schimbat:** ritmul pe fișa instalatorului și în contractul cu el, secțiunea „Montaj de facturat", anunțul.
+- **Ce vede fondatorul:** tot ce e mai sus.
+- **Ce vede clientul:** factura montajului poate veni săptămânal (când instalatorul e săptămânal), cu zilele de
+  montaj scrise în mențiuni. Suma și rândurile sunt cele din contract, ca până acum.
+
+
+### AMÂNDOI · Trei reparații găsite pe drum: căutarea din Dispozitive, mențiunea facturii, filele Cereri demo
+
+Aceeași capcană, în trei locuri: un buton sau o casetă care scria într-o variabilă pe care pagina nu o citea.
+
+1. **Căutarea din Dispozitive nu filtra nimic.** Acum filtrează, iar cursorul rămâne în casetă.
+2. **Mențiunea corectată de mână în „Generează factură" nu ajungea pe factură** — pleca textul scris de aplicație.
+   Acum pleacă ce ai scris tu. (Măsurat: „…(2 mașini). Corectat." ajunge pe factură.) De aici eticheta AMÂNDOI:
+   mențiunile se văd pe factura clientului.
+3. **Filele din „Cereri demo"** (Toate / Noi / Aprobate / Respinse) nu schimbau lista. Acum o schimbă.
+
+Plus: în Dispozitive → Neasignate, firma aleasă în bara de jos se pierdea la fiecare bifă. Acum rămâne.
+
+- **Ce am schimbat:** cele trei, și o probă care caută capcana în tot panoul de administrare.
+- **Ce vede fondatorul:** căutarea și filele merg; firma aleasă rămâne aleasă.
+- **Ce vede clientul:** pe factura montajului, mențiunea exact cum a corectat-o fondatorul.
+
 
 ### FONDATOR · Calendarul de montaj, în Business → Montaj
 
@@ -9754,6 +9844,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 - [ ] **(voi) Instalați aplicația de telefon 1.0.6** (cuprinde tot din 1.0.4 și 1.0.5). Ecranele loturilor 3 și 4 apar doar în ea. Încărcarea unei liste
   Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
+
+- [ ] **(eu + Robert) Telefonul, la APK-ul următor (30.09, seara).** Sursa e gata pentru: „Ne facturează" în fișa
+  instalatorului și textele noi din Stoc (GPS-ul intră o singură dată, cu IMEI-ul). Doar pe web deocamdată: secțiunea
+  „Montaj de facturat" din Facturare și clicul pe anunțurile noi („aparate noi transmit", „Montaj de facturat") —
+  pe telefon anunțurile se văd, dar clicul nu duce încă la treaba lor.
 
 - [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
   fiecare e scrisă și reparația propusă; le face sesiunea lui sau le facem noi, cum hotărâți.

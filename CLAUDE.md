@@ -704,7 +704,7 @@ Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Patru
 - **Partenerii stau DOAR aici.** Au ieșit din ecranul Contracte (acolo sunt doar contractele clienților).
   `raxParteneriIncarca` a rămas ca nume vechi și cheamă `raxLoadMontaj`.
 - **Fișa partenerului** (`montaj_parteneri`): CUI + ANAF, reg_com, address, legal_rep, email, phone, iban,
-  bank, zona, tarife. ⚠ **`upsertPartenerMontaj` scrie DOAR cheile primite** (`undefined` = rămâne cum era):
+  bank, zona, tarife, `ritm_facturare` (30.09 — vezi „Factura montajului, în ritmul instalatorului"). ⚠ **`upsertPartenerMontaj` scrie DOAR cheile primite** (`undefined` = rămâne cum era):
   o salvare fără CUI îi ștergea CUI-ul, contactul și notițele. Ruta trimite `undefined` pentru ce n-a venit.
 - **Contractul cu partenerul** (`montaj_contracte`, număr `RAT-M-AAAA-NNNN`): aceleași stări și aceeași
   regulă de trecere ca la clienți (`_trecereContract`), un singur contract nesfârșit pe partener (409),
@@ -759,6 +759,26 @@ disponibilitatea"* + *„în secțiunea Montaj"*. Blocul „calendarul de montaj
   tema deschisă, măsurate ≥ 6. Pe telefon grila rămâne în pagină; numele clientului se ascunde, cifra rămâne.
 - Păzit de `verify_montaj_calendar.js` (în `npm test`), pe server pornit.
 
+### Factura montajului, în ritmul instalatorului (Alin, 30.09: „…ca să nu fim pe pierdere. Doar la montaj.")
+- **Ritmul stă pe fișa instalatorului:** `montaj_parteneri.ritm_facturare` = `lunar` / `saptamanal` (gol = lunar;
+  `montaj.ritmFacturare`). Se scrie doar când vine în cerere (telefonul vechi nu-l golește). Abonamentul NU are ritm:
+  rămâne lunar.
+- **Regula stă în `montaj.js`, curată:** `perioadaFacturare(zi, ritm)` — săptămâna luni–duminică sau luna, pe ZILE
+  'AAAA-LL-ZZ' ale României; `deFacturatMontaj(lucrari, azi)` → `{ gata, inCurs }` pe firmă: lucrările MONTATE,
+  nefacturate, cu preț, a căror perioadă s-a încheiat (gata) sau nu (în curs, cu `gataDin`). Lucrările unei firme din
+  perioade încheiate — de la oricâți instalatori — merg pe O factură. Textele (`text`, `anuntMontajDeFacturat`) tot acolo.
+- `GET /api/montaj/de-facturat` (super) și `montajDeFacturatTick` (la oră; anunț DOAR 8–20, ora României; cheia =
+  firma + ultima zi a perioadei încheiate → o dată pe perioadă, iar nefacturat, perioada următoare amintește din nou).
+  Ritmul folosit e cel din FIȘĂ (de azi), ca tarifele la lucrări.
+- **Pe ecran:** Facturare → a treia secțiune „Montaj de facturat" (`_raxMontajFactHtml`, între sentinele) — doar arată
+  ce spune serverul, NU socotește perioade. „Pregătește factura" = `raxFacturaMontaj(companyId, lucrari)`:
+  `raxOpenGenInvoice(…, 'unica')` → `raxGiTip('invoice')` → `raxGenDraft()` → `_giPuneLucrare` pe fiecare. NU emite
+  singură. Anunțul („Montaj de facturat: …") duce acolo (`notifMontajDeFacturat`).
+- **Contractul cu instalatorul** îngheață ritmul la creare (`montaj_contracte.ritm_facturare`), ca tarifele; „Reia din
+  fișă" (cât e nesemnat) îl reia. Hârtia (`scrieContractMontaj`, cap. IV): „facturează săptămânal … săptămâna
+  anterioară (de luni până duminică)" / „lunar … luna anterioară".
+- Păzit de `verify_montaj_ritm.js` (în `npm test`), inclusiv pe server pornit, cu ceasul mutat.
+
 ### Aparatele ÎNCHIRIATE și stocul nostru (decizie Alin, 25.09)
 Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze"* + *„trebuie să
 avem un stoc de echipamente"*. Hotărât: **24 de luni minim, 50% marjă, montajul la semnare, aparatele ne
@@ -786,6 +806,7 @@ revin, chiria pe rând separat, o singură alegere pe ofertă** (cumpără SAU �
   scrie (`_applyCompanySettingsPatch`, `allowFeatures`); în „Abonament & plăți" doar se vede.
 - **Stocul (Gestiune → Stoc echipamente, `admin-tab-stoc`, `raxLoadStoc`):** tabela `stoc_echipamente`, un
   rând = o bucată (`stare` = unde e, `proprietar` = 'ra' / 'client', `istoric` adăugat la fiecare mutare).
+  Din 30.09, un GPS intră în aplicație DOAR aici, cu IMEI-ul ca serie — vezi „Aparatele intră o singură dată".
   Regulile (treceri, sumar, alerte) stau în **`stoc.js`**, curate. Rutele `/api/stoc*` = `requireSuperadmin`;
   `/api/stoc/praguri` stă ÎNAINTEA `/api/stoc/:id`. Se șterge doar o bucată fără mutări; restul → „casat".
   În `BUSINESS_TABLES`. Căutarea redesenează doar `#stoc-tabel` (capcana de la Inventar).
@@ -1295,6 +1316,37 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
   cerea imediat o a doua trecere. Regula „doar NOI" e apărată de ușă: ambele rute sunt `requireSuperadmin`.
 - **Ce ține de VEHICUL îi rămâne** clientului: nume, număr, tip, șofer, grupă, senzori, program de
   lucru, calibrare rezervor. E flota lui.
+
+### Aparatele intră o singură dată: în Stoc, cu IMEI-ul (Alin, 30.09: „da")
+- Un tracker (`montaj.ECHIPAMENTE` cu `transmite: true`: FMC130/150/650) trecut în Stoc e **primit la conectare**
+  fără să fie scris și în Dispozitive: lista de acceptate = `registeredImeis` (Dispozitive) ∪ `stocImeis` (stoc,
+  nu casat), prin `_imeiPrimit`. La prima conectare se face rândul lui, fără firmă (→ Neasignate), cu `gps_model`
+  din stoc (`_aparatNouDinStoc`, doar dacă n-a scris nimeni altul). Străinul și arhivatul — refuzați, ca până acum.
+- **La un tracker, seria din stoc E IMEI-ul** (`montaj.seriiFaraImei`): altceva se refuză la intrare și la corectură,
+  cu seria pe nume. Modulele (LV-CAN) au serie liberă.
+- `stocImeis` se ține în pas la intrare, corectura seriei, mutarea pe „casat" și ștergere; plus reîncărcarea la 2 min
+  (`loadRegisteredImeis`). Dacă adaugi o cale nouă care schimbă seria sau starea unei bucăți, ține lista în pas.
+- „Adaugă dispozitiv" rămâne (aparate care nu trec prin stocul nostru). Adopția rămâne în Neasignate.
+- Păzit de `verify_aparate_noi.js` (în `npm test`), cu trackere adevărate pe TCP, în mod strict.
+
+### Anunțul „aparate noi transmit" (Alin, 30.09: „pregătește-l ca notificare, să fie funcțional când face Robert")
+- **O singură funcție anunță: `anuntaAparateNoi({ imeis, companyId, partenerId, lucrareId, sursa, acum })`** (server.js).
+  Azi o cheamă semnalul (`aparateNoiTick`, la 3 min); raportul instalatorului (Robert) o va chema cu
+  `sursa: 'instalator'` și firma știută. Păzit prin numărare. NU scrie a doua cale de anunț.
+- Anunțul merge DOAR la super-admini (`_anuntaSuperadmini`, fără firmă pe notificare). Un aparat se anunță o singură
+  dată (`devices.anuntat_nou_la`); firma propusă stă în `devices.anuntat_firma` cât aparatul e fără firmă și se șterge
+  la trecerea pe firmă (`_trecePeFirma`). Ce era în Neasignate înainte de 30.09 s-a marcat o dată
+  (`migreazaAparateNoiAnuntate`).
+- **Loturi:** 20 de minute fără un aparat nou în lot, cel mult 3 ore — sau pe loc, când s-au adunat toate mașinile
+  programate în ziua aia la firma propusă. Memoria loturilor (`_aparateNoiVazut`) e în memorie: la repornire se reia.
+- **Firma propusă** (`montaj.propuneFirma` / `grupeazaAparateNoi`, curate): montajul `programat` sau montat din ziua
+  aparatului sau din cele `ZILE_POTRIVIRE_MONTAJ` (2) dinainte, la instalatorul la care stă aparatul în stoc. Două firme
+  posibile, sau alt instalator decât cel din calendar → **nicio propunere**. O lucrare „de programat" nu propune nimic.
+- Textele: `montaj.anuntAparateNoi` (singular/plural, „de", azi/ieri/pe ZZ.LL). Clicul (`notifAparateNoi`) →
+  `raxDevDeschideNeasignate({ imeis, firma })` → bifează aparatele din anunț ȘI toate cele cu aceeași `anuntat_firma`,
+  alege firma în bară (`_raxDevBlocFirma`). Trecerea rămâne apăsarea omului („Trece pe firmă", cu confirmare).
+- Anunțul vechi „Dispozitiv nou conectat" (`notifyNewDeviceConnected`) a fost scos. NU-l pune la loc.
+- Probele mută ceasul prin `POST /api/test/ceasuri` și `/api/test/aparate-montate` — DOAR sub `SEED_TEST=1`.
 - Butoanele „Adaugă vehicul", „Importă", „Șablon", „Arhivează" sunt `super-only` în ecranul lui — dar
   asta e doar al doilea strat; refuzul vine de la server.
 - Păzit de `verify_dispozitive.js` (în `npm test`), inclusiv pe server pornit.
@@ -1482,6 +1534,17 @@ Rândul aprins din bara din stânga trebuie să fie ecranul deschis, **oricum ai
 - **Orice rând nou din meniu trebuie ori să cheme `navGo(this, …)`, ori să poarte `data-view`.** Șase
   rânduri ale clientului (Localizare, Traseu, Rapoarte, Agenți AI, Hotspot, Setări) chemau direct
   `showView(...)` — la client verdele stătea înțepenit pe „Localizare". Păzit de `verify_acasa.js`.
+
+## Capcană: un atribut `onclick` / `oninput` vede doar `window` (30.09)
+Panoul de administrare trăiește într-o funcție (`(function () { … })()`): variabilele lui (`_giState`,
+`_raxDevSearch`, `_demoReqFilter`…) NU se văd din atributele HTML. Scris direct în atribut:
+- `oninput="_raxDevSearch=this.value;…"` face o variabilă NOUĂ pe `window` — căutarea din Dispozitive n-a filtrat nimic;
+- `oninput="_giState.nota=this.value"` aruncă „_giState is not defined" la fiecare literă — mențiunea corectată a
+  facturii nu ajungea pe factură;
+- `onclick="_demoReqFilter='new';…"` — filele din Cereri demo n-au filtrat nimic.
+Nimic nu crapă vizibil: pagina merge mai departe. **Regula:** un atribut CHEAMĂ o funcție de pe `window`
+(`raxDevCauta(this.value)`, `raxGiNota(this.value)`), nu scrie într-o variabilă. Păzit de `verify_aparate_noi.js`, care
+caută forma în tot panoul.
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

@@ -285,7 +285,7 @@ export function StocEchipamente() {
     if (a.laInstalator.length) {
       const n = a.laInstalator.length;
       const bucati = a.laInstalator.slice(0, 6).map((x) => { const b = peId[x.id]; return (b && b.serie ? b.serie : '#' + x.id) + (b && b.partener_nume ? ' (' + b.partener_nume + ')' : ''); }).join(', ');
-      L.push(<>{n === 1 ? 'O bucată stă' : n + deNr(n) + 'bucăți stau'} la instalator de peste {nrDe(a.zileInstalator, 'zi', 'zile')}: {bucati}{n > 6 ? '…' : ''} — montate și neînregistrate în Dispozitive, sau uitate.</>);
+      L.push(<>{n === 1 ? 'O bucată stă' : n + deNr(n) + 'bucăți stau'} la instalator de peste {nrDe(a.zileInstalator, 'zi', 'zile')}: {bucati}{n > 6 ? '…' : ''} — montate și netrecute pe firmă (vezi Dispozitive → Neasignate), sau uitate.</>);
     }
     if (a.deRecuperat.length) {
       const peFirme: Record<string, { nume: string; serii: string[] }> = {};
@@ -392,8 +392,9 @@ export function StocEchipamente() {
 
             <div class="st-h"><Icon name="boxes" size={18} /> Stocul nostru de echipamente</div>
             <div class="fd-note">
-              Fiecare bucată, cu seria ei: unde e și al cui e. Un aparat din stoc, legat de o firmă în „Dispozitive”, trece singur
-              pe „montat la client” — închiriat, dacă firma închiriază. Clientul nu vede nimic de aici.
+              Fiecare bucată, cu seria ei: unde e și al cui e. Aparatele GPS intră în aplicație o singură dată, aici, cu IMEI-ul: când
+              transmit prima dată apar singure la Dispozitive → Neasignate, iar trecute pe o firmă, trec singure pe „montat la client”
+              — închiriat, dacă firma închiriază. Clientul nu vede nimic de aici.
             </div>
             <div class="fd-acts" style="margin:0 0 10px">
               <button type="button" class="fd-btn primary" onClick={deschideIntrare} disabled={!tipuri.length}><Icon name="plus" size={15} /> Intrare în stoc</button>
@@ -449,7 +450,7 @@ export function StocEchipamente() {
             <div class="fld"><label>Cât ne-a costat una (€)</label>
               <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="ex. 45" value={fi.cost} onInput={(e: any) => setFi({ ...fi, cost: e.currentTarget.value })} />
             </div>
-            <div class="fld"><label>Seriile (IMEI la GPS), una pe rând</label>
+            <div class="fld"><label>Seriile, una pe rând — la GPS, IMEI-ul (15 cifre)</label>
               <textarea class="st-serii" placeholder={'864275071234567\n864275071234568'} value={fi.serii} onInput={(e: any) => setFi({ ...fi, serii: e.currentTarget.value })} />
             </div>
             <div class="fld"><label>Bucăți FĂRĂ serie (opțional)</label>

@@ -30,6 +30,7 @@ import '../screens/montaj.css';
 type Edit = {
   id: number; name: string; cui: string; reg_com: string; address: string; rep: string; reprole: string;
   email: string; phone: string; iban: string; bank: string; zona: string; contact: string; activ: string;
+  ritm: string;   // cât de des ne facturează (30.09): 'lunar' / 'saptamanal' — în același ritm facturăm montajul clientului
   tarife: Record<string, string>;
 };
 type Anaf = { cauta?: boolean; eroare?: string; ok?: boolean; radiata?: boolean; inactiva?: boolean } | null;
@@ -74,7 +75,8 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
     const e: Edit = {
       id: p ? Number(p.id) : 0, name: s(p && p.name), cui: s(p && p.cui), reg_com: s(p && p.reg_com), address: s(p && p.address),
       rep: s(rep.name), reprole: s(rep.role), email: s(p && p.email), phone: s(p && p.phone), iban: s(p && p.iban),
-      bank: s(p && p.bank), zona: s(p && p.zona), contact: s(p && p.contact), activ: p && p.active === false ? '0' : '1', tarife: t,
+      bank: s(p && p.bank), zona: s(p && p.zona), contact: s(p && p.contact), activ: p && p.active === false ? '0' : '1',
+      ritm: p && p.ritm_facturare === 'saptamanal' ? 'saptamanal' : 'lunar', tarife: t,
     };
     start.current = JSON.stringify(e);
     laCerere.current = cerut;
@@ -152,6 +154,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
         id: edit.id || null, name: t(edit.name), cui: t(edit.cui), contact: t(edit.contact), tarife,
         reg_com: t(edit.reg_com), address: t(edit.address), email: t(edit.email), phone: t(edit.phone),
         iban: t(edit.iban), bank: t(edit.bank), zona: t(edit.zona), active: edit.activ !== '0',
+        ritm_facturare: edit.ritm === 'saptamanal' ? 'saptamanal' : 'lunar',
         legal_rep: t(edit.rep) ? { name: t(edit.rep), role: t(edit.reprole) } : null,
       });
       const cerut = laCerere.current;
@@ -265,6 +268,13 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
                   <select value={edit.activ} onChange={(e: any) => sf('activ', e.target.value)}>
                     <option value="1">activ</option>
                     <option value="0">inactiv — nu mai lucrăm cu el</option>
+                  </select>
+                </div>
+                {/* Ritmul lui (Alin, 30.09): montajul făcut de el îl facturăm clientului în același ritm, „ca să nu fim pe pierdere". */}
+                <div class="fld"><label>Ne facturează</label>
+                  <select value={edit.ritm} onChange={(e: any) => sf('ritm', e.target.value)}>
+                    <option value="lunar">lunar</option>
+                    <option value="saptamanal">săptămânal</option>
                   </select>
                 </div>
                 <div class="ctr-h2" style="margin-top:4px">Cât ne cere, pe lucrare (lei, fără TVA)</div>

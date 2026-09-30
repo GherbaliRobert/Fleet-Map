@@ -10997,10 +10997,18 @@ const pozitii = await r.json();</code></pre>
         // Notificările de raport (report_ready/report_error) NU au poziție GPS → click-ul deschide raportul din
         // Istoric (nu modalul de eveniment) + un buton dedicat „Rapoarte".
         let nd = n.data; if (typeof nd === 'string') { try { nd = JSON.parse(nd); } catch (e) { nd = null; } }
+        _notifDate[n.id] = nd || {};
         const isDemoReq = (n.type === 'demo_request'); // nu are poziție GPS → n-are ce căuta în modalul cu hartă
         const isReport = (n.type === 'report_ready' || n.type === 'report_error');
         const hid = (nd && nd.historyId != null) ? nd.historyId : '';
-        const clickAttr = isDemoReq
+        // Anunțurile noastre de lucru (30.09) duc drept la treaba de făcut, nu în modalul cu hartă: aparatele noi, bifate
+        // în Dispozitive → Neasignate; montajul de facturat, cu factura pregătită.
+        const isAparateNoi = (n.type === 'aparate_noi'), isMontajFact = (n.type === 'montaj_de_facturat');
+        const clickAttr = isAparateNoi
+          ? `onclick="notifAparateNoi(${Number(n.id)})" title="Deschide Dispozitive → Neasignate, cu aparatele bifate"`
+          : isMontajFact
+          ? `onclick="notifMontajDeFacturat(${Number(n.id)})" title="Pregătește factura montajului"`
+          : isDemoReq
           ? `onclick="goSistem('demoreq')" title="Deschide Cereri demo"`
           : isReport
           ? `onclick="notifOpenReport('${hid}')" title="Deschide raportul în Istoric"`
@@ -11030,6 +11038,21 @@ const pozitii = await r.json();</code></pre>
     function notifOpenReport(hid) { openHistoryReportModal((hid === '' || hid == null) ? null : hid); }
     // Butonul „Rapoarte" → zona de rapoarte generate (panoul Rapoarte, tab Istoric).
     function notifGoReports() { closeNotifications(); if (typeof showView === 'function') showView('rapoarte'); setTimeout(function () { if (typeof repShowTab === 'function') repShowTab('history'); }, 250); }
+    // Anunțurile noastre de lucru (30.09) duc drept la treaba de făcut. Datele lor (aparatele, firma propusă, lucrările)
+    // se țin din lista încărcată, ca atributul `onclick` să poarte doar id-ul. Ca `goSistem`: întâi Administrarea, apoi secțiunea.
+    const _notifDate = {};
+    function notifAparateNoi(id) {
+      const d = _notifDate[id] || {};
+      closeNotifications();
+      if (typeof showView === 'function') showView('administrare');
+      setTimeout(function () { if (window.raxDevDeschideNeasignate) raxDevDeschideNeasignate({ imeis: d.imeis || [], firma: d.company_id != null ? d.company_id : null }); }, 180);
+    }
+    function notifMontajDeFacturat(id) {
+      const d = _notifDate[id] || {};
+      closeNotifications();
+      if (typeof showView === 'function') showView('administrare');
+      setTimeout(function () { if (window.raxFacturaMontaj) raxFacturaMontaj(d.company_id, d.lucrari || [], true); }, 180);
+    }
     // Modal dedicat care afișează raportul complet (columns/rows) dintr-un istoric, cu export + „Deschide în Rapoarte".
     // NB: numele e unic — NU „openReportModal" (există deja openReportModal(imei) pentru configuratorul „Raport vehicul").
     function _hrmClose() { var e = document.getElementById('hist-report-modal'); if (e) e.style.display = 'none'; }
@@ -21285,7 +21308,12 @@ const pozitii = await r.json();</code></pre>
           // „Inactiv" e capătul unui partener cu istoric: cel cu contract semnat nu se șterge (hârtia rămâne în dosar).
           '<div class="raco-2"><label class="raco-f"><span>Stare</span><select class="rax-field" id="pt-activ">' +
             '<option value="1"' + (e.active !== false ? ' selected' : '') + '>activ</option>' +
-            '<option value="0"' + (e.active === false ? ' selected' : '') + '>inactiv — nu mai lucrăm cu el</option></select></label></div>' +
+            '<option value="0"' + (e.active === false ? ' selected' : '') + '>inactiv — nu mai lucrăm cu el</option></select></label>' +
+            // Ritmul facturării lui (Alin, 30.09): în același ritm facturăm și noi montajul clientului — „ca să nu fim pe pierdere".
+            '<label class="raco-f"><span>Ne facturează</span><select class="rax-field" id="pt-ritm">' +
+            '<option value="lunar"' + (e.ritm_facturare !== 'saptamanal' ? ' selected' : '') + '>lunar</option>' +
+            '<option value="saptamanal"' + (e.ritm_facturare === 'saptamanal' ? ' selected' : '') + '>săptămânal</option></select></label></div>' +
+          '<div class="raco-sub" style="margin-top:-2px;color:var(--text-secondary);">Montajul făcut de el îl facturăm clientului în același ritm: la sfârșitul săptămânii (luni–duminică) sau al lunii, cu toate zilele de montaj din ea, pe o singură factură. Intră în contractul cu el.</div>' +
           '<div id="pt-msg" class="raco-msg"></div>' +
           '<div class="raco-h2">Cât ne cere, pe lucrare (lei, fără TVA)</div>' +
           '<div class="raco-mont-cap" style="grid-template-columns:1fr 96px;"><span>Lucrare</span><span>Tarif</span></div>' +
@@ -21303,7 +21331,8 @@ const pozitii = await r.json();</code></pre>
             var st = c ? _mjStare(c.status) : null;
             return '<div class="raco-row"><span class="raco-row-t"><strong>' + esc(p.name) + '</strong>' + (p.active === false ? ' <span class="raco-pill">inactiv</span>' : '') +
               (st ? ' <span class="raco-pill ' + st[1] + '">contract: ' + st[0] + '</span>' : ' <span class="raco-pill warn">fără contract</span>') +
-              '<span class="raco-row-s">' + [p.cui, p.zona, p.email, (n ? n + ' tarife scrise' : 'fără tarife scrise')].filter(Boolean).map(esc).join(' · ') + '</span></span>' +
+              '<span class="raco-row-s">' + [p.cui, p.zona, p.email, (n ? n + ' tarife scrise' : 'fără tarife scrise'),
+                (p.ritm_facturare === 'saptamanal' ? 'ne facturează săptămânal' : 'ne facturează lunar')].filter(Boolean).map(esc).join(' · ') + '</span></span>' +
               (c ? '' : '<button class="rax-btn primary ctre-pas" onclick="raxMjContractNou(' + p.id + ')"><i class="fas fa-file-circle-plus"></i> Fă contract</button>') +
               '<button class="rax-btn" title="Editează" onclick="raxPartEdit(' + p.id + ')"><i class="fas fa-pen"></i></button>' +
               '<button class="rax-btn" title="Șterge" onclick="raxPartSterge(' + p.id + ')"><i class="fas fa-trash"></i></button></div>';
@@ -21342,6 +21371,7 @@ const pozitii = await r.json();</code></pre>
         var j = await fetch('/api/montaj/parteneri', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
           body: JSON.stringify({ id: _raxPart.edit.id || null, name: v('pt-name'), cui: v('pt-cui'), contact: v('pt-contact'), tarife: tarife,
             reg_com: v('pt-reg'), address: v('pt-addr'), email: v('pt-email'), phone: v('pt-phone'), iban: v('pt-iban'), bank: v('pt-bank'), zona: v('pt-zona'), active: v('pt-activ') !== '0',
+            ritm_facturare: v('pt-ritm') === 'saptamanal' ? 'saptamanal' : 'lunar',
             legal_rep: v('pt-rep') ? { name: v('pt-rep'), role: v('pt-reprole') } : null }) }).then(function (r) { return r.json(); });
         if (j.error) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; else (window.raxToast || alert)(j.error, 'error'); return; }
         _raxPart.edit = null;
@@ -21393,7 +21423,8 @@ const pozitii = await r.json();</code></pre>
           var st = _mjStare(c.status), semnat = c.status === 'activ' || c.status === 'incheiat';
           return '<tr><td><strong>' + esc(c.partener_name || '') + '</strong>' + (c.cui ? '<span class="raco-until">' + esc(c.cui) + '</span>' : '') + '</td>' +
             '<td style="white-space:nowrap;">' + esc(c.number || '—') + '</td>' +
-            '<td>' + (c.start_at ? _zile(c.start_at) + ' → ' + (c.sfarsit ? _zile(c.sfarsit) : 'nedeterminat') : (c.months ? c.months + _raxDe(Number(c.months)) + 'luni' : 'nedeterminat') + '<span class="raco-until">fără dată de început</span>') + '</td>' +
+            '<td>' + (c.start_at ? _zile(c.start_at) + ' → ' + (c.sfarsit ? _zile(c.sfarsit) : 'nedeterminat') : (c.months ? c.months + _raxDe(Number(c.months)) + 'luni' : 'nedeterminat') + '<span class="raco-until">fără dată de început</span>') +
+              '<span class="raco-until">ne facturează ' + (c.ritm_facturare === 'saptamanal' ? 'săptămânal' : 'lunar') + '</span></td>' +
             '<td><span class="raco-pill ' + st[1] + '">' + st[0] + '</span><div class="ctre-pasi">' + _mjPasHtml(c) + '</div></td>' +
             '<td>' + (c.status === 'incheiat' ? '<span class="raco-until">—</span>' : _mjLipsuriHtml(c)) + '</td>' +
             '<td><div class="ctre-act">' + _raxHartieBtn('/api/montaj/contracte/' + c.id + '/pdf', 'Contractul', true) +
@@ -21413,7 +21444,7 @@ const pozitii = await r.json();</code></pre>
         '<div class="raco-2">' + _f('Preaviz de denunțare (zile)', 'mj-preaviz', c.notice_days == null ? 30 : c.notice_days, '30', 'number') + _f('Plata facturii lui (zile)', 'mj-plata', c.plata_zile == null ? 30 : c.plata_zile, '30', 'number') + '</div>' +
         '<div class="raco-2">' + _f('Începe la', 'mj-start', c.start_at ? new Date(Number(c.start_at)).toISOString().slice(0, 10) : '', '', 'date') + _f('Zona', 'mj-zona', c.zona, 'ex. Timiș, Arad') + '</div>' +
         '<div class="raco-2">' + _f('Cine semnează la noi', 'mj-our', rep.name, 'nume și prenume') + _f('Funcția', 'mj-ourrole', rep.role, 'Administrator') + '</div>' +
-        '<label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:6px 0 10px;"><input type="checkbox" id="mj-retarif"> Reia tarifele de azi ale partenerului în Anexa nr. 1</label>' +
+        '<label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:6px 0 10px;"><input type="checkbox" id="mj-retarif"> Reia din fișa partenerului tarifele de azi (Anexa nr. 1) și cât de des ne facturează (acum: ' + (c.ritm_facturare === 'saptamanal' ? 'săptămânal' : 'lunar') + ')</label>' +
         '<div class="raco-nav"><button class="rax-btn" onclick="raxMjEditRenunt()">Renunț</button><button class="rax-btn primary" onclick="raxMjEditSalveaza(' + c.id + ')"><i class="fas fa-check"></i> Salvează contractul</button></div></div>';
     }
     function _mjGasit(id) { return _raxMj.contracte.filter(function (x) { return x.id === id; })[0] || null; }
@@ -21847,7 +21878,7 @@ const pozitii = await r.json();</code></pre>
       var L = [];
       (a.subMinim || []).forEach(function (s) { L.push('<b>' + esc(_stocTip(s.tip).et) + '</b>: ' + s.depozit + ' în depozit, sub minimul de ' + s.minim + ' — e timpul să comanzi.'); });
       if ((a.laInstalator || []).length) L.push((a.laInstalator.length === 1 ? 'O bucată stă' : a.laInstalator.length + _raxDe(a.laInstalator.length) + 'bucăți stau') + ' la instalator de peste ' + a.zileInstalator + _raxDe(a.zileInstalator) + 'zile: ' +
-        a.laInstalator.slice(0, 6).map(function (x) { var b = peId[x.id] || {}; return esc((b.serie || '#' + x.id) + (b.partener_nume ? ' (' + b.partener_nume + ')' : '')); }).join(', ') + ' — montate și neînregistrate în Dispozitive, sau uitate.');
+        a.laInstalator.slice(0, 6).map(function (x) { var b = peId[x.id] || {}; return esc((b.serie || '#' + x.id) + (b.partener_nume ? ' (' + b.partener_nume + ')' : '')); }).join(', ') + ' — montate și netrecute pe firmă (vezi Dispozitive → Neasignate), sau uitate.');
       if ((a.deRecuperat || []).length) {
         var peFirme = {};
         a.deRecuperat.forEach(function (x) { var b = peId[x.id] || {}; (peFirme[x.company_id] = peFirme[x.company_id] || []).push(b.serie || '#' + x.id); });
@@ -21872,7 +21903,7 @@ const pozitii = await r.json();</code></pre>
       var sel = Object.keys(_raxStoc.sel).filter(function (k) { return _raxStoc.sel[k]; }).length;
       var h = _stocSumarHtml() + _stocAlerteHtml() +
         '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-boxes-stacked"></i> Stocul nostru de echipamente</div>' +
-        '<div class="raco-sub">Fiecare bucată, cu seria ei: unde e și al cui e. Un aparat din stoc, legat de o firmă în „Dispozitive", trece singur pe „montat la client" — închiriat, dacă firma închiriază. Clientul nu vede nimic de aici.</div>' +
+        '<div class="raco-sub">Fiecare bucată, cu seria ei: unde e și al cui e. Aparatele GPS intră în aplicație o singură dată, aici, cu IMEI-ul: când transmit prima dată apar singure la Dispozitive → Neasignate, iar trecute pe o firmă, trec singure pe „montat la client" — închiriat, dacă firma închiriază. Clientul nu vede nimic de aici.</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0 10px;">' +
           '<button class="rax-btn primary" onclick="raxStocPanou(\'intrare\')"><i class="fas fa-plus"></i> Intrare în stoc</button>' +
           '<button class="rax-btn" onclick="raxStocPanou(\'praguri\')"><i class="fas fa-sliders"></i> Stoc minim</button>' +
@@ -21920,7 +21951,9 @@ const pozitii = await r.json();</code></pre>
         return '<div class="raco-urmeaza" style="margin-bottom:12px;"><div class="raco-h2" style="margin-top:0;">Intrare în stoc</div>' +
           '<div class="raco-2"><label class="raco-f"><span>Model</span><select class="rax-field" id="stoc-tip" onchange="raxStocCostPropus()">' + optTip + '</select></label>' +
             _f('Cât ne-a costat una (€)', 'stoc-cost', c0 == null ? '' : c0, 'ex. 45', 'number') + '</div>' +
-          '<label class="raco-f"><span>Seriile (IMEI la GPS), una pe rând</span><textarea class="rax-field" id="stoc-serii" style="min-height:90px;" placeholder="864275071234567&#10;864275071234568"></textarea></label>' +
+          '<label class="raco-f"><span>Seriile, una pe rând — la GPS, IMEI-ul (15 cifre)</span><textarea class="rax-field" id="stoc-serii" style="min-height:90px;" placeholder="864275071234567&#10;864275071234568"></textarea></label>' +
+          // Aparatele intră în aplicație O SINGURĂ DATĂ, aici (Alin, 30.09): nu se mai scriu și în Dispozitive.
+          '<div class="raco-sub" style="margin-top:-2px;color:var(--text-secondary);">Un GPS trecut aici cu IMEI-ul nu se mai scrie și în Dispozitive: când e montat și transmite prima dată, apare singur la Dispozitive → Neasignate, iar tu primești un anunț.</div>' +
           '<div class="raco-2">' + _f('Bucăți FĂRĂ serie (opțional)', 'stoc-buc', '', '0', 'number') + _f('Furnizor', 'stoc-furnizor', '', 'ex. Teltonika / distribuitor') + '</div>' +
           '<div id="stoc-msg" class="raco-msg"></div>' +
           nav('<button class="rax-btn primary" onclick="raxStocIntrare()"><i class="fas fa-check"></i> Adaugă în stoc</button>') + '</div>';
@@ -21978,7 +22011,8 @@ const pozitii = await r.json();</code></pre>
       var v = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
       var x = await _stocCere('/api/stoc/intrare', 'POST', { tip: v('stoc-tip'), serii: v('stoc-serii'), buc: v('stoc-buc'), cost_eur: v('stoc-cost'), furnizor: v('stoc-furnizor') });
       if (!x.ok) return _stocMesaj(x.j.error || 'Nu s-a putut adăuga.');
-      (window.raxToast || function () {})(x.j.adaugate + (x.j.adaugate === 1 ? ' bucată a intrat' : _raxDe(x.j.adaugate) + 'bucăți au intrat') + ' în stoc ✓', 'success');
+      (window.raxToast || function () {})(x.j.adaugate + (x.j.adaugate === 1 ? ' bucată a intrat' : _raxDe(x.j.adaugate) + 'bucăți au intrat') + ' în stoc' +
+        (x.j.primite_la_conectare ? ' · ' + (x.j.primite_la_conectare === 1 ? 'GPS-ul poate transmite' : 'GPS-urile pot transmite') + ' de îndată ce ' + (x.j.primite_la_conectare === 1 ? 'e montat' : 'sunt montate') : '') + ' ✓', 'success');
       _raxStoc.panou = null; raxLoadStoc();
     };
     window.raxStocPraguri = async function () {
@@ -25567,6 +25601,9 @@ const pozitii = await r.json();</code></pre>
     // ─── Cereri de cont demo (super-admin) ───
     // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.
     var _demoReqFilter = '';
+    // Filele (Toate / Noi / Aprobate / Respinse). Prin funcție: atributul care scria direct în `_demoReqFilter` scria,
+    // de fapt, o variabilă nouă pe `window`, nu pe asta de aici — filele nu filtrau nimic (30.09).
+    window.raxDemoReqFiltru = function (f) { _demoReqFilter = f || ''; raxLoadDemoReq(); };
     // Simulatorul de poziții demo merge doar cât timp există un cont demo valabil. Fără banda asta,
     // super-adminul care deschide flota demo ar vedea cinci camioane înghețate fără să înțeleagă de ce.
     async function _demoSimStrip() {
@@ -25609,7 +25646,7 @@ const pozitii = await r.json();</code></pre>
       });
 
       var tabs = [['', 'Toate'], ['new', 'Noi'], ['approved', 'Aprobate'], ['rejected', 'Respinse']].map(function (t) {
-        return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="_demoReqFilter=\'' + t[0] + '\';raxLoadDemoReq()">' + t[1] + '</button>';
+        return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="raxDemoReqFiltru(\'' + t[0] + '\')">' + t[1] + '</button>';
       }).join(' ');
       var head = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + tabs +
         '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + ' cereri</span></div>'
@@ -26453,6 +26490,45 @@ const pozitii = await r.json();</code></pre>
     var _raxInvoices = [];
     // Secțiunile listei (30.09, Alin: „să am secțiuni de unde să le văd"): facturile fiscale și proformele, separat.
     var _raxInvSect = 'facturi';
+    // ── începe „montajul de facturat" ──
+    // A treia secțiune (Alin, 30.09: „dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… ca să
+    // nu fim pe pierdere"): lucrările montate și nefacturate, pe firme. Ce e GATA (perioada instalatorului s-a încheiat)
+    // și ce e ÎN CURS (se facturează de pe …) le spune serverul (montaj.deFacturatMontaj); aici doar se arată.
+    // „Pregătește factura" deschide fereastra facturii cu lucrările puse — o verifici și apeși „Emite factura".
+    var _raxMontajFact = { gata: [], inCurs: [] };
+    function _raxMontajFactHtml() {
+      var d = _raxMontajFact || {}, gata = d.gata || [], inCurs = d.inCurs || [];
+      var rand = function (g, ton) {
+        return '<div class="rax-mf-rand' + (ton ? ' ' + ton : '') + '"><div class="rax-mf-t"><b>' + esc(g.company_name || ('Firma #' + g.company_id)) + '</b>' +
+          '<span>' + esc(g.text || '') + '</span></div>' +
+          '<div class="rax-mf-s">' + _invMoney(g.total) + ' lei <span>fără TVA</span></div>' +
+          '<button class="rax-btn' + (ton ? '' : ' primary') + '" onclick="raxFacturaMontaj(' + Number(g.company_id) + ', [' + (g.lucrari || []).map(Number).join(',') + '])">' +
+            '<i class="fas fa-file-invoice-dollar"></i> ' + (ton ? 'Facturează acum' : 'Pregătește factura') + '</button></div>';
+      };
+      return '<div class="rax-mf-sub">Montajul se facturează în ritmul instalatorului care l-a făcut: la sfârșitul săptămânii (luni–duminică) sau al lunii, cu toate zilele de montaj din ea, pe o singură factură. Ritmul se alege în fișa instalatorului (Business → Montaj → Parteneri). Abonamentul rămâne lunar.</div>' +
+        (gata.length ? gata.map(function (g) { return rand(g, ''); }).join('')
+          : '<div class="rax-co-meta" style="padding:8px 0 12px;">Nimic gata de facturat din montaj.</div>') +
+        (inCurs.length ? '<div class="rax-mf-h">În curs — perioada instalatorului nu s-a încheiat încă</div>' + inCurs.map(function (g) { return rand(g, 'curs'); }).join('') : '');
+    }
+    // Fereastra facturii, pregătită: factură fiscală, unică, cu lucrările date puse (strânse pe rânduri, zilele în mențiuni).
+    // `dinAnunt`: chemată din anunțul „Montaj de facturat" — deschide întâi Facturarea, pe secțiunea montajului.
+    window.raxFacturaMontaj = async function (companyId, lucrari, dinAnunt) {
+      if (!window.raxOpenGenInvoice || companyId == null) return;
+      if (dinAnunt && window.raxAdminTab) { _raxInvSect = 'montaj'; raxAdminTab('billing'); }
+      if (!Array.isArray(companiesCache) || !companiesCache.length) {
+        try { companiesCache = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      }
+      raxOpenGenInvoice(companyId, 'unica');
+      raxGiTip('invoice');
+      await raxGenDraft();
+      var puse = 0;
+      (lucrari || []).forEach(function (id) {
+        if (_giState && _giState.dinContract && (_giState.dinContract.lucrari || []).some(function (j) { return j.id === Number(id); })) { _giPuneLucrare(Number(id)); puse++; }
+      });
+      var msg = document.getElementById('rax-gi-msg');
+      if (msg && (lucrari || []).length && puse < lucrari.length) msg.innerHTML = '<span style="color:var(--orange)">' + (lucrari.length - puse) + ' din lucrări nu mai sunt de facturat (poate au fost facturate între timp).</span>';
+    };
+    // ── sfârșit „montajul de facturat" ──
     var _giState = null; // ciorna din „Generează factură": { companyId, fel, luna, lines, issuer, vatRate, client, dinContract, montaje, puse }
     function _invFmtD(ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; }
     function _invMoney(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -26480,19 +26556,30 @@ const pozitii = await r.json();</code></pre>
     // ─── Lista de facturi fiscale ───
     window.raxLoadInvoices = async function () {
       var box = document.getElementById('rax-invoices'); if (!box) return;
-      try { var d = await fetch('/api/invoices?limit=1000', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); _raxInvoices = (d && d.invoices) || []; }
+      try {
+        var r2 = await Promise.all([
+          fetch('/api/invoices?limit=1000', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+          fetch('/api/montaj/de-facturat', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        ]);
+        _raxInvoices = (r2[0] && r2[0].invoices) || [];
+        _raxMontajFact = r2[1] || { gata: [], inCurs: [] };
+      }
       catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcarea facturilor.</div>'; return; }
       raxRenderInvoices();
     };
-    window.raxInvSectiune = function (k) { _raxInvSect = k === 'proforme' ? 'proforme' : 'facturi'; raxRenderInvoices(); };
+    window.raxInvSectiune = function (k) { _raxInvSect = (k === 'proforme' || k === 'montaj') ? k : 'facturi'; raxRenderInvoices(); };
     window.raxRenderInvoices = function () {
       var box = document.getElementById('rax-invoices'); if (!box) return;
       var toate = _raxInvoices || [];
       var nrPf = toate.filter(function (v) { return v.type === 'proforma'; }).length, nrF = toate.length - nrPf;
       var deIncasat = toate.filter(function (v) { return v.type === 'proforma' && v.status !== 'paid' && v.status !== 'canceled'; }).length;
+      var nrMont = ((_raxMontajFact && _raxMontajFact.gata) || []).length;
       var sect = '<div class="rax-inv-sect" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;">' +
         '<button class="rax-btn' + (_raxInvSect === 'facturi' ? ' primary' : '') + '" onclick="raxInvSectiune(\'facturi\')">Facturi · ' + nrF + '</button>' +
-        '<button class="rax-btn' + (_raxInvSect === 'proforme' ? ' primary' : '') + '" onclick="raxInvSectiune(\'proforme\')">Proforme · ' + nrPf + (deIncasat ? ' (' + deIncasat + ' de încasat)' : '') + '</button></div>';
+        '<button class="rax-btn' + (_raxInvSect === 'proforme' ? ' primary' : '') + '" onclick="raxInvSectiune(\'proforme\')">Proforme · ' + nrPf + (deIncasat ? ' (' + deIncasat + ' de încasat)' : '') + '</button>' +
+        // A treia secțiune (30.09): montajul gata de facturat, în ritmul fiecărui instalator. Cifra = câte firme așteaptă.
+        '<button class="rax-btn' + (_raxInvSect === 'montaj' ? ' primary' : '') + '" onclick="raxInvSectiune(\'montaj\')">Montaj de facturat · ' + nrMont + '</button></div>';
+      if (_raxInvSect === 'montaj') { box.innerHTML = sect + _raxMontajFactHtml(); return; }
       var rows = toate.filter(function (v) { return _raxInvSect === 'proforme' ? v.type === 'proforma' : v.type !== 'proforma'; });
       if (!rows.length) { box.innerHTML = sect + '<div class="rax-co-meta" style="padding:12px;">' + (_raxInvSect === 'proforme' ? 'Nicio proformă emisă încă.' : 'Nicio factură fiscală emisă încă.') + ' Apasă „Generează factură".</div>'; return; }
       var head = '<thead><tr><th>Document</th><th>Companie</th><th>Data</th><th>Ce e</th><th class="num">Net</th><th class="num">TVA</th><th class="num">Total</th><th>Stare</th><th>e-Factura</th><th>Acțiuni</th></tr></thead>';
@@ -26733,7 +26820,7 @@ const pozitii = await r.json();</code></pre>
         : '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Descriere</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Preț unit.</th><th style="text-align:right;">Valoare</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       var eticheta = _giTip === 'proforma' ? 'Emite proforma' : 'Emite factura';
       var mentiuni = abo ? '' : '<div style="margin-top:8px;"><label for="rax-gi-nota" style="font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:3px;">Mențiuni pe factură (apar sub rânduri)</label>' +
-        '<input class="rax-field" id="rax-gi-nota" style="margin:0;" maxlength="500" value="' + esc(S.nota || '') + '" oninput="_giState.nota=this.value"></div>';
+        '<input class="rax-field" id="rax-gi-nota" style="margin:0;" maxlength="500" value="' + esc(S.nota || '') + '" oninput="raxGiNota(this.value)"></div>';
       res.innerHTML = cap + gol + mentiuni +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:6px;"><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="rax-btn" onclick="_giAdd()"><i class="fas fa-plus"></i> Linie liberă</button></div>' +
           '<div style="text-align:right;font-size:12.5px;"><span style="color:var(--text-muted);">Net </span><b>' + _invMoney(sub) + '</b> · <span style="color:var(--text-muted);">TVA </span><b>' + _invMoney(vat) + '</b> · <span style="color:var(--text-muted);">Total </span><b style="color:var(--accent);font-size:15px;">' + _invMoney(sub + vat) + ' lei</b></div></div>' +
@@ -26749,6 +26836,9 @@ const pozitii = await r.json();</code></pre>
     function _giRecalcLine(l) { var vr = (_giState.vatRate || 0); l.net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; l.vat = Math.round(l.net * vr) / 100; l.vatRate = vr; l.gross = Math.round((l.net + l.vat) * 100) / 100; }
     window._giEdit = function (i, k, v) { if (!_giState || !_giState.lines[i]) return; _giState.lines[i][k] = (k === 'desc') ? v : (Number(v) || 0); if (k !== 'desc') { _giRecalcLine(_giState.lines[i]); _giRenderLines(); } };
     window._giDel = function (i) { if (!_giState) return; _giState.lines.splice(i, 1); _giRenderLines(); };
+    // Mențiunea corectată de mână. Prin funcție: un atribut `oninput` vede doar `window`, iar `_giState` trăiește aici —
+    // scris direct în atribut („_giState.nota=…") arunca o eroare la fiecare literă, iar corectura nu ajungea pe factură.
+    window.raxGiNota = function (v) { if (_giState) _giState.nota = String(v == null ? '' : v); };
     window._giAdd = function (desc, price) { if (!_giState) return; var l = { desc: desc || '', qty: 1, unitPrice: Number(price) || 0, vatRate: _giState.vatRate || 0, net: 0, vat: 0, gross: 0 }; _giRecalcLine(l); _giState.lines.push(l); _giRenderLines(); };
     // Ce trimite fereastra: ACELAȘI corp pentru „Previzualizează" și „Emite" — ce vezi e ce pleacă.
     function _giCorp() {
@@ -26907,13 +26997,41 @@ const pozitii = await r.json();</code></pre>
         _raxAttempts = (r[2] && Array.isArray(r[2].attempts)) ? r[2].attempts : [];
         _raxStrict = !!(r[2] && r[2].strict);
       } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; return; }
+      _raxDevPuneAnuntul();
       raxRenderDevices();
     };
+    // ── începe „aparatele noi, bifate din anunț" ──
+    // Clicul pe anunțul „aparate noi transmit" bifează aparatele din el și alege firma propusă în bara de jos. Pentru o
+    // firmă propusă se bifează TOATE aparatele încă neasignate propuse pentru ea (`anuntat_firma`, de la server) — o zi de
+    // montaj poate veni în mai multe anunțuri. Ce a fost între timp trecut pe firmă sau arhivat nu se mai bifează.
+    var _raxDevDePus = null, _raxDevBlocFirma = '';
+    function _raxDevPuneAnuntul() {
+      var p = _raxDevDePus; if (!p) return;
+      _raxDevDePus = null;
+      _raxDevSel = {};
+      (_raxDevices || []).forEach(function (d) {
+        if (_raxDevBucket(d) !== 'unassigned') return;
+        if (p.imeis.indexOf(String(d.imei)) >= 0 || (p.firma != null && d.anuntat_firma === Number(p.firma))) _raxDevSel[d.imei] = true;
+      });
+      _raxDevBlocFirma = p.firma != null ? String(p.firma) : '';
+    }
+    // ── sfârșit „aparatele noi, bifate din anunț" ──
     window.raxDevFilter = function (k) { _raxDevFilter = k; raxRenderDevices(); };
+    // Căutarea. Prin funcție: atributul care scria direct în `_raxDevSearch` scria, de fapt, o variabilă nouă pe
+    // `window`, deci căutarea nu filtra nimic (30.09). Ecranul se redesenează întreg: întoarcem cursorul în casetă, la capăt.
+    window.raxDevCauta = function (q) {
+      _raxDevSearch = String(q == null ? '' : q);
+      raxRenderDevices();
+      var el = document.querySelector('#admin-tab-devices .rax-dev-search');
+      if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }
+    };
     // Chemat din banda de pe „Companii": deschide Dispozitive DIRECT pe aparatele neasignate. Filtrul
     // se pune ÎNAINTE de a deschide secțiunea, ca randarea de după încărcare să-l prindă deja pus.
-    window.raxDevDeschideNeasignate = function () {
+    // `pune` (anunțul „aparate noi transmit", 30.09): { imeis, firma } — aparatele se bifează și firma se alege în bara
+    // de jos, după încărcare. Trecerea pe firmă rămâne apăsarea TA („Trece pe firmă", cu confirmare).
+    window.raxDevDeschideNeasignate = function (pune) {
       _raxDevFilter = 'unassigned';
+      _raxDevDePus = pune && ((pune.imeis || []).length || pune.firma) ? { imeis: (pune.imeis || []).map(String), firma: pune.firma || null } : null;
       if (window.raxAdminTab) raxAdminTab('devices');
     };
     // ── începe „dispozitivele, pe firme" ───────────────────────────────────────────
@@ -26999,7 +27117,7 @@ const pozitii = await r.json();</code></pre>
       var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat. Ca să adopți unul, alege-i firma în coloana <b>Companie</b>; „Respinge" îl arhivează.</div>' : '') +
         '<div class="rax-dev-bar">' + '<button class="rax-btn primary" style="border-radius:20px;" onclick="raxDevAddOpen()"><i class="fas fa-plus"></i> Adaugă dispozitiv</button>' +
         chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('nosignal', 'Fără semnal', 'atentie') + chip('archived', 'Arhivate') +
-        '<input class="rax-field rax-dev-search" placeholder="\uD83D\uDD0E nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
+        '<input class="rax-field rax-dev-search" placeholder="\uD83D\uDD0E nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="raxDevCauta(this.value)"></div>';
       var randHtml = function (d) {
         var b = _raxDevBucket(d);
         // Neasignate: o bifă pe rând, pentru trecerea mai multora deodată pe aceeași firmă (28.09).
@@ -27088,14 +27206,19 @@ const pozitii = await r.json();</code></pre>
     function _raxDevBaraBloc(lista) {
       var toate = lista.length > 0 && lista.every(function (d) { return _raxDevSel[d.imei]; });
       var n = lista.filter(function (d) { return _raxDevSel[d.imei]; }).length;
+      // Firma aleasă rămâne aleasă când mai bifezi un aparat (lista se redesenează la fiecare bifă).
+      var propusa = _raxDevBlocFirma ? ((companiesCache || []).filter(function (c) { return String(c.id) === String(_raxDevBlocFirma); })[0] || null) : null;
       return '<div class="rax-dev-bulk">' +
         '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"' + (toate ? ' checked' : '') + ' onchange="raxDevBifaToate(this.checked)"> Toate (' + lista.length + ')</label>' +
         '<span style="color:var(--text-muted);">' + n + (n === 1 ? ' bifat' : ' bifate') + '</span>' +
-        '<select class="rax-field" id="rax-dev-bulk-co">' + _raxDevCoOptions('').replace('— neasignat —', '— alege firma —') + '</select>' +
+        '<select class="rax-field" id="rax-dev-bulk-co" onchange="raxDevBlocFirma(this.value)">' + _raxDevCoOptions(_raxDevBlocFirma).replace('— neasignat —', '— alege firma —') + '</select>' +
         '<button class="rax-btn primary"' + (n ? '' : ' disabled') + ' onclick="raxDevTreceBloc()"><i class="fas fa-arrow-right"></i> Trece pe firmă</button>' +
+        (propusa && n ? '<div class="rax-dev-propus"><i class="fas fa-calendar-check"></i> Firma e propusă de montajul din calendar: <b>' + esc(propusa.name) + '</b>. Verifică aparatele bifate și apasă „Trece pe firmă".</div>' : '') +
       '</div>';
     }
     window.raxDevBifa = function (imei, on) { if (on) _raxDevSel[imei] = true; else delete _raxDevSel[imei]; raxRenderDevices(); };
+    // Prin funcție, nu `_raxDevBlocFirma=this.value` în atribut: atributul vede doar ce e pe `window`, nu variabilele de aici.
+    window.raxDevBlocFirma = function (v) { _raxDevBlocFirma = v || ''; raxRenderDevices(); };
     window.raxDevBifaToate = function (on) {
       (_raxDevices || []).filter(function (d) { return _raxDevBucket(d) === 'unassigned'; }).forEach(function (d) { if (on) _raxDevSel[d.imei] = true; else delete _raxDevSel[d.imei]; });
       raxRenderDevices();
@@ -27113,6 +27236,7 @@ const pozitii = await r.json();</code></pre>
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
         imeis.forEach(function (i) { delete _raxDevSel[i]; });
+        _raxDevBlocFirma = '';
         if (window.raxToast) raxToast((j.trecute || 0) + (j.trecute === 1 ? ' aparat trecut' : _raxDe(j.trecute || 0) + 'aparate trecute') + ' pe ' + (co.name || 'firmă') + (j.sarite && j.sarite.length ? ' · ' + j.sarite.length + ' sărite (arhivate sau inexistente)' : '') + ' ✓', 'success');
         raxLoadDevices();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }

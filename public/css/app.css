@@ -3776,9 +3776,23 @@ body:not(.dark) .rax-gi-avert{ color:#9a3412; }
    „Aparatele din contract" apăsat o dată trebuie să se VADĂ stins (măsurat pe captură, 29.09). */
 #rax-geninv-overlay .rax-btn:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
 
+/* Facturare → „Montaj de facturat" (30.09): o firmă pe rând — cine, ce și când, suma, butonul. „În curs" = chenar punctat. */
+.rax-mf-sub{ font-size:12px; color:var(--text-secondary); line-height:1.5; margin:0 0 10px; }
+.rax-mf-h{ font-size:12px; font-weight:700; color:var(--text-secondary); margin:14px 0 6px; }
+.rax-mf-rand{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 12px; margin:0 0 8px;
+  border:1px solid var(--border); border-radius:10px; background:var(--bg-dark); }
+.rax-mf-rand.curs{ border-style:dashed; background:transparent; }
+.rax-mf-t{ flex:1 1 260px; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:13px; }
+.rax-mf-t span{ font-size:12px; color:var(--text-secondary); line-height:1.45; }
+.rax-mf-s{ font-weight:800; font-size:14px; white-space:nowrap; }
+.rax-mf-s span{ font-weight:400; font-size:11px; color:var(--text-secondary); }
+
 /* „Dispozitive" → Neasignate: bife pe rânduri + trecerea în bloc pe o firmă (28.09) */
 .rax-dev-bulk{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 10px; margin:6px 0 8px;
   border:1px dashed var(--border); border-radius:10px; font-size:12.5px; }
 .rax-dev-bulk select{ margin:0; width:auto; min-width:180px; height:32px; }
+/* Firma propusă de anunțul „aparate noi transmit" (30.09): un rând întreg sub bară, pe textul obișnuit. */
+.rax-dev-propus{ flex-basis:100%; font-size:12px; color:var(--text-secondary); line-height:1.45; }
+.rax-dev-propus i{ color:var(--accent); margin-right:4px; }
 .rax-dev-abo{ display:block; font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; }
 .rax-dev-abo button{ border:0; background:none; padding:0 0 0 4px; color:var(--text-muted); cursor:pointer; font-family:inherit; }
