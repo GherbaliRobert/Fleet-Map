@@ -161,8 +161,93 @@ function facAnexaCosturiUnice(rdMontaj, rdEchip, curs, moneda) {
   };
 }
 
+// ─── Calendarul de montaj (Alin, 30.09: „calendar de programare… să pot selecta eu ziua, și să-mi arate
+//     ce am de instalat") ───
+// Se programează pe MAȘINI: la fiecare mașină merg aparatul GPS și ce se mai montează pe ea (adaptorul LV-CAN,
+// CAN-ul încorporat, priza FMS). Deplasarea, demontarea și înlocuirea nu se împart pe zile: se pun de mână pe
+// lucrare, din fișa clientului.
+const PE_MASINA = ['gps', 'lvcan', 'caninc', 'fms'];
+const STARI_PROGRAMATE = ['de_programat', 'programat'];
+// Aceleași stări ca `contracts.MONTAJ_EXECUTAT` (drumul clientului, termenul) — legate printr-o probă.
+const STARI_MONTATE = ['executat', 'facturat_de_partener', 'facturat_clientului'];
+function _obj(v) { if (v && typeof v === 'object') return v; if (typeof v === 'string' && v) { try { return JSON.parse(v); } catch (e) {} } return null; }
+// „1 mașină", „5 mașini", „20 de mașini" (fără „de" când ultimele două cifre sunt între 1 și 19).
+function _cate(n, unu, multe) { const r = n % 100; return n + ' ' + (n === 1 ? unu : ((r >= 1 && r <= 19) ? '' : 'de ') + multe); }
+
+// Ce mai e de programat dintr-un contract SEMNAT: Anexa nr. 2 minus lucrările lui (programate + montate), pe
+// tipuri. `masini` = aparatele GPS (unul pe mașină); `peMasina` = câte bucăți din tipul ăla merg pe o mașină,
+// ca ecranul să propună, la 10 mașini, 10 adaptoare când toate au, și mai puține când doar unele au.
+function deProgramat(anexa, lucrari) {
+  const a = _obj(anexa) || {};
+  const inAnexa = {};
+  (a.items || []).forEach(function (r) {
+    if (!r || PE_MASINA.indexOf(r.tip) < 0) return;
+    const x = inAnexa[r.tip] || (inAnexa[r.tip] = { buc: 0, pretClient: null });
+    x.buc += _n(r.buc);
+    if (x.pretClient == null && r.pretClient != null) x.pretClient = _n(r.pretClient);
+  });
+  const prog = {}, mont = {};
+  (lucrari || []).forEach(function (l) {
+    const tinta = STARI_PROGRAMATE.indexOf(l && l.status) >= 0 ? prog : STARI_MONTATE.indexOf(l && l.status) >= 0 ? mont : null;
+    if (!tinta) return;
+    const items = _obj(l.items);
+    (Array.isArray(items) ? items : []).forEach(function (r) {
+      if (r && PE_MASINA.indexOf(r.tip) >= 0) tinta[r.tip] = (tinta[r.tip] || 0) + _n(r.buc);
+    });
+  });
+  const masini = inAnexa.gps ? inAnexa.gps.buc : 0;
+  const tipuri = PE_MASINA.filter(function (k) { return inAnexa[k] && inAnexa[k].buc > 0; }).map(function (k) {
+    const t = tip(k), n = inAnexa[k].buc, p = prog[k] || 0, m = mont[k] || 0;
+    return { tip: k, eticheta: t ? t.et : k, inAnexa: n, programate: p, montate: m, ramase: Math.max(0, n - p - m),
+      pretClient: inAnexa[k].pretClient, peMasina: masini > 0 ? Math.round(n / masini * 1000) / 1000 : 0 };
+  });
+  const g = tipuri.filter(function (r) { return r.tip === 'gps'; })[0] || { programate: 0, montate: 0, ramase: 0 };
+  return { masini: masini, programate: g.programate, montate: g.montate, ramase: g.ramase, tipuri: tipuri };
+}
+
+// Lucrarea unei zile din calendar. `cate` = { gps: 10, lvcan: 10 } (bucăți pe tip). Prețul pentru client vine din
+// Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului. Niciodată peste ce a rămas de programat.
+// → { items } sau { eroare } (în cuvintele ecranului).
+function lucrareaZilei(stare, cate, tarifeInstalator) {
+  const s = stare || { tipuri: [] };
+  const c = cate || {};
+  const g = _n(c.gps);
+  if (!(g >= 1) || Math.floor(g) !== g) return { eroare: 'Scrie câte mașini se montează în ziua asta.' };
+  const tarife = tarifeInstalator || {};
+  const items = [];
+  for (const r of (s.tipuri || [])) {
+    const buc = Math.floor(_n(c[r.tip]));
+    if (!buc) continue;
+    if (buc > r.ramase) {
+      return { eroare: r.tip === 'gps'
+        ? (r.ramase ? 'Au mai rămas de programat doar ' + _cate(r.ramase, 'mașină', 'mașini') + '.' : 'Toate mașinile contractului sunt deja programate.')
+        : r.eticheta + ': au mai rămas doar ' + _cate(r.ramase, 'bucată', 'bucăți') + '.' };
+    }
+    items.push({ tip: r.tip, buc: buc, pretClient: r.pretClient == null ? null : r.pretClient,
+      costPartener: tarife[r.tip] == null || tarife[r.tip] === '' ? null : _n(tarife[r.tip]) });
+  }
+  if (!items.some(function (r) { return r.tip === 'gps'; })) return { eroare: 'Contractul n-are montaj de aparat GPS de programat.' };
+  return { items: items };
+}
+
+// „Montată": lucrarea programată pentru 10 mașini s-a făcut la 8. Tipurile pe mașină scad în aceeași proporție
+// (GPS-ul exact la 8); deplasarea și restul rămân. Ce nu s-a montat se întoarce SINGUR la „de programat",
+// fiindcă restul se socotește din lucrări (`deProgramat`).
+function scaleazaLaMontate(items, masini) {
+  const lista = Array.isArray(items) ? items : [];
+  const gps = lista.filter(function (r) { return r && r.tip === 'gps'; })[0];
+  const inainte = gps ? _n(gps.buc) : 0;
+  const acum = Math.max(0, Math.floor(_n(masini)));
+  if (!inainte || acum >= inainte) return lista.map(function (r) { return Object.assign({}, r); });
+  return lista.map(function (r) {
+    if (!r || PE_MASINA.indexOf(r.tip) < 0) return Object.assign({}, r);
+    return Object.assign({}, r, { buc: r.tip === 'gps' ? acum : Math.round(_n(r.buc) * acum / inainte) });
+  }).filter(function (r) { return !(PE_MASINA.indexOf(r.tip) >= 0 && !(r.buc > 0)); });
+}
+
 module.exports = {
   TIPURI, CHEI, STARI, ETICHETE_STARE, ECHIPAMENTE, CHEI_ECHIP,
   tip, echipament, randuri, randuriEchip, calc,
-  facAnexaMontaj, facAnexaEchip, facAnexaCosturiUnice, pretDinOferta
+  facAnexaMontaj, facAnexaEchip, facAnexaCosturiUnice, pretDinOferta,
+  PE_MASINA, STARI_PROGRAMATE, STARI_MONTATE, deProgramat, lucrareaZilei, scaleazaLaMontate
 };

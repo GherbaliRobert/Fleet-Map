@@ -20914,12 +20914,13 @@ const pozitii = await r.json();</code></pre>
               : '<div class="drum-urm"><span>Toți pașii sunt făcuți.</span></div>') +
       '</div>';
     }
-    // Montajul: fișa firmei, fila Contract, formularul unei lucrări noi — deschis, nu doar arătat.
-    window.raxDrumMontaj = async function (companyId) {
-      var ov = document.getElementById('rax-codetail-overlay');
-      if (!(ov && ov.classList.contains('open') && window._raxCtr && _raxCtr.id === companyId)) await raxOpenCompanyDetail(companyId, 'contract');
-      if (window.raxMontajEdit) raxMontajEdit(0);
-      var m = document.getElementById('ct-montaj'); if (m) m.scrollIntoView({ block: 'center' });
+    // Montajul (30.09): se programează DOAR în calendar (Business → Montaj), cu fereastra deschisă pe contractul
+    // clientului. Înainte deschidea formularul lucrării din fișă — acum formularul rămâne doar pentru editare.
+    window.raxDrumMontaj = function (companyId) {
+      if (window.raxCloseCompanyDetail) raxCloseCompanyDetail();
+      _raxMj.fila = 'calendar';
+      _raxMj.cal.pre = companyId;
+      if (window.raxAdminTab) raxAdminTab('montaj');
     };
     // Aparatele: în „Dispozitive", grupul Neasignate — singurul loc de adopție (decizie Alin, 17.09).
     window.raxDrumAparate = function () {
@@ -21047,7 +21048,26 @@ const pozitii = await r.json();</code></pre>
       var f = await _ctreAlegeFisier(); if (!f) return;
       if (!await _ctreUrca(id, 'contract', f)) return;
       var ms = /^\d{4}-\d{2}-\d{2}$/.test(String(zi)) ? Date.parse(zi + 'T12:00:00') : Date.now();
-      _ctrePut(id, { status: 'activ', signed_at: ms }, 'Contract semnat și în dosar ✓');
+      if (await _ctrePut(id, { status: 'activ', signed_at: ms }, 'Contract semnat și în dosar ✓') && _areAparateVandute(c)) raxProformaLaSemnare(c.company_id);
+    };
+    // ── Proforma aparatelor, gata făcută la semnare (Alin, 30.09) ──
+    // Contractul cu aparate VÂNDUTE cere avansul pe proformă (cap. IV). La „E semnat" se deschide fereastra facturii
+    // pe proformă, cu aparatele din contract deja puse: te uiți la hârtie („Previzualizează") și apeși „Emite
+    // proforma". NU emite nimic singură. La închiriere nu există avans (aparatele rămân ale noastre), deci nu apare.
+    function _areAparateVandute(c) {
+      var m = c && c.montaj;
+      if (typeof m === 'string') { try { m = JSON.parse(m); } catch (e) { m = null; } }
+      return !!(m && m.echipamente && (m.echipamente.items || []).length);
+    }
+    window.raxProformaLaSemnare = async function (companyId) {
+      if (!window.raxOpenGenInvoice) return;
+      if (!Array.isArray(companiesCache) || !companiesCache.length) {
+        try { companiesCache = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      }
+      raxOpenGenInvoice(companyId, 'unica');
+      raxGiTip('proforma');
+      await raxGenDraft();
+      if (_giState && _giState.dinContract && (_giState.dinContract.aparate || []).length) _giPuneContract('aparate');
     };
     window.raxCtreData = async function (id) {
       var zi = await raConfirm('Ce zi a fost semnat contractul?', { danger: false, icon: 'fa-calendar-check', okLabel: 'Salvează', field: { label: 'Data semnării', type: 'date', value: new Date().toISOString().slice(0, 10) } });
@@ -21202,19 +21222,28 @@ const pozitii = await r.json();</code></pre>
     // Lucrări (toate, de la toți clienții). Clientul nu vede nimic de aici — pentru el montăm noi.
     // Contul partenerului în aplicație (ce vede el, ce bifează) îl face Robert.
     var _raxPart = { lista: [], edit: null };
-    var _raxMj = { fila: 'parteneri', contracte: [], faraContract: [], lucrari: [], stari: {}, trimite: false, editC: null, fStare: '', fPart: '' };
-    var MJ_FILE = [['parteneri', 'Parteneri'], ['contracte', 'Contracte cu partenerii'], ['lucrari', 'Lucrări']];
+    // Calendarul (30.09) e fila întâi: acolo se programează montajul (vezi „calendarul de montaj", mai jos).
+    var _raxMj = { fila: 'calendar', contracte: [], faraContract: [], lucrari: [], stari: {}, trimite: false, editC: null, fStare: '', fPart: '',
+      cal: { luna: null, data: null, part: '', form: null, sel: null, pre: null } };
+    var MJ_FILE = [['calendar', 'Calendar'], ['parteneri', 'Parteneri'], ['contracte', 'Contracte cu partenerii'], ['lucrari', 'Lucrări']];
     window.raxLoadMontaj = async function () {
       var box = document.getElementById('admin-tab-montaj'); if (!box) return;
       if (!document.getElementById('mj-corp')) box.innerHTML = '<div class="raco"><div class="raco-seg" id="mj-file"></div><div id="mj-corp"><div class="rax-co-meta">Se încarcă…</div></div></div>';
       var get = function (u) { return fetch(u, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return null; }); };
-      var r = await Promise.all([get('/api/montaj/parteneri'), get('/api/montaj/contracte'), get('/api/montaj/lucrari')]);
+      var r = await Promise.all([get('/api/montaj/parteneri'), get('/api/montaj/contracte'), get('/api/montaj/lucrari'), _mjcIncarca(_raxMj.cal.luna)]);
       _raxPart.lista = Array.isArray(r[0]) ? r[0] : [];
       _raxMj.contracte = (r[1] && r[1].contracte) || [];
       _raxMj.faraContract = (r[1] && r[1].fara_contract) || [];
       _raxMj.trimite = !!(r[1] && r[1].trimite_pe_email);
       _raxMj.lucrari = (r[2] && r[2].lucrari) || [];
       _raxMj.stari = (r[2] && r[2].stari) || {};
+      // Venit din drumul clientului („Programează montajul"): fereastra se deschide pe contractul lui.
+      if (_raxMj.cal.pre) {
+        var dP = _mjcDate(), cP = (dP.deProgramat || []).filter(function (x) { return x.company_id === _raxMj.cal.pre && x.ramase > 0; })[0];
+        var coP = (Array.isArray(companiesCache) ? companiesCache : []).filter(function (x) { return x.id === _raxMj.cal.pre; })[0];
+        _raxMj.cal.form = cP ? { zi: dP.azi, contract_id: cP.contract_id, n: null, partener_id: null } : { faraClient: (coP && coP.name) || 'Firma asta' };
+        _raxMj.cal.sel = null; _raxMj.cal.pre = null;
+      }
       _mjDeseneaza();
     };
     // Partenerii se reîncarcă din secțiunea lor (numele vechi rămâne pentru apelurile existente).
@@ -21222,11 +21251,13 @@ const pozitii = await r.json();</code></pre>
     window.raxMjFila = function (f) { _raxMj.fila = f; _raxMj.editC = null; _mjDeseneaza(); };
     function _mjDeseneaza() {
       var file = document.getElementById('mj-file'), corp = document.getElementById('mj-corp'); if (!file || !corp) return;
-      var nr = { parteneri: _raxPart.lista.length, contracte: _raxMj.contracte.length, lucrari: _raxMj.lucrari.length };
+      var nr = { parteneri: _raxPart.lista.length, contracte: _raxMj.contracte.length, lucrari: _raxMj.lucrari.length,
+        calendar: (_mjcDate().deProgramat || []).filter(function (x) { return x.ramase > 0; }).length };
       file.innerHTML = MJ_FILE.map(function (x) {
-        return '<button class="rax-btn' + (_raxMj.fila === x[0] ? ' primary' : '') + '" onclick="raxMjFila(\'' + x[0] + '\')">' + x[1] + ' · ' + nr[x[0]] + '</button>';
+        return '<button class="rax-btn' + (_raxMj.fila === x[0] ? ' primary' : '') + '" onclick="raxMjFila(\'' + x[0] + '\')">' + x[1] + (nr[x[0]] ? ' · ' + nr[x[0]] : (x[0] === 'calendar' ? '' : ' · 0')) + '</button>';
       }).join('');
-      if (_raxMj.fila === 'contracte') corp.innerHTML = _mjContracteHtml();
+      if (_raxMj.fila === 'calendar') corp.innerHTML = '<div class="mjc">' + _mjcCalendarHtml() + '</div>';
+      else if (_raxMj.fila === 'contracte') corp.innerHTML = _mjContracteHtml();
       else if (_raxMj.fila === 'lucrari') corp.innerHTML = _mjLucrariHtml();
       else corp.innerHTML = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-screwdriver-wrench"></i> Parteneri de montaj</div>' +
         '<div class="raco-sub">Firmele care montează în locul nostru. Clientul nu le vede niciodată — pentru el montăm noi. Tarifele scrise aici se propun singure la fiecare lucrare și intră în contractul cu partenerul.</div>' +
@@ -21493,7 +21524,7 @@ const pozitii = await r.json();</code></pre>
       var optStari = '<option value="">toate stările</option>' + Object.keys(stari).map(function (k) { return '<option value="' + k + '"' + (_raxMj.fStare === k ? ' selected' : '') + '>' + esc(stari[k]) + '</option>'; }).join('');
       var optPart = '<option value="">toți partenerii</option>' + _raxPart.lista.map(function (p) { return '<option value="' + p.id + '"' + (_raxMj.fPart === String(p.id) ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('');
       var h = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-wrench"></i> Lucrările de montaj</div>' +
-        '<div class="raco-sub">Toate lucrările, de la toți clienții. Se programează și se editează din fișa clientului (fila Contract) — de acolo intră în contractul lui.</div>' +
+        '<div class="raco-sub">Toate lucrările, de la toți clienții. Se programează în Calendar; se editează din fișa clientului (fila Contract).</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px;"><select class="rax-field" style="width:auto;margin:0;" onchange="raxMjFiltru(\'fStare\', this.value)">' + optStari + '</select>' +
           '<select class="rax-field" style="width:auto;margin:0;" onchange="raxMjFiltru(\'fPart\', this.value)">' + optPart + '</select></div>';
       if (!lista.length) return h + '<div class="rax-co-meta" style="padding:16px;">' + (toate.length ? 'Nicio lucrare pentru filtrul ăsta.' : 'Nicio lucrare de montaj încă. Se face din fișa clientului, fila Contract.') + '</div></section>';
@@ -21510,6 +21541,253 @@ const pozitii = await r.json();</code></pre>
         }).join('') + '</tbody></table></div>';
       return h + '</section>';
     }
+
+    // ── începe „calendarul de montaj" ───────────────────────────────────────────────────────────
+    // Alin, 30.09: „în secțiunea Montaj, calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am
+    // de instalat și disponibilitatea". SINGURUL loc în care se programează montajul unui contract SEMNAT: clic pe
+    // o zi → clientul, câte mașini, instalatorul. Ce mai e de programat, termenul și prețurile le dă serverul
+    // (montaj.deProgramat, contracts.termenMontaj, Anexa nr. 2 + tarifele instalatorului); ecranul doar arată.
+    // Zilele ocupate ale unui instalator se văd alegându-l sus. Clientul nu vede nimic de aici.
+    var MJC_LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+    var MJC_ZILE = ['L', 'Ma', 'Mi', 'J', 'V', 'S', 'D'];
+    function _mjcDate() { return (_raxMj.cal && _raxMj.cal.data) || { lucrari: [], deProgramat: [], parteneri: [], stoc: [], stari: {} }; }
+    async function _mjcIncarca(luna) {
+      try {
+        var j = await fetch('/api/montaj/calendar' + (luna ? '?luna=' + encodeURIComponent(luna) : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (j && !j.error) { _raxMj.cal.data = j; _raxMj.cal.luna = j.luna; }
+      } catch (e) {}
+    }
+    function _mjcZiRo(zi) { var p = String(zi || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : ''; }
+    function _mjcMasini(n) { return n + (n === 1 ? ' mașină' : _raxDe(n) + 'mașini'); }
+    function _mjcMontata(st) { return st === 'executat' || st === 'facturat_de_partener' || st === 'facturat_clientului'; }
+    function _mjcCeSeMonteaza(items) {
+      return (items || []).map(function (r) { var t = MONTAJ_TIPURI.filter(function (x) { return x[0] === r.tip; })[0]; return (r.buc || 0) + '× ' + (t ? t[1] : r.tip); }).join(', ');
+    }
+    function _mjcCalendarHtml() {
+      var d = _mjcDate(), luna = _raxMj.cal.luna || d.luna || '';
+      var y = parseInt(luna.slice(0, 4), 10), m = parseInt(luna.slice(5, 7), 10);
+      if (!y || !m) return '<div class="rax-co-meta">Se încarcă…</div>';
+      var part = _raxMj.cal.part;
+      var peZi = {};
+      (d.lucrari || []).forEach(function (l) {
+        if (part && String(l.partener_id || '') !== part) return;
+        (peZi[l.zi] = peZi[l.zi] || []).push(l);
+      });
+      var gol = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7, zile = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      var grila = MJC_ZILE.map(function (z) { return '<div class="mjc-zs">' + z + '</div>'; }).join('');
+      for (var i = 0; i < gol; i++) grila += '<div class="mjc-zi gol" aria-hidden="true"></div>';
+      for (var zz = 1; zz <= zile; zz++) {
+        var zi = luna + '-' + ('0' + zz).slice(-2), wk = ((gol + zz - 1) % 7) >= 5;
+        var ch = (peZi[zi] || []).map(function (l) {
+          var mont = _mjcMontata(l.status);
+          var titlu = (l.company_name || '') + ' · ' + _mjcMasini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + ((d.stari || {})[l.status] || l.status);
+          return '<button type="button" class="mjc-l ' + (mont ? 'mjc-mont' : 'mjc-prog') + '" title="' + esc(titlu) + '" onclick="event.stopPropagation();raxMjCalLucrare(' + l.id + ')">' +
+            '<b>' + l.masini + '</b> <span class="mjc-cl">' + esc(l.company_name || '') + '</span></button>';
+        }).join('');
+        grila += '<div class="mjc-zi' + (wk ? ' wk' : '') + (zi === d.azi ? ' azi' : '') + '" role="button" tabindex="0" aria-label="Programează pe ' + _mjcZiRo(zi) + '"' +
+          ' onclick="raxMjCalZi(\'' + zi + '\')" onkeydown="if(event.key===\'Enter\')raxMjCalZi(\'' + zi + '\')"><span class="mjc-nr">' + zz + '</span>' + ch + '</div>';
+      }
+      var optPart = '<option value="">toți</option>' + (d.parteneri || []).filter(function (p) { return p.active || String(p.id) === part; }).map(function (p) {
+        return '<option value="' + p.id + '"' + (String(p.id) === part ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('');
+      var h = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-calendar-days"></i> Calendarul montajului</div>' +
+        '<div class="raco-sub">Apasă pe o zi ca să programezi montajul unui client: câte mașini și cine montează. Alege un instalator ca să vezi doar zilele lui ocupate.</div>' +
+        '<div class="mjc-bar"><button class="rax-btn mjc-sag" onclick="raxMjCalLuna(-1)" aria-label="Luna trecută" title="Luna trecută">‹</button>' +
+          '<strong class="mjc-luna">' + MJC_LUNI.at(m - 1) + ' ' + y + '</strong>' +
+          '<button class="rax-btn mjc-sag" onclick="raxMjCalLuna(1)" aria-label="Luna viitoare" title="Luna viitoare">›</button>' +
+          '<button class="rax-btn" onclick="raxMjCalLuna(0)">Azi</button>' +
+          '<label class="mjc-f"><span>Instalator</span><select class="rax-field" onchange="raxMjCalPart(this.value)">' + optPart + '</select></label></div>' +
+        '<div id="mjc-form">' + (_raxMj.cal.form ? _mjcFormHtml() : _raxMj.cal.sel ? _mjcLucrareHtml() : '') + '</div>' +
+        '<div class="mjc-grila">' + grila + '</div>' +
+        '<div class="mjc-leg"><span class="mjc-l mjc-prog"><b>10</b> programat</span><span class="mjc-l mjc-mont"><b>10</b> montat</span><span>cifra = câte mașini</span></div></section>';
+      return h + _mjcDeProgramatHtml();
+    }
+    // „Jos, ce am de instalat": contractele semnate cu mașini rămase, cel mai strâns termen primul.
+    function _mjcDeProgramatHtml() {
+      var d = _mjcDate();
+      var h = '<section class="raco-card">' + '<div class="raco-h"><i class="fas fa-list-check"></i> De programat</div>' +
+        '<div class="raco-sub">Contractele semnate, cu ce a mai rămas de montat. Termenul e cel din contract: 30 de zile de la încasarea avansului.</div>';
+      if (!(d.deProgramat || []).length) h += '<div class="rax-co-meta" style="padding:12px 0;">Niciun contract semnat nu mai are mașini de montat.</div>';
+      else h += d.deProgramat.map(function (c) {
+        var t = c.termen, cls = t ? (t.stare === 'depasit' ? 'bad' : t.stare === 'curand' ? 'warn' : '') : '';
+        var detalii = [c.text, c.programate ? _mjcMasini(c.programate) + ' programate' : null,
+          c.ramase ? _mjcMasini(c.ramase) + ' de programat' : 'toate sunt programate'].filter(Boolean).join(' · ');
+        return '<div class="raco-row"><span class="raco-row-t"><strong>' + esc(c.company_name || '—') + '</strong>' +
+          (t ? ' <span class="raco-pill ' + cls + '">termen ' + _mjcZiRo(new Date(Number(t.pana)).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' })) + ', ' + esc(t.text) + '</span>' : '') +
+          '<span class="raco-row-s">' + esc(detalii) + '</span></span>' +
+          (c.ramase ? '<button class="rax-btn primary ctre-pas" onclick="raxMjCalProgrameaza(' + c.contract_id + ')"><i class="fas fa-calendar-plus"></i> Programează</button>' : '') + '</div>';
+      }).join('');
+      if ((d.stoc || []).length) {
+        h += '<div class="raco-anexa-t"><b>Aparate în stoc:</b> ' + d.stoc.map(function (s) {
+          return esc(s.eticheta) + ' — ' + s.depozit + ' în depozit' + (s.instalator ? ', ' + s.instalator + ' la instalatori' : '');
+        }).join(' · ') + '</div>';
+      }
+      return h + '</section>';
+    }
+    // Fereastra „Programează": clientul, ziua, instalatorul, câte mașini (și, pe mașină, ce se mai montează).
+    function _mjcFormHtml() {
+      var d = _mjcDate(), f = _raxMj.cal.form;
+      var ctrs = (d.deProgramat || []).filter(function (x) { return x.ramase > 0; });
+      var inchide = '<div class="raco-nav"><button class="rax-btn" onclick="raxMjCalRenunt()">Închide</button></div>';
+      if (!ctrs.length) return '<div class="mjc-panou"><div class="raco-msg">Nimic de programat: niciun contract semnat nu mai are mașini rămase.</div>' + inchide + '</div>';
+      if (f.faraClient) return '<div class="mjc-panou"><div class="raco-msg">' + esc(f.faraClient) + ' n-are nimic de programat acum: contractul nu e semnat sau toate mașinile sunt deja programate.</div>' + inchide + '</div>';
+      var c = ctrs.filter(function (x) { return x.contract_id === f.contract_id; })[0] || ctrs[0];
+      f.contract_id = c.contract_id;
+      var gps = (c.tipuri || []).filter(function (t) { return t.tip === 'gps'; })[0] || { ramase: 0 };
+      var n = f.n != null ? f.n : gps.ramase;
+      var alte = (c.tipuri || []).filter(function (t) { return t.tip !== 'gps' && t.ramase > 0; });
+      var optC = ctrs.map(function (x) { return '<option value="' + x.contract_id + '"' + (x.contract_id === c.contract_id ? ' selected' : '') + '>' + esc(x.company_name || '—') + ' — ' + _mjcMasini(x.ramase) + ' de programat</option>'; }).join('');
+      var optP = '<option value="">— îl aleg mai târziu —</option>' + (d.parteneri || []).filter(function (p) { return p.active; }).map(function (p) {
+        return '<option value="' + p.id + '"' + (f.partener_id === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('');
+      return '<div class="mjc-panou"><div class="raco-h2">Programează montajul</div>' +
+        '<div class="raco-2"><label class="raco-f"><span>Clientul</span><select class="rax-field" id="mjc-ctr" onchange="raxMjCalClient(this.value)">' + optC + '</select></label>' +
+          '<label class="raco-f"><span>Ziua</span><input class="rax-field" type="date" id="mjc-zi" value="' + esc(f.zi || d.azi || '') + '"></label></div>' +
+        '<div class="raco-2"><label class="raco-f"><span>Câte mașini (din ' + gps.ramase + ' rămase)</span><input class="rax-field" type="number" id="mjc-gps" min="1" max="' + gps.ramase + '" step="1" value="' + n + '" oninput="raxMjCalCate()"></label>' +
+          '<label class="raco-f"><span>Cine montează</span><select class="rax-field" id="mjc-part">' + optP + '</select></label></div>' +
+        (alte.length ? '<div class="raco-2">' + alte.map(function (t) {
+          return '<label class="raco-f"><span>' + esc(t.eticheta) + ' (din ' + t.ramase + ' rămase)</span><input class="rax-field" type="number" min="0" max="' + t.ramase + '" step="1" data-mjc-tip="' + t.tip + '" data-pe-masina="' + t.peMasina + '" value="' + Math.min(t.ramase, Math.round(n * t.peMasina)) + '" oninput="this.setAttribute(\'data-atins\', \'1\')"></label>';
+        }).join('') + '</div>' : '') +
+        (c.termen ? '<div class="raco-sub">Termenul din contract: ' + _mjcZiRo(new Date(Number(c.termen.pana)).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' })) + ' (' + esc(c.termen.text) + ').</div>' : '') +
+        '<div id="mjc-msg" class="raco-msg"></div>' +
+        '<div class="raco-nav"><button class="rax-btn" onclick="raxMjCalRenunt()">Renunț</button>' +
+        '<button class="rax-btn primary" onclick="raxMjCalSalveaza()"><i class="fas fa-calendar-check"></i> Programează</button></div></div>';
+    }
+    // O lucrare din calendar: cine, ce, și — cât e programată — mută, montată, șterge.
+    function _mjcLucrareHtml() {
+      var d = _mjcDate(), l = (d.lucrari || []).filter(function (x) { return x.id === _raxMj.cal.sel; })[0];
+      if (!l) return '';
+      var prog = !_mjcMontata(l.status);
+      var optP = '<option value="">— neales —</option>' + (d.parteneri || []).filter(function (p) { return p.active || p.id === l.partener_id; }).map(function (p) {
+        return '<option value="' + p.id + '"' + (p.id === l.partener_id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('');
+      var h = '<div class="mjc-panou"><div class="raco-h2">' + esc(l.company_name || '—') + ' · ' + _mjcZiRo(l.zi) + '</div>' +
+        '<div class="raco-sub">' + esc(_mjcMasini(l.masini)) + ' · ' + esc(l.partener_nume || 'instalator neales') + ' · ' + esc((d.stari || {})[l.status] || l.status) + '<br>' + esc(_mjcCeSeMonteaza(l.items)) + '</div>';
+      if (prog) {
+        h += '<div class="raco-h2">S-a montat?</div>' +
+          '<div class="mjc-rand"><label class="raco-f"><span>Câte mașini s-au montat</span><input class="rax-field" type="number" id="mjc-mont" min="1" max="' + l.masini + '" step="1" value="' + l.masini + '"></label>' +
+            '<button class="rax-btn primary" onclick="raxMjCalMontata(' + l.id + ')"><i class="fas fa-check"></i> Montată</button></div>' +
+          '<div class="raco-sub">Dacă s-au montat mai puține, celelalte se întorc singure la „De programat".</div>' +
+          '<div class="raco-h2">Altă zi sau alt instalator</div>' +
+          '<div class="mjc-rand"><label class="raco-f"><span>Ziua</span><input class="rax-field" type="date" id="mjc-mzi" value="' + esc(l.zi) + '"></label>' +
+            '<label class="raco-f"><span>Cine montează</span><select class="rax-field" id="mjc-mpart">' + optP + '</select></label>' +
+            '<button class="rax-btn" onclick="raxMjCalMuta(' + l.id + ')"><i class="fas fa-calendar-day"></i> Mută</button></div>';
+      }
+      h += '<div id="mjc-msg" class="raco-msg"></div><div class="raco-nav">' +
+        '<button class="rax-btn" onclick="raxMjCalRenunt()">Închide</button>' +
+        '<button class="rax-btn" onclick="raxMjCalLaClient(' + l.company_id + ')"><i class="fas fa-up-right-from-square"></i> La client</button>' +
+        (prog ? '<button class="rax-btn" onclick="raxMjCalSterge(' + l.id + ')"><i class="fas fa-trash"></i> Șterge ziua</button>' : '') + '</div></div>';
+      return h;
+    }
+    function _mjcFormAcum() {
+      var b = document.getElementById('mjc-form'); if (!b) return;
+      b.innerHTML = _raxMj.cal.form ? _mjcFormHtml() : _raxMj.cal.sel ? _mjcLucrareHtml() : '';
+      if (_raxMj.cal.form || _raxMj.cal.sel) b.scrollIntoView({ block: 'nearest' });
+    }
+    function _mjcMesaj(t) { var m = document.getElementById('mjc-msg'); if (m) m.textContent = t || ''; }
+    async function _mjcDupa(luna) { await _mjcIncarca(luna || _raxMj.cal.luna); _mjDeseneaza(); }
+    window.raxMjCalLuna = async function (pas) {
+      var d = _mjcDate(), luna = _raxMj.cal.luna || d.luna || '';
+      if (!pas) luna = String(d.azi || '').slice(0, 7);
+      else {
+        var y = parseInt(luna.slice(0, 4), 10), m = parseInt(luna.slice(5, 7), 10) + pas;
+        if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+        luna = y + '-' + ('0' + m).slice(-2);
+      }
+      _raxMj.cal.form = null; _raxMj.cal.sel = null;
+      await _mjcDupa(luna);
+    };
+    window.raxMjCalPart = function (v) { _raxMj.cal.part = v || ''; _mjDeseneaza(); };
+    window.raxMjCalZi = function (zi) {
+      var f = _raxMj.cal.form;
+      _raxMj.cal.sel = null;
+      _raxMj.cal.form = { zi: zi, contract_id: f ? f.contract_id : null, n: null, partener_id: _raxMj.cal.part ? parseInt(_raxMj.cal.part, 10) : (f ? f.partener_id : null) };
+      _mjcFormAcum();
+    };
+    window.raxMjCalProgrameaza = function (contractId) {
+      _raxMj.cal.sel = null;
+      _raxMj.cal.form = { zi: _mjcDate().azi, contract_id: contractId, n: null, partener_id: _raxMj.cal.part ? parseInt(_raxMj.cal.part, 10) : null };
+      _mjcFormAcum();
+    };
+    // Alt client: se păstrează ziua și instalatorul alese; cantitățile pornesc din nou de la ce i-a rămas lui.
+    window.raxMjCalClient = function (v) {
+      var f = _raxMj.cal.form; if (!f) return;
+      var zi = document.getElementById('mjc-zi'), p = document.getElementById('mjc-part');
+      if (zi && zi.value) f.zi = zi.value;
+      f.partener_id = p && p.value ? parseInt(p.value, 10) : null;
+      f.contract_id = parseInt(v, 10); f.n = null;
+      _mjcFormAcum();
+    };
+    // Câte mașini → ce se mai montează pe ele (adaptoarele…), cât timp nu le-ai scris tu de mână.
+    window.raxMjCalCate = function () {
+      var n = parseInt((document.getElementById('mjc-gps') || {}).value, 10) || 0;
+      document.querySelectorAll('#mjc-form input[data-mjc-tip]').forEach(function (i) {
+        if (i.getAttribute('data-atins')) return;
+        i.value = Math.min(parseInt(i.getAttribute('max'), 10) || 0, Math.round(n * (parseFloat(i.getAttribute('data-pe-masina')) || 0)));
+      });
+    };
+    window.raxMjCalRenunt = function () { _raxMj.cal.form = null; _raxMj.cal.sel = null; _mjcFormAcum(); };
+    window.raxMjCalSalveaza = async function () {
+      var f = _raxMj.cal.form; if (!f) return;
+      var zi = (document.getElementById('mjc-zi') || {}).value || '';
+      var n = parseInt((document.getElementById('mjc-gps') || {}).value, 10) || 0;
+      var p = (document.getElementById('mjc-part') || {}).value || '';
+      if (!zi) { _mjcMesaj('Alege ziua montajului.'); return; }
+      var cate = { gps: n };
+      document.querySelectorAll('#mjc-form input[data-mjc-tip]').forEach(function (i) { cate[i.getAttribute('data-mjc-tip')] = parseInt(i.value, 10) || 0; });
+      try {
+        var r = await fetch('/api/montaj/programeaza', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contract_id: f.contract_id, data_lucrare: _zi(zi), partener_id: p ? parseInt(p, 10) : null, cate: cate }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { _mjcMesaj(j.error || 'Nu s-a putut programa.'); return; }
+        var c = (_mjcDate().deProgramat || []).filter(function (x) { return x.contract_id === f.contract_id; })[0] || {};
+        if (window.raxToast) raxToast('Programat: ' + (c.company_name || 'clientul') + ', ' + _mjcMasini(n) + ', pe ' + _mjcZiRo(zi) + ' ✓', 'success');
+        _raxMj.cal.form = null;
+        await _mjcDupa(zi.slice(0, 7));
+      } catch (e) { _mjcMesaj('Eroare: ' + e.message); }
+    };
+    window.raxMjCalLucrare = function (id) { _raxMj.cal.form = null; _raxMj.cal.sel = id; _mjcFormAcum(); };
+    window.raxMjCalMuta = async function (id) {
+      var zi = (document.getElementById('mjc-mzi') || {}).value || '', p = (document.getElementById('mjc-mpart') || {}).value || '';
+      if (!zi) { _mjcMesaj('Alege ziua.'); return; }
+      try {
+        var r = await fetch('/api/montaje/' + id + '/muta', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data_lucrare: _zi(zi), partener_id: p ? parseInt(p, 10) : null }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { _mjcMesaj(j.error || 'Nu s-a putut muta.'); return; }
+        if (window.raxToast) raxToast('Mutat pe ' + _mjcZiRo(zi) + ' ✓', 'success');
+        _raxMj.cal.sel = null;
+        await _mjcDupa(zi.slice(0, 7));
+      } catch (e) { _mjcMesaj('Eroare: ' + e.message); }
+    };
+    window.raxMjCalMontata = async function (id) {
+      var l = (_mjcDate().lucrari || []).filter(function (x) { return x.id === id; })[0] || {};
+      var n = parseInt((document.getElementById('mjc-mont') || {}).value, 10) || 0;
+      var intreb = 'Treci lucrarea ca montată: ' + _mjcMasini(n) + ' la ' + (l.company_name || 'client') + '?' +
+        (l.masini && n < l.masini ? ' Celelalte ' + _mjcMasini(l.masini - n) + ' se întorc la „De programat".' : '') +
+        ' Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.';
+      if (!await raConfirm(intreb, { okLabel: 'Montată', danger: false })) return;
+      try {
+        var r = await fetch('/api/montaje/' + id + '/montata', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ masini: n }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { _mjcMesaj(j.error || 'Nu s-a putut salva.'); return; }
+        if (window.raxToast) raxToast('Montată ✓' + (j.inapoi_la_programat ? ' · ' + _mjcMasini(j.inapoi_la_programat) + ' înapoi la „De programat"' : ''), 'success');
+        _raxMj.cal.sel = null;
+        await _mjcDupa();
+      } catch (e) { _mjcMesaj('Eroare: ' + e.message); }
+    };
+    window.raxMjCalSterge = async function (id) {
+      if (!await raConfirm('Ștergi ziua asta de montaj? Mașinile ei se întorc la „De programat".')) return;
+      try {
+        var r = await fetch('/api/montaje/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { _mjcMesaj(j.error || 'Nu s-a putut șterge.'); return; }
+        _raxMj.cal.sel = null;
+        await _mjcDupa();
+      } catch (e) { _mjcMesaj('Eroare: ' + e.message); }
+    };
+    window.raxMjCalLaClient = function (companyId) { raxOpenCompanyDetail(companyId, 'contract'); };
+    // ── sfârșit „calendarul de montaj" ──────────────────────────────────────────────────────────
 
     // ─── Secțiunea „Stoc echipamente" (Gestiune, 25.09) ─────────────────────────────────────────
     // Alin: „noi trebuie să avem un stoc de echipamente, de GPS-uri, LV-CAN-uri. Poate nu toți vor să
@@ -22040,7 +22318,9 @@ const pozitii = await r.json();</code></pre>
           { okLabel: 'Încheie contractul', field: { label: 'Motivul încetării (rămâne în dosar)', placeholder: 'ex. denunțare cu preaviz' } });
         if (motiv === false) return;
       }
-      await raxCtrSalveaza(stareNoua, motiv);
+      var cSemnat = stareNoua === 'activ' && window._raxCtr ? { companyId: _raxCtr.id, contract: _raxCtr.contract } : null;
+      var okS = await raxCtrSalveaza(stareNoua, motiv);
+      if (okS && cSemnat && _areAparateVandute(cSemnat.contract)) raxProformaLaSemnare(cSemnat.companyId);
     };
     // „Reînnoiește": face actul adițional de prelungire (ciornă), cu textul și datele puse de server.
     // De acolo merge pe drumul oricărui act — capătul contractului se mută abia când actul e SEMNAT.
@@ -22307,7 +22587,11 @@ const pozitii = await r.json();</code></pre>
         h += '<div class="raco-anexa-t">Total montaj la clientul ăsta: <strong>' + _lei(tc) + '</strong> încasat · ' +
           _lei(tp) + ' plătit partenerilor · <strong style="color:var(--accent)">' + _lei(tc - tp) + ' marjă</strong></div>';
       }
-      h += '<button class="rax-btn" style="margin-top:10px;" onclick="raxMontajEdit(0)"><i class="fas fa-plus"></i> Lucrare de montaj</button>';
+      // Contract semnat → montajul se programează în calendar (un singur loc). Nesemnat → lucrările de aici
+      // scriu încă Anexa nr. 2 (montajul pus în contract), deci formularul rămâne.
+      h += (_raxCtr && _raxCtr.contract && _raxCtr.contract.status === 'activ')
+        ? '<button class="rax-btn primary" style="margin-top:10px;" onclick="raxDrumMontaj(' + _raxMont.companyId + ')"><i class="fas fa-calendar-plus"></i> Programează în calendar</button>'
+        : '<button class="rax-btn" style="margin-top:10px;" onclick="raxMontajEdit(0)"><i class="fas fa-plus"></i> Lucrare de montaj</button>';
       box.innerHTML = h;
     };
     window.raxMontajEdit = function (id) {
@@ -22539,11 +22823,12 @@ const pozitii = await r.json();</code></pre>
       }
       try {
         var j = await fetch('/api/contracts/' + _raxCtr.contract.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(trup) }).then(function (r) { return r.json(); });
-        if (j.error) { _ctMsg(j.error, true); return; }
+        if (j.error) { _ctMsg(j.error, true); return false; }
         (window.raxToast || function () {})('Contract salvat ✓', 'success');
         if (window.raxLoadCompanies) raxLoadCompanies();
         raxOpenCompanyDetail(_raxCtr.id, 'contract');
-      } catch (e) { _ctMsg('Eroare: ' + e.message, true); }
+        return true;
+      } catch (e) { _ctMsg('Eroare: ' + e.message, true); return false; }
     };
     window.raxCtrSalveazaAnexa = async function () {
       var box = document.getElementById('ct-anexa'); if (!box) return;
@@ -22654,7 +22939,7 @@ const pozitii = await r.json();</code></pre>
         '</div>' +
         '<div id="rax-bill-auto"></div>' +
         '<div id="rax-bill-status" style="margin-bottom:18px;"></div>' +
-        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi fiscale <span id="rax-ef-status" style="font-size:10.5px;font-weight:400;margin-left:6px;"></span></h4>' +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi și proforme <span id="rax-ef-status" style="font-size:10.5px;font-weight:400;margin-left:6px;"></span></h4>' +
         '<div id="rax-invoices" style="margin-bottom:18px;"><div class="rax-co-meta">Se încarcă…</div></div>' +
         '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Plăți / încasări</h4>' +
         '<div id="rax-bill-table"><div class="rax-co-meta">Se încarcă…</div></div>';
@@ -25850,9 +26135,11 @@ const pozitii = await r.json();</code></pre>
           // O ofertă e făcută ca să devină client. Dacă a devenit, se vede și duci direct în dosarul
           // lui; dacă nu, un buton deschide traseul „client nou" cu datele ofertei deja puse.
           var devenit = !!o.contract_id;
+          // Un singur nume, cu text, nu o iconiță (Alin, 30.09): „Deschide dosarul clientului". Prima dată face firma,
+          // contractul și contul clientului din ofertă (și o trece pe „acceptată"); după, deschide dosarul lui.
           var ofBtn = devenit
-            ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOpenCompanyDetail(' + o.company_id + ', \'contract\')" title="Deschide dosarul clientului"><i class="fas fa-file-signature"></i></button>'
-            : ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="coNouDinOferta(' + o.id + ')" title="Deschide un client pornind de la oferta asta — datele și prețul vin singure"><i class="fas fa-user-plus"></i></button>';
+            ? ' <button class="rax-btn primary" style="padding:4px 10px;font-size:11px;white-space:nowrap;" onclick="raxOpenCompanyDetail(' + o.company_id + ', \'contract\')" title="Fișa firmei, fila Contract"><i class="fas fa-folder-open"></i> Deschide dosarul clientului</button>'
+            : ' <button class="rax-btn primary" style="padding:4px 10px;font-size:11px;white-space:nowrap;" onclick="coNouDinOferta(' + o.id + ')" title="Face firma, contractul și contul clientului din ofertă — datele și prețul vin singure"><i class="fas fa-folder-plus"></i> Deschide dosarul clientului</button>';
           // Numele și pastila „AI" stau într-o cutie FLEX, aliniate pe mijloc. Cu `vertical-align`
           // pastila (9,5px, cu chenar) cădea vizibil sub linia numelui — `vertical-align:middle`
           // aliniază față de LINIA DE BAZĂ plus jumătate din înălțimea literei mici, nu față de
@@ -26164,6 +26451,8 @@ const pozitii = await r.json();</code></pre>
     };
     // ═══ Facturi FISCALE (super-admin): generare din abonament + listă + PDF fiscal ═══
     var _raxInvoices = [];
+    // Secțiunile listei (30.09, Alin: „să am secțiuni de unde să le văd"): facturile fiscale și proformele, separat.
+    var _raxInvSect = 'facturi';
     var _giState = null; // ciorna din „Generează factură": { companyId, fel, luna, lines, issuer, vatRate, client, dinContract, montaje, puse }
     function _invFmtD(ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; }
     function _invMoney(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -26195,10 +26484,17 @@ const pozitii = await r.json();</code></pre>
       catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcarea facturilor.</div>'; return; }
       raxRenderInvoices();
     };
+    window.raxInvSectiune = function (k) { _raxInvSect = k === 'proforme' ? 'proforme' : 'facturi'; raxRenderInvoices(); };
     window.raxRenderInvoices = function () {
       var box = document.getElementById('rax-invoices'); if (!box) return;
-      var rows = _raxInvoices || [];
-      if (!rows.length) { box.innerHTML = '<div class="rax-co-meta" style="padding:12px;">Nicio factură fiscală emisă încă. Apasă „Generează factură".</div>'; return; }
+      var toate = _raxInvoices || [];
+      var nrPf = toate.filter(function (v) { return v.type === 'proforma'; }).length, nrF = toate.length - nrPf;
+      var deIncasat = toate.filter(function (v) { return v.type === 'proforma' && v.status !== 'paid' && v.status !== 'canceled'; }).length;
+      var sect = '<div class="rax-inv-sect" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;">' +
+        '<button class="rax-btn' + (_raxInvSect === 'facturi' ? ' primary' : '') + '" onclick="raxInvSectiune(\'facturi\')">Facturi · ' + nrF + '</button>' +
+        '<button class="rax-btn' + (_raxInvSect === 'proforme' ? ' primary' : '') + '" onclick="raxInvSectiune(\'proforme\')">Proforme · ' + nrPf + (deIncasat ? ' (' + deIncasat + ' de încasat)' : '') + '</button></div>';
+      var rows = toate.filter(function (v) { return _raxInvSect === 'proforme' ? v.type === 'proforma' : v.type !== 'proforma'; });
+      if (!rows.length) { box.innerHTML = sect + '<div class="rax-co-meta" style="padding:12px;">' + (_raxInvSect === 'proforme' ? 'Nicio proformă emisă încă.' : 'Nicio factură fiscală emisă încă.') + ' Apasă „Generează factură".</div>'; return; }
       var head = '<thead><tr><th>Document</th><th>Companie</th><th>Data</th><th>Ce e</th><th class="num">Net</th><th class="num">TVA</th><th class="num">Total</th><th>Stare</th><th>e-Factura</th><th>Acțiuni</th></tr></thead>';
       // Ce e documentul: abonamentul unei luni, o factură unică sau o proformă. Facturile de dinainte de 28.09
       // n-au felul scris — se văd cu o liniuță, nu cu un fel ghicit.
@@ -26236,7 +26532,7 @@ const pozitii = await r.json();</code></pre>
           '<td style="white-space:nowrap;">' + act + '</td>' +
         '</tr>';
       }).join('');
-      box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+      box.innerHTML = sect + '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
     };
     window.raxInvoiceMarkPaid = async function (id, proforma) {
       var intreb = proforma
@@ -26443,21 +26739,43 @@ const pozitii = await r.json();</code></pre>
           '<div style="text-align:right;font-size:12.5px;"><span style="color:var(--text-muted);">Net </span><b>' + _invMoney(sub) + '</b> · <span style="color:var(--text-muted);">TVA </span><b>' + _invMoney(vat) + '</b> · <span style="color:var(--text-muted);">Total </span><b style="color:var(--accent);font-size:15px;">' + _invMoney(sub + vat) + ' lei</b></div></div>' +
         (_giTip === 'proforma' ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși ✓ „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div>' : '') +
         '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">La emitere pleacă singură: clientul e anunțat în aplicație și o primește pe email, cu PDF-ul' + (_giTip === 'proforma' ? '' : ', iar factura fiscală pleacă și la ANAF') + ' (când serverul are emailul și tokenul ANAF).</div>' +
-        '<button class="rax-btn primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="raxGenIssue(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-file-invoice-dollar"></i> ' + eticheta + '</button>' +
+        // Previzualizarea (30.09, Alin: „să aibă previzualizare, că se pot face greșeli"): hârtia exactă, de pe server,
+        // fără număr și fără să plece nimic. Abia „Emite" o face document.
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+          '<button class="rax-btn" style="flex:1 1 180px;justify-content:center;" onclick="raxGenPrevizualizare(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-eye"></i> Previzualizează</button>' +
+          '<button class="rax-btn primary" style="flex:2 1 220px;justify-content:center;" onclick="raxGenIssue(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-file-invoice-dollar"></i> ' + eticheta + '</button></div>' +
         '<div id="rax-gi-msg" style="font-size:12px;margin-top:8px;"></div>';
     }
     function _giRecalcLine(l) { var vr = (_giState.vatRate || 0); l.net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; l.vat = Math.round(l.net * vr) / 100; l.vatRate = vr; l.gross = Math.round((l.net + l.vat) * 100) / 100; }
     window._giEdit = function (i, k, v) { if (!_giState || !_giState.lines[i]) return; _giState.lines[i][k] = (k === 'desc') ? v : (Number(v) || 0); if (k !== 'desc') { _giRecalcLine(_giState.lines[i]); _giRenderLines(); } };
     window._giDel = function (i) { if (!_giState) return; _giState.lines.splice(i, 1); _giRenderLines(); };
     window._giAdd = function (desc, price) { if (!_giState) return; var l = { desc: desc || '', qty: 1, unitPrice: Number(price) || 0, vatRate: _giState.vatRate || 0, net: 0, vat: 0, gross: 0 }; _giRecalcLine(l); _giState.lines.push(l); _giRenderLines(); };
+    // Ce trimite fereastra: ACELAȘI corp pentru „Previzualizează" și „Emite" — ce vezi e ce pleacă.
+    function _giCorp() {
+      var lines = _giState.lines.filter(function (l) { return (l.desc || '').trim() && (Number(l.qty) || 0) > 0; });
+      return { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.montaje || [],
+        note: (_giState.fel === 'unica' && String(_giState.nota || '').trim()) ? String(_giState.nota).trim().slice(0, 500) : null };
+    }
+    window.raxGenPrevizualizare = async function (btn) {
+      if (!_giState) return; var msg = document.getElementById('rax-gi-msg');
+      var body = _giCorp();
+      if (!body.lines.length) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Adaugă cel puțin o linie validă.</span>'; return; }
+      if (btn) btn.disabled = true;
+      try {
+        var r = await fetch('/api/invoices/previzualizare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        if (!r.ok) { var j = await r.json().catch(function () { return {}; }); if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error || ('HTTP ' + r.status)) + '</span>'; return; }
+        var blob = await r.blob();
+        _ofArataHartia(URL.createObjectURL(blob), _numeDinAntet(r, 'previzualizare.pdf'), 'Previzualizarea');
+        if (msg) msg.innerHTML = '';
+      } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
+      finally { if (btn) btn.disabled = false; }
+    };
     window.raxGenIssue = async function (btn) {
       if (!_giState) return; var msg = document.getElementById('rax-gi-msg');
-      var lines = _giState.lines.filter(function (l) { return (l.desc || '').trim() && (Number(l.qty) || 0) > 0; });
+      var body = _giCorp(), lines = body.lines;
       if (!lines.length) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Adaugă cel puțin o linie validă.</span>'; return; }
       var eticheta = _giTip === 'proforma' ? 'Emite proforma' : 'Emite factura';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se emite…'; }
-      var body = { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.montaje || [],
-        note: (_giState.fel === 'unica' && String(_giState.nota || '').trim()) ? String(_giState.nota).trim().slice(0, 500) : null };
       try {
         var r = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
         var j = await r.json().catch(function () { return {}; });

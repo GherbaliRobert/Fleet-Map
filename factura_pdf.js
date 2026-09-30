@@ -16,6 +16,7 @@ const path = require('path');
 
 const VERDE = '#16a34a', VERDE_INCHIS = '#15803d', VERDE_FUNDAL = '#f0fdf4';
 const TEXT = '#1a2235', GRI = '#64748b', GRI_TEXT = '#475569', LINIE = '#e2e8f0', FUNDAL = '#f8fafc', RAND = '#fafcff';
+const PORTOCALIU = '#c2410c';   // doar pe previzualizare: să nu poată fi luată drept document emis
 
 let _logoBuf = null, _logoTried = false;
 // „logo-light.png" e varianta ÎNCHISĂ (pentru fundal deschis) — pe hârtie albă asta se vede (regula casei).
@@ -84,7 +85,9 @@ function scrieFactura(doc, inv, emitentAcum) {
   if (lg) { try { doc.image(lg, left, sus, { height: 30 }); } catch (e) {} }
   doc.font('Nunito-Bold').fontSize(7.5).fillColor(GRI).text('MONITORIZARE GPS FLOTĂ', left, sus + 36, { width: 220, characterSpacing: 1 });
   doc.font('Nunito-Bold').fontSize(9).fillColor(GRI).text(pf ? 'FACTURĂ PROFORMĂ' : 'FACTURĂ FISCALĂ', left, sus, { width: w, align: 'right', characterSpacing: 0.5 });
-  doc.font('Nunito-Bold').fontSize(17).fillColor(TEXT).text(inv.full_number || '—', left, sus + 12, { width: w, align: 'right' });
+  // Previzualizarea (30.09): aceeași hârtie, fără număr — numărul se ia abia la emitere, ca șirul să nu aibă găuri.
+  if (inv.previzualizare) doc.font('Nunito-Bold').fontSize(15).fillColor(PORTOCALIU).text('PREVIZUALIZARE', left, sus + 13, { width: w, align: 'right', characterSpacing: 0.5 });
+  else doc.font('Nunito-Bold').fontSize(17).fillColor(TEXT).text(inv.full_number || '—', left, sus + 12, { width: w, align: 'right' });
   doc.font('Nunito').fontSize(9).fillColor(GRI).text('Data emiterii: ' + _data(inv.issue_date), left, sus + 35, { width: w, align: 'right' });
   if (inv.due_date) doc.font('Nunito').fontSize(9).fillColor(GRI).text('Scadență: ' + _data(inv.due_date), left, sus + 47, { width: w, align: 'right' });
   const yLinie = sus + 64;
@@ -211,7 +214,9 @@ function scrieFactura(doc, inv, emitentAcum) {
   }
 
   // ── Josul hârtiei ──
-  const subsol = pf
+  const subsol = inv.previzualizare
+    ? 'PREVIZUALIZARE — documentul nu e emis încă: numărul, data și trimiterea către client se fac la „Emite". Nu are valoare fiscală.'
+    : pf
     ? 'Proformă emisă din platforma RA Tracks. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.'
     : 'Factură emisă electronic din platforma RA Tracks. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' +
       (inv.din_proforma ? ' Emisă la încasarea unei proforme.' : '');

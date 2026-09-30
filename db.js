@@ -2363,6 +2363,22 @@ async function marcheazaMontajeFacturate(companyId, ids) {
     [companyId, lista, Date.now()]);
   return (r.rows || []).length;   // `rowCount` lipsește în PGlite — numărăm rândurile întoarse
 }
+// Calendarul de montaj (30.09): lucrările cu zi într-un interval, cu firma și instalatorul lângă.
+async function lucrariMontajIntre(de, pana) {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.total_client, m.total_partener,
+            m.status, m.factura_partener, m.notes, co.name AS company_name, p.name AS partener_nume
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      WHERE m.data_lucrare >= $1 AND m.data_lucrare < $2 ORDER BY m.data_lucrare, m.id`, [de, pana]);
+  return r.rows;
+}
+// Lucrările mai multor contracte deodată — din ele se socotește ce mai e de programat (montaj.deProgramat).
+async function lucrariPeContracte(ids) {
+  const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
+  if (!lista.length) return [];
+  const r = await pool.query('SELECT id, contract_id, status, items FROM montaje WHERE contract_id = ANY($1::int[])', [lista]);
+  return r.rows;
+}
 async function montajeContract(contractId) {
   const r = await pool.query('SELECT id, items FROM montaje WHERE contract_id = $1 ORDER BY created_at ASC', [contractId]);
   return r.rows;
@@ -5024,7 +5040,7 @@ module.exports = {
   contracteInVigoare, contracteToate, firmeFaraContract, legOferta,
   listActe, getAct, getActFile, urmatorulNrAct, upsertAct, setActFile, deleteAct,
   listParteneriMontaj, upsertPartenerMontaj, deletePartenerMontaj,
-  listMontaje, getMontaj, upsertMontaj, deleteMontaj, setContractMontaj,
+  listMontaje, getMontaj, upsertMontaj, deleteMontaj, setContractMontaj, lucrariMontajIntre, lucrariPeContracte,
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,

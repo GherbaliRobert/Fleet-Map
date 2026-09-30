@@ -297,7 +297,8 @@ function pachetFacturare() {
 
   sect('1.4 Emiterea: aceeași formă ca pe web (raxGenIssue), cu felul și luna din CIORNĂ');
   {
-    const corpWeb = (/var body = \{ companyId: _giState\.companyId,([^;]*?)\};/.exec(html) || ['', ''])[0];
+    // 30.09: corpul emiterii stă în `_giCorp` (același pentru „Previzualizează" și „Emite").
+    const corpWeb = (/function _giCorp\(\) \{[\s\S]*?return \{ companyId: _giState\.companyId,([^;]*?)\};/.exec(html) || ['', ''])[0];
     const cheiWeb = (corpWeb.match(/([a-zA-Z]+):/g) || []).map((x) => x.slice(0, -1)).filter((k, i, a) => a.indexOf(k) === i && ['companyId', 'fel', 'luna', 'tip', 'lines', 'montaje', 'note'].includes(k));
     const S = F.ciornaDinRaspuns({ vatRate: 19, fel: 'abonament', luna: '2026-10', lines: [{ desc: 'Abonament GPS — octombrie 2026', qty: 3, unitPrice: 45 }] }, 7, 'abonament');
     const b = F.corpEmitere(S, 'proforma');

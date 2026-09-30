@@ -698,8 +698,8 @@ O linie de pași: **Oferta → Trimis la semnat → Semnat → Montajul → Apar
 ### Montaj — secțiunea partenerilor (Business, 24.09)
 Alin: *„secțiune de partener montaj, unde adăugăm parteneri, semnăm contracte fix la fel ca la clienți.
 Logica din spate o va face Robert în interfața lor."* Rândul „Montaj" stă în meniu **imediat după
-Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Trei file (`MJ_FILE`):
-Parteneri · Contracte cu partenerii · Lucrări.
+Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Patru file (`MJ_FILE`):
+**Calendar** (prima, se deschide singură, 30.09) · Parteneri · Contracte cu partenerii · Lucrări.
 
 - **Partenerii stau DOAR aici.** Au ieșit din ecranul Contracte (acolo sunt doar contractele clienților).
   `raxParteneriIncarca` a rămas ca nume vechi și cheamă `raxLoadMontaj`.
@@ -724,14 +724,40 @@ Parteneri · Contracte cu partenerii · Lucrări.
   clienților 12 luni, și **SUBÎMPUTERNICIT GDPR** (art. 28 alin. 4, Anexa nr. 2) — vede date ale
   clienților noștri. Nume: „RA-Tracks - Contract montaj {nr} - {partener}.pdf". Scris de noi, nu de un
   jurist: e pe lista de lansare.
-- **Lucrările se EDITEAZĂ doar din fișa clientului** (fila Contract) — de acolo iau prețul pentru client și
-  intră în Anexa nr. 2 a contractului lui. Fila „Lucrări" e privirea de sus (`GET /api/montaj/lucrari`,
-  marja socotită pe server), cu buton „La client". NU pune un al doilea formular de lucrare aici.
+- **Montajul unui contract SEMNAT se PROGRAMEAZĂ doar în Calendar** (vezi mai jos); **detaliile unei lucrări
+  se editează din fișa clientului** (fila Contract: preț, cost, factura partenerului, deplasare). La un contract
+  NESEMNAT, formularul din fișă („+ Lucrare de montaj") rămâne: acolo lucrările scriu încă Anexa nr. 2. Fila
+  „Lucrări" e privirea de sus (`GET /api/montaj/lucrari`, marja socotită pe server), cu buton „La client".
+  NU pune un al treilea loc în care se fac lucrări.
 - **Clientul nu vede nimic de aici.** Toate rutele `/api/montaj/*` sunt `requireSuperadmin`: cât ne cere
   partenerul e exact diferența din care trăim.
 - **Contul partenerului în aplicație = Robert.** NU-l construi din proprie inițiativă. Când se face: vede
   DOAR lucrările lui — nu flota/pozițiile clientului, nu prețul pentru client, nu marja, nu alți parteneri.
 - Păzit de `verify_montaj_sectiune.js` (în `npm test`), pe server pornit, cu server de email FALS.
+
+### Calendarul de montaj (Business → Montaj, Alin 30.09)
+Alin: *„calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de instalat și
+disponibilitatea"* + *„în secțiunea Montaj"*. Blocul „calendarul de montaj" din pagină, între sentinele.
+
+- **O zi programată = o lucrare** (`montaje`, status „programat") — exact ce va vedea instalatorul în contul lui
+  (partea lui Robert). NU ține programarea într-o tabelă separată.
+- **Ce mai e de programat se SOCOTEȘTE, nu se ține:** `montaj.deProgramat(anexa, lucrari)` = Anexa nr. 2 minus
+  lucrările contractului (programate + montate), pe tipurile „pe mașină" (`PE_MASINA`: gps, lvcan, caninc, fms).
+  Deplasarea, demontarea, înlocuirea nu se împart pe zile. `STARI_MONTATE` = `contracts.MONTAJ_EXECUTAT`
+  (legate prin probă), deci calendarul, drumul clientului și termenul de 30 de zile numără la fel.
+- **Rutele** (toate `requireSuperadmin`): `GET /api/montaj/calendar?luna=AAAA-LL` (lucrările lunii pe zile, cu
+  ziua pe ora României; „De programat" pe contracte, cu termenul și textele gata scrise; instalatorii; stocul),
+  `POST /api/montaj/programeaza` (DOAR contract semnat — la nesemnat, lucrările scriu Anexa nr. 2),
+  `POST /api/montaje/:id/muta`, `POST /api/montaje/:id/montata { masini }`.
+- **Prețurile NU vin de la ecran:** clientul din Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului
+  (`montaj.lucrareaZilei`). Instalator fără tarif → cost `null`, nu 0.
+- **„Montată" cu mai puține** (`montaj.scaleazaLaMontate`): tipurile pe mașină scad în aceeași proporție, iar
+  restul se întoarce SINGUR la „de programat". O zi montată nu se mai mută.
+- **„Programează montajul"** din drumul clientului (`raxDrumMontaj`) duce în calendar cu clientul ales
+  (`_raxMj.cal.pre`); în fișă, la contract semnat, butonul e „Programează în calendar".
+- Ecranul NU socotește nimic (păzit): cere serverului. Culorile etichetelor (programat / montat) au pereche pe
+  tema deschisă, măsurate ≥ 6. Pe telefon grila rămâne în pagină; numele clientului se ascunde, cifra rămâne.
+- Păzit de `verify_montaj_calendar.js` (în `npm test`), pe server pornit.
 
 ### Aparatele ÎNCHIRIATE și stocul nostru (decizie Alin, 25.09)
 Alin: *„dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze"* + *„trebuie să
@@ -988,6 +1014,18 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   abonamentul își păstrează perioada. Păzit de `verify_abonament.js` (codul paginii, decupat și rulat).
 - Ce fel de factură se emite la încasarea unui avans (de avans / finală) = întrebare pentru contabil, în
   „De amintit". Nu schimba forma fără răspunsul lui.
+
+### Previzualizare, proforma la semnare, secțiuni (Alin, 30.09: „că se pot face greșeli")
+- **„Previzualizează"** în „Generează factură": `POST /api/invoices/previzualizare` compune documentul prin
+  ACEEAȘI funcție ca emiterea (`_compuneFactura`, păzit prin numărare) și desenează ACEEAȘI hârtie
+  (`factura_pdf.js`, cu `previzualizare: true` → „PREVIZUALIZARE" în locul numărului). NU salvează, NU ia număr,
+  NU trimite nimic. Pagina trimite același corp la amândouă (`_giCorp`).
+- **Proforma gata la semnare:** după „E semnat" (listă — `raxCtreSemnat`; fișă — `raxCtrTreci('activ')`), dacă
+  contractul are aparate VÂNDUTE (`_areAparateVandute`: Anexa nr. 2 cu echipamente), se deschide fereastra
+  facturii pe proformă, cu aparatele din contract puse (`raxProformaLaSemnare`). Nu emite singură.
+- **Facturare are două secțiuni:** „Facturi" și „Proforme" (cu câte sunt de încasat) — `raxInvSectiune`.
+- **Pe rândul ofertei, un buton cu nume:** „Deschide dosarul clientului" (înainte: „Client nou din ofertă";
+  după: fișa firmei). NU-l întoarce la o iconiță.
 
 ### Hârtia facturii e UNA, pe server: `factura_pdf.js` (Alin, 30.09: „de acord")
 - `facturaPdf(inv, emitentAcum)` desenează factura fiscală și proforma (PDFKit, `logo-light.png`, DejaVu sub

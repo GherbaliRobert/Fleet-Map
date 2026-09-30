@@ -5760,6 +5760,139 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Calendarul de montaj (Business → Montaj, Alin 30.09) ───────────────────────────────────────
+// „Să am calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de instalat și
+// disponibilitatea." SINGURUL loc în care se PROGRAMEAZĂ montajul unui contract SEMNAT: fiecare zi
+// programată e o lucrare (tabela `montaje`, status „programat") — exact ce va vedea instalatorul în contul
+// lui (partea lui Robert). Ce mai e de programat se socotește din Anexa nr. 2 minus lucrări
+// (`montaj.deProgramat`), nu se ține separat, ca să nu se poată despărți de ele. Doar contracte semnate:
+// la unul nesemnat, lucrările din fișă scriu încă Anexa nr. 2 (o zi programată ar tăia-o la ziua aia).
+function _ziRo(ms) { return new Date(Number(ms)).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' }); }
+app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const acum = Date.now(), ZI = 86400000;
+    let luna = String(req.query.luna || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(luna)) luna = _ziRo(acum).slice(0, 7);
+    const y = parseInt(luna.slice(0, 4), 10), m = parseInt(luna.slice(5, 7), 10);
+    const [brute, inVigoare, parteneri, stoc, dd] = await Promise.all([
+      db.lucrariMontajIntre(Date.UTC(y, m - 1, 1) - ZI, Date.UTC(y, m, 1) + ZI),
+      db.contracteInVigoare(), db.listParteneriMontaj(), db.listStoc().catch(function () { return []; }),
+      db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })
+    ]);
+    const lucrari = brute.filter(function (l) { return _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(function (l) {
+      const items = Array.isArray(l.items) ? l.items : [];
+      const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
+      return { id: l.id, company_id: l.company_id, company_name: l.company_name, contract_id: l.contract_id,
+        partener_id: l.partener_id, partener_nume: l.partener_nume, zi: _ziRo(l.data_lucrare), status: l.status,
+        masini: gps ? Number(gps.buc) || 0 : 0, items: items };
+    });
+    const cuMontaj = inVigoare.filter(function (c) { return contracte.masiniDeMontat(c) > 0; });
+    const peContract = {};
+    (await db.lucrariPeContracte(cuMontaj.map(function (c) { return c.id; }))).forEach(function (l) {
+      (peContract[l.contract_id] = peContract[l.contract_id] || []).push(l);
+    });
+    const deProgramat = cuMontaj.map(function (c) {
+      const s = montaj.deProgramat(c.montaj, peContract[c.id] || []);
+      const t = contracte.termenMontaj(c, contracte.avansContract(((dd && dd.avans) || {})[c.company_id], c), s.montate, acum);
+      return Object.assign({ contract_id: c.id, company_id: c.company_id, company_name: c.company_name, number: c.number,
+        termen: t && t.stare !== 'gata' ? Object.assign({}, t, { text: contracte.termenText(t) }) : null,
+        text: contracte.montateText(s.montate, s.masini) }, s);
+    }).filter(function (x) { return x.ramase > 0 || x.programate > 0; }).sort(function (a, b) {
+      // Întâi cel mai strâns termen, apoi cine mai are de programat, apoi numele.
+      const ta = a.termen ? a.termen.pana : Infinity, tb = b.termen ? b.termen.pana : Infinity;
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      if ((a.ramase > 0) !== (b.ramase > 0)) return a.ramase > 0 ? -1 : 1;
+      return String(a.company_name || '').localeCompare(String(b.company_name || ''), 'ro');
+    });
+    const sumar = stocMod.sumar(stoc);
+    res.json({ luna: luna, azi: _ziRo(acum), lucrari: lucrari, deProgramat: deProgramat, stari: montaj.ETICHETE_STARE,
+      parteneri: parteneri.map(function (p) { return { id: p.id, name: p.name, active: p.active !== false }; }),
+      stoc: montaj.ECHIPAMENTE.map(function (e) {
+        const x = sumar[e.k] || {};
+        return { tip: e.k, eticheta: e.et, depozit: x.depozit || 0, instalator: x.instalator || 0 };
+      }).filter(function (x) { return x.depozit || x.instalator; }) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// O zi programată: contractul, ziua, instalatorul și câte bucăți din fiecare tip „pe mașină". Prețurile NU vin
+// de la ecran: pentru client din Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului.
+app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cid = parseInt(b.contract_id, 10);
+    const c = Number.isFinite(cid) ? await db.getContractById(cid) : null;
+    if (!c) return res.status(404).json({ error: 'Contract inexistent.' });
+    if (c.status !== 'activ') return res.status(400).json({ error: 'Montajul se programează după semnare: contractul ăsta nu e semnat.' });
+    const zi = Number(b.data_lucrare);
+    if (!(zi > 0)) return res.status(400).json({ error: 'Alege ziua montajului.' });
+    const pid = b.partener_id ? parseInt(b.partener_id, 10) : null;
+    const part = pid ? (await db.listParteneriMontaj()).filter(function (p) { return p.id === pid; })[0] : null;
+    if (pid && !part) return res.status(400).json({ error: 'Instalatorul ales nu mai există.' });
+    const stare = montaj.deProgramat(c.montaj, await db.lucrariPeContracte([c.id]));
+    const z = montaj.lucrareaZilei(stare, b.cate, part && part.tarife);
+    if (z.eroare) return res.status(400).json({ error: z.eroare });
+    const rd = montaj.randuri(z.items), s = montaj.calc(rd);
+    const m = await db.upsertMontaj({ id: null, company_id: c.company_id, contract_id: c.id, partener_id: pid, data_lucrare: zi,
+      items: rd, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
+      factura_partener: null, notes: b.notes ? String(b.notes).slice(0, 2000) : null, created_by: req.auth && req.auth.userId });
+    const gps = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
+    auditReq(req, 'create', 'montaj', m && m.id, { company_id: c.company_id, contract_id: c.id, programat: _ziRo(zi), masini: gps.buc || 0 });
+    res.json({ ok: true, lucrare: m });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Mutarea unei zile programate (și, dacă vrei, alt instalator — atunci costul se ia din tarifele lui).
+// Una montată nu se mai mută: ziua ei e un fapt, iar din ea curge abonamentul.
+app.post('/api/montaje/:id/muta', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja montată — ziua ei nu se mai mută.' });
+    const b = req.body || {};
+    const zi = Number(b.data_lucrare);
+    if (!(zi > 0)) return res.status(400).json({ error: 'Alege ziua montajului.' });
+    let pid = m.partener_id, items = Array.isArray(m.items) ? m.items : [];
+    if (b.partener_id !== undefined) {
+      pid = b.partener_id ? parseInt(b.partener_id, 10) : null;
+      if (pid !== m.partener_id) {
+        const part = pid ? (await db.listParteneriMontaj()).filter(function (p) { return p.id === pid; })[0] : null;
+        if (pid && !part) return res.status(400).json({ error: 'Instalatorul ales nu mai există.' });
+        const tarife = (part && part.tarife) || {};
+        items = items.map(function (r) { return Object.assign({}, r, { costPartener: tarife[r.tip] == null || tarife[r.tip] === '' ? null : Number(tarife[r.tip]) }); });
+      }
+    }
+    const rd = montaj.randuri(items), s = montaj.calc(rd);
+    const u = await db.upsertMontaj(Object.assign({}, m, { partener_id: pid, data_lucrare: zi, items: rd, total_client: s.totalClient, total_partener: s.totalPartener }));
+    auditReq(req, 'update', 'montaj', id, { mutat: _ziRo(zi), din: m.data_lucrare ? _ziRo(m.data_lucrare) : null, partener_id: pid });
+    res.json({ ok: true, lucrare: u });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Montată": câte mașini s-au făcut de fapt. Ce nu s-a montat se întoarce SINGUR la „de programat" (se
+// socotește din lucrări) — și tot de aici numără drumul clientului și termenul de 30 de zile.
+app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja trecută ca montată.' });
+    if (m.contract_id) {
+      const c = await db.getContractById(m.contract_id);
+      if (c && c.status !== 'activ' && c.status !== 'incheiat') return res.status(400).json({ error: 'Contractul nu e semnat: lucrarea se schimbă din fișa clientului.' });
+    }
+    const items = Array.isArray(m.items) ? m.items : [];
+    const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
+    const inainte = gps ? Number(gps.buc) || 0 : 0;
+    let noi = items;
+    if (inainte > 0) {
+      const n = parseInt((req.body || {}).masini, 10);
+      if (!(n >= 1) || n > inainte) return res.status(400).json({ error: 'Câte mașini s-au montat? Între 1 și ' + inainte + '.' });
+      noi = montaj.scaleazaLaMontate(items, n);
+    }
+    const rd = montaj.randuri(noi), s = montaj.calc(rd);
+    const u = await db.upsertMontaj(Object.assign({}, m, { items: rd, total_client: s.totalClient, total_partener: s.totalPartener, status: 'executat' }));
+    const dupa = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
+    auditReq(req, 'update', 'montaj', id, { montata: true, masini: dupa.buc || 0, programate: inainte });
+    res.json({ ok: true, lucrare: u, inapoi_la_programat: Math.max(0, inainte - (dupa.buc || 0)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
 // Drumul unui contract, din numărătorile adunate o dată (`db.drumDateToate`). Fără ele → fără drum,
@@ -13548,45 +13681,54 @@ function _termenPlata(co) {
 //   • abonamentul unei luni se emite O SINGURĂ DATĂ (refuz 409, cu numărul celei existente); după anulare, se poate reface;
 //   • proforma: doar pentru o factură UNICĂ, cu serie proprie, fără ANAF; la încasare devine factură fiscală;
 //   • `montaje`: lucrările puse pe factură — la o factură FISCALĂ trec pe „facturat clientului".
+// Compune documentul EXACT cum l-ar emite „Emite", fără să-l salveze și fără să ia un număr. Folosit de emitere
+// și de previzualizare (30.09, Alin: „să aibă previzualizare, că se pot face greșeli") — ca ce vezi înainte să
+// nu se poată despărți de ce pleacă. → { eroare: { status, body } } sau { co, iss, tip, fel, luna, calc, … }.
+async function _compuneFactura(b) {
+  const id = parseInt(b.companyId); if (!Number.isFinite(id)) return { eroare: { status: 400, body: { error: 'companyId invalid' } } };
+  const co = await db.getCompanyById(id); if (!co) return { eroare: { status: 404, body: { error: 'Companie inexistentă' } } };
+  const iss = ((await getSystemSettings()).invoice_issuer) || {};
+  if (!iss.name || !iss.cui) return { eroare: { status: 400, body: { error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' } } };
+  const vr = _issuerVatRate(iss);
+  const tip = b.tip === 'proforma' ? 'proforma' : 'invoice';
+  const liniiPrimite = Array.isArray(b.lines) ? b.lines : [];
+  let fel = (b.fel === 'abonament' || b.fel === 'unica') ? b.fel
+    : (liniiPrimite.some(function (l) { return /^(Abonament|Supliment)/.test(String(l && l.desc || '')); }) || !liniiPrimite.length ? 'abonament' : 'unica');
+  if (tip === 'proforma') fel = 'unica';
+  const now = Date.now();
+  let calc, luna = null, periodStart, periodEnd;
+  if (fel === 'abonament') {
+    const L = abonament.dinCheie(b.luna) || (b.periodStart ? abonament.lunaDin(Number(b.periodStart)) : abonament.lunaDin(now));
+    luna = abonament.cheieLuna(L.an, L.luna);
+    const deja = await db.abonamentLuna(id, luna, true);
+    if (deja) return { eroare: { status: 409, body: { error: 'Abonamentul lunii ' + abonament.numeLuna(L.an, L.luna) + ' e deja facturat: ' + (deja.full_number || '') + '. Dacă vrei s-o refaci, anuleaz-o întâi.', deja: deja } } };
+    const soc = await facturaAbonamentLuna(co, L.an, L.luna, vr);
+    calc = liniiPrimite.length ? _totaluri(_liniiNormalizate(liniiPrimite, vr)) : soc;
+    periodStart = soc.periodStart; periodEnd = soc.periodEnd;
+  } else {
+    calc = _totaluri(_liniiNormalizate(liniiPrimite, vr));
+    periodStart = b.periodStart ? Number(b.periodStart) : now;
+    periodEnd = b.periodEnd ? Number(b.periodEnd) : periodStart;
+  }
+  if (!calc.lines.length || calc.total <= 0) {
+    return { eroare: { status: 400, body: { error: fel === 'abonament' ? 'Nimic de facturat pe luna asta: nicio mașină pornită (aparatele pornesc la prima transmisie, adică după montaj).' : 'Adaugă cel puțin un rând cu valoare.' } } };
+  }
+  return { id: id, co: co, iss: iss, tip: tip, fel: fel, luna: luna, calc: calc, periodStart: periodStart, periodEnd: periodEnd,
+    now: now, termDays: _termenPlata(co), note: b.note ? String(b.note).slice(0, 500) : null };
+}
 app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const b = req.body || {};
-    const id = parseInt(b.companyId); if (!Number.isFinite(id)) return res.status(400).json({ error: 'companyId invalid' });
-    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    const iss = ((await getSystemSettings()).invoice_issuer) || {};
-    if (!iss.name || !iss.cui) return res.status(400).json({ error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' });
-    const vr = _issuerVatRate(iss);
-    const tip = b.tip === 'proforma' ? 'proforma' : 'invoice';
-    const liniiPrimite = Array.isArray(b.lines) ? b.lines : [];
-    let fel = (b.fel === 'abonament' || b.fel === 'unica') ? b.fel
-      : (liniiPrimite.some(function (l) { return /^(Abonament|Supliment)/.test(String(l && l.desc || '')); }) || !liniiPrimite.length ? 'abonament' : 'unica');
-    if (tip === 'proforma') fel = 'unica';
-    const now = Date.now();
-    let calc, luna = null, periodStart, periodEnd;
-    if (fel === 'abonament') {
-      const L = abonament.dinCheie(b.luna) || (b.periodStart ? abonament.lunaDin(Number(b.periodStart)) : abonament.lunaDin(now));
-      luna = abonament.cheieLuna(L.an, L.luna);
-      const deja = await db.abonamentLuna(id, luna, true);
-      if (deja) return res.status(409).json({ error: 'Abonamentul lunii ' + abonament.numeLuna(L.an, L.luna) + ' e deja facturat: ' + (deja.full_number || '') + '. Dacă vrei s-o refaci, anuleaz-o întâi.', deja: deja });
-      const soc = await facturaAbonamentLuna(co, L.an, L.luna, vr);
-      calc = liniiPrimite.length ? _totaluri(_liniiNormalizate(liniiPrimite, vr)) : soc;
-      periodStart = soc.periodStart; periodEnd = soc.periodEnd;
-    } else {
-      calc = _totaluri(_liniiNormalizate(liniiPrimite, vr));
-      periodStart = b.periodStart ? Number(b.periodStart) : now;
-      periodEnd = b.periodEnd ? Number(b.periodEnd) : periodStart;
-    }
-    if (!calc.lines.length || calc.total <= 0) {
-      return res.status(400).json({ error: fel === 'abonament' ? 'Nimic de facturat pe luna asta: nicio mașină pornită (aparatele pornesc la prima transmisie, adică după montaj).' : 'Adaugă cel puțin un rând cu valoare.' });
-    }
+    const k = await _compuneFactura(b);
+    if (k.eroare) return res.status(k.eroare.status).json(k.eroare.body);
+    const { id, co, iss, tip, fel, luna, calc, periodStart, periodEnd, now, termDays } = k;
     const year = new Date(now).getFullYear();
     const num = await db.nextInvoiceNumber(tip === 'proforma' ? PF_SERIES : INV_SERIES, year);
-    const termDays = _termenPlata(co);
     const inv = await db.createInvoice({
       companyId: id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
       type: tip, status: 'issued', issueDate: now, dueDate: now + termDays * 86400000, periodStart: periodStart, periodEnd: periodEnd, currency: 'RON',
       subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines,
-      issuer: iss, client: _clientSnapshot(co), note: (b.note ? String(b.note).slice(0, 500) : null), createdBy: req.auth && req.auth.userId,
+      issuer: iss, client: _clientSnapshot(co), note: k.note, createdBy: req.auth && req.auth.userId,
       fel: fel, luna: luna
     });
     let montajeFacturate = 0;
@@ -13597,6 +13739,24 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
     // Pleacă singură, ca factura automată: anunț în aplicație, email cu PDF, ANAF (doar fiscala). Răspunsul spune ce a plecat.
     const trimisa = await _trimiteFactura(inv, co, iss);
     res.json({ ok: true, invoice: inv, montajeFacturate: montajeFacturate, trimisa: trimisa });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Previzualizarea: aceeași compunere, aceeași hârtie (factura_pdf.js), dar NIMIC salvat, niciun număr luat,
+// nimic trimis. Pe hârtie scrie „PREVIZUALIZARE", iar numărul se pune abia la emitere.
+app.post('/api/invoices/previzualizare', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!facturaPdf) return res.status(503).json({ error: 'Hârtia facturii nu e disponibilă pe server.' });
+    const k = await _compuneFactura(req.body || {});
+    if (k.eroare) return res.status(k.eroare.status).json(k.eroare.body);
+    const inv = { full_number: null, previzualizare: true, type: k.tip, status: 'draft', issue_date: k.now,
+      due_date: k.now + k.termDays * 86400000, period_start: k.periodStart, period_end: k.periodEnd, currency: 'RON',
+      subtotal: k.calc.subtotal, vat_amount: k.calc.vatAmount, total: k.calc.total, lines: k.calc.lines,
+      issuer: k.iss, client: _clientSnapshot(k.co), note: k.note, fel: k.fel, luna: k.luna, company_name: k.co.name };
+    const pdf = await _pdfInBuffer(facturaPdf.facturaPdf(inv, k.iss));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', _antetDescarcare('RA-Tracks - Previzualizare ' + (k.tip === 'proforma' ? 'proformă' : 'factură') + ' - ' + (k.co.name || 'client') + '.pdf', true));
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(pdf);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Stare document: 'paid' | 'canceled'.

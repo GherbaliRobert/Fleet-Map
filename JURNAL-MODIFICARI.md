@@ -81,6 +81,52 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-30
 
+### FONDATOR · Calendarul de montaj, în Business → Montaj
+
+Alin: *„în secțiunea Montaj, calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de
+instalat și disponibilitatea"* — și, la întrebarea mea, *„da, în secțiunea Montaj"*.
+
+- **Unde:** Business → Montaj, prima filă, „Calendar". Se deschide singur acolo.
+- **Sus, luna:** pe fiecare zi, câte mașini se montează și la ce client (portocaliu = programat, verde = montat).
+  Alegi un instalator sus și vezi doar zilele lui ocupate — asta e disponibilitatea.
+- **Apeși pe o zi** → alegi clientul, câte mașini (și câte adaptoare, propuse singure) și cine montează →
+  „Programează". Prețul pentru client vine din contract, costul din tarifele instalatorului — nu scrii nimic.
+- **Jos, „De programat":** fiecare contract semnat, cu „10 din 50 de mașini montate · 20 programate · 20 de
+  programat" și termenul de 30 de zile, cel mai strâns primul. Plus aparatele din stoc (câte în depozit).
+- **Apeși pe o zi programată:** „Montată" (cu câte s-au făcut de fapt — dacă din 10 s-au montat 8, celelalte 2
+  se întorc singure la „De programat"), „Mută" (altă zi sau alt instalator), „Șterge ziua", „La client".
+- **„Programează montajul"** din drumul clientului duce acum aici, cu clientul deja ales. În fișa clientului, la
+  un contract semnat, butonul e „Programează în calendar" (formularul lucrării rămâne pentru editare).
+- Se programează doar contracte **semnate**: la unul nesemnat, lucrările încă scriu Anexa nr. 2.
+- Ce se programează aici e exact ce va vedea instalatorul în contul lui (partea lui Robert).
+
+- **Ce am schimbat:** fila Calendar în Montaj, programarea pe zile, drumul clientului duce în calendar.
+- **Ce vede fondatorul:** calendarul, cu tot ce e de montat și cine unde e.
+- **Ce vede clientul:** nimic nou.
+
+
+### FONDATOR · Facturile și proformele: previzualizare înainte de emitere, secțiuni, proforma gata la semnare
+
+Alin: *„proforma să aibă buton de descărcare, previzualizare — la fel și la factură, că se pot face greșeli…
+să am secțiuni de unde să le văd"*.
+
+1. **„Previzualizează"** în fereastra „Generează factură", lângă „Emite". Deschide hârtia EXACTĂ, cea care ar
+   pleca, cu „PREVIZUALIZARE" în locul numărului. Nu se salvează nimic, nu se ia niciun număr, nu pleacă nimic.
+   Abia „Emite" o face document.
+2. **Proforma gata făcută la semnare:** după „E semnat" (din lista Contracte sau din fișă), dacă contractul are
+   aparate vândute, se deschide singură fereastra facturii, pe proformă, cu aparatele din contract deja puse.
+   Te uiți la ea (Previzualizează) și apeși „Emite proforma". La închiriere nu apare (nu există avans).
+3. **Secțiuni în Facturare:** lista are acum două file, „Facturi" și „Proforme" (cu câte sunt de încasat).
+   Fiecare document are „Vezi" și „Descarcă".
+4. **Pe rândul ofertei**, în locul iconiței: butonul cu nume **„Deschide dosarul clientului"**. Prima dată face
+   firma, contractul și contul clientului; după, deschide dosarul lui.
+
+- **Ce am schimbat:** previzualizarea (aceeași compunere ca emiterea, pe server), proforma la semnare, secțiunile,
+  butonul cu nume.
+- **Ce vede fondatorul:** tot ce e mai sus.
+- **Ce vede clientul:** nimic nou (primește tot proforma și facturile, ca până acum).
+
+
 ### AMÂNDOI · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web; factura în PDF — `aa64ecc`
 
 Hotărât pe 30.09: „la fel ca și pe web". Până acum, pe telefon, contul unei firme suspendate rămânea înăuntru, cu
@@ -9372,9 +9418,10 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   vechi, inventate — se rezolvă la instalarea APK-ului nou, nu cere nimic separat.
   **Din 30.09, tot la acest APK:** butonul „Trimite ANAF" nu mai apare pe o factură deja trimisă (sursa e
   gata; telefoanele de azi îl mai arată, dar serverul refuză a doua trimitere, cu mesaj — nu se dublează nimic),
-  iar întrebarea de la „Încasată" spune că factura pleacă singură. „Descarcă" PDF-ul facturii există deocamdată
-  doar pe web (rutele sunt gata pe server). Trimiterea automată (anunț, email, ANAF) merge și pentru facturile
-  emise de pe telefon: o face serverul.
+  iar întrebarea de la „Încasată" spune că factura pleacă singură. „Vezi / Descarcă" PDF-ul facturii e și pe
+  telefon, din 1.0.6 (Robert, 30.09). Trimiterea automată (anunț, email, ANAF) merge și pentru facturile emise de pe
+  telefon: o face serverul. **Tot la APK-ul următor:** pe telefon, „Programează montajul" deschide încă formularul
+  din dosar; pe web duce, din 30.09, în calendarul din Montaj (nota lui Robert o spune).
 
 - [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),

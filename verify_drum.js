@@ -90,7 +90,9 @@ sect('2. Pe ecran');
 T('fișa firmei, fila Contract, pornește cu drumul', /h \+= _raxDrumHtml\(d\.drum, c, co\.id\);/.test(html));
 T('lista Contracte arată pasul următor și după semnare', /var dr = c\.drum; if \(!dr \|\| !dr\.urmatorul\) return '';/.test(html));
 const fnBtn = html.slice(html.indexOf('function _drumButon('), html.indexOf('// Linia de pași din fila Contract'));
-T('montaj → „Programează montajul" (deschide formularul lucrării)', /raxDrumMontaj\(/.test(fnBtn) && /raxMontajEdit\(0\)/.test(html.slice(html.indexOf('window.raxDrumMontaj'), html.indexOf('window.raxDrumAparate'))));
+// De pe 30.09 montajul se programează DOAR în calendar (Business → Montaj), cu fereastra deschisă pe clientul ăsta.
+T('montaj → „Programează montajul" (duce în calendar, pe clientul ăsta)', /raxDrumMontaj\(/.test(fnBtn) &&
+  /_raxMj\.cal\.pre = companyId;[\s\S]*raxAdminTab\('montaj'\)/.test(html.slice(html.indexOf('window.raxDrumMontaj'), html.indexOf('window.raxDrumAparate'))));
 T('aparate → „Adoptă aparatele", tot prin SINGURUL loc de adopție (decizie 17.09)',
   /raxDrumAparate\(\)/.test(fnBtn) && /raxDevDeschideNeasignate\(\)/.test(html.slice(html.indexOf('window.raxDrumAparate'), html.indexOf('window.raxDrumFactura'))) &&
   !/\/company'/.test(html.slice(html.indexOf('function _drumButon('), html.indexOf('window.raxDrumFactura'))));

@@ -26,7 +26,8 @@ const _garda = (html.match(/window\.raxAdminTab = function \(name\) \{\s*\n\s*if
 T('e strict a fondatorilor', _garda.indexOf("name === 'montaj'") >= 0, _garda);
 const randCtr = html.slice(html.indexOf('window.raxRenderContracte = function'), html.indexOf('window.raxRenderContracte = function') + 2500);
 T('partenerii NU mai stau în ecranul Contracte', !/_raxParteneriHtml\(\)|raxParteneriIncarca\(\)/.test(randCtr));
-T('trei file: Parteneri · Contracte cu partenerii · Lucrări', /var MJ_FILE = \[\['parteneri', 'Parteneri'\], \['contracte', 'Contracte cu partenerii'\], \['lucrari', 'Lucrări'\]\];/.test(html));
+// 30.09: Calendarul a intrat ca filă întâi (verify_montaj_calendar.js îl probează pe el).
+T('patru file: Calendar · Parteneri · Contracte cu partenerii · Lucrări', /var MJ_FILE = \[\['calendar', 'Calendar'\], \['parteneri', 'Parteneri'\], \['contracte', 'Contracte cu partenerii'\], \['lucrari', 'Lucrări'\]\];/.test(html));
 T('fișa partenerului are datele juridice și ANAF', ['pt-reg', 'pt-addr', 'pt-rep', 'pt-email', 'pt-iban', 'pt-zona'].every((id) => html.indexOf("'" + id + "'") > 0) && /raxPartAnaf\(\)/.test(html));
 T('lucrările se editează tot din fișa clientului (aici doar „La client")', /raxOpenCompanyDetail\(' \+ m\.company_id \+ ', \\'contract\\'\)/.test(html));
 const blocMj = html.slice(html.indexOf('// ─── Secțiunea „Montaj"'), html.indexOf('// ─── Fila „Contract": dosarul juridic'));

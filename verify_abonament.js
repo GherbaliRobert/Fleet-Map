@@ -192,6 +192,9 @@ sect('4. Pe ecran');
       period_start: Date.UTC(2027, 0, 30, 19), period_end: Date.UTC(2027, 0, 30, 19), subtotal: 3500, vat_amount: 735, total: 4235, lines: linii, issuer: emit, client: client(false),
       note: 'Montaj executat pe 15.01.2027 (10 mașini).' };
     const tm = hartie(montajInv);
+    const prev = hartie(Object.assign({}, montajInv, { full_number: null, previzualizare: true, type: 'proforma' }));
+    T('previzualizarea: aceeași hârtie, dar scrie „PREVIZUALIZARE" în locul numărului și, jos, că nu e emisă',
+      /PREVIZUALIZARE ¦/.test(prev) && /PREVIZUALIZARE — documentul nu e emis încă/.test(prev) && !/RAT-2027-00002/.test(prev) && /FACTURĂ PROFORMĂ/.test(prev), prev);
     T('pe hârtie, factura unică: „Mențiuni" (zilele montajului), nu „Perioada" (o perioadă de o zi n-avea sens)',
       /Mențiuni: Montaj executat pe 15\.01\.2027 \(10 mașini\)\./.test(tm) && !/Perioada:/.test(tm), tm);
     T('clientul NEPLĂTITOR de TVA: CUI fără „RO" (chiar dacă s-a tastat cu RO); noi, plătitori: cu „RO"',
@@ -244,6 +247,23 @@ sect('4. Pe ecran');
     rutaEf.indexOf("efactura_status === 'uploaded'") < rutaEf.indexOf('efactura.uploadInvoice(') &&
     /v\.efactura_status !== 'validated' && v\.efactura_status !== 'uploaded'\) act \+= /.test(html));
   T('„Prima factură" din drum numără facturi FISCALE, nu proforme', /AND type IS DISTINCT FROM 'proforma' GROUP BY company_id/.test(dbjs));
+  // Punctul 6 (Alin, 30.09): previzualizare înainte de emitere, proforma gata la semnare, secțiuni, butonul cu nume.
+  T('„Previzualizează" și „Emite" trimit ACELAȘI corp (_giCorp) — ce vezi e ce pleacă',
+    (html.match(/var body = _giCorp\(\)/g) || []).length === 2 && (html.match(/\/api\/invoices\/previzualizare/g) || []).length === 1 &&
+    /onclick="raxGenPrevizualizare\(this\)"/.test(html) && /<i class="fas fa-eye"><\/i> Previzualizează<\/button>/.test(html));
+  const rutaPrev = server.slice(server.indexOf("app.post('/api/invoices/previzualizare'"), server.indexOf("// Stare document: 'paid' | 'canceled'."));
+  T('pe server, emiterea și previzualizarea compun documentul prin ACEEAȘI funcție; previzualizarea nu salvează, nu ia număr, nu trimite',
+    (server.match(/await _compuneFactura\(/g) || []).length === 2 && rutaPrev.length > 200 &&
+    !/createInvoice|nextInvoiceNumber|_trimiteFactura/.test(rutaPrev) && /previzualizare: true/.test(rutaPrev) && /requireSuperadmin/.test(rutaPrev));
+  const fnSemnat = html.slice(html.indexOf('window.raxCtreSemnat'), html.indexOf('window.raxCtreData'));
+  T('la „E semnat" (din listă și din fișă), proforma aparatelor se deschide gata făcută — doar la aparate VÂNDUTE, fără să emită',
+    /_areAparateVandute\(c\)\) raxProformaLaSemnare\(c\.company_id\)/.test(fnSemnat) &&
+    /if \(okS && cSemnat && _areAparateVandute\(cSemnat\.contract\)\) raxProformaLaSemnare\(cSemnat\.companyId\);/.test(html) &&
+    /raxOpenGenInvoice\(companyId, 'unica'\);\s*raxGiTip\('proforma'\);\s*await raxGenDraft\(\);/.test(fnSemnat) && !/raxGenIssue/.test(fnSemnat));
+  T('Facturare are două secțiuni: „Facturi" și „Proforme" (cu câte sunt de încasat)',
+    /window\.raxInvSectiune = function/.test(html) && /Proforme · ' \+ nrPf \+ \(deIncasat \? ' \(' \+ deIncasat \+ ' de încasat\)' : ''\)/.test(html));
+  T('pe rândul ofertei: un buton cu nume, „Deschide dosarul clientului" — și înainte, și după ce a devenit client',
+    (html.match(/<\/i> Deschide dosarul clientului<\/button>'/g) || []).length === 2);
   T('fără „acces până la" și fără „Nelimitat" pe ecranele de facturare', !/Acces până/.test(html) && !/∞ Nelimitat/.test(html));
 }
 
@@ -350,8 +370,8 @@ async function intra(u, p) {
     return { s: x.status, j: j };
   };
   // Un fișier (PDF-ul facturii): starea, felul, numele din antet și primii octeți.
-  f.fisier = async (url) => {
-    const x = await fetch(B + url, { headers: { Cookie: ck } });
+  f.fisier = async (url, body) => {
+    const x = await fetch(B + url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: ck }, body: JSON.stringify(body) } : { headers: { Cookie: ck } });
     const buf = Buffer.from(await x.arrayBuffer());
     return { s: x.status, ct: x.headers.get('content-type') || '', cd: x.headers.get('content-disposition') || '', inceput: buf.slice(0, 5).toString('latin1'), marime: buf.length };
   };
@@ -441,8 +461,17 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   T('lucrarea pusă pe o factură fiscală trece pe „facturat clientului"', cuMontaj.s === 200 && cuMontaj.j.montajeFacturate === 1 && lucrareDupa.status === 'facturat_clientului', lucrareDupa.status);
   T('…și nu mai e propusă a doua oară', (((await R('POST', '/api/invoices/draft', { companyId: co.id, fel: 'unica' })).j.dinContract || {}).lucrari || []).length === 0);
 
+  // Previzualizarea (30.09): hârtia exactă, fără număr, fără nimic salvat sau trimis.
+  const inainte = (((await R('GET', '/api/invoices?limit=1000')).j || {}).invoices || []).length;
+  const pv = await R.fisier('/api/invoices/previzualizare', { companyId: co.id, tip: 'proforma', fel: 'unica', lines: dc.aparate });
+  const dupaPv = (((await R('GET', '/api/invoices?limit=1000')).j || {}).invoices || []).length;
+  T('previzualizarea proformei: un PDF, cu numele „RA-Tracks - Previzualizare proformă - …", și NICIUN document nou',
+    pv.s === 200 && /application\/pdf/.test(pv.ct) && pv.inceput === '%PDF-' && /Previzualizare%20proform%C4%83/.test(pv.cd) && dupaPv === inainte, JSON.stringify({ s: pv.s, cd: pv.cd, inainte, dupaPv }));
+  const pvGol = await R('POST', '/api/invoices/previzualizare', { companyId: co.id, tip: 'invoice', fel: 'unica', lines: [] });
+  T('previzualizarea spune aceleași refuzuri ca emiterea (fără rânduri → „Adaugă cel puțin un rând")', pvGol.s === 400 && /Adaugă cel puțin un rând/.test((pvGol.j || {}).error || ''), JSON.stringify(pvGol));
   // Proforma: serie proprie, fără ANAF, fără „prima factură", la încasare → factură fiscală plătită.
   const pf = await R('POST', '/api/invoices', { companyId: co.id, tip: 'proforma', fel: 'unica', lines: dc.aparate });
+  T('după o previzualizare, proforma emisă ia primul număr liber (previzualizarea n-a „mâncat" niciunul)', pf.s === 200 && /^PF-\d{4}-00001$/.test(pf.j.invoice.full_number), pf.j && pf.j.invoice && pf.j.invoice.full_number);
   T('proforma are seria ei (PF-…), nu ia numere din șirul facturilor', pf.s === 200 && /^PF-\d{4}-\d{5}$/.test(pf.j.invoice.full_number) && pf.j.invoice.type === 'proforma', pf.j && pf.j.invoice && pf.j.invoice.full_number);
   T('proforma nu se trimite la ANAF și n-are XML', (await R('POST', '/api/invoices/' + pf.j.invoice.id + '/efactura')).s >= 400 && (await R('GET', '/api/invoices/' + pf.j.invoice.id + '/efactura/xml')).s >= 400);
   T('proforma se anunță, dar nu merge la ANAF', pf.j.trimisa && pf.j.trimisa.notificare === true && pf.j.trimisa.anaf === 'nu_se_trimite', JSON.stringify(pf.j.trimisa));
