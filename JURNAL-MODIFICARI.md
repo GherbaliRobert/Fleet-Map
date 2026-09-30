@@ -73,10 +73,107 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
   **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025). Adăugat pe 29.09: dacă rămâne necompletată, aplicația
   pune singură 19% pe facturi — cifra veche. (Implicitul din cod e trecut și la lista lui Alin.)
+- [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
+  evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
+  amânat până atunci, cum am stabilit.
 
 ---
 
 ## 2026-09-30
+
+### AMÂNDOI · Orice factură pleacă singură la client și la ANAF — și se descarcă direct în PDF
+
+Alin, la recomandările 1 și 2: *„de acord. apucă-te."*
+
+**Ce era:** doar factura automată a lunii pleca singură. Tot ce emiteai de mână — proforma aparatelor, factura
+montajului, factura fiscală de la încasarea proformei — rămânea în aplicație: clientul nu era anunțat, nu primea
+nimic pe email, iar la ANAF ajungea doar dacă apăsai tu „Trimite la ANAF", factură cu factură. Iar „Vezi
+factura" deschidea o fereastră de printare, din care salvai singur un PDF.
+
+**Ce e acum:** în clipa în care emiți un document, pe aceeași cale pentru toate felurile:
+1. **Clientul e anunțat în aplicație** — „Factură nouă: RAT-2027-00002" sau „Proformă nouă: PF-2027-00001",
+   cu suma și scadența.
+2. **Pleacă pe email**, la adresa firmei, **cu PDF-ul atașat** — exact fișierul pe care îl descarci tu.
+3. **Factura fiscală pleacă la ANAF** (e-Factura). Proforma nu — nu e document fiscal.
+
+Mesajul de după emitere spune ce a plecat și ce nu, de ex.: „Factură emisă: RAT-2027-00002 · clientul e
+anunțat în aplicație · fără email (serverul n-are email) · nu pleacă la ANAF încă (lipsește tokenul)". Azi,
+pe ratrack.ro, emailul și ANAF nu sunt puse încă (sunt în „De amintit"), deci pleacă doar anunțul — restul
+pornește singur când le puneți.
+
+**PDF-ul:** fiecare factură și proformă are „Vezi" și „Descarcă", la voi (Facturare și fișa firmei) și la
+client („Facturile mele", doar documentele firmei lui). Fișierul: „RA-Tracks - Factură RAT-2027-00002 -
+Transport SRL.pdf" — același nume ca rapoartele, ofertele și contractele, cu logo-ul pe alb.
+
+**O plasă în plus:** fiindcă factura pleacă acum singură la ANAF, butonul „Trimite la ANAF" rămâne doar pe
+facturile netrimise sau respinse. Pe una deja trimisă ar fi pus aceeași factură de două ori în SPV-ul
+clientului — serverul refuză și el.
+
+- **Ce am schimbat:** o singură cale de trimitere pentru toate facturile; hârtia facturii, făcută pe server
+  (ca la contracte și oferte), în locul ferestrei de printare; plasa de la ANAF.
+- **Ce vede fondatorul:** după „Emite", mesajul cu ce a plecat; „Vezi" / „Descarcă" pe fiecare rând; butonul
+  ANAF doar unde mai e ceva de trimis.
+- **Ce vede clientul:** anunțul în aplicație, emailul cu PDF-ul (când e pus emailul) și „Descarcă" în
+  „Facturile mele".
+
+
+### FONDATOR · Aplicația numără cele 30 de zile de montaj
+
+Alin, la recomandarea 3: *„de acord"*. Contractul promite montajul în cel mult 30 de zile de la încasarea
+avansului pentru aparate. Până azi nu le număra nimeni.
+
+- **De când curge:** din ziua în care apeși „Încasată" pe proforma aparatelor (atunci se naște factura
+  fiscală). Avans încasat pe 6 ianuarie → termen **5 februarie**.
+- **Pe drumul clientului** (fișa firmei și lista Contracte), la pasul „Montajul": „10 din 50 de mașini
+  montate · termen 05.02.2027, mai sunt 21 de zile". Cu 7 zile înainte apare o bandă portocalie; după
+  termen, una roșie, care amintește că mașinile neaduse de client prelungesc termenul (contract, cap. V).
+- **Anunț pentru voi:** o dată cu 7 zile înainte („Montaj, mai sunt 7 zile: Transport SRL") și o dată la
+  depășire („Termenul de montaj a trecut: Transport SRL"). Nu se repetă zilnic.
+- **Pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate.** Înainte se bifa la
+  prima lucrare executată, deci un montaj făcut pe jumătate arăta „gata".
+- Fără avans încasat nu apare niciun termen (nu inventăm unul). Un contract nou nu moștenește avansul unui
+  contract vechi al aceleiași firme.
+
+- **Ce am schimbat:** numărătoarea termenului, pasul „Montajul" din drum, anunțul zilnic.
+- **Ce vede fondatorul:** termenul pe drum, banda când se apropie sau a trecut, anunțul.
+- **Ce vede clientul:** nimic nou.
+
+
+### AMÂNDOI · „Preia de la ANAF" ține minte și dacă firma plătește TVA
+
+Găsit când am răspuns la întrebarea lui Alin, *„de ce implicăm ANAF-ul?"*. ANAF nu aduce nimic nou pe
+factură față de ce ne dă clientul: aduce aceleași date, dar **oficiale** (nume, Reg. Com., sediu — fără
+greșeli de tastare) și spune **dacă firma plătește TVA**. Tocmai informația asta se pierdea: aplicația o
+citea de la ANAF și n-o salva, deci socotea **orice client plătitor de TVA**.
+
+- **Ce se schimbă pe factură:** la plătitor, „CUI: RO12345678"; la neplătitor, „CUI: 12345678" — fără „RO",
+  ca în registrul ANAF. La fel pleacă și codul în e-Factura.
+- „Preia de la ANAF" o salvează din „Client nou din ofertă" și din „Completează". Clienții de dinainte rămân
+  plătitori (cum erau socotiți) până le apeși o dată „Preia de la ANAF".
+
+- **Ce am schimbat:** statutul de TVA se păstrează pe firmă și ajunge pe factură.
+- **Ce vede fondatorul:** nimic nou pe ecran; factura corectă.
+- **Ce vede clientul:** CUI-ul scris corect pe factură.
+
+
+### AMÂNDOI · „Mută între companii" trece prin aceeași regulă ca adopția
+
+Alin, la punctul 5: *„de acord"*. Butonul „Mută între companii" (din Companii) muta aparatele direct în bază,
+pe lângă regula folosită la adopție. Urmarea: noua firmă ar fi plătit abonamentul de la ziua în care aparatul
+pornise la **vechea** firmă, iar stocul și jurnalul de audit nu aflau nimic.
+
+Acum trece prin aceeași funcție ca adopția (unul sau mai multe aparate): abonamentul pornește din nou la prima
+transmisie la noua firmă, stocul se mută, rămâne rând în audit.
+
+- **Ce am schimbat:** calea butonului „Mută între companii".
+- **Ce vede fondatorul:** același buton, același rezultat pe ecran.
+- **Ce vede clientul:** factura noii firme pornește din ziua în care aparatul transmite la ea.
+
+
+### Recomandarea 4 (plățile către instalator) — amânată
+
+Alin: *„de acord"* cu recomandarea: se face după primul partener de montaj real. E trecută în „De amintit".
+
 
 ### AMÂNDOI · Aplicația de telefon 1.0.5: facturarea lui Alin din 29.09, adusă pe telefon (lotul 4) — `5b97118`
 
@@ -9241,6 +9338,9 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   până la", fără plăți cu număr de factură inventat, fără butonul mort de plată cu cardul, clientul își vede
   documentele adevărate. Până la APK, telefonul vechi arată lista clientului cu sumele, dar cu numere
   vechi, inventate — se rezolvă la instalarea APK-ului nou, nu cere nimic separat.
+  **Din 30.09, tot la acest APK:** pe telefon, butonul „Trimite ANAF" apare și pe o factură deja trimisă
+  (serverul o refuză, cu mesaj — nu se dublează nimic), iar „Vezi / Descarcă" PDF-ul facturii există doar pe
+  web. Trimiterea automată (anunț, email, ANAF) merge și pentru facturile emise de pe telefon: o face serverul.
 
 - [x] **REZOLVAT (23.09, APK 1.0.2): curățat RA Insight pe telefon.** În `mobile/src/components/ChatScreen.tsx`
   stă încă toată interfața veche de plată peste fond: caseta de acord (`needsExtraConsent`),

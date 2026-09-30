@@ -170,19 +170,79 @@ sect('4. Pe ecran');
     T('o singură zi: „Montaj executat pe 15.01.2027 (10 mașini)."', f._giNotaMontaj([{ data: zi(2027, 1, 15), masini: 10 }]) === 'Montaj executat pe 15.01.2027 (10 mașini).');
   }
   T('mențiunea se poate corecta în fereastră și pleacă odată cu factura', /id="rax-gi-nota"/.test(modal + html) && /note: \(_giState\.fel === 'unica' && String\(_giState\.nota \|\| ''\)\.trim\(\)\)/.test(html));
-  T('pe hârtie, la factura unică și la proformă: „Mențiuni", nu „Perioada" (o perioadă de o zi n-avea sens)',
-    /\(inv\.fel === 'unica' \|\| pf\s*\?\s*\(inv\.note \? '<div class="pay"><b>Mențiuni:<\/b> '/.test(html));
+  // Hârtia facturii, desenată pe un „carton" care ține minte doar textul (ce citește clientul).
+  {
+    const FP = require('./factura_pdf.js');
+    const carton = () => {
+      const texte = [];
+      const d = {
+        page: { width: 595.28, height: 841.89, margins: { top: 40, bottom: 40, left: 40, right: 40 } }, x: 40, y: 40,
+        font() { return d; }, fontSize() { return d; }, fillColor() { return d; }, strokeColor() { return d; }, lineWidth() { return d; },
+        moveTo() { return d; }, lineTo() { return d; }, stroke() { return d; }, image() { return d; }, roundedRect() { return d; }, rect() { return d; },
+        fill() { return d; }, fillAndStroke() { return d; }, heightOfString() { return 10; }, addPage() { d.y = 40; return d; },
+        text(t, x, y) { texte.push(String(t == null ? '' : t)); if (typeof y === 'number') d.y = y + 11; else d.y += 11; return d; }
+      };
+      return { d, texte };
+    };
+    const hartie = (inv) => { const c = carton(); FP.scrieFactura(c.d, inv, null); return c.texte.join(' ¦ '); };
+    const emit = { name: 'RA TRACKS SRL', cui: '12345678', reg_com: 'J35/1/2025', iban: 'RO49AAAA1B31007593840000', bank: 'Banca', vat_rate: 21 };
+    const client = (tva) => ({ name: 'Transport SRL', cui: 'RO11111111', reg_com: 'J35/2/2020', vat_payer: tva });
+    const linii = [{ desc: 'Instalare dispozitiv GPS', qty: 35, unitPrice: 100, net: 3500, vatRate: 21, vat: 735 }];
+    const montajInv = { full_number: 'RAT-2027-00002', type: 'invoice', fel: 'unica', issue_date: Date.UTC(2027, 0, 30, 19), due_date: Date.UTC(2027, 1, 14, 19),
+      period_start: Date.UTC(2027, 0, 30, 19), period_end: Date.UTC(2027, 0, 30, 19), subtotal: 3500, vat_amount: 735, total: 4235, lines: linii, issuer: emit, client: client(false),
+      note: 'Montaj executat pe 15.01.2027 (10 mașini).' };
+    const tm = hartie(montajInv);
+    T('pe hârtie, factura unică: „Mențiuni" (zilele montajului), nu „Perioada" (o perioadă de o zi n-avea sens)',
+      /Mențiuni: Montaj executat pe 15\.01\.2027 \(10 mașini\)\./.test(tm) && !/Perioada:/.test(tm), tm);
+    T('clientul NEPLĂTITOR de TVA: CUI fără „RO" (chiar dacă s-a tastat cu RO); noi, plătitori: cu „RO"',
+      /CUI: 11111111 · Reg\. Com\.: J35\/2\/2020/.test(tm) && /CUI: RO12345678/.test(tm), tm);
+    T('clientul plătitor de TVA: CUI cu „RO"', /CUI: RO11111111/.test(hartie(Object.assign({}, montajInv, { client: client(true) }))));
+    T('plata: prin transfer, în contul nostru, până la scadență; sume românești (3.500,00)',
+      /Plata: prin transfer bancar, în contul RO49AAAA1B31007593840000 \(Banca\), până la 14\.02\.2027\./.test(tm) && /3\.500,00/.test(tm), tm);
+    const abo = hartie(Object.assign({}, montajInv, { full_number: 'RAT-2027-00003', fel: 'abonament', note: 'Factură lunară automată',
+      period_start: Date.UTC(2027, 0, 15), period_end: Date.UTC(2027, 1, 28, 23, 59, 59, 999) }));
+    T('abonamentul: „Perioada: 15.01.2027 → 28.02.2027" — sfârșitul lunii NU sare pe 01.03 (zile de calendar, nu ora României)',
+      /Perioada: 15\.01\.2027 → 28\.02\.2027 · Factură lunară automată/.test(abo), abo);
+    const pfh = hartie(Object.assign({}, montajInv, { full_number: 'PF-2027-00001', type: 'proforma', note: null }));
+    T('proforma: „FACTURĂ PROFORMĂ" și „fără valoare fiscală"; fără „Perioada"', /FACTURĂ PROFORMĂ/.test(pfh) && /Document fără valoare fiscală/.test(pfh) && !/Perioada:/.test(pfh), pfh);
+    const dinPf = hartie(Object.assign({}, montajInv, { din_proforma: 7, note: 'Emisă la încasarea proformei PF-2027-00001' }));
+    T('factura născută din proformă nu mai cere plată și spune de unde vine', !/Plata: prin transfer/.test(dinPf) && /Emisă la încasarea unei proforme\./.test(dinPf), dinPf);
+    T('numele fișierului, regula casei: „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf" / „… Proformă PF-…"',
+      FP.numeFisier(montajInv) === 'RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf' &&
+      FP.numeFisier({ full_number: 'PF-2027-00001', type: 'proforma', client: { name: 'Trans/Port: SRL' } }) === 'RA-Tracks - Proformă PF-2027-00001 - Trans-Port- SRL.pdf');
+    T('logo-ul pentru fundal alb (logo-light.png) și fonturile cu diacritice, ca oferta și contractul',
+      /logo-light\.png/.test(fs.readFileSync('./factura_pdf.js', 'utf8')) && /DejaVuSans\.ttf/.test(fs.readFileSync('./factura_pdf.js', 'utf8')));
+  }
   T('serverul spune câte mașini s-au montat în fiecare zi (pentru mențiune)', /linii: linii, masini: masini \|\| null,/.test(server));
   T('ecranul spune câte aparate de pe firmă nu transmit încă (și de ce nu intră)', /nu transmit încă: nu intră pe factură/.test(modal));
   T('și avertizează când luna e deja facturată', /Luna asta e deja facturată/.test(modal));
   T('emiterea trimite felul, luna, tipul și lucrările', /fel: _giState\.fel, luna: _giState\.luna, tip: _giState\.fel === 'unica' \? _giTip : 'invoice', lines: lines, montaje:/.test(html));
   T('„Prima factură" din drumul clientului deschide factura unică', /raxOpenGenInvoice\(companyId, 'unica'\)/.test(html));
-  T('proforma nu are buton de ANAF și se „încasează", nu se „plătește"', /if \(!pf && v\.status !== 'canceled' && v\.efactura_status !== 'validated'\)/.test(html) && /Încasată — emite factura fiscală/.test(html));
-  T('hârtia proformei scrie „FACTURĂ PROFORMĂ" și că nu e document fiscal', /'FACTURĂ PROFORMĂ'/.test(html) && /Document fără valoare fiscală/.test(html));
+  T('proforma nu are buton de ANAF și se „încasează", nu se „plătește"', /if \(!pf && v\.status !== 'canceled' && v\.efactura_status !== 'validated' && v\.efactura_status !== 'uploaded'\)/.test(html) && /Încasată — emite factura fiscală/.test(html));
+  // Hârtia facturii e UNA, pe server (factura_pdf.js). Pagina nu mai are un șablon al ei, care s-ar
+  // despărți de cel descărcat — exact ce spune regula rapoartelor. Textul proformei îl probează 4b, desenat.
+  const fpSrc = fs.readFileSync('./factura_pdf.js', 'utf8');
+  T('hârtia facturii și a proformei se face DOAR pe server: pagina nu mai scrie „FACTURĂ FISCALĂ" / „FACTURĂ PROFORMĂ"',
+    /'FACTURĂ PROFORMĂ' : 'FACTURĂ FISCALĂ'/.test(fpSrc) && /Document fără valoare fiscală/.test(fpSrc) &&
+    !/FACTURĂ PROFORMĂ|FACTURĂ FISCALĂ|fără valoare fiscală/.test(html));
   T('trecerea în bloc stă în „Neasignate" — adopția rămâne într-un singur loc', /gr\.k === '_neas' \? _raxDevBaraBloc\(gr\.dev\)/.test(html) && (html.match(/\/api\/devices\/company-bulk/g) || []).length === 1);
-  T('pe server, unul sau mai mulți trec prin aceeași funcție', (server.match(/await _trecePeFirma\(req, /g) || []).length === 2);
+  T('pe server, toate cele trei uși (unul, mai mulți, „Mută între companii") trec prin aceeași funcție',
+    (server.match(/await _trecePeFirma\(req, /g) || []).length === 3 && !/setDevicesCompanyBulk/.test(server + dbjs));
   T('rândul aparatului arată din ce zi plătește clientul, cu corectură', /abonament din ' \+ new Date\(Number\(d\.abonament_de_la\)\)/.test(html) && /raxDevAbonament\(/.test(html));
-  T('clientul vede DOCUMENTELE adevărate, nu plăți cu numere inventate', !/function _raxInvNo\(/.test(html) && /_invFiscalHtml\(f, \(_myInvData && _myInvData\.issuer\)/.test(html));
+  T('clientul vede DOCUMENTELE adevărate, nu plăți cu numere inventate — și le descarcă în PDF, doar pe ale lui',
+    !/function _raxInvNo\(/.test(html) && /_invHartieBtns\('\/api\/billing\/my-invoices\/' \+ f\.id \+ '\/pdf', f\.type === 'proforma'\)/.test(html));
+  T('o singură hârtie a facturii: PDF-ul de pe server (șablonul HTML și fereastra de printare au plecat)',
+    !/function _invFiscalHtml\(/.test(html) && !/raxPrintFiscalInvoice|raxPrintMyInvoice|_raxOpenInvoiceWindow/.test(html) && (html.match(/_invHartieBtns\(/g) || []).length === 4);
+  T('fereastra „Generează factură" spune ce pleacă singur la emitere', /La emitere pleacă singură: clientul e anunțat în aplicație și o primește pe email/.test(html));
+  T('după emitere și după „Încasată", mesajul spune ce a plecat și ce nu', (html.match(/_invTrimisaText\(j\.trimisa/g) || []).length === 2);
+  T('pe server, toate felurile de documente pleacă prin ACEEAȘI funcție (automată, de mână, din proformă)',
+    (server.match(/await _trimiteFactura\(/g) || []).length === 3 && !/title: 'Factură nouă: ' \+ num\.full/.test(server));
+  // Factura pleacă singură la ANAF la emitere: o a doua trimitere ar dubla-o în SPV-ul clientului.
+  const rutaEf = server.slice(server.indexOf("app.post('/api/invoices/:id/efactura'"), server.indexOf("app.get('/api/invoices/:id/efactura/status'"));
+  T('o factură aflată deja la ANAF (trimisă sau validată) NU se mai trimite a doua oară — nici din pagină, nici pe server',
+    /if \(inv\.efactura_status === 'uploaded' \|\| inv\.efactura_status === 'validated'\) \{\s*return res\.status\(409\)/.test(rutaEf) &&
+    rutaEf.indexOf("efactura_status === 'uploaded'") < rutaEf.indexOf('efactura.uploadInvoice(') &&
+    /v\.efactura_status !== 'validated' && v\.efactura_status !== 'uploaded'\) act \+= /.test(html));
   T('„Prima factură" din drum numără facturi FISCALE, nu proforme', /AND type IS DISTINCT FROM 'proforma' GROUP BY company_id/.test(dbjs));
   T('fără „acces până la" și fără „Nelimitat" pe ecranele de facturare', !/Acces până/.test(html) && !/∞ Nelimitat/.test(html));
 }
@@ -284,11 +344,18 @@ function gata() {
 async function intra(u, p) {
   const r = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
   const ck = (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')]).filter(Boolean).map((c) => c.split(';')[0]).join('; ');
-  return async (m, url, body) => {
+  const f = async (m, url, body) => {
     const x = await fetch(B + url, { method: m, headers: { 'Content-Type': 'application/json', Cookie: ck }, body: body ? JSON.stringify(body) : undefined });
     let j = null; try { j = await x.json(); } catch (e) {}
     return { s: x.status, j: j };
   };
+  // Un fișier (PDF-ul facturii): starea, felul, numele din antet și primii octeți.
+  f.fisier = async (url) => {
+    const x = await fetch(B + url, { headers: { Cookie: ck } });
+    const buf = Buffer.from(await x.arrayBuffer());
+    return { s: x.status, ct: x.headers.get('content-type') || '', cd: x.headers.get('content-disposition') || '', inceput: buf.slice(0, 5).toString('latin1'), marime: buf.length };
+  };
+  return f;
 }
 const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 (async () => {
@@ -343,6 +410,9 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   // Problema 2: o factură unică în lună NU mai oprește abonamentul automat.
   const unica = await R('POST', '/api/invoices', { companyId: co.id, fel: 'unica', lines: [{ desc: 'Echipament — Teltonika FMC130', qty: 1, unitPrice: 279.32 }] });
   T('factura unică se emite ca „unică"', unica.s === 200 && unica.j.invoice.fel === 'unica');
+  const tu = unica.j.trimisa || {};
+  T('factura făcută de mână pleacă singură: clientul e anunțat; fără email și token pe server, spune pe față de ce n-a plecat',
+    tu.notificare === true && tu.email === false && tu.emailMotiv === 'serverul n-are email' && tu.anaf === 'fara_token', JSON.stringify(tu));
   await R('PUT', '/api/companies/' + co.id + '/billing-config', { auto_invoice: true, billing_day: 1 });
   const run = (await R('POST', '/api/admin/billing/run-auto')).j;
   let facturi = ((await R('GET', '/api/invoices?company_id=' + co.id)).j || {}).invoices || [];
@@ -375,7 +445,9 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   const pf = await R('POST', '/api/invoices', { companyId: co.id, tip: 'proforma', fel: 'unica', lines: dc.aparate });
   T('proforma are seria ei (PF-…), nu ia numere din șirul facturilor', pf.s === 200 && /^PF-\d{4}-\d{5}$/.test(pf.j.invoice.full_number) && pf.j.invoice.type === 'proforma', pf.j && pf.j.invoice && pf.j.invoice.full_number);
   T('proforma nu se trimite la ANAF și n-are XML', (await R('POST', '/api/invoices/' + pf.j.invoice.id + '/efactura')).s >= 400 && (await R('GET', '/api/invoices/' + pf.j.invoice.id + '/efactura/xml')).s >= 400);
+  T('proforma se anunță, dar nu merge la ANAF', pf.j.trimisa && pf.j.trimisa.notificare === true && pf.j.trimisa.anaf === 'nu_se_trimite', JSON.stringify(pf.j.trimisa));
   const inc = await R('PUT', '/api/invoices/' + pf.j.invoice.id + '/status', { status: 'paid' });
+  T('factura fiscală din proforma încasată pleacă și ea (anunț; ANAF doar cu token)', inc.j && inc.j.trimisa && inc.j.trimisa.notificare === true && inc.j.trimisa.anaf === 'fara_token', JSON.stringify(inc.j && inc.j.trimisa));
   T('„Încasată" → factura fiscală, în seria RAT, marcată plătită, legată de proformă', inc.s === 200 && /^RAT-/.test(inc.j.invoice.full_number) && inc.j.invoice.status === 'paid' && inc.j.invoice.din_proforma === pf.j.invoice.id, JSON.stringify(inc.j && inc.j.invoice && { n: inc.j.invoice.full_number, s: inc.j.invoice.status, d: inc.j.invoice.din_proforma }));
   const pfDupa = (await R('GET', '/api/invoices/' + pf.j.invoice.id)).j;
   T('proforma rămâne „încasată", cu legătura spre factură', pfDupa.status === 'paid' && pfDupa.factura_id === inc.j.invoice.id);
@@ -394,6 +466,32 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   const my = (await C('GET', '/api/billing/my-invoices')).j || {};
   T('clientul își vede documentele adevărate, cu numărul lor (facturi și proforma)', (my.invoices || []).some((f) => f.type === 'proforma' && /^PF-/.test(f.full_number)) && (my.invoices || []).some((f) => f.full_number === veche.j.invoice.full_number));
   T('și starea plăților, fără „acces până la"', my.access && my.access.status === 'active' && my.access.access_until === undefined);
+  // Hârtia facturii, descărcată: noi orice factură, clientul doar pe ale lui (același 404 pentru „nu există" și „nu e a ta").
+  const nrInc = inc.j.invoice.full_number;
+  const pdfNoi = await R.fisier('/api/invoices/' + inc.j.invoice.id + '/pdf');
+  T('noi descărcăm factura ca PDF, cu numele casei în antet (UTF-8: „Factură")',
+    pdfNoi.s === 200 && /application\/pdf/.test(pdfNoi.ct) && pdfNoi.inceput === '%PDF-' &&
+    pdfNoi.cd.indexOf("filename*=UTF-8''" + encodeURIComponent('RA-Tracks - Factură ' + nrInc + ' - Transport SRL.pdf')) >= 0, JSON.stringify({ s: pdfNoi.s, ct: pdfNoi.ct, cd: pdfNoi.cd }));
+  const pdfClient = await C.fisier('/api/billing/my-invoices/' + inc.j.invoice.id + '/pdf');
+  T('clientul își descarcă propria factură', pdfClient.s === 200 && pdfClient.inceput === '%PDF-', pdfClient.s);
+  const coStrain = (await R('POST', '/api/companies', { name: 'Străin SRL' })).j;
+  const fStrain = await R('POST', '/api/invoices', { companyId: coStrain.id, fel: 'unica', lines: [{ desc: 'Echipament', qty: 1, unitPrice: 100 }] });
+  const pdfStrain = await C.fisier('/api/billing/my-invoices/' + fStrain.j.invoice.id + '/pdf');
+  T('…dar nu pe a altei firme: 404, ca pentru una care nu există', pdfStrain.s === 404 && (await C.fisier('/api/billing/my-invoices/99999999/pdf')).s === 404, pdfStrain.s);
+  T('și nici ruta noastră (doar super-admin)', (await C.fisier('/api/invoices/' + inc.j.invoice.id + '/pdf')).s === 403);
+  const notC = (((await C('GET', '/api/notifications?limit=40')).j) || []).map((n) => n.title);
+  T('clientul găsește în aplicație „Factură nouă" pentru factura făcută de mână și „Proformă nouă" pentru proformă',
+    notC.indexOf('Factură nouă: ' + unica.j.invoice.full_number) >= 0 && notC.indexOf('Proformă nouă: ' + pf.j.invoice.full_number) >= 0 && notC.indexOf('Factură nouă: ' + nrInc) >= 0, JSON.stringify(notC));
+  // TVA-ul de la ANAF se SALVEAZĂ (până pe 30.09 se arăta și se pierdea; toate firmele erau socotite plătitoare).
+  const dz = await R('PUT', '/api/companies/' + co.id + '/dosar', { vat_payer: false });
+  let ovT = (await R('GET', '/api/companies/' + co.id + '/overview')).j || {};
+  T('„Completează" (cu ANAF) salvează: neplătitoare de TVA', dz.s === 200 && dz.j.company.vat_payer === false && ovT.company.vat_payer === false, JSON.stringify(dz.j && dz.j.company));
+  await R('PUT', '/api/companies/' + co.id, { vat_payer: true });
+  ovT = (await R('GET', '/api/companies/' + co.id + '/overview')).j || {};
+  T('„Client nou" (cu ANAF) salvează: plătitoare de TVA', ovT.company.vat_payer === true);
+  await R('PUT', '/api/companies/' + co.id, { vat_payer: 'poate' });
+  ovT = (await R('GET', '/api/companies/' + co.id + '/overview')).j || {};
+  T('altceva decât da/nu nu atinge câmpul', ovT.company.vat_payer === true);
 
   // Mutarea pe altă firmă: abonamentul pornește din nou.
   const co2 = (await R('POST', '/api/companies', { name: 'Alt Client SRL' })).j;
@@ -403,6 +501,16 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   await R('POST', '/api/test/simulate', { imei: imeis[1] });
   dev = ((await R('GET', '/api/admin/devices')).j || []).filter((x) => x.imei === imeis[1])[0] || {};
   T('…și pornește din nou la prima transmisie pe firma nouă', dev.abonament_de_la != null);
+  // Aceeași regulă și pe a treia ușă: Companii → „Mută între companii" (și „Bifează tot" de pe telefon). Până pe 30.09
+  // ea scria doar firma, iar mașina ajungea pe factura firmei noi cu ziua de pornire de la cea veche.
+  const coMut = (await R('POST', '/api/companies', { name: 'Mutare SRL' })).j;
+  const mut = await R('PUT', '/api/devices/company/bulk', { company_id: coMut.id, imeis: [imeis[1]] });
+  dev = ((await R('GET', '/api/admin/devices')).j || []).filter((x) => x.imei === imeis[1])[0] || {};
+  T('„Mută între companii": ziua de pornire se șterge și aici (pornește la prima transmisie pe firma nouă)',
+    mut.s === 200 && mut.j.moved === 1 && dev.company_id === coMut.id && dev.abonament_de_la === null, JSON.stringify({ r: mut.j, dev: { co: dev.company_id, de_la: dev.abonament_de_la } }));
+  await R('POST', '/api/test/simulate', { imei: imeis[1] });
+  dev = ((await R('GET', '/api/admin/devices')).j || []).filter((x) => x.imei === imeis[1])[0] || {};
+  T('…și pornește din nou la prima transmisie acolo', dev.abonament_de_la != null);
 
   // „Prima factură" din drumul clientului: o proformă singură NU o bifează.
   const co3 = (await R('POST', '/api/companies', { name: 'Doar Proformă SRL' })).j;

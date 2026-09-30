@@ -20097,8 +20097,10 @@ const pozitii = await r.json();</code></pre>
         if (!co.id) { _coMsg(co.error || 'Nu am putut crea firma.', true); s.lucrez = false; if (btn) btn.disabled = false; return; }
         // Datele juridice se salvează imediat după creare — ruta de creare primește doar numele.
         await fetch('/api/companies/' + co.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-          body: JSON.stringify({ cui: s.firma.cui, reg_com: s.firma.reg_com, address: s.firma.address,
-            contact_email: s.firma.contact_email, phone: s.firma.phone }) }).catch(function () {});
+          body: JSON.stringify(Object.assign({ cui: s.firma.cui, reg_com: s.firma.reg_com, address: s.firma.address,
+            contact_email: s.firma.contact_email, phone: s.firma.phone },
+            // Plătitoare de TVA: doar când a răspuns ANAF (hotărăște „RO" în fața CUI-ului pe factură).
+            (s.firma.anaf && !s.firma.anaf.eroare) ? { vat_payer: !!s.firma.anaf.vat_payer } : {})) }).catch(function () {});
         var c = s.contract, contractId = null, numar = null, autoFactura = false;
         if (c.rep_name || c.signed_at || c.start_at || c.number || s.offerId) {
           var ofAleasa = s.offerId ? (_coOferte || []).filter(function (x) { return String(x.id) === String(s.offerId); })[0] : null;
@@ -20446,7 +20448,7 @@ const pozitii = await r.json();</code></pre>
             var pf = f.type === 'proforma';
             var ce = pf ? 'proformă' : (f.fel === 'abonament' ? 'abonament ' + esc(_giLunaText(f.luna)) : (f.fel === 'unica' ? 'unică' : '—'));
             var st = _myInvStare(f);
-            var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + f.id + ')"><i class="fas fa-print"></i></button>';
+            var act = _invHartieBtns('/api/invoices/' + f.id + '/pdf', f.type === 'proforma');
             if (f.status !== 'paid' && f.status !== 'canceled') act += ' <button class="rax-ico-btn" title="' + (pf ? 'Încasată — emite factura fiscală' : 'Marchează plătită') + '" onclick="raxInvoiceMarkPaid(' + f.id + (pf ? ', true' : '') + ')"><i class="fas fa-check"></i></button>';
             return '<tr><td style="font-weight:700;white-space:nowrap;">' + esc(f.full_number || '') + '</td><td style="font-size:11.5px;">' + ce + '</td>' +
               '<td>' + fmtD(f.issue_date) + '</td><td style="white-space:nowrap;"><strong>' + _invMoney(f.total) + ' lei</strong></td>' +
@@ -20893,12 +20895,21 @@ const pozitii = await r.json();</code></pre>
     function _raxDrumHtml(dr, c, companyId) {
       if (!dr || !dr.pasi) return '';
       var acum = dr.pasi.filter(function (p) { return p.stare === 'acum'; })[0];
+      var tm = dr.termenMontaj;
       return '<div class="drum">' +
         '<div class="drum-cap"><strong>Drumul clientului</strong><span>' + dr.gata + ' din ' + dr.din + ' pași făcuți</span></div>' +
         '<div class="drum-pasi">' + dr.pasi.map(function (p) {
           return '<div class="drum-pas drum-' + p.stare + '"><i class="fas ' + (DRUM_IC[p.stare] || 'fa-circle') + '"></i>' +
             '<span class="drum-e">' + esc(p.eticheta) + '</span>' + (p.detaliu ? '<span class="drum-d">' + esc(p.detaliu) + '</span>' : '') + '</div>';
         }).join('') + '</div>' +
+        // Termenul de montaj (contract, cap. V): scris pe față când se apropie sau a trecut. Textele („mai sunt 7 zile",
+        // „10 din 50 de mașini montate") vin gata scrise de la server — aceeași regulă ca pasul și anunțul zilnic.
+        (tm && (tm.stare === 'curand' || tm.stare === 'depasit')
+          ? '<div class="drum-termen ' + tm.stare + '"><i class="fas fa-' + (tm.stare === 'depasit' ? 'circle-exclamation' : 'hourglass-half') + '"></i> ' +
+            (tm.stare === 'depasit' ? 'Termenul de montaj a trecut: ' : 'Termenul de montaj: ') +
+            esc(new Date(Number(tm.pana)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' })) + ' (' + esc(tm.text) + ') · ' + esc(tm.cate) + '.' +
+            (tm.stare === 'depasit' ? ' Dacă mașinile n-au fost aduse de client, termenul se prelungește (contract, cap. V).' : '') + '</div>'
+          : '') +
         (acum ? '<div class="drum-urm"><span>Pasul următor: <strong>' + esc(acum.eticheta) + '</strong></span>' + _drumButon(acum.cheie, c, companyId, true) + '</div>'
               : '<div class="drum-urm"><span>Toți pașii sunt făcuți.</span></div>') +
       '</div>';
@@ -21045,7 +21056,9 @@ const pozitii = await r.json();</code></pre>
     };
     // „Completează": fereastra mică a datelor din dosar, cu „Preia de la ANAF". Scrie DOAR ce e aici
     // (ruta `/dosar`), fără să atingă telefonul, IBAN-ul sau celelalte date ale firmei.
+    var _dzTva = null;   // plătitoare de TVA, cum a răspuns ANAF în fereastra de mai jos (null = n-am întrebat)
     window.raxCtreCompleteaza = function (companyId) {
+      _dzTva = null;
       var c = (_raxCtre.tot || []).filter(function (x) { return x.company_id === companyId; })[0] || {};
       var rep = c.legal_rep || c.client_rep || {};
       var ov = document.getElementById('rax-dosar-overlay');
@@ -21077,7 +21090,8 @@ const pozitii = await r.json();</code></pre>
         if (!r.ok) { if (m) m.innerHTML = '<span style="color:var(--red)">' + esc(a.error || 'Nu am găsit firma la ANAF.') + '</span>'; return; }
         var pune = function (id, v) { var e = document.getElementById(id); if (e && v) e.value = v; };
         pune('dz-name', a.name); pune('dz-reg', a.reg_com); pune('dz-addr', a.address); pune('dz-cui', a.cui);
-        if (m) m.innerHTML = '<span style="color:var(--accent)"><i class="fas fa-check"></i> Preluat de la ANAF</span>' +
+        _dzTva = !!a.vat_payer;   // se salvează odată cu restul: hotărăște „RO" în fața CUI-ului pe factură
+        if (m) m.innerHTML = '<span style="color:var(--accent)"><i class="fas fa-check"></i> Preluat de la ANAF' + (a.vat_payer ? ' · plătitoare de TVA' : ' · neplătitoare de TVA') + '</span>' +
           ((a.radiata || a.inactiva) ? '<div style="color:var(--red);font-weight:700;margin-top:4px;">⚠ ' + (a.radiata ? 'firma apare RADIATĂ la ANAF' : 'firma e declarată INACTIVĂ') + '</div>' : '');
       } catch (e) { if (m) m.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
     };
@@ -21085,6 +21099,7 @@ const pozitii = await r.json();</code></pre>
       var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
       var corp = { cui: v('dz-cui'), name: v('dz-name'), reg_com: v('dz-reg'), address: v('dz-addr'), contact_email: v('dz-email'),
         legal_rep: v('dz-rep') ? { name: v('dz-rep'), role: v('dz-reprole') } : null };
+      if (_dzTva === true || _dzTva === false) corp.vat_payer = _dzTva;
       var m = document.getElementById('dz-msg');
       try {
         var r = await fetch('/api/companies/' + companyId + '/dosar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
@@ -22719,19 +22734,6 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       t.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
     };
-    // Fereastra în care se deschide un document de tipărit (factură / proformă) → Print / Salvează PDF.
-    function _raxOpenInvoiceWindow(html) {
-      var w = window.open('', '_blank', 'width=880,height=980');
-      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile ca să vezi factura', 'error'); return; }
-      w.document.open(); w.document.write(html); w.document.close();
-    }
-    // Adminul firmei: un document PROPRIU (factură sau proformă), cu ACELAȘI șablon ca în lista noastră
-    // (`_invFiscalHtml`) — clientul și noi ne uităm la aceeași hârtie, nu la două.
-    window.raxPrintMyInvoice = function (id) {
-      var f = ((_myInvData && _myInvData.invoices) || []).find(function (x) { return x.id === id; });
-      if (!f) { if (window.raxToast) raxToast('Document negăsit', 'error'); return; }
-      _raxOpenInvoiceWindow(_invFiscalHtml(f, (_myInvData && _myInvData.issuer) || {}));
-    };
     // ─── „Facturile mele" (admin firmă, manageUsers): starea plăților + documentele firmei ───
     var _myInvData = null;
     var _INV_TIP = { invoice: 'Factură', proforma: 'Proformă', credit_note: 'Storno' };
@@ -22775,7 +22777,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="white-space:nowrap;">' + fmtD(f.due_date) + '</td>' +
             '<td class="num">' + bani(f.total) + '</td>' +
             '<td><span style="color:' + st[1] + ';font-weight:700;white-space:nowrap;">' + st[0] + '</span></td>' +
-            '<td><button class="rax-ico-btn" title="Vezi / printează" onclick="raxPrintMyInvoice(' + f.id + ')"><i class="fas fa-print"></i></button></td>' +
+            '<td style="white-space:nowrap;">' + _invHartieBtns('/api/billing/my-invoices/' + f.id + '/pdf', f.type === 'proforma') + '</td>' +
           '</tr>';
         }).join('');
         rows = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
@@ -26165,69 +26167,26 @@ const pozitii = await r.json();</code></pre>
     var _giState = null; // ciorna din „Generează factură": { companyId, fel, luna, lines, issuer, vatRate, client, dinContract, montaje, puse }
     function _invFmtD(ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; }
     function _invMoney(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-    var _INV_ST = { draft: ['Ciornă', '#64748b'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'], paid: ['Plătită', '#16a34a'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'] };
-
-    // Builder factură fiscală (HTML self-contained) — linii + defalcare TVA + serie/număr + date emitent/client.
-    function _invFiscalHtml(inv, issFallback) {
-      var iss = (inv.issuer && typeof inv.issuer === 'object') ? inv.issuer : (issFallback || {});
-      var cl = (inv.client && typeof inv.client === 'object') ? inv.client : {};
-      var lines = Array.isArray(inv.lines) ? inv.lines : [];
-      var line = function (cond, html) { return cond ? '<div class="ln">' + html + '</div>' : ''; };
-      var rows = lines.map(function (l, i) {
-        return '<tr><td>' + (i + 1) + '</td><td>' + esc(l.desc || '') + '</td>' +
-          '<td class="c">' + (Number(l.qty) || 0) + '</td>' +
-          '<td class="r">' + _invMoney(l.unitPrice) + '</td>' +
-          '<td class="r">' + _invMoney(l.net) + '</td>' +
-          '<td class="c">' + (Number(l.vatRate) || 0) + '%</td>' +
-          '<td class="r">' + _invMoney(l.vat) + '</td></tr>';
-      }).join('');
-      var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
-      // Proforma e o CERERE DE PLATĂ, nu o factură: o scrie pe față, iar la subsol spune că nu e document fiscal.
-      var pf = inv.type === 'proforma';
-      var titluDoc = pf ? 'FACTURĂ PROFORMĂ' : 'FACTURĂ FISCALĂ';
-      var html = '<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>' + (pf ? 'Proformă ' : 'Factură ') + esc(inv.full_number || '') + '</title>' +
-        '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"><style>' +
-        '*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Nunito",-apple-system,"Segoe UI",sans-serif;color:#1a2235;padding:40px;max-width:820px;margin:0 auto;font-size:13px;line-height:1.5;background:#fff}' +
-        '.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16a34a;padding-bottom:16px;margin-bottom:20px}' +
-        '.brand{font-size:25px;font-weight:800;color:#16a34a;line-height:1.05}.brand small{display:block;font-size:10.5px;font-weight:700;color:#64748b;letter-spacing:1px;margin-top:3px}' +
-        '.inv-meta{text-align:right}.inv-meta .ttl{font-size:12px;font-weight:800;letter-spacing:.5px;color:#64748b}.inv-meta .no{font-size:20px;font-weight:800}.inv-meta .dt{color:#64748b;font-size:12px;margin-top:3px}' +
-        '.parties{display:flex;gap:18px;margin-bottom:20px}.party{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px 15px}' +
-        '.party h4{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:6px}.party .nm{font-weight:800;font-size:14px;margin-bottom:3px}.party .ln{font-size:12px;color:#475569}' +
-        'table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#16a34a;color:#fff;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.3px}' +
-        'th.r,td.r{text-align:right}th.c,td.c{text-align:center}td{padding:9px 10px;border-bottom:1px solid #e8edf3;font-size:12.5px}tbody tr:nth-child(even){background:#fafcff}' +
-        '.tot{display:flex;justify-content:flex-end}.tot .box{min-width:290px}.tot .row{display:flex;justify-content:space-between;padding:6px 14px;font-size:13px;color:#475569}.tot .row.vat{border-bottom:1px solid #e2e8f0}' +
-        '.tot .grand{display:flex;justify-content:space-between;background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;font-weight:800;font-size:17px;color:#15803d;padding:11px 14px;margin-top:6px}' +
-        '.pay{margin-top:14px;font-size:12px;color:#334155}.pay b{color:#1a2235}.foot{margin-top:22px;padding-top:12px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:10.5px;line-height:1.5}' +
-        '.noprint{margin-top:24px;text-align:center}.noprint button{font-family:inherit;background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}@media print{.noprint{display:none}body{padding:8px}}' +
-        '</style></head><body>' +
-        '<div class="head"><div class="brand"><img src="' + esc(logoUrl) + '" alt="RA Tracks" style="height:34px;width:auto;vertical-align:middle;margin-right:4px;"><span style="vertical-align:middle;">Tracks</span><small>MONITORIZARE GPS FLOTĂ</small></div>' +
-          '<div class="inv-meta"><div class="ttl">' + titluDoc + '</div><div class="no">' + esc(inv.full_number || '—') + '</div><div class="dt">Data emiterii: ' + _invFmtD(inv.issue_date) + (inv.due_date ? '<br>Scadență: ' + _invFmtD(inv.due_date) : '') + '</div></div></div>' +
-        '<div class="parties">' +
-          '<div class="party"><h4>Furnizor (Emitent)</h4><div class="nm">' + esc(iss.name || '(completează Date emitent)') + '</div>' +
-            line(iss.cui, 'CUI: ' + esc(iss.cui) + (iss.reg_com ? ' · Reg. Com.: ' + esc(iss.reg_com) : '')) +
-            line(iss.address, esc(iss.address)) + line(iss.iban, 'IBAN: ' + esc(iss.iban) + (iss.bank ? ' · ' + esc(iss.bank) : '')) +
-            line(true, 'TVA: ' + (iss.vat_rate != null ? iss.vat_rate : 19) + '%' + (iss.vat_payer === false ? ' · neplătitor de TVA' : ' · plătitor de TVA')) +
-          '</div>' +
-          '<div class="party"><h4>Client (Beneficiar)</h4><div class="nm">' + esc(cl.name || inv.company_name || '—') + '</div>' +
-            line(cl.cui, 'CUI: ' + esc(cl.cui) + (cl.reg_com ? ' · Reg. Com.: ' + esc(cl.reg_com) : '')) +
-            line(cl.address, esc(cl.address)) + line(cl.email, esc(cl.email)) + line(cl.phone, 'Tel: ' + esc(cl.phone)) +
-          '</div></div>' +
-        '<table><thead><tr><th style="width:26px">#</th><th>Descriere</th><th class="c">Cant.</th><th class="r">Preț unitar</th><th class="r">Valoare</th><th class="c">TVA %</th><th class="r">TVA</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-        '<div class="tot"><div class="box">' +
-          '<div class="row"><span>Total fără TVA (net)</span><b>' + _invMoney(inv.subtotal) + ' lei</b></div>' +
-          '<div class="row vat"><span>TVA</span><b>' + _invMoney(inv.vat_amount) + ' lei</b></div>' +
-          '<div class="grand"><span>TOTAL DE PLATĂ</span><span>' + _invMoney(inv.total) + ' lei</span></div>' +
-        '</div></div>' +
-        (inv.fel === 'unica' || pf
-          ? (inv.note ? '<div class="pay"><b>Mențiuni:</b> ' + esc(inv.note) + '</div>' : '')
-          : '<div class="pay">Perioada: ' + _invFmtD(inv.period_start) + ' → ' + _invFmtD(inv.period_end) + (inv.note ? ' · ' + esc(inv.note) : '') + '</div>') +
-        (pf
-          ? '<div class="foot">Proformă emisă din platforma RA Tracks. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.</div>'
-          : '<div class="foot">Factură emisă electronic din platforma RA Tracks. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' + (inv.din_proforma ? ' Emisă la încasarea unei proforme.' : '') + '</div>') +
-        '<div class="noprint"><button onclick="window.print()">🖨 Printează / Salvează PDF</button></div>' +
-        '</body></html>';
-      return html;
+    // Hârtia unei facturi sau proforme: „Vezi" și „Descarcă", pe PDF-ul făcut de SERVER (factura_pdf.js), ca oferta și
+    // contractul (Alin, 30.09). Aceeași fereastră și același cititor al numelui (`raxHartie`) peste tot: la noi, în
+    // fișa firmei și la client. Până atunci factura se deschidea într-o fereastră de printare, iar PDF-ul și-l
+    // salva fiecare cum putea.
+    // Ce a plecat odată cu factura, cum o spune serverul: anunțul, emailul, ANAF-ul. Pe față, ca să nu crezi
+    // că a plecat ce n-a plecat (fără email pe server sau fără tokenul ANAF, nu pleacă nimic).
+    function _invTrimisaText(t, pf) {
+      if (!t) return '';
+      var p = [];
+      if (t.notificare) p.push('clientul e anunțat în aplicație');
+      p.push(t.email ? 'emailul a plecat, cu PDF-ul' : 'fără email (' + (t.emailMotiv || 'n-a plecat') + ')');
+      if (!pf) p.push(t.anaf === 'uploaded' ? 'trimisă la ANAF' : t.anaf === 'error' ? 'ANAF a refuzat-o (vezi coloana ANAF)' : 'nu pleacă la ANAF încă (lipsește tokenul)');
+      return ' · ' + p.join(' · ');
     }
+    function _invHartieBtns(url, pf) {
+      var ce = pf ? 'Proforma' : 'Factura';
+      return '<button class="rax-ico-btn" title="Vezi" onclick="raxHartie(\'' + url + '\', true, \'' + ce + '\')"><i class="fas fa-eye"></i></button> ' +
+        '<button class="rax-ico-btn" title="Descarcă (PDF)" onclick="raxHartie(\'' + url + '\', false, \'' + ce + '\')"><i class="fas fa-download"></i></button>';
+    }
+    var _INV_ST = { draft: ['Ciornă', '#64748b'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'], paid: ['Plătită', '#16a34a'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'] };
 
     // ─── Lista de facturi fiscale ───
     window.raxLoadInvoices = async function () {
@@ -26256,10 +26215,12 @@ const pozitii = await r.json();</code></pre>
         var ef = v.type === 'proforma' ? '<span style="font-size:10.5px;color:var(--text-muted);">nu se trimite</span>'
           : (_efi ? ('<span style="font-size:10.5px;font-weight:700;color:' + _efi[1] + ';">● ' + _efi[0] + '</span>') : '<span style="font-size:10.5px;color:var(--text-muted);opacity:.6;">—</span>');
         var pf = v.type === 'proforma';
-        var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + v.id + ')"><i class="fas fa-print"></i></button> ';
+        var act = _invHartieBtns('/api/invoices/' + v.id + '/pdf', v.type === 'proforma') + ' ';
         // Proforma nu e document fiscal: fără XML și fără ANAF. La ANAF merge factura emisă la încasarea ei.
         if (!pf) act += '<button class="rax-ico-btn" title="Vezi XML (e-Factura)" onclick="raxEfacturaView(' + v.id + ')"><i class="fas fa-code"></i></button> ';
-        if (!pf && v.status !== 'canceled' && v.efactura_status !== 'validated') act += '<button class="rax-ico-btn" title="Trimite la ANAF" onclick="raxEfacturaSend(' + v.id + ')"><i class="fas fa-paper-plane"></i></button> ';
+        // Factura pleacă singură la ANAF la emitere (30.09). Butonul rămâne doar pentru cea netrimisă sau respinsă:
+        // pe una aflată deja la ANAF ar pune aceeași factură de două ori în SPV-ul clientului (serverul refuză, 409).
+        if (!pf && v.status !== 'canceled' && v.efactura_status !== 'validated' && v.efactura_status !== 'uploaded') act += '<button class="rax-ico-btn" title="' + (v.efactura_status === 'error' ? 'Retrimite la ANAF' : 'Trimite la ANAF') + '" onclick="raxEfacturaSend(' + v.id + ')"><i class="fas fa-paper-plane"></i></button> ';
         if (!pf && v.efactura_status === 'uploaded') act += '<button class="rax-ico-btn" title="Verifică status ANAF" onclick="raxEfacturaStatus(' + v.id + ')"><i class="fas fa-rotate"></i></button> ';
         if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="' + (pf ? 'Încasată — emite factura fiscală' : 'Marchează plătită') + '" onclick="raxInvoiceMarkPaid(' + v.id + (pf ? ', true' : '') + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
         return '<tr>' +
@@ -26277,27 +26238,16 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
     };
-    window.raxPrintFiscalInvoice = async function (id) {
-      var w = window.open('', '_blank', 'width=880,height=980');
-      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile pentru a vedea factura', 'error'); return; }
-      try { w.document.write('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;padding:40px;color:#64748b">Se încarcă factura…</body>'); } catch (e) {}
-      try {
-        var inv = await fetch('/api/invoices/' + id, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!inv || inv.error) { try { w.close(); } catch (e) {} if (window.raxToast) raxToast((inv && inv.error) || 'Factură negăsită', 'error'); return; }
-        var iss = await _raxGetIssuer();
-        w.document.open(); w.document.write(_invFiscalHtml(inv, iss)); w.document.close();
-      } catch (e) { try { w.close(); } catch (_) {} if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
-    };
     window.raxInvoiceMarkPaid = async function (id, proforma) {
       var intreb = proforma
-        ? 'Proforma e ÎNCASATĂ? Se emite acum factura fiscală, cu aceleași rânduri, marcată plătită. Proforma rămâne legată de ea.'
+        ? 'Proforma e ÎNCASATĂ? Se emite acum factura fiscală, cu aceleași rânduri, marcată plătită, și pleacă singură: clientului (în aplicație și pe email, cu PDF) și la ANAF. Proforma rămâne legată de ea.'
         : 'Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea. Dacă firma era oprită pentru neplată, accesul revine pe loc.';
       if (!await raConfirm(intreb, { okLabel: proforma ? 'Încasată — emite factura' : 'Marchează plătită', danger: false })) return;
       try {
         var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'paid' }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
-        if (window.raxToast) raxToast(proforma ? ('Proformă încasată → factura ' + ((j.invoice && j.invoice.full_number) || '') + ' ✓') : 'Factură plătită ✓', 'success');
+        if (window.raxToast) raxToast(proforma ? ('Proformă încasată → factura ' + ((j.invoice && j.invoice.full_number) || '') + _invTrimisaText(j.trimisa, false) + ' ✓') : 'Factură plătită ✓', 'success');
         raxLoadBilling();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
@@ -26492,6 +26442,7 @@ const pozitii = await r.json();</code></pre>
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:6px;"><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="rax-btn" onclick="_giAdd()"><i class="fas fa-plus"></i> Linie liberă</button></div>' +
           '<div style="text-align:right;font-size:12.5px;"><span style="color:var(--text-muted);">Net </span><b>' + _invMoney(sub) + '</b> · <span style="color:var(--text-muted);">TVA </span><b>' + _invMoney(vat) + '</b> · <span style="color:var(--text-muted);">Total </span><b style="color:var(--accent);font-size:15px;">' + _invMoney(sub + vat) + ' lei</b></div></div>' +
         (_giTip === 'proforma' ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși ✓ „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div>' : '') +
+        '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;">La emitere pleacă singură: clientul e anunțat în aplicație și o primește pe email, cu PDF-ul' + (_giTip === 'proforma' ? '' : ', iar factura fiscală pleacă și la ANAF') + ' (când serverul are emailul și tokenul ANAF).</div>' +
         '<button class="rax-btn primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="raxGenIssue(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-file-invoice-dollar"></i> ' + eticheta + '</button>' +
         '<div id="rax-gi-msg" style="font-size:12px;margin-top:8px;"></div>';
     }
@@ -26513,7 +26464,7 @@ const pozitii = await r.json();</code></pre>
         if (!r.ok || j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error || 'Eroare') + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> ' + eticheta; } return; }
         document.getElementById('rax-geninv-overlay').classList.remove('open');
         var nr = (j.invoice && j.invoice.full_number) || '';
-        if (window.raxToast) raxToast((body.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (j.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + ' ✓', 'success');
+        if (window.raxToast) raxToast((body.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (j.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + _invTrimisaText(j.trimisa, body.tip === 'proforma') + ' ✓', 'success');
         raxLoadBilling();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
         // factura se deschide din listă (butonul 🖨) — window.open imediat după emitere e blocat ca popup

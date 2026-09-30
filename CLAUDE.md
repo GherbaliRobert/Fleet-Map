@@ -978,7 +978,7 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   nici în venituri. `PUT /api/invoices/:id/status {paid}` pe o proformă = **„Încasată"**: emite factura fiscală
   (seria RAT, aceleași rânduri, `din_proforma`), o marchează plătită atomic, iar proforma primește
   `factura_id`. A doua apăsare nu face a doua factură; proforma încasată nu se anulează.
-- Hârtia proformei: „FACTURĂ PROFORMĂ" + „document fără valoare fiscală" (`_invFiscalHtml`, același șablon).
+- Hârtia proformei: „FACTURĂ PROFORMĂ" + „document fără valoare fiscală" (`factura_pdf.js`, aceeași hârtie).
 - **Factura montajului e STRÂNSĂ** (Alin, 29.09: „da"): lucrările alese în „Generează factură" se adună pe
   rânduri (aceeași denumire ȘI același preț — alt preț = rând separat), iar zilele lor intră în mențiuni:
   „Montaj executat pe 15.01.2027 (10 mașini), … și 30.01.2027 (15 mașini)." O SINGURĂ regulă, în pagină:
@@ -988,6 +988,38 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   abonamentul își păstrează perioada. Păzit de `verify_abonament.js` (codul paginii, decupat și rulat).
 - Ce fel de factură se emite la încasarea unui avans (de avans / finală) = întrebare pentru contabil, în
   „De amintit". Nu schimba forma fără răspunsul lui.
+
+### Hârtia facturii e UNA, pe server: `factura_pdf.js` (Alin, 30.09: „de acord")
+- `facturaPdf(inv, emitentAcum)` desenează factura fiscală și proforma (PDFKit, `logo-light.png`, DejaVu sub
+  aliasul „Nunito"), lângă hârtiile contractului și ale ofertei. Numele: **„RA-Tracks - Factură {număr} -
+  {client}.pdf"** / „RA-Tracks - Proformă …" (`numeFisier`), antetul scris de `_antetDescarcare`.
+- Rute: `GET /api/invoices/:id/pdf` (super-admin) și `GET /api/billing/my-invoices/:id/pdf` (administratorul
+  firmei, DOAR documentele firmei lui, fără ciorne). „Nu e a ta" și „nu există" răspund la fel: **404**.
+- Pe ecran: `_invHartieBtns(url, proforma)` → „Vezi" / „Descarcă", prin `raxHartie` (aceeași fereastră ca la
+  contracte). **Șablonul HTML și fereastra de printare au plecat** (`_invFiscalHtml`, `raxPrintFiscalInvoice`,
+  `raxPrintMyInvoice`, `_raxOpenInvoiceWindow`). NU scrie o a doua hârtie în pagină.
+- **Emailul atașează ACELAȘI PDF** (`_pdfInBuffer(facturaPdf.facturaPdf(…))`) — clientul primește exact ce
+  descarcă.
+- „CUI: RO…" doar la plătitorul de TVA (`cuiAfisat(cui, vat_payer)`), la fel ca în e-Factura.
+
+### Orice factură pleacă SINGURĂ, pe o singură cale: `_trimiteFactura(inv, co, iss)` (Alin, 30.09)
+- Chemată din TREI locuri: factura automată a lunii, `POST /api/invoices` (de mână: unică, montaj, proformă) și
+  „Încasată" pe proformă (factura fiscală născută din ea). Păzit prin numărare. NU scrie a patra cale.
+- Face trei lucruri, fiecare cu eșecul lui scris, nu înghițit: **anunțul** în aplicația clientului („Factură
+  nouă: …" / „Proformă nouă: …"), **emailul** către `contact_email`, cu PDF-ul atașat, și **ANAF** — doar
+  factura fiscală, niciodată proforma. Întoarce `{ notificare, email, emailMotiv, anaf, anafEroare }`;
+  răspunsul rutei îl poartă ca `trimisa`, iar ecranul îl spune (`_invTrimisaText`).
+- ⚠ **O factură aflată deja la ANAF nu se mai trimite a doua oară** (`efactura_status` `uploaded` /
+  `validated` → 409 pe `POST /api/invoices/:id/efactura`, iar butonul nu apare): ar dubla factura în SPV-ul
+  clientului. Se retrimite doar una respinsă (`error`) sau netrimisă.
+
+### TVA-ul clientului: `companies.vat_payer` (30.09)
+- „Preia de la ANAF" (Client nou și „Completează") scrie și dacă firma e plătitoare de TVA; `updateCompany` și
+  `completeazaDosarFirma` primesc DOAR `true` / `false` (orice altceva nu atinge câmpul).
+- Lipsă = plătitor (`vat_payer !== false`), ca înainte: clienții vechi nu se schimbă pe tăcute.
+- De aici ies „RO" din fața CUI-ului pe hârtie și codul de TVA din e-Factura. ANAF nu dă nimic NOU pe factură
+  față de ce cerem clientului: dă datele oficiale (nume, Reg. Com., sediu) fără greșeli de tastare și
+  statutul de TVA. Reprezentantul și emailul tot de la client le luăm.
 
 ### Aparatele VÂNDUTE: avans pe proformă, montajul în 30 de zile de la încasare (Alin, 29.09)
 „1.A, 2.DA, 3.DA". A înlocuit regula din 21.09 („echipamentele se facturează la livrare").
@@ -1002,16 +1034,35 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   sus); oferta: prima condiție + cea despre mașini (a doua, doar dacă oferta are montaj). La închiriere nu
   există avans. Păzit de `verify_abonament.js` (5b, hârtiile desenate), `verify_montaj.js`, `verify_tarife.js`,
   `verify_stoc_chirie.js`.
+- **Aplicația NUMĂRĂ termenul (30.09)** — `contracts.termenMontaj(contract, avansLa, montate, acum)`:
+  - `avansLa` = **prima proformă încasată după ce s-a făcut contractul** (`avansContract`: factura fiscală
+    `din_proforma`, cu `issue_date` ≥ `contract.created_at`). Un contract vechi, încheiat, nu-și dă avansul
+    celui nou. Fără avans încasat → **fără termen**, nu unul inventat.
+  - `deMontat` = montajele de aparat GPS din Anexa nr. 2 (`masiniDeMontat`); `montate` = aceleași din lucrările
+    executate (`drumDateToate`). Pasul „Montajul" din drum se bifează abia la **toate** (nu la prima lucrare).
+  - Zile de CALENDAR, pe ora României: în ziua termenului scrie „azi e ultima zi". Textele („mai sunt 7 zile",
+    „10 din 50 de mașini montate") le scrie serverul (`termenText`, `montateText`) și le trimite gata; ecranul
+    NU-și face a doua regulă.
+  - Pe drum: rândul pasului mereu; banda portocalie cu `MONTAJ_AVERTIZARE_ZILE` (7) înainte, roșie după.
+    Anunțul zilnic (`contractExpiryTick`) merge DOAR la super-admini, o dată pe termen și pe stare (cheia are
+    termenul în ea). Clientul nu primește nimic.
+  - Aplicația nu știe dacă mașinile n-au fost aduse (termenul se prelungește, cap. V): anunțul de depășire o
+    amintește, nu hotărăște. Păzit de `verify_drum.js` (regula, anunțul pe bucata din server.js cu ceasul
+    mutat, drumul pe server pornit).
+- **Plățile către instalator (punctul 4, 30.09): AMÂNATE** până la primul partener de montaj real (Alin: „de
+  acord"). NU le construi din proprie inițiativă.
 
 ### Trecerea mai multor aparate pe firmă
-- `PUT /api/devices/company-bulk { company_id, imeis }` și `PUT /api/devices/:imei/company` trec AMÂNDOUĂ
-  prin **`_trecePeFirma`** (o singură funcție: firma, cache-urile, pornirea abonamentului, stocul, auditul).
+- `PUT /api/devices/company-bulk { company_id, imeis }`, `PUT /api/devices/:imei/company` și „Mută între
+  companii" (`PUT /api/devices/company/bulk`, din Companii) trec TOATE TREI prin **`_trecePeFirma`** (o singură
+  funcție: firma, cache-urile, pornirea abonamentului, stocul, auditul). Până pe 30.09 a treia scria direct în
+  bază (`setDevicesCompanyBulk`, scos): noua firmă ar fi plătit abonamentul de la pornirea de la vechea firmă.
 - Pe ecran, DOAR în „Dispozitive → Neasignate" (bife + bara `_raxDevBaraBloc`) — adopția rămâne într-un
   singur loc (17.09). NU pune bife de adopție în altă parte.
 
 ### Ce vede clientul
 - „Facturile mele" (`GET /api/billing/my-invoices`) = **documentele adevărate** ale firmei (facturi + proforme,
-  fără ciorne), tipărite cu `_invFiscalHtml`. NU mai arăta plăți cu număr inventat (`_raxInvNo` — scos: făcea
+  fără ciorne), cu „Vezi" / „Descarcă" pe PDF-ul de pe server (`factura_pdf.js`). NU mai arăta plăți cu număr inventat (`_raxInvNo` — scos: făcea
   „RAT-AAAA-000{id plată}", care se putea bate cap în cap cu o factură adevărată). Răspunsul mai poartă
   `amount_ron` doar pentru telefonul vechi, până la APK.
 - Păzit de `verify_abonament.js` (în `npm test`, inclusiv pe server pornit), `verify_neplata.js`,
