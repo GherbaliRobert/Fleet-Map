@@ -73,6 +73,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
   **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025). Adăugat pe 29.09: dacă rămâne necompletată, aplicația
   pune singură 19% pe facturi — cifra veche. (Implicitul din cod e trecut și la lista lui Alin.)
+- [ ] **Voi: pașii firmei la ANAF, înainte de prima factură reală. Adăugat pe 30.09.** (1) un contabil; (2) semnătura
+  electronică a administratorului (cam 150–400 lei pe an, de la un furnizor autorizat); (3) firma în SPV, pe anaf.ro,
+  cu semnătura — de obicei o face contabilul cu voi; (4) apoi Robert ia „cheia" e-Factura și o pune pe server (punctul
+  lui de mai sus); (5) întrebați contabilul dacă RA Tracks e plătitoare de TVA — de aici bifa și cota din „Date emitent".
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
