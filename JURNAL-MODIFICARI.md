@@ -9942,6 +9942,39 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   - ~~„Mută între companii" cu mai multe aparate (web și telefon) ocolește regula lui „Trece pe firmă" (punctul 5):
     pe telefon N-am ocolit-o separat, ca cele două să nu se despartă — se repară o dată, pe server.~~ — **FĂCUT pe
     server (30.09)**; telefonul n-are nimic de schimbat.
+  **Verificat în cod pe 30.09, seara (după cele 5 schimbări ale lui Alin din ziua asta, până la `6d1525e`):**
+  din cele 26 de puncte deschise dimineață, 25 sunt încă deschise și unul e pe jumătate (13: firma aleasă în bară rămâne
+  aleasă, dar „Toate" bifează tot și aparatele ascunse de căutare). Cele date drept închise: hârtia facturii pe server —
+  gata; drumul care știe de avans și termenul de 30 de zile — gata; „Mută între companii" — pe jumătate: abonamentul și
+  jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. La punctul 8 s-a
+  adăugat un loc: hârtia facturii scrie „TVA 19%" când „Date emitent" n-are cotă.
+  **Patru probleme NOI, din schimbările de azi:**
+  17. **„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se
+      uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
+      la ANAF pe aceeași lună**.
+  18. **„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
+      client, pe email și la ANAF.
+  19. **„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
+      „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.
+  20. **Un aparat șters definitiv revine singur** dacă mai transmite: IMEI-ul lui rămâne în stoc, iar serverul primește
+      acum și aparatele din stoc. I se face rând nou la Neasignate și i se salvează iar pozițiile — contrazice ștergerea
+      promisă în contract după încetare.
+
+- [ ] **(eu) Lotul 5 pe telefon (aplicația 1.0.7): ce a făcut Alin pe 30.09. Adăugat pe 30.09.** Nimic pe server — toate
+  rutele există. Verificat în cod (inventar), nimic început încă.
+  **Merg greșit pe telefon acum:**
+  1. **TVA — ajunge pe factură:** o firmă făcută sau completată de pe telefon rămâne „plătitoare de TVA", orice ar spune
+     ANAF (telefonul arată statutul, dar nu-l trimite). Pe factură și în e-Factura apare cod de TVA greșit.
+  2. Anunțurile noi („aparate noi transmit", „montaj de facturat") nu duc nicăieri pe telefon.
+  3. La un contract semnat, telefonul programează montajul pe calea veche, pe lângă calendar: se pot programa mai multe
+     mașini decât a rămas din contract.
+  4. „E semnat" nu deschide proforma aparatelor (pe web, da) — avansul și termenul de 30 de zile depind de memorie.
+  **Lipsesc:** calendarul de montaj (mare, ~o zi); proforma la semnare, „Previzualizează", „Montaj de facturat",
+  clicul pe „aparate noi" (medii); banda termenului de montaj pe drum, secțiunile Facturi / Proforme, nota „pleacă
+  singură", „ce a plecat" după ✓ din fișă, „Deschide dosarul clientului", textele despre ritmul instalatorului și din
+  Stoc (mici). Intră și ce a scris Alin deja pe telefon („Ne facturează" în fișa instalatorului, textele din Stoc).
+  Probe de rescris pe regula nouă: `verify_contracte_telefon.js` (calea `?lucrare=noua`), `verify_facturare_telefon.js`
+  (reperul „Facturi fiscale").
 
 - [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
   telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon
