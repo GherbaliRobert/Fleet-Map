@@ -193,6 +193,7 @@ const stocMod = require('./stoc');                  // stocul nostru de echipame
 const compat = require('./compatibilitate');        // ce aparat merge pe ce mașină, după listele Teltonika (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
+let facturaPdf = null; try { facturaPdf = require('./factura_pdf'); } catch (e) { /* opțional: fără pdfkit nu se face hârtia facturii */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
@@ -2223,6 +2224,30 @@ async function contractExpiryTick() {
       raport.anuntate.push(c.id);
     } catch (e) { /* per contract, best-effort */ }
   }
+  // Termenul de montaj (contract, cap. V: 30 de zile de la încasarea avansului; Alin, 30.09). Noi aflăm cu
+  // MONTAJ_AVERTIZARE_ZILE înainte și la depășire — o dată fiecare, pe termenul ăla. Clientul nu primește nimic.
+  raport.montaj = [];
+  try {
+    const dd = await db.drumDateToate(contracte.MONTAJ_EXECUTAT);
+    const zi = function (ms) { return new Date(ms).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
+    for (const c of lista) {
+      try {
+        const t = contracte.termenMontaj(c, contracte.avansContract((dd.avans || {})[c.company_id], c), (dd.montaje[c.id] || {}).montate, acum);
+        if (!t || (t.stare !== 'curand' && t.stare !== 'depasit')) continue;
+        const cheie = 'montaj_termen_' + t.stare + ':' + c.id + ':' + t.pana;
+        if (await db.notificationKeyExists(cheie, 24 * 120)) continue;
+        const firma = c.company_name || ('#' + c.company_id);
+        const cate = contracte.montateText(t.montate, t.deMontat);
+        const titlu = t.stare === 'depasit' ? 'Termenul de montaj a trecut: ' + firma : 'Montaj, ' + contracte.termenText(t) + ': ' + firma;
+        const corp = firma + ': ' + cate + '. Termenul din contract (' + contracte.numar(contracte.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') + ' de la încasarea avansului) ' +
+          (t.stare === 'depasit' ? 'a fost ' + zi(t.pana) + '. Dacă mașinile n-au fost aduse de client, termenul se prelungește (contract, cap. V) — notează de ce, în contract.'
+            : 'e ' + zi(t.pana) + '. Programează restul din fișa firmei → Contract.');
+        await _anuntaSuperadmini(supers, 'montaj_termen', t.stare === 'depasit' ? 'critical' : 'warning', titlu, corp,
+          { key: cheie, contractId: c.id, companyId: c.company_id, pana: t.pana, montate: t.montate, deMontat: t.deMontat });
+        raport.montaj.push(c.id);
+      } catch (e) { /* per contract, best-effort */ }
+    }
+  } catch (e) { /* fără numărători, fără anunț — nu inventăm */ }
   return raport;
 }
 
@@ -2231,20 +2256,88 @@ function _he(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').repla
 // Corpul de email pentru o factură emisă (rezumat + instrucțiuni plată).
 function _invoiceEmailHtml(inv, iss) {
   const money = function (n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-  const due = inv.due_date ? new Date(Number(inv.due_date)).toLocaleDateString('ro-RO') : '';
+  const due = inv.due_date ? new Date(Number(inv.due_date)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
   iss = iss || {};
+  const pf = inv.type === 'proforma', platita = !!inv.din_proforma;
+  // Ce e documentul, în cuvintele clientului: proformă, factura unei plăți primite, abonamentul lunii, altă factură.
+  const intro = pf ? 'Vă trimitem proforma de mai jos. Factura fiscală se emite la încasare, cu aceleași rânduri.'
+    : platita ? 'Vă trimitem factura fiscală pentru plata primită. Pe ea nu mai e nimic de plată.'
+    : inv.fel === 'abonament' ? 'Am emis factura pentru abonamentul de monitorizare GPS.'
+    : 'Am emis factura de mai jos.';
   return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a2235;">' +
-    '<div style="background:#16a34a;color:#fff;padding:18px 20px;border-radius:10px 10px 0 0;"><h2 style="margin:0;font-size:19px;">RA Tracks — Factura ' + _he(inv.full_number) + '</h2></div>' +
+    '<div style="background:#16a34a;color:#fff;padding:18px 20px;border-radius:10px 10px 0 0;"><h2 style="margin:0;font-size:19px;">RA Tracks — ' + (pf ? 'Proforma ' : 'Factura ') + _he(inv.full_number) + '</h2></div>' +
     '<div style="border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px;padding:20px;">' +
-      '<p>Bună ziua,</p><p>Am emis factura pentru abonamentul de monitorizare GPS:</p>' +
+      '<p>Bună ziua,</p><p>' + intro + '</p>' +
       '<table style="width:100%;font-size:14px;margin:12px 0;border-collapse:collapse;">' +
         '<tr><td style="padding:5px 0;color:#475569;">Serie / număr</td><td style="text-align:right;font-weight:700;">' + _he(inv.full_number) + '</td></tr>' +
-        '<tr><td style="padding:5px 0;color:#475569;">Total de plată</td><td style="text-align:right;font-weight:800;color:#16a34a;font-size:18px;">' + money(inv.total) + ' lei</td></tr>' +
-        (due ? '<tr><td style="padding:5px 0;color:#475569;">Scadență</td><td style="text-align:right;">' + _he(due) + '</td></tr>' : '') +
+        '<tr><td style="padding:5px 0;color:#475569;">' + (platita ? 'Total plătit' : 'Total de plată') + '</td><td style="text-align:right;font-weight:800;color:#16a34a;font-size:18px;">' + money(inv.total) + ' lei</td></tr>' +
+        (due && !platita ? '<tr><td style="padding:5px 0;color:#475569;">Scadență</td><td style="text-align:right;">' + _he(due) + '</td></tr>' : '') +
       '</table>' +
-      (iss.iban ? '<p style="font-size:13px;color:#475569;">Plată prin transfer în contul <b>' + _he(iss.iban) + '</b>' + (iss.bank ? ' (' + _he(iss.bank) + ')' : '') + ', beneficiar <b>' + _he(iss.name || '') + '</b>.</p>' : '') +
-      '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">Factura fiscală este disponibilă și în platformă. Vă mulțumim!</p>' +
+      (iss.iban && !platita ? '<p style="font-size:13px;color:#475569;">Plată prin transfer în contul <b>' + _he(iss.iban) + '</b>' + (iss.bank ? ' (' + _he(iss.bank) + ')' : '') + ', beneficiar <b>' + _he(iss.name || '') + '</b>.</p>' : '') +
+      '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">Documentul e atașat (PDF) și îl găsiți și în platformă, la „Facturile mele". Vă mulțumim!</p>' +
     '</div></div>';
+}
+// ─── Ce se întâmplă după ce se naște o factură sau o proformă (Alin, 30.09: „de acord, apucă-te") ───
+// Clientul e anunțat în aplicație („Factură nouă"), îi pleacă pe email cu hârtia PDF atașată, iar o factură FISCALĂ
+// pleacă și la ANAF (e-Factura). O SINGURĂ funcție pentru toate felurile de documente: abonamentul automat de pe 1 a
+// lunii, factura făcută de mână (aparate, montaj, abonamentul unei luni), proforma și factura născută dintr-o
+// proformă încasată. Până pe 30.09 asta o făcea DOAR factura automată; celelalte stăteau în aplicație până le
+// trimitea cineva de mână, iar la ANAF — până apăsa cineva „Trimite la ANAF", pe fiecare.
+// Întoarce ce a plecat, ca ecranul s-o spună pe față:
+//   { notificare, email: true|false, emailMotiv, anaf: 'uploaded'|'error'|'nu_se_trimite'|'fara_token', anafEroare }
+async function _trimiteFactura(inv, co, iss) {
+  const rez = { notificare: false, email: false, emailMotiv: null, anaf: null, anafEroare: null };
+  if (!inv || !co) return rez;
+  const pf = inv.type === 'proforma';
+  const nr = inv.full_number || '';
+  const bani = (Number(inv.total) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const scad = inv.due_date ? new Date(Number(inv.due_date)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null;
+  const corp = pf ? 'Am emis proforma de ' + bani + ' lei' + (scad ? ', de plătit până pe ' + scad : '') + '. Factura fiscală vine la încasare.'
+    : inv.din_proforma ? 'Am emis factura fiscală de ' + bani + ' lei pentru plata primită. Pe ea nu mai e nimic de plată.'
+    : (inv.fel === 'abonament' ? 'Am emis factura lunară de ' : 'Am emis factura de ') + bani + ' lei.' + (scad ? ' Scadență: ' + scad + '.' : '');
+  try {
+    await db.createNotification({ type: 'invoice_issued', severity: 'info', companyId: co.id, userId: null,
+      title: (pf ? 'Proformă nouă: ' : 'Factură nouă: ') + nr, body: corp, data: { invoiceFull: nr, total: Number(inv.total) || 0, invoiceId: inv.id } });
+    rez.notificare = true;
+  } catch (e) { /* anunțul nu oprește restul */ }
+  // ANAF: DOAR factura fiscală. Eșecul se scrie pe factură (coloana ANAF din listă îl arată roșu), nu se înghite.
+  if (pf) rez.anaf = 'nu_se_trimite';
+  else if (!(efactura && efactura.enabled())) rez.anaf = 'fara_token';
+  else {
+    try {
+      const r = await efactura.uploadInvoice(inv, {});
+      if (r.ok) { await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index }); rez.anaf = 'uploaded'; }
+      else {
+        rez.anaf = 'error'; rez.anafEroare = String(r.error || 'respinsă de ANAF').slice(0, 300);
+        console.error('[E-FACTURA] ANAF a respins factura ' + nr + ':', rez.anafEroare);
+        await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: rez.anafEroare }).catch(function () {});
+      }
+    } catch (e) {
+      rez.anaf = 'error'; rez.anafEroare = String(e.message).slice(0, 300);
+      console.error('[E-FACTURA] EȘEC la trimiterea facturii ' + nr + ':', e.message);
+      try { captureError(e, { route: 'efactura-upload', context: { invoice: nr } }); } catch (_) {}
+      await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: rez.anafEroare }).catch(function () {});
+    }
+  }
+  // Emailul, cu hârtia atașată — același PDF ca la „Descarcă" (factura_pdf.js).
+  if (!(mailer && mailer.enabled())) rez.emailMotiv = 'serverul n-are email';
+  else if (!co.contact_email) rez.emailMotiv = 'firma n-are adresă de email';
+  else {
+    let atasate;
+    try {
+      if (facturaPdf) {
+        const pdf = await _pdfInBuffer(facturaPdf.facturaPdf(inv, iss));
+        atasate = [{ filename: facturaPdf.numeFisier(inv), content: pdf, contentType: 'application/pdf' }];
+      }
+    } catch (e) { /* fără hârtie atașată, emailul tot pleacă: documentul e și în platformă */ }
+    try {
+      const r = await mailer.send({ to: co.contact_email, replyTo: (iss && iss.email) || undefined,
+        subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate });
+      rez.email = !!(r && r.ok);
+      if (!rez.email) rez.emailMotiv = (r && r.error) || 'trimiterea a eșuat';
+    } catch (e) { rez.emailMotiv = e.message; }
+  }
+  return rez;
 }
 // ─── Facturare AUTOMATĂ lunară: pe ziua de facturare a companiei (auto_invoice=true) emite factura lunii, o notifică,
 //     o trimite la ANAF (dacă e activ) și pe email (dacă SMTP e setat). IDEMPOTENT: o singură factură de ABONAMENT
@@ -2289,20 +2382,7 @@ async function billingAutoInvoiceTick() {
         subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines, issuer: iss, client: _clientSnapshot(co), note: 'Factură lunară automată', createdBy: null,
         fel: 'abonament', luna: calc.luna
       });
-      await db.createNotification({ type: 'invoice_issued', severity: 'info', companyId: co.id, userId: null, title: 'Factură nouă: ' + num.full, body: 'Am emis factura lunară de ' + calc.total.toFixed(2) + ' lei. Scadență în ' + termDays + ' zile.', data: { invoiceFull: num.full, total: calc.total } }).catch(function () {});
-      // e-Factura ANAF: eșecul era ÎNGHIȚIT (catch gol) → dacă ANAF respingea factura, nimeni nu afla.
-      if (efactura && efactura.enabled()) {
-        try {
-          const r = await efactura.uploadInvoice(inv, {});
-          if (r.ok) await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index });
-          else { console.error('[E-FACTURA] ANAF a respins factura ' + num.full + ':', r.error || 'eroare necunoscută'); await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(r.error || 'respinsă de ANAF').slice(0, 300) }).catch(function () {}); }
-        } catch (e) {
-          console.error('[E-FACTURA] EȘEC la trimiterea facturii ' + num.full + ':', e.message);
-          try { captureError(e, { route: 'efactura-auto-upload', context: { invoice: num.full } }); } catch (_) {}
-          await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(e.message).slice(0, 300) }).catch(function () {});
-        }
-      }
-      if (mailer && mailer.enabled() && co.contact_email) { mailer.send({ to: co.contact_email, subject: 'Factură ' + num.full + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss), text: 'Factura ' + num.full + ', total ' + calc.total.toFixed(2) + ' lei.' }).catch(function () {}); }
+      await _trimiteFactura(inv, co, iss);   // anunț + ANAF + email cu PDF — ca orice factură (30.09)
       out.issued.push(num.full);
       console.log('[BILLING] factură automată ' + num.full + ' → companie #' + co.id + ' (' + calc.total.toFixed(2) + ' lei)');
     } catch (e) { console.warn('[BILLING] auto-invoice co #' + co.id + ':', e.message); }
@@ -5687,7 +5767,8 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
 function _drumContract(c, dd) {
   if (!c || !dd) return null;
   return contracte.drumulClientului({ contract: c, areOferta: !!dd.oferte[c.id],
-    montaje: dd.montaje[c.id] || { total: 0, executate: 0 }, aparate: dd.aparate[c.company_id] || 0, facturi: dd.facturi[c.company_id] || 0 });
+    montaje: dd.montaje[c.id] || { total: 0, executate: 0, montate: 0 }, aparate: dd.aparate[c.company_id] || 0, facturi: dd.facturi[c.company_id] || 0,
+    avansLa: contracte.avansContract((dd.avans || {})[c.company_id], c), acum: Date.now() });
 }
 app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -6119,10 +6200,13 @@ app.put('/api/companies/:id/dosar', requireAuth, requireSuperadmin, async (req, 
       const r = b.legal_rep || {};
       d.legal_rep = text(r.name, 120) ? { name: text(r.name, 120), role: text(r.role, 80) } : null;
     }
+    // Plătitoare de TVA — vine de la ANAF (butonul „ANAF"). Hotărăște ce scrie pe factură: „RO" în fața CUI-ului
+    // și codul de TVA din factura electronică. Până pe 30.09 se arăta pe ecran și nu se salva nicăieri.
+    if (b.vat_payer === true || b.vat_payer === false) d.vat_payer = b.vat_payer;
     await db.completeazaDosarFirma(id, d);
     auditReq(req, 'update', 'company', id, { dosar: Object.keys(d) });
     const dupa = await db.getCompanyById(id);
-    res.json({ ok: true, company: { id: id, name: dupa.name, cui: dupa.cui, reg_com: dupa.reg_com, address: dupa.address, contact_email: dupa.contact_email, legal_rep: dupa.legal_rep } });
+    res.json({ ok: true, company: { id: id, name: dupa.name, cui: dupa.cui, reg_com: dupa.reg_com, address: dupa.address, contact_email: dupa.contact_email, legal_rep: dupa.legal_rep, vat_payer: dupa.vat_payer !== false } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -6944,9 +7028,17 @@ app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req,
     if (companyId != null && demoCompanyId != null && companyId === demoCompanyId && imeis.some(im => !DEMO_SET.has(im))) {
       return res.status(400).json({ error: 'Compania demo e doar pentru vehiculele simulate.' });
     }
-    const moved = await db.setDevicesCompanyBulk(imeis, companyId);
+    // Fiecare aparat trece prin ACEEAȘI regulă ca la „Trece pe firmă" (`_trecePeFirma`): pe firma nouă abonamentul
+    // pornește din nou, la prima transmisie, iar stocul se mută odată cu aparatul. Până pe 30.09 ruta asta scria
+    // doar firma (un UPDATE în bloc): o mașină mutată de la o firmă la alta ajungea pe factura celei noi ca și cum
+    // ar fi mers la ea de luni de zile, iar în stoc rămânea la firma veche.
+    let moved = 0;
+    for (const imei of imeis) {
+      if (!(await db.getDeviceByImei(imei))) continue;
+      await _trecePeFirma(req, imei, companyId);
+      moved++;
+    }
     invalidateAccessCache();
-    imeis.forEach(im => _devCompanyCache.delete(im));
     refreshWsScope();
     auditReq(req, 'assign_company_bulk', 'device', null, { companyId, count: moved, imeis: imeis.slice(0, 50) });
     res.json({ ok: true, moved });
@@ -13342,6 +13434,22 @@ app.get('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
     res.json({ invoices: rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Hârtia facturii (și a proformei), ca fișier PDF — ca oferta și contractul (Alin, 30.09). Aceeași hârtie pleacă
+// atașată la email (`_trimiteFactura`). Numele: „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf".
+async function _trimitePdfFactura(res, inv) {
+  if (!facturaPdf) return res.status(503).json({ error: 'Hârtia facturii nu se poate face pe serverul ăsta.' });
+  let emitentAcum = {}; try { emitentAcum = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', _antetDescarcare(facturaPdf.numeFisier(inv)));
+  facturaPdf.facturaPdf(inv, emitentAcum).pipe(res);
+}
+app.get('/api/invoices/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10); if (!Number.isFinite(id)) return res.status(400).json({ error: 'Identificator invalid' });
+    const inv = await db.getInvoice(id); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    await _trimitePdfFactura(res, inv);
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
 app.get('/api/invoices/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try { const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' }); res.json(inv); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -13486,7 +13594,9 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
       try { montajeFacturate = await db.marcheazaMontajeFacturate(id, b.montaje); } catch (e) {}
     }
     auditReq(req, 'issue', tip === 'proforma' ? 'proforma' : 'invoice', inv.id, { full: num.full, company: id, total: calc.total, fel: fel, luna: luna });
-    res.json({ ok: true, invoice: inv, montajeFacturate: montajeFacturate });
+    // Pleacă singură, ca factura automată: anunț în aplicație, email cu PDF, ANAF (doar fiscala). Răspunsul spune ce a plecat.
+    const trimisa = await _trimiteFactura(inv, co, iss);
+    res.json({ ok: true, invoice: inv, montajeFacturate: montajeFacturate, trimisa: trimisa });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Stare document: 'paid' | 'canceled'.
@@ -13529,7 +13639,9 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
         await db.updateInvoice(inv.id, { status: 'paid', paidAt: now, facturaId: f.id });
         _invalidateAccessCache(inv.company_id);
         auditReq(req, 'paid', 'proforma', inv.id, { factura: num.full, factura_id: f.id, paymentId: r.payment && r.payment.id });
-        return res.json({ ok: true, invoice: r.invoice || f, payment: r.payment, dinProforma: inv.id });
+        // Factura fiscală a avansului pleacă și ea singură: clientului (pentru contabilitatea lui) și la ANAF.
+        const trimisa = await _trimiteFactura(r.invoice || f, co, iss);
+        return res.json({ ok: true, invoice: r.invoice || f, payment: r.payment, dinProforma: inv.id, trimisa: trimisa });
       }
       if (inv.status === 'paid') return res.json({ ok: true, already: true });
       if (inv.status === 'canceled') return res.status(400).json({ error: 'Factura e anulată.' });
@@ -13563,6 +13675,13 @@ app.post('/api/invoices/:id/efactura', requireAuth, requireSuperadmin, async (re
     if (inv.status === 'canceled') return res.status(400).json({ error: 'Factură anulată' });
     // Proforma nu e document fiscal: la ANAF ajunge FACTURA emisă la încasarea ei, nu proforma.
     if (inv.type === 'proforma') return res.status(400).json({ error: 'Proforma nu se trimite la ANAF — se trimite factura emisă la încasare.' });
+    // De pe 30.09 orice factură pleacă SINGURĂ la ANAF, la emitere. O a doua trimitere ar pune aceeași factură de
+    // două ori în SPV-ul clientului: se retrimite DOAR una respinsă (`error`) sau netrimisă încă.
+    if (inv.efactura_status === 'uploaded' || inv.efactura_status === 'validated') {
+      return res.status(409).json({ error: inv.efactura_status === 'validated'
+        ? 'Factura e deja validată de ANAF — nu se mai trimite.'
+        : 'Factura e deja la ANAF, în procesare. Apasă „Verifică status ANAF"; se retrimite doar dacă e respinsă.' });
+    }
     if (!efactura.enabled()) return res.status(400).json({ error: 'e-Factura e dormantă — setează ANAF_EFACTURA_TOKEN + ANAF_CIF pe server.' });
     const r = await efactura.uploadInvoice(inv, {});
     if (!r.ok) { await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(r.error || '').slice(0, 500) }); return res.status(400).json({ error: r.error || 'Trimitere eșuată', raw: r.raw }); }
@@ -15100,6 +15219,17 @@ app.post('/api/admin/masini/potrivire', requireAuth, requireSuperadmin, async (r
 // și cu starea lor. Până pe 28.09 vedea aici PLĂȚILE, îmbrăcate în „Factură RAT-AAAA-000{id plată}" — un
 // număr inventat din id-ul plății, care se putea bate cap în cap cu numărul unei facturi adevărate, iar
 // facturile fiscale nu le putea deschide deloc. Ciornele nu pleacă spre client.
+// Clientul își descarcă hârtia unui document PROPRIU (factură sau proformă). Doar al firmei lui și doar emis:
+// pentru un id străin sau o ciornă răspunsul e același 404 — nu spunem nimănui ce facturi au alții.
+app.get('/api/billing/my-invoices/:id/pdf', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
+  try {
+    const cid = req.companyId, id = parseInt(req.params.id, 10);
+    if (cid == null || !Number.isFinite(id)) return res.status(404).json({ error: 'Document inexistent' });
+    const inv = await db.getInvoice(id);
+    if (!inv || Number(inv.company_id) !== Number(cid) || inv.status === 'draft') return res.status(404).json({ error: 'Document inexistent' });
+    await _trimitePdfFactura(res, inv);
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
 app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
   try {
     const cid = req.companyId;

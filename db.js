@@ -2397,23 +2397,33 @@ async function contracteToate(limita) {
 // Ce trebuie ca să se socotească drumul fiecărui client (contracts.js → `drumulClientului`), pentru
 // TOATE firmele deodată: patru numărători, nu câte o cerere pe rând de listă.
 async function drumDateToate(executate) {
-  const [ap, fa, mo, of] = await Promise.all([
+  const [ap, fa, mo, of, av] = await Promise.all([
     pool.query(`SELECT company_id, COUNT(*)::int AS n FROM devices
                  WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' GROUP BY company_id`),
     pool.query(`SELECT company_id, COUNT(*)::int AS n FROM invoices
                  WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled'
                    AND type IS DISTINCT FROM 'proforma' GROUP BY company_id`),   // proforma e cerere de plată, nu factură
-    pool.query(`SELECT contract_id, COUNT(*)::int AS total,
-                       COUNT(*) FILTER (WHERE status = ANY($1::varchar[]))::int AS executate
-                  FROM montaje WHERE contract_id IS NOT NULL GROUP BY contract_id`, [executate]),
-    pool.query(`SELECT DISTINCT contract_id FROM offers WHERE contract_id IS NOT NULL`)
+    // `montate` = câte mașini au montajul de aparat GPS executat (una pe mașină) — pentru „10 din 50" și termen (30.09).
+    pool.query(`SELECT m.contract_id, COUNT(*)::int AS total,
+                       COUNT(*) FILTER (WHERE m.status = ANY($1::varchar[]))::int AS executate,
+                       COALESCE(SUM(CASE WHEN m.status = ANY($1::varchar[]) THEN
+                         (SELECT COALESCE(SUM((it->>'buc')::numeric), 0) FROM jsonb_array_elements(COALESCE(m.items, '[]'::jsonb)) it
+                           WHERE it->>'tip' = 'gps') ELSE 0 END), 0)::int AS montate
+                  FROM montaje m WHERE m.contract_id IS NOT NULL GROUP BY m.contract_id`, [executate]),
+    pool.query(`SELECT DISTINCT contract_id FROM offers WHERE contract_id IS NOT NULL`),
+    // Clipele în care s-au încasat proforme: factura fiscală născută dintr-o proformă. Termenul de montaj curge de la
+    // PRIMA de după contract (contracts.avansContract) — de-aia toate, nu doar cea mai veche a firmei.
+    pool.query(`SELECT company_id, issue_date AS la FROM invoices
+                 WHERE din_proforma IS NOT NULL AND status IS DISTINCT FROM 'canceled' AND issue_date IS NOT NULL
+                 ORDER BY company_id, issue_date`)
   ]);
   const harta = function (rows, k, v) { const o = {}; rows.forEach(function (r) { o[r[k]] = v ? v(r) : r.n; }); return o; };
   return {
     aparate: harta(ap.rows, 'company_id'),
     facturi: harta(fa.rows, 'company_id'),
-    montaje: harta(mo.rows, 'contract_id', function (r) { return { total: r.total, executate: r.executate }; }),
-    oferte: harta(of.rows, 'contract_id', function () { return true; })
+    montaje: harta(mo.rows, 'contract_id', function (r) { return { total: r.total, executate: r.executate, montate: r.montate }; }),
+    oferte: harta(of.rows, 'contract_id', function () { return true; }),
+    avans: av.rows.reduce(function (o, r) { const la = Number(r.la); if (la > 0) (o[r.company_id] = o[r.company_id] || []).push(la); return o; }, {})
   };
 }
 // Firmele care n-au NICIUN contract — ele sunt gaura din dosar, nu contractele existente.
@@ -2462,7 +2472,7 @@ async function setCompanySuspend(id, date) {
 async function contracteInVigoare() {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
-            c.notice_days, co.name AS company_name, co.contact_email,
+            c.notice_days, c.montaj, c.created_at, co.name AS company_name, co.contact_email,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite
        FROM contracts c JOIN companies co ON co.id = c.company_id
@@ -2498,6 +2508,8 @@ async function updateCompany(id, data) {
   const pune = (sql, val) => { params.push(val); sets.push(sql.replace('?', '$' + params.length)); };
   if (are('name') && d.name) pune('name=?', d.name);
   for (const k of ['contact_email', 'phone', 'cui', 'reg_com', 'address', 'iban', 'bank_name']) if (are(k)) pune(k + '=?', d[k] || null);
+  // Plătitoare de TVA: DOAR un da/nu adevărat (de la ANAF). Altceva nu atinge câmpul.
+  if (are('vat_payer') && (d.vat_payer === true || d.vat_payer === false)) pune('vat_payer=?', d.vat_payer);
   if (are('plan') && d.plan) pune('plan=?', d.plan);
   if (are('active') && d.active !== undefined && d.active !== null) pune('active=?', d.active);
   if (are('contacts') && d.contacts !== undefined) pune('contacts=?', JSON.stringify(d.contacts));
@@ -2512,6 +2524,7 @@ async function completeazaDosarFirma(id, d) {
   const pune = function (col, v) { val.push(v); set.push(col + ' = $' + val.length); };
   ['name', 'cui', 'reg_com', 'address', 'contact_email'].forEach(function (k) { if (d[k] !== undefined) pune(k, d[k]); });
   if (d.legal_rep !== undefined) pune('legal_rep', d.legal_rep ? JSON.stringify(d.legal_rep) : null);
+  if (d.vat_payer === true || d.vat_payer === false) pune('vat_payer', d.vat_payer);
   if (!set.length) return false;
   await pool.query('UPDATE companies SET ' + set.join(', ') + ' WHERE id = $1', val);
   return true;
@@ -3315,18 +3328,6 @@ async function getDevicesLite() {
     ORDER BY last_seen DESC NULLS LAST
   `);
   return result.rows;
-}
-
-// UPDATE bulk: mută mai multe vehicule pe aceeași companie într-un singur statement (atomic).
-async function setDevicesCompanyBulk(imeis, companyId) {
-  if (!Array.isArray(imeis) || !imeis.length) return 0;
-  const r = await pool.query(
-    'UPDATE devices SET company_id = $2 WHERE imei = ANY($1::varchar[])',
-    [imeis, companyId || null]
-  );
-  await _purgeDeviceFeed(imeis); // curăță feed-ul vechi al vehiculelor mutate
-  // Pattern PGlite-safe: PGlite expune affectedRows, pg expune rowCount (vezi db.js:957)
-  return r.affectedRows || r.rowCount || 0;
 }
 
 async function getDeviceHistory(imei, from, to, limit) {
@@ -5058,7 +5059,6 @@ module.exports = {
   insertPositions,
   getDevices,
   getDevicesLite,
-  setDevicesCompanyBulk,
   setUsersCompanyBulk,
   setDriversCompanyBulk,
   countSuperadminsInIds,

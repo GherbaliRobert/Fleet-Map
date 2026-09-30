@@ -2733,6 +2733,13 @@
     .raco .drum-acum i { color: var(--accent); }
     .raco .drum-urmeaza .drum-e, .raco .drum-nu_e_cazul .drum-e { color: var(--text-muted); font-weight: 600; }
     .raco .drum-urm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between; margin-top: 10px; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border); font-size: 12.5px; }
+    /* Termenul de montaj (30 de zile de la încasarea avansului, 30.09): portocaliu cu o săptămână înainte, roșu după.
+       Socotit pe amândouă temele: pe cea închisă 6,6 / 5,7; pe cea deschisă (culori închise) 6,5 / 5,5. */
+    .raco .drum-termen { margin-top: 10px; padding: 8px 11px; border-radius: 9px; font-size: 12.5px; line-height: 1.45; }
+    .raco .drum-termen.curand { color: #fb923c; background: rgba(249,115,22,.10); }
+    .raco .drum-termen.depasit { color: #f87171; background: rgba(239,68,68,.10); }
+    body:not(.dark) .raco .drum-termen.curand { color: #9a3412; }
+    body:not(.dark) .raco .drum-termen.depasit { color: #b91c1c; }
     @media (max-width: 720px) { .raco .drum-pasi { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .raco .rax-co-table th { background: var(--bg-dark); padding: 10px 12px; font-weight: 800; border-bottom: 1.5px solid var(--border); }
     .raco .rax-co-table td { padding: 12px; }

@@ -402,6 +402,10 @@ function pachetFacturare() {
     T('anularea vorbește de „document"', /Anulezi acest document\?/.test(doc) && /'Document anulat'/.test(doc));
     T('„Verifică status ANAF" pe facturile trimise (nu pe proformă)', /!pf && inv\.efactura_status === 'uploaded'/.test(doc) && /Api\.invoiceEfacturaStatus\(inv\.id\)/.test(doc));
     T('proforma nu se trimite la ANAF', /!pf && inv\.status !== 'canceled' && inv\.efactura_status !== 'validated'/.test(doc));
+    // 30.09: factura pleacă singură la ANAF la emitere. Butonul rămâne doar pe cea netrimisă sau respinsă — ca pe web.
+    T('„Trimite ANAF" nu apare pe o factură aflată deja la ANAF (ar dubla-o în SPV) — aceeași regulă ca pe web',
+      /inv\.efactura_status !== 'validated' && inv\.efactura_status !== 'uploaded' && <button/.test(doc) &&
+      /v\.efactura_status !== 'validated' && v\.efactura_status !== 'uploaded'\) act \+= /.test(html));
     T('hârtia arată tot: ziua emiterii, furnizorul cu IBAN, rândurile, TVA, totalul, scadența, perioada, mențiunile, nota proformei',
       /Emisă pe/.test(doc) && /IBAN: \{iss\.iban\}/.test(doc) && /lines\.map/.test(doc) && /inv\.vat_amount/.test(doc) && /Total de plată/.test(doc) &&
       /Scadență/.test(doc) && /Perioada/.test(doc) && /Mențiuni/.test(doc) && /document fără valoare fiscală/.test(doc) && /Emisă la încasarea unei proforme\./.test(doc));
@@ -459,9 +463,11 @@ function pachetFisa() {
   const W = vm.createContext({ Date, Number, String, Math, JSON });
   const invMoney = functie(html, 'function _invMoney(n) {');
   const codFacturi = functie(html, 'function _raxCodFacturi(d) {');
-  T('găsesc în pagină _invMoney și _raxCodFacturi', !!(invMoney && codFacturi));
+  // „Vezi" / „Descarcă" pe fiecare document (30.09): hârtia e PDF-ul de pe server, butoanele le face _invHartieBtns.
+  const hartieBtns = functie(html, 'function _invHartieBtns(url, pf) {');
+  T('găsesc în pagină _invMoney, _invHartieBtns și _raxCodFacturi', !!(invMoney && hartieBtns && codFacturi));
   let webOk = true;
-  try { vm.runInContext([web.esc, invMoney, web.luni, web.luna, web.stare, codFacturi].join('\n'), W); } catch (e) { webOk = false; console.log('    (pagina: ' + e.message + ')'); }
+  try { vm.runInContext([web.esc, invMoney, hartieBtns, web.luni, web.luna, web.stare, codFacturi].join('\n'), W); } catch (e) { webOk = false; console.log('    (pagina: ' + e.message + ')'); }
   T('bucățile din pagină rulează', webOk);
 
   // Telefonul: blocul dintre sentinele din fișă (+ bani2, legatura), cu lunaText din lib/factura.ts.

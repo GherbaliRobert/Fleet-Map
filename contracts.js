@@ -440,7 +440,54 @@ const PASI_DRUM = [
   ['montaj', 'Montajul'], ['aparate', 'Aparatele la firmă'], ['factura', 'Prima factură']
 ];
 const MONTAJ_EXECUTAT = ['executat', 'facturat_de_partener', 'facturat_clientului'];
-// d = { contract, areOferta, montaje: { total, executate }, aparate: N, facturi: N }
+// ─── Termenul de montaj (Alin, 30.09: „aplicația să numere cele 30 de zile") ───
+// Contractul (cap. V) promite livrarea și montajul în cel mult MONTAJ_ZILE_DUPA_AVANS zile de la ÎNCASAREA avansului
+// pentru aparate. Până pe 30.09 nu-l număra nimeni. Aici se socotește, o singură dată, pentru „Drumul clientului"
+// (fișa firmei și lista Contracte) și pentru anunțul zilnic către noi: cu MONTAJ_AVERTIZARE_ZILE înainte și la depășire.
+const MONTAJ_AVERTIZARE_ZILE = 7;
+function _jsonC(v) { if (v && typeof v === 'object') return v; if (typeof v === 'string' && v) { try { return JSON.parse(v); } catch (e) {} } return null; }
+// Câte mașini are contractul de montat: montajele de aparat GPS din Anexa nr. 2 (un aparat pe mașină).
+function masiniDeMontat(contract) {
+  const a2 = _jsonC(contract && contract.montaj) || {};
+  return (a2.items || []).filter(function (r) { return r && r.tip === 'gps'; })
+    .reduce(function (s, r) { return s + (Number(r.buc) || 0); }, 0);
+}
+// Avansul unui contract = PRIMA proformă încasată după ce s-a făcut contractul. O firmă cu un contract vechi, încheiat,
+// nu-și moștenește avansul de atunci (altfel contractul nou ar porni cu termenul „depășit cu 400 de zile").
+// `incasari` = clipele încasărilor de proformă ale firmei (factura fiscală născută din proformă), în orice ordine.
+function avansContract(incasari, contract) {
+  const de = Number(contract && contract.created_at) || 0;
+  const l = (Array.isArray(incasari) ? incasari : []).map(Number).filter(function (x) { return x > 0 && x >= de; });
+  return l.length ? Math.min.apply(null, l) : null;
+}
+// avansLa = clipa în care proforma aparatelor s-a încasat; montate = câte mașini au lucrarea de montaj executată.
+// null = nu e cazul (contract încheiat, fără avans încasat, fără mașini de montat în anexă).
+// Altfel { pana, deMontat, montate, zile (rămase; negativ = depășit), stare: 'in_termen' | 'curand' | 'depasit' | 'gata' }.
+// Mașinile pe care clientul nu le aduce PRELUNGESC termenul (cap. V); aplicația nu știe asta — anunțul o spune.
+function termenMontaj(contract, avansLa, montate, acum) {
+  if (!contract || contract.status === 'incheiat' || !(Number(avansLa) > 0)) return null;
+  const deMontat = masiniDeMontat(contract);
+  if (!(deMontat > 0)) return null;
+  const pana = Number(avansLa) + MONTAJ_ZILE_DUPA_AVANS * ZI;
+  const m = Math.max(0, Number(montate) || 0);
+  // Zile de CALENDAR (ora României), nu ore împărțite la 24: în ziua termenului scrie „azi e ultima zi", nu „mai e o zi".
+  const ziCal = function (ms) { return Math.round(Date.parse(new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' }) + 'T00:00:00Z') / ZI); };
+  const zile = ziCal(pana) - ziCal(Number(acum) || Date.now());
+  const stare = m >= deMontat ? 'gata' : zile < 0 ? 'depasit' : zile <= MONTAJ_AVERTIZARE_ZILE ? 'curand' : 'in_termen';
+  return { pana: pana, deMontat: deMontat, montate: m, zile: zile, stare: stare };
+}
+// „10 din 50 de mașini montate", „0 din 1 mașină montată" — același text pe drum, în anunțul zilnic și pe ecran.
+function montateText(montate, deMontat) {
+  return (Math.max(0, Number(montate) || 0)) + ' din ' + numar(deMontat, 'mașină', 'mașini') + (Number(deMontat) === 1 ? ' montată' : ' montate');
+}
+// „mai sunt 21 de zile", „mai e o zi", „azi e ultima zi", „depășit cu 3 zile".
+function termenText(t) {
+  if (!t) return '';
+  if (t.zile < 0) return 'depășit cu ' + numar(-t.zile, 'zi', 'zile');
+  if (t.zile === 0) return 'azi e ultima zi';
+  return t.zile === 1 ? 'mai e o zi' : 'mai sunt ' + numar(t.zile, 'zi', 'zile');
+}
+// d = { contract, areOferta, montaje: { total, executate, montate? }, aparate: N, facturi: N, avansLa?, acum? }
 function drumulClientului(d) {
   const c = d && d.contract;
   if (!c) return null;
@@ -452,13 +499,25 @@ function drumulClientului(d) {
   const cuMontaj = ((anexa2.items || []).length > 0) || (((anexa2.echipamente || {}).items || []).length > 0) || mo.total > 0;
   const nAp = Number(d.aparate) || 0, nFa = Number(d.facturi) || 0;
   const zi = function (ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : ''; };
+  // Montajul e gata abia când TOATE mașinile din anexă au lucrarea executată (30.09) — până atunci pasul spune câte
+  // și, dacă avansul e încasat, termenul. Fără cifrele astea (apelanți vechi, anexă fără montaj de aparat), regula de
+  // dinainte: o lucrare executată bifează pasul.
+  const deMontat = masiniDeMontat(c);
+  const termen = termenMontaj(c, d.avansLa, mo.montate, d.acum);
+  const _stareMontaj = function () {
+    if (deMontat > 0 && mo.montate != null) {
+      const gata = mo.montate >= deMontat;
+      return [gata ? 'gata' : 'urmeaza', montateText(mo.montate, deMontat) + (termen && !gata ? ' · termen ' + zi(termen.pana) + ', ' + termenText(termen) : '')];
+    }
+    return mo.executate > 0
+      ? ['gata', numar(mo.executate, 'lucrare executată', 'lucrări executate')]
+      : ['urmeaza', mo.total ? numar(mo.total, 'lucrare programată', 'lucrări programate') : 'nicio lucrare încă'];
+  };
   const stari = {
     oferta: d.areOferta ? ['gata', 'din ofertă'] : ['nu_e_cazul', 'fără ofertă'],
     trimis: trimis ? ['gata', c.sent_at ? 'pe ' + zi(c.sent_at) + (c.sent_to ? ', la ' + c.sent_to : '') : ''] : ['urmeaza', st === 'ciorna' ? 'întâi se aprobă' : ''],
     semnat: semnat ? ['gata', c.signed_at ? 'pe ' + zi(c.signed_at) : ''] : ['urmeaza', ''],
-    montaj: !cuMontaj ? ['nu_e_cazul', 'fără montaj'] : (mo.executate > 0
-      ? ['gata', numar(mo.executate, 'lucrare executată', 'lucrări executate')]
-      : ['urmeaza', mo.total ? numar(mo.total, 'lucrare programată', 'lucrări programate') : 'nicio lucrare încă']),
+    montaj: !cuMontaj ? ['nu_e_cazul', 'fără montaj'] : _stareMontaj(),
     aparate: nAp > 0 ? ['gata', numar(nAp, 'aparat', 'aparate')] : ['urmeaza', 'niciun aparat încă'],
     factura: nFa > 0 ? ['gata', numar(nFa, 'factură', 'facturi')] : ['urmeaza', '']
   };
@@ -469,7 +528,10 @@ function drumulClientului(d) {
     if (p) { p.stare = 'acum'; urmatorul = p.cheie; }
   }
   const socotiti = pasi.filter(function (x) { return x.stare !== 'nu_e_cazul'; });
-  return { pasi: pasi, urmatorul: urmatorul, gata: socotiti.filter(function (x) { return x.stare === 'gata'; }).length, din: socotiti.length };
+  return { pasi: pasi, urmatorul: urmatorul, gata: socotiti.filter(function (x) { return x.stare === 'gata'; }).length, din: socotiti.length,
+    // Cu textele gata scrise, ca ecranul să nu-și facă a doua regulă de „mai sunt N zile".
+    termenMontaj: termen && termen.stare !== 'gata'
+      ? Object.assign({}, termen, { text: termenText(termen), cate: montateText(termen.montate, termen.deMontat) }) : null };
 }
 
 // Ce trebuie păstrat dintr-o anexă când se re-salvează DOAR lista de aparate: serviciile lunare,
@@ -500,5 +562,6 @@ module.exports = {
   MONTAJ_ZILE_DUPA_AVANS, AVANS_ZILE_RENUNTARE,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
   calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
-  facAnexa, dinAnexaDePastrat, anexaInVigoare
+  facAnexa, dinAnexaDePastrat, anexaInVigoare,
+  MONTAJ_AVERTIZARE_ZILE, masiniDeMontat, avansContract, termenMontaj, termenText, montateText
 };

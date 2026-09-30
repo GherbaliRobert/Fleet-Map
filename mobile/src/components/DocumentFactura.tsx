@@ -132,7 +132,9 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
           </div>
           {actiuni && <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-primary" disabled={!!busy} onClick={() => act('paid')}><Icon name="check" size={15} color="#06210f" /> {pf ? 'Încasată' : 'Plătită'}</button>}
-            {!pf && inv.status !== 'canceled' && inv.efactura_status !== 'validated' && <button class="btn" style={btnSec} disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : 'Trimite ANAF'}</button>}
+            {/* Factura pleacă singură la ANAF la emitere (30.09): butonul doar pe cea netrimisă sau respinsă — pe una aflată deja
+                la ANAF ar dubla-o în SPV-ul clientului (serverul refuză, 409). Ca pe web. */}
+            {!pf && inv.status !== 'canceled' && inv.efactura_status !== 'validated' && inv.efactura_status !== 'uploaded' && <button class="btn" style={btnSec} disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : (inv.efactura_status === 'error' ? 'Retrimite ANAF' : 'Trimite ANAF')}</button>}
             {!pf && inv.efactura_status === 'uploaded' && <button class="btn" style={btnSec} disabled={!!busy} onClick={() => act('anafStare')}><Icon name="refresh" size={14} /> {busy === 'anafStare' ? '…' : 'Verifică status ANAF'}</button>}
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-danger-ghost" disabled={!!busy} onClick={() => act('cancel')}>Anulează</button>}
           </div>}
