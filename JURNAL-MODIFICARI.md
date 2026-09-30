@@ -81,7 +81,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-30
 
-### AMÂNDOI · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web; factura în PDF — `HASH`
+### AMÂNDOI · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web; factura în PDF — `aa64ecc`
 
 Hotărât pe 30.09: „la fel ca și pe web". Până acum, pe telefon, contul unei firme suspendate rămânea înăuntru, cu
 banda roșie și butonul „Vezi facturile". Acum telefonul face exact ce face web-ul:
