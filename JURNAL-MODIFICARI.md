@@ -78,7 +78,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-30
 
-### AMÂNDOI · Aplicația de telefon 1.0.5: facturarea lui Alin din 29.09, adusă pe telefon (lotul 4) — `HASH`
+### AMÂNDOI · Aplicația de telefon 1.0.5: facturarea lui Alin din 29.09, adusă pe telefon (lotul 4) — `5b97118`
 
 Pe 29.09 Alin a schimbat facturarea pe web (factura unică și proforma, abonamentul pe zile, fila Facturi din fișa
 firmei, aparatele trecute pe firmă în bloc, „Client nou" cu linkul de parolă). Telefonul n-avea nimic din ele: de pe
