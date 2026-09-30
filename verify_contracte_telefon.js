@@ -18,7 +18,8 @@
 // doar în secțiunea Montaj (păzită și ea).
 // Din 29.09: „Completează" după un „Trimite" refuzat nu mai lasă o intrare în plus în istoric (butonul „înapoi"),
 // „E semnat" nu rescrie cu azi data salvată, dosarul nu pierde ce e scris și nesalvat în formular, iar întrebările
-// dosarului se închid la „înapoi".
+// dosarului se închid la „înapoi". „Emite prima factură" deschide factura UNICĂ (aparate, montaj), nu abonamentul
+// lunii — ca raxDrumFactura pe web —, pe aceeași adresă ca butoanele din fila Facturi a fișei firmei.
 // Nu pornește niciun server și nu are nevoie de TypeScript: citește fișierele ca text.
 const fs = require('fs');
 const C = require('./contracts');
@@ -330,9 +331,48 @@ T('„Adoptă aparatele" duce în Dispozitive → Neasignate, cu filtrul pus în
   !!mRuta && mRuta[1] === '/admin/devices?filtru=neasignate' && /neasignate:\s*'unassigned'/.test(devTsx));
 T('drumul și anexa goală folosesc aceeași adresă', /loc\.route\(RUTA_NEASIGNATE\)/.test(pasiTsx) && /loc\.route\(RUTA_NEASIGNATE\)/.test(anexaTsx));
 T('nicio adopție de aparat din ecranele de contract (adopția stă DOAR în Dispozitive, decizia din 17.09)', !/moveDevice|\/company['`]/.test(codCtr));
-const billTsx = citeste('mobile/src/screens/Billing.tsx');
-T('„Emite prima factură" deschide „Generează factură" cu firma aleasă (/billing?factura=)',
-  /'\/billing\?factura='/.test(pasiTsx) && /query[^;\n]*\.factura/.test(billTsx) && /GenerateInvoiceSheet[^\n]*preset=/.test(billTsx));
+// „Emite prima factură" (29.09): „Generează factură" cu firma aleasă și pe factura UNICĂ (aparate, montaj — din
+// contract), nu pe abonamentul lunii. Web: raxDrumFactura → raxOpenGenInvoice(companyId, 'unica'). Pe telefon,
+// adresa o face O SINGURĂ funcție (rutaFactura, lib/factura.ts), pe care o folosește și fila Facturi a fișei;
+// Facturare citește firma și felul din adresă și deschide fereastra pe felul cerut.
+const billTsx = citeste('mobile/src/screens/Billing.tsx'), factTs = citeste('mobile/src/lib/factura.ts');
+const webDrumFact = html.slice(html.indexOf('window.raxDrumFactura = '), html.indexOf('function _ctrePasHtml('));
+T('pe web, „Emite prima factură" deschide factura UNICĂ (raxOpenGenInvoice(companyId, \'unica\'))',
+  webDrumFact.length > 0 && /raxOpenGenInvoice\(companyId, 'unica'\)/.test(webDrumFact));
+// Funcțiile din lib/factura.ts, rulate (fără tipuri): adresa făcută de telefon și felul citit înapoi din ea.
+function dinFactura(nume) {
+  const m = new RegExp('export function ' + nume + '\\(([^)]*)\\)[^{]*\\{').exec(factTs);
+  if (!m) return null;
+  // Corpul, până la acolada care-l închide (merge și pe funcțiile scrise pe un singur rând).
+  let i = m.index + m[0].length, adanc = 1;
+  for (; i < factTs.length && adanc > 0; i++) { if (factTs[i] === '{') adanc++; else if (factTs[i] === '}') adanc--; }
+  const corp = factTs.slice(m.index + m[0].length, i - 1);
+  const par = m[1].split(',').map((p) => p.split(':')[0].replace('?', '').trim()).filter(Boolean);
+  try { return new Function(...par, corp); } catch (e) { return null; }
+}
+const rutaFactura = dinFactura('rutaFactura'), felDinAdresa = dinFactura('felDinAdresa');
+T('găsesc și pot rula rutaFactura și felDinAdresa (lib/factura.ts)', !!rutaFactura && !!felDinAdresa);
+if (rutaFactura && felDinAdresa) {
+  const adr = String(rutaFactura(7, 'unica'));
+  const qs = new URLSearchParams(adr.split('?')[1] || '');
+  T('adresa facturii unice e /billing, cu firma și fel=unica', adr.indexOf('/billing?') === 0 && qs.get('factura') === '7' && qs.get('fel') === 'unica', adr);
+  T('… iar Facturare o citește înapoi ca factură UNICĂ', felDinAdresa(qs.get('fel')) === 'unica');
+  const adrA = String(rutaFactura(7, 'abonament'));
+  const qsA = new URLSearchParams(adrA.split('?')[1] || '');
+  T('adresa abonamentului (și cea veche, fără fel) se citește ca abonamentul lunii',
+    qsA.get('factura') === '7' && felDinAdresa(qsA.get('fel') || undefined) === 'abonament' && felDinAdresa(undefined) === 'abonament', adrA);
+}
+T('„Emite prima factură" trece prin rutaPrimaFactura → rutaFactura(…, \'unica\') din lib/factura.ts (o singură adresă)',
+  /import \{[^}]*\brutaFactura\b[^}]*\} from '\.\.\/lib\/factura'/.test(pasiTsx) &&
+  /export const rutaPrimaFactura = \(companyId: any\) => rutaFactura\(companyId, 'unica'\);/.test(pasiTsx) &&
+  /buton\('report', 'Emite prima factură', \(\) => loc\.route\(rutaPrimaFactura\(c\.company_id\)\)\)/.test(pasiTsx) &&
+  !/'\/billing\?/.test(faraComentarii(pasiTsx)));
+T('Facturare citește firma și felul din adresă și deschide „Generează factură" pe felul cerut',
+  /loc\.query/.test(billTsx) && /\.factura\b/.test(billTsx) && /felDinAdresa\([^)]*\.fel\)/.test(billTsx) &&
+  /<GenerateInvoiceSheet[\s\S]{0,300}?preset=\{[\s\S]{0,200}?felInitial=\{/.test(billTsx));
+T('Facturare își curăță adresa (înlocuind-o), ca „înapoi" să ducă în fișă, pe fila de pe care ai plecat',
+  /loc\.route\('\/billing', true\)/.test(billTsx) &&
+  /const alegeFila = \(k: string\) => \{ setFila\(k\); if \(k !== filaCeruta\) loc\.route\(rutaFisa\(id, k\), true\); \};/.test(fisaTsx));
 T('„Programează montajul" din listă / fișa firmei duce în dosar cu `?lucrare=noua`', /rutaDosar\(companyId\) \+ '\?lucrare=noua'/.test(pasiTsx));
 T('dosarul citește `?lucrare=noua` și deschide formularul lucrării (biletul → ContractMontaj)',
   /\.lucrare \|\| ''\) === 'noua'/.test(detTsx) && /deschideNoua=\{bilet\}/.test(detTsx) && /deschideNoua === biletFolosit/.test(montajTsx) && /if \(!edit\) deschide\(null\)/.test(montajTsx));

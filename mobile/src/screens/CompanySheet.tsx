@@ -13,8 +13,14 @@ import { DrumClient } from '../components/ContractDrum';
 import { lipsuriFirma, randDinFisa, usePasiContract } from '../components/ContractPasi';
 import { CompanyAbonament } from './CompanyAbonament';
 import { CTR_STARI, CTR_EXPLIC, DOSAR_FEL, dupaIncetare, zile } from '../lib/contracte';
+// Documentele firmei: adresa ferestrei de emis, starea și luna — aceleași ca în Facturare (lib/factura.ts).
+// Întrebarea de dinainte de ✓ și metoda încasării stau tot acolo, scrise o singură dată pe telefon.
+import { lunaText, metodaText, rutaFactura, stareClient, INTREB_PROFORMA, INTREB_FACTURA, OK_PROFORMA, OK_FACTURA } from '../lib/factura';
+// „Vezi": hârtia documentului — ACEEAȘI ca în Facturare (nu o a doua, desenată aici).
+import { DocumentFactura } from '../components/DocumentFactura';
+import { useInapoiInchide } from '../lib/inapoiFoaie';
 import {
-  accesDetalii, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, nrPlati, nrUseri, nrVeh, ROL_ET, rutaDosar, rutaFisa,
+  accesDetalii, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, nrUseri, nrVeh, ROL_ET, rutaDosar, rutaFisa,
 } from '../lib/companii';
 import './admin.css';
 import './detail.css';
@@ -65,6 +71,10 @@ export function CompanySheet() {
   // Fila aleasă intră în ADRESĂ (înlocuiește intrarea, nu adaugă una): butoanele care pleacă din fișă — pașii din
   // drumul clientului, „Deschide Stoc echipamente" — te aduc, la „înapoi", pe fila de pe care ai plecat, nu pe Detalii.
   const alegeFila = (k: string) => { setFila(k); if (k !== filaCeruta) loc.route(rutaFisa(id, k), true); };
+  // „Deschide fila Facturi" din „Abonament & plăți" (web: raxCodTab('facturi')). Butonul stă jos pe o pagină
+  // lungă: fila nouă se arată de sus, nu de la mijloc.
+  const cont = useRef<HTMLDivElement>(null);
+  const deschideFacturi = () => { alegeFila('facturi'); if (cont.current) cont.current.scrollTop = 0; };
 
   const o = esteFirma(ov, id) ? ov : null;
   const co = (o && o.company) || {};
@@ -89,7 +99,7 @@ export function CompanySheet() {
         <div class="h-title">{co.name || 'Companie'}</div>
         <button class="h-btn" onClick={incarca} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
-      <div class="content co-page">
+      <div class="content co-page" ref={cont}>
         {err && (
           <div class="fm-empty" style="color:var(--red)">{err}
             <div style="margin-top:12px"><button class="fm-btn" onClick={incarca}>Reîncearcă</button></div>
@@ -118,8 +128,8 @@ export function CompanySheet() {
             {fila === 'detalii' && <Detalii o={o} onEdit={() => setFoaie('edit')} onConfig={() => setFoaie('config')} onSterge={() => setFoaie('sterge')} />}
             {fila === 'utilizatori' && <Utilizatori o={o} onReload={incarca} />}
             {fila === 'vehicule' && <Vehicule o={o} />}
-            {fila === 'facturi' && <Facturi o={o} />}
-            {fila === 'abonament' && <CompanyAbonament ov={o} onReload={incarca} />}
+            {fila === 'facturi' && <Facturi o={o} onReload={incarca} />}
+            {fila === 'abonament' && <CompanyAbonament ov={o} onReload={incarca} onFacturi={deschideFacturi} />}
             {fila === 'contract' && <Contract o={o} onDosar={() => loc.route(rutaDosar(id))} onReload={incarca} />}
           </>
         )}
@@ -312,30 +322,141 @@ function Vehicule({ o }: { o: any }) {
   );
 }
 
-// ─── Facturi (_raxCodFacturi): istoricul plăților ─────────────────────────────────────────────
-function Facturi({ o }: { o: any }) {
-  const p: any[] = o.payments || [];
-  if (!p.length) {
-    return (
-      <div class="fm-empty"><Icon name="report" size={32} color="var(--text-muted)" /><b>Nicio plată înregistrată</b>
-        Se încasează prin transfer bancar, pe factură. Plata se trece din „Abonament &amp; plăți".</div>
-    );
+// ─── Facturi (_raxCodFacturi): DOCUMENTELE firmei, cu starea și ✓, apoi încasările ─────────────────────
+// Până pe 29.09 fila arăta doar plățile, iar plata „se trecea din Abonament & plăți", cu luni de acces — ceas
+// scos pe 28.09. Acum, ca pe web: facturile și proformele firmei (fără ciorne: le scoate serverul, în /overview →
+// `facturi`), fiecare cu ce e, data, totalul și starea; ✓ pe cele neplătite; dedesubt, încasările.
+//   • Emiterea NU se face aici. Cele două butoane deschid „Generează factură" din Facturare, cu firma și felul
+//     deja alese (web: raxOpenGenInvoice(id, 'unica' | 'abonament')) — o singură fereastră de emis, nu două.
+//     Adresa o face rutaFactura (aceeași ca „Emite prima factură" din drumul clientului). La „înapoi" de acolo,
+//     fișa se redeschide pe fila asta: fila e în adresă (alegeFila → rutaFisa).
+//   • ✓ = PUT /api/invoices/:id/status {paid}, cu aceeași întrebare ca pe web (raxInvoiceMarkPaid). Pe o proformă
+//     înseamnă „Încasată": serverul emite factura fiscală cu aceleași rânduri și o dă plătită.
+//   • Starea e ACEEAȘI funcție ca în Facturare pe telefon (stareClient, lib/factura.ts ↔ _myInvStare, legate prin
+//     proba lui); luna din „abonament <luna>" la fel (lunaText ↔ _giLunaText). Aici se scrie doar coloana „Ce e"
+//     a fișei (mai scurtă decât cea din Facturare, ca pe web) — blocul dintre sentinele, pe care proba îl rulează
+//     lângă _raxCodFacturi. Întrebarea de dinainte de ✓ vine din lib/factura.ts (aceeași ca în Facturare), iar
+//     proba o pune lângă raxInvoiceMarkPaid din pagină.
+//   • „Vezi" deschide hârtia comună (components/DocumentFactura.tsx), aceeași ca în Facturare.
+
+// ── începe „documentele firmei" ──
+// Coloana „Ce e" din fișă (web: _raxCodFacturi): proformă · abonament <luna> · unică · — (factură de dinainte de
+// 28.09, fără fel scris).
+function ceEDocumentul(f: any): string {
+  if (f.type === 'proforma') return 'proformă';
+  if (f.fel === 'abonament') return ('abonament ' + lunaText(f.luna)).trim();
+  if (f.fel === 'unica') return 'unică';
+  return '—';
+}
+// ── sfârșit „documentele firmei" ──
+
+const bani2 = (v: any) => (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei';
+// Legătura proformă ↔ factura fiscală făcută din ea, dacă amândouă sunt în listă: același total de două ori nu e
+// o dublură, iar omul vede din ce s-a născut fiecare.
+function legatura(f: any, docs: any[]): string {
+  const nr = (id: any) => { const d = id != null ? docs.find((x) => Number(x.id) === Number(id)) : null; return d && d.full_number ? d.full_number : ''; };
+  if (f.type === 'proforma' && f.factura_id) { const n = nr(f.factura_id); return n ? 'a devenit factura ' + n : ''; }
+  if (f.din_proforma) { const n = nr(f.din_proforma); return n ? 'din proforma ' + n : ''; }
+  return '';
+}
+
+function Facturi({ o, onReload }: { o: any; onReload: () => void }) {
+  const loc = useLocation();
+  const c = o.company || {};
+  const docs: any[] = o.facturi || [];
+  const pl: any[] = o.payments || [];
+  const [vezi, setVezi] = useState<any | null>(null);    // documentul deschis în „Vezi"
+  const [intreb, setIntreb] = useState<any | null>(null); // documentul pe care s-a apăsat ✓
+  const [busy, setBusy] = useState(false);
+  // „Înapoi" pe Android închide întrebarea, nu fișa (foaia „Vezi" se păzește singură).
+  useInapoiInchide(!!intreb, () => { if (busy) return false; setIntreb(null); return true; });
+  const acum = Date.now();
+
+  async function platita(f: any) {
+    if (busy) return;
+    const pf = f.type === 'proforma';
+    setBusy(true);
+    try {
+      const j: any = await Api.invoiceSetStatus(Number(f.id), 'paid');
+      // Ca pe web: la proformă, și numărul facturii fiscale născute acum (dacă nu vine, fără un loc gol în text).
+      const nr = (j && j.invoice && j.invoice.full_number) || '';
+      showToast(pf ? (nr ? 'Proformă încasată → factura ' + nr + ' ✓' : 'Proformă încasată ✓') : 'Factură plătită ✓');
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
+    finally { setBusy(false); setIntreb(null); }
+    // Și după o eroare: poate a încasat-o altcineva între timp — lista arată ce e acum pe server.
+    onReload();
   }
-  const total = p.reduce((s, x) => s + (Number(x.amount_ron) || 0), 0);
+
   return (
     <>
-      <div style="font-size:14px;font-weight:800;color:var(--co-ok);margin:0 2px 10px">Total: {total.toLocaleString('ro-RO')} lei · {nrPlati(p.length)}</div>
-      <div class="fm-card">
-        {p.map((x) => (
-          <div class="co-row">
-            <div class="a"><b>{x.amount_ron != null ? lei2(x.amount_ron) : '—'}</b><span style="font-size:12.5px;color:var(--text-muted)">{dataRo(x.paid_at || x.created_at)}</span></div>
-            <div class="s">Perioadă: {x.period_start && x.period_end ? dataRo(x.period_start) + ' – ' + dataRo(x.period_end) : '—'} · {x.method || 'manual'}</div>
-            {x.note ? <div class="s">{x.note}</div> : null}
-          </div>
-        ))}
-      </div>
+      {/* Compania demo nu se facturează: nu e în lista din Facturare, deci fereastra de emis nu s-ar deschide. */}
+      {!c.is_demo && (
+        <div class="fm-btns" style="margin-bottom:12px">
+          <button class="fm-btn acc" style="flex:1 1 auto" onClick={() => loc.route(rutaFactura(c.id, 'unica'))}><Icon name="report" size={15} /> Factură unică / proformă</button>
+          <button class="fm-btn" style="flex:1 1 auto" onClick={() => loc.route(rutaFactura(c.id, 'abonament'))}><Icon name="calendar" size={15} /> Abonamentul unei luni</button>
+        </div>
+      )}
+      {docs.length === 0 ? (
+        <div class="fm-empty" style="padding:28px 14px"><Icon name="report" size={32} color="var(--text-muted)" /><b>Niciun document emis</b>
+          {c.is_demo
+            ? 'Compania demo nu se facturează.'
+            : 'Aparatele și montajul se facturează din „Factură unică / proformă", completată din contract. Abonamentul lunar pleacă singur dacă firma are bifat „auto" în Facturare.'}</div>
+      ) : (
+        <div class="fm-card">
+          <h3>Documente</h3>
+          {docs.map((f) => {
+            const pf = f.type === 'proforma';
+            const [stEt, stCul] = stareClient(f, acum);
+            const ce = ceEDocumentul(f);
+            const leg = legatura(f, docs);
+            const deschis = f.status !== 'paid' && f.status !== 'canceled';
+            return (
+              <div class="co-row">
+                <div class="a"><b>{f.full_number || '—'}</b><span style={'font-size:12.5px;font-weight:800;white-space:nowrap;color:' + stCul}>{stEt}</span></div>
+                <div class="s">{[ce !== '—' ? ce : '', 'din ' + dataRo(f.issue_date), deschis && f.due_date ? 'scadentă pe ' + dataRo(f.due_date) : ''].filter(Boolean).join(' · ')}</div>
+                {leg ? <div class="s">{leg}</div> : null}
+                {/* Suma pe rândul ei, întreagă (nowrap); butoanele dedesubt. Pe 375px, lângă „Vezi" + „Marchează plătită"
+                    rămâneau ~49px pentru sumă, iar „2.250,00 lei" se rupea în mijlocul cifrei (revizia lotului 4). */}
+                <div class="s" style="margin-top:6px"><b style="font-size:15px;white-space:nowrap;color:var(--text-primary)">{bani2(f.total)}</b></div>
+                <div class="fm-btns" style="margin-top:8px">
+                  <button class="fm-btn" onClick={() => setVezi(f)}><Icon name="eye" size={15} /> Vezi</button>
+                  {deschis && (
+                    <button class="fm-btn acc" disabled={busy} title={pf ? 'Încasată — emite factura fiscală' : 'Marchează plătită'} onClick={() => setIntreb(f)}>
+                      <Icon name="check" size={15} /> {pf ? 'Încasată' : 'Marchează plătită'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {pl.length > 0 && (
+        <div class="fm-card">
+          <h3>Încasări</h3>
+          {pl.map((p) => (
+            <div class="co-row">
+              <div class="a"><b>{p.amount_ron != null ? lei2(p.amount_ron) : '—'}</b><span style="font-size:12.5px;color:var(--text-muted)">{dataRo(p.paid_at || p.created_at)}</span></div>
+              <div class="s">{(p.note || 'încasare fără factură') + ' · ' + metodaText(p.method)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {intreb && (
+        <Confirma title={(intreb.type === 'proforma' ? 'Proforma ' : 'Factura ') + (intreb.full_number || '')} busy={busy}
+          okLabel={intreb.type === 'proforma' ? OK_PROFORMA : OK_FACTURA}
+          text={intreb.type === 'proforma' ? INTREB_PROFORMA : INTREB_FACTURA}
+          onOk={() => platita(intreb)} onCancel={() => { if (!busy) setIntreb(null); }} />
+      )}
+      {vezi && <DocumentFactura inv={vezi} privire="fisa" nota={notaLegatura(vezi, docs)} onClose={() => setVezi(null)} />}
     </>
   );
+}
+
+// Legătura proformă ↔ factură, ca frază pe hârtia „Vezi" („Din proforma PF-2026-0002.").
+function notaLegatura(f: any, docs: any[]): string {
+  const leg = legatura(f, docs);
+  return leg ? leg[0].toUpperCase() + leg.slice(1) + '.' : '';
 }
 
 // ─── Contract: rezumatul dosarului + drumul clientului + comparația cu factura; dosarul întreg e în ecranele

@@ -71,8 +71,64 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: „Date emitent" cu datele reale ale RA Tracks. Adăugat pe 29.09.** Facturare → „Date emitent":
   numele firmei, CUI, Reg. Com., adresa, IBAN, banca, cota de TVA. Fără nume și CUI nu pleacă nicio factură,
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
+  **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025). Adăugat pe 29.09: dacă rămâne necompletată, aplicația
+  pune singură 19% pe facturi — cifra veche. (Implicitul din cod e trecut și la lista lui Alin.)
 
 ---
+
+## 2026-09-30
+
+### AMÂNDOI · Aplicația de telefon 1.0.5: facturarea lui Alin din 29.09, adusă pe telefon (lotul 4) — `HASH`
+
+Pe 29.09 Alin a schimbat facturarea pe web (factura unică și proforma, abonamentul pe zile, fila Facturi din fișa
+firmei, aparatele trecute pe firmă în bloc, „Client nou" cu linkul de parolă). Telefonul n-avea nimic din ele: de pe
+telefon se putea emite doar abonamentul lunii, iar felul facturii îl ghicea serverul din denumirea rândurilor. Acum
+telefonul face ce face web-ul, cu aceleași rute. **Serverul și pagina web ale lui Alin n-au fost atinse.**
+
+**Facturare (fondator)**
+- „Generează factură" are „Ce facturezi" (abonamentul unei luni / factură unică) și, la factura unică, „Document"
+  (factură fiscală / proformă, cu butonul „Emite proforma").
+- Factura unică se completează din contract: „Aparatele din contract" (la cursul din contract) și fiecare lucrare de
+  montaj executată. Montajul se strânge pe rânduri, iar „Mențiuni pe factură" se scrie singură („Montaj executat pe
+  15.01.2027 (10 mașini) și 30.01.2027 (20 de mașini).") — aceeași regulă ca pe web, legată printr-o probă care
+  rulează bucata din pagină și pe cea a telefonului pe aceleași cazuri.
+- Abonamentul lunii spune câte mașini intră întregi și câte pe zile, câte aparate nu transmit încă, „Luna asta e
+  deja facturată: RAT-…" (butonul se oprește) și „Nimic de facturat". Schimbarea lunii golește ciorna — până acum
+  se putea emite factura lui octombrie înregistrată pe noiembrie.
+- Lista de documente spune „Ce e" (abonament pe lună / unică / proformă → factură), proforma „nu se trimite" la ANAF,
+  iar „Încasată" pe proformă arată numărul facturii fiscale născute. Un document se vede pe o singură foaie (aceeași
+  în Facturare, în fișa firmei și la client), cu data emiterii, perioada sau mențiunile și nota de proformă.
+- „Verifică status ANAF" pe facturile trimise; la „Plăți / încasări", totalul încasat și metoda pe fiecare rând;
+  la firme, butonul „Facturile firmei" și factura restantă cu scadența.
+
+**Fișa firmei, Client nou, Dispozitive (fondator)**
+- Fila „Facturi" din fișă: documentele firmei cu ✓ (Plătită / Încasată), plus „Factură unică / proformă" și
+  „Abonamentul unei luni". „Abonament & plăți" are „Deschide fila Facturi". „Emite prima factură" din drumul
+  clientului deschide factura UNICĂ.
+- „Client nou": linkul de parolă se arată când emailul nu pleacă (cu motivul), „Factura automată e pornită" când e
+  cazul, iar „Mai departe" descrie drumul de azi.
+- Dispozitive → Neasignate: bifezi mai multe aparate și le treci pe o firmă dintr-o apăsare (firma aleasă rămâne
+  aleasă, „Toate" bifează doar ce se vede — două greșeli ale barei de pe web, necopiate). Pe fiecare aparat, ziua
+  de la care plătește abonamentul, cu ✎ pentru corectură.
+
+**Unde telefonul face altfel decât web-ul, dinadins** (din revizia lucrului lui Alin): o corectură de mână pe un rând
+de montaj rămâne; o lucrare scoasă de pe factură nu mai trece pe „facturat"; telefonul avertizează când luna n-a
+început, când aparatele din contract sunt deja pe o proformă și când montajul e pus pe o proformă.
+
+**Pentru client (CLIENT)**
+- **Banda de restanță / suspendare, pentru toți oamenii firmei** (dispecer, viewer, șofer — nu doar adminul): sus,
+  portocalie la restanță, cu textul serverului (suma, scadența, câte zile mai are), roșie la suspendare. Adminul
+  firmei are pe ea „Vezi facturile". Până acum, pe telefon, cine nu era admin nu afla niciodată de restanță.
+- „Facturile mele": starea pe limba clientului (De plată / Restantă / Plătită / Încasată), data emiterii și scadența.
+
+- **Ce am schimbat:** aplicația de telefon 1.0.5 (plus proba nouă a telefonului, `verify_facturare_telefon.js`,
+  458 de verificări, în poartă). Nimic pe server și nimic pe web.
+- **Ce vede fondatorul:** pe telefon, factura unică și proforma, fila Facturi din fișă, aparatele trecute în bloc,
+  ziua de pornire a abonamentului, „Client nou" complet — ca pe web.
+- **Ce vede clientul:** banda de restanță / suspendare pe telefon, pentru oricine din firmă; „Facturile mele" mai clare.
+
+Verificat: tipurile, proba nouă (458), probele telefonului și toată poarta de pe GitHub; banda, văzută în aplicația
+pornită, pe ambele teme, la lățimea unui telefon (375px). Suspendat, contul rămâne înăuntru ca să-și vadă facturile.
 
 ## 2026-09-29
 
@@ -9181,7 +9237,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   3. Factura automată ia doar mașinile care transmit, pe zile de la montaj (decizia 1:A). Probat.
   Vezi intrarea din 29.09.
 
-- [ ] **(eu) APK-ul de după 1.0.3: ecranele de facturare de pe telefon.** Sursa e pregătită (29.09): fără „acces
+- [x] **REZOLVAT (29–30.09, APK 1.0.4 și 1.0.5): ecranele de facturare de pe telefon.** (era: „(eu) APK-ul de după 1.0.3”.) Sursa e pregătită (29.09): fără „acces
   până la", fără plăți cu număr de factură inventat, fără butonul mort de plată cu cardul, clientul își vede
   documentele adevărate. Până la APK, telefonul vechi arată lista clientului cu sumele, dar cu numere
   vechi, inventate — se rezolvă la instalarea APK-ului nou, nu cere nimic separat.
@@ -9511,7 +9567,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
 
-- [ ] **(voi) Instalați aplicația de telefon 1.0.4.** Ecranele lotului 3 apar doar în ea. Încărcarea unei liste
+- [ ] **(voi) Instalați aplicația de telefon 1.0.5** (cuprinde tot din 1.0.4). Ecranele loturilor 3 și 4 apar doar în ea. Încărcarea unei liste
   Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
 
 - [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
@@ -9536,12 +9592,69 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
      ce ai scris (pe telefon, da); „E semnat" propune ziua de azi peste data deja scrisă.
   9. **Web, contractele cu partenerii:** lipsa „tarifele" trimite la „Completează", care n-o poate închide (pe
      telefon e butonul „Reia tarifele").
-  10. **Facturi:** serverul ia cota de TVA de pe fiecare rând trimis de ecran; mai sigur, din „Date emitent".
+  10. **Facturi:** serverul ia cota de TVA de pe fiecare rând trimis de ecran; mai sigur, din „Date emitent". Plus: fără cotă
+      în „Date emitent", codul pune 19% (în două locuri pe server); cota legală e 21% din 1 august 2025.
   11. **Web, „Stare producție":** „1 lucruri de verificat".
-  12. **Paritatea pe telefon a lucrului lui Alin din 29.09 — încă nefăcută:** factura unică / proforma completată
+  12. ~~Paritatea pe telefon a lucrului lui Alin din 29.09~~ — **FĂCUT de noi (30.09, APK 1.0.5, lotul 4).** Era:
+      factura unică / proforma completată
       din contract și din lucrări (cu „Mențiuni pe factură"); fila Facturi din fișa firmei (documentele, cu ✓);
       „Trece pe firmă" în bloc în Dispozitive → Neasignate; ziua de pornire a abonamentului pe fiecare aparat (✎).
       Până atunci, „Emite prima factură" de pe telefon deschide „Generează factură" obișnuit, nu factura unică.
+
+- [ ] **(Alin) Găsite la revizia facturării din 29.09 — NEATINSE de noi (29.09).** O revizie cu 4 priviri (bani, acces,
+  ecrane, hârtie) peste cele 5 schimbări ale lui Alin din 29.09; fiecare găsire a trecut și pe la un sceptic. Cele 30
+  de găsiri se strâng în 16 probleme. Detaliile (cu rândurile din cod) sunt în raportul revizuirii; aici, pe scurt:
+  **Bani — se poate factura de două ori sau pierde o sumă**
+  1. **Factura unică nu ține minte ce s-a facturat.** După proforma aparatelor (încasată), fereastra propune din nou
+     „Aparatele din contract"; montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
+     facturat" redeschide o lucrare deja facturată clientului. Drumul clientului nu știe de avans: după factura
+     aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj. (web + telefon, vine de la server)
+  2. **Montajul marcat „facturat" fără să fie pe factură:** o lucrare scoasă de pe factură (rând șters sau cantitate
+     scăzută) rămâne marcată și scrisă la „Mențiuni"; anularea facturii nu o redeschide.
+  3. **Lunile de dinainte de 28.09 se pot factura de două ori:** „Abonamentul unei luni" nu vede facturile vechi (fără
+     „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie.
+  4. **Aparat schimbat pe aceeași mașină:** zilele din luna schimbării se plătesc de două ori (aparatul vechi a plătit
+     luna în avans, cel nou intră cu zilele lui).
+  5. **„Mută între companii" cu mai multe aparate deodată** (web și telefon, ruta veche): nu șterge ziua de pornire a
+     abonamentului de la firma veche — firma nouă plătește luna întreagă, chiar pentru o mașină nemontată — și nu
+     leagă stocul (punctul 6 de mai sus).
+  6. **Abonamentul emis înainte să înceapă luna** (ex. pe 28.10 pentru noiembrie) pierde mașinile montate până pe 1:
+     ≈ 48 de lei pe fiecare, niciodată facturați.
+  7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura.
+  **Acces și siguranță**
+  8. **„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
+     facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.
+  9. **Motivul intern al unei suspendări făcute de mână** pleacă la toți oamenii firmei (se vede în datele trimise,
+     nu pe ecran).
+  10. **Migrarea „o singură dată"** a dat zi de pornire și aparatelor care transmiseseră doar pe masa de probă.
+  11. **Aparat șters definitiv și înregistrat din nou:** abonamentul nu mai pornește până la următoarea repornire.
+  11b. **Harta live merge mai departe după suspendare** (găsit la lotul 4, 30.09): o legătură live deschisă ÎNAINTE de
+      suspendare primește pozițiile flotei până se reconectează (web și telefon). Reparația: verificarea periodică a
+      legăturilor să le închidă pe cele ale firmelor oprite (telefonul 1.0.5 aprinde atunci banda roșie pe loc).
+  **Ecrane web**
+  12. **Din fișa firmei, „Factură unică / proformă" și „Abonamentul unei luni"** pot deschide fereastra în spatele fișei
+      (nu se vede nimic) sau fără nicio firmă în listă.
+  13. **Bara „Trece pe firmă" din Neasignate:** fiecare bifă golește firma aleasă, iar „Toate" bifează și aparatele
+      ascunse de căutare (confirmarea spune 12 când bara spune 3).
+  14. După ✓ pe factură, „Status facturare companii" rămâne pe „Suspendat" până la reîncărcare.
+  **Hârtie și texte**
+  15. **Contract cu aparate vândute, dar fără montaj:** hârtia ne obligă să le montăm în 30 de zile, fără preț; oferta
+      fără aparate promite totuși avans pentru aparate.
+  16. Texte: primul avertisment de neplată spune și „16 zile", și „15 zile"; ecranul ofertei „montajul la semnare"
+      (hârtia: după executare); „Client nou" cu închiriere promite „proforma pentru aparate"; „neachitată de 16 de zile". Plus (30.09):
+      refuzul la intrare spune „Abonament suspendat pentru neplată" și la o oprire făcută de noi; banda spune
+      „Accesul este suspendat…" — două formulări pentru aceeași stare, prima cu un cuvânt vechi.
+  **De hotărât cu Alin (ating serverul lui):**
+  - Clientul nu-și poate salva factura de pe telefon: hârtia facturii există doar în pagina web. Recomandarea: o
+    singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.
+  - Telefoanele vechi (1.0.3) mai au „Înregistrează plata + extinde accesul": serverul o scrie ca încasare fără
+    factură, iar factura rămâne neplătită → clientul se poate suspenda deși a plătit. Plasa: toate telefoanele noastre
+    pe 1.0.5; opțional, serverul să refuze cererea veche.
+  - **Contul suspendat: pe web e scos din aplicație, pe telefon (1.0.5) rămâne înăuntru**, cu banda roșie și „Vezi
+    facturile" (serverul oprește oricum restul, iar facturile rămân deschise). Recomandarea noastră: la fel și pe web —
+    omul își vede factura pe care trebuie s-o plătească. Dacă Alin vrea altfel, pe telefon e o schimbare de un rând.
+  - „Mută între companii" cu mai multe aparate (web și telefon) ocolește regula lui „Trece pe firmă" (punctul 5):
+    pe telefon N-am ocolit-o separat, ca cele două să nu se despartă — se repară o dată, pe server.
 
 - [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
   telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon

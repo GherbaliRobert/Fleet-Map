@@ -20,3 +20,36 @@
 /* Totalul e scris verde: --fl-ok (flota.css) e verdele aplicației pe tema închisă și unul închis pe cea
    luminoasă — pe alb, #3FE07D ieșea la contrast 1,6 și totalul facturii nu se citea. */
 .bill-total { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--fl-ok, var(--green)); border-radius: 9px; padding: 10px 14px; margin-top: 14px; font-size: 16px; font-weight: 800; color: var(--fl-ok, var(--green)); }
+
+/* „Generează factură": alegerea felului (abonament / unică) și a documentului (factură / proformă), ca pe web
+   (.rax-gi-fel). Cea aleasă are chenarul verde și un fundal abia colorat; scrisul rămâne --text-primary pe
+   ambele teme (verdele aplicației ca text pe alb ar ieși la 1,6). */
+.bill-fel { display: flex; gap: 8px; }
+.bill-fel button { flex: 1; min-width: 0; text-align: left; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; color: var(--text-primary); font: inherit; cursor: pointer; }
+.bill-fel button b { display: block; font-size: 13px; font-weight: 800; }
+.bill-fel button span { display: block; font-size: 11px; color: var(--text-secondary); margin-top: 2px; line-height: 1.35; }
+.bill-fel button.on { border: 2px solid var(--fl-ok, var(--accent)); padding: 8px 9px; background: color-mix(in srgb, var(--accent) 12%, var(--bg-dark)); }
+
+.bill-cap { font-size: 12.5px; margin-bottom: 6px; line-height: 1.45; color: var(--text-primary); }
+.bill-mic { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.45; }
+/* Avertismentele: chihlimbarul SCRISULUI (--fl-warn, închis pe luminos) pe un fundal abia colorat; cele care opresc
+   ceva (luna deja facturată, o eroare) pe roșu. */
+.bill-avert { font-size: 12px; line-height: 1.5; color: var(--text-primary); background: color-mix(in srgb, #f59e0b 10%, var(--bg-dark)); border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent); border-left: 4px solid var(--fl-warn); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
+.bill-avert.rau { background: color-mix(in srgb, var(--red) 9%, var(--bg-dark)); border-color: color-mix(in srgb, var(--red) 45%, transparent); border-left-color: var(--red); }
+.bill-nota { font-size: 12px; line-height: 1.5; color: var(--text-secondary); background: var(--bg-dark); border: 1px dashed var(--border); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
+
+/* Ce se poate lua din contract și din lucrări: un buton pe sursă; cea pusă pe factură rămâne ca rând cu bifă. */
+.bill-surse { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.bill-sursa { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; text-align: left; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 700; }
+button.bill-sursa { cursor: pointer; }
+.bill-sursa span { font-weight: 400; color: var(--text-secondary); }
+.bill-sursa.pusa { border-style: dashed; }
+.bill-sursa.pusa > svg { color: var(--fl-ok); }
+.bill-sursa.partiala { border-color: color-mix(in srgb, #f59e0b 55%, transparent); }
+.bill-sursa.partiala > svg { color: var(--fl-warn); }
+.bill-scoate { margin-left: auto; background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; color: var(--text-primary); font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+
+.bill-linie { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
+.bill-ment { font-weight: 600; white-space: pre-wrap; }
+.bill-totinc { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: -2px 0 8px; }
+.bill-totinc b { color: var(--fl-ok); }

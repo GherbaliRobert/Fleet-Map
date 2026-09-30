@@ -197,7 +197,8 @@ export const Api = {
   // Venitul lunar pe firmă + total, socotit pe server cu motorul facturii (același ca registrul de clienți).
   companiesMrr: () => api<{ firme: Record<string, number>; totalLei: number }>('/api/companies/mrr'),
   companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
-  setCompanyAccess: (id: number, until: number) => api<any>(`/api/companies/${id}/access`, { method: 'PUT', body: { until } }),
+  // (Apelul care punea de mână „acces până la" a plecat: ruta lui a fost ștearsă pe server odată cu ceasul vechi,
+  // 29.09. Accesul se oprește doar pentru neplată sau de mână.)
   // ── Super-admin: Dashboard platformă ──
   adminOverview: (days = 30) => api<any>(`/api/admin/overview?days=${days}`),
   adminCounts: () => api<any>('/api/admin/counts'),
@@ -339,13 +340,21 @@ export const Api = {
   recordPayment: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/payment`, { method: 'POST', body: b }),
   myInvoices: () => api<any>('/api/billing/my-invoices'), // admin firmă: facturile proprii + status abonament
   // ── Facturi FISCALE (super-admin) ──
-  invoices: () => api<{ invoices: any[] }>('/api/invoices'),
+  // Ca pe web (raxLoadInvoices): până la 1000 de documente — fără limită, serverul dă doar 500.
+  invoices: () => api<{ invoices: any[] }>('/api/invoices?limit=1000'),
   invoice: (id: number) => api<any>(`/api/invoices/${id}`),
-  // `luna` ('AAAA-LL'): abonamentul lunii alese, pe zile de la montaj (28.09). Fără ea, luna de azi.
-  invoiceDraft: (companyId: number, luna?: string) => api<any>('/api/invoices/draft', { method: 'POST', body: { companyId, luna } }),
-  issueInvoice: (b: any) => api<any>('/api/invoices', { method: 'POST', body: b }),
-  invoiceSetStatus: (id: number, status: string) => api<any>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
+  // Ciorna unei facturi (nu se salvează). `fel` = 'abonament' (implicit: `luna` 'AAAA-LL', pe zile de la montaj;
+  // fără ea, luna de azi) sau 'unica' (fără rânduri, dar cu `dinContract`: aparatele din Anexa nr. 2 + lucrările executate).
+  invoiceDraft: (companyId: number, luna?: string, fel: 'abonament' | 'unica' = 'abonament') =>
+    api<any>('/api/invoices/draft', { method: 'POST', body: fel === 'unica' ? { companyId, fel } : { companyId, fel, luna } }),
+  // { companyId, fel, luna, tip: 'invoice'|'proforma', lines, montaje, note } — ca pe web (raxGenIssue).
+  // Abonamentul unei luni deja facturate → 409, cu numărul facturii existente în mesaj.
+  issueInvoice: (b: any) => api<{ ok: boolean; invoice: any; montajeFacturate?: number }>('/api/invoices', { method: 'POST', body: b }),
+  // 'paid' | 'canceled'. „Încasată" pe o proformă emite factura fiscală: `invoice` e factura născută.
+  invoiceSetStatus: (id: number, status: string) => api<{ ok: boolean; invoice?: any; already?: boolean }>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),
+  // Ce spune ANAF de o factură trimisă: `stare` = răspunsul lor, `status` = uploaded / validated / error.
+  invoiceEfacturaStatus: (id: number) => api<{ ok: boolean; stare?: string; status?: string; note?: string }>(`/api/invoices/${id}/efactura/status`),
   billingConfig: () => api<any>('/api/admin/billing/config'),
   billingRunAuto: () => api<any>('/api/admin/billing/run-auto', { method: 'POST', body: {} }),
   companyBillingConfig: (id: number, b: any) => api<any>(`/api/companies/${id}/billing-config`, { method: 'PUT', body: b }),

@@ -462,7 +462,8 @@ export function ContractDetail() {
             {luniOptiuni(c.months).map(([v, et]) => <option value={v}>{et}</option>)}
           </select>
           {/* Aparate închiriate (25.09): contractul ține cel puțin cât scrie în anexă (`annex.chirie.luniMin`, pus de
-              server). Regula o păzește serverul; aici doar se spune, cu cifra lui. */}
+              server). Serverul o păzește DOAR la crearea contractului din ofertă, nu și la salvarea formularului (punct
+              trecut la Alin, 29.09) — deci aici se spune, cu cifra lui, iar omul trebuie să-l respecte. */}
           {chirieLuniMin > 0 && (
             <div class="ctr-hint" style="margin-top:4px">Aparatele sunt închiriate: contractul se face pe cel puțin {luniText(chirieLuniMin)} (sau pe durată nedeterminată).</div>
           )}

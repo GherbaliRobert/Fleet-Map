@@ -1,0 +1,8 @@
+/* „Client nou" — panoul de final: butonul care redeschide linkul de parolă și „Mai departe", pașii de după
+   deschiderea clientului. Culorile vin din temă (--text-primary / --text-secondary), lizibile pe amândouă temele;
+   restul (cutia verde, butoanele) sunt clasele existente din companii.css și firma.css. Fontul se moștenește. */
+.cn-link { margin: 8px 0 2px; }
+.cn-mai { margin: 10px 0 12px; }
+.cn-mai-t { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+.cn-mai ol { margin: 0 0 0 20px; padding: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.cn-mai li { margin-bottom: 3px; }

@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { LinkParolaSheet, pregatesteLinkul, type LinkParola } from '../components/LinkParolaSheet';
 import { luniOptiuni, rolNostru, semnatariDin, zi } from '../lib/contracte';
-import { EMAIL_OK, rutaDosar, rutaFisa } from '../lib/companii';
+import { EMAIL_OK, rutaDosar } from '../lib/companii';
+import { nrDe } from '../lib/numar';
 import './admin.css';
 import './detail.css';
 import './firma.css';
 import './companii.css';
+import './clientnou.css';
 
 // „Client nou" (fondatori) — deschiderea unui client în trei pași, ca pe web (coNouStart … coNouCreeaza):
 //   1. Firma — cu datele luate de la ANAF, ca să nu fie tastate greșit (opțional, pornind de la o ofertă);
@@ -28,10 +30,76 @@ type Ctr = {
   number: string; signed_at: string; start_at: string; months: string; auto_renew: boolean; notice_days: string;
   rep_name: string; rep_role: string; our_name: string; our_role: string; gdpr_kind: string;
 };
+// `admin` = emailul contului făcut (există și când invitația n-a plecat); `adminLink` = linkul de parolă întors de
+// server când emailul n-a plecat — rămâne aici, ca foaia să se poată redeschide oricând din panou (ca pe web,
+// coNouArataLinkul); `adminMotiv` = de ce n-a plecat, cu vorbele web-ului.
 type Gata = {
   id: number; name: string; cui: string; contract: string | null; contractId: number | null;
-  admin: string | null; adminLink: string | null; offerTotal: number | null; pretPeFirma: boolean; avertismente: string[];
+  admin: string | null; adminInvitat: boolean; adminLink: string | null; adminMotiv: string | null;
+  offerTotal: number | null; pretPeFirma: boolean; autoFactura: boolean; drum: CnDrum; avertismente: string[];
 };
+
+// ── începe „panoul de final" ─────────────────────────────────────────────────────────────────────────────
+// Ce scrie ecranul de la capăt, ca pe web (coNouGataHtml / coNouCreeaza). Bucata e curată — fără ecran și fără
+// importuri —, ca proba s-o poată rula lângă cea a paginii și să ceară aceleași cuvinte.
+
+// Serverul răspunde la contract cu `auto_factura: true` DOAR când chiar a pornit factura automată (prima ofertă
+// a firmei, 29.09). Fraza e a web-ului, cuvânt cu cuvânt.
+const CN_AUTO_FACTURA = 'Factura automată e pornită: abonamentul pleacă singur pe 1 a lunii, de la prima mașină care transmite.';
+
+// De ce n-a plecat invitația — după ce spune serverul (`inviteEmailConfigured`), cu vorbele web-ului.
+function cnMotivLink(a: any): string {
+  return a && a.inviteEmailConfigured
+    ? 'Emailul de invitație n-a putut pleca.'
+    : 'Serverul nu are email configurat, deci invitația n-a plecat.';
+}
+
+// Ce fel de aparate are contractul, citit din ce a SCRIS serverul în el (răspunsul la „fă contractul"), nu
+// presupus din ofertă: Anexa nr. 2 cu echipamente → vândute (proformă, avans); Anexa nr. 1 cu `chirie` →
+// închiriate (fără avans). Același criteriu ca hârtia contractului (areEchip / areMontaj / chirieA din
+// contract_pdf.js) — proba le rulează pe amândouă, pe contracte făcute din oferte cu funcțiile serverului.
+type CnDrum = { fel: 'fara-contract' | 'cumparate' | 'inchiriate' | 'fara-aparate'; montaj: boolean };
+function cnDrum(ct: any): CnDrum {
+  if (!ct) return { fel: 'fara-contract', montaj: false };
+  const mont = ct.montaj, echip = mont && mont.echipamente;
+  const areEchip = !!(echip && (echip.items || []).length);
+  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));
+  const ch = ct.annex && ct.annex.chirie;
+  const inchiriate = !!(ch && (ch.aparate || []).length);
+  return { fel: areEchip ? 'cumparate' : (inchiriate ? 'inchiriate' : 'fara-aparate'), montaj: areMontaj };
+}
+
+// „Mai departe": drumul de AZI (Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima
+// factură), pe felul contractului, cu regulile semnate în el (IV și V): aparatele vândute se plătesc în avans, pe
+// proformă; montajul se facturează după executare, pe mașinile montate efectiv; abonamentul pornește la prima
+// transmisie. Web-ul scrie o singură frază fixă, cu proforma și la închiriere, fără aparate sau chiar fără
+// contract (greșeala din revizia de pe 29.09) — aici se spune doar ce e adevărat pentru contractul ăsta.
+// Nicio cifră scrisă aici (30 de zile, 24 de luni): stau în contracts.js și le spune hârtia contractului.
+function cnMaiDeparte(d: CnDrum): string[] {
+  const p: string[] = [];
+  if (d.fel === 'fara-contract') {
+    p.push('În dosar: fă contractul, cu „Fă un contract”, apoi aprobă-l și trimite-l la semnat.');
+  } else {
+    p.push('În dosar: aprobă contractul și trimite-l la semnat.');
+    if (d.fel === 'cumparate') {
+      p.push('După semnare: proforma pentru aparate — clientul le plătește în avans. Când plătește, apeși „Încasată” pe proformă, iar factura aparatelor se face singură.');
+      p.push('După ce avansul e încasat: montajul.');
+    } else if (d.fel === 'inchiriate') {
+      p.push('După semnare: montajul. Aparatele sunt închiriate și rămân ale noastre: fără proformă și fără avans.');
+    } else if (d.montaj) {
+      p.push('După semnare: montajul.');
+    }
+  }
+  p.push('Aparatele le treci pe firmă abia după ce sunt montate.');
+  if (d.montaj) {
+    p.push('Apoi factura montajului, doar pentru mașinile montate efectiv.' +
+      (d.fel === 'cumparate' ? ' Aparatele nu mai intră pe ea: sunt deja pe factura avansului.' : ''));
+  }
+  if (d.fel === 'inchiriate') p.push('Chiria vine pe factura lunară, pe rând separat.');
+  p.push('Abonamentul fiecărei mașini începe din ziua în care aparatul ei transmite prima dată.');
+  return p;
+}
+// ── sfârșit „panoul de final" ──
 const PASI = ['Firma', 'Contractul', 'Administratorul'];
 const firmaGoala = (): Firma => ({ cui: '', name: '', reg_com: '', address: '', contact_email: '', phone: '', anaf: null });
 const contractGol = (): Ctr => ({
@@ -54,6 +122,9 @@ export function ClientNou() {
   const [lucrez, setLucrez] = useState(false);
   const [gata, setGata] = useState<Gata | null>(null);
   const [link, setLink] = useState<LinkParola | null>(null);
+  // Firma arătată acum în panoul de final: foaia cu linkul se deschide doar dacă panoul e tot al ei (după
+  // „Deschid alt client" nu mai apare linkul clientului de dinainte).
+  const gataAcum = useRef<number | null>(null);
   const [anafBusy, setAnafBusy] = useState(false);
 
   // Ofertele încă nelegate de niciun contract (una care a devenit deja client nu se mai propune).
@@ -154,7 +225,7 @@ export function ClientNou() {
       await Api.updateCompany(id, { cui: firma.cui.trim(), reg_com: firma.reg_com.trim(), address: firma.address.trim(), contact_email: firma.contact_email.trim(), phone: firma.phone.trim() });
     } catch (e: any) { av.push('Datele juridice nu s-au salvat (' + (e?.message || 'eroare') + ') — completează-le din fișa firmei.'); }
 
-    let contractId: number | null = null, numar: string | null = null;
+    let contractId: number | null = null, numar: string | null = null, autoFactura = false, ctRasp: any = null;
     const c = ctr;
     if (c.rep_name.trim() || c.signed_at || c.start_at || c.number.trim() || offerId) {
       // Socoteala ofertei (prețul pe mașină + rândurile lunare ale anexei), făcută de server cu funcția
@@ -178,18 +249,23 @@ export function ClientNou() {
           client_rep: { name: c.rep_name.trim(), role: c.rep_role.trim() }, our_rep: { name: c.our_name.trim(), role: c.our_role.trim() },
           gdpr: { kind: c.gdpr_kind },
         });
-        if (ct && ct.id) { contractId = Number(ct.id); numar = ct.number || null; }
+        // `auto_factura` vine DOAR când serverul chiar a pornit factura automată (prima ofertă a firmei, 29.09).
+        // Contractul întors (anexele lui) spune și ce fel de aparate are — de acolo se scrie „Mai departe".
+        if (ct && ct.id) { contractId = Number(ct.id); numar = ct.number || null; autoFactura = !!ct.auto_factura; ctRasp = ct; }
       } catch (e: any) { av.push('Contractul nu s-a salvat: ' + (e?.message || 'eroare') + '.'); }
     }
 
-    let adminOk: string | null = null, adminLink: string | null = null;
+    let adminCont: string | null = null, adminInvitat = false, adminLink: string | null = null, adminMotiv: string | null = null;
     if (email) {
-      // Fără parolă, mereu: pleacă invitația și omul își pune singur parola.
+      // Fără parolă, mereu: pleacă invitația și omul își pune singur parola. Contul EXISTĂ și când emailul
+      // n-a plecat (fără SMTP): atunci serverul întoarce linkul, iar linkul îl duci tu. Linkul rămâne în panou,
+      // cu butonul lui, ca foaia să se poată redeschide după ce ai închis-o (ca pe web, coNouArataLinkul).
       try {
         const a: any = await Api.addCompanyAdmin(id, { username: email });
-        if (a && a.invited) adminOk = email;
-        else if (a && a.link) { adminLink = email; setLink(await pregatesteLinkul({ email, link: a.link, motiv: 'Emailul de invitație NU a plecat' })); }
-        else av.push((a && a.warning) || 'Contul de administrator e făcut, dar linkul nu a plecat.');
+        adminCont = email;
+        if (a && a.invited) adminInvitat = true;
+        else if (a && a.link) { adminLink = String(a.link); adminMotiv = cnMotivLink(a); }
+        else av.push((a && a.warning) || 'Contul de administrator e făcut, dar linkul nu a venit.');
       } catch (e: any) { av.push('Firma e creată, dar contul de admin nu: ' + (e?.message || 'eroare')); }
     }
 
@@ -197,15 +273,27 @@ export function ClientNou() {
     let pretPeFirma = false;
     if (offerId) { try { const ov: any = await Api.companyOverview(id); pretPeFirma = !!(ov && ov.offer); } catch { /* rămâne nespus */ } }
 
-    setGata({ id, name: firma.name.trim(), cui: firma.cui.trim(), contract: numar, contractId, admin: adminOk, adminLink,
-      offerTotal: offerId ? offerTotal : null, pretPeFirma, avertismente: av });
+    const g: Gata = { id, name: firma.name.trim(), cui: firma.cui.trim(), contract: numar, contractId,
+      admin: adminCont, adminInvitat, adminLink, adminMotiv,
+      offerTotal: offerId ? offerTotal : null, pretPeFirma, autoFactura, drum: cnDrum(ctRasp), avertismente: av };
+    gataAcum.current = g.id;
+    setGata(g);
     setMsg(null);
     setLucrez(false);
     citesteOferte(); // o ofertă tocmai a devenit client — lista trebuie recitită
+    if (g.adminLink) arataLinkul(g); // o dată, singură, ca pe web; apoi din butonul din panou
+  }
+
+  // Linkul de parolă al administratorului, când emailul n-a plecat: ACEEAȘI foaie ca peste tot (LinkParolaSheet).
+  async function arataLinkul(g: Gata | null) {
+    if (!g || !g.adminLink) return;
+    const l = await pregatesteLinkul({ email: g.admin || undefined, link: g.adminLink, motiv: g.adminMotiv || undefined });
+    if (gataAcum.current === g.id) setLink(l);
   }
 
   function altClient() {
-    setGata(null); setPas(1); setFirma(firmaGoala()); setAdminEmail(''); setOfferId(null); setOfferTotal(null); setMsg(null);
+    gataAcum.current = null;
+    setGata(null); setLink(null); setPas(1); setFirma(firmaGoala()); setAdminEmail(''); setOfferId(null); setOfferTotal(null); setMsg(null);
     const c = contractGol();
     if (noi && noi.length) { c.our_name = noi.join(' și '); c.our_role = rolNostru(noi.length); }
     setCtr(c);
@@ -235,26 +323,34 @@ export function ClientNou() {
               <li>{gata.contract
                 ? <>Contractul <b>{gata.contract}</b> e salvat, în lucru.{gata.offerTotal
                   ? (gata.pretPeFirma
-                    ? ' Prețul din ofertă (' + Math.round(gata.offerTotal) + ' lei/lună) e trecut în anexă și scris pe firmă, pentru factură.'
-                    : ' Prețul din ofertă (' + Math.round(gata.offerTotal) + ' lei/lună) e trecut în anexă. Pe firmă nu s-a scris încă prețul pe mașină — pune-l din fișa firmei, „Abonament & plăți".')
+                    ? ' Prețul din ofertă (' + nrDe(Math.round(gata.offerTotal), 'leu', 'lei') + '/lună) e trecut în anexă și scris pe firmă, pentru factură.'
+                    : ' Prețul din ofertă (' + nrDe(Math.round(gata.offerTotal), 'leu', 'lei') + '/lună) e trecut în anexă. Pe firmă nu s-a scris încă prețul pe mașină — pune-l din fișa firmei, „Abonament & plăți".')
                   : ''}</>
                 : 'Fără contract încă.'}</li>
-              <li>{gata.admin
-                ? <>Invitația a plecat la <b>{gata.admin}</b> — își pune singur parola.</>
+              {gata.autoFactura && <li>{CN_AUTO_FACTURA}</li>}
+              <li>{!gata.admin
+                ? 'Fără administrator încă.'
                 : gata.adminLink
-                  ? <>Contul lui <b>{gata.adminLink}</b> e făcut, dar emailul n-a plecat — trimite-i tu linkul de parolă.</>
-                  : 'Fără administrator încă.'}</li>
+                  ? <>Contul lui <b>{gata.admin}</b> e făcut, dar invitația n-a plecat pe email. Linkul de parolă i-l trimiți tu; parola și-o pune el.</>
+                  : gata.adminInvitat
+                    ? <>Invitația a plecat la <b>{gata.admin}</b> — își pune singur parola.</>
+                    : <>Contul lui <b>{gata.admin}</b> e făcut, dar invitația n-a plecat.</>}</li>
             </ul>
+            {gata.adminLink && (
+              <button class="fm-btn acc cn-link" onClick={() => arataLinkul(gata)}><Icon name="key" size={15} /> Arată linkul de parolă</button>
+            )}
             {gata.avertismente.map((t) => <div class="co-msg rau">{t}</div>)}
-            <div class="co-note" style="font-size:13px;margin:10px 0 12px">Mai departe: adoptă aparatele clientului, apoi treci-le în anexa contractului și descarcă ciorna de semnat.</div>
+            <div class="cn-mai">
+              <div class="cn-mai-t">Mai departe</div>
+              <ol>{cnMaiDeparte(gata.drum).map((t) => <li>{t}</li>)}</ol>
+            </div>
             <div class="fm-btns">
-              {gata.contractId
-                ? <button class="btn btn-primary" style="flex:1" onClick={() => loc.route(rutaDosar(gata.id))}><Icon name="fileSignature" size={16} color="#06210F" /> Deschide dosarul</button>
-                : <button class="btn btn-primary" style="flex:1" onClick={() => loc.route(rutaFisa(gata.id))}><Icon name="layers" size={16} color="#06210F" /> Deschide fișa firmei</button>}
+              {/* Dosarul și fără contract: acolo e „Fă un contract” — primul pas de la „Mai departe”. */}
+              <button class="btn btn-primary" style="flex:1" onClick={() => loc.route(rutaDosar(gata.id))}><Icon name="fileSignature" size={16} color="#06210F" /> Deschide dosarul</button>
               <button class="fm-btn" style="flex:1" onClick={altClient}>Deschid alt client</button>
             </div>
-            {gata.adminLink && link == null && (
-              <div class="co-note">Linkul de parolă îl găsești oricând în fișa firmei → Utilizatori, sau îl retrimiți din Utilizatori.</div>
+            {gata.admin && !gata.adminInvitat && (
+              <div class="co-note">După ce pleci de pe ecranul ăsta, un link nou de parolă îl trimiți din Utilizatori: alegi firma, deschizi omul și apeși „Trimite link de parolă”.</div>
             )}
           </div>
         ) : (

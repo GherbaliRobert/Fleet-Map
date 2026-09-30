@@ -1,0 +1,40 @@
+/* „Dispozitive" pe telefon (lotul 4, pachetul P4, 29.09): trecerea în bloc din „Neasignate" și ziua de pornire a
+   abonamentului pe rândul aparatului. Restul vine din fondator.css (.fd-rand, .fd-btn, .fd-band, --fd-ok/-warn/-bad).
+   Doar variabilele temei: se citește pe amândouă temele. */
+
+/* Bara din capul grupului „Neasignate": Toate · câte sunt bifate · firma · „Trece pe firmă". */
+.ap-bloc { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.ap-bloc-r { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.ap-toate { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; font-size: 13.5px; font-weight: 700; color: var(--text-primary); cursor: pointer; }
+.ap-toate input, .ap-bifa input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.ap-cate { font-size: 12.5px; color: var(--text-secondary); }
+.ap-sel { flex: 1 1 160px; min-width: 0; min-height: 40px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--bg-dark); color: var(--text-primary); font-size: 14px; font-family: inherit; }
+.ap-sel:focus { outline: none; border-color: var(--accent); }
+.ap-bloc .fd-btn.primary { flex: 0 0 auto; min-height: 40px; }
+.ap-bloc-nota { font-size: 12px; line-height: 1.45; color: var(--fd-warn); }
+
+/* Rândul cu bifă: bifa stă ALĂTURI de rând, nu în el (un buton în alt buton nu se apasă sigur pe telefon). */
+.ap-cu-bifa { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.ap-cu-bifa:last-child { border-bottom: none; }
+.ap-cu-bifa > .fd-rand { flex: 1; min-width: 0; border-bottom: none; padding-left: 4px; }
+.ap-bifa { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; padding-left: 4px; cursor: pointer; }
+
+/* Rândul unui aparat pe firmă: dedesubt, din ce zi plătește clientul, cu corectura. */
+.ap-rand { border-bottom: 1px solid var(--border); }
+.ap-rand:last-child { border-bottom: none; }
+.ap-rand > .fd-rand { border-bottom: none; padding-bottom: 6px; }
+.ap-abo { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; padding: 0 12px 10px; font-size: 12.5px; color: var(--text-secondary); }
+.ap-abo.nepornit { color: var(--text-muted); }
+.ap-abo .fd-btn { min-height: 34px; padding: 0 10px; font-size: 12px; }
+
+/* Ce a ieșit după „Trece pe firmă": rămâne pe ecran până îl închizi (un mesaj trecător nu ajunge pentru cele sărite). */
+.ap-rez > span { flex: 1; min-width: 0; }
+.ap-rez-s { display: block; margin-top: 3px; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.ap-inchide { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px;
+  margin: -6px -6px -6px 0; background: transparent; border: none; color: var(--text-muted); }
+
+/* Fereastra „Abonament din" */
+.ap-text { font-size: 14px; line-height: 1.5; white-space: pre-line; color: var(--text-primary); }
+.ap-eroare { font-size: 12.5px; font-weight: 700; color: var(--fd-bad); }

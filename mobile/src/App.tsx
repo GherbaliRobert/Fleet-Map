@@ -7,6 +7,7 @@ import { Icon } from './components/Icon';
 import { App as CapApp } from '@capacitor/app';
 import { initPush } from './lib/push';
 import { TabBar } from './components/TabBar';
+import { BandaAcces, bandaAcces, verificaAccesul, ACCES_VERIFICARE_MS } from './components/BandaAcces';   // restanța / suspendarea firmei, pentru toți oamenii ei
 import { Login } from './screens/Login';
 import { Vehicles } from './screens/Vehicles';
 import { VehicleDetail } from './screens/VehicleDetail';
@@ -163,9 +164,12 @@ function Shell() {
     refreshUnread();
     initPush();
     const unreadTimer = setInterval(refreshUnread, 30000);
+    // Restanța / suspendarea firmei se schimbă și cu aplicația deschisă: o dată pe minut, profilul se reîncarcă
+    // doar dacă accesul s-a schimbat (banda de sus se aprinde sau se stinge singură, ca pe web).
+    const accesTimer = setInterval(verificaAccesul, ACCES_VERIFICARE_MS);
     // La revenire reîmprospătăm și profilul: drepturile și ecranele tăiate de firmă se aplică fără re-logare.
     const h = CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) { startLive(7000); refreshMe(); } else stopLive(); });
-    return () => { stopLive(); clearInterval(unreadTimer); h.then((x) => x.remove()); };
+    return () => { stopLive(); clearInterval(unreadTimer); clearInterval(accesTimer); h.then((x) => x.remove()); };
   }, [token.value]);
 
   // „Ecranul cu care se deschide aplicația" (Contul meu → Afișaj): store-ul îl cere O SINGURĂ DATĂ, după
@@ -180,14 +184,30 @@ function Shell() {
     if (p === '/' || p === '/vehicles') loc.route(ecranCerut, true);
   }, [ecranCerut]);
 
+  // Banda de restanță / suspendare (ca pe web, applyAccessBanner): din `access` de pe profil, cu textul serverului.
+  // Când apare sau dispare, ecranul de dedesubt își schimbă înălțimea fără ca fereastra să se schimbe — de ex. la
+  // autentificare, unde profilul sosește la o clipă după cheie. Hărțile (Leaflet) își refac mărimea doar la „resize"
+  // pe fereastră: i-l dăm noi, o dată, altfel partea de jos a hărții ar rămâne tăiată și centrul mutat.
+  const banda = bandaAcces(me.value);
+  const areBanda = !!banda;
+  useEffect(() => { try { window.dispatchEvent(new Event('resize')); } catch { /* */ } }, [areBanda]);
+
   if (!authReady.value) return <Splash />;
   if (!token.value) return <Login />;
 
   const path = loc.path || '/';
   const showTabs = path === '/' || path === '/vehicles' || path === '/stats' || path === '/reports' || path === '/notifications' || path === '/meniu';
 
+  // Ramele benzii (.ba-cadru / .ba-corp) stau MEREU acolo, cu sau fără bandă: dacă ar apărea doar odată cu ea,
+  // ecranul deschis s-ar reîncărca de la zero (și și-ar pierde ce era scris în el) când sosește profilul.
+  // Butonul spre facturi: doar cine are „Facturile mele" în meniu (aceeași condiție) și nu e deja acolo.
+  const spreFacturi = banda && me.value?.permissions?.manageUsers && path !== '/billing' ? () => loc.route('/billing') : undefined;
+
   return (
     <>
+      <div class="ba-cadru">
+      <BandaAcces banda={banda} onFacturi={spreFacturi} />
+      <div class={'ba-corp' + (banda ? ' sub-banda' : '')}>
       <Router>
         <Route path="/" component={Vehicles} />
         <Route path="/vehicles" component={Vehicles} />
@@ -255,6 +275,8 @@ function Shell() {
         <Route path="/notif/:id" component={NotifDetail} />
         <Route default component={Vehicles} />
       </Router>
+      </div>{/* .ba-corp */}
+      </div>{/* .ba-cadru */}
       {showTabs && <TabBar />}
     </>
   );

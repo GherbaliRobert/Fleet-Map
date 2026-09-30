@@ -72,6 +72,26 @@ export type EcranCheie =
 const ecraneAscunse = computed<Set<string>>(() => new Set((me.value && me.value.ecraneAscunse) || []));
 export function ecranAscuns(cheie: EcranCheie): boolean { return ecraneAscunse.value.has(cheie); }
 
+// ── Accesul firmei (câmpul `access` din GET /api/me, făcut de stareAcces pe server) ──
+// Interfața Me nu-l declară (endpoints.ts), dar răspunsul întreg ajunge în `me`, deci câmpul e acolo; îl citim cu
+// tipul de aici. `mesaj` vine doar la restanță: textul pentru client, scris o singură dată pe server
+// (neplata.mesajClient) — telefonul nu socotește nicio zi, nicio sumă. `nota` (motivul unei opriri de mână) e a
+// noastră și nu se arată nicăieri. Banda de sus (components/BandaAcces.tsx) se hotărăște din el.
+export interface AccesFirma {
+  status?: string;                 // 'active' | 'grace' (restanță, în cele 15 zile) | 'expired' (suspendat)
+  motiv?: string | null;           // 'neplata' | 'manual'
+  mesaj?: string | null;
+}
+// Ca pe web (`currentUser.access`): orice valoare venită în câmp contează; lipsa lui = firmă fără stare (sau cont de platformă).
+export function accesFirma(m: unknown): AccesFirma | null {
+  const a = m ? (m as { access?: unknown }).access : null;
+  return a ? (a as AccesFirma) : null;
+}
+// Textul pentru un acces oprit — același ca pe web (applyAccessBanner, public/index.html), legat printr-o probă.
+// Îl folosesc banda roșie și anunțul venit pe fluxul live. (Până la 1.0.5 anunțul spunea „verifică
+// factura/abonamentul", de dinainte de 28.09.)
+export const MESAJ_ACCES_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
+
 export const offlineMinutes = computed(() =>
   (me.value && ((me.value as any).sys?.offline_minutes ?? (me.value as any).offline_minutes)) || 65
 );
@@ -123,7 +143,9 @@ export async function login(username: string, password: string) {
   const res = await Api.mobileLogin(username, password, 'android');
   token.value = res.token; setAuthToken(res.token);
   await saveToken(res.token);
-  const m = { username: res.username, role: res.role, permissions: res.permissions, companyId: res.companyId, isSuper: res.isSuper, company: res.company, features: res.features } as Me;
+  // `access` vine și la autentificare (aceeași stareAcces ca /api/me): banda de restanță apare din prima, chiar dacă
+  // cererea /api/me de mai jos nu ajunge.
+  const m = { username: res.username, role: res.role, permissions: res.permissions, companyId: res.companyId, isSuper: res.isSuper, company: res.company, features: res.features, access: accesFirma(res) } as Me;
   me.value = m; await saveUser(m);
   try { me.value = await Api.me(); await saveUser(me.value); } catch { /* ignore */ }
   syncUiPrefs(true); // tema, harta și ecranul de pornire ale contului în care tocmai a intrat
@@ -202,7 +224,14 @@ function upsertVehicle(pos: Position) {
 }
 function applyWs(msg: any) {
   if (!msg || !msg.type) return;
-  if (msg.type === 'init' && Array.isArray(msg.data)) { livePos.value = msg.data; vehiclesLoading.value = false; return; }
+  if (msg.type === 'init' && Array.isArray(msg.data)) {
+    livePos.value = msg.data; vehiclesLoading.value = false;
+    // Serverul trimite fluxul doar unei firme cu acces. Dacă profilul încă spune „suspendat", firma a fost
+    // reactivată între timp (a plătit): îl reîmprospătăm, ca banda roșie să nu rămână agățată până la
+    // revenirea în aplicație. Iar o nouă suspendare se anunță din nou.
+    if (accesFirma(me.value)?.status === 'expired') { _wsAccessMsgShown = false; refreshMe(); }
+    return;
+  }
   if (msg.type === 'position') { upsertVehicle(msg.data); return; }
   if (msg.type === 'positions' && Array.isArray(msg.data)) {
     const map = new Map(livePos.value.map((v) => [v.imei, v] as [string, Position]));
@@ -233,8 +262,11 @@ function applyWs(msg: any) {
     return;
   }
   if (msg.type === 'error' && msg.data && msg.data.error === 'access_expired') {
-    // Acces suspendat de server (abonament/factură) — NU e eroare de autentificare → nu delogăm; anunțăm o dată.
-    if (!_wsAccessMsgShown) { _wsAccessMsgShown = true; showToast('Acces suspendat — verifică factura/abonamentul', true); }
+    // Serverul a refuzat fluxul live: accesul firmei e oprit (neplată sau de noi). NU e eroare de autentificare →
+    // nu delogăm. Profilul se reîmprospătează, ca banda roșie de sus să se aprindă pe loc, nu abia la revenirea
+    // în aplicație — o singură dată: cât profilul spune deja „suspendat", reconectările nu mai cer nimic.
+    if (accesFirma(me.value)?.status !== 'expired') refreshMe();
+    if (!_wsAccessMsgShown) { _wsAccessMsgShown = true; showToast(MESAJ_ACCES_SUSPENDAT, true); }
     return;
   }
 }

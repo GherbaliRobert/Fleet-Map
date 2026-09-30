@@ -58,7 +58,8 @@ function bifeCan(ov: any): Record<string, boolean> {
   return m;
 }
 
-export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => void }) {
+// `onFacturi` — „Deschide fila Facturi" (web: raxCodTab('facturi')): fișa schimbă fila; plata se trece acolo.
+export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReload: () => void; onFacturi?: () => void }) {
   const loc = useLocation();
   const co = ov.company || {};
   const id = Number(co.id);
@@ -434,7 +435,12 @@ export function CompanyAbonament({ ov, onReload }: { ov: any; onReload: () => vo
           a plecat odată cu ceasul vechi „acces până la", care bloca clienți care plătiseră tot. */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Plăți</h3>
-        <div class="co-note" style="margin:0">Plata se trece pe factură: Facturare → factura → „Plătită". Accesul clientului se oprește doar pentru o factură neplătită la 15 zile după scadență — nu mai există „acces până la".</div>
+        <div class="co-note" style="margin:0">Plata se trece pe factură, din fila „Facturi" (butonul „Marchează plătită" de pe rând; la proformă, „Încasată"). Accesul clientului se oprește doar pentru o factură neplătită la 15 zile după scadență — nu mai există „acces până la".</div>
+        {onFacturi && (
+          <div class="fm-btns" style="margin-top:10px">
+            <button class="fm-btn" onClick={onFacturi}><Icon name="report" size={15} /> Deschide fila Facturi</button>
+          </div>
+        )}
       </div>
 
       {reactivez && (

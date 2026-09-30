@@ -1017,6 +1017,23 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - Păzit de `verify_abonament.js` (în `npm test`, inclusiv pe server pornit), `verify_neplata.js`,
   `verify_companii.js`, `verify_factura.js`.
 
+### Facturarea pe telefon (APK 1.0.5, lotul 4 — 30.09)
+Telefonul face ce face pagina, pe aceleași rute; serverul nu știe că e telefonul. Ce trebuie știut când schimbi
+facturarea pe web:
+- **Regulile ferestrei stau în `mobile/src/lib/factura.ts`, legate de pagină** prin `verify_facturare_telefon.js`
+  (în `npm test`), care RULEAZĂ bucățile paginii (`_giStrangeLucrarea` / `_giNotaMontaj`, `_giLunaText`, `_myInvStare`,
+  „Ce e" din lista de facturi, întrebările lui `raxInvoiceMarkPaid`) și pe ale telefonului pe aceleași cazuri. Schimbi
+  una pe web → proba pică până o schimbi și pe telefon. NU slăbi proba; mută regula.
+- **O singură adresă deschide „Generează factură"**: `rutaFactura(companyId, fel)` → `/billing?factura=<id>[&fel=unica]`
+  (drumul clientului, fila Facturi din fișă). **O singură foaie a documentului**: `components/DocumentFactura.tsx`,
+  cu trei priviri (Facturare / fișa firmei / client).
+- **Unde telefonul face dinadins altfel** (din revizia lucrului din 29.09): o corectură de mână pe un rând de montaj nu
+  se rescrie; o lucrare scoasă de pe factură NU pleacă în `montaje`; avertismente pentru luna care n-a început, aparatele
+  deja pe o proformă și montajul pus pe proformă. Când Alin le repară pe server/web, telefonul poate rămâne cum e.
+- **Banda de acces** (`components/BandaAcces.tsx`, în `App.tsx`) arată `access.mesaj` de la server — telefonul NU
+  socotește zile sau sume; `access.nota` (motivul nostru intern) nu se arată niciodată. Contul suspendat rămâne în
+  aplicație, cu „Vezi facturile" (rutele de facturi sunt în `ACCESS_FREE`).
+
 ## Parola nu există (regulă de fond)
 
 **Nimeni nu scrie parola altcuiva.** Nici noi, nici administratorul firmei. Se deschide un cont pe o

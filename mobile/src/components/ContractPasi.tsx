@@ -21,6 +21,7 @@ import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { LIPSA_ET, LIPSA_FIRMA, RUTA_NEASIGNATE, azi, inputZi, zile } from '../lib/contracte';
 import { rutaDosar } from '../lib/companii';
+import { rutaFactura } from '../lib/factura';
 import { ziLaPranz } from '../lib/montajSectiune';
 import { AlegeFisier, type FisierAles } from './ContractUi';
 import { Confirma } from './FlotaUi';
@@ -32,8 +33,11 @@ import '../screens/contracte.css';
 // Montajul: dosarul firmei, cu formularul unei lucrări noi DESCHIS (web: raxDrumMontaj → raxMontajEdit(0)).
 // Dosarul citește `?lucrare=noua`. Adresa dosarului rămâne una singură (rutaDosar).
 export const rutaMontajNou = (companyId: any) => rutaDosar(companyId) + '?lucrare=noua';
-// Prima factură: „Generează factură", cu firma deja aleasă (web: raxDrumFactura → raxOpenGenInvoice(companyId)).
-export const rutaPrimaFactura = (companyId: any) => '/billing?factura=' + encodeURIComponent(String(companyId));
+// „Emite prima factură" (29.09): „Generează factură" din Facturare, cu firma aleasă și pe factura UNICĂ, nu pe
+// abonamentul lunii — web: raxDrumFactura → raxOpenGenInvoice(companyId, 'unica'). Abonamentul pleacă singur,
+// luna următoare, pe zile de la montaj. Factură fiscală sau proformă se alege în fereastra de emis.
+// Adresa o face `rutaFactura` (lib/factura.ts) — aceeași și pentru butoanele din fila Facturi a fișei firmei.
+export const rutaPrimaFactura = (companyId: any) => rutaFactura(companyId, 'unica');
 // Fără SMTP pe server, „Trimite la semnat" ar minți; pe web e scris pe butonul „Am trimis-o", la trecerea mouse-ului.
 const FARA_EMAIL = 'Emailul nu e configurat pe server: descarcă contractul și trimite-l tu.';
 
