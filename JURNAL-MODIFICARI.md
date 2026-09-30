@@ -9946,8 +9946,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   din cele 26 de puncte deschise dimineață, 25 sunt încă deschise și unul e pe jumătate (13: firma aleasă în bară rămâne
   aleasă, dar „Toate" bifează tot și aparatele ascunse de căutare). Cele date drept închise: hârtia facturii pe server —
   gata; drumul care știe de avans și termenul de 30 de zile — gata; „Mută între companii" — pe jumătate: abonamentul și
-  jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. La punctul 8 s-a
-  adăugat un loc: hârtia facturii scrie „TVA 19%" când „Date emitent" n-are cotă.
+  jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. La TVA (punctul 10
+  din lista lotului 3, mai sus) s-a adăugat un loc: hârtia facturii scrie „TVA 19%" când „Date emitent" n-are cotă.
   **Patru probleme NOI, din schimbările de azi:**
   17. **„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se
       uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
