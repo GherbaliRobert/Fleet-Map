@@ -418,6 +418,32 @@ function pachetFacturare() {
     T('hârtia se închide la „înapoi" și nu scrie un răspuns venit după închidere', /useInapoiInchide\(true/.test(doc) && /let viu = true/.test(doc) && /viu = false/.test(doc));
   }
 
+  sect('1.6b PDF-ul de pe server („Vezi" / „Descarcă") și ce a plecat odată cu documentul — ca pe web (30.09)');
+  {
+    const doc = docFactura;
+    // Ce a plecat (anunțul, emailul, ANAF): _invTrimisaText din pagină, RULATĂ, pe aceleași răspunsuri ca telefonul.
+    const trimisaWeb = functie(html, 'function _invTrimisaText(t, pf) {');
+    let TW = null;
+    try { const c = vm.createContext({}); vm.runInContext(trimisaWeb + '\nthis.f = _invTrimisaText;', c); TW = c.f; } catch (e) { console.log('    (pagina: ' + e.message + ')'); }
+    T('găsesc _invTrimisaText în pagină și trimisaText în telefon', typeof TW === 'function' && typeof F.trimisaText === 'function');
+    const raspunsuri = [null, undefined, {}, { notificare: true }, { notificare: true, email: true }, { email: false, emailMotiv: 'serverul n-are email' },
+      { notificare: true, anaf: 'uploaded' }, { anaf: 'error' }, { anaf: null }, { notificare: true, email: true, emailMotiv: 'x', anaf: 'uploaded' }];
+    let laFel = 0, total = 0;
+    for (const t of raspunsuri) for (const pf of [true, false]) { total++; if (TW && TW(t, pf) === F.trimisaText(t, pf)) laFel++; }
+    T('ce a plecat: aceleași cuvinte ca pe web, pe ' + total + ' de răspunsuri (factură și proformă)', laFel === total, laFel + '/' + total);
+    T('după „Emite": mesajul spune ce a plecat (felul documentului contează: proforma nu merge la ANAF)',
+      /trimisaText\(r && r\.trimisa, corp\.tip === 'proforma'\)/.test(billing));
+    T('după „Încasată" pe proformă: la fel, pentru factura fiscală născută', /trimisaText\(r && r\.trimisa, false\)/.test(doc));
+    // PDF-ul: aceleași rute ca pe web (la noi / la client), iar serverul le are, fiecare cu ușa ei.
+    T('rutele PDF-ului = cele din pagină: la noi /api/invoices/:id/pdf, la client /api/billing/my-invoices/:id/pdf',
+      F.rutaPdfFactura(7, false) === '/api/invoices/7/pdf' && F.rutaPdfFactura(7, true) === '/api/billing/my-invoices/7/pdf'
+      && html.indexOf("_invHartieBtns('/api/invoices/' + f.id + '/pdf'") >= 0 && html.indexOf("_invHartieBtns('/api/billing/my-invoices/' + f.id + '/pdf'") >= 0);
+    T('…iar serverul le are: a noastră doar pentru super-admin, a clientului doar pe firma lui',
+      /app\.get\('\/api\/invoices\/:id\/pdf', requireAuth, requireSuperadmin,/.test(server) && /app\.get\('\/api\/billing\/my-invoices\/:id\/pdf', requireAuth, requirePerm\('manageUsers'\), withCompany,/.test(server));
+    T('hârtia documentului are „Vezi" și „Descarcă" pe PDF-ul serverului, în toate cele trei priviri (ruta clientului la client)',
+      /<HartieBtns path=\{rutaPdfFactura\(inv\.id, privire === 'client'\)\} ce=\{pf \? 'Proforma' : 'Factura'\}/.test(doc) && /import \{ HartieBtns \} from '\.\/ContractUi';/.test(doc));
+  }
+
   sect('1.7 Adresa „/billing?factura=…" și cererile spre server');
   {
     const u = new URL('http://x' + F.rutaFactura(42, 'unica'));

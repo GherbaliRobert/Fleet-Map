@@ -242,6 +242,22 @@ export function aparateDejaPe(documente: any[], companyId: any, dinContract: any
     .map((v) => String(v.full_number || '')).filter(Boolean);
 }
 
+// Hârtia unei facturi sau proforme = PDF-ul făcut de SERVER (factura_pdf.js, Alin 30.09), ca la contracte și oferte:
+// la noi (Facturare, fișa firmei) ruta noastră; la client, ruta lui, care dă doar documentele firmei lui.
+export function rutaPdfFactura(id: any, laClient: boolean): string {
+  return (laClient ? '/api/billing/my-invoices/' : '/api/invoices/') + encodeURIComponent(String(id)) + '/pdf';
+}
+// Ce a plecat odată cu documentul, cum o spune serverul (`trimisa`: anunțul, emailul, ANAF) — aceleași cuvinte ca pe
+// web (_invTrimisaText), legate printr-o probă. Pe față, ca să nu crezi că a plecat ce n-a plecat.
+export function trimisaText(t: any, pf: boolean): string {
+  if (!t) return '';
+  const p: string[] = [];
+  if (t.notificare) p.push('clientul e anunțat în aplicație');
+  p.push(t.email ? 'emailul a plecat, cu PDF-ul' : 'fără email (' + (t.emailMotiv || 'n-a plecat') + ')');
+  if (!pf) p.push(t.anaf === 'uploaded' ? 'trimisă la ANAF' : t.anaf === 'error' ? 'ANAF a refuzat-o (vezi coloana ANAF)' : 'nu pleacă la ANAF încă (lipsește tokenul)');
+  return ' · ' + p.join(' · ');
+}
+
 // Metoda unei încasări, pe înțelesul omului (pe web apare codul: transfer / cash / card / manual).
 export function metodaText(m: any): string {
   return ({ transfer: 'transfer bancar', cash: 'numerar', card: 'card', manual: 'altă metodă' } as Record<string, string>)[String(m || 'manual')] || String(m);

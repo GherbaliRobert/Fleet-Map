@@ -349,9 +349,9 @@ export const Api = {
     api<any>('/api/invoices/draft', { method: 'POST', body: fel === 'unica' ? { companyId, fel } : { companyId, fel, luna } }),
   // { companyId, fel, luna, tip: 'invoice'|'proforma', lines, montaje, note } — ca pe web (raxGenIssue).
   // Abonamentul unei luni deja facturate → 409, cu numărul facturii existente în mesaj.
-  issueInvoice: (b: any) => api<{ ok: boolean; invoice: any; montajeFacturate?: number }>('/api/invoices', { method: 'POST', body: b }),
+  issueInvoice: (b: any) => api<{ ok: boolean; invoice: any; montajeFacturate?: number; trimisa?: any }>('/api/invoices', { method: 'POST', body: b }),
   // 'paid' | 'canceled'. „Încasată" pe o proformă emite factura fiscală: `invoice` e factura născută.
-  invoiceSetStatus: (id: number, status: string) => api<{ ok: boolean; invoice?: any; already?: boolean }>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
+  invoiceSetStatus: (id: number, status: string) => api<{ ok: boolean; invoice?: any; already?: boolean; trimisa?: any }>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),
   // Ce spune ANAF de o factură trimisă: `stare` = răspunsul lor, `status` = uploaded / validated / error.
   invoiceEfacturaStatus: (id: number) => api<{ ok: boolean; stare?: string; status?: string; note?: string }>(`/api/invoices/${id}/efactura/status`),

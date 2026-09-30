@@ -1090,6 +1090,10 @@ facturarea pe web:
   `MESAJ_SUSPENDAT_LA_INTRARE` = `MESAJ_SUSPENDAT` de pe server = textul din `checkAuth` de pe web (legate prin probă,
   care rulează `checkAuth`). Cu aplicația deschisă: banda roșie, fără buton. „Vezi facturile" stă DOAR pe banda de
   restanță — singurul lucru în plus față de web.
+- **Hârtia facturii pe telefon = PDF-ul serverului** (factura_pdf.js): `DocumentFactura` pune `HartieBtns` (aceleași
+  butoane ca la contracte) pe `rutaPdfFactura(id, laClient)` — `/api/invoices/:id/pdf` la noi, `/api/billing/my-invoices/
+  :id/pdf` la client. Mesajul de după „Emite" / „Încasată" = `trimisaText(r.trimisa, pf)`, legat de `_invTrimisaText`
+  din pagină (proba le rulează pe amândouă). NU desena o hârtie a facturii în telefon.
 
 ## Parola nu există (regulă de fond)
 

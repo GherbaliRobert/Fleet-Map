@@ -81,7 +81,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-09-30
 
-### CLIENT · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web — `HASH`
+### AMÂNDOI · Telefonul 1.0.6: contul unei firme suspendate iese din aplicație, ca pe web; factura în PDF — `HASH`
 
 Hotărât pe 30.09: „la fel ca și pe web". Până acum, pe telefon, contul unei firme suspendate rămânea înăuntru, cu
 banda roșie și butonul „Vezi facturile". Acum telefonul face exact ce face web-ul:
@@ -94,10 +94,20 @@ banda roșie și butonul „Vezi facturile". Acum telefonul face exact ce face w
 
 Pornirea fără rețea nu scoate pe nimeni afară: hotărăște doar răspunsul proaspăt de la server, nu copia de pe telefon.
 
-- **Ce am schimbat:** aplicația de telefon 1.0.6 (pornirea, ecranul de autentificare, banda). Proba telefonului rulează
-  acum și pornirea de pe web, pe aceleași stări, și cere același rezultat (496 de verificări).
-- **Ce vede fondatorul:** nimic nou.
-- **Ce vede clientul:** o firmă suspendată nu mai intră din telefon; vede mesajul pe ecranul de autentificare, ca pe web.
+**Tot în 1.0.6 — ce a făcut Alin azi pe web, adus pe telefon:**
+- **Factura și proforma au „Vezi" și „Descarcă"** pe PDF-ul făcut de server (același fișier ca pe web, cu logo-ul și
+  numele „RA-Tracks - Factură …"): la noi, în Facturare și în fișa firmei, și la client, în „Facturile mele".
+- **După „Emite" și după „Încasată"**, mesajul spune ce a plecat: „clientul e anunțat în aplicație · fără email
+  (serverul n-are email) · nu pleacă la ANAF încă (lipsește tokenul)" — aceleași cuvinte ca pe web.
+- Întrebarea de la „Încasată" și butonul ANAF (doar pe factura netrimisă sau respinsă) le-a pus Alin azi pe telefon;
+  ajung la voi tot cu 1.0.6.
+
+- **Ce am schimbat:** aplicația de telefon 1.0.6 (pornirea, ecranul de autentificare, banda, PDF-ul facturii, mesajul
+  de după emitere). Proba telefonului rulează acum și pornirea de pe web și textul „ce a plecat" de pe web, pe aceleași
+  cazuri, și cere același rezultat (504 de verificări).
+- **Ce vede fondatorul:** „Vezi" / „Descarcă" pe fiecare factură și proformă; după „Emite", ce a plecat.
+- **Ce vede clientul:** o firmă suspendată nu mai intră din telefon (vede mesajul pe ecranul de autentificare, ca pe
+  web); în „Facturile mele", „Vezi" / „Descarcă" pe fiecare document.
 
 
 ### AMÂNDOI · Orice factură pleacă singură la client și la ANAF — și se descarcă direct în PDF
@@ -9775,7 +9785,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   - ~~Clientul nu-și poate salva factura de pe telefon: hârtia facturii există doar în pagina web. Recomandarea: o
     singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.~~ — **FĂCUT pe
     server (30.09):** `GET /api/invoices/:id/pdf` (noi) și `GET /api/billing/my-invoices/:id/pdf` (administratorul
-    firmei, doar documentele lui). Web-ul le folosește deja; telefonului îi rămâne butonul „Descarcă" (APK).
+    firmei, doar documentele lui). Web-ul le folosește deja; pe telefon, „Vezi" / „Descarcă" — **făcut în 1.0.6 (30.09)**.
   - Telefoanele vechi (1.0.3) mai au „Înregistrează plata + extinde accesul": serverul o scrie ca încasare fără
     factură, iar factura rămâne neplătită → clientul se poate suspenda deși a plătit. Plasa: toate telefoanele noastre
     pe 1.0.6; opțional, serverul să refuze cererea veche.

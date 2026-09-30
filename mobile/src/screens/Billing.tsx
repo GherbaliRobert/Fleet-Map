@@ -9,7 +9,7 @@ import { rutaFisa } from '../lib/companii';
 import {
   LUNI, cheieLuna, lunaText, ziRo, felDinAdresa, ciornaDinRaspuns, sursaPusa, puneContract, acoperire, montajeDeTrimis,
   puneLucrare, scoateLucrare, editeazaLinie, stergeLinie, adaugaLinie, puneNota, liniiValide, corpEmitere, ceEste,
-  stareClient, lunaViitoare, aparateDejaPe, metodaText,
+  stareClient, lunaViitoare, aparateDejaPe, metodaText, trimisaText,
 } from '../lib/factura';
 import type { Ciorna, Fel, Tip } from '../lib/factura';
 // Hârtia documentului — una singură pe telefon, aceeași și în fișa firmei (fila Facturi, butonul „Vezi”).
@@ -349,7 +349,7 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
     try {
       const r = await Api.issueInvoice(corp);
       const nr = (r && r.invoice && r.invoice.full_number) || '';
-      showToast((corp.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (r && r.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + ' ✓');
+      showToast((corp.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (r && r.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + trimisaText(r && r.trimisa, corp.tip === 'proforma') + ' ✓');
       onIssued();
     } catch (e: any) { showToast(e?.message || 'Eroare la emitere', true); }   // 409: mesajul serverului, cu numărul facturii existente
     finally { setSaving(false); }

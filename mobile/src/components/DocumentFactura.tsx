@@ -3,7 +3,8 @@ import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
-import { stareClient, INTREB_PROFORMA, INTREB_FACTURA } from '../lib/factura';
+import { stareClient, INTREB_PROFORMA, INTREB_FACTURA, rutaPdfFactura, trimisaText } from '../lib/factura';
+import { HartieBtns } from './ContractUi';
 import '../screens/billing.css';
 // --fl-ok / --fl-warn (flota.css) și --fd-warn (fondator.css): culorile SCRISULUI, cu pereche pe tema luminoasă.
 import '../screens/flota.css';
@@ -87,7 +88,8 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
       if (kind === 'paid') {
         const r = await Api.invoiceSetStatus(inv.id, 'paid');
         const nr = (r && r.invoice && r.invoice.full_number) || '';
-        showToast(pf ? ((r && r.already ? 'Proforma era deja încasată' : 'Proformă încasată') + (nr ? ' → factura ' + nr : '') + ' ✓') : 'Factură plătită ✓');
+        // Factura fiscală născută din proformă pleacă singură (anunț, email, ANAF): spunem ce a plecat, ca pe web.
+        showToast(pf ? ((r && r.already ? 'Proforma era deja încasată' : 'Proformă încasată') + (nr ? ' → factura ' + nr : '') + trimisaText(r && r.trimisa, false) + ' ✓') : 'Factură plătită ✓');
         gata();
       }
       else if (kind === 'cancel') { await Api.invoiceSetStatus(inv.id, 'canceled'); showToast('Document anulat'); gata(); }
@@ -130,6 +132,11 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
             {plin && inv.note ? <div class="bill-kv"><span>Mențiuni</span><b class="bill-ment">{inv.note}</b></div> : null}
             {plin && inv.din_proforma && !dinProformaSpus ? <div class="bill-nota">Emisă la încasarea unei proforme.</div> : null}
           </div>
+          {/* Hârtia documentului: PDF-ul de pe server, în toate cele trei priviri (ca pe web: la noi, în fișa firmei,
+              în „Facturile mele"). Numele fișierului vine din antetul răspunsului. */}
+          {inv.id ? <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
+            <HartieBtns path={rutaPdfFactura(inv.id, privire === 'client')} ce={pf ? 'Proforma' : 'Factura'} nume={(pf ? 'proforma' : 'factura') + '.pdf'} />
+          </div> : null}
           {actiuni && <div class="frm-actions" style="flex-wrap:wrap;gap:8px;margin-top:12px">
             {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-primary" disabled={!!busy} onClick={() => act('paid')}><Icon name="check" size={15} color="#06210f" /> {pf ? 'Încasată' : 'Plătită'}</button>}
             {/* Factura pleacă singură la ANAF la emitere (30.09): butonul doar pe cea netrimisă sau respinsă — pe una aflată deja
