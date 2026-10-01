@@ -777,9 +777,46 @@ disponibilitatea"* + *„în secțiunea Montaj"*. Blocul „calendarul de montaj
   restul se întoarce SINGUR la „de programat". O zi montată nu se mai mută.
 - **„Programează montajul"** din drumul clientului (`raxDrumMontaj`) duce în calendar cu clientul ales
   (`_raxMj.cal.pre`); în fișă, la contract semnat, butonul e „Programează în calendar".
-- Ecranul NU socotește nimic (păzit): cere serverului. Culorile etichetelor (programat / montat) au pereche pe
-  tema deschisă, măsurate ≥ 6. Pe telefon grila rămâne în pagină; numele clientului se ascunde, cifra rămâne.
+- Ecranul NU socotește nimic (păzit): cere serverului. Pe telefon grila rămâne în pagină; numele clientului se
+  ascunde, cifra rămâne.
 - Păzit de `verify_montaj_calendar.js` (în `npm test`), pe server pornit.
+
+#### Refăcut pe 01.10, după macheta aprobată (Alin: „ca în imagini — da"; „ajung cele două — și buton reprogramează")
+- **Clicul pe o zi deschide FEREASTRA ei** (`#mjc-ov`, o singură fereastră, conținutul după stare: ziua, lucrarea,
+  anularea, reprogramarea — `_mjcFereastraCorp`). Fereastra stă în markup-ul calendarului; „La client" o închide ÎNTÂI
+  (`raxMjCalLaClient`), altfel ar acoperi fișa firmei. Alături de calendar: „Ce ai de montat"; dedesubt: „Programate /
+  Istoric" (filtre Toate / Montate / Anulate).
+- **Confirmările** (vorbite la telefon): `montaje.confirmat_instalator_la` / `confirmat_client_la` (ms). Se bifează la
+  programare (`confirmat_instalator` / `confirmat_client` în `POST /api/montaj/programeaza`) sau după
+  (`POST /api/montaje/:id/confirmari { instalator?, client? }`, `db.confirmaMontaj` — doar pe o zi încă programată).
+  Culoarea zilei: **verde** `mjc-ok` = amândoi, **galben** `mjc-conf` = mai lipsește una, **gri** `mjc-mont` = montată.
+  Starea și textul le dă serverul (`montaj.stareConfirmare` / `textConfirmare` → `conf`, `conf_text`).
+- **O zi programată a unui contract SEMNAT NU se mai șterge: se ANULEAZĂ, cu motivul ei**, și rămâne în istoric
+  (`status = 'anulat'`, `anulat_la`, `anulat_de`, `motiv_anulare`, `detalii_anulare`). `DELETE /api/montaje/:id` →
+  409 `{ anuleaza: true }` pe una programată de contract semnat, 409 pe una anulată. Lucrările unui contract NESEMNAT
+  (din fișă) se șterg ca înainte. „anulat" e în `ETICHETE_STARE`, dar NU în `STARI` (nu se alege din fișă); o zi
+  anulată nu se mută, nu se trece montată (400) și nu se rescrie din fișă (409).
+- **Motivele sunt DOUĂ** (`montaj.MOTIVE_ANULARE`: instalatorul nu poate / clientul nu poate) — Alin, 01.10. Vin de la
+  server (`motive` în răspunsul calendarului); pagina și telefonul NU le scriu.
+- **O SINGURĂ funcție de anulare: `_anuleazaLucrarea(id, { motiv, detalii, reprogramare, cine, sursa })`** (server.js),
+  chemată azi de `POST /api/montaje/:id/anuleaza`; mâine, de „Refuz" din contul instalatorului (partea lui Robert).
+  „Accept" din contul lui = `db.confirmaMontaj(id, { instalator: true })`. Păzit prin numărare. NU scrie a doua cale.
+- **Reprogramarea:** pe loc (`reprogramare: { data_lucrare, partener_id }` la anulare — validată ÎNAINTE de anulare, ca
+  să nu rămână o zi anulată pe jumătate) sau din istoric (`POST /api/montaje/:id/reprogrameaza`, o singură dată:
+  `reprogramat_ca` = lucrarea nouă). Aceleași mașini; prețul din Anexa nr. 2, costul din tarifele instalatorului
+  (`_ziuaNoua` → `montaj.lucrareaZilei`, ca la programare).
+- **Textele le scrie serverul, ecranele doar le arată:** istoricul (`montaj.textIstoric` — „Anulată — instalatorul nu
+  poate" · „„Bolnav” · anulată de Alin, pe 08.03 · reprogramată pe 15.03"), ce are fiecare instalator în ziua aia
+  (`montaj.incarcarePeZile` + `textIncarcare`, anulatele nu țin pe nimeni ocupat; `textLiber`), nota de stoc
+  (`POST /api/montaj/nota-stoc` → `montaj.notaStoc` cu `aparatePeTip` din Anexa nr. 2 / chirie și `db.stocLaInstalator`).
+- O zi anulată nu se numără nicăieri ca lucrare: nici la „de programat" (`deProgramat` ignoră starea), nici în drumul
+  clientului (`drumDateToate` o scoate).
+- Culorile (etichete, rezultate, nota de stoc, „Anulează") au pereche pe tema deschisă; contrastul e MĂSURAT de probă
+  din CSS, pe ambele teme și pe weekend (≥ 4,5). Butonul plin „Anulează lucrarea" are clasa lui (`mjc-rosu`), fiindcă
+  Montaj nu e în familia `.ra-camp`.
+- **Telefonul** (`mobile/src/lib/calendarMontaj.ts` + `components/CalendarMontaj.tsx`) face același lucru, pe aceleași
+  rute; legat de pagină de `verify_telefon_lot5.js`, care rulează blocul paginii. Telefonul vechi (până la APK-ul nou)
+  mai are „Șterge ziua": serverul îl refuză cu mesajul „Ziua asta se anulează din calendar…".
 
 ### Factura montajului, în ritmul instalatorului (Alin, 30.09: „…ca să nu fim pe pierdere. Doar la montaj.")
 - **Ritmul stă pe fișa instalatorului:** `montaj_parteneri.ritm_facturare` = `lunar` / `saptamanal` (gol = lunar;

@@ -2734,7 +2734,7 @@ async function setCompanySuspend(id, date) {
 async function contracteInVigoare() {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
-            c.notice_days, c.montaj, c.annex, c.created_at, co.name AS company_name, co.contact_email,
+            c.notice_days, c.montaj, c.created_at, c.annex, co.name AS company_name, co.contact_email,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite
        FROM contracts c JOIN companies co ON co.id = c.company_id

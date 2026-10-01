@@ -85,12 +85,15 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** Alin a hotărât să le facă el. Lista,
   pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
   „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
-  starea fiecăruia. La punctul 8 (aparat schimbat pe aceeași mașină) așteaptă întâi „da"-ul lui Alin.
+  starea fiecăruia. Punctul 8 (aparat schimbat pe aceeași mașină): Alin, 01.10 — „îl face Robert"; e pe lista lui.
 - [ ] **Robert: pe ratrack.ro, aparatele care au primit „ziua de pornire" fără să fie montate. Adăugat pe 01.10.** (Lista
   lui, pct. 11.) Pe 28.09 aplicația a dat o singură dată zi de pornire tuturor aparatelor care transmiseseră deja —
   inclusiv celor care au transmis doar de pe masa de probă. Ele plătesc abonament de atunci. De verificat în Dispozitive,
   la fiecare aparat nemontat încă la client, și corectat cu „✎ ziua de pornire" (golită: pornește la prima transmisie
   de după montaj). Trecerea „o singură dată" nu se rulează a doua oară.
+- [ ] **Robert: aplicația de telefon cu calendarul nou de montaj. Adăugat pe 01.10.** Codul e gata (fereastra zilei,
+  confirmările, anularea cu motiv, istoricul, reprogramarea); trebuie construit și instalat APK-ul următor. Până atunci,
+  pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -108,8 +111,8 @@ vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), sec�
 | Gestiune | Stoc echipamente | 🆕 secțiune nouă (25.09; din 30.09 GPS-ul intră doar aici, cu IMEI-ul) |
 | AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
 | Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
-| Business | Montaj | 🆕 secțiune nouă (24.09), cu calendar și ritmul instalatorului (30.09) |
-| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; mai are puncte deschise din verificarea lui Robert |
+| Business | Montaj | 🆕 secțiune nouă (24.09), cu ritmul instalatorului (30.09); ✅ **calendarul refăcut după machetă (01.10)** |
+| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; urmează trecerea ecran cu ecran, ca la celelalte |
 | Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
 | Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
 
@@ -124,14 +127,50 @@ vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche). 
 Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și texte 4), cu locul din cod și reparația propusă, e
 în documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
 
-**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) **Montaj → Calendar**, refăcut (propunerea cu machetă e la
-Alin); (2) **Facturare** (ce mai e: stornarea; răspunsul contabilului despre factura de avans); (3) restul meniului, de la
-„Conturi & Abonamente" până la „Jurnal audit". Regula „ce apare nou pe drum se face la capătul secțiunii" — încă de
-lămurit cu Alin.
+**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) ~~Montaj → Calendar~~, refăcut după machetă (01.10, gata);
+(2) **Facturare**, ecran cu ecran (Alin: „terminăm montajul și trecem la facturare"; ce mai e: stornarea; răspunsul
+contabilului despre factura de avans); (3) restul meniului, de la „Conturi & Abonamente" până la „Jurnal audit". Regula
+„ce apare nou pe drum se face la capătul secțiunii" — încă de lămurit cu Alin.
 
 ---
 
 ## 2026-10-01
+
+### FONDATOR · Calendarul de montaj, refăcut după machetă: fereastra zilei, confirmări, anulare cu motiv, istoric
+
+Alin (01.10): *„Ca în imagini — da"*; la motivele de anulare: *„ajung cele două — și buton reprogramează"*.
+
+1. **Apeși pe o zi și se deschide fereastra ei.** Sus, ce e deja programat în ziua aia. Dedesubt, „Programează
+   montajul": clientul, câte mașini (cu aparatul scris lângă — FMC130, LV-CAN200), cine montează și, lângă fiecare
+   instalator, ce mai are deja în ziua aia („liber în ziua asta" / „are deja 6 mașini (Logistic Nord SRL)").
+2. **Nota de stoc:** când alegi instalatorul, aplicația spune ce aparate are la el din stoc și ce trebuie să-i mai
+   duci — de exemplu „Are la el din stoc 3 × FMC130 și 2 × LV-CAN200: mai trebuie să-i duci 3 × FMC130."
+3. **Două confirmări, vorbite la telefon:** „Am vorbit cu instalatorul: poate în ziua asta" și „Am vorbit cu clientul:
+   mașinile sunt disponibile". Se bifează la programare sau mai târziu, din ziua programată. Culoarea zilei în
+   calendar: **verde** = au confirmat amândoi, **galben** = mai lipsește o confirmare, **gri** = montată.
+4. **Anulează, cu motivul:** „Instalatorul nu poate" sau „Clientul nu poate" (doar două, cum a hotărât Alin), plus
+   amănunte, dacă vrei. Ziua anulată **nu se mai șterge**: rămâne în „Istoric", cu motivul, cine a anulat și când, iar
+   mașinile ei se întorc la „Ce ai de montat".
+5. **Reprogramează:** pe loc, din fereastra de anulare („Anulează și reprogramează"), sau mai târziu, din „Istoric".
+   Aceleași mașini, pe ziua nouă; în istoric scrie „reprogramată pe 15.10".
+6. **Sub calendar, „Programate / Istoric":** toate zilele încă programate (din orice lună), cu confirmările lor; și
+   istoricul — zilele montate și cele anulate, cu filtrele Toate / Montate / Anulate.
+7. **„Ce ai de montat"** (fostul „De programat") stă lângă calendar, cu termenul de 30 de zile și „Programează".
+
+Pe drum: o zi anulată nu mai poate fi mutată sau trecută „montată" din greșeală (scrie „se reprogramează din
+Istoric"), nu se rescrie din fișa clientului și nu se șterge. Până face Robert contul instalatorului, confirmările și
+anularea le facem noi; când îl face, „Accept" și „Refuz" din contul lui folosesc exact aceleași reguli, ca istoricul să
+spună la fel, oricine ar fi anulat.
+
+- **Ce am schimbat:** serverul (confirmările, anularea cu motiv — o singură regulă, pe care o va chema și „Refuz" din
+  contul instalatorului —, reprogramarea, istoricul, ce are fiecare instalator în ziua aia, nota de stoc), pagina
+  (calendarul, fereastra zilei, Programate / Istoric) și telefonul (același calendar; intră în aplicația următoare — la
+  „De amintit"). Probe: `verify_montaj_calendar.js` (104 verificări, rescrisă pe regulile noi, cu contrastul măsurat pe
+  ambele teme), `verify_telefon_lot5.js` (562 — telefonul face exact ce face pagina). Contrastul măsurat și în browser:
+  cel mai mic, 4,76 (legenda, pe tema deschisă).
+- **Ce vede fondatorul:** Business → Montaj → Calendar, ca în machetă.
+- **Ce vede clientul:** nimic — calendarul, instalatorii și stocul sunt doar ai noștri (verificat: 403 pe toate rutele,
+  inclusiv confirmări, anulare, reprogramare, nota de stoc).
 
 ### AMÂNDOI · Lista lui Robert, lotul 4 — ecrane și texte (23–26) — `183dafe`
 
