@@ -87,6 +87,37 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ---
 
+## Unde suntem — harta verificării (la zi: 01.10)
+
+Alin (01.10): *„am intrat într-un ciclu în care îmi tot dai chestii de făcut… hai să facem o curățenie în idei și să
+vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), secțiune cu secțiune, de sus în jos.
+
+| Grupa | Secțiunea | Unde e |
+|---|---|---|
+| Gestiune | Acasă · Dispozitive · Utilizatori · Inventar dispozitive · Dispozitive arhivate | ✅ verificate (16–18.09) |
+| Gestiune | Stoc echipamente | 🆕 secțiune nouă (25.09; din 30.09 GPS-ul intră doar aici, cu IMEI-ul) |
+| AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
+| Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
+| Business | Montaj | 🆕 secțiune nouă (24.09), cu calendar și ritmul instalatorului (30.09) |
+| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; mai are puncte deschise din verificarea lui Robert |
+| Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
+| Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
+
+**Unde ne-am abătut:** pe 25.09, la Montaj. Din „verificăm ce există" am trecut la „construim ce lipsește":
+închirierea și stocul (25.09) → sugestiile și „Mașinile clientului" în ofertă (28.09) → întrebarea „de când îi
+facturăm?" (28.09) → tot drumul de după semnare: abonament pe zile, proformă, avans, termenul de 30 de zile, calendar,
+aparatele noi, ritmul instalatorului (29–30.09) → reparațiile din verificarea lui Robert (01.10).
+
+**Ce e încă deschis din verificările lui Robert (29.09), mai jos la „De verificat":** 10 puncte din revizia lotului 3
+(primul e de siguranță: un Excel „umflat" poate opri serverul) și 14 din revizia facturării, plus două mici (telefoanele
+vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche).
+
+**Propunerea de ordine (01.10, așteaptă „da"-ul lui Alin):** (1) închidem lista lui Robert pe loturi: siguranță → bani →
+contracte → ecrane și texte; (2) reluăm meniul de la „Conturi & Abonamente", până la „Jurnal audit"; (3) ce găsim nou pe
+drum se notează aici și se face la capătul secțiunii — pe loc doar ce strică bani sau siguranță.
+
+---
+
 ## 2026-10-01
 
 ### AMÂNDOI · Nimic nu se mai facturează de două ori: „Încasată" și montajul (18, 19)
