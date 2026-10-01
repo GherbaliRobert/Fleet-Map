@@ -3773,6 +3773,17 @@ body:not(.dark) .raof-ms-not{ color:#c2410c; }
 .rax-gi-avert{ font-size:12px; line-height:1.45; color:var(--orange); background:rgba(245,158,11,.10);
   border:1px solid rgba(245,158,11,.35); border-radius:8px; padding:8px 10px; margin-bottom:8px; }
 body:not(.dark) .rax-gi-avert{ color:#9a3412; }
+/* O lucrare de montaj pusă pe factură (lista lui Robert, 01.10, pct. 6): întreagă = pleacă „facturată"; doar în parte = NU
+   pleacă și se propune din nou. Cu „Scoate", ca pe telefon. */
+.rax-gi-pus{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px; font-weight:600; color:var(--text-primary);
+  border:1px solid var(--border); border-radius:8px; padding:5px 6px 5px 10px; }
+.rax-gi-pus > i{ color:var(--accent); }
+.rax-gi-pus .rax-gi-pus-st{ font-weight:400; color:var(--text-secondary); }
+.rax-gi-pus .rax-btn{ padding:3px 9px; font-size:12px; }
+.rax-gi-pus.partiala{ border-color:rgba(245,158,11,.55); }
+.rax-gi-pus.partiala > i, .rax-gi-pus.partiala .rax-gi-pus-st{ color:var(--orange); }
+body:not(.dark) .rax-gi-pus > i{ color:#15803d; }
+body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .rax-gi-pus-st{ color:#9a3412; }
 @media (max-width:520px){ .rax-gi-fel{ grid-template-columns:1fr; } }
 /* Fereastra stă direct în <body>, în afara `.ra-camp`, deci regula casei pentru butonul stins nu o prinde:
    „Aparatele din contract" apăsat o dată trebuie să se VADĂ stins (măsurat pe captură, 29.09). */

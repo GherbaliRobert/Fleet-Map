@@ -73,7 +73,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   numele firmei, CUI, Reg. Com., adresa, IBAN, banca, cota de TVA. Fără nume și CUI nu pleacă nicio factură,
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
   **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025). Adăugat pe 29.09: dacă rămâne necompletată, aplicația
-  pune singură 19% pe facturi — cifra veche. (Implicitul din cod e trecut și la lista lui Alin.)
+  pune singură 19% pe facturi — cifra veche. (Din 01.10, necompletată = 21%: reparat, lista lui Robert, pct. 4. Dacă pe
+  ratrack.ro e scris deja 19 acolo, rămâne 19 — de verificat.)
 - [ ] **Voi: pașii firmei la ANAF, înainte de prima factură reală. Adăugat pe 30.09.** (1) un contabil; (2) semnătura
   electronică a administratorului (cam 150–400 lei pe an, de la un furnizor autorizat); (3) firma în SPV, pe anaf.ro,
   cu semnătura — de obicei o face contabilul cu voi; (4) apoi Robert ia „cheia" e-Factura și o pune pe server (punctul
@@ -85,6 +86,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
   „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
   starea fiecăruia. La punctul 8 (aparat schimbat pe aceeași mașină) așteaptă întâi „da"-ul lui Alin.
+- [ ] **Robert: pe ratrack.ro, aparatele care au primit „ziua de pornire" fără să fie montate. Adăugat pe 01.10.** (Lista
+  lui, pct. 11.) Pe 28.09 aplicația a dat o singură dată zi de pornire tuturor aparatelor care transmiseseră deja —
+  inclusiv celor care au transmis doar de pe masa de probă. Ele plătesc abonament de atunci. De verificat în Dispozitive,
+  la fiecare aparat nemontat încă la client, și corectat cu „✎ ziua de pornire" (golită: pornește la prima transmisie
+  de după montaj). Trecerea „o singură dată" nu se rulează a doua oară.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -126,6 +132,48 @@ lămurit cu Alin.
 ---
 
 ## 2026-10-01
+
+### AMÂNDOI · Lista lui Robert, lotul 2 — banii (4, 5, 6, 7, 9, 10, 12, 13, 14, 15) — `HASH`
+
+Lotul 2 sunt locurile unde se putea factura de două ori, se putea pierde o sumă sau ecranul arăta altă sumă decât
+factura. Zece din douăsprezece sunt reparate. **Punctul 8** (aparat schimbat pe aceeași mașină) așteaptă „da"-ul lui
+Alin; **punctul 11** e o verificare pe producție, trecută la „De amintit".
+
+1. **(4) TVA-ul: 21%, din „Date emitent".** Fără cotă scrisă acolo, aplicația punea 19% — cifra de dinainte de
+   1 august 2025 — iar cota se lua de pe fiecare rând trimis de ecran. Acum cota vine doar din „Date emitent", iar
+   necompletată înseamnă 21%. Hârtia facturii scrie cota care chiar s-a aplicat pe rânduri.
+2. **(5) Aparatele din contract nu se mai propun a doua oară.** După proforma de avans, „Generează factură" propunea
+   din nou „Aparatele din contract". Acum, dacă aparatele sunt deja pe o factură sau proformă neanulată a
+   contractului, nu se mai propun, iar fereastra spune pe ce document sunt. Dacă doar o parte e facturată (de ex. 1 din
+   3), se propune restul. Un document anulat le eliberează.
+3. **(6) Pe web, o lucrare scoasă de pe factură nu mai pleacă „facturată".** Dacă ștergeai rândul de montaj sau scădeai
+   cantitatea, lucrarea era totuși marcată „facturată clientului" și scrisă la Mențiuni. Acum pagina face ca
+   telefonul: pleacă doar lucrările aflate întregi pe factură; una pusă doar în parte apare cu „⚠ doar o parte e pe
+   factură" și se propune din nou; fiecare are „Scoate". Pagina și telefonul sunt legate printr-o probă, pe 14 cazuri.
+4. **(7) Lunile de dinainte de 28.09 nu se mai pot factura a doua oară.** Facturile vechi (de dinainte de regula nouă)
+   nu erau văzute de „Abonamentul unei luni". Acum una veche, cu abonament pe luna aceea, oprește a doua factură, cu
+   numărul ei spus pe nume.
+5. **(9) Abonamentul unei luni se emite de pe 1 ale ei.** Emis mai devreme (de ex. pe 28.10 pentru noiembrie),
+   mașinile montate până pe 1 nu mai ajungeau pe nicio factură — cam 48 de lei de mașină pierduți. Acum serverul
+   refuză, cu motivul spus, iar fereastra (web și telefon) îl arată sus și stinge butoanele.
+6. **(10) „Lunar" din Companii și „Contract ↔ factură" arată acum suma facturii.** Număra și aparatele nemontate.
+   Acum numără doar mașinile pornite (care au transmis), ca factura; o firmă fără nicio mașină pornită are 0 lei.
+7. **(12) Aparat șters definitiv și înregistrat din nou:** abonamentul pornește iar la prima transmisie. Până acum,
+   doar după o repornire a serverului.
+8. **(13) Chiria nu mai apare „în contract, dar nu pe factură"** la clienții care închiriază — chiar ajunge pe factură.
+9. **(14) Telefoanele vechi (până la 1.0.4):** „Înregistrează plata + extinde accesul" e refuzat cu mesajul „plata se
+   trece pe factură, cu Încasată". Înainte scria o încasare fără factură, iar clientul se putea suspenda deși plătise.
+10. **(15) „Mută între companii":** aparatul deja montat își mută și bucata din stoc la firma nouă, cu rând în istoric.
+
+- **Ce am schimbat:** serverul (facturarea, venitul lunar, stocul, încasările), pagina web (fereastra facturii, „Date
+  emitent") și telefonul (cota, nota despre aparatele deja facturate, refuzul pentru luna care n-a început — intră în
+  aplicația 1.0.8). Probe: `verify_reparatii_lista.js` (94 de verificări; stricând pe rând fiecare reparație, proba
+  pică), `verify_facturare_telefon.js` (565, pagina legată de telefon la lucrările de montaj), `verify_abonament.js`
+  rescrisă pe regula nouă la aparate (un FMC130 deja facturat → se propun 2, nu 3).
+- **Ce vede fondatorul:** fereastra facturii spune unde sunt deja aparatele, ce lucrare e pusă doar în parte, și de ce nu
+  se emite încă abonamentul lunii viitoare; „Lunar" și „Contract ↔ factură" dau suma facturii.
+- **Ce vede clientul:** facturile cu TVA 21% (dacă „Date emitent" n-are altă cotă), fără aparate sau luni facturate de două
+  ori.
 
 ### AMÂNDOI · Lista lui Robert, lotul 1 — siguranță: Excel-ul care se umflă, harta după suspendare, motivul intern (1, 2, 3) — `09c0c90`
 

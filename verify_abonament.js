@@ -464,7 +464,11 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   const du = (await R('POST', '/api/invoices/draft', { companyId: co.id, fel: 'unica' })).j;
   const dc = du.dinContract || {};
   const a130 = (dc.aparate || []).filter((x) => /FMC130/.test(x.desc))[0];
-  T('aparatele din contract: 3 × 55 € la 5,0785 lei = 279,32 lei bucata', a130 && a130.qty === 3 && a130.unitPrice === 279.32, JSON.stringify(dc.aparate));
+  // Regula din 01.10 (lista lui Robert, pct. 5): aparatele aflate deja pe un document al contractului nu se mai propun.
+  // Factura unică de mai sus („Problema 2") are deja un FMC130, emis după contract — deci din cele 3 se propun 2.
+  T('aparatele din contract: 3 × 55 € în contract, unul deja pe factura unică de mai sus → se propun 2, la 5,0785 lei = 279,32 lei bucata',
+    a130 && a130.qty === 2 && a130.unitPrice === 279.32, JSON.stringify(dc.aparate));
+  T('…iar ciorna spune pe ce document sunt deja', (dc.aparateDejaPe || []).indexOf(unica.j.invoice.full_number) >= 0, JSON.stringify(dc.aparateDejaPe));
   T('montajul se ia din lucrarea EXECUTATĂ (2 bucăți montate, nu 3 din contract)', (dc.lucrari || []).length === 1 && dc.lucrari[0].linii[0].qty === 2 && dc.lucrari[0].total === 200, JSON.stringify(dc.lucrari));
   const cuMontaj = await R('POST', '/api/invoices', { companyId: co.id, fel: 'unica', tip: 'invoice', montaje: [lucrare.j.id],
     lines: dc.lucrari[0].linii });

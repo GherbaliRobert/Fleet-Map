@@ -86,6 +86,7 @@ export interface Ciorna {
   companyId: number; fel: Fel; luna: string | null; lines: Linie[]; vatRate: number; issuer: any; client: any;
   deja: any; aparateIntregi: number; aparatePeZile: number; aparateNepornite: number;
   dinContract: any; adaugate: Lucrare[]; nota: string; notaAuto: string;
+  preaDevreme?: string | null;     // abonamentul unei luni care n-a început: refuzul serverului, gata scris (01.10)
   notaMana?: boolean;              // omul a scris în caseta de mențiuni (chiar și ștergând-o): nu se mai rescrie singură
 }
 
@@ -97,12 +98,14 @@ export function recalc(l: any, rata: number): Linie {
 // Ciorna, din răspunsul POST /api/invoices/draft. Luna e cea din RĂSPUNS: cu ea se emite (nu cu selectorul).
 export function ciornaDinRaspuns(d: any, companyId: number, felCerut: Fel): Ciorna {
   d = d || {};
-  const rata = d.vatRate != null ? Number(d.vatRate) : 19;
+  // Cota vine de la server (din „Date emitent"); fără ea, cea legală de azi — 21% din 01.08.2025 (lista lui Robert, pct. 4).
+  const rata = d.vatRate != null ? Number(d.vatRate) : 21;
   return {
     companyId, fel: d.fel === 'unica' || d.fel === 'abonament' ? d.fel : felCerut, luna: d.luna || null,
     lines: (d.lines || []).map((l: any) => recalc(l, rata)), vatRate: rata, issuer: d.issuer || {}, client: d.client || {},
     deja: d.deja || null, aparateIntregi: Number(d.aparateIntregi) || 0, aparatePeZile: Number(d.aparatePeZile) || 0,
     aparateNepornite: Number(d.aparateNepornite) || 0, dinContract: d.dinContract || null, adaugate: [], nota: '', notaAuto: '',
+    preaDevreme: d.preaDevreme || null,
   };
 }
 
@@ -322,16 +325,17 @@ export function stareClient(f: any, acum: number = Date.now()): [string, string]
 }
 
 // O lună de abonament care n-a început încă (revizia din 29.09): mașinile montate până pe 1 ale ei nu mai intră pe
-// factura ei, iar factura automată o sare. Telefonul doar spune asta; nu oprește emiterea.
+// factura ei, iar factura automată o sare. (Din 01.10 serverul REFUZĂ emiterea și trimite refuzul în ciornă —
+// `preaDevreme`; ecranul îl arată pe acela. Regula de aici a rămas doar pentru proba din 29.09.)
 export function lunaViitoare(cheie: any, acum: number = Date.now()): boolean {
   const d = new Date(acum);
   return !!cheie && String(cheie) > cheieLuna(d.getFullYear(), d.getMonth() + 1);
 }
 
-// Documentele firmei (neanulate) pe care stau deja aparatele din contract — aceeași denumire de rând. Serverul
-// propune aparatele din Anexa nr. 2 la FIECARE factură unică, fără să știe dacă au fost deja pe proforma de avans
-// (revizia din 29.09). Telefonul avertizează; nu hotărăște în locul omului. O proformă încasată nu se numără:
-// factura ei fiscală, cu aceleași rânduri, e deja în listă.
+// Documentele firmei (neanulate) pe care stau deja aparatele din contract — aceeași denumire de rând (revizia din 29.09).
+// O proformă încasată nu se numără: factura ei fiscală, cu aceleași rânduri, e deja în listă. (Din 01.10 serverul nu mai
+// propune aparatele aflate deja pe un document și spune singur unde sunt — `dinContract.aparateDejaPe`; ecranul nu mai
+// folosește funcția de aici, păstrată doar pentru proba din 29.09.)
 function liniiDoc(v: any): any[] {
   if (Array.isArray(v && v.lines)) return v.lines;
   try { const x = JSON.parse(v && v.lines); return Array.isArray(x) ? x : []; } catch (e) { return []; }

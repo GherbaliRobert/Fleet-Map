@@ -165,7 +165,9 @@ function pachetFacturare() {
   function webNou(vatRate) {
     const ctx = vm.createContext({ _giState: { lines: [], vatRate: vatRate, zileMontaj: [], nota: '' } });
     vm.runInContext([web.esc, web.luni, web.luna, invFmtD, web.rDe, web.raxDe, recalcWeb, bloc, ceEWeb, web.stare,
-      'this.W = { strange: _giStrangeLucrarea, nota: _giNotaMontaj, luna: _giLunaText, ceE: ceE, stare: _myInvStare };'].join('\n'), ctx);
+      'this.W = { strange: _giStrangeLucrarea, nota: _giNotaMontaj, luna: _giLunaText, ceE: ceE, stare: _myInvStare,',
+      '  scoate: _giScoateLucrarea, editeaza: _giEditeaza, sterge: _giSterge, puneNota: _giPuneNota, acoperire: _giAcoperire,',
+      '  deTrimis: _giMontajeDeTrimis, sursaPusa: _giSursaPusa };'].join('\n'), ctx);
     return ctx;
   }
   const W = webNou(21).W;
@@ -293,6 +295,72 @@ function pachetFacturare() {
     T('metoda încasării, pe înțelesul omului: numerar, transfer bancar; fără metodă sau „manual" → altă metodă',
       F.metodaText('cash') === 'numerar' && F.metodaText('transfer') === 'transfer bancar' && F.metodaText(undefined) === 'altă metodă' &&
       F.metodaText(null) === 'altă metodă' && F.metodaText('manual') === 'altă metodă');
+  }
+
+  sect('1.3b …iar pagina face acum LA FEL: lucrările scoase de pe factură nu mai pleacă „facturate" (lista lui Robert, pct. 6)');
+  {
+    // Până pe 01.10 pagina trimitea în `montaje` orice lucrare apăsată o dată, chiar dacă rândul ei fusese șters sau
+    // scăzut, și o lăsa scrisă la Mențiuni. Acum regula telefonului stă și în pagină (blocul „factura montajului,
+    // strânsă"): aceleași cazuri ca la 1.3, rulate pe AMÂNDOUĂ, cu același rezultat.
+    const j = (id, d, n, linii) => ({ id, data: d, masini: n, linii });
+    const L2 = (n, pret) => [{ desc: 'Instalare dispozitiv GPS', qty: n, unitPrice: pret || 100 }, { desc: 'Instalare modul LV-CAN', qty: n, unitPrice: 60 }];
+    const j15 = () => j(15, zi(2027, 1, 15), 10, L2(10)), j30 = () => j(30, zi(2027, 1, 30), 15, L2(15));
+    const j40 = () => j(40, zi(2027, 2, 10), 5, [{ desc: 'Instalare dispozitiv GPS', qty: 5, unitPrice: 100 }]);
+    // Un pas = [nume, (web, S) → S nou]; web lucrează pe starea ferestrei (o schimbă pe loc), telefonul întoarce una nouă.
+    const pasi = {
+      pune15: [(w, S) => { w.W.strange(w._giState, j15()); return F.puneLucrare(S, j15()); }],
+      pune30: [(w, S) => { w.W.strange(w._giState, j30()); return F.puneLucrare(S, j30()); }],
+      pune40: [(w, S) => { w.W.strange(w._giState, j40()); return F.puneLucrare(S, j40()); }],
+      gps10: [(w, S) => { w.W.editeaza(w._giState, 0, 'qty', 10); return F.editeazaLinie(S, 0, 'qty', 10); }],
+      can10: [(w, S) => { w.W.editeaza(w._giState, 1, 'qty', 10); return F.editeazaLinie(S, 1, 'qty', 10); }],
+      gps26: [(w, S) => { w.W.editeaza(w._giState, 0, 'qty', 26); return F.editeazaLinie(S, 0, 'qty', 26); }],
+      faraDenumire: [(w, S) => { w.W.editeaza(w._giState, 0, 'desc', ''); return F.editeazaLinie(S, 0, 'desc', ''); }],
+      sterge0: [(w, S) => { w.W.sterge(w._giState, 0); return F.stergeLinie(S, 0); }],
+      scoate30: [(w, S) => { w.W.scoate(w._giState, 30); return F.scoateLucrare(S, 30); }],
+      scoate15: [(w, S) => { w.W.scoate(w._giState, 15); return F.scoateLucrare(S, 15); }],
+      nota12: [(w, S) => { w.W.puneNota(w._giState, 'Montaj conform comenzii nr. 12.'); return F.puneNota(S, 'Montaj conform comenzii nr. 12.'); }],
+      notaGoala: [(w, S) => { w.W.puneNota(w._giState, ''); return F.puneNota(S, ''); }],
+      notaLunga: [(w, S) => { w.W.puneNota(w._giState, 'x'.repeat(700)); return F.puneNota(S, 'x'.repeat(700)); }],
+    };
+    const scenarii = [
+      ['două zile pe aceleași rânduri', ['pune15', 'pune30']],
+      ['25 → 10 pe rândul GPS: 30.01 iese din `montaje`', ['pune15', 'pune30', 'gps10']],
+      ['…și LV-CAN la 10: 30.01 scoasă de tot, mențiunea spune doar 15.01', ['pune15', 'pune30', 'gps10', 'can10']],
+      ['rândul GPS șters: nicio lucrare întreagă, mențiunea golită', ['pune15', 'pune30', 'sterge0']],
+      ['„Scoate" 30.01: rândurile 10 + 10, rămâne 15.01', ['pune15', 'pune30', 'scoate30']],
+      ['după „Scoate", lucrarea se pune din nou', ['pune15', 'pune30', 'scoate30', 'pune30']],
+      ['o lucrare deja pusă nu se pune a doua oară', ['pune15', 'pune30', 'pune30']],
+      ['scoase amândouă: niciun rând gol', ['pune15', 'pune30', 'scoate30', 'scoate15']],
+      ['rândul corectat de mână (26) nu primește lucrarea nouă', ['pune15', 'pune30', 'gps26', 'pune40']],
+      ['pe un rând neatins, lucrarea nouă se adună', ['pune15', 'pune30', 'pune40']],
+      ['mențiunea scrisă de mână rămâne', ['pune15', 'pune30', 'nota12', 'pune40']],
+      ['mențiunea golită de mână rămâne goală', ['pune15', 'pune30', 'scoate30', 'notaGoala', 'pune30']],
+      ['mențiunea se taie la 500 de caractere', ['pune15', 'notaLunga']],
+      ['un rând fără denumire nu pleacă (nici lucrările lui)', ['pune15', 'pune30', 'faraDenumire']],
+    ];
+    scenarii.forEach(([nume, lista]) => {
+      const w = webNou(19);
+      w._giState = { lines: [], vatRate: 19, adaugate: [], nota: '', notaMana: false };
+      let S = F.ciornaDinRaspuns({ vatRate: 19, fel: 'unica', lines: [] }, 7, 'unica');
+      lista.forEach((k) => { S = pasi[k][0](w, S); });
+      const WS = w._giState;
+      const rw = WS.lines.map((l) => [l.desc, l.qty, l.unitPrice, l.net, l.vat]), rt = S.lines.map((l) => [l.desc, l.qty, l.unitPrice, l.net, l.vat]);
+      T(nume + ': aceleași rânduri', J(rw) === J(rt), J(rw) + ' ≠ ' + J(rt));
+      T(nume + ': aceeași stare a lucrărilor', J(w.W.acoperire(WS)) === J(F.acoperire(S)), J(w.W.acoperire(WS)) + ' ≠ ' + J(F.acoperire(S)));
+      T(nume + ': aceleași lucrări în `montaje`', J(w.W.deTrimis(WS)) === J(F.montajeDeTrimis(S)), J(w.W.deTrimis(WS)) + ' ≠ ' + J(F.montajeDeTrimis(S)));
+      T(nume + ': aceeași mențiune', WS.nota === S.nota, J(WS.nota) + ' ≠ ' + J(S.nota));
+    });
+    // Sursele din contract: aparatele o dată; șterse de pe factură, butonul se reaprinde — ca sursaPusa.
+    const w = webNou(19);
+    const WS = { lines: [{ desc: 'Echipament — FMC130', qty: 10, unitPrice: 507.85, _sursa: 'aparate' }], vatRate: 19, adaugate: [], nota: '' };
+    T('pagina: aparatele din contract „puse" cât rândul lor e pe factură, ca pe telefon', w.W.sursaPusa(WS, 'aparate') === true && !w.W.sursaPusa(WS, 'montaj'));
+    w.W.sterge(WS, 0);
+    T('…șterse, butonul se reaprinde', w.W.sursaPusa(WS, 'aparate') === false);
+    const puneContract = functie(html, 'window._giPuneContract = function (ce) {'), corp = functie(html, 'function _giCorp() {');
+    T('pagina: rândurile din contract își țin sursa, iar butonul se stinge după ea (nu după o bifă ținută separat)',
+      /_sursa: ce/.test(puneContract) && /_giSursaPusa\(_giState, ce\)/.test(puneContract) && !/_giState\.puse/.test(html));
+    T('pagina: `montaje` iese din lucrările întregi pe factură (_giMontajeDeTrimis), nu dintr-o listă ținută separat',
+      /montaje: _giState\.fel === 'unica' \? _giMontajeDeTrimis\(_giState\) : \[\]/.test(corp) && !/_giState\.montaje/.test(html));
   }
 
   sect('1.4 Emiterea: aceeași formă ca pe web (raxGenIssue), cu felul și luna din CIORNĂ');

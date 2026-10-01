@@ -1743,6 +1743,23 @@ async function abonamentLuna(companyId, luna, doarValide) {
       ORDER BY id LIMIT 1`, [companyId, luna]);
   return r.rows[0] || null;
 }
+// Facturile VECHI (de dinainte de 28.09, fără `fel`/`luna`) care țin deja loc de abonament pe o lună: neanulate, cu un
+// rând de abonament („Abonament…" / „Supliment…" — aceeași regulă ca la telefonul vechi, `_compuneFactura`) și cu
+// perioada peste lună [de, pana]. Fără ele, `abonamentLuna` nu le vedea și o lună veche se putea factura a doua oară
+// (lista lui Robert, 01.10, pct. 7).
+async function abonamentVechiLuna(companyId, de, pana) {
+  const r = await pool.query(
+    `SELECT id, full_number, status, lines FROM invoices
+      WHERE company_id = $1 AND type = 'invoice' AND fel IS NULL AND status IS DISTINCT FROM 'canceled'
+        AND COALESCE(period_start, issue_date) <= $3 AND COALESCE(period_end, period_start, issue_date) >= $2
+      ORDER BY id`, [companyId, Number(de), Number(pana)]);
+  const veche = r.rows.filter(function (v) {
+    let linii = v.lines;
+    if (typeof linii === 'string') { try { linii = JSON.parse(linii); } catch (e) { linii = []; } }
+    return (Array.isArray(linii) ? linii : []).some(function (l) { return /^(Abonament|Supliment)/.test(String((l && l.desc) || '')); });
+  })[0];
+  return veche ? { id: veche.id, full_number: veche.full_number, status: veche.status, veche: true } : null;
+}
 // Ziua în care pornește abonamentul unei mașini: la PRIMA transmisie după ce aparatul a ajuns pe o firmă
 // client (nu demo), nearhivat. Nu suprascrie o zi deja scrisă. Întoarce `true` dacă aparatul are acum ziua
 // (scrisă acum sau de dinainte), `false` dacă n-are firmă (stă în „Neasignate") — atunci nu pornește nimic.
@@ -3625,7 +3642,7 @@ async function companyAdmins() {
 // aici doar aducem materia primă, ca prețul lunar de pe listă să iasă EXACT ca cel de pe factură.
 async function deviceCanBits() {
   const r = await pool.query(
-    `SELECT d.company_id, d.can_interface,
+    `SELECT d.company_id, d.can_interface, (d.abonament_de_la IS NOT NULL) AS pornit,
             (d.last_can IS NOT NULL AND d.last_can::text <> '{}') AS are_can,
             COALESCE(p.io_keys, '[]'::jsonb) AS io_keys
        FROM devices d
@@ -5194,7 +5211,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
-  getAiUsageByMonth, getInvoicesSince, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
+  getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
   recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic, incaseazaProforma,

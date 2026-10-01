@@ -333,7 +333,10 @@ async function parteaFacturare() {
       T(nume + ': același document (' + w._giTip + ')', w._giTip === p.tip, w._giTip + ' ≠ ' + p.tip);
       T(nume + ': aceleași rânduri', J(WS.lines.map(rand)) === J(S.lines.map(rand)), J(WS.lines.map(rand)) + ' ≠ ' + J(S.lines.map(rand)));
       T(nume + ': aceeași mențiune', (WS.nota || '') === (S.nota || ''), J(WS.nota) + ' ≠ ' + J(S.nota));
-      T(nume + ': aceleași lucrări pleacă în `montaje`', J((WS.montaje || []).slice().sort()) === J(F.montajeDeTrimis(S).slice().sort()), J(WS.montaje) + ' ≠ ' + J(F.montajeDeTrimis(S)));
+      // Din 01.10 (lista lui Robert, pct. 6) pagina nu mai ține o listă de lucrări separată: `montaje` iese din _giCorp, din
+      // lucrările aflate întregi pe factură — ca pe telefon.
+      const montajeWeb = w._giState ? (w._corp().montaje || []) : [];
+      T(nume + ': aceleași lucrări pleacă în `montaje`', J(montajeWeb.slice().sort()) === J(F.montajeDeTrimis(S).slice().sort()), J(montajeWeb) + ' ≠ ' + J(F.montajeDeTrimis(S)));
       const mesajTel = r.lipsa ? F.lucrariLipsaText(r.lipsa) : '';
       T(nume + ': același mesaj despre lucrările care nu mai sunt de facturat: ' + J(mesajTel), w._msg() === mesajTel, J(w._msg()) + ' ≠ ' + J(mesajTel));
       // Corpul care pleacă la „Previzualizează" și la „Emite": _giCorp (pagina) = corpEmitere (telefonul).
@@ -506,11 +509,11 @@ async function parteaFacturare() {
       const res = { innerHTML: '' };
       const ctx = vm.createContext({ console, JSON, Math, Number, String, Date, _S: stare, _T: tip });
       ctx.document = { getElementById: (id) => (id === 'rax-gi-result' ? res : null) };
-      vm.runInContext([W.esc, W.luni, W.luna, W.invFmtD, W.invMoney, W.surse, W.renderLines, 'var _giState = _S, _giTip = _T;', '_giRenderLines();'].join('\n'), ctx);
+      vm.runInContext([W.esc, W.luni, W.luna, W.invFmtD, W.invMoney, W.raxDe, W.recalc, W.bloc, W.surse, W.renderLines, 'var _giState = _S, _giTip = _T;', '_giRenderLines();'].join('\n'), ctx);
       return res.innerHTML;
     }
     const baza = { companyId: 7, luna: '2026-10', lines: [{ desc: 'x', qty: 1, unitPrice: 10, net: 10, vat: 1.9 }], issuer: {}, vatRate: 19, client: { name: 'T' }, deja: null,
-      aparateIntregi: 1, aparatePeZile: 0, aparateNepornite: 0, dinContract: { aparate: [], lucrari: [], montaj: [] }, montaje: [], puse: {}, zileMontaj: [], nota: '' };
+      aparateIntregi: 1, aparatePeZile: 0, aparateNepornite: 0, dinContract: { aparate: [], lucrari: [], montaj: [] }, adaugate: [], nota: '' };
     for (const [fel, tip] of [['abonament', 'invoice'], ['unica', 'invoice'], ['unica', 'proforma']]) {
       const h = webRand(Object.assign({}, baza, { fel }), tip);
       const nota = dezEsc((/La emitere pleacă singură:[^<]*/.exec(h) || [''])[0]);

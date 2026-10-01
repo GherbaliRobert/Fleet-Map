@@ -820,7 +820,7 @@ const tcpServer = net.createServer((socket) => {
         // primește aici rândul (fără firmă → Dispozitive → Neasignate) și modelul din stoc. Anunțul „aparate noi
         // transmit" îl dă `aparateNoiTick`, pe loturi — nu fiecare aparat, pe loc.
         db.upsertDevice(imei)
-          .then(r => { if (r && r.created) _aparatNouDinStoc(imei); })
+          .then(r => { if (r && r.created) { _uitaPornirea(imei); _aparatNouDinStoc(imei); } })
           .catch(e => console.error(`[TCP] upsertDevice ${imei}: ${e.message}`));
 
         // Init mirror connection to Traccar/OpenRemote if enabled
@@ -4614,6 +4614,9 @@ async function _venitLunarToate(lista) {
   ]);
   const peFirma = {};
   (bits || []).forEach(function (b) {
+    // Doar aparatele PORNITE (au transmis pe firmă: `abonament_de_la`) — aceeași regulă ca factura (abonament.js). Un
+    // aparat nemontat nu plătește, deci nici „Lunar" nu-l numără (lista lui Robert, 01.10, pct. 10).
+    if (!b.pornit) return;
     const chei = Array.isArray(b.io_keys) ? b.io_keys : (function () { try { return JSON.parse(b.io_keys || '[]'); } catch (e) { return []; } })();
     const io = {}; chei.forEach(function (k) { io[k] = 1; });
     // Clasificatorul ADEVĂRAT, același cu cel de pe factură.
@@ -4623,7 +4626,9 @@ async function _venitLunarToate(lista) {
   });
   const out = { firme: {}, totalLei: 0 };
   (list || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
-    const lei = _venitLunar(c, peFirma[c.id] || { none: 0, can: 0, fms: 0 }, seats[c.id] || 0);
+    // Fără nicio mașină pornită, factura n-are nimic (nici RA Insight, păstrarea, chiria sau tariful fix — pornesc odată
+    // cu prima mașină, abonament.js), deci nici „Lunar".
+    const lei = peFirma[c.id] ? _venitLunar(c, peFirma[c.id], seats[c.id] || 0) : 0;
     out.firme[c.id] = lei;
     out.totalLei += lei;
   });
@@ -4949,8 +4954,13 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const pl = acte.filter(function (a) { return a.status !== 'activ' && Number(a.luni_noi) > 0; }).pop();
         if (pl) prelungireInLucru = { id: pl.id, number: pl.number, status: pl.status };
         const anexa = contracte.anexaInVigoare(contract, acte) || {};
-        const bc = await _companyBillCounts(company);
-        const f = buildInvoiceLines(company, bc, features, 0);
+        // Aparatele care PLĂTESC: cele pornite (au transmis pe firmă), clasificate ca pe factură (`_aparateAbonament`).
+        // Până pe 01.10 se numărau și cele nemontate, deci „factura" de aici arăta altă sumă decât factura (pct. 10).
+        const pornite = await _aparateAbonament(company);
+        const bc = { none: 0, can: 0, fms: 0, raInsight: (await _companyBillCounts(company)).raInsight };
+        pornite.forEach(function (a) { bc[a.tip] = (bc[a.tip] || 0) + 1; });
+        // Fără nicio mașină pornită nu se facturează nimic — nici ce ține de firmă (abonament.js).
+        const f = pornite.length ? buildInvoiceLines(company, bc, features, 0) : { lines: [], subtotal: 0 };
         const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
         const suma = function (l, k) { return l.reduce(function (s, x) { return s + (Number(x[k]) || 0); }, 0); };
         const cuAparate = (anexa.vehicles || []).length > 0;
@@ -4986,7 +4996,10 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           } : null,
           // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură. (Păstrarea datelor
           // a stat aici până pe 24.09 — vândută, semnată, dar nici facturată, nici livrată; are acum rândul ei.)
-          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && x.fel !== 'ret' && !x.inclus && Number(x.total) > 0; })
+          // Chiria ajunge pe factură când firma are rândurile ei (`chirieFirma`, puse de contractul din ofertă): atunci NU e
+          // „nefacturată". Până pe 01.10 apărea aici la fiecare client care închiriază (lista lui Robert, pct. 13).
+          nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && x.fel !== 'ret' && !x.inclus && Number(x.total) > 0 &&
+              !(x.fel === 'chirie' && contracte.chirieFirma(company.settings)); })
             .map(function (x) { return { nume: x.nume, lei: r2(x.total) }; }),
           total: { contract: r2(anexa.monthlyTotal), factura: r2(f.subtotal) }
         };
@@ -5716,7 +5729,18 @@ async function _stocLaFirma(imei, companyId, cine) {
   try {
     if (!imei || companyId == null) return null;
     const x = await db.stocDupaSerie(String(imei));
-    if (!x || (x.stare !== 'depozit' && x.stare !== 'instalator')) return null;
+    if (!x) return null;
+    // Deja montată la ALTĂ firmă („Mută între companii", corectura unei adopții greșite): bucata merge odată cu aparatul,
+    // cu rând în istoric. Rămâne „montat" și al cui era (proprietarul nu se schimbă dintr-o mutare). Până pe 01.10 rămânea
+    // în stoc la firma veche (lista lui Robert, pct. 15).
+    if (x.stare === 'montat') {
+      if (Number(x.company_id) === Number(companyId)) return null;
+      const nou = await db.getCompanyById(companyId); if (!nou) return null;
+      const vechi = x.company_id != null ? await db.getCompanyById(x.company_id).catch(function () { return null; }) : null;
+      return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null, proprietar: x.proprietar, cine: cine || null,
+        nota: 'automat: aparatul a fost mutat' + (vechi ? ' de la „' + vechi.name + '"' : '') + ' pe „' + nou.name + '" în „Dispozitive"' });
+    }
+    if (x.stare !== 'depozit' && x.stare !== 'instalator') return null;
     const co = await db.getCompanyById(companyId); if (!co) return null;
     stocImeis.delete(String(imei));   // montat: de acum hotărăște rândul din Dispozitive (stoc.PRIMITE_LA_CONECTARE)
     return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null,
@@ -8547,6 +8571,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       if (instIssue) await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, JSON.stringify(instIssue)]);
       if (_existing.status === 'archived') await db.setDeviceStatus(imei, 'active');
       registeredImeis.add(imei); deviceAttempts.delete(imei); // adoptat → intră în allow-list (mod strict)
+      _uitaPornirea(imei);   // pe firma nouă, abonamentul pornește la prima transmisie (pct. 12)
       invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); await refreshWsScope();
       const _pa = livePositions.get(imei);
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
@@ -8558,6 +8583,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
     await db.createDevice(imei, fields, companyId);
     if (instIssue) await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, JSON.stringify(instIssue)]);
     registeredImeis.add(imei); deviceAttempts.delete(imei); // pre-înregistrat → intră în allow-list (mod strict)
+    _uitaPornirea(imei);   // rând nou: nicio zi de pornire ținută minte de la un rând șters (pct. 12)
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
     // Dacă vehiculul transmitea deja (era în memoria live ca IMEI „gol"), pune-i numele/nr ACUM + anunță WS,
@@ -8689,6 +8715,7 @@ app.post('/api/devices/import', requireAuth, requireSuperadmin, withScope, async
         } else {
           await db.createDevice(imei, fields, req.isSuper ? null : req.companyId);
           registeredImeis.add(imei); deviceAttempts.delete(imei); // import → în allow-list (mod strict)
+          _uitaPornirea(imei);   // (pct. 12)
           created++;
         }
       } catch (e) { errors.push({ line: i + 2, imei, error: e.message }); }
@@ -8742,6 +8769,9 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
     registeredImeis.delete(imei);
+    // Rândul s-a dus, deci și ziua lui de pornire: înregistrat din nou, aparatul pornește abonamentul la prima transmisie.
+    // Până pe 01.10 memoria îl ținea „pornit" până la repornirea serverului (lista lui Robert, pct. 12).
+    _uitaPornirea(imei);
     // Șters definitiv = nu mai e primit nici ca aparat din stoc (găsit de Robert, 30.09: revenea singur, cu poziții noi).
     // Bucata încă „în depozit" / „la instalator" trece pe „defect", cu notă: de verificat înainte să se mai monteze.
     stocImeis.delete(imei);
@@ -9377,7 +9407,7 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.anthropic_credit_date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(b.anthropic_credit_date))) await db.setSetting('anthropic_credit_date', String(b.anthropic_credit_date)); // data la care soldul de credite era cel de mai sus
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
-      const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : 19;
+      const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : COTA_TVA_IMPLICITA;
       const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), city: S(i.city, 80), county: S(i.county, 12), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40), vat_rate: vatRate, vat_payer: (i.vat_payer !== false && i.vat_payer !== 'false') };
       await db.setSetting('invoice_issuer', JSON.stringify(clean));
     }
@@ -13563,6 +13593,12 @@ app.post('/api/companies/:id/payment', requireAuth, requireSuperadmin, async (re
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    // Aplicația de telefon veche (până la 1.0.4) trimite aici „luni de prelungit": scria o încasare fără factură, iar
+    // factura rămânea neplătită — clientul se putea suspenda deși plătise (lista lui Robert, 01.10, pct. 14). Ceasul
+    // „acces până la" nu mai există; plata se trece pe factură, cu „Încasată".
+    if (req.body && req.body.months != null) {
+      return res.status(400).json({ aplicatieVeche: true, error: 'Aplicația de telefon e veche: plata unei facturi se trece pe factură, cu „Încasată" (sau de pe web). Instalează aplicația nouă.' });
+    }
     // Sumă obligatorie: o încasare fără sumă nu spune nimic. Separatorul zecimal RO (virgulă) + miile (punct).
     const rawAmt = (req.body && req.body.amount != null) ? String(req.body.amount).trim() : '';
     const norm = rawAmt.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
@@ -13588,7 +13624,10 @@ app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
 });
 // ─── Facturi FISCALE (super-admin): generare din abonament (linii + TVA), emitere numerotată, plată/anulare ───
 const INV_SERIES = (process.env.INVOICE_SERIES || 'RAT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'RAT';
-function _issuerVatRate(iss) { const v = parseFloat(iss && iss.vat_rate); return (Number.isFinite(v) && v >= 0 && v <= 100) ? v : 19; }
+// Cota de TVA a facturilor: DOAR din „Date emitent" (lista lui Robert, 01.10, pct. 4). Fără cotă scrisă acolo, cota legală
+// de azi: 21% (din 01.08.2025; până pe 01.10 aplicația punea 19%). O cotă 0 scrisă de noi (neplătitor) rămâne 0.
+const COTA_TVA_IMPLICITA = 21;
+function _issuerVatRate(iss) { const v = parseFloat(iss && iss.vat_rate); return (Number.isFinite(v) && v >= 0 && v <= 100) ? v : COTA_TVA_IMPLICITA; }
 // Clasifică vehiculele companiei în {none, can, fms} pentru facturare (aceeași logică ca /overview: bill_can/override).
 async function _companyBillCounts(company) {
   const devices = await db.getDevices(company.id);
@@ -13804,6 +13843,14 @@ async function _unicaDinContract(companyId) {
         out.montaj.push({ desc: r.eticheta || r.tip, qty: Number(r.buc), unitPrice: Number(r.pretClient) });
       });
     }
+    // Aparatele aflate DEJA pe un document al contractului nu se mai propun (lista lui Robert, 01.10, pct. 5): după
+    // proforma de avans (încasată sau nu), „Generează factură" le propunea din nou, la fiecare factură unică.
+    if (out.aparate.length) {
+      const dejaPe = await _aparateDejaFacturate(companyId, c, out.aparate);
+      out.aparate = out.aparate.map(function (a) { return Object.assign({}, a, { qty: Math.max(0, a.qty - (dejaPe.bucati[a.desc] || 0)) }); })
+        .filter(function (a) { return a.qty > 0; });
+      out.aparateDejaPe = dejaPe.documente;
+    }
   }
   const lucrari = await db.listMontaje(companyId);
   (lucrari || []).forEach(function (j) {
@@ -13820,6 +13867,48 @@ async function _unicaDinContract(companyId) {
       total: Math.round(linii.reduce(function (x, l) { return x + l.qty * l.unitPrice; }, 0) * 100) / 100 });
   });
   return out;
+}
+// Câte bucăți din fiecare aparat al contractului stau deja pe documentele firmei: facturi și proforme NEANULATE, emise de
+// la facerea contractului (un contract vechi, încheiat, nu-și dă aparatele celui nou — ca la avans, `avansContract`),
+// pe rânduri cu aceeași denumire ca în contract. O proformă încasată nu se numără: factura ei fiscală, cu aceleași
+// rânduri, e deja printre documente. Aceeași regulă ca avertismentul de pe telefon (lib/factura.ts → aparateDejaPe).
+// → { bucati: { denumire: n }, documente: ['PF-2027-00001', …] }
+async function _aparateDejaFacturate(companyId, contract, aparate) {
+  const denumiri = new Set(aparate.map(function (a) { return a.desc; }));
+  const dela = Number(contract && contract.created_at) || 0;
+  const docs = (await db.getInvoices({ companyId: companyId, limit: 500 })) || [];
+  const bucati = {}, documente = [];
+  docs.forEach(function (v) {
+    if (v.status === 'canceled' || v.status === 'draft') return;
+    if (v.type !== 'invoice' && v.type !== 'proforma') return;
+    if (v.type === 'proforma' && v.factura_id) return;
+    if ((Number(v.issue_date) || 0) < dela) return;
+    let pe = false;
+    (_jsonSigur(v.lines) || []).forEach(function (l) {
+      const d = String((l && l.desc) || '');
+      if (!denumiri.has(d)) return;
+      bucati[d] = (bucati[d] || 0) + (Number(l.qty) || 0); pe = true;
+    });
+    if (pe && v.full_number) documente.push(v.full_number);
+  });
+  return { bucati: bucati, documente: documente };
+}
+// Abonamentul lunii L e deja facturat? Factura de abonament a lunii (`fel`, `luna`) SAU o factură VECHE, de dinainte
+// de 28.09, care acoperă luna (lista lui Robert, 01.10, pct. 7). Folosit de ciornă și de emitere (refuzul 409).
+async function _abonamentulLunii(companyId, L, doarValide) {
+  const deja = await db.abonamentLuna(companyId, abonament.cheieLuna(L.an, L.luna), doarValide);
+  if (deja) return deja;
+  const iv = abonament.intervalLuna(L.an, L.luna);
+  return db.abonamentVechiLuna(companyId, iv.de, iv.pana);
+}
+// Abonamentul unei luni se emite DE PE 1 ale ei (lista lui Robert, pct. 9): emis înainte (de ex. pe 28.10 pentru
+// noiembrie), mașinile montate până pe 1 n-ar mai ajunge pe nicio factură — nici zilele lor din octombrie (factura
+// lui decembrie ia doar zilele din noiembrie), nici noiembrie întreg. Întoarce textul refuzului, sau null.
+function _abonamentPreaDevreme(L, acum) {
+  const iv = abonament.intervalLuna(L.an, L.luna);
+  if (Number(acum) >= iv.de) return null;
+  return 'Abonamentul pe ' + abonament.numeLuna(L.an, L.luna) + ' se emite de pe 1 ' + abonament.LUNI[L.luna - 1] +
+    ': până atunci se mai pot monta mașini, iar zilele lor n-ar mai ajunge pe nicio factură.';
 }
 // Ciorna unei facturi: se socotește, NU se salvează și nu se numerotează (omul o vede, o corectează, o emite).
 //   fel = 'abonament' (implicit): luna `luna` ('AAAA-LL', implicit luna de azi), pe regula pe zile;
@@ -13838,8 +13927,9 @@ app.post('/api/invoices/draft', requireAuth, requireSuperadmin, async (req, res)
     const azi = new Date();
     const L = abonament.dinCheie(b.luna) || { an: azi.getFullYear(), luna: azi.getMonth() + 1 };
     const calc = await facturaAbonamentLuna(co, L.an, L.luna, vatRate);
-    const deja = await db.abonamentLuna(id, calc.luna, true);
+    const deja = await _abonamentulLunii(id, L, true);
     res.json(Object.assign(baza, { fel: 'abonament', luna: calc.luna, model: calc.model, lines: calc.lines,
+      preaDevreme: _abonamentPreaDevreme(L, Date.now()),
       subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, periodStart: calc.periodStart, periodEnd: calc.periodEnd,
       aparateIntregi: calc.aparateIntregi, aparatePeZile: calc.aparatePeZile, aparateNepornite: calc.aparateNepornite,
       deja: deja ? { id: deja.id, full_number: deja.full_number, status: deja.status } : null }));
@@ -13848,11 +13938,13 @@ app.post('/api/invoices/draft', requireAuth, requireSuperadmin, async (req, res)
 // Seria proformelor: SEPARATĂ de a facturilor. Numerele facturilor fiscale merg în șir, fără goluri; o proformă
 // e o cerere de plată, nu o factură — dacă ar lua un număr din seria fiscală, șirul ar avea găuri.
 const PF_SERIES = (process.env.PROFORMA_SERIES || 'PF').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'PF';
+// Cota pe fiecare rând = cea din „Date emitent" (`vr`), oricare ar fi cea trimisă de ecran (lista lui Robert, pct. 4): până
+// pe 01.10 serverul lua cota de pe rândul primit, deci o fereastră deschisă de dinainte sau un telefon vechi o puteau alege.
 function _liniiNormalizate(brute, vr) {
   return (brute || []).map(function (l) {
     const qty = Math.max(0, Number(l.qty) || 0), unit = Math.round((Number(l.unitPrice) || 0) * 100) / 100;
     const net = Math.round(qty * unit * 100) / 100;
-    const vrate = (l.vatRate != null ? Number(l.vatRate) : vr);
+    const vrate = vr;
     const vat = Math.round(net * vrate) / 100;
     return { desc: String(l.desc || '').slice(0, 200), qty: qty, unitPrice: unit, vatRate: vrate, net: net, vat: vat, gross: Math.round((net + vat) * 100) / 100 };
   }).filter(function (l) { return l.desc && l.qty > 0; });
@@ -13893,8 +13985,11 @@ async function _compuneFactura(b) {
   if (fel === 'abonament') {
     const L = abonament.dinCheie(b.luna) || (b.periodStart ? abonament.lunaDin(Number(b.periodStart)) : abonament.lunaDin(now));
     luna = abonament.cheieLuna(L.an, L.luna);
-    const deja = await db.abonamentLuna(id, luna, true);
-    if (deja) return { eroare: { status: 409, body: { error: 'Abonamentul lunii ' + abonament.numeLuna(L.an, L.luna) + ' e deja facturat: ' + (deja.full_number || '') + '. Dacă vrei s-o refaci, anuleaz-o întâi.', deja: deja } } };
+    const preaDevreme = _abonamentPreaDevreme(L, now);
+    if (preaDevreme) return { eroare: { status: 400, body: { error: preaDevreme, preaDevreme: true } } };
+    const deja = await _abonamentulLunii(id, L, true);
+    if (deja) return { eroare: { status: 409, body: { error: 'Abonamentul lunii ' + abonament.numeLuna(L.an, L.luna) + ' e deja facturat: ' + (deja.full_number || '') +
+      (deja.veche ? ' (o factură de dinainte de 28.09, care acoperă luna)' : '') + '. Dacă vrei s-o refaci, anuleaz-o întâi.', deja: deja } } };
     const soc = await facturaAbonamentLuna(co, L.an, L.luna, vr);
     calc = liniiPrimite.length ? _totaluri(_liniiNormalizate(liniiPrimite, vr)) : soc;
     periodStart = soc.periodStart; periodEnd = soc.periodEnd;

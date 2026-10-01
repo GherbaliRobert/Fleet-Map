@@ -95,7 +95,9 @@ function scrieFactura(doc, inv, emitentAcum) {
 
   // ── Părțile: două casete de aceeași înălțime ──
   const gap = 14, bw = (w - gap) / 2, pad = 12, y0 = yLinie + 16;
-  const tva = iss.vat_rate != null ? iss.vat_rate : (linii[0] && linii[0].vatRate != null ? linii[0].vatRate : 19);
+  // Cota scrisă sus e cea APLICATĂ pe rânduri (serverul le pune pe toate cota din „Date emitent"), apoi cea a emitentului;
+  // fără niciuna, cea legală de azi — 21% din 01.08.2025 (până pe 01.10 hârtia scria aici 19%: lista lui Robert, pct. 4).
+  const tva = (linii[0] && linii[0].vatRate != null) ? linii[0].vatRate : (iss.vat_rate != null ? iss.vat_rate : 21);
   const furnizor = [
     iss.cui ? 'CUI: ' + cuiAfisat(iss.cui, iss.vat_payer) + (iss.reg_com ? ' · Reg. Com.: ' + iss.reg_com : '') : null,
     iss.address || null,

@@ -26489,7 +26489,7 @@ const pozitii = await r.json();</code></pre>
         '<div>' + _raxField('Bancă', 'rax-iss-bank', iss.bank, 'ex. Banca Transilvania') + '</div></div>' +
         '<div class="rax-row2"><div>' + _raxField('Email facturare', 'rax-iss-email', iss.email, 'facturare@firma.ro') + '</div>' +
         '<div>' + _raxField('Telefon', 'rax-iss-phone', iss.phone, '07xx xxx xxx') + '</div></div>' +
-        '<div class="rax-row2"><div>' + _raxField('Cotă TVA (%)', 'rax-iss-vat', (iss.vat_rate != null ? iss.vat_rate : 19), 'ex. 19') + '</div>' +
+        '<div class="rax-row2"><div>' + _raxField('Cotă TVA (%)', 'rax-iss-vat', (iss.vat_rate != null ? iss.vat_rate : 21), 'ex. 21') + '</div>' +
         '<div><label class="rax-lbl">Plătitor TVA</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;cursor:pointer;"><input type="checkbox" id="rax-iss-vatpayer"' + (iss.vat_payer !== false ? ' checked' : '') + ' style="width:auto;"> firma e plătitoare de TVA</label></div></div>' +
         '<button class="rax-btn primary" style="margin-top:8px;width:100%;justify-content:center;" onclick="raxSaveIssuer(this)"><i class="fas fa-check"></i> Salvează datele emitentului</button>' +
         '<div id="rax-iss-msg" style="font-size:12px;margin-top:8px;"></div>';
@@ -26503,7 +26503,7 @@ const pozitii = await r.json();</code></pre>
         city: (($('rax-iss-city') || {}).value || '').trim(), county: (($('rax-iss-county') || {}).value || '').trim(),
         iban: (($('rax-iss-iban') || {}).value || '').trim(), bank: (($('rax-iss-bank') || {}).value || '').trim(),
         email: (($('rax-iss-email') || {}).value || '').trim(), phone: (($('rax-iss-phone') || {}).value || '').trim(),
-        vat_rate: parseFloat((($('rax-iss-vat') || {}).value || '19')) || 0, vat_payer: !!(($('rax-iss-vatpayer') || {}).checked)
+        vat_rate: parseFloat((($('rax-iss-vat') || {}).value || '21')) || 0, vat_payer: !!(($('rax-iss-vatpayer') || {}).checked)
       };
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
       try {
@@ -26752,9 +26752,9 @@ const pozitii = await r.json();</code></pre>
         var d = await fetch('/api/invoices/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
         if (d.error) { res.innerHTML = '<div style="color:var(--red);font-size:12px;">' + esc(d.error) + '</div>'; return; }
         _giState = { companyId: cid, fel: d.fel || _giFel, luna: d.luna || null, lines: (d.lines || []).slice(), issuer: d.issuer || {},
-          vatRate: d.vatRate != null ? d.vatRate : 19, client: d.client || {}, deja: d.deja || null,
+          vatRate: d.vatRate != null ? d.vatRate : 21, client: d.client || {}, deja: d.deja || null, preaDevreme: d.preaDevreme || null,
           aparateIntregi: d.aparateIntregi || 0, aparatePeZile: d.aparatePeZile || 0, aparateNepornite: d.aparateNepornite || 0,
-          dinContract: d.dinContract || null, montaje: [], puse: {}, zileMontaj: [], nota: '' };
+          dinContract: d.dinContract || null, adaugate: [], nota: '', notaMana: false };
         if (!(_giState.issuer && _giState.issuer.name && _giState.issuer.cui)) {
           res.innerHTML = '<div style="background:var(--bg-dark);border:1px dashed var(--border);border-radius:10px;padding:12px;font-size:12.5px;color:#f59e0b;">⚠ Completează întâi <b>Date emitent</b> (nume + CUI) — sunt obligatorii pe factură. <button class="rax-btn" style="margin-left:6px;" onclick="document.getElementById(\'rax-geninv-overlay\').classList.remove(\'open\');raxEditIssuer()">Date emitent</button></div>';
           return;
@@ -26766,7 +26766,8 @@ const pozitii = await r.json();</code></pre>
     // Ce se poate lua din contract / din lucrări — butoane care pun rândurile gata scrise. Un buton apăsat o dată
     // se stinge: aceleași aparate de două ori pe aceeași factură ar fi o greșeală, nu o alegere.
     function _giSurseHtml() {
-      var dc = _giState.dinContract || {}, puse = _giState.puse || {};
+      var dc = _giState.dinContract || {}, acop = _giAcoperire(_giState);
+      var puse = { aparate: _giSursaPusa(_giState, 'aparate'), montaj: _giSursaPusa(_giState, 'montaj') };
       var bani = function (n) { return _invMoney(n) + ' lei'; };
       var suma = function (ls) { return ls.reduce(function (x, l) { return x + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0); }, 0); };
       var btn = function (cheie, eticheta, detaliu, onclick) {
@@ -26777,44 +26778,137 @@ const pozitii = await r.json();</code></pre>
       if ((dc.aparate || []).length) h.push(btn('aparate', 'Aparatele din contract', bani(suma(dc.aparate)) + (dc.curs ? ', la ' + String(dc.curs).replace('.', ',') + ' lei/€' : ''), "_giPuneContract('aparate')"));
       if ((dc.lucrari || []).length) {
         dc.lucrari.forEach(function (j) {
-          h.push(btn('lucrare:' + j.id, 'Montajul executat' + (j.data ? ' pe ' + _invFmtD(j.data) : ''), bani(j.total) + (j.partener ? ', ' + esc(j.partener) : ''), '_giPuneLucrare(' + j.id + ')'));
+          var nume = 'Montajul executat' + (j.data ? ' pe ' + _invFmtD(j.data) : ''), st = acop[j.id];
+          // Pusă pe factură: întreagă (pleacă „facturată") sau doar în parte (NU pleacă, se propune din nou) — ca pe telefon.
+          if (st === 'intreaga' || st === 'partiala') {
+            h.push('<span class="rax-gi-pus' + (st === 'partiala' ? ' partiala' : '') + '"><i class="fas fa-' + (st === 'intreaga' ? 'check' : 'triangle-exclamation') + '"></i> ' + nume +
+              ' <span class="rax-gi-pus-st">· ' + (st === 'intreaga' ? 'pus pe factură' : 'doar o parte e pe factură: nu trece pe „facturat clientului" și va fi propus din nou') + '</span>' +
+              ' <button class="rax-btn" onclick="_giScoateLucrare(' + j.id + ')">Scoate</button></span>');
+          } else h.push(btn('lucrare:' + j.id, nume, bani(j.total) + (j.partener ? ', ' + esc(j.partener) : ''), '_giPuneLucrare(' + j.id + ')'));
         });
       } else if ((dc.montaj || []).length) {
         h.push(btn('montaj', 'Montajul din contract', bani(suma(dc.montaj)), "_giPuneContract('montaj')"));
       }
+      // Aparatele contractului aflate deja pe un document (proforma de avans, factura): serverul nu le mai propune
+      // (lista lui Robert, 01.10, pct. 5) — aici se spune unde sunt.
+      var dejaPe = (dc.aparateDejaPe || []).length ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;"><i class="fas fa-check"></i> Aparatele din contract' +
+        ((dc.aparate || []).length ? ', în parte,' : '') + ' sunt deja pe ' + dc.aparateDejaPe.map(esc).join(', ') + ((dc.aparate || []).length ? ' — se propune doar restul.' : ' — nu se mai propun.') + '</div>' : '';
       var fara = !h.length
-        ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + (dc.contract ? 'Contractul firmei n-are aparate sau montaj în Anexa nr. 2' : 'Firma n-are încă un contract') + ' — scrie rândurile de mână.</div>'
-        : '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Din contractul ' + esc((dc.contract && dc.contract.number) || '') + ' și din lucrările executate' + ((dc.lucrari || []).length ? ' (montajul se ia din lucrări: cantitățile reale)' : '') + ':</div>';
+        ? dejaPe + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + (dc.contract ? ((dc.aparateDejaPe || []).length ? 'Nimic altceva de luat din contract' : 'Contractul firmei n-are aparate sau montaj în Anexa nr. 2') : 'Firma n-are încă un contract') + ' — scrie rândurile de mână.</div>'
+        : dejaPe + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Din contractul ' + esc((dc.contract && dc.contract.number) || '') + ' și din lucrările executate' + ((dc.lucrari || []).length ? ' (montajul se ia din lucrări: cantitățile reale)' : '') + ':</div>';
       return fara + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' + h.join('') + '</div>';
     }
     window._giPuneContract = function (ce) {
-      if (!_giState || !_giState.dinContract || _giState.puse[ce]) return;
-      (_giState.dinContract[ce] || []).forEach(function (r) { var l = { desc: r.desc, qty: r.qty, unitPrice: r.unitPrice }; _giRecalcLine(l); _giState.lines.push(l); });
-      _giState.puse[ce] = true; _giRenderLines();
+      if (!_giState || !_giState.dinContract || _giSursaPusa(_giState, ce)) return;
+      (_giState.dinContract[ce] || []).forEach(function (r) { var l = { desc: r.desc, qty: r.qty, unitPrice: r.unitPrice, _sursa: ce }; _giRecalcLine(l); _giState.lines.push(l); });
+      _giRenderLines();
     };
     window._giPuneLucrare = function (id) {
-      if (!_giState || !_giState.dinContract || _giState.puse['lucrare:' + id]) return;
+      if (!_giState || !_giState.dinContract) return;
       var j = (_giState.dinContract.lucrari || []).filter(function (x) { return x.id === id; })[0]; if (!j) return;
-      _giStrangeLucrarea(_giState, j);
-      _giState.montaje.push(id); _giState.puse['lucrare:' + id] = true; _giRenderLines();
+      _giStrangeLucrarea(_giState, j);   // o lucrare deja pe factură (întreagă sau în parte) nu se pune a doua oară
+      _giRenderLines();
     };
+    window._giScoateLucrare = function (id) { if (!_giState) return; _giScoateLucrarea(_giState, id); _giRenderLines(); };
     // ── începe „factura montajului, strânsă" ──
     // Alin, 29.09: „da". Factura montajului avea câte o pereche de rânduri pentru FIECARE zi de montaj (6 rânduri
     // pentru 3 zile, fără dată), iar clientul vedea trei rânduri „Instalare dispozitiv GPS" fără să știe de ce.
     // Acum: un rând pe fel de lucrare (35 × montaj GPS, 35 × montaj LV-CAN), iar zilele lucrărilor merg dedesubt,
     // în mențiunile facturii. Se adună doar rândurile cu ACEEAȘI denumire și ACELAȘI preț: o zi cu alt preț
     // (negociat altfel) rămâne pe rândul ei — nu amestecăm două prețuri într-unul.
+    //
+    // Din 01.10 (lista lui Robert, pct. 6) pagina ține minte, ca telefonul (lib/factura.ts), CE cantitate a adus fiecare
+    // lucrare pe fiecare rând (`_lucrari`). Pleacă în `montaje` — și trec pe „facturat clientului" — DOAR lucrările aflate
+    // ÎNTREGI pe factură (_giMontajeDeTrimis): un rând șters sau o cantitate scăzută le scot, iar mențiunea automată se
+    // reface din ele. Până atunci, o lucrare scoasă de pe factură era marcată „facturată" și scrisă la Mențiuni. Pe un
+    // rând adunat din mai multe zile, cantitatea se împarte în ordinea zilelor (25 → 10: rămâne ziua cea dintâi). Un rând
+    // corectat de mână (`_atins`) nu mai primește cantități de la alte lucrări; mențiunea scrisă de om (`notaMana`) nu se
+    // rescrie. Aceleași reguli ca pe telefon, legate prin verify_facturare_telefon.js, pe aceleași cazuri.
+    function _giCant(l) { return String(l.desc || '').trim() ? Math.max(0, Number(l.qty) || 0) : 0; }   // rândul fără denumire nu pleacă
+    function _giIdLucrare(S, j) { if (j.id == null) j.id = '_l' + (S._nLucrari = (S._nLucrari || 0) + 1); return j.id; }
+    function _giInOrdineaZilelor(S) {
+      var zi = {}, pus = {};
+      (S.adaugate || []).forEach(function (j, i) { zi[j.id] = Number(j.data) || 0; pus[j.id] = i; });
+      return function (cs) { return cs.slice().sort(function (a, b) { return ((zi[a.id] || 0) - (zi[b.id] || 0)) || ((pus[a.id] || 0) - (pus[b.id] || 0)); }); };
+    }
+    // Cât din fiecare lucrare a rămas pe factură.
+    function _giAlocat(S) {
+      var dupaZi = _giInOrdineaZilelor(S), out = {};
+      S.lines.forEach(function (l) {
+        var rest = _giCant(l);
+        dupaZi(l._lucrari || []).forEach(function (c) { var a = Math.min(rest, Number(c.qty) || 0); rest -= a; out[c.id] = (out[c.id] || 0) + a; });
+      });
+      return out;
+    }
+    // { id lucrare: 'intreaga' | 'partiala' | 'scoasa' }
+    function _giAcoperire(S) {
+      var a = _giAlocat(S), out = {};
+      (S.adaugate || []).forEach(function (j) {
+        var trebuie = (j.linii || []).reduce(function (x, r) { return x + (Number(r.qty) || 0); }, 0), are = a[j.id] || 0;
+        out[j.id] = trebuie > 0 && are >= trebuie ? 'intreaga' : (are > 0 ? 'partiala' : 'scoasa');
+      });
+      return out;
+    }
+    function _giMontajeDeTrimis(S) {
+      var st = _giAcoperire(S);
+      return (S.adaugate || []).filter(function (j) { return st[j.id] === 'intreaga'; }).map(function (j) { return j.id; });
+    }
+    // Mențiunea automată, din lucrările ÎNTREGI pe factură; ce a scris omul în casetă rămâne.
+    function _giRefaNota(S) {
+      var st = _giAcoperire(S);
+      var zile = (S.adaugate || []).filter(function (j) { return st[j.id] === 'intreaga'; })
+        .map(function (j) { return { data: j.data || null, masini: Number(j.masini) || 0 }; })
+        .sort(function (a, b) { return (Number(a.data) || 0) - (Number(b.data) || 0); });
+      var auto = _giNotaMontaj(zile);
+      S.notaAuto = auto;
+      if (!S.notaMana) S.nota = auto;
+    }
+    // Pune o lucrare: un rând pe fel de lucrare, adunat cu rândurile NEATINSE cu aceeași denumire și același preț. O
+    // lucrare deja pe factură (întreagă sau în parte) nu se pune a doua oară.
     function _giStrangeLucrarea(S, j) {
+      if (!j) return;
+      var id = _giIdLucrare(S, j);
+      var st = _giAcoperire(S)[id];
+      if (st === 'intreaga' || st === 'partiala') return;
+      // Urmele vechi ale lucrării (rânduri pe care nu mai avea nimic) se șterg, ca să nu se numere de două ori.
+      S.lines.forEach(function (l) { if ((l._lucrari || []).some(function (c) { return c.id === id; })) l._lucrari = l._lucrari.filter(function (c) { return c.id !== id; }); });
       (j.linii || []).forEach(function (r) {
-        var l = S.lines.filter(function (x) { return x._montaj && x.desc === r.desc && Number(x.unitPrice) === Number(r.unitPrice); })[0];
-        if (l) l.qty = (Number(l.qty) || 0) + (Number(r.qty) || 0);
-        else { l = { desc: r.desc, qty: Number(r.qty) || 0, unitPrice: Number(r.unitPrice) || 0, _montaj: true }; S.lines.push(l); }
+        var q = Number(r.qty) || 0, p = Number(r.unitPrice) || 0;
+        var l = S.lines.filter(function (x) { return x._montaj && !x._atins && x.desc === r.desc && Number(x.unitPrice) === p; })[0];
+        if (l) { l.qty = (Number(l.qty) || 0) + q; l._lucrari = (l._lucrari || []).concat([{ id: id, qty: q }]); }
+        else { l = { desc: r.desc, qty: q, unitPrice: p, _montaj: true, _lucrari: [{ id: id, qty: q }] }; S.lines.push(l); }
         _giRecalcLine(l);
       });
-      S.zileMontaj = (S.zileMontaj || []).concat([{ data: j.data || null, masini: Number(j.masini) || 0 }])
-        .sort(function (a, b) { return (Number(a.data) || 0) - (Number(b.data) || 0); });
-      S.nota = _giNotaMontaj(S.zileMontaj);
+      S.adaugate = (S.adaugate || []).filter(function (x) { return x.id !== id; }).concat([j]);
+      _giRefaNota(S);
     }
+    // „Scoate": ia de pe rânduri exact cât adusese lucrarea (cât a mai rămas din ea) și o scoate din `montaje`.
+    function _giScoateLucrarea(S, id) {
+      var dupaZi = _giInOrdineaZilelor(S), lines = [];
+      S.lines.forEach(function (l) {
+        if (!(l._lucrari || []).some(function (c) { return c.id === id; })) { lines.push(l); return; }
+        var rest = _giCant(l), aLui = 0;
+        dupaZi(l._lucrari || []).forEach(function (c) { var a = Math.min(rest, Number(c.qty) || 0); rest -= a; if (c.id === id) aLui += a; });
+        var altele = (l._lucrari || []).filter(function (c) { return c.id !== id; });
+        var q = Math.max(0, (Number(l.qty) || 0) - aLui);
+        if (q <= 0 && !altele.length) return;   // rândul era doar al ei
+        l.qty = q; l._lucrari = altele; _giRecalcLine(l); lines.push(l);
+      });
+      S.lines = lines;
+      S.adaugate = (S.adaugate || []).filter(function (j) { return j.id !== id; });
+      _giRefaNota(S);
+    }
+    // Corecturile de mână: un rând de montaj sau din contract corectat nu mai primește cantități de la alte lucrări.
+    function _giEditeaza(S, i, k, v) {
+      var l = S.lines[i]; if (!l) return;
+      l[k] = k === 'desc' ? String(v) : (Number(v) || 0);
+      if (l._montaj || l._sursa) l._atins = true;
+      _giRecalcLine(l);
+      _giRefaNota(S);
+    }
+    function _giSterge(S, i) { S.lines.splice(i, 1); _giRefaNota(S); }
+    function _giSursaPusa(S, ce) { return S.lines.some(function (l) { return l._sursa === ce; }); }
+    function _giPuneNota(S, text) { S.nota = String(text || '').slice(0, 500); S.notaMana = true; }
     // „Montaj executat pe 15.01.2027 (10 mașini), 25.01.2027 (10 mașini) și 30.01.2027 (15 mașini)."
     function _giNotaMontaj(zile) {
       var z = (zile || []).filter(function (x) { return x && x.data; }).map(function (x) {
@@ -26845,6 +26939,7 @@ const pozitii = await r.json();</code></pre>
         if (S.aparatePeZile) bucati.push(S.aparatePeZile + ' cu zilele de la montaj (pornite luna trecută)');
         cap = '<div style="font-size:12.5px;margin-bottom:6px;">Abonamentul pe <b>' + esc(_giLunaText(S.luna)) + '</b> · ' + esc(S.client.name || '') + (bucati.length ? ' · ' + bucati.join(', ') : '') + '</div>' +
           (S.aparateNepornite ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + S.aparateNepornite + (S.aparateNepornite === 1 ? ' aparat e' : ' aparate sunt') + ' pe firmă, dar nu transmit încă: nu intră pe factură. Pornesc singure la montaj, la prima transmisie.</div>' : '') +
+          (S.preaDevreme ? '<div class="rax-gi-avert"><i class="fas fa-triangle-exclamation"></i> ' + esc(S.preaDevreme) + '</div>' : '') +
           (S.deja ? '<div class="rax-gi-avert"><i class="fas fa-triangle-exclamation"></i> Luna asta e deja facturată: <b>' + esc(S.deja.full_number || '') + '</b>. O a doua factură pe aceeași lună se refuză — dacă vrei s-o refaci, anuleaz-o întâi pe cea veche.</div>' : '');
       } else {
         cap = '<div style="font-size:12.5px;margin-bottom:6px;">' + (_giTip === 'proforma' ? 'Proformă' : 'Factură unică') + ' · ' + esc(S.client.name || '') + ' · TVA ' + S.vatRate + '%</div>' + _giSurseHtml();
@@ -26863,21 +26958,29 @@ const pozitii = await r.json();</code></pre>
         // Previzualizarea (30.09, Alin: „să aibă previzualizare, că se pot face greșeli"): hârtia exactă, de pe server,
         // fără număr și fără să plece nimic. Abia „Emite" o face document.
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-          '<button class="rax-btn" style="flex:1 1 180px;justify-content:center;" onclick="raxGenPrevizualizare(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-eye"></i> Previzualizează</button>' +
-          '<button class="rax-btn primary" style="flex:2 1 220px;justify-content:center;" onclick="raxGenIssue(this)"' + (S.lines.length ? '' : ' disabled') + '><i class="fas fa-file-invoice-dollar"></i> ' + eticheta + '</button></div>' +
+          '<button class="rax-btn" style="flex:1 1 180px;justify-content:center;" onclick="raxGenPrevizualizare(this)"' + (S.lines.length && !(abo && S.preaDevreme) ? '' : ' disabled') + '><i class="fas fa-eye"></i> Previzualizează</button>' +
+          '<button class="rax-btn primary" style="flex:2 1 220px;justify-content:center;" onclick="raxGenIssue(this)"' + (S.lines.length && !(abo && S.preaDevreme) ? '' : ' disabled') + '><i class="fas fa-file-invoice-dollar"></i> ' + eticheta + '</button></div>' +
         '<div id="rax-gi-msg" style="font-size:12px;margin-top:8px;"></div>';
     }
     function _giRecalcLine(l) { var vr = (_giState.vatRate || 0); l.net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; l.vat = Math.round(l.net * vr) / 100; l.vatRate = vr; l.gross = Math.round((l.net + l.vat) * 100) / 100; }
-    window._giEdit = function (i, k, v) { if (!_giState || !_giState.lines[i]) return; _giState.lines[i][k] = (k === 'desc') ? v : (Number(v) || 0); if (k !== 'desc') { _giRecalcLine(_giState.lines[i]); _giRenderLines(); } };
-    window._giDel = function (i) { if (!_giState) return; _giState.lines.splice(i, 1); _giRenderLines(); };
+    // Corecturile de mână trec prin regulile din blocul de mai sus (lucrările întregi, mențiunea automată). La denumire nu
+    // se redesenează (caseta și-ar pierde cursorul) — se pune doar mențiunea nouă, dacă omul n-a scris-o el.
+    window._giEdit = function (i, k, v) {
+      if (!_giState || !_giState.lines[i]) return;
+      _giEditeaza(_giState, i, k, v);
+      if (k !== 'desc') { _giRenderLines(); return; }
+      var n = document.getElementById('rax-gi-nota'); if (n && !_giState.notaMana) n.value = _giState.nota || '';
+    };
+    window._giDel = function (i) { if (!_giState) return; _giSterge(_giState, i); _giRenderLines(); };
     // Mențiunea corectată de mână. Prin funcție: un atribut `oninput` vede doar `window`, iar `_giState` trăiește aici —
     // scris direct în atribut („_giState.nota=…") arunca o eroare la fiecare literă, iar corectura nu ajungea pe factură.
-    window.raxGiNota = function (v) { if (_giState) _giState.nota = String(v == null ? '' : v); };
+    window.raxGiNota = function (v) { if (_giState) _giPuneNota(_giState, v); };
     window._giAdd = function (desc, price) { if (!_giState) return; var l = { desc: desc || '', qty: 1, unitPrice: Number(price) || 0, vatRate: _giState.vatRate || 0, net: 0, vat: 0, gross: 0 }; _giRecalcLine(l); _giState.lines.push(l); _giRenderLines(); };
     // Ce trimite fereastra: ACELAȘI corp pentru „Previzualizează" și „Emite" — ce vezi e ce pleacă.
     function _giCorp() {
       var lines = _giState.lines.filter(function (l) { return (l.desc || '').trim() && (Number(l.qty) || 0) > 0; });
-      return { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.montaje || [],
+      // `montaje`: DOAR lucrările aflate întregi pe factură (lista lui Robert, pct. 6 — regula telefonului).
+      return { companyId: _giState.companyId, fel: _giState.fel, luna: _giState.luna, tip: _giState.fel === 'unica' ? _giTip : 'invoice', lines: lines, montaje: _giState.fel === 'unica' ? _giMontajeDeTrimis(_giState) : [],
         note: (_giState.fel === 'unica' && String(_giState.nota || '').trim()) ? String(_giState.nota).trim().slice(0, 500) : null };
     }
     window.raxGenPrevizualizare = async function (btn) {

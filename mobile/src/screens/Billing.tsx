@@ -9,7 +9,7 @@ import { rutaFisa } from '../lib/companii';
 import {
   LUNI, cheieLuna, lunaText, ziRo, felDinAdresa, ciornaDinRaspuns, sursaPusa, puneContract, acoperire,
   puneLucrare, scoateLucrare, editeazaLinie, stergeLinie, adaugaLinie, puneNota, liniiValide, corpEmitere, ceEste,
-  stareClient, lunaViitoare, aparateDejaPe, metodaText, trimisaText,
+  stareClient, metodaText, trimisaText,
   pregatireDinAdresa, pregatesteCiorna, lucrariLipsaText, notaLaEmitere, RUTA_PREVIZUALIZARE,
   SECTIUNI, numereSectiuni, etichetaSectiune, documenteSectiune, golSectiune,
   randuriMontajFact, MONTAJ_FACT_SUB, MONTAJ_FACT_GOL, MONTAJ_FACT_IN_CURS,
@@ -462,7 +462,8 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
   const acop = S ? acoperire(S) : {};
   const dc = (S && S.dinContract) || {};
   const sumaLinii = (ls: any[]) => (ls || []).reduce((x: number, l: any) => x + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
-  const dejaAparate = S && unica ? aparateDejaPe(invoices, S.companyId, dc) : [];
+  // (Avertismentul „aparatele din contract apar deja pe …", socotit aici din documentele firmei, a plecat pe 01.10: serverul
+  //  nu le mai propune și spune singur unde sunt — `dinContract.aparateDejaPe`, lista lui Robert, pct. 5.)
   // (Avertismentul „de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»" a plecat pe 01.10: serverul
   //  le ține acum pe proformă și le trece pe factura fiscală la „Încasată" — punctul 19 din verificarea lui Robert.)
   const eticheta = unica && tip === 'proforma' ? 'Emite proforma' : 'Emite factura';
@@ -516,9 +517,9 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                     {S.aparateNepornite ? <div class="bill-mic">{Number(S.aparateNepornite) === 1
                       ? '1 aparat e pe firmă, dar nu transmite încă: nu intră pe factură. Pornește singur la montaj, la prima transmisie.'
                       : nrDe(S.aparateNepornite, 'aparat e', 'aparate sunt') + ' pe firmă, dar nu transmit încă: nu intră pe factură. Pornesc singure la montaj, la prima transmisie.'}</div> : null}
-                    {/* Revizia din 29.09: o mașină montată între emitere și 1 ale lunii nu mai intră pe factura lunii, iar factura
-                        automată sare luna deja facturată — zilele ei pe luna aceea nu se mai facturează niciodată. */}
-                    {lunaViitoare(S.luna) ? <div class="bill-avert">⚠ Luna {lunaText(S.luna)} n-a început. O mașină montată până atunci nu mai intră pe această factură, iar factura automată sare luna deja facturată — deci zilele acelei mașini pe {lunaText(S.luna)} nu se mai facturează. Mai sigur: emite abonamentul de pe 1 {lunaText(S.luna)}.</div> : null}
+                    {/* O lună care n-a început: din 01.10 serverul REFUZĂ abonamentul înainte de 1 ale ei (lista lui Robert, pct. 9) și
+                        trimite refuzul gata scris în ciornă — același text ca pe web. Butoanele se sting mai jos. */}
+                    {S.preaDevreme ? <div class="bill-avert rau">⚠ {S.preaDevreme}</div> : null}
                     {S.deja ? <div class="bill-avert rau">⚠ Luna asta e deja facturată: <b>{S.deja.full_number || ''}</b>. O a doua factură pe aceeași lună se refuză — dacă vrei s-o refaci, anuleaz-o întâi pe cea veche.</div> : null}
                   </div>
                 ) : (
@@ -526,11 +527,17 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                     <div class="bill-cap">{tip === 'proforma' ? 'Proformă' : 'Factură unică'} · {S.client?.name || ''} · TVA {S.vatRate}%</div>
                     {(() => {
                       const areAparate = (dc.aparate || []).length > 0, areLucrari = (dc.lucrari || []).length > 0, areMontaj = !areLucrari && (dc.montaj || []).length > 0;
+                      // Aparatele contractului aflate deja pe un document (proforma de avans, factura): serverul nu le mai propune
+                      // (lista lui Robert, 01.10, pct. 5) — aici se spune unde sunt, ca pe web.
+                      const dejaPe = (dc.aparateDejaPe || []).length
+                        ? <div class="bill-mic"><Icon name="check" size={13} /> Aparatele din contract{areAparate ? ', în parte,' : ''} sunt deja pe {dc.aparateDejaPe.join(', ')} — {areAparate ? 'se propune doar restul.' : 'nu se mai propun.'}</div>
+                        : null;
                       if (!areAparate && !areLucrari && !areMontaj) {
-                        return <div class="bill-mic">{dc.contract ? 'Contractul firmei n-are aparate sau montaj în Anexa nr. 2' : 'Firma n-are încă un contract'} — scrie rândurile de mână.</div>;
+                        return <div>{dejaPe}<div class="bill-mic">{dc.contract ? ((dc.aparateDejaPe || []).length ? 'Nimic altceva de luat din contract' : 'Contractul firmei n-are aparate sau montaj în Anexa nr. 2') : 'Firma n-are încă un contract'} — scrie rândurile de mână.</div></div>;
                       }
                       return (
                         <div>
+                          {dejaPe}
                           <div class="bill-mic">Din contractul {(dc.contract && dc.contract.number) || ''} și din lucrările executate{areLucrari ? ' (montajul se ia din lucrări: cantitățile reale)' : ''}:</div>
                           <div class="bill-surse">
                             {areAparate && (sursaPusa(S, 'aparate')
@@ -557,7 +564,6 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                         </div>
                       );
                     })()}
-                    {dejaAparate.length ? <div class="bill-avert">⚠ Aparatele din contract apar deja pe {dejaAparate.join(', ')}. Verifică să nu le facturezi de două ori.</div> : null}
                   </div>
                 )}
 
@@ -585,8 +591,8 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                 {/* Ce pleacă singur la emitere (anunțul, emailul cu PDF, ANAF la factura fiscală) — ca pe web. */}
                 <div class="bill-mic" style="margin-top:8px;line-height:1.5">{notaLaEmitere(unica ? tip : 'invoice')}</div>
                 <div class="bill-emite">
-                  <button class="btn" style={sec} disabled={vede || saving || !S.lines.length} onClick={previzualizeaza}><Icon name="eye" size={16} /> {vede ? 'Se deschide…' : 'Previzualizează'}</button>
-                  <button class="btn btn-primary" disabled={saving || !S.lines.length || (!unica && !!S.deja)} onClick={emite}>{saving ? 'Se emite…' : eticheta}</button>
+                  <button class="btn" style={sec} disabled={vede || saving || !S.lines.length || (!unica && !!S.preaDevreme)} onClick={previzualizeaza}><Icon name="eye" size={16} /> {vede ? 'Se deschide…' : 'Previzualizează'}</button>
+                  <button class="btn btn-primary" disabled={saving || !S.lines.length || (!unica && (!!S.deja || !!S.preaDevreme))} onClick={emite}>{saving ? 'Se emite…' : eticheta}</button>
                 </div>
               </div>
             )}
@@ -672,7 +678,7 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
 }
 
 function IssuerSheet({ issuer, onClose, onSaved }: any) {
-  const [form, setForm] = useState<any>(() => ({ name: '', cui: '', reg_com: '', address: '', city: '', county: '', iban: '', bank: '', email: '', phone: '', vat_rate: 19, vat_payer: true, ...(issuer || {}) }));
+  const [form, setForm] = useState<any>(() => ({ name: '', cui: '', reg_com: '', address: '', city: '', county: '', iban: '', bank: '', email: '', phone: '', vat_rate: 21, vat_payer: true, ...(issuer || {}) }));   // 21% = cota legală din 01.08.2025
   const start = useRef(amprenta(form));   // datele cum s-au deschis
   const [saving, setSaving] = useState(false);
   // Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: datele emitentului schimbate nu se pierd pe tăcute.

@@ -1165,6 +1165,33 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - Păzit de `verify_abonament.js` (în `npm test`, inclusiv pe server pornit), `verify_neplata.js`,
   `verify_companii.js`, `verify_factura.js`.
 
+### Banii, după lista lui Robert (lotul 2, 01.10) — regulile, ca să nu se strice la loc
+- **TVA:** cota stă DOAR în „Date emitent"; fără ea, `COTA_TVA_IMPLICITA` = 21 (din 01.08.2025). `_liniiNormalizate`
+  pune pe fiecare rând cota emitentului — cota trimisă de ecran NU contează. Hârtia (`factura_pdf.js`) scrie cota aplicată
+  pe rânduri. Pagina și telefonul pornesc tot de la 21. NU pune înapoi 19 nicăieri.
+- **Aparatele din contract** se propun minus ce stă deja pe documentele firmei (facturi și proforme NEANULATE, emise de la
+  facerea contractului, aceeași denumire de rând; proforma încasată nu se numără — factura ei e deja acolo):
+  `_aparateDejaFacturate` în `_unicaDinContract`, care întoarce și `aparateDejaPe` (numerele documentelor). Web și
+  telefon doar le arată. Avertismentul socotit pe telefon (`aparateDejaPe` din lib/factura.ts) nu mai e pe ecran.
+- **Lucrările de montaj pe factura web** urmează regula telefonului (blocul „factura montajului, strânsă"): `_lucrari` pe
+  rând, `_giAcoperire` / `_giMontajeDeTrimis` / `_giRefaNota`; pleacă în `montaje` doar lucrările ÎNTREGI pe factură.
+  NU reintroduce `_giState.montaje` / `_giState.puse` (o listă ținută separat de rânduri). Legate de telefon în
+  `verify_facturare_telefon.js` (1.3b, 14 cazuri). Lucrările fără `id` (proba lui Alin) primesc unul în fereastră.
+- **„E deja facturată luna?"** = `_abonamentulLunii`: factura de abonament a lunii SAU una VECHE (fără `fel`, cu rând
+  „Abonament…/Supliment…", neanulată, cu perioada peste lună — `db.abonamentVechiLuna`). Ceasul automat și-a păstrat
+  regula lui pentru luna trecerii.
+- **Abonamentul lunii M se emite de pe 1 M** (`_abonamentPreaDevreme`): emiterea și previzualizarea refuză (400,
+  `preaDevreme`), ciorna poartă textul refuzului, iar ecranele doar îl arată și sting butoanele.
+- **„Lunar" (Companii) și „Contract ↔ factură"** numără DOAR aparatele pornite (`abonament_de_la`), ca factura; fără
+  niciunul pornit = 0 (și fără RA Insight, chirie, păstrare — pornesc odată cu prima mașină). Chiria care ajunge pe
+  factură (`chirieFirma`) nu e „nefacturată".
+- **`_uitaPornirea(imei)`** la ștergerea definitivă și la orice (re)înregistrare (POST /api/devices, import, prima
+  conectare din stoc): altfel memoria `_aboPornit` ținea un aparat nou „pornit" până la repornirea serverului.
+- **`POST /api/companies/:id/payment` refuză `months`** (telefoanele ≤ 1.0.4, „extinde accesul"): plata se trece pe factură.
+- **`_stocLaFirma`** mută și o bucată deja „montată" la altă firmă (proprietarul rămâne), cu rând în istoric.
+- Păzit de `verify_reparatii_lista.js` (în `npm test`). Facturile vechi se pun în baza probei de un pas separat
+  (`--faza=seed`), cu fusul UTC, ca serverul (server.js își pune `TZ=UTC` la pornire).
+
 ### Facturarea pe telefon (APK 1.0.5, lotul 4 — 30.09)
 Telefonul face ce face pagina, pe aceleași rute; serverul nu știe că e telefonul. Ce trebuie știut când schimbi
 facturarea pe web:
