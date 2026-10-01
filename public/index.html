@@ -11903,6 +11903,8 @@ const pozitii = await r.json();</code></pre>
       var a = currentUser && currentUser.access;
       var el = document.getElementById('access-banner');
       var hide = !a || a.status === 'active' || (currentUser && currentUser.isSuper);
+      // Accesul a revenit: harta live se reconectează pe loc. (Funcția se poate rula și singură — probele o decupează.)
+      if ((!a || a.status !== 'expired') && typeof _wsAccesRevenit === 'function') _wsAccesRevenit();
       if (hide) { if (el) el.style.display = 'none'; return; }
       if (!el) {
         el = document.createElement('div'); el.id = 'access-banner';
@@ -15746,6 +15748,11 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── WebSocket ───
+    // Accesul firmei e oprit (neplată sau de noi): serverul închide harta live cu „access_expired" — la deschidere și,
+    // din 01.10, și pe o hartă deja deschisă (lista lui Robert, pct. 2). Banda roșie de sus o aprinde verificarea
+    // profilului (la 4 secunde); aici doar nu mai batem la ușă la fiecare 3 secunde: o dată pe minut. Când profilul
+    // spune că accesul a revenit, harta se reconectează PE LOC (_wsAccesRevenit, chemată de applyAccessBanner).
+    var _wsAccesOprit = false, _wsReia = null;
     function connectWs() {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(protocol + '//' + location.host);
@@ -15768,8 +15775,10 @@ const pozitii = await r.json();</code></pre>
           }).catch(function () {});
           return;
         }
+        if (msg.type === 'error' && msg.data && msg.data.error === 'access_expired') { _wsAccesOprit = true; return; }
 
         if (msg.type === 'init') {
+          _wsAccesOprit = false;
           msg.data.forEach(updateMarker);
           if (msg.data.length > 0) {
             const bounds = msg.data.map(d => [d.latitude, d.longitude]);
@@ -15827,12 +15836,18 @@ const pozitii = await r.json();</code></pre>
       };
 
       ws.onclose = () => {
-        statusEl.innerHTML = '<span class="ws-dot"></span><span>Deconectat &mdash; reconectare...</span>';
+        statusEl.innerHTML = _wsAccesOprit ? '<span class="ws-dot"></span><span>Oprit &mdash; accesul firmei e suspendat</span>'
+          : '<span class="ws-dot"></span><span>Deconectat &mdash; reconectare...</span>';
         statusEl.className = 'ws-disconnected';
-        setTimeout(connectWs, 3000);
+        _wsReia = setTimeout(connectWs, _wsAccesOprit ? 60000 : 3000);
       };
 
       ws.onerror = () => ws.close();
+    }
+    function _wsAccesRevenit() {
+      if (!_wsAccesOprit || !_wsReia) return;
+      clearTimeout(_wsReia); _wsReia = null; _wsAccesOprit = false;
+      connectWs();
     }
 
     // ─── Alert Notifications ───

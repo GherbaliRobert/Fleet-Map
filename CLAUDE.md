@@ -930,7 +930,9 @@ când schimbi pagina de ofertă pe web:
   Lista mașinilor vine de la telefon la fiecare socoteală (`_ofMasiniCurate`), altfel o salvare ar lua lista altei
   oferte (pagina din vm e una, a tuturor cererilor).
 - Șablonul se încarcă de pe telefon în JSON (`{ fisier, b64 }`), pe aceeași rută; pe calea asta se numără octeții
-  dezarhivați înainte de citire (`_sablonNuSeUmfla`, 50 MB).
+  dezarhivați înainte de citire (`_sablonNuSeUmfla`, 50 MB). Din 01.10 (lista lui Robert, pct. 1) numărătoarea stă pe
+  AMBELE căi ale șablonului (și pe cea web, crudă) și pe încărcarea listelor Teltonika (120 MB; o listă adevărată crește
+  la ~10 MB): `SABLON_MAX_DEZARHIVAT` / `LISTA_MAX_DEZARHIVAT`. Orice ușă nouă care primește un .xlsx numără întâi.
 
 ### Rămase la decizia lui Alin (NU le face din proprie inițiativă)
 - Lista „Mașinile clientului" pe oferta PDF (azi nu apare).
@@ -970,6 +972,13 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   scadență, în cele 15 zile, cu `mesaj` din `neplata.mesajClient`) / `expired` (`motiv`: `neplata` | `manual`).
   `_accessStatusCached`, listele de firme, exportul registrului, cartonașul de pe „Acasă", `/api/me`,
   „Facturile mele" — toate trec prin ea.
+- **Starea NU poartă motivul scris de noi** (`suspend_reason`) — pleacă și la oamenii firmei. Ecranele noastre îl
+  citesc din fișa firmei (`company.suspend_reason`). NU pune înapoi un `nota` în `stareAcces` (lista lui Robert, pct. 3).
+- **Harta live a unei firme oprite se închide și când era deja deschisă** (pct. 2): trecerea de la un minut
+  (`_verificaLegaturileLive`) întreabă `_accessStatusCached` pe fiecare firmă și închide legăturile non-super cu
+  `access_expired` — același cuvânt ca la deschidere; suspendarea de mână cheamă trecerea PE LOC. Telefonul aprinde banda
+  roșie; pagina web (`connectWs`) reîncearcă atunci o dată pe minut, nu la 3 secunde, iar când profilul (verificat la
+  4 secunde) spune că accesul a revenit, `applyAccessBanner` cheamă `_wsAccesRevenit` și harta se reconectează pe loc.
 - **Ceasul vechi „acces până la" a fost SCOS** (`companyAccessStatus`, `GRACE_DAYS`, `billingReminderTick`
   cu anunțul lui orar, ruta `PUT /api/companies/:id/access`, `setCompanyAccessUntil`, formularul „Înregistrează
   plata + extinde accesul"). Bloca clienți care plătiseră tot: „Plătită" pe o factură punea `access_until` =
@@ -1170,7 +1179,8 @@ facturarea pe web:
   se rescrie; o lucrare scoasă de pe factură NU pleacă în `montaje`; avertismente pentru luna care n-a început, aparatele
   deja pe o proformă și montajul pus pe proformă. Când Alin le repară pe server/web, telefonul poate rămâne cum e.
 - **Banda de acces** (`components/BandaAcces.tsx`, în `App.tsx`) arată `access.mesaj` de la server — telefonul NU
-  socotește zile sau sume; `access.nota` (motivul nostru intern) nu se arată niciodată.
+  socotește zile sau sume. Motivul nostru intern al unei suspendări nu ajunge la telefon deloc (din 01.10 serverul nu-l
+  mai trimite clientului); proba păzește oricum ca telefonul să nu citească un `nota`.
 - **Contul suspendat, ca pe web** (hotărât pe 30.09: „la fel ca și pe web"; APK 1.0.6): la PORNIRE iese din aplicație
   (`bootstrap` → `accesOprit`, doar pe profilul proaspăt de la server), iar ecranul de autentificare arată
   `MESAJ_SUSPENDAT_LA_INTRARE` = `MESAJ_SUSPENDAT` de pe server = textul din `checkAuth` de pe web (legate prin probă,

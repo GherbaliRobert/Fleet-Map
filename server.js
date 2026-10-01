@@ -2018,11 +2018,14 @@ function requireFeature(key) {
 // Întoarce mereu aceeași formă: { status: 'active' | 'grace' | 'expired', motiv, neplata, ... }
 //   grace   = o factură a trecut de scadență, dar suntem încă în cele 15 zile (se vede numărătoarea);
 //   expired = oprit (neplată sau de mână) — restul aplicației verifică exact cuvântul ăsta.
+// FĂRĂ motivul scris de noi la o oprire de mână (`suspend_reason`): starea pleacă și la oamenii firmei (/api/me,
+// „Facturile mele"), iar motivul e o notă internă (lista lui Robert, 01.10, pct. 3). Ecranele noastre îl citesc din
+// fișa firmei (`company.suspend_reason`).
 function stareAcces(co, facturi, acum) {
   const np = neplata.stareNeplata(facturi || [], acum || Date.now());
   const restanta = np.faza === 'ok' ? null : np;
   if (co && co.suspended_at != null) {
-    return { status: 'expired', motiv: 'manual', suspendat_din: Number(co.suspended_at), nota: co.suspend_reason || null, neplata: restanta };
+    return { status: 'expired', motiv: 'manual', suspendat_din: Number(co.suspended_at), neplata: restanta };
   }
   if (np.faza === 'suspendat') return { status: 'expired', motiv: 'neplata', factura: np.factura, suspendat_din: np.suspendareLa, neplata: np };
   if (np.faza === 'avertisment') return { status: 'grace', motiv: 'neplata', factura: np.factura, suspendareLa: np.suspendareLa, neplata: np, mesaj: neplata.mesajClient(np) };
@@ -2468,7 +2471,7 @@ async function _accessStatusCached(companyId) {
     let co = null, facturi = [];
     try { co = await db.getCompanyById(companyId); } catch (err) { co = null; }
     try { facturi = await db.facturiNeachitate(companyId); } catch (err) { facturi = []; }
-    e = { co: co ? { suspended_at: co.suspended_at, suspend_reason: co.suspend_reason } : null, facturi: facturi, ts: Date.now() };
+    e = { co: co ? { suspended_at: co.suspended_at } : null, facturi: facturi, ts: Date.now() };
     _accessCache.set(companyId, e);
   }
   return stareAcces(e.co, e.facturi, Date.now());
@@ -7015,6 +7018,16 @@ if (process.env.NODE_ENV === 'test') {
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
+  // Același lucru pentru o FIRMĂ: suspendare scrisă direct, fără închiderea pe loc a legăturilor live (pe care o face ruta
+  // normală) — ca proba să vadă că trecerea de la un minut prinde singură o firmă oprită (lista lui Robert, pct. 2).
+  app.post('/api/debug/suspenda-fara-legaturi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const id = parseInt((req.body || {}).id, 10);
+      await db.setCompanySuspend(id, { at: Date.now(), reason: 'probă', by: null });
+      _invalidateAccessCache(id);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.post('/api/debug/ws-sweep', requireAuth, requireSuperadmin, async (req, res) => {
     try { res.json({ inchise: await _verificaLegaturileLive() }); } catch (e) { res.status(500).json({ error: e.message }); }
   });
@@ -7163,6 +7176,8 @@ app.put('/api/companies/:id/suspend', requireAuth, requireSuperadmin, async (req
     if (pornit && !motiv) return res.status(400).json({ error: 'Scrie motivul suspendării — rămâne scris în dosar.' });
     await db.setCompanySuspend(id, pornit ? { at: Date.now(), reason: motiv, by: req.auth && req.auth.userId } : { at: null, reason: null, by: null });
     _invalidateAccessCache(id);
+    // Harta live a firmei se oprește PE LOC, nu la trecerea de la un minut (lista lui Robert, pct. 2).
+    if (pornit) _verificaLegaturileLive().catch(function () {});
     auditReq(req, pornit ? 'suspend' : 'unsuspend', 'company', id, { reason: motiv });
     res.json({ ok: true, access: await _accessStatusCached(id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -15450,6 +15465,10 @@ app.post('/api/admin/masini/liste', requireAuth, requireSuperadmin, express.raw(
   try {
     const buf = req.body;
     if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege fișierul Excel al listei.' });
+    // Un .xlsx e o ARHIVĂ: 15 MB arhivați se pot umfla la citire la sute de MB, în procesul care primește și pozițiile
+    // GPS ale tuturor firmelor (lista lui Robert, 01.10, pct. 1). Se numără octeții dezarhivați ÎNAINTE de ExcelJS.
+    // Listele adevărate cresc de vreo 6–9 ori (ALL-CAN300, 1,6 MB → 10 MB, măsurat pe 01.10), deci plafonul lasă loc.
+    if (!(await _sablonNuSeUmfla(buf, LISTA_MAX_DEZARHIVAT))) return res.status(400).json({ error: 'Nu pot deschide fișierul: trebuie să fie lista Excel (.xlsx) de la Teltonika.' });
     let fisier = 'lista.xlsx';
     try { fisier = decodeURIComponent(String(req.get('x-fisier') || '')).replace(/[\\/]/g, '').slice(0, 200) || fisier; } catch (e) { /* nume stricat: rămâne cel implicit */ }
     let r;
@@ -15496,6 +15515,10 @@ app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, 
 // cererile aplicației pleacă prin stratul nativ, care poartă text, nu un fișier. Același cititor, aceeași limită
 // de 5 MB; un șablon completat are câteva sute de KB, deci încape lejer în JSON (limita lui e 6 MB).
 const SABLON_MAX_OCTETI = 5 * 1024 * 1024;
+// Cât are voie să crească un fișier la dezarhivare, pe AMBELE căi (web, crud; telefon, base64): șablonul are câțiva MB,
+// o listă Teltonika vreo 10 MB. Peste plafon nu-l mai dăm lui ExcelJS.
+const SABLON_MAX_DEZARHIVAT = 50 * 1024 * 1024;
+const LISTA_MAX_DEZARHIVAT = 120 * 1024 * 1024;
 // true dacă arhiva, dezarhivată de-adevăratelea (nu după mărimea declarată, care poate minți), rămâne sub `buget`.
 // Se oprește la depășire și nu ține nimic în memorie. JSZip vine cu ExcelJS (același pe care îl folosește citirea).
 async function _sablonNuSeUmfla(buf, buget) {
@@ -15522,12 +15545,12 @@ app.post('/api/admin/masini/sablon', requireAuth, requireSuperadmin, express.raw
     if (!Buffer.isBuffer(buf) && buf && typeof buf === 'object' && typeof buf.b64 === 'string') {
       buf = Buffer.from(buf.b64, 'base64');
       if (buf.length > SABLON_MAX_OCTETI) return res.status(413).json({ error: 'Șablonul are peste 5 MB — nu e cel trimis de noi.' });
-      // Calea telefonului: un .xlsx e o ARHIVĂ, iar 5 MB arhivați se pot umfla la dezarhivare la sute de MB, în
-      // procesul care primește și pozițiile GPS (găsit la revizia lotului 3, 29.09). Se numără octeții dezarhivați
-      // înainte de citire; un șablon completat are câțiva MB. (Calea web, CRUDĂ, e a lui Alin — semnalată, neatinsă.)
-      if (!(await _sablonNuSeUmfla(buf, 50 * 1024 * 1024))) return res.status(400).json({ error: 'Nu pot deschide fișierul: trebuie să fie șablonul Excel (.xlsx) descărcat din calculator.' });
     }
     if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: 'Alege șablonul completat (fișierul Excel).' });
+    // Un .xlsx e o ARHIVĂ, iar 5 MB arhivați se pot umfla la dezarhivare la sute de MB, în procesul care primește și
+    // pozițiile GPS (găsit la revizia lotului 3, 29.09, pe calea telefonului). Se numără octeții dezarhivați înainte
+    // de citire, pe AMBELE căi: web (crud) și telefon (base64) — lista lui Robert, 01.10, pct. 1.
+    if (!(await _sablonNuSeUmfla(buf, SABLON_MAX_DEZARHIVAT))) return res.status(400).json({ error: 'Nu pot deschide fișierul: trebuie să fie șablonul Excel (.xlsx) descărcat din calculator.' });
     let r;
     try { r = await compat.citesteSablonExcel(buf); } catch (e) { return res.status(400).json({ error: e.message }); }
     res.json({ masini: r.masini, probleme: r.probleme.slice(0, 50), nProbleme: r.probleme.length });
@@ -15958,6 +15981,19 @@ async function _verificaLegaturileLive() {
       cheiBune = new Set((await db.pool.query('SELECT id FROM api_keys WHERE id = ANY($1::int[]) AND revoked = false AND (expires_at IS NULL OR expires_at > NOW())', [chei])).rows.map(function (r) { return Number(r.id); }));
     } catch (e) { cheiBune = null; } // nu știm: nu închidem pe ghicite
   }
+  // Firmele cu accesul OPRIT (neplată sau de noi) — aceeași regulă ca la deschiderea legăturii (_wsAuthContext). Până pe
+  // 01.10 se verifica DOAR la deschidere: o hartă deschisă înainte de suspendare primea pozițiile flotei până se
+  // reconecta (lista lui Robert, pct. 2). O singură întrebare pe firmă și trecere; o eroare = nu închidem pe ghicite.
+  const firmeOprite = new Map();
+  async function firmaOprita(cid) {
+    if (cid == null) return false;
+    if (!firmeOprite.has(cid)) {
+      let oprita = false;
+      try { oprita = (await _accessStatusCached(cid)).status === 'expired'; } catch (e) { oprita = false; }
+      firmeOprite.set(cid, oprita);
+    }
+    return firmeOprite.get(cid);
+  }
   let inchise = 0;
   for (const c of clienti) {
     if (c._userId == null) continue;
@@ -15967,6 +16003,8 @@ async function _verificaLegaturileLive() {
     else if (userAccessExpired(u)) motiv = DEMO_EXPIRED_MSG;
     else if (c._keyId != null && cheiBune && !cheiBune.has(Number(c._keyId))) motiv = 'Neautorizat'; // cheie revocată sau expirată
     else if (c._role && u.role !== c._role) motiv = 'reautentificare'; // drepturi schimbate: se reconectează cu cele noi
+    // Același cuvânt ca la deschidere: telefonul (1.0.5+) aprinde banda roșie, pagina web la fel (connectWs).
+    else if (!isSuper(u.role) && (await firmaOprita(c._companyId))) motiv = 'access_expired';
     if (!motiv) continue;
     try { c.send(JSON.stringify({ type: 'error', data: { error: motiv } })); } catch (e) {}
     try { c.close(); } catch (e) {}

@@ -127,6 +127,34 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
+### AMÂNDOI · Lista lui Robert, lotul 1 — siguranță: Excel-ul care se umflă, harta după suspendare, motivul intern (1, 2, 3) — `HASH`
+
+Pe 01.10 Alin ne-a dat înapoi lista de 26 de reparații („Reparații pentru Robert — din verificările tale"). Lotul 1
+sunt cele trei care ating toate firmele deodată sau datele lor. Zonele lui Alin (calendarul de montaj, montajul,
+stornarea) n-au fost atinse.
+
+1. **(1) Un Excel mic nu mai poate opri serverul.** Un fișier .xlsx e o arhivă: unul de câteva sute de KB, făcut
+   anume, se umflă la citire la sute de MB — în același program care primește pozițiile GPS ale tuturor firmelor.
+   Pe telefon exista deja o pază (din 29.09); pe web — „Încarcă șablonul" la mașinile clientului și încărcarea
+   listelor Teltonika — nu. Acum se numără cât crește fișierul ÎNAINTE de citire, pe toate ușile: 50 MB la șablon,
+   120 MB la liste. Listele adevărate cresc de la 1,6 MB la vreo 10 MB (măsurat pe 01.10 pe cele de la Teltonika),
+   deci au loc de 12 ori mai mult.
+2. **(2) Harta live se oprește și când era deja deschisă.** Înainte, suspendarea (neplată sau de noi) oprea harta
+   doar la următoarea deschidere: o pagină sau un telefon deschise de dinainte primeau pozițiile flotei mai departe,
+   până se reconectau. Acum verificarea de la un minut închide și legăturile firmelor oprite, iar suspendarea de mână
+   le închide pe loc. Telefonul aprinde banda roșie (de la 1.0.5); pagina web scrie „Oprit — accesul firmei e
+   suspendat" lângă hartă și nu mai bate la ușă la fiecare 3 secunde; când firma e reactivată, harta revine singură în
+   câteva secunde (verificat în browser, pe serverul de probă: oprită în sub 2 secunde, pornită din nou în 1,3).
+3. **(3) Motivul scris de noi la o suspendare nu mai pleacă la client.** Textul din „Scrie motivul suspendării"
+   pleca, ascuns, în datele trimise tuturor oamenilor firmei (profilul, „Facturile mele"). Nu apărea pe ecran, dar
+   era acolo. Acum rămâne doar la noi, în fișa firmei, unde îl vedeam și până acum.
+
+- **Ce am schimbat:** serverul (încărcările de Excel, verificarea legăturilor live, suspendarea, starea accesului) și
+  pagina web (harta live). Probă nouă: `verify_reparatii_lista.js` (42 de verificări, în poartă; stricând pe rând
+  fiecare reparație, proba pică). Telefonul n-are nimic de schimbat: aprinde deja banda roșie.
+- **Ce vede fondatorul:** nimic nou pe ecran. Un Excel umflat e refuzat cu „Nu pot deschide fișierul…".
+- **Ce vede clientul:** la suspendare, harta se oprește pe loc, cu banda roșie de sus; motivul nostru nu-i mai ajunge.
+
 ### AMÂNDOI · Telefonul 1.0.7: ce a făcut Alin pe 30.09, adus pe telefon (lotul 5) — `1167fb6`
 
 Pe 30.09 Alin a pus pe web calendarul de montaj, facturile care pleacă singure, previzualizarea, proforma la semnare,
