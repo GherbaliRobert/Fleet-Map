@@ -67,4 +67,7 @@
   border: 1px solid color-mix(in srgb, var(--red) 45%, transparent); border-radius: 9px; padding: 8px 10px; }
 .st-hint { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
 .st-hint.warn { color: var(--fd-warn); font-weight: 700; }
+/* Sub caseta seriilor: un GPS trecut aici cu IMEI-ul nu se mai scrie în Dispozitive (30.09). E o regulă, nu un
+   sfat de umplutură: --text-secondary (mai apăsat decât indiciul gri de mai sus), pe fundalul foii. */
+.st-nota { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); margin-top: 2px; }
 .fld textarea.st-serii { min-height: 110px; }

@@ -5,6 +5,12 @@
 //   lunaText        ↔ _giLunaText            ceEste      ↔ ceE (raxRenderInvoices)
 //   stareClient     ↔ _myInvStare            puneLucrare ↔ _giStrangeLucrarea / _giNotaMontaj
 //                                                          („factura montajului, strânsă", Alin 29.09)
+// Lotul 5 (lucrul lui Alin din 30.09):
+//   pregatesteCiorna / lucrariLipsaText  ↔ raxProformaLaSemnare / raxFacturaMontaj (fereastra deschisă pregătită)
+//   etichetaSectiune / documenteSectiune / golSectiune ↔ raxRenderInvoices (secțiunile Facturi / Proforme / Montaj)
+//   randuriMontajFact + MONTAJ_FACT_*    ↔ _raxMontajFactHtml („Montaj de facturat")
+//   notaLaEmitere   ↔ _giRenderLines       RUTA_PREVIZUALIZARE ↔ raxGenPrevizualizare (același corp ca emiterea)
+//   cuiAfisat       ↔ cuiAfisat din factura_pdf.js („RO" doar la plătitorii de TVA, ca pe hârtia serverului)
 //
 // Ce face telefonul ALTFEL decât pagina, dinadins (revizia lucrului din 29.09):
 //   • un rând de montaj corectat de mână nu mai primește cantitățile lucrării următoare: lucrarea nouă își
@@ -38,10 +44,34 @@ export function ziRo(ts: any): string {
 //   /billing?factura=<id firmă>             → abonamentul unei luni (ca până acum)
 //   /billing?factura=<id firmă>&fel=unica   → factură unică (aparate, montaj — din contract; fiscală sau proformă)
 // Felul se citește înapoi cu felDinAdresa: orice altceva decât „unica" (inclusiv „&fel=abonament") = abonamentul.
-export function rutaFactura(companyId: any, fel?: Fel | null): string {
-  return '/billing?factura=' + encodeURIComponent(String(companyId)) + (fel === 'unica' ? '&fel=unica' : '');
+// Lotul 5 (30.09), ce pregătește fereastra la deschidere, ca pe web:
+//   opt.tip = 'proforma' + opt.aparate → proforma aparatelor din contract, la „E semnat" (web: raxProformaLaSemnare)
+//     → /billing?factura=<id>&fel=unica&tip=proforma&aparate=1
+//   opt.lucrari = [id, …] → factura montajului, cu lucrările puse (web: raxFacturaMontaj, anunțul „Montaj de facturat")
+//     → /billing?factura=<id>&fel=unica&lucrari=12,13
+// Fără `opt`, adresa rămâne exact cea de dinainte.
+export function rutaFactura(companyId: any, fel?: Fel | null, opt?: { tip?: 'proforma'; aparate?: boolean; lucrari?: any[] } | null): string {
+  let u = '/billing?factura=' + encodeURIComponent(String(companyId)) + (fel === 'unica' ? '&fel=unica' : '');
+  if (fel === 'unica' && opt) {
+    if (opt.tip === 'proforma') u += '&tip=proforma';
+    if (opt.aparate) u += '&aparate=1';
+    const l = (opt.lucrari || []).map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0);
+    if (l.length) u += '&lucrari=' + l.join(',');
+  }
+  return u;
 }
 export function felDinAdresa(v: any): Fel { return v === 'unica' ? 'unica' : 'abonament'; }
+// Ce pregătește fereastra la deschidere, citit înapoi din adresa făcută de rutaFactura (lotul 5): `tip`, `aparate`,
+// `lucrari`. Doar la factura unică. Fără nimic de pregătit (adresa de dinainte) → null: fereastra se deschide ca până acum.
+export interface Pregatire { tip: Tip; aparate: boolean; lucrari: number[] }
+export function pregatireDinAdresa(q: any): Pregatire | null {
+  const x = q || {};
+  if (felDinAdresa(x.fel) !== 'unica') return null;
+  const tip: Tip = x.tip === 'proforma' ? 'proforma' : 'invoice';
+  const aparate = String(x.aparate == null ? '' : x.aparate) === '1';
+  const lucrari = String(x.lucrari == null ? '' : x.lucrari).split(',').map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0);
+  return tip === 'proforma' || aparate || lucrari.length ? { tip, aparate, lucrari } : null;
+}
 
 export interface Contributie { id: number; qty: number }
 export interface Linie {
@@ -178,6 +208,28 @@ export function scoateLucrare(S: Ciorna, id: number): Ciorna {
   return cuNota({ ...S, lines, adaugate: S.adaugate.filter((j) => j.id !== id) });
 }
 
+// ── Ce pune fereastra singură la deschidere (lotul 5), ca pe web ──
+//   • proforma aparatelor, la „E semnat" (raxProformaLaSemnare): aparatele din contract, dacă Anexa nr. 2 are;
+//   • factura montajului — anunțul „Montaj de facturat" și secțiunea lui (raxFacturaMontaj): lucrările cerute care
+//     sunt încă de facturat, în ordinea cerută, strânse pe rânduri ca la o apăsare de mână.
+// `lipsa` = câte dintre lucrările cerute nu mai sunt de facturat (poate au fost facturate între timp) — numărate ca
+// pe web, deci și o lucrare cerută de două ori se numără de două ori.
+export function pregatesteCiorna(S: Ciorna, p: Pregatire | null): { S: Ciorna; lipsa: number } {
+  if (!p) return { S, lipsa: 0 };
+  let x = S;
+  if (p.aparate && x.dinContract && (x.dinContract.aparate || []).length) x = puneContract(x, 'aparate');
+  let puse = 0;
+  (p.lucrari || []).forEach((id) => {
+    const j = ((x.dinContract && x.dinContract.lucrari) || []).find((l: any) => Number(l && l.id) === Number(id));
+    if (j) { x = puneLucrare(x, j); puse++; }
+  });
+  return { S: x, lipsa: (p.lucrari || []).length - puse };
+}
+// Aceleași cuvinte ca pe web (raxFacturaMontaj), legate printr-o probă.
+export function lucrariLipsaText(n: number): string {
+  return n + ' din lucrări nu mai sunt de facturat (poate au fost facturate între timp).';
+}
+
 // ── Corecturile de mână ──
 export function editeazaLinie(S: Ciorna, i: number, k: 'desc' | 'qty' | 'unitPrice', v: any): Ciorna {
   const l = S.lines[i]; if (!l) return S;
@@ -201,6 +253,15 @@ export function corpEmitere(S: Ciorna, tip: Tip) {
     note: unica && String(S.nota || '').trim() ? String(S.nota).trim().slice(0, 500) : null,
   };
 }
+// „Previzualizează" (30.09, Alin: „să aibă previzualizare, că se pot face greșeli"): ACELAȘI corp ca emiterea
+// (corpEmitere), trimis aici, întoarce hârtia exactă de pe server (factura_pdf.js) — fără număr, cu „PREVIZUALIZARE",
+// nimic salvat, nimic trimis. Ce vezi e ce pleacă (web: _giCorp, folosit de raxGenPrevizualizare și de raxGenIssue).
+export const RUTA_PREVIZUALIZARE = '/api/invoices/previzualizare';
+// Nota de sub rânduri, înainte de „Emite": ce pleacă singur la emitere (web: _giRenderLines). Abonamentul e mereu
+// factură fiscală, deci merge și la ANAF.
+export function notaLaEmitere(tip: Tip): string {
+  return 'La emitere pleacă singură: clientul e anunțat în aplicație și o primește pe email, cu PDF-ul' + (tip === 'proforma' ? '' : ', iar factura fiscală pleacă și la ANAF') + ' (când serverul are emailul și tokenul ANAF).';
+}
 
 // ── Lista de documente ──
 // „Ce e" documentul (web: ceE din raxRenderInvoices). Facturile de dinainte de 28.09 n-au felul scris: liniuță.
@@ -210,6 +271,48 @@ export function ceEste(v: any): string {
   if (v.fel === 'unica') return v.din_proforma ? 'Unică (din proformă)' : 'Unică';
   return '—';
 }
+// Secțiunile listei din Facturare (Alin, 30.09: „să am secțiuni de unde să le văd"; web: raxRenderInvoices /
+// raxInvSectiune): facturile fiscale, proformele (câte sunt de încasat) și montajul gata de facturat — cifra lui =
+// câte FIRME așteaptă. Cuvintele sunt ale paginii, legate printr-o probă.
+export type Sectiune = 'facturi' | 'proforme' | 'montaj';
+export const SECTIUNI: Sectiune[] = ['facturi', 'proforme', 'montaj'];
+export interface NumereSectiuni { facturi: number; proforme: number; deIncasat: number; montaj: number }
+export function numereSectiuni(documente: any[], montaj: any): NumereSectiuni {
+  const toate = documente || [];
+  const proforme = toate.filter((v) => v.type === 'proforma').length;
+  return {
+    facturi: toate.length - proforme, proforme,
+    deIncasat: toate.filter((v) => v.type === 'proforma' && v.status !== 'paid' && v.status !== 'canceled').length,
+    montaj: ((montaj && montaj.gata) || []).length,
+  };
+}
+export function etichetaSectiune(k: Sectiune, n: NumereSectiuni): string {
+  if (k === 'proforme') return 'Proforme · ' + n.proforme + (n.deIncasat ? ' (' + n.deIncasat + ' de încasat)' : '');
+  if (k === 'montaj') return 'Montaj de facturat · ' + n.montaj;
+  return 'Facturi · ' + n.facturi;
+}
+export function documenteSectiune(documente: any[], k: Sectiune): any[] {
+  return (documente || []).filter((v) => (k === 'proforme' ? v.type === 'proforma' : v.type !== 'proforma'));
+}
+export function golSectiune(k: Sectiune): string {
+  return (k === 'proforme' ? 'Nicio proformă emisă încă.' : 'Nicio factură fiscală emisă încă.') + ' Apasă „Generează factură".';
+}
+// „Montaj de facturat" (Alin, 30.09: „dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… ca să
+// nu fim pe pierdere"; web: _raxMontajFactHtml): o firmă pe rând — cine, ce și când (scris de server), suma fără TVA,
+// butonul. Ce e GATA (perioada instalatorului s-a încheiat) și ce e ÎN CURS le spune serverul (montaj.deFacturatMontaj).
+export const MONTAJ_FACT_SUB = 'Montajul se facturează în ritmul instalatorului care l-a făcut: la sfârșitul săptămânii (luni–duminică) sau al lunii, cu toate zilele de montaj din ea, pe o singură factură. Ritmul se alege în fișa instalatorului (Business → Montaj → Parteneri). Abonamentul rămâne lunar.';
+export const MONTAJ_FACT_GOL = 'Nimic gata de facturat din montaj.';
+export const MONTAJ_FACT_IN_CURS = 'În curs — perioada instalatorului nu s-a încheiat încă';
+export interface RandMontajFact { companyId: number; nume: string; text: string; total: number; lucrari: number[]; buton: string; curs: boolean }
+export function randuriMontajFact(d: any): { gata: RandMontajFact[]; inCurs: RandMontajFact[] } {
+  const rand = (g: any, curs: boolean): RandMontajFact => ({
+    companyId: Number(g.company_id), nume: String(g.company_name || ('Firma #' + g.company_id)), text: String(g.text || ''),
+    total: Number(g.total) || 0, lucrari: (g.lucrari || []).map((x: any) => Number(x)),
+    buton: curs ? 'Facturează acum' : 'Pregătește factura', curs,
+  });
+  return { gata: ((d && d.gata) || []).map((g: any) => rand(g, false)), inCurs: ((d && d.inCurs) || []).map((g: any) => rand(g, true)) };
+}
+
 // Starea unui document pe limba CLIENTULUI (web: _myInvStare). „Restantă" se socotește din scadență.
 export function stareClient(f: any, acum: number = Date.now()): [string, string] {
   if (f.status === 'paid') return f.type === 'proforma' ? ['Încasată', 'var(--fl-ok)'] : ['Plătită', 'var(--fl-ok)'];
@@ -246,6 +349,14 @@ export function aparateDejaPe(documente: any[], companyId: any, dinContract: any
 // la noi (Facturare, fișa firmei) ruta noastră; la client, ruta lui, care dă doar documentele firmei lui.
 export function rutaPdfFactura(id: any, laClient: boolean): string {
   return (laClient ? '/api/billing/my-invoices/' : '/api/invoices/') + encodeURIComponent(String(id)) + '/pdf';
+}
+// CUI-ul, cum îl scrie hârtia facturii (factura_pdf.js → cuiAfisat, legat printr-o probă): cu „RO" în față DOAR la o
+// firmă plătitoare de TVA (atunci e codul ei de TVA), fără „RO" la una neplătitoare. Plătitoare = orice în afară de un
+// `false` explicit (așa e și în baza de date). Fără cifre → null (nu se scrie nimic).
+export function cuiAfisat(cui: any, platitorTva: any): string | null {
+  const cifre = String(cui == null ? '' : cui).replace(/\s+/g, '').replace(/^RO/i, '');
+  if (!cifre) return null;
+  return (platitorTva === false ? '' : 'RO') + cifre;
 }
 // Ce a plecat odată cu documentul, cum o spune serverul (`trimisa`: anunțul, emailul, ANAF) — aceleași cuvinte ca pe
 // web (_invTrimisaText), legate printr-o probă. Pe față, ca să nu crezi că a plecat ce n-a plecat.

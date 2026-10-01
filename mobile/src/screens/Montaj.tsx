@@ -1,14 +1,18 @@
-// Super-admin: „Montaj" (Business, imediat după Companii) — secțiunea partenerilor de montaj, ca pe web
-// (raxLoadMontaj, MJ_FILE): trei file, Parteneri · Contracte cu partenerii · Lucrări.
+// Super-admin: „Montaj" (Business, imediat după Companii) — secțiunea montajului, ca pe web (raxLoadMontaj, MJ_FILE):
+// patru file, Calendar · Parteneri · Contracte cu partenerii · Lucrări.
 //
+//   • Calendar (30.09, prima filă) — SINGURUL loc în care se programează montajul unui contract SEMNAT: luna, zilele
+//     cu mașini și client, filtrul pe instalator, „De programat" cu termenul, stocul; programează / mută / „montată" /
+//     șterge ziua (components/CalendarMontaj.tsx, lib/calendarMontaj.ts). Adresa `?fila=calendar&contract=<id>` (din
+//     „Drumul clientului" și din fișă) deschide fila și pregătește programarea pentru contractul acela, ca raxDrumMontaj.
 //   • Parteneri — fișa completă a firmei care montează (components/ParteneriMontaj.tsx). Pe fiecare rând scrie
-//     dacă are contract; dacă n-are, „Fă contract" e chiar acolo.
+//     dacă are contract și cât de des ne facturează; dacă n-are contract, „Fă contract" e chiar acolo.
 //   • Contracte cu partenerii — același drum ca la clienți: în lucru → aprobat → trimis la semnat → semnat →
 //     încheiat. Partenerul e PRESTATORUL, noi BENEFICIARUL. Fiecare lipsă are butonul ei, chiar pe cartonaș — și
 //     un buton care chiar o închide: tarifele lipsesc din CONTRACT (Anexa nr. 1, înghețată la creare), deci
 //     fișa partenerului singură nu le aduce acolo; le aduce „Reia tarifele" (`tarife_din_partener`, pe server).
 //   • Lucrări — toate montajele, de la toți clienții, cu marja socotită de SERVER. Doar privirea de sus: o lucrare
-//     se programează și se editează DOAR din fișa clientului (fila Contract), unde duce „La client".
+//     se programează în Calendar și se editează din fișa clientului (fila Contract), unde duce „La client".
 //
 // Telefonul NU hotărăște nimic din toate astea: trecerile (_trecereContract), ce lipsește (`lipsuri`), capătul
 // (`sfarsit`), refuzurile („e semnat, nu se mai schimbă", „are contract semnat, nu se șterge") și marja lucrărilor
@@ -22,9 +26,11 @@ import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { AlegeFisier, CapEcran, DescarcaFisier, HartieBtns, Pill, type FisierAles } from '../components/ContractUi';
 import { ParteneriMontaj } from '../components/ParteneriMontaj';
+import { CalendarMontaj } from '../components/CalendarMontaj';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { MONTAJ_TIPURI, azi, inputZi, lei, luniOptiuni, luniText, zile } from '../lib/contracte';
-import { MJ_LIPSA, MJ_LIPSURI_FIRMA, mjStare, ziLaPranz } from '../lib/montajSectiune';
+import { MJ_LIPSA, MJ_LIPSURI_FIRMA, bifaRetarif, cifraFilei, mjStare, ritmText, ziLaPranz } from '../lib/montajSectiune';
+import { calendarMontaj, deProgramatActive, eroarea, type CalDate } from '../lib/calendarMontaj';
 import { rutaDosar } from '../lib/companii';
 import { nrDe } from '../lib/numar';
 import './admin.css';
@@ -32,8 +38,9 @@ import './detail.css';
 import './contracte.css';
 import './montaj.css';
 
-type Fila = 'parteneri' | 'contracte' | 'lucrari';
-const MJ_FILE: [Fila, string][] = [['parteneri', 'Parteneri'], ['contracte', 'Contracte cu partenerii'], ['lucrari', 'Lucrări']];
+type Fila = 'calendar' | 'parteneri' | 'contracte' | 'lucrari';
+const MJ_FILE: [Fila, string][] = [['calendar', 'Calendar'], ['parteneri', 'Parteneri'], ['contracte', 'Contracte cu partenerii'], ['lucrari', 'Lucrări']];
+const esteFila = (v: any): v is Fila => MJ_FILE.some((x) => x[0] === v);
 
 type Date_ = {
   parteneri: any[]; contracte: any[]; fara: { id: number; name: string }[]; trimite: boolean;
@@ -41,16 +48,25 @@ type Date_ = {
 };
 type Dlg = { fel: 'aproba' | 'amtrimis' | 'trimite' | 'incheie' | 'sterge' | 'semnat' | 'retarif'; c: any } | null;
 
-// Fila și filtrele se țin minte cât trăiește aplicația: „La client" duce în fișa firmei, iar „înapoi" trebuie să
-// întoarcă omul pe aceeași filă, cu aceleași filtre, nu la începutul secțiunii.
-let filaTinuta: Fila = 'parteneri';
+// Fila, luna calendarului și filtrele se țin minte cât trăiește aplicația: „La client" duce în dosarul firmei, iar
+// „înapoi" trebuie să întoarcă omul pe aceeași filă, pe aceeași lună, cu aceleași filtre. Prima dată: Calendarul, ca
+// pe web (prima filă).
+let filaTinuta: Fila = 'calendar';
+let lunaTinuta: string | null = null;
 const filtruTinut = { stare: '', part: '' };
 
 export function Montaj() {
   const loc = useLocation();
-  const [fila, setFilaS] = useState<Fila>(filaTinuta);
+  // Venit cu `?fila=calendar&contract=<id>` (din drumul clientului sau din fișă): fila cerută și contractul de programat.
+  const q = (loc.query || {}) as any;
+  const [fila, setFilaS] = useState<Fila>(() => { if (esteFila(q.fila)) filaTinuta = q.fila; return filaTinuta; });
+  const [pre, setPre] = useState<number | null>(() => parseInt(String(q.contract || ''), 10) || null);
   const [d, setD] = useState<Date_ | null>(null);
   const [err, setErr] = useState('');
+  const [cal, setCal] = useState<CalDate | null>(null);
+  const [calErr, setCalErr] = useState('');
+  const [calIncarca, setCalIncarca] = useState(false); // altă lună pe drum
+  const calCerere = useRef(0);
   const [deschidePart, setDeschidePart] = useState<number | null>(null); // „Completează" → fișa partenerului
   const [editC, setEditC] = useState<any | null>(null);
   const [dlg, setDlg] = useState<Dlg>(null);
@@ -71,17 +87,19 @@ export function Montaj() {
   const [dupaTrimite, setDupaTrimite] = useState<any>(null);
   useEffect(() => { if (!dupaTrimite || dlg) return; const c = dupaTrimite; setDupaTrimite(null); completeaza(c); }, [dupaTrimite, dlg]);
 
-  // Cele trei liste pleacă împreună; fiecare cade separat pe gol, ca pe web.
+  // Cele patru liste pleacă împreună (calendarul pe luna ținută minte); fiecare cade separat pe gol, ca pe web.
   async function incarca(): Promise<Date_ | null> {
     const nr = ++cerere.current;
+    const nrCal = ++calCerere.current;
     setErr('');
-    let prima = '';
+    let prima = '', eroareCal = '';
     const prinde = (e: any): null => {
       if (!prima) prima = e && e.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare');
       return null;
     };
-    const [p, c, l] = await Promise.all([
+    const [p, c, l, k] = await Promise.all([
       Api.montajParteneri().catch(prinde), Api.montajContracte().catch(prinde), Api.montajLucrari().catch(prinde),
+      calendarMontaj(lunaTinuta).catch((e: any) => { eroareCal = e && e.status === 403 ? 'Acces interzis.' : eroarea(e, 'Calendarul nu s-a putut încărca.'); return prinde(e); }),
     ]);
     if (nr !== cerere.current) return null; // a pornit între timp o reîncărcare mai nouă
     const nou: Date_ = {
@@ -90,10 +108,40 @@ export function Montaj() {
       lucrari: (l && l.lucrari) || [], stari: (l && l.stari) || {},
     };
     setD(nou);
-    if (p == null && c == null && l == null) setErr(prima);
+    // Calendarul: doar dacă între timp nu s-a cerut altă lună (săgețile). Căzut, rămâne cel de dinainte, cu eroarea.
+    if (nrCal === calCerere.current) {
+      if (k) { lunaTinuta = k.luna; setCal(k); setCalErr(''); } else setCalErr(eroareCal);
+      setCalIncarca(false);
+    }
+    if (p == null && c == null && l == null && k == null) setErr(prima);
     return nou;
   }
   useEffect(() => { incarca(); }, []);
+  // Altă lună (‹ / › / „Azi"): doar calendarul; o cerere mai nouă o bate pe cea veche.
+  async function incarcaLuna(luna: string) {
+    const nr = ++calCerere.current;
+    setCalIncarca(true);
+    try {
+      const k = await calendarMontaj(luna);
+      if (nr !== calCerere.current) return;
+      lunaTinuta = k.luna;
+      setCal(k);
+      setCalErr('');
+    } catch (e: any) {
+      if (nr === calCerere.current) showToast(eroarea(e, 'Calendarul nu s-a putut încărca.'), true);
+    } finally { if (nr === calCerere.current) setCalIncarca(false); }
+  }
+  // După o programare / mutare / „montată" / ștergere: tot, pe luna zilei atinse (ca _mjcDupa) — și fila Lucrări
+  // (cu cifra ei) rămâne la zi.
+  function dupaCalendar(luna?: string) { if (luna) lunaTinuta = luna; incarca(); }
+  // Adresa cu `?fila=` / `?contract=` se citește o dată și se curăță: o întoarcere pe ecran nu redeschide formularul.
+  useEffect(() => {
+    if (q.fila == null && q.contract == null) return;
+    if (esteFila(q.fila)) { filaTinuta = q.fila; setFilaS(q.fila); setEditC(null); }
+    const cid = parseInt(String(q.contract || ''), 10);
+    if (cid) setPre(cid);
+    loc.route('/admin/montaj', true);
+  }, [q.fila, q.contract]);
 
   // Schimbarea filei închide editarea de contract deschisă (ca raxMjFila).
   function setFila(f: Fila) { filaTinuta = f; setFilaS(f); setEditC(null); }
@@ -194,23 +242,36 @@ export function Montaj() {
     finally { setUrca(null); }
   }
 
-  const nr: Record<Fila, number> = { parteneri: d ? d.parteneri.length : 0, contracte: d ? d.contracte.length : 0, lucrari: d ? d.lucrari.length : 0 };
+  // Cifrele filelor, ca pe web: Calendar = câte contracte semnate mai au mașini de programat (fără cifră când niciunul).
+  const nr: Record<Fila, number> = {
+    calendar: deProgramatActive(cal).length,
+    parteneri: d ? d.parteneri.length : 0, contracte: d ? d.contracte.length : 0, lucrari: d ? d.lucrari.length : 0,
+  };
 
   return (
     <div class="screen">
-      <CapEcran titlu="Montaj" onBack={inapoi} onRefresh={() => { setD(null); incarca(); }} />
+      <CapEcran titlu="Montaj" onBack={inapoi} onRefresh={() => { setD(null); setCal(null); incarca(); }} />
       <div class="content">
         <div class="ctr-wrap">
           {d == null && !err && <div class="spin" style="margin:30px auto" />}
           {err && <div class="ctr-err">{err}</div>}
           {d != null && (
             <div class="ctr-chips" role="tablist">
-              {MJ_FILE.map(([k, et]) => (
-                <button role="tab" aria-selected={fila === k} class={'ctr-chip' + (fila === k ? ' on' : '')} onClick={() => setFila(k)}>
-                  {et} · <b>{nr[k]}</b>
-                </button>
-              ))}
+              {MJ_FILE.map(([k, et]) => {
+                const n = cifraFilei(k, nr[k]);
+                return (
+                  <button role="tab" aria-selected={fila === k} class={'ctr-chip' + (fila === k ? ' on' : '')} onClick={() => setFila(k)}>
+                    {et}{n != null && <> · <b>{n}</b></>}
+                  </button>
+                );
+              })}
             </div>
+          )}
+          {/* „La client" se apasă din foaia unei zile: adresa foii (paza de „înapoi") se ÎNLOCUIEȘTE cu dosarul, ca
+              „înapoi" din dosar să ducă direct în calendar, nu într-o foaie care nu mai e. */}
+          {d != null && fila === 'calendar' && (
+            <CalendarMontaj d={cal} err={calErr} incarcand={calIncarca} onLuna={incarcaLuna} onSchimbat={dupaCalendar}
+              onClient={(id) => loc.route(rutaDosar(id), true)} pre={pre} onPreFolosit={() => setPre(null)} />
           )}
           {d != null && fila === 'parteneri' && (
             <ParteneriMontaj lista={d.parteneri} contracte={d.contracte} onSchimbat={() => { incarca(); }}
@@ -253,9 +314,11 @@ export function Montaj() {
           text="Ștergi ciorna contractului? Partenerul rămâne, doar hârtia asta dispare."
           onOk={() => stergeCiorna(dlg.c)} onCancel={() => { if (!busy) setDlg(null); }} />
       )}
+      {/* Tarifele ȘI ritmul se reiau împreună (`tarife_din_partener` rescrie și ritm_facturare) — ca bifa de pe web. */}
       {dlg && dlg.fel === 'retarif' && (
         <Confirma title="Reia tarifele" busy={busy} okLabel="Reia tarifele"
-          text={'Reiei în Anexa nr. 1 a contractului ' + (dlg.c.number || '') + ' tarifele de azi ale partenerului ' + (dlg.c.partener_name || '') + '?' +
+          text={'Reiei din fișa partenerului ' + (dlg.c.partener_name || '') + ' tarifele de azi (Anexa nr. 1 a contractului ' + (dlg.c.number || '') +
+            ') și cât de des ne facturează (acum: ' + ritmText(dlg.c.ritm_facturare) + ')?' +
             (dlg.c.status === 'trimis' ? '\n\nContractul a plecat deja la partener fără ele: după asta, trimite-i-l din nou.' : '')}
           onOk={() => reiaTarife(dlg.c)} onCancel={() => { if (!busy) setDlg(null); }} />
       )}
@@ -288,9 +351,11 @@ export function Montaj() {
 
   function cardContract(c: any, trimitePeEmail: boolean) {
     const st = mjStare(c.status), semnat = c.status === 'activ' || c.status === 'incheiat';
+    // Sub perioadă, cât de des ne facturează partenerul — înghețat în contract (Alin, 30.09), ca pe web.
+    const ritm = <span class="ctr-small">ne facturează {ritmText(c.ritm_facturare)}</span>;
     const perioada = c.start_at
-      ? <>{zile(c.start_at) + ' → ' + (c.sfarsit ? zile(c.sfarsit) : 'nedeterminat')}</>
-      : <>{c.months ? luniText(Number(c.months)) : 'nedeterminat'}<span class="ctr-small">fără dată de început</span></>;
+      ? <>{zile(c.start_at) + ' → ' + (c.sfarsit ? zile(c.sfarsit) : 'nedeterminat')}{ritm}</>
+      : <>{c.months ? luniText(Number(c.months)) : 'nedeterminat'}<span class="ctr-small">fără dată de început</span>{ritm}</>;
     return (
       <div class="ctr-card">
         <div class="ctr-card-h">
@@ -485,9 +550,9 @@ function EditContract({ c, onInchide, onSalvat }: { c: any; onInchide: () => voi
             <div class="fld"><label>Funcția</label>
               <input value={f.ourrole} placeholder="Administrator" onInput={(e: any) => sf('ourrole', e.target.value)} />
             </div>
-            <label class="ctr-semn-b">
+            <label class="ctr-semn-b mj-bifa">
               <input type="checkbox" checked={f.retarif} onChange={(e: any) => sf('retarif', !!e.target.checked)} />
-              <span>Reia tarifele de azi ale partenerului în Anexa nr. 1</span>
+              <span>{bifaRetarif(c)}</span>
             </label>
             {msg && <div class="ctr-msg">{msg}</div>}
             <div class="frm-actions">
@@ -554,7 +619,8 @@ function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; 
 }
 
 // ── Fila „Lucrări" (_mjLucrariHtml): toate montajele, de la toți clienții. Doar privirea de sus — o lucrare se
-// editează DOAR din fișa clientului (fila Contract), unde duce „La client". Marja o dă serverul (`marja`).
+// programează în Calendar și se editează din fișa clientului (fila Contract), unde duce „La client". Marja o dă
+// serverul (`marja`).
 function Lucrari({ d, onClient }: { d: Date_; onClient: (companyId: any) => void }) {
   const [fStare, setFStare] = useState(filtruTinut.stare);
   const [fPart, setFPart] = useState(filtruTinut.part);
@@ -574,7 +640,7 @@ function Lucrari({ d, onClient }: { d: Date_; onClient: (companyId: any) => void
   return (
     <>
       <div class="ctr-h"><Icon name="wrench" size={17} class="ic" /> Lucrările de montaj</div>
-      <div class="ctr-sub">Toate lucrările, de la toți clienții. Se programează și se editează din fișa clientului (fila Contract) — de acolo intră în contractul lui.</div>
+      <div class="ctr-sub">Toate lucrările, de la toți clienții. Se programează în Calendar; se editează din fișa clientului (fila Contract).</div>
       <div class="mj-filtre">
         <select aria-label="Starea lucrării" value={fStare} onChange={(e: any) => { filtruTinut.stare = e.target.value; setFStare(e.target.value); }}>
           <option value="">toate stările</option>

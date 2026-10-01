@@ -159,7 +159,7 @@ export const Api = {
   trimiteContract: (id: number, catre: string) =>
     api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/contracts/${id}/trimite`, { method: 'POST', body: { catre } }),
   // „Completează": datele firmei din dosar. Scrie DOAR cheile trimise (NU PUT /api/companies/:id, care golește ce vine gol).
-  completeazaDosar: (companyId: number, b: { name?: string; cui?: string; reg_com?: string; address?: string; contact_email?: string; legal_rep?: { name: string; role: string } | null }) =>
+  completeazaDosar: (companyId: number, b: { name?: string; cui?: string; reg_com?: string; address?: string; contact_email?: string; legal_rep?: { name: string; role: string } | null; vat_payer?: boolean }) =>
     api<{ ok: boolean; company: any }>(`/api/companies/${companyId}/dosar`, { method: 'PUT', body: b }),
   createContract: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/contract`, { method: 'POST', body: b }),
   updateContract: (id: number, b: any) => api<any>(`/api/contracts/${id}`, { method: 'PUT', body: b }),
@@ -349,7 +349,13 @@ export const Api = {
     api<any>('/api/invoices/draft', { method: 'POST', body: fel === 'unica' ? { companyId, fel } : { companyId, fel, luna } }),
   // { companyId, fel, luna, tip: 'invoice'|'proforma', lines, montaje, note } — ca pe web (raxGenIssue).
   // Abonamentul unei luni deja facturate → 409, cu numărul facturii existente în mesaj.
+  // (Previzualizarea, POST /api/invoices/previzualizare cu ACELAȘI corp, întoarce un PDF, nu JSON: merge prin
+  // lib/descarcaPost.ts, cu adresa din lib/factura.ts — RUTA_PREVIZUALIZARE.)
   issueInvoice: (b: any) => api<{ ok: boolean; invoice: any; montajeFacturate?: number; trimisa?: any }>('/api/invoices', { method: 'POST', body: b }),
+  // „Montaj de facturat" (Facturare, 30.09): lucrările montate și nefacturate, pe firme, în ritmul instalatorului —
+  // `gata` (perioada lui s-a încheiat) și `inCurs`, cu textul, suma fără TVA și lucrările. Le socotește serverul
+  // (montaj.deFacturatMontaj); telefonul doar le arată.
+  montajDeFacturat: () => api<{ gata: any[]; inCurs: any[] }>('/api/montaj/de-facturat'),
   // 'paid' | 'canceled'. „Încasată" pe o proformă emite factura fiscală: `invoice` e factura născută.
   invoiceSetStatus: (id: number, status: string) => api<{ ok: boolean; invoice?: any; already?: boolean; trimisa?: any }>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),

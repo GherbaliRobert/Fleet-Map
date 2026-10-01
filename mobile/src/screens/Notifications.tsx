@@ -5,6 +5,7 @@ import type { NotificationItem } from '../api/endpoints';
 import { refreshUnread } from '../app/store';
 import { fmtAgo } from '../lib/format';
 import { Icon, type IconName } from '../components/Icon';
+import { adresaAnunt } from '../lib/push';
 import './notifications.css';
 
 const SEV: Record<string, { color: string; icon: IconName }> = {
@@ -26,6 +27,15 @@ export function Notifications() {
       let nd: any = (n as any).data; if (typeof nd === 'string') { try { nd = JSON.parse(nd); } catch { nd = null; } }
       const hid = nd && nd.historyId != null ? nd.historyId : '';
       loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
+      return;
+    }
+    // Anunțurile noastre de lucru („aparate noi transmit", „Montaj de facturat") duc drept la treaba de făcut, ca pe
+    // web — aceeași adresă ca din detaliu și din push (adresaAnunt). Detaliul lor nu se deschide, deci atingerea le
+    // marchează citite.
+    const spre = adresaAnunt(n.type, n.data);
+    if (spre) {
+      if (!n.acknowledged) Api.ackNotification(n.id).then(() => refreshUnread()).catch(() => {});
+      loc.route(spre);
       return;
     }
     loc.route('/notif/' + n.id); // deschide detaliul evenimentului — marcarea „citit" se face din modal

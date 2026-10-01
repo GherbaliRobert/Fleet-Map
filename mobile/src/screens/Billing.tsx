@@ -10,8 +10,13 @@ import {
   LUNI, cheieLuna, lunaText, ziRo, felDinAdresa, ciornaDinRaspuns, sursaPusa, puneContract, acoperire, montajeDeTrimis,
   puneLucrare, scoateLucrare, editeazaLinie, stergeLinie, adaugaLinie, puneNota, liniiValide, corpEmitere, ceEste,
   stareClient, lunaViitoare, aparateDejaPe, metodaText, trimisaText,
+  pregatireDinAdresa, pregatesteCiorna, lucrariLipsaText, notaLaEmitere, RUTA_PREVIZUALIZARE,
+  SECTIUNI, numereSectiuni, etichetaSectiune, documenteSectiune, golSectiune,
+  randuriMontajFact, MONTAJ_FACT_SUB, MONTAJ_FACT_GOL, MONTAJ_FACT_IN_CURS,
 } from '../lib/factura';
-import type { Ciorna, Fel, Tip } from '../lib/factura';
+import type { Ciorna, Fel, Tip, Pregatire, Sectiune, RandMontajFact } from '../lib/factura';
+// Previzualizarea: PDF-ul făcut de server dintr-un POST, deschis ca „Vezi" (lotul 5).
+import { salveazaPostDeLaServer } from '../lib/descarcaPost';
 // Hârtia documentului — una singură pe telefon, aceeași și în fișa firmei (fila Facturi, butonul „Vezi”).
 import { DocumentFactura, TIP, stareNoi, efOf, fmtD, money2 } from '../components/DocumentFactura';
 import './detail.css';
@@ -77,6 +82,10 @@ export function Billing() {
   const q = (loc.query || {}) as any;
   const facturaPentru = isSuper ? parseInt(String(q.factura || '')) || null : null;
   const facturaFel = felDinAdresa(q.fel);
+  // Lotul 5 (30.09): fereastra se poate deschide și PREGĂTITĂ, ca pe web — proforma aparatelor la „E semnat"
+  // (`&tip=proforma&aparate=1`, raxProformaLaSemnare) și factura montajului cu lucrările puse (`&lucrari=12,13`, anunțul
+  // „Montaj de facturat" — raxFacturaMontaj). Adresa o face rutaFactura (lib/factura.ts); aici doar se citește înapoi.
+  const facturaPregatire = isSuper ? pregatireDinAdresa(q) : null;
   return (
     <div class="screen">
       <header class="app-header">
@@ -85,7 +94,7 @@ export function Billing() {
         <div class="h-title">{isSuper ? 'Facturare' : 'Facturile mele'}</div>
         <div style="width:36px" />
       </header>
-      {isSuper ? <SuperBilling facturaPentru={facturaPentru} facturaFel={facturaFel} /> : <MyBilling />}
+      {isSuper ? <SuperBilling facturaPentru={facturaPentru} facturaFel={facturaFel} facturaPregatire={facturaPregatire} /> : <MyBilling />}
     </div>
   );
 }
@@ -126,18 +135,28 @@ function MyBilling() {
   );
 }
 
+// Secțiunea aleasă în „Facturi și proforme" se ține cât trăiește aplicația, ca pe web (`_raxInvSect`): te întorci în
+// Facturare pe secțiunea pe care ai lăsat-o.
+let sectiuneaAleasa: Sectiune = 'facturi';
+
 // ─── Super-admin: status companii + facturi FISCALE + plăți + automatizare + date emitent ───
-function SuperBilling({ facturaPentru, facturaFel }: { facturaPentru: number | null; facturaFel: Fel }) {
+function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { facturaPentru: number | null; facturaFel: Fel; facturaPregatire: Pregatire | null }) {
   const loc = useLocation();
   const [companies, setCompanies] = useState<any[] | null>(null);
   const [pays, setPays] = useState<any[]>([]);
   const [paysTotal, setPaysTotal] = useState<number>(0);
   const [invoices, setInvoices] = useState<any[]>([]);
+  // „Montaj de facturat" (30.09): ce e gata și ce e în curs, pe firme — socotit de server (GET /api/montaj/de-facturat).
+  const [mf, setMf] = useState<{ gata: any[]; inCurs: any[] }>({ gata: [], inCurs: [] });
+  const [sect, setSect] = useState<Sectiune>(sectiuneaAleasa);
+  const alegeSect = (k: Sectiune) => { sectiuneaAleasa = k; setSect(k); };
   const [issuer, setIssuer] = useState<any>({});
   const [cfg, setCfg] = useState<any>(null);
   const [pay, setPay] = useState<any | null>(null);
   const [fview, setFview] = useState<any | null>(null);   // factură fiscală
   const [gen, setGen] = useState<{ cid: number | null; fel: Fel } | null>(null);   // „Generează factură", cu firma și felul alese sau nu
+  // Ce pune fereastra singură la deschidere (lotul 5): proforma aparatelor, factura montajului. Se golește la închidere.
+  const [preg, setPreg] = useState<Pregatire | null>(null);
   const [editIss, setEditIss] = useState(false);
   const [running, setRunning] = useState(false);
   const cerutaFolosita = useRef(false);
@@ -152,19 +171,37 @@ function SuperBilling({ facturaPentru, facturaFel }: { facturaPentru: number | n
     loc.route('/billing', true);
     if (!companies.length) return;   // lista n-a venit: eroarea s-a spus deja
     if (!companies.some((c) => c.id === facturaPentru)) { showToast('Firma nu se găsește în lista de facturare.', true); return; }
+    // Sub fereastră, Facturarea stă pe secțiunea documentului care se pregătește: montajul (ca pe web, unde anunțul
+    // „Montaj de facturat" deschide secțiunea lui) sau proformele — pe telefon „E semnat" aduce omul AICI, iar proforma
+    // emisă trebuie să se vadă în listă, nu ascunsă sub „Facturi".
+    if (facturaPregatire && facturaPregatire.lucrari.length) alegeSect('montaj');
+    else if (facturaPregatire && facturaPregatire.tip === 'proforma') alegeSect('proforme');
+    setPreg(facturaPregatire);
     setGen({ cid: facturaPentru, fel: facturaFel });
   }, [facturaPentru, companies]);
 
+  // „Pregătește factura" / „Facturează acum" din secțiunea montajului: aceeași fereastră și aceeași pregătire ca adresa
+  // din anunț (web: raxFacturaMontaj) — factură fiscală unică, cu lucrările firmei puse. O firmă care nu e în lista de
+  // facturare NU deschide fereastra pe alta (fereastra ar alege prima firmă din listă).
+  function facturaMontaj(r: RandMontajFact) {
+    if (!(companies || []).some((c) => c.id === r.companyId)) { showToast('Firma nu se găsește în lista de facturare.', true); return; }
+    setPreg({ tip: 'invoice', aparate: false, lucrari: r.lucrari });
+    setGen({ cid: r.companyId, fel: 'unica' });
+  }
+  const inchideGen = () => { setGen(null); setPreg(null); };
+
   async function reload() {
     try {
-      const [cos, pj, ss, iv, cf] = await Promise.all([
+      const [cos, pj, ss, iv, cf, md] = await Promise.all([
         Api.companies(), Api.payments(1000), Api.systemSettings().catch(() => ({})),
         Api.invoices().catch(() => ({ invoices: [] })), Api.billingConfig().catch(() => null),
+        Api.montajDeFacturat().catch(() => null),
       ]);
       setCompanies((Array.isArray(cos) ? cos : []).filter((c: any) => !c.is_demo));
       setPays((pj && (pj as any).payments) || []);
       setPaysTotal(Number(pj && (pj as any).total) || 0);
       setInvoices((iv && (iv as any).invoices) || []);
+      setMf({ gata: (md && md.gata) || [], inCurs: (md && md.inCurs) || [] });
       setIssuer((ss && (ss as any).invoice_issuer) || {});
       setCfg(cf);
     } catch (e: any) { showToast(e?.message || 'Eroare la încărcare', true); setCompanies([]); }
@@ -187,11 +224,13 @@ function SuperBilling({ facturaPentru, facturaFel }: { facturaPentru: number | n
 
   const cos = companies.slice().sort((a, b) => accessOf(a)[2] - accessOf(b)[2]);
   const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--fl-ok)' : 'var(--text-muted)'}`}>{l}</span>;
+  const numere = numereSectiuni(invoices, mf);
+  const docsSect = documenteSectiune(invoices, sect);
 
   return (
     <div class="content has-tabbar" style="padding-bottom:96px">
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button class="btn btn-primary" style="flex:1" onClick={() => setGen({ cid: null, fel: 'abonament' })}><Icon name="report" size={16} color="#06210f" /> Generează factură</button>
+        <button class="btn btn-primary" style="flex:1" onClick={() => { setPreg(null); setGen({ cid: null, fel: 'abonament' }); }}><Icon name="report" size={16} color="#06210f" /> Generează factură</button>
         <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setPay({})} aria-label="Încasare fără factură"><Icon name="plus" size={16} /></button>
         <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setEditIss(true)} aria-label="Date emitent"><Icon name="settings" size={16} /></button>
       </div>
@@ -229,10 +268,19 @@ function SuperBilling({ facturaPentru, facturaFel }: { facturaPentru: number | n
         })}
       </div>
 
-      <div class="mn-sec">Facturi fiscale</div>
-      {invoices.length === 0
-        ? <div class="adm-empty">Nicio factură fiscală. Apasă „Generează factură".</div>
-        : <div class="adm-list">{invoices.map((v) => <FiscalRow v={v} onClick={() => setFview(v)} />)}</div>}
+      <div class="mn-sec">Facturi și proforme</div>
+      {/* Secțiunile listei (Alin, 30.09: „să am secțiuni de unde să le văd"), ca pe web (raxRenderInvoices): facturile
+          fiscale, proformele (câte sunt de încasat) și montajul gata de facturat, în ritmul instalatorului. */}
+      <div class="bill-sect" role="group" aria-label="Secțiunile listei">
+        {SECTIUNI.map((k) => (
+          <button type="button" class={'fd-chip' + (sect === k ? ' on' : '')} aria-pressed={sect === k} onClick={() => alegeSect(k)}>{etichetaSectiune(k, numere)}</button>
+        ))}
+      </div>
+      {sect === 'montaj'
+        ? <MontajDeFacturat d={mf} onFactura={facturaMontaj} />
+        : (docsSect.length === 0
+          ? <div class="adm-empty">{golSectiune(sect)}</div>
+          : <div class="adm-list">{docsSect.map((v) => <FiscalRow v={v} onClick={() => setFview(v)} />)}</div>)}
 
       <div class="mn-sec">Plăți / încasări</div>
       <div class="bill-totinc">Total încasat: <b>{fmtMoney(paysTotal || 0)}</b></div>
@@ -240,12 +288,35 @@ function SuperBilling({ facturaPentru, facturaFel }: { facturaPentru: number | n
         ? <div class="adm-empty">Nicio încasare înregistrată.</div>
         : <div class="adm-list">{pays.map((p) => <PaymentRow p={p} />)}</div>}
 
-      {gen && <GenerateInvoiceSheet companies={companies} invoices={invoices} preset={gen.cid} felInitial={gen.fel}
-        onClose={() => setGen(null)} onIssued={() => { setGen(null); reload(); }}
-        onIssuer={() => { setGen(null); setEditIss(true); }} />}
+      {gen && <GenerateInvoiceSheet companies={companies} invoices={invoices} preset={gen.cid} felInitial={gen.fel} pregatire={preg}
+        onClose={inchideGen} onIssued={() => { inchideGen(); reload(); }}
+        onIssuer={() => { inchideGen(); setEditIss(true); }} />}
       {fview && <DocumentFactura inv={fview} privire="noi" onClose={() => setFview(null)} onChanged={() => { setFview(null); reload(); }} />}
       {pay && <RecordPaymentSheet companies={companies} preset={pay.companyId} onClose={() => setPay(null)} onSaved={() => { setPay(null); reload(); }} />}
       {editIss && <IssuerSheet issuer={issuer} onClose={() => setEditIss(false)} onSaved={(iss: any) => { setIssuer(iss); setEditIss(false); }} />}
+    </div>
+  );
+}
+
+// Secțiunea „Montaj de facturat" (Alin, 30.09), ca pe web (_raxMontajFactHtml): lucrările montate și nefacturate, o
+// firmă pe rând — cine, ce și când (textul serverului), suma fără TVA și butonul. „În curs" = perioada instalatorului
+// nu s-a încheiat încă (chenar punctat). Butonul deschide fereastra facturii cu lucrările puse: o verifici
+// („Previzualizează") și apeși „Emite factura". Rândurile și cuvintele vin din lib/factura.ts, legate de pagină.
+function MontajDeFacturat({ d, onFactura }: { d: any; onFactura: (r: RandMontajFact) => void }) {
+  const { gata, inCurs } = randuriMontajFact(d);
+  const rand = (r: RandMontajFact) => (
+    <div class={'bill-mf' + (r.curs ? ' curs' : '')}>
+      <div class="bill-mf-t"><b>{r.nume}</b><span>{r.text}</span></div>
+      <div class="bill-mf-s">{money2(r.total)} lei <span>fără TVA</span></div>
+      <button class={'btn bill-mf-b' + (r.curs ? '' : ' btn-primary')} onClick={() => onFactura(r)}><Icon name="report" size={15} /> {r.buton}</button>
+    </div>
+  );
+  return (
+    <div>
+      <div class="bill-mf-sub">{MONTAJ_FACT_SUB}</div>
+      {gata.length ? gata.map(rand) : <div class="bill-mic" style="padding:8px 0 12px">{MONTAJ_FACT_GOL}</div>}
+      {inCurs.length ? <div class="bill-mf-h">{MONTAJ_FACT_IN_CURS}</div> : null}
+      {inCurs.map(rand)}
     </div>
   );
 }
@@ -285,21 +356,26 @@ function FiscalRow({ v, onClick, client }: { v: any; onClick: () => void; client
 // Felul și luna pleacă la emitere DIN CIORNĂ (nu din selectoare): schimbi firma, felul, luna sau anul → ciorna se
 // golește și se pregătește din nou. Regulile ferestrei stau în lib/factura.ts, legate de pagină printr-o probă.
 // `preset` = firma deja aleasă, `felInitial` = felul cerut (fișa firmei, drumul clientului).
-function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose, onIssued, onIssuer }: {
-  companies: any[]; invoices: any[]; preset: number | null; felInitial: Fel; onClose: () => void; onIssued: () => void; onIssuer: () => void;
+// `pregatire` (lotul 5) = fereastra se deschide PREGĂTITĂ, ca pe web: cere singură rândurile, o dată, și pune ce s-a
+// cerut — aparatele din contract pe proformă (raxProformaLaSemnare), lucrările de montaj pe factură (raxFacturaMontaj).
+// NU emite nimic singură: omul se uită la hârtie („Previzualizează") și apasă „Emite".
+function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregatire, onClose, onIssued, onIssuer }: {
+  companies: any[]; invoices: any[]; preset: number | null; felInitial: Fel; pregatire?: Pregatire | null; onClose: () => void; onIssued: () => void; onIssuer: () => void;
 }) {
   const opts = (companies || []).filter((c: any) => !c.is_demo);
   const now = new Date();
   const ales = preset != null && opts.some((c: any) => c.id === preset) ? preset : (opts[0] && opts[0].id);
   const [cid, setCid] = useState<string>(String(ales || ''));
   const [fel, setFel] = useState<Fel>(felInitial === 'unica' ? 'unica' : 'abonament');
-  const [tip, setTip] = useState<Tip>('invoice');
+  const [tip, setTip] = useState<Tip>(pregatire && pregatire.tip === 'proforma' ? 'proforma' : 'invoice');
   const [mon, setMon] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
   const [S, setS] = useState<Ciorna | null>(null);
   const [eroare, setEroare] = useState('');
+  const [lipsa, setLipsa] = useState('');   // „N din lucrări nu mai sunt de facturat…" (fereastra deschisă pregătită)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [vede, setVede] = useState(false);  // previzualizarea e pe drum
   const cerere = useRef(0);          // un răspuns întârziat al unei ciorne vechi (altă firmă / lună) nu se mai pune
   const startAmp = useRef('');       // ciorna cum a venit — „înapoi" întreabă doar dacă omul a schimbat ceva
   const amp = (x: Ciorna | null) => (x ? JSON.stringify([x.lines, x.nota]) : '');
@@ -319,29 +395,48 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
   function goleste(): boolean {
     if (saving) return false;
     if (S && amp(S) !== startAmp.current && !confirm('Rândurile pregătite (cu ce ai schimbat la ele) se șterg. Continui?')) return false;
-    cerere.current++; setS(null); setEroare(''); setLoading(false); startAmp.current = '';
+    cerere.current++; setS(null); setEroare(''); setLipsa(''); setLoading(false); startAmp.current = '';
     return true;
   }
 
-  async function pregateste() {
+  // `p` = ce pune fereastra singură (doar la deschiderea pregătită). „Pregătește din nou" aduce ciorna goală, ca pe web.
+  async function pregateste(p?: Pregatire | null) {
     const id = parseInt(cid);
     if (!id) { showToast('Alege o companie', true); return; }
     // „Pregătește din nou" peste rânduri schimbate de mână întreabă întâi (ca la schimbarea firmei sau a lunii).
     if (S && amp(S) !== startAmp.current && !confirm('Rândurile pregătite (cu ce ai schimbat la ele) se șterg. Continui?')) return;
     const nr = ++cerere.current;
-    setLoading(true); setS(null); setEroare('');
+    setLoading(true); setS(null); setEroare(''); setLipsa('');
     try {
       const d = await Api.invoiceDraft(id, fel === 'abonament' ? cheieLuna(yr, mon) : undefined, fel);
       if (nr !== cerere.current) return;
-      const c = ciornaDinRaspuns(d, id, fel);
-      startAmp.current = amp(c);
-      setS(c);
+      // Ce a pus fereastra singură intră în „cum a venit": închisă fără nicio schimbare de mână, nu întreabă nimic.
+      const r = pregatesteCiorna(ciornaDinRaspuns(d, id, fel), p || null);
+      startAmp.current = amp(r.S);
+      setS(r.S);
+      if (r.lipsa) setLipsa(lucrariLipsaText(r.lipsa));
     } catch (e: any) { if (nr === cerere.current) setEroare(e?.message || 'Eroare la pregătire'); }
     finally { if (nr === cerere.current) setLoading(false); }
   }
+  // Deschisă pregătită: rândurile se cer singure, o singură dată, pe firma și felul cu care s-a deschis fereastra — și
+  // DOAR pe firma cerută (dacă n-ar fi în listă, fereastra ar sta pe prima firmă: acolo nu se pune nimic singur).
+  useEffect(() => { if (pregatire && felInitial === 'unica' && preset != null && ales === preset) pregateste(pregatire); }, []);
+
+  // „Previzualizează" (30.09, Alin: „să aibă previzualizare, că se pot face greșeli"): hârtia exactă, de pe server, din
+  // ACELAȘI corp ca „Emite" (corpEmitere) — fără număr și fără să plece nimic. Se deschide ca „Vezi" la orice hârtie.
+  // Cât e pe drum se oprește doar butonul lui (ca pe web); „Emite" rămâne al omului.
+  async function previzualizeaza() {
+    if (!S || vede || saving) return;
+    const corp = corpEmitere(S, tip);
+    if (!corp.lines.length) { showToast('Adaugă cel puțin o linie validă', true); return; }
+    setVede(true);
+    try { await salveazaPostDeLaServer(RUTA_PREVIZUALIZARE, corp, 'previzualizare.pdf', { deschide: true }); }
+    catch (e: any) { showToast(e?.message || 'Previzualizarea nu s-a deschis', true); }   // refuzurile emiterii, cu vorbele serverului
+    finally { setVede(false); }
+  }
 
   async function emite() {
-    if (!S) return;
+    if (!S || saving) return;
     if (!liniiValide(S).length) { showToast('Adaugă cel puțin o linie validă', true); return; }
     if (!(S.issuer && S.issuer.name && S.issuer.cui)) { showToast('Completează „Date emitent" (nume + CUI)', true); return; }
     const corp = corpEmitere(S, tip);
@@ -395,8 +490,9 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
                 <button type="button" class={tip === 'proforma' ? 'on' : ''} onClick={() => setTip('proforma')}><b>Proformă</b><span>cerere de plată; la încasare devine factură</span></button>
               </div>
             </div>}
-            <button class="btn" style={sec + ';color:var(--fl-ok)'} disabled={loading} onClick={pregateste}>{loading ? 'Se pregătește…' : (S ? 'Pregătește din nou' : 'Pregătește rândurile')}</button>
+            <button class="btn" style={sec + ';color:var(--fl-ok)'} disabled={loading} onClick={() => pregateste()}>{loading ? 'Se pregătește…' : (S ? 'Pregătește din nou' : 'Pregătește rândurile')}</button>
             {eroare ? <div class="bill-avert rau">{eroare}</div> : null}
+            {lipsa ? <div class="bill-avert">⚠ {lipsa}</div> : null}
 
             {S && !issuerOk && (
               <div class="bill-avert">⚠ Completează întâi <b>Date emitent</b> (nume + CUI) — sunt obligatorii pe factură.
@@ -481,7 +577,12 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
                 <div class="bill-total"><span>Total (cu TVA)</span><b>{money2(subtotal + vatTotal)} lei</b></div>
                 <div class="bill-mic" style="text-align:right;margin-top:4px">Net {money2(subtotal)} · TVA {money2(vatTotal)}</div>
                 {unica && tip === 'proforma' ? <div class="bill-mic" style="margin-top:8px;line-height:1.5">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div> : null}
-                <div class="frm-actions" style="margin-top:12px"><button class="btn btn-primary" disabled={saving || !S.lines.length || (!unica && !!S.deja)} onClick={emite}>{saving ? 'Se emite…' : eticheta}</button></div>
+                {/* Ce pleacă singur la emitere (anunțul, emailul cu PDF, ANAF la factura fiscală) — ca pe web. */}
+                <div class="bill-mic" style="margin-top:8px;line-height:1.5">{notaLaEmitere(unica ? tip : 'invoice')}</div>
+                <div class="bill-emite">
+                  <button class="btn" style={sec} disabled={vede || saving || !S.lines.length} onClick={previzualizeaza}><Icon name="eye" size={16} /> {vede ? 'Se deschide…' : 'Previzualizează'}</button>
+                  <button class="btn btn-primary" disabled={saving || !S.lines.length || (!unica && !!S.deja)} onClick={emite}>{saving ? 'Se emite…' : eticheta}</button>
+                </div>
               </div>
             )}
           </div>

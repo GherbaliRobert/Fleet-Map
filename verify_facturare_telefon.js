@@ -354,8 +354,9 @@ function pachetFacturare() {
     T('„Plăți / încasări": metoda pe rând și „Total încasat" deasupra', /Metodă: \{metodaText\(p\.method\)\}/.test(billing) && /Total încasat:/.test(billing) && /setPaysTotal\(Number\(pj && \(pj as any\)\.total\) \|\| 0\)/.test(billing));
     T('„Status facturare companii": „Total plătit" (paid_total)', /Total plătit:/.test(billing) && /c\.paid_total/.test(billing));
     // Pe rândul firmei, „Facturile firmei" (fișa, fila Facturi), ca pe web; NU „Încasare", care înregistra o încasare
-    // fără factură și lăsa factura restantă „emisă".
-    const lista = taie(billing, '<div class="mn-sec">Status facturare companii</div>', '<div class="mn-sec">Facturi fiscale</div>');
+    // fără factură și lăsa factura restantă „emisă". Lista firmelor se termină unde începe lista documentelor, care de
+    // pe 30.09 (lotul 5) se numește „Facturi și proforme", ca pe web, și are secțiuni (Facturi · Proforme · Montaj).
+    const lista = taie(billing, '<div class="mn-sec">Status facturare companii</div>', '<div class="mn-sec">Facturi și proforme</div>');
     T('rândul firmei: „Facturile firmei" → fișa, fila Facturi (rutaFisa)', lista.indexOf("onClick={() => loc.route(rutaFisa(c.id, 'facturi'))}>Facturile firmei</button>") > 0 &&
       billing.indexOf("import { rutaFisa } from '../lib/companii';") > 0);
     T('rândul firmei nu mai are „Încasare" (încasarea fără factură rămâne doar pe „+" de sus)', !!lista && lista.indexOf('setPay({ companyId') < 0 && lista.indexOf('>Încasare<') < 0 &&
@@ -576,9 +577,10 @@ function pachetFisa() {
   T('aceeași cerere: PUT /api/invoices/:id/status {paid} (Api.invoiceSetStatus)', /Api\.invoiceSetStatus\(Number\(f\.id\), 'paid'\)/.test(fisa) &&
     /invoiceSetStatus: \(id: number, status: string\) => api<[^\n]*`\/api\/invoices\/\$\{id\}\/status`, \{ method: 'PUT', body: \{ status \} \}/.test(endpoints) &&
     /body: JSON\.stringify\(\{ status: 'paid' \}\)/.test(markWeb));
-  T('mesajul de după, ca pe web: „Proformă încasată → factura N ✓" / „Factură plătită ✓"',
-    markWeb.indexOf("'Proformă încasată → factura '") >= 0 && markWeb.indexOf("'Factură plătită ✓'") >= 0 &&
-    fisa.indexOf("'Proformă încasată → factura ' + nr + ' ✓'") > 0 && fisa.indexOf("'Factură plătită ✓'") > 0);
+  // Lotul 5 (30.09): ca pe web (raxInvoiceMarkPaid), mesajul spune și ce a plecat odată cu factura născută (trimisaText).
+  T('mesajul de după, ca pe web: „Proformă încasată → factura N · ce a plecat ✓" / „Factură plătită ✓"',
+    markWeb.indexOf("'Proformă încasată → factura '") >= 0 && markWeb.indexOf("_invTrimisaText(j.trimisa, false)") >= 0 && markWeb.indexOf("'Factură plătită ✓'") >= 0 &&
+    fisa.indexOf("(nr ? 'Proformă încasată → factura ' + nr : 'Proformă încasată') + trimisaText(j && j.trimisa, false) + ' ✓'") > 0 && fisa.indexOf("'Factură plătită ✓'") > 0);
   T('după ✓ fișa se reîncarcă (starea accesului și lista vin proaspete de la server — nu rămâne „Suspendat")', /onReload\(\);\n  \}/.test(functie(fisa, 'async function platita(f: any) {')));
   T('„înapoi" pe Android închide întrebarea, nu fișa, și nu în timpul cererii', /useInapoiInchide\(!!intreb, \(\) => \{ if \(busy\) return false; setIntreb\(null\); return true; \}\)/.test(fisa));
   T('fișa nu ocolește clientul API (fără fetch, fără adrese /api/ scrise de mână)', !/\bfetch\(/.test(fisa) && !/['"`]\/api\//.test(faraComentarii(fisa)));

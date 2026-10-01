@@ -1,7 +1,9 @@
-// Partenerii de montaj — firmele care montează în locul nostru. Stau DOAR în secțiunea „Montaj" (Business), prima
-// filă, ca pe web (raxLoadMontaj → _raxParteneriCorp / raxPartEdit / raxPartAnaf / raxPartSalveaza / raxPartSterge),
-// și NU apar nicăieri în ce vede clientul. Tarifele lor se propun singure la fiecare lucrare de montaj și intră în
-// contractul cu partenerul (Anexa nr. 1). Modificarea e tot POST, cu id; serverul scrie DOAR cheile trimise.
+// Partenerii de montaj — firmele care montează în locul nostru. Stau DOAR în secțiunea „Montaj" (Business), fila
+// Parteneri (a doua, după Calendar), ca pe web (raxLoadMontaj → _raxParteneriCorp / raxPartEdit / raxPartAnaf /
+// raxPartSalveaza / raxPartSterge), și NU apar nicăieri în ce vede clientul. Tarifele lor se propun singure la fiecare
+// lucrare de montaj și intră în contractul cu partenerul (Anexa nr. 1). Modificarea e tot POST, cu id; serverul scrie
+// DOAR cheile trimise. „Ne facturează" (lunar / săptămânal, 30.09) e ritmul în care facturăm și noi clientului
+// montajul făcut de el; se vede pe rândul lui și intră în contractul cu el.
 //
 // Fișa are tot ce trebuie pe hârtia contractului: CUI (cu ANAF), Reg. Com., sediu, reprezentant, email (acolo pleacă
 // contractul), telefon, IBAN, bancă, zonă — plus „Stare": un partener cu contract SEMNAT nu se șterge (serverul
@@ -17,7 +19,7 @@ import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { MONTAJ_TIPURI } from '../lib/contracte';
-import { contractulPartenerului, mjStare } from '../lib/montajSectiune';
+import { NOTA_RITM, contractulPartenerului, mjStare, subPartener } from '../lib/montajSectiune';
 import { nrDe } from '../lib/numar';
 import { Confirma } from './FlotaUi';
 import { Pill } from './ContractUi';
@@ -201,10 +203,9 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
         <div class="ctr-list">
           {!lista.length && <div class="ctr-empty">Niciun partener de montaj încă.</div>}
           {lista.map((p: any) => {
-            const n = Object.keys(p.tarife || {}).length;
             const c = cuContracte ? contractulPartenerului(contracte, p.id) : null;
             const st = c ? mjStare(c.status) : null;
-            const sub = [p.cui, p.zona, p.email, n ? nrDe(n, 'tarif scris', 'tarife scrise') : 'fără tarife scrise'].filter(Boolean).join(' · ');
+            const sub = subPartener(p); // … · „ne facturează lunar / săptămânal", ca pe web
             return (
               <div class="ctr-row">
                 <div class="ctr-row-top">
@@ -276,6 +277,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
                     <option value="lunar">lunar</option>
                     <option value="saptamanal">săptămânal</option>
                   </select>
+                  <div class="mj-nota">{NOTA_RITM}</div>
                 </div>
                 <div class="ctr-h2" style="margin-top:4px">Cât ne cere, pe lucrare (lei, fără TVA)</div>
                 <div class="ctr-mont">

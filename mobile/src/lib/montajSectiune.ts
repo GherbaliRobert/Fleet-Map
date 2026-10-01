@@ -1,10 +1,36 @@
-// Secțiunea „Montaj" (fondatori, Business) — cuvintele comune filei Parteneri și filei Contracte cu partenerii.
+// Secțiunea „Montaj" (fondatori, Business) — cuvintele comune filelor Parteneri și Contracte cu partenerii, plus
+// cifra de pe file. (Calendarul, prima filă, își are cuvintele în lib/calendarMontaj.ts.)
 //
 // Nimic de aici nu HOTĂRĂȘTE ceva despre un contract cu un partener: ce lipsește (`lipsuri`), capătul lui
 // (`sfarsit`), trecerile dintre stări, golurile pentru care „Trimite la semnat" e refuzat și marja lucrărilor le
 // dă SERVERUL (server.js: _lipsuriPartener, _trecereContract, /trimite, /api/montaj/lucrari). Aici stau doar
 // etichetele, ca pe web (_mjStare, MJ_LIPSA), și data scrisă la prânz.
 import { CTR_STARI } from './contracte';
+import { nrDe } from './numar';
+
+// Cifra de pe o filă (_mjDeseneaza): fila Calendar arată câte contracte mai au mașini de programat și NIMIC când nu e
+// niciunul („Calendar", nu „Calendar · 0"); celelalte file își arată cifra, și zero. null = fără cifră.
+export function cifraFilei(fila: string, n: number): number | null {
+  return n ? n : fila === 'calendar' ? null : 0;
+}
+
+// Cât de des ne facturează instalatorul (30.09): în același ritm facturăm și noi clientului montajul făcut de el —
+// „ca să nu fim pe pierdere". Fără valoare = lunar, ca pe server (montaj.ritmFacturare).
+export function ritmText(ritm: any): string { return ritm === 'saptamanal' ? 'săptămânal' : 'lunar'; }
+// Nota de sub „Ne facturează" din fișa partenerului — aceleași cuvinte ca pe web.
+export const NOTA_RITM = 'Montajul făcut de el îl facturăm clientului în același ritm: la sfârșitul săptămânii (luni–duminică) sau al lunii, cu toate zilele de montaj din ea, pe o singură factură. Intră în contractul cu el.';
+// Rândul partenerului din fila Parteneri (_raxParteneriCorp): CUI, zonă, email, tarife, ritmul facturii lui.
+// Singura abatere de la web, dinadins: „1 tarif scris" (pe web „1 tarife scrise").
+export function subPartener(p: any): string {
+  const n = Object.keys((p && p.tarife) || {}).length;
+  return [p && p.cui, p && p.zona, p && p.email, n ? nrDe(n, 'tarif scris', 'tarife scrise') : 'fără tarife scrise',
+    'ne facturează ' + ritmText(p && p.ritm_facturare)].filter(Boolean).join(' · ');
+}
+// Bifa din editarea contractului cu partenerul (_mjEditHtml): tarifele ȘI ritmul se reiau împreună, pe server
+// (`tarife_din_partener` rescrie și `ritm_facturare`), deci bifa le spune pe amândouă, cu ritmul de acum al contractului.
+export function bifaRetarif(c: any): string {
+  return 'Reia din fișa partenerului tarifele de azi (Anexa nr. 1) și cât de des ne facturează (acum: ' + ritmText(c && c.ritm_facturare) + ')';
+}
 
 // Aceleași stări ca la clienți, cu un singur cuvânt schimbat: contractul unui partener nu pleacă „la client".
 // NU se atinge CTR_STARI (proba îl compară cuvânt cu cuvânt cu contracts.js): schimbarea se face doar aici.

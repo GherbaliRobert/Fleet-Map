@@ -14,6 +14,10 @@
 .ap-sel:focus { outline: none; border-color: var(--accent); }
 .ap-bloc .fd-btn.primary { flex: 0 0 auto; min-height: 40px; }
 .ap-bloc-nota { font-size: 12px; line-height: 1.45; color: var(--fd-warn); }
+/* Anunțul „aparate noi transmit" a ales firma din bară (lotul 5, 30.09; web: .rax-dev-propus). */
+.ap-propus { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.ap-propus > svg { flex: 0 0 auto; margin-top: 2px; color: var(--fd-ok); }
+.ap-propus b { color: var(--text-primary); }
 
 /* Rândul cu bifă: bifa stă ALĂTURI de rând, nu în el (un buton în alt buton nu se apasă sigur pe telefon). */
 .ap-cu-bifa { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }

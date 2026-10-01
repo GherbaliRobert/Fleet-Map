@@ -1,9 +1,77 @@
 // Push nativ (FCM Android / APNs iOS). No-op în browser dev — rulează doar pe device.
+// Tot aici: unde duce un anunț de-al nostru (lista Notificări, detaliul și push-ul folosesc aceeași adresă).
 import { Capacitor } from '@capacitor/core';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
+import { rutaFactura } from './factura';
+import { RUTA_NEASIGNATE } from './contracte';
 
 let registered = false;
+
+// ── începe „unde duce un anunț" ──
+// Anunțurile noastre de lucru (30.09, doar la noi) duc drept la treaba de făcut, ca pe web (notifAparateNoi /
+// notifMontajDeFacturat) — nu în „Detaliu eveniment", care pentru ele era gol („Fără poziție GPS…", fără buton):
+//   • „aparate noi transmit" → Dispozitive, grupul Neasignate, cu aparatele din anunț bifate și firma propusă aleasă
+//     în bară: /admin/devices?filtru=neasignate&bifate=<imei,imei>&firma=<id>. Dispozitive citește adresa
+//     (anuntDinAdresa), bifează și aparatele propuse aceleiași firme din alte anunțuri, apoi o curăță.
+//   • „Montaj de facturat" → Facturare, „Generează factură" unică, cu lucrările puse (rutaFactura, lib/factura.ts).
+// Bucata e fără JSX și fără stare: proba o rulează lângă pagina web și lângă serverul pornit.
+//   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request'];
+// `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
+export function dateAnunt(d: any): any {
+  if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
+  return d && typeof d === 'object' ? d : {};
+}
+function idFirma(v: any): number | null {
+  const s = v == null ? '' : String(v).trim();
+  return /^\d+$/.test(s) && Number(s) > 0 ? Number(s) : null;
+}
+// Adresa anunțului, sau null: anunțul n-are un loc al lui și se deschide detaliul, ca până acum.
+export function adresaAnunt(tip: any, date: any): string | null {
+  const d = dateAnunt(date);
+  if (tip === 'aparate_noi') {
+    const imeis = (Array.isArray(d.imeis) ? d.imeis : []).map((x: any) => String(x == null ? '' : x).trim()).filter(Boolean);
+    const firma = idFirma(d.company_id);
+    let u = RUTA_NEASIGNATE;
+    const pune = (k: string, v: string) => { u += (u.indexOf('?') >= 0 ? '&' : '?') + k + '=' + v; };
+    if (imeis.length) pune('bifate', imeis.map((x: string) => encodeURIComponent(x)).join(','));
+    if (firma != null) pune('firma', String(firma));
+    return u;
+  }
+  if (tip === 'montaj_de_facturat') {
+    const firma = idFirma(d.company_id);
+    return firma != null ? rutaFactura(firma, 'unica', { lucrari: Array.isArray(d.lucrari) ? d.lucrari : [] }) : '/billing';
+  }
+  if (tip === 'demo_request') return '/admin/demo-requests';
+  return null;
+}
+// Adresa de mai sus, citită înapoi de Dispozitive: { imeis, firma }, sau null când n-are nimic de pus
+// (ca raxDevDeschideNeasignate pe web: fără aparate și fără firmă, doar filtrul).
+export function anuntDinAdresa(q: any): { imeis: string[]; firma: number | null } | null {
+  const o = q || {};
+  const imeis = String(o.bifate == null ? '' : o.bifate).split(',').map((s) => s.trim()).filter(Boolean);
+  const firma = idFirma(o.firma);
+  return imeis.length || firma != null ? { imeis, firma } : null;
+}
+// …și adresa curățată după ce Dispozitive a citit anunțul: fără `bifate` și `firma`, cu restul (filtrul), ca o
+// întoarcere pe ecran să nu-l mai pună o dată.
+export function adresaFaraAnunt(cale: string, q: any): string {
+  const o = q || {};
+  const rest = Object.keys(o).filter((k) => k !== 'bifate' && k !== 'firma').map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(String(o[k])));
+  return (cale || RUTA_NEASIGNATE.split('?')[0]) + (rest.length ? '?' + rest.join('&') : '');
+}
+// Tap pe push → unde duce. Push-ul anunțurilor noastre poartă doar felul și id-ul notificării (serverul,
+// `_anuntaSuperadmini`: { type, notifId }), nu și aparatele sau lucrările: deschidem detaliul, care citește anunțul
+// întreg, îl marchează citit și te duce mai departe. Restul, ca până acum: fișa mașinii, altfel lista Notificări.
+export function adresaPush(data: any): string {
+  const d = data || {};
+  const id = d.notifId == null ? '' : String(d.notifId);
+  if (TIPURI_CU_LOC.indexOf(String(d.type)) >= 0 && /^\d+$/.test(id)) return '/notif/' + id;
+  if (d.imei) return '/vehicles/' + encodeURIComponent(d.imei);
+  return '/notifications';
+}
+// ── sfârșit „unde duce un anunț" ──
 
 // Înregistrează tokenul la backend cu retry exponențial (3 încercări). Eșecul nu mai e silențios.
 async function registerToken(token: string, attempt = 0) {
@@ -42,11 +110,10 @@ export async function initPush() {
       console.warn('[push] registrationError', err);
     });
 
-    // Tap pe notificare → deep-link la vehicul (reload simplu; sesiunea e persistată în storage).
+    // Tap pe notificare → adresaPush (mai sus): anunțurile noastre de lucru → detaliul lor, care te duce la treaba de
+    // făcut; o alertă cu mașină → fișa mașinii; restul → Notificări. Reîncărcare simplă (sesiunea e persistată în storage).
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      const data: any = action.notification?.data || {};
-      if (data.imei) window.location.href = '/vehicles/' + encodeURIComponent(data.imei);
-      else window.location.href = '/notifications';
+      window.location.href = adresaPush(action.notification?.data || {});
     });
   } catch {
     registered = false;

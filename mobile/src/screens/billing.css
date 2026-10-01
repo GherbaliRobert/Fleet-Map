@@ -53,3 +53,27 @@ button.bill-sursa { cursor: pointer; }
 .bill-ment { font-weight: 600; white-space: pre-wrap; }
 .bill-totinc { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: -2px 0 8px; }
 .bill-totinc b { color: var(--fl-ok); }
+
+/* „Previzualizează" + „Emite" (lotul 5): pe un rând când încap, altfel unul sub altul, fiecare pe toată lățimea. */
+.bill-emite { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.bill-emite .btn { flex: 1 1 140px; }
+.bill-emite .btn-primary { flex: 2 1 170px; }
+
+/* „Facturi și proforme": secțiunile (Facturi · Proforme · Montaj de facturat), ca pe web. Pastilele sunt .fd-chip
+   (fondator.css, cu perechea lor pe tema luminoasă); aici doar se așază — pe două rânduri dacă nu încap. */
+.bill-sect { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+
+/* „Montaj de facturat" (30.09), ca .rax-mf-* de pe web: o firmă pe rând — cine și ce, suma, butonul.
+   „În curs" (perioada instalatorului nu s-a încheiat) = chenar punctat, fără fundal. Scrisul mic pe --text-secondary. */
+.bill-mf-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 10px; }
+.bill-mf-h { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 14px 0 6px; }
+.bill-mf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); }
+.bill-mf.curs { border-style: dashed; background: transparent; }
+.bill-mf-t { flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--text-primary); }
+.bill-mf-t b { overflow-wrap: anywhere; }
+.bill-mf-t span { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+.bill-mf-s { flex: 1 1 auto; font-weight: 800; font-size: 15px; white-space: nowrap; color: var(--text-primary); }
+.bill-mf-s span { font-weight: 400; font-size: 11.5px; color: var(--text-secondary); }
+/* Butonul rândului: două clase, ca să treacă peste .btn (global.css) oricare foaie de stil s-ar încărca ultima. */
+.bill-mf .bill-mf-b { flex: 0 0 auto; padding: 9px 12px; font-size: 13px; }
+.bill-mf .bill-mf-b:not(.btn-primary) { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }

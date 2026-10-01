@@ -13,11 +13,16 @@
 //   • „Salvează lucrarea" nu pleacă cu un rând care are bucăți, dar n-are preț pentru client: la un contract
 //     nesemnat, serverul reface Anexa nr. 2 din lucrări și rândul ar ajunge pe hârtie „3 buc × 0,00 lei".
 //   • Butonul „înapoi" de pe Android închide foaia (întreabă dacă s-a scris ceva), nu pleacă din fișă.
+//   • Contract SEMNAT (30.09, ca pe web — raxMontajRandeaza): o lucrare nouă se programează în CALENDAR, nu aici
+//     („Programează în calendar"). Nesemnat: lucrările de aici scriu încă Anexa nr. 2, deci formularul rămâne.
+//     „Modifică" pe o lucrare rămâne în ambele cazuri.
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { MONTAJ_STARI, MONTAJ_TIPURI, eur, inputZi, lei, tarifeMontajCasa, zi, zile } from '../lib/contracte';
+import { rutaCalendarMontaj } from '../lib/calendarMontaj';
 import { Confirma } from './FlotaUi';
 import { Icon } from './Icon';
 import '../screens/admin.css';
@@ -53,14 +58,15 @@ type Linie = { buc: string; pc: string; cp: string };
 // `p0` = partenerul salvat pe lucrare când s-a deschis foaia: un partener „inactiv" rămâne în listă DOAR pe ea.
 type Edit = { id: number; partener: string; p0: string; data: string; stare: string; factura: string; linii: Record<string, Linie> };
 const s = (v: any) => (v == null || v === '' ? '' : String(v));
-// „Programează montajul" din Drumul clientului cere formularul unei lucrări NOI, deschis (web: raxDrumMontaj →
-// raxMontajEdit(0)). `deschideNoua` e un bilet: un număr nou = o deschidere. Biletul folosit se ține minte AICI,
-// în afara bucății, ca fișa reîncărcată (care o face din nou) să nu redeschidă formularul.
-let biletFolosit = 0;
+// Butonul de sub lucrări: la un contract în vigoare („activ"), „Programează în calendar"; altfel „Lucrare de montaj"
+// (formularul). Aceeași condiție ca pe web (raxMontajRandeaza: `_raxCtr.contract.status === 'activ'`) — legate printr-o
+// probă. Un contract încheiat păstrează formularul, ca pe web.
+export const programeazaInCalendar = (contract: any): boolean => !!contract && contract.status === 'activ';
 
-export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat, deschideNoua }: {
-  companyId: number; contract: any; tarifeCasa: Record<string, any> | null | undefined; onSalvat: () => void; deschideNoua?: number;
+export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
+  companyId: number; contract: any; tarifeCasa: Record<string, any> | null | undefined; onSalvat: () => void;
 }) {
+  const loc = useLocation();
   const [lucrari, setLucrari] = useState<any[] | null>(null);
   const [parteneri, setParteneri] = useState<any[]>([]);
   const [edit, setEdit] = useState<Edit | null>(null);
@@ -134,12 +140,6 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat, desc
     return true;
   }
   useInapoiInchide(!!edit, inchide);
-  // Biletul drumului: după ce lucrările și partenerii au sosit (lista „Cine execută" e plină), o singură dată.
-  useEffect(() => {
-    if (!deschideNoua || deschideNoua === biletFolosit || lucrari == null) return;
-    biletFolosit = deschideNoua;
-    if (!edit) deschide(null);
-  }, [deschideNoua, lucrari]);
   // Alt partener: ce s-a scris pe rândurile cu bucăți rămâne; restul se propune din nou (ca pe web).
   function schimbaPartener(pid: string) {
     setEdit((e) => {
@@ -238,7 +238,9 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat, desc
           {lucrari.length > 0 && (
             <div class="ctr-total">Total montaj la clientul ăsta: <b>{lei(tc)}</b> încasat · {lei(tp)} plătit partenerilor · <b class="ctr-ok-txt">{lei(tc - tp)} marjă</b></div>
           )}
-          <button class="ctr-btn" style="align-self:flex-start" disabled={deschid} onClick={() => deschide(null)}><Icon name="plus" size={16} /> {deschid ? 'Se deschide…' : 'Lucrare de montaj'}</button>
+          {programeazaInCalendar(contract)
+            ? <button class="ctr-btn pri" style="align-self:flex-start" onClick={() => loc.route(rutaCalendarMontaj(contract.id))}><Icon name="calendar" size={16} /> Programează în calendar</button>
+            : <button class="ctr-btn" style="align-self:flex-start" disabled={deschid} onClick={() => deschide(null)}><Icon name="plus" size={16} /> {deschid ? 'Se deschide…' : 'Lucrare de montaj'}</button>}
         </div>
       )}
 

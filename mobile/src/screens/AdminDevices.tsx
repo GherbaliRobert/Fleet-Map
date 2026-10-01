@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { api } from '../api/client';
@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { raCauta } from '../lib/format';
 import { nrDe } from '../lib/numar';
+import { anuntDinAdresa, adresaFaraAnunt } from '../lib/push';   // anunțul „aparate noi transmit", din adresă
 import { stareAparat, momentMs, type StareAparat } from '../lib/semnal';
 import { AntetFondator, Banda, GrupFirma, adresaFirmei } from '../components/FondatorUi';
 import './admin.css';
@@ -18,8 +19,9 @@ import './aparate.css'; // bara „Trece pe firmă" din Neasignate + ziua abonam
 // deschis), apoi fiecare firmă, alfabetic, la final „Arhivate" (închis). Pastile cu număr, banda de adopție, modul
 // strict cu aparatele neînregistrate care bat la ușă, iar din fișa aparatului: firma, interfața CAN, montajul,
 // „Arhivează" / „Respinge". Din 29.09 (lotul 4): în „Neasignate", bife + bara „Trece pe firmă" (mai multe deodată), iar
-// pe rândul unui aparat de pe firmă, ziua din care plătește clientul, cu corectura noastră. Toate apelurile sunt
-// requireSuperadmin pe server (ruta e păzită și în App.tsx).
+// pe rândul unui aparat de pe firmă, ziua din care plătește clientul, cu corectura noastră. Din 30.09 (lotul 5):
+// anunțul „aparate noi transmit" deschide ecranul pe Neasignate cu aparatele lui bifate și firma propusă aleasă în bară
+// (adresa: lib/push.ts → adresaAnunt). Toate apelurile sunt requireSuperadmin pe server (ruta e păzită și în App.tsx).
 const CAN_OPTS = [
   { value: '', label: 'Auto (implicit)' },
   { value: 'fms', label: 'FMS (camioane / tahograf)' },
@@ -135,6 +137,35 @@ function puneAbonament(imei: string, deLa: string | null): Promise<{ ok?: boolea
 function mesajAbo(v: string | null): string { return v ? 'Abonament din ' + v.split('-').reverse().join('.') : 'Pornește la următoarea transmisie'; }
 // ── sfârșit „trecerea în bloc și ziua abonamentului" ──
 
+// ── începe „aparatele noi, bifate din anunț" ──
+// Atingerea anunțului „aparate noi transmit" (în Notificări, în detaliu sau pe push) deschide ecranul pe Neasignate,
+// cu adresa făcută de adresaAnunt (lib/push.ts). Ca _raxDevPuneAnuntul pe web: se bifează aparatele din anunț și TOATE
+// cele încă neasignate propuse aceleiași firme (`anuntat_firma`, de la server — montajul unei zile poate veni în mai
+// multe anunțuri); ce a fost între timp trecut pe firmă sau arhivat nu se mai bifează. Firma propusă se alege în bară.
+// Trecerea rămâne apăsarea TA („Trece pe firmă", cu întrebarea ei): din bifare nu pleacă nicio cerere spre server.
+// Bucata e fără JSX și fără stare (folosește doar neasignatViu, de mai sus): proba o rulează lângă pagina web.
+type Anunt = { imeis: string[]; firma: number | null };
+function bifeDinAnunt(lista: any[], p: Anunt | null): Record<string, boolean> {
+  const m: Record<string, boolean> = {};
+  if (!p) return m;
+  (lista || []).forEach((d) => {
+    if (!neasignatViu(d)) return;
+    const k = String(d.imei);
+    if (p.imeis.indexOf(k) >= 0 || (p.firma != null && d.anuntat_firma != null && Number(d.anuntat_firma) === p.firma)) m[k] = true;
+  });
+  return m;
+}
+// Banda „Firma e propusă de montajul din calendar" (web: rax-dev-propus) → numele firmei, sau null. DOAR cât în bară e
+// aleasă firma propusă de anunț și printre aparatele bifate pe ecran e măcar unul din anunț. Pe web banda apare la
+// orice firmă din bară, și aleasă de mână, și la aparate bifate de mână — acolo calendarul n-a propus nimic.
+function firmaPropusa(p: Anunt | null, firmaBloc: string, alese: string[], dinAnunt: Record<string, boolean>, firme: { value: string; label: string }[]): string | null {
+  if (!p || p.firma == null || firmaBloc !== String(p.firma)) return null;
+  if (!alese.some((i) => !!dinAnunt[i])) return null;
+  const co = firme.filter((c) => c.value === firmaBloc)[0];
+  return co ? co.label : null;
+}
+// ── sfârșit „aparatele noi, bifate din anunț" ──
+
 export function AdminDevices() {
   const loc = useLocation();
   const [items, setItems] = useState<any[] | null>(null);
@@ -156,9 +187,14 @@ export function AdminDevices() {
   const GOL = { imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '', gps_model: '', sim_number: '', issue: false, issue_note: '' };
   const [f, setF] = useState<any>(GOL);
   const [issueNote, setIssueNote] = useState('');
+  // Anunțul „aparate noi transmit" (30.09), venit prin adresă: citit O dată, la deschidere. Firma propusă pornește
+  // aleasă în bară; bifele se pun după prima încărcare (le trebuie lista, cu `anuntat_firma`).
+  const [anunt] = useState(() => anuntDinAdresa(loc.query));
+  const anuntDePus = useRef(!!anunt);
+  const [dinAnunt, setDinAnunt] = useState<Record<string, boolean>>({});   // ce a bifat anunțul (pentru banda de mai jos)
   // Trecerea în bloc: bifele (pe IMEI) și firma aleasă. Firma NU se golește la o bifă (pe web, da — revizia din 29.09).
   const [bife, setBife] = useState<Record<string, boolean>>({});
-  const [firmaBloc, setFirmaBloc] = useState('');
+  const [firmaBloc, setFirmaBloc] = useState(() => (anunt && anunt.firma != null ? String(anunt.firma) : ''));
   const [intreb, setIntreb] = useState<{ imeis: string[]; coId: number; firma: string } | null>(null);
   const [trece, setTrece] = useState(false);
   const [rezBloc, setRezBloc] = useState<{ text: string; sarite: { imei: string; motiv: string }[] } | null>(null);
@@ -171,7 +207,15 @@ export function AdminDevices() {
     Promise.all([Api.adminDevices(), Api.unassignedDevices().catch(() => [] as any[])])
       .then(([all, un]) => {
         const seen = new Set((all || []).map((d: any) => d.imei));
-        setItems((all || []).concat((un || []).filter((d: any) => !seen.has(d.imei))));
+        const lista = (all || []).concat((un || []).filter((d: any) => !seen.has(d.imei)));
+        setItems(lista);
+        // Anunțul se pune o singură dată, pe prima listă venită (ca _raxDevPuneAnuntul pe web).
+        if (anunt && anuntDePus.current) {
+          anuntDePus.current = false;
+          const b = bifeDinAnunt(lista, anunt);
+          setBife(b);
+          setDinAnunt(b);
+        }
       })
       .catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare')); setItems([]); });
     // Fără firma DEMO: acolo trăiesc conturile temporare ale străinilor care au cerut demo. Un aparat real
@@ -182,6 +226,10 @@ export function AdminDevices() {
       .catch(() => { setStrict(null); setAttempts([]); });
   }
   useEffect(reload, []);
+  // Adresa anunțului se curăță îndată ce ecranul l-a citit (e în `anunt`, iar bifele îl așteaptă acolo): o întoarcere pe
+  // ecran nu-l mai pune o dată. Aici, la deschidere, și nu după încărcare: un răspuns venit după ce ai plecat din
+  // ecran ar muta altfel adresa altui ecran înapoi pe Dispozitive.
+  useEffect(() => { if (anunt) loc.route(adresaFaraAnunt(loc.path, loc.query), true); }, []);
 
   const toate = items || [];
   const counts = useMemo(() => {
@@ -395,6 +443,10 @@ export function AdminDevices() {
     const alese = bifateVazute(bife, vii);
     const toateBifate = vii.length > 0 && alese.length === vii.length;
     const ascunse = bifateAscunse(bife, toate, vii);
+    const propusa = firmaPropusa(anunt, firmaBloc, alese, dinAnunt, companies);
+    // Firma aleasă se arată doar cât e în listă (ștearsă între timp, încă neîncărcată sau firma demo → „— alege firma —",
+    // exact ce hotărăște și „Trece pe firmă"); altfel lista ar rămâne goală pe ecran.
+    const firmaVazuta = companies.some((c) => c.value === firmaBloc) ? firmaBloc : '';
     return (
       <div class="ap-bloc">
         <div class="ap-bloc-r">
@@ -405,7 +457,7 @@ export function AdminDevices() {
           <span class="ap-cate">{nrDe(alese.length, 'aparat bifat', 'aparate bifate')}</span>
         </div>
         <div class="ap-bloc-r">
-          <select class="ap-sel" value={firmaBloc} onChange={(e: any) => setFirmaBloc(e.target.value)} aria-label="Firma pe care trec aparatele bifate">
+          <select class="ap-sel" value={firmaVazuta} onChange={(e: any) => setFirmaBloc(e.target.value)} aria-label="Firma pe care trec aparatele bifate">
             <option value="">— alege firma —</option>
             {companies.map((c) => <option value={c.value}>{c.label}</option>)}
           </select>
@@ -413,6 +465,13 @@ export function AdminDevices() {
             <Icon name="arrowRight" size={14} /> Trece pe firmă
           </button>
         </div>
+        {/* Anunțul „aparate noi transmit" a ales firma: o spunem pe față (web: rax-dev-propus), aceleași cuvinte. */}
+        {propusa && (
+          <div class="ap-propus">
+            <Icon name="calendar" size={14} />
+            <span>Firma e propusă de montajul din calendar: <b>{propusa}</b>. Verifică aparatele bifate și apasă „Trece pe firmă".</span>
+          </div>
+        )}
         {ascunse > 0 && (
           <div class="ap-bloc-nota">
             Încă {nrDe(ascunse, 'aparat bifat nu se vede', 'aparate bifate nu se văd')} acum pe ecran, deci nu {ascunse === 1 ? 'trece' : 'trec'} pe firmă. Ca {ascunse === 1 ? 'să-l vezi' : 'să le vezi'}, golește căutarea sau alege „Neasignate" sus.

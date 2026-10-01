@@ -222,7 +222,10 @@ export function ClientNou() {
 
     // Datele juridice se salvează imediat după creare — ruta de creare primește doar numele.
     try {
-      await Api.updateCompany(id, { cui: firma.cui.trim(), reg_com: firma.reg_com.trim(), address: firma.address.trim(), contact_email: firma.contact_email.trim(), phone: firma.phone.trim() });
+      await Api.updateCompany(id, { cui: firma.cui.trim(), reg_com: firma.reg_com.trim(), address: firma.address.trim(), contact_email: firma.contact_email.trim(), phone: firma.phone.trim(),
+        // Plătitoare de TVA: doar când a răspuns ANAF, ca pe web (coNou). Hotărăște „RO" în fața CUI-ului pe factură și
+        // codul de TVA din e-Factura; fără ea, firma rămânea mereu „plătitoare" (implicitul din bază).
+        ...(firma.anaf && !firma.anaf.eroare ? { vat_payer: !!firma.anaf.vat_payer } : {}) });
     } catch (e: any) { av.push('Datele juridice nu s-au salvat (' + (e?.message || 'eroare') + ') — completează-le din fișa firmei.'); }
 
     let contractId: number | null = null, numar: string | null = null, autoFactura = false, ctRasp: any = null;

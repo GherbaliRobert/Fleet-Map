@@ -148,6 +148,16 @@ label.ctr-btn { cursor: pointer; }
 .ctr-drum-pas.urmeaza .e, .ctr-drum-pas.nu_e_cazul .e { color: var(--text-muted); font-weight: 600; }
 .ctr-drum-urm { margin-top: 10px; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border); font-size: 13.5px; line-height: 1.45; color: var(--text-primary); }
 .ctr-drum-urm b { font-weight: 800; }
+/* Termenul de montaj (30.09): portocaliu când se apropie, roșu după ce a trecut — ca .drum-termen pe web, cu aceleași
+   culori. Pe tema luminoasă scrisul trece pe variantele închise (#9a3412 / #b91c1c), ca pe web: portocaliul și roșul
+   deschise nu se citesc ca text mic pe alb. Contrastul e măsurat de proba lotului, pe ambele teme. */
+:root { --ctr-termen-curand: #fb923c; --ctr-termen-depasit: #f87171; }
+:root[data-theme="light"] { --ctr-termen-curand: #9a3412; --ctr-termen-depasit: #b91c1c; }
+.ctr-drum-termen { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 9px 11px; border-radius: 10px;
+  font-size: 13px; line-height: 1.45; font-weight: 600; }
+.ctr-drum-termen .ic { flex: 0 0 auto; margin-top: 1px; }
+.ctr-drum-termen.curand { color: var(--ctr-termen-curand); background: rgba(249, 115, 22, .10); }
+.ctr-drum-termen.depasit { color: var(--ctr-termen-depasit); background: rgba(239, 68, 68, .10); }
 
 /* Lista Contracte (24.09): sub stare, pasul următor cu butonul lui; la „Dosar", fiecare lipsă cu butonul ei. */
 .ctr-pas { display: flex; flex-direction: column; gap: 2px; padding: 0 0 10px; }

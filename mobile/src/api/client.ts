@@ -10,7 +10,7 @@ export const API_BASE = Capacitor.isNativePlatform()
 // Versiunea aplicației, trimisă serverului în `X-RA-App`. Serverul lasă să scrie oferte DOAR aplicația care
 // are calculatorul nou (1.0.3+, socotit pe server); cele vechi (1.0.1/1.0.2) n-au antetul și sunt refuzate
 // cu explicație. Se ține la zi cu `appVersionName` din android/variables.gradle.
-export const APP_VERSIUNE = '1.0.6';
+export const APP_VERSIUNE = '1.0.7';
 
 let _token: string | null = null;
 let _onUnauthorized: (() => void) | null = null;

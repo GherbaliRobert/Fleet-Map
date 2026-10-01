@@ -50,6 +50,16 @@ const zi = (ms: any) => (ms ? new Date(Number(ms)).toLocaleDateString('ro-RO') :
 const euro = (n: any) => Number(n).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 const SUMAR_GOL: Sumar = { depozit: 0, instalator: 0, inchiriate: 0, vandute: 0, retur: 0, defect: 0 };
 
+// Aparatele intră în aplicație O SINGURĂ DATĂ, aici (Alin, 30.09): nu se mai scriu și în Dispozitive. Nota de sub
+// casetă și mesajul de după intrare — aceleași cuvinte ca pe web (raxStocIntrare). `primite_la_conectare` = câte GPS-uri
+// (seria = IMEI-ul) primește serverul de acum la conectare; o spune serverul, după modelul ales (montaj.transmite).
+export const NOTA_IMEI = 'Un GPS trecut aici cu IMEI-ul nu se mai scrie și în Dispozitive: când e montat și transmite prima dată, apare singur la Dispozitive → Neasignate, iar tu primești un anunț.';
+export function mesajIntrare(r: { adaugate: number; primite_la_conectare?: number }): string {
+  const p = r.primite_la_conectare;
+  return nrDe(r.adaugate, 'bucată a intrat', 'bucăți au intrat') + ' în stoc' +
+    (p ? ' · ' + (p === 1 ? 'GPS-ul poate transmite' : 'GPS-urile pot transmite') + ' de îndată ce ' + (p === 1 ? 'e montat' : 'sunt montate') : '') + ' ✓';
+}
+
 function curata(s: any): StocDate {
   const a = (s && s.alerte) || {};
   return {
@@ -195,9 +205,10 @@ export function StocEchipamente() {
     if (busy) return;
     setBusy(true); setFErr('');
     try {
-      // Seriile pleacă TEXTUL scris; serverul (stoc.serii) le desparte, le curăță și scoate dublurile.
-      const r = await Api.stocIntrare({ tip: fi.tip, serii: fi.serii, buc: fi.buc, cost_eur: fi.cost, furnizor: fi.furnizor });
-      showToast(nrDe(r.adaugate, 'bucată a intrat', 'bucăți au intrat') + ' în stoc ✓');
+      // Seriile pleacă TEXTUL scris; serverul (stoc.serii) le desparte, le curăță și scoate dublurile. La un GPS,
+      // seria trebuie să fie IMEI-ul: altfel serverul refuză intrarea, cu vorbele lui (arătate mai jos, în foaie).
+      const r: { adaugate: number; primite_la_conectare?: number } = await Api.stocIntrare({ tip: fi.tip, serii: fi.serii, buc: fi.buc, cost_eur: fi.cost, furnizor: fi.furnizor });
+      showToast(mesajIntrare(r));
       setFoaie(null); reload(true);
     } catch (e: any) { setFErr(e?.message || 'Nu s-a putut adăuga.'); }
     finally { setBusy(false); }
@@ -452,6 +463,7 @@ export function StocEchipamente() {
             </div>
             <div class="fld"><label>Seriile, una pe rând — la GPS, IMEI-ul (15 cifre)</label>
               <textarea class="st-serii" placeholder={'864275071234567\n864275071234568'} value={fi.serii} onInput={(e: any) => setFi({ ...fi, serii: e.currentTarget.value })} />
+              <div class="st-nota">{NOTA_IMEI}</div>
             </div>
             <div class="fld"><label>Bucăți FĂRĂ serie (opțional)</label>
               <input type="number" inputMode="numeric" min="0" step="1" placeholder="0" value={fi.buc} onInput={(e: any) => setFi({ ...fi, buc: e.currentTarget.value })} />

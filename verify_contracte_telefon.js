@@ -20,6 +20,8 @@
 // „E semnat" nu rescrie cu azi data salvată, dosarul nu pierde ce e scris și nesalvat în formular, iar întrebările
 // dosarului se închid la „înapoi". „Emite prima factură" deschide factura UNICĂ (aparate, montaj), nu abonamentul
 // lunii — ca raxDrumFactura pe web —, pe aceeași adresă ca butoanele din fila Facturi a fișei firmei.
+// Din 30.09 (lotul 5): la un contract semnat, „Programează montajul" (drumul) și „Programează în calendar" (dosarul) duc
+// în calendarul de montaj, ca pe web; la unul nesemnat formularul lucrării din dosar rămâne (el scrie Anexa nr. 2).
 // Nu pornește niciun server și nu are nevoie de TypeScript: citește fișierele ca text.
 const fs = require('fs');
 const C = require('./contracts');
@@ -373,11 +375,76 @@ T('Facturare citește firma și felul din adresă și deschide „Generează fac
 T('Facturare își curăță adresa (înlocuind-o), ca „înapoi" să ducă în fișă, pe fila de pe care ai plecat',
   /loc\.route\('\/billing', true\)/.test(billTsx) &&
   /const alegeFila = \(k: string\) => \{ setFila\(k\); if \(k !== filaCeruta\) loc\.route\(rutaFisa\(id, k\), true\); \};/.test(fisaTsx));
-T('„Programează montajul" din listă / fișa firmei duce în dosar cu `?lucrare=noua`', /rutaDosar\(companyId\) \+ '\?lucrare=noua'/.test(pasiTsx));
-T('dosarul citește `?lucrare=noua` și deschide formularul lucrării (biletul → ContractMontaj)',
-  /\.lucrare \|\| ''\) === 'noua'/.test(detTsx) && /deschideNoua=\{bilet\}/.test(detTsx) && /deschideNoua === biletFolosit/.test(montajTsx) && /if \(!edit\) deschide\(null\)/.test(montajTsx));
-T('în dosar, „Programează montajul" deschide formularul pe loc, iar „Aprobă contractul" salvează întâi formularul (ca raxCtrTreci)',
-  /montajNou: \(\) => setBilet\(Date\.now\(\)\)/.test(detTsx) && /aproba: \(\) => treci\('aprobat'\)/.test(detTsx));
+T('în dosar, „Aprobă contractul" salvează întâi formularul (ca raxCtrTreci)', /aproba: \(\) => treci\('aprobat'\)/.test(detTsx));
+
+// Montajul (Alin, 30.09): la un contract SEMNAT se programează DOAR în calendar (Business → Montaj), unde stau regulile
+// lui — câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată" cu mai puține care întoarce restul. Până
+// atunci telefonul deschidea din drum formularul lucrării din dosar (`?lucrare=noua`, POST /api/companies/:id/montaje)
+// și le ocolea pe toate. La un contract NESEMNAT formularul din dosar rămâne: el scrie Anexa nr. 2 (web: raxMontajRandeaza).
+sect('7a. Montajul: contract semnat → calendarul; nesemnat → formularul din dosar (30.09)');
+const calLib = citeste('mobile/src/lib/calendarMontaj.ts');
+// O funcție întreagă din pagină: de la reper până la acolada care o închide (bucățile de aici n-au acolade în șiruri).
+const functieWeb = (reper) => {
+  const i = html.indexOf(reper); if (i < 0) return '';
+  let j = html.indexOf('{', i + reper.length - 1), adanc = 0;
+  for (; j < html.length; j++) { if (html[j] === '{') adanc++; else if (html[j] === '}') { adanc--; if (!adanc) break; } }
+  return html.slice(i, j + 1);
+};
+// Pe web: butonul drumului → raxDrumMontaj, care deschide calendarul pe firma clientului.
+const webDrumMontaj = functieWeb('window.raxDrumMontaj = function (companyId) {');
+T('pe web, „Programează montajul" din drum duce în calendar (raxDrumMontaj → fila „calendar" din Montaj)',
+  /if \(cheie === 'montaj'\) return '<button class="' \+ cls \+ '" onclick="raxDrumMontaj\(' \+ companyId \+ '\)">/.test(fnBtnWeb) &&
+  /_raxMj\.fila = 'calendar';/.test(webDrumMontaj) && /_raxMj\.cal\.pre = companyId;/.test(webDrumMontaj) && /raxAdminTab\('montaj'\)/.test(webDrumMontaj));
+T('pe telefon, același buton (listă, dosar, fișa firmei) duce în calendar, pe contractul clientului',
+  /if \(cheie === 'montaj'\) return buton\('wrench', 'Programează montajul', \(\) => loc\.route\(rutaCalendarMontaj\(c\.id\)\)\);/.test(pasiTsx));
+// Butonul drumului e mereu pentru un contract semnat: pasul „Montajul" ajunge „acum" abia după „Semnat" (regula serverului).
+const drumLa = (st) => C.drumulClientului({ contract: { status: st, montaj: { items: [{ tip: 'gps', buc: 2 }] } }, areOferta: true,
+  montaje: { total: 0, executate: 0 }, aparate: 0, facturi: 0 });
+T('pasul „Montajul" e cel de acum doar la un contract semnat (serverul), deci butonul drumului nu ocolește anexa unuia nesemnat',
+  ['ciorna', 'aprobat', 'trimis', 'incheiat'].every((st) => drumLa(st).urmatorul !== 'montaj') && drumLa('activ').urmatorul === 'montaj');
+// Adresa calendarului e UNA, în lib/calendarMontaj.ts (ecranul Montaj citește din ea fila și contractul), rulată aici.
+const mRutaCal = /export const rutaCalendarMontaj = \(contractId: any\) => ([^;\n]+);/.exec(calLib);
+let rutaCal = null; try { rutaCal = mRutaCal ? new Function('contractId', 'return ' + mRutaCal[1] + ';') : null; } catch (e) { rutaCal = null; }
+T('găsesc și pot rula rutaCalendarMontaj (lib/calendarMontaj.ts)', !!rutaCal);
+if (rutaCal) {
+  const u = String(rutaCal(42)), q = new URLSearchParams(u.split('?')[1] || '');
+  T('adresa calendarului: /admin/montaj, fila „calendar", contractul cerut', u.indexOf('/admin/montaj?') === 0 && q.get('fila') === 'calendar' && q.get('contract') === '42', u);
+}
+T('drumul și dosarul iau adresa de acolo (nicio a doua scriere a ei în ecranele contractelor)',
+  /import \{ rutaCalendarMontaj \} from '\.\.\/lib\/calendarMontaj';/.test(pasiTsx) && /import \{ rutaCalendarMontaj \} from '\.\.\/lib\/calendarMontaj';/.test(montajTsx) &&
+  !/fila=calendar/.test(faraComentarii([pasiTsx, montajTsx, detTsx, listTsx, fisaTsx, drumTsx].join('\n'))));
+T('calea veche a plecat: nicio adresă `?lucrare=noua`, niciun bilet de formular deschis din drum',
+  !/lucrare=noua|montajNou|deschideNoua|biletFolosit|\.lucrare\b|setBilet/.test(faraComentarii([pasiTsx, detTsx, montajTsx, listTsx, fisaTsx].join('\n'))));
+// Sub lucrări, în dosar: web — raxMontajRandeaza, RULAT pe fiecare stare a contractului; telefon — programeazaInCalendar.
+const fnRandeaza = functieWeb('window.raxMontajRandeaza = function () {');
+const mProg = /export const programeazaInCalendar = \(contract: any\): boolean => ([^;\n]+);/.exec(montajTsx);
+let progTel = null; try { progTel = mProg ? new Function('contract', 'return ' + mProg[1] + ';') : null; } catch (e) { progTel = null; }
+const subLucrariWeb = (contract) => {
+  const box = { innerHTML: '' };
+  const W = { _raxMont: { companyId: 5, lucrari: [], parteneri: [], edit: null }, _raxCtr: contract === undefined ? null : { contract: contract },
+    document: { getElementById: () => box }, esc: (x) => String(x == null ? '' : x), _zile: () => '01.01.2027', _lei: (v) => String(v),
+    MONTAJ_STARI: {}, window: {} };
+  new Function(...Object.keys(W), fnRandeaza + '\nwindow.raxMontajRandeaza();')(...Object.values(W));
+  return /raxDrumMontaj\(5\)"><i class="fas fa-calendar-plus"><\/i> Programează în calendar/.test(box.innerHTML) ? 'calendar'
+    : /raxMontajEdit\(0\)"><i class="fas fa-plus"><\/i> Lucrare de montaj/.test(box.innerHTML) ? 'formular' : '? ' + box.innerHTML;
+};
+T('găsesc și pot rula raxMontajRandeaza (web) și programeazaInCalendar (telefon)', !!fnRandeaza && !!progTel);
+if (fnRandeaza && progTel) {
+  const cazuriMontaj = [undefined, null, {}, { status: 'ciorna' }, { status: 'aprobat' }, { status: 'trimis' }, { status: 'activ' }, { status: 'incheiat' }];
+  const dif = [];
+  cazuriMontaj.forEach((k) => {
+    let w; try { w = subLucrariWeb(k); } catch (e) { w = 'eroare web: ' + e.message; }
+    const t = progTel(k) ? 'calendar' : 'formular';
+    if (w !== t) dif.push(J(k) + ' → web ' + w + ', telefon ' + t);
+  });
+  T('sub lucrări, același buton ca pe web, pe fiecare stare: semnat → calendarul, altfel formularul', !dif.length, dif.join(' | '));
+  T('… adică doar contractul în vigoare („activ") trimite în calendar', progTel({ status: 'activ' }) === true && !progTel({ status: 'trimis' }) && !progTel({ status: 'incheiat' }) && !progTel(null));
+}
+T('pe telefon, sub lucrări: „Programează în calendar" (în calendar) sau „Lucrare de montaj" (formularul), din aceeași regulă',
+  /\{programeazaInCalendar\(contract\)\s*\?\s*<button class="ctr-btn pri"[^\n]*onClick=\{\(\) => loc\.route\(rutaCalendarMontaj\(contract\.id\)\)\}><Icon name="calendar" size=\{16\} \/> Programează în calendar<\/button>\s*:\s*<button class="ctr-btn"[^\n]*onClick=\{\(\) => deschide\(null\)\}>[^\n]*'Lucrare de montaj'\}<\/button>\}/.test(montajTsx));
+T('formularul unei lucrări NOI se deschide doar de acolo (nicio altă cale spre el)', (montajTsx.match(/deschide\(null\)/g) || []).length === 1);
+T('„Programează în calendar" e scris la fel ca pe web', html.indexOf('<i class="fas fa-calendar-plus"></i> Programează în calendar</button>') > 0 && montajTsx.indexOf('Programează în calendar</button>') > 0);
+T('„Modifică" pe o lucrare rămâne (formularul, pentru editare), ca pe web', /onClick=\{\(\) => deschide\(m\)\}><Icon name="edit" size=\{15\} \/> Modifică/.test(montajTsx) && /raxMontajEdit\(' \+ m\.id \+ '\)/.test(html));
 
 sect('7b. Dosarul nu pierde ce ai scris în „Datele contractului" (29.09)');
 // „Trimite la semnat" emailează PDF-ul din contractul SALVAT, iar „E semnat" îl încuie: ce era scris și nesalvat

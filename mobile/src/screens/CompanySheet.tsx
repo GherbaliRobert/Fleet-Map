@@ -15,7 +15,7 @@ import { CompanyAbonament } from './CompanyAbonament';
 import { CTR_STARI, CTR_EXPLIC, DOSAR_FEL, dupaIncetare, zile } from '../lib/contracte';
 // Documentele firmei: adresa ferestrei de emis, starea și luna — aceleași ca în Facturare (lib/factura.ts).
 // Întrebarea de dinainte de ✓ și metoda încasării stau tot acolo, scrise o singură dată pe telefon.
-import { lunaText, metodaText, rutaFactura, stareClient, INTREB_PROFORMA, INTREB_FACTURA, OK_PROFORMA, OK_FACTURA } from '../lib/factura';
+import { lunaText, metodaText, rutaFactura, stareClient, trimisaText, INTREB_PROFORMA, INTREB_FACTURA, OK_PROFORMA, OK_FACTURA } from '../lib/factura';
 // „Vezi": hârtia documentului — ACEEAȘI ca în Facturare (nu o a doua, desenată aici).
 import { DocumentFactura } from '../components/DocumentFactura';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
@@ -378,9 +378,12 @@ function Facturi({ o, onReload }: { o: any; onReload: () => void }) {
     setBusy(true);
     try {
       const j: any = await Api.invoiceSetStatus(Number(f.id), 'paid');
-      // Ca pe web: la proformă, și numărul facturii fiscale născute acum (dacă nu vine, fără un loc gol în text).
+      // Ca pe web (raxInvoiceMarkPaid): la proformă, și numărul facturii fiscale născute acum (dacă nu vine, fără un loc
+      // gol în text), plus ce a plecat singur odată cu ea — anunțul clientului, emailul cu PDF-ul, ANAF —, cu vorbele
+      // serverului (`trimisa`), prin trimisaText din lib/factura.ts (legat de _invTrimisaText din pagină).
       const nr = (j && j.invoice && j.invoice.full_number) || '';
-      showToast(pf ? (nr ? 'Proformă încasată → factura ' + nr + ' ✓' : 'Proformă încasată ✓') : 'Factură plătită ✓');
+      const dinProforma = (nr ? 'Proformă încasată → factura ' + nr : 'Proformă încasată') + trimisaText(j && j.trimisa, false) + ' ✓';
+      showToast(pf ? dinProforma : 'Factură plătită ✓');
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(false); setIntreb(null); }
     // Și după o eroare: poate a încasat-o altcineva între timp — lista arată ce e acum pe server.

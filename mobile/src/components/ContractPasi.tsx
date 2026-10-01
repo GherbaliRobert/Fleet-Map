@@ -14,14 +14,17 @@
 //     „Descarcă") și trecerea pe „trimis" le face serverul. Fără SMTP butonul NU minte: devine „Am trimis-o".
 //   • „Completează" scrie pe PUT /api/companies/:id/dosar, care schimbă DOAR cheile primite — și trimitem doar ce
 //     s-a schimbat. NU pe PUT /api/companies/:id, care golește ce primește gol.
+//   • Lotul 5 (30.09, ca pe web): „E semnat" pe un contract cu aparate vândute deschide proforma lor, gata pregătită
+//     (raxProformaLaSemnare); „Programează montajul" duce în calendarul de montaj (raxDrumMontaj), nu în formularul
+//     lucrării.
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { LIPSA_ET, LIPSA_FIRMA, RUTA_NEASIGNATE, azi, inputZi, zile } from '../lib/contracte';
-import { rutaDosar } from '../lib/companii';
 import { rutaFactura } from '../lib/factura';
+import { rutaCalendarMontaj } from '../lib/calendarMontaj';
 import { ziLaPranz } from '../lib/montajSectiune';
 import { AlegeFisier, type FisierAles } from './ContractUi';
 import { Confirma } from './FlotaUi';
@@ -30,14 +33,38 @@ import '../screens/admin.css';
 import '../screens/detail.css';
 import '../screens/contracte.css';
 
-// Montajul: dosarul firmei, cu formularul unei lucrări noi DESCHIS (web: raxDrumMontaj → raxMontajEdit(0)).
-// Dosarul citește `?lucrare=noua`. Adresa dosarului rămâne una singură (rutaDosar).
-export const rutaMontajNou = (companyId: any) => rutaDosar(companyId) + '?lucrare=noua';
+// Montajul (Alin, 30.09): se programează DOAR în calendar (Business → Montaj), deschis pe contractul clientului — web:
+// raxDrumMontaj. Acolo stau regulile lui: câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată" cu mai
+// puține mașini care întoarce restul. Adresa e UNA, a calendarului (rutaCalendarMontaj, lib/calendarMontaj.ts), aceeași
+// și pentru „Programează în calendar" din dosar. Formularul lucrării din dosar rămâne pentru editare și, cât contractul
+// e nesemnat, pentru Anexa nr. 2 (ContractMontaj).
 // „Emite prima factură" (29.09): „Generează factură" din Facturare, cu firma aleasă și pe factura UNICĂ, nu pe
 // abonamentul lunii — web: raxDrumFactura → raxOpenGenInvoice(companyId, 'unica'). Abonamentul pleacă singur,
 // luna următoare, pe zile de la montaj. Factură fiscală sau proformă se alege în fereastra de emis.
 // Adresa o face `rutaFactura` (lib/factura.ts) — aceeași și pentru butoanele din fila Facturi a fișei firmei.
 export const rutaPrimaFactura = (companyId: any) => rutaFactura(companyId, 'unica');
+
+// ── Proforma aparatelor, gata pregătită la „E semnat" (Alin, 30.09 — web: raxProformaLaSemnare) ──
+// Contractul cu aparate VÂNDUTE cere avansul pe proformă (cap. IV). După „E semnat" se deschide „Generează factură" pe
+// proformă, cu aparatele din contract deja puse: omul se uită la hârtie și apasă „Emite proforma". NU se emite nimic
+// singur. La închiriere nu există avans (aparatele rămân ale noastre), deci nu apare.
+// Aceeași regulă ca pe web (_areAparateVandute): aparatele vândute stau în Anexa nr. 2 (`montaj.echipamente.items`),
+// care poate veni din bază și ca text. Legate printr-o probă care le rulează pe amândouă.
+export function areAparateVandute(c: any): boolean {
+  let m = c && c.montaj;
+  if (typeof m === 'string') { try { m = JSON.parse(m); } catch (e) { m = null; } }
+  return !!(m && m.echipamente && (m.echipamente.items || []).length);
+}
+export const rutaProformaLaSemnare = (companyId: any) => rutaFactura(companyId, 'unica', { tip: 'proforma', aparate: true });
+// Se pleacă din foaia „E semnat" sau din întrebarea „Contractul e semnat?", amândouă păzite la „înapoi"
+// (lib/inapoiFoaie.ts): cât stau deschise, ultima intrare din istoric e a LOR (`raFoaie`), cu adresa ecranului. Adresa
+// proformei o ÎNLOCUIEȘTE — altfel „înapoi" din Facturare ar ateriza pe intrarea foii (același ecran, un „înapoi" care
+// nu face nimic). Dacă foaia n-a apucat să-și pună intrarea, adresa se adaugă, ca de obicei. Ecranul de aici se
+// reîncarcă singur la întoarcere.
+export function spreProforma(loc: { route: (url: string, replace?: boolean) => void }, companyId: any) {
+  const peIntrareaFoii = !!(history.state && (history.state as any).raFoaie);
+  loc.route(rutaProformaLaSemnare(companyId), peIntrareaFoii);
+}
 // Fără SMTP pe server, „Trimite la semnat" ar minți; pe web e scris pe butonul „Am trimis-o", la trecerea mouse-ului.
 const FARA_EMAIL = 'Emailul nu e configurat pe server: descarcă contractul și trimite-l tu.';
 
@@ -65,8 +92,6 @@ export function usePasiContract(o: {
   laSchimbat: () => void;
   // Dosarul: „Aprobă contractul" salvează ÎNTÂI formularul, apoi trece pe „aprobat" (web: raxCtrTreci('aprobat')).
   aproba?: (c: any) => void;
-  // Dosarul: „Programează montajul" deschide formularul lucrării pe loc; altfel se merge în dosar, cu el deschis.
-  montajNou?: (c: any) => void;
   // Dosarul: înainte de „Trimite la semnat", „Am trimis-o" și „E semnat" — pași care lucrează pe contractul SALVAT —
   // salvează ce e scris în formular. Întoarce contractul proaspăt (pentru foaia pasului) sau null dacă salvarea n-a
   // mers; atunci foaia nu se deschide, iar mesajul serverului e deja pe ecran.
@@ -135,6 +160,14 @@ export function usePasiContract(o: {
     try { r = await o.salveazaIntai(c); } catch { r = null; } finally { setBusy(false); }
     if (r) setDlg({ fel, c: r });
   }
+  // După „E semnat" (web: raxCtreSemnat): cu aparate VÂNDUTE în contract se deschide proforma avansului, gata
+  // pregătită (spreProforma). Altfel — fără aparate vândute, cu aparatele închiriate, sau când serverul n-a primit
+  // semnarea —, foaia se închide și ecranul se reîncarcă, ca până acum.
+  function dupaSemnare(c: any, semnat: boolean) {
+    if (semnat && areAparateVandute(c)) { spreProforma(loc, c.company_id); setDlg(null); return; }
+    setDlg(null);
+    o.laSchimbat();
+  }
   function puneData(c: any, v?: string) {
     const ms = ziLaPranz(String(v || ''));
     if (ms == null) { showToast('Alege ziua în care s-a semnat.', true); return; }
@@ -167,7 +200,8 @@ export function usePasiContract(o: {
       if (c.status === 'aprobat') return trimiteSauAmTrimis(c);
     }
     if (cheie === 'semnat' && c.status === 'trimis') return buton('fileSignature', 'E semnat', () => deschide('semnat', c));
-    if (cheie === 'montaj') return buton('wrench', 'Programează montajul', () => (o.montajNou ? o.montajNou(c) : loc.route(rutaMontajNou(c.company_id))));
+    // Pasul „Montajul" e cel de acum doar după semnare (drumul îl dă serverul): se programează în calendar, ca pe web.
+    if (cheie === 'montaj') return buton('wrench', 'Programează montajul', () => loc.route(rutaCalendarMontaj(c.id)));
     if (cheie === 'aparate') return buton('cpu', 'Adoptă aparatele', () => loc.route(RUTA_NEASIGNATE));
     if (cheie === 'factura') return buton('report', 'Emite prima factură', () => loc.route(rutaPrimaFactura(c.company_id)));
     return null;
@@ -261,7 +295,7 @@ export function usePasiContract(o: {
           field={{ label: 'Data semnării', type: 'date', value: azi() }}
           onOk={(v) => puneData(dlg.c, v)} onCancel={inchideDlg} />
       )}
-      {dlg.fel === 'semnat' && <SemnatFoaie c={dlg.c} onInchide={() => setDlg(null)} onGata={() => { setDlg(null); o.laSchimbat(); }} />}
+      {dlg.fel === 'semnat' && <SemnatFoaie c={dlg.c} onInchide={() => setDlg(null)} onGata={(semnat) => dupaSemnare(dlg.c, semnat)} />}
       {dlg.fel === 'completeaza' && <CompleteazaFirma c={dlg.c} onInchide={() => setDlg(null)} onSalvat={() => { setDlg(null); o.laSchimbat(); }} />}
     </>
   );
@@ -273,7 +307,8 @@ export function usePasiContract(o: {
 // apoi contractul trece în vigoare. Semnat nu se mai întoarce — de aceea întreabă întâi. Data se scrie la
 // prânz, ca pe web. Ziua propusă e cea deja scrisă în contract (câmpul „Data semnării" din dosar), și abia fără
 // ea ziua de azi — ca butonul „Contractul e semnat de amândoi" din dosar. Altfel foaia rescria data salvată cu azi.
-function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; onGata: () => void }) {
+// `onGata(semnat)`: semnat = serverul a trecut contractul în vigoare (abia atunci poate urma proforma aparatelor).
+function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; onGata: (semnat: boolean) => void }) {
   const [ziS, setZi] = useState(() => inputZi(c.signed_at) || azi());
   const [busy, setBusy] = useState(false);
   function inchide(): boolean { if (busy) return false; onInchide(); return true; }
@@ -285,14 +320,16 @@ function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; 
     try {
       await Api.uploadContractFile(Number(c.id), { care: 'contract', name: f.name, b64: f.b64 });
     } catch (e: any) { setBusy(false); showToast(e?.message || 'Eroare', true); return; }
+    let semnat = false;
     try {
       await Api.updateContract(Number(c.id), { status: 'activ', signed_at: ziLaPranz(ziS) || Date.now() });
+      semnat = true;
       showToast('Contract semnat și în dosar ✓');
     } catch (e: any) {
       showToast(e?.message || 'Eroare', true); // fișierul a urcat: ecranul se reîncarcă oricum
     }
     setBusy(false);
-    onGata();
+    onGata(semnat);
   }
 
   return (
@@ -339,8 +376,11 @@ function CompleteazaFirma({ c, onInchide, onSalvat }: { c: any; onInchide: () =>
   const [msg, setMsg] = useState<{ t: string; fel: '' | 'ok' | 'rau'; avert?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [anafBusy, setAnafBusy] = useState(false);
+  // Plătitoare de TVA, cum a răspuns ANAF aici (null = n-am întrebat) — ca pe web (_dzTva). Se salvează odată cu restul:
+  // hotărăște „RO" în fața CUI-ului pe factură și codul de TVA din e-Factura.
+  const [tva, setTva] = useState<boolean | null>(null);
   const sf = (k: keyof Dz, v: string) => setF((x) => ({ ...x, [k]: v }));
-  const schimbat = JSON.stringify(f) !== JSON.stringify(start);
+  const schimbat = JSON.stringify(f) !== JSON.stringify(start) || tva !== null;
   function inchide(): boolean {
     if (busy) return false;
     if (schimbat && !confirm('Închizi fără să salvezi?\n\nCe ai scris la datele firmei se pierde.')) return false;
@@ -357,7 +397,8 @@ function CompleteazaFirma({ c, onInchide, onSalvat }: { c: any; onInchide: () =>
     try {
       const a: any = await Api.anafFirma(cui);
       setF((x) => ({ ...x, name: a.name || x.name, reg_com: a.reg_com || x.reg_com, address: a.address || x.address, cui: a.cui || x.cui }));
-      setMsg({ t: 'Preluat de la ANAF', fel: 'ok',
+      setTva(!!a.vat_payer);
+      setMsg({ t: 'Preluat de la ANAF' + (a.vat_payer ? ' · plătitoare de TVA' : ' · neplătitoare de TVA'), fel: 'ok',
         avert: a.radiata ? 'firma apare RADIATĂ la ANAF' : a.inactiva ? 'firma e declarată INACTIVĂ' : undefined });
     } catch (e: any) {
       const retea = !e || e.status === 0 || e.status === 408;
@@ -375,6 +416,7 @@ function CompleteazaFirma({ c, onInchide, onSalvat }: { c: any; onInchide: () =>
     if (t(f.address) !== t(start.address)) corp.address = t(f.address);
     if (t(f.email) !== t(start.email)) corp.contact_email = t(f.email);
     if (t(f.rep) !== t(start.rep) || t(f.reprole) !== t(start.reprole)) corp.legal_rep = t(f.rep) ? { name: t(f.rep), role: t(f.reprole) } : null;
+    if (tva === true || tva === false) corp.vat_payer = tva;
     if (!Object.keys(corp).length) { setMsg({ t: 'N-ai schimbat nimic: scrie ce lipsește, apoi „Salvează".', fel: '' }); return; }
     setBusy(true); setMsg(null);
     try {

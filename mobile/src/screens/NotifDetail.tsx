@@ -9,6 +9,7 @@ import './admin.css';
 import './route.css';
 import './flota.css'; // --fl-ok / --fl-warn: verde și chihlimbar citibile și pe tema deschisă
 import { nrDe } from '../lib/numar';
+import { adresaAnunt } from '../lib/push';
 
 // Detaliu eveniment: harta segmentului de drum + poziția + adresa unde s-a întâmplat notificarea.
 const SEV: Record<string, string> = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' };
@@ -44,6 +45,17 @@ export function NotifDetail() {
         if (!x.acknowledged) Api.ackNotification(Number(id)).then(() => refreshUnread()).catch(() => {});
         const cid = x.data && x.data.companyId != null ? x.data.companyId : '';
         loc.route('/admin/contracts' + (cid !== '' ? '/' + cid : ''), true);
+        return;
+      }
+      // „Aparate noi transmit" și „Montaj de facturat" (30.09, doar la noi) → drept la treaba de făcut, ca pe web
+      // (notifAparateNoi / notifMontajDeFacturat): Dispozitive → Neasignate cu aparatele bifate și firma aleasă,
+      // respectiv factura montajului cu lucrările puse. Adresa o face adresaAnunt (lib/push.ts), aceeași pentru listă
+      // și push. Ca la contractul care expiră: detaliul nu se desenează, deci deschiderea îl marchează citit, iar
+      // adresa se înlocuiește, ca „Înapoi" să nu te întoarcă aici.
+      const spre = x ? adresaAnunt(x.type, x.data) : null;
+      if (spre) {
+        if (!x.acknowledged) Api.ackNotification(Number(id)).then(() => refreshUnread()).catch(() => {});
+        loc.route(spre, true);
         return;
       }
       setD(x); setAcked(!!x.acknowledged);

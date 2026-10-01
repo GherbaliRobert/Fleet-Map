@@ -1,7 +1,21 @@
-/* Montaj (fondatori, Business) pe telefon — Parteneri · Contracte cu partenerii · Lucrări. Clase proprii (prefix mj-);
-   restul vine din contracte.css (ctr-), aceleași cartonașe, pastile și butoane ca la contractele clienților.
-   Culorile vin DOAR din tokenurile temei; verdele de text trece prin --ctr-ok (mai închis pe tema deschisă),
-   pentru că verdele aplicației nu se citește ca text mic pe alb. Fontul se moștenește (Nunito). */
+/* Montaj (fondatori, Business) pe telefon — Calendar · Parteneri · Contracte cu partenerii · Lucrări. Clase proprii
+   (prefix mj- / mjc- pentru calendar); restul vine din contracte.css (ctr-), aceleași cartonașe, pastile și butoane ca
+   la contractele clienților. Culorile vin DOAR din tokenurile temei; verdele de text trece prin --ctr-ok (mai închis pe
+   tema deschisă), pentru că verdele aplicației nu se citește ca text mic pe alb. Fontul se moștenește (Nunito). */
+
+/* Culorile calendarului, pe fiecare temă — aceleași ca pe web (.mjc-l.mjc-prog / .mjc-mont, cu perechea lor pe tema
+   deschisă) plus roșul termenului depășit. Măsurate cu proba (text / fundal ≥ 4,5 pe amândouă temele, și pe căsuța
+   de weekend, care e mai închisă): portocaliu = programat / termen curând, verde = montat. */
+:root {
+  --mjc-prog: #fdba74; --mjc-prog-bg: rgba(249, 115, 22, .14); --mjc-prog-bd: rgba(249, 115, 22, .35);
+  --mjc-mont: #86efac; --mjc-mont-bg: rgba(63, 224, 125, .12); --mjc-mont-bd: rgba(63, 224, 125, .30);
+  --mjc-rau: #f87171; --mjc-rau-bg: rgba(239, 68, 68, .14);
+}
+:root[data-theme="light"] {
+  --mjc-prog: #9a3412; --mjc-prog-bg: #fff1e6; --mjc-prog-bd: #fdba74;
+  --mjc-mont: #166534; --mjc-mont-bg: #e8f8ee; --mjc-mont-bd: #86efac;
+  --mjc-rau: #b91c1c; --mjc-rau-bg: #fee2e2;
+}
 
 /* Pastilele de lângă numele partenerului: „inactiv", „contract: …" / „fără contract" */
 .mj-pastile { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
@@ -36,3 +50,69 @@
 /* Suma de pe o lucrare: „Rămâne" bătut în verde (sigur pe ambele teme) */
 /* Cu `.ctr-kv .v` în față: altfel regula din contracte.css (0,2,0) câștiga și „Rămâne" ieșea ca „Ne costă". */
 .ctr-kv .v.mj-rama { color: var(--ctr-ok); font-weight: 800; }
+
+/* Nota de sub „Ne facturează" (fișa partenerului): de ce contează ritmul. --text-secondary pe fundalul foii. */
+.mj-nota { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); margin-top: 2px; }
+/* Bifa „Reia din fișa partenerului…": textul are două-trei rânduri, deci bifa stă sus, lângă primul. */
+.ctr-semn-b.mj-bifa { align-items: flex-start; padding: 10px 11px; font-size: 13.5px; line-height: 1.45; }
+.ctr-semn-b.mj-bifa input { margin-top: 1px; }
+
+/* ── Calendarul montajului (prima filă, 30.09) ─────────────────────────────────────────────────────────────────────
+   Luna, strânsă: 7 coloane care se strâng (minmax(0, 1fr)), fără derulare laterală — la 375px o zi are ~44px. Pe zi,
+   doar câte mașini (ca pe web, la lățime de telefon); clientul stă dedesubt, în lista zilelor cu montaj. */
+.mjc-panou { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px 12px;
+  display: flex; flex-direction: column; gap: 10px; }
+.mjc-bar { display: flex; align-items: center; gap: 6px; }
+.mjc-bar .ctr-btn { margin: 0; }
+.mjc-bar .mjc-sag { flex: 0 0 44px; min-height: 42px; padding: 0; }
+.mjc-luna { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 15.5px; font-weight: 800; color: var(--text-primary); text-align: center; }
+.mjc-spin { width: 14px; height: 14px; border-width: 2px; }
+.mjc-f { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.mjc-f select { flex: 1; min-width: 0; min-height: 42px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 10px; padding: 0 10px; font-size: 14.5px; font-family: inherit; }
+.mjc-f select:focus { outline: none; border-color: var(--accent); }
+.mjc-grila { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.mjc-zs { font-size: 11px; font-weight: 800; color: var(--text-secondary); text-align: center; padding: 0 0 2px; }
+.mjc-zi { min-width: 0; min-height: 56px; padding: 3px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card);
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-family: inherit; color: var(--text-primary);
+  text-align: left; cursor: pointer; overflow: hidden; }
+.mjc-zi.wk { background: var(--bg-dark); }
+.mjc-zi.gol { visibility: hidden; cursor: default; }
+.mjc-zi.azi { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.mjc-zi:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mjc-nr { font-size: 12px; font-weight: 700; line-height: 1.25; color: var(--text-secondary); }
+.mjc-zi.azi .mjc-nr { color: var(--ctr-ok); font-weight: 800; }
+/* Eticheta unei lucrări: cifra = câte mașini; portocaliu programat, verde montat (ca pe web). */
+.mjc-l { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 800;
+  line-height: 1.3; border-radius: 6px; padding: 1px 4px; border: 1px solid transparent; white-space: nowrap; }
+.mjc-l.mjc-prog { color: var(--mjc-prog); background: var(--mjc-prog-bg); border-color: var(--mjc-prog-bd); }
+.mjc-l.mjc-mont { color: var(--mjc-mont); background: var(--mjc-mont-bg); border-color: var(--mjc-mont-bd); }
+.mjc-mai { font-size: 11px; font-weight: 800; color: var(--text-secondary); text-align: center; }
+.mjc-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 12px; color: var(--text-secondary); }
+.mjc-leg .mjc-l { font-weight: 700; }
+
+/* Zilele cu montaj ale lunii: ziua, apoi câte un rând pe lucrare (clientul, mașinile, instalatorul, starea). */
+.mjc-zile { display: flex; flex-direction: column; gap: 10px; }
+.mjc-ziua { display: flex; flex-direction: column; gap: 6px; }
+.mjc-ziua-t { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); margin: 0 2px; }
+.mjc-rand { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 10px 8px 9px; text-align: left;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 11px; color: var(--text-primary); font-family: inherit; }
+.mjc-rand > .mjc-l { flex: 0 0 auto; min-width: 30px; font-size: 13px; padding: 3px 6px; }
+.mjc-rand-t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.mjc-rand-t b { font-weight: 800; }
+.mjc-rand-s { font-size: 12.5px; color: var(--text-secondary); }
+.mjc-rand > svg { flex: 0 0 auto; color: var(--text-muted); }
+
+/* „De programat": termenul, pe culoarea lui (măsurat și pe tema deschisă, unde pastila roșie obișnuită e prea palidă). */
+.ctr-pill.mjc-termen { white-space: normal; }
+.ctr-pill.mjc-termen.warn { color: var(--mjc-prog); background: var(--mjc-prog-bg); }
+.ctr-pill.mjc-termen.bad { color: var(--mjc-rau); background: var(--mjc-rau-bg); }
+.ctr-row-t .ctr-pill.mjc-termen { margin-left: 2px; vertical-align: 1px; }
+.mjc-stoc { color: var(--text-primary); }
+
+/* Foile calendarului */
+.mjc-foaie-t { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.mjc-text { font-size: 14.5px; line-height: 1.5; color: var(--text-primary); overflow-wrap: anywhere; }
+.mjc-text.mic { font-size: 12.5px; color: var(--text-secondary); }
+.mjc-ce { display: block; margin-top: 3px; font-size: 13px; color: var(--text-secondary); }

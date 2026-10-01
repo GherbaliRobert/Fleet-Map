@@ -3,7 +3,7 @@ import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
-import { stareClient, INTREB_PROFORMA, INTREB_FACTURA, rutaPdfFactura, trimisaText } from '../lib/factura';
+import { stareClient, INTREB_PROFORMA, INTREB_FACTURA, rutaPdfFactura, trimisaText, cuiAfisat } from '../lib/factura';
 import { HartieBtns } from './ContractUi';
 import '../screens/billing.css';
 // --fl-ok / --fl-warn (flota.css) și --fd-warn (fondator.css): culorile SCRISULUI, cu pereche pe tema luminoasă.
@@ -68,6 +68,8 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
 
   const inv = plin || inv0;
   const iss = json(inv.issuer) || {}, cl = json(inv.client) || {};
+  // CUI-ul ca pe hârtia serverului (factura_pdf.js): „RO" în față doar la plătitorii de TVA (30.09).
+  const cuiIss = cuiAfisat(iss.cui, iss.vat_payer), cuiCl = cuiAfisat(cl.cui, cl.vat_payer);
   const lines: any[] = plin && Array.isArray(json(plin.lines)) ? json(plin.lines) : [];
   const pf = inv.type === 'proforma';
   const st = privire === 'noi' ? stareNoi(inv) : stareClient(inv);
@@ -115,9 +117,9 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
             {plin ? (
               <>
                 <div class="bill-sec">Furnizor</div>
-                <div class="bill-party"><b>{iss.name || '—'}</b>{iss.cui ? <div>CUI: {iss.cui}</div> : null}{iss.iban ? <div>IBAN: {iss.iban}</div> : null}</div>
+                <div class="bill-party"><b>{iss.name || '—'}</b>{cuiIss ? <div>CUI: {cuiIss}</div> : null}{iss.iban ? <div>IBAN: {iss.iban}</div> : null}</div>
                 <div class="bill-sec">Client</div>
-                <div class="bill-party"><b>{cl.name || inv.company_name || '—'}</b>{cl.cui ? <div>CUI: {cl.cui}</div> : null}</div>
+                <div class="bill-party"><b>{cl.name || inv.company_name || '—'}</b>{cuiCl ? <div>CUI: {cuiCl}</div> : null}</div>
                 <div class="bill-sec">Linii</div>
                 {lines.map((l) => (
                   <div class="bill-kv"><span>{l.desc} ({l.qty} × {money2(l.unitPrice)})</span><b>{money2(l.net)}</b></div>

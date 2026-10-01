@@ -5,6 +5,7 @@ import { showToast } from '../app/store';
 import { Icon, type IconName } from '../components/Icon';
 import { salveazaPostDeLaServer } from '../lib/descarcaPost';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
+import { rutaFisa } from '../lib/companii';
 import './admin.css';
 import './detail.css';
 import './oferte.css';
@@ -233,9 +234,12 @@ export function Offers() {
                   <button class="of-b" disabled={busy === 'pdf-' + o.id} onClick={() => hartia(o)} aria-label="Vezi hârtia">
                     {busy === 'pdf-' + o.id ? <span class="spin" style="width:15px;height:15px;border-width:2px" /> : <Icon name="eye" size={15} />} Vezi hârtia
                   </button>
+                  {/* Un singur nume, cu text (Alin, 30.09 — web: raxOfRenderList): „Deschide dosarul clientului". Prima dată
+                      face firma, contractul și contul clientului din ofertă (Client nou, datele și prețul vin singure); după,
+                      deschide dosarul lui (fișa firmei, fila Contract). */}
                   {dosar
-                    ? <button class="of-b ok" onClick={() => loc.route('/admin/companies/' + o.company_id + '?tab=contract')} aria-label="Deschide dosarul clientului"><Icon name="fileSignature" size={15} /> Dosarul clientului</button>
-                    : devenit ? null : <button class="of-b" onClick={() => loc.route('/admin/client-nou?oferta=' + o.id)} aria-label="Client nou din ofertă"><Icon name="userPlus" size={15} /> Client nou</button>}
+                    ? <button class="of-b pri" onClick={() => loc.route(rutaFisa(o.company_id, 'contract'))}><Icon name="fileSignature" size={15} /> Deschide dosarul clientului</button>
+                    : devenit ? null : <button class="of-b pri" onClick={() => loc.route('/admin/client-nou?oferta=' + o.id)}><Icon name="userPlus" size={15} /> Deschide dosarul clientului</button>}
                   <button class="of-b of-ic" onClick={() => loc.route('/admin/offers/' + o.id)} aria-label="Deschide și modifică oferta"><Icon name="edit" size={16} /></button>
                   <button class="of-b of-ic rau" onClick={() => del(o)} aria-label="Șterge oferta"><Icon name="trash" size={16} /></button>
                 </div>

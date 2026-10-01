@@ -6,6 +6,8 @@
 //     telefonul nu-și mai compune singur „raport_…" (regula de brand din CLAUDE.md).
 //   • Cererea trece prin stratul nativ, cu tokenul (un fetch din pagină e blocat — serverul nu trimite CORS).
 //   • Eroarea serverului ajunge pe ecran cu vorbele lui.
+//   • `deschide` = „Vezi" (ca `salveazaDeLaServer`): foaia telefonului se deschide ca s-o citești (vizualizatorul de
+//     PDF-uri) — ex. „Previzualizează" factura înainte de emitere (lotul 5); fără el = „Descarcă" / trimite.
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { API_BASE, getAuthToken } from '../api/client';
 import { numeDinAntet } from './export';
@@ -25,7 +27,7 @@ function eroareServer(data: any, status: number): string {
   return 'Eroare ' + status;
 }
 
-export async function salveazaPostDeLaServer(path: string, body: any, numeImplicit: string): Promise<string> {
+export async function salveazaPostDeLaServer(path: string, body: any, numeImplicit: string, opt: { deschide?: boolean } = {}): Promise<string> {
   const url = API_BASE + path;
   const token = getAuthToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -45,7 +47,7 @@ export async function salveazaPostDeLaServer(path: string, body: any, numeImplic
     try {
       await Filesystem.writeFile({ path: cale, data: b64, directory: Directory.Cache });
       const { uri } = await Filesystem.getUri({ path: cale, directory: Directory.Cache });
-      await Share.share({ title: nume, dialogTitle: 'Salvează sau trimite', files: [uri] } as any);
+      await Share.share({ title: nume, dialogTitle: opt.deschide ? 'Deschide cu…' : 'Salvează sau trimite', files: [uri] } as any);
     } catch (e: any) {
       if (/cancel/i.test(String(e?.message || ''))) return nume; // omul a închis foaia — nu e o eroare
       throw new Error(e?.message || 'Nu am putut salva fișierul pe acest telefon.');
@@ -62,9 +64,12 @@ export async function salveazaPostDeLaServer(path: string, body: any, numeImplic
   r.headers.forEach((v, k) => { antete[k] = v; });
   const nume = numeDinAntet(antete, numeImplicit);
   const u = URL.createObjectURL(await r.blob());
-  const a = document.createElement('a');
-  a.href = u; a.download = nume;
-  document.body.appendChild(a); a.click(); a.remove();
+  if (opt.deschide) window.open(u, '_blank');
+  else {
+    const a = document.createElement('a');
+    a.href = u; a.download = nume;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
   setTimeout(() => { try { URL.revokeObjectURL(u); } catch { /* */ } }, 60000);
   return nume;
 }
