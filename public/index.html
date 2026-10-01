@@ -22586,6 +22586,14 @@ const pozitii = await r.json();</code></pre>
       facturat_de_partener: 'partenerul ne-a facturat', facturat_clientului: 'facturat clientului'
     };
     var _raxMont = { companyId: null, lucrari: [], parteneri: [], edit: null };
+    // Pe ce document al clientului stă lucrarea (01.10, punctul 19): factura noastră sau o proformă neanulată. Numerele
+    // vin de la server; o lucrare facturată își păstrează starea, iar una de pe un document nu se șterge.
+    function _raxMontPeDoc(m) { return !!(m && (m.factura_client != null || m.proforma_client_nr)); }
+    function _raxMontDoc(m) {
+      if (m && m.factura_client_nr) return ' · pe factura ' + esc(m.factura_client_nr);
+      if (m && m.proforma_client_nr && m.factura_client == null) return ' · pe proforma ' + esc(m.proforma_client_nr) + ' (se facturează la încasare)';
+      return '';
+    }
     window.raxMontajIncarca = async function (companyId) {
       _raxMont.companyId = companyId;
       try {
@@ -22612,9 +22620,10 @@ const pozitii = await r.json();</code></pre>
             (m.data_lucrare ? _zile(m.data_lucrare) : 'fără dată') + ' · ' + _lei(m.total_client) + ' de la client</strong>' +
             '<span class="raco-row-s">' + (m.partener_nume ? 'executat de ' + esc(m.partener_nume) + ' · ne costă ' + _lei(m.total_partener) : 'fără partener ales') +
             ' · <b style="color:var(--accent)">marjă ' + _lei(s.marja) + (s.marjaProc != null ? ' (' + s.marjaProc + '%)' : '') + '</b>' +
-            ' · ' + esc(MONTAJ_STARI[m.status] || m.status) + (m.factura_partener ? ' · factura lui: ' + esc(m.factura_partener) : '') + '</span></span>' +
+            ' · ' + esc(MONTAJ_STARI[m.status] || m.status) + _raxMontDoc(m) + (m.factura_partener ? ' · factura lui: ' + esc(m.factura_partener) : '') + '</span></span>' +
             '<button class="rax-btn" onclick="raxMontajEdit(' + m.id + ')"><i class="fas fa-pen"></i></button>' +
-            '<button class="rax-btn" onclick="raxMontajSterge(' + m.id + ')"><i class="fas fa-trash"></i></button></div>';
+            // Una aflată pe un document al clientului nu se șterge (serverul refuză): butonul nici nu apare.
+            (_raxMontPeDoc(m) ? '' : '<button class="rax-btn" onclick="raxMontajSterge(' + m.id + ')"><i class="fas fa-trash"></i></button>') + '</div>';
         }).join('');
         var tc = _raxMont.lucrari.reduce(function (a, m) { return a + Number(m.total_client || 0); }, 0);
         var tp = _raxMont.lucrari.reduce(function (a, m) { return a + Number(m.total_partener || 0); }, 0);
@@ -22665,10 +22674,14 @@ const pozitii = await r.json();</code></pre>
           _f('Data lucrării', 'mo-data', e.data_lucrare ? _inputZi(e.data_lucrare) : '', '', 'date') +
         '</div>' +
         '<div class="raco-2">' +
-          '<label class="raco-f"><span>Unde e lucrarea</span><select class="rax-field" id="mo-stare">' +
+          // Facturată clientului = starea nu se mai schimbă de aici (serverul refuză); ce ne-a facturat partenerul se
+          // scrie alături, în câmpul facturii lui. O factură anulată o redeschide singură.
+          '<label class="raco-f"><span>Unde e lucrarea</span><select class="rax-field" id="mo-stare"' + (e.factura_client != null ? ' disabled' : '') + '>' +
             Object.keys(MONTAJ_STARI).map(function (k) {
               return '<option value="' + k + '"' + (e.status === k ? ' selected' : '') + '>' + MONTAJ_STARI[k] + '</option>';
-            }).join('') + '</select></label>' +
+            }).join('') + '</select>' +
+            (e.factura_client != null ? '<em class="raco-f-nota">Facturată clientului' + (e.factura_client_nr ? ' pe ' + esc(e.factura_client_nr) : '') + ': starea rămâne așa. Factura partenerului se scrie alături.</em>' : '') +
+          '</label>' +
           _f('Nr. facturii de la partener', 'mo-fact', e.factura_partener, 'ex. X-2026-118') +
         '</div>' +
         '<div class="raco-mont-cap"><span>Lucrare</span><span>Cant.</span><span>Preț client</span><span>Cost partener</span></div>' +
@@ -26632,7 +26645,11 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'paid' }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
-        if (window.raxToast) raxToast(proforma ? ('Proformă încasată → factura ' + ((j.invoice && j.invoice.full_number) || '') + _invTrimisaText(j.trimisa, false) + ' ✓') : 'Factură plătită ✓', 'success');
+        // `already`: altcineva (alt ecran, telefonul) a apăsat întâi — serverul NU face a doua factură (01.10, punctul 18).
+        if (window.raxToast) raxToast(proforma
+          ? (j.already ? 'Proforma era deja încasată' + (j.invoice && j.invoice.full_number ? ' → factura ' + j.invoice.full_number : '') + ' ✓'
+            : 'Proformă încasată → factura ' + ((j.invoice && j.invoice.full_number) || '') + (j.montajeFacturate ? ' · lucrările de montaj trec pe „facturat clientului"' : '') + _invTrimisaText(j.trimisa, false) + ' ✓')
+          : 'Factură plătită ✓', 'success');
         raxLoadBilling();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
@@ -26643,7 +26660,7 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'canceled' }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
-        if (window.raxToast) raxToast('Document anulat', 'success');
+        if (window.raxToast) raxToast('Document anulat' + (j.montajeEliberate ? ' · ' + (j.montajeEliberate === 1 ? 'lucrarea de montaj de pe el se poate' : j.montajeEliberate + ' lucrări de montaj de pe el se pot') + ' factura iar' : ''), 'success');
         raxLoadInvoices();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
@@ -26874,7 +26891,8 @@ const pozitii = await r.json();</code></pre>
         if (!r.ok || j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error || 'Eroare') + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> ' + eticheta; } return; }
         document.getElementById('rax-geninv-overlay').classList.remove('open');
         var nr = (j.invoice && j.invoice.full_number) || '';
-        if (window.raxToast) raxToast((body.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (j.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + _invTrimisaText(j.trimisa, body.tip === 'proforma') + ' ✓', 'success');
+        if (window.raxToast) raxToast((body.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (j.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') +
+          (j.montajePeProforma ? ' · lucrările de montaj trec pe „facturat clientului" la încasare' : '') + _invTrimisaText(j.trimisa, body.tip === 'proforma') + ' ✓', 'success');
         raxLoadBilling();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
         // factura se deschide din listă (butonul 🖨) — window.open imediat după emitere e blocat ca popup

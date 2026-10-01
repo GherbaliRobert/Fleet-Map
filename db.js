@@ -1080,6 +1080,10 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
+    // Lucrarea pusă pe o PROFORMĂ încă neîncasată (01.10, punctul 19 din verificarea lui Robert): cât proforma e
+    // deschisă, lucrarea nu se mai propune pe alt document; la „Încasată" trece pe factura fiscală (`factura_client`).
+    // O proformă anulată o eliberează singură (se verifică starea proformei, nu se șterge nimic aici).
+    await client.query('ALTER TABLE montaje ADD COLUMN IF NOT EXISTS proforma_client INTEGER');
     // ─── Montaj ca secțiune a ei (24.09): partenerii au contract cu noi, ca și clienții ─────────
     // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri și semnăm contracte fix
     // la fel ca la clienți". Pentru hârtie trebuie datele juridice ale partenerului — ca la o firmă client.
@@ -1823,6 +1827,57 @@ async function payInvoiceAtomic(invoiceId, payment, invoiceFields) {
   } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
   finally { client.release(); }
 }
+// „Încasată" pe o proformă, DINTR-O BUCATĂ (01.10, punctul 18 din verificarea lui Robert). Erau pași separați:
+// două apăsări în aceeași secundă (web + telefon) făceau DOUĂ facturi fiscale — și, de pe 30.09, amândouă plecau
+// singure la client și la ANAF —, iar o eroare la mijloc lăsa o factură fiscală neplătită, care pornea neplata.
+// Acum, într-o singură tranzacție: întâi proforma se REVENDICĂ (trece pe „încasată" doar dacă nu era deja), apoi
+// numărul din seria fiscală, plata, factura fiscală (plătită), legătura proformă ↔ factură și lucrările de montaj de
+// pe proformă (trec pe „facturat clientului", pe factura nouă). A doua apăsare așteaptă rândul proformei, îl găsește
+// încasat și nu mai face nimic (`{ deja: true }`). O eroare oriunde întoarce TOT, inclusiv numărul luat.
+// `o` = { series, iss, client, method, createdBy } — fotografiile emitentului și ale clientului vin de la server.
+async function incaseazaProforma(proformaId, o) {
+  const client = await pool.connect();
+  const now = Date.now();
+  try {
+    await client.query('BEGIN');
+    const pr = await client.query(
+      `UPDATE invoices SET status = 'paid', paid_at = $2, updated_at = $2
+        WHERE id = $1 AND type = 'proforma' AND factura_id IS NULL
+          AND status IS DISTINCT FROM 'paid' AND status IS DISTINCT FROM 'canceled' RETURNING *`, [proformaId, now]);
+    const pf = pr.rows[0];
+    if (!pf) { await client.query('ROLLBACK'); return { deja: true }; }
+    const series = String(o.series || 'RAT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'RAT';
+    const year = new Date(now).getFullYear();
+    const nr = await client.query(
+      `INSERT INTO invoice_counters (series, year, last_number) VALUES ($1,$2,1)
+       ON CONFLICT (series, year) DO UPDATE SET last_number = invoice_counters.last_number + 1 RETURNING last_number`, [series, year]);
+    const number = nr.rows[0].last_number;
+    const full = series + '-' + year + '-' + String(number).padStart(5, '0');
+    const total = Number(pf.total) || 0;
+    const pay = (await client.query(
+      `INSERT INTO payments (company_id, amount_ron, period_start, period_end, method, note, paid_at, created_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$7) RETURNING *`,
+      [pf.company_id, total || null, pf.period_start || null, pf.period_end || null, o.method || 'transfer',
+        'Factură ' + full + ' (proforma ' + (pf.full_number || '') + ')', now, o.createdBy || null])).rows[0];
+    const linii = typeof pf.lines === 'string' ? pf.lines : JSON.stringify(pf.lines || []);
+    const f = (await client.query(
+      `INSERT INTO invoices (company_id, series, number, year, full_number, type, status, issue_date, due_date, period_start, period_end,
+         currency, subtotal, vat_amount, total, lines, issuer, client, note, created_by, created_at, updated_at, fel, luna, din_proforma,
+         paid_at, payment_id)
+       VALUES ($1,$2,$3,$4,$5,'invoice','paid',$6,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$6,$6,'unica',NULL,$18,$6,$19) RETURNING *`,
+      [pf.company_id, series, number, year, full, now, pf.period_start || null, pf.period_end || null, pf.currency || 'RON',
+        _r2(pf.subtotal), _r2(pf.vat_amount), _r2(pf.total), linii,
+        o.iss ? JSON.stringify(o.iss) : null, o.client ? JSON.stringify(o.client) : null,
+        'Emisă la încasarea proformei ' + (pf.full_number || ''), o.createdBy || null, pf.id, pay.id])).rows[0];
+    const leg = await client.query('UPDATE invoices SET factura_id = $2 WHERE id = $1 RETURNING *', [pf.id, f.id]);
+    const mo = await client.query(
+      `UPDATE montaje SET factura_client = $2, status = 'facturat_clientului', updated_at = $3
+        WHERE proforma_client = $1 AND factura_client IS NULL RETURNING id`, [pf.id, f.id, now]);
+    await client.query('COMMIT');
+    return { proforma: leg.rows[0] || pf, invoice: f, payment: pay, montaje: (mo.rows || []).length };
+  } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
+  finally { client.release(); }
+}
 
 // ─── Control costuri (platform_costs) ───
 async function listPlatformCosts(opts) {
@@ -2361,7 +2416,7 @@ async function lucrariMontateNefacturate() {
     `SELECT m.id, m.company_id, m.partener_id, COALESCE(m.data_lucrare, m.updated_at, m.created_at) AS data_lucrare, m.items,
             m.total_client, m.status, co.name AS company_name, p.name AS partener_nume, p.ritm_facturare
        FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
-      WHERE m.status IN ('executat', 'facturat_de_partener') ORDER BY m.company_id, m.data_lucrare`);
+      WHERE ${_MONTAJ_LIBER} ORDER BY m.company_id, m.data_lucrare`);
   return r.rows;
 }
 
@@ -2389,19 +2444,37 @@ async function firmeCuContractIncheiat() {
   return r.rows.map(function (x) { return Number(x.company_id); });
 }
 
-// Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat).
+// O lucrare e LIBERĂ de facturat clientului când e montată, nu e pe nicio factură a noastră și nu stă pe o proformă
+// neanulată (01.10, punctul 19 din verificarea lui Robert). Până atunci „facturat" se ținea DOAR în stare: proforma nu
+// marca nimic, iar „partenerul ne-a facturat" o redeschidea — și „Montaj de facturat" o propunea a doua oară.
+// UN singur loc pentru regula asta: ciorna facturii unice, „Montaj de facturat" (și anunțul lui), verificarea de la
+// emitere, marcarea și rezervarea pe proformă. (Alias-ul lucrării trebuie să fie `m`.)
+const _MONTAJ_LIBER = `m.status IN ('executat', 'facturat_de_partener') AND m.factura_client IS NULL
+  AND NOT EXISTS (SELECT 1 FROM invoices _pf WHERE _pf.id = m.proforma_client AND _pf.status IS DISTINCT FROM 'canceled')`;
+// Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat) și documentul
+// clientului pe care stau (factura noastră / proforma neanulată), ca ecranul să poată spune „pe RAT-2027-00012".
+const _MONTAJ_SELECT = `SELECT m.*, p.name AS partener_nume, fc.full_number AS factura_client_nr,
+         pfc.full_number AS proforma_client_nr, (${_MONTAJ_LIBER}) AS liber_de_facturat
+    FROM montaje m
+    LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+    LEFT JOIN invoices fc ON fc.id = m.factura_client
+    LEFT JOIN invoices pfc ON pfc.id = m.proforma_client AND pfc.status IS DISTINCT FROM 'canceled'`;
 async function listMontaje(companyId) {
-  const r = await pool.query(
-    `SELECT m.*, p.name AS partener_nume FROM montaje m
-       LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
-      WHERE m.company_id = $1 ORDER BY m.created_at DESC`, [companyId]);
+  const r = await pool.query(_MONTAJ_SELECT + ' WHERE m.company_id = $1 ORDER BY m.created_at DESC', [companyId]);
   return r.rows;
 }
 async function getMontaj(id) {
-  const r = await pool.query(
-    `SELECT m.*, p.name AS partener_nume FROM montaje m
-       LEFT JOIN montaj_parteneri p ON p.id = m.partener_id WHERE m.id = $1`, [id]);
+  const r = await pool.query(_MONTAJ_SELECT + ' WHERE m.id = $1', [id]);
   return r.rows[0] || null;
+}
+// Dintre lucrările cerute pe un document nou, cele care NU mai sunt libere (deja pe o factură sau pe o proformă
+// neanulată) — cu numărul documentului, ca refuzul să-l spună pe nume.
+async function montajeNelibere(companyId, ids) {
+  const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
+  if (!lista.length) return [];
+  const r = await pool.query(_MONTAJ_SELECT + ` WHERE m.company_id = $1 AND m.id = ANY($2::int[])
+      AND m.status IN ('executat', 'facturat_de_partener', 'facturat_clientului') AND NOT (${_MONTAJ_LIBER})`, [companyId, lista]);
+  return r.rows;
 }
 async function upsertMontaj(m) {
   const now = Date.now();
@@ -2425,16 +2498,36 @@ async function upsertMontaj(m) {
   return getMontaj(r.rows[0].id);
 }
 async function deleteMontaj(id) { await pool.query('DELETE FROM montaje WHERE id = $1', [id]); return { ok: true }; }
-// Lucrările puse pe o factură FISCALĂ a clientului trec pe „facturat clientului" — ca aceeași lucrare să nu
-// mai fie propusă pe o a doua factură. Doar cele executate (sau deja facturate nouă de partener).
-async function marcheazaMontajeFacturate(companyId, ids) {
+// Lucrările puse pe o factură FISCALĂ a clientului trec pe „facturat clientului" și țin minte factura
+// (`factura_client`) — ca aceeași lucrare să nu mai fie propusă pe o a doua factură. Doar cele libere.
+async function marcheazaMontajeFacturate(companyId, ids, facturaId) {
   const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
   if (!lista.length) return 0;
   const r = await pool.query(
-    `UPDATE montaje SET status = 'facturat_clientului', updated_at = $3
-      WHERE company_id = $1 AND id = ANY($2::int[]) AND status IN ('executat', 'facturat_de_partener') RETURNING id`,
-    [companyId, lista, Date.now()]);
+    `UPDATE montaje m SET status = 'facturat_clientului', factura_client = $4, updated_at = $3
+      WHERE m.company_id = $1 AND m.id = ANY($2::int[]) AND ${_MONTAJ_LIBER} RETURNING m.id`,
+    [companyId, lista, Date.now(), facturaId == null ? null : Number(facturaId)]);
   return (r.rows || []).length;   // `rowCount` lipsește în PGlite — numărăm rândurile întoarse
+}
+// Lucrările puse pe o PROFORMĂ: rămân în starea lor (montajul e făcut, banii nu-s încă), dar nu se mai propun pe alt
+// document cât proforma nu e anulată. La „Încasată" trec pe factura fiscală (`incaseazaProforma`).
+async function rezervaMontajePeProforma(companyId, ids, proformaId) {
+  const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
+  if (!lista.length) return 0;
+  const r = await pool.query(
+    `UPDATE montaje m SET proforma_client = $4, updated_at = $3
+      WHERE m.company_id = $1 AND m.id = ANY($2::int[]) AND ${_MONTAJ_LIBER} RETURNING m.id`,
+    [companyId, lista, Date.now(), Number(proformaId)]);
+  return (r.rows || []).length;
+}
+// O factură ANULATĂ (deci neplătită și neajunsă la ANAF) își eliberează lucrările: se întorc la starea de dinainte
+// („partenerul ne-a facturat" dacă are scris numărul facturii lui, altfel „executat") și se pot factura iar.
+async function elibereazaMontajeleFacturii(facturaId) {
+  const r = await pool.query(
+    `UPDATE montaje SET factura_client = NULL, updated_at = $2,
+            status = CASE WHEN COALESCE(factura_partener, '') <> '' THEN 'facturat_de_partener' ELSE 'executat' END
+      WHERE factura_client = $1 RETURNING id`, [Number(facturaId), Date.now()]);
+  return (r.rows || []).length;
 }
 // Calendarul de montaj (30.09): lucrările cu zi într-un interval, cu firma și instalatorul lângă.
 async function lucrariMontajIntre(de, pana) {
@@ -5104,7 +5197,8 @@ module.exports = {
   getAiUsageByMonth, getInvoicesSince, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
   recordPayment, getPayments, getAllPayments,
-  nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
+  nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic, incaseazaProforma,
+  montajeNelibere, rezervaMontajePeProforma, elibereazaMontajeleFacturii,
   abonamentLuna, pornesteAbonamentul, setAbonamentDeLa, migreazaPornireaAbonamentelor,
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,

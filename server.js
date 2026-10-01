@@ -5740,13 +5740,24 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
     const rd = montaj.randuri(b.items);
     if (!rd.length) return res.status(400).json({ error: 'Nicio linie de montaj — scrie măcar o lucrare cu bucăți.' });
     const s = montaj.calc(rd);
+    const idEx = b.id ? parseInt(b.id, 10) : null;
+    const ex = idEx ? await db.getMontaj(idEx) : null;
+    if (idEx && (!ex || Number(ex.company_id) !== id)) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    const stare = montaj.STARI.indexOf(b.status) >= 0 ? b.status : (ex ? ex.status : 'de_programat');
+    // O lucrare facturată clientului RĂMÂNE facturată (01.10, punctul 19): „partenerul ne-a facturat" o redeschidea, iar
+    // „Montaj de facturat" o propunea pe a doua factură. Ce ne-a facturat partenerul se scrie în câmpul facturii lui.
+    // Factura noastră anulată (cât n-a ajuns la ANAF) o redeschide singură.
+    if (ex && ex.factura_client != null && stare !== 'facturat_clientului') {
+      return res.status(409).json({ facturata: true, error: 'Lucrarea e deja facturată clientului' + (ex.factura_client_nr ? ', pe ' + ex.factura_client_nr : '') +
+        ', deci rămâne „facturat clientului". Factura primită de la partener se scrie în câmpul „Nr. facturii de la partener".' });
+    }
     const m = await db.upsertMontaj({
-      id: b.id ? parseInt(b.id, 10) : null, company_id: id,
+      id: idEx, company_id: id,
       contract_id: b.contract_id ? parseInt(b.contract_id, 10) : null,
       partener_id: b.partener_id ? parseInt(b.partener_id, 10) : null,
       data_lucrare: b.data_lucrare ? Number(b.data_lucrare) : null,
       items: rd, total_client: s.totalClient, total_partener: s.totalPartener,
-      currency: 'RON', status: montaj.STARI.indexOf(b.status) >= 0 ? b.status : 'de_programat',
+      currency: 'RON', status: stare,
       factura_partener: b.factura_partener ? String(b.factura_partener).slice(0, 60) : null,
       notes: b.notes ? String(b.notes).slice(0, 2000) : null,
       created_by: req.auth && req.auth.userId
@@ -5789,6 +5800,13 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    // Una aflată pe un document al clientului nu se șterge: ar dispărea montajul unei facturi trimise, iar calendarul
+    // l-ar propune iar de programat — adică încă un montaj și încă o factură pentru aceleași mașini (01.10).
+    const peDoc = m.factura_client_nr ? 'factura ' + m.factura_client_nr : m.proforma_client_nr ? 'proforma ' + m.proforma_client_nr : null;
+    if (m.factura_client != null || peDoc) {
+      return res.status(409).json({ error: 'Lucrarea e pe ' + (peDoc || 'o factură') + ' trimisă clientului, deci nu se șterge.' +
+        (m.factura_client == null ? ' Dacă proforma e greșită, anuleaz-o întâi.' : '') });
+    }
     await db.deleteMontaj(id);
     auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id });
     res.json({ ok: true });
@@ -13774,7 +13792,8 @@ async function _unicaDinContract(companyId) {
   }
   const lucrari = await db.listMontaje(companyId);
   (lucrari || []).forEach(function (j) {
-    if (['executat', 'facturat_de_partener'].indexOf(j.status) < 0) return;
+    // Doar lucrările LIBERE: montate, nefacturate și nepuse pe o proformă neanulată (regula stă în db.js, una singură).
+    if (!j.liber_de_facturat) return;
     const items = _jsonSigur(j.items) || [];
     const linii = items.filter(function (r) { return Number(r.buc) > 0 && Number(r.pretClient) > 0; })
       .map(function (r) { const t = montaj.tip(r.tip); return { desc: t ? t.et : r.tip, qty: Number(r.buc), unitPrice: Number(r.pretClient) }; });
@@ -13872,6 +13891,21 @@ async function _compuneFactura(b) {
   if (!calc.lines.length || calc.total <= 0) {
     return { eroare: { status: 400, body: { error: fel === 'abonament' ? 'Nimic de facturat pe luna asta: nicio mașină pornită (aparatele pornesc la prima transmisie, adică după montaj).' : 'Adaugă cel puțin un rând cu valoare.' } } };
   }
+  // Un montaj care e deja pe o factură sau pe o proformă neanulată nu intră pe al doilea document (01.10, punctul 19).
+  // Fereastra nu le mai propune; refuzul prinde o fereastră deschisă de dinainte (sau al doilea ecran, pe telefon).
+  const montajeCerute = Array.isArray(b.montaje) ? b.montaje : [];
+  if (montajeCerute.length) {
+    const ocupate = await db.montajeNelibere(id, montajeCerute);
+    if (ocupate.length) {
+      const zi = function (ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null; };
+      const ce = ocupate.map(function (m) {
+        return 'montajul' + (zi(m.data_lucrare) ? ' din ' + zi(m.data_lucrare) : '') + ' e deja pe ' +
+          (m.factura_client_nr ? 'factura ' + m.factura_client_nr : m.proforma_client_nr ? 'proforma ' + m.proforma_client_nr : 'o factură');
+      });
+      return { eroare: { status: 409, body: { montajeOcupate: ocupate.map(function (m) { return m.id; }),
+        error: ce.join('; ').replace(/^m/, 'M') + '. Nu se facturează de două ori: pregătește din nou rândurile (fără ' + (ocupate.length === 1 ? 'el' : 'ele') + ').' } } };
+    }
+  }
   return { id: id, co: co, iss: iss, tip: tip, fel: fel, luna: luna, calc: calc, periodStart: periodStart, periodEnd: periodEnd,
     now: now, termDays: _termenPlata(co), note: b.note ? String(b.note).slice(0, 500) : null };
 }
@@ -13890,14 +13924,19 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
       issuer: iss, client: _clientSnapshot(co), note: k.note, createdBy: req.auth && req.auth.userId,
       fel: fel, luna: luna
     });
-    let montajeFacturate = 0;
-    if (tip === 'invoice' && Array.isArray(b.montaje) && b.montaje.length) {
-      try { montajeFacturate = await db.marcheazaMontajeFacturate(id, b.montaje); } catch (e) {}
+    // Lucrările de montaj puse pe document: pe o factură FISCALĂ trec pe „facturat clientului" (cu factura ținută
+    // minte); pe o PROFORMĂ rămân rezervate pe ea și trec pe factură la „Încasată" (01.10, punctul 19).
+    let montajeFacturate = 0, montajePeProforma = 0;
+    if (Array.isArray(b.montaje) && b.montaje.length) {
+      try {
+        if (tip === 'invoice') montajeFacturate = await db.marcheazaMontajeFacturate(id, b.montaje, inv.id);
+        else montajePeProforma = await db.rezervaMontajePeProforma(id, b.montaje, inv.id);
+      } catch (e) {}
     }
     auditReq(req, 'issue', tip === 'proforma' ? 'proforma' : 'invoice', inv.id, { full: num.full, company: id, total: calc.total, fel: fel, luna: luna });
     // Pleacă singură, ca factura automată: anunț în aplicație, email cu PDF, ANAF (doar fiscala). Răspunsul spune ce a plecat.
     const trimisa = await _trimiteFactura(inv, co, iss);
-    res.json({ ok: true, invoice: inv, montajeFacturate: montajeFacturate, trimisa: trimisa });
+    res.json({ ok: true, invoice: inv, montajeFacturate: montajeFacturate, montajePeProforma: montajePeProforma, trimisa: trimisa });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Previzualizarea: aceeași compunere, aceeași hârtie (factura_pdf.js), dar NIMIC salvat, niciun număr luat,
@@ -13940,7 +13979,12 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
       if (_laAnaf(inv)) return res.status(409).json({ laAnaf: true, error: 'Factura ' + (inv.full_number || '') + ' e deja la ANAF, deci nu se mai anulează: acolo rămâne valabilă. Se corectează printr-o factură de stornare (cu minus), cu contabilul.' });
       await db.updateInvoice(inv.id, { status: 'canceled' });
       _invalidateAccessCache(inv.company_id);
-      auditReq(req, 'cancel', inv.type === 'proforma' ? 'proforma' : 'invoice', inv.id, {}); return res.json({ ok: true });
+      // Lucrările de montaj de pe ea se pot factura iar (01.10): o factură anulată le eliberează. O proformă anulată
+      // le eliberează singură — rezervarea se uită la starea proformei.
+      let montajeEliberate = 0;
+      if (inv.type !== 'proforma') { try { montajeEliberate = await db.elibereazaMontajeleFacturii(inv.id); } catch (e) {} }
+      auditReq(req, 'cancel', inv.type === 'proforma' ? 'proforma' : 'invoice', inv.id, montajeEliberate ? { montajeEliberate: montajeEliberate } : {});
+      return res.json({ ok: true, montajeEliberate: montajeEliberate });
     }
     if (status === 'paid') {
       if (inv.type === 'proforma') {
@@ -13949,24 +13993,21 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
         const iss = ((await getSystemSettings()).invoice_issuer) || {};
         if (!iss.name || !iss.cui) return res.status(400).json({ error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' });
         const co = await db.getCompanyById(inv.company_id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-        const now = Date.now();
-        const num = await db.nextInvoiceNumber(INV_SERIES, new Date(now).getFullYear());
-        const linii = _jsonSigur(inv.lines) || [];
-        const f = await db.createInvoice({
-          companyId: inv.company_id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
-          type: 'invoice', status: 'issued', issueDate: now, dueDate: now, periodStart: inv.period_start, periodEnd: inv.period_end, currency: inv.currency || 'RON',
-          subtotal: Number(inv.subtotal), vatAmount: Number(inv.vat_amount), total: Number(inv.total), lines: linii,
-          issuer: iss, client: _clientSnapshot(co), note: 'Emisă la încasarea proformei ' + (inv.full_number || ''), createdBy: cine,
-          fel: 'unica', dinProforma: inv.id
-        });
-        const r = await db.payInvoiceAtomic(f.id, { companyId: inv.company_id, amountRon: Number(f.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end,
-          method: method, note: 'Factură ' + num.full + ' (proforma ' + (inv.full_number || '') + ')', createdBy: cine }, {});
-        await db.updateInvoice(inv.id, { status: 'paid', paidAt: now, facturaId: f.id });
+        // Dintr-o bucată (01.10, punctul 18): proforma se revendică, iar factura fiscală, plata, legătura și lucrările de
+        // pe proformă se scriu în aceeași tranzacție. A doua apăsare (web + telefon, în aceeași secundă) găsește proforma
+        // deja încasată și primește factura făcută de prima — nu o a doua factură, care ar fi plecat și ea singură.
+        const r = await db.incaseazaProforma(inv.id, { series: INV_SERIES, iss: iss, client: _clientSnapshot(co), method: method, createdBy: cine });
+        if (r.deja) {
+          const acum = await db.getInvoice(inv.id);
+          if (acum && acum.status === 'canceled') return res.status(400).json({ error: 'Proforma e anulată.' });
+          return res.json({ ok: true, already: true, invoice: acum && acum.factura_id ? await db.getInvoice(acum.factura_id) : null });
+        }
         _invalidateAccessCache(inv.company_id);
-        auditReq(req, 'paid', 'proforma', inv.id, { factura: num.full, factura_id: f.id, paymentId: r.payment && r.payment.id });
-        // Factura fiscală a avansului pleacă și ea singură: clientului (pentru contabilitatea lui) și la ANAF.
-        const trimisa = await _trimiteFactura(r.invoice || f, co, iss);
-        return res.json({ ok: true, invoice: r.invoice || f, payment: r.payment, dinProforma: inv.id, trimisa: trimisa });
+        auditReq(req, 'paid', 'proforma', inv.id, { factura: r.invoice.full_number, factura_id: r.invoice.id, paymentId: r.payment && r.payment.id, montaje: r.montaje });
+        // Factura fiscală a avansului pleacă și ea singură: clientului (pentru contabilitatea lui) și la ANAF. DUPĂ ce
+        // totul e scris — un email sau o trimitere la ANAF nu se pot „întoarce" odată cu o tranzacție.
+        const trimisa = await _trimiteFactura(r.invoice, co, iss);
+        return res.json({ ok: true, invoice: r.invoice, payment: r.payment, dinProforma: inv.id, montajeFacturate: r.montaje, trimisa: trimisa });
       }
       if (inv.status === 'paid') return res.json({ ok: true, already: true });
       if (inv.status === 'canceled') return res.status(400).json({ error: 'Factura e anulată.' });

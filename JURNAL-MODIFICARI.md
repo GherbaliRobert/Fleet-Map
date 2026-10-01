@@ -81,9 +81,47 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
+- [ ] **Robert: cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** Alin a hotărât să le facă el. Lista,
+  pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
+  „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
+  starea fiecăruia. La punctul 8 (aparat schimbat pe aceeași mașină) așteaptă întâi „da"-ul lui Alin.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
+
+---
+
+## Unde suntem — harta verificării (la zi: 01.10)
+
+Alin (01.10): *„am intrat într-un ciclu în care îmi tot dai chestii de făcut… hai să facem o curățenie în idei și să
+vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), secțiune cu secțiune, de sus în jos.
+
+| Grupa | Secțiunea | Unde e |
+|---|---|---|
+| Gestiune | Acasă · Dispozitive · Utilizatori · Inventar dispozitive · Dispozitive arhivate | ✅ verificate (16–18.09) |
+| Gestiune | Stoc echipamente | 🆕 secțiune nouă (25.09; din 30.09 GPS-ul intră doar aici, cu IMEI-ul) |
+| AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
+| Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
+| Business | Montaj | 🆕 secțiune nouă (24.09), cu calendar și ritmul instalatorului (30.09) |
+| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; mai are puncte deschise din verificarea lui Robert |
+| Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
+| Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
+
+**Unde ne-am abătut:** pe 25.09, la Montaj. Din „verificăm ce există" am trecut la „construim ce lipsește":
+închirierea și stocul (25.09) → sugestiile și „Mașinile clientului" în ofertă (28.09) → întrebarea „de când îi
+facturăm?" (28.09) → tot drumul de după semnare: abonament pe zile, proformă, avans, termenul de 30 de zile, calendar,
+aparatele noi, ritmul instalatorului (29–30.09) → reparațiile din verificarea lui Robert (01.10).
+
+**Ce e încă deschis din verificările lui Robert (29.09), mai jos la „De verificat":** 10 puncte din revizia lotului 3
+(primul e de siguranță: un Excel „umflat" poate opri serverul) și 14 din revizia facturării, plus două mici (telefoanele
+vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche). **Hotărât de Alin (01.10): le repară Robert.**
+Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și texte 4), cu locul din cod și reparația propusă, e
+în documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
+
+**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) **Montaj → Calendar**, refăcut (propunerea cu machetă e la
+Alin); (2) **Facturare** (ce mai e: stornarea; răspunsul contabilului despre factura de avans); (3) restul meniului, de la
+„Conturi & Abonamente" până la „Jurnal audit". Regula „ce apare nou pe drum se face la capătul secțiunii" — încă de
+lămurit cu Alin.
 
 ---
 
@@ -133,6 +171,54 @@ apare doar la plătitori, ca pe PDF.
 - **Ce vede fondatorul:** pe telefon, calendarul de montaj, secțiunile din Facturare, previzualizarea, proforma la
   semnare, anunțurile care duc la treabă — ca pe web.
 - **Ce vede clientul:** factura corectă la TVA pentru firmele făcute de pe telefon.
+
+
+### AMÂNDOI · Nimic nu se mai facturează de două ori: „Încasată" și montajul (18, 19)
+
+Alin: *„Repar și 18 și 19? Recomand: da."* — da. Ultimele două din verificarea lui Robert de aseară.
+
+1. **(18) „Încasată" apăsată de două ori nu mai face două facturi.** Înainte, la „Încasată" pe o proformă, aplicația
+   făcea pașii unul după altul: citea proforma, lua un număr, făcea factura fiscală, înregistra plata, lega proforma.
+   Două apăsări în aceeași secundă (de pe web și de pe telefon) puteau trece amândouă de primul pas — deci **două
+   facturi fiscale** pentru aceeași plată, și de pe 30.09 amândouă ar fi plecat singure la client și la ANAF. Iar o
+   eroare la mijloc lăsa o factură fiscală neplătită, care pornea avertismentele de neplată.
+   Acum totul se face **dintr-o bucată**: proforma se „ia" întâi (trece pe încasată doar dacă nu era deja), apoi
+   restul. A doua apăsare găsește proforma deja încasată și primește factura făcută de prima — scrie „Proforma era
+   deja încasată → factura RAT-…". O eroare la mijloc întoarce **tot** înapoi, inclusiv numărul (șirul facturilor
+   rămâne fără goluri). Emailul și ANAF pleacă abia după ce totul e scris.
+2. **(19) Montajul deja facturat nu mai e propus a doua oară.** „Facturat" se ținea doar în starea lucrării, și
+   asta avea trei găuri, toate cu același efect — „Montaj de facturat" îl propunea din nou, cu anunțul „factura e
+   pregătită":
+   - **montajul pus pe o proformă** nu se marca deloc, nici când proforma se încasa;
+   - **„partenerul ne-a facturat"** scris pe o lucrare deja facturată clientului o redeschidea;
+   - **o fereastră de factură rămasă deschisă** putea pune același montaj pe al doilea document.
+   Acum fiecare lucrare **ține minte documentul pe care stă**: pe o proformă rămâne „rezervată" (nu se mai propune;
+   la „Încasată" trece pe factura fiscală), iar pe o factură trece pe „facturat clientului" și rămâne așa. Ce ne-a
+   facturat instalatorul se scrie alături, în „Nr. facturii de la partener". Un document anulat își eliberează
+   lucrările: se pot factura iar, iar starea se întoarce cum era. O lucrare aflată pe un document nu se mai șterge
+   (altfel calendarul ar fi propus din nou montajul acelor mașini).
+
+Exemplu cu cifre: 10 mașini montate pe 15.09, la 100 de lei → 1.000 de lei + TVA. Pui montajul pe proforma PF-…; de
+acum nu mai apare la „Montaj de facturat". Clientul plătește, apeși „Încasată" (chiar și de două ori) → **o singură**
+factură fiscală, de 1.210 lei, iar lucrarea scrie „facturat clientului · pe factura RAT-…".
+
+- **Ce am schimbat:** „Încasată" pe proformă într-o singură tranzacție; lucrarea de montaj ține minte factura sau
+  proforma ei (o coloană nouă în bază); o singură regulă pentru „montaj liber de facturat", folosită de fereastra
+  facturii, de „Montaj de facturat", de anunțul lui și la emitere; anularea unei facturi eliberează lucrările.
+  Probă nouă, `verify_facturare_dubla.js` (45 de verificări, în `npm test`): rulează funcția pe o bază adevărată cu o
+  cădere provocată la mijloc, cinci apăsări deodată (și, ca martor, pașii vechi: ei fac mai multe facturi) și tot
+  drumul pe server pornit. `verify_montaj.js` adusă pe regula nouă: o salvare fără stare păstrează starea lucrării.
+- **Ce vede fondatorul:** pe rândul lucrării, „pe factura RAT-…" sau „pe proforma PF-… (se facturează la încasare)";
+  la o lucrare facturată, starea e încuiată, cu o notă dedesubt; coșul de gunoi lipsește pe lucrările aflate pe un
+  document; mesajele după emitere, încasare și anulare spun ce s-a întâmplat cu lucrările.
+- **Ce vede clientul:** nimic nou pe ecran — dar nu mai poate primi două facturi pentru aceeași plată sau același
+  montaj.
+- **Telefonul:** serverul face regula, deci telefonul e acoperit de azi. Un singur text de pe telefon a rămas fals
+  („de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»… pune montajul pe o factură fiscală") — l-am
+  scos din cod; dispare la APK-ul următor (lotul 5).
+- **De știut:** proformele emise **înainte de azi** cu montaj pe ele nu-și știu lucrările. Dacă vreuna se încasează,
+  lucrarea ei trebuie trecută de mână pe „facturat clientului". Dacă n-ați emis încă proforme cu montaj pe ratrack.ro,
+  nu e nimic de făcut.
 
 
 ### AMÂNDOI · Trei probleme găsite aseară de verificarea lui Robert, reparate (20, 13, 17)
@@ -9925,6 +10011,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 - [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
   fiecare e scrisă și reparația propusă; le face sesiunea lui sau le facem noi, cum hotărâți.
+  **HOTĂRÂT (01.10, Alin): le face Robert**, cu cele din revizia facturării (mai jos) — în total 26, pe loturi, în
+  documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
   1. **Securitate, urgent:** un Excel mic, făcut anume, se „umflă" la citire la sute de MB și poate opri serverul
      întreg (toate firmele, până repornește Railway). Pe web: „Încarcă șablonul" (fișierul vine de la client) și
      încărcarea listelor Teltonika. Reparația: la citire, înainte de ExcelJS, se numără octeții dezarhivați, cu un
@@ -9955,18 +10043,21 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       „Trece pe firmă" în bloc în Dispozitive → Neasignate; ziua de pornire a abonamentului pe fiecare aparat (✎).
       Până atunci, „Emite prima factură" de pe telefon deschide „Generează factură" obișnuit, nu factura unică.
 
-- [ ] **(Alin) Găsite la revizia facturării din 29.09 — NEATINSE de noi (29.09).** O revizie cu 4 priviri (bani, acces,
+- [ ] **(Alin → Robert, 01.10) Găsite la revizia facturării din 29.09 — le face Robert (hotărât de Alin pe 01.10; lista
+  în documentul pentru el, linkul e la punctul de mai sus).** O revizie cu 4 priviri (bani, acces,
   ecrane, hârtie) peste cele 5 schimbări ale lui Alin din 29.09; fiecare găsire a trecut și pe la un sceptic. Cele 30
   de găsiri se strâng în 16 probleme. Detaliile (cu rândurile din cod) sunt în raportul revizuirii; aici, pe scurt:
   **Bani — se poate factura de două ori sau pierde o sumă**
   1. **Factura unică nu ține minte ce s-a facturat.** După proforma aparatelor (încasată), fereastra propune din nou
-     „Aparatele din contract"; montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
-     facturat" redeschide o lucrare deja facturată clientului. ~~Drumul clientului nu știe de avans: după factura
-     aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e FĂCUTĂ (30.09):**
-     pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul de 30 de zile
-     de la avans. Restul punctului rămâne. (web + telefon, vine de la server)
+     „Aparatele din contract"; ~~montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
+     facturat" redeschide o lucrare deja facturată clientului~~ — **FĂCUT (01.10, odată cu 19).** ~~Drumul clientului nu
+     știe de avans: după factura aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e
+     FĂCUTĂ (30.09):** pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul
+     de 30 de zile de la avans. **Rămâne doar:** aparatele din contract propuse din nou după proforma lor (pe telefon e
+     un avertisment; pe web, nimic).
   2. **Montajul marcat „facturat" fără să fie pe factură:** o lucrare scoasă de pe factură (rând șters sau cantitate
-     scăzută) rămâne marcată și scrisă la „Mențiuni"; anularea facturii nu o redeschide.
+     scăzută) rămâne marcată și scrisă la „Mențiuni" (pe web; telefonul o scoate corect). ~~Anularea facturii nu o
+     redeschide.~~ — **FĂCUT (01.10):** factura anulată își eliberează lucrările.
   3. **Lunile de dinainte de 28.09 se pot factura de două ori:** „Abonamentul unei luni" nu vede facturile vechi (fără
      „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie.
   4. **Aparat schimbat pe aceeași mașină:** zilele din luna schimbării se plătesc de două ori (aparatul vechi a plătit
@@ -9978,8 +10069,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
      ≈ 48 de lei pe fiecare, niciodată facturați.
   7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura.
   **Acces și siguranță**
-  8. **„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
-     facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.
+  8. ~~**„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
+     facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.~~ — **FĂCUT (01.10, ca 18).**
   9. **Motivul intern al unei suspendări făcute de mână** pleacă la toți oamenii firmei (se vede în datele trimise,
      nu pe ecran).
   10. **Migrarea „o singură dată"** a dat zi de pornire și aparatelor care transmiseseră doar pe masa de probă.
@@ -10026,10 +10117,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
       la ANAF pe aceeași lună**.~~ — **FĂCUT (01.10):** serverul refuză (409, „se stornează"), butonul nu mai apare pe web;
       pe telefon se ascunde din 1.0.7 (01.10).
-  18. **„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
-      client, pe email și la ANAF.
-  19. **„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
-      „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.
+  18. ~~**„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
+      client, pe email și la ANAF.~~ — **FĂCUT (01.10):** totul într-o singură tranzacție; a doua apăsare primește
+      factura primei. Probat cu cinci apăsări deodată și cu o cădere provocată la mijloc (`verify_facturare_dubla.js`).
+  19. ~~**„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
+      „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.~~
+      — **FĂCUT (01.10):** lucrarea ține minte factura sau proforma ei; o singură regulă pentru „liberă de facturat".
+      Pe telefon a rămas doar un text fals (scos din cod, pleacă cu 1.0.7).
   20. ~~**Un aparat șters definitiv revine singur** dacă mai transmite: IMEI-ul lui rămâne în stoc, iar serverul primește
       acum și aparatele din stoc. I se face rând nou la Neasignate și i se salvează iar pozițiile — contrazice ștergerea
       promisă în contract după încetare.~~ — **FĂCUT (01.10):** din stoc e primit doar ce e în depozit sau la instalator;
@@ -10050,6 +10144,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   Stoc (mici). Intră și ce a scris Alin deja pe telefon („Ne facturează" în fișa instalatorului, textele din Stoc).
   Probe de rescris pe regula nouă: `verify_contracte_telefon.js` (calea `?lucrare=noua`), `verify_facturare_telefon.js`
   (reperul „Facturi fiscale").
+  **Deja schimbat în cod (01.10), pleacă odată cu 1.0.7:** scos avertismentul „de pe o proformă, lucrările de montaj nu
+  trec pe «facturat clientului»… pune montajul pe o factură fiscală" — de pe 01.10 serverul le trece singur la încasare.
 
 - [ ] **(Alin) Găsite la revizia lotului 5 de telefon (01.10), pe web — NEATINSE de noi.** Telefonul le-a ocolit unde
   ținea doar de ecran; pe web rămân:
