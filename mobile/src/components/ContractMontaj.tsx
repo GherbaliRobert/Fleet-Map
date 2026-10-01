@@ -194,11 +194,16 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(false); }
   }
+  // Ștearsă o lucrare, Anexa nr. 2 a unui contract nesemnat se reface din cele rămase (01.10); mesajul îl scrie serverul.
   async function sterge() {
     if (!del || busy) return;
     setBusy(true);
-    try { await Api.deleteMontaj(Number(del.id)); setDel(null); incarca(); }
-    catch (e: any) { showToast('Eroare: ' + (e?.message || ''), true); }
+    try {
+      const j: any = await Api.deleteMontaj(Number(del.id));
+      showToast((j && j.mesaj) || 'Lucrare ștearsă ✓');
+      setDel(null);
+      onSalvat(); // anexa poate s-a schimbat: fișa se reîncarcă toată, ca după „Salvează"
+    } catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge.', true); }
     finally { setBusy(false); }
   }
 
@@ -302,7 +307,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
       )}
       {del && (
         <Confirma title="Șterge lucrarea" danger busy={busy} okLabel="Șterge"
-          text="Ștergi lucrarea de montaj? Anexa nr. 2 rămâne cum a fost salvată ultima dată."
+          text="Ștergi lucrarea de montaj? Dacă ține de un contract nesemnat, Anexa nr. 2 se reface din lucrările rămase."
           onOk={sterge} onCancel={() => { if (!busy) setDel(null); }} />
       )}
     </>

@@ -2009,6 +2009,11 @@ async function getOfferById(id) {
   const r = await pool.query('SELECT * FROM offers WHERE id = $1', [id]);
   return r.rows[0] || null;
 }
+// Oferta din care s-a născut un contract (legată la „Client nou din ofertă"). Cea mai nouă, dacă ar fi mai multe.
+async function ofertaContractului(contractId) {
+  const r = await pool.query('SELECT * FROM offers WHERE contract_id = $1 ORDER BY id DESC LIMIT 1', [contractId]);
+  return r.rows[0] || null;
+}
 async function createOffer(o) {
   const now = Date.now();
   const r = await pool.query(
@@ -5285,7 +5290,7 @@ module.exports = {
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
-  listOffers, getOfferById, createOffer, updateOffer, deleteOffer, setOfferStatus,
+  listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany, montajeContract,
   contracteInVigoare, contracteToate, firmeFaraContract, legOferta,

@@ -118,13 +118,26 @@ T('anexa de montaj se scrie pe contract, nu pe lucrare',
 // (23.09) Lucrarea scrie în anexă DOAR cât contractul nu e semnat, din TOATE lucrările lui adunate
 // (nu din ultima), iar aparatele vândute rămân. Înainte orice lucrare salvată rescria anexa — și a
 // unui contract semnat — și ștergea din ea echipamentele.
+// (01.10) …și la ȘTERGEREA unei lucrări (Alin: „rezolvăm problema"): până atunci anexa rămânea „cum a fost salvată ultima
+// dată" — 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea. O SINGURĂ funcție face asta: _refaAnexaDinLucrari.
 const bucMontaj = server.slice(server.indexOf("app.post('/api/companies/:id/montaje'"), server.indexOf("app.delete('/api/montaje/:id'"));
+const bucSterge = server.slice(server.indexOf("app.delete('/api/montaje/:id'"), server.indexOf('function _mesajStergereLucrare('));
+const fnAnexa = server.slice(server.indexOf('async function _refaAnexaDinLucrari('), server.indexOf('// Echipamentele ÎNCHIRIATE dintr-o ofertă'));
 T('lucrarea NU atinge anexa unui contract semnat',
-  /if \(c && \(c\.status === 'activ' \|\| c\.status === 'incheiat'\)\) anexa = 'semnat';/.test(bucMontaj));
+  /if \(c\.status === 'activ' \|\| c\.status === 'incheiat'\) return \{ anexa: 'semnat' \};/.test(fnAnexa));
 T('la unul nesemnat, anexa se face din TOATE lucrările contractului',
-  /await db\.montajeContract\(c\.id\)/.test(bucMontaj) && /adunat\[k\]\.buc \+= Number\(r\.buc\) \|\| 0;/.test(bucMontaj));
-T('și aparatele vândute rămân în anexă', /noua\.echipamente = echip;/.test(bucMontaj));
+  /await db\.montajeContract\(c\.id\)/.test(fnAnexa) && /adunat\[k\]\.buc \+= Number\(r\.buc\) \|\| 0;/.test(fnAnexa));
+T('și aparatele vândute rămân în anexă', /noua\.echipamente = echip;/.test(fnAnexa));
+T('fără nicio lucrare rămasă: montajul din oferta contractului; fără ofertă, niciun montaj', /db\.ofertaContractului\(c\.id\)/.test(fnAnexa) &&
+  /_montajDinOferta\(of\)/.test(fnAnexa) && /fel = 'din_oferta'/.test(fnAnexa) && /fel = 'fara'/.test(fnAnexa));
+T('salvarea, lucrarea mutată de pe alt contract și ȘTERGEREA refac anexa prin aceeași funcție (și nicăieri altundeva)',
+  /_refaAnexaDinLucrari\(m\.contract_id\)/.test(bucMontaj) && /_refaAnexaDinLucrari\(ex\.contract_id\)/.test(bucMontaj) && /_refaAnexaDinLucrari\(m\.contract_id\)/.test(bucSterge) &&
+  (server.replace(/\/\/[^\n]*/g, '').match(/_refaAnexaDinLucrari\(/g) || []).length === 4);
 T('ecranul spune ce s-a întâmplat cu anexa', /j\.anexa === 'semnat'/.test(html) && /Anexa nr\. 2 rămâne cum s-a semnat/.test(html));
+const tsxMontaj = fs.readFileSync('./mobile/src/components/ContractMontaj.tsx', 'utf8');
+T('după „Șterge", web și telefon arată mesajul serverului și reîncarcă fișa; întrebarea nu mai promite „rămâne cum a fost salvată"',
+  /\(window\.raxToast \|\| function \(\) \{\}\)\(j\.mesaj \|\| 'Lucrare ștearsă ✓', 'success'\);/.test(html) && /showToast\(\(j && j\.mesaj\) \|\| 'Lucrare ștearsă ✓'\);/.test(tsxMontaj) &&
+  !/rămâne cum a fost salvată ultima dată/.test(html + tsxMontaj) && (html + tsxMontaj).split('Dacă ține de un contract nesemnat, Anexa nr. 2 se reface din lucrările rămase.').length === 3);
 T('totalul lunar din Anexa 1 NU include montajul',
   !/monthlyTotal[\s\S]{0,80}montaj/.test(fs.readFileSync('./contracts.js', 'utf8')));
 

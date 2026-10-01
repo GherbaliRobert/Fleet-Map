@@ -5139,6 +5139,48 @@ function _montajDinOferta(oferta) {
   const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
   return montaj.facAnexaCosturiUnice(montaj.randuri(rdMontaj), montaj.randuriEchip(rdEchip), curs, 'RON');
 }
+// Anexa nr. 2 a unui contract NESEMNAT = lucrările lui de montaj, adunate (nu doar ultima: două lucrări, 3 + 2 montaje,
+// lăsau în anexă doar 2). Se reface la FIECARE salvare și ștergere de lucrare (01.10), prin funcția asta și numai prin ea.
+//   • Semnat (activ / încheiat) → nu se atinge: anexa e ce s-a semnat; montaj în plus = act adițional.  → 'semnat'
+//   • Cu lucrări → suma lor.                                                                              → 'actualizata'
+//   • Fără nicio lucrare rămasă → montajul din oferta contractului, ca înainte de prima lucrare.         → 'din_oferta'
+//     Fără ofertă (sau oferta fără montaj) → niciun montaj; fără aparate vândute, nicio Anexa nr. 2.     → 'fara'
+// Aparatele vândute (echipamentele) rămân mereu cum erau: până pe 23.09 orice lucrare salvată le ștergea din anexă.
+// O zi anulată nu e o lucrare (`db.montajeContract` o sare).
+async function _refaAnexaDinLucrari(contractId) {
+  const c = contractId ? await db.getContractById(contractId) : null;
+  if (!c) return { anexa: null };
+  if (c.status === 'activ' || c.status === 'incheiat') return { anexa: 'semnat' };
+  const lucrari = await db.montajeContract(c.id);
+  const echip = c.montaj && c.montaj.echipamente;
+  let noua = null, fel;
+  if (lucrari.length) {
+    const adunat = {};
+    lucrari.forEach(function (x) {
+      (x.items || []).forEach(function (r) {
+        const k = r.tip + '|' + (r.pretClient == null ? '' : r.pretClient);
+        if (!adunat[k]) adunat[k] = { tip: r.tip, buc: 0, pretClient: r.pretClient };
+        adunat[k].buc += Number(r.buc) || 0;
+      });
+    });
+    noua = montaj.facAnexaMontaj(montaj.randuri(Object.keys(adunat).map(function (k) { return adunat[k]; })), 'RON');
+    fel = 'actualizata';
+  } else {
+    const of = await db.ofertaContractului(c.id).catch(function () { return null; });
+    const dinOf = of ? _montajDinOferta(of) : null;
+    if (dinOf && (dinOf.items || []).length) {
+      noua = { items: dinOf.items, totalClient: dinOf.totalClient, currency: dinOf.currency || 'RON' };
+      fel = 'din_oferta';
+    } else fel = 'fara';
+  }
+  if (echip) {
+    noua = noua || montaj.facAnexaMontaj([], 'RON');
+    noua.echipamente = echip;
+    noua.totalUnicLei = Math.round(((Number(noua.totalClient) || 0) + (Number(echip.totalLei) || 0)) * 100) / 100;
+  }
+  await db.setContractMontaj(c.id, noua);
+  return { anexa: fel };
+}
 // Echipamentele ÎNCHIRIATE dintr-o ofertă (25.09): ce aparate, câte, chiria lunară a fiecăruia (cea
 // SALVATĂ în ofertă, negociată cu clientul) și valoarea lui — prețul de vânzare, la cursul înghețat în
 // ofertă: cât plătește clientul dacă nu-l returnează. `null` = oferta e cu aparate cumpărate.
@@ -5800,36 +5842,11 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
       notes: b.notes ? String(b.notes).slice(0, 2000) : null,
       created_by: req.auth && req.auth.userId
     });
-    // Anexa nr. 2 a contractului: DOAR partea clientului și DOAR cât contractul nu e semnat.
-    //   • Semnat → anexa e ce s-a semnat; lucrarea e doar execuția ei. Montaj în plus = act adițional.
-    //   • Nesemnat → anexa se face din TOATE lucrările contractului, adunate, nu din ultima salvată
-    //     (două lucrări, 3 + 2 montaje, lăsau în anexă doar 2). Aparatele vândute rămân cum erau:
-    //     până pe 23.09 orice lucrare salvată le ștergea din anexă (găsit pe viu).
+    // Anexa nr. 2 a contractului: DOAR partea clientului și DOAR cât contractul nu e semnat (`_refaAnexaDinLucrari`).
     let anexa = null;
-    if (m && m.contract_id) {
-      try {
-        const c = await db.getContractById(m.contract_id);
-        if (c && (c.status === 'activ' || c.status === 'incheiat')) anexa = 'semnat';
-        else if (c) {
-          const adunat = {};
-          (await db.montajeContract(c.id)).forEach(function (x) {
-            (x.items || []).forEach(function (r) {
-              const k = r.tip + '|' + (r.pretClient == null ? '' : r.pretClient);
-              if (!adunat[k]) adunat[k] = { tip: r.tip, buc: 0, pretClient: r.pretClient };
-              adunat[k].buc += Number(r.buc) || 0;
-            });
-          });
-          const noua = montaj.facAnexaMontaj(montaj.randuri(Object.keys(adunat).map(function (k) { return adunat[k]; })), 'RON');
-          const echip = c.montaj && c.montaj.echipamente;
-          if (echip) {
-            noua.echipamente = echip;
-            noua.totalUnicLei = Math.round((noua.totalClient + (Number(echip.totalLei) || 0)) * 100) / 100;
-          }
-          await db.setContractMontaj(c.id, noua);
-          anexa = 'actualizata';
-        }
-      } catch (e) {}
-    }
+    if (m && m.contract_id) { try { anexa = (await _refaAnexaDinLucrari(m.contract_id)).anexa; } catch (e) {} }
+    // Lucrarea mutată de pe alt contract: și anexa celui vechi se reface, altfel ar păstra lucrarea plecată (01.10).
+    if (ex && ex.contract_id && Number(ex.contract_id) !== Number(m && m.contract_id)) { try { await _refaAnexaDinLucrari(ex.contract_id); } catch (e) {} }
     auditReq(req, b.id ? 'update' : 'create', 'montaj', m.id, { company_id: id, total_client: s.totalClient });
     res.json(Object.assign({}, m, { socoteala: s, anexa: anexa }));
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5853,10 +5870,23 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
       if (c && (c.status === 'activ' || c.status === 'incheiat')) return res.status(409).json({ anuleaza: true, error: 'Ziua asta se anulează din calendar, cu motivul ei (instalatorul sau clientul nu poate), ca să rămână în istoric.' });
     }
     await db.deleteMontaj(id);
-    auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id });
-    res.json({ ok: true });
+    // Anexa nr. 2 a unui contract nesemnat se ține în pas cu lucrările și la ștergere (01.10, Alin: „rezolvăm problema").
+    // Până atunci rămânea „cum a fost salvată ultima dată": 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
+    let ref = { anexa: null };
+    if (m.contract_id) { try { ref = await _refaAnexaDinLucrari(m.contract_id); } catch (e) {} }
+    auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id, anexa: ref.anexa });
+    res.json({ ok: true, anexa: ref.anexa, mesaj: _mesajStergereLucrare(ref.anexa) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Ce scrie ecranul după „Șterge" pe o lucrare (web și telefon arată textul ăsta, nu-și fac al lor).
+function _mesajStergereLucrare(anexa) {
+  return 'Lucrare ștearsă ✓' + ({
+    semnat: ' — contractul e semnat, deci Anexa nr. 2 rămâne cum s-a semnat',
+    actualizata: ' — Anexa nr. 2 s-a refăcut din lucrările rămase',
+    din_oferta: ' — nu mai e nicio lucrare, deci Anexa nr. 2 s-a întors la montajul din ofertă',
+    fara: ' — nu mai e nicio lucrare, deci contractul nu mai are montaj în Anexa nr. 2'
+  }[anexa] || '');
+}
 
 // ─── Calendarul de montaj (Business → Montaj, Alin 30.09) ───────────────────────────────────────
 // „Să am calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de instalat și

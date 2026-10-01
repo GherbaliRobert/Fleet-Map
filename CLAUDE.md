@@ -18,6 +18,10 @@ cu pas."*
 - **Când e de hotărât ceva:** opțiunile numerotate, cu recomandarea mea spusă direct, iar întrebările
   pentru el la final, numerotate, ca să poată răspunde „1: da, 2: 36 de luni".
 - Când simte că se încurcă, **o luăm pas cu pas**: un pas, confirmarea lui, apoi următorul.
+- **Ce găsesc nou pe drum, îl ÎNTREB** (Alin, 01.10: *„vreau ca acum să mă întrebi dacă trecem mai departe sau
+  rezolvăm problema identificată"*): o problemă găsită în afara lucrului cerut NU se repară pe tăcute și NU se
+  lasă deoparte pe tăcute. O spun pe scurt (ce se întâmplă, cu un exemplu în cifre) și întreb la final: **„o
+  rezolvăm acum sau trecem mai departe?"**. El hotărăște de fiecare dată.
 
 ## De amintit lui Alin — la fiecare raport (OBLIGATORIU)
 
@@ -598,6 +602,14 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 ### Anexa nr. 2 (montaj + echipamente) și lucrările
 - Lucrarea de montaj scrie în anexă DOAR cât contractul e nesemnat, din **toate** lucrările lui adunate
   (nu din ultima), și **păstrează echipamentele**. La un contract semnat nu atinge anexa.
+- **Și la ȘTERGERE, și la mutarea unei lucrări de pe contract** (01.10, Alin: „rezolvăm problema"): anexa se reface din
+  lucrările rămase. Fără nicio lucrare = montajul din oferta contractului (`db.ofertaContractului` →
+  `_montajDinOferta`), ca înainte de prima lucrare; fără ofertă = niciun montaj (fără aparate vândute, `montaj` = null).
+  Până atunci rămânea „cum a fost salvată ultima dată": 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
+- **O SINGURĂ funcție: `_refaAnexaDinLucrari(contractId)`** (server.js) → `{ anexa: 'semnat' | 'actualizata' |
+  'din_oferta' | 'fara' }`, chemată la salvare (contractul lucrării + cel de pe care a plecat) și la ștergere. Păzit prin
+  numărare (`verify_montaj.js`). Mesajul de după „Șterge" îl scrie serverul (`_mesajStergereLucrare` → `mesaj`); web și
+  telefon doar îl arată și reîncarcă fișa. Probat pe server pornit în `verify_contracte.js`.
 - Prețul pentru client la o lucrare nouă se propune din anexă, apoi din tarifele casei (`_ofTarifeDeBaza`).
 
 ### Capătul contractului, reînnoirea, alarma

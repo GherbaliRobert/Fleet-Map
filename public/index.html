@@ -23092,11 +23092,15 @@ const pozitii = await r.json();</code></pre>
         raxOpenCompanyDetail(_raxMont.companyId, 'contract');
       } catch (x) { (window.raxToast || alert)('Eroare: ' + x.message, 'error'); }
     };
+    // Ștearsă o lucrare, Anexa nr. 2 a unui contract nesemnat se reface din cele rămase (01.10); mesajul îl scrie serverul.
     window.raxMontajSterge = async function (id) {
-      if (!await raConfirm('Ștergi lucrarea de montaj? Anexa nr. 2 rămâne cum a fost salvată ultima dată.')) return;
+      if (!await raConfirm('Ștergi lucrarea de montaj? Dacă ține de un contract nesemnat, Anexa nr. 2 se reface din lucrările rămase.')) return;
       try {
-        await fetch('/api/montaje/' + id, { method: 'DELETE', credentials: 'same-origin' });
-        raxMontajIncarca(_raxMont.companyId);
+        var r = await fetch('/api/montaje/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { (window.raxToast || alert)(j.error || 'Nu s-a putut șterge.', 'error'); return; }
+        (window.raxToast || function () {})(j.mesaj || 'Lucrare ștearsă ✓', 'success');
+        raxOpenCompanyDetail(_raxMont.companyId, 'contract');   // anexa poate s-a schimbat: fișa se reîncarcă toată, ca după „Salvează"
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
 

@@ -111,7 +111,7 @@ vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), sec�
 | Gestiune | Stoc echipamente | 🆕 secțiune nouă (25.09; din 30.09 GPS-ul intră doar aici, cu IMEI-ul) |
 | AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
 | Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
-| Business | Montaj | 🆕 secțiune nouă (24.09), cu ritmul instalatorului (30.09); ✅ **calendarul refăcut după machetă (01.10)** |
+| Business | Montaj | ✅ **terminată (01.10, Alin)**: parteneri, contracte, lucrări, calendarul refăcut după machetă. Contul instalatorului îl face Robert |
 | Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; urmează trecerea ecran cu ecran, ca la celelalte |
 | Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
 | Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
@@ -129,12 +129,38 @@ Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și tex
 
 **Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) ~~Montaj → Calendar~~, refăcut după machetă (01.10, gata);
 (2) **Facturare**, ecran cu ecran (Alin: „terminăm montajul și trecem la facturare"; ce mai e: stornarea; răspunsul
-contabilului despre factura de avans); (3) restul meniului, de la „Conturi & Abonamente" până la „Jurnal audit". Regula
-„ce apare nou pe drum se face la capătul secțiunii" — încă de lămurit cu Alin.
+contabilului despre factura de avans); (3) restul meniului, de la „Conturi & Abonamente" până la „Jurnal audit".
+**Hotărât (Alin, 01.10): ce găsim nou pe drum, mă întreabă de fiecare dată** — „o rezolvăm acum sau trecem mai departe?".
+(Pe 01.10, problema anexei de la ștergerea unei lucrări: „rezolvăm problema" — rezolvată, mai jos.)
 
 ---
 
 ## 2026-10-01
+
+### FONDATOR · Contractul nesemnat: anexa de montaj se reface și când ștergi o lucrare
+
+Găsit pe drum, la calendar; Alin (01.10): *„rezolvăm problema"*.
+
+Cât un contract nu e semnat, lucrările de montaj din fișa clientului scriu Anexa nr. 2 (montajul de pe contract). La
+salvare se refăcea din toate lucrările; **la ștergere, nu**. Exemplu: lucrări de 3 + 2 mașini → anexa spunea 5; ștergeai
+lucrarea de 2 → tot 5 scria, deși rămăseseră 3. Hârtia trimisă la semnat ar fi cerut montaj pentru 5 mașini.
+
+Acum, cât contractul nu e semnat:
+1. **Ștergi o lucrare** → anexa se reface din lucrările rămase (5 → 3).
+2. **Ștergi și ultima** → anexa se întoarce la montajul din ofertă (cum era înainte de prima lucrare).
+3. **Contract fără ofertă** → după ultima lucrare, contractul rămâne fără anexă de montaj.
+4. **Scoți o lucrare de pe contract** (o salvezi fără contract) → anexa lui se reface la fel.
+5. Aparatele vândute rămân mereu în anexă, neatinse. La un contract **semnat** nu se schimbă nimic: anexa e ce s-a semnat.
+
+După „Șterge", aplicația spune ce s-a întâmplat („Anexa nr. 2 s-a refăcut din lucrările rămase" / „s-a întors la
+montajul din ofertă") și reîncarcă fișa. Întrebarea dinainte nu mai promite „Anexa rămâne cum a fost salvată".
+
+- **Ce am schimbat:** serverul (o singură regulă pentru salvare și ștergere, `_refaAnexaDinLucrari`; mesajul îl scrie
+  serverul), pagina și telefonul (întrebarea, mesajul, reîncărcarea fișei — pe telefon din aplicația următoare). Probe:
+  `verify_contracte.js` (7 verificări noi, pe server pornit: 3 + 2 → 5, ștearsă una → 3, scoasă de pe contract,
+  ultima → oferta, fără ofertă → fără anexă, semnat → neatins), `verify_montaj.js`.
+- **Ce vede fondatorul:** în fișa clientului (fila Contract), anexa care se potrivește cu lucrările rămase.
+- **Ce vede clientul:** nimic — e partea noastră. Contractul pe care îl primește la semnat spune montajul adevărat.
 
 ### FONDATOR · Calendarul de montaj, refăcut după machetă: fereastra zilei, confirmări, anulare cu motiv, istoric
 
