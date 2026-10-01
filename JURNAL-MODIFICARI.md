@@ -81,6 +81,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
+- [ ] **Robert: cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** Alin a hotărât să le facă el. Lista,
+  pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
+  „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
+  starea fiecăruia. La punctul 8 (aparat schimbat pe aceeași mașină) așteaptă întâi „da"-ul lui Alin.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -110,11 +114,14 @@ aparatele noi, ritmul instalatorului (29–30.09) → reparațiile din verificar
 
 **Ce e încă deschis din verificările lui Robert (29.09), mai jos la „De verificat":** 10 puncte din revizia lotului 3
 (primul e de siguranță: un Excel „umflat" poate opri serverul) și 14 din revizia facturării, plus două mici (telefoanele
-vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche).
+vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche). **Hotărât de Alin (01.10): le repară Robert.**
+Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și texte 4), cu locul din cod și reparația propusă, e
+în documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
 
-**Propunerea de ordine (01.10, așteaptă „da"-ul lui Alin):** (1) închidem lista lui Robert pe loturi: siguranță → bani →
-contracte → ecrane și texte; (2) reluăm meniul de la „Conturi & Abonamente", până la „Jurnal audit"; (3) ce găsim nou pe
-drum se notează aici și se face la capătul secțiunii — pe loc doar ce strică bani sau siguranță.
+**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) **Montaj → Calendar**, refăcut (propunerea cu machetă e la
+Alin); (2) **Facturare** (ce mai e: stornarea; răspunsul contabilului despre factura de avans); (3) restul meniului, de la
+„Conturi & Abonamente" până la „Jurnal audit". Regula „ce apare nou pe drum se face la capătul secțiunii" — încă de
+lămurit cu Alin.
 
 ---
 
@@ -9957,6 +9964,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 - [ ] **(Alin) Găsite la revizia lotului 3 în zonele lui — NEATINSE de noi, ca să nu ne călcăm (29.09).** Pentru
   fiecare e scrisă și reparația propusă; le face sesiunea lui sau le facem noi, cum hotărâți.
+  **HOTĂRÂT (01.10, Alin): le face Robert**, cu cele din revizia facturării (mai jos) — în total 26, pe loturi, în
+  documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
   1. **Securitate, urgent:** un Excel mic, făcut anume, se „umflă" la citire la sute de MB și poate opri serverul
      întreg (toate firmele, până repornește Railway). Pe web: „Încarcă șablonul" (fișierul vine de la client) și
      încărcarea listelor Teltonika. Reparația: la citire, înainte de ExcelJS, se numără octeții dezarhivați, cu un
@@ -9987,7 +9996,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       „Trece pe firmă" în bloc în Dispozitive → Neasignate; ziua de pornire a abonamentului pe fiecare aparat (✎).
       Până atunci, „Emite prima factură" de pe telefon deschide „Generează factură" obișnuit, nu factura unică.
 
-- [ ] **(Alin) Găsite la revizia facturării din 29.09 — NEATINSE de noi (29.09).** O revizie cu 4 priviri (bani, acces,
+- [ ] **(Alin → Robert, 01.10) Găsite la revizia facturării din 29.09 — le face Robert (hotărât de Alin pe 01.10; lista
+  în documentul pentru el, linkul e la punctul de mai sus).** O revizie cu 4 priviri (bani, acces,
   ecrane, hârtie) peste cele 5 schimbări ale lui Alin din 29.09; fiecare găsire a trecut și pe la un sceptic. Cele 30
   de găsiri se strâng în 16 probleme. Detaliile (cu rândurile din cod) sunt în raportul revizuirii; aici, pe scurt:
   **Bani — se poate factura de două ori sau pierde o sumă**
