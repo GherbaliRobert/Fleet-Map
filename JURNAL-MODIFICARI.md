@@ -10148,7 +10148,9 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
 
-- [ ] **(voi) Instalați aplicația de telefon 1.0.7** (cuprinde tot din 1.0.4–1.0.6). Ecranele loturilor 3, 4 și 5 apar doar în ea. Încărcarea unei liste
+- [ ] **(voi) Instalați aplicația de telefon 1.0.8** (cuprinde tot din 1.0.4–1.0.7, plus reparațiile din lista lui Robert,
+  01.10: cota TVA 21%, aparatele deja facturate, luna care n-a început, confirmarea la scăderea păstrării, mesajul unic de
+  suspendare). Telefoanele mai vechi de 1.0.5 nu mai pot trece plăți cu „extinde accesul" (serverul le refuză). Ecranele loturilor 3, 4 și 5 apar doar în ea. Încărcarea unei liste
   Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
 
 - [ ] **(eu + Robert) Telefonul, la APK-ul următor (30.09, seara).** Sursa e gata pentru: „Ne facturează" în fișa
