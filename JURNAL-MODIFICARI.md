@@ -133,7 +133,7 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
-### AMÂNDOI · Lista lui Robert, lotul 4 — ecrane și texte (23–26) — `HASH`
+### AMÂNDOI · Lista lui Robert, lotul 4 — ecrane și texte (23–26) — `183dafe`
 
 Ultimul lot: nimic nu se pierdea aici, dar ecranul spunea altceva decât face aplicația. Cu el, lista de 26 e gata, mai
 puțin punctul 8 (așteaptă „da"-ul lui Alin) și punctul 11 (verificare pe producție, la „De amintit").
