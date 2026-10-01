@@ -455,7 +455,7 @@ let registeredLoaded = false;
 async function loadRegisteredImeis() {
   try {
     const r = await db.pool.query("SELECT imei FROM devices WHERE status IS DISTINCT FROM 'archived'");
-    const s = await db.stocImeiuri(montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).map(function (e) { return e.k; }));
+    const s = await db.stocImeiuri(montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).map(function (e) { return e.k; }), stocMod.PRIMITE_LA_CONECTARE);
     registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei));
     stocImeis.clear(); s.filter(montaj.esteImei).forEach(function (x) { stocImeis.add(x); });
     registeredLoaded = true;
@@ -5636,7 +5636,11 @@ app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
       else if (stare === 'retur') { m.partener_id = null; }
       else if (stare === 'casat') { m.company_id = null; m.partener_id = null; }
       await db.mutaStoc(id, m);
-      if (stare === 'casat' && x.serie) stocImeis.delete(x.serie);   // un tracker casat nu mai are ce transmite
+      // Primit la conectare doar cât e în depozit sau la instalator (stoc.PRIMITE_LA_CONECTARE); montat, returnat, defect
+      // sau casat — nu: de acolo hotărăște rândul lui din Dispozitive.
+      if (x.serie && montaj.transmite(x.tip) && montaj.esteImei(x.serie)) {
+        if (stocMod.primitLaConectare(stare)) stocImeis.add(x.serie); else stocImeis.delete(x.serie);
+      }
       mutate.push(id);
     }
     if (!mutate.length) return res.status(400).json({ refuzate: refuzate, error: 'Nimic nu s-a mutat: ' + refuzate.map(function (r) { return (r.serie || '#' + r.id) + ' ' + r.motiv; }).slice(0, 4).join('; ') + '.' });
@@ -5682,7 +5686,7 @@ app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
     // Seria corectată la un tracker: IMEI-ul vechi nu mai e primit, cel nou da.
     if (f.serie !== undefined && montaj.transmite(x.tip)) {
       if (x.serie) stocImeis.delete(x.serie);
-      if (f.serie && x.stare !== 'casat') stocImeis.add(f.serie);
+      if (f.serie && stocMod.primitLaConectare(x.stare)) stocImeis.add(f.serie);
     }
     auditReq(req, 'update', 'stoc', id, { campuri: Object.keys(f) });
     res.json(out);
@@ -5711,6 +5715,7 @@ async function _stocLaFirma(imei, companyId, cine) {
     const x = await db.stocDupaSerie(String(imei));
     if (!x || (x.stare !== 'depozit' && x.stare !== 'instalator')) return null;
     const co = await db.getCompanyById(companyId); if (!co) return null;
+    stocImeis.delete(String(imei));   // montat: de acum hotărăște rândul din Dispozitive (stoc.PRIMITE_LA_CONECTARE)
     return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null,
       proprietar: contracte.chirieFirma(co.settings) ? 'ra' : 'client', cine: cine || null,
       nota: 'automat: aparatul a fost legat de firmă în „Dispozitive"' });
@@ -8704,6 +8709,16 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
     registeredImeis.delete(imei);
+    // Șters definitiv = nu mai e primit nici ca aparat din stoc (găsit de Robert, 30.09: revenea singur, cu poziții noi).
+    // Bucata încă „în depozit" / „la instalator" trece pe „defect", cu notă: de verificat înainte să se mai monteze.
+    stocImeis.delete(imei);
+    try {
+      const sb = await db.stocDupaSerie(imei);
+      if (sb && stocMod.primitLaConectare(sb.stare) && stocMod.poateTrece(sb.stare, 'defect')) {
+        await db.mutaStoc(sb.id, { stare: 'defect', company_id: sb.company_id, partener_id: null, proprietar: sb.proprietar,
+          cine: _cine(req), nota: 'automat: aparatul a fost șters definitiv din Dispozitive — de verificat înainte să se mai monteze' });
+      }
+    } catch (e) { console.warn('[STOC] la ștergerea aparatului:', e.message); }
     livePositions.delete(imei);
     broadcastWs({ type: 'removed', data: { imei } });
     auditReq(req, 'delete', 'device', imei, { name: dev.name, plate: dev.plate, hard: true });
@@ -13707,7 +13722,8 @@ function _clientSnapshot(co) {
 app.get('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const rows = await db.getInvoices({ companyId: req.query.company_id ? parseInt(req.query.company_id) : null, status: req.query.status || null, limit: parseInt(req.query.limit) || 500 });
-    res.json({ invoices: rows });
+    // `la_anaf`: ajunsă la ANAF → ecranul nu mai arată „Anulează" (regula stă într-un singur loc, `_laAnaf`).
+    res.json({ invoices: rows.map(function (v) { return Object.assign({}, v, { la_anaf: _laAnaf(v) }); }) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Hârtia facturii (și a proformei), ca fișier PDF — ca oferta și contractul (Alin, 30.09). Aceeași hârtie pleacă
@@ -13902,6 +13918,9 @@ app.post('/api/invoices/previzualizare', requireAuth, requireSuperadmin, async (
     res.end(pdf);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// O factură fiscală ajunsă la ANAF (trimisă, în procesare, sau validată): acolo e valabilă, orice am scrie la noi.
+// Nu se mai trimite a doua oară și nu se mai anulează (se stornează). O singură regulă, pentru amândouă.
+function _laAnaf(inv) { return !!inv && inv.type !== 'proforma' && (inv.efactura_status === 'uploaded' || inv.efactura_status === 'validated'); }
 // Stare document: 'paid' | 'canceled'.
 //   • factură: 'paid' = încasarea, scrisă ATOMIC cu factura (plată + stare într-o singură tranzacție). NU mai
 //     prelungește niciun „acces până la" (ceasul vechi, scos pe 28.09) — o factură plătită iese singură din
@@ -13916,6 +13935,9 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
     const cine = req.auth && req.auth.userId;
     if (status === 'canceled') {
       if (inv.status === 'paid') return res.status(400).json({ error: inv.type === 'proforma' ? 'Proforma e încasată și are factură fiscală — anularea se face pe factură, prin storno.' : 'Factura e plătită — folosește storno, nu anulare.' });
+      // O factură ajunsă la ANAF (din 30.09 pleacă singură) rămâne valabilă în SPV-ul clientului orice am scrie la noi:
+      // „anulată" aici + refăcută = DOUĂ facturi la ANAF pe aceeași lună. O asemenea factură se stornează (cu minus).
+      if (_laAnaf(inv)) return res.status(409).json({ laAnaf: true, error: 'Factura ' + (inv.full_number || '') + ' e deja la ANAF, deci nu se mai anulează: acolo rămâne valabilă. Se corectează printr-o factură de stornare (cu minus), cu contabilul.' });
       await db.updateInvoice(inv.id, { status: 'canceled' });
       _invalidateAccessCache(inv.company_id);
       auditReq(req, 'cancel', inv.type === 'proforma' ? 'proforma' : 'invoice', inv.id, {}); return res.json({ ok: true });
@@ -13980,7 +14002,7 @@ app.post('/api/invoices/:id/efactura', requireAuth, requireSuperadmin, async (re
     if (inv.type === 'proforma') return res.status(400).json({ error: 'Proforma nu se trimite la ANAF — se trimite factura emisă la încasare.' });
     // De pe 30.09 orice factură pleacă SINGURĂ la ANAF, la emitere. O a doua trimitere ar pune aceeași factură de
     // două ori în SPV-ul clientului: se retrimite DOAR una respinsă (`error`) sau netrimisă încă.
-    if (inv.efactura_status === 'uploaded' || inv.efactura_status === 'validated') {
+    if (_laAnaf(inv)) {
       return res.status(409).json({ error: inv.efactura_status === 'validated'
         ? 'Factura e deja validată de ANAF — nu se mai trimite.'
         : 'Factura e deja la ANAF, în procesare. Apasă „Verifică status ANAF"; se retrimite doar dacă e respinsă.' });
