@@ -1706,7 +1706,10 @@ async function parteaMontaj() {
     'lunaAlaturata', 'termenFel', 'termenPastila', 'termenLinie', 'detaliiContract', 'stocText', 'deProgramatActive', 'contractulFormularului',
     'formNou', 'cuClient', 'cuMasini', 'corpProgramare', 'toastProgramat', 'dinContract', 'formLucrare', 'corpMutare', 'corpMontata',
     'intrebareMontata', 'toastMutat', 'toastMontata', 'eroarea', 'calendarMontaj', 'programeazaMontaj', 'mutaLucrarea', 'lucrareMontata',
-    'stergeZiua', 'numeFirmaContract', 'rutaCalendarMontaj', 'optiuneClient', 'instalatoriActivi', 'instalatoriLucrare', 'faraClientText', 'ziCuNume'];
+    'anuleazaLucrarea', 'numeFirmaContract', 'rutaCalendarMontaj', 'optiuneClient', 'instalatoriActivi', 'instalatoriLucrare', 'faraClientText', 'ziCuNume',
+    // 01.10 — calendarul refăcut (culoarea după confirmări, confirmările, anularea cu motiv, reprogramarea, istoricul, nota de stoc)
+    'clasaLucrare', 'confirmaLucrarea', 'reprogrameazaLucrarea', 'notaStocMontaj', 'incarcareText', 'formAnulare', 'corpAnulare', 'toastAnulat',
+    'corpReprogramare', 'toastReprogramat', 'istoricFiltrat'];
   T('lib/calendarMontaj.ts se traduce și are toate regulile', FN_CAL.every((k) => typeof CAL[k] === 'function') && !!CAL.CAL_TEXT,
     FN_CAL.filter((k) => typeof CAL[k] !== 'function').join(', '));
   T('lib/montajSectiune.ts se traduce (cifraFilei, ritmText, subPartener, bifaRetarif, NOTA_RITM)',
@@ -1773,7 +1776,8 @@ async function parteaMontaj() {
   const PART = [{ id: 7, name: 'Instal Vest SRL', active: true }, { id: 8, name: 'Montaj „Est" & <Co>', active: false }, { id: 9, name: "Nord GPS d'Or", active: true }];
   function lucrariProba(luna) {
     return [
-      { id: 101, company_id: 1, company_name: 'Calendar SRL', contract_id: 11, partener_id: 7, partener_nume: 'Instal Vest SRL', zi: luna + '-03', status: 'programat', masini: 3, items: [{ tip: 'gps', buc: 3 }, { tip: 'lvcan', buc: 2 }] },
+      { id: 101, company_id: 1, company_name: 'Calendar SRL', contract_id: 11, partener_id: 7, partener_nume: 'Instal Vest SRL', zi: luna + '-03', status: 'programat', masini: 3, items: [{ tip: 'gps', buc: 3 }, { tip: 'lvcan', buc: 2 }],
+        conf: 'confirmat', conf_text: 'confirmat de instalator și de client', confirmat_instalator: true, confirmat_client: true },
       { id: 102, company_id: 2, company_name: 'Alfa & <Beta>', contract_id: 12, partener_id: null, partener_nume: null, zi: luna + '-03', status: 'executat', masini: 1, items: [{ tip: 'gps', buc: 1 }] },
       { id: 103, company_id: 1, company_name: 'Calendar SRL', contract_id: 11, partener_id: 9, partener_nume: "Nord GPS d'Or", zi: luna + '-03', status: 'facturat_clientului', masini: 20, items: [{ tip: 'gps', buc: 20 }, { tip: 'fms', buc: 20 }, { tip: 'deplasare', buc: 40 }] },
       { id: 104, company_id: 3, company_name: '', contract_id: 13, partener_id: 8, partener_nume: 'Montaj „Est" & <Co>', zi: luna + '-15', status: 'de_programat', masini: 21, items: [{ tip: 'gps', buc: 21 }, { tip: 'necunoscut', buc: 2 }] },
@@ -1794,6 +1798,15 @@ async function parteaMontaj() {
     ];
   }
   const STOC = [{ tip: 'fmc130', eticheta: 'Teltonika FMC130', depozit: 12, instalator: 3 }, { tip: 'lvcan200', eticheta: 'Modul LV-CAN200 & <x>', depozit: 4, instalator: 0 }];
+  // Anularea și istoricul (01.10): motivele sunt ale serverului (montaj.MOTIVE_ANULARE), textele istoricului le scrie el
+  // (montaj.textIstoric) — telefonul și pagina doar le arată.
+  const MOTIVE = require('./montaj.js').MOTIVE_ANULARE;
+  const ISTORIC = [
+    { id: 301, company_id: 4, company_name: 'Zeta', contract_id: 14, partener_id: 7, partener_nume: 'Instal Vest SRL', zi: '2027-03-05', status: 'anulat', masini: 4, items: [{ tip: 'gps', buc: 4 }],
+      anulata: true, motiv: 'instalator', text: 'Anulată — instalatorul nu poate', detaliu: '„Bolnav” · anulată de Alin, pe 04.03', reprogramat_ca: null, poateReprograma: true },
+    { id: 302, company_id: 1, company_name: 'Calendar SRL', contract_id: 11, partener_id: 9, partener_nume: "Nord GPS d'Or", zi: '2027-02-20', status: 'executat', masini: 2, items: [{ tip: 'gps', buc: 2 }],
+      anulata: false, motiv: null, text: 'Montată — 2 mașini', detaliu: null, reprogramat_ca: null, poateReprograma: false },
+  ];
   function dateProba(luna, azi, peste_) {
     return Object.assign({ luna, azi, lucrari: lucrariProba(luna), deProgramat: contracteProba(), stari: STARI, parteneri: PART, stoc: STOC }, peste_ || {});
   }
@@ -1830,13 +1843,13 @@ async function parteaMontaj() {
         const gol = (h.match(/class="mjc-zi gol"/g) || []).length;
         const zileW = []; const re = /<div class="mjc-zi( wk)?( azi)?" role="button" tabindex="0" aria-label="Programează pe ([^"]*)" onclick="raxMjCalZi\('([^']*)'\)"[^>]*><span class="mjc-nr">(\d+)<\/span>([\s\S]*?)<\/div>/g; let m;
         while ((m = re.exec(h))) {
-          const chips = []; const rc = /<button type="button" class="mjc-l (mjc-mont|mjc-prog)" title="([^"]*)" onclick="event\.stopPropagation\(\);raxMjCalLucrare\((\d+)\)"><b>([^<]*)<\/b> <span class="mjc-cl">([^<]*)<\/span><\/button>/g; let c;
+          const chips = []; const rc = /<button type="button" class="mjc-l (mjc-mont|mjc-ok|mjc-conf)" title="([^"]*)" onclick="event\.stopPropagation\(\);raxMjCalLucrare\((\d+)\)"><b>([^<]*)<\/b> <span class="mjc-cl">([^<]*)<\/span><\/button>/g; let c;
           while ((c = rc.exec(m[6]))) chips.push({ cls: c[1], titlu: unesc(c[2]), id: +c[3], n: c[4], nume: unesc(c[5]) });
           zileW.push({ zi: m[4], nr: +m[5], wk: !!m[1], azi: !!m[2], data: m[3], chips });
         }
         const g = CAL.grilaLunii(luna, azi), pe = CAL.lucrariPeZi(d.lucrari, part);
         const zileT = g.zile.map((z) => ({ zi: z.zi, nr: z.nr, wk: z.wk, azi: z.azi, data: CAL.ziRo(z.zi),
-          chips: (pe[z.zi] || []).map((l) => ({ cls: CAL.esteMontata(l.status) ? 'mjc-mont' : 'mjc-prog', titlu: CAL.titluLucrare(l, d.stari), id: l.id, n: String(l.masini), nume: l.company_name || '' })) }));
+          chips: (pe[z.zi] || []).map((l) => ({ cls: CAL.clasaLucrare(l), titlu: CAL.titluLucrare(l, d.stari), id: l.id, n: String(l.masini), nume: l.company_name || '' })) }));
         if (gol !== g.gol || J(zileW) !== J(zileT)) { grOk = false; grD = luna + '/' + part + ': gol ' + gol + '≠' + g.gol + ' ' + J(zileW).slice(0, 300) + ' ≠ ' + J(zileT).slice(0, 300); }
         const lunaW = unesc((/<strong class="mjc-luna">([^<]*)<\/strong>/.exec(h) || [])[1] || '');
         if (lunaW !== CAL.lunaText(luna)) { grOk = false; grD = 'luna: ' + lunaW + ' ≠ ' + CAL.lunaText(luna); }
@@ -1845,12 +1858,16 @@ async function parteaMontaj() {
         if (J(optW) !== J(optT)) { optOk = false; optD = 'instalatori ' + part + ': ' + J(optW) + ' ≠ ' + J(optT); }
       });
     });
-    T('grila: aceleași căsuțe goale, zile, weekend, „azi", aceleași lucrări pe zi (clasă, cifră, client, eticheta întreagă) — 6 luni × 5 filtre, cu luna scrisă la fel', grOk, grD);
+    T('grila: aceleași căsuțe goale, zile, weekend, „azi", aceleași lucrări pe zi (clasă — verde confirmat / galben de confirmat / gri montat —, cifră, client, eticheta întreagă) — 6 luni × 5 filtre, cu luna scrisă la fel', grOk, grD);
+    const clase = [{ status: 'programat', conf: 'confirmat' }, { status: 'programat', conf: 'de_confirmat' }, { status: 'programat' }, { status: 'de_programat' }, { status: 'executat', conf: 'confirmat' }, { status: 'facturat_clientului' }];
+    T('culoarea unei zile (_mjcClasa ↔ clasaLucrare): aceeași pe 6 cazuri', clase.every((l) => { const x = webNou({}); return vm.runInContext('_mjcClasa(' + J(l) + ')', x) === CAL.clasaLucrare(l); }), J(clase.map((l) => CAL.clasaLucrare(l))));
     T('filtrul pe instalator: „toți" + activii + cel ales (chiar inactiv) — același ca pe web', optOk, optD);
     const hC = webNou({ luna: '2027-03', data: dateProba('2027-03', '2027-03-10') }).W.cal();
     T('textul de sub titlu e cel de pe web', unesc((/Calendarul montajului<\/div><div class="raco-sub">([^<]*)<\/div>/.exec(hC) || [])[1] || '') === CAL.CAL_TEXT.sub);
-    T('legenda: „programat", „montat", „cifra = câte mașini" (ca pe web)', /<b>10<\/b> programat/.test(hC) && /<b>10<\/b> montat/.test(hC) && /cifra = câte mașini/.test(hC) &&
-      /<b>10<\/b> programat<\/span>/.test(S.calTsx) && /<b>10<\/b> montat<\/span>/.test(S.calTsx) && /<span>cifra = câte mașini<\/span>/.test(S.calTsx));
+    T('legenda: „confirmat", „de confirmat", „montat", „cifra = câte mașini" (ca pe web)', /<b>10<\/b> confirmat<\/span>/.test(hC) && /<b>10<\/b> de confirmat<\/span>/.test(hC) &&
+      /<b>10<\/b> montat<\/span>/.test(hC) && /cifra = câte mașini/.test(hC) &&
+      /<span class="mjc-l mjc-ok"><b>10<\/b> confirmat<\/span>/.test(S.calTsx) && /<span class="mjc-l mjc-conf"><b>10<\/b> de confirmat<\/span>/.test(S.calTsx) &&
+      /<span class="mjc-l mjc-mont"><b>10<\/b> montat<\/span>/.test(S.calTsx) && /<span>cifra = câte mașini<\/span>/.test(S.calTsx));
     T('luna stricată → „Se încarcă…" pe web, null pe telefon', /Se încarcă…/.test(webNou({ luna: '', data: dateProba('', '') }).W.cal()) && CAL.grilaLunii('', '') === null && CAL.grilaLunii('abc', '') === null);
     T('zilele săptămânii, în aceeași ordine (L … D)', J((/var MJC_ZILE = (\[[^\]]*\]);/.exec(W.bloc) || [])[1] ? eval((/var MJC_ZILE = (\[[^\]]*\]);/.exec(W.bloc))[1]) : null) === J(CAL.MJC_ZILE) &&
       J(eval((/var MJC_LUNI = (\[[^\]]*\]);/.exec(W.bloc) || [0, 'null'])[1])) === J(CAL.MJC_LUNI));
@@ -1866,11 +1883,12 @@ async function parteaMontaj() {
         const stW = (/<b>Aparate în stoc:<\/b> ([^<]*)<\/div>/.exec(h) || [])[1];
         if ((stW == null ? '' : unesc(stW)) !== (stoc.length ? CAL.stocText(stoc) : '')) { dpOk = false; dpD = 'stoc: ' + stW + ' ≠ ' + CAL.stocText(stoc); }
         if (!lista.length && h.indexOf(CAL.CAL_TEXT.golDeProgramat) < 0) { dpOk = false; dpD = 'golul'; }
-        const subW = unesc((/De programat<\/div><div class="raco-sub">([^<]*)<\/div>/.exec(h) || [])[1] || '');
+        const subW = unesc((/Ce ai de montat<\/div><div class="raco-sub">([^<]*)<\/div>/.exec(h) || [])[1] || '');
         if (subW !== CAL.CAL_TEXT.subDeProgramat) { dpOk = false; dpD = 'sub: ' + subW; }
       });
     });
-    T('„De programat": același rând (client, termen cu culoarea lui: roșu depășit / portocaliu curând / neutru, rest, buton doar cu mașini rămase), același stoc, același gol', dpOk, dpD);
+    T('„Ce ai de montat": același rând (client, termen cu culoarea lui: roșu depășit / portocaliu curând / neutru, rest, buton doar cu mașini rămase), același stoc, același gol', dpOk, dpD);
+    T('titlul „Ce ai de montat" și pe telefon', /> Ce ai de montat<\/div>/.test(S.calTsx));
     const C = require('./contracts.js');
     T('„30 de zile" din textul de sub „De programat" e cifra din contracts.js (MONTAJ_ZILE_DUPA_AVANS)', CAL.CAL_TEXT.subDeProgramat.indexOf(C.MONTAJ_ZILE_DUPA_AVANS + ' de zile') >= 0, C.MONTAJ_ZILE_DUPA_AVANS);
     const pana = [Date.UTC(2027, 2, 14, 21, 30), Date.UTC(2027, 2, 14, 22, 30), Date.UTC(2027, 9, 30, 21, 59), Date.UTC(2027, 9, 30, 23, 1), ACUM];
@@ -1962,6 +1980,24 @@ async function parteaMontaj() {
         if (!la) { sOk = false; sD = J([a.url, a.op.body, x.__toast[0]]) + ' ≠ ' + J([b.p, J(b.o.body), CAL.toastProgramat(c, parseInt(n, 10) || 0, zi)]); }
       }
       T('„Programează": aceeași cerere (POST /api/montaj/programeaza, aceleași cifre, ziua la miezul nopții local), același mesaj, luna zilei reîncărcată', sOk, sD);
+      // 01.10 — cele două confirmări vorbite pleacă în aceeași cerere (bifate pe web = `ci` / `cc` pe telefon)
+      let cfOk = true, cfD = '';
+      for (const [ci, cc] of [[true, false], [false, true], [true, true]]) {
+        const x = webNou({ luna: '2027-03', data: d0, form: { zi: '2027-03-20', contract_id: 11, n: null, partener_id: 7 } });
+        x.__el['mjc-zi'] = { value: '2027-03-20' }; x.__el['mjc-gps'] = { value: '3' }; x.__el['mjc-part'] = { value: '7' }; x.__el['mjc-msg'] = { textContent: '' };
+        x.__el['mjc-cinst'] = { checked: ci }; x.__el['mjc-ccli'] = { checked: cc };
+        const c = CAL.contractulFormularului(d0, 11);
+        x.__qsa['#mjc-form input[data-mjc-tip]'] = CAL.alteTipuri(c).map((t) => ({ value: '1', getAttribute: (k) => (k === 'data-mjc-tip' ? t.tip : null) }));
+        x.__raspuns = (url) => (/calendar/.test(url) ? d0 : { ok: true, lucrare: { id: 1 } });
+        await x.raxMjCalSalveaza();
+        const alte = {}; CAL.alteTipuri(c).forEach((t) => { alte[t.tip] = '1'; });
+        apiLog.length = 0; await CAL.programeazaMontaj(CAL.corpProgramare(c, { zi: '2027-03-20', contract_id: 11, n: '3', part: '7', alte, atinse: {}, ci, cc }));
+        const a = x.__fetch[0] || { op: {} }, b = apiLog[0] || { o: {} };
+        if (a.op.body !== J(b.o.body) || JSON.parse(a.op.body || '{}').confirmat_instalator !== ci || JSON.parse(a.op.body || '{}').confirmat_client !== cc) { cfOk = false; cfD = a.op.body + ' ≠ ' + J(b.o.body); }
+      }
+      T('„Programează" cu confirmările bifate: aceeași cerere pe web și pe telefon (confirmat_instalator / confirmat_client)', cfOk, cfD);
+      const fc = CAL.cuClient(d0, Object.assign(CAL.formNou(d0, '2027-03-20', 11, '7'), { ci: true, cc: true }), 12);
+      T('alt client păstrează bifele (ca raxMjCalClient)', fc.ci === true && fc.cc === true && /f\.ci = !!\(document\.getElementById\('mjc-cinst'\) \|\| \{\}\)\.checked/.test(W.bloc));
       T('pe telefon, după programare se reîncarcă luna zilei programate (onSchimbat(f.zi.slice(0, 7)))', /onSchimbat\(f\.zi\.slice\(0, 7\)\)/.test(S.calTsx) && /onSchimbat\(f\.mzi\.slice\(0, 7\)\)/.test(S.calTsx));
       const x = webNou({ luna: '2027-03', data: d0, form: { zi: '', contract_id: 11 } });
       x.__el['mjc-zi'] = { value: '' }; x.__el['mjc-msg'] = { textContent: '' };
@@ -1996,13 +2032,18 @@ async function parteaMontaj() {
         const pW = optiuni((/id="mjc-mpart">([\s\S]*?)<\/select>/.exec(h) || [])[1]);
         const pT = [{ v: '', t: '— neales —' }].concat(CAL.instalatoriLucrare(d.parteneri, l).map((p) => ({ v: String(p.id), t: p.name })));
         const rez = J([titlu, unesc(sub[1] || ''), unesc(sub[2] || ''), !!mont, mont ? [mont[1], mont[2]] : null, mzi || null, prog ? pW.map((o) => ({ v: o.v, t: o.t })) : null, prog ? aleasa(pW) : null,
-          /raxMjCalSterge\(/.test(h), +((/raxMjCalLaClient\((\d+)\)/.exec(h) || [])[1])]);
+          /raxMjCalAnuleaza\(/.test(h), +((/raxMjCalLaClient\((\d+)\)/.exec(h) || [])[1])]);
         const tel = J([(l.company_name || '—') + ' · ' + CAL.ziRo(l.zi), CAL.masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + CAL.stareText(l, d.stari),
           CAL.ceSeMonteaza(l.items), prog, prog ? [String(l.masini), f.mont] : null, prog ? f.mzi : null, prog ? pT : null, prog ? f.mpart : null, prog, l.company_id]);
         if (rez !== tel) { lOk = false; lD = l.id + ': ' + rez + ' ≠ ' + tel; }
         if (prog && unesc((/<div class="raco-sub">(Dacă s-au montat[^<]*)<\/div>/.exec(h) || [])[1] || '') !== CAL.CAL_TEXT.maiPutine) { lOk = false; lD = 'maiPutine'; }
       });
-      T('ziua programată: același titlu, aceeași descriere (mașini · instalator · stare, ce se montează), „S-a montat?" / „Mută" / „Șterge ziua" doar cât e programată, aceiași instalatori', lOk, lD);
+      T('ziua programată: același titlu, aceeași descriere (mașini · instalator · stare, ce se montează), „S-a montat?" / „Mută" / „Anulează" doar cât e programată, aceiași instalatori', lOk, lD);
+      // Confirmările pe ziua programată: bifate cum spune serverul, pe web și pe telefon
+      const hc = webNou({ luna: '2027-03', data: d, sel: 101 }).W.luc();
+      T('confirmările zilei: bifate cum spune serverul (pe web: două bife cu raxMjCalConfirma; pe telefon: aceleași, pe l.confirmat_*)',
+        (hc.match(/<input type="checkbox" checked onchange="raxMjCalConfirma\(101, '(instalator|client)', this\.checked\)">/g) || []).length === 2 &&
+        /checked=\{!!l\.confirmat_instalator\}/.test(S.calTsx) && /checked=\{!!l\.confirmat_client\}/.test(S.calTsx));
       const lx = Object.assign({}, d.lucrari[0], { partener_id: 55 });
       T('instalator dispărut de pe listă → „— neales —" (nu trimite la server un instalator care nu mai e)', CAL.formLucrare(d.parteneri, lx).mpart === '' &&
         aleasa(optiuni((/id="mjc-mpart">([\s\S]*?)<\/select>/.exec(webNou({ luna: '2027-03', data: Object.assign({}, d, { lucrari: [lx] }), sel: lx.id }).W.luc()) || [])[1])) === '');
@@ -2047,13 +2088,47 @@ async function parteaMontaj() {
       await xr.raxMjCalMontata(101);
       T('„Montată" cu „Renunță": nicio cerere (pe telefon întrebarea e o foaie; „Renunță" te întoarce în ziua ei)', !xr.__fetch.length &&
         /if \(x\.fel === 'intreb'\) \{ setFoaie\(\{ fel: 'lucrare', id: x\.id, f: x\.f, start: x\.start \}\); return false; \}/.test(S.calTsx));
-      const xs = webNou({ luna: '2027-03', data: d, sel: 101 }); xs.__el['mjc-msg'] = { textContent: '' };
-      xs.__raspuns = (url) => (/calendar/.test(url) ? d : { ok: true });
-      await xs.raxMjCalSterge(101);
-      apiLog.length = 0; await CAL.stergeZiua(101);
-      const a = xs.__fetch[0] || { op: {} }, b = apiLog[0] || { o: {} };
-      T('„Șterge ziua": aceeași întrebare și aceeași cerere (DELETE /api/montaje/:id), fără mesaj', (xs.__confirm[0] || {}).m === CAL.CAL_TEXT.sterge &&
-        a.url === b.p && a.op.method === b.o.method && !xs.__toast.length, J([xs.__confirm[0], a, b]));
+      // „Anulează" (01.10): motivul (unul din cele două), amănuntele și, la „Reprogramează", ziua nouă
+      let anOk = true, anD = '';
+      for (const [motiv, det, reprog, zi2, p2, rasp] of [['instalator', '  Bolnav, revine luni. ', false, '', '', { ok: true, reprogramata: null }],
+        ['client', '', false, '', '', { ok: true, reprogramata: null }], ['client', 'Camioanele sunt în cursă', true, '2027-03-25', '9', { ok: true, reprogramata: { id: 55, zi: '2027-03-25' } }],
+        ['instalator', '', true, '2027-04-02', '', { ok: true, reprogramata: { id: 56, zi: '2027-04-02' } }]]) {
+        const xa = webNou({ luna: '2027-03', data: d, sel: 101 }); xa.__el['mjc-msg'] = { textContent: '' };
+        xa.raxMjCalAnuleaza(101); xa.raxMjCalMotiv(motiv); xa.__el['mjc-andet'] = { value: det };
+        if (reprog) { xa.raxMjCalAnulReprog(); xa.__el['mjc-rzi'] = { value: zi2 }; xa.__el['mjc-rpart'] = { value: p2 }; }
+        xa.__raspuns = (url) => (/calendar/.test(url) ? d : rasp);
+        await xa.raxMjCalAnuleazaTrimite(101, reprog);
+        apiLog.length = 0; apiRaspuns = () => rasp;
+        const j = await CAL.anuleazaLucrarea(101, CAL.corpAnulare({ motiv, detalii: det, reprog, zi: zi2, part: p2 }));
+        apiRaspuns = () => ({ ok: true });
+        const a = xa.__fetch[0] || { op: {} }, b = apiLog[0] || { o: {} };
+        if (!(a.url === b.p && a.url === '/api/montaje/101/anuleaza' && a.op.method === b.o.method && a.op.body === J(b.o.body) && xa.__toast[0] === CAL.toastAnulat(j))) {
+          anOk = false; anD = J([a.url, a.op.body, xa.__toast[0]]) + ' ≠ ' + J([b.p, J(b.o.body), CAL.toastAnulat(j)]);
+        }
+      }
+      T('„Anulează": aceeași cerere (POST /api/montaje/:id/anuleaza, motivul, amănuntele curățate, ziua nouă la „Reprogramează"), același mesaj', anOk, anD);
+      const xf = webNou({ luna: '2027-03', data: d, sel: 101 }); xf.__el['mjc-msg'] = { textContent: '' };
+      xf.raxMjCalAnuleaza(101); await xf.raxMjCalAnuleazaTrimite(101, false);
+      T('fără motiv: „Alege motivul anulării." și nicio cerere (și pe telefon, înainte de cerere)', xf.__el['mjc-msg'].textContent === CAL.CAL_TEXT.faraMotiv && !xf.__fetch.length &&
+        /if \(!f\.motiv\) \{ setMsg\(CAL_TEXT\.faraMotiv\); return; \}/.test(S.calTsx));
+      const xz = webNou({ luna: '2027-03', data: d, sel: 101 }); xz.__el['mjc-msg'] = { textContent: '' };
+      xz.raxMjCalAnuleaza(101); xz.raxMjCalMotiv('client'); xz.raxMjCalAnulReprog(); xz.__el['mjc-rzi'] = { value: '' };
+      await xz.raxMjCalAnuleazaTrimite(101, true);
+      T('„Reprogramează" fără zi nouă: „Alege ziua nouă." și nicio cerere (și pe telefon)', xz.__el['mjc-msg'].textContent === CAL.CAL_TEXT.faraZiNoua && !xz.__fetch.length &&
+        /if \(f\.reprog && !f\.zi\) \{ setMsg\(CAL_TEXT\.faraZiNoua\); return; \}/.test(S.calTsx));
+      // Reprogramarea unei zile anulate, din istoric
+      let rpOk = true, rpD = '';
+      for (const [zi2, p2] of [['2027-03-28', '7'], ['2027-05-01', '']]) {
+        const xr2 = webNou({ luna: '2027-03', data: d }); xr2.__el['mjc-msg'] = { textContent: '' };
+        xr2.raxMjCalReprogrameaza(301); xr2.__el['mjc-rzi'] = { value: zi2 }; xr2.__el['mjc-rpart'] = { value: p2 };
+        xr2.__raspuns = (url) => (/calendar/.test(url) ? d : { ok: true, reprogramata: { id: 77, zi: zi2 } });
+        await xr2.raxMjCalReprogTrimite(301);
+        apiLog.length = 0; await CAL.reprogrameazaLucrarea(301, CAL.corpReprogramare({ zi: zi2, part: p2 }));
+        const a = xr2.__fetch[0] || { op: {} }, b = apiLog[0] || { o: {} };
+        if (!(a.url === b.p && a.url === '/api/montaje/301/reprogrameaza' && a.op.body === J(b.o.body) && xr2.__toast[0] === CAL.toastReprogramat(zi2) &&
+          (xr2.__fetch[1] || {}).url === '/api/montaj/calendar?luna=' + zi2.slice(0, 7))) { rpOk = false; rpD = J([a, xr2.__toast]) + ' ≠ ' + J([b, CAL.toastReprogramat(zi2)]); }
+      }
+      T('„Reprogramează" din istoric: aceeași cerere (POST /api/montaje/:id/reprogrameaza), același mesaj, luna zilei noi reîncărcată', rpOk, rpD);
       const xc = webNou({ luna: '2027-03', data: d }); xc.raxMjCalLaClient(4);
       T('„La client" pe web deschide firma pe fila Contract; pe telefon, dosarul ei (rutaDosar), din foaie', J(xc.__deschis[0]) === J([4, 'contract']) &&
         /onClient=\{\(id\) => loc\.route\(rutaDosar\(id\), true\)\}/.test(S.mj) && /onClient=\{\(\) => onClient\(lucrareDeschisa\.company_id\)\}/.test(S.calTsx));
@@ -2213,8 +2288,8 @@ async function parteaMontaj() {
         './FlotaUi': { Confirma: (p) => (preact || preactCarton).h('div', { class: 'confirma-proba' }, p.title, ' | ', p.text) }, './Icon': { Icon: () => null },
       }).exp;
     } catch (e) { console.log('    (CalendarMontaj.tsx: ' + e.message + ')'); }
-    T('CalendarMontaj.tsx se traduce și exportă ecranul și foile (CalendarMontaj, DeProgramat, FoaieProgramare, FoaieLucrare)',
-      ['CalendarMontaj', 'DeProgramat', 'FoaieProgramare', 'FoaieLucrare'].every((k) => typeof CM[k] === 'function'));
+    T('CalendarMontaj.tsx se traduce și exportă ecranul și foile (CalendarMontaj, DeProgramat, FoaieProgramare, FoaieLucrare, FoaieAnulare, FoaieReprog)',
+      ['CalendarMontaj', 'DeProgramat', 'FoaieProgramare', 'FoaieLucrare', 'FoaieAnulare', 'FoaieReprog'].every((k) => typeof CM[k] === 'function'));
     if (typeof CM.CalendarMontaj === 'function' && typeof render === 'function') {
       const h = preact.h;
       const text = (s) => unesc(String(s).replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ');
@@ -2227,7 +2302,7 @@ async function parteaMontaj() {
         const zileBtn = (out.match(/<button type="button" class="mjc-zi( wk)?( azi)?"/g) || []).length;
         const gol = (out.match(/class="mjc-zi gol"/g) || []).length;
         const etGrila = g.zile.reduce((s, z) => s + Math.min(2, (pe[z.zi] || []).length), 0);
-        const etGasite = ((out.split('class="mjc-grila"')[1] || '').split('class="mjc-leg"')[0].match(/class="mjc-l mjc-(prog|mont)"/g) || []).length;
+        const etGasite = ((out.split('class="mjc-grila"')[1] || '').split('class="mjc-leg"')[0].match(/class="mjc-l mjc-(ok|conf|mont)"/g) || []).length;
         const randuri = (out.match(/class="mjc-rand"/g) || []).length;
         const nLuc = d.lucrari.filter((l) => l.zi.slice(0, 7) === luna).length;
         const t = text(out);
@@ -2248,6 +2323,14 @@ async function parteaMontaj() {
       T('fără date: se încarcă (rotița); căzut: eroarea', /class="spin"/.test(inc) && text(err).indexOf('Acces interzis.') >= 0);
       const incLuna = render(h(CM.CalendarMontaj, { d: dateProba('2027-03', '2027-03-10'), incarcand: true, onLuna() {}, onSchimbat() {}, onClient() {} }));
       T('altă lună pe drum: săgețile și „Azi" așteaptă (dezactivate), cu rotița lângă lună', (incLuna.match(/<button type="button" class="ctr-btn( mjc-sag)?" disabled/g) || []).length === 3 && /mjc-spin/.test(incLuna));
+      // „Programate" / „Istoric" (01.10): zilele încă programate, din orice lună, cu confirmările lor (textul serverului).
+      const progP = [lucrariProba('2027-03')[0], Object.assign({}, lucrariProba('2027-04')[0], { id: 111, company_name: 'Aprilie & <Co>', conf: 'de_confirmat', conf_text: 'lipsește confirmarea clientului', confirmat_client: false })];
+      const outP = render(h(CM.CalendarMontaj, { d: dateProba('2027-03', '2027-03-10', { programate: progP, istoric: ISTORIC }), onLuna() {}, onSchimbat() {}, onClient() {} }));
+      const tP = text(outP);
+      T('„Programate · 2" / „Istoric · 2": zilele programate din orice lună, cu clientul, mașinile, instalatorul și confirmările (vorbele serverului), câte un „Deschide"',
+        tP.indexOf('Programate · 2') >= 0 && tP.indexOf('Istoric · 2') >= 0 && progP.every((l) => tP.indexOf(CAL.ziRo(l.zi) + ' · ' + l.company_name) >= 0 && tP.indexOf(l.conf_text) >= 0) &&
+        (outP.match(/class="mjc-rez (ok|conf)"/g) || []).length === 2 && (outP.match(/> Deschide<\/button>/g) || []).length === 2 &&
+        (outP.match(/class="ctr-btn mjc-fila( pri)?"/g) || []).length === 2 && !rau(outP), tP.slice(-500));
       // Foile
       const d = dateProba('2027-03', '2027-03-10');
       const f = CAL.formNou(d, '2027-03-20', 11, '7');
@@ -2257,31 +2340,73 @@ async function parteaMontaj() {
         tp.indexOf('Câte mașini (din 20 rămase)') >= 0 && tp.indexOf('Instalare modul LV-CAN (din 12 rămase)') >= 0 && tp.indexOf('Instalare FMS (tahograf) (din 7 rămase)') >= 0 &&
         tp.indexOf(CAL.termenLinie(CAL.contractulFormularului(d, 11).termen)) >= 0 && tp.indexOf('— îl aleg mai târziu —') >= 0 && tp.indexOf('Refuzul serverului') >= 0 &&
         (fp.match(/<option /g) || []).length === CAL.deProgramatActive(d).length + 1 + CAL.instalatoriActivi(d.parteneri).length && !rau(fp) && /value="2027-03-20"/.test(fp), tp.slice(0, 400));
+      T('foaia „Programează montajul": cele două confirmări (nebifate la început), cu nota lor', tp.indexOf('Am vorbit cu instalatorul: poate în ziua asta') >= 0 &&
+        tp.indexOf('Am vorbit cu clientul: mașinile sunt disponibile') >= 0 && tp.indexOf(CAL.CAL_TEXT.confirmariNota) >= 0 &&
+        (fp.match(/<input type="checkbox"/g) || []).length === 2 && !/<input type="checkbox"[^>]*checked/.test(fp));
+      // Ce are fiecare instalator în ziua aleasă (textele serverului) și aparatul de pe rând
+      const dInc = dateProba('2027-03', '2027-03-10', { textLiber: 'liber în ziua asta',
+        incarcare: { '2027-03-20': { '7': { masini: 3, text: 'are deja 3 mașini (Calendar SRL)' } } },
+        deProgramat: contracteProba().map((c) => Object.assign({}, c, { tipuri: c.tipuri.map((t) => Object.assign({}, t, t.tip === 'gps' ? { aparat: 'FMC130' } : t.tip === 'lvcan' ? { aparat: 'LV-CAN200' } : {})) })) });
+      const fi = render(h(CM.FoaieProgramare, { d: dInc, f: Object.assign({}, f, { ci: true, cc: false }), msg: '', busy: false, onF() {}, onClose: () => true, onSalveaza() {} }));
+      const ti = text(fi);
+      T('foaia „Programează montajul": ce are fiecare instalator activ în ziua aleasă („are deja 3 mașini (…)" / „liber în ziua asta"), aparatul pe rând, bifa ținută',
+        ti.indexOf('Instal Vest SRL : are deja 3 mașini (Calendar SRL)') >= 0 && ti.indexOf("Nord GPS d'Or : liber în ziua asta") >= 0 && ti.indexOf('Montaj „Est"') < 0 &&
+        ti.indexOf('Aparat: FMC130') >= 0 && ti.indexOf('Aparat: LV-CAN200') >= 0 && (fi.match(/<input type="checkbox"[^>]*checked/g) || []).length === 1 && !rau(fi), ti.slice(0, 600));
       const fn = render(h(CM.FoaieProgramare, { d: dateProba('2027-03', '2027-03-10', { deProgramat: [] }), f, msg: '', busy: false, onF() {}, onClose: () => true, onSalveaza() {} }));
       T('foaia fără nimic de programat: „Nimic de programat: …"', text(fn).indexOf(CAL.CAL_TEXT.nimic) >= 0);
       const lp = d.lucrari[0], lm = d.lucrari[1];
-      const fl = render(h(CM.FoaieLucrare, { d, l: lp, f: CAL.formLucrare(d.parteneri, lp), msg: '', busy: false, onF() {}, onClose: () => true, onMontata() {}, onMuta() {}, onSterge() {}, onClient() {} }));
-      const fm = render(h(CM.FoaieLucrare, { d, l: lm, f: CAL.formLucrare(d.parteneri, lm), msg: '', busy: false, onF() {}, onClose: () => true, onMontata() {}, onMuta() {}, onSterge() {}, onClient() {} }));
+      const lpDe = Object.assign({}, lp, { conf: 'de_confirmat', conf_text: 'lipsește confirmarea clientului', confirmat_client: false });
+      const foaieL = (l) => render(h(CM.FoaieLucrare, { d, l, f: CAL.formLucrare(d.parteneri, l), msg: '', busy: false, onF() {}, onClose: () => true, onMontata() {}, onMuta() {}, onConfirma() {}, onAnuleaza() {}, onClient() {} }));
+      const fl = foaieL(lp), fm = foaieL(lm), fd = foaieL(lpDe);
       const tl = text(fl), tm = text(fm);
-      T('ziua programată: „S-a montat?", „Montată", „Altă zi sau alt instalator", „Mută", „La client", „Șterge ziua" și ce se montează',
-        ['S-a montat?', 'Montată', 'Altă zi sau alt instalator', 'Mută', 'La client', 'Șterge ziua', CAL.CAL_TEXT.maiPutine, CAL.ceSeMonteaza(lp.items), 'Calendar SRL · ' + CAL.ziRo(lp.zi)].every((s) => tl.indexOf(s) >= 0) && !rau(fl));
-      T('ziua deja montată: doar „La client" (nu se mai mută, nu se șterge)', tm.indexOf('La client') >= 0 && tm.indexOf('S-a montat?') < 0 && tm.indexOf('Șterge ziua') < 0 && tm.indexOf('Mută') < 0 && !rau(fm));
+      T('ziua programată: „Confirmări" (cele două bife, bifate cum spune serverul), „S-a montat?", „Montată", „Altă zi sau alt instalator", „Mută", „La client", „Anulează" și ce se montează',
+        ['Confirmări', 'Am vorbit cu instalatorul: poate pe ' + CAL.ziRo(lp.zi), 'Am vorbit cu clientul: mașinile sunt disponibile', 'S-a montat?', 'Montată', 'Altă zi sau alt instalator', 'Mută', 'La client', 'Anulează',
+          CAL.CAL_TEXT.maiPutine, CAL.ceSeMonteaza(lp.items), 'Calendar SRL · ' + CAL.ziRo(lp.zi)].every((s) => tl.indexOf(s) >= 0) && !rau(fl) &&
+        (fl.match(/<input type="checkbox"[^>]*checked/g) || []).length === 2 && (fd.match(/<input type="checkbox"[^>]*checked/g) || []).length === 1 && /class="ctr-btn danger"/.test(fl), tl.slice(0, 500));
+      T('ziua deja montată: doar „La client" (fără confirmări, nu se mai mută, nu se anulează)', tm.indexOf('La client') >= 0 && tm.indexOf('S-a montat?') < 0 && tm.indexOf('Confirmări') < 0 &&
+        tm.indexOf('Anulează') < 0 && tm.indexOf('Mută') < 0 && !/type="checkbox"/.test(fm) && !rau(fm));
+      // Anularea: cele DOUĂ motive ale serverului, amănuntele, „Reprogramează" cu ziua nouă
+      const dMot = Object.assign({}, d, { motive: MOTIVE });
+      const fa = render(h(CM.FoaieAnulare, { d: dMot, l: lp, f: CAL.formAnulare(d.parteneri, lp), msg: 'Alege motivul anulării.', busy: false, onF() {}, onClose: () => true, onTrimite() {} }));
+      const ta = text(fa);
+      const fr = render(h(CM.FoaieAnulare, { d: dMot, l: lp, f: Object.assign(CAL.formAnulare(d.parteneri, lp), { motiv: 'client', reprog: true }), msg: '', busy: false, onF() {}, onClose: () => true, onTrimite() {} }));
+      const tr = text(fr);
+      T('anularea: „Anulezi lucrarea?", cele două motive (radio), „Detalii (dacă vrei)", „Reprogramează", „Anulează lucrarea" pe roșu, unde se duc mașinile, refuzul',
+        ['Anulezi lucrarea?', MOTIVE.instalator, MOTIVE.client, 'Detalii (dacă vrei)', 'Reprogramează', 'Anulează lucrarea', 'Mașinile ei se întorc la „Ce ai de montat”.', 'Alege motivul anulării.',
+          'Calendar SRL · 3 mașini · ' + CAL.ziRo(lp.zi) + ' · Instal Vest SRL'].every((s) => ta.indexOf(s) >= 0) &&
+        (fa.match(/<input type="radio" name="mjc-motiv"/g) || []).length === Object.keys(MOTIVE).length && !/<input type="radio"[^>]*checked/.test(fa) && /class="btn mjc-rosu"/.test(fa) && !rau(fa), ta.slice(0, 500));
+      T('anularea cu „Reprogramează": ziua nouă, instalatorul (cel al zilei, propus), „Anulează și reprogramează" — fără butonul roșu',
+        ['Ziua nouă', 'Cine montează', 'Anulează și reprogramează', 'Pe ziua nouă se programează aceleași mașini.'].every((s) => tr.indexOf(s) >= 0) && tr.indexOf('Anulează lucrarea') < 0 &&
+        (fr.match(/<input type="radio"[^>]*checked/g) || []).length === 1 && /<option selected value="7">/.test(fr) && !rau(fr), tr.slice(0, 500));
+      const fre = render(h(CM.FoaieReprog, { d, l: ISTORIC[0], f: { zi: '', part: '7' }, msg: '', busy: false, onF() {}, onClose: () => true, onTrimite() {} }));
+      const tre = text(fre);
+      const fre0 = render(h(CM.FoaieReprog, { d, l: null, f: { zi: '', part: '' }, msg: '', busy: false, onF() {}, onClose: () => true, onTrimite() {} }));
+      T('„Reprogramează" din istoric: clientul, „anulată de pe …", ce s-a întâmplat (textul serverului), ziua nouă, instalatorul; zi dispărută → „Ziua asta nu mai e în istoric."',
+        tre.indexOf('Zeta · 4 mașini · anulată de pe ' + CAL.ziRo(ISTORIC[0].zi)) >= 0 && tre.indexOf(ISTORIC[0].text + ' · ' + ISTORIC[0].detaliu) >= 0 && tre.indexOf('Ziua nouă') >= 0 &&
+        /<option selected value="7">/.test(fre) && text(fre0).indexOf('Ziua asta nu mai e în istoric.') >= 0 && !rau(fre) && !rau(fre0), tre.slice(0, 500));
     } else if (typeof render !== 'function') {
       // Fără preact-render-to-string (CI) ecranul nu se poate desena: verificările desenului (aceleași nume ca mai sus) se sar.
       ['calendarul desenat: luna, 7 zile ale săptămânii, toate zilele, etichetele (cel mult 2 pe zi + „+1"), zilele cu montaj cu clientul, „De programat" cu termenele colorate și butoanele, stocul — fără „undefined"/„NaN"',
         'luna goală: „Nicio zi de montaj în luna asta." și golul de la „De programat"',
         'fără date: se încarcă (rotița); căzut: eroarea',
         'altă lună pe drum: săgețile și „Azi" așteaptă (dezactivate), cu rotița lângă lună',
+        '„Programate · 2" / „Istoric · 2": zilele programate din orice lună, cu clientul, mașinile, instalatorul și confirmările (vorbele serverului), câte un „Deschide"',
         'foaia „Programează montajul": clientul, ziua, „Câte mașini (din 20 rămase)", cine montează, adaptoarele, termenul, refuzul',
+        'foaia „Programează montajul": cele două confirmări (nebifate la început), cu nota lor',
+        'foaia „Programează montajul": ce are fiecare instalator activ în ziua aleasă („are deja 3 mașini (…)" / „liber în ziua asta"), aparatul pe rând, bifa ținută',
         'foaia fără nimic de programat: „Nimic de programat: …"',
-        'ziua programată: „S-a montat?", „Montată", „Altă zi sau alt instalator", „Mută", „La client", „Șterge ziua" și ce se montează',
-        'ziua deja montată: doar „La client" (nu se mai mută, nu se șterge)'].forEach((n) => SARI(n, FARA_DESEN));
+        'ziua programată: „Confirmări" (cele două bife, bifate cum spune serverul), „S-a montat?", „Montată", „Altă zi sau alt instalator", „Mută", „La client", „Anulează" și ce se montează',
+        'ziua deja montată: doar „La client" (fără confirmări, nu se mai mută, nu se anulează)',
+        'anularea: „Anulezi lucrarea?", cele două motive (radio), „Detalii (dacă vrei)", „Reprogramează", „Anulează lucrarea" pe roșu, unde se duc mașinile, refuzul',
+        'anularea cu „Reprogramează": ziua nouă, instalatorul (cel al zilei, propus), „Anulează și reprogramează" — fără butonul roșu',
+        '„Reprogramează" din istoric: clientul, „anulată de pe …", ce s-a întâmplat (textul serverului), ziua nouă, instalatorul; zi dispărută → „Ziua asta nu mai e în istoric."'].forEach((n) => SARI(n, FARA_DESEN));
     }
 
     // Ce NU face ecranul
     const cod = faraComentarii(S.calTsx) + faraComentarii(S.calLib);
     T('nicio cerere fetch() ocolind clientul API; niciun preț sau termen socotit pe telefon', !/\bfetch\(/.test(cod) && !/pretClient\s*[*+]|costPartener|termenMontaj\(|MONTAJ_ZILE/.test(cod));
-    T('rutele calendarului sunt cele ale serverului (și toate sunt doar pentru noi)', ['/api/montaj/calendar', '/api/montaj/programeaza', '/api/montaje/:id/muta', '/api/montaje/:id/montata'].every((r) =>
+    T('rutele calendarului sunt cele ale serverului (și toate sunt doar pentru noi)', ['/api/montaj/calendar', '/api/montaj/programeaza', '/api/montaje/:id/muta', '/api/montaje/:id/montata',
+      '/api/montaje/:id/confirmari', '/api/montaje/:id/anuleaza', '/api/montaje/:id/reprogrameaza', '/api/montaj/nota-stoc'].every((r) =>
       new RegExp("app\\.(get|post)\\('" + r.replace(/[/:]/g, (c) => '\\' + c) + "', requireAuth, requireSuperadmin").test(S.srv)) &&
       /app\.delete\('\/api\/montaje\/:id', requireAuth, requireSuperadmin/.test(S.srv));
     T('foile calendarului sunt păzite la „înapoi" (o singură pază, pe foaia deschisă) și întreabă înainte să piardă ce ai ales',
@@ -2310,18 +2435,28 @@ async function parteaMontaj() {
         if (r < 4.5) { cOk = false; cD.push(tema + ' ' + nume + ' = ' + r.toFixed(2)); }
       };
       Object.keys(fund).forEach((k) => {
-        masura('programat pe ' + k, mj['mjc-prog'], mj['mjc-prog-bg'], fund[k]);
+        masura('confirmat pe ' + k, mj['mjc-ok'], mj['mjc-ok-bg'], fund[k]);
+        masura('de confirmat pe ' + k, mj['mjc-conf'], mj['mjc-conf-bg'], fund[k]);
         masura('montat pe ' + k, mj['mjc-mont'], mj['mjc-mont-bg'], fund[k]);
       });
       masura('termen curând', mj['mjc-prog'], mj['mjc-prog-bg'], fund.panou);
       masura('termen depășit', mj['mjc-rau'], mj['mjc-rau-bg'], fund.panou);
+      // „Programate" / „Istoric": rezultatul scris direct pe rând (fundalul rândului, --bg-panel)
+      masura('„confirmat de instalator și de client" pe rând', mj['mjc-ok'], tok['bg-panel'], fund.panou);
+      masura('„lipsește confirmarea…" pe rând', mj['mjc-conf'], tok['bg-panel'], fund.panou);
+      masura('„Anulată — …" pe rând', mj['mjc-prog'], tok['bg-panel'], fund.panou);
+      masura('nota de stoc „trebuie să-i duci…"', mj['mjc-conf'], mj['mjc-conf-bg'], fund.panou);
+      masura('nota de stoc obișnuită', tok['text-secondary'], tok['bg-card'], fund.panou);
+      masura('butonul „Anulează lucrarea"', mj['mjc-rosu'], mj['mjc-rosu-bg'], fund.panou);
+      masura('bifele (confirmări, motive)', tok['text-primary'], tok['bg-card'], fund.panou);
       masura('ziua din lună (căsuță)', tok['text-secondary'], tok['bg-card'], fund['căsuță']);
       masura('ziua din lună (weekend)', tok['text-secondary'], tok['bg-dark'], fund.weekend);
       masura('ziua de azi', rezolva(ctr['ctr-ok'], tok), tok['bg-card'], fund['căsuță']);
       masura('notele (--text-secondary pe foaie)', tok['text-secondary'], tok['bg-panel'], fund.panou);
     });
-    T('culorile calendarului (programat, montat, termen curând / depășit, ziua, azi, notele): ≥ 4,5:1 pe AMBELE teme, și pe weekend', cOk, cD.join('; '));
-    T('culorile noi stau în variabile de temă, cu pereche pe tema deschisă', ['mjc-prog', 'mjc-prog-bg', 'mjc-mont', 'mjc-mont-bg', 'mjc-rau', 'mjc-rau-bg'].every((k) => mjD[k] && variabile(S.mjCss, ':root[data-theme="light"]')[k]) &&
+    T('culorile calendarului (confirmat, de confirmat, montat, termen curând / depășit, ziua, azi, notele, rezultatele din Programate / Istoric, nota de stoc, butonul roșu, bifele): ≥ 4,5:1 pe AMBELE teme, și pe weekend', cOk, cD.join('; '));
+    T('culorile noi stau în variabile de temă, cu pereche pe tema deschisă', ['mjc-prog', 'mjc-prog-bg', 'mjc-ok', 'mjc-ok-bg', 'mjc-conf', 'mjc-conf-bg', 'mjc-mont', 'mjc-mont-bg', 'mjc-rau', 'mjc-rau-bg', 'mjc-rosu', 'mjc-rosu-bg']
+      .every((k) => mjD[k] && variabile(S.mjCss, ':root[data-theme="light"]')[k]) &&
       !/#[0-9a-f]{3,6}/i.test(S.calTsx) && !/#[0-9a-f]{3,6}\b/i.test(S.mjCss.replace(/:root[^{]*\{[^}]*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '')));
   }
 
@@ -2423,10 +2558,86 @@ async function parteaMontaj() {
     T('una montată nu se mai mută → refuz, cu vorbele serverului', !!e && e.status === 400 && /deja montată/.test(K.eroarea(e, 'Nu s-a putut muta.')), e && e.message);
     e = null; try { await K.lucrareMontata(l2.id, { masini: 3 }); } catch (x) { e = x; }
     T('„montată" cu mai multe decât erau programate → refuz: „Între 1 și 2."', !!e && e.status === 400 && /Între 1 și 2\./.test(e.message), e && e.message);
-    // Șterge ziua
-    e = null; try { await K.stergeZiua(l2.id); } catch (x) { e = x; }
+    // Confirmările (01.10): le bifăm noi, după telefoanele cu instalatorul și cu clientul
+    const ziua = (x, id) => (x.lucrari || []).filter((l) => l.id === id)[0] || {};
+    e = null; try { await K.confirmaLucrarea(l2.id, { instalator: true }); } catch (x) { e = x; }
+    d = await K.calendarMontaj(LUNA);
+    let c2 = ziua(d, l2.id);
+    T('confirmă instalatorul → „lipsește confirmarea clientului", eticheta galbenă', !e && c2.conf === 'de_confirmat' && c2.conf_text === 'lipsește confirmarea clientului' &&
+      c2.confirmat_instalator === true && c2.confirmat_client === false && K.clasaLucrare(c2) === 'mjc-conf', e ? e.message : J(c2));
+    e = null; try { await K.confirmaLucrarea(l2.id, { client: true }); } catch (x) { e = x; }
+    d = await K.calendarMontaj(LUNA);
+    c2 = ziua(d, l2.id);
+    T('și clientul → „confirmat de instalator și de client", eticheta verde (și la „Programate")', !e && c2.conf === 'confirmat' && c2.conf_text === 'confirmat de instalator și de client' &&
+      K.clasaLucrare(c2) === 'mjc-ok' && (d.programate || []).some((x) => x.id === l2.id && x.conf === 'confirmat'), e ? e.message : J(c2));
+    e = null; try { await K.confirmaLucrarea(l2.id, { client: false }); } catch (x) { e = x; }
+    d = await K.calendarMontaj(LUNA);
+    c2 = ziua(d, l2.id);
+    T('debifează clientul → înapoi la „lipsește confirmarea clientului" (instalatorul rămâne bifat)', !e && c2.conf === 'de_confirmat' && c2.confirmat_instalator === true && c2.confirmat_client === false, e ? e.message : J(c2));
+    e = null; try { await K.confirmaLucrarea(l1.id, { client: true }); } catch (x) { e = x; }
+    T('o zi montată nu se mai confirmă → refuz, cu vorbele serverului („Doar o zi încă programată se confirmă.")', !!e && e.status === 400 && K.eroarea(e, '') === 'Doar o zi încă programată se confirmă.', e && e.message);
+    // O zi programată a unui contract semnat NU se mai șterge: se anulează, cu motivul ei, și rămâne în istoric
+    const del = await R('DELETE', '/api/montaje/' + l2.id);
+    T('ștergerea unei zile programate (contract semnat) → 409: „se anulează din calendar, cu motivul ei"', del.s === 409 && !!del.j && del.j.anuleaza === true && /se anulează din calendar/.test(del.j.error || ''), J(del));
+    T('telefonul nu mai are „Șterge ziua" (nici cererea DELETE): o zi programată se anulează', !/stergeZiua|Șterge ziua|method: 'DELETE'/.test(S.calLib + S.calTsx));
+    e = null; try { await K.anuleazaLucrarea(l2.id, K.corpAnulare({ motiv: '', detalii: '', reprog: false, zi: '', part: '' })); } catch (x) { e = x; }
+    T('anulare fără motiv → refuz, cu vorbele serverului', !!e && e.status === 400 && /^Alege motivul anulării/.test(K.eroarea(e, '')), e && e.message);
+    let ja = null; e = null;
+    try { ja = await K.anuleazaLucrarea(l2.id, K.corpAnulare({ motiv: 'instalator', detalii: '  Bolnav  ', reprog: false, zi: '', part: '' })); } catch (x) { e = x; }
     d = await K.calendarMontaj(LUNA); cA = alLui(d, A.c.id);
-    T('șterge ziua programată → mașinile ei se întorc la „De programat" (3 de programat)', !e && !d.lucrari.some((l) => l.id === l2.id) && cA.programate === 0 && cA.ramase === 3, e ? e.message : J(cA));
+    const i2 = (d.istoric || []).filter((x) => x.id === l2.id)[0] || {};
+    T('anulează („instalatorul nu poate", „Bolnav") → ziua iese din calendar și din „Programate", mașinile ei se întorc la „Ce ai de montat" (3), iar istoricul scrie „Anulată — instalatorul nu poate"',
+      !e && ja.ok && ja.reprogramata === null && K.toastAnulat(ja) === 'Anulată ✓ · mașinile ei s-au întors la „Ce ai de montat"' && !d.lucrari.some((l) => l.id === l2.id) &&
+      !(d.programate || []).some((l) => l.id === l2.id) && cA.programate === 0 && cA.ramase === 3 && i2.anulata === true && i2.motiv === 'instalator' &&
+      i2.text === 'Anulată — instalatorul nu poate' && /^„Bolnav” · anulată( de [^,]+)?, pe \d\d\.\d\d$/.test(i2.detaliu || '') && i2.poateReprograma === true &&
+      K.istoricFiltrat(d, 'anulate').some((x) => x.id === l2.id) && !K.istoricFiltrat(d, 'montate').some((x) => x.id === l2.id), e ? e.message : J([ja, cA, i2]));
+    const i1 = (d.istoric || []).filter((x) => x.id === l1.id)[0] || {};
+    T('istoricul are și ziua montată: „Montată — 2 mașini", fără „Reprogramează"', i1.text === 'Montată — 2 mașini' && i1.anulata === false && i1.poateReprograma === false &&
+      K.istoricFiltrat(d, 'montate').some((x) => x.id === l1.id), J(i1));
+    e = null; try { await K.anuleazaLucrarea(l2.id, K.corpAnulare({ motiv: 'client', detalii: '', reprog: false, zi: '', part: '' })); } catch (x) { e = x; }
+    T('a doua anulare → refuz: „Ziua asta e deja anulată."', !!e && e.status === 400 && K.eroarea(e, '') === 'Ziua asta e deja anulată.', e && e.message);
+    const delA = await R('DELETE', '/api/montaje/' + l2.id);
+    T('o zi anulată nu se șterge (e istoricul) → 409', delA.s === 409, J(delA));
+    // „Reprogramează" din istoric: aceleași mașini, ziua nouă
+    let jr = null; e = null;
+    try { jr = await K.reprogrameazaLucrarea(l2.id, K.corpReprogramare({ zi: LUNA + '-18', part: String(part.id) })); } catch (x) { e = x; }
+    d = await K.calendarMontaj(LUNA); cA = alLui(d, A.c.id);
+    const r2 = jr && jr.reprogramata ? ziua(d, jr.reprogramata.id) : {};
+    const i2b = (d.istoric || []).filter((x) => x.id === l2.id)[0] || {};
+    T('„Reprogramează" din istoric → aceleași 2 mașini pe 18.03, cu instalatorul; istoricul scrie „reprogramată pe 18.03" și nu mai dă butonul',
+      !e && r2.zi === LUNA + '-18' && r2.masini === 2 && r2.partener_id === part.id && r2.conf === 'de_confirmat' && cA.programate === 2 && cA.ramase === 1 &&
+      K.toastReprogramat(jr.reprogramata.zi) === 'Reprogramată pe 18.03.2027 ✓' && /reprogramată pe 18\.03$/.test(i2b.detaliu || '') && i2b.poateReprograma === false &&
+      i2b.reprogramat_ca === jr.reprogramata.id, e ? e.message : J([jr, r2, i2b]));
+    e = null; try { await K.reprogrameazaLucrarea(l2.id, K.corpReprogramare({ zi: LUNA + '-19', part: '' })); } catch (x) { e = x; }
+    T('a doua reprogramare a aceleiași zile → refuz: „Ziua asta a fost deja reprogramată."', !!e && e.status === 400 && K.eroarea(e, '') === 'Ziua asta a fost deja reprogramată.', e && e.message);
+    e = null; try { await K.reprogrameazaLucrarea(r2.id, K.corpReprogramare({ zi: LUNA + '-19', part: '' })); } catch (x) { e = x; }
+    T('o zi încă programată nu se „reprogramează" (se mută) → refuz', !!e && e.status === 400 && /se mută/.test(K.eroarea(e, '')), e && e.message);
+    // Anulează ȘI reprogramează dintr-o apăsare („clientul nu poate"), fără instalator pe ziua nouă
+    e = null; try { await K.anuleazaLucrarea(r2.id, K.corpAnulare({ motiv: 'client', detalii: '', reprog: true, zi: '', part: '' })); } catch (x) { e = x; }
+    T('„Anulează și reprogramează" fără zi nouă → refuz („Alege ziua nouă."), iar ziua rămâne programată', !!e && e.status === 400 && K.eroarea(e, '') === 'Alege ziua nouă.' &&
+      ziua(await K.calendarMontaj(LUNA), r2.id).status === 'programat', e && e.message);
+    let jb = null; e = null;
+    try { jb = await K.anuleazaLucrarea(r2.id, K.corpAnulare({ motiv: 'client', detalii: '', reprog: true, zi: LUNA + '-22', part: '' })); } catch (x) { e = x; }
+    d = await K.calendarMontaj(LUNA); cA = alLui(d, A.c.id);
+    const r3 = jb && jb.reprogramata ? ziua(d, jb.reprogramata.id) : {};
+    const ir2 = (d.istoric || []).filter((x) => x.id === r2.id)[0] || {};
+    T('anulează și reprogramează („clientul nu poate") → ziua nouă pe 22.03, fără instalator; „Anulată și reprogramată pe 22.03.2027 ✓"; istoricul: „Anulată — clientul nu poate"',
+      !e && r3.zi === LUNA + '-22' && r3.partener_id == null && r3.masini === 2 && K.toastAnulat(jb) === 'Anulată și reprogramată pe 22.03.2027 ✓' && cA.programate === 2 && cA.ramase === 1 &&
+      ir2.text === 'Anulată — clientul nu poate' && /reprogramată pe 22\.03$/.test(ir2.detaliu || '') && ir2.poateReprograma === false, e ? e.message : J([jb, r3, ir2]));
+    // Ce mai are fiecare instalator în ziua aleasă: textele serverului
+    T('pe 22.03 nimeni n-are instalator ales: „liber în ziua asta" pentru fiecare; pe 10.03, Instal Vest are 2 mașini (Calendar Telefon SRL)',
+      K.incarcareText(d, LUNA + '-22', part.id) === 'liber în ziua asta' && K.incarcareText(d, LUNA + '-10', part.id) === 'are deja 2 mașini (Calendar Telefon SRL)',
+      J([K.incarcareText(d, LUNA + '-22', part.id), K.incarcareText(d, LUNA + '-10', part.id)]));
+    // Nota de stoc: o scrie serverul (ce are instalatorul la el din stoc)
+    let ns0 = null, ns1 = null; e = null;
+    try {
+      ns0 = await K.notaStocMontaj({ contract_id: A.c.id, partener_id: null, cate: { gps: 1 } });
+      ns1 = await K.notaStocMontaj({ contract_id: A.c.id, partener_id: part.id, cate: { gps: 1, lvcan: 1 } });
+    } catch (x) { e = x; }
+    T('nota de stoc: fără instalator „Alege instalatorul…"; cu instalator fără aparate la el „N-are la el niciun aparat din stoc."', !e &&
+      ns0.text === 'Alege instalatorul ca să vezi ce aparate are la el din stoc.' && ns1.text === 'N-are la el niciun aparat din stoc.', e ? e.message : J([ns0, ns1]));
+    T('„Ce ai de montat" nu numără zilele anulate: „2 din 5 mașini montate · 2 mașini programate · 1 mașină de programat"',
+      K.detaliiContract(cA) === '2 din 5 mașini montate · 2 mașini programate · 1 mașină de programat', K.detaliiContract(cA));
     // Nesemnat
     e = null; try { await K.programeazaMontaj({ contract_id: N.c.id, data_lucrare: Date.now(), partener_id: null, cate: { gps: 1 } }); } catch (x) { e = x; }
     T('contract nesemnat → refuz: „Montajul se programează după semnare…"', !!e && e.status === 400 && /după semnare/.test(e.message), e && e.message);

@@ -5779,6 +5779,8 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
     const idEx = b.id ? parseInt(b.id, 10) : null;
     const ex = idEx ? await db.getMontaj(idEx) : null;
     if (idEx && (!ex || Number(ex.company_id) !== id)) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    // O zi anulată e istoric (01.10): nu se rescrie din formular; se reprogramează din calendar.
+    if (ex && ex.status === montaj.STARE_ANULAT) return res.status(409).json({ error: 'Ziua asta e anulată și stă în istoric. Se reprogramează din calendar (Business → Montaj).' });
     const stare = montaj.STARI.indexOf(b.status) >= 0 ? b.status : (ex ? ex.status : 'de_programat');
     // O lucrare facturată clientului RĂMÂNE facturată (01.10, punctul 19): „partenerul ne-a facturat" o redeschidea, iar
     // „Montaj de facturat" o propunea pe a doua factură. Ce ne-a facturat partenerul se scrie în câmpul facturii lui.
@@ -5843,6 +5845,13 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
       return res.status(409).json({ error: 'Lucrarea e pe ' + (peDoc || 'o factură') + ' trimisă clientului, deci nu se șterge.' +
         (m.factura_client == null ? ' Dacă proforma e greșită, anuleaz-o întâi.' : '') });
     }
+    // Calendarul refăcut (01.10): o zi programată a unui contract SEMNAT se anulează, cu motivul ei, ca să rămână în
+    // istoric — nu se șterge. Iar una anulată E istoricul. (Lucrările unui contract nesemnat, din fișă, se șterg ca înainte.)
+    if (m.status === montaj.STARE_ANULAT) return res.status(409).json({ error: 'O zi anulată rămâne în istoric, cu motivul ei — nu se șterge.' });
+    if (m.status === 'programat' && m.contract_id) {
+      const c = await db.getContractById(m.contract_id);
+      if (c && (c.status === 'activ' || c.status === 'incheiat')) return res.status(409).json({ anuleaza: true, error: 'Ziua asta se anulează din calendar, cu motivul ei (instalatorul sau clientul nu poate), ca să rămână în istoric.' });
+    }
     await db.deleteMontaj(id);
     auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id });
     res.json({ ok: true });
@@ -5868,13 +5877,8 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       db.contracteInVigoare(), db.listParteneriMontaj(), db.listStoc().catch(function () { return []; }),
       db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })
     ]);
-    const lucrari = brute.filter(function (l) { return _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(function (l) {
-      const items = Array.isArray(l.items) ? l.items : [];
-      const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
-      return { id: l.id, company_id: l.company_id, company_name: l.company_name, contract_id: l.contract_id,
-        partener_id: l.partener_id, partener_nume: l.partener_nume, zi: _ziRo(l.data_lucrare), status: l.status,
-        masini: gps ? Number(gps.buc) || 0 : 0, items: items };
-    });
+    // O zi ANULATĂ nu stă în grilă (01.10): e în istoric, iar mașinile ei s-au întors la „de programat".
+    const lucrari = brute.filter(function (l) { return l.status !== montaj.STARE_ANULAT && _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(_mjcLucrareCal);
     const cuMontaj = inVigoare.filter(function (c) { return contracte.masiniDeMontat(c) > 0; });
     const peContract = {};
     (await db.lucrariPeContracte(cuMontaj.map(function (c) { return c.id; }))).forEach(function (l) {
@@ -5883,6 +5887,9 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
     const deProgramat = cuMontaj.map(function (c) {
       const s = montaj.deProgramat(c.montaj, peContract[c.id] || []);
       const t = contracte.termenMontaj(c, contracte.avansContract(((dd && dd.avans) || {})[c.company_id], c), s.montate, acum);
+      // Aparatul de pe fiecare fel de lucrare („Instalare dispozitiv GPS" → FMC130), din ce s-a vândut sau închiriat.
+      const ap = montaj.aparatePeTip(c.montaj, c.annex);
+      s.tipuri = s.tipuri.map(function (x) { return Object.assign({}, x, { aparat: (ap[x.tip] || []).map(montaj.numeScurt).join(' / ') || null }); });
       return Object.assign({ contract_id: c.id, company_id: c.company_id, company_name: c.company_name, number: c.number,
         termen: t && t.stare !== 'gata' ? Object.assign({}, t, { text: contracte.termenText(t) }) : null,
         text: contracte.montateText(s.montate, s.masini) }, s);
@@ -5894,14 +5901,40 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       return String(a.company_name || '').localeCompare(String(b.company_name || ''), 'ro');
     });
     const sumar = stocMod.sumar(stoc);
+    // Calendarul refăcut (01.10): cât are fiecare instalator în fiecare zi (cu textul gata scris), zilele încă
+    // programate (oricare lună) și istoricul (montate + anulate). Ecranele doar arată ce primesc.
+    const [progBrut, istBrut] = await Promise.all([db.montajeProgramate(300), db.montajeIstoric(100)]);
+    const programate = progBrut.map(_mjcLucrareCal);
+    // Lucrările lunii + toate cele programate (alte luni), fiecare O dată (o zi programată din luna asta e în amândouă).
+    const vazute = {};
+    const incarcare = montaj.incarcarePeZile(lucrari.concat(programate).filter(function (l) { if (vazute[l.id]) return false; vazute[l.id] = true; return true; }));
+    Object.keys(incarcare).forEach(function (z) { Object.keys(incarcare[z]).forEach(function (p) { incarcare[z][p].text = montaj.textIncarcare(incarcare[z][p]); }); });
+    const istoric = istBrut.map(function (l) {
+      const x = _mjcLucrareCal(l);
+      const t = montaj.textIstoric(Object.assign({}, l, x, { anulat_zi: l.anulat_la ? _ziRo(l.anulat_la) : null,
+        reprogramat_zi: l.reprogramat_la ? _ziRo(l.reprogramat_la) : null }));
+      return Object.assign(x, { text: t.text, detaliu: t.detaliu, anulata: !!t.anulata, motiv: l.motiv_anulare || null,
+        reprogramat_ca: l.reprogramat_ca || null, poateReprograma: !!t.anulata && !l.reprogramat_ca });
+    });
     res.json({ luna: luna, azi: _ziRo(acum), lucrari: lucrari, deProgramat: deProgramat, stari: montaj.ETICHETE_STARE,
       parteneri: parteneri.map(function (p) { return { id: p.id, name: p.name, active: p.active !== false }; }),
       stoc: montaj.ECHIPAMENTE.map(function (e) {
         const x = sumar[e.k] || {};
         return { tip: e.k, eticheta: e.et, depozit: x.depozit || 0, instalator: x.instalator || 0 };
-      }).filter(function (x) { return x.depozit || x.instalator; }) });
+      }).filter(function (x) { return x.depozit || x.instalator; }),
+      programate: programate, istoric: istoric, incarcare: incarcare, textLiber: montaj.textIncarcare(null), motive: montaj.MOTIVE_ANULARE });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// O lucrare, cum o arată calendarul: ziua pe ora României, câte mașini, și starea confirmărilor (01.10).
+function _mjcLucrareCal(l) {
+  const items = Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || []);
+  const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
+  return { id: l.id, company_id: l.company_id, company_name: l.company_name, contract_id: l.contract_id,
+    partener_id: l.partener_id, partener_nume: l.partener_nume, zi: l.data_lucrare ? _ziRo(l.data_lucrare) : null, status: l.status,
+    masini: gps ? Number(gps.buc) || 0 : 0, items: items,
+    confirmat_instalator: !!Number(l.confirmat_instalator_la), confirmat_client: !!Number(l.confirmat_client_la),
+    conf: montaj.stareConfirmare(l), conf_text: l.status === 'programat' ? montaj.textConfirmare(l) : null };
+}
 // O zi programată: contractul, ziua, instalatorul și câte bucăți din fiecare tip „pe mașină". Prețurile NU vin
 // de la ecran: pentru client din Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului.
 app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5923,6 +5956,10 @@ app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, 
     const m = await db.upsertMontaj({ id: null, company_id: c.company_id, contract_id: c.id, partener_id: pid, data_lucrare: zi,
       items: rd, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
       factura_partener: null, notes: b.notes ? String(b.notes).slice(0, 2000) : null, created_by: req.auth && req.auth.userId });
+    // Confirmările vorbite la telefon, bifate deja la programare (01.10). Lipsă = neconfirmat (telefonul vechi).
+    if (m && (b.confirmat_instalator === true || b.confirmat_client === true)) {
+      await db.confirmaMontaj(m.id, { instalator: b.confirmat_instalator === true, client: b.confirmat_client === true });
+    }
     const gps = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
     auditReq(req, 'create', 'montaj', m && m.id, { company_id: c.company_id, contract_id: c.id, programat: _ziRo(zi), masini: gps.buc || 0 });
     res.json({ ok: true, lucrare: m });
@@ -5934,6 +5971,7 @@ app.post('/api/montaje/:id/muta', requireAuth, requireSuperadmin, async (req, re
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja montată — ziua ei nu se mai mută.' });
     const b = req.body || {};
     const zi = Number(b.data_lucrare);
@@ -5960,6 +5998,7 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja trecută ca montată.' });
     if (m.contract_id) {
       const c = await db.getContractById(m.contract_id);
@@ -5979,6 +6018,103 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
     const dupa = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
     auditReq(req, 'update', 'montaj', id, { montata: true, masini: dupa.buc || 0, programate: inainte });
     res.json({ ok: true, lucrare: u, inapoi_la_programat: Math.max(0, inainte - (dupa.buc || 0)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Calendarul refăcut (Alin, 01.10): confirmări, anulare cu motiv, reprogramare, nota de stoc ─────────────────
+// Până face Robert contul instalatorului, confirmările și anularea le facem noi, de aici. Când îl face, „Accept" din
+// contul lui cheamă `db.confirmaMontaj(id, { instalator: true })`, iar „Refuz" cheamă `_anuleazaLucrarea(…, { motiv:
+// 'instalator' })` — ACEEAȘI funcție ca butonul nostru, ca istoricul să spună la fel, oricine ar fi anulat.
+app.post('/api/montaje/:id/confirmari', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const b = req.body || {};
+    const r = await db.confirmaMontaj(id, { instalator: b.instalator, client: b.client });
+    if (!r) return res.status(400).json({ error: 'Doar o zi încă programată se confirmă.' });
+    auditReq(req, 'update', 'montaj', id, { confirmari: { instalator: !!Number(r.confirmat_instalator_la), client: !!Number(r.confirmat_client_la) } });
+    res.json({ ok: true, confirmat_instalator: !!Number(r.confirmat_instalator_la), confirmat_client: !!Number(r.confirmat_client_la) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Ziua nouă a unei lucrări anulate: aceleași mașini (și ce se mai montează pe ele), alt zi, instalatorul ales.
+// Prețul pentru client din Anexa nr. 2, costul din tarifele instalatorului (montaj.lucrareaZilei), ca la programare.
+// `scoate` = lucrarea care tocmai se anulează: mașinile ei se socotesc deja libere (validarea se face ÎNAINTE de anulare).
+async function _ziuaNoua(l, o, scoate) {
+  const c = l.contract_id ? await db.getContractById(l.contract_id) : null;
+  if (!c || c.status !== 'activ') return { eroare: 'Se reprogramează doar montajul unui contract semnat.' };
+  const zi = Number(o.data_lucrare);
+  if (!(zi > 0)) return { eroare: 'Alege ziua nouă.' };
+  const pid = o.partener_id !== undefined ? (o.partener_id ? parseInt(o.partener_id, 10) : null) : (l.partener_id || null);
+  const part = pid ? (await db.listParteneriMontaj()).filter(function (p) { return p.id === pid; })[0] : null;
+  if (pid && !part) return { eroare: 'Instalatorul ales nu mai există.' };
+  const lucr = (await db.lucrariPeContracte([c.id])).filter(function (x) { return x.id !== scoate; });
+  const stare = montaj.deProgramat(c.montaj, lucr);
+  const cate = {};
+  (Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || [])).forEach(function (r) {
+    if (r && montaj.PE_MASINA.indexOf(r.tip) >= 0) cate[r.tip] = (cate[r.tip] || 0) + (Number(r.buc) || 0);
+  });
+  const z = montaj.lucrareaZilei(stare, cate, part && part.tarife);
+  if (z.eroare) return { eroare: z.eroare };
+  return { c: c, zi: zi, pid: pid, items: montaj.randuri(z.items) };
+}
+async function _scrieZiuaNoua(v, cine) {
+  const s = montaj.calc(v.items);
+  return db.upsertMontaj({ id: null, company_id: v.c.company_id, contract_id: v.c.id, partener_id: v.pid, data_lucrare: v.zi,
+    items: v.items, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
+    factura_partener: null, notes: null, created_by: cine || null });
+}
+// Anularea, cu motivul ei (și, dacă vrei, ziua nouă). O SINGURĂ funcție: butonul nostru și, mai târziu, „Refuz" din
+// contul instalatorului. → { ok, nou } sau { status, error }.
+async function _anuleazaLucrarea(id, o) {
+  const motiv = String((o && o.motiv) || '');
+  if (!montaj.MOTIVE_ANULARE[motiv]) return { status: 400, error: 'Alege motivul anulării: instalatorul nu poate sau clientul nu poate.' };
+  const l = await db.getMontaj(id);
+  if (!l) return { status: 404, error: 'Lucrare inexistentă' };
+  if (l.status !== 'programat') return { status: 400, error: l.status === montaj.STARE_ANULAT ? 'Ziua asta e deja anulată.' : 'Doar o zi încă programată se anulează.' };
+  let v = null;
+  if (o.reprogramare) {
+    v = await _ziuaNoua(l, o.reprogramare, l.id);
+    if (v.eroare) return { status: 400, error: v.eroare };
+  }
+  if (!(await db.anuleazaMontaj(id, { motiv: motiv, detalii: o.detalii, cine: o.cine }))) return { status: 409, error: 'Ziua asta nu mai e programată (a fost schimbată între timp).' };
+  let nou = null;
+  if (v) { nou = await _scrieZiuaNoua(v, o.cine); if (nou) await db.setMontajReprogramat(id, nou.id); }
+  return { ok: true, nou: nou, lucrare: l };
+}
+app.post('/api/montaje/:id/anuleaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const b = req.body || {};
+    const r = await _anuleazaLucrarea(id, { motiv: b.motiv, detalii: b.detalii ? String(b.detalii).trim().slice(0, 500) : null,
+      reprogramare: b.reprogramare && typeof b.reprogramare === 'object' ? b.reprogramare : null, cine: req.auth && req.auth.userId, sursa: 'noi' });
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    auditReq(req, 'cancel', 'montaj', id, { motiv: b.motiv, detalii: b.detalii || null, reprogramat: r.nou ? { id: r.nou.id, zi: _ziRo(r.nou.data_lucrare) } : null });
+    res.json({ ok: true, reprogramata: r.nou ? { id: r.nou.id, zi: _ziRo(r.nou.data_lucrare) } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// O zi anulată, reprogramată mai târziu (din istoric): aceleași mașini, ziua nouă. O dată: a doua oară → 400.
+app.post('/api/montaje/:id/reprogrameaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const l = await db.getMontaj(id); if (!l) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (l.status !== montaj.STARE_ANULAT) return res.status(400).json({ error: 'Se reprogramează doar o zi anulată (una programată se mută).' });
+    if (l.reprogramat_ca) return res.status(400).json({ error: 'Ziua asta a fost deja reprogramată.' });
+    const v = await _ziuaNoua(l, req.body || {}, null);
+    if (v.eroare) return res.status(400).json({ error: v.eroare });
+    const nou = await _scrieZiuaNoua(v, req.auth && req.auth.userId);
+    if (nou) await db.setMontajReprogramat(id, nou.id);
+    auditReq(req, 'create', 'montaj', nou && nou.id, { reprogramare: id, zi: nou ? _ziRo(nou.data_lucrare) : null });
+    res.json({ ok: true, reprogramata: nou ? { id: nou.id, zi: _ziRo(nou.data_lucrare) } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Nota de stoc din fereastra zilei: ce are instalatorul la el și ce trebuie să-i mai duci (montaj.notaStoc).
+app.post('/api/montaj/nota-stoc', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cid = parseInt(b.contract_id, 10), pid = b.partener_id ? parseInt(b.partener_id, 10) : null;
+    const c = Number.isFinite(cid) ? await db.getContractById(cid) : null;
+    if (!c) return res.status(404).json({ error: 'Contract inexistent.' });
+    const stoc = pid ? await db.stocLaInstalator(pid) : {};
+    res.json(montaj.notaStoc(b.cate || {}, montaj.aparatePeTip(c.montaj, c.annex), stoc, !!pid));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

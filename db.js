@@ -1084,6 +1084,13 @@ async function initDb() {
     // deschisă, lucrarea nu se mai propune pe alt document; la „Încasată" trece pe factura fiscală (`factura_client`).
     // O proformă anulată o eliberează singură (se verifică starea proformei, nu se șterge nimic aici).
     await client.query('ALTER TABLE montaje ADD COLUMN IF NOT EXISTS proforma_client INTEGER');
+    // Calendarul refăcut (01.10, Alin: „cum mă înțeleg cu instalatorul… să știm și noi dacă are disponibilitate
+    // clientul" + „istoric de lucrări… anulate din motivele instalatorului, buton de anulare… și reprogramează"):
+    // confirmările vorbite (clipa în care s-au bifat), anularea (cine, când, de ce) și legătura spre ziua nouă.
+    for (const col of ['confirmat_instalator_la BIGINT', 'confirmat_client_la BIGINT', 'anulat_la BIGINT', 'anulat_de INTEGER',
+      'motiv_anulare VARCHAR(16)', 'detalii_anulare TEXT', 'reprogramat_ca INTEGER']) {
+      await client.query('ALTER TABLE montaje ADD COLUMN IF NOT EXISTS ' + col);
+    }
     // ─── Montaj ca secțiune a ei (24.09): partenerii au contract cu noi, ca și clienții ─────────
     // Alin: „în Business, secțiune de partener montaj, unde adăugăm parteneri și semnăm contracte fix
     // la fel ca la clienți". Pentru hârtie trebuie datele juridice ale partenerului — ca la o firmă client.
@@ -2550,10 +2557,65 @@ async function elibereazaMontajeleFacturii(facturaId) {
 async function lucrariMontajIntre(de, pana) {
   const r = await pool.query(
     `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.total_client, m.total_partener,
-            m.status, m.factura_partener, m.notes, co.name AS company_name, p.name AS partener_nume
+            m.status, m.factura_partener, m.notes, m.confirmat_instalator_la, m.confirmat_client_la,
+            co.name AS company_name, p.name AS partener_nume
        FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
       WHERE m.data_lucrare >= $1 AND m.data_lucrare < $2 ORDER BY m.data_lucrare, m.id`, [de, pana]);
   return r.rows;
+}
+// Calendarul refăcut (01.10): toate zilele încă programate (oricare lună), pentru fila „Programate".
+async function montajeProgramate(limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.status,
+            m.confirmat_instalator_la, m.confirmat_client_la, co.name AS company_name, p.name AS partener_nume
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      WHERE m.status = 'programat' AND m.data_lucrare IS NOT NULL ORDER BY m.data_lucrare, m.id LIMIT $1`, [Math.min(parseInt(limita) || 300, 1000)]);
+  return r.rows;
+}
+// Istoricul: zilele montate și cele anulate, cele mai noi întâi — cu cine a anulat și ziua în care s-a reprogramat.
+async function montajeIstoric(limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.status, m.updated_at,
+            m.anulat_la, m.anulat_de, m.motiv_anulare, m.detalii_anulare, m.reprogramat_ca,
+            co.name AS company_name, p.name AS partener_nume,
+            COALESCE(NULLIF(u.full_name, ''), u.username) AS anulat_de_nume,
+            rp.data_lucrare AS reprogramat_la, rp.status AS reprogramat_status
+       FROM montaje m LEFT JOIN companies co ON co.id = m.company_id LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+       LEFT JOIN users u ON u.id = m.anulat_de LEFT JOIN montaje rp ON rp.id = m.reprogramat_ca
+      WHERE m.status IN ('executat', 'facturat_de_partener', 'facturat_clientului', 'anulat') AND m.contract_id IS NOT NULL
+      ORDER BY COALESCE(m.data_lucrare, m.updated_at, m.created_at) DESC, m.id DESC LIMIT $1`, [Math.min(parseInt(limita) || 100, 500)]);
+  return r.rows;
+}
+// Anularea unei zile programate, dintr-o bucată: trece pe „anulat" DOAR dacă încă era programată (două apăsări sau
+// web + telefon nu anulează de două ori). Mașinile ei se întorc singure la „de programat" (montaj.deProgramat).
+async function anuleazaMontaj(id, o) {
+  const acum = Date.now();
+  const r = await pool.query(
+    `UPDATE montaje SET status = 'anulat', anulat_la = $2, anulat_de = $3, motiv_anulare = $4, detalii_anulare = $5, updated_at = $2
+      WHERE id = $1 AND status = 'programat' RETURNING id`,
+    [Number(id), acum, o && o.cine != null ? Number(o.cine) : null, String((o && o.motiv) || ''), (o && o.detalii) ? String(o.detalii).slice(0, 500) : null]);
+  return r.rows.length > 0;
+}
+// Confirmările vorbite: `true` = bifată acum (păstrează clipa de prima bifare), `false` = scoasă, lipsă = neatinsă.
+async function confirmaMontaj(id, o) {
+  const acum = Date.now();
+  const v = function (x) { return x === true ? true : x === false ? false : null; };
+  const r = await pool.query(
+    `UPDATE montaje SET
+        confirmat_instalator_la = CASE WHEN $2::boolean IS NULL THEN confirmat_instalator_la WHEN $2::boolean THEN COALESCE(confirmat_instalator_la, $4) ELSE NULL END,
+        confirmat_client_la = CASE WHEN $3::boolean IS NULL THEN confirmat_client_la WHEN $3::boolean THEN COALESCE(confirmat_client_la, $4) ELSE NULL END,
+        updated_at = $4
+      WHERE id = $1 AND status = 'programat' RETURNING id, confirmat_instalator_la, confirmat_client_la`,
+    [Number(id), v(o && o.instalator), v(o && o.client), acum]);
+  return r.rows[0] || null;
+}
+async function setMontajReprogramat(id, nouId) {
+  await pool.query('UPDATE montaje SET reprogramat_ca = $2, updated_at = $3 WHERE id = $1', [Number(id), Number(nouId), Date.now()]);
+}
+// Ce are la el un instalator din stocul nostru, pe feluri de aparat: { fmc130: 6, lvcan200: 4 }.
+async function stocLaInstalator(partenerId) {
+  const r = await pool.query(`SELECT tip, COUNT(*)::int AS n FROM stoc_echipamente WHERE stare = 'instalator' AND partener_id = $1 GROUP BY tip`, [Number(partenerId)]);
+  const out = {}; r.rows.forEach(function (x) { out[x.tip] = Number(x.n) || 0; }); return out;
 }
 // Lucrările mai multor contracte deodată — din ele se socotește ce mai e de programat (montaj.deProgramat).
 async function lucrariPeContracte(ids) {
@@ -2608,7 +2670,8 @@ async function drumDateToate(executate) {
                        COALESCE(SUM(CASE WHEN m.status = ANY($1::varchar[]) THEN
                          (SELECT COALESCE(SUM((it->>'buc')::numeric), 0) FROM jsonb_array_elements(COALESCE(m.items, '[]'::jsonb)) it
                            WHERE it->>'tip' = 'gps') ELSE 0 END), 0)::int AS montate
-                  FROM montaje m WHERE m.contract_id IS NOT NULL GROUP BY m.contract_id`, [executate]),
+                  FROM montaje m WHERE m.contract_id IS NOT NULL AND m.status IS DISTINCT FROM 'anulat'   -- o zi anulată nu e o lucrare (01.10)
+                 GROUP BY m.contract_id`, [executate]),
     pool.query(`SELECT DISTINCT contract_id FROM offers WHERE contract_id IS NOT NULL`),
     // Clipele în care s-au încasat proforme: factura fiscală născută dintr-o proformă. Termenul de montaj curge de la
     // PRIMA de după contract (contracts.avansContract) — de-aia toate, nu doar cea mai veche a firmei.
@@ -2671,7 +2734,7 @@ async function setCompanySuspend(id, date) {
 async function contracteInVigoare() {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
-            c.notice_days, c.montaj, c.created_at, co.name AS company_name, co.contact_email,
+            c.notice_days, c.montaj, c.annex, c.created_at, co.name AS company_name, co.contact_email,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite
        FROM contracts c JOIN companies co ON co.id = c.company_id
@@ -5216,6 +5279,7 @@ module.exports = {
   recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic, incaseazaProforma,
   montajeNelibere, rezervaMontajePeProforma, elibereazaMontajeleFacturii,
+  montajeProgramate, montajeIstoric, anuleazaMontaj, confirmaMontaj, setMontajReprogramat, stocLaInstalator,
   abonamentLuna, pornesteAbonamentul, setAbonamentDeLa, migreazaPornireaAbonamentelor,
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,

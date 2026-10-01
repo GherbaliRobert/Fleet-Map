@@ -3,28 +3,33 @@
 //
 // Ce e pe web e și aici, pe o singură coloană, lizibil la 375px, fără derulare laterală:
 //   • luna (‹ / › / „Azi") și filtrul pe instalator („vezi doar zilele lui ocupate");
-//   • grila lunii, strânsă: pe fiecare zi câte mașini se montează (portocaliu = programat, verde = montat). Pe web
-//     grila scrie și clientul; pe telefon n-are loc, așa că sub grilă stau zilele cu montaj, cu clientul, mașinile,
-//     instalatorul și starea — exact ce scrie pe web în eticheta fiecărei zile;
-//   • „De programat": contractele semnate cu mașini rămase, termenul de 30 de zile (roșu depășit, portocaliu curând),
+//   • grila lunii, strânsă: pe fiecare zi câte mașini se montează (verde = confirmat de instalator și de client, galben
+//     = mai lipsește o confirmare, gri = montat). Pe web grila scrie și clientul; pe telefon n-are loc, așa că sub grilă
+//     stau zilele cu montaj, cu clientul, mașinile, instalatorul și starea — exact ce scrie pe web în eticheta zilei;
+//   • „Ce ai de montat": contractele semnate cu mașini rămase, termenul de 30 de zile (roșu depășit, portocaliu curând),
 //     butonul „Programează" pe fiecare, și stocul de aparate;
-//   • o zi liberă apăsată → „Programează montajul" pe ziua aia; o zi ocupată → ce e pe ea + „Programează";
-//   • o lucrare apăsată → „S-a montat?" (cu câte — mai puține se întorc singure la „De programat"), „Altă zi sau alt
-//     instalator" (Mută), „La client" (dosarul lui) și „Șterge ziua".
+//   • „Programate" / „Istoric" (01.10): zilele încă programate și cele montate sau anulate (cu motivul), cu
+//     „Reprogramează" pe o zi anulată;
+//   • o zi liberă apăsată → „Programează montajul" pe ziua aia (cu ce mai are fiecare instalator în ziua aia, nota de
+//     stoc și cele două confirmări); o zi ocupată → ce e pe ea + „Programează";
+//   • o lucrare apăsată → confirmările, „S-a montat?", „Altă zi sau alt instalator" (Mută), „La client" și „Anulează"
+//     (cu motivul: instalatorul sau clientul nu poate; rămâne în istoric) — cu „Reprogramează" pe loc, dacă vrei.
 //
 // Telefonul NU socotește nimic din programare: ce mai e de programat, termenul, prețul pentru client (din Anexa
-// nr. 2) și costul instalatorului le face serverul, cu vorbele lui la refuz. Regulile de afișare stau în
-// lib/calendarMontaj.ts, legate de pagină printr-o probă. Clientul nu vede nimic de aici (rute requireSuperadmin).
+// nr. 2), costul instalatorului, textele istoricului și nota de stoc le face serverul, cu vorbele lui la refuz.
+// Regulile de afișare stau în lib/calendarMontaj.ts, legate de pagină printr-o probă. Clientul nu vede nimic de aici
+// (rute requireSuperadmin).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import {
-  CAL_TEXT, MJC_ZILE, alteTipuri, ceSeMonteaza, contractulFormularului, corpMontata, corpMutare, corpProgramare, cuClient,
-  cuMasini, deProgramatActive, detaliiContract, dinContract, eroarea, esteMontata, faraClientText, formLucrare, formNou,
-  grilaLunii, instalatoriActivi, instalatoriFiltru, instalatoriLucrare, intrebareMontata, lucrareMontata, lucrariPeZi,
-  lunaAlaturata, lunaText, masini, mutaLucrarea, numeFirmaContract, optiuneClient, programeazaMontaj, stareText, stergeZiua,
-  stocText, termenFel, termenLinie, termenPastila, tipGps, titluLucrare, toastMontata, toastMutat, toastProgramat, ziCuNume, ziRo,
-  type CalContract, type CalDate, type CalLucrare, type FormLuc, type FormProg,
+  CAL_TEXT, MJC_ZILE, alteTipuri, anuleazaLucrarea, ceSeMonteaza, clasaLucrare, confirmaLucrarea, contractulFormularului, corpAnulare,
+  corpMontata, corpMutare, corpProgramare, corpReprogramare, cuClient, cuMasini, deProgramatActive, detaliiContract, dinContract, eroarea,
+  esteMontata, faraClientText, formAnulare, formLucrare, formNou, grilaLunii, incarcareText, instalatoriActivi, instalatoriFiltru,
+  instalatoriLucrare, intrebareMontata, istoricFiltrat, lucrareMontata, lucrariPeZi, lunaAlaturata, lunaText, masini, mutaLucrarea,
+  notaStocMontaj, numeFirmaContract, optiuneClient, programeazaMontaj, reprogrameazaLucrarea, stareText, stocText, termenFel, termenLinie,
+  termenPastila, tipGps, titluLucrare, toastAnulat, toastMontata, toastMutat, toastProgramat, toastReprogramat, ziCuNume, ziRo,
+  type CalContract, type CalDate, type CalIstoric, type CalLucrare, type FormAnulare, type FormLuc, type FormProg,
 } from '../lib/calendarMontaj';
 import { Confirma } from './FlotaUi';
 import { Icon } from './Icon';
@@ -36,15 +41,18 @@ import '../screens/montaj.css';
 // Instalatorul ales sus se ține minte cât trăiește aplicația: „La client" duce în dosarul firmei, iar „înapoi"
 // trebuie să găsească calendarul cum l-ai lăsat (ca filtrele din fila Lucrări).
 let partTinut = '';
+let filaTinuta: 'programate' | 'istoric' = 'programate';
 
-// O singură foaie deschisă deodată; trecerea de la una la alta (ziua → programarea, lucrarea → întrebarea) păstrează
-// aceeași pază de „înapoi" (vezi useInapoiInchide: două foi păzite schimbate deodată lasă istoricul strâmb).
+// O singură foaie deschisă deodată; trecerea de la una la alta (ziua → programarea, lucrarea → întrebarea / anularea)
+// păstrează aceeași pază de „înapoi" (vezi useInapoiInchide: două foi păzite schimbate deodată lasă istoricul strâmb).
 type Foaie =
   | { fel: 'zi'; zi: string }
   | { fel: 'prog'; f: FormProg; start: string }
   | { fel: 'fara'; text: string }
   | { fel: 'lucrare'; id: number; f: FormLuc; start: string }
-  | { fel: 'intreb'; ce: 'montata' | 'sterge'; id: number; f: FormLuc; start: string; text: string }
+  | { fel: 'intreb'; ce: 'montata'; id: number; f: FormLuc; start: string; text: string }
+  | { fel: 'anul'; id: number; f: FormAnulare; lf: FormLuc; start: string }
+  | { fel: 'reprog'; id: number; f: { zi: string; part: string } }
   | null;
 
 export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient, pre, onPreFolosit }: {
@@ -52,26 +60,30 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   err?: string;
   incarcand?: boolean;               // altă lună pe drum: săgețile așteaptă
   onLuna: (luna: string) => void;
-  onSchimbat: (luna?: string) => void;   // după programare / mutare / montată / ștergere: ecranul reîncarcă (pe luna dată)
+  onSchimbat: (luna?: string) => void;   // după programare / mutare / montată / anulare: ecranul reîncarcă (pe luna dată)
   onClient: (companyId: number) => void; // „La client": dosarul firmei (se cheamă din foaie — ecranul înlocuiește adresa)
   pre?: number | null;               // venit din drumul clientului: contractul de programat
   onPreFolosit?: () => void;
 }) {
   const [part, setPartS] = useState(partTinut);
+  const [fila, setFilaS] = useState(filaTinuta);
+  const [filtru, setFiltru] = useState('toate');
   const [foaie, setFoaie] = useState<Foaie>(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const preNr = useRef(0);
   const setPart = (v: string) => { partTinut = v; setPartS(v); };
+  const setFila = (v: 'programate' | 'istoric') => { filaTinuta = v; setFilaS(v); };
 
   // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal, „Renunț" și „înapoi" de pe Android.
-  // Din întrebarea „Montată?" / „Șterge ziua?", „înapoi" te întoarce în foaia zilei (ca „Renunță" pe web, unde
+  // Din întrebarea „Montată?" și din anulare, „înapoi" te întoarce în foaia zilei (ca „Renunță" pe web, unde
   // panoul rămâne deschis) — foaia rămâne deschisă, deci paza își pune intrarea la loc.
   function inchide(): boolean {
     if (busy) return false;
     const x = foaie;
     if (!x) return true;
     if (x.fel === 'intreb') { setFoaie({ fel: 'lucrare', id: x.id, f: x.f, start: x.start }); return false; }
+    if (x.fel === 'anul') { setMsg(''); setFoaie({ fel: 'lucrare', id: x.id, f: x.lf, start: x.start }); return false; }
     if ((x.fel === 'prog' || x.fel === 'lucrare') && JSON.stringify(x.f) !== x.start &&
       !confirm('Închizi fără să salvezi?\n\n' + (x.fel === 'prog' ? 'Ce ai ales la programare se pierde.' : 'Ce ai schimbat la ziua de montaj se pierde.'))) return false;
     setFoaie(null);
@@ -97,14 +109,16 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     });
   }, [pre, d]);
 
-  // O lucrare deschisă care nu mai e în calendar (ștearsă între timp): foaia se închide, nu rămâne goală.
-  const lucrareDeschisa = foaie && (foaie.fel === 'lucrare' || foaie.fel === 'intreb') && d ? d.lucrari.find((x) => x.id === foaie.id) : null;
+  // Lucrările care se pot deschide: cele ale lunii și cele programate în alte luni (fila „Programate").
+  const toate = d ? d.lucrari.concat((d.programate || []).filter((p) => !d.lucrari.some((l) => l.id === p.id))) : [];
+  // O lucrare deschisă care nu mai e programată (anulată, mutată între timp): foaia se închide, nu rămâne goală.
+  const lucrareDeschisa = foaie && (foaie.fel === 'lucrare' || foaie.fel === 'intreb' || foaie.fel === 'anul') && d ? toate.find((x) => x.id === foaie.id) : null;
   useEffect(() => {
-    if (foaie && (foaie.fel === 'lucrare' || foaie.fel === 'intreb') && !lucrareDeschisa) setFoaie(null);
+    if (foaie && (foaie.fel === 'lucrare' || foaie.fel === 'intreb' || foaie.fel === 'anul') && !lucrareDeschisa) setFoaie(null);
   }, [foaie, lucrareDeschisa]);
 
   function deschideFara(text: string) { setMsg(''); setFoaie({ fel: 'fara', text }); }
-  // „Programează": pe o zi (din grilă / din foaia zilei), pe un contract („De programat"), sau pe contractul cerut.
+  // „Programează": pe o zi (din grilă / din foaia zilei), pe un contract („Ce ai de montat"), sau pe contractul cerut.
   // Instalatorul ales sus se propune singur (raxMjCalZi / raxMjCalProgrameaza); venit din drum, niciunul.
   function deschideProg(zi: string | null, contractId: number | null, partener: string | null) {
     const f = formNou(d, zi, contractId, partener);
@@ -123,6 +137,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   }
   const setF = (f: FormProg) => { setMsg(''); setFoaie((x) => (x && x.fel === 'prog' ? { ...x, f } : x)); };
   const setL = (f: FormLuc) => { setMsg(''); setFoaie((x) => (x && x.fel === 'lucrare' ? { ...x, f } : x)); };
+  const setA = (f: FormAnulare) => { setMsg(''); setFoaie((x) => (x && x.fel === 'anul' ? { ...x, f } : x)); };
+  const setR = (f: { zi: string; part: string }) => { setMsg(''); setFoaie((x) => (x && x.fel === 'reprog' ? { ...x, f } : x)); };
 
   // ── Cererile (rutele și refuzurile: ale serverului) ──
   async function programeaza(c: CalContract, f: FormProg) {
@@ -152,21 +168,57 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     finally { setBusy(false); }
   }
   // Întrebarea s-a pus; un refuz al serverului („Între 1 și 3") se vede înapoi în foaia zilei, ca pe web (#mjc-msg).
-  async function faIntrebarea(x: { ce: 'montata' | 'sterge'; id: number; f: FormLuc; start: string }) {
+  async function faIntrebarea(x: { ce: 'montata'; id: number; f: FormLuc; start: string }) {
     if (busy) return;
     setBusy(true);
     setMsg('');
     try {
-      if (x.ce === 'montata') {
-        const j = await lucrareMontata(x.id, corpMontata(x.f));
-        showToast(toastMontata(j));
-      } else await stergeZiua(x.id);
+      const j = await lucrareMontata(x.id, corpMontata(x.f));
+      showToast(toastMontata(j));
       setFoaie(null);
       onSchimbat();
     } catch (e: any) {
       setFoaie({ fel: 'lucrare', id: x.id, f: x.f, start: x.start });
-      setMsg(eroarea(e, x.ce === 'montata' ? 'Nu s-a putut salva.' : 'Nu s-a putut șterge.'));
+      setMsg(eroarea(e, 'Nu s-a putut salva.'));
     } finally { setBusy(false); }
+  }
+  // Confirmările unei zile programate (vorbite la telefon); până face Robert contul instalatorului, le bifăm noi.
+  async function confirma(l: CalLucrare, cine: 'instalator' | 'client', val: boolean) {
+    if (busy) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      await confirmaLucrarea(l.id, cine === 'client' ? { client: val } : { instalator: val });
+      onSchimbat();
+    } catch (e: any) { setMsg(eroarea(e, 'Nu s-a putut salva.')); }
+    finally { setBusy(false); }
+  }
+  async function anuleaza(id: number, f: FormAnulare) {
+    if (busy) return;
+    if (!f.motiv) { setMsg(CAL_TEXT.faraMotiv); return; }
+    if (f.reprog && !f.zi) { setMsg(CAL_TEXT.faraZiNoua); return; }
+    setBusy(true);
+    setMsg('');
+    try {
+      const j = await anuleazaLucrarea(id, corpAnulare(f));
+      showToast(toastAnulat(j));
+      setFoaie(null);
+      onSchimbat(j && j.reprogramata ? String(j.reprogramata.zi).slice(0, 7) : undefined);
+    } catch (e: any) { setMsg(eroarea(e, 'Nu s-a putut anula.')); }
+    finally { setBusy(false); }
+  }
+  async function reprogrameaza(id: number, f: { zi: string; part: string }) {
+    if (busy) return;
+    if (!f.zi) { setMsg(CAL_TEXT.faraZiNoua); return; }
+    setBusy(true);
+    setMsg('');
+    try {
+      const j = await reprogrameazaLucrarea(id, corpReprogramare(f));
+      showToast(toastReprogramat(j && j.reprogramata ? j.reprogramata.zi : f.zi));
+      setFoaie(null);
+      onSchimbat(f.zi.slice(0, 7));
+    } catch (e: any) { setMsg(eroarea(e, 'Nu s-a putut reprograma.')); }
+    finally { setBusy(false); }
   }
 
   if (!d) return err ? <div class="ctr-err">{err}</div> : <div class="spin" style="margin:30px auto" />;
@@ -175,6 +227,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   const pe = lucrariPeZi(d.lucrari, part);
   const zileCu = Object.keys(pe).filter((zi) => zi.slice(0, 7) === d.luna).sort();
   const luna = (pas: number) => { if (!incarcand) onLuna(lunaAlaturata(d.luna, pas, d.azi)); };
+  const prog = d.programate || [];
+  const ist = istoricFiltrat(d, filtru);
 
   return (
     <>
@@ -206,7 +260,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
                   aria-label={l.length ? ziRo(z.zi) + ': ' + l.map((x) => titluLucrare(x, d.stari)).join('; ') : 'Programează pe ' + ziRo(z.zi)}
                   onClick={() => peZi(z.zi, l)}>
                   <span class="mjc-nr">{z.nr}</span>
-                  {l.slice(0, 2).map((x) => <span class={'mjc-l ' + (esteMontata(x.status) ? 'mjc-mont' : 'mjc-prog')}>{x.masini}</span>)}
+                  {l.slice(0, 2).map((x) => <span class={'mjc-l ' + clasaLucrare(x)}>{x.masini}</span>)}
                   {l.length > 2 && <span class="mjc-mai">+{l.length - 2}</span>}
                 </button>
               );
@@ -214,7 +268,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
           </div>
         ) : <div class="ctr-empty">Se încarcă…</div>}
         <div class="mjc-leg">
-          <span class="mjc-l mjc-prog"><b>10</b> programat</span>
+          <span class="mjc-l mjc-ok"><b>10</b> confirmat</span>
+          <span class="mjc-l mjc-conf"><b>10</b> de confirmat</span>
           <span class="mjc-l mjc-mont"><b>10</b> montat</span>
           <span>cifra = câte mașini</span>
         </div>
@@ -235,6 +290,41 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
       )}
 
       <DeProgramat d={d} onProgrameaza={(cid) => deschideProg(null, cid, part || null)} />
+
+      {/* „Programate" / „Istoric" (01.10): zilele încă programate și cele montate sau anulate, cu motivul. */}
+      <div class="mjc-file">
+        <button type="button" class={'ctr-btn mjc-fila' + (fila === 'programate' ? ' pri' : '')} onClick={() => setFila('programate')}>Programate · {prog.length}</button>
+        <button type="button" class={'ctr-btn mjc-fila' + (fila === 'istoric' ? ' pri' : '')} onClick={() => setFila('istoric')}>Istoric · {(d.istoric || []).length}</button>
+      </div>
+      {fila === 'programate' ? (
+        prog.length ? (
+          <div class="ctr-list">
+            {prog.map((l) => (
+              <div class="ctr-row" key={'p' + l.id}>
+                <div class="ctr-row-t">
+                  <b>{ziRo(l.zi) + ' · ' + (l.company_name || '—')}</b>
+                  <span class="ctr-row-s">{masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales')}</span>
+                  {l.conf_text && <span class={'mjc-rez ' + (l.conf === 'confirmat' ? 'ok' : 'conf')}>{l.conf_text}</span>}
+                </div>
+                <div class="ctr-btns"><button class="ctr-btn" onClick={() => deschideLucrare(l)}><Icon name="arrowRight" size={15} /> Deschide</button></div>
+              </div>
+            ))}
+          </div>
+        ) : <div class="ctr-empty">Nicio zi de montaj programată.</div>
+      ) : (
+        <>
+          <div class="mjc-filtre">
+            {[['toate', 'Toate'], ['montate', 'Montate'], ['anulate', 'Anulate']].map(([k, t]) => (
+              <button type="button" class={'mjc-fl' + (filtru === k ? ' on' : '')} onClick={() => setFiltru(k)}>{t}</button>
+            ))}
+          </div>
+          {ist.length ? (
+            <div class="ctr-list">
+              {ist.map((l) => <RandIstoric l={l} onReprog={() => { setMsg(''); setFoaie({ fel: 'reprog', id: l.id, f: { zi: '', part: l.partener_id != null && instalatoriLucrare(d.parteneri, l).some((p) => p.id === l.partener_id) ? String(l.partener_id) : '' } }); }} />)}
+            </div>
+          ) : <div class="ctr-empty">{filtru === 'anulate' ? 'Nicio zi anulată.' : filtru === 'montate' ? 'Nicio zi montată încă.' : 'Istoricul e gol: aici apar zilele montate și cele anulate.'}</div>}
+        </>
+      )}
 
       {foaie && foaie.fel === 'zi' && (
         <Foaie titlu={ziCuNume(foaie.zi)} icon="calendar" onClose={inchide}>
@@ -264,12 +354,19 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
         <FoaieLucrare d={d} l={lucrareDeschisa} f={foaie.f} msg={msg} busy={busy} onF={setL} onClose={inchide}
           onMontata={() => setFoaie({ fel: 'intreb', ce: 'montata', id: foaie.id, f: foaie.f, start: foaie.start, text: intrebareMontata(lucrareDeschisa, parseInt(foaie.f.mont, 10) || 0) })}
           onMuta={() => muta(lucrareDeschisa, foaie.f)}
-          onSterge={() => setFoaie({ fel: 'intreb', ce: 'sterge', id: foaie.id, f: foaie.f, start: foaie.start, text: CAL_TEXT.sterge })}
+          onConfirma={(cine, val) => confirma(lucrareDeschisa, cine, val)}
+          onAnuleaza={() => { setMsg(''); setFoaie({ fel: 'anul', id: foaie.id, f: formAnulare(d.parteneri, lucrareDeschisa), lf: foaie.f, start: foaie.start }); }}
           onClient={() => onClient(lucrareDeschisa.company_id)} />
       )}
+      {foaie && foaie.fel === 'anul' && lucrareDeschisa && (
+        <FoaieAnulare d={d} l={lucrareDeschisa} f={foaie.f} msg={msg} busy={busy} onF={setA} onClose={inchide} onTrimite={() => anuleaza(foaie.id, foaie.f)} />
+      )}
+      {foaie && foaie.fel === 'reprog' && (
+        <FoaieReprog d={d} l={(d.istoric || []).find((x) => x.id === foaie.id) || null} f={foaie.f} msg={msg} busy={busy} onF={setR} onClose={inchide}
+          onTrimite={() => reprogrameaza(foaie.id, foaie.f)} />
+      )}
       {foaie && foaie.fel === 'intreb' && (
-        <Confirma title={foaie.ce === 'montata' ? 'Montată' : 'Șterge ziua'} text={foaie.text} busy={busy}
-          okLabel={foaie.ce === 'montata' ? 'Montată' : 'Șterge'} danger={foaie.ce === 'sterge'}
+        <Confirma title="Montată" text={foaie.text} busy={busy} okLabel="Montată"
           onOk={() => faIntrebarea(foaie)} onCancel={() => { inchide(); }} />
       )}
     </>
@@ -280,22 +377,38 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
 function RandLucrare({ l, stari, onClick }: { l: CalLucrare; stari: Record<string, string>; onClick: () => void }) {
   return (
     <button type="button" class="mjc-rand" onClick={onClick} aria-label={titluLucrare(l, stari)}>
-      <span class={'mjc-l ' + (esteMontata(l.status) ? 'mjc-mont' : 'mjc-prog')}>{l.masini}</span>
+      <span class={'mjc-l ' + clasaLucrare(l)}>{l.masini}</span>
       <span class="mjc-rand-t">
         <b>{l.company_name || '—'}</b>
         <span class="mjc-rand-s">{masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + stareText(l, stari)}</span>
+        {l.conf_text && <span class={'mjc-rez mic ' + (l.conf === 'confirmat' ? 'ok' : 'conf')}>{l.conf_text}</span>}
       </span>
       <Icon name="chevronR" size={16} />
     </button>
   );
 }
 
-// „De programat" (_mjcDeProgramatHtml): contractele semnate cu ce a mai rămas, cel mai strâns termen primul (ordinea
-// serverului), plus stocul de aparate.
+// Un rând din istoric: ziua, clientul, ce s-a întâmplat (textul serverului), amănuntele și „Reprogramează".
+function RandIstoric({ l, onReprog }: { l: CalIstoric; onReprog: () => void }) {
+  return (
+    <div class="ctr-row">
+      <div class="ctr-row-t">
+        <b>{ziRo(l.zi) + ' · ' + (l.company_name || '—')}</b>
+        <span class="ctr-row-s">{masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales')}</span>
+        <span class={'mjc-rez ' + (l.anulata ? 'an' : 'ok')}>{l.text}</span>
+        {l.detaliu && <span class="ctr-row-s">{l.detaliu}</span>}
+      </div>
+      {l.poateReprograma && <div class="ctr-btns"><button class="ctr-btn" onClick={onReprog}><Icon name="calendar" size={15} /> Reprogramează</button></div>}
+    </div>
+  );
+}
+
+// „Ce ai de montat" (_mjcDeProgramatHtml): contractele semnate cu ce a mai rămas, cel mai strâns termen primul
+// (ordinea serverului), plus stocul de aparate.
 export function DeProgramat({ d, onProgrameaza }: { d: CalDate; onProgrameaza: (contractId: number) => void }) {
   return (
     <>
-      <div class="ctr-h"><Icon name="clipboard" size={17} class="ic" /> De programat</div>
+      <div class="ctr-h"><Icon name="clipboard" size={17} class="ic" /> Ce ai de montat</div>
       <div class="ctr-sub">{CAL_TEXT.subDeProgramat}</div>
       {!(d.deProgramat || []).length ? <div class="ctr-empty">{CAL_TEXT.golDeProgramat}</div> : (
         <div class="ctr-list">
@@ -320,14 +433,29 @@ export function DeProgramat({ d, onProgrameaza }: { d: CalDate; onProgrameaza: (
   );
 }
 
-// „Programează montajul" (_mjcFormHtml): clientul, ziua, câte mașini (din cât a rămas), cine montează și — pe mașini —
-// ce se mai montează, propus din câte mașini cât timp n-ai scris tu de mână.
+// „Programează montajul" (_mjcFormHtml): clientul, ziua, câte mașini (din cât a rămas), cine montează — cu ce mai are
+// fiecare instalator în ziua aia —, ce se mai montează pe mașini (propus din câte mașini cât timp n-ai scris tu de
+// mână), nota de stoc (de la server) și cele două confirmări vorbite la telefon.
 export function FoaieProgramare({ d, f, msg, busy, onF, onClose, onSalveaza }: {
   d: CalDate; f: FormProg; msg: string; busy: boolean; onF: (f: FormProg) => void; onClose: () => boolean;
   onSalveaza: (c: CalContract, f: FormProg) => void;
 }) {
   const ctrs = deProgramatActive(d);
   const c = contractulFormularului(d, f.contract_id);
+  const [nota, setNota] = useState<{ text: string; lipsa: boolean } | null>(null);
+  // Nota de stoc o socotește serverul (montaj.notaStoc): o cere din nou când se schimbă clientul, instalatorul sau
+  // cantitățile. Un răspuns întârziat al unei alegeri vechi nu se mai pune.
+  const notaNr = useRef(0);
+  const cheie = c ? JSON.stringify([c.contract_id, f.part, f.n, f.alte]) : '';
+  useEffect(() => {
+    if (!c) return;
+    const nr = ++notaNr.current;
+    const cate: Record<string, number> = { gps: parseInt(f.n, 10) || 0 };
+    alteTipuri(c).forEach((t) => { cate[t.tip] = parseInt(f.alte[t.tip], 10) || 0; });
+    notaStocMontaj({ contract_id: c.contract_id, partener_id: f.part ? parseInt(f.part, 10) : null, cate })
+      .then((j) => { if (nr === notaNr.current && j && j.text) setNota({ text: j.text, lipsa: !!(j.lipsa && j.lipsa.length) }); })
+      .catch(() => {});
+  }, [cheie]);
   return (
     <Foaie titlu="Programează montajul" icon="calendar" onClose={onClose}>
       {!c ? (
@@ -348,20 +476,32 @@ export function FoaieProgramare({ d, f, msg, busy, onF, onClose, onSalveaza }: {
           <div class="fld"><label>{'Câte mașini (din ' + tipGps(c).ramase + ' rămase)'}</label>
             <input type="number" inputMode="numeric" min="1" max={tipGps(c).ramase} step="1" value={f.n} disabled={busy}
               onInput={(e: any) => onF(cuMasini(c, f, e.currentTarget.value))} />
+            {(c.tipuri || []).filter((t) => t.tip === 'gps' && t.aparat).map((t) => <span class="mjc-aparat">Aparat: {t.aparat}</span>)}
           </div>
           <div class="fld"><label>Cine montează</label>
             <select value={f.part} disabled={busy} onChange={(e: any) => onF({ ...f, part: e.currentTarget.value })}>
               <option value="">— îl aleg mai târziu —</option>
               {instalatoriActivi(d.parteneri).map((p) => <option value={String(p.id)}>{p.name}</option>)}
             </select>
+            {d.textLiber && instalatoriActivi(d.parteneri).length > 0 && (
+              <div class="mjc-inc">
+                {instalatoriActivi(d.parteneri).map((p) => <span><b>{p.name}</b>: {incarcareText(d, f.zi, p.id)}</span>)}
+              </div>
+            )}
           </div>
           {alteTipuri(c).map((t) => (
             <div class="fld"><label>{t.eticheta + ' (din ' + t.ramase + ' rămase)'}</label>
               <input type="number" inputMode="numeric" min="0" max={t.ramase} step="1" value={f.alte[t.tip] || ''} disabled={busy}
                 onInput={(e: any) => onF({ ...f, alte: { ...f.alte, [t.tip]: e.currentTarget.value }, atinse: { ...f.atinse, [t.tip]: true } })} />
+              {t.aparat && <span class="mjc-aparat">Aparat: {t.aparat}</span>}
             </div>
           ))}
+          {nota && <div class={'mjc-nota' + (nota.lipsa ? ' warn' : '')}>{nota.text}</div>}
           {c.termen && <div class="mjc-text mic">{termenLinie(c.termen)}</div>}
+          <div class="ctr-h2" style="margin-top:2px">Confirmări (vorbite la telefon)</div>
+          <label class="mjc-bifa"><input type="checkbox" checked={!!f.ci} disabled={busy} onChange={(e: any) => onF({ ...f, ci: !!e.currentTarget.checked })} /> Am vorbit cu instalatorul: poate în ziua asta</label>
+          <label class="mjc-bifa"><input type="checkbox" checked={!!f.cc} disabled={busy} onChange={(e: any) => onF({ ...f, cc: !!e.currentTarget.checked })} /> Am vorbit cu clientul: mașinile sunt disponibile</label>
+          <div class="mjc-text mic">{CAL_TEXT.confirmariNota}</div>
           {msg && <div class="ctr-msg">{msg}</div>}
           <div class="frm-actions">
             <button class="btn fl-btn2" disabled={busy} onClick={() => onClose()}>Renunț</button>
@@ -373,10 +513,10 @@ export function FoaieProgramare({ d, f, msg, busy, onF, onClose, onSalveaza }: {
   );
 }
 
-// O zi programată (_mjcLucrareHtml): cine, ce, și — cât e doar programată — montată, mutată, ștearsă.
-export function FoaieLucrare({ d, l, f, msg, busy, onF, onClose, onMontata, onMuta, onSterge, onClient }: {
+// O zi programată (_mjcLucrareHtml): cine, ce, confirmările și — cât e doar programată — montată, mutată, anulată.
+export function FoaieLucrare({ d, l, f, msg, busy, onF, onClose, onMontata, onMuta, onConfirma, onAnuleaza, onClient }: {
   d: CalDate; l: CalLucrare; f: FormLuc; msg: string; busy: boolean; onF: (f: FormLuc) => void; onClose: () => boolean;
-  onMontata: () => void; onMuta: () => void; onSterge: () => void; onClient: () => void;
+  onMontata: () => void; onMuta: () => void; onConfirma: (cine: 'instalator' | 'client', val: boolean) => void; onAnuleaza: () => void; onClient: () => void;
 }) {
   const prog = !esteMontata(l.status);
   const ce = ceSeMonteaza(l.items);
@@ -389,7 +529,10 @@ export function FoaieLucrare({ d, l, f, msg, busy, onF, onClose, onMontata, onMu
         </div>
         {prog && (
           <>
-            <div class="ctr-h2" style="margin-top:2px">S-a montat?</div>
+            <div class="ctr-h2" style="margin-top:2px">Confirmări</div>
+            <label class="mjc-bifa"><input type="checkbox" checked={!!l.confirmat_instalator} disabled={busy} onChange={(e: any) => onConfirma('instalator', !!e.currentTarget.checked)} /> Am vorbit cu instalatorul: poate pe {ziRo(l.zi)}</label>
+            <label class="mjc-bifa"><input type="checkbox" checked={!!l.confirmat_client} disabled={busy} onChange={(e: any) => onConfirma('client', !!e.currentTarget.checked)} /> Am vorbit cu clientul: mașinile sunt disponibile</label>
+            <div class="ctr-h2">S-a montat?</div>
             <div class="fld"><label>Câte mașini s-au montat</label>
               <input type="number" inputMode="numeric" min="1" max={l.masini} step="1" value={f.mont} disabled={busy}
                 onInput={(e: any) => onF({ ...f, mont: e.currentTarget.value })} />
@@ -412,12 +555,92 @@ export function FoaieLucrare({ d, l, f, msg, busy, onF, onClose, onMontata, onMu
         {msg && <div class="ctr-msg">{msg}</div>}
         <div class="ctr-btns" style="margin-top:2px">
           <button class="ctr-btn" disabled={busy} onClick={onClient}><Icon name="arrowRight" size={15} /> La client</button>
-          {prog && <button class="ctr-btn danger" disabled={busy} onClick={onSterge}><Icon name="trash" size={15} /> Șterge ziua</button>}
+          {prog && <button class="ctr-btn danger" disabled={busy} onClick={onAnuleaza}><Icon name="x" size={15} /> Anulează</button>}
         </div>
         <div class="frm-actions">
           <button class="btn fl-btn2" disabled={busy} onClick={() => onClose()}>Închide</button>
         </div>
       </div>
+    </Foaie>
+  );
+}
+
+// Anularea (_mjcAnuleazaHtml): unul din cele DOUĂ motive ale serverului, amănuntele dacă vrei și, la „Reprogramează",
+// ziua nouă cu instalatorul ei. Lucrarea anulată rămâne în istoric; mașinile se întorc la „Ce ai de montat".
+export function FoaieAnulare({ d, l, f, msg, busy, onF, onClose, onTrimite }: {
+  d: CalDate; l: CalLucrare; f: FormAnulare; msg: string; busy: boolean; onF: (f: FormAnulare) => void; onClose: () => boolean; onTrimite: () => void;
+}) {
+  const mot = d.motive || {};
+  return (
+    <Foaie titlu="Anulezi lucrarea?" icon="wrench" onClose={onClose}>
+      <div class="frm">
+        <div class="mjc-text mic">{(l.company_name || '—') + ' · ' + masini(l.masini) + ' · ' + ziRo(l.zi) + (l.partener_nume ? ' · ' + l.partener_nume : '')}</div>
+        <div class="ctr-h2" style="margin-top:2px">Motivul</div>
+        {Object.keys(mot).map((k) => (
+          <label class="mjc-bifa"><input type="radio" name="mjc-motiv" value={k} checked={f.motiv === k} disabled={busy} onChange={() => onF({ ...f, motiv: k })} /> {mot[k]}</label>
+        ))}
+        <div class="fld"><label>Detalii (dacă vrei)</label>
+          <input type="text" maxLength={500} value={f.detalii} disabled={busy} placeholder="ex. bolnav, revine luni" onInput={(e: any) => onF({ ...f, detalii: e.currentTarget.value })} />
+        </div>
+        {f.reprog && (
+          <>
+            <div class="fld"><label>Ziua nouă</label>
+              <input type="date" value={f.zi} disabled={busy} onInput={(e: any) => onF({ ...f, zi: e.currentTarget.value })} />
+            </div>
+            <div class="fld"><label>Cine montează</label>
+              <select value={f.part} disabled={busy} onChange={(e: any) => onF({ ...f, part: e.currentTarget.value })}>
+                <option value="">— neales —</option>
+                {instalatoriLucrare(d.parteneri, l).map((p) => <option value={String(p.id)}>{p.name}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+        <div class="mjc-text mic">{'Lucrarea rămâne în „Istoric”, cu motivul. ' + (f.reprog ? 'Pe ziua nouă se programează aceleași mașini.' : 'Mașinile ei se întorc la „Ce ai de montat”.')}</div>
+        {msg && <div class="ctr-msg">{msg}</div>}
+        <div class="frm-actions">
+          <button class="btn fl-btn2" disabled={busy} onClick={() => onClose()}>Renunț</button>
+          {f.reprog
+            ? <button class="btn btn-primary" disabled={busy} onClick={onTrimite}><Icon name="calendar" size={16} /> {busy ? 'Se anulează…' : 'Anulează și reprogramează'}</button>
+            : <button class="btn fl-btn2" disabled={busy} onClick={() => onF({ ...f, reprog: true })}><Icon name="calendar" size={16} /> Reprogramează</button>}
+        </div>
+        {!f.reprog && <button class="btn mjc-rosu" disabled={busy} onClick={onTrimite}><Icon name="x" size={16} /> {busy ? 'Se anulează…' : 'Anulează lucrarea'}</button>}
+      </div>
+    </Foaie>
+  );
+}
+
+// Reprogramarea unei zile anulate, din istoric (_mjcReprogHtml): aceleași mașini, pe ziua nouă.
+export function FoaieReprog({ d, l, f, msg, busy, onF, onClose, onTrimite }: {
+  d: CalDate; l: CalIstoric | null; f: { zi: string; part: string }; msg: string; busy: boolean; onF: (f: { zi: string; part: string }) => void;
+  onClose: () => boolean; onTrimite: () => void;
+}) {
+  return (
+    <Foaie titlu="Reprogramează" icon="calendar" onClose={onClose}>
+      {!l ? (
+        <div class="frm">
+          <div class="mjc-text">Ziua asta nu mai e în istoric.</div>
+          <div class="frm-actions"><button class="btn fl-btn2" onClick={() => onClose()}>Închide</button></div>
+        </div>
+      ) : (
+        <div class="frm">
+          <div class="mjc-text mic">{(l.company_name || '—') + ' · ' + masini(l.masini) + ' · anulată de pe ' + ziRo(l.zi)}</div>
+          <div class="mjc-text mic">{l.text + (l.detaliu ? ' · ' + l.detaliu : '')}</div>
+          <div class="fld"><label>Ziua nouă</label>
+            <input type="date" value={f.zi} disabled={busy} onInput={(e: any) => onF({ ...f, zi: e.currentTarget.value })} />
+          </div>
+          <div class="fld"><label>Cine montează</label>
+            <select value={f.part} disabled={busy} onChange={(e: any) => onF({ ...f, part: e.currentTarget.value })}>
+              <option value="">— neales —</option>
+              {instalatoriLucrare(d.parteneri, l).map((p) => <option value={String(p.id)}>{p.name}</option>)}
+            </select>
+          </div>
+          {msg && <div class="ctr-msg">{msg}</div>}
+          <div class="frm-actions">
+            <button class="btn fl-btn2" disabled={busy} onClick={() => onClose()}>Renunț</button>
+            <button class="btn btn-primary" disabled={busy} onClick={onTrimite}><Icon name="calendar" size={16} /> {busy ? 'Se reprogramează…' : 'Reprogramează'}</button>
+          </div>
+        </div>
+      )}
     </Foaie>
   );
 }
