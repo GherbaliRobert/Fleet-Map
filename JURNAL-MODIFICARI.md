@@ -127,7 +127,7 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
-### AMÂNDOI · Lista lui Robert, lotul 1 — siguranță: Excel-ul care se umflă, harta după suspendare, motivul intern (1, 2, 3) — `HASH`
+### AMÂNDOI · Lista lui Robert, lotul 1 — siguranță: Excel-ul care se umflă, harta după suspendare, motivul intern (1, 2, 3) — `09c0c90`
 
 Pe 01.10 Alin ne-a dat înapoi lista de 26 de reparații („Reparații pentru Robert — din verificările tale"). Lotul 1
 sunt cele trei care ating toate firmele deodată sau datele lor. Zonele lui Alin (calendarul de montaj, montajul,
