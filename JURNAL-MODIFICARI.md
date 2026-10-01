@@ -133,7 +133,7 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
-### AMÂNDOI · Lista lui Robert, lotul 3 — contractele și dosarul (16–22) — `HASH`
+### AMÂNDOI · Lista lui Robert, lotul 3 — contractele și dosarul (16–22) — `bd06cbc`
 
 Lotul 3 sunt locurile unde hârtia putea pleca greșită la semnat sau se puteau pierde datele firmei. Toate șapte sunt
 reparate.
