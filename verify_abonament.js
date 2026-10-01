@@ -242,10 +242,21 @@ sect('4. Pe ecran');
     (server.match(/await _trimiteFactura\(/g) || []).length === 3 && !/title: 'Factură nouă: ' \+ num\.full/.test(server));
   // Factura pleacă singură la ANAF la emitere: o a doua trimitere ar dubla-o în SPV-ul clientului.
   const rutaEf = server.slice(server.indexOf("app.post('/api/invoices/:id/efactura'"), server.indexOf("app.get('/api/invoices/:id/efactura/status'"));
-  T('o factură aflată deja la ANAF (trimisă sau validată) NU se mai trimite a doua oară — nici din pagină, nici pe server',
-    /if \(inv\.efactura_status === 'uploaded' \|\| inv\.efactura_status === 'validated'\) \{\s*return res\.status\(409\)/.test(rutaEf) &&
-    rutaEf.indexOf("efactura_status === 'uploaded'") < rutaEf.indexOf('efactura.uploadInvoice(') &&
+  // O singură regulă pentru „e la ANAF" (`_laAnaf`): nici a doua trimitere, nici anularea (01.10, găsit de Robert: „Anulează"
+  // rămânea pe o factură trimisă — anulată + refăcută = două facturi la ANAF pe aceeași lună). Rulată pe cazuri.
+  const fnLaAnaf = (server.match(/function _laAnaf\(inv\) \{[^\n]*\}/) || [])[0] || '';
+  let laAnaf = null; try { laAnaf = new Function(fnLaAnaf + '\nreturn _laAnaf;')(); } catch (e) {}
+  T('„e la ANAF" = factură fiscală trimisă (în procesare) sau validată; nu proforma, nu cea respinsă sau netrimisă',
+    !!laAnaf && laAnaf({ type: 'invoice', efactura_status: 'uploaded' }) && laAnaf({ type: 'invoice', efactura_status: 'validated' }) &&
+    !laAnaf({ type: 'invoice', efactura_status: 'error' }) && !laAnaf({ type: 'invoice', efactura_status: null }) && !laAnaf({ type: 'proforma', efactura_status: 'uploaded' }) && !laAnaf(null), fnLaAnaf);
+  T('o factură aflată deja la ANAF NU se mai trimite a doua oară — nici din pagină, nici pe server',
+    /if \(_laAnaf\(inv\)\) \{\s*return res\.status\(409\)/.test(rutaEf) && rutaEf.indexOf('_laAnaf(inv)') < rutaEf.indexOf('efactura.uploadInvoice(') &&
     /v\.efactura_status !== 'validated' && v\.efactura_status !== 'uploaded'\) act \+= /.test(html));
+  const rutaSt = server.slice(server.indexOf("app.put('/api/invoices/:id/status'"), server.indexOf("app.put('/api/invoices/:id/status'") + 2500);
+  T('…și NU se mai anulează: serverul refuză (409, „se stornează"), lista o spune (`la_anaf`), pagina ascunde „Anulează"',
+    /if \(_laAnaf\(inv\)\) return res\.status\(409\)\.json\(\{ laAnaf: true/.test(rutaSt) && rutaSt.indexOf('_laAnaf(inv)') < rutaSt.indexOf("db.updateInvoice(inv.id, { status: 'canceled' })") &&
+    /la_anaf: _laAnaf\(v\)/.test(server) && /&& !v\.la_anaf\) act \+= '<button class="rax-ico-btn danger" title="Anulează"/.test(html) &&
+    (html.match(/onclick="raxInvoiceCancel\(/g) || []).length === 1);
   T('„Prima factură" din drum numără facturi FISCALE, nu proforme', /AND type IS DISTINCT FROM 'proforma' GROUP BY company_id/.test(dbjs));
   // Punctul 6 (Alin, 30.09): previzualizare înainte de emitere, proforma gata la semnare, secțiuni, butonul cu nume.
   T('„Previzualizează" și „Emite" trimit ACELAȘI corp (_giCorp) — ce vezi e ce pleacă',

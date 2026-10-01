@@ -2303,10 +2303,10 @@ async function editStoc(id, f) {
   return getStoc(id);
 }
 async function stergeStoc(id) { await pool.query('DELETE FROM stoc_echipamente WHERE id = $1', [id]); return { ok: true }; }
-// IMEI-urile trackerelor din stoc (Alin, 30.09: aparatul intră în aplicație o singură dată, în Stoc). Un tracker casat nu
-// mai are ce transmite, deci nu mai e primit.
-async function stocImeiuri(tipuri) {
-  const r = await pool.query(`SELECT serie FROM stoc_echipamente WHERE tip = ANY($1::text[]) AND stare <> 'casat' AND serie IS NOT NULL`, [tipuri || []]);
+// IMEI-urile trackerelor din stoc (Alin, 30.09: aparatul intră în aplicație o singură dată, în Stoc), doar în stările
+// date (`stoc.PRIMITE_LA_CONECTARE`: depozit, la instalator — regula și de ce stau în stoc.js).
+async function stocImeiuri(tipuri, stari) {
+  const r = await pool.query(`SELECT serie FROM stoc_echipamente WHERE tip = ANY($1::text[]) AND stare = ANY($2::text[]) AND serie IS NOT NULL`, [tipuri || [], stari || []]);
   return r.rows.map(function (x) { return x.serie; });
 }
 // Bucățile din stoc pentru mai multe serii deodată, cu instalatorul la care stau (pentru „aparate noi transmit").

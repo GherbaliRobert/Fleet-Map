@@ -24,6 +24,9 @@ const css = fs.readFileSync('./public/css/app.css', 'utf8');
 
 sect('1. Regula (montaj.js)');
 T('trackerele transmit (FMC130 / FMC150 / FMC650), modulul LV-CAN nu', M.transmite('fmc130') && M.transmite('fmc150') && M.transmite('fmc650') && !M.transmite('lvcan200') && !M.transmite('nimic'));
+const S = require('./stoc.js');
+T('din stoc e primit la conectare DOAR ce e încă al nostru și nemontat: depozit, la instalator (montat / returnat / defect / casat — nu)',
+  J(S.PRIMITE_LA_CONECTARE) === J(['depozit', 'instalator']) && ['montat', 'retur', 'defect', 'casat'].every((st) => !S.primitLaConectare(st)) && S.primitLaConectare('depozit') && S.primitLaConectare('instalator'));
 T('la un GPS, seria e IMEI-ul: altceva se spune pe nume', J(M.seriiFaraImei('fmc130', ['860000000000101', 'SN-123', '12345'])) === J(['SN-123', '12345']));
 T('la un modul, orice serie merge', M.seriiFaraImei('lvcan200', ['SN-1', 'X']).length === 0);
 const L = [
@@ -74,15 +77,26 @@ const atribute = iife.match(/on(?:click|change|input|keydown|keyup|blur|focus)=\
 const scriu = atribute.filter((a) => /="\s*(?:if\s*\()?\s*_[A-Za-z]\w*(?:\.\w+)*\s*=[^=]/.test(a.replace(/\\"/g, '"')));
 T('în panoul de administrare, niciun atribut nu scrie într-o variabilă de-a lui (ar scrie pe window)', scriu.length === 0, J(scriu.slice(0, 4)));
 T('căutarea din Dispozitive, mențiunea facturii și filele Cereri demo trec prin funcții', /oninput="raxDevCauta\(this\.value\)"/.test(html) && /oninput="raxGiNota\(this\.value\)"/.test(html) && /onclick="raxDemoReqFiltru\(/.test(html));
+// Robert, 30.09 (punctul 13): „Toate" bifa și aparatele ascunse de căutare, iar confirmarea spunea 12 când bara spunea 3.
+T('rândurile, „Toate" și „Trece pe firmă" folosesc ACEEAȘI regulă de „ce se vede" (fila + căutarea)',
+  /var rows = all\.filter\(_raxDevVizibil\)/.test(html) && /window\.raxDevBifaToate = function \(on\) \{\s*_raxDevNeasVizibile\(\)\.forEach/.test(html) &&
+  /var imeis = _raxDevNeasVizibile\(\)\.filter\(function \(d\) \{ return _raxDevSel\[d\.imei\]; \}\)/.test(html));
+T('clicul pe anunț golește căutarea, ca aparatele bifate să se vadă', /if \(_raxDevDePus\) _raxDevSearch = '';/.test(html));
 
 sect('3. Pe server');
 T('o SINGURĂ funcție anunță aparatele noi (semnalul azi, raportul lui Robert mâine)', (server.match(/_anuntaSuperadmini\(supers, 'aparate_noi'/g) || []).length === 1 && /async function anuntaAparateNoi\(o\)/.test(server));
 T('anunțul vechi „Dispozitiv nou conectat" (pe fiecare aparat, pe loc) a plecat — îl înlocuiește ăsta', !/notifyNewDeviceConnected|type: 'device_new'/.test(server));
 T('la conectare: primit dacă e în Dispozitive SAU în stoc; străinul și arhivatul — refuzați', /if \(STRICT_DEVICES && registeredLoaded && \(!_imeiPrimit\(imei\) \|\| archivedImeis\.has\(imei\)\)\)/.test(server) &&
   /function _imeiPrimit\(imei\) \{ return registeredImeis\.has\(imei\) \|\| stocImeis\.has\(imei\); \}/.test(server));
-T('lista din stoc se ține în pas: intrare, corectura seriei, casare, ștergere (+ reîncărcare la 2 minute)',
-  /serii\.forEach\(function \(s\) \{ stocImeis\.add\(s\); deviceAttempts\.delete\(s\); \}\)/.test(server) && /if \(stare === 'casat' && x\.serie\) stocImeis\.delete\(x\.serie\)/.test(server) &&
-  /if \(x\.serie\) stocImeis\.delete\(x\.serie\);   \/\/ trecut din greșeală/.test(server) && /setInterval\(loadRegisteredImeis, 2 \* 60 \* 1000\)/.test(server));
+T('lista din stoc se ține în pas: intrare, orice mutare (primit doar în depozit / la instalator), corectura seriei, ștergere, legarea de firmă (+ reîncărcare la 2 minute)',
+  /serii\.forEach\(function \(s\) \{ stocImeis\.add\(s\); deviceAttempts\.delete\(s\); \}\)/.test(server) &&
+  /if \(stocMod\.primitLaConectare\(stare\)\) stocImeis\.add\(x\.serie\); else stocImeis\.delete\(x\.serie\);/.test(server) &&
+  /if \(f\.serie && stocMod\.primitLaConectare\(x\.stare\)\) stocImeis\.add\(f\.serie\);/.test(server) &&
+  /if \(x\.serie\) stocImeis\.delete\(x\.serie\);   \/\/ trecut din greșeală/.test(server) && /stocImeis\.delete\(String\(imei\)\);   \/\/ montat/.test(server) &&
+  /db\.stocImeiuri\([^\n]*stocMod\.PRIMITE_LA_CONECTARE\)/.test(server) && /setInterval\(loadRegisteredImeis, 2 \* 60 \* 1000\)/.test(server));
+const rutaSterge = server.slice(server.indexOf("app.delete('/api/devices/:imei'"), server.indexOf("app.delete('/api/devices/:imei'") + 2200);
+T('ștergerea definitivă: IMEI-ul iese și din lista stocului, iar bucata încă „în depozit / la instalator" trece pe „defect", cu notă (găsit de Robert, 30.09)',
+  /stocImeis\.delete\(imei\);/.test(rutaSterge) && /stocMod\.primitLaConectare\(sb\.stare\) && stocMod\.poateTrece\(sb\.stare, 'defect'\)/.test(rutaSterge) && /șters definitiv din Dispozitive — de verificat/.test(rutaSterge));
 T('ce era deja în „Neasignate" nu se anunță ca nou la prima pornire (o singură dată)', /await db\.migreazaAparateNoiAnuntate\(\);/.test(server));
 T('rutele de probă (ceasul mutat) există doar sub SEED_TEST și doar pentru noi', /if \(process\.env\.SEED_TEST === '1'\) \{\s*\n\s*\/\/[^\n]*\n\s*app\.post\('\/api\/test\/ceasuri', requireAuth, requireSuperadmin/.test(server));
 
@@ -227,6 +241,18 @@ const pranz = (plus) => Date.UTC(ay, am - 1, ad + (plus || 0), 9, 0);
   const st2 = ((await R('GET', '/api/stoc')).j || {}).aparate || [];
   T('„Trece pe firmă": A și B pe firmă, fără propunere agățată, iar în stoc „montat" la client', tr.s === 200 && tr.j.trecute === 2 && d(A).company_id === co.id && d(A).anuntat_firma == null &&
     (st2.filter((y) => y.serie === A)[0] || {}).stare === 'montat', J([tr.j, d(A)]));
+
+  // Punctul 20 (Robert, 30.09): un aparat șters definitiv revenea singur dacă mai transmitea — IMEI-ul rămânea în stoc.
+  await R('PUT', '/api/devices/' + A + '/status', { status: 'archived' });
+  const delA = await R('DELETE', '/api/devices/' + A);
+  T('A (montat la client) arhivat și șters definitiv → nu mai e primit, deși e încă în stoc', delA.s === 200 && !(await tracker(A)).primit, J(delA));
+  await R('PUT', '/api/devices/' + C + '/status', { status: 'archived' });
+  const delC = await R('DELETE', '/api/devices/' + C);
+  const bucC = ((((await R('GET', '/api/stoc')).j || {}).aparate) || []).filter((y) => y.serie === C)[0] || {};
+  T('C (încă „la instalator") șters definitiv → bucata trece pe „defect", cu notă, și nu mai e primit',
+    delC.s === 200 && bucC.stare === 'defect' && /șters definitiv din Dispozitive/.test(J(bucC.istoric || [])) && !(await tracker(C)).primit, J([delC.s, bucC.stare]));
+  dev = ((await R('GET', '/api/admin/devices')).j) || [];
+  T('…și niciunul nu și-a refăcut rândul în Dispozitive', !d(A) && !d(C));
 
   // Clientul nu vede nimic din toate astea.
   const u = (await R('POST', '/api/users', { username: 'sef@transportnou.ro', full_name: 'Șef Transport', role: 'company_admin', company_id: co.id })).j;

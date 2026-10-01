@@ -31,6 +31,13 @@ const TRECERI = {
 };
 function poateTrece(din, spre) { return (TRECERI[din] || []).indexOf(spre) >= 0; }
 
+// Un tracker din stoc e primit la conectare (fără să fie scris și în Dispozitive — Alin, 30.09) DOAR cât e încă al
+// nostru și nemontat: în depozit sau la instalator. După prima conectare are rândul lui în Dispozitive, iar de acolo
+// hotărăște rândul (arhivat = refuzat). Montat la un client, returnat, defect sau casat → NU e primit doar fiindcă e în
+// stoc: altfel un aparat șters definitiv din Dispozitive ar reveni singur, cu poziții noi (găsit de Robert, 30.09).
+const PRIMITE_LA_CONECTARE = ['depozit', 'instalator'];
+function primitLaConectare(stare) { return PRIMITE_LA_CONECTARE.indexOf(stare) >= 0; }
+
 // Câte zile poate sta o bucată la instalator până o semnalăm. Implicit 14; se schimbă din ecran.
 const ZILE_LA_INSTALATOR = 14;
 
@@ -82,4 +89,4 @@ function serii(text) {
     .filter(function (x) { if (!x || vazute[x]) return false; vazute[x] = true; return true; });
 }
 
-module.exports = { STARI, ETICHETE_STARE, TRECERI, poateTrece, ZILE_LA_INSTALATOR, sumar, alerte, serii };
+module.exports = { STARI, ETICHETE_STARE, TRECERI, poateTrece, PRIMITE_LA_CONECTARE, primitLaConectare, ZILE_LA_INSTALATOR, sumar, alerte, serii };

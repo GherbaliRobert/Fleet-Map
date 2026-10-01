@@ -861,15 +861,20 @@ async function pachetNeasignate() {
 
   // Bucățile paginii, rulate cu vecinii lor de carton.
   const bucketSrc = functie(html, 'function _raxDevBucket(d) {');
+  // (01.10) Pagina trimite acum, ca telefonul, DOAR bifele vizibile: „ce se vede" e o regulă a ei (fila + căutarea).
+  const vizibilSrc = functie(html, 'function _raxDevVizibil(d) {') + '\n' + functie(html, 'function _raxDevNeasVizibile() {');
   const treceSrc = taie(html, 'window.raxDevTreceBloc = async function () {', '// Corectura zilei de pornire a abonamentului');
   const aboSrc = taie(html, 'window.raxDevAbonament = async function (imei) {', 'window.raxDevSetCompany');
   const randAboSrc = taie(html, "var abo = (b === 'active' && d.company_id != null)", '\n        var co = ');
-  T('găsesc bucata telefonului (între sentinele) și bucățile paginii (_raxDevBucket, raxDevTreceBloc, raxDevAbonament, rândul)',
-    !!(blocTel && bucketSrc && treceSrc && aboSrc && randAboSrc));
+  T('găsesc bucata telefonului (între sentinele) și bucățile paginii (_raxDevBucket, „ce se vede", raxDevTreceBloc, raxDevAbonament, rândul)',
+    !!(blocTel && bucketSrc && vizibilSrc.length > 200 && treceSrc && aboSrc && randAboSrc));
   async function webTrece(o) {
     const rec = { confirm: [], toast: [], fetch: [], incarcat: 0 };
     const ctx = {
       _raxDevices: o.devices, _raxDevSel: o.sel, companiesCache: o.companies, console,
+      // Vecinii de carton ai lui „ce se vede": fila Neasignate, căutarea (goală dacă nu se dă), semnalul.
+      _raxDevFilter: 'unassigned', _raxDevSearch: o.cauta || '', _raxDevSemnal: () => ({ k: '' }),
+      raCauta: (q, ...v) => v.some((x) => String(x == null ? '' : x).toLowerCase().indexOf(q) >= 0),
       document: { getElementById: (id) => (id === 'rax-dev-bulk-co' ? { value: String(o.cid) } : null) },
       raConfirm: async (m, op) => { rec.confirm.push({ m, op }); return o.confirm; },
       raxToast: (m, k) => { rec.toast.push({ m, k }); },
@@ -878,7 +883,7 @@ async function pachetNeasignate() {
     };
     ctx.window = ctx;
     vm.createContext(ctx);
-    vm.runInContext([web.rDe, web.raxDe, bucketSrc, treceSrc].join('\n'), ctx, { filename: 'index.html#raxDevTreceBloc' });
+    vm.runInContext([web.rDe, web.raxDe, bucketSrc, vizibilSrc, treceSrc].join('\n'), ctx, { filename: 'index.html#raxDevTreceBloc' });
     await ctx.raxDevTreceBloc();
     return rec;
   }
@@ -1018,6 +1023,14 @@ async function pachetNeasignate() {
       !!cw && !!ct && cw.url === ct.p && cw.op.method === ct.o.method && J(JSON.parse(cw.op.body)) === J(ct.o.body),
       J({ web: cw && [cw.url, cw.op.method, cw.op.body], tel: ct }));
     T('răspunsul serverului ajunge neatins la ecran', r && r.trecute === 3);
+  }
+  {
+    // (01.10) Căutarea ascunde un aparat bifat: pagina trimite acum, ca telefonul, DOAR bifele vizibile.
+    const l = aparate(3); l[2].imei = '861999999999999';
+    const w = await webTrece({ devices: l, sel: toateBifate(l), cid: 42, companies: firme, confirm: true, cauta: '86100000000000', resp: { ok: true, trecute: 2, sarite: [] } });
+    const trimise = w.fetch[0] ? JSON.parse(w.fetch[0].op.body).imeis : null;
+    T('căutarea ascunde un aparat bifat → pagina trimite doar bifele vizibile, ca telefonul (bifateVazute)',
+      !!trimise && J(trimise) === J(P.bifateVazute(toateBifate(l), l.slice(0, 2))), J(trimise));
   }
 
   aceleasi = true; dif = '';

@@ -26605,7 +26605,9 @@ const pozitii = await r.json();</code></pre>
         // pe una aflată deja la ANAF ar pune aceeași factură de două ori în SPV-ul clientului (serverul refuză, 409).
         if (!pf && v.status !== 'canceled' && v.efactura_status !== 'validated' && v.efactura_status !== 'uploaded') act += '<button class="rax-ico-btn" title="' + (v.efactura_status === 'error' ? 'Retrimite la ANAF' : 'Trimite la ANAF') + '" onclick="raxEfacturaSend(' + v.id + ')"><i class="fas fa-paper-plane"></i></button> ';
         if (!pf && v.efactura_status === 'uploaded') act += '<button class="rax-ico-btn" title="Verifică status ANAF" onclick="raxEfacturaStatus(' + v.id + ')"><i class="fas fa-rotate"></i></button> ';
-        if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="' + (pf ? 'Încasată — emite factura fiscală' : 'Marchează plătită') + '" onclick="raxInvoiceMarkPaid(' + v.id + (pf ? ', true' : '') + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
+        if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="' + (pf ? 'Încasată — emite factura fiscală' : 'Marchează plătită') + '" onclick="raxInvoiceMarkPaid(' + v.id + (pf ? ', true' : '') + ')"><i class="fas fa-check"></i></button> ';
+        // O factură ajunsă la ANAF nu se mai anulează (acolo rămâne valabilă; se stornează) — `la_anaf` vine de la server.
+        if (v.status !== 'paid' && v.status !== 'canceled' && !v.la_anaf) act += '<button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
         return '<tr>' +
           '<td style="font-weight:700;white-space:nowrap;">' + esc(v.full_number || '') + '</td>' +
           '<td><strong>' + esc(v.company_name || ('#' + v.company_id)) + '</strong></td>' +
@@ -27032,6 +27034,7 @@ const pozitii = await r.json();</code></pre>
     window.raxDevDeschideNeasignate = function (pune) {
       _raxDevFilter = 'unassigned';
       _raxDevDePus = pune && ((pune.imeis || []).length || pune.firma) ? { imeis: (pune.imeis || []).map(String), firma: pune.firma || null } : null;
+      if (_raxDevDePus) _raxDevSearch = '';   // aparatele bifate din anunț trebuie să se vadă (căutarea veche le-ar ascunde)
       if (window.raxAdminTab) raxAdminTab('devices');
     };
     // ── începe „dispozitivele, pe firme" ───────────────────────────────────────────
@@ -27078,6 +27081,18 @@ const pozitii = await r.json();</code></pre>
         .sort(function (x, y) { return g[x].nume.localeCompare(g[y].nume, 'ro'); }).map(function (k) { return g[k]; });
       return (g._neas ? [g._neas] : []).concat(firme, g._arh ? [g._arh] : []);
     }
+    // Ce arată ecranul acum: filtrul ales (fila) + căutarea. O singură regulă, pentru rânduri ȘI pentru bara din Neasignate
+    // („Toate" și „Trece pe firmă" lucrează doar pe ce se vede — găsit de Robert, 30.09: „Toate" bifa și aparatele ascunse
+    // de căutare, iar confirmarea spunea 12 când bara spunea 3).
+    function _raxDevVizibil(d) {
+      var q = (_raxDevSearch || '').toLowerCase();
+      if (_raxDevFilter === 'nosignal') {
+        if (_raxDevBucket(d) === 'archived' || _raxDevSemnal(d).k !== 'mut') return false;
+      } else if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
+      if (q && !raCauta(q, d.name, d.plate, d.imei, d.company_name)) return false;
+      return true;
+    }
+    function _raxDevNeasVizibile() { return (_raxDevices || []).filter(function (d) { return _raxDevBucket(d) === 'unassigned' && _raxDevVizibil(d); }); }
     window.raxRenderDevices = function () {
       var box = document.getElementById('admin-tab-devices'); if (!box) return;
       var all = _raxDevices, q = (_raxDevSearch || '').toLowerCase();
@@ -27086,13 +27101,7 @@ const pozitii = await r.json();</code></pre>
         counts[_raxDevBucket(d)]++;
         if (_raxDevBucket(d) !== 'archived' && _raxDevSemnal(d).k === 'mut') counts.nosignal++;
       });
-      var rows = all.filter(function (d) {
-        if (_raxDevFilter === 'nosignal') {
-          if (_raxDevBucket(d) === 'archived' || _raxDevSemnal(d).k !== 'mut') return false;
-        } else if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
-        if (q && !raCauta(q, d.name, d.plate, d.imei, d.company_name)) return false;
-        return true;
-      }).sort(function (a2, b2) { return (Number(b2.last_position_time) || 0) - (Number(a2.last_position_time) || 0); });
+      var rows = all.filter(_raxDevVizibil).sort(function (a2, b2) { return (Number(b2.last_position_time) || 0) - (Number(a2.last_position_time) || 0); });
       var chip = function (k, label, ton) {
         return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + (ton && counts[k] ? ' ' + ton : '') +
           '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>';
@@ -27220,11 +27229,12 @@ const pozitii = await r.json();</code></pre>
     // Prin funcție, nu `_raxDevBlocFirma=this.value` în atribut: atributul vede doar ce e pe `window`, nu variabilele de aici.
     window.raxDevBlocFirma = function (v) { _raxDevBlocFirma = v || ''; raxRenderDevices(); };
     window.raxDevBifaToate = function (on) {
-      (_raxDevices || []).filter(function (d) { return _raxDevBucket(d) === 'unassigned'; }).forEach(function (d) { if (on) _raxDevSel[d.imei] = true; else delete _raxDevSel[d.imei]; });
+      _raxDevNeasVizibile().forEach(function (d) { if (on) _raxDevSel[d.imei] = true; else delete _raxDevSel[d.imei]; });
       raxRenderDevices();
     };
+    // Pleacă DOAR ce vezi bifat — exact cifra din bară. Un aparat bifat înainte și ascuns apoi de căutare nu pleacă.
     window.raxDevTreceBloc = async function () {
-      var imeis = (_raxDevices || []).filter(function (d) { return _raxDevBucket(d) === 'unassigned' && _raxDevSel[d.imei]; }).map(function (d) { return d.imei; });
+      var imeis = _raxDevNeasVizibile().filter(function (d) { return _raxDevSel[d.imei]; }).map(function (d) { return d.imei; });
       var sel = document.getElementById('rax-dev-bulk-co'); var cid = sel ? parseInt(sel.value) : NaN;
       if (!imeis.length) { if (window.raxToast) raxToast('Bifează aparatele montate.', 'error'); return; }
       if (!Number.isFinite(cid)) { if (window.raxToast) raxToast('Alege firma.', 'error'); return; }

@@ -1073,6 +1073,10 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 - ⚠ **O factură aflată deja la ANAF nu se mai trimite a doua oară** (`efactura_status` `uploaded` /
   `validated` → 409 pe `POST /api/invoices/:id/efactura`, iar butonul nu apare): ar dubla factura în SPV-ul
   clientului. Se retrimite doar una respinsă (`error`) sau netrimisă.
+- ⚠ **…și NU se mai anulează** (01.10, găsit de Robert): acolo rămâne valabilă, deci „anulată" + refăcută = două facturi
+  la ANAF pe aceeași lună. `PUT /api/invoices/:id/status {canceled}` → 409 (`laAnaf`, „se stornează, cu contabilul");
+  lista poartă `la_anaf`, iar pagina nu arată „Anulează". O SINGURĂ regulă pentru amândouă: `_laAnaf(inv)`. Stornarea
+  (factura cu minus) nu e încă în aplicație.
 
 ### TVA-ul clientului: `companies.vat_payer` (30.09)
 - „Preia de la ANAF" (Client nou și „Completează") scrie și dacă firma e plătitoare de TVA; `updateCompany` și
@@ -1120,6 +1124,9 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   bază (`setDevicesCompanyBulk`, scos): noua firmă ar fi plătit abonamentul de la pornirea de la vechea firmă.
 - Pe ecran, DOAR în „Dispozitive → Neasignate" (bife + bara `_raxDevBaraBloc`) — adopția rămâne într-un
   singur loc (17.09). NU pune bife de adopție în altă parte.
+- **Bara lucrează doar pe ce se vede** (01.10): rândurile, „Toate" (`raxDevBifaToate`) și „Trece pe firmă"
+  (`raxDevTreceBloc`) folosesc ACEEAȘI regulă, `_raxDevVizibil` (fila + căutarea), prin `_raxDevNeasVizibile`. Pleacă
+  exact cifra din bară, ca pe telefon (`bifateVazute`). Firma aleasă stă în `_raxDevBlocFirma` (nu se golește la o bifă).
 
 ### Ce vede clientul
 - „Facturile mele" (`GET /api/billing/my-invoices`) = **documentele adevărate** ale firmei (facturi + proforme,
@@ -1324,8 +1331,14 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
   din stoc (`_aparatNouDinStoc`, doar dacă n-a scris nimeni altul). Străinul și arhivatul — refuzați, ca până acum.
 - **La un tracker, seria din stoc E IMEI-ul** (`montaj.seriiFaraImei`): altceva se refuză la intrare și la corectură,
   cu seria pe nume. Modulele (LV-CAN) au serie liberă.
-- `stocImeis` se ține în pas la intrare, corectura seriei, mutarea pe „casat" și ștergere; plus reîncărcarea la 2 min
-  (`loadRegisteredImeis`). Dacă adaugi o cale nouă care schimbă seria sau starea unei bucăți, ține lista în pas.
+- **Din stoc e primit DOAR ce e încă al nostru și nemontat** (`stoc.PRIMITE_LA_CONECTARE` = depozit, la instalator;
+  01.10, găsit de Robert): după prima conectare hotărăște rândul din Dispozitive (arhivat = refuzat). Montat la client,
+  returnat, defect, casat → NU e primit doar fiindcă e în stoc — altfel un aparat șters definitiv ar reveni singur, cu
+  poziții noi. La ștergerea definitivă (`DELETE /api/devices/:imei`), bucata încă în depozit/la instalator trece pe
+  „defect", cu notă. NU lărgi lista de stări.
+- `stocImeis` se ține în pas la intrare, la ORICE mutare (`primitLaConectare(stare)`), corectura seriei, ștergere și
+  legarea de firmă (`_stocLaFirma`); plus reîncărcarea la 2 min (`loadRegisteredImeis`). Dacă adaugi o cale nouă care
+  schimbă seria sau starea unei bucăți, ține lista în pas.
 - „Adaugă dispozitiv" rămâne (aparate care nu trec prin stocul nostru). Adopția rămâne în Neasignate.
 - Păzit de `verify_aparate_noi.js` (în `npm test`), cu trackere adevărate pe TCP, în mod strict.
 

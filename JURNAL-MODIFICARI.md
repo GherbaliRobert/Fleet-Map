@@ -87,6 +87,33 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ---
 
+## 2026-10-01
+
+### AMÂNDOI · Trei probleme găsite aseară de verificarea lui Robert, reparate (20, 13, 17)
+
+Sesiunea lui Robert a verificat lucrul de pe 30.09 și a găsit patru probleme noi (17–20, în lista de mai jos, la
+„De verificat"). Trei le-am reparat azi; 18 și 19 așteaptă răspunsul lui Alin.
+
+1. **(20) Un aparat șters definitiv revenea singur** dacă mai transmitea: IMEI-ul lui rămânea în Stoc, iar de pe 30.09
+   serverul primește și aparatele din Stoc. Acum, din Stoc e primit **doar** un aparat încă al nostru și nemontat (în
+   depozit sau la instalator). Unul montat la un client, returnat, defect sau casat nu mai e primit doar fiindcă e în
+   Stoc. Iar la ștergerea definitivă, bucata încă „în depozit / la instalator" trece pe „defect", cu notă: „aparatul a
+   fost șters definitiv din Dispozitive — de verificat înainte să se mai monteze". Probat cu aparate adevărate pe TCP.
+2. **(13) „Toate" din Neasignate bifa și aparatele ascunse de căutare**, iar „Trece pe firmă" le trimitea și pe ele
+   (confirmarea spunea 12 când bara spunea 3). Acum amândouă lucrează doar pe ce se vede, ca pe telefon. Clicul pe
+   anunțul „aparate noi transmit" golește căutarea, ca aparatele bifate să se vadă.
+3. **(17) O factură deja trimisă la ANAF nu se mai anulează.** De pe 30.09 facturile pleacă singure la ANAF; acolo
+   rămân valabile orice am scrie noi, deci „anulată" și refăcută ar fi însemnat două facturi la ANAF pe aceeași lună.
+   Butonul „Anulează" nu mai apare pe ele, iar serverul refuză, cu mesajul: „se corectează printr-o factură de
+   stornare (cu minus), cu contabilul". Pe telefon butonul se ascunde la APK-ul următor; până atunci, serverul refuză.
+
+- **Ce am schimbat:** cele trei, cu probele lor (și proba de paritate a telefonului adusă pe regula nouă a barei).
+- **Ce vede fondatorul:** în Stoc, o bucată „defect" cu notă după o ștergere definitivă; bara din Neasignate ia doar ce
+  se vede; fără „Anulează" pe facturile aflate la ANAF.
+- **Ce vede clientul:** nimic nou — dar nu mai poate primi două facturi pe aceeași lună în SPV din cauza unei anulări.
+
+---
+
 ## 2026-09-30
 
 ### FONDATOR · Aparatele intră în aplicație o singură dată: în Stoc, cu IMEI-ul
@@ -9917,8 +9944,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   **Ecrane web**
   12. **Din fișa firmei, „Factură unică / proformă" și „Abonamentul unei luni"** pot deschide fereastra în spatele fișei
       (nu se vede nimic) sau fără nicio firmă în listă.
-  13. **Bara „Trece pe firmă" din Neasignate:** fiecare bifă golește firma aleasă, iar „Toate" bifează și aparatele
-      ascunse de căutare (confirmarea spune 12 când bara spune 3).
+  13. ~~**Bara „Trece pe firmă" din Neasignate:** fiecare bifă golește firma aleasă, iar „Toate" bifează și aparatele
+      ascunse de căutare (confirmarea spune 12 când bara spune 3).~~ — **FĂCUT (30.09 firma, 01.10 „Toate" și trimiterea).**
   14. După ✓ pe factură, „Status facturare companii" rămâne pe „Suspendat" până la reîncărcare.
   **Hârtie și texte**
   15. **Contract cu aparate vândute, dar fără montaj:** hârtia ne obligă să le montăm în 30 de zile, fără preț; oferta
@@ -9949,16 +9976,18 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. La TVA (punctul 10
   din lista lotului 3, mai sus) s-a adăugat un loc: hârtia facturii scrie „TVA 19%" când „Date emitent" n-are cotă.
   **Patru probleme NOI, din schimbările de azi:**
-  17. **„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se
+  17. ~~**„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se
       uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
-      la ANAF pe aceeași lună**.
+      la ANAF pe aceeași lună**.~~ — **FĂCUT (01.10):** serverul refuză (409, „se stornează"), butonul nu mai apare pe web;
+      pe telefon se ascunde la APK-ul următor.
   18. **„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
       client, pe email și la ANAF.
   19. **„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
       „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.
-  20. **Un aparat șters definitiv revine singur** dacă mai transmite: IMEI-ul lui rămâne în stoc, iar serverul primește
+  20. ~~**Un aparat șters definitiv revine singur** dacă mai transmite: IMEI-ul lui rămâne în stoc, iar serverul primește
       acum și aparatele din stoc. I se face rând nou la Neasignate și i se salvează iar pozițiile — contrazice ștergerea
-      promisă în contract după încetare.
+      promisă în contract după încetare.~~ — **FĂCUT (01.10):** din stoc e primit doar ce e în depozit sau la instalator;
+      la ștergerea definitivă, bucata trece pe „defect", cu notă. Probat cu trackere pe TCP (`verify_aparate_noi.js`).
 
 - [ ] **(eu) Lotul 5 pe telefon (aplicația 1.0.7): ce a făcut Alin pe 30.09. Adăugat pe 30.09.** Nimic pe server — toate
   rutele există. Verificat în cod (inventar), nimic început încă.
