@@ -4959,8 +4959,9 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const pornite = await _aparateAbonament(company);
         const bc = { none: 0, can: 0, fms: 0, raInsight: (await _companyBillCounts(company)).raInsight };
         pornite.forEach(function (a) { bc[a.tip] = (bc[a.tip] || 0) + 1; });
+        const f = buildInvoiceLines(company, bc, features, 0);
         // Fără nicio mașină pornită nu se facturează nimic — nici ce ține de firmă (abonament.js).
-        const f = pornite.length ? buildInvoiceLines(company, bc, features, 0) : { lines: [], subtotal: 0 };
+        if (!pornite.length) { f.lines = []; f.subtotal = 0; }
         const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
         const suma = function (l, k) { return l.reduce(function (s, x) { return s + (Number(x[k]) || 0); }, 0); };
         const cuAparate = (anexa.vehicles || []).length > 0;

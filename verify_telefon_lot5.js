@@ -526,8 +526,8 @@ async function parteaFacturare() {
     T('telefonul: nota, sub rânduri, înainte de butoane, pe documentul care pleacă (abonamentul = factură fiscală)',
       /\{notaLaEmitere\(unica \? tip : 'invoice'\)\}/.test(gen) && gen.indexOf('notaLaEmitere(unica') < gen.indexOf("'Previzualizează'") &&
       gen.indexOf('Proforma nu e factură fiscală') < gen.indexOf('notaLaEmitere(unica'));
-    T('telefonul: „Previzualizează" lângă „Emite", cu ochiul, oprit fără rânduri (ca pe web) și cât se emite',
-      /<button class="btn" style=\{sec\} disabled=\{vede \|\| saving \|\| !S\.lines\.length\} onClick=\{previzualizeaza\}><Icon name="eye" size=\{16\} \/> \{vede \? 'Se deschide…' : 'Previzualizează'\}<\/button>/.test(gen) &&
+    T('telefonul: „Previzualizează" lângă „Emite", cu ochiul, oprit fără rânduri (ca pe web), cât se emite și pe o lună care n-a început (01.10)',
+      /<button class="btn" style=\{sec\} disabled=\{vede \|\| saving \|\| !S\.lines\.length \|\| \(!unica && !!S\.preaDevreme\)\} onClick=\{previzualizeaza\}><Icon name="eye" size=\{16\} \/> \{vede \? 'Se deschide…' : 'Previzualizează'\}<\/button>/.test(gen) &&
       gen.indexOf('onClick={previzualizeaza}') < gen.indexOf('onClick={emite}') && /<div class="bill-emite">/.test(gen));
     const prev = functie(gen, 'async function previzualizeaza() {'), emite = functie(gen, 'async function emite() {');
     T('ACELAȘI corp la „Previzualizează" și la „Emite": corpEmitere(S, tip) — ca _giCorp pe web', /const corp = corpEmitere\(S, tip\);/.test(prev) && /const corp = corpEmitere\(S, tip\);/.test(emite) &&

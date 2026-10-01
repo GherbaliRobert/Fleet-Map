@@ -405,7 +405,8 @@ function pachetFacturare() {
       gen.indexOf("Number(S.aparateNepornite) === 1\n                      ? '1 aparat e pe firmă, dar nu transmite încă: nu intră pe factură. Pornește singur la montaj, la prima transmisie.'") > 0 &&
       gen.indexOf("'aparate sunt') + ' pe firmă, dar nu transmit încă: nu intră pe factură. Pornesc singure la montaj, la prima transmisie.'") > 0);
     T('abonamentul: „(pornită luna trecută)" la o singură mașină pe zile', gen.indexOf("(Number(S.aparatePeZile) === 1 ? 'pornită' : 'pornite')") > 0);
-    T('abonamentul: banda „Luna asta e deja facturată" + butonul oprit', /Luna asta e deja facturată/.test(gen) && /\(!unica && !!S\.deja\)/.test(gen));
+    T('abonamentul: banda „Luna asta e deja facturată" + butonul oprit (și pe o lună care n-a început, din 01.10)',
+      /Luna asta e deja facturată/.test(gen) && /\(!unica && \(!!S\.deja \|\| !!S\.preaDevreme\)\)/.test(gen));
     T('abonamentul: „Nimic de facturat pe luna asta" la zero rânduri, butonul oprit', /Nimic de facturat pe luna asta/.test(gen) && /!S\.lines\.length/.test(gen));
     T('fără „+ Dispozitiv" / „+ Montaj" scrise de mână (montajul ajungea pe abonament); rămâne „Linie liberă"', !/\+ Dispozitiv|\+ Montaj/.test(billing) && /\+ Linie liberă/.test(gen));
     T('sursele din contract: aparatele, lucrările executate, montajul din contract (doar fără lucrări)',

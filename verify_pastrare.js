@@ -249,6 +249,12 @@ function gata() {
       vehicule: [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 10, pret: 29, total: 290 }],
       servicii: [{ fel: 'ret', luni: 24, nume: 'Păstrare date 24 de luni', cant: 1, pret: 50, total: 50 }] } });
   T('contractul din ofertă ține cele 24 de luni în anexă', cD.s === 200 && cD.j.annex && cD.j.annex.pastrareLuni === 24, cD.s + ' ' + JSON.stringify(cD.j && cD.j.annex));
+  // De pe 01.10 (lista lui Robert, pct. 10) „Contract ↔ factură" socotește partea facturii ca factura: nimic până
+  // pornește prima mașină (păstrarea pornește odată cu ea). Firma din ofertă primește deci o mașină pornită — ca A și C
+  // mai sus —, ca să aibă ce compara.
+  const imeiD = '35' + String(Date.now()).slice(-13);
+  await R('POST', '/api/devices', { imei: imeiD, company_id: fD.id, name: 'D1' });
+  await R('PUT', '/api/devices/' + imeiD + '/abonament', { de_la: _zi });
   const ovD = (await R('GET', '/api/companies/' + fD.id + '/overview')).j || {};
   T('...și firma le primește singură, cu prețul din ofertă', ovD.pastrare && ovD.pastrare.luni === 24 && ovD.pastrare.pretRON === 50, JSON.stringify(ovD.pastrare));
   T('contract, firmă și factură spun același lucru', ovD.comparatie && ovD.comparatie.pastrare && ovD.comparatie.pastrare.contractLuni === 24 &&
