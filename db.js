@@ -2625,7 +2625,8 @@ async function lucrariPeContracte(ids) {
   return r.rows;
 }
 async function montajeContract(contractId) {
-  const r = await pool.query('SELECT id, items FROM montaje WHERE contract_id = $1 ORDER BY created_at ASC', [contractId]);
+  // O zi anulată nu e o lucrare (01.10): nu intră în Anexa nr. 2 adunată din lucrări.
+  const r = await pool.query(`SELECT id, items FROM montaje WHERE contract_id = $1 AND status IS DISTINCT FROM 'anulat' ORDER BY created_at ASC`, [contractId]);
   return r.rows;
 }
 // Anexa nr. 2 (montajul semnat) se scrie pe contract, separat de lucrare.

@@ -158,7 +158,9 @@ Alin (01.10): *„Ca în imagini — da"*; la motivele de anulare: *„ajung cel
 7. **„Ce ai de montat"** (fostul „De programat") stă lângă calendar, cu termenul de 30 de zile și „Programează".
 
 Pe drum: o zi anulată nu mai poate fi mutată sau trecută „montată" din greșeală (scrie „se reprogramează din
-Istoric"), nu se rescrie din fișa clientului și nu se șterge. Până face Robert contul instalatorului, confirmările și
+Istoric"), nu se rescrie din fișa clientului și nu se șterge. Din calendar se anulează doar montajul unui contract
+semnat; o lucrare a unui contract încă nesemnat se schimbă sau se șterge din fișa clientului, ca Anexa nr. 2 să rămână
+cea adevărată. Până face Robert contul instalatorului, confirmările și
 anularea le facem noi; când îl face, „Accept" și „Refuz" din contul lui folosesc exact aceleași reguli, ca istoricul să
 spună la fel, oricine ar fi anulat.
 

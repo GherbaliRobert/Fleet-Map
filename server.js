@@ -6070,6 +6070,12 @@ async function _anuleazaLucrarea(id, o) {
   const l = await db.getMontaj(id);
   if (!l) return { status: 404, error: 'Lucrare inexistentă' };
   if (l.status !== 'programat') return { status: 400, error: l.status === montaj.STARE_ANULAT ? 'Ziua asta e deja anulată.' : 'Doar o zi încă programată se anulează.' };
+  // Calendarul anulează doar montajul unui contract SEMNAT. La unul nesemnat, lucrările din fișă scriu încă Anexa nr. 2
+  // (adunate toate): acolo o zi greșită se schimbă sau se șterge, ca anexa să rămână cea adevărată.
+  const c = l.contract_id ? await db.getContractById(l.contract_id) : null;
+  if (!c || (c.status !== 'activ' && c.status !== 'incheiat')) {
+    return { status: 400, error: 'Din calendar se anulează doar montajul unui contract semnat. Lucrarea asta se schimbă sau se șterge din fișa clientului.' };
+  }
   let v = null;
   if (o.reprogramare) {
     v = await _ziuaNoua(l, o.reprogramare, l.id);

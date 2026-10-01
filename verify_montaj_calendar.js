@@ -184,6 +184,9 @@ T('anularea are O SINGURĂ funcție (_anuleazaLucrarea): butonul nostru azi, „
 T('o zi programată a unui contract semnat NU se șterge (409, „se anulează din calendar"), iar una anulată e istoric (409)',
   /if \(c && \(c\.status === 'activ' \|\| c\.status === 'incheiat'\)\) return res\.status\(409\)\.json\(\{ anuleaza: true,/.test(server) &&
   /if \(m\.status === montaj\.STARE_ANULAT\) return res\.status\(409\)\.json\(\{ error: 'O zi anulată rămâne în istoric/.test(server));
+T('din calendar se anulează doar montajul unui contract semnat; o zi anulată nu intră în Anexa nr. 2 adunată din lucrări',
+  /if \(!c \|\| \(c\.status !== 'activ' && c\.status !== 'incheiat'\)\) \{\s*return \{ status: 400, error: 'Din calendar se anulează doar montajul unui contract semnat\./.test(server) &&
+  /FROM montaje WHERE contract_id = \$1 AND status IS DISTINCT FROM 'anulat'/.test(fs.readFileSync('./db.js', 'utf8')));
 T('o zi anulată nu se rescrie din fișa clientului și nu se mută / nu se trece montată (se reprogramează)', /if \(ex && ex\.status === montaj\.STARE_ANULAT\) return res\.status\(409\)/.test(server) &&
   (server.match(/if \(m\.status === montaj\.STARE_ANULAT\) return res\.status\(400\)\.json\(\{ error: 'Ziua asta e anulată: se reprogramează din „Istoric"\.' \}\);/g) || []).length === 2);
 T('se programează doar un contract semnat (la nesemnat, lucrările scriu încă Anexa nr. 2)', /if \(c\.status !== 'activ'\) return res\.status\(400\)\.json\(\{ error: 'Montajul se programează după semnare/.test(server));
@@ -361,6 +364,12 @@ const zi = (d) => Date.UTC(2027, 2, d) - 2 * 3600000;
   const anL3 = await R('POST', '/api/montaje/' + l3.id + '/anuleaza', { motiv: 'client' });
   k = await cal(); d = alLui(k) || {};
   T('ultima zi anulată fără reprogramare → mașina ei se întoarce la „Ce ai de montat" (1 de programat)', anL3.s === 200 && d.ramase === 1 && d.programate === 2, JSON.stringify(d));
+  // Din calendar se anulează doar montajul unui contract SEMNAT: o lucrare fără contract (sau a unui contract nesemnat,
+  // care scrie încă Anexa nr. 2) se schimbă sau se șterge din fișa clientului.
+  const fc = await R('POST', '/api/companies/' + co.id + '/montaje', { status: 'programat', data_lucrare: zi(26), items: [{ tip: 'gps', buc: 1, pretClient: 100 }] });
+  const anFc = await R('POST', '/api/montaje/' + (fc.j || {}).id + '/anuleaza', { motiv: 'client' });
+  T('o lucrare fără contract semnat nu se anulează din calendar → 400 („se schimbă sau se șterge din fișa clientului"), și se poate șterge',
+    fc.s === 200 && anFc.s === 400 && /fișa clientului/.test((anFc.j || {}).error || '') && (await R('DELETE', '/api/montaje/' + fc.j.id)).s === 200, JSON.stringify([fc.s, anFc]));
   // Clientul nu vede nimic de aici: calendarul, prețurile și instalatorii sunt ai noștri.
   const u = (await R('POST', '/api/users', { username: 'sef@calendar.ro', full_name: 'Șef Calendar', role: 'company_admin', company_id: co.id })).j;
   await puneParola(u, 'Str4da-Verde-2026', B);

@@ -796,6 +796,9 @@ disponibilitatea"* + *„în secțiunea Montaj"*. Blocul „calendarul de montaj
   409 `{ anuleaza: true }` pe una programată de contract semnat, 409 pe una anulată. Lucrările unui contract NESEMNAT
   (din fișă) se șterg ca înainte. „anulat" e în `ETICHETE_STARE`, dar NU în `STARI` (nu se alege din fișă); o zi
   anulată nu se mută, nu se trece montată (400) și nu se rescrie din fișă (409).
+- **Din calendar se anulează DOAR montajul unui contract semnat** (activ / încheiat). O lucrare fără contract, sau a unui
+  contract nesemnat, se schimbă ori se șterge din fișă (400 cu mesajul ăsta): la nesemnat, lucrările scriu încă Anexa
+  nr. 2, adunate — iar `db.montajeContract` (adunarea) sare oricum peste zilele anulate.
 - **Motivele sunt DOUĂ** (`montaj.MOTIVE_ANULARE`: instalatorul nu poate / clientul nu poate) — Alin, 01.10. Vin de la
   server (`motive` în răspunsul calendarului); pagina și telefonul NU le scriu.
 - **O SINGURĂ funcție de anulare: `_anuleazaLucrarea(id, { motiv, detalii, reprogramare, cine, sursa })`** (server.js),
