@@ -65,9 +65,10 @@ T('fiecare cere super-admin', rute.every(r => /requireSuperadmin/.test(r[3])), r
 T('și autentificare', rute.every(r => /requireAuth/.test(r[3])));
 
 sect('4. Costurile UNICE (echipamente + montaj) sunt separate de abonament');
-// Cu aparate VÂNDUTE anexa e „Echipamente și montaj"; la ÎNCHIRIERE (25.09) aparatele nu se vând, deci
-// anexa rămâne doar cu montajul și se numește „Montaj" (verify_stoc_chirie.js citește hârtia desenată).
-T('anexa are și marfa, și manopera', /'ANEXA nr\. 2 — ' \+ \(areEchip \? 'Echipamente și montaj' : 'Montaj'\) \+ ' \(costuri unice\)'/.test(cpdf));
+// Cu aparate VÂNDUTE și montaj anexa e „Echipamente și montaj"; cu aparate vândute FĂRĂ montaj, „Echipamente" (lista lui
+// Robert, 01.10, pct. 22); la ÎNCHIRIERE (25.09) aparatele nu se vând, deci anexa rămâne doar cu montajul și se numește
+// „Montaj" (verify_stoc_chirie.js citește hârtia desenată).
+T('anexa are și marfa, și manopera', /'ANEXA nr\. 2 — ' \+ \(areEchip \? \(areLucrari \? 'Echipamente și montaj' : 'Echipamente'\) : 'Montaj'\) \+ ' \(costuri unice\)'/.test(cpdf));
 // Când se plătește fiecare parte (decizie Alin, 29.09: „1.A"): aparatele integral în avans, pe proformă;
 // montajul după executare, pe vehiculele montate efectiv. (Până atunci: „la livrare și la execuție".)
 T('și scrie limpede că nu fac parte din abonament — aparatele în avans, montajul după',

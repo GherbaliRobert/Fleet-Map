@@ -208,7 +208,10 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     const inc = Number(PR.incluse);
     setBusy('past');
     try {
-      const r: any = await Api.saveCompanySettingsOf(id, { pastrare: luni > inc ? { luni, pretRON: pret } : null });
+      // Coborârea ȘTERGE date: confirmarea de pe ecran (setPastCob) pleacă și la server, care o cere din 01.10
+      // (lista lui Robert, pct. 18) — ca pe web.
+      const inainte = (PA && Number(PA.luni)) || inc;
+      const r: any = await Api.saveCompanySettingsOf(id, { pastrare: luni > inc ? { luni, pretRON: pret } : null, ...(luni < inainte ? { confirmaStergere: true } : {}) });
       // Ce a rămas scris pe server, nu ce am trimis.
       const p = (r && r.pastrare) || null;
       showToast(p && p.platita

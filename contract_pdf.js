@@ -77,6 +77,11 @@ function _titlu(doc, t) {
   doc.x = left;
   doc.y += 3;
 }
+// Un reprezentant cu NUME, sau null (lista lui Robert, 01.10, pct. 16): unul care are doar funcția nu ține loc de nume.
+function _repCuNume(r) {
+  if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { return null; } }
+  return r && typeof r === 'object' && String(r.name || '').trim() ? r : null;
+}
 function _p(doc, t, optiuni) {
   const { left, w } = _ST(doc);
   doc.fillColor('#1f2937').font('Nunito').fontSize(9.5)
@@ -325,7 +330,9 @@ function scrieContract(doc, date) {
   // hârtia e curată și se poate printa pentru semnare — asta a fost cererea lui Alin: „dacă noi deja
   // vorbim de o semnare de contract, aici ar trebui aprobă contractul și îl poți descărca printabil".
   const ciorna = contract.status === 'ciorna';
-  const clientRep = contract.client_rep || firma.legal_rep || {};
+  // Reprezentantul de pe contract DOAR dacă are nume; altfel cel scris pe firmă (lista lui Robert, 01.10, pct. 16): „Client
+  // nou" fără nume salva pe contract doar funcția, „Completează" punea numele pe firmă, iar hârtia rămânea cu o linie goală.
+  const clientRep = _repCuNume(contract.client_rep) || _repCuNume(firma.legal_rep) || contract.client_rep || firma.legal_rep || {};
   const ourRep = contract.our_rep || {};
   const gdprAnexa = !(contract.gdpr && contract.gdpr.kind === 'separat');
   // Anexa nr. 2 e montajul (costurile unice), dacă există; atunci acordul GDPR e Anexa nr. 3. Textul
@@ -334,7 +341,10 @@ function scrieContract(doc, date) {
   const mont = contract.montaj;
   const echip = mont && mont.echipamente;
   const areEchip = !!(echip && (echip.items || []).length);
-  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));
+  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));   // = există Anexa nr. 2 (montaj și/sau aparate)
+  // Montaj ADEVĂRAT (lucrări cu preț în Anexa nr. 2). Aparate vândute fără montaj: hârtia nu ne mai obligă să le montăm în
+  // 30 de zile fără niciun preț, iar clauzele despre zilele de montaj lipsesc (lista lui Robert, 01.10, pct. 22).
+  const areLucrari = !!(mont && (mont.items || []).length);
   const nrGdpr = areMontaj ? 3 : 2;
   const luni = contract.months;
   const sfarsit = contract.end_at || C.calcSfarsit(contract.start_at, luni);
@@ -417,7 +427,7 @@ function scrieContract(doc, date) {
     const inTermen = termenPlata > 0 ? 'în termen de ' + C.numar(termenPlata, 'zi', 'zile') + ' de la semnare' : 'la semnare';
     _p(doc, areEchip
       ? 'Echipamentele din Anexa nr. 2 se plătesc integral în avans, pe baza facturii proforme emise la semnarea contractului, ' + inTermen +
-        '; factura fiscală se emite la încasare. Montajul se facturează după executare, pentru vehiculele montate efectiv.'
+        '; factura fiscală se emite la încasare.' + (areLucrari ? ' Montajul se facturează după executare, pentru vehiculele montate efectiv.' : '')
       : 'Montajul din Anexa nr. 2 se facturează după executare, pentru vehiculele montate efectiv.');
   }
 
@@ -426,11 +436,14 @@ function scrieContract(doc, date) {
   _p(doc, 'Beneficiarul se obligă: să achite prețul la termenele convenite; să folosească platforma potrivit legii și scopului declarat; să își informeze proprii angajați despre monitorizarea vehiculelor, potrivit legislației muncii și protecției datelor; să anunțe Prestatorul despre modificările din flotă care afectează Anexa nr. 1.');
   // Termenul nostru curge de la ÎNCASAREA avansului, nu de la semnare (decizie Alin, 29.09: „2. DA").
   if (areEchip) {
-    _p(doc, 'Prestatorul livrează și montează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') +
-      ' de la încasarea avansului, la datele de montaj convenite cu Beneficiarul.');
+    _p(doc, areLucrari
+      ? 'Prestatorul livrează și montează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') +
+        ' de la încasarea avansului, la datele de montaj convenite cu Beneficiarul.'
+      : 'Prestatorul livrează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') + ' de la încasarea avansului.');
   }
   // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA"): termenul se prelungește, drumul în plus se plătește.
-  if (areMontaj) {
+  // Doar când există montaj (pct. 22): fără lucrări nu există zile de montaj.
+  if (areLucrari) {
     _p(doc, 'Beneficiarul pune vehiculele la dispoziție la datele de montaj convenite. Dacă un vehicul nu este disponibil, termenul de montaj se prelungește cu zilele de întârziere, ' +
       'iar deplasarea suplimentară a echipei de montaj se facturează separat' + (tarifKm ? ', la tariful de ' + _bani(tarifKm, 'RON') + ' pe kilometru, fără TVA.' : '.') +
       ' Abonamentul vehiculelor nemontate nu începe până la montaj.');
@@ -494,13 +507,15 @@ function scrieContract(doc, date) {
     doc.addPage();
     const AM = _ST(doc);
     doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
-      .text('ANEXA nr. 2 — ' + (areEchip ? 'Echipamente și montaj' : 'Montaj') + ' (costuri unice)', AM.left, doc.y, { width: AM.w });
+      .text('ANEXA nr. 2 — ' + (areEchip ? (areLucrari ? 'Echipamente și montaj' : 'Echipamente') : 'Montaj') + ' (costuri unice)', AM.left, doc.y, { width: AM.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
     doc.x = AM.left; doc.y += 12;
     // Aceleași cuvinte ca în capitolul IV și în ofertă (decizie Alin, 29.09): aparatele în avans, montajul după.
     _p(doc, areEchip
-      ? 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ și NU fac parte din abonamentul lunar din Anexa nr. 1: echipamentele (A), integral în avans, pe baza facturii proforme; montajul (B), după executare, pentru vehiculele montate efectiv.'
+      ? (areLucrari
+        ? 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ și NU fac parte din abonamentul lunar din Anexa nr. 1: echipamentele (A), integral în avans, pe baza facturii proforme; montajul (B), după executare, pentru vehiculele montate efectiv.'
+        : 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ, integral în avans, pe baza facturii proforme, și NU fac parte din abonamentul lunar din Anexa nr. 1.')
       : 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ, după executare, pentru vehiculele montate efectiv, și NU fac parte din abonamentul lunar din Anexa nr. 1.');
     // Marfa întâi, manopera după: așa se citește o factură și așa se înțelege devizul.
     if (areEchip) {
@@ -567,7 +582,7 @@ function scrieAct(doc, date) {
   const firma = date.firma || {};
   const em = date.emitent || {};
   const ciorna = act.status === 'ciorna';
-  const clientRep = act.client_rep || contract.client_rep || firma.legal_rep || {};
+  const clientRep = _repCuNume(act.client_rep) || _repCuNume(contract.client_rep) || _repCuNume(firma.legal_rep) || act.client_rep || contract.client_rep || firma.legal_rep || {};
   const ourRep = act.our_rep || contract.our_rep || {};
 
   const { left, w } = _ST(doc);
@@ -731,7 +746,7 @@ function scrieContractMontaj(doc, date) {
   const luni = c.months, sfarsit = c.end_at || C.calcSfarsit(c.start_at, luni);
   const preaviz = c.notice_days == null ? 30 : c.notice_days;
   const plata = c.plata_zile == null ? 30 : c.plata_zile;
-  const repP = c.partner_rep || p.legal_rep || {}, repN = c.our_rep || {};
+  const repP = _repCuNume(c.partner_rep) || _repCuNume(p.legal_rep) || c.partner_rep || p.legal_rep || {}, repN = c.our_rep || {};
   const zona = String(c.zona || p.zona || '').trim();
 
   _antet(doc, c, ciorna, 'CONTRACT DE COLABORARE', 'servicii de montaj pentru echipamente de monitorizare GPS');

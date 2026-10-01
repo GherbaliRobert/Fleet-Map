@@ -626,17 +626,29 @@ function renderOfertaPdf(doc, o) {
   y += 8;
 
   const zMontaj = contracte.MONTAJ_ZILE_DUPA_AVANS;
+  // Ce are oferta, cu adevărat: aparate vândute și/sau montaj (lista lui Robert, 01.10, pct. 22). O ofertă fără aparate
+  // promitea totuși „echipamentele se plătesc integral în avans" și „rămân în proprietatea Beneficiarului".
+  const cuAparate = !inchiriere && (o.deviceLines || []).length > 0;
+  const cuMontaj = (o.montajLines || []).length > 0 || Number(o.montaj) > 0;
   const conditii = [
     // Aparatele, în AVANS, pe proformă; montajul, după executare (decizie Alin, 29.09: „1.A, 2.DA"). A înlocuit
     // regula din 21.09 („la livrare"): nu comandăm aparate pe banii noștri. Termenul curge de la ÎNCASARE.
     // Aceleași cuvinte ca în contract (IV, V) și în Anexa nr. 2 — actele noastre nu se contrazic.
-    'Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult '
-      + zMontaj + ' ' + _ofDe(zMontaj) + 'zile de la încasare. Instalarea se facturează după punerea în funcțiune, pe mașinile montate efectiv. '
-      + 'Costul unic nu face parte din abonamentul lunar.',
+    (cuAparate && cuMontaj
+      ? 'Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult '
+        + zMontaj + ' ' + _ofDe(zMontaj) + 'zile de la încasare. Instalarea se facturează după punerea în funcțiune, pe mașinile montate efectiv. '
+        + 'Costul unic nu face parte din abonamentul lunar.'
+      : cuAparate
+        ? 'Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea se face în cel mult '
+          + zMontaj + ' ' + _ofDe(zMontaj) + 'zile de la încasare. Costul unic nu face parte din abonamentul lunar.'
+        : cuMontaj
+          ? 'Instalarea se facturează o singură dată, după punerea în funcțiune, pe mașinile montate efectiv. Costul unic nu face parte din abonamentul lunar.'
+          : null),
     // De la ce zi plătește clientul o mașină (decizie Alin, 28.09): din ziua în care aparatul montat pe ea
     // transmite prima dată. Aceeași regulă ca în contract (IV) și ca factura (abonament.js).
     'Abonamentul fiecărei mașini începe din ziua în care aparatul montat pe ea transmite prima dată; prima lună se plătește pe zile, pe factura lunii următoare. Apoi se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
-    'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor. Instalarea o executăm noi, la sediul Beneficiarului.',
+    ([cuAparate ? 'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor.' : '', cuMontaj ? 'Instalarea o executăm noi, la sediul Beneficiarului.' : '']
+      .filter(Boolean).join(' ') || null),
     // „Cursul BNR" se scrie DOAR dacă de la BNR vine. Când n-a putut fi preluat, folosim o valoare
     // de rezervă — și atunci hârtia spune „curs de referință", nu pune numele BNR pe o cifră care nu e
     // a lui. Pe ecran, fondatorul vede un avertisment înainte să trimită oferta.
@@ -668,6 +680,8 @@ function renderOfertaPdf(doc, o) {
     conditii.splice(1, 0, 'Mașinile se pun la dispoziție în zilele de montaj stabilite. Dacă o mașină lipsește, termenul se prelungește, '
       + 'iar drumul în plus al echipei de montaj se plătește separat. Abonamentul unei mașini nemontate nu începe.');
   }
+  // Condițiile care nu se potrivesc ofertei au rămas goale (null) până aici, ca pozițiile de mai sus să nu se mute.
+  for (let i = conditii.length - 1; i >= 0; i--) if (!conditii[i]) conditii.splice(i, 1);
   spatiu(26);
   doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(9).text('CONDIȚII', left, y, { lineBreak: false });
   y += 13;

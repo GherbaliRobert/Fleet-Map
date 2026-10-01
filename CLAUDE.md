@@ -551,6 +551,28 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 - Durata din ofertă stă în `cfg.contractMonths` (NU `cfg.contract`, care n-a existat niciodată).
 - Oferta devenită contract trece singură pe **„acceptată"** (`decided_at` scris de server).
 
+### Dosarul, după lista lui Robert (lotul 3, 01.10) — regulile, ca să nu se strice la loc
+- **Reprezentantul:** pe hârtie, cel de pe contract DOAR dacă are nume (`_repCuNume` în `contract_pdf.js`), altfel cel al
+  firmei — la contract, act adițional și contractul cu instalatorul. Pe firmă se scrie înapoi doar unul CU nume
+  (`_repCuNume` în server.js, la facere și la „Aprobă"). Un „Administrator" fără nume nu mai golește firma.
+- **Închirierea:** `PUT /api/contracts/:id` refuză sub `CHIRIE_LUNI_MIN` cât `annex.chirie` există (ca la creare).
+- **Păstrarea istoricului coborâtă** cere `confirmaStergere: true` de la ecran (409 `confirmare` fără el); web și telefon
+  îl trimit după întrebarea lor; auditul scrie `confirmat`.
+- **„Completează" (web)** își încarcă firma (`_dzFirma`: lista Contracte → fișa deschisă → serverul) și trimite DOAR
+  câmpurile schimbate față de deschidere (`_dzInit`). NU trimite toate casetele: ruta /dosar golește ce primește gol.
+- **Pașii din fișă** (`raxCtreAproba`, `raxCtreAmTrimis`, `raxCtreTrimite`, `raxCtreSemnat`) salvează întâi formularul
+  (`_ctreSalveazaFormular` → `_ctrTrupFormular`, același corp ca „Salvează"); „E semnat" propune ziua scrisă
+  (`_ctreZiSemnare`). „E semnat" al instalatorilor (Montaj) are drumul lui — nu-l amesteca.
+- **Instalatorii:** lipsa „tarife" are „Reia tarifele" (`raxMjReiaTarifele`, `tarife_din_partener`) când partenerul
+  are tarife; semnat → doar se spune.
+- **Hârtiile:** `areLucrari` (montaj adevărat) ≠ `areMontaj` (există Anexa nr. 2). Aparate vândute fără montaj = doar
+  livrarea în 30 de zile, fără zile de montaj, Anexa nr. 2 „Echipamente". Oferta: `cuAparate` / `cuMontaj` aleg
+  condițiile; o condiție care nu se potrivește rămâne `null` până la desen, ca pozițiile (`splice`) să nu se mute.
+- ⚠ Capcană de unealtă: un script care inserează cod printr-un șir `…` (template) mănâncă barele oblice inverse
+  (`\d` → `d`, `\n` → rând nou în mijlocul unui șir). După orice inserare, se verifică scripturile paginii
+  (`new Function` pe fiecare `<script>`) — așa s-a prins pe 01.10.
+- Păzit de `verify_reparatii_lista.js`.
+
 ### Anexa nr. 1 are DOUĂ părți, amândouă semnate
 `annex = { vehicles, vehiculeOferta, servicii, monthlyTotal, aiSeatPriceRON, aiQuestionsPerSeat }`
 (`contracts.js` → `facAnexa`).

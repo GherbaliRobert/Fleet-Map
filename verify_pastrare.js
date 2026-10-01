@@ -221,7 +221,12 @@ function gata() {
   T('a doua rulare nu mai are ce șterge', ((await R('POST', '/api/admin/istoric/sterge-vechi')).j || {}).pozitii === 0);
 
   // Coborâre: firma B trece înapoi pe cele 12 incluse → anul ei trecut se șterge la rularea următoare.
-  const jos = await R('PUT', '/api/companies/' + fB.id + '/settings', { pastrare: null });
+  // De pe 01.10 (lista lui Robert, pct. 18) serverul cere confirmarea explicită a coborârii, nu doar ecranul.
+  const faraConfirmare = await R('PUT', '/api/companies/' + fB.id + '/settings', { pastrare: null });
+  T('coborârea fără confirmare → refuzată (409), cu cât de la cât, și nimic schimbat',
+    faraConfirmare.s === 409 && faraConfirmare.j.confirmare === true && faraConfirmare.j.de === 24 && faraConfirmare.j.la === 12 &&
+    ((await R('GET', '/api/companies/' + fB.id + '/overview')).j.pastrare || {}).luni === 24, JSON.stringify(faraConfirmare.j));
+  const jos = await R('PUT', '/api/companies/' + fB.id + '/settings', { pastrare: null, confirmaStergere: true });
   T('înapoi pe cele 12 incluse', jos.s === 200 && jos.j.pastrare.luni === 12 && jos.j.pastrare.platita === false);
   await R('POST', '/api/admin/istoric/sterge-vechi');
   T('...iar istoricul de 13 luni al firmei se șterge', (await nr('B')).pozitii === 40);

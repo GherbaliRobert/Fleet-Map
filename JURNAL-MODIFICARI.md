@@ -133,6 +133,45 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
+### AMÂNDOI · Lista lui Robert, lotul 3 — contractele și dosarul (16–22) — `HASH`
+
+Lotul 3 sunt locurile unde hârtia putea pleca greșită la semnat sau se puteau pierde datele firmei. Toate șapte sunt
+reparate.
+
+1. **(16) Reprezentantul legal ajunge pe contract.** „Client nou" fără nume salva pe contract doar funcția
+   („Administrator"); „Completează" punea numele pe firmă, dar hârtia îl lua de pe contract — deci rămânea o linie goală.
+   Iar următorul „Aprobă" copia reprezentantul gol înapoi peste firmă. Acum hârtia ia numele de pe firmă când contractul
+   n-are, iar pe firmă se scrie doar un reprezentant cu nume. (La fel la actele adiționale și la contractele cu
+   instalatorii.)
+2. **(17) Închirierea: cel puțin 24 de luni și la salvarea din dosar.** Minimul era păzit doar la facerea contractului;
+   din fila Contract se putea salva 12 luni, iar hârtia scria și 12, și 24. Acum serverul refuză sub 24.
+3. **(18) Scăderea păstrării istoricului cere confirmare și de la server.** Doar ecranul întreba („se șterg date");
+   serverul accepta orice scădere, deci un telefon vechi o putea face pe tăcute. Acum serverul cere confirmarea explicită
+   (pagina și telefonul o trimit după întrebarea de pe ecran), iar jurnalul de audit scrie că a fost confirmată.
+4. **(19) „Completează" nu mai golește datele firmei.** Deschisă din fișa firmei (după un „Trimite la semnat" refuzat),
+   cu lista Contracte neîncărcată, fereastra pornea goală, iar „Salvează" ștergea sediul, emailul, Reg. Com. și
+   reprezentantul. Acum își încarcă întâi firma și trimite doar ce ai schimbat.
+5. **(20) Pașii din fila Contract salvează întâi ce ai scris.** „Aprobă", „Trimite la semnat", „Am trimis-o" și „E
+   semnat" nu salvau formularul înainte (pe telefon, da); „E semnat" propunea ziua de azi peste data deja scrisă. Acum
+   salvează întâi, iar data scrisă rămâne.
+6. **(21) Contractele cu instalatorii: lipsa „tarifele" are butonul ei.** Trimitea la „Completează" (fișa
+   partenerului), care n-o putea închide dacă partenerul avea deja tarife. Acum apare „Reia tarifele", ca pe telefon; pe
+   un contract semnat se spune că nu se mai schimbă.
+7. **(22) Clauzele de montaj doar cu montaj, cele de avans doar cu aparate vândute.** Un contract cu aparate vândute, dar
+   fără montaj, ne obliga să le montăm în 30 de zile, fără niciun preț; acum scrie doar livrarea. O ofertă fără aparate
+   promitea totuși „echipamentele se plătesc integral în avans" și „rămân în proprietatea Beneficiarului"; acum condițiile
+   spun doar ce are oferta.
+
+- **Ce am schimbat:** serverul (contractul, setările firmei), hârtiile (contractul, oferta), pagina web (Contracte, fila
+  Contract, Montaj → Contracte cu partenerii, Abonament & plăți) și telefonul (confirmarea la scăderea păstrării — intră în
+  aplicația 1.0.8). Probe: `verify_reparatii_lista.js` (127 de verificări; stricând pe rând fiecare reparație, proba
+  pică), plus trei probe rescrise pe regula nouă: `verify_pastrare.js` (scăderea fără confirmare e refuzată; firma din
+  ofertă are o mașină pornită), `verify_montaj.js` (titlul Anexei nr. 2 fără montaj) și cele de telefon.
+- **Ce vede fondatorul:** contractele ies cu reprezentantul și clauzele potrivite; „Completează" și pașii din fișă nu mai
+  pierd date; „Reia tarifele" la instalatori.
+- **Ce vede clientul:** hârtia contractului și a ofertei, corectă: numele reprezentantului, fără obligații de montaj sau
+  avans care nu se aplică.
+
 ### AMÂNDOI · Lista lui Robert, lotul 2 — banii (4, 5, 6, 7, 9, 10, 12, 13, 14, 15) — `c25dfb6`
 
 Lotul 2 sunt locurile unde se putea factura de două ori, se putea pierde o sumă sau ecranul arăta altă sumă decât

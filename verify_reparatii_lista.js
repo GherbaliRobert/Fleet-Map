@@ -189,6 +189,131 @@ T('5: pagina și telefonul spun unde sunt aparatele, în locul butonului',
 T('6: pagina trimite în `montaje` doar lucrările întregi pe factură (legat de telefon în verify_facturare_telefon.js)',
   /montaje: _giState\.fel === 'unica' \? _giMontajeDeTrimis\(_giState\) : \[\],/.test(html));
 
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Lotul 3 — contracte și dosar (codul și hârtiile, rulate). Pe server pornit, mai jos.
+// Hârtiile se desenează pe un „carton" care ține minte doar textul — ce ar citi clientul (ca în verify_abonament.js).
+const carton = () => {
+  const texte = [];
+  const d = {
+    page: { width: 595.28, height: 841.89, margins: { top: 50, bottom: 50, left: 50, right: 50 } }, x: 50, y: 50,
+    font() { return d; }, fontSize() { return d; }, fillColor() { return d; }, strokeColor() { return d; }, lineWidth() { return d; },
+    moveTo() { return d; }, lineTo() { return d; }, stroke() { return d; }, image() { return d; }, roundedRect() { return d; }, fill() { return d; },
+    widthOfString(x) { return String(x == null ? '' : x).length * 4.6; }, heightOfString() { return 10; },
+    addPage() { d.y = 50; return d; }, moveDown(n) { d.y += 12 * (n == null ? 1 : n); return d; },
+    text(t, x, y) { texte.push(String(t == null ? '' : t)); if (typeof y === 'number') d.y = y + 11; else d.y += 11; return d; },
+  };
+  return { d, texte };
+};
+const CP = require('./contract_pdf.js'), RE = require('./report_export.js'), MJ = require('./montaj.js'), contracte = require('./contracts.js');
+const ziC = Date.parse('2026-10-01T09:00:00Z');
+const hartieContract = (montaj, rep, repFirma) => {
+  const c = carton();
+  CP.scrieContract(c.d, {
+    contract: { number: 'RAT-C-2026-0060', status: 'aprobat', signed_at: ziC, start_at: ziC, months: 24, end_at: contracte.calcSfarsit(ziC, 24), auto_renew: true, notice_days: 30,
+      client_rep: rep || null, gdpr: { kind: 'anexa' }, annex: contracte.facAnexa([], { vehiculeOferta: [{ fel: 'plain', nume: 'Vehicule GPS', cant: 10, pret: 29, total: 290 }] }), montaj: montaj || null },
+    firma: { name: 'Transport SRL', cui: 'RO12345678', address: 'Str. Exemplu 1', payment_term_days: 15, billing_day: 1, legal_rep: repFirma || null },
+    emitent: { name: 'RA TRACKS SRL', cui: 'RO44556677', vat_rate: 21 },
+  });
+  return c.texte.join(' ¦ ');
+};
+
+sect('16. Reprezentantul legal ajunge pe contract (hârtia, desenată)');
+{
+  const t = hartieContract(null, { name: '', role: 'Administrator' }, { name: 'Ion Popescu', role: 'Administrator' });
+  T('contractul are doar funcția („Client nou" fără nume), firma are numele → pe hârtie apare numele de pe firmă', t.indexOf('Ion Popescu') >= 0, t.slice(0, 300));
+  T('…iar un nume scris pe contract are întâietate', hartieContract(null, { name: 'Maria Ionescu', role: 'Director' }, { name: 'Ion Popescu', role: 'Administrator' }).indexOf('Maria Ionescu') >= 0);
+  T('serverul scrie pe firmă doar un reprezentant CU NUME (la facerea contractului și la „Aprobă")',
+    /if \(_repCuNume\(date\.client_rep\) && !_repCuNume\(co\.legal_rep\)\)/.test(server) && /if \(_repCuNume\(date\.client_rep\) && _STARI_NESEMNAT\.indexOf\(vechi\.status\) >= 0\)/.test(server));
+}
+
+sect('22. Clauzele de montaj doar cu montaj, cele de avans doar cu aparate vândute (hârtiile, desenate)');
+{
+  const doarAparate = MJ.facAnexaCosturiUnice([], MJ.randuriEchip([{ tip: 'fmc130', buc: 10, pretEur: 55 }]), 5, 'RON');
+  const tA = hartieContract(doarAparate);
+  T('contract cu aparate vândute, FĂRĂ montaj: nu ne mai obligă să le montăm (doar livrarea, în 30 de zile de la avans)',
+    !/livrează și montează/.test(tA) && /livrează echipamentele din Anexa nr\. 2 în cel mult 30 de zile de la încasarea avansului\./.test(tA), tA.slice(0, 200));
+  T('…fără zilele de montaj și mașinile neaduse, fără „Montajul se facturează"', !/Dacă un vehicul nu este disponibil/.test(tA) && !/Montajul se facturează/.test(tA));
+  T('…dar cu avansul pe proformă și renunțarea dacă nu vine', /se plătesc integral în avans, pe baza facturii proforme/.test(tA) && /Dacă avansul pentru echipamente nu este plătit/.test(tA));
+  T('…iar Anexa nr. 2 se numește „Echipamente", plătite în avans (fără „montajul (B)")', /ANEXA nr\. 2 — Echipamente \(costuri unice\)/.test(tA) && /O SINGURĂ DATĂ, integral în avans/.test(tA) && !/montajul \(B\)/.test(tA));
+  const cuTot = MJ.facAnexaCosturiUnice(MJ.randuri([{ tip: 'gps', buc: 10, pretClient: 100 }]), MJ.randuriEchip([{ tip: 'fmc130', buc: 10, pretEur: 55 }]), 5, 'RON');
+  const tT = hartieContract(cuTot);
+  T('cu aparate ȘI montaj, hârtia rămâne cum era (livrează și montează, mașinile neaduse, „Echipamente și montaj")',
+    /livrează și montează echipamentele/.test(tT) && /Dacă un vehicul nu este disponibil/.test(tT) && /ANEXA nr\. 2 — Echipamente și montaj/.test(tT));
+  const oferta = (o) => { const c = carton(); RE.renderOfertaPdf(c.d, o); return c.texte.join(' ¦ '); };
+  const baza = { client: { name: 'Transport SRL' }, contractMonths: 24, fxRate: 5, fxSursa: 'BNR', nVeh: 10,
+    lines: [{ fel: 'plain', label: 'Vehicule GPS', qty: 10, unit: 29, total: 290 }], monthly: 290, contractTotal: 6960,
+    montajLines: [{ label: 'Instalare dispozitiv GPS', qty: 10, unit: 100, total: 1000 }], montaj: 1000,
+    deviceLines: [{ label: 'Teltonika FMC130', qty: 10, unit: 55, total: 550 }], hwTotal: 550, chirieLuniMin: 24, chirieZileRetur: 15 };
+  const oFaraAparate = oferta(Object.assign({}, baza, { deviceLines: [], hwTotal: 0 }));
+  T('oferta fără aparate: nu mai promite avans pentru aparate, nici că „rămân în proprietatea Beneficiarului"',
+    !/Echipamentele se plătesc/.test(oFaraAparate) && !/rămân în proprietatea Beneficiarului/.test(oFaraAparate) && /Instalarea se facturează o singură dată, după punerea în funcțiune/.test(oFaraAparate), oFaraAparate.slice(-600));
+  const oFaraMontaj = oferta(Object.assign({}, baza, { montajLines: [], montaj: 0 }));
+  T('oferta cu aparate, fără montaj: avansul și livrarea, fără „livrarea și montajul"',
+    /Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea se face în cel mult 30 de zile de la încasare\./.test(oFaraMontaj) && !/livrarea și montajul/.test(oFaraMontaj) && !/Instalarea o executăm noi/.test(oFaraMontaj));
+  const oNimic = oferta(Object.assign({}, baza, { montajLines: [], montaj: 0, deviceLines: [], hwTotal: 0 }));
+  T('oferta doar cu abonament: nicio condiție despre costul unic', !/Costul unic/.test(oNimic) && !/Echipamentele/.test(oNimic) && /Abonamentul fiecărei mașini începe/.test(oNimic));
+  T('oferta cu aparate și montaj rămâne cum era', /livrarea și montajul se fac în cel mult 30 de zile de la încasare/.test(oferta(baza)));
+}
+
+sect('19–21. Ecranele contractelor (codul paginii, rulat)');
+{
+  // 19 — „Completează": pleacă DOAR ce s-a schimbat față de ce era în casete la deschidere.
+  const salv = taie(html, '    window.raxCtreCompleteazaSalveaza = async function (companyId) {', '\n    };');
+  const corp = (init, valori) => {
+    const trimis = [];
+    const el = {}; Object.keys(valori).forEach((k) => { el[k] = { value: valori[k] }; });
+    const ctx = vm.createContext({ window: {}, document: { getElementById: (id) => el[id] || null }, JSON, Object,
+      fetch: async (u, o) => { trimis.push(JSON.parse(o.body)); return { ok: true, json: async () => ({}) }; },
+      raxCtreCompleteazaInchide: () => {}, _ctreToast: () => {}, _ctreDupa: () => {}, esc: (x) => x, _dzInit: init, _dzTva: null });
+    vm.runInContext(salv.replace('window.raxCtreCompleteazaSalveaza = ', 'this.f = '), ctx);
+    return ctx.f(7).then(() => trimis);
+  };
+  const plin = { cui: 'RO123', name: 'Firma SRL', reg_com: 'J35/1/2020', address: 'Str. Veche 1', contact_email: 'a@firma.ro', rep: 'Ion Popescu', reprole: 'Administrator' };
+  const caseteDin = (o) => ({ 'dz-cui': o.cui, 'dz-name': o.name, 'dz-reg': o.reg_com, 'dz-addr': o.address, 'dz-email': o.contact_email, 'dz-rep': o.rep, 'dz-reprole': o.reprole });
+  global.__p19 = Promise.all([
+    corp(plin, caseteDin(Object.assign({}, plin, { address: 'Str. Nouă 2' }))),
+    corp({}, caseteDin({ cui: 'RO999', name: '', reg_com: '', address: '', contact_email: '', rep: '', reprole: '' })),
+    corp(plin, caseteDin(plin)),
+  ]).then(([a, b, c]) => {
+    T('19: schimbat doar sediul → pleacă DOAR sediul (nu se golesc emailul, Reg. Com., reprezentantul)', J(a) === J([{ address: 'Str. Nouă 2' }]), J(a));
+    T('19: firma n-a putut fi încărcată, omul scrie doar CUI-ul → pleacă doar CUI-ul', J(b) === J([{ cui: 'RO999' }]), J(b));
+    T('19: nimic schimbat → nimic trimis', c.length === 0, J(c));
+  }).catch((e) => T('19: „Completează" a rulat', false, e && e.message));
+  T('19: fereastra își încarcă întâi firma (lista Contracte, fișa deschisă sau serverul)', /var gasita = await _dzFirma\(companyId\);/.test(html) && /async function _dzFirma\(companyId\)/.test(html));
+  // 20 — pașii din fișă salvează întâi formularul; „E semnat" propune ziua deja scrisă.
+  const fz = taie(html, '    function _ctreFormularDeschis(id) {', '\n    }') + '\n' + taie(html, '    function _ctreZiSemnare(c) {', '\n    }');
+  const ziua = (deschis, valoare, c) => {
+    const ctx = vm.createContext({ window: { _raxCtr: deschis ? { contract: { id: 5 } } : null }, document: { getElementById: (id) => (id === 'ct-signed' && deschis ? { value: valoare } : null) }, Date, String, Number });
+    ctx._raxCtr = ctx.window._raxCtr;
+    vm.runInContext(fz + '\nthis.f = _ctreZiSemnare;', ctx);
+    return ctx.f(c);
+  };
+  T('20: „E semnat" propune ziua scrisă deja în formular, nu azi', ziua(true, '2026-09-20', { id: 5 }) === '2026-09-20');
+  T('20: …altfel ziua din contract, abia apoi azi', ziua(false, '', { id: 5, signed_at: new Date(2026, 8, 18, 12).getTime() }) === '2026-09-18' && ziua(false, '', { id: 5 }) === new Date().toISOString().slice(0, 10));
+  const pas = (nume) => taie(html, '    window.' + nume + ' = async function (id) {', '\n    };');
+  T('20: „Aprobă", „Am trimis-o", „Trimite la semnat" și „E semnat" salvează întâi formularul, apoi fac pasul',
+    ['raxCtreAproba', 'raxCtreAmTrimis', 'raxCtreTrimite', 'raxCtreSemnat'].every((n) => { const b = pas(n); const i = b.indexOf('await _ctreSalveazaFormular(id)'); return i > 0 && i < Math.max(b.indexOf('_ctrePut(id, {'), b.indexOf("'/trimite'")); }));
+  T('20: formularul se citește într-un singur loc (raxCtrSalveaza și salvarea dinaintea pașilor)', /window\._ctrTrupFormular = function \(stareNoua, motiv\)/.test(html) && /var trup = _ctrTrupFormular\(stareNoua, motiv\);/.test(html));
+  // 21 — instalatorii: „Reia tarifele" închide lipsa „tarifele".
+  const lips = taie(html, '    function _mjLipsuriHtml(c) {', '\n    }');
+  const MJL = (/var MJ_LIPSA = \{[^\n]*\};/.exec(html) || [''])[0];
+  const randat = (c, tarifePartener) => {
+    const ctx = vm.createContext({ window: {}, _raxPart: { lista: [{ id: 3, tarife: tarifePartener }] }, esc: (x) => String(x) });
+    vm.runInContext(MJL + '\n' + lips + '\nthis.f = _mjLipsuriHtml;', ctx);
+    return ctx.f(c);
+  };
+  const r1 = randat({ id: 9, partener_id: 3, status: 'ciorna', lipsuri: ['tarife', 'email'] }, { mGps: 80 });
+  T('21: partenerul ARE tarife, contractul nu → buton „Reia tarifele", iar „tarifele" nu mai trimite la „Completează"',
+    /raxMjReiaTarifele\(9\)/.test(r1) && /lipsește emailul<\/span>/.test(r1) && !/lipsește emailul, tarifele/.test(r1), r1);
+  const r2 = randat({ id: 9, partener_id: 3, status: 'activ', lipsuri: ['tarife'] }, { mGps: 80 });
+  T('21: pe un contract semnat nu se mai schimbă nimic — se spune, fără buton', !/raxMjReiaTarifele/.test(r2) && /semnat și nu se mai schimbă/.test(r2), r2);
+  const r3 = randat({ id: 9, partener_id: 3, status: 'ciorna', lipsuri: ['tarife'] }, {});
+  T('21: nici partenerul n-are tarife → rămâne „Completează" (fișa lui)', /raxPartEdit\(3\)/.test(r3) && /tarifele/.test(r3) && !/raxMjReiaTarifele/.test(r3), r3);
+}
+T('18: coborârea păstrării cere confirmarea pe față (web și telefon o trimit, serverul o cere)',
+  /confirmaStergere: luni < inainte\.luni/.test(html) && /\.\.\.\(luni < inainte \? \{ confirmaStergere: true \} : \{\}\)/.test(citeste('mobile/src/screens/CompanyAbonament.tsx')) &&
+  /if \(_luniNoi < _luniAcum && b\.confirmaStergere !== true\)/.test(server));
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Pe server pornit.
 const PORT = 3271, TCP = 5271;
@@ -475,6 +600,34 @@ async function excelUmflat(mb) {
   const mut2 = await R('PUT', '/api/devices/company/bulk', { company_id: coW.id, imeis: [IM15] });
   T('…iar o „mutare" pe aceeași firmă nu scrie nimic în plus', mut2.s === 200 && ((await bucata()).istoric || []).length === (b1.istoric || []).length);
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  // Lotul 3 — contracte și dosar, pe server pornit.
+  sect('16. Reprezentantul legal nu se mai golește pe firmă (pe server pornit)');
+  const repF = (await R('PUT', '/api/companies/' + co5.id + '/dosar', { legal_rep: { name: 'Ion Popescu', role: 'Administrator' } })).s;
+  const apr = await R('PUT', '/api/contracts/' + ct5.j.id, { status: 'aprobat', client_rep: { name: '', role: 'Administrator' } });
+  const firmaRep = async (id) => { const r = ((await R('GET', '/api/companies/' + id + '/overview')).j.company || {}).legal_rep; return typeof r === 'string' ? JSON.parse(r) : r; };
+  T('„Aprobă" cu reprezentantul gol de pe contract nu mai golește numele scris pe firmă', repF === 200 && apr.s === 200 && ((await firmaRep(co5.id)) || {}).name === 'Ion Popescu', apr.s + ' ' + J(await firmaRep(co5.id)));
+  const coRep = await firma('Reprezentant Gol SRL');
+  const ctRep = await R('POST', '/api/companies/' + coRep.id + '/contract', { months: 12, client_rep: { name: '', role: 'Administrator' } });
+  T('un contract nou cu doar funcția nu scrie pe firmă un reprezentant fără nume', ctRep.s === 200 && !((await firmaRep(coRep.id)) || {}).role, ctRep.s + ' ' + J(await firmaRep(coRep.id)));
+  const ctRep2 = await R('PUT', '/api/contracts/' + ctRep.j.id, { client_rep: { name: 'Maria Ionescu', role: 'Director' } });
+  T('…dar unul CU nume, scris pe contract cât e nesemnat, ajunge și pe firmă (ca înainte)', ctRep2.s === 200 && ((await firmaRep(coRep.id)) || {}).name === 'Maria Ionescu', J(await firmaRep(coRep.id)));
+
+  sect('17. Închirierea: cel puțin 24 de luni și la salvarea din dosar (pe server pornit)');
+  const l12 = await R('PUT', '/api/contracts/' + ctZ.j.id, { months: 12 });
+  T('contract cu echipamente închiriate, salvat pe 12 luni → refuzat, cu minimul spus', l12.s === 400 && /cel puțin 24 de luni/.test(l12.j.error || ''), l12.s + ' ' + l12.text.slice(0, 160));
+  T('…pe 36 de luni merge', (await R('PUT', '/api/contracts/' + ctZ.j.id, { months: 36 })).s === 200);
+  T('…iar un contract fără închiriere se salvează și pe 12', (await R('PUT', '/api/contracts/' + ctRep.j.id, { months: 12 })).s === 200);
+
+  sect('18. Coborârea păstrării cere confirmare și de la server (pe server pornit)');
+  await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: { luni: 24, pretRON: 50 } });
+  const jos18 = await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: null });
+  T('de la 24 la 12 luni fără confirmare → refuzat (409), nimic schimbat', jos18.s === 409 && jos18.j.confirmare === true && (((await R('GET', '/api/companies/' + coZ.id + '/overview')).j.pastrare) || {}).luni === 24, jos18.s + ' ' + jos18.text.slice(0, 160));
+  const jos18b = await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: null, confirmaStergere: true });
+  T('…cu confirmarea, merge', jos18b.s === 200 && jos18b.j.pastrare && jos18b.j.pastrare.luni === 12, jos18b.s + ' ' + jos18b.text.slice(0, 160));
+  T('…iar urcarea nu cere nimic', (await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: { luni: 36, pretRON: 90 } })).s === 200);
+
+  if (global.__p19) await global.__p19;
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

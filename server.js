@@ -5083,6 +5083,12 @@ function _idCtr(req, res) {
   if (!Number.isFinite(id)) { res.status(400).json({ error: 'Identificator invalid' }); return null; }
   return id;
 }
+// Reprezentantul cu NUME, sau null (lista lui Robert, 01.10, pct. 16): „Client nou" fără nume salva doar funcția, iar
+// „Aprobă" copia apoi acel reprezentant gol peste cel scris pe firmă. Pe firmă se scrie doar unul cu nume.
+function _repCuNume(v) {
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return null; } }
+  return v && typeof v === 'object' && String(v.name || '').trim() ? v : null;
+}
 function _rep(v) {
   if (!v || typeof v !== 'object') return null;
   const name = String(v.name || '').trim().slice(0, 120);
@@ -6272,7 +6278,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
       auditReq(req, 'link', 'offer', oferta.id, { company_id: id, contract_id: c.id });
     }
     // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
-    if (date.client_rep && !co.legal_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
+    if (_repCuNume(date.client_rep) && !_repCuNume(co.legal_rep)) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
     auditReq(req, 'create', 'contract', c.id, { company_id: id, number: c.number });
     // `auto_factura`: ecranul „Client nou" spune că abonamentul pleacă singur doar când chiar s-a pornit.
     res.json(autoFactura ? Object.assign({}, c, { auto_factura: true }) : c);
@@ -6329,11 +6335,18 @@ app.put('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) =
     if (b.annex && typeof b.annex === 'object') b.annex = Object.assign({}, contracte.dinAnexaDePastrat(vechi.annex), b.annex);
     const date = _contractDinCerere(Object.assign({}, vechi, b));
     date.status = stareNoua;
+    // Contract cu echipamente închiriate: cel puțin CHIRIE_LUNI_MIN, ca la creare (lista lui Robert, 01.10, pct. 17).
+    // Până atunci, din dosar se putea salva 12 luni, iar hârtia scria și 12, și 24. „Nedeterminată" rămâne voie.
+    const _anCh = _jsonSigur(date.annex);
+    if (_anCh && _anCh.chirie && date.months != null && Number(date.months) < contracte.CHIRIE_LUNI_MIN) {
+      return res.status(400).json({ error: 'Contractul e cu echipamente închiriate: durata e de cel puțin ' +
+        contracte.numar(contracte.CHIRIE_LUNI_MIN, 'lună', 'luni') + '.' });
+    }
     // „Încheiat" fără dată de încetare n-are sens — pune ziua de azi, ca să nu rămână o gaură în act.
     if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
     if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
     const c = await db.updateContract(id, date);
-    if (date.client_rep && _STARI_NESEMNAT.indexOf(vechi.status) >= 0) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [vechi.company_id, JSON.stringify(date.client_rep)]); } catch (e) {} }
+    if (_repCuNume(date.client_rep) && _STARI_NESEMNAT.indexOf(vechi.status) >= 0) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [vechi.company_id, JSON.stringify(date.client_rep)]); } catch (e) {} }
     auditReq(req, 'update', 'contract', id, { status: date.status, number: date.number, din: vechi.status });
     res.json(c);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -13387,12 +13400,23 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
         return res.status(400).json({ error: 'Păstrarea istoricului: alege un număr de luni, cel mult ' + contracte.LUNI_ISTORIC_MAX + '.' });
       }
       pastrareInainte = contracte.pastrareFirma(await db.getCompanySettings(id));
+      // O coborâre ȘTERGE istoricul mai vechi la următoarea rulare, fără cale de întoarcere. Ecranul întreabă pe față;
+      // serverul cere și el confirmarea, explicit (`confirmaStergere: true`) — până pe 01.10 accepta orice coborâre
+      // (lista lui Robert, pct. 18). Un telefon vechi sau o cerere scrisă de mână nu mai pot șterge pe tăcute.
+      const _pNou = contracte.curataPastrare(b.pastrare);
+      const _luniNoi = _pNou ? _pNou.luni : contracte.LUNI_ISTORIC_INCLUSE;
+      const _luniAcum = pastrareInainte ? pastrareInainte.luni : contracte.LUNI_ISTORIC_INCLUSE;
+      if (_luniNoi < _luniAcum && b.confirmaStergere !== true) {
+        return res.status(409).json({ confirmare: true, de: _luniAcum, la: _luniNoi,
+          error: 'Scazi păstrarea istoricului de la ' + contracte.numar(_luniAcum, 'lună', 'luni') + ' la ' + contracte.numar(_luniNoi, 'lună', 'luni') +
+            ': istoricul mai vechi se șterge definitiv la următoarea rulare. Confirmă pe ecran ca să meargă mai departe.' });
+      }
     }
     const next = await _applyCompanySettingsPatch(id, b, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
     const det = { keys: Object.keys(b) };
     // O păstrare coborâtă ȘTERGE date la următoarea rulare: se scrie în jurnal de la cât la cât, ca să
     // se poată spune oricând cine a hotărât și când.
-    if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni };
+    if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni, confirmat: b.confirmaStergere === true };
     auditReq(req, 'update', 'company_settings', id, det);
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null,
       pastrare: contracte.pastrareFirma(next) });
