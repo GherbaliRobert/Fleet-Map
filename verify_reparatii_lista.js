@@ -310,6 +310,59 @@ sect('19–21. Ecranele contractelor (codul paginii, rulat)');
   const r3 = randat({ id: 9, partener_id: 3, status: 'ciorna', lipsuri: ['tarife'] }, {});
   T('21: nici partenerul n-are tarife → rămâne „Completează" (fișa lui)', /raxPartEdit\(3\)/.test(r3) && /tarifele/.test(r3) && !/raxMjReiaTarifele/.test(r3), r3);
 }
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Lotul 4 — ecrane și texte (codul, rulat).
+sect('23–26. Ecranele și textele (codul paginii și al serverului, rulat)');
+{
+  // 23 — „Stare producție": cifra și cuvântul se acordă.
+  const ctx = vm.createContext({});
+  vm.runInContext(taie(html, '    function _rDe(n) {', '\n    }') + '\n' + taie(html, '    function _raxDe(n) {', '\n') + '\nthis.de = _raxDe;', ctx);
+  const exprW = (/\(nWarn === 1 \? '1 lucru de verificat' : nWarn \+ _raxDe\(nWarn\) \+ 'lucruri de verificat'\)/.exec(html) || [''])[0];
+  const exprC = (/nCrit \+ \(nCrit === 1 \? ' problemă critică' : _raxDe\(nCrit\) \+ 'probleme critice'\)/.exec(html) || [''])[0];
+  const w = (n) => vm.runInContext('(function (nWarn) { return ' + exprW + '; })(' + n + ')', vm.createContext({ _raxDe: ctx.de }));
+  const c = (n) => vm.runInContext('(function (nCrit) { return ' + exprC + '; })(' + n + ')', vm.createContext({ _raxDe: ctx.de }));
+  T('23: „1 lucru de verificat", „3 lucruri", „20 de lucruri" (nu „1 lucruri")', !!exprW && w(1) === '1 lucru de verificat' && w(3) === '3 lucruri de verificat' && w(20) === '20 de lucruri de verificat', exprW && [w(1), w(3), w(20)].join(' / '));
+  T('23: la fel la problemele critice („20 de probleme critice")', !!exprC && c(1) === '1 problemă critică' && c(2) === '2 probleme critice' && c(20) === '20 de probleme critice', exprC && [c(1), c(2), c(20)].join(' / '));
+  // 24 — „Generează factură" din fișă: deasupra fișei, cu firma în listă (rulat pe un DOM de carton).
+  const deschide = taie(html, '    async function _giIncarcaFirmele(companyId) {', '\n    };');
+  const el = {}, cereri = [];
+  const nod = (id) => (el[id] = el[id] || { id, innerHTML: '', value: '', style: {}, classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } } });
+  const body = { copii: [], appendChild(x) { this.copii = this.copii.filter((y) => y !== x).concat([x]); x.parentNode = body; return x; }, get lastElementChild() { return this.copii[this.copii.length - 1]; } };
+  const fisa = nod('rax-codetail-overlay'), fereastra = nod('rax-geninv-overlay');
+  body.appendChild(fereastra); body.appendChild(fisa);   // fișa deschisă DUPĂ ce fereastra a fost făcută o dată
+  const c24 = vm.createContext({ window: {}, companiesCache: [], _GI_LUNI: ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'],
+    _giFel: 'abonament', _giTip: 'invoice', _giState: null, esc: (x) => String(x), Date, String, Array,
+    document: { body, getElementById: (id) => (id === 'rax-geninv-overlay' ? fereastra : nod(id)), createElement: () => nod('nou'), querySelectorAll: () => [] },
+    fetch: async (u) => { cereri.push(u); return { ok: true, json: async () => [{ id: 7, name: 'Firma Fișă SRL' }, { id: 8, name: 'Altă Firmă SRL' }] }; } });
+  c24.window._raxCod = { company: { id: 7, name: 'Firma Fișă SRL' } }; c24._raxCod = c24.window._raxCod;
+  vm.runInContext(deschide + '\nfunction _giArataFel() {}\nthis.deschide = window.raxOpenGenInvoice;', c24);
+  c24.deschide(7, 'unica');
+  T('24: fereastra se mută ULTIMA în pagină, deci deasupra fișei deschise', body.lastElementChild === fereastra);
+  T('24: cu lista de companii neîncărcată, firma din fișă e totuși în listă, aleasă', /<option value="7" selected>Firma Fișă SRL<\/option>/.test(nod('rax-geninv-body').innerHTML), nod('rax-geninv-body').innerHTML.slice(0, 200));
+  T('24: …iar lista întreagă se cere în fundal', cereri.indexOf('/api/companies') >= 0);
+  // 25 — după ✓ pe o factură, lista firmelor se cere din nou înainte de redesenare.
+  const plata = taie(html, '    window.raxInvoiceMarkPaid = async function (id, proforma) {', '\n    };');
+  T('25: după „Marchează plătită", lista firmelor se cere din nou (starea lor), apoi se redesenează Facturarea',
+    plata.indexOf("fetch('/api/companies'") > 0 && plata.indexOf("fetch('/api/companies'") < plata.indexOf('raxLoadBilling();'));
+  // 26 — textele.
+  const NP = require('./neplata');
+  const acum = Date.UTC(2026, 9, 1, 9), fact = [{ id: 1, full_number: 'RAT-2026-00001', status: 'issued', due_date: acum - 1000, total: 100, currency: 'RON' }];
+  const st0 = NP.stareNeplata(fact, acum);
+  const m0 = NP.mesajClient(st0, NP.treaptaDeAnuntat(st0.zile));
+  T('26: primul avertisment spune O singură cifră pentru termen (din ziua suspendării), nu și „16 zile", și „15 zile"',
+    new RegExp('achitați în ' + st0.zilePanaLaSuspendare + ' zile').test(m0) && !/Aveți \d+ zile de la scadență/.test(m0), m0);
+  T('26: ecranul ofertei nu mai spune „montajul la semnare" (hârtia: după executare)', !/montajul se plătește la semnare/.test(html) && /montajul se facturează după executare, pe mașinile montate/.test(html));
+  T('26: „Client nou" nu mai promite „proforma pentru aparate" oricui — pașii vin din felul contractului (ca pe telefon)',
+    !/După semnare: proforma pentru aparate, apoi montajul/.test(html) && /_coNouMaiDeparte\(g\.drum\)\.map\(esc\)\.join\(' '\)/.test(html) && /drum: _coNouDrum\(ctFacut\)/.test(html));
+  T('26: „neachitată de 16 zile" (nu „16 de zile"), pe web și pe telefon',
+    /' e neachitată de ' \+ np\.zile \+ \(np\.zile === 1 \? ' zi\.' : _raxDe\(np\.zile\) \+ 'zile\.'\)/.test(html) &&
+    /' e neachitată de ' \+ np\.zile \+ \(Number\(np\.zile\) === 1 \? ' zi\.' : de\(np\.zile\) \+ 'zile\.'\)/.test(citeste('mobile/src/screens/CompanyAbonament.tsx')));
+  const MSG = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
+  T('26: o singură formulare pentru suspendare, pe server, la intrarea web și pe telefon (cu vorbele benzii)',
+    server.indexOf("const MESAJ_SUSPENDAT = '" + MSG + "';") >= 0 && html.indexOf("el.textContent = '" + MSG + "'; el.style.display = 'block';") >= 0 &&
+    html.indexOf("el.textContent = '🚫 " + MSG + "';") >= 0 && /export const MESAJ_SUSPENDAT_LA_INTRARE = MESAJ_ACCES_SUSPENDAT;/.test(citeste('mobile/src/app/store.ts')) &&
+    citeste('mobile/src/app/store.ts').indexOf("export const MESAJ_ACCES_SUSPENDAT = '" + MSG + "';") >= 0 && !/suspendat pentru neplată\. Contactați/.test(server + html));
+}
 T('18: coborârea păstrării cere confirmarea pe față (web și telefon o trimit, serverul o cere)',
   /confirmaStergere: luni < inainte\.luni/.test(html) && /\.\.\.\(luni < inainte \? \{ confirmaStergere: true \} : \{\}\)/.test(citeste('mobile/src/screens/CompanyAbonament.tsx')) &&
   /if \(_luniNoi < _luniAcum && b\.confirmaStergere !== true\)/.test(server));
@@ -626,6 +679,11 @@ async function excelUmflat(mb) {
   const jos18b = await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: null, confirmaStergere: true });
   T('…cu confirmarea, merge', jos18b.s === 200 && jos18b.j.pastrare && jos18b.j.pastrare.luni === 12, jos18b.s + ' ' + jos18b.text.slice(0, 160));
   T('…iar urcarea nu cere nimic', (await R('PUT', '/api/companies/' + coZ.id + '/settings', { pastrare: { luni: 36, pretRON: 90 } })).s === 200);
+
+  sect('26. Mesajul de suspendare, la intrare (pe server pornit)');
+  const intrare = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'sef@reparatii.ro', password: PAROLA }) });
+  const ji = await intrare.json().catch(() => ({}));
+  T('omul unei firme oprite de noi e refuzat cu formularea unică (nu „pentru neplată")', intrare.status === 402 && ji.error === 'Accesul este suspendat. Contactați furnizorul pentru reactivare.' && ji.motiv === 'manual', intrare.status + ' ' + J(ji));
 
   if (global.__p19) await global.__p19;
   console.log('\n──────────────────────────────');

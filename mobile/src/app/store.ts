@@ -97,7 +97,8 @@ export const MESAJ_ACCES_SUSPENDAT = 'Accesul este suspendat. Contactați furniz
 // public/index.html; hotărât pe 30.09: „la fel ca și pe web"). Sesiunea de pe telefon se închide, iar ecranul de
 // autentificare arată mesajul pe care îl dă și serverul când refuză intrarea (MESAJ_SUSPENDAT, server.js) — legat
 // printr-o probă de amândouă. Cu aplicația DEJA deschisă rămâne banda roșie, tot ca pe web, până la următoarea pornire.
-export const MESAJ_SUSPENDAT_LA_INTRARE = 'Abonament suspendat pentru neplată. Contactați furnizorul.';
+// Din 01.10 (lista lui Robert, pct. 26) o singură formulare pentru suspendare: aceeași ca banda de sus.
+export const MESAJ_SUSPENDAT_LA_INTRARE = MESAJ_ACCES_SUSPENDAT;
 // Aceeași condiție ca pe web: accesul „expired", iar contul nu e de platformă.
 export function accesOprit(m: unknown): boolean {
   const a = accesFirma(m);

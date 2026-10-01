@@ -2457,7 +2457,9 @@ const _accessCache = new Map();
 function _invalidateAccessCache(companyId) { _accessCache.delete(companyId); }
 // Un singur mesaj pentru toate felurile de suspendare, ales de Alin (09.09). Motivul exact
 // (neplată / oprit de noi) merge separat, în câmpul `motiv`, pentru ecranul care-l arată.
-const MESAJ_SUSPENDAT = 'Abonament suspendat pentru neplată. Contactați furnizorul.';
+// Din 01.10 (lista lui Robert, pct. 26) cu vorbele benzii de sus: „Abonament suspendat pentru neplată" se spunea și la o
+// oprire făcută de noi, iar banda spunea altceva pentru aceeași stare.
+const MESAJ_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
 // Accesul unei firme se poate tăia din DOUĂ motive (regula stă în `stareAcces`, mai sus), verificate
 // aici, într-un singur loc, ca să nu existe o cale prin care cineva intră pe ușa din dos:
 //   1. suspendare MANUALĂ, pusă de noi (un caz aparte, cu motiv scris);

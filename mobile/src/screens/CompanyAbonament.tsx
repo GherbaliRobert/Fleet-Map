@@ -105,7 +105,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     fel = 'bad';
     titlu = manual ? 'Acces oprit de noi' : 'Acces suspendat pentru neplată';
     if (manual && co.suspend_reason) text = 'Motivul scris: „' + co.suspend_reason + '".';
-    else if (np && np.factura) text = 'Factura ' + (np.factura.numar || '') + ' e neachitată de ' + np.zile + de(np.zile) + 'zile.';
+    else if (np && np.factura) text = 'Factura ' + (np.factura.numar || '') + ' e neachitată de ' + np.zile + (Number(np.zile) === 1 ? ' zi.' : de(np.zile) + 'zile.');
     text += (text ? ' ' : '') + 'Clientul nu poate intra deloc. Aparatele transmit mai departe, datele nu se pierd.';
   } else if (np && np.faza === 'avertisment') {
     fel = 'warn';

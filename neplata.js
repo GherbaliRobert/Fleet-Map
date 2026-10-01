@@ -100,8 +100,9 @@ function mesajClient(stare, treapta) {
   return 'Factura ' + (f.numar || '') + (suma ? ' (' + suma + ')' : '') + ' a fost scadentă la ' + zi(f.due_date) + '. ' +
     (ramase <= 0 ? 'Accesul se suspendă azi.'
       : 'Vă rugăm să achitați în ' + ramase + (ramase === 1 ? ' zi' : ' zile') + ', până la ' + zi(stare.suspendareLa) +
-        ', altfel accesul la platformă se suspendă.') +
-    (treapta && treapta.zi === 0 ? ' Aveți ' + ZILE_GRATIE + ' zile de la scadență.' : '');
+        ', altfel accesul la platformă se suspendă.');
+  // (Primul avertisment adăuga „Aveți 15 zile de la scadență", după „achitați în 16 zile" — două cifre pentru același
+  //  termen. Rămâne doar cea socotită din ZI_SUSPENDARE, cu data: lista lui Robert, 01.10, pct. 26.)
 }
 
 module.exports = {

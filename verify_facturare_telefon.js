@@ -867,9 +867,17 @@ function pachetClientNou() {
       tot('cumparate', true));
     T('la vândute, factura montajului NU mai ia aparatele (sunt pe factura avansului)', /Aparatele nu mai intră pe ea/.test(tot('cumparate', true)) && !/Aparatele nu mai intră pe ea/.test(tot('fara-aparate', true)));
     T('factura montajului doar când contractul are montaj', feluri.every(([f, m]) => /factura montajului/.test(tot(f, m)) === !!m));
-    T('„aparatele le treci pe firmă abia după ce sunt montate" — mereu, cu vorbele paginii',
+    // Din 01.10 (lista lui Robert, pct. 26) pagina scrie și ea pașii din felul contractului, cu ACEEAȘI regulă: blocul
+    // „mai departe, după Client nou" (_coNouDrum / _coNouMaiDeparte), rulat aici lângă cnDrum / cnMaiDeparte.
+    const blocMai = taie(html, '// ── începe „mai departe, după Client nou" ──', '// ── sfârșit „mai departe, după Client nou" ──');
+    const cw = vm.createContext({ JSON });
+    vm.runInContext(blocMai + '\nthis.drum = _coNouDrum; this.mai = _coNouMaiDeparte;', cw);
+    T('„aparatele le treci pe firmă abia după ce sunt montate" — mereu; iar pagina spune ACEEAȘI listă de pași, pe fiecare fel de contract',
       feluri.every(([f, m]) => pasi(f, m).indexOf('Aparatele le treci pe firmă abia după ce sunt montate.') >= 0) &&
-      /aparatele le treci pe firmă abia după ce sunt montate/.test(html));
+      feluri.every(([f, m]) => J(cw.mai({ fel: f, montaj: m })) === J(pasi(f, m))), feluri.map(([f, m]) => J(cw.mai({ fel: f, montaj: m })) === J(pasi(f, m))).join(','));
+    T('…și vede același fel de contract ca telefonul (vândute / închiriate / fără aparate / fără contract)',
+      [null, { montaj: { items: [{ tip: 'gps', buc: 2 }], echipamente: { items: [{ tip: 'fmc130', buc: 2 }] } } }, { montaj: { items: [{ tip: 'gps', buc: 2 }] }, annex: { chirie: { aparate: [{ cant: 2 }] } } },
+        { montaj: { items: [{ tip: 'gps', buc: 2 }] } }, { annex: {} }].every((ct) => J(cw.drum(ct)) === J(C.cnDrum(ct))));
     T('abonamentul pornește la prima transmisie — mereu, ultimul pas', feluri.every(([f, m]) => /transmite prima dată\.$/.test(pasi(f, m)[pasi(f, m).length - 1])));
     T('fără contract: primul pas e „Fă un contract", butonul pe care dosarul de pe telefon chiar îl are',
       /„Fă un contract”/.test(pasi('fara-contract', false)[0]) && !/aprobă contractul și/.test(tot('fara-contract', false)) &&

@@ -80,8 +80,10 @@ const loginuri = [...server.matchAll(/access = await _accessStatusCached\(co\.id
 T('și autentificarea (web + telefon) trece prin aceeași verificare', loginuri.length === 2, loginuri.length + ' locuri');
 T('nu mai există o verificare de login care se uită doar la abonament',
   !/access = companyAccessStatus\(co\);\s*\n\s*if \(!isSuper/.test(server));
-T('mesajul e cel cerut de Alin, scris o singură dată',
-  /const MESAJ_SUSPENDAT = 'Abonament suspendat pentru neplată\. Contactați furnizorul\.';/.test(server));
+// Din 01.10 (lista lui Robert, pct. 26, hotărâtă de Alin): o singură formulare pentru suspendare, cu vorbele benzii de sus —
+// „Abonament suspendat pentru neplată" se spunea și la o oprire făcută de noi.
+T('mesajul e unul singur, cu vorbele benzii (nu „pentru neplată" și la o oprire de-a noastră), scris o singură dată',
+  /const MESAJ_SUSPENDAT = 'Accesul este suspendat\. Contactați furnizorul pentru reactivare\.';/.test(server) && !/suspendat pentru neplată\. Contactați/.test(server));
 T('și se folosește peste tot, nu copiat de mână',
   (server.match(/error: MESAJ_SUSPENDAT/g) || []).length >= 4, (server.match(/error: MESAJ_SUSPENDAT/g) || []).length + ' locuri');
 T('super-adminii nu se blochează niciodată singuri', /if \(!isSuper\(user\.role\) && access\.status === 'expired'\)/.test(server));

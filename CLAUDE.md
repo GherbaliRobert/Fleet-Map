@@ -1230,6 +1230,9 @@ facturarea pe web:
 - **Banda de acces** (`components/BandaAcces.tsx`, în `App.tsx`) arată `access.mesaj` de la server — telefonul NU
   socotește zile sau sume. Motivul nostru intern al unei suspendări nu ajunge la telefon deloc (din 01.10 serverul nu-l
   mai trimite clientului); proba păzește oricum ca telefonul să nu citească un `nota`.
+- **O singură formulare pentru suspendare** (lista lui Robert, 01.10, pct. 26): `MESAJ_SUSPENDAT` = „Accesul este suspendat.
+  Contactați furnizorul pentru reactivare." — aceleași vorbe ca banda de sus (web și telefon); pe telefon
+  `MESAJ_SUSPENDAT_LA_INTRARE = MESAJ_ACCES_SUSPENDAT`. NU pune înapoi „pentru neplată": se spunea și la o oprire de-a noastră.
 - **Contul suspendat, ca pe web** (hotărât pe 30.09: „la fel ca și pe web"; APK 1.0.6): la PORNIRE iese din aplicație
   (`bootstrap` → `accesOprit`, doar pe profilul proaspăt de la server), iar ecranul de autentificare arată
   `MESAJ_SUSPENDAT_LA_INTRARE` = `MESAJ_SUSPENDAT` de pe server = textul din `checkAuth` de pe web (legate prin probă,

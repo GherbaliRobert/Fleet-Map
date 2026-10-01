@@ -133,6 +133,38 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
+### AMÂNDOI · Lista lui Robert, lotul 4 — ecrane și texte (23–26) — `HASH`
+
+Ultimul lot: nimic nu se pierdea aici, dar ecranul spunea altceva decât face aplicația. Cu el, lista de 26 e gata, mai
+puțin punctul 8 (așteaptă „da"-ul lui Alin) și punctul 11 (verificare pe producție, la „De amintit").
+
+1. **(23) „Stare producție"** scrie „1 lucru de verificat", „3 lucruri", „20 de lucruri" (era „1 lucruri"); la fel la
+   problemele critice.
+2. **(24) „Factură unică / proformă" și „Abonamentul unei luni" din fișa firmei** se deschid deasupra fișei (uneori se
+   deschideau în spatele ei și nu se vedea nimic) și cu firma deja aleasă în listă, chiar dacă lista de companii nu era
+   încărcată.
+3. **(25) După ✓ pe o factură**, „Status facturare companii" se reîmprospătează pe loc (rămânea „Suspendat" până la
+   reîncărcarea paginii).
+4. **(26) Textele:**
+   - primul avertisment de neplată spunea „achitați în 16 zile" și apoi „Aveți 15 zile de la scadență" — acum o
+     singură cifră, cu data;
+   - ecranul ofertei, la închiriere, scria „montajul se plătește la semnare"; acum: „se facturează după executare, pe
+     mașinile montate" (ca hârtia);
+   - „Client nou" promitea „proforma pentru aparate" oricui (și la închiriere, și fără aparate); acum pașii vin din felul
+     contractului — aceleași fraze ca pe telefon, legate printr-o probă;
+   - „neachitată de 16 de zile" → „neachitată de 16 zile" (pe web și pe telefon);
+   - **mesajul de suspendare e acum unul singur**, cu vorbele benzii de sus: „Accesul este suspendat. Contactați
+     furnizorul pentru reactivare." — la intrarea pe web, pe telefon și în bandă. Până acum, la intrare scria
+     „Abonament suspendat pentru neplată" și când oprirea era făcută de noi.
+
+- **Ce am schimbat:** pagina web (Stare producție, fereastra facturii, Facturare, oferta, Client nou, fișa firmei),
+  serverul (mesajul de suspendare, primul avertisment de neplată) și telefonul (mesajul la intrare, „16 zile" — intră în
+  aplicația 1.0.8). Probe: `verify_reparatii_lista.js` (139 de verificări), `verify_neplata.js` rescrisă pe
+  formularea unică, `verify_facturare_telefon.js` (pașii „Mai departe" de pe web legați de cei de pe telefon).
+- **Ce vede fondatorul:** cuvintele potrivite cu cifrele; fereastra facturii vizibilă din fișă; starea firmelor la zi după
+  încasare.
+- **Ce vede clientul:** la suspendare, aceeași frază peste tot; primul avertisment de neplată, fără două termene.
+
 ### AMÂNDOI · Lista lui Robert, lotul 3 — contractele și dosarul (16–22) — `bd06cbc`
 
 Lotul 3 sunt locurile unde hârtia putea pleca greșită la semnat sau se puteau pierde datele firmei. Toate șapte sunt
@@ -10131,27 +10163,27 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   1. **Securitate, urgent:** un Excel mic, făcut anume, se „umflă" la citire la sute de MB și poate opri serverul
      întreg (toate firmele, până repornește Railway). Pe web: „Încarcă șablonul" (fișierul vine de la client) și
      încărcarea listelor Teltonika. Reparația: la citire, înainte de ExcelJS, se numără octeții dezarhivați, cu un
-     plafon (50 MB șablonul, 120 MB lista — măsurat: listele reale ajung la 10 MB). Pe calea telefonului am pus-o.
+     plafon (50 MB șablonul, 120 MB lista — măsurat: listele reale ajung la 10 MB). Pe calea telefonului am pus-o. Acum pe toate ușile — **FĂCUT (01.10, lista lui Robert, lotul 1).**
   2. **Reprezentantul legal nu ajunge pe contract:** „Client nou" lăsat fără nume salvează doar funcția;
      „Completează" pune numele pe firmă, dar hârtia îl ia de pe contract (gol), iar următorul „Aprobă" copiază
-     înapoi reprezentantul gol peste firmă. Contractul pleacă la semnat fără nume (web și telefon).
+     înapoi reprezentantul gol peste firmă. Contractul pleacă la semnat fără nume (web și telefon). — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   3. **Închirierea:** minimul de 24 de luni e păzit doar la crearea contractului; din formularul dosarului se poate
-     salva pe 12 luni, iar hârtia spune și „12 luni", și „durata minimă e de 24 de luni".
+     salva pe 12 luni, iar hârtia spune și „12 luni", și „durata minimă e de 24 de luni". — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   4. **Chiria apare fals ca „nu ajunge pe factură"** în cutia „Contractul și factura", la fiecare client care
-     închiriază (factura chiar o pune). Pe web și pe telefon, fiindcă lista vine de la server.
-  5. **Scăderea păstrării istoricului** („se șterg date") e întrebată doar pe ecran; serverul acceptă orice scădere.
+     închiriază (factura chiar o pune). Pe web și pe telefon, fiindcă lista vine de la server. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
+  5. **Scăderea păstrării istoricului** („se șterg date") e întrebată doar pe ecran; serverul acceptă orice scădere. — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   6. ~~**Mutarea mai multor aparate deodată** (și „Trece pe firmă" în bloc, dacă folosește aceeași cale) nu leagă
      stocul: aparatul rămâne „la instalator" în Stoc echipamente.~~ — **FĂCUT (30.09):** „Mută între companii" trece
      acum prin aceeași funcție ca adopția („Trece pe firmă" trecea deja): stocul, abonamentul, auditul.
   7. **Web, „Completează" deschis din fișa firmei** (după „Trimite la semnat" refuzat), cu lista Contracte
-     neîncărcată: pornește GOL și, la salvare, poate șterge sediul, emailul, Reg. Com. și reprezentantul firmei.
+     neîncărcată: pornește GOL și, la salvare, poate șterge sediul, emailul, Reg. Com. și reprezentantul firmei. — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   8. **Web, fila Contract din fișa firmei:** „Trimite la semnat", „Am trimis-o" și „E semnat" nu salvează întâi
-     ce ai scris (pe telefon, da); „E semnat" propune ziua de azi peste data deja scrisă.
+     ce ai scris (pe telefon, da); „E semnat" propune ziua de azi peste data deja scrisă. — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   9. **Web, contractele cu partenerii:** lipsa „tarifele" trimite la „Completează", care n-o poate închide (pe
-     telefon e butonul „Reia tarifele").
+     telefon e butonul „Reia tarifele"). — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   10. **Facturi:** serverul ia cota de TVA de pe fiecare rând trimis de ecran; mai sigur, din „Date emitent". Plus: fără cotă
-      în „Date emitent", codul pune 19% (în două locuri pe server); cota legală e 21% din 1 august 2025.
-  11. **Web, „Stare producție":** „1 lucruri de verificat".
+      în „Date emitent", codul pune 19% (în două locuri pe server); cota legală e 21% din 1 august 2025. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
+  11. **Web, „Stare producție":** „1 lucruri de verificat". — **FĂCUT (01.10, lista lui Robert, lotul 4).**
   12. ~~Paritatea pe telefon a lucrului lui Alin din 29.09~~ — **FĂCUT de noi (30.09, APK 1.0.5, lotul 4).** Era:
       factura unică / proforma completată
       din contract și din lucrări (cu „Mențiuni pe factură"); fila Facturi din fișa firmei (documentele, cu ✓);
@@ -10169,43 +10201,43 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
      știe de avans: după factura aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e
      FĂCUTĂ (30.09):** pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul
      de 30 de zile de la avans. **Rămâne doar:** aparatele din contract propuse din nou după proforma lor (pe telefon e
-     un avertisment; pe web, nimic).
+     un avertisment; pe web, nimic). — **FĂCUT (01.10, lista lui Robert, lotul 2).**
   2. **Montajul marcat „facturat" fără să fie pe factură:** o lucrare scoasă de pe factură (rând șters sau cantitate
      scăzută) rămâne marcată și scrisă la „Mențiuni" (pe web; telefonul o scoate corect). ~~Anularea facturii nu o
-     redeschide.~~ — **FĂCUT (01.10):** factura anulată își eliberează lucrările.
+     redeschide.~~ — **FĂCUT (01.10):** factura anulată își eliberează lucrările. Lucrarea scoasă de pe factură — **FĂCUT (01.10, lista lui Robert, lotul 2).**
   3. **Lunile de dinainte de 28.09 se pot factura de două ori:** „Abonamentul unei luni" nu vede facturile vechi (fără
-     „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie.
+     „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
   4. **Aparat schimbat pe aceeași mașină:** zilele din luna schimbării se plătesc de două ori (aparatul vechi a plătit
-     luna în avans, cel nou intră cu zilele lui).
+     luna în avans, cel nou intră cu zilele lui). — **Așteaptă „da"-ul lui Alin** (lista lui Robert, pct. 8).
   5. ~~**„Mută între companii" cu mai multe aparate deodată** (web și telefon, ruta veche): nu șterge ziua de pornire a
      abonamentului de la firma veche — firma nouă plătește luna întreagă, chiar pentru o mașină nemontată — și nu
      leagă stocul (punctul 6 de mai sus).~~ — **FĂCUT (30.09)**, pe server, deci și pentru telefon.
   6. **Abonamentul emis înainte să înceapă luna** (ex. pe 28.10 pentru noiembrie) pierde mașinile montate până pe 1:
-     ≈ 48 de lei pe fiecare, niciodată facturați.
-  7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura.
+     ≈ 48 de lei pe fiecare, niciodată facturați. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
+  7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
   **Acces și siguranță**
   8. ~~**„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
      facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.~~ — **FĂCUT (01.10, ca 18).**
   9. **Motivul intern al unei suspendări făcute de mână** pleacă la toți oamenii firmei (se vede în datele trimise,
-     nu pe ecran).
-  10. **Migrarea „o singură dată"** a dat zi de pornire și aparatelor care transmiseseră doar pe masa de probă.
-  11. **Aparat șters definitiv și înregistrat din nou:** abonamentul nu mai pornește până la următoarea repornire.
+     nu pe ecran). — **FĂCUT (01.10, lista lui Robert, lotul 1).**
+  10. **Migrarea „o singură dată"** a dat zi de pornire și aparatelor care transmiseseră doar pe masa de probă. — **De verificat pe producție: trecut la „De amintit" (01.10).**
+  11. **Aparat șters definitiv și înregistrat din nou:** abonamentul nu mai pornește până la următoarea repornire. — **FĂCUT (01.10, lista lui Robert, lotul 2).**
   11b. **Harta live merge mai departe după suspendare** (găsit la lotul 4, 30.09): o legătură live deschisă ÎNAINTE de
       suspendare primește pozițiile flotei până se reconectează (web și telefon). Reparația: verificarea periodică a
-      legăturilor să le închidă pe cele ale firmelor oprite (telefonul, de la 1.0.5, aprinde atunci banda roșie pe loc).
+      legăturilor să le închidă pe cele ale firmelor oprite (telefonul, de la 1.0.5, aprinde atunci banda roșie pe loc). — **FĂCUT (01.10, lista lui Robert, lotul 1).**
   **Ecrane web**
   12. **Din fișa firmei, „Factură unică / proformă" și „Abonamentul unei luni"** pot deschide fereastra în spatele fișei
-      (nu se vede nimic) sau fără nicio firmă în listă.
+      (nu se vede nimic) sau fără nicio firmă în listă. — **FĂCUT (01.10, lista lui Robert, lotul 4).**
   13. ~~**Bara „Trece pe firmă" din Neasignate:** fiecare bifă golește firma aleasă, iar „Toate" bifează și aparatele
       ascunse de căutare (confirmarea spune 12 când bara spune 3).~~ — **FĂCUT (30.09 firma, 01.10 „Toate" și trimiterea).**
-  14. După ✓ pe factură, „Status facturare companii" rămâne pe „Suspendat" până la reîncărcare.
+  14. După ✓ pe factură, „Status facturare companii" rămâne pe „Suspendat" până la reîncărcare. — **FĂCUT (01.10, lista lui Robert, lotul 4).**
   **Hârtie și texte**
   15. **Contract cu aparate vândute, dar fără montaj:** hârtia ne obligă să le montăm în 30 de zile, fără preț; oferta
-      fără aparate promite totuși avans pentru aparate.
+      fără aparate promite totuși avans pentru aparate. — **FĂCUT (01.10, lista lui Robert, lotul 3).**
   16. Texte: primul avertisment de neplată spune și „16 zile", și „15 zile"; ecranul ofertei „montajul la semnare"
       (hârtia: după executare); „Client nou" cu închiriere promite „proforma pentru aparate"; „neachitată de 16 de zile". Plus (30.09):
       refuzul la intrare spune „Abonament suspendat pentru neplată" și la o oprire făcută de noi; banda spune
-      „Accesul este suspendat…" — două formulări pentru aceeași stare, prima cu un cuvânt vechi.
+      „Accesul este suspendat…" — două formulări pentru aceeași stare, prima cu un cuvânt vechi. — **FĂCUT (01.10, lista lui Robert, lotul 4).**
   **De hotărât cu Alin (ating serverul lui):**
   - ~~Clientul nu-și poate salva factura de pe telefon: hârtia facturii există doar în pagina web. Recomandarea: o
     singură hârtie, făcută pe server (PDF, ca rapoartele), pe care o iau și web-ul, și telefonul.~~ — **FĂCUT pe
@@ -10213,7 +10245,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
     firmei, doar documentele lui). Web-ul le folosește deja; pe telefon, „Vezi" / „Descarcă" — **făcut în 1.0.6 (30.09)**.
   - Telefoanele vechi (1.0.3) mai au „Înregistrează plata + extinde accesul": serverul o scrie ca încasare fără
     factură, iar factura rămâne neplătită → clientul se poate suspenda deși a plătit. Plasa: toate telefoanele noastre
-    pe 1.0.6; opțional, serverul să refuze cererea veche.
+    pe 1.0.6; opțional, serverul să refuze cererea veche. — **FĂCUT (01.10, lotul 2): serverul refuză cererea veche;** telefoanele, pe 1.0.8.
   - ~~Contul suspendat: pe web e scos din aplicație, pe telefon (1.0.5) rămâne înăuntru~~ — **HOTĂRÂT (30.09): „la fel ca
     și pe web"; făcut în telefonul 1.0.6.** Era: cu banda roșie și „Vezi
     facturile" (serverul oprește oricum restul, iar facturile rămân deschise). Recomandarea noastră: la fel și pe web —
@@ -10225,7 +10257,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   din cele 26 de puncte deschise dimineață, 25 sunt încă deschise și unul e pe jumătate (13: firma aleasă în bară rămâne
   aleasă, dar „Toate" bifează tot și aparatele ascunse de căutare). Cele date drept închise: hârtia facturii pe server —
   gata; drumul care știe de avans și termenul de 30 de zile — gata; „Mută între companii" — pe jumătate: abonamentul și
-  jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. La TVA (punctul 10
+  jurnalul sunt bune, dar un aparat deja „montat" la firma A rămâne în stoc la A după mutarea la B. (**FĂCUT (01.10, lotul 2).**) La TVA (punctul 10
   din lista lotului 3, mai sus) s-a adăugat un loc: hârtia facturii scrie „TVA 19%" când „Date emitent" n-are cotă.
   **Patru probleme NOI, din schimbările de azi:**
   17. ~~**„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se

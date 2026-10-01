@@ -3773,7 +3773,7 @@ const pozitii = await r.json();</code></pre>
           if (data && data.access && data.access.status === 'expired' && !data.isSuper) {
             await fetch('/api/logout', { method: 'POST' }).catch(function () {});
             var el = document.getElementById('login-error');
-            if (el) { el.textContent = 'Abonament suspendat pentru neplată. Contactați furnizorul.'; el.style.display = 'block'; }
+            if (el) { el.textContent = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.'; el.style.display = 'block'; }
             return;
           }
           currentUser = data;
@@ -19158,8 +19158,8 @@ const pozitii = await r.json();</code></pre>
       var nCrit = h.checks.filter(function (c) { return c.level === 'crit'; }).length;
       var nWarn = h.checks.filter(function (c) { return c.level === 'warn'; }).length;
       var banner = nCrit
-        ? '<div class="hbanner" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="fas fa-circle-exclamation"></i><span>' + nCrit + (nCrit === 1 ? ' problemă critică' : ' probleme critice') + ' de rezolvat înainte de lansare' + (nWarn ? ' · ' + nWarn + ' de verificat' : '') + '</span></div>'
-        : (nWarn ? '<div class="hbanner" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i><span>' + nWarn + ' lucruri de verificat</span></div>'
+        ? '<div class="hbanner" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="fas fa-circle-exclamation"></i><span>' + nCrit + (nCrit === 1 ? ' problemă critică' : _raxDe(nCrit) + 'probleme critice') + ' de rezolvat înainte de lansare' + (nWarn ? ' · ' + nWarn + ' de verificat' : '') + '</span></div>'
+        : (nWarn ? '<div class="hbanner" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i><span>' + (nWarn === 1 ? '1 lucru de verificat' : nWarn + _raxDe(nWarn) + 'lucruri de verificat') + '</span></div>'
                  : '<div class="hbanner" style="background:color-mix(in srgb, var(--accent) 14%, transparent);color:var(--accent);"><i class="fas fa-circle-check"></i><span>Totul e configurat pentru producție</span></div>');
       var rows = h.checks.map(function (c) {
         return '<div class="hcheck"><span class="hd" style="background:' + (COL[c.level] || COL.info) + '"></span>'
@@ -20067,7 +20067,7 @@ const pozitii = await r.json();</code></pre>
                 '<button class="rax-btn" style="padding:3px 9px;font-size:12px;" onclick="coNouArataLinkul()"><i class="fas fa-link"></i> Arată linkul de parolă</button> — i-l trimiți tu; parola și-o pune el.'
             : 'Invitația a plecat la <strong>' + esc(g.admin) + '</strong> — își pune singur parola.') + '</li>' +
         '</ul>' +
-        '<div class="raco-sub" style="margin:10px 0 12px;">Mai departe, în dosar: aprobă contractul și trimite-l la semnat. După semnare: proforma pentru aparate, apoi montajul — aparatele le treci pe firmă abia după ce sunt montate.</div>' +
+        '<div class="raco-sub" style="margin:10px 0 12px;">' + _coNouMaiDeparte(g.drum).map(esc).join(' ') + '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
           (g.contractId ? '<button class="rax-btn primary" onclick="raxOpenCompanyDetail(' + g.id + ', \'contract\')"><i class="fas fa-file-signature"></i> Deschide dosarul</button>' : '') +
           '<button class="rax-btn" onclick="coNouRenunta()">Deschid alt client</button>' +
@@ -20139,7 +20139,7 @@ const pozitii = await r.json();</code></pre>
             contact_email: s.firma.contact_email, phone: s.firma.phone },
             // Plătitoare de TVA: doar când a răspuns ANAF (hotărăște „RO" în fața CUI-ului pe factură).
             (s.firma.anaf && !s.firma.anaf.eroare) ? { vat_payer: !!s.firma.anaf.vat_payer } : {})) }).catch(function () {});
-        var c = s.contract, contractId = null, numar = null, autoFactura = false;
+        var c = s.contract, contractId = null, numar = null, autoFactura = false, ctFacut = null;
         if (c.rep_name || c.signed_at || c.start_at || c.number || s.offerId) {
           var ofAleasa = s.offerId ? (_coOferte || []).filter(function (x) { return String(x.id) === String(s.offerId); })[0] : null;
           var ct = await fetch('/api/companies/' + co.id + '/contract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
@@ -20149,7 +20149,7 @@ const pozitii = await r.json();</code></pre>
               auto_renew: !!c.auto_renew, notice_days: parseInt(c.notice_days) || 30,
               client_rep: { name: c.rep_name, role: c.rep_role }, our_rep: { name: c.our_name, role: c.our_role },
               gdpr: { kind: c.gdpr_kind } }) }).then(function (r) { return r.json(); });
-          if (ct && ct.id) { contractId = ct.id; numar = ct.number; autoFactura = !!ct.auto_factura; }
+          if (ct && ct.id) { contractId = ct.id; numar = ct.number; autoFactura = !!ct.auto_factura; ctFacut = ct; }
         }
         var adminOk = null, adminLink = null, adminMotiv = null;
         if (s.admin.username) {
@@ -20168,7 +20168,7 @@ const pozitii = await r.json();</code></pre>
             }
           }
         }
-        s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk,
+        s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk, drum: _coNouDrum(ctFacut),
           adminLink: adminLink, adminMotiv: adminMotiv, offerTotal: s.offerId ? s.offerTotal : null, autoFactura: autoFactura };
         _coOferte = null;  // o ofertă tocmai a devenit client — lista trebuie recitită
         s.lucrez = false;
@@ -20564,7 +20564,7 @@ const pozitii = await r.json();</code></pre>
         fel = 'bad';
         titlu = manual ? 'Acces oprit de noi' : 'Acces suspendat pentru neplată';
         if (manual && c.suspend_reason) text = 'Motivul scris: „' + esc(c.suspend_reason) + '".';
-        else if (np && np.factura) text = 'Factura ' + esc(np.factura.numar || '') + ' e neachitată de ' + np.zile + ' de zile.';
+        else if (np && np.factura) text = 'Factura ' + esc(np.factura.numar || '') + ' e neachitată de ' + np.zile + (np.zile === 1 ? ' zi.' : _raxDe(np.zile) + 'zile.');
         text += ' Clientul nu poate intra deloc. Aparatele transmit mai departe, datele nu se pierd.';
       } else if (np && np.faza === 'avertisment') {
         fel = 'warn';
@@ -21156,6 +21156,47 @@ const pozitii = await r.json();</code></pre>
       var rep = co.legal_rep; if (typeof rep === 'string') { try { rep = JSON.parse(rep); } catch (e) { rep = null; } }
       return { company_id: co.id, company_name: co.name, cui: co.cui, reg_com: co.reg_com, address: co.address, contact_email: co.contact_email, legal_rep: rep };
     }
+    // ── începe „mai departe, după Client nou" ──
+    // Drumul de AZI după „Client nou", pe felul contractului (lista lui Robert, 01.10, pct. 26): fraza fixă de dinainte promitea
+    // „proforma pentru aparate" și la închiriere, fără aparate sau fără contract. Aceleași reguli și aceleași cuvinte ca pe
+    // telefon (ClientNou.tsx → cnDrum / cnMaiDeparte), legate printr-o probă.
+    function _coNouDrum(ct) {
+      if (!ct) return { fel: 'fara-contract', montaj: false };
+      var mont = ct.montaj; if (typeof mont === 'string') { try { mont = JSON.parse(mont); } catch (e) { mont = null; } }
+      var echip = mont && mont.echipamente;
+      var areEchip = !!(echip && (echip.items || []).length);
+      var areMontaj = !!(mont && ((mont.items || []).length || areEchip));
+      var an = ct.annex; if (typeof an === 'string') { try { an = JSON.parse(an); } catch (e) { an = null; } }
+      var ch = an && an.chirie;
+      var inchiriate = !!(ch && (ch.aparate || []).length);
+      return { fel: areEchip ? 'cumparate' : (inchiriate ? 'inchiriate' : 'fara-aparate'), montaj: areMontaj };
+    }
+    function _coNouMaiDeparte(d) {
+      d = d || { fel: 'fara-contract', montaj: false };
+      var p = [];
+      if (d.fel === 'fara-contract') {
+        p.push('În dosar: fă contractul, cu „Fă un contract”, apoi aprobă-l și trimite-l la semnat.');
+      } else {
+        p.push('În dosar: aprobă contractul și trimite-l la semnat.');
+        if (d.fel === 'cumparate') {
+          p.push('După semnare: proforma pentru aparate — clientul le plătește în avans. Când plătește, apeși „Încasată” pe proformă, iar factura aparatelor se face singură.');
+          p.push('După ce avansul e încasat: montajul.');
+        } else if (d.fel === 'inchiriate') {
+          p.push('După semnare: montajul. Aparatele sunt închiriate și rămân ale noastre: fără proformă și fără avans.');
+        } else if (d.montaj) {
+          p.push('După semnare: montajul.');
+        }
+      }
+      p.push('Aparatele le treci pe firmă abia după ce sunt montate.');
+      if (d.montaj) {
+        p.push('Apoi factura montajului, doar pentru mașinile montate efectiv.' +
+          (d.fel === 'cumparate' ? ' Aparatele nu mai intră pe ea: sunt deja pe factura avansului.' : ''));
+      }
+      if (d.fel === 'inchiriate') p.push('Chiria vine pe factura lunară, pe rând separat.');
+      p.push('Abonamentul fiecărei mașini începe din ziua în care aparatul ei transmite prima dată.');
+      return p;
+    }
+    // ── sfârșit „mai departe, după Client nou" ──
     window.raxCtreCompleteaza = async function (companyId) {
       _dzTva = null;
       var gasita = await _dzFirma(companyId);
@@ -23839,7 +23880,7 @@ const pozitii = await r.json();</code></pre>
       h.innerHTML = !ch
         ? '<span style="color:var(--orange);">Regulile închirierii nu s-au încărcat de pe server — chiria nu se poate propune acum.</span>'
         : '<b>Închiriere:</b> aparatele rămân ale noastre și ne revin la final. Contract de minim ' + ch.luniMin + _raxDe(ch.luniMin)
-          + 'luni; montajul se plătește la semnare. Chiria se propune din cât ne costă aparatul — o poți schimba.';
+          + 'luni; montajul se facturează după executare, pe mașinile montate. Chiria se propune din cât ne costă aparatul — o poți schimba.';
     }
     // Chiria propusă, din ce NE COSTĂ aparatul (Prețurile noastre → „ne costă", în euro), la cursul ofertei.
     // Ca la cantități: o casetă în care ai scris tu nu se mai atinge.
@@ -26739,6 +26780,9 @@ const pozitii = await r.json();</code></pre>
           ? (j.already ? 'Proforma era deja încasată' + (j.invoice && j.invoice.full_number ? ' → factura ' + j.invoice.full_number : '') + ' ✓'
             : 'Proformă încasată → factura ' + ((j.invoice && j.invoice.full_number) || '') + (j.montajeFacturate ? ' · lucrările de montaj trec pe „facturat clientului"' : '') + _invTrimisaText(j.trimisa, false) + ' ✓')
           : 'Factură plătită ✓', 'success');
+        // Lista firmelor se cere din nou: „Status facturare companii" se desena din cea veche și rămânea pe „Suspendat"
+        // până la reîncărcarea paginii (lista lui Robert, 01.10, pct. 25).
+        try { var cosNoi = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); if (Array.isArray(cosNoi)) companiesCache = cosNoi; } catch (e) {}
         raxLoadBilling();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
@@ -26763,6 +26807,17 @@ const pozitii = await r.json();</code></pre>
     // ca PROFORMĂ: cerere de plată, cu serie proprie, fără ANAF; la încasare devine factură fiscală dintr-un clic.
     var _giFel = 'abonament', _giTip = 'invoice';
     var _GI_LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+    // Lista de companii a ferestrei, cerută în fundal când nu era încărcată; firma aleasă rămâne aleasă.
+    async function _giIncarcaFirmele(companyId) {
+      try {
+        var l = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; });
+        if (!Array.isArray(l)) return;
+        companiesCache = l;
+        var sel = document.getElementById('rax-gi-co'); if (!sel) return;
+        var ales = sel.value || (companyId != null ? String(companyId) : '');
+        sel.innerHTML = l.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '"' + (String(c.id) === String(ales) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+      } catch (e) { /* lista rămâne cu firma din fișă */ }
+    }
     window.raxOpenGenInvoice = function (companyId, fel) {
       var ov = document.getElementById('rax-geninv-overlay');
       if (!ov) {
@@ -26772,8 +26827,18 @@ const pozitii = await r.json();</code></pre>
           '<div class="rax-body" id="rax-geninv-body"></div></div>';
         document.body.appendChild(ov);
       }
+      // Ultima în pagină, deci DEASUPRA fișei firmei (toate ferestrele au același strat): deschisă din fișă, apărea uneori în
+      // spatele ei și nu se vedea nimic (lista lui Robert, 01.10, pct. 24).
+      if (ov.parentNode && ov !== ov.parentNode.lastElementChild) document.body.appendChild(ov);
       _giFel = fel === 'unica' ? 'unica' : 'abonament'; _giTip = 'invoice'; _giState = null;
       var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
+      // Firma cerută trebuie să fie în listă: deschisă din fișă, cu lista de companii neîncărcată, lista era goală. Se ia
+      // din fișa deschisă pe loc, iar lista întreagă se cere în fundal (pct. 24).
+      if (companyId != null && !cos.some(function (c) { return String(c.id) === String(companyId); })) {
+        var coFisa = window._raxCod && _raxCod.company && String(_raxCod.company.id) === String(companyId) ? _raxCod.company : null;
+        if (coFisa) cos = [{ id: coFisa.id, name: coFisa.name }].concat(cos);
+      }
+      if (!Array.isArray(companiesCache) || !companiesCache.length) _giIncarcaFirmele(companyId);
       var now = new Date(), curM = now.getMonth() + 1, curY = now.getFullYear();
       var coOpts = cos.map(function (c) { return '<option value="' + c.id + '"' + (String(companyId) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
       var monOpts = _GI_LUNI.map(function (m, i) { return '<option value="' + (i + 1) + '"' + ((i + 1) === curM ? ' selected' : '') + '>' + m + '</option>'; }).join('');
