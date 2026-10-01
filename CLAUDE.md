@@ -1025,6 +1025,26 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   nici în venituri. `PUT /api/invoices/:id/status {paid}` pe o proformă = **„Încasată"**: emite factura fiscală
   (seria RAT, aceleași rânduri, `din_proforma`), o marchează plătită atomic, iar proforma primește
   `factura_id`. A doua apăsare nu face a doua factură; proforma încasată nu se anulează.
+
+### „Încasată" dintr-o bucată, montajul facturat o singură dată (01.10, punctele 18 și 19 ale lui Robert)
+- **„Încasată" pe proformă = `db.incaseazaProforma`, O tranzacție:** revendică proforma (`UPDATE … WHERE` încă
+  neîncasată și neanulată) → numărul din seria fiscală → plata → factura fiscală (plătită) → `factura_id` →
+  lucrările de pe proformă. A doua apăsare (web + telefon, aceeași secundă) găsește proforma încasată → `{ deja }`, iar
+  ruta întoarce `already` cu factura primei. O eroare la mijloc întoarce TOT (și numărul). Emailul/ANAF
+  (`_trimiteFactura`) DUPĂ commit. NU reintroduce pașii separați (`createInvoice` + `payInvoiceAtomic` + `updateInvoice`)
+  pe ramura asta — proba îi rulează ca martor și arată că fac mai multe facturi.
+- **„Liberă de facturat" e O regulă: `_MONTAJ_LIBER` în db.js** — montată (`executat` / `facturat_de_partener`), fără
+  `factura_client` și fără o proformă neanulată în `proforma_client`. O folosesc: `listMontaje`/`getMontaj`
+  (`liber_de_facturat`, `factura_client_nr`, `proforma_client_nr`), ciorna facturii unice, „Montaj de facturat" (și
+  anunțul), refuzul de la emitere (`montajeNelibere`, 409, și la previzualizare), marcarea și rezervarea. NU filtra
+  lucrări de facturat după stare în altă parte.
+- **Pe proformă, lucrarea se REZERVĂ** (`proforma_client`), nu se marchează; la „Încasată" trece pe factura fiscală
+  (`factura_client`, `facturat_clientului`). Proforma anulată o eliberează singură (regula se uită la starea ei).
+- **Pe factură, `factura_client` + `facturat_clientului`, și rămâne așa:** schimbarea stării unei lucrări facturate →
+  409 (ce ne-a facturat partenerul se scrie în `factura_partener`); o salvare fără stare păstrează starea (nu mai
+  coboară la „de programat"); o lucrare aflată pe un document nu se șterge (409). Factura ANULATĂ eliberează lucrările
+  (`elibereazaMontajeleFacturii`): înapoi la `facturat_de_partener` dacă are numărul facturii lui, altfel `executat`.
+- Proformele emise înainte de 01.10 nu-și știu lucrările (n-aveau legătura). Păzit de `verify_facturare_dubla.js`.
 - Hârtia proformei: „FACTURĂ PROFORMĂ" + „document fără valoare fiscală" (`factura_pdf.js`, aceeași hârtie).
 - **Factura montajului e STRÂNSĂ** (Alin, 29.09: „da"): lucrările alese în „Generează factură" se adună pe
   rânduri (aceeași denumire ȘI același preț — alt preț = rând separat), iar zilele lor intră în mențiuni:

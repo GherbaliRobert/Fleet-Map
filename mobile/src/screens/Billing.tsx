@@ -7,7 +7,7 @@ import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { nrDe } from '../lib/numar';
 import { rutaFisa } from '../lib/companii';
 import {
-  LUNI, cheieLuna, lunaText, ziRo, felDinAdresa, ciornaDinRaspuns, sursaPusa, puneContract, acoperire, montajeDeTrimis,
+  LUNI, cheieLuna, lunaText, ziRo, felDinAdresa, ciornaDinRaspuns, sursaPusa, puneContract, acoperire,
   puneLucrare, scoateLucrare, editeazaLinie, stergeLinie, adaugaLinie, puneNota, liniiValide, corpEmitere, ceEste,
   stareClient, lunaViitoare, aparateDejaPe, metodaText, trimisaText,
 } from '../lib/factura';
@@ -363,7 +363,8 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
   const dc = (S && S.dinContract) || {};
   const sumaLinii = (ls: any[]) => (ls || []).reduce((x: number, l: any) => x + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
   const dejaAparate = S && unica ? aparateDejaPe(invoices, S.companyId, dc) : [];
-  const peProforma = S && unica && tip === 'proforma' ? montajeDeTrimis(S).length : 0;
+  // (Avertismentul „de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»" a plecat pe 01.10: serverul
+  //  le ține acum pe proformă și le trece pe factura fiscală la „Încasată" — punctul 19 din verificarea lui Robert.)
   const eticheta = unica && tip === 'proforma' ? 'Emite proforma' : 'Emite factura';
 
   const sec = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
@@ -477,7 +478,6 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, onClose
                     <textarea rows={2} maxLength={500} value={S.nota} onInput={(e: any) => setS(puneNota(S, e.target.value))} />
                   </div>
                 )}
-                {peProforma ? <div class="bill-avert">⚠ De pe o proformă, lucrările de montaj nu trec pe „facturat clientului" — nici când proforma se încasează — și vor fi propuse din nou. Pune montajul pe o factură fiscală.</div> : null}
                 <div class="bill-total"><span>Total (cu TVA)</span><b>{money2(subtotal + vatTotal)} lei</b></div>
                 <div class="bill-mic" style="text-align:right;margin-top:4px">Net {money2(subtotal)} · TVA {money2(vatTotal)}</div>
                 {unica && tip === 'proforma' ? <div class="bill-mic" style="margin-top:8px;line-height:1.5">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div> : null}

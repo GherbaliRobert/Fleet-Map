@@ -2858,6 +2858,8 @@
     /* Câmpuri cu etichetă deasupra + două pe rând */
     .raco .raco-f { display: block; margin-bottom: 12px; }
     .raco .raco-f > span { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px; }
+    /* Nota de sub un câmp încuiat (lucrarea facturată clientului, 01.10) */
+    .raco .raco-f-nota { display: block; font-style: normal; font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); margin-top: 5px; }
     .raco .raco-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .raco .raco-cui { display: flex; gap: 8px; }
     .raco .raco-cui .rax-field { flex: 1; min-width: 0; }

@@ -205,7 +205,10 @@ T('lucrările au tabela lor, legate de firmă și de contract',
 T('lucrarea ține și numărul facturii primite de la partener', /factura_partener VARCHAR\(60\)/.test(dbjs));
 T('stările lucrării merg de la „de programat" la „facturat clientului"',
   M.STARI.join(',') === 'de_programat,programat,executat,facturat_de_partener,facturat_clientului', M.STARI.join(','));
-T('o stare inventată nu se salvează', /montaj\.STARI\.indexOf\(b\.status\) >= 0 \? b\.status : 'de_programat'/.test(server));
+// (01.10) O stare inventată sau lipsă nu se salvează: lucrarea nouă pornește „de programat", iar una existentă își
+// PĂSTREAZĂ starea — până atunci o salvare fără stare cobora și o lucrare facturată clientului la „de programat".
+T('o stare inventată nu se salvează (cea nouă pornește „de programat", cea existentă își păstrează starea)',
+  /const stare = montaj\.STARI\.indexOf\(b\.status\) >= 0 \? b\.status : \(ex \? ex\.status : 'de_programat'\);/.test(server) && /status: stare,/.test(server));
 T('o lucrare fără nicio linie e refuzată', /Nicio linie de montaj/.test(server));
 T('ștergerea partenerului nu șterge lucrările', !/ON DELETE CASCADE[\s\S]{0,80}montaje/.test(dbjs));
 

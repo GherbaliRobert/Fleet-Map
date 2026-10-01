@@ -89,6 +89,53 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-10-01
 
+### AMÂNDOI · Nimic nu se mai facturează de două ori: „Încasată" și montajul (18, 19)
+
+Alin: *„Repar și 18 și 19? Recomand: da."* — da. Ultimele două din verificarea lui Robert de aseară.
+
+1. **(18) „Încasată" apăsată de două ori nu mai face două facturi.** Înainte, la „Încasată" pe o proformă, aplicația
+   făcea pașii unul după altul: citea proforma, lua un număr, făcea factura fiscală, înregistra plata, lega proforma.
+   Două apăsări în aceeași secundă (de pe web și de pe telefon) puteau trece amândouă de primul pas — deci **două
+   facturi fiscale** pentru aceeași plată, și de pe 30.09 amândouă ar fi plecat singure la client și la ANAF. Iar o
+   eroare la mijloc lăsa o factură fiscală neplătită, care pornea avertismentele de neplată.
+   Acum totul se face **dintr-o bucată**: proforma se „ia" întâi (trece pe încasată doar dacă nu era deja), apoi
+   restul. A doua apăsare găsește proforma deja încasată și primește factura făcută de prima — scrie „Proforma era
+   deja încasată → factura RAT-…". O eroare la mijloc întoarce **tot** înapoi, inclusiv numărul (șirul facturilor
+   rămâne fără goluri). Emailul și ANAF pleacă abia după ce totul e scris.
+2. **(19) Montajul deja facturat nu mai e propus a doua oară.** „Facturat" se ținea doar în starea lucrării, și
+   asta avea trei găuri, toate cu același efect — „Montaj de facturat" îl propunea din nou, cu anunțul „factura e
+   pregătită":
+   - **montajul pus pe o proformă** nu se marca deloc, nici când proforma se încasa;
+   - **„partenerul ne-a facturat"** scris pe o lucrare deja facturată clientului o redeschidea;
+   - **o fereastră de factură rămasă deschisă** putea pune același montaj pe al doilea document.
+   Acum fiecare lucrare **ține minte documentul pe care stă**: pe o proformă rămâne „rezervată" (nu se mai propune;
+   la „Încasată" trece pe factura fiscală), iar pe o factură trece pe „facturat clientului" și rămâne așa. Ce ne-a
+   facturat instalatorul se scrie alături, în „Nr. facturii de la partener". Un document anulat își eliberează
+   lucrările: se pot factura iar, iar starea se întoarce cum era. O lucrare aflată pe un document nu se mai șterge
+   (altfel calendarul ar fi propus din nou montajul acelor mașini).
+
+Exemplu cu cifre: 10 mașini montate pe 15.09, la 100 de lei → 1.000 de lei + TVA. Pui montajul pe proforma PF-…; de
+acum nu mai apare la „Montaj de facturat". Clientul plătește, apeși „Încasată" (chiar și de două ori) → **o singură**
+factură fiscală, de 1.210 lei, iar lucrarea scrie „facturat clientului · pe factura RAT-…".
+
+- **Ce am schimbat:** „Încasată" pe proformă într-o singură tranzacție; lucrarea de montaj ține minte factura sau
+  proforma ei (o coloană nouă în bază); o singură regulă pentru „montaj liber de facturat", folosită de fereastra
+  facturii, de „Montaj de facturat", de anunțul lui și la emitere; anularea unei facturi eliberează lucrările.
+  Probă nouă, `verify_facturare_dubla.js` (45 de verificări, în `npm test`): rulează funcția pe o bază adevărată cu o
+  cădere provocată la mijloc, cinci apăsări deodată (și, ca martor, pașii vechi: ei fac mai multe facturi) și tot
+  drumul pe server pornit. `verify_montaj.js` adusă pe regula nouă: o salvare fără stare păstrează starea lucrării.
+- **Ce vede fondatorul:** pe rândul lucrării, „pe factura RAT-…" sau „pe proforma PF-… (se facturează la încasare)";
+  la o lucrare facturată, starea e încuiată, cu o notă dedesubt; coșul de gunoi lipsește pe lucrările aflate pe un
+  document; mesajele după emitere, încasare și anulare spun ce s-a întâmplat cu lucrările.
+- **Ce vede clientul:** nimic nou pe ecran — dar nu mai poate primi două facturi pentru aceeași plată sau același
+  montaj.
+- **Telefonul:** serverul face regula, deci telefonul e acoperit de azi. Un singur text de pe telefon a rămas fals
+  („de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»… pune montajul pe o factură fiscală") — l-am
+  scos din cod; dispare la APK-ul următor (lotul 5).
+- **De știut:** proformele emise **înainte de azi** cu montaj pe ele nu-și știu lucrările. Dacă vreuna se încasează,
+  lucrarea ei trebuie trecută de mână pe „facturat clientului". Dacă n-ați emis încă proforme cu montaj pe ratrack.ro,
+  nu e nimic de făcut.
+
 ### AMÂNDOI · Trei probleme găsite aseară de verificarea lui Robert, reparate (20, 13, 17)
 
 Sesiunea lui Robert a verificat lucrul de pe 30.09 și a găsit patru probleme noi (17–20, în lista de mai jos, la
@@ -9914,13 +9961,15 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   de găsiri se strâng în 16 probleme. Detaliile (cu rândurile din cod) sunt în raportul revizuirii; aici, pe scurt:
   **Bani — se poate factura de două ori sau pierde o sumă**
   1. **Factura unică nu ține minte ce s-a facturat.** După proforma aparatelor (încasată), fereastra propune din nou
-     „Aparatele din contract"; montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
-     facturat" redeschide o lucrare deja facturată clientului. ~~Drumul clientului nu știe de avans: după factura
-     aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e FĂCUTĂ (30.09):**
-     pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul de 30 de zile
-     de la avans. Restul punctului rămâne. (web + telefon, vine de la server)
+     „Aparatele din contract"; ~~montajul pus pe o proformă nu trece pe „facturat" la încasare, iar „partenerul ne-a
+     facturat" redeschide o lucrare deja facturată clientului~~ — **FĂCUT (01.10, odată cu 19).** ~~Drumul clientului nu
+     știe de avans: după factura aparatelor scrie „Toți pașii sunt făcuți" și nu mai amintește de montaj.~~ **Partea asta e
+     FĂCUTĂ (30.09):** pasul „Montajul" se bifează abia când toate mașinile din contract sunt montate și numără termenul
+     de 30 de zile de la avans. **Rămâne doar:** aparatele din contract propuse din nou după proforma lor (pe telefon e
+     un avertisment; pe web, nimic).
   2. **Montajul marcat „facturat" fără să fie pe factură:** o lucrare scoasă de pe factură (rând șters sau cantitate
-     scăzută) rămâne marcată și scrisă la „Mențiuni"; anularea facturii nu o redeschide.
+     scăzută) rămâne marcată și scrisă la „Mențiuni" (pe web; telefonul o scoate corect). ~~Anularea facturii nu o
+     redeschide.~~ — **FĂCUT (01.10):** factura anulată își eliberează lucrările.
   3. **Lunile de dinainte de 28.09 se pot factura de două ori:** „Abonamentul unei luni" nu vede facturile vechi (fără
      „fel"), deci nici avertismentul, nici refuzul (409) nu apar pe septembrie.
   4. **Aparat schimbat pe aceeași mașină:** zilele din luna schimbării se plătesc de două ori (aparatul vechi a plătit
@@ -9932,8 +9981,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
      ≈ 48 de lei pe fiecare, niciodată facturați.
   7. **„Lunar" din Companii și „Contract ↔ factură" numără și aparatele nemontate**, deci arată altă sumă decât factura.
   **Acces și siguranță**
-  8. **„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
-     facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.
+  8. ~~**„Încasată" pe proformă nu e dintr-o bucată:** două apăsări în aceeași secundă (web + telefon) pot naște două
+     facturi fiscale; o eroare la mijloc lasă o factură fiscală neplătită, care pornește neplata.~~ — **FĂCUT (01.10, ca 18).**
   9. **Motivul intern al unei suspendări făcute de mână** pleacă la toți oamenii firmei (se vede în datele trimise,
      nu pe ecran).
   10. **Migrarea „o singură dată"** a dat zi de pornire și aparatelor care transmiseseră doar pe masa de probă.
@@ -9980,10 +10029,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
       la ANAF pe aceeași lună**.~~ — **FĂCUT (01.10):** serverul refuză (409, „se stornează"), butonul nu mai apare pe web;
       pe telefon se ascunde la APK-ul următor.
-  18. **„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
-      client, pe email și la ANAF.
-  19. **„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
-      „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.
+  18. ~~**„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
+      client, pe email și la ANAF.~~ — **FĂCUT (01.10):** totul într-o singură tranzacție; a doua apăsare primește
+      factura primei. Probat cu cinci apăsări deodată și cu o cădere provocată la mijloc (`verify_facturare_dubla.js`).
+  19. ~~**„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
+      „partenerul ne-a facturat"), cu anunțul automat „factura e pregătită" — adică punctul 1, cu îndemn spre dublură.~~
+      — **FĂCUT (01.10):** lucrarea ține minte factura sau proforma ei; o singură regulă pentru „liberă de facturat".
+      Pe telefon a rămas doar un text fals (scos din cod, pleacă la APK-ul următor).
   20. ~~**Un aparat șters definitiv revine singur** dacă mai transmite: IMEI-ul lui rămâne în stoc, iar serverul primește
       acum și aparatele din stoc. I se face rând nou la Neasignate și i se salvează iar pozițiile — contrazice ștergerea
       promisă în contract după încetare.~~ — **FĂCUT (01.10):** din stoc e primit doar ce e în depozit sau la instalator;
@@ -10004,6 +10056,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   Stoc (mici). Intră și ce a scris Alin deja pe telefon („Ne facturează" în fișa instalatorului, textele din Stoc).
   Probe de rescris pe regula nouă: `verify_contracte_telefon.js` (calea `?lucrare=noua`), `verify_facturare_telefon.js`
   (reperul „Facturi fiscale").
+  **Deja schimbat în cod (01.10), pleacă odată cu 1.0.7:** scos avertismentul „de pe o proformă, lucrările de montaj nu
+  trec pe «facturat clientului»… pune montajul pe o factură fiscală" — de pe 01.10 serverul le trece singur la încasare.
 
 - [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
   telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon
