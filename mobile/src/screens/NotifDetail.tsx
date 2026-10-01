@@ -29,7 +29,11 @@ export function NotifDetail() {
   const maxHaloRef = useRef<any>(null); // halo-ul punctului MAX (re-colorat de OSM dacă s-a depășit limita reală)
 
   useEffect(() => {
+    // Răspunsul poate veni după ce omul a plecat de aici („înapoi" înainte de răspuns): atunci nu mai mutăm nicio
+    // adresă — altfel i-am înlocui ecranul pe care a ajuns cu Facturarea sau Dispozitive (revizia lotului 5, 01.10).
+    let viu = true;
     Api.notifContext(id).then((x: any) => {
+      if (!viu) return;
       if (x && x.error) { setErr(x.error); return; }
       // Notificare de raport → nu are eveniment GPS; deschid direct ecranul Rapoarte (+ raportul din Istoric).
       if (x && (x.type === 'report_ready' || x.type === 'report_error')) {
@@ -49,7 +53,8 @@ export function NotifDetail() {
       }
       // „Aparate noi transmit" și „Montaj de facturat" (30.09, doar la noi) → drept la treaba de făcut, ca pe web
       // (notifAparateNoi / notifMontajDeFacturat): Dispozitive → Neasignate cu aparatele bifate și firma aleasă,
-      // respectiv factura montajului cu lucrările puse. Adresa o face adresaAnunt (lib/push.ts), aceeași pentru listă
+      // respectiv factura montajului cu lucrările puse; „Cerere demo" → Cereri demo; termenul de montaj → calendarul,
+      // pe contractul lui. Adresa o face adresaAnunt (lib/push.ts), aceeași pentru listă
       // și push. Ca la contractul care expiră: detaliul nu se desenează, deci deschiderea îl marchează citit, iar
       // adresa se înlocuiește, ca „Înapoi" să nu te întoarcă aici.
       const spre = x ? adresaAnunt(x.type, x.data) : null;
@@ -59,7 +64,8 @@ export function NotifDetail() {
         return;
       }
       setD(x); setAcked(!!x.acknowledged);
-    }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
+    }).catch((e: any) => { if (viu) setErr(e?.message || 'Eroare la încărcare'); });
+    return () => { viu = false; };
   }, [id]);
 
   async function markRead() {

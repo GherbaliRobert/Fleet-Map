@@ -1161,6 +1161,18 @@ facturarea pe web:
   :id/pdf` la client. Mesajul de după „Emite" / „Încasată" = `trimisaText(r.trimisa, pf)`, legat de `_invTrimisaText`
   din pagină (proba le rulează pe amândouă). NU desena o hârtie a facturii în telefon.
 
+### Telefonul 1.0.7 (lotul 5, 01.10): calendarul, anunțurile, legăturile
+- **Adresele de legătură sunt UNA fiecare:** `rutaFactura(id, 'unica', { tip:'proforma', aparate:true } | { lucrari })`
+  (lib/factura.ts; Facturare le citește prin `pregatireDinAdresa`), `rutaCalendarMontaj(contractId)` (lib/calendarMontaj.ts;
+  Montaj citește `?fila=calendar&contract=`), iar unde duce un anunț — `adresaAnunt(tip, data)` (lib/push.ts): aparate noi →
+  Dispozitive cu bife și firmă, montaj de facturat → factura pregătită, cerere demo → Cereri demo, termenul de montaj →
+  calendarul pe contract. Lista, detaliul și push-ul folosesc aceeași funcție. NU scrie a doua adresă pentru aceeași țintă.
+- **Calendarul de pe telefon NU socotește nimic** (ce mai e de programat, prețuri, „montată" cu mai puține): le spune
+  serverul (montaj.js). Textele și culorile din calendar sunt ale paginii, legate prin probă.
+- **Unde telefonul face dinadins altfel decât web-ul:** „Montaj de facturat" căzut spune eroarea (web: „· 0"); banda „Firma
+  e propusă…" doar pentru firma din anunț; termenul de montaj duce în calendar (web: fereastra goală). Restul — la fel.
+- Păzit de `verify_telefon_lot5.js` (în `npm test`).
+
 ## Parola nu există (regulă de fond)
 
 **Nimeni nu scrie parola altcuiva.** Nici noi, nici administratorul firmei. Se deschide un cont pe o

@@ -148,6 +148,9 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
   const [invoices, setInvoices] = useState<any[]>([]);
   // „Montaj de facturat" (30.09): ce e gata și ce e în curs, pe firme — socotit de server (GET /api/montaj/de-facturat).
   const [mf, setMf] = useState<{ gata: any[]; inCurs: any[] }>({ gata: [], inCurs: [] });
+  // Montajul de facturat n-a venit (eroare de server sau de rețea): o spunem, nu „· 0" și „nimic de facturat" — ar fi
+  // un fals „n-ai nimic de încasat". (Pe web eroarea se înghite; găsit la revizia lotului 5, 01.10.)
+  const [mfErr, setMfErr] = useState('');
   const [sect, setSect] = useState<Sectiune>(sectiuneaAleasa);
   const alegeSect = (k: Sectiune) => { sectiuneaAleasa = k; setSect(k); };
   const [issuer, setIssuer] = useState<any>({});
@@ -195,13 +198,14 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
       const [cos, pj, ss, iv, cf, md] = await Promise.all([
         Api.companies(), Api.payments(1000), Api.systemSettings().catch(() => ({})),
         Api.invoices().catch(() => ({ invoices: [] })), Api.billingConfig().catch(() => null),
-        Api.montajDeFacturat().catch(() => null),
+        Api.montajDeFacturat().catch((e: any) => ({ __eroare: (e && e.message) || 'eroare' })),
       ]);
       setCompanies((Array.isArray(cos) ? cos : []).filter((c: any) => !c.is_demo));
       setPays((pj && (pj as any).payments) || []);
       setPaysTotal(Number(pj && (pj as any).total) || 0);
       setInvoices((iv && (iv as any).invoices) || []);
-      setMf({ gata: (md && md.gata) || [], inCurs: (md && md.inCurs) || [] });
+      if (md && (md as any).__eroare) { setMfErr(String((md as any).__eroare)); setMf({ gata: [], inCurs: [] }); }
+      else { setMfErr(''); setMf({ gata: (md && (md as any).gata) || [], inCurs: (md && (md as any).inCurs) || [] }); }
       setIssuer((ss && (ss as any).invoice_issuer) || {});
       setCfg(cf);
     } catch (e: any) { showToast(e?.message || 'Eroare la încărcare', true); setCompanies([]); }
@@ -273,11 +277,11 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
           fiscale, proformele (câte sunt de încasat) și montajul gata de facturat, în ritmul instalatorului. */}
       <div class="bill-sect" role="group" aria-label="Secțiunile listei">
         {SECTIUNI.map((k) => (
-          <button type="button" class={'fd-chip' + (sect === k ? ' on' : '')} aria-pressed={sect === k} onClick={() => alegeSect(k)}>{etichetaSectiune(k, numere)}</button>
+          <button type="button" class={'fd-chip' + (sect === k ? ' on' : '')} aria-pressed={sect === k} onClick={() => alegeSect(k)}>{k === 'montaj' && mfErr ? 'Montaj de facturat' : etichetaSectiune(k, numere)}</button>
         ))}
       </div>
       {sect === 'montaj'
-        ? <MontajDeFacturat d={mf} onFactura={facturaMontaj} />
+        ? <MontajDeFacturat d={mf} err={mfErr} onFactura={facturaMontaj} />
         : (docsSect.length === 0
           ? <div class="adm-empty">{golSectiune(sect)}</div>
           : <div class="adm-list">{docsSect.map((v) => <FiscalRow v={v} onClick={() => setFview(v)} />)}</div>)}
@@ -302,7 +306,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
 // firmă pe rând — cine, ce și când (textul serverului), suma fără TVA și butonul. „În curs" = perioada instalatorului
 // nu s-a încheiat încă (chenar punctat). Butonul deschide fereastra facturii cu lucrările puse: o verifici
 // („Previzualizează") și apeși „Emite factura". Rândurile și cuvintele vin din lib/factura.ts, legate de pagină.
-function MontajDeFacturat({ d, onFactura }: { d: any; onFactura: (r: RandMontajFact) => void }) {
+function MontajDeFacturat({ d, err, onFactura }: { d: any; err?: string; onFactura: (r: RandMontajFact) => void }) {
   const { gata, inCurs } = randuriMontajFact(d);
   const rand = (r: RandMontajFact) => (
     <div class={'bill-mf' + (r.curs ? ' curs' : '')}>
@@ -314,7 +318,8 @@ function MontajDeFacturat({ d, onFactura }: { d: any; onFactura: (r: RandMontajF
   return (
     <div>
       <div class="bill-mf-sub">{MONTAJ_FACT_SUB}</div>
-      {gata.length ? gata.map(rand) : <div class="bill-mic" style="padding:8px 0 12px">{MONTAJ_FACT_GOL}</div>}
+      {err ? <div class="bill-avert rau">Nu s-a putut încărca montajul de facturat: {err}</div>
+        : (gata.length ? gata.map(rand) : <div class="bill-mic" style="padding:8px 0 12px">{MONTAJ_FACT_GOL}</div>)}
       {inCurs.length ? <div class="bill-mf-h">{MONTAJ_FACT_IN_CURS}</div> : null}
       {inCurs.map(rand)}
     </div>

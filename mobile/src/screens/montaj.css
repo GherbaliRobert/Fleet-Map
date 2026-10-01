@@ -116,3 +116,8 @@
 .mjc-text { font-size: 14.5px; line-height: 1.5; color: var(--text-primary); overflow-wrap: anywhere; }
 .mjc-text.mic { font-size: 12.5px; color: var(--text-secondary); }
 .mjc-ce { display: block; margin-top: 3px; font-size: 13px; color: var(--text-secondary); }
+
+/* Cele patru file din Montaj (Calendar, Parteneri, Contracte cu partenerii, Lucrări) nu încap pe un rând la 375px:
+   derulate lateral, cu bara ascunsă, „Lucrări" ieșea complet din ecran. Se așază pe două rânduri, ca secțiunile din
+   Facturare (.bill-sect). Revizia lotului 5, 01.10. */
+.ctr-chips.mj-file { flex-wrap: wrap; overflow-x: visible; }

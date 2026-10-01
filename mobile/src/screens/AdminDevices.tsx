@@ -192,7 +192,7 @@ export function AdminDevices() {
   const [anunt] = useState(() => anuntDinAdresa(loc.query));
   const anuntDePus = useRef(!!anunt);
   const [dinAnunt, setDinAnunt] = useState<Record<string, boolean>>({});   // ce a bifat anunțul (pentru banda de mai jos)
-  // Trecerea în bloc: bifele (pe IMEI) și firma aleasă. Firma NU se golește la o bifă (pe web, da — revizia din 29.09).
+  // Trecerea în bloc: bifele (pe IMEI) și firma aleasă. Firma NU se golește la o bifă (pe web, la fel, din 30.09).
   const [bife, setBife] = useState<Record<string, boolean>>({});
   const [firmaBloc, setFirmaBloc] = useState(() => (anunt && anunt.firma != null ? String(anunt.firma) : ''));
   const [intreb, setIntreb] = useState<{ imeis: string[]; coId: number; firma: string } | null>(null);

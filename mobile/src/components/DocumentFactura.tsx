@@ -145,7 +145,9 @@ export function DocumentFactura({ inv: inv0, privire, onClose, onChanged, nota }
                 la ANAF ar dubla-o în SPV-ul clientului (serverul refuză, 409). Ca pe web. */}
             {!pf && inv.status !== 'canceled' && inv.efactura_status !== 'validated' && inv.efactura_status !== 'uploaded' && <button class="btn" style={btnSec} disabled={!!busy} onClick={() => act('anaf')}>{busy === 'anaf' ? '…' : (inv.efactura_status === 'error' ? 'Retrimite ANAF' : 'Trimite ANAF')}</button>}
             {!pf && inv.efactura_status === 'uploaded' && <button class="btn" style={btnSec} disabled={!!busy} onClick={() => act('anafStare')}><Icon name="refresh" size={14} /> {busy === 'anafStare' ? '…' : 'Verifică status ANAF'}</button>}
-            {inv.status !== 'paid' && inv.status !== 'canceled' && <button class="btn btn-danger-ghost" disabled={!!busy} onClick={() => act('cancel')}>Anulează</button>}
+            {/* O factură ajunsă la ANAF nu se mai anulează (acolo rămâne valabilă; se stornează) — ca pe web, din `la_anaf`, pe care
+                îl pune serverul pe rândurile listei (`_laAnaf`, o singură regulă). Documentul întreg cerut după nu-l are: îl luăm de pe rând. */}
+            {inv.status !== 'paid' && inv.status !== 'canceled' && !(inv.la_anaf || (inv0 && inv0.la_anaf)) && <button class="btn btn-danger-ghost" disabled={!!busy} onClick={() => act('cancel')}>Anulează</button>}
           </div>}
         </div>
       </div>

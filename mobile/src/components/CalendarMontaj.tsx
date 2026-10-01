@@ -8,7 +8,7 @@
 //     instalatorul și starea — exact ce scrie pe web în eticheta fiecărei zile;
 //   • „De programat": contractele semnate cu mașini rămase, termenul de 30 de zile (roșu depășit, portocaliu curând),
 //     butonul „Programează" pe fiecare, și stocul de aparate;
-//   • o zi liberă apăsată → „Programează montajul" pe ziua aia; o zi ocupată → ce e pe ea + „Programează pe …";
+//   • o zi liberă apăsată → „Programează montajul" pe ziua aia; o zi ocupată → ce e pe ea + „Programează";
 //   • o lucrare apăsată → „S-a montat?" (cu câte — mai puține se întorc singure la „De programat"), „Altă zi sau alt
 //     instalator" (Mută), „La client" (dosarul lui) și „Șterge ziua".
 //

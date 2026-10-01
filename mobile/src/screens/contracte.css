@@ -182,3 +182,7 @@ label.ctr-btn { cursor: pointer; }
 .ctr-mont-1 { display: grid; grid-template-columns: 1fr 96px; gap: 8px; align-items: center; }
 .ctr-mont-1 input { width: 100%; box-sizing: border-box; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
   border-radius: 8px; padding: 10px 8px; font-size: 15px; font-family: inherit; text-align: right; }
+
+/* Gri-ul explicațiilor (--text-muted) pe fundalul paginii, pe tema deschisă: 4,23:1 — sub prag. Acum le poartă și
+   calendarul de montaj și Facturarea. Pe tema deschisă trec pe --text-secondary (~6,7:1). Revizia lotului 5, 01.10. */
+:root[data-theme="light"] .ctr-sub, :root[data-theme="light"] .ctr-empty { color: var(--text-secondary); }

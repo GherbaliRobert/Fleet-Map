@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { rutaFactura } from './factura';
+import { rutaCalendarMontaj } from './calendarMontaj';
 import { RUTA_NEASIGNATE } from './contracte';
 
 let registered = false;
@@ -17,7 +18,9 @@ let registered = false;
 //   • „Montaj de facturat" → Facturare, „Generează factură" unică, cu lucrările puse (rutaFactura, lib/factura.ts).
 // Bucata e fără JSX și fără stare: proba o rulează lângă pagina web și lângă serverul pornit.
 //   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
-export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request'];
+//   • termenul de montaj („Montaj, mai sunt N zile" / „Termenul de montaj a trecut") → calendarul, pe contractul din
+//     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen'];
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
 export function dateAnunt(d: any): any {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -44,6 +47,10 @@ export function adresaAnunt(tip: any, date: any): string | null {
     return firma != null ? rutaFactura(firma, 'unica', { lucrari: Array.isArray(d.lucrari) ? d.lucrari : [] }) : '/billing';
   }
   if (tip === 'demo_request') return '/admin/demo-requests';
+  if (tip === 'montaj_termen') {
+    const ctr = idFirma(d.contractId);   // același fel de id: un număr întreg pozitiv
+    return ctr != null ? rutaCalendarMontaj(ctr) : '/admin/montaj?fila=calendar';
+  }
   return null;
 }
 // Adresa de mai sus, citită înapoi de Dispozitive: { imeis, firma }, sau null când n-are nimic de pus

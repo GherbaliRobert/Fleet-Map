@@ -119,3 +119,7 @@
 .chip.hi::after { content: '•'; margin-left: 4px; opacity: .5; }
 .chip.on { background: rgba(63,224,125,.16); border-color: var(--accent); color: var(--accent); }
 .fld-note { font-size: 12.5px; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* Lista goală, pe tema deschisă: --text-muted pe fundalul paginii dădea 4,23:1, sub prag; --text-secondary ~6,7:1.
+   (Revizia lotului 5, 01.10.) */
+:root[data-theme="light"] .adm-empty { color: var(--text-secondary); }

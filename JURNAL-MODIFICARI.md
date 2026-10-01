@@ -89,6 +89,52 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 
 ## 2026-10-01
 
+### AMÂNDOI · Telefonul 1.0.7: ce a făcut Alin pe 30.09, adus pe telefon (lotul 5) — `HASH`
+
+Pe 30.09 Alin a pus pe web calendarul de montaj, facturile care pleacă singure, previzualizarea, proforma la semnare,
+factura montajului în ritmul instalatorului și anunțurile noi. Telefonul n-avea nimic din ele, iar câteva lucruri
+mergeau pe telefon altfel decât pe web. Acum telefonul face ce face web-ul, pe aceleași rute. **Serverul și pagina
+web ale lui Alin n-au fost atinse.**
+
+**Montaj — calendarul (prima filă)**
+- Luna, pe zile, cu câte mașini se montează în fiecare zi (portocaliu = programat, verde = montat), filtrul pe
+  instalator, „De programat" cu termenul și stocul de aparate.
+- Programezi o zi, muți o lucrare, o treci „Montată" (și cu mai puține mașini — restul se întoarce singur la „De
+  programat"), ștergi ziua, mergi „La client".
+- Drumul clientului și fișa, la un contract **semnat**, duc acum aici („Programează montajul"). Înainte, telefonul
+  programa pe calea veche, pe lângă calendar, și se puteau programa mai multe mașini decât are contractul.
+- Ritmul instalatorului („ne facturează lunar / săptămânal") apare pe rândul lui, pe contractul cu el și la „Reia
+  tarifele"; în Stoc, nota despre GPS-urile trecute cu IMEI și mesajul de după intrare.
+
+**Facturare**
+- Secțiunile „Facturi", „Proforme (N de încasat)" și „Montaj de facturat", ca pe web.
+- „Previzualizează": hârtia exactă, fără număr și fără să plece nimic.
+- La „E semnat", când contractul are aparate vândute, se deschide proforma aparatelor, gata completată.
+- Factura montajului se pregătește singură, cu lucrările puse (din secțiune sau din anunț).
+- Nota „La emitere pleacă singură: anunț, email cu PDF, ANAF".
+- O factură ajunsă deja la ANAF nu mai are „Anulează" (se stornează) — ca pe web, de azi.
+- Dacă „Montaj de facturat" nu se poate încărca, ecranul o spune, în loc de „· 0" și „nimic de facturat".
+
+**Anunțurile duc la treabă** (înainte deschideau o pagină goală pe telefon)
+- „Aparate noi transmit" → Dispozitive, Neasignate, cu aparatele bifate și firma propusă aleasă.
+- „Montaj de facturat" → factura pregătită. „Cerere demo" → Cereri demo. Termenul de montaj → calendarul, pe
+  contractul lui (pe web încă nu — trecut la Alin).
+
+**Mai mici:** banda „Termenul de montaj" pe drumul clientului; după „Încasată" din fișa firmei, ce a plecat;
+„Deschide dosarul clientului" pe rândul ofertei.
+
+**Pentru client (CLIENT) — TVA-ul de pe factură.** O firmă făcută sau completată de pe telefon lua mereu „plătitoare
+de TVA", orice ar fi spus ANAF: pe factură apărea „RO" în fața CUI-ului și cod de TVA în e-Factura, și la firmele
+neplătitoare. Acum telefonul salvează statutul primit de la ANAF, ca web-ul. Pe foaia facturii de pe telefon, „RO"
+apare doar la plătitori, ca pe PDF.
+
+- **Ce am schimbat:** aplicația de telefon 1.0.7. Probe: `verify_telefon_lot5.js` (nouă, în poartă), plus
+  `verify_facturare_telefon.js` și `verify_contracte_telefon.js` rescrise pe regula nouă. Nimic pe server, nimic pe web.
+- **Ce vede fondatorul:** pe telefon, calendarul de montaj, secțiunile din Facturare, previzualizarea, proforma la
+  semnare, anunțurile care duc la treabă — ca pe web.
+- **Ce vede clientul:** factura corectă la TVA pentru firmele făcute de pe telefon.
+
+
 ### AMÂNDOI · Trei probleme găsite aseară de verificarea lui Robert, reparate (20, 13, 17)
 
 Sesiunea lui Robert a verificat lucrul de pe 30.09 și a găsit patru probleme noi (17–20, în lista de mai jos, la
@@ -9869,7 +9915,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
 
-- [ ] **(voi) Instalați aplicația de telefon 1.0.6** (cuprinde tot din 1.0.4 și 1.0.5). Ecranele loturilor 3 și 4 apar doar în ea. Încărcarea unei liste
+- [ ] **(voi) Instalați aplicația de telefon 1.0.7** (cuprinde tot din 1.0.4–1.0.6). Ecranele loturilor 3, 4 și 5 apar doar în ea. Încărcarea unei liste
   Teltonika noi de pe telefon e de încercat o dată pe un telefon adevărat (fișierul are câțiva MB).
 
 - [ ] **(eu + Robert) Telefonul, la APK-ul următor (30.09, seara).** Sursa e gata pentru: „Ne facturează" în fișa
@@ -9979,7 +10025,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   17. ~~**„Anulează" rămâne și pe factura deja trimisă la ANAF.** De azi factura pleacă singură la ANAF; anularea nu se
       uită la asta. Factura rămâne valabilă în SPV-ul clientului, iar la abonament luna se poate reface → **două facturi
       la ANAF pe aceeași lună**.~~ — **FĂCUT (01.10):** serverul refuză (409, „se stornează"), butonul nu mai apare pe web;
-      pe telefon se ascunde la APK-ul următor.
+      pe telefon se ascunde din 1.0.7 (01.10).
   18. **„Încasată" apăsată de două ori** (punctul 8 de mai sus) face acum două facturi fiscale care pleacă SINGURE la
       client, pe email și la ANAF.
   19. **„Montaj de facturat" propune din nou un montaj deja facturat** (pus pe o proformă încasată sau redeschis cu
@@ -9989,8 +10035,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
       promisă în contract după încetare.~~ — **FĂCUT (01.10):** din stoc e primit doar ce e în depozit sau la instalator;
       la ștergerea definitivă, bucata trece pe „defect", cu notă. Probat cu trackere pe TCP (`verify_aparate_noi.js`).
 
-- [ ] **(eu) Lotul 5 pe telefon (aplicația 1.0.7): ce a făcut Alin pe 30.09. Adăugat pe 30.09.** Nimic pe server — toate
-  rutele există. Verificat în cod (inventar), nimic început încă.
+- [x] **REZOLVAT (01.10, APK 1.0.7): lotul 5 pe telefon** — vezi intrarea din 01.10. Era: (eu) ce a făcut Alin pe 30.09.
+  Nimic pe server — toate rutele există.
   **Merg greșit pe telefon acum:**
   1. **TVA — ajunge pe factură:** o firmă făcută sau completată de pe telefon rămâne „plătitoare de TVA", orice ar spune
      ANAF (telefonul arată statutul, dar nu-l trimite). Pe factură și în e-Factura apare cod de TVA greșit.
@@ -10004,6 +10050,23 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   Stoc (mici). Intră și ce a scris Alin deja pe telefon („Ne facturează" în fișa instalatorului, textele din Stoc).
   Probe de rescris pe regula nouă: `verify_contracte_telefon.js` (calea `?lucrare=noua`), `verify_facturare_telefon.js`
   (reperul „Facturi fiscale").
+
+- [ ] **(Alin) Găsite la revizia lotului 5 de telefon (01.10), pe web — NEATINSE de noi.** Telefonul le-a ocolit unde
+  ținea doar de ecran; pe web rămân:
+  1. **Texte copiate întocmai pe telefon, greșite la cifra 1** (se schimbă pe amândouă odată — proba telefonului cere
+     aceleași cuvinte ca pagina): „1 mașină programate", „Celelalte 1 mașină se întorc la «De programat»", „(din 1
+     rămase)", „1 din lucrări nu mai sunt de facturat".
+  2. **„Facturează acum"** nu facturează: deschide fereastra pregătită. Butonul ar trebui să spună ce face.
+  3. **„30 de zile de la încasarea avansului"** e scris de mână în subtitlul „De programat" (web și telefon), deși cifra
+     are locul ei în contracte (`MONTAJ_ZILE_DUPA_AVANS`).
+  4. **Anunțul termenului de montaj:** pe web deschide fereastra goală (pe telefon, din 1.0.7, duce în calendar, pe
+     contractul lui); iar textul lui de pe server spune „Programează restul din fișa firmei → Contract" — din 30.09 se
+     programează în Calendar.
+  5. **„Montaj de facturat" căzut** (eroare de server sau de rețea) arată pe web „· 0" și „nimic de facturat" — un fals
+     „n-ai nimic de încasat". Pe telefon, din 1.0.7, spune eroarea.
+  6. Doar pe web: „1 tarife scrise"; banda „Firma e propusă de montajul din calendar" apare și când firma e aleasă de mână.
+  7. **De hotărât:** „Modifică" pe o lucrare a unui contract SEMNAT deschide tot formularul vechi, deci poate schimba
+     bucăți și stare pe lângă regulile calendarului (web și telefon, la fel).
 
 - [ ] **(voi) Factura emisă de pe telefon cu altă cotă de TVA decât 19%.** Până la 1.0.4, la prima calculare,
   telefonul punea 19% pe linii oricare ar fi fost cota din „Date emitent". Dacă s-a emis vreo factură de pe telefon

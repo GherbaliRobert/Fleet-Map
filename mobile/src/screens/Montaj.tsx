@@ -256,7 +256,7 @@ export function Montaj() {
           {d == null && !err && <div class="spin" style="margin:30px auto" />}
           {err && <div class="ctr-err">{err}</div>}
           {d != null && (
-            <div class="ctr-chips" role="tablist">
+            <div class="ctr-chips mj-file" role="tablist">
               {MJ_FILE.map(([k, et]) => {
                 const n = cifraFilei(k, nr[k]);
                 return (
