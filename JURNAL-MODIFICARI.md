@@ -133,7 +133,7 @@ lămurit cu Alin.
 
 ## 2026-10-01
 
-### AMÂNDOI · Lista lui Robert, lotul 2 — banii (4, 5, 6, 7, 9, 10, 12, 13, 14, 15) — `HASH`
+### AMÂNDOI · Lista lui Robert, lotul 2 — banii (4, 5, 6, 7, 9, 10, 12, 13, 14, 15) — `c25dfb6`
 
 Lotul 2 sunt locurile unde se putea factura de două ori, se putea pierde o sumă sau ecranul arăta altă sumă decât
 factura. Zece din douăsprezece sunt reparate. **Punctul 8** (aparat schimbat pe aceeași mașină) așteaptă „da"-ul lui
