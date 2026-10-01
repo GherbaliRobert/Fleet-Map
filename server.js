@@ -9209,44 +9209,85 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
     if (!req.query.ext) return res.json(history);
     const dev = await db.getDeviceFull(imei).catch(() => null);
     const limit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
-    let oc = 0, oMax = 0, oDur = 0;
-    if (limit && history.length > 1) {
-      for (let i = 1; i < history.length; i++) {
-        const p = history[i], sp = Number(p.speed) || 0;
-        if (sp > limit) {
-          oc++;
-          const over = sp - limit; if (over > oMax) oMax = over;
-          const dt = (new Date(p.timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
-          if (dt > 0 && dt < 300) oDur += dt; // ignoră salturi mari (offline)
-        }
-      }
-    }
-    // Sumar traseu: distanță + combustibil din reports.fuelStats (identic cu „Statistici consum"),
-    // timp în deplasare/staționar calculat direct din poziții (IDLE_SPEED = 3 km/h, ca în reports.js).
-    let distanceKm = null, fuelLiters = null, fuelEstimated = false;
-    try {
-      const fs = await reports.fuelStats(db, [imei], from, to, {});
-      const pv = fs && fs.perVehicle && fs.perVehicle[0];
-      if (pv) { distanceKm = pv.km; fuelLiters = pv.liters; fuelEstimated = !!pv.estimated; }
-    } catch (e) { /* sumarul de combustibil e best-effort, nu blochează traseul */ }
-    let movingSec = 0, stationarySec = 0;
-    for (let i = 1; i < history.length; i++) {
-      const dt = (new Date(history[i].timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
-      if (!(dt > 0) || dt > 3600) continue; // ignoră salturile mari (offline)
-      if ((Number(history[i].speed) || 0) > 3) movingSec += dt; else stationarySec += dt;
-    }
     res.json({
       points: history,
       device: dev ? { speed_limit: limit, name: dev.name, plate: dev.plate } : null,
-      summary: {
-        overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax,
-        distanceKm, movingSec: Math.round(movingSec), stationarySec: Math.round(stationarySec),
-        fuelLiters, fuelEstimated
-      }
+      summary: await _sumarTraseu(imei, from, to, history, limit)
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+// Sumarul unui traseu — O SINGURĂ socoteală pentru ecranul Traseu (`/api/history/:imei?ext=1`) și pentru fișierul
+// descărcat de acolo (`/api/traseu/excel`), ca hârtia să spună exact ce spune ecranul (01.10).
+//   • distanța și combustibilul: din reports.fuelStats (identic cu „Statistici consum");
+//   • timpul în deplasare / staționar: din poziții (IDLE_SPEED = 3 km/h, ca în reports.js), fără salturile de peste o oră;
+//   • depășirile: față de limita setată pe mașină.
+async function _sumarTraseu(imei, from, to, history, limit) {
+  let oc = 0, oMax = 0, oDur = 0;
+  if (limit && history.length > 1) {
+    for (let i = 1; i < history.length; i++) {
+      const p = history[i], sp = Number(p.speed) || 0;
+      if (sp > limit) {
+        oc++;
+        const over = sp - limit; if (over > oMax) oMax = over;
+        const dt = (new Date(p.timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+        if (dt > 0 && dt < 300) oDur += dt; // ignoră salturi mari (offline)
+      }
+    }
+  }
+  let distanceKm = null, fuelLiters = null, fuelEstimated = false;
+  try {
+    const fs = await reports.fuelStats(db, [imei], from, to, {});
+    const pv = fs && fs.perVehicle && fs.perVehicle[0];
+    if (pv) { distanceKm = pv.km; fuelLiters = pv.liters; fuelEstimated = !!pv.estimated; }
+  } catch (e) { /* sumarul de combustibil e best-effort, nu blochează traseul */ }
+  let movingSec = 0, stationarySec = 0;
+  for (let i = 1; i < history.length; i++) {
+    const dt = (new Date(history[i].timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+    if (!(dt > 0) || dt > 3600) continue; // ignoră salturile mari (offline)
+    if ((Number(history[i].speed) || 0) > 3) movingSec += dt; else stationarySec += dt;
+  }
+  return {
+    overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax,
+    distanceKm, movingSec: Math.round(movingSec), stationarySec: Math.round(stationarySec),
+    fuelLiters, fuelEstimated
+  };
+}
+// Traseul descărcat din ecranul Traseu (Alin, 01.10: „nu are numele RA Tracks… în interiorul fișierului sunt doar
+// cifre, nimic de înțeles"). Excel prin `sendReport` — numele casei, logo-ul pe fiecare foaie —, cu „Sumar" (aceleași
+// cifre ca ecranul, din `_sumarTraseu`) și pozițiile pe românește (`reportExport.traseuVehicul`). Unul sau mai multe
+// vehicule (cele bifate pe ecran). Aceleași drepturi ca traseul: cine vede mașina pe hartă îi poate descărca traseul.
+// Exportul CSV brut (`/api/export/:imei`) rămâne cum era: e documentat pentru integrările prin API.
+app.get('/api/traseu/excel', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul Excel nu e disponibil acum.' });
+    const imeis = String(req.query.imeis || req.query.imei || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!imeis.length) return res.status(400).json({ error: 'Alege vehiculul.' });
+    if (imeis.length > 20) return res.status(400).json({ error: 'Cel mult 20 de vehicule într-un fișier.' });
+    if (imeis.some(function (imei) { return !canAccessImei(req, imei); })) return res.status(403).json({ error: 'Acces interzis' });
+    const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const spanMs = new Date(to).getTime() - new Date(from).getTime();
+    if (!Number.isFinite(spanMs) || spanMs < 0) return res.status(400).json({ error: 'Interval invalid' });
+    if (spanMs > 92 * 24 * 60 * 60 * 1000) return res.status(400).json({ error: 'Interval prea mare (max 92 de zile). Restrânge perioada.' });
+    // Cel mult `TRASEU_MAX_POZITII` poziții într-un fișier (regula și fraza stau în report_export.js): Excel-ul se face
+    // în memorie și, peste atât, ar ține serverul ocupat secunde întregi. Se socotește pe măsură ce se citește.
+    const lista = [];
+    let total = 0;
+    for (const imei of imeis) {
+      const history = await db.getDeviceHistory(imei, from, to);
+      if (!history.length) continue;
+      total += history.length;
+      const preaMare = reportExport.traseuPreaMare(total);
+      if (preaMare) return res.status(400).json({ error: preaMare, preaMare: true });
+      const dev = await db.getDeviceFull(imei).catch(function () { return null; });
+      const limit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
+      lista.push(reportExport.traseuVehicul({ imei: imei, dev: dev, history: history, limit: limit, sum: await _sumarTraseu(imei, from, to, history, limit) }));
+    }
+    if (!lista.length) return res.status(404).json({ error: 'Nu sunt date pentru perioada selectată.' });
+    return reportExport.sendReport(res, reportExport.traseuCaRaport(lista, from, to), 'xlsx');
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)

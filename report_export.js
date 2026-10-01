@@ -49,6 +49,14 @@ function xlSheetName(name, used) {
   used.add(cand.toLowerCase());
   return cand;
 }
+// O celulă de tabel. Un link ({ text, hyperlink } — ex. „Vezi pe hartă" din traseu) primește și înfățișarea de
+// link, albastru și subliniat: altfel Excel îl arată ca text obișnuit și nu se vede că se poate apăsa.
+function xlCelula(cell, v) {
+  cell.value = (v == null ? '' : v);
+  if (v && typeof v === 'object' && v.hyperlink) cell.font = { color: { argb: 'FF0563C1' }, underline: true };
+}
+// Câte caractere ocupă o valoare pe ecran (pentru lățimea coloanei): la un link contează textul, nu obiectul.
+function xlLungime(v) { return String((v && typeof v === 'object' && v.text != null) ? v.text : v).length; }
 // Scrie un tabel uniform într-un worksheet: linii titlu + antet + rânduri + auto-lățime.
 function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   const ncol = Math.max(1, columns.length);
@@ -59,8 +67,8 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   const hr = r;
   columns.forEach((c, i) => { const cell = ws.getCell(hr, i + 1); cell.value = c; cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } }; cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } }; });
   r = hr + 1;
-  for (const row of (rows || [])) { const xr = ws.getRow(r++); (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); }); }
-  columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, String(v).length); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
+  for (const row of (rows || [])) { const xr = ws.getRow(r++); (row || []).forEach((v, i) => { xlCelula(xr.getCell(i + 1), v); }); }
+  columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, xlLungime(v)); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
   return r; // rândul următor liber (după ultimul rând de date) — ca să putem atașa o legendă sub tabel
 }
 // Legendă sub tabel (ex. explicația coloanei „Sursă"): titlu îngroșat + „termen | descriere" pe rânduri.
@@ -136,7 +144,7 @@ async function toXlsx(report) {
     const sumRows = Object.entries(report.summary).map(([k, v]) => { const n = _summableNum(v); return [k, n != null ? n : (v == null ? '' : v)]; });
     xlWriteTable(wb.addWorksheet('Sumar'), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], ['Indicator', 'Valoare'], sumRows, logoId);
   }
-  const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
+  const ws = wb.addWorksheet((report.sheetName || report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
   const base = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul începe de la rândul 2 (sau 1 fără logo)
 
   // Fără merge pe titlu/perioadă → textul lung se revarsă în celulele goale din dreapta (vizibil fără să tragi de coloane).
@@ -158,12 +166,12 @@ async function toXlsx(report) {
   let r = headerRow + 1;
   for (const row of (report.rows || [])) {
     const xr = ws.getRow(r++);
-    (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); });
+    (row || []).forEach((v, i) => { xlCelula(xr.getCell(i + 1), v); });
   }
 
   cols.forEach((c, i) => {
     let w = String(c).length;
-    for (const row of (report.rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, String(v).length); }
+    for (const row of (report.rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, xlLungime(v)); }
     ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2));
   });
 
@@ -833,4 +841,101 @@ async function sablonMasiniXlsx(opt) {
   return { buffer: Buffer.from(buf), nume: 'RA-Tracks - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
 }
 
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx };
+// ─── începe „traseul descărcat din ecranul Traseu" ───────────────────────────────────────────────
+// Alin (01.10): „raportul CSV — îmi apar numai cifre… nu are numele RA Tracks ca celelalte documente
+// descărcabile, iar în interiorul fișierului sunt doar cifre, nimic de înțeles". Fișierul vechi
+// (`traseu_<imei>_<zi>.csv`) avea codurile brute ale aparatului („_control_flags", „can_csf_…",
+// „[object Object]") și se deschidea într-o SINGURĂ coloană în Excel-ul românesc (care desparte cu „;").
+// Acum: Excel, prin `sendReport` (numele casei, logo-ul pe fiecare foaie). Foaia „Sumar" are ACELEAȘI
+// cifre ca ecranul (le dă `_sumarTraseu` din server.js), foaia „Poziții" are fiecare punct pe românește.
+// Exportul CSV brut (`/api/export/:imei`) rămâne neschimbat: e documentat pentru integrările prin API.
+const TRASEU_COLOANE = ['Data', 'Ora', 'Stare', 'Viteză (km/h)', 'Contact', 'Direcție', 'Altitudine (m)', 'Sateliți', 'Coordonate', 'Pe hartă'];
+const _DIRECTII = ['N', 'NE', 'E', 'SE', 'S', 'SV', 'V', 'NV'];
+// Unghiul aparatului (0 = nord, în sensul acelor de ceasornic) → una din cele 8 direcții.
+function directieTraseu(unghi) {
+  if (unghi == null || unghi === '') return '';
+  const a = Number(unghi); if (!isFinite(a)) return '';
+  return _DIRECTII[Math.round((((a % 360) + 360) % 360) / 45) % 8];
+}
+// „1h 05m" / „45 min" — ACEEAȘI formă ca sumarul de pe ecran (`_hm` din hpRenderSummary), legate printr-o probă.
+function hmTraseu(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  let h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  if (m === 60) { h++; m = 0; }
+  return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min');
+}
+// „70 km", „1.250 km" — ca pe ecran (`_grp` din hpRenderSummary: kilometrii rotunjiți, cu punct la mii).
+function _miiTraseu(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+function kmTraseu(n) { return _miiTraseu(n) + ' km'; }
+// Durata depășirilor, ca pe ecran (`durStr` din hpRenderSummary): „45s", „3min 20s".
+function durataDepasiri(sec) { const d = Math.max(0, Math.round(Number(sec) || 0)); return d < 60 ? d + 's' : Math.floor(d / 60) + 'min ' + (d % 60) + 's'; }
+// Cel mult atâtea poziții într-un fișier (01.10). MĂSURAT: Excel-ul se face în memorie — 10.000 de poziții cer ~3 secunde
+// și ~0,6 GB; 50.000 (cam o lună a unei mașini) cer 16 secunde și 1,5 GB, timp în care serverul nu mai răspunde nimănui
+// (harta live, aparatele care trimit). Ecranul arată oricum tot traseul; fișierul e pentru câteva zile sau câteva mașini.
+const TRASEU_MAX_POZITII = 10000;
+// null = încape; altfel, fraza pentru om. O singură regulă, chemată de ruta de export.
+function traseuPreaMare(total) {
+  if (!(Number(total) > TRASEU_MAX_POZITII)) return null;
+  return 'Traseul ales are peste ' + contracte.numar(TRASEU_MAX_POZITII, 'poziție', 'poziții').replace(/^\d+/, _miiTraseu(TRASEU_MAX_POZITII)) +
+    ' — prea multe pentru un singur fișier Excel. Alege o perioadă mai scurtă sau mai puține mașini.';
+}
+// Un vehicul: rândurile (o poziție pe rând) și sumarul, ca perechi [etichetă, valoare] cu etichete FIXE
+// (la mai multe vehicule devin coloanele foii „Sumar").
+function traseuVehicul(o) {
+  const dev = o.dev || {}, sum = o.sum || {}, hist = o.history || [];
+  const nume = String(dev.name || o.imei || '').trim(), plate = String(dev.plate || '').trim();
+  const vehicul = nume + (plate && plate !== nume ? ' · ' + plate : '');
+  const zi = (ts, opt) => new Date(ts).toLocaleString('ro-RO', Object.assign({ timeZone: DISPLAY_TZ }, opt));
+  const rows = hist.map(function (p) {
+    const io = (p.io_data && typeof p.io_data === 'object') ? p.io_data : {};
+    const lat = Number(p.latitude), lon = Number(p.longitude), viteza = Number(p.speed) || 0;
+    const coord = (isFinite(lat) && isFinite(lon) && (lat || lon)) ? lat.toFixed(6) + ', ' + lon.toFixed(6) : '';
+    return [
+      zi(p.timestamp, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      zi(p.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      viteza > 3 ? 'În mers' : 'Staționare',          // același prag ca sumarul (3 km/h)
+      Math.round(viteza),
+      io.ignition == null ? '' : (Number(io.ignition) ? 'Pornit' : 'Oprit'),
+      directieTraseu(p.angle),
+      p.altitude == null ? '' : Math.round(Number(p.altitude) || 0),
+      p.satellites == null ? '' : Number(p.satellites) || 0,
+      coord,
+      coord ? { text: 'Vezi pe hartă', hyperlink: 'https://www.google.com/maps?q=' + lat.toFixed(6) + ',' + lon.toFixed(6) } : ''
+    ];
+  });
+  const maxV = hist.reduce(function (m, p) { return Math.max(m, Number(p.speed) || 0); }, 0);
+  const limita = Number(o.limit) || null, oc = Number(sum.overspeedCount) || 0;
+  // Etichete FIXE, aceleași la orice mașină (la mai multe mașini devin coloanele foii „Sumar"). Cifrele sunt cele de
+  // pe ecran (`hpRenderSummary`), scrise la fel; „—" unde ecranul n-are ce arăta.
+  const sumar = [
+    ['Distanță', (sum.distanceKm != null && isFinite(sum.distanceKm)) ? kmTraseu(sum.distanceKm) : '—'],
+    ['Timp în deplasare', hmTraseu(sum.movingSec)],
+    ['Timp staționar', hmTraseu(sum.stationarySec)],
+    ['Consum', (sum.fuelLiters != null && isFinite(sum.fuelLiters)) ? Number(sum.fuelLiters).toFixed(1).replace('.', ',') + ' L' + (sum.fuelEstimated ? ' (estimat)' : '') : '—'],
+    ['Viteză maximă', Math.round(maxV) + ' km/h'],
+    ['Limita de viteză a mașinii', limita ? limita + ' km/h' : 'nesetată (se pune în fișa vehiculului)'],
+    ['Depășiri ale limitei', limita ? oc : '—'],
+    ['Depășirea cea mai mare', (limita && oc) ? '+' + Math.round(Number(sum.maxOverKmh) || 0) + ' km/h' : '—'],
+    ['Durata depășirilor', (limita && oc) ? durataDepasiri(sum.overspeedDurationSec) : '—'],
+    ['Poziții GPS', hist.length]
+  ];
+  return { vehicul: vehicul || String(o.imei || ''), nume: nume, plate: plate, rows: rows, sumar: sumar };
+}
+// Raportul pentru `sendReport`: un vehicul = foaia „Sumar" + foaia „Poziții"; mai multe = „Sumar" (un rând pe
+// vehicul) + câte o foaie pe vehicul. Numele fișierului: „RA-Tracks - Raport Traseu {vehicul} - {zi}.xlsx".
+function traseuCaRaport(lista, from, to) {
+  const v = (lista || []).filter(Boolean);
+  if (v.length === 1) {
+    const x = v[0], summary = { 'Vehicul': x.nume || x.vehicul };
+    if (x.plate && x.plate !== x.nume) summary['Număr de înmatriculare'] = x.plate;
+    x.sumar.forEach(function (s) { summary[s[0]] = s[1]; });
+    return { label: 'Traseu ' + x.vehicul, sheetName: 'Poziții', from: from, to: to, columns: TRASEU_COLOANE, rows: x.rows,
+      summary: summary, summarySheet: true };
+  }
+  return { label: 'Traseu ' + v.length + ' vehicule', from: from, to: to, columns: TRASEU_COLOANE, rows: [],
+    perVehicle: v.map(function (x) { return { vehicul: x.vehicul, summary: x.sumar, rows: x.rows }; }), noFleetTotal: true };
+}
+// ─── sfârșit „traseul descărcat din ecranul Traseu" ──────────────────────────────────────────────
+
+module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx,
+  traseuVehicul, traseuCaRaport, traseuPreaMare, directieTraseu, hmTraseu, kmTraseu, durataDepasiri, TRASEU_COLOANE, TRASEU_MAX_POZITII };

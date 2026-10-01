@@ -1093,6 +1093,8 @@
        nimic nou de învățat. Înainte erau „capete" înguste, cu bifă ȘI cu nume clicabil separat, iar
        cele două făceau lucruri diferite pe același rând. */
     #hp-tabs { display: flex; flex-direction: column; gap: 3px; margin-top: 10px; }
+    /* Butoanele de export stau sub lista traseelor încărcate, nu lipite de ea (Alin, 01.10: „se vede urât"). */
+    #hp-export { margin-top: 12px; }
     .hp-step2-h {
       display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
       font-size: 10px; text-transform: uppercase; letter-spacing: .4px;

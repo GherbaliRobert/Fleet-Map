@@ -94,6 +94,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: aplicația de telefon cu calendarul nou de montaj. Adăugat pe 01.10.** Codul e gata (fereastra zilei,
   confirmările, anularea cu motiv, istoricul, reprogramarea); trebuie construit și instalat APK-ul următor. Până atunci,
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
+  **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
+  primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -132,10 +134,48 @@ Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și tex
 contabilului despre factura de avans); (3) restul meniului, de la „Conturi & Abonamente" până la „Jurnal audit".
 **Hotărât (Alin, 01.10): ce găsim nou pe drum, mă întreabă de fiecare dată** — „o rezolvăm acum sau trecem mai departe?".
 (Pe 01.10, problema anexei de la ștergerea unei lucrări: „rezolvăm problema" — rezolvată, mai jos.)
+(Pe 01.10, seara: trei reparații pe ecranul Traseu, găsite de Alin pe verticala partenerului — mai jos. Apoi, înapoi
+la verticala fondatorului: Facturare.)
 
 ---
 
 ## 2026-10-01
+
+### CLIENT · Traseu: „Limite reale" merge, butoanele au loc, traseul se descarcă în Excel cu numele casei
+
+Alin (01.10, pe verticala partenerului): *„când dau pe Limite reale… îmi apare eroare, încarcă întâi un traseu… între
+Dacia Logan cu bifa și butoanele CSV sau KML se vede urât, nu există spațiere… raportul CSV — îmi apar numai cifre, nu
+are numele RA Tracks ca celelalte documente, nimic de înțeles"*.
+
+1. **„Limite reale" și „Aliniază pe drumuri" lucrează pe traseul bifat.** Spuneau „Încarcă întâi un traseu." cu traseul
+   pe hartă: la bifare, aplicația reținea traseul și imediat după aceea îl ștergea, odată cu limitele traseului de
+   dinainte. Acum întâi curăță, apoi reține. Pe ratrack.ro limitele vin de la OpenStreetMap; în cutia de probe serviciul
+   e blocat, deci acolo am văzut doar că cererea pleacă (fără mesajul greșit).
+2. **Butoanele nu mai stau lipite de rândul traseului:** 12 px între „Dacia Logan 3 · B 154 UIP" și butoanele de dedesubt,
+   măsurat pe ambele teme.
+3. **„CSV" a devenit „Excel"**, ca rapoartele:
+   - Numele: „RA-Tracks - Raport Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.xlsx", cu logo-ul pe fiecare foaie.
+   - Foaia „Sumar": distanța, timpul în deplasare și în staționare, consumul, viteza maximă, limita mașinii și
+     depășirile — **aceleași cifre ca pe ecran** (le socotește aceeași funcție, pentru ecran și pentru fișier).
+   - Foaia „Poziții": un rând pe poziție — data, ora (a României), „În mers" / „Staționare", viteza, contactul
+     „Pornit" / „Oprit", direcția (N, NE…), altitudinea, sateliții, coordonatele și un link „Vezi pe hartă".
+   - Mai multe mașini bifate → un singur fișier: „Sumar" cu un rând pe mașină, plus câte o foaie pe mașină.
+   - **Cel mult 10.000 de poziții într-un fișier** (de obicei 1–2 săptămâni ale unei mașini, sau o zi pentru câteva).
+     Peste atât, aplicația spune „alege o perioadă mai scurtă sau mai puține mașini". De ce: fișierul se face pe server,
+     în memorie. Măsurat: 10.000 de poziții = 3 secunde; 50.000 (cam o lună) = 16 secunde și 1,5 GB, timp în care
+     serverul nu mai răspunde nimănui — nici hărții live a celorlalți clienți.
+   - KML-ul are și el numele casei: „RA-Tracks - Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.kml".
+   - Fișierul vechi (CSV cu codurile aparatului) rămâne doar pentru integrările prin cheie API, unde e documentat.
+
+- **Ce am schimbat:** pagina (ordinea la bifare, spațiul, butonul Excel, numele KML), serverul (o rută nouă pentru
+  Excel, prin aceeași cale ca rapoartele; sumarul traseului mutat într-o singură funcție, folosită de ecran și de
+  fișier), telefonul (Excel în loc de CSV, numele KML — din aplicația următoare). Probă nouă: `verify_traseu_export.js`
+  (87 de verificări, în `npm test`): funcțiile paginii rulate (și ordinea veche, ca martor), formele cifrelor legate de
+  ecran, numele KML legat între web și telefon, apoi pe server pornit — numele, foile, cifrele ecranului în fișier,
+  altă firmă (refuz), mașinile demo (refuz), limitele.
+- **Ce vede fondatorul:** același ecran Traseu, când trece pe verticala partenerului.
+- **Ce vede clientul:** cele trei de mai sus. Pe telefon, Excel-ul și numele KML vin cu aplicația următoare; până atunci
+  telefonul vechi descarcă tot CSV-ul.
 
 ### FONDATOR · Contractul nesemnat: anexa de montaj se reface și când ștergi o lucrare
 

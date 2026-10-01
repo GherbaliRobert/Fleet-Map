@@ -195,10 +195,12 @@ T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAnte
 T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
   /function _numeDinAntet\(resp, implicit\)/.test(html)
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
-  // Șase locuri: cititorul însuși, Inventarul, hârtia ofertei, hârtia contractelor (23.09), șablonul
-  // mașinilor clientului (28.09) și previzualizarea facturii (30.09). O descărcare nouă îl folosește pe el — și se adaugă aici.
-  && (html.match(/_numeDinAntet\(/g) || []).length === 6 && /_numeDinAntet\(r, 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(html)
+  // Șapte locuri: cititorul însuși, Inventarul, hârtia ofertei, hârtia contractelor (23.09), șablonul
+  // mașinilor clientului (28.09), previzualizarea facturii (30.09) și traseul descărcat din ecranul Traseu (01.10,
+  // prin `window._numeDinAntet`). O descărcare nouă îl folosește pe el — și se adaugă aici.
+  && (html.match(/_numeDinAntet\(/g) || []).length === 7 && /_numeDinAntet\(r, 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(html)
   && /_numeDinAntet\(r, 'previzualizare\.pdf'\)/.test(html)
+  && /window\._numeDinAntet\(r, 'RA-Tracks - Traseu\.xlsx'\)/.test(html)
   && !/filename\\\*\?=\(\?:UTF-8/.test(html));
 T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
 T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));

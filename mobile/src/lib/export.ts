@@ -58,6 +58,16 @@ function _eroareServer(data: any, status: number): string {
   if (status === 404) return 'Fișierul nu există pe server';
   return 'Eroare ' + status;
 }
+// Numele fișierului KML al unui traseu, după regula casei: „RA-Tracks - Traseu {vehicul} - {ziua descărcării}.kml"
+// (01.10). Aceeași formă ca pe web (`_numeKmlTraseu` din pagină) — legate printr-o probă. Caracterele interzise
+// în nume de fișier se scot.
+export function numeKmlTraseu(nume: string, plate?: string | null, azi?: Date): string {
+  const vehicul = String(nume || '') + (plate && plate !== nume ? ' · ' + plate : '');
+  const d = azi || new Date(), p2 = (n: number) => String(n).padStart(2, '0');
+  return ('RA-Tracks - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
+    .replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim() + '.kml';
+}
+
 export async function salveazaDeLaServer(path: string, numeImplicit: string, opt: { deschide?: boolean } = {}): Promise<string> {
   const url = API_BASE + path;
   const token = getAuthToken();

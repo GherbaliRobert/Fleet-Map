@@ -314,7 +314,7 @@
              (pregătirea) și n-ai mai vedea nimic după încărcare. -->
         <div id="hp-tabs" style="display:none;"></div>
         <div id="hp-export" class="hp-row hp-export" style="display:none;">
-          <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
+          <button class="history-btn success" onclick="exportTraseuExcel()" title="Descarcă traseul în Excel: sumarul și fiecare poziție, pe românește"><i class="fas fa-file-excel"></i> Excel</button>
           <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
           <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
           <button class="history-btn" id="hp-snap-btn" onclick="hpSnapToRoads()" title="Mută punctele traseului pe carosabil (date OpenStreetMap)"><i class="fas fa-road"></i> Aliniază pe drumuri</button>
@@ -14785,7 +14785,7 @@ const pozitii = await r.json();</code></pre>
 
       dtSet('history-from', from);
       dtSet('history-to', to);
-      exportCSV();
+      exportTraseuExcel();
     }
 
     // ─── History ───
@@ -15407,8 +15407,11 @@ const pozitii = await r.json();</code></pre>
         var sel = document.getElementById('history-imei'); if (sel) sel.value = solo.imei;
         hpSetVehicleLabel(solo.imei);
         hpSpeedLimit = solo.speedLimit;
-        hpLastData = solo.data;                 // „Limite reale" / „Aliniază" lucrează pe ea
+        // ÎNTÂI se curăță stratul de limite al traseului de dinainte, ABIA APOI se reține traseul bifat:
+        // hpClearOsmOverlay() golește și hpLastData. Invers (cum a stat până pe 01.10), „Limite reale" și
+        // „Aliniază pe drumuri" spuneau „Încarcă întâi un traseu." cu traseul deja pe hartă (Alin, 01.10).
         hpClearOsmOverlay();
+        hpLastData = solo.data;                 // „Limite reale" / „Aliniază" lucrează pe ea
         if (osm) { osm.style.display = ''; osm.classList.remove('primary'); }
         if (snap) snap.style.display = solo.snapped ? 'none' : '';
         hpRenderSummary(solo);
@@ -16778,16 +16781,39 @@ const pozitii = await r.json();</code></pre>
       }
     }
 
-    // ─── Export CSV ───
-    async function exportCSV() {
-      if (!selectedImei) return alert('Selecteaza un dispozitiv');
-
-      const from = document.getElementById('history-from').value;
-      const to = document.getElementById('history-to').value;
-      if (!from || !to) return alert('Selecteaza perioada');
-
-      const url = '/api/export/' + selectedImei + '?from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString();
-      window.open(url, '_blank');
+    // ─── Traseul, descărcat (01.10) ───
+    // Alin: „raportul CSV — îmi apar numai cifre… nu are numele RA Tracks ca celelalte documente". Acum: Excel de la
+    // server, prin aceeași cale ca rapoartele (numele casei, logo-ul pe fiecare foaie), cu foaia „Sumar" (aceleași
+    // cifre ca pe ecran) și pozițiile pe românește. Se descarcă traseele BIFATE din „Trasee încărcate" — una sau mai
+    // multe; fără nicio bifă (ex. din fișa vehiculului), vehiculul ales. Numele fișierului se citește din antet.
+    function _hpDeExportat() {
+      var vis = [];
+      hpLoaded.forEach(function (st) { if (st.visible) vis.push(st.imei); });
+      if (vis.length) return vis;
+      return selectedImei ? [String(selectedImei)] : [];
+    }
+    async function exportTraseuExcel() {
+      var imeis = _hpDeExportat();
+      if (!imeis.length) return alert('Alege un vehicul.');
+      var from = document.getElementById('history-from').value, to = document.getElementById('history-to').value;
+      if (!from || !to) return alert('Alege perioada.');
+      try {
+        var r = await fetch('/api/traseu/excel?imeis=' + encodeURIComponent(imeis.join(',')) + '&from=' + encodeURIComponent(new Date(from).toISOString()) +
+          '&to=' + encodeURIComponent(new Date(to).toISOString()), { credentials: 'same-origin' });
+        if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error(j.error || ('Eroare ' + r.status)); }
+        var blob = await r.blob();
+        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Tracks - Traseu.xlsx') : 'RA-Tracks - Traseu.xlsx';
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = nume; document.body.appendChild(a); a.click();
+        a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      } catch (e) { (window.raxToast || alert)('Exportul nu a mers: ' + e.message, 'error'); }
+    }
+    // Numele fișierului KML, după regula casei: „RA-Tracks - Traseu {vehicul} - {ziua descărcării}.kml" (01.10) —
+    // aceeași formă ca Excel-ul de alături. Caracterele interzise în nume de fișier se scot.
+    function _numeKmlTraseu(vehicul, azi) {
+      var d = azi || new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
+      return ('RA-Tracks - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
+        .replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim() + '.kml';
     }
 
     // ─── Export KML (Google Earth / Maps) ───
@@ -16817,7 +16843,7 @@ const pozitii = await r.json();</code></pre>
           + '<Placemark><name>Start</name><description>' + x(new Date(s.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#s</styleUrl><Point><coordinates>' + s.longitude + ',' + s.latitude + ',0</coordinates></Point></Placemark>\n'
           + '<Placemark><name>Stop</name><description>' + x(new Date(e.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#f</styleUrl><Point><coordinates>' + e.longitude + ',' + e.latitude + ',0</coordinates></Point></Placemark>\n'
           + '</Document></kml>';
-        const fname = 'traseu_' + vname.replace(/[^\w]+/g, '_') + '_' + from.slice(0, 10) + '.kml';
+        const fname = _numeKmlTraseu((dev.name || selectedImei) + (dev.plate && dev.plate !== dev.name ? ' · ' + dev.plate : ''));
         downloadBlob(kml, fname, 'application/vnd.google-earth.kml+xml');
       } catch (err) { alert('Eroare la export KML: ' + err.message); }
     }
@@ -25409,6 +25435,8 @@ const pozitii = await r.json();</code></pre>
       if (!m) return implicit;
       try { return decodeURIComponent(m[1]).trim(); } catch (e) { return String(m[1]).trim(); }
     }
+    // Același cititor și pentru ecranele din afara panoului de administrare (ex. Traseu → Excel, 01.10).
+    window._numeDinAntet = _numeDinAntet;
     // Exportă CE VEZI: trimite IMEI-urile rândurilor filtrate, în ordinea de pe ecran. Înainte deschidea
     // ruta fără nimic, deci primeai tot inventarul chiar dacă filtrasei la o firmă (Alin, 18.09).
     window.raxInvExport = async function (fmt) {

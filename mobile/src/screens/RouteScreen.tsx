@@ -5,7 +5,7 @@ import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { showToast, vehicles, uiPrefs } from '../app/store';
 import { reverseGeocode } from '../api/geocode';
-import { salveazaDeLaServer } from '../lib/export';
+import { numeKmlTraseu, salveazaDeLaServer } from '../lib/export';
 import { salveazaText } from '../components/salveazaText';
 import './route.css';
 import './detail.css'; // .sheet-ov / .sheet (foaia „Exportă traseul")
@@ -414,13 +414,15 @@ export function RouteScreen() {
 
   const veh = vehicles.value.find((v) => v.imei === imei);
 
-  // ── Export: CSV (fișierul brut de traseu, de la server) și KML (Google Earth / Maps, făcut aici) ──
-  async function exportCsv() {
+  // ── Export: Excel (de la server, ca pe web: numele casei, logo-ul, sumarul și pozițiile pe românește — 01.10)
+  //    și KML (Google Earth / Maps, făcut aici). CSV-ul brut a ieșit: avea codurile aparatului și se deschidea
+  //    într-o singură coloană în Excel (Alin, 01.10: „doar cifre, nimic de înțeles"). ──
+  async function exportExcel() {
     if (exporting) return;
-    setExporting('csv');
+    setExporting('xlsx');
     try {
-      const q = '?from=' + encodeURIComponent(rng.from) + '&to=' + encodeURIComponent(rng.to);
-      await salveazaDeLaServer('/api/export/' + encodeURIComponent(imei) + q, 'traseu_' + imei + '_' + rng.from.slice(0, 10) + '.csv');
+      const q = '?imeis=' + encodeURIComponent(imei) + '&from=' + encodeURIComponent(rng.from) + '&to=' + encodeURIComponent(rng.to);
+      await salveazaDeLaServer('/api/traseu/excel' + q, 'RA-Tracks - Traseu.xlsx');
       setExpOpen(false);
     } catch (e: any) { showToast(e?.message || 'Exportul n-a mers', true); }
     finally { setExporting(''); }
@@ -447,7 +449,7 @@ export function RouteScreen() {
         + '<Placemark><name>Start</name><description>' + x(new Date(s.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#s</styleUrl><Point><coordinates>' + s.longitude + ',' + s.latitude + ',0</coordinates></Point></Placemark>\n'
         + '<Placemark><name>Stop</name><description>' + x(new Date(e.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#f</styleUrl><Point><coordinates>' + e.longitude + ',' + e.latitude + ',0</coordinates></Point></Placemark>\n'
         + '</Document></kml>';
-      const fname = 'traseu_' + String(vname).replace(/[^\w]+/g, '_') + '_' + localInput(new Date(rng.from)).slice(0, 10) + '.kml';
+      const fname = numeKmlTraseu((veh && veh.name) || imei, veh && veh.plate);
       await salveazaText(fname, kml, 'application/vnd.google-earth.kml+xml');
       setExpOpen(false);
     } catch (e: any) { showToast(e?.message || 'Eroare la export KML', true); }
@@ -474,7 +476,7 @@ export function RouteScreen() {
           {veh ? <span style="font-size:11.5px;font-weight:600;color:var(--text-muted)">{veh.name || veh.imei}{veh.plate ? ' · ' + veh.plate : ''}</span>
             : (query as any)?.arhivat ? <span style="font-size:11.5px;font-weight:600;color:var(--text-muted)">{(query as any).nume || imei} (arhivat)</span> : null}
         </div>
-        <button class="h-btn" disabled={loading} onClick={() => setExpOpen(true)} aria-label="Exportă traseul (CSV / KML)" title="Exportă">
+        <button class="h-btn" disabled={loading} onClick={() => setExpOpen(true)} aria-label="Exportă traseul (Excel / KML)" title="Exportă">
           <Icon name="download" />
         </button>
       </header>
@@ -602,9 +604,9 @@ export function RouteScreen() {
             </div>
             <div class="sheet-body">
               <div class="loc-exp-note" style="margin:0 2px 10px">Tot intervalul ales: {fmtScurt(rng.from)} → {fmtScurt(rng.to)}</div>
-              <button class="loc-exp" disabled={!!exporting} onClick={exportCsv}>
-                <Icon name="list" size={22} /><div><b>CSV</b><small>Toate punctele, cu datele trimise de aparat</small></div>
-                {exporting === 'csv' && <div class="spin" />}
+              <button class="loc-exp" disabled={!!exporting} onClick={exportExcel}>
+                <Icon name="list" size={22} /><div><b>Excel</b><small>Sumarul și fiecare poziție, pe românește</small></div>
+                {exporting === 'xlsx' && <div class="spin" />}
               </button>
               <button class="loc-exp" disabled={!!exporting || !pts || !pts.length} onClick={exportKml}>
                 <Icon name="map" size={22} /><div><b>KML</b><small>Pentru Google Earth / Google Maps</small></div>

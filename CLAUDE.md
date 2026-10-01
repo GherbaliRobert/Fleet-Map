@@ -90,7 +90,25 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 - **Logo în PDF:** aceeași imagine reală, înglobată în antet cu `doc.image()` (NU redesenată cu forme/text). Vezi `renderPdf`.
 - **Fișier de logo pentru fundal ALB = `public/logo-light.png`** (varianta ÎNCHISĂ). ⚠️ Capcană de denumire: `logo.png` e varianta **ALBĂ** (pentru fundal închis, ca în app) — pe alb devine invizibilă („arată pe alb"). Pentru orice export pe fundal alb folosește `logo-light.png`.
 - Ambele descărcări (raport live ȘI Istoric rapoarte) trec prin același `sendReport` → o singură modificare acoperă tot. NU adăuga căi paralele de export care sar peste el.
-- Excepție: exportul CSV brut de traseu GPS (`traseu_<imei>.csv` din `server.js`) nu e un „raport" și nu intră sub regula asta.
+- Excepție: exportul CSV brut de traseu GPS (`/api/export/:imei`, `traseu_<imei>.csv`) nu e un „raport" și nu intră sub
+  regula asta — dar a rămas DOAR pentru integrările prin cheie API (e documentat acolo). Ecranul Traseu NU-l mai folosește.
+
+### Traseul descărcat din ecranul Traseu (Alin, 01.10: „doar cifre, nimic de înțeles")
+Web și telefon descarcă **Excel prin `sendReport`**: `GET /api/traseu/excel?imeis=…&from&to` → `reportExport.traseuVehicul`
+(rândurile pe românește + sumarul) → `traseuCaRaport` (un vehicul: „Sumar" + „Poziții"; mai multe: „Sumar" + o foaie pe
+vehicul) → `sendReport`. Numele: „RA-Tracks - Raport Traseu {nume · număr} - {zi}.xlsx". Aceleași drepturi ca traseul
+(`canAccessImei` pe fiecare mașină, deci și demo-ul exclus).
+- **Sumarul are O SINGURĂ socoteală: `_sumarTraseu`** (server.js), folosită de ecran (`/api/history/:imei?ext=1`) și de
+  fișier — păzit prin numărare. Formele cifrelor (`hmTraseu`, `kmTraseu`, `durataDepasiri`) sunt legate de
+  `hpRenderSummary` din pagină: proba le rulează pe aceleași cazuri.
+- **Cel mult `TRASEU_MAX_POZITII` = 10.000 de poziții într-un fișier** (`traseuPreaMare`, report_export.js). MĂSURAT:
+  ExcelJS face fișierul în memorie — 10.000 = ~3 s; 50.000 = 16 s și 1,5 GB, cu serverul blocat pentru toți. NU urca
+  cifra fără să măsori. Varianta „în flux" a ExcelJS nu pune imagini pe foi, deci ar pierde logo-ul casei.
+- Numele KML-ului: `_numeKmlTraseu` (pagină) = `numeKmlTraseu` (mobile/src/lib/export.ts), legate prin probă.
+- ⚠ **Capcana „Limite reale":** `hpClearOsmOverlay()` golește și `hpLastData` (traseul pe care lucrează „Limite reale"
+  și „Aliniază pe drumuri"). În `hpApplySelection` se curăță ÎNTÂI, apoi `hpLastData = solo.data`. Invers, butoanele
+  spuneau „Încarcă întâi un traseu." cu traseul pe hartă (până pe 01.10).
+- Păzit de `verify_traseu_export.js` (în `npm test`), inclusiv pe server pornit.
 
 ## Poarta de dinaintea livrării (`.github/workflows/ci.yml`) — să nu moară în tăcere
 
