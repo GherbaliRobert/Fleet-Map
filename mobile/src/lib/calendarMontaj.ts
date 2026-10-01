@@ -92,7 +92,7 @@ export const CAL_TEXT = {
   subDeProgramat: 'Contractele semnate, cu ce a mai rămas de montat. Termenul e cel din contract: 30 de zile de la încasarea avansului.',
   golDeProgramat: 'Niciun contract semnat nu mai are mașini de montat.',
   nimic: 'Nimic de programat: niciun contract semnat nu mai are mașini rămase.',
-  maiPutine: 'Dacă s-au montat mai puține, celelalte se întorc singure la „De programat".',
+  maiPutine: 'Dacă s-au montat mai puține, celelalte se întorc singure la „Ce ai de montat".',
   faraZi: 'Alege ziua montajului.',
   faraZiMuta: 'Alege ziua.',
   // 01.10 — confirmările, anularea, reprogramarea (aceleași litere ca pe web)
@@ -287,12 +287,12 @@ export function corpMutare(f: FormLuc) {
 export function corpMontata(f: FormLuc) { return { masini: parseInt(f.mont, 10) || 0 }; }
 export function intrebareMontata(l: CalLucrare, n: number): string {
   return 'Treci lucrarea ca montată: ' + masini(n) + ' la ' + (l.company_name || 'client') + '?' +
-    (l.masini && n < l.masini ? ' Celelalte ' + masini(l.masini - n) + ' se întorc la „De programat".' : '') +
+    (l.masini && n < l.masini ? (l.masini - n === 1 ? ' Cealaltă mașină se întoarce la „Ce ai de montat".' : ' Celelalte ' + masini(l.masini - n) + ' se întorc la „Ce ai de montat".') : '') +
     ' Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.';
 }
 export function toastMutat(zi: string): string { return 'Mutat pe ' + ziRo(zi) + ' ✓'; }
 export function toastMontata(j: { inapoi_la_programat?: number } | null | undefined): string {
-  return 'Montată ✓' + (j && j.inapoi_la_programat ? ' · ' + masini(j.inapoi_la_programat) + ' înapoi la „De programat"' : '');
+  return 'Montată ✓' + (j && j.inapoi_la_programat ? ' · ' + masini(j.inapoi_la_programat) + ' înapoi la „Ce ai de montat"' : '');
 }
 
 // ─── Anularea și reprogramarea (raxMjCalAnuleaza…, raxMjCalReprogrameaza…, 01.10) ───

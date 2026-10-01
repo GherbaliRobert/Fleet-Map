@@ -21922,7 +21922,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="raco-h2">S-a montat?</div>' +
           '<div class="mjc-rand"><label class="raco-f"><span>Câte mașini s-au montat</span><input class="rax-field" type="number" id="mjc-mont" min="1" max="' + l.masini + '" step="1" value="' + l.masini + '"></label>' +
             '<button class="rax-btn primary" onclick="raxMjCalMontata(' + l.id + ')"><i class="fas fa-check"></i> Montată</button></div>' +
-          '<div class="raco-sub">Dacă s-au montat mai puține, celelalte se întorc singure la „De programat".</div>' +
+          '<div class="raco-sub">Dacă s-au montat mai puține, celelalte se întorc singure la „Ce ai de montat".</div>' +
           '<div class="raco-h2">Altă zi sau alt instalator</div>' +
           '<div class="mjc-rand"><label class="raco-f"><span>Ziua</span><input class="rax-field" type="date" id="mjc-mzi" value="' + esc(l.zi) + '"></label>' +
             '<label class="raco-f"><span>Cine montează</span><select class="rax-field" id="mjc-mpart">' + optP + '</select></label>' +
@@ -22084,14 +22084,14 @@ const pozitii = await r.json();</code></pre>
       var l = _mjcLucrarea(id) || {};
       var n = parseInt((document.getElementById('mjc-mont') || {}).value, 10) || 0;
       var intreb = 'Treci lucrarea ca montată: ' + _mjcMasini(n) + ' la ' + (l.company_name || 'client') + '?' +
-        (l.masini && n < l.masini ? ' Celelalte ' + _mjcMasini(l.masini - n) + ' se întorc la „De programat".' : '') +
+        (l.masini && n < l.masini ? (l.masini - n === 1 ? ' Cealaltă mașină se întoarce la „Ce ai de montat".' : ' Celelalte ' + _mjcMasini(l.masini - n) + ' se întorc la „Ce ai de montat".') : '') +
         ' Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.';
       if (!await raConfirm(intreb, { okLabel: 'Montată', danger: false })) return;
       try {
         var r = await fetch('/api/montaje/' + id + '/montata', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ masini: n }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { _mjcMesaj(j.error || 'Nu s-a putut salva.'); return; }
-        if (window.raxToast) raxToast('Montată ✓' + (j.inapoi_la_programat ? ' · ' + _mjcMasini(j.inapoi_la_programat) + ' înapoi la „De programat"' : ''), 'success');
+        if (window.raxToast) raxToast('Montată ✓' + (j.inapoi_la_programat ? ' · ' + _mjcMasini(j.inapoi_la_programat) + ' înapoi la „Ce ai de montat"' : ''), 'success');
         _raxMj.cal.sel = null; _raxMj.cal.dinZi = null;
         await _mjcDupa();
       } catch (e) { _mjcMesaj('Eroare: ' + e.message); }

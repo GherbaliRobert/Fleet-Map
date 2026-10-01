@@ -2544,13 +2544,15 @@ async function parteaMontaj() {
     // Montată cu mai puține → restul se întoarce la „De programat"
     const fl = K.formLucrare(d.parteneri, l1);
     T('„S-a montat?" pornește de la toate mașinile zilei (3), iar instalatorul e cel de pe zi', fl.mont === '3' && fl.mpart === String(part.id), J(fl));
-    T('întrebarea: „Treci lucrarea ca montată: 2 mașini la Calendar Telefon SRL? Celelalte 1 mașină se întorc la „De programat". …"',
-      K.intrebareMontata(l1, 2) === 'Treci lucrarea ca montată: 2 mașini la Calendar Telefon SRL? Celelalte 1 mașină se întorc la „De programat". Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.');
+    T('întrebarea: „Treci lucrarea ca montată: 2 mașini la Calendar Telefon SRL? Cealaltă mașină se întoarce la „Ce ai de montat". …" (și „Celelalte 2 mașini se întorc…")',
+      K.intrebareMontata(l1, 2) === 'Treci lucrarea ca montată: 2 mașini la Calendar Telefon SRL? Cealaltă mașină se întoarce la „Ce ai de montat". Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.' &&
+      K.intrebareMontata(l1, 1) === 'Treci lucrarea ca montată: 1 mașină la Calendar Telefon SRL? Celelalte 2 mașini se întorc la „Ce ai de montat". Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.' &&
+      K.intrebareMontata(l1, 3) === 'Treci lucrarea ca montată: 3 mașini la Calendar Telefon SRL? Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.');
     let j = null; e = null; try { j = await K.lucrareMontata(l1.id, K.corpMontata(Object.assign({}, fl, { mont: '2' }))); } catch (x) { e = x; }
     d = await K.calendarMontaj(LUNA); cA = alLui(d, A.c.id);
     const m1 = d.lucrari.filter((l) => l.id === l1.id)[0] || {};
-    T('montată 2 din 3: mesajul „Montată ✓ · 1 mașină înapoi la „De programat"", ziua verde, una înapoi la programat', !e && j.inapoi_la_programat === 1 &&
-      K.toastMontata(j) === 'Montată ✓ · 1 mașină înapoi la „De programat"' && K.esteMontata(m1.status) && m1.masini === 2 &&
+    T('montată 2 din 3: mesajul „Montată ✓ · 1 mașină înapoi la „Ce ai de montat"", ziua gri, una înapoi la programat', !e && j.inapoi_la_programat === 1 &&
+      K.toastMontata(j) === 'Montată ✓ · 1 mașină înapoi la „Ce ai de montat"' && K.esteMontata(m1.status) && m1.masini === 2 && K.clasaLucrare(m1) === 'mjc-mont' &&
       cA.montate === 2 && cA.programate === 2 && cA.ramase === 1 && K.detaliiContract(cA) === '2 din 5 mașini montate · 2 mașini programate · 1 mașină de programat', e ? e.message : J([j, m1, cA]));
     e = null; try { await K.lucrareMontata(l1.id, { masini: 1 }); } catch (x) { e = x; }
     T('a doua oară „montată" → refuz, cu vorbele serverului', !!e && e.status === 400 && K.eroarea(e, 'Nu s-a putut salva.') === 'Lucrarea e deja trecută ca montată.', e && e.message);
