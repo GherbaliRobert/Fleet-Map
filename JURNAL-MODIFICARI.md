@@ -166,7 +166,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-02
 
-### CLIENT · Site-ul public: trei pagini noi, diacritice, adrese curate, harta site-ului cu date adevărate — `HASH`
+### CLIENT · Site-ul public: trei pagini noi, diacritice, adrese curate, harta site-ului cu date adevărate — `f55ae25`
 
 Robert (02.10), după analiza SEO: *„fă tot ce poți tu"*. Ce se poate face doar din conturile voastre (Search Console,
 Bing, redirecționarea www, profilul de Google, datele firmei) e la „De amintit".
