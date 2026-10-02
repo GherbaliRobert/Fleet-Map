@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
+  <!-- Analytics (GA4) se încarcă DOAR după consimțământ explicit — vezi public/js/consent.js. -->
+  <script src="/js/consent.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Întrebări frecvente despre monitorizarea GPS a flotei | RA Tracks</title>
@@ -23,7 +26,9 @@
 
   <!-- Datele structurate ale întrebărilor. Google le poate afișa desfășurate direct în rezultate.
        Regula pe care o respect aici: textul de mai jos e IDENTIC cu cel din pagină. Un răspuns
-       „pentru Google" diferit de cel pentru om e exact ce se sancționează, și pe bună dreptate. -->
+       „pentru Google" diferit de cel pentru om e exact ce se sancționează, și pe bună dreptate.
+       Păzit de verify_site_public.js (până pe 02.10 erau 10 întrebări din 11, rezumate). Schimbi o
+       întrebare pe pagină → o schimbi și aici, cuvânt cu cuvânt. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -31,25 +36,27 @@
     "inLanguage": "ro-RO",
     "mainEntity": [
       { "@type": "Question", "name": "Cât costă monitorizarea GPS pentru o flotă?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Se plătește lunar, per vehicul, iar prețul depinde de funcțiile folosite: doar localizare și trasee, sau și date din calculatorul mașinii (consum, kilometraj real, turație), sonde de combustibil, ori funcțiile cu inteligență artificială. Peste abonament există costul unic al echipamentului montat pe mașină și cartela SIM. Nu afișăm o grilă fixă, pentru că o flotă de cinci autoutilitare și una de o sută de camioane nu au aceleași nevoi." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Se plătește lunar, per vehicul, iar prețul depinde de ce funcții folosiți: doar localizare și trasee, sau și date din calculatorul mașinii (consum, kilometraj real, turație), sonde de combustibil, ori funcțiile cu inteligență artificială. Peste abonament există costul unic al echipamentului montat pe mașină și cartela SIM. Nu afișăm o grilă fixă, pentru că o flotă de cinci autoutilitare și una de o sută de camioane cu remorcă nu au aceleași nevoi. Cereți o ofertă cu numărul real de vehicule și vă spunem cifra, nu un interval." } },
       { "@type": "Question", "name": "Ce echipament trebuie montat pe mașină?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Un aparat GPS Teltonika, montat de un tehnician. Se alimentează din instalația mașinii și are cartelă SIM proprie, deci nu depinde de telefonul șoferului. Pentru camioane și utilaje, aparatul se poate lega la calculatorul de bord — de acolo vin kilometrajul real, consumul, turația și nivelul din rezervor. La mașinile fără această legătură, consumul rămâne o estimare." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Un aparat GPS Teltonika, montat de un tehnician. Se alimentează din instalația mașinii și are cartelă SIM proprie, deci nu depinde de telefonul șoferului și nu poate fi oprit dintr-o aplicație. Pentru camioane și utilaje, aparatul se poate lega la calculatorul de bord — de acolo vin kilometrajul real din bord, consumul, turația și nivelul din rezervor, adică datele care contează la deconturi. La mașinile mici, fără această legătură, consumul rămâne o estimare, și o spunem ca atare în aplicație." } },
+      { "@type": "Question", "name": "Se poate monta pe utilaje, remorci sau generatoare?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Da. Pentru utilaje și generatoare contează în special orele de funcționare, nu kilometrii. Pentru remorci și semiremorci, care n-au alimentare proprie constantă, se folosesc aparate cu baterie, cu o frecvență de raportare mai rară." } },
       { "@type": "Question", "name": "E legal să monitorizez mașinile firmei?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Da, monitorizarea vehiculelor firmei în scop de serviciu este permisă, dar are condiții: angajații trebuie informați în scris despre ce se urmărește și de ce, prelucrarea trebuie trecută în evidențele firmei, iar scopul trebuie să fie real — organizarea transportului, siguranță, deconturi — nu supravegherea persoanei. Pentru mașinile folosite și personal se stabilește un program: în afara lui, poziția nu se înregistrează sau nu se afișează." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Da, monitorizarea vehiculelor firmei în scop de serviciu este permisă, dar are condiții care nu sunt opționale: angajații trebuie informați în scris despre ce se urmărește și de ce, prelucrarea trebuie trecută în evidențele firmei, iar scopul trebuie să fie real (organizarea transportului, siguranță, deconturi) — nu supravegherea persoanei. Practic, urmăriți vehiculul, nu omul. Pentru mașinile care se folosesc și personal, se stabilește un program: în afara lui, poziția nu se înregistrează sau nu se afișează. Noi vă dăm mijloacele; încadrarea juridică o faceți cu consultantul dumneavoastră." } },
       { "@type": "Question", "name": "Cine vede datele și ce se întâmplă cu ele?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Datele aparțin firmei client. Fiecare companie își vede exclusiv propria flotă, iar accesul se dă pe roluri; un utilizator poate fi limitat la anumite vehicule. Există un export complet al datelor și o cale prin care se pot șterge definitiv, la cerere. Pozițiile mai vechi de o perioadă stabilită se șterg automat." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Datele sunt ale firmei dumneavoastră. Fiecare companie își vede exclusiv propria flotă, iar accesul se dă pe roluri: un dispecer poate vedea altceva decât un administrator, iar un utilizator poate fi limitat la anumite vehicule. Aveți la dispoziție un export complet al datelor și o cale prin care se pot șterge definitiv, la cerere. Istoricul pozițiilor se păstrează 12 luni (sau 24 ori 36, dacă le cereți prin contract), apoi se șterge automat — nu ținem istoric la nesfârșit." } },
       { "@type": "Question", "name": "Cum se măsoară consumul real de combustibil?",
-        "acceptedAnswer": { "@type": "Answer", "text": "În trei feluri, în ordinea preciziei: din calculatorul mașinii — cea mai exactă; cu sondă în rezervor — arată nivelul efectiv, deci se văd alimentările și scăderile bruște; estimat — după kilometri și consumurile de referință, când nu există niciuna dintre primele două. Aplicația spune întotdeauna care dintre cele trei stă în spatele unei cifre." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "În trei feluri, în ordinea preciziei. Din calculatorul mașinii — cea mai exactă, pentru că folosim aceleași cifre pe care le vede și șoferul în bord. Cu sondă în rezervor — arată nivelul efectiv, deci se văd atât alimentările, cât și scăderile bruște. Estimat — după kilometri și consumurile de referință ale vehiculului, când nu există niciuna dintre primele două. Aplicația spune întotdeauna care dintre cele trei stă în spatele unei cifre. O estimare prezentată ca măsurătoare ar fi o minciună utilă nouă și păgubitoare pentru dumneavoastră." } },
       { "@type": "Question", "name": "Mă anunță când expiră ITP-ul, RCA-ul sau rovinieta?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Da, cu notificare în aplicație și pe telefon, cu un preaviz stabilit de client. Alertele se repetă la apropierea termenului, dar nu zilnic. Ca să nu fie nevoie de tastare, actul se poate încărca (poză sau PDF), iar aplicația citește emitentul, seria și data expirării, plus datele tehnice ale mașinii dacă apar în act. Tot ce citește este arătat pentru confirmare — nimic nu se salvează fără acord." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Da, cu notificare în aplicație și pe telefon, cu un preaviz pe care îl stabiliți dumneavoastră. Alertele se repetă la apropierea termenului, dar nu zilnic — un anunț pe care înveți să-l ignori nu folosește nimănui. Ca să nu fie nevoie să tastați datele, puteți încărca actul (poză sau PDF), iar aplicația citește singură emitentul, seria și data expirării, plus datele tehnice ale mașinii dacă apar în act. Tot ce citește vă este arătat pentru confirmare — nimic nu se salvează fără acordul dumneavoastră. Dacă un act rămâne fără dată de expirare, sunteți anunțați că pentru el nu există alertă." } },
       { "@type": "Question", "name": "Merge pe telefon? Există aplicație?",
         "acceptedAnswer": { "@type": "Answer", "text": "Da, există aplicație pentru Android, cu harta în timp real, traseele, rapoartele și notificările. Interfața web merge din orice browser, inclusiv de pe telefon." } },
       { "@type": "Question", "name": "Cât durează până văd prima mașină pe hartă?",
         "acceptedAnswer": { "@type": "Answer", "text": "Din momentul montajului, primele poziții apar în câteva minute. Partea care ia timp nu e tehnică, ci organizatorică: programarea mașinilor la montaj, mai ales dacă sunt pe drum." } },
       { "@type": "Question", "name": "Pot încerca înainte să cumpăr?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Da. Se poate cere un cont demonstrativ, cu vehicule simulate, ca să vedeți cum arată aplicația înainte de a monta ceva. Contul se acordă la cerere, pe o perioadă stabilită." } },
+        "acceptedAnswer": { "@type": "Answer", "text": "Da. Se poate cere un cont demonstrativ, cu vehicule simulate, ca să vedeți exact cum arată aplicația înainte de a monta ceva. Contul se acordă la cerere, pe o perioadă stabilită." } },
       { "@type": "Question", "name": "Ce se întâmplă dacă renunț?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Exportul complet al datelor e disponibil oricând, iar la cerere ștergem definitiv tot ce ținem despre flota respectivă. Echipamentul montat rămâne al firmei, dacă a fost cumpărat." } }
+        "acceptedAnswer": { "@type": "Answer", "text": "Vă luați datele cu dumneavoastră: exportul complet e disponibil oricând. La încetarea contractului aveți 30 de zile să ne cereți datele; după aceea se șterg definitiv, fără să mai fie nevoie de o cerere. Echipamentul montat rămâne al firmei, dacă a fost cumpărat; cel închiriat ni se returnează." } }
     ]
   }
   </script>
@@ -116,7 +123,7 @@
     <details>
       <summary><h2>Cine vede datele și ce se întâmplă cu ele?</h2></summary>
       <p>Datele sunt ale firmei dumneavoastră. Fiecare companie își vede exclusiv propria flotă, iar accesul se dă pe roluri: un dispecer poate vedea altceva decât un administrator, iar un utilizator poate fi limitat la anumite vehicule.</p>
-      <p>Aveți la dispoziție un <b>export complet</b> al datelor și o cale prin care se pot <b>șterge definitiv</b>, la cerere. Pozițiile mai vechi de o perioadă stabilită se șterg automat — nu ținem istoric la nesfârșit.</p>
+      <p>Aveți la dispoziție un <b>export complet</b> al datelor și o cale prin care se pot <b>șterge definitiv</b>, la cerere. Istoricul pozițiilor se păstrează <b>12 luni</b> (sau 24 ori 36, dacă le cereți prin contract), apoi se șterge automat — nu ținem istoric la nesfârșit.</p>
     </details>
 
     <div class="grup">Consum, documente, alerte</div>
@@ -154,7 +161,7 @@
 
     <details>
       <summary><h2>Ce se întâmplă dacă renunț?</h2></summary>
-      <p>Vă luați datele cu dumneavoastră: exportul complet e disponibil oricând, iar la cerere ștergem definitiv tot ce ținem despre flota dumneavoastră. Echipamentul montat rămâne al firmei, dacă a fost cumpărat.</p>
+      <p>Vă luați datele cu dumneavoastră: exportul complet e disponibil oricând. La încetarea contractului aveți <b>30 de zile</b> să ne cereți datele; după aceea se șterg definitiv, fără să mai fie nevoie de o cerere. Echipamentul montat rămâne al firmei, dacă a fost cumpărat; cel închiriat ni se returnează.</p>
     </details>
 
     <div class="cta">
