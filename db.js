@@ -3618,6 +3618,41 @@ async function getDeviceHistory(imei, from, to, limit) {
   return result.rows;
 }
 
+// ─── Istoricul COMPLET al unui aparat, pe pagini (Alin, 02.10: „Descarcă tot istoricul") ─────────────────────────
+// Aceleași rânduri ca getDeviceHistory (poziții vii + arhivă, fără dubluri), dar FĂRĂ plafon: se citesc bucată cu
+// bucată, după timp, de la `dupa` încolo. `dupa` e cheia ultimului rând de pe pagina de dinainte (`cheie`, ora scrisă
+// ca text, cu microsecunde): o dată JS are doar milisecunde, iar o poziție cu microsecunde s-ar citi de două ori.
+// Prima pagină: `dupa` = null. Contactul e singurul semnal din io_data pe care îl scrie fișierul — restul nu se aduce.
+async function istoricOre(imei, dupa, limita) {
+  const r = await pool.query(`
+    SELECT DISTINCT ON (timestamp) timestamp, timestamp::text AS cheie
+    FROM (
+      SELECT timestamp FROM positions WHERE imei = $1 AND ($2::timestamp IS NULL OR timestamp > $2::timestamp)
+      UNION ALL
+      SELECT timestamp FROM positions_archive WHERE imei = $1 AND ($2::timestamp IS NULL OR timestamp > $2::timestamp)
+    ) u
+    ORDER BY timestamp ASC
+    LIMIT $3
+  `, [imei, dupa || null, Math.max(1, Math.min(100000, parseInt(limita) || 50000))]);
+  return r.rows;
+}
+async function istoricPagina(imei, dupa, limita) {
+  const r = await pool.query(`
+    SELECT DISTINCT ON (timestamp) timestamp, timestamp::text AS cheie, latitude, longitude, altitude, angle, speed, satellites,
+           jsonb_build_object('ignition', io_data->'ignition') AS io_data
+    FROM (
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions WHERE imei = $1 AND ($2::timestamp IS NULL OR timestamp > $2::timestamp)
+      UNION ALL
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions_archive WHERE imei = $1 AND ($2::timestamp IS NULL OR timestamp > $2::timestamp)
+    ) u
+    ORDER BY timestamp ASC
+    LIMIT $3
+  `, [imei, dupa || null, Math.max(1, Math.min(20000, parseInt(limita) || 5000))]);
+  return r.rows;
+}
+
 // Semințele hărții live de la pornire: DOAR ultimele zile, nu tot istoricul. Fără margine, interogarea atinge
 // toate blocurile, inclusiv cele comprimate — MĂSURAT 7,4 s la 60 de zile de istoric pentru 1000 de vehicule
 // (estimat ~22 s la 180 de zile), iar Railway declară pornirea eșuată după 30 s. Cu fereastră: 63 ms.
@@ -5337,6 +5372,8 @@ module.exports = {
   getUsersLite,
   getDriversLite,
   getDeviceHistory,
+  istoricOre,
+  istoricPagina,
   getLastPositions,
   getUserByUsername,
   createUser,

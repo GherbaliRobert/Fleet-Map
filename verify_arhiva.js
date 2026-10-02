@@ -102,7 +102,9 @@ T('cuvintele termenului stau într-un singur loc', /function _arhTermen\(d\)/.te
 T('„istoricul se șterge pe <zi> (în N zile)"', /'istoricul se șterge pe ' \+ zi \+ ' \(în ' \+ _arhZile\(z\) \+ '\)'/.test(blocArhiva));
 T('și „s-a șters", pentru cele trecute', /istoricul s-a șters/.test(blocArhiva));
 T('bandă de sus când sunt aparate pe ducă', /arch-note-warn[\s\S]{0,300}istoricul pe ducă/.test(blocArhiva));
-T('care spune și cum dai datele înapoi (din 01.10, Traseu descarcă Excel, nu CSV)', /Istoric" → Excel, sau dintr-un raport/.test(blocArhiva) && !/Export CSV/.test(blocArhiva));
+T('care spune și cum dai datele înapoi: butonul „Descarcă tot istoricul” (02.10)', /scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii/.test(blocArhiva) && !/Export CSV/.test(blocArhiva));
+// Butonul stă pe rândul mașinii, între „Istoric” și „Restaurează”, și lipsește când istoricul s-a șters deja.
+T('rândul arhivat are „Descarcă tot istoricul” (doar cât mai are istoric)', /d\.istoric_sters \? '' : '<button class="btn-sm" onclick="archDescarcaTot\(/.test(blocArhiva) && /window\.archDescarcaTot = archDescarcaTot;/.test(html));
 T('portocaliul e doar pentru ce cere o mișcare, nu pentru o explicație',
   /\.arch-note \{[^}]*background: var\(--bg-dark\)/.test(html) && /\.arch-note-warn \{[^}]*rgba\(245,158,11/.test(html));
 T('fișa contractului încheiat amintește de arhivare și de cele 30 de zile', /d\.date_dupa_incetare_zile/.test(html) && /date_dupa_incetare_zile: contracte\.ZILE_DATE_DUPA_INCETARE/.test(server));

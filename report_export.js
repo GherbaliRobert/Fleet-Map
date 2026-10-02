@@ -881,28 +881,42 @@ function traseuPreaMare(total) {
 }
 // Un vehicul: rândurile (o poziție pe rând) și sumarul, ca perechi [etichetă, valoare] cu etichete FIXE
 // (la mai multe vehicule devin coloanele foii „Sumar").
+// Ora României, scrisă ca pe ecran („01.10.2026" / „08:30:00"). Formatorii se fac O DATĂ: `toLocaleString` pe fiecare
+// rând își face formatorul de la capăt — la istoricul complet (sute de mii de rânduri) ar însemna zeci de secunde.
+let _fmtZiTraseu = null, _fmtOraTraseu = null;
+function _formatoriTraseu() {
+  if (!_fmtZiTraseu) {
+    _fmtZiTraseu = new Intl.DateTimeFormat('ro-RO', { timeZone: DISPLAY_TZ, day: '2-digit', month: '2-digit', year: 'numeric' });
+    _fmtOraTraseu = new Intl.DateTimeFormat('ro-RO', { timeZone: DISPLAY_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  return { zi: _fmtZiTraseu, ora: _fmtOraTraseu };
+}
+// O poziție → un rând pe românește. O SINGURĂ scriere a rândului, pentru traseul de pe ecran și pentru istoricul
+// complet (`cuLink: false` — acolo coloana „Pe hartă" lipsește: Excel nu primește peste 65.530 de linkuri într-o foaie).
+function traseuRand(p, cuLink) {
+  const f = _formatoriTraseu(), d = new Date(p.timestamp);
+  const io = (p.io_data && typeof p.io_data === 'object') ? p.io_data : {};
+  const lat = Number(p.latitude), lon = Number(p.longitude), viteza = Number(p.speed) || 0;
+  const coord = (isFinite(lat) && isFinite(lon) && (lat || lon)) ? lat.toFixed(6) + ', ' + lon.toFixed(6) : '';
+  const rand = [
+    f.zi.format(d),
+    f.ora.format(d),
+    viteza > 3 ? 'În mers' : 'Staționare',          // același prag ca sumarul (3 km/h)
+    Math.round(viteza),
+    io.ignition == null ? '' : (Number(io.ignition) ? 'Pornit' : 'Oprit'),
+    directieTraseu(p.angle),
+    p.altitude == null ? '' : Math.round(Number(p.altitude) || 0),
+    p.satellites == null ? '' : Number(p.satellites) || 0,
+    coord
+  ];
+  if (cuLink !== false) rand.push(coord ? { text: 'Vezi pe hartă', hyperlink: 'https://www.google.com/maps?q=' + lat.toFixed(6) + ',' + lon.toFixed(6) } : '');
+  return rand;
+}
 function traseuVehicul(o) {
   const dev = o.dev || {}, sum = o.sum || {}, hist = o.history || [];
   const nume = String(dev.name || o.imei || '').trim(), plate = String(dev.plate || '').trim();
   const vehicul = nume + (plate && plate !== nume ? ' · ' + plate : '');
-  const zi = (ts, opt) => new Date(ts).toLocaleString('ro-RO', Object.assign({ timeZone: DISPLAY_TZ }, opt));
-  const rows = hist.map(function (p) {
-    const io = (p.io_data && typeof p.io_data === 'object') ? p.io_data : {};
-    const lat = Number(p.latitude), lon = Number(p.longitude), viteza = Number(p.speed) || 0;
-    const coord = (isFinite(lat) && isFinite(lon) && (lat || lon)) ? lat.toFixed(6) + ', ' + lon.toFixed(6) : '';
-    return [
-      zi(p.timestamp, { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      zi(p.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      viteza > 3 ? 'În mers' : 'Staționare',          // același prag ca sumarul (3 km/h)
-      Math.round(viteza),
-      io.ignition == null ? '' : (Number(io.ignition) ? 'Pornit' : 'Oprit'),
-      directieTraseu(p.angle),
-      p.altitude == null ? '' : Math.round(Number(p.altitude) || 0),
-      p.satellites == null ? '' : Number(p.satellites) || 0,
-      coord,
-      coord ? { text: 'Vezi pe hartă', hyperlink: 'https://www.google.com/maps?q=' + lat.toFixed(6) + ',' + lon.toFixed(6) } : ''
-    ];
-  });
+  const rows = hist.map(function (p) { return traseuRand(p, true); });
   const maxV = hist.reduce(function (m, p) { return Math.max(m, Number(p.speed) || 0); }, 0);
   const limita = Number(o.limit) || null, oc = Number(sum.overspeedCount) || 0;
   // Etichete FIXE, aceleași la orice mașină (la mai multe mașini devin coloanele foii „Sumar"). Cifrele sunt cele de
@@ -937,5 +951,163 @@ function traseuCaRaport(lista, from, to) {
 }
 // ─── sfârșit „traseul descărcat din ecranul Traseu" ──────────────────────────────────────────────
 
+// ─── începe „istoricul complet, scris în flux" ───────────────────────────────────────────────────
+// Alin (02.10: „O facem acum"): un client care pleacă are 30 de zile să-și ceară datele înapoi. Un an de traseu al unei
+// mașini ≈ 500.000 de poziții; la Traseu încap 10.000 într-un fișier (Excel-ul obișnuit se face în memorie), deci ar fi
+// ieșit ~50 de fișiere. Aici fișierul se scrie ÎN FLUX (ExcelJS WorkbookWriter): pozițiile se citesc din bază pe pagini
+// și pleacă spre browser pe măsură ce sunt scrise — memoria rămâne mică oricât de lung ar fi istoricul.
+//   • Foile: „Sumar" (prima) + câte una pe lună, pe ora României. Coloanele = cele ale Excel-ului de la Traseu, scrise
+//     de ACEEAȘI funcție (`traseuRand`), fără „Pe hartă" (Excel nu primește peste 65.530 de linkuri într-o foaie).
+//   • Logo-ul casei pe FIECARE foaie, ca la rapoarte: varianta în flux nu știe să pună imagini pe foi, deci desenul se
+//     adaugă de mână (`_xlFluxLogo`), cu EXACT XML-ul pe care Excel-ul obișnuit îl scrie pentru `xlPlaceLogo` (180×35,
+//     în colțul A1). Atinge piese interne ale ExcelJS (versiunea e fixată în package-lock); păzit de probă, care
+//     citește fișierul înapoi și numără logo-urile.
+const ContentTypesXform = require('exceljs/lib/xlsx/xform/core/content-types-xform');
+const ISTORIC_COLOANE = TRASEU_COLOANE.slice(0, -1);                 // fără „Pe hartă"
+const ISTORIC_LATIMI = [12, 10, 12, 14, 10, 10, 15, 10, 24];
+const _XL_CAP = { font: { bold: true }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } },
+  border: { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } } };
+const _XL_GRI = { italic: true, size: 10, color: { argb: 'FF777777' } };
+function _xlFluxLogo(wb) {
+  const buf = _logoBuffer(); if (!buf) return function () { return 1; };
+  const img = wb.media[wb.addImage({ buffer: buf, extension: 'png' })];
+  const desene = [];
+  // Tipul fișierelor-desen trebuie anunțat în [Content_Types].xml, altfel Excel le ignoră (sau „repară" fișierul).
+  wb.addContentTypes = function () {
+    const model = { worksheets: this._worksheets.filter(Boolean), sharedStrings: this.sharedStrings, commentRefs: this.commentRefs,
+      media: this.media, drawings: desene.map(function (n) { return { name: 'drawing' + n }; }) };
+    this.zip.append(new ContentTypesXform().toXml(model), { name: '[Content_Types].xml' });
+    return Promise.resolve();
+  };
+  // Chemată imediat după addWorksheet: foaia își deschide intrarea în arhivă la creare, iar desenul trebuie să vină DUPĂ
+  // ea — altfel arhiva ar aștepta desenul și ar ține toată foaia în memorie. Întoarce primul rând liber (2).
+  return function (ws) {
+    const n = desene.length + 1; desene.push(n);
+    const rId = ws._sheetRelsWriter.addRelationship({ Type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing',
+      Target: '../drawings/drawing' + n + '.xml' });
+    const d = wb._openStream('/xl/drawings/drawing' + n + '.xml');
+    d.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><xdr:oneCellAnchor editAs="oneCell"><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="1714500" cy="333375"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="Picture 1"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1" cstate="print"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>');
+    d.end();
+    const dr = wb._openStream('/xl/drawings/_rels/drawing' + n + '.xml.rels');
+    dr.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/' + img.name + '"/></Relationships>');
+    dr.end();
+    // `<drawing>` stă în foaie după `<pageSetup>`, unde îl pune și Excel-ul obișnuit (ordinea cerută de format).
+    const veche = ws._writeLegacyData.bind(ws);
+    ws._writeLegacyData = function () { this.stream.write('<drawing r:id="' + rId + '"/>'); veche(); };
+    const r1 = ws.getRow(1); r1.height = 28; r1.commit();
+    return 2;
+  };
+}
+// Luna unei poziții, pe ora României: { cheie: '2026-10', nume: 'Octombrie 2026' } — aceeași regulă la numărat și la scris.
+let _fmtLunaCheie = null, _fmtLunaNume = null;
+function lunaPozitiei(ts) {
+  if (!_fmtLunaCheie) {
+    _fmtLunaCheie = new Intl.DateTimeFormat('en-GB', { timeZone: DISPLAY_TZ, year: 'numeric', month: '2-digit' });
+    _fmtLunaNume = new Intl.DateTimeFormat('ro-RO', { timeZone: DISPLAY_TZ, year: 'numeric', month: 'long' });
+  }
+  const d = new Date(ts), p = {};
+  _fmtLunaCheie.formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+  const nume = _fmtLunaNume.format(d);
+  return { cheie: p.year + '-' + p.month, nume: nume.charAt(0).toUpperCase() + nume.slice(1) };
+}
+// Pasul 1: câte poziții are fiecare lună, citind pe pagini doar orele (`pagina(dupa)` → [{ timestamp, cheie }]). Foaia
+// „Sumar" stă prima, deci cifrele ei se știu ÎNAINTE de a scrie lunile.
+async function istoricPeLuni(pagina, pauza) {
+  const luni = []; let dupa = null, total = 0, prima = null, ultima = null, cur = null;
+  for (;;) {
+    const rows = await pagina(dupa);
+    if (!rows || !rows.length) break;
+    for (const r of rows) {
+      const l = lunaPozitiei(r.timestamp);
+      if (!cur || cur.cheie !== l.cheie) { cur = { cheie: l.cheie, nume: l.nume, n: 0 }; luni.push(cur); }
+      cur.n++;
+    }
+    total += rows.length; if (prima == null) prima = rows[0].timestamp; ultima = rows[rows.length - 1].timestamp;
+    dupa = rows[rows.length - 1].cheie;
+    if (pauza) await pauza();
+  }
+  return { luni: luni, total: total, prima: prima, ultima: ultima };
+}
+// Frâna: foaia își varsă rândurile spre arhivă fără să aștepte (ExcelJS nu ține seama că țeava e plină). Cu un browser
+// lent, rândurile s-ar strânge în memorie cât ține descărcarea. După fiecare pagină așteptăm ca țeava foii să se
+// golească — lanțul arhivă → răspuns o umple exact când cel care descarcă nu ține pasul. Țeava e un PassThrough din
+// `readable-stream` (fără `writableNeedDrain`), deci se citește starea lui. `inchis` = s-a dus cel care descarcă.
+async function _asteaptaArhiva(ws, inchis) {
+  for (let i = 0; i < 400; i++) {                 // țeava vine când îi vine foii rândul în arhivă
+    const dest = ws && ws.stream && ws.stream.pipes && ws.stream.pipes[0];
+    if (dest) {
+      const st = dest._writableState;
+      if (dest.writableNeedDrain || (st && st.needDrain)) await Promise.race([new Promise(function (r) { dest.once('drain', r); }), inchis]);
+      return;
+    }
+    await Promise.race([new Promise(function (r) { setTimeout(r, 5); }), inchis]);
+  }
+}
+// Pasul 2: fișierul, scris în `iesire` (răspunsul HTTP). `o` = { vehicul, firma, sumar (din istoricPeLuni),
+// pagina(dupa) → rânduri întregi, pauza() — după fiecare pagină, ca serverul să răspundă și altora }.
+async function istoricCompletXlsx(iesire, o) {
+  const inchis = new Promise(function (r) { iesire.once('close', r); });
+  const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: iesire, useStyles: true, useSharedStrings: false });
+  wb.creator = 'RA Tracks';
+  const logo = _xlFluxLogo(wb), sumar = o.sumar, f = _formatoriTraseu();
+  const zi = function (ts) { return ts == null ? '—' : f.zi.format(new Date(ts)); };
+  // Un rând, scris și trimis pe loc (în flux, un rând trimis nu se mai poate schimba — stilul se pune înainte).
+  const scrie = function (ws, nr, valori, stil, numFmt) {
+    const r = ws.getRow(nr);
+    (valori || []).forEach(function (v, i) {
+      const c = r.getCell(i + 1); c.value = v;
+      if (stil) Object.assign(c, stil);
+      if (numFmt && typeof v === 'number') c.numFmt = numFmt;
+    });
+    r.commit();
+  };
+  // „Sumar": cine, ce firmă, ce perioadă, câte poziții, pe luni.
+  const s = wb.addWorksheet('Sumar');
+  s.columns = [{ width: 30 }, { width: 18 }];
+  let r = logo(s);
+  scrie(s, r++, ['Istoricul complet — ' + o.vehicul], { font: { bold: true, size: 14 } });
+  scrie(s, r++, ['Firma: ' + (o.firma || '—')]);
+  scrie(s, r++, ['Perioada: ' + zi(sumar.prima) + ' — ' + zi(sumar.ultima)]);
+  scrie(s, r++, ['Descărcat pe ' + zi(Date.now()) + ', la ' + f.ora.format(new Date()).slice(0, 5) + ' (ora României)'], { font: _XL_GRI });
+  r++;
+  scrie(s, r++, ['Luna', 'Poziții GPS'], _XL_CAP);
+  sumar.luni.forEach(function (l) { scrie(s, r++, [l.nume, l.n], null, '#,##0'); });
+  scrie(s, r++, ['Total', sumar.total], { font: { bold: true } }, '#,##0');
+  r++;
+  scrie(s, r++, ['Fiecare lună are foaia ei, cu fiecare poziție a mașinii: ' + ISTORIC_COLOANE.join(', ').toLowerCase() + '.'], { font: _XL_GRI });
+  s.commit();
+  // Lunile: o foaie pe lună, rândurile scrise pe măsură ce vin din bază.
+  let ws = null, luna = null, nr = 0, dupa = null;
+  const deschide = function (l) {
+    if (ws) ws.commit();
+    const nL = (sumar.luni.filter(function (x) { return x.cheie === l.cheie; })[0] || {}).n;
+    ws = wb.addWorksheet(l.nume.slice(0, 31), { views: [{ state: 'frozen', ySplit: 5 }] });
+    ws.columns = ISTORIC_LATIMI.map(function (w) { return { width: w }; });
+    nr = logo(ws);
+    scrie(ws, nr++, [o.vehicul + ' — ' + l.nume], { font: { bold: true, size: 13 } });
+    scrie(ws, nr++, [(nL != null ? 'Poziții GPS: ' + Number(nL).toLocaleString('ro-RO') + ' · ' : '') + 'ora României'], { font: _XL_GRI });
+    nr++;
+    scrie(ws, nr++, ISTORIC_COLOANE, _XL_CAP);
+    luna = l.cheie;
+  };
+  for (;;) {
+    const rows = await o.pagina(dupa);
+    if (!rows || !rows.length) break;
+    for (const p of rows) {
+      const l = lunaPozitiei(p.timestamp);
+      if (l.cheie !== luna) deschide(l);
+      const rr = ws.getRow(nr++); rr.values = traseuRand(p, false); rr.commit();
+    }
+    dupa = rows[rows.length - 1].cheie;
+    await _asteaptaArhiva(ws, inchis);
+    if (iesire.destroyed) throw new Error('Descărcarea a fost întreruptă.');
+    if (o.pauza) await o.pauza();
+  }
+  if (ws) ws.commit();
+  await wb.commit();
+}
+// ─── sfârșit „istoricul complet, scris în flux" ──────────────────────────────────────────────────
+
 module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx,
-  traseuVehicul, traseuCaRaport, traseuPreaMare, directieTraseu, hmTraseu, kmTraseu, durataDepasiri, TRASEU_COLOANE, TRASEU_MAX_POZITII };
+  traseuVehicul, traseuCaRaport, traseuPreaMare, directieTraseu, hmTraseu, kmTraseu, durataDepasiri, TRASEU_COLOANE, TRASEU_MAX_POZITII,
+  traseuRand, lunaPozitiei, istoricPeLuni, istoricCompletXlsx, ISTORIC_COLOANE, safeName, datePart };

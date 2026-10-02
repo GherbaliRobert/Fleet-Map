@@ -105,6 +105,25 @@ vehicul) → `sendReport`. Numele: „RA-Tracks - Raport Traseu {nume · număr}
   ExcelJS face fișierul în memorie — 10.000 = ~3 s; 50.000 = 16 s și 1,5 GB, cu serverul blocat pentru toți. NU urca
   cifra fără să măsori. Varianta „în flux" a ExcelJS nu pune imagini pe foi, deci ar pierde logo-ul casei.
 - Numele KML-ului: `_numeKmlTraseu` (pagină) = `numeKmlTraseu` (mobile/src/lib/export.ts), legate prin probă.
+- **„Descarcă tot istoricul" (Dispozitive arhivate, Alin 02.10: „O facem acum")** = UN Excel cu TOT istoricul unei mașini
+  (datele înapoi pentru clientul care pleacă; la Traseu, cu 10.000 de poziții pe fișier, un an ar fi fost ~50 de fișiere).
+  `GET /api/devices/:imei/istoric-complet` (super-admin, `canAccessImei`) → `reportExport.istoricPeLuni` (pasul 1: câte
+  poziții pe lună, citind doar orele, ca „Sumar" să stea primul) → `istoricCompletXlsx` (pasul 2: ExcelJS ÎN FLUX, o foaie
+  pe lună pe ora României, rândurile scrise de ACEEAȘI `traseuRand`, fără „Pe hartă" — Excel nu primește peste 65.530 de
+  linkuri într-o foaie). Citirea: `db.istoricOre` / `db.istoricPagina`, pe pagini după timp, cu cheia scrisă ca TEXT
+  (microsecunde — o dată JS le-ar pierde și ar citi rânduri de două ori); poziții vii + arhivă fără dubluri.
+  - **Logo-ul pe fiecare foaie e pus de mână** (`_xlFluxLogo`): varianta în flux nu știe imagini. Desenul = XML-ul pe care
+    îl scrie Excel-ul obișnuit pentru `xlPlaceLogo`; anunțat în `[Content_Types].xml`; `<drawing>` după `<pageSetup>`.
+    Atinge piese interne ale ExcelJS (`_openStream`, `_sheetRelsWriter`, `_writeLegacyData`) — versiunea e fixată în
+    package-lock. Desenul se deschide DUPĂ foaie (altfel arhiva ar ține toată foaia în memorie). Păzit de probă (XML brut).
+  - **Frâna** (`_asteaptaArhiva`): după fiecare pagină se așteaptă golirea țevii foii — ExcelJS nu ține seama de ea, iar un
+    browser lent ar strânge altfel tot fișierul în memorie. MĂSURAT: un an (500.000 de poziții) ≈ 30 s, ~23 MB; cu un
+    browser de 256 KB/s memoria rămâne sub 70 MB. Memoria care crește fără frână e gunoi strâns la nevoie, nu o scurgere.
+  - **Câte UNUL deodată pe server** (`_istoricCompletAcum`): al doilea primește 429 cu „încearcă peste un minut". În jurnal
+    (`export` / `device_history`, cu numărul mașinii) abia după ce a plecat tot fișierul.
+  - **Pe telefon NU există** (un an de date e un fișier mare, peste timpul de așteptare al telefonului): banda „pe ducă" de
+    pe telefon spune dinadins „de pe calculator". Păzit de `verify_arhiva_telefon.js`.
+  - Păzit de `verify_traseu_export.js` (6c + 7b, inclusiv pe server pornit), `verify_arhiva.js` (butonul pe rând).
 - **Linkul „Vezi pe hartă" (Google Maps, pe fiecare poziție) RĂMÂNE** (Alin, 02.10: „da, îl lași"). Avertizarea de la
   clic („link suspect") o dă programul în care se deschide fișierul (Excel, telefonul) pentru orice link dintr-un fișier
   venit de pe internet — nu linkul. NU-l scoate și nu-l „repara" ca s-o ocolești.
@@ -1556,8 +1575,8 @@ plătite) — vezi „Păstrarea istoricului", mai jos.
   bucăți. Un aparat se marchează „șters" doar dacă au mers toate ștergerile; altfel se reîncearcă mâine.
 - Restaurarea oprește ceasul (`archived_at = NULL`). Aparatele arhivate înainte de 24.09 au primit
   ziua de 24.09 — nimic nu s-a șters pe nepusă masă la prima pornire.
-- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Excel (ecranul Traseu, cel mult 10.000 de poziții
-  pe fișier), sau un raport.
+- În cele 30 de zile, dacă clientul cere datele înapoi: **„Descarcă tot istoricul"** de pe rândul mașinii (un singur
+  Excel cu tot istoricul, o foaie pe lună — vezi la „Traseul descărcat", mai sus), sau un raport.
 - **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_la`, `istoric_sters` pe
   fiecare rând din `/api/archived-devices`). Ecranul doar arată ce primește; NU-și face a doua regulă
   din zile. Pragul de avertizare (`ARH_PRAG_ZILE = 7`, ultima săptămână) și cuvintele stau într-un

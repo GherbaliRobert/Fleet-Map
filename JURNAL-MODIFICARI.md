@@ -96,7 +96,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
   **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
   primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
-  (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Excel", nu la „Export CSV".)
+  (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -138,12 +138,43 @@ contabilului despre factura de avans); (3) restul meniului, de la „Conturi & A
 (Pe 01.10, seara: trei reparații pe ecranul Traseu, găsite de Alin pe verticala partenerului — mai jos. Apoi, înapoi
 la verticala fondatorului: Facturare.)
 (Pe 02.10: butonul „CSV" din Rapoarte — găsit pe drum, Alin: „da", scos; limita de 10.000 de poziții pe fișier — „da",
-rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași", rămâne. Întrebat apoi: datele unui client care
-pleacă — un an de traseu pentru o mașină = cam 50 de fișiere Excel; „Descarcă tot istoricul" acum sau mai târziu.)
+rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași", rămâne; datele unui client care pleacă (un an
+de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă tot istoricul", făcut, mai jos.)
 
 ---
 
 ## 2026-10-02
+
+### FONDATOR · „Descarcă tot istoricul": datele unui client care pleacă, într-un singur fișier
+
+Alin (02.10): *„O facem acum — și îmi spui unde va sta butonul."*
+
+**Unde stă:** Administrare → Gestiune → **Dispozitive arhivate** → pe rândul fiecărei mașini, între „Istoric" și
+„Restaurează". Pe calculator. Nu apare la mașinile al căror istoric s-a șters deja.
+
+**Ce face:** o apăsare → **un singur Excel cu tot istoricul mașinii**, oricât de lung:
+- numele casei: „RA-Tracks - Istoric complet Camion Volvo FH · TM 31 VLV - 02.10.2026.xlsx", logo-ul pe fiecare foaie;
+- foaia **„Sumar"**: mașina, firma, perioada, câte poziții pe fiecare lună și totalul;
+- **câte o foaie pe lună** („Iulie 2026", „August 2026"…), pe ora României, cu aceleași coloane ca Excelul de la Traseu
+  (data, ora, în mers/staționare, viteza, contactul, direcția, altitudinea, sateliții, coordonatele); capul de tabel
+  rămâne sus când derulezi. Fără linkul „Vezi pe hartă": Excel nu primește mai mult de 65.000 de linkuri într-o foaie,
+  iar un an are cam 500.000 de poziții — coordonatele sunt acolo.
+- Un an de date ≈ jumătate de minut și un fișier de ~23 MB; butonul scrie „Se pregătește…" cât lucrează.
+- Câte o descărcare deodată pe tot serverul (ca să nu încetinească harta live a clienților): dacă apasă doi oameni
+  odată, al doilea primește „încearcă din nou peste un minut".
+- Fiecare descărcare intră în Istoric activitate, la „Descărcări", cu numărul mașinii — se vede că datele au fost predate.
+
+Banda portocalie „istoricul pe ducă" (sus, în Dispozitive arhivate) trimite acum la butonul ăsta. Pe telefon butonul nu
+există (fișierul e prea mare pentru telefon), iar banda de acolo spune „de pe calculator".
+
+- **Ce am schimbat:** serverul (o rută nouă; istoricul citit pe pagini; fișierul scris pe măsură ce se citește, cu
+  logo-ul pus pe fiecare foaie), pagina (butonul, banda, rândul care trece pe două linii pe ecran îngust), telefonul
+  (textul benzii — din aplicația următoare). Probe: `verify_traseu_export.js` (121 de verificări: lunile pe ora României,
+  inclusiv la schimbarea orei; fișierul citit înapoi; pe server pornit: o mașină arhivată nu-și numără pozițiile de două
+  ori, numele, jurnalul, „câte unul deodată", clientul și mașinile demo refuzate), `verify_arhiva.js`,
+  `verify_arhiva_telefon.js`.
+- **Ce vede fondatorul:** butonul nou pe rândul fiecărei mașini arhivate.
+- **Ce vede clientul:** nimic în aplicație — primește de la noi fișierul, când își cere datele.
 
 ### AMÂNDOI · Rapoarte: butonul „CSV" a plecat; banda din Dispozitive arhivate trimite la Excel
 

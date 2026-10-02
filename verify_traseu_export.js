@@ -14,6 +14,10 @@
 //    KML-ul de alături poartă și el numele casei, la fel pe web și pe telefon (funcțiile rulate pe aceleași cazuri).
 // 4. Rapoarte (Alin, 02.10: „da"): butonul „CSV" — aceeași boală, fără numele casei, o singură coloană în Excel-ul
 //    românesc — a fost SCOS, cu exportul făcut în pagină din spatele lui. Un raport se descarcă doar prin server.
+// 5. „Descarcă tot istoricul" (Alin, 02.10: „O facem acum"), în Dispozitive arhivate: un singur Excel cu TOT istoricul
+//    unei mașini, scris în flux (fără limita de 10.000), o foaie pe lună pe ora României, logo-ul casei pe fiecare foaie
+//    (pus de mână — varianta în flux nu știe imagini). Proba citește fișierul înapoi (și XML-ul brut), apoi, pe server
+//    pornit: arhivat (fără poziții numărate de două ori), numele, drepturile, câte unul deodată.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -232,6 +236,55 @@ const exportTs = citeste('mobile/src/lib/export.ts');
   T('butonul „CSV" și stilul lui au plecat', !/rep-dl-csv/.test(html) && !/>\s*(<i[^>]*><\/i>\s*)?CSV\s*<\/button>/.test(randDesc));
   T('exportul făcut în pagină a plecat cu el (nu mai rămâne cod la care nu duce nimic)', !/exportReport\(/.test(htmlCod) && !/function printReportData\(/.test(htmlCod) && !/_pdfChartImage/.test(htmlCod));
 
+  // ═══ 6c. Istoricul complet, scris în flux ═════════════════════════════════════════════════════════════════════
+  sect('6c. „Descarcă tot istoricul": un Excel scris în flux, o foaie pe lună, logo pe fiecare');
+  T('o SINGURĂ scriere a rândului (traseuRand), pentru Traseu și pentru istoricul complet', (faraComentarii(citeste('report_export.js')).match(/traseuRand\(/g) || []).length === 3,
+    (faraComentarii(citeste('report_export.js')).match(/traseuRand\(/g) || []).length);
+  T('coloanele = cele de la Traseu, fără „Pe hartă" (Excel nu primește peste 65.530 de linkuri într-o foaie)', J(re.ISTORIC_COLOANE) === J(re.TRASEU_COLOANE.slice(0, -1)));
+  const Lp = (iso) => re.lunaPozitiei(iso);
+  T('31.10.2026, 23:59:59 ora României (ora de iarnă, 21:59:59 UTC) → „Octombrie 2026"', Lp('2026-10-31T21:59:59Z').cheie === '2026-10' && Lp('2026-10-31T21:59:59Z').nume === 'Octombrie 2026', J(Lp('2026-10-31T21:59:59Z')));
+  T('… o secundă mai târziu → „Noiembrie 2026"', Lp('2026-10-31T22:00:00Z').cheie === '2026-11' && Lp('2026-10-31T22:00:00Z').nume === 'Noiembrie 2026', J(Lp('2026-10-31T22:00:00Z')));
+  T('vara (UTC+3): 30.06, 21:00 UTC e deja 1 iulie → „Iulie 2026"', Lp('2026-06-30T21:00:00Z').cheie === '2026-07', J(Lp('2026-06-30T21:00:00Z')));
+  // 1.680 de poziții, din oră în oră, de pe 30.06, 23:00 (ora României): 1 în iunie, 744 în iulie, 744 în august, 191 în septembrie.
+  const T0 = Date.parse('2026-06-30T20:00:00Z'), NI = 1680;
+  const paginaProba = (dupa, lim, cuDate) => {
+    const start = dupa == null ? 0 : (Math.round((Date.parse(dupa) - T0) / 3600000) + 1), out = [];
+    for (let i = start; i < Math.min(NI, start + lim); i++) {
+      const ts = new Date(T0 + i * 3600000), p = { timestamp: ts, cheie: ts.toISOString() };
+      if (cuDate) Object.assign(p, { latitude: 44.4 + i * 1e-4, longitude: 26.1, altitude: 80, angle: 90, speed: i % 2 ? 50 : 0, satellites: 11, io_data: { ignition: i % 2 } });
+      out.push(p);
+    }
+    return Promise.resolve(out);
+  };
+  const sumarP = await re.istoricPeLuni((d) => paginaProba(d, 500, false));
+  T('numărătoarea pe luni, pe ora României: iunie 1 · iulie 744 · august 744 · septembrie 191', J(sumarP.luni.map((l) => [l.nume, l.n])) === J([['Iunie 2026', 1], ['Iulie 2026', 744], ['August 2026', 744], ['Septembrie 2026', 191]]) && sumarP.total === NI, J(sumarP.luni));
+  const { PassThrough } = require('stream');
+  const bucati = [], tub = new PassThrough(); tub.on('data', (b) => bucati.push(b));
+  await re.istoricCompletXlsx(tub, { vehicul: 'Dacia Logan 3 · B 154 UIP', firma: 'Proba Traseu SRL', sumar: sumarP, pagina: (d) => paginaProba(d, 500, true) });
+  const bufX = Buffer.concat(bucati);
+  const wbX = new ExcelJS.Workbook(); await wbX.xlsx.load(bufX);
+  T('foile: „Sumar", apoi câte una pe lună, în ordine', J(wbX.worksheets.map((w) => w.name)) === J(['Sumar', 'Iunie 2026', 'Iulie 2026', 'August 2026', 'Septembrie 2026']), J(wbX.worksheets.map((w) => w.name)));
+  T('logo-ul casei pe FIECARE foaie', wbX.worksheets.every((w) => w.getImages().length === 1), J(wbX.worksheets.map((w) => w.getImages().length)));
+  const sumX = {}; wbX.getWorksheet('Sumar').eachRow((row) => { sumX[row.getCell(1).value] = row.getCell(2).value; });
+  T('„Sumar": vehiculul, firma și câte poziții pe fiecare lună, cu totalul', /Istoricul complet — Dacia Logan 3 · B 154 UIP/.test(J(wbX.getWorksheet('Sumar').getRow(2).values)) &&
+    /Firma: Proba Traseu SRL/.test(J(wbX.getWorksheet('Sumar').getRow(3).values)) && sumX['Iulie 2026'] === 744 && sumX['Septembrie 2026'] === 191 && sumX['Total'] === NI, J(sumX));
+  const iul = wbX.getWorksheet('Iulie 2026');
+  T('capul de tabel pe rândul 5, înghețat (rămâne sus la derulare)', J(re.ISTORIC_COLOANE.map((c, i) => iul.getRow(5).getCell(i + 1).value)) === J(re.ISTORIC_COLOANE) && iul.views[0].state === 'frozen' && iul.views[0].ySplit === 5, J(iul.views));
+  T('prima poziție din iulie: 01.07.2026, 00:00:00 (ora României), pe românește', J(iul.getRow(6).values.slice(1)) === J(['01.07.2026', '00:00:00', 'În mers', 50, 'Pornit', 'E', 80, 11, '44.400100, 26.100000']), J(iul.getRow(6).values.slice(1)));
+  T('câte un rând pe poziție (744 în iulie)', iul.rowCount === 5 + 744, iul.rowCount);
+  let JSZip = null; try { JSZip = require('jszip'); } catch (e) { /* vine cu exceljs */ }
+  T('pot citi XML-ul brut al fișierului (jszip, adus de exceljs)', !!JSZip);
+  if (JSZip) {
+    const z = await JSZip.loadAsync(bufX), nume = Object.keys(z.files);
+    const ia = async (re_) => { const n = nume.find((x) => re_.test(x)); return n ? z.file(n).async('string') : ''; };
+    const ct = await ia(/\[Content_Types\]\.xml$/);
+    T('fiecare desen e anunțat în [Content_Types].xml (altfel Excel „repară" fișierul)', (ct.match(/drawing\+xml/g) || []).length === 5, (ct.match(/drawing\+xml/g) || []).length);
+    const sh = await ia(/xl\/worksheets\/sheet3\.xml$/);
+    T('în foaie, desenul stă după <pageSetup>, unde îl pune și Excel-ul obișnuit', /<pageSetup[^>]*\/>(<headerFooter[^>]*\/>)?<drawing r:id="rId\d+"\/><\/worksheet>\s*$/.test(sh), sh.slice(-260));
+    const rels = await Promise.all(nume.filter((x) => /worksheets\/_rels\/.*\.rels$/.test(x)).map((x) => z.file(x).async('string')));
+    T('nicio foaie nu are linkuri; fiecare are desenul ei', rels.length === 5 && rels.every((x) => !/relationships\/hyperlink/.test(x) && /relationships\/drawing/.test(x)), rels.length);
+  }
+
   // ═══ 7. Pe server pornit ══════════════════════════════════════════════════════════════════════════════════════
   sect('7. Pe server pornit: numele, foile, cifrele ecranului, drepturile, limitele');
   const PORT = 3283, DIR = '.traseu-export-ci-db';
@@ -338,6 +391,45 @@ const exportTs = citeste('mobile/src/lib/export.ts');
     T('refuzul vine repede (fără să facă fișierul): ' + (Date.now() - t0) + ' ms', Date.now() - t0 < 8000, Date.now() - t0);
     const csv = await GET('/api/export/' + A1 + '?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
     T('CSV-ul brut pentru API răspunde ca înainte', csv.status === 200 && /csv/.test(csv.headers.get('content-type') || ''), csv.status + ' ' + csv.headers.get('content-type'));
+
+    // ── 7b. „Descarcă tot istoricul", pe server pornit ──
+    sect('7b. „Descarcă tot istoricul" pe server pornit: arhivat, numele, drepturile, câte unul deodată');
+    const H1 = '862129084800021';
+    await POST('/api/devices', { imei: H1, name: 'Camion arhivat', plate: 'TM 21 ARH', company_id: coA.id });
+    for (const luni of [0, 1]) await POST('/api/test/istoric-vechi', { imei: H1, luni: luni, n: 3000 });
+    await POST('/api/test/simulate', { imei: H1, ts: new Date(Date.now() - 3600000).toISOString(), lat: 45.7, lng: 21.2, speed: 50, io: { ignition: 1 } });
+    // Arhivarea copiază istoricul în arhivă: pozițiile stau în DOUĂ locuri, iar fișierul nu le numără de două ori.
+    const arhv = await PUT('/api/devices/' + H1 + '/status', { status: 'archived' });
+    T('aparatul se arhivează', arhv.status === 200, arhv.status);
+    const xh = await GET('/api/devices/' + H1 + '/istoric-complet');
+    T('istoricul complet se descarcă', xh.status === 200 && /spreadsheetml/.test(xh.headers.get('content-type') || ''), xh.status + ' ' + xh.headers.get('content-type'));
+    T('numele: „RA-Tracks - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx"', numeDin(xh) === 'RA-Tracks - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx', numeDin(xh));
+    if (xh.status === 200) {
+      const w = new ExcelJS.Workbook(); await w.xlsx.load(Buffer.from(await xh.arrayBuffer()));
+      const sm = {}; let lunile = 0;
+      w.getWorksheet('Sumar').eachRow((row) => { const k = row.getCell(1).value, v = row.getCell(2).value; sm[k] = v; if (/^[A-ZĂÎÂȘȚ][a-zăîâșț]+ \d{4}$/.test(String(k)) && typeof v === 'number') lunile++; });
+      T('6.001 de poziții (3.000 + 3.000 + 1), deși jumătate stau și în arhivă', sm['Total'] === 6001, J(sm));
+      T('„Sumar" + câte o foaie pentru fiecare lună din sumar, cu logo pe fiecare', w.worksheets.length === 1 + lunile && lunile >= 2 && w.worksheets.every((x) => x.getImages().length === 1), w.worksheets.map((x) => x.name).join(' | '));
+      const randuri = w.worksheets.slice(1).reduce((a, x) => a + x.rowCount - 5, 0);
+      T('rândurile din foile lunilor = totalul din „Sumar"', randuri === 6001, randuri);
+      T('firma e cea a mașinii', /Firma: Proba Traseu A SRL/.test(J(w.getWorksheet('Sumar').getRow(3).values)), J(w.getWorksheet('Sumar').getRow(3).values));
+    }
+    const act = await (await GET('/api/activity?zile=1&familie=descarcari')).json().catch(() => ({}));
+    T('descărcarea intră în jurnal, la „Descărcări", cu numărul mașinii', (act.randuri || []).some((x) => x.entity === 'device_history' && x.details && x.details.plate === 'TM 21 ARH'), J((act.randuri || []).map((x) => x.entity)));
+    // Câte UNUL deodată: al doilea, venit cât primul încă lucrează, primește 429 cu mesaj; primul se termină bine.
+    const pA = GET('/api/devices/' + H1 + '/istoric-complet');
+    await sleep(40);
+    const rB = await GET('/api/devices/' + H1 + '/istoric-complet'), jB = await rB.json().catch(() => ({}));
+    const rA = await pA; await rA.arrayBuffer();
+    T('câte unul deodată: al doilea primește 429, cu fraza pentru om', rB.status === 429 && jB.ocupat === true && /peste un minut/.test(jB.error || ''), rB.status + ' ' + J(jB));
+    T('… iar primul se termină bine', rA.status === 200, rA.status);
+    const H2 = '862129084800022';
+    await POST('/api/devices', { imei: H2, name: 'Fără istoric', plate: 'TM 22 ARH', company_id: coA.id });
+    const gol = await GET('/api/devices/' + H2 + '/istoric-complet'), jg = await gol.json().catch(() => ({}));
+    T('mașină fără istoric → 404, cu mesaj', gol.status === 404 && /nu mai are istoric/.test(jg.error || ''), gol.status + ' ' + J(jg));
+    T('după un refuz, următoarea descărcare merge (lacătul s-a deschis)', (await GET('/api/devices/' + H1 + '/istoric-complet').then(async (x) => { await x.arrayBuffer(); return x.status; })) === 200);
+    if (ckB) T('clientul NU poate descărca istoricul complet (doar noi)', (await GET('/api/devices/' + B1 + '/istoric-complet', ckB)).status === 403);
+    T('mașinile demo nu se descarcă', (await GET('/api/devices/DEMO0001/istoric-complet')).status === 403);
   } catch (e) { T('proba pe server pornit a mers până la capăt', false, e && e.stack); }
   gata(rele ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

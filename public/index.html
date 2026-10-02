@@ -4123,6 +4123,8 @@ const pozitii = await r.json();</code></pre>
         + '</div>'
         + '<div class="arch-actions">'
         + '<button class="btn-sm" onclick="archViewHistory(\'' + _ssEsc(d.imei) + '\')" title="Vezi traseul istoric"><i class="fas fa-route"></i> Istoric</button>'
+        // Datele înapoi, dintr-o apăsare (Alin, 02.10): un singur Excel cu TOT istoricul mașinii. Fără istoric, nu apare.
+        + (d.istoric_sters ? '' : '<button class="btn-sm" onclick="archDescarcaTot(\'' + _ssEsc(d.imei) + '\',this)" title="Un singur fișier Excel cu tot istoricul mașinii — pentru clientul care își cere datele înapoi"><i class="fas fa-file-arrow-down"></i> Descarcă tot istoricul</button>')
         + '<button class="btn-sm btn-primary" onclick="archRestore(\'' + _ssEsc(d.imei) + '\',this)" title="Reactivează dispozitivul"><i class="fas fa-undo"></i> Restaurează</button>'
         + '<button class="btn-sm" style="background:var(--red);border-color:var(--red);color:#fff;" onclick="archDelete(\'' + _ssEsc(d.imei) + '\',this)" title="Șterge definitiv din baza de date (ireversibil)"><i class="fas fa-trash"></i> Șterge</button>'
         + '</div></div>';
@@ -4139,7 +4141,7 @@ const pozitii = await r.json();</code></pre>
       var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). '
           + (zPastrare ? 'Istoricul lor se mai păstrează <strong>' + _arhZile(zPastrare) + '</strong> de la arhivare — cât clientul poate cere datele înapoi — apoi se șterge definitiv, cum scrie în contract.' : '')
           + '</div>'
-        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Excel, sau dintr-un raport.</div>' : '')
+        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).</div>' : '')
         + '<div class="rax-dev-bar"><input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / firmă" value="' + _ssEsc(_arhCauta || '') + '" oninput="_arhCautaSet(this.value)"></div>';
       if (!rows.length) {
         host.innerHTML = cap + '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun aparat arhivat care să se potrivească.</div>';
@@ -4223,6 +4225,25 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { alert('Eroare: ' + e.message); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Șterge'; } }
     }
     window.archDelete = archDelete;
+
+    // „Descarcă tot istoricul" (Alin, 02.10): un singur Excel cu TOT istoricul mașinii — pentru clientul care pleacă și își
+    // cere datele înapoi. Serverul îl scrie în flux, o foaie pe lună; la un an de date durează cam jumătate de minut, deci
+    // butonul spune asta cât lucrează. Numele fișierului vine din antet (`_numeDinAntet`), ca la celelalte descărcări.
+    async function archDescarcaTot(imei, btn) {
+      var vechi = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se pregătește… (până la un minut)'; }
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/istoric-complet', { credentials: 'same-origin' });
+        if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error(j.error || ('Eroare ' + r.status)); }
+        var blob = await r.blob();
+        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Tracks - Istoric complet.xlsx') : 'RA-Tracks - Istoric complet.xlsx';
+        var url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = nume; document.body.appendChild(a); a.click();
+        a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      } catch (e) { (window.raxToast || alert)('Descărcarea n-a mers: ' + e.message, 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = vechi; } }
+    }
+    window.archDescarcaTot = archDescarcaTot;
 
     // ── începe „istoricul unui aparat arhivat" ────────────────────────────────────────────────────
     // Butonul „Istoric" de pe un rând arhivat. NU făcea nimic, din două motive suprapuse (găsite
@@ -18161,7 +18182,8 @@ const pozitii = await r.json();</code></pre>
     .arch-meta { font-size: 12px; min-width: 110px; }
     .arch-span { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .arch-term { font-size: 11px; font-weight: 700; margin-top: 3px; }
-    .arch-actions { display: flex; gap: 6px; }
+    /* Patru butoane din 02.10 („Descarcă tot istoricul"): pe un ecran îngust trec pe două rânduri, nu ies din pagină. */
+    .arch-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     @media (max-width: 640px) {
       .adash-cards { grid-template-columns: repeat(2, 1fr); }
       .arch-actions { width: 100%; }

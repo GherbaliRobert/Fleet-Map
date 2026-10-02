@@ -8702,6 +8702,45 @@ app.get('/api/archived-devices', requireAuth, requireSuperadmin, withScope, asyn
   }
 });
 
+// ─── „Descarcă tot istoricul" (Alin, 02.10: „O facem acum") ─────────────────────────────────────────────────────────
+// Un client care pleacă are 30 de zile să-și ceară datele înapoi (contractul, Anexa GDPR). Butonul stă în Dispozitive
+// arhivate, pe rândul mașinii: un singur Excel cu TOT istoricul ei, oricât de lung — o foaie pe lună, plus „Sumar".
+// Se scrie în flux (`reportExport.istoricCompletXlsx`), citit din bază pe pagini: memoria rămâne mică. MĂSURAT: un an
+// (≈ 500.000 de poziții) = ~30 s și un fișier de ~23 MB. De aceea, câte UNUL deodată pe tot serverul: al doilea primește
+// 429 și încearcă peste un minut. Doar noi (super-admin), ca tot ecranul; mașinile demo nu se descarcă (canAccessImei).
+let _istoricCompletAcum = null;   // IMEI-ul care se descarcă acum
+app.get('/api/devices/:imei/istoric-complet', requireAuth, requireSuperadmin, withScope, async (req, res) => {
+  const imei = String(req.params.imei || '');
+  if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+  if (!reportExport || !reportExport.istoricCompletXlsx) return res.status(503).json({ error: 'Exportul Excel nu e disponibil acum.' });
+  if (_istoricCompletAcum) return res.status(429).json({ error: 'Se descarcă chiar acum istoricul complet al altei mașini. Încearcă din nou peste un minut.', ocupat: true });
+  _istoricCompletAcum = imei;
+  try {
+    const dev = await db.getDeviceFull(imei).catch(function () { return null; });
+    if (!dev) return res.status(404).json({ error: 'Aparatul nu există.' });
+    const pauza = function () { return new Promise(function (r) { setImmediate(r); }); };
+    // 1) Câte poziții are fiecare lună — „Sumar" stă primul, deci cifrele lui trebuie știute înainte.
+    const sumar = await reportExport.istoricPeLuni(function (dupa) { return db.istoricOre(imei, dupa, 50000); }, pauza);
+    if (!sumar.total) return res.status(404).json({ error: 'Mașina nu mai are istoric de descărcat (s-a șters sau n-a transmis niciodată).' });
+    const co = dev.company_id != null ? await db.getCompanyById(dev.company_id).catch(function () { return null; }) : null;
+    const nume = String(dev.name || imei).trim(), plate = String(dev.plate || '').trim();
+    const vehicul = nume + (plate && plate !== nume ? ' · ' + plate : '');
+    // 2) Fișierul. Numele, ca la celelalte descărcări ale casei; antetul îl citește pagina (`_numeDinAntet`).
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', reportExport.contentDisposition(reportExport.safeName('RA-Tracks - Istoric complet ' + vehicul + ' - ' + reportExport.datePart()) + '.xlsx'));
+    await reportExport.istoricCompletXlsx(res, { vehicul: vehicul, firma: co ? co.name : null, sumar: sumar,
+      pagina: function (dupa) { return db.istoricPagina(imei, dupa, 5000); }, pauza: pauza });
+    // În jurnal abia după ce a plecat tot fișierul (o descărcare întreruptă nu e o predare de date).
+    auditReq(req, 'export', 'device_history', imei, { name: dev.name || null, plate: dev.plate || null, pozitii: sumar.total, luni: sumar.luni.length });
+  } catch (e) {
+    console.error('[istoric-complet]', imei, e && e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+    else res.destroy(e);            // jumătate de fișier nu e un fișier: browserul vede că descărcarea a eșuat
+  } finally {
+    _istoricCompletAcum = null;
+  }
+});
+
 // Listă slabă (fără poziție live + io_data) — folosită de selectoarele de mutare super-admin.
 // Drop ~80-95% din payload-ul /api/devices la 1000+ vehicule.
 app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
