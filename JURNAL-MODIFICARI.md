@@ -29,7 +29,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   returul în 15 zile, valoarea aparatelor nereturnate). **Din 29.09, și clauzele noi:** abonamentul
   fiecărui vehicul pornește la prima transmisie a aparatului, prima lună pe zile (IV); aparatele în avans,
   pe proformă (IV + Anexa nr. 2); montajul în 30 de zile de la încasare și mașinile neaduse (V); renunțarea
-  dacă avansul nu vine în 30 de zile (VII).
+  dacă avansul nu vine în 30 de zile (VII). **Din 02.10, și paginile publice Termeni și Confidențialitate** de pe
+  ratrack.ro: sunt ciorne, cu nota „Document-model… înainte de lansare" pe ele și cu goluri de completat
+  („[lunar/anual]", „[30] de zile", „[12] luni", „[Railway / furnizor cloud]", „[furnizor SMTP]").
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -109,6 +111,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   www.ratrack.ro → ratrack.ro, permanentă (301).
 - [ ] **Voi: profilul firmei pe Google (Google Business Profile). Adăugat pe 02.10.** Numele, adresa, telefonul,
   programul și linkul spre site — e ce vede primul cine caută firma pe nume.
+- [ ] **Voi: hotărâți corecturile de pe site, găsite pe 02.10.** Prima pagină promite câteva lucruri pe care aplicația
+  nu le face (agenții „24/7", raportul „în fiecare dimineață", alerta de „deconectări"…), „Ultima actualizare" de pe
+  Termeni și Confidențialitate arată ziua de azi, întrebările frecvente au datele pentru Google incomplete și păstrarea
+  datelor scrisă vag, documentația API pomenește „TrackGPS". Corecturile sunt gata (ramura „seo-corecturi"); lista
+  întreagă e în jurnal, la 02.10. Un „da" (sau „da, fără …") și le urc.
+- [ ] **Voi: datele firmei, pe site. Adăugat pe 02.10.** Pe Termeni și Confidențialitate scrie încă „[NUME FIRMĂ SRL]",
+  „[CUI]", „[adresă]", „[contact@ratrack.ro]" — le vede oricine, și Google. Pe prima pagină telefonul e „+40 7XX XXX XXX",
+  iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
+  telefonul (aceleași ca în „Date emitent") și adresele paginilor de Facebook / LinkedIn, dacă există, și le pun eu.
+  Aceleași date trebuie să fie și în profilul de Google (punctul de mai sus), literă cu literă.
 
 ---
 
@@ -154,6 +166,58 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-02
 
+### CLIENT · Site-ul public: trei pagini noi, diacritice, adrese curate, harta site-ului cu date adevărate — `HASH`
+
+Robert (02.10), după analiza SEO: *„fă tot ce poți tu"*. Ce se poate face doar din conturile voastre (Search Console,
+Bing, redirecționarea www, profilul de Google, datele firmei) e la „De amintit".
+
+1. **Trei pagini noi**, câte una pentru ce caută oamenii pe Google, fiecare cu patru întrebări la final:
+   - **ratrack.ro/monitorizare-combustibil** — de unde vine cifra consumului (calculatorul mașinii, sonda din rezervor
+     sau estimare), scăderile bruște cu locul și cantitatea, alimentările, costul în lei, rapoartele de consum;
+   - **ratrack.ro/alerte-itp-rca-rovinieta** — ce acte se urmăresc, când și unde vin alertele, reviziile pe kilometri
+     sau pe dată, citirea automată a actelor din poză;
+   - **ratrack.ro/agenti-ai** — ce face fiecare dintre cei șase agenți și cum îl întrebi pe RA Insight.
+   Fiecare frază e verificată în cod: paginile spun doar ce face aplicația azi. Se ajunge la ele din prima pagină (sub
+   „Combustibil & sonde", sub „Mentenanță & documente", sub agenți și din subsol) și din întrebările frecvente.
+2. **Prima pagină, cu diacritice peste tot:** „Monitorizează-ți flota în timp real" (era „Monitorizeaza-ti flota in
+   timp real"), meniul, cartonașele, formularul de contact și mesajele lui. Doar diacriticele — textul a rămas același.
+3. **Adresele duble:** ratrack.ro/confidentialitate.html și ratrack.ro/confidentialitate erau aceeași pagină sub două
+   adrese (la fel întrebările frecvente, termenii, prima pagină). Acum cea cu „.html" duce permanent la cea curată, iar
+   linkurile vechi (din aplicația de telefon de azi, de exemplu) merg mai departe. Documentația API, care răspunde la
+   trei adrese, îi spune lui Google pe care s-o țină.
+4. **Harta site-ului pentru Google** spune ziua în care s-a schimbat fiecare pagină — nu ziua de azi, la fiecare
+   citire, cum spunea până acum (o dată care se schimbă mereu e o dată pe care Google o ignoră).
+5. **Termeni și Confidențialitate:** au descriere pentru Google și adresă canonică.
+
+**Găsite pe drum — NU le-am reparat, vă întreb întâi** (regula din 01.10). Corecturile sunt gata, pe o ramură separată
+(„seo-corecturi"), nepublicate; un „da" și urcă:
+- **Prima pagină promite ce aplicația nu face** (verificat în cod): agenții „supraveghează flota 24/7" (doar RA Watch
+  lucrează singur, o dată pe oră; ceilalți cinci, când le deschizi pagina); RA Client „îți livrează în fiecare
+  dimineață un rezumat… și topul șoferilor" (nu trimite nimic dimineața și arată cea mai activă mașină, nu șoferi);
+  RA Optimize „scor pentru fiecare șofer" (e pe mașină); RA Compliance „condus și odihnă" (e o estimare din GPS a
+  condusului de azi); RA Watch „te alertează instant" (nu vine nimic pe telefon); alerte la „deconectări" (nu există);
+  harta de căldură „unde trec" (arată unde stau); dispecerizarea „la o adresă" (locul se alege pe hartă); „14+" sus și
+  „32 de tipuri" jos (sunt 33 de rapoarte); „nu estimări" (fără CAN sau sondă, consumul chiar e o estimare).
+  Până se hotărăște, pagina „Agenți AI" și prima pagină spun lucruri diferite despre agenți.
+- **Termeni și Confidențialitate:** „Ultima actualizare" arată ziua de azi, din calculatorul vizitatorului — o dată
+  falsă pe un document legal. Corectura: ziua reală a ultimei schimbări (12.06.2026, respectiv 24.09.2026).
+- **Întrebările frecvente:** datele pentru Google au 10 din 11 întrebări, cu răspunsurile rezumate (Google cere să fie
+  ca pe pagină); păstrarea datelor scrie „o perioadă stabilită", nu ce scrie în contract (12 luni; la plecare, 30 de
+  zile, apoi se șterg); e singura pagină publică fără bannerul de cookie-uri.
+- **Documentația API** scrie în descriere „RA Tracks / TrackGPS" — TrackGPS e marca altei firme.
+
+- **Ce am schimbat:** paginile publice (`landing.html`, `faq.html`, `termeni.html`, `confidentialitate.html`,
+  `api-docs.html` + trei pagini noi), serverul (o singură listă a paginilor publice: harta site-ului, adresele,
+  redirecționările), legăturile spre Termeni și Confidențialitate din aplicație, din bannerul de cookie-uri și din
+  meniul telefonului (pe telefon intră în următorul APK; până atunci merg prin redirecționare). Probă nouă:
+  `verify_site_public.js` (în `npm test`, și pe server pornit): titlu, descriere, adresă canonică, un singur titlu
+  mare, fontul casei, diacriticele, întrebările identice cu datele pentru Google, data din harta site-ului (se schimbă
+  doar când se schimbă textul), redirecționările — și fiecare cifră scrisă pe paginile noi, legată de regula din cod.
+  Ce e „de hotărât" stă într-o listă în probă și se tipărește la fiecare rulare.
+- **Ce vede fondatorul:** aceleași pagini ca orice vizitator; după ce trimiteți harta site-ului în Search Console,
+  Google vede 7 pagini în loc de 4.
+- **Ce vede clientul (și orice vizitator):** prima pagină scrisă cu diacritice; trei pagini noi, pe larg, despre
+  combustibil, alertele de acte și agenți.
 ### FONDATOR · „Descarcă tot istoricul": datele unui client care pleacă, într-un singur fișier
 
 Alin (02.10): *„O facem acum — și îmi spui unde va sta butonul."*

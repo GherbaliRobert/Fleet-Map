@@ -338,6 +338,9 @@
     }
     .feature h3{font-size:19px;font-weight:700;margin-bottom:9px}
     .feature p{color:var(--muted);font-size:15px;line-height:1.6}
+    /* Legătura spre pagina pe larg a funcției: sub etichetă, pe rândul ei. */
+    .feature .more{display:flex;width:max-content;align-items:center;gap:7px;margin-top:14px;font-size:14px;font-weight:700;color:var(--accent);transition:gap .2s var(--ease)}
+    .feature .more:hover{gap:11px}
     .feature .tag{
       display:inline-block;margin-top:16px;font-size:12px;font-weight:600;letter-spacing:.3px;
       color:var(--accent);background:rgba(63,224,125,.07);border:1px solid rgba(63,224,125,.2);
@@ -460,8 +463,8 @@
       .ra-insight{grid-template-columns:1fr;padding:24px 20px;gap:16px}
       .ri-head h3{font-size:19px}
     }
-    .agents-foot{text-align:center;margin-top:34px}
-    .agents-foot a{display:inline-flex;align-items:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
+    .agents-foot{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 32px;margin-top:34px}
+    .agents-foot a{display:inline-flex;align-items:center;justify-content:center;text-align:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
     .agents-foot a:hover{gap:14px}
 
     /* ---------- ABOUT ---------- */
@@ -641,14 +644,14 @@
         </a>
 
         <div class="nav-links">
-          <a href="#functii">Functii</a>
-          <a href="#agenti-ai">Agenti AI</a>
+          <a href="#functii">Funcții</a>
+          <a href="#agenti-ai">Agenți AI</a>
           <a href="#despre">Despre</a>
           <a href="#contact">Contact</a>
         </div>
 
         <div class="nav-right">
-          <a href="/app" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+          <a href="/app" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
           <button class="hamburger" id="hamburger" aria-label="Meniu" aria-controls="mobileMenu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
         </div>
       </nav>
@@ -661,11 +664,11 @@
       <div class="mm-mark" aria-hidden="true">
         <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:32px" alt="RA"><span class="raw" style="font-size:25px">Tracks</span></span>
       </div>
-      <a href="#functii">Functii</a>
-      <a href="#agenti-ai">Agenti AI</a>
+      <a href="#functii">Funcții</a>
+      <a href="#agenti-ai">Agenți AI</a>
       <a href="#despre">Despre</a>
       <a href="#contact">Contact</a>
-      <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+      <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
     </div>
   </div>
 
@@ -679,17 +682,17 @@
     <div class="hero-veil" aria-hidden="true"></div>
     <div class="wrap">
       <div class="hero-inner">
-        <span class="badge"><span class="dot"></span> Optimizeaza consumul si reduce costurile flotei</span>
-        <h1>Monitorizeaza-ti <span class="grad">flota in timp real</span></h1>
-        <p class="sub">RA Tracks iti aduce localizare live, rapoarte detaliate, consum de combustibil si alerte instant — totul intr-un singur dashboard rapid, clar si construit pentru operatiuni reale de transport.</p>
+        <span class="badge"><span class="dot"></span> Optimizează consumul și reduce costurile flotei</span>
+        <h1>Monitorizează-ți <span class="grad">flota în timp real</span></h1>
+        <p class="sub">RA Tracks îți aduce localizare live, rapoarte detaliate, consum de combustibil și alerte instant — totul într-un singur dashboard rapid, clar și construit pentru operațiuni reale de transport.</p>
         <div class="hero-ctas">
-          <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+          <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
           <button type="button" class="btn btn-ghost" onclick="raxDemoAsk()"><i class="fa-solid fa-envelope-open-text"></i> Cere cont demo</button>
         </div>
         <div class="hero-stats">
           <div class="stat">
             <div class="num"><span>4G</span></div>
-            <div class="lbl">tehnologie moderna</div>
+            <div class="lbl">tehnologie modernă</div>
           </div>
           <div class="stat">
             <div class="num"><span>14+</span></div>
@@ -708,83 +711,85 @@
   <section class="section" id="functii">
     <div class="wrap">
       <div class="section-head reveal">
-        <span class="eyebrow">Functii</span>
-        <h2><span class="accent">Management de flota</span>, complet, dintr-un singur ecran</h2>
+        <span class="eyebrow">Funcții</span>
+        <h2><span class="accent">Management de flotă</span>, complet, dintr-un singur ecran</h2>
         <p class="subhead">Tot ce ai nevoie pentru un control integral.</p>
-        <p class="lead">De la harta live, dispecerizare si rapoarte, pana la acte completate automat, evidenta soferilor, combustibil si integrari prin API.</p>
+        <p class="lead">De la harta live, dispecerizare și rapoarte, până la acte completate automat, evidența șoferilor, combustibil și integrări prin API.</p>
       </div>
 
       <div class="features-grid">
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-location-crosshairs"></i></div>
           <h3>Localizare live</h3>
-          <p>Urmareste fiecare vehicul pe harta in timp real, cu viteza, directie si traseu. Pozitia se actualizeaza la cateva secunde.</p>
+          <p>Urmărește fiecare vehicul pe hartă în timp real, cu viteză, direcție și traseu. Poziția se actualizează la câteva secunde.</p>
           <span class="tag">Real-time</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-truck-arrow-right"></i></div>
-          <h3>Dispecerizare: ce masina trimiti</h3>
-          <p>Ai o cursa la o adresa? Aplicatia iti arata pe loc masinile cele mai apropiate, care sunt libere si in cat timp ajung. Nu mai suni pe rand sa afli cine unde e.</p>
-          <span class="tag">Distanta &amp; timp</span>
+          <h3>Dispecerizare: ce mașină trimiți</h3>
+          <p>Ai o cursă la o adresă? Aplicația îți arată pe loc mașinile cele mai apropiate, care sunt libere și în cât timp ajung. Nu mai suni pe rând să afli cine unde e.</p>
+          <span class="tag">Distanță &amp; timp</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-chart-column"></i></div>
           <h3>Rapoarte detaliate</h3>
-          <p>Trasee, opriri, stationari, kilometri, viteze si activitate per vehicul sau per sofer. Exporta si analizeaza usor.</p>
+          <p>Trasee, opriri, staționări, kilometri, viteze și activitate per vehicul sau per șofer. Exportă și analizează ușor.</p>
           <span class="tag">32 de tipuri</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-gas-pump"></i></div>
           <h3>Combustibil &amp; sonde</h3>
-          <p>Monitorizare consum si nivel rezervor cu sonde litrometrice Escort / EuroSens si date CAN. Detectie alimentari si scurgeri.</p>
+          <p>Monitorizare consum și nivel rezervor cu sonde litrometrice Escort / EuroSens și date CAN. Detecție alimentări și scurgeri.</p>
           <span class="tag">Escort / EuroSens</span>
+          <a class="more" href="/monitorizare-combustibil">Cum măsurăm consumul <i class="fa-solid fa-arrow-right"></i></a>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-bell"></i></div>
-          <h3>Alerte &amp; notificari</h3>
-          <p>Primesti instant alerte pentru viteza, geofence, scurgeri de combustibil, deconectari sau evenimente personalizate.</p>
+          <h3>Alerte &amp; notificări</h3>
+          <p>Primești instant alerte pentru viteză, geofence, scurgeri de combustibil, deconectări sau evenimente personalizate.</p>
           <span class="tag">Instant</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-users-gear"></i></div>
           <h3>Roluri &amp; multi-client</h3>
-          <p>Gestioneaza mai multi clienti si echipe cu drepturi de acces separate. Fiecare vede exact ce trebuie sa vada.</p>
+          <p>Gestionează mai mulți clienți și echipe cu drepturi de acces separate. Fiecare vede exact ce trebuie să vadă.</p>
           <span class="tag">RBAC</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-plug-circle-bolt"></i></div>
-          <h3>API &amp; integrari</h3>
-          <p>Conecteaza RA Tracks cu sistemele tale — ERP, facturare sau TMS — prin API si webhooks. Datele tale, fluxul tau.</p>
+          <h3>API &amp; integrări</h3>
+          <p>Conectează RA Tracks cu sistemele tale — ERP, facturare sau TMS — prin API și webhooks. Datele tale, fluxul tău.</p>
           <span class="tag">API + Webhooks</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-mobile"></i></div>
-          <h3>Aplicatie mobila</h3>
-          <p>Toata flota in buzunar: harta live, fisa vehiculului, rapoarte si notificari push. Aplicatie nativa de Android.</p>
+          <h3>Aplicație mobilă</h3>
+          <p>Toată flota în buzunar: harta live, fișa vehiculului, rapoarte și notificări push. Aplicație nativă de Android.</p>
           <span class="tag">Android</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-wrench"></i></div>
-          <h3>Mentenanta &amp; documente</h3>
-          <p>ITP, RCA si reviziile, urmarite pe data sau pe kilometri. Esti anuntat din timp, ca sa nu ramai cu masina pe loc.</p>
-          <span class="tag">Fara expirari ratate</span>
+          <h3>Mentenanță &amp; documente</h3>
+          <p>ITP, RCA și reviziile, urmărite pe dată sau pe kilometri. Ești anunțat din timp, ca să nu rămâi cu mașina pe loc.</p>
+          <span class="tag">Fără expirări ratate</span>
+          <a class="more" href="/alerte-itp-rca-rovinieta">Cum funcționează alertele <i class="fa-solid fa-arrow-right"></i></a>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-file-circle-check"></i></div>
-          <h3>Acte incarcate, fisa completata automat</h3>
-          <p>Incarci talonul, RCA-ul sau ITP-ul si un instrument le citeste singur: numarul, seria de sasiu, marca, puterea si data expirarii intra direct in fisa vehiculului. Nu mai introduci date manual — doar confirmi.</p>
+          <h3>Acte încărcate, fișă completată automat</h3>
+          <p>Încarci talonul, RCA-ul sau ITP-ul și un instrument le citește singur: numărul, seria de șasiu, marca, puterea și data expirării intră direct în fișa vehiculului. Nu mai introduci date manual — doar confirmi.</p>
           <span class="tag">Automatizare</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-id-badge"></i></div>
-          <h3>Evidenta soferilor si a permiselor</h3>
-          <p>Fiecare sofer cu categoriile lui de permis, incadrarea (sofer sau sofer profesionist), data expirarii si masina pe care e pus. Scoti oricand o situatie completa cu soferii.</p>
+          <h3>Evidența șoferilor și a permiselor</h3>
+          <p>Fiecare șofer cu categoriile lui de permis, încadrarea (șofer sau șofer profesionist), data expirării și mașina pe care e pus. Scoți oricând o situație completă cu șoferii.</p>
           <span class="tag">Permise &amp; categorii</span>
         </div>
         <div class="feature reveal">
           <div class="ic"><i class="fa-solid fa-route"></i></div>
-          <h3>Istoric traseu &amp; harta de caldura</h3>
-          <p>Reia orice cursa, lipita pe drum, cu opriri si viteze. Harta de caldura iti arata unde stau sau trec cel mai des vehiculele.</p>
+          <h3>Istoric traseu &amp; harta de căldură</h3>
+          <p>Reia orice cursă, lipită pe drum, cu opriri și viteze. Harta de căldură îți arată unde stau sau trec cel mai des vehiculele.</p>
           <span class="tag">Traseu pe drum</span>
         </div>
       </div>
@@ -795,9 +800,9 @@
   <section class="section section-ai" id="agenti-ai">
     <div class="wrap">
       <div class="section-head reveal">
-        <span class="eyebrow">Inteligenta artificiala</span>
-        <h2>6 agenti AI care iti <span class="accent">supravegheaza flota 24/7</span></h2>
-        <p class="lead">Fiecare agent are o misiune clara si lucreaza non-stop in fundal. Tu primesti doar concluziile care conteaza — nu sute de notificari. Iar cand vrei sa afli ceva anume, intrebi direct asistentul RA Insight.</p>
+        <span class="eyebrow">Inteligență artificială</span>
+        <h2>6 agenți AI care îți <span class="accent">supraveghează flota 24/7</span></h2>
+        <p class="lead">Fiecare agent are o misiune clară și lucrează non-stop în fundal. Tu primești doar concluziile care contează — nu sute de notificări. Iar când vrei să afli ceva anume, întrebi direct asistentul RA Insight.</p>
       </div>
 
       <div class="agents-grid">
@@ -808,7 +813,7 @@
           </div>
           <div class="role">Supraveghere</div>
           <h3>RA Watch</h3>
-          <p>Detecteaza vehicule offline, scaderi bruste de combustibil, ralanti excesiv si tahograf neconfigurat — si te alerteaza instant.</p>
+          <p>Detectează vehicule offline, scăderi bruște de combustibil, ralanti excesiv și tahograf neconfigurat — și te alertează instant.</p>
         </div>
 
         <div class="agent reveal">
@@ -816,19 +821,19 @@
             <div class="ic"><i class="fa-solid fa-screwdriver-wrench"></i></div>
             <span class="live"><span class="dot"></span> Predictiv</span>
           </div>
-          <div class="role">Mentenanta</div>
+          <div class="role">Mentenanță</div>
           <h3>RA Care</h3>
-          <p>Te anunta din timp de revizii (pe km sau data), ITP si asigurari care urmeaza sa expire. Fara surprize, fara penalizari.</p>
+          <p>Te anunță din timp de revizii (pe km sau dată), ITP și asigurări care urmează să expire. Fără surprize, fără penalizări.</p>
         </div>
 
         <div class="agent reveal">
           <div class="agent-top">
             <div class="ic"><i class="fa-solid fa-leaf"></i></div>
-            <span class="live"><span class="dot"></span> Scor sofer</span>
+            <span class="live"><span class="dot"></span> Scor șofer</span>
           </div>
           <div class="role">Eco-driving</div>
           <h3>RA Optimize</h3>
-          <p>Calculeaza un scor pentru fiecare sofer din accelerari si franari bruste, viteza si ralanti — vezi exact unde pierzi combustibil.</p>
+          <p>Calculează un scor pentru fiecare șofer din accelerări și frânări bruște, viteză și ralanti — vezi exact unde pierzi combustibil.</p>
         </div>
 
         <div class="agent reveal">
@@ -838,7 +843,7 @@
           </div>
           <div class="role">Conformitate</div>
           <h3>RA Compliance</h3>
-          <p>Verifica automat limitele de condus si odihna conform Reg. UE 561/2006 si semnaleaza depasirile inainte sa devina amenzi.</p>
+          <p>Verifică automat limitele de condus și odihnă conform Reg. UE 561/2006 și semnalează depășirile înainte să devină amenzi.</p>
         </div>
 
         <div class="agent reveal">
@@ -848,7 +853,7 @@
           </div>
           <div class="role">Raport zilnic</div>
           <h3>RA Client</h3>
-          <p>Iti livreaza in fiecare dimineata un rezumat clar al flotei: kilometri parcursi, vehicule active si topul soferilor.</p>
+          <p>Îți livrează în fiecare dimineață un rezumat clar al flotei: kilometri parcurși, vehicule active și topul șoferilor.</p>
         </div>
 
         <div class="agent reveal">
@@ -858,7 +863,7 @@
           </div>
           <div class="role">Alocare curse</div>
           <h3>RA Dispatch</h3>
-          <p>Iti arata instant ce vehicule sunt libere acum si care e cel mai aproape de o destinatie — aloci cursa in secunde.</p>
+          <p>Îți arată instant ce vehicule sunt libere acum și care e cel mai aproape de o destinație — aloci cursa în secunde.</p>
         </div>
       </div>
 
@@ -871,17 +876,18 @@
             <h3>RA Insight</h3>
             <span class="ri-tag">Asistentul flotei</span>
           </div>
-          <p>Cei sase agenti lucreaza singuri si te anunta cand gasesc ceva. RA Insight e altfel: nu asteapta — il intrebi tu, in limbaj natural, orice despre flota ta, si iti raspunde pe loc. Tot el iti transforma un raport lung intr-un paragraf clar, gata de trimis.</p>
+          <p>Cei șase agenți lucrează singuri și te anunță când găsesc ceva. RA Insight e altfel: nu așteaptă — îl întrebi tu, în limbaj natural, orice despre flota ta, și îți răspunde pe loc. Tot el îți transformă un raport lung într-un paragraf clar, gata de trimis.</p>
           <div class="ri-qs">
-            <span>Care vehicul a consumat cel mai mult saptamana asta?</span>
-            <span>Cate curse a facut Logan-ul luna trecuta?</span>
-            <span>Ce masini au ITP-ul aproape de expirare?</span>
+            <span>Care vehicul a consumat cel mai mult săptămâna asta?</span>
+            <span>Câte curse a făcut Logan-ul luna trecută?</span>
+            <span>Ce mașini au ITP-ul aproape de expirare?</span>
           </div>
         </div>
       </div>
 
       <div class="agents-foot reveal">
-        <a href="#contact">Vrei agentii AI si RA Insight pe flota ta? Cere o oferta personalizata <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="/agenti-ai">Ce face fiecare agent, pe larg <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="#contact">Vrei agenții AI și RA Insight pe flota ta? Cere o ofertă personalizată <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>
   </section>
@@ -892,19 +898,19 @@
       <div class="about">
         <div class="about-content reveal">
           <span class="eyebrow">Despre noi</span>
-          <h2>Construit de oameni care chiar <span style="color:var(--accent)">opereaza flote</span></h2>
-          <p>RA Tracks s-a nascut din nevoia reala de a vedea instant unde sunt vehiculele, cat combustibil consuma si ce se intampla pe traseu — fara software greoi si fara compromisuri.</p>
-          <p>Lucram cu echipamente Teltonika, date CAN si sonde litrometrice profesionale, asa ca primesti informatii precise pe care te poti baza atunci cand iei decizii.</p>
+          <h2>Construit de oameni care chiar <span style="color:var(--accent)">operează flote</span></h2>
+          <p>RA Tracks s-a născut din nevoia reală de a vedea instant unde sunt vehiculele, cât combustibil consumă și ce se întâmplă pe traseu — fără software greoi și fără compromisuri.</p>
+          <p>Lucrăm cu echipamente Teltonika, date CAN și sonde litrometrice profesionale, așa că primești informații precise pe care te poți baza atunci când iei decizii.</p>
           <ul class="check-list">
-            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Date precise din hardware profesional, nu estimari</li>
-            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Interfata rapida, optimizata pentru desktop si mobil</li>
-            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Suport tehnic in limba romana, de la oameni reali</li>
-            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Datele tale raman ale tale, in siguranta</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Date precise din hardware profesional, nu estimări</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Interfață rapidă, optimizată pentru desktop și mobil</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Suport tehnic în limba română, de la oameni reali</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Datele tale rămân ale tale, în siguranță</li>
           </ul>
         </div>
         <div class="about-media reveal">
           <span class="frame-glow" aria-hidden="true"></span>
-          <img src="https://images.pexels.com/photos/20882742/pexels-photo-20882742.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="Sofer si camion pe traseu" loading="lazy">
+          <img src="https://images.pexels.com/photos/20882742/pexels-photo-20882742.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="Șofer și camion pe traseu" loading="lazy">
           <span class="chip"><i class="fa-solid fa-satellite-dish"></i> Conectat &middot; live</span>
         </div>
       </div>
@@ -919,9 +925,9 @@
     <div class="wrap">
       <div class="cta-inner">
         <div class="cta-grid-lines" aria-hidden="true"></div>
-        <h2>Vezi-ti flota chiar acum</h2>
-        <p>Intra in aplicatie si descopera in cateva secunde cum arata monitorizarea moderna a flotei tale.</p>
-        <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+        <h2>Vezi-ți flota chiar acum</h2>
+        <p>Intră în aplicație și descoperă în câteva secunde cum arată monitorizarea modernă a flotei tale.</p>
+        <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
       </div>
     </div>
   </section>
@@ -932,8 +938,8 @@
       <div class="contact-grid">
         <div class="contact-info reveal">
           <span class="eyebrow">Contact</span>
-          <h2>Hai sa vorbim despre <span style="color:var(--accent)">flota ta</span></h2>
-          <p class="intro">Spune-ne cate vehicule ai si ce vrei sa monitorizezi, iar noi iti pregatim o oferta personalizata in functie de flota ta. Platesti exact pentru ce ai nevoie.</p>
+          <h2>Hai să vorbim despre <span style="color:var(--accent)">flota ta</span></h2>
+          <p class="intro">Spune-ne câte vehicule ai și ce vrei să monitorizezi, iar noi îți pregătim o ofertă personalizată în funcție de flota ta. Plătești exact pentru ce ai nevoie.</p>
 
           <div class="info-row">
             <div class="ic"><i class="fa-solid fa-envelope"></i></div>
@@ -952,8 +958,8 @@
           <div class="info-row">
             <div class="ic"><i class="fa-solid fa-location-dot"></i></div>
             <div class="meta">
-              <div class="k">Locatie</div>
-              <div class="v">Romania</div>
+              <div class="k">Locație</div>
+              <div class="v">România</div>
             </div>
           </div>
         </div>
@@ -968,14 +974,14 @@
         <form class="contact-form reveal" id="contactForm">
           <div class="field">
             <label for="cf-name">Nume</label>
-            <input type="text" id="cf-name" name="name" placeholder="Numele tau" required>
+            <input type="text" id="cf-name" name="name" placeholder="Numele tău" required>
           </div>
           <div class="field">
             <label for="cf-email">Email</label>
             <input type="email" id="cf-email" name="email" placeholder="adresa@email.ro" required>
           </div>
           <div class="field">
-            <label for="cf-company">Firma</label>
+            <label for="cf-company">Firmă</label>
             <input type="text" id="cf-company" name="company" placeholder="Numele firmei">
           </div>
           <div class="field">
@@ -984,10 +990,10 @@
           </div>
           <div class="field">
             <label for="cf-msg">Mesaj</label>
-            <textarea id="cf-msg" name="message" placeholder="Cate vehicule ai si ce vrei sa monitorizezi?" required></textarea>
+            <textarea id="cf-msg" name="message" placeholder="Câte vehicule ai și ce vrei să monitorizezi?" required></textarea>
           </div>
-          <label class="cf-check"><input type="checkbox" id="cf-demo" checked> <span>Vreau un <b>cont demo</b> — acces temporar, cu vehicule si trasee demonstrative</span></label>
-          <label class="cf-check"><input type="checkbox" id="cf-consent" required> <span>Sunt de acord cu prelucrarea datelor pentru a fi contactat (<a href="/confidentialitate.html" target="_blank" rel="noopener">politica de confidentialitate</a>)</span></label>
+          <label class="cf-check"><input type="checkbox" id="cf-demo" checked> <span>Vreau un <b>cont demo</b> — acces temporar, cu vehicule și trasee demonstrative</span></label>
+          <label class="cf-check"><input type="checkbox" id="cf-consent" required> <span>Sunt de acord cu prelucrarea datelor pentru a fi contactat (<a href="/confidentialitate" target="_blank" rel="noopener">politica de confidențialitate</a>)</span></label>
           <!-- Capcana pentru roboti: un om nu vede si nu completeaza campul asta. -->
           <input type="text" id="cf-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
           <button type="submit" class="btn btn-primary" id="cf-submit"><i class="fa-solid fa-paper-plane"></i> Trimite cererea</button>
@@ -1005,14 +1011,18 @@
           <a href="#top" class="logo" aria-label="RA Tracks">
             <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:28px" alt="RA"><span class="raw" style="font-size:22px">Tracks</span></span>
           </a>
-          <p>Monitorizare GPS in timp real pentru flote. Localizare live, rapoarte, combustibil si alerte — intr-un singur loc.</p>
+          <p>Monitorizare GPS în timp real pentru flote. Localizare live, rapoarte, combustibil și alerte — într-un singur loc.</p>
         </div>
 
         <div class="foot-cols">
           <div class="foot-col">
             <h4>Produs</h4>
-            <a href="#functii">Functii</a>
-            <a href="/app">Intra in aplicatie</a>
+            <a href="#functii">Funcții</a>
+            <a href="/monitorizare-combustibil">Monitorizare combustibil</a>
+            <a href="/alerte-itp-rca-rovinieta">Alerte ITP, RCA, rovinietă</a>
+            <a href="/agenti-ai">Agenți AI</a>
+            <a href="/intrebari-frecvente">Întrebări frecvente</a>
+            <a href="/app">Intră în aplicație</a>
           </div>
           <div class="foot-col">
             <h4>Companie</h4>
@@ -1087,7 +1097,7 @@
       var st = document.getElementById('cf-status');
       var val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
       var chk = function (id) { var el = document.getElementById(id); return !!(el && el.checked); };
-      if (!chk('cf-consent')) { st.className = 'cf-status err'; st.textContent = 'Bifeaza acordul pentru a putea fi contactat.'; return; }
+      if (!chk('cf-consent')) { st.className = 'cf-status err'; st.textContent = 'Bifează acordul pentru a putea fi contactat.'; return; }
       var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Se trimite…';
       st.className = 'cf-status'; st.textContent = '';
       try {
@@ -1103,16 +1113,16 @@
         if (r.ok) {
           st.className = 'cf-status ok';
           st.textContent = chk('cf-demo')
-            ? 'Am primit cererea. Verificam si iti trimitem datele de acces pe email — de obicei in aceeasi zi lucratoare.'
-            : 'Am primit mesajul. Te contactam in cel mai scurt timp.';
+            ? 'Am primit cererea. Verificăm și îți trimitem datele de acces pe email — de obicei în aceeași zi lucrătoare.'
+            : 'Am primit mesajul. Te contactăm în cel mai scurt timp.';
           document.getElementById('contactForm').reset();
         } else {
           st.className = 'cf-status err';
-          st.textContent = j.error || 'Nu am putut trimite cererea. Incearca din nou.';
+          st.textContent = j.error || 'Nu am putut trimite cererea. Încearcă din nou.';
         }
       } catch (err) {
         st.className = 'cf-status err';
-        st.textContent = 'Conexiune intrerupta. Incearca din nou.';
+        st.textContent = 'Conexiune întreruptă. Încearcă din nou.';
       }
       btn.disabled = false; btn.innerHTML = old;
     });

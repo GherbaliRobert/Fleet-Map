@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <!-- Analytics (GA4) se încarcă DOAR după consimțământ explicit — vezi public/js/consent.js. -->
+  <script src="/js/consent.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerte la expirarea ITP, RCA și rovinietei pentru flote | RA Tracks</title>
+  <meta name="description" content="RA Tracks vă anunță din timp când expiră ITP-ul, RCA-ul, rovinieta sau CASCO-ul fiecărei mașini, plus reviziile pe kilometri sau pe dată. Actele se încarcă din poză sau PDF, iar datele se citesc singure.">
+  <link rel="canonical" href="https://ratrack.ro/alerte-itp-rca-rovinieta">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0B0E11">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="RA Tracks">
+  <meta property="og:locale" content="ro_RO">
+  <meta property="og:url" content="https://ratrack.ro/alerte-itp-rca-rovinieta">
+  <meta property="og:title" content="Alerte la expirarea ITP, RCA și rovinietei">
+  <meta property="og:description" content="Fiecare act al fiecărei mașini, cu alertă din timp. Reviziile pe kilometri sau pe dată. Actele se încarcă din poză, datele se citesc singure.">
+  <meta property="og:image" content="https://ratrack.ro/og-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Datele structurate: unde e pagina în site și întrebările de la final. Textul întrebărilor e IDENTIC
+       cu cel de pe pagină — păzit de verify_site_public.js. Cifrele (30 de zile, 14 zile, 500 km, 16 lucrări,
+       1–365) sunt cele din cod și sunt legate tot acolo: schimbi regula, pagina pică până o schimbi și aici. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "RA Tracks",
+            "item": "https://ratrack.ro/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Alerte ITP, RCA, rovinietă",
+            "item": "https://ratrack.ro/alerte-itp-rca-rovinieta"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "inLanguage": "ro-RO",
+        "url": "https://ratrack.ro/alerte-itp-rca-rovinieta",
+        "isPartOf": {
+          "@id": "https://ratrack.ro/#site"
+        },
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Pot schimba cu câte zile înainte vine alerta?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Da. Preavizul pentru acte se alege pentru toată firma, între 1 și 365 de zile; implicit e de 30 de zile. Reviziile au preavizul lor, separat de al actelor."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ce se întâmplă cu un act fără dată de expirare?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Se salvează, dar pentru el nu există alertă — și sunteți anunțați de asta. Ca să nu rămână uitat, actele fără dată apar o dată pe săptămână într-o listă separată."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Trebuie să tastez datele din acte?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nu. Încărcați poza sau PDF-ul actului, iar aplicația citește singură datele; dumneavoastră doar verificați și confirmați."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Urmărește și permisele șoferilor?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Da. Fiecare șofer are trecute categoriile de permis și data expirării, iar înainte de expirare primiți alertă."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root{--bg:#0B0E11;--bg2:#11161B;--text:#E6EAF0;--muted:#9AA6B2;--accent:#3FE07D;--border:#1F2730}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15.5px/1.75 'Nunito',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:820px;margin:0 auto;padding:32px 20px 80px}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    header{padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+    header a{display:inline-flex;align-items:center;gap:10px;color:var(--text)}header a:hover{text-decoration:none}
+    header img{height:26px}.brand{font-size:20px;font-weight:700}
+    .firimituri{font-size:13px;color:var(--muted);margin:0}.firimituri a{color:var(--muted)}
+    h1{font-size:28px;line-height:1.25;margin:10px 0 12px}
+    .intro{color:#CBD3DC;font-size:16.5px;margin:0}
+    h2{font-size:20px;line-height:1.35;margin:38px 0 10px;color:#fff;font-weight:800}
+    h3{font-size:16.5px;margin:20px 0 6px;color:#fff;font-weight:700}
+    p{margin:10px 0;color:#CBD3DC}
+    ul{padding-left:20px;margin:10px 0}li{margin:7px 0;color:#CBD3DC}
+    p b,li b{color:#fff}
+    details{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:10px 0}
+    details[open]{border-color:#2A3540}
+    summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:flex-start}
+    summary::-webkit-details-marker{display:none}
+    summary::before{content:"+";color:var(--accent);font-weight:800;font-size:18px;line-height:1.3;flex:none}
+    details[open] summary::before{content:"\2013"}
+    summary h3{margin:0;font-size:16px}
+    details p{margin:10px 0 0}
+    .cta{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:16px 18px;margin:36px 0 0}
+    .cta p{margin:6px 0 0;color:var(--muted)}
+    .vezi{margin:26px 0 0;font-size:14px;color:var(--muted)}
+    .back{display:inline-block;margin-top:18px;font-size:14px}
+    @media (max-width:560px){h1{font-size:24px}h2{font-size:18.5px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><a href="/"><img src="/logo-mark.png" alt="RA"><span class="brand">RA Tracks</span></a></header>
+    <nav class="firimituri" aria-label="Unde vă aflați"><a href="/">RA Tracks</a> › Alerte ITP, RCA, rovinietă</nav>
+
+    <h1>Alerte la expirarea ITP, RCA și rovinietei</h1>
+    <p class="intro">Un ITP, un RCA sau o rovinietă expirate înseamnă amenzi, iar fără ITP sau RCA valabil mașina nu mai poate circula legal. Într-o flotă cu zeci de mașini, termenele se pierd ușor într-un tabel. RA Tracks le ține pe toate, pe fiecare mașină, și vă anunță din timp — cu preavizul pe care îl alegeți.</p>
+
+    <h2>Ce acte urmărește</h2>
+    <ul>
+      <li><b>Pe fiecare mașină:</b> ITP, RCA, rovinieta, CASCO, licența de transport, verificarea tahografului, asigurarea mărfii — și orice alt act, la „Altul”.</li>
+      <li><b>Ce e obligatoriu, după tipul mașinii:</b> ITP, RCA și rovinieta la toate; la camioane, și licența de transport și verificarea tahografului. Un act obligatoriu care lipsește apare ca „lipsă”, nu trece neobservat.</li>
+      <li><b>Pe fiecare șofer:</b> permisul de conducere, cu categoriile și data expirării.</li>
+    </ul>
+    <p>La fiecare act se păstrează numărul, emitentul, perioada, costul și fișierul actului. La reînnoire, actul vechi rămâne în istoric.</p>
+
+    <h2>Când și cum vă anunță</h2>
+    <ul>
+      <li><b>Prima alertă:</b> implicit cu <b>30 de zile</b> înainte de expirare. Preavizul se poate schimba pentru firma dumneavoastră.</li>
+      <li><b>Apoi:</b> încă o dată cu 3 zile înainte și cu o zi înainte. După expirare, o dată pe săptămână, până când actul e reînnoit.</li>
+      <li><b>Unde:</b> mereu în aplicație; pe telefon, dacă ați cerut notificări — iar termenele de 3 zile sau mai puțin ajung pe telefon chiar dacă nu le-ați cerut.</li>
+      <li><b>Actele fără dată de expirare</b> nu pot avea alertă. Ca să nu rămână uitate, primiți o dată pe săptămână lista lor.</li>
+    </ul>
+    <p>Alertele nu vin zilnic: un anunț repetat în fiecare dimineață devine zgomot, iar zgomotul ajunge să fie ignorat.</p>
+    <p>Ecranul de documente arată fiecare mașină cu actele ei — expirate, aproape de termen, în regulă, fără dată sau lipsă —, în aceleași culori ca alertele, iar raportul „Scadențe documente &amp; service” pune totul într-un singur tabel, de descărcat în Excel sau PDF.</p>
+
+    <h2>Reviziile, pe kilometri sau pe dată</h2>
+    <p>Schimbul de ulei, revizia generală, distribuția, frânele, anvelopele, bateria și celelalte — 16 tipuri de lucrări, fiecare cu intervalul ei pe kilometri, pe luni sau pe amândouă. Intervalele vin completate după tipul mașinii (autoturism, autoutilitară, camion) și le puteți schimba.</p>
+    <ul>
+      <li>Kilometrii vin din calculatorul mașinii sau din contorul aparatului GPS — nu îi tastează nimeni.</li>
+      <li>Anunțul vine cu <b>14 zile</b> înainte la lucrările pe dată și cu <b>500 km</b> înainte la cele pe kilometri.</li>
+      <li>Când marcați lucrarea ca făcută, aplicația notează data și kilometrii și programează singură următoarea.</li>
+    </ul>
+
+    <h2>Actele se încarcă, nu se tastează</h2>
+    <p>Faceți o poză actului sau încărcați PDF-ul. Aplicația citește tipul actului, seria și numărul, emitentul, perioada de valabilitate și numărul mașinii. Din talon (certificatul de înmatriculare) citește și marca, modelul, seria de șasiu, masele, cilindreea, puterea și combustibilul — și le trece în fișa mașinii.</p>
+    <p>Fiecare câmp citit vă este arătat cu cât de sigur e — „sigur”, „probabil” sau „verifică” —, iar mașina se găsește după numărul de înmatriculare. <b>Nimic nu se salvează fără confirmarea dumneavoastră.</b></p>
+    <p>Merge pe calculator și pe telefon. Pozele se citesc cu ajutorul unui model de inteligență artificială; un PDF cu text se citește direct. Un PDF scanat, care e doar o imagine, nu se poate citi — pentru el, faceți o poză actului.</p>
+
+    <h2>Întrebări despre alertele de acte</h2>
+    <details>
+      <summary><h3>Pot schimba cu câte zile înainte vine alerta?</h3></summary>
+      <p>Da. Preavizul pentru acte se alege pentru toată firma, între 1 și 365 de zile; implicit e de 30 de zile. Reviziile au preavizul lor, separat de al actelor.</p>
+    </details>
+    <details>
+      <summary><h3>Ce se întâmplă cu un act fără dată de expirare?</h3></summary>
+      <p>Se salvează, dar pentru el nu există alertă — și sunteți anunțați de asta. Ca să nu rămână uitat, actele fără dată apar o dată pe săptămână într-o listă separată.</p>
+    </details>
+    <details>
+      <summary><h3>Trebuie să tastez datele din acte?</h3></summary>
+      <p>Nu. Încărcați poza sau PDF-ul actului, iar aplicația citește singură datele; dumneavoastră doar verificați și confirmați.</p>
+    </details>
+    <details>
+      <summary><h3>Urmărește și permisele șoferilor?</h3></summary>
+      <p>Da. Fiecare șofer are trecute categoriile de permis și data expirării, iar înainte de expirare primiți alertă.</p>
+    </details>
+
+    <div class="cta">
+      <b>Vreți să vedeți cum arată lista de scadențe?</b>
+      <p>Cereți un <a href="/#contact">cont demonstrativ</a>, cu mașini de probă, sau o ofertă pentru flota dumneavoastră.</p>
+    </div>
+
+    <p class="vezi">Vedeți și: <a href="/monitorizare-combustibil">monitorizarea combustibilului</a> · <a href="/agenti-ai">agenții AI</a> · <a href="/intrebari-frecvente">întrebări frecvente</a></p>
+    <a class="back" href="/">← Înapoi la pagina principală</a>
+  </div>
+</body>
+</html>
