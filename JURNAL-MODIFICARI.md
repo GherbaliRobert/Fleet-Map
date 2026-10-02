@@ -121,6 +121,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
   telefonul (aceleași ca în „Date emitent") și adresele paginilor de Facebook / LinkedIn, dacă există, și le pun eu.
   Aceleași date trebuie să fie și în profilul de Google (punctul de mai sus), literă cu literă.
+- [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
+  fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
+  clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
 
 ---
 
