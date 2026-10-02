@@ -105,6 +105,9 @@ vehicul) → `sendReport`. Numele: „RA-Tracks - Raport Traseu {nume · număr}
   ExcelJS face fișierul în memorie — 10.000 = ~3 s; 50.000 = 16 s și 1,5 GB, cu serverul blocat pentru toți. NU urca
   cifra fără să măsori. Varianta „în flux" a ExcelJS nu pune imagini pe foi, deci ar pierde logo-ul casei.
 - Numele KML-ului: `_numeKmlTraseu` (pagină) = `numeKmlTraseu` (mobile/src/lib/export.ts), legate prin probă.
+- **Linkul „Vezi pe hartă" (Google Maps, pe fiecare poziție) RĂMÂNE** (Alin, 02.10: „da, îl lași"). Avertizarea de la
+  clic („link suspect") o dă programul în care se deschide fișierul (Excel, telefonul) pentru orice link dintr-un fișier
+  venit de pe internet — nu linkul. NU-l scoate și nu-l „repara" ca s-o ocolești.
 - ⚠ **Capcana „Limite reale":** `hpClearOsmOverlay()` golește și `hpLastData` (traseul pe care lucrează „Limite reale"
   și „Aliniază pe drumuri"). În `hpApplySelection` se curăță ÎNTÂI, apoi `hpLastData = solo.data`. Invers, butoanele
   spuneau „Încarcă întâi un traseu." cu traseul pe hartă (până pe 01.10).

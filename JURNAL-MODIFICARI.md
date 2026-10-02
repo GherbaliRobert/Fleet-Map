@@ -138,7 +138,8 @@ contabilului despre factura de avans); (3) restul meniului, de la „Conturi & A
 (Pe 01.10, seara: trei reparații pe ecranul Traseu, găsite de Alin pe verticala partenerului — mai jos. Apoi, înapoi
 la verticala fondatorului: Facturare.)
 (Pe 02.10: butonul „CSV" din Rapoarte — găsit pe drum, Alin: „da", scos; limita de 10.000 de poziții pe fișier — „da",
-rămâne.)
+rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași", rămâne. Întrebat apoi: datele unui client care
+pleacă — un an de traseu pentru o mașină = cam 50 de fișiere Excel; „Descarcă tot istoricul" acum sau mai târziu.)
 
 ---
 
