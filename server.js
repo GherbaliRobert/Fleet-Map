@@ -1299,16 +1299,25 @@ if (API_CORS_ORIGIN) {
 // Fără cache pentru shell-ul aplicației + service worker, ca actualizările să apară imediat
 // (altfel un CDN/edge ca Cloudflare poate servi versiuni vechi, iar SW-ul nu se mai actualizează).
 const NO_CACHE = 'no-cache, no-store, must-revalidate';
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 // ─── Indexare: robots.txt + sitemap.xml ───────────────────────────────────────────────────────────
-// Generate de server, nu fișiere statice: o pagină nouă adăugată în listă intră automat în sitemap,
-// iar `lastmod` nu rămâne mințind luni de zile. Adresa se ia din SITE_URL (sau din antetul cererii),
-// ca sitemap-ul să nu trimită spre alt domeniu când rulăm pe alt mediu (probe, VPS nou).
+// Generate de server, nu fișiere statice: o pagină nouă adăugată în listă intră automat în sitemap.
+// Adresa se ia din SITE_URL (sau din antetul cererii), ca sitemap-ul să nu trimită spre alt domeniu
+// când rulăm pe alt mediu (probe, VPS nou).
+//
+// PAGINI_PUBLICE e SINGURA listă a site-ului public: din ea ies sitemap-ul, adresele „frumoase" și
+// redirecționarea de la vechea adresă cu „.html" (mai jos). O pagină nouă = un rând aici.
+// `modificat` = ziua în care s-a schimbat ULTIMA oară TEXTUL paginii; e `lastmod` din sitemap. Până
+// pe 02.10 acolo stătea ziua de azi, la fiecare citire — iar o dată care se schimbă mereu e o dată pe
+// care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
+// `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', prio: '1.0', freq: 'weekly' },
-  { cale: '/intrebari-frecvente', prio: '0.8', freq: 'monthly' },
-  { cale: '/termeni', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', prio: '0.3', freq: 'yearly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-10-02', amprenta: '9f4c491f04dd', prio: '1.0', freq: 'weekly' },
+  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-02', amprenta: 'afcc13e675e8', prio: '0.8', freq: 'monthly' },
+  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-02', amprenta: '576f1c6d37cd', prio: '0.8', freq: 'monthly' },
+  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-02', amprenta: '908fa3e90cb9', prio: '0.8', freq: 'monthly' },
+  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '811b25a36e81', prio: '0.7', freq: 'monthly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-06-12', amprenta: '00958fcb023f', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-09-24', amprenta: '10dcbf858f71', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -1333,12 +1342,11 @@ app.get('/robots.txt', (req, res) => {
 });
 app.get('/sitemap.xml', (req, res) => {
   const baza = _adresaSite(req);
-  const azi = new Date().toISOString().slice(0, 10);
   const bucati = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
   for (const p of PAGINI_PUBLICE) {
     bucati.push('  <url>');
     bucati.push('    <loc>' + baza + p.cale + '</loc>');
-    bucati.push('    <lastmod>' + azi + '</lastmod>');
+    bucati.push('    <lastmod>' + p.modificat + '</lastmod>');
     bucati.push('    <changefreq>' + p.freq + '</changefreq>');
     bucati.push('    <priority>' + p.prio + '</priority>');
     bucati.push('  </url>');
@@ -1346,11 +1354,20 @@ app.get('/sitemap.xml', (req, res) => {
   bucati.push('</urlset>', '');
   res.type('application/xml').send(bucati.join('\n'));
 });
-// Adresele „frumoase" ale paginilor publice. Fără ele, un link din sitemap ar da 404, iar Google
-// ar raporta erori exact pentru paginile pe care i le-am arătat noi.
-app.get('/intrebari-frecvente', (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
-app.get('/termeni', (req, res) => res.sendFile(path.join(__dirname, 'public', 'termeni.html')));
-app.get('/confidentialitate', (req, res) => res.sendFile(path.join(__dirname, 'public', 'confidentialitate.html')));
+// Adresele „frumoase" ale paginilor publice, din aceeași listă ca sitemap-ul. Fără ele, un link din
+// sitemap ar da 404, iar Google ar raporta erori exact pentru paginile pe care i le-am arătat noi.
+// Adresa cu „.html" a aceluiași fișier (o servea și `express.static`, mai jos) duce PERMANENT (301) la
+// cea frumoasă: aceeași pagină sub două adrese e conținut dublu, iar Google alege singur una dintre
+// ele — nu neapărat pe a noastră (02.10). Linkurile vechi (aplicația de telefon, bannerul de cookie-uri)
+// merg mai departe, doar că trec prin redirecționare. Stă ÎNAINTEA lui `express.static`, altfel n-ar ajunge aici.
+for (const p of PAGINI_PUBLICE) {
+  const fisier = path.join(__dirname, 'public', p.fisier);
+  app.get(p.cale, (req, res) => res.sendFile(fisier));
+  app.get('/' + p.fisier, (req, res) => {
+    const q = req.originalUrl.indexOf('?');
+    res.redirect(301, p.cale + (q >= 0 ? req.originalUrl.slice(q) : ''));
+  });
+}
 
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 // Documentație API pentru clienți (publică, fără secrete)

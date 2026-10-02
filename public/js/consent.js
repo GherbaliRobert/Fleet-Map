@@ -47,7 +47,7 @@
     txt.style.cssText = 'flex:1;min-width:220px;';
     txt.innerHTML = 'Cookie-urile <b>strict necesare</b> (autentificare) sunt mereu active. '
       + 'Ne ajuți cu <b>statistici anonime de trafic</b> (Google Analytics)? Poți refuza — site-ul funcționează identic. '
-      + '<a href="/confidentialitate.html" style="color:#3FE07D">Detalii</a>.';
+      + '<a href="/confidentialitate" style="color:#3FE07D">Detalii</a>.';
     // Cele două butoane au aceeași greutate vizuală: refuzul nu e ascuns sau descurajat.
     var no = document.createElement('button');
     no.type = 'button'; no.textContent = 'Refuz';

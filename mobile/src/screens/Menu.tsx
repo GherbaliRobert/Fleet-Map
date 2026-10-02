@@ -174,9 +174,9 @@ export function Menu() {
             primește cont direct nu trece niciodată prin pagina publică. E și cerință Google Play. */}
         <div class="mn-foot">
           <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <a href={API_BASE + '/termeni.html'} target="_blank" rel="noopener" style="color:var(--text-muted)">Termeni</a>
+            <a href={API_BASE + '/termeni'} target="_blank" rel="noopener" style="color:var(--text-muted)">Termeni</a>
             <span aria-hidden="true">·</span>
-            <a href={API_BASE + '/confidentialitate.html'} target="_blank" rel="noopener" style="color:var(--text-muted)">Confidențialitate</a>
+            <a href={API_BASE + '/confidentialitate'} target="_blank" rel="noopener" style="color:var(--text-muted)">Confidențialitate</a>
           </div>
           RA Tracks{versiune ? ' · v' + versiune : ''}
         </div>
