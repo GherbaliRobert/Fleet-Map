@@ -186,6 +186,49 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
   produs (acolo trăiesc conturile temporare). Comutatorul oprește DOAR simulatorul de poziții. Ștergerea
   completă rămâne o operație deliberată, nu efectul unei variabile de mediu.
 
+## RA Insight — vedeta: un singur asistent, cu memorie (Alin, 02.10: „da, fă tot")
+
+Alin a arătat două capturi: „câți km a făcut B 154 UIP săptămâna trecută?" → „nu apare în flotă"; apoi „Dacia Logan 3" →
+„ce vrei să afli?". Modelul primea mașinile doar cu NUMELE și fiecare mesaj pleca singur. Hotărât cu el: RA Insight e
+SINGURUL asistent care costă (pe cont, ca azi); „AI Raport" din Rapoarte e gratuit, pe reguli; cei 6 agenți rămân.
+Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Raport, 3 Safe Drive & costuri, 4 celelalte ramuri
++ scrisoarea de luni; creierul puternic și acțiunile — abia după măsurătoare și după ce stabilim prețul.
+
+- **Un singur asistent: `_raInsight` (server.js)**, chemat de trei uși: `/api/insight/intreaba` (secțiunea),
+  `/api/ai/reports-agent` (Rapoarte, web + telefon) și `/api/ai/chat` („Asistent AI" de pe telefonul vechi). Păzit prin
+  numărare (`verify_insight.js`). NU scrie a doua funcție de răspuns. Rapoartele (`run_report`) se dau doar cui are
+  `viewReports` (`permReq`).
+- **Fișa flotei (`insight.js`)**: `fisaFlotei` / `gasesteInText` / `rezolva` — număr (comparat fără spații, și pe
+  jumătate: „154 UIP"), nume (cu terminațiile românești: „Loganul", „Caddy-ul"; un cuvânt comun tuturor tot numește ceva —
+  toate, deci îndoială), șofer (nume întreg sau „lui X"; un singur cuvânt fără „lui" NU, altfel „consum mare" găsea pe
+  Ionel Mare), grupă. Două îndoieli care se taie într-o mașină („Loganul lui Ion") = mașina aia. Îndoiala nu se rezolvă pe
+  ghicite: unealta întoarce `ambiguu`, ecranul primește `alege` (butoane); „celălalt" scoate mașina discutată. Arhivatele
+  NU intră în fișă (clientul nu le vede).
+- **Memoria:** tabelele `ai_conversatii` / `ai_mesaje`. Modelul vede ultimele 12 mesaje — doar TEXTUL, tăiat la 1.500 de
+  caractere (`istoricPentruModel`) — plus `context` (mașina, perioada, rapoartele discutate), scris de server după fiecare
+  răspuns. Fără id: se continuă ultima conversație a omului de < 30 de minute (telefonul vechi); web-ul trimite `nou: true`
+  la bula deschisă proaspăt, ca omul să nu continue fără să știe o discuție veche.
+- **Conversația e a OMULUI care a scris-o.** Fiecare cerere din db.js are `user_id` în WHERE — nici adminul firmei, nici
+  super-adminul nu o citesc, nu o șterg, nu o continuă (404, ca una care nu există). 12 luni de la ultimul mesaj
+  (`LUNI_CONVERSATII_AI` în contracts.js, legată de pagina de confidențialitate), apoi `stergeConversatiiVechi` (zilnic;
+  de mână `POST /api/admin/insight/sterge-vechi`). Tabelele stau în `BACKUP_EXCLUDED`: în copii ar trăi mai mult decât promitem.
+- **Perioadele pe ora României:** `insight.perioada` / `etichetaPerioadei` („21–27 septembrie", „septembrie 2026", „azi").
+  NU socoti zile cu `setHours` pe server — serverul e pe UTC („azi" începea la 3 dimineața, vara).
+- **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
+  subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
+  despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
+- **Instrucțiunile în DOUĂ bucăți:** partea fixă (`_insightInstructiuni`, cu `cache_control`) + contextul întrebării
+  (`_insightContext`: ora, mașinile recunoscute, ce s-a discutat). NU pune ora sau mașinile în partea fixă — ar strica cache-ul.
+- **Plafonul de întrebări AI pe minut (`RL_AI`) cuprinde și `/api/insight/intreaba`**, nu doar `/api/ai/*`. O ușă nouă de AI
+  se adaugă acolo.
+- **„Am înțeles"** (`_insightInteles`) vine din uneltele chiar rulate, nu din ce a scris modelul. Pe ecran: o singură funcție,
+  `window._insightExtra(j, laAlegere)`, pentru bulă, fila din Rapoarte și secțiune; textele se pun cu textContent.
+- **Fără nicio mașină, RA Insight nu pleacă spre model** și nu se numără (regula veche a lui RA Insight, acum și pe ușa
+  „Asistent AI").
+- ⚠ Proba pornește serverul cu un model SIMULAT (un `-r` care răspunde în locul api.anthropic.com dintr-o coadă) — nu se
+  cheltuie nimic. Importul de mașini citește coloanele pe românește (`nume`, `nr_inmatriculare`), nu `name`/`plate`.
+- Păzit de `verify_insight.js` (în `npm test`) și `verify_paritate_telefon.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

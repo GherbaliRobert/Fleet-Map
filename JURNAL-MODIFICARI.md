@@ -154,6 +154,50 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-02
 
+### AMÂNDOI · RA Insight, pasul 1: recunoaște mașina după număr și ține minte discuția
+
+Alin (02.10), cu două capturi: *„Câți kilometri mi-a făcut mașina B 154 UIP săptămâna trecută și ce consum a avut?"* →
+RA Insight: „B 154 UIP nu apare în flotă". Apoi *„Dacia Logan 3"* → „ce vrei să afli despre ea?". Și, după propunere:
+*„da, fă tot"*.
+
+**Ce era greșit — două lucruri, niciunul de „inteligență":**
+1. RA Insight primea mașinile doar cu numele. Numărul de înmatriculare nu ajungea la el.
+2. Fiecare mesaj pleca singur: pe ecran arăta a discuție, dar el nu vedea mesajul de dinainte.
+
+**Ce face acum:**
+1. **Recunoaște mașina** după număr (cu sau fără spații: „B 154 UIP", „b154uip", „154 UIP"), după nume (și „Loganul",
+   „Caddy-ul"), după șofer („mașina lui Ion") sau după grupă. Când se potrivesc mai multe („Logan", cu trei Logan în flotă),
+   întreabă care — cu **butoane de apăsat**. La „celălalt Logan" lasă deoparte mașina despre care tocmai era vorba.
+2. **Ține minte discuția**: la „și săptămâna dinainte?" știe că e vorba de B 154 UIP și de săptămâna discutată.
+3. **Sub fiecare răspuns, „Am înțeles"**: „B 154 UIP · Dacia Logan 3 · 21–27 septembrie · Index km / ore" — ce a căutat
+   cu adevărat. „Ținut minte" (mov) = mașina vine din discuție, nu din întrebarea de acum.
+4. **Bula RA Insight are „Conversație nouă"**. Conversațiile se păstrează **12 luni de la ultimul mesaj** și le vede **doar
+   omul care le-a scris** — nici adminul firmei, nici noi. Scris și pe pagina de confidențialitate.
+5. **„Azi", „săptămâna trecută", „luna trecută" se socotesc pe ora României** (înainte, pe a serverului: „azi" începea la
+   3 dimineața, vara).
+6. **Răspunsul rapid gratuit** („unde e…", „câți km azi") pleacă doar la întrebări despre ACUM. Înainte se aprindea pe un
+   singur cuvânt: dacă scriai corect „kilometri", primeai km-ii de AZI ai întregii flote, nu pe cei de săptămâna trecută ai
+   mașinii (ai scăpat doar fiindcă ai tastat „kilometir"). Iar „Unde e B 154 UIP?" răspunde acum gratuit, doar despre ea.
+7. **„Asistent AI" de pe telefonul vechi trece prin același RA Insight** (cu memorie și cu rapoartele) — un singur asistent.
+8. **Fără nicio mașină**, RA Insight spune că n-are ce analiza, fără să trimită întrebarea mai departe și fără să o numere.
+
+**Găsite pe drum, reparate (erau chiar în bula RA Insight):** butoanele cu rapoartele folosite, de sub răspuns, erau
+verde-deschis pe verde-pal — abia citibile pe tema deschisă; „Istoric activitate" scria pe englezește („device history")
+descărcarea istoricului complet — acum „istoricul complet al mașinii" (scăparea mea de ieri).
+
+**Costul:** memoria trimite modelului doar textul discuției (ultimele 12 mesaje, tăiate), deci o întrebare costă cam la fel
+ca înainte; partea fixă a instrucțiunilor rămâne în cache între întrebări.
+
+- **Ce am schimbat:** un modul nou (`insight.js`: fișa flotei, perioadele, memoria), serverul (o singură funcție pentru
+  toate ușile lui RA Insight; conversațiile, ștergerea la 12 luni; plafonul de întrebări pe minut și pe ușa nouă), baza
+  (două tabele, ținute în afara copiilor de siguranță), pagina (bula și fila din Rapoarte), pagina de confidențialitate,
+  telefonul (eticheta din Istoric activitate — din aplicația următoare). Probe: `verify_insight.js` (95 de verificări, cu AI
+  simulat: numărul ajunge la unealtă, a doua întrebare o vede pe prima, nimeni altcineva nu vede conversația, butoanele de
+  ales, ștergerea la 12 luni), `verify_paritate_telefon.js` (rescrisă pe regula „fără mașini, fără întrebare").
+- **Ce vede fondatorul:** RA Insight (bula) recunoaște numerele, ține minte, arată ce a înțeles; „Conversație nouă".
+- **Ce vede clientul:** la fel, pe web. Pe telefon, răspunsurile mai bune vin imediat (le face serverul); restul, cu
+  aplicația nouă.
+
 ### FONDATOR · „Descarcă tot istoricul": datele unui client care pleacă, într-un singur fișier
 
 Alin (02.10): *„O facem acum — și îmi spui unde va sta butonul."*

@@ -5770,7 +5770,7 @@ const pozitii = await r.json();</code></pre>
       test:             ['a testat',            'fa-vial',              'var(--text-secondary)']
     };
     var IST_OBIECT = {
-      device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate',
+      device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate', device_history: 'istoricul complet al mașinii',
       driver: 'șoferul', drivers: 'lista de șoferi', user: 'utilizatorul', group: 'grupa', geofence: 'hotspotul',
       alert: 'alerta', maintenance: 'o lucrare de mentenanță', maint_intervals: 'intervalele de mentenanță',
       document: 'un document', doc_needs: 'actele obligatorii', report: 'un raport', report_schedule: 'un raport programat',
@@ -10052,6 +10052,7 @@ const pozitii = await r.json();</code></pre>
     }
     // ─── RA Insight — agent analitic conversațional peste rapoarte ───
     var rinBusy = false, rinInited = false;
+    var _rinConvId = null;   // RA Insight ține minte discuția (02.10); fila deschisă proaspăt pornește una nouă
     function rinMd(t) {
       var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
       var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
@@ -10077,6 +10078,41 @@ const pozitii = await r.json();</code></pre>
       }
       wrap.appendChild(row); wrap.scrollTop = wrap.scrollHeight; return row;
     }
+    // ─── RA Insight: „Am înțeles" + butoanele de ales (02.10) ───
+    // Sub fiecare răspuns: ce a căutat RA Insight cu adevărat (mașina, perioada, raportul), ca omul să vadă dacă
+    // l-a înțeles bine; „ținut minte" = mașina vine din discuție, nu din întrebarea de acum. Când întreabă „care
+    // dintre ele?", variantele sunt butoane. O SINGURĂ funcție, pentru toate locurile unde răspunde RA Insight.
+    // Textele vin de la server și se pun cu textContent (nu se interpretează ca HTML).
+    window._insightExtra = function (j, laAlegere) {
+      var box = document.createElement('div'); box.className = 'ins-extra';
+      var int = (j && Array.isArray(j.inteles)) ? j.inteles : [];
+      if (int.length) {
+        var r = document.createElement('div'); r.className = 'ins-int';
+        var et = document.createElement('span'); et.textContent = 'Am înțeles:'; r.appendChild(et);
+        int.forEach(function (x) {
+          var c = document.createElement('span'); c.className = 'ins-chip' + (x.mem ? ' mem' : '');
+          var ic = document.createElement('i');
+          ic.className = 'fas ' + (x.mem ? 'fa-brain' : (x.tip === 'masina' ? 'fa-car-side' : (x.tip === 'perioada' ? 'fa-calendar' : 'fa-file-lines')));
+          c.appendChild(ic);
+          c.appendChild(document.createTextNode((x.mem ? 'ținut minte: ' : '') + String(x.text || '')));
+          r.appendChild(c);
+        });
+        box.appendChild(r);
+      }
+      var al = (j && Array.isArray(j.alege)) ? j.alege : [];
+      if (al.length && typeof laAlegere === 'function') {
+        var w = document.createElement('div'); w.className = 'ins-alege';
+        al.forEach(function (a) {
+          var b = document.createElement('button'); b.type = 'button';
+          b.innerHTML = '<i class="fas fa-car-side"></i>';
+          b.appendChild(document.createTextNode(String(a.text || a.trimite || '')));
+          b.onclick = function () { laAlegere(String(a.trimite || a.text || '')); };
+          w.appendChild(b);
+        });
+        box.appendChild(w);
+      }
+      return box;
+    };
     function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }
     function rinSuggestionList() {
       return [
@@ -10154,10 +10190,15 @@ const pozitii = await r.json();</code></pre>
       var btn = document.getElementById('rin-send'); if (btn) btn.disabled = true;
       var thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
       try {
-        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
+        var corp = { message: msg };
+        if (_rinConvId) corp.conversatieId = _rinConvId; else corp.nou = true;
+        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
         var j = await r.json();
         if (thinking) thinking.remove();
-        rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
+        if (r.status === 404) _rinConvId = null; else if (j.conversatieId) _rinConvId = j.conversatieId;
+        var rinRow = rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
+        var rinB = rinRow && rinRow.querySelector('.rax-msg.ai');
+        if (rinB) rinB.appendChild(window._insightExtra(j, function (t) { rinAsk(t); }));
         if (j.sources) rinRenderSources(j.sources);
       } catch (e) { if (thinking) thinking.remove(); rinAddMsg('ai', 'Eroare de rețea: ' + e.message); }
       rinBusy = false; if (btn) btn.disabled = false;
@@ -18273,7 +18314,11 @@ const pozitii = await r.json();</code></pre>
           <div class="rax-av" style="width:34px;height:34px;font-size:15px;background:var(--accent);color:#06210F;"><i class="fas fa-wand-magic-sparkles"></i></div>
           <div><h3 style="margin:0;">RA Insight</h3><div style="font-size:11px;color:var(--accent);">● asistentul flotei · live · istoric · alerte</div></div>
         </div>
-        <button class="rax-x" onclick="raxToggleAI()">&times;</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <!-- RA Insight ține minte discuția (02.10). Butonul ăsta o ia de la capăt. -->
+          <button class="rax-ai-nou" onclick="raxAiNou()" title="Începe o conversație nouă"><i class="fas fa-plus"></i> Conversație nouă</button>
+          <button class="rax-x" onclick="raxToggleAI()">&times;</button>
+        </div>
       </div>
       <div id="rax-ai-quota" style="display:none;"></div>
       <div class="rax-body" id="rax-ai-msgs"></div>
@@ -18960,10 +19005,14 @@ const pozitii = await r.json();</code></pre>
       ov.classList.toggle('open', open);
       if (open) { try { raxLoadQuota(); } catch (e) {} }
       if (!open) { ov.style.top = ''; ov.style.height = ''; } // #9: reset poziționarea de tastatură la închidere
-      if (open && !$('rax-ai-msgs').dataset.init) {
+      if (open && !$('rax-ai-msgs').dataset.init) raxAiSalut();
+      if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
+    };
+    // Salutul și întrebările rapide — la prima deschidere și la „Conversație nouă".
+    function raxAiSalut() {
         $('rax-ai-msgs').dataset.init = '1';
         // Întotdeauna: salut + întrebări rapide (răspund LOCAL, instant, fără tokeni AI)
-        addMsg('ai', 'Salut! Sunt **RA Insight** — asistentul flotei tale. Întreabă-mă orice: unde sunt vehiculele **acum**, ce **probleme** are flota, sau analize pe perioadă (km, consum, viteze). Întrebările rapide de mai jos răspund **instant**.');
+        addMsg('ai', 'Salut! Sunt **RA Insight** — asistentul flotei tale. Întreabă-mă orice: o mașină după **număr**, nume sau șofer, ce **probleme** are flota, sau analize pe perioadă (km, consum, viteze). **Țin minte discuția**: poți continua cu „și săptămâna dinainte?".');
         var s = document.createElement('div'); s.className = 'rax-suggest';
         SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
         var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
@@ -18974,8 +19023,13 @@ const pozitii = await r.json();</code></pre>
             ? 'Întrebările rapide merg fără AI. Asistentul liber se activează din Dashboard → secțiunea „AI" (cheie + limite per companie).'
             : 'Întrebările rapide merg instant. Asistentul complet e gestionat de administratorul platformei.');
         }
-      }
-      if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
+    }
+    // „Conversație nouă": se golește bula, iar următoarea întrebare pornește o discuție de la zero pe server.
+    window.raxAiNou = function () {
+      window._raxConvId = null;
+      $('rax-ai-msgs').innerHTML = '';
+      raxAiSalut();
+      setTimeout(function () { $('rax-ai-input').focus(); }, 50);
     };
     function raxMd(t) {
       var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
@@ -19024,12 +19078,23 @@ const pozitii = await r.json();</code></pre>
       try {
         // RA Insight unificat: „unde/oprite/status" primesc răspuns local gratuit pe server (short-circuit),
         // restul rulează pe agentul cu unelte (live + istoric + alerte) și întorc și sursele (rapoartele folosite).
-        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
+        // RA Insight ține minte discuția (02.10): trimitem conversația în care suntem. Bula deschisă proaspăt
+        // pornește una nouă (`nou`), ca omul să nu vorbească, fără să știe, în continuarea unei discuții vechi.
+        var corp = { message: msg };
+        if (window._raxConvId) corp.conversatieId = window._raxConvId; else corp.nou = true;
+        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
         var j = await r.json();
         thinking.remove();
         try { raxLoadQuota(); } catch (e) {} // contorul scade imediat după întrebare
+        if (r.status === 404) window._raxConvId = null;            // conversația a fost ștearsă între timp
+        else if (j.conversatieId) window._raxConvId = j.conversatieId;
         var reply = j.reply || j.error || 'Eroare AI.';
         var row = addMsg('ai', reply);
+        // „Am înțeles" + butoanele de ales (când RA Insight întreabă „care dintre ele?")
+        if (row && window._insightExtra) {
+          var b0 = row.querySelector('.rax-msg.ai');
+          if (b0) b0.appendChild(window._insightExtra(j, function (t) { $('rax-ai-input').value = t; raxSendAI(); }));
+        }
         if (row && Array.isArray(j.sources) && j.sources.length) {
           var bubble = row.querySelector('.rax-msg.ai');
           if (bubble) {
@@ -19037,7 +19102,8 @@ const pozitii = await r.json();</code></pre>
             wrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;';
             j.sources.slice(0, 6).forEach(function (s) {
               var c = document.createElement('span');
-              c.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--accent);background:rgba(63,224,125,.1);border:1px solid rgba(63,224,125,.28);border-radius:8px;padding:4px 8px;cursor:pointer;';
+              // Verdele casei pe fond verde-pal se citea greu pe tema deschisă (măsurat 02.10) → clasa `ins-src`, cu contrast.
+              c.className = 'ins-src';
               c.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
               c.appendChild(document.createTextNode(String(s.label || s.type || 'Raport') + (s.vehicle ? ' · ' + s.vehicle : '')));
               c.title = 'Deschide Rapoarte';

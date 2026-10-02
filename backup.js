@@ -53,6 +53,8 @@ const BACKUP_EXCLUDED = {
   user_sessions: 'sesiuni deschise: se refac la autentificare, iar în copie ar fi chei de acces',
   user_presence: 'prezența oamenilor în aplicație: date despre activitate, nu le păstrăm în copii',
   liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
+  ai_conversatii: 'conversațiile cu RA Insight: sunt ale omului care le-a scris și se șterg la 12 luni — nu le ținem și în copii, unde ar trăi mai mult decât promitem',
+  ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
 };
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext

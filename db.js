@@ -1479,6 +1479,39 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_rhist_user ON report_history(user_id, generated_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_rhist_expires ON report_history(expires_at)`);
 
+    // ─── RA Insight: conversațiile păstrate (02.10) ───
+    // Până acum fiecare întrebare pleca singură: la „Dacia Logan 3", trimis după „câți km a făcut B 154 UIP?",
+    // RA Insight uitase întrebarea. O conversație e A OMULUI care a scris-o (nici adminul firmei, nici noi nu
+    // o citim) și se șterge la 12 luni de la ultimul mesaj (contracts.js → LUNI_CONVERSATII_AI).
+    // `context` = ce s-a discutat ultima dată (mașini, perioadă, rapoarte), ca „și săptămâna dinainte?" să aibă sens.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_conversatii (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        company_id INTEGER,
+        titlu VARCHAR(120),
+        ramura VARCHAR(30) DEFAULT 'general',
+        context JSONB DEFAULT '{}',
+        creat_la TIMESTAMP DEFAULT NOW(),
+        actualizat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_aiconv_user ON ai_conversatii(user_id, actualizat_la DESC)`);
+    // Un mesaj: textul (întrebarea omului sau răspunsul) + `extra` (sursele, „am înțeles", butoanele de ales).
+    // `feedback` = 👍 (1) / 👎 (-1) pe un răspuns.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_mesaje (
+        id BIGSERIAL PRIMARY KEY,
+        conversatie_id BIGINT NOT NULL REFERENCES ai_conversatii(id) ON DELETE CASCADE,
+        rol VARCHAR(12) NOT NULL,
+        text TEXT NOT NULL,
+        extra JSONB,
+        feedback SMALLINT,
+        creat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_aimsg_conv ON ai_mesaje(conversatie_id, id)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -5297,12 +5330,113 @@ async function listUsersByCompany(companyId) {
   return q.rows;
 }
 
+// ─── RA Insight: conversațiile (02.10) ──────────────────────────────────────────────────────────────
+// Regula de fond: o conversație e a omului care a scris-o. FIECARE citire și scriere de aici cere `userId`
+// și îl pune în WHERE — nu există cale de a citi conversația altcuiva, nici pentru adminul firmei, nici
+// pentru super-admin. Un id care nu e al tău se poartă exact ca unul care nu există.
+function _convRand(r) {
+  if (!r) return null;
+  let ctx = r.context;
+  if (typeof ctx === 'string') { try { ctx = JSON.parse(ctx); } catch (e) { ctx = {}; } }
+  return { id: Number(r.id), user_id: r.user_id, company_id: r.company_id, titlu: r.titlu, ramura: r.ramura || 'general',
+    context: ctx || {}, creat_la: r.creat_la, actualizat_la: r.actualizat_la, mesaje: r.mesaje != null ? Number(r.mesaje) : undefined };
+}
+async function conversatieNoua(userId, companyId, titlu, ramura) {
+  const r = await pool.query(
+    'INSERT INTO ai_conversatii (user_id, company_id, titlu, ramura) VALUES ($1, $2, $3, $4) RETURNING *',
+    [userId, companyId != null ? companyId : null, String(titlu || 'Conversație nouă').slice(0, 120), String(ramura || 'general').slice(0, 30)]);
+  return _convRand(r.rows[0]);
+}
+async function conversatieUser(id, userId) {
+  if (!(Number(id) > 0) || userId == null) return null;
+  const r = await pool.query('SELECT * FROM ai_conversatii WHERE id = $1 AND user_id = $2', [Number(id), userId]);
+  return _convRand(r.rows[0]);
+}
+// Telefonul vechi și bula de pe web nu trimit niciun id: continuăm ultima conversație a omului, dacă a scris
+// în ea în ultimele `minute` minute. Altfel e o discuție nouă.
+async function ultimaConversatieRecenta(userId, minute, ramura) {
+  if (userId == null) return null;
+  const r = await pool.query(
+    `SELECT * FROM ai_conversatii WHERE user_id = $1 AND ramura = $3 AND actualizat_la > NOW() - make_interval(mins => $2::int)
+      ORDER BY actualizat_la DESC LIMIT 1`, [userId, Math.max(1, Math.round(minute || 30)), String(ramura || 'general')]);
+  return _convRand(r.rows[0]);
+}
+// Ultimele `limita` mesaje, în ordinea în care s-au scris.
+async function mesajeConversatie(convId, userId, limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.rol, m.text, m.extra, m.feedback, m.creat_la FROM ai_mesaje m
+       JOIN ai_conversatii c ON c.id = m.conversatie_id
+      WHERE m.conversatie_id = $1 AND c.user_id = $2
+      ORDER BY m.id DESC LIMIT $3`, [Number(convId), userId, Math.max(1, Math.min(500, Math.round(limita || 50)))]);
+  return r.rows.reverse().map(function (m) {
+    let ex = m.extra; if (typeof ex === 'string') { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+    return { id: Number(m.id), rol: m.rol, text: m.text, extra: ex || null, feedback: m.feedback != null ? Number(m.feedback) : null, creat_la: m.creat_la };
+  });
+}
+async function adaugaMesajAi(convId, rol, text, extra) {
+  const r = await pool.query(
+    'INSERT INTO ai_mesaje (conversatie_id, rol, text, extra) VALUES ($1, $2, $3, $4) RETURNING id',
+    [Number(convId), rol === 'assistant' ? 'assistant' : 'user', String(text || '').slice(0, 20000), extra ? JSON.stringify(extra) : null]);
+  return Number(r.rows[0].id);
+}
+// Ce s-a discutat (context) și, la prima întrebare, titlul. Întotdeauna urcă ora ultimei scrieri.
+async function actualizeazaConversatie(convId, userId, campuri) {
+  const c = campuri || {};
+  await pool.query(
+    `UPDATE ai_conversatii SET actualizat_la = NOW(),
+       context = COALESCE($3::jsonb, context), titlu = COALESCE($4, titlu)
+     WHERE id = $1 AND user_id = $2`,
+    [Number(convId), userId, c.context ? JSON.stringify(c.context) : null, c.titlu ? String(c.titlu).slice(0, 120) : null]);
+}
+// Lista omului, cea mai nouă întâi. `q` caută în titlu și în textul mesajelor.
+async function listaConversatii(userId, optiuni) {
+  const o = optiuni || {};
+  const p = [userId];
+  let filtru = '';
+  if (o.q && String(o.q).trim()) {
+    p.push('%' + String(o.q).trim().slice(0, 100).replace(/[%_\\]/g, '\\$&') + '%');
+    filtru = ` AND (c.titlu ILIKE $2 OR EXISTS (SELECT 1 FROM ai_mesaje m WHERE m.conversatie_id = c.id AND m.text ILIKE $2))`;
+  }
+  if (o.ramura) { p.push(String(o.ramura)); filtru += ' AND c.ramura = $' + p.length; }
+  p.push(Math.max(1, Math.min(200, Math.round(o.limita || 100))));
+  const r = await pool.query(
+    `SELECT c.*, (SELECT COUNT(*) FROM ai_mesaje m WHERE m.conversatie_id = c.id) AS mesaje
+       FROM ai_conversatii c WHERE c.user_id = $1${filtru}
+      ORDER BY c.actualizat_la DESC LIMIT $${p.length}`, p);
+  return r.rows.map(_convRand);
+}
+async function redenumesteConversatie(convId, userId, titlu) {
+  const r = await pool.query('UPDATE ai_conversatii SET titlu = $3 WHERE id = $1 AND user_id = $2',
+    [Number(convId), userId, String(titlu || '').trim().slice(0, 120) || 'Conversație']);
+  return (r.affectedRows || r.rowCount || 0) > 0;
+}
+async function stergeConversatie(convId, userId) {
+  const r = await pool.query('DELETE FROM ai_conversatii WHERE id = $1 AND user_id = $2', [Number(convId), userId]);
+  return (r.affectedRows || r.rowCount || 0) > 0;
+}
+// 👍 / 👎 pe un RĂSPUNS din conversația omului. `valoare` null = retrage aprecierea.
+async function feedbackMesajAi(mesajId, userId, valoare) {
+  const v = valoare === 1 || valoare === -1 ? valoare : null;
+  const r = await pool.query(
+    `UPDATE ai_mesaje m SET feedback = $3 FROM ai_conversatii c
+      WHERE m.id = $1 AND m.conversatie_id = c.id AND c.user_id = $2 AND m.rol = 'assistant'`, [Number(mesajId), userId, v]);
+  return (r.affectedRows || r.rowCount || 0) > 0;
+}
+// Conversațiile în care nu s-a mai scris de `luni` luni (contracts.js → LUNI_CONVERSATII_AI). Mesajele pleacă odată cu ele.
+async function stergeConversatiiMaiVechiDe(luni) {
+  const r = await pool.query(`DELETE FROM ai_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
+  return r.affectedRows || r.rowCount || 0;
+}
+
 module.exports = {
   pool,
   poolIngest,
   getTimescaleStatus,
   initDb,
   ensureTenancy,
+  // RA Insight — conversațiile (fiecare om doar pe ale lui)
+  conversatieNoua, conversatieUser, ultimaConversatieRecenta, mesajeConversatie, adaugaMesajAi, actualizeazaConversatie,
+  listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,

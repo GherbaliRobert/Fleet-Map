@@ -3863,3 +3863,23 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .rax-dev-propus i{ color:var(--accent); margin-right:4px; }
 .rax-dev-abo{ display:block; font-size:11px; color:var(--text-muted); margin-top:3px; white-space:nowrap; }
 .rax-dev-abo button{ border:0; background:none; padding:0 0 0 4px; color:var(--text-muted); cursor:pointer; font-family:inherit; }
+
+/* ─── RA Insight: „Am înțeles", butoanele de ales, „Conversație nouă" (02.10) ─── */
+.ins-extra { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ins-extra:empty { display: none; }
+.ins-int { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-secondary); } /* --text-muted ieșea 4,3 pe tema deschisă (măsurat) */
+.ins-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+.ins-chip i { font-size: 10px; color: var(--text-muted); }
+.ins-chip.mem, .ins-chip.mem i { color: var(--purple); }
+.ins-chip.mem { border-color: var(--purple); }
+.ins-alege { display: flex; flex-wrap: wrap; gap: 6px; }
+.ins-alege button { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.ins-alege button i { color: var(--text-muted); margin-right: 6px; }
+.ins-alege button:hover { background: var(--bg-dark); }
+.rax-ai-nou { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
+.rax-ai-nou i { margin-right: 4px; }
+.rax-ai-nou:hover { color: var(--text-primary); border-color: var(--accent); }
+/* Butoanele „deschide raportul" de sub un răspuns: text plin pe fond neutru, cu dunga verde a casei. */
+.ins-src { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 4px 8px; cursor: pointer; }
+.ins-src i { color: var(--text-muted); }
+.ins-src:hover { border-color: var(--accent); }

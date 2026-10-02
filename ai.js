@@ -26,6 +26,12 @@ function _cachedSystem(system) {
   if (Array.isArray(system)) return system;
   return [{ type: 'text', text: String(system), cache_control: { type: 'ephemeral' } }];
 }
+// O notă adăugată la sfârșitul instrucțiunilor — merge și pe text simplu, și pe blocuri (partea fixă,
+// păstrată în cache, + partea care se schimbă la fiecare întrebare, ca la RA Insight).
+function _cuNota(system, nota) {
+  if (Array.isArray(system)) return system.concat([{ type: 'text', text: nota }]);
+  return _cachedSystem(String(system || '') + '\n\n' + nota);
+}
 
 let runtimeKey = process.env.ANTHROPIC_API_KEY || null;
 function setKey(k) { runtimeKey = (k && String(k).trim()) || null; }
@@ -114,7 +120,7 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
     convo.push({ role: 'user', content: results });
   }
   // Limită de iterații atinsă → cere un răspuns final fără unelte, pe baza a ce s-a adunat.
-  const jf = await _rawCall({ model: model || AI_AGENT_MODEL, max_tokens: maxTokens, system: _cachedSystem(system + '\n\nGata cu interogările. Răspunde acum pe baza datelor deja adunate.'), messages: convo });
+  const jf = await _rawCall({ model: model || AI_AGENT_MODEL, max_tokens: maxTokens, system: _cuNota(system, 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.'), messages: convo });
   if (onUsage && jf.usage) { try { onUsage(jf.usage); } catch (e) {} }
   const text = (jf.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
   return { text, toolCalls: used };

@@ -654,6 +654,16 @@ function formularWeb(cookie, eSuper, proprii) {
   await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 1 } });
   const sefAlt = lista((await json('GET', '/api/users', ckAlt)).j).find((x) => x.username === 'sef@alta.ro') || {};
   const locAlt = await json('PUT', '/api/users/' + sefAlt.id + '/ai-seat', ckAlt, { on: true });
+  // Din 02.10, „Asistent AI" de pe telefonul vechi trece prin RA Insight, care avea deja regula: fără nicio
+  // mașină nu are ce analiza, deci întrebarea NU pleacă spre model și nu se numără. Firma a doua n-avea mașini;
+  // întâi se verifică regula asta, apoi primește o mașină, ca bucata să probeze în continuare fondul.
+  const inainteGol = apeluriAi();
+  const faraMasini = await json('POST', '/api/ai/chat', ckAlt, { message: Q });
+  await sleep(300);
+  T('fără nicio mașină, RA Insight spune că n-are ce analiza — fără model, fără să se numere',
+    /nicio mașină/.test(faraMasini.j.reply || '') && apeluriAi() === inainteGol, faraMasini.text.slice(0, 120));
+  await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000024799', nume: 'Duba Alta', nr_inmatriculare: 'AR-02-ALT' }] });
+  await json('PUT', '/api/devices/350000000024799/company', S, { company_id: co2.id });
   const inainteB = apeluriAi();
   const primul = await json('POST', '/api/ai/chat', ckAlt, { message: Q, acceptExtra: true });
   await sleep(500);

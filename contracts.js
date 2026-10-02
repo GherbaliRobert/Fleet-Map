@@ -86,6 +86,10 @@ function curataPastrare(b) {
 // Documentele cu termen legal stau în tabelele LOR și nu sunt atinse: facturile (legea contabilității)
 // și contractele. Cifra e scrisă și pe pagina publică de confidențialitate — legată printr-o probă.
 const LUNI_JURNAL_AUDIT = 12;
+// Cât se țin CONVERSAȚIILE cu RA Insight: 12 luni de la ultimul mesaj, apoi se șterg singure (Alin, 02.10:
+// „da, fă tot" — recomandarea era 12 luni, ca jurnalul). Le vede doar omul care le-a scris. Cifra e scrisă
+// și pe pagina publică de confidențialitate — legată printr-o probă (verify_insight.js).
+const LUNI_CONVERSATII_AI = 12;
 
 // ─── Echipamentele ÎNCHIRIATE (decizie Alin, 25.09) ──────────────────────────────────────────────
 // Nu orice client vrea să cumpere aparatele. Cine le închiriază plătește la semnare doar montajul, iar
@@ -557,7 +561,7 @@ function anexaInVigoare(contract, acte) {
 
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
-  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT,
+  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT, LUNI_CONVERSATII_AI,
   CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
   MONTAJ_ZILE_DUPA_AVANS, AVANS_ZILE_RENUNTARE,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
