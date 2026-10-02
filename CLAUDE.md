@@ -18,6 +18,10 @@ cu pas."*
 - **Când e de hotărât ceva:** opțiunile numerotate, cu recomandarea mea spusă direct, iar întrebările
   pentru el la final, numerotate, ca să poată răspunde „1: da, 2: 36 de luni".
 - Când simte că se încurcă, **o luăm pas cu pas**: un pas, confirmarea lui, apoi următorul.
+- **Ce găsesc nou pe drum, îl ÎNTREB** (Alin, 01.10: *„vreau ca acum să mă întrebi dacă trecem mai departe sau
+  rezolvăm problema identificată"*): o problemă găsită în afara lucrului cerut NU se repară pe tăcute și NU se
+  lasă deoparte pe tăcute. O spun pe scurt (ce se întâmplă, cu un exemplu în cifre) și întreb la final: **„o
+  rezolvăm acum sau trecem mai departe?"**. El hotărăște de fiecare dată.
 
 ## De amintit lui Alin — la fiecare raport (OBLIGATORIU)
 
@@ -86,7 +90,47 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 - **Logo în PDF:** aceeași imagine reală, înglobată în antet cu `doc.image()` (NU redesenată cu forme/text). Vezi `renderPdf`.
 - **Fișier de logo pentru fundal ALB = `public/logo-light.png`** (varianta ÎNCHISĂ). ⚠️ Capcană de denumire: `logo.png` e varianta **ALBĂ** (pentru fundal închis, ca în app) — pe alb devine invizibilă („arată pe alb"). Pentru orice export pe fundal alb folosește `logo-light.png`.
 - Ambele descărcări (raport live ȘI Istoric rapoarte) trec prin același `sendReport` → o singură modificare acoperă tot. NU adăuga căi paralele de export care sar peste el.
-- Excepție: exportul CSV brut de traseu GPS (`traseu_<imei>.csv` din `server.js`) nu e un „raport" și nu intră sub regula asta.
+- Excepție: exportul CSV brut de traseu GPS (`/api/export/:imei`, `traseu_<imei>.csv`) nu e un „raport" și nu intră sub
+  regula asta — dar a rămas DOAR pentru integrările prin cheie API (e documentat acolo). Ecranul Traseu NU-l mai folosește.
+
+### Traseul descărcat din ecranul Traseu (Alin, 01.10: „doar cifre, nimic de înțeles")
+Web și telefon descarcă **Excel prin `sendReport`**: `GET /api/traseu/excel?imeis=…&from&to` → `reportExport.traseuVehicul`
+(rândurile pe românește + sumarul) → `traseuCaRaport` (un vehicul: „Sumar" + „Poziții"; mai multe: „Sumar" + o foaie pe
+vehicul) → `sendReport`. Numele: „RA-Tracks - Raport Traseu {nume · număr} - {zi}.xlsx". Aceleași drepturi ca traseul
+(`canAccessImei` pe fiecare mașină, deci și demo-ul exclus).
+- **Sumarul are O SINGURĂ socoteală: `_sumarTraseu`** (server.js), folosită de ecran (`/api/history/:imei?ext=1`) și de
+  fișier — păzit prin numărare. Formele cifrelor (`hmTraseu`, `kmTraseu`, `durataDepasiri`) sunt legate de
+  `hpRenderSummary` din pagină: proba le rulează pe aceleași cazuri.
+- **Cel mult `TRASEU_MAX_POZITII` = 10.000 de poziții într-un fișier** (`traseuPreaMare`, report_export.js). MĂSURAT:
+  ExcelJS face fișierul în memorie — 10.000 = ~3 s; 50.000 = 16 s și 1,5 GB, cu serverul blocat pentru toți. NU urca
+  cifra fără să măsori. Varianta „în flux" a ExcelJS nu pune imagini pe foi, deci ar pierde logo-ul casei.
+- Numele KML-ului: `_numeKmlTraseu` (pagină) = `numeKmlTraseu` (mobile/src/lib/export.ts), legate prin probă.
+- **„Descarcă tot istoricul" (Dispozitive arhivate, Alin 02.10: „O facem acum")** = UN Excel cu TOT istoricul unei mașini
+  (datele înapoi pentru clientul care pleacă; la Traseu, cu 10.000 de poziții pe fișier, un an ar fi fost ~50 de fișiere).
+  `GET /api/devices/:imei/istoric-complet` (super-admin, `canAccessImei`) → `reportExport.istoricPeLuni` (pasul 1: câte
+  poziții pe lună, citind doar orele, ca „Sumar" să stea primul) → `istoricCompletXlsx` (pasul 2: ExcelJS ÎN FLUX, o foaie
+  pe lună pe ora României, rândurile scrise de ACEEAȘI `traseuRand`, fără „Pe hartă" — Excel nu primește peste 65.530 de
+  linkuri într-o foaie). Citirea: `db.istoricOre` / `db.istoricPagina`, pe pagini după timp, cu cheia scrisă ca TEXT
+  (microsecunde — o dată JS le-ar pierde și ar citi rânduri de două ori); poziții vii + arhivă fără dubluri.
+  - **Logo-ul pe fiecare foaie e pus de mână** (`_xlFluxLogo`): varianta în flux nu știe imagini. Desenul = XML-ul pe care
+    îl scrie Excel-ul obișnuit pentru `xlPlaceLogo`; anunțat în `[Content_Types].xml`; `<drawing>` după `<pageSetup>`.
+    Atinge piese interne ale ExcelJS (`_openStream`, `_sheetRelsWriter`, `_writeLegacyData`) — versiunea e fixată în
+    package-lock. Desenul se deschide DUPĂ foaie (altfel arhiva ar ține toată foaia în memorie). Păzit de probă (XML brut).
+  - **Frâna** (`_asteaptaArhiva`): după fiecare pagină se așteaptă golirea țevii foii — ExcelJS nu ține seama de ea, iar un
+    browser lent ar strânge altfel tot fișierul în memorie. MĂSURAT: un an (500.000 de poziții) ≈ 30 s, ~23 MB; cu un
+    browser de 256 KB/s memoria rămâne sub 70 MB. Memoria care crește fără frână e gunoi strâns la nevoie, nu o scurgere.
+  - **Câte UNUL deodată pe server** (`_istoricCompletAcum`): al doilea primește 429 cu „încearcă peste un minut". În jurnal
+    (`export` / `device_history`, cu numărul mașinii) abia după ce a plecat tot fișierul.
+  - **Pe telefon NU există** (un an de date e un fișier mare, peste timpul de așteptare al telefonului): banda „pe ducă" de
+    pe telefon spune dinadins „de pe calculator". Păzit de `verify_arhiva_telefon.js`.
+  - Păzit de `verify_traseu_export.js` (6c + 7b, inclusiv pe server pornit), `verify_arhiva.js` (butonul pe rând).
+- **Linkul „Vezi pe hartă" (Google Maps, pe fiecare poziție) RĂMÂNE** (Alin, 02.10: „da, îl lași"). Avertizarea de la
+  clic („link suspect") o dă programul în care se deschide fișierul (Excel, telefonul) pentru orice link dintr-un fișier
+  venit de pe internet — nu linkul. NU-l scoate și nu-l „repara" ca s-o ocolești.
+- ⚠ **Capcana „Limite reale":** `hpClearOsmOverlay()` golește și `hpLastData` (traseul pe care lucrează „Limite reale"
+  și „Aliniază pe drumuri"). În `hpApplySelection` se curăță ÎNTÂI, apoi `hpLastData = solo.data`. Invers, butoanele
+  spuneau „Încarcă întâi un traseu." cu traseul pe hartă (până pe 01.10).
+- Păzit de `verify_traseu_export.js` (în `npm test`), inclusiv pe server pornit.
 
 ## Poarta de dinaintea livrării (`.github/workflows/ci.yml`) — să nu moară în tăcere
 
@@ -598,6 +642,14 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 ### Anexa nr. 2 (montaj + echipamente) și lucrările
 - Lucrarea de montaj scrie în anexă DOAR cât contractul e nesemnat, din **toate** lucrările lui adunate
   (nu din ultima), și **păstrează echipamentele**. La un contract semnat nu atinge anexa.
+- **Și la ȘTERGERE, și la mutarea unei lucrări de pe contract** (01.10, Alin: „rezolvăm problema"): anexa se reface din
+  lucrările rămase. Fără nicio lucrare = montajul din oferta contractului (`db.ofertaContractului` →
+  `_montajDinOferta`), ca înainte de prima lucrare; fără ofertă = niciun montaj (fără aparate vândute, `montaj` = null).
+  Până atunci rămânea „cum a fost salvată ultima dată": 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
+- **O SINGURĂ funcție: `_refaAnexaDinLucrari(contractId)`** (server.js) → `{ anexa: 'semnat' | 'actualizata' |
+  'din_oferta' | 'fara' }`, chemată la salvare (contractul lucrării + cel de pe care a plecat) și la ștergere. Păzit prin
+  numărare (`verify_montaj.js`). Mesajul de după „Șterge" îl scrie serverul (`_mesajStergereLucrare` → `mesaj`); web și
+  telefon doar îl arată și reîncarcă fișa. Probat pe server pornit în `verify_contracte.js`.
 - Prețul pentru client la o lucrare nouă se propune din anexă, apoi din tarifele casei (`_ofTarifeDeBaza`).
 
 ### Capătul contractului, reînnoirea, alarma
@@ -777,9 +829,49 @@ disponibilitatea"* + *„în secțiunea Montaj"*. Blocul „calendarul de montaj
   restul se întoarce SINGUR la „de programat". O zi montată nu se mai mută.
 - **„Programează montajul"** din drumul clientului (`raxDrumMontaj`) duce în calendar cu clientul ales
   (`_raxMj.cal.pre`); în fișă, la contract semnat, butonul e „Programează în calendar".
-- Ecranul NU socotește nimic (păzit): cere serverului. Culorile etichetelor (programat / montat) au pereche pe
-  tema deschisă, măsurate ≥ 6. Pe telefon grila rămâne în pagină; numele clientului se ascunde, cifra rămâne.
+- Ecranul NU socotește nimic (păzit): cere serverului. Pe telefon grila rămâne în pagină; numele clientului se
+  ascunde, cifra rămâne.
 - Păzit de `verify_montaj_calendar.js` (în `npm test`), pe server pornit.
+
+#### Refăcut pe 01.10, după macheta aprobată (Alin: „ca în imagini — da"; „ajung cele două — și buton reprogramează")
+- **Clicul pe o zi deschide FEREASTRA ei** (`#mjc-ov`, o singură fereastră, conținutul după stare: ziua, lucrarea,
+  anularea, reprogramarea — `_mjcFereastraCorp`). Fereastra stă în markup-ul calendarului; „La client" o închide ÎNTÂI
+  (`raxMjCalLaClient`), altfel ar acoperi fișa firmei. Alături de calendar: „Ce ai de montat"; dedesubt: „Programate /
+  Istoric" (filtre Toate / Montate / Anulate).
+- **Confirmările** (vorbite la telefon): `montaje.confirmat_instalator_la` / `confirmat_client_la` (ms). Se bifează la
+  programare (`confirmat_instalator` / `confirmat_client` în `POST /api/montaj/programeaza`) sau după
+  (`POST /api/montaje/:id/confirmari { instalator?, client? }`, `db.confirmaMontaj` — doar pe o zi încă programată).
+  Culoarea zilei: **verde** `mjc-ok` = amândoi, **galben** `mjc-conf` = mai lipsește una, **gri** `mjc-mont` = montată.
+  Starea și textul le dă serverul (`montaj.stareConfirmare` / `textConfirmare` → `conf`, `conf_text`).
+- **O zi programată a unui contract SEMNAT NU se mai șterge: se ANULEAZĂ, cu motivul ei**, și rămâne în istoric
+  (`status = 'anulat'`, `anulat_la`, `anulat_de`, `motiv_anulare`, `detalii_anulare`). `DELETE /api/montaje/:id` →
+  409 `{ anuleaza: true }` pe una programată de contract semnat, 409 pe una anulată. Lucrările unui contract NESEMNAT
+  (din fișă) se șterg ca înainte. „anulat" e în `ETICHETE_STARE`, dar NU în `STARI` (nu se alege din fișă); o zi
+  anulată nu se mută, nu se trece montată (400) și nu se rescrie din fișă (409).
+- **Din calendar se anulează DOAR montajul unui contract semnat** (activ / încheiat). O lucrare fără contract, sau a unui
+  contract nesemnat, se schimbă ori se șterge din fișă (400 cu mesajul ăsta): la nesemnat, lucrările scriu încă Anexa
+  nr. 2, adunate — iar `db.montajeContract` (adunarea) sare oricum peste zilele anulate.
+- **Motivele sunt DOUĂ** (`montaj.MOTIVE_ANULARE`: instalatorul nu poate / clientul nu poate) — Alin, 01.10. Vin de la
+  server (`motive` în răspunsul calendarului); pagina și telefonul NU le scriu.
+- **O SINGURĂ funcție de anulare: `_anuleazaLucrarea(id, { motiv, detalii, reprogramare, cine, sursa })`** (server.js),
+  chemată azi de `POST /api/montaje/:id/anuleaza`; mâine, de „Refuz" din contul instalatorului (partea lui Robert).
+  „Accept" din contul lui = `db.confirmaMontaj(id, { instalator: true })`. Păzit prin numărare. NU scrie a doua cale.
+- **Reprogramarea:** pe loc (`reprogramare: { data_lucrare, partener_id }` la anulare — validată ÎNAINTE de anulare, ca
+  să nu rămână o zi anulată pe jumătate) sau din istoric (`POST /api/montaje/:id/reprogrameaza`, o singură dată:
+  `reprogramat_ca` = lucrarea nouă). Aceleași mașini; prețul din Anexa nr. 2, costul din tarifele instalatorului
+  (`_ziuaNoua` → `montaj.lucrareaZilei`, ca la programare).
+- **Textele le scrie serverul, ecranele doar le arată:** istoricul (`montaj.textIstoric` — „Anulată — instalatorul nu
+  poate" · „„Bolnav” · anulată de Alin, pe 08.03 · reprogramată pe 15.03"), ce are fiecare instalator în ziua aia
+  (`montaj.incarcarePeZile` + `textIncarcare`, anulatele nu țin pe nimeni ocupat; `textLiber`), nota de stoc
+  (`POST /api/montaj/nota-stoc` → `montaj.notaStoc` cu `aparatePeTip` din Anexa nr. 2 / chirie și `db.stocLaInstalator`).
+- O zi anulată nu se numără nicăieri ca lucrare: nici la „de programat" (`deProgramat` ignoră starea), nici în drumul
+  clientului (`drumDateToate` o scoate).
+- Culorile (etichete, rezultate, nota de stoc, „Anulează") au pereche pe tema deschisă; contrastul e MĂSURAT de probă
+  din CSS, pe ambele teme și pe weekend (≥ 4,5). Butonul plin „Anulează lucrarea" are clasa lui (`mjc-rosu`), fiindcă
+  Montaj nu e în familia `.ra-camp`.
+- **Telefonul** (`mobile/src/lib/calendarMontaj.ts` + `components/CalendarMontaj.tsx`) face același lucru, pe aceleași
+  rute; legat de pagină de `verify_telefon_lot5.js`, care rulează blocul paginii. Telefonul vechi (până la APK-ul nou)
+  mai are „Șterge ziua": serverul îl refuză cu mesajul „Ziua asta se anulează din calendar…".
 
 ### Factura montajului, în ritmul instalatorului (Alin, 30.09: „…ca să nu fim pe pierdere. Doar la montaj.")
 - **Ritmul stă pe fișa instalatorului:** `montaj_parteneri.ritm_facturare` = `lunar` / `saptamanal` (gol = lunar;
@@ -1483,7 +1575,8 @@ plătite) — vezi „Păstrarea istoricului", mai jos.
   bucăți. Un aparat se marchează „șters" doar dacă au mers toate ștergerile; altfel se reîncearcă mâine.
 - Restaurarea oprește ceasul (`archived_at = NULL`). Aparatele arhivate înainte de 24.09 au primit
   ziua de 24.09 — nimic nu s-a șters pe nepusă masă la prima pornire.
-- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Export CSV, sau un raport.
+- În cele 30 de zile, dacă clientul cere datele înapoi: **„Descarcă tot istoricul"** de pe rândul mașinii (un singur
+  Excel cu tot istoricul, o foaie pe lună — vezi la „Traseul descărcat", mai sus), sau un raport.
 - **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_la`, `istoric_sters` pe
   fiecare rând din `/api/archived-devices`). Ecranul doar arată ce primește; NU-și face a doua regulă
   din zile. Pragul de avertizare (`ARH_PRAG_ZILE = 7`, ultima săptămână) și cuvintele stau într-un

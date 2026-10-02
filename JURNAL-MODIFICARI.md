@@ -85,12 +85,18 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** Alin a hotărât să le facă el. Lista,
   pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
   „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
-  starea fiecăruia. La punctul 8 (aparat schimbat pe aceeași mașină) așteaptă întâi „da"-ul lui Alin.
+  starea fiecăruia. Punctul 8 (aparat schimbat pe aceeași mașină): Alin, 01.10 — „îl face Robert"; e pe lista lui.
 - [ ] **Robert: pe ratrack.ro, aparatele care au primit „ziua de pornire" fără să fie montate. Adăugat pe 01.10.** (Lista
   lui, pct. 11.) Pe 28.09 aplicația a dat o singură dată zi de pornire tuturor aparatelor care transmiseseră deja —
   inclusiv celor care au transmis doar de pe masa de probă. Ele plătesc abonament de atunci. De verificat în Dispozitive,
   la fiecare aparat nemontat încă la client, și corectat cu „✎ ziua de pornire" (golită: pornește la prima transmisie
   de după montaj). Trecerea „o singură dată" nu se rulează a doua oară.
+- [ ] **Robert: aplicația de telefon cu calendarul nou de montaj. Adăugat pe 01.10.** Codul e gata (fereastra zilei,
+  confirmările, anularea cu motiv, istoricul, reprogramarea); trebuie construit și instalat APK-ul următor. Până atunci,
+  pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
+  **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
+  primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
+  (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -117,8 +123,8 @@ vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), sec�
 | Gestiune | Stoc echipamente | 🆕 secțiune nouă (25.09; din 30.09 GPS-ul intră doar aici, cu IMEI-ul) |
 | AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
 | Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
-| Business | Montaj | 🆕 secțiune nouă (24.09), cu calendar și ritmul instalatorului (30.09) |
-| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; mai are puncte deschise din verificarea lui Robert |
+| Business | Montaj | ✅ **terminată (01.10, Alin)**: parteneri, contracte, lucrări, calendarul refăcut după machetă. Contul instalatorului îl face Robert |
+| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; urmează trecerea ecran cu ecran, ca la celelalte |
 | Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
 | Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
 
@@ -133,14 +139,174 @@ vechi 1.0.3; un aparat mutat între companii rămâne în stoc la firma veche). 
 Lista, pe 4 loturi (siguranță 3 → bani 12 → contracte 7 → ecrane și texte 4), cu locul din cod și reparația propusă, e
 în documentul „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357).
 
-**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) **Montaj → Calendar**, refăcut (propunerea cu machetă e la
-Alin); (2) **Facturare** (ce mai e: stornarea; răspunsul contabilului despre factura de avans); (3) restul meniului, de la
-„Conturi & Abonamente" până la „Jurnal audit". Regula „ce apare nou pe drum se face la capătul secțiunii" — încă de
-lămurit cu Alin.
+**Ordinea, de acum (01.10):** Robert — lista lui. Noi — (1) ~~Montaj → Calendar~~, refăcut după machetă (01.10, gata);
+(2) **Facturare**, ecran cu ecran (Alin: „terminăm montajul și trecem la facturare"; ce mai e: stornarea; răspunsul
+contabilului despre factura de avans); (3) restul meniului, de la „Conturi & Abonamente" până la „Jurnal audit".
+**Hotărât (Alin, 01.10): ce găsim nou pe drum, mă întreabă de fiecare dată** — „o rezolvăm acum sau trecem mai departe?".
+(Pe 01.10, problema anexei de la ștergerea unei lucrări: „rezolvăm problema" — rezolvată, mai jos.)
+(Pe 01.10, seara: trei reparații pe ecranul Traseu, găsite de Alin pe verticala partenerului — mai jos. Apoi, înapoi
+la verticala fondatorului: Facturare.)
+(Pe 02.10: butonul „CSV" din Rapoarte — găsit pe drum, Alin: „da", scos; limita de 10.000 de poziții pe fișier — „da",
+rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași", rămâne; datele unui client care pleacă (un an
+de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă tot istoricul", făcut, mai jos.)
+
+---
+
+## 2026-10-02
+
+### FONDATOR · „Descarcă tot istoricul": datele unui client care pleacă, într-un singur fișier
+
+Alin (02.10): *„O facem acum — și îmi spui unde va sta butonul."*
+
+**Unde stă:** Administrare → Gestiune → **Dispozitive arhivate** → pe rândul fiecărei mașini, între „Istoric" și
+„Restaurează". Pe calculator. Nu apare la mașinile al căror istoric s-a șters deja.
+
+**Ce face:** o apăsare → **un singur Excel cu tot istoricul mașinii**, oricât de lung:
+- numele casei: „RA-Tracks - Istoric complet Camion Volvo FH · TM 31 VLV - 02.10.2026.xlsx", logo-ul pe fiecare foaie;
+- foaia **„Sumar"**: mașina, firma, perioada, câte poziții pe fiecare lună și totalul;
+- **câte o foaie pe lună** („Iulie 2026", „August 2026"…), pe ora României, cu aceleași coloane ca Excelul de la Traseu
+  (data, ora, în mers/staționare, viteza, contactul, direcția, altitudinea, sateliții, coordonatele); capul de tabel
+  rămâne sus când derulezi. Fără linkul „Vezi pe hartă": Excel nu primește mai mult de 65.000 de linkuri într-o foaie,
+  iar un an are cam 500.000 de poziții — coordonatele sunt acolo.
+- Un an de date ≈ jumătate de minut și un fișier de ~23 MB; butonul scrie „Se pregătește…" cât lucrează.
+- Câte o descărcare deodată pe tot serverul (ca să nu încetinească harta live a clienților): dacă apasă doi oameni
+  odată, al doilea primește „încearcă din nou peste un minut".
+- Fiecare descărcare intră în Istoric activitate, la „Descărcări", cu numărul mașinii — se vede că datele au fost predate.
+
+Banda portocalie „istoricul pe ducă" (sus, în Dispozitive arhivate) trimite acum la butonul ăsta. Pe telefon butonul nu
+există (fișierul e prea mare pentru telefon), iar banda de acolo spune „de pe calculator".
+
+- **Ce am schimbat:** serverul (o rută nouă; istoricul citit pe pagini; fișierul scris pe măsură ce se citește, cu
+  logo-ul pus pe fiecare foaie), pagina (butonul, banda, rândul care trece pe două linii pe ecran îngust), telefonul
+  (textul benzii — din aplicația următoare). Probe: `verify_traseu_export.js` (121 de verificări: lunile pe ora României,
+  inclusiv la schimbarea orei; fișierul citit înapoi; pe server pornit: o mașină arhivată nu-și numără pozițiile de două
+  ori, numele, jurnalul, „câte unul deodată", clientul și mașinile demo refuzate), `verify_arhiva.js`,
+  `verify_arhiva_telefon.js`.
+- **Ce vede fondatorul:** butonul nou pe rândul fiecărei mașini arhivate.
+- **Ce vede clientul:** nimic în aplicație — primește de la noi fișierul, când își cere datele.
+
+### AMÂNDOI · Rapoarte: butonul „CSV" a plecat; banda din Dispozitive arhivate trimite la Excel
+
+Alin (02.10), la „scot butonul CSV din Rapoarte; rămân Excel și PDF" — *„da"*; la „limita de 10.000 de puncte pe fișier
+rămâne?" — *„da"*.
+
+1. **Rapoarte → „Descarcă:" are doar Excel și PDF**, amândouă cu numele și logo-ul RA Tracks. CSV-ul se numea
+   „Traseu 01.10.2026.csv" (fără numele casei) și în Excel-ul românesc tot textul cădea într-o singură coloană — aceeași
+   problemă ca vechiul fișier de pe Traseu. A plecat odată cu el și exportul făcut în pagină din spatele lui (inclusiv o
+   tipărire la care nu mai ducea niciun buton).
+2. **Banda „istoricul pe ducă" din Dispozitive arhivate** (web + telefon) spunea „scoate-l acum: «Istoric» → Export CSV".
+   De ieri, butonul acela e „Excel". Acum scrie „«Istoric» → Excel, sau dintr-un raport". (Rămășiță a schimbării de ieri:
+   când scoți un buton, îi cauți și cuvintele.)
+3. **Limita de 10.000 de poziții pe fișier rămâne** (hotărât).
+
+- **Ce am schimbat:** pagina (butonul, stilul lui, exportul din pagină, banda), telefonul (banda — din aplicația
+  următoare), probele: `verify_traseu_export.js` (91 de verificări: rândul „Descarcă:" are exact Excel și PDF, prin server),
+  `verify_arhiva.js` și `verify_arhiva_telefon.js`, rescrise pe textul nou.
+- **Ce vede fondatorul:** banda din Dispozitive arhivate trimite la Excel; Rapoarte fără CSV (pe verticala partenerului).
+- **Ce vede clientul:** Rapoarte → „Descarcă:" Excel și PDF.
 
 ---
 
 ## 2026-10-01
+
+### CLIENT · Traseu: „Limite reale" merge, butoanele au loc, traseul se descarcă în Excel cu numele casei
+
+Alin (01.10, pe verticala partenerului): *„când dau pe Limite reale… îmi apare eroare, încarcă întâi un traseu… între
+Dacia Logan cu bifa și butoanele CSV sau KML se vede urât, nu există spațiere… raportul CSV — îmi apar numai cifre, nu
+are numele RA Tracks ca celelalte documente, nimic de înțeles"*.
+
+1. **„Limite reale" și „Aliniază pe drumuri" lucrează pe traseul bifat.** Spuneau „Încarcă întâi un traseu." cu traseul
+   pe hartă: la bifare, aplicația reținea traseul și imediat după aceea îl ștergea, odată cu limitele traseului de
+   dinainte. Acum întâi curăță, apoi reține. Pe ratrack.ro limitele vin de la OpenStreetMap; în cutia de probe serviciul
+   e blocat, deci acolo am văzut doar că cererea pleacă (fără mesajul greșit).
+2. **Butoanele nu mai stau lipite de rândul traseului:** 12 px între „Dacia Logan 3 · B 154 UIP" și butoanele de dedesubt,
+   măsurat pe ambele teme.
+3. **„CSV" a devenit „Excel"**, ca rapoartele:
+   - Numele: „RA-Tracks - Raport Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.xlsx", cu logo-ul pe fiecare foaie.
+   - Foaia „Sumar": distanța, timpul în deplasare și în staționare, consumul, viteza maximă, limita mașinii și
+     depășirile — **aceleași cifre ca pe ecran** (le socotește aceeași funcție, pentru ecran și pentru fișier).
+   - Foaia „Poziții": un rând pe poziție — data, ora (a României), „În mers" / „Staționare", viteza, contactul
+     „Pornit" / „Oprit", direcția (N, NE…), altitudinea, sateliții, coordonatele și un link „Vezi pe hartă".
+   - Mai multe mașini bifate → un singur fișier: „Sumar" cu un rând pe mașină, plus câte o foaie pe mașină.
+   - **Cel mult 10.000 de poziții într-un fișier** (de obicei 1–2 săptămâni ale unei mașini, sau o zi pentru câteva).
+     Peste atât, aplicația spune „alege o perioadă mai scurtă sau mai puține mașini". De ce: fișierul se face pe server,
+     în memorie. Măsurat: 10.000 de poziții = 3 secunde; 50.000 (cam o lună) = 16 secunde și 1,5 GB, timp în care
+     serverul nu mai răspunde nimănui — nici hărții live a celorlalți clienți.
+   - KML-ul are și el numele casei: „RA-Tracks - Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.kml".
+   - Fișierul vechi (CSV cu codurile aparatului) rămâne doar pentru integrările prin cheie API, unde e documentat.
+
+- **Ce am schimbat:** pagina (ordinea la bifare, spațiul, butonul Excel, numele KML), serverul (o rută nouă pentru
+  Excel, prin aceeași cale ca rapoartele; sumarul traseului mutat într-o singură funcție, folosită de ecran și de
+  fișier), telefonul (Excel în loc de CSV, numele KML — din aplicația următoare). Probă nouă: `verify_traseu_export.js`
+  (87 de verificări, în `npm test`): funcțiile paginii rulate (și ordinea veche, ca martor), formele cifrelor legate de
+  ecran, numele KML legat între web și telefon, apoi pe server pornit — numele, foile, cifrele ecranului în fișier,
+  altă firmă (refuz), mașinile demo (refuz), limitele.
+- **Ce vede fondatorul:** același ecran Traseu, când trece pe verticala partenerului.
+- **Ce vede clientul:** cele trei de mai sus. Pe telefon, Excel-ul și numele KML vin cu aplicația următoare; până atunci
+  telefonul vechi descarcă tot CSV-ul.
+
+### FONDATOR · Contractul nesemnat: anexa de montaj se reface și când ștergi o lucrare
+
+Găsit pe drum, la calendar; Alin (01.10): *„rezolvăm problema"*.
+
+Cât un contract nu e semnat, lucrările de montaj din fișa clientului scriu Anexa nr. 2 (montajul de pe contract). La
+salvare se refăcea din toate lucrările; **la ștergere, nu**. Exemplu: lucrări de 3 + 2 mașini → anexa spunea 5; ștergeai
+lucrarea de 2 → tot 5 scria, deși rămăseseră 3. Hârtia trimisă la semnat ar fi cerut montaj pentru 5 mașini.
+
+Acum, cât contractul nu e semnat:
+1. **Ștergi o lucrare** → anexa se reface din lucrările rămase (5 → 3).
+2. **Ștergi și ultima** → anexa se întoarce la montajul din ofertă (cum era înainte de prima lucrare).
+3. **Contract fără ofertă** → după ultima lucrare, contractul rămâne fără anexă de montaj.
+4. **Scoți o lucrare de pe contract** (o salvezi fără contract) → anexa lui se reface la fel.
+5. Aparatele vândute rămân mereu în anexă, neatinse. La un contract **semnat** nu se schimbă nimic: anexa e ce s-a semnat.
+
+După „Șterge", aplicația spune ce s-a întâmplat („Anexa nr. 2 s-a refăcut din lucrările rămase" / „s-a întors la
+montajul din ofertă") și reîncarcă fișa. Întrebarea dinainte nu mai promite „Anexa rămâne cum a fost salvată".
+
+- **Ce am schimbat:** serverul (o singură regulă pentru salvare și ștergere, `_refaAnexaDinLucrari`; mesajul îl scrie
+  serverul), pagina și telefonul (întrebarea, mesajul, reîncărcarea fișei — pe telefon din aplicația următoare). Probe:
+  `verify_contracte.js` (7 verificări noi, pe server pornit: 3 + 2 → 5, ștearsă una → 3, scoasă de pe contract,
+  ultima → oferta, fără ofertă → fără anexă, semnat → neatins), `verify_montaj.js`.
+- **Ce vede fondatorul:** în fișa clientului (fila Contract), anexa care se potrivește cu lucrările rămase.
+- **Ce vede clientul:** nimic — e partea noastră. Contractul pe care îl primește la semnat spune montajul adevărat.
+
+### FONDATOR · Calendarul de montaj, refăcut după machetă: fereastra zilei, confirmări, anulare cu motiv, istoric
+
+Alin (01.10): *„Ca în imagini — da"*; la motivele de anulare: *„ajung cele două — și buton reprogramează"*.
+
+1. **Apeși pe o zi și se deschide fereastra ei.** Sus, ce e deja programat în ziua aia. Dedesubt, „Programează
+   montajul": clientul, câte mașini (cu aparatul scris lângă — FMC130, LV-CAN200), cine montează și, lângă fiecare
+   instalator, ce mai are deja în ziua aia („liber în ziua asta" / „are deja 6 mașini (Logistic Nord SRL)").
+2. **Nota de stoc:** când alegi instalatorul, aplicația spune ce aparate are la el din stoc și ce trebuie să-i mai
+   duci — de exemplu „Are la el din stoc 3 × FMC130 și 2 × LV-CAN200: mai trebuie să-i duci 3 × FMC130."
+3. **Două confirmări, vorbite la telefon:** „Am vorbit cu instalatorul: poate în ziua asta" și „Am vorbit cu clientul:
+   mașinile sunt disponibile". Se bifează la programare sau mai târziu, din ziua programată. Culoarea zilei în
+   calendar: **verde** = au confirmat amândoi, **galben** = mai lipsește o confirmare, **gri** = montată.
+4. **Anulează, cu motivul:** „Instalatorul nu poate" sau „Clientul nu poate" (doar două, cum a hotărât Alin), plus
+   amănunte, dacă vrei. Ziua anulată **nu se mai șterge**: rămâne în „Istoric", cu motivul, cine a anulat și când, iar
+   mașinile ei se întorc la „Ce ai de montat".
+5. **Reprogramează:** pe loc, din fereastra de anulare („Anulează și reprogramează"), sau mai târziu, din „Istoric".
+   Aceleași mașini, pe ziua nouă; în istoric scrie „reprogramată pe 15.10".
+6. **Sub calendar, „Programate / Istoric":** toate zilele încă programate (din orice lună), cu confirmările lor; și
+   istoricul — zilele montate și cele anulate, cu filtrele Toate / Montate / Anulate.
+7. **„Ce ai de montat"** (fostul „De programat") stă lângă calendar, cu termenul de 30 de zile și „Programează".
+
+Pe drum: o zi anulată nu mai poate fi mutată sau trecută „montată" din greșeală (scrie „se reprogramează din
+Istoric"), nu se rescrie din fișa clientului și nu se șterge. Din calendar se anulează doar montajul unui contract
+semnat; o lucrare a unui contract încă nesemnat se schimbă sau se șterge din fișa clientului, ca Anexa nr. 2 să rămână
+cea adevărată. Până face Robert contul instalatorului, confirmările și
+anularea le facem noi; când îl face, „Accept" și „Refuz" din contul lui folosesc exact aceleași reguli, ca istoricul să
+spună la fel, oricine ar fi anulat.
+
+- **Ce am schimbat:** serverul (confirmările, anularea cu motiv — o singură regulă, pe care o va chema și „Refuz" din
+  contul instalatorului —, reprogramarea, istoricul, ce are fiecare instalator în ziua aia, nota de stoc), pagina
+  (calendarul, fereastra zilei, Programate / Istoric) și telefonul (același calendar; intră în aplicația următoare — la
+  „De amintit"). Probe: `verify_montaj_calendar.js` (104 verificări, rescrisă pe regulile noi, cu contrastul măsurat pe
+  ambele teme), `verify_telefon_lot5.js` (562 — telefonul face exact ce face pagina). Contrastul măsurat și în browser:
+  cel mai mic, 4,76 (legenda, pe tema deschisă).
+- **Ce vede fondatorul:** Business → Montaj → Calendar, ca în machetă.
+- **Ce vede clientul:** nimic — calendarul, instalatorii și stocul sunt doar ai noștri (verificat: 403 pe toate rutele,
+  inclusiv confirmări, anulare, reprogramare, nota de stoc).
 
 ### AMÂNDOI · Lista lui Robert, lotul 4 — ecrane și texte (23–26) — `183dafe`
 

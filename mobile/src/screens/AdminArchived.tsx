@@ -141,7 +141,7 @@ export function AdminArchived() {
             </div>
             {peDuca > 0 && (
               <Banda ton="warn" icon="clock">
-                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.
+                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum, de pe calculator: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).
               </Banda>
             )}
             <input class="fd-search" value={q} onInput={(e: any) => setQ(e.target.value)} placeholder="Caută nume / număr / IMEI / firmă…" />

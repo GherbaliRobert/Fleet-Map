@@ -3,18 +3,25 @@
    la contractele clienților. Culorile vin DOAR din tokenurile temei; verdele de text trece prin --ctr-ok (mai închis pe
    tema deschisă), pentru că verdele aplicației nu se citește ca text mic pe alb. Fontul se moștenește (Nunito). */
 
-/* Culorile calendarului, pe fiecare temă — aceleași ca pe web (.mjc-l.mjc-prog / .mjc-mont, cu perechea lor pe tema
-   deschisă) plus roșul termenului depășit. Măsurate cu proba (text / fundal ≥ 4,5 pe amândouă temele, și pe căsuța
-   de weekend, care e mai închisă): portocaliu = programat / termen curând, verde = montat. */
+/* Culorile calendarului, pe fiecare temă — aceleași ca pe web (.mjc-l.mjc-ok / .mjc-conf / .mjc-mont, cu perechea lor
+   pe tema deschisă) plus portocaliul termenului „curând" și roșul celui depășit. Măsurate cu proba (text / fundal ≥ 4,5
+   pe amândouă temele, și pe căsuța de weekend, care e mai închisă). Din 01.10: verde = au confirmat instalatorul și
+   clientul, galben = mai lipsește o confirmare, gri = montat; roșul plin = „Anulează lucrarea". */
 :root {
   --mjc-prog: #fdba74; --mjc-prog-bg: rgba(249, 115, 22, .14); --mjc-prog-bd: rgba(249, 115, 22, .35);
-  --mjc-mont: #86efac; --mjc-mont-bg: rgba(63, 224, 125, .12); --mjc-mont-bd: rgba(63, 224, 125, .30);
+  --mjc-ok: #86efac; --mjc-ok-bg: rgba(63, 224, 125, .12); --mjc-ok-bd: rgba(63, 224, 125, .30);
+  --mjc-conf: #fde68a; --mjc-conf-bg: rgba(234, 179, 8, .13); --mjc-conf-bd: rgba(234, 179, 8, .38);
+  --mjc-mont: #cbd5e1; --mjc-mont-bg: rgba(148, 163, 184, .14); --mjc-mont-bd: rgba(148, 163, 184, .32);
   --mjc-rau: #f87171; --mjc-rau-bg: rgba(239, 68, 68, .14);
+  --mjc-rosu: #ffffff; --mjc-rosu-bg: #dc2626;
 }
 :root[data-theme="light"] {
   --mjc-prog: #9a3412; --mjc-prog-bg: #fff1e6; --mjc-prog-bd: #fdba74;
-  --mjc-mont: #166534; --mjc-mont-bg: #e8f8ee; --mjc-mont-bd: #86efac;
+  --mjc-ok: #166534; --mjc-ok-bg: #e8f8ee; --mjc-ok-bd: #86efac;
+  --mjc-conf: #854d0e; --mjc-conf-bg: #fef6d8; --mjc-conf-bd: #f2c94c;
+  --mjc-mont: #334155; --mjc-mont-bg: #eef2f6; --mjc-mont-bd: #cbd5e1;
   --mjc-rau: #b91c1c; --mjc-rau-bg: #fee2e2;
+  --mjc-rosu: #ffffff; --mjc-rosu-bg: #dc2626;
 }
 
 /* Pastilele de lângă numele partenerului: „inactiv", „contract: …" / „fără contract" */
@@ -83,10 +90,11 @@
 .mjc-zi:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .mjc-nr { font-size: 12px; font-weight: 700; line-height: 1.25; color: var(--text-secondary); }
 .mjc-zi.azi .mjc-nr { color: var(--ctr-ok); font-weight: 800; }
-/* Eticheta unei lucrări: cifra = câte mașini; portocaliu programat, verde montat (ca pe web). */
+/* Eticheta unei lucrări: cifra = câte mașini; verde confirmat, galben de confirmat, gri montat (ca pe web). */
 .mjc-l { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 800;
   line-height: 1.3; border-radius: 6px; padding: 1px 4px; border: 1px solid transparent; white-space: nowrap; }
-.mjc-l.mjc-prog { color: var(--mjc-prog); background: var(--mjc-prog-bg); border-color: var(--mjc-prog-bd); }
+.mjc-l.mjc-ok { color: var(--mjc-ok); background: var(--mjc-ok-bg); border-color: var(--mjc-ok-bd); }
+.mjc-l.mjc-conf { color: var(--mjc-conf); background: var(--mjc-conf-bg); border-color: var(--mjc-conf-bd); }
 .mjc-l.mjc-mont { color: var(--mjc-mont); background: var(--mjc-mont-bg); border-color: var(--mjc-mont-bd); }
 .mjc-mai { font-size: 11px; font-weight: 800; color: var(--text-secondary); text-align: center; }
 .mjc-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 12px; color: var(--text-secondary); }
@@ -116,6 +124,29 @@
 .mjc-text { font-size: 14.5px; line-height: 1.5; color: var(--text-primary); overflow-wrap: anywhere; }
 .mjc-text.mic { font-size: 12.5px; color: var(--text-secondary); }
 .mjc-ce { display: block; margin-top: 3px; font-size: 13px; color: var(--text-secondary); }
+
+/* 01.10 — confirmările, nota de stoc, ce are fiecare instalator în ziua aleasă, „Programate / Istoric", anularea. */
+.mjc-rez { display: block; font-size: 12.5px; font-weight: 800; }
+.mjc-rez.mic { font-size: 12px; }
+.mjc-rez.ok { color: var(--mjc-ok); }
+.mjc-rez.conf { color: var(--mjc-conf); }
+.mjc-rez.an { color: var(--mjc-prog); }
+.mjc-file { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 2px; }
+.mjc-file .ctr-btn.mjc-fila { margin: 0; }
+.mjc-filtre { display: flex; gap: 6px; flex-wrap: wrap; }
+.mjc-fl { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; min-height: 34px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
+.mjc-fl.on { color: var(--text-primary); border-color: var(--text-secondary); }
+.mjc-bifa { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-card); font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.mjc-bifa input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.mjc-aparat { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.mjc-inc { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 12.5px; color: var(--text-secondary); }
+.mjc-inc b { color: var(--text-primary); }
+.mjc-nota { font-size: 13px; line-height: 1.45; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-secondary); }
+.mjc-nota.warn { color: var(--mjc-conf); background: var(--mjc-conf-bg); border-color: var(--mjc-conf-bd); }
+.btn.mjc-rosu { width: 100%; color: var(--mjc-rosu); background: var(--mjc-rosu-bg); border-color: var(--mjc-rosu-bg); }
 
 /* Cele patru file din Montaj (Calendar, Parteneri, Contracte cu partenerii, Lucrări) nu încap pe un rând la 375px:
    derulate lateral, cu bara ascunsă, „Lucrări" ieșea complet din ecran. Se așază pe două rânduri, ca secțiunile din

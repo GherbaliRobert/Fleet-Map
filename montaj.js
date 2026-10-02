@@ -49,7 +49,10 @@ const ETICHETE_STARE = {
   programat: 'programat',
   executat: 'executat',
   facturat_de_partener: 'partenerul ne-a facturat',
-  facturat_clientului: 'facturat clientului'
+  facturat_clientului: 'facturat clientului',
+  // O zi programată care n-a mai avut loc (01.10). NU e în STARI: nu se alege din formularul lucrării, ci doar din
+  // „Anulează" (cu motiv), ca să rămână în istoric cine, când și de ce.
+  anulat: 'anulată'
 };
 
 function _n(v) { const x = Number(v); return Number.isFinite(x) && x >= 0 ? x : 0; }
@@ -415,7 +418,106 @@ function anuntMontajDeFacturat(g) {
     corp: g.text + ' — ' + _bani(g.total) + ' lei fără TVA. Apasă aici: factura e pregătită, cu lucrările puse. O verifici („Previzualizează") și apeși „Emite factura".' };
 }
 
+// ─── Calendarul, refăcut (Alin, 01.10: „când selectăm o zi aș vrea să se deschidă un meniu… cum mă înțeleg cu
+//     instalatorul că poate instala în ziua respectivă, să știm și noi dacă are disponibilitate clientul") ───
+// O zi programată poartă două confirmări, vorbite la telefon: a instalatorului și a clientului. Până face Robert contul
+// instalatorului le bifăm noi; după, „Accept" din contul lui o bifează pe a lui, iar „Refuz" anulează lucrarea cu
+// motivul „instalatorul nu poate". O lucrare ANULATĂ nu dispare: rămâne în istoric, cu motivul, iar mașinile ei se
+// întorc singure la „de programat" (deProgramat nu numără starea `anulat`).
+const STARE_ANULAT = 'anulat';
+// Doar două motive (Alin, 01.10: „ajung cele două"). Amănuntele se scriu alături, ca text.
+const MOTIVE_ANULARE = { instalator: 'Instalatorul nu poate', client: 'Clientul nu poate (mașinile nu sunt disponibile)' };
+function _ts(v) { const x = Number(v); return Number.isFinite(x) && x > 0 ? x : null; }
+// Culoarea zilei în calendar: verde = au confirmat amândoi, galben = mai lipsește cel puțin o confirmare. Doar pentru
+// o lucrare încă programată; una montată sau anulată n-are ce confirma.
+function stareConfirmare(l) {
+  if (!l || l.status !== 'programat') return null;
+  return _ts(l.confirmat_instalator_la) && _ts(l.confirmat_client_la) ? 'confirmat' : 'de_confirmat';
+}
+function textConfirmare(l) {
+  const i = !!_ts(l && l.confirmat_instalator_la), c = !!_ts(l && l.confirmat_client_la);
+  if (i && c) return 'confirmat de instalator și de client';
+  if (i) return 'lipsește confirmarea clientului';
+  if (c) return 'lipsește confirmarea instalatorului';
+  return 'neconfirmat încă';
+}
+// Cât are deja fiecare instalator în fiecare zi (lucrările programate sau montate; cele anulate nu țin pe nimeni ocupat).
+// lucrari = [{ zi, partener_id, status, masini, company_name }] → { 'AAAA-LL-ZZ': { '<partener_id>': { masini, clienti } } }
+function incarcarePeZile(lucrari) {
+  const out = {};
+  (lucrari || []).forEach(function (l) {
+    if (!l || !l.zi || l.partener_id == null) return;
+    if (l.status !== 'programat' && STARI_MONTATE.indexOf(l.status) < 0) return;
+    const z = out[l.zi] || (out[l.zi] = {});
+    const p = z[l.partener_id] || (z[l.partener_id] = { masini: 0, clienti: [] });
+    p.masini += _n(l.masini);
+    if (l.company_name && p.clienti.indexOf(l.company_name) < 0) p.clienti.push(l.company_name);
+  });
+  return out;
+}
+// „liber în ziua asta" / „are deja 6 mașini (Logistic Nord SRL)" — lângă numele instalatorului, în fereastra zilei.
+function textIncarcare(x) {
+  if (!x || !(x.masini > 0)) return 'liber în ziua asta';
+  return 'are deja ' + _cate(x.masini, 'mașină', 'mașini') + (x.clienti && x.clienti.length ? ' (' + x.clienti.join(', ') + ')' : '');
+}
+// Numele scurt al unui aparat, cum îl spune instalatorul: „FMC130", „LV-CAN200".
+function numeScurt(k) { const e = echipament(k); return e ? e.et.replace(/^(Teltonika|Modul)\s+/, '') : String(k || ''); }
+// Ce aparate ale contractului merg la fiecare fel de lucrare pe mașină: la „gps" trackerele din contract (vândute în
+// Anexa nr. 2 sau închiriate), la „lvcan" modulul LV-CAN200. CAN-ul încorporat și priza FMS nu cer un aparat în plus.
+function aparatePeTip(anexa2, annex) {
+  const a2 = _obj(anexa2) || {}, an = _obj(annex) || {};
+  const are = {};
+  ((a2.echipamente || {}).items || []).forEach(function (r) { if (r && _n(r.buc) > 0) are[r.tip] = true; });
+  (((an.chirie || {}).aparate) || []).forEach(function (r) { if (r && _n(r.cant || r.buc) > 0) are[r.tip] = true; });
+  return {
+    gps: ECHIPAMENTE.filter(function (e) { return e.transmite && are[e.k]; }).map(function (e) { return e.k; }),
+    lvcan: are.lvcan200 ? ['lvcan200'] : [], caninc: [], fms: []
+  };
+}
+function _lista(bucati) { return bucati.length <= 1 ? (bucati[0] || '') : bucati.slice(0, -1).join(', ') + ' și ' + bucati[bucati.length - 1]; }
+// Nota de stoc din fereastra zilei: ce are instalatorul la el și ce trebuie să-i mai duci pentru ziua aleasă.
+//   cate   = { gps: 6, lvcan: 6 } (ce se montează în ziua aceea);
+//   aparate = aparatePeTip(...) (ce aparate merg la fiecare fel);
+//   stoc   = { fmc130: 6, lvcan200: 4 } (bucățile din stoc aflate „la instalator", la el).
+// La mai multe modele de tracker în același contract (FMC130 și FMC650) nu se știe care mașină ce primește: se
+// numără trackerele lor împreună.
+function notaStoc(cate, aparate, stoc, arePartener) {
+  if (!arePartener) return { text: 'Alege instalatorul ca să vezi ce aparate are la el din stoc.', lipsa: [] };
+  const s = stoc || {}, c = cate || {}, ap = aparate || {};
+  const areTxt = Object.keys(s).filter(function (k) { return _n(s[k]) > 0; }).sort().map(function (k) { return _n(s[k]) + ' × ' + numeScurt(k); });
+  const lipsa = [];
+  ['gps', 'lvcan'].forEach(function (t) {
+    const modele = ap[t] || [], trebuie = Math.floor(_n(c[t]));
+    if (!modele.length || !trebuie) return;
+    const are = modele.reduce(function (x, k) { return x + _n(s[k]); }, 0);
+    if (are < trebuie) lipsa.push({ tip: t, modele: modele, n: trebuie - are, text: (trebuie - are) + ' × ' + modele.map(numeScurt).join(' / ') });
+  });
+  const are = areTxt.length ? 'Are la el din stoc ' + _lista(areTxt) : 'N-are la el niciun aparat din stoc';
+  if (lipsa.length) return { text: are + (areTxt.length ? ': mai trebuie să-i duci ' : ': trebuie să-i duci ') + _lista(lipsa.map(function (x) { return x.text; })) + '.', lipsa: lipsa };
+  if (!['gps', 'lvcan'].some(function (t) { return (ap[t] || []).length && Math.floor(_n(c[t])) > 0; })) return { text: are + '.', lipsa: [] };
+  return { text: are + ': ajunge pentru ziua asta.', lipsa: [] };
+}
+// Rândul din istoric: ce s-a întâmplat cu o zi de montaj. l = lucrarea (cu `anulat_de_nume`, `reprogramat_zi` 'AAAA-LL-ZZ').
+function textIstoric(l) {
+  if (!l) return { text: '', detaliu: '' };
+  if (l.status === STARE_ANULAT) {
+    const m = MOTIVE_ANULARE[l.motiv_anulare];
+    const bucati = [];
+    if (l.detalii_anulare) bucati.push('„' + String(l.detalii_anulare).trim() + '”');
+    // `anulat_zi` = ziua anulării pe ora României ('AAAA-LL-ZZ'), pusă de server; regula nu știe de fusuri orare.
+    const cand = l.anulat_zi ? _zzll(_ziMs(l.anulat_zi)) : null;
+    bucati.push('anulată' + (l.anulat_de_nume ? ' de ' + l.anulat_de_nume : '') + (cand ? ', pe ' + cand : ''));
+    if (l.reprogramat_zi) bucati.push('reprogramată pe ' + _zzll(_ziMs(l.reprogramat_zi)));
+    return { text: 'Anulată — ' + (m ? m.charAt(0).toLowerCase() + m.slice(1).replace(/ \(.*\)$/, '') : 'fără motiv'), detaliu: bucati.join(' · '), anulata: true };
+  }
+  if (STARI_MONTATE.indexOf(l.status) >= 0) {
+    return { text: 'Montată — ' + _cate(_n(l.masini), 'mașină', 'mașini'), detaliu: ETICHETE_STARE[l.status] && l.status !== 'executat' ? ETICHETE_STARE[l.status] : '', anulata: false };
+  }
+  return { text: ETICHETE_STARE[l.status] || String(l.status || ''), detaliu: '', anulata: false };
+}
+
 module.exports = {
+  STARE_ANULAT, MOTIVE_ANULARE, stareConfirmare, textConfirmare, incarcarePeZile, textIncarcare, numeScurt, aparatePeTip, notaStoc, textIstoric,
   TIPURI, CHEI, STARI, ETICHETE_STARE, ECHIPAMENTE, CHEI_ECHIP,
   tip, echipament, randuri, randuriEchip, calc,
   facAnexaMontaj, facAnexaEchip, facAnexaCosturiUnice, pretDinOferta,

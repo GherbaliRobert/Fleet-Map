@@ -705,6 +705,53 @@ function gata() {
   const c3 = (await R('POST', '/api/companies/' + co3.id + '/contract', { offer_id: of3.id })).j;
   T('ciorna se șterge', (await R('DELETE', '/api/contracts/' + c3.id)).s === 200);
   T('iar oferta nu mai arată spre ea', ((await R('GET', '/api/admin/offers')).j.find(o => o.id === of3.id) || {}).contract_id == null);
+  // ─── Anexa nr. 2 a unui contract NESEMNAT ține pasul cu lucrările din fișă — și la ștergere (01.10, Alin: „rezolvăm
+  // problema"). Până atunci: 3 + 2 mașini în anexă = 5; ștearsă lucrarea de 2, contractul tot 5 spunea.
+  const ofA = (await R('POST', '/api/admin/offers', { name: 'CI Anexa', client_name: 'CI Anexa SRL', monthly_total: 116, currency: 'RON',
+    config: { cfg: { nVeh: 4, contractMonths: 12, montaj: { qGps: 4 }, devices: { d130: 4 } }, prices: { pPlain: 29, mGps: 100, dFmc130: 45 } } })).j;
+  const coA = (await R('POST', '/api/companies', { name: 'CI Anexa SRL' })).j;
+  const cA = (await R('POST', '/api/companies/' + coA.id + '/contract', { offer_id: ofA.id, months: 12,
+    din_oferta: { unitati: { plain: 29, can: 29, fms: 29 }, vehicule: [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 4, pret: 29, total: 116 }], servicii: [] } })).j;
+  const anexaDe = async (coId) => ((((await R('GET', '/api/companies/' + coId + '/contract')).j || {}).contract || {}).montaj) || null;
+  const gpsIn = (a) => ((a && a.items) || []).filter((r) => r.tip === 'gps').reduce((x, r) => x + Number(r.buc || 0), 0);
+  const fmcIn = (a) => (((a && a.echipamente) || {}).items || []).filter((r) => r.tip === 'fmc130').reduce((x, r) => x + Number(r.buc || 0), 0);
+  let aA = await anexaDe(coA.id);
+  T('contractul nesemnat pornește cu montajul din ofertă (4 mașini) și aparatele vândute (4 × FMC130)', gpsIn(aA) === 4 && fmcIn(aA) === 4, JSON.stringify(aA));
+  const lA = (await R('POST', '/api/companies/' + coA.id + '/montaje', { contract_id: cA.id, status: 'de_programat', items: [{ tip: 'gps', buc: 3, pretClient: 100 }] })).j || {};
+  const lB = (await R('POST', '/api/companies/' + coA.id + '/montaje', { contract_id: cA.id, status: 'de_programat', items: [{ tip: 'gps', buc: 2, pretClient: 100 }] })).j || {};
+  aA = await anexaDe(coA.id);
+  T('două lucrări (3 + 2 mașini) → anexa spune 5 (500 de lei), aparatele vândute rămân', lA.anexa === 'actualizata' && lB.anexa === 'actualizata' && gpsIn(aA) === 5 &&
+    fmcIn(aA) === 4 && Number(aA.totalClient) === 500, JSON.stringify(aA));
+  const dB = await R('DELETE', '/api/montaje/' + lB.id);
+  aA = await anexaDe(coA.id);
+  T('ștearsă lucrarea de 2 → anexa spune 3 (până pe 01.10 rămânea 5), aparatele rămân, mesajul îl scrie serverul', dB.s === 200 && dB.j.anexa === 'actualizata' &&
+    gpsIn(aA) === 3 && fmcIn(aA) === 4 && Number(aA.totalClient) === 300 && dB.j.mesaj === 'Lucrare ștearsă ✓ — Anexa nr. 2 s-a refăcut din lucrările rămase', JSON.stringify([dB, aA]));
+  // O lucrare scoasă de pe contract (salvată în fișă fără contract): anexa contractului se reface și ea.
+  const lC = (await R('POST', '/api/companies/' + coA.id + '/montaje', { contract_id: cA.id, status: 'de_programat', items: [{ tip: 'gps', buc: 1, pretClient: 100 }] })).j || {};
+  const gpsCu = gpsIn(await anexaDe(coA.id));
+  const scoasa = await R('POST', '/api/companies/' + coA.id + '/montaje', { id: lC.id, contract_id: null, status: 'de_programat', items: [{ tip: 'gps', buc: 1, pretClient: 100 }] });
+  aA = await anexaDe(coA.id);
+  T('o lucrare scoasă de pe contract nu mai stă în anexa lui (4 → 3)', gpsCu === 4 && scoasa.s === 200 && gpsIn(aA) === 3, JSON.stringify([gpsCu, scoasa.s, gpsIn(aA)]));
+  await R('DELETE', '/api/montaje/' + lC.id);
+  const dA = await R('DELETE', '/api/montaje/' + lA.id);
+  aA = await anexaDe(coA.id);
+  T('ștearsă și ultima lucrare → anexa se întoarce la montajul din ofertă (4 mașini, 400 de lei), cu aparatele vândute', dA.s === 200 && dA.j.anexa === 'din_oferta' &&
+    gpsIn(aA) === 4 && fmcIn(aA) === 4 && Number(aA.totalClient) === 400 && /s-a întors la montajul din ofertă/.test(dA.j.mesaj || ''), JSON.stringify([dA, aA]));
+  // Un contract fără ofertă: anexa de montaj există doar cât există lucrări.
+  const coF = (await R('POST', '/api/companies', { name: 'CI Fara Oferta SRL' })).j;
+  const cF = (await R('POST', '/api/companies/' + coF.id + '/contract', { status: 'ciorna', months: 12 })).j;
+  const lF = (await R('POST', '/api/companies/' + coF.id + '/montaje', { contract_id: cF.id, status: 'de_programat', items: [{ tip: 'gps', buc: 2, pretClient: 90 }] })).j || {};
+  const aF1 = await anexaDe(coF.id);
+  const dF = await R('DELETE', '/api/montaje/' + lF.id);
+  const aF2 = await anexaDe(coF.id);
+  T('contract fără ofertă: lucrarea face anexa (2 mașini); ștearsă, contractul rămâne fără Anexa nr. 2', gpsIn(aF1) === 2 && dF.s === 200 && dF.j.anexa === 'fara' &&
+    aF2 == null && /nu mai are montaj/.test(dF.j.mesaj || ''), JSON.stringify([aF1, dF, aF2]));
+  // Semnat: nici salvarea, nici ștergerea unei lucrări nu ating anexa.
+  const aS0 = JSON.stringify(await anexaDe(co.id));
+  const lS = (await R('POST', '/api/companies/' + co.id + '/montaje', { contract_id: cid, status: 'executat', data_lucrare: Date.now(), items: [{ tip: 'gps', buc: 1, pretClient: 100 }] })).j || {};
+  const dS = await R('DELETE', '/api/montaje/' + lS.id);
+  T('la un contract SEMNAT, salvarea și ștergerea unei lucrări nu ating anexa („rămâne cum s-a semnat")', lS.anexa === 'semnat' && dS.s === 200 && dS.j.anexa === 'semnat' &&
+    /rămâne cum s-a semnat/.test(dS.j.mesaj || '') && JSON.stringify(await anexaDe(co.id)) === aS0, JSON.stringify([lS.anexa, dS]));
   // Totul e al fondatorilor.
   const { puneParola } = require('./test_parola');
   const sef = (await R('POST', '/api/users', { username: 'sef@ci-ctr.ro', full_name: 'Șef CI', role: 'company_admin', company_id: co.id })).j;

@@ -87,8 +87,12 @@ if (web && tel) {
 sect('4. O singură copie pe telefon, și banda spune de unde se scot datele');
 T('„Acasă" folosește termenul din AdminArchived, nu a doua copie', /import \{ termen \} from '\.\/AdminArchived';/.test(acasa) && !/function termen\(/.test(acasa));
 T('nicio altă copie a pragului pe telefon (PRAG_ZILE scris o singură dată)', (arh.match(/PRAG_ZILE = /g) || []).length === 1 && !/PRAG_ZILE = /.test(acasa));
-const banda = 'Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.';
-T('banda „pe ducă" e scrisă la fel ca pe web (cu „→ Export CSV")', html.indexOf(banda) >= 0 && arh.indexOf(banda) >= 0);
+// Banda trimite la „Descarcă tot istoricul” (02.10). Butonul există DOAR pe calculator (un an de date e un fișier mare,
+// pe care telefonul nu-l poate aduce în timpul lui de așteptare) — deci telefonul spune, dinadins, „de pe calculator”.
+const banda = 'Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, ';
+const bandaWeb = banda + 'scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).';
+const bandaTel = banda + 'scoate-l acum, de pe calculator: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).';
+T('banda „pe ducă" trimite la „Descarcă tot istoricul”, pe web și pe telefon (acolo „de pe calculator”)', html.indexOf(bandaWeb) >= 0 && arh.indexOf(bandaTel) >= 0);
 T('„Restaurează" se întreabă în foaia aplicației, nu în fereastra sistemului', !/\bconfirm\(/.test(arh) && /<Confirma\b/.test(arh));
 T('foile de pe ecranul arhivei sunt păzite de butonul „înapoi"', (arh.match(/useInapoiInchide\(/g) || []).length >= 2);
 

@@ -5139,6 +5139,48 @@ function _montajDinOferta(oferta) {
   const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
   return montaj.facAnexaCosturiUnice(montaj.randuri(rdMontaj), montaj.randuriEchip(rdEchip), curs, 'RON');
 }
+// Anexa nr. 2 a unui contract NESEMNAT = lucrările lui de montaj, adunate (nu doar ultima: două lucrări, 3 + 2 montaje,
+// lăsau în anexă doar 2). Se reface la FIECARE salvare și ștergere de lucrare (01.10), prin funcția asta și numai prin ea.
+//   • Semnat (activ / încheiat) → nu se atinge: anexa e ce s-a semnat; montaj în plus = act adițional.  → 'semnat'
+//   • Cu lucrări → suma lor.                                                                              → 'actualizata'
+//   • Fără nicio lucrare rămasă → montajul din oferta contractului, ca înainte de prima lucrare.         → 'din_oferta'
+//     Fără ofertă (sau oferta fără montaj) → niciun montaj; fără aparate vândute, nicio Anexa nr. 2.     → 'fara'
+// Aparatele vândute (echipamentele) rămân mereu cum erau: până pe 23.09 orice lucrare salvată le ștergea din anexă.
+// O zi anulată nu e o lucrare (`db.montajeContract` o sare).
+async function _refaAnexaDinLucrari(contractId) {
+  const c = contractId ? await db.getContractById(contractId) : null;
+  if (!c) return { anexa: null };
+  if (c.status === 'activ' || c.status === 'incheiat') return { anexa: 'semnat' };
+  const lucrari = await db.montajeContract(c.id);
+  const echip = c.montaj && c.montaj.echipamente;
+  let noua = null, fel;
+  if (lucrari.length) {
+    const adunat = {};
+    lucrari.forEach(function (x) {
+      (x.items || []).forEach(function (r) {
+        const k = r.tip + '|' + (r.pretClient == null ? '' : r.pretClient);
+        if (!adunat[k]) adunat[k] = { tip: r.tip, buc: 0, pretClient: r.pretClient };
+        adunat[k].buc += Number(r.buc) || 0;
+      });
+    });
+    noua = montaj.facAnexaMontaj(montaj.randuri(Object.keys(adunat).map(function (k) { return adunat[k]; })), 'RON');
+    fel = 'actualizata';
+  } else {
+    const of = await db.ofertaContractului(c.id).catch(function () { return null; });
+    const dinOf = of ? _montajDinOferta(of) : null;
+    if (dinOf && (dinOf.items || []).length) {
+      noua = { items: dinOf.items, totalClient: dinOf.totalClient, currency: dinOf.currency || 'RON' };
+      fel = 'din_oferta';
+    } else fel = 'fara';
+  }
+  if (echip) {
+    noua = noua || montaj.facAnexaMontaj([], 'RON');
+    noua.echipamente = echip;
+    noua.totalUnicLei = Math.round(((Number(noua.totalClient) || 0) + (Number(echip.totalLei) || 0)) * 100) / 100;
+  }
+  await db.setContractMontaj(c.id, noua);
+  return { anexa: fel };
+}
 // Echipamentele ÎNCHIRIATE dintr-o ofertă (25.09): ce aparate, câte, chiria lunară a fiecăruia (cea
 // SALVATĂ în ofertă, negociată cu clientul) și valoarea lui — prețul de vânzare, la cursul înghețat în
 // ofertă: cât plătește clientul dacă nu-l returnează. `null` = oferta e cu aparate cumpărate.
@@ -5779,6 +5821,8 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
     const idEx = b.id ? parseInt(b.id, 10) : null;
     const ex = idEx ? await db.getMontaj(idEx) : null;
     if (idEx && (!ex || Number(ex.company_id) !== id)) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    // O zi anulată e istoric (01.10): nu se rescrie din formular; se reprogramează din calendar.
+    if (ex && ex.status === montaj.STARE_ANULAT) return res.status(409).json({ error: 'Ziua asta e anulată și stă în istoric. Se reprogramează din calendar (Business → Montaj).' });
     const stare = montaj.STARI.indexOf(b.status) >= 0 ? b.status : (ex ? ex.status : 'de_programat');
     // O lucrare facturată clientului RĂMÂNE facturată (01.10, punctul 19): „partenerul ne-a facturat" o redeschidea, iar
     // „Montaj de facturat" o propunea pe a doua factură. Ce ne-a facturat partenerul se scrie în câmpul facturii lui.
@@ -5798,36 +5842,11 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
       notes: b.notes ? String(b.notes).slice(0, 2000) : null,
       created_by: req.auth && req.auth.userId
     });
-    // Anexa nr. 2 a contractului: DOAR partea clientului și DOAR cât contractul nu e semnat.
-    //   • Semnat → anexa e ce s-a semnat; lucrarea e doar execuția ei. Montaj în plus = act adițional.
-    //   • Nesemnat → anexa se face din TOATE lucrările contractului, adunate, nu din ultima salvată
-    //     (două lucrări, 3 + 2 montaje, lăsau în anexă doar 2). Aparatele vândute rămân cum erau:
-    //     până pe 23.09 orice lucrare salvată le ștergea din anexă (găsit pe viu).
+    // Anexa nr. 2 a contractului: DOAR partea clientului și DOAR cât contractul nu e semnat (`_refaAnexaDinLucrari`).
     let anexa = null;
-    if (m && m.contract_id) {
-      try {
-        const c = await db.getContractById(m.contract_id);
-        if (c && (c.status === 'activ' || c.status === 'incheiat')) anexa = 'semnat';
-        else if (c) {
-          const adunat = {};
-          (await db.montajeContract(c.id)).forEach(function (x) {
-            (x.items || []).forEach(function (r) {
-              const k = r.tip + '|' + (r.pretClient == null ? '' : r.pretClient);
-              if (!adunat[k]) adunat[k] = { tip: r.tip, buc: 0, pretClient: r.pretClient };
-              adunat[k].buc += Number(r.buc) || 0;
-            });
-          });
-          const noua = montaj.facAnexaMontaj(montaj.randuri(Object.keys(adunat).map(function (k) { return adunat[k]; })), 'RON');
-          const echip = c.montaj && c.montaj.echipamente;
-          if (echip) {
-            noua.echipamente = echip;
-            noua.totalUnicLei = Math.round((noua.totalClient + (Number(echip.totalLei) || 0)) * 100) / 100;
-          }
-          await db.setContractMontaj(c.id, noua);
-          anexa = 'actualizata';
-        }
-      } catch (e) {}
-    }
+    if (m && m.contract_id) { try { anexa = (await _refaAnexaDinLucrari(m.contract_id)).anexa; } catch (e) {} }
+    // Lucrarea mutată de pe alt contract: și anexa celui vechi se reface, altfel ar păstra lucrarea plecată (01.10).
+    if (ex && ex.contract_id && Number(ex.contract_id) !== Number(m && m.contract_id)) { try { await _refaAnexaDinLucrari(ex.contract_id); } catch (e) {} }
     auditReq(req, b.id ? 'update' : 'create', 'montaj', m.id, { company_id: id, total_client: s.totalClient });
     res.json(Object.assign({}, m, { socoteala: s, anexa: anexa }));
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5843,11 +5862,31 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
       return res.status(409).json({ error: 'Lucrarea e pe ' + (peDoc || 'o factură') + ' trimisă clientului, deci nu se șterge.' +
         (m.factura_client == null ? ' Dacă proforma e greșită, anuleaz-o întâi.' : '') });
     }
+    // Calendarul refăcut (01.10): o zi programată a unui contract SEMNAT se anulează, cu motivul ei, ca să rămână în
+    // istoric — nu se șterge. Iar una anulată E istoricul. (Lucrările unui contract nesemnat, din fișă, se șterg ca înainte.)
+    if (m.status === montaj.STARE_ANULAT) return res.status(409).json({ error: 'O zi anulată rămâne în istoric, cu motivul ei — nu se șterge.' });
+    if (m.status === 'programat' && m.contract_id) {
+      const c = await db.getContractById(m.contract_id);
+      if (c && (c.status === 'activ' || c.status === 'incheiat')) return res.status(409).json({ anuleaza: true, error: 'Ziua asta se anulează din calendar, cu motivul ei (instalatorul sau clientul nu poate), ca să rămână în istoric.' });
+    }
     await db.deleteMontaj(id);
-    auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id });
-    res.json({ ok: true });
+    // Anexa nr. 2 a unui contract nesemnat se ține în pas cu lucrările și la ștergere (01.10, Alin: „rezolvăm problema").
+    // Până atunci rămânea „cum a fost salvată ultima dată": 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
+    let ref = { anexa: null };
+    if (m.contract_id) { try { ref = await _refaAnexaDinLucrari(m.contract_id); } catch (e) {} }
+    auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id, anexa: ref.anexa });
+    res.json({ ok: true, anexa: ref.anexa, mesaj: _mesajStergereLucrare(ref.anexa) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Ce scrie ecranul după „Șterge" pe o lucrare (web și telefon arată textul ăsta, nu-și fac al lor).
+function _mesajStergereLucrare(anexa) {
+  return 'Lucrare ștearsă ✓' + ({
+    semnat: ' — contractul e semnat, deci Anexa nr. 2 rămâne cum s-a semnat',
+    actualizata: ' — Anexa nr. 2 s-a refăcut din lucrările rămase',
+    din_oferta: ' — nu mai e nicio lucrare, deci Anexa nr. 2 s-a întors la montajul din ofertă',
+    fara: ' — nu mai e nicio lucrare, deci contractul nu mai are montaj în Anexa nr. 2'
+  }[anexa] || '');
+}
 
 // ─── Calendarul de montaj (Business → Montaj, Alin 30.09) ───────────────────────────────────────
 // „Să am calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de instalat și
@@ -5868,13 +5907,8 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       db.contracteInVigoare(), db.listParteneriMontaj(), db.listStoc().catch(function () { return []; }),
       db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })
     ]);
-    const lucrari = brute.filter(function (l) { return _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(function (l) {
-      const items = Array.isArray(l.items) ? l.items : [];
-      const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
-      return { id: l.id, company_id: l.company_id, company_name: l.company_name, contract_id: l.contract_id,
-        partener_id: l.partener_id, partener_nume: l.partener_nume, zi: _ziRo(l.data_lucrare), status: l.status,
-        masini: gps ? Number(gps.buc) || 0 : 0, items: items };
-    });
+    // O zi ANULATĂ nu stă în grilă (01.10): e în istoric, iar mașinile ei s-au întors la „de programat".
+    const lucrari = brute.filter(function (l) { return l.status !== montaj.STARE_ANULAT && _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(_mjcLucrareCal);
     const cuMontaj = inVigoare.filter(function (c) { return contracte.masiniDeMontat(c) > 0; });
     const peContract = {};
     (await db.lucrariPeContracte(cuMontaj.map(function (c) { return c.id; }))).forEach(function (l) {
@@ -5883,6 +5917,9 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
     const deProgramat = cuMontaj.map(function (c) {
       const s = montaj.deProgramat(c.montaj, peContract[c.id] || []);
       const t = contracte.termenMontaj(c, contracte.avansContract(((dd && dd.avans) || {})[c.company_id], c), s.montate, acum);
+      // Aparatul de pe fiecare fel de lucrare („Instalare dispozitiv GPS" → FMC130), din ce s-a vândut sau închiriat.
+      const ap = montaj.aparatePeTip(c.montaj, c.annex);
+      s.tipuri = s.tipuri.map(function (x) { return Object.assign({}, x, { aparat: (ap[x.tip] || []).map(montaj.numeScurt).join(' / ') || null }); });
       return Object.assign({ contract_id: c.id, company_id: c.company_id, company_name: c.company_name, number: c.number,
         termen: t && t.stare !== 'gata' ? Object.assign({}, t, { text: contracte.termenText(t) }) : null,
         text: contracte.montateText(s.montate, s.masini) }, s);
@@ -5894,14 +5931,40 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       return String(a.company_name || '').localeCompare(String(b.company_name || ''), 'ro');
     });
     const sumar = stocMod.sumar(stoc);
+    // Calendarul refăcut (01.10): cât are fiecare instalator în fiecare zi (cu textul gata scris), zilele încă
+    // programate (oricare lună) și istoricul (montate + anulate). Ecranele doar arată ce primesc.
+    const [progBrut, istBrut] = await Promise.all([db.montajeProgramate(300), db.montajeIstoric(100)]);
+    const programate = progBrut.map(_mjcLucrareCal);
+    // Lucrările lunii + toate cele programate (alte luni), fiecare O dată (o zi programată din luna asta e în amândouă).
+    const vazute = {};
+    const incarcare = montaj.incarcarePeZile(lucrari.concat(programate).filter(function (l) { if (vazute[l.id]) return false; vazute[l.id] = true; return true; }));
+    Object.keys(incarcare).forEach(function (z) { Object.keys(incarcare[z]).forEach(function (p) { incarcare[z][p].text = montaj.textIncarcare(incarcare[z][p]); }); });
+    const istoric = istBrut.map(function (l) {
+      const x = _mjcLucrareCal(l);
+      const t = montaj.textIstoric(Object.assign({}, l, x, { anulat_zi: l.anulat_la ? _ziRo(l.anulat_la) : null,
+        reprogramat_zi: l.reprogramat_la ? _ziRo(l.reprogramat_la) : null }));
+      return Object.assign(x, { text: t.text, detaliu: t.detaliu, anulata: !!t.anulata, motiv: l.motiv_anulare || null,
+        reprogramat_ca: l.reprogramat_ca || null, poateReprograma: !!t.anulata && !l.reprogramat_ca });
+    });
     res.json({ luna: luna, azi: _ziRo(acum), lucrari: lucrari, deProgramat: deProgramat, stari: montaj.ETICHETE_STARE,
       parteneri: parteneri.map(function (p) { return { id: p.id, name: p.name, active: p.active !== false }; }),
       stoc: montaj.ECHIPAMENTE.map(function (e) {
         const x = sumar[e.k] || {};
         return { tip: e.k, eticheta: e.et, depozit: x.depozit || 0, instalator: x.instalator || 0 };
-      }).filter(function (x) { return x.depozit || x.instalator; }) });
+      }).filter(function (x) { return x.depozit || x.instalator; }),
+      programate: programate, istoric: istoric, incarcare: incarcare, textLiber: montaj.textIncarcare(null), motive: montaj.MOTIVE_ANULARE });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// O lucrare, cum o arată calendarul: ziua pe ora României, câte mașini, și starea confirmărilor (01.10).
+function _mjcLucrareCal(l) {
+  const items = Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || []);
+  const gps = items.filter(function (r) { return r && r.tip === 'gps'; })[0];
+  return { id: l.id, company_id: l.company_id, company_name: l.company_name, contract_id: l.contract_id,
+    partener_id: l.partener_id, partener_nume: l.partener_nume, zi: l.data_lucrare ? _ziRo(l.data_lucrare) : null, status: l.status,
+    masini: gps ? Number(gps.buc) || 0 : 0, items: items,
+    confirmat_instalator: !!Number(l.confirmat_instalator_la), confirmat_client: !!Number(l.confirmat_client_la),
+    conf: montaj.stareConfirmare(l), conf_text: l.status === 'programat' ? montaj.textConfirmare(l) : null };
+}
 // O zi programată: contractul, ziua, instalatorul și câte bucăți din fiecare tip „pe mașină". Prețurile NU vin
 // de la ecran: pentru client din Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului.
 app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5923,6 +5986,10 @@ app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, 
     const m = await db.upsertMontaj({ id: null, company_id: c.company_id, contract_id: c.id, partener_id: pid, data_lucrare: zi,
       items: rd, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
       factura_partener: null, notes: b.notes ? String(b.notes).slice(0, 2000) : null, created_by: req.auth && req.auth.userId });
+    // Confirmările vorbite la telefon, bifate deja la programare (01.10). Lipsă = neconfirmat (telefonul vechi).
+    if (m && (b.confirmat_instalator === true || b.confirmat_client === true)) {
+      await db.confirmaMontaj(m.id, { instalator: b.confirmat_instalator === true, client: b.confirmat_client === true });
+    }
     const gps = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
     auditReq(req, 'create', 'montaj', m && m.id, { company_id: c.company_id, contract_id: c.id, programat: _ziRo(zi), masini: gps.buc || 0 });
     res.json({ ok: true, lucrare: m });
@@ -5934,6 +6001,7 @@ app.post('/api/montaje/:id/muta', requireAuth, requireSuperadmin, async (req, re
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja montată — ziua ei nu se mai mută.' });
     const b = req.body || {};
     const zi = Number(b.data_lucrare);
@@ -5960,6 +6028,7 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja trecută ca montată.' });
     if (m.contract_id) {
       const c = await db.getContractById(m.contract_id);
@@ -5979,6 +6048,109 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
     const dupa = rd.filter(function (r) { return r.tip === 'gps'; })[0] || {};
     auditReq(req, 'update', 'montaj', id, { montata: true, masini: dupa.buc || 0, programate: inainte });
     res.json({ ok: true, lucrare: u, inapoi_la_programat: Math.max(0, inainte - (dupa.buc || 0)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Calendarul refăcut (Alin, 01.10): confirmări, anulare cu motiv, reprogramare, nota de stoc ─────────────────
+// Până face Robert contul instalatorului, confirmările și anularea le facem noi, de aici. Când îl face, „Accept" din
+// contul lui cheamă `db.confirmaMontaj(id, { instalator: true })`, iar „Refuz" cheamă `_anuleazaLucrarea(…, { motiv:
+// 'instalator' })` — ACEEAȘI funcție ca butonul nostru, ca istoricul să spună la fel, oricine ar fi anulat.
+app.post('/api/montaje/:id/confirmari', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const b = req.body || {};
+    const r = await db.confirmaMontaj(id, { instalator: b.instalator, client: b.client });
+    if (!r) return res.status(400).json({ error: 'Doar o zi încă programată se confirmă.' });
+    auditReq(req, 'update', 'montaj', id, { confirmari: { instalator: !!Number(r.confirmat_instalator_la), client: !!Number(r.confirmat_client_la) } });
+    res.json({ ok: true, confirmat_instalator: !!Number(r.confirmat_instalator_la), confirmat_client: !!Number(r.confirmat_client_la) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Ziua nouă a unei lucrări anulate: aceleași mașini (și ce se mai montează pe ele), alt zi, instalatorul ales.
+// Prețul pentru client din Anexa nr. 2, costul din tarifele instalatorului (montaj.lucrareaZilei), ca la programare.
+// `scoate` = lucrarea care tocmai se anulează: mașinile ei se socotesc deja libere (validarea se face ÎNAINTE de anulare).
+async function _ziuaNoua(l, o, scoate) {
+  const c = l.contract_id ? await db.getContractById(l.contract_id) : null;
+  if (!c || c.status !== 'activ') return { eroare: 'Se reprogramează doar montajul unui contract semnat.' };
+  const zi = Number(o.data_lucrare);
+  if (!(zi > 0)) return { eroare: 'Alege ziua nouă.' };
+  const pid = o.partener_id !== undefined ? (o.partener_id ? parseInt(o.partener_id, 10) : null) : (l.partener_id || null);
+  const part = pid ? (await db.listParteneriMontaj()).filter(function (p) { return p.id === pid; })[0] : null;
+  if (pid && !part) return { eroare: 'Instalatorul ales nu mai există.' };
+  const lucr = (await db.lucrariPeContracte([c.id])).filter(function (x) { return x.id !== scoate; });
+  const stare = montaj.deProgramat(c.montaj, lucr);
+  const cate = {};
+  (Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || [])).forEach(function (r) {
+    if (r && montaj.PE_MASINA.indexOf(r.tip) >= 0) cate[r.tip] = (cate[r.tip] || 0) + (Number(r.buc) || 0);
+  });
+  const z = montaj.lucrareaZilei(stare, cate, part && part.tarife);
+  if (z.eroare) return { eroare: z.eroare };
+  return { c: c, zi: zi, pid: pid, items: montaj.randuri(z.items) };
+}
+async function _scrieZiuaNoua(v, cine) {
+  const s = montaj.calc(v.items);
+  return db.upsertMontaj({ id: null, company_id: v.c.company_id, contract_id: v.c.id, partener_id: v.pid, data_lucrare: v.zi,
+    items: v.items, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
+    factura_partener: null, notes: null, created_by: cine || null });
+}
+// Anularea, cu motivul ei (și, dacă vrei, ziua nouă). O SINGURĂ funcție: butonul nostru și, mai târziu, „Refuz" din
+// contul instalatorului. → { ok, nou } sau { status, error }.
+async function _anuleazaLucrarea(id, o) {
+  const motiv = String((o && o.motiv) || '');
+  if (!montaj.MOTIVE_ANULARE[motiv]) return { status: 400, error: 'Alege motivul anulării: instalatorul nu poate sau clientul nu poate.' };
+  const l = await db.getMontaj(id);
+  if (!l) return { status: 404, error: 'Lucrare inexistentă' };
+  if (l.status !== 'programat') return { status: 400, error: l.status === montaj.STARE_ANULAT ? 'Ziua asta e deja anulată.' : 'Doar o zi încă programată se anulează.' };
+  // Calendarul anulează doar montajul unui contract SEMNAT. La unul nesemnat, lucrările din fișă scriu încă Anexa nr. 2
+  // (adunate toate): acolo o zi greșită se schimbă sau se șterge, ca anexa să rămână cea adevărată.
+  const c = l.contract_id ? await db.getContractById(l.contract_id) : null;
+  if (!c || (c.status !== 'activ' && c.status !== 'incheiat')) {
+    return { status: 400, error: 'Din calendar se anulează doar montajul unui contract semnat. Lucrarea asta se schimbă sau se șterge din fișa clientului.' };
+  }
+  let v = null;
+  if (o.reprogramare) {
+    v = await _ziuaNoua(l, o.reprogramare, l.id);
+    if (v.eroare) return { status: 400, error: v.eroare };
+  }
+  if (!(await db.anuleazaMontaj(id, { motiv: motiv, detalii: o.detalii, cine: o.cine }))) return { status: 409, error: 'Ziua asta nu mai e programată (a fost schimbată între timp).' };
+  let nou = null;
+  if (v) { nou = await _scrieZiuaNoua(v, o.cine); if (nou) await db.setMontajReprogramat(id, nou.id); }
+  return { ok: true, nou: nou, lucrare: l };
+}
+app.post('/api/montaje/:id/anuleaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const b = req.body || {};
+    const r = await _anuleazaLucrarea(id, { motiv: b.motiv, detalii: b.detalii ? String(b.detalii).trim().slice(0, 500) : null,
+      reprogramare: b.reprogramare && typeof b.reprogramare === 'object' ? b.reprogramare : null, cine: req.auth && req.auth.userId, sursa: 'noi' });
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    auditReq(req, 'cancel', 'montaj', id, { motiv: b.motiv, detalii: b.detalii || null, reprogramat: r.nou ? { id: r.nou.id, zi: _ziRo(r.nou.data_lucrare) } : null });
+    res.json({ ok: true, reprogramata: r.nou ? { id: r.nou.id, zi: _ziRo(r.nou.data_lucrare) } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// O zi anulată, reprogramată mai târziu (din istoric): aceleași mașini, ziua nouă. O dată: a doua oară → 400.
+app.post('/api/montaje/:id/reprogrameaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const l = await db.getMontaj(id); if (!l) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    if (l.status !== montaj.STARE_ANULAT) return res.status(400).json({ error: 'Se reprogramează doar o zi anulată (una programată se mută).' });
+    if (l.reprogramat_ca) return res.status(400).json({ error: 'Ziua asta a fost deja reprogramată.' });
+    const v = await _ziuaNoua(l, req.body || {}, null);
+    if (v.eroare) return res.status(400).json({ error: v.eroare });
+    const nou = await _scrieZiuaNoua(v, req.auth && req.auth.userId);
+    if (nou) await db.setMontajReprogramat(id, nou.id);
+    auditReq(req, 'create', 'montaj', nou && nou.id, { reprogramare: id, zi: nou ? _ziRo(nou.data_lucrare) : null });
+    res.json({ ok: true, reprogramata: nou ? { id: nou.id, zi: _ziRo(nou.data_lucrare) } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Nota de stoc din fereastra zilei: ce are instalatorul la el și ce trebuie să-i mai duci (montaj.notaStoc).
+app.post('/api/montaj/nota-stoc', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cid = parseInt(b.contract_id, 10), pid = b.partener_id ? parseInt(b.partener_id, 10) : null;
+    const c = Number.isFinite(cid) ? await db.getContractById(cid) : null;
+    if (!c) return res.status(404).json({ error: 'Contract inexistent.' });
+    const stoc = pid ? await db.stocLaInstalator(pid) : {};
+    res.json(montaj.notaStoc(b.cate || {}, montaj.aparatePeTip(c.montaj, c.annex), stoc, !!pid));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -8530,6 +8702,45 @@ app.get('/api/archived-devices', requireAuth, requireSuperadmin, withScope, asyn
   }
 });
 
+// ─── „Descarcă tot istoricul" (Alin, 02.10: „O facem acum") ─────────────────────────────────────────────────────────
+// Un client care pleacă are 30 de zile să-și ceară datele înapoi (contractul, Anexa GDPR). Butonul stă în Dispozitive
+// arhivate, pe rândul mașinii: un singur Excel cu TOT istoricul ei, oricât de lung — o foaie pe lună, plus „Sumar".
+// Se scrie în flux (`reportExport.istoricCompletXlsx`), citit din bază pe pagini: memoria rămâne mică. MĂSURAT: un an
+// (≈ 500.000 de poziții) = ~30 s și un fișier de ~23 MB. De aceea, câte UNUL deodată pe tot serverul: al doilea primește
+// 429 și încearcă peste un minut. Doar noi (super-admin), ca tot ecranul; mașinile demo nu se descarcă (canAccessImei).
+let _istoricCompletAcum = null;   // IMEI-ul care se descarcă acum
+app.get('/api/devices/:imei/istoric-complet', requireAuth, requireSuperadmin, withScope, async (req, res) => {
+  const imei = String(req.params.imei || '');
+  if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+  if (!reportExport || !reportExport.istoricCompletXlsx) return res.status(503).json({ error: 'Exportul Excel nu e disponibil acum.' });
+  if (_istoricCompletAcum) return res.status(429).json({ error: 'Se descarcă chiar acum istoricul complet al altei mașini. Încearcă din nou peste un minut.', ocupat: true });
+  _istoricCompletAcum = imei;
+  try {
+    const dev = await db.getDeviceFull(imei).catch(function () { return null; });
+    if (!dev) return res.status(404).json({ error: 'Aparatul nu există.' });
+    const pauza = function () { return new Promise(function (r) { setImmediate(r); }); };
+    // 1) Câte poziții are fiecare lună — „Sumar" stă primul, deci cifrele lui trebuie știute înainte.
+    const sumar = await reportExport.istoricPeLuni(function (dupa) { return db.istoricOre(imei, dupa, 50000); }, pauza);
+    if (!sumar.total) return res.status(404).json({ error: 'Mașina nu mai are istoric de descărcat (s-a șters sau n-a transmis niciodată).' });
+    const co = dev.company_id != null ? await db.getCompanyById(dev.company_id).catch(function () { return null; }) : null;
+    const nume = String(dev.name || imei).trim(), plate = String(dev.plate || '').trim();
+    const vehicul = nume + (plate && plate !== nume ? ' · ' + plate : '');
+    // 2) Fișierul. Numele, ca la celelalte descărcări ale casei; antetul îl citește pagina (`_numeDinAntet`).
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', reportExport.contentDisposition(reportExport.safeName('RA-Tracks - Istoric complet ' + vehicul + ' - ' + reportExport.datePart()) + '.xlsx'));
+    await reportExport.istoricCompletXlsx(res, { vehicul: vehicul, firma: co ? co.name : null, sumar: sumar,
+      pagina: function (dupa) { return db.istoricPagina(imei, dupa, 5000); }, pauza: pauza });
+    // În jurnal abia după ce a plecat tot fișierul (o descărcare întreruptă nu e o predare de date).
+    auditReq(req, 'export', 'device_history', imei, { name: dev.name || null, plate: dev.plate || null, pozitii: sumar.total, luni: sumar.luni.length });
+  } catch (e) {
+    console.error('[istoric-complet]', imei, e && e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+    else res.destroy(e);            // jumătate de fișier nu e un fișier: browserul vede că descărcarea a eșuat
+  } finally {
+    _istoricCompletAcum = null;
+  }
+});
+
 // Listă slabă (fără poziție live + io_data) — folosită de selectoarele de mutare super-admin.
 // Drop ~80-95% din payload-ul /api/devices la 1000+ vehicule.
 app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
@@ -9037,44 +9248,85 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
     if (!req.query.ext) return res.json(history);
     const dev = await db.getDeviceFull(imei).catch(() => null);
     const limit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
-    let oc = 0, oMax = 0, oDur = 0;
-    if (limit && history.length > 1) {
-      for (let i = 1; i < history.length; i++) {
-        const p = history[i], sp = Number(p.speed) || 0;
-        if (sp > limit) {
-          oc++;
-          const over = sp - limit; if (over > oMax) oMax = over;
-          const dt = (new Date(p.timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
-          if (dt > 0 && dt < 300) oDur += dt; // ignoră salturi mari (offline)
-        }
-      }
-    }
-    // Sumar traseu: distanță + combustibil din reports.fuelStats (identic cu „Statistici consum"),
-    // timp în deplasare/staționar calculat direct din poziții (IDLE_SPEED = 3 km/h, ca în reports.js).
-    let distanceKm = null, fuelLiters = null, fuelEstimated = false;
-    try {
-      const fs = await reports.fuelStats(db, [imei], from, to, {});
-      const pv = fs && fs.perVehicle && fs.perVehicle[0];
-      if (pv) { distanceKm = pv.km; fuelLiters = pv.liters; fuelEstimated = !!pv.estimated; }
-    } catch (e) { /* sumarul de combustibil e best-effort, nu blochează traseul */ }
-    let movingSec = 0, stationarySec = 0;
-    for (let i = 1; i < history.length; i++) {
-      const dt = (new Date(history[i].timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
-      if (!(dt > 0) || dt > 3600) continue; // ignoră salturile mari (offline)
-      if ((Number(history[i].speed) || 0) > 3) movingSec += dt; else stationarySec += dt;
-    }
     res.json({
       points: history,
       device: dev ? { speed_limit: limit, name: dev.name, plate: dev.plate } : null,
-      summary: {
-        overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax,
-        distanceKm, movingSec: Math.round(movingSec), stationarySec: Math.round(stationarySec),
-        fuelLiters, fuelEstimated
-      }
+      summary: await _sumarTraseu(imei, from, to, history, limit)
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+// Sumarul unui traseu — O SINGURĂ socoteală pentru ecranul Traseu (`/api/history/:imei?ext=1`) și pentru fișierul
+// descărcat de acolo (`/api/traseu/excel`), ca hârtia să spună exact ce spune ecranul (01.10).
+//   • distanța și combustibilul: din reports.fuelStats (identic cu „Statistici consum");
+//   • timpul în deplasare / staționar: din poziții (IDLE_SPEED = 3 km/h, ca în reports.js), fără salturile de peste o oră;
+//   • depășirile: față de limita setată pe mașină.
+async function _sumarTraseu(imei, from, to, history, limit) {
+  let oc = 0, oMax = 0, oDur = 0;
+  if (limit && history.length > 1) {
+    for (let i = 1; i < history.length; i++) {
+      const p = history[i], sp = Number(p.speed) || 0;
+      if (sp > limit) {
+        oc++;
+        const over = sp - limit; if (over > oMax) oMax = over;
+        const dt = (new Date(p.timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+        if (dt > 0 && dt < 300) oDur += dt; // ignoră salturi mari (offline)
+      }
+    }
+  }
+  let distanceKm = null, fuelLiters = null, fuelEstimated = false;
+  try {
+    const fs = await reports.fuelStats(db, [imei], from, to, {});
+    const pv = fs && fs.perVehicle && fs.perVehicle[0];
+    if (pv) { distanceKm = pv.km; fuelLiters = pv.liters; fuelEstimated = !!pv.estimated; }
+  } catch (e) { /* sumarul de combustibil e best-effort, nu blochează traseul */ }
+  let movingSec = 0, stationarySec = 0;
+  for (let i = 1; i < history.length; i++) {
+    const dt = (new Date(history[i].timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+    if (!(dt > 0) || dt > 3600) continue; // ignoră salturile mari (offline)
+    if ((Number(history[i].speed) || 0) > 3) movingSec += dt; else stationarySec += dt;
+  }
+  return {
+    overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax,
+    distanceKm, movingSec: Math.round(movingSec), stationarySec: Math.round(stationarySec),
+    fuelLiters, fuelEstimated
+  };
+}
+// Traseul descărcat din ecranul Traseu (Alin, 01.10: „nu are numele RA Tracks… în interiorul fișierului sunt doar
+// cifre, nimic de înțeles"). Excel prin `sendReport` — numele casei, logo-ul pe fiecare foaie —, cu „Sumar" (aceleași
+// cifre ca ecranul, din `_sumarTraseu`) și pozițiile pe românește (`reportExport.traseuVehicul`). Unul sau mai multe
+// vehicule (cele bifate pe ecran). Aceleași drepturi ca traseul: cine vede mașina pe hartă îi poate descărca traseul.
+// Exportul CSV brut (`/api/export/:imei`) rămâne cum era: e documentat pentru integrările prin API.
+app.get('/api/traseu/excel', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul Excel nu e disponibil acum.' });
+    const imeis = String(req.query.imeis || req.query.imei || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!imeis.length) return res.status(400).json({ error: 'Alege vehiculul.' });
+    if (imeis.length > 20) return res.status(400).json({ error: 'Cel mult 20 de vehicule într-un fișier.' });
+    if (imeis.some(function (imei) { return !canAccessImei(req, imei); })) return res.status(403).json({ error: 'Acces interzis' });
+    const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const spanMs = new Date(to).getTime() - new Date(from).getTime();
+    if (!Number.isFinite(spanMs) || spanMs < 0) return res.status(400).json({ error: 'Interval invalid' });
+    if (spanMs > 92 * 24 * 60 * 60 * 1000) return res.status(400).json({ error: 'Interval prea mare (max 92 de zile). Restrânge perioada.' });
+    // Cel mult `TRASEU_MAX_POZITII` poziții într-un fișier (regula și fraza stau în report_export.js): Excel-ul se face
+    // în memorie și, peste atât, ar ține serverul ocupat secunde întregi. Se socotește pe măsură ce se citește.
+    const lista = [];
+    let total = 0;
+    for (const imei of imeis) {
+      const history = await db.getDeviceHistory(imei, from, to);
+      if (!history.length) continue;
+      total += history.length;
+      const preaMare = reportExport.traseuPreaMare(total);
+      if (preaMare) return res.status(400).json({ error: preaMare, preaMare: true });
+      const dev = await db.getDeviceFull(imei).catch(function () { return null; });
+      const limit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
+      lista.push(reportExport.traseuVehicul({ imei: imei, dev: dev, history: history, limit: limit, sum: await _sumarTraseu(imei, from, to, history, limit) }));
+    }
+    if (!lista.length) return res.status(404).json({ error: 'Nu sunt date pentru perioada selectată.' });
+    return reportExport.sendReport(res, reportExport.traseuCaRaport(lista, from, to), 'xlsx');
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)

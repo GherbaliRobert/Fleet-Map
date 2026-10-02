@@ -1093,6 +1093,8 @@
        nimic nou de învățat. Înainte erau „capete" înguste, cu bifă ȘI cu nume clicabil separat, iar
        cele două făceau lucruri diferite pe același rând. */
     #hp-tabs { display: flex; flex-direction: column; gap: 3px; margin-top: 10px; }
+    /* Butoanele de export stau sub lista traseelor încărcate, nu lipite de ea (Alin, 01.10: „se vede urât"). */
+    #hp-export { margin-top: 12px; }
     .hp-step2-h {
       display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
       font-size: 10px; text-transform: uppercase; letter-spacing: .4px;
@@ -2748,7 +2750,7 @@
     .raco .mjc-f .rax-field { width: auto; min-width: 140px; margin: 0; }
     .raco .mjc-grila { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
     .raco .mjc-zs { font-size: 11px; font-weight: 800; color: var(--text-muted); text-align: center; padding: 2px 0 4px; }
-    .raco .mjc-zi { min-height: 86px; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer;
+    .raco .mjc-zi { min-height: 70px; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer;
       display: flex; flex-direction: column; gap: 3px; background: var(--bg-card); }
     .raco .mjc-zi:hover, .raco .mjc-zi:focus-visible { border-color: var(--accent); outline: none; }
     .raco .mjc-zi.wk { background: var(--bg-dark); }
@@ -2758,11 +2760,14 @@
     .raco .mjc-l { font: inherit; font-size: 11px; font-weight: 600; text-align: left; line-height: 1.35; border-radius: 6px; padding: 2px 5px;
       border: 1px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; max-width: 100%; }
     .raco .mjc-l b { font-weight: 800; }
-    .raco .mjc-l.mjc-prog { color: #fdba74; background: rgba(249,115,22,.14); border-color: rgba(249,115,22,.35); }
-    .raco .mjc-l.mjc-mont { color: #86efac; background: rgba(63,224,125,.12); border-color: rgba(63,224,125,.30); }
-    body:not(.dark) .raco .mjc-l.mjc-prog { color: #9a3412; background: #fff1e6; border-color: #fdba74; }
-    body:not(.dark) .raco .mjc-l.mjc-mont { color: #166534; background: #e8f8ee; border-color: #86efac; }
-    .raco .mjc-leg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 11.5px; color: var(--text-muted); }
+    /* Culoarea unei zile (01.10): verde = au confirmat amândoi, galben = mai lipsește o confirmare, gri = montată. */
+    .raco .mjc-l.mjc-ok { color: #86efac; background: rgba(63,224,125,.12); border-color: rgba(63,224,125,.30); }
+    .raco .mjc-l.mjc-conf { color: #fde68a; background: rgba(234,179,8,.13); border-color: rgba(234,179,8,.38); }
+    .raco .mjc-l.mjc-mont { color: #cbd5e1; background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.32); }
+    body:not(.dark) .raco .mjc-l.mjc-ok { color: #166534; background: #e8f8ee; border-color: #86efac; }
+    body:not(.dark) .raco .mjc-l.mjc-conf { color: #854d0e; background: #fef6d8; border-color: #f2c94c; }
+    body:not(.dark) .raco .mjc-l.mjc-mont { color: #334155; background: #eef2f6; border-color: #cbd5e1; }
+    .raco .mjc-leg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 11.5px; color: var(--text-muted); }
     .raco .mjc-leg .mjc-l { cursor: default; }
     .raco .mjc-panou { border: 1px solid var(--border); border-radius: 10px; padding: 4px 14px 14px; margin-bottom: 12px; background: var(--bg-dark); }
     .raco .mjc-rand { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
@@ -2771,6 +2776,55 @@
     .raco .mjc-rand .rax-field { margin-bottom: 0; }
     .raco .mjc-rand + .raco-sub { margin-top: 8px; }
     .raco .mjc-sag { font-size: 18px; font-weight: 800; line-height: 1; min-width: 36px; }
+    /* Calendarul refăcut (01.10, macheta aprobată de Alin): calendarul și „Ce ai de montat" alături, „Programate /
+       Istoric" dedesubt, fereastra zilei peste ecran. */
+    .raco .mjc-rand2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .raco .mjc-rand2 > .raco-card { margin: 0; }
+    .raco .mjc-lucr { margin-top: 14px; }
+    .raco .mjc-file { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .raco .mjc-filtre { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .raco .mjc-fl { font: inherit; font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); }
+    .raco .mjc-fl.on { color: var(--text-primary); border-color: var(--text-secondary); }
+    .raco .mjc-tabel-w { overflow-x: auto; }
+    .raco .mjc-tabel td { vertical-align: top; }
+    .raco .mjc-tabel .mjc-td-zi { white-space: nowrap; }
+    .raco .mjc-tabel .mjc-td-b { text-align: right; white-space: nowrap; }
+    .raco .mjc-rez { font-weight: 800; }
+    .raco .mjc-rez.ok { color: #86efac; }
+    .raco .mjc-rez.conf { color: #fde68a; }
+    .raco .mjc-rez.an { color: #fdba74; }
+    body:not(.dark) .raco .mjc-rez.ok { color: #166534; }
+    body:not(.dark) .raco .mjc-rez.conf { color: #854d0e; }
+    body:not(.dark) .raco .mjc-rez.an { color: #9a3412; }
+    .raco .mjc-det { display: block; margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+    /* Fereastra zilei */
+    .mjc-ov .mjc-fer { max-width: 700px; }
+    .raco .mjc-sect { font-size: 11.5px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; margin: 4px 0 8px; }
+    .raco .mjc-zi-rand { font: inherit; width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; margin-bottom: 8px;
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; background: var(--bg-card); color: var(--text-primary); }
+    .raco .mjc-zi-rand:hover, .raco .mjc-zi-rand:focus-visible { border-color: var(--accent); outline: none; }
+    .raco .mjc-zi-rand .mjc-l { flex: 0 0 auto; cursor: pointer; }
+    .raco .mjc-zi-rand-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .raco .mjc-zi-rand-s { font-size: 12px; color: var(--text-secondary); }
+    .raco .mjc-zi-rand > i { color: var(--text-muted); }
+    .raco .mjc-bifa, .raco .mjc-radio { display: flex; align-items: center; gap: 9px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer;
+      border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .raco .mjc-bifa input, .raco .mjc-radio input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); flex: 0 0 auto; }
+    .raco .mjc-inc { display: flex; flex-direction: column; gap: 3px; margin: -4px 0 10px; font-size: 12px; color: var(--text-secondary); }
+    .raco .mjc-inc .ocupat b, .raco .mjc-inc .liber b { color: var(--text-primary); }
+    .raco .mjc-aparat { display: block; margin-top: 4px; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+    .raco .mjc-nota { font-size: 12.5px; line-height: 1.45; border-radius: 9px; padding: 0; margin: 0 0 10px; color: var(--text-secondary); }
+    .raco .mjc-nota:not(:empty) { padding: 7px 10px; border: 1px solid var(--border); background: var(--bg-card); }
+    .raco .mjc-nota.warn { color: #fde68a; border-color: rgba(234,179,8,.38); background: rgba(234,179,8,.10); }
+    body:not(.dark) .raco .mjc-nota.warn { color: #854d0e; border-color: #f2c94c; background: #fef6d8; }
+    .raco .mjc-anul-cap { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+    .raco .rax-btn.mjc-anul-btn { color: #fca5a5; border-color: rgba(239,68,68,.45); }
+    body:not(.dark) .raco .rax-btn.mjc-anul-btn { color: #b91c1c; border-color: #f5b5b5; }
+    .ra-camp .raco .rax-btn.mjc-rosu, .raco .rax-btn.mjc-rosu { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .ra-camp .raco .rax-btn.mjc-rosu:hover, .raco .rax-btn.mjc-rosu:hover { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+    .ra-camp .raco .rax-btn.mjc-rosu i, .raco .rax-btn.mjc-rosu i { color: inherit; }
+    @media (max-width: 1100px) { .raco .mjc-rand2 { grid-template-columns: minmax(0, 1fr); } }
     @media (max-width: 640px) {
       .raco .mjc-zi { min-height: 58px; padding: 3px; }
       .raco .mjc-l { font-size: 10.5px; padding: 1px 3px; }
