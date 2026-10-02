@@ -497,15 +497,21 @@ T('locurile se numără din conturile aprinse', /await db\.getAiSeats\(companyId
 T('doar conturile ACTIVE țin loc (unul dezactivat nu se facturează)',
   /ai_seat = true AND active IS NOT false/.test(fs.readFileSync('./db.js', 'utf8')));
 T('RA Insight se deschide doar cui are loc', /function requireAiSeat\(req, res, next\)/.test(server));
-T('poarta e pusă pe amândouă căile de AI',
-  (server.match(/requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length === 2,
-  String((server.match(/requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length));
+// Din 02.10 RA Insight e UN SINGUR asistent (_raInsight), cu trei uși: secțiunea, Rapoarte și „Asistent AI" de pe
+// telefonul vechi. Regula de azi: poarta contului stă pe FIECARE ușă și pe conversațiile omului (nu mai sunt „două căi").
+const usiAi = server.split('\n').filter((l) => /_raInsight\(req, res, \{/.test(l));
+T('poarta e pusă pe toate ușile lui RA Insight (secțiunea, Rapoarte, „Asistent AI" vechi)',
+  usiAi.length === 3 && usiAi.every((l) => /requireFeature\('ai_assistant'\), requireAiSeat/.test(l)), usiAi.length + ' uși');
+T('și pe conversațiile omului (listă, citire, redenumire, ștergere, 👍/👎)',
+  (server.match(/app\.\w+\('\/api\/insight\/(conversatii|mesaje)[^']*', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length === 5);
 T('mesajul spune cine poate porni contul', /Administratorul firmei îl poate porni din Utilizatori/.test(server));
 T('super-adminul nu e îngrădit', /if \(req\.isSuper \|\| req\.companyId == null\) return next\(\);[\s\S]{0,120}getUserById/.test(server));
 T('bara omului primește și consumul LUI', /aiQuotaState\(a\.companyId, a\.userId\)/.test(server));
-T('consumul se scrie pe om la toate felurile de întrebări',
-  (server.match(/recordAiUsage\(req\.companyId, '(insight|chat|report)', [^)]*req\.auth && req\.auth\.userId\)/g) || []).length === 3,
-  String((server.match(/recordAiUsage\(req\.companyId, '(insight|chat|report)', [^)]*req\.auth && req\.auth\.userId\)/g) || []).length));
+T('consumul se scrie pe om la toate felurile de întrebări (RA Insight, oricare ușă, și rezumatul de raport)',
+  /const userId = req\.auth && req\.auth\.userId != null \? req\.auth\.userId : null;/.test(server) &&
+  /db\.recordAiUsage\(req\.companyId, 'insight', _agg, userId\)/.test(server) &&
+  /recordAiUsage\(req\.companyId, 'report', [^)]*req\.auth && req\.auth\.userId\)/.test(server));
+T('„Asistent AI" nu mai scrie un fel separat de consum — e tot RA Insight', !/recordAiUsage\(req\.companyId, 'chat'/.test(server));
 // Factura
 T('factura are rândul de conturi', /RA Insight — conturi \(/.test(server));
 T('forma veche („Asistent AI", sumă fixă) rămâne pentru clienții vechi',
@@ -532,9 +538,11 @@ T('propune un CONT în plus', /Un cont în plus aduce încă/.test(server));
 T('și NU pomenește niciun preț',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
 // Poarta e una singură și e folosită de toate căile de AI (scrisă la paritatea telefonului).
-T('poarta fondului e chemată din toate căile de AI',
+const corpInsight = (server.match(/async function _raInsight\([\s\S]*?\n\}\n/) || [''])[0];
+T('poarta fondului e chemată din toate căile de AI (RA Insight, cu toate ușile lui, și rezumatul de raport)',
   /async function _regulileFonduluiAi\(req, res\)/.test(server) &&
-  (server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length >= 3,
+  /if \(await _regulileFonduluiAi\(req, res\)\) return;/.test(corpInsight) && usiAi.length === 3 &&
+  (server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length === 2,
   String((server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
 T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
 // Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
@@ -628,7 +636,7 @@ T('numărul adevărat al flotei merge mai departe', /Object\.defineProperty\(out
 T('proprietatea e ne-enumerabilă (nu strică JSON-ul trimis la model)', /totalFlota'[\s\S]{0,60}enumerable: false/.test(server));
 T('unealta „starea live" spune modelului câte vehicule are flota', /total_flota: snap\.totalFlota/.test(server));
 T('și îl avertizează când lista e tăiată', /out\.atentie = 'Flota are '/.test(server));
-T('răspunsurile rapide primesc numărul adevărat', (server.match(/total: snap(shot)?\.totalFlota/g) || []).length === 2,
+T('răspunsurile rapide primesc numărul adevărat (o singură cale, în RA Insight)', (server.match(/total: snap(shot)?\.totalFlota/g) || []).length === 1 && /total: snap\.totalFlota/.test((server.match(/async function _raInsight\([\s\S]*?\n\}\n/) || [''])[0]),
   (server.match(/total: snap(shot)?\.totalFlota/g) || []).join(' | '));
 
 // Răspunsurile locale (gratuite): „Status flotă" trebuie să spună numărul ADEVĂRAT

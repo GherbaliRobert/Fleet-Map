@@ -1317,7 +1317,7 @@ const PAGINI_PUBLICE = [
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-02', amprenta: '908fa3e90cb9', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '811b25a36e81', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-06-12', amprenta: '00958fcb023f', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-09-24', amprenta: '10dcbf858f71', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-02', amprenta: '9b4850c35118', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
