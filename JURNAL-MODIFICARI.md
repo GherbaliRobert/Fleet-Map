@@ -96,6 +96,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
   **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
   primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
+  (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Excel", nu la „Export CSV".)
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -136,6 +137,32 @@ contabilului despre factura de avans); (3) restul meniului, de la „Conturi & A
 (Pe 01.10, problema anexei de la ștergerea unei lucrări: „rezolvăm problema" — rezolvată, mai jos.)
 (Pe 01.10, seara: trei reparații pe ecranul Traseu, găsite de Alin pe verticala partenerului — mai jos. Apoi, înapoi
 la verticala fondatorului: Facturare.)
+(Pe 02.10: butonul „CSV" din Rapoarte — găsit pe drum, Alin: „da", scos; limita de 10.000 de poziții pe fișier — „da",
+rămâne.)
+
+---
+
+## 2026-10-02
+
+### AMÂNDOI · Rapoarte: butonul „CSV" a plecat; banda din Dispozitive arhivate trimite la Excel
+
+Alin (02.10), la „scot butonul CSV din Rapoarte; rămân Excel și PDF" — *„da"*; la „limita de 10.000 de puncte pe fișier
+rămâne?" — *„da"*.
+
+1. **Rapoarte → „Descarcă:" are doar Excel și PDF**, amândouă cu numele și logo-ul RA Tracks. CSV-ul se numea
+   „Traseu 01.10.2026.csv" (fără numele casei) și în Excel-ul românesc tot textul cădea într-o singură coloană — aceeași
+   problemă ca vechiul fișier de pe Traseu. A plecat odată cu el și exportul făcut în pagină din spatele lui (inclusiv o
+   tipărire la care nu mai ducea niciun buton).
+2. **Banda „istoricul pe ducă" din Dispozitive arhivate** (web + telefon) spunea „scoate-l acum: «Istoric» → Export CSV".
+   De ieri, butonul acela e „Excel". Acum scrie „«Istoric» → Excel, sau dintr-un raport". (Rămășiță a schimbării de ieri:
+   când scoți un buton, îi cauți și cuvintele.)
+3. **Limita de 10.000 de poziții pe fișier rămâne** (hotărât).
+
+- **Ce am schimbat:** pagina (butonul, stilul lui, exportul din pagină, banda), telefonul (banda — din aplicația
+  următoare), probele: `verify_traseu_export.js` (91 de verificări: rândul „Descarcă:" are exact Excel și PDF, prin server),
+  `verify_arhiva.js` și `verify_arhiva_telefon.js`, rescrise pe textul nou.
+- **Ce vede fondatorul:** banda din Dispozitive arhivate trimite la Excel; Rapoarte fără CSV (pe verticala partenerului).
+- **Ce vede clientul:** Rapoarte → „Descarcă:" Excel și PDF.
 
 ---
 

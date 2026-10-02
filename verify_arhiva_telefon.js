@@ -87,8 +87,9 @@ if (web && tel) {
 sect('4. O singură copie pe telefon, și banda spune de unde se scot datele');
 T('„Acasă" folosește termenul din AdminArchived, nu a doua copie', /import \{ termen \} from '\.\/AdminArchived';/.test(acasa) && !/function termen\(/.test(acasa));
 T('nicio altă copie a pragului pe telefon (PRAG_ZILE scris o singură dată)', (arh.match(/PRAG_ZILE = /g) || []).length === 1 && !/PRAG_ZILE = /.test(acasa));
-const banda = 'Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.';
-T('banda „pe ducă" e scrisă la fel ca pe web (cu „→ Export CSV")', html.indexOf(banda) >= 0 && arh.indexOf(banda) >= 0);
+// Din 01.10 ecranul Traseu descarcă Excel (cu numele casei), nu CSV — banda trimite acolo, pe web și pe telefon.
+const banda = 'Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Excel, sau dintr-un raport.';
+T('banda „pe ducă" e scrisă la fel ca pe web (cu „→ Excel")', html.indexOf(banda) >= 0 && arh.indexOf(banda) >= 0);
 T('„Restaurează" se întreabă în foaia aplicației, nu în fereastra sistemului', !/\bconfirm\(/.test(arh) && /<Confirma\b/.test(arh));
 T('foile de pe ecranul arhivei sunt păzite de butonul „înapoi"', (arh.match(/useInapoiInchide\(/g) || []).length >= 2);
 

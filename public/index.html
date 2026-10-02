@@ -1207,7 +1207,6 @@
     #rep-table tbody tr:hover { background:rgba(127,127,127,.12); }
     /* Butoane descărcare colorate (ca AROBS): CSV albastru · Excel verde · PDF roșu */
     .rep-dl i { font-size:14px; }
-    .rep-dl-csv i { color:#2563eb; }
     .rep-dl-xls i { color:#3FE07D; }
     .rep-dl-pdf i { color:#dc2626; }
     /* ── Flatpickr: câmp + temă asortată (light/dark prin variabile) ── */
@@ -3207,7 +3206,6 @@ const pozitii = await r.json();</code></pre>
           <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
           <button class="btn-sm rep-insight" onclick="insightSummarizeReport()" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" title="Rezumat executiv cu RA Insight"><i class="fas fa-wand-magic-sparkles"></i> Rezumă cu RA Insight</button>
           <span style="font-size:12px;color:var(--text-muted);">Descarcă:</span>
-          <button class="btn-sm rep-dl rep-dl-csv" onclick="exportReport('csv')" title="Descarcă CSV"><i class="fas fa-file-csv"></i> CSV</button>
           <button class="btn-sm rep-dl rep-dl-xls" onclick="repExport('xlsx')" title="Descarcă Excel (.xlsx)"><i class="fas fa-file-excel"></i> Excel</button>
           <button class="btn-sm rep-dl rep-dl-pdf" onclick="repExport('pdf')" title="Descarcă PDF"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
@@ -4141,7 +4139,7 @@ const pozitii = await r.json();</code></pre>
       var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). '
           + (zPastrare ? 'Istoricul lor se mai păstrează <strong>' + _arhZile(zPastrare) + '</strong> de la arhivare — cât clientul poate cere datele înapoi — apoi se șterge definitiv, cum scrie în contract.' : '')
           + '</div>'
-        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Export CSV, sau dintr-un raport.</div>' : '')
+        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: „Istoric" → Excel, sau dintr-un raport.</div>' : '')
         + '<div class="rax-dev-bar"><input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / firmă" value="' + _ssEsc(_arhCauta || '') + '" oninput="_arhCautaSet(this.value)"></div>';
       if (!rows.length) {
         host.innerHTML = cap + '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun aparat arhivat care să se potrivească.</div>';
@@ -10692,111 +10690,10 @@ const pozitii = await r.json();</code></pre>
       const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    function exportReport(fmt) {
-      if (!lastReport || !lastReport.rows || !lastReport.rows.length) return alert('Generează întâi un raport cu date');
-      const cols = lastReport.columns, rows = lastReport.rows;
-      const title = lastReport.label || 'Raport';
-      const _d = new Date(), _p = n => String(n).padStart(2,'0');
-      const fname = (title.replace(/[\\/:*?"<>|]+/g,' ').trim() || 'Raport') + ' ' + _p(_d.getDate())+'.'+_p(_d.getMonth()+1)+'.'+_d.getFullYear();
-      if (fmt === 'csv') {
-        const esc = v => { const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-        const csv = [cols.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
-        downloadBlob('﻿'+csv, fname+'.csv', 'text/csv;charset=utf-8');
-      } else if (fmt === 'xls') {
-        const esc = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const html = '<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>' + cols.map(c=>'<th>'+esc(c)+'</th>').join('') + '</tr></thead><tbody>' + rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('') + '</tbody></table></body></html>';
-        downloadBlob(html, fname+'.xls', 'application/vnd.ms-excel');
-      } else if (fmt === 'pdf') {
-        printReportData(title, cols, rows, lastReport.summary);
-      }
-    }
-    // Plugin: fundal alb → PNG-ul nu e transparent (transparent devine negru pe unele print engine-uri).
-    const _pdfWhiteBg = { id: 'pdfWhiteBg', beforeDraw(c) { const x = c.ctx; x.save(); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
-    const PDF_PALETTE = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
-    // Re-randează un grafic în temă LIGHT (text închis pe alb) pe un canvas off-screen → imagine PNG pentru PDF.
-    // Folosește `new Chart()` DIRECT (nu createChart) ca să NU mute Chart.defaults; canvas unic (nu în window._charts).
-    function _pdfChartImage(c) {
-      if (typeof Chart === 'undefined') return '';
-      const cv = document.createElement('canvas');
-      cv.width = 1000; cv.height = 520; cv.style.cssText = 'position:fixed;left:-10000px;top:0;width:1000px;height:520px;';
-      document.body.appendChild(cv); // trebuie în DOM-ul live ca să aibă layout pentru măsurare
-      const isPie = c.type === 'doughnut' || c.type === 'pie', isLine = c.type === 'line';
-      const single = (c.datasets || []).length <= 1;
-      const ds = (c.datasets || []).map((d, di) => {
-        const bg = isLine ? (single ? 'rgba(63,224,125,.15)' : 'transparent') : isPie ? (d.data || []).map((_, k) => PDF_PALETTE[k % PDF_PALETTE.length]) : single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
-        const lineCol = single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
-        return Object.assign({ backgroundColor: bg, borderColor: isLine ? lineCol : (isPie ? '#fff' : bg), borderWidth: isLine ? (single ? 3 : 2) : (isPie ? 2 : 0), tension: .35, fill: isLine && single, pointRadius: 0, borderRadius: isPie || isLine ? 0 : 4 }, d);
-      });
-      const INK = '#1f2937', GRID = 'rgba(0,0,0,.10)';
-      let chart, img = '';
-      try {
-        chart = new Chart(cv.getContext('2d'), {
-          type: c.type, data: { labels: c.labels || [], datasets: ds }, plugins: [_pdfWhiteBg],
-          options: {
-            responsive: false, maintainAspectRatio: false, devicePixelRatio: 2, animation: false,
-            plugins: { legend: { display: !single || isPie, position: 'bottom', labels: { color: INK, boxWidth: 12, font: { family: 'Nunito', size: 13 } } }, tooltip: { enabled: false }, title: { display: false } },
-            scales: isPie ? {} : Object.assign({ y: { beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { color: GRID } }, x: { ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } }, (c.datasets || []).some(d => d.yAxisID === 'y1') ? { y1: { position: 'right', beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } } : {})
-          }
-        });
-        img = chart.toBase64Image('image/png', 1); // animation:false → primul frame e cel final, sincron
-      } catch (e) { img = ''; }
-      finally { if (chart) try { chart.destroy(); } catch (e) {} cv.remove(); }
-      return img;
-    }
-    // PDF/print bogat: antet brandat + KPI + grafice (imagini light-theme) + tabel. Sincron până la window.open (anti-popup-block).
-    function printReportData(title, cols, rows, summary) {
-      const w = window.open('', '_blank'); if (!w) return alert('Permite pop-up-urile pentru a tipări în PDF.');
-      const PRINT_ROW_CAP = 1500;
-      const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const sel = document.getElementById('rep-imei');
-      const vehicle = (sel && sel.selectedOptions && sel.selectedOptions[0] && sel.selectedOptions[0].text) || 'Toată flota';
-      const fmtDt = v => { if (!v) return '—'; try { return new Date(v).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
-      const fromEl = document.getElementById('rep-from'), toEl = document.getElementById('rep-to');
-      const period = (lastReport && lastReport.periodLabel) ? lastReport.periodLabel : ((fromEl && fromEl.value) ? (fmtDt(fromEl.value) + ' → ' + fmtDt(toEl && toEl.value)) : '—');
-      const generated = new Date().toLocaleString('ro-RO');
-      const charts = (lastReport && lastReport.charts) || [];
-      const imgs = charts.map(c => ({ title: c.title, src: _pdfChartImage(c) })).filter(o => o.src);
-      const wide = cols.length > 8;
-      const capped = rows.length > PRINT_ROW_CAP, shown = capped ? rows.slice(0, PRINT_ROW_CAP) : rows;
-      const kpis = Object.entries(summary || {}).map(([k, v]) => '<div class="kpi"><div class="kv">' + esc(v) + '</div><div class="kl">' + esc(k) + '</div></div>').join('');
-      const gallery = imgs.map(o => '<figure class="ch"><figcaption>' + esc(o.title) + '</figcaption><img src="' + o.src + '"></figure>').join('');
-      const thead = '<tr>' + cols.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr>';
-      const tbody = shown.map(r => '<tr>' + r.map(c => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('');
-      const capNote = capped ? '<div class="note">Afișate primele ' + PRINT_ROW_CAP + ' din ' + rows.length + ' rânduri — exportă CSV/Excel pentru setul complet.</div>' : '';
-      w.document.write('<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>' + esc(title) + '</title>'
-        + '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">'
-        + '<style>'
-        + '@page{ size:A4 ' + (wide ? 'landscape' : 'portrait') + '; margin:14mm 12mm 16mm; }'
-        + '*{box-sizing:border-box} body{font-family:\'Nunito\',Arial,sans-serif;color:#1f2937;margin:0;font-size:12px;}'
-        + '.hd{display:flex;align-items:center;gap:12px;border-bottom:3px solid #3FE07D;padding-bottom:10px;margin-bottom:14px;}'
-        + '.logo{font-weight:800;font-size:22px;color:#111;display:flex;align-items:center;gap:7px}'
-        + '.logo .mk{background:#3FE07D;color:#06210F;border-radius:7px;padding:2px 9px;}'
-        + '.hd .ttl{margin-left:auto;text-align:right;font-size:15px;font-weight:700}'
-        + '.hd .ttl small{display:block;font-weight:600;color:#6b7280;font-size:11px}'
-        + '.meta{display:flex;gap:22px;flex-wrap:wrap;font-size:11px;color:#6b7280;margin-bottom:14px}'
-        + '.meta b{color:#1f2937;font-weight:700}'
-        + '.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}'
-        + '.kpi{flex:1 1 130px;border:1px solid #e5e7eb;border-left:4px solid #3FE07D;border-radius:8px;padding:9px 12px;page-break-inside:avoid}'
-        + '.kv{font-size:19px;font-weight:800;color:#16a34a} .kl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}'
-        + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}'
-        + '.ch{margin:0;border:1px solid #e5e7eb;border-radius:8px;padding:8px;page-break-inside:avoid}'
-        + '.ch figcaption{font-size:12px;font-weight:700;margin-bottom:6px} .ch img{width:100%;height:auto;display:block}'
-        + '.note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:6px 10px;font-size:11px;margin-bottom:8px}'
-        + 'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:' + (wide ? '9px' : '10px') + '}'
-        + 'thead{display:table-header-group} tr{page-break-inside:avoid}'
-        + 'th,td{border:1px solid #e5e7eb;padding:4px 6px;text-align:left;word-break:break-word;vertical-align:top}'
-        + 'th{background:#f0fdf4;color:#166534;font-weight:700} tbody tr:nth-child(even){background:#fafafa}'
-        + '</style></head><body>'
-        + '<div class="hd"><div class="logo"><span class="mk">RA</span> Tracks</div><div class="ttl">' + esc(title) + '<small>Raport flotă</small></div></div>'
-        + '<div class="meta"><span>Vehicul: <b>' + esc(vehicle) + '</b></span><span>Perioadă: <b>' + esc(period) + '</b></span><span>Generat: <b>' + esc(generated) + '</b></span></div>'
-        + (kpis ? '<div class="kpis">' + kpis + '</div>' : '')
-        + (gallery ? '<div class="grid">' + gallery + '</div>' : '')
-        + capNote
-        + '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>'
-        + '</body></html>');
-      w.document.close();
-      setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 450);
-    }
+    // Butonul „CSV" din Rapoarte a fost SCOS (Alin, 02.10: „da"), împreună cu exportul făcut în pagină din spatele lui
+    // (`exportReport` + tipărirea `printReportData`, la care nu mai ducea niciun buton): fișierul n-avea numele casei
+    // și se deschidea într-o singură coloană în Excel-ul românesc. Un raport se descarcă DOAR prin server
+    // (`repExport` → `sendReport`): Excel și PDF, cu numele și logo-ul RA Tracks. NU pune la loc o descărcare în pagină.
 
     // ─── Hotspot (heatmap) ───
     let heatLayer = null;

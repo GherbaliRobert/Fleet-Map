@@ -12,6 +12,8 @@
 //    de server de cele ale ecranului (le rulează pe aceleași cazuri), apoi, pe server pornit: numele fișierului,
 //    foile, cifrele ecranului în fișier, drepturile (altă firmă, demo), limitele de mărime.
 //    KML-ul de alături poartă și el numele casei, la fel pe web și pe telefon (funcțiile rulate pe aceleași cazuri).
+// 4. Rapoarte (Alin, 02.10: „da"): butonul „CSV" — aceeași boală, fără numele casei, o singură coloană în Excel-ul
+//    românesc — a fost SCOS, cu exportul făcut în pagină din spatele lui. Un raport se descarcă doar prin server.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -221,6 +223,14 @@ const exportTs = citeste('mobile/src/lib/export.ts');
   T('ruta trece prin sendReport (numele casei, logo-ul) — nu are cale proprie de export', /reportExport\.sendReport\(res, reportExport\.traseuCaRaport\(/.test(fRuta) && !/setHeader\(/.test(fRuta));
   T('ruta numără pozițiile pe măsură ce citește (traseuPreaMare)', /reportExport\.traseuPreaMare\(total\)/.test(fRuta));
   T('CSV-ul brut rămâne pentru integrările prin API', /app\.get\('\/api\/export\/:imei'/.test(server));
+
+  // ═══ 6b. Rapoarte: descărcarea doar prin server ═══════════════════════════════════════════════════════════════
+  sect('6b. Rapoarte: Excel și PDF prin server, fără „CSV" făcut în pagină');
+  const iDesc = html.indexOf('>Descarcă:</span>'), randDesc = iDesc < 0 ? '' : html.slice(iDesc, html.indexOf('</div>', iDesc));
+  T('găsesc rândul „Descarcă:" din Rapoarte', randDesc.length > 50);
+  T('rândul are exact Excel și PDF, amândouă prin server (repExport)', J(randDesc.match(/onclick="[^"]+"/g)) === J(['onclick="repExport(\'xlsx\')"', 'onclick="repExport(\'pdf\')"']), J(randDesc.match(/onclick="[^"]+"/g)));
+  T('butonul „CSV" și stilul lui au plecat', !/rep-dl-csv/.test(html) && !/>\s*(<i[^>]*><\/i>\s*)?CSV\s*<\/button>/.test(randDesc));
+  T('exportul făcut în pagină a plecat cu el (nu mai rămâne cod la care nu duce nimic)', !/exportReport\(/.test(htmlCod) && !/function printReportData\(/.test(htmlCod) && !/_pdfChartImage/.test(htmlCod));
 
   // ═══ 7. Pe server pornit ══════════════════════════════════════════════════════════════════════════════════════
   sect('7. Pe server pornit: numele, foile, cifrele ecranului, drepturile, limitele');

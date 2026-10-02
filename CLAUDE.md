@@ -1553,7 +1553,8 @@ plătite) — vezi „Păstrarea istoricului", mai jos.
   bucăți. Un aparat se marchează „șters" doar dacă au mers toate ștergerile; altfel se reîncearcă mâine.
 - Restaurarea oprește ceasul (`archived_at = NULL`). Aparatele arhivate înainte de 24.09 au primit
   ziua de 24.09 — nimic nu s-a șters pe nepusă masă la prima pornire.
-- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Export CSV, sau un raport.
+- În cele 30 de zile, dacă clientul cere datele înapoi: „Istoric" → Excel (ecranul Traseu, cel mult 10.000 de poziții
+  pe fișier), sau un raport.
 - **Termenul se socotește pe SERVER** (`_arhivaTermen` → `purge_zile`, `purge_la`, `istoric_sters` pe
   fiecare rând din `/api/archived-devices`). Ecranul doar arată ce primește; NU-și face a doua regulă
   din zile. Pragul de avertizare (`ARH_PRAG_ZILE = 7`, ultima săptămână) și cuvintele stau într-un
