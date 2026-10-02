@@ -94,6 +94,15 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
+- [ ] **Robert: Google Search Console — câte pagini are Google. Adăugat pe 02.10.** Site-ul e verificat acolo (codul de
+  verificare e în DNS). De văzut: „Pagini" → câte sunt indexate; „Sitemaps" → trimisă `ratrack.ro/sitemap.xml`, dacă nu e.
+  Fără asta nu știm dacă apărem la Google și pe ce căutări.
+- [ ] **Robert: Bing Webmaster Tools. Adăugat pe 02.10.** Bing nu are NICIO pagină de pe ratrack.ro. Se face în 2 minute,
+  cu „Import din Google Search Console". Bing alimentează și DuckDuckGo, Yahoo și căutarea din ChatGPT și Copilot.
+- [ ] **Robert: www.ratrack.ro dă eroare (404). Adăugat pe 02.10.** O regulă de redirecționare în Cloudflare:
+  www.ratrack.ro → ratrack.ro, permanentă (301).
+- [ ] **Voi: profilul firmei pe Google (Google Business Profile). Adăugat pe 02.10.** Numele, adresa, telefonul,
+  programul și linkul spre site — e ce vede primul cine caută firma pe nume.
 
 ---
 
