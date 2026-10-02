@@ -12,7 +12,10 @@
 //   5. hârtia și copiile: 12 luni pe pagina de confidențialitate, conversațiile în afara copiilor;
 //   6. pe server pornit, cu un model SIMULAT (nu cheltuim nimic): numărul ajunge la unealtă, a doua întrebare
 //      vede prima, continuarea fără id, conversația nouă, nimeni altcineva nu vede conversația (nici noi),
-//      butoanele de ales, „celălalt", răspunsul rapid pe o mașină, ușa veche a telefonului, fondul, ștergerea la 12 luni.
+//      butoanele de ales, „celălalt", răspunsul rapid pe o mașină, ușa veche a telefonului, fondul, ștergerea la 12 luni;
+//   7. pasul 2 (secțiunea proprie): rândul din meniu și secțiunea, notițele firmei (le scrie doar adminul, ajung în
+//      contextul întrebării, nu în partea fixă), ghidul (unealta `cauta_in_ghid`), un raport tăiat din rol nu se scoate
+//      nici prin RA Insight, statisticile pentru noi numără fără să citească textul conversațiilor.
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -333,6 +336,52 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('conversația fără mesaje noi de 13 luni se șterge', st.status === 200 && st.j.sterse >= 1 && (await json('GET', '/api/insight/conversatii/' + q4.j.conversatieId, ckSef)).status === 404, st.text.slice(0, 80));
   T('cea de 11 luni rămâne', (await json('GET', '/api/insight/conversatii/' + q5.j.conversatieId, ckSef)).status === 200);
   T('doar super-adminul pornește ștergerea de mână', (await json('POST', '/api/admin/insight/sterge-vechi', ckSef, {})).status === 403);
+
+  // ─── 7. Pasul 2: secțiunea proprie ──────────────────────────────────────────────────────────────────
+  console.log('\n7. Pasul 2: secțiunea din meniu, notițele firmei, ghidul, drepturile din rol, statisticile fără text');
+  const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  T('rândul „RA Insight" din meniu (cu eticheta NOU) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
+  T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde" (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
+  T('ramurile care încă nu sunt gata nu se arată (gata: false)', /k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: false/.test(PAG));
+  T('discuția din secțiune e ACEEAȘI cu bula din colț (o singură conversație curentă)', (PAG.match(/window\._raxConvId/g) || []).length >= 4);
+  // notițele firmei
+  const n0 = await json('GET', '/api/insight/notite', ckSef);
+  T('notițele firmei: goale la început, plafon de 1.500 de caractere, șeful le poate scrie', n0.status === 200 && n0.j.text === '' && n0.j.max === 1500 && n0.j.poateScrie === true, n0.text.slice(0, 120));
+  const NOTITA = 'La noi săptămâna e de luni până sâmbătă.\u0007 Motorina o plătim 7,30 lei.';
+  const n1 = await json('PUT', '/api/insight/notite', ckSef, { text: NOTITA + ' ' + 'x'.repeat(2000) });
+  T('șeful le scrie; caracterele de control se scot, textul se taie la 1.500', n1.status === 200 && n1.j.text.length === 1500 && n1.j.text.indexOf('\u0007') < 0 && n1.j.text.indexOf('Motorina o plătim 7,30 lei.') > 0, n1.status + ' ' + (n1.j.text || '').length);
+  await json('PUT', '/api/insight/notite', ckSef, { text: NOTITA });
+  const nColeg = await json('PUT', '/api/insight/notite', ckColeg, { text: 'șters de coleg' });
+  const nColegG = await json('GET', '/api/insight/notite', ckColeg);
+  T('colegul (manager) le citește, dar nu le poate schimba', nColeg.status === 403 && nColegG.j.poateScrie === false && /sâmbătă/.test(nColegG.j.text || ''), nColeg.status + ' ' + nColegG.text.slice(0, 80));
+  T('altă firmă nu le vede', (await json('GET', '/api/insight/notite', ckAlt)).j.text === '');
+  coada([text('Am ținut cont de regulile firmei.')]);
+  await json('POST', '/api/insight/intreaba', ckSef, { message: 'Ce probleme are flota săptămâna asta?', nou: true });
+  const cN = cereri().slice(-1)[0];
+  T('RA Insight citește notițele la fiecare întrebare — în contextul întrebării, nu în partea fixă (cache-ul rămâne)', contextul(cN).indexOf('Motorina o plătim 7,30 lei.') > 0 && String(cN.system[0].text).indexOf('Motorina') < 0);
+  // ghidul aplicației
+  const gh = await json('GET', '/api/insight/ghid', ckSef);
+  T('ghidul aplicației: peste 20 de capitole, fiecare cu pași', gh.status === 200 && gh.j.sectiuni.length >= 20 && gh.j.sectiuni.every((x) => x.titlu && Array.isArray(x.pasi) && x.pasi.length), (gh.j.sectiuni || []).length);
+  coada([unealta('cauta_in_ghid', { intrebare: 'cum adaug un șofer nou' }), text('Management → Șoferi → „Adaugă șofer".')]);
+  const qg = await json('POST', '/api/insight/intreaba', ckSef, { message: 'cum adaug un șofer nou?', nou: true });
+  const cg = cereri().slice(-1)[0];
+  const rezG = JSON.stringify((cg.messages || []).slice(-1)[0]);
+  T('„cum fac…?" → unealta ghidului; modelul primește pașii capitolului despre șoferi', qg.status === 200 && rezG.indexOf('Un șofer nou și mașina lui') >= 0 && rezG.indexOf('Adaugă șofer') >= 0, rezG.slice(0, 200));
+  T('…iar „Am înțeles" spune că a citit ghidul', (qg.j.inteles || []).some((x) => x.text === 'ghidul aplicației'), JSON.stringify(qg.j.inteles));
+  T('instrucțiunile îi cer să răspundă la „cum fac" DOAR din ghid (nu din memorie)', /GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo/.test(String(cg.system[0].text)));
+  // un raport tăiat din rol nu se scoate nici prin RA Insight
+  await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: ['consumption'] });
+  coada([unealta('run_report', { type: 'consumption', vehicle: 'B 154 UIP', period: 'last_week' }), text('Nu ai acces la raportul de consum.')]);
+  const qr = await json('POST', '/api/insight/intreaba', ckColeg, { message: 'cât a consumat B 154 UIP săptămâna trecută?', nou: true });
+  const cr = cereri().slice(-1)[0];
+  const rezR = JSON.stringify((cr.messages || []).slice(-1)[0]);
+  T('managerul cu „Consum carburant" tăiat din rol: RA Insight nu-l rulează (unealta refuză)', qr.status === 200 && /l-a tăiat firma din rolul lui/.test(rezR) && !(qr.j.sources || []).length, rezR.slice(0, 200));
+  await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: [] });
+  // statisticile pentru noi: numere, fără textul conversațiilor
+  const stt = await json('GET', '/api/admin/insight/statistici?zile=30', S);
+  T('statisticile (doar noi): câte răspunsuri, 👍/👎, conversații, ce rapoarte a rulat', stt.status === 200 && stt.j.raspunsuri >= 5 && stt.j.sus >= 1 && stt.j.conversatii >= 2 && Array.isArray(stt.j.rapoarte) && stt.j.rapoarte.some((x) => x.tip === 'utilization'), stt.text.slice(0, 200));
+  T('…fără niciun text din conversații', ['KILOMETIR', '538 km', 'Ce probleme', 'Motorina', 'șofer nou'].every((w) => stt.text.indexOf(w) < 0), stt.text.slice(0, 300));
+  T('clientul nu are acces la statistici', (await json('GET', '/api/admin/insight/statistici', ckSef)).status === 403);
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

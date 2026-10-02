@@ -3883,3 +3883,107 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .ins-src { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 4px 8px; cursor: pointer; }
 .ins-src i { color: var(--text-muted); }
 .ins-src:hover { border-color: var(--accent); }
+
+/* ═══ RA Insight — secțiunea proprie (02.10, pasul 2) ═══
+   Pe tot ecranul (ca celelalte pagini din meniu), dar fără caseta .modal: o discuție are nevoie de toată înălțimea,
+   cu caseta de scris lipită jos. Stânga: ramurile și conversațiile; dreapta: discuția sau pagina ramurii. */
+#insight-view.as-view { padding: 0; align-items: stretch; overflow: hidden; }
+.insp { flex: 1; display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); min-width: 0; height: 100%; background: var(--bg-darkest); } /* minmax: altfel coloana crește după cel mai lat rând și pe telefon secțiunea ieșea din ecran (măsurat 02.10) */
+.insp-cap { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.insp-stea { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 17px; flex: none; color: var(--purple); background: color-mix(in srgb, var(--purple) 13%, transparent); }
+.insp-cap h1 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.insp-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 1px; }
+.insp-dr { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.insp-fond { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
+.insp-fond .bar { width: 64px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.insp-fond .bar b { display: block; height: 100%; background: var(--accent); }
+.insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.insp-btn i { color: var(--text-muted); }
+.insp-btn:hover { border-color: var(--accent); }
+.insp-btn.prim { background: var(--accent); color: #06210F; border-color: var(--accent); }
+.insp-btn.prim i { color: inherit; }
+.insp-meniu { display: none; }
+.insp-corp { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 0; }
+.insp-st { border-right: 1px solid var(--border); background: var(--bg-panel); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; }
+.insp-st .insp-btn.prim { justify-content: center; padding: 9px 12px; font-size: 13px; }
+.insp-cauta { margin: 8px 0 4px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 12.5px; }
+.insp-grp { font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-muted); margin: 12px 6px 4px; }
+.insp-ram { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-secondary); cursor: pointer; border: 0; background: transparent; font-family: inherit; text-align: left; width: 100%; }
+.insp-ram .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 12.5px; background: var(--bg-dark); color: var(--text-muted); flex: none; }
+.insp-ram:hover { background: var(--bg-dark); color: var(--text-primary); }
+.insp-ram.act { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-primary); }
+.insp-ram.act .ic { background: var(--accent); color: #06210F; }
+.insp-zi { font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 8px 8px 2px; }
+.insp-conv { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.insp-conv:hover { background: var(--bg-dark); color: var(--text-primary); }
+.insp-conv.act { background: var(--bg-dark); color: var(--text-primary); font-weight: 700; box-shadow: inset 0 0 0 1px var(--border-light); }
+.insp-conv .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insp-conv .a { display: none; gap: 2px; }
+.insp-conv:hover .a, .insp-conv.act .a { display: inline-flex; }
+.insp-conv .a button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 11px; }
+.insp-conv .a button:hover { background: var(--bg-card); color: var(--text-primary); }
+.insp-gol { font-size: 12px; color: var(--text-muted); padding: 6px 8px; line-height: 1.45; }
+.insp-pastrare { margin-top: auto; padding: 10px 8px 2px; font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+.insp-main { display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
+.insp-msgs { overflow-y: auto; padding: 18px 24px 8px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.insp-u { align-self: flex-end; max-width: 72%; background: color-mix(in srgb, var(--accent) 14%, var(--bg-card)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); color: var(--text-primary); border-radius: 14px 14px 4px 14px; padding: 9px 13px; font-weight: 600; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.insp-a { align-self: flex-start; max-width: 88%; display: flex; gap: 10px; }
+.insp-a .av { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; margin-top: 2px; color: var(--purple); background: color-mix(in srgb, var(--purple) 13%, transparent); }
+.insp-a .bub { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; padding: 11px 14px; line-height: 1.5; min-width: 0; color: var(--text-primary); }
+.insp-a .bub .rax-md-h { font-weight: 800; }
+.insp-surse { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.insp-subsol { display: flex; align-items: center; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
+.insp-subsol .gratis { color: var(--text-secondary); }
+.insp-th { margin-left: auto; display: inline-flex; gap: 6px; }
+.insp-th button { width: 28px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 11.5px; }
+.insp-th button:hover { color: var(--text-primary); border-color: var(--border-light); }
+.insp-th button.on { color: #06210F; background: var(--accent); border-color: var(--accent); }
+.insp-th button.on.jos { color: #fff; background: var(--red); border-color: var(--red); }
+.insp-salut { max-width: 640px; margin: 24px auto 0; text-align: center; color: var(--text-secondary); }
+.insp-salut h2 { font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 10px 0 6px; }
+.insp-salut p { margin: 0 0 14px; line-height: 1.5; font-size: 13.5px; }
+.insp-sug { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.insp-sug button { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+.insp-sug button:hover { border-color: var(--accent); }
+.insp-scrie { padding: 10px 24px 14px; }
+.insp-caseta { display: flex; align-items: flex-end; gap: 10px; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 13px; padding: 8px 8px 8px 14px; }
+.insp-caseta textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; line-height: 1.45; max-height: 140px; padding: 6px 0; }
+.insp-caseta button { width: 38px; height: 38px; border-radius: 10px; border: 0; background: var(--accent); color: #06210F; cursor: pointer; flex: none; font-size: 14px; }
+.insp-caseta button:disabled { opacity: .55; cursor: default; }
+.insp-nota { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11.5px; color: var(--text-secondary); margin-top: 7px; } /* --text-muted ieșea 4,2 pe tema deschisă (măsurat 02.10) */
+.insp-nota i { color: var(--text-muted); margin-right: 4px; }
+.insp-card { max-width: 620px; margin: 32px auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; color: var(--text-secondary); line-height: 1.55; }
+.insp-card h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 800; }
+.insp-ghid { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 16px 20px; overflow: hidden; min-height: 0; }
+.insp-ghid-lista { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.insp-ghid-lista button { font: inherit; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+.insp-ghid-lista button:hover { background: var(--bg-panel); color: var(--text-primary); }
+.insp-ghid-lista button.act { background: var(--bg-panel); color: var(--text-primary); box-shadow: inset 3px 0 0 var(--accent); }
+.insp-ghid-text { overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; padding: 16px 18px; color: var(--text-primary); line-height: 1.55; }
+.insp-ghid-text h3 { margin: 0 0 8px; font-size: 16px; font-weight: 800; }
+.insp-ghid-text ol { margin: 6px 0 10px; padding-left: 20px; }
+.insp-ghid-text li { margin: 3px 0; }
+.insp-ghid-text .det { color: var(--text-secondary); font-size: 12.5px; }
+@media (max-width: 860px) {
+  .insp-corp { grid-template-columns: minmax(0, 1fr); }
+  /* Capul pe telefon: [meniu] [stea] [titlu] [notițe] [✕] pe un rând, fondul lunii pe rândul de dedesubt. */
+  .insp-cap { flex-wrap: wrap; padding: 10px 12px; gap: 8px 10px; }
+  .insp-cap > div:nth-of-type(2) { flex: 1; min-width: 0; }
+  .insp-dr { display: contents; }
+  .insp-fond { order: 9; flex: 1 1 100%; white-space: normal; justify-content: flex-start; }
+  .insp-cap .insp-btn .et { display: none; }
+  .insp-st { display: none; border-right: 0; border-bottom: 1px solid var(--border); max-height: 55vh; }
+  .insp.st-deschis .insp-st { display: flex; }
+  .insp-meniu { display: inline-flex; }
+  .insp-sub, .insp-fond .bar { display: none; }
+  .insp-msgs { padding: 14px 12px 6px; }
+  .insp-scrie { padding: 8px 12px 12px; }
+  .insp-u { max-width: 86%; }
+  .insp-a { max-width: 100%; }
+  .insp-ghid { grid-template-columns: 1fr; overflow-y: auto; }
+}
+/* Rândul din meniu: RA Insight are eticheta „NOU" cât e nou. */
+.nav-nou { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; background: var(--purple); color: #fff; border-radius: 999px; padding: 2px 7px; }
+body.dark .nav-nou { color: #1b1036; }
+#nav-insight i { color: var(--purple); }
+#nav-insight.active i { color: inherit; }

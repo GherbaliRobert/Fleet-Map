@@ -273,6 +273,37 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   cheltuie nimic. Importul de mașini citește coloanele pe românește (`nume`, `nr_inmatriculare`), nu `name`/`plate`.
 - Păzit de `verify_insight.js` (în `npm test`) și `verify_paritate_telefon.js`.
 
+### Pasul 2 (02.10): secțiunea din meniu, notițele, ghidul, „AI Raport" gratuit
+- **Rândul din meniu:** `#nav-insight` (data-view="insight", eticheta „NOU"), arătat de `updateFabs` când firma are
+  `ai_assistant`; vederea `insight-view` → `renderInsightPage` (blocul „secțiunea RA Insight", între sentinele). Bula din
+  colț se ascunde cât ești în secțiune. **Discuția e una: `window._raxConvId`**, comună bulei și secțiunii — NU ține o a
+  doua conversație curentă. Ramurile cu `gata: false` nu se arată; se aprind când se livrează pagina lor.
+- `.insp` are `grid-template-columns: minmax(0, 1fr)` (și `.insp-corp` la fel): fără el, coloana crește după cel mai lat
+  rând și pe telefon secțiunea ieșea din ecran (645 px într-un ecran de 390). Pe ≤ 860 px capul se rupe pe două rânduri.
+- **Notițele firmei:** `settings.insight_notite` (≤ 1.500), `GET/PUT /api/insight/notite` — scrie doar `manageUsers`. Intră
+  în CONTEXTUL întrebării (`_insightContext`), NU în partea fixă din cache.
+- **Ghidul:** `insight_ghid.js` (`SECTIUNI`, `cauta`, `publice`), citit gratuit (`GET /api/insight/ghid`) și folosit de unealta
+  `cauta_in_ghid`. Fiecare nume citat („Adaugă șofer") trebuie să existe pe ecran — `verify_insight_ghid.js` le caută pe toate.
+  Schimbi un buton → schimbi și ghidul. Un cuvânt-cheie scurt se potrivește doar întreg (+ terminație): „act" NU în „facturile".
+- **`run_report` respectă rapoartele tăiate din rol** (`poateRaport`) — înainte RA Insight le rula oricum.
+- **Statisticile pentru noi** (`GET /api/admin/insight/statistici`, super-admin): numere (răspunsuri, 👍/👎, conversații,
+  rapoartele rulate) — NICIODATĂ textul conversațiilor. Ecranul lor vine cu ramurile.
+- **„AI Raport" (Rapoarte → fila `rep-tab-insight`, butonul `rep-tab-btn-insight`)**: întrebări despre rapoarte, pe REGULI,
+  fără model, fără fond, fără loc RA Insight — doar `viewReports` (și ecranul „rapoarte"). Înțelegerea și propozițiile stau
+  în `ai_raport.js` (`intelege`, `raspunde`, `neinteles`, `INTREBARI_GATA`); ruta: `POST /api/reports/ai-raport` +
+  `GET /api/reports/ai-raport/intrebari`. Contextul („și luna trecută?") îl întoarce serverul și ecranul i-l trimite înapoi
+  (`_rinCtx`); serverul îl CURĂȚĂ (doar mașini accesibile). `imei` din corp e aruncat. Plafon: 30 de întrebări pe minut pe om.
+  În jurnal: doar subiectul și câte mașini. „De ce / compară / ce să fac" → `spreInsight` (butonul „Întreabă RA Insight").
+- **Opțiunile unui raport: O funcție, `_optiuniRaport(q, cs)`**, folosită de ecranul Rapoarte și de AI Raport — ca amândouă
+  să scoată aceleași cifre. NU scrie a doua listă de opțiuni.
+- **`valori` în rapoarte** (`utilization`, `consumption`, `costs`): cifrele ca NUMERE, pe mașină, pentru AI Raport (să nu
+  citească „1.234 km" din tabel). Ecranul și exporturile nu le folosesc. `raspunde` citește cheile din sumarul și rândurile
+  rapoartelor: schimbi o etichetă în `reports.js` → schimbi și `ai_raport.js` (proba le are pe forma adevărată).
+- Rutele vechi `/api/insight/presets` și `/api/insight/run` (întrebările gata făcute ale filei vechi) rămân DOAR pentru
+  telefonul cu aplicația veche; pagina nu le mai cheamă. Se scot după APK-ul cu AI Raport.
+- Păzit de `verify_ai_raport.js` (84, cu ZERO cereri către model numărate pe server), `verify_insight_ghid.js` (22) și
+  `verify_insight.js` (secțiunea 7).
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

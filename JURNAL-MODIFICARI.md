@@ -166,6 +166,61 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-02
 
+### AMÂNDOI · RA Insight, pasul 2: rândul lui în meniu, secțiunea întreagă, „AI Raport" gratuit în Rapoarte
+
+Alin (02.10): *„scoatem RA Insight din meniul Agenți AI și îl trecem separat în meniu și facem o întreagă secțiune despre
+el"* + *„în rapoarte vreau să fie un agent unde întrebi ceva despre rapoarte (AI Raport)… va lua din rapoarte date, deci nu
+ne costă bani/tokeni; RA Insight va fi singurul care va costa"* + *„da, fă tot"*.
+
+**1. RA Insight are rândul lui în meniu** (sub Traseu, cu eticheta mov „NOU") și o secțiune întreagă:
+- în stânga: „Conversație nouă", căutarea, ramurile și conversațiile omului, pe zile (Azi / Ieri / Săptămâna asta / Mai
+  demult), cu redenumire și ștergere;
+- în dreapta: discuția — **aceeași cu bula din colț** (o începi în bulă, o continui în secțiune);
+- sus: câte întrebări mai sunt în fondul lunii (de ex. „99 din 100 de întrebări rămase în octombrie") și „Notițele firmei";
+- sub fiecare răspuns: „Am înțeles", raportul folosit (se deschide cu un clic), 👍 / 👎.
+- Ramurile Safe Drive & costuri, Combustibil, Mentenanță & acte, Ore de condus și Scrisoarea de luni vin în pașii următori;
+  până atunci nu apar deloc. Pagina „Agenți AI" rămâne cu cei 6 agenți; jumătatea despre RA Insight a plecat de acolo.
+- Pe telefon (în browser) secțiunea încape: conversațiile se deschid din butonul cu trei linii.
+
+**2. „Notițele firmei"**: adminul firmei scrie o dată regulile casei („motorina o plătim 7,30 lei", „la noi săptămâna e
+luni–sâmbătă", „grupa Distribuție = dubele"), iar RA Insight ține cont de ele la fiecare întrebare. Le citesc toți colegii
+cu RA Insight, le schimbă doar adminul; cel mult 1.500 de caractere.
+
+**3. „Ghidul aplicației"** (ramură gratuită, de citit): 22 de capitole cu pașii adevărați — „Un șofer nou și mașina lui",
+„Un raport trimis singur pe email"… La „cum fac…?" RA Insight răspunde **din ghid**, nu din memorie. Proba verifică pe
+ecran fiecare nume de buton citat în ghid (133); dacă un ecran se schimbă și ghidul rămâne în urmă, proba pică.
+
+**4. „AI Raport" în Rapoarte — gratuit, nimic nu pleacă spre model.** Fila „RA Insight" din Rapoarte a devenit „AI Raport"
+(cu eticheta GRATUIT). Exemplu, pe aplicația pornită:
+- „Câți km a făcut B 154 UIP săptămâna trecută?" → „**B 154 UIP · Dacia Logan 3 a parcurs 39 de km** — 21–27 septembrie."
+  — cifra e exact cea din raportul „Index km / ore";
+- „și săptămâna asta?" → „35 de km — 28 septembrie – azi", cu „ținut minte: B 154 UIP" și sugestia „Cu 4 km mai puțin decât
+  în perioada dinainte";
+- „consumul Loganului" (cu două Logan) → două butoane: care dintre ele;
+- „ralanti azi" → „Flota a stat în ralanti 11m — azi, arzând 0,2 litri" și, unde e mult, cât înseamnă în lei;
+- „de ce consumă atât?" → „La «de ce» răspunde RA Insight" + butonul „Întreabă RA Insight".
+Sub răspuns: cifrele mari, un tabel scurt, sugestiile, „Am înțeles" și „Deschide raportul" (cu mașina și perioada deja
+puse). Îl are **oricine vede Rapoartele**, fără loc RA Insight; nu se numără din fond. În jurnal se scrie doar subiectul
+(„km", „consum") și câte mașini — nu întrebarea.
+
+**Găsite pe drum și reparate (erau chiar în lucrarea asta):**
+- **RA Insight rula și rapoartele tăiate din rolul omului.** Un manager căruia firma îi tăiase „Consum carburant" afla
+  consumul întrebându-l pe RA Insight. Acum RA Insight respectă tăierile, exact ca ecranul Rapoarte.
+- Cifrele mari din răspunsurile filei din Rapoarte erau **verzi pe alb** (abia se vedeau pe tema deschisă); acum sunt
+  închise la culoare, cu dunga verde alături. Contrastul e măsurat pe ambele teme, la fiecare text.
+
+- **Ce am schimbat:** serverul (AI Raport, notițele firmei, ghidul, statisticile pentru noi — numere, fără textul
+  conversațiilor; RA Insight respectă rapoartele tăiate din rol), două module noi (`ai_raport.js` — înțelegerea și
+  propozițiile, `insight_ghid.js` — ghidul), `reports.js` (cifrele ca numere, pe mașină, pentru AI Raport), pagina
+  (rândul din meniu, secțiunea, fila AI Raport), stilurile. Probe noi: `verify_ai_raport.js` (84: răspunsurile pe forma
+  adevărată a rapoartelor, cifra = cifra raportului, **zero cereri către model**, nimeni nu vede mașinile altei firme,
+  rolurile, demo-ul, plafonul pe minut), `verify_insight_ghid.js` (22: butoanele citate există pe ecran, căutarea găsește
+  capitolul potrivit); `verify_insight.js` a crescut la 112.
+- **Ce vede fondatorul:** rândul „RA Insight" din meniu, cu secțiunea; „AI Raport" în Rapoarte. Statisticile de folosire
+  (câte răspunsuri, câte 👍/👎, ce rapoarte a rulat RA Insight) sunt deocamdată doar pe server — ecranul lor vine cu ramurile.
+- **Ce vede clientul:** la fel: RA Insight în meniu (doar firmele care au modulul), „Notițele firmei" (adminul), ghidul,
+  „AI Raport" pentru toți cei cu Rapoarte. Pe telefonul cu aplicație, totul vine cu APK-ul următor (pasul 5).
+
 ### AMÂNDOI · RA Insight, pasul 1: recunoaște mașina după număr și ține minte discuția
 
 Alin (02.10), cu două capturi: *„Câți kilometri mi-a făcut mașina B 154 UIP săptămâna trecută și ce consum a avut?"* →

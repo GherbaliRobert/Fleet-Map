@@ -977,7 +977,7 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
       if (hFirst != null && hLast != null && hLast >= hFirst) { const dH = hLast - hFirst; startTxt = _grp(hFirst) + ' h'; realTxt = _grp(dH) + ' h'; endTxt = _grp(hLast) + ' h'; src = 'CAN'; sortKey = dH; realH = dH; }
       else if (hLast != null) { endTxt = _grp(hLast) + ' h'; src = 'CAN'; } // avem doar indexul curent, nu și delta
     }
-    items.push({ nm: label(devMap, imei), unit, startTxt, realTxt, endTxt, src, sortKey, realKm, realH, isCan: (src === 'CAN') });
+    items.push({ imei, nm: label(devMap, imei), unit, startTxt, realTxt, endTxt, src, sortKey, realKm, realH, isCan: (src === 'CAN') });
   }
   items.sort((a, b) => b.sortKey - a.sortKey);
   const rows = items.map(x => [ x.nm, x.startTxt, x.realTxt, x.endTxt, x.src ]);
@@ -986,7 +986,10 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
     { type: 'bar', title: 'Km realizați pe vehicul', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
   ] : [];
   // FĂRĂ sumar (cerut explicit): raportul e per-vehicul (index început → realizat → sfârșit + sursă); un bloc de totaluri nu adăuga nimic util.
-  return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, charts };
+  // `valori` = aceleași cifre, ca NUMERE, pe mașină — pentru „AI Raport" (02.10), care compară și clasează fără să
+  // citească textul tabelului („1.234 km"). Ecranul și exporturile nu le folosesc.
+  const valori = items.map(x => ({ vehicul: x.nm, imei: x.imei, km: Math.round(x.realKm * 10) / 10, ore: Math.round(x.realH * 10) / 10, unitate: x.unit, sursa: x.src }));
+  return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, charts, valori };
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
@@ -1152,8 +1155,10 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     { type: 'bar', title: 'L/100km pe vehicul',    labels: topPer.labels,  datasets: [{ label: 'L/100km', data: topPer.data }] }
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
+  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
+  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0) }; });
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true, legend: CONSUMPTION_LEGEND };
+    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true, legend: CONSUMPTION_LEGEND, valori };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
@@ -1849,8 +1854,10 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     { type: 'bar', title: 'Cost combustibil pe vehicul (RON)', labels: topC.labels, datasets: [{ label: 'RON', data: topC.data }] },
     { type: 'bar', title: 'Cost pe km (RON)',                  labels: topK.labels, datasets: [{ label: 'RON/km', data: topK.data }] }
   ] : [];
+  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
+  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, pret: Math.round(m.price * 100) / 100, cost: Math.round(m.consumed * m.price), estimat: !!m.estimated }; });
   return { columns: ['Vehicul', 'Km efectuați', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true };
+    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true, valori };
 }
 
 // Legenda pt. Emisii CO₂ (setată pe raport → randată online, în Excel și PDF).

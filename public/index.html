@@ -95,6 +95,9 @@
       <nav id="navrail">
         <button data-vert="partener" data-ecran="localizare" class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
         <button data-vert="partener" data-ecran="traseu" class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
+        <!-- RA Insight are rândul lui (Alin, 02.10: „scoatem RA Insight din meniul Agenți AI și îl trecem separat în
+             meniu"). Se arată când firma are modulul (updateFabs); fără cont RA Insight, pagina spune cum îl primești. -->
+        <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-insight" data-view="insight" onclick="showView('insight')" style="display:none;"><i class="fas fa-wand-magic-sparkles"></i><span>RA Insight</span><span class="nav-nou">NOU</span></button>
         <div class="nav-group" data-vert="partener" data-group="analize">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
@@ -1287,14 +1290,39 @@
     .rep-tab i { font-size:15px; }
     .rep-tab .rt-short { display:none; }
     .rin-chip, .rin-src { white-space:normal; text-align:left; font-size:12px; line-height:1.3; height:auto; }
-    .rin-src { border-color:var(--accent); color:var(--accent); }
-    .rin-kpis { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
-    .rin-kpi { background:var(--bg-dark); border:1px solid var(--border); border-radius:9px; padding:8px 12px; min-width:100px; }
-    .rin-kpi .v { font-weight:800; font-size:17px; color:var(--accent); }
-    .rin-kpi .l { font-size:11px; color:var(--text-muted); margin-top:2px; }
-    .rin-tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:9px; margin-top:8px; }
+    .rin-chip { color:var(--text-primary); }
+    .rin-chip i { color:var(--text-muted); margin-right:2px; }
+    /* Verdele casei ca TEXT pe alb nu se citește (1,6) — culoarea stă pe dunga din stânga, textul e închis (02.10, măsurat). */
+    .rin-src { color:var(--text-primary); border-left:3px solid var(--accent); }
+    .rin-src i { color:var(--text-muted); }
+    .rin-src:hover { border-color:var(--accent); }
+    .rin-kpis { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; }
+    .rin-kpi { background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:9px; padding:8px 12px; min-width:100px; }
+    .rin-kpi .v { font-weight:800; font-size:17px; color:var(--text-primary); }
+    .rin-kpi .l { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+    /* AI Raport (02.10): intro, eticheta „GRATUIT", sugestiile, rândul de butoane de sub răspuns */
+    .rin-intro { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:12px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg-dark); color:var(--text-secondary); font-size:12.5px; line-height:1.45; }
+    .rin-intro .ic { width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); flex:0 0 auto; }
+    .rin-intro .tx { flex:1; min-width:0; }
+    .rin-nou { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .rin-nou i { color:var(--text-muted); }
+    .rin-nou:hover { border-color:var(--accent); }
+    .rin-gratis { font-size:9.5px; font-weight:800; letter-spacing:.3px; padding:2px 6px; border-radius:6px; background:var(--bg-dark); color:var(--text-primary); border:1px solid var(--border); line-height:1.3; }
+    .rep-tab.active .rin-gratis { background:rgba(6,33,15,.12); color:#06210F; border-color:rgba(6,33,15,.28); }
+    .rin-sug { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+    .rin-sug-i { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.45; color:var(--text-primary); background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--text-muted); border-radius:8px; padding:7px 10px; }
+    .rin-sug-i i { margin-top:2px; font-size:12px; color:var(--text-muted); flex:0 0 auto; }
+    .rin-sug-i.bun { border-left-color:#15803d; } .rin-sug-i.bun i { color:#15803d; }
+    .rin-sug-i.atentie { border-left-color:#c2410c; } .rin-sug-i.atentie i { color:#c2410c; }
+    body.dark .rin-sug-i.bun { border-left-color:var(--accent); } body.dark .rin-sug-i.bun i { color:var(--accent); }
+    body.dark .rin-sug-i.atentie { border-left-color:var(--orange); } body.dark .rin-sug-i.atentie i { color:var(--orange); }
+    .rin-acts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:10px; }
+    .rin-gratis-nota { font-size:11px; color:var(--text-secondary); }
+    @media (max-width:600px) { .rin-intro { flex-wrap:wrap; } .rin-intro .tx { flex-basis:calc(100% - 40px); } }
+    .rin-tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:9px; margin-top:8px; background:var(--bg-panel); }
     .rin-tbl { border-collapse:collapse; font-size:12px; white-space:nowrap; min-width:100%; }
-    .rin-tbl th { text-align:left; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--border); }
+    .rin-tbl th { text-align:left; color:var(--text-secondary); padding:7px 10px; border-bottom:1px solid var(--border); }
+    .rin-tbl tbody tr:last-child td { border-bottom:none; }
     .rin-tbl td { padding:7px 10px; border-bottom:1px solid var(--border); }
     #rep-tab-insight .rax-row.ai .rax-msg { max-width:92%; }
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
@@ -2919,24 +2947,11 @@ const pozitii = await r.json();</code></pre>
     .agp-model .agp-h + .agp-h{border-left:1px solid var(--border)}
     .agp-model .agp-tile{width:40px;height:40px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px}
     .agp-model .g .agp-tile{background:rgba(63,224,125,.13);color:var(--accent)}
-    .agp-model .p .agp-tile{background:rgba(63,224,125,.13);color:var(--accent)}
     .agp-model .agp-k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px}
-    .agp-model .g .agp-k{color:var(--accent)} .agp-model .p .agp-k{color:var(--accent)}
+    .agp-model .g .agp-k{color:var(--accent)}
     .agp-model .agp-h b{font-size:14.5px;font-weight:800}
     .agp-model .agp-h p{margin:2px 0 0;font-size:12px;color:var(--text-muted)}
     .agp-model .agp-h .btn-sm{margin-top:8px}
-    /* ── RA Insight = VEDETA: iconiță animată CONTINUU (nu doar la hover) + sclipiri, mai spectaculoasă ca restul ── */
-    .agp-model .p .agp-tile{position:relative;overflow:visible}
-    .agp-model .p .agp-tile > i{transform-origin:center;will-change:transform,filter;animation:raxStar 3.4s ease-in-out infinite}
-    @keyframes raxStar{0%,100%{transform:translateY(0) rotate(-5deg);filter:drop-shadow(0 0 1px rgba(63,224,125,.35))}30%{transform:translateY(-2.5px) rotate(0)}50%{transform:translateY(0) rotate(5deg);filter:drop-shadow(0 0 7px rgba(63,224,125,.85))}70%{transform:translateY(-1.5px) rotate(0)}}
-    .agp-model .p .agp-tile::before,.agp-model .p .agp-tile::after{content:"\f005";font-family:"Font Awesome 6 Free";font-weight:900;position:absolute;color:var(--accent);pointer-events:none;opacity:0;text-shadow:0 0 4px rgba(63,224,125,.7)}
-    .agp-model .p .agp-tile::before{font-size:8px;top:-1px;right:0;animation:raxSpark 2.6s ease-in-out infinite}
-    .agp-model .p .agp-tile::after{font-size:5.5px;bottom:2px;left:-1px;animation:raxSpark 2.6s ease-in-out 1.1s infinite}
-    @keyframes raxSpark{0%,100%{opacity:0;transform:scale(.3) rotate(0)}45%{opacity:1;transform:scale(1) rotate(35deg)}62%{opacity:.5;transform:scale(.85) rotate(50deg)}}
-    .agp-model .p .agp-tile:hover{box-shadow:0 0 0 5px rgba(63,224,125,.14)}
-    .agp-model .p .agp-tile:hover > i{animation:raxCast .7s ease-in-out infinite}
-    @keyframes raxCast{0%,100%{transform:rotate(0) scale(1);filter:drop-shadow(0 0 8px rgba(63,224,125,.9))}22%{transform:rotate(-17deg) scale(1.13)}52%{transform:rotate(11deg) scale(1.2)}78%{transform:rotate(-5deg) scale(1.1)}}
-    @media (prefers-reduced-motion:reduce){.agp-model .p .agp-tile > i,.agp-model .p .agp-tile::before,.agp-model .p .agp-tile::after{animation:none!important}.agp-model .p .agp-tile > i{filter:none}}
     /* ── „Agenții veghează": robotul scanează calm în fundal (mai discret ca RA Insight, ca să rămână vedeta) ── */
     .agp-model .g .agp-tile > i{transform-origin:center;will-change:transform,filter;animation:raxWatch 4.6s ease-in-out infinite}
     @keyframes raxWatch{0%,100%{transform:rotate(-6deg);filter:drop-shadow(0 0 0 rgba(63,224,125,0))}25%{transform:rotate(6deg)}50%{transform:rotate(-4deg);filter:drop-shadow(0 0 5px rgba(63,224,125,.55))}75%{transform:rotate(4deg)}}
@@ -3062,6 +3077,8 @@ const pozitii = await r.json();</code></pre>
     @media (max-width:620px){ .agp-grid{grid-template-columns:1fr} .agp-model{grid-template-columns:1fr} .agp-model .agp-h + .agp-h{border-left:0;border-top:1px solid var(--border)} }
   </style>
   <div id="agenti-view" class="modal-overlay"></div>
+  <!-- RA Insight — secțiunea proprie (populată de renderInsightPage) -->
+  <div id="insight-view" class="modal-overlay"></div>
 
   <div id="fuel-stats-modal" class="modal-overlay">
     <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;">
@@ -3095,7 +3112,8 @@ const pozitii = await r.json();</code></pre>
       <div class="rep-tabs">
         <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repTabGenerate()"><i class="fas fa-circle-plus"></i> <span class="rt-long">Generează rapoarte</span><span class="rt-short">Generează</span></button>
         <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> <span class="rt-long">Istoric rapoarte</span><span class="rt-short">Istoric</span></button>
-        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-wand-magic-sparkles"></i> <span class="rt-long">RA Insight</span><span class="rt-short">Insight</span></button>
+        <!-- „AI Raport" (02.10): întrebări despre rapoarte, pe reguli, GRATUIT. RA Insight (cel care costă) are secțiunea lui în meniu. -->
+        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-comments"></i> <span class="rt-long">AI Raport</span><span class="rt-short">AI Raport</span> <span class="rin-gratis">GRATUIT</span></button>
       </div>
       <!-- TAB: Generează rapoarte -->
       <div id="rep-tab-generate" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -3237,16 +3255,18 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-history-empty" style="display:none;text-align:center;color:var(--text-muted);padding:28px;">Nu ai generat niciun raport în ultimele 7 zile.</div>
       </div>
 
-      <!-- TAB: RA Insight (agent analitic) -->
+      <!-- TAB: AI Raport — întrebări despre rapoarte, pe reguli, fără model (zero tokeni) -->
       <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
-        <div style="margin-bottom:8px;">
-          <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Apasă o întrebare predefinită — RA Insight rulează raportul și-ți dă răspunsul instant.</span>
+        <div class="rin-intro">
+          <span class="ic"><i class="fas fa-comments"></i></span>
+          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației, și nu se scade din fondul RA Insight.</span>
+          <button type="button" class="rin-nou" onclick="rinReset()" title="Uită mașina și perioada discutate"><i class="fas fa-rotate-left"></i> Începe din nou</button>
         </div>
         <div id="rin-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
         <div id="rin-msgs" style="overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:12px;padding:8px 2px;"></div>
         <div id="rin-suggest" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px;"></div>
         <div id="rin-inputbar" style="display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;">
-          <textarea id="rin-input" rows="1" placeholder="Scrie întrebarea ta… ex: cât a consumat camionul X luna asta și în ce zonă a stat cel mai mult?" style="flex:1;resize:none;max-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13.5px;line-height:1.4;"></textarea>
+          <textarea id="rin-input" rows="1" placeholder="Întreabă despre rapoarte… de exemplu „km săptămâna trecută pe grupa Cluj” sau „consumul lui B 154 UIP în septembrie”" style="flex:1;resize:none;max-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13.5px;line-height:1.4;"></textarea>
           <button class="btn-sm btn-primary" id="rin-send" onclick="rinAsk()" style="height:42px;min-width:46px;" title="Trimite"><i class="fas fa-paper-plane"></i></button>
         </div>
       </div>
@@ -5770,7 +5790,7 @@ const pozitii = await r.json();</code></pre>
       test:             ['a testat',            'fa-vial',              'var(--text-secondary)']
     };
     var IST_OBIECT = {
-      device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate', device_history: 'istoricul complet al mașinii',
+      device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate', device_history: 'istoricul complet al mașinii', insight_notite: 'notițele firmei pentru RA Insight',
       driver: 'șoferul', drivers: 'lista de șoferi', user: 'utilizatorul', group: 'grupa', geofence: 'hotspotul',
       alert: 'alerta', maintenance: 'o lucrare de mentenanță', maint_intervals: 'intervalele de mentenanță',
       document: 'un document', doc_needs: 'actele obligatorii', report: 'un raport', report_schedule: 'un raport programat',
@@ -10050,9 +10070,8 @@ const pozitii = await r.json();</code></pre>
       if (tab === 'history') loadReportHistory();
       if (tab === 'insight') rinInit();
     }
-    // ─── RA Insight — agent analitic conversațional peste rapoarte ───
+    // ─── Fila „AI Raport” (02.10: era „RA Insight”, plătit; acum gratuit, pe reguli) — bulele discuției ───
     var rinBusy = false, rinInited = false;
-    var _rinConvId = null;   // RA Insight ține minte discuția (02.10); fila deschisă proaspăt pornește una nouă
     function rinMd(t) {
       var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
       var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
@@ -10113,15 +10132,352 @@ const pozitii = await r.json();</code></pre>
       }
       return box;
     };
-    function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }
-    function rinSuggestionList() {
-      return [
-        'Privire de ansamblu pe flotă în ultimele 7 zile',
-        'Ce vehicul a consumat cel mai mult luna asta?',
-        'Câte ore a lucrat vs ralanti fiecare vehicul săptămâna trecută?',
-        'Top 3 vehicule după km în ultimele 30 de zile'
+    // ═══ RA Insight — secțiunea proprie (Alin, 02.10: „scoatem RA Insight din meniul Agenți AI și îl trecem separat
+    // în meniu și facem o întreagă secțiune despre el"). Stânga: ramurile și conversațiile omului; dreapta: discuția
+    // sau pagina ramurii. Discuția e ACEEAȘI cu bula din colț (window._raxConvId). Serverul face tot — recunoaște
+    // mașina, ține minte, socotește; ecranul doar arată. Textele venite de la server se pun cu textContent.
+    // ── începe „secțiunea RA Insight" ──
+    (function () {
+      var S = { lista: [], conv: null, mesaje: [], ramura: 'general', trimite: false, faraLoc: null, cautaT: null, ghid: null, ghidAles: null };
+      // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
+      var RAMURI = [
+        { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
+        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: false },
+        { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: false },
+        { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: false },
+        { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: false },
+        { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true },
+        { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'fa-envelope-open-text', gata: false }
       ];
-    }
+      window._insightRamuri = RAMURI;
+      var SUGESTII = ['Câți km a făcut fiecare mașină săptămâna trecută?', 'Ce probleme are flota acum?', 'Cine a stat cel mai mult în ralanti luna asta?', 'Ce acte expiră în următoarele 30 de zile?'];
+      function $i(id) { return document.getElementById(id); }
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+      function md(t) {
+        var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
+        return esc(t || '').split('\n').map(function (ln) {
+          var l = ln.replace(/\s+$/, ''), tr = l.trim();
+          if (tr === '') return '<div style="height:6px"></div>';
+          if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
+          if (/^[•\-*]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-*]\s+/, '')) + '</div>';
+          return '<div>' + bold(l) + '</div>';
+        }).join('');
+      }
+      // „azi, 12:56" / „ieri" / „28 sept." — și grupele din stânga: Azi / Ieri / Săptămâna asta / Mai demult.
+      function zi0(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
+      function cand(ts) {
+        var d = new Date(ts); if (isNaN(d)) return '';
+        var z = (zi0(Date.now()) - zi0(d)) / 86400000;
+        if (z < 1) return 'azi, ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+        if (z < 2) return 'ieri';
+        return d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+      }
+      function grup(ts) {
+        var z = (zi0(Date.now()) - zi0(ts)) / 86400000;
+        return z < 1 ? 'Azi' : (z < 2 ? 'Ieri' : (z < 7 ? 'Săptămâna asta' : 'Mai demult'));
+      }
+      async function cere(m, url, corp) {
+        var r = await fetch(url, { method: m, credentials: 'same-origin', headers: corp ? { 'Content-Type': 'application/json' } : undefined, body: corp ? JSON.stringify(corp) : undefined });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        return { s: r.status, j: j };
+      }
+
+      window.renderInsightPage = async function () {
+        var host = $i('insight-view'); if (!host) return;
+        try { var fb = $i('rax-fabs'); if (fb) fb.style.display = 'none'; } catch (e) {}
+        if (!host._gata) schelet(host);
+        deseneazaRamuri();
+        incarcaFond();
+        await incarcaLista();
+        // Bula din colț a pornit între timp o discuție? O continuăm aici.
+        if (!S.conv && window._raxConvId && S.ramura === 'general') { await window.insightDeschide(window._raxConvId); return; }
+        deseneazaMain();
+      };
+      function schelet(host) {
+        host.innerHTML =
+          '<div class="insp" id="insp">' +
+          '<header class="insp-cap">' +
+          '<button class="insp-btn insp-meniu" onclick="insightComutaStanga()" aria-label="Conversații și ramuri"><i class="fas fa-bars"></i></button>' +
+          '<div class="insp-stea"><i class="fas fa-wand-magic-sparkles"></i></div>' +
+          '<div><h1>RA Insight</h1><div class="insp-sub">Asistentul flotei tale — îl întrebi în cuvintele tale, răspunde din datele aplicației.</div></div>' +
+          '<div class="insp-dr"><span class="insp-fond" id="insp-fond" style="display:none;"></span>' +
+          '<button class="insp-btn" onclick="insightNotite()" title="Notițele firmei" aria-label="Notițele firmei"><i class="fas fa-note-sticky"></i><span class="et"> Notițele firmei</span></button>' +
+          '<button class="close-btn" onclick="showView(\'localizare\')" style="position:static;font-size:18px;" aria-label="Închide">&#10005;</button></div>' +
+          '</header>' +
+          '<div class="insp-corp">' +
+          '<aside class="insp-st" id="insp-st">' +
+          '<button class="insp-btn prim" onclick="insightNou()"><i class="fas fa-plus"></i> Conversație nouă</button>' +
+          '<input class="insp-cauta" id="insp-cauta" type="search" placeholder="Caută în conversațiile tale" oninput="insightCauta(this.value)">' +
+          '<div class="insp-grp">Ramuri</div><div id="insp-ramuri"></div>' +
+          '<div class="insp-grp">Conversațiile tale</div><div id="insp-lista"></div>' +
+          '<div class="insp-pastrare"><i class="fas fa-lock"></i> Conversațiile le vezi doar tu și se păstrează 12 luni de la ultimul mesaj.</div>' +
+          '</aside>' +
+          '<main class="insp-main" id="insp-main"></main>' +
+          '</div></div>';
+        host._gata = true;
+      }
+      async function incarcaFond() {
+        var box = $i('insp-fond'); if (!box) return;
+        var q = null; try { q = (await cere('GET', '/api/ai/quota')).j; } catch (e) {}
+        if (!q || q.error || q.unlimited || !q.questions) { box.style.display = 'none'; return; }
+        var pct = Math.max(0, Math.min(100, Math.round((q.remaining / Math.max(1, q.questions)) * 100)));
+        var luna = q.periodEnd ? new Date(new Date(q.periodEnd).getTime() - 86400000).toLocaleDateString('ro-RO', { month: 'long' }) : '';
+        box.innerHTML = '<span class="bar"><b style="width:' + pct + '%"></b></span>';
+        box.appendChild(document.createTextNode(q.remaining + ' din ' + (window._raxNrI ? window._raxNrI(q.questions) : q.questions + ' întrebări') + ' rămase' + (luna ? ' în ' + luna : '')));
+        box.style.display = '';
+      }
+      async function incarcaLista() {
+        var q = ($i('insp-cauta') || {}).value || '';
+        var r = await cere('GET', '/api/insight/conversatii' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : ''));
+        if (r.s === 403 || r.s === 401) { S.faraLoc = r.j.message || r.j.error || 'RA Insight nu e pornit pe contul tău.'; S.lista = []; }
+        else { S.faraLoc = null; S.lista = (r.j && r.j.conversatii) || []; }
+        deseneazaLista();
+      }
+      function deseneazaRamuri() {
+        var box = $i('insp-ramuri'); if (!box) return;
+        box.innerHTML = '';
+        RAMURI.filter(function (r) { return r.gata; }).forEach(function (r) {
+          var b = el('button', 'insp-ram' + (S.ramura === r.k ? ' act' : ''));
+          b.innerHTML = '<span class="ic"><i class="fas ' + r.ic + '"></i></span>';
+          b.appendChild(document.createTextNode(r.et));
+          b.onclick = function () { window.insightRamura(r.k); };
+          box.appendChild(b);
+        });
+      }
+      function deseneazaLista() {
+        var box = $i('insp-lista'); if (!box) return;
+        box.innerHTML = '';
+        if (S.faraLoc) { box.appendChild(el('div', 'insp-gol', '—')); return; }
+        if (!S.lista.length) { box.appendChild(el('div', 'insp-gol', ($i('insp-cauta') || {}).value ? 'Nicio conversație nu conține ce cauți.' : 'Încă nicio conversație. Pune prima întrebare în dreapta.')); return; }
+        var ultimulGrup = null;
+        S.lista.forEach(function (c) {
+          var g = grup(c.actualizat_la);
+          if (g !== ultimulGrup) { box.appendChild(el('div', 'insp-zi', g)); ultimulGrup = g; }
+          var row = el('div', 'insp-conv' + (S.conv && S.conv.id === c.id ? ' act' : ''));
+          var t = el('span', 't', c.titlu || 'Conversație'); t.title = (c.titlu || '') + ' · ' + cand(c.actualizat_la);
+          row.appendChild(t);
+          var a = el('span', 'a');
+          var bR = el('button'); bR.title = 'Redenumește'; bR.innerHTML = '<i class="fas fa-pen"></i>'; bR.onclick = function (e) { e.stopPropagation(); window.insightRedenumeste(c.id); };
+          var bS = el('button'); bS.title = 'Șterge'; bS.innerHTML = '<i class="fas fa-trash"></i>'; bS.onclick = function (e) { e.stopPropagation(); window.insightSterge(c.id); };
+          a.appendChild(bR); a.appendChild(bS); row.appendChild(a);
+          row.onclick = function () { window.insightDeschide(c.id); };
+          box.appendChild(row);
+        });
+      }
+      function deseneazaMain() {
+        var main = $i('insp-main'); if (!main) return;
+        if (S.faraLoc) {
+          main.innerHTML = '';
+          var card = el('div', 'insp-card');
+          card.appendChild(el('h3', null, 'RA Insight nu e pornit pe contul tău'));
+          card.appendChild(el('div', null, S.faraLoc));
+          main.appendChild(card);
+          return;
+        }
+        if (S.ramura === 'ghid') return deseneazaGhid(main);
+        main.innerHTML = '<div class="insp-msgs" id="insp-msgs"></div>' +
+          '<div class="insp-scrie"><div class="insp-caseta">' +
+          '<textarea id="insp-input" rows="1" placeholder="Scrie numărul, numele mașinii sau al șoferului… de exemplu „Cât a consumat B 154 UIP luna asta?”" onkeydown="insightTasta(event)" oninput="insightCreste(this)"></textarea>' +
+          '<button id="insp-trimite" onclick="insightTrimite()" aria-label="Trimite"><i class="fas fa-paper-plane"></i></button></div>' +
+          '<div class="insp-nota"><span><i class="fas fa-lock"></i>Vede doar mașinile la care ai acces.</span><span><i class="fas fa-clock-rotate-left"></i>Conversația rămâne salvată — o poți relua oricând.</span></div></div>';
+        var box = $i('insp-msgs');
+        if (!S.mesaje.length) {
+          var sal = el('div', 'insp-salut');
+          sal.innerHTML = '<div class="insp-stea" style="margin:0 auto;"><i class="fas fa-wand-magic-sparkles"></i></div>';
+          sal.appendChild(el('h2', null, 'Întreabă orice despre flota ta'));
+          sal.appendChild(el('p', null, 'Spune mașina după număr, nume sau șofer. Țin minte discuția, așa că poți continua cu „și săptămâna dinainte?” sau „dar celălalt?”. Cifrele vin din rapoartele aplicației.'));
+          var sg = el('div', 'insp-sug');
+          SUGESTII.forEach(function (t) { var b = el('button', null, t); b.onclick = function () { window.insightTrimite(t); }; sg.appendChild(b); });
+          sal.appendChild(sg);
+          box.appendChild(sal);
+        }
+        S.mesaje.forEach(function (m) { box.appendChild(m.rol === 'user' ? bulaOm(m.text) : bulaAi(m)); });
+        box.scrollTop = box.scrollHeight;
+      }
+      function bulaOm(text) { return el('div', 'insp-u', text); }
+      function bulaAi(m) {
+        var row = el('div', 'insp-a');
+        var av = el('div', 'av'); av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>'; row.appendChild(av);
+        var bub = el('div', 'bub'); bub.innerHTML = md(m.text);
+        var x = m.extra || {};
+        if (window._insightExtra) bub.appendChild(window._insightExtra({ inteles: x.inteles, alege: x.alege }, function (t) { window.insightTrimite(t); }));
+        if (Array.isArray(x.sources) && x.sources.length) {
+          var su = el('div', 'insp-surse');
+          x.sources.slice(0, 6).forEach(function (s) {
+            var b = el('span', 'ins-src'); b.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
+            b.appendChild(document.createTextNode('Deschide raportul: ' + (s.label || s.type) + (s.vehicle ? ' · ' + s.vehicle : '')));
+            b.title = 'Deschide raportul în Rapoarte';
+            b.onclick = function () { showView('rapoarte'); setTimeout(function () { try { rinOpenReport(s.type, s.imei || ''); } catch (e) {} }, 80); };
+            su.appendChild(b);
+          });
+          bub.appendChild(su);
+        }
+        var sub = el('div', 'insp-subsol');
+        if (x.source === 'local') sub.appendChild(el('span', 'gratis', 'Răspuns rapid, din datele de acum — nu s-a numărat din fond.'));
+        else if (Array.isArray(x.sources) && x.sources.length) sub.appendChild(el('span', null, 'Cifrele vin din rapoartele aplicației.'));
+        if (m.id && x.source !== 'local') {
+          var th = el('span', 'insp-th');
+          [[1, 'fa-thumbs-up', 'Răspuns bun'], [-1, 'fa-thumbs-down', 'Răspuns slab']].forEach(function (d) {
+            var b = el('button', (m.feedback === d[0] ? 'on' : '') + (d[0] < 0 ? ' jos' : ''));
+            b.title = d[2]; b.innerHTML = '<i class="fas ' + d[1] + '"></i>';
+            b.onclick = function () { window.insightNota(m, d[0]); };
+            th.appendChild(b);
+          });
+          sub.appendChild(th);
+        }
+        if (sub.childNodes.length) bub.appendChild(sub);
+        row.appendChild(bub);
+        return row;
+      }
+
+      window.insightTrimite = async function (text) {
+        var inp = $i('insp-input');
+        var msg = String(text != null ? text : (inp ? inp.value : '')).trim();
+        if (!msg || S.trimite) return;
+        if (S.ramura !== 'general') { S.ramura = 'general'; deseneazaRamuri(); deseneazaMain(); inp = $i('insp-input'); }
+        if (inp) { inp.value = ''; window.insightCreste(inp); }
+        S.trimite = true;
+        var btn = $i('insp-trimite'); if (btn) btn.disabled = true;
+        S.mesaje.push({ rol: 'user', text: msg });
+        var box = $i('insp-msgs');
+        if (box) { var sal = box.querySelector('.insp-salut'); if (sal) sal.remove(); box.appendChild(bulaOm(msg)); }
+        var gand = el('div', 'insp-a'); gand.innerHTML = '<div class="av"><i class="fas fa-wand-magic-sparkles"></i></div><div class="bub"><span class="rax-typing"><i></i><i></i><i></i></span></div>';
+        if (box) { box.appendChild(gand); box.scrollTop = box.scrollHeight; }
+        try {
+          var corp = { message: msg };
+          if (S.conv && S.conv.id) corp.conversatieId = S.conv.id; else corp.nou = true;
+          var r = await cere('POST', '/api/insight/intreaba', corp);
+          gand.remove();
+          var j = r.j || {};
+          if (r.s === 404) { S.conv = null; window._raxConvId = null; }
+          if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
+          var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
+            extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source } };
+          S.mesaje.push(m);
+          if (box) { box.appendChild(bulaAi(m)); box.scrollTop = box.scrollHeight; }
+          incarcaFond();
+          incarcaLista();
+        } catch (e) {
+          gand.remove();
+          if (box) box.appendChild(bulaAi({ rol: 'assistant', text: 'Eroare de rețea: ' + e.message, extra: {} }));
+        }
+        S.trimite = false;
+        if (btn) btn.disabled = false;
+        var inp2 = $i('insp-input'); if (inp2) inp2.focus();
+      };
+      window.insightTasta = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.insightTrimite(); } };
+      window.insightCreste = function (t) { if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; };
+      window.insightNou = function () {
+        S.conv = null; S.mesaje = []; S.ramura = 'general'; window._raxConvId = null;
+        deseneazaRamuri(); deseneazaLista(); deseneazaMain();
+        var i = $i('insp-input'); if (i) i.focus();
+        comutaStanga(false);
+      };
+      window.insightDeschide = async function (id) {
+        var r = await cere('GET', '/api/insight/conversatii/' + encodeURIComponent(id));
+        if (r.s !== 200) { if (window._raxConvId === id) window._raxConvId = null; S.conv = null; S.mesaje = []; deseneazaMain(); return; }
+        S.conv = r.j.conversatie; S.mesaje = r.j.mesaje || []; S.ramura = 'general'; window._raxConvId = S.conv.id;
+        deseneazaRamuri(); deseneazaLista(); deseneazaMain();
+        comutaStanga(false);
+      };
+      window.insightCauta = function () { clearTimeout(S.cautaT); S.cautaT = setTimeout(incarcaLista, 250); };
+      window.insightRamura = function (k) { S.ramura = k; deseneazaRamuri(); deseneazaMain(); comutaStanga(false); };
+      window.insightRedenumeste = async function (id) {
+        var c = S.lista.filter(function (x) { return x.id === id; })[0] || {};
+        var nume = await raConfirm('Un nume după care o recunoști ușor în listă.', { title: 'Redenumește conversația', danger: false, okLabel: 'Salvează', icon: 'fa-pen', field: { label: 'Numele conversației', value: c.titlu || '' } });
+        if (nume === false || !String(nume).trim()) return;
+        var r = await cere('PUT', '/api/insight/conversatii/' + id, { titlu: String(nume).trim() });
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut redenumi.', 'error'); return; }
+        await incarcaLista();
+      };
+      window.insightSterge = async function (id) {
+        if (!await raConfirm('Conversația se șterge de tot și nu se mai poate recupera.', { title: 'Ștergi conversația?', okLabel: 'Șterge' })) return;
+        var r = await cere('DELETE', '/api/insight/conversatii/' + id);
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut șterge.', 'error'); return; }
+        if (S.conv && S.conv.id === id) { S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaMain(); }
+        await incarcaLista();
+      };
+      window.insightNota = async function (m, v) {
+        var nou = m.feedback === v ? 0 : v;
+        var r = await cere('POST', '/api/insight/mesaje/' + m.id + '/feedback', { valoare: nou });
+        if (r.s !== 200) return;
+        m.feedback = nou || null;
+        deseneazaMain();
+        if (nou) (window.raxToast || function () {})(nou > 0 ? 'Mulțumim! Ne ajută să știm ce merge.' : 'Mulțumim — ne uităm la ce n-a mers.', 'success');
+      };
+      // Pe ecran îngust, stânga (ramuri + conversații) se deschide din butonul din cap.
+      function comutaStanga(v) { var p = $i('insp'); if (p) p.classList.toggle('st-deschis', v == null ? !p.classList.contains('st-deschis') : !!v); }
+      window.insightComutaStanga = function () { comutaStanga(); };
+
+      // ─── Notițele firmei: regulile casei, scrise o dată de administrator ───
+      window.insightNotite = async function () {
+        var r = await cere('GET', '/api/insight/notite');
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Notițele nu s-au putut încărca.', 'error'); return; }
+        var j = r.j;
+        var ex = $i('insp-notite'); if (ex) ex.remove();
+        var ov = el('div'); ov.id = 'insp-notite';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px;';
+        var card = el('div');
+        card.style.cssText = 'background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 24px 64px rgba(0,0,0,.4);';
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="fas fa-note-sticky" style="color:var(--purple);font-size:18px;"></i><b style="font-size:16px;">Notițele firmei pentru RA Insight</b></div>' +
+          '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Motorina e 7,30 lei.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>';
+        var ta = el('textarea'); ta.value = j.text || ''; ta.maxLength = j.max || 1500; ta.rows = 8;
+        ta.style.cssText = 'width:100%;border-radius:10px;border:1px solid var(--border-light);background:var(--bg-dark);color:var(--text-primary);padding:10px 12px;font:inherit;font-size:13.5px;line-height:1.5;resize:vertical;';
+        if (!j.poateScrie) { ta.readOnly = true; }
+        card.appendChild(ta);
+        var jos = el('div'); jos.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:12px;';
+        var info = el('span', null, j.poateScrie ? '' : 'Le scrie administratorul firmei.'); info.style.cssText = 'font-size:12px;color:var(--text-muted);margin-right:auto;';
+        jos.appendChild(info);
+        var bI = el('button', 'insp-btn', j.poateScrie ? 'Renunță' : 'Închide'); bI.onclick = function () { ov.remove(); }; jos.appendChild(bI);
+        if (j.poateScrie) {
+          var bS = el('button', 'insp-btn prim'); bS.innerHTML = '<i class="fas fa-check"></i> Salvează'; jos.appendChild(bS);
+          bS.onclick = async function () {
+            var w = await cere('PUT', '/api/insight/notite', { text: ta.value });
+            if (w.s !== 200) { (window.raxToast || alert)(w.j.error || 'Nu s-au putut salva.', 'error'); return; }
+            ov.remove(); (window.raxToast || function () {})('Notițele firmei s-au salvat ✓', 'success');
+          };
+        }
+        card.appendChild(jos);
+        ov.appendChild(card);
+        ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+        document.body.appendChild(ov);
+        setTimeout(function () { ta.focus(); }, 30);
+      };
+
+      // ─── Ramura „Ghidul aplicației": citit e gratuit; o întrebare în plus merge la RA Insight ───
+      async function deseneazaGhid(main) {
+        main.innerHTML = '<div class="insp-ghid"><div class="insp-ghid-lista" id="insp-ghid-lista"></div><div class="insp-ghid-text" id="insp-ghid-text"></div></div>';
+        if (!S.ghid) { var r = await cere('GET', '/api/insight/ghid'); S.ghid = (r.s === 200 && r.j.sectiuni) || []; }
+        var lista = $i('insp-ghid-lista'); if (!lista) return;
+        if (!S.ghidAles && S.ghid.length) S.ghidAles = S.ghid[0].cheie;
+        S.ghid.forEach(function (g) {
+          var b = el('button', S.ghidAles === g.cheie ? 'act' : '', g.titlu);
+          b.onclick = function () { S.ghidAles = g.cheie; deseneazaGhid(main); };
+          lista.appendChild(b);
+        });
+        var g = S.ghid.filter(function (x) { return x.cheie === S.ghidAles; })[0];
+        var t = $i('insp-ghid-text'); if (!t) return;
+        if (!g) { t.appendChild(el('div', 'insp-gol', 'Ghidul nu s-a putut încărca.')); return; }
+        t.appendChild(el('h3', null, g.titlu));
+        if (g.unde) { var u = el('div', 'det'); u.innerHTML = '<i class="fas fa-location-arrow"></i> '; u.appendChild(document.createTextNode(g.unde)); t.appendChild(u); }
+        if (Array.isArray(g.pasi) && g.pasi.length) { var ol = el('ol'); g.pasi.forEach(function (p) { ol.appendChild(el('li', null, p)); }); t.appendChild(ol); }
+        if (g.detalii) t.appendChild(el('div', 'det', g.detalii));
+        var b = el('button', 'insp-btn'); b.style.marginTop = '12px';
+        b.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre asta';
+        b.onclick = function () { S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain(); var i = $i('insp-input'); if (i) { i.value = 'Despre „' + g.titlu + '”: '; i.focus(); } };
+        t.appendChild(b);
+      }
+    })();
+    // ── sfârșit „secțiunea RA Insight" ──
+    function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }
+    // ─── AI Raport (Rapoarte → fila „AI Raport", 02.10): întrebări despre rapoarte, pe REGULI — gratuit ───
+    // Alin: „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul care costă".
+    // Serverul înțelege întrebarea, rulează raportul aplicației și scrie răspunsul (ai_raport.js); ecranul doar îl arată.
+    // Ce s-a discutat (subiectul, mașina, perioada) vine de la server în `context` și i se trimite înapoi la întrebarea
+    // următoare („și luna trecută?"). Nu cere loc RA Insight și nu se numără din fond. Textele venite de la server se pun
+    // cu textContent (sau prin rinMd, care le curăță întâi).
+    var _rinCtx = null;
     function rinInit() {
       var inp = document.getElementById('rin-input');
       if (inp && !inp._wired) {
@@ -10131,52 +10487,78 @@ const pozitii = await r.json();</code></pre>
       }
       if (rinInited) return;
       rinInited = true;
-      // Întrebări predefinite (FĂRĂ AI, zero tokeni) — disponibile oricărei companii
+      // Întrebările gata făcute vin de la server (aceeași listă pe care o probează serverul) — nu se scriu aici.
       var pbox = document.getElementById('rin-presets');
-      if (pbox) fetch('/api/insight/presets', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }).then(function (ps) {
-        pbox.innerHTML = (ps || []).map(function (p) { return '<button class="btn-sm rin-chip" onclick="rinPreset(\'' + rinEsc(p.key) + '\', this)"><i class="fas fa-bolt" style="opacity:.7;"></i> ' + rinEsc(p.title) + '</button>'; }).join('');
+      if (pbox) fetch('/api/reports/ai-raport/intrebari', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) {
+        pbox.innerHTML = '';
+        ((j && j.intrebari) || []).forEach(function (q) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'btn-sm rin-chip';
+          var ic = document.createElement('i'); ic.className = 'fas ' + (/^fa-[a-z0-9-]+$/.test(String(q.ic || '')) ? q.ic : 'fa-bolt');
+          b.appendChild(ic); b.appendChild(document.createTextNode(' ' + String(q.text || '')));
+          b.onclick = function () { rinAsk(String(q.text || '')); };
+          pbox.appendChild(b);
+        });
       }).catch(function () {});
-      // Text liber (AI) = OPȚIONAL: doar dacă firma are modulul ai_assistant
-      var aiOn = !!(currentUser && currentUser.features && currentUser.features.ai_assistant);
-      var box = document.getElementById('rin-suggest');
-      var bar = document.getElementById('rin-inputbar');
-      if (aiOn) {
-        rinAddMsg('ai', 'Apasă o întrebare predefinită mai sus, sau scrie liber — **AI-ul** îți combină mai multe rapoarte.');
-        if (box) box.innerHTML = rinSuggestionList().map(function (q) {
-          return '<button class="btn-sm rin-chip" data-q="' + rinEsc(q) + '" onclick="rinAsk(this.dataset.q)"><i class="fas fa-lightbulb" style="opacity:.7;"></i> ' + rinEsc(q) + '</button>';
-        }).join('');
-      } else {
-        if (bar) bar.style.display = 'none';
-        if (box) box.innerHTML = '<span style="font-size:11.5px;color:var(--text-muted);">Întrebările libere (AI) sunt opționale — activează modulul AI pentru companie ca să le folosești.</span>';
+      rinAddMsg('ai', 'Întreabă-mă ce vrei să afli din rapoarte: **ce, cât, când, care mașină**. Răspund pe loc, din rapoartele aplicației.');
+    }
+    // „Începe din nou": uită ce s-a discutat (mașina, perioada) și golește discuția.
+    function rinReset() {
+      _rinCtx = null;
+      var w = document.getElementById('rin-msgs'); if (w) w.innerHTML = '';
+      rinAddMsg('ai', 'Am început din nou. Ce vrei să afli din rapoarte?');
+    }
+    // Butonul „Întreabă RA Insight" are rost doar unde RA Insight există pentru om (rândul lui din meniu e aprins).
+    function _rinAreInsight() { var n = document.getElementById('nav-insight'); return !!n && n.style.display !== 'none' && typeof window.insightAsk === 'function'; }
+    function rinRaspuns(bub, j, intrebarea) {
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+      if (j.neinteles) {
+        bub.innerHTML = rinMd(String(j.text || ''));
+        if (Array.isArray(j.alege) && j.alege.length) bub.appendChild(window._insightExtra({ alege: j.alege }, function (t) { rinAsk(t); }));
+        if (j.spreInsight && _rinAreInsight()) {
+          var w = el('div', 'rin-acts'), bi = el('button', 'btn-sm rin-src'); bi.type = 'button';
+          bi.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ';
+          bi.appendChild(document.createTextNode('Întreabă RA Insight'));
+          bi.onclick = function () { window.insightAsk(intrebarea); };
+          w.appendChild(bi); bub.appendChild(w);
+        }
+        return;
       }
-    }
-    // RA Insight FĂRĂ AI — rulează un raport predefinit (zero tokeni) și afișează sumarul
-    async function rinPreset(key, btn) {
-      var title = btn ? btn.textContent.trim() : key;
-      rinAddMsg('user', title);
-      var pbtns = document.querySelectorAll('#rin-presets button'); pbtns.forEach(function (b) { b.disabled = true; });
-      var typing = rinAddMsg('ai', '<i class="fas fa-spinner fa-spin" style="opacity:.6;"></i>', true);
-      try {
-        var r = await fetch('/api/insight/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) });
-        var j = await r.json();
-        if (typing) typing.remove();
-        if (!r.ok) { rinAddMsg('ai', rinEsc(j.error || 'Eroare RA Insight.'), true); return; }
-        var s = j.summary || {}; var sk = Object.keys(s);
-        var html = '<strong>' + rinEsc(j.title || 'Rezultat') + '</strong>';
-        if (sk.length) html += '<div class="rin-kpis">' + sk.map(function (k) { return '<div class="rin-kpi"><div class="v">' + rinEsc(String(s[k])) + '</div><div class="l">' + rinEsc(k) + '</div></div>'; }).join('') + '</div>';
-        if (j.rows && j.rows.length) html += '<div class="rin-tbl-wrap"><table class="rin-tbl"><thead><tr>' + (j.columns || []).map(function (c) { return '<th>' + rinEsc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' + j.rows.map(function (row) { return '<tr>' + row.map(function (cell) { return '<td>' + rinEsc(cell == null ? '' : String(cell)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
-        if (j.reportType) html += '<div style="margin-top:8px;"><button class="btn-sm rin-src" onclick="rinOpenReport(\'' + rinEsc(j.reportType) + '\',\'\')"><i class="fas fa-up-right-from-square" style="opacity:.7;"></i> Deschide raportul complet</button></div>';
-        rinAddMsg('ai', html, true);
-      } catch (e) { if (typing) typing.remove(); rinAddMsg('ai', 'Eroare: ' + rinEsc(e.message), true); }
-      finally { pbtns.forEach(function (b) { b.disabled = false; }); }
-    }
-    function rinRenderSources(sources) {
-      if (!Array.isArray(sources) || !sources.length) return;
-      var chips = sources.map(function (s) {
-        var txt = (s.label || s.type) + (s.vehicle ? (' · ' + s.vehicle) : '');
-        return '<button class="btn-sm rin-src" onclick="rinOpenReport(\'' + rinEsc(s.type) + '\',\'' + rinEsc(s.imei || '') + '\')" title="Deschide raportul complet"><i class="fas fa-up-right-from-square" style="opacity:.7;"></i> ' + rinEsc(txt) + '</button>';
-      }).join('');
-      rinAddMsg('sys', '<div style="font-size:11px;color:var(--text-muted);margin:2px 0 4px;text-align:left;">Surse (deschide raportul complet):</div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;">' + chips + '</div>', true);
+      var x = j.raspuns || {};
+      bub.innerHTML = rinMd(String(x.text || ''));
+      if (Array.isArray(x.tiles) && x.tiles.length) {
+        var k = el('div', 'rin-kpis');
+        x.tiles.forEach(function (t) { var c = el('div', 'rin-kpi'); c.appendChild(el('div', 'v', t.val)); c.appendChild(el('div', 'l', t.et)); k.appendChild(c); });
+        bub.appendChild(k);
+      }
+      if (x.tabel && Array.isArray(x.tabel.randuri) && x.tabel.randuri.length) {
+        var tw = el('div', 'rin-tbl-wrap'), tb = el('table', 'rin-tbl'), th = el('thead'), trh = el('tr'), tbd = el('tbody');
+        (x.tabel.coloane || []).forEach(function (c) { trh.appendChild(el('th', null, c)); });
+        th.appendChild(trh); tb.appendChild(th);
+        x.tabel.randuri.forEach(function (rw) { var tr = el('tr'); (rw || []).forEach(function (c) { tr.appendChild(el('td', null, c)); }); tbd.appendChild(tr); });
+        tb.appendChild(tbd); tw.appendChild(tb); bub.appendChild(tw);
+      }
+      if (Array.isArray(x.sugestii) && x.sugestii.length) {
+        var sg = el('div', 'rin-sug');
+        x.sugestii.forEach(function (s) {
+          var fel = ({ bun: 'bun', atentie: 'atentie', info: 'info' })[s.fel] || 'info';
+          var it = el('div', 'rin-sug-i ' + fel);
+          it.appendChild(el('i', 'fas ' + (fel === 'bun' ? 'fa-circle-check' : (fel === 'atentie' ? 'fa-triangle-exclamation' : 'fa-circle-info'))));
+          it.appendChild(el('span', null, s.text));
+          sg.appendChild(it);
+        });
+        bub.appendChild(sg);
+      }
+      bub.appendChild(window._insightExtra({ inteles: j.inteles }));
+      var acts = el('div', 'rin-acts');
+      if (j.sursa && j.sursa.type) {
+        var s0 = j.sursa, bo = el('button', 'btn-sm rin-src'); bo.type = 'button';
+        bo.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
+        bo.appendChild(document.createTextNode('Deschide raportul „' + String(s0.label || s0.type) + '”'));
+        bo.onclick = function () { rinOpenReport(s0.type, (Array.isArray(s0.imeis) && s0.imeis.length === 1) ? s0.imeis[0] : '', s0.from, s0.to); };
+        acts.appendChild(bo);
+      }
+      acts.appendChild(el('span', 'rin-gratis-nota', 'Gratuit — nu se scade din fondul RA Insight'));
+      bub.appendChild(acts);
     }
     async function rinAsk(preset) {
       if (rinBusy) return;
@@ -10184,28 +10566,36 @@ const pozitii = await r.json();</code></pre>
       var msg = ((preset != null ? preset : (inp ? inp.value : '')) || '').trim();
       if (!msg) return;
       if (inp) { inp.value = ''; inp.style.height = 'auto'; }
-      var sg = document.getElementById('rin-suggest'); if (sg) sg.innerHTML = '';
       rinAddMsg('user', msg);
       rinBusy = true;
       var btn = document.getElementById('rin-send'); if (btn) btn.disabled = true;
       var thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
       try {
-        var corp = { message: msg };
-        if (_rinConvId) corp.conversatieId = _rinConvId; else corp.nou = true;
-        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
-        var j = await r.json();
-        if (thinking) thinking.remove();
-        if (r.status === 404) _rinConvId = null; else if (j.conversatieId) _rinConvId = j.conversatieId;
-        var rinRow = rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
-        var rinB = rinRow && rinRow.querySelector('.rax-msg.ai');
-        if (rinB) rinB.appendChild(window._insightExtra(j, function (t) { rinAsk(t); }));
-        if (j.sources) rinRenderSources(j.sources);
+        var r = await fetch('/api/reports/ai-raport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ text: msg, context: _rinCtx || {} }) });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        if (thinking) { thinking.remove(); thinking = null; }
+        if (!r.ok) { rinAddMsg('ai', String(j.error || ('Nu am putut răspunde acum (eroare ' + r.status + ').'))); return; }
+        if (j.context) _rinCtx = j.context;
+        var row = rinAddMsg('ai', ''), bub = row && row.querySelector('.rax-msg.ai');
+        if (bub) rinRaspuns(bub, j, msg);
+        var wrap = document.getElementById('rin-msgs'); if (wrap) wrap.scrollTop = wrap.scrollHeight;
       } catch (e) { if (thinking) thinking.remove(); rinAddMsg('ai', 'Eroare de rețea: ' + e.message); }
-      rinBusy = false; if (btn) btn.disabled = false;
+      finally { rinBusy = false; if (btn) btn.disabled = false; }
     }
-    async function rinOpenReport(type, imei) {
+    // „Deschide raportul": cardul raportului, cu mașina și perioada din răspuns (scadențele au selectorul lor de lună).
+    async function rinOpenReport(type, imei, from, to) {
       repShowTab('generate');
-      try { await openReportCard(type); if (imei) { var sel = document.getElementById('rep-imei'); if (sel) sel.value = imei; } } catch (e) {}
+      try {
+        await openReportCard(type);
+        if (imei) { var sel = document.getElementById('rep-imei'); if (sel) sel.value = imei; }
+        if (from && to && type !== 'due' && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to))) {
+          var f = new Date(from), t = new Date(to);
+          if (repFromFp && repToFp) { repToFp.set('minDate', null); repFromFp.setDate(f, false); repToFp.setDate(t, false); repToFp.set('minDate', f); }
+          else { document.getElementById('rep-from').value = localISO(f); document.getElementById('rep-to').value = localISO(t); }
+          var grp = document.getElementById('rep-int-quick');
+          if (grp) Array.prototype.forEach.call(grp.querySelectorAll('.rep-quick'), function (b) { b.classList.remove('active'); });
+        }
+      } catch (e) {}
     }
     function repFmtDT(s) {
       if (!s) return '—';
@@ -11523,8 +11913,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', insight: 'insight-view', administrare: 'users-modal', hotspot: 'hotspot-view', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', insight: 'renderInsightPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -11804,6 +12194,7 @@ const pozitii = await r.json();</code></pre>
       // doar la clic pe rând. Dacă nu există rând pentru ecranul ăsta (ex. „administrare", care are
       // secțiuni), `_navAprinde` nu stinge nimic — aprinde apoi `_raxSideActive`, pe secțiune.
       if (window._navAprinde) window._navAprinde(document.querySelector('#navrail .nav-item[data-view="' + name + '"]'));
+      if (name !== 'insight' && window._raxUpdateFabs) { try { window._raxUpdateFabs(); } catch (e) {} }   // bula RA Insight revine când ieși din secțiune
       if (window.innerWidth <= 768) closeNavrail();
     }
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
@@ -18639,7 +19030,12 @@ const pozitii = await r.json();</code></pre>
       // RA Insight (asistentul unificat) răspunde și pe rapoarte → necesită permisiunea viewReports.
       if (!(me.isSuper || (me.permissions && me.permissions.viewReports))) $('rax-fabs').style.display = 'none';
       var na = $('nav-agenti'); if (na) na.style.display = (feats.agents !== false && me.permissions && me.permissions.viewReports) ? '' : 'none';
+      // RA Insight: rândul lui din meniu, când firma are modulul. Bula din colț tace cât e deschisă secțiunea
+      // (e aceeași discuție, iar bula ar acoperi caseta de scris).
+      var ni = $('nav-insight'); if (ni) ni.style.display = (feats.ai_assistant !== false) ? '' : 'none';
+      if (typeof currentView !== 'undefined' && currentView === 'insight') $('rax-fabs').style.display = 'none';
     }
+    window._raxUpdateFabs = updateFabs;   // showView o cheamă când ieși din secțiunea RA Insight
     setInterval(refresh, 4000); refresh();
 
     // ─── Catalog IO Teltonika (138 ID-uri + override-uri super-admin) ───
@@ -29001,9 +29397,10 @@ const pozitii = await r.json();</code></pre>
         });
       } catch (e) {}
 
-      var model = '<div class="agp-model">'
+      // RA Insight a plecat de aici (Alin, 02.10: „scoatem RA Insight din meniul Agenți AI și îl trecem separat în
+      // meniu”): are rândul și secțiunea lui. Pagina rămâne a celor 6 agenți, care lucrează singuri, gratuit.
+      var model = '<div class="agp-model" style="grid-template-columns:1fr;">'
         + '<div class="agp-h g" onclick="renderAgentsPage()" style="cursor:pointer;" title="Apasă pentru a reafișa agenții"><div class="agp-tile"><i class="fas fa-robot"></i></div><div><div class="agp-k">Agenții veghează</div><b>Automat, în fundal</b><p>Verifică flota periodic și ridică alerte, fără să faci nimic.</p></div></div>'
-        + '<div class="agp-h p"><div class="agp-tile"><i class="fas fa-wand-magic-sparkles"></i></div><div><div class="agp-k">RA Insight răspunde</div><b>La cerere, când vrei</b><p>Asistentul pe care-l întrebi tu ce vrei (nu pornește singur).</p><button class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="insightAsk()"><i class="fas fa-wand-magic-sparkles"></i> Deschide RA Insight</button></div></div>'
         + '</div>';
 
       var chips = '<div class="agp-chips">'
@@ -29480,10 +29877,13 @@ const pozitii = await r.json();</code></pre>
     // Launcher unic RA Insight — deschide asistentul și (opțional) trimite o întrebare.
     // Deschide RA Insight cu întrebarea PRECOMPLETATĂ, dar NU o trimite — userul apasă send.
     // (Evită apeluri plătite automate: nimic nu consumă tokeni decât dacă userul trimite intenționat.)
+    // Din 02.10 RA Insight are secțiunea lui: launcher-ul duce acolo (o conversație nouă, întrebarea doar scrisă).
     window.insightAsk = function (prefill) {
-      var ov = $('rax-ai-overlay');
-      if (ov && !ov.classList.contains('open')) { try { raxToggleAI(); } catch (e) {} }
-      setTimeout(function () { var inp = $('rax-ai-input'); if (inp) { if (prefill) inp.value = prefill; inp.focus(); } }, 160);
+      showView('insight');
+      setTimeout(function () {
+        if (window.insightNou) window.insightNou();
+        var inp = document.getElementById('insp-input'); if (inp) { if (prefill) inp.value = prefill; inp.focus(); }
+      }, 300);
     };
     // „Rezumă cu RA Insight" din antetul raportului → deschide asistentul + rezumă tabelul vizibil.
     window.insightSummarizeReport = function () {

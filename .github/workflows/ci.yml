@@ -38,6 +38,8 @@ jobs:
           node --check channels.js
           node --check ai.js
           node --check insight.js
+          node --check ai_raport.js
+          node --check insight_ghid.js
           node --check tacho.js
           node --check geocode.js
           # ⚠ NU adăuga aici un fișier fără să-l ai în depozit. `billing.js` a rămas scris în lista

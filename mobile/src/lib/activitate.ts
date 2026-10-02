@@ -37,7 +37,7 @@ export const IST_VERB: Record<string, Verb> = {
 };
 
 export const IST_OBIECT: Record<string, string> = {
-  device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate', device_history: 'istoricul complet al mașinii',
+  device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate', device_history: 'istoricul complet al mașinii', insight_notite: 'notițele firmei pentru RA Insight',
   driver: 'șoferul', drivers: 'lista de șoferi', user: 'utilizatorul', group: 'grupa', geofence: 'hotspotul',
   alert: 'alerta', maintenance: 'o lucrare de mentenanță', maint_intervals: 'intervalele de mentenanță',
   document: 'un document', doc_needs: 'actele obligatorii', report: 'un raport', report_schedule: 'un raport programat',

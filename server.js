@@ -213,6 +213,8 @@ const reports = require('./reports');
 const channels = require('./channels');
 const ai = require('./ai');
 const insight = require('./insight');   // RA Insight: fișa flotei (număr, nume, șofer, grupă), perioadele pe ora României, memoria
+const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": pașii adevărați, citiți gratuit sau prin RA Insight
+const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
 let ioCatalog = null;
@@ -4046,7 +4048,8 @@ function _insightInstructiuni(cuRapoarte) {
     'Rolul tău: omul află de la tine orice despre flota lui, fără să genereze singur rapoarte. Aduni datele din unelte și răspunzi clar.',
     'UNELTE:\n• fleet_status — starea LIVE acum (unde e fiecare mașină, în mișcare / ralanti / oprită / fără semnal, combustibilul).\n' +
       '• fleet_alerts — înștiințările active (fără semnal, service sau acte scadente, posibil furt de combustibil, ralanti, condus fără pauză, scor de condus slab).\n' +
-      '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă.\n• list_zones — zonele (hotspot) definite.' +
+      '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă.\n• list_zones — zonele (hotspot) definite.\n' +
+      '• cauta_in_ghid — ghidul aplicației RA Tracks: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).' +
       (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare).' : ''),
     'MAȘINILE: omul le numește după numărul de înmatriculare (cu sau fără spații: „B 154 UIP", „b154uip"), după nume („Dacia Logan 3"), ' +
       'după șofer („mașina lui Ion") sau după grupă. În unelte scrie exact ce a spus omul — aplicația recunoaște mașina. Dacă unealta ' +
@@ -4063,6 +4066,7 @@ function _insightInstructiuni(cuRapoarte) {
     'ALEGEREA UNELTEI: despre ACUM → fleet_status; „ce probleme are flota / ce expiră / ce e de făcut" → fleet_alerts' +
       (cuRapoarte ? '; analize pe perioadă (km, ore, consum, opriri, viteze, ralanti, scor de condus, zone) → run_report' : '') + '. Poți combina.',
     cuRapoarte ? 'Tipuri de raport pentru run_report (cheia din stânga):\n' + lista : '',
+    'GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo, cu numele butoanelor. Dacă ghidul nu are răspunsul, spune că nu știi sigur și trimite omul la suport (iconița căști din bara de sus) — nu ghici meniuri.',
     'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă consum fără senzor), spune ' +
       'sincer că nu e disponibilă. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
       '„B 154 UIP (Dacia Logan 3)". (5) Concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; alertele critice primele. ' +
@@ -4070,7 +4074,7 @@ function _insightInstructiuni(cuRapoarte) {
   ].filter(Boolean).join('\n\n');
 }
 // Partea care se schimbă la fiecare întrebare: ora, ce mașini a pomenit omul, ce s-a discutat până acum.
-function _insightContext(fisa, gasite, ctx, peImei) {
+function _insightContext(fisa, gasite, ctx, peImei, notite) {
   const z = new Date().toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const descrie = function (v) {
     const parti = [];
@@ -4088,6 +4092,8 @@ function _insightContext(fisa, gasite, ctx, peImei) {
   if (ctx.perioada && ctx.perioada.from) disc.push('perioada: ' + insight.etichetaPerioadei(ctx.perioada.from, ctx.perioada.to));
   if (Array.isArray(ctx.rapoarte) && ctx.rapoarte.length) disc.push('rapoarte: ' + ctx.rapoarte.map(function (t) { return (reports.REPORTS[t] || {}).label || t; }).join(', '));
   if (disc.length) r.push('Din discuția de până acum — ' + disc.join('; ') + '.');
+  // Regulile casei, scrise o dată de administratorul firmei („motorina e 7,30 lei", „la noi săptămâna e luni–sâmbătă").
+  if (notite) r.push('Notițele firmei (scrise de administratorul ei — ține cont de ele ca de regulile casei):\n' + notite);
   return r.join('\n');
 }
 // „Am înțeles": ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
@@ -4101,6 +4107,7 @@ function _insightInteles(sources, folosite, gasite, areIstoric) {
   if (folosite.has('fleet_status')) pune({ tip: 'perioada', text: 'acum' });
   for (const s of sources) pune({ tip: 'subiect', text: s.label });
   if (folosite.has('fleet_alerts')) pune({ tip: 'subiect', text: 'alertele active' });
+  if (folosite.has('cauta_in_ghid')) pune({ tip: 'subiect', text: 'ghidul aplicației' });
   return out;
 }
 
@@ -4190,7 +4197,8 @@ async function _raInsight(req, res, opts) {
       { name: 'list_vehicles', description: 'Toate mașinile la care are acces omul: număr de înmatriculare, nume, șofer, grupă, tip.', input_schema: { type: 'object', properties: {} } },
       { name: 'list_zones', description: 'Zonele (hotspot/geofence) definite. Necesare pentru raportul „hotspot".', input_schema: { type: 'object', properties: {} } },
       { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare mașină — unde e (adresă), în mișcare / ralanti / oprită / fără semnal, viteza, combustibilul (dacă există senzor), ultima transmisie. Pentru „unde e X acum", „care sunt oprite", „cine se mișcă".', input_schema: { type: 'object', properties: {} } },
-      { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale flotei: fără semnal, service depășit sau aproape, acte care expiră (ITP/RCA), posibil furt de combustibil, ralanti excesiv, condus peste limita legală, scor de condus slab. Pentru „ce probleme are flota", „ce trebuie să știu", „ce expiră".', input_schema: { type: 'object', properties: {} } }
+      { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale flotei: fără semnal, service depășit sau aproape, acte care expiră (ITP/RCA), posibil furt de combustibil, ralanti excesiv, condus peste limita legală, scor de condus slab. Pentru „ce probleme are flota", „ce trebuie să știu", „ce expiră".', input_schema: { type: 'object', properties: {} } },
+      { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Tracks: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } }
     ];
     if (cuRapoarte) tools.push({
       name: 'run_report',
@@ -4219,11 +4227,20 @@ async function _raInsight(req, res, opts) {
         return out;
       },
       list_zones: async () => { folosite.add('list_zones'); return { zones: zones.map(z => z.name) }; },
+      cauta_in_ghid: async (input) => {
+        folosite.add('cauta_in_ghid');
+        const gasite = insightGhid.cauta(String((input && input.intrebare) || ''), 3);
+        if (!gasite.length) return { gasit: false, mesaj: 'Ghidul nu are pașii pentru asta. Spune-i omului că nu știi sigur și trimite-l la suport (iconița căști din bara de sus).' };
+        return { gasit: true, sectiuni: gasite.map(function (g) { return { titlu: g.titlu, unde: g.unde, pasi: g.pasi, detalii: g.detalii }; }) };
+      },
       run_report: async (input) => {
         if (!cuRapoarte) return { error: 'Omul nu are acces la rapoarte.' };
         if (reportCalls >= INSIGHT_MAX_RAPOARTE) return { error: 'Ai atins limita de ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare. Răspunde cu datele deja adunate.' };
         const type = String(input.type || '');
         if (!reports.REPORTS[type]) return { error: 'Tip necunoscut: ' + type + '. Valide: ' + Object.keys(reports.REPORTS).join(', ') };
+        // Aceleași drepturi ca ecranul Rapoarte: un raport tăiat din rolul omului nu se scoate nici prin RA Insight
+        // (găsit pe drum, 02.10 — înainte RA Insight le rula oricum).
+        if (!poateRaport(req, type)) return { error: 'Omul nu are acces la raportul „' + reports.REPORTS[type].label + '" (l-a tăiat firma din rolul lui). Spune-i asta, fără cifre din alt raport.' };
         let imeis = allImeis, eticheta = null, imei = null;
         const cine = input.vehicle || input.group;
         if (cine) {
@@ -4302,9 +4319,11 @@ async function _raInsight(req, res, opts) {
       }
     };
 
+    let notite = '';
+    try { if (req.companyId != null) notite = String((await db.getCompanySettings(req.companyId)).insight_notite || '').trim(); } catch (e) { /* fără notițe */ }
     const system = [
       { type: 'text', text: _insightInstructiuni(cuRapoarte), cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: _insightContext(fisa, gasite, ctx, peImei) }
+      { type: 'text', text: _insightContext(fisa, gasite, ctx, peImei, notite) }
     ];
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
@@ -4397,6 +4416,56 @@ app.post('/api/insight/mesaje/:id/feedback', requireAuth, withScope, requireFeat
     const ok = await db.feedbackMesajAi(req.params.id, req.auth && req.auth.userId, v === 1 || v === -1 ? v : null);
     if (!ok) return res.status(404).json({ error: 'Răspunsul nu există.' });
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── Notițele firmei pentru RA Insight (pasul 2) ───
+// Regulile casei, scrise O DATĂ de administratorul firmei și citite de RA Insight la fiecare întrebare: „motorina e
+// 7,30 lei", „grupa Distribuție = cele 8 dube", „la noi săptămâna e luni–sâmbătă". Le văd toți cei cu RA Insight din
+// firmă (de-aia nu se pun acolo date personale); le scrie doar cine administrează oamenii firmei.
+const INSIGHT_NOTITE_MAX = 1500;
+app.get('/api/insight/notite', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    const text = req.companyId != null ? String((await db.getCompanySettings(req.companyId)).insight_notite || '') : '';
+    res.json({ text: text, max: INSIGHT_NOTITE_MAX, poateScrie: req.companyId != null && permReq(req, 'manageUsers') });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/insight/notite', requireAuth, requireAdmin, withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Notițele sunt ale unei firme: alege întâi firma.' });
+    // Fără caractere de control (în afară de rând nou); tăiat la plafon.
+    const text = String((req.body || {}).text || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '').slice(0, INSIGHT_NOTITE_MAX).trim();
+    await db.setCompanySettings(req.companyId, { insight_notite: text });
+    auditReq(req, 'update', 'insight_notite', req.companyId, { lungime: text.length });
+    res.json({ ok: true, text: text });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── Ghidul aplicației: pașii adevărați, de citit (gratuit) — aceiași pe care îi folosește RA Insight ───
+app.get('/api/insight/ghid', requireAuth, (req, res) => {
+  res.json({ sectiuni: insightGhid.publice() });
+});
+// ─── Ce întreabă clienții — pentru noi, FĂRĂ textul întrebărilor ───
+// Conversațiile sunt ale oamenilor (nu le citim). Ca să știm ce merită construit, numărăm doar ce se vede din afară:
+// ce rapoarte a rulat RA Insight, câte răspunsuri au fost gratuite, câte 👍 și 👎.
+app.get('/api/admin/insight/statistici', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const zile = Math.min(Math.max(parseInt(req.query.zile) || 30, 1), 365);
+    const t = await db.pool.query(
+      `SELECT COUNT(*)::int AS raspunsuri,
+              COUNT(*) FILTER (WHERE feedback = 1)::int AS sus,
+              COUNT(*) FILTER (WHERE feedback = -1)::int AS jos,
+              COUNT(*) FILTER (WHERE extra->>'source' = 'local')::int AS gratuite
+         FROM ai_mesaje WHERE rol = 'assistant' AND creat_la > NOW() - make_interval(days => $1::int)`, [zile]);
+    const r = await db.pool.query(
+      `SELECT s->>'type' AS tip, COUNT(*)::int AS n
+         FROM ai_mesaje m, jsonb_array_elements(COALESCE(m.extra->'sources', '[]'::jsonb)) s
+        WHERE m.rol = 'assistant' AND m.creat_la > NOW() - make_interval(days => $1::int)
+        GROUP BY 1 ORDER BY 2 DESC LIMIT 12`, [zile]);
+    const c = await db.pool.query(
+      `SELECT COUNT(*)::int AS conversatii, COUNT(DISTINCT user_id)::int AS oameni, COUNT(DISTINCT company_id)::int AS firme
+         FROM ai_conversatii WHERE actualizat_la > NOW() - make_interval(days => $1::int)`, [zile]);
+    res.json(Object.assign({ zile: zile }, t.rows[0] || {}, c.rows[0] || {}, {
+      rapoarte: r.rows.map(function (x) { return { tip: x.tip, eticheta: (reports.REPORTS[x.tip] || {}).label || x.tip, n: x.n }; })
+    }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Conversațiile în care nu s-a mai scris de 12 luni se șterg (zilnic; de mână: ruta de mai jos). Rând în audit.
@@ -13045,6 +13114,110 @@ app.delete('/api/reports/history/:id', requireAuth, requirePerm('viewReports'), 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── AI Raport (Rapoarte → fila „AI Raport"): întrebări despre rapoarte, pe REGULI — gratuit (Alin, 02.10) ───
+// „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul care va costa." Înțelegerea
+// și propozițiile stau în ai_raport.js; aici: drepturile (aceleași ca la Rapoarte), mașinile accesibile, raportul rulat cu
+// ACELEAȘI opțiuni ca ecranul (_optiuniRaport). Nimic nu ajunge la model și nimic nu se numără din fondul RA Insight.
+// Întrebarea omului nu se scrie nicăieri (în jurnal: doar subiectul și câte mașini).
+const AI_RAPORT_PE_MINUT = 30;   // rapoartele încarcă baza: un plafon pe om, ca o buclă să nu încetinească tot serverul
+const _aiRaportRata = new Map();
+function _aiRaportPreaDes(userId) {
+  const acum = Date.now(), k = String(userId || 'anon');
+  let b = _aiRaportRata.get(k);
+  if (!b || acum > b.pana) { b = { n: 0, pana: acum + 60000 }; _aiRaportRata.set(k, b); }
+  b.n++;
+  if (_aiRaportRata.size > 2000) for (const [kk, v] of _aiRaportRata) if (acum > v.pana) _aiRaportRata.delete(kk);
+  return b.n > AI_RAPORT_PE_MINUT;
+}
+app.get('/api/reports/ai-raport/intrebari', requireAuth, requirePerm('viewReports'), (req, res) => {
+  res.json({ intrebari: aiRaport.INTREBARI_GATA });
+});
+app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (_aiRaportPreaDes(req.auth && req.auth.userId)) return res.status(429).json({ error: 'Prea multe întrebări într-un minut. Mai așteaptă puțin.' });
+    const b = req.body || {};
+    const text = String(b.text || '').slice(0, 500).trim();
+    // Mașinile la care are acces omul — aceeași regulă ca la rapoarte (fără arhivate, fără mașinile demo pe flota reală).
+    if (b.imei != null) delete b.imei;   // mașina o alege întrebarea, nu un câmp trimis pe lângă
+    const accesibile = await resolveReportImeis(req);
+    if (!accesibile) return res.status(403).json({ error: 'Acces interzis' });
+    const setAcc = new Set(accesibile);
+    const scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
+    let devices = await db.getDevices(scope === -1 ? -1 : scope);
+    devices = devices.filter(function (d) { return setAcc.has(d.imei); });
+    const soferi = {};
+    try { (await db.getDriversLite(scope === -1 ? -1 : scope)).forEach(function (s2) { soferi[s2.id] = s2.name; }); } catch (e) {}
+    const fisa = insight.fisaFlotei(devices, soferi);
+    // Ce s-a discutat (îl ține ecranul și ni-l trimite înapoi) — curățat: doar mașini accesibile, doar subiecte cunoscute.
+    const c0 = (b.context && typeof b.context === 'object') ? b.context : {};
+    const ctx = {};
+    if (aiRaport.SUBIECTE.some(function (x) { return x.k === c0.subiect; })) ctx.subiect = c0.subiect;
+    if (Array.isArray(c0.masini)) { const m = c0.masini.map(String).filter(function (i) { return setAcc.has(i); }).slice(0, 50); if (m.length) ctx.masini = m; }
+    if (typeof c0.grupa === 'string' && ctx.masini) ctx.grupa = c0.grupa.slice(0, 60);
+    if (c0.perioada && !isNaN(Date.parse(c0.perioada.from)) && !isNaN(Date.parse(c0.perioada.to))) ctx.perioada = { from: c0.perioada.from, to: c0.perioada.to };
+    const u = aiRaport.intelege(text, ctx, fisa, Date.now());
+    if (!u.ok) return res.json(Object.assign({ neinteles: true, motiv: u.motiv, context: ctx, gratuit: true }, aiRaport.neinteles(u.motiv, u.variante, fisa)));
+    const def = reports.REPORTS[u.raport];
+    if (!def) return res.json({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx, gratuit: true });
+    if (!poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx, gratuit: true });
+    // Perioada: cel mult MAX_ZILE (scadențele privesc înainte și nu încarcă istoricul).
+    let from = u.perioada.from, to = u.perioada.to, taiat = false;
+    if (u.subiect !== 'scadente' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
+    const imeis = u.masini || accesibile;
+    if (!imeis.length) return res.json({ neinteles: true, motiv: 'fara_masini', text: 'Nu ai nicio mașină la care să ai acces, deci nu am din ce răspunde.', context: ctx, gratuit: true });
+    const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
+    const opts = _optiuniRaport({}, cs);
+    const rep = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
+    const extra = { fisa: fisa, acum: Date.now(), pret: (effectiveFuelPrices(cs).motorina || 7.5) };
+    // Sugestiile care cer încă un raport — doar pe o mașină sau câteva, ca să nu dublăm încărcarea pe toată flota.
+    if ((u.subiect === 'km' || u.subiect === 'consum') && imeis.length <= 10) {
+      const ant = aiRaport.perioadaAnterioara({ from: from, to: to });
+      try { extra.anterior = await reports.runReport(db, u.raport, imeis, ant.from, ant.to, opts, scope); } catch (e) {}
+    }
+    if (u.subiect === 'consum' && imeis.length <= 10 && poateRaport(req, 'fuel')) {
+      try { extra.alimentari = await reports.runReport(db, 'fuel', imeis, from, to, opts, scope); } catch (e) {}
+    }
+    const r = aiRaport.raspunde(Object.assign({}, u, { perioada: Object.assign({}, u.perioada, { from: from, to: to }) }), rep, extra);
+    if (taiat) r.sugestii.unshift({ fel: 'info', text: 'Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se scoate din „Generează rapoarte".' });
+    auditReq(req, 'ai_raport', 'report', null, { subiect: u.subiect, masini: imeis.length });
+    res.json({
+      inteles: aiRaport.inteles(u, fisa), raspuns: r, gratuit: true,
+      sursa: { type: u.raport, label: def.label, from: from, to: to, imeis: u.masini || null },
+      context: { subiect: u.subiect, masini: u.masini || null, grupa: u.grupa || null, perioada: { from: from, to: to } }
+    });
+  } catch (e) {
+    console.warn('[AI Raport]', e.message);
+    res.status(500).json({ error: 'AI Raport: ' + e.message });
+  }
+});
+// Opțiunile unui raport (praguri, preț combustibil, filtre) — O SINGURĂ dată, pentru ecranul Rapoarte și pentru
+// „AI Raport" (02.10), ca amândouă să scoată aceleași cifre. `q` = parametrii cererii (req.query, sau ce pune AI Raport).
+function _optiuniRaport(q, _cs) {
+  q = q || {};
+  return {
+      stopMin: parseInt(q.stopMin) || 5,
+      limit: parseInt(q.limit) || 90,
+      refuelMin: parseInt(q.refuelMin) || 10,
+      dropMin: parseInt(q.dropMin) || 10,
+      zoneMin: q.zoneMin != null ? (parseFloat(q.zoneMin) || 0) : 2, // Vizite în zone: ignoră vizitele mai scurte de atât (min); lipsă (client vechi în cache) → default 2
+      harshAccel: parseFloat(q.harshAccel) || 7, // EcoDrive: prag accelerare bruscă (km/h/s)
+      harshBrake: parseFloat(q.harshBrake) || 9, // EcoDrive: prag frânare bruscă (km/h/s)
+      harshTurn: parseFloat(q.harshTurn) || 25,  // EcoDrive: prag viraj brusc (°/s)
+      geo: q.geo !== '0',                        // EcoDrive: geocodare adrese la Locație (implicit da); geo=0 → doar coordonate (rapid)
+      geofenceId: parseInt(q.geofenceId) || null,
+      osm: q.osm === '1', // Depășiri viteză: compară cu limita reală a drumului (OpenStreetMap) în loc de pragul fix
+      osmOver: q.osmOver != null ? (parseInt(q.osmOver) || 0) : 20, // OSM: prag relativ (km/h peste limita drumului). Lipsă (client vechi în cache) → default recomandat +20, nu „tot"
+      sampleSec: parseInt(q.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
+      all: q.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
+      geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
+      timeFilter: parseReportTimeFilter(q), // filtru zile/ore (cascadă) — null dacă nu e cerut
+      priceByType: effectiveFuelPrices(_cs),
+      // CAN detaliat: semnalele bifate de om. Se curăță în io_signals.curata() — orice cheie
+      // necunoscută se aruncă, fiindcă ajunge într-o interogare pe baza de date.
+      signals: q.signals ? String(q.signals).split(',').slice(0, 20) : null,
+      canBucket: parseInt(q.canBucket) || 0   // lățimea unui interval (sec); 0 = aleasă din perioadă
+  };
+}
 app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     // Raport cu raport: firma poate tăia din rol exact ce rapoarte scoate omul. Verificarea stă AICI,
@@ -13055,29 +13228,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     const from = req.query.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
     const to = req.query.to || new Date().toISOString();
     const _cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
-    const opts = {
-      stopMin: parseInt(req.query.stopMin) || 5,
-      limit: parseInt(req.query.limit) || 90,
-      refuelMin: parseInt(req.query.refuelMin) || 10,
-      dropMin: parseInt(req.query.dropMin) || 10,
-      zoneMin: req.query.zoneMin != null ? (parseFloat(req.query.zoneMin) || 0) : 2, // Vizite în zone: ignoră vizitele mai scurte de atât (min); lipsă (client vechi în cache) → default 2
-      harshAccel: parseFloat(req.query.harshAccel) || 7, // EcoDrive: prag accelerare bruscă (km/h/s)
-      harshBrake: parseFloat(req.query.harshBrake) || 9, // EcoDrive: prag frânare bruscă (km/h/s)
-      harshTurn: parseFloat(req.query.harshTurn) || 25,  // EcoDrive: prag viraj brusc (°/s)
-      geo: req.query.geo !== '0',                        // EcoDrive: geocodare adrese la Locație (implicit da); geo=0 → doar coordonate (rapid)
-      geofenceId: parseInt(req.query.geofenceId) || null,
-      osm: req.query.osm === '1', // Depășiri viteză: compară cu limita reală a drumului (OpenStreetMap) în loc de pragul fix
-      osmOver: req.query.osmOver != null ? (parseInt(req.query.osmOver) || 0) : 20, // OSM: prag relativ (km/h peste limita drumului). Lipsă (client vechi în cache) → default recomandat +20, nu „tot"
-      sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
-      all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
-      geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
-      timeFilter: parseReportTimeFilter(req.query), // filtru zile/ore (cascadă) — null dacă nu e cerut
-      priceByType: effectiveFuelPrices(_cs),
-      // CAN detaliat: semnalele bifate de om. Se curăță în io_signals.curata() — orice cheie
-      // necunoscută se aruncă, fiindcă ajunge într-o interogare pe baza de date.
-      signals: req.query.signals ? String(req.query.signals).split(',').slice(0, 20) : null,
-      canBucket: parseInt(req.query.canBucket) || 0   // lățimea unui interval (sec); 0 = aleasă din perioadă
-    };
+    const opts = _optiuniRaport(req.query, _cs);
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
     // ─── Generare în FUNDAL (background=1): răspundem imediat, generăm async, apoi notificăm userul ───
     // Notificarea „report_ready" ajunge în clopoțel (WS) pe web + push FCM pe APK + în lista de notificări.

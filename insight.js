@@ -41,6 +41,8 @@ function fisaFlotei(devices, soferi) {
     return {
       imei: String(d.imei), nume: nume || nr || String(d.imei), nr: nr, sofer: sofer, grupa: grupa,
       tip: d.vehicle_type || null,
+      // cum o scriu rapoartele („Dacia Logan 3 (B 154 UIP)") — ca AI Raport s-o recunoască în rândurile lor
+      etRaport: (nume || String(d.imei)) + (nr ? ' (' + nr + ')' : ''),
       _nr: compact(nr), _nume: norm(nume), _cuv: cuvinte(nume).map(radacina), _sofer: cuvinte(sofer), _grupa: norm(grupa)
     };
   });
