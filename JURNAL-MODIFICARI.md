@@ -74,9 +74,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: „Date emitent" cu datele reale ale RA Tracks. Adăugat pe 29.09.** Facturare → „Date emitent":
   numele firmei, CUI, Reg. Com., adresa, IBAN, banca, cota de TVA. Fără nume și CUI nu pleacă nicio factură,
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
-  **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025). Adăugat pe 29.09: dacă rămâne necompletată, aplicația
+  **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025) — ⚠ **dar vedeți nota din 03.10, de mai jos.** Adăugat pe 29.09: dacă rămâne necompletată, aplicația
   pune singură 19% pe facturi — cifra veche. (Din 01.10, necompletată = 21%: reparat, lista lui Robert, pct. 4. Dacă pe
   ratrack.ro e scris deja 19 acolo, rămâne 19 — de verificat.)
+  **03.10, din ANAF: DUO BUSINESS CONCEPT S.R.L. NU e înregistrată în scopuri de TVA.** Cât rămâne așa, în „Date emitent"
+  bifați „neplătitor de TVA" și puneți cota 0, nu 21% — aplicația scrie atunci pe factură „neplătitor de TVA" și trimite
+  la ANAF fără TVA. Altfel, o factură de 100 de lei ar ieși 121 de lei, cu un TVA pe care firma nu are voie să-l ceară.
+  Întrebați contabilul dacă vă înregistrați în scopuri de TVA (punctul despre pașii la ANAF, de mai jos).
 - [ ] **Voi: pașii firmei la ANAF, înainte de prima factură reală. Adăugat pe 30.09.** (1) un contabil; (2) semnătura
   electronică a administratorului (cam 150–400 lei pe an, de la un furnizor autorizat); (3) firma în SPV, pe anaf.ro,
   cu semnătura — de obicei o face contabilul cu voi; (4) apoi Robert ia „cheia" e-Factura și o pune pe server (punctul
@@ -127,6 +131,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
   telefonul (aceleași ca în „Date emitent") și adresele paginilor de Facebook / LinkedIn, dacă există, și le pun eu.
   Aceleași date trebuie să fie și în profilul de Google (punctul de mai sus), literă cu literă.
+  **03.10 (Robert: „Duo business concept, cu sediul în Pantelimon — caută tu datele corecte"):** puse, din ANAF, pe
+  Termeni, pe Confidențialitate și în subsolul primei pagini: DUO BUSINESS CONCEPT S.R.L., CUI 48718634, Reg. Com.
+  J2023005685230 (vechiul format: J23/5685/2023), Str. Migdalilor nr. 49A, camera 1, Pantelimon, jud. Ilfov. **Rămân:**
+  telefonul (în ANAF e trecut 0729 699 847 — îl punem pe site și la WhatsApp?), emailul (contact@ratrack.ro nu
+  primește încă nimic: domeniul n-are căsuță de email) și paginile de Facebook / LinkedIn.
 - [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
   fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
   clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
@@ -175,7 +184,35 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-03
 
-### CLIENT · Site-ul public: corecturile găsite pe drum, urcate (Robert: „da") — `HASH`
+### CLIENT · Datele firmei pe site: DUO BUSINESS CONCEPT S.R.L. — `HASH`
+
+Robert (03.10): *„Duo business concept cu sediul în Pantelimon (caută tu datele corecte)"*. Datele sunt luate de la
+ANAF (registrul public al contribuabililor, 03.10.2026), nu dintr-un site de firme:
+
+| | |
+|---|---|
+| Denumire | DUO BUSINESS CONCEPT S.R.L. |
+| CUI | 48718634 |
+| Reg. Com. | J2023005685230 (vechiul format: J23/5685/2023) |
+| Sediul | Str. Migdalilor nr. 49A, camera 1, Pantelimon, jud. Ilfov, cod poștal 077145 |
+| TVA | neplătitor (nu e înregistrată în scopuri de TVA) |
+
+1. **Termeni și Confidențialitate:** numele, CUI-ul, Reg. Com. și sediul în locul golurilor „[NUME FIRMĂ SRL]",
+   „[CUI]", „[nr.]", „[adresă]"; „Ultima actualizare: 03.10.2026". Emailul a rămas „[contact@ratrack.ro]".
+2. **Prima pagină, în subsol:** „RA Tracks, operat de DUO BUSINESS CONCEPT S.R.L. · CUI · Reg. Com. · Pantelimon,
+   jud. Ilfov" — legea comerțului electronic (Legea 365/2002, art. 5) cere ca vizitatorul să găsească aceste date pe
+   site. Aceleași date, și în datele pentru Google despre organizație (denumirea legală, CUI-ul, adresa).
+3. **Nu le-am pus:** telefonul (ANAF are 0729 699 847 — îl punem?), emailul (contact@ratrack.ro nu primește nimic) și
+   Facebook / LinkedIn. „Locație: România" din contactul primei pagini a rămas cum era.
+4. **Găsit pe drum — TVA:** firma nu e plătitoare de TVA, deci „Date emitent" trebuie pus pe „neplătitor", cota 0.
+   Aplicația știe deja să emită așa. Scris la „De amintit", la „Date emitent".
+
+- **Ce am schimbat:** `termeni.html`, `confidentialitate.html`, `landing.html` (subsolul și datele structurate),
+  datele din harta site-ului (`PAGINI_PUBLICE`).
+- **Ce vede fondatorul:** aceleași pagini ca orice vizitator.
+- **Ce vede clientul:** cine operează serviciul, cu datele firmei, pe Termeni, pe Confidențialitate și în subsol.
+
+### CLIENT · Site-ul public: corecturile găsite pe drum, urcate (Robert: „da") — `c4d2c82`
 
 Robert (03.10), la întrebarea de ieri: *„1. da"*. Ce s-a schimbat pe site (lista din 02.10, „Găsite pe drum"):
 
