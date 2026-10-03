@@ -173,35 +173,35 @@ Confidențialitate.
 - **`modificat` = ziua în care s-a schimbat TEXTUL paginii** = `lastmod` din sitemap. NU pune înapoi ziua de azi:
   o dată care se schimbă la fiecare citire e una pe care Google o ignoră. `amprenta` = amprenta textului (titlu,
   descriere, ce se vede); schimbi textul și uiți data → `verify_site_public.js` pică și îți scrie exact ce să pui.
-- **`DE_HOTARAT` (în probă): ce am găsit pe 02.10 în afara lucrului cerut și NU am reparat** — regula casei din
-  01.10 („ce găsesc pe drum, întreb"). Cât un rând stă acolo, verificarea lui doarme și proba îl tipărește la fiecare
-  rulare. Corecturile sunt gata pe ramura locală `seo-corecturi`; când se hotărăște, se aduc și se scoate rândul.
-  Azi: promisiunile primei pagini (mai jos), datele pentru Google ale întrebărilor frecvente (10 din 11, rezumate),
-  păstrarea datelor scrisă vag acolo, bannerul de cookie-uri lipsă tot acolo, „Ultima actualizare" de pe Termeni și
-  Confidențialitate (arată ziua de azi, din browser) și „TrackGPS" din descrierea documentației API.
+- **`DE_HOTARAT` (în probă): ce se găsește pe drum și încă nu s-a hotărât** — regula casei din 01.10 („ce găsesc
+  pe drum, întreb"). Cât un rând stă acolo, verificarea lui doarme și proba îl tipărește la fiecare rulare. Cele
+  șase găsite pe 02.10 (promisiunile primei pagini, datele pentru Google ale întrebărilor frecvente, păstrarea
+  datelor scrisă vag, bannerul de cookie-uri lipsă, „Ultima actualizare" falsă, „TrackGPS") — Robert, 03.10: „da";
+  corectate, lista e goală.
+- **Termeni / Confidențialitate:** „Ultima actualizare" e data FIXĂ = `modificat` (`<time datetime>`), nu ziua de
+  azi din browser — cum era până pe 03.10, o dată falsă pe un document legal. Schimbi textul → schimbi amândouă.
 - **Fiecare pagină publică:** titlu (≤ 70), descriere, adresă canonică, UN `<h1>`, Nunito, iconiță și bannerul de
-  cookie-uri (`/js/consent.js`) — afară de întrebările frecvente, cât e „de hotărât".
+  cookie-uri (`/js/consent.js`).
 - **Întrebările din datele pentru Google (FAQPage) sunt IDENTICE cu cele de pe pagină**, cuvânt cu cuvânt, în aceeași
-  ordine (pe cele trei pagini pe funcții; pe întrebările frecvente, cât e „de hotărât", doar numele întrebărilor).
-  Schimbi o întrebare pe pagină → o schimbi și în bloc.
-- **Paginile pe funcții spun DOAR ce face aplicația azi** (verificat în cod pe 02.10). ⚠ Prima pagină încă promite
-  câteva din lista de mai jos — e „de hotărât", vezi `DE_HOTARAT`. Ce NU promitem, deliberat: că agenții
+  ordine, pe toate paginile (pe întrebările frecvente erau 10 din 11, rezumate, până pe 03.10). Schimbi o întrebare
+  pe pagină → o schimbi și în bloc.
+- **Paginile spun DOAR ce face aplicația azi** (verificat în cod pe 02.10; prima pagină corectată pe 03.10). Ce NU
+  promitem, deliberat: că agenții
   lucrează „24/7" (doar RA Watch, o dată pe oră; ceilalți cinci, când le deschizi pagina), că agenții trimit
   notificări pe telefon (nu trimit), raportul RA Client „în fiecare dimineață" (nu există), scorul RA Optimize „pe
   șofer" (e pe vehicul; clasamentul șoferilor e raportul EcoDrive), „condus și odihnă" la RA Compliance (e o estimare
   din GPS, doar condusul de azi), alerta de „deconectare" (nu există), harta de căldură „pe unde trec" (arată unde
   STAU), adresa scrisă la dispecerizare (locul se alege pe hartă), cardurile de combustibil, emailul (fără SMTP pe
   ratrack.ro), descărcarea tahografului, e-Transport, taxa de drum. Fără prețuri.
-- **Cifrele scrise pe pagini sunt legate de cod în probă** (`LEGATE`): 16 lucrări de service (`maint_types.js`), 30
-  de zile preaviz la acte (`DOC_DAYS_LEAD`), 14 zile / 500 km la revizii, pragurile lui RA Watch (`agents.js`), 4h30 /
-  9 ore / 45 de minute (RA Compliance), 12 ore între constatări (`db.js`), RA Watch din oră în oră. Rândurile pentru
-  prima pagină și întrebările frecvente (16 tipuri de alerte, 12 luni, 30 de zile) dorm cât sunt „de hotărât". Cifra
-  rapoartelor de pe prima pagină nu poate trece de catalog; după hotărâre, se NUMĂRĂ (rotunjit în jos la zece, ca pe
-  hârtia ofertei: „30+").
+- **Cifrele scrise pe pagini sunt legate de cod în probă** (`LEGATE`): 16 tipuri de alerte (`ALERT_TYPES`, prima
+  pagină), 16 lucrări de service (`maint_types.js`), 30 de zile preaviz la acte (`DOC_DAYS_LEAD`), 14 zile / 500 km
+  la revizii, 12 luni de istoric și 30 de zile după încetare (`contracts.js`, întrebările frecvente), pragurile lui
+  RA Watch (`agents.js`), 4h30 / 9 ore / 45 de minute (RA Compliance), 12 ore între constatări (`db.js`), RA Watch
+  din oră în oră. „30+ tipuri de rapoarte" se NUMĂRĂ din catalog, rotunjit în jos la zece, ca pe hârtia ofertei.
 - **Diacriticele se verifică pe cuvinte** (`FARA_DIACRITICE`). ⚠ Granița de cuvânt e scrisă cu litere Unicode:
   `\b` din JavaScript socotește „ș" punctuație și ar găsi „in" în „mașină".
-- `/api-docs` (și `/docs`, `/api-docs.html`) are adresă canonică; nu e în sitemap. Descrierea scrie încă „RA Tracks /
-  TrackGPS" (marca altei firme) — „de hotărât".
+- `/api-docs` (și `/docs`, `/api-docs.html`) are adresă canonică; nu e în sitemap. Descrierea spunea „RA Tracks /
+  TrackGPS" — TrackGPS e marca altei firme; scos pe 03.10.
 - Păzit de `verify_site_public.js` (în `npm test`), inclusiv pe server pornit (sitemap, 301, robots.txt).
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)

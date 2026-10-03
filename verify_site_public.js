@@ -108,18 +108,12 @@ function siruriDinScripturi(html) {
   return rez;
 }
 
-// ── Găsite pe 02.10, în afara lucrului cerut, și NEREPARATE încă ────────────────────────────────────
+// ── Găsite pe drum și încă NEHOTĂRÂTE ──────────────────────────────────────────────────────────────
 // Regula casei (Alin, 01.10): ce găsesc pe drum NU repar pe tăcute și NU las deoparte pe tăcute — întreb.
-// Corecturile sunt gata, pe ramura locală `seo-corecturi`. Cât un rând stă aici, verificarea lui doarme,
-// iar proba îl tipărește la fiecare rulare. Când se hotărăște, scoate rândul: verificarea pornește.
-const DE_HOTARAT = {
-  primaPagina: 'prima pagină promite ce aplicația nu face: agenții „24/7", RA Client „în fiecare dimineață… topul șoferilor", scorul „pe șofer", RA Compliance „condus și odihnă", RA Watch „te alertează instant", alerta de „deconectări", harta de căldură „pe unde trec", „14+" / „32 de tipuri" de rapoarte (sunt 33)',
-  faqDateGoogle: 'întrebările frecvente: datele pentru Google au 10 din 11 întrebări, cu răspunsurile rezumate',
-  faqPastrare: 'întrebările frecvente: păstrarea datelor scrie „o perioadă stabilită", nu 12 luni / 30 de zile după încetare',
-  faqBanner: 'întrebările frecvente: fără bannerul de cookie-uri, singura pagină publică așa',
-  dataLegala: 'Termeni și Confidențialitate: „Ultima actualizare" arată ziua de azi, din calculatorul vizitatorului',
-  apiDocs: 'documentația API: descrierea scrie „RA Tracks / TrackGPS" — marca altei firme',
-};
+// Cât un rând stă aici, verificarea lui doarme, iar proba îl tipărește la fiecare rulare. Când se hotărăște,
+// scoate rândul: verificarea pornește. (Cele șase găsite pe 02.10: Robert, 03.10 — „da", corectate.)
+// Forma unui rând: cheie: 'ce e greșit, pe scurt' — iar verificarea lui întreabă `if (!DE_HOTARAT.cheie)`.
+const DE_HOTARAT = {};
 for (const t of Object.values(DE_HOTARAT)) console.log('  ⓘ de hotărât (02.10): ' + t);
 
 // ── 1. Fiecare pagină ───────────────────────────────────────────────────────────────────────────────

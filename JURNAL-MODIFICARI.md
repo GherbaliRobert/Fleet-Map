@@ -84,7 +84,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
-- [ ] **Robert: cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** Alin a hotărât să le facă el. Lista,
+- [x] **BIFAT pe 03.10 (Robert: „da"): cele 26 de reparații găsite la verificările lui. Adăugat pe 01.10.** 24 făcute pe
+  01.10; punctul 11 e rândul de mai jos, iar punctul 8 a trecut pe un rând al lui (mai jos, „Alin: aparatul schimbat"). Alin a hotărât să le facă el. Lista,
   pe 4 loturi (siguranță → bani → contracte → ecrane și texte), cu locul din cod și reparația, e în documentul
   „Reparații pentru Robert" (https://claude.ai/code/artifact/39d2702f-d17c-4871-9d42-7af5ad3b3357); acolo bifează și
   starea fiecăruia. Punctul 8 (aparat schimbat pe aceeași mașină): Alin, 01.10 — „îl face Robert"; e pe lista lui.
@@ -111,11 +112,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   www.ratrack.ro → ratrack.ro, permanentă (301).
 - [ ] **Voi: profilul firmei pe Google (Google Business Profile). Adăugat pe 02.10.** Numele, adresa, telefonul,
   programul și linkul spre site — e ce vede primul cine caută firma pe nume.
-- [ ] **Voi: hotărâți corecturile de pe site, găsite pe 02.10.** Prima pagină promite câteva lucruri pe care aplicația
+- [x] **HOTĂRÂT (03.10): corecturile de pe site, găsite pe 02.10 — Robert: „da"; urcate pe 03.10.** Prima pagină promite câteva lucruri pe care aplicația
   nu le face (agenții „24/7", raportul „în fiecare dimineață", alerta de „deconectări"…), „Ultima actualizare" de pe
   Termeni și Confidențialitate arată ziua de azi, întrebările frecvente au datele pentru Google incomplete și păstrarea
   datelor scrisă vag, documentația API pomenește „TrackGPS". Corecturile sunt gata (ramura „seo-corecturi"); lista
   întreagă e în jurnal, la 02.10. Un „da" (sau „da, fără …") și le urc.
+- [ ] **Alin: aparatul schimbat pe aceeași mașină (punctul 8 din lista lui Robert). Trecut pe rândul lui pe 03.10.**
+  Când se schimbă aparatul unei mașini în timpul lunii, zilele din luna aceea se plătesc de două ori: aparatul vechi a
+  plătit luna întreagă în avans, iar cel nou pornește cu zilele lui (de ex. la 45 de lei pe lună, schimbat pe 15 ale
+  unei luni de 30 de zile: încă 24 de lei pentru 16 zile pe care aparatul vechi le plătise deja). De hotărât regula —
+  de pildă, aparatul nou preia ziua de pornire a celui vechi. Pe 03.10 nu era hotărâtă nici în jurnal, nici în cod.
 - [ ] **Voi: datele firmei, pe site. Adăugat pe 02.10.** Pe Termeni și Confidențialitate scrie încă „[NUME FIRMĂ SRL]",
   „[CUI]", „[adresă]", „[contact@ratrack.ro]" — le vede oricine, și Google. Pe prima pagină telefonul e „+40 7XX XXX XXX",
   iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
@@ -166,6 +172,30 @@ rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași",
 de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă tot istoricul", făcut, mai jos.)
 
 ---
+
+## 2026-10-03
+
+### CLIENT · Site-ul public: corecturile găsite pe drum, urcate (Robert: „da") — `HASH`
+
+Robert (03.10), la întrebarea de ieri: *„1. da"*. Ce s-a schimbat pe site (lista din 02.10, „Găsite pe drum"):
+
+1. **Prima pagină spune ce face aplicația:** RA Watch verifică flota în fiecare oră, ceilalți cinci agenți fac analiza
+   când le deschizi pagina; RA Client e sinteza zilei (fără „raport în fiecare dimineață"); scorul eco e pe mașină
+   (clasamentul șoferilor e în raportul EcoDrive); RA Compliance e o estimare din GPS a condusului de azi; alertele
+   sunt cele 16 tipuri reale (fără „deconectări"); harta de căldură arată unde stau mașinile; la dispecerizare locul se
+   alege pe hartă; „30+" și „Peste 30 de tipuri" de rapoarte (sunt 33); „nu din telefonul șoferului" în loc de
+   „nu estimări". Acum prima pagină și pagina „Agenți AI" spun același lucru.
+2. **Termeni și Confidențialitate:** „Ultima actualizare" e ziua reală a ultimei schimbări, nu ziua de azi din
+   calculatorul vizitatorului.
+3. **Întrebările frecvente:** datele pentru Google au toate cele 11 întrebări, cuvânt cu cuvânt ca pe pagină;
+   păstrarea datelor scrie cifrele din contract (12 luni; la plecare, 30 de zile, apoi se șterg); bannerul de cookie-uri.
+4. **Documentația API:** fără „TrackGPS" în descriere.
+
+- **Ce am schimbat:** paginile publice, aduse din ramura pregătită ieri peste lucrul lui Alin de aseară (fraza nouă din
+  Confidențialitate, despre conversațiile cu RA Insight, rămâne, iar data paginii e 02.10, ziua ei). Proba
+  `verify_site_public.js` verifică acum tot: lista „de hotărât" din ea e goală.
+- **Ce vede fondatorul:** aceleași pagini ca orice vizitator.
+- **Ce vede clientul:** o prima pagină fără promisiuni pe care aplicația nu le ține.
 
 ## 2026-10-02
 

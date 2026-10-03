@@ -1313,13 +1313,13 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-10-02', amprenta: '9f4c491f04dd', prio: '1.0', freq: 'weekly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-10-02', amprenta: '821881d632d2', prio: '1.0', freq: 'weekly' },
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-02', amprenta: 'afcc13e675e8', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-02', amprenta: '576f1c6d37cd', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-02', amprenta: '908fa3e90cb9', prio: '0.8', freq: 'monthly' },
-  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '811b25a36e81', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-06-12', amprenta: '00958fcb023f', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-02', amprenta: '9b4850c35118', prio: '0.3', freq: 'yearly' },
+  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '0a222475dace', prio: '0.7', freq: 'monthly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-06-12', amprenta: '61da9ec6d0ee', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-02', amprenta: 'a7fe3cc8793f', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
