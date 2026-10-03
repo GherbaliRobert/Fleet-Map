@@ -184,7 +184,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-03
 
-### FONDATOR · „Cereri demo": linkul de parolă apare pe loc, la aprobare — `HASH`
+### FONDATOR · „Cereri demo": linkul de parolă apare pe loc, la aprobare — `88f6e20`
 
 Robert (03.10), la întrebarea „o rezolvăm acum sau trecem mai departe?": *„acum"*.
 
