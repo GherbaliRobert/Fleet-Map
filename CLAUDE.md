@@ -224,6 +224,10 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
   autentificare: `/api/login`, `/api/mobile/login`, cheie API/token mobil, WebSocket, plus per-request în
   `refreshAuth` (sesiunea deschisă nu se invalidează singură — cookie 24h). Cutoff HARD: NU refolosi
   regula de acces a FIRMEI (`stareAcces`), care numără 15 zile de grație după scadența unei facturi.
+- **La aprobare fără email, linkul de parolă apare PE LOC** (web din 03.10 — Robert: „acum"; telefonul din 23.09), în
+  fereastra comună `window._usrAratLinkul`, copiat deja. NU trimite fondatorul în Utilizatori după el: până pe 03.10,
+  pe web, asta însemna doi pași în plus la fiecare cerere, cât serverul n-are email. Fereastra (`raConfirm`) rupe un
+  link lung înăuntru (`overflow-wrap:anywhere`) — ieșea în dreapta din chenar. Păzit de `verify_utilizatori.js`.
 - **Conturile demo nu pot trimite emailuri prin serverul nostru** (`_demoBlocked`): fără rapoarte programate
   și fără formularul de suport — altfel demo-ul devine releu de spam pe reputația domeniului.
 - **`DEMO_DISABLED=true` NU mai șterge nimic.** De când demo-ul se acordă la cerere, compania demo e parte din

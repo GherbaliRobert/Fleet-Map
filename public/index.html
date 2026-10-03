@@ -9896,7 +9896,9 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px;">Tracks</span></span></div>' +
           '<div style="width:54px;height:54px;border-radius:50%;background:' + halo + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i class="fas ' + icon + '" style="font-size:26px;color:' + accent + ';"></i></div>' +
           (opts.title ? '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">' + opts.title + '</div>' : '') +
-          '<div style="font-size:13.5px;color:var(--text-muted,#64748b);line-height:1.5;margin-bottom:20px;">' + msgHtml + '</div>' +
+          // `overflow-wrap:anywhere`: un șir lung fără spații (linkul de parolă, 03.10) ieșea în dreapta din fereastră;
+          // acum se rupe înăuntru. Textul obișnuit nu se schimbă — se rupe doar ce nu încape.
+          '<div style="font-size:13.5px;color:var(--text-muted,#64748b);line-height:1.5;margin-bottom:20px;overflow-wrap:anywhere;">' + msgHtml + '</div>' +
           // opts.field = o singură întrebare suplimentară, chiar în fereastră (ex. „cât a costat?"),
           // ca să nu fie nevoie de încă un formular pentru un singur număr. Fără field, se comportă
           // exact ca înainte: răspunde true/false.
@@ -26456,12 +26458,20 @@ const pozitii = await r.json();</code></pre>
       // Valoarea selectorului e în ORE (2h … 30 zile) — serverul lucrează tot în ore.
       var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
       var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
-      if (!await raConfirm('Acorzi acces demo pentru ' + lbl + '?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și primește pe email link de setare a parolei.', { okLabel: 'Acordă acces', danger: false })) return;
+      if (!await raConfirm('Acorzi acces demo pentru ' + lbl + '?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și îi trimitem link de setare a parolei — pe email sau, dacă emailul nu poate pleca, ți-l arăt aici, să i-l dai tu.', { okLabel: 'Acordă acces', danger: false })) return;
       try {
         var r = await fetch('/api/admin/demo-requests/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
         var j = await r.json();
         if (!r.ok) { raxToast(j.error || 'Nu s-a putut aproba', 'error', 6000); return; }
-        raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat: ' + (j.duration || lbl) + ' ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
+        // Emailul n-a plecat, dar serverul a întors linkul de parolă: îl arătăm PE LOC, copiat deja, în fereastra comună
+        // (window._usrAratLinkul) — ca pe telefon din 23.09. Până pe 03.10 ecranul îl arunca și trimitea fondatorul în
+        // Utilizatori după el: doi pași în plus la fiecare cerere, cât timp serverul n-are email.
+        if (j.link && window._usrAratLinkul) {
+          raxToast('Acces acordat: ' + (j.duration || lbl) + ' — linkul de parolă trebuie dus de tine.', 'success', 4000);
+          await window._usrAratLinkul(j.email || j.username || '', j.link, j.motiv);
+        } else {
+          raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat: ' + (j.duration || lbl) + ' ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
+        }
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadDemoReq();
     };

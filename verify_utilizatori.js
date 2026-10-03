@@ -121,6 +121,17 @@ T('„Client nou": contul există și fără email — panoul nu mai spune „F�
   /adminOk = s\.admin\.username;/.test(_coCre) && !/else if \(a && a\.warning\) \{ _coMsg\(a\.warning, true\); \}/.test(_coCre));
 T('„Client nou": linkul se arată cu fereastra comună, nu cu una nouă',
   /window\.coNouArataLinkul = function \(\) \{[\s\S]{0,200}window\._usrAratLinkul\(g\.admin, g\.adminLink, g\.adminMotiv\)/.test(html));
+// „Cereri demo" (web), găsit pe 02.10: la aprobare fără email, serverul întorcea linkul, dar ecranul îl arunca și
+// trimitea fondatorul în Utilizatori după el — doi pași în plus la fiecare cerere. Telefonul îl arăta din 23.09.
+const _dqAp = (html.match(/window\.raxDemoReqApprove = async function \(id\) \{[\s\S]*?\n    \};\n/) || [''])[0];
+T('„Cereri demo": când invitația nu pleacă, linkul se arată pe loc, cu fereastra comună',
+  /if \(j\.link && window\._usrAratLinkul\)/.test(_dqAp) && /await window\._usrAratLinkul\(j\.email \|\| j\.username \|\| '', j\.link, j\.motiv\)/.test(_dqAp), _dqAp.length);
+T('„Cereri demo": întrebarea dinainte nu mai promite emailul ca singura cale',
+  /ți-l arăt aici, să i-l dai tu/.test(_dqAp) && !/și primește pe email link de setare a parolei/.test(_dqAp));
+T('fereastra comună rupe linkul lung înăuntru (ieșea în dreapta din chenar)',
+  /function raConfirm\(message, opts\) \{[\s\S]{0,4000}line-height:1\.5;margin-bottom:20px;overflow-wrap:anywhere;">' \+ msgHtml/.test(html));
+T('„Cereri demo": pe telefon, la fel (aceeași foaie cu linkul)',
+  /if \(r\?\.link\) \{[\s\S]{0,300}pregatesteLinkul\(/.test(fs.readFileSync(P('mobile/src/screens/DemoRequests.tsx'), 'utf8')));
 // Pagina pe care omul își pune parola cere ce cere serverul (scria „min 6", serverul cere 10).
 {
   const setp = fs.readFileSync(P('public/set-password.html'), 'utf8');

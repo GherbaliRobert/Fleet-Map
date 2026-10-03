@@ -184,6 +184,25 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-03
 
+### FONDATOR · „Cereri demo": linkul de parolă apare pe loc, la aprobare — `HASH`
+
+Robert (03.10), la întrebarea „o rezolvăm acum sau trecem mai departe?": *„acum"*.
+
+1. **La „Aprobă", când emailul nu poate pleca** (azi, de fiecare dată: serverul n-are email), linkul de parolă apare
+   imediat, în fereastra „Linkul de parolă", deja copiat — îl trimiteți omului pe WhatsApp sau din emailul personal.
+   Până acum ecranul spunea doar „trimite-i-l din Utilizatori": doi pași în plus la fiecare cerere. Pe telefon, linkul
+   apărea deja din 23.09.
+2. **Întrebarea de dinainte** nu mai promite că linkul pleacă pe email: „pe email sau, dacă emailul nu poate pleca,
+   ți-l arăt aici, să i-l dai tu".
+3. **Fereastra cu linkul:** linkul lung ieșea în dreapta din chenar; acum se rupe înăuntru. E aceeași fereastră
+   peste tot (Utilizatori, „Client nou", Cereri demo), deci se vede bine în toate.
+
+- **Ce am schimbat:** pagina web (Cereri demo și fereastra comună de confirmare). Probă: `verify_utilizatori.js`
+  (+4 verificări). Încercat pe o copie locală cu compania demo: cererea trimisă din formular, aprobată, linkul arătat
+  pe loc, fără să iasă din fereastră.
+- **Ce vede fondatorul:** la „Aprobă", fereastra cu linkul, gata de trimis.
+- **Ce vede clientul:** nimic nou; omul care a cerut demo primește linkul de la voi.
+
 ### CLIENT · Datele firmei pe site: DUO BUSINESS CONCEPT S.R.L. — `4fe1128`
 
 Robert (03.10): *„Duo business concept cu sediul în Pantelimon (caută tu datele corecte)"*. Datele sunt luate de la
