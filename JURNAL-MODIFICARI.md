@@ -136,6 +136,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   J2023005685230 (vechiul format: J23/5685/2023), Str. Migdalilor nr. 49A, camera 1, Pantelimon, jud. Ilfov. **Rămân:**
   telefonul (în ANAF e trecut 0729 699 847 — îl punem pe site și la WhatsApp?), emailul (contact@ratrack.ro nu
   primește încă nimic: domeniul n-are căsuță de email) și paginile de Facebook / LinkedIn.
+  **03.10 (seara):** telefonul din ANAF NU se pune (Robert: „nu") — rămâne de dat alt număr; butoanele Facebook și
+  LinkedIn au fost scoase din subsol până există paginile (Robert: „da"); emailul: „mai stăm puțin".
 - [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
   fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
   clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
@@ -183,6 +185,22 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 ---
 
 ## 2026-10-03
+
+### CLIENT · Termeni și Confidențialitate fără nota „Document-model"; subsolul fără Facebook și LinkedIn — `HASH`
+
+Robert (03.10): *„2. da, 3. da"*.
+
+1. **Nota galbenă „⚠️ Document-model… completează datele firmei… revizuire juridică"** a ieșit de pe Termeni și de pe
+   Confidențialitate. Era o notă pentru noi, pe care o vedea orice vizitator. Datele firmei sunt acum pe pagini, iar
+   citirea de către un jurist rămâne la „De amintit".
+2. **Butoanele Facebook și LinkedIn** din subsolul primei pagini nu duceau nicăieri; au ieșit până există paginile.
+   A rămas iconița de email.
+3. **Telefonul** de pe prima pagină rămâne cum e („+40 7XX XXX XXX"): numărul din ANAF nu se pune (Robert: „1. nu").
+
+- **Ce am schimbat:** `termeni.html`, `confidentialitate.html` (nota), `landing.html` (subsolul), datele din harta
+  site-ului. Probe: `verify_site_public.js`, `verify_pastrare.js` — trec.
+- **Ce vede fondatorul:** aceleași pagini ca orice vizitator.
+- **Ce vede clientul:** paginile legale fără nota de lucru; subsolul fără butoane moarte.
 
 ### FONDATOR · „Cereri demo": linkul de parolă apare pe loc, la aprobare — `88f6e20`
 

@@ -1318,8 +1318,8 @@ const PAGINI_PUBLICE = [
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-02', amprenta: '576f1c6d37cd', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-02', amprenta: '908fa3e90cb9', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '0a222475dace', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-03', amprenta: '2ea41c62091b', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-03', amprenta: '8207aeca174b', prio: '0.3', freq: 'yearly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-03', amprenta: '8ae263a7896e', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-03', amprenta: '7fadb34cd3c5', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
