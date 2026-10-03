@@ -186,7 +186,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-03
 
-### CLIENT · Termeni și Confidențialitate fără nota „Document-model"; subsolul fără Facebook și LinkedIn — `HASH`
+### CLIENT · Termeni și Confidențialitate fără nota „Document-model"; subsolul fără Facebook și LinkedIn — `78d841c`
 
 Robert (03.10): *„2. da, 3. da"*.
 
