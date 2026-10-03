@@ -184,7 +184,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 ## 2026-10-03
 
-### CLIENT · Datele firmei pe site: DUO BUSINESS CONCEPT S.R.L. — `HASH`
+### CLIENT · Datele firmei pe site: DUO BUSINESS CONCEPT S.R.L. — `4fe1128`
 
 Robert (03.10): *„Duo business concept cu sediul în Pantelimon (caută tu datele corecte)"*. Datele sunt luate de la
 ANAF (registrul public al contribuabililor, 03.10.2026), nu dintr-un site de firme:
