@@ -141,6 +141,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
   fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
   clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
+- [ ] **Voi: hotărârile din analiza concurenței. Adăugat pe 05.10.** Raportul întreg (13 firme, cu surse):
+  https://claude.ai/artifact/52xCU4BFu1pfpqfZrPG7Pq. De hotărât: (1) e-Transport se vinde în ofertă (4 lei pe mașină pe
+  lună), dar azi nu trimite nimic la ANAF — îl trecem „în pregătire", fără preț?; (2) numărul-șablon „+40 7XX" de pe
+  prima pagină: îl ascundem până aveți alt număr?; (3) cu ce flote începem: mixte locale sau transportatori cu camioane?;
+  (4) cardurile de combustibil rămân scoase?; (5) prețuri publice pe site sau doar un calculator de economii?
 
 ---
 
