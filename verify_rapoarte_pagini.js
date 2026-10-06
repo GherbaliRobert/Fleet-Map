@@ -14,6 +14,12 @@
 //   4. pe server pornit (plafon 300, pagini de 100, 700 de poziții adevărate în bază): km-ii întregi, ultima locație
 //      adevărată, avertismentul la staționări, AI Raport cu cifra întreagă.
 'use strict';
+// Fără adrese: pe GitHub serviciul de hărți răspunde, iar o adresă găsită în buget la prima rulare și nu la a doua face
+// două rapoarte „diferite" (06.10: așa a picat proba acolo, de 5 ori). Proba urmărește CE poziții se citesc, nu adresele,
+// deci le cere unui port închis — ca aici, unde rețeaua spre hărți e oprită. Serverul pornit de probă moștenește setarea.
+process.env.GEOCODE_URL = 'http://127.0.0.1:9/reverse';
+process.env.GEOCODE_MIN_INTERVAL_MS = '0';
+process.env.GEOCODE_TIMEOUT_MS = '300';
 process.env.RAPOARTE_PLAFON = '1000';
 process.env.RAPOARTE_PAGINA = '300';
 const { spawn } = require('child_process');

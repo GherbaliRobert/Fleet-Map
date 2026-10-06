@@ -234,6 +234,10 @@ ziua în care rulează.
   pe server pornit, 700 de poziții numărate întregi cu plafonul coborât la 300).
 - **Ce vede fondatorul:** cifrele lunare corecte; banda portocalie doar când chiar s-a oprit un raport.
 - **Ce vede clientul:** la fel — rapoartele pe o lună arată toată luna.
+- **Seara, pe GitHub (06.10):** verificarea automată a picat la proba nouă, de 5 ori, toate din adrese: acolo aplicația
+  ajunge la serviciul de hărți și scrie „DN29C, Siret", iar proba aștepta coordonatele. Aplicația era bună; proba cere
+  acum adresele unui port închis (ca aici, unde rețeaua spre hărți e oprită), ca rezultatul să nu depindă de internet.
+  Căderea din 04.10 (o intrare de jurnal) era a celor două probe cu zilele scrise de mână — reparate în aceeași livrare.
 
 ---
 
