@@ -307,6 +307,29 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   telefonul cu aplicația veche; pagina nu le mai cheamă. Se scot după APK-ul cu AI Raport.
 - Păzit de `verify_ai_raport.js` (84, cu ZERO cereri către model numărate pe server), `verify_insight_ghid.js` (22) și
   `verify_insight.js` (secțiunea 7).
+- ⚠ **Probele pe server pornit merg pe ceasul ADEVĂRAT**: zilele datelor de probă se socotesc față de azi
+  (`insight.perioada({ period: 'last_week' }, Date.now())`, `inceputZiRO`), NU se scriu de mână. Două probe scrise pe
+  02.10 cu „21–27 septembrie" picau de pe 06.10 la orice livrare.
+
+## Rapoartele citesc TOATĂ perioada (Alin, 05.10: „rezolvăm acum")
+Rapoartele citeau cel mult 50.000 de poziții pe mașină (cele mai vechi), fără să spună — cam o lună a unei mașini care
+merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ieșea de la mijlocul perioadei.
+- **`fiecarePozitie(db, imei, from, to, fn)`** (reports.js): toată perioada, pe pagini de `PAGINA_ISTORIC` (20.000 ≈ 15 MB;
+  MĂSURAT ~785 de octeți pe poziție), prin `db.istoricInterval` (vii + arhivă, fără dubluri, cheia timpului ca TEXT).
+  O folosesc: `rUtilization`, `_consumptionMap` (Consum / Costuri / Emisii), `rIdling`, `rSpeeding` (limită fixă),
+  `rEcoDrive`, `rEcoDriveDrivers`, `rEngineHours`, `rFuel`, `fuelStats`. Un raport NOU care merge poziție cu poziție o
+  folosește pe ea, NU `history`. Starea (punctul anterior, evenimentul în curs) se duce peste capătul paginii.
+- **`coadaIstoric`** (`db.istoricCoada`): „Ultima locație" citește doar capătul perioadei.
+- **`history`** rămâne pentru rapoartele care au nevoie de tot șirul deodată (curse, staționări, traseu, zilnic, HOS,
+  disponibilitate, senzori, OSM la viteză): cel mult `PLAFON_ISTORIC` (50.000) și, când baza dă exact plafonul, raportul
+  primește **`trunchiat: [{ imei, vehicul, panaLa }]`** (prin `AsyncLocalStorage`, o rulare = un raport) + rândul
+  „Atenție" în legendă (ecran, Excel, PDF). Ecranul: banda `#rep-trunchiat`; AI Raport: prima sugestie; RA Insight:
+  `atentie` în rezultatul uneltei.
+- **Filtrul zile/ore** (`_tfWrapDb`) se aplică DUPĂ citire (`_tfMatch` pe baza `_tfBaza`), ca paginile și plafonul să
+  se socotească pe ce e în bază — altfel o pagină filtrată s-ar reciti la nesfârșit.
+- În probe: `RAPOARTE_PLAFON` / `RAPOARTE_PAGINA` coboară cifrele (nu le seta în producție).
+- Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
+  filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni

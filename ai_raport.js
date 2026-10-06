@@ -239,7 +239,21 @@ function _numara(rows, col) {
 
 // u = înțelegerea; rep = raportul rulat; extra = { fisa, anterior (raportul perioadei dinainte), alimentari, pret, acum }.
 // Întoarce { text (cu **bold** și „• "), tiles: [{ et, val }], tabel?: { coloane, randuri }, sugestii: [{ fel: 'bun'|'atentie'|'info', text }] }.
+// Când raportul s-a oprit la plafonul de poziții (`rep.trunchiat`, din reports.js), PRIMA sugestie o spune pe față:
+// cifrele de deasupra nu acoperă toată perioada.
 function raspunde(u, rep, extra) {
+  const r = _raspunde(u, rep, extra);
+  const tr = rep && Array.isArray(rep.trunchiat) ? rep.trunchiat : [];
+  if (tr.length) {
+    const et = _etichete((extra || {}).fisa);
+    const pana = function (iso) { return new Date(iso).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' }); };
+    r.sugestii.unshift({ fel: 'atentie', text: 'Atenție: perioada are prea multe poziții, așa că raportul s-a oprit înainte de capăt — ' +
+      tr.slice(0, 3).map(function (x) { return et(x.vehicul) + ' (citit până pe ' + pana(x.panaLa) + ')'; }).join(', ') + (tr.length > 3 ? '…' : '') +
+      '. Cifrele de mai sus nu acoperă toată perioada: întreabă pe o perioadă mai scurtă.' });
+  }
+  return r;
+}
+function _raspunde(u, rep, extra) {
   const x = extra || {};
   const fisa = x.fisa || [];
   const et = _etichete(fisa);

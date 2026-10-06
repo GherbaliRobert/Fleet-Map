@@ -4270,11 +4270,16 @@ async function _raInsight(req, res, opts) {
           const report = await reports.runReport(db, type, imeis, from, to, ropts, companyScope);
           sources.push({ type, label: report.label || type, vehicle: eticheta, imei, from, to, perioada: perioadaEt });
           const rows = Array.isArray(report.rows) ? report.rows : [];
-          return {
+          const out = {
             type, label: report.label, vehicul: eticheta || 'toată flota', perioada: { from, to, eticheta: perioadaEt },
             summary: report.summary || {}, columns: report.columns || [],
             rows: rows.slice(0, 25), rows_total: rows.length, truncated: rows.length > 25
           };
+          // Raportul s-a oprit la plafonul de poziții (reports.js, „Citirea pozițiilor") → cifrele NU acoperă toată perioada.
+          if (Array.isArray(report.trunchiat) && report.trunchiat.length) {
+            out.atentie = 'Perioada are prea multe poziții: raportul s-a oprit înainte de capăt (' + report.trunchiat.map(function (x) { return x.vehicul + ' — citit până pe ' + new Date(x.panaLa).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); }).join('; ') + '). Spune-i omului că cifrele NU acoperă toată perioada și propune o perioadă mai scurtă.';
+          }
+          return out;
         } catch (e) { return { error: 'Eroare la generarea raportului: ' + ((e && e.message) || e) }; }
       },
       fleet_status: async () => {

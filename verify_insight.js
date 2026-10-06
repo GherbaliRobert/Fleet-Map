@@ -255,7 +255,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const c2 = cereri().slice(-1)[0];
   T('a doua întrebare rămâne în aceeași conversație', q2.status === 200 && q2.j.conversatieId === q1.j.conversatieId);
   T('modelul vede întrebarea și răspunsul de dinainte (memoria)', (c2.messages || []).length === 3 && textulCererii(c2).indexOf('KILOMETIR') >= 0 && textulCererii(c2).indexOf('538 km') >= 0, (c2.messages || []).map((m) => m.role).join(','));
-  T('și știe ce s-a discutat: mașina, perioada, raportul', /Din discuția de până acum — mașina: B 154 UIP · Dacia Logan 3; perioada: \d+–\d+ \w+; rapoarte: Index km \/ ore/.test(contextul(c2)), contextul(c2).split('\n').slice(-1)[0]);
+  T('și știe ce s-a discutat: mașina, perioada, raportul', /Din discuția de până acum — mașina: B 154 UIP · Dacia Logan 3; perioada: \d+[^;]*; rapoarte: Index km \/ ore/.test(contextul(c2)), contextul(c2).split('\n').slice(-1)[0]);
 
   // c) fără id, imediat după: se continuă ultima conversație (telefonul vechi și bula nu trimit id)
   coada([text('Dacia Logan 3 a consumat 36,6 litri.')]);

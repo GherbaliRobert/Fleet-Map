@@ -1289,6 +1289,10 @@
     .rep-tab.active { background:var(--accent); color:#06210F; border-color:var(--accent); box-shadow:0 6px 16px rgba(63,224,125,.32); }
     .rep-tab i { font-size:15px; }
     .rep-tab .rt-short { display:none; }
+    /* Raportul oprit la plafonul de poziții (05.10): text închis, dunga portocalie — contrast măsurat pe ambele teme. */
+    .rep-trunchiat { margin:-4px 0 10px; padding:8px 12px; border:1px solid var(--border); border-left:3px solid #c2410c; border-radius:8px; background:var(--bg-dark); color:var(--text-primary); font-size:12.5px; line-height:1.45; }
+    .rep-trunchiat i { color:#c2410c; margin-right:4px; }
+    body.dark .rep-trunchiat { border-left-color:var(--orange); } body.dark .rep-trunchiat i { color:var(--orange); }
     .rin-chip, .rin-src { white-space:normal; text-align:left; font-size:12px; line-height:1.3; height:auto; }
     .rin-chip { color:var(--text-primary); }
     .rin-chip i { color:var(--text-muted); margin-right:2px; }
@@ -3177,6 +3181,7 @@ const pozitii = await r.json();</code></pre>
           <strong id="rep-title" style="font-size:14px;"></strong>
         </div>
         <div id="rep-period" style="font-size:12px;color:var(--text-muted);font-weight:600;margin:-6px 0 10px 2px;display:none;"></div>
+        <div id="rep-trunchiat" class="rep-trunchiat" style="display:none;"></div>
         <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
         <div id="rep-controls">
         <label class="rep-f" style="margin-bottom:14px;"><span>Vehicul</span><select id="rep-imei"></select></label>
@@ -9480,6 +9485,7 @@ const pozitii = await r.json();</code></pre>
       document.querySelector('#rep-table tbody').innerHTML = '';
       document.getElementById('rep-summary').innerHTML = '';
       var _rpp = document.getElementById('rep-period'); if (_rpp) { _rpp.textContent = ''; _rpp.style.display = 'none'; }
+      var _rtr = document.getElementById('rep-trunchiat'); if (_rtr) { _rtr.textContent = ''; _rtr.style.display = 'none'; }
       var _ch = document.getElementById('rep-charts'); if (_ch) _ch.innerHTML = '';
       var _vv = document.getElementById('rep-vehview'); if (_vv) { _vv.innerHTML = ''; _vv.style.display = 'none'; }
       var _fb = document.getElementById('rep-filter-bar'); if (_fb) { _fb.innerHTML = ''; _fb.style.display = 'none'; }
@@ -10881,6 +10887,13 @@ const pozitii = await r.json();</code></pre>
       // Intervalul pentru care a fost generat raportul (de la – până la), sub titlu.
       var _rp = document.getElementById('rep-period');
       if (_rp) { if (data && data.periodLabel) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> ' + _repEsc(data.periodLabel); _rp.style.display = ''; } else if (data && data.from && data.to) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> Interval: ' + repFmtDT(data.from) + ' – ' + repFmtDT(data.to); _rp.style.display = ''; } else { _rp.textContent = ''; _rp.style.display = 'none'; } }
+      // Raportul s-a oprit la plafonul de poziții (perioadă foarte lungă, raport care are nevoie de tot traseul deodată):
+      // spus pe față, sub perioadă — cifrele de dedesubt nu acoperă toată perioada (Alin, 05.10).
+      var _tr = (data && Array.isArray(data.trunchiat)) ? data.trunchiat : [], _rw = document.getElementById('rep-trunchiat');
+      if (_rw) {
+        if (_tr.length) { _rw.innerHTML = '<i class="fas fa-triangle-exclamation"></i> ' + _repEsc('Perioada are prea multe poziții pentru ' + _tr.map(function (x) { return x.vehicul + ' — citit până pe ' + repFmtDT(x.panaLa); }).join('; ') + '. Cifrele de mai jos nu acoperă toată perioada — alege o perioadă mai scurtă.'); _rw.style.display = ''; }
+        else { _rw.textContent = ''; _rw.style.display = 'none'; }
+      }
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
       _repRenderVehView(data);
       renderRepCharts(data.charts || []);

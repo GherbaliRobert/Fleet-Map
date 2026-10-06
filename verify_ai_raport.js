@@ -240,10 +240,15 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
     const t0 = Date.parse(startIso);
     for (let i = 0; i < n; i++) await json('POST', '/api/test/simulate', S, { imei, ts: new Date(t0 + i * 60000).toISOString(), lat: 44.40 + i * pasKm / 111, lng: 26.10, speed: 60, io: { ignition: 1 } });
   };
-  await drum(DEV[0].imei, '2026-09-24T07:00:00Z', 30, 1.0);
-  await drum(DEV[0].imei, '2026-09-30T07:00:00Z', 20, 1.0);
-  await drum(DEV[2].imei, '2026-09-30T09:00:00Z', 15, 1.0);
-  await drum('350000000051009', '2026-09-30T09:00:00Z', 15, 1.0);
+  // Zilele se socotesc față de AZI (serverul merge pe ceasul adevărat; scrise de mână, proba ar fi picat peste o săptămână):
+  // un drum miercuri săptămâna trecută, unul acum o oră (săptămâna asta — sau, luni la miezul nopții, tot cea trecută).
+  const sapTrecuta = I.perioada({ period: 'last_week' }, Date.now());
+  const ziTrecuta = new Date(Date.parse(sapTrecuta.from) + 2 * 86400000 + 7 * 3600000).toISOString();
+  const acumOOra = new Date(Date.now() - 60 * 60000).toISOString();
+  await drum(DEV[0].imei, ziTrecuta, 30, 1.0);
+  await drum(DEV[0].imei, acumOOra, 20, 1.0);
+  await drum(DEV[2].imei, acumOOra, 15, 1.0);
+  await drum('350000000051009', acumOOra, 15, 1.0);
   const fond0 = (await json('GET', '/api/ai/quota', ckSef)).j.used;
 
   // a) întrebările gata făcute

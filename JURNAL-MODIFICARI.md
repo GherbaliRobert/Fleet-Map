@@ -161,7 +161,7 @@ vedem unde suntem."* Din 16.09 trecem prin meniul nostru (al fondatorului), sec�
 | AI & Module | Utilizare RA Insight · Tahograf · e-Transport | ✅ verificate (16–21.09) |
 | Business | Ofertare Live · Contracte · Companii | ✅ verificate (16–24.09), apoi extinse |
 | Business | Montaj | ✅ **terminată (01.10, Alin)**: parteneri, contracte, lucrări, calendarul refăcut după machetă. Contul instalatorului îl face Robert |
-| Business | **Facturare** | 🔶 **aici suntem** — refăcută 28.09–01.10; urmează trecerea ecran cu ecran, ca la celelalte |
+| Business | **Facturare** | 🔶 **următoarea, după capitolul AI** — refăcută 28.09–01.10; urmează trecerea ecran cu ecran, ca la celelalte |
 | Business | Conturi & Abonamente · Dashboard platformă · Control costuri · Cereri demo | ⬜ neverificate (Cereri demo doar atinsă, 30.09) |
 | Sistem | Chei API · Jurnal audit | ⬜ neverificate (la jurnal doar regula de 12 luni, 24.09) |
 
@@ -186,6 +186,54 @@ la verticala fondatorului: Facturare.)
 (Pe 02.10: butonul „CSV" din Rapoarte — găsit pe drum, Alin: „da", scos; limita de 10.000 de poziții pe fișier — „da",
 rămâne; linkul „Vezi pe hartă" din Excelul traseului — „da, îl lași", rămâne; datele unui client care pleacă (un an
 de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă tot istoricul", făcut, mai jos.)
+
+**Acum: capitolul Inteligență artificială** (Alin, 05.10: *„aici suntem în capitolul inteligență artificială… nu trecem la
+facturi până nu terminăm capitolul ăsta"*). Pașii: 1. RA Insight recunoaște numerele și ține minte ✅ (02.10) · 2. secțiunea
+din meniu + „AI Raport" gratuit ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ·
+4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni · 5. telefonul (pentru APK-ul lui Robert).
+**Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
+contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
+diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
+cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+
+---
+
+## 2026-10-06
+
+### AMÂNDOI · Rapoartele citesc toată perioada (era: cel mult 50.000 de poziții pe mașină, fără să spună)
+
+Găsit pe drum pe 02.10, la AI Raport; Alin, 05.10: *„rezolvăm acum, înaintea pasului 3"* (recomandarea mea: altfel și
+costurile din Safe Drive ar fi ieșit greșite).
+
+**Ce era greșit:** un raport citea pozițiile unei mașini de la începutul perioadei și se oprea la 50.000 — fără niciun
+semn. O mașină care merge zilnic adună cam 50.000 de poziții pe lună (aparatul trimite des când merge). Exemplu: la o
+mașină care trimite la 10 secunde, „km luna trecută" număra doar ~1–14 ale lunii și arăta cam jumătate din km. Mai rău:
+„Ultima locație" pe o perioadă lungă ieșea de la jumătatea perioadei, nu de la capăt.
+
+**Ce face acum:**
+1. **Rapoartele de bază citesc toată perioada, pe bucăți** de câte 20.000 de poziții (≈ 15 MB, ca serverul să nu se
+   umple): Index km / ore, Consum carburant, Costuri combustibil, Emisii CO₂, Ralanti, Depășiri viteză (cu limita fixă),
+   EcoDrive, Clasamentul șoferilor, Ore motor, Alimentări & scăderi, plus pagina „Statistici consum". Cifrele sunt
+   EXACT cele de dinainte pe perioadele scurte (probat: pe bucăți = dintr-o bucată, și cu filtrul zile/ore).
+2. **„Ultima locație" citește doar capătul perioadei** — ultima poziție adevărată.
+3. **Rapoartele care au nevoie de tot traseul deodată** (Staționări, Foaie de parcurs, Traseu, Situație zilnică,
+   Condus & repaus, Disponibilitate și cele de senzori) rămân cu plafonul, dar **o spun pe față** când se opresc: o bandă
+   portocalie sub perioadă — „Perioada are prea multe poziții pentru Dacia Logan 3 (B 154 UIP) — citit până pe 14.09.2026,
+   18:32. Cifrele
+   de mai jos nu acoperă toată perioada — alege o perioadă mai scurtă." — același rând în Excel și în PDF (la legendă),
+   în AI Raport (prima sugestie) și la RA Insight (îi spune modelului să-i spună omului).
+
+**Găsit pe drum și reparat (erau probele mele):** două probe RA Insight din 02.10 aveau zilele scrise de mână
+(„săptămâna trecută" = 21–27 septembrie) și ar fi picat începând de azi la orice livrare. Acum își socotesc zilele față de
+ziua în care rulează.
+
+- **Ce am schimbat:** `reports.js` (citirea pe pagini `fiecarePozitie`, capătul perioadei `coadaIstoric`, plafonul care
+  se spune — `trunchiat` pe raport), `db.js` (două citiri noi: pe pagini și coada perioadei), `ai_raport.js` și unealta lui
+  RA Insight (avertismentul), pagina (banda din Rapoarte). Probă nouă: `verify_rapoarte_pagini.js` (33: aceleași cifre pe
+  pagini ca dintr-o bucată pe 11 rapoarte + statistici, cu și fără filtru; martorul vechi chiar număra 238 de km din 792;
+  pe server pornit, 700 de poziții numărate întregi cu plafonul coborât la 300).
+- **Ce vede fondatorul:** cifrele lunare corecte; banda portocalie doar când chiar s-a oprit un raport.
+- **Ce vede clientul:** la fel — rapoartele pe o lună arată toată luna.
 
 ---
 

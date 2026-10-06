@@ -3669,6 +3669,42 @@ async function istoricOre(imei, dupa, limita) {
   `, [imei, dupa || null, Math.max(1, Math.min(100000, parseInt(limita) || 50000))]);
   return r.rows;
 }
+// Rapoartele (reports.js → fiecarePozitie): pozițiile unei perioade, pe pagini după timp, cu io_data ÎNTREG (rapoartele
+// citesc contoare, nivel, contact…). Aceleași rânduri ca getDeviceHistory — vii + arhivă, fără dubluri — dar fără plafon pe
+// perioadă: pagina următoare pornește după `dupa` (timpul ultimei poziții, scris ca TEXT, ca la istoricPagina).
+async function istoricInterval(imei, from, to, dupa, limita) {
+  const r = await pool.query(`
+    SELECT DISTINCT ON (timestamp) timestamp, timestamp::text AS cheie, latitude, longitude, altitude, angle, speed, satellites, io_data
+    FROM (
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions WHERE imei = $1 AND timestamp BETWEEN $2 AND $3 AND ($4::timestamp IS NULL OR timestamp > $4::timestamp)
+      UNION ALL
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions_archive WHERE imei = $1 AND timestamp BETWEEN $2 AND $3 AND ($4::timestamp IS NULL OR timestamp > $4::timestamp)
+    ) u
+    ORDER BY timestamp ASC
+    LIMIT $5
+  `, [imei, from, to, dupa || null, Math.max(1, Math.min(50000, parseInt(limita) || 20000))]);
+  return r.rows;
+}
+// Ultimele `n` poziții dintr-o perioadă, în ordinea timpului (pentru „Ultima locație": restul perioadei nu contează).
+async function istoricCoada(imei, from, to, n) {
+  const r = await pool.query(`
+    SELECT * FROM (
+      SELECT DISTINCT ON (timestamp) timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+      FROM (
+        SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+          FROM positions WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+        UNION ALL
+        SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+          FROM positions_archive WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+      ) u
+      ORDER BY timestamp DESC
+      LIMIT $4
+    ) c ORDER BY timestamp ASC
+  `, [imei, from, to, Math.max(1, Math.min(20000, parseInt(n) || 2000))]);
+  return r.rows;
+}
 async function istoricPagina(imei, dupa, limita) {
   const r = await pool.query(`
     SELECT DISTINCT ON (timestamp) timestamp, timestamp::text AS cheie, latitude, longitude, altitude, angle, speed, satellites,
@@ -5508,6 +5544,8 @@ module.exports = {
   getDeviceHistory,
   istoricOre,
   istoricPagina,
+  istoricInterval,
+  istoricCoada,
   getLastPositions,
   getUserByUsername,
   createUser,
