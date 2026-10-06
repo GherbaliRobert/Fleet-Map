@@ -146,6 +146,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   lună), dar azi nu trimite nimic la ANAF — îl trecem „în pregătire", fără preț?; (2) numărul-șablon „+40 7XX" de pe
   prima pagină: îl ascundem până aveți alt număr?; (3) cu ce flote începem: mixte locale sau transportatori cu camioane?;
   (4) cardurile de combustibil rămân scoase?; (5) prețuri publice pe site sau doar un calculator de economii?
+- [ ] **Alin: prețurile de pornire din Safe Drive. Adăugat pe 06.10.** Cât costă o manevră bruscă (frânare / accelerare /
+  viraj), în lei: autoturism 0,20 / 0,15 / 0,10; dubă 0,40 / 0,30 / 0,20; camion 1,50 / 1,00 / 0,50. Sunt estimarea mea
+  (combustibilul aruncat + tocirea frânelor și a anvelopelor). Le confirmi sau îmi dai cifrele tale? Fiecare firmă și le
+  poate schimba oricum, din Safe Drive → „Cum se socotește".
 
 ---
 
@@ -189,7 +193,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 **Acum: capitolul Inteligență artificială** (Alin, 05.10: *„aici suntem în capitolul inteligență artificială… nu trecem la
 facturi până nu terminăm capitolul ăsta"*). Pașii: 1. RA Insight recunoaște numerele și ține minte ✅ (02.10) · 2. secțiunea
-din meniu + „AI Raport" gratuit ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ·
+din meniu + „AI Raport" gratuit ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ✅ (06.10) ·
 4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni · 5. telefonul (pentru APK-ul lui Robert).
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
@@ -199,6 +203,53 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-06
+
+### AMÂNDOI · Safe Drive & costuri — pasul 3 din RA Insight (după macheta din 02.10)
+
+Alin, 02.10: *„SAFE DRIVE, CU COSTURI"* — și „da, fă tot". O ramură nouă în RA Insight, pentru cine are loc RA Insight.
+
+**Ce arată, pe fiecare lună** (cu luna dinainte alături; luna de acum se compară cu aceleași zile — 1–6 octombrie cu
+1–6 septembrie, nu cu o lună întreagă):
+1. **Cât a costat în plus felul în care se conduce**, în lei, pe patru bucăți: *Combustibil* (accelerările bruște),
+   *Frâne și anvelope* (frânările și virajele bruște), *Viteză* (combustibilul pus în plus peste 90 km/h — la 130 km/h cam
+   36% în plus) și *Ralanti* (motorul pornit pe loc, cel puțin 3 minute).
+   Exemplu: o dubă cu 40 de frânări, 30 de accelerări și 10 viraje bruște = 16 + 9 + 2 = **27 de lei**; 2 ore de ralanti la
+   1,2 L pe oră × 7,50 lei = **18 lei**; 60 de km la 120 km/h = **14 lei** în plus. Luna ei: **~59 de lei**.
+2. **Pe șofer — cine costă cel mai mult**, cu „față de luna dinainte" și **„Au mers măsurile?"**: butonul „Am vorbit cu
+   el" ține minte ziua (și o notă scurtă); de atunci pagina compară manevrele bruște la 100 km de dinainte și de după.
+3. **Unde și când se repetă**: zonele (~500 m) cu cele mai multe manevre, cu adresa, și graficul pe ore.
+4. **Ce recomandă RA Insight** — pe reguli, gratuit (ralantiul scump, viteza, șoferul cu de două ori mai multe manevre
+   decât media, ora și locul care se repetă, discuțiile care au mers).
+5. **Pe mașină** și **„Cum se socotește"**, cu prețul pe manevră, pe care firma îl poate schimba (administratorul sau
+   managerul). Prețurile de pornire sunt o estimare de-a mea — trecute la „De amintit", de confirmat.
+
+**Aceleași cifre ca raportul EcoDrive:** pragurile (7 / 9 / 25 de grade, 90 km/h) și scorul stau acum într-un singur loc,
+folosit și de raport și de pagină; proba le compară pe o lună întreagă (scor, manevre, km — identice; litrii de ralanti —
+identici cu raportul Ralanti).
+
+**Cine a condus, și când — ținut minte de azi.** Până azi aplicația știa doar șoferul de ACUM: un schimb la jumătatea lunii
+punea toată luna pe noul șofer. Acum fiecare schimbare se ține minte. Primul șofer trecut pe o mașină e socotit „de la
+început" (de obicei se trece în aplicație după ce deja conduce); de la al doilea, schimbarea contează din clipa ei.
+**Clasamentul EcoDrive pe șoferi** (Rapoarte) folosește aceeași evidență — altfel pagina și raportul s-ar fi contrazis.
+
+**RA Insight are aceleași cifre:** butonul „Întreabă RA Insight despre asta" deschide discuția, iar RA Insight citește
+luna din același loc ca pagina (se numără din fond, ca orice întrebare).
+
+**Cum se socotește în spate:** fiecare zi a fiecărei mașini se rezumă o dată (pe șofer), noaptea pentru ultimele 3 zile
+(prind și pachetele trimise târziu) și la prima deschidere a unei luni — atunci pagina scrie „Pregătesc luna…" cu
+procentul, iar apoi se deschide pe loc. Ziua de azi se reîmprospătează din 15 în 15 minute. Rezumatele zilelor se șterg
+odată cu pozițiile din care s-au făcut (12 luni, 30 de zile după arhivare, ștergerea aparatului).
+
+- **Ce am schimbat:** `condus.js` (nou: regulile — praguri, scor, litri, lei, recomandări, textele „Cum se socotește"),
+  `safe_drive.js` (nou: zilele și luna), `reports.js` (EcoDrive din `condus.js`; clasamentul pe șoferi după istoric),
+  `db.js` (zilele, istoricul șoferilor, discuțiile; ștergerea odată cu pozițiile), `backup.js`, `server.js` (rutele,
+  coada de calcul, tura de noapte, unealta `safe_drive` a lui RA Insight), pagina (ramura) și `app.css`. Probe:
+  `verify_safe_drive.js` (88, cu un server pornit) și `verify_insight.js` (+4, unealta). Ecranul măsurat în browser, pe
+  ambele teme, pe calculator și pe telefon: contrast ≥ 5, nimic nu iese din ecran.
+- **Ce vede fondatorul:** ramura „Safe Drive & costuri" în RA Insight — pe toată platforma, sau pe firma în care intră.
+- **Ce vede clientul:** ramura, doar cu loc RA Insight; numai mașinile la care are acces (fără arhivate). Prețurile și „Am
+  vorbit cu el" — doar cine conduce flota (administratorul, managerul). Clasamentul EcoDrive pe șoferi pune de azi
+  fiecare zi pe cine chiar a condus.
 
 ### AMÂNDOI · Rapoartele citesc toată perioada (era: cel mult 50.000 de poziții pe mașină, fără să spună)
 

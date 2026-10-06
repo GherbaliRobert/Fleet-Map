@@ -3964,6 +3964,80 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .insp-ghid-text ol { margin: 6px 0 10px; padding-left: 20px; }
 .insp-ghid-text li { margin: 3px 0; }
 .insp-ghid-text .det { color: var(--text-secondary); font-size: 12.5px; }
+/* ═══ RA Insight → Safe Drive & costuri (06.10, după macheta din 02.10) ═══
+   Cartonașul mare cu costul + patru pe feluri, rândul scorului, „Pe șofer" lângă „Unde și când", caseta „Ce recomandă",
+   „Pe mașină", „Cum se socotește". Tabelele se derulează în cutia lor (pe telefon pagina nu iese din ecran). Culorile de
+   stare au pereche pe tema deschisă — măsurate pe amândouă teme, ≥ 4,5. */
+.sdp { overflow-y: auto; min-height: 0; min-width: 0; padding: 16px 22px 28px; display: flex; flex-direction: column; gap: 14px; }
+.sdp-cap { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; }
+.sdp-cap h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.sdp-cap h2 i { color: var(--accent); margin-right: 4px; }
+body:not(.dark) .sdp-cap h2 i { color: #166534; }
+.sdp-dr { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sdp-sel { height: 36px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 13px; font-weight: 700; max-width: 100%; }
+.sdp-tiles { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 10px; }
+.sdp-tile { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px; min-width: 0; }
+.sdp-tile .et { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.sdp-tile .et i { color: var(--text-muted); margin-right: 3px; }
+.sdp-tile .val { font-size: 22px; font-weight: 800; color: var(--text-primary); margin-top: 6px; }
+.sdp-tile .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
+.sdp-tile.mare { border-left: 4px solid var(--orange); }
+.sdp-tile.mare .et { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; font-weight: 800; color: #fdba74; }
+body:not(.dark) .sdp-tile.mare .et { color: #9a3412; }
+.sdp-tile.mare .val { font-size: 30px; }
+.sdp-chip { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; line-height: 1.35; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; }
+.sdp-linie { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px; }
+/* „Pe șofer" lângă „Unde și când" doar pe ecran lat; altfel tabelul șoferilor ar fi înghesuit (măsurat la 1400 px: ~560 px). */
+.sdp-doua { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (min-width: 1700px) { .sdp-doua { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } }
+.sdp-sect { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px; min-width: 0; }
+.sdp-sect h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.sdp-sect h3 i, .sdp-cum summary i { color: var(--purple); margin-right: 4px; }
+.sdp-scroll { overflow-x: auto; max-width: 100%; }
+.sdp-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sdp-tab th { text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: bottom; }
+.sdp-tab th.n { text-align: right; }
+.sdp-tab td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-primary); vertical-align: middle; }
+.sdp-tab tr:last-child td { border-bottom: 0; }
+.sdp-tab .n { text-align: right; white-space: nowrap; }
+.sdp-tab .lat { min-width: 220px; }
+.sdp-tab .nw { white-space: nowrap; }
+.sdp-tab .b { font-weight: 700; }
+.sdp-tab .mut { color: var(--text-secondary); font-style: italic; }
+.sdp-tab .mic, .sdp-mic { font-size: 11.5px; color: var(--text-secondary); line-height: 1.45; }
+.sdp-tab .sdp-chip { margin-top: 0; }
+.sdp-et { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); margin: 10px 0 6px; }
+.sdp-loc { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-primary); padding: 6px 0; text-decoration: none; border-bottom: 1px solid var(--border); line-height: 1.4; }
+.sdp-loc i { color: #f87171; margin-top: 2px; }
+body:not(.dark) .sdp-loc i { color: #b91c1c; }
+a.sdp-loc:hover span { text-decoration: underline; }
+.sdp-ore { display: flex; align-items: flex-end; gap: 4px; height: 92px; padding-top: 4px; max-width: 560px; }
+.sdp-ora { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.sdp-ora b { display: block; width: 100%; max-width: 22px; border-radius: 4px 4px 0 0; background: var(--border-light); }
+.sdp-ora b.sus { background: var(--orange); }
+.sdp-ora span { font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
+.sdp-recbox { border: 2px solid var(--purple); border-radius: 14px; padding: 12px 16px; background: color-mix(in srgb, var(--purple) 7%, var(--bg-panel)); }
+.sdp-recbox > .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); margin-bottom: 4px; }
+.sdp-rec { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: var(--text-primary); padding: 6px 0; }
+.sdp-rec i { margin-top: 3px; color: var(--text-muted); }
+.sdp-cum summary { cursor: pointer; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.sdp-cum p { font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); margin: 8px 0; }
+.sdp-cum p b { color: var(--text-primary); }
+.sdp-pret { width: 76px; height: 30px; text-align: right; border-radius: 7px; border: 1px solid var(--border-light); background: var(--bg-dark); color: var(--text-primary); font: inherit; font-size: 12.5px; padding: 0 6px; }
+.sdp-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.sdp-btns .insp-btn { white-space: normal; text-align: left; }
+.sdp-link { font: inherit; font-size: 11.5px; color: var(--text-secondary); background: none; border: 0; padding: 2px 0; cursor: pointer; text-decoration: underline; }
+.sdp-prog { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; margin-top: 12px; }
+.sdp-prog b { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+.sdp-nota { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.sdp-nota i { color: var(--text-muted); margin-right: 4px; }
+/* Starea: portocaliu = atenție (cost mai mare, manevre multe), verde = bine. Tema închisă: culori deschise; cea deschisă: închise. */
+.sdp .sdp-chip.atentie, .sdp-tab td.atentie, .sdp-rec.atentie i { color: #fdba74; }
+.sdp .sdp-chip.bun, .sdp-tab td.bun, .sdp-rec.bun i { color: #86efac; }
+.sdp .sdp-chip.atentie { background: rgba(249,115,22,.12); border-color: transparent; }
+.sdp .sdp-chip.bun { background: rgba(34,197,94,.12); border-color: transparent; }
+body:not(.dark) .sdp .sdp-chip.atentie, body:not(.dark) .sdp-tab td.atentie, body:not(.dark) .sdp-rec.atentie i { color: #9a3412; }
+body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.dark) .sdp-rec.bun i { color: #166534; }
 @media (max-width: 860px) {
   .insp-corp { grid-template-columns: minmax(0, 1fr); }
   /* Capul pe telefon: [meniu] [stea] [titlu] [notițe] [✕] pe un rând, fondul lunii pe rândul de dedesubt. */
@@ -3981,6 +4055,15 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
   .insp-u { max-width: 86%; }
   .insp-a { max-width: 100%; }
   .insp-ghid { grid-template-columns: 1fr; overflow-y: auto; }
+  .sdp { padding: 12px 12px 24px; }
+  .sdp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sdp-tile.mare { grid-column: 1 / -1; }
+  .sdp-tile .val { font-size: 19px; }
+  .sdp-tile.mare .val { font-size: 26px; }
+  .sdp-doua { grid-template-columns: minmax(0, 1fr); }
+  .sdp-dr { margin-left: 0; width: 100%; }
+  .sdp-dr .sdp-sel { flex: 1 1 140px; }
+  .sdp-dr .insp-btn .et { display: none; }
 }
 /* Rândul din meniu: RA Insight are eticheta „NOU" cât e nou. */
 .nav-nou { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; background: var(--purple); color: #fff; border-radius: 999px; padding: 2px 7px; }

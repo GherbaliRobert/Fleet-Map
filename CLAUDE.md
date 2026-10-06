@@ -331,6 +331,37 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
   filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
 
+### Pasul 3 (06.10): Safe Drive & costuri — ramura din RA Insight (după macheta din 02.10)
+- **Regulile stau într-un singur loc: `condus.js`** (curat): pragurile și scorul EcoDrive (`PRAGURI`, `scor`, `scorFlota`
+  — rapoartele `ecodrive` / `ecodrive_drivers` le citesc de acolo), litrii (`litri`: ralantiul măsurat din contor sau
+  ore × L/h; viteza = Σ km × ((v/90)² − 1) × consum × `PARTE_AER` = ⅓), leii (`costuri`: ralanti, viteză, `accel` =
+  „Combustibil", `frane` = frânări + viraje = „Frâne și anvelope"), recomandările și textele „Cum se socotește"
+  (`explicatii`). NU scrie praguri sau prețuri în pagină ori în altă parte. „Peste 90 km/h" e pragul EcoDrive, NU limita
+  legală — textele o spun așa.
+- **Zilele: `zile_condus` (imei, zi pe ora României, șofer)** — doar ce s-a MĂSURAT (`pesteF`, `ralantiOreEst`,
+  `ralantiLMasurat`, manevre, ore, zone de ~500 m). Litrii și leii se socotesc la citire, cu consumul și prețul de azi ale
+  mașinii. NU rotunji numerele pe zi: pe o lună rotunjirile mutau o zecime (40,15) și pagina se contrazicea cu raportul.
+- **Ce se (re)socotește: `safe_drive.deSocotit`** — zi nesocotită, socotită înainte să se termine, sau „azi" mai veche de
+  15 minute. Coada din server (`_sdPune`, două mașini deodată, fără dubluri), tura de noapte (`safeDriveNoaptea`, 2–6 ora
+  României, ultimele 3 zile, firmele cu RA Insight, fără demo), iar prima deschidere a unei luni răspunde „Pregătesc luna"
+  cu procentul. Citirea pornește cu 10 minute înainte (drumul de peste miezul nopții se leagă), dar scrie doar zilele ei.
+- **O SINGURĂ funcție pentru lună: `_sdLuna(req, o)`**, chemată de pagină (`GET /api/insight/safe-drive`) și de unealta
+  `safe_drive` a lui RA Insight — păzit prin numărare. Luna de acum se compară cu ACELEAȘI zile din luna dinainte; textele
+  „față de …" le scrie serverul (`_fata`), pagina doar le arată (cu textContent).
+- **Istoricul șoferilor: `istoric_soferi`** — `assignDevice` scrie fiecare schimbare; primul șofer al unei mașini fără
+  istoric e socotit de la început (de_la = 0), ca raportul de până atunci; ștergerea sau mutarea șoferului îi închide
+  rândurile. Clasamentul `ecodrive_drivers` folosește același istoric (`condus.soferLa`); fără istoric (baze de probă) —
+  șoferul de acum.
+- **Drepturi:** pagina = `ai_assistant` + loc RA Insight; prețurile pe manevră (`settings.safe_drive.preturi`, 0–100 lei,
+  altfel prețul de pornire) și „Am vorbit cu el" = `requireFleet`; discuția doar pe șoferii firmei (404 altfel), ziua o pune
+  serverul. Mașinile: `canAccessImei` + nearhivate; grupa — doar dintre ale omului.
+- **Ștergerea:** zilele pleacă odată cu pozițiile (`stergeIstoricAparat`, `stergeIstoricMaiVechiDe`,
+  `deleteDeviceCompletely`); `zile_condus` e în `BACKUP_EXCLUDED` (se reface), `istoric_soferi` și
+  `safe_drive_discutii` în `BUSINESS_TABLES`.
+- Prețurile de pornire (`PRETURI_IMPLICITE`) sunt o estimare a mea — la „De amintit", de confirmat cu Alin.
+- Păzit de `verify_safe_drive.js` (în `npm test`; cifrele = EcoDrive / Ralanti pe o lună, server pornit) și
+  `verify_insight.js` (unealta).
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

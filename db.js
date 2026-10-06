@@ -1512,6 +1512,52 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_aimsg_conv ON ai_mesaje(conversatie_id, id)`);
 
+    // ─── Safe Drive (RA Insight, pasul 3) ───
+    // Rezumatul unei ZILE (ora României) pe mașină și pe șofer: km, mers, manevre bruște, viteză, ralanti, plus orele și
+    // zonele manevrelor (celule de ~500 m) — socotit din poziții o dată (noaptea, sau la prima cerere a unei luni) de
+    // condus.js. Lunile se adună din zile, fără să recitim pozițiile. Sunt date DIN poziții: se șterg odată cu ele
+    // (stergeIstoricMaiVechiDe / stergeIstoricAparat). `sofer` = 0 când mașina n-avea șofer. O zi fără mers are tot un
+    // rând (zero), ca să se știe că a fost socotită.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS zile_condus (
+        imei VARCHAR(20) NOT NULL,
+        zi DATE NOT NULL,
+        sofer INTEGER NOT NULL DEFAULT 0,
+        date JSONB NOT NULL DEFAULT '{}',
+        calculat_la BIGINT,
+        PRIMARY KEY (imei, zi, sofer)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_zile_condus_zi ON zile_condus(zi)`);
+    // Cine a condus ce mașină și CÂND. Până pe 06.10 aplicația știa doar șoferul de ACUM; un schimb la mijlocul lunii ar fi
+    // pus toată luna pe noul șofer. `de_la` = 0: de dinainte să ținem minte. Se scrie la fiecare schimbare (assignDevice)
+    // și se închide când șoferul e șters sau mutat la altă firmă.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS istoric_soferi (
+        id BIGSERIAL PRIMARY KEY,
+        imei VARCHAR(20) NOT NULL,
+        driver_id INTEGER NOT NULL,
+        de_la BIGINT NOT NULL DEFAULT 0,
+        pana_la BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_istoric_soferi_imei ON istoric_soferi(imei, de_la)`);
+    // „Am vorbit cu el": ziua în care șeful a discutat cu un șofer (sau despre o mașină fără șofer), ca pagina să arate
+    // înainte / după. O notă scurtă, opțională. Ține de firmă; se șterge odată cu șoferul.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS safe_drive_discutii (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        driver_id INTEGER,
+        imei VARCHAR(20),
+        la BIGINT NOT NULL,
+        nota VARCHAR(300),
+        user_id INTEGER,
+        creat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_sd_discutii_co ON safe_drive_discutii(company_id, la DESC)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -2990,6 +3036,7 @@ async function setDriverCompany(id, companyId) {
   try {
     await client.query('BEGIN');
     await client.query('UPDATE devices SET driver_id = NULL WHERE driver_id = $1', [id]);
+    await client.query('UPDATE istoric_soferi SET pana_la = $2 WHERE driver_id = $1 AND pana_la IS NULL', [id, Date.now()]);
     await client.query('UPDATE drivers SET company_id = $2 WHERE id = $1', [id, companyId || null]);
     await client.query('COMMIT');
   } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -3331,7 +3378,8 @@ async function deleteDeviceCompletely(imei) {
     try { await _stergeImeiPeLoturi(t, imei); } catch (e) { /* tabel inexistent */ }
   }
   const tables = ['notifications', 'agent_findings', 'vehicle_documents',
-    'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
+    'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules',
+    'zile_condus', 'istoric_soferi'];
   for (const t of tables) {
     try { await pool.query(`DELETE FROM ${t} WHERE imei = $1`, [imei]); } catch (e) { /* tabel/coloană inexistentă */ }
   }
@@ -3377,10 +3425,96 @@ async function updateVehicleDetails(imei, fields) {
 }
 
 async function assignDevice(imei, driverId, groupId) {
+  // Schimbarea de șofer se ține minte (istoric_soferi), ca Safe Drive să pună fiecare zi pe cine chiar a condus.
+  const vechi = await pool.query('SELECT driver_id FROM devices WHERE imei = $1', [imei]);
   await pool.query(
     'UPDATE devices SET driver_id = $2, group_id = $3 WHERE imei = $1',
     [imei, driverId || null, groupId || null]
   );
+  const inainte = vechi.rows[0] ? vechi.rows[0].driver_id : null, acum = driverId ? Number(driverId) : null;
+  if (vechi.rows[0] && inainte !== acum) { try { await schimbaSoferIstoric(imei, acum, Date.now()); } catch (e) { /* istoricul nu oprește atribuirea */ } }
+}
+// ─── Istoricul șoferilor (Safe Drive) ───
+// Închide rândul deschis al mașinii și, dacă are șofer nou, deschide unul. `acum` în ms.
+// Primul șofer al unei mașini fără niciun rând e socotit „de la început" — cum punea raportul EcoDrive toată perioada pe
+// șoferul de acum (de obicei, șoferul se trece în aplicație după ce deja conduce mașina). De la al doilea, schimbarea se
+// ține de la clipa ei.
+async function schimbaSoferIstoric(imei, driverId, acum) {
+  await pool.query('UPDATE istoric_soferi SET pana_la = $2 WHERE imei = $1 AND pana_la IS NULL', [imei, acum]);
+  if (!driverId) return;
+  const are = await pool.query('SELECT 1 FROM istoric_soferi WHERE imei = $1 LIMIT 1', [imei]);
+  await pool.query('INSERT INTO istoric_soferi (imei, driver_id, de_la) VALUES ($1, $2, $3)', [imei, driverId, are.rows.length ? acum : 0]);
+}
+// Un șofer șters sau mutat la altă firmă nu mai conduce nimic de acum încolo.
+async function inchideSoferiIstoric(driverIds, acum) {
+  if (!Array.isArray(driverIds) || !driverIds.length) return;
+  await pool.query('UPDATE istoric_soferi SET pana_la = $2 WHERE driver_id = ANY($1::int[]) AND pana_la IS NULL', [driverIds, acum]);
+}
+// La pornire: fiecare mașină cu șofer și fără rând deschis primește unul „de dinainte" (de_la = 0) — până pe 06.10 nu
+// țineam minte schimbările, deci zilele vechi merg pe șoferul de acum.
+async function semanaIstoricSoferi() {
+  const r = await pool.query(`
+    INSERT INTO istoric_soferi (imei, driver_id, de_la)
+    SELECT d.imei, d.driver_id, 0 FROM devices d
+     WHERE d.driver_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM istoric_soferi s WHERE s.imei = d.imei AND s.pana_la IS NULL)`);
+  return r.rowCount || 0;
+}
+async function istoricSoferi(imeis) {
+  if (!Array.isArray(imeis) || !imeis.length) return [];
+  const r = await pool.query('SELECT imei, driver_id, de_la, pana_la FROM istoric_soferi WHERE imei = ANY($1) ORDER BY imei, de_la', [imeis]);
+  return r.rows.map(function (x) { return { imei: x.imei, driver_id: x.driver_id, de_la: Number(x.de_la) || 0, pana_la: x.pana_la == null ? null : Number(x.pana_la) }; });
+}
+// ─── Rezumatul pe zile (Safe Drive) ───
+// Scrie zilele socotite ale unei mașini: șterge întâi tot intervalul (o zi recalculată nu lasă rânduri vechi de alt
+// șofer), apoi pune rândurile. O zi fără niciun rând primește unul zero (sofer 0), ca să se știe că a fost socotită.
+async function scrieZileCondus(imei, ziDe, ziPana, randuri, zileToate) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM zile_condus WHERE imei = $1 AND zi BETWEEN $2 AND $3', [imei, ziDe, ziPana]);
+    const acum = Date.now(), cu = new Set();
+    for (const r of randuri) {
+      cu.add(r.zi);
+      const d = Object.assign({}, r); delete d.zi; delete d.sofer;
+      await client.query('INSERT INTO zile_condus (imei, zi, sofer, date, calculat_la) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (imei, zi, sofer) DO UPDATE SET date = EXCLUDED.date, calculat_la = EXCLUDED.calculat_la',
+        [imei, r.zi, r.sofer || 0, JSON.stringify(d), acum]);
+    }
+    for (const z of (zileToate || [])) if (!cu.has(z)) await client.query('INSERT INTO zile_condus (imei, zi, sofer, date, calculat_la) VALUES ($1, $2, 0, $3, $4) ON CONFLICT DO NOTHING', [imei, z, '{}', acum]);
+    await client.query('COMMIT');
+  } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
+  finally { client.release(); }
+}
+async function citesteZileCondus(imeis, ziDe, ziPana) {
+  if (!Array.isArray(imeis) || !imeis.length) return [];
+  const r = await pool.query("SELECT imei, to_char(zi, 'YYYY-MM-DD') AS zi, sofer, date FROM zile_condus WHERE imei = ANY($1) AND zi BETWEEN $2 AND $3", [imeis, ziDe, ziPana]);
+  return r.rows.map(function (x) { const d = typeof x.date === 'string' ? JSON.parse(x.date) : (x.date || {}); return { imei: x.imei, zi: x.zi, sofer: x.sofer, date: d }; });
+}
+// Când a fost socotită fiecare zi (cea mai veche socoteală dintre rândurile zilei): 'imei|zi' → ms. Ce lipsește n-a fost
+// socotit niciodată. Serverul hotărăște din asta ce se reface (safe_drive.js → deSocotit).
+async function zileCondusStare(imeis, ziDe, ziPana) {
+  const m = new Map();
+  if (!Array.isArray(imeis) || !imeis.length) return m;
+  const r = await pool.query("SELECT imei, to_char(zi, 'YYYY-MM-DD') AS zi, MIN(calculat_la) AS la FROM zile_condus WHERE imei = ANY($1) AND zi BETWEEN $2 AND $3 GROUP BY 1, 2", [imeis, ziDe, ziPana]);
+  r.rows.forEach(function (x) { m.set(x.imei + '|' + x.zi, Number(x.la) || 0); });
+  return m;
+}
+// ─── „Am vorbit cu el" (Safe Drive) ───
+async function adaugaDiscutieSafeDrive(o) {
+  const r = await pool.query('INSERT INTO safe_drive_discutii (company_id, driver_id, imei, la, nota, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, la',
+    [o.companyId == null ? null : o.companyId, o.driverId || null, o.imei || null, o.la, o.nota || null, o.userId || null]);
+  return r.rows[0];
+}
+// O discuție trecută din greșeală se scoate — doar din firma ei (super-adminul fără firmă: oricare).
+async function stergeDiscutieSafeDrive(id, companyId) {
+  const r = await pool.query('DELETE FROM safe_drive_discutii WHERE id = $1 AND ($2::int IS NULL OR company_id = $2)', [parseInt(id) || 0, companyId == null ? null : companyId]);
+  return (r.affectedRows || r.rowCount || 0) > 0;
+}
+async function discutiiSafeDrive(companyId, driverIds, imeis) {
+  const r = await pool.query(`SELECT id, company_id, driver_id, imei, la, nota, user_id FROM safe_drive_discutii
+     WHERE (driver_id = ANY($1::int[]) OR imei = ANY($2::text[])) AND ($3::int IS NULL OR company_id = $3) ORDER BY la DESC`,
+    [driverIds || [], imeis || [], companyId == null ? null : companyId]);
+  return r.rows.map(function (x) { return Object.assign({}, x, { la: Number(x.la) }); });
 }
 // Schimbă DOAR grupa. `assignDevice` scrie și driver_id, deci mutarea unui vehicul dintr-o grupă în
 // alta i-ar șterge șoferul dacă n-ar exista funcția asta.
@@ -4448,12 +4582,13 @@ async function _stergeImeiPeLoturi(tabel, imei) {
 // Întoarce ce s-a șters, pe feluri. Aparatul se marchează „istoric șters" DOAR dacă toate au mers —
 // altfel mâine se încearcă din nou, nu se lasă ceva pe jumătate crezând că e gata.
 async function stergeIstoricAparat(imei) {
-  const out = { pozitii: 0, arhiva: 0, curse: 0, alerte: 0, erori: [] };
+  const out = { pozitii: 0, arhiva: 0, curse: 0, alerte: 0, zile: 0, erori: [] };
   const incearca = async function (cheie, fn) { try { out[cheie] = await fn(); } catch (e) { out.erori.push(cheie + ': ' + e.message); } };
   await incearca('pozitii', function () { return _stergeImeiPeLoturi('positions', imei); });
   await incearca('arhiva', function () { return _stergeImeiPeLoturi('positions_archive', imei); });
   await incearca('curse', async function () { const r = await pool.query('DELETE FROM trips WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
   await incearca('alerte', async function () { const r = await pool.query('DELETE FROM alert_history WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
+  await incearca('zile', async function () { const r = await pool.query('DELETE FROM zile_condus WHERE imei = $1', [imei]); return r.affectedRows || r.rowCount || 0; });
   if (!out.erori.length) await pool.query('UPDATE devices SET istoric_sters_at = $2 WHERE imei = $1', [imei, Date.now()]);
   return out;
 }
@@ -4479,7 +4614,7 @@ async function aparatePentruPastrare() {
 async function stergeIstoricMaiVechiDe(imei, luni, opts) {
   const pana = (opts && opts.pana) || (Date.now() + BATCH_BUDGET_MS);
   const lot = (opts && opts.lot) || BATCH_ROWS;
-  const out = { pozitii: 0, curse: 0, alerte: 0, loturi: 0, epuizat: false };
+  const out = { pozitii: 0, curse: 0, alerte: 0, zile: 0, loturi: 0, epuizat: false };
   const PRAG = `NOW() - make_interval(months => $2::int)`;
   for (;;) {
     if (Date.now() >= pana) { out.epuizat = true; break; }
@@ -4499,6 +4634,9 @@ async function stergeIstoricMaiVechiDe(imei, luni, opts) {
     out.curse = c.affectedRows || c.rowCount || 0;
     const a = await pool.query(`DELETE FROM alert_history WHERE imei = $1 AND triggered_at < ${PRAG}`, [imei, luni]);
     out.alerte = a.affectedRows || a.rowCount || 0;
+    // Rezumatul pe zile (Safe Drive) ține și locuri: nu trăiește mai mult decât pozițiile din care s-a făcut.
+    const z = await pool.query(`DELETE FROM zile_condus WHERE imei = $1 AND zi < (${PRAG})::date`, [imei, luni]);
+    out.zile = z.affectedRows || z.rowCount || 0;
   }
   return out;
 }
@@ -4826,6 +4964,7 @@ async function setDriversCompanyBulk(ids, companyId) {
   try {
     await client.query('BEGIN');
     await client.query('UPDATE devices SET driver_id = NULL WHERE driver_id = ANY($1::int[])', [ids]);
+    await client.query('UPDATE istoric_soferi SET pana_la = $2 WHERE driver_id = ANY($1::int[]) AND pana_la IS NULL', [ids, Date.now()]);
     const r = await client.query('UPDATE drivers SET company_id = $2 WHERE id = ANY($1::int[])', [ids, companyId || null]);
     await client.query('COMMIT');
     return r.affectedRows || r.rowCount || 0;
@@ -4850,6 +4989,8 @@ async function updateDriver(id, data) {
 
 async function deleteDriver(id) {
   await pool.query('UPDATE devices SET driver_id = NULL WHERE driver_id = $1', [id]);
+  await pool.query('UPDATE istoric_soferi SET pana_la = $2 WHERE driver_id = $1 AND pana_la IS NULL', [id, Date.now()]);
+  await pool.query('DELETE FROM safe_drive_discutii WHERE driver_id = $1', [id]);
   await pool.query('DELETE FROM drivers WHERE id = $1', [id]);
 }
 
@@ -5576,6 +5717,8 @@ module.exports = {
   cleanupExpiredSessions,
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
+  schimbaSoferIstoric, inchideSoferiIstoric, semanaIstoricSoferi, istoricSoferi,
+  scrieZileCondus, citesteZileCondus, zileCondusStare, adaugaDiscutieSafeDrive, discutiiSafeDrive, stergeDiscutieSafeDrive,
   aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
   stergeAuditMaiVechiDe,
   getArchivedImeis,

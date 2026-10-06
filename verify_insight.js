@@ -342,7 +342,8 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
   T('rândul „RA Insight" din meniu (cu eticheta NOU) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
   T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde" (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
-  T('ramurile care încă nu sunt gata nu se arată (gata: false)', /k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: false/.test(PAG));
+  // Pasul 3 (06.10): Safe Drive s-a livrat și se arată; ramurile încă nelivrate (Combustibil…) rămân ascunse.
+  T('ramurile livrate se arată (Safe Drive, din pasul 3); cele încă nelivrate nu (gata: false)', /k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true/.test(PAG) && /k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: false/.test(PAG) && /RAMURI\.filter\(function \(r\) \{ return r\.gata; \}\)/.test(PAG));
   T('discuția din secțiune e ACEEAȘI cu bula din colț (o singură conversație curentă)', (PAG.match(/window\._raxConvId/g) || []).length >= 4);
   // notițele firmei
   const n0 = await json('GET', '/api/insight/notite', ckSef);
@@ -369,6 +370,16 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('„cum fac…?" → unealta ghidului; modelul primește pașii capitolului despre șoferi', qg.status === 200 && rezG.indexOf('Un șofer nou și mașina lui') >= 0 && rezG.indexOf('Adaugă șofer') >= 0, rezG.slice(0, 200));
   T('…iar „Am înțeles" spune că a citit ghidul', (qg.j.inteles || []).some((x) => x.text === 'ghidul aplicației'), JSON.stringify(qg.j.inteles));
   T('instrucțiunile îi cer să răspundă la „cum fac" DOAR din ghid (nu din memorie)', /GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo/.test(String(cg.system[0].text)));
+  // Safe Drive (pasul 3, 06.10): RA Insight primește ACEEAȘI lună ca pagina (aceeași funcție pe server), fără coordonate
+  coada([unealta('safe_drive', {}), text('**Safe Drive** — luna asta, costul condusului.')]);
+  const qs = await json('POST', '/api/insight/intreaba', ckSef, { message: 'cât ne-a costat condusul luna asta?', nou: true });
+  const cs = cereri().slice(-1)[0];
+  const rezS = JSON.stringify((cs.messages || []).slice(-1)[0]);
+  const pagS = await json('GET', '/api/insight/safe-drive', ckSef);
+  T('„cât ne-a costat condusul" → unealta safe_drive; modelul primește costul pe feluri, mașinile și spusa „estimate"', qs.status === 200 && /cost_lei/.test(rezS) && /combustibil_accelerari/.test(rezS) && /ESTIMATE/.test(rezS) && !/latitude|"lat"|"lng"/.test(rezS), rezS.slice(0, 240));
+  T('…cu aceeași lună și aceleași mașini ca pagina Safe Drive', pagS.status === 200 && rezS.indexOf(pagS.j.eticheta) >= 0 && (pagS.j.masini || []).every((m) => rezS.indexOf(m.eticheta) >= 0), pagS.status + ' ' + (pagS.j.eticheta || pagS.text.slice(0, 120)));
+  T('…iar „Am înțeles" spune Safe Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'Safe Drive & costuri') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
+  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna, chemată de două ori)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 2 && /UNELTE:[\s\S]*safe_drive — Safe Drive & costuri/.test(String(cs.system[0].text)));
   // un raport tăiat din rol nu se scoate nici prin RA Insight
   await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: ['consumption'] });
   coada([unealta('run_report', { type: 'consumption', vehicle: 'B 154 UIP', period: 'last_week' }), text('Nu ai acces la raportul de consum.')]);

@@ -5,6 +5,7 @@ const IDLE_SPEED = 3;        // km/h sub care vehiculul e considerat oprit
 const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
 let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză")
+const condus = require('./condus');   // pragurile și scorul EcoDrive — aceleași pentru raport și pentru Safe Drive (o singură regulă)
 
 function t(p) { return new Date(p.timestamp).getTime(); }
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -1667,11 +1668,12 @@ const ECODRIVE_LEGEND = { title: 'Scorul EcoDrive — cum se citește', items: [
 ] };
 
 async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — scor comportament șofer
-  const limit = opts.limit || 90;
-  const HARSH_ACCEL = opts.harshAccel || 7; // km/h pe secundă (~1.9 m/s²)
-  const HARSH_BRAKE = opts.harshBrake || 9; // km/h pe secundă (~2.5 m/s²)
-  const HARSH_TURN = opts.harshTurn || 25;  // grade/secundă la viteză > 25 km/h
-  const rows = []; const evPts = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0, totT = 0; const vehScore = []; const perVeh = {};
+  // Pragurile și scorul stau în condus.js (aceleași pentru raport și pentru pagina Safe Drive).
+  const limit = opts.limit || condus.PRAGURI.limita;
+  const HARSH_ACCEL = opts.harshAccel || condus.PRAGURI.accel; // km/h pe secundă (~1.9 m/s²)
+  const HARSH_BRAKE = opts.harshBrake || condus.PRAGURI.frana; // km/h pe secundă (~2.5 m/s²)
+  const HARSH_TURN = opts.harshTurn || condus.PRAGURI.viraj;   // grade/secundă la viteză > 25 km/h
+  const rows = []; const evPts = []; let fleetVeh = 0, totA = 0, totB = 0, totT = 0; const vehScore = []; const perVeh = {}; const deFlota = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
@@ -1697,21 +1699,13 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
       }
     });
     if (km < 0.5 && driveSec < 60) continue;
-    const per100 = km > 1 ? 100 / km : 0;
-    const speedShare = driveSec > 0 ? speedOverSec / driveSec : 0;
     const idleShare = (driveSec + idleSec) > 0 ? idleSec / (driveSec + idleSec) : 0;
-    let pen = 0;
-    pen += Math.min(30, accel * per100 * 2.5);
-    pen += Math.min(35, brake * per100 * 3.0);
-    pen += Math.min(20, hardTurn * per100 * 2.0);
-    pen += Math.min(25, speedShare * 100);
-    pen += Math.min(15, idleShare * 40);
-    const score = Math.max(0, Math.round(100 - pen));
-    const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
+    const sc = condus.scor({ km, accel, frana: brake, viraj: hardTurn, pesteSec: speedOverSec, condusSec: driveSec, ralantiSec: idleSec });
+    const score = sc.scor, grade = sc.nota;
     events.sort((x, y) => t(x.p) - t(y.p));
     for (const ev of events) { rows.push([ nm, fmtTs(ev.ts), ev.type, ev.detail, loc(ev.p) ]); evPts.push(ev.p); }
     perVeh[nm] = { score, grade, accel, brake, turn: hardTurn, speedOverSec, idleShare, km: Math.round(km) };
-    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([nm, score]);
+    deFlota.push({ scor: score, km: km }); fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([nm, score]);
   }
   // Adresă la locul fiecărui eveniment brusc — DOAR dacă userul a ales „Adrese exacte" (opts.geo). Altfel rămân coordonate (rapid, fără amestec).
   if (opts.geo !== false && geocode && geocode.warm && evPts.length) {
@@ -1741,36 +1735,44 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
   return {
     columns: ['Vehicul', 'Data', 'Eveniment', 'Detaliu', 'Locație'],
     rows,
-    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB, 'Viraje bruște': totT },
+    summary: { 'Scor flotă (0-100)': condus.scorFlota(deFlota), 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB, 'Viraje bruște': totT },
     charts, perVehicle, noFleetTotal: true, legend: ECODRIVE_LEGEND // scorurile nu se adună → fără rând TOTAL în Sumar
   };
 }
 
 // EcoDrive — clasament pe ȘOFER: agregă metricile vehiculelor după șoferul asignat, scor + notă + rang.
 async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
-  const limit = opts.limit || 90;
-  const HARSH_ACCEL = opts.harshAccel || 7, HARSH_BRAKE = opts.harshBrake || 9, HARSH_TURN = opts.harshTurn || 25;
+  const limit = opts.limit || condus.PRAGURI.limita;   // pragurile și scorul: condus.js (o singură regulă)
+  const HARSH_ACCEL = opts.harshAccel || condus.PRAGURI.accel, HARSH_BRAKE = opts.harshBrake || condus.PRAGURI.frana, HARSH_TURN = opts.harshTurn || condus.PRAGURI.viraj;
   const driverName = {};
   try { const dr = await db.pool.query('SELECT id, name FROM drivers'); dr.rows.forEach(r => driverName[r.id] = r.name); } catch (e) {}
 
+  // Cine a condus, la fiecare poziție: istoricul șoferilor (06.10 — același ca pagina Safe Drive). Un schimb de șofer la
+  // mijlocul lunii nu mai pune toată luna pe noul șofer. Fără istoric (mașină fără rânduri, bază de probă) — șoferul de acum.
+  const ist = {};
+  try { if (typeof db.istoricSoferi === 'function') (await db.istoricSoferi(imeis)).forEach(x => { (ist[x.imei] || (ist[x.imei] = [])).push(x); }); } catch (e) { /* fără istoric: șoferul de acum */ }
   const agg = {}; // key -> bucket agregat pe șofer
+  const bucket = (id) => {
+    const key = id ? ('d' + id) : 'none';
+    return agg[key] || (agg[key] = { key, name: id ? (driverName[id] || ('Șofer #' + id)) : 'Fără șofer asignat', vehicles: new Set(), km: 0, accel: 0, brake: 0, hardTurn: 0, speedOverSec: 0, idleSec: 0, driveSec: 0 });
+  };
   for (const imei of imeis) {
     const dev = devMap[imei] || {};
-    const key = dev.driver_id != null ? ('d' + dev.driver_id) : 'none';
-    const name = dev.driver_id != null ? (driverName[dev.driver_id] || ('Șofer #' + dev.driver_id)) : 'Fără șofer asignat';
-    const b = agg[key] || (agg[key] = { name, vehicles: new Set(), km: 0, accel: 0, brake: 0, hardTurn: 0, speedOverSec: 0, idleSec: 0, driveSec: 0 });
-    let vehKm = 0, vehDrive = 0, pr = null;
+    const cine = ist[imei] ? condus.soferLa(ist[imei]) : (() => (dev.driver_id != null ? dev.driver_id : 0));
+    const peSofer = {}; // key -> { km, drive } pe mașina asta
+    let pr = null;
     // Toată perioada, pe pagini (vezi „Citirea pozițiilor"): fiecare pereche de puncte vecine, ca înainte.
     await fiecarePozitie(db, imei, from, to, function (p) {
       const anterior = pr; pr = p;
       if (!anterior) return;
       const dt = (t(p) - t(anterior)) / 1000;
       if (dt <= 0 || dt > 300) return;
+      const b = bucket(cine(t(p))), v = peSofer[b.key] || (peSofer[b.key] = { km: 0, drive: 0 });
       const dist = haversineKm(anterior.latitude, anterior.longitude, p.latitude, p.longitude);
-      if (dist < MAX_STEP_KM) { b.km += dist; vehKm += dist; }
+      if (dist < MAX_STEP_KM) { b.km += dist; v.km += dist; }
       const sp = p.speed || 0, spPr = anterior.speed || 0;
       if (sp > limit) b.speedOverSec += dt;
-      if (sp > IDLE_SPEED) { b.driveSec += dt; vehDrive += dt; } else if (ignOn(p)) b.idleSec += dt;
+      if (sp > IDLE_SPEED) { b.driveSec += dt; v.drive += dt; } else if (ignOn(p)) b.idleSec += dt;
       if (dt <= 30) {
         const a = (sp - spPr) / dt;
         if (a > HARSH_ACCEL) b.accel++;
@@ -1778,27 +1780,19 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
         if (sp > 25) { let da = Math.abs((p.angle || 0) - (anterior.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > HARSH_TURN) b.hardTurn++; }
       }
     });
-    if (vehKm >= 0.5 || vehDrive >= 60) b.vehicles.add(imei);
+    Object.keys(peSofer).forEach(k => { if (peSofer[k].km >= 0.5 || peSofer[k].drive >= 60) agg[k].vehicles.add(imei); });
   }
 
-  const scored = []; let fleetScoreW = 0, fleetKm = 0, totA = 0, totB = 0;
+  const scored = []; const deFlota = []; let totA = 0, totB = 0;
   for (const key of Object.keys(agg)) {
     const b = agg[key];
     if (b.km < 0.5 && b.driveSec < 60) continue;
     const per100 = b.km > 1 ? 100 / b.km : 0;
-    const speedShare = b.driveSec > 0 ? b.speedOverSec / b.driveSec : 0;
-    const idleShare = (b.driveSec + b.idleSec) > 0 ? b.idleSec / (b.driveSec + b.idleSec) : 0;
-    let pen = 0;
-    pen += Math.min(30, b.accel * per100 * 2.5);
-    pen += Math.min(35, b.brake * per100 * 3.0);
-    pen += Math.min(20, b.hardTurn * per100 * 2.0);
-    pen += Math.min(25, speedShare * 100);
-    pen += Math.min(15, idleShare * 40);
-    const score = Math.max(0, Math.round(100 - pen));
-    const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
+    const sc = condus.scor({ km: b.km, accel: b.accel, frana: b.brake, viraj: b.hardTurn, pesteSec: b.speedOverSec, condusSec: b.driveSec, ralantiSec: b.idleSec });
+    const score = sc.scor, grade = sc.nota;
     const per100ev = Math.round((b.accel + b.brake + b.hardTurn) * per100 * 10) / 10;
     scored.push({ name: b.name, vehicles: b.vehicles.size, score, grade, accel: b.accel, brake: b.brake, hardTurn: b.hardTurn, per100ev, km: Math.round(b.km) });
-    const w = Math.max(1, b.km); fleetScoreW += score * w; fleetKm += w; totA += b.accel; totB += b.brake;
+    deFlota.push({ scor: score, km: b.km }); totA += b.accel; totB += b.brake;
   }
   scored.sort((x, y) => y.score - x.score);
   // Top LEAN pe șofer: rang + scor/notă (separate) + evenimente/100km (comparație corectă). Fără accel/frânări/viraje pe mașină — alea sunt în EcoDrive comportament (nu dublăm).
@@ -1812,7 +1806,7 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
   return {
     columns: ['Rang', 'Șofer', 'Scor', 'Notă', 'Evenim./100km', 'Km'],
     rows,
-    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB },
+    summary: { 'Scor mediu flotă (0-100)': condus.scorFlota(deFlota), 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB },
     charts, legend: ECODRIVE_LEGEND, summarySheet: true // sumarul pe foaie „Sumar" separată, nu îngrămădit sub tabel
   };
 }
@@ -2708,4 +2702,7 @@ async function analyzeZone(db, imeis, from, to, zone) {
 // „Consum azi" din fișa vehiculului. Acolo era A DOUA copie a aceleiași greșeli — aduna toate scăderile
 // de nivel. O reparasem doar în rapoarte, iar cifra din fișă ar fi rămas umflată.
 module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices,
-  _nivelConsum, _capat, _cumulTracker };
+  _nivelConsum, _capat, _cumulTracker,
+  // Safe Drive (safe_drive.js) citește pozițiile și mașina cu ACELEAȘI funcții ca rapoartele: contactul, motorul, contorul
+  // de combustibil, distanța, consumul și prețul — ca pagina și raportul EcoDrive / Ralanti să nu se contrazică.
+  _ajutor: { ignOn, engineRunning, fuelCumul, haversineKm, idleRate, defConsumption, resolvePrice, fiecarePozitie } };

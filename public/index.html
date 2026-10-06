@@ -10150,7 +10150,7 @@ const pozitii = await r.json();</code></pre>
       // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
-        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: false },
+        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true },
         { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: false },
         { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: false },
         { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: false },
@@ -10284,6 +10284,7 @@ const pozitii = await r.json();</code></pre>
           return;
         }
         if (S.ramura === 'ghid') return deseneazaGhid(main);
+        if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
         main.innerHTML = '<div class="insp-msgs" id="insp-msgs"></div>' +
           '<div class="insp-scrie"><div class="insp-caseta">' +
           '<textarea id="insp-input" rows="1" placeholder="Scrie numărul, numele mașinii sau al șoferului… de exemplu „Cât a consumat B 154 UIP luna asta?”" onkeydown="insightTasta(event)" oninput="insightCreste(this)"></textarea>' +
@@ -10476,6 +10477,227 @@ const pozitii = await r.json();</code></pre>
         b.onclick = function () { S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain(); var i = $i('insp-input'); if (i) { i.value = 'Despre „' + g.titlu + '”: '; i.focus(); } };
         t.appendChild(b);
       }
+
+      // ─── Ramura „Safe Drive & costuri" (pasul 3, 06.10; după macheta din 02.10): cum conduc mașinile și șoferii și cât
+      // costă, în lei. Serverul socotește tot (safe_drive.js + condus.js — aceleași praguri și același scor ca raportul
+      // EcoDrive) și scrie textele („față de august", „Cum se socotește", recomandările); pagina doar le arată, cu textContent.
+      function sdLei(n) { var r = Math.round(Number(n) || 0), v = Math.abs(r) % 100; return r === 1 ? '1 leu' : r.toLocaleString('ro-RO') + ((v === 0 && r) || v >= 20 ? ' de lei' : ' lei'); }
+      function sdNr(x, z) { return x == null ? '—' : Number(x).toLocaleString('ro-RO', { maximumFractionDigits: z || 0 }); }
+      function sdCel(tr, text, cls) { var td = el('td', cls || null, text); tr.appendChild(td); return td; }
+      function sdTabel(capete) {
+        var w = el('div', 'sdp-scroll'), t = el('table', 'sdp-tab'), th = el('tr');
+        capete.forEach(function (c) { th.appendChild(el('th', c[1] || null, c[0])); });
+        var h = el('thead'); h.appendChild(th); t.appendChild(h);
+        var b = el('tbody'); t.appendChild(b); w.appendChild(t);
+        return { w: w, b: b };
+      }
+      function sdSect(gazda, titlu, ic) { var s = el('section', 'sdp-sect'); var h = el('h3'); h.innerHTML = '<i class="fas ' + ic + '"></i> '; h.appendChild(document.createTextNode(titlu)); s.appendChild(h); gazda.appendChild(s); return s; }
+      function sdIar(main, j) { setTimeout(function () { if (S.ramura === 'safedrive' && S.sdLuna === j.lunaAleasa) deseneazaSafeDrive(main, j.lunaAleasa, true); }, j.pregatire ? 2500 : 4000); }
+      async function deseneazaSafeDrive(main, luna, singur) {
+        var tok = S.sdTok = (S.sdTok || 0) + 1;
+        if (!singur || !main.querySelector('.sdp')) main.innerHTML = '<div class="sdp"><div class="insp-gol">Se încarcă…</div></div>';
+        var q = [];
+        if (luna) q.push('luna=' + encodeURIComponent(luna));
+        if (S.sdGrupa != null) q.push('grupa=' + encodeURIComponent(S.sdGrupa));
+        var r = await cere('GET', '/api/insight/safe-drive' + (q.length ? '?' + q.join('&') : ''));
+        if (tok !== S.sdTok || S.ramura !== 'safedrive') return;   // omul a plecat sau a cerut altceva între timp
+        var pag = el('div', 'sdp'), j = r.j || {};
+        var vechi = main.querySelector('.sdp'), sus = vechi ? vechi.scrollTop : 0;
+        main.innerHTML = ''; main.appendChild(pag);
+        if (r.s !== 200) {
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Safe Drive nu s-a putut deschide'));
+          c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
+        }
+        S.sdLuna = j.lunaAleasa; S.sdGrupa = j.grupaAleasa;
+        // Capul: titlul, luna, grupa, „Întreabă RA Insight"
+        var cap = el('div', 'sdp-cap');
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-shield-halved"></i> '; h2.appendChild(document.createTextNode('Safe Drive & costuri')); cap.appendChild(h2);
+        var dr = el('div', 'sdp-dr');
+        var sel = el('select', 'sdp-sel'); sel.setAttribute('aria-label', 'Luna');
+        (j.luni || []).forEach(function (l) { var o = el('option', null, l.eticheta.charAt(0).toUpperCase() + l.eticheta.slice(1)); o.value = l.luna; if (l.luna === j.lunaAleasa) o.selected = true; sel.appendChild(o); });
+        sel.onchange = function () { deseneazaSafeDrive(main, sel.value); };
+        dr.appendChild(sel);
+        if ((j.grupe || []).length > 1) {
+          var sg = el('select', 'sdp-sel'); sg.setAttribute('aria-label', 'Mașinile');
+          j.grupe.forEach(function (g) { var o = el('option', null, g.eticheta); o.value = g.id == null ? '' : String(g.id); if (String(g.id) === String(j.grupaAleasa)) o.selected = true; sg.appendChild(o); });
+          sg.onchange = function () { S.sdGrupa = sg.value === '' ? null : sg.value; deseneazaSafeDrive(main, j.lunaAleasa); };
+          dr.appendChild(sg);
+        }
+        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
+        bQ.title = 'Întreabă RA Insight despre luna asta (se numără din fondul de întrebări)';
+        bQ.onclick = function () { window.insightSdIntreaba(j); };
+        dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
+        if (j.pregatire) {
+          var pr = el('div', 'insp-card');
+          pr.appendChild(el('h3', null, 'Pregătesc luna…'));
+          pr.appendChild(el('div', null, 'Prima dată durează mai mult: socotesc fiecare zi din toate pozițiile mașinilor. Pagina se actualizează singură.'));
+          var bar = el('div', 'sdp-prog'); var bb = el('b'); bb.style.width = (j.pregatire.procent || 1) + '%'; bar.appendChild(bb); pr.appendChild(bar);
+          pr.appendChild(el('div', 'sdp-mic', (j.pregatire.procent || 1) + '%'));
+          pag.appendChild(pr); sdIar(main, j); return;
+        }
+        if (j.gol || !(j.masini || []).length) {
+          var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, j.gol ? 'Nicio mașină de arătat' : 'Nimic de arătat în ' + (j.eticheta || 'luna asta')));
+          g0.appendChild(el('div', null, j.gol ? 'Safe Drive se uită la mașinile la care ai acces — acum nu e niciuna.' : 'Mașinile n-au mers (sau n-au trimis poziții) în perioada asta. Alege altă lună de sus.'));
+          pag.appendChild(g0); return;
+        }
+        var f = j.flota || {}, fa = j.fata || {}, c = f.cost || {}, lim = (j.praguri || {}).limita || '';
+        var luniiCe = (j.inainte && j.inainte.eticheta) || 'luna dinainte';
+        // Cifrele mari: cât a costat, apoi pe feluri
+        var tl = el('div', 'sdp-tiles');
+        var mare = el('div', 'sdp-tile mare');
+        mare.appendChild(el('div', 'et', 'Condusul a costat în plus'));
+        mare.appendChild(el('div', 'val', '~' + sdLei(c.total)));
+        mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + (f.costPeMasina != null && f.cuDrum > 1 ? ' · cam ' + sdLei(f.costPeMasina) + ' pe mașină' : '') + ' (estimat)'));
+        if (fa.cost) mare.appendChild(el('span', 'sdp-chip ' + (fa.fel || 'info'), fa.cost));
+        tl.appendChild(mare);
+        [['fa-gas-pump', 'Combustibil', c.accel, 'în plus, din accelerări bruște'],
+         ['fa-circle-stop', 'Frâne și anvelope', c.frane, 'din frânări și viraje bruște'],
+         ['fa-gauge-high', 'Viteză', c.viteza, 'combustibil în plus, peste ' + lim + ' km/h'],
+         ['fa-hourglass-half', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + ' ore']].forEach(function (x) {
+          var t = el('div', 'sdp-tile'), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
+          t.appendChild(et); t.appendChild(el('div', 'val', sdLei(x[2]))); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
+        });
+        pag.appendChild(tl);
+        // Rândul scorului: scorul flotei, manevrele la 100 km, km — cu luna dinainte alături
+        var lin = el('div', 'sdp-linie');
+        lin.appendChild(el('span', null, 'Scorul flotei: ' + (f.scor == null ? '—' : f.scor + ' · ' + f.nota) + (fa.scor ? ' (' + fa.scor + ')' : '')));
+        lin.appendChild(el('span', null, 'Manevre bruște la 100 km: ' + sdNr(f.laSuta, 1) + (fa.laSuta ? ' (' + fa.laSuta + ')' : '')));
+        lin.appendChild(el('span', null, sdNr(f.km) + ' km · peste ' + lim + ' km/h: ' + sdNr(f.pesteMin) + ' min · cel mai repede ' + sdNr(f.vmax) + ' km/h'));
+        pag.appendChild(lin);
+        if (j.inaintePregatire) { pag.appendChild(el('div', 'sdp-mic', 'Comparația cu luna dinainte se pregătește — apare singură în câteva secunde.')); sdIar(main, j); }
+        // Pe șofer + Unde și când
+        var doua = el('div', 'sdp-doua'); pag.appendChild(doua);
+        var sS = sdSect(doua, 'Pe șofer — cine costă cel mai mult', 'fa-ranking-star');
+        if ((j.soferi || []).length) {
+          var tS = sdTabel([['Șofer'], ['Mașina'], ['Cost pe lună', 'n'], ['Bruște la 100 km', 'n'], ['Față de ' + luniiCe, 'n'], ['Au mers măsurile?', 'lat']]);
+          j.soferi.forEach(function (s) {
+            var tr = el('tr');
+            sdCel(tr, s.nume, s.id ? 'b' : 'mut'); sdCel(tr, (s.masini || []).join(', ') || '—', 'mic nw');
+            var cc = sdCel(tr, sdLei(s.cost && s.cost.total), 'n b'); cc.title = 'combustibil ' + sdLei(s.cost.accel) + ' · frâne și anvelope ' + sdLei(s.cost.frane) + ' · viteză ' + sdLei(s.cost.viteza) + ' · ralanti ' + sdLei(s.cost.ralanti);
+            sdCel(tr, sdNr(s.laSuta, 1), 'n'); sdCel(tr, s.fata ? s.fata.text : '—', 'n ' + (s.fata ? s.fata.fel : ''));
+            var td = sdCel(tr, '', 'lat');
+            if (s.discutie) {
+              var cm = s.discutie.comparatie;
+              td.appendChild(el('div', 'sdp-chip ' + (cm ? cm.fel : 'info'), cm ? cm.text : 'Ați vorbit pe ' + s.discutie.zi.split('-').reverse().join('.')));
+              td.appendChild(el('div', 'mic', 'Discuția din ' + s.discutie.zi.split('-').reverse().join('.') + (s.discutie.nota ? ' — „' + s.discutie.nota + '”' : '')));
+              if (j.poateNota) { var bx = el('button', 'sdp-link', 'Scoate'); bx.title = 'Scoate discuția (dacă ai trecut-o din greșeală)'; bx.onclick = function () { window.insightSdScoate(s.discutie.id); }; td.appendChild(bx); }
+            } else if (s.id && j.poateNota) {
+              var bv = el('button', 'insp-btn'); bv.innerHTML = '<i class="fas fa-comments"></i> Am vorbit cu el';
+              bv.onclick = function () { window.insightSdDiscutie(s.id, s.nume); }; td.appendChild(bv);
+            } else td.appendChild(document.createTextNode('—'));
+            tS.b.appendChild(tr);
+          });
+          sS.appendChild(tS.w);
+          sS.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi din ce e făcut. Fiecare zi merge pe cine conducea mașina atunci.'));
+        } else sS.appendChild(el('div', 'sdp-mic', 'Mașinile n-au șoferi trecuți în aplicație. Îi treci din Management → Șoferi, iar de atunci Safe Drive îi arată aici.'));
+        var sU = sdSect(doua, 'Unde și când se repetă', 'fa-location-dot');
+        (j.locuri || []).forEach(function (x) {
+          var a = el('a', 'sdp-loc'); a.href = 'https://www.google.com/maps?q=' + x.lat + ',' + x.lng; a.target = '_blank'; a.rel = 'noopener';
+          a.innerHTML = '<i class="fas fa-location-dot"></i>';
+          a.appendChild(el('span', null, (x.adresa || ('zona ' + x.lat.toFixed(3) + ', ' + x.lng.toFixed(3))) + ' — ' + x.n + ' manevre bruște'));
+          sU.appendChild(a);
+        });
+        if (!(j.locuri || []).length) sU.appendChild(el('div', 'sdp-mic', 'Niciun loc nu iese în evidență.'));
+        var ore = f.ore || [], prim = -1, ult = -1, mx = 0;
+        ore.forEach(function (v, h) { if (v > 0) { if (prim < 0) prim = h; ult = h; } if (v > mx) mx = v; });
+        if (mx > 0) {
+          sU.appendChild(el('div', 'sdp-et', 'Manevrele bruște, pe ore'));
+          var de = Math.max(0, Math.min(prim, ult - 5)), pana = Math.min(23, Math.max(ult, de + 5));
+          var top = ore.slice().sort(function (a, b) { return b - a; })[Math.min(2, ore.length - 1)] || mx;
+          var gr = el('div', 'sdp-ore');
+          for (var h = de; h <= pana; h++) {
+            var col = el('div', 'sdp-ora'), bb2 = el('b', ore[h] >= top && ore[h] > 0 ? 'sus' : null);
+            bb2.style.height = Math.max(4, Math.round(ore[h] / mx * 100)) + '%'; bb2.title = h + ':00–' + (h + 1) + ':00 · ' + ore[h] + ' manevre';
+            col.appendChild(bb2); col.appendChild(el('span', null, String(h))); gr.appendChild(col);
+          }
+          sU.appendChild(gr);
+        }
+        (j.ferestre || []).forEach(function (x, k) { sU.appendChild(el('div', 'sdp-mic', (k ? 'Apoi: ' : 'Cele mai multe: ') + x.text + ' (' + x.n + ' manevre)')); });
+        // Ce recomandă RA Insight (pe reguli, din cifrele de mai sus — nu se numără din fond)
+        if ((j.recomandari || []).length) {
+          var rb = el('div', 'sdp-recbox');
+          rb.appendChild(el('div', 'et', 'Ce recomandă RA Insight'));
+          var sof = null;
+          j.recomandari.forEach(function (x) {
+            var d = el('div', 'sdp-rec ' + (x.fel || 'info'));
+            d.innerHTML = '<i class="fas ' + (x.fel === 'atentie' ? 'fa-triangle-exclamation' : (x.fel === 'bun' ? 'fa-circle-check' : 'fa-lightbulb')) + '"></i>';
+            d.appendChild(el('span', null, x.text)); rb.appendChild(d);
+            if (x.sofer && !sof) sof = x.sofer;
+          });
+          var bt = el('div', 'sdp-btns');
+          if (sof && j.poateNota) { var b1 = el('button', 'insp-btn prim'); b1.innerHTML = '<i class="fas fa-comments"></i> '; b1.appendChild(document.createTextNode('Am vorbit cu ' + sof.nume + ' azi — pornește comparația')); b1.onclick = function () { window.insightSdDiscutie(sof.id, sof.nume); }; bt.appendChild(b1); }
+          var b2 = el('button', 'insp-btn'); b2.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre asta'; b2.onclick = function () { window.insightSdIntreaba(j); }; bt.appendChild(b2);
+          rb.appendChild(bt); pag.appendChild(rb);
+        }
+        // Pe mașină
+        var sM = sdSect(pag, 'Pe mașină', 'fa-car-side');
+        var tM = sdTabel([['Mașina'], ['Km', 'n'], ['Scor', 'n'], ['Bruște la 100 km', 'n'], ['Ralanti (ore)', 'n'], ['Peste ' + lim + ' (min)', 'n'], ['Cost', 'n'], ['Față de ' + luniiCe, 'n']]);
+        j.masini.forEach(function (m) {
+          var tr = el('tr');
+          sdCel(tr, m.eticheta, 'b'); sdCel(tr, sdNr(m.km), 'n'); sdCel(tr, m.scor == null ? '—' : m.scor + ' · ' + m.nota, 'n');
+          sdCel(tr, sdNr(m.laSuta, 1), 'n'); sdCel(tr, sdNr(m.ralantiOre, 1), 'n'); sdCel(tr, sdNr(m.pesteMin), 'n');
+          var cc = sdCel(tr, sdLei(m.cost.total), 'n b');
+          cc.title = 'combustibil ' + sdLei(m.cost.accel) + ' · frâne și anvelope ' + sdLei(m.cost.frane) + ' · viteză ' + sdLei(m.cost.viteza) + ' · ralanti ' + sdLei(m.cost.ralanti);
+          sdCel(tr, m.fata ? m.fata.text : '—', 'n ' + (m.fata ? m.fata.fel : ''));
+          tM.b.appendChild(tr);
+        });
+        sM.appendChild(tM.w);
+        // Cum se socotește + prețurile pe manevră
+        var det = el('details', 'sdp-sect sdp-cum'); var sum = el('summary'); sum.innerHTML = '<i class="fas fa-calculator"></i> '; sum.appendChild(document.createTextNode('Cum se socotește')); det.appendChild(sum);
+        (j.explicatii || []).forEach(function (x) { var p = el('p'); p.appendChild(el('b', null, x.titlu + '. ')); p.appendChild(document.createTextNode(x.text)); det.appendChild(p); });
+        var P = j.preturi || {}, ev = [['frana', 'Frânare bruscă'], ['accel', 'Accelerare bruscă'], ['viraj', 'Viraj brusc']];
+        det.appendChild(el('div', 'sdp-et', 'Prețul unei manevre bruște (lei)'));
+        var tP = sdTabel([['Felul mașinii']].concat(ev.map(function (e) { return [e[1], 'n']; })));
+        (P.clase || []).forEach(function (cl) {
+          var tr = el('tr'); sdCel(tr, cl.et);
+          ev.forEach(function (e) {
+            var v = ((P.valori || {})[cl.k] || {})[e[0]];
+            if (P.poateSchimba) { var td = sdCel(tr, '', 'n'); var inp = el('input', 'sdp-pret'); inp.type = 'number'; inp.min = '0'; inp.max = '100'; inp.step = '0.01'; inp.value = v; inp.dataset.k = cl.k; inp.dataset.e = e[0]; inp.setAttribute('aria-label', cl.et + ' — ' + e[1]); td.appendChild(inp); }
+            else sdCel(tr, sdNr(v, 2), 'n');
+          });
+          tP.b.appendChild(tr);
+        });
+        det.appendChild(tP.w);
+        if (P.poateSchimba) {
+          var rbt = el('div', 'sdp-btns');
+          var bS = el('button', 'insp-btn prim'); bS.innerHTML = '<i class="fas fa-check"></i> Salvează prețurile'; bS.onclick = function () { window.insightSdPreturi(det, false); };
+          var bI = el('button', 'insp-btn', 'Înapoi la prețurile de pornire'); bI.onclick = function () { window.insightSdPreturi(det, true); };
+          rbt.appendChild(bS); rbt.appendChild(bI); det.appendChild(rbt);
+        } else det.appendChild(el('div', 'sdp-mic', 'Prețurile le schimbă cine conduce flota în firmă (administratorul sau managerul).'));
+        if (S.sdCumDeschis) det.open = true;
+        det.addEventListener('toggle', function () { S.sdCumDeschis = det.open; });
+        pag.appendChild(det);
+        var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
+        nota.appendChild(document.createTextNode('Costurile sunt estimate și socotite de aplicație, la vedere (vezi „Cum se socotește”). Prețul combustibilului e al mașinii sau al firmei; prețul pe manevră îl poate schimba firma.'));
+        pag.appendChild(nota);
+        if (singur) pag.scrollTop = sus;
+      }
+      window.insightSdIntreaba = function (j) {
+        S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain();
+        var i = $i('insp-input'); if (i) { i.value = 'Despre Safe Drive, ' + ((j && j.eticheta) || '') + ': '; window.insightCreste(i); i.focus(); }
+      };
+      window.insightSdDiscutie = async function (id, nume) {
+        var nota = await raConfirm('De azi, Safe Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', { title: 'Ai vorbit cu ' + nume + '?', danger: false, okLabel: 'Da, am vorbit', icon: 'fa-comments', field: { label: 'O notă scurtă (nu e obligatorie)', value: '' } });
+        if (nota === false) return;
+        var r = await cere('POST', '/api/insight/safe-drive/discutie', { driverId: id, nota: String(nota || '').trim() });
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut salva.', 'error'); return; }
+        (window.raxToast || function () {})('Discuția s-a trecut ✓', 'success');
+        var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
+      };
+      window.insightSdScoate = async function (id) {
+        if (!await raConfirm('Discuția dispare din Safe Drive (de exemplu, dacă ai trecut-o din greșeală).', { title: 'Scoți discuția?', okLabel: 'Scoate' })) return;
+        var r = await cere('DELETE', '/api/insight/safe-drive/discutie/' + encodeURIComponent(id));
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut scoate.', 'error'); return; }
+        var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
+      };
+      window.insightSdPreturi = async function (det, laPornire) {
+        var p = {};
+        if (!laPornire) det.querySelectorAll('input.sdp-pret').forEach(function (i) { (p[i.dataset.k] || (p[i.dataset.k] = {}))[i.dataset.e] = i.value; });
+        var r = await cere('PUT', '/api/insight/safe-drive/preturi', { preturi: p });
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-au putut salva.', 'error'); return; }
+        (window.raxToast || function () {})(laPornire ? 'Prețurile de pornire s-au pus la loc ✓' : 'Prețurile s-au salvat ✓', 'success');
+        var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
+      };
     })();
     // ── sfârșit „secțiunea RA Insight" ──
     function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }

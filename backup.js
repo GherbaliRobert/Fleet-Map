@@ -42,6 +42,8 @@ const BUSINESS_TABLES = [
   // Stocul nostru de echipamente (25.09): ce aparate avem, unde e fiecare și al cui e. Fără el, după o
   // restaurare n-am mai ști ce aparate închiriate stau la clienți — adică marfa noastră.
   'stoc_echipamente',
+  // Safe Drive (06.10): cine a condus ce mașină și când (nu se poate reface din poziții) și discuțiile șefului cu șoferii.
+  'istoric_soferi', 'safe_drive_discutii',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —
@@ -55,6 +57,7 @@ const BACKUP_EXCLUDED = {
   liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
   ai_conversatii: 'conversațiile cu RA Insight: sunt ale omului care le-a scris și se șterg la 12 luni — nu le ținem și în copii, unde ar trăi mai mult decât promitem',
   ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
+  zile_condus: 'rezumatul pe zile din Safe Drive: se reface din poziții (care au arhiva lor) și se șterge odată cu ele',
 };
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext
