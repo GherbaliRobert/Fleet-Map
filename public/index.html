@@ -10151,8 +10151,8 @@ const pozitii = await r.json();</code></pre>
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
         { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true },
-        { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: false },
-        { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: false },
+        { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true },
+        { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true },
         { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: false },
         { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true },
         { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'fa-envelope-open-text', gata: false }
@@ -10197,6 +10197,7 @@ const pozitii = await r.json();</code></pre>
         if (!host._gata) schelet(host);
         deseneazaRamuri();
         incarcaFond();
+        incarcaNumere();
         await incarcaLista();
         // Bula din colț a pornit între timp o discuție? O continuăm aici.
         if (!S.conv && window._raxConvId && S.ramura === 'general') { await window.insightDeschide(window._raxConvId); return; }
@@ -10235,6 +10236,12 @@ const pozitii = await r.json();</code></pre>
         box.appendChild(document.createTextNode(q.remaining + ' din ' + (window._raxNrI ? window._raxNrI(q.questions) : q.questions + ' întrebări') + ' rămase' + (luna ? ' în ' + luna : '')));
         box.style.display = '';
       }
+      // Numerele de lângă ramuri (ca pe macheta din 02.10) — doar din ce e deja socotit pe server.
+      async function incarcaNumere() {
+        var r = null; try { r = await cere('GET', '/api/insight/ramuri'); } catch (e) {}
+        S.numere = (r && r.s === 200 && r.j) || {};
+        deseneazaRamuri();
+      }
       async function incarcaLista() {
         var q = ($i('insp-cauta') || {}).value || '';
         var r = await cere('GET', '/api/insight/conversatii' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : ''));
@@ -10249,6 +10256,9 @@ const pozitii = await r.json();</code></pre>
           var b = el('button', 'insp-ram' + (S.ramura === r.k ? ' act' : ''));
           b.innerHTML = '<span class="ic"><i class="fas ' + r.ic + '"></i></span>';
           b.appendChild(document.createTextNode(r.et));
+          // Câte lucruri cer atenție în ramură (le numără serverul; vezi incarcaNumere).
+          var n = S.numere && S.numere[r.k];
+          if (n > 0) { var nr = el('span', 'insp-nr', String(n)); nr.title = n === 1 ? 'Un lucru cere atenție' : n + ' lucruri cer atenție'; b.appendChild(nr); }
           b.onclick = function () { window.insightRamura(r.k); };
           box.appendChild(b);
         });
@@ -10285,6 +10295,8 @@ const pozitii = await r.json();</code></pre>
         }
         if (S.ramura === 'ghid') return deseneazaGhid(main);
         if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
+        if (S.ramura === 'combustibil') return deseneazaCombustibil(main, S.cbLuna);
+        if (S.ramura === 'mentenanta') return deseneazaMentenanta(main);
         main.innerHTML = '<div class="insp-msgs" id="insp-msgs"></div>' +
           '<div class="insp-scrie"><div class="insp-caseta">' +
           '<textarea id="insp-input" rows="1" placeholder="Scrie numărul, numele mașinii sau al șoferului… de exemplu „Cât a consumat B 154 UIP luna asta?”" onkeydown="insightTasta(event)" oninput="insightCreste(this)"></textarea>' +
@@ -10672,6 +10684,195 @@ const pozitii = await r.json();</code></pre>
         pag.appendChild(nota);
         if (singur) pag.scrollTop = sus;
       }
+
+      // ─── Ramura „Mentenanță & acte" (pasul 4): ce a trecut de termen și ce urmează, într-o singură listă ───
+      // Stările sunt ale listelor Mentenanță / Documente și ale anunțurilor (serverul le socotește, cu preavizul firmei);
+      // textele vin de la server. „Rezolvă" duce în ecranul unde se rezolvă: Documente, Mentenanță sau Șoferi.
+      async function deseneazaMentenanta(main) {
+        var tok = S.rmTok = (S.rmTok || 0) + 1;
+        main.innerHTML = '<div class="sdp"><div class="insp-gol">Se încarcă…</div></div>';
+        var r = await cere('GET', '/api/insight/mentenanta');
+        if (tok !== S.rmTok || S.ramura !== 'mentenanta') return;
+        var pag = el('div', 'sdp'), j = r.j || {};
+        main.innerHTML = ''; main.appendChild(pag);
+        if (r.s !== 200) {
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Mentenanță & acte nu s-a putut deschide'));
+          c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
+        }
+        var cap = el('div', 'sdp-cap');
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-screwdriver-wrench"></i> '; h2.appendChild(document.createTextNode('Mentenanță & acte')); cap.appendChild(h2);
+        var dr = el('div', 'sdp-dr');
+        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
+        bQ.title = 'Întreabă RA Insight despre acte și revizii (se numără din fondul de întrebări)';
+        bQ.onclick = function () { window.insightIntreabaDespre('Despre acte și revizii: '); };
+        dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
+        var z = j.rezumat || {}, rd = j.randuri || [];
+        var tl = el('div', 'sdp-tiles trei');
+        [['fa-circle-exclamation', 'Au trecut de termen', z.depasite || 0, (z.depasite ? 'de rezolvat acum' : 'nimic'), z.depasite ? 'rosu' : ''],
+         ['fa-clock', 'Urmează', z.curand || 0, 'în perioada de preaviz', z.curand ? 'atentie' : ''],
+         ['fa-file-circle-question', 'Acte fără dată de expirare', z.faraData || 0, z.faraData ? 'completează data în Documente' : 'toate au dată', '']].forEach(function (x) {
+          var t = el('div', 'sdp-tile' + (x[4] ? ' st-' + x[4] : '')), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
+          t.appendChild(et); t.appendChild(el('div', 'val', String(x[2]))); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
+        });
+        pag.appendChild(tl);
+        if (!rd.length) {
+          var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, 'Totul e la zi'));
+          g0.appendChild(el('div', null, 'Niciun act, nicio revizie și niciun permis nu a trecut de termen și nimic nu urmează în perioada de preaviz.'));
+          pag.appendChild(g0);
+        }
+        [['depasit', 'Au trecut de termen', 'fa-circle-exclamation', 'rosu'], ['curand', 'Urmează', 'fa-clock', 'atentie']].forEach(function (gr) {
+          var lista = rd.filter(function (x) { return x.stare === gr[0]; });
+          if (!lista.length) return;
+          var sc = sdSect(pag, gr[1] + ' · ' + lista.length, gr[2]);
+          var tb = sdTabel([['Ce'], ['Mașina / șoferul'], ['Când'], ['']]);
+          lista.forEach(function (x) {
+            var tr = el('tr');
+            sdCel(tr, x.ce, 'b'); sdCel(tr, x.cine);
+            sdCel(tr, x.cand, gr[3]);
+            var td = sdCel(tr, '', 'n');
+            var b = el('button', 'insp-btn'); b.innerHTML = '<i class="fas fa-arrow-right"></i> ';
+            b.appendChild(document.createTextNode(x.ecran === 'documente' ? 'La Documente' : (x.ecran === 'drivers' ? 'La Șoferi' : 'La Mentenanță')));
+            b.onclick = function () { window.insightRezolva(x.ecran); }; td.appendChild(b);
+            tb.b.appendChild(tr);
+          });
+          sc.appendChild(tb.w);
+        });
+        var det = el('details', 'sdp-sect sdp-cum'); var sum = el('summary'); sum.innerHTML = '<i class="fas fa-calculator"></i> '; sum.appendChild(document.createTextNode('Cum se socotește')); det.appendChild(sum);
+        (j.explicatii || []).forEach(function (x) { var p = el('p'); p.appendChild(el('b', null, x.titlu + '. ')); p.appendChild(document.createTextNode(x.text)); det.appendChild(p); });
+        pag.appendChild(det);
+      }
+
+      // ─── Ramura „Combustibil" (pasul 4): litri și lei pe lună, consumul față de fișă, alimentările și scăderile ───
+      // Cifrele sunt ale rapoartelor Consum / Costuri și „Alimentări & scăderi" (același motor, aceleași opțiuni), socotite
+      // pe server (ramuri.js); pagina doar le arată, cu textContent. Prima deschidere a unei luni se pregătește în fundal.
+      function sdCant(n, unu, multi) { var r = Math.round(Number(n) || 0), v = Math.abs(r) % 100; return r === 1 ? '1 ' + unu : r.toLocaleString('ro-RO') + ((v === 0 && r) || v >= 20 ? ' de ' : ' ') + multi; }
+      function cbIar(main, j) { setTimeout(function () { if (S.ramura === 'combustibil' && S.cbLuna === j.lunaAleasa) deseneazaCombustibil(main, j.lunaAleasa, true); }, 2500); }
+      async function deseneazaCombustibil(main, luna, singur) {
+        var tok = S.cbTok = (S.cbTok || 0) + 1;
+        if (!singur || !main.querySelector('.sdp')) main.innerHTML = '<div class="sdp"><div class="insp-gol">Se încarcă…</div></div>';
+        var q = [];
+        if (luna) q.push('luna=' + encodeURIComponent(luna));
+        if (S.cbGrupa != null) q.push('grupa=' + encodeURIComponent(S.cbGrupa));
+        var r = await cere('GET', '/api/insight/combustibil' + (q.length ? '?' + q.join('&') : ''));
+        if (tok !== S.cbTok || S.ramura !== 'combustibil') return;   // omul a plecat sau a cerut altceva între timp
+        var pag = el('div', 'sdp'), j = r.j || {};
+        var vechi = main.querySelector('.sdp'), sus = vechi ? vechi.scrollTop : 0;
+        main.innerHTML = ''; main.appendChild(pag);
+        if (r.s !== 200) {
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Combustibil nu s-a putut deschide'));
+          c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
+        }
+        S.cbLuna = j.lunaAleasa; S.cbGrupa = j.grupaAleasa;
+        var cap = el('div', 'sdp-cap');
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-gas-pump"></i> '; h2.appendChild(document.createTextNode('Combustibil')); cap.appendChild(h2);
+        var dr = el('div', 'sdp-dr');
+        var sel = el('select', 'sdp-sel'); sel.setAttribute('aria-label', 'Luna');
+        (j.luni || []).forEach(function (l) { var o = el('option', null, l.eticheta.charAt(0).toUpperCase() + l.eticheta.slice(1)); o.value = l.luna; if (l.luna === j.lunaAleasa) o.selected = true; sel.appendChild(o); });
+        sel.onchange = function () { deseneazaCombustibil(main, sel.value); };
+        dr.appendChild(sel);
+        if ((j.grupe || []).length > 1) {
+          var sg = el('select', 'sdp-sel'); sg.setAttribute('aria-label', 'Mașinile');
+          j.grupe.forEach(function (g) { var o = el('option', null, g.eticheta); o.value = g.id == null ? '' : String(g.id); if (String(g.id) === String(j.grupaAleasa)) o.selected = true; sg.appendChild(o); });
+          sg.onchange = function () { S.cbGrupa = sg.value === '' ? null : sg.value; deseneazaCombustibil(main, j.lunaAleasa); };
+          dr.appendChild(sg);
+        }
+        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
+        bQ.title = 'Întreabă RA Insight despre combustibil (se numără din fondul de întrebări)';
+        bQ.onclick = function () { window.insightIntreabaDespre('Despre combustibil, ' + (j.eticheta || '') + ': '); };
+        dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
+        if (j.pregatire) {
+          var pr = el('div', 'insp-card');
+          pr.appendChild(el('h3', null, 'Pregătesc luna…'));
+          pr.appendChild(el('div', null, 'Prima dată durează mai mult: citesc toate pozițiile mașinilor din lună (și aceleași zile din luna dinainte, pentru comparație). Pagina se actualizează singură.'));
+          pag.appendChild(pr); cbIar(main, j); return;
+        }
+        if (j.gol || !(j.masini || []).length) {
+          var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, j.gol ? 'Nicio mașină de arătat' : 'Nimic de arătat în ' + (j.eticheta || 'luna asta')));
+          g0.appendChild(el('div', null, j.gol ? 'Combustibil se uită la mașinile la care ai acces — acum nu e niciuna.' : 'Mașinile n-au mers (sau n-au trimis poziții) în perioada asta. Alege altă lună de sus.'));
+          pag.appendChild(g0); return;
+        }
+        var f = j.flota || {}, fa = j.fata || {}, ev = j.evenimente || {};
+        var luniiCe = (j.inainte && j.inainte.eticheta) || 'luna dinainte';
+        // Cifrele mari: cât a costat, apoi litrii, consumul, alimentările, scăderile
+        var tl = el('div', 'sdp-tiles');
+        var mare = el('div', 'sdp-tile mare');
+        mare.appendChild(el('div', 'et', 'Combustibilul a costat'));
+        mare.appendChild(el('div', 'val', (f.procentEstimat ? '~' : '') + sdLei(f.cost)));
+        mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + (f.masini > 1 ? ' · ' + sdCant(f.masini, 'mașină', 'mașini') : '')));
+        if (fa.cost) mare.appendChild(el('span', 'sdp-chip ' + (fa.fel || 'info'), fa.cost));
+        tl.appendChild(mare);
+        [['fa-droplet', 'Litri', sdCant(f.litri, 'litru', 'litri'), f.procentEstimat ? f.procentEstimat + '% estimați din fișă' : 'măsurați la toate mașinile', ''],
+         ['fa-gauge', 'Consum mediu', f.l100 == null ? '—' : sdNr(f.l100, 1) + ' L/100 km', sdNr(f.km) + ' km' + (fa.l100 ? ' · ' + fa.l100 : ''), ''],
+         ['fa-gas-pump', 'Alimentări', String(ev.alimentari || 0), ev.alimentari ? sdCant(ev.litriAlimentati, 'litru alimentat', 'litri alimentați') : 'se văd la mașinile care trimit nivelul din rezervor', ''],
+         ['fa-triangle-exclamation', 'Scăderi suspecte', String(ev.scaderi || 0), ev.scaderi ? sdCant(ev.litriScazuti, 'litru', 'litri') + ' în total' : 'niciuna', ev.scaderi ? 'rosu' : '']].forEach(function (x) {
+          var t = el('div', 'sdp-tile' + (x[4] ? ' st-' + x[4] : '')), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
+          t.appendChild(et); t.appendChild(el('div', 'val', x[2])); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
+        });
+        pag.appendChild(tl);
+        // Ce recomandă RA Insight (pe reguli, din cifrele de mai sus — nu se numără din fond)
+        if ((j.recomandari || []).length) {
+          var rb = el('div', 'sdp-recbox');
+          rb.appendChild(el('div', 'et', 'Ce recomandă RA Insight'));
+          j.recomandari.forEach(function (x) {
+            var d = el('div', 'sdp-rec ' + (x.fel || 'info'));
+            d.innerHTML = '<i class="fas ' + (x.fel === 'atentie' ? 'fa-triangle-exclamation' : (x.fel === 'bun' ? 'fa-circle-check' : 'fa-lightbulb')) + '"></i>';
+            d.appendChild(el('span', null, x.text)); rb.appendChild(d);
+          });
+          var bt = el('div', 'sdp-btns');
+          var b2 = el('button', 'insp-btn'); b2.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre asta'; b2.onclick = function () { window.insightIntreabaDespre('Despre combustibil, ' + (j.eticheta || '') + ': '); }; bt.appendChild(b2);
+          rb.appendChild(bt); pag.appendChild(rb);
+        }
+        // Pe mașină — „peste normă" e lista serverului (pesteNorma), nu o regulă a paginii
+        var peste = {}; (j.pesteNorma || []).forEach(function (x) { peste[x.imei] = true; });
+        var sM = sdSect(pag, 'Pe mașină', 'fa-car-side');
+        var tM = sdTabel([['Mașina'], ['Km', 'n'], ['Litri', 'n'], ['L la 100 km', 'n'], ['În fișă', 'n'], ['Sursa'], ['Cost', 'n'], ['Față de ' + luniiCe, 'n']]);
+        j.masini.forEach(function (m) {
+          var tr = el('tr');
+          sdCel(tr, m.eticheta, 'b'); sdCel(tr, sdNr(m.km), 'n'); sdCel(tr, sdNr(m.litri, 1), 'n');
+          var cl = sdCel(tr, m.l100 == null ? '—' : sdNr(m.l100, 1), 'n' + (peste[m.imei] ? ' rosu' : ''));
+          if (m.peste != null) cl.title = (m.peste > 0 ? 'cu ' + m.peste + '% peste' : (m.peste < 0 ? 'cu ' + Math.abs(m.peste) + '% sub' : 'cât')) + ' consumul din fișă';
+          sdCel(tr, m.norma == null ? '—' : sdNr(m.norma, 1), 'n');
+          sdCel(tr, m.sursa || '—', m.estimat ? 'mut' : null);
+          var cc = sdCel(tr, sdLei(m.cost), 'n b'); cc.title = sdNr(m.litri, 1) + ' L × ' + sdNr(m.pret, 2) + ' lei/L';
+          sdCel(tr, m.fata ? m.fata.text : '—', 'n ' + (m.fata ? m.fata.fel : ''));
+          tM.b.appendChild(tr);
+        });
+        sM.appendChild(tM.w);
+        sM.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi litrii și prețul. „În fișă” e consumul trecut în fișa mașinii (Consum drum).'));
+        // Scăderile suspecte: când, cât, cu motorul pornit sau oprit, unde (pe hartă)
+        var sS = sdSect(pag, 'Scăderi suspecte' + ((j.scaderi || []).length ? ' · ' + j.scaderi.length : ''), 'fa-triangle-exclamation');
+        if ((j.scaderi || []).length) {
+          var tS = sdTabel([['Mașina'], ['Când'], ['Litri', 'n'], ['Rezervorul', 'n'], ['Motorul'], ['Unde', 'lat']]);
+          j.scaderi.forEach(function (x) {
+            var tr = el('tr');
+            sdCel(tr, x.eticheta, 'b'); sdCel(tr, x.cand, 'nw'); sdCel(tr, sdNr(x.litri, 1), 'n rosu');
+            sdCel(tr, sdNr(x.de, 1) + ' → ' + sdNr(x.la, 1) + ' L', 'n'); sdCel(tr, x.motorPornit ? 'pornit' : 'oprit');
+            var td = sdCel(tr, '', 'lat');
+            if (x.lat != null && x.lng != null) {
+              var a = el('a', 'sdp-loc'); a.href = 'https://www.google.com/maps?q=' + x.lat + ',' + x.lng; a.target = '_blank'; a.rel = 'noopener';
+              a.innerHTML = '<i class="fas fa-location-dot"></i>'; a.appendChild(el('span', null, x.loc || 'pe hartă')); td.appendChild(a);
+            } else td.appendChild(document.createTextNode(x.loc || '—'));
+            tS.b.appendChild(tr);
+          });
+          sS.appendChild(tS.w);
+        } else sS.appendChild(el('div', 'sdp-mic', 'Nicio scădere suspectă în perioada asta. (Se văd doar la mașinile care trimit nivelul din rezervor.)'));
+        var det = el('details', 'sdp-sect sdp-cum'); var sum = el('summary'); sum.innerHTML = '<i class="fas fa-calculator"></i> '; sum.appendChild(document.createTextNode('Cum se socotește')); det.appendChild(sum);
+        (j.explicatii || []).forEach(function (x) { var p = el('p'); p.appendChild(el('b', null, x.titlu + '. ')); p.appendChild(document.createTextNode(x.text)); det.appendChild(p); });
+        if (S.cbCumDeschis) det.open = true;
+        det.addEventListener('toggle', function () { S.cbCumDeschis = det.open; });
+        pag.appendChild(det);
+        var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
+        nota.appendChild(document.createTextNode('Aceleași cifre ca în rapoartele Consum, Costuri și Alimentări & scăderi, pentru aceeași perioadă. Prețul combustibilului e al mașinii sau al firmei.'));
+        pag.appendChild(nota);
+        if (singur) pag.scrollTop = sus;
+      }
+      // Ecranul unde se rezolvă un rând (Documente / Mentenanță / Șoferi) — aceleași ecrane ca din meniul Management.
+      window.insightRezolva = function (ecran) { if (window.goManage) goManage(ecran); };
+      // „Întreabă RA Insight" din orice ramură: deschide discuția cu începutul întrebării scris.
+      window.insightIntreabaDespre = function (inceput) {
+        S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain();
+        var i = $i('insp-input'); if (i) { i.value = String(inceput || ''); window.insightCreste(i); i.focus(); }
+      };
       window.insightSdIntreaba = function (j) {
         S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain();
         var i = $i('insp-input'); if (i) { i.value = 'Despre Safe Drive, ' + ((j && j.eticheta) || '') + ': '; window.insightCreste(i); i.focus(); }

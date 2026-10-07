@@ -3913,6 +3913,9 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .insp-ram:hover { background: var(--bg-dark); color: var(--text-primary); }
 .insp-ram.act { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-primary); }
 .insp-ram.act .ic { background: var(--accent); color: #06210F; }
+/* Câte lucruri cer atenție într-o ramură (macheta din 02.10). Portocaliu deschis pe tema închisă, închis pe cea deschisă. */
+.insp-nr { margin-left: auto; font-size: 11px; font-weight: 800; line-height: 1; padding: 3px 7px; border-radius: 999px; color: #fdba74; background: rgba(249,115,22,.15); }
+body:not(.dark) .insp-nr { color: #9a3412; background: rgba(249,115,22,.12); }
 .insp-zi { font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 8px 8px 2px; }
 .insp-conv { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
 .insp-conv:hover { background: var(--bg-dark); color: var(--text-primary); }
@@ -3982,6 +3985,9 @@ body:not(.dark) .sdp-cap h2 i { color: #166534; }
 .sdp-tile .val { font-size: 22px; font-weight: 800; color: var(--text-primary); margin-top: 6px; }
 .sdp-tile .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
 .sdp-tile.mare { border-left: 4px solid var(--orange); }
+.sdp-tiles.trei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sdp-tile.st-rosu { border-left: 4px solid var(--red); }
+.sdp-tile.st-atentie { border-left: 4px solid var(--orange); }
 .sdp-tile.mare .et { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; font-weight: 800; color: #fdba74; }
 body:not(.dark) .sdp-tile.mare .et { color: #9a3412; }
 .sdp-tile.mare .val { font-size: 30px; }
@@ -4033,6 +4039,8 @@ a.sdp-loc:hover span { text-decoration: underline; }
 .sdp-nota i { color: var(--text-muted); margin-right: 4px; }
 /* Starea: portocaliu = atenție (cost mai mare, manevre multe), verde = bine. Tema închisă: culori deschise; cea deschisă: închise. */
 .sdp .sdp-chip.atentie, .sdp-tab td.atentie, .sdp-rec.atentie i { color: #fdba74; }
+.sdp-tab td.rosu { color: #fca5a5; font-weight: 700; }
+body:not(.dark) .sdp-tab td.rosu { color: #b91c1c; }
 .sdp .sdp-chip.bun, .sdp-tab td.bun, .sdp-rec.bun i { color: #86efac; }
 .sdp .sdp-chip.atentie { background: rgba(249,115,22,.12); border-color: transparent; }
 .sdp .sdp-chip.bun { background: rgba(34,197,94,.12); border-color: transparent; }
@@ -4058,6 +4066,7 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
   .sdp { padding: 12px 12px 24px; }
   .sdp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sdp-tile.mare { grid-column: 1 / -1; }
+  .sdp-tiles.trei { grid-template-columns: minmax(0, 1fr); }
   .sdp-tile .val { font-size: 19px; }
   .sdp-tile.mare .val { font-size: 26px; }
   .sdp-doua { grid-template-columns: minmax(0, 1fr); }
