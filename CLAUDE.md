@@ -362,6 +362,34 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - Păzit de `verify_safe_drive.js` (în `npm test`; cifrele = EcoDrive / Ralanti pe o lună, server pornit) și
   `verify_insight.js` (unealta).
 
+### Pasul 4 (07.10): Mentenanță & acte, Combustibil, Ore de condus, Scrisoarea de luni
+- **Regulile și textele stau în `ramuri.js`** (curat); serverul adună datele cu funcțiile care există deja. **O funcție pe
+  ramură**, chemată de pagină, de unealta lui RA Insight, de numărul de lângă ramură și de scrisoare (păzit prin numărare):
+  `_ramMentenanta(req)`, `_ramCombustibil(req, o)`, `_ramOreCondus(req, o)` (+ `_sdLuna` la Safe Drive). „Ce mașini vede
+  omul" = `_ramFlota(req)` (acces + fără arhivate) — una pentru toate ramurile. Paginile nu socotesc (textContent).
+- **Socotelile grele** (lună / săptămână de poziții) trec prin `_ramGreu` (una în lucru pe cheie, ținută minte 15 min pentru
+  perioada de acum, 6 h pentru cele trecute; `doarGata` = numărul ramurii nu pornește nimic).
+- **Mentenanță & acte:** stările sunt ale listelor (`maintenanceDueState` / `documentDueState`, cu preavizul firmei);
+  permisele = pragul anunțului lor (`NOTIFY_EXPIRY_DAYS`, 30).
+- **Combustibil = motorul rapoartelor** (`reports._ajutor.consumptionMap` + raportul `fuel`, cu `_optiuniRaport`): aceleași
+  cifre ca Consum / Costuri / Alimentări & scăderi. **Norma din fișă = cel mai mare consum trecut** (`cMax`: oraș sau
+  afară); „peste normă" doar pe consum măsurat, ≥ 100 km, > 15% (`PESTE_NORMA`, `KM_MIN_NORMA`). Evenimentele `fuel` au
+  `lat`/`lng` (harta din pagină); unealta lui RA Insight NU primește coordonate.
+- **Ore de condus = raportul `hos`** (rHos), pe săptămână (`_ramSaptamana`: acum + 3 înapoi). **rHos pune fiecare zi pe
+  șoferul de atunci** (`istoric_soferi`, `condus.soferLa`), o mașină cu doi șoferi se citește pentru fiecare (memoria rămâne
+  pe un șofer). Pragurile din „Cum se socotește" sunt LEGATE de codul rHos în probă. `valori` = zilele ca numere.
+- **Scrisoarea de luni:** `_fapteScrisoare` (aceleași funcții, pe mașinile omului — `_cerereOm` ca withScope) →
+  `ramuri.fapteScrisoare` → `_scrieScrisoarea`: RA Insight (`ai.callClaude`, instrucțiunile fixe în cache) DOAR din fapte;
+  **`ramuri.textulTrece` oprește orice cifră care nu e în fapte** (afară de `CIFRE_MEREU`: 100, 561, 2006) → atunci textul
+  pe reguli (`textScrisoare`). Consumul = fel `'scrisoare'`, în afara `AI_BILLABLE_KINDS` (îl plătim noi). **Pleacă DOAR
+  lunea, de la 8** (`scrisoareaDeLuniTick`, la 15 min): o livrare în mijlocul săptămânii nu trimite nimic. O scrisoare pe
+  aceleași mașini (un singur text), una pe om și săptămână (`UNIQUE (user_id, saptamana)`), anunț `scrisoare_luni` →
+  `insightDeschideScrisoarea`. Tabela `scrisori_luni`: a omului (user_id în WHERE), 12 luni (`stergeConversatiiVechi`),
+  în `BACKUP_EXCLUDED`. Fără drum și fără nimic de rezolvat → nicio scrisoare.
+- În probe: `/api/test/ceasuri { acum, scrisori: true }` pornește trecerea cu ceasul probei. Proba RA Insight are modelul
+  simulat; a ramurilor merge fără model (textul pe reguli).
+- Păzit de `verify_ramuri.js` (în `npm test`), `verify_insight.js`, `verify_safe_drive.js`, `verify_insight_ghid.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

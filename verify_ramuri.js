@@ -186,7 +186,7 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   T('faptele vin din ACELEAȘI funcții ca ramurile (Combustibil pe săptămână, Ore de condus, Safe Drive pe zile, Mentenanță), pe mașinile omului', /await _ramFlota\(req\)/.test(fF) && /await _ramCombustibil\(req, \{ perioada: /.test(fF) && /await _ramOreCondus\(req, \{ saptamana: luni/.test(fF) && /safeDrive\.saptamana\(/.test(fF) && /await _ramMentenanta\(req\)/.test(fF) && /getAllowedImeiSet\(u\.id, u\.role, u\.company_id\)/.test(SRV));
   T('textul: RA Insight cu paza cifrelor, altfel cel pe reguli; consumul se scrie „scrisoare" — în afara fondului clientului', /ramuri\.textulTrece\(text, fapte\)/.test(fS) && /scrisDe: 'model'/.test(fS) && /ramuri\.textScrisoare\(fapte\)/.test(fS) && /recordAiUsage\(companyId, 'scrisoare'/.test(fS) &&
     /AI_BILLABLE_KINDS = \['insight', 'chat', 'report'\]/.test(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8')));
-  T('trimiterea: lunea de la 8 (ora României), oamenii cu loc RA Insight și cont activ, fără firma demo și fără firmele oprite; o scrisoare pe aceleași mașini', /SCRISOARE_ORA = 8/.test(SRV) && /SCRISOARE_ORA \* 3600000/.test(fT) && /ai_seat = true AND active IS NOT false/.test(fT) && /co\.id !== demoCompanyId/.test(fT) && /st\.status === 'expired'/.test(fT) && /_ramCheieImei\(Array\.from\(req\.allowedImeis\)\)/.test(fT));
+  T('trimiterea: DOAR lunea, de la 8 (ora României), oamenii cu loc RA Insight și cont activ, fără firma demo și fără firmele oprite; o scrisoare pe aceleași mașini', /SCRISOARE_ORA = 8/.test(SRV) && /if \(azi !== luniAcum\) return \{ nuELuni: true/.test(fT) && /SCRISOARE_ORA \* 3600000/.test(fT) && /ai_seat = true AND active IS NOT false/.test(fT) && /co\.id !== demoCompanyId/.test(fT) && /st\.status === 'expired'/.test(fT) && /_ramCheieImei\(Array\.from\(req\.allowedImeis\)\)/.test(fT));
   const DB = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
   T('scrisoarea e a omului: fiecare citire are user_id în WHERE; ștergerea la 12 luni, odată cu discuțiile; în afara copiilor', /FROM scrisori_luni WHERE user_id = \$1 ORDER BY/.test(DB) && /FROM scrisori_luni WHERE id = \$1 AND user_id = \$2/.test(DB) && /UPDATE scrisori_luni SET citita_la = NOW\(\) WHERE id = \$1 AND user_id = \$2/.test(DB) &&
     /await db\.stergeScrisoriMaiVechiDe\(luni\)/.test(SRV) && /scrisori_luni:/.test(fs.readFileSync(path.join(__dirname, 'backup.js'), 'utf8')));
@@ -422,7 +422,7 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
 
   // ─── 5. Scrisoarea de luni, pe server pornit (fără model: textul pe reguli) ─────────────────────────────────
   console.log('\n5. Scrisoarea de luni — ajunge la oamenii cu loc RA Insight, o dată, cu cifrele ramurilor');
-  const acumS = Math.max(Date.now(), SD.inceput(luniAcum) + 8 * 3600000 + 60000);   // lunea de la 8 încolo (ceasul probei)
+  const acumS = SD.inceput(luniAcum) + 8 * 3600000 + 60000;   // lunea asta la 8 și un minut (ceasul probei; scrisoarea pleacă doar lunea)
   const t1s = await json('POST', '/api/test/ceasuri', S, { acum: acumS, scrisori: true });
   const ls = await json('GET', '/api/insight/scrisori', ckSef);
   const sc1 = (ls.j.scrisori || [])[0] || {};
@@ -450,6 +450,8 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   T('cealaltă firmă: scrisoarea ei, cu ITP-ul ei expirat, fără nimic din firma noastră', lsA.status === 200 && (lsA.j.scrisori || []).length === 1 && /ITP — CJ 01 ALT/.test(sAlt.j.text || '') && (sAlt.j.text || '').indexOf('Gheorghe') < 0 && (sAlt.j.text || '').indexOf('B 154 UIP') < 0, (sAlt.j.text || '').slice(0, 300));
   const devreme = await json('POST', '/api/test/ceasuri', S, { acum: SD.inceput(luniAcum) + 7 * 3600000, scrisori: true });
   T('lunea înainte de 8: încă nimic', devreme.j.scrisori && devreme.j.scrisori.devreme === true, JSON.stringify(devreme.j.scrisori));
+  const marti = await json('POST', '/api/test/ceasuri', S, { acum: SD.inceput(ziPlus(luniAcum, 1)) + 9 * 3600000, scrisori: true });
+  T('în altă zi decât lunea: nimic (o livrare în mijlocul săptămânii nu trimite scrisori)', marti.j.scrisori && marti.j.scrisori.nuELuni === true, JSON.stringify(marti.j.scrisori));
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

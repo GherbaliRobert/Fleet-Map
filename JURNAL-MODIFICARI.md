@@ -194,11 +194,48 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 **Acum: capitolul Inteligență artificială** (Alin, 05.10: *„aici suntem în capitolul inteligență artificială… nu trecem la
 facturi până nu terminăm capitolul ăsta"*). Pașii: 1. RA Insight recunoaște numerele și ține minte ✅ (02.10) · 2. secțiunea
 din meniu + „AI Raport" gratuit ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ✅ (06.10) ·
-4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni · 5. telefonul (pentru APK-ul lui Robert).
+4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni ✅ (07.10) · 5. telefonul (pentru APK-ul lui Robert).
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+
+---
+
+## 2026-10-07
+
+### AMÂNDOI · RA Insight, pasul 4: Mentenanță & acte, Combustibil, Ore de condus, Scrisoarea de luni
+
+Patru ramuri noi în secțiunea RA Insight, pentru cine are loc RA Insight. Fiecare pagină e socotită de aplicație, din
+ACELEAȘI rapoarte ca ecranul Rapoarte (deci pagina, raportul și RA Insight spun aceleași cifre), și **nu se scade din
+fondul de întrebări**. Lângă fiecare ramură, un număr: câte lucruri cer atenție acolo.
+
+1. **Mentenanță & acte** — într-o singură listă: ce a trecut de termen și ce urmează (ITP, RCA, rovinietă, revizii pe dată
+   și pe kilometri, permisele șoferilor), cu preavizul firmei. Fiecare rând are buton spre ecranul unde se rezolvă
+   (Documente, Mentenanță, Șoferi). Exemplu: „ITP — a expirat pe 03.10 (acum 4 zile)", „Schimb ulei — mai are 420 de km".
+2. **Combustibil**, pe lună: litri și lei, consumul la 100 km pe mașină față de fișă, alimentările și scăderile suspecte
+   (cu locul pe hartă), cu aceleași zile din luna dinainte alături. Exemplu: „1.140 de lei · 152 de litri · 14,2 L la
+   100 km". „Peste normă" = consum MĂSURAT, cu cel puțin 100 km, cu peste 15% peste **cel mai mare consum din fișă** (de
+   obicei „Consum oraș") — ca drumurile prin oraș să nu pară risipă. Mașinile fără contor sau senzor apar „Estimat".
+3. **Ore de condus**, pe săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără
+   pauză, încălcările Reg. 561 (doar camioane și autobuze), din tahograf sau estimate din GPS. **Raportul „Condus & repaus"
+   pune acum fiecare zi pe șoferul care avea mașina atunci** (ca Safe Drive) — înainte, un schimb de șofer la mijlocul
+   săptămânii punea toate orele pe cel nou.
+4. **Scrisoarea de luni** — lunea la 8, fiecare om cu loc RA Insight primește un anunț și o scrisoare: ce contează din
+   săptămâna trecută (drum, combustibil, Safe Drive, orele de condus, actele) și „De făcut săptămâna asta". O scrie RA
+   Insight **doar din cifrele aplicației**; dacă scrie o cifră care nu e acolo, rămâne textul pe reguli. O plătim noi (nu
+   din fondul clientului). **Pleacă DOAR lunea** — prima dată luni, 12.10, la 8 (nu la livrare).
+
+RA Insight a primit trei unelte noi (Mentenanță & acte, Combustibil, Ore de condus) — aceleași funcții ca paginile; înainte,
+la „ce probleme are flota" vedea doar constatările lui RA Watch, nu și actele, reviziile sau orele. Ghidul aplicației are un
+capitol nou despre ramuri.
+
+- **Ce vede fondatorul:** nimic nou în Administrare. Costul scrisorii apare în consumul AI al nostru (fel „scrisoare").
+- **Ce vede clientul (cu loc RA Insight):** cele patru ramuri noi, numerele de lângă ele și, lunea, anunțul cu scrisoarea.
+  Fără loc RA Insight: nimic (403). Scrisorile sunt ale omului (altcineva = „nu există") și se șterg la 12 luni.
+- Probat: proba ramurilor (117 verificări — cifrele comparate cu rapoartele Consum, Costuri, Alimentări & scăderi și
+  Condus & repaus, pe server pornit), RA Insight (132, cu modelul simulat: cifra inventată e oprită), Safe Drive (88), ghidul
+  (22); ecranele pe ambele teme și pe telefon (contrast minim 5,07), fără erori.
 
 ---
 

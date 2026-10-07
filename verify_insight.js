@@ -440,7 +440,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const tT = SDj.inceput(ziP(luniTrec, 1)) + 10 * 3600000;
   for (let k = 0; k < 20; k++) await json('POST', '/api/test/simulate', S, { imei: DEV[0].imei, name: DEV[0].name, speed: 70, io: { ignition: 1 }, ts: new Date(tT + k * 60000).toISOString(), lat: 45.6 + k * 0.01, lng: 21.2 });
   const folositeInainte = await folosite();
-  const acum1 = Math.max(Date.now(), SDj.inceput(luniS) + 8 * 3600000 + 60000);
+  const acum1 = SDj.inceput(luniS) + 8 * 3600000 + 60000;   // lunea asta la 8 și un minut (scrisoarea pleacă doar lunea)
   coada([text('Săptămâna trecută flota a mers bine. Ai economisit 999 de lei la combustibil și nicio problemă la orele de condus. De făcut săptămâna asta:\n• Nimic urgent.\n• Uită-te la Safe Drive.')]);
   const nCereri1 = cereri().length;
   const tk1 = await json('POST', '/api/test/ceasuri', S, { acum: acum1, scrisori: true });

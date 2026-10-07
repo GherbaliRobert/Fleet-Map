@@ -5014,13 +5014,15 @@ async function _scrieScrisoarea(fapte, companyId) {
   } catch (e) { console.warn('[SCRISOARE] RA Insight n-a putut scrie: ' + e.message); }
   return rezerva;
 }
-// Lunea de la 8 încolo, pentru săptămâna trecută: oamenii cu loc RA Insight care n-au încă scrisoarea ei. Oamenii cu aceleași
-// mașini primesc ACEEAȘI scrisoare (o singură socoteală, un singur text). Firmă fără drum și fără nimic de rezolvat → nimic.
+// Lunea de la 8 încolo (DOAR lunea: în altă zi nu pleacă nimic — nici după o livrare în mijlocul săptămânii), pentru săptămâna
+// trecută: oamenii cu loc RA Insight care n-au încă scrisoarea ei. Oamenii cu aceleași mașini primesc ACEEAȘI scrisoare (o
+// singură socoteală, un singur text). Firmă fără drum și fără nimic de rezolvat → nimic.
 let _scrisoareMerge = false;
 const _scrisoareFacute = new Set();   // firmă|săptămână, deja trecută pe la rândul ei (în memorie: la repornire se reia o dată)
 async function scrisoareaDeLuniTick(acum) {
   const t = acum || Date.now();
   const azi = condus.zi(t), luniAcum = _ziPlus(azi, -condus.ziSapt(azi)), luni = _ziPlus(luniAcum, -7);
+  if (azi !== luniAcum) return { nuELuni: true, saptamana: luni };
   if (t < safeDrive.inceput(luniAcum) + SCRISOARE_ORA * 3600000) return { devreme: true, saptamana: luni };
   if (_scrisoareMerge) return { merge: true };
   _scrisoareMerge = true;
