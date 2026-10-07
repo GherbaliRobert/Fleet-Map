@@ -147,7 +147,11 @@ const ruta = (SRV.split("app.post('/api/reports/ai-raport'")[1] || '').split('\n
 const antet = (SRV.match(/app\.post\('\/api\/reports\/ai-raport',[^\n]*/) || [''])[0];
 T('ruta cere doar „vede rapoarte" — nu loc RA Insight, nu modulul RA Insight', /requirePerm\('viewReports'\)/.test(antet) && !/requireAiSeat|requireFeature\('ai_assistant'\)/.test(antet), antet);
 T('ruta nu cheamă modelul și nu numără nimic din fond', ruta.length > 500 && !/runAgent|anthropic|recordAiUsage|_regulileFonduluiAi|ai\.chat/.test(ruta));
-T('opțiunile raportului vin din ACEEAȘI funcție ca ecranul (două apeluri: ecranul și AI Raport)', (SRV.match(/_optiuniRaport\(/g) || []).length === 3 && /const opts = _optiuniRaport\(req\.query, _cs\);/.test(SRV), (SRV.match(/_optiuniRaport\(/g) || []).length);
+// Cine cheamă opțiunile, pe nume: ecranul Rapoarte, AI Raport și ramurile RA Insight Combustibil și Ore de condus (07.10) —
+// toate aceeași funcție; nicio a doua listă de opțiuni.
+T('opțiunile raportului vin din ACEEAȘI funcție ca ecranul (ecranul, AI Raport, ramurile Combustibil și Ore de condus)', (SRV.match(/_optiuniRaport\(/g) || []).length === 5 &&
+  /const opts = _optiuniRaport\(req\.query, _cs\);/.test(SRV) && /const opts = _optiuniRaport\(\{\}, cs\);/.test(SRV) && (SRV.match(/_optiuniRaport\(\{\}, f\.cs\)/g) || []).length === 2 &&
+  /async function _ramCombustibil\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV) && /async function _ramOreCondus\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV), (SRV.match(/_optiuniRaport\(/g) || []).length);
 T('mașinile: aceeași regulă ca rapoartele (fără arhivate, fără demo); `imei` din corp e aruncat', /delete b\.imei/.test(ruta) && /resolveReportImeis\(req\)/.test(ruta));
 T('rolul tăiat se respectă și aici (poateRaport)', /poateRaport\(req, u\.raport\)/.test(ruta));
 T('în jurnal: doar subiectul și câte mașini — nu textul întrebării', /auditReq\(req, 'ai_raport', 'report', null, \{ subiect: u\.subiect, masini: imeis\.length \}\)/.test(ruta) && !/auditReq\([^)]*text/.test(ruta));
