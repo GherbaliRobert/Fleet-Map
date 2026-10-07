@@ -6,6 +6,9 @@ const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
 let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză")
 const condus = require('./condus');   // pragurile și scorul EcoDrive — aceleași pentru raport și pentru Safe Drive (o singură regulă)
+const tacho = require('./tacho');     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
+const insight = require('./insight'); // începutul unei zile pe ora României (inceputZiRO)
+const preaviz = require('./preaviz'); // starea unui act / a unei revizii și preavizul firmei — aceleași ca listele (Scadențe)
 
 function t(p) { return new Date(p.timestamp).getTime(); }
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -273,6 +276,7 @@ function segmentTrack(pts, stopMinSec) {
 // Contract: un raport poate întoarce `charts: [{ type, title, labels, datasets:[{label,data}] }]`.
 // Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
 function _dayKeyISO(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }).format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
+function _ziPlusISO(z, n) { const d = new Date(String(z) + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } // AAAA-LL-ZZ ± n zile
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
 function _dayLabelFull(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : isoKey; } // YYYY-MM-DD → DD.MM.YYYY
 // Listă compactă de zile (chei sortate „YYYY-MM-DD") → grupează zilele CONSECUTIVE în intervale: „01–05.07.2026, 08.07.2026".
@@ -874,13 +878,14 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
 // Marchează încălcări: conducere continuă > 4h30 (fără pauză ≥45 min) și conducere zilnică > 9h.
 // Legenda HOS — regulile Reg. 561 verificate + sursa (tahograf vs GPS) + limitele estimării.
 const HOS_LEGEND = { title: 'Reg. (CE) 561/2006 — regulile verificate', items: [
-  ['Se aplică la', 'Camioane peste 3,5t și autobuze (>9 locuri). La autoturisme/autoutilitare ușoare apare „Nu se aplică".'],
+  ['Se aplică la', 'Camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și orice mașină care trimite date de tahograf. La celelalte apare „Nu se aplică".'],
   ['Condus continuu', 'Max 4h30 la volan fără o pauză de 45 min. Peste → încălcare.'],
   ['Condus zilnic', 'Max 9h/zi, extensibil la 10h de cel mult 2 ori/săptămână. Peste 10h sau a 3-a zi extinsă → încălcare.'],
   ['Repaus zilnic', 'Min 11h, reductibil la 9h de cel mult 3 ori/săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
-  ['Condus săptămânal', 'Max 56h într-o săptămână (luni–duminică). Peste → încălcare.'],
+  ['Condus săptămânal', 'Max 56h într-o săptămână (luni–duminică). Peste → încălcare. Săptămâna se socotește întreagă, de luni, chiar dacă perioada aleasă începe mai târziu.'],
+  ['Două săptămâni', 'Max 90h în două săptămâni la rând. Peste → încălcare.'],
   ['Sursă', '„tahograf" = citit din tahograful digital (exact, valoare legală). „GPS (est.)" = estimat din viteză/contact (orientativ).'],
-  ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45h) și limita pe 2 săptămâni (90h) nu sunt incluse.']
+  ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45h) nu e inclus.']
 ] };
 
 async function rHos(db, imeis, from, to, opts, devMap) {
@@ -909,6 +914,27 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     if (acoperit < toMs) ids.add(0);
     ids.forEach((did) => adauga(did, imei));
   }
+  // Orele de condus DINAINTEA perioadei, de luni din săptămâna dinainte până la `from` — doar secundele de condus pe zi și pe
+  // șofer, citite pe pagini (nu țin pozițiile în memorie). Din ele: săptămâna începută (56h, zilele de peste 9h) și cele două
+  // săptămâni la rând (90h). Același fel de a socoti ca mai jos: starea din tahograf, altfel viteza.
+  const inainte = {};
+  const luniInainte = _ziPlusISO(_weekKey(_dayKeyISO(from)), -7), pz = luniInainte.split('-').map(Number);
+  const preDe = new Date(insight.inceputZiRO(pz[0], pz[1] - 1, pz[2])).toISOString();
+  if (Date.parse(preDe) < fromMs) {
+    for (const imei of imeis) {
+      const cine = cineDe[imei]; let pr = null;
+      await fiecarePozitie(db, imei, preDe, from, function (p) {
+        const anterior = pr; pr = p;
+        if (!anterior) return;
+        const dt = (t(p) - t(anterior)) / 1000;
+        if (!(dt > 0 && dt < 3 * 3600)) return;
+        const s0 = stOf(anterior);
+        if (!(s0 != null ? s0 === 3 : (anterior.speed || 0) > IDLE_SPEED)) return;
+        const did = cine(t(anterior)) || 0, key = did ? ('d' + did) : ('v_' + imei), day = _dayKeyISO(anterior.timestamp);
+        const z = inainte[key] || (inainte[key] = {}); z[day] = (z[day] || 0) + dt;
+      });
+    }
+  }
   const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {}; const perSubj = [];
   const valori = [];   // zilele ca NUMERE, pe șofer (ramura „Ore de condus" din RA Insight); ecranul și fișierele nu le folosesc
   for (const key of Object.keys(byDriver)) {
@@ -927,9 +953,10 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       }
     }
     if (merged.length < 2) continue;
-    // Reg. 561 se aplică la CAMIOANE (>3,5t) și AUTOBUZE — NU la turisme/autoutilitare ușoare. Determinăm din tipul mașinii (fișă).
-    const vtypes = [...folosite].map((i) => String((devMap[i] || {}).vehicle_type || '').toLowerCase());
-    const subject = !(vtypes.length && vtypes.every((tp) => /car|autoturism|van|autoutilitar/.test(tp)));
+    // Reg. 561 se aplică la camioane și autobuze (tipul din fișă) sau la mașinile care trimit date de tahograf — aceeași regulă
+    // ca agentul RA Compliance (tacho.supusReg561). Până pe 07.10: „nu e autoturism/dubă" → tipul „Auto" (autoturismul din
+    // fișă) intra sub Reg. 561, iar „autocar" (conținea „car") ieșea.
+    const subject = [...folosite].some((i) => tacho.supusReg561((devMap[i] || {}).vehicle_type, useTacho));
     merged.sort((a, b) => t(a.p) - t(b.p));
     const byDay = {}; let contSec = 0, restRun = 0, restRunDay = null;
     const closeRest = () => { if (restRun > 0 && restRunDay && byDay[restRunDay]) { if (restRun > byDay[restRunDay].restMax) byDay[restRunDay].restMax = restRun; } restRun = 0; restRunDay = null; };
@@ -951,8 +978,16 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       else closeRest(); // orice non-repaus închide seria de repaus → atribuită zilei în care a început (sigur peste miezul nopții)
     }
     closeRest();
-    // #4: reguli suplimentare pe săptămână (zile extinse >9h max 2, reduceri de repaus <11h max 3, condus săptămânal max 56h) — DOAR dacă vehiculul e subiect Reg. 561.
+    // #4: reguli suplimentare pe săptămână (zile extinse >9h max 2, reduceri de repaus <11h max 3, condus săptămânal max 56h,
+    // 90h în două săptămâni la rând) — DOAR dacă vehiculul e subiect Reg. 561. Săptămânile încep cu zilele de DINAINTEA
+    // perioadei (de luni, cu o săptămână în urmă — `inainte`), ca limitele să se socotească pe săptămâni întregi.
     const weekDrive = {}, weekExt = {}, weekRed = {};
+    const pre = inainte[key] || {};
+    Object.keys(pre).forEach((day) => {
+      const wk = _weekKey(day), dh = pre[day] / 3600;
+      weekDrive[wk] = (weekDrive[wk] || 0) + pre[day];
+      if (dh > 9 && dh <= 10) weekExt[wk] = (weekExt[wk] || 0) + 1;
+    });
     const subjRows = []; let sDrive = 0, sRest = 0, sInfr = 0; const sVehs = new Set();
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day]; const wk = _weekKey(day); const infr = [];
@@ -968,6 +1003,8 @@ async function rHos(db, imeis, from, to, opts, devMap) {
         }
         weekDrive[wk] = (weekDrive[wk] || 0) + d.drive;
         if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal >56h');
+        const doua = (weekDrive[_ziPlusISO(wk, -7)] || 0) + weekDrive[wk];   // săptămâna dinainte + cea de acum, până azi
+        if (doua / 3600 > 90 && (doua - d.drive) / 3600 <= 90) infr.push('condus în două săptămâni la rând ' + fmtDur(doua) + ' (>90h)');
       }
       const status = subject ? (infr.length ? 'Încălcare' : 'Conform') : 'Nu se aplică';
       const incCell = subject ? (infr.join('; ') || '—') : 'Reg. 561 nu se aplică';
@@ -1968,7 +2005,22 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
 
 // Catalog: cat = monitorizare | consum | can | evenimente | siguranta
 function fmtDate(d) { try { return new Date(d).toLocaleDateString('ro-RO', { timeZone: DISPLAY_TZ }); } catch (e) { return String(d || ''); } }
-function _dueStatus(days) { return days < 0 ? 'Depășit' : days <= 7 ? 'Critic' : days <= 30 ? 'Curând' : 'OK'; }
+// Starea din raportul „Scadențe" = starea din listele Mentenanță / Documente (preaviz.js, cu preavizul FIRMEI), plus
+// „Critic" pentru ultima săptămână dinaintea unui termen pe dată. Până pe 07.10: praguri fixe (7 / 30 de zile, 500 / 2.000 km).
+const _CRITIC_ZILE = 7;
+function _stareScadenta(st, zile) {
+  if (st === 'expired' || st === 'overdue') return 'Depășit';
+  if (st === 'soon' || st === 'due_soon') return (zile != null && zile <= _CRITIC_ZILE) ? 'Critic' : 'Curând';
+  return 'OK';
+}
+// Preavizul fiecărei firme, din bază (aceeași regulă ca listele: firma → pragurile globale → pornirea).
+async function _preavizFirme(db) {
+  let glob = {}, firme = [];
+  const json = function (x) { if (x == null) return {}; if (typeof x !== 'string') return x; try { return JSON.parse(x); } catch (e) { return {}; } };
+  try { if (typeof db.getSetting === 'function') glob = json(await db.getSetting('alert_thresholds_global')); } catch (e) {}
+  try { firme = (await db.pool.query('SELECT id, settings FROM companies')).rows.map(function (co) { return { id: co.id, praguri: json(co.settings).alert_thresholds || {} }; }); } catch (e) {}
+  return preaviz.peFirme(glob, firme);
+}
 
 // ── Model de consum ROBUST (sursă unică pentru Consum / Costuri / Costuri-totale / Emisii) ───────────────
 // Senzorul de nivel e folosit DOAR dacă dă un L/100km plauzibil (1..200) pe distanță reală; altfel estimează
@@ -2030,7 +2082,8 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 // ── Raport NOU: Scadențe documente & service (expirări ITP/RCA/roviniete/tahograf + revizii) ─────────────
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Documente + service, pe DATĂ și pe KM. „Zile rămase" mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
-  const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
+  const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate()); const acum = n0.getTime();
+  const lead = await _preavizFirme(db);
   const showAll = !!(opts && opts.all); // „Tot" → fără orizont (arată chiar tot); altfel filtrăm „până la finalul lunii alese"
   const horizon = showAll ? null : (to ? new Date(to) : null); // filtrează doar scadențele pe DATĂ; km + efectuate rămân mereu
   const items = [];
@@ -2046,13 +2099,14 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   try {
     // replaced_at IS NULL = doar actul valabil acum; cele înlocuite stau în istoric și nu au ce căuta
     // într-un raport de scadențe (altfel fiecare RCA reînnoit ar apărea etern ca „expirat").
-    const r = await db.pool.query('SELECT imei, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL AND replaced_at IS NULL', [imeis]);
-    for (const d of r.rows) { if (horizon && new Date(d.expiry_date) > horizon) continue; const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
+    const r = await db.pool.query('SELECT imei, company_id, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL AND replaced_at IS NULL', [imeis]);
+    for (const d of r.rows) { if (horizon && new Date(d.expiry_date) > horizon) continue; const days = preaviz.zileRamase(d.expiry_date, acum);
+      const st = _stareScadenta(preaviz.stareAct(d, lead.of(d.company_id).docDays, acum), days);
       items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
   } catch (e) {}
   // Mentenanță — scadente (pe dată / pe km) ȘI efectuate (cu data + km la care s-au făcut)
   try {
-    const r = await db.pool.query('SELECT imei, type, due_date, due_km, done_date, done_km, status FROM maintenance WHERE imei = ANY($1)', [imeis]);
+    const r = await db.pool.query('SELECT imei, company_id, type, due_date, due_km, done_date, done_km, status FROM maintenance WHERE imei = ANY($1)', [imeis]);
     for (const m of r.rows) {
       const nm = label(devMap, m.imei);
       if (m.status === 'done') {
@@ -2060,10 +2114,12 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
         const efect = (m.done_date ? fmtDate(m.done_date) : '—') + (m.done_km != null ? ' · ' + _grp(m.done_km) + ' km' : '');
         items.push({ sk1: 5, sk2: -(m.done_date ? new Date(m.done_date).getTime() : 0), row: [ nm, 'Service', m.type || '—', scad, efect, 'Efectuat' ] });
       } else {
-        if (m.due_date != null && !(horizon && new Date(m.due_date) > horizon)) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
+        const L = lead.of(m.company_id);
+        if (m.due_date != null && !(horizon && new Date(m.due_date) > horizon)) { const days = preaviz.zileRamase(m.due_date, acum);
+          const st = _stareScadenta(preaviz.stareRevizie({ due_date: m.due_date }, null, L, acum), days);
           items.push({ sk1: rank[st], sk2: days, row: [ nm, 'Service', m.type || '—', fmtDate(m.due_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
         if (m.due_km != null) { const odo = odoMap[m.imei]; const kmLeft = odo != null ? (m.due_km - odo) : null;
-          const st = kmLeft == null ? '—' : (kmLeft < 0 ? 'Depășit' : kmLeft <= 500 ? 'Critic' : kmLeft <= 2000 ? 'Curând' : 'OK');
+          const st = kmLeft == null ? '—' : _stareScadenta(preaviz.stareRevizie({ due_km: m.due_km }, odo, L, acum), null);
           const detail = kmLeft == null ? 'fără odometru' : (kmLeft < 0 ? '~' + _grp(-kmLeft) + ' km în urmă' : '~' + _grp(kmLeft) + ' km');
           items.push({ sk1: rank[st], sk2: kmLeft == null ? 1e12 : kmLeft, row: [ nm, 'Service (km)', m.type || '—', 'la ' + _grp(m.due_km) + ' km (' + detail + ')', '—', st ] }); }
       }
@@ -2557,7 +2613,9 @@ async function fuelStats(db, imeis, from, to, opts) {
         if (bPrev[bk] !== undefined) { const d = fl - bPrev[bk]; if (d >= refuelMin) bRefuel[bk] = (bRefuel[bk] || 0) + d; }
         bPrev[bk] = fl;
       }
-      if (prevP) { const dd = haversineKm(prevP.latitude, prevP.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) { dist += dd; bDist[bk] = (bDist[bk] || 0) + dd; } }
+      // Km socotiți EXACT ca raportul Consum (_consumptionMap): doar între poziții la cel mult 5 minute una de alta (07.10 —
+      // fără garda de timp, o gaură de semnal adăuga linia dreaptă dintre două locuri și „Statistici consum" ieșea altfel).
+      if (prevP) { const dt = (t(p) - t(prevP)) / 1000, dd = haversineKm(prevP.latitude, prevP.longitude, p.latitude, p.longitude); if (dt > 0 && dt <= 300 && dd < MAX_STEP_KM) { dist += dd; bDist[bk] = (bDist[bk] || 0) + dd; } }
       if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED && prevP && ignOn(prevP) && (prevP.speed || 0) <= IDLE_SPEED) { const dt = (new Date(p.timestamp) - new Date(prevP.timestamp)) / 1000; if (dt > 0 && dt < 3600) { idleSec += dt; bIdle[bk] = (bIdle[bk] || 0) + dt; } }
       prevP = p;
     });

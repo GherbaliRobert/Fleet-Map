@@ -19,6 +19,9 @@
 //   5. Scrisoarea de luni: faptele (din ramuri, pe mașinile omului), textul pe reguli, paza care oprește cifrele inventate; pe
 //      server pornit (fără model): scrisoarea săptămânii trecute ajunge la oamenii cu loc RA Insight, cu anunț, o singură dată,
 //      cu aceleași cifre ca ramurile; a altuia = 404; fără loc = 403; numărul de lângă ramură = scrisorile necitite.
+//   6. Cele 5 găsite pe drum (07.10): preavizul și starea termenelor dintr-un singur loc (liste, RA Care, raportul
+//      „Scadențe"), o singură regulă „Reg. 561 se aplică" (agent, raport, Tahograf), km din „Statistici consum" ca la Consum,
+//      limitele pe săptămâni întregi și cea de 90 de ore în două săptămâni — pe reguli și pe server pornit.
 'use strict';
 process.env.GEOCODE_URL = 'http://127.0.0.1:9/reverse';
 process.env.GEOCODE_MIN_INTERVAL_MS = '0';
@@ -195,6 +198,35 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
     (blocS.match(/'\/api\/insight\/scrisori'/g) || []).length === 1 && (blocS.match(/'\/api\/insight\/scrisori\/'/g) || []).length === 1 && /d\.type === 'scrisoare_luni'\) \{ closeNotifDetail\(\); if \(window\.insightDeschideScrisoarea\)/.test(PAG));
   const ihS = blocS.match(/innerHTML = [^;]*;/g) || [];
   T('pagina: textul scrisorii și cifrele se pun cu textContent (innerHTML doar pentru iconițe)', ihS.length >= 3 && ihS.every((x) => !/\.(text|eticheta|fata|nota|total|message|error)\b/.test(x)), ihS.join(' | '));
+
+  console.log('\n1e. Cele 5 găsite pe drum (07.10) — pe reguli');
+  const PV = require('./preaviz'), TH = require('./tacho'), AG = require('./agents');
+  const ZZ = (n) => new Date(ACUM + n * ZI).toISOString().slice(0, 10);
+  T('preavizul: acte 30 de zile, revizii 14 zile / 500 km; firma îl schimbă, o valoare proastă cade pe cea globală', JSON.stringify(PV.dinPraguri({})) === JSON.stringify({ days: 14, km: 500, docDays: 30 }) &&
+    PV.peFirme({ docDaysLead: 21 }, [{ id: 5, praguri: { docDaysLead: 7, careKmLead: 'x' } }]).of(5).docDays === 7 && PV.peFirme({ docDaysLead: 21 }, [{ id: 5, praguri: { careKmLead: 'x' } }]).of(5).km === 500 &&
+    PV.peFirme({ docDaysLead: 21 }, []).of(9).docDays === 21);
+  T('starea unui act: 20 de zile = „curând" la 30 de preaviz, „în regulă" la 7; trecut = „expirat"; fără dată = „none"', PV.stareAct({ expiry_date: ZZ(20) }, 30, ACUM) === 'soon' && PV.stareAct({ expiry_date: ZZ(20) }, 7, ACUM) === 'ok' && PV.stareAct({ expiry_date: ZZ(-2) }, 30, ACUM) === 'expired' && PV.stareAct({}, 30, ACUM) === 'none');
+  T('starea unei revizii: 400 km rămași = „curând" la 500, „în regulă" la 300; 0 km = depășită; închisă = în regulă', PV.stareRevizie({ due_km: 150000 }, 149600, { km: 500 }, ACUM) === 'due_soon' && PV.stareRevizie({ due_km: 150000 }, 149600, { km: 300 }, ACUM) === 'ok' &&
+    PV.stareRevizie({ due_km: 150000 }, 150000, {}, ACUM) === 'overdue' && PV.stareRevizie({ due_date: ZZ(-1), status: 'done' }, null, {}, ACUM) === 'ok');
+  const care = async (th, docs, mnt) => (await AG.AGENTS.care.run({ imeis: ['C1'], livePositions: new Map(), companyId: 1, alertThresholds: th,
+    db: { getVehicleDocuments: async () => docs, getMaintenance: async () => mnt } })).findings;
+  const fc1 = await care({}, [{ id: 1, imei: 'C1', doc_type: 'RCA', expiry_date: new Date(Date.now() + 20 * ZI).toISOString() }], [{ id: 2, imei: 'C1', type: 'Revizie', due_date: new Date(Date.now() + 20 * ZI).toISOString(), status: 'pending' }]);
+  const fc2 = await care({ docDaysLead: 10 }, [{ id: 1, imei: 'C1', doc_type: 'RCA', expiry_date: new Date(Date.now() + 20 * ZI).toISOString() }], []);
+  T('agentul RA Care: RCA-ul care expiră în 20 de zile e anunțat (preavizul actelor, 30 — era 14); revizia de peste 20 de zile nu (14); cu preavizul firmei de 10 zile, nici RCA-ul', fc1.some((f) => /RCA expiră în 20 zile/.test(f.title)) && !fc1.some((f) => /Revizie/.test(f.title)) && fc2.length === 0, JSON.stringify([fc1.map((f) => f.title), fc2.map((f) => f.title)]));
+  const AGS = fs.readFileSync(path.join(__dirname, 'agents.js'), 'utf8'), RPS = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8');
+  T('o singură sursă: listele (maintenanceDueState / documentDueState), preavizul firmelor și RA Care trec prin preaviz.js', /function maintenanceDueState\(m, odo, leads\) \{ return preaviz\.stareRevizie\(m, odo, leads\); \}/.test(SRV) && /function documentDueState\(d, leadDays\) \{ return preaviz\.stareAct\(d, leadDays\); \}/.test(SRV) &&
+    /return preaviz\.peFirme\(await _getGlobalAlertThresholds\(\), firme\);/.test(SRV) && /const lead = preaviz\.dinPraguri\(thresholds\);/.test(AGS) && /days <= docDaysLead/.test(AGS) && !/: 14;\n/.test(AGS.split('async function raCare(')[1].split('\nasync function ')[0]));
+  const fDue = (RPS.split('async function rDocServiceDue(')[1] || '').split('\nasync function ')[0];
+  T('raportul „Scadențe": starea listelor, cu preavizul FIECĂREI firme (nu 7 / 30 de zile, 500 / 2.000 km scrise în el)', /preaviz\.stareAct\(d, lead\.of\(d\.company_id\)\.docDays, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_date: m\.due_date \}, null, L, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_km: m\.due_km \}, odo, L, acum\)/.test(fDue) && !/2000|_dueStatus/.test(fDue) && !/function _dueStatus/.test(RPS));
+  T('„Reg. 561 se aplică": o regulă (tipul din fișă — lista modulului Tahograf — sau datele de tahograf): „Auto" și „Duba" nu, „Autotractor" și „autocar" da',
+    TH.supusReg561('Auto', false) === false && TH.supusReg561('Duba', false) === false && TH.supusReg561('Autotractor', false) === true && TH.supusReg561('autocar', false) === true && TH.supusReg561('Auto', true) === true && TH.supusReg561(true, false) === true);
+  T('…folosită de agentul RA Compliance, de raportul Condus & repaus (deci și de ramura Ore de condus) și de Tahograf; a treia listă a agentului a plecat',
+    /tacho\.supusReg561\(await _isTruck\(ctx, imei\), !!\(live && _hasAnyTachoSignal\(live\)\)\)/.test(AGS) && /tacho\.vehiculAreTahograf\(d\.vehicle_type\)/.test(AGS) && !/TACHO_TRUCK_TYPES/.test(AGS) &&
+    /tacho\.supusReg561\(\(devMap\[i\] \|\| \{\}\)\.vehicle_type, useTacho\)/.test(fH) && !/car\|autoturism\|van\|autoutilitar/.test(fH));
+  const fStat = (RPS.split('async function fuelStats(')[1] || '').split('\nasync function ')[0];
+  T('„Statistici consum": km socotiți ca la raportul Consum (doar între poziții la cel mult 5 minute)', /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test(fStat) && /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test((RPS.split('async function _consumptionMap(')[1] || '').split('\nasync function ')[0]));
+  T('orele de condus: săptămânile întregi (zilele de dinainte, citite pe pagini) și 90 de ore în două săptămâni; legenda raportului o spune', /fiecarePozitie\(db, imei, preDe, from,/.test(fH) && /const pre = inainte\[key\]/.test(fH) && /doua \/ 3600 > 90/.test(fH) &&
+    /\['Două săptămâni', 'Max 90h în două săptămâni la rând/.test(RPS) && !/limita pe 2 săptămâni \(90h\) nu sunt incluse/.test(RPS) && /peste 90 de ore în două săptămâni la rând/.test(exH), exH);
 
   // ─── 2. Pe server pornit ──────────────────────────────────────────────────────────────────────────────
   const PORT = 3298, TCP = 5298;
@@ -452,6 +484,43 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   T('lunea înainte de 8: încă nimic', devreme.j.scrisori && devreme.j.scrisori.devreme === true, JSON.stringify(devreme.j.scrisori));
   const marti = await json('POST', '/api/test/ceasuri', S, { acum: SD.inceput(ziPlus(luniAcum, 1)) + 9 * 3600000, scrisori: true });
   T('în altă zi decât lunea: nimic (o livrare în mijlocul săptămânii nu trimite scrisori)', marti.j.scrisori && marti.j.scrisori.nuELuni === true, JSON.stringify(marti.j.scrisori));
+
+  // ─── 6. Cele 5 găsite pe drum, pe server pornit ──────────────────────────────────────────────────────────────
+  console.log('\n6. Cele 5 găsite pe drum — pe server pornit');
+  // Raportul „Scadențe": firma noastră are preavizul la acte de 7 zile și la revizii de 300 km (secțiunea 2).
+  await json('POST', '/api/documents', ckSef, { imei: V[1], doc_type: 'Tahograf', expiry_date: ziPeste(20) });
+  const scadR = (await json('GET', '/api/reports/due?all=1&from=' + encodeURIComponent(new Date().toISOString()) + '&to=' + encodeURIComponent(new Date(Date.now() + 400 * ZI).toISOString()), ckSef)).j;
+  const col = (r, nume) => (r.columns || []).indexOf(nume);   // coloanele după nume (raportul primește și „Șofer")
+  const stare = (tip) => (((scadR.rows || []).filter((r) => r[col(scadR, 'Tip')] === tip)[0]) || [])[col(scadR, 'Stare')];
+  T('„Scadențe" pe preavizul FIRMEI (acte 7 zile, revizii 300 km): ITP expirat = Depășit, RCA peste 5 zile = Critic, tahograful peste 20 de zile = OK (pragul vechi îl punea „Curând"), uleiul cu 400 km rămași = OK',
+    stare('ITP') === 'Depășit' && stare('RCA') === 'Critic' && stare('Tahograf') === 'OK' && stare('Rovinietă') === 'OK' && stare('Schimb ulei + filtru') === 'OK' && stare('Revizie generală') === 'Depășit', JSON.stringify((scadR.rows || []).map((r) => [r[col(scadR, 'Tip')], r[col(scadR, 'Stare')]])));
+  const ldS = (await json('GET', '/api/documents', ckSef)).j;
+  const dueL = (tip) => ((Array.isArray(ldS) ? ldS : []).filter((x) => x.doc_type === tip)[0] || {})._due;
+  T('…aceleași stări ca lista Documente: Tahograf „ok", RCA „soon", ITP „expired"', dueL('Tahograf') === 'ok' && dueL('RCA') === 'soon' && dueL('ITP') === 'expired', [dueL('Tahograf'), dueL('RCA'), dueL('ITP')].join(','));
+  const scadA = (await json('GET', '/api/reports/due?all=1&from=' + encodeURIComponent(new Date().toISOString()) + '&to=' + encodeURIComponent(new Date(Date.now() + 400 * ZI).toISOString()), ckAlt)).j;
+  T('…iar cealaltă firmă, cu preavizul de pornire, își vede ITP-ul ei Depășit și nimic de-al nostru', (scadA.rows || []).length === 1 && scadA.rows[0][col(scadA, 'Stare')] === 'Depășit' && JSON.stringify(scadA).indexOf('B 154 UIP') < 0, JSON.stringify(scadA.rows));
+  // Orele de condus: un al doilea camion, 12 ore pe zi, luni–vineri, în ultimele două săptămâni (din 30 în 30 de minute).
+  const VT2 = '350000000081005';
+  await json('POST', '/api/devices/import', S, { rows: [{ imei: VT2, nume: 'Scania R450', nr_inmatriculare: 'TM 78 RAT' }] });
+  await json('PUT', '/api/devices/' + VT2 + '/company', S, { company_id: coA.id });
+  await json('PUT', '/api/devices/' + VT2 + '/details', ckSef, { vehicle_type: 'Autotractor' });
+  const mi2 = (await json('POST', '/api/drivers', ckSef, { name: 'Mihai Stan' })).j;
+  await json('PUT', '/api/devices/' + VT2 + '/assign', ckSef, { driver_id: mi2.id });
+  let rele6 = 0;
+  for (const luni0 of [luniTT, luniT]) {
+    for (let zi = 0; zi < 5; zi++) {
+      const t0 = SD.inceput(ziPlus(luni0, zi)) + 6 * 3600000; let lat = 44.5;
+      for (let k = 0; k <= 24; k++) { lat += 0.3; const r = await json('POST', '/api/test/simulate', S, { imei: VT2, ts: new Date(t0 + k * 1800000).toISOString(), lat, lng: 22.0, speed: 75, io: { ignition: 1 } }); if (r.status !== 200) rele6++; }
+    }
+  }
+  T('pregătire: autotractorul lui Mihai, 12 ore pe zi, luni–vineri, două săptămâni', !!mi2.id && rele6 === 0, rele6);
+  const miercuri = ziPlus(luniT, 2);
+  const hR = (await json('GET', '/api/reports/hos?from=' + encodeURIComponent(new Date(SD.inceput(miercuri)).toISOString()) + '&to=' + encodeURIComponent(new Date(SD.inceput(luniAcum)).toISOString()), ckSef)).j;
+  const incMi = (hR.valori || []).filter((x) => x.sofer === 'Mihai Stan');
+  const peZi = (z) => ((incMi.filter((x) => x.zi === z)[0] || {}).incalcari || []).join(' | ');
+  T('perioada pornește MIERCURI, dar săptămâna se socotește întreagă: luni–marți (24 h) + miercuri–vineri = 60 h → „condus săptămânal >56h" vineri (înainte: doar 36 h, fără încălcare)', /condus săptămânal >56h/.test(peZi(ziPlus(luniT, 4))) && incMi.length === 3, JSON.stringify(incMi.map((x) => [x.zi, x.incalcari])));
+  T('90 de ore în două săptămâni la rând: săptămâna dinainte (60 h) + luni–miercuri (36 h) = 96 h → încălcarea miercuri', /condus în două săptămâni la rând 96h \(>90h\)/.test(peZi(miercuri)) && !/două săptămâni/.test(peZi(ziPlus(luniT, 3))), peZi(miercuri));
+  T('autotractorul intră la Reg. 561 (tipul din fișă), autoturismul nu', incMi.every((x) => x.supus) && ((hR.valori || []).filter((x) => x.sofer === 'Ion Popescu')[0] || { supus: false }).supus === false, JSON.stringify((hR.valori || []).map((x) => [x.sofer, x.supus])));
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

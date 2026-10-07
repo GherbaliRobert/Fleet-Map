@@ -75,6 +75,13 @@ function vehiculAreTahograf(tip) {
   if (tip == null) return false;
   return _TIPURI_SET.has(String(tip).trim().toLowerCase());
 }
+// Reg. 561 (orele de condus) se aplică: tipul din fișă e camion / autobuz (vehiculAreTahograf — primit ca rezultat, sau ca
+// tipul însuși) SAU mașina trimite date de tahograf. O SINGURĂ regulă pentru agentul RA Compliance, raportul Condus &
+// repaus și ramura Ore de condus (07.10: erau trei; raportul punea autoturismele „Auto" sub Reg. 561 și scutea autocarele).
+function supusReg561(tipSauCamion, areDateTahograf) {
+  if (areDateTahograf) return true;
+  return typeof tipSauCamion === 'boolean' ? tipSauCamion : vehiculAreTahograf(tipSauCamion);
+}
 
 // ─── Blocuri (fișier de card) ────────────────────────────────────────────────────────────────────
 // Întoarce { blocuri, acopera } — `acopera` e adevărat doar dacă lanțul consumă TOT fișierul.
@@ -467,7 +474,7 @@ function goluri(perioade) {
 
 module.exports = {
   parse, infringements, statZi, scadenta, goluri, ziISO,
-  TERMEN_CARD_ZILE, TERMEN_VU_ZILE, TIPURI_CU_TAHOGRAF, vehiculAreTahograf,
+  TERMEN_CARD_ZILE, TERMEN_VU_ZILE, TIPURI_CU_TAHOGRAF, vehiculAreTahograf, supusReg561,
   // expuse pentru probe
   _citesteBlocuri: citesteBlocuri, _citesteZile: citesteZile, _numeDinIdentificare: numeDinIdentificare,
   _cautaVin: cautaVin, _esteVu: esteVu, _LEN_IDENTIFICATION: LEN_IDENTIFICATION,

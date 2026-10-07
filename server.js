@@ -218,6 +218,7 @@ const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: 
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
+const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
 let ioCatalog = null;
@@ -11847,61 +11848,27 @@ function _odoFromIo(io) {
 //
 // Valorile de aici sunt doar punctul de plecare; fiecare companie și le poate schimba
 // (careDaysLead / careKmLead / docDaysLead în alert_thresholds).
-const MAINT_DAYS_LEAD = 14;  // LUCRĂRI, pe dată — un schimb de ulei se face într-o oră
-const MAINT_KM_LEAD = 500;   // LUCRĂRI, pe km
-const DOC_DAYS_LEAD = 30;    // ACTE — un RCA sau un ITP vrea o lună de preaviz, nu o săptămână
+// Cifrele stau într-un singur loc, preaviz.js (07.10: și agentul RA Care le citește de acolo — anunța actele cu 14 zile).
+const MAINT_DAYS_LEAD = preaviz.REVIZII_ZILE;  // LUCRĂRI, pe dată — 14 zile
+const MAINT_KM_LEAD = preaviz.REVIZII_KM;      // LUCRĂRI, pe km — 500 km
+const DOC_DAYS_LEAD = preaviz.ACTE_ZILE;       // ACTE — 30 de zile
 
 // Preavizul fiecărei companii, într-o singură interogare. Ordinea: setarea companiei → setarea
 // globală (super-admin) → constantele de mai sus.
 async function _leadsByCompany() {
-  const g = await _getGlobalAlertThresholds();
-  const base = {
-    days: parseInt(g && g.careDaysLead) || MAINT_DAYS_LEAD,
-    km: parseInt(g && g.careKmLead) || MAINT_KM_LEAD,
-    docDays: parseInt(g && g.docDaysLead) || DOC_DAYS_LEAD
-  };
-  const m = new Map();
-  try {
-    for (const co of await db.getCompanies()) {
-      const t = _alertThresholdsFromSettings(co.settings) || {};
-      m.set(co.id, {
-        days: parseInt(t.careDaysLead) || base.days,
-        km: parseInt(t.careKmLead) || base.km,
-        docDays: parseInt(t.docDaysLead) || base.docDays
-      });
-    }
-  } catch (e) {}
-  return { base: base, of: function (cid) { return (cid != null && m.get(cid)) || base; } };
+  // Regula (firma → pragurile globale → pornirea) stă în preaviz.js — aceeași pentru raportul „Scadențe".
+  let firme = [];
+  try { firme = (await db.getCompanies()).map(function (co) { return { id: co.id, praguri: _alertThresholdsFromSettings(co.settings) || {} }; }); } catch (e) {}
+  return preaviz.peFirme(await _getGlobalAlertThresholds(), firme);
 }
 // Închisă? — REGULĂ UNICĂ (RA Care + checkExpiries + colorarea listei): status done/completed SAU done_date setat.
-function _maintClosed(m) { if (!m) return true; const st = String(m.status || '').toLowerCase(); return st === 'done' || st === 'completed' || !!m.done_date; }
+function _maintClosed(m) { return preaviz.lucrareInchisa(m); }
 // Starea de scadență pt. UI: 'overdue' (depășit) | 'due_soon' (în fereastra de alertă) | 'ok'.
 // `leads` = preavizul companiei (vezi _leadsByCompany); lipsă → constantele implicite.
-function maintenanceDueState(m, odo, leads) {
-  if (!m || _maintClosed(m)) return 'ok';
-  const dLead = (leads && leads.days) || MAINT_DAYS_LEAD;
-  const kLead = (leads && leads.km) || MAINT_KM_LEAD;
-  let soon = false;
-  if (m.due_date) {
-    const days = Math.ceil((new Date(m.due_date).getTime() - Date.now()) / 86400000);
-    if (days < 0) return 'overdue';
-    if (days <= dLead) soon = true;
-  }
-  if (m.due_km && odo) {
-    const left = m.due_km - odo;
-    if (left <= 0) return 'overdue';
-    if (left <= kLead) soon = true;
-  }
-  return soon ? 'due_soon' : 'ok';
-}
+function maintenanceDueState(m, odo, leads) { return preaviz.stareRevizie(m, odo, leads); }
 // Aceeași poveste pentru ACTE, ca ecranele să nu mai calculeze fiecare pe cont propriu.
-// 'expired' | 'soon' | 'ok' | 'none' (fără dată de expirare).
-function documentDueState(d, leadDays) {
-  if (!d || !d.expiry_date) return 'none';
-  const days = Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000);
-  if (days < 0) return 'expired';
-  return days <= ((leadDays) || DOC_DAYS_LEAD) ? 'soon' : 'ok';
-}
+// 'expired' | 'soon' | 'ok' | 'none' (fără dată de expirare). Regula stă în preaviz.js (și raportul „Scadențe" o folosește).
+function documentDueState(d, leadDays) { return preaviz.stareAct(d, leadDays); }
 // La marcarea „efectuat": înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
 async function stampMaintenanceDone(body) {
   if (!body || body.status !== 'done') return;

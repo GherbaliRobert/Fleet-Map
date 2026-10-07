@@ -26,6 +26,7 @@ const citeste = (f) => fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
 
 // ── Lista paginilor, din server.js ──────────────────────────────────────────────────────────────────
 const SRV = citeste('server.js');
+const PREAVIZ = citeste('preaviz.js');   // cifrele preavizului (30 de zile la acte, 14 zile / 500 km la revizii) stau acolo din 07.10
 const mLista = SRV.match(/\nconst PAGINI_PUBLICE = (\[[\s\S]*?\n\]);/);
 check(!!mLista, 'server.js: nu găsesc lista PAGINI_PUBLICE');
 const PAGINI = mLista ? vm.runInNewContext(mLista[1]) : [];
@@ -249,11 +250,11 @@ const LEGATE = [
   ['/', '<span class="dot"></span> La fiecare oră</span>', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/intrebari-frecvente', 'Istoricul pozițiilor se păstrează <b>12 luni</b>', C.LUNI_ISTORIC_INCLUSE === 12, 'LUNI_ISTORIC_INCLUSE din contracts.js e ' + C.LUNI_ISTORIC_INCLUSE, 'faqPastrare'],
   ['/intrebari-frecvente', 'aveți <b>30 de zile</b> să ne cereți datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
-  ['/alerte-itp-rca-rovinieta', 'implicit cu <b>30 de zile</b> înainte de expirare', num(SRV, /const DOC_DAYS_LEAD = (\d+);/) === 30, 'DOC_DAYS_LEAD din server.js'],
-  ['/alerte-itp-rca-rovinieta', 'implicit e de 30 de zile', num(SRV, /const DOC_DAYS_LEAD = (\d+);/) === 30, 'DOC_DAYS_LEAD din server.js'],
+  ['/alerte-itp-rca-rovinieta', 'implicit cu <b>30 de zile</b> înainte de expirare', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
+  ['/alerte-itp-rca-rovinieta', 'implicit e de 30 de zile', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
   ['/alerte-itp-rca-rovinieta', 'între 1 și 365 de zile', /\{ k: 'docDaysLead', min: 1, max: 365,/.test(SRV), 'limitele docDaysLead din ALERT_THRESHOLD_SPECS (server.js)'],
-  ['/alerte-itp-rca-rovinieta', 'cu <b>14 zile</b> înainte la lucrările pe dată', num(SRV, /const MAINT_DAYS_LEAD = (\d+);/) === 14, 'MAINT_DAYS_LEAD din server.js'],
-  ['/alerte-itp-rca-rovinieta', 'cu <b>500 km</b> înainte la cele pe kilometri', num(SRV, /const MAINT_KM_LEAD = (\d+);/) === 500, 'MAINT_KM_LEAD din server.js'],
+  ['/alerte-itp-rca-rovinieta', 'cu <b>14 zile</b> înainte la lucrările pe dată', num(PREAVIZ, /const REVIZII_ZILE = (\d+);/) === 14, 'REVIZII_ZILE din preaviz.js'],
+  ['/alerte-itp-rca-rovinieta', 'cu <b>500 km</b> înainte la cele pe kilometri', num(PREAVIZ, /const REVIZII_KM = (\d+);/) === 500, 'REVIZII_KM din preaviz.js'],
   ['/alerte-itp-rca-rovinieta', '16 tipuri de lucrări', nLucrari === 16, 'maint_types.js are ' + nLucrari + ' lucrări'],
   ['/agenti-ai', 'RA Watch verifică flota singur, în fiecare oră', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră'],
   ['/agenti-ai', 'nu mai transmit de peste o oră', num(AG, /const OFFLINE_MIN = (\d+);/) === 60, 'OFFLINE_MIN din agents.js'],

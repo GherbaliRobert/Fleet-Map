@@ -229,7 +229,7 @@ function recomandariOreCondus(x) {
     out.push({ fel: 'atentie', text: s.nume + ': ' + (s.incalcari === 1 ? 'o încălcare' : cant(s.incalcari, 'încălcare', 'încălcări')) + ' a Reg. 561 — ' + lista + '. ' +
       (s.sursa === 'GPS' ? 'E o estimare din GPS: verifică pe tahograf, apoi vorbește cu el.' : 'Vorbește cu el și verifică planificarea curselor.') });
   });
-  if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și autoutilitare ușoare — orele de mai jos arată doar cât a condus fiecare.' });
+  if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și dube — orele de mai jos arată doar cât a condus fiecare. Dacă un camion apare aici, trece-i tipul în fișa mașinii („Camion", „Autotractor"…).' });
   const gps = x.soferi.filter(function (s) { return s.supus && s.sursa === 'GPS'; }).length;
   if (gps) out.push({ fel: 'info', text: (gps === 1 ? 'La un șofer' : 'La ' + gps + ' șoferi') + ' orele sunt estimate din GPS (mașina nu trimite datele tahografului): în mers = condus. Pentru un control oficial contează tahograful.' });
   if (x.flota.faraSofer) out.push({ fel: 'info', text: (x.flota.faraSofer === 1 ? 'O mașină a mers' : cant(x.flota.faraSofer, 'mașină a mers', 'mașini au mers')) + ' fără șofer trecut în aplicație — orele nu se pot pune pe un om. Șoferul se trece din Management → Șoferi.' });
@@ -241,7 +241,7 @@ function explicatiiOreCondus() {
   return [
     { titlu: 'Orele', text: 'Din tahograf, unde mașina trimite starea șoferului (condus, muncă, disponibil, odihnă); altfel estimate din GPS: mașina în mers = condus, motor pornit pe loc = muncă. Aceeași socoteală ca raportul „Condus & repaus (Reg. 561)".' },
     { titlu: 'Pe cine', text: 'Fiecare zi merge pe șoferul care avea mașina atunci (Management → Șoferi). Mașinile care au mers fără șofer trecut apar cu numele lor.' },
-    { titlu: 'Încălcările', text: 'Ale Regulamentului CE 561/2006, doar la camioane și autobuze (nu la autoturisme și autoutilitare ușoare): condus continuu peste 4h30 fără o pauză de 45 de minute; condus zilnic peste 10 ore, sau peste 9 ore de mai mult de două ori pe săptămână; condus săptămânal peste 56 de ore. Repausul zilnic sub 9 ore se verifică doar cu tahograful (din GPS nu se vede).' },
+    { titlu: 'Încălcările', text: 'Ale Regulamentului CE 561/2006, la camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și la orice mașină care trimite date de tahograf — nu la autoturisme și dube: condus continuu peste 4h30 fără o pauză de 45 de minute; condus zilnic peste 10 ore, sau peste 9 ore de mai mult de două ori pe săptămână; condus săptămânal peste 56 de ore; peste 90 de ore în două săptămâni la rând. Săptămânile se socotesc întregi, de luni. Repausul zilnic sub 9 ore se verifică doar cu tahograful (din GPS nu se vede).' },
     { titlu: 'Săptămâna', text: 'De luni până duminică, pe ora României. Săptămâna de acum se compară cu aceleași zile din săptămâna trecută.' },
   ];
 }

@@ -5,6 +5,8 @@
 
 let segmentTrack = null;
 try { segmentTrack = require('./reports').segmentTrack; } catch (e) { segmentTrack = null; }
+const preaviz = require('./preaviz');   // preavizul termenelor: același ca listele și anunțurile
+const tacho = require('./tacho');       // „e camion / autobuz?" — o singură listă de tipuri (tacho.vehiculAreTahograf)
 
 const SPEED_LIMIT = 90;        // km/h
 const IDLE_MIN_MINUTES = 120;  // ralanti prelungit (RA Watch)
@@ -27,7 +29,6 @@ const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
 const TACHO_GRACE_MIN = 10;    // minute cu contact ON dar zero semnal tahograf = neconfigurat
 
 // Tipuri de vehicul pentru care se aplică legislația tahograf (Reg. EU 561/2006, 165/2014).
-const TACHO_TRUCK_TYPES = new Set(['Camion', 'Autobuz', 'Autoutilitară', 'Autoutilitara', 'TIR', 'Truck', 'Bus']);
 
 // AVL IDs Teltonika care indică prezența unui tahograf citit corect (dacă apare oricare valoare ≠ 0, e OK).
 // Acoperă: viteză/distanță tahograf (192-194), Driver 1/2 working state (184-187, 122-125),
@@ -74,9 +75,12 @@ async function _vehLimit(ctx, imei) {
 }
 
 // Verifică dacă vehiculul e tip „camion" (intră sub legislația tahografului).
+// „E camion / autobuz?" — după tipul din fișă, cu ACEEAȘI listă ca modulul Tahograf și raportul Condus & repaus
+// (tacho.vehiculAreTahograf: autotractor, camion, TIR, autobuz, autocar…). Până pe 07.10 aici era o a treia listă, care
+// lăsa pe dinafară autotractoarele și socotea dubele camioane.
 async function _isTruck(ctx, imei) {
   if (!ctx || !ctx.db || !ctx.db.getDeviceFull) return false;
-  try { const d = await ctx.db.getDeviceFull(imei); return d && TACHO_TRUCK_TYPES.has(String(d.vehicle_type || '').trim()); }
+  try { const d = await ctx.db.getDeviceFull(imei); return !!(d && tacho.vehiculAreTahograf(d.vehicle_type)); }
   catch (e) { return false; }
 }
 
@@ -259,14 +263,15 @@ async function raWatch(ctx) {
 }
 
 // ─── RA Care — mentenanță predictivă (revizii, ITP, asigurări) ───
-// Praguri UNIFICATE cu canalul push (checkExpiries): careDaysLead (def 14 zile) + careKmLead (def 500 km),
-// configurabile per companie. serviceSoonKm rămâne DOAR pentru distanța-până-la-service din bord (CAN).
+// Preavizul e ACELAȘI cu al listelor și al anunțurilor (preaviz.js, cu pragurile firmei): lucrările pe dată 14 zile, pe km
+// 500 km, ACTELE 30 de zile (07.10: actele se anunțau aici cu 14 zile, iar listele și telefonul cu 30).
+// serviceSoonKm rămâne DOAR pentru distanța-până-la-service din bord (CAN).
 async function raCare(ctx) {
   const { db, imeis, livePositions, companyId } = ctx; const findings = []; const now = Date.now(); const DAY = 86400000;
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const serviceSoonKm = Number.isFinite(thresholds.serviceSoonKm) && thresholds.serviceSoonKm > 0 ? thresholds.serviceSoonKm : SERVICE_SOON_KM;
-  const daysLead = Number.isFinite(thresholds.careDaysLead) && thresholds.careDaysLead > 0 ? thresholds.careDaysLead : 14;
-  const kmLead = Number.isFinite(thresholds.careKmLead) && thresholds.careKmLead > 0 ? thresholds.careKmLead : 500;
+  const lead = preaviz.dinPraguri(thresholds);
+  const daysLead = lead.days, kmLead = lead.km, docDaysLead = lead.docDays;
   // Documentele vehiculelor (ITP/RCA/rovinietă…) — o singură citire per rulare, grupate pe imei.
   const docsByImei = new Map();
   try {
@@ -312,13 +317,13 @@ async function raCare(ctx) {
     // Scadență pe km dar FĂRĂ odometru → altfel ar fi nesupravegheată în tăcere.
     if (hasKmDue && odo == null) findings.push({ imei, severity: 'info', agent: 'care', fkey: 'care_km_nosrc_' + imei, title: name + ': scadență pe km nesupravegheată', body: 'Există mentenanță cu scadență pe kilometri, dar vehiculul nu transmite odometru (CAN). Verifică interfața CAN sau folosește scadență pe dată.' });
 
-    // 3) Documente (ITP / RCA / rovinietă…) — aceeași fereastră daysLead ca push-ul
+    // 3) Documente (ITP / RCA / rovinietă…) — același preaviz ca listele și push-ul (docDaysLead, 30 de zile)
     for (const d of (docsByImei.get(imei) || [])) {
       if (!d.expiry_date) continue;
       const days = Math.ceil((new Date(d.expiry_date).getTime() - now) / DAY);
       const dl = String(d.doc_type || 'Document').toUpperCase();
       if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' EXPIRAT' + (days < 0 ? ' de ' + (-days) + ' zile' : ''), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' a expirat la ' + roDate(d.expiry_date) + '. Reînnoiește urgent.' });
-      else if (days <= daysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' expiră la ' + roDate(d.expiry_date) + '.' });
+      else if (days <= docDaysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' expiră la ' + roDate(d.expiry_date) + '.' });
     }
   }
   return { findings };
@@ -395,10 +400,11 @@ async function raCompliance(ctx) {
   const dailyWarnMin = (Number.isFinite(th.compDailyWarnMin) && th.compDailyWarnMin > 0 && th.compDailyWarnMin <= DAILY_LIMIT_MIN) ? th.compDailyWarnMin : DAILY_LIMIT_MIN;
   let monitored = 0, skipped = 0;
   for (const imei of imeis) {
-    // Reg. 561 + tahograf se aplică vehiculelor de peste 3,5 t (camioane/autocare), NU turismelor.
+    // Reg. 561 + tahograf se aplică vehiculelor de peste 3,5 t (camioane/autocare), NU turismelor — aceeași regulă ca raportul
+    // Condus & repaus (tacho.supusReg561): tipul din fișă SAU datele de tahograf pe care le trimite mașina.
     // Pe un autoturism „4h30 continuu" nu e o obligație legală → nu inventăm încălcări care nu există.
-    if (!(await _isTruck(ctx, imei))) { skipped++; continue; }
     const live = livePositions.get(imei); const name = nameOf(live, imei);
+    if (!tacho.supusReg561(await _isTruck(ctx, imei), !!(live && _hasAnyTachoSignal(live)))) { skipped++; continue; }
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
     const { trips } = segmentTrack(pts, 45 * 60); // o oprire ≥45 min = pauză legală (separă cursele)
     if (!trips.length) continue;
