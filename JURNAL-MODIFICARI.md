@@ -214,7 +214,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-07
 
-### AMÂNDOI · Capitolul AI, etapa A: AI Raport înțelege întrebările + cele 5 găsite pe drum — `COMMIT_A`
+### AMÂNDOI · Capitolul AI, etapa A: AI Raport înțelege întrebările + cele 5 găsite pe drum — `ab4fdd9` + `c44ec03`
 
 Alin, 07.10, cu o captură: la *„de cât timp staționează B 154 UIP?"* AI Raport a răspuns „Nu am înțeles despre ce raport
 e vorba", iar la *„din raport staționări"* a dat toată flota, nu mașina. Și: *„Gratuit — nu se scade din fondul RA
