@@ -4560,11 +4560,12 @@ app.get('/api/admin/insight/statistici', requireAuth, requireSuperadmin, async (
 async function stergeConversatiiVechi() {
   const luni = contracte.LUNI_CONVERSATII_AI;
   const n = await db.stergeConversatiiMaiVechiDe(luni);
-  if (n) {
-    console.log('[RA Insight] Șterse ' + n + ' conversații fără mesaje noi de ' + luni + ' luni');
-    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conversatii_ai', entityId: null, details: { conversatii: n, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
+  const ns = await db.stergeScrisoriMaiVechiDe(luni);   // și scrisorile de luni: tot ale omului, tot 12 luni
+  if (n || ns) {
+    console.log('[RA Insight] Șterse ' + n + ' conversații fără mesaje noi și ' + ns + ' scrisori de luni, mai vechi de ' + luni + ' luni');
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conversatii_ai', entityId: null, details: { conversatii: n, scrisori: ns, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
   }
-  return { sterse: n, luni: luni };
+  return { sterse: n, scrisori: ns, luni: luni };
 }
 app.post('/api/admin/insight/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await stergeConversatiiVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -4882,7 +4883,7 @@ async function _ramCombustibil(req, o) {
   o = o || {};
   const acum = Date.now();
   const f = await _ramFlota(req);
-  const p = _ramPerioada(f, o, acum);
+  const p = o.perioada || _ramPerioada(f, o, acum);   // o.perioada: o săptămână dată (Scrisoarea de luni), cu aceleași câmpuri
   let devs = f.devices; if (p.grupa != null) devs = devs.filter(function (d) { return d.group_id === p.grupa; });
   const masini = devs.map(function (d) { return { imei: d.imei, eticheta: f.etPe[d.imei] }; });
   const imeis = masini.map(function (m) { return m.imei; });
@@ -4891,7 +4892,7 @@ async function _ramCombustibil(req, o) {
     explicatii: ramuri.explicatiiCombustibil({ dropMin: opts.dropMin }) };
   if (!imeis.length) return Object.assign(comun, { gol: true });
   const iso = function (ms) { return new Date(ms).toISOString(); };
-  const cheie = 'combustibil|' + (req.companyId != null ? req.companyId : 's') + '|' + p.lunaAleasa + '|' + _ramCheieImei(imeis);
+  const cheie = 'combustibil|' + (req.companyId != null ? req.companyId : 's') + '|' + (p.cheie || p.lunaAleasa) + '|' + _ramCheieImei(imeis);
   const g = await _ramGreu(cheie, p.panaAzi ? 15 * 60000 : 6 * 3600000, async function () {
     const cm = await reports._ajutor.consumptionMap(db, imeis, iso(p.de), iso(p.pana), opts);
     const cmI = await reports._ajutor.consumptionMap(db, imeis, iso(p.deI), iso(p.panaI), opts);
@@ -4964,6 +4965,118 @@ app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_as
   catch (e) { console.warn('[ORE DE CONDUS]', e.message); res.status(500).json({ error: 'Ore de condus: ' + e.message }); }
 });
 
+// ═══ RA Insight → Scrisoarea de luni (pasul 4) ═══
+// Lunea la 8, fiecare om cu loc RA Insight primește ce contează din săptămâna trecută: drumul și combustibilul, Safe Drive,
+// orele de condus, actele și reviziile. Cifrele vin din ACELEAȘI funcții ca ramurile, pe mașinile LUI (aceeași regulă de acces);
+// textul îl scrie RA Insight DOAR din ele — iar dacă scrie o cifră care nu e în ele, sau nu se poate (fără cheie, eroare), rămâne
+// textul pe reguli (ramuri.textScrisoare). Nu se scade din fondul clientului: consumul se scrie ca 'scrisoare', în afara
+// AI_BILLABLE_KINDS (îl plătim noi; planul din 02.10: sub 25 de bani pe lună pe firmă).
+const SCRISOARE_ORA = 8;   // lunea la 8, ora României
+// Cererea unui om, pentru o treabă de fundal: aceleași câmpuri pe care le pune withScope (firma, mașinile la care are acces).
+async function _cerereOm(u) {
+  return { companyId: u.company_id, isSuper: false, allowedImeis: await getAllowedImeiSet(u.id, u.role, u.company_id),
+    auth: { userId: u.id, role: u.role, username: u.username } };
+}
+async function _fapteScrisoare(req, acum) {
+  const f = await _ramFlota(req);
+  if (!f.devices.length) return null;
+  const iso = function (ms) { return new Date(ms).toISOString(); };
+  const azi = condus.zi(acum), luniAcum = _ziPlus(azi, -condus.ziSapt(azi)), luni = _ziPlus(luniAcum, -7);
+  const de = safeDrive.inceput(luni), pana = safeDrive.inceput(luniAcum), deI = safeDrive.inceput(_ziPlus(luni, -7));
+  const eticheta = insight.etichetaPerioadei(iso(de), iso(pana), acum), etInainte = insight.etichetaPerioadei(iso(deI), iso(de), acum);
+  const cb = await _ramCombustibil(req, { perioada: { cheie: 'sapt-' + luni, de: de, pana: pana, deI: deI, panaI: de, panaAzi: false, eticheta: eticheta, etInainte: etInainte, grupa: null }, asteptaMs: 180000 });
+  const hc = await _ramOreCondus(req, { saptamana: luni, asteptaMs: 180000 });
+  // Safe Drive: zilele săptămânii și ale celei dinainte (socotite întâi, dacă lipsesc — tura de noapte face doar 3 zile).
+  const sf = await _sdFlota(req), imeis = sf.masini.map(function (m) { return m.imei; });
+  const a = await _sdAsigura(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6), acum);
+  if (a.ramase) await Promise.race([a.gata, new Promise(function (ok) { setTimeout(ok, 180000); })]);
+  const zile = await db.citesteZileCondus(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6));
+  const sd = safeDrive.saptamana({ masini: sf.masini, soferi: sf.soferi, preturi: condus.preturi(sf.cs.safe_drive && sf.cs.safe_drive.preturi),
+    zile: zile.filter(function (r) { return r.zi >= luni; }), zileInainte: zile.filter(function (r) { return r.zi < luni; }) });
+  const mt = await _ramMentenanta(req);
+  return ramuri.fapteScrisoare({ luni: luni, eticheta: eticheta, etInainte: etInainte, masini: f.devices.length,
+    cb: cb.pregatire ? null : cb, hc: hc.pregatire ? null : hc, sd: sd, mt: mt });
+}
+// Textul scrisorii: RA Insight (din fapte), cu paza cifrelor; altfel cel pe reguli. { text, scrisDe }
+async function _scrieScrisoarea(fapte, companyId) {
+  const rezerva = { text: ramuri.textScrisoare(fapte), scrisDe: 'reguli' };
+  if (!ai.aiEnabled()) return rezerva;
+  try {
+    const text = await ai.callClaude({
+      system: [{ type: 'text', text: ramuri.instructiuniScrisoare(), cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: 'FAPTELE (JSON):\n' + JSON.stringify(fapte) }],
+      maxTokens: 700, model: ai.AI_MODEL,
+      onUsage: function (u) { db.recordAiUsage(companyId, 'scrisoare', u, null).catch(function () {}); },
+    });
+    const v = ramuri.textulTrece(text, fapte);
+    if (v.ok) return { text: String(text).trim(), scrisDe: 'model' };
+    console.warn('[SCRISOARE] textul lui RA Insight nu trece (' + v.motiv + ') — rămâne cel pe reguli');
+  } catch (e) { console.warn('[SCRISOARE] RA Insight n-a putut scrie: ' + e.message); }
+  return rezerva;
+}
+// Lunea de la 8 încolo, pentru săptămâna trecută: oamenii cu loc RA Insight care n-au încă scrisoarea ei. Oamenii cu aceleași
+// mașini primesc ACEEAȘI scrisoare (o singură socoteală, un singur text). Firmă fără drum și fără nimic de rezolvat → nimic.
+let _scrisoareMerge = false;
+const _scrisoareFacute = new Set();   // firmă|săptămână, deja trecută pe la rândul ei (în memorie: la repornire se reia o dată)
+async function scrisoareaDeLuniTick(acum) {
+  const t = acum || Date.now();
+  const azi = condus.zi(t), luniAcum = _ziPlus(azi, -condus.ziSapt(azi)), luni = _ziPlus(luniAcum, -7);
+  if (t < safeDrive.inceput(luniAcum) + SCRISOARE_ORA * 3600000) return { devreme: true, saptamana: luni };
+  if (_scrisoareMerge) return { merge: true };
+  _scrisoareMerge = true;
+  const out = { saptamana: luni, firme: 0, scrisori: 0, model: 0, reguli: 0, faraNimic: 0 };
+  try {
+    const firme = (await db.getCompanies()).filter(function (co) { return co.id !== demoCompanyId && plans && plans.featuresFor(co).ai_assistant; });
+    for (const co of firme) {
+      const cheie = co.id + '|' + luni;
+      if (_scrisoareFacute.has(cheie)) continue;
+      try {
+        const st = await _accessStatusCached(co.id);
+        if (st && st.status === 'expired') { _scrisoareFacute.add(cheie); continue; }
+        const r = await db.pool.query("SELECT id, username, full_name, role, company_id, access_until FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false", [co.id]);
+        const oameni = r.rows.filter(function (u) { return !u.access_until || Number(u.access_until) > t; });
+        const au = await db.auScrisoarea(oameni.map(function (u) { return u.id; }), luni);
+        const grupe = {};
+        for (const u of oameni.filter(function (x) { return !au.has(x.id); })) {
+          const req = await _cerereOm(u);
+          const k = req.allowedImeis == null ? '*' : _ramCheieImei(Array.from(req.allowedImeis));
+          (grupe[k] || (grupe[k] = { req: req, oameni: [] })).oameni.push(u);
+        }
+        out.firme++;
+        for (const k of Object.keys(grupe)) {
+          const g = grupe[k];
+          const fapte = await _fapteScrisoare(g.req, t);
+          if (!fapte || fapte.nimic) { out.faraNimic += g.oameni.length; continue; }
+          const sc = await _scrieScrisoarea(fapte, co.id);
+          for (const u of g.oameni) {
+            const id = await db.scrieScrisoare({ userId: u.id, companyId: co.id, saptamana: luni, eticheta: fapte.eticheta, fapte: fapte, text: sc.text, scrisDe: sc.scrisDe });
+            if (!id) continue;
+            out.scrisori++; out[sc.scrisDe === 'model' ? 'model' : 'reguli']++;
+            await notify({ type: 'scrisoare_luni', severity: 'info', title: 'Scrisoarea de luni', userId: u.id, companyId: co.id,
+              body: 'Ce contează din săptămâna ' + fapte.eticheta + ' — de la RA Insight.', data: { key: 'scrisoare_' + u.id + '_' + luni, scrisoareId: id } });
+          }
+        }
+        _scrisoareFacute.add(cheie);
+      } catch (e) { console.warn('[SCRISOARE] firma ' + co.id + ': ' + e.message); }
+    }
+  } finally { _scrisoareMerge = false; }
+  return out;
+}
+app.get('/api/insight/scrisori', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+  try {
+    const l = await db.scrisorileOmului(req.auth.userId, 26);
+    res.json({ scrisori: l.map(function (x) { return { id: x.id, saptamana: x.saptamana, eticheta: x.eticheta, citita: !!x.citita_la, creat_la: x.creat_la }; }), ora: SCRISOARE_ORA });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/insight/scrisori/:id', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+  try {
+    const x = await db.scrisoareaOmului(req.auth.userId, parseInt(req.params.id, 10) || 0);
+    if (!x) return res.status(404).json({ error: 'Scrisoarea nu există.' });   // a altcuiva = ca una care nu există
+    await db.citesteScrisoarea(req.auth.userId, x.id);
+    res.json({ id: x.id, saptamana: x.saptamana, eticheta: x.eticheta, text: x.text, fapte: x.fapte, scrisDe: x.scris_de, creat_la: x.creat_la });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Numerele de lângă ramuri (ca pe macheta din 02.10): câte lucruri cer atenție în fiecare. Doar din ce e deja socotit —
 // deschiderea secțiunii nu pornește nicio socoteală grea. O ramură fără număr nu apare în răspuns.
 app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
@@ -4972,6 +5085,7 @@ app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assist
   try { const s = await _sdLuna(req, { doarGata: true }); if (!s.gol && !s.pregatire) out.safedrive = (s.recomandari || []).filter(function (x) { return x.fel === 'atentie'; }).length; } catch (e) { /* fără număr */ }
   try { const c = await _ramCombustibil(req, { doarGata: true }); if (!c.gol && !c.pregatire) out.combustibil = (c.scaderi || []).length + (c.pesteNorma || []).length; } catch (e) { /* fără număr */ }
   try { const h = await _ramOreCondus(req, { doarGata: true }); if (!h.gol && !h.pregatire) out.orecondus = (h.incalcari || []).length; } catch (e) { /* fără număr */ }
+  try { if (req.auth && req.auth.userId) { const n = await db.scrisoriNecitite(req.auth.userId); if (n) out.scrisoare = n; } } catch (e) { /* fără număr */ }
   res.json(out);
 });
 
@@ -16982,7 +17096,7 @@ if (process.env.SEED_TEST === '1') {
   app.post('/api/test/ceasuri', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {}, acum = Number(b.acum) || Date.now();
-      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum) });
+      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   // Raportul instalatorului, până îl face Robert: aceeași funcție pe care o va chema el.
@@ -17635,6 +17749,12 @@ async function start() {
   const runSafeDrive = () => safeDriveNoaptea().then(r => { if (r && r.gata) r.gata.then(() => console.log('[SAFE DRIVE] Noaptea: ' + r.masini + ' mașini, ' + r.de + '…' + r.pana)); })
     .catch(e => console.warn('[SAFE DRIVE] tura de noapte amânată:', e.message));
   setInterval(runSafeDrive, 30 * 60 * 1000);
+
+  // Scrisoarea de luni: lunea de la 8 (ora României), pentru săptămâna trecută; o dată pe om. Verificată la 15 minute.
+  const runScrisoare = () => scrisoareaDeLuniTick().then(r => { if (r && r.scrisori) console.log('[SCRISOARE] ' + r.scrisori + ' scrisori pentru săptămâna ' + r.saptamana + ' (RA Insight: ' + r.model + ', pe reguli: ' + r.reguli + ')'); })
+    .catch(e => console.warn('[SCRISOARE] amânată:', e.message));
+  setTimeout(runScrisoare, 10 * 60 * 1000);
+  setInterval(runScrisoare, 15 * 60 * 1000);
 
   // Workere Faza 4: detecție automată curse + alerte expirare documente
   setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);

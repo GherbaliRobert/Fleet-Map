@@ -4018,6 +4018,12 @@ body:not(.dark) .sdp-tile.mare .et { color: #9a3412; }
 body:not(.dark) .sdp-loc i { color: #b91c1c; }
 a.sdp-loc:hover span { text-decoration: underline; }
 .sdp-tab .sdp-loc { border-bottom: 0; padding: 0; }   /* locul în tabel (Combustibil → Scăderi suspecte): linia o dă rândul */
+/* Scrisoarea de luni: textul ca o scrisoare — paragrafe aerisite, „De făcut săptămâna asta" cu puncte. */
+.sdp-scris p { font-size: 14px; line-height: 1.65; color: var(--text-primary); margin: 8px 0; }
+.sdp-scris p.b { font-weight: 800; margin-top: 14px; }
+.sdp-scris ul { margin: 4px 0 6px; padding-left: 20px; }
+.sdp-scris li { font-size: 14px; line-height: 1.6; color: var(--text-primary); margin: 3px 0; }
+.sdp-tile .sdp-link { display: inline-block; margin-top: 6px; }
 .sdp-ore { display: flex; align-items: flex-end; gap: 4px; height: 92px; padding-top: 4px; max-width: 560px; }
 .sdp-ora { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
 .sdp-ora b { display: block; width: 100%; max-width: 22px; border-radius: 4px 4px 0 0; background: var(--border-light); }

@@ -103,6 +103,61 @@ function locuriLunii(o) { return condus.locuri(condus.insumeaza(_randuriLunii(o)
 //   discutii: [{ id, driver_id, imei, la, nota }],              — cele mai noi întâi
 //   adrese: { 'lat,lng': 'adresă' }                              — pentru locurile cu manevre (opțional)
 // }
+// Sumele pe mașină: fiecare mașină cu rândurile ei, cu consumul și prețul ei (o = { masini, preturi }).
+function _peMasini(o, randuri) {
+  const g = {}; randuri.forEach(function (r) { (g[r.imei] || (g[r.imei] = [])).push(r); });
+  return o.masini.map(function (m) {
+    const t = condus.insumeaza(g[m.imei] || []);
+    return { m: m, t: t, cost: condus.costuri(t, m, o.preturi[m.clasa]) };
+  });
+}
+function _rezumat(lista) {
+  const cuScor = lista.filter(function (x) { return condus.areScor(x.t); });
+  const t = condus.insumeaza(lista.map(function (x) { return { date: x.t }; }));
+  t.zile = Math.max.apply(null, [0].concat(lista.map(function (x) { return x.t.zile; })));
+  const cost = condus.adunaCosturi(lista.map(function (x) { return x.cost; }));
+  const scor = cuScor.length ? condus.scorFlota(cuScor.map(function (x) { return { scor: condus.scor(x.t).scor, km: x.t.km }; })) : null;
+  const cuDrum = lista.filter(function (x) { return x.t.km > 0.05 || x.t.ralantiEp; }).length;
+  return {
+    km: Math.round(t.km), manevre: condus.manevre(t), laSuta: rot(condus.laSuta(condus.manevre(t), t.km), 1),
+    scor: scor, nota: scor == null ? null : condus.notaDin(scor), cost: cost,
+    costLaSuta: t.km > 1 ? rot(cost.total / t.km * 100, 2) : null, costPeMasina: cuDrum ? Math.round(cost.total / cuDrum) : null,
+    ralantiOre: rot(t.ralantiEpSec / 3600, 1), pesteMin: Math.round(t.pesteSec / 60), vmax: Math.round(t.vmax), masini: cuScor.length, cuDrum: cuDrum,
+    ore: t.ore,   // manevrele bruște pe ore (0–23), pentru graficul „pe ore"
+  };
+}
+// Șoferii: rândurile lor, pe mașini (consumul și prețul mașinii pe care au condus).
+function _peSoferi(o, peImei, randuri) {
+  const g = {};
+  randuri.forEach(function (r) {
+    const k = r.sofer || 0, s = g[k] || (g[k] = { id: k, pe: {} });
+    (s.pe[r.imei] || (s.pe[r.imei] = [])).push(r);
+  });
+  return Object.keys(g).map(function (k) {
+    const s = g[k], parti = Object.keys(s.pe).map(function (im) {
+      const t = condus.insumeaza(s.pe[im]);
+      return { t: t, cost: condus.costuri(t, peImei[im], o.preturi[peImei[im].clasa]), imei: im };
+    });
+    const t = condus.insumeaza(parti.map(function (x) { return { date: x.t }; }));
+    return { id: s.id, t: t, cost: condus.adunaCosturi(parti.map(function (x) { return x.cost; })),
+      masini: parti.filter(function (x) { return x.t.km >= 0.5 || x.t.condusSec >= 60; }).map(function (x) { return x.imei; }) };
+  });
+}
+// O săptămână pe scurt (Scrisoarea de luni): cât a costat condusul, scorul, șoferii care costă cel mai mult — din ACELEAȘI
+// zile și cu aceleași funcții ca luna din pagină. o = { masini, soferi, preturi, zile, zileInainte (săptămâna dinainte) }.
+function saptamana(o) {
+  const peImei = {}; o.masini.forEach(function (m) { peImei[m.imei] = m; });
+  const al = function (r) { return !!peImei[r.imei]; };
+  const randuri = (o.zile || []).filter(al), randuriI = (o.zileInainte || []).filter(al);
+  const flota = _rezumat(_peMasini(o, randuri));
+  const inainte = randuriI.length ? _rezumat(_peMasini(o, randuriI)) : null;
+  const soferi = _peSoferi(o, peImei, randuri).filter(function (s) { return s.id && (s.t.km > 0.05 || condus.manevre(s.t)); }).map(function (s) {
+    return { id: s.id, nume: o.soferi[s.id] || 'Șofer care nu mai e în firmă', cost: Math.round(s.cost.total), km: Math.round(s.t.km),
+      laSuta: rot(condus.laSuta(condus.manevre(s.t), s.t.km), 1) };
+  }).sort(function (a, b) { return b.cost - a.cost || b.km - a.km; });
+  return { cost: Math.round(flota.cost.total), costPe: flota.cost, scor: flota.scor, nota: flota.nota, km: flota.km, laSuta: flota.laSuta, ralantiOre: flota.ralantiOre,
+    inainte: inainte ? { cost: Math.round(inainte.cost.total), scor: inainte.scor } : null, soferi: soferi };
+}
 function alcatuieste(o) {
   const L = luna(o.luna), Li = luna(lunaDinainte(o.luna));
   const peImei = {}; o.masini.forEach(function (m) { peImei[m.imei] = m; });
@@ -119,29 +174,8 @@ function alcatuieste(o) {
   });
   const numeSofer = function (id) { return id ? (o.soferi[id] || 'Șofer care nu mai e în firmă') : 'Fără șofer atribuit'; };
 
-  // Sumele pe mașină (și, la șoferi, pe mașină + șofer — fiecare mașină cu consumul și prețul ei).
-  function peMasini(randuri) {
-    const g = {}; randuri.forEach(function (r) { (g[r.imei] || (g[r.imei] = [])).push(r); });
-    return o.masini.map(function (m) {
-      const t = condus.insumeaza(g[m.imei] || []);
-      return { m: m, t: t, cost: condus.costuri(t, m, o.preturi[m.clasa]) };
-    });
-  }
-  function rezumat(lista) {
-    const cuScor = lista.filter(function (x) { return condus.areScor(x.t); });
-    const t = condus.insumeaza(lista.map(function (x) { return { date: x.t }; }));
-    t.zile = Math.max.apply(null, [0].concat(lista.map(function (x) { return x.t.zile; })));
-    const cost = condus.adunaCosturi(lista.map(function (x) { return x.cost; }));
-    const scor = cuScor.length ? condus.scorFlota(cuScor.map(function (x) { return { scor: condus.scor(x.t).scor, km: x.t.km }; })) : null;
-    const cuDrum = lista.filter(function (x) { return x.t.km > 0.05 || x.t.ralantiEp; }).length;
-    return {
-      km: Math.round(t.km), manevre: condus.manevre(t), laSuta: rot(condus.laSuta(condus.manevre(t), t.km), 1),
-      scor: scor, nota: scor == null ? null : condus.notaDin(scor), cost: cost,
-      costLaSuta: t.km > 1 ? rot(cost.total / t.km * 100, 2) : null, costPeMasina: cuDrum ? Math.round(cost.total / cuDrum) : null,
-      ralantiOre: rot(t.ralantiEpSec / 3600, 1), pesteMin: Math.round(t.pesteSec / 60), vmax: Math.round(t.vmax), masini: cuScor.length, cuDrum: cuDrum,
-      ore: t.ore,   // manevrele bruște pe ore (0–23), pentru graficul „pe ore"
-    };
-  }
+  // Sumele pe mașină (și, la șoferi, pe mașină + șofer — fiecare mașină cu consumul și prețul ei): _peMasini / _rezumat / _peSoferi.
+  const peMasini = function (randuri) { return _peMasini(o, randuri); }, rezumat = _rezumat;
   const acum = peMasini(randuriL), inainte = peMasini(randuriI);
   const inaintePe = {}; inainte.forEach(function (x) { inaintePe[x.m.imei] = x; });
 
@@ -160,22 +194,7 @@ function alcatuieste(o) {
   }).sort(function (a, b) { return b.cost.total - a.cost.total || b.km - a.km; });
 
   // Șoferii: rândurile lor, pe mașini (consumul și prețul mașinii pe care au condus).
-  function peSoferi(randuri) {
-    const g = {};
-    randuri.forEach(function (r) {
-      const k = r.sofer || 0, s = g[k] || (g[k] = { id: k, pe: {} });
-      (s.pe[r.imei] || (s.pe[r.imei] = [])).push(r);
-    });
-    return Object.keys(g).map(function (k) {
-      const s = g[k], parti = Object.keys(s.pe).map(function (im) {
-        const t = condus.insumeaza(s.pe[im]);
-        return { t: t, cost: condus.costuri(t, peImei[im], o.preturi[peImei[im].clasa]), imei: im };
-      });
-      const t = condus.insumeaza(parti.map(function (x) { return { date: x.t }; }));
-      return { id: s.id, t: t, cost: condus.adunaCosturi(parti.map(function (x) { return x.cost; })),
-        masini: parti.filter(function (x) { return x.t.km >= 0.5 || x.t.condusSec >= 60; }).map(function (x) { return x.imei; }) };
-    });
-  }
+  const peSoferi = function (randuri) { return _peSoferi(o, peImei, randuri); };
   // „Am vorbit cu el": ultima discuție a fiecărui șofer, cu înainte / după din zilele pe care le avem (luna și cea dinainte).
   const discutiePe = {};
   (o.discutii || []).forEach(function (d) { const k = d.driver_id ? 'd' + d.driver_id : 'm' + d.imei; if (!discutiePe[k]) discutiePe[k] = d; });
@@ -246,5 +265,5 @@ function rot(x, z) { if (x == null || !isFinite(x)) return null; const f = Math.
 module.exports = {
   PROASPAT_AZI_MS, INAINTE_MS, ZILE_DISCUTIE,
   inceput, urmatoarea, zileIntre, luna, lunaDinainte, lunaDe, etichetaLunii,
-  deSocotit, siruri, masina, socotesteMasina, locuriLunii, alcatuieste,
+  deSocotit, siruri, masina, socotesteMasina, locuriLunii, alcatuieste, saptamana,
 };

@@ -1511,6 +1511,24 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_aimsg_conv ON ai_mesaje(conversatie_id, id)`);
+    // Scrisoarea de luni (RA Insight, pasul 4): ce contează din săptămâna trecută, a OMULUI care o primește (pe mașinile lui).
+    // `fapte` = cifrele din ramuri; `text` = scrisoarea (RA Insight sau, de rezervă, pe reguli — `scris_de`). 12 luni, ca discuțiile.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS scrisori_luni (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        company_id INTEGER,
+        saptamana VARCHAR(10) NOT NULL,
+        eticheta VARCHAR(80),
+        fapte JSONB,
+        text TEXT NOT NULL,
+        scris_de VARCHAR(12) DEFAULT 'reguli',
+        citita_la TIMESTAMP,
+        creat_la TIMESTAMP DEFAULT NOW(),
+        UNIQUE (user_id, saptamana)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_scrisori_user ON scrisori_luni(user_id, saptamana DESC)`);
 
     // ─── Safe Drive (RA Insight, pasul 3) ───
     // Rezumatul unei ZILE (ora României) pe mașină și pe șofer: km, mers, manevre bruște, viteză, ralanti, plus orele și
@@ -5604,6 +5622,39 @@ async function stergeConversatiiMaiVechiDe(luni) {
   const r = await pool.query(`DELETE FROM ai_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
   return r.affectedRows || r.rowCount || 0;
 }
+// ─── Scrisoarea de luni: a omului care o primește (user_id în fiecare WHERE — ca la conversații) ───
+async function scrieScrisoare(o) {
+  const r = await pool.query(
+    `INSERT INTO scrisori_luni (user_id, company_id, saptamana, eticheta, fapte, text, scris_de) VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (user_id, saptamana) DO NOTHING RETURNING id`,
+    [o.userId, o.companyId != null ? o.companyId : null, o.saptamana, String(o.eticheta || '').slice(0, 80), JSON.stringify(o.fapte || {}), String(o.text || ''), o.scrisDe || 'reguli']);
+  return r.rows[0] ? r.rows[0].id : null;
+}
+async function auScrisoarea(userIds, saptamana) {   // cine are deja scrisoarea săptămânii
+  if (!userIds.length) return new Set();
+  const r = await pool.query('SELECT user_id FROM scrisori_luni WHERE saptamana = $1 AND user_id = ANY($2::int[])', [saptamana, userIds]);
+  return new Set(r.rows.map(function (x) { return x.user_id; }));
+}
+async function scrisorileOmului(userId, limita) {
+  const r = await pool.query(`SELECT id, saptamana, eticheta, scris_de, citita_la, creat_la FROM scrisori_luni WHERE user_id = $1 ORDER BY saptamana DESC LIMIT $2`,
+    [userId, Math.max(1, Math.min(60, limita || 26))]);
+  return r.rows;
+}
+async function scrisoareaOmului(userId, id) {
+  const r = await pool.query('SELECT * FROM scrisori_luni WHERE id = $1 AND user_id = $2', [id, userId]);
+  return r.rows[0] || null;
+}
+async function citesteScrisoarea(userId, id) {
+  await pool.query('UPDATE scrisori_luni SET citita_la = NOW() WHERE id = $1 AND user_id = $2 AND citita_la IS NULL', [id, userId]);
+}
+async function scrisoriNecitite(userId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM scrisori_luni WHERE user_id = $1 AND citita_la IS NULL', [userId]);
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+async function stergeScrisoriMaiVechiDe(luni) {
+  const r = await pool.query(`DELETE FROM scrisori_luni WHERE creat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
+  return r.affectedRows || r.rowCount || 0;
+}
 
 module.exports = {
   pool,
@@ -5614,6 +5665,7 @@ module.exports = {
   // RA Insight — conversațiile (fiecare om doar pe ale lui)
   conversatieNoua, conversatieUser, ultimaConversatieRecenta, mesajeConversatie, adaugaMesajAi, actualizeazaConversatie,
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
+  scrieScrisoare, auScrisoarea, scrisorileOmului, scrisoareaOmului, citesteScrisoarea, scrisoriNecitite, stergeScrisoriMaiVechiDe,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,

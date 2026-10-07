@@ -254,7 +254,9 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   const rut = (m, u) => (SRV.split("app." + m + "('" + u + "'")[1] || '').split('\n')[0];
   T('pagina: doar cu RA Insight pe firmă ȘI loc RA Insight pe om', /requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat/.test(rut('get', '/api/insight/safe-drive')));
   T('prețurile și „Am vorbit cu el": doar cine conduce flota (requireFleet)', /requireFleet/.test(rut('put', '/api/insight/safe-drive/preturi')) && /requireFleet/.test(rut('post', '/api/insight/safe-drive/discutie')) && /requireFleet/.test(rut('delete', '/api/insight/safe-drive/discutie/:id')));
-  T('mașinile: doar cele la care omul are acces, fără arhivate (demo-ul îl taie canAccessImei)', /canAccessImei\(req, d\.imei\) && d\.status !== 'archived'/.test(SRV.split('async function _sdFlota(')[1] || ''));
+  // Regula „ce mașini vede omul" stă în _ramFlota (07.10: una pentru toate ramurile RA Insight); Safe Drive o cheamă de acolo.
+  const corpFn = (nume) => (SRV.split('async function ' + nume + '(')[1] || '').split(/\nasync function |\nfunction /)[0];
+  T('mașinile: doar cele la care omul are acces, fără arhivate (demo-ul îl taie canAccessImei) — regula comună a ramurilor', /canAccessImei\(req, d\.imei\) && d\.status !== 'archived'/.test(corpFn('_ramFlota')) && /await _ramFlota\(req\)/.test(corpFn('_sdFlota')));
   T('tura de noapte: fără firma demo și fără mașinile demo', /co\.id !== demoCompanyId/.test(SRV.split('async function safeDriveNoaptea(')[1] || '') && /!DEMO_SET\.has\(d\.imei\)/.test(SRV.split('async function safeDriveNoaptea(')[1] || ''));
   const DB = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
   const fdb = (f) => (DB.split('async function ' + f + '(')[1] || '').split(/\nasync function /)[0];

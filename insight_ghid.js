@@ -149,6 +149,17 @@ const SECTIUNI = [
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei']
   },
   {
+    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Safe Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Ramuri',
+    pasi: [
+      'În stânga, la „Ramuri", alege pagina: „Safe Drive & costuri", „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
+      'Sus alegi luna (la „Ore de condus", săptămâna) și mașinile: toată flota sau o grupă.',
+      'Numărul de lângă o ramură = câte lucruri cer atenție acolo (de exemplu actele trecute de termen sau o scrisoare necitită).',
+      '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
+    ],
+    detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Scrisoarea de luni vine lunea la 8, cu un anunț, și nu se scade nici ea din fond.',
+    cuvinte: ['ramura', 'ramuri', 'safe drive', 'scrisoarea de luni', 'scrisoare', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+  },
+  {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',
     pasi: [
       'Alege rolul din stânga și dă-i numele de la voi din firmă.',

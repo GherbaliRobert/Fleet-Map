@@ -246,9 +246,119 @@ function explicatiiOreCondus() {
   ];
 }
 
+// ═══ Scrisoarea de luni ════════════════════════════════════════════════════════════════════════════
+// Lunea la 8, omul cu loc RA Insight primește ce contează din săptămâna trecută. Cifrele (FAPTELE) vin din ramuri — aceleași
+// funcții, pe mașinile lui; aici se strâng într-o formă scurtă, se scrie textul pe reguli (rezerva) și instrucțiunile pentru
+// RA Insight, care scrie scrisoarea DOAR din fapte. `textulTrece` oprește orice cifră care nu e în fapte.
+const SCRISOARE_ACTE_ZILE = 7;    // „urmează săptămâna asta": termenele din următoarele 7 zile (cele pe km: toate din preaviz)
+// o = { luni, eticheta, etInainte, masini (câte vede omul), cb (Combustibil), hc (Ore de condus), sd (Safe Drive, săptămâna), mt (Mentenanță & acte) }
+function fapteScrisoare(o) {
+  const cb = o.cb || {}, hc = o.hc || {}, sd = o.sd || null, mt = o.mt || {};
+  const fl = cb.flota || null, rd = mt.randuri || [];
+  const scurt = function (r) { return { ce: r.ce, cine: r.cine, cand: r.cand }; };
+  const trecute = rd.filter(function (r) { return r.stare === 'depasit'; });
+  const urmeaza = rd.filter(function (r) { return r.stare === 'curand' && (r.zile == null || r.zile <= SCRISOARE_ACTE_ZILE); });
+  const f = {
+    saptamana: o.luni, eticheta: o.eticheta, inainte: o.etInainte, masini: o.masini || 0,
+    drum: fl && fl.km > 0 ? { km: fl.km, masini: fl.masini } : null,
+    combustibil: fl && fl.masini ? { litri: fl.litri, lei: fl.cost, leiInainte: cb.inainte ? cb.inainte.cost : null,
+      fata: cb.fata && !/^fără drum/.test(cb.fata.cost) ? cb.fata.cost : null,   // „nimic de comparat" n-are ce căuta în scrisoare
+      l100: fl.l100, procentEstimat: fl.procentEstimat,
+      pesteNorma: (cb.pesteNorma || []).slice(0, 3).map(function (m) { return { masina: m.eticheta, l100: m.l100, norma: m.norma, peste: m.peste }; }),
+      scaderi: (cb.scaderi || []).slice(0, 3).map(function (x) { return { masina: x.eticheta, cand: x.cand, litri: x.litri, motor: x.motorPornit ? 'pornit' : 'oprit' }; }),
+      scaderiTotal: (cb.scaderi || []).length } : null,
+    safeDrive: sd && sd.km > 0 ? { lei: sd.cost, leiInainte: sd.inainte ? sd.inainte.cost : null, scor: sd.scor, nota: sd.nota,
+      soferi: (sd.soferi || []).filter(function (x) { return x.cost > 0; }).slice(0, 3).map(function (x) { return { sofer: x.nume, lei: x.cost }; }) } : null,
+    oreCondus: hc.flota && hc.flota.condusSec > 0 ? { total: hc.flota.text, seAplica: hc.flota.supusi > 0, incalcariTotal: (hc.incalcari || []).length,
+      incalcari: (hc.incalcari || []).slice(0, 5).map(function (x) { return { sofer: x.nume, zi: x.ziText, ce: x.ce }; }) } : null,
+    acte: { trecute: trecute.slice(0, 5).map(scurt), trecuteTotal: trecute.length, urmeaza: urmeaza.slice(0, 5).map(scurt), urmeazaTotal: urmeaza.length },
+  };
+  f.nimic = !f.drum && !f.acte.trecuteTotal && !f.acte.urmeazaTotal;
+  return f;
+}
+const _si = function (lista, n) { return lista.join('; ') + (n > lista.length ? '; și încă ' + (n - lista.length) : ''); };
+// Textul pe reguli: și scrisoarea când RA Insight nu poate scrie (fără cheie, eroare, o cifră care nu e în fapte), și ce se
+// vede pe telefoanele fără pagină. Paragrafe despărțite de un rând gol; „• " = un lucru de făcut.
+function textScrisoare(f) {
+  const p = [], deFacut = [];
+  if (f.drum) {
+    let t = 'Săptămâna trecută (' + f.eticheta + '), ' + (f.drum.masini === 1 ? 'o mașină a mers' : cant(f.drum.masini, 'mașină a mers', 'mașini au mers')) + ' ' + cant(f.drum.km, 'km', 'km') + '.';
+    if (f.combustibil) t += ' Au consumat ' + litri(f.combustibil.litri) + ', adică ' + lei(f.combustibil.lei) + (f.combustibil.fata ? ' — ' + f.combustibil.fata : '') + '.';
+    p.push(t);
+  } else p.push('Săptămâna trecută (' + f.eticheta + ') mașinile n-au mers.');
+  if (f.safeDrive && f.safeDrive.lei > 0) {
+    const s0 = f.safeDrive.soferi[0];
+    p.push('Condusul a costat în plus ~' + lei(f.safeDrive.lei) + (f.safeDrive.leiInainte != null ? ' (săptămâna dinainte: ~' + lei(f.safeDrive.leiInainte) + ')' : '') +
+      (f.safeDrive.scor != null ? '; scorul flotei: ' + f.safeDrive.scor + ' — ' + f.safeDrive.nota : '') + '.' +
+      (s0 ? ' Cel mai mult: ' + s0.sofer + ', ~' + lei(s0.lei) + '.' : ''));
+    if (s0 && s0.lei >= 20) deFacut.push('Vorbește cu ' + s0.sofer + ' despre felul în care conduce (Safe Drive).');
+  }
+  if (f.oreCondus && f.oreCondus.incalcariTotal) {
+    p.push((f.oreCondus.incalcariTotal === 1 ? 'O încălcare' : cant(f.oreCondus.incalcariTotal, 'încălcare', 'încălcări')) + ' a orelor de condus (Reg. 561): ' +
+      _si(f.oreCondus.incalcari.map(function (x) { return x.sofer + ', ' + x.zi + ' — ' + x.ce; }), f.oreCondus.incalcariTotal) + '.');
+    const cine = []; f.oreCondus.incalcari.forEach(function (x) { if (cine.indexOf(x.sofer) < 0) cine.push(x.sofer); });
+    deFacut.push('Verifică pe tahograf și vorbește cu ' + cine.join(', ') + ' despre pauze.');
+  } else if (f.oreCondus && f.oreCondus.seAplica) p.push('Nicio încălcare a orelor de condus (' + f.oreCondus.total + ' de condus în total).');
+  if (f.combustibil && (f.combustibil.pesteNorma.length || f.combustibil.scaderiTotal)) {
+    const b = [];
+    f.combustibil.pesteNorma.forEach(function (m) { b.push(m.masina + ' a consumat ' + nr(m.l100, 1) + ' L la 100 km, cu ' + m.peste + '% peste fișă'); });
+    if (f.combustibil.scaderiTotal) {
+      const x = f.combustibil.scaderi[0];
+      b.push((f.combustibil.scaderiTotal === 1 ? 'o scădere suspectă' : cant(f.combustibil.scaderiTotal, 'scădere suspectă', 'scăderi suspecte')) + ' de combustibil (cea mai nouă: ' + x.masina + ', ' + x.cand + ', ' + litri(x.litri) + ', cu motorul ' + x.motor + ')');
+      deFacut.push('Verifică bonurile pentru scăderea de la ' + x.masina + ' (' + x.cand + ').');
+    }
+    p.push('La combustibil: ' + b.join('; ') + '.');
+  }
+  if (f.acte.trecuteTotal) {
+    p.push('Au trecut de termen: ' + _si(f.acte.trecute.map(function (x) { return x.ce + ' — ' + x.cine; }), f.acte.trecuteTotal) + '.');
+    deFacut.push('Rezolvă ce a trecut de termen: ' + f.acte.trecute.slice(0, 2).map(function (x) { return x.ce + ' (' + x.cine + ')'; }).join(', ') + '.');
+  }
+  if (f.acte.urmeazaTotal) {
+    p.push('Urmează săptămâna asta: ' + _si(f.acte.urmeaza.map(function (x) { return x.ce + ' — ' + x.cine + ' (' + x.cand + ')'; }), f.acte.urmeazaTotal) + '.');
+    deFacut.push('Programează la timp: ' + f.acte.urmeaza.slice(0, 2).map(function (x) { return x.ce + ' (' + x.cine + ')'; }).join(', ') + '.');
+  }
+  if (deFacut.length) p.push('De făcut săptămâna asta:\n' + deFacut.slice(0, 4).map(function (x) { return '• ' + x; }).join('\n'));
+  else p.push('Nimic de rezolvat de urgență săptămâna asta.');
+  return p.join('\n\n');
+}
+// Partea FIXĂ a instrucțiunilor (aceeași pentru toate scrisorile, deci în cache).
+function instructiuniScrisoare() {
+  return [
+    'Ești „RA Insight", asistentul flotei din aplicația RA Tracks. Scrii „Scrisoarea de luni": ce contează din săptămâna trecută, pentru omul care conduce flota.',
+    'Primești FAPTELE (JSON), socotite de aplicație. Folosește DOAR cifrele și numele din ele, scrise exact ca acolo — nu socoti altele, nu rotunji altfel, nu inventa nimic. Toate cifrele le scrii cu cifre (nu în litere).',
+    'Forma: 3–5 paragrafe scurte, în limba română, pe înțelesul oricui (fără jargon). Începe cu ce contează cel mai mult (o încălcare, o scădere de combustibil, un act expirat), apoi restul pe scurt. Ce lipsește din fapte nu pomenești.',
+    'La final, un rând „De făcut săptămâna asta:" urmat de 2–4 rânduri care încep cu „• ". Fără titluri cu #, fără tabele, fără liste numerotate. Cel mult 220 de cuvinte. Nu semna.',
+  ].join('\n');
+}
+// Cifrele pe care le are voie să le scrie RA Insight: toate cele din fapte (și din textele lor: „06.10, 02:14", „5h 20m").
+function _numere(t) {
+  const out = [];
+  String(t).replace(/\d+(?:[.,]\d+)*/g, function (m) {
+    if (/^\d{1,3}(\.\d{3})+$/.test(m)) out.push(Number(m.replace(/\./g, '')));          // 4.230 = patru mii
+    else if (/^\d+,\d+$/.test(m)) out.push(Number(m.replace(',', '.')));               // 12,3
+    else if (/^\d+\.\d+$/.test(m) && !/^\d{1,2}\.\d{2}$/.test(m)) out.push(Number(m)); // 12.3 (din JSON)
+    else m.split(/[.,]/).forEach(function (x) { if (x) out.push(Number(x)); });         // 06.10 = două cifre
+    return m;
+  });
+  return out;
+}
+// Mereu pe voie: „Reg. 561" (CE 561/2006) și „la 100 km" — nume și unități, nu cifre ale flotei.
+const CIFRE_MEREU = [100, 561, 2006];
+function cifreleFaptelor(f) { const set = new Set(CIFRE_MEREU); _numere(JSON.stringify(f)).forEach(function (n) { set.add(n); }); return set; }
+// Textul lui RA Insight trece dacă are o lungime de scrisoare și fiecare cifră din el e în fapte. { ok, motiv }
+function textulTrece(text, f) {
+  const t = String(text || '').trim();
+  if (t.length < 120) return { ok: false, motiv: 'prea scurt' };
+  if (t.length > 2600) return { ok: false, motiv: 'prea lung' };
+  const voie = cifreleFaptelor(f), straine = _numere(t).filter(function (n) { return !voie.has(n); });
+  if (straine.length) return { ok: false, motiv: 'cifre care nu sunt în fapte: ' + straine.slice(0, 5).join(', ') };
+  return { ok: true };
+}
+
 module.exports = {
   ZI, zz, zilePana,
   candData, candKm, candRand, ordoneaza, rezumatMentenanta, explicatiiMentenanta,
   PESTE_NORMA, KM_MIN_NORMA, cand, alcatuiesteCombustibil, recomandariCombustibil, explicatiiCombustibil,
   durata, ziText, alcatuiesteOreCondus, recomandariOreCondus, explicatiiOreCondus,
+  SCRISOARE_ACTE_ZILE, CIFRE_MEREU, fapteScrisoare, textScrisoare, instructiuniScrisoare, cifreleFaptelor, textulTrece,
 };

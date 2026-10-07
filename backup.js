@@ -57,6 +57,7 @@ const BACKUP_EXCLUDED = {
   liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
   ai_conversatii: 'conversațiile cu RA Insight: sunt ale omului care le-a scris și se șterg la 12 luni — nu le ținem și în copii, unde ar trăi mai mult decât promitem',
   ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
+  scrisori_luni: 'scrisorile de luni ale RA Insight: sunt ale omului care le primește și se șterg la 12 luni, ca discuțiile — nu le ținem și în copii',
   zile_condus: 'rezumatul pe zile din Safe Drive: se reface din poziții (care au arhiva lor) și se șterge odată cu ele',
 };
 
