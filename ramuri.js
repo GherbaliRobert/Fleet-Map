@@ -144,7 +144,7 @@ function recomandariCombustibil(x) {
   if (x.flota.estimate && x.flota.masini) out.push({ fel: 'info', text: 'La ' + x.flota.estimate + ' din ' + cant(x.flota.masini, 'mașină', 'mașini') +
     ' consumul e ESTIMAT din fișă (km × consumul trecut), fiindcă nu trimit contorul sau nivelul de combustibil. Cifrele lor sunt aproximative.' });
   if (x.faraNorma.length) out.push({ fel: 'info', text: (x.faraNorma.length === 1 ? x.faraNorma[0].eticheta + ' n-are' : cant(x.faraNorma.length, 'mașină n-are', 'mașini n-au')) +
-    ' consumul trecut în fișă — fără el nu se poate spune dacă mănâncă prea mult. Se trece în fișa mașinii, la „Consum drum".' });
+    ' consumul trecut în fișă — fără el nu se poate spune dacă mănâncă prea mult. Se trece în fișa mașinii, la „Consum oraș” și „Consum afară”.' });
   if (!out.length && x.flota.masini) out.push({ fel: 'bun', text: 'Niciun consum ieșit din normă și nicio scădere suspectă în perioada asta.' });
   return out;
 }
@@ -152,8 +152,97 @@ function explicatiiCombustibil(o) {
   return [
     { titlu: 'Litrii', text: 'Din contorul de combustibil al mașinii, unde îl are; altfel din nivelul rezervorului (senzorul); altfel estimați din consumul trecut în fișă × km, plus ralantiul. Aceeași socoteală ca rapoartele Consum și Costuri — coloana „Sursa" spune de unde vine fiecare cifră.' },
     { titlu: 'Prețul', text: 'Al mașinii, din fișa ei; altfel cel al firmei (Setări → Prețuri combustibil); altfel media națională a zilei.' },
-    { titlu: 'Peste normă', text: 'Doar unde consumul e măsurat (nu estimat), cu cel puțin ' + cant(KM_MIN_NORMA, 'km', 'km') + ' de drum și cu peste ' + Math.round(PESTE_NORMA * 100) + '% față de consumul trecut în fișă.' },
+    { titlu: 'Peste normă', text: 'Doar unde consumul e măsurat (nu estimat), cu cel puțin ' + cant(KM_MIN_NORMA, 'km', 'km') + ' de drum și cu peste ' + Math.round(PESTE_NORMA * 100) + '% față de cel mai mare consum trecut în fișă (de obicei „Consum oraș”) — ca drumurile prin oraș să nu pară risipă.' },
     { titlu: 'Scăderi suspecte', text: 'O scădere de cel puțin ' + cant((o && o.dropMin) || 10, 'litru', 'litri') + ' dintr-o dată: cu motorul oprit (oricât a stat mașina, până la 3 zile) sau cu motorul pornit (într-o oră). Ca raportul Alimentări & scăderi.' },
+  ];
+}
+
+// ═══ Ore de condus ══════════════════════════════════════════════════════════════════════════════════
+// Cifrele vin din raportul „Condus & repaus (Reg. 561)" (reports.js → rHos: starea din tahograf, unde mașina o trimite; altfel
+// estimarea din GPS), zi cu zi, pe șofer — fiecare zi pe cine avea mașina atunci. Aici doar se adună pe săptămână și se spun.
+// Încălcările sunt ALE RAPORTULUI (aceleași cuvinte), nu o a doua regulă.
+const ZILE_SAPT = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
+// 38 h 20 min / 45 min / 9 h
+function durata(sec) {
+  const m = Math.round((Number(sec) || 0) / 60), h = Math.floor(m / 60), r = m % 60;
+  return h ? h + ' h' + (r ? ' ' + r + ' min' : '') : r + ' min';
+}
+// „luni, 05.10"
+function ziText(zi, acum) { const d = new Date(zi + 'T12:00:00Z'); return isNaN(d) ? String(zi || '') : ZILE_SAPT[d.getUTCDay()] + ', ' + zz(zi, acum); }
+// o = { valori (zilele săptămânii, din rHos), valoriInainte (aceleași zile din săptămâna dinainte), azi ('AAAA-LL-ZZ' sau null),
+//       eticheta, etInainte, panaAzi, inaintePregatita, acum }
+function alcatuiesteOreCondus(o) {
+  const pe = {};
+  (o.valori || []).forEach(function (v) {
+    const s = pe[v.cheie] || (pe[v.cheie] = { cheie: v.cheie, nume: v.sofer, driverId: v.driverId || null, faraSofer: !v.driverId, masini: [], zile: 0, condusSec: 0,
+      azi: o.azi ? 0 : null, ziMax: null, continuuMax: null, incalcari: 0, supus: false, surse: {} });
+    s.condusSec += v.condusSec || 0;
+    if ((v.condusSec || 0) > 0) s.zile++;
+    if (o.azi && v.zi === o.azi) s.azi += v.condusSec || 0;
+    if (!s.ziMax || v.condusSec > s.ziMax.sec) s.ziMax = { zi: v.zi, sec: v.condusSec || 0 };
+    if (!s.continuuMax || v.continuuMaxSec > s.continuuMax.sec) s.continuuMax = { zi: v.zi, sec: v.continuuMaxSec || 0 };
+    s.incalcari += (v.incalcari || []).length;
+    if (v.supus) s.supus = true;
+    s.surse[v.sursa] = true;
+    (v.masini || []).forEach(function (m) { if (s.masini.indexOf(m) < 0) s.masini.push(m); });
+  });
+  const soferi = Object.keys(pe).map(function (k) {
+    const s = pe[k];
+    s.sursa = s.surse.tahograf && s.surse.GPS ? 'amestec' : (s.surse.tahograf ? 'tahograf' : 'GPS'); delete s.surse;
+    s.text = { condus: durata(s.condusSec), azi: s.azi == null ? null : (s.azi > 0 ? durata(s.azi) : '—'),
+      ziMax: s.ziMax ? durata(s.ziMax.sec) : '—', ziMaxZi: s.ziMax ? ziText(s.ziMax.zi, o.acum) : '',
+      continuuMax: s.continuuMax ? durata(s.continuuMax.sec) : '—', continuuMaxZi: s.continuuMax ? ziText(s.continuuMax.zi, o.acum) : '',
+      sursa: s.sursa === 'tahograf' ? 'tahograf' : (s.sursa === 'amestec' ? 'tahograf + GPS' : 'estimat din GPS') };
+    return s;
+  }).filter(function (s) { return s.condusSec > 0 || s.incalcari > 0; })
+    .sort(function (a, b) { return b.incalcari - a.incalcari || (a.faraSofer - b.faraSofer) || b.condusSec - a.condusSec; });
+  const incalcari = [];
+  (o.valori || []).forEach(function (v) {
+    (v.incalcari || []).forEach(function (ce) { incalcari.push({ cheie: v.cheie, nume: v.sofer, zi: v.zi, ziText: ziText(v.zi, o.acum), ce: ce, masini: v.masini || [], sursa: v.sursa }); });
+  });
+  incalcari.sort(function (a, b) { return a.zi < b.zi ? -1 : (a.zi > b.zi ? 1 : String(a.nume).localeCompare(String(b.nume), 'ro')); });
+  const tot = soferi.reduce(function (a, s) { return a + s.condusSec; }, 0);
+  const flota = { condusSec: tot, text: durata(tot), soferi: soferi.filter(function (s) { return !s.faraSofer; }).length, faraSofer: soferi.filter(function (s) { return s.faraSofer; }).length,
+    zile: soferi.reduce(function (a, s) { return a + s.zile; }, 0), incalcari: incalcari.length, cuIncalcari: soferi.filter(function (s) { return s.incalcari > 0; }).length,
+    supusi: soferi.filter(function (s) { return s.supus; }).length, tahograf: soferi.filter(function (s) { return s.sursa !== 'GPS'; }).length };
+  const cel = function (f) { return soferi.reduce(function (m, s) { return s[f] && (!m || s[f].sec > m[f].sec) ? s : m; }, null); };
+  const sZi = cel('ziMax'), sCont = cel('continuuMax');
+  flota.ziMax = sZi && sZi.ziMax.sec > 0 ? { nume: sZi.nume, text: durata(sZi.ziMax.sec), cand: ziText(sZi.ziMax.zi, o.acum) } : null;
+  flota.continuuMax = sCont && sCont.continuuMax.sec > 0 ? { nume: sCont.nume, text: durata(sCont.continuuMax.sec), cand: ziText(sCont.continuuMax.zi, o.acum) } : null;
+  // Săptămâna dinainte (aceleași zile, pentru săptămâna de acum) — doar orele, fără judecată: mai mult condus nu e rău în sine.
+  let inainte = null, fata = null;
+  if (o.inaintePregatita) {
+    const ti = (o.valoriInainte || []).reduce(function (a, v) { return a + (v.condusSec || 0); }, 0);
+    inainte = { eticheta: o.etInainte, condusSec: ti, text: durata(ti) };
+    const pe2 = (o.panaAzi ? 'pe ' : 'în ') + o.etInainte;
+    if (!ti) fata = { fel: 'info', text: 'fără condus ' + pe2 + ' — nimic de comparat' };
+    else { const d = tot - ti; fata = { fel: 'info', text: Math.abs(d) < 600 ? 'cam la fel ca ' + pe2 : (d > 0 ? '+' : '−') + durata(Math.abs(d)) + ' față de ' + o.etInainte }; }
+  }
+  return { soferi: soferi, incalcari: incalcari, flota: flota, inainte: inainte, fata: fata,
+    recomandari: recomandariOreCondus({ soferi: soferi, incalcari: incalcari, flota: flota, eticheta: o.eticheta }) };
+}
+function recomandariOreCondus(x) {
+  const out = [];
+  x.soferi.filter(function (s) { return s.incalcari > 0; }).slice(0, 3).forEach(function (s) {
+    const ale = x.incalcari.filter(function (i) { return i.cheie === s.cheie; });
+    const lista = ale.slice(0, 3).map(function (i) { return i.ce + ' (' + i.ziText + ')'; }).join('; ') + (ale.length > 3 ? '; și încă ' + (ale.length - 3) : '');
+    out.push({ fel: 'atentie', text: s.nume + ': ' + (s.incalcari === 1 ? 'o încălcare' : cant(s.incalcari, 'încălcare', 'încălcări')) + ' a Reg. 561 — ' + lista + '. ' +
+      (s.sursa === 'GPS' ? 'E o estimare din GPS: verifică pe tahograf, apoi vorbește cu el.' : 'Vorbește cu el și verifică planificarea curselor.') });
+  });
+  if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și autoutilitare ușoare — orele de mai jos arată doar cât a condus fiecare.' });
+  const gps = x.soferi.filter(function (s) { return s.supus && s.sursa === 'GPS'; }).length;
+  if (gps) out.push({ fel: 'info', text: (gps === 1 ? 'La un șofer' : 'La ' + gps + ' șoferi') + ' orele sunt estimate din GPS (mașina nu trimite datele tahografului): în mers = condus. Pentru un control oficial contează tahograful.' });
+  if (x.flota.faraSofer) out.push({ fel: 'info', text: (x.flota.faraSofer === 1 ? 'O mașină a mers' : cant(x.flota.faraSofer, 'mașină a mers', 'mașini au mers')) + ' fără șofer trecut în aplicație — orele nu se pot pune pe un om. Șoferul se trece din Management → Șoferi.' });
+  if (x.flota.supusi && !x.flota.incalcari) out.push({ fel: 'bun', text: 'Nicio încălcare a Reg. 561 în ' + (x.eticheta || 'perioada asta') + '.' });
+  return out;
+}
+// Cifrele din „Încălcări" sunt ale raportului (reports.js → rHos); proba le leagă de codul lui.
+function explicatiiOreCondus() {
+  return [
+    { titlu: 'Orele', text: 'Din tahograf, unde mașina trimite starea șoferului (condus, muncă, disponibil, odihnă); altfel estimate din GPS: mașina în mers = condus, motor pornit pe loc = muncă. Aceeași socoteală ca raportul „Condus & repaus (Reg. 561)".' },
+    { titlu: 'Pe cine', text: 'Fiecare zi merge pe șoferul care avea mașina atunci (Management → Șoferi). Mașinile care au mers fără șofer trecut apar cu numele lor.' },
+    { titlu: 'Încălcările', text: 'Ale Regulamentului CE 561/2006, doar la camioane și autobuze (nu la autoturisme și autoutilitare ușoare): condus continuu peste 4h30 fără o pauză de 45 de minute; condus zilnic peste 10 ore, sau peste 9 ore de mai mult de două ori pe săptămână; condus săptămânal peste 56 de ore. Repausul zilnic sub 9 ore se verifică doar cu tahograful (din GPS nu se vede).' },
+    { titlu: 'Săptămâna', text: 'De luni până duminică, pe ora României. Săptămâna de acum se compară cu aceleași zile din săptămâna trecută.' },
   ];
 }
 
@@ -161,4 +250,5 @@ module.exports = {
   ZI, zz, zilePana,
   candData, candKm, candRand, ordoneaza, rezumatMentenanta, explicatiiMentenanta,
   PESTE_NORMA, KM_MIN_NORMA, cand, alcatuiesteCombustibil, recomandariCombustibil, explicatiiCombustibil,
+  durata, ziText, alcatuiesteOreCondus, recomandariOreCondus, explicatiiOreCondus,
 };

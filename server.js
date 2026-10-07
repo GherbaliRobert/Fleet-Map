@@ -4053,6 +4053,7 @@ function _insightInstructiuni(cuRapoarte) {
       '• fleet_alerts — înștiințările active ale agenților (fără semnal, posibil furt de combustibil, ralanti prelungit).\n' +
       '• mentenanta_acte — ce a trecut de termen și ce urmează: actele mașinilor (ITP, RCA, rovinietă…), reviziile și permisele șoferilor.\n' +
       '• combustibil — litri și lei pe o lună, consumul față de normă, alimentările și scăderile suspecte (aceleași cifre ca rapoartele de consum).\n' +
+      '• ore_condus — orele de condus ale fiecărui șofer pe o săptămână și încălcările Reg. 561 (aceleași cifre ca raportul „Condus & repaus").\n' +
       '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă.\n• list_zones — zonele (hotspot) definite.\n' +
       '• cauta_in_ghid — ghidul aplicației RA Tracks: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
       '• safe_drive — Safe Drive & costuri pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
@@ -4072,6 +4073,7 @@ function _insightInstructiuni(cuRapoarte) {
     'ALEGEREA UNELTEI: despre ACUM → fleet_status; „ce probleme are flota / ce e de făcut" → fleet_alerts (și mentenanta_acte); ' +
       '„ce expiră / ITP / RCA / rovinietă / revizie / permis" → mentenanta_acte; ' +
       '„cât combustibil / cât ne-a costat motorina luna asta / cine consumă prea mult / scăderi de combustibil" → combustibil; ' +
+      '„câte ore a condus X săptămâna asta / cine a încălcat orele de condus / pauze / Reg. 561 / tahograf" → ore_condus; ' +
       '„cât ne-a costat condusul / cine conduce cel mai urât / a mers discuția cu X / Safe Drive" → safe_drive' +
       (cuRapoarte ? '; analize pe perioadă (km, ore, consum, opriri, viteze, ralanti, scor de condus, zone) → run_report' : '') + '. Poți combina.',
     cuRapoarte ? 'Tipuri de raport pentru run_report (cheia din stânga):\n' + lista : '',
@@ -4199,7 +4201,7 @@ async function _raInsight(req, res, opts) {
     let zones = [];
     try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
 
-    let reportCalls = 0, sdVazut = null, cbVazut = null;
+    let reportCalls = 0, sdVazut = null, cbVazut = null, hcVazut = null;
     const sources = [];
     const folosite = new Set();
     const ambiguitati = [];   // variantele întoarse de unelte când „Logan" se potrivește cu trei mașini
@@ -4210,6 +4212,7 @@ async function _raInsight(req, res, opts) {
       { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare mașină — unde e (adresă), în mișcare / ralanti / oprită / fără semnal, viteza, combustibilul (dacă există senzor), ultima transmisie. Pentru „unde e X acum", „care sunt oprite", „cine se mișcă".', input_schema: { type: 'object', properties: {} } },
       { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale agenților pentru flotă: fără semnal, posibil furt sau scădere de combustibil, ralanti prelungit. Pentru „ce probleme are flota", „ce trebuie să știu". (Actele și reviziile care expiră sunt în mentenanta_acte.)', input_schema: { type: 'object', properties: {} } },
       { name: 'combustibil', description: 'Combustibil pe o lună: litri și lei, pe mașină și pe flotă, cu aceleași zile din luna dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte. Aceleași cifre ca pagina „Combustibil" și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL". Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
+      { name: 'ore_condus', description: 'Ore de condus, pe o săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără pauză, încălcările Regulamentului 561 (doar camioane și autobuze), din tahograf sau estimate din GPS, cu săptămâna dinainte alături. Aceleași cifre ca pagina „Ore de condus" și ca raportul „Condus & repaus".', input_schema: { type: 'object', properties: { week: { type: 'string', enum: ['this_week', 'last_week'], description: 'Săptămâna: this_week (implicit) sau last_week.' }, group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' } } } },
       { name: 'mentenanta_acte', description: 'Mentenanță & acte: ce a trecut de termen și ce urmează — actele mașinilor (ITP, RCA, rovinietă…), reviziile (pe dată și pe kilometraj) și permisele șoferilor, cu preavizul firmei. Pentru „ce expiră", „ce revizii urmează", „are ITP valabil B 154 UIP?". Aceleași cifre ca pagina „Mentenanță & acte" și ca listele din Mentenanță / Documente.', input_schema: { type: 'object', properties: {} } },
       { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Tracks: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
       { name: 'safe_drive', description: 'Safe Drive & costuri, pe o lună: cât a costat în plus condusul (accelerări, frânări și viraje bruște, viteză peste 90 km/h, ralanti), în lei, pe mașină și pe șofer, cu luna dinainte alături, unde și când se repetă manevrele, discuțiile „Am vorbit cu el" și rezultatul lor, recomandările. Aceleași cifre ca pagina Safe Drive.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL". Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } }
@@ -4254,6 +4257,21 @@ async function _raInsight(req, res, opts) {
           scaderi_suspecte: r.scaderi.slice(0, 10).map(function (x) { return { masina: x.eticheta, cand: x.cand, litri: x.litri, de_la: x.de, la: x.la, motor: x.motorPornit ? 'pornit' : 'oprit', unde: /^-?\d+\.\d+, -?\d+\.\d+$/.test(x.loc) ? null : x.loc }; }),
           alimentari: r.evenimente, recomandari: r.recomandari.map(function (x) { return x.text; }),
           atentie: 'Litrii estimați (sursa „Estimat") sunt aproximativi; spune asta când dai cifrele.',
+        };
+      },
+      // Ore de condus: aceeași funcție ca pagina (_ramOreCondus).
+      ore_condus: async (input) => {
+        folosite.add('ore_condus');
+        const r = await _ramOreCondus(req, { saptamanaTrecuta: input && input.week === 'last_week', grupaNume: input && input.group, asteptaMs: 20000 });
+        if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
+        if (r.pregatire) return { mesaj: 'Orele săptămânii se pregătesc încă. Spune-i omului să deschidă ramura „Ore de condus" peste un minut — apar acolo.' };
+        hcVazut = r.eticheta;
+        return {
+          perioada: r.eticheta, total: r.flota.text, fata_de_saptamana_dinainte: r.fata ? r.fata.text : null,
+          soferi: r.soferi.slice(0, 20).map(function (x) { return { sofer: x.faraSofer ? null : x.nume, masina_fara_sofer: x.faraSofer ? x.nume : undefined, masini: x.masini, zile: x.zile, condus: x.text.condus, azi: x.text.azi || undefined, cea_mai_lunga_zi: x.text.ziMax + (x.text.ziMaxZi ? ' (' + x.text.ziMaxZi + ')' : ''), condus_continuu_maxim: x.text.continuuMax + (x.text.continuuMaxZi ? ' (' + x.text.continuuMaxZi + ')' : ''), incalcari: x.incalcari, reg561_se_aplica: x.supus, sursa: x.text.sursa }; }),
+          incalcari: r.incalcari.slice(0, 20).map(function (x) { return { sofer: x.nume, zi: x.ziText, ce: x.ce, sursa: x.sursa === 'tahograf' ? 'tahograf' : 'estimat din GPS' }; }),
+          recomandari: r.recomandari.map(function (x) { return x.text; }), atentie_perioada: r.atentie || undefined,
+          atentie: 'Unde sursa e „estimat din GPS", spune că e o estimare și că pentru control contează tahograful. Reg. 561 nu se aplică la autoturisme.',
         };
       },
       // Mentenanță & acte: aceeași funcție ca pagina (_ramMentenanta).
@@ -4412,7 +4430,8 @@ async function _raInsight(req, res, opts) {
     const seen = new Set(); const uniqSources = [];
     for (const s of sources) { const k = s.type + '|' + (s.imei || s.vehicle || '') + '|' + s.from + '|' + s.to; if (!seen.has(k)) { seen.add(k); uniqSources.push(s); } }
     const inteles = _insightInteles(uniqSources, folosite, gasite, mesaje.length > 0, [].concat(sdVazut ? [{ tip: 'perioada', text: sdVazut }, { tip: 'subiect', text: 'Safe Drive & costuri' }] : [],
-      cbVazut ? [{ tip: 'perioada', text: cbVazut }, { tip: 'subiect', text: 'Combustibil' }] : []));
+      cbVazut ? [{ tip: 'perioada', text: cbVazut }, { tip: 'subiect', text: 'Combustibil' }] : [],
+      hcVazut ? [{ tip: 'perioada', text: hcVazut }, { tip: 'subiect', text: 'Ore de condus' }] : []));
 
     // Butoane de ales, când răspunsul întreabă „care dintre ele?". „Celălalt" scoate mașina despre care tocmai s-a vorbit.
     let variante = ambiguitati.length ? ambiguitati : (!uniqSources.length ? [].concat.apply([], gasite.ambigue.map(a => a.variante)) : []);
@@ -4888,6 +4907,63 @@ app.get('/api/insight/combustibil', requireAuth, withScope, requireFeature('ai_a
   catch (e) { console.warn('[COMBUSTIBIL]', e.message); res.status(500).json({ error: 'Combustibil: ' + e.message }); }
 });
 
+// ═══ RA Insight → Ore de condus (pasul 4) ═══
+// Orele de condus ale fiecărui șofer pe o săptămână (luni–duminică), încălcările Reg. 561 și de unde vin cifrele. Totul din
+// raportul „Condus & repaus (Reg. 561)" (rHos: tahograful sau estimarea din GPS, fiecare zi pe șoferul de atunci), cu
+// opțiunile ecranului Rapoarte — deci pagina, raportul și RA Insight spun același lucru. O SINGURĂ funcție, pentru pagină,
+// pentru unealta ore_condus a lui RA Insight și pentru numărul de lângă ramură.
+const RAM_SAPTAMANI = 4;   // săptămâna de acum + trei înapoi
+function _ziPlus(z, n) { const d = new Date(z + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function _ramSaptamana(f, o, acum) {
+  const iso = function (ms) { return new Date(ms).toISOString(); };
+  const azi = condus.zi(acum), luni0 = _ziPlus(azi, -condus.ziSapt(azi));
+  const saptamani = [];
+  for (let k = 0; k < RAM_SAPTAMANI; k++) {
+    const z = _ziPlus(luni0, -7 * k), de = safeDrive.inceput(z), pana = k === 0 ? acum : safeDrive.inceput(_ziPlus(z, 7));
+    const et = insight.etichetaPerioadei(iso(de), iso(pana), acum);
+    saptamani.push({ saptamana: z, de: de, pana: pana, eticheta: et, optiune: (k === 0 ? 'Săptămâna asta' : (k === 1 ? 'Săptămâna trecută' : 'Săptămâna')) + ' · ' + et });
+  }
+  const s = saptamani.filter(function (x) { return x.saptamana === String(o.saptamana || ''); })[0] || saptamani[o.saptamanaTrecuta ? 1 : 0];
+  const panaAzi = s === saptamani[0];
+  const deI = safeDrive.inceput(_ziPlus(s.saptamana, -7)), capatI = safeDrive.inceput(s.saptamana);
+  const panaI = panaAzi ? Math.min(capatI, deI + (s.pana - s.de)) : capatI;
+  let grupa = f.grupe.some(function (g) { return g.id != null && String(g.id) === String(o.grupa); }) ? Number(o.grupa) : null;
+  if (grupa == null && o.grupaNume) {
+    const q = insight.norm(o.grupaNume), g = f.grupe.filter(function (x) { return x.id != null && (insight.norm(x.nume) === q || insight.norm(x.nume).indexOf(q) >= 0); })[0];
+    if (g) grupa = g.id;
+  }
+  return { saptamani: saptamani.map(function (x) { return { saptamana: x.saptamana, eticheta: x.eticheta, optiune: x.optiune }; }), ales: s, grupa: grupa,
+    de: s.de, pana: s.pana, deI: deI, panaI: panaI, panaAzi: panaAzi, azi: panaAzi ? azi : null,
+    eticheta: s.eticheta, etInainte: insight.etichetaPerioadei(iso(deI), iso(panaI), acum) };
+}
+async function _ramOreCondus(req, o) {
+  o = o || {};
+  const acum = Date.now();
+  const f = await _ramFlota(req);
+  const p = _ramSaptamana(f, o, acum);
+  let devs = f.devices; if (p.grupa != null) devs = devs.filter(function (d) { return d.group_id === p.grupa; });
+  const imeis = devs.map(function (d) { return d.imei; });
+  const comun = { saptamani: p.saptamani, saptamanaAleasa: p.ales.saptamana, grupe: f.grupe, grupaAleasa: p.grupa, eticheta: p.eticheta,
+    explicatii: ramuri.explicatiiOreCondus() };
+  if (!imeis.length) return Object.assign(comun, { gol: true });
+  const iso = function (ms) { return new Date(ms).toISOString(); };
+  const opts = _optiuniRaport({}, f.cs), scope = f.companyScope === -1 ? -1 : f.companyScope;
+  const cheie = 'orecondus|' + (req.companyId != null ? req.companyId : 's') + '|' + p.ales.saptamana + '|' + _ramCheieImei(imeis);
+  const g = await _ramGreu(cheie, p.panaAzi ? 15 * 60000 : 6 * 3600000, async function () {
+    const r = await reports.runReport(db, 'hos', imeis, iso(p.de), iso(p.pana), opts, scope);
+    const ri = await reports.runReport(db, 'hos', imeis, iso(p.deI), iso(p.panaI), opts, scope);
+    const at = ((r.legend && r.legend.items) || []).filter(function (x) { return x[0] === 'Atenție'; })[0];
+    return { v: r.valori || [], vi: ri.valori || [], atentie: r.trunchiat ? (at ? at[1] : null) : null };
+  }, o.asteptaMs, o.doarGata);
+  if (g.inLucru) return Object.assign(comun, { pregatire: { procent: null } });
+  return Object.assign(comun, { atentie: g.rez.atentie }, ramuri.alcatuiesteOreCondus({ valori: g.rez.v, valoriInainte: g.rez.vi, azi: p.azi,
+    eticheta: p.eticheta, etInainte: p.etInainte, panaAzi: p.panaAzi, inaintePregatita: true, acum: acum }));
+}
+app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+  try { res.json(await _ramOreCondus(req, { saptamana: req.query.saptamana, grupa: req.query.grupa })); }
+  catch (e) { console.warn('[ORE DE CONDUS]', e.message); res.status(500).json({ error: 'Ore de condus: ' + e.message }); }
+});
+
 // Numerele de lângă ramuri (ca pe macheta din 02.10): câte lucruri cer atenție în fiecare. Doar din ce e deja socotit —
 // deschiderea secțiunii nu pornește nicio socoteală grea. O ramură fără număr nu apare în răspuns.
 app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
@@ -4895,6 +4971,7 @@ app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assist
   try { const m = await _ramMentenanta(req); out.mentenanta = m.rezumat.depasite + m.rezumat.curand; } catch (e) { /* fără număr */ }
   try { const s = await _sdLuna(req, { doarGata: true }); if (!s.gol && !s.pregatire) out.safedrive = (s.recomandari || []).filter(function (x) { return x.fel === 'atentie'; }).length; } catch (e) { /* fără număr */ }
   try { const c = await _ramCombustibil(req, { doarGata: true }); if (!c.gol && !c.pregatire) out.combustibil = (c.scaderi || []).length + (c.pesteNorma || []).length; } catch (e) { /* fără număr */ }
+  try { const h = await _ramOreCondus(req, { doarGata: true }); if (!h.gol && !h.pregatire) out.orecondus = (h.incalcari || []).length; } catch (e) { /* fără număr */ }
   res.json(out);
 });
 

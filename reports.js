@@ -889,28 +889,47 @@ async function rHos(db, imeis, from, to, opts, devMap) {
   const contMinOf = (p) => { const io = p.io_data || {}; const v = io.tacho_driver1_continuous_time; return (typeof v === 'number' && v >= 0) ? v : null; };
   const _weekKey = (isoDay) => { try { const d = new Date(isoDay + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); } catch (e) { return isoDay; } }; // lunea săptămânii
   // #5: grupare pe ȘOFER (mașinile fără șofer → propriul bucket, cu numele mașinii) → orele se adună pe persoană, chiar dacă a condus mai multe mașini.
-  const byDriver = {};
+  // Cine a condus, la fiecare poziție: istoricul șoferilor (07.10 — ca EcoDrive pe șofer și Safe Drive): un schimb de șofer la
+  // mijlocul săptămânii nu mai pune toate orele pe noul șofer. Fără istoric (mașină fără rânduri, bază de probă) — șoferul de acum.
+  const ist = {};
+  try { if (typeof db.istoricSoferi === 'function') (await db.istoricSoferi(imeis)).forEach((x) => { (ist[x.imei] || (ist[x.imei] = [])).push(x); }); } catch (e) { /* fără istoric: șoferul de acum */ }
+  const fromMs = new Date(from).getTime(), toMs = new Date(to).getTime();
+  const cineDe = {}, byDriver = {};
+  const adauga = (did, imei) => { const key = did ? ('d' + did) : ('v_' + imei); (byDriver[key] || (byDriver[key] = { name: did ? (drv[did] || ('Șofer #' + did)) : label(devMap, imei), driverId: did || null, imeis: [] })).imeis.push(imei); };
   for (const imei of imeis) {
-    const did = devMap[imei] && devMap[imei].driver_id;
-    const key = did != null ? ('d' + did) : ('v_' + imei);
-    const name = did != null ? (drv[did] || ('Șofer #' + did)) : label(devMap, imei);
-    (byDriver[key] || (byDriver[key] = { name, imeis: [] })).imeis.push(imei);
+    const dev = devMap[imei] || {}, iv = ist[imei];
+    cineDe[imei] = iv ? condus.soferLa(iv) : (() => (dev.driver_id != null ? dev.driver_id : 0));
+    if (!iv) { adauga(dev.driver_id != null ? dev.driver_id : 0, imei); continue; }
+    // Șoferii care au avut mașina în perioadă, plus „nimeni" dacă istoricul lasă o gaură în ea.
+    const ids = new Set(); let acoperit = fromMs;
+    iv.slice().sort((x, y) => x.de_la - y.de_la).forEach((x) => {
+      const pana = x.pana_la == null ? Infinity : x.pana_la;
+      if (x.de_la < toMs && pana > fromMs) { ids.add(x.driver_id); if (x.de_la > acoperit) ids.add(0); if (pana > acoperit) acoperit = pana; }
+    });
+    if (acoperit < toMs) ids.add(0);
+    ids.forEach((did) => adauga(did, imei));
   }
   const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {}; const perSubj = [];
+  const valori = [];   // zilele ca NUMERE, pe șofer (ramura „Ore de condus" din RA Insight); ecranul și fișierele nu le folosesc
   for (const key of Object.keys(byDriver)) {
-    const { name, imeis: dImeis } = byDriver[key];
-    // Reg. 561 se aplică la CAMIOANE (>3,5t) și AUTOBUZE — NU la turisme/autoutilitare ușoare. Determinăm din tipul mașinii (fișă).
-    const vtypes = dImeis.map((i) => String((devMap[i] || {}).vehicle_type || '').toLowerCase());
-    const subject = !(vtypes.length && vtypes.every((tp) => /car|autoturism|van|autoutilitar/.test(tp)));
+    const { name, imeis: dImeis, driverId } = byDriver[key];
     // Timeline UNIFICAT al șoferului (toate mașinile lui), cronologic → condusul continuu și zilnic se calculează corect peste schimbări de mașină.
-    const merged = []; let useTacho = false;
+    // Dintr-o mașină se iau doar pozițiile din vremea lui (o mașină cu doi șoferi se citește pentru fiecare).
+    const merged = []; let useTacho = false; const folosite = new Set();
     for (const imei of dImeis) {
       const pts = await history(db, imei, from, to);
-      if (pts.some((p) => stOf(p) != null)) useTacho = true;
-      const vn = label(devMap, imei);
-      for (const p of pts) merged.push({ p, vn });
+      const vn = label(devMap, imei), cine = cineDe[imei];
+      for (const p of pts) {
+        const did = cine(t(p)) || 0;
+        if ((did ? ('d' + did) : ('v_' + imei)) !== key) continue;
+        merged.push({ p, vn }); folosite.add(imei);
+        if (stOf(p) != null) useTacho = true;
+      }
     }
     if (merged.length < 2) continue;
+    // Reg. 561 se aplică la CAMIOANE (>3,5t) și AUTOBUZE — NU la turisme/autoutilitare ușoare. Determinăm din tipul mașinii (fișă).
+    const vtypes = [...folosite].map((i) => String((devMap[i] || {}).vehicle_type || '').toLowerCase());
+    const subject = !(vtypes.length && vtypes.every((tp) => /car|autoturism|van|autoutilitar/.test(tp)));
     merged.sort((a, b) => t(a.p) - t(b.p));
     const byDay = {}; let contSec = 0, restRun = 0, restRunDay = null;
     const closeRest = () => { if (restRun > 0 && restRunDay && byDay[restRunDay]) { if (restRun > byDay[restRunDay].restMax) byDay[restRunDay].restMax = restRun; } restRun = 0; restRunDay = null; };
@@ -954,6 +973,8 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       const incCell = subject ? (infr.join('; ') || '—') : 'Reg. 561 nu se aplică';
       const row = [name, [...d.vehs].join(', '), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', status, incCell];
       rows.push(row); subjRows.push(row);
+      valori.push({ cheie: key, sofer: name, driverId: driverId, zi: day, condusSec: Math.round(d.drive), muncaSec: Math.round(d.work), repausSec: Math.round(d.rest),
+        continuuMaxSec: Math.round(d.contMax * 3600), incalcari: infr.slice(), supus: subject, sursa: useTacho ? 'tahograf' : 'GPS', masini: [...d.vehs] });
       [...d.vehs].forEach((v) => sVehs.add(v));
       sDrive += d.drive; sRest += d.rest; sInfr += infr.length;
       totDrive += d.drive; totWork += d.work; totRest += d.rest; totInfr += infr.length;
@@ -977,7 +998,7 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     columns: ['Șofer', 'Vehicul', 'Zi', 'Condus', 'Muncă', 'Repaus', 'Continuă max', 'Sursă', 'Status', 'Încălcări (Reg. 561)'],
     rows,
     summary: { 'Zile evaluate': rows.length, 'Condus total': fmtDur(totDrive), 'Repaus total': fmtDur(totRest), 'Încălcări (561)': totInfr },
-    charts, perVehicle, legend: HOS_LEGEND, groupLabel: 'Vehicul', noFleetTotal: true
+    charts, perVehicle, legend: HOS_LEGEND, groupLabel: 'Vehicul', noFleetTotal: true, valori
   };
 }
 
@@ -1957,7 +1978,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   opts = opts || {};
   const refuelMin = opts.refuelMin || 5, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
   const cfg = {};
-  try { (await db.pool.query('SELECT imei, fuel_price, fuel_type, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), fuelType: d.fuel_type || null, vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
+  try { (await db.pool.query('SELECT imei, fuel_price, fuel_type, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), fuelType: d.fuel_type || null, vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cMax: Math.max(parseFloat(d.consumption_road) || 0, parseFloat(d.consumption_city) || 0) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
   const out = {};
   for (const imei of imeis) {
     let refueled = 0, dist = 0, prevFuel = null, idleSec = 0, prevP = null;
@@ -2001,7 +2022,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     // CAN dar prea grosier pt. scăderi mici (consum estimat, dar mașina NU e oarbă) > fără nicio dată (pur din fișă).
     const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : (hasFuel ? 'Estimat (nivel CAN)' : 'Estimat'));
     out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), source, hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null,
-      norma: c.cRoad || null };   // consumul trecut în fișă (drum, altfel oraș); null = netrecut (atunci nu se spune „peste normă")
+      norma: c.cMax || null };   // cel mai mare consum din fișă (de obicei „Consum oraș”); null = netrecut (atunci nu se spune „peste normă”)
   }
   return out;
 }

@@ -399,6 +399,16 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('…cu aceeași lună și aceleași mașini ca pagina Combustibil', pagC.status === 200 && !pagC.j.pregatire && rezC.indexOf(pagC.j.eticheta) >= 0 && (pagC.j.masini || []).length > 0 && (pagC.j.masini || []).every((m) => rezC.indexOf(m.eticheta) >= 0), pagC.status + ' ' + (pagC.j.eticheta || pagC.text.slice(0, 120)));
   T('…iar „Am înțeles" spune Combustibil și luna', (qc.j.inteles || []).some((x) => x.text === 'Combustibil') && (qc.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagC.j.eticheta), JSON.stringify(qc.j.inteles));
   T('pagina și RA Insight cer cifrele prin ACEEAȘI funcție (_ramCombustibil: pagina, unealta, numărul ramurii)', (SRV.match(/await _ramCombustibil\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*combustibil — /.test(String(cc.system[0].text)));
+  // Ore de condus (pasul 4): ACEEAȘI funcție ca pagina (_ramOreCondus), din raportul „Condus & repaus"
+  coada([unealta('ore_condus', {}), text('**Ore de condus** — săptămâna asta.')]);
+  const qh = await json('POST', '/api/insight/intreaba', ckSef, { message: 'câte ore a condus Ion săptămâna asta?', nou: true });
+  const ch = cereri().slice(-1)[0];
+  const rezH = JSON.stringify((ch.messages || []).slice(-1)[0]);
+  const pagH = await json('GET', '/api/insight/ore-condus', ckSef);
+  T('„câte ore a condus" → unealta ore_condus; modelul primește perioada, orele pe șofer, încălcările și spusa „estimat din GPS"', qh.status === 200 && /perioada/.test(rezH) && /reg561_se_aplica|soferi/.test(rezH) && /incalcari/.test(rezH) && /estimat din GPS/.test(rezH) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezH), rezH.slice(0, 240));
+  T('…cu aceeași săptămână și aceiași șoferi ca pagina Ore de condus', pagH.status === 200 && !pagH.j.pregatire && rezH.indexOf(pagH.j.eticheta) >= 0 && (pagH.j.soferi || []).every((x) => rezH.indexOf(x.nume) >= 0), pagH.status + ' ' + (pagH.j.eticheta || pagH.text.slice(0, 120)));
+  T('…iar „Am înțeles" spune Ore de condus și săptămâna', (qh.j.inteles || []).some((x) => x.text === 'Ore de condus') && (qh.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagH.j.eticheta), JSON.stringify(qh.j.inteles));
+  T('instrucțiunile numesc unealta și când se alege (ore de condus / Reg. 561 / tahograf)', /UNELTE:[\s\S]*ore_condus — /.test(String(ch.system[0].text)) && /Reg\. 561 \/ tahograf" → ore_condus/.test(String(ch.system[0].text)));
   // Mentenanță & acte (pasul 4): ACEEAȘI listă ca pagina (_ramMentenanta)
   coada([unealta('mentenanta_acte', {}), text('**Mentenanță & acte** — ce urmează.')]);
   const qm = await json('POST', '/api/insight/intreaba', ckSef, { message: 'ce acte expiră curând?', nou: true });

@@ -10153,7 +10153,7 @@ const pozitii = await r.json();</code></pre>
         { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true },
         { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true },
         { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true },
-        { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: false },
+        { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true },
         { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true },
         { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'fa-envelope-open-text', gata: false }
       ];
@@ -10297,6 +10297,7 @@ const pozitii = await r.json();</code></pre>
         if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
         if (S.ramura === 'combustibil') return deseneazaCombustibil(main, S.cbLuna);
         if (S.ramura === 'mentenanta') return deseneazaMentenanta(main);
+        if (S.ramura === 'orecondus') return deseneazaOreCondus(main, S.hcSapt);
         main.innerHTML = '<div class="insp-msgs" id="insp-msgs"></div>' +
           '<div class="insp-scrie"><div class="insp-caseta">' +
           '<textarea id="insp-input" rows="1" placeholder="Scrie numărul, numele mașinii sau al șoferului… de exemplu „Cât a consumat B 154 UIP luna asta?”" onkeydown="insightTasta(event)" oninput="insightCreste(this)"></textarea>' +
@@ -10801,8 +10802,8 @@ const pozitii = await r.json();</code></pre>
         mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + (f.masini > 1 ? ' · ' + sdCant(f.masini, 'mașină', 'mașini') : '')));
         if (fa.cost) mare.appendChild(el('span', 'sdp-chip ' + (fa.fel || 'info'), fa.cost));
         tl.appendChild(mare);
-        [['fa-droplet', 'Litri', sdCant(f.litri, 'litru', 'litri'), f.procentEstimat ? f.procentEstimat + '% estimați din fișă' : 'măsurați la toate mașinile', ''],
-         ['fa-gauge', 'Consum mediu', f.l100 == null ? '—' : sdNr(f.l100, 1) + ' L/100 km', sdNr(f.km) + ' km' + (fa.l100 ? ' · ' + fa.l100 : ''), ''],
+        [['fa-droplet', 'Consumat', sdCant(f.litri, 'litru', 'litri'), f.procentEstimat ? f.procentEstimat + '% estimați din fișă' : 'măsurați la toate mașinile', ''],
+         ['fa-gauge', 'Consum mediu', f.l100 == null ? '—' : sdNr(f.l100, 1) + ' L', 'la 100 km · ' + sdNr(f.km) + ' km parcurși' + (fa.l100 ? ' · ' + fa.l100 : ''), ''],
          ['fa-gas-pump', 'Alimentări', String(ev.alimentari || 0), ev.alimentari ? sdCant(ev.litriAlimentati, 'litru alimentat', 'litri alimentați') : 'se văd la mașinile care trimit nivelul din rezervor', ''],
          ['fa-triangle-exclamation', 'Scăderi suspecte', String(ev.scaderi || 0), ev.scaderi ? sdCant(ev.litriScazuti, 'litru', 'litri') + ' în total' : 'niciuna', ev.scaderi ? 'rosu' : '']].forEach(function (x) {
           var t = el('div', 'sdp-tile' + (x[4] ? ' st-' + x[4] : '')), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
@@ -10838,7 +10839,7 @@ const pozitii = await r.json();</code></pre>
           tM.b.appendChild(tr);
         });
         sM.appendChild(tM.w);
-        sM.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi litrii și prețul. „În fișă” e consumul trecut în fișa mașinii (Consum drum).'));
+        sM.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi litrii și prețul. „În fișă” e cel mai mare consum trecut în fișa mașinii (de obicei „Consum oraș”).'));
         // Scăderile suspecte: când, cât, cu motorul pornit sau oprit, unde (pe hartă)
         var sS = sdSect(pag, 'Scăderi suspecte' + ((j.scaderi || []).length ? ' · ' + j.scaderi.length : ''), 'fa-triangle-exclamation');
         if ((j.scaderi || []).length) {
@@ -10863,6 +10864,129 @@ const pozitii = await r.json();</code></pre>
         pag.appendChild(det);
         var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
         nota.appendChild(document.createTextNode('Aceleași cifre ca în rapoartele Consum, Costuri și Alimentări & scăderi, pentru aceeași perioadă. Prețul combustibilului e al mașinii sau al firmei.'));
+        pag.appendChild(nota);
+        if (singur) pag.scrollTop = sus;
+      }
+      // ─── Ramura „Ore de condus" (pasul 4): cât a condus fiecare șofer într-o săptămână și încălcările Reg. 561 ───
+      // Cifrele sunt ale raportului „Condus & repaus (Reg. 561)" (tahograful sau estimarea din GPS, fiecare zi pe șoferul de
+      // atunci), adunate pe server (ramuri.js); pagina doar le arată, cu textContent.
+      function hcIar(main, j) { setTimeout(function () { if (S.ramura === 'orecondus' && S.hcSapt === j.saptamanaAleasa) deseneazaOreCondus(main, j.saptamanaAleasa, true); }, 2500); }
+      async function deseneazaOreCondus(main, saptamana, singur) {
+        var tok = S.hcTok = (S.hcTok || 0) + 1;
+        if (!singur || !main.querySelector('.sdp')) main.innerHTML = '<div class="sdp"><div class="insp-gol">Se încarcă…</div></div>';
+        var q = [];
+        if (saptamana) q.push('saptamana=' + encodeURIComponent(saptamana));
+        if (S.hcGrupa != null) q.push('grupa=' + encodeURIComponent(S.hcGrupa));
+        var r = await cere('GET', '/api/insight/ore-condus' + (q.length ? '?' + q.join('&') : ''));
+        if (tok !== S.hcTok || S.ramura !== 'orecondus') return;   // omul a plecat sau a cerut altceva între timp
+        var pag = el('div', 'sdp'), j = r.j || {};
+        var vechi = main.querySelector('.sdp'), sus = vechi ? vechi.scrollTop : 0;
+        main.innerHTML = ''; main.appendChild(pag);
+        if (r.s !== 200) {
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Ore de condus nu s-a putut deschide'));
+          c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
+        }
+        S.hcSapt = j.saptamanaAleasa; S.hcGrupa = j.grupaAleasa;
+        var cap = el('div', 'sdp-cap');
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-stopwatch"></i> '; h2.appendChild(document.createTextNode('Ore de condus')); cap.appendChild(h2);
+        var dr = el('div', 'sdp-dr');
+        var sel = el('select', 'sdp-sel'); sel.setAttribute('aria-label', 'Săptămâna');
+        (j.saptamani || []).forEach(function (x) { var o = el('option', null, x.optiune); o.value = x.saptamana; if (x.saptamana === j.saptamanaAleasa) o.selected = true; sel.appendChild(o); });
+        sel.onchange = function () { deseneazaOreCondus(main, sel.value); };
+        dr.appendChild(sel);
+        if ((j.grupe || []).length > 1) {
+          var sg = el('select', 'sdp-sel'); sg.setAttribute('aria-label', 'Mașinile');
+          j.grupe.forEach(function (g) { var o = el('option', null, g.eticheta); o.value = g.id == null ? '' : String(g.id); if (String(g.id) === String(j.grupaAleasa)) o.selected = true; sg.appendChild(o); });
+          sg.onchange = function () { S.hcGrupa = sg.value === '' ? null : sg.value; deseneazaOreCondus(main, j.saptamanaAleasa); };
+          dr.appendChild(sg);
+        }
+        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
+        bQ.title = 'Întreabă RA Insight despre orele de condus (se numără din fondul de întrebări)';
+        bQ.onclick = function () { window.insightIntreabaDespre('Despre orele de condus, ' + (j.eticheta || '') + ': '); };
+        dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
+        if (j.pregatire) {
+          var pr = el('div', 'insp-card');
+          pr.appendChild(el('h3', null, 'Pregătesc săptămâna…'));
+          pr.appendChild(el('div', null, 'Prima dată durează mai mult: citesc pozițiile (și datele tahografului, unde există) ale fiecărei mașini din săptămână. Pagina se actualizează singură.'));
+          pag.appendChild(pr); hcIar(main, j); return;
+        }
+        if (j.gol || !(j.soferi || []).length) {
+          var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, j.gol ? 'Nicio mașină de arătat' : 'Nimic de arătat în ' + (j.eticheta || 'săptămâna asta')));
+          g0.appendChild(el('div', null, j.gol ? 'Ore de condus se uită la mașinile la care ai acces — acum nu e niciuna.' : 'Mașinile n-au mers (sau n-au trimis poziții) în săptămâna asta. Alege altă săptămână de sus.'));
+          pag.appendChild(g0); return;
+        }
+        if (j.atentie) {
+          var at = el('div', 'sdp-sect'), ad = el('div', 'sdp-rec atentie');
+          ad.innerHTML = '<i class="fas fa-triangle-exclamation"></i>'; ad.appendChild(el('span', null, j.atentie)); at.appendChild(ad); pag.appendChild(at);
+        }
+        var f = j.flota || {}, fa = j.fata || {}, curenta = (j.soferi || []).some(function (x) { return x.azi != null; });
+        var tl = el('div', 'sdp-tiles');
+        var mare = el('div', 'sdp-tile mare');
+        mare.appendChild(el('div', 'et', 'Ore de condus'));
+        mare.appendChild(el('div', 'val', f.text || '—'));
+        mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + ' · ' + (f.soferi === 1 ? '1 șofer' : (f.soferi || 0) + ' șoferi') + (f.faraSofer ? ' · ' + (f.faraSofer === 1 ? '1 mașină fără șofer' : f.faraSofer + ' mașini fără șofer') : '')));
+        if (fa.text) mare.appendChild(el('span', 'sdp-chip ' + (fa.fel || 'info'), fa.text));
+        tl.appendChild(mare);
+        var tot = (f.soferi || 0) + (f.faraSofer || 0);
+        [['fa-triangle-exclamation', 'Încălcări Reg. 561', String(f.incalcari || 0), f.incalcari ? (f.cuIncalcari === 1 ? 'la un șofer' : 'la ' + f.cuIncalcari + ' șoferi') : (f.supusi ? 'niciuna' : 'nu se aplică la autoturisme'), f.incalcari ? 'rosu' : ''],
+         ['fa-calendar-day', 'Cea mai lungă zi', f.ziMax ? f.ziMax.text : '—', f.ziMax ? f.ziMax.nume + ' · ' + f.ziMax.cand : '', ''],
+         ['fa-hourglass-half', 'Condus fără pauză', f.continuuMax ? f.continuuMax.text : '—', f.continuuMax ? f.continuuMax.nume + ' · ' + f.continuuMax.cand : '', ''],
+         ['fa-id-card', 'Din tahograf', (f.tahograf || 0) + ' din ' + tot, f.tahograf ? (f.tahograf < tot ? 'restul, estimat din GPS' : 'toate din tahograf') : 'toate estimate din GPS', '']].forEach(function (x) {
+          var t = el('div', 'sdp-tile' + (x[4] ? ' st-' + x[4] : '')), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
+          t.appendChild(et); t.appendChild(el('div', 'val', x[2])); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
+        });
+        pag.appendChild(tl);
+        // Ce recomandă RA Insight (pe reguli, din cifrele de mai sus — nu se numără din fond)
+        if ((j.recomandari || []).length) {
+          var rb = el('div', 'sdp-recbox');
+          rb.appendChild(el('div', 'et', 'Ce recomandă RA Insight'));
+          j.recomandari.forEach(function (x) {
+            var d = el('div', 'sdp-rec ' + (x.fel || 'info'));
+            d.innerHTML = '<i class="fas ' + (x.fel === 'atentie' ? 'fa-triangle-exclamation' : (x.fel === 'bun' ? 'fa-circle-check' : 'fa-lightbulb')) + '"></i>';
+            d.appendChild(el('span', null, x.text)); rb.appendChild(d);
+          });
+          var bt = el('div', 'sdp-btns');
+          var b2 = el('button', 'insp-btn'); b2.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre asta'; b2.onclick = function () { window.insightIntreabaDespre('Despre orele de condus, ' + (j.eticheta || '') + ': '); }; bt.appendChild(b2);
+          rb.appendChild(bt); pag.appendChild(rb);
+        }
+        // Pe șofer
+        var sP = sdSect(pag, 'Pe șofer', 'fa-user-clock');
+        var cap2 = [['Șofer · mașina'], ['Zile', 'n'], ['Condus', 'n']];
+        if (curenta) cap2.push(['Azi', 'n']);
+        var tP = sdTabel(cap2.concat([['Cea mai lungă zi', 'n'], ['Fără pauză, maxim', 'n'], ['Încălcări', 'n'], ['Sursa']]));
+        var cuZi = function (tr, val, zi) { var td = sdCel(tr, val, 'n nw'); if (zi) td.appendChild(el('div', 'mic', zi)); };
+        j.soferi.forEach(function (x) {
+          var tr = el('tr');
+          var cn = sdCel(tr, '', 'nw'); cn.appendChild(el('div', x.faraSofer ? 'mut' : 'b', x.faraSofer ? 'fără șofer trecut' : x.nume)); cn.appendChild(el('div', 'mic', (x.masini || []).join(', ') || '—'));
+          if (x.faraSofer) cn.title = 'Mașina a mers fără șofer trecut în aplicație';
+          sdCel(tr, String(x.zile), 'n'); sdCel(tr, x.text.condus, 'n b');
+          if (curenta) sdCel(tr, x.text.azi || '—', 'n');
+          cuZi(tr, x.text.ziMax, x.text.ziMaxZi); cuZi(tr, x.text.continuuMax, x.text.continuuMaxZi);
+          if (x.supus) sdCel(tr, String(x.incalcari), 'n' + (x.incalcari ? ' rosu' : ''));
+          else { var cv = sdCel(tr, 'nu se aplică', 'n nw mut'); cv.title = 'Reg. 561 nu se aplică la autoturisme și autoutilitare ușoare'; }
+          var cs = sdCel(tr, x.sursa === 'GPS' ? 'GPS' : x.text.sursa, 'nw' + (x.sursa === 'GPS' ? ' mut' : '')); if (x.sursa === 'GPS') cs.title = 'Estimat din GPS: mașina nu trimite datele tahografului';
+          tP.b.appendChild(tr);
+        });
+        sP.appendChild(tP.w);
+        // Încălcările, zi cu zi (cuvintele raportului)
+        var sI = sdSect(pag, 'Încălcările, zi cu zi' + ((j.incalcari || []).length ? ' · ' + j.incalcari.length : ''), 'fa-triangle-exclamation');
+        if ((j.incalcari || []).length) {
+          var tI = sdTabel([['Ziua'], ['Șofer'], ['Ce'], ['Mașina'], ['Sursa']]);
+          j.incalcari.forEach(function (x) {
+            var tr = el('tr');
+            sdCel(tr, x.ziText, 'nw'); sdCel(tr, x.nume, 'b'); sdCel(tr, x.ce, 'rosu'); sdCel(tr, (x.masini || []).join(', ') || '—', 'mic');
+            sdCel(tr, x.sursa === 'tahograf' ? 'tahograf' : 'estimat din GPS', x.sursa === 'tahograf' ? null : 'mut');
+            tI.b.appendChild(tr);
+          });
+          sI.appendChild(tI.w);
+        } else sI.appendChild(el('div', 'sdp-mic', f.supusi ? 'Nicio încălcare a Reg. 561 în ' + (j.eticheta || 'săptămâna asta') + '.' : 'Reg. 561 nu se aplică la mașinile care au mers (autoturisme și autoutilitare ușoare).'));
+        var det = el('details', 'sdp-sect sdp-cum'); var sum = el('summary'); sum.innerHTML = '<i class="fas fa-calculator"></i> '; sum.appendChild(document.createTextNode('Cum se socotește')); det.appendChild(sum);
+        (j.explicatii || []).forEach(function (x) { var p = el('p'); p.appendChild(el('b', null, x.titlu + '. ')); p.appendChild(document.createTextNode(x.text)); det.appendChild(p); });
+        if (S.hcCumDeschis) det.open = true;
+        det.addEventListener('toggle', function () { S.hcCumDeschis = det.open; });
+        pag.appendChild(det);
+        var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
+        nota.appendChild(document.createTextNode('Aceleași cifre ca în raportul „Condus & repaus (Reg. 561)”, pentru aceeași săptămână. Pentru un control oficial contează tahograful.'));
         pag.appendChild(nota);
         if (singur) pag.scrollTop = sus;
       }
