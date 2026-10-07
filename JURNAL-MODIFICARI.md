@@ -204,7 +204,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-07
 
-### AMÂNDOI · RA Insight, pasul 4: Mentenanță & acte, Combustibil, Ore de condus, Scrisoarea de luni
+### AMÂNDOI · RA Insight, pasul 4: Mentenanță & acte, Combustibil, Ore de condus, Scrisoarea de luni — `8446a2d`
 
 Patru ramuri noi în secțiunea RA Insight, pentru cine are loc RA Insight. Fiecare pagină e socotită de aplicație, din
 ACELEAȘI rapoarte ca ecranul Rapoarte (deci pagina, raportul și RA Insight spun aceleași cifre), și **nu se scade din
