@@ -1116,7 +1116,8 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
     const movingNow = (pLast.speed || 0) > IDLE_SPEED;
     let k = pts.length - 1;                                   // scan înapoi cât timp e oprită → primul punct al staționării curente
     while (k > 0 && (pts[k - 1].speed || 0) <= IDLE_SPEED) k--;
-    items.push({ imei, pLast, movingNow, stoppedAt: pts[k].timestamp });
+    // k = 0: oprirea ține de la primul punct citit — a început, poate, mai demult („de cel puțin", la AI Raport).
+    items.push({ imei, pLast, movingNow, stoppedAt: pts[k].timestamp, deLaInceput: k === 0 && (pts[0].speed || 0) <= IDLE_SPEED });
   }
   // 2. Adrese în cache (poziția curentă/parcarea fiecărui vehicul) → coloana „Locație" arată ADRESE, nu coordonate.
   if (geocode && geocode.warm && items.length) {
@@ -1130,9 +1131,13 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
     if (movingNow) return [ nm, addr(pLast), '—', 'în mișcare', ign, satTxt ];
     return [ nm, addr(pLast), fmtTs(stoppedAt), _ageStr(refMs - new Date(stoppedAt).getTime(), false), ign, satTxt ];
   });
+  // `valori` = aceleași lucruri ca cifre, pe mașină — pentru „AI Raport" („de cât timp stă", „de cel puțin", vechimea
+  // ultimei poziții). Ecranul și exporturile nu le folosesc.
+  const valori = items.map(({ imei, pLast, movingNow, stoppedAt, deLaInceput }) => ({ imei, vehicul: label(devMap, imei), inMiscare: !!movingNow,
+    opritLa: movingNow ? null : new Date(stoppedAt).toISOString(), ultima: new Date(pLast.timestamp).toISOString(), deCelPutin: !movingNow && !!deLaInceput }));
   return {
     columns: ['Vehicul', 'Locație (unde a oprit)', 'A oprit la', 'Staționează de', 'Contact', 'Sateliți'],
-    rows
+    rows, valori
     // fără sumar; antetul arată „Perioada: de la — până la" (intervalul contează acum, căutăm ultima oprire în el)
   };
 }
@@ -2788,4 +2793,5 @@ module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, an
   // Safe Drive (safe_drive.js) citește pozițiile și mașina cu ACELEAȘI funcții ca rapoartele: contactul, motorul, contorul
   // de combustibil, distanța, consumul și prețul — ca pagina și raportul EcoDrive / Ralanti să nu se contrazică.
   _ajutor: { ignOn, engineRunning, fuelCumul, haversineKm, idleRate, defConsumption, resolvePrice, fiecarePozitie,
-    consumptionMap: _consumptionMap } };   // ramura Combustibil: același motor ca rapoartele Consum / Costuri / Emisii
+    consumptionMap: _consumptionMap,     // ramura Combustibil: același motor ca rapoartele Consum / Costuri / Emisii
+    coloanaSofer: _injectDriverColumn } };   // proba AI Raport pune rândurile pe forma ADEVĂRATĂ (cu „Șofer" pe locul 2)

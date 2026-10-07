@@ -34,6 +34,7 @@ const EXEMPLE = {
   'consumul lui B 154 UIP luna trecută': 'exemplu de întrebare scrisă de om',
   'și august?': 'exemplu de continuare scrisă de om',
   'dar B 155 UIP?': 'exemplu de continuare scrisă de om',
+  'din raportul Staționări': 'exemplu de continuare scrisă de om (Alin, 07.10: „din raport staționări")',
   'mai are N zile': 'textul are cifra pusă de aplicație (\'mai are \' + zile)',
 };
 const citate = [];

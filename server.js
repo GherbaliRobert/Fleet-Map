@@ -13696,6 +13696,16 @@ function _aiRaportPreaDes(userId) {
 app.get('/api/reports/ai-raport/intrebari', requireAuth, requirePerm('viewReports'), (req, res) => {
   res.json({ intrebari: aiRaport.INTREBARI_GATA });
 });
+// Are omul RA Insight (modulul firmei + locul lui)? Doar ca AI Raport să știe dacă poate trimite „de ce"-urile acolo.
+async function _areRaInsight(req) {
+  if (req.isSuper || req.companyId == null) return true;
+  try {
+    const co = await db.getCompanyById(req.companyId);
+    if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false;
+    const u = await db.getUserById(req.auth && req.auth.userId);
+    return !!(u && u.ai_seat);
+  } catch (e) { return false; }
+}
 app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     if (_aiRaportPreaDes(req.auth && req.auth.userId)) return res.status(429).json({ error: 'Prea multe întrebări într-un minut. Mai așteaptă puțin.' });
@@ -13720,19 +13730,31 @@ app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), with
     if (typeof c0.grupa === 'string' && ctx.masini) ctx.grupa = c0.grupa.slice(0, 60);
     if (c0.perioada && !isNaN(Date.parse(c0.perioada.from)) && !isNaN(Date.parse(c0.perioada.to))) ctx.perioada = { from: c0.perioada.from, to: c0.perioada.to };
     const u = aiRaport.intelege(text, ctx, fisa, Date.now());
-    if (!u.ok) return res.json(Object.assign({ neinteles: true, motiv: u.motiv, context: ctx, gratuit: true }, aiRaport.neinteles(u.motiv, u.variante, fisa)));
+    if (!u.ok) {
+      // Ce nu se poate răspunde pe reguli: spus cinstit, cu butoane; mașina și subiectul rămân în discuție (u.context).
+      const etRaport = {}; Object.keys(reports.REPORTS).forEach(function (k) { etRaport[k] = reports.REPORTS[k].label; });
+      const ne = Object.assign({ neinteles: true, motiv: u.motiv, context: u.context || ctx }, aiRaport.neinteles(u, fisa, { areInsight: await _areRaInsight(req), etRaport: etRaport }));
+      // Un raport pe care AI Raport nu-l citește: butonul „Deschide raportul", cu mașina și perioada din întrebare.
+      if (u.motiv === 'alt_raport') {
+        if (!reports.REPORTS[u.raport] || !poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul ăsta — l-a tăiat firma din rolul tău.', context: ne.context });
+        ne.sursa = { type: u.raport, label: reports.REPORTS[u.raport].label, from: u.perioada.from, to: u.perioada.to, imeis: u.masini || null };
+      }
+      return res.json(ne);
+    }
     const def = reports.REPORTS[u.raport];
-    if (!def) return res.json({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx, gratuit: true });
-    if (!poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx, gratuit: true });
+    if (!def) return res.json({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx });
+    if (!poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx });
     // Perioada: cel mult MAX_ZILE (scadențele privesc înainte și nu încarcă istoricul).
     let from = u.perioada.from, to = u.perioada.to, taiat = false;
     if (u.subiect !== 'scadente' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
     const imeis = u.masini || accesibile;
-    if (!imeis.length) return res.json({ neinteles: true, motiv: 'fara_masini', text: 'Nu ai nicio mașină la care să ai acces, deci nu am din ce răspunde.', context: ctx, gratuit: true });
+    if (!imeis.length) return res.json({ neinteles: true, motiv: 'fara_masini', text: 'Nu ai nicio mașină la care să ai acces, deci nu am din ce răspunde.', context: ctx });
     const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
     const opts = _optiuniRaport({}, cs);
     const rep = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
-    const extra = { fisa: fisa, acum: Date.now(), pret: (effectiveFuelPrices(cs).motorina || 7.5) };
+    // `semnal` = aceleași cuvinte ca Inventarul („tăcut de 2 ore", „fără semnal de 3 zile"), ca „Unde e acum" să spună
+    // când locul e doar ultimul primit — fără a treia listă de praguri.
+    const extra = { fisa: fisa, acum: Date.now(), pret: (effectiveFuelPrices(cs).motorina || 7.5), semnal: _invSemnalText };
     // Sugestiile care cer încă un raport — doar pe o mașină sau câteva, ca să nu dublăm încărcarea pe toată flota.
     if ((u.subiect === 'km' || u.subiect === 'consum') && imeis.length <= 10) {
       const ant = aiRaport.perioadaAnterioara({ from: from, to: to });
@@ -13745,9 +13767,9 @@ app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), with
     if (taiat) r.sugestii.unshift({ fel: 'info', text: 'Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se scoate din „Generează rapoarte".' });
     auditReq(req, 'ai_raport', 'report', null, { subiect: u.subiect, masini: imeis.length });
     res.json({
-      inteles: aiRaport.inteles(u, fisa), raspuns: r, gratuit: true,
+      inteles: aiRaport.inteles(u, fisa), raspuns: r,
       sursa: { type: u.raport, label: def.label, from: from, to: to, imeis: u.masini || null },
-      context: { subiect: u.subiect, masini: u.masini || null, grupa: u.grupa || null, perioada: { from: from, to: to } }
+      context: aiRaport.contextul(u, from, to)
     });
   } catch (e) {
     console.warn('[AI Raport]', e.message);

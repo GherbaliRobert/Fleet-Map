@@ -1304,15 +1304,13 @@
     .rin-kpi { background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:9px; padding:8px 12px; min-width:100px; }
     .rin-kpi .v { font-weight:800; font-size:17px; color:var(--text-primary); }
     .rin-kpi .l { font-size:11px; color:var(--text-secondary); margin-top:2px; }
-    /* AI Raport (02.10): intro, eticheta „GRATUIT", sugestiile, rândul de butoane de sub răspuns */
+    /* AI Raport (02.10): intro, sugestiile, rândul de butoane de sub răspuns. Fără eticheta „GRATUIT" (Alin, 07.10). */
     .rin-intro { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:12px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg-dark); color:var(--text-secondary); font-size:12.5px; line-height:1.45; }
     .rin-intro .ic { width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); flex:0 0 auto; }
     .rin-intro .tx { flex:1; min-width:0; }
     .rin-nou { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
     .rin-nou i { color:var(--text-muted); }
     .rin-nou:hover { border-color:var(--accent); }
-    .rin-gratis { font-size:9.5px; font-weight:800; letter-spacing:.3px; padding:2px 6px; border-radius:6px; background:var(--bg-dark); color:var(--text-primary); border:1px solid var(--border); line-height:1.3; }
-    .rep-tab.active .rin-gratis { background:rgba(6,33,15,.12); color:#06210F; border-color:rgba(6,33,15,.28); }
     .rin-sug { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
     .rin-sug-i { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.45; color:var(--text-primary); background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--text-muted); border-radius:8px; padding:7px 10px; }
     .rin-sug-i i { margin-top:2px; font-size:12px; color:var(--text-muted); flex:0 0 auto; }
@@ -1321,7 +1319,6 @@
     body.dark .rin-sug-i.bun { border-left-color:var(--accent); } body.dark .rin-sug-i.bun i { color:var(--accent); }
     body.dark .rin-sug-i.atentie { border-left-color:var(--orange); } body.dark .rin-sug-i.atentie i { color:var(--orange); }
     .rin-acts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:10px; }
-    .rin-gratis-nota { font-size:11px; color:var(--text-secondary); }
     @media (max-width:600px) { .rin-intro { flex-wrap:wrap; } .rin-intro .tx { flex-basis:calc(100% - 40px); } }
     .rin-tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:9px; margin-top:8px; background:var(--bg-panel); }
     .rin-tbl { border-collapse:collapse; font-size:12px; white-space:nowrap; min-width:100%; }
@@ -3116,8 +3113,8 @@ const pozitii = await r.json();</code></pre>
       <div class="rep-tabs">
         <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repTabGenerate()"><i class="fas fa-circle-plus"></i> <span class="rt-long">Generează rapoarte</span><span class="rt-short">Generează</span></button>
         <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> <span class="rt-long">Istoric rapoarte</span><span class="rt-short">Istoric</span></button>
-        <!-- „AI Raport" (02.10): întrebări despre rapoarte, pe reguli, GRATUIT. RA Insight (cel care costă) are secțiunea lui în meniu. -->
-        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-comments"></i> <span class="rt-long">AI Raport</span><span class="rt-short">AI Raport</span> <span class="rin-gratis">GRATUIT</span></button>
+        <!-- „AI Raport" (02.10): întrebări despre rapoarte, pe reguli, fără model. RA Insight are secțiunea lui în meniu. -->
+        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-comments"></i> <span class="rt-long">AI Raport</span><span class="rt-short">AI Raport</span></button>
       </div>
       <!-- TAB: Generează rapoarte -->
       <div id="rep-tab-generate" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -3264,7 +3261,7 @@ const pozitii = await r.json();</code></pre>
       <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div class="rin-intro">
           <span class="ic"><i class="fas fa-comments"></i></span>
-          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației, și nu se scade din fondul RA Insight.</span>
+          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației.</span>
           <button type="button" class="rin-nou" onclick="rinReset()" title="Uită mașina și perioada discutate"><i class="fas fa-rotate-left"></i> Începe din nou</button>
         </div>
         <div id="rin-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
@@ -11054,7 +11051,7 @@ const pozitii = await r.json();</code></pre>
         var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre săptămâna asta';
         bQ.onclick = function () { window.insightIntreabaDespre('Despre săptămâna ' + (x.eticheta || '') + ': '); }; bt.appendChild(bQ); pag.appendChild(bt);
         var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
-        nota.appendChild(document.createTextNode('Cifrele sunt cele din ramuri, pe mașinile la care ai acces. Scrisoarea nu se scade din fondul de întrebări RA Insight. O păstrăm 12 luni.'));
+        nota.appendChild(document.createTextNode('Cifrele sunt cele din ramuri, pe mașinile la care ai acces. O păstrăm 12 luni.'));
         pag.appendChild(nota);
         incarcaNumere();   // s-a citit: numărul de lângă ramură scade
       }
@@ -11123,7 +11120,8 @@ const pozitii = await r.json();</code></pre>
           var b = document.createElement('button'); b.type = 'button'; b.className = 'btn-sm rin-chip';
           var ic = document.createElement('i'); ic.className = 'fas ' + (/^fa-[a-z0-9-]+$/.test(String(q.ic || '')) ? q.ic : 'fa-bolt');
           b.appendChild(ic); b.appendChild(document.createTextNode(' ' + String(q.text || '')));
-          b.onclick = function () { rinAsk(String(q.text || '')); };
+          // O întrebare gata făcută e despre flotă (n-are mașină în ea): pornește de la zero, nu pe mașina discutată.
+          b.onclick = function () { rinAsk(String(q.text || ''), true); };
           pbox.appendChild(b);
         });
       }).catch(function () {});
@@ -11142,13 +11140,17 @@ const pozitii = await r.json();</code></pre>
       if (j.neinteles) {
         bub.innerHTML = rinMd(String(j.text || ''));
         if (Array.isArray(j.alege) && j.alege.length) bub.appendChild(window._insightExtra({ alege: j.alege }, function (t) { rinAsk(t); }));
+        var w = el('div', 'rin-acts');
+        // Un raport pe care AI Raport nu-l citește (supraturații, PTO, senzori…): deschis direct, cu mașina și perioada.
+        if (j.sursa && j.sursa.type) w.appendChild(_rinButonRaport(j.sursa));
         if (j.spreInsight && _rinAreInsight()) {
-          var w = el('div', 'rin-acts'), bi = el('button', 'btn-sm rin-src'); bi.type = 'button';
+          var bi = el('button', 'btn-sm rin-src'); bi.type = 'button';
           bi.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ';
           bi.appendChild(document.createTextNode('Întreabă RA Insight'));
           bi.onclick = function () { window.insightAsk(intrebarea); };
-          w.appendChild(bi); bub.appendChild(w);
+          w.appendChild(bi);
         }
+        if (w.childNodes.length) bub.appendChild(w);
         return;
       }
       var x = j.raspuns || {};
@@ -11178,17 +11180,18 @@ const pozitii = await r.json();</code></pre>
       }
       bub.appendChild(window._insightExtra({ inteles: j.inteles }));
       var acts = el('div', 'rin-acts');
-      if (j.sursa && j.sursa.type) {
-        var s0 = j.sursa, bo = el('button', 'btn-sm rin-src'); bo.type = 'button';
-        bo.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
-        bo.appendChild(document.createTextNode('Deschide raportul „' + String(s0.label || s0.type) + '”'));
-        bo.onclick = function () { rinOpenReport(s0.type, (Array.isArray(s0.imeis) && s0.imeis.length === 1) ? s0.imeis[0] : '', s0.from, s0.to); };
-        acts.appendChild(bo);
-      }
-      acts.appendChild(el('span', 'rin-gratis-nota', 'Gratuit — nu se scade din fondul RA Insight'));
-      bub.appendChild(acts);
+      if (j.sursa && j.sursa.type) acts.appendChild(_rinButonRaport(j.sursa));
+      if (acts.childNodes.length) bub.appendChild(acts);
     }
-    async function rinAsk(preset) {
+    // „Deschide raportul „…”": același buton sub un răspuns și sub un raport pe care AI Raport nu-l citește.
+    function _rinButonRaport(s0) {
+      var bo = document.createElement('button'); bo.type = 'button'; bo.className = 'btn-sm rin-src';
+      bo.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
+      bo.appendChild(document.createTextNode('Deschide raportul „' + String(s0.label || s0.type) + '”'));
+      bo.onclick = function () { rinOpenReport(s0.type, (Array.isArray(s0.imeis) && s0.imeis.length === 1) ? s0.imeis[0] : '', s0.from, s0.to); };
+      return bo;
+    }
+    async function rinAsk(preset, deLaZero) {
       if (rinBusy) return;
       var inp = document.getElementById('rin-input');
       var msg = ((preset != null ? preset : (inp ? inp.value : '')) || '').trim();
@@ -11199,7 +11202,7 @@ const pozitii = await r.json();</code></pre>
       var btn = document.getElementById('rin-send'); if (btn) btn.disabled = true;
       var thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
       try {
-        var r = await fetch('/api/reports/ai-raport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ text: msg, context: _rinCtx || {} }) });
+        var r = await fetch('/api/reports/ai-raport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ text: msg, context: deLaZero ? {} : (_rinCtx || {}) }) });
         var j = {}; try { j = await r.json(); } catch (e) {}
         if (thinking) { thinking.remove(); thinking = null; }
         if (!r.ok) { rinAddMsg('ai', String(j.error || ('Nu am putut răspunde acum (eroare ' + r.status + ').'))); return; }

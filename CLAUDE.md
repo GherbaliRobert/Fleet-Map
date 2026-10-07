@@ -390,6 +390,46 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
   simulat; a ramurilor merge fără model (textul pe reguli).
 - Păzit de `verify_ramuri.js` (în `npm test`), `verify_insight.js`, `verify_safe_drive.js`, `verify_insight_ghid.js`.
 
+### Etapa A (07.10): cele 5 găsite pe drum + AI Raport înțelege (Alin: „rezolvă acum")
+Capitolul AI, pe etape (Alin, 07.10): **A** (asta) → **B** RA Insight ca un chat modern (machetă întâi) → **C** ramura
+„Potrivirea șoferilor pe mașini" (propunere + machetă) → **D** la final: „Rezumă cu RA Insight" (ce consumă) + ecranul de
+statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
+- **Preavizul și starea termenelor: `preaviz.js`** (curat) — `REVIZII_ZILE` 14, `REVIZII_KM` 500, `ACTE_ZILE` 30, `peFirme`,
+  `stareRevizie`, `stareAct`. Îl citesc listele (`maintenanceDueState` / `documentDueState`), anunțurile, agentul RA Care
+  (actele erau anunțate cu 14 zile, listele cu 30) și raportul „Scadențe" (avea 7 / 30 de zile, 500 / 2.000 km). NU scrie
+  a doua cifră de preaviz. `DOC_DAYS_LEAD` = `preaviz.ACTE_ZILE` (pagina publică o citește prin probă).
+- **Cine e sub Reg. 561: `tacho.supusReg561(tipSauCamion, areDateTahograf)`** — date de tahograf → da; altfel tipul din fișă
+  (`vehiculAreTahograf`: autotractor, camion, TIR, autobuz, autocar…). Folosită de RA Compliance, raportul „Condus &
+  repaus" și Tahograf. Raportul punea „Auto" sub regulament (expresia `/car|…/`) și scutea autocarele; agentul nu știa
+  „Autotractor" și număra dubele.
+- **rHos citește săptămâna întreagă**: orele de condus de dinainte de perioadă, de luni (`inainte`), intră în sumele pe
+  săptămână; plus limita de **90 h în două săptămâni la rând**. „Statistici consum" (`fuelStats`) numără km-ii cu garda
+  raportului Consum (5 minute).
+- **AI Raport — înțelegerea** (`ai_raport.js`): două treceri, `re` (cuvintele tari: „staționări", „unde e", „ce a făcut")
+  apoi `slab` (verbele: „a mers", „a făcut", „a stat"). Prezentul („staționează", „unde e", „de cât timp stă", `LOCATIE_RE`)
+  = ACUM → „Ultima locație", citită pe `ZILE_LOCATIE` (30) cu `perioada.acum` („Am înțeles" scrie „acum"); trecutul →
+  „Staționări". Subiecte noi: `rezumat` (Situație zilnică) și curse/drumuri. `ALTE_RAPOARTE` (supraturații, PTO, senzori,
+  CAN…) → `alt_raport` + butonul „Deschide raportul" (`_rinButonRaport`, același de sub răspunsuri).
+- **Mașina rămâne în discuție** (Alin: „din raport staționări" primea toată flota): se schimbă doar la altă mașină / grupă,
+  „toată flota", sau o întrebare la plural (`RANG`, `DESPRE_FLOTA`: „care mașină", „cine"). Și după o întrebare
+  NEînțeleasă: `intelege` întoarce `context` și la eșec (mașina; la îndoială și subiectul + perioada, ca butonul ales să
+  primească răspunsul întrebării). După răspuns, discuția = `contextul(u, from, to)` („acum" nu lasă perioadă). Întrebările
+  gata făcute de sus pornesc de la zero (`rinAsk(text, true)`), butoanele din răspuns nu.
+- **Doar mașina** („B 154 UIP") → `doar_masina`: „Ce vrei să afli despre …?" + `PE_MASINA` (numărul scris în fiecare
+  întrebare); neînțeles fără mașină → `PE_FLOTA`. Proba cere ca FIECARE buton să fie înțeles. `neinteles(u, fisa, extra)`.
+- **Coloanele rapoartelor se citesc DUPĂ NUME (`_col`)**: `runReport` pune „Șofer" pe locul 2 (`_injectDriverColumn`) la orice
+  raport care începe cu „Vehicul". Până pe 07.10 AI Raport citea după poziție: „Ce expiră" citea „Efectuat" în loc de
+  „Stare" („Nimic nu expiră"), „Ultima locație" scria șoferul în locul adresei, alertele/zonele/disponibilitatea/scăderile
+  numărau coloana greșită. Scăderile de combustibil vin din `valori` (raportul `fuel`); „Ultima locație" are `valori`
+  (`opritLa`, `ultima`, `deCelPutin` = oprirea ține de la primul punct citit → „de cel puțin"). NU scrie `row[N]` în
+  ai_raport.js (păzit). Proba face forma ADEVĂRATĂ: coloanele citite din reports.js + `reports._ajutor.coloanaSofer`.
+- **Vechimea locului** („aparatul e fără semnal de 3 zile…") = `semnal: _invSemnalText`, cuvintele Inventarului — NU praguri noi.
+- **Fără „gratuit" și fără „fond" în AI Raport** (Alin: „nu e ok să apară asta"): nici pe filă, nici sub răspunsuri, nici în
+  texte, nici `gratuit: true` în răspunsul serverului; nici fraza despre fond de sub Scrisoarea de luni. „De ce" → butonul
+  RA Insight doar cui îl are (`_areRaInsight(req)`), altfel butoane cu cifre.
+- Păzit de `verify_ai_raport.js` (în `npm test`; răspunsurile pe server comparate cu rapoartele „Ultima locație",
+  „Staționări", „Scadențe"), `verify_ramuri.js` (preaviz, Reg. 561, 90 h), `verify_insight_ghid.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

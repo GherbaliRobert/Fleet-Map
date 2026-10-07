@@ -193,8 +193,18 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 
 **Acum: capitolul Inteligență artificială** (Alin, 05.10: *„aici suntem în capitolul inteligență artificială… nu trecem la
 facturi până nu terminăm capitolul ăsta"*). Pașii: 1. RA Insight recunoaște numerele și ține minte ✅ (02.10) · 2. secțiunea
-din meniu + „AI Raport" gratuit ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ✅ (06.10) ·
-4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni ✅ (07.10) · 5. telefonul (pentru APK-ul lui Robert).
+din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ✅ (06.10) ·
+4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni ✅ (07.10).
+**De aici, pe etape (Alin, 07.10: „organizează etapizat tot ce ți-am dat… să nu uităm"):**
+
+| Etapa | Ce | Unde e |
+|---|---|---|
+| **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
+| **B** | RA Insight arată ca un chat modern, cu butoane de chat modern | ⬜ întâi macheta; o fac după „da"-ul vostru |
+| **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
+| **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight | ⬜ |
+| **E** | Telefonul: RA Insight (meniu, conversații, ramuri) + AI Raport, pentru APK-ul lui Robert | ⬜ |
+| — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
@@ -203,6 +213,57 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-07
+
+### AMÂNDOI · Capitolul AI, etapa A: AI Raport înțelege întrebările + cele 5 găsite pe drum — `COMMIT_A`
+
+Alin, 07.10, cu o captură: la *„de cât timp staționează B 154 UIP?"* AI Raport a răspuns „Nu am înțeles despre ce raport
+e vorba", iar la *„din raport staționări"* a dat toată flota, nu mașina. Și: *„Gratuit — nu se scade din fondul RA
+Insight… nu e ok să apară asta."* Plus *„cele 5 găsite pe drum, rezolvă acum."*
+
+**1. AI Raport (Rapoarte → fila „AI Raport") înțelege ce-l întrebi**
+- **„Acum" și „atunci" sunt două lucruri.** „De cât timp staționează B 154 UIP?", „unde e…", „e oprită?", „de când stă…"
+  → răspunde din „Ultima locație": *„B 154 UIP · Dacia Logan 3 stă de 48 min la Str. Lungă 5 (a oprit azi la 13:42)."*
+  Dacă oprirea ține de la începutul a ce s-a citit, spune „de **cel puțin** 7 zile"; dacă aparatul nu mai transmite, spune
+  că locul e doar ultimul primit; dacă stă cu contactul pornit, spune că poate merge în ralanti.
+  „A staționat", „staționările de ieri", „unde a stat ieri" → raportul „Staționări": câte opriri, cât în total, cea mai
+  lungă cu locul, și fiecare oprire într-un tabel.
+- **Întrebări noi:** „ce a făcut B 154 UIP ieri?", „la ce oră a plecat azi?" → „Situație zilnică" (*„a lucrat între 07:00
+  – 17:40, 182 km în 6 curse; 4h 10m în mers, 25m în ralanti, 5 opriri"*); „ce curse a făcut ieri" → „Foaie de parcurs"
+  (înainte primea km-ii); „când a transmis ultima dată" → „Disponibilitate".
+- **Mașina rămâne în discuție.** După o întrebare despre B 154 UIP, „din raport staționări" e despre B 154 UIP. Se schimbă
+  doar când numești altă mașină, o grupă, „toată flota", sau întrebi „care mașină… / cine…". Butoanele gata făcute de sus
+  („Km săptămâna asta"…) sunt despre flotă și pornesc de la zero.
+- **Doar numărul** („B 154 UIP") → *„Ce vrei să afli despre B 154 UIP?"* cu butoane: Unde e acum · Ce a făcut azi ·
+  Staționări azi · Km săptămâna asta · Consum luna asta · Viteză săptămâna asta · Ce expiră. O întrebare neînțeleasă primește
+  și ea butoane, nu o listă de cuvinte.
+- „Loganul" (două Logan) → butoanele cu cele două; mașina aleasă primește acum răspunsul întrebării (înainte: „nu am înțeles").
+- Un raport pe care AI Raport nu-l citește (supraturații, PTO, senzori, CAN…) → butonul „Deschide raportul", cu mașina și
+  perioada din întrebare.
+- **Scos „GRATUIT" și „nu se scade din fondul RA Insight"**: de pe filă, din textul de sus, de sub fiecare răspuns, din
+  ghidul aplicației, și fraza despre fond de sub Scrisoarea de luni. „De ce / compară" trimite la RA Insight doar pe cine îl
+  are; ceilalți primesc butoane cu cifre (nu le promitem ce nu au).
+- **Găsit și reparat în același loc** (e chiar răspunsul la întrebarea din captură): AI Raport citea coloanele rapoartelor
+  după poziție, dar rapoartele primesc automat coloana „Șofer" pe locul 2. Așa că, de pe 02.10: „Ce expiră" spunea „Nimic nu
+  expiră" (citea coloana „Efectuat" în loc de „Stare"), „Ultima locație" scria numele șoferului în locul adresei, iar alertele,
+  zonele, disponibilitatea și scăderile de combustibil numărau coloana greșită. Acum citește după numele coloanei.
+
+**2. Cele 5 găsite pe drum la pasul 4**
+1. Agentul RA Care anunța actele cu **14** zile înainte; listele, telefonul și ramura Mentenanță — cu **30**. Acum toate cu 30
+   (sau cu preavizul pus de firmă).
+2. Raportul „Scadențe" avea pragurile lui (7 / 30 de zile, 500 / 2.000 km) → acum aceleași ca listele.
+3. Cine intră sub Reg. 561 (camioane, autobuze): raportul „Condus & repaus" punea autoturismele de tip „Auto" sub regulament
+   și scutea autocarele; agentul RA Compliance nu știa „Autotractor" și număra dubele. Acum o singură regulă: tipul din fișă
+   sau datele de tahograf.
+4. „Statistici consum" număra km-ii altfel decât raportul Consum → aceeași regulă.
+5. „Condus & repaus": o perioadă începută miercuri pierdea orele de luni–marți din săptămână → acum săptămâna se socotește
+   întreagă, de luni; și se verifică limita de **90 de ore în două săptămâni la rând**.
+
+- **Ce vede fondatorul:** aceleași răspunsuri ca un client (pe toate firmele); RA Care anunță actele cu 30 de zile.
+- **Ce vede clientul:** AI Raport nou (de mai sus); anunțurile RA Care despre acte cu 30 de zile înainte; „Scadențe" cu
+  preavizul firmei; „Condus & repaus" corect pe săptămâni.
+- Probat: AI Raport — 140 de verificări (răspunsurile comparate pe server pornit cu rapoartele „Ultima locație",
+  „Staționări", „Scadențe"; zero cereri către model), ramurile 134, RA Insight 132, rapoartele pe pagini 33, ghidul 22,
+  site-ul 305, agenții 7, tahograful 61; ecranul pe ambele teme și pe telefon (contrast minim 6,9), fără erori.
 
 ### AMÂNDOI · RA Insight, pasul 4: Mentenanță & acte, Combustibil, Ore de condus, Scrisoarea de luni — `8446a2d`
 

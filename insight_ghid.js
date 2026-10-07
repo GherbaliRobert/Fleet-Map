@@ -39,18 +39,18 @@ const SECTIUNI = [
       'Apasă „Generează", apoi „Vezi raportul".',
       'Sub tabel, la „Descarcă:", apasă „Excel" sau „PDF" (fișierul are numele și logo-ul RA Tracks); „Rezumă cu RA Insight" scrie pe scurt ce arată raportul.'
     ],
-    detalii: 'Fila „Istoric rapoarte" păstrează rapoartele generate 7 zile, apoi se șterg singure. Fila „AI Raport" răspunde gratuit la întrebări despre rapoarte.',
+    detalii: 'Fila „Istoric rapoarte" păstrează rapoartele generate 7 zile, apoi se șterg singure. Fila „AI Raport" răspunde pe loc la întrebări despre rapoarte.',
     cuvinte: ['raport', 'rapoarte', 'genereaza', 'descarca', 'excel', 'pdf', 'istoric rapoarte', 'categorie']
   },
   {
-    cheie: 'ai_raport', titlu: 'AI Raport: întrebi despre rapoarte, gratuit', unde: 'Meniu → Rapoarte → fila „AI Raport"',
+    cheie: 'ai_raport', titlu: 'AI Raport: întrebi despre rapoarte', unde: 'Meniu → Rapoarte → fila „AI Raport"',
     pasi: [
       'Apasă o întrebare gata făcută (de exemplu „Km săptămâna asta"), sau scrie una simplu: ce, care mașină, ce perioadă — „consumul lui B 154 UIP luna trecută".',
       'Citește răspunsul: cifrele raportului, puse în propoziții, cu sugestii.',
-      'Continuă scurt: „și august?", „dar B 155 UIP?" — ține minte mașina și perioada.',
+      'Continuă scurt: „și august?", „dar B 155 UIP?", „din raportul Staționări" — ține minte mașina și perioada.',
       'Pentru „de ce", comparații sau sfaturi apasă „Întreabă RA Insight".'
     ],
-    detalii: 'AI Raport nu se scade din fondul RA Insight și îl are oricine vede Rapoartele. Răspunde din aceleași rapoarte ca ecranul.',
+    detalii: 'AI Raport îl are oricine vede Rapoartele. Răspunde din aceleași rapoarte ca ecranul: km, consum, costuri, staționări, unde e o mașină acum și de cât timp stă, ce a făcut într-o zi, curse, viteză, ralanti, ce expiră.',
     cuvinte: ['ai raport', 'intrebare despre raport', 'gratuit', 'rapid', 'fila']
   },
   {
