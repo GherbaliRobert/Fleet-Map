@@ -234,7 +234,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `COMMIT_BPLUS`
+### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `5d96c98`
 
 Alin, 08.10: *„Verificarea cifrelor, perioada exactă (1–7 înseamnă 1–7) și cifrele greu de crezut … — da"*. Pornit de la
 captura lui: a cerut consumul pe 1–7 octombrie, RA Insight a citit 1–8 octombrie (luna, până azi), dar în titlu a scris
