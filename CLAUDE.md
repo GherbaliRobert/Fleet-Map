@@ -2020,6 +2020,13 @@ Nimic nu crapă vizibil: pagina merge mai departe. **Regula:** un atribut CHEAM�
 (`raxDevCauta(this.value)`, `raxGiNota(this.value)`), nu scrie într-o variabilă. Păzit de `verify_aparate_noi.js`, care
 caută forma în tot panoul.
 
+## Harta: „când a transmis" — o singură regulă (Alin, 08.10: „rezolvă acum")
+- `candATransmis(ts)` / `ziuaTransmisiei(ts)` (lângă `timeAgoPhrase`): fără oră → „fără transmisie" / „—". Lista din
+  stânga a hărții, fișa mașinii (starea + „Ultima interogare") și fereastra grupei trec prin ele. O mașină fără nicio
+  poziție (aparatul pus, montajul încă nefăcut) scria „acum 20734 zile" și „01.01.1970": `new Date(null)` e 1970.
+- NU scrie `timeAgoPhrase(new Date(x))` fără `x ? ` înainte, pe același rând (lista din Management are „niciodată").
+  Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

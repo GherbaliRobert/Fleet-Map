@@ -214,6 +214,23 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
+### AMÂNDOI · Harta: mașina care n-a transmis niciodată scrie „fără transmisie", nu „acum 20734 zile" — `COMMIT_H`
+
+Găsit pe drum la etapa B, în capturi. Alin, 08.10: *„rezolvă acum"*.
+
+- **Ce am schimbat:** o mașină fără nicio poziție (aparatul pus, montajul încă nefăcut) apărea în lista din stânga a
+  hărții cu „⚠️ acum 20734 zile" — socotit de la 1 ianuarie 1970 —, iar în fișa ei cu „⚠️ Oprit (fără semnal) · ultima
+  actualizare · acum 20734 zile" și ziua „01.01.1970". Acum: în listă „⚠️ fără transmisie"; în fișă „⚠️ Fără transmisie ·
+  n-a trimis încă nicio poziție", iar la „Ultima interogare" o liniuță. O singură regulă în pagină, folosită de listă, de
+  fișă și de fereastra grupei de pe hartă (care scria deja „fără transmisie").
+- **Ce vede fondatorul:** la fel ca clientul, pe hartă.
+- **Ce vede clientul:** „fără transmisie" la mașinile al căror aparat n-a trimis încă nimic.
+- Probat: `verify_harta_transmisie.js` (17 verificări, în `npm test`; pe codul vechi pică) și aplicația pornită, pe
+  calculator și pe ecran de telefon.
+- **Găsite pe drum aici, întrebate pe 08.10:** (1) pe calculator, clicul pe o astfel de mașină nu deschide fișa (harta
+  încearcă să zboare la o poziție care nu există); (2) „acum 1 ore", „acum 1 zile", „acum 25 zile" în loc de „acum o oră",
+  „acum o zi", „acum 25 de zile".
+
 ### AMÂNDOI · Capitolul AI, etapa B: RA Insight ca un chat modern (și AI Raport, și bula din colț) — `75872f2`
 
 Alin, 08.10, la macheta din 07.10: *„da, sunt de acord cu tot"* (macheta, butoanele Mașina și Perioada, întrebările de

@@ -14696,7 +14696,7 @@ const pozitii = await r.json();</code></pre>
                 '<span class="device-card-speed ' + (isMoving && _freshLive ? 'moving' : 'stopped') + '">' + (d.speed || 0) + ' km/h</span>' +
               '</div>' +
               '<div class="device-card-meta">' +
-                '<span><i class="far fa-clock"></i> ' + (d.timestamp ? timeAgoPhrase(new Date(d.timestamp)) : 'fără transmisie') + '</span>' +
+                '<span><i class="far fa-clock"></i> ' + candATransmis(d.timestamp) + '</span>' +
               '</div>' +
             '</div>';
         }).join('');
@@ -14921,7 +14921,7 @@ const pozitii = await r.json();</code></pre>
         const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
         const plate = d.plate || '';
-        const timeAgo = timeAgoPhrase(new Date(d.timestamp));
+        const timeAgo = candATransmis(d.timestamp);
         const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
@@ -15400,9 +15400,10 @@ const pozitii = await r.json();</code></pre>
       const _lastMs = data.timestamp ? (Date.now() - new Date(data.timestamp).getTime()) : Infinity;
       const _freshLive = _lastMs < 3 * 60 * 1000;
       if (!isOnline) {
-        statusClass = 'gone';                          // gri + ⚠ (>1h fără date)
-        statusText = '⚠️ Oprit (fără semnal)';
-        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
+        statusClass = 'gone';                          // gri + ⚠ (>1h fără date, sau niciuna)
+        // Fără nicio poziție nu știm că mașina e „oprită": aparatul n-a transmis deloc.
+        statusText = data.timestamp ? '⚠️ Oprit (fără semnal)' : '⚠️ Fără transmisie';
+        statusDetail = data.timestamp ? 'ultima actualizare · ' + candATransmis(data.timestamp) : 'n-a trimis încă nicio poziție';
       } else if (isMoving && _freshLive) {
         statusClass = 'moving';                        // verde
         statusText = 'În mișcare';
@@ -15410,15 +15411,15 @@ const pozitii = await r.json();</code></pre>
       } else if (isMoving) {
         statusClass = 'idle';                          // galben — se mișca, dar nu mai transmite de câteva minute
         statusText = '⚠️ Fără semnal recent';
-        statusDetail = 'ultima viteză ' + Math.round(data.speed || 0) + ' km/h · ' + timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima viteză ' + Math.round(data.speed || 0) + ' km/h · ' + candATransmis(data.timestamp);
       } else if (hasIgnition) {
         statusClass = 'idle';                          // galben
         statusText = 'Staționat (contact pornit)';
-        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima actualizare · ' + candATransmis(data.timestamp);
       } else {
         statusClass = 'off';                           // roșu (parcat, contact decuplat)
         statusText = 'Oprit';
-        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima actualizare · ' + candATransmis(data.timestamp);
       }
 
       const grid = document.getElementById('detail-info-grid');
@@ -15483,8 +15484,8 @@ const pozitii = await r.json();</code></pre>
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + '</div>' +
-            '<div class="info-item-label">Ultima interogare · ' + timeAgoPhrase(new Date(data.timestamp)) + '</div>' +
+            '<div class="info-item-value" style="font-size:12px;">' + ziuaTransmisiei(data.timestamp) + '</div>' +
+            '<div class="info-item-label">Ultima interogare · ' + candATransmis(data.timestamp) + '</div>' +
           '</div>' +
         '</div>' +
         (_isSuper ?
@@ -17243,6 +17244,11 @@ const pozitii = await r.json();</code></pre>
       return Math.floor(seconds / 86400) + ' zile';
     }
     function timeAgoPhrase(date) { var t = getTimeAgo(date); return t === 'acum' ? 'chiar acum' : 'acum ' + t; }
+    // Când a transmis mașina ultima dată — O SINGURĂ regulă pentru lista hărții, fișa mașinii și fereastra grupei.
+    // O mașină care n-a transmis niciodată (aparatul pus, montajul încă nefăcut) n-are oră: new Date(null) e
+    // 1 ianuarie 1970, iar lista scria „acum 20734 zile" și fișa „01.01.1970" (Alin, 08.10: „rezolvă acum").
+    function candATransmis(ts) { return ts ? timeAgoPhrase(new Date(ts)) : 'fără transmisie'; }
+    function ziuaTransmisiei(ts) { return ts ? new Date(ts).toLocaleString('ro-RO') : '—'; }
 
     function formatDateLocal(date) {
       return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
