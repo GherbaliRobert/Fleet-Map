@@ -241,7 +241,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Proba modelelor (doar pentru noi) + reguli de scris mai stricte pentru RA Insight — `COMMIT_PM`
+### AMÂNDOI · Proba modelelor (doar pentru noi) + reguli de scris mai stricte pentru RA Insight — `fc79710`
 
 Alin, 08.10: *„pai ce-mi recomanzi după Haiku? că e slab tare… nu poți să scrii așa greșit"* (la „Cât de grabă e
 afacerea lui?" din Scrisoarea de luni).
