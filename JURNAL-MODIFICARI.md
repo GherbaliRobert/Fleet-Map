@@ -150,6 +150,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   viraj), în lei: autoturism 0,20 / 0,15 / 0,10; dubă 0,40 / 0,30 / 0,20; camion 1,50 / 1,00 / 0,50. Sunt estimarea mea
   (combustibilul aruncat + tocirea frânelor și a anvelopelor). Le confirmi sau îmi dai cifrele tale? Fiecare firmă și le
   poate schimba oricum, din Safe Drive → „Cum se socotește".
+- [ ] **Robert + voi: cât ne costă inteligența artificială, la Anthropic. Adăugat pe 08.10.** În Business → Control costuri,
+  cardul Anthropic arată „Folosit luna: $…" și „sold rămas: $…" (din factura reală a Anthropic: întrebările clienților,
+  ale noastre, Scrisoarea de luni, citirea actelor). Dacă acolo scrie „necesită cheie Admin", Robert pune pe server cheia de
+  administrare Anthropic (o cheie „Admin", alta decât cea pe care o folosește RA Insight). Apoi, în fereastra cardului (📊),
+  treceți creditele cumpărate și ziua în care le-ați cumpărat: soldul scade singur.
 
 ---
 
