@@ -175,6 +175,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   mai scump pe aceeași cantitate de text. Dacă alegeți altul decât Haiku 4.5, refacem socoteala prețurilor pe cont
   (14 / 17 / 19 / 25 / 35 de lei) înainte să-l pornim la clienți. **Rulați-o doar pe firma noastră**, nu pe datele unui
   client fără acordul lui.
+- [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) Planul se vede în Railway
+  → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
+  de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
+  „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
+  mașini reale ar umple discul în 2–3 săptămâni.
 
 ---
 
