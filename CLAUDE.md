@@ -13,6 +13,9 @@ cu pas."*
 - **Structurat:** titluri scurte, pași numerotați, tabele pentru comparații. Un subiect pe rând — nu
   amesteca trei lucruri într-un răspuns.
 - **Complet din prima**, ca să nu trebuiască să întrebe iar: ce se întâmplă, ce face el, unde apasă.
+- **Raportul de la finalul unei etape: SCURT** (Alin, 08.10, după un raport lung: *„ți-am zis să-mi explici când e
+  gata etapa B, ce ai făcut scurt"*). 5–7 rânduri: ce s-a schimbat și cum vede el asta pe ecran. Fără „cum am verificat",
+  fără cifrele probelor, fără ce n-am făcut — stau în jurnal și le spun doar dacă le cere. Întrebările rămase, la final.
 - **Pe limba lui:** fără jargon, fără nume de fișiere sau de funcții în explicații (ele stau în jurnal).
   Exemple cu cifre, în lei.
 - **Când e de hotărât ceva:** opțiunile numerotate, cu recomandarea mea spusă direct, iar întrebările
