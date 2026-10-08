@@ -214,7 +214,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Capitolul AI, etapa B: RA Insight ca un chat modern (și AI Raport, și bula din colț) — `COMMIT_B`
+### AMÂNDOI · Capitolul AI, etapa B: RA Insight ca un chat modern (și AI Raport, și bula din colț) — `75872f2`
 
 Alin, 08.10, la macheta din 07.10: *„da, sunt de acord cu tot"* (macheta, butoanele Mașina și Perioada, întrebările de
 continuare, același aspect la AI Raport, scoasă nota „nu s-a numărat din fond").
