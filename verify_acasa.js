@@ -16,7 +16,8 @@
 //   • perna de sus/dreapta scoasă (cartonașul se ridică sub mouse, iar zona taie ce iese din ea);
 //   • un cartonaș rămas fără „Vezi detalii", sau care duce în altă secțiune decât a lui;
 //   • reîntoarcerea mecanismului de „deschide sub cartonașe";
-//   • listele de secțiuni scrise de mână — cele trei care au dus la bug.
+//   • listele de secțiuni scrise de mână — cele trei care au dus la bug;
+//   • două grupe deschise deodată în meniul din stânga, sau deschiderea fără animație (secțiunea 9).
 const fs = require('fs');
 const P = (f) => require('path').join(__dirname, f);
 const css = fs.readFileSync(P('public/css/app.css'), 'utf8');
@@ -186,6 +187,66 @@ const orfane = randuri.filter(b => !/navGo\(this/.test(b) && !/data-view="/.test
   .map(b => (b.match(/<span>([^<]*)<\/span>/) || [])[1] || '?');
 T('niciun rând din meniu nu rămâne pe dinafară', orfane.length === 0, orfane.join(', '));
 T('„Setări" e și el recunoscut (nu trecea prin navGo)', /id="nav-setari"[^>]*data-view="settings"/.test(html));
+
+console.log('\n9. O singură grupă deschisă în meniu, cu animație (Robert, 08.10)');
+// „Când deschidem un meniu, vreau ca celălalt să se închidă, cu animație." Rulăm chiar funcțiile din
+// pagină pe un DOM de carton: grupe cu clasa `open`, corpuri cu înălțime, ceasuri prinse de mână.
+(function () {
+  const i0 = html.indexOf('function _navAnimGrupa(');
+  const i1 = html.indexOf('// Navighează (fn)', i0);
+  T('blocul grupelor se găsește în pagină', i0 > 0 && i1 > i0);
+  if (!(i0 > 0 && i1 > i0)) return;
+  const bloc = html.slice(i0, i1);
+  function clase(init) {
+    const s = new Set(init || []);
+    return { contains: (c) => s.has(c), add: (c) => s.add(c), remove: (c) => s.delete(c),
+      toggle: (c, f) => { const v = f === undefined ? !s.has(c) : !!f; if (v) s.add(c); else s.delete(c); return v; } };
+  }
+  function lume(o) {
+    o = o || {};
+    const ceasuri = [];
+    const grupe = ['a', 'b', 'c'].map(function (n, k) {
+      const plin = 100 + 40 * k;
+      const g = { nume: n, classList: clase(n === 'b' ? ['open'] : []), offsetParent: o.ascunse ? null : {} };
+      const corp = { style: { height: '' }, scrollHeight: plin, get offsetHeight() { return 0; },
+        getBoundingClientRect: function () { return { height: corp.style.height ? parseFloat(corp.style.height) : (g.classList.contains('open') ? plin : 0) }; } };
+      g.corp = corp;
+      g.querySelector = function (sel) { return sel === '.nav-group-body' ? corp : null; };
+      g.head = { closest: function () { return g; } };
+      return g;
+    });
+    const doc = { querySelectorAll: function (sel) { return sel === '#navrail .nav-group.open' ? grupe.filter(function (g) { return g.classList.contains('open'); }) : []; } };
+    const win = { matchMedia: function () { return { matches: !!o.miscareRedusa }; } };
+    const f = new Function('document', 'window', 'setTimeout', 'clearTimeout',
+      bloc + '\nreturn { toggleNavGroup: toggleNavGroup, _navDeschideGrupa: _navDeschideGrupa };');
+    const api = f(doc, win, function (fn) { ceasuri.push(fn); return ceasuri.length; }, function () {});
+    return { grupe: grupe, api: api, ceasuri: ceasuri, deschise: function () { return grupe.filter(function (g) { return g.classList.contains('open'); }).map(function (g) { return g.nume; }).join(','); } };
+  }
+  const L = lume();
+  L.api.toggleNavGroup(L.grupe[0].head); // deschid „a" cât „b" e deschisă
+  T('deschizi o grupă → cealaltă se închide (rămâne una singură)', L.deschise() === 'a', L.deschise());
+  T('cea care se închide pleacă din înălțimea ei și merge spre 0 (animație, nu salt)', L.grupe[1].corp.style.height === '0px', L.grupe[1].corp.style.height);
+  T('cea care se deschide merge până la cât îi trebuie', L.grupe[0].corp.style.height === '100px', L.grupe[0].corp.style.height);
+  L.ceasuri.forEach(function (fn) { fn(); });
+  T('la final înălțimile scrise se scot (deschis = cât cuprinsul, închis = 0, din CSS)', !L.grupe[0].corp.style.height && !L.grupe[1].corp.style.height);
+  L.api.toggleNavGroup(L.grupe[0].head);
+  T('clic pe titlul grupei deschise o închide', L.deschise() === '', L.deschise());
+  L.api._navDeschideGrupa(L.grupe[2]); L.api._navDeschideGrupa(L.grupe[1]);
+  T('și pe calea „ai ajuns în pagină altfel" rămâne una singură', L.deschise() === 'b', L.deschise());
+  const R = lume({ miscareRedusa: true });
+  R.api.toggleNavGroup(R.grupe[0].head);
+  T('„mișcare redusă" → tot una singură, dar fără animație', R.deschise() === 'a' && !R.grupe[0].corp.style.height && !R.grupe[1].corp.style.height);
+  const A = lume({ ascunse: true });
+  A.api.toggleNavGroup(A.grupe[2].head);
+  T('grupele care nu sunt pe ecran se schimbă fără animație', A.deschise() === 'c' && !A.grupe[2].corp.style.height);
+})();
+T('rândul aprins își deschide grupa tot prin aceeași funcție (nu cu clasa, direct)',
+  /var g = el\.closest\('\.nav-group'\); if \(g\) _navDeschideGrupa\(g\);/.test(html) &&
+  !/\.closest\('\.nav-group'\);?\s*if \(g\) g\.classList\.(add|toggle)\('open'\)/.test(html));
+T('închis = înălțime 0 și ascuns de Tab; deschis = cât cuprinsul',
+  /\.nav-group-body \{[^}]*overflow: hidden;[^}]*height: 0;[^}]*visibility: hidden;[^}]*transition: height/.test(html) &&
+  /\.nav-group\.open > \.nav-group-body \{[^}]*height: auto;[^}]*visibility: visible;/.test(html));
+T('„mișcare redusă" oprește animația și din CSS', /@media \(prefers-reduced-motion: reduce\) \{ \.nav-group-body/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

@@ -242,6 +242,23 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
+### AMÂNDOI · Meniul din stânga: o singură grupă deschisă deodată, cu animație — `HASH`
+
+Robert (08.10): *„când deschidem un meniu, vreau ca celălalt să se închidă, cu animație"*.
+
+1. **Deschizi o grupă (de pildă „Analize statistice") → cea deschisă („Management") se strânge singură.** Rămâne
+   deschisă una singură. Se strâng și se deschid lin (un sfert de secundă), nu dintr-odată.
+2. **La fel când ajungi într-o pagină pe altă cale** (cartonașele de pe „Acasă", banda de aparate neasignate):
+   se deschide grupa paginii și se închide cea veche.
+3. Clic pe titlul grupei deschise o închide, ca înainte. Cine are „mișcare redusă" în calculator le vede fără animație.
+
+- **Ce am schimbat:** `public/index.html` (`_navAnimGrupa`, `_navDeschideGrupa`, `toggleNavGroup`, `_navAprinde` +
+  stilul `.nav-group-body`). Proba: `verify_acasa.js`, secțiunea 9 (rulează funcțiile pe grupe de carton; 63 de verificări).
+  Verificat și în browser, pe ambele verticale.
+- **Ce vede fondatorul:** în meniul lui (Gestiune, AI & Module, Business, Sistem), o singură grupă deschisă.
+- **Ce vede clientul:** la fel, la „Analize statistice" și „Management".
+- **Telefonul:** meniul aplicației nu are grupe care se strâng (are doar titluri de secțiune), deci nu e nimic de schimbat acolo.
+
 ### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `5d96c98`
 
 Alin, 08.10: *„Verificarea cifrelor, perioada exactă (1–7 înseamnă 1–7) și cifrele greu de crezut … — da"*. Pornit de la
