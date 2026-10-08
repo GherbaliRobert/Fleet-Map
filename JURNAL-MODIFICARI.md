@@ -214,7 +214,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Harta: mașina care n-a transmis niciodată scrie „fără transmisie", nu „acum 20734 zile" — `COMMIT_H`
+### AMÂNDOI · Harta: mașina care n-a transmis niciodată scrie „fără transmisie", nu „acum 20734 zile" — `ca90329`
 
 Găsit pe drum la etapa B, în capturi. Alin, 08.10: *„rezolvă acum"*.
 
