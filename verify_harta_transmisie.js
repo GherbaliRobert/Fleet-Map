@@ -37,6 +37,13 @@ T('acum 3 zile → „acum 3 zile"', R.candATransmis(new Date(acum - 3 * 1440 * 
 T('o oră știută → ziua scrisă românește', R.ziuaTransmisiei('2026-10-08T05:47:00Z') === new Date('2026-10-08T05:47:00Z').toLocaleString('ro-RO'));
 const nicio = [null, undefined, ''].map((v) => R.candATransmis(v) + ' ' + R.ziuaTransmisiei(v)).join(' | ');
 T('nicăieri 1970 sau 20734', !/1970|20734/.test(nicio), nicio);
+// Româna: „acum o oră", nu „acum 1 ore"; de la 20 în sus cu „de" (Alin, 08.10: „rezolvă acum").
+const ORA = 60 * MIN, ZI = 24 * ORA;
+for (const [ms, asteptat] of [[ORA, 'acum o oră'], [2 * ORA, 'acum 2 ore'], [19 * ORA, 'acum 19 ore'], [21 * ORA, 'acum 21 de ore'],
+  [ZI, 'acum o zi'], [3 * ZI, 'acum 3 zile'], [19 * ZI, 'acum 19 zile'], [25 * ZI, 'acum 25 de zile'], [101 * ZI, 'acum 101 zile'], [120 * ZI, 'acum 120 de zile']]) {
+  const t = R.candATransmis(new Date(acum - ms - 5000).toISOString());
+  T('„' + asteptat + '"', t === asteptat, t);
+}
 
 // ─── 2. Toate locurile trec prin regulă ─────────────────────────────────────────────────────────────
 console.log('\n2. Lista hărții, fereastra grupei și fișa mașinii folosesc aceeași regulă');
@@ -61,6 +68,18 @@ html.split('\n').forEach((l, i) => {
 T('orice „acum …" are întâi verificarea că există o oră', rele3.length === 0, rele3.join(' | '));
 const directe = html.match(/new Date\((?:d|data|device)\.timestamp\)\.toLocaleString\(/g) || [];
 T('nicio zi a transmisiei scrisă direct din new Date(...timestamp)', directe.length === 0, directe.join(' | '));
+
+// ─── 4. Fișa unei mașini fără nicio poziție se deschide ────────────────────────────────────────────
+console.log('\n4. Fișa unei mașini fără nicio poziție se deschide (și pe calculator)');
+// Pe calculator, clicul chema harta să zboare la o poziție goală: eroare, iar fișa nu se mai deschidea (găsit pe 08.10).
+T('harta zboară doar la o poziție care există',
+  /if \(data && data\.latitude != null && data\.longitude != null && window\.innerWidth > 768\) \{\s*map\.flyTo\(\[data\.latitude, data\.longitude\], 16\);/.test(html));
+T('pe telefon, mașina se pune deasupra fișei doar dacă are poziție',
+  /if \(_d && _d\.latitude != null && _d\.longitude != null\) focusVehicleAboveSheet\(_d\.latitude, _d\.longitude\);/.test(html));
+T('fără poziție, adresa scrie „—" în loc să se învârtă la nesfârșit',
+  /id="detail-address">' \+ \(\(data\.latitude != null && data\.longitude != null\) \? '<i class="fas fa-spinner fa-spin"[^']*><\/i>' : '—'\) \+ '<\/div>/.test(html));
+const zboruri = (html.match(/map\.flyTo\(\[data\.latitude, data\.longitude\]/g) || []).length;
+T('un singur zbor la poziția mașinii din listă, cel păzit', zboruri === 1, zboruri);
 
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

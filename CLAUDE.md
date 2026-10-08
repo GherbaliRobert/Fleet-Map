@@ -2025,7 +2025,10 @@ caută forma în tot panoul.
   stânga a hărții, fișa mașinii (starea + „Ultima interogare") și fereastra grupei trec prin ele. O mașină fără nicio
   poziție (aparatul pus, montajul încă nefăcut) scria „acum 20734 zile" și „01.01.1970": `new Date(null)` e 1970.
 - NU scrie `timeAgoPhrase(new Date(x))` fără `x ? ` înainte, pe același rând (lista din Management are „niciodată").
-  Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+- **O mașină fără poziție nu are unde să zboare:** `selectDevice` cheamă `map.flyTo` doar cu `latitude`/`longitude`
+  puse (altfel Leaflet aruncă o eroare și fișa nu se mai deschidea pe calculator); adresa din fișă scrie atunci „—".
+- `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
+- Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

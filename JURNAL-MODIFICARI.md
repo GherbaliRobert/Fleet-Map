@@ -155,6 +155,14 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   ale noastre, Scrisoarea de luni, citirea actelor). Dacă acolo scrie „necesită cheie Admin", Robert pune pe server cheia de
   administrare Anthropic (o cheie „Admin", alta decât cea pe care o folosește RA Insight). Apoi, în fereastra cardului (📊),
   treceți creditele cumpărate și ziua în care le-ați cumpărat: soldul scade singur.
+- [ ] **Alin: reperele anonime — RA Insight „învață" din toate flotele. Adăugat pe 08.10 (Alin: „mi-o ții minte… vedem dacă
+  o mai facem").** Comparații de felul „flota ta consumă cu 12% peste flotele asemănătoare", din cifre adunate de la toți
+  clienții, fără nume, numere sau locuri. Dacă o facem: o etapă separată, după capitolul AI, și o clauză în contract
+  verificată de jurist (datele sunt ale clienților).
+- [ ] **Alin: ramura „Acte pentru transport". Adăugat pe 08.10, propusă de Alin, încă nehotărâtă.** „Am camionul X, șoferul Y,
+  duc marfa Z la Cluj — ce acte îmi trebuie?": RA Insight pune laolaltă ce știe aplicația (mașina, permisul, actele) și
+  regulile (aviz, CMR, cod UIT, ADR, ATP…). Recomandarea mea: după ce aducem internetul în RA Insight, cu lista de reguli
+  verificată de un specialist în transport și cu sursa pe fiecare răspuns.
 
 ---
 
@@ -206,8 +214,10 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 |---|---|---|
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
 | **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
+| **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | 🔶 acum |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
-| **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight | ⬜ |
+| **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ⬜ |
+| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da") | ⬜ |
 | **E** | Telefonul: RA Insight (meniu, conversații, ramuri) + AI Raport, pentru APK-ul lui Robert | ⬜ |
 | — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
@@ -218,6 +228,21 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-08
+
+### AMÂNDOI · Harta: fișa mașinii fără transmisie se deschide și pe calculator; „acum o oră", nu „acum 1 ore" — `COMMIT_H2`
+
+Cele două găsite la reparația de mai jos. Alin, 08.10: *„rezolvă acum"*.
+
+- **Ce am schimbat:**
+  1. Pe calculator, clicul pe o mașină care n-a transmis niciodată nu-i deschidea fișa: harta încerca să zboare la o poziție
+     care nu există și se oprea cu o eroare. Acum fișa se deschide („⚠️ Fără transmisie · n-a trimis încă nicio poziție"),
+     iar harta rămâne unde era. La adresă scrie „—", în loc de semnul de încărcare care se învârtea la nesfârșit.
+  2. „acum 1 ore" → „acum o oră", „acum 1 zile" → „acum o zi", „acum 21 ore" → „acum 21 de ore", „acum 25 zile" →
+     „acum 25 de zile" — în lista hărții, în fișa mașinii și în fereastra grupei.
+- **Ce vede fondatorul:** la fel ca clientul, pe hartă.
+- **Ce vede clientul:** fișa se deschide și pentru mașinile încă fără aparat pornit; timpul scris corect românește.
+- Probat: `verify_harta_transmisie.js` (31 de verificări; pe codul vechi pică 8) și aplicația pornită, pe calculator și pe
+  ecran de telefon, fără nicio eroare în pagină.
 
 ### AMÂNDOI · Harta: mașina care n-a transmis niciodată scrie „fără transmisie", nu „acum 20734 zile" — `ca90329`
 

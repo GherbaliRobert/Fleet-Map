@@ -14969,7 +14969,9 @@ const pozitii = await r.json();</code></pre>
         if (typeof window.applyMapSelection === 'function') window.applyMapSelection();
       }
       const data = devices.get(imei);
-      if (data && window.innerWidth > 768) {
+      // Fără nicio poziție (aparatul n-a transmis încă) n-avem unde zbura: flyTo cu o poziție goală arunca o eroare și fișa
+      // nu se mai deschidea pe calculator (Alin, 08.10: „rezolvă acum").
+      if (data && data.latitude != null && data.longitude != null && window.innerWidth > 768) {
         map.flyTo([data.latitude, data.longitude], 16); // desktop: panou lateral → centrăm normal
         // pe mobil focalizarea se face din openDetailPanel (deasupra bottom-sheet-ului)
       }
@@ -15047,7 +15049,7 @@ const pozitii = await r.json();</code></pre>
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
       // pe mobil: bottom-sheet-ul acoperă centrul → focalizează mașina în partea de sus vizibilă
-      if (window.innerWidth <= 768) { var _d = devices.get(imei); if (_d) focusVehicleAboveSheet(_d.latitude, _d.longitude); }
+      if (window.innerWidth <= 768) { var _d = devices.get(imei); if (_d && _d.latitude != null && _d.longitude != null) focusVehicleAboveSheet(_d.latitude, _d.longitude); }
     }
 
     function showDetailView(view) {
@@ -15475,7 +15477,7 @@ const pozitii = await r.json();</code></pre>
         '<div class="info-item full" id="detail-address-item">' +
           '<div class="info-item-icon purple"><i class="fas fa-map-marker-alt"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value" style="font-size:12px;" id="detail-address"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></div>' +
+            '<div class="info-item-value" style="font-size:12px;" id="detail-address">' + ((data.latitude != null && data.longitude != null) ? '<i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i>' : '—') + '</div>' +
             '<div class="info-item-label">Adresa</div>' +
           '</div>' +
           ((data.latitude != null && data.longitude != null) ? '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + data.latitude + ',' + data.longitude + '" target="_blank" rel="noopener" title="Vezi exact unde e mașina — Google Street View" style="align-self:center;flex:none;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;"><i class="fas fa-street-view"></i> Street View</a>' : '') +
@@ -17240,8 +17242,12 @@ const pozitii = await r.json();</code></pre>
       const seconds = Math.floor((new Date() - date) / 1000);
       if (seconds < 60) return 'acum';
       if (seconds < 3600) return Math.floor(seconds / 60) + ' min';
-      if (seconds < 86400) return Math.floor(seconds / 3600) + ' ore';
-      return Math.floor(seconds / 86400) + ' zile';
+      // „o oră", „2 ore", „21 de ore"; „o zi", „3 zile", „25 de zile" — de la 20 în sus româna cere „de" (scria „acum 1 ore").
+      const de = function (n) { const r = n % 100; return (r === 0 || r >= 20) ? ' de ' : ' '; };
+      const h = Math.floor(seconds / 3600);
+      if (seconds < 86400) return h === 1 ? 'o oră' : h + de(h) + 'ore';
+      const z = Math.floor(seconds / 86400);
+      return z === 1 ? 'o zi' : z + de(z) + 'zile';
     }
     function timeAgoPhrase(date) { var t = getTimeAgo(date); return t === 'acum' ? 'chiar acum' : 'acum ' + t; }
     // Când a transmis mașina ultima dată — O SINGURĂ regulă pentru lista hărții, fișa mașinii și fereastra grupei.
