@@ -1335,6 +1335,9 @@ async function initDb() {
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_read_tokens INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_write_tokens INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id INTEGER`);
+    // Modelul care a răspuns (08.10): prețurile diferă de la model la model (ai.MODELE). Gol = rândurile vechi, scrise
+    // toate cu modelul de bază de atunci (Haiku 4.5).
+    await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS model VARCHAR(40)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
 
     // Preferințe UI per user (toggle-uri: overspeed_heatmap, replay_marker, etc.) — separat de notification_prefs ca să nu interfere
@@ -1640,7 +1643,7 @@ async function getCompanies() {
 }
 
 // ─── Consum AI (tokeni) per companie ───
-async function recordAiUsage(companyId, kind, usage, userId) {
+async function recordAiUsage(companyId, kind, usage, userId, model) {
   if (!usage) return;
   const inp = parseInt(usage.input_tokens) || 0;
   const out = parseInt(usage.output_tokens) || 0;
@@ -1650,8 +1653,8 @@ async function recordAiUsage(companyId, kind, usage, userId) {
   // UN rând = O întrebare a userului (agentul RA Insight face mai multe apeluri pe întrebare, dar
   // consumul lor e însumat înainte de a ajunge aici) → COUNT(*) e chiar numărul de întrebări.
   await pool.query(
-    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, user_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out, cr, cw, userId != null ? userId : null]
+    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, user_id, model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out, cr, cw, userId != null ? userId : null, model ? String(model).slice(0, 40) : null]
   );
 }
 // Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.

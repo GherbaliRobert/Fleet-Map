@@ -168,6 +168,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
   trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
+- [ ] **Voi: rulați „Proba modelelor" și alegeți modelul lui RA Insight. Adăugat pe 08.10.** Administrare → Utilizare
+  RA Insight → „Proba modelelor": alegeți firma noastră (cea cu B 154 UIP), lăsați cele 20 de întrebări și apăsați
+  „Pornește proba" (costă cam 5–10 lei, din contul nostru Anthropic). Citiți răspunsurile una lângă alta și spuneți-mi
+  modelul. Prețuri oficiale pe 08.10: Haiku 5.5 e de 10 ori mai ieftin decât Haiku 4.5 de azi; Sonnet 5.5, de 2 ori
+  mai scump pe aceeași cantitate de text. Dacă alegeți altul decât Haiku 4.5, refacem socoteala prețurilor pe cont
+  (14 / 17 / 19 / 25 / 35 de lei) înainte să-l pornim la clienți. **Rulați-o doar pe firma noastră**, nu pe datele unui
+  client fără acordul lui.
 
 ---
 
@@ -233,6 +240,35 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-08
+
+### AMÂNDOI · Proba modelelor (doar pentru noi) + reguli de scris mai stricte pentru RA Insight — `COMMIT_PM`
+
+Alin, 08.10: *„pai ce-mi recomanzi după Haiku? că e slab tare… nu poți să scrii așa greșit"* (la „Cât de grabă e
+afacerea lui?" din Scrisoarea de luni).
+
+**Ce s-a schimbat:**
+1. **„Proba modelelor"** — buton nou în Administrare → Utilizare RA Insight. Alegi firma, modelele (Haiku 4.5 — cel de
+   azi, Haiku 5.5, Sonnet 5.5) și întrebările (20 gata scrise, se pot schimba; „{masina}" devine prima mașină a firmei).
+   Aplicația pune fiecare întrebare la fiecare model, pe datele firmei, și arată răspunsurile unul lângă altul, cu
+   costul adevărat al fiecăruia, timpul și banda „De verificat"; sus, pe model: cost total, pe întrebare, cât ar costa 100
+   de întrebări. Proba se poate opri oricând. Răspunde ACEEAȘI funcție care răspunde clientului, dar nimic nu se
+   salvează în conversațiile cuiva, nu se numără din întrebările firmei, iar costul se scrie pe noi. Rând în jurnalul de
+   audit (cine, pe ce firmă, ce modele, cât a costat).
+2. **Prețurile oficiale ale modelelor** (de la Anthropic, citite pe 08.10): Haiku 4.5 = 1 $ / 5 $ pe milion de tokeni
+   (intrare / ieșire), **Haiku 5.5 = 0,10 $ / 0,50 $ — de 10 ori mai ieftin**, Sonnet 5.5 = 2 $ / 10 $. Costul fiecărui
+   răspuns se socotește pe prețurile modelului care a răspuns, iar consumul ține minte de acum modelul.
+3. **Aplicația știe să vorbească cu modelele noi** (5.5): le spune cât să gândească (puțin, ca la chat) și citește
+   răspunsul corect. Pentru clienți nu se schimbă nimic până nu alegem: RA Insight rămâne pe Haiku 4.5.
+4. **Reguli de scris mai stricte**, aceleași în discuție și în Scrisoarea de luni: română corectă și simplă, propoziții
+   scurte, fără expresii traduse cuvânt cu cuvânt, fără cuvinte inventate, fără întrebări retorice, fără presupuneri
+   despre oameni sau despre afacerea lor; o recomandare începe cu un verb și are motivul cu cifra lui.
+
+- **Ce vede fondatorul:** butonul „Proba modelelor" și fereastra ei.
+- **Ce vede clientul:** răspunsurile lui RA Insight și Scrisoarea de luni, scrise sub regulile noi (același model).
+- Probat: `verify_proba_modele.js` (40 de verificări, în `npm test`, cu modelul simulat — nu se cheltuie nimic), plus
+  probele vecine (RA Insight, AI Raport, ramurile, prețurile pe cont, telefonul, panoul RA Insight); ecranul pe
+  aplicația pornită, pe ambele teme și pe telefon: contrast minim 7,6, fără erori.
+- **De știut:** pe telefon, tabelul de sus al probei se derulează în lateral (e un ecran pentru calculator).
 
 ### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `5d96c98`
 

@@ -485,6 +485,32 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   `--text-primary`; chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată.
 - Păzit de `verify_cifre.js` (în `npm test`; 57, cu server pornit și modelul simulat).
 
+### Modelele și „Proba modelelor" (08.10, Alin: „Haiku e slab tare… ce-mi recomanzi după?")
+- **Modelele știute stau în `ai.MODELE`**, cu prețurile OFICIALE (USD / milion de tokeni, citite pe 08.10 de pe
+  platform.claude.com/docs/en/about-claude/pricing): Haiku 4.5 1 / 5 (cache 0,10), **Haiku 5.5 0,10 / 0,50** (cache 0,01; sub
+  100.000 de tokeni pe cerere), Sonnet 5.5 2 / 10 (cache 0,10). `ai.costUsd(usage, model)` — fără model = modelul de bază.
+  Un model necunoscut ia prețurile din env (`AI_PRICE_*`). Schimbi prețurile doar după pagina oficială.
+- **Modelele 5.x (`gandire: true`) au alt fel de cerere** (`ai._corp`): `thinking: { type: 'adaptive' }`,
+  `output_config.effort` = `AI_EFFORT` (implicit „low"), `max_tokens` + `GANDIRE_LOC`. Haiku 4.5 primește cererea veche,
+  neschimbată. Textul se citește pe TIP de bloc (`ai._text`): un răspuns 5.x poate începe cu „thinking". NU citi `content[0]`.
+- ⚠ **În bucla cu unelte, la 5.x istoricul NU se atinge** (blocurile de gândire sunt legate de tot ce e înaintea lor; o
+  schimbare în urmă = 400 pe conturile noi): aceleași instrucțiuni și unelte în toate cererile, cache-ul cozii pus de API
+  (`cache_control` pe cerere), blocurile „thinking" trimise înapoi neschimbate, nota „Gata cu interogările" adăugată după
+  ultimele rezultate și răspunsul final cu `tool_choice: none`. Haiku 4.5 rămâne pe drumul vechi (semn mutat, notă în
+  instrucțiuni). `stop_reason: 'refusal'` → text pe față (`TEXT_REFUZ`).
+- **`onUsage(usage, model)`** și `ai_usage.model`: consumul ține minte modelul. ⚠ Panourile de cost încă socotesc din
+  tokeni pe prețurile modelului de bază — **înainte să trecem clienții pe alt model, panourile se socotesc pe model**.
+- **„Proba modelelor"** (Administrare → Utilizare RA Insight, `raxProbaModele`, blocul între sentinele): rutele
+  `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
+  Răspunde ACEEAȘI funcție, `_raInsight(_cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al
+  firmei alese" (vede doar mașinile ei), fără conversație salvată, fără fondul firmei (`!o.proba && _regulileFonduluiAi`),
+  fără răspunsul rapid; consumul pe noi (`company_id` NULL, fel `proba_modele`, în afara `AI_BILLABLE_KINDS`). O probă
+  deodată (409), ultimele 5 în memorie, rând în audit `ai_proba_modele`. Pagina NU socotește costuri (doar le adună).
+  Se rulează pe firma NOASTRĂ — pe datele unui client doar cu acordul lui.
+- **Regulile de scris: `insight.SCRISUL`**, în partea fixă a instrucțiunilor lui RA Insight și în cele ale Scrisorii de
+  luni. Un singur loc.
+- Păzit de `verify_proba_modele.js` (în `npm test`; 40, cu API-ul simulat în proces și pe server pornit).
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

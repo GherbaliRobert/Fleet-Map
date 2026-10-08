@@ -27293,7 +27293,8 @@ const pozitii = await r.json();</code></pre>
         || '<div class="rax-co-meta" style="padding:14px;">Nicio companie.</div>';
       box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'
         + '<span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-wand-magic-sparkles"></i> RA Insight — dashboard</span>'
-        + '<button id="aiu-istoric-btn" class="rax-btn" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
+        + '<button class="rax-btn" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxProbaModele()" title="Aceleași întrebări, la mai multe modele — răspunsurile una lângă alta, cu costul"><i class="fas fa-flask"></i> Proba modelelor</button>'
+        + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
         + '<button id="aiu-toate" class="rax-btn primary" style="padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
         + _aiuAvertismente(s, rows)
         + _aiuKpiuri(s, rows, d.istoric, fx)
@@ -27307,6 +27308,118 @@ const pozitii = await r.json();</code></pre>
       try { raxAiIstoric(_aiuIstoricPornit()); } catch (e) { /* fără grafic, restul panoului rămâne */ }
     };
     // ─── sfârșit „Panoul RA Insight pe firme" ──
+    // ─── Proba modelelor (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?") ───
+    // Doar pentru noi. Aceleași întrebări la mai multe modele, pe datele unei firme alese; răspunsurile una lângă alta,
+    // cu costul ADEVĂRAT al fiecăruia. Serverul face tot (aceeași funcție care îi răspunde clientului); pagina doar arată.
+    var _pm = { meta: null, id: null, timer: null };
+    function _pmBani(x) { return (Number(x) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei'; }
+    function _pmBaniMici(x) { var v = Number(x) || 0; return v < 0.1 ? (v * 100).toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' bani' : _pmBani(v); }
+    // Răspunsul modelului e text străin: se scapă tot, apoi doar **îngroșat** și rândurile noi.
+    function _pmText(t) { return esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+    function _pmOverlay() {
+      var ov = document.getElementById('rax-pm-overlay');
+      if (ov) return ov;
+      ov = document.createElement('div'); ov.className = 'rax-overlay'; ov.id = 'rax-pm-overlay';
+      ov.innerHTML = '<div class="rax-card pm-card"><div class="rax-head"><h3><i class="fas fa-flask" style="color:var(--purple)"></i> Proba modelelor</h3>'
+        + '<button class="rax-x" onclick="raxProbaModeleInchide()" aria-label="Închide">&times;</button></div><div class="rax-body" id="pm-corp"></div></div>';
+      document.body.appendChild(ov);
+      return ov;
+    }
+    window.raxProbaModeleInchide = function () { var ov = document.getElementById('rax-pm-overlay'); if (ov) ov.classList.remove('open'); if (_pm.timer) { clearTimeout(_pm.timer); _pm.timer = null; } };
+    window.raxProbaModele = async function () {
+      var ov = _pmOverlay(); ov.classList.add('open');
+      var c = document.getElementById('pm-corp'); c.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var r = await fetch('/api/admin/insight/proba-modele', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return null; });
+      var cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; });
+      if (!r || r.error) { c.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + esc((r && r.error) || 'Nu s-a putut încărca.') + '</div>'; return; }
+      _pm.meta = r;
+      var firme = (Array.isArray(cos) ? cos : (cos.companies || [])).filter(function (x) { return x && x.id; });
+      var h = '<div class="pm-intro">Aceleași întrebări, puse la mai multe modele, pe datele firmei alese. Răspunsurile apar una lângă alta, cu costul adevărat al fiecăruia. Nimic nu se salvează în conversațiile cuiva, iar costul e al nostru (nu intră în întrebările firmei).</div>'
+        + (r.activ ? '' : '<div class="pm-avert"><i class="fas fa-triangle-exclamation"></i> Cheia Anthropic lipsește — proba nu poate porni.</div>')
+        + '<div class="pm-rand"><label class="pm-et" for="pm-firma">Firma</label><select id="pm-firma" class="rax-field">'
+        + firme.map(function (f) { return '<option value="' + esc(f.id) + '">' + esc(f.name) + '</option>'; }).join('') + '</select></div>'
+        + '<div class="pm-rand"><span class="pm-et">Modelele</span><span class="pm-modele">'
+        + (r.modele || []).map(function (m) {
+            var azi = m.id === r.modelAzi;
+            return '<label class="pm-model"><input type="checkbox" class="pm-m" value="' + esc(m.id) + '" checked> <b>' + esc(m.nume) + '</b>' + (azi ? ' <span class="pm-azi">cel de azi</span>' : '') + '</label>';
+          }).join('') + '</span></div>'
+        + '<div class="pm-rand pm-col"><label class="pm-et" for="pm-intrebari">Întrebările — una pe rând (cel mult ' + r.maxIntrebari + '). „{masina}" și „{masina2}" se înlocuiesc cu primele mașini ale firmei.</label>'
+        + '<textarea id="pm-intrebari" class="rax-field" rows="10">' + esc((r.intrebari || []).join('\n')) + '</textarea></div>'
+        + '<div class="pm-rand"><button class="rax-btn primary" id="pm-porneste" onclick="raxProbaModelePorneste()"' + (r.activ ? '' : ' disabled') + '><i class="fas fa-play"></i> Pornește proba</button>'
+        + '<span class="pm-nota">Costul îl vezi lângă fiecare răspuns. Poți opri proba oricând.</span></div>'
+        + '<div id="pm-rez"></div>';
+      c.innerHTML = h;
+      if (r.inLucru) { _pm.id = r.inLucru; _pmUrmareste(); }
+    };
+    window.raxProbaModelePorneste = async function () {
+      var firma = document.getElementById('pm-firma'), ta = document.getElementById('pm-intrebari');
+      var modele = Array.prototype.map.call(document.querySelectorAll('#pm-corp .pm-m:checked'), function (x) { return x.value; });
+      var intrebari = String(ta && ta.value || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!modele.length) { alert('Alege cel puțin un model.'); return; }
+      if (!intrebari.length) { alert('Scrie cel puțin o întrebare.'); return; }
+      var n = Math.min(intrebari.length, (_pm.meta && _pm.meta.maxIntrebari) || 20);
+      var ok = typeof raConfirm === 'function'
+        ? await raConfirm('Pornesc proba: ' + n + (n === 1 ? ' întrebare' : (n % 100 >= 20 || n % 100 === 0 ? ' de întrebări' : ' întrebări')) + ' × ' + modele.length + (modele.length === 1 ? ' model' : ' modele') + ', pe firma „' + (firma.options[firma.selectedIndex] || {}).text + '". Costul e din contul nostru Anthropic și îl vezi lângă fiecare răspuns.', { okLabel: 'Pornește', danger: false, icon: 'fa-flask', title: 'Proba modelelor' })
+        : confirm('Pornesc proba?');
+      if (!ok) return;
+      var r = await fetch('/api/admin/insight/proba-modele', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: firma.value, modele: modele, intrebari: intrebari }) })
+        .then(function (x) { return x.json(); }).catch(function (e) { return { error: e.message }; });
+      if (!r || r.error) { alert((r && r.error) || 'Proba nu a pornit.'); return; }
+      _pm.id = r.id; _pmDeseneaza(r.proba, r.estimatLei); _pmUrmareste();
+    };
+    window.raxProbaModeleOpreste = async function () {
+      if (!_pm.id) return;
+      await fetch('/api/admin/insight/proba-modele/' + encodeURIComponent(_pm.id) + '/opreste', { method: 'POST', credentials: 'same-origin' }).catch(function () {});
+    };
+    function _pmUrmareste() {
+      if (_pm.timer) clearTimeout(_pm.timer);
+      var ov = document.getElementById('rax-pm-overlay');
+      if (!_pm.id || !ov || !ov.classList.contains('open')) return;
+      fetch('/api/admin/insight/proba-modele/' + encodeURIComponent(_pm.id), { credentials: 'same-origin' }).then(function (x) { return x.json(); }).then(function (p) {
+        if (!p || p.error) return;
+        _pmDeseneaza(p);
+        if (!p.gata) _pm.timer = setTimeout(_pmUrmareste, 2500);
+      }).catch(function () { _pm.timer = setTimeout(_pmUrmareste, 5000); });
+    }
+    function _pmDeseneaza(p, estimat) {
+      var box = document.getElementById('pm-rez'); if (!box || !p) return;
+      var buton = document.getElementById('pm-porneste'); if (buton) buton.disabled = !p.gata;
+      var stare = p.gata ? (p.oprita ? 'Oprită' : (p.eroare ? 'Oprită de o eroare: ' + p.eroare : 'Gata')) : 'În lucru';
+      var h = '<div class="pm-stare"><b>' + esc(stare) + '</b> · ' + p.facute + ' din ' + p.total + ' răspunsuri · până acum ' + _pmBani(p.costLei)
+        + (estimat != null ? ' · estimat la pornire: cam ' + _pmBani(estimat) : '')
+        + (p.gata ? '' : ' <button class="rax-btn" style="margin-left:8px;padding:3px 10px;font-size:12px;" onclick="raxProbaModeleOpreste()"><i class="fas fa-stop"></i> Oprește</button>') + '</div>';
+      // Sumarul pe model: cât a costat, în cât timp, câte răspunsuri au „De verificat".
+      var pe = {};
+      p.modele.forEach(function (m) { pe[m.id] = { nume: m.nume, n: 0, cost: 0, ms: 0, msN: 0, verif: 0, erori: 0 }; });
+      p.rezultate.forEach(function (x) {
+        var a = pe[x.model]; if (!a) return;
+        a.n++; a.cost += x.costLei || 0; if (x.ms) { a.ms += x.ms; a.msN++; }
+        if (x.verificare) a.verif++; if (x.eroare) a.erori++;
+      });
+      h += '<table class="pm-sumar"><thead><tr><th>Model</th><th>Răspunsuri</th><th>Cost total</th><th>Pe întrebare</th><th>100 de întrebări</th><th>Timp mediu</th><th>Cu „De verificat"</th></tr></thead><tbody>'
+        + p.modele.map(function (m) {
+            var a = pe[m.id], med = a.n ? a.cost / a.n : 0;
+            return '<tr><td><b>' + esc(a.nume) + '</b></td><td>' + a.n + (a.erori ? ' (' + a.erori + ' cu eroare)' : '') + '</td><td>' + _pmBani(a.cost) + '</td><td>' + _pmBaniMici(med)
+              + '</td><td>' + _pmBani(med * 100) + '</td><td>' + (a.msN ? (a.ms / a.msN / 1000).toLocaleString('ro-RO', { maximumFractionDigits: 1 }) + ' s' : '—') + '</td><td>' + a.verif + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      // Întrebare cu întrebare: răspunsurile modelelor, una lângă alta.
+      p.intrebari.forEach(function (q, i) {
+        var rand = p.rezultate.filter(function (x) { return x.i === i; });
+        if (!rand.length) return;
+        h += '<div class="pm-q"><div class="pm-q-t">' + (i + 1) + '. ' + esc(q) + '</div><div class="pm-grila" style="grid-template-columns:repeat(' + p.modele.length + ', minmax(0, 1fr));">'
+          + p.modele.map(function (m) {
+              var x = rand.filter(function (y) { return y.model === m.id; })[0];
+              if (!x) return '<div class="pm-r pm-asteapta"><div class="pm-r-cap">' + esc(m.nume) + '</div>…</div>';
+              var vf = x.verificare ? [].concat(x.verificare.perioada ? [x.verificare.perioada] : [], (x.verificare.cifre || []).length ? ['Cifre negăsite în date: ' + x.verificare.cifre.join(', ')] : [], x.verificare.deVerificat || []) : [];
+              return '<div class="pm-r"><div class="pm-r-cap"><b>' + esc(m.nume) + '</b><span>' + _pmBaniMici(x.costLei) + (x.ms ? ' · ' + (x.ms / 1000).toLocaleString('ro-RO', { maximumFractionDigits: 1 }) + ' s' : '') + '</span></div>'
+                + (x.eroare ? '<div class="pm-err">' + esc(x.eroare) + '</div>' : '<div class="pm-txt">' + _pmText(x.text) + '</div>')
+                + (vf.length ? '<div class="pm-verif"><b>De verificat:</b> ' + vf.map(esc).join(' · ') + '</div>' : '')
+                + ((x.unelte || []).length ? '<div class="pm-unelte">A citit: ' + esc(Array.from(new Set(x.unelte)).join(', ')) + '</div>' : '') + '</div>';
+            }).join('') + '</div></div>';
+      });
+      box.innerHTML = h;
+    }
+    // ─── sfârșit „Proba modelelor" ──
     // ─── Cereri de cont demo (super-admin) ───
     // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.
     var _demoReqFilter = '';

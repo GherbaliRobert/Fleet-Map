@@ -336,8 +336,15 @@ function titluDin(text, masini) {
   return t.length > 70 ? t.slice(0, 67).replace(/\s+\S*$/, '') + '…' : t;
 }
 
+// Cum scrie RA Insight — ACELEAȘI reguli în discuție și în Scrisoarea de luni (Alin, 08.10, la „Cât de grabă e afacerea
+// lui?": „nu poți să scrii așa greșit"). Stau în partea fixă a instrucțiunilor (cea din cache).
+const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu experiență care vorbește cu patronul: propoziții scurte, ' +
+  'cu diacritice, cuvinte obișnuite. Fără expresii traduse cuvânt cu cuvânt, fără cuvinte inventate, fără întrebări retorice, fără ' +
+  'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…", „Verifică…", ' +
+  '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă.';
+
 module.exports = {
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI,
-  potrivitPentruRapid, istoricPentruModel, titluDin,
+  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL,
 };

@@ -4024,7 +4024,7 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
     const system = 'Ești analist de flotă. Rezumi un raport în limba română, în stil executiv: 4-6 puncte scurte, cu cifrele cheie (km, ore, opriri, consum, viteze). Doar pe baza datelor. Fără introduceri lungi.';
-    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600, onUsage: u => db.recordAiUsage(req.companyId, 'report', u, req.auth && req.auth.userId).catch(() => {}) });
+    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600, onUsage: (u, m) => db.recordAiUsage(req.companyId, 'report', u, req.auth && req.auth.userId, m).catch(() => {}) });
     auditReq(req, 'ai_report', 'assistant', null, { type: req.body.type });
     res.json({ summary });
   } catch (e) {
@@ -4087,7 +4087,8 @@ function _insightInstructiuni(cuRapoarte) {
       '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite. (8) Perioada: citește EXACT perioada cerută ' +
       '(„1–7 octombrie" = from 2026-10-01, to 2026-10-07). Safe Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
       'cere altă perioadă, spune ce perioadă ai citit. În titlu scrie perioada CITITĂ. (9) O cifră cu „de_verificat" o spui lângă cifra ' +
-      'ei, cu motivul — nu o prezenta ca sigură. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.'
+      'ei, cu motivul — nu o prezenta ca sigură. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.',
+    insight.SCRISUL
   ].filter(Boolean).join('\n\n');
 }
 // Partea care se schimbă la fiecare întrebare: ora, ce mașini a pomenit omul, ce s-a discutat până acum.
@@ -4186,7 +4187,7 @@ async function _raInsight(req, res, opts) {
 
     // Salvează schimbul (întrebare + răspuns) și ce s-a discutat. Fără om (nu se întâmplă azi) nu se ține nimic.
     async function salveaza(reply, extra, ctxNou) {
-      if (userId == null) return { convId: null, mesajId: null };
+      if (userId == null || o.proba) return { convId: null, mesajId: null };   // proba modelelor nu scrie în conversațiile nimănui
       try {
         if (!conv) conv = await db.conversatieNoua(userId, req.companyId, insight.titluDin(message, gasite.masini), 'general');
         await db.adaugaMesajAi(conv.id, 'user', message, null);
@@ -4202,7 +4203,7 @@ async function _raInsight(req, res, opts) {
     try {
       const intent = fleetQuick ? fleetQuick.detectIntent(message) : null;
       const peMasini = gasite.masini.length > 0;
-      if (intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
+      if (!o.proba && intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
         const doar = peMasini ? new Set(gasite.masini.map(function (v) { return v.imei; })) : null;
         let snap = _fleetSnapshot(req, doar ? 100000 : undefined);
         if (doar) { const total = snap.filter(function (v) { return doar.has(v.imei); }); snap = total; Object.defineProperty(snap, 'totalFlota', { value: total.length, enumerable: false }); }
@@ -4224,7 +4225,7 @@ async function _raInsight(req, res, opts) {
 
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
     // Fondul firmei: dacă s-a terminat, se oprește cu explicație (aceeași poartă pentru toate ușile).
-    if (await _regulileFonduluiAi(req, res)) return;
+    if (!o.proba && await _regulileFonduluiAi(req, res)) return;   // proba modelelor e costul nostru, nu al firmei
     if (!allImeis.length) return res.json({ reply: 'Nu ai nicio mașină la care să ai acces, deci nu am ce analiza.', sources: [] });
 
     let zones = [];
@@ -4464,9 +4465,11 @@ async function _raInsight(req, res, opts) {
     ];
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+    const model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
+    const t0 = Date.now();
     const result = await ai.runAgent({
       system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
-      model: ai.AI_AGENT_MODEL, maxTokens: 1100, maxIters: 8,
+      model: model, maxTokens: 1100, maxIters: 8,
       onUsage: u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
         _agg.input_tokens += Number(u.input_tokens) || 0;
         _agg.output_tokens += Number(u.output_tokens) || 0;
@@ -4474,7 +4477,9 @@ async function _raInsight(req, res, opts) {
         _agg.cache_creation_input_tokens += Number(u.cache_creation_input_tokens) || 0;
       }
     });
-    db.recordAiUsage(req.companyId, 'insight', _agg, userId).catch(() => {});
+    // Proba modelelor: fără firmă pe rând (nu intră în consumul și în panourile clientului), cu felul ei.
+    if (o.proba) db.recordAiUsage(null, 'proba_modele', _agg, userId, model).catch(() => {});
+    else db.recordAiUsage(req.companyId, 'insight', _agg, userId, model).catch(() => {});
     const reply = result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.';
 
     // Surse unice (tip + mașină + perioadă), pentru „Deschide raportul".
@@ -4512,8 +4517,9 @@ async function _raInsight(req, res, opts) {
 
     const verificare = _verificaRaspunsul(reply, message, dateCitite, citite);
     const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare || undefined }, ctxNou);
-    auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined });
-    res.json({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare });
+    if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined });
+    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare },
+      o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz } : {}));
   } catch (e) {
     console.warn('[RA Insight]', e.message);
     res.status(500).json({ error: 'RA Insight: ' + e.message, reply: 'RA Insight nu a putut răspunde acum. Încearcă din nou peste un minut.' });
@@ -4523,6 +4529,141 @@ async function _raInsight(req, res, opts) {
 // de pe telefonul vechi (mai jos, la /api/ai/chat). Rapoartele intră în joc doar pentru cine are dreptul la ele.
 app.post('/api/insight/intreaba', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'sectiune' }));
 app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'rapoarte' }));
+
+// ─── Proba modelelor (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?") ───────────────────────────────────────
+// Doar pentru noi (super-admin): aceleași întrebări, puse la mai multe modele, pe datele unei firme alese; răspunsurile
+// una lângă alta, cu costul ADEVĂRAT al fiecăruia (din tokenii întorși, pe prețurile modelului — ai.MODELE). Răspunde
+// ACEEAȘI funcție ca pentru client (_raInsight, cu `proba`): fără conversație salvată, fără fondul firmei, fără răspunsul
+// rapid; consumul se scrie pe noi (rând fără firmă, felul „proba_modele"). O singură probă deodată, ținută în memorie.
+const PROBA_MAX_INTREBARI = 20;
+const _probe = new Map();      // id → proba (ultimele 5)
+let _probaInLucru = null;
+// Întrebările de pornire: ce întreabă de obicei un om cu o flotă. {masina} / {masina2} = primele mașini ale firmei.
+function _probaIntrebariImplicite(acum) {
+  const z = insight.perioada({ period: 'last_month' }, acum), luna = insight.etichetaPerioadei(z.from, z.to, acum).replace(/ \d{4}$/, '');
+  return [
+    'Câți kilometri a făcut fiecare mașină săptămâna trecută?',
+    'Ce consum a avut {masina} luna asta, față de luna trecută?',
+    'Cât am cheltuit pe combustibil în ultimele 30 de zile, pe toată flota?',
+    'Care mașină a stat cel mai mult la ralanti săptămâna asta și cât ne-a costat?',
+    'Cine a depășit viteza ieri?',
+    'Unde a stat {masina} ieri și cât timp?',
+    'Ce acte expiră în următoarele 30 de zile?',
+    'Ce revizii urmează?',
+    'Câte ore a condus fiecare șofer săptămâna trecută? A încălcat cineva regulile?',
+    'Cum stăm la Safe Drive luna asta și ce ar trebui să îmbunătățim?',
+    'Compară {masina} cu {masina2} pe luna trecută: kilometri, consum, cost.',
+    'Au fost scăderi de combustibil suspecte luna asta?',
+    'Care mașini n-au mai transmis de o zi?',
+    'Rezumă-mi flota pe săptămâna trecută, în cinci rânduri.',
+    'Cum adaug un șofer nou în aplicație?',
+    'Ce consum am avut între 1 și 7 ' + luna + '?',
+    'Câți kilometri a făcut {masina} în weekend?',
+    'Ce mașină folosim cel mai puțin? Merită păstrată?',
+    'Care a fost cea mai lungă cursă de luna trecută?',
+    'Vreau să reduc costurile cu 10%. De unde să încep?'
+  ];
+}
+// Cererea „ca un administrator al firmei", dar cu numele nostru în jurnal: vede DOAR mașinile firmei alese.
+function _cerereProba(req, companyId, message) {
+  const a = getAuth(req) || {};
+  const auth = { userId: a.userId, username: a.username, role: 'company_admin', companyId: companyId };
+  const r = Object.create(req);
+  r.apiAuth = auth; r._freshAuth = null; r._rolAjust = null; r.auth = auth;
+  r.companyId = companyId; r.isSuper = false; r.allowedImeis = null;
+  r.body = { message: message, nou: true };
+  return r;
+}
+function _raspunsInMemorie() {
+  const r = { statusCode: 200, body: null };
+  r.status = function (c) { r.statusCode = c; return r; };
+  r.json = function (b) { r.body = b; return r; };
+  return r;
+}
+function _probaPublic(p) {
+  return { id: p.id, firma: p.firma, modele: p.modele.map(function (m) { return { id: m, nume: ai.pret(m).nume }; }), intrebari: p.intrebari,
+    rezultate: p.rezultate, gata: p.gata, oprita: p.oprita, eroare: p.eroare, inceput: p.inceput, sfarsit: p.sfarsit,
+    costLei: Math.round(p.rezultate.reduce(function (t, x) { return t + (x.costLei || 0); }, 0) * 100) / 100,
+    facute: p.rezultate.length, total: p.intrebari.length * p.modele.length };
+}
+// O estimare de dinainte, ca să știi cât pornești: ~3.000 de tokeni noi, ~15.000 citiți din cache, ~3.000 scriși în cache și
+// ~600 la ieșire pe întrebare; la 5.x, +30% (alt fel de a număra tokenii) și ieșirea dublă (gândirea). Costul adevărat
+// se scrie lângă fiecare răspuns.
+function _probaEstimatLei(modele, n, eurRon) {
+  return Math.round(modele.reduce(function (t, m) {
+    const p = ai.pret(m), k = p.gandire ? 1.3 : 1;
+    return t + ai.costUsd({ input_tokens: 3000 * k, cache_read_input_tokens: 15000 * k, cache_creation_input_tokens: 3000 * k, output_tokens: 600 * k * (p.gandire ? 2 : 1) }, m) * n;
+  }, 0) * ai.USD_EUR * eurRon * 100) / 100;
+}
+async function _ruleazaProba(p, req) {
+  const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
+  const eur = fx.eur || EUR_RON_FALLBACK;
+  try {
+    for (let i = 0; i < p.intrebari.length && !p.oprita; i++) {
+      for (const m of p.modele) {
+        if (p.oprita) break;
+        const res = _raspunsInMemorie();
+        let x = { i: i, model: m };
+        try {
+          await _raInsight(_cerereProba(req, p.companyId, p.intrebari[i]), res, { usa: 'proba', proba: { model: m } });
+          const b = res.body || {};
+          x = Object.assign(x, { text: b.reply || b.error || '', ms: b.ms || null, unelte: b.unelte || [], verificare: b.verificare || null, refuz: !!b.refuz,
+            costLei: b.usage ? Math.round(ai.costUsd(b.usage, m) * ai.USD_EUR * eur * 10000) / 10000 : 0, tokeni: b.usage || null, eroare: res.statusCode >= 400 ? (b.error || 'eroare') : null });
+        } catch (e) { x.eroare = String((e && e.message) || e).slice(0, 300); x.costLei = 0; }
+        p.rezultate.push(x);
+      }
+    }
+  } catch (e) { p.eroare = String((e && e.message) || e).slice(0, 300); }
+  p.gata = true; p.sfarsit = Date.now(); _probaInLucru = null;
+  auditReq(req, 'ai_proba_modele', 'company', p.companyId, { modele: p.modele, intrebari: p.intrebari.length, raspunsuri: p.rezultate.length, costLei: _probaPublic(p).costLei });
+}
+app.get('/api/admin/insight/proba-modele', requireAuth, requireSuperadmin, async (req, res) => {
+  const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
+  const eur = fx.eur || EUR_RON_FALLBACK;
+  res.json({ activ: ai.aiEnabled(), modelAzi: ai.AI_AGENT_MODEL, efort: ai.EFORT, maxIntrebari: PROBA_MAX_INTREBARI, eurRon: eur, usdEur: ai.USD_EUR,
+    modele: Object.keys(ai.MODELE).map(function (k) { const p = ai.MODELE[k]; return { id: k, nume: p.nume, in: p.in, out: p.out, cacheRead: p.cacheRead, gandire: p.gandire }; }),
+    intrebari: _probaIntrebariImplicite(Date.now()),
+    probe: Array.from(_probe.values()).map(function (p) { return { id: p.id, firma: p.firma, inceput: p.inceput, gata: p.gata, costLei: _probaPublic(p).costLei }; }).reverse(),
+    inLucru: _probaInLucru });
+});
+app.post('/api/admin/insight/proba-modele', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!ai.aiEnabled()) return res.status(400).json({ error: 'Cheia Anthropic lipsește — proba nu poate porni.' });
+    if (_probaInLucru) return res.status(409).json({ error: 'O probă e deja în lucru. Așteaptă să se termine.', id: _probaInLucru });
+    const b = req.body || {};
+    const companyId = parseInt(b.companyId);
+    const co = companyId ? await db.getCompanyById(companyId) : null;
+    if (!co) return res.status(400).json({ error: 'Alege firma pe datele căreia rulează proba.' });
+    const modele = Array.from(new Set((Array.isArray(b.modele) ? b.modele : []).filter(function (m) { return ai.MODELE[m]; })));
+    if (!modele.length) return res.status(400).json({ error: 'Alege cel puțin un model.' });
+    const devices = (await db.getDevices(companyId)).filter(function (d) { return d.status !== 'archived' && (companyId === demoCompanyId || !DEMO_SET.has(d.imei)); });
+    if (!devices.length) return res.status(400).json({ error: 'Firma aleasă n-are nicio mașină — RA Insight n-ar avea ce citi.' });
+    const fisa = insight.fisaFlotei(devices, {});
+    const m1 = fisa[0] ? (fisa[0].nr || fisa[0].nume) : '', m2 = fisa[1] ? (fisa[1].nr || fisa[1].nume) : m1;
+    const intrebari = (Array.isArray(b.intrebari) ? b.intrebari : []).map(function (q) { return String(q || '').trim().slice(0, 300); }).filter(Boolean)
+      .slice(0, PROBA_MAX_INTREBARI).map(function (q) { return q.replace(/\{masina\}/g, m1).replace(/\{masina2\}/g, m2); });
+    if (!intrebari.length) return res.status(400).json({ error: 'Scrie cel puțin o întrebare.' });
+    const id = 'p' + Date.now().toString(36);
+    const p = { id: id, companyId: companyId, firma: co.name, modele: modele, intrebari: intrebari, rezultate: [], gata: false, oprita: false, eroare: null, inceput: Date.now(), sfarsit: null };
+    _probe.set(id, p);
+    while (_probe.size > 5) _probe.delete(_probe.keys().next().value);
+    _probaInLucru = id;
+    _ruleazaProba(p, req).catch(function (e) { p.eroare = String(e && e.message || e); p.gata = true; _probaInLucru = null; });
+    const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
+    res.json({ id: id, estimatLei: _probaEstimatLei(modele, intrebari.length, fx.eur || EUR_RON_FALLBACK), proba: _probaPublic(p) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/admin/insight/proba-modele/:id', requireAuth, requireSuperadmin, (req, res) => {
+  const p = _probe.get(String(req.params.id));
+  if (!p) return res.status(404).json({ error: 'Proba nu mai există (se țin ultimele 5, până la repornirea serverului).' });
+  res.json(_probaPublic(p));
+});
+app.post('/api/admin/insight/proba-modele/:id/opreste', requireAuth, requireSuperadmin, (req, res) => {
+  const p = _probe.get(String(req.params.id));
+  if (!p) return res.status(404).json({ error: 'Proba nu mai există.' });
+  p.oprita = true;
+  res.json(_probaPublic(p));
+});
 
 // ─── Conversațiile omului ───
 // Toate cer `userId` în WHERE (db.js): o conversație a altcuiva răspunde 404, ca una care nu există.
@@ -5088,7 +5229,7 @@ async function _scrieScrisoarea(fapte, companyId) {
       system: [{ type: 'text', text: ramuri.instructiuniScrisoare(), cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: 'FAPTELE (JSON):\n' + JSON.stringify(fapte) }],
       maxTokens: 700, model: ai.AI_MODEL,
-      onUsage: function (u) { db.recordAiUsage(companyId, 'scrisoare', u, null).catch(function () {}); },
+      onUsage: function (u, m) { db.recordAiUsage(companyId, 'scrisoare', u, null, m).catch(function () {}); },
     });
     const v = ramuri.textulTrece(text, fapte);
     if (v.ok) return { text: String(text).trim(), scrisDe: 'model' };
@@ -5328,7 +5469,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     if (_aiAllowed) {
       try {
         const system = 'Ești coordonatorul agenților AI ai unei flote de transport (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client). Primești constatările lor de azi. Scrie un rezumat scurt (2-4 propoziții) în limba română care prioritizează urgențele (furt combustibil, service depășit, încălcarea orelor de condus) și recomandă acțiuni concrete. Fără introduceri lungi.';
-        aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400, onUsage: u => db.recordAiUsage(storeCompany, 'agents', u).catch(() => {}) });
+        aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400, onUsage: (u, m) => db.recordAiUsage(storeCompany, 'agents', u, null, m).catch(() => {}) });
       } catch (e) { /* AI opțional */ }
     }
     auditReq(req, 'run', 'agent', which, { found: findings.length, stored });
@@ -12219,7 +12360,7 @@ app.post('/api/documents/scan', requireAuth, requireEdit('documente'), withScope
       b64, mime, tip: tip || 'auto',
       // 'docscan': fel separat în ai_usage → costul citirii de acte se vede singur în Control costuri,
       // nu amestecat cu întrebările RA Insight. Se măsoară ÎNAINTE să-i punem preț.
-      onUsage: (u) => db.recordAiUsage(req.companyId, 'docscan', u, req.auth && req.auth.userId).catch(() => {}),
+      onUsage: (u, m) => db.recordAiUsage(req.companyId, 'docscan', u, req.auth && req.auth.userId, m).catch(() => {}),
     });
     auditReq(req, 'scan', 'document', null, { sursa: r.sursa, tip: r.tipDetectat, campuri: Object.keys(r.campuri).length });
     res.json(r);

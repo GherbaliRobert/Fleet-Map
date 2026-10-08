@@ -5,20 +5,50 @@ const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 const AI_AGENT_MODEL = process.env.AI_AGENT_MODEL || AI_MODEL;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
-// ─── Preț tokeni (USD / 1 milion) — implicit Haiku 4.5. Schimbi modelul → schimbi și astea din env. ───
+// ─── Modelele pe care le știm, cu prețurile OFICIALE (USD / milion de tokeni), citite de pe
+// platform.claude.com/docs/en/about-claude/pricing pe 08.10.2026. Haiku 5.5: prețul cererilor sub 100.000 de tokeni
+// (ale noastre au câteva mii). `gandire` = modelele 5.x gândesc „adaptiv": li se spune cât (`effort`), iar istoricul
+// unei bucle cu unelte NU se mai atinge (vezi runAgent). Un model necunoscut ia prețurile din env (mai jos).
+const MODELE = {
+  'claude-haiku-4-5':  { nume: 'Haiku 4.5',  in: 1.00, out: 5.00,  cacheRead: 0.10, cacheWrite: 1.25,  gandire: false },
+  'claude-haiku-5-5':  { nume: 'Haiku 5.5',  in: 0.10, out: 0.50,  cacheRead: 0.01, cacheWrite: 0.125, gandire: true },
+  'claude-sonnet-5-5': { nume: 'Sonnet 5.5', in: 2.00, out: 10.00, cacheRead: 0.10, cacheWrite: 2.50,  gandire: true },
+};
+// Cât de mult gândesc modelele 5.x la noi: puțin („low" — ce recomandă Anthropic pentru chat). Gândirea intră în
+// max_tokens, deci li se dă loc în plus (GANDIRE_LOC); se plătește doar ce se folosește.
+const EFORT = process.env.AI_EFFORT || 'low';
+const GANDIRE_LOC = 2000;
+// ─── Prețul unui model necunoscut (USD / 1 milion) — implicit Haiku 4.5, din env. ───
 const PRICE_IN = Number(process.env.AI_PRICE_IN_USD_PER_MTOK) || 1.00;
 const PRICE_OUT = Number(process.env.AI_PRICE_OUT_USD_PER_MTOK) || 5.00;
 const PRICE_CACHE_READ = Number(process.env.AI_PRICE_CACHE_READ_USD_PER_MTOK) || 0.10;  // ~10% din input
 const PRICE_CACHE_WRITE = Number(process.env.AI_PRICE_CACHE_WRITE_USD_PER_MTOK) || 1.25; // ~125% din input
 const USD_EUR = Number(process.env.USD_EUR_RATE) || 0.92;
-// Costul unui răspuns, din `usage`-ul întors de API (tokenii din cache se taxează diferit).
-function costUsd(u) {
+function pret(model) {
+  return MODELE[model || AI_MODEL] || { nume: String(model || AI_MODEL), in: PRICE_IN, out: PRICE_OUT, cacheRead: PRICE_CACHE_READ, cacheWrite: PRICE_CACHE_WRITE, gandire: false };
+}
+// Costul unui răspuns, din `usage`-ul întors de API (tokenii din cache se taxează diferit), pe prețurile modelului
+// care a răspuns (fără model = modelul de bază — cel cu care s-au scris rândurile vechi din consum).
+function costUsd(u, model) {
   if (!u) return 0;
+  const p = pret(model);
   const inp = Number(u.input_tokens) || 0, out = Number(u.output_tokens) || 0;
   const cr = Number(u.cache_read_input_tokens) || 0, cw = Number(u.cache_creation_input_tokens) || 0;
-  return (inp * PRICE_IN + out * PRICE_OUT + cr * PRICE_CACHE_READ + cw * PRICE_CACHE_WRITE) / 1e6;
+  return (inp * p.in + out * p.out + cr * p.cacheRead + cw * p.cacheWrite) / 1e6;
 }
-function costEur(u) { return costUsd(u) * USD_EUR; }
+function costEur(u, model) { return costUsd(u, model) * USD_EUR; }
+// Cererea către API, pe felul modelului: la 5.x, gândire adaptivă cu efortul nostru și loc pentru ea în max_tokens.
+// Haiku 4.5 primește cererea de până acum, neschimbată.
+function _corp(b) {
+  const p = pret(b.model);
+  if (!p.gandire) return b;
+  return Object.assign({}, b, { max_tokens: (Number(b.max_tokens) || 1024) + GANDIRE_LOC, thinking: { type: 'adaptive' }, output_config: { effort: EFORT } });
+}
+// Textul răspunsului: blocurile `text`, în ordine. La modelele 5.x răspunsul poate începe cu un bloc `thinking`, deci
+// NU se citește „primul bloc".
+function _text(j) { return ((j && j.content) || []).filter(function (b) { return b && b.type === 'text'; }).map(function (b) { return b.text; }).join('\n').trim(); }
+// Refuzul modelului (`stop_reason: "refusal"`, la modelele 5.x) se spune pe față, nu ca un răspuns gol.
+const TEXT_REFUZ = 'Nu pot răspunde la întrebarea asta. Încearcă s-o formulezi altfel.';
 // Marchează ultimul bloc pentru cache (prefix-match). Ordinea randării: tools → system → messages,
 // deci un semn pe system acoperă și uneltele. Economie ~90% pe partea deja trimisă o dată.
 function _cachedSystem(system) {
@@ -47,7 +77,7 @@ async function _rawCall(body) {
       'x-api-key': runtimeKey,
       'anthropic-version': '2023-06-01'
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(_corp(body))
   });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
@@ -59,9 +89,11 @@ async function _rawCall(body) {
 }
 
 async function callClaude({ system, messages, maxTokens = 800, model, onUsage }) {
-  const j = await _rawCall({ model: model || AI_MODEL, max_tokens: maxTokens, system: _cachedSystem(system), messages });
-  if (onUsage && j.usage) { try { onUsage(j.usage); } catch (e) { /* logarea consumului nu trebuie să rupă răspunsul */ } }
-  return (j.content && j.content[0] && j.content[0].text) || '';
+  const m = model || AI_MODEL;
+  const j = await _rawCall({ model: m, max_tokens: maxTokens, system: _cachedSystem(system), messages });
+  if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) { /* logarea consumului nu trebuie să rupă răspunsul */ } }
+  if (j.stop_reason === 'refusal') return '';
+  return _text(j);
 }
 
 // Citirea unei IMAGINI (poză de talon, CIV, RCA…). Până aici tot fișierul vorbea doar text; blocul
@@ -71,8 +103,9 @@ async function callClaude({ system, messages, maxTokens = 800, model, onUsage })
 // greșește cel mai puțin, iar regulile noastre sunt verificabile și testate (test_docparse.js).
 // mediaType: 'image/jpeg' | 'image/png' | 'image/webp'.
 async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUsage }) {
+  const m = model || AI_MODEL;
   const j = await _rawCall({
-    model: model || AI_MODEL,
+    model: m,
     max_tokens: maxTokens,
     messages: [{
       role: 'user',
@@ -82,27 +115,37 @@ async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUs
       ],
     }],
   });
-  if (onUsage && j.usage) { try { onUsage(j.usage); } catch (e) {} }
-  return (j.content && j.content[0] && j.content[0].text) || '';
+  if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) {} }
+  if (j.stop_reason === 'refusal') return '';
+  return _text(j);
 }
 
 // Agent cu tool-use: rulează bucla model → execută unelte → model, până la stop_reason !== 'tool_use' sau maxIters.
 // toolHandlers: { numeUnealtă: async (input) => rezultat } — rezultatul e serializat ca JSON pentru model.
-// Întoarce { text, toolCalls: [{name, input}] }. Consumul (tokeni) e raportat per fiecare răspuns prin onUsage.
+// Întoarce { text, toolCalls: [{name, input}] }. Consumul (tokeni) e raportat per fiecare răspuns prin onUsage(usage, model).
+//
+// La modelele 5.x (`gandire`) istoricul buclei NU se atinge: blocurile de gândire sunt legate de tot ce a fost înaintea
+// lor (instrucțiuni, unelte, mesaje), iar o schimbare în urmă le invalidează (pe conturile noi, eroare 400). Deci acolo:
+// cache-ul cozii îl pune API-ul singur (`cache_control` pe cerere), nu mutăm semne pe rezultatele vechi, iar la capăt
+// nu schimbăm instrucțiunile — nota „gata" se adaugă după ultimele rezultate și se cere răspunsul fără unelte
+// (`tool_choice: none`, uneltele rămân aceleași). Haiku 4.5 merge pe drumul de până acum, neschimbat.
+const NOTA_GATA = 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.';
 async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage }) {
+  const m = model || AI_AGENT_MODEL;
+  const cuGandire = pret(m).gandire;
   const convo = (messages || []).slice();
   const sysCached = _cachedSystem(system); // system + unelte se trimit la FIECARE rundă → merită cache-uite
   const used = [];
   for (let i = 0; i < maxIters; i++) {
-    const j = await _rawCall({ model: model || AI_AGENT_MODEL, max_tokens: maxTokens, system: sysCached, tools, messages: convo });
-    if (onUsage && j.usage) { try { onUsage(j.usage); } catch (e) {} }
+    const corp = { model: m, max_tokens: maxTokens, system: sysCached, tools, messages: convo };
+    if (cuGandire) corp.cache_control = { type: 'ephemeral' };
+    const j = await _rawCall(corp);
+    if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) {} }
+    if (j.stop_reason === 'refusal') return { text: TEXT_REFUZ, toolCalls: used, refuz: true };
     const blocks = j.content || [];
-    convo.push({ role: 'assistant', content: blocks });
+    convo.push({ role: 'assistant', content: blocks });   // tot, cu blocurile de gândire, neschimbat
     const toolUses = blocks.filter(b => b.type === 'tool_use');
-    if (j.stop_reason !== 'tool_use' || !toolUses.length) {
-      const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-      return { text, toolCalls: used };
-    }
+    if (j.stop_reason !== 'tool_use' || !toolUses.length) return { text: _text(j), toolCalls: used };
     const results = [];
     for (const tu of toolUses) {
       used.push({ name: tu.name, input: tu.input || {} });
@@ -113,17 +156,24 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
       } catch (e) { out = { error: String((e && e.message) || e) }; }
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: typeof out === 'string' ? out : JSON.stringify(out) });
     }
-    // Cache pe conversația acumulată: doar ULTIMUL rezultat poartă semnul (max 4 semne/cerere),
-    // așa că runda următoare recitește ieftin tot ce s-a trimis deja.
-    for (const m of convo) if (Array.isArray(m.content)) for (const b of m.content) if (b && b.cache_control) delete b.cache_control;
-    results[results.length - 1].cache_control = { type: 'ephemeral' };
+    if (cuGandire) {
+      if (i === maxIters - 1) results.push({ type: 'text', text: NOTA_GATA });
+    } else {
+      // Cache pe conversația acumulată: doar ULTIMUL rezultat poartă semnul (max 4 semne/cerere),
+      // așa că runda următoare recitește ieftin tot ce s-a trimis deja.
+      for (const mm of convo) if (Array.isArray(mm.content)) for (const b of mm.content) if (b && b.cache_control) delete b.cache_control;
+      results[results.length - 1].cache_control = { type: 'ephemeral' };
+    }
     convo.push({ role: 'user', content: results });
   }
   // Limită de iterații atinsă → cere un răspuns final fără unelte, pe baza a ce s-a adunat.
-  const jf = await _rawCall({ model: model || AI_AGENT_MODEL, max_tokens: maxTokens, system: _cuNota(system, 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.'), messages: convo });
-  if (onUsage && jf.usage) { try { onUsage(jf.usage); } catch (e) {} }
-  const text = (jf.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-  return { text, toolCalls: used };
+  const jf = cuGandire
+    ? await _rawCall({ model: m, max_tokens: maxTokens, system: sysCached, tools, tool_choice: { type: 'none' }, messages: convo, cache_control: { type: 'ephemeral' } })
+    : await _rawCall({ model: m, max_tokens: maxTokens, system: _cuNota(system, NOTA_GATA), messages: convo });
+  if (onUsage && jf.usage) { try { onUsage(jf.usage, m); } catch (e) {} }
+  if (jf.stop_reason === 'refusal') return { text: TEXT_REFUZ, toolCalls: used, refuz: true };
+  return { text: _text(jf), toolCalls: used };
 }
 
-module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT };
+module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT,
+  MODELE, pret, EFORT, _corp, _text };

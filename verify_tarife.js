@@ -509,8 +509,8 @@ T('super-adminul nu e îngrădit', /if \(req\.isSuper \|\| req\.companyId == nul
 T('bara omului primește și consumul LUI', /aiQuotaState\(a\.companyId, a\.userId\)/.test(server));
 T('consumul se scrie pe om la toate felurile de întrebări (RA Insight, oricare ușă, și rezumatul de raport)',
   /const userId = req\.auth && req\.auth\.userId != null \? req\.auth\.userId : null;/.test(server) &&
-  /db\.recordAiUsage\(req\.companyId, 'insight', _agg, userId\)/.test(server) &&
-  /recordAiUsage\(req\.companyId, 'report', [^)]*req\.auth && req\.auth\.userId\)/.test(server));
+  /db\.recordAiUsage\(req\.companyId, 'insight', _agg, userId, model\)/.test(server) &&
+  /recordAiUsage\(req\.companyId, 'report', [^)]*req\.auth && req\.auth\.userId, m\)/.test(server));
 T('„Asistent AI" nu mai scrie un fel separat de consum — e tot RA Insight', !/recordAiUsage\(req\.companyId, 'chat'/.test(server));
 // Factura
 T('factura are rândul de conturi', /RA Insight — conturi \(/.test(server));
@@ -539,11 +539,14 @@ T('și NU pomenește niciun preț',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
 // Poarta e una singură și e folosită de toate căile de AI (scrisă la paritatea telefonului).
 const corpInsight = (server.match(/async function _raInsight\([\s\S]*?\n\}\n/) || [''])[0];
+// Din 08.10 singura ocolire e proba modelelor (`o.proba`): costul ei e al NOSTRU, nu al firmei, și o pornește doar
+// super-adminul (ruta /api/admin/insight/proba-modele, requireSuperadmin) — păzit și în verify_proba_modele.js.
 T('poarta fondului e chemată din toate căile de AI (RA Insight, cu toate ușile lui, și rezumatul de raport)',
   /async function _regulileFonduluiAi\(req, res\)/.test(server) &&
-  /if \(await _regulileFonduluiAi\(req, res\)\) return;/.test(corpInsight) && usiAi.length === 3 &&
-  (server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length === 2,
-  String((server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
+  /if \(!o\.proba && await _regulileFonduluiAi\(req, res\)\) return;/.test(corpInsight) && usiAi.length === 3 &&
+  (server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length === 2 &&
+  (server.match(/proba: \{ model: m \}/g) || []).length === 1,
+  String((server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
 T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
 // Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
 T('bara propune contul în plus', /'Un cont în plus aduce încă ' \+ window\._raxNrI\(peCont\)/.test(html));
