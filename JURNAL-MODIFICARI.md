@@ -163,6 +163,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   duc marfa Z la Cluj — ce acte îmi trebuie?": RA Insight pune laolaltă ce știe aplicația (mașina, permisul, actele) și
   regulile (aviz, CMR, cod UIT, ADR, ATP…). Recomandarea mea: după ce aducem internetul în RA Insight, cu lista de reguli
   verificată de un specialist în transport și cu sursa pe fiecare răspuns.
+- [ ] **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Tracks, ca la Sezamo). Adăugat pe 08.10.**
+  Analiza pe criterii: `docs/RA-Tracks-MCP-Analiza.pdf` (5 pagini). De hotărât, pe scurt: (1) întâi întrebăm 15–20 de
+  clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
+  început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
+  trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
 
 ---
 
