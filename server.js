@@ -4564,13 +4564,16 @@ function _probaIntrebariImplicite(acum) {
     'Vreau să reduc costurile cu 10%. De unde să încep?'
   ];
 }
-// Cererea „ca un administrator al firmei", dar cu numele nostru în jurnal: vede DOAR mașinile firmei alese.
-function _cerereProba(req, companyId, message) {
+// Cererea „ca un administrator al firmei", dar cu numele nostru în jurnal: vede DOAR mașinile firmei alese — lista lor
+// explicită (`allowedImeis`), ca la omul firmei. Gol (null) ar însemna „toate mașinile platformei" (așa e la super-admin):
+// starea live (fleet_status) ar fi trimis modelului și mașinile altor firme.
+async function _cerereProba(req, companyId, message) {
   const a = getAuth(req) || {};
   const auth = { userId: a.userId, username: a.username, role: 'company_admin', companyId: companyId };
   const r = Object.create(req);
   r.apiAuth = auth; r._freshAuth = null; r._rolAjust = null; r.auth = auth;
-  r.companyId = companyId; r.isSuper = false; r.allowedImeis = null;
+  r.companyId = companyId; r.isSuper = false;
+  r.allowedImeis = new Set(await db.getCompanyImeis(companyId));
   r.body = { message: message, nou: true };
   return r;
 }
@@ -4605,7 +4608,7 @@ async function _ruleazaProba(p, req) {
         const res = _raspunsInMemorie();
         let x = { i: i, model: m };
         try {
-          await _raInsight(_cerereProba(req, p.companyId, p.intrebari[i]), res, { usa: 'proba', proba: { model: m } });
+          await _raInsight(await _cerereProba(req, p.companyId, p.intrebari[i]), res, { usa: 'proba', proba: { model: m } });
           const b = res.body || {};
           x = Object.assign(x, { text: b.reply || b.error || '', ms: b.ms || null, unelte: b.unelte || [], verificare: b.verificare || null, refuz: !!b.refuz,
             costLei: b.usage ? Math.round(ai.costUsd(b.usage, m) * ai.USD_EUR * eur * 10000) / 10000 : 0, tokeni: b.usage || null, eroare: res.statusCode >= 400 ? (b.error || 'eroare') : null });

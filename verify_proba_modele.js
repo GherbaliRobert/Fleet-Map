@@ -95,7 +95,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   // ─── 2. Pe server pornit ─────────────────────────────────────────────────────────────────────────────
   const PORT = 3300, TCP = 5300;
   const DIR = path.join(os.tmpdir(), 'rax_pm_' + Date.now());
-  const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl';
+  const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl', AI_COADA = DIR + '_coada.json';
   const B = 'http://127.0.0.1:' + PORT;
   // Modelul simulat: răspunde cu text, întârziat (ca să se vadă proba „în lucru"), cu un consum fix și mare, ca diferențele
   // de preț să se vadă după rotunjire.
@@ -106,18 +106,21 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     "    let corp = {}; try { corp = JSON.parse((opts && opts.body) || '{}'); } catch (e) {}",
     "    try { fs.appendFileSync(process.env.PROBA_AI_LOG, JSON.stringify(corp) + '\\n'); } catch (e) {}",
     "    await new Promise(function (r) { setTimeout(r, Number(process.env.PROBA_AI_MS || 0)); });",
-    "    const r = { content: [{ type: 'thinking', thinking: '', signature: 's' }, { type: 'text', text: 'Răspuns de probă de la ' + corp.model + '.' }], stop_reason: 'end_turn', usage: { input_tokens: 10000, output_tokens: 2000 } };",
+    "    let coada = []; try { coada = JSON.parse(fs.readFileSync(process.env.PROBA_AI_COADA, 'utf8') || '[]'); } catch (e) {}",
+    "    let r = coada.shift(); fs.writeFileSync(process.env.PROBA_AI_COADA, JSON.stringify(coada));",
+    "    if (!r) r = { content: [{ type: 'thinking', thinking: '', signature: 's' }, { type: 'text', text: 'Răspuns de probă de la ' + corp.model + '.' }], stop_reason: 'end_turn' };",
+    "    r.usage = { input_tokens: 10000, output_tokens: 2000 };",
     "    return new Response(JSON.stringify(r), { status: 200, headers: { 'content-type': 'application/json' } });", '  }',
     "  if (!/^https?:\\/\\/(127\\.0\\.0\\.1|localhost)[:/]/.test(u)) throw new Error('proba: fara retea');",
     '  return orig.apply(this, arguments);', '};'].join('\n'));
-  fs.writeFileSync(AI_LOG, '');
+  fs.writeFileSync(AI_LOG, ''); fs.writeFileSync(AI_COADA, '[]');
   const env = Object.assign({}, process.env, { NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_pm', DEMO_DISABLED: 'true',
-    PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR, PROBA_AI_LOG: AI_LOG, PROBA_AI_MS: '400', EUR_RON_RATE: '5',
+    PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR, PROBA_AI_LOG: AI_LOG, PROBA_AI_COADA: AI_COADA, PROBA_AI_MS: '400', EUR_RON_RATE: '5',
     GEOCODE_URL: 'http://127.0.0.1:9/reverse', GEOCODE_MIN_INTERVAL_MS: '0', GEOCODE_TIMEOUT_MS: '300' });
   delete env.DATABASE_URL; delete env.ANTHROPIC_API_KEY; delete env.AI_MODEL; delete env.AI_AGENT_MODEL;
   const srv = spawn(process.execPath, ['-r', PRELOAD, 'server.js'], { cwd: __dirname, env, stdio: ['ignore', 'ignore', 'inherit'] });
   let terminat = false;
-  const curata = () => { for (const f of [PRELOAD, AI_LOG]) { try { fs.rmSync(f, { force: true }); } catch (e) {} } try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {} };
+  const curata = () => { for (const f of [PRELOAD, AI_LOG, AI_COADA]) { try { fs.rmSync(f, { force: true }); } catch (e) {} } try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {} };
   const gata = (code) => { terminat = true; try { srv.kill(); } catch (e) {} setTimeout(() => { curata(); process.exit(code); }, 800); };
   srv.on('exit', (c) => { if (!terminat) { console.log('  ✗ serverul probei s-a oprit singur (cod ' + c + ')'); curata(); process.exit(1); } });
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -166,6 +169,9 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
       await json('POST', '/api/admin/insight/proba-modele', S, { companyId: co.id, modele: ['claude-haiku-4-5'], intrebari: ['  '] })];
     T('refuzuri pe față: fără firmă, firmă fără mașini, model necunoscut, fără întrebări (400)', fara.every((r) => r.status === 400 && r.j.error), fara.map((r) => r.status + ' ' + r.j.error).join(' | '));
 
+    // Poziții live: una a firmei, una a ALTEI firme. Prima rundă a primului model cere starea live (fleet_status).
+    for (const imei of ['862129084940001', '862129084940003']) await json('POST', '/api/test/simulate', S, { imei, ts: new Date().toISOString(), lat: 44.43, lng: 26.10, speed: 0, io: { ignition: 0 } });
+    fs.writeFileSync(AI_COADA, JSON.stringify([{ content: [{ type: 'tool_use', id: 'tu_live', name: 'fleet_status', input: {} }], stop_reason: 'tool_use' }]));
     fs.writeFileSync(AI_LOG, '');
     const MODELE = ['claude-haiku-4-5', 'claude-haiku-5-5', 'claude-sonnet-5-5'];
     const st = await json('POST', '/api/admin/insight/proba-modele', S, { companyId: co.id, modele: MODELE, intrebari: ['Câți km a făcut {masina} ieri?', 'Compară {masina} cu {masina2}.'] });
@@ -175,8 +181,12 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     let p = null;
     for (let i = 0; i < 120; i++) { p = (await json('GET', '/api/admin/insight/proba-modele/' + st.j.id, S)).j; if (p.gata) break; await sleep(500); }
     T('proba se termină: 2 întrebări × 3 modele = 6 răspunsuri', p && p.gata && p.facute === 6 && p.total === 6 && (p.rezultate || []).every((x) => !x.eroare && /Răspuns de probă/.test(x.text)), JSON.stringify(p && p.rezultate && p.rezultate.map((x) => x.eroare || x.text)));
-    const log = cereri();
-    T('modelele cerute chiar sunt chemate, întrebare cu întrebare, în ordine', log.map((c) => c.model).join(',') === MODELE.concat(MODELE).join(','), log.map((c) => c.model).join(','));
+    const toate = cereri();
+    // Prima întrebare a primului model a avut două runde (starea live, apoi răspunsul); a doua rundă poartă rezultatul.
+    const live = JSON.stringify((toate[1] && toate[1].messages || []).slice(-1));
+    T('starea live trimisă modelului are DOAR mașinile firmei alese (nu și pe a altei firme)', /B 154 UIP/.test(live) && !/B 999 ALT/.test(live) && /total_flota\\":1/.test(live), live.slice(0, 200));
+    const log = toate.filter((c, k) => k !== 1);
+    T('modelele cerute chiar sunt chemate, întrebare cu întrebare, în ordine', log.map((c) => c.model).join(',') === MODELE.concat(MODELE).join(','), toate.map((c) => c.model).join(','));
     T('5.x primesc gândirea adaptivă cu efort „low"; Haiku 4.5 cererea de până acum', log.every((c) => (c.model === 'claude-haiku-4-5') === !c.thinking) &&
       log.filter((c) => c.thinking).every((c) => c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low'));
     T('„{masina}" și „{masina2}" se înlocuiesc cu mașinile firmei', /Câți km a făcut B 154 UIP ieri\?/.test(JSON.stringify(log[0].messages)) && /Compară B 154 UIP cu B 268 ROY\./.test(JSON.stringify(log[3].messages)));
@@ -187,7 +197,9 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     // 10.000 de tokeni la intrare + 2.000 la ieșire, la 0,92 €/$ și 5 lei/€: Haiku 4.5 = 0,02 $ = 0,092 lei
     T('costul fiecărui răspuns, pe prețurile modelului: Haiku 4.5 0,092 lei, Haiku 5.5 0,0092 lei, Sonnet 5.5 0,184 lei',
       cost['claude-haiku-4-5'] === 0.092 && cost['claude-haiku-5-5'] === 0.0092 && cost['claude-sonnet-5-5'] === 0.184, JSON.stringify(cost));
-    T('totalul probei = suma răspunsurilor', Math.abs(p.costLei - 2 * (0.092 + 0.0092 + 0.184)) < 0.01, p.costLei);
+    // Primul răspuns al lui Haiku 4.5 a avut două runde (starea live + răspunsul): 3 × 0,092 + 2 × 0,0092 + 2 × 0,184.
+    T('totalul probei = suma răspunsurilor (cu toate rundele fiecăruia)', Math.abs(p.costLei - (3 * 0.092 + 2 * 0.0092 + 2 * 0.184)) < 0.005 &&
+      Math.abs(p.costLei - p.rezultate.reduce((t, x) => t + x.costLei, 0)) < 0.005, p.costLei);
     const conv = await json('GET', '/api/insight/conversatii', ck);
     T('nimic în conversațiile cuiva (lista administratorului firmei e goală)', conv.status === 200 && JSON.stringify(conv.j).indexOf('Câți km') < 0 && ((conv.j.conversatii || conv.j || []).length === 0), JSON.stringify(conv.j).slice(0, 160));
     const us = await json('GET', '/api/admin/ai-usage', S);

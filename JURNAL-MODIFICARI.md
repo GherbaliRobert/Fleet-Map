@@ -265,10 +265,12 @@ afacerea lui?" din Scrisoarea de luni).
 
 - **Ce vede fondatorul:** butonul „Proba modelelor" și fereastra ei.
 - **Ce vede clientul:** răspunsurile lui RA Insight și Scrisoarea de luni, scrise sub regulile noi (același model).
-- Probat: `verify_proba_modele.js` (40 de verificări, în `npm test`, cu modelul simulat — nu se cheltuie nimic), plus
+- Probat: `verify_proba_modele.js` (41 de verificări, în `npm test`, cu modelul simulat — nu se cheltuie nimic), plus
   probele vecine (RA Insight, AI Raport, ramurile, prețurile pe cont, telefonul, panoul RA Insight); ecranul pe
   aplicația pornită, pe ambele teme și pe telefon: contrast minim 7,6, fără erori.
 - **De știut:** pe telefon, tabelul de sus al probei se derulează în lateral (e un ecran pentru calculator).
+- **Prins de probă înainte de livrare:** în prima variantă, proba trimitea modelului, la întrebările despre „acum", și
+  mașinile altor firme. Reparat: vede doar mașinile firmei alese; proba verifică asta.
 
 ### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `5d96c98`
 

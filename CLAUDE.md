@@ -502,14 +502,15 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   tokeni pe prețurile modelului de bază — **înainte să trecem clienții pe alt model, panourile se socotesc pe model**.
 - **„Proba modelelor"** (Administrare → Utilizare RA Insight, `raxProbaModele`, blocul între sentinele): rutele
   `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
-  Răspunde ACEEAȘI funcție, `_raInsight(_cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al
-  firmei alese" (vede doar mașinile ei), fără conversație salvată, fără fondul firmei (`!o.proba && _regulileFonduluiAi`),
+  Răspunde ACEEAȘI funcție, `_raInsight(await _cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al
+  firmei alese" — ⚠ `allowedImeis` = LISTA mașinilor firmei, NU null (null = toată platforma, ca la super-admin: starea live
+  ar fi trimis modelului mașinile altor firme; prins de probă pe 08.10, înainte de livrare) —, fără conversație salvată, fără fondul firmei (`!o.proba && _regulileFonduluiAi`),
   fără răspunsul rapid; consumul pe noi (`company_id` NULL, fel `proba_modele`, în afara `AI_BILLABLE_KINDS`). O probă
   deodată (409), ultimele 5 în memorie, rând în audit `ai_proba_modele`. Pagina NU socotește costuri (doar le adună).
   Se rulează pe firma NOASTRĂ — pe datele unui client doar cu acordul lui.
 - **Regulile de scris: `insight.SCRISUL`**, în partea fixă a instrucțiunilor lui RA Insight și în cele ale Scrisorii de
   luni. Un singur loc.
-- Păzit de `verify_proba_modele.js` (în `npm test`; 40, cu API-ul simulat în proces și pe server pornit).
+- Păzit de `verify_proba_modele.js` (în `npm test`; 41, cu API-ul simulat în proces și pe server pornit).
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
