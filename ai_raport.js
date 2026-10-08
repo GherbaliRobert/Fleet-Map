@@ -116,6 +116,37 @@ function _per(from, to, acum, extra) {
   r.eticheta = I.etichetaPerioadei(r.from, r.to, acum);
   return Object.assign(r, extra || {});
 }
+// Un interval scris de om — „01.10.2026-07.10.2026", „1-7 octombrie", „de pe 1 până pe 7 octombrie", „între 1 și 7
+// octombrie", „din 28 septembrie până pe 4 octombrie", „de pe 1 octombrie până azi". Ultima zi intră întreagă. Până pe
+// 08.10, „1-7 octombrie" ieșea „1 iulie" (citit ca o zi: 1.7), iar „de pe 1 până pe 7 octombrie" ieșea doar 7 octombrie
+// (Alin, 08.10: „eu am dat doar până pe 07"). Fără an scris, un interval din viitor e cel de anul trecut.
+const _PANA = '(?:-|–|—|pana (?:pe|la|in)|pana|si)';
+function _interval(t, z, now) {
+  let m, d1, m1, y1 = null, d2, m2, y2 = null, panaAcum = false;
+  if ((m = new RegExp('\\b(\\d{1,2})[./](\\d{1,2})(?:[./](\\d{2,4}))?\\s*' + _PANA + '\\s*(\\d{1,2})[./](\\d{1,2})(?:[./](\\d{2,4}))?\\b').exec(t))) {
+    d1 = +m[1]; m1 = +m[2] - 1; y1 = m[3] ? +m[3] : null; d2 = +m[4]; m2 = +m[5] - 1; y2 = m[6] ? +m[6] : null;
+  } else if ((m = new RegExp('\\b(\\d{1,2})\\s*(?:-|–|—)\\s*(\\d{1,2}) (' + LUNI_RE + ')(?: (\\d{4}))?\\b').exec(t))) {
+    d1 = +m[1]; d2 = +m[2]; m1 = m2 = _luna(m[3]); y1 = y2 = m[4] ? +m[4] : null;
+  } else if ((m = new RegExp('\\b(?:de pe|de la|din|intre) (\\d{1,2})(?: (' + LUNI_RE + '))?(?: (\\d{4}))? ' + _PANA + ' (?:pe )?(\\d{1,2}) (' + LUNI_RE + ')(?: (\\d{4}))?\\b').exec(t))) {
+    d1 = +m[1]; m2 = _luna(m[5]); m1 = m[2] ? _luna(m[2]) : m2; y1 = m[3] ? +m[3] : null; d2 = +m[4]; y2 = m[6] ? +m[6] : null;
+  } else if ((m = new RegExp('\\b(?:de pe|de la|din) (\\d{1,2})(?: (' + LUNI_RE + ')|[./](\\d{1,2}))(?:[ ./](\\d{4}))? (?:pana )?(?:azi|astazi|acum|in prezent)\\b').exec(t))) {
+    d1 = +m[1]; m1 = m[2] ? _luna(m[2]) : +m[3] - 1; y1 = m[4] ? +m[4] : null; panaAcum = true;
+  } else return null;
+  if (y1 != null && y1 < 100) y1 += 2000;
+  if (y2 != null && y2 < 100) y2 += 2000;
+  if (!(m1 >= 0 && m1 <= 11 && d1 >= 1 && d1 <= 31)) return null;
+  if (!panaAcum && !(m2 >= 0 && m2 <= 11 && d2 >= 1 && d2 <= 31)) return null;
+  const faraAn = y1 == null && y2 == null;
+  if (y1 == null) y1 = y2 != null ? y2 : z.y;
+  if (y2 == null) y2 = y1;
+  if (faraAn && _zi(y1, m1, d1) > now) { y1 -= 1; y2 -= 1; }
+  const de = _zi(y1, m1, d1);
+  let pana = now;
+  if (!panaAcum) { if (_zi(y2, m2, d2) < de) y2 += 1; pana = Math.min(now, _zi(y2, m2, d2 + 1)); }
+  if (!(de < pana)) return null;
+  if (pana - de > MAX_ZILE * ZI) return _per(pana - MAX_ZILE * ZI, pana, now, { taiat: true });
+  return _per(de, pana, now);
+}
 // Întoarce { from, to, eticheta } sau null dacă textul nu spune nicio perioadă. `s` = subiectul (scadențele privesc înainte).
 function perioadaDin(t, acum, s) {
   const now = acum != null ? Number(acum) : Date.now();
@@ -129,6 +160,8 @@ function perioadaDin(t, acum, s) {
     if (/\b(luna viitoare|luna urmatoare)\b/.test(t)) return _per(_zi(z.y, z.m0 + 1, 1), _zi(z.y, z.m0 + 2, 1), now, { inainte: true });
     return null;
   }
+  const iv = _interval(t, z, now);
+  if (iv) return iv;
   if (/\balaltaieri\b/.test(t)) return _per(_zi(z.y, z.m0, z.d - 2), _zi(z.y, z.m0, z.d - 1), now);
   if (/\b(ieri|aseara|azi-?\s?noapte|noaptea trecuta)\b/.test(t)) return _per(_zi(z.y, z.m0, z.d - 1), azi0, now);
   if (/\b(azi|astazi|de dimineata|in dimineata asta)\b/.test(t)) return _per(azi0, now, now);
@@ -488,6 +521,12 @@ function _raspunde(u, rep, extra) {
   }
 
   if ((u.subiect === 'consum' || u.subiect === 'costuri') && valori) {
+    // Cifrele greu de crezut, din raport (cifre.js, prin `valori`): spuse lângă răspuns, nu ascunse (Alin, 08.10).
+    const deVerificat = function () {
+      valori.filter(function (v) { return (v.deVerificat || []).length; }).slice(0, 4).forEach(function (v) {
+        r.sugestii.unshift({ fel: 'atentie', text: 'De verificat — ' + et(v.imei) + ': ' + v.deVerificat.join('; ') + '.' });
+      });
+    };
     const cuDate = valori.filter(function (v) { return u.subiect === 'costuri' ? v.litri > 0 : v.areDate; });
     const litri = valori.reduce(function (a, v) { return a + (v.litri || 0); }, 0);
     const km = valori.reduce(function (a, v) { return a + (v.km || 0); }, 0);
@@ -504,6 +543,7 @@ function _raspunde(u, rep, extra) {
         r.tabel = { coloane: ['Mașina', 'Cost', 'Litri', 'Km'], randuri: ord.slice(0, u.top ? 5 : 8).map(function (v) { return [et(v.imei), '~' + lei(v.cost), nr(v.litri), nr(v.km)]; }) };
         r.tiles = [{ et: 'Cost total', val: '~' + lei(cost) }, { et: 'Litri', val: nr(litri) }, { et: 'Cost pe km', val: km > 1 ? nr(cost / km, 2) + ' lei' : '—' }];
       }
+      deVerificat();
       return r;
     }
     if (una && valori.length === 1) {
@@ -542,6 +582,7 @@ function _raspunde(u, rep, extra) {
         r.sugestii.push({ fel: 'atentie', text: (sc.length === 1 ? 'Pe ' + zi + ', rezervorul ' + (una ? '' : 'lui ' + et(prim.imei) + ' ') + 'a scăzut cu ' + cant(Math.abs(Math.round(prim.litri)), 'litru', 'litri') + ' fără să se explice prin drum.' : sc.length + ' scăderi suspecte de combustibil în perioada asta.') + ' Vezi raportul „Alimentări & scăderi”.' });
       }
     }
+    deVerificat();
     return r;
   }
 

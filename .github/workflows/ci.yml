@@ -43,6 +43,7 @@ jobs:
           node --check condus.js
           node --check safe_drive.js
           node --check ramuri.js
+          node --check cifre.js
           node --check preaviz.js
           node --check tacho.js
           node --check geocode.js

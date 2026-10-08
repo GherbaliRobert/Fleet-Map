@@ -3991,6 +3991,17 @@ body.dark .chat-sursa i { color: var(--accent); }
 .chat-pas i { color: var(--text-secondary); }
 .chat-pas:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
 .chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
+/* „De verificat" sub un răspuns RA Insight (cifre.js): textul pe culoarea textului (contrast sigur pe ambele teme), chihlimbarul doar
+   pe chenar și pe iconiță. Alin, 08.10: „să aibă grijă cumva să nu dea greșit". */
+.chat-verif { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 2px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(245,158,11,.45); border-left: 3px solid #f59e0b; background: rgba(245,158,11,.08); color: var(--text-primary); font-size: 13px; line-height: 1.5; }
+.chat-verif > i { color: #b45309; margin-top: 3px; }
+body.dark .chat-verif > i { color: #fbbf24; }
+.chat-verif b { display: block; font-weight: 800; margin-bottom: 2px; }
+.chat-verif ul { margin: 0; padding-left: 18px; }
+.chat-verif li { margin: 1px 0; }
+.sdp-verif td { font-size: 12px; color: var(--text-primary); background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b; padding: 5px 10px !important; }
+.sdp-verif td i { color: #b45309; }
+body.dark .sdp-verif td i { color: #fbbf24; }
 #rin-msgs .chat-urm, #rax-ai-msgs .chat-urm { margin: -4px 0 0 38px; }
 .chat-urm button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 99px; border: 1px dashed var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .chat-urm button i { font-size: 11px; color: var(--text-muted); }

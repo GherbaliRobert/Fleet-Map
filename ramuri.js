@@ -96,6 +96,7 @@ function alcatuiesteCombustibil(o) {
     const dif = o.inaintePregatita && i && (i.dist >= 0.5 || i.consumed >= 0.5) ? Math.round(cost - ci) : null;
     return { imei: m.imei, eticheta: m.eticheta, km: Math.round(c.dist), litri: Math.round(c.consumed * 10) / 10, l100: l100, sursa: c.source, estimat: !masurat,
       pret: Math.round(c.price * 100) / 100, cost: Math.round(cost), norma: c.norma || null, peste: peste,
+      deVerificat: c.deVerificat || [],   // cifre greu de crezut (cifre.js, din motorul rapoartelor) — pagina și RA Insight le spun
       fata: dif == null ? null : { fel: dif > 0 ? 'atentie' : (dif < 0 ? 'bun' : 'info'), text: dif ? (dif > 0 ? '+' : '−') + lei(Math.abs(dif)) : 'la fel' } };
   }).filter(Boolean).sort(function (a, b) { return b.cost - a.cost || b.km - a.km; });
   const sum = function (lista, f) { return lista.reduce(function (a, x) { return a + f(x); }, 0); };
@@ -331,17 +332,8 @@ function instructiuniScrisoare() {
   ].join('\n');
 }
 // Cifrele pe care le are voie să le scrie RA Insight: toate cele din fapte (și din textele lor: „06.10, 02:14", „5h 20m").
-function _numere(t) {
-  const out = [];
-  String(t).replace(/\d+(?:[.,]\d+)*/g, function (m) {
-    if (/^\d{1,3}(\.\d{3})+$/.test(m)) out.push(Number(m.replace(/\./g, '')));          // 4.230 = patru mii
-    else if (/^\d+,\d+$/.test(m)) out.push(Number(m.replace(',', '.')));               // 12,3
-    else if (/^\d+\.\d+$/.test(m) && !/^\d{1,2}\.\d{2}$/.test(m)) out.push(Number(m)); // 12.3 (din JSON)
-    else m.split(/[.,]/).forEach(function (x) { if (x) out.push(Number(x)); });         // 06.10 = două cifre
-    return m;
-  });
-  return out;
-}
+// Cititorul de cifre e unul singur, în cifre.js (îl folosește și verificarea răspunsurilor din RA Insight).
+const _numere = require('./cifre').numere;
 // Mereu pe voie: „Reg. 561" (CE 561/2006) și „la 100 km" — nume și unități, nu cifre ale flotei.
 const CIFRE_MEREU = [100, 561, 2006];
 function cifreleFaptelor(f) { const set = new Set(CIFRE_MEREU); _numere(JSON.stringify(f)).forEach(function (n) { set.add(n); }); return set; }

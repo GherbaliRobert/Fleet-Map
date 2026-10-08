@@ -10119,7 +10119,7 @@ const pozitii = await r.json();</code></pre>
     // (dedesubt); fără `parte` = amândouă, ca înainte.
     window._insightExtra = function (j, laAlegere, parte) {
       var box = document.createElement('div'); box.className = 'ins-extra';
-      var int = (j && Array.isArray(j.inteles) && parte !== 'alege') ? j.inteles : [];
+      var int = (j && Array.isArray(j.inteles) && parte !== 'alege' && parte !== 'verificare') ? j.inteles : [];
       if (int.length) {
         var r = document.createElement('div'); r.className = 'ins-int';
         var et = document.createElement('span'); et.textContent = 'Am înțeles:'; r.appendChild(et);
@@ -10133,7 +10133,25 @@ const pozitii = await r.json();</code></pre>
         });
         box.appendChild(r);
       }
-      var al = (j && Array.isArray(j.alege) && parte !== 'inteles') ? j.alege : [];
+      // „De verificat" (cifre.js, pe server, după fiecare răspuns): perioada citită ≠ cea cerută, cifre care nu se regăsesc
+      // în datele citite, cifre greu de crezut. Doar la cerere (parte === 'verificare'), sub textul răspunsului.
+      var vf = (j && j.verificare && parte === 'verificare') ? j.verificare : null;
+      if (vf) {
+        var linii = [];
+        if (vf.perioada) linii.push(String(vf.perioada));
+        if (Array.isArray(vf.cifre) && vf.cifre.length) linii.push('Cifre care nu se regăsesc în datele citite: ' + vf.cifre.join(', ') + '. Verifică-le în raport.');
+        (Array.isArray(vf.deVerificat) ? vf.deVerificat : []).forEach(function (t) { linii.push(String(t)); });
+        if (linii.length) {
+          var bd = document.createElement('div'); bd.className = 'chat-verif';
+          var ic2 = document.createElement('i'); ic2.className = 'fas fa-triangle-exclamation'; bd.appendChild(ic2);
+          var cp = document.createElement('div');
+          var tt = document.createElement('b'); tt.textContent = 'De verificat'; cp.appendChild(tt);
+          var ul = document.createElement('ul');
+          linii.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+          cp.appendChild(ul); bd.appendChild(cp); box.appendChild(bd);
+        }
+      }
+      var al = (j && Array.isArray(j.alege) && parte !== 'inteles' && parte !== 'verificare') ? j.alege : [];
       if (al.length && typeof laAlegere === 'function') {
         var w = document.createElement('div'); w.className = 'ins-alege';
         al.forEach(function (a) {
@@ -10503,6 +10521,7 @@ const pozitii = await r.json();</code></pre>
         var x = m.extra || {};
         if (window._insightExtra) { var ii = window._insightExtra({ inteles: x.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
         var txt = el('div', 'insp-txt'); txt.innerHTML = md(m.text); bub.appendChild(txt);
+        if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
         if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
         if (surse.length) {
@@ -10561,7 +10580,7 @@ const pozitii = await r.json();</code></pre>
           if (r.s === 404) { S.conv = null; window._raxConvId = null; }
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
-            extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari } };
+            extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
@@ -11067,6 +11086,12 @@ const pozitii = await r.json();</code></pre>
           var cc = sdCel(tr, sdLei(m.cost), 'n b'); cc.title = sdNr(m.litri, 1) + ' L × ' + sdNr(m.pret, 2) + ' lei/L';
           sdCel(tr, m.fata ? m.fata.text : '—', 'n ' + (m.fata ? m.fata.fel : ''));
           tM.b.appendChild(tr);
+          // Cifre greu de crezut (cifre.js, din motorul rapoartelor): spuse sub mașină, nu ascunse (Alin, 08.10)
+          if ((m.deVerificat || []).length) {
+            var trv = el('tr', 'sdp-verif'); var tdv = el('td'); tdv.colSpan = 8;
+            tdv.appendChild(el('i', 'fas fa-triangle-exclamation')); tdv.appendChild(document.createTextNode(' De verificat: ' + m.deVerificat.join('; ') + '.'));
+            trv.appendChild(tdv); tM.b.appendChild(trv);
+          }
         });
         sM.appendChild(tM.w);
         sM.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi litrii și prețul. „În fișă” e cel mai mare consum trecut în fișa mașinii (de obicei „Consum oraș”).'));
@@ -20401,6 +20426,7 @@ const pozitii = await r.json();</code></pre>
         if (b0 && window._insightExtra) {
           // „Am înțeles" deasupra răspunsului, butoanele de ales (când RA Insight întreabă „care dintre ele?") dedesubt
           var ii = window._insightExtra(j, null, 'inteles'); if (ii.childNodes.length) b0.insertBefore(ii, b0.firstChild);
+          var vv = window._insightExtra(j, null, 'verificare'); if (vv.childNodes.length) b0.appendChild(vv);
           var aa = window._insightExtra(j, function (t) { $('rax-ai-input').value = t; raxSendAI(); }, 'alege'); if (aa.childNodes.length) b0.appendChild(aa);
         }
         if (b0 && Array.isArray(j.sources) && j.sources.length) {

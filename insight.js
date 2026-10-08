@@ -242,7 +242,14 @@ function perioada(input, acum) {
   const p = String(i.period || '').toLowerCase();
   let from, to = now;
   const luna = /^(\d{4})-(\d{2})$/.exec(String(i.month || ''));
-  if (i.from && i.to && !isNaN(Date.parse(i.from)) && !isNaN(Date.parse(i.to))) { from = Date.parse(i.from); to = Date.parse(i.to); }
+  // O zi scrisă „AAAA-LL-ZZ" e o zi a României: „from" de la miezul ei, „to" = ultima zi, care intră ÎNTREAGĂ (08.10: un
+  // „to" de „2026-10-07" se citea ca miezul nopții UTC dinaintea zilei, deci 7 octombrie ieșea din interval).
+  const zi = function (x) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x || '').trim()); return m ? [+m[1], +m[2] - 1, +m[3]] : null; };
+  const zf = zi(i.from), zt = zi(i.to);
+  if (i.from && i.to && (zf || !isNaN(Date.parse(i.from))) && (zt || !isNaN(Date.parse(i.to)))) {
+    from = zf ? inceputZiRO(zf[0], zf[1], zf[2]) : Date.parse(i.from);
+    to = zt ? inceputZiRO(zt[0], zt[1], zt[2] + 1) : Date.parse(i.to);
+  }
   else if (luna) { from = inceputZiRO(+luna[1], +luna[2] - 1, 1); to = Math.min(now, inceputZiRO(+luna[1], +luna[2], 1)); }
   else if (p === 'today') from = azi0;
   else if (p === 'yesterday') { from = inceputZiRO(z.y, z.m0, z.d - 1); to = azi0; }

@@ -234,7 +234,47 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Harta: fișa mașinii fără transmisie se deschide și pe calculator; „acum o oră", nu „acum 1 ore" — `COMMIT_H2`
+### AMÂNDOI · Capitolul AI, etapa B+: cifrele lui RA Insight se verifică, „1–7 octombrie" înseamnă 1–7, consumul greu de crezut e spus — `COMMIT_BPLUS`
+
+Alin, 08.10: *„Verificarea cifrelor, perioada exactă (1–7 înseamnă 1–7) și cifrele greu de crezut … — da"*. Pornit de la
+captura lui: a cerut consumul pe 1–7 octombrie, RA Insight a citit 1–8 octombrie (luna, până azi), dar în titlu a scris
+„1–7 octombrie"; Passatul apărea cu 1,2 l/100 km (pe 13 km) fără nicio vorbă.
+
+**Ce s-a schimbat:**
+1. **Perioada e exactă.** „1-7 octombrie", „01.10.2026-07.10.2026", „de pe 1 până pe 7 octombrie", „între 1 și 7
+   octombrie", „din 28 septembrie până pe 4 octombrie", „de pe 1 octombrie până azi" — AI Raport și RA Insight citesc
+   exact zilele astea, cu ultima zi întreagă. Până acum AI Raport citea „1-7 octombrie" ca „1 iulie", iar RA Insight
+   putea cere la combustibil doar luni întregi.
+2. **Sub răspunsul lui RA Insight, banda „De verificat"**, doar când e cazul:
+   - perioada citită nu e cea cerută: „Ai cerut 28–30 septembrie; cifrele sunt pentru septembrie 2026.";
+   - o cifră care nu se regăsește în datele citite (nici ca atare, nici socotită din ele: totaluri, partea din total,
+     diferențe și procente față de perioada dinainte, litri la 100 km, lei pe litru): „Cifre care nu se regăsesc în datele
+     citite: 734 km. Verifică-le în raport.";
+   - o cifră greu de crezut (punctul 3).
+   Răspunsul nu se schimbă — banda doar spune. Rămâne în conversație (se vede și la redeschidere).
+3. **Consumul greu de crezut** — sub 3 sau peste 40 l/100 km (la camioane sub 10 sau peste 70), prețul pe litru sub 3
+   sau peste 12 lei — e spus la fel peste tot: în rapoartele Consum, Costuri și Emisii (rândul „De verificat" din
+   legendă, pe ecran, în Excel și în PDF), în ramura Combustibil (sub mașină), în AI Raport și în RA Insight. Exemplu:
+   „1,0 l/100 km — neobișnuit de mic; verifică senzorul, contorul sau consumul din fișă". Pe drum scurt (sub 50 km):
+   „1,2 l/100 km pe doar 13 km — prea puțin drum ca cifra să fie sigură". Cifra rămâne cum e.
+4. **RA Insight primește mai bine datele de combustibil:** prețul pe litru al fiecărei mașini și, pe înțeles, de unde
+   vine consumul („estimat din consumul trecut în fișă (mașina nu trimite consumul)"). I se cere: perioada exactă, titlul
+   = perioada citită, cifra „de verificat" spusă lângă cifra ei, nicio cifră socotită din cap.
+5. Duratele („45 de minute", „1h 23m") nu se verifică: aceeași durată se scrie în prea multe feluri, iar o bandă pusă
+   pe o cifră bună ar strica încrederea mai mult decât ajută.
+
+- **Ce vede fondatorul:** la fel ca clientul, pe orice firmă. În jurnalul de audit, la fiecare răspuns, doar ce fel de
+  semnal a apărut (perioada / cifre / de verificat) — nu textul.
+- **Ce vede clientul:** banda „De verificat" sub răspunsurile lui RA Insight, când e cazul; rândul „De verificat" în
+  rapoartele de consum; perioadele scrise „1–7 octombrie" înțelese exact.
+- Probat: `verify_cifre.js` (57 de verificări, în `npm test`; cu aplicația pornită și modelul simulat — nu se cheltuie
+  nimic), RA Insight 137, AI Raport 151, ramurile 134, Safe Drive 88, rapoartele pe pagini 33, consumul 30, ghidul 22;
+  ecranul pe aplicația pornită, pe ambele teme și pe telefon: contrastul textului benzii 15–17, al iconiței 4,2–10,
+  nimic ieșit din ecran, fără erori.
+- **Scăpare prinsă de capturi, reparată înainte de livrare:** în secțiunea RA Insight banda apărea doar la redeschiderea
+  conversației, nu imediat după răspuns. Păzită acum în probă.
+
+### AMÂNDOI · Harta: fișa mașinii fără transmisie se deschide și pe calculator; „acum o oră", nu „acum 1 ore" — `499bc97`
 
 Cele două găsite la reparația de mai jos. Alin, 08.10: *„rezolvă acum"*.
 

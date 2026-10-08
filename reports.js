@@ -6,7 +6,8 @@ const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
 let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză")
 const condus = require('./condus');   // pragurile și scorul EcoDrive — aceleași pentru raport și pentru Safe Drive (o singură regulă)
-const tacho = require('./tacho');     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
+const tacho = require('./tacho');
+const cifre = require('./cifre');   // cifrele greu de crezut la consum („de verificat") — un singur loc pentru praguri     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
 const insight = require('./insight'); // începutul unei zile pe ora României (inceputZiRO)
 const preaviz = require('./preaviz'); // starea unui act / a unei revizii și preavizul firmei — aceleași ca listele (Scadențe)
 
@@ -1274,9 +1275,11 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
   // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
-  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0) }; });
+  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0), deVerificat: m.deVerificat || [] }; });
+  const deVerificat = _deVerificatConsum(cm, imeis, devMap);
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true, legend: CONSUMPTION_LEGEND, valori };
+    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true,
+    legend: _legendaCuDeVerificat(CONSUMPTION_LEGEND, deVerificat), valori, deVerificat };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
@@ -1969,9 +1972,12 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     { type: 'bar', title: 'Cost pe km (RON)',                  labels: topK.labels, datasets: [{ label: 'RON/km', data: topK.data }] }
   ] : [];
   // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
-  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, pret: Math.round(m.price * 100) / 100, cost: Math.round(m.consumed * m.price), estimat: !!m.estimated }; });
-  return { columns: ['Vehicul', 'Km efectuați', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true, valori };
+  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, pret: Math.round(m.price * 100) / 100, cost: Math.round(m.consumed * m.price), estimat: !!m.estimated, deVerificat: m.deVerificat || [] }; });
+  const deVerificat = _deVerificatConsum(cm, imeis, devMap);
+  const legend = _legendaCuDeVerificat(null, deVerificat);
+  return Object.assign({ columns: ['Vehicul', 'Km efectuați', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true, valori, deVerificat },
+    legend ? { legend } : {});
 }
 
 // Legenda pt. Emisii CO₂ (setată pe raport → randată online, în Excel și PDF).
@@ -2004,7 +2010,7 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
   return {
     columns: ['Vehicul', 'Combustibil', 'Km', 'Consum', 'CO₂ (t)', 'CO₂/km', 'Sursă'], rows,
     summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'CO₂ mediu (g/km)': tKm > 1 ? Math.round(tCo2 / tKm * 1000) : '—' },
-    charts, summarySheet: true, legend: EMISSIONS_LEGEND
+    charts, summarySheet: true, legend: _legendaCuDeVerificat(EMISSIONS_LEGEND, _deVerificatConsum(cm, imeis, devMap)), deVerificat: _deVerificatConsum(cm, imeis, devMap)
   };
 }
 
@@ -2031,6 +2037,16 @@ async function _preavizFirme(db) {
 // Senzorul de nivel e folosit DOAR dacă dă un L/100km plauzibil (1..200) pe distanță reală; altfel estimează
 // din km × consum-pe-tip + ralanti. Gardă de timp pe distanță (dt<=300s) și pe realimentări (salt după o pauză
 // mare = ignorat). Întoarce un map imei -> metrici. Oglindește logica din fuelStats (pagina „Statistici consum").
+// „De verificat", pe mașini: [{ imei, vehicul, texte }] — pentru legenda rapoartelor (ecran, Excel, PDF) și pentru RA Insight.
+function _deVerificatConsum(cm, imeis, devMap) {
+  return imeis.filter(function (imei) { return cm[imei] && (cm[imei].deVerificat || []).length; })
+    .map(function (imei) { return { imei: imei, vehicul: label(devMap, imei), texte: cm[imei].deVerificat }; });
+}
+function _legendaCuDeVerificat(legend, lista) {
+  if (!lista.length) return legend;
+  const items = lista.map(function (x) { return ['De verificat', x.vehicul + ': ' + x.texte.join('; ') + '.']; });
+  return legend ? Object.assign({}, legend, { items: items.concat(legend.items || []) }) : { title: 'De verificat', items: items };
+}
 async function _consumptionMap(db, imeis, from, to, opts) {
   opts = opts || {};
   const refuelMin = opts.refuelMin || 5, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
@@ -2078,8 +2094,14 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     // Sursa consumului, în ordinea încrederii: contor cumulativ CAN > nivel rezervor plauzibil > are senzor de nivel
     // CAN dar prea grosier pt. scăderi mici (consum estimat, dar mașina NU e oarbă) > fără nicio dată (pur din fișă).
     const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : (hasFuel ? 'Estimat (nivel CAN)' : 'Estimat'));
+    // Cifre greu de crezut (sub 3 sau peste 40 l/100 km, la camioane sub 10 sau peste 70; prețul pe litru sub 3 sau peste
+    // 12 lei) — marcate „de verificat", nu schimbate. Aceleași texte în rapoarte, în ramura Combustibil, în AI Raport și în
+    // RA Insight (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"). Pe drum zero nu e nimic de spus.
+    const deVerificat = (consumed > 0 || dist > 1) ? cifre.consumDeVerificat({ l100: per100, km: dist, pret: price, camion: tacho.vehiculAreTahograf(c.vtype),
+      electric: /electr/i.test(String(c.fuelType || '')) }) : [];
     out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), source, hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null,
-      norma: c.cMax || null };   // cel mai mare consum din fișă (de obicei „Consum oraș”); null = netrecut (atunci nu se spune „peste normă”)
+      norma: c.cMax || null,     // cel mai mare consum din fișă (de obicei „Consum oraș”); null = netrecut (atunci nu se spune „peste normă”)
+      deVerificat };
   }
   return out;
 }

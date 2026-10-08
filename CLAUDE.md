@@ -460,6 +460,31 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - Nu s-au pus „Încearcă din nou" și „Oprește" (ar consuma o întrebare fără ca omul să știe).
 - Păzit de `verify_ai_raport.js` (151), `verify_insight.js` (137), `verify_insight_ghid.js`.
 
+### Etapa B+ (08.10): cifrele se verifică, perioada e exactă, consumul greu de crezut e spus (Alin: „da")
+- **Regula stă în `cifre.js`** (curat): `numere` (cititorul de cifre, folosit și de Scrisoarea de luni — `ramuri.textulTrece`),
+  `negasite(text, date)` (cifrele cu unitate din răspuns care nu se regăsesc în ce au întors uneltele, nici socotite: totalul
+  și partea din total ale unei liste, diferențe și procente între locuri DIFERITE, l/100 km, lei pe litru / pe km),
+  `perioadaDiferita` (capetele ±1 h; „până acum" = „până acum"), `consumDeVerificat` (3 / 40 l/100 km, camion 10 / 70, preț
+  3 / 12 lei, sub 50 km = „prea puțin drum"). NU scrie praguri în altă parte.
+- Nu se verifică: întregii ≤ 12, 100 / 90 / 561 / 2006, datele, orele, numerele de înmatriculare și **duratele** (prea multe
+  forme: „1h 23m", „83 de minute", „1,4 ore" — o bandă pe o cifră bună strică încrederea). `*`, `_`, `` ` `` se scot înainte
+  de citire. Felul cifrei din date îl dă numele câmpului (`_felCheie`), cu **banii întâi**: „pret_litru_lei" e preț, nu litri.
+- **Pe server:** `_raInsight` ține tot ce au întors uneltele (`dateCitite`) și perioadele chiar citite (`citite`);
+  `_verificaRaspunsul` → `verificare: { perioada?, cifre?, deVerificat? }`, salvată în mesaj (`extra.verificare`) și trimisă
+  în răspuns; în audit doar felurile, nu textul. **Răspunsul nu se schimbă** — banda doar spune.
+- **Perioada exactă:** `ai_raport._interval` (în `perioadaDin`, înaintea zilelor): „1-7 octombrie", „01.10-07.10[.2026]",
+  „de pe / de la / din / între 1 [și | până pe] 7 octombrie", „… până azi"; fără an și în viitor → anul trecut; ultima zi
+  întreagă; plafonul `MAX_ZILE`. `insight.perioada` primește și zile („AAAA-LL-ZZ", `to` = ziua întreagă). Unealta
+  `combustibil` primește `from` / `to` (`_ramInterval`, cel mult `RAM_INTERVAL_ZILE` = 93) și `period`; ramurile întorc
+  `de` / `pana` = ce s-a citit. Până pe 08.10 AI Raport citea „1-7 octombrie" ca „1 iulie".
+- **„De verificat" la consum: O socoteală, în `_consumptionMap`** (reports.js) → rapoartele Consum / Costuri / Emisii (legenda,
+  `_legendaCuDeVerificat` → ecran, Excel, PDF), ramura Combustibil (`deVerificat` pe mașină → rândul `.sdp-verif`), AI Raport
+  (sugestia „De verificat — …"), unealta lui RA Insight (`de_verificat`). NU o socoti a doua oară.
+- **Pagina:** banda = partea `'verificare'` din `_insightExtra` (`.chat-verif`, textContent), și pe răspunsul PROASPĂT
+  (`extra.verificare` în `insightTrimite` — lipsea, prins de capturi pe 08.10: banda apărea doar la redeschidere). Textul pe
+  `--text-primary`; chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată.
+- Păzit de `verify_cifre.js` (în `npm test`; 57, cu server pornit și modelul simulat).
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

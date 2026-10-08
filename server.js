@@ -218,6 +218,7 @@ const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: 
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
+const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat"
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
@@ -4067,9 +4068,10 @@ function _insightInstructiuni(cuRapoarte) {
       'sau doar numele unei mașini) se leagă de ce s-a vorbit: aceeași mașină, aceeași perioadă, același subiect, dacă omul nu spune ' +
       'altceva. Dacă o întrebare de mai înainte a rămas fără răspuns (de pildă lipsea mașina), răspunde acum la ea — nu-l întreba din nou ce vrea.',
     cuRapoarte
-      ? 'PERIOADE: pentru run_report folosește `period` (today, yesterday, this_week, last_week, this_month, last_month, last_7_days, ' +
-        'last_30_days), `month` („2026-09") pentru o lună anume, sau `from`/`to`. Fără perioadă spusă: ultimele 7 zile, și spune asta. ' +
-        'Când compari două perioade, rulează raportul pentru fiecare.'
+      ? 'PERIOADE: pentru run_report (și pentru combustibil) folosește `period` (today, yesterday, this_week, last_week, this_month, last_month, ' +
+        'last_7_days, last_30_days), `month` („2026-09") pentru o lună întreagă, sau `from`/`to` ca zile („2026-10-01" și „2026-10-07" — ' +
+        'ultima zi intră întreagă) pentru o perioadă anume. Fără perioadă spusă: ultimele 7 zile, și spune asta. Când compari două perioade, ' +
+        'rulează raportul pentru fiecare.'
       : 'Omul nu are acces la rapoarte: pentru perioade trecute spune-i că rapoartele i le poate da administratorul firmei.',
     'ALEGEREA UNELTEI: despre ACUM → fleet_status; „ce probleme are flota / ce e de făcut" → fleet_alerts (și mentenanta_acte); ' +
       '„ce expiră / ITP / RCA / rovinietă / revizie / permis" → mentenanta_acte; ' +
@@ -4082,7 +4084,10 @@ function _insightInstructiuni(cuRapoarte) {
     'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă consum fără senzor), spune ' +
       'sincer că nu e disponibilă. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
       '„B 154 UIP (Dacia Logan 3)". (5) Concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; alertele critice primele. ' +
-      '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite.'
+      '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite. (8) Perioada: citește EXACT perioada cerută ' +
+      '(„1–7 octombrie" = from 2026-10-01, to 2026-10-07). Safe Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
+      'cere altă perioadă, spune ce perioadă ai citit. În titlu scrie perioada CITITĂ. (9) O cifră cu „de_verificat" o spui lângă cifra ' +
+      'ei, cu motivul — nu o prezenta ca sigură. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.'
   ].filter(Boolean).join('\n\n');
 }
 // Partea care se schimbă la fiecare întrebare: ora, ce mașini a pomenit omul, ce s-a discutat până acum.
@@ -4110,6 +4115,29 @@ function _insightContext(fisa, gasite, ctx, peImei, notite) {
 }
 // „Am înțeles": ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
 // `mem` = mașina vine din discuție, nu din mesajul de acum („ținut minte").
+// Verificarea răspunsului lui RA Insight, fără tokeni (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"): perioada citită
+// față de cea cerută, cifrele „flotei" care nu se regăsesc în datele citite, cifrele greu de crezut din date. Banda de sub
+// răspuns o arată; null = nimic de spus. O SINGURĂ funcție — o cheamă _raInsight, după fiecare răspuns.
+function _verificaRaspunsul(reply, message, dateCitite, citite) {
+  const out = {};
+  try {
+    const ceruta = aiRaport.perioadaDin(insight.norm(message), Date.now());
+    const p = cifre.perioadaDiferita(ceruta, citite, Date.now());
+    if (p) out.perioada = p;
+  } catch (e) { /* o perioadă neînțeleasă nu oprește răspunsul */ }
+  try {
+    const lipsa = cifre.negasite(reply, dateCitite);
+    if (lipsa.length) out.cifre = lipsa.slice(0, 6);
+  } catch (e) { /* idem */ }
+  const dv = [];
+  (dateCitite || []).forEach(function (d) {
+    if (!d || typeof d !== 'object') return;
+    (d.masini || []).forEach(function (m) { (m.de_verificat || []).forEach(function (t) { dv.push(m.masina + ': ' + t); }); });
+    (d.de_verificat || []).forEach(function (t) { dv.push(t); });
+  });
+  if (dv.length) out.deVerificat = Array.from(new Set(dv)).slice(0, 6);
+  return Object.keys(out).length ? out : null;
+}
 function _insightInteles(sources, folosite, gasite, areIstoric, inPlus) {
   const out = [], vazut = new Set();
   const pune = function (o) { const k = o.tip + '|' + o.text; if (o.text && !vazut.has(k)) { vazut.add(k); out.push(o); } };
@@ -4203,6 +4231,7 @@ async function _raInsight(req, res, opts) {
     try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
 
     let reportCalls = 0, sdVazut = null, cbVazut = null, hcVazut = null;
+    const citite = [];      // perioadele chiar citite (rapoarte, ramuri) — pentru verificarea perioadei cerute
     const sources = [];
     const folosite = new Set();
     const ambiguitati = [];   // variantele întoarse de unelte când „Logan" se potrivește cu trei mașini
@@ -4212,7 +4241,7 @@ async function _raInsight(req, res, opts) {
       { name: 'list_zones', description: 'Zonele (hotspot/geofence) definite. Necesare pentru raportul „hotspot".', input_schema: { type: 'object', properties: {} } },
       { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare mașină — unde e (adresă), în mișcare / ralanti / oprită / fără semnal, viteza, combustibilul (dacă există senzor), ultima transmisie. Pentru „unde e X acum", „care sunt oprite", „cine se mișcă".', input_schema: { type: 'object', properties: {} } },
       { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale agenților pentru flotă: fără semnal, posibil furt sau scădere de combustibil, ralanti prelungit. Pentru „ce probleme are flota", „ce trebuie să știu". (Actele și reviziile care expiră sunt în mentenanta_acte.)', input_schema: { type: 'object', properties: {} } },
-      { name: 'combustibil', description: 'Combustibil pe o lună: litri și lei, pe mașină și pe flotă, cu aceleași zile din luna dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte. Aceleași cifre ca pagina „Combustibil" și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL". Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
+      { name: 'combustibil', description: 'Combustibil pe o perioadă: litri și lei, pe mașină și pe flotă, cu perioada de aceeași lungime de dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte; cifrele „de_verificat" (greu de crezut). Perioada: o lună întreagă (month) SAU exact ce a cerut omul (period, sau from + to — de pildă 1–7 octombrie). Aceleași cifre ca pagina „Combustibil" și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'O lună întreagă, „AAAA-LL". Omite pentru luna de acum.' }, period: { type: 'string', enum: insight.PERIOADE, description: 'Scurtătură de perioadă (azi, ieri, săptămâna asta / trecută…). Alternativă la month.' }, from: { type: 'string', description: 'Prima zi, „AAAA-LL-ZZ" (sau ISO 8601). Cu to — pentru o perioadă anume.' }, to: { type: 'string', description: 'Ultima zi, „AAAA-LL-ZZ" — intră întreagă (sau ISO 8601, capăt exclus).' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
       { name: 'ore_condus', description: 'Ore de condus, pe o săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără pauză, încălcările Regulamentului 561 (doar camioane și autobuze), din tahograf sau estimate din GPS, cu săptămâna dinainte alături. Aceleași cifre ca pagina „Ore de condus" și ca raportul „Condus & repaus".', input_schema: { type: 'object', properties: { week: { type: 'string', enum: ['this_week', 'last_week'], description: 'Săptămâna: this_week (implicit) sau last_week.' }, group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' } } } },
       { name: 'mentenanta_acte', description: 'Mentenanță & acte: ce a trecut de termen și ce urmează — actele mașinilor (ITP, RCA, rovinietă…), reviziile (pe dată și pe kilometraj) și permisele șoferilor, cu preavizul firmei. Pentru „ce expiră", „ce revizii urmează", „are ITP valabil B 154 UIP?". Aceleași cifre ca pagina „Mentenanță & acte" și ca listele din Mentenanță / Documente.', input_schema: { type: 'object', properties: {} } },
       { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Tracks: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
@@ -4248,16 +4277,25 @@ async function _raInsight(req, res, opts) {
       // Combustibil: aceeași funcție ca pagina (_ramCombustibil), fără coordonate.
       combustibil: async (input) => {
         folosite.add('combustibil');
-        const r = await _ramCombustibil(req, { luna: input && input.month, grupaNume: input && input.group, asteptaMs: 20000 });
+        const i = input || {};
+        // Perioada exactă cerută (period sau from + to) — altfel luna. Până pe 08.10 doar luna: „1–7 octombrie" citea toată luna.
+        const interval = (i.period || (i.from && i.to)) ? { period: i.period, from: i.from, to: i.to } : null;
+        const r = await _ramCombustibil(req, { luna: i.month, interval: interval, grupaNume: i.group, asteptaMs: 20000 });
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
-        if (r.pregatire) return { mesaj: 'Cifrele lunii se pregătesc încă. Spune-i omului să deschidă ramura „Combustibil" peste un minut — apar acolo.' };
+        if (r.pregatire) return { mesaj: 'Cifrele se pregătesc încă. Spune-i omului să deschidă ramura „Combustibil" peste un minut — apar acolo.' };
         cbVazut = r.eticheta;
+        if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
+        const sursaPeScurt = function (m) {
+          if (m.sursa === 'Estimat (nivel CAN)') return 'estimat din consumul trecut în fișă (mașina trimite nivelul din rezervor, dar prea grosier ca să se poată socoti din el)';
+          if (m.sursa === 'Estimat') return 'estimat din consumul trecut în fișă (mașina nu trimite consumul)';
+          return m.sursa === 'CAN' ? 'măsurat de calculatorul mașinii (CAN)' : (m.sursa === 'Senzor' ? 'măsurat de senzorul din rezervor' : m.sursa);
+        };
         return {
-          perioada: r.eticheta, flota: r.flota, fata_de_luna_dinainte: r.fata ? r.fata.cost : null, luna_dinainte: r.inainte,
-          masini: r.masini.slice(0, 15).map(function (m) { return { masina: m.eticheta, km: m.km, litri: m.litri, l_la_100_km: m.l100, sursa: m.sursa, norma_din_fisa: m.norma, peste_norma_procent: m.peste, cost_lei: m.cost, fata: m.fata ? m.fata.text : null }; }),
+          perioada: r.eticheta, flota: r.flota, fata_de_perioada_dinainte: r.fata ? r.fata.cost : null, perioada_dinainte: r.inainte,
+          masini: r.masini.slice(0, 15).map(function (m) { return { masina: m.eticheta, km: m.km, litri: m.litri, l_la_100_km: m.l100, sursa: sursaPeScurt(m), norma_din_fisa: m.norma, peste_norma_procent: m.peste, pret_litru_lei: m.pret, cost_lei: m.cost, fata: m.fata ? m.fata.text : null, de_verificat: (m.deVerificat || []).length ? m.deVerificat : undefined }; }),
           scaderi_suspecte: r.scaderi.slice(0, 10).map(function (x) { return { masina: x.eticheta, cand: x.cand, litri: x.litri, de_la: x.de, la: x.la, motor: x.motorPornit ? 'pornit' : 'oprit', unde: /^-?\d+\.\d+, -?\d+\.\d+$/.test(x.loc) ? null : x.loc }; }),
           alimentari: r.evenimente, recomandari: r.recomandari.map(function (x) { return x.text; }),
-          atentie: 'Litrii estimați (sursa „Estimat") sunt aproximativi; spune asta când dai cifrele.',
+          atentie: 'Litrii estimați sunt aproximativi; spune asta când dai cifrele. La o mașină cu „de_verificat", spune-o lângă cifra ei, cu motivul.',
         };
       },
       // Ore de condus: aceeași funcție ca pagina (_ramOreCondus).
@@ -4267,6 +4305,7 @@ async function _raInsight(req, res, opts) {
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
         if (r.pregatire) return { mesaj: 'Orele săptămânii se pregătesc încă. Spune-i omului să deschidă ramura „Ore de condus" peste un minut — apar acolo.' };
         hcVazut = r.eticheta;
+        if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
         return {
           perioada: r.eticheta, total: r.flota.text, fata_de_saptamana_dinainte: r.fata ? r.fata.text : null,
           soferi: r.soferi.slice(0, 20).map(function (x) { return { sofer: x.faraSofer ? null : x.nume, masina_fara_sofer: x.faraSofer ? x.nume : undefined, masini: x.masini, zile: x.zile, condus: x.text.condus, azi: x.text.azi || undefined, cea_mai_lunga_zi: x.text.ziMax + (x.text.ziMaxZi ? ' (' + x.text.ziMaxZi + ')' : ''), condus_continuu_maxim: x.text.continuuMax + (x.text.continuuMaxZi ? ' (' + x.text.continuuMaxZi + ')' : ''), incalcari: x.incalcari, reg561_se_aplica: x.supus, sursa: x.text.sursa }; }),
@@ -4295,6 +4334,7 @@ async function _raInsight(req, res, opts) {
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
         if (r.pregatire) return { mesaj: 'Luna se pregătește încă (' + r.pregatire.procent + '%). Spune-i omului să deschidă ramura „Safe Drive & costuri" peste un minut — cifrele apar acolo.' };
         sdVazut = r.eticheta;
+        if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
         const c = r.flota.cost;
         return {
           luna: r.eticheta, flota: r.grupaAleasa != null ? ((r.grupe.filter(function (g) { return g.id === r.grupaAleasa; })[0] || {}).nume || 'o grupă') : 'toată flota',
@@ -4351,12 +4391,15 @@ async function _raInsight(req, res, opts) {
         try {
           const report = await reports.runReport(db, type, imeis, from, to, ropts, companyScope);
           sources.push({ type, label: report.label || type, vehicle: eticheta, imei, from, to, perioada: perioadaEt });
+          citite.push({ from: from, to: to, eticheta: perioadaEt });
           const rows = Array.isArray(report.rows) ? report.rows : [];
           const out = {
             type, label: report.label, vehicul: eticheta || 'toată flota', perioada: { from, to, eticheta: perioadaEt },
             summary: report.summary || {}, columns: report.columns || [],
             rows: rows.slice(0, 25), rows_total: rows.length, truncated: rows.length > 25
           };
+          // Cifre greu de crezut (consum, preț pe litru): marcate de raport, spuse de RA Insight lângă cifra lor.
+          if (Array.isArray(report.deVerificat) && report.deVerificat.length) out.de_verificat = report.deVerificat.slice(0, 10).map(function (x) { return x.vehicul + ': ' + x.texte.join('; '); });
           // Raportul s-a oprit la plafonul de poziții (reports.js, „Citirea pozițiilor") → cifrele NU acoperă toată perioada.
           if (Array.isArray(report.trunchiat) && report.trunchiat.length) {
             out.atentie = 'Perioada are prea multe poziții: raportul s-a oprit înainte de capăt (' + report.trunchiat.map(function (x) { return x.vehicul + ' — citit până pe ' + new Date(x.panaLa).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); }).join('; ') + '). Spune-i omului că cifrele NU acoperă toată perioada și propune o perioadă mai scurtă.';
@@ -4405,6 +4448,13 @@ async function _raInsight(req, res, opts) {
         return { count: alerts.length, alerts: alerts };
       }
     };
+
+    // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite).
+    const dateCitite = [];
+    Object.keys(toolHandlers).forEach(function (k) {
+      const f = toolHandlers[k];
+      toolHandlers[k] = async function (input) { const r = await f(input); dateCitite.push(r); return r; };
+    });
 
     let notite = '';
     try { if (req.companyId != null) notite = String((await db.getCompanySettings(req.companyId)).insight_notite || '').trim(); } catch (e) { /* fără notițe */ }
@@ -4460,9 +4510,10 @@ async function _raInsight(req, res, opts) {
         perioada: { from: ultima.from, to: ultima.to, inainte: !!(subR && subR.k === 'scadente'), acum: !!(subR && subR.k === 'locatie') } }, null);
     }
 
-    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari }, ctxNou);
-    auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight' });
-    res.json({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari });
+    const verificare = _verificaRaspunsul(reply, message, dateCitite, citite);
+    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare || undefined }, ctxNou);
+    auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined });
+    res.json({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare });
   } catch (e) {
     console.warn('[RA Insight]', e.message);
     res.status(500).json({ error: 'RA Insight: ' + e.message, reply: 'RA Insight nu a putut răspunde acum. Încearcă din nou peste un minut.' });
@@ -4689,6 +4740,7 @@ async function _sdLuna(req, o) {
   if (grupa != null) f.masini = f.masini.filter(function (m) { return m.grupa === grupa; });
   const comun = {
     luni: luni, lunaAleasa: lunaAleasa, grupe: f.grupe, grupaAleasa: grupa,
+    de: safeDrive.inceput(L.de), pana: Math.min(acum, safeDrive.inceput(safeDrive.urmatoarea(L.pana))),   // perioada citită (RA Insight o verifică)
     praguri: { limita: condus.PRAGURI.limita, accel: condus.PRAGURI.accel, frana: condus.PRAGURI.frana, viraj: condus.PRAGURI.viraj, ralantiMin: condus.RALANTI_MIN_S / 60 },
     preturi: { clase: condus.CLASE, valori: preturi, implicite: condus.PRETURI_IMPLICITE, poateSchimba: req.companyId != null && permReq(req, 'manageFleet') },
     poateNota: permReq(req, 'manageFleet'),
@@ -4866,14 +4918,33 @@ async function _ramGreu(cheie, ttl, fn, asteptaMs, doarGata) {
 function _ramCheieImei(imeis) { let h = 0; const t = imeis.slice().sort().join(','); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return imeis.length + ':' + h; }
 // Luna aleasă, grupa (după id — pagina — sau după nume — RA Insight), perioada și aceleași zile din luna dinainte.
 // Aceleași reguli de lună ca la Safe Drive (lunile din care se alege = cât ține istoricul firmei).
-function _ramPerioada(f, o, acum) {
-  const luni = _sdLuni(f.cs, acum);
-  const lunaAleasa = luni.some(function (x) { return x.luna === String(o.luna || ''); }) ? String(o.luna) : luni[0].luna;
+function _ramGrupa(f, o) {
   let grupa = f.grupe.some(function (g) { return g.id != null && String(g.id) === String(o.grupa); }) ? Number(o.grupa) : null;
   if (grupa == null && o.grupaNume) {
     const q = insight.norm(o.grupaNume), g = f.grupe.filter(function (x) { return x.id != null && (insight.norm(x.nume) === q || insight.norm(x.nume).indexOf(q) >= 0); })[0];
     if (g) grupa = g.id;
   }
+  return grupa;
+}
+// Un interval ANUME (RA Insight: „1–7 octombrie", „săptămâna trecută"), cu intervalul de aceeași lungime de dinainte.
+// Până pe 08.10 unealta combustibil știa doar luni întregi: la „1–7 octombrie" citea toată luna (Alin: „eu am dat doar
+// până pe 07… ce facem aici?"). Cel mult RAM_INTERVAL_ZILE, ca o întrebare să nu citească un an de poziții.
+const RAM_INTERVAL_ZILE = 93;
+function _ramInterval(f, o, acum) {
+  const i = o.interval || {};
+  const per = insight.perioada({ period: i.period, from: i.from, to: i.to }, acum);
+  const pana = Math.min(acum, Date.parse(per.to));
+  const de = Math.max(Date.parse(per.from), pana - RAM_INTERVAL_ZILE * 86400000);
+  const deI = de - (pana - de), panaI = de;
+  const iso = function (ms) { return new Date(ms).toISOString(); };
+  return { cheie: 'int-' + de + '-' + Math.round(pana / 60000), luni: _sdLuni(f.cs, acum), lunaAleasa: null, grupa: _ramGrupa(f, o),
+    de: de, pana: pana, deI: deI, panaI: panaI, panaAzi: acum - pana < 10 * 60000,
+    eticheta: insight.etichetaPerioadei(iso(de), iso(pana), acum), etInainte: insight.etichetaPerioadei(iso(deI), iso(panaI), acum) };
+}
+function _ramPerioada(f, o, acum) {
+  const luni = _sdLuni(f.cs, acum);
+  const lunaAleasa = luni.some(function (x) { return x.luna === String(o.luna || ''); }) ? String(o.luna) : luni[0].luna;
+  const grupa = _ramGrupa(f, o);
   const L = safeDrive.luna(lunaAleasa), Li = safeDrive.luna(safeDrive.lunaDinainte(lunaAleasa));
   const de = safeDrive.inceput(L.de), capat = safeDrive.inceput(safeDrive.urmatoarea(L.pana)), panaAzi = capat > acum;
   const pana = panaAzi ? acum : capat;
@@ -4893,12 +4964,13 @@ async function _ramCombustibil(req, o) {
   o = o || {};
   const acum = Date.now();
   const f = await _ramFlota(req);
-  const p = o.perioada || _ramPerioada(f, o, acum);   // o.perioada: o săptămână dată (Scrisoarea de luni), cu aceleași câmpuri
+  // o.perioada: o săptămână dată (Scrisoarea de luni), cu aceleași câmpuri; o.interval: perioada exactă cerută lui RA Insight.
+  const p = o.perioada || (o.interval ? _ramInterval(f, o, acum) : _ramPerioada(f, o, acum));
   let devs = f.devices; if (p.grupa != null) devs = devs.filter(function (d) { return d.group_id === p.grupa; });
   const masini = devs.map(function (d) { return { imei: d.imei, eticheta: f.etPe[d.imei] }; });
   const imeis = masini.map(function (m) { return m.imei; });
   const opts = _optiuniRaport({}, f.cs);
-  const comun = { luni: p.luni, lunaAleasa: p.lunaAleasa, grupe: f.grupe, grupaAleasa: p.grupa, eticheta: p.eticheta,
+  const comun = { luni: p.luni, lunaAleasa: p.lunaAleasa, grupe: f.grupe, grupaAleasa: p.grupa, eticheta: p.eticheta, de: p.de, pana: p.pana,
     explicatii: ramuri.explicatiiCombustibil({ dropMin: opts.dropMin }) };
   if (!imeis.length) return Object.assign(comun, { gol: true });
   const iso = function (ms) { return new Date(ms).toISOString(); };
@@ -4954,7 +5026,7 @@ async function _ramOreCondus(req, o) {
   const p = _ramSaptamana(f, o, acum);
   let devs = f.devices; if (p.grupa != null) devs = devs.filter(function (d) { return d.group_id === p.grupa; });
   const imeis = devs.map(function (d) { return d.imei; });
-  const comun = { saptamani: p.saptamani, saptamanaAleasa: p.ales.saptamana, grupe: f.grupe, grupaAleasa: p.grupa, eticheta: p.eticheta,
+  const comun = { saptamani: p.saptamani, saptamanaAleasa: p.ales.saptamana, grupe: f.grupe, grupaAleasa: p.grupa, eticheta: p.eticheta, de: p.de, pana: p.pana,
     explicatii: ramuri.explicatiiOreCondus() };
   if (!imeis.length) return Object.assign(comun, { gol: true });
   const iso = function (ms) { return new Date(ms).toISOString(); };
