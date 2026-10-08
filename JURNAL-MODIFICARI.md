@@ -200,7 +200,7 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | Etapa | Ce | Unde e |
 |---|---|---|
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
-| **B** | RA Insight arată ca un chat modern, cu butoane de chat modern | ⬜ întâi macheta; o fac după „da"-ul vostru |
+| **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight | ⬜ |
 | **E** | Telefonul: RA Insight (meniu, conversații, ramuri) + AI Raport, pentru APK-ul lui Robert | ⬜ |
@@ -211,6 +211,46 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-08
+
+### AMÂNDOI · Capitolul AI, etapa B: RA Insight ca un chat modern (și AI Raport, și bula din colț) — `COMMIT_B`
+
+Alin, 08.10, la macheta din 07.10: *„da, sunt de acord cu tot"* (macheta, butoanele Mașina și Perioada, întrebările de
+continuare, același aspect la AI Raport, scoasă nota „nu s-a numărat din fond").
+
+**Ce s-a schimbat la RA Insight (meniu → RA Insight):**
+1. **Discuția arată ca un chat de azi:** întrebările tale în bule rotunde, la dreapta; răspunsurile fără chenar, pe toată
+   coloana, cu semnul mov al lui RA Insight. „Am înțeles" (mașina, perioada, raportul) stă acum DEASUPRA răspunsului.
+2. **Caseta de scris** e rotundă, jos, cu butonul rotund ↑ (gri cât e goală, verde când ai scris ceva) și trei butoane:
+   **Mașina** (alegi din lista mașinilor tale, cu căutare — se scrie numărul în întrebare), **Perioada** (azi, ieri,
+   săptămâna asta / trecută, luna asta / trecută, ultimele 30 de zile) și **Ramuri**.
+3. **Sub fiecare răspuns:** Copiază · 👍 · 👎 și „Din raportul …" (de unde vin cifrele); butonul „Deschide raportul".
+4. **Sub ultimul răspuns, întrebările de continuare**, gata scrise, pe reguli: de exemplu după km-ii lui B 154 UIP pe
+   săptămâna trecută — „Și săptămâna dinainte?", „Și consumul?", „Și pe toată flota?". Apăsată, una pleacă la fel ca o
+   întrebare scrisă (la RA Insight se numără ca oricare întrebare; la AI Raport nu costă nimic).
+5. **Pe întrebarea ta:** „Editează" (o pune înapoi în casetă, s-o corectezi) și „Copiază".
+6. **Conversație nouă:** „Bună, Alin! Ce vrei să afli despre flotă?" și patru întrebări pe cartonașe.
+7. **Stânga:** „Conversație nouă", lupa (căutare), ramurile, conversațiile pe zile; jos, câte întrebări au rămas luna asta.
+   „Întreabă orice" nu mai e printre ramuri (discuția se deschide din „Conversație nouă" și din listă).
+8. **Sus:** titlul conversației, notițele firmei, „⋯" (redenumește / șterge), închide. Butonul ↓ te duce la ultimul mesaj.
+9. **Pe telefon:** stânga e un sertar (☰), ✎ = conversație nouă; caseta rămâne jos, butoanele ei doar cu iconițe.
+10. **Scoasă nota „Răspuns rapid… nu s-a numărat din fond"** de sub răspunsurile rapide (contorul din stânga spune oricum
+    câte întrebări au rămas).
+
+**AI Raport (Rapoarte → AI Raport) și bula RA Insight din colț** au același aspect: aceleași bule, aceeași casetă rotundă
+(la AI Raport cu butoanele Mașina · Perioada · **Raport** — alegi ce vrei să afli: km, consum, staționări, unde e acum…),
+Copiază și întrebările de continuare. La AI Raport, întrebările gata făcute de sus apar doar la început (și după „Începe
+din nou"). AI Raport înțelege acum și „Și săptămâna dinainte?" / „Și luna dinainte?" / „Și ziua dinainte?" (perioada de
+dinaintea celei discutate), „orele de condus" și „emisiile".
+
+- **Ce vede fondatorul:** aceleași ecrane (și bula, și AI Raport pe orice firmă).
+- **Ce vede clientul:** chatul nou la RA Insight (cine are loc), AI Raport și bula. Nimic nu se schimbă la bani: o întrebare
+  RA Insight se numără la fel ca până acum; continuările nu se numără până nu le apeși.
+- Probat: AI Raport — 151 de verificări (fiecare întrebare de continuare e înțeleasă; „dinainte" pe săptămână, lună, zi
+  și perioadă oarecare), RA Insight — 137 (continuările vin din raportul citit, se păstrează în conversație, lipsesc la
+  răspunsul rapid și la „care dintre ele?"), ramurile 134, Safe Drive 88, telefonul 164, ghidul 22; ecranele pe aplicația
+  pornită, pe ambele teme și pe telefon: contrast minim 5,7, nimic ieșit din ecran, fără erori.
 
 ## 2026-10-07
 

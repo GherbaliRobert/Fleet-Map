@@ -4451,9 +4451,18 @@ async function _raInsight(req, res, opts) {
     const ultima = uniqSources[uniqSources.length - 1];
     if (ultima) { ctxNou.perioada = { from: ultima.from, to: ultima.to }; ctxNou.rapoarte = Array.from(new Set(uniqSources.map(s => s.type))).slice(0, 6); }
 
-    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege }, ctxNou);
+    // Întrebările de continuare de sub răspuns (Alin, 08.10: „da"): ACEEAȘI regulă ca la AI Raport (aiRaport.urmari), din
+    // raportul citit ultimul. Gata scrise, gratuite până le apasă omul — apăsate, sunt o întrebare ca oricare alta.
+    let urmari = [];
+    if (ultima && !alege.length) {
+      const subR = aiRaport.SUBIECTE.find(function (x) { return x.raport === ultima.type; });
+      urmari = aiRaport.urmari({ subiect: subR ? subR.k : null, masini: imeisSurse.length === 1 ? imeisSurse : null,
+        perioada: { from: ultima.from, to: ultima.to, inainte: !!(subR && subR.k === 'scadente'), acum: !!(subR && subR.k === 'locatie') } }, null);
+    }
+
+    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari }, ctxNou);
     auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight' });
-    res.json({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege });
+    res.json({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari });
   } catch (e) {
     console.warn('[RA Insight]', e.message);
     res.status(500).json({ error: 'RA Insight: ' + e.message, reply: 'RA Insight nu a putut răspunde acum. Încearcă din nou peste un minut.' });
@@ -13694,7 +13703,7 @@ function _aiRaportPreaDes(userId) {
   return b.n > AI_RAPORT_PE_MINUT;
 }
 app.get('/api/reports/ai-raport/intrebari', requireAuth, requirePerm('viewReports'), (req, res) => {
-  res.json({ intrebari: aiRaport.INTREBARI_GATA });
+  res.json({ intrebari: aiRaport.INTREBARI_GATA, subiecte: aiRaport.ALEGERI_RAPORT.map(function (x) { return { text: x.text, pune: x.pune }; }) });
 });
 // Are omul RA Insight (modulul firmei + locul lui)? Doar ca AI Raport să știe dacă poate trimite „de ce"-urile acolo.
 async function _areRaInsight(req) {

@@ -47,7 +47,7 @@ const LOCATIE_RE = new RegExp('\\b(' + [
   'stationeaza', 'stationeza', 'sta pe loc', '(e|este|sunt) (oprit\\w*|parcat\\w*|pe loc|in parcare)'
 ].join('|') + ')\\b');
 const SUBIECTE = [
-  { k: 'ore_condus', raport: 'hos', et: 'Condus & repaus', re: /\b(ore de condus|ore la volan|condus continuu|timp(ul|ii)? de condus|pauz\w*|repaus|561|tahograf\w*)\b/ },
+  { k: 'ore_condus', raport: 'hos', et: 'Condus & repaus', re: /\b((ore|orele) de condus|(ore|orele) la volan|condus continuu|timp(ul|ii)? de condus|pauz\w*|repaus|561|tahograf\w*)\b/ },
   { k: 'ore_motor', raport: 'enginehours', et: 'Ore motor', re: /\bore (de )?motor\b/ },
   { k: 'clasament', raport: 'ecodrive_drivers', et: 'Clasamentul șoferilor', re: /\b(clasament\w*|top (al )?soferilor|top soferi|cel mai bun sofer|cei mai buni soferi)\b/ },
   { k: 'scor', raport: 'ecodrive', et: 'Stilul de condus (EcoDrive)', re: /\b(scor\w*|ecodrive|eco drive|franar\w*|frane bruste|acceler\w*|viraj\w*|agresiv\w*|stil(ul)? de condus|cum (a|au) condus)\b/ },
@@ -60,7 +60,7 @@ const SUBIECTE = [
   { k: 'viteza', raport: 'speeding', et: 'Depășiri de viteză', re: /\b(vitez\w*|depasir\w*|vitezoman\w*|peste limita|prea repede)\b/ },
   { k: 'scadente', raport: 'due', et: 'Ce expiră (acte și service)', re: /\b(expir\w*|itp|rca|casco|rovinieta|revizi\w*|service|scaden\w*|acte(le)?|documente\w*)\b/ },
   { k: 'zone', raport: 'geofence', et: 'Vizite în zone', re: /\b(zon(a|e|ele|ei)|hotspot\w*|vizit\w*)\b/ },
-  { k: 'emisii', raport: 'emissions', et: 'Emisii CO₂', re: /\b(emisii|co2|carbon)\b/ },
+  { k: 'emisii', raport: 'emissions', et: 'Emisii CO₂', re: /\b(emisii\w*|co2|carbon)\b/ },
   { k: 'rezumat', raport: 'daily', et: 'Situație zilnică', re: /\b(ce (a|au) (mai )?facut|rezumat\w*|situati\w* (zilnic\w*|pe zi\w*|zilei)|activitat\w*|cum (a|au) (fost|mers) (ziua|azi|ieri|saptamana)|(la ce ora|cand|de la ce ora) (a|au) (plecat|pornit|iesit|inceput|ajuns|venit|terminat|intrat))\b/ },
   { k: 'curse', raport: 'trips', et: 'Foaie de parcurs', re: /\b(curse|cursa|cursel\w*|foaie de parcurs|foaia de parcurs|deplasar\w*|drumuri\w*|trasee|traseu\w*|pe unde (a|au) (umblat|mers|fost))\b/ },
   { k: 'km', raport: 'utilization', et: 'Km parcurși', re: /\b(km|kilometr\w*|kilometir\w*|parcurs\w*|distant\w*|rulaj\w*)\b/, slab: /\b((a|au) (mai )?(mers|facut|rulat)|cat (a|au) mers)\b/ },
@@ -183,6 +183,31 @@ function perioadaAnterioara(p) {
   const a = Date.parse(p.from), b = Date.parse(p.to);
   return { from: new Date(a - (b - a)).toISOString(), to: new Date(a).toISOString() };
 }
+// Ce fel de perioadă e (pentru „Și săptămâna dinainte?"): o zi, o săptămână de luni, o lună întreagă — pe ora României —
+// sau altfel („ultimele 7 zile" = „perioada").
+function _unitate(p) {
+  const a = Date.parse(p.from), b = Date.parse(p.to);
+  if (!(b > a)) return 'perioada';
+  const z = _parti(a);
+  if (_zi(z.y, z.m0, z.d) !== a) return 'perioada';                       // nu începe la miezul nopții
+  if (b - a <= ZI + 3600000) return 'ziua';
+  if (z.d === 1 && b <= _zi(z.y, z.m0 + 1, 1)) return 'luna';
+  if (new Date(Date.UTC(z.y, z.m0, z.d)).getUTCDay() === 1 && b - a <= 7 * ZI + 3600000) return 'saptamana';
+  return 'perioada';
+}
+// „Și săptămâna dinainte?" = perioada de dinaintea celei discutate: ziua / săptămâna / luna întreagă de dinainte (și
+// când cea discutată e „azi" sau „luna asta", până acum), altfel la fel de lungă, lipită înainte.
+const DINAINTE = /\b(ziua|saptamana|luna|perioada) (de )?dinainte\b/;
+function perioadaDinainte(per, acum) {
+  const a = Date.parse(per.from), b = Date.parse(per.to), z = _parti(a);
+  const u = _unitate(per);
+  let de;
+  if (u === 'ziua') de = _zi(z.y, z.m0, z.d - 1);
+  else if (u === 'saptamana') de = _zi(z.y, z.m0, z.d - 7);
+  else if (u === 'luna') de = _zi(z.y, z.m0 - 1, 1);
+  else de = a - (b - a);
+  return _per(de, a, acum);
+}
 
 // ─── Înțelegerea întrebării ─────────────────────────────────────────────────────────────────────────
 // ctx = ce s-a discutat la întrebarea de dinainte: { subiect, masini: [imei], grupa, perioada: { from, to } }.
@@ -239,6 +264,8 @@ function intelege(text, ctx, fisa, acum) {
     if (TOATA_FLOTA.test(t) || RANG.test(t) || DESPRE_FLOTA.test(t)) masini = null;
     else if (Array.isArray(c.masini) && c.masini.length) { masini = c.masini.slice(); grupa = c.grupa || null; mem.masini = true; }
   }
+  // „Și săptămâna dinainte?": perioada de dinaintea celei discutate (întrebarea de continuare de sub răspuns, 08.10).
+  if (!p && DINAINTE.test(t) && c.perioada && c.perioada.from && s.k !== 'scadente' && s.k !== 'locatie') p = perioadaDinainte(c.perioada, acum);
   // Perioada discutată rămâne la o continuare (nu la „ce expiră", care privește înainte, și nu la „unde e", care e acum).
   if (!p && c.perioada && c.perioada.from && (mem.subiect || urmare || mem.masini) && s.k !== 'scadente' && c.subiect !== 'scadente' && s.k !== 'locatie') {
     p = _per(c.perioada.from, c.perioada.to, acum); mem.perioada = true;
@@ -266,6 +293,40 @@ function inteles(u, fisa) {
   const per = u.perioada.acum ? 'acum' : (u.perioada.eticheta + (u.perioada.implicita ? (u.perioada.inainte ? ' (implicit)' : ' (n-ai spus perioada)') : ''));
   out.push({ tip: 'perioada', text: per, mem: !!(u.mem && u.mem.perioada) });
   return out;
+}
+
+// ─── Întrebările de continuare (Alin, 08.10: „da") ───────────────────────────────────────────────────
+// Sub ultimul răspuns, cel mult trei întrebări gata scrise, pe reguli, din ce s-a răspuns: perioada dinainte, subiectul
+// care urmează firesc și mașina (prima din tabel, ori toată flota după o singură mașină). Fiecare trebuie înțeleasă de
+// `intelege` cu discuția de după răspuns (păzit de probă). Le folosește și RA Insight, din rapoartele pe care le-a citit
+// (acolo apăsarea e o întrebare din lună; aici, la AI Raport, nu costă nimic).
+const URMATORUL = {
+  km: ['Și consumul?'], consum: ['Și costurile?'], costuri: ['Și alimentările?'], alimentari: ['Și consumul?'],
+  ralanti: ['Și consumul?'], viteza: ['Și stilul de condus?'], scor: ['Și depășirile de viteză?'],
+  clasament: ['Și depășirile de viteză?'], alerte: ['Și depășirile de viteză?'], zone: ['Și alertele?'],
+  emisii: ['Și consumul?'], ore_condus: ['Și km-ii?'], ore_motor: ['Și ralantiul?'], scadente: ['Și luna viitoare?'],
+  disponibilitate: ['Unde e acum?', 'Unde sunt mașinile acum?'], opriri: ['Unde e acum?', 'Unde sunt mașinile acum?'],
+  locatie: ['Unde a stat azi?', 'Unde au stat azi?'], rezumat: ['Unde a stat?', 'Unde au stat?'], curse: ['Unde a stat?', 'Unde au stat?'],
+};
+const UNITATE_TEXT = { ziua: 'ziua', saptamana: 'săptămâna', luna: 'luna', perioada: 'perioada' };
+// u = înțelegerea (subiect, masini, grupa, perioada); primaMasina = cum se scrie prima mașină din tabel („B 154 UIP").
+function urmari(u, primaMasina) {
+  const out = [];
+  const una = !!(u && Array.isArray(u.masini) && u.masini.length === 1 && !u.grupa);
+  const p = u && u.perioada;
+  if (p && p.from && p.to && !p.acum && !p.inainte) out.push('Și ' + UNITATE_TEXT[_unitate(p)] + ' dinainte?');
+  const urm = u && URMATORUL[u.subiect];
+  if (urm) out.push(urm.length > 1 && !una ? urm[1] : urm[0]);
+  if (una) out.push('Și pe toată flota?');
+  else if (primaMasina) out.push('Dar ' + primaMasina + '?');
+  return out.slice(0, 3).map(function (t) { return { text: t, trimite: t }; });
+}
+// Prima mașină din tabelul unui răspuns (coloana „Mașina"), scrisă cum o recunoaște `intelege`: numărul, altfel numele.
+function _primaDinTabel(r, fisa) {
+  if (!r || !r.tabel || !Array.isArray(r.tabel.coloane) || r.tabel.coloane[0] !== 'Mașina' || !r.tabel.randuri.length) return null;
+  const et = String(r.tabel.randuri[0][0] || '');
+  const v = (fisa || []).find(function (x) { return I.eticheta(x) === et; });
+  return v ? (v.nr || v.nume) : null;
 }
 
 // ─── Răspunsurile, din raport ───────────────────────────────────────────────────────────────────────
@@ -369,6 +430,7 @@ function _oZi(p) { return !!(p && Date.parse(p.to) - Date.parse(p.from) <= ZI + 
 // cifrele de deasupra nu acoperă toată perioada.
 function raspunde(u, rep, extra) {
   const r = _raspunde(u, rep, extra);
+  r.urmari = urmari(u, _primaDinTabel(r, (extra || {}).fisa));
   const tr = rep && Array.isArray(rep.trunchiat) ? rep.trunchiat : [];
   if (tr.length) {
     const et = _etichete((extra || {}).fisa);
@@ -827,6 +889,17 @@ function neinteles(u, fisa, extra) {
   return { text: 'Nu am înțeles ce raport te interesează. Alege mai jos sau scrie mai simplu: ce (km, consum, staționări, viteză, ce expiră…), care mașină și ce perioadă.', alege: _butoane(null), spreInsight: !!x.areInsight };
 }
 
+// Butonul „Raport" din caseta de scris (08.10): ce se poate afla, cu cuvântul pus în întrebare. Fiecare cuvânt trebuie să
+// numească subiectul lui (păzit de probă: subiectDin(cuvânt) = subiectul).
+const ALEGERI_RAPORT = [
+  ['km', 'Km parcurși', 'km'], ['consum', 'Consum', 'consumul'], ['costuri', 'Costuri cu combustibilul', 'costurile cu combustibilul'],
+  ['locatie', 'Unde e acum și de cât timp stă', 'unde e acum'], ['opriri', 'Staționări', 'staționările'], ['rezumat', 'Ce a făcut (pe zile)', 'ce a făcut'],
+  ['curse', 'Curse (foaie de parcurs)', 'cursele'], ['viteza', 'Depășiri de viteză', 'depășirile de viteză'], ['ralanti', 'Ralanti', 'ralantiul'],
+  ['alimentari', 'Alimentări și scăderi', 'alimentările'], ['scor', 'Stilul de condus', 'stilul de condus'], ['clasament', 'Clasamentul șoferilor', 'clasamentul șoferilor'],
+  ['scadente', 'Ce expiră (acte și revizii)', 'ce expiră'], ['alerte', 'Alerte', 'alertele'], ['disponibilitate', 'Disponibilitate (zile fără mers)', 'disponibilitatea'],
+  ['ore_condus', 'Ore de condus', 'orele de condus'], ['zone', 'Vizite în zone', 'vizitele în zone'], ['emisii', 'Emisii CO₂', 'emisiile'],
+].map(function (x) { return { k: x[0], text: x[1], pune: x[2] }; });
+
 // Întrebările gata făcute (butoanele de sus) — fiecare trebuie să fie înțeleasă de `intelege` (păzit de probă).
 const INTREBARI_GATA = [
   { k: 'km', text: 'Km săptămâna asta', ic: 'fa-road' },
@@ -839,6 +912,7 @@ const INTREBARI_GATA = [
 ];
 
 module.exports = {
-  SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,
-  intelege, contextul, inteles, raspunde, neinteles, perioadaDin, perioadaImplicita, perioadaAnterioara, subiectDin, nr, cant, _numar,
+  SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, ALEGERI_RAPORT, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,
+  intelege, contextul, inteles, raspunde, neinteles, urmari, perioadaDin, perioadaImplicita, perioadaAnterioara, perioadaDinainte,
+  subiectDin, nr, cant, _numar,
 };

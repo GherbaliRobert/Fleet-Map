@@ -430,6 +430,33 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - Păzit de `verify_ai_raport.js` (în `npm test`; răspunsurile pe server comparate cu rapoartele „Ultima locație",
   „Staționări", „Scadențe"), `verify_ramuri.js` (preaviz, Reg. 561, 90 h), `verify_insight_ghid.js`.
 
+### Etapa B (08.10): chatul modern — RA Insight, bula din colț și AI Raport (Alin: „da, sunt de acord cu tot")
+- **Piesele comune stau O DATĂ în pagină** (lângă `window._insightExtra`): `_chatTextSimplu`, `_chatCopiaza`, `_chatActiuni`
+  (Copiază), `_chatUrmari` (întrebările de continuare), `_chatAlege` (lista care se deschide deasupra unui buton: Mașina,
+  Perioada, Ramuri, Raport, ⋯), `_chatMasini` (din `/api/devices` — aceeași listă ca harta: fără arhivate, fără demo),
+  `_CHAT_PERIOADE`, `_chatPuneInText`, `_chatStareTrimite`. Secțiunea, bula și AI Raport le cheamă de acolo (păzit prin
+  numărare în `verify_insight.js`). NU scrie a doua variantă în alt loc. Stilurile lor: `.chat-*` în app.css.
+- **`_insightExtra(j, laAlegere, parte)`**: `'inteles'` = doar „Am înțeles" (DEASUPRA răspunsului), `'alege'` = doar butoanele
+  (dedesubt). Tot o singură funcție pentru toate trei locurile.
+- **Întrebările de continuare: o regulă, `aiRaport.urmari(u, primaMasina)`** (ai_raport.js) — perioada dinainte („Și
+  săptămâna dinainte?", `_unitate` / `perioadaDinainte`, înțelese de `intelege` prin `DINAINTE`), subiectul care urmează
+  (`URMATORUL`), mașina (prima din tabel, `_primaDinTabel`, ori „Și pe toată flota?"). AI Raport le pune în `raspuns.urmari`;
+  RA Insight le face din raportul citit ultimul (`_raInsight`, doar cu surse și fără butoane de ales) și le păstrează în
+  mesaj (`extra.urmari`). Răspunsul rapid nu le are. Proba cere ca FIECARE să fie înțeleasă cu discuția de după.
+- **Butonul „Raport" (AI Raport)**: lista vine de la server (`ALEGERI_RAPORT` → `GET /api/reports/ai-raport/intrebari`
+  `subiecte`); fiecare cuvânt trebuie să numească subiectul lui (păzit).
+- **Secțiunea:** stânga `.insp-st` (pe telefon sertar: `st-deschis` + `.insp-umbra`; pe calculator se ascunde: `st-ascuns`)
+  — `insightComutaStanga(v)`, `inchideSertar()`; dreapta `.insp-dr-col` = bara `.insp-top` (titlul din `setTitlu()`, ⋯ =
+  `insightMeniuConv`) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
+  salutul cu prenumele (`prenume()`, din `currentUser.full_name`) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU mai
+  e în lista ramurilor (`RAMURI.filter(… r.gata && r.k !== 'general')`, de două ori: lista și butonul Ramuri).
+- ⚠ `.insp-top .insp-meniu` / `.insp-nou-tel` au `.insp-top` în față: `.chat-ib` (mai jos în fișier) le-ar arăta pe calculator.
+- ⚠ **Capcană de unealtă, prinsă pe 08.10:** un script Python cu șir NE-brut transformă `\b` din JavaScript în caracterul
+  „backspace" — expresia arată la fel, dar nu mai potrivește nimic. Inserările se scriu cu șiruri brute (`r'''…'''`) și se
+  caută după fiecare caracterele de control (`grep -P "[\x00-\x08]"`).
+- Nu s-au pus „Încearcă din nou" și „Oprește" (ar consuma o întrebare fără ca omul să știe).
+- Păzit de `verify_ai_raport.js` (151), `verify_insight.js` (137), `verify_insight_ghid.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:

@@ -99,6 +99,30 @@ T('un raport pe care AI Raport nu-l citește (supraturații) → butonul raportu
 T('„aseară" = ieri', U('unde a parcat B 154 UIP aseară').perioada.eticheta === 'ieri');
 T('după „unde e acum", discuția nu ține minte o perioadă (întrebarea următoare pornește de la a ei)', A.contextul(s1, s1.perioada.from, s1.perioada.to).perioada === null && A.contextul(u1, u1.perioada.from, u1.perioada.to).perioada.from === u1.perioada.from);
 
+// Întrebările de continuare de sub răspuns (Alin, 08.10: „da"): pe reguli, cel mult trei, fiecare înțeleasă cu discuția
+// de după răspuns — altfel butonul ar duce la „nu am înțeles".
+const LANT = ['Câți km a făcut B 154 UIP săptămâna trecută?', 'consum luna trecută pe flotă', 'ce a făcut B 154 UIP azi?', 'unde sunt mașinile acum',
+  'Ce expiră în următoarele 30 de zile', 'depășiri de viteză în ultimele 7 zile', 'staționări ieri B 77 RAT', 'alerte săptămâna asta', 'ralanti luna asta pe flotă'];
+const rauUrm = [];
+for (const q of LANT) {
+  const u = U(q), urm = A.urmari(u, u.masini ? null : 'B 77 RAT'), cx = A.contextul(u, u.perioada.from, u.perioada.to);
+  if (!urm.length || urm.length > 3) rauUrm.push(q + ': ' + urm.length);
+  for (const x of urm) { const v = U(x.trimite, cx); if (!v.ok) rauUrm.push(q + ' → ' + x.text + ': ' + v.motiv); }
+}
+T('întrebările de continuare: 1–3 după fiecare răspuns, fiecare înțeleasă cu discuția de după (' + LANT.length + ' răspunsuri)', !rauUrm.length, rauUrm.join(' | '));
+const cu1 = A.contextul(u1, u1.perioada.from, u1.perioada.to), urm1 = A.urmari(u1, null);
+const sd = U('Și săptămâna dinainte?', cu1);
+T('după km-ii lui B 154 UIP pe săptămâna trecută: „Și săptămâna dinainte?" (14–20 septembrie, pe aceeași mașină), „Și consumul?", „Și pe toată flota?"',
+  urm1.map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și consumul? | Și pe toată flota?' && sd.ok && sd.perioada.eticheta === '14–20 septembrie' && sd.masini.join() === DEV[0].imei && sd.subiect === 'km', urm1.map((x) => x.text).join(' | ') + ' / ' + sd.perioada.eticheta);
+const ul = U('consum luna trecută pe flotă'), ld = U('Și luna dinainte?', A.contextul(ul, ul.perioada.from, ul.perioada.to));
+const uz = U('ce a făcut B 154 UIP azi?'), zd = U('Și ziua dinainte?', A.contextul(uz, uz.perioada.from, uz.perioada.to));
+const ur = U('depășiri de viteză în ultimele 7 zile'), rd = U('Și perioada dinainte?', A.contextul(ur, ur.perioada.from, ur.perioada.to));
+T('„dinainte": luna întreagă de dinainte (august), ziua de dinainte (după „azi" = ieri), iar o perioadă oarecare — la fel de lungă, lipită înainte',
+  ld.perioada.eticheta === 'august 2026' && zd.perioada.eticheta === 'ieri' && Date.parse(rd.perioada.to) === Date.parse(ur.perioada.from) && Date.parse(ur.perioada.to) - Date.parse(ur.perioada.from) === Date.parse(rd.perioada.to) - Date.parse(rd.perioada.from),
+  [ld.perioada.eticheta, zd.perioada.eticheta, rd.perioada.eticheta].join(' | '));
+T('„unde e acum" nu primește „perioada dinainte"; „ce expiră" primește „Și luna viitoare?" (privește înainte)', !A.urmari(s1, null).some((x) => /dinainte/.test(x.text)) && A.urmari(u6, null)[0].text === 'Și luna viitoare?' && U('Și luna viitoare?', A.contextul(u6, u6.perioada.from, u6.perioada.to)).perioada.eticheta === 'noiembrie 2026');
+T('butonul „Raport" din casetă: fiecare cuvânt pus în întrebare numește subiectul lui (' + A.ALEGERI_RAPORT.length + ')', A.ALEGERI_RAPORT.length >= 15 && A.ALEGERI_RAPORT.every((x) => { const v = A.subiectDin(I.norm(x.pune)); return v && v.k === x.k; }), JSON.stringify(A.ALEGERI_RAPORT.filter((x) => { const v = A.subiectDin(I.norm(x.pune)); return !v || v.k !== x.k; })));
+
 // ─── 2. Răspunsurile, pe forma adevărată a rapoartelor ──────────────────────────────────────────────
 console.log('\n2. Răspunsurile, din rapoarte (aceleași chei ca reports.js), cu numere românești');
 const ET = (i) => DEV[i].name + ' (' + DEV[i].plate + ')';   // cum scriu rapoartele mașina
@@ -127,6 +151,7 @@ r = A.raspunde(U('km pe flota saptamana trecuta'), { valori: [
   { vehicul: ET(1), imei: DEV[1].imei, km: 0, unitate: 'km', sursa: 'GPS (estimat)' },
   { vehicul: ET(2), imei: DEV[2].imei, km: 310, unitate: 'km', sursa: 'CAN' }] }, X);
 T('km pe flotă: totalul cu separatorul românesc de mii, tabelul ordonat, cine n-a mers', /Flota a parcurs \*\*1\.545 de km\*\*/.test(r.text) && r.tabel.randuri[0][0] === 'B 154 UIP · Dacia Logan 3' && r.tabel.randuri[0][1] === '1.235' && r.sugestii.some((s) => s.fel === 'atentie' && /O mașină n-a mers deloc: B 155 UIP · Dacia Logan 2/.test(s.text)), r.text + ' ' + JSON.stringify(r.tabel));
+T('…iar sub răspuns, continuarea pe prima mașină din tabel: „Dar B 154 UIP?"', (r.urmari || []).some((x) => x.trimite === 'Dar B 154 UIP?'), JSON.stringify(r.urmari));
 r = A.raspunde(U('consumul lui B 77 RAT luna trecuta'), { valori: [{ vehicul: ET(2), imei: DEV[2].imei, km: 1200, litri: 81.6, l100: 6.8, sursa: 'CAN', areDate: true }] }, Object.assign({}, X, { anterior: { valori: [{ imei: DEV[2].imei, l100: 7.2 }] },
   alimentari: forma('rFuel', [[ET(2), '15.09.2026, 22:10:00', 'Scădere/furt', 'Motorină', -23.4, '60.0 → 36.6', '']], { valori: [{ imei: DEV[2].imei, vehicul: ET(2), ts: '2026-09-15T19:10:00.000Z', fel: 'scadere', litri: 23.4, de: 60, la: 36.6 }] }) }));
 T('consum pe o mașină: „82 de litri", „6,8 L la 100 km", mai bine decât înainte', /a consumat \*\*82 de litri\*\* — septembrie 2026: \*\*6,8 L la 100 km\*\*, pe 1\.200 de km/.test(r.text) && r.sugestii.some((s) => s.fel === 'bun' && /0,4 L la 100 km mai mic/.test(s.text)), r.text + ' ' + JSON.stringify(r.sugestii));
@@ -263,14 +288,18 @@ T('pagina: întrebările gata făcute vin de la server, nu scrise în pagină', 
 T('pagina: fila se numește „AI Raport", FĂRĂ eticheta „GRATUIT" (Alin, 07.10)', /id="rep-tab-btn-insight"[^>]*>[\s\S]{0,120}AI Raport/.test(PAG) && PAG.indexOf('rin-gratis') < 0 && PAG.indexOf('>GRATUIT<') < 0);
 // Fila AI Raport și funcțiile ei din pagină: niciun „gratuit", niciun „fond" (fila, intro, răspunsurile).
 const filaAR = (PAG.split('<div id="rep-tab-insight"')[1] || '').split('<!-- ═══ Hotspot')[0];
-const codAR = (PAG.split('var _rinCtx = null;')[1] || '').split('async function rinOpenReport')[0];
+const codAR = (PAG.split('var _rinCtx = null')[1] || '').split('async function rinOpenReport')[0];
 T('pagina: fila și codul AI Raport nu spun „gratuit", „fond" sau „se scade"', filaAR.length > 300 && codAR.length > 2000 && !/gratuit|fond|se scade/i.test(filaAR.replace(/<!--[\s\S]*?-->/g, '')) && !/gratuit|fondul|se scade/i.test(codAR.replace(/\/\/[^\n]*/g, '')), (codAR.match(/.{30}(gratuit|fondul).{20}/i) || [])[0]);
 T('serverul nu mai trimite `gratuit: true` în răspunsurile AI Raport', ruta.indexOf('gratuit') < 0);
 T('pagina: o întrebare gata făcută pornește de la zero (e despre flotă); butoanele din răspuns țin minte discuția', /b\.onclick = function \(\) \{ rinAsk\(String\(q\.text \|\| ''\), true\); \};/.test(PAG) && /context: deLaZero \? \{\} : \(_rinCtx \|\| \{\}\)/.test(PAG) && /function \(t\) \{ rinAsk\(t\); \}/.test(PAG));
 T('pagina: raportul pe care AI Raport nu-l citește are butonul „Deschide raportul" (același cu cel de sub răspunsuri)', /if \(j\.sursa && j\.sursa\.type\) w\.appendChild\(_rinButonRaport\(j\.sursa\)\)/.test(PAG) && /if \(j\.sursa && j\.sursa\.type\) acts\.appendChild\(_rinButonRaport\(j\.sursa\)\)/.test(PAG));
 T('serverul: întrebarea neînțeleasă întoarce ce s-a ținut minte (mașina), iar după răspuns discuția vine din ai_raport.js', /context: u\.context \|\| ctx/.test(ruta) && /context: aiRaport\.contextul\(u, from, to\)/.test(ruta));
 T('serverul: „Unde e acum" spune vechimea locului cu ACELEAȘI cuvinte ca Inventarul (_invSemnalText), nu cu praguri noi', /semnal: _invSemnalText/.test(ruta));
-T('pagina: textele venite de la server trec prin textContent sau prin rinMd (care curăță)', /bub\.innerHTML = rinMd\(String\(x\.text/.test(PAG) && /it\.appendChild\(el\('span', null, s\.text\)\)/.test(PAG));
+// Chatul modern (08.10): caseta rotundă cu Mașina / Perioada / Raport, continuările sub răspuns, Copiază — aceleași piese ca RA Insight.
+T('pagina: caseta AI Raport are Mașina, Perioada, Raport și butonul rotund de trimis', /onclick="rinAlegeMasina\(this\)"/.test(PAG) && /onclick="rinAlegePerioada\(this\)"/.test(PAG) && /onclick="rinAlegeRaport\(this\)"/.test(PAG) && /class="chat-trimite gol" id="rin-send"/.test(PAG));
+T('pagina: continuările și Copiază vin din piesele COMUNE ale chatului (o singură scriere, folosită și de RA Insight)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && /wrap\.appendChild\(window\._chatUrmari\(urm, function \(t\) \{ rinAsk\(t\); \}\)\)/.test(PAG) && /bub\.appendChild\(window\._chatActiuni\(String\(x\.text \|\| ''\)\)\)/.test(PAG));
+T('serverul: subiectele butonului „Raport" vin din ai_raport.js (nu sunt scrise în pagină)', /subiecte: aiRaport\.ALEGERI_RAPORT\.map/.test(SRV) && PAG.indexOf('costurile cu combustibilul') < 0);
+T('pagina: textele venite de la server trec prin textContent sau prin rinMd (care curăță)', /tx\.innerHTML = rinMd\(String\(x\.text/.test(PAG) && /bub\.innerHTML = rinMd\(String\(j\.text/.test(PAG) && /it\.appendChild\(el\('span', null, s\.text\)\)/.test(PAG));
 
 // ─── 4. Pe server pornit ────────────────────────────────────────────────────────────────────────────
 const PORT = 3293, TCP = 5293;
@@ -406,6 +435,11 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   const nOpr = rs.j.summary && rs.j.summary['Opriri'];
   T('…„din raport stationari" → Staționări pe B 154 UIP (Alin: primea toată flota), mașina „ținută minte"', qs.status === 200 && qs.j.sursa && qs.j.sursa.type === 'stops' && (qs.j.sursa.imeis || []).join() === DEV[0].imei && (qs.j.inteles || []).some((x) => x.mem && x.tip === 'masina'), qs.text.slice(0, 240));
   T('…cu numărul de opriri al raportului „Staționări" (' + nOpr + ')', nOpr > 0 && ((qs.j.raspuns || {}).tiles || []).some((x) => x.et === 'Opriri' && x.val === A.nr(nOpr)), JSON.stringify((qs.j.raspuns || {}).tiles) + ' vs ' + nOpr);
+  const urmS = (qs.j.raspuns || {}).urmari || [];
+  const fisaSrv = I.fisaFlotei(DEV, {});
+  T('…și sub răspuns, 1–3 întrebări de continuare, fiecare înțeleasă cu discuția întoarsă de server', urmS.length >= 1 && urmS.length <= 3 && urmS.every((x) => A.intelege(x.trimite, qs.j.context, fisaSrv, Date.now()).ok), JSON.stringify(urmS));
+  const iqS = await json('GET', '/api/reports/ai-raport/intrebari', ckSef);
+  T('butonul „Raport": lista vine de la server, aceeași ca în ai_raport.js', (iqS.j.subiecte || []).length === A.ALEGERI_RAPORT.length && iqS.j.subiecte.every((x, i) => x.pune === A.ALEGERI_RAPORT[i].pune), (iqS.j.subiecte || []).length);
   // c4) un raport pe care AI Raport nu-l citește: butonul lui, cu mașina și perioada
   const qa = await json('POST', '/api/reports/ai-raport', ckSef, { text: 'supraturații la B 154 UIP săptămâna asta' });
   toate.push(qa.text);

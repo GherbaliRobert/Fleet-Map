@@ -3888,75 +3888,137 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
    Pe tot ecranul (ca celelalte pagini din meniu), dar fără caseta .modal: o discuție are nevoie de toată înălțimea,
    cu caseta de scris lipită jos. Stânga: ramurile și conversațiile; dreapta: discuția sau pagina ramurii. */
 #insight-view.as-view { padding: 0; align-items: stretch; overflow: hidden; }
-.insp { flex: 1; display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); min-width: 0; height: 100%; background: var(--bg-darkest); } /* minmax: altfel coloana crește după cel mai lat rând și pe telefon secțiunea ieșea din ecran (măsurat 02.10) */
-.insp-cap { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
-.insp-stea { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 17px; flex: none; color: var(--purple); background: color-mix(in srgb, var(--purple) 13%, transparent); }
-.insp-cap h1 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
-.insp-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 1px; }
-.insp-dr { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.insp-fond { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
-.insp-fond .bar { width: 64px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
-.insp-fond .bar b { display: block; height: 100%; background: var(--accent); }
-.insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.insp-btn i { color: var(--text-muted); }
-.insp-btn:hover { border-color: var(--accent); }
-.insp-btn.prim { background: var(--accent); color: #06210F; border-color: var(--accent); }
-.insp-btn.prim i { color: inherit; }
-.insp-meniu { display: none; }
-.insp-corp { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 0; }
-.insp-st { border-right: 1px solid var(--border); background: var(--bg-panel); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; }
-.insp-st .insp-btn.prim { justify-content: center; padding: 9px 12px; font-size: 13px; }
-.insp-cauta { margin: 8px 0 4px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 12.5px; }
-.insp-grp { font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-muted); margin: 12px 6px 4px; }
-.insp-ram { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-secondary); cursor: pointer; border: 0; background: transparent; font-family: inherit; text-align: left; width: 100%; }
-.insp-ram .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 12.5px; background: var(--bg-dark); color: var(--text-muted); flex: none; }
+/* Chatul modern (Alin, 08.10, după macheta aprobată): stânga = bara RA Insight; dreapta = bara de sus + discuția (sau pagina
+   ramurii). Răspunsurile fără chenar, întrebările în bule rotunde la dreapta, caseta de scris rotundă, jos. */
+.insp { flex: 1; display: grid; grid-template-columns: 264px minmax(0, 1fr); min-width: 0; height: 100%; background: var(--bg-darkest); position: relative; } /* minmax: altfel coloana crește după cel mai lat rând și pe telefon secțiunea ieșea din ecran (măsurat 02.10) */
+.insp.st-ascuns { grid-template-columns: minmax(0, 1fr); }
+.insp.st-ascuns .insp-st { display: none; }
+.insp-umbra { display: none; }
+.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); }
+.insp-stea.mare { width: 48px; height: 48px; border-radius: 15px; font-size: 21px; margin: 0 auto; }
+/* stânga */
+.insp-st { background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.insp-st-cap { display: flex; align-items: center; gap: 4px; padding: 12px 10px 6px 14px; }
+.insp-st-tit { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 15px; color: var(--text-primary); margin-right: auto; }
+.insp-nou { margin: 4px 10px 6px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; font: inherit; font-weight: 700; font-size: 13.5px; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); cursor: pointer; text-align: left; }
+.insp-nou i { color: var(--text-secondary); }
+.insp-nou:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.insp-cauta { margin: 2px 10px 4px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 12.5px; }
+.insp-grp { font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); margin: 12px 16px 4px; }
+#insp-ramuri { padding: 0 8px; }
+.insp-ram { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-secondary); cursor: pointer; border: 0; background: transparent; font-family: inherit; text-align: left; width: 100%; }
+.insp-ram .ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; background: transparent; color: var(--text-secondary); flex: none; }
 .insp-ram:hover { background: var(--bg-dark); color: var(--text-primary); }
 .insp-ram.act { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-primary); }
 .insp-ram.act .ic { background: var(--accent); color: #06210F; }
 /* Câte lucruri cer atenție într-o ramură (macheta din 02.10). Portocaliu deschis pe tema închisă, închis pe cea deschisă. */
 .insp-nr { margin-left: auto; font-size: 11px; font-weight: 800; line-height: 1; padding: 3px 7px; border-radius: 999px; color: #fdba74; background: rgba(249,115,22,.15); }
 body:not(.dark) .insp-nr { color: #9a3412; background: rgba(249,115,22,.12); }
-.insp-zi { font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 8px 8px 2px; }
-.insp-conv { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.insp-lista { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px; }
+.insp-zi { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin: 8px 8px 2px; }
+.insp-conv { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 8px; border-radius: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
 .insp-conv:hover { background: var(--bg-dark); color: var(--text-primary); }
-.insp-conv.act { background: var(--bg-dark); color: var(--text-primary); font-weight: 700; box-shadow: inset 0 0 0 1px var(--border-light); }
+.insp-conv.act { background: var(--bg-dark); color: var(--text-primary); font-weight: 700; }
 .insp-conv .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .insp-conv .a { display: none; gap: 2px; }
 .insp-conv:hover .a, .insp-conv.act .a { display: inline-flex; }
-.insp-conv .a button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 11px; }
+.insp-conv .a button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 11px; }
 .insp-conv .a button:hover { background: var(--bg-card); color: var(--text-primary); }
-.insp-gol { font-size: 12px; color: var(--text-muted); padding: 6px 8px; line-height: 1.45; }
-.insp-pastrare { margin-top: auto; padding: 10px 8px 2px; font-size: 11px; color: var(--text-muted); line-height: 1.45; }
-.insp-main { display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
-.insp-msgs { overflow-y: auto; padding: 18px 24px 8px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-.insp-u { align-self: flex-end; max-width: 72%; background: color-mix(in srgb, var(--accent) 14%, var(--bg-card)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); color: var(--text-primary); border-radius: 14px 14px 4px 14px; padding: 9px 13px; font-weight: 600; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
-.insp-a { align-self: flex-start; max-width: 88%; display: flex; gap: 10px; }
-.insp-a .av { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; margin-top: 2px; color: var(--purple); background: color-mix(in srgb, var(--purple) 13%, transparent); }
-.insp-a .bub { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; padding: 11px 14px; line-height: 1.5; min-width: 0; color: var(--text-primary); }
-.insp-a .bub .rax-md-h { font-weight: 800; }
-.insp-surse { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.insp-subsol { display: flex; align-items: center; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
-.insp-subsol .gratis { color: var(--text-secondary); }
-.insp-th { margin-left: auto; display: inline-flex; gap: 6px; }
-.insp-th button { width: 28px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 11.5px; }
-.insp-th button:hover { color: var(--text-primary); border-color: var(--border-light); }
-.insp-th button.on { color: #06210F; background: var(--accent); border-color: var(--accent); }
-.insp-th button.on.jos { color: #fff; background: var(--red); border-color: var(--red); }
-.insp-salut { max-width: 640px; margin: 24px auto 0; text-align: center; color: var(--text-secondary); }
-.insp-salut h2 { font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 10px 0 6px; }
-.insp-salut p { margin: 0 0 14px; line-height: 1.5; font-size: 13.5px; }
-.insp-sug { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.insp-sug button { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
-.insp-sug button:hover { border-color: var(--accent); }
-.insp-scrie { padding: 10px 24px 14px; }
-.insp-caseta { display: flex; align-items: flex-end; gap: 10px; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 13px; padding: 8px 8px 8px 14px; }
-.insp-caseta textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; line-height: 1.45; max-height: 140px; padding: 6px 0; }
-.insp-caseta button { width: 38px; height: 38px; border-radius: 10px; border: 0; background: var(--accent); color: #06210F; cursor: pointer; flex: none; font-size: 14px; }
-.insp-caseta button:disabled { opacity: .55; cursor: default; }
-.insp-nota { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11.5px; color: var(--text-secondary); margin-top: 7px; } /* --text-muted ieșea 4,2 pe tema deschisă (măsurat 02.10) */
+.insp-gol { font-size: 12px; color: var(--text-secondary); padding: 6px 8px; line-height: 1.45; }
+.insp-st-jos { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
+.insp-fond { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.insp-fond .bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin: 6px 0 4px; }
+.insp-fond .bar b { display: block; height: 100%; background: var(--accent); }
+.insp-fond-s { font-weight: 600; }
+.insp-pastrare { margin-top: 8px; font-size: 11px; color: var(--text-secondary); line-height: 1.45; }
+.insp-pastrare i { color: var(--text-muted); margin-right: 3px; }
+/* dreapta */
+.insp-dr-col { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.insp-top { display: flex; align-items: center; gap: 4px; padding: 8px 14px 6px; min-width: 0; }
+.insp-titlu { font-weight: 800; font-size: 15px; color: var(--text-primary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.insp-top-dr { margin-left: auto; display: flex; gap: 2px; flex: none; }
+.insp-top .insp-meniu, .insp-top .insp-nou-tel { display: none; } /* cu .insp-top în față: altfel .chat-ib (mai jos) le-ar arăta pe calculator */
+.insp.st-ascuns .insp-top .insp-meniu { display: inline-grid; }
+.insp.pe-ramura .insp-top .insp-titlu { visibility: hidden; } /* pagina ramurii își are titlul ei */
+.insp-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; min-width: 0; position: relative; }
+/* coloana discuției: derularea pe toată lățimea, textul pe 780 px la mijloc */
+.insp-msgs { overflow-y: auto; padding: 8px max(24px, calc((100% - 780px) / 2)) 12px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+.insp-u { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-start; gap: 2px; }
+.insp-u .b { background: color-mix(in srgb, var(--text-primary) 7%, var(--bg-darkest)); color: var(--text-primary); border-radius: 20px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-width: 0; }
+.insp-u-act { display: flex; gap: 2px; padding-top: 4px; opacity: 0; transition: opacity .12s; }
+.insp-u:hover .insp-u-act, .insp-u:focus-within .insp-u-act { opacity: 1; }
+@media (hover: none) { .insp-u-act { opacity: 1; } }
+.insp-a { align-self: stretch; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
+.insp-a .av { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); margin-top: 1px; }
+.insp-a .bub { min-width: 0; color: var(--text-primary); font-size: 14.5px; line-height: 1.62; }
+.insp-a .bub .rax-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
+.insp-a .bub .rax-md-li { padding-left: 14px; position: relative; margin: 3px 0; }
+.insp-a .bub .rax-md-li::before { content: ''; position: absolute; left: 2px; top: .72em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.insp-a .ins-extra { margin: 0 0 8px; }
+.insp-a .ins-alege { margin-top: 8px; }
+.insp-surse { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.insp-salut { width: 100%; max-width: 780px; margin: 0 auto; text-align: center; color: var(--text-secondary); }
+.insp-salut h2 { font-size: 26px; font-weight: 800; color: var(--text-primary); margin: 14px 0 6px; }
+.insp-salut p { margin: 0 0 20px; line-height: 1.5; font-size: 14.5px; }
+.insp-gol-mij { overflow-y: auto; min-height: 0; display: flex; align-items: center; padding: 24px; grid-row: 1 / -1; }
+.insp-carduri { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; text-align: left; }
+.insp-card-q { display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.insp-card-q:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.insp-card-q > i { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-dark); color: var(--text-secondary); font-size: 13px; flex: none; }
+.insp-card-q b { display: block; font-size: 13.5px; }
+.insp-card-q span span { display: block; font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.insp-scrie { padding: 6px max(24px, calc((100% - 780px) / 2)) 12px; }
+.insp-nota { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; font-size: 11.5px; color: var(--text-secondary); margin-top: 8px; } /* --text-muted ieșea 4,2 pe tema deschisă (măsurat 02.10) */
 .insp-nota i { color: var(--text-muted); margin-right: 4px; }
+.insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.insp-btn i { color: var(--text-muted); }
+.insp-btn:hover { border-color: var(--accent); }
+.insp-btn.prim { background: var(--accent); color: #06210F; border-color: var(--accent); }
+.insp-btn.prim i { color: inherit; }
 .insp-card { max-width: 620px; margin: 32px auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; color: var(--text-secondary); line-height: 1.55; }
 .insp-card h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 800; }
+/* ── piesele comune ale chatului (RA Insight, bula din colț, AI Raport) ── */
+.chat-ib { width: 32px; height: 32px; border-radius: 9px; border: 0; background: transparent; color: var(--text-secondary); display: inline-grid; place-items: center; font-size: 13px; cursor: pointer; flex: none; }
+.chat-ib:hover { background: var(--bg-dark); color: var(--text-primary); }
+.chat-ib.on { color: #06210F; background: var(--accent); }
+.chat-ib.on.jos { color: #fff; background: var(--red); }
+.chat-act { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin-top: 6px; margin-left: -6px; }
+.chat-act .chat-ib { width: 30px; height: 30px; font-size: 12.5px; }
+.chat-sursa { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+.chat-sursa i { color: #16a34a; }
+body.dark .chat-sursa i { color: var(--accent); }
+.chat-pas { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 99px; border: 1px solid var(--border-light); background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; }
+.chat-pas i { color: var(--text-secondary); }
+.chat-pas:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
+.chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
+#rin-msgs .chat-urm, #rax-ai-msgs .chat-urm { margin: -4px 0 0 38px; }
+.chat-urm button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 99px; border: 1px dashed var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.chat-urm button i { font-size: 11px; color: var(--text-muted); }
+.chat-urm button:hover { color: var(--text-primary); border-style: solid; border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
+.chat-caseta { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 24px; padding: 10px 10px 8px 16px; box-shadow: 0 6px 24px rgba(0,0,0,.08); text-align: left; }
+body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+.chat-caseta:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, var(--border-light)); }
+.chat-caseta textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 14.5px; line-height: 1.45; max-height: 140px; padding: 4px 0 10px; }
+.chat-caseta textarea::placeholder { color: var(--text-secondary); }
+.chat-unelte { display: flex; align-items: center; gap: 6px; }
+.chat-un { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.chat-un i { font-size: 12px; color: var(--text-muted); }
+.chat-un:hover { color: var(--text-primary); border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
+.chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent); color: #06210F; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; }
+.chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-light); cursor: default; }
+.chat-trimite:disabled { opacity: .6; }
+.chat-jos { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: none; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; z-index: 2; }
+.chat-jos.vizibil { display: grid; }
+.chat-pop { position: fixed; z-index: 100001; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 14px; box-shadow: 0 18px 44px rgba(2,6,23,.28); padding: 6px; display: flex; flex-direction: column; overflow: hidden; }
+.chat-pop-t { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); padding: 6px 8px 4px; }
+.chat-pop-cauta { margin: 2px 4px 6px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 13px; }
+.chat-pop-l { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; }
+.chat-pop-i { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.chat-pop-i i { width: 16px; text-align: center; color: var(--text-secondary); font-size: 12.5px; }
+.chat-pop-i small { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+.chat-pop-i:hover { background: var(--bg-dark); }
+.chat-pop-i.rosu, .chat-pop-i.rosu i { color: var(--red); }
+.chat-pop-gol { padding: 10px; font-size: 12.5px; color: var(--text-secondary); }
 .insp-ghid { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 16px 20px; overflow: hidden; min-height: 0; }
 .insp-ghid-lista { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
 .insp-ghid-lista button { font: inherit; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
@@ -4054,21 +4116,30 @@ body:not(.dark) .sdp-tab td.rosu { color: #b91c1c; }
 body:not(.dark) .sdp .sdp-chip.atentie, body:not(.dark) .sdp-tab td.atentie, body:not(.dark) .sdp-rec.atentie i { color: #9a3412; }
 body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.dark) .sdp-rec.bun i { color: #166534; }
 @media (max-width: 860px) {
-  .insp-corp { grid-template-columns: minmax(0, 1fr); }
-  /* Capul pe telefon: [meniu] [stea] [titlu] [notițe] [✕] pe un rând, fondul lunii pe rândul de dedesubt. */
-  .insp-cap { flex-wrap: wrap; padding: 10px 12px; gap: 8px 10px; }
-  .insp-cap > div:nth-of-type(2) { flex: 1; min-width: 0; }
-  .insp-dr { display: contents; }
-  .insp-fond { order: 9; flex: 1 1 100%; white-space: normal; justify-content: flex-start; }
-  .insp-cap .insp-btn .et { display: none; }
-  .insp-st { display: none; border-right: 0; border-bottom: 1px solid var(--border); max-height: 55vh; }
-  .insp.st-deschis .insp-st { display: flex; }
-  .insp-meniu { display: inline-flex; }
-  .insp-sub, .insp-fond .bar { display: none; }
-  .insp-msgs { padding: 14px 12px 6px; }
-  .insp-scrie { padding: 8px 12px 12px; }
-  .insp-u { max-width: 86%; }
-  .insp-a { max-width: 100%; }
+  /* Telefonul: stânga e un sertar peste discuție (☰ îl deschide, alegerea îl închide), bara de sus are ☰ și ✎. */
+  .insp, .insp.st-ascuns { grid-template-columns: minmax(0, 1fr); }
+  .insp-st, .insp.st-ascuns .insp-st { display: flex; position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); transform: translateX(-104%); transition: transform .2s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); }
+  .insp.st-deschis .insp-st { transform: none; }
+  .insp.st-deschis .insp-umbra { display: block; position: absolute; inset: 0; z-index: 29; background: rgba(0,0,0,.45); }
+  .insp-top .insp-meniu, .insp-top .insp-nou-tel { display: inline-grid; }
+  .insp-top { padding: 6px 6px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+  .insp-titlu { flex: 1; text-align: center; }
+  .insp.pe-ramura .insp-top .insp-titlu { visibility: visible; }
+  .insp-msgs { padding: 14px 12px 8px; gap: 16px; }
+  .insp-scrie { padding: 6px 10px 10px; }
+  .insp-nota { display: none; }
+  .insp-u { max-width: 90%; }
+  .insp-a { grid-template-columns: 26px minmax(0, 1fr); gap: 9px; }
+  .insp-a .av { width: 26px; height: 26px; font-size: 11.5px; }
+  .insp-a .bub { font-size: 14px; }
+  .chat-urm { margin-left: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .chat-urm button { white-space: nowrap; }
+  .chat-un .et { display: none; }
+  .chat-un { width: 34px; padding: 0; justify-content: center; }
+  .insp-salut h2 { font-size: 21px; }
+  .insp-carduri { grid-template-columns: minmax(0, 1fr); }
+  .insp-gol-mij { padding: 16px 12px; align-items: flex-start; }
+  .chat-jos { bottom: 96px; }
   .insp-ghid { grid-template-columns: 1fr; overflow-y: auto; }
   .sdp { padding: 12px 12px 24px; }
   .sdp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }

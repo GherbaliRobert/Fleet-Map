@@ -248,6 +248,8 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('„Am înțeles": mașina, perioada și raportul', inteles1.includes('masina:B 154 UIP · Dacia Logan 3') && inteles1.some((x) => /^perioada:\d/.test(x)) && inteles1.includes('subiect:Index km / ore'), inteles1.join(' | '));
   T('conversația s-a păstrat (are id)', Number(q1.j.conversatieId) > 0 && Number(q1.j.mesajId) > 0);
   T('întrebarea se numără o singură dată din fond, deși modelul a lucrat în doi pași', (await folosite()) === 1);
+  // Chatul modern (08.10): sub răspunsul cu un raport, întrebările de continuare — ACEEAȘI regulă ca AI Raport (aiRaport.urmari).
+  T('sub răspuns, întrebările de continuare din raportul citit: „Și săptămâna dinainte?", „Și consumul?", „Și pe toată flota?"', (q1.j.urmari || []).map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și consumul? | Și pe toată flota?', JSON.stringify(q1.j.urmari));
 
   // b) continuarea, cu id: modelul vede discuția
   coada([text('Față de 14–20 septembrie: +66 km.')]);
@@ -275,6 +277,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('lista spune și cât se păstrează (12 luni)', l1.j.pastrareLuni === 12);
   const cit = await json('GET', '/api/insight/conversatii/' + q1.j.conversatieId, ckSef);
   T('conversația se redeschide: 3 întrebări + 3 răspunsuri, cu „Am înțeles" la răspuns', cit.status === 200 && cit.j.mesaje.length === 6 && cit.j.mesaje[1].rol === 'assistant' && (cit.j.mesaje[1].extra.inteles || []).length >= 3, cit.status + ' ' + (cit.j.mesaje || []).length);
+  T('…și cu întrebările de continuare păstrate (se arată sub ultimul răspuns când o redeschizi)', (cit.j.mesaje[1].extra.urmari || []).length === 3);
   const cauta = await json('GET', '/api/insight/conversatii?q=36,6', ckSef);
   T('căutarea găsește și în textul răspunsurilor', cauta.j.conversatii.length === 1 && cauta.j.conversatii[0].id === q1.j.conversatieId);
 
@@ -307,7 +310,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const c5 = cereri().slice(-1)[0];
   T('unealta nu alege la întâmplare: îi spune modelului că sunt mai multe', JSON.stringify(c5.messages.slice(-1)[0]).indexOf('ambiguu') >= 0);
   T('răspunsul are butoane cu cele trei Logan (de apăsat în loc de scris)', (q5.j.alege || []).map((a) => a.trimite).sort().join(',') === 'B 154 UIP,B 155 UIP,CJ 12 RAT', JSON.stringify(q5.j.alege));
-  T('și nu s-a rulat niciun raport', !(q5.j.sources || []).length);
+  T('și nu s-a rulat niciun raport (nici continuări: întâi alege mașina)', !(q5.j.sources || []).length && !(q5.j.urmari || []).length);
   // „celălalt": se scoate mașina despre care tocmai s-a vorbit
   coada([text('Care dintre B 155 UIP și CJ 12 RAT?')]);
   const q6 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Dar celălalt Logan?', conversatieId: q1.j.conversatieId });
@@ -318,6 +321,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const q7 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Unde e B 154 UIP?', nou: true });
   T('„Unde e B 154 UIP?" → răspuns rapid, doar despre ea, fără model și fără să se numere', q7.j.source === 'local' && /Dacia Logan 3/.test(q7.j.reply || '') && cereri().length === inainte && (await folosite()) === fondInainte, q7.text.slice(0, 160));
   T('și „Am înțeles" spune mașina și „acum"', (q7.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|acum', JSON.stringify(q7.j.inteles));
+  T('…fără continuări (apăsate, ar porni întrebări care se numără) și fără nota „nu s-a numărat din fond" pe ecran (Alin, 08.10)', !(q7.j.urmari || []).length && fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').indexOf('nu s-a numărat din fond') < 0);
   coada([text('Săptămâna trecută: 538 km.')]);
   const q8 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți kilometri a făcut B 154 UIP săptămâna trecută?', nou: true });
   T('cu altă perioadă, aceeași întrebare merge la RA Insight (nu primește km-ii de azi)', q8.j.source === 'ai' && cereri().length === inainte + 1, q8.j.source);
@@ -345,10 +349,15 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // Ramurile livrate (pasul 3: Safe Drive; pasul 4: Combustibil, Mentenanță & acte…) se arată și au pagina lor;
   // cele încă nelivrate (gata: false) rămân ascunse.
   const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+', ic: 'fa-[\w-]+', gata: (true|false) \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
-  T('ramurile livrate se arată și au pagina lor (Safe Drive, Combustibil, Mentenanță & acte); cele nelivrate nu', RAM.length === 7 &&
+  // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
+  T('ramurile livrate se arată și au pagina lor (Safe Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
     ['safedrive', 'combustibil', 'mentenanta'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
-    /RAMURI\.filter\(function \(r\) \{ return r\.gata; \}\)/.test(PAG), JSON.stringify(RAM));
+    (PAG.match(/RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general'; \}\)/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
+  T('chatul modern: caseta cu Mașina / Perioada / Ramuri și butonul rotund; „Conversație nouă" și ☰ / ✎ pentru telefon', /onclick="insightAlegeMasina\(this\)"/.test(PAG) && /onclick="insightAlegePerioada\(this\)"/.test(PAG) && /onclick="insightAlegeRamura\(this\)"/.test(PAG) &&
+    /id="insp-trimite" class="chat-trimite gol"/.test(PAG) && /class="insp-nou" onclick="insightNou\(\)"/.test(PAG) && /chat-ib insp-meniu/.test(PAG) && /chat-ib insp-nou-tel/.test(PAG));
+  T('piesele chatului sunt scrise O DATĂ și folosite de secțiune, bula din colț și AI Raport (continuările, Copiază, Mașina, Perioada)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && (PAG.match(/window\._chatUrmari\(/g) || []).length >= 4 &&
+    (PAG.match(/window\._chatActiuni = function/g) || []).length === 1 && (PAG.match(/window\._chatActiuni\(/g) || []).length >= 3 && (PAG.match(/window\._CHAT_PERIOADE = \[/g) || []).length === 1 && (PAG.match(/window\._CHAT_PERIOADE,/g) || []).length >= 3);
   T('discuția din secțiune e ACEEAȘI cu bula din colț (o singură conversație curentă)', (PAG.match(/window\._raxConvId/g) || []).length >= 4);
   // notițele firmei
   const n0 = await json('GET', '/api/insight/notite', ckSef);

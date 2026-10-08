@@ -141,11 +141,11 @@ const SECTIUNI = [
     cheie: 'ra_insight', titlu: 'RA Insight: cine îl are și cum se folosește', unde: 'Meniu → RA Insight (și bula rotundă din colț)',
     pasi: [
       'Adminul firmei îl pornește pe contul omului: Setări → Utilizatori → iconița baghetă de pe rând → „Dă-i acces" (se facturează un cont în plus).',
-      'În meniul „RA Insight" scrie întrebarea; spune mașina după număr, nume sau șofer.',
-      'Continuă discuția („și săptămâna dinainte?"); „Conversație nouă" o ia de la capăt.',
-      'Conversațiile rămân în stânga, cu căutare; le vezi doar tu, 12 luni.'
+      'În meniul „RA Insight" scrie întrebarea în caseta de jos; spune mașina după număr, nume sau șofer — sau alege-o cu butonul „Mașina", iar perioada cu „Perioada".',
+      'Continuă discuția: scrie („și săptămâna dinainte?") sau apasă una dintre întrebările gata scrise de sub răspuns; „Conversație nouă" o ia de la capăt.',
+      'Conversațiile rămân în stânga, cu căutare (lupa); le vezi doar tu, 12 luni. Pe telefon, stânga se deschide din butonul cu trei linii.'
     ],
-    detalii: 'Sus vezi câte întrebări mai are firma luna asta; când se termină, RA Insight se oprește până pe 1, fără niciun cost în plus. Răspunsurile rapide („unde e…", „câți km azi") nu se numără. „Notițele firmei" = regulile casei, scrise de admin.',
+    detalii: 'Jos în stânga vezi câte întrebări mai are firma luna asta; când se termină, RA Insight se oprește până pe 1, fără niciun cost în plus. Răspunsurile rapide („unde e…", „câți km azi") nu se numără. Sub fiecare răspuns: copiezi textul, îl notezi (👍 / 👎) și vezi din ce rapoarte vin cifrele. „Notițele firmei" (iconița cu notiță, sus) = regulile casei, scrise de admin.',
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei']
   },
   {
