@@ -12828,7 +12828,38 @@ const pozitii = await r.json();</code></pre>
     const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', insight: 'renderInsightPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
-    function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
+    // O SINGURĂ grupă deschisă deodată (Robert, 08.10: „când deschidem un meniu, vreau ca celălalt să se
+    // închidă, cu animație"). Deschiderea trece mereu prin `_navDeschideGrupa` — și clicul pe titlul grupei,
+    // și `_navAprinde` (când ajungi într-un rând din grupă pe altă cale) — ca să nu existe o a doua cale care
+    // lasă două grupe deschise.
+    //
+    // Animația: înălțimea corpului merge de la cât e acum la cât îi trebuie (sau la 0), apoi se scoate
+    // înălțimea scrisă, ca deschis = „cât cuprinsul", închis = 0 (din CSS). Pornim de la înălțimea DE ACUM,
+    // nu de la 0 sau de la plin: un al doilea clic în mijlocul animației o întoarce din loc, fără salt.
+    // Grupa care nu e pe ecran (cealaltă verticală, meniul strâns) și „mișcare redusă" → fără animație.
+    function _navAnimGrupa(g, deschide) {
+      var corp = g.querySelector('.nav-group-body');
+      if (!corp) { g.classList.toggle('open', deschide); return; }
+      if (g.classList.contains('open') === deschide && !corp.style.height) return;
+      var fara = !g.offsetParent || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      clearTimeout(corp._navT);
+      if (fara) { g.classList.toggle('open', deschide); corp.style.height = ''; return; }
+      var acum = corp.getBoundingClientRect().height;
+      g.classList.toggle('open', deschide);
+      var tinta = deschide ? corp.scrollHeight : 0;
+      corp.style.height = acum + 'px';
+      void corp.offsetHeight; // pornește tranziția de la înălțimea de acum
+      corp.style.height = tinta + 'px';
+      corp._navT = setTimeout(function () { corp.style.height = ''; }, 260);
+    }
+    function _navDeschideGrupa(g) {
+      document.querySelectorAll('#navrail .nav-group.open').forEach(function (alta) { if (alta !== g) _navAnimGrupa(alta, false); });
+      _navAnimGrupa(g, true);
+    }
+    function toggleNavGroup(head) {
+      var g = head.closest('.nav-group'); if (!g) return;
+      if (g.classList.contains('open')) _navAnimGrupa(g, false); else _navDeschideGrupa(g);
+    }
     // Navighează (fn), marchează butonul activ și ține grupul deschis. fn rulează ÎNAINTE (showView resetează .active).
     // ── începe „rândul aprins din meniu" ──────────────────────────────────────────────────────────
     // UN SINGUR loc care mută evidențierea verde din bara din stânga. Erau trei căi de a ajunge într-o
@@ -12846,7 +12877,7 @@ const pozitii = await r.json();</code></pre>
       if (!el || el.style.display === 'none' || el.closest('.vert-ascuns')) return false;
       document.querySelectorAll('#navrail .nav-item').forEach(function (n) { n.classList.remove('active'); });
       el.classList.add('active');
-      var g = el.closest('.nav-group'); if (g) g.classList.add('open');
+      var g = el.closest('.nav-group'); if (g) _navDeschideGrupa(g);
       return true;
     };
     function navGo(btn, fn) {
@@ -19491,8 +19522,12 @@ const pozitii = await r.json();</code></pre>
     .nav-group-head { display: flex; align-items: center; width: 100%; }
     .nav-group-head .nav-caret { margin-left: auto; font-size: 10px; opacity: .55; transition: transform .2s ease; }
     .nav-group.open > .nav-group-head .nav-caret { transform: rotate(180deg); opacity: 1; }
-    .nav-group-body { display: none; flex-direction: column; }
-    .nav-group.open > .nav-group-body { display: flex; }
+    /* Închis = înălțime 0 + `visibility:hidden` (rândurile ascunse nu primesc Tab); `visibility` se schimbă abia
+       după pliere, ca rândurile să se vadă cât timp se strâng. Înălțimile din mijlocul animației le scrie
+       `_navAnimGrupa`; aici stau doar capetele (0 și „cât cuprinsul"). */
+    .nav-group-body { display: flex; flex-direction: column; overflow: hidden; height: 0; visibility: hidden; transition: height .24s ease, visibility 0s linear .24s; }
+    .nav-group.open > .nav-group-body { height: auto; visibility: visible; transition: height .24s ease, visibility 0s; }
+    @media (prefers-reduced-motion: reduce) { .nav-group-body, .nav-group.open > .nav-group-body { transition: none; } }
     .nav-item.nav-sub { padding-left: 40px; font-size: 13px; opacity: .9; }
     .nav-item.nav-sub:hover { opacity: 1; }
     .nav-group:has(.nav-item.active) > .nav-group-head { color: var(--accent); }
