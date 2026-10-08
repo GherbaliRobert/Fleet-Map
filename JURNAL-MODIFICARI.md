@@ -43,7 +43,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
 - [ ] **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
   contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
-  facturile.
+  facturile. **08.10:** sunteți pe Hobby (Robert), iar pe Hobby Railway blochează exact calea pe care trimite aplicația
+  azi (SMTP) — o setare nu ajunge. Ori adaptăm aplicația la Brevo (gratuit, 300 de emailuri pe zi; direcția din 03.10,
+  „mai stăm puțin"), ori treceți pe Pro (minimum ≈ 96 de lei pe lună, față de ≈ 64 azi).
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
@@ -168,7 +170,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
   trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
-- [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) Planul se vede în Railway
+- [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
+  08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
   de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
   „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
