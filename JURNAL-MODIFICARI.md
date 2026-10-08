@@ -242,7 +242,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-08
 
-### AMÂNDOI · Meniul din stânga: o singură grupă deschisă deodată, cu animație — `HASH`
+### AMÂNDOI · Meniul din stânga: o singură grupă deschisă deodată, cu animație — `a868618`
 
 Robert (08.10): *„când deschidem un meniu, vreau ca celălalt să se închidă, cu animație"*.
 
