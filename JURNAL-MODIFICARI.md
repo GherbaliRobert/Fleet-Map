@@ -249,7 +249,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-09
 
-### AMÂNDOI · Numele și sigla „RA Tracks" peste tot: fără „traks", fără „RA Track", fără „RA" de două ori — `HASH`
+### AMÂNDOI · Numele și sigla „RA Tracks" peste tot: fără „traks", fără „RA Track", fără „RA" de două ori — `e24850b`
 
 Robert (09.10): *„schimbă peste tot pe unde avem logoul în RA Track, cum este și numele, pentru că am mai găsit Trak și
 este eronat"*. Căutat în tot proiectul (text, imagini, PDF-uri, aplicația de telefon), apoi a doua oară, de verificatori.
