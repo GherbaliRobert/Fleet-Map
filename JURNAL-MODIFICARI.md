@@ -46,6 +46,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   facturile. **08.10:** sunteți pe Hobby (Robert), iar pe Hobby Railway blochează exact calea pe care trimite aplicația
   azi (SMTP) — o setare nu ajunge. Ori adaptăm aplicația la Brevo (gratuit, 300 de emailuri pe zi; direcția din 03.10,
   „mai stăm puțin"), ori treceți pe Pro (minimum ≈ 96 de lei pe lună, față de ≈ 64 azi).
+  **09.10:** când îl puneți, expeditorul (`SMTP_FROM`, dacă îl setați) să scrie „RA Track", nu „RA Tracks" — numele
+  din setare bate numele din aplicație.
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
