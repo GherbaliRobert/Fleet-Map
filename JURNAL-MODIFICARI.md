@@ -187,6 +187,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
   „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
   mașini reale ar umple discul în 2–3 săptămâni.
+- [ ] **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
+  spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
+  în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
+  Setări Windows → Oră și limbă → Dată și oră → „Setează ora automat” pornit → „Sincronizează acum”, apoi F5 în pagină.
 
 ---
 
