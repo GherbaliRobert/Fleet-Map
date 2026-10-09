@@ -1,6 +1,6 @@
 {
-  "name": "RA Tracks — Monitorizare flotă",
-  "short_name": "RA Tracks",
+  "name": "RA Track — Monitorizare flotă",
+  "short_name": "RA Track",
   "description": "Localizare GPS, rapoarte, alerte și notificări pentru flotă.",
   "start_url": "/app",
   "scope": "/",

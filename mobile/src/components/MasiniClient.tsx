@@ -158,7 +158,7 @@ export function MasiniClient(p: {
   // ── Șablonul: îl face serverul (cu logo, cu listele de ales) și tot el îl citește ──────────────────
   async function descarcaSablon() {
     setBusy('descarc');
-    try { await salveazaDeLaServer('/api/admin/masini/sablon', 'RA-Tracks - Șablon mașini client.xlsx'); }
+    try { await salveazaDeLaServer('/api/admin/masini/sablon', 'RA-Track - Șablon mașini client.xlsx'); }
     catch (e: any) { showToast('Șablonul nu s-a descărcat: ' + (e?.message || 'eroare'), true); }
     finally { setBusy(''); }
   }

@@ -1,4 +1,4 @@
-# Deploy RA Tracks pe Railway
+# Deploy RA Track pe Railway
 
 Ghid pas-cu-pas pentru a muta aplicația pe **Railway** (server + bază de date PostgreSQL/TimescaleDB).
 Codul detectează automat modul: dacă există `DATABASE_URL` → **PostgreSQL real** (scalabil, concurență
@@ -73,7 +73,7 @@ cade automat pe Postgres simplu, fără să crape):
 | `SMTP_PASS` | parola/app-password | ⚠ `mailer.enabled()` verifică doar HOST+USER — dacă uiți PASS, aplicația se crede configurată și trimiterile eșuează tăcut |
 | `SMTP_PORT` | `587` (implicit) | |
 | `SMTP_SECURE` | `true` **doar** pentru portul 465 | pe 587 lasă nesetat |
-| `SMTP_FROM` | `RA Tracks <noreply@ratrack.ro>` | implicit se compune din `SMTP_USER` |
+| `SMTP_FROM` | `RA Track <noreply@ratrack.ro>` | implicit se compune din `SMTP_USER` |
 | `SUPPORT_EMAIL` | adresa unde ajung sesizările din aplicație | altfel se caută în setările din DB |
 
 ### 3d. Înainte de lansare
@@ -182,7 +182,7 @@ După ce adaugi variabilele → **Redeploy**, apoi verifică în *„Stare produ
 [DB] TimescaleDB activ: hypertable positions + compresie >7z (ștergerea istoricului: după regula fiecărei firme)   (doar varianta B)
 [AUTH] Utilizator super-admin creat (admin)
 [PUSH] Web Push activ (VAPID configurat)
-  RA Tracks Server — PORNIT
+  RA Track Server — PORNIT
 ```
 Healthcheck-ul pe `/api` trebuie să treacă (serviciul devine **Active/verde**).
 

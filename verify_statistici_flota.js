@@ -90,7 +90,7 @@ T('rândul de cartonașe se așază singur (nu forțat pe 4 coloane)',
   /id="dash-hero"[^>]*repeat\(auto-fit,minmax\(190px/.test(html));
 
 console.log('\n7. Agenții: gratuiți, deci activi la toate firmele');
-// RA Tracks nu vinde pe planuri, ci pe OFERTE. Agenții sunt gratuiți (reguli fixe, zero tokeni) și
+// RA Track nu vinde pe planuri, ci pe OFERTE. Agenții sunt gratuiți (reguli fixe, zero tokeni) și
 // sunt scoși din calculatorul de ofertă — deci n-au ce căuta într-un tabel de planuri. Înainte,
 // fiecare firmă nouă pica pe „standard" (= start), unde scria `agents: false`: clientul nu-i avea,
 // iar traseul de deschidere nu-i atingea deloc.

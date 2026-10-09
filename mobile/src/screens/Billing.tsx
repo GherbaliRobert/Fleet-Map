@@ -709,7 +709,7 @@ function IssuerSheet({ issuer, onClose, onSaved }: any) {
         <div class="sheet-body">
           <div class="muted" style="font-size:12px;margin-bottom:10px">Aceste date apar ca EMITENT (Furnizor) pe facturile fiscale emise.</div>
           <div class="frm">
-            {F('name', 'Denumire firmă', 'ex. RA Tracks SRL')}
+            {F('name', 'Denumire firmă', 'ex. RA Track SRL')}
             <div class="frm-row">{F('cui', 'CUI / CIF')}{F('reg_com', 'Reg. Com.')}</div>
             {F('address', 'Adresă')}
             <div class="frm-row">{F('city', 'Oraș / localitate', 'ex. SECTOR1')}{F('county', 'Cod județ', 'ex. RO-B')}</div>

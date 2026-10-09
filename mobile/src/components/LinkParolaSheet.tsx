@@ -29,7 +29,7 @@ export function LinkParolaSheet({ data, onClose }: { data: LinkParola; onClose: 
   async function trimite() {
     try {
       const { Share } = await import('@capacitor/share');
-      await Share.share({ title: 'Linkul de parolă', text: 'Îți pui singur parola în RA Tracks din linkul ăsta:', url: data.link });
+      await Share.share({ title: 'Linkul de parolă', text: 'Îți pui singur parola în RA Track din linkul ăsta:', url: data.link });
     } catch (e: any) {
       if (/cancel/i.test(String(e?.message || ''))) return; // omul a închis foaia de partajare — nu e o eroare
       showToast('Nu am putut deschide trimiterea — copiază linkul.', true);

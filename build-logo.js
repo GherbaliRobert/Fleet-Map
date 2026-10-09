@@ -1,5 +1,5 @@
 // Construiește monograma "RA |" (din imaginea reală a userului) + iconurile PWA.
-// Cuvântul "Tracks" se redă ca TEXT în HTML (control pe scriere + temă), nu aici.
+// Cuvântul "Track" se redă ca TEXT în HTML (control pe scriere + temă), nu aici.
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');

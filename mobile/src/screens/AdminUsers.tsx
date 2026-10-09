@@ -142,7 +142,7 @@ export function AdminUsers() {
   // Rolurile pe care serverul le acceptă de la contul ăsta (COMPANY_ASSIGNABLE_ROLES / VALID_ROLES):
   //  • adminul firmei → Admin companie (delegare în firma lui, decizie 16.09) + manager/dispecer/viewer + rolurile
   //    proprii. Contul de PLATFORMĂ nu i se oferă — și serverul îl refuză.
-  //  • super-adminul, la ADĂUGARE → doar cont de platformă: ecranul ăsta e, la noi, pentru un coleg nou la RA Tracks.
+  //  • super-adminul, la ADĂUGARE → doar cont de platformă: ecranul ăsta e, la noi, pentru un coleg nou la RA Track.
   //    Administratorul unei firme client se face din Companii → firma → Utilizatori; restul, de adminul ei.
   //  • super-adminul, la EDITARE → toate rolurile standard, ca pe web.
   // „Client" nu se mai oferă (aceleași drepturi ca Viewer).
@@ -625,7 +625,7 @@ export function AdminUsers() {
       {editing && (
         <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setEditing(null); }}>
           <div class="sheet">
-            <div class="sheet-h"><b><Icon name="user" size={18} color="var(--accent)" /> {isEdit ? 'Editează utilizator' : (isSuper ? 'Adaugă utilizator (specific pentru colegi noi RA Tracks)' : 'Adaugă utilizator')}</b><button class="h-btn" onClick={() => setEditing(null)}><Icon name="x" /></button></div>
+            <div class="sheet-h"><b><Icon name="user" size={18} color="var(--accent)" /> {isEdit ? 'Editează utilizator' : (isSuper ? 'Adaugă utilizator (specific pentru colegi noi RA Track)' : 'Adaugă utilizator')}</b><button class="h-btn" onClick={() => setEditing(null)}><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
                 {isEdit ? (

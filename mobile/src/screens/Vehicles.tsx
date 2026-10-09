@@ -79,11 +79,11 @@ export function Vehicles() {
     if (exporting) return;
     setExporting(fmt);
     try {
-      // Numele îl dă serverul („RA-Tracks - Raport Situația flotei - 24.09.2026.xlsx", din sendReport);
+      // Numele îl dă serverul („RA-Track - Raport Situația flotei - 24.09.2026.xlsx", din sendReport);
       // cel de aici e doar rezerva pentru cazul rar în care antetul lipsește.
       const azi = new Date().toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' });
       if (fmt === 'csv') await salveazaDeLaServer('/api/devices/export.csv', 'vehicule.csv');
-      else await salveazaDeLaServer('/api/devices/export?format=' + fmt, `RA-Tracks - Raport Situația flotei - ${azi}.${fmt}`);
+      else await salveazaDeLaServer('/api/devices/export?format=' + fmt, `RA-Track - Raport Situația flotei - ${azi}.${fmt}`);
       setExportOpen(false);
     } catch (e: any) { showToast(e?.message || 'Exportul n-a mers', true); }
     finally { setExporting(''); }
@@ -185,11 +185,11 @@ export function Vehicles() {
             </div>
             <div class="sheet-body">
               <button class="loc-exp" disabled={!!exporting} onClick={() => exporta('xlsx')}>
-                <Icon name="fileBar" size={22} /><div><b>Excel</b><small>Situația flotei (vehiculele active), cu logo RA Tracks</small></div>
+                <Icon name="fileBar" size={22} /><div><b>Excel</b><small>Situația flotei (vehiculele active), cu logo RA Track</small></div>
                 {exporting === 'xlsx' && <div class="spin" />}
               </button>
               <button class="loc-exp" disabled={!!exporting} onClick={() => exporta('pdf')}>
-                <Icon name="report" size={22} /><div><b>PDF</b><small>Situația flotei (vehiculele active), cu logo RA Tracks</small></div>
+                <Icon name="report" size={22} /><div><b>PDF</b><small>Situația flotei (vehiculele active), cu logo RA Track</small></div>
                 {exporting === 'pdf' && <div class="spin" />}
               </button>
               {/* Toate trei au doar vehiculele active: clientul nu vede arhivatele (18.09), iar serverul le lasă

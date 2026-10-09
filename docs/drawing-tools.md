@@ -1,4 +1,4 @@
-# Uneltele de desenare zone (Hotspot) — RA Tracks
+# Uneltele de desenare zone (Hotspot) — RA Track
 
 > Referință internă. Descrie cele 4 unelte de creare zone (geofence) din secțiunea **Hotspot & Rutare**.
 > Fișiere cheie: `public/index.html` (UI + desen), `server.js` (salvare + detecție), `db.js` (stocare).

@@ -1,4 +1,4 @@
-# Backup & restaurare — RA Tracks
+# Backup & restaurare — RA Track
 
 Backup logic al **datelor de business** (companii, useri, vehicule, șoferi, plăți, setări, documente, alerte, geofence-uri, oferte etc.).
 NU include telemetria `positions` (uriașă, append-only) — aceea se acoperă cu backup-ul nativ Railway al bazei.

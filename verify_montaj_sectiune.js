@@ -165,7 +165,7 @@ function gata() {
   T('...cu contractul atașat în PDF și răspunsul către noi', !!m && /Content-Type: application\/pdf/i.test(m.date) && /JVBERi0/.test(m.date) && /Reply-To: office@ratrack\.ro/i.test(m.date));
   const pdf = await fetch(B + '/api/montaj/contracte/' + c.id + '/pdf', { headers: { Cookie: ck } });
   const cd = pdf.headers.get('content-disposition') || '';
-  T('„Vezi/Descarcă": PDF cu numele casei', pdf.status === 200 && /application\/pdf/.test(pdf.headers.get('content-type') || '') && /RA-Tracks%20-%20Contract%20montaj%20RAT-M-/.test(cd), cd);
+  T('„Vezi/Descarcă": PDF cu numele casei', pdf.status === 200 && /application\/pdf/.test(pdf.headers.get('content-type') || '') && /RA-Track%20-%20Contract%20montaj%20RAT-M-/.test(cd), cd);
   T('„E semnat": fișierul semnat', (await R('POST', '/api/montaj/contracte/' + c.id + '/file', { name: 'semnat.pdf', b64: Buffer.from('%PDF-1.4\n').toString('base64') })).s === 200);
   const semn = await R('PUT', '/api/montaj/contracte/' + c.id, { status: 'activ', signed_at: Date.now(), start_at: Date.now() });
   T('...și contractul intră în vigoare', semn.s === 200 && semn.j.status === 'activ', semn.s + ' ' + JSON.stringify(semn.j && semn.j.error));

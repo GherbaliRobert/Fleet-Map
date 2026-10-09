@@ -1,4 +1,4 @@
-# ROADMAP — Plan de dezvoltare viitoare (RA Tracks)
+# ROADMAP — Plan de dezvoltare viitoare (RA Track)
 
 Backlog de idei aprobate pentru dezvoltare ulterioară. Fiecare intrare e auto-conținută
 (context + ce există deja în cod + decizii deschise), ca o sesiune viitoare să o poată

@@ -1,4 +1,4 @@
-// agents.js — cadru de agenți AI pentru RA Tracks.
+// agents.js — cadru de agenți AI pentru RA Track.
 // Agenți: RA Watch (monitorizare), RA Care (mentenanță), RA Optimize (eco/costuri),
 //         RA Compliance (ore de condus), RA Client (raport zilnic).
 // Fiecare run(ctx) întoarce { findings: [...] }. Rezumatul AI se face de către apelant (server).

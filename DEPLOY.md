@@ -1,4 +1,4 @@
-# Deploy RA Tracks
+# Deploy RA Track
 
 Aplicația are nevoie de un host care oferă:
 
@@ -31,7 +31,7 @@ curl -fsSL https://get.docker.com | sh
 
 **3. Copiază proiectul pe server** (git clone sau scp) și creează `.env`:
 ```bash
-cd "RA Tracks APP"
+cd "RA Track APP"
 cat > .env <<EOF
 DOMAIN=gps.firma.ro
 SESSION_SECRET=$(openssl rand -hex 32)

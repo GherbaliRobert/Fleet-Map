@@ -2194,7 +2194,7 @@
     .btn-primary, .nav-item.active, .history-btn.primary, .report-period-btn.active,
     .detail-history-buttons .btn-load, .rep-cat.active { color: #06210F !important; }
     .btn-primary i, .nav-item.active i { color: #06210F !important; }
-    /* Logo RA Tracks: monogramă "RA |" (imagine, urmează tema) + cuvântul "Tracks" ca text */
+    /* Logo RA Track: monogramă "RA |" (imagine, urmează tema) + cuvântul "Track" ca text */
     .ralogo { display: inline-flex; align-items: center; gap: 9px; }
     .ralogo .ralm { display: block; }
     .ralogo .ralm.l { display: none; }

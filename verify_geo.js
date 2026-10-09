@@ -110,7 +110,7 @@ async function health(key) {
     t('/api/geocode/reverse răspunde', g1.status === 200 && Array.isArray(g1.body.labels), JSON.stringify(g1.body));
     t('a întors adresa furnizorului configurat', g1.body.labels[0] && /Strada 45\.75/.test(g1.body.labels[0]), JSON.stringify(g1.body.labels));
     t('a chemat furnizorul din GEOCODE_URL', nomHits === 1, 'apeluri=' + nomHits);
-    t('trimite un User-Agent care identifică aplicația', !!nomUA && /RA-Tracks/.test(nomUA) && /ratrack\.ro/.test(nomUA), String(nomUA));
+    t('trimite un User-Agent care identifică aplicația', !!nomUA && /RA-Track/.test(nomUA) && /ratrack\.ro/.test(nomUA), String(nomUA));
 
     // ── 1b. Adresa DETALIATĂ pentru fișa vehiculului, din ACELAȘI apel de rețea ──
     // „Olteni" (doar localitatea) nu-i spune dispecerului unde să trimită pe cineva.

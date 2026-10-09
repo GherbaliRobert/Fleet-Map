@@ -9,7 +9,7 @@ const PROVIDER = process.env.GEOCODE_URL || 'https://nominatim.openstreetmap.org
 // DOAR ASCII: antetele HTTP sunt limitate la ISO-8859-1, iar `fetch` aruncă excepție la orice diacritică —
 // adică geocodarea ar eșua în întregime, tăcut. Curățăm și valoarea venită din mediu, din același motiv.
 const _asciiOnly = (s) => String(s).replace(/[^\x20-\x7E]/g, '');
-const UA = _asciiOnly(process.env.GEOCODE_UA || 'RA-Tracks/1.0 (+https://ratrack.ro; fleet GPS monitoring)') || 'RA-Tracks/1.0';
+const UA = _asciiOnly(process.env.GEOCODE_UA || 'RA-Track/1.0 (+https://ratrack.ro; fleet GPS monitoring)') || 'RA-Track/1.0';
 const TIMEOUT_MS = parseInt(process.env.GEOCODE_TIMEOUT_MS) || 3000;
 
 // Contoare — fără ele nu se poate alege un plan tarifar decât ghicind. Până acum eșecurile erau complet

@@ -225,7 +225,7 @@ export function AiUsage() {
               <Kpi cap="Ne costă" icon="cpu" val={<Lei v={costLuna} fx={fx} />}
                 sub={<>{intrebari(nrInt)}{peIntrebare ? ' · ' + nr(peIntrebare) + ' lei una' : ''}</>} jos="plata către model" />
               <Kpi cap="Profit" icon="coins" val={<Lei v={profit} fx={fx} />} ton={venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad'}
-                sub={venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui'} jos="din RA Insight, nu din tot RA Tracks" />
+                sub={venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui'} jos="din RA Insight, nu din tot RA Track" />
             </div>
 
             <div class="fd-sec">Clienții</div>

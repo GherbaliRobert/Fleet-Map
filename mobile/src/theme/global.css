@@ -11,7 +11,7 @@ input, button, select, textarea { font-family: inherit; }
 a { color: var(--accent); text-decoration: none; }
 button { cursor: pointer; border: none; background: none; color: inherit; }
 
-/* Sigla oficială (Robert, 09.10: „1 da"): monograma „RA |" (imagine, din mobile/public = copiile lui public/) + „Tracks"
+/* Sigla oficială (Robert, 09.10: „1 da"): monograma „RA |" (imagine, din mobile/public = copiile lui public/) + „Track"
    cu Nunito ExtraBold — exact ca pe web (.ralogo din app.css). Pe tema deschisă intră varianta închisă a monogramei. */
 .ralogo { display: inline-flex; align-items: center; gap: 9px; }
 .ralogo .ralm { display: block; width: auto; }

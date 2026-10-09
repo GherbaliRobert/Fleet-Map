@@ -61,7 +61,7 @@ export function AdminCompanies() {
     setSort((s) => (s.col === col ? { col, dir: -s.dir } : { col, dir: col === 'name' ? 1 : -1 }));
   }
   // Lista de clienți în Excel. Serverul verifică din nou cine cere și trece descărcarea în jurnalul de audit;
-  // numele fișierului vine din antetul lui („RA-Tracks - Raport Companii - zz.ll.aaaa.xlsx").
+  // numele fișierului vine din antetul lui („RA-Track - Raport Companii - zz.ll.aaaa.xlsx").
   async function exportExcel() {
     if (exportBusy) return;
     setExportBusy(true);

@@ -1757,7 +1757,7 @@ async function getCompanyById(id) {
   return r.rows[0] || null;
 }
 // Oferta scrisă pe firmă. Coloana `plan` rămâne în tabel (nu ștergem date vechi), dar NU mai e
-// citită de nimeni — RA Tracks nu funcționează pe planuri, ci pe oferte.
+// citită de nimeni — RA Track nu funcționează pe planuri, ci pe oferte.
 async function setCompanyOferta(id, oferta) {
   await pool.query('UPDATE companies SET custom_plan = $2 WHERE id = $1',
     [id, oferta ? JSON.stringify(oferta) : null]);

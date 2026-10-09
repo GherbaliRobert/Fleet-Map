@@ -210,9 +210,9 @@ sect('4. Pe ecran');
     T('proforma: „FACTURĂ PROFORMĂ" și „fără valoare fiscală"; fără „Perioada"', /FACTURĂ PROFORMĂ/.test(pfh) && /Document fără valoare fiscală/.test(pfh) && !/Perioada:/.test(pfh), pfh);
     const dinPf = hartie(Object.assign({}, montajInv, { din_proforma: 7, note: 'Emisă la încasarea proformei PF-2027-00001' }));
     T('factura născută din proformă nu mai cere plată și spune de unde vine', !/Plata: prin transfer/.test(dinPf) && /Emisă la încasarea unei proforme\./.test(dinPf), dinPf);
-    T('numele fișierului, regula casei: „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf" / „… Proformă PF-…"',
-      FP.numeFisier(montajInv) === 'RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf' &&
-      FP.numeFisier({ full_number: 'PF-2027-00001', type: 'proforma', client: { name: 'Trans/Port: SRL' } }) === 'RA-Tracks - Proformă PF-2027-00001 - Trans-Port- SRL.pdf');
+    T('numele fișierului, regula casei: „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf" / „… Proformă PF-…"',
+      FP.numeFisier(montajInv) === 'RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf' &&
+      FP.numeFisier({ full_number: 'PF-2027-00001', type: 'proforma', client: { name: 'Trans/Port: SRL' } }) === 'RA-Track - Proformă PF-2027-00001 - Trans-Port- SRL.pdf');
     T('logo-ul pentru fundal alb (logo-light.png) și fonturile cu diacritice, ca oferta și contractul',
       /logo-light\.png/.test(fs.readFileSync('./factura_pdf.js', 'utf8')) && /DejaVuSans\.ttf/.test(fs.readFileSync('./factura_pdf.js', 'utf8')));
   }
@@ -480,7 +480,7 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   const inainte = (((await R('GET', '/api/invoices?limit=1000')).j || {}).invoices || []).length;
   const pv = await R.fisier('/api/invoices/previzualizare', { companyId: co.id, tip: 'proforma', fel: 'unica', lines: dc.aparate });
   const dupaPv = (((await R('GET', '/api/invoices?limit=1000')).j || {}).invoices || []).length;
-  T('previzualizarea proformei: un PDF, cu numele „RA-Tracks - Previzualizare proformă - …", și NICIUN document nou',
+  T('previzualizarea proformei: un PDF, cu numele „RA-Track - Previzualizare proformă - …", și NICIUN document nou',
     pv.s === 200 && /application\/pdf/.test(pv.ct) && pv.inceput === '%PDF-' && /Previzualizare%20proform%C4%83/.test(pv.cd) && dupaPv === inainte, JSON.stringify({ s: pv.s, cd: pv.cd, inainte, dupaPv }));
   const pvGol = await R('POST', '/api/invoices/previzualizare', { companyId: co.id, tip: 'invoice', fel: 'unica', lines: [] });
   T('previzualizarea spune aceleași refuzuri ca emiterea (fără rânduri → „Adaugă cel puțin un rând")', pvGol.s === 400 && /Adaugă cel puțin un rând/.test((pvGol.j || {}).error || ''), JSON.stringify(pvGol));
@@ -515,7 +515,7 @@ const cheie = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
   const pdfNoi = await R.fisier('/api/invoices/' + inc.j.invoice.id + '/pdf');
   T('noi descărcăm factura ca PDF, cu numele casei în antet (UTF-8: „Factură")',
     pdfNoi.s === 200 && /application\/pdf/.test(pdfNoi.ct) && pdfNoi.inceput === '%PDF-' &&
-    pdfNoi.cd.indexOf("filename*=UTF-8''" + encodeURIComponent('RA-Tracks - Factură ' + nrInc + ' - Transport SRL.pdf')) >= 0, JSON.stringify({ s: pdfNoi.s, ct: pdfNoi.ct, cd: pdfNoi.cd }));
+    pdfNoi.cd.indexOf("filename*=UTF-8''" + encodeURIComponent('RA-Track - Factură ' + nrInc + ' - Transport SRL.pdf')) >= 0, JSON.stringify({ s: pdfNoi.s, ct: pdfNoi.ct, cd: pdfNoi.cd }));
   const pdfClient = await C.fisier('/api/billing/my-invoices/' + inc.j.invoice.id + '/pdf');
   T('clientul își descarcă propria factură', pdfClient.s === 200 && pdfClient.inceput === '%PDF-', pdfClient.s);
   const coStrain = (await R('POST', '/api/companies', { name: 'Străin SRL' })).j;

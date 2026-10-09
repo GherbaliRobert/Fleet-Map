@@ -121,7 +121,7 @@ export function AdminDrivers() {
     catch (e: any) { showToast(e?.message || 'Eroare la ștergere', true); }
     finally { setSaving(false); }
   }
-  // Exportul trece prin serverul care pune numele „RA-Tracks - Raport Situația șoferilor - data" și logo-ul.
+  // Exportul trece prin serverul care pune numele „RA-Track - Raport Situația șoferilor - data" și logo-ul.
   // Numele fișierului se ia din răspunsul serverului, nu se compune aici.
   async function exporta(fmt: 'csv' | 'xlsx' | 'pdf') {
     if (exp) return;
@@ -129,7 +129,7 @@ export function AdminDrivers() {
     try {
       const azi = new Date().toLocaleDateString('ro-RO');
       if (fmt === 'csv') await salveazaDeLaServer('/api/drivers/export.csv', 'soferi.csv');
-      else await salveazaDeLaServer('/api/drivers/export?format=' + fmt, 'RA-Tracks - Raport Situația șoferilor - ' + azi + '.' + fmt);
+      else await salveazaDeLaServer('/api/drivers/export?format=' + fmt, 'RA-Track - Raport Situația șoferilor - ' + azi + '.' + fmt);
     } catch (e: any) { showToast(e?.message || 'Exportul n-a mers', true); }
     finally { setExp(''); }
   }

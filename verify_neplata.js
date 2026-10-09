@@ -119,7 +119,7 @@ T('fiecare treaptă sună o singură dată (cheia are ziua în ea)',
   /const cheie = 'neplata:' \+ f\.id \+ ':' \+ treapta\.zi;[\s\S]{0,120}notificationKeyExists\(cheie/.test(server));
 T('suspendarea se anunță o singură dată per factură',
   /const cheie = 'neplata_suspendat:' \+ f\.id;[\s\S]{0,120}notificationKeyExists\(cheie/.test(server));
-T('anunțul merge și pe email, dacă firma are adresă', /mailer\.send\(\{ to: email, subject: 'RA Tracks — ' \+ treapta\.titlu/.test(server));
+T('anunțul merge și pe email, dacă firma are adresă', /mailer\.send\(\{ to: email, subject: 'RA Track — ' \+ treapta\.titlu/.test(server));
 T('iar noi aflăm separat când s-a suspendat cineva', /_anuntaSuperadmini\(supers, 'neplata_suspendat_intern'/.test(server));
 T('companiile demo nu intră în ceas', /AND COALESCE\(c\.is_demo, false\) = false/.test(dbjs));
 T('ceasul rulează de mai multe ori pe zi, ca ziua 16 să însemne ziua 16',

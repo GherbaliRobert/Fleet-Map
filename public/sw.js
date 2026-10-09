@@ -1,5 +1,5 @@
-// Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Tracks
-const CACHE = 'ratracks-v413';
+// Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Track
+const CACHE = 'ratracks-v414';
 const SHELL = ['/app', '/index.html', '/css/app.css', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
 
 self.addEventListener('install', function (e) {
@@ -46,8 +46,8 @@ self.addEventListener('fetch', function (e) {
 self.addEventListener('push', function (event) {
   let data = {};
   try { data = event.data ? event.data.json() : {}; }
-  catch (e) { data = { title: 'RA Tracks', body: event.data ? event.data.text() : '' }; }
-  const title = data.title || 'RA Tracks';
+  catch (e) { data = { title: 'RA Track', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'RA Track';
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || '',
     icon: '/icon-192.png',

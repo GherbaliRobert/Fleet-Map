@@ -125,7 +125,11 @@ const logo = citestePng(SURSA_LOGO);
 // Logoul ocupă ~46% din lățime, centrat, puțin deasupra mijlocului — restul rămâne aer.
 const scara = (LAT * 0.46) / logo.lat;
 const lLat = Math.round(logo.lat * scara), lInal = Math.round(logo.inal * scara);
-const x0 = Math.round((LAT - lLat) / 2), y0 = Math.round(INAL * 0.40 - lInal / 2);
+// Centrat după DESEN, nu după chenar: din 09.10 („RA Track", cu o literă mai puțin) logoul are loc gol în dreapta.
+let dreapta = 0;
+for (let i = 0; i < logo.lat * logo.inal; i++) if (logo.px[i * 4 + 3] > 12) dreapta = Math.max(dreapta, i % logo.lat);
+const desenLat = Math.round((dreapta + 1) * scara);
+const x0 = Math.round((LAT - desenLat) / 2), y0 = Math.round(INAL * 0.40 - lInal / 2);
 for (let y = 0; y < lInal; y++) {
   for (let x = 0; x < lLat; x++) {
     // Eșantionare pe cel mai apropiat pixel: logoul se micșorează, deci nu apar trepte vizibile.

@@ -425,7 +425,7 @@ async function _anuntaTacereaReceptiei(minute, conexiuni) {
   // 2. pe email, către noi (ALERT_EMAIL în Railway)
   try {
     const to = process.env.ALERT_EMAIL || process.env.SUPPORT_EMAIL;
-    if (to && channels.emailConfigured && channels.emailConfigured()) await channels.sendEmailTo(to, 'RA Tracks — ' + title, body);
+    if (to && channels.emailConfigured && channels.emailConfigured()) await channels.sendEmailTo(to, 'RA Track — ' + title, body);
   } catch (e) { /* best-effort: alarma nu are voie să cadă din cauza emailului */ }
   // 3. în jurnalul de erori (ajunge în Sentry dacă SENTRY_DSN e setat)
   try { captureError(new Error(title + ': ' + body), { zona: 'watchdog', minute: minute, conexiuni: conexiuni }); } catch (e) {}
@@ -1318,13 +1318,13 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-10-03', amprenta: '0166ebf8a33a', prio: '1.0', freq: 'weekly' },
-  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: '765b85550e17', prio: '0.8', freq: 'monthly' },
-  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'e0c1261398fe', prio: '0.8', freq: 'monthly' },
-  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-09', amprenta: 'c482ac3a8acb', prio: '0.8', freq: 'monthly' },
-  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: 'c718a35b68b5', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '31513703c0eb', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-09', amprenta: '53fc818c46a1', prio: '0.3', freq: 'yearly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-10-09', amprenta: '8e729c4a9d3b', prio: '1.0', freq: 'weekly' },
+  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
+  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
+  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-09', amprenta: '8656be612636', prio: '0.8', freq: 'monthly' },
+  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-09', amprenta: '5e6a9d629dc9', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -2178,8 +2178,8 @@ async function neplataTick() {
           'Am suspendat: ' + numeFirma, 'Factura ' + (f.numar || '') + ' e neachitată de ' + stare.zile + ' de zile. Accesul clientului e oprit până la plată.',
           { key: cheie + ':noi', companyId: companyId, invoiceId: f.id });
         if (mailer && mailer.enabled() && email) {
-          mailer.send({ to: email, subject: 'RA Tracks — acces suspendat pentru neplată',
-            html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Tracks</p>' }).catch(function () {});
+          mailer.send({ to: email, subject: 'RA Track — acces suspendat pentru neplată',
+            html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>' }).catch(function () {});
         }
         _invalidateAccessCache(companyId);
         raport.suspendate.push(companyId);
@@ -2196,8 +2196,8 @@ async function neplataTick() {
         title: treapta.titlu, body: corp, data: { key: cheie, invoiceId: f.id, zile: stare.zile }
       });
       if (mailer && mailer.enabled() && email) {
-        mailer.send({ to: email, subject: 'RA Tracks — ' + treapta.titlu,
-          html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Tracks</p>' }).catch(function () {});
+        mailer.send({ to: email, subject: 'RA Track — ' + treapta.titlu,
+          html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>' }).catch(function () {});
       }
       raport.avertizate.push({ companyId: companyId, zi: treapta.zi });
     } catch (e) { /* per firmă, best-effort */ }
@@ -2309,10 +2309,10 @@ function _invoiceEmailHtml(inv, iss) {
     : 'Am emis factura de mai jos.';
   // Antetul: sigla OFICIALĂ (Robert, 09.10: „1 da"), imaginea albă pe bandă închisă, ca în aplicație. Pe verde, A-ul verde
   // al siglei abia se vedea (1,9:1). Sigla vine ATAȘATĂ în email (`cid`, vezi EMAIL_LOGO): o imagine de pe site o blochează
-  // multe programe de email până apasă omul „arată imaginile". Textul alternativ scrie „RA Tracks", pentru cine n-o vede.
+  // multe programe de email până apasă omul „arată imaginile". Textul alternativ scrie „RA Track", pentru cine n-o vede.
   return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a2235;">' +
     '<div style="background:#0B0E11;color:#fff;padding:18px 20px 16px;border-radius:10px 10px 0 0;border-bottom:3px solid #3FE07D;">' +
-      '<img src="cid:' + EMAIL_LOGO.cid + '" width="180" height="35" alt="RA Tracks" style="display:block;border:0;color:#fff;font:bold 20px Arial,Helvetica,sans-serif;">' +
+      '<img src="cid:' + EMAIL_LOGO.cid + '" width="180" height="35" alt="RA Track" style="display:block;border:0;color:#fff;font:bold 20px Arial,Helvetica,sans-serif;">' +
       '<h2 style="margin:12px 0 0;font-size:18px;font-weight:700;color:#fff;">' + (pf ? 'Proforma ' : 'Factura ') + _he(inv.full_number) + '</h2></div>' +
     '<div style="border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px;padding:20px;">' +
       '<p>Bună ziua,</p><p>' + intro + '</p>' +
@@ -2381,7 +2381,7 @@ async function _trimiteFactura(inv, co, iss) {
     atasate = (atasate || []).concat([EMAIL_LOGO]); // sigla din antet (cid)
     try {
       const r = await mailer.send({ to: co.contact_email, replyTo: (iss && iss.email) || undefined,
-        subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate });
+        subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Track', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate });
       rez.email = !!(r && r.ok);
       if (!rez.email) rez.emailMotiv = (r && r.error) || 'trimiterea a eșuat';
     } catch (e) { rez.emailMotiv = e.message; }
@@ -3347,11 +3347,11 @@ function _coEmailRata(companyId) {
 }
 async function _trimiteConfirmare(req, rand, token, companyName) {
   const link = appBaseUrl(req) + '/api/email/confirm?token=' + encodeURIComponent(token);
-  const subiect = 'Confirmă adresa pentru RA Tracks' + (companyName ? ' — ' + companyName : '');
-  const text = 'Bună,\n\nAdresa asta (' + rand.email + ') a fost adăugată în RA Tracks'
+  const subiect = 'Confirmă adresa pentru RA Track' + (companyName ? ' — ' + companyName : '');
+  const text = 'Bună,\n\nAdresa asta (' + rand.email + ') a fost adăugată în RA Track'
     + (companyName ? ' de ' + companyName : '') + ', ca să primească alerte și rapoarte despre flotă.\n\n'
     + 'Confirmă că ești de acord (link valabil 7 zile):\n' + link + '\n\n'
-    + 'Dacă nu știi despre ce e vorba, ignoră mesajul — fără confirmare nu se trimite nimic la adresa asta.\n\n— RA Tracks';
+    + 'Dacă nu știi despre ce e vorba, ignoră mesajul — fără confirmare nu se trimite nimic la adresa asta.\n\n— RA Track';
   return await channels.sendEmailTo(rand.email, subiect, text);
 }
 
@@ -3423,7 +3423,7 @@ app.delete('/api/company-emails/:id', requireAuth, requireAdmin, withCompany, as
 app.get('/api/email/confirm', async (req, res) => {
   const pagina = (titlu, text, culoare) => `<!doctype html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${titlu} — RA Tracks</title>
+<title>${titlu} — RA Track</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef2f6;font-family:'Nunito',sans-serif;color:#0f172a}
 .c{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px 30px;max-width:420px;text-align:center;box-shadow:0 10px 30px -20px rgba(0,0,0,.4)}
@@ -3434,7 +3434,7 @@ h1{font-size:19px;margin:0 0 8px;color:${culoare}}p{font-size:14px;line-height:1
     if (!r) return res.status(400).send(pagina('Link expirat sau folosit',
       'Cere din aplicație o nouă confirmare, de la <b>Setări → Adrese de email</b>.', '#dc2626'));
     res.send(pagina('Adresă confirmată ✓',
-      'De acum, <b>' + String(r.email).replace(/[<>&"]/g, '') + '</b> poate primi alerte și rapoarte din RA Tracks. Poți închide pagina.', '#16a34a'));
+      'De acum, <b>' + String(r.email).replace(/[<>&"]/g, '') + '</b> poate primi alerte și rapoarte din RA Track. Poți închide pagina.', '#16a34a'));
   } catch (e) {
     res.status(500).send(pagina('Ceva n-a mers', 'Încearcă din nou peste câteva minute.', '#dc2626'));
   }
@@ -4058,7 +4058,7 @@ const INSIGHT_LISTA_MAX = 300;       // câte mașini încap în list_vehicles
 function _insightInstructiuni(cuRapoarte) {
   const lista = Object.entries(reports.REPORTS).map(([k, v]) => '- ' + k + ': ' + v.label).join('\n');
   return [
-    'Ești „RA Insight", asistentul AI al platformei RA Tracks (monitorizare GPS pentru flote). Răspunzi în limba română.',
+    'Ești „RA Insight", asistentul AI al platformei RA Track (monitorizare GPS pentru flote). Răspunzi în limba română.',
     'Rolul tău: omul află de la tine orice despre flota lui, fără să genereze singur rapoarte. Aduni datele din unelte și răspunzi clar.',
     'UNELTE:\n• fleet_status — starea LIVE acum (unde e fiecare mașină, în mișcare / ralanti / oprită / fără semnal, combustibilul).\n' +
       '• fleet_alerts — înștiințările active ale agenților (fără semnal, posibil furt de combustibil, ralanti prelungit).\n' +
@@ -4066,7 +4066,7 @@ function _insightInstructiuni(cuRapoarte) {
       '• combustibil — litri și lei pe o lună, consumul față de normă, alimentările și scăderile suspecte (aceleași cifre ca rapoartele de consum).\n' +
       '• ore_condus — orele de condus ale fiecărui șofer pe o săptămână și încălcările Reg. 561 (aceleași cifre ca raportul „Condus & repaus").\n' +
       '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă.\n• list_zones — zonele (hotspot) definite.\n' +
-      '• cauta_in_ghid — ghidul aplicației RA Tracks: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
+      '• cauta_in_ghid — ghidul aplicației RA Track: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
       '• safe_drive — Safe Drive & costuri pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
       (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare).' : ''),
     'MAȘINILE: omul le numește după numărul de înmatriculare (cu sau fără spații: „B 154 UIP", „b154uip"), după nume („Dacia Logan 3"), ' +
@@ -4254,7 +4254,7 @@ async function _raInsight(req, res, opts) {
       { name: 'combustibil', description: 'Combustibil pe o perioadă: litri și lei, pe mașină și pe flotă, cu perioada de aceeași lungime de dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte; cifrele „de_verificat" (greu de crezut). Perioada: o lună întreagă (month) SAU exact ce a cerut omul (period, sau from + to — de pildă 1–7 octombrie). Aceleași cifre ca pagina „Combustibil" și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'O lună întreagă, „AAAA-LL". Omite pentru luna de acum.' }, period: { type: 'string', enum: insight.PERIOADE, description: 'Scurtătură de perioadă (azi, ieri, săptămâna asta / trecută…). Alternativă la month.' }, from: { type: 'string', description: 'Prima zi, „AAAA-LL-ZZ" (sau ISO 8601). Cu to — pentru o perioadă anume.' }, to: { type: 'string', description: 'Ultima zi, „AAAA-LL-ZZ" — intră întreagă (sau ISO 8601, capăt exclus).' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
       { name: 'ore_condus', description: 'Ore de condus, pe o săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără pauză, încălcările Regulamentului 561 (doar camioane și autobuze), din tahograf sau estimate din GPS, cu săptămâna dinainte alături. Aceleași cifre ca pagina „Ore de condus" și ca raportul „Condus & repaus".', input_schema: { type: 'object', properties: { week: { type: 'string', enum: ['this_week', 'last_week'], description: 'Săptămâna: this_week (implicit) sau last_week.' }, group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' } } } },
       { name: 'mentenanta_acte', description: 'Mentenanță & acte: ce a trecut de termen și ce urmează — actele mașinilor (ITP, RCA, rovinietă…), reviziile (pe dată și pe kilometraj) și permisele șoferilor, cu preavizul firmei. Pentru „ce expiră", „ce revizii urmează", „are ITP valabil B 154 UIP?". Aceleași cifre ca pagina „Mentenanță & acte" și ca listele din Mentenanță / Documente.', input_schema: { type: 'object', properties: {} } },
-      { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Tracks: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
+      { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Track: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
       { name: 'safe_drive', description: 'Safe Drive & costuri, pe o lună: cât a costat în plus condusul (accelerări, frânări și viraje bruște, viteză peste 90 km/h, ralanti), în lei, pe mașină și pe șofer, cu luna dinainte alături, unde și când se repetă manevrele, discuțiile „Am vorbit cu el" și rezultatul lor, recomandările. Aceleași cifre ca pagina Safe Drive.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL". Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } }
     ];
     if (cuRapoarte) tools.push({
@@ -6116,7 +6116,7 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
 });
 
 // ─── Contractele cu clienții ─────────────────────────────────────────────────────────────────────
-// Tot ce urmează e strict al nostru (requireSuperadmin): contractul e relația dintre RA Tracks și
+// Tot ce urmează e strict al nostru (requireSuperadmin): contractul e relația dintre RA Track și
 // client, nu ceva ce clientul își administrează singur din aplicație.
 //
 // Documentele semnate se țin ca base64 în rândul contractului, la fel ca actele vehiculelor. NU se
@@ -6582,7 +6582,7 @@ async function _mcHartie(id) {
   const p = await db.getPartenerMontaj(c.partener_id); if (!p) return null;
   const emitent = ((await getSystemSettings()).invoice_issuer) || {};
   const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
-  return { c: c, p: p, emitent: emitent, nume: 'RA-Tracks - Contract montaj ' + curat(c.number || 'ciornă') + (p.name ? ' - ' + curat(p.name) : '') + '.pdf' };
+  return { c: c, p: p, emitent: emitent, nume: 'RA-Track - Contract montaj ' + curat(c.number || 'ciornă') + (p.name ? ' - ' + curat(p.name) : '') + '.pdf' };
 }
 app.get('/api/montaj/contracte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -6634,7 +6634,7 @@ app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, as
     if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
     if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server (SMTP). Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
     const pdf = await _pdfInBuffer(contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }));
-    const noi = h.emitent.name || 'RA Tracks';
+    const noi = h.emitent.name || 'RA Track';
     const r = await mailer.send({ to: catre, replyTo: h.emitent.email || undefined,
       subject: 'Contractul de colaborare ' + (h.c.number || '') + ' — de semnat · ' + noi,
       html: '<p>Bună ziua,</p><p>Vă trimitem atașat contractul de colaborare nr. <b>' + _he(h.c.number || '') + '</b> pentru lucrările de montaj, cu anexele lui (tarifele și acordul de prelucrare a datelor).</p>' +
@@ -7753,7 +7753,7 @@ app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (re
     }
     const emitent = ((await getSystemSettings()).invoice_issuer) || {};
     const pdf = await _pdfInBuffer(contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent }));
-    const noi = emitent.name || 'RA Tracks';
+    const noi = emitent.name || 'RA Track';
     const r = await mailer.send({
       to: catre,
       replyTo: emitent.email || undefined,
@@ -7822,7 +7822,7 @@ app.get('/api/gdpr/export', requireAuth, requirePerm('manageUsers'), withCompany
     // Cererea de acces se consemnează: e o dovadă că am răspuns, dacă cineva întreabă mai târziu.
     auditReq(req, 'export', 'gdpr', cid, { company: co.name, tabele: pachet.rezumat.length });
     const nume = String(co.name || 'companie').replace(/[^\w\-]+/g, '-').slice(0, 40);
-    res.setHeader('Content-Disposition', `attachment; filename="RA-Tracks - Date ${nume} - ${new Date().toISOString().slice(0, 10)}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="RA-Track - Date ${nume} - ${new Date().toISOString().slice(0, 10)}.json"`);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.send(JSON.stringify(pachet, null, 2));
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7866,7 +7866,7 @@ function appBaseUrl(req) {
   return (process.env.BASE_URL || ('https://' + h)).replace(/\/$/, '');
 }
 // Linkul prin care omul ÎȘI pune parola. Se face într-un singur loc, fiindcă e singurul mod în care
-// se naște o parolă în RA Tracks: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există").
+// se naște o parolă în RA Track: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există").
 async function linkDeParola(req, user, opts) {
   const token = crypto.randomBytes(32).toString('hex');
   const hours = (opts && opts.hours) || (24 * 7);
@@ -7898,15 +7898,15 @@ async function _trimiteEmailulDeParola(req, user, link, opts) {
   const hours = opts.hours || (24 * 7);
   let subject, text;
   if (opts.invite) {
-    subject = 'Invitație RA Tracks' + (opts.company ? ' — ' + opts.company.name : '');
+    subject = 'Invitație RA Track' + (opts.company ? ' — ' + opts.company.name : '');
     text = 'Bună' + (user.full_name ? ' ' + user.full_name : '') + ',\n\n'
-      + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '"' : 'un cont') + ' în RA Tracks.\n'
+      + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '"' : 'un cont') + ' în RA Track.\n'
       + 'Utilizator: ' + user.username + '\n\n'
       + 'Setează-ți parola (link valabil ' + Math.round(hours / 24) + ' zile):\n' + link + '\n\n'
-      + 'După ce setezi parola, te autentifici la ' + appBaseUrl(req) + '/app\n\n— RA Tracks';
+      + 'După ce setezi parola, te autentifici la ' + appBaseUrl(req) + '/app\n\n— RA Track';
   } else {
-    subject = 'Resetare parolă RA Tracks';
-    text = 'Resetare parolă pentru contul „' + user.username + '".\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Tracks';
+    subject = 'Resetare parolă RA Track';
+    text = 'Resetare parolă pentru contul „' + user.username + '".\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
   }
   return await channels.sendEmailTo(user.email, subject, text);
 }
@@ -8032,7 +8032,7 @@ async function notifyDemoRequest(row) {
   try {
     const to = process.env.DEMO_REQUEST_EMAIL || process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null));
     if (to && channels.emailConfigured && channels.emailConfigured()) {
-      await channels.sendEmailTo(to, 'RA Tracks — cerere nouă din formular',
+      await channels.sendEmailTo(to, 'RA Track — cerere nouă din formular',
         [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
          'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || '')].join('\n'));
     }
@@ -8055,7 +8055,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // (Aici au fost rutele de planuri și de plată cu cardul prin Stripe. Au fost scoase de tot:
-//  RA Tracks nu vinde pachete și nu încasează cu cardul — se ofertă fiecare client în parte, se
+//  RA Track nu vinde pachete și nu încasează cu cardul — se ofertă fiecare client în parte, se
 //  face contract pe oferta acceptată, iar plata vine prin transfer bancar, pe factură.)
 // Device-uri neasignate (super-admin) + asignare la companie
 app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
@@ -8211,7 +8211,7 @@ function _invSemnalText(lastTx) {
   const cat = m < 60 ? (m + ' min') : h < 24 ? (h + (h === 1 ? ' oră' : ' ore')) : (z + (z === 1 ? ' zi' : ' zile'));
   return (d < INV_MUT_ORE * 3600000 ? 'tăcut de ' : 'fără semnal de ') + cat;
 }
-// Export brandat: trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo (regula din CLAUDE.md).
+// Export brandat: trece prin sendReport → nume „RA-Track - Raport ... - data" + logo (regula din CLAUDE.md).
 //
 // GET  = tot inventarul (link direct, compatibilitate).
 // POST = fix rândurile de pe ecran, în ordinea de pe ecran (`imeis`). Înainte exista doar GET-ul, iar
@@ -9132,7 +9132,7 @@ app.post('/api/webhooks/:id/test', requireAuth, requireAdmin, withCompany, async
     const w = await db.getWebhookById(req.params.id);
     if (!w) return res.status(404).json({ error: 'Inexistent' });
     // Doar acest webhook (nu fan-out) — buton „testează acest webhook".
-    const body = JSON.stringify({ company_id: w.company_id, ts: new Date().toISOString(), event: 'test', imei: null, vehicle: null, severity: 'info', message: 'Eveniment de test RA Tracks' });
+    const body = JSON.stringify({ company_id: w.company_id, ts: new Date().toISOString(), event: 'test', imei: null, vehicle: null, severity: 'info', message: 'Eveniment de test RA Track' });
     _deliverWebhook(w, body);
     auditReq(req, 'test', 'webhook', w.id);
     res.json({ ok: true, message: 'Eveniment de test trimis. Verifică starea în listă.' });
@@ -9527,7 +9527,7 @@ app.post('/api/support', requireAuth, withCompany, async (req, res) => {
 // Catalog API (public) — pentru integratori
 app.get('/api', (req, res) => {
   res.json({
-    name: 'RA Tracks API',
+    name: 'RA Track API',
     version: '1.0',
     auth: 'Trimite cheia în header: "Authorization: Bearer <key>" sau "X-API-Key: <key>". Cheile se creează din interfață (Utilizatori → Chei API) și moștenesc rolul + accesul pe vehicule al utilizatorului asociat.',
     endpoints: {
@@ -9791,7 +9791,7 @@ app.get('/api/devices/:imei/istoric-complet', requireAuth, requireSuperadmin, wi
     const vehicul = nume + (plate && plate !== nume ? ' · ' + plate : '');
     // 2) Fișierul. Numele, ca la celelalte descărcări ale casei; antetul îl citește pagina (`_numeDinAntet`).
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', reportExport.contentDisposition(reportExport.safeName('RA-Tracks - Istoric complet ' + vehicul + ' - ' + reportExport.datePart()) + '.xlsx'));
+    res.setHeader('Content-Disposition', reportExport.contentDisposition(reportExport.safeName('RA-Track - Istoric complet ' + vehicul + ' - ' + reportExport.datePart()) + '.xlsx'));
     await reportExport.istoricCompletXlsx(res, { vehicul: vehicul, firma: co ? co.name : null, sumar: sumar,
       pagina: function (dupa) { return db.istoricPagina(imei, dupa, 5000); }, pauza: pauza });
     // În jurnal abia după ce a plecat tot fișierul (o descărcare întreruptă nu e o predare de date).
@@ -10198,7 +10198,7 @@ async function _osrmMatchChunk(coords) { // coords [[lng,lat]...] (≤100) -> [[
   const url = OSRM_URL + '/match/v1/driving/' + coordStr + '?geometries=geojson&overview=full&tidy=true&radiuses=' + rad;
   const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 9000);
   try {
-    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'RA-Tracks/1.0' } });
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'RA-Track/1.0' } });
     clearTimeout(to);
     if (!r.ok) return null;
     const d = await r.json();
@@ -10357,7 +10357,7 @@ async function _sumarTraseu(imei, from, to, history, limit) {
     fuelLiters, fuelEstimated
   };
 }
-// Traseul descărcat din ecranul Traseu (Alin, 01.10: „nu are numele RA Tracks… în interiorul fișierului sunt doar
+// Traseul descărcat din ecranul Traseu (Alin, 01.10: „nu are numele RA Track… în interiorul fișierului sunt doar
 // cifre, nimic de înțeles"). Excel prin `sendReport` — numele casei, logo-ul pe fiecare foaie —, cu „Sumar" (aceleași
 // cifre ca ecranul, din `_sumarTraseu`) și pozițiile pe românește (`reportExport.traseuVehicul`). Unul sau mai multe
 // vehicule (cele bifate pe ecran). Aceleași drepturi ca traseul: cine vede mașina pe hartă îi poate descărca traseul.
@@ -11601,7 +11601,7 @@ app.put('/api/drivers/:id', requireAuth, requireEdit('soferi'), withCompany, asy
 });
 
 // ─── Export brandat: „Situația șoferilor" (Excel/PDF) ───────────────────────────────────────────
-// Trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo, ca ORICE document descărcat
+// Trece prin sendReport → nume „RA-Track - Raport ... - data" + logo, ca ORICE document descărcat
 // din aplicație (regula din CLAUDE.md). Nu e o cale paralelă de export.
 function _drvLicRow(d, vehByDriver) {
   const cats = licenseCats.parse(d.license_categories);
@@ -12969,7 +12969,7 @@ async function _notifyPush(n) {
   } catch (_) { return; }
   if (!users || !users.length) return;
   const prefsMap = await getPrefsMap();
-  const payload = { title: n.title || 'RA Tracks', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
+  const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
     // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
@@ -13327,7 +13327,7 @@ async function sendFcmToUser(userId, payload) {
   try {
     const resp = await _fcm.sendEachForMulticast({
       tokens: tokens.map(t => t.token),
-      notification: { title: (payload && payload.title) || 'RA Tracks', body: (payload && payload.body) || '' },
+      notification: { title: (payload && payload.title) || 'RA Track', body: (payload && payload.body) || '' },
       data,
       android: { priority: 'high', notification: { channelId: 'ra_alerts', sound: 'notif' } }
     });
@@ -15212,7 +15212,7 @@ app.get('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Hârtia facturii (și a proformei), ca fișier PDF — ca oferta și contractul (Alin, 30.09). Aceeași hârtie pleacă
-// atașată la email (`_trimiteFactura`). Numele: „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf".
+// atașată la email (`_trimiteFactura`). Numele: „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf".
 async function _trimitePdfFactura(res, inv) {
   if (!facturaPdf) return res.status(503).json({ error: 'Hârtia facturii nu se poate face pe serverul ăsta.' });
   let emitentAcum = {}; try { emitentAcum = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
@@ -15475,7 +15475,7 @@ app.post('/api/invoices/previzualizare', requireAuth, requireSuperadmin, async (
       issuer: k.iss, client: _clientSnapshot(k.co), note: k.note, fel: k.fel, luna: k.luna, company_name: k.co.name };
     const pdf = await _pdfInBuffer(facturaPdf.facturaPdf(inv, k.iss));
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', _antetDescarcare('RA-Tracks - Previzualizare ' + (k.tip === 'proforma' ? 'proformă' : 'factură') + ' - ' + (k.co.name || 'client') + '.pdf', true));
+    res.setHeader('Content-Disposition', _antetDescarcare('RA-Track - Previzualizare ' + (k.tip === 'proforma' ? 'proformă' : 'factură') + ' - ' + (k.co.name || 'client') + '.pdf', true));
     res.setHeader('Cache-Control', 'no-store');
     res.end(pdf);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -17170,7 +17170,7 @@ app.post('/api/push/test', requireAuth, async (req, res) => {
   let deviceTokens = 0, webSubs = 0;
   try { deviceTokens = (await db.getDeviceTokens(uid) || []).length; } catch (_) {}
   try { webSubs = (await db.getPushSubscriptions(uid) || []).length; } catch (_) {}
-  sendPushToUser(uid, { title: 'RA Tracks — test', body: 'Notificare de test — dacă o vezi, push-ul funcționează! ✅', data: { type: 'test' } }).catch(() => {});
+  sendPushToUser(uid, { title: 'RA Track — test', body: 'Notificare de test — dacă o vezi, push-ul funcționează! ✅', data: { type: 'test' } }).catch(() => {});
   res.json({ ok: true, fcm: !!_fcm, deviceTokens, webSubs });
 });
 app.post('/api/push/subscribe', requireAuth, async (req, res) => {
@@ -17833,11 +17833,12 @@ async function start() {
   if (process.env.DEMO_DISABLED !== 'true') {
     try {
       let demo = await db.getCompanyBySlug('demo');
-      if (!demo) demo = await db.createCompany({ name: 'RA Tracks Demo', slug: 'demo', is_demo: true });
-      // Numele vechi, „RA Track Demo" (fără „s"), se corectează o singură dată (Robert, 09.10: „am mai găsit Trak și
-      // este eronat"). Doar dacă scrie exact numele vechi: un nume pus de noi de mână rămâne cum e.
-      if (demo && demo.name === 'RA Track Demo') {
-        try { await db.updateCompany(demo.id, { name: 'RA Tracks Demo' }); demo.name = 'RA Tracks Demo'; } catch (e) { /* nu oprește pornirea */ }
+      if (!demo) demo = await db.createCompany({ name: 'RA Track Demo', slug: 'demo', is_demo: true });
+      // Marca e „RA Track", ca domeniul (Robert, 09.10). Pe 09.10, pentru câteva ore, compania a fost redenumită
+      // „RA Tracks Demo"; numele acela se întoarce o singură dată la pornire. Doar dacă scrie exact numele acela: un nume
+      // pus de noi de mână rămâne cum e.
+      if (demo && demo.name === 'RA Tracks Demo') {
+        try { await db.updateCompany(demo.id, { name: 'RA Track Demo' }); demo.name = 'RA Track Demo'; } catch (e) { /* nu oprește pornirea */ }
       }
       demoCompanyId = demo.id;
       for (let i = 0; i < demoSim.DEMO_IMEIS.length; i++) {
@@ -17915,7 +17916,7 @@ async function start() {
     console.log(`[WS] WebSocket activ`);
     console.log('');
     console.log('═══════════════════════════════════════');
-    console.log(`  RA Tracks Server — PORNIT (${process.env.DATABASE_URL ? 'PostgreSQL — mod scalabil' : 'PGlite embedded, 100% local'})`);
+    console.log(`  RA Track Server — PORNIT (${process.env.DATABASE_URL ? 'PostgreSQL — mod scalabil' : 'PGlite embedded, 100% local'})`);
     console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
     console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');

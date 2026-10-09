@@ -1,4 +1,4 @@
-# RA Tracks — Aplicație mobilă (Capacitor + Preact)
+# RA Track — Aplicație mobilă (Capacitor + Preact)
 
 Aplicație mobilă **Android** (apoi iOS din același cod) pentru clientul final: monitorizare flotă, statistici, notificări. Consumă API-ul existent `server.js` prin **token (cheie API)** — fără cookie-uri.
 
@@ -76,7 +76,7 @@ Capacitor adaugă `INTERNET`. Pentru push pe Android 13+ adaugă:
 ## 4. Push notificări (FCM)
 
 ### Firebase (o singură dată)
-1. Creează proiect Firebase „RA Tracks" → adaugă app Android cu `applicationId = ro.ratracks.app`.
+1. Creează proiect Firebase „RA Track" → adaugă app Android cu `applicationId = ro.ratracks.app`.
 2. Descarcă `google-services.json` → pune-l în `mobile/android/app/`.
 3. În Firebase → Project settings → Service accounts → **Generate new private key** → JSON.
 4. Pune conținutul JSON în variabila de mediu a serverului: `FIREBASE_SA_JSON` (pe Railway: Settings → Variables). Serverul îl citește la boot (`initFcm`), no-op dacă lipsește.

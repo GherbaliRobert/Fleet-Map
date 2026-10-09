@@ -118,12 +118,12 @@ const hCump = hartie(bazaOf);
 const hInch = hartie(Object.assign({}, bazaOf, { inchiriere: true, tarifDemontare: 60, deviceLines: [], hwTotal: 0, monthly: 430, contractTotal: 10320,
   lines: bazaOf.lines.concat([{ fel: 'chirie', label: 'Chirie Teltonika FMC130', qty: 10, unit: 14, total: 140 }]) }));
 // Din 29.09 aparatele cumpărate se plătesc în AVANS, pe proformă (decizie Alin, „1.A"); restul hârtiei e același.
-T('CUMPĂRĂ: echipamente o singură dată, plătite în avans, pe proformă', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se plătesc integral în avans, pe proformă/.test(hCump) && !/proprietatea RA Tracks/.test(hCump));
+T('CUMPĂRĂ: echipamente o singură dată, plătite în avans, pe proformă', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se plătesc integral în avans, pe proformă/.test(hCump) && !/proprietatea RA Track/.test(hCump));
 T('ÎNCHIRIAZĂ: fără avans pentru aparate (nu se cumpără)', !/se plătesc integral în avans/.test(hInch));
 T('ÎNCHIRIAZĂ: tabelul „Chiria echipamentelor — lunar"', /CHIRIA ECHIPAMENTELOR — LUNAR/.test(hInch) && /Chirie Teltonika FMC130/.test(hInch));
 T('ÎNCHIRIAZĂ: fără tabel de echipamente vândute', !/ECHIPAMENTE — O SINGURĂ DATĂ/.test(hInch));
 T('ÎNCHIRIAZĂ: costul unic e doar instalarea (1.000 lei)', /instalare \(aparatele sunt închiriate\)/.test(hInch) && /1\.000,00 lei/.test(hInch));
-T('ÎNCHIRIAZĂ: aparatele rămân proprietatea RA Tracks, chiria pe rând separat', /rămân proprietatea RA Tracks pe toată durata contractului/.test(hInch) && /pe rând separat/.test(hInch));
+T('ÎNCHIRIAZĂ: aparatele rămân proprietatea RA Track, chiria pe rând separat', /rămân proprietatea RA Track pe toată durata contractului/.test(hInch) && /pe rând separat/.test(hInch));
 T('ÎNCHIRIAZĂ: durata minimă de 24 de luni și chiria lunilor rămase', /Durata minimă a contractului este de 24 de luni/.test(hInch) && /lunile rămase până la 24/.test(hInch));
 T('ÎNCHIRIAZĂ: plecarea mai devreme plătește și demontarea, cu cifra (60 lei/aparat)', /și demontarea lor, de 60,00 lei pe aparat/.test(hInch));
 T('hârtia primește tariful de dezinstalare din ofertă', /tarifDemontare: Number\(r\.p\.mUninstall\) \|\| null/.test(html));

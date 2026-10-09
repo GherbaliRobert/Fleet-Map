@@ -85,8 +85,8 @@ export const SPEC_SECTIONS: SpecSection[] = [
     // Echipamentul GPS, nu vehiculul: ca pe web („Administrativ & afișare"), cine administrează flota le vede,
     // nu le scrie. Restul rolurilor nu le văd deloc (vezi `admin` în VehicleSpecsView).
     titlu: 'Echipament GPS', icon: 'cpu', campuri: [
-      { k: 'gps_model', l: 'Model dispozitiv GPS', ro: true, hint: 'Se completează la instalare, de RA Tracks.' },
-      { k: 'sim_number', l: 'Număr cartelă SIM', ro: true, hint: 'Se completează la instalare, de RA Tracks.' },
+      { k: 'gps_model', l: 'Model dispozitiv GPS', ro: true, hint: 'Se completează la instalare, de RA Track.' },
+      { k: 'sim_number', l: 'Număr cartelă SIM', ro: true, hint: 'Se completează la instalare, de RA Track.' },
     ],
   },
 ];

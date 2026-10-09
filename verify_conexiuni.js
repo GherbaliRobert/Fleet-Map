@@ -100,7 +100,7 @@ console.log('\n4. Ce pornește o publicare și ce nu');
   for (const f of ['server.js', 'db.js', 'backup.js', 'reports.js', 'codec8e.js', 'public/index.html', 'public/css/app.css', 'public/sw.js', 'Dockerfile', 'package.json', 'package-lock.json', 'railway.json']) {
     T('„' + f + '" pornește o publicare', publica(f));
   }
-  for (const f of ['JURNAL-MODIFICARI.md', 'CLAUDE.md', 'DEPLOY_RAILWAY.md', 'docs/RA-Tracks-Manual.pdf', 'docs_promo/img/harta.png', 'docs_audit/raport.md', 'verify_pornire.js', 'verify_conexiuni.js', 'rbac_smoke.js', '.github/workflows/ci.yml']) {
+  for (const f of ['JURNAL-MODIFICARI.md', 'CLAUDE.md', 'DEPLOY_RAILWAY.md', 'docs/RA-Track-Manual.pdf', 'docs_promo/img/harta.png', 'docs_audit/raport.md', 'verify_pornire.js', 'verify_conexiuni.js', 'rbac_smoke.js', '.github/workflows/ci.yml']) {
     T('„' + f + '" NU pornește o publicare', !publica(f));
   }
   T('un .md din public/ (servit de aplicație) pornește o publicare', publica('public/ajutor.md'));

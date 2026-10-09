@@ -85,7 +85,7 @@ function smtpFals(port) {
 const PORT = 3225, SMTP = 2526, DIR = '.lipsuri-ci-db';
 const envS = { ...process.env, NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_lips',
   PORT: String(PORT), TCP_PORT: '5225', PGLITE_DIR: DIR + '/pgdata',
-  SMTP_HOST: '127.0.0.1', SMTP_PORT: String(SMTP), SMTP_USER: 'proba', SMTP_PASS: 'proba', SMTP_FROM: 'RA Tracks <noreply@ratrack.ro>' };
+  SMTP_HOST: '127.0.0.1', SMTP_PORT: String(SMTP), SMTP_USER: 'proba', SMTP_PASS: 'proba', SMTP_FROM: 'RA Track <noreply@ratrack.ro>' };
 delete envS.ANTHROPIC_API_KEY; delete envS.DATABASE_URL;
 const B = 'http://127.0.0.1:' + PORT;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -153,7 +153,7 @@ function gata() {
     const d = m1.date;
     T('...cu subiectul contractului', /Subject: .*Contractul/i.test(d) || /Subject: =\?UTF-8\?/i.test(d));
     T('...cu PDF-ul atașat', /Content-Type: application\/pdf/i.test(d) && /JVBERi0/.test(d));
-    T('...cu numele casei pe fișier (RA-Tracks - Contract …)', /RA-Tracks/.test(d) && /Contract/.test(d));
+    T('...cu numele casei pe fișier (RA-Track - Contract …)', /RA-Track/.test(d) && /Contract/.test(d));
     T('...iar răspunsul lor vine la noi (Reply-To)', /Reply-To: office@ratrack\.ro/i.test(d));
   }
   r0 = await rand();

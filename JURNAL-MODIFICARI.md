@@ -73,7 +73,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   proprie, PF-…, fără ANAF), iar la încasare emite singură factura fiscală, cu aceleași rânduri, marcată
   plătită. De întrebat: la un avans încasat înainte de livrare se emite „factură de avans" și apoi factura
   finală, sau direct factura finală? Și în ce termen, ca să nu întârziem la ANAF.
-- [ ] **Voi: „Date emitent" cu datele reale ale RA Tracks. Adăugat pe 29.09.** Facturare → „Date emitent":
+- [ ] **Voi: „Date emitent" cu datele reale ale RA Track. Adăugat pe 29.09.** Facturare → „Date emitent":
   numele firmei, CUI, Reg. Com., adresa, IBAN, banca, cota de TVA. Fără nume și CUI nu pleacă nicio factură,
   nici cea automată. În exemplele PDF din 29.09 sunt date de probă (CUI RO12345678, IBAN de exemplu).
   **Cota de TVA: scrieți 21%** (cota legală din 1 august 2025) — ⚠ **dar vedeți nota din 03.10, de mai jos.** Adăugat pe 29.09: dacă rămâne necompletată, aplicația
@@ -86,7 +86,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: pașii firmei la ANAF, înainte de prima factură reală. Adăugat pe 30.09.** (1) un contabil; (2) semnătura
   electronică a administratorului (cam 150–400 lei pe an, de la un furnizor autorizat); (3) firma în SPV, pe anaf.ro,
   cu semnătura — de obicei o face contabilul cu voi; (4) apoi Robert ia „cheia" e-Factura și o pune pe server (punctul
-  lui de mai sus); (5) întrebați contabilul dacă RA Tracks e plătitoare de TVA — de aici bifa și cota din „Date emitent".
+  lui de mai sus); (5) întrebați contabilul dacă RA Track e plătitoare de TVA — de aici bifa și cota din „Date emitent".
 - [ ] **Voi: spuneți-mi când semnați cu primul partener de montaj real. Adăugat pe 30.09.** Atunci facem
   evidența plăților către el (cât i-am plătit, cât mai avem de dat, pe ce lucrări) — punctul 4 din 30.09,
   amânat până atunci, cum am stabilit.
@@ -105,8 +105,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
   **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
   primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
-  **09.10:** APK-ul e construit — `RA-Tracks-1.0.9-debug.apk`, pe Desktop. Are tot ce e mai sus, plus sigla oficială.
-  Rămâne doar instalarea pe telefoane.
+  **09.10:** APK-ul e construit — `RA-Track-1.0.10-debug.apk`, pe Desktop (înlocuiește 1.0.9 de mai devreme, azi). Are
+  tot ce e mai sus, plus sigla oficială și numele „RA Track". Rămâne doar instalarea pe telefoane.
   (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
@@ -167,8 +167,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   duc marfa Z la Cluj — ce acte îmi trebuie?": RA Insight pune laolaltă ce știe aplicația (mașina, permisul, actele) și
   regulile (aviz, CMR, cod UIT, ADR, ATP…). Recomandarea mea: după ce aducem internetul în RA Insight, cu lista de reguli
   verificată de un specialist în transport și cu sursa pe fiecare răspuns.
-- [ ] **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Tracks, ca la Sezamo). Adăugat pe 08.10.**
-  Analiza pe criterii: `docs/RA-Tracks-MCP-Analiza.pdf` (5 pagini). De hotărât, pe scurt: (1) întâi întrebăm 15–20 de
+- [ ] **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Track, ca la Sezamo). Adăugat pe 08.10.**
+  Analiza pe criterii: `docs/RA-Track-MCP-Analiza.pdf` (5 pagini). De hotărât, pe scurt: (1) întâi întrebăm 15–20 de
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
   trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
@@ -250,6 +250,43 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-09
+
+### AMÂNDOI · Marca este „RA Track", ca domeniul ratrack.ro
+
+Robert (09.10): *„trebuia sa fie ratrack nu ratracks"*, apoi, la cele două întrebări, *„1 da, 2 da, asa avem si domeniul
+RA Track"*. Întoarce cele două intrări de mai jos (de azi dimineață) și hotărârea din 21.09 („RA Tracks"): marca se scrie
+ca domeniul.
+
+1. **„RA Track" peste tot unde se vede:** sigla (imaginea de pe rapoarte, Excel, contracte, oferte, facturi și emailuri,
+   refăcută „RA | Track"), imaginea pe care o arată site-ul când e trimis pe WhatsApp sau Facebook, antetul aplicației,
+   cele 7 pagini publice, documentația API, telefonul (numele de sub iconiță, ecranul de intrare, animația de pornire),
+   PDF-urile de prezentare, numele fișierelor descărcate („RA-Track - Raport Traseu - 09.10.2026.xlsx", „RA-Track -
+   Ofertă …", „RA-Track - Contract …", „RA-Track - Factură …"), titlurile notificărilor, ce îi spunem lui RA Insight.
+2. **Compania demo se numește „RA Track Demo".** Dacă pe ratrack.ro a apucat azi să devină „RA Tracks Demo", serverul o
+   redenumește o singură dată, la pornire.
+3. **Rămân dinadins (Robert: „2 da") numele tehnice, pe care nu le vede nimeni:** identitatea aplicației Android
+   (`ro.ratracks.app` — schimbată, telefoanele n-ar mai primi actualizarea peste aplicația instalată), prefixul copiilor
+   de siguranță, memoria paginii din browser, semnătura serverului către serviciile de hartă, antetele webhook-urilor
+   (`X-RaTracks-Signature`, `RA-Tracks-Webhook/1.0` — integrările clienților le pot filtra). Istoricul jurnalului rămâne
+   cum a fost scris.
+4. **Memoria paginii a urcat la `ratracks-v414`**, ca telefoanele și calculatoarele care au aplicația web instalată să ia
+   sigla și numele nou (altfel le țineau pe cele vechi din memorie).
+
+- **Ce am schimbat:** textul din ~95 de fișiere (aplicația, serverul, telefonul, paginile publice, documentația,
+  probele, CLAUDE.md — secțiunea „Marca este RA Track"); `public/logo.png`, `logo-light.png`, `og-cover.png`, refăcute
+  cu `tools/make-logo.js` și `tools/make-og-cover.js` (acum fără Playwright: le desenează Edge, care e pe orice Windows);
+  ziua și amprenta celor 7 pagini publice (Google vede că s-a schimbat textul); telefonul **1.0.10**
+  (`RA-Track-1.0.10-debug.apk`, pe Desktop); PDF-urile cu nume noi: `RA-Track_Flyer.pdf`, `RA-Track_Agenti-AI.pdf`,
+  `RA-Track_Ce-avem-ready.pdf` (în rădăcină și în `docs_build/`), iar în afara git `docs/RA-Track-Prezentare.pdf`,
+  `-Tehnic`, `-Manual`, `-MCP-Analiza`.
+- **Probe:** `verify_ofertare.js` 5g, întoarsă pe regula nouă: pică la orice „RA Tracks" sau „traks" rămas pe ce vede
+  omul — și scris într-o adresă („RA%20Tracks": așa scăpase subiectul emailului de la „Contactează-ne", găsit de
+  verificarea de după redenumire) —, la orice altă denumire a companiei demo și la sigla fără „Track". Trec
+  `verify_site_public.js`, `verify_oferta_telefon.js` (1.0.10 în ambele locuri) și poarta întreagă (`npm test` + cele
+  13 suite de securitate + tsc pe telefon). O verificare separată (două priviri independente) a căutat ce a scăpat și ce
+  s-ar fi putut strica: nicio cheie de memorie, rută sau setare a oamenilor nu s-a schimbat.
+- **Ce vede fondatorul:** „RA Track" peste tot, inclusiv pe hârtiile pe care le trimite clienților.
+- **Ce vede clientul:** „RA Track" în aplicație, pe telefon, pe site, pe facturi, contracte, oferte și rapoarte.
 
 ### AMÂNDOI · Sigla oficială peste tot, PDF-ul „Agenți AI" cu ce face aplicația azi, fără „TrackGPS" — `10a5d3b`
 

@@ -12,7 +12,7 @@ function caleRaport(type: string, from: string, to: string, imeis: string[] | un
 }
 
 // Rapoartele trec pe ACELAȘI drum ca hârtiile de mai jos: numele fișierului vine din antetul serverului
-// („RA-Tracks - Raport Traseu - 06.07.2026.xlsx", regula casei din report_export.js → sendReport). Până pe
+// („RA-Track - Raport Traseu - 06.07.2026.xlsx", regula casei din report_export.js → sendReport). Până pe
 // 29.09 telefonul le salva „raport_<tip>_<data>" — singurele descărcări rămase fără numele brandat.
 // `raport_…` rămâne doar ca rezervă, dacă antetul lipsește.
 export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx', opts?: ReportOpts) {
@@ -27,7 +27,7 @@ export async function exportHistoryReport(id: number, type: string, format: 'pdf
 // ─── Un fișier făcut de SERVER: contractul, actul adițional, oferta, factura, un scan urcat ─────
 // UN SINGUR drum pentru toate hârtiile, ca pe web (`raxHartie`): telefonul nu desenează niciun PDF,
 // ci cere fișierul generatorului de pe server și i-l predă telefonului sub numele din ANTETUL
-// răspunsului („RA-Tracks - Contract RAT-C-2026-0001 - Firma.pdf"), nu sub unul compus aici.
+// răspunsului („RA-Track - Contract RAT-C-2026-0001 - Firma.pdf"), nu sub unul compus aici.
 //   • Cererea trece prin stratul nativ, cu tokenul: un <a href> nu cară tokenul, iar un fetch() din
 //     pagină e blocat (serverul nu trimite antete CORS — verificat 13.09, vezi VehicleDocs.tsx).
 //   • `deschide` = „Vezi": foaia telefonului se deschide ca s-o citești (vizualizatorul de PDF-uri);
@@ -58,13 +58,13 @@ function _eroareServer(data: any, status: number): string {
   if (status === 404) return 'Fișierul nu există pe server';
   return 'Eroare ' + status;
 }
-// Numele fișierului KML al unui traseu, după regula casei: „RA-Tracks - Traseu {vehicul} - {ziua descărcării}.kml"
+// Numele fișierului KML al unui traseu, după regula casei: „RA-Track - Traseu {vehicul} - {ziua descărcării}.kml"
 // (01.10). Aceeași formă ca pe web (`_numeKmlTraseu` din pagină) — legate printr-o probă. Caracterele interzise
 // în nume de fișier se scot.
 export function numeKmlTraseu(nume: string, plate?: string | null, azi?: Date): string {
   const vehicul = String(nume || '') + (plate && plate !== nume ? ' · ' + plate : '');
   const d = azi || new Date(), p2 = (n: number) => String(n).padStart(2, '0');
-  return ('RA-Tracks - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
+  return ('RA-Track - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
     .replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim() + '.kml';
 }
 

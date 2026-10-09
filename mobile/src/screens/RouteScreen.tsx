@@ -422,7 +422,7 @@ export function RouteScreen() {
     setExporting('xlsx');
     try {
       const q = '?imeis=' + encodeURIComponent(imei) + '&from=' + encodeURIComponent(rng.from) + '&to=' + encodeURIComponent(rng.to);
-      await salveazaDeLaServer('/api/traseu/excel' + q, 'RA-Tracks - Traseu.xlsx');
+      await salveazaDeLaServer('/api/traseu/excel' + q, 'RA-Track - Traseu.xlsx');
       setExpOpen(false);
     } catch (e: any) { showToast(e?.message || 'Exportul n-a mers', true); }
     finally { setExporting(''); }

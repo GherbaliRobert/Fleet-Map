@@ -81,7 +81,7 @@ function AparateGpsEcran() {
     return String(a.plate || a.name || a.imei).localeCompare(String(b.plate || b.name || b.imei), 'ro');
   }), [rows, q, acum]);
 
-  // Exportul trece prin sendReport pe server (nume „RA-Tracks - Raport Inventar dispozitive - data" + logo).
+  // Exportul trece prin sendReport pe server (nume „RA-Track - Raport Inventar dispozitive - data" + logo).
   // Pleacă DOAR cu aparatele de pe ecran, în ordinea de pe ecran. O listă goală nu se trimite niciodată:
   // serverul ar înțelege „tot inventarul".
   async function exporta(fmt: 'xlsx' | 'pdf') {

@@ -1,4 +1,4 @@
-// contract_pdf.js — ciorna contractului de prestări servicii, în PDF, cu logo RA Tracks.
+// contract_pdf.js — ciorna contractului de prestări servicii, în PDF, cu logo RA Track.
 //
 // ⚠ CE ESTE ȘI CE NU ESTE. Fișierul ăsta scoate o CIORNĂ: aceleași clauze de fiecare dată,
 // completate cu datele reale ale părților, cu anexa aparatelor și cu acordul GDPR. NU e consultanță
@@ -61,7 +61,7 @@ function _antet(doc, contract, ciorna, titlu, subtitlu) {
   doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(15)
     .text(titlu || 'CONTRACT DE PRESTĂRI SERVICII', left, doc.y, { width: w, align: 'center' });
   doc.font('Nunito').fontSize(9).fillColor(GRI)
-    .text(subtitlu || 'monitorizare GPS a flotei prin platforma RA Tracks', left, doc.y + 2, { width: w, align: 'center' });
+    .text(subtitlu || 'monitorizare GPS a flotei prin platforma RA Track', left, doc.y + 2, { width: w, align: 'center' });
   if (ciorna) {
     doc.fillColor('#b45309').font('Nunito-Bold').fontSize(8.5)
       .text('CIORNĂ — generată automat din datele din aplicație. A se verifica juridic înainte de semnare.',
@@ -377,7 +377,7 @@ function scrieContract(doc, date) {
   });
 
   _titlu(doc, 'II. OBIECTUL CONTRACTULUI');
-  _p(doc, 'Prestatorul pune la dispoziția Beneficiarului serviciul de monitorizare prin GPS a vehiculelor acestuia, prin platforma RA Tracks, împreună cu funcțiile activate în contul Beneficiarului. Aparatele și vehiculele care fac obiectul contractului sunt cele din Anexa nr. 1, parte integrantă din prezentul contract.');
+  _p(doc, 'Prestatorul pune la dispoziția Beneficiarului serviciul de monitorizare prin GPS a vehiculelor acestuia, prin platforma RA Track, împreună cu funcțiile activate în contul Beneficiarului. Aparatele și vehiculele care fac obiectul contractului sunt cele din Anexa nr. 1, parte integrantă din prezentul contract.');
   _p(doc, 'Serviciul cuprinde: colectarea și stocarea datelor de poziție transmise de aparate, afișarea lor în aplicație, rapoartele și alertele incluse în abonament, precum și asistență tehnică pe durata contractului.');
 
   _titlu(doc, 'III. DURATA CONTRACTULUI');
@@ -662,7 +662,7 @@ function scrieAct(doc, date) {
 function actPdf(date) {
   const doc = new PDFDocument({
     size: 'A4', margin: 50,
-    info: { Title: 'Act adițional ' + ((date.act && date.act.number) || ''), Author: 'RA Tracks' }
+    info: { Title: 'Act adițional ' + ((date.act && date.act.number) || ''), Author: 'RA Track' }
   });
   try {
     doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
@@ -679,7 +679,7 @@ function actPdf(date) {
 function contractPdf(date) {
   const doc = new PDFDocument({
     size: 'A4', margin: 50,
-    info: { Title: 'Contract ' + ((date.contract && date.contract.number) || ''), Author: 'RA Tracks' }
+    info: { Title: 'Contract ' + ((date.contract && date.contract.number) || ''), Author: 'RA Track' }
   });
   try {
     doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
@@ -692,7 +692,7 @@ function contractPdf(date) {
   return doc;
 }
 
-// Numele fișierului descărcat, după regula casei (ca rapoartele și ofertele): „RA-Tracks - Contract
+// Numele fișierului descărcat, după regula casei (ca rapoartele și ofertele): „RA-Track - Contract
 // RAT-C-2026-0001 - Transport Alfa SRL.pdf". Hotărât de Alin pe 24.09 (pe 09.09 ceruse „RA
 // TRAKS-Contract", de pe vremea când și logo-ul scria „traks").
 // Caracterele interzise în numele de fișier se scot din TOT numele, nu doar din firmă: numărul unui
@@ -701,7 +701,7 @@ function numeFisier(contract, firma, fel) {
   const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
   const nr = curat((contract && contract.number) || 'ciornă');
   const cine = curat(firma && firma.name);
-  return 'RA-Tracks - ' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
+  return 'RA-Track - ' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
 }
 
 // ─── Contractul de colaborare cu un PARTENER DE MONTAJ (24.09) ──────────────────────────────────
@@ -839,7 +839,7 @@ function scrieContractMontaj(doc, date) {
 }
 function contractMontajPdf(date) {
   const doc = new PDFDocument({ size: 'A4', margin: 50,
-    info: { Title: 'Contract de colaborare ' + ((date.contract && date.contract.number) || ''), Author: 'RA Tracks' } });
+    info: { Title: 'Contract de colaborare ' + ((date.contract && date.contract.number) || ''), Author: 'RA Track' } });
   try {
     doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
     doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));

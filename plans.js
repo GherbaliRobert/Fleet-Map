@@ -1,6 +1,6 @@
-// oferte.js — prețul unei firme la RA Tracks.
+// oferte.js — prețul unei firme la RA Track.
 //
-// RA Tracks NU funcționează pe planuri și n-a funcționat niciodată așa. Fiecare client primește o
+// RA Track NU funcționează pe planuri și n-a funcționat niciodată așa. Fiecare client primește o
 // OFERTĂ, făcută pe ce are el (câte vehicule, câte cu CAN, ce module), iar contractul se face pe
 // oferta acceptată. Atât.
 //

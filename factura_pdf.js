@@ -3,7 +3,7 @@
 // Până atunci, factura se deschidea într-o fereastră de printare (HTML) din care omul își salva singur un PDF —
 // cu numele pe care îl alegea el și cu fontul pe care îl avea browserul. Acum se face aici, ca oferta
 // (`report_export.js`) și contractul (`contract_pdf.js`): logo-ul casei pentru fundal alb, fonturile cu
-// diacritice și numele „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf". Aceeași hârtie pleacă și
+// diacritice și numele „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf". Aceeași hârtie pleacă și
 // atașată la email (`server.js` → trimiterea facturii), deci ce vede clientul pe email, în „Facturile mele"
 // și ce descărcăm noi e UNUL și același fișier.
 //
@@ -50,7 +50,7 @@ function cuiAfisat(cui, platitorTva) {
 }
 
 // Numele fișierului, după regula casei (ca rapoartele, ofertele și contractele):
-// „RA-Tracks - Factură RAT-2027-00002 - Transport SRL.pdf" / „RA-Tracks - Proformă PF-2027-00001 - …".
+// „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf" / „RA-Track - Proformă PF-2027-00001 - …".
 // Caracterele interzise în numele de fișier se scot din TOT numele.
 function numeFisier(inv) {
   const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
@@ -58,7 +58,7 @@ function numeFisier(inv) {
   const fel = inv && inv.type === 'proforma' ? 'Proformă' : 'Factură';
   const nr = curat(inv && inv.full_number) || 'fără număr';
   const cine = curat(cl.name || (inv && inv.company_name));
-  return 'RA-Tracks - ' + fel + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
+  return 'RA-Track - ' + fel + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
 }
 
 // ⚠ Regula casei (contract_pdf.js): pdfkit ține minte ultima poziție scrisă. FIECARE scriere de aici își dă
@@ -219,8 +219,8 @@ function scrieFactura(doc, inv, emitentAcum) {
   const subsol = inv.previzualizare
     ? 'PREVIZUALIZARE — documentul nu e emis încă: numărul, data și trimiterea către client se fac la „Emite". Nu are valoare fiscală.'
     : pf
-    ? 'Proformă emisă din platforma RA Tracks. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.'
-    : 'Factură emisă electronic din platforma RA Tracks. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' +
+    ? 'Proformă emisă din platforma RA Track. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.'
+    : 'Factură emisă electronic din platforma RA Track. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' +
       (inv.din_proforma ? ' Emisă la încasarea unei proforme.' : '');
   doc.font('Nunito').fontSize(7.5);
   const hSub = doc.heightOfString(subsol, { width: w });
@@ -236,7 +236,7 @@ function facturaPdf(inv, emitentAcum) {
   const pf = inv && inv.type === 'proforma';
   const doc = new PDFDocument({
     size: 'A4', margin: 40,
-    info: { Title: (pf ? 'Proformă ' : 'Factură ') + ((inv && inv.full_number) || ''), Author: 'RA Tracks' }
+    info: { Title: (pf ? 'Proformă ' : 'Factură ') + ((inv && inv.full_number) || ''), Author: 'RA Track' }
   });
   try {
     doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));

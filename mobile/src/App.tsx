@@ -301,7 +301,7 @@ function EcranIndisponibil({ titlu, radacina, doarNoi }: { titlu: string; radaci
           <div style="font-weight:800;font-size:16px;color:var(--text-primary)">Ecranul nu e disponibil pentru rolul tău</div>
           <div style="font-size:13.5px;line-height:1.5;max-width:300px">
             {doarNoi
-              ? 'Ecranul acesta e rezervat administratorilor platformei RA Tracks.'
+              ? 'Ecranul acesta e rezervat administratorilor platformei RA Track.'
               : 'Firma ta a ascuns acest ecran pentru rolul tău. Dacă ai nevoie de el, cere-i administratorului firmei să ți-l deschidă.'}
           </div>
           <button class="btn btn-primary" style="margin-top:8px" onClick={() => loc.route('/vehicles')}>Mergi la vehicule</button>
@@ -314,7 +314,7 @@ function EcranIndisponibil({ titlu, radacina, doarNoi }: { titlu: string; radaci
 function Splash() {
   return (
     <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:var(--bg-darkest)">
-      <span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="34" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="34" alt="RA" /><span class="raw" style="font-size:24px">Tracks</span></span>
+      <span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="34" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="34" alt="RA" /><span class="raw" style="font-size:24px">Track</span></span>
       <div class="spin" />
     </div>
   );

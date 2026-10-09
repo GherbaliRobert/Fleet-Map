@@ -82,7 +82,7 @@ jobs:
       - name: Ce trebuie știut despre APK-ul ăsta
         run: |
           {
-            echo "### APK de test — RA Tracks"
+            echo "### APK de test — RA Track"
             echo ""
             echo "Se descarcă de mai jos, de la **Artifacts**. Se dezarhivează și se copiază pe telefon."
             echo ""
@@ -90,7 +90,7 @@ jobs:
             echo "- E build de **debug**, pentru încercat pe telefonul propriu. Nu se dă clienților."
             echo "- **Nu are notificări push**: \`google-services.json\` (cheia Firebase) nu e în git."
             echo "- Are același nume de pachet ca aplicația reală (\`ro.ratracks.app\`), dar altă"
-            echo "  semnătură — dacă ai deja RA Tracks pe telefon, Android cere să o **dezinstalezi**"
+            echo "  semnătură — dacă ai deja RA Track pe telefon, Android cere să o **dezinstalezi**"
             echo "  întâi. Datele din aplicație se pierd (nu și cele de pe server)."
             echo "- Telefonul va cere permisiunea de a instala din afara magazinului."
           } >> "$GITHUB_STEP_SUMMARY"

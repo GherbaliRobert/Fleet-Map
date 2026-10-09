@@ -2,7 +2,7 @@
 // E geamănul lui `salveazaDeLaServer` din export.ts, care știe doar GET: exportul inventarului are nevoie de
 // POST, ca să trimită exact aparatele de pe ecran (GET-ul scoate tot inventarul). Dacă export.ts primește
 // odată un `body` opțional, fișierul ăsta se poate șterge și apelul se mută acolo.
-//   • Numele vine din antetul răspunsului, pus de `sendReport` pe server („RA-Tracks - Raport … - data"):
+//   • Numele vine din antetul răspunsului, pus de `sendReport` pe server („RA-Track - Raport … - data"):
 //     telefonul nu-și mai compune singur „raport_…" (regula de brand din CLAUDE.md).
 //   • Cererea trece prin stratul nativ, cu tokenul (un fetch din pagină e blocat — serverul nu trimite CORS).
 //   • Eroarea serverului ajunge pe ecran cu vorbele lui.
@@ -74,9 +74,9 @@ export async function salveazaPostDeLaServer(path: string, body: any, numeImplic
   return nume;
 }
 
-// „RA-Tracks - Raport {nume} - zz.ll.aaaa.{ext}" — rezerva, dacă antetul lipsește (același tipar ca pe server).
+// „RA-Track - Raport {nume} - zz.ll.aaaa.{ext}" — rezerva, dacă antetul lipsește (același tipar ca pe server).
 export function numeBrand(numeRaport: string, ext: 'xlsx' | 'pdf'): string {
   const d = new Date();
   const zz = String(d.getDate()).padStart(2, '0'), ll = String(d.getMonth() + 1).padStart(2, '0');
-  return 'RA-Tracks - Raport ' + numeRaport + ' - ' + zz + '.' + ll + '.' + d.getFullYear() + '.' + ext;
+  return 'RA-Track - Raport ' + numeRaport + ' - ' + zz + '.' + ll + '.' + d.getFullYear() + '.' + ext;
 }

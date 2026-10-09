@@ -1,4 +1,4 @@
-# RA Tracks pe Fly.io
+# RA Track pe Fly.io
 #   fly launch --no-deploy        (creează app-ul, alege regiunea)
 #   fly volumes create gpsdata --size 1
 #   fly secrets set SESSION_SECRET=$(openssl rand -hex 32) ADMIN_PASSWORD=parola-ta

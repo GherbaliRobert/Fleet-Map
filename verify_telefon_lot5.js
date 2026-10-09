@@ -662,7 +662,7 @@ async function parteaFacturare() {
     // „Previzualizează": același corp, PDF-ul serverului, fără niciun document nou.
     const inainte = await nrDoc();
     const pv = await fisier(F.RUTA_PREVIZUALIZARE, corp);
-    T('„Previzualizează": un PDF, „RA-Tracks - Previzualizare factură - …", și NICIUN document nou', pv.s === 200 && /application\/pdf/.test(pv.ct) && pv.inceput === '%PDF-' &&
+    T('„Previzualizează": un PDF, „RA-Track - Previzualizare factură - …", și NICIUN document nou', pv.s === 200 && /application\/pdf/.test(pv.ct) && pv.inceput === '%PDF-' &&
       /Previzualizare%20factur%C4%83/.test(pv.cd) && (await nrDoc()) === inainte, J({ s: pv.s, ct: pv.ct, cd: pv.cd, j: pv.j }));
     // „Emite": același corp → lucrările trec pe „facturat clientului".
     const em = await R('POST', '/api/invoices', corp);
@@ -687,7 +687,7 @@ async function parteaFacturare() {
       J(rp.S.lines.map((l) => [l.desc, l.qty, l.unitPrice])) === J(ap.map((l) => [l.desc, l.qty, l.unitPrice])), J({ pp, linii: rp.S.lines.map((l) => [l.desc, l.qty, l.unitPrice]), ap }));
     const corpP = F.corpEmitere(rp.S, pp.tip);
     const pvP = await fisier(F.RUTA_PREVIZUALIZARE, corpP);
-    T('previzualizarea proformei: „RA-Tracks - Previzualizare proformă - …"', pvP.s === 200 && pvP.inceput === '%PDF-' && /Previzualizare%20proform%C4%83/.test(pvP.cd), J({ s: pvP.s, cd: pvP.cd, j: pvP.j }));
+    T('previzualizarea proformei: „RA-Track - Previzualizare proformă - …"', pvP.s === 200 && pvP.inceput === '%PDF-' && /Previzualizare%20proform%C4%83/.test(pvP.cd), J({ s: pvP.s, cd: pvP.cd, j: pvP.j }));
     const emP = await R('POST', '/api/invoices', corpP);
     T('„Emite proforma": seria PF, fără ANAF', emP.s === 200 && /^PF-/.test(emP.j.invoice.full_number) && emP.j.trimisa && emP.j.trimisa.anaf === 'nu_se_trimite', J(emP.j && { n: emP.j.invoice && emP.j.invoice.full_number, t: emP.j.trimisa, e: emP.j.error }));
     // Lista: secțiunile numără ce a venit de la server.

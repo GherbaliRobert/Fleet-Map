@@ -1,4 +1,4 @@
-/* Token-uri de design RA Tracks — copiate din public/css/app.css. Pe mobil, DARK e implicit. */
+/* Token-uri de design RA Track — copiate din public/css/app.css. Pe mobil, DARK e implicit. */
 :root, :root[data-theme="dark"] {
   --bg-darkest: #0B0E11;
   --bg-dark: #0E1217;

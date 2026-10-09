@@ -242,7 +242,7 @@ export function MntForm({ edit, imei0, lockImei, devs, cat, lucrari, onClose, on
 
             {interval && type && (
               <div class="fl-prop">
-                <div class="fl-prop-t"><Icon name="wrench" size={14} /> RA Tracks propune</div>
+                <div class="fl-prop-t"><Icon name="wrench" size={14} /> RA Track propune</div>
                 <div>
                   La {(clasa && clasa.art) || 'un'} <b>{(clasa && (clasa.low || clasa.label)) || 'mașina asta'}</b>, „{type}” se face{' '}
                   {interval.km && interval.months

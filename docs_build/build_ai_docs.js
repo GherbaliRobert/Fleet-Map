@@ -1,4 +1,4 @@
-// build_ai_docs.js — PDF „Agenți AI + RA Insight" în stilul RA Tracks (același ca build_docs.js).
+// build_ai_docs.js — PDF „Agenți AI + RA Insight" în stilul RA Track (același ca build_docs.js).
 // Totul desenat în pdfkit: branding Nunito, iconuri Font Awesome, mockup-uri UI „stil app".
 // Fiecare agent: iconița lui, rol, ce face, ce date dă, cum ajută + un mockup din aplicație.
 const PDFDocument = require('pdfkit');
@@ -43,7 +43,7 @@ function pageHeader(doc, M, sub) {
 }
 function pageFooter(doc, M, n) {
   const fy = doc.page.height - M - 12;
-  doc.font('N').fontSize(7.5).fillColor(MUTED).text('RA Tracks · Agenți AI & RA Insight · ratrack.ro', M, fy, { lineBreak: false });
+  doc.font('N').fontSize(7.5).fillColor(MUTED).text('RA Track · Agenți AI & RA Insight · ratrack.ro', M, fy, { lineBreak: false });
   doc.font('N').fontSize(7.5).fillColor(MUTED).text(String(n), doc.page.width - M - 30, fy, { width: 30, align: 'right', lineBreak: false });
 }
 
@@ -188,9 +188,9 @@ function agentBlock(doc, M, y, CW, a) {
 }
 
 function build() {
-  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Tracks - Agenți AI & RA Insight', Author: 'RA Tracks' } });
+  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Track - Agenți AI & RA Insight', Author: 'RA Track' } });
   reg(doc);
-  const out = fs.createWriteStream(path.join(__dirname, 'RA-Tracks_Agenti-AI.pdf')); doc.pipe(out);
+  const out = fs.createWriteStream(path.join(__dirname, 'RA-Track_Agenti-AI.pdf')); doc.pipe(out);
   const W = doc.page.width, H = doc.page.height, CW = W - 2 * M;
 
   // ══════ COPERTĂ (dark, ca flyer-ul) ══════
@@ -371,4 +371,4 @@ function build() {
   return new Promise(function (r) { out.on('finish', r); });
 }
 
-build().then(function () { console.log('DONE: RA-Tracks_Agenti-AI.pdf'); });
+build().then(function () { console.log('DONE: RA-Track_Agenti-AI.pdf'); });

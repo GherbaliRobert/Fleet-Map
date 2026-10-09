@@ -1,4 +1,4 @@
-// insight_ghid.js — „Ghidul aplicației": cum se face ceva în RA Tracks, pas cu pas (Alin, 02.10: ramura din RA Insight).
+// insight_ghid.js — „Ghidul aplicației": cum se face ceva în RA Track, pas cu pas (Alin, 02.10: ramura din RA Insight).
 //
 // Citit e GRATUIT (ramura „Ghidul aplicației" din secțiunea RA Insight arată textele de aici). RA Insight îl folosește
 // și el (unealta `cauta_in_ghid`), ca la „cum programez un raport pe email?" să răspundă cu pașii ADEVĂRAȚI, nu din
@@ -26,7 +26,7 @@ const SECTIUNI = [
       'La „Interval orar" completează „De la" și „Până la", sau apasă „Azi", „Ieri", „7 zile".',
       'Apasă „Încarcă traseul".',
       'Bifează o singură mașină ca să vezi „Sumar traseu", redarea pe hartă și butoanele „Limite reale" și „Aliniază pe drumuri".',
-      'Descarcă cu „Excel" (sumar + fiecare poziție, cu numele RA Tracks) sau „KML".'
+      'Descarcă cu „Excel" (sumar + fiecare poziție, cu numele RA Track) sau „KML".'
     ],
     detalii: 'Intervalul poate fi de cel mult 92 de zile. „Limite reale" colorează cu roșu porțiunile unde s-a depășit limita drumului.',
     cuvinte: ['traseu', 'istoric', 'pe unde a fost', 'drum', 'excel', 'kml', 'limite reale', 'redare', 'poziții']
@@ -37,7 +37,7 @@ const SECTIUNI = [
       'Alege categoria (Monitorizare, Consum carburant, Date CAN, Senzori, Evenimente & zone, Siguranță & EcoDrive) și apasă cardul raportului.',
       'La „Vehicul" alege o mașină sau „Toată flota"; la „Interval orar" alege perioada (sau „Azi", „Ieri", „7 zile", „30 zile").',
       'Apasă „Generează", apoi „Vezi raportul".',
-      'Sub tabel, la „Descarcă:", apasă „Excel" sau „PDF" (fișierul are numele și logo-ul RA Tracks); „Rezumă cu RA Insight" scrie pe scurt ce arată raportul.'
+      'Sub tabel, la „Descarcă:", apasă „Excel" sau „PDF" (fișierul are numele și logo-ul RA Track); „Rezumă cu RA Insight" scrie pe scurt ce arată raportul.'
     ],
     detalii: 'Fila „Istoric rapoarte" păstrează rapoartele generate 7 zile, apoi se șterg singure. Fila „AI Raport" răspunde pe loc la întrebări despre rapoarte.',
     cuvinte: ['raport', 'rapoarte', 'genereaza', 'descarca', 'excel', 'pdf', 'istoric rapoarte', 'categorie']
@@ -202,7 +202,7 @@ const SECTIUNI = [
       'Apasă un agent → „Deschide agentul" ca să vezi ce a găsit.',
       '„Rulează" verifică acum; „Praguri" schimbă limitele (adminul firmei).'
     ],
-    detalii: 'RA Watch (paznic: fără semnal, furt de combustibil, ralanti), RA Dispatch (mașini libere), RA Care (acte, revizii), RA Optimize (stilul de condus), RA Compliance (ore de condus), RA Client (sinteza zilei). Lucrează singuri, gratuit; îi pornește echipa RA Tracks.',
+    detalii: 'RA Watch (paznic: fără semnal, furt de combustibil, ralanti), RA Dispatch (mașini libere), RA Care (acte, revizii), RA Optimize (stilul de condus), RA Compliance (ore de condus), RA Client (sinteza zilei). Lucrează singuri, gratuit; îi pornește echipa RA Track.',
     cuvinte: ['agenti', 'agent', 'ra watch', 'ra care', 'ra optimize', 'ra compliance', 'ra dispatch', 'ra client', 'praguri']
   },
   {

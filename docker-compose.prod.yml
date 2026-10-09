@@ -1,4 +1,4 @@
-# RA Tracks — stivă de PRODUCȚIE pentru VPS propriu (Hostico sau oricare altul).
+# RA Track — stivă de PRODUCȚIE pentru VPS propriu (Hostico sau oricare altul).
 #
 # Diferența față de `docker-compose.yml` (care e pentru probe și demonstrații): acolo aplicația
 # rulează pe PGlite, o bază care trăiește într-un fișier. E potrivită pentru câteva vehicule, nu

@@ -69,7 +69,7 @@ const rupte = [];
 T('niciun `require` local rupt în probele porții', rupte.length === 0, rupte.join(' · '));
 
 sect('3. Ce s-a scos odată cu Stripe a plecat de tot');
-// Regula de fond („RA Tracks NU funcționează pe planuri") e păzită de `verify_fara_planuri.js`.
+// Regula de fond („RA Track NU funcționează pe planuri") e păzită de `verify_fara_planuri.js`.
 // Aici se apără doar urma rămasă în poartă — locul care n-a fost curățat atunci.
 T('poarta nu mai numește `billing.js`', !/^\s*node\s+(?:--check\s+)?billing\.js/m.test(ci));
 T('și nici proba lui', !/^\s*node\s+test_billing\.js/m.test(ci) && !fs.existsSync(P('test_billing.js')));

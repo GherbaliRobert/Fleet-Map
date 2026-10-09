@@ -1,7 +1,7 @@
 // montaj.js — montajul la client: ce-i facturăm lui și cât ne costă pe noi.
 //
 // Cum merge afacerea (Alin, 09.09): clientul cere GPS cu montaj. Montajul îl vindem NOI, ca RA
-// Tracks. Îl execută un partener (firma X). Partenerul ne facturează pe noi, noi facturăm clientul.
+// Track. Îl execută un partener (firma X). Partenerul ne facturează pe noi, noi facturăm clientul.
 // Clientul nu știe de firma X și nici nu trebuie să știe.
 //
 // De aici ies DOUĂ prețuri pe aceeași lucrare, și doar unul are voie să ajungă pe hârtia clientului:

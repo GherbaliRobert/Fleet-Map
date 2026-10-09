@@ -1,4 +1,4 @@
-// verify_fara_planuri.js — RA Tracks nu funcționează pe planuri. Niciodată.
+// verify_fara_planuri.js — RA Track nu funcționează pe planuri. Niciodată.
 //
 //   node verify_fara_planuri.js
 //

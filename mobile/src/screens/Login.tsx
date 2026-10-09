@@ -47,7 +47,7 @@ export function Login() {
   return (
     <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:24px;padding-top:calc(var(--sat) + 24px);background:var(--bg-darkest)">
       <div style="text-align:center;margin-bottom:34px">
-        <span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="44" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="44" alt="RA" /><span class="raw" style="font-size:30px">Tracks</span></span>
+        <span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="44" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="44" alt="RA" /><span class="raw" style="font-size:30px">Track</span></span>
         <div class="muted" style="margin-top:6px;font-size:14px">Monitorizare flotă</div>
       </div>
       <form onSubmit={submit} style="display:flex;flex-direction:column;gap:16px">
@@ -85,7 +85,7 @@ export function Login() {
             style="color:var(--text-muted);font-size:12.5px;text-decoration:none;border-bottom:1px dotted var(--text-muted)">Am uitat parola</a>
         </div>
       )}
-      <div class="muted" style="text-align:center;margin-top:26px;font-size:12px">RA Tracks © {new Date().getFullYear()}</div>
+      <div class="muted" style="text-align:center;margin-top:26px;font-size:12px">RA Track © {new Date().getFullYear()}</div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const contracte = require('./contracts');   // regulile promise pe hârtie (ex. câte luni se păstrează istoricul)
 
-// Logo RA Tracks pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
+// Logo RA Track pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
 // ATENȚIE la denumire: „logo.png" e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
 // „logo-light.png" e varianta ÎNCHISĂ (pt. temă/​fundal deschis) — asta ne trebuie pe alb.
 let _logoBuf = null, _logoTried = false;
@@ -94,11 +94,11 @@ function xlWriteLegend(ws, legend, startRow, ncol) {
 }
 // Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar" + un sheet/mașină.
 async function toXlsxMultiSheet(report) {
-  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Tracks';
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
   const used = new Set();
   const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
-  const logoId = xlLogoId(wb); // logo RA Tracks, refolosit pe toate foile
+  const logoId = xlLogoId(wb); // logo RA Track, refolosit pe toate foile
   if (!report.noSummarySheet) { // unele rapoarte (ex. Scadențe) vor DOAR foi/mașină, fără foaia „Sumar"
     // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
     const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
@@ -134,7 +134,7 @@ async function toXlsx(report) {
   const cols = report.columns || [];
   const ncol = Math.max(1, cols.length);
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'RA Tracks';
+  wb.creator = 'RA Track';
   const logoId = xlLogoId(wb);
   // Sumar pe FOAIE SEPARATĂ (opt-in prin report.summarySheet) — KPI-urile flotei, curat, ca primă foaie (nu îngrămădit la baza tabelului).
   if (report.summarySheet && report.summary && Object.keys(report.summary).length) {
@@ -294,7 +294,7 @@ function renderPdf(doc, report) {
   const bottom = doc.page.height - doc.page.margins.bottom;
   let y = doc.page.margins.top;
 
-  // 1. Antet brandat — logo REAL RA Tracks (aceeași imagine ca în Excel), la stânga
+  // 1. Antet brandat — logo REAL RA Track (aceeași imagine ca în Excel), la stânga
   const _pdfLogo = _logoBuffer();
   if (_pdfLogo) { try { doc.image(_pdfLogo, left, y, { height: 24 }); } catch (e) {} } // 694×135 → înălț. 24 ⇒ lățime ≈123, proporție păstrată
   doc.fillColor('#111').font('Nunito-Bold').fontSize(13).text(report.label || 'Raport', left, y + 6, { width: usableW, align: 'right', lineBreak: false });
@@ -372,7 +372,7 @@ function renderPdf(doc, report) {
 function toPdf(report) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Tracks' } });
+      const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Track' } });
       // Font unicode înglobat (DejaVu Sans — glife românești complete Ș/Ț/Ă/ș/ț/ă) sub aliasul intern „Nunito".
       // Helvetica din pdfkit corupea diacriticele. Fallback la Helvetica dacă lipsesc TTF-urile (nu strică PDF-ul).
       try {
@@ -406,7 +406,7 @@ function contentDisposition(filename) {
 
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
-  const name = safeName('RA-Tracks - Raport ' + (report.label || report.type) + ' - ' + datePart()); // ex: „RA-Tracks - Raport Traseu - 06.07.2026"
+  const name = safeName('RA-Track - Raport ' + (report.label || report.type) + ' - ' + datePart()); // ex: „RA-Track - Raport Traseu - 06.07.2026"
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -672,7 +672,7 @@ function renderOfertaPdf(doc, o) {
     const lMin = Math.max(1, Number(o.chirieLuniMin) || 24), zRet = Math.max(1, Number(o.chirieZileRetur) || 15);
     conditii.splice(0, 1, 'Instalarea se facturează o singură dată, după punerea în funcțiune. Aparatele nu se cumpără: sunt închiriate.');
     conditii.splice(2, 1,
-      'Aparatele sunt închiriate și rămân proprietatea RA Tracks pe toată durata contractului. Chiria lor se facturează lunar, pe rând separat, împreună cu abonamentul.',
+      'Aparatele sunt închiriate și rămân proprietatea RA Track pe toată durata contractului. Chiria lor se facturează lunar, pe rând separat, împreună cu abonamentul.',
       'Durata minimă a contractului este de ' + lMin + ' ' + _ofDe(lMin) + 'luni. Dacă se încheie mai devreme, se datorează chiria aparatelor pentru lunile rămase până la ' + lMin
         + ' și demontarea lor' + (Number(o.tarifDemontare) > 0 ? ', de ' + _bani(o.tarifDemontare, 'lei') + ' pe aparat.' : '.'),
       'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. La sfârșitul contractului, demontarea o facem noi, fără cost. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
@@ -718,7 +718,7 @@ function renderOfertaPdf(doc, o) {
 function ofertaToPdf(o) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: 'A4', margin: 36, info: { Title: 'Ofertă RA Tracks', Author: 'RA Tracks' } });
+      const doc = new PDFDocument({ size: 'A4', margin: 36, info: { Title: 'Ofertă RA Track', Author: 'RA Track' } });
       try {
         doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
         doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));
@@ -734,10 +734,10 @@ function ofertaToPdf(o) {
     } catch (e) { reject(e); }
   });
 }
-// Numele fișierului urmează regula casei, ca la rapoarte: „RA-Tracks - Ofertă {client} - {data}".
+// Numele fișierului urmează regula casei, ca la rapoarte: „RA-Track - Ofertă {client} - {data}".
 async function sendOfertaPdf(res, o) {
   const cine = (o && ((o.client && o.client.name) || o.offerName)) || 'client';
-  const name = safeName('RA-Tracks - Ofertă ' + cine + ' - ' + datePart());
+  const name = safeName('RA-Track - Ofertă ' + cine + ' - ' + datePart());
   const buf = await ofertaToPdf(o);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', contentDisposition(name + '.pdf'));
@@ -757,12 +757,12 @@ async function sendOfertaPdf(res, o) {
 async function sablonMasiniXlsx(opt) {
   const compat = require('./compatibilitate');
   const marci = (opt && opt.marci) || [];
-  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Tracks';
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
   const col = compat.SABLON_COLOANE, n = col.length;
   const ws = wb.addWorksheet('Mașini');
   let r = xlPlaceLogo(ws, xlLogoId(wb));
   const scrie = (text, font) => { const c = ws.getCell(r, 1); c.value = text; c.font = font; r++; };
-  scrie('Mașinile flotei — pentru oferta RA Tracks', { bold: true, size: 14 });
+  scrie('Mașinile flotei — pentru oferta RA Track', { bold: true, size: 14 });
   scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți", câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
   scrie('Marca și modelul: scrieți primele litere (ex. „da"), apăsați Enter, apoi săgeata din celulă — lista arată doar ce începe așa. La model, doar modelele mărcii scrise. Combustibilul se alege din listă.', { size: 10, color: { argb: 'FF555555' } });
   scrie('„An fabricație" = anul mașinii, de ex. 2024. Exemplu de rând: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
@@ -838,11 +838,11 @@ async function sablonMasiniXlsx(opt) {
     col.forEach((c, j) => { ws.getCell(antet + i, j + 1).border = { top: chenar, left: chenar, bottom: chenar, right: chenar }; });
   }
   const buf = await wb.xlsx.writeBuffer();
-  return { buffer: Buffer.from(buf), nume: 'RA-Tracks - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
+  return { buffer: Buffer.from(buf), nume: 'RA-Track - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
 }
 
 // ─── începe „traseul descărcat din ecranul Traseu" ───────────────────────────────────────────────
-// Alin (01.10): „raportul CSV — îmi apar numai cifre… nu are numele RA Tracks ca celelalte documente
+// Alin (01.10): „raportul CSV — îmi apar numai cifre… nu are numele RA Track ca celelalte documente
 // descărcabile, iar în interiorul fișierului sunt doar cifre, nimic de înțeles". Fișierul vechi
 // (`traseu_<imei>_<zi>.csv`) avea codurile brute ale aparatului („_control_flags", „can_csf_…",
 // „[object Object]") și se deschidea într-o SINGURĂ coloană în Excel-ul românesc (care desparte cu „;").
@@ -936,7 +936,7 @@ function traseuVehicul(o) {
   return { vehicul: vehicul || String(o.imei || ''), nume: nume, plate: plate, rows: rows, sumar: sumar };
 }
 // Raportul pentru `sendReport`: un vehicul = foaia „Sumar" + foaia „Poziții"; mai multe = „Sumar" (un rând pe
-// vehicul) + câte o foaie pe vehicul. Numele fișierului: „RA-Tracks - Raport Traseu {vehicul} - {zi}.xlsx".
+// vehicul) + câte o foaie pe vehicul. Numele fișierului: „RA-Track - Raport Traseu {vehicul} - {zi}.xlsx".
 function traseuCaRaport(lista, from, to) {
   const v = (lista || []).filter(Boolean);
   if (v.length === 1) {
@@ -1048,7 +1048,7 @@ async function _asteaptaArhiva(ws, inchis) {
 async function istoricCompletXlsx(iesire, o) {
   const inchis = new Promise(function (r) { iesire.once('close', r); });
   const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: iesire, useStyles: true, useSharedStrings: false });
-  wb.creator = 'RA Tracks';
+  wb.creator = 'RA Track';
   const logo = _xlFluxLogo(wb), sumar = o.sumar, f = _formatoriTraseu();
   const zi = function (ts) { return ts == null ? '—' : f.zi.format(new Date(ts)); };
   // Un rând, scris și trimis pe loc (în flux, un rând trimis nu se mai poate schimba — stilul se pune înainte).

@@ -1,4 +1,4 @@
-// build_docs.js — 2 PDF-uri RA Tracks: (1) "Ce avem ready acum" (status), (2) flyer showcase funcționalități.
+// build_docs.js — 2 PDF-uri RA Track: (1) "Ce avem ready acum" (status), (2) flyer showcase funcționalități.
 // Totul desenat în pdfkit: branding Nunito (full latin), iconuri Font Awesome, grafice + mockup-uri UI „stil app".
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
@@ -127,7 +127,7 @@ function pageHeader(doc, M, sub) {
 }
 function pageFooter(doc, M, n) {
   const fy = doc.page.height - M - 12;
-  doc.font('N').fontSize(7.5).fillColor(MUTED).text('RA Tracks · Monitorizare GPS flotă · ratrack.ro', M, fy, { lineBreak: false });
+  doc.font('N').fontSize(7.5).fillColor(MUTED).text('RA Track · Monitorizare GPS flotă · ratrack.ro', M, fy, { lineBreak: false });
   doc.font('N').fontSize(7.5).fillColor(MUTED).text(String(n), doc.page.width - M - 30, fy, { width: 30, align: 'right', lineBreak: false });
 }
 function check(doc, x, y, txt, desc) {
@@ -161,8 +161,8 @@ function roadmapBlock(doc, M, y, CW, items) {
   return y + h + 10;
 }
 function buildDoc1() {
-  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Tracks - Ce avem ready', Author: 'RA Tracks' } });
-  reg(doc); const out = fs.createWriteStream(path.join(__dirname, 'RA-Tracks_Ce-avem-ready.pdf')); doc.pipe(out);
+  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Track - Ce avem ready', Author: 'RA Track' } });
+  reg(doc); const out = fs.createWriteStream(path.join(__dirname, 'RA-Track_Ce-avem-ready.pdf')); doc.pipe(out);
   const CW = doc.page.width - 2 * M;
   // Ziua CONȚINUTULUI, nu ziua de azi: pe 09.10 s-a refăcut doar sigla, iar textul e cel din 25.07. Cu data de azi, un
   // status vechi ar fi părut de acum. Schimbi textul → schimbi și ziua de aici.
@@ -226,8 +226,8 @@ function featurePage(doc, M, f, n) {
   pageFooter(doc, M, n);
 }
 function buildDoc2() {
-  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Tracks - Flyer', Author: 'RA Tracks' } });
-  reg(doc); const out = fs.createWriteStream(path.join(__dirname, 'RA-Tracks_Flyer.pdf')); doc.pipe(out);
+  const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Track - Flyer', Author: 'RA Track' } });
+  reg(doc); const out = fs.createWriteStream(path.join(__dirname, 'RA-Track_Flyer.pdf')); doc.pipe(out);
   const W = doc.page.width, H = doc.page.height, CW = W - 2 * M;
 
   doc.rect(0, 0, W, H).fillColor(DARK).fill();

@@ -178,7 +178,7 @@ export function Menu() {
             <span aria-hidden="true">·</span>
             <a href={API_BASE + '/confidentialitate'} target="_blank" rel="noopener" style="color:var(--text-muted)">Confidențialitate</a>
           </div>
-          RA Tracks{versiune ? ' · v' + versiune : ''}
+          RA Track{versiune ? ' · v' + versiune : ''}
         </div>
       </div>
 

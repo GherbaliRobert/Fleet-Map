@@ -95,6 +95,6 @@ li{margin:2px 0;}
 strong{color:#0b3a22;}
 `;
 
-const out = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Audit RA Tracks</title><style>' + css + '</style></head><body>' + html.join('\n') + '</body></html>';
+const out = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Audit RA Track</title><style>' + css + '</style></head><body>' + html.join('\n') + '</body></html>';
 fs.writeFileSync(process.argv[3] || 'AUDIT-RA-TRACKS.html', out, 'utf8');
 console.log('HTML scris:', process.argv[3] || 'AUDIT-RA-TRACKS.html', '(' + out.length + ' bytes)');

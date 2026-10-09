@@ -309,7 +309,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const pdf = await cerere('POST', '/api/admin/offers/pdf', telNou, inc.j.hartieSalvata);
   const buf = Buffer.from(await pdf.arrayBuffer());
   const cd = pdf.headers.get('content-disposition') || '';
-  T('PDF-ul ofertei salvate iese de la generatorul serverului, cu numele lui', pdf.status === 200 && buf.slice(0, 4).toString() === '%PDF' && /filename\*=UTF-8''RA-Tracks/.test(cd),
+  T('PDF-ul ofertei salvate iese de la generatorul serverului, cu numele lui', pdf.status === 200 && buf.slice(0, 4).toString() === '%PDF' && /filename\*=UTF-8''RA-Track/.test(cd),
     pdf.status + ' ' + cd);
   // Modulele vândute se redeschid bifate: altfel „Actualizează" scria un abonament mai mic (Tahograf și
   // e-Transport dispăreau fără niciun mesaj — și din contractul făcut apoi din ofertă).
@@ -545,7 +545,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const ExcelJS = require('exceljs');
   const rsab = await fetch(B + '/api/admin/masini/sablon', { headers: { Authorization: 'Bearer ' + tel.token } });
   const cdSab = rsab.headers.get('content-disposition') || '';
-  T('telefonul descarcă șablonul de la server, cu numele casei', rsab.status === 200 && decodeURIComponent((cdSab.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') === 'RA-Tracks - Șablon mașini client.xlsx', rsab.status + ' ' + cdSab);
+  T('telefonul descarcă șablonul de la server, cu numele casei', rsab.status === 200 && decodeURIComponent((cdSab.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') === 'RA-Track - Șablon mașini client.xlsx', rsab.status + ' ' + cdSab);
   const wbS = new ExcelJS.Workbook(); await wbS.xlsx.load(Buffer.from(await rsab.arrayBuffer()));
   const wsS = wbS.getWorksheet('Mașini');
   let rA = 0; for (let i = 1; i <= 12 && wsS && !rA; i++) if (String(wsS.getCell(i, 1).value) === 'Marcă') rA = i;
@@ -588,7 +588,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   T('lista mașinilor nu alege aparate și nu caută singură în listele Teltonika (nici potrivire, nici reguli)',
     !!msTel && !/masini\/potrivire|fmc130_lvcan|'fmc650'|_ofRecDinMasini|_ofRecomandare|recomanda\(/.test(msTel + calcTel2));
   T('șablonul: descărcat de la server (numele din antet), urcat în JSON pe ușa lui; lista Teltonika — crud, pe ușa web-ului',
-    /salveazaDeLaServer\('\/api\/admin\/masini\/sablon', 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(msTel) && /masiniSablonCiteste\(/.test(msTel)
+    /salveazaDeLaServer\('\/api\/admin\/masini\/sablon', 'RA-Track - Șablon mașini client\.xlsx'\)/.test(msTel) && /masiniSablonCiteste\(/.test(msTel)
       && /masiniSablonCiteste: [\s\S]{0,200}'\/api\/admin\/masini\/sablon', \{ method: 'POST'/.test(epTel) && /trimiteFisierCrud\('\/api\/admin\/masini\/liste'/.test(msTel)
       && /dataType: 'file'/.test(trimTel) && /'X-Fisier': encodeURIComponent\(f\.name\)/.test(msTel));
   T('...și întreabă înainte să înlocuiască o listă începută', /fel: 'inlocuieste'/.test(msTel) && /'Lista are deja ' \+ nrDe\(foaie\.acum, 'mașină', 'mașini'\)/.test(msTel));

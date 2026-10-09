@@ -3,8 +3,8 @@ ext {
     // appVersionCode: numar intreg, CRESTE la fiecare livrare. Android refuza sa instaleze peste
     //   o versiune cu numar mai mare, iar Google Play refuza acelasi numar de doua ori.
     // appVersionName: ce vede clientul in ecranul „Despre".
-    appVersionCode = 11
-    appVersionName = '1.0.9'
+    appVersionCode = 12
+    appVersionName = '1.0.10'
     minSdkVersion = 22
     compileSdkVersion = 34
     targetSdkVersion = 34

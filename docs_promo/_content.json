@@ -1,7 +1,7 @@
 {
  "inventory": {
   "brandTaglineIdeas": [
-   "RA Tracks — flota ta, sub control, în timp real.",
+   "RA Track — flota ta, sub control, în timp real.",
    "Vezi tot. Consumă mai puțin. Conduci mai sigur.",
    "GPS fleet management făcut pentru flotele din România.",
    "De la poziția pe hartă până la ora de condus — o singură platformă.",
@@ -152,7 +152,7 @@
     "group": "Integrare & API",
     "name": "Webhooks și API REST",
     "whatItDoes": "Trimite evenimente către URL-urile tale prin webhooks semnate HMAC (X-RaTracks-Signature) cu protecție anti-SSRF; API REST cu chei API cu durată limitată.",
-    "benefit": "Conectezi RA Tracks la ERP-ul, TMS-ul sau sistemele tale, în siguranță."
+    "benefit": "Conectezi RA Track la ERP-ul, TMS-ul sau sistemele tale, în siguranță."
    },
    {
     "group": "Platformă & securitate",
@@ -395,9 +395,9 @@
   ]
  },
  "marketing": {
-  "tagline": "RA Tracks — flota ta, sub control, în timp real.",
+  "tagline": "RA Track — flota ta, sub control, în timp real.",
   "heroHeadline": "Nu-ți mai imaginezi ce face flota ta. O vezi.",
-  "heroSub": "De la poziția pe hartă până la ultimul litru de motorină din rezervor, RA Tracks îți aduce flota întreagă pe un singur ecran — cu date reale din CAN-bus, nu estimări. Web și Android, aceleași funcții, oriunde ești.",
+  "heroSub": "De la poziția pe hartă până la ultimul litru de motorină din rezervor, RA Track îți aduce flota întreagă pe un singur ecran — cu date reale din CAN-bus, nu estimări. Web și Android, aceleași funcții, oriunde ești.",
   "pillars": [
    {
     "title": "Timp real, nu întârziat",
@@ -419,7 +419,7 @@
   "sections": [
    {
     "title": "Harta care nu clipește",
-    "lead": "Deschizi RA Tracks și toată flota respiră în fața ta. Fiecare marker e orientat după direcția de mers, colorat după stare — în mișcare, la ralanti, oprit — și se mută singur, în timp real, prin WebSocket. Un click și ai fișa vehiculului: viteza reală, litrii din rezervor și procentul, kilometrajul, temperaturile și datele CAN, toate într-un singur ecran care se actualizează live. Nu mai dai refresh. Nu mai aștepți. Doar vezi.",
+    "lead": "Deschizi RA Track și toată flota respiră în fața ta. Fiecare marker e orientat după direcția de mers, colorat după stare — în mișcare, la ralanti, oprit — și se mută singur, în timp real, prin WebSocket. Un click și ai fișa vehiculului: viteza reală, litrii din rezervor și procentul, kilometrajul, temperaturile și datele CAN, toate într-un singur ecran care se actualizează live. Nu mai dai refresh. Nu mai aștepți. Doar vezi.",
     "bullets": [
      "Poziții push în timp real, event-driven — fără reîncărcare, fără polling",
      "Marker orientat după direcția de mers, cu categorie și stare (mișcare / ralanti / oprit)",
@@ -430,7 +430,7 @@
    },
    {
     "title": "Alerte care ajung înaintea problemei",
-    "lead": "O platformă bună nu-ți arată doar ce s-a întâmplat — te avertizează înainte să te coste. Motorul de alerte RA Tracks urmărește peste zece tipuri de evenimente cu praguri pe care le stabilești tu: depășire de viteză, scădere bruscă de combustibil care miroase a furt, ralanti prelungit, temperatură mare de motor, supraîncărcare, mișcare fără contact, erori DTC, intrări și ieșiri din geozone, documente pe cale să expire. Iar când s-a depășit, îți arătăm pe hartă exact pe ce segment — comparând cu limita REALĂ a drumului din OpenStreetMap, nu cu o cifră fixă.",
+    "lead": "O platformă bună nu-ți arată doar ce s-a întâmplat — te avertizează înainte să te coste. Motorul de alerte RA Track urmărește peste zece tipuri de evenimente cu praguri pe care le stabilești tu: depășire de viteză, scădere bruscă de combustibil care miroase a furt, ralanti prelungit, temperatură mare de motor, supraîncărcare, mișcare fără contact, erori DTC, intrări și ieșiri din geozone, documente pe cale să expire. Iar când s-a depășit, îți arătăm pe hartă exact pe ce segment — comparând cu limita REALĂ a drumului din OpenStreetMap, nu cu o cifră fixă.",
     "bullets": [
      "Peste 10 tipuri de alerte configurabile, plus intrare/ieșire din geozone, cu praguri per companie",
      "Notificări livrate prin push (FCM), e-mail și Telegram — pe canalul care ți se potrivește",
@@ -441,7 +441,7 @@
    },
    {
     "title": "Fiecare vehicul, cu dosarul lui complet",
-    "lead": "Flota nu se administrează din memorie și din tabele Excel rătăcite. RA Tracks îți dă o fișă de vehicul de nivel enterprise: peste 15 câmpuri tehnice, de la limita de viteză și consumurile pe oraș/drum/ralanti până la clasa de emisii, puterea, sarcina utilă și centrul de cost. Documentele — ITP, RCA, CASCO — au date de expirare colorate și te avertizează din timp, așa că nu mai prinzi niciodată o asigurare expirată. Iar când muți sau actualizezi zeci de mașini, un import CSV le rezolvă în câteva minute.",
+    "lead": "Flota nu se administrează din memorie și din tabele Excel rătăcite. RA Track îți dă o fișă de vehicul de nivel enterprise: peste 15 câmpuri tehnice, de la limita de viteză și consumurile pe oraș/drum/ralanti până la clasa de emisii, puterea, sarcina utilă și centrul de cost. Documentele — ITP, RCA, CASCO — au date de expirare colorate și te avertizează din timp, așa că nu mai prinzi niciodată o asigurare expirată. Iar când muți sau actualizezi zeci de mașini, un import CSV le rezolvă în câteva minute.",
     "bullets": [
      "Fișă vehicul completă cu peste 15 câmpuri tehnice și status activ/arhivat",
      "Documente ITP/RCA/CASCO cu scadențe colorate și alerte de expirare din timp",
@@ -452,7 +452,7 @@
    },
    {
     "title": "Fiecare litru, socotit corect",
-    "lead": "Combustibilul e cea mai mare gaură din bugetul unei flote — și cea mai ușoară de furat. RA Tracks îl măsoară din contorul CAN cumulativ sau din scăderile reale de nivel, iar acolo unde nu există senzor estimează cinstit din kilometri și consum, marcând clar „estimat” față de „senzor”. Costurile folosesc prețul real de piață, actualizat automat de două ori pe zi din media națională. Iar reconcilierea cardului de combustibil prinde furtul singură: un bon de 50 de litri fără nicio creștere în rezervor apare imediat ca suspect.",
+    "lead": "Combustibilul e cea mai mare gaură din bugetul unei flote — și cea mai ușoară de furat. RA Track îl măsoară din contorul CAN cumulativ sau din scăderile reale de nivel, iar acolo unde nu există senzor estimează cinstit din kilometri și consum, marcând clar „estimat” față de „senzor”. Costurile folosesc prețul real de piață, actualizat automat de două ori pe zi din media națională. Iar reconcilierea cardului de combustibil prinde furtul singură: un bon de 50 de litri fără nicio creștere în rezervor apare imediat ca suspect.",
     "bullets": [
      "Consum din senzor/contor CAN acolo unde ai, estimare onestă acolo unde nu ai — fără cifre umflate",
      "Preț combustibil real din media națională (PrețCarburant.ro), actualizat automat de 2×/zi",
@@ -474,7 +474,7 @@
    },
    {
     "title": "Toată flota, în buzunarul tău",
-    "lead": "Nu ești mereu la birou, dar flota nu ia pauză. Aplicația nativă Android RA Tracks îți dă aceleași funcții ca în browser — hartă live, trasee, rapoarte cu istoric, alerte, fișă vehicul, administrare, AI și card combustibil — pentru că paritatea web ↔ Android e la noi o regulă, nu o promisiune. Ce apare pe web apare și pe telefon, în aceeași iterație. Iar sub capotă, o platformă construită pe standarde serioase îți ține datele separate, protejate și salvate off-site.",
+    "lead": "Nu ești mereu la birou, dar flota nu ia pauză. Aplicația nativă Android RA Track îți dă aceleași funcții ca în browser — hartă live, trasee, rapoarte cu istoric, alerte, fișă vehicul, administrare, AI și card combustibil — pentru că paritatea web ↔ Android e la noi o regulă, nu o promisiune. Ce apare pe web apare și pe telefon, în aceeași iterație. Iar sub capotă, o platformă construită pe standarde serioase îți ține datele separate, protejate și salvate off-site.",
     "bullets": [
      "Aplicație nativă Android (Capacitor/Preact) cu paritate operațională față de web",
      "Push în timp real prin Firebase Cloud Messaging, direct pe telefon",
@@ -511,10 +511,10 @@
    }
   ],
   "ctaHeadline": "Flota ta merită să fie văzută. Toată. În timp real.",
-  "ctaText": "Fie că ai 5 vehicule sau 2000, RA Tracks îți aduce controlul, economia și liniștea într-o singură platformă — web și Android, cu date reale și AI care veghează pentru tine. Programează o demonstrație și vezi cu ochii tăi cum arată flota ta când nu mai lași nimic la voia întâmplării."
+  "ctaText": "Fie că ai 5 vehicule sau 2000, RA Track îți aduce controlul, economia și liniștea într-o singură platformă — web și Android, cu date reale și AI care veghează pentru tine. Programează o demonstrație și vezi cu ochii tăi cum arată flota ta când nu mai lași nimic la voia întâmplării."
  },
  "technical": {
-  "intro": "RA Tracks este o platformă SaaS multi-tenant de fleet management GPS, construită pentru flotele din România și dimensionată pentru scalare de la câteva vehicule până la ținta proiectată de 30+ companii și ~2000 de vehicule Teltonika. Spre deosebire de soluțiile care oferă doar poziție pe hartă, RA Tracks extrage date reale din calculatorul mașinii prin CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) folosind decodarea codec8e, cu două scheme CAN comutabile per dispozitiv — LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane. Documentul de față descrie arhitectura tehnică, hardware-ul suportat, protocoalele de date, modelul de securitate, integrările, motorul de rapoarte, aplicația nativă și modelul de deployment, adresându-se CTO-ilor și managerilor de flotă care evaluează platforma. Principiul de bază al platformei este onestitatea datelor: consumul măsurat prin senzor/contor CAN este marcat distinct față de cel estimat, iar funcțiile aflate încă în stadiu de demo sau roadmap (e-Transport ANAF, e-Toll, descărcare tahograf la distanță, RA Dispatch, plăți automate Stripe, object storage pentru atașamente) sunt marcate explicit ca atare în secțiunile relevante și NU sunt prezentate ca funcționale în producție.",
+  "intro": "RA Track este o platformă SaaS multi-tenant de fleet management GPS, construită pentru flotele din România și dimensionată pentru scalare de la câteva vehicule până la ținta proiectată de 30+ companii și ~2000 de vehicule Teltonika. Spre deosebire de soluțiile care oferă doar poziție pe hartă, RA Track extrage date reale din calculatorul mașinii prin CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) folosind decodarea codec8e, cu două scheme CAN comutabile per dispozitiv — LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane. Documentul de față descrie arhitectura tehnică, hardware-ul suportat, protocoalele de date, modelul de securitate, integrările, motorul de rapoarte, aplicația nativă și modelul de deployment, adresându-se CTO-ilor și managerilor de flotă care evaluează platforma. Principiul de bază al platformei este onestitatea datelor: consumul măsurat prin senzor/contor CAN este marcat distinct față de cel estimat, iar funcțiile aflate încă în stadiu de demo sau roadmap (e-Transport ANAF, e-Toll, descărcare tahograf la distanță, RA Dispatch, plăți automate Stripe, object storage pentru atașamente) sunt marcate explicit ca atare în secțiunile relevante și NU sunt prezentate ca funcționale în producție.",
   "architecture": "Arhitectura este împărțită pe straturi clare, de la ingestie până la prezentare. Dispozitivele Teltonika deschid o conexiune TCP brută către serverul de ingestie (port container 5027) și trimit cadre în protocolul codec8e, decodate în timp real; datele decodate (poziții, parametri IO, valori CAN) trec printr-un strat de procesare care evaluează regulile de alerte, actualizează starea live în memorie și persistă pozițiile. Persistența se face în PostgreSQL, cu TimescaleDB pentru tabela `positions` transformată în hypertable (compresie după 7 zile, retenție implicită 180 de zile, configurabilă via `POSITION_RETENTION_DAYS`). Stratul de prezentare este o aplicație web PWA single-page care primește actualizări de poziții și alerte prin WebSocket (push event-driven, nu polling), plus o aplicație nativă Android cu paritate operațională. Baza de date rulează în mod dual (`db.js`): PostgreSQL/TimescaleDB în producție, PGlite pentru dezvoltare și demo local, cu migrarea izolată în acest modul.",
   "architectureLayers": [
    "Ingestie: server TCP dedicat (port container 5027) care primește cadre codec8e brute de la trackerele Teltonika și le decodează în timp real",

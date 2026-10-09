@@ -1,4 +1,4 @@
-# RA Tracks — platformă SaaS de tracking flotă (Teltonika)
+# RA Track — platformă SaaS de tracking flotă (Teltonika)
 
 Platformă de monitorizare GPS pentru dispozitive Teltonika (FMB140 + camioane cu CAN), cu hartă live,
 istoric, rapoarte, alerte, **multi-tenant** (mai multe companii, fiecare cu flota ei), **asistent AI**

@@ -94,7 +94,7 @@ const LUNI_CONVERSATII_AI = 12;
 // ─── Echipamentele ÎNCHIRIATE (decizie Alin, 25.09) ──────────────────────────────────────────────
 // Nu orice client vrea să cumpere aparatele. Cine le închiriază plătește la semnare doar montajul, iar
 // lunar, pe lângă abonament, chiria aparatelor — pe rând separat, pe factură. Aparatele rămân ALE
-// NOASTRE (stoc RA Tracks) și ne revin la final. Regulile, hotărâte de Alin:
+// NOASTRE (stoc RA Track) și ne revin la final. Regulile, hotărâte de Alin:
 //   • durata minimă a contractului: 24 de luni — aparatul își scoate banii din chirie, în timp;
 //   • chiria = ce ne-a costat aparatul ÷ lunile contractului, plus 50% (riscul și banii dați înainte);
 //   • montajul se plătește la semnare, ca la cumpărare;

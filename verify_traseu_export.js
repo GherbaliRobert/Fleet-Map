@@ -122,8 +122,8 @@ const exportTs = citeste('mobile/src/lib/export.ts');
   try { kmlWeb = new Function(fKml + '\nreturn _numeKmlTraseu;')(); } catch (e) { T('_numeKmlTraseu rulează', false, e.message); }
   const AZI = new Date(2026, 9, 1);
   if (kmlWeb) {
-    T('KML: „RA-Tracks - Traseu {vehicul} - {zi}.kml"', kmlWeb('Dacia Logan 3 · B 154 UIP', AZI) === 'RA-Tracks - Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.kml', kmlWeb('Dacia Logan 3 · B 154 UIP', AZI));
-    T('KML: caracterele interzise în nume de fișier se scot', kmlWeb('Camion 3/4: "Volvo"', AZI) === 'RA-Tracks - Traseu Camion 3 4 Volvo - 01.10.2026.kml', kmlWeb('Camion 3/4: "Volvo"', AZI));
+    T('KML: „RA-Track - Traseu {vehicul} - {zi}.kml"', kmlWeb('Dacia Logan 3 · B 154 UIP', AZI) === 'RA-Track - Traseu Dacia Logan 3 · B 154 UIP - 01.10.2026.kml', kmlWeb('Dacia Logan 3 · B 154 UIP', AZI));
+    T('KML: caracterele interzise în nume de fișier se scot', kmlWeb('Camion 3/4: "Volvo"', AZI) === 'RA-Track - Traseu Camion 3 4 Volvo - 01.10.2026.kml', kmlWeb('Camion 3/4: "Volvo"', AZI));
   }
 
   // ═══ 4. Telefonul: același fișier, același nume ═══════════════════════════════════════════════════════════════
@@ -338,7 +338,7 @@ const exportTs = citeste('mobile/src/lib/export.ts');
 
     const x1 = await GET(q(A1));
     T('Excel-ul unui vehicul se descarcă', x1.status === 200 && /spreadsheetml/.test(x1.headers.get('content-type') || ''), x1.status + ' ' + x1.headers.get('content-type'));
-    T('numele: „RA-Tracks - Raport Traseu Dacia Logan 3 · B 154 UIP - ' + azi + '.xlsx"', numeDin(x1) === 'RA-Tracks - Raport Traseu Dacia Logan 3 · B 154 UIP - ' + azi + '.xlsx', numeDin(x1));
+    T('numele: „RA-Track - Raport Traseu Dacia Logan 3 · B 154 UIP - ' + azi + '.xlsx"', numeDin(x1) === 'RA-Track - Raport Traseu Dacia Logan 3 · B 154 UIP - ' + azi + '.xlsx', numeDin(x1));
     if (x1.status === 200) {
       const w = new ExcelJS.Workbook(); await w.xlsx.load(Buffer.from(await x1.arrayBuffer()));
       T('foile „Sumar" și „Poziții", logo pe amândouă', J(w.worksheets.map((s) => s.name)) === J(['Sumar', 'Poziții']) && w.worksheets.every((s) => s.getImages().length === 1), J(w.worksheets.map((s) => [s.name, s.getImages().length])));
@@ -355,7 +355,7 @@ const exportTs = citeste('mobile/src/lib/export.ts');
     }
 
     const x2 = await GET(q(A1 + ',' + A2));
-    T('două vehicule: un fișier, „RA-Tracks - Raport Traseu 2 vehicule - ' + azi + '.xlsx"', x2.status === 200 && numeDin(x2) === 'RA-Tracks - Raport Traseu 2 vehicule - ' + azi + '.xlsx', x2.status + ' ' + numeDin(x2));
+    T('două vehicule: un fișier, „RA-Track - Raport Traseu 2 vehicule - ' + azi + '.xlsx"', x2.status === 200 && numeDin(x2) === 'RA-Track - Raport Traseu 2 vehicule - ' + azi + '.xlsx', x2.status + ' ' + numeDin(x2));
     if (x2.status === 200) {
       const w = new ExcelJS.Workbook(); await w.xlsx.load(Buffer.from(await x2.arrayBuffer()));
       T('„Sumar" + câte o foaie pe vehicul', J(w.worksheets.map((s) => s.name)) === J(['Sumar', 'Dacia Logan 3 · B 154 UIP', 'Ford Transit · B 22 FRD']), J(w.worksheets.map((s) => s.name)));
@@ -403,7 +403,7 @@ const exportTs = citeste('mobile/src/lib/export.ts');
     T('aparatul se arhivează', arhv.status === 200, arhv.status);
     const xh = await GET('/api/devices/' + H1 + '/istoric-complet');
     T('istoricul complet se descarcă', xh.status === 200 && /spreadsheetml/.test(xh.headers.get('content-type') || ''), xh.status + ' ' + xh.headers.get('content-type'));
-    T('numele: „RA-Tracks - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx"', numeDin(xh) === 'RA-Tracks - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx', numeDin(xh));
+    T('numele: „RA-Track - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx"', numeDin(xh) === 'RA-Track - Istoric complet Camion arhivat · TM 21 ARH - ' + azi + '.xlsx', numeDin(xh));
     if (xh.status === 200) {
       const w = new ExcelJS.Workbook(); await w.xlsx.load(Buffer.from(await xh.arrayBuffer()));
       const sm = {}; let lunile = 0;

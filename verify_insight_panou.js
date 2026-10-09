@@ -245,7 +245,7 @@ T('cartonașul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.t
 T('sus apar și facturatul, și cât a intrat', /cap: 'Facturat'/.test(html) && /cap: 'Intrat în cont'/.test(html));
 T('cifra de încasări își spune rostul, nu „încasat tot"', /încă neplătiți de clienți/.test(html) && /tot ce am facturat a fost plătit/.test(html));
 T('profitul e numit profit', /cap: 'Profit'/.test(html));
-T('și e limpede că e profitul din RA Insight, nu al firmei', /din RA Insight, nu din tot RA Tracks/.test(html));
+T('și e limpede că e profitul din RA Insight, nu al firmei', /din RA Insight, nu din tot RA Track/.test(html));
 
 sect('11. Dashboard: statistici și luna curentă, estimată');
 const M = (luna, o) => Object.assign({ luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);
@@ -313,7 +313,7 @@ T('și din câte conturi vine', /5 conturi × 16 lei în medie/.test(K));
 T('„Ne costă" spune și cât e o întrebare', /Ne costă/.test(K) && /112 întrebări/.test(K) && /lei una/.test(K),
   K.slice(K.indexOf('Ne costă'), K.indexOf('Ne costă') + 330));
 T('„Profit" arată marja', /Profit/.test(K) && /marjă 98%/.test(K), (K.match(/marjă \d+%/) || [''])[0]);
-T('și spune că e doar din RA Insight', /din RA Insight, nu din tot RA Tracks/.test(K));
+T('și spune că e doar din RA Insight', /din RA Insight, nu din tot RA Track/.test(K));
 T('„Firme" arată câte din câte', /3 <span class="mic">din 4<\/span>/.test(K));
 T('„Conturi de facturat" spune și câte sunt aprinse acum', /3 aprinse acum/.test(K) && /2 stinse pe parcurs/.test(K));
 T('și acordă numărul cum trebuie la unul singur',

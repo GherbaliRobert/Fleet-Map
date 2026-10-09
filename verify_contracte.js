@@ -258,10 +258,10 @@ T('și că trebuie verificată juridic', /A se verifica juridic înainte de semn
 // contractul e APROBAT, hârtia e curată și se poate printa. Semnul rămâne doar cât e în lucru.
 T('semnul de ciornă apare DOAR cât contractul e în lucru', /const ciorna = contract\.status === 'ciorna';/.test(cpdf));
 T('foloseşte logo-ul pentru fundal alb (vezi CLAUDE.md)', /logo-light\.png/.test(cpdf));
-// Numele fișierului, după regula casei (Alin, 24.09: „RA-Tracks - Contract"). Rulat, nu doar citit.
+// Numele fișierului, după regula casei (Alin, 24.09: „RA-Track - Contract"). Rulat, nu doar citit.
 const numeF = require('./contract_pdf').numeFisier;
 T('numele fișierului e brandat ca restul casei',
-  numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }) === 'RA-Tracks - Contract RAT-C-2026-0001 - Transport Țăndărei SRL.pdf',
+  numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }) === 'RA-Track - Contract RAT-C-2026-0001 - Transport Țăndărei SRL.pdf',
   numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }));
 T('actul adițional nu mai are „/" în nume (numărul lui e „…/A1")',
   !/\//.test(numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional')), numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional'));
@@ -374,7 +374,7 @@ T('lista vine tot din conturile de super-admin, nu din nume scrise în cod',
   /x\.role === 'superadmin' && x\.active !== false/.test(html));
 T('câmpul rămâne editabil (se poate semna și prin împuternicit)', /id="' \+ idPrefix \+ '-our"/.test(html));
 // Numele fișierului descărcat, cerut de Alin.
-T('contractul se descarcă „RA-Tracks - Contract …"', /return 'RA-Tracks - ' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
+T('contractul se descarcă „RA-Track - Contract …"', /return 'RA-Track - ' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
 // Amânarea scadenței: Alin, 09.09 — „nu înțeleg, nu vreau să existe asta". Scoasă de tot.
 T('nu mai există rută de amânare a scadenței', !/\/api\/invoices\/:id\/due/.test(server));
 T('și nici funcția din spate', !/'set_due', 'invoice'/.test(server));

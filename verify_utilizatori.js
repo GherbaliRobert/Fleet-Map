@@ -373,14 +373,14 @@ T('și nu mai oferă două opțiuni pentru același rol', !/\{ v: 'admin', baza:
 T('și vede amândouă numele ca administrator', /ADMIN_ROLES = \['company_admin', 'admin', 'superadmin'\]/.test(tel));
 
 sect('11f. Fiecare ecran, un singur rost');
-// La NOI, „Adaugă utilizator" e doar pentru un coleg nou la RA Tracks. Administratorul unei firme
+// La NOI, „Adaugă utilizator" e doar pentru un coleg nou la RA Track. Administratorul unei firme
 // client se dă din fișa firmei (Companii → firma → Utilizatori), iar restul oamenilor și-i face
 // adminul ei. Înainte, formularul de la noi le putea face pe toate și nu se mai știa ușa din față.
 T('la fondator, formularul oferă DOAR cont de platformă',
   /\[\['superadmin', 'Super-admin \(PLATFORMĂ — toate companiile\)'\]\]/.test(html));
 T('și nu mai oferă roluri de firmă client',
   !/\['company_admin', 'Admin companie \(control total\)'\]/.test(html));
-T('antetul secțiunii spune pentru cine e', /h\.textContent = 'Adaugă utilizator \(specific pentru colegi noi RA Tracks\)'/.test(html));
+T('antetul secțiunii spune pentru cine e', /h\.textContent = 'Adaugă utilizator \(specific pentru colegi noi RA Track\)'/.test(html));
 // Nota se rupea: `.rau-nota` e flex, iar fiecare `<b>` devenea propriul element de flex.
 T('nota stă într-un singur bloc de text, nu împrăștiată',
   (html.match(/class="rau-nota"|nota\.innerHTML = '<i class="fas fa-(user-shield|envelope-circle-check)"><\/i><span>/g) || []).length >= 3 &&

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'ro.ratracks.app',
-  appName: 'RA Tracks',
+  appName: 'RA Track',
   webDir: 'dist',
   // Fără server.url → web-ul e împachetat LOCAL în APK; API-ul remote se cheamă via CapacitorHttp.
   plugins: {

@@ -2,7 +2,7 @@
   "name": "ratracks-mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "RA Tracks — aplicație mobilă de monitorizare flotă (Capacitor + Preact)",
+  "description": "RA Track — aplicație mobilă de monitorizare flotă (Capacitor + Preact)",
   "type": "module",
   "scripts": {
     "dev": "vite",

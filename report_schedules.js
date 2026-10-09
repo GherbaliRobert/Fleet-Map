@@ -135,9 +135,9 @@ async function runSchedule(s, deps, now) {
     } catch (e) { /* dacă agenda nu se poate citi, raportul pleacă oricum către lista scrisă de mână */ }
   }
   const rowsN = (report.rows && report.rows.length) || 0;
-  const subject = '[RA Tracks] ' + (report.label || s.report_type) + ' — ' + from.slice(0, 10) + ' … ' + to.slice(0, 10);
+  const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + from.slice(0, 10) + ' … ' + to.slice(0, 10);
   const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + from.slice(0, 10) + ' — ' + to.slice(0, 10) +
-    '.\nRânduri: ' + rowsN + '.\n\n— RA Tracks (raport automat)';
+    '.\nRânduri: ' + rowsN + '.\n\n— RA Track (raport automat)';
 
   let emailSent = false;
   if (recips.length) {

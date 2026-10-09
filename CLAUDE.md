@@ -1,4 +1,4 @@
-# CLAUDE.md — Convenții proiect RA Tracks
+# CLAUDE.md — Convenții proiect RA Track
 
 Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 
@@ -47,12 +47,12 @@ Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă în
   `font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;`
 - **Controale de formular:** `button, input, select, textarea { font-family: inherit; }`.
 - **Valori tehnice (IMEI, coordonate, coduri `io_`):** au fost monospace — acum sunt pe Nunito (`font-family: inherit`). NU le pune înapoi pe monospace.
-- **Logo „Tracks":** `.ralogo .raw` (app + landing) folosește Nunito.
-- **Sigla oficială = monograma „RA |" (imaginea `logo-mark.png` / `logo-mark-light.png`) + „Tracks" cu Nunito 800, PESTE TOT**
+- **Logo „Track":** `.ralogo .raw` (app + landing) folosește Nunito.
+- **Sigla oficială = monograma „RA |" (imaginea `logo-mark.png` / `logo-mark-light.png`) + „Track" cu Nunito 800, PESTE TOT**
   (Robert, 09.10): aplicația, paginile publice, documentația API, telefonul (`mobile/public/` ține COPIILE exacte ale
   monogramelor — schimbi una în `public/`, o copiezi și acolo), emailul cu factura (`EMAIL_LOGO`, atașat cu `cid`),
   PDF-urile de prezentare (`docs_build/`, `docs_promo/`, `docs_manual/`; în pdfkit, `logo.png` / `logo-light.png`). NU scrie
-  sigla cu litere („RA" verde + „Tracks") și nu desena alt semn. Păzit de `verify_ofertare.js` (5g).
+  sigla cu litere („RA" verde + „Track") și nu desena alt semn. Păzit de `verify_ofertare.js` (5g).
 
 ### Reguli pentru cod/UI nou
 - NU reintroduce `Inter`, `monospace` sau alt font pentru text — lasă elementele să moștenească din `body`.
@@ -90,10 +90,10 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 
 ## Export rapoarte (Excel & PDF) — branding (OBLIGATORIU)
 
-**Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Tracks.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
+**Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Track.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
 
-- **Numele fișierului:** `RA-Tracks - Raport {Nume raport} - {data generării}`
-  (ex. `RA-Tracks - Raport Traseu - 06.07.2026.xlsx` / `.pdf`). „Numele raportului" = `label`-ul din catalogul din `reports.js`. Setat **într-un singur loc**: `report_export.js` → `sendReport()`.
+- **Numele fișierului:** `RA-Track - Raport {Nume raport} - {data generării}`
+  (ex. `RA-Track - Raport Traseu - 06.07.2026.xlsx` / `.pdf`). „Numele raportului" = `label`-ul din catalogul din `reports.js`. Setat **într-un singur loc**: `report_export.js` → `sendReport()`.
 - **Logo în Excel:** imaginea reală pe **rândul 1 al FIECĂREI foi** (Sumar + fiecare vehicul); titlul/perioada/tabelul coboară dedesubt. Vezi `xlLogoId` / `xlPlaceLogo` / `xlWriteTable` + `toXlsx` / `toXlsxMultiSheet`.
 - **Logo în PDF:** aceeași imagine reală, înglobată în antet cu `doc.image()` (NU redesenată cu forme/text). Vezi `renderPdf`.
 - **Fișier de logo pentru fundal ALB = `public/logo-light.png`** (varianta ÎNCHISĂ). ⚠️ Capcană de denumire: `logo.png` e varianta **ALBĂ** (pentru fundal închis, ca în app) — pe alb devine invizibilă („arată pe alb"). Pentru orice export pe fundal alb folosește `logo-light.png`.
@@ -104,7 +104,7 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 ### Traseul descărcat din ecranul Traseu (Alin, 01.10: „doar cifre, nimic de înțeles")
 Web și telefon descarcă **Excel prin `sendReport`**: `GET /api/traseu/excel?imeis=…&from&to` → `reportExport.traseuVehicul`
 (rândurile pe românește + sumarul) → `traseuCaRaport` (un vehicul: „Sumar" + „Poziții"; mai multe: „Sumar" + o foaie pe
-vehicul) → `sendReport`. Numele: „RA-Tracks - Raport Traseu {nume · număr} - {zi}.xlsx". Aceleași drepturi ca traseul
+vehicul) → `sendReport`. Numele: „RA-Track - Raport Traseu {nume · număr} - {zi}.xlsx". Aceleași drepturi ca traseul
 (`canAccessImei` pe fiecare mașină, deci și demo-ul exclus).
 - **Sumarul are O SINGURĂ socoteală: `_sumarTraseu`** (server.js), folosită de ecran (`/api/history/:imei?ext=1`) și de
   fișier — păzit prin numărare. Formele cifrelor (`hmTraseu`, `kmTraseu`, `durataDepasiri`) sunt legate de
@@ -208,12 +208,12 @@ Confidențialitate.
   din oră în oră. „30+ tipuri de rapoarte" se NUMĂRĂ din catalog, rotunjit în jos la zece, ca pe hârtia ofertei.
 - **Diacriticele se verifică pe cuvinte** (`FARA_DIACRITICE`). ⚠ Granița de cuvânt e scrisă cu litere Unicode:
   `\b` din JavaScript socotește „ș" punctuație și ar găsi „in" în „mașină".
-- `/api-docs` (și `/docs`, `/api-docs.html`) are adresă canonică; nu e în sitemap. Descrierea spunea „RA Tracks /
+- `/api-docs` (și `/docs`, `/api-docs.html`) are adresă canonică; nu e în sitemap. Descrierea spunea „RA Track /
   TrackGPS" — TrackGPS e marca altei firme; scos pe 03.10.
 - Păzit de `verify_site_public.js` (în `npm test`), inclusiv pe server pornit (sitemap, 301, robots.txt).
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)
-Aplicația seedează la pornire o **companie demo** built-in — „RA Tracks Demo" (până pe 09.10 „RA Track Demo"; numele vechi se corectează o dată, la pornire), 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
+Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo" (pe 09.10, câteva ore, „RA Tracks Demo"; numele acela se corectează o dată, la pornire), 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
 
 - **Sunt ascunse de flota REALĂ peste tot** prin `DEMO_SET` (= `demoSim.DEMO_IMEIS`) + `demoCompanyId`: `canAccessImei` (hartă live, dispecerizare, insight/analitice, dashboards), `resolveReportImeis` (rapoarte live) și ramura super-admin din `report_schedules.js` (rapoarte programate). Regula: `if (req.companyId !== demoCompanyId) ... filtrează !DEMO_SET.has(imei)`. La orice cale NOUĂ care listează vehicule/poziții pentru flota reală, exclude demo la fel.
 - **NU apar în niciun raport** (live sau programat). Dacă adaugi o cale de raport/analiză nouă, mirror-uiește excluderea demo.
@@ -724,7 +724,7 @@ să fie la fel ca la rapoarte, să-ți alegi unde o descarci. Asta înseamnă de
   rapoartelor. Acolo stau logo-ul (`logo-light.png`, pentru fundal alb), fonturile cu diacritice
   (DejaVu sub aliasul „Nunito") și `contentDisposition`. **NU scrie o a doua cale de export în
   pagină** — s-ar despărți de ele, exact ce spune regula rapoartelor.
-- Numele urmează regula casei: `RA-Tracks - Ofertă {client} - {data}.pdf`.
+- Numele urmează regula casei: `RA-Track - Ofertă {client} - {data}.pdf`.
 - Ecranul trimite CIFRELE deja socotite (`POST /api/admin/offers/pdf`, super-admin) — nu se
   recalculează pe server. E un document, nu un rând în bază: **nu se salvează nimic** acolo.
 - Termenul de valabilitate îl pune **serverul**, din `OFERTA_VALABIL_ZILE`, ca hârtia să nu poată
@@ -811,17 +811,29 @@ firme. Peste asta, era de prisos: ce s-a vândut se aprinde **singur la semnare*
   aștepta milisecunde — cutia e în HTML-ul paginii, e acolo imediat.
 - Păzit de `verify_ofertare.js`.
 
-### Logo-ul scrie „RA Tracks" — și se REFACE, nu se desenează de mână (21.09)
+### MARCA ESTE „RA Track", ca domeniul ratrack.ro (Robert, 09.10)
+Robert, 09.10: *„trebuia să fie ratrack nu ratracks… așa avem și domeniul RA Track"*. Până atunci aplicația scria
+„RA Tracks" (Alin, 21.09: „«RA Tracks» trebuie să scrie", la refacerea siglei). Redenumit peste tot ce vede omul: sigla
+(imaginile), antetul aplicației, site-ul, telefonul (numele aplicației, APK 1.0.10), documentele, emailurile, numele
+fișierelor descărcate („RA-Track - Raport …", „RA-Track - Factură …"). Citatele mai vechi din notele de aici au fost
+aduse la noul nume. **Numele tehnice interne rămân** (Robert: „2 da"): codul aplicației de telefon `ro.ratracks.app`
+(schimbat, telefoanele ar instala o aplicație nouă și și-ar pierde notificările), `ratracks-backup`, `ratracks-vNN`
+(cache), User-Agent `RATracks/1.0`, `/hooks/ratracks` (exemplu), antetele webhook-urilor `X-RaTracks-Signature` și
+`RA-Tracks-Webhook/1.0` (integrările clienților le pot filtra). Păzit de `verify_ofertare.js` 5g: orice „RA Tracks" /
+„RA-Tracks" rămas în ce vede omul — și scris într-o adresă, „RA%20Tracks" — pică proba.
+
+### Logo-ul scrie „RA Track" — și se REFACE, nu se desenează de mână (21.09; „Track" din 09.10)
 `public/logo.png` și `public/logo-light.png` aveau în ele **„RA | traks"** și ajungeau pe fiecare
 raport, Excel, contract și ofertă. Acum se generează cu **`tools/make-logo.js`**: marca originală
 (`logo-mark*.png`, desen — neatinsă) + cuvântul scris cu **Nunito ExtraBold**, fontul cu care
 aplicația îl scrie în antet (`.ralogo .raw`).
 
 - ⚠ **Dimensiunea rămâne 694×135.** `xlPlaceLogo` pune imaginea în Excel cu mărime FIXĂ (180×35 =
-  același raport 5,14:1). Alt raport = logo turtit în fiecare Excel trimis unui client. Unealta
-  caută singură mărimea literelor ca să intre exact în lățimea rămasă.
-- `tools/make-logo.js` e unealtă de DEZVOLTARE (are nevoie de Playwright, care nu e dependință a
-  proiectului). Rezultatul — cele două PNG-uri — intră în repo.
+  același raport 5,14:1). Alt raport = logo turtit în fiecare Excel trimis unui client.
+- ⚠ **Mărimea literelor e FIXĂ** (`MARIME` = 113,6 px, cea din sigla de pe 21.09), nu „cât să umple lățimea": „Track"
+  umplut până la margine ar fi avut litere cât marca. Rămâne loc transparent în dreapta; `make-og-cover.js` centrează după desen.
+- `tools/make-logo.js` e unealtă de DEZVOLTARE: desenează cu Edge/Chrome-ul instalat (fără Playwright), fotografiind
+  pagina pe negru și pe alb ca să scoată transparența. Rezultatul — cele două PNG-uri — intră în repo.
 - `public/og-cover.png` se reface din logo, cu `tools/make-og-cover.js`. Dacă schimbi logo-ul,
   rulează-l și pe ăla.
 - Păzit de `verify_ofertare.js` (cuvântul, fontul, dimensiunile).
@@ -865,7 +877,7 @@ Butonul-ochi de pe rândul ofertei deschide oferta pe hârtie, fără s-o descar
 ### Numele fișierului descărcat: `_numeDinAntet(resp, implicit)` (22.09)
 Antetul `content-disposition` poartă numele de DOUĂ ori: `filename="…"`, curățat de diacritice
 pentru browserele vechi, și `filename*=UTF-8''…`, cel adevărat. Regula veche prindea prima
-potrivire — deci fișierul se salva „RA-Tracks - **Oferta** …", nu „Ofertă".
+potrivire — deci fișierul se salva „RA-Track - **Oferta** …", nu „Ofertă".
 
 - Se cere ÎNTÂI varianta UTF-8. Un singur cititor, folosit de Inventar ȘI de hârtia ofertei.
 - Orice descărcare nouă îl folosește. NU scrie a treia expresie de citit antetul.
@@ -1000,8 +1012,8 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 - Fără cuvântul „plan"; numerele cu „de" prin `contracts.numar` („24 de luni", „100 de întrebări").
 - „Vezi" / „Descarcă": `raxHartie(url, previzualizare, ce)` — o singură cerere, fereastra
   `_ofArataHartia`, numele din antet (`_numeDinAntet`). Antetul îl scrie `_antetDescarcare`
-  (ASCII + `filename*` UTF-8). Numele: **„RA-Tracks - Contract {număr} - {firmă}.pdf"** (Alin, 24.09),
-  ca rapoartele și ofertele; actul: „RA-Tracks - Act adițional …". Caracterele interzise (inclusiv
+  (ASCII + `filename*` UTF-8). Numele: **„RA-Track - Contract {număr} - {firmă}.pdf"** (Alin, 24.09),
+  ca rapoartele și ofertele; actul: „RA-Track - Act adițional …". Caracterele interzise (inclusiv
   „/" din numărul actului, „…/A1") se scot din TOT numele (`numeFisier`).
 - ⚠ În cutia de probe Chromium salvează „download" în loc de un nume cu diacritice: cutia n-are
   limba UTF-8. Pornește browserul cu `LANG=C.UTF-8`. Nu e o problemă a aplicației.
@@ -1127,7 +1139,7 @@ Companii**; containerul `admin-tab-montaj`, încărcat de `raxLoadMontaj`. Patru
   partenerul = PRESTATOR, noi = BENEFICIAR (banii merg invers). Clauzele care contează: el ne facturează
   lunar, recepția = aparatul transmite, aparatele sunt ale noastre, garanție 12 luni, nesolicitarea
   clienților 12 luni, și **SUBÎMPUTERNICIT GDPR** (art. 28 alin. 4, Anexa nr. 2) — vede date ale
-  clienților noștri. Nume: „RA-Tracks - Contract montaj {nr} - {partener}.pdf". Scris de noi, nu de un
+  clienților noștri. Nume: „RA-Track - Contract montaj {nr} - {partener}.pdf". Scris de noi, nu de un
   jurist: e pe lista de lansare.
 - **Montajul unui contract SEMNAT se PROGRAMEAZĂ doar în Calendar** (vezi mai jos); **detaliile unei lucrări
   se editează din fișa clientului** (fila Contract: preț, cost, factura partenerului, deplasare). La un contract
@@ -1384,7 +1396,7 @@ când schimbi pagina de ofertă pe web:
 - Păzit de `verify_contracte.js` (inclusiv pe server pornit), `verify_montaj.js`, `verify_companii.js`,
   `verify_arhiva.js` (inclusiv pe server pornit).
 
-## RA Tracks NU funcționează pe planuri (regulă de fond)
+## RA Track NU funcționează pe planuri (regulă de fond)
 
 **Nu există pachete de-a gata și nu vor exista.** Fiecare client primește o **ofertă** făcută pe ce
 are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe oferta acceptată**. Atât.
@@ -1524,8 +1536,8 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
 
 ### Hârtia facturii e UNA, pe server: `factura_pdf.js` (Alin, 30.09: „de acord")
 - `facturaPdf(inv, emitentAcum)` desenează factura fiscală și proforma (PDFKit, `logo-light.png`, DejaVu sub
-  aliasul „Nunito"), lângă hârtiile contractului și ale ofertei. Numele: **„RA-Tracks - Factură {număr} -
-  {client}.pdf"** / „RA-Tracks - Proformă …" (`numeFisier`), antetul scris de `_antetDescarcare`.
+  aliasul „Nunito"), lângă hârtiile contractului și ale ofertei. Numele: **„RA-Track - Factură {număr} -
+  {client}.pdf"** / „RA-Track - Proformă …" (`numeFisier`), antetul scris de `_antetDescarcare`.
 - Rute: `GET /api/invoices/:id/pdf` (super-admin) și `GET /api/billing/my-invoices/:id/pdf` (administratorul
   firmei, DOAR documentele firmei lui, fără ciorne). „Nu e a ta" și „nu există" răspund la fel: **404**.
 - Pe ecran: `_invHartieBtns(url, proforma)` → „Vezi" / „Descarcă", prin `raxHartie` (aceeași fereastră ca la
@@ -1719,9 +1731,9 @@ sesiunea unei firme cu contul lui, cu rând în audit („X a intrat în suport 
 nicio parolă. NU o construi din proprie inițiativă; e trecută la „De verificat înainte de lansare".
 
 ### Fiecare ecran, un singur rost (decizie Alin, 16.09)
-- **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Tracks).
+- **Utilizatori, în privirea FONDATORULUI** = doar **conturi de platformă** (coleg nou la RA Track).
   Un singur rol în formular (`superadmin`), selectorul de companie mereu ascuns, antet „Adaugă
-  utilizator (specific pentru colegi noi RA Tracks)". NU pune înapoi roluri de firmă client acolo.
+  utilizator (specific pentru colegi noi RA Track)". NU pune înapoi roluri de firmă client acolo.
 - **Utilizatori, în privirea CLIENTULUI** = oamenii firmei lui, **inclusiv alți administratori**.
 - **Companii → firma → fila Utilizatori** = doar **oglinda** (cine sunt administratorii activi) plus
   **trusa de reparat**: formularul de adăugare (`_raxCodAdminiHtml` + `raxCoAddAdmin`, pe ruta

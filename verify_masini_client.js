@@ -165,7 +165,7 @@ T('la electrică: kilometri și baterie, fără rezervor', C.dateCitite(L1.randu
 sect('4. Șablonul (citirea lui)');
 const antetS = C.SABLON_COLOANE.map((x) => x.et);
 T('coloanele șablonului: exact cele cinci hotărâte cu Alin', antetS.join(' · ') === 'Marcă · Model · An fabricație · Combustibil · Bucăți', antetS.join(' · '));
-const foiS = [{ nume: 'Mașini', randuri: [[], rand(['Mașinile flotei — pentru oferta RA Tracks']), rand(['Un rând pentru fiecare model…']), [], rand(antetS),
+const foiS = [{ nume: 'Mașini', randuri: [[], rand(['Mașinile flotei — pentru oferta RA Track']), rand(['Un rând pentru fiecare model…']), [], rand(antetS),
   rand(['Dacia', 'Logan', '2024', 'benzină + GPL', '5']),
   rand(['Ford', 'Transit', '2021', 'motorină', '3']),
   rand(['Volvo', 'FH']),
@@ -215,7 +215,7 @@ T('regula NU e scrisă în pagină: potrivirea și șablonul le face serverul (o
   (html.match(/'\/api\/admin\/masini\/potrivire'/g) || []).length === 1 && (html.match(/'\/api\/admin\/masini\/sablon'/g) || []).length === 2
   && !/function (potriveste|citesteSablon|descompuneModel)\b/.test(html));
 T('șablonul: numele din antet, încărcarea CRUDĂ, și întreabă înainte să înlocuiască lista',
-  /_numeDinAntet\(r, 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(bloc) && /fetch\('\/api\/admin\/masini\/sablon', \{ method: 'POST'[\s\S]{0,120}'application\/octet-stream'/.test(bloc)
+  /_numeDinAntet\(r, 'RA-Track - Șablon mașini client\.xlsx'\)/.test(bloc) && /fetch\('\/api\/admin\/masini\/sablon', \{ method: 'POST'[\s\S]{0,120}'application\/octet-stream'/.test(bloc)
   && /raConfirm\('Lista are deja/.test(bloc));
 T('butoanele „Descarcă șablonul" și „Încarcă șablonul" stau în secțiune', /raxOfMsSablonDescarca\(\)"><i class="fas fa-file-arrow-down"><\/i> Descarcă șablonul/.test(html) && /raxOfMsSablonAlege\(\)"><i class="fas fa-file-arrow-up"><\/i> Încarcă șablonul/.test(html));
 T('secțiunea stă între „1. Clientul" și „2. Flota clientului"', /clientCard \+ masiniCard \+ vehCard/.test(html));
@@ -303,7 +303,7 @@ function gata() {
   const rs = await fetch(B + '/api/admin/masini/sablon', { headers: { Cookie: ck } });
   const cd = rs.headers.get('content-disposition') || '';
   T('șablonul se descarcă, ca Excel, cu numele casei', rs.status === 200 && /spreadsheetml/.test(rs.headers.get('content-type') || '')
-    && decodeURIComponent((cd.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') === 'RA-Tracks - Șablon mașini client.xlsx', cd);
+    && decodeURIComponent((cd.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') === 'RA-Track - Șablon mașini client.xlsx', cd);
   const bufSablon = Buffer.from(await rs.arrayBuffer());
   const wbS = new ExcelJSs.Workbook(); await wbS.xlsx.load(bufSablon);
   const wsS = wbS.getWorksheet('Mașini');
@@ -314,7 +314,7 @@ function gata() {
   const sq = (xmlFoaie.match(/<dataValidation [^>]*sqref="[^"]+"/g) || []).map((x) => x.match(/sqref="([^"]+)"/)[1]);
   T('...o regulă pe coloană, fără intervale care se suprapun', sq.join() === ['A', 'B', 'C', 'D', 'E'].map((l) => l + (rAntet + 1) + ':' + l + (rAntet + C.SABLON_MAX)).join(), sq.join());
   T('...cu capul de tabel: cele cinci coloane, în ordine', rAntet > 0 && [1, 2, 3, 4, 5].map((c) => String(wsS.getCell(rAntet, c).value)).join(' · ') === 'Marcă · Model · An fabricație · Combustibil · Bucăți');
-  T('...cu logo-ul RA Tracks sus', !!wsS && wsS.getImages().length >= 1);
+  T('...cu logo-ul RA Track sus', !!wsS && wsS.getImages().length >= 1);
   const vComb = wsS && wsS.getCell(rAntet + 1, 4).dataValidation, vAn = wsS && wsS.getCell(rAntet + 1, 3).dataValidation, vMarca = wsS && wsS.getCell(rAntet + 1, 1).dataValidation;
   T('...combustibilul DOAR din listă (aceleași cuvinte ca în calculator)', !!vComb && vComb.type === 'list' && vComb.errorStyle !== 'warning'
     && vComb.formulae[0] === '"' + Object.values(C.COMBUSTIBILI).join(',') + '"', JSON.stringify(vComb));

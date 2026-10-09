@@ -191,7 +191,7 @@ T('și îl salvează ca fișier', /a\.download = nume/.test(PDFOF) && /URL\.crea
 T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAntet\(resp, 'ofertă\.pdf'\)/.test(PDFOF));
 // Antetul poartă numele de două ori: unul curățat de diacritice (pentru browsere vechi) și cel
 // adevărat, `filename*=UTF-8''`. Regula veche prindea prima potrivire, deci fișierul se salva
-// „RA-Tracks - Oferta …" în loc de „Ofertă". Un singur cititor, folosit și de Inventar.
+// „RA-Track - Oferta …" în loc de „Ofertă". Un singur cititor, folosit și de Inventar.
 T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
   /function _numeDinAntet\(resp, implicit\)/.test(html)
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
@@ -200,12 +200,12 @@ T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritic
   // și istoricul complet din Dispozitive arhivate (02.10) — ultimele două prin `window._numeDinAntet`. O descărcare
   // nouă îl folosește pe el — și se adaugă aici.
   && (html.match(/_numeDinAntet\(/g) || []).length === 8
-  && /window\._numeDinAntet\(r, 'RA-Tracks - Istoric complet\.xlsx'\)/.test(html) && /_numeDinAntet\(r, 'RA-Tracks - Șablon mașini client\.xlsx'\)/.test(html)
+  && /window\._numeDinAntet\(r, 'RA-Track - Istoric complet\.xlsx'\)/.test(html) && /_numeDinAntet\(r, 'RA-Track - Șablon mașini client\.xlsx'\)/.test(html)
   && /_numeDinAntet\(r, 'previzualizare\.pdf'\)/.test(html)
-  && /window\._numeDinAntet\(r, 'RA-Tracks - Traseu\.xlsx'\)/.test(html)
+  && /window\._numeDinAntet\(r, 'RA-Track - Traseu\.xlsx'\)/.test(html)
   && !/filename\\\*\?=\(\?:UTF-8/.test(html));
 T('hârtia se face pe server, lângă cea a rapoartelor', /function sendOfertaPdf\(res, o\)/.test(PDFSRV));
-T('și poartă numele brandat al casei', /'RA-Tracks - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));
+T('și poartă numele brandat al casei', /'RA-Track - Ofertă ' \+ cine \+ ' - ' \+ datePart\(\)/.test(PDFSRV));
 T('cu logo-ul pentru fundal alb, ca rapoartele', /const logo = _logoBuffer\(\)/.test(PDFSRV));
 T('fără termen știut, hârtia NU inventează unul',
   /Number\(o\.valabilZile\) > 0 \? new Date/.test(PDFSRV) && /pana \? '     Valabilă până: '/.test(PDFSRV));
@@ -399,14 +399,14 @@ T('și nu mai ghicește un număr de milisecunde',
 T('iar formularul ajunge sub ochii tăi, fără să derulezi',
   /getElementById\('rax-conou-box'\);[\s\S]{0,200}scrollIntoView/.test(html));
 
-sect('5g. Marca de pe hârtie: scrie „RA Tracks"');
-// Fișierele de logo scriau „RA | traks", nu „RA Tracks" — și ele ajung pe FIECARE raport PDF, pe
-// fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât de Alin:
-// „«RA Tracks» trebuie să scrie"). Refăcute cu `tools/make-logo.js`, din marcă + Nunito ExtraBold —
-// fix fontul cu care aplicația scrie cuvântul în antet.
+sect('5g. Marca de pe hârtie: scrie „RA Track"');
+// Fișierele de logo scriau „RA | traks", nu „RA Track" — și ele ajung pe FIECARE raport PDF, pe
+// fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât atunci de Alin:
+// „«RA Tracks» trebuie să scrie"; din 09.10, Robert: „RA Track", ca domeniul). Refăcute cu `tools/make-logo.js`,
+// din marcă + Nunito ExtraBold — fix fontul cu care aplicația scrie cuvântul în antet.
 T('unealta care le desenează există', fs.existsSync(P('tools/make-logo.js')));
 const MKLOGO = fs.readFileSync(P('tools/make-logo.js'), 'utf8');
-T('și scrie „Tracks", nu altceva', /const CUV[A-ZÂ]+ = 'Tracks';/.test(MKLOGO), (MKLOGO.match(/const CUV\S* = '[^']*'/) || [])[0]);
+T('și scrie „Track", nu altceva', /const CUV[A-ZÂ]+ = 'Track';/.test(MKLOGO), (MKLOGO.match(/const CUV\S* = '[^']*'/) || [])[0]);
 T('cuvântul se scrie cu fontul casei (Nunito ExtraBold), ca în antetul aplicației',
   /Nunito-ExtraBold\.ttf/.test(MKLOGO) && fs.existsSync(P('fonts/Nunito-ExtraBold.ttf')));
 T('marca („RA" + bara verde) rămâne desenul original, nu se rescrie',
@@ -419,10 +419,10 @@ const pngDim = (f) => { const d = fs.readFileSync(P(f)).slice(16, 24); return [d
   T(f.replace('public/', '') + ' are 694×135, ca așezarea din Excel să rămână dreaptă', w === 694 && h === 135, w + '×' + h);
 });
 T('Excel-ul pune logo-ul la același raport', /ext: \{ width: 180, height: 35 \}/.test(fs.readFileSync(P('report_export.js'), 'utf8')));
-// Robert, 09.10: „schimbă peste tot pe unde avem logoul… am mai găsit Trak și este eronat". Mai rămăseseră:
-// imaginea de referință cu „RA | traks" în public/ (se deschidea de pe site), „RA Track" (fără „s") în titlul
-// notificărilor de pe telefon, în emailul rapoartelor programate, în proprietățile fișierelor descărcate
-// și în numele companiei demo. Căutăm în tot ce vede omul — codul fără comentarii (în comentarii stă istoria).
+// Robert, 09.10: „schimbă peste tot pe unde avem logoul… am mai găsit Trak și este eronat", apoi „trebuia să fie ratrack
+// nu ratracks… așa avem și domeniul". Marca e „RA Track" (fișierele: „RA-Track - …"). Căutăm în tot ce vede omul — codul
+// fără comentarii (în comentarii stă istoria) — orice „RA Tracks" / „RA-Tracks" rămas și vechiul „traks".
+// Numele tehnice interne (ro.ratracks.app, ratracks-backup, User-Agent „RATracks") sunt cu litere mici / lipite: nu le prinde.
 T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate deschide de pe site)',
   !fs.existsSync(P('public/_logo-ref-fix.png')));
 (function () {
@@ -440,23 +440,26 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
   fisiere.push('mobile/index.html');
   const rele = [];
   fisiere.filter((f) => fs.existsSync(P(f))).forEach((f) => {
-    // Singura „RA Track" îngăduită: numele vechi pe care pornirea îl caută ca să-l corecteze. „ratrack.ro" e domeniul.
-    const s = faraComentarii(fs.readFileSync(P(f), 'utf8')).split("demo.name === 'RA Track Demo'").join('');
-    const m = s.match(/RA[ -]Track(?![s\w])|RATrack(?![s\w])|\b[Tt]raks?\b|\bTRAKS?\b/g);
+    // Îngăduite doar două: numele de câteva ore al companiei demo, pe care pornirea îl caută ca să-l întoarcă, și
+    // semnătura webhook-urilor (`User-Agent`), nume tehnic pe care integrările clienților îl pot filtra (Robert: „2 da").
+    const s = faraComentarii(fs.readFileSync(P(f), 'utf8')).split("demo.name === 'RA Tracks Demo'").join('')
+      .split("'User-Agent': 'RA-Tracks-Webhook/1.0'").join('');
+    // „RA%20Tracks" / „RA+Tracks": numele scris într-o adresă (subiectul unui email) — așa scăpase „Contactează-ne".
+    const m = s.match(/RA(?:[ -]|%20|%2D|\+)Tracks\b|\b[Tt]raks?\b|\bTRAKS?\b|>Tracks</gi);
     if (m) rele.push(f + ': ' + Array.from(new Set(m)).join(', '));
   });
-  T('numele se scrie „RA Tracks" peste tot ce vede omul (nici „Track", nici „traks")', rele.length === 0, rele.join(' · '));
+  T('numele se scrie „RA Track" peste tot ce vede omul (nici „RA Tracks", nici „traks")', rele.length === 0, rele.join(' · '));
 })();
-// Sigla OFICIALĂ peste tot unde apărea în alt desen (Robert, 09.10: „1 da"): monograma „RA |" (logo-mark*.png) + „Tracks".
+// Sigla OFICIALĂ peste tot unde apărea în alt desen (Robert, 09.10: „1 da"): monograma „RA |" (logo-mark*.png) + „Track".
 (function () {
   const citeste = (f) => fs.existsSync(P(f)) ? fs.readFileSync(P(f), 'utf8') : '';
   const md5 = (f) => require('crypto').createHash('md5').update(fs.readFileSync(P(f))).digest('hex');
   const LOGIN = citeste('mobile/src/screens/Login.tsx'), APPT = citeste('mobile/src/App.tsx'), INTRO = citeste('mobile/index.html');
-  const sigla = /class="ralogo"[^>]*>\s*<img class="ralm d" src="\/logo-mark\.png"[^>]*>\s*<img class="ralm l" src="\/logo-mark-light\.png"[^>]*>\s*<span class="raw"[^>]*>Tracks<\/span>/;
+  const sigla = /class="ralogo"[^>]*>\s*<img class="ralm d" src="\/logo-mark\.png"[^>]*>\s*<img class="ralm l" src="\/logo-mark-light\.png"[^>]*>\s*<span class="raw"[^>]*>Track<\/span>/;
   T('telefon: ecranul de intrare și cel de încărcare au sigla oficială (ambele teme)', sigla.test(LOGIN) && sigla.test(APPT));
-  T('telefon: animația de pornire are monograma + „Tracks"', /class="ra-word"[^>]*><img src="\/logo-mark\.png"[^>]*><span>Tracks<\/span>/.test(INTRO));
-  const vechi = /<span[^>]*>RA<\/span>\s*Tracks/;
-  T('telefon: nicio siglă scrisă doar cu litere („RA" verde + „Tracks")', !vechi.test(LOGIN) && !vechi.test(APPT) && !vechi.test(INTRO));
+  T('telefon: animația de pornire are monograma + „Track"', /class="ra-word"[^>]*><img src="\/logo-mark\.png"[^>]*><span>Track<\/span>/.test(INTRO));
+  const vechi = /<span[^>]*>RA<\/span>\s*Track/;
+  T('telefon: nicio siglă scrisă doar cu litere („RA" verde + „Track")', !vechi.test(LOGIN) && !vechi.test(APPT) && !vechi.test(INTRO));
   T('telefon: monogramele sunt copiile EXACTE din public/',
     ['logo-mark.png', 'logo-mark-light.png'].every((f) => fs.existsSync(P('mobile/public/' + f)) && md5('mobile/public/' + f) === md5('public/' + f)));
   const API = citeste('public/api-docs.html');
@@ -474,9 +477,9 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
     /src="cid:' \+ EMAIL_LOGO\.cid \+ '"/.test(SRVE) && /atasate = \(atasate \|\| \[\]\)\.concat\(\[EMAIL_LOGO\]\)/.test(SRVE));
 })();
 const SRV_DEMO = fs.readFileSync(P('server.js'), 'utf8');
-T('compania demo se numește „RA Tracks Demo", iar numele vechi se corectează o dată, la pornire',
-  /createCompany\(\{ name: 'RA Tracks Demo', slug: 'demo'/.test(SRV_DEMO) &&
-  /if \(demo && demo\.name === 'RA Track Demo'\) \{[\s\S]{0,120}updateCompany\(demo\.id, \{ name: 'RA Tracks Demo' \}\)/.test(SRV_DEMO));
+T('compania demo se numește „RA Track Demo", iar numele de câteva ore („RA Tracks Demo") se întoarce o dată, la pornire',
+  /createCompany\(\{ name: 'RA Track Demo', slug: 'demo'/.test(SRV_DEMO) &&
+  /if \(demo && demo\.name === 'RA Tracks Demo'\) \{[\s\S]{0,120}updateCompany\(demo\.id, \{ name: 'RA Track Demo' \}\)/.test(SRV_DEMO));
 
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));
@@ -592,7 +595,7 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
     pdfResp.headers.get('content-type'));
   const cd = pdfResp.headers.get('content-disposition') || '';
   T('ca DESCĂRCARE, nu ca pagină deschisă', /^attachment;/.test(cd), cd.slice(0, 60));
-  T('cu numele brandat al casei', /RA-Tracks - Ofert/.test(cd) && /CI Transbet SRL/.test(decodeURIComponent(cd)),
+  T('cu numele brandat al casei', /RA-Track - Ofert/.test(cd) && /CI Transbet SRL/.test(decodeURIComponent(cd)),
     cd.slice(0, 120));
   const buf = Buffer.from(await pdfResp.arrayBuffer());
   T('și e un PDF adevărat, nu o pagină de eroare', buf.slice(0, 5).toString() === '%PDF-' && buf.length > 3000,

@@ -6,7 +6,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>RA Tracks — Monitorizare flotă</title>
+  <title>RA Track — Monitorizare flotă</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -18,12 +18,12 @@
   <!-- PWA / mobil -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0B0E11">
-  <meta name="application-name" content="RA Tracks">
+  <meta name="application-name" content="RA Track">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="apple-touch-icon" href="/icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="RA Tracks">
+  <meta name="apple-mobile-web-app-title" content="RA Track">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/css/app.css?v=6">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
@@ -38,7 +38,7 @@
   <div id="login-screen">
     <div class="login-box">
       <div class="login-logo">
-        <span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="44" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="44" alt="RA"><span class="raw" style="font-size:30px">Tracks</span></span>
+        <span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="44" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="44" alt="RA"><span class="raw" style="font-size:30px">Track</span></span>
       </div>
       <p style="margin-top:14px;">Monitorizare GPS flotă</p>
       <div id="login-error" class="login-error"></div>
@@ -65,7 +65,7 @@
     <header id="topbar">
       <div class="topbar-left">
         <button class="topbar-icon" id="nav-toggle" onclick="toggleNavrail()" title="Meniu"><i class="fas fa-bars"></i></button>
-        <div class="brand-title"><span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px">Tracks</span></span></div>
+        <div class="brand-title"><span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px">Track</span></span></div>
       </div>
       <!-- Centru topbar: aici se montează bara de căutare vehicule (map-tools.js), vizibilă pe „Localizare". -->
       <div class="topbar-center" id="topbar-center"></div>
@@ -1777,7 +1777,7 @@
         <button class="close-btn" onclick="closeApiDocs()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
       <div class="apidocs">
-        <p class="apidocs-lead">API REST pentru integrare cu RA Tracks. Toate răspunsurile sunt JSON. <strong>Base URL:</strong> <code>https://ratrack.ro</code></p>
+        <p class="apidocs-lead">API REST pentru integrare cu RA Track. Toate răspunsurile sunt JSON. <strong>Base URL:</strong> <code>https://ratrack.ro</code></p>
 
         <h3><i class="fas fa-lock"></i> Autentificare</h3>
         <p>Fiecare cerere trimite o cheie API într-un header HTTP:</p>
@@ -2773,7 +2773,7 @@ const pozitii = await r.json();</code></pre>
               <!-- Abonament și integrări → Chei API -->
               <div class="set-panel" data-spanel="api" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-key"></i> Chei API</div>
-                <p class="set-note">Pentru cine leagă alt program de RA Tracks (contabilitate, dispecerizare, ERP). Cheia se dă unui utilizator anume și vede exact cât vede el.</p>
+                <p class="set-note">Pentru cine leagă alt program de RA Track (contabilitate, dispecerizare, ERP). Cheia se dă unui utilizator anume și vede exact cât vede el.</p>
                 <button class="btn-sm btn-primary" onclick="openApiKeys()"><i class="fas fa-key"></i> Deschide cheile API</button>
               </div>
 
@@ -4266,7 +4266,7 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/istoric-complet', { credentials: 'same-origin' });
         if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error(j.error || ('Eroare ' + r.status)); }
         var blob = await r.blob();
-        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Tracks - Istoric complet.xlsx') : 'RA-Tracks - Istoric complet.xlsx';
+        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Track - Istoric complet.xlsx') : 'RA-Track - Istoric complet.xlsx';
         var url = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = url; a.download = nume; document.body.appendChild(a); a.click();
         a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
@@ -4559,7 +4559,7 @@ const pozitii = await r.json();</code></pre>
       var _priv = sup && setPrivescCaFirma();
       if (_priv) sup = false;
       // Fiecare ecran, un singur rost (decizie Alin, 16.09): ecranul ăsta e pentru ECHIPA NOASTRĂ.
-      // La noi se face un coleg nou la RA Tracks — atât. Oamenii unei firme client se fac în altă
+      // La noi se face un coleg nou la RA Track — atât. Oamenii unei firme client se fac în altă
       // parte: administratorul, din Companii → firma → Utilizatori; restul, de adminul ei, de aici,
       // din verticala lui. Înainte, formularul de la noi le putea face pe toate, și nu se mai știa
       // care e ușa din față.
@@ -4578,7 +4578,7 @@ const pozitii = await r.json();</code></pre>
       var h = document.getElementById('usr-adauga-h');
       var nota = document.getElementById('usr-adauga-n');
       if (sup) {
-        if (h) h.textContent = 'Adaugă utilizator (specific pentru colegi noi RA Tracks)';
+        if (h) h.textContent = 'Adaugă utilizator (specific pentru colegi noi RA Track)';
         if (nota) nota.innerHTML = '<i class="fas fa-user-shield"></i><span>Cont de <b>platformă</b>: vede și administrează toate companiile, toate vehiculele, ' +
           'facturarea și jurnalul de audit. Pentru administratorul unei firme client, mergi la <b>Companii → firma → Utilizatori</b>.</span>';
       } else {
@@ -6769,7 +6769,7 @@ const pozitii = await r.json();</code></pre>
       await loadVehicles();
     }
     function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
-    // Document brandat (logo + „RA-Tracks - Raport ... - data"), nu CSV brut. Respectă și fila
+    // Document brandat (logo + „RA-Track - Raport ... - data"), nu CSV brut. Respectă și fila
     // curentă: dacă te uiți la „Arhivate", documentul e despre arhivate.
     function exportVehicles(fmt) {
       // CSV = fișierul cu TOATE câmpurile, pe care îl reînghite importul (export → editezi → reimporți).
@@ -8093,7 +8093,7 @@ const pozitii = await r.json();</code></pre>
         calcul = '<div class="mnt-prop-c">După ce salvezi, următoarea scadență se programează singură, pornind de la data și kilometrajul pe care le pui mai sus.</div>';
       }
 
-      prop.innerHTML = '<div class="mnt-prop-t"><i class="fas fa-screwdriver-wrench"></i> RA Tracks propune</div>'
+      prop.innerHTML = '<div class="mnt-prop-t"><i class="fas fa-screwdriver-wrench"></i> RA Track propune</div>'
         + '<div class="mnt-prop-r">' + regula + '</div>'
         + calcul
         + '<div class="mnt-prop-f">Poți scrie tu alte cifre mai jos. Cifrele noastre se schimbă din fila '
@@ -9881,8 +9881,8 @@ const pozitii = await r.json();</code></pre>
       if (!bg && _repJob) { _repAutoOpenJob = _repJob.id; _repCascadeReturn = true; }
     };
 
-    // Popup branded RA Tracks (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
-    // Dialog de confirmare BRANDED RA Tracks (înlocuiește confirm() nativ). Returnează Promise<boolean>.
+    // Popup branded RA Track (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
+    // Dialog de confirmare BRANDED RA Track (înlocuiește confirm() nativ). Returnează Promise<boolean>.
     // `danger` (implicit true) dă doar CULOAREA roșie + iconița de avertisment — nu înseamnă „ștergere".
     // Eticheta implicită a fost „Șterge", deci orice confirmare care NU era o ștergere (arhivare, import,
     // marcare factură plătită, mutare vehicule, creare cont) afișa un buton roșu pe care scria „Șterge".
@@ -9904,7 +9904,7 @@ const pozitii = await r.json();</code></pre>
         card.style.cssText = 'background:var(--bg-card,#fff);color:var(--text-primary,#1f2937);border:1px solid var(--border,#e2e8f0);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:410px;width:100%;padding:24px;text-align:center;font-family:inherit;animation:raPopIn .16s ease-out;';
         var msgHtml = String(message == null ? 'Ești sigur?' : message).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
         card.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px;">Tracks</span></span></div>' +
+          '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px;">Track</span></span></div>' +
           '<div style="width:54px;height:54px;border-radius:50%;background:' + halo + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i class="fas ' + icon + '" style="font-size:26px;color:' + accent + ';"></i></div>' +
           (opts.title ? '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">' + opts.title + '</div>' : '') +
           // `overflow-wrap:anywhere`: un șir lung fără spații (linkul de parolă, 03.10) ieșea în dreapta din fereastră;
@@ -9938,7 +9938,7 @@ const pozitii = await r.json();</code></pre>
       card.style.cssText = 'background:var(--bg-card,#fff);color:var(--text-primary,#1f2937);border:1px solid var(--border,#e2e8f0);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:380px;width:100%;padding:24px;text-align:center;font-family:inherit;animation:raPopIn .16s ease-out;';
       var icon = opts.icon || 'fa-circle-check';
       card.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="28" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="28" alt="RA"><span class="raw" style="font-size:21px;">Tracks</span></span></div>' +
+        '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span class="ralogo" aria-label="RA Track"><img class="ralm d" src="/logo-mark.png" height="28" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="28" alt="RA"><span class="raw" style="font-size:21px;">Track</span></span></div>' +
         '<div style="width:54px;height:54px;border-radius:50%;background:rgba(34,197,94,.14);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i class="fas ' + icon + '" style="font-size:26px;color:var(--accent,#16a34a);"></i></div>' +
         (opts.title ? '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">' + opts.title + '</div>' : '') +
         '<div style="font-size:13.5px;color:var(--text-muted,#64748b);line-height:1.5;margin-bottom:18px;">' + (opts.message || '') + '</div>' +
@@ -12054,7 +12054,7 @@ const pozitii = await r.json();</code></pre>
     // Butonul „CSV" din Rapoarte a fost SCOS (Alin, 02.10: „da"), împreună cu exportul făcut în pagină din spatele lui
     // (`exportReport` + tipărirea `printReportData`, la care nu mai ducea niciun buton): fișierul n-avea numele casei
     // și se deschidea într-o singură coloană în Excel-ul românesc. Un raport se descarcă DOAR prin server
-    // (`repExport` → `sendReport`): Excel și PDF, cu numele și logo-ul RA Tracks. NU pune la loc o descărcare în pagină.
+    // (`repExport` → `sendReport`): Excel și PDF, cu numele și logo-ul RA Track. NU pune la loc o descărcare în pagină.
 
     // ─── Hotspot (heatmap) ───
     let heatLayer = null;
@@ -17913,7 +17913,7 @@ const pozitii = await r.json();</code></pre>
           if (!(currentUser && currentUser.role === 'superadmin')) {
             ['edit-gps-model', 'edit-sim-number'].forEach(function (id) {
               var el = document.getElementById(id);
-              if (el) { el.readOnly = true; el.title = 'Se completează la instalare, de RA Tracks.'; el.style.opacity = '.7'; }
+              if (el) { el.readOnly = true; el.title = 'Se completează la instalare, de RA Track.'; el.style.opacity = '.7'; }
             });
           }
           setv('edit-odo-base', dev.odo_base_km != null && dev.odo_base_km !== '' ? Math.round(dev.odo_base_km) : '');
@@ -18086,7 +18086,7 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Traseul, descărcat (01.10) ───
-    // Alin: „raportul CSV — îmi apar numai cifre… nu are numele RA Tracks ca celelalte documente". Acum: Excel de la
+    // Alin: „raportul CSV — îmi apar numai cifre… nu are numele RA Track ca celelalte documente". Acum: Excel de la
     // server, prin aceeași cale ca rapoartele (numele casei, logo-ul pe fiecare foaie), cu foaia „Sumar" (aceleași
     // cifre ca pe ecran) și pozițiile pe românește. Se descarcă traseele BIFATE din „Trasee încărcate" — una sau mai
     // multe; fără nicio bifă (ex. din fișa vehiculului), vehiculul ales. Numele fișierului se citește din antet.
@@ -18106,17 +18106,17 @@ const pozitii = await r.json();</code></pre>
           '&to=' + encodeURIComponent(new Date(to).toISOString()), { credentials: 'same-origin' });
         if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error(j.error || ('Eroare ' + r.status)); }
         var blob = await r.blob();
-        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Tracks - Traseu.xlsx') : 'RA-Tracks - Traseu.xlsx';
+        var nume = window._numeDinAntet ? window._numeDinAntet(r, 'RA-Track - Traseu.xlsx') : 'RA-Track - Traseu.xlsx';
         var url = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = url; a.download = nume; document.body.appendChild(a); a.click();
         a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
       } catch (e) { (window.raxToast || alert)('Exportul nu a mers: ' + e.message, 'error'); }
     }
-    // Numele fișierului KML, după regula casei: „RA-Tracks - Traseu {vehicul} - {ziua descărcării}.kml" (01.10) —
+    // Numele fișierului KML, după regula casei: „RA-Track - Traseu {vehicul} - {ziua descărcării}.kml" (01.10) —
     // aceeași formă ca Excel-ul de alături. Caracterele interzise în nume de fișier se scot.
     function _numeKmlTraseu(vehicul, azi) {
       var d = azi || new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
-      return ('RA-Tracks - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
+      return ('RA-Track - Traseu ' + vehicul + ' - ' + p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear())
         .replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim() + '.kml';
     }
 
@@ -19474,7 +19474,7 @@ const pozitii = await r.json();</code></pre>
     .ss-item.ss-sel { color: var(--accent); font-weight: 800; background: rgba(63,224,125,.10); }
     .ss-empty { padding: 10px 12px; font-size: 12.5px; color: var(--text-muted); }
 
-    /* Butoane rapide de perioadă (Azi / Ieri / 7 zile / 30 zile) — moderne, verde RA Tracks */
+    /* Butoane rapide de perioadă (Azi / Ieri / 7 zile / 30 zile) — moderne, verde RA Track */
     .rep-quick { border: 1.5px solid var(--border-light); background: var(--bg-card); color: var(--text-secondary); font-family: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 15px; border-radius: 10px; cursor: pointer; transition: border-color .14s, color .14s, background .14s, box-shadow .14s; }
     .rep-quick:hover { border-color: var(--accent); color: var(--text-primary); }
     .rep-quick.active { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 4px 12px rgba(63,224,125,.3); }
@@ -22004,7 +22004,7 @@ const pozitii = await r.json();</code></pre>
       };
       var html = '<div class="rax-abo">';
       html += _raxSuspendHtml();
-      // Nicio presetărire de plan: la RA Tracks fiecare client are oferta LUI, scrisă aici.
+      // Nicio presetărire de plan: la RA Track fiecare client are oferta LUI, scrisă aici.
       {
         html += '<div class="rax-abo-sect"><h4>Preț / vehicul (RON / lună, fără TVA)</h4>' +
           '<div class="rax-abo-grid">' +
@@ -25453,7 +25453,7 @@ const pozitii = await r.json();</code></pre>
     }
     // ── începe „închirierea aparatelor" (25.09) ──────────────────────────────────────────────────────
     // Alin: „dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze de la noi
-    // pe toată durata contractului". Atunci aparatele rămân ALE NOASTRE (stoc RA Tracks), la semnare
+    // pe toată durata contractului". Atunci aparatele rămân ALE NOASTRE (stoc RA Track), la semnare
     // plătește doar montajul, iar lunar, pe lângă abonament, chiria aparatelor — pe rând separat.
     //   • chiria = ce ne costă aparatul ÷ lunile contractului (cel puțin 24) + 50%;
     //   • durata minimă 24 de luni; montajul la semnare; la final aparatele ne revin.
@@ -25837,7 +25837,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await fetch('/api/admin/masini/sablon', { credentials: 'same-origin' });
         if (!r.ok) { var e = await r.json().catch(function () { return {}; }); throw new Error(e.error || ('HTTP ' + r.status)); }
-        var blob = await r.blob(), nume = _numeDinAntet(r, 'RA-Tracks - Șablon mașini client.xlsx');
+        var blob = await r.blob(), nume = _numeDinAntet(r, 'RA-Track - Șablon mașini client.xlsx');
         var url = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = url; a.download = nume; document.body.appendChild(a); a.click();
         a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
@@ -26084,7 +26084,7 @@ const pozitii = await r.json();</code></pre>
           var q = Math.max(0, Math.round(Number((cfg.devices || {})[x[1]]) || 0)); if (!q) return;
           var u = Number(p[x[0]]);
           if (!(u > 0)) { chirieLipsa.push(x[3]); return; }
-          lines.push({ fel: 'chirie', label: 'Chirie ' + x[3], extra: 'aparat închiriat — rămâne al RA Tracks', qty: q, unit: u, total: q * u });
+          lines.push({ fel: 'chirie', label: 'Chirie ' + x[3], extra: 'aparat închiriat — rămâne al RA Track', qty: q, unit: u, total: q * u });
         });
       }
       if (cfg.aiA) {
@@ -26780,7 +26780,7 @@ const pozitii = await r.json();</code></pre>
     //
     // ⚠ Antetul poartă numele de DOUĂ ori: `filename="…"`, curățat de diacritice pentru browserele
     // vechi, și `filename*=UTF-8''…`, cel adevărat. Regula veche prindea prima potrivire, adică pe
-    // cea ciuntită: fișierul se salva „RA-Tracks - Oferta …", nu „Ofertă" (găsit 22.09, probând
+    // cea ciuntită: fișierul se salva „RA-Track - Oferta …", nu „Ofertă" (găsit 22.09, probând
     // previzualizarea). Se cere ÎNTÂI varianta UTF-8, și abia dacă lipsește se ia cealaltă.
     function _numeDinAntet(resp, implicit) {
       var cd = (resp.headers.get('content-disposition') || '');
@@ -27102,7 +27102,7 @@ const pozitii = await r.json();</code></pre>
             cap: 'Profit', icon: 'piggy-bank', val: _aiuLei(profit),
             ton: venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad',
             sub: venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui',
-            jos: 'din RA Insight, nu din tot RA Tracks' })
+            jos: 'din RA Insight, nu din tot RA Track' })
         + '</div>'
         + '<div class="aiu-grup">Clienții</div><div class="aiu-kpiuri">'
         + _aiuKpi({
@@ -28316,7 +28316,7 @@ const pozitii = await r.json();</code></pre>
       var body = document.getElementById('rax-issuer-body'); if (!body) return;
       body.innerHTML =
         '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">Aceste date apar ca EMITENT (Furnizor) pe facturile fiscale emise.</div>' +
-        _raxField('Denumire firmă', 'rax-iss-name', iss.name, 'ex. RA Tracks SRL') +
+        _raxField('Denumire firmă', 'rax-iss-name', iss.name, 'ex. RA Track SRL') +
         '<div class="rax-row2"><div>' + _raxField('CUI / CIF', 'rax-iss-cui', iss.cui, 'ex. RO12345678') + '</div>' +
         '<div>' + _raxField('Nr. Reg. Com.', 'rax-iss-reg', iss.reg_com, 'ex. J40/1234/2020') + '</div></div>' +
         _raxField('Adresă', 'rax-iss-addr', iss.address, 'Str. ..., oraș, județ') +
@@ -30469,7 +30469,7 @@ const pozitii = await r.json();</code></pre>
       });
 
       if (!keys.length) {
-        body.innerHTML = '<div class="agp-note"><i class="fas fa-info-circle"></i> <span>Agenții AI nu sunt activați pentru compania ta. Scrie-ne și configurăm agenții pentru flota ta — activarea se face de către echipa RA Tracks, pe oferta ta personalizată.</span></div>';
+        body.innerHTML = '<div class="agp-note"><i class="fas fa-info-circle"></i> <span>Agenții AI nu sunt activați pentru compania ta. Scrie-ne și configurăm agenții pentru flota ta — activarea se face de către echipa RA Track, pe oferta ta personalizată.</span></div>';
         return;
       }
 
@@ -30995,10 +30995,10 @@ const pozitii = await r.json();</code></pre>
       cur.innerHTML = ''; box.innerHTML = ''; msg.textContent = ''; msg.style.color = '';
       box.innerHTML = '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;">'
         + '<div style="font-weight:700;margin-bottom:5px;"><i class="fas fa-file-signature" style="color:var(--accent)"></i> Abonamentul tău e cel din contract</div>'
-        + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.65;">La RA Tracks nu există pachete de-a gata. Fiecare client primește o ofertă făcută pe flota lui, iar contractul se face pe oferta acceptată. Sumele exacte sunt pe contract și pe fiecare factură.</div>'
+        + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.65;">La RA Track nu există pachete de-a gata. Fiecare client primește o ofertă făcută pe flota lui, iar contractul se face pe oferta acceptată. Sumele exacte sunt pe contract și pe fiecare factură.</div>'
         + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.65;margin-top:8px;">Vrei mai multe vehicule sau funcții în plus? Scrie-ne și îți actualizăm oferta.</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'
-        + '<a class="rax-btn primary" href="mailto:contact@ratrack.ro?subject=Modificare%20abonament%20RA%20Tracks">Contactează-ne</a>'
+        + '<a class="rax-btn primary" href="mailto:contact@ratrack.ro?subject=Modificare%20abonament%20RA%20Track">Contactează-ne</a>'
         + '<button class="rax-btn" onclick="showView(\'administrare\')"><i class="fas fa-receipt"></i> Facturile mele</button>'
         + '</div></div>';
     };

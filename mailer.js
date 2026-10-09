@@ -15,7 +15,7 @@ function _transport() {
   });
   return _tx;
 }
-function fromAddr() { return process.env.SMTP_FROM || ('RA Tracks <' + (process.env.SMTP_USER || 'noreply@ratrack.ro') + '>'); }
+function fromAddr() { return process.env.SMTP_FROM || ('RA Track <' + (process.env.SMTP_USER || 'noreply@ratrack.ro') + '>'); }
 
 // send({to, subject, html, text, attachments, replyTo}) → { ok, id? , error? }. Nu aruncă (best-effort).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
