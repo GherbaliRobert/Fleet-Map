@@ -251,7 +251,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-09
 
-### AMÂNDOI · Sigla oficială peste tot, PDF-ul „Agenți AI" cu ce face aplicația azi, fără „TrackGPS" — `HASH`
+### AMÂNDOI · Sigla oficială peste tot, PDF-ul „Agenți AI" cu ce face aplicația azi, fără „TrackGPS" — `10a5d3b`
 
 Robert (09.10): *„1 da, 2 da, 3 da"* — la cele trei întrebări de după corectarea numelui.
 
