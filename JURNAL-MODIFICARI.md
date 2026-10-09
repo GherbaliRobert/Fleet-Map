@@ -251,7 +251,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-09
 
-### AMÂNDOI · Marca este „RA Track", ca domeniul ratrack.ro
+### AMÂNDOI · Marca este „RA Track", ca domeniul ratrack.ro — `351e2e1`
 
 Robert (09.10): *„trebuia sa fie ratrack nu ratracks"*, apoi, la cele două întrebări, *„1 da, 2 da, asa avem si domeniul
 RA Track"*. Întoarce cele două intrări de mai jos (de azi dimineață) și hotărârea din 21.09 („RA Tracks"): marca se scrie
