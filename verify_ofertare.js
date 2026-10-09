@@ -419,6 +419,37 @@ const pngDim = (f) => { const d = fs.readFileSync(P(f)).slice(16, 24); return [d
   T(f.replace('public/', '') + ' are 694×135, ca așezarea din Excel să rămână dreaptă', w === 694 && h === 135, w + '×' + h);
 });
 T('Excel-ul pune logo-ul la același raport', /ext: \{ width: 180, height: 35 \}/.test(fs.readFileSync(P('report_export.js'), 'utf8')));
+// Robert, 09.10: „schimbă peste tot pe unde avem logoul… am mai găsit Trak și este eronat". Mai rămăseseră:
+// imaginea de referință cu „RA | traks" în public/ (se deschidea de pe site), „RA Track" (fără „s") în titlul
+// notificărilor de pe telefon, în emailul rapoartelor programate, în proprietățile fișierelor descărcate
+// și în numele companiei demo. Căutăm în tot ce vede omul — codul fără comentarii (în comentarii stă istoria).
+T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate deschide de pe site)',
+  !fs.existsSync(P('public/_logo-ref-fix.png')));
+(function () {
+  const faraComentarii = (s) => s.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\'"])\/\/.*$/gm, '$1');
+  const fisiere = ['server.js', 'report_export.js', 'report_schedules.js', 'channels.js', 'mailer.js', 'contract_pdf.js',
+    'factura_pdf.js', 'public/sw.js', 'public/manifest.json'];
+  fs.readdirSync(P('public')).filter((f) => /\.html$/.test(f)).forEach((f) => fisiere.push('public/' + f));
+  (function adauga(dir) {
+    if (!fs.existsSync(P(dir))) return;
+    fs.readdirSync(P(dir), { withFileTypes: true }).forEach((d) => {
+      const r = dir + '/' + d.name;
+      if (d.isDirectory()) adauga(r); else if (/\.(tsx?|json)$/.test(d.name)) fisiere.push(r);
+    });
+  })('mobile/src');
+  const rele = [];
+  fisiere.filter((f) => fs.existsSync(P(f))).forEach((f) => {
+    // Singura „RA Track" îngăduită: numele vechi pe care pornirea îl caută ca să-l corecteze. „ratrack.ro" e domeniul.
+    const s = faraComentarii(fs.readFileSync(P(f), 'utf8')).split("demo.name === 'RA Track Demo'").join('');
+    const m = s.match(/RA[ -]Track(?![s\w])|RATrack(?![s\w])|\b[Tt]raks?\b|\bTRAKS?\b/g);
+    if (m) rele.push(f + ': ' + Array.from(new Set(m)).join(', '));
+  });
+  T('numele se scrie „RA Tracks" peste tot ce vede omul (nici „Track", nici „traks")', rele.length === 0, rele.join(' · '));
+})();
+const SRV_DEMO = fs.readFileSync(P('server.js'), 'utf8');
+T('compania demo se numește „RA Tracks Demo", iar numele vechi se corectează o dată, la pornire',
+  /createCompany\(\{ name: 'RA Tracks Demo', slug: 'demo'/.test(SRV_DEMO) &&
+  /if \(demo && demo\.name === 'RA Track Demo'\) \{[\s\S]{0,120}updateCompany\(demo\.id, \{ name: 'RA Tracks Demo' \}\)/.test(SRV_DEMO));
 
 sect('6. Cifrele de sus urmăresc ofertele arătate');
 T('se socotesc din rândurile primite', /function _ofPalnieHtml\(rows\)/.test(PAL) && /rows\.filter/.test(PAL));

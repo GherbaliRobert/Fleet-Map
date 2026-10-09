@@ -56,7 +56,7 @@ async function sendWebhook(payload) {
 async function dispatchChannels(n) {
   const text = `[${(n.severity || 'info').toUpperCase()}] ${n.title || n.type}\n${n.body || ''}`.trim();
   const results = {};
-  try { results.email = await sendEmail(n.title || 'Notificare Fleet-Map', text); } catch (e) { results.email = 'err: ' + e.message; }
+  try { results.email = await sendEmail(n.title || 'Notificare RA Tracks', text); } catch (e) { results.email = 'err: ' + e.message; }
   try { results.telegram = await sendTelegram(text); } catch (e) { results.telegram = 'err: ' + e.message; }
   try { results.webhook = await sendWebhook(n); } catch (e) { results.webhook = 'err: ' + e.message; }
   return results;

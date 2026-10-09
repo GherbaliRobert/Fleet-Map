@@ -94,7 +94,7 @@ function xlWriteLegend(ws, legend, startRow, ncol) {
 }
 // Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar" + un sheet/mașină.
 async function toXlsxMultiSheet(report) {
-  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Tracks';
   const used = new Set();
   const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
@@ -134,7 +134,7 @@ async function toXlsx(report) {
   const cols = report.columns || [];
   const ncol = Math.max(1, cols.length);
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'RA Track';
+  wb.creator = 'RA Tracks';
   const logoId = xlLogoId(wb);
   // Sumar pe FOAIE SEPARATĂ (opt-in prin report.summarySheet) — KPI-urile flotei, curat, ca primă foaie (nu îngrămădit la baza tabelului).
   if (report.summarySheet && report.summary && Object.keys(report.summary).length) {
@@ -372,7 +372,7 @@ function renderPdf(doc, report) {
 function toPdf(report) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Track' } });
+      const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Tracks' } });
       // Font unicode înglobat (DejaVu Sans — glife românești complete Ș/Ț/Ă/ș/ț/ă) sub aliasul intern „Nunito".
       // Helvetica din pdfkit corupea diacriticele. Fallback la Helvetica dacă lipsesc TTF-urile (nu strică PDF-ul).
       try {
@@ -718,7 +718,7 @@ function renderOfertaPdf(doc, o) {
 function ofertaToPdf(o) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: 'A4', margin: 36, info: { Title: 'Ofertă RA Tracks', Author: 'RA Track' } });
+      const doc = new PDFDocument({ size: 'A4', margin: 36, info: { Title: 'Ofertă RA Tracks', Author: 'RA Tracks' } });
       try {
         doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
         doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));

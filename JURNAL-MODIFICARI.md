@@ -247,6 +247,39 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
 
+## 2026-10-09
+
+### AMÂNDOI · Numele și sigla „RA Tracks" peste tot: fără „traks", fără „RA Track", fără „RA" de două ori — `HASH`
+
+Robert (09.10): *„schimbă peste tot pe unde avem logoul în RA Track, cum este și numele, pentru că am mai găsit Trak și
+este eronat"*. Căutat în tot proiectul (text, imagini, PDF-uri, aplicația de telefon), apoi a doua oară, de verificatori.
+
+1. **PDF-ul de prezentare „Agenți AI"** (în rădăcină și în `docs_build/`) avea pe toate cele 7 pagini sigla VECHE,
+   „RA | traks": era făcut pe 30.07, înainte ca sigla să fie refăcută (21.09). Refăcut din același script; conținutul
+   nu l-am atins.
+2. **Imaginea de lucru cu „RA | traks"** stătea în `public/` și se putea deschide de pe site. Mutată în `tools/`.
+3. **„RA Track", fără „s"**: titlul notificărilor de pe telefon când n-au titlu propriu (și cel de test), subiectul și
+   semnătura emailului cu rapoartele programate, autorul din proprietățile fișierelor Excel și PDF descărcate, numele
+   companiei demo — acum „RA Tracks Demo" (cea existentă se redenumește singură, o dată, la pornire).
+4. **Antetul a 7 pagini scria „RA | RA Tracks"** — monograma are deja „RA", iar lângă ea scria iar „RA Tracks": Întrebări
+   frecvente, Termeni, Confidențialitate, cele trei pagini pe funcții și pagina „Setează parola" (o vede fiecare client
+   nou). Acum „RA | Tracks", ca pe prima pagină și în aplicație. Fiindcă s-a schimbat textul paginilor, data lor din harta
+   site-ului a trecut pe 09.10, iar pe Termeni și Confidențialitate și „Ultima actualizare" (textul juridic e același).
+5. **Vechiul nume „Fleet-Map"**: în catalogul public al API-ului (ratrack.ro/api) și în subiectul de rezervă al
+   emailurilor de notificare — acum „RA Tracks".
+
+- **Ce am schimbat:** `server.js` (notificări, compania demo, catalogul API, datele paginilor), `report_schedules.js`,
+  `report_export.js`, `channels.js`, antetele din `faq.html`, `termeni.html`, `confidentialitate.html`, `agenti-ai.html`,
+  `alerte-itp-rca-rovinieta.html`, `monitorizare-combustibil.html`, `set-password.html`, stilul nefolosit din
+  `landing.html`, `build-logo.js` (citește imaginea din `tools/`), PDF-ul Agenți AI. Proba: `verify_ofertare.js`, 5g
+  (+3: caută „RA Track" / „traks" / „TRAKS" în tot ce vede omul — codul fără comentarii, paginile, aplicația de telefon —,
+  imaginea veche nu mai e în `public/`, compania demo). Trec și `verify_site_public.js`, `verify_pastrare.js`,
+  `verify_utilizatori.js`, `verify_contracte.js`, `verify_companii.js`.
+- **Ce vede fondatorul:** „RA Tracks Demo" în Companii; notificările și emailurile cu numele corect.
+- **Ce vede clientul:** antetul paginilor publice și al paginii de parolă cu „RA | Tracks"; notificările de pe telefon și
+  fișierele descărcate cu „RA Tracks".
+- **Telefonul:** aplicația scria deja corect; titlul notificărilor vine de la server, deci se corectează fără APK nou.
+
 ## 2026-10-08
 
 ### AMÂNDOI · Meniul din stânga: o singură grupă deschisă deodată, cu animație — `a868618`

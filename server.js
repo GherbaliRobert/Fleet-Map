@@ -1319,12 +1319,12 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
   { cale: '/', fisier: 'landing.html', modificat: '2026-10-03', amprenta: '0166ebf8a33a', prio: '1.0', freq: 'weekly' },
-  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-02', amprenta: 'afcc13e675e8', prio: '0.8', freq: 'monthly' },
-  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-02', amprenta: '576f1c6d37cd', prio: '0.8', freq: 'monthly' },
-  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-02', amprenta: '908fa3e90cb9', prio: '0.8', freq: 'monthly' },
-  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-02', amprenta: '0a222475dace', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-03', amprenta: '8ae263a7896e', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-03', amprenta: '7fadb34cd3c5', prio: '0.3', freq: 'yearly' },
+  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: '765b85550e17', prio: '0.8', freq: 'monthly' },
+  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'e0c1261398fe', prio: '0.8', freq: 'monthly' },
+  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-09', amprenta: 'c482ac3a8acb', prio: '0.8', freq: 'monthly' },
+  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: 'c718a35b68b5', prio: '0.7', freq: 'monthly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '31513703c0eb', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-09', amprenta: '53fc818c46a1', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -9518,7 +9518,7 @@ app.post('/api/support', requireAuth, withCompany, async (req, res) => {
 // Catalog API (public) — pentru integratori
 app.get('/api', (req, res) => {
   res.json({
-    name: 'Fleet-Map API',
+    name: 'RA Tracks API',
     version: '1.0',
     auth: 'Trimite cheia în header: "Authorization: Bearer <key>" sau "X-API-Key: <key>". Cheile se creează din interfață (Utilizatori → Chei API) și moștenesc rolul + accesul pe vehicule al utilizatorului asociat.',
     endpoints: {
@@ -12960,7 +12960,7 @@ async function _notifyPush(n) {
   } catch (_) { return; }
   if (!users || !users.length) return;
   const prefsMap = await getPrefsMap();
-  const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
+  const payload = { title: n.title || 'RA Tracks', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
     // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
@@ -13318,7 +13318,7 @@ async function sendFcmToUser(userId, payload) {
   try {
     const resp = await _fcm.sendEachForMulticast({
       tokens: tokens.map(t => t.token),
-      notification: { title: (payload && payload.title) || 'RA Track', body: (payload && payload.body) || '' },
+      notification: { title: (payload && payload.title) || 'RA Tracks', body: (payload && payload.body) || '' },
       data,
       android: { priority: 'high', notification: { channelId: 'ra_alerts', sound: 'notif' } }
     });
@@ -17161,7 +17161,7 @@ app.post('/api/push/test', requireAuth, async (req, res) => {
   let deviceTokens = 0, webSubs = 0;
   try { deviceTokens = (await db.getDeviceTokens(uid) || []).length; } catch (_) {}
   try { webSubs = (await db.getPushSubscriptions(uid) || []).length; } catch (_) {}
-  sendPushToUser(uid, { title: 'RA Track — test', body: 'Notificare de test — dacă o vezi, push-ul funcționează! ✅', data: { type: 'test' } }).catch(() => {});
+  sendPushToUser(uid, { title: 'RA Tracks — test', body: 'Notificare de test — dacă o vezi, push-ul funcționează! ✅', data: { type: 'test' } }).catch(() => {});
   res.json({ ok: true, fcm: !!_fcm, deviceTokens, webSubs });
 });
 app.post('/api/push/subscribe', requireAuth, async (req, res) => {
@@ -17824,7 +17824,12 @@ async function start() {
   if (process.env.DEMO_DISABLED !== 'true') {
     try {
       let demo = await db.getCompanyBySlug('demo');
-      if (!demo) demo = await db.createCompany({ name: 'RA Track Demo', slug: 'demo', is_demo: true });
+      if (!demo) demo = await db.createCompany({ name: 'RA Tracks Demo', slug: 'demo', is_demo: true });
+      // Numele vechi, „RA Track Demo" (fără „s"), se corectează o singură dată (Robert, 09.10: „am mai găsit Trak și
+      // este eronat"). Doar dacă scrie exact numele vechi: un nume pus de noi de mână rămâne cum e.
+      if (demo && demo.name === 'RA Track Demo') {
+        try { await db.updateCompany(demo.id, { name: 'RA Tracks Demo' }); demo.name = 'RA Tracks Demo'; } catch (e) { /* nu oprește pornirea */ }
+      }
       demoCompanyId = demo.id;
       for (let i = 0; i < demoSim.DEMO_IMEIS.length; i++) {
         const imei = demoSim.DEMO_IMEIS[i];

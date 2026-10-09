@@ -5,7 +5,9 @@ const fs = require('fs');
 const path = require('path');
 
 const PUB = path.join(__dirname, 'public');
-const SRC = path.join(PUB, '_logo-ref-fix.png');
+// Imaginea de referință are în ea cuvântul VECHI, „traks” (de aici se taie doar monograma „RA |”). A stat în public/
+// și se putea deschide de pe site; din 09.10 stă în tools/, unde nu o servește nimeni.
+const SRC = path.join(__dirname, 'tools', 'logo-referinta-veche.png');
 const DARK = { r: 11, g: 14, b: 17 };
 const DK = { r: 21, g: 24, b: 29 }; // #15181D pentru tema light
 
