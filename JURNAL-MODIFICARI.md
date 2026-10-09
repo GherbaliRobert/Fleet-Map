@@ -105,6 +105,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
   **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
   primește și el numele casei. Până atunci, telefonul vechi descarcă tot CSV-ul (merge, doar că e cel greu de citit).
+  **09.10:** APK-ul e construit — `RA-Tracks-1.0.9-debug.apk`, pe Desktop. Are tot ce e mai sus, plus sigla oficială.
+  Rămâne doar instalarea pe telefoane.
   (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
@@ -248,6 +250,46 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-09
+
+### AMÂNDOI · Sigla oficială peste tot, PDF-ul „Agenți AI" cu ce face aplicația azi, fără „TrackGPS" — `HASH`
+
+Robert (09.10): *„1 da, 2 da, 3 da"* — la cele trei întrebări de după corectarea numelui.
+
+1. **Sigla oficială** (monograma „RA |" + „Tracks" scris cu Nunito ExtraBold, ca în aplicație) a intrat peste tot unde
+   marca apărea în alt desen:
+   - **telefonul**: ecranul de intrare, cel de încărcare și animația de pornire (scriau „RA" verde + „Tracks", cu litere).
+     Pe tema deschisă intră monograma închisă la culoare. **APK 1.0.9** e pe Desktop (`RA-Tracks-1.0.9-debug.apk`) și duce
+     și tot ce s-a schimbat pe telefon de la 1.0.8 încoace;
+   - **pagina de documentație API** (bara de sus și meniul lateral);
+   - **emailul cu factura**: bandă închisă cu sigla albă (pe verde, A-ul verde al siglei abia se vedea). Sigla e atașată
+     în email, așa că se vede fără „arată imaginile";
+   - **PDF-urile de prezentare**: flyerul și „Ce avem gata" (aveau un pătrat verde cu „RA"), prezentarea comercială și cea
+     tehnică (aveau „RA" alb + „Tracks" verde), manualul (copertă, macheta meniului, subsoluri, final);
+   - antetele paginilor publice: cuvântul „Tracks" e acum la fel de gros ca în aplicație.
+2. **PDF-ul „Agenți AI" promite doar ce face aplicația azi**, după regulile paginilor publice: fără „24/7" și „non-stop"
+   (RA Watch se uită din oră în oră, ceilalți cinci când le deschizi pagina), fără „te anunță" (agenții nu trimit
+   notificări pe telefon), locul cursei ales pe hartă (nu o adresă scrisă), RA Compliance ca estimare din GPS, RA Insight
+   pe întrebări (nu „50 de apeluri"), cu rândul lui în meniu, plus „AI Raport" gratuit. Fără emailul care nu primește
+   încă nimic și fără telefonul-șablon „+40 7XX": oferta se cere din formularul de pe site.
+3. **„TrackGPS"** (marca unui concurent) a ieșit din prezentarea tehnică, iar **„paritate AROBS"** din cea comercială.
+   Prezentările au acum titlu de document (în fereastra cititorului de PDF scria „….html") și fontul casei (ieșeau în
+   Segoe UI, manualul în Arial). Documentul de vânzare (SALES-PITCH) are în proprietăți titlul lui, nu „Audit RA Tracks".
+
+- **Ce am schimbat:** `mobile/index.html`, `mobile/src/App.tsx`, `mobile/src/screens/Login.tsx`, `mobile/src/theme/global.css`,
+  `mobile/public/logo-mark*.png` (copiile exacte din `public/`), versiunea 1.0.9 (`variables.gradle`, `client.ts`);
+  `public/api-docs.html` și stilul siglei din paginile publice; `server.js` (`EMAIL_LOGO`, antetul emailului cu factura);
+  `docs_build/build_docs.js`, `docs_build/build_ai_docs.js` + PDF-urile lor (și copiile din rădăcină);
+  `docs_manual/manual.html`; `docs_promo/_content.json` (generatorul `docs_promo/build.js` și PDF-urile din `docs_promo/`
+  și `docs/` nu sunt în git); `SALES-PITCH-MODULE.docx`. „Ce avem gata" păstrează data textului (25.07), nu ziua refacerii.
+- **Probe:** `verify_ofertare.js` 5g (+9: sigla de pe telefon pe ambele teme și copiile identice ale monogramei, pagina
+  API, manualul, flyerul, PDF-ul Agenți AI fără „24/7"/emailul/telefonul-șablon, sigla din emailul cu factura; căutarea
+  „RA Track"/„traks" acoperă și animația de pornire). Trec și `verify_oferta_telefon.js` (versiunea 1.0.9 în ambele
+  locuri), `verify_facturare_telefon.js`, `verify_contracte_telefon.js`, `verify_site_public.js`, `verify_abonament.js`,
+  `verify_lipsuri.js`. Verificat pe ecran: telefonul (ambele teme + animația), pagina API (lată și îngustă), emailul
+  (desenat cu o factură de probă), fiecare PDF.
+- **Ce vede fondatorul:** aceeași siglă în aplicație, pe telefon, în PDF-uri și în emailuri.
+- **Ce vede clientul:** sigla oficială la intrarea în aplicația de telefon și în emailul cu factura; PDF-uri de
+  prezentare fără promisiuni pe care aplicația nu le face (la „Agenți AI").
 
 ### AMÂNDOI · Numele și sigla „RA Tracks" peste tot: fără „traks", fără „RA Track", fără „RA" de două ori — `e24850b`
 

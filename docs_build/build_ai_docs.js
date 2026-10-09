@@ -74,46 +74,46 @@ function statusPill(doc, x, y, col, txt) {
 
 // ─── Mockup-uri per agent ───
 function mockWatch(doc, x, y, w, h) {
-  appPanel(doc, x, y, w, h, 'RA Watch · flota reală');
+  appPanel(doc, x, y, w, h, 'RA Watch · verificat acum 12 min', false); // rulează din oră în oră, nu „live”
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   statusPill(doc, ix, iy, RED, '2 semnalări'); iy += 24;
-  findRow(doc, ix, iy, iw, RED, 'Ford Transit — B 77 VWC', 'Offline de 3h 12m · ultima poziție: Otopeni'); iy += 34;
-  findRow(doc, ix, iy, iw, AMBER, 'MAN TGS 26.480 — B 99 MAN', 'Scădere combustibil −18 L în 6 min · posibil furt');
+  findRow(doc, ix, iy, iw, RED, 'Ford Transit — B 77 VWC', 'Offline de 3h 12m · verifică aparatul și SIM-ul'); iy += 34;
+  findRow(doc, ix, iy, iw, AMBER, 'MAN TGS 26.480 — B 99 MAN', 'Scădere de ~18 L · posibil furt sau scurgere');
 }
 function mockDispatch(doc, x, y, w, h) {
   appPanel(doc, x, y, w, h, 'RA Dispatch · disponibile acum');
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   statusPill(doc, ix, iy, GREEN, '2 disponibile'); iy += 24;
-  findRow(doc, ix, iy, iw, GREEN, 'VW Caddy — B 154 UIP', 'Online · staționat de 22 min · Militari'); iy += 34;
-  findRow(doc, ix, iy, iw, GREEN, 'Dacia Logan 3 — IF 08 RAT', 'Online · staționat de 40 min · Pipera'); iy += 36;
-  doc.font('N').fontSize(7).fillColor('#8aa89c').text('Cel mai apropiat de Str. Fabricii 20: VW Caddy · ~9 min', ix, iy, { width: iw, lineBreak: false });
+  findRow(doc, ix, iy, iw, GREEN, 'VW Caddy — B 21 RAT', 'Disponibil · 6 km · ~9 min'); iy += 34;
+  findRow(doc, ix, iy, iw, GREEN, 'Dacia Logan 3 — IF 08 RAT', 'Disponibil · 11 km · ~17 min'); iy += 36;
+  doc.font('N').fontSize(7).fillColor('#8aa89c').text('Locul ales pe hartă: Str. Fabricii 20 · timp orientativ', ix, iy, { width: iw, lineBreak: false });
 }
 function mockCare(doc, x, y, w, h) {
   appPanel(doc, x, y, w, h, 'RA Care · scadențe');
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   statusPill(doc, ix, iy, AMBER, '2 scadențe'); iy += 24;
-  findRow(doc, ix, iy, iw, AMBER, 'ITP — Iveco Daily · TM 04 IVE', 'Expiră în 8 zile (14.08.2026)'); iy += 34;
-  findRow(doc, ix, iy, iw, BLUE, 'Revizie — Renault Master · IS 21 REN', 'În 900 km până la următorul service');
+  findRow(doc, ix, iy, iw, AMBER, 'ITP — Iveco Daily · TM 04 IVE', 'Expiră în 8 zile'); iy += 34;
+  findRow(doc, ix, iy, iw, BLUE, 'Revizie — Renault Master · IS 21 REN', 'Mai sunt 420 km până la revizie');
 }
 function mockOptimize(doc, x, y, w, h) {
   appPanel(doc, x, y, w, h, 'RA Optimize · scor eco');
   const ix = x + 12; const cx = ix + 34, cy = y + 74, r = 26;
   // gauge semicerc
   doc.path('M ' + (cx - r) + ' ' + cy + ' A ' + r + ' ' + r + ' 0 0 1 ' + (cx + r) + ' ' + cy).strokeOpacity(0.12).strokeColor('#ffffff').lineWidth(6).stroke().strokeOpacity(1);
-  const score = 62, segs = 40; doc.strokeColor(AMBER).lineWidth(6);
+  const score = 54, segs = 40; // agentul arată doar mașinile sub 60 doc.strokeColor(AMBER).lineWidth(6);
   for (let i = 0; i <= segs; i++) { const ai = Math.PI - (Math.PI * score / 100) * (i / segs); const px = cx + r * Math.cos(ai), py = cy - r * Math.sin(ai); i ? doc.lineTo(px, py) : doc.moveTo(px, py); } doc.stroke();
   doc.font('NX').fontSize(17).fillColor('#fff').text(String(score), cx - 26, cy - 16, { width: 52, align: 'center', lineBreak: false });
   doc.font('N').fontSize(6.5).fillColor('#8aa89c').text('/100 azi', cx - 26, cy + 2, { width: 52, align: 'center', lineBreak: false });
   const tx = ix + 78, tw = w - (tx - x) - 12; let ty = y + 34;
-  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Dacia Logan 3 · B 154 UIP', tx, ty, { width: tw, lineBreak: false }); ty += 14;
-  ['3 frânări bruște', '2 accelerări bruște', '14 min ralanti'].forEach(function (s) {
+  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Dacia Logan 3 · IF 08 RAT', tx, ty, { width: tw, lineBreak: false }); ty += 14;
+  ['3 frânări bruște', '2 accelerări bruște', 'timp mult la ralanti'].forEach(function (s) {
     doc.circle(tx + 3, ty + 4, 1.6).fillColor(AMBER).fill();
     doc.font('N').fontSize(7.5).fillColor('#b9cec4').text(s, tx + 10, ty, { width: tw - 10, lineBreak: false }); ty += 12;
   });
-  doc.font('N').fontSize(7).fillColor(GREEN).text('Sugestie: instruire frânare anticipată', tx, ty + 2, { width: tw, lineBreak: false });
+  doc.font('N').fontSize(7).fillColor(GREEN).text('Sugestie: frânează lin, din timp', tx, ty + 2, { width: tw, lineBreak: false });
 }
 function mockCompliance(doc, x, y, w, h) {
-  appPanel(doc, x, y, w, h, 'RA Compliance · ore de condus');
+  appPanel(doc, x, y, w, h, 'RA Compliance · estimare din GPS');
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   statusPill(doc, ix, iy, AMBER, 'aproape de limită'); iy += 24;
   // bară condus continuu
@@ -131,7 +131,7 @@ function mockClient(doc, x, y, w, h) {
   appPanel(doc, x, y, w, h, 'RA Client · sinteza zilei');
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   const kw = (iw - 16) / 3;
-  [['344 km', 'azi', GREEN], ['6/8', 'active', '#e6f3ec'], ['+12%', 'vs. ieri', GREEN]].forEach(function (k, i) {
+  [['344 km', 'azi', GREEN], ['6/8', 'active', '#e6f3ec'], ['+12%', 'față de ieri', GREEN]].forEach(function (k, i) {
     const kx = ix + i * (kw + 8);
     doc.roundedRect(kx, iy, kw, 30, 5).fillColor(DARK2).fill();
     doc.font('NX').fontSize(11).fillColor(k[2]).text(k[0], kx + 8, iy + 4, { lineBreak: false });
@@ -139,7 +139,7 @@ function mockClient(doc, x, y, w, h) {
   });
   iy += 40;
   doc.font('NB').fontSize(7.5).fillColor(AMBER).text('DE VERIFICAT', ix, iy, { lineBreak: false }); iy += 12;
-  ['RA Watch: 1 vehicul offline > 3h', 'RA Care: ITP Iveco Daily în 8 zile'].forEach(function (s) {
+  ['RA Watch: 1 alertă de monitorizare', 'RA Care: 1 scadență'].forEach(function (s) {
     doc.circle(ix + 3, iy + 4, 1.6).fillColor(AMBER).fill();
     doc.font('N').fontSize(7.5).fillColor('#b9cec4').text(s, ix + 10, iy, { width: iw - 10, lineBreak: false }); iy += 13;
   });
@@ -149,7 +149,7 @@ function mockInsight(doc, x, y, w, h) {
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   // contorul de apeluri (ca la Claude)
   doc.roundedRect(ix, iy, iw, 30, 6).fillColor(DARK2).fill();
-  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Îți mai rămân 7 din 50 apeluri', ix + 10, iy + 5, { lineBreak: false });
+  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Întrebări luna asta: 86 din 100 rămase', ix + 10, iy + 5, { lineBreak: false });
   aFill(doc, ix + 10, iy + 20, iw - 20, 5, 2.5, '#ffffff', 0.1);
   doc.roundedRect(ix + 10, iy + 20, (iw - 20) * 0.86, 5, 2.5).fillColor(GREEN).fill();
   iy += 40;
@@ -160,7 +160,7 @@ function mockInsight(doc, x, y, w, h) {
   // răspuns agent
   doc.roundedRect(ix, iy, iw * 0.8, 30, 6).fillColor(DARK2).fill();
   icon(doc, FA.wand, ix + 8, iy + 6, 8, GREEN);
-  doc.font('N').fontSize(7.5).fillColor('#b9cec4').text('MAN TGS 26.480 — 9.4 L/100km, cu 21% peste media flotei. Recomand verificarea presiunii și a stilului de condus.', ix + 20, iy + 5, { width: iw * 0.8 - 28 });
+  doc.font('N').fontSize(7.5).fillColor('#b9cec4').text('Cel mai mult: B 99 MAN (MAN TGS 26.480) — 412 L, 34,2 L/100 km, cu 9% peste norma mașinii. Merită o discuție cu șoferul.', ix + 20, iy + 5, { width: iw * 0.8 - 28 });
 }
 
 // ─── Bloc agent (text stânga + mockup dreapta) ───
@@ -200,10 +200,10 @@ function build() {
   doc.font('NB').fontSize(10).fillColor(GREEN).text('INTELIGENȚĂ ARTIFICIALĂ PENTRU FLOTA TA', M, 150, { characterSpacing: 1 });
   doc.font('NX').fontSize(36).fillColor('#fff').text('6 agenți AI', M, 172, { width: CW });
   doc.font('NX').fontSize(36).fillColor(GREEN).text('+ RA Insight', M, 214, { width: CW });
-  doc.font('N').fontSize(12).fillColor('#c9ddd3').text('Șase agenți care veghează flota non-stop — și un asistent AI care răspunde la orice întrebare despre ea. Fiecare cu rolul lui, direct în aplicație.', M, 268, { width: CW - 30 });
+  doc.font('N').fontSize(12).fillColor('#c9ddd3').text('Șase agenți care verifică flota după reguli clare — RA Watch în fiecare oră, ceilalți cinci când le deschizi pagina — și un asistent pe care îl întrebi orice despre flotă.', M, 268, { width: CW - 30 });
 
   // constelația celor 6 agenți (grilă de iconițe)
-  const agIcons = [[FA.shield, 'Watch', 'Paznic 24/7'], [FA.compass, 'Dispatch', 'Dispecerat'], [FA.wrench, 'Care', 'Mentenanță'], [FA.leaf, 'Optimize', 'Eco-driving'], [FA.clipboard, 'Compliance', 'Ore de condus'], [FA.file, 'Client', 'Sinteza zilei']];
+  const agIcons = [[FA.shield, 'Watch', 'La fiecare oră'], [FA.compass, 'Dispatch', 'Dispecerat'], [FA.wrench, 'Care', 'Mentenanță'], [FA.leaf, 'Optimize', 'Condus economic'], [FA.clipboard, 'Compliance', 'Ore de condus'], [FA.file, 'Client', 'Sinteza zilei']];
   const gy = 330, gcw = CW / 3;
   agIcons.forEach(function (g, i) {
     const gx = M + (i % 3) * gcw, gyy = gy + Math.floor(i / 3) * 92;
@@ -230,12 +230,12 @@ function build() {
   doc.addPage(); doc.rect(0, 0, W, H).fillColor('#fff').fill(); pageHeader(doc, M, 'Agenți AI · concept');
   let y = M + 48;
   doc.font('NX').fontSize(22).fillColor('#111').text('Cum lucrează agenții', M, y); y += 32;
-  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Agenții sunt „angajați digitali" care verifică flota automat, din oră în oră, fiecare pe specialitatea lui. Când găsesc ceva, îți arată exact ce și unde — nu un istoric, ci starea de acum.', M, y, { width: CW }); y += 40;
+  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Fiecare agent verifică flota după reguli clare, pe specialitatea lui: RA Watch singur, în fiecare oră; ceilalți cinci pe loc, când le deschizi pagina.', M, y, { width: CW }); y += 40;
 
   // 3 diferențiatori
-  [[FA.bolt, 'Rulează singuri', 'automat, din oră în oră — plus rulare manuală oricând, cu un click'],
-   [FA.circleCheck, 'Incluși în platformă', 'veghează non-stop, fără să miști un deget — fac parte din aplicație'],
-   [FA.bell, 'Îți spun doar ce contează', 'când e „totul în regulă", tac; când apare o problemă, o semnalează']
+  [[FA.bolt, 'Când lucrează', 'RA Watch singur, din oră în oră; ceilalți când le deschizi pagina sau apeși „Rulează acum”'],
+   [FA.circleCheck, 'Incluși în abonament', 'cei șase agenți nu costă nimic în plus — fac parte din aplicație'],
+   [FA.bell, 'Fără avalanșă de mesaje', 'ce găsește RA Watch reapare abia după 12 ore, sau dacă se agravează']
   ].forEach(function (d, i) {
     const cy2 = y + i * 62;
     doc.roundedRect(M, cy2, CW, 54, 10).fillColor(LIGHT).fill();
@@ -251,38 +251,38 @@ function build() {
   doc.roundedRect(M, y, CW, 96, 11).fillColor(DARK).fill();
   doc.rect(M, y, 5, 96).fillColor(GREEN).fill();
   icon(doc, FA.bolt, M + 22, y + 20, 15, GREEN);
-  doc.font('NB').fontSize(9).fillColor(GREEN).text('SUPRAVEGHERE + RĂSPUNS LA CERERE', M + 46, y + 15, { lineBreak: false });
-  doc.font('N').fontSize(10.5).fillColor('#e6f3ec').text('Cei 6 agenți lucrează singuri și te anunță când găsesc ceva — supraveghere non-stop. RA Insight e altfel: nu așteaptă, îl întrebi tu direct, în limbaj natural, orice despre flotă și îți răspunde pe loc. Împreună acoperă și pază automată, și răspuns la cerere.', M + 46, y + 32, { width: CW - 70 });
+  doc.font('NB').fontSize(9).fillColor(GREEN).text('VERIFICĂRI + RĂSPUNS LA CERERE', M + 46, y + 15, { lineBreak: false });
+  doc.font('N').fontSize(10.5).fillColor('#e6f3ec').text('Cei șase agenți verifică flota după reguli fixe și îți arată ce au găsit în pagina „Agenți AI” — nu îți trimit notificări pe telefon. RA Insight e altfel: îl întrebi tu, în limba română, orice despre flotă, și îți răspunde pe loc.', M + 46, y + 32, { width: CW - 70 });
   y += 96 + 20;
-  doc.font('N').fontSize(9.5).fillColor(MUTED).text('Pe paginile următoare: fiecare agent cu rolul lui, ce face, ce date îți dă și cum te ajută — cu un exemplu real din aplicație.', M, y, { width: CW });
+  doc.font('N').fontSize(9.5).fillColor(MUTED).text('Pe paginile următoare: fiecare agent cu rolul lui, ce face, ce date îți dă și cum te ajută — cu un exemplu de cum arată în aplicație (date de probă).', M, y, { width: CW });
   pageFooter(doc, M, 2);
 
   // ══════ P3-P5 — cei 6 agenți, 2 per pagină ══════
   const AGENTS = [
-    { icon: FA.shield, name: 'RA Watch', role: 'Paznic 24/7', mock: mockWatch,
-      does: 'Veghează flota non-stop. Sesizează vehicule rămase offline, scăderi bruște de combustibil (posibil furt), ralanti prelungit și camioane cu tahograful neconfigurat.',
-      data: 'Ce vehicul a dispărut de pe hartă și de cât timp, unde a fost văzut ultima dată, câți litri s-au pierdut și în cât timp.',
-      helps: 'Afli imediat, nu la sfârșitul zilei, când un vehicul se oprește din raportat sau pierde combustibil — poți reacționa pe loc.' },
+    { icon: FA.shield, name: 'RA Watch', role: 'Paznicul', mock: mockWatch,
+      does: 'Din oră în oră caută mașinile care nu mai transmit de peste o oră, scăderile bruște de combustibil, ralantiul lung și camioanele fără date de la tahograf.',
+      data: 'Ce mașină nu mai transmite și de cât timp, câți litri au scăzut din rezervor și cât a stat cu motorul pornit pe loc.',
+      helps: 'Afli în cel mult o oră, din pagina agenților, că o mașină nu mai transmite sau a pierdut combustibil — nu la sfârșitul zilei.' },
     { icon: FA.compass, name: 'RA Dispatch', role: 'Dispecerat', mock: mockDispatch,
-      does: 'Găsește vehiculele disponibile chiar acum pentru o cursă și le arată pe cele subutilizate azi. Poate alege și cel mai apropiat de o destinație.',
-      data: 'Vehicule online și staționate, cu numărul de înmatriculare, de cât timp stau, plus cel mai apropiat de adresa cursei și timpul estimat.',
+      does: 'Îți arată ce mașini sunt libere acum și, după prânz, pe cele care n-au mers aproape deloc azi. Pentru o cursă, alegi locul pe hartă.',
+      data: 'Mașinile libere acum, cu nume și număr, iar pentru locul ales pe hartă: distanța până la fiecare și un timp estimat, orientativ.',
       helps: 'Aloci cursa celui mai potrivit vehicul în câteva secunde, fără să suni pe rând fiecare șofer să afli unde e.' },
     { icon: FA.wrench, name: 'RA Care', role: 'Mentenanță', mock: mockCare,
-      does: 'Urmărește toate scadențele flotei: ITP, RCA, revizii și intervale de service — calculate pe dată sau pe kilometri.',
+      does: 'Strânge într-o listă tot ce se apropie de termen, din ce ai trecut în aplicație: ITP, RCA, asigurări și revizii pe dată sau pe kilometri.',
       data: 'Ce expiră și când, pe fiecare vehicul: zile rămase până la ITP/RCA sau kilometri rămași până la următoarea revizie.',
-      helps: 'Nu mai ratezi un ITP sau o revizie: eviți amenzile, imobilizările și reparațiile scumpe cauzate de service-ul sărit.' },
-    { icon: FA.leaf, name: 'RA Optimize', role: 'Eco-driving', mock: mockOptimize,
+      helps: 'Afli din timp ce urmează — actele cu 30 de zile înainte, reviziile cu 14 zile sau 500 km — și eviți amenzile și mașinile oprite.' },
+    { icon: FA.leaf, name: 'RA Optimize', role: 'Condus economic', mock: mockOptimize,
       does: 'Calculează scorul eco al fiecărui vehicul din frânări și accelerări bruște, viteză și risipa la ralanti — și dă sugestii concrete de instruire.',
-      data: 'Scor pe 100 per vehicul, ce anume a tras scorul jos azi (câte frânări/accelerări bruște, câte minute de ralanti) și ce să corectezi.',
-      helps: 'Șoferi mai economici și mai siguri înseamnă mai puțin combustibil ars, uzură redusă și mai puține riscuri de accident.' },
+      data: 'Scorul pe 100 al mașinilor sub prag, ce l-a tras în jos azi (frânări sau accelerări bruște, viteză, ralanti) și ce să corecteze șoferul.',
+      helps: 'Vezi pe ce mașini se conduce agresiv. Clasamentul șoferilor îl găsești în raportul „EcoDrive — clasament șoferi”.' },
     { icon: FA.clipboard, name: 'RA Compliance', role: 'Ore de condus', mock: mockCompliance,
-      does: 'Urmărește orele de condus (continuu și zilnic, Reg. CE 561) și avertizează ÎNAINTE de depășire. Doar pentru vehiculele cu tahograf — camioane, nu turisme.',
-      data: 'Timpul de condus continuu și zilnic per camion, cu avertisment când se apropie de limita legală, nu doar după ce a depășit-o.',
-      helps: 'Eviți amenzile usturătoare la controlul ISCTR și protejezi șoferul de oboseală — prevenire, nu constatare.' },
+      does: 'La camioane și autobuze estimează din GPS condusul de azi: cel mult 4h30 fără o pauză de 45 de minute și 9 ore pe zi.',
+      data: 'Camioanele care se apropie de limită sau au trecut-o azi, cu timpul estimat de condus și ce e de făcut (de pildă pauza).',
+      helps: 'Dispecerul vede din timp cine trebuie să oprească. E o estimare: pentru control rămâne tahograful.' },
     { icon: FA.file, name: 'RA Client', role: 'Sinteza zilei', mock: mockClient,
-      does: 'Adună toată ziua într-un singur raport: kilometri, vehicule active, comparație cu ieri și concluziile celorlalți cinci agenți, într-un singur loc.',
+      does: 'Strânge ziua flotei într-un singur loc: kilometri, mașini active și nefolosite, comparația cu ieri la aceeași oră și ce au găsit ceilalți agenți.',
       data: 'Km totali azi, câte vehicule au fost active vs. nefolosite, procentul față de ieri, vehiculul de top și lista scurtă „de verificat".',
-      helps: 'În 30 de secunde știi cum a mers ziua în flotă, fără să deschizi cinci ecrane diferite — ideal pentru raportul de seară.' }
+      helps: 'Dintr-o privire știi cum merge ziua, fără să deschizi mai multe ecrane. Unde scrie „De verificat”, deschizi agentul respectiv.' }
   ];
   for (let i = 0; i < AGENTS.length; i++) {
     if (i % 2 === 0) { doc.addPage(); doc.rect(0, 0, W, H).fillColor('#fff').fill(); pageHeader(doc, M, 'Agenți AI · ' + (i / 2 + 1) + ' din 3'); y = M + 48; }
@@ -297,14 +297,14 @@ function build() {
   doc.roundedRect(M, y, 44, 44, 10).fillColor('#f0fdf4').fill();
   icon(doc, FA.wand, M + 12, y + 12, 20, GREEN_D);
   doc.font('NX').fontSize(22).fillColor('#111').text('RA Insight', M + 56, y + 2, { lineBreak: false });
-  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Asistentul care leagă tot. Îl întrebi orice despre flotă, în limbaj natural — caută în datele tale și îți răspunde pe loc: de la poziții și consum, la scadențe și ore de condus. Tot el rezumă rapoartele într-un paragraf clar.', M + 56, y + 28, { width: CW - 56 });
+  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Asistentul care leagă tot. Îl întrebi orice despre flotă, în limba română — caută în datele tale și îți răspunde pe loc: de la poziții și consum la acte, revizii și ore de condus. Vede doar ce vede contul care întreabă.', M + 56, y + 28, { width: CW - 56 });
   y += 72;
   mockInsight(doc, M, y, CW, 158); y += 172;
 
   // ce obții cu RA Insight (valoare, fără mecanica de vânzare)
-  [[FA.wand, 'Întrebi în limbaj natural', 'nu înveți rapoarte — scrii întrebarea ca unui coleg și primești răspunsul'],
-   [FA.file, 'Rezumate de rapoarte', 'transformă un raport lung într-un paragraf clar, gata de trimis'],
-   [FA.gauge, 'Transparență totală', 'vezi oricând cât ai folosit din luna curentă — fără surprize']
+  [[FA.wand, 'Întrebi în limba română', 'nu înveți rapoarte — scrii întrebarea ca unui coleg și primești răspunsul'],
+   [FA.file, 'Rezumate de rapoarte', 'pe calculator, un raport lung devine câteva puncte clare'],
+   [FA.gauge, 'Fără surprize', 'vezi câte întrebări mai are firma; la final se oprește, fără cost în plus']
   ].forEach(function (d, i) {
     const cy2 = y + i * 44;
     doc.roundedRect(M + 14, cy2 + 2, 28, 28, 7).fillColor('#f0fdf4').fill();
@@ -320,39 +320,39 @@ function build() {
   doc.font('NX').fontSize(14).fillColor('#fff').text('Ofertă personalizată', M + 26, y + 18, { lineBreak: false });
   doc.font('N').fontSize(10).fillColor('#c9ddd3').text('Prețul se stabilește în funcție de flota și de nevoile tale. Spune-ne ce ai și îți pregătim o ofertă pe măsură.', M + 26, y + 40, { width: CW * 0.52 });
   const cxx = M + CW * 0.60;
-  icon(doc, FA.envelope, cxx, y + 20, 11, GREEN);
-  doc.font('NB').fontSize(10.5).fillColor('#fff').text('contact@ratrack.ro', cxx + 20, y + 19, { lineBreak: false });
-  icon(doc, FA.phone, cxx, y + 42, 11, GREEN);
-  doc.font('NB').fontSize(10.5).fillColor('#fff').text('+40 7XX XXX XXX', cxx + 20, y + 41, { lineBreak: false });
-  icon(doc, FA.globe, cxx, y + 64, 11, GREEN);
-  doc.font('NB').fontSize(10.5).fillColor('#fff').text('ratrack.ro', cxx + 20, y + 63, { lineBreak: false });
+  // Fără email și telefon (09.10): adresa de email nu primește încă nimic, iar numărul era un șablon. Oferta se cere din
+  // formularul de pe site, care chiar ajunge la noi.
+  icon(doc, FA.globe, cxx, y + 28, 12, GREEN);
+  doc.font('NB').fontSize(12).fillColor('#fff').text('ratrack.ro', cxx + 22, y + 26, { lineBreak: false });
+  doc.font('N').fontSize(9.5).fillColor('#c9ddd3').text('Cere oferta din formularul de pe site.', cxx, y + 50, { width: CW * 0.38 });
   pageFooter(doc, M, 6);
 
   // ══════ P7 — Închidere ══════
   doc.addPage(); doc.rect(0, 0, W, H).fillColor('#fff').fill(); pageHeader(doc, M, 'Pe scurt');
   y = M + 50;
-  doc.font('NX').fontSize(20).fillColor('#111').text('Șapte instrumente AI, un singur ecran', M, y); y += 34;
-  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Toți agenții trăiesc în pagina „Agenți AI" din aplicație. Fiecare card arată pe scurt starea; îl deschizi și vezi detaliile.', M, y, { width: CW }); y += 34;
+  doc.font('NX').fontSize(20).fillColor('#111').text('Șase agenți și un asistent', M, y); y += 34;
+  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Cei șase agenți stau în pagina „Agenți AI”: fiecare card arată pe scurt starea, iar când îl deschizi vezi detaliile. RA Insight are rândul lui în meniu.', M, y, { width: CW }); y += 34;
 
   // recap rânduri
-  const recap = [[FA.shield, 'RA Watch', 'offline, furt combustibil, ralanti, tahograf'], [FA.compass, 'RA Dispatch', 'vehicule libere acum + cel mai apropiat de cursă'], [FA.wrench, 'RA Care', 'ITP, RCA, revizii — pe dată sau pe km'], [FA.leaf, 'RA Optimize', 'scor eco + sugestii de instruire'], [FA.clipboard, 'RA Compliance', 'ore de condus (Reg. 561) — doar camioane'], [FA.file, 'RA Client', 'sinteza zilei + concluziile celorlalți'], [FA.wand, 'RA Insight', 'asistent AI — întrebi orice despre flotă']];
+  // [iconiță, nume, ce face, eticheta din dreapta, evidențiat]. „AI Raport" (Rapoarte, pe calculator) e gratuit, pe reguli.
+  const recap = [[FA.shield, 'RA Watch', 'din oră în oră: offline, combustibil, ralanti, tahograf', 'inclus'], [FA.compass, 'RA Dispatch', 'mașini libere acum + cele mai apropiate de locul ales', 'inclus'], [FA.wrench, 'RA Care', 'ITP, RCA, revizii — pe dată sau pe km', 'inclus'], [FA.leaf, 'RA Optimize', 'scor eco pe mașină + sfaturi pentru șofer', 'inclus'], [FA.clipboard, 'RA Compliance', 'condusul de azi, estimat din GPS — camioane, autobuze', 'inclus'], [FA.file, 'RA Client', 'sinteza zilei + concluziile celorlalți', 'inclus'], [FA.wand, 'RA Insight', 'asistent AI — întrebi orice despre flotă', 'cu plată', true], [FA.file, 'AI Raport', 'în Rapoarte: întrebări despre rapoarte, pe calculator', 'gratuit']];
   recap.forEach(function (r, i) {
     const ry = y + i * 34;
-    doc.roundedRect(M, ry, CW, 28, 7).fillColor(i === 6 ? '#f0fdf4' : LIGHT).fill();
-    if (i === 6) aStroke(doc, M, ry, CW, 28, 7, GREEN, 0.5, 1);
-    if (i === 6) { aFill(doc, M + 8, ry + 5, 20, 18, 5, GREEN, 0.18); } else { doc.roundedRect(M + 8, ry + 5, 20, 18, 5).fillColor('#eef2f0').fill(); }
+    const ev = !!r[4];
+    doc.roundedRect(M, ry, CW, 28, 7).fillColor(ev ? '#f0fdf4' : LIGHT).fill();
+    if (ev) aStroke(doc, M, ry, CW, 28, 7, GREEN, 0.5, 1);
+    if (ev) { aFill(doc, M + 8, ry + 5, 20, 18, 5, GREEN, 0.18); } else { doc.roundedRect(M + 8, ry + 5, 20, 18, 5).fillColor('#eef2f0').fill(); }
     icon(doc, r[0], M + 13, ry + 8, 11, GREEN_D);
     doc.font('NB').fontSize(10.5).fillColor('#111').text(r[1], M + 38, ry + 8, { width: 120, lineBreak: false });
     doc.font('N').fontSize(9.5).fillColor(MUTED).text(r[2], M + 164, ry + 8, { width: CW - 180, lineBreak: false });
-    if (i === 6) { doc.font('NB').fontSize(8).fillColor(GREEN_D).text('cu plată', M + CW - 60, ry + 9, { width: 52, align: 'right', lineBreak: false }); }
-    else { doc.font('N').fontSize(8).fillColor(MUTED).text('inclus', M + CW - 60, ry + 9, { width: 52, align: 'right', lineBreak: false }); }
+    doc.font(ev ? 'NB' : 'N').fontSize(8).fillColor(ev ? GREEN_D : MUTED).text(r[3], M + CW - 60, ry + 9, { width: 52, align: 'right', lineBreak: false });
   });
   y += recap.length * 34 + 14;
 
   // stats
   doc.roundedRect(M, y, CW, 58, 8).fillColor('#f0fdf4').fill();
   aStroke(doc, M, y, CW, 58, 8, GREEN, 0.5, 1);
-  [['6', 'agenți incluși'], ['24/7', 'supraveghere'], ['1', 'asistent AI'], ['0', 'configurări']].forEach(function (k, i) {
+  [['6', 'agenți incluși'], ['1 oră', 'între verificări RA Watch'], ['1', 'asistent AI'], ['0 lei', 'în plus pentru agenți']].forEach(function (k, i) {
     const kx = M + 16 + i * (CW / 4);
     doc.font('NX').fontSize(20).fillColor(GREEN_D).text(k[0], kx, y + 11, { lineBreak: false });
     doc.font('N').fontSize(8.5).fillColor(MUTED).text(k[1], kx, y + 37, { lineBreak: false });
@@ -361,8 +361,8 @@ function build() {
 
   // CTA
   doc.roundedRect(M, y, CW, 90, 12).fillColor(DARK).fill(); doc.rect(M, y, 5, 90).fillColor(GREEN).fill();
-  doc.font('NX').fontSize(18).fillColor('#fff').text('Flota ta, supravegheată de AI.', M + 26, y + 20);
-  doc.font('N').fontSize(10.5).fillColor('#c9ddd3').text('Cei 6 agenți sunt deja incluși. Activează RA Insight când vrei un asistent care răspunde la orice întrebare.', M + 26, y + 48, { width: CW - 210 });
+  doc.font('NX').fontSize(18).fillColor('#fff').text('Agenții verifică. Tu întrebi.', M + 26, y + 20);
+  doc.font('N').fontSize(10.5).fillColor('#c9ddd3').text('Agenții sunt incluși în abonament. RA Insight îl ceri în ofertă, pe conturile alese de firmă.', M + 26, y + 48, { width: CW - 210 });
   doc.roundedRect(W - M - 160, y + 30, 134, 34, 8).fillColor(GREEN).fill();
   doc.font('NX').fontSize(13).fillColor(INK).text('ratrack.ro', W - M - 160, y + 40, { width: 134, align: 'center', lineBreak: false });
   pageFooter(doc, M, 7);

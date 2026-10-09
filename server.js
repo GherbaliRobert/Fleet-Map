@@ -2294,6 +2294,9 @@ async function contractExpiryTick() {
 // Escape HTML minimal pentru email-uri (valori dinamice companie/emitent).
 function _he(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 // Corpul de email pentru o factură emisă (rezumat + instrucțiuni plată).
+// Sigla din antetul emailului: același fișier ca pe rapoarte (`logo.png` = varianta ALBĂ, pentru fundal închis), atașat
+// „în corpul" emailului și chemat din HTML prin `cid:`.
+const EMAIL_LOGO = { filename: 'logo.png', path: path.join(__dirname, 'public', 'logo.png'), cid: 'logo@ratrack.ro', contentType: 'image/png' };
 function _invoiceEmailHtml(inv, iss) {
   const money = function (n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   const due = inv.due_date ? new Date(Number(inv.due_date)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
@@ -2304,8 +2307,13 @@ function _invoiceEmailHtml(inv, iss) {
     : platita ? 'Vă trimitem factura fiscală pentru plata primită. Pe ea nu mai e nimic de plată.'
     : inv.fel === 'abonament' ? 'Am emis factura pentru abonamentul de monitorizare GPS.'
     : 'Am emis factura de mai jos.';
+  // Antetul: sigla OFICIALĂ (Robert, 09.10: „1 da"), imaginea albă pe bandă închisă, ca în aplicație. Pe verde, A-ul verde
+  // al siglei abia se vedea (1,9:1). Sigla vine ATAȘATĂ în email (`cid`, vezi EMAIL_LOGO): o imagine de pe site o blochează
+  // multe programe de email până apasă omul „arată imaginile". Textul alternativ scrie „RA Tracks", pentru cine n-o vede.
   return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a2235;">' +
-    '<div style="background:#16a34a;color:#fff;padding:18px 20px;border-radius:10px 10px 0 0;"><h2 style="margin:0;font-size:19px;">RA Tracks — ' + (pf ? 'Proforma ' : 'Factura ') + _he(inv.full_number) + '</h2></div>' +
+    '<div style="background:#0B0E11;color:#fff;padding:18px 20px 16px;border-radius:10px 10px 0 0;border-bottom:3px solid #3FE07D;">' +
+      '<img src="cid:' + EMAIL_LOGO.cid + '" width="180" height="35" alt="RA Tracks" style="display:block;border:0;color:#fff;font:bold 20px Arial,Helvetica,sans-serif;">' +
+      '<h2 style="margin:12px 0 0;font-size:18px;font-weight:700;color:#fff;">' + (pf ? 'Proforma ' : 'Factura ') + _he(inv.full_number) + '</h2></div>' +
     '<div style="border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px;padding:20px;">' +
       '<p>Bună ziua,</p><p>' + intro + '</p>' +
       '<table style="width:100%;font-size:14px;margin:12px 0;border-collapse:collapse;">' +
@@ -2370,6 +2378,7 @@ async function _trimiteFactura(inv, co, iss) {
         atasate = [{ filename: facturaPdf.numeFisier(inv), content: pdf, contentType: 'application/pdf' }];
       }
     } catch (e) { /* fără hârtie atașată, emailul tot pleacă: documentul e și în platformă */ }
+    atasate = (atasate || []).concat([EMAIL_LOGO]); // sigla din antet (cid)
     try {
       const r = await mailer.send({ to: co.contact_email, replyTo: (iss && iss.email) || undefined,
         subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate });

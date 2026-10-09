@@ -314,7 +314,7 @@ function EcranIndisponibil({ titlu, radacina, doarNoi }: { titlu: string; radaci
 function Splash() {
   return (
     <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:var(--bg-darkest)">
-      <div style="font-weight:800;font-size:26px;letter-spacing:-.5px"><span style="color:var(--accent)">RA</span> Tracks</div>
+      <span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="34" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="34" alt="RA" /><span class="raw" style="font-size:24px">Tracks</span></span>
       <div class="spin" />
     </div>
   );

@@ -7,6 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
+  /* Nunito din fișierele proiectului (09.10): la printarea fișierului local, fontul de pe Google nu se încărca și PDF-ul ieșea în Arial. */
+  @font-face{ font-family:'Nunito'; font-weight:400; src:url('../docs_build/assets/Nunito-Regular.ttf') format('truetype'); }
+  @font-face{ font-family:'Nunito'; font-weight:700; src:url('../docs_build/assets/Nunito-Bold.ttf') format('truetype'); }
+  @font-face{ font-family:'Nunito'; font-weight:800; src:url('../docs_build/assets/Nunito-ExtraBold.ttf') format('truetype'); }
   :root{
     --green:#16a34a; --green2:#3FE07D; --ink:#1a2235; --muted:#5b6b82; --line:#e2e8f0;
     --dbg:#0f1524; --dpanel:#151c2e; --dborder:#26304a; --dtext:#e8edf7; --dmut:#8b96ad; --acc:#3FE07D; --red:#ff5c6c; --amber:#f59e0b; --blue:#38bdf8;
@@ -22,6 +26,11 @@
   .foot .brand{ font-weight:800; color:var(--green); }
   .brandmark{ font-weight:800; color:var(--green); font-size:15pt; letter-spacing:-.3px; }
   .brandmark .t{ color:var(--ink); }
+  /* Sigla OFICIALĂ (09.10): monograma „RA |" (imagine) + „Tracks" cu Nunito ExtraBold, ca în aplicație. Pe fundal închis
+     monograma albă (logo-mark.png), pe alb cea închisă (logo-mark-light.png). Imaginea crește odată cu textul (1,4em). */
+  .ralogo{ display:inline-flex; align-items:center; gap:.32em; vertical-align:middle; }
+  .ralogo img{ height:1.4em; width:auto; display:block; }
+  .ralogo .raw{ font-weight:800; letter-spacing:-.5px; line-height:1; color:var(--ink); }
 
   h1{ font-size:22pt; font-weight:800; color:var(--ink); margin:0 0 4px; letter-spacing:-.4px; }
   h2{ font-size:16.5pt; font-weight:800; color:var(--green); margin:0 0 10px; padding-bottom:7px; border-bottom:3px solid var(--green2); display:flex; align-items:center; gap:9px; }
@@ -107,7 +116,7 @@
 <!-- ═══════════ COPERTĂ ═══════════ -->
 <section class="page" style="padding:0;display:flex;flex-direction:column;">
   <div style="flex:1;background:linear-gradient(160deg,#0f1524 0%,#122b1f 60%,#0f2a1c 100%);color:#fff;padding:34mm 20mm 0;position:relative;">
-    <div style="font-size:26pt;font-weight:800;letter-spacing:-.5px;"><span style="color:var(--acc)">RA</span> Tracks</div>
+    <div style="font-size:26pt;"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark.png" alt="RA"><span class="raw" style="color:#fff">Tracks</span></span></div>
     <div style="width:64px;height:4px;background:var(--acc);border-radius:3px;margin:14px 0 40mm;"></div>
     <div style="font-size:34pt;font-weight:800;line-height:1.1;letter-spacing:-1px;">Manual de utilizare<br>&amp; Documentație</div>
     <div style="font-size:14pt;color:#a9b6cf;margin-top:16px;max-width:130mm;">Platforma de monitorizare a flotei GPS — aplicația <b style="color:#fff">Web</b> (ratrack.ro) și aplicația <b style="color:#fff">mobilă Android</b>.</div>
@@ -153,7 +162,7 @@
     <div class="row"><span class="num">A6</span> Integrări &amp; API <span class="dots"></span></div>
     <div class="row"><span class="num">A7</span> Instalare APK &amp; publicare (deploy) <span class="dots"></span></div>
   </div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>Manual &amp; Documentație</span><span>2</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>Manual &amp; Documentație</span><span>2</span></div>
 </section>
 
 <!-- ═══════════ 1. INTRODUCERE ═══════════ -->
@@ -182,7 +191,7 @@
     <div class="body" style="padding:0;">
       <div style="display:flex;">
         <div style="width:150px;background:#0c1220;border-right:1px solid var(--dborder);padding:10px 8px;font-size:8.3pt;">
-          <div style="font-weight:800;color:var(--acc);font-size:11pt;margin:2px 4px 12px;">RA <span style="color:#fff">Tracks</span></div>
+          <div style="font-size:11pt;margin:2px 4px 12px;"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark.png" alt="RA"><span class="raw" style="color:#fff">Tracks</span></span></div>
           <div style="padding:6px 8px;border-radius:7px;background:rgba(63,224,125,.14);color:var(--acc);font-weight:700;margin-bottom:3px;"><i class="fas fa-map-location-dot"></i> Localizare</div>
           <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-route"></i> Traseu</div>
           <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-chart-simple"></i> Analize ▾</div>
@@ -216,7 +225,7 @@
     <li><b>Bara de sus:</b> căutare vehicul, temă (zi/noapte 🌙), <b>notificări 🔔</b> (cu numărul de necitite) și contul tău.</li>
     <li><b>Harta:</b> centrul aplicației — fiecare vehicul e un marcaj colorat (vezi capitolul 2).</li>
   </ul>
-  <div class="foot"><span class="brand">RA Tracks</span><span>1 · Introducere</span><span>3</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>1 · Introducere</span><span>3</span></div>
 </section>
 
 <!-- ═══════════ 2. HARTA & LOCALIZARE ═══════════ -->
@@ -239,7 +248,7 @@
     <li><b>Căutare:</b> scrie numele/numărul în bara de sus ca să găsești rapid un vehicul.</li>
   </ul>
   <div class="cal note"><i class="fas fa-circle-info"></i><div>Datele vin de la trackerul montat pe vehicul (Teltonika), prin GPS + CAN. Frecvența de actualizare depinde de configurația trackerului.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>2 · Harta &amp; Localizare</span><span>4</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>2 · Harta &amp; Localizare</span><span>4</span></div>
 </section>
 
 <!-- ═══════════ 3. FIȘA VEHICULULUI ═══════════ -->
@@ -279,7 +288,7 @@
       <div class="cap">Fișa vehiculului — stare live, statistici azi, combustibil.</div>
     </div>
   </div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>3 · Fișa vehiculului</span><span>5</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>3 · Fișa vehiculului</span><span>5</span></div>
 </section>
 
 <!-- ═══════════ 4. TRASEE ═══════════ -->
@@ -299,7 +308,7 @@
     <li>Vezi unde și cât a staționat.</li>
     <li>Ai dovada exactă a poziției la o anumită oră.</li>
   </ul>
-  <div class="foot"><span class="brand">RA Tracks</span><span>4 · Trasee</span><span>6</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>4 · Trasee</span><span>6</span></div>
 </section>
 
 <!-- ═══════════ 5. RAPOARTE ═══════════ -->
@@ -353,7 +362,7 @@
     <div style="text-align:right;margin-top:10px;"><span class="d-btn ghost" style="font-size:8pt;"><i class="fas fa-file-excel"></i> Excel</span> <span class="d-btn ghost" style="font-size:8pt;"><i class="fas fa-file-pdf"></i> PDF</span> <span class="d-btn" style="font-size:8pt;"><i class="fas fa-arrow-right"></i> Deschide în Rapoarte</span></div>
   </div></div></div>
   <div class="cap">Modalul de raport: sinteză (KPI) + curse grupate pe vehicul + export.</div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>5 · Rapoarte</span><span>7</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>5 · Rapoarte</span><span>7</span></div>
 </section>
 
 <!-- ═══════════ 6. STATISTICI / DASHBOARD ═══════════ -->
@@ -387,7 +396,7 @@
   </div></div></div>
   <div class="cap">Dashboard flotă: KPI-uri, bara de stare (verde/galben/gri/offline) și topuri.</div>
   <div class="cal note"><i class="fas fa-circle-info"></i><div>Orele de motor și consumul apar în format zecimal (ex. „11.0 h", „176 L") pentru citire rapidă.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>6 · Statistici</span><span>8</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>6 · Statistici</span><span>8</span></div>
 </section>
 
 <!-- ═══════════ 7. STATISTICI CONSUM ═══════════ -->
@@ -401,7 +410,7 @@
     <li><b>Per vehicul</b> — tabel cu km, litri, L/100 km.</li>
   </ul>
   <div class="cal note"><i class="fas fa-gas-pump"></i><div><b>Măsurat vs. estimat:</b> vehiculele cu senzor de combustibil / CAN au consum <b>măsurat</b> (exact). Cele fără senzor (ex. unele Logan) primesc un consum <b>estimat</b> din km × consum configurat, marcat clar ca „estimat". Vezi Anexa A5.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>7 · Statistici consum</span><span>9</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>7 · Statistici consum</span><span>9</span></div>
 </section>
 
 <!-- ═══════════ 8. PREȚ COMBUSTIBIL ═══════════ -->
@@ -431,7 +440,7 @@
   </div></div></div>
   <div class="cap">Preț combustibil: prețuri curente + evoluția reală pe ultimul an.</div>
   <div class="cal tip"><i class="fas fa-lightbulb"></i><div>Lanțul de preț folosit în rapoarte: <b>preț pe vehicul → prețul companiei (Setări) → media națională → 7.5 lei</b> (ultima rezervă). Setezi prețul companiei în <span class="path">Setări → Prețuri combustibil</span>.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>8 · Preț combustibil</span><span>10</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>8 · Preț combustibil</span><span>10</span></div>
 </section>
 
 <!-- ═══════════ 9. HOTSPOT ═══════════ -->
@@ -461,7 +470,7 @@
       <div class="cap">Heatmap: zone roșii = staționări/treceri frecvente.</div>
     </div>
   </div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>9 · Hotspot</span><span>11</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>9 · Hotspot</span><span>11</span></div>
 </section>
 
 <!-- ═══════════ 10. NOTIFICĂRI ═══════════ -->
@@ -481,7 +490,7 @@
   <h3>Preferințe notificări</h3>
   <p>Din <span class="path">🔔 → ⚙ Preferințe</span> alegi ce alerte primești, pragurile tale și canalele (în aplicație, email, push). Se aplică doar contului tău.</p>
   <div class="cal tip"><i class="fas fa-bell"></i><div>La click pe o alertă de eveniment (ex. depășire viteză) se deschide un modal cu <b>locul exact pe hartă</b>. Notificarea de „Raport generat" deschide direct raportul.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>10 · Notificări</span><span>12</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>10 · Notificări</span><span>12</span></div>
 </section>
 
 <!-- ═══════════ 11. AGENȚI AI ═══════════ -->
@@ -502,7 +511,7 @@
   <p>Un chat unde poți întreba în limbaj natural despre flotă (ex. „câți km a făcut Logan azi?"). Disponibil pe web și pe APK.</p>
   <h3>RA Insight</h3>
   <p>Pe lângă rapoarte, poți cere o <b>analiză AI</b> a datelor — un rezumat în cuvinte al tendințelor și anomaliilor.</p>
-  <div class="foot"><span class="brand">RA Tracks</span><span>11 · Agenți AI</span><span>13</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>11 · Agenți AI</span><span>13</span></div>
 </section>
 
 <!-- ═══════════ 12. MODULE ═══════════ -->
@@ -515,7 +524,7 @@
     <tr><td><b>Tahograf</b></td><td>Urmărire descărcare card șofer (ciclu 28 zile), stare per șofer.</td><td><span class="pill s">Demo</span> / Real</td></tr>
   </table>
   <div class="cal note"><i class="fas fa-circle-info"></i><div><b>Demo vs. Real:</b> modulele au un badge care arată dacă rulează în <b>Demo</b> (date simulate, pentru prezentare) sau <b>Real</b> (conectat la furnizorul/serviciul oficial). Trecerea pe „Real" se face de super-admin, cu tokenul/host-ul aferent.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>12 · Module</span><span>14</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>12 · Module</span><span>14</span></div>
 </section>
 
 <!-- ═══════════ 13. APLICAȚIA MOBILĂ ═══════════ -->
@@ -557,7 +566,7 @@
     </div>
   </div>
   <div class="cap" style="text-align:center;">Aplicația mobilă — hartă live, listă vehicule, bara de jos.</div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>13 · Aplicația mobilă</span><span>15</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>13 · Aplicația mobilă</span><span>15</span></div>
 </section>
 
 <!-- ═══════════ 14. SETĂRI ═══════════ -->
@@ -572,7 +581,7 @@
     <li><b>Sursă ignition (DIN1)</b> — pentru vehiculele unde „pornit/oprit" e detectat greșit (se setează per vehicul, de super-admin).</li>
   </ul>
   <div class="cal warn"><i class="fas fa-triangle-exclamation"></i><div>Confirmările de ștergere folosesc un dialog <b>propriu RA Tracks</b> (nu cel de browser), cu buton roșu „Șterge" — ca să fie clar când o acțiune e ireversibilă.</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>14 · Setări</span><span>16</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>14 · Setări</span><span>16</span></div>
 </section>
 
 <!-- ═══════════ DIVIDER PARTEA II ═══════════ -->
@@ -598,7 +607,7 @@
     <tr><td><b>Live updates</b></td><td>WebSocket (poziții + notificări live) cu fallback la polling.</td></tr>
   </table>
   <div class="cal note"><i class="fas fa-circle-info"></i><div>Versiunea publicată se verifică la <span class="path">ratrack.ro/api/health</span> (câmpul <b>version</b> = prefixul commit-ului deployat).</div></div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A1 · Arhitectură</span><span>18</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A1 · Arhitectură</span><span>18</span></div>
 </section>
 
 <!-- ═══════════ A2. ROLURI & IZOLARE ═══════════ -->
@@ -615,7 +624,7 @@
   </table>
   <h3>Izolarea pe companie (multi-tenant)</h3>
   <p>Fiecare cerere trece prin middleware care <b>limitează datele la compania utilizatorului</b> (<span class="path">withScope</span> / <span class="path">withCompany</span>), iar panourile de super-admin sunt protejate cu <span class="path">requireSuperadmin</span> — respinse înainte de handler (403) pentru orice non-super. Un utilizator de companie nu poate vedea niciodată date ale altei companii sau panouri de platformă. Aceeași protecție se aplică pe web ȘI pe APK (același lanț de middleware).</p>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A2 · Roluri &amp; izolare</span><span>19</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A2 · Roluri &amp; izolare</span><span>19</span></div>
 </section>
 
 <!-- ═══════════ A3. ADMINISTRARE ═══════════ -->
@@ -633,7 +642,7 @@
     <tr><td><b>Setări companie</b></td><td>Prețuri combustibil, praguri agenți, default-uri.</td></tr>
     <tr><td><b>Dispozitive &amp; mutare</b> (super-admin)</td><td>Toate dispozitivele, adoptare/arhivare, mutare vehicule între companii (individual sau în masă).</td></tr>
   </table>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A3 · Administrare</span><span>20</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A3 · Administrare</span><span>20</span></div>
 </section>
 
 <!-- ═══════════ A4. SUPER-ADMIN ═══════════ -->
@@ -655,7 +664,7 @@
   <div class="cap">Control costuri — cash-flow venituri vs cheltuieli (doar super-admin).</div>
   <h3>Ofertare Live</h3>
   <p>Calculator de preț pentru oferte: vehicule (GPS/CAN/FMS), AI, retenție date, secțiune montaj (tarife + deplasare lei/km), echipamente — cu rezumat lunar/anual/contract și export PDF. Ofertele se salvează și se pot re-deschide.</p>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A4 · Super-admin</span><span>21</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A4 · Super-admin</span><span>21</span></div>
 </section>
 
 <!-- ═══════════ A5. DATE & SENZORI ═══════════ -->
@@ -668,7 +677,7 @@
   </ul>
   <h3>Combustibil: măsurat vs. estimat</h3>
   <p>Consumul se determină, în ordine: (1) contor CAN cumulativ (exact), (2) suma scăderilor reale de nivel, (3) estimare km × consum configurat. Vehiculele fără senzor primesc <b>consum estimat</b>, marcat clar. Nivelul în % se calculează din litri ÷ capacitatea rezervorului (se ascunde dacă rezervorul nu e setat, pentru că % brut de la CAN e nesigur).</p>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A5 · Date &amp; senzori</span><span>22</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A5 · Date &amp; senzori</span><span>22</span></div>
 </section>
 
 <!-- ═══════════ A6. INTEGRĂRI & API ═══════════ -->
@@ -692,7 +701,7 @@
     <tr><td>GET <span class="path">/api/admin/finance</span></td><td>Cash-flow platformă (super-admin).</td></tr>
     <tr><td>GET <span class="path">/api/health</span></td><td>Stare + versiune deployată.</td></tr>
   </table>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A6 · Integrări &amp; API</span><span>23</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A6 · Integrări &amp; API</span><span>23</span></div>
 </section>
 
 <!-- ═══════════ A7. DEPLOY ═══════════ -->
@@ -710,11 +719,11 @@
   <div class="cal tip"><i class="fas fa-shield-halved"></i><div><b>Regulă de dezvoltare:</b> orice modificare pe web se replică și pe APK în aceeași sesiune (paritate web↔mobil), cu excepția panourilor exclusiv super-admin.</div></div>
 
   <div style="margin-top:40px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;text-align:center;">
-    <div class="brandmark" style="font-size:18pt;">RA <span class="t">Tracks</span></div>
+    <div style="font-size:18pt;"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></div>
     <div style="color:var(--muted);font-size:10pt;margin-top:6px;">Monitorizare flotă GPS · Web &amp; Android · ratrack.ro</div>
     <div style="color:var(--muted);font-size:9pt;margin-top:4px;">Pentru asistență, contactează administratorul platformei.</div>
   </div>
-  <div class="foot"><span class="brand">RA Tracks</span><span>A7 · Deploy</span><span>24</span></div>
+  <div class="foot"><span class="brand"><span class="ralogo" aria-label="RA Tracks"><img src="../public/logo-mark-light.png" alt="RA"><span class="raw">Tracks</span></span></span><span>A7 · Deploy</span><span>24</span></div>
 </section>
 </body>
 </html>

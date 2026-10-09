@@ -60,7 +60,7 @@
    },
    {
     "group": "Management vehicule",
-    "name": "Fișă vehicul completă (paritate AROBS)",
+    "name": "Fișă vehicul completă",
     "whatItDoes": "Peste 15 câmpuri tehnice per vehicul (limită viteză, consumuri oraș/drum/ralanti, GPL, clasă emisii, putere, sarcină utilă, centru de cost etc.), listă Administrare → Vehicule cu status activ/arhivat, căutare și adăugare/arhivare IMEI.",
     "benefit": "Ai un dosar tehnic complet pentru fiecare mașină, ca într-o platformă enterprise."
    },
@@ -261,7 +261,7 @@
    "28 de tipuri de rapoarte cu export PDF/Excel și programare automată pe e-mail.",
    "Conformitate: pontaj șofer și ore de condus (HOS Reg. CE 561), scadențe ITP/RCA cu alerte, decodare tahograf.",
    "Securitate serioasă pentru scară: multi-tenant izolat, RBAC + audit, webhooks semnate HMAC cu anti-SSRF, chei API cu TTL, backup criptat off-site.",
-   "Fișă vehicul de nivel enterprise (paritate AROBS) cu import/export CSV, documente și mentenanță."
+   "Fișă vehicul de nivel enterprise, cu import/export CSV, documente și mentenanță."
   ],
   "truthfulNumbers": [
    {
@@ -441,7 +441,7 @@
    },
    {
     "title": "Fiecare vehicul, cu dosarul lui complet",
-    "lead": "Flota nu se administrează din memorie și din tabele Excel rătăcite. RA Tracks îți dă o fișă de vehicul de nivel enterprise, cu paritate AROBS: peste 15 câmpuri tehnice, de la limita de viteză și consumurile pe oraș/drum/ralanti până la clasa de emisii, puterea, sarcina utilă și centrul de cost. Documentele — ITP, RCA, CASCO — au date de expirare colorate și te avertizează din timp, așa că nu mai prinzi niciodată o asigurare expirată. Iar când muți sau actualizezi zeci de mașini, un import CSV le rezolvă în câteva minute.",
+    "lead": "Flota nu se administrează din memorie și din tabele Excel rătăcite. RA Tracks îți dă o fișă de vehicul de nivel enterprise: peste 15 câmpuri tehnice, de la limita de viteză și consumurile pe oraș/drum/ralanti până la clasa de emisii, puterea, sarcina utilă și centrul de cost. Documentele — ITP, RCA, CASCO — au date de expirare colorate și te avertizează din timp, așa că nu mai prinzi niciodată o asigurare expirată. Iar când muți sau actualizezi zeci de mașini, un import CSV le rezolvă în câteva minute.",
     "bullets": [
      "Fișă vehicul completă cu peste 15 câmpuri tehnice și status activ/arhivat",
      "Documente ITP/RCA/CASCO cu scadențe colorate și alerte de expirare din timp",
@@ -514,7 +514,7 @@
   "ctaText": "Fie că ai 5 vehicule sau 2000, RA Tracks îți aduce controlul, economia și liniștea într-o singură platformă — web și Android, cu date reale și AI care veghează pentru tine. Programează o demonstrație și vezi cu ochii tăi cum arată flota ta când nu mai lași nimic la voia întâmplării."
  },
  "technical": {
-  "intro": "RA Tracks (TrackGPS) este o platformă SaaS multi-tenant de fleet management GPS, construită pentru flotele din România și dimensionată pentru scalare de la câteva vehicule până la ținta proiectată de 30+ companii și ~2000 de vehicule Teltonika. Spre deosebire de soluțiile care oferă doar poziție pe hartă, RA Tracks extrage date reale din calculatorul mașinii prin CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) folosind decodarea codec8e, cu două scheme CAN comutabile per dispozitiv — LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane. Documentul de față descrie arhitectura tehnică, hardware-ul suportat, protocoalele de date, modelul de securitate, integrările, motorul de rapoarte, aplicația nativă și modelul de deployment, adresându-se CTO-ilor și managerilor de flotă care evaluează platforma. Principiul de bază al platformei este onestitatea datelor: consumul măsurat prin senzor/contor CAN este marcat distinct față de cel estimat, iar funcțiile aflate încă în stadiu de demo sau roadmap (e-Transport ANAF, e-Toll, descărcare tahograf la distanță, RA Dispatch, plăți automate Stripe, object storage pentru atașamente) sunt marcate explicit ca atare în secțiunile relevante și NU sunt prezentate ca funcționale în producție.",
+  "intro": "RA Tracks este o platformă SaaS multi-tenant de fleet management GPS, construită pentru flotele din România și dimensionată pentru scalare de la câteva vehicule până la ținta proiectată de 30+ companii și ~2000 de vehicule Teltonika. Spre deosebire de soluțiile care oferă doar poziție pe hartă, RA Tracks extrage date reale din calculatorul mașinii prin CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) folosind decodarea codec8e, cu două scheme CAN comutabile per dispozitiv — LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane. Documentul de față descrie arhitectura tehnică, hardware-ul suportat, protocoalele de date, modelul de securitate, integrările, motorul de rapoarte, aplicația nativă și modelul de deployment, adresându-se CTO-ilor și managerilor de flotă care evaluează platforma. Principiul de bază al platformei este onestitatea datelor: consumul măsurat prin senzor/contor CAN este marcat distinct față de cel estimat, iar funcțiile aflate încă în stadiu de demo sau roadmap (e-Transport ANAF, e-Toll, descărcare tahograf la distanță, RA Dispatch, plăți automate Stripe, object storage pentru atașamente) sunt marcate explicit ca atare în secțiunile relevante și NU sunt prezentate ca funcționale în producție.",
   "architecture": "Arhitectura este împărțită pe straturi clare, de la ingestie până la prezentare. Dispozitivele Teltonika deschid o conexiune TCP brută către serverul de ingestie (port container 5027) și trimit cadre în protocolul codec8e, decodate în timp real; datele decodate (poziții, parametri IO, valori CAN) trec printr-un strat de procesare care evaluează regulile de alerte, actualizează starea live în memorie și persistă pozițiile. Persistența se face în PostgreSQL, cu TimescaleDB pentru tabela `positions` transformată în hypertable (compresie după 7 zile, retenție implicită 180 de zile, configurabilă via `POSITION_RETENTION_DAYS`). Stratul de prezentare este o aplicație web PWA single-page care primește actualizări de poziții și alerte prin WebSocket (push event-driven, nu polling), plus o aplicație nativă Android cu paritate operațională. Baza de date rulează în mod dual (`db.js`): PostgreSQL/TimescaleDB în producție, PGlite pentru dezvoltare și demo local, cu migrarea izolată în acest modul.",
   "architectureLayers": [
    "Ingestie: server TCP dedicat (port container 5027) care primește cadre codec8e brute de la trackerele Teltonika și le decodează în timp real",

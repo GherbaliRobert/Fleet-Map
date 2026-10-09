@@ -47,7 +47,7 @@ export function Login() {
   return (
     <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:24px;padding-top:calc(var(--sat) + 24px);background:var(--bg-darkest)">
       <div style="text-align:center;margin-bottom:34px">
-        <div style="font-weight:800;font-size:34px;letter-spacing:-1px"><span style="color:var(--accent)">RA</span> Tracks</div>
+        <span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="44" alt="RA" /><img class="ralm l" src="/logo-mark-light.png" height="44" alt="RA" /><span class="raw" style="font-size:30px">Tracks</span></span>
         <div class="muted" style="margin-top:6px;font-size:14px">Monitorizare flotă</div>
       </div>
       <form onSubmit={submit} style="display:flex;flex-direction:column;gap:16px">

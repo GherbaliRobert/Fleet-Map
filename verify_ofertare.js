@@ -437,6 +437,7 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
       if (d.isDirectory()) adauga(r); else if (/\.(tsx?|json)$/.test(d.name)) fisiere.push(r);
     });
   })('mobile/src');
+  fisiere.push('mobile/index.html');
   const rele = [];
   fisiere.filter((f) => fs.existsSync(P(f))).forEach((f) => {
     // Singura „RA Track" îngăduită: numele vechi pe care pornirea îl caută ca să-l corecteze. „ratrack.ro" e domeniul.
@@ -445,6 +446,32 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
     if (m) rele.push(f + ': ' + Array.from(new Set(m)).join(', '));
   });
   T('numele se scrie „RA Tracks" peste tot ce vede omul (nici „Track", nici „traks")', rele.length === 0, rele.join(' · '));
+})();
+// Sigla OFICIALĂ peste tot unde apărea în alt desen (Robert, 09.10: „1 da"): monograma „RA |" (logo-mark*.png) + „Tracks".
+(function () {
+  const citeste = (f) => fs.existsSync(P(f)) ? fs.readFileSync(P(f), 'utf8') : '';
+  const md5 = (f) => require('crypto').createHash('md5').update(fs.readFileSync(P(f))).digest('hex');
+  const LOGIN = citeste('mobile/src/screens/Login.tsx'), APPT = citeste('mobile/src/App.tsx'), INTRO = citeste('mobile/index.html');
+  const sigla = /class="ralogo"[^>]*>\s*<img class="ralm d" src="\/logo-mark\.png"[^>]*>\s*<img class="ralm l" src="\/logo-mark-light\.png"[^>]*>\s*<span class="raw"[^>]*>Tracks<\/span>/;
+  T('telefon: ecranul de intrare și cel de încărcare au sigla oficială (ambele teme)', sigla.test(LOGIN) && sigla.test(APPT));
+  T('telefon: animația de pornire are monograma + „Tracks"', /class="ra-word"[^>]*><img src="\/logo-mark\.png"[^>]*><span>Tracks<\/span>/.test(INTRO));
+  const vechi = /<span[^>]*>RA<\/span>\s*Tracks/;
+  T('telefon: nicio siglă scrisă doar cu litere („RA" verde + „Tracks")', !vechi.test(LOGIN) && !vechi.test(APPT) && !vechi.test(INTRO));
+  T('telefon: monogramele sunt copiile EXACTE din public/',
+    ['logo-mark.png', 'logo-mark-light.png'].every((f) => fs.existsSync(P('mobile/public/' + f)) && md5('mobile/public/' + f) === md5('public/' + f)));
+  const API = citeste('public/api-docs.html');
+  T('documentația API: sigla oficială, nu „RA" verde scris', (API.match(/<span class="ralogo"[^>]*><img src="\/logo-mark\.png"/g) || []).length === 2 && !/\.raw\{color:var\(--accent\)\}/.test(API));
+  const MAN = citeste('docs_manual/manual.html');
+  T('manualul: sigla oficială pe copertă, în subsoluri și la final', (MAN.match(/class="ralogo"/g) || []).length >= 24 && !vechi.test(MAN));
+  const FLY = citeste('docs_build/build_docs.js'), AIP = citeste('docs_build/build_ai_docs.js');
+  T('flyerul și statusul: imaginile siglei, nu pătratul verde cu „RA"',
+    /doc\.image\(LOGO_LIGHT/.test(FLY) && /doc\.image\(LOGO_DARK/.test(FLY) && !/text\('RA', M/.test(FLY));
+  T('PDF-ul Agenți AI nu mai promite „24/7" / „non-stop" și nu tipărește emailul care nu primește sau telefonul-șablon',
+    !/24\/7|non-stop|contact@ratrack\.ro|7XX/.test(AIP));
+  const SRVE = citeste('server.js');
+  T('emailul cu factura: sigla oficială atașată în corp (cid), nu doar text pe bandă verde',
+    /const EMAIL_LOGO = \{ filename: 'logo\.png', path: path\.join\(__dirname, 'public', 'logo\.png'\), cid: 'logo@ratrack\.ro'/.test(SRVE) &&
+    /src="cid:' \+ EMAIL_LOGO\.cid \+ '"/.test(SRVE) && /atasate = \(atasate \|\| \[\]\)\.concat\(\[EMAIL_LOGO\]\)/.test(SRVE));
 })();
 const SRV_DEMO = fs.readFileSync(P('server.js'), 'utf8');
 T('compania demo se numește „RA Tracks Demo", iar numele vechi se corectează o dată, la pornire',

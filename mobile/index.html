@@ -24,8 +24,9 @@
     .ra-pin { width: 74px; height: 74px; color: #3FE07D; opacity: 0; transform: translateY(-42px) scale(.5);
       animation: raDrop .72s cubic-bezier(.2, .85, .3, 1.35) .1s forwards; filter: drop-shadow(0 8px 16px rgba(63, 224, 125, .45)); }
     @keyframes raDrop { 0% { transform: translateY(-42px) scale(.5); opacity: 0; } 55% { opacity: 1; } 70% { transform: translateY(4px) scale(1.04); } 100% { transform: translateY(0) scale(1); opacity: 1; } }
-    .ra-word { font-size: 30px; font-weight: 800; letter-spacing: .3px; color: #fff; opacity: 0; transform: translateY(10px); animation: raRise .55s ease .58s forwards; }
-    .ra-word .g { color: #3FE07D; }
+    /* Sigla oficială (Robert, 09.10): monograma „RA |" (imagine) + „Tracks" cu Nunito ExtraBold, ca pe web. Intro-ul e mereu închis la culoare, deci monograma albă. */
+    .ra-word { display: flex; align-items: center; gap: 9px; font-size: 28px; font-weight: 800; letter-spacing: -.5px; line-height: 1; color: #fff; opacity: 0; transform: translateY(10px); animation: raRise .55s ease .58s forwards; }
+    .ra-word img { height: 40px; width: auto; display: block; }
     .ra-sub { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #8a93a3; opacity: 0; transform: translateY(8px); animation: raRise .55s ease .82s forwards; }
     @keyframes raRise { to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) {
@@ -44,7 +45,7 @@
           <path d="M12 2C7.58 2 4 5.58 4 10c0 5.4 7 11.55 7.3 11.81a1.1 1.1 0 0 0 1.4 0C13 21.55 20 15.4 20 10c0-4.42-3.58-8-8-8zm0 10.75A2.75 2.75 0 1 1 12 7.25a2.75 2.75 0 0 1 0 5.5z" />
         </svg>
       </div>
-      <div class="ra-word"><span class="g">RA</span> Tracks</div>
+      <div class="ra-word" aria-label="RA Tracks"><img src="/logo-mark.png" alt="RA"><span>Tracks</span></div>
       <div class="ra-sub">Monitorizare flotă</div>
     </div>
   </div>

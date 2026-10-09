@@ -4,6 +4,11 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const A = path.join(__dirname, 'assets');
+// Sigla OFICIALĂ (Robert, 09.10): imaginile de producție, ca în build_ai_docs.js. logo.png = varianta ALBĂ (fundal închis),
+// logo-light.png = varianta ÎNCHISĂ (fundal alb); 694x135, raport ~5,14:1. Până pe 09.10, aici era un pătrat verde cu „RA".
+const LOGO_DARK = path.join(__dirname, '..', 'public', 'logo.png');
+const LOGO_LIGHT = path.join(__dirname, '..', 'public', 'logo-light.png');
+const STATUS_ZI = '25.07.2026'; // ziua în care s-a scris textul statusului (vezi pageHeader de pe pagina 1)
 
 const GREEN = '#3FE07D', GREEN_D = '#16a34a', INK = '#0b1f17', DARK = '#0d1411', DARK2 = '#15241c';
 const TXT = '#1f2937', MUTED = '#6b7280', LINE = '#e5e7eb', LIGHT = '#f8fafc';
@@ -116,11 +121,9 @@ function mockFleet(doc, x, y, w, h) {
 
 // ─── Pagină ───
 function pageHeader(doc, M, sub) {
-  doc.roundedRect(M, M, 30, 22, 5).fillColor(GREEN).fill();
-  doc.font('NX').fontSize(14).fillColor(INK).text('RA', M, M + 4, { width: 30, align: 'center', lineBreak: false });
-  doc.font('NX').fontSize(16).fillColor('#111').text('Tracks', M + 36, M + 4, { lineBreak: false });
-  if (sub) doc.font('N').fontSize(9).fillColor(MUTED).text(sub, M, M + 6, { width: doc.page.width - 2 * M, align: 'right', lineBreak: false });
-  doc.moveTo(M, M + 30).lineTo(doc.page.width - M, M + 30).strokeColor(GREEN).lineWidth(2).stroke();
+  try { doc.image(LOGO_LIGHT, M, M + 2, { height: 24 }); } catch (e) {}
+  if (sub) doc.font('N').fontSize(9).fillColor(MUTED).text(sub, M, M + 8, { width: doc.page.width - 2 * M, align: 'right', lineBreak: false });
+  doc.moveTo(M, M + 32).lineTo(doc.page.width - M, M + 32).strokeColor(GREEN).lineWidth(2).stroke();
 }
 function pageFooter(doc, M, n) {
   const fy = doc.page.height - M - 12;
@@ -161,7 +164,9 @@ function buildDoc1() {
   const M = 40, doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true, info: { Title: 'RA Tracks - Ce avem ready', Author: 'RA Tracks' } });
   reg(doc); const out = fs.createWriteStream(path.join(__dirname, 'RA-Tracks_Ce-avem-ready.pdf')); doc.pipe(out);
   const CW = doc.page.width - 2 * M;
-  pageHeader(doc, M, 'Status platformă · ' + new Date().toLocaleDateString('ro-RO'));
+  // Ziua CONȚINUTULUI, nu ziua de azi: pe 09.10 s-a refăcut doar sigla, iar textul e cel din 25.07. Cu data de azi, un
+  // status vechi ar fi părut de acum. Schimbi textul → schimbi și ziua de aici.
+  pageHeader(doc, M, 'Status platformă · ' + STATUS_ZI);
   let y = M + 44;
   doc.font('NX').fontSize(22).fillColor('#111').text('Ce avem gata acum', M, y); y += 30;
   doc.font('N').fontSize(10.5).fillColor(MUTED).text('Platformă de monitorizare GPS și management de flotă, funcțională în producție. Mai jos: ce e gata acum — și, separat, ce e în dezvoltare.', M, y, { width: CW }); y += 36;
@@ -229,9 +234,7 @@ function buildDoc2() {
   photoBanner(doc, 'photo_hero.jpg', 0, 0, W, 392, 0, 0.32);
   doc.rect(0, 236, W, 156).fillColor(DARK).fillOpacity(0.55).fill(); doc.fillOpacity(1);
   doc.rect(0, 0, W, 6).fillColor(GREEN).fill();
-  doc.roundedRect(M, 40, 40, 30, 7).fillColor(GREEN).fill();
-  doc.font('NX').fontSize(19).fillColor(INK).text('RA', M, 47, { width: 40, align: 'center', lineBreak: false });
-  doc.font('NX').fontSize(21).fillColor('#fff').text('Tracks', M + 50, 48, { lineBreak: false });
+  try { doc.image(LOGO_DARK, M, 42, { height: 40 }); } catch (e) {}
   doc.font('NX').fontSize(34).fillColor('#fff').text('Toată flota ta,', M, 298, { width: CW });
   doc.font('NX').fontSize(34).fillColor(GREEN).text('în timp real.', M, 338, { width: CW });
   doc.rect(0, 392, W, 4).fillColor(GREEN).fill();

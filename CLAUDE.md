@@ -48,6 +48,11 @@ Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă în
 - **Controale de formular:** `button, input, select, textarea { font-family: inherit; }`.
 - **Valori tehnice (IMEI, coordonate, coduri `io_`):** au fost monospace — acum sunt pe Nunito (`font-family: inherit`). NU le pune înapoi pe monospace.
 - **Logo „Tracks":** `.ralogo .raw` (app + landing) folosește Nunito.
+- **Sigla oficială = monograma „RA |" (imaginea `logo-mark.png` / `logo-mark-light.png`) + „Tracks" cu Nunito 800, PESTE TOT**
+  (Robert, 09.10): aplicația, paginile publice, documentația API, telefonul (`mobile/public/` ține COPIILE exacte ale
+  monogramelor — schimbi una în `public/`, o copiezi și acolo), emailul cu factura (`EMAIL_LOGO`, atașat cu `cid`),
+  PDF-urile de prezentare (`docs_build/`, `docs_promo/`, `docs_manual/`; în pdfkit, `logo.png` / `logo-light.png`). NU scrie
+  sigla cu litere („RA" verde + „Tracks") și nu desena alt semn. Păzit de `verify_ofertare.js` (5g).
 
 ### Reguli pentru cod/UI nou
 - NU reintroduce `Inter`, `monospace` sau alt font pentru text — lasă elementele să moștenească din `body`.
