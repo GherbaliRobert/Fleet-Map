@@ -52,7 +52,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Railway: (1) Brevo → Senders, Domains & Dedicated IPs → Domains → adăugați ratrack.ro și puneți în Cloudflare
   înregistrările pe care le dă Brevo (fără ele, emailurile ajung la spam sau sunt refuzate); (2) Brevo → SMTP & API →
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
-  `EMAIL_FROM` = `RA Track <noreply@ratrack.ro>`. Verificare: Administrare → Stare producție, rândul „Email": „activ —
+  `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
