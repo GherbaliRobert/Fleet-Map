@@ -157,6 +157,10 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
   trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**.
+- **Commit cu altă sesiune în același folder: doar bucățile tale, dar CU context.** Pe 12.10 `git apply --cached
+  --unidiff-zero` (patch din `git diff -U0`) a lipit trei inserări pe linii greșite (rute în interiorul altei rute) —
+  sintaxa trecea, probele treceau (rulau pe folder, nu pe commit), iar pe ratrack.ro rutele nu existau. Patch-ul se face
+  cu `git diff -U3`, iar după commit `git diff` trebuie să arate DOAR bucățile celeilalte sesiuni, fără mutări.
 - **O probă picată nu înseamnă cod stricat.** De trei ori aici, proba cerea regula VECHE: adminul
   firmei să-și înregistreze aparate (interzis din 16.09) și preavizul actelor de 7 zile (urcat de
   atunci la 30, `DOC_DAYS_LEAD`, ca telefonul să sune când se colorează lista). Întâi întreabă care

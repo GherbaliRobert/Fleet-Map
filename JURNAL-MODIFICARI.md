@@ -333,6 +333,10 @@ macheta aprobată (https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
 - **Ce vede fondatorul:** rândul „Simulator încărcare" mereu; vehiculele tuturor firmelor, cu numele firmei.
 - **Ce vede clientul:** rândul doar dacă firma are modulul; vede vehiculele lui (un vizualizator — doar pe cele
   atribuite lui). Pe telefon simulatorul vine în etapa următoare (planul șoferului și „Am încărcat").
+- ⚠ **Reparat în `913c389`:** la urcare (doar bucățile mele, fiindcă în același folder lucra și sesiunea panoului Mail),
+  trei bucăți s-au lipit pe linii greșite — rutele simulatorului ajunseseră în interiorul celei de webhook-uri, ecranul în
+  interiorul exportului de vehicule, iar rândul care arată butonul din meniu în altă funcție. Pe ratrack.ro a stat așa
+  câteva minute (versiunea `4b51bfc`). `913c389` le pune la loc — doar mutări, aceleași rânduri.
 
 ### AMÂNDOI · Fișa unei mașini care n-a transmis încă se salvează până la capăt (găsit pe drum; Robert: „o rezolvăm acum")  — `ad0afbf`
 
