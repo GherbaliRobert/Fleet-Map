@@ -84,7 +84,10 @@ T('fișa salvează toate coloanele „Încărcare" (VEHICLE_DETAIL_COLS)', inc.C
 T('…cu zecimale unde trebuie (metrii nu se rotunjesc la întreg)', /const DECIMAL_COLS = new Set\(\[[\s\S]{0,200}'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa'\]\)/.test(dbSrc));
 T('fiecare coloană e creată în bază', inc.CAMPURI_CAROSERIE.every((k) => new RegExp('ADD COLUMN IF NOT EXISTS ' + k + ' ').test(dbSrc)));
 T('tabela „remorci" are firma și cifrele de care are nevoie simulatorul', /CREATE TABLE IF NOT EXISTS remorci \([\s\S]{0,700}company_id INTEGER[\s\S]{0,700}pivot_axe_m[\s\S]{0,200}limita_axe_kg/.test(dbSrc));
-T('semiremorcile intră în copie (BUSINESS_TABLES)', /'remorci',\s*\n\];/.test(backupSrc));
+// Oriunde în listă (alte tabele se adaugă după ea), dar ÎN listă — nu într-un comentariu.
+const iBT = backupSrc.indexOf('const BUSINESS_TABLES = [');
+const BT = iBT >= 0 ? backupSrc.slice(iBT, backupSrc.indexOf('\n];', iBT)).replace(/\/\/[^\n]*/g, '') : '';
+T('semiremorcile intră în copie (BUSINESS_TABLES)', /'remorci',/.test(BT), BT.slice(-200));
 T('pleacă odată cu firma', /async function deleteCompany\(id\) \{[\s\S]{0,400}DELETE FROM remorci WHERE company_id = \$1/.test(dbSrc));
 T('un rând se verifică pe firmă (getRowCompany știe „remorci")', /const allow = \{[^}]*remorci: 1/.test(dbSrc));
 T('ștearsă, nu rămâne legată de nicio mașină', /async function deleteRemorca[\s\S]{0,200}UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = \$1/.test(dbSrc));

@@ -1800,7 +1800,30 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   telefon (`vehCatOf` are mai puține desene). De aceea lista telefonului (`refreshRoster`) ține și `icon`.
 - **Pe telefon semiremorcile au ecranul lor** (`/remorci`, din Vehicule): lista de vehicule e harta vie. Pe web stau ca
   rânduri în Administrare → Vehicule (`st-rem`, fără semnal). Diferență dinadins.
-- Fereastra semiremorcii (`#rem-modal`) stă peste lista de vehicule (`z-index: 2100`). Simulatorul în sine: pasul 3.
+- Fereastra semiremorcii (`#rem-modal`) stă peste lista de vehicule (`z-index: 2100`).
+
+### Simulatorul de încărcare pe web (pasul 3, 12.10: „cu 3D și greutatea pe osii")
+- **Regulile stau în `incarcare.js`** (curat): `vehiculDin` / `semiDin` / `remorcaDin` (din fișă; ce lipsește se ia din
+  cifrele obișnuite și se spune în `presupuse`; „Altul" fără caroserie = `lipsa` → eroare, nu ghicit), `aranjeaza` (rânduri
+  de la peretele din față; „după opriri" = ultima oprire în față; un rând merge în primul corp în care încape — camionul
+  se umple întâi, apoi remorca), `osii` (momente față de axe, pivot `PIVOT_DE_LA_FATA`, șa), `simuleaza` (cifrele și
+  TEXTELE gata scrise: indicatori, osii, masa, mesaje, stare, legenda, ordinea). Limitele: `max_axle_loads` (axa 1 = față,
+  2–5 adunate = spate) și `max_weight_legal`, altfel `limFata` / `limSpate` / `masaMax` ale felului. NU scrie reguli de
+  așezare sau de osii în altă parte.
+- **Rutele** (`server.js`, toate `withScope` + `requireFeature('incarcare')`): `GET /api/incarcare/flota` (vehiculele care
+  cară marfă, fără demo / arhivate; semiremorcile), `POST /api/incarcare/simuleaza`, `POST /api/incarcare/pdf`. Ecranul și
+  hârtia trec prin ACEEAȘI `_incSimulare` (drepturile pe vehicul — `canAccessImei`, deci vizualizatorul doar pe mașinile
+  lui —, semiremorca firmei vehiculului, de felul potrivit). Telefonul (etapa următoare) le folosește pe aceleași.
+- **Pagina nu socotește** (blocul „simulatorul de încărcare", între repere): trimite alegerile și desenează ce primește.
+  Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
+  din macheta aprobată și citește corpurile, coletele și axele de la server; cabina e doar reper. Planul în lucru se ține în
+  `localStorage` (cu try/catch) — o comoditate, nu o salvare. Rândul `#nav-incarcare` (data-view) se arată din `updateFabs`
+  (`me.isSuper || feats.incarcare === true`).
+- **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește;
+  marfa și osiile trec pe pagina a doua doar dacă nu încap. Nume: „RA-Track - Plan de încărcare {număr} - {zi}.pdf”.
+  Descărcarea = blob + `_numeDinAntet`.
+- Culorile: tonurile și structura desenului au pereche pe ambele teme (verdele pe alb = `#166534`, măsurat ≥ 4,5).
+- Păzit de `verify_simulator.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Fereastra „Companie" (`#rax-codetail-overlay`) — capcanele ei, măsurate
 Se deschide din Companii (clic pe firmă), din „Deschide firma" (Dispozitive, Tahograf) — o singură

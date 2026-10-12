@@ -194,6 +194,7 @@ const compat = require('./compatibilitate');        // ce aparat merge pe ce ma�
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 let facturaPdf = null; try { facturaPdf = require('./factura_pdf'); } catch (e) { /* opțional: fără pdfkit nu se face hârtia facturii */ }
+let incarcarePdf = null; try { incarcarePdf = require('./incarcare_pdf'); } catch (e) { /* opțional: fără pdfkit nu se face hârtia planului */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
 const incarcare = require('./incarcare');   // simulatorul de încărcare: tipurile de remorci, cifrele obișnuite, ce se poate scrie (12.10)
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
@@ -9176,6 +9177,81 @@ app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res
   try {
     const rows = await db.getWebhooks(req.isSuper ? null : req.companyId);
     // Maschează secretul (nu-l returnăm în clar; arătăm doar dacă există).
+// ─── Simulatorul de încărcare (pasul 3, 12.10: „cu 3D și greutatea pe osii") ───
+// Regulile (cum se așază marfa, osiile, textele) stau în incarcare.js; aici doar se adună datele și se verifică drepturile.
+// Ecranul, PDF-ul și telefonul (mai târziu) primesc ACELAȘI rezultat — nimeni nu-l socotește a doua oară.
+async function _incFlota(req) {
+  let devices = await db.getDevices(req.isSuper ? null : req.companyId);
+  if (req.allowedImeis != null) devices = devices.filter((d) => req.allowedImeis.has(d.imei));
+  if (req.companyId !== demoCompanyId) devices = devices.filter((d) => !DEMO_SET.has(d.imei));
+  devices = devices.filter((d) => d.status !== 'archived');
+  const vehicule = [];
+  devices.forEach((d) => {
+    const v = incarcare.vehiculDin(d);
+    if (!v) return;
+    vehicule.push({ imei: d.imei, plate: d.plate || d.name || d.imei, name: d.name || '', sub: [d.brand, d.model].filter(Boolean).join(' '),
+      company_id: d.company_id, company_name: d.company_name || '', fel: v.fel, felEt: v.felEt, tip: v.tip, carlig: !!v.carlig,
+      presupuse: v.presupuse.length, lipsa: v.lipsa, remorca_id: d.inc_remorca_id || null });
+  });
+  vehicule.sort((a, b) => String(a.plate).localeCompare(String(b.plate), 'ro'));
+  const remorci = (await db.listRemorci(req.isSuper ? null : req.companyId)).map((r) => {
+    const tip = ((incarcare.TIPURI_REMORCA[r.fel] || []).find((t) => t.id === r.tip) || {}).et;
+    return { id: r.id, fel: r.fel, plate: r.plate, company_id: r.company_id,
+      sub: [tip || r.model, r.lungime_m && !/\d m$/.test(tip || '') ? String(r.lungime_m).replace('.', ',') + ' m' : ''].filter(Boolean).join(' · ') };
+  });
+  return { vehicule, remorci };
+}
+app.get('/api/incarcare/flota', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try { res.json(await _incFlota(req)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// O simulare din cererea ecranului: vehiculul din flotă (cu drepturile lui), semiremorca / remorca firmei lui, marfa curățată.
+async function _incSimulare(req) {
+  const b = req.body || {};
+  const imei = String(b.imei || '');
+  if (!imei || !canAccessImei(req, imei)) return { status: 403, eroare: 'Acces interzis la vehicul.' };
+  const dev = await db.getDeviceFull(imei);
+  if (!dev || dev.status === 'archived') return { status: 404, eroare: 'Vehiculul nu există.' };
+  const veh = incarcare.vehiculDin(dev);
+  if (!veh) return { status: 400, eroare: 'Vehiculul ăsta nu cară marfă — alege un autotractor, un camion sau o dubă.' };
+  const cm = incarcare.curataMarfa(b.marfa || []);
+  if (cm.eroare) return { status: 400, eroare: cm.eroare };
+  let semi = null, remorca = null;
+  if (b.remorca_id != null && b.remorca_id !== '') {
+    const r = await db.getRemorca(b.remorca_id);
+    if (!r || r.company_id == null || r.company_id !== dev.company_id) return { status: 400, eroare: 'Semiremorca aleasă nu e a firmei vehiculului.' };
+    if (veh.tip === 'trac') {
+      if (r.fel !== 'semiremorca') return { status: 400, eroare: 'La autotractor se cuplează o semiremorcă, nu o remorcă cu proțap.' };
+      semi = incarcare.semiDin(r);
+    } else {
+      if (r.fel !== 'remorca' || !veh.carlig) return { status: 400, eroare: 'La vehiculul ăsta nu se poate cupla remorca aleasă.' };
+      remorca = incarcare.remorcaDin(r);
+    }
+  }
+  const rez = incarcare.simuleaza({ vehicul: veh, semi, remorca, marfa: cm.marfa, mod: b.mod, opriri: b.opriri });
+  if (rez.eroare) return { status: 400, eroare: rez.eroare };
+  return { rezultat: rez };
+}
+app.post('/api/incarcare/simuleaza', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    const s = await _incSimulare(req);
+    if (s.eroare) return res.status(s.status).json({ error: s.eroare });
+    res.json(s.rezultat);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Hârtia planului: ACEEAȘI simulare (aceleași cifre și texte ca pe ecran), desenată de incarcare_pdf.js.
+app.post('/api/incarcare/pdf', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!incarcarePdf) return res.status(503).json({ error: 'Hârtia planului nu se poate face pe serverul ăsta.' });
+    const s = await _incSimulare(req);
+    if (s.eroare) return res.status(s.status).json({ error: s.eroare });
+    const acum = Date.now();
+    auditReq(req, 'export', 'plan_incarcare', String((req.body || {}).imei || ''), { colete: s.rezultat.total });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', _antetDescarcare(incarcarePdf.numeFisier(s.rezultat, acum)));
+    incarcarePdf.planPdf(s.rezultat, { generatLa: acum }).pipe(res);
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
     res.json(rows.map(w => ({ id: w.id, url: w.url, events: w.events, enabled: w.enabled, hasSecret: !!w.secret, last_status: w.last_status, last_error: w.last_error, last_at: w.last_at, created_at: w.created_at })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

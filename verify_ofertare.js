@@ -197,9 +197,9 @@ T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritic
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
   // Opt locuri: cititorul însuși, Inventarul, hârtia ofertei, hârtia contractelor (23.09), șablonul
   // mașinilor clientului (28.09), previzualizarea facturii (30.09), traseul descărcat din ecranul Traseu (01.10)
-  // și istoricul complet din Dispozitive arhivate (02.10) — ultimele două prin `window._numeDinAntet`. O descărcare
-  // nouă îl folosește pe el — și se adaugă aici.
-  && (html.match(/_numeDinAntet\(/g) || []).length === 8
+  // și istoricul complet din Dispozitive arhivate (02.10) — ultimele două prin `window._numeDinAntet` —, plus planul de
+  // încărcare din simulator (12.10, tot prin `window._numeDinAntet`). O descărcare nouă îl folosește pe el — și se adaugă aici.
+  && (html.match(/_numeDinAntet\(/g) || []).length === 9
   && /window\._numeDinAntet\(r, 'RA-Track - Istoric complet\.xlsx'\)/.test(html) && /_numeDinAntet\(r, 'RA-Track - Șablon mașini client\.xlsx'\)/.test(html)
   && /_numeDinAntet\(r, 'previzualizare\.pdf'\)/.test(html)
   && /window\._numeDinAntet\(r, 'RA-Track - Traseu\.xlsx'\)/.test(html)

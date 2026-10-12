@@ -268,7 +268,40 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### AMÂNDOI · Fișa unei mașini care n-a transmis încă se salvează până la capăt (găsit pe drum; Robert: „o rezolvăm acum")
+### AMÂNDOI · Simulatorul de încărcare pe web, cu 3D și greutatea pe osii (etapa 1, pasul 3)
+
+Robert (12.10): *„vreau să facem un simulator de încărcare marfă pentru transportatori"*, *„vreau să existe și un buton
+pentru 3D"*; ordinea aprobată: *„(3) simulatorul pe web, cu 3D și greutatea pe osii"*; apoi *„facem și pasul"*. Făcut după
+macheta aprobată (https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
+
+1. **Rândul nou din meniu, „Simulator încărcare"** — doar la firmele cu modulul pornit (singur, după flotă, sau ales de
+   noi din fereastra firmei, fila „Acces"). Noi îl vedem mereu.
+2. **Alegi din flotă** vehiculul (autotractor, camion, dubă) și semiremorca lui (sau, la camion, remorca cu proțap);
+   semiremorca „obișnuită" din fișă e aleasă singură. Alegi cum se așază: **după opriri** (ultima oprire lângă peretele
+   din față) sau **greutate echilibrată**. Opririle cursei au nume (până la 5).
+3. **Marfa:** paleți EUR, paleți industriali, colete sau altceva (cu dimensiunile tale), bucățile, oprirea fiecăreia și
+   dacă se pot pune câte două unul peste altul.
+4. **Se socotește pe loc:** metri de podea, greutatea, volumul, câte colete încap (și care nu), **greutatea pe fiecare
+   axă** față de limitele din fișă (Config Camion), masa totală, centrul de greutate și ordinea de încărcare. Ce trece de
+   limită se spune cu roșu și cu sfatul („mută marfa grea spre spate"); cifrele luate din cele obișnuite (fișa
+   necompletată) se spun cu galben.
+5. **Desenul:** lateral, văzut de sus și **3D** (îl rotești cu butoanele sau trăgând cu mouse-ul), colorat pe opriri.
+6. **„Descarcă PDF":** planul pe hârtie, cu sigla casei — „RA-Track - Plan de încărcare B 01 TIR - 12.10.2026.pdf".
+
+- **Ce am schimbat:** `incarcare.js` (regulile: cum se așază marfa, osiile, textele gata scrise; limitele obișnuite pe
+  felul vehiculului); `incarcare_pdf.js` (nou: hârtia); `server.js` (`/api/incarcare/flota`, `/simuleaza`, `/pdf` — cu
+  modulul, drepturile pe vehicul și semiremorca firmei lui); `public/index.html` (rândul din meniu, ecranul, desenul);
+  `public/css/app.css` (stilurile, pe ambele teme). Pagina nu socotește nimic: primește tot de la server, ca hârtia și,
+  mai târziu, telefonul.
+- **Probe:** `verify_simulator.js` (nouă, în `npm test`, 68): regulile (33 de paleți EUR într-o prelată, straturile,
+  opririle, remorca; echilibrul — suma pe axe = tara + marfa; exemplul din machetă), pagina fără reguli, culorile pe
+  ambele teme, hârtia cu aceleași cifre pe o pagină, plus server pornit (simularea = regula rulată direct, drepturile,
+  firmele între ele, PDF-ul). Verificat pe ecran, pe ambele teme și pe lățime de telefon; contrastul măsurat.
+- **Ce vede fondatorul:** rândul „Simulator încărcare" mereu; vehiculele tuturor firmelor, cu numele firmei.
+- **Ce vede clientul:** rândul doar dacă firma are modulul; vede vehiculele lui (un vizualizator — doar pe cele
+  atribuite lui). Pe telefon simulatorul vine în etapa următoare (planul șoferului și „Am încărcat").
+
+### AMÂNDOI · Fișa unei mașini care n-a transmis încă se salvează până la capăt (găsit pe drum; Robert: „o rezolvăm acum")  — `ad0afbf`
 
 La o mașină cu aparatul pus, dar fără nicio poziție încă (de exemplu un camion montat azi), „Salvează" din fișă scria
 datele, dar apoi harta încerca s-o pună pe hartă la o poziție goală și se oprea cu o eroare: lista nu se mai
