@@ -81,7 +81,7 @@ function _pentruBrevo(m) {
     atas.push({ name: String(a.filename || (a.path ? path.basename(a.path) : 'atasament')), content: b64 });
   });
   const corp = {
-    sender: (function () { const s = _adresa(fromAddr()); if (!s.name) s.name = 'RA Track'; return s; })(),
+    sender: (function () { const s = _adresa(m.from || fromAddr()); if (!s.name) s.name = 'RA Track'; return s; })(),
     to: _destinatari(m.to),
     subject: m.subject || '(fără subiect)',
     htmlContent: html,
@@ -108,17 +108,49 @@ async function _trimiteBrevo(m) {
   } catch (e) { return { ok: false, error: 'Brevo: ' + e.message }; }
 }
 
-// send({to, subject, html, text, attachments, replyTo}) → { ok, id? , error? }. Nu aruncă (best-effort).
+// ─── Jurnalul „Trimise" din panoul Mail (12.10) ───
+// Un email cu `jurnal: { fel, companyId, userId }` se scrie, după trimitere (reușită sau nu), prin funcția pusă de server
+// (`setJurnal`) — mailer.js nu știe de bază. Fără `jurnal`, emailul NU se scrie: rapoartele și alertele pe care o firmă și
+// le trimite singură oamenilor ei nu intră în „Trimise" (hotărât: nu ne uităm la ce face o companie).
+let _jurnal = null;
+function setJurnal(fn) { _jurnal = typeof fn === 'function' ? fn : null; }
+async function _noteaza(m, r) {
+  if (!m.jurnal || !_jurnal) return;
+  try {
+    await _jurnal({
+      de_la: _adresa(m.from || fromAddr()).email.toLowerCase(),
+      catre: _destinatari(m.to).map(function (x) { return x.email; }).join(', '),
+      subiect: m.subject || '(fără subiect)', text: m.text || null, html: m.html || null,
+      atasamente: (m.attachments || []).filter(function (a) { return a && !a.cid; }).map(function (a) {
+        const n = Buffer.isBuffer(a.content) ? a.content.length : (typeof a.content === 'string' ? Buffer.byteLength(a.content, a.encoding || 'utf8') : null);
+        return { nume: String(a.filename || (a.path ? path.basename(a.path) : 'atasament')), octeti: n };
+      }),
+      fel: m.jurnal.fel || null, companyId: m.jurnal.companyId != null ? m.jurnal.companyId : null,
+      userId: m.jurnal.userId != null ? m.jurnal.userId : null,
+      stare: r.ok ? 'trimis' : 'esuat', eroare: r.ok ? null : (r.error || null), cale: fel(), mesajId: r.id || null,
+    });
+  } catch (e) { /* jurnalul nu are voie să strice trimiterea */ }
+}
+
+// send({to, subject, html, text, attachments, replyTo, from?, jurnal?}) → { ok, id? , error? }. Nu aruncă (best-effort).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
+// `from`: altă adresă de-a noastră decât cea implicită (panoul Mail: robert.gherbali@…); o verifică serverul, nu aici.
 async function send(m) {
   if (!m || !m.to) return { ok: false, error: 'Fără destinatar' };
-  if (fel() === 'brevo') return _trimiteBrevo(m);
-  const tx = _transport();
-  if (!tx) return { ok: false, error: 'Email neconfigurat (nici Brevo, nici SMTP)' };
-  try {
-    const info = await tx.sendMail({ from: fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments });
-    return { ok: true, id: info && info.messageId };
-  } catch (e) { return { ok: false, error: e.message }; }
+  let r;
+  if (fel() === 'brevo') r = await _trimiteBrevo(m);
+  else {
+    const tx = _transport();
+    if (!tx) r = { ok: false, error: 'Email neconfigurat (nici Brevo, nici SMTP)' };
+    else {
+      try {
+        const info = await tx.sendMail({ from: m.from || fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments });
+        r = { ok: true, id: info && info.messageId };
+      } catch (e) { r = { ok: false, error: e.message }; }
+    }
+  }
+  await _noteaza(m, r);
+  return r;
 }
 // Verifică legătura (pentru panoul de config): la Brevo, cheia (contul); la SMTP, conexiunea.
 async function verify() {
@@ -133,4 +165,4 @@ async function verify() {
   try { await tx.verify(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
 }
 
-module.exports = { enabled, send, verify, fromAddr, fel, _pentruBrevo };
+module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo };

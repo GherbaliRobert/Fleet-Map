@@ -174,6 +174,26 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
 - „Stare producție", rândul `smtp`: „activ — Brevo/SMTP, de la …". Probele pot muta Brevo pe un server fals (`BREVO_API_URL`).
 - Păzit de `verify_email_brevo.js` (în `npm test`), inclusiv pe server pornit.
 
+### Panoul Mail al fondatorilor (Robert, 12.10) — etapa 1: „Trimise" + „Scrie"
+Business → **Mail** (după „Cereri demo"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";
+telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin` pe `/api/mail/*`).
+- **Adresele nu se scriu de mână:** `_mailAdrese(req)` = adresa COMUNĂ (expeditorul aplicației, `EMAIL_FROM` —
+  contact@ratrack.ro) + adresa fiecărui super-admin activ cu email pe același domeniu (robert.gherbali@, alin.tilvar@).
+  Comuna o văd toți; adresa personală o vede și scrie de pe ea DOAR omul ei (Robert: „1 este ok"). Mesajul altuia = 404.
+- **„Trimise" = doar emailurile NOASTRE:** `mailer.send({ …, jurnal: { fel, companyId, userId } })` → `mailer.setJurnal`
+  → `db.noteazaMailTrimis` (tabela `mail_trimise`, în `BUSINESS_TABLES`; corpul tăiat la ~200 KB, atașamentele doar nume +
+  mărime). Felurile: factura / proforma / neplata / contract / contract_montaj / invitatie / parola / formular / suport /
+  mesaj (textele în `MAIL_FEL`). Rapoartele programate, alertele și confirmările de adrese ale unei firme NU au `jurnal`
+  (nu ne uităm la ce face o companie). Un email nou al nostru = `jurnal` la trimitere; altfel nu apare.
+- **„Scrie"** (`POST /api/mail/trimite`): de pe o adresă văzută, cel mult 20 de destinatari, 4 MB de atașamente (JSON are
+  6 MB), 60 de emailuri pe oră de om; `replyTo` = adresa de pe care pleacă; rând în audit `mail_trimis` fără conținut.
+- **Fără ștergere automată** (Robert: „mai bine de 12 luni, vom avea un indice de încărcare"): indicatorul arată cât
+  ocupă mailul și toată baza din discul ei (`railway_volume_gb`, implicit 5 GB), portocaliu de la 70%.
+- HTML-ul unui email se arată într-un `<iframe sandbox="">` cu `srcdoc` și CSP propriu (fără scripturi).
+- Etapele următoare (de hotărât): 2 = „Primite" + „Răspunde" (Cloudflare Email Routing + o funcție care trimite emailurile
+  primite aplicației); 3 = starea livrării (evenimentele Brevo).
+- Păzit de `verify_mail.js` (în `npm test`, pe server pornit, cu Brevo fals).
+
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).

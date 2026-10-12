@@ -46,6 +46,8 @@ const BUSINESS_TABLES = [
   'istoric_soferi', 'safe_drive_discutii',
   // Semiremorcile și remorcile firmelor (12.10): flota fără aparat GPS, scrisă de client — nu se reface din nimic.
   'remorci',
+  // Panoul Mail (12.10): ce le-am trimis clienților și partenerilor (facturi, contracte, mesajele noastre). Nu se reface.
+  'mail_trimise',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —

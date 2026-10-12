@@ -48,6 +48,7 @@ import { Offers } from './screens/Offers';
 import { OfferCalc } from './screens/OfferCalc';   // calculatorul — socotit pe server, cu codul paginii web
 import { OurPrices } from './screens/OurPrices';   // „Prețurile noastre": cât cerem, cât ne costă, cursul
 import { DemoRequests } from './screens/DemoRequests';
+import { Mail } from './screens/Mail';
 // Operațiunile fondatorului (lotul 2b, F4): Acasă, Inventar, Tahograf și e-Transport pe firme, RA Insight, Chei API, Jurnal audit.
 import { FounderHome } from './screens/FounderHome';
 import { DeviceInventory } from './screens/DeviceInventory';
@@ -124,6 +125,7 @@ const P = {
   offerCalc: doarSuper(OfferCalc, 'Ofertare Live'),
   ourPrices: doarSuper(OurPrices, 'Prețurile noastre'),
   demoRequests: doarSuper(DemoRequests, 'Cereri demo'),
+  mail: doarSuper(Mail, 'Mail'),   // panoul Mail al fondatorilor (12.10), ca pe web
   founderHome: doarSuper(FounderHome, 'Acasă'),
   inventory: doarSuper(DeviceInventory, 'Inventar dispozitive'),
   stoc: doarSuper(StocEchipamente, 'Stoc echipamente'),   // stocul nostru: ce avem, unde e, al cui e
@@ -260,6 +262,7 @@ function Shell() {
         <Route path="/admin/offers/preturi" component={P.ourPrices} />
         <Route path="/admin/offers/:id" component={P.offerCalc} />
         <Route path="/admin/demo-requests" component={P.demoRequests} />
+        <Route path="/admin/mail" component={P.mail} />
         <Route path="/admin/home" component={P.founderHome} />
         <Route path="/admin/inventory" component={P.inventory} />
         <Route path="/admin/stoc" component={P.stoc} />

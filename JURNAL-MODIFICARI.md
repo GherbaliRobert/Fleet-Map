@@ -202,6 +202,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
   Setări Windows → Oră și limbă → Dată și oră → „Setează ora automat” pornit → „Sincronizează acum”, apoi F5 în pagină.
+- [ ] **Robert și Alin: adresa @ratrack.ro în contul vostru din aplicație. Adăugat pe 12.10 (panoul Mail).** Panoul Mail
+  vă dă adresa personală după emailul contului: Utilizatori → fișa ta → Email = robert.gherbali@ratrack.ro (Robert),
+  alin.tilvar@ratrack.ro (Alin). Numele cu care vă autentificați nu se schimbă. Fără asta, fiecare vede doar contact@.
+  Emailurile primite pe aceste adrese (fila „Primite") vin abia la etapa 2.
 
 ---
 
@@ -267,6 +271,35 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-12
+
+### FONDATOR · Panoul Mail, etapa 1: „Trimise" și „Scrie", de pe contact@ și de pe adresa fiecăruia
+
+Robert (12.10): *„vreau ca noi adminii să avem un panou de mail, de acolo vom gestiona mail-urile"*; adresele: *„robert.
+gherbali@ratrack.ro; contact@ratrack.ro, alin"*; *„1 este ok"* (contact@ îl văd amândoi, adresa personală doar omul ei);
+*„mai bine de 12 luni, vom avea un indice de încărcare"*; *„și pe telefon, bineînțeles"*.
+
+1. **Rând nou în meniu: Business → Mail** (web și telefon), doar pentru noi.
+2. **„Trimise":** tot ce trimitem NOI — facturile și proformele, avertismentele de neplată, contractele (clienți și
+   instalatori), invitațiile și linkurile de parolă, cererile din site, mesajele de suport și emailurile scrise aici — cu
+   felul lor, firma, cine l-a scris, atașamentele și dacă a plecat („n-a plecat", cu motivul). Căutare după destinatar
+   sau subiect, filtru pe adresă. Rapoartele și alertele pe care o firmă și le trimite singură NU apar aici.
+3. **„Scrie email":** de pe contact@ratrack.ro sau de pe adresa ta (robert.gherbali@ / alin.tilvar@), cu atașamente
+   până la 4 MB; răspunsul omului se întoarce la adresa de pe care a plecat.
+4. **Adresa ta o vezi doar tu.** Emailurile scrise de Robert de pe adresa lui nu apar la Alin, și invers.
+5. **Indicatorul de încărcare:** cât ocupă mailul și cât ocupă toată baza din discul de 5 GB (portocaliu de la 70%).
+   Emailurile nu se șterg singure.
+
+- **Ce am schimbat:** `mailer.js` (adresa de expeditor la alegere, notarea în „Trimise"), `channels.js`, `db.js` (tabela
+  `mail_trimise`), `backup.js`, `server.js` (rutele `/api/mail/*`; felul pus pe fiecare email al nostru), `public/index.html`
+  (secțiunea și rândul din meniu), telefonul (`screens/Mail.tsx`, meniul, rutele), `CLAUDE.md`. APK nou: 1.0.11.
+- **Probe:** `verify_mail.js` (nouă, 33, în `npm test`, pe server pornit, cu Brevo fals): adresele fiecăruia, trimiterea de
+  pe adresa aleasă, refuzurile, „Trimise" cu felurile, mesajele personale ascunse celuilalt, firmele fără acces, pagina
+  și telefonul cu aceleași cuvinte. Văzut pe ecran: lista, fereastra unui email, fereastra „Email nou".
+- **Ce vede fondatorul:** panoul Mail, cu ce am trimis și de unde poate scrie.
+- **Ce vede clientul:** nimic nou; primește emailurile noastre ca până acum.
+- **Ca să meargă:** adresele voastre în aplicație. Contul tău de super-admin trebuie să aibă emailul
+  robert.gherbali@ratrack.ro, iar al lui Alin alin.tilvar@ratrack.ro (Utilizatori → fișa omului → Email). Fără asta,
+  vedeți doar contact@.
 
 ### AMÂNDOI · Simulatorul de încărcare pe web, cu 3D și greutatea pe osii (etapa 1, pasul 3)  — `737f1d1`
 

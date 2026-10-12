@@ -199,6 +199,8 @@ const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăc
 const incarcare = require('./incarcare');   // simulatorul de încărcare: tipurile de remorci, cifrele obișnuite, ce se poate scrie (12.10)
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
+// Panoul Mail, fila „Trimise" (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
+if (mailer && mailer.setJurnal) mailer.setJurnal(function (r) { return db.noteazaMailTrimis(r); });
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
 const tollro = require('./tollro');           // taxa rutiera pe km (TollRo) - grila + calcul, modul pur
@@ -2188,7 +2190,7 @@ async function neplataTick() {
           { key: cheie + ':noi', companyId: companyId, invoiceId: f.id });
         if (mailer && mailer.enabled() && email) {
           mailer.send({ to: email, subject: 'RA Track — acces suspendat pentru neplată',
-            html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>' }).catch(function () {});
+            html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>', jurnal: { fel: 'neplata', companyId: companyId } }).catch(function () {});
         }
         _invalidateAccessCache(companyId);
         raport.suspendate.push(companyId);
@@ -2206,7 +2208,7 @@ async function neplataTick() {
       });
       if (mailer && mailer.enabled() && email) {
         mailer.send({ to: email, subject: 'RA Track — ' + treapta.titlu,
-          html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>' }).catch(function () {});
+          html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Track</p>', jurnal: { fel: 'neplata', companyId: companyId } }).catch(function () {});
       }
       raport.avertizate.push({ companyId: companyId, zi: treapta.zi });
     } catch (e) { /* per firmă, best-effort */ }
@@ -2390,7 +2392,8 @@ async function _trimiteFactura(inv, co, iss) {
     atasate = (atasate || []).concat([EMAIL_LOGO]); // sigla din antet (cid)
     try {
       const r = await mailer.send({ to: co.contact_email, replyTo: (iss && iss.email) || undefined,
-        subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Track', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate });
+        subject: (pf ? 'Proformă ' : 'Factură ') + nr + ' — RA Track', html: _invoiceEmailHtml(inv, iss || {}), text: corp, attachments: atasate,
+        jurnal: { fel: pf ? 'proforma' : 'factura', companyId: co.id } });
       rez.email = !!(r && r.ok);
       if (!rez.email) rez.emailMotiv = (r && r.error) || 'trimiterea a eșuat';
     } catch (e) { rez.emailMotiv = e.message; }
@@ -6667,7 +6670,7 @@ app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, as
       html: '<p>Bună ziua,</p><p>Vă trimitem atașat contractul de colaborare nr. <b>' + _he(h.c.number || '') + '</b> pentru lucrările de montaj, cu anexele lui (tarifele și acordul de prelucrare a datelor).</p>' +
         '<p>Vă rugăm să-l semnați și să ni-l trimiteți înapoi — scanat sau fotografiat — ca răspuns la acest email.</p><p>Vă mulțumim,<br>' + _he(noi) + '</p>',
       text: 'Bună ziua,\n\nVă trimitem atașat contractul de colaborare nr. ' + (h.c.number || '') + '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\n' + noi,
-      attachments: [{ filename: h.nume, content: pdf, contentType: 'application/pdf' }] });
+      attachments: [{ filename: h.nume, content: pdf, contentType: 'application/pdf' }], jurnal: { fel: 'contract_montaj' } });
     if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
     const acum = await db.marcheazaContractMontajTrimis(id, catre);
     auditReq(req, 'send', 'contract_montaj', id, { catre: catre });
@@ -7791,7 +7794,8 @@ app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (re
         '<p>Vă mulțumim,<br>' + _he(noi) + (emitent.phone ? '<br>' + _he(emitent.phone) : '') + '</p>',
       text: 'Bună ziua,\n\nVă trimitem atașat contractul nr. ' + (c.number || '') + ' pentru monitorizarea GPS a flotei ' + (co.name || '') +
         '. Vă rugăm să-l semnați și să ni-l trimiteți înapoi, ca răspuns la acest email.\n\nVă mulțumim,\n' + noi,
-      attachments: [{ filename: contractPdf.numeFisier(c, co), content: pdf, contentType: 'application/pdf' }]
+      attachments: [{ filename: contractPdf.numeFisier(c, co), content: pdf, contentType: 'application/pdf' }],
+      jurnal: { fel: 'contract', companyId: co.id }
     });
     if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare necunoscută') + '. Contractul a rămas cum era.' });
     const acum = Date.now();
@@ -7935,7 +7939,8 @@ async function _trimiteEmailulDeParola(req, user, link, opts) {
     subject = 'Resetare parolă RA Track';
     text = 'Resetare parolă pentru contul „' + user.username + '".\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
   }
-  return await channels.sendEmailTo(user.email, subject, text);
+  return await channels.sendEmailTo(user.email, subject, text, null, null,
+    { jurnal: { fel: opts.invite ? 'invitatie' : 'parola', companyId: user.company_id != null ? user.company_id : null } });
 }
 
 app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req, res) => {
@@ -8061,7 +8066,7 @@ async function notifyDemoRequest(row) {
     if (to && channels.emailConfigured && channels.emailConfigured()) {
       await channels.sendEmailTo(to, 'RA Track — cerere nouă din formular',
         [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
-         'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || '')].join('\n'));
+         'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || '')].join('\n'), null, null, { jurnal: { fel: 'formular' } });
     }
   } catch (e) { /* best-effort */ }
 }
@@ -9668,7 +9673,7 @@ app.post('/api/support', requireAuth, withCompany, async (req, res) => {
     try { await db.logError({ level: 'info', message: 'SUPORT — ' + who + ': ' + msg, route: '/api/support', userId: a.userId || null, companyId: a.companyId || null, context: { kind: 'support' } }); } catch (e) {}
     try {
       const to = process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null));
-      if (to && channels && channels.sendEmailTo) channels.sendEmailTo(to, 'Mesaj suport — ' + who, msg).catch(() => {});
+      if (to && channels && channels.sendEmailTo) channels.sendEmailTo(to, 'Mesaj suport — ' + who, msg, null, null, { jurnal: { fel: 'suport', companyId: a.companyId != null ? a.companyId : null } }).catch(() => {});
     } catch (e) {}
     auditReq(req, 'create', 'support', null, { len: msg.length });
     res.json({ ok: true });
@@ -16373,6 +16378,109 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, creditConfigured: creditConfigured, spentSince: spentSince, soldRemaining: soldRemaining, soldError: soldError }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail") ─────────────────
+// Etapa 1: „Trimise" (ce trimitem NOI: facturi, contracte, avertismente, invitații, mesajele scrise aici) + „Scrie".
+// Adresele: cea COMUNĂ = expeditorul aplicației (EMAIL_FROM — contact@ratrack.ro), pe care o văd toți fondatorii, plus câte
+// una pentru fiecare fondator (super-admin activ) cu email pe același domeniu (robert.gherbali@…, alin.tilvar@…), pe care
+// o vede și de pe care scrie DOAR el (Robert, 12.10: „1 este ok"). Fără listă scrisă de mână: un fondator nou cu adresă pe
+// domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
+const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', neplata: 'Neplată',
+  invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj' };
+const MAIL_ATAS_MAX = 4 * 1024 * 1024;   // corpul JSON are voie la 6 MB; atașamentele în base64 cresc cu o treime
+const MAIL_DESTINATARI_MAX = 20;
+const _mailRitm = new Map();   // userId → [ms] — cel mult 60 de emailuri scrise pe oră de om (reputația domeniului)
+async function _mailAdrese(req) {
+  const c = mailer ? mailer.adresa(mailer.fromAddr()) : { email: 'contact@ratrack.ro' };
+  const comuna = String(c.email || '').toLowerCase();
+  const dom = comuna.split('@')[1] || '';
+  const out = [{ adresa: comuna, nume: c.name || 'RA Track', comuna: true, aMea: false }];
+  const r = await db.pool.query("SELECT id, full_name, email, username FROM users WHERE role = 'superadmin' AND active IS NOT false ORDER BY id");
+  r.rows.forEach(function (u) {
+    const e = String(u.email || u.username || '').trim().toLowerCase();
+    if (!dom || !e.endsWith('@' + dom) || e === comuna || out.some(function (x) { return x.adresa === e; })) return;
+    out.push({ adresa: e, nume: u.full_name || e, comuna: false, aMea: u.id === (req.auth && req.auth.userId), userId: u.id });
+  });
+  return out;
+}
+function _mailVazute(adrese) { return adrese.filter(function (a) { return a.comuna || a.aMea; }); }
+function _mailRand(m) {
+  return {
+    id: Number(m.id), la: m.creat_la ? new Date(m.creat_la).toISOString() : null, de_la: m.de_la, catre: m.catre, subiect: m.subiect,
+    fel: m.fel, felText: MAIL_FEL[m.fel] || (m.fel ? m.fel : 'Email'), firma: m.company_name || null, companyId: m.company_id,
+    cine: m.user_id ? (m.user_name || 'un fondator') : 'aplicația', atasamente: Array.isArray(m.atasamente) ? m.atasamente : [],
+    stare: m.stare, eroare: m.eroare || null,
+  };
+}
+app.get('/api/mail/adrese', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const adrese = _mailVazute(await _mailAdrese(req)).map(function (a) { return { adresa: a.adresa, nume: a.nume, comuna: a.comuna, aMea: a.aMea }; });
+    let capGb = 5; try { const v = parseFloat(await db.getSetting('railway_volume_gb')); if (Number.isFinite(v) && v > 0) capGb = v; } catch (e) {}
+    const sp = await db.mailSpatiu();
+    res.json({ adrese: adrese, activ: !!(mailer && mailer.enabled()), cale: mailer ? mailer.fel() : null,
+      spatiu: { mailOcteti: sp.octeti, numar: sp.numar, bazaOcteti: sp.bazaOcteti, capOcteti: Math.round(capGb * 1024 * 1024 * 1024) },
+      limite: { atasamenteOcteti: MAIL_ATAS_MAX, destinatari: MAIL_DESTINATARI_MAX } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/mail/trimise', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
+    let lista = vazute;
+    if (req.query.adresa) {
+      const a = String(req.query.adresa).toLowerCase();
+      if (vazute.indexOf(a) < 0) return res.status(403).json({ error: 'Adresa asta nu e a ta.' });
+      lista = [a];
+    }
+    const pagina = Math.max(parseInt(req.query.pagina) || 0, 0);
+    const r = await db.listMailTrimise(lista, { cauta: req.query.cauta || null, limit: 50, offset: pagina * 50 });
+    res.json({ mailuri: r.rows.map(_mailRand), maiSunt: r.maiSunt, pagina: pagina });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/mail/trimise/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const m = Number.isFinite(id) ? await db.getMailTrimis(id) : null;
+    const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
+    if (!m || vazute.indexOf(String(m.de_la).toLowerCase()) < 0) return res.status(404).json({ error: 'Emailul nu există.' });
+    res.json(Object.assign(_mailRand(m), { text: m.text || null, html: m.html || null }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Serverul n-are email configurat (cheia Brevo în Railway).' });
+    const b = req.body || {};
+    const adrese = _mailVazute(await _mailAdrese(req));
+    const de = adrese.filter(function (a) { return a.adresa === String(b.de_la || '').trim().toLowerCase(); })[0];
+    if (!de) return res.status(403).json({ error: 'Poți scrie doar de pe adresa comună sau de pe adresa ta.' });
+    const catre = String(b.catre || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!catre.length) return res.status(400).json({ error: 'Scrie cel puțin un destinatar.' });
+    if (catre.length > MAIL_DESTINATARI_MAX) return res.status(400).json({ error: 'Cel mult ' + MAIL_DESTINATARI_MAX + ' destinatari într-un email.' });
+    const rau = catre.filter(function (x) { return !_EMAIL_RE.test(x) || x.length > 200; });
+    if (rau.length) return res.status(400).json({ error: 'Adresa „' + rau[0].slice(0, 80) + '" nu arată a email.' });
+    const subiect = String(b.subiect || '').trim();
+    const text = String(b.text || '').replace(/\r\n/g, '\n').trim();
+    if (!subiect || subiect.length > 200) return res.status(400).json({ error: 'Subiectul lipsește sau e prea lung (cel mult 200 de caractere).' });
+    if (!text || text.length > 50000) return res.status(400).json({ error: 'Mesajul lipsește sau e prea lung.' });
+    const atas = [];
+    let octeti = 0;
+    for (const a of (Array.isArray(b.atasamente) ? b.atasamente : []).slice(0, 10)) {
+      const buf = Buffer.from(String((a && a.b64) || ''), 'base64');
+      if (!buf.length) continue;
+      octeti += buf.length;
+      atas.push({ filename: String((a && a.nume) || 'atasament').replace(/[\\/:*?"<>|\r\n]+/g, '_').slice(0, 120), content: buf });
+    }
+    if (octeti > MAIL_ATAS_MAX) return res.status(400).json({ error: 'Atașamentele trec de ' + Math.round(MAIL_ATAS_MAX / 1048576) + ' MB.' });
+    const acum = Date.now(), uid = req.auth.userId;
+    const ritm = (_mailRitm.get(uid) || []).filter(function (t) { return acum - t < 3600000; });
+    if (ritm.length >= 60) return res.status(429).json({ error: 'Prea multe emailuri într-o oră. Încearcă mai târziu.' });
+    ritm.push(acum); _mailRitm.set(uid, ritm);
+    const r = await mailer.send({ from: de.nume + ' <' + de.adresa + '>', replyTo: de.adresa, to: catre.join(', '), subject: subiect, text: text,
+      attachments: atas, jurnal: { fel: 'mesaj', userId: uid } });
+    auditReq(req, 'mail_trimis', 'mail', null, { de_la: de.adresa, destinatari: catre.length, atasamente: atas.length, ok: !!r.ok });
+    if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare') });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Cereri de cont demo (super-admin) ─────────────────────────────────────────────────────────────
 app.get('/api/admin/demo-requests', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listDemoRequests({ status: req.query.status || null })); }

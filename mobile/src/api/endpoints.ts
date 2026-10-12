@@ -263,6 +263,12 @@ export const Api = {
   refreshFuelPrices: () => api<any>('/api/admin/fuel-prices/refresh', { method: 'POST', body: {} }), // super-admin
   companySettings: () => api<any>('/api/companies/me/settings'),
   saveCompanySettings: (b: any) => api<any>('/api/companies/me/settings', { method: 'PUT', body: b }),
+  // ── Super-admin: panoul Mail (12.10) — aceleași rute ca pe web (Administrare → Mail) ──
+  mailAdrese: () => api<any>('/api/mail/adrese'),
+  mailTrimise: (q: { adresa?: string; cauta?: string; pagina?: number }) => api<any>('/api/mail/trimise?pagina=' + (q.pagina || 0)
+    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '')),
+  mailTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`),
+  mailTrimite: (b: any) => api<any>('/api/mail/trimite', { method: 'POST', body: b }),
   // ── Super-admin: Cereri de cont demo (formularul public de pe landing) ──
   demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),

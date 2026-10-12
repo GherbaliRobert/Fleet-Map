@@ -1565,6 +1565,30 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_scrisori_user ON scrisori_luni(user_id, saptamana DESC)`);
+    // Panoul Mail (Robert, 12.10), fila „Trimise": ce trimitem NOI — facturi, contracte, avertismente, invitații, mesajele
+    // scrise din panou — de pe adresa comună (contact@) sau de pe adresa unui fondator. Scris de mailer.js (`jurnal`).
+    // Corpul se păstrează (tăiat la ~200 KB); atașamentele doar cu numele și mărimea. Fără ștergere automată (Robert:
+    // „mai bine de 12 luni, vom avea un indice de încărcare").
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mail_trimise (
+        id BIGSERIAL PRIMARY KEY,
+        creat_la TIMESTAMP DEFAULT NOW(),
+        de_la VARCHAR(200) NOT NULL,
+        catre TEXT NOT NULL,
+        subiect TEXT,
+        fel VARCHAR(30),
+        company_id INTEGER,
+        user_id INTEGER,
+        text TEXT,
+        html TEXT,
+        atasamente JSONB,
+        stare VARCHAR(12) NOT NULL DEFAULT 'trimis',
+        eroare TEXT,
+        cale VARCHAR(10),
+        mesaj_id VARCHAR(200)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_trimise_de_la ON mail_trimise(de_la, id DESC)`);
 
     // ─── Safe Drive (RA Insight, pasul 3) ───
     // Rezumatul unei ZILE (ora României) pe mașină și pe șofer: km, mers, manevre bruște, viteză, ralanti, plus orele și
@@ -2143,6 +2167,55 @@ async function getFinanceSummary(fromMs) {
   const recurring = await pool.query(
     `SELECT provider, category, amount, currency, cycle FROM platform_costs WHERE active = true AND amount IS NOT NULL`);
   return { income: inc.rows, expenses: exp.rows, recurring: recurring.rows };
+}
+// ─── Panoul Mail (Robert, 12.10): fila „Trimise" ───
+// Scris de mailer.js după fiecare email NOSTRU (cu `jurnal`). Corpul tăiat la ~200 KB, ca un email lung să nu umple baza.
+const _MAIL_CORP_MAX = 200000;
+async function noteazaMailTrimis(r) {
+  const taie = function (s, n) { return s == null ? null : String(s).slice(0, n || _MAIL_CORP_MAX); };
+  const q = await pool.query(
+    `INSERT INTO mail_trimise (de_la, catre, subiect, fel, company_id, user_id, text, html, atasamente, stare, eroare, cale, mesaj_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+    [taie(r.de_la, 200) || '', taie(r.catre, 4000) || '', taie(r.subiect, 500), taie(r.fel, 30), r.companyId != null ? r.companyId : null,
+      r.userId != null ? r.userId : null, taie(r.text), taie(r.html), JSON.stringify(Array.isArray(r.atasamente) ? r.atasamente.slice(0, 30) : []),
+      r.stare === 'esuat' ? 'esuat' : 'trimis', taie(r.eroare, 1000), taie(r.cale, 10), taie(r.mesajId, 200)]);
+  return q.rows[0] ? q.rows[0].id : null;
+}
+// Lista (fără corp), DOAR de pe adresele primite — cele pe care le vede omul (serverul le alege). `cauta`: în destinatari
+// sau subiect. Se întoarce o pagină și dacă mai sunt.
+async function listMailTrimise(adrese, o) {
+  o = o || {};
+  const lim = Math.min(Math.max(parseInt(o.limit) || 50, 1), 200), off = Math.max(parseInt(o.offset) || 0, 0);
+  const p = [(adrese || []).map(function (a) { return String(a).toLowerCase(); })];
+  let w = 'm.de_la = ANY($1)';
+  if (o.cauta) {
+    p.push('%' + String(o.cauta).toLowerCase().slice(0, 100).replace(/[\\%_]/g, '\\$&') + '%');
+    w += ' AND (LOWER(m.catre) LIKE $' + p.length + ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
+  }
+  p.push(lim + 1); p.push(off);
+  const r = await pool.query(
+    `SELECT m.id, m.creat_la, m.de_la, m.catre, m.subiect, m.fel, m.company_id, c.name AS company_name, m.user_id,
+            u.full_name AS user_name, m.atasamente, m.stare, m.eroare, m.cale
+       FROM mail_trimise m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users u ON u.id = m.user_id
+      WHERE ${w} ORDER BY m.id DESC LIMIT $${p.length - 1} OFFSET $${p.length}`, p);
+  return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
+}
+async function getMailTrimis(id) {
+  const r = await pool.query(
+    `SELECT m.*, c.name AS company_name, u.full_name AS user_name
+       FROM mail_trimise m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users u ON u.id = m.user_id
+      WHERE m.id = $1`, [id]);
+  return r.rows[0] || null;
+}
+// Cât ocupă mailul în bază (indicatorul de încărcare din panou) și cât ocupă toată baza.
+async function mailSpatiu() {
+  const out = { octeti: null, numar: 0, bazaOcteti: null };
+  try {
+    const r = await pool.query("SELECT pg_total_relation_size('mail_trimise') AS b, (SELECT COUNT(*) FROM mail_trimise)::int AS n");
+    out.octeti = Number(r.rows[0].b) || 0; out.numar = Number(r.rows[0].n) || 0;
+  } catch (e) {}
+  try { const r = await pool.query('SELECT pg_database_size(current_database()) AS b'); out.bazaOcteti = Number(r.rows[0].b) || null; } catch (e) {}
+  return out;
 }
 // Capacitatea bazei de date din PostgreSQL-ul PROPRIU (fără token extern): mărime totală + defalcare pe tabel.
 async function getDbCapacity() {
@@ -5822,7 +5895,7 @@ module.exports = {
   abonamentLuna, pornesteAbonamentul, setAbonamentDeLa, migreazaPornireaAbonamentelor,
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
-  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
+  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, mailSpatiu,
   listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany, montajeContract,

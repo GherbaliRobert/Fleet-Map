@@ -179,6 +179,7 @@
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('dashboard'); })"><i class="fas fa-chart-line"></i><span>Dashboard platformă</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('costs'); })"><i class="fas fa-wallet"></i><span>Control costuri</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('demoreq'); })"><i class="fas fa-envelope-open-text"></i><span>Cereri demo</span><span id="nav-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('mail'); })"><i class="fas fa-envelope"></i><span>Mail</span></button>
           </div>
         </div>
         <div class="nav-group" data-vert="fondator" data-group="sistem">
@@ -1714,6 +1715,7 @@
           <button class="aside-item" data-super data-atab="ofertare" onclick="raxAdminTab('ofertare')"><i class="fas fa-tag"></i> Ofertare Live</button>
           <button class="aside-item" data-super data-atab="contracte" onclick="raxAdminTab('contracte')"><i class="fas fa-file-signature"></i> Contracte</button>
           <button class="aside-item" data-super data-atab="demoreq" onclick="raxAdminTab('demoreq')"><i class="fas fa-envelope-open-text"></i> Cereri demo <span id="rax-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>
+          <button class="aside-item" data-super data-atab="mail" onclick="raxAdminTab('mail')"><i class="fas fa-envelope"></i> Mail</button>
           <div class="aside-grp">Sistem</div>
           <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
           <button class="aside-item" data-super onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
@@ -1756,6 +1758,7 @@
           <div id="admin-tab-contracte" style="display:none;"></div>
           <div id="admin-tab-montaj" style="display:none;"></div>
           <div id="admin-tab-demoreq" style="display:none;"></div>
+          <div id="admin-tab-mail" class="ra-camp" style="display:none;"></div>
       <div id="admin-tab-users" class="ra-camp" style="display:none;">
       <!-- Bara de deasupra listei: căutarea și ordinea stau în HTML (nu se redesenează), ca scrisul din
            casetă să nu-și piardă cursorul la fiecare filtrare. Pastilele și contorul se desenează din JS. -->
@@ -3192,6 +3195,26 @@ const pozitii = await r.json();</code></pre>
     .dq-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .dq-days{padding:6px 9px;border-radius:8px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:12px;cursor:pointer}
     @media(max-width:640px){.dq-acts{width:100%}}
+    /* Panoul Mail (12.10). Culorile de stare au pereche pe fiecare temă (roșul/verdele casei pe alb nu se citesc). */
+    .mail-bara{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .mail-bara .rax-field{flex:1;min-width:180px}
+    .mail-spatiu{border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:12px;background:var(--bg-panel);font-size:12.5px;color:var(--text-secondary)}
+    .mail-spatiu .bar{height:6px;border-radius:4px;background:var(--bg-dark);overflow:hidden;margin-top:7px}
+    .mail-spatiu .bar i{display:block;height:100%;background:var(--accent)}
+    .mail-spatiu.atentie .bar i{background:#d97706}
+    .mail-stare{font-size:12px;margin-bottom:10px;color:var(--text-secondary)}
+    .mail-rand{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border:1px solid var(--border);border-radius:12px;margin-bottom:7px;background:var(--bg-panel);cursor:pointer}
+    .mail-rand:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+    .mail-rand .sub{font-size:13.5px;font-weight:700;color:var(--text-primary);overflow-wrap:anywhere}
+    .mail-rand .meta{font-size:11.5px;color:var(--text-muted);margin-top:3px;overflow-wrap:anywhere}
+    .mail-rand .cand{margin-left:auto;font-size:11.5px;color:var(--text-muted);white-space:nowrap;text-align:right}
+    .mail-ok{color:#15803d} body.dark .mail-ok{color:var(--accent)}
+    .mail-err{color:#b91c1c} body.dark .mail-err{color:#f87171}
+    .mail-f label{display:block;font-size:12px;font-weight:700;color:var(--text-secondary);margin:10px 0 4px}
+    .mail-f .rax-field,.mail-f textarea{width:100%;box-sizing:border-box}
+    .mail-f textarea{min-height:180px;resize:vertical;padding:9px 11px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font:inherit;font-size:13.5px;line-height:1.5}
+    .mail-corp{white-space:pre-wrap;font-size:13.5px;line-height:1.55;color:var(--text-primary);overflow-wrap:anywhere}
+    .mail-cadru{width:100%;min-height:340px;border:1px solid var(--border);border-radius:10px;background:#fff}
     .agp-fa{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
     .agp-fb{display:inline-flex;align-items:center;gap:6px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
     .agp-fb:hover{border-color:var(--accent);color:var(--text-primary)}
@@ -4030,7 +4053,7 @@ const pozitii = await r.json();</code></pre>
       archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices',
       agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport',
       dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare',
-      demoreq: 'admin-tab-demoreq'
+      demoreq: 'admin-tab-demoreq', mail: 'admin-tab-mail'
     };
     // NUMELE secțiunilor — tot o singură listă, și ea. Numele de aici trebuie să fie IDENTIC cu cel
     // scris pe rândul din meniul din stânga: e același loc, deci același nume. Erau scrise separat și
@@ -4044,7 +4067,7 @@ const pozitii = await r.json();</code></pre>
       archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele',
       agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport',
       dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live',
-      demoreq: 'Cereri demo'
+      demoreq: 'Cereri demo', mail: 'Mail'
     };
     // Ascunde TOATE secțiunile, lăsând-o deschisă doar pe cea cerută (sau niciuna, cu `null`).
     function _raxAscundeTaburile(deschisId) {
@@ -4128,6 +4151,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadOfertare) window.raxLoadOfertare();
       } else if (name === 'demoreq') {
         if (window.raxLoadDemoReq) window.raxLoadDemoReq();
+      } else if (name === 'mail') {
+        if (window.raxLoadMail) window.raxLoadMail();
       }
     };
 
@@ -28514,6 +28539,177 @@ const pozitii = await r.json();</code></pre>
       try { await fetch('/api/admin/demo-requests/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxToast('Ștearsă', 'success'); } catch (e) {}
       raxLoadDemoReq();
     };
+    // ── începe „Panoul Mail" (Robert, 12.10: „noi adminii să avem un panou de mail") ──────────────
+    // Etapa 1: „Trimise" + „Scrie". Ecranul NU hotărăște nimic: ce adrese vezi (comuna + a ta), starea emailului, spațiul
+    // ocupat și felul fiecărui email (textul) le dă serverul. Scheletul (bara cu căutarea) se desenează o dată; căutarea
+    // redesenează doar lista — altfel caseta își pierde cursorul după prima literă (capcana de la Inventar).
+    var _mail = { adrese: [], activ: false, cale: null, limite: {}, filtru: '', cauta: '', pagina: 0, lista: [], maiSunt: false, cautaT: null };
+    function _mailOct(n) {
+      n = Number(n) || 0;
+      if (n >= 1073741824) return (n / 1073741824).toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' GB';
+      if (n >= 1048576) return (n / 1048576).toLocaleString('ro-RO', { maximumFractionDigits: 1 }) + ' MB';
+      if (n >= 1024) return Math.round(n / 1024) + ' KB';
+      return n + ' B';
+    }
+    // „1 email”, „5 emailuri”, „20 de emailuri” — ca pe telefon (numar).
+    function _mailNumar(n) { var v = Number(n) || 0, r = v % 100; return v === 1 ? '1 email' : v + (r >= 1 && r <= 19 ? ' emailuri' : ' de emailuri'); }
+    function _mailCand(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+    }
+    window.raxLoadMail = async function () {
+      var box = $('admin-tab-mail'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var a = null;
+      try { a = await fetch('/api/mail/adrese', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!a) { box.innerHTML = '<div class="rax-co-meta" style="padding:16px;">Nu s-a putut încărca panoul de mail.</div>'; return; }
+      _mail.adrese = a.adrese || []; _mail.activ = !!a.activ; _mail.cale = a.cale; _mail.limite = a.limite || {};
+      if (_mail.filtru && !_mail.adrese.some(function (x) { return x.adresa === _mail.filtru; })) _mail.filtru = '';
+      var sp = a.spatiu || {};
+      var pct = (sp.bazaOcteti && sp.capOcteti) ? Math.min(100, Math.round(sp.bazaOcteti / sp.capOcteti * 100)) : null;
+      // Indicatorul de încărcare (Robert: „mai bine de 12 luni, vom avea un indice de încărcare"): cât ocupă mailul și cât
+      // ocupă toată baza din discul ei. Portocaliu de la 70%.
+      var spatiu = '<div class="mail-spatiu' + (pct != null && pct >= 70 ? ' atentie' : '') + '"><i class="fas fa-database" style="margin-right:6px;"></i>'
+        + 'Mailul ocupă <b>' + _mailOct(sp.mailOcteti) + '</b> (' + _mailNumar(sp.numar) + ')'
+        + (pct != null ? ' · toată baza: <b>' + _mailOct(sp.bazaOcteti) + '</b> din ' + _mailOct(sp.capOcteti) + ' (' + pct + '%)' : '')
+        + (pct != null ? '<div class="bar"><i style="width:' + pct + '%"></i></div>' : '') + '</div>';
+      var stare = _mail.activ
+        ? '<div class="mail-stare"><i class="fas fa-circle-check mail-ok"></i> Emailul pleacă prin ' + (_mail.cale === 'brevo' ? 'Brevo' : 'SMTP') + '.</div>'
+        : '<div class="mail-stare"><i class="fas fa-triangle-exclamation mail-err"></i> Serverul n-are email configurat: nu pleacă nimic până nu se pune cheia Brevo în Railway.</div>';
+      var chips = [['', 'Toate']].concat(_mail.adrese.map(function (x) { return [x.adresa, x.comuna ? x.adresa : (x.adresa + ' (a mea)')]; }));
+      box.innerHTML = spatiu + stare
+        + '<div class="mail-bara">'
+        + chips.map(function (c) { return '<button class="btn-sm' + (_mail.filtru === c[0] ? ' btn-primary' : '') + '" onclick="raxMailFiltru(\'' + esc(c[0]) + '\')">' + esc(c[1]) + '</button>'; }).join(' ')
+        + '<input type="search" id="mail-cauta" class="rax-field" placeholder="Caută după destinatar sau subiect…" autocomplete="off" oninput="raxMailCauta(this.value)" value="' + esc(_mail.cauta) + '">'
+        + '<button class="rax-btn primary" onclick="raxMailScrie()"' + (_mail.activ ? '' : ' disabled title="Serverul n-are email configurat"') + '><i class="fas fa-pen"></i> Scrie email</button>'
+        + '</div><div id="mail-lista"></div>';
+      _mail.pagina = 0;
+      await _mailIncarcaLista(false);
+    };
+    async function _mailIncarcaLista(adauga) {
+      var host = $('mail-lista'); if (!host) return;
+      if (!adauga) host.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var q = '?pagina=' + _mail.pagina + (_mail.filtru ? '&adresa=' + encodeURIComponent(_mail.filtru) : '') + (_mail.cauta ? '&cauta=' + encodeURIComponent(_mail.cauta) : '');
+      var j = null;
+      try { j = await fetch('/api/mail/trimise' + q, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!j) { host.innerHTML = '<div class="rax-co-meta" style="padding:16px;">Nu s-a putut încărca lista.</div>'; return; }
+      _mail.lista = adauga ? _mail.lista.concat(j.mailuri || []) : (j.mailuri || []);
+      _mail.maiSunt = !!j.maiSunt;
+      if (!_mail.lista.length) { host.innerHTML = '<div class="rax-co-meta" style="padding:16px;">' + (_mail.cauta ? 'Nimic găsit.' : 'Niciun email trimis încă.') + '</div>'; return; }
+      host.innerHTML = _mail.lista.map(_mailRandHtml).join('')
+        + (_mail.maiSunt ? '<div style="text-align:center;margin-top:8px;"><button class="rax-btn" onclick="raxMailMaiMulte()">Mai multe</button></div>' : '');
+    }
+    function _mailRandHtml(m) {
+      var st = m.stare === 'esuat'
+        ? '<span class="mail-err"><i class="fas fa-circle-xmark"></i> n-a plecat</span>'
+        : '<span class="mail-ok"><i class="fas fa-circle-check"></i> trimis</span>';
+      return '<div class="mail-rand" onclick="raxMailDeschide(' + Number(m.id) + ')">'
+        + '<div style="min-width:0;flex:1;">'
+          + '<div class="sub">' + esc(m.subiect || '(fără subiect)') + '</div>'
+          + '<div class="meta">către ' + esc(m.catre) + ' · de la ' + esc(m.de_la) + '</div>'
+          + '<div class="meta"><span class="rax-tag">' + esc(m.felText) + '</span>' + (m.firma ? ' · ' + esc(m.firma) : '') + ' · ' + esc(m.cine)
+            + ((m.atasamente || []).length ? ' · <i class="fas fa-paperclip"></i> ' + m.atasamente.length : '') + '</div>'
+        + '</div>'
+        + '<div class="cand">' + _mailCand(m.la) + '<br>' + st + '</div></div>';
+    }
+    window.raxMailFiltru = function (a) { _mail.filtru = a || ''; raxLoadMail(); };
+    window.raxMailCauta = function (v) {
+      clearTimeout(_mail.cautaT);
+      _mail.cautaT = setTimeout(function () { _mail.cauta = String(v || '').trim(); _mail.pagina = 0; _mailIncarcaLista(false); }, 350);
+    };
+    window.raxMailMaiMulte = function () { _mail.pagina++; _mailIncarcaLista(true); };
+    // O singură fereastră pentru citit și pentru scris (`#mail-ov`), făcută la prima nevoie.
+    function _mailOv() {
+      var ov = document.getElementById('mail-ov');
+      if (!ov) {
+        ov = document.createElement('div'); ov.id = 'mail-ov'; ov.className = 'rax-overlay ra-camp';
+        ov.innerHTML = '<div class="rax-card" style="max-width:720px;"><div class="rax-head"><h3 id="mail-ov-t"></h3>'
+          + '<button class="rax-x" onclick="raxMailInchide()" aria-label="Închide">&times;</button></div><div class="rax-body" id="mail-ov-b"></div></div>';
+        ov.addEventListener('click', function (e) { if (e.target === ov) raxMailInchide(); });
+        document.body.appendChild(ov);
+      }
+      return ov;
+    }
+    window.raxMailInchide = function () { var ov = document.getElementById('mail-ov'); if (ov) ov.classList.remove('open'); };
+    window.raxMailDeschide = async function (id) {
+      var ov = _mailOv();
+      $('mail-ov-t').textContent = 'Email';
+      $('mail-ov-b').innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      ov.classList.add('open');
+      var m = null;
+      try { m = await fetch('/api/mail/trimise/' + Number(id), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!m) { $('mail-ov-b').innerHTML = '<div class="rax-co-meta">Emailul nu se poate deschide.</div>'; return; }
+      $('mail-ov-t').textContent = m.subiect || '(fără subiect)';
+      $('mail-ov-b').innerHTML = '<div class="dq-meta" style="margin:0 0 10px;line-height:1.7;">'
+        + '<b>De la:</b> ' + esc(m.de_la) + '<br><b>Către:</b> ' + esc(m.catre) + '<br><b>Când:</b> ' + _mailCand(m.la)
+        + ' · <span class="rax-tag">' + esc(m.felText) + '</span>' + (m.firma ? ' · ' + esc(m.firma) : '') + ' · ' + esc(m.cine)
+        + (m.stare === 'esuat' ? '<br><span class="mail-err"><b>N-a plecat:</b> ' + esc(m.eroare || '') + '</span>' : '')
+        + ((m.atasamente || []).length ? '<br><b>Atașamente:</b> ' + m.atasamente.map(function (x) { return esc(x.nume) + (x.octeti ? ' (' + _mailOct(x.octeti) + ')' : ''); }).join(', ') : '')
+        + '</div><div id="mail-ov-corp"></div>';
+      var corp = $('mail-ov-corp');
+      if (m.html) {
+        // HTML-ul emailului stă într-un cadru izolat: fără scripturi, fără acces la pagina noastră.
+        var f = document.createElement('iframe');
+        f.className = 'mail-cadru'; f.setAttribute('sandbox', ''); f.setAttribute('referrerpolicy', 'no-referrer'); f.title = 'Conținutul emailului';
+        f.srcdoc = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src https: data:; style-src \'unsafe-inline\'">' + m.html;
+        corp.appendChild(f);
+      } else {
+        var p = document.createElement('div'); p.className = 'mail-corp'; p.textContent = m.text || ''; corp.appendChild(p);
+      }
+    };
+    window.raxMailScrie = function () {
+      if (!_mail.activ) { raxToast('Serverul n-are email configurat.', 'error'); return; }
+      var ov = _mailOv();
+      $('mail-ov-t').textContent = 'Email nou';
+      var aMea = _mail.adrese.filter(function (x) { return x.aMea; })[0];
+      var deLa = _mail.adrese.map(function (x) {
+        return '<option value="' + esc(x.adresa) + '"' + ((aMea ? x === aMea : x.comuna) ? ' selected' : '') + '>' + esc(x.nume + ' <' + x.adresa + '>') + '</option>';
+      }).join('');
+      var lim = _mail.limite || {};
+      $('mail-ov-b').innerHTML = '<div class="mail-f">'
+        + '<label for="mail-de">De la</label><select id="mail-de" class="rax-field">' + deLa + '</select>'
+        + '<label for="mail-catre">Către</label><input id="mail-catre" class="rax-field" type="text" autocomplete="off" placeholder="adresa@firma.ro — mai multe, despărțite prin virgulă">'
+        + '<label for="mail-subiect">Subiect</label><input id="mail-subiect" class="rax-field" type="text" maxlength="200" autocomplete="off">'
+        + '<label for="mail-text">Mesaj</label><textarea id="mail-text"></textarea>'
+        + '<label for="mail-fis">Atașamente (cel mult ' + _mailOct(lim.atasamenteOcteti || 0) + ' în total)</label><input id="mail-fis" type="file" multiple>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">'
+          + '<button class="rax-btn" onclick="raxMailInchide()">Renunță</button>'
+          + '<button class="rax-btn primary" id="mail-trimite" onclick="raxMailTrimite()"><i class="fas fa-paper-plane"></i> Trimite</button></div>'
+        + '</div>';
+      ov.classList.add('open');
+      setTimeout(function () { var c = $('mail-catre'); if (c) c.focus(); }, 30);
+    };
+    function _mailCiteste(f) {
+      return new Promise(function (ok, nu) {
+        var r = new FileReader();
+        r.onload = function () { ok({ nume: f.name, b64: String(r.result).split(',')[1] || '' }); };
+        r.onerror = function () { nu(r.error); };
+        r.readAsDataURL(f);
+      });
+    }
+    window.raxMailTrimite = async function () {
+      var btn = $('mail-trimite'); if (!btn || btn.disabled) return;
+      var fis = Array.prototype.slice.call(($('mail-fis') && $('mail-fis').files) || []);
+      var total = fis.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+      var lim = (_mail.limite && _mail.limite.atasamenteOcteti) || 0;
+      if (lim && total > lim) { raxToast('Atașamentele trec de ' + _mailOct(lim) + '.', 'error'); return; }
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se trimite…';
+      try {
+        var atas = await Promise.all(fis.map(_mailCiteste));
+        var r = await fetch('/api/mail/trimite', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ de_la: $('mail-de').value, catre: $('mail-catre').value, subiect: $('mail-subiect').value, text: $('mail-text').value, atasamente: atas }) });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok) { raxToast(j.error || 'Emailul n-a plecat.', 'error', 7000); btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Trimite'; return; }
+        raxToast('Emailul a plecat ✓', 'success');
+        raxMailInchide();
+        raxLoadMail();
+      } catch (e) {
+        raxToast('Eroare de rețea', 'error');
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Trimite';
+      }
+    };
+    // ── sfârșit „Panoul Mail" ──
     window.raxLoadOfertare = async function () {
       var box = document.getElementById('admin-tab-ofertare'); if (!box) return;
       // Tarifele NOASTRE și termenul de valabilitate se aduc ÎNAINTE de a desena formularul: din ele

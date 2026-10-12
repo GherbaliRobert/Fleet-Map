@@ -152,6 +152,8 @@ export function Menu() {
             {/* Bulina roșie: cererile noi, ca pe web (nav-demoreq-badge). */}
             {item('mail', 'Cereri demo', () => loc.route('/admin/demo-requests'),
               cereriNoi > 0 ? <span style="display:inline-flex;align-items:center;gap:6px"><span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800">{cereriNoi}</span><Icon name="chevronR" size={18} color="var(--text-muted)" /></span> : undefined)}
+            {/* Panoul Mail al fondatorilor (12.10), ca pe web: imediat după „Cereri demo", în Business. */}
+            {item('mail', 'Mail', () => loc.route('/admin/mail'))}
 
             <div class="mn-sec" style="display:flex;align-items:center;gap:6px"><Icon name="gears" size={13} /> Sistem</div>
             {item('key', 'Chei API', () => loc.route('/admin/apikeys'))}
