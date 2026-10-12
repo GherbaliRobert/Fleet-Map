@@ -257,7 +257,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### FONDATOR · Fereastra firmei: filele „Stare" și „Acces"; simulatorul de încărcare pornit după flotă (etapa 1, pasul 1)
+### FONDATOR · Fereastra firmei: filele „Stare" și „Acces"; simulatorul de încărcare pornit după flotă (etapa 1, pasul 1)  — `7104a69`
 
 Robert (12.10), la simulatorul de încărcare: *„inclus în abonament, dar noi ca admini să putem configura profilul
 companiei și să bifăm la ce au ei acces… vreau să avem un fel de dashboard pentru fiecare companie, care să fie accesat
