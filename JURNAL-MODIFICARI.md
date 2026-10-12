@@ -268,7 +268,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### AMÂNDOI · Emailul pleacă prin Brevo (merge și pe Railway Hobby), pe o singură cale
+### AMÂNDOI · Emailul pleacă prin Brevo (merge și pe Railway Hobby), pe o singură cale — `7ba41bf`
 
 Robert (12.10): *„am făcut contul [Brevo], îl putem integra în ratrack? văd că au API"*. Da: Railway Hobby blochează
 SMTP, singura cale pe care trimitea aplicația — deci până azi nu pleca nimic: nici facturile, nici contractele, nici
