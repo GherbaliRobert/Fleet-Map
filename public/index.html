@@ -3229,6 +3229,7 @@ const pozitii = await r.json();</code></pre>
   <div id="agenti-view" class="modal-overlay"></div>
   <!-- RA Insight — secțiunea proprie (populată de renderInsightPage) -->
   <div id="insight-view" class="modal-overlay"></div>
+  <div id="incarcare-view" class="modal-overlay"></div>
 
   <div id="fuel-stats-modal" class="modal-overlay">
     <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;">
@@ -3252,7 +3253,6 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
-  <div id="incarcare-view" class="modal-overlay"></div>
   <div id="reports-modal" class="modal-overlay">
     <div class="modal" id="reports-modal-box" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
@@ -7078,31 +7078,6 @@ const pozitii = await r.json();</code></pre>
     };
     // ── sfârșit „semiremorcile din flotă" ──
 
-    async function createVehicle() {
-      const imei = (document.getElementById('veh-new-imei').value || '').trim();
-      if (!/^\d{10,20}$/.test(imei)) { alert('IMEI invalid (10–20 cifre)'); return; }
-      const body = {
-        imei,
-        name: document.getElementById('veh-new-name').value.trim(),
-        plate: document.getElementById('veh-new-plate').value.trim().toUpperCase()
-      };
-      const r = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
-      document.getElementById('veh-new-imei').value = ''; document.getElementById('veh-new-name').value = ''; document.getElementById('veh-new-plate').value = '';
-      toggleVehAdd(); await loadVehicles();
-    }
-    async function setVehArchive(imei, archive) {
-      if (!await raConfirm(archive ? 'Arhivezi acest vehicul? Nu va mai apărea pe hartă.' : 'Restaurezi vehiculul?')) return;
-      const r = await fetch('/api/devices/' + imei + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: archive ? 'archived' : 'active' }) });
-      if (!r.ok) { alert('Eroare la arhivare'); return; }
-      if (archive && typeof removeVehicleFromMap === 'function') removeVehicleFromMap(imei); // scoate marker-ul imediat
-      await loadVehicles();
-    }
-    function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
-    // Document brandat (logo + „RA-Track - Raport ... - data"), nu CSV brut. Respectă și fila
-    // curentă: dacă te uiți la „Arhivate", documentul e despre arhivate.
-    function exportVehicles(fmt) {
-      // CSV = fișierul cu TOATE câmpurile, pe care îl reînghite importul (export → editezi → reimporți).
     // ── începe „simulatorul de încărcare" ──
     // Simulatorul de încărcare pe web (pasul 3, 12.10: „cu 3D și greutatea pe osii"), după macheta aprobată de Robert.
     // Pagina NU socotește nimic despre marfă sau osii: trimite alegerile la POST /api/incarcare/simuleaza și desenează ce
@@ -7478,6 +7453,31 @@ const pozitii = await r.json();</code></pre>
     })();
     // ── sfârșit „simulatorul de încărcare" ──
 
+    async function createVehicle() {
+      const imei = (document.getElementById('veh-new-imei').value || '').trim();
+      if (!/^\d{10,20}$/.test(imei)) { alert('IMEI invalid (10–20 cifre)'); return; }
+      const body = {
+        imei,
+        name: document.getElementById('veh-new-name').value.trim(),
+        plate: document.getElementById('veh-new-plate').value.trim().toUpperCase()
+      };
+      const r = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
+      document.getElementById('veh-new-imei').value = ''; document.getElementById('veh-new-name').value = ''; document.getElementById('veh-new-plate').value = '';
+      toggleVehAdd(); await loadVehicles();
+    }
+    async function setVehArchive(imei, archive) {
+      if (!await raConfirm(archive ? 'Arhivezi acest vehicul? Nu va mai apărea pe hartă.' : 'Restaurezi vehiculul?')) return;
+      const r = await fetch('/api/devices/' + imei + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: archive ? 'archived' : 'active' }) });
+      if (!r.ok) { alert('Eroare la arhivare'); return; }
+      if (archive && typeof removeVehicleFromMap === 'function') removeVehicleFromMap(imei); // scoate marker-ul imediat
+      await loadVehicles();
+    }
+    function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
+    // Document brandat (logo + „RA-Track - Raport ... - data"), nu CSV brut. Respectă și fila
+    // curentă: dacă te uiți la „Arhivate", documentul e despre arhivate.
+    function exportVehicles(fmt) {
+      // CSV = fișierul cu TOATE câmpurile, pe care îl reînghite importul (export → editezi → reimporți).
       // Excel/PDF = documentul brandat, de citit și de trimis.
       if (fmt === 'csv') { window.open('/api/devices/export.csv', '_blank'); return; }
       const f = (fmt === 'pdf') ? 'pdf' : 'xlsx';
@@ -20835,6 +20835,8 @@ const pozitii = await r.json();</code></pre>
       // RA Insight: rândul lui din meniu, când firma are modulul. Bula din colț tace cât e deschisă secțiunea
       // (e aceeași discuție, iar bula ar acoperi caseta de scris).
       var ni = $('nav-insight'); if (ni) ni.style.display = (feats.ai_assistant !== false) ? '' : 'none';
+      // Simulatorul de încărcare: modulul firmei (după flotă sau ales de noi); noi îl vedem mereu.
+      var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || feats.incarcare === true) ? '' : 'none';
       if (typeof currentView !== 'undefined' && currentView === 'insight') $('rax-fabs').style.display = 'none';
     }
     window._raxUpdateFabs = updateFabs;   // showView o cheamă când ieși din secțiunea RA Insight
@@ -20860,8 +20862,6 @@ const pozitii = await r.json();</code></pre>
       try {
         if (!detailPanelImei) return null;
         var d = devices.get(detailPanelImei); if (!d || !d.io) return null;
-      // Simulatorul de încărcare: modulul firmei (după flotă sau ales de noi); noi îl vedem mereu.
-      var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || feats.incarcare === true) ? '' : 'none';
         var chei = {};
         Object.keys(d.io).forEach(function (k) {
           if (k === '_security_flags' || k === '_control_flags') return;

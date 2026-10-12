@@ -9177,11 +9177,6 @@ app.delete('/api/remorci/:id', requireAuth, requireEdit('vehicule'), withCompany
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───
-app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
-  try {
-    const rows = await db.getWebhooks(req.isSuper ? null : req.companyId);
-    // Maschează secretul (nu-l returnăm în clar; arătăm doar dacă există).
 // ─── Simulatorul de încărcare (pasul 3, 12.10: „cu 3D și greutatea pe osii") ───
 // Regulile (cum se așază marfa, osiile, textele) stau în incarcare.js; aici doar se adună datele și se verifică drepturile.
 // Ecranul, PDF-ul și telefonul (mai târziu) primesc ACELAȘI rezultat — nimeni nu-l socotește a doua oară.
@@ -9257,6 +9252,11 @@ app.post('/api/incarcare/pdf', requireAuth, withScope, requireFeature('incarcare
   } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
 });
 
+// ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───
+app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const rows = await db.getWebhooks(req.isSuper ? null : req.companyId);
+    // Maschează secretul (nu-l returnăm în clar; arătăm doar dacă există).
     res.json(rows.map(w => ({ id: w.id, url: w.url, events: w.events, enabled: w.enabled, hasSecret: !!w.secret, last_status: w.last_status, last_error: w.last_error, last_at: w.last_at, created_at: w.created_at })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
