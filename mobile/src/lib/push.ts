@@ -20,7 +20,7 @@ let registered = false;
 //   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
 //   • termenul de montaj („Montaj, mai sunt N zile" / „Termenul de montaj a trecut") → calendarul, pe contractul din
 //     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
-export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen'];
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'mail_nou'];
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
 export function dateAnunt(d: any): any {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -33,6 +33,7 @@ function idFirma(v: any): number | null {
 // Adresa anunțului, sau null: anunțul n-are un loc al lui și se deschide detaliul, ca până acum.
 export function adresaAnunt(tip: any, date: any): string | null {
   const d = dateAnunt(date);
+  if (tip === 'mail_nou') return '/admin/mail';   // „Email nou" (panoul Mail, etapa 2) → Mail, fila Primite
   if (tip === 'aparate_noi') {
     const imeis = (Array.isArray(d.imeis) ? d.imeis : []).map((x: any) => String(x == null ? '' : x).trim()).filter(Boolean);
     const firma = idFirma(d.company_id);

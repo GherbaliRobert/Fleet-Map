@@ -269,6 +269,13 @@ export const Api = {
     + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '')),
   mailTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`),
   mailTrimite: (b: any) => api<any>('/api/mail/trimite', { method: 'POST', body: b }),
+  // Etapa 2: „Primite" (deschis = citit; răspunsul pleacă tot prin mailTrimite, cu `raspunsLa`).
+  mailPrimite: (q: { adresa?: string; cauta?: string; pagina?: number }) => api<any>('/api/mail/primite?pagina=' + (q.pagina || 0)
+    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '')),
+  mailPrimit: (id: number) => api<any>(`/api/mail/primite/${id}`),
+  mailNecitit: (id: number) => api<any>(`/api/mail/primite/${id}/necitit`, { method: 'POST', body: {} }),
+  mailStergePrimit: (id: number) => api<any>(`/api/mail/primite/${id}`, { method: 'DELETE' }),
+  mailNecitite: () => api<{ total: number; peAdresa: Record<string, number> }>('/api/mail/necitite'),
   // ── Super-admin: Cereri de cont demo (formularul public de pe landing) ──
   demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),

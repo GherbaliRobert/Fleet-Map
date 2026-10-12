@@ -807,6 +807,9 @@ async function parteaAnunturi() {
   // „Cerere demo" → Cereri demo, ca pe web (în lista de notificări: onclick="goSistem('demoreq')"); ruta ecranului pe telefon.
   T('„Cerere demo" duce în Cereri demo, ca pe web', P.adresaAnunt('demo_request', { id: 5 }) === '/admin/demo-requests'
     && /isDemoReq\s*\n?\s*\? `onclick="goSistem\('demoreq'\)"/.test(S.html) && /<Route path="\/admin\/demo-requests" component=\{P\.demoRequests\} \/>/.test(S.app));
+  // „Email nou" (panoul Mail, etapa 2, 12.10) → Mail, fila Primite, ca pe web (openNotifDetail → goSistem('mail')).
+  T('„Email nou" duce în Mail, ca pe web', P.adresaAnunt('mail_nou', { adresa: 'contact@ratrack.ro', mail: true }) === '/admin/mail'
+    && /_notifDate\[id\]\.mail\) \{ closeNotifications\(\);[^\n]*goSistem\('mail'\)/.test(S.html) && /<Route path="\/admin\/mail" component=\{P\.mail\} \/>/.test(S.app));
   const altele = ['alert', 'overspeed', 'report_ready', 'report_error', 'contract_expira', 'document_expiry', 'maintenance_due', '', undefined, null];
   T('restul anunțurilor: null — se deschid ca până acum (detaliul, rapoartele, contractul)', altele.every((t) => P.adresaAnunt(t, { imeis: [A1], company_id: 1, lucrari: [1] }) === null));
   // Termenul de montaj (anunț din 30.09, datele au contractId) → calendarul, pe contractul lui (revizia lotului 5, 01.10).
@@ -814,7 +817,7 @@ async function parteaAnunturi() {
     P.adresaAnunt('montaj_termen', { contractId: 17, companyId: 4 }) === '/admin/montaj?fila=calendar&contract=17'
     && P.adresaAnunt('montaj_termen', {}) === '/admin/montaj?fila=calendar'
     && /_anuntaSuperadmini\(supers, 'montaj_termen'[\s\S]{0,200}\{ key: cheie, contractId: c\.id, companyId: c\.company_id/.test(S.server));
-  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['aparate_noi', 'demo_request', 'montaj_de_facturat', 'montaj_termen']) &&
+  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['aparate_noi', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen']) &&
     P.TIPURI_CU_LOC.every((t) => P.adresaAnunt(t, { company_id: 3 }) !== null));
   {
     const u = P.adresaAnunt('aparate_noi', { imeis: [A1, A2, 'TEST111'], company_id: 42 });

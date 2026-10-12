@@ -194,9 +194,44 @@ telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin
 - **Fără ștergere automată** (Robert: „mai bine de 12 luni, vom avea un indice de încărcare"): indicatorul arată cât
   ocupă mailul și toată baza din discul ei (`railway_volume_gb`, implicit 5 GB), portocaliu de la 70%.
 - HTML-ul unui email se arată într-un `<iframe sandbox="">` cu `srcdoc` și CSP propriu (fără scripturi).
-- Etapele următoare (de hotărât): 2 = „Primite" + „Răspunde" (Cloudflare Email Routing + o funcție care trimite emailurile
-  primite aplicației); 3 = starea livrării (evenimentele Brevo).
+- Etapa următoare (de hotărât): 3 = starea livrării (evenimentele Brevo).
 - Păzit de `verify_mail.js` (în `npm test`, pe server pornit, cu Brevo fals).
+
+### Panoul Mail — etapa 2: „Primite" + „Răspunde" (Robert, 12.10: „hai cu etapa 2")
+- **Drumul:** Cloudflare Email Routing → Email Worker (`tools/mail-worker.mjs`, se LIPEȘTE în Cloudflare, nu rulează la noi)
+  → `POST /api/mail/primeste` (fără sesiune): emailul ÎNTREG (MIME), `X-RA-Secret` = `MAIL_INBOUND_SECRET` (comparat în
+  timp constant; nesetat → 503) și `X-RA-Catre` = adresa noastră pe care a venit. 401 parolă, 422 adresă străină sau email
+  necitibil, 429 plafon (300 pe oră; 30 de la un expeditor), 200 `{ ok, id, deja, intreg }`. **Orice „nu" și orice
+  `intreg: false` → Worker-ul îl duce în `BACKUP`** (căsuța de rezervă); fără ea, îl refuză (expeditorul află). Nu se pierde
+  nimic pe tăcute — NU schimba asta.
+- **Regulile stau în `mail_primit.js` (curat):** `citeste` (mailparser 3.9.28, fixat; `keepCidLinks` — imaginile din corp
+  rămân `cid:` și le pune serverul la deschidere, `cuImagini`, doar imagini ≤ 2 MB), `textDinHtml` (unealta html-to-text
+  a LUI mailparser; mailparser nu face textul într-un `multipart/related`), `verificare` (antetul de SUS: DMARC picat sau
+  SPF picat fără DKIM → `picat` → avertismentul `MAIL_TEXT_VERIFICARE`), `adresaNoastra`, `subiectRaspuns`, `citat`,
+  `pentruRaspuns` (răspunsul pleacă de pe adresa pe care a venit, la `Reply-To`/expeditor), `anunt` (fără nume și subiect).
+  Ecranele (web, telefon) NU scriu subiectul „Re:" și nici citatul: le iau din `pentruRaspuns`.
+- **Ce se păstrează:** `mail_primite` (corp ca la „Trimise"; HTML peste 500 KB → doar textul) + `mail_atasamente` (base64,
+  cel mult 10 MB pe email adunat; peste, doar numele, `intreg: false`). Același `Message-ID` pe aceeași adresă = un rând.
+  `mail_primite` e în `BUSINESS_TABLES`; `mail_atasamente` în `BACKUP_EXCLUDED` — copia se face toată în memorie.
+- **Cine vede:** ca la „Trimise" (`_mailVazute`): comuna — toți; personala — doar omul ei (404 / 403, și la atașamente).
+  **Citit / răspuns: o dată pe email** (`citit_la`, `raspuns_de`): pe contact@, ce a citit sau a răspuns Alin vede și Robert.
+  Firma expeditorului: `db.firmaDupaEmail` (om al firmei sau `contact_email`), doar ca etichetă.
+- **Atașamentul se DESCARCĂ** (`application/octet-stream` + `_antetDescarcare`), niciodată deschis cu tipul lui: un HTML
+  trimis de oricine ar rula pe adresa noastră. NU servi atașamente „inline".
+- **Cadrul unui email PRIMIT, pe web:** `sandbox="allow-popups allow-popups-to-escape-sandbox"` + `<base target="_blank">`
+  (linkurile, în altă filă), CSP fără `https:` la imagini până la „Arată imaginile" (altfel expeditorul află când l-ai
+  deschis). **Pe telefon rămâne `sandbox=""`** (o filă nouă din cadru n-are unde să meargă în aplicație). Un font de bază
+  pentru emailul fără font (`_MAIL_CADRU_BAZA`), stilurile emailului câștigă.
+- **„Răspunde"** = `POST /api/mail/trimite` cu `raspunsLa`: aceeași rută ca „Scrie"; `de_la` trebuie să fie adresa pe care a
+  venit emailul (400 altfel), felul `raspuns`, `jurnal.raspunsPentru` (→ `mail_trimise.raspuns_pentru`), `inReplyTo` /
+  `references` → la Brevo antetul `headers` (Brevo nu spune dacă le primește: la 400 se trimite o dată fără ele), la SMTP
+  nodemailer. `mailer.send` întoarce `jurnalId`, iar emailul primit se marchează „răspuns" (`marcheazaMailRaspuns`).
+- **Anunțul** `mail_nou` (`data: { adresa, mail: true }`): comuna → `_anuntaSuperadmini`, personala → doar omul (userId);
+  cel mult unul la 10 minute pe adresă. Web: `openNotifDetail` → Mail → Primite, `onNotificationWs` → bulina; telefon:
+  `adresaAnunt('mail_nou')` → `/admin/mail`. Bulina din meniu (`#nav-mail-nr`, `GET /api/mail/necitite`) — doar fondatori.
+- „Stare producție", rândul `mail_primit`: pornit / `MAIL_INBOUND_SECRET` nesetat, cu ziua ultimului email primit.
+- Păzit de `verify_mail_primite.js` (în `npm test`; emailuri brute ca de la Worker, pe server pornit, Brevo fals),
+  `verify_mail.js`, `verify_telefon_lot5.js` (anunțul pe telefon).
 
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).

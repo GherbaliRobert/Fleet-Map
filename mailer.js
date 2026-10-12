@@ -89,22 +89,31 @@ function _pentruBrevo(m) {
   if (m.text) corp.textContent = String(m.text);
   if (m.replyTo) corp.replyTo = _adresa(m.replyTo);
   if (atas.length) corp.attachment = atas;
+  // Un răspuns din panoul Mail (etapa 2) spune la ce email răspunde, ca programul omului să-l pună în aceeași discuție.
+  if (m.inReplyTo) corp.headers = { 'In-Reply-To': String(m.inReplyTo), References: String(m.references || m.inReplyTo) };
   return corp;
 }
 
+async function _postBrevo(corp) {
+  const r = await fetch(process.env.BREVO_API_URL || BREVO_URL_IMPLICIT, {
+    method: 'POST',
+    headers: { 'api-key': _brevoKey(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(corp),
+    signal: AbortSignal.timeout(20000),
+  });
+  const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch (e) {}
+  return { r: r, t: t, j: j };
+}
 async function _trimiteBrevo(m) {
   const corp = _pentruBrevo(m);
   if (!corp.to.length) return { ok: false, error: 'Fără destinatar' };
   try {
-    const r = await fetch(process.env.BREVO_API_URL || BREVO_URL_IMPLICIT, {
-      method: 'POST',
-      headers: { 'api-key': _brevoKey(), 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(corp),
-      signal: AbortSignal.timeout(20000),
-    });
-    const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch (e) {}
-    if (r.ok) return { ok: true, id: j.messageId || (j.messageIds && j.messageIds[0]) || null };
-    return { ok: false, error: 'Brevo ' + r.status + ': ' + (j.message || t || 'eroare').toString().slice(0, 300) };
+    let x = await _postBrevo(corp);
+    // Brevo nu spune în documentație dacă primește antetele de discuție. Dacă le refuză, emailul pleacă fără ele —
+    // răspunsul ajunge oricum, cu „Re:" și cu mesajul citat dedesubt.
+    if (x.r.status === 400 && corp.headers) { delete corp.headers; x = await _postBrevo(corp); }
+    if (x.r.ok) return { ok: true, id: x.j.messageId || (x.j.messageIds && x.j.messageIds[0]) || null };
+    return { ok: false, error: 'Brevo ' + x.r.status + ': ' + (x.j.message || x.t || 'eroare').toString().slice(0, 300) };
   } catch (e) { return { ok: false, error: 'Brevo: ' + e.message }; }
 }
 
@@ -115,9 +124,9 @@ async function _trimiteBrevo(m) {
 let _jurnal = null;
 function setJurnal(fn) { _jurnal = typeof fn === 'function' ? fn : null; }
 async function _noteaza(m, r) {
-  if (!m.jurnal || !_jurnal) return;
+  if (!m.jurnal || !_jurnal) return null;
   try {
-    await _jurnal({
+    return await _jurnal({
       de_la: _adresa(m.from || fromAddr()).email.toLowerCase(),
       catre: _destinatari(m.to).map(function (x) { return x.email; }).join(', '),
       subiect: m.subject || '(fără subiect)', text: m.text || null, html: m.html || null,
@@ -128,11 +137,12 @@ async function _noteaza(m, r) {
       fel: m.jurnal.fel || null, companyId: m.jurnal.companyId != null ? m.jurnal.companyId : null,
       userId: m.jurnal.userId != null ? m.jurnal.userId : null,
       stare: r.ok ? 'trimis' : 'esuat', eroare: r.ok ? null : (r.error || null), cale: fel(), mesajId: r.id || null,
+      raspunsPentru: m.jurnal.raspunsPentru != null ? m.jurnal.raspunsPentru : null,
     });
-  } catch (e) { /* jurnalul nu are voie să strice trimiterea */ }
+  } catch (e) { return null; /* jurnalul nu are voie să strice trimiterea */ }
 }
 
-// send({to, subject, html, text, attachments, replyTo, from?, jurnal?}) → { ok, id? , error? }. Nu aruncă (best-effort).
+// send({to, subject, html, text, attachments, replyTo, from?, inReplyTo?, references?, jurnal?}) → { ok, id?, error?, jurnalId? }. Nu aruncă (best-effort).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
 // `from`: altă adresă de-a noastră decât cea implicită (panoul Mail: robert.gherbali@…); o verifică serverul, nu aici.
 async function send(m) {
@@ -144,12 +154,14 @@ async function send(m) {
     if (!tx) r = { ok: false, error: 'Email neconfigurat (nici Brevo, nici SMTP)' };
     else {
       try {
-        const info = await tx.sendMail({ from: m.from || fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments });
+        const info = await tx.sendMail({ from: m.from || fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments,
+          inReplyTo: m.inReplyTo || undefined, references: m.inReplyTo ? (m.references || m.inReplyTo) : undefined });
         r = { ok: true, id: info && info.messageId };
       } catch (e) { r = { ok: false, error: e.message }; }
     }
   }
-  await _noteaza(m, r);
+  const jid = await _noteaza(m, r);
+  if (jid != null) r.jurnalId = jid;   // rândul din „Trimise" (răspunsul se leagă de emailul primit)
   return r;
 }
 // Verifică legătura (pentru panoul de config): la Brevo, cheia (contul); la SMTP, conexiunea.

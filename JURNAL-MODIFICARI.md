@@ -205,7 +205,22 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert și Alin: adresa @ratrack.ro în contul vostru din aplicație. Adăugat pe 12.10 (panoul Mail).** Panoul Mail
   vă dă adresa personală după emailul contului: Utilizatori → fișa ta → Email = robert.gherbali@ratrack.ro (Robert),
   alin.tilvar@ratrack.ro (Alin). Numele cu care vă autentificați nu se schimbă. Fără asta, fiecare vede doar contact@.
-  Emailurile primite pe aceste adrese (fila „Primite") vin abia la etapa 2.
+  Din etapa 2 (12.10), tot de aici depinde și ce emailuri PRIMITE vede fiecare.
+- [ ] **Robert: primirea emailurilor, în Cloudflare și Railway. Adăugat pe 12.10 (panoul Mail, etapa 2).** Până atunci,
+  fila „Primite" rămâne goală, iar emailurile trimise pe contact@ nu ajung nicăieri (domeniul n-are încă unde să le
+  primească). Pașii:
+  1. Railway → serviciul aplicației → Variables → `MAIL_INBOUND_SECRET` = o parolă lungă, inventată (40 de litere și cifre).
+     Păstrați-o: o puneți și la pasul 4.
+  2. Cloudflare → ratrack.ro → Email → Email Routing → „Get started" / „Enable". Pune singur înregistrările MX și una
+     „v=spf1" — înregistrările Brevo rămân cum sunt. Dacă spune că există deja un „v=spf1", îmi trimiteți captura.
+  3. Email Routing → Destination addresses → adresa voastră de rezervă (ex. un Gmail) → confirmați din emailul primit.
+  4. Workers & Pages → Create → Worker (numele „ra-mail") → „Edit code" → lipiți codul din `tools/mail-worker.mjs` →
+     Deploy. Apoi Settings → Variables and Secrets: `RA_URL` = `https://ratrack.ro/api/mail/primeste`, `RA_SECRET` =
+     parola de la pasul 1 (tip „Secret"), `BACKUP` = adresa de rezervă de la pasul 3.
+  5. Email Routing → Routing rules → „Create address" pentru contact@, robert.gherbali@ și alin.tilvar@ → Action „Send to a
+     Worker" → ra-mail.
+  6. Proba: trimiteți un email pe contact@ratrack.ro de pe telefon. Apare în Administrare → Mail → Primite, iar în „Stare
+     producție" rândul „Email primit" scrie ora lui. Dacă ajunge doar în căsuța de rezervă, îmi spuneți.
 
 ---
 
@@ -271,6 +286,45 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-12
+
+### FONDATOR · Panoul Mail, etapa 2: „Primite" și „Răspunde" — `…`
+
+Robert (12.10): *„hai cu etapa 2"*.
+
+1. **Fila „Primite"** (web și telefon): emailurile venite pe contact@ratrack.ro (le văd amândoi) și pe adresa fiecăruia
+   (doar omul ei). Cele necitite sunt îngroșate, cu „nou", și numărate pe rândul „Mail" din meniu (bulina verde).
+2. **Pe contact@, citit și răspuns o dată pentru amândoi:** dacă Alin i-a răspuns, Robert vede pe rând „Răspuns de Alin
+   Tîlvar, pe 12.10.2026, la 14:30". În fereastra emailului: „Răspunde", „Marchează necitit", „Șterge".
+3. **„Răspunde":** pleacă de pe adresa pe care a venit emailul, la adresa de răspuns a omului, cu „Re:" și cu mesajul lui
+   citat dedesubt. Apare în „Trimise" ca „Răspuns". Gmail / Outlook îl pun în aceeași discuție, dacă Brevo primește
+   antetele de discuție (dacă nu, emailul pleacă oricum, fără ele).
+4. **Siguranța:** emailul se arată într-un cadru izolat (fără scripturi); imaginile din afară sunt oprite până apeși „Arată
+   imaginile" (altfel expeditorul ar afla când l-ai deschis); un expeditor care nu se poate dovedi (adresă probabil falsă)
+   primește un avertisment roșu; atașamentele se descarcă, nu se deschid în aplicație.
+5. **Firma expeditorului** apare pe rând, când adresa e a unui om al firmei sau adresa ei de contact.
+6. **Anunț în aplicație și pe telefon:** „Email nou pe contact@ratrack.ro" — fără nume și fără subiect, cel mult unul la
+   10 minute pe adresă; pe adresa personală, doar la omul ei.
+7. **Ce se păstrează:** emailul cu atașamentele, până la 10 MB pe email. Unul mai mare rămâne doar cu numele, iar
+   emailul întreg ajunge și în căsuța de rezervă. Atașamentele nu intră în copia de siguranță zilnică (pot ajunge la
+   gigabytes, iar copia se face în memorie); emailul intră, cu numele atașamentelor.
+8. **Plafoane:** cel mult 300 de emailuri primite pe oră și 30 de la același expeditor; peste, merg în căsuța de rezervă.
+9. **„Stare producție"** are un rând nou, „Email primit": pornit sau nu, și când a venit ultimul email.
+
+- **Ce am schimbat:** `mail_primit.js` (nou: citirea emailului, expeditorul nedovedit, răspunsul, anunțul), `db.js` (tabelele
+  `mail_primite`, `mail_atasamente`), `backup.js`, `mailer.js` (antetele de discuție, cu a doua încercare fără ele),
+  `server.js` (`POST /api/mail/primeste` și rutele „Primite"), `public/index.html` (filele, fereastra, bulina din meniu,
+  anunțul), telefonul (`Mail.tsx`, rutele, anunțul în `push.ts`), `tools/mail-worker.mjs` (bucata care se lipește în
+  Cloudflare), `package.json` (`mailparser`, care citește emailurile). APK: 1.0.12, împreună cu simulatorul de încărcare,
+  după commit-ul celeilalte sesiuni.
+- **Probe:** `verify_mail_primite.js` (nouă, în `npm test`): emailuri brute trimise ca de Cloudflare, pe server pornit, cu
+  Brevo fals — parola, adresa, cine vede ce, citit pentru amândoi, atașamentul descărcat cu exact octeții primiți,
+  avertismentul, răspunsul cu antetele de discuție (și fără ele), anunțul, plafonul, emailul prea mare, ștergerea, pagina
+  și telefonul cu aceleași cuvinte. Plus `verify_mail.js` și `verify_telefon_lot5.js` (anunțul pe telefon). Văzut pe ecran,
+  pe calculator și pe telefon: lista, emailul cu avertisment, „Răspunde" completat.
+- **Ce vede fondatorul:** fila „Primite", bulina cu necitite, anunțul „Email nou".
+- **Ce vede clientul:** nimic nou; răspunsurile noastre îi vin de pe contact@ (sau de pe adresa unuia din noi), în aceeași
+  discuție.
+- **Ca să meargă:** pașii din Cloudflare și Railway, la „De amintit".
 
 ### FONDATOR · Panoul Mail, etapa 1: „Trimise" și „Scrie", de pe contact@ și de pe adresa fiecăruia — `2ac3742`
 

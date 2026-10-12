@@ -48,6 +48,8 @@ const BUSINESS_TABLES = [
   'remorci',
   // Panoul Mail (12.10): ce le-am trimis clienților și partenerilor (facturi, contracte, mesajele noastre). Nu se reface.
   'mail_trimise',
+  // …și ce ne-au scris ei (etapa 2): emailurile primite, fără atașamente (vezi mai jos). Nu se refac din nimic.
+  'mail_primite',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —
@@ -63,6 +65,7 @@ const BACKUP_EXCLUDED = {
   ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
   scrisori_luni: 'scrisorile de luni ale RA Insight: sunt ale omului care le primește și se șterg la 12 luni, ca discuțiile — nu le ținem și în copii',
   zile_condus: 'rezumatul pe zile din Safe Drive: se reface din poziții (care au arhiva lor) și se șterge odată cu ele',
+  mail_atasamente: 'atașamentele emailurilor primite: pot ajunge la gigabytes, iar copia se face toată în memorie — ar opri serverul; emailul rămâne în copie, cu numele atașamentelor',
 };
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext

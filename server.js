@@ -201,6 +201,7 @@ let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* op
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 // Panoul Mail, fila „Trimise" (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
 if (mailer && mailer.setJurnal) mailer.setJurnal(function (r) { return db.noteazaMailTrimis(r); });
+const mailPrimit = require('./mail_primit');   // fila „Primite" (etapa 2): emailul venit de la Cloudflare, citit (reguli curate)
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
 const tollro = require('./tollro');           // taxa rutiera pe km (TollRo) - grila + calcul, modul pur
@@ -15924,6 +15925,14 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     (mailer && mailer.enabled())
       ? ('activ — ' + (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') + ', de la ' + mailer.fromAddr())
       : 'neconfigurat (BREVO_API_KEY sau SMTP) → facturile, contractele, invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă');
+  // Panoul Mail, etapa 2: emailurile PRIMITE (Cloudflare Email Routing → Worker → /api/mail/primeste, cu parola comună).
+  {
+    let ultim = null; try { const r = await db.pool.query('SELECT MAX(primit_la) AS t FROM mail_primite'); ultim = r.rows[0] && r.rows[0].t; } catch (e) {}
+    add('mail_primit', 'Email primit (panoul Mail)', _mailPrimirePornita() ? 'ok' : 'warn',
+      _mailPrimirePornita()
+        ? ('pornit' + (ultim ? ' — ultimul email primit: ' + new Date(ultim).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : ' — niciun email primit încă'))
+        : 'MAIL_INBOUND_SECRET nesetat → emailurile trimise pe contact@ și pe adresele voastre nu ajung în panoul Mail');
+  }
   add('push', 'Push nativ (FCM)', _fcm ? 'ok' : 'warn', _fcmStatus || (_fcm ? 'activ' : 'FIREBASE_SA_JSON nesetat'));
   add('sentry', 'Raportare erori (Sentry)', errortrack.enabled() ? 'ok' : 'warn', errortrack.enabled() ? 'activ' : 'SENTRY_DSN nesetat → erorile rămân doar în jurnalul intern');
   add('strict_devices', 'Înregistrare strictă dispozitive', STRICT_DEVICES ? 'ok' : 'warn', STRICT_DEVICES ? 'doar IMEI-uri pre-înregistrate' : 'STRICT_DEVICES=false → orice tracker se poate conecta');
@@ -16385,7 +16394,7 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
 // o vede și de pe care scrie DOAR el (Robert, 12.10: „1 este ok"). Fără listă scrisă de mână: un fondator nou cu adresă pe
 // domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
 const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', neplata: 'Neplată',
-  invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj' };
+  invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj', raspuns: 'Răspuns' };
 const MAIL_ATAS_MAX = 4 * 1024 * 1024;   // corpul JSON are voie la 6 MB; atașamentele în base64 cresc cu o treime
 const MAIL_DESTINATARI_MAX = 20;
 const _mailRitm = new Map();   // userId → [ms] — cel mult 60 de emailuri scrise pe oră de om (reputația domeniului)
@@ -16416,7 +16425,9 @@ app.get('/api/mail/adrese', requireAuth, requireSuperadmin, async (req, res) => 
     const adrese = _mailVazute(await _mailAdrese(req)).map(function (a) { return { adresa: a.adresa, nume: a.nume, comuna: a.comuna, aMea: a.aMea }; });
     let capGb = 5; try { const v = parseFloat(await db.getSetting('railway_volume_gb')); if (Number.isFinite(v) && v > 0) capGb = v; } catch (e) {}
     const sp = await db.mailSpatiu();
-    res.json({ adrese: adrese, activ: !!(mailer && mailer.enabled()), cale: mailer ? mailer.fel() : null,
+    const nec = await db.mailNecitite(adrese.map(function (a) { return a.adresa; }));
+    adrese.forEach(function (a) { a.necitite = nec[a.adresa] || 0; });
+    res.json({ adrese: adrese, activ: !!(mailer && mailer.enabled()), cale: mailer ? mailer.fel() : null, primire: _mailPrimirePornita(),
       spatiu: { mailOcteti: sp.octeti, numar: sp.numar, bazaOcteti: sp.bazaOcteti, capOcteti: Math.round(capGb * 1024 * 1024 * 1024) },
       limite: { atasamenteOcteti: MAIL_ATAS_MAX, destinatari: MAIL_DESTINATARI_MAX } });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -16456,6 +16467,14 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
     if (catre.length > MAIL_DESTINATARI_MAX) return res.status(400).json({ error: 'Cel mult ' + MAIL_DESTINATARI_MAX + ' destinatari într-un email.' });
     const rau = catre.filter(function (x) { return !_EMAIL_RE.test(x) || x.length > 200; });
     if (rau.length) return res.status(400).json({ error: 'Adresa „' + rau[0].slice(0, 80) + '" nu arată a email.' });
+    // Răspunsul la un email din „Primite" (etapa 2): pleacă de pe adresa pe care a venit emailul, se leagă de el.
+    let primit = null;
+    if (b.raspunsLa != null) {
+      const pid = parseInt(b.raspunsLa);
+      primit = Number.isFinite(pid) ? await db.getMailPrimit(pid) : null;
+      if (!primit || !adrese.some(function (a) { return a.adresa === String(primit.catre).toLowerCase(); })) return res.status(404).json({ error: 'Emailul la care răspunzi nu există.' });
+      if (de.adresa !== String(primit.catre).toLowerCase()) return res.status(400).json({ error: 'Răspunsul pleacă de pe adresa pe care a venit emailul: ' + primit.catre + '.' });
+    }
     const subiect = String(b.subiect || '').trim();
     const text = String(b.text || '').replace(/\r\n/g, '\n').trim();
     if (!subiect || subiect.length > 200) return res.status(400).json({ error: 'Subiectul lipsește sau e prea lung (cel mult 200 de caractere).' });
@@ -16474,9 +16493,172 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
     if (ritm.length >= 60) return res.status(429).json({ error: 'Prea multe emailuri într-o oră. Încearcă mai târziu.' });
     ritm.push(acum); _mailRitm.set(uid, ritm);
     const r = await mailer.send({ from: de.nume + ' <' + de.adresa + '>', replyTo: de.adresa, to: catre.join(', '), subject: subiect, text: text,
-      attachments: atas, jurnal: { fel: 'mesaj', userId: uid } });
-    auditReq(req, 'mail_trimis', 'mail', null, { de_la: de.adresa, destinatari: catre.length, atasamente: atas.length, ok: !!r.ok });
+      attachments: atas,
+      inReplyTo: primit && primit.mesaj_id ? primit.mesaj_id : undefined,
+      references: primit && primit.mesaj_id ? ((primit.referinte ? primit.referinte + ' ' : '') + primit.mesaj_id).slice(-3000) : undefined,
+      jurnal: { fel: primit ? 'raspuns' : 'mesaj', userId: uid, companyId: primit ? primit.company_id : null, raspunsPentru: primit ? Number(primit.id) : null } });
+    auditReq(req, 'mail_trimis', 'mail', primit ? Number(primit.id) : null, { de_la: de.adresa, destinatari: catre.length, atasamente: atas.length, ok: !!r.ok, raspuns: !!primit });
     if (!r.ok) return res.status(502).json({ error: 'Emailul n-a plecat: ' + (r.error || 'eroare') });
+    if (primit) await db.marcheazaMailRaspuns(Number(primit.id), uid, r.jurnalId != null ? r.jurnalId : null);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Etapa 2: „Primite" (Robert, 12.10: „hai cu etapa 2") ───
+// Emailul vine de la Cloudflare Email Routing, printr-un Email Worker (tools/mail-worker.js): emailul întreg (MIME) +
+// antetele X-RA-Secret (parola comună, MAIL_INBOUND_SECRET în Railway = RA_SECRET în Worker) și X-RA-Catre (adresa
+// noastră pe care a venit). Fără parola bună: 401. Pe o adresă care nu e a noastră: 422. Peste plafon: 429. La orice
+// răspuns care nu e 200, Worker-ul îl duce în căsuța de rezervă — nu se pierde nimic. Citirea stă în mail_primit.js.
+const MAIL_PRIMIRE_ORA = 300;              // emailuri primite pe oră, peste tot (un val de spam nu umple baza)
+const MAIL_PRIMIRE_EXPEDITOR_ORA = 30;     // de la același expeditor, pe oră
+const MAIL_ANUNT_PAUZA = 10 * 60 * 1000;   // cel mult un anunț la 10 minute pe adresă
+const _mailPrimiri = [];
+const _mailPrimiriDe = new Map();
+const _mailAnuntat = new Map();
+function _mailPrimirePornita() { return !!String(process.env.MAIL_INBOUND_SECRET || '').trim(); }
+function _mailSecretBun(dat) {
+  const s = String(process.env.MAIL_INBOUND_SECRET || '').trim();
+  if (!s || !dat) return false;
+  const a = crypto.createHash('sha256').update(String(dat)).digest(), b = crypto.createHash('sha256').update(s).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+function _mailInRitm(lista, max, acum) {
+  while (lista.length && acum - lista[0] > 3600000) lista.shift();
+  if (lista.length >= max) return false;
+  lista.push(acum); return true;
+}
+// Anunțul: adresa comună → toți fondatorii; o adresă personală → doar omul ei. Fără nume și fără subiect (mail_primit.anunt).
+async function _anuntaMailPrimit(adresa, toate) {
+  const acum = Date.now();
+  if (acum - (_mailAnuntat.get(adresa) || 0) < MAIL_ANUNT_PAUZA) return;
+  _mailAnuntat.set(adresa, acum);
+  const a = toate.filter(function (x) { return x.adresa === adresa; })[0];
+  if (!a) return;
+  const n = (await db.mailNecitite([adresa]))[adresa] || 1;
+  const t = mailPrimit.anunt(adresa, n);
+  if (a.comuna) {
+    let supers = [];
+    try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+    await _anuntaSuperadmini(supers, 'mail_nou', 'info', t.titlu, t.corp, { adresa: adresa, mail: true });
+    return;
+  }
+  const nn = await db.createNotification({ type: 'mail_nou', severity: 'info', companyId: null, userId: a.userId, imei: null, title: t.titlu, body: t.corp, data: { adresa: adresa, mail: true } });
+  try { broadcastWsToUser(a.userId, { type: 'notification', data: nn }); } catch (e) {}
+  try { await sendPushToUser(a.userId, { title: nn.title, body: nn.body, data: { type: nn.type, notifId: nn.id } }); } catch (e) {}
+}
+// Parola se verifică ÎNAINTE de citirea emailului: cine n-o are nu poate face serverul să țină în memorie 30 MB la cerere.
+function _mailPrimireUsa(req, res, next) {
+  if (!_mailPrimirePornita()) return res.status(503).json({ error: 'Primirea emailurilor nu e pornită (MAIL_INBOUND_SECRET).' });
+  if (!_mailSecretBun(req.get('x-ra-secret'))) return res.status(401).json({ error: 'Parola nu se potrivește.' });
+  next();
+}
+app.post('/api/mail/primeste', _mailPrimireUsa, express.raw({ type: function () { return true; }, limit: mailPrimit.EMAIL_MAX }), async (req, res) => {
+  try {
+    const raw = req.body;
+    if (!Buffer.isBuffer(raw) || !raw.length) return res.status(400).json({ error: 'Emailul lipsește.' });
+    const acum = Date.now();
+    if (!_mailInRitm(_mailPrimiri, MAIL_PRIMIRE_ORA, acum)) return res.status(429).json({ error: 'Prea multe emailuri într-o oră.' });
+    const toate = await _mailAdrese(req);
+    let m;
+    try { m = await mailPrimit.citeste(raw); } catch (e) { return res.status(422).json({ error: 'Emailul nu se poate citi.' }); }
+    const catre = mailPrimit.adresaNoastra(toate.map(function (a) { return a.adresa; }), req.get('x-ra-catre'), m._catre, m._cc);
+    if (!catre) return res.status(422).json({ error: 'Adresa nu e a noastră.' });
+    if (m.de_la) {
+      const l = _mailPrimiriDe.get(m.de_la) || [];
+      if (!_mailInRitm(l, MAIL_PRIMIRE_EXPEDITOR_ORA, acum)) return res.status(429).json({ error: 'Prea multe emailuri de la același expeditor.' });
+      _mailPrimiriDe.set(m.de_la, l);
+      if (_mailPrimiriDe.size > 5000) { for (const [k, v] of _mailPrimiriDe) if (!v.length || acum - v[v.length - 1] > 3600000) _mailPrimiriDe.delete(k); }
+    }
+    m.catre = catre; m.octeti = raw.length;
+    try { m.company_id = await db.firmaDupaEmail(m.de_la); } catch (e) { m.company_id = null; }
+    const r = await db.noteazaMailPrimit(m);
+    console.log('[MAIL] primit pe ' + catre + ' (' + Math.round(raw.length / 1024) + ' KB)' + (r.deja ? ' — deja era' : ''));
+    if (!r.deja) { try { await _anuntaMailPrimit(catre, toate); } catch (e) {} }
+    res.json({ ok: true, id: r.id, deja: !!r.deja, intreg: m.intreg !== false });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+function _mailPrimitRand(m) {
+  return {
+    id: Number(m.id), la: m.primit_la ? new Date(m.primit_la).toISOString() : null, catre: m.catre, de_la: m.de_la, de_nume: m.de_nume || null,
+    subiect: m.subiect, firma: m.company_name || null, companyId: m.company_id, intreg: m.intreg !== false,
+    atasamente: Array.isArray(m.atasamente) ? m.atasamente : [], verificare: m.verificare || null, citit: !!m.citit_la,
+    raspuns: m.raspuns_la ? { la: new Date(m.raspuns_la).toISOString(), text: 'Răspuns de ' + (m.raspuns_de_nume || 'un fondator') + ', pe ' + mailPrimit.cand(m.raspuns_la) } : null,
+  };
+}
+// Ce scrie pe ecran (vin de la server: ecranele doar le arată).
+const MAIL_TEXT_VERIFICARE = 'Atenție: nu s-a putut dovedi că emailul vine chiar de la această adresă — poate fi fals. Nu deschide atașamentele și nu da date până nu verifici cu omul.';
+const MAIL_TEXT_NEINTREG = 'Emailul era prea mare: unele părți au rămas doar cu numele. Întreg a mers și în căsuța de rezervă, dacă e pusă în Cloudflare.';
+async function _mailPrimitVazut(req) {
+  const id = parseInt(req.params.id);
+  const m = Number.isFinite(id) ? await db.getMailPrimit(id) : null;
+  const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
+  return m && vazute.indexOf(String(m.catre).toLowerCase()) >= 0 ? m : null;
+}
+app.get('/api/mail/primite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
+    let lista = vazute;
+    if (req.query.adresa) {
+      const a = String(req.query.adresa).toLowerCase();
+      if (vazute.indexOf(a) < 0) return res.status(403).json({ error: 'Adresa asta nu e a ta.' });
+      lista = [a];
+    }
+    const pagina = Math.max(parseInt(req.query.pagina) || 0, 0);
+    const r = await db.listMailPrimite(lista, { cauta: req.query.cauta || null, necitite: req.query.necitite === '1', limit: 50, offset: pagina * 50 });
+    res.json({ mailuri: r.rows.map(_mailPrimitRand), maiSunt: r.maiSunt, pagina: pagina, primire: _mailPrimirePornita() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/mail/necitite', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
+    const nec = await db.mailNecitite(vazute);
+    res.json({ total: vazute.reduce(function (s, a) { return s + (nec[a] || 0); }, 0), peAdresa: nec });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Deschis = citit (o dată pe email: adresa comună e a tuturor).
+app.get('/api/mail/primite/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const m = await _mailPrimitVazut(req);
+    if (!m) return res.status(404).json({ error: 'Emailul nu există.' });
+    if (!m.citit_la) { await db.marcheazaMailCitit(Number(m.id), req.auth.userId, true); m.citit_la = new Date(); }
+    const atas = await db.atasamenteMailPrimit(Number(m.id), true);
+    res.json(Object.assign(_mailPrimitRand(m), {
+      text: m.text || null, html: m.html ? mailPrimit.cuImagini(m.html, atas) : null,
+      antet_catre: m.antet_catre || null, antet_cc: m.antet_cc || null, raspuns_catre: m.raspuns_catre || null,
+      atasamente: atas.filter(function (a) { return !a.in_corp; }).map(function (a) { return { id: Number(a.id), nume: a.nume, tip: a.tip, octeti: a.octeti, pastrat: !!a.continut_b64 }; }),
+      avertisment: m.verificare === 'picat' ? MAIL_TEXT_VERIFICARE : null,
+      neintreg: m.intreg === false ? MAIL_TEXT_NEINTREG : null,
+      pentruRaspuns: mailPrimit.pentruRaspuns(m),
+    }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Atașamentul se DESCARCĂ, niciodată nu se deschide în pagină (un HTML trimis de oricine ar rula pe adresa noastră).
+app.get('/api/mail/primite/:id/atasamente/:aid', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const m = await _mailPrimitVazut(req);
+    const aid = parseInt(req.params.aid);
+    const a = m && Number.isFinite(aid) ? await db.getAtasamentMailPrimit(Number(m.id), aid) : null;
+    if (!a || !a.continut_b64) return res.status(404).json({ error: 'Atașamentul nu există.' });
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', _antetDescarcare(a.nume || 'atasament'));
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(a.continut_b64, 'base64'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/mail/primite/:id/necitit', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const m = await _mailPrimitVazut(req);
+    if (!m) return res.status(404).json({ error: 'Emailul nu există.' });
+    await db.marcheazaMailCitit(Number(m.id), req.auth.userId, false);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/mail/primite/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const m = await _mailPrimitVazut(req);
+    if (!m) return res.status(404).json({ error: 'Emailul nu există.' });
+    await db.stergeMailPrimit(Number(m.id));
+    auditReq(req, 'mail_primit_sters', 'mail', Number(m.id), { catre: m.catre });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -1589,6 +1589,56 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_trimise_de_la ON mail_trimise(de_la, id DESC)`);
+    // Etapa 2 (12.10): răspunsul scris din panoul Mail ține minte la ce email primit răspunde.
+    await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS raspuns_pentru BIGINT`);
+    // Fila „Primite": ce ne scriu oamenii pe adresele noastre (contact@ și ale fondatorilor), adus de Cloudflare
+    // (mail_primit.js). `catre` = adresa NOASTRĂ pe care a venit — de ea depinde cine îl vede. Citit / răspuns: o dată pe
+    // email (adresa comună e a tuturor: dacă a răspuns Alin, Robert vede asta). Fără ștergere automată, ca „Trimise".
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mail_primite (
+        id BIGSERIAL PRIMARY KEY,
+        primit_la TIMESTAMP DEFAULT NOW(),
+        catre VARCHAR(200) NOT NULL,
+        de_la VARCHAR(320),
+        de_nume VARCHAR(200),
+        raspuns_catre VARCHAR(320),
+        antet_catre TEXT,
+        antet_cc TEXT,
+        subiect TEXT,
+        text TEXT,
+        html TEXT,
+        mesaj_id VARCHAR(500),
+        in_reply_to VARCHAR(500),
+        referinte TEXT,
+        trimis_la TIMESTAMP,
+        company_id INTEGER,
+        atasamente JSONB,
+        intreg BOOLEAN DEFAULT true,
+        verificare VARCHAR(10),
+        octeti INTEGER,
+        citit_la TIMESTAMP,
+        citit_de INTEGER,
+        raspuns_la TIMESTAMP,
+        raspuns_de INTEGER,
+        raspuns_id BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_primite_catre ON mail_primite(catre, id DESC)`);
+    // Atașamentele emailurilor primite, în base64 (ca fișierele semnate ale contractelor). Unul prea mare rămâne cu
+    // numele, fără conținut (continut_b64 NULL).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mail_atasamente (
+        id BIGSERIAL PRIMARY KEY,
+        mail_id BIGINT NOT NULL,
+        nume VARCHAR(200),
+        tip VARCHAR(120),
+        octeti INTEGER,
+        cid VARCHAR(300),
+        in_corp BOOLEAN DEFAULT false,
+        continut_b64 TEXT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_atasamente_mail ON mail_atasamente(mail_id)`);
 
     // ─── Safe Drive (RA Insight, pasul 3) ───
     // Rezumatul unei ZILE (ora României) pe mașină și pe șofer: km, mers, manevre bruște, viteză, ralanti, plus orele și
@@ -2174,11 +2224,12 @@ const _MAIL_CORP_MAX = 200000;
 async function noteazaMailTrimis(r) {
   const taie = function (s, n) { return s == null ? null : String(s).slice(0, n || _MAIL_CORP_MAX); };
   const q = await pool.query(
-    `INSERT INTO mail_trimise (de_la, catre, subiect, fel, company_id, user_id, text, html, atasamente, stare, eroare, cale, mesaj_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+    `INSERT INTO mail_trimise (de_la, catre, subiect, fel, company_id, user_id, text, html, atasamente, stare, eroare, cale, mesaj_id, raspuns_pentru)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
     [taie(r.de_la, 200) || '', taie(r.catre, 4000) || '', taie(r.subiect, 500), taie(r.fel, 30), r.companyId != null ? r.companyId : null,
       r.userId != null ? r.userId : null, taie(r.text), taie(r.html), JSON.stringify(Array.isArray(r.atasamente) ? r.atasamente.slice(0, 30) : []),
-      r.stare === 'esuat' ? 'esuat' : 'trimis', taie(r.eroare, 1000), taie(r.cale, 10), taie(r.mesajId, 200)]);
+      r.stare === 'esuat' ? 'esuat' : 'trimis', taie(r.eroare, 1000), taie(r.cale, 10), taie(r.mesajId, 200),
+      r.raspunsPentru != null ? r.raspunsPentru : null]);
   return q.rows[0] ? q.rows[0].id : null;
 }
 // Lista (fără corp), DOAR de pe adresele primite — cele pe care le vede omul (serverul le alege). `cauta`: în destinatari
@@ -2207,15 +2258,115 @@ async function getMailTrimis(id) {
       WHERE m.id = $1`, [id]);
   return r.rows[0] || null;
 }
-// Cât ocupă mailul în bază (indicatorul de încărcare din panou) și cât ocupă toată baza.
+// Cât ocupă mailul în bază (indicatorul de încărcare din panou: trimise + primite + atașamentele lor) și toată baza.
 async function mailSpatiu() {
   const out = { octeti: null, numar: 0, bazaOcteti: null };
   try {
-    const r = await pool.query("SELECT pg_total_relation_size('mail_trimise') AS b, (SELECT COUNT(*) FROM mail_trimise)::int AS n");
+    const r = await pool.query(`SELECT pg_total_relation_size('mail_trimise') + pg_total_relation_size('mail_primite') + pg_total_relation_size('mail_atasamente') AS b,
+      (SELECT COUNT(*) FROM mail_trimise)::int + (SELECT COUNT(*) FROM mail_primite)::int AS n`);
     out.octeti = Number(r.rows[0].b) || 0; out.numar = Number(r.rows[0].n) || 0;
   } catch (e) {}
   try { const r = await pool.query('SELECT pg_database_size(current_database()) AS b'); out.bazaOcteti = Number(r.rows[0].b) || null; } catch (e) {}
   return out;
+}
+// ─── Panoul Mail, etapa 2: fila „Primite" ───
+// Un email primit (forma din mail_primit.citeste) + atașamentele lui, într-o tranzacție. Același email venit a doua oară
+// pe aceeași adresă (Cloudflare reîncearcă) nu se scrie din nou: întoarce { id, deja: true }.
+async function noteazaMailPrimit(m) {
+  const client = await pool.connect();
+  try {
+    if (m.mesaj_id) {
+      const d = await client.query('SELECT id FROM mail_primite WHERE catre = $1 AND mesaj_id = $2 LIMIT 1', [m.catre, m.mesaj_id]);
+      if (d.rows[0]) return { id: Number(d.rows[0].id), deja: true };
+    }
+    await client.query('BEGIN');
+    const atas = Array.isArray(m.atasamente) ? m.atasamente.slice(0, 50) : [];
+    const r = await client.query(
+      `INSERT INTO mail_primite (catre, de_la, de_nume, raspuns_catre, antet_catre, antet_cc, subiect, text, html, mesaj_id, in_reply_to,
+         referinte, trimis_la, company_id, atasamente, intreg, verificare, octeti)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
+      [m.catre, m.de_la || null, m.de_nume || null, m.raspuns_catre || null, m.antet_catre || null, m.antet_cc || null, m.subiect || null,
+        m.text || null, m.html || null, m.mesaj_id || null, m.in_reply_to || null, m.referinte || null, m.trimis_la || null,
+        m.company_id != null ? m.company_id : null,
+        JSON.stringify(atas.filter(function (a) { return !a.inCorp; }).map(function (a) { return { nume: a.nume, octeti: a.octeti, pastrat: !!a.pastrat }; })),
+        m.intreg !== false, m.verificare || null, m.octeti != null ? m.octeti : null]);
+    const id = Number(r.rows[0].id);
+    for (const a of atas) {
+      await client.query('INSERT INTO mail_atasamente (mail_id, nume, tip, octeti, cid, in_corp, continut_b64) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [id, a.nume, a.tip, a.octeti, a.cid || null, !!a.inCorp, a.pastrat && a.continut ? Buffer.from(a.continut).toString('base64') : null]);
+    }
+    await client.query('COMMIT');
+    return { id: id, deja: false };
+  } catch (e) { try { await client.query('ROLLBACK'); } catch (x) {} throw e; }
+  finally { client.release(); }
+}
+const _MAIL_PRIMIT_CAMPURI = `m.id, m.primit_la, m.catre, m.de_la, m.de_nume, m.subiect, m.trimis_la, m.company_id, c.name AS company_name,
+  m.atasamente, m.intreg, m.verificare, m.citit_la, m.raspuns_la, m.raspuns_de, ur.full_name AS raspuns_de_nume`;
+// Lista (fără corp), DOAR pe adresele primite (cele pe care le vede omul). `cauta`: în expeditor sau subiect.
+async function listMailPrimite(adrese, o) {
+  o = o || {};
+  const lim = Math.min(Math.max(parseInt(o.limit) || 50, 1), 200), off = Math.max(parseInt(o.offset) || 0, 0);
+  const p = [(adrese || []).map(function (a) { return String(a).toLowerCase(); })];
+  let w = 'm.catre = ANY($1)';
+  if (o.cauta) {
+    p.push('%' + String(o.cauta).toLowerCase().slice(0, 100).replace(/[\\%_]/g, '\\$&') + '%');
+    w += ' AND (LOWER(COALESCE(m.de_la, \'\')) LIKE $' + p.length + ' OR LOWER(COALESCE(m.de_nume, \'\')) LIKE $' + p.length +
+      ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
+  }
+  if (o.necitite) w += ' AND m.citit_la IS NULL';
+  p.push(lim + 1); p.push(off);
+  const r = await pool.query(
+    `SELECT ${_MAIL_PRIMIT_CAMPURI}
+       FROM mail_primite m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users ur ON ur.id = m.raspuns_de
+      WHERE ${w} ORDER BY m.id DESC LIMIT $${p.length - 1} OFFSET $${p.length}`, p);
+  return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
+}
+async function getMailPrimit(id) {
+  const r = await pool.query(
+    `SELECT m.*, c.name AS company_name, ur.full_name AS raspuns_de_nume, uc.full_name AS citit_de_nume
+       FROM mail_primite m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users ur ON ur.id = m.raspuns_de
+       LEFT JOIN users uc ON uc.id = m.citit_de
+      WHERE m.id = $1`, [id]);
+  return r.rows[0] || null;
+}
+// Atașamentele unui email primit; `cuContinut` doar pentru imaginile din corp și pentru descărcare.
+async function atasamenteMailPrimit(mailId, cuContinut) {
+  const r = await pool.query(`SELECT id, mail_id, nume, tip, octeti, cid, in_corp, ${cuContinut ? 'continut_b64' : '(continut_b64 IS NOT NULL) AS pastrat'}
+    FROM mail_atasamente WHERE mail_id = $1 ORDER BY id`, [mailId]);
+  return r.rows;
+}
+async function getAtasamentMailPrimit(mailId, id) {
+  const r = await pool.query('SELECT * FROM mail_atasamente WHERE mail_id = $1 AND id = $2', [mailId, id]);
+  return r.rows[0] || null;
+}
+// Citit (de cine, prima dată) / înapoi la necitit.
+async function marcheazaMailCitit(id, userId, citit) {
+  if (citit) await pool.query('UPDATE mail_primite SET citit_la = NOW(), citit_de = $2 WHERE id = $1 AND citit_la IS NULL', [id, userId || null]);
+  else await pool.query('UPDATE mail_primite SET citit_la = NULL, citit_de = NULL WHERE id = $1', [id]);
+}
+async function marcheazaMailRaspuns(id, userId, trimisId) {
+  await pool.query('UPDATE mail_primite SET raspuns_la = NOW(), raspuns_de = $2, raspuns_id = $3, citit_la = COALESCE(citit_la, NOW()), citit_de = COALESCE(citit_de, $2) WHERE id = $1',
+    [id, userId || null, trimisId != null ? trimisId : null]);
+}
+async function stergeMailPrimit(id) {
+  await pool.query('DELETE FROM mail_atasamente WHERE mail_id = $1', [id]);
+  await pool.query('DELETE FROM mail_primite WHERE id = $1', [id]);
+}
+// Câte necitite are fiecare adresă (bulina de pe rândul „Mail" și de pe fiecare adresă).
+async function mailNecitite(adrese) {
+  const r = await pool.query(`SELECT catre, COUNT(*)::int AS n FROM mail_primite WHERE catre = ANY($1) AND citit_la IS NULL GROUP BY catre`,
+    [(adrese || []).map(function (a) { return String(a).toLowerCase(); })]);
+  const out = {}; r.rows.forEach(function (x) { out[x.catre] = Number(x.n) || 0; });
+  return out;
+}
+// Firma unui expeditor: un om al ei cu adresa asta, apoi adresa de contact a firmei. Doar ca etichetă pe rând.
+async function firmaDupaEmail(email) {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e) return null;
+  const u = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL AND (LOWER(email) = $1 OR LOWER(username) = $1) LIMIT 1', [e]);
+  if (u.rows[0]) return u.rows[0].company_id;
+  const c = await pool.query('SELECT id FROM companies WHERE LOWER(contact_email) = $1 LIMIT 1', [e]);
+  return c.rows[0] ? c.rows[0].id : null;
 }
 // Capacitatea bazei de date din PostgreSQL-ul PROPRIU (fără token extern): mărime totală + defalcare pe tabel.
 async function getDbCapacity() {
@@ -5896,6 +6047,7 @@ module.exports = {
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, mailSpatiu,
+  noteazaMailPrimit, listMailPrimite, getMailPrimit, atasamenteMailPrimit, getAtasamentMailPrimit, marcheazaMailCitit, marcheazaMailRaspuns, stergeMailPrimit, mailNecitite, firmaDupaEmail,
   listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany, montajeContract,
