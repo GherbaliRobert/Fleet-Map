@@ -268,7 +268,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### AMÂNDOI · Simulatorul de încărcare pe web, cu 3D și greutatea pe osii (etapa 1, pasul 3)
+### AMÂNDOI · Simulatorul de încărcare pe web, cu 3D și greutatea pe osii (etapa 1, pasul 3)  — `737f1d1`
 
 Robert (12.10): *„vreau să facem un simulator de încărcare marfă pentru transportatori"*, *„vreau să existe și un buton
 pentru 3D"*; ordinea aprobată: *„(3) simulatorul pe web, cu 3D și greutatea pe osii"*; apoi *„facem și pasul"*. Făcut după
