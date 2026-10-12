@@ -257,7 +257,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### AMÂNDOI · Flota pentru simulator: semiremorcile și remorcile, fila „Încărcare", filtrul pe fel (etapa 1, pasul 2)
+### AMÂNDOI · Flota pentru simulator: semiremorcile și remorcile, fila „Încărcare", filtrul pe fel (etapa 1, pasul 2)  — `406912a`
 
 Robert (12.10): *„să adăugăm semiremorcile în aplicație, ca atunci când te duci să faci o simulare să nu fii nevoit să
 bagi dimensiunile de fiecare dată, și să poți alege din flota pe care o ai deja… și pentru camioane, de exemplu 3.5t,
