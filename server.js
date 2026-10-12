@@ -6658,7 +6658,7 @@ app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, as
     const catre = String((req.body && req.body.catre) || h.p.email || '').trim();
     if (!catre) return res.status(400).json({ error: 'Partenerul n-are adresă de email. Scrie adresa la care trimitem contractul.' });
     if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
-    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server (SMTP). Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
+    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
     const pdf = await _pdfInBuffer(contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }));
     const noi = h.emitent.name || 'RA Track';
     const r = await mailer.send({ to: catre, replyTo: h.emitent.email || undefined,
@@ -7775,7 +7775,7 @@ app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (re
     if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
     if (!mailer || !mailer.enabled()) {
       return res.status(503).json({ faraEmail: true,
-        error: 'Emailul nu e configurat pe server (SMTP), deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis".' });
+        error: 'Emailul nu e configurat pe server, deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis".' });
     }
     const emitent = ((await getSystemSettings()).invoice_issuer) || {};
     const pdf = await _pdfInBuffer(contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent }));
@@ -15838,8 +15838,11 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     process.env.COOKIE_SECURE === 'true' ? 'da (+ HSTS)' : 'COOKIE_SECURE≠true → cookie-ul de sesiune poate pleca și pe HTTP');
   add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
     isSet(process.env.SESSION_SECRET) ? 'setat din mediu' : 'negenerat din mediu → se folosește fișierul local; la reconstruirea containerului toate sesiunile pică');
-  add('smtp', 'Email (SMTP)', (mailer && mailer.enabled()) ? 'ok' : 'crit',
-    (mailer && mailer.enabled()) ? 'activ' : 'neconfigurat → invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă');
+  // Calea emailului (12.10): Brevo pe HTTPS (BREVO_API_KEY — merge și pe Railway Hobby) sau SMTP. Cheia rămâne 'smtp'.
+  add('smtp', 'Email', (mailer && mailer.enabled()) ? 'ok' : 'crit',
+    (mailer && mailer.enabled())
+      ? ('activ — ' + (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') + ', de la ' + mailer.fromAddr())
+      : 'neconfigurat (BREVO_API_KEY sau SMTP) → facturile, contractele, invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă');
   add('push', 'Push nativ (FCM)', _fcm ? 'ok' : 'warn', _fcmStatus || (_fcm ? 'activ' : 'FIREBASE_SA_JSON nesetat'));
   add('sentry', 'Raportare erori (Sentry)', errortrack.enabled() ? 'ok' : 'warn', errortrack.enabled() ? 'activ' : 'SENTRY_DSN nesetat → erorile rămân doar în jurnalul intern');
   add('strict_devices', 'Înregistrare strictă dispozitive', STRICT_DEVICES ? 'ok' : 'warn', STRICT_DEVICES ? 'doar IMEI-uri pre-înregistrate' : 'STRICT_DEVICES=false → orice tracker se poate conecta');

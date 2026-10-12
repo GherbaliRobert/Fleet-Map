@@ -48,9 +48,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „mai stăm puțin"), ori treceți pe Pro (minimum ≈ 96 de lei pe lună, față de ≈ 64 azi).
   **09.10:** când îl puneți, expeditorul (`SMTP_FROM`, dacă îl setați) să scrie „RA Track", nu „RA Tracks" — numele
   din setare bate numele din aplicație.
+  **12.10:** Robert a făcut contul Brevo, iar aplicația știe acum să trimită prin el. Rămân trei pași, în Brevo și
+  Railway: (1) Brevo → Senders, Domains & Dedicated IPs → Domains → adăugați ratrack.ro și puneți în Cloudflare
+  înregistrările pe care le dă Brevo (fără ele, emailurile ajung la spam sau sunt refuzate); (2) Brevo → SMTP & API →
+  API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
+  `EMAIL_FROM` = `RA Track <noreply@ratrack.ro>`. Verificare: Administrare → Stare producție, rândul „Email": „activ —
+  Brevo".
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
+  **12.10:** Robert — „rămâne în stand by".
 - [ ] **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
   nicăieri; „Stare producție" o arată portocaliu cât timp stă acolo.
 - [ ] **Robert: e-Factura (ANAF). Adăugat pe 25.09, găsit când am explicat „Prima factură".** Fără
@@ -58,6 +65,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `ANAF_EFACTURA_TEST=false`, ajung în mediul de **PROBĂ** al ANAF, nu în cel real — aplicația
   pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
+  **12.10:** Robert — „mai așteaptă".
 - [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
   FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
 - [x] **HOTĂRÂT (28.09): accesoriile rămân doar ca sfat, fără rând de preț.** Alin a ales varianta 2.
@@ -259,6 +267,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-12
+
+### AMÂNDOI · Emailul pleacă prin Brevo (merge și pe Railway Hobby), pe o singură cale
+
+Robert (12.10): *„am făcut contul [Brevo], îl putem integra în ratrack? văd că au API"*. Da: Railway Hobby blochează
+SMTP, singura cale pe care trimitea aplicația — deci până azi nu pleca nimic: nici facturile, nici contractele, nici
+invitațiile, nici linkurile de parolă, nici rapoartele programate.
+
+1. **Cu cheia Brevo pusă în Railway, emailul pleacă prin API-ul lor, pe HTTPS** — exact ce Hobby nu blochează. Dacă nu e
+   pusă, aplicația rămâne ca azi (SMTP sau nimic).
+2. **O singură cale pentru tot emailul.** Invitațiile, linkurile de parolă, rapoartele programate și notificările aveau un
+   al doilea drum, separat, tot pe SMTP; acum trec toate pe același. Altfel, cu Brevo pornit, ar fi plecat facturile, dar
+   nu și invitațiile.
+3. **Sigla din emailul cu factura** se cere de pe ratrack.ro (Brevo nu primește imaginea atașată în corp). Dacă un
+   program de email blochează imaginile, pe banda închisă rămâne scris „RA Track".
+4. Emailurile scrise doar ca text (invitațiile) au linkul de parolă apăsabil.
+5. „Stare producție" spune pe ce cale pleacă emailul și de la ce adresă („activ — Brevo, de la RA Track <…>").
+
+- **Ce am schimbat:** `mailer.js` (calea Brevo lângă SMTP), `channels.js` (trimite prin `mailer.js`, fără SMTP propriu),
+  `server.js` (rândul din „Stare producție", două mesaje fără „SMTP" în ele), `public/index.html` (un mesaj la rapoarte),
+  `.env.example` (`BREVO_API_KEY`, `EMAIL_FROM`), `CLAUDE.md`.
+- **Probe:** `verify_email_brevo.js` (nouă, 23, în `npm test`, cu un Brevo fals — nu pleacă niciun email adevărat): cererea
+  către Brevo, atașamentele, sigla, erorile, calea unică, invitația pe server pornit. Trec și `verify_lipsuri.js`,
+  `verify_montaj_sectiune.js` (emailul prin SMTP fals, neschimbat), `verify_utilizatori.js`.
+- **Ce vede fondatorul:** după ce Robert pune cheia (pașii, la „De amintit"), contractele se trimit la semnat din
+  aplicație, facturile pleacă singure pe email, invitațiile nu mai cer copierea linkului.
+- **Ce vede clientul:** primește pe email factura (cu PDF-ul), contractul, invitația și rapoartele programate.
 
 ### FONDATOR · RA Insight pe Haiku 5.5; panourile de cost socotesc pe modelul fiecărui răspuns — `2f09975`
 

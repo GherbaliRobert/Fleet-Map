@@ -2,37 +2,29 @@
 // Dacă un canal nu e configurat, e pur și simplu ignorat (no-op). Centrul de notificări in-app
 // funcționează mereu, local, fără niciun canal extern.
 
-let transporter = null;
-function getTransporter() {
-  if (transporter) return transporter;
-  if (!process.env.SMTP_HOST) return null;
-  const nodemailer = require('nodemailer');
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined
-  });
-  return transporter;
-}
+// Emailul pleacă pe O SINGURĂ cale, a lui mailer.js (Brevo pe HTTPS sau SMTP — 12.10). Aici era un al doilea
+// transport SMTP, cu alt expeditor; pe Railway Hobby, unde SMTP e blocat, invitațiile și rapoartele n-ar fi plecat
+// nici după ce emailul facturilor mergea. NU pune înapoi un transport propriu.
+const mailer = require('./mailer');
 
 async function sendEmail(subject, text) {
-  const tr = getTransporter();
   const to = process.env.NOTIFY_EMAIL_TO;
-  if (!tr || !to) return false;
-  await tr.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER || 'gps@local', to, subject, text });
+  if (!mailer.enabled() || !to) return false;
+  const r = await mailer.send({ to, subject, text });
+  if (!r.ok) throw new Error(r.error || 'emailul n-a plecat');
   return true;
 }
 
 // Trimite email către un destinatar specific (folosit pentru notificările per-utilizator)
-// html (opțional) → email HTML cu fallback text.
+// html (opțional) → email HTML cu fallback text. Fără email pe server → false; emailul care n-a plecat → aruncă (cine
+// cheamă hotărăște: invitația arată atunci linkul pe ecran).
 async function sendEmailTo(to, subject, text, attachments, html) {
-  const tr = getTransporter();
-  if (!tr || !to) return false;
-  const msg = { from: process.env.SMTP_FROM || process.env.SMTP_USER || 'gps@local', to, subject, text };
+  if (!mailer.enabled() || !to) return false;
+  const msg = { to, subject, text };
   if (html) msg.html = html;
   if (attachments && attachments.length) msg.attachments = attachments;
-  await tr.sendMail(msg);
+  const r = await mailer.send(msg);
+  if (!r.ok) throw new Error(r.error || 'emailul n-a plecat');
   return true;
 }
 
@@ -64,10 +56,10 @@ async function dispatchChannels(n) {
 
 function channelsConfigured() {
   return {
-    email: !!(process.env.SMTP_HOST && process.env.NOTIFY_EMAIL_TO),
+    email: !!(mailer.enabled() && process.env.NOTIFY_EMAIL_TO),
     telegram: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
     webhook: !!process.env.NOTIFY_WEBHOOK_URL
   };
 }
 
-module.exports = { dispatchChannels, channelsConfigured, sendWebhook, sendEmailTo, emailConfigured: () => !!process.env.SMTP_HOST };
+module.exports = { dispatchChannels, channelsConfigured, sendWebhook, sendEmailTo, emailConfigured: () => mailer.enabled() };

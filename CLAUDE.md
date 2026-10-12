@@ -163,6 +163,17 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
   e regula de azi; abia apoi decide cine greșește, codul sau proba. Iar când o rescrii, **rescrie-o
   pe regula nouă** — nu-i slăbi asertul ca să treacă.
 
+## Emailul: o singură cale, `mailer.js` — Brevo pe HTTPS sau SMTP (Robert, 12.10)
+Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca nimic (facturi, contracte, invitații).
+- **`mailer.js` e SINGURA cale.** `BREVO_API_KEY` → API-ul Brevo (`fel() === 'brevo'`, câștigă); altfel `SMTP_HOST` +
+  `SMTP_USER` (nodemailer). `channels.js` (invitații, linkuri de parolă, rapoarte programate, notificări) trimite prin el —
+  NU-i pune înapoi un transport propriu. `sendEmailTo` aruncă dacă emailul n-a plecat (invitația arată atunci linkul).
+- Expeditorul: `EMAIL_FROM`, apoi `SMTP_FROM`, apoi „RA Track <noreply@ratrack.ro>". La Brevo, pe un domeniu autentificat.
+- Brevo **nu primește imagini cid**: sigla din emailul cu factura (`EMAIL_LOGO`, din `public/`) se cere de la `BASE_URL`.
+  Textul simplu devine HTML cu linkurile apăsabile (`_htmlDinText`).
+- „Stare producție", rândul `smtp`: „activ — Brevo/SMTP, de la …". Probele pot muta Brevo pe un server fals (`BREVO_API_URL`).
+- Păzit de `verify_email_brevo.js` (în `npm test`), inclusiv pe server pornit.
+
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).

@@ -12072,7 +12072,7 @@ const pozitii = await r.json();</code></pre>
         const parts = ['Generat ' + (saved ? '✓ ' : '') + '(' + (d.rows || 0) + ' rânduri)'];
         parts.push(saved ? 'salvat în Istoric' : ('NU s-a salvat' + (d.historyError ? ': ' + d.historyError : (d.reason ? ' (' + d.reason + ')' : ''))));
         if (d.emailSent) parts.push('trimis pe email');
-        else if (d.recipients && d.recipients.length) parts.push('email indisponibil (SMTP neconfigurat)');
+        else if (d.recipients && d.recipients.length) parts.push('email indisponibil (serverul n-are email configurat)');
         msg.style.color = saved ? 'var(--accent)' : 'var(--orange)';
         msg.textContent = parts.join(' · ');
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
