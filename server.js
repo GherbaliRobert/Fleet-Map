@@ -3860,7 +3860,8 @@ function _insightIstoric(uzPeLuna, facturi, opt) {
     m.firme = Number(u.firme) || 0;
     m.costEur = Math.round(cost({
       input_tokens: u.input_tokens, output_tokens: u.output_tokens,
-      cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens
+      cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens,
+      cost_usd: u.cost_usd   // socotit pe modelul fiecărui răspuns, când vine de la bază
     }) * 100) / 100;
   });
   const firmePeLuna = {};
@@ -3921,7 +3922,8 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     ]);
     const istoric = _insightIstoric(uzLunar, facturi, {
       luni: LUNI_ISTORIC,
-      cost: function (t) { return ai ? ai.costEur(t) : 0; }
+      // `cost_usd` vine de la bază socotit pe modelul fiecărui răspuns (Haiku 4.5 / 5.5 / Sonnet — 12.10).
+      cost: function (t) { return ai ? (t.cost_usd != null ? Number(t.cost_usd) * ai.USD_EUR : ai.costEur(t)) : 0; }
     });
     const facturatPeFirma = _insightPeFirme(facturi);
     const byId = {}; usage.forEach(function (u) { byId[u.company_id] = u; });
@@ -3933,7 +3935,7 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
-      const cost = ai ? ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) : 0;
+      const cost = ai ? (Number(u.cost_usd) || 0) * ai.USD_EUR : 0;   // pe modelul fiecărui răspuns (db.js)
       const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost });
       const ist = facturatPeFirma[c.id] || null;
       r.facturatLei = ist ? ist.facturatLei : 0;   // ce i-am facturat pe RA Insight în perioada citită
@@ -5845,12 +5847,13 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     // Compania demo nu apare în dashboard-ul de business (nici tabel, nici totaluri/venituri/health).
     const demoIds = new Set(companies.filter(function (c) { return c.is_demo; }).map(function (c) { return c.id; }));
     const realCompanies = companies.filter(function (c) { return !c.is_demo; });
-    const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0, totCr = 0, totCw = 0;
+    const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0, totCr = 0, totCw = 0, totCostUsd = 0;
     usage.forEach(function (u) {
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
       if (u.company_id != null && demoIds.has(u.company_id)) return; // exclude demo din totalurile AI
       totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
       totCr += Number(u.cache_read_tokens) || 0; totCw += Number(u.cache_write_tokens) || 0;
+      totCostUsd += Number(u.cost_usd) || 0;   // pe modelul fiecărui răspuns (db.js)
     });
     // ─── GPS + SIM health (din livePositions, real-time) per companie ───
     // Hartă imei → company_id (din devices)
@@ -5893,7 +5896,9 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
         // Cât ne COSTĂ efectiv clientul ăsta, în euro (nu doar tokeni) — baza pentru preț în ofertă.
-        ai_cost_eur: ai ? Math.round(ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) * 10000) / 10000 : 0,
+        // …socotit pe modelul fiecărui răspuns (db.js, `cost_usd`), nu pe un singur preț.
+        ai_cost_usd: ai ? Math.round((Number(u.cost_usd) || 0) * 10000) / 10000 : 0,
+        ai_cost_eur: ai ? Math.round((Number(u.cost_usd) || 0) * ai.USD_EUR * 10000) / 10000 : 0,
         ai_quota: _aiQuotaFromSettings(c.settings).questions || 0,
         ai_limit: Number(c.ai_monthly_limit) || 0,
         mrr: plans ? Math.round(_companyMrr(c).mrr) : 0,
@@ -5936,7 +5941,8 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
       revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), cu_oferta: cuOferta, fara_oferta: realCompanies.length - cuOferta, paying_companies: realCompanies.length },
       companies: rows,
-      platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
+      platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0,
+        ai_cost_usd: Math.round((Number(pf.cost_usd) || 0) * 10000) / 10000, health: _healthSummary(hbc['null']) },
       totals: {
         companies: realCompanies.length,
         vehicles: realCompanies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
@@ -5945,8 +5951,9 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         ai_cache_read: totCr, ai_cache_write: totCw,
         // Costul se calculează O SINGURĂ DATĂ, pe server, cu prețurile din config și cu tokenii din
         // cache taxați corect — interfața nu mai are formulă proprie care să divergă.
-        ai_cost_usd: ai ? Math.round(ai.costUsd({ input_tokens: totIn, output_tokens: totOut, cache_read_input_tokens: totCr, cache_creation_input_tokens: totCw }) * 100) / 100 : 0,
-        ai_cost_eur: ai ? Math.round(ai.costEur({ input_tokens: totIn, output_tokens: totOut, cache_read_input_tokens: totCr, cache_creation_input_tokens: totCw }) * 100) / 100 : 0,
+        // Din 12.10, suma costurilor socotite pe modelul fiecărui răspuns (tokenii nu se mai înmulțesc cu un preț).
+        ai_cost_usd: ai ? Math.round(totCostUsd * 100) / 100 : 0,
+        ai_cost_eur: ai ? Math.round(totCostUsd * ai.USD_EUR * 100) / 100 : 0,
         findings_new: findingsNew,
         health: totalsHealth
       }
@@ -17410,9 +17417,10 @@ app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
 if (process.env.SEED_TEST === '1') {
   app.post('/api/test/ai-usage', requireAuth, async (req, res) => {
     try {
-      const { companyId, userId, kind } = req.body || {};
+      // `usage` și `model` sunt opționale: proba costului pe model (12.10) scrie consum de pe modele diferite.
+      const { companyId, userId, kind, usage, model } = req.body || {};
       await db.recordAiUsage(companyId != null ? parseInt(companyId) : null, kind || 'insight',
-        { input_tokens: 1200, output_tokens: 300 }, userId != null ? parseInt(userId) : null);
+        usage || { input_tokens: 1200, output_tokens: 300 }, userId != null ? parseInt(userId) : null, model || null);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });

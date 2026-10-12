@@ -1693,12 +1693,44 @@ async function recordAiUsage(companyId, kind, usage, userId, model) {
 // Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.
 // `kinds` = tipurile care se numără drept „întrebare" a clientului (restul sunt automatisme interne).
 const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
+// ─── Costul consumului AI se socotește pe MODELUL care a răspuns (Robert, 12.10) ───
+// RA Insight a trecut pe Haiku 5.5, de 10 ori mai ieftin decât Haiku 4.5. Tokenii adunați la un loc și socotiți cu
+// prețul unui singur model ar fi dat panouri greșite de zece ori. Aici se adună pe (cheie, model), costul fiecărui
+// rând se socotește cu prețurile modelului lui (`ai.costUsd`, singura formulă), și abia apoi rândurile se strâng pe
+// cheie. Rândurile de dinainte de 08.10 n-au modelul scris: atunci totul mergea pe Haiku 4.5.
+const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';
+function _costUsdRand(r) {
+  return require('./ai.js').costUsd({
+    input_tokens: Number(r.input_tokens) || 0, output_tokens: Number(r.output_tokens) || 0,
+    cache_read_input_tokens: Number(r.cache_read_tokens) || 0, cache_creation_input_tokens: Number(r.cache_write_tokens) || 0
+  }, r.model || MODEL_RANDURI_VECHI);
+}
+// Rânduri (cheie, model) → un rând pe cheie, în ordinea în care au venit: numerele se adună, `cost_usd` = suma
+// costurilor pe model, `last_used` = cel mai nou. Câmpurile care nu se adună (company_id, luna) rămân de pe primul rând.
+const _AI_SUME = ['questions', 'calls', 'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens'];
+function _strangePeModele(rows, cheie) {
+  const out = new Map();
+  rows.forEach(function (r) {
+    const k = cheie(r);
+    let o = out.get(k);
+    if (!o) {
+      o = Object.assign({}, r, { cost_usd: 0 });
+      delete o.model;
+      _AI_SUME.forEach(function (f) { if (f in r) o[f] = 0; });
+      out.set(k, o);
+    }
+    _AI_SUME.forEach(function (f) { if (f in r) o[f] += Number(r[f]) || 0; });
+    o.cost_usd += _costUsdRand(r);
+    if (r.last_used && (!o.last_used || new Date(r.last_used) > new Date(o.last_used))) o.last_used = r.last_used;
+  });
+  return Array.from(out.values());
+}
 // Utilizarea RA Insight pe LUNA CURENTĂ, grupată pe companie — pentru privirea de ansamblu
-// a super-adminului: cine folosește, cât, și cât ne costă.
+// a super-adminului: cine folosește, cât, și cât ne costă (`cost_usd`, pe modelul fiecărui răspuns).
 async function getAiMonthUsageByCompany(kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
   const r = await pool.query(
-    `SELECT company_id,
+    `SELECT company_id, model,
             COUNT(*)::int AS questions,
             COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
             COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
@@ -1707,8 +1739,8 @@ async function getAiMonthUsageByCompany(kinds) {
             MAX(created_at) AS last_used
        FROM ai_usage
       WHERE kind = ANY($1) AND created_at >= date_trunc('month', NOW())
-      GROUP BY company_id`, [k]);
-  return r.rows;
+      GROUP BY company_id, model`, [k]);
+  return _strangePeModele(r.rows, function (x) { return x.company_id == null ? 'null' : String(x.company_id); });
 }
 async function getAiMonthUsage(companyId, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
@@ -1738,14 +1770,14 @@ async function getAiUsageByCompany(sinceDays) {
   let where = '', params = [];
   if (days > 0) { params.push(new Date(Date.now() - days * 86400000).toISOString()); where = 'WHERE created_at >= $1'; }
   const r = await pool.query(
-    `SELECT company_id,
+    `SELECT company_id, model,
        COALESCE(SUM(input_tokens), 0)::bigint AS input_tokens,
        COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
        COALESCE(SUM(cache_read_tokens), 0)::bigint AS cache_read_tokens,
        COALESCE(SUM(cache_write_tokens), 0)::bigint AS cache_write_tokens,
        COUNT(*)::int AS calls
-     FROM ai_usage ${where} GROUP BY company_id`, params);
-  return r.rows;
+     FROM ai_usage ${where} GROUP BY company_id, model`, params);
+  return _strangePeModele(r.rows, function (x) { return x.company_id == null ? 'null' : String(x.company_id); });
 }
 // Consum AI grupat pe tip de asistent (kind) — pentru panoul „Asistenți AI" din Analize statistice.
 // companyId=null → toate companiile (super-admin fără filtru). sinceDays=0/null → tot istoricul.
@@ -4089,18 +4121,28 @@ async function aiSeatsByCompany() {
 async function getAiUsageByMonth(dela, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
   const d = dela instanceof Date ? dela : new Date(Number(dela) || 0);
+  // Pe (lună, model, firmă): costul se socotește pe model, iar „firme" se numără pe lună fără dubluri (o firmă care a
+  // folosit două modele în aceeași lună e tot o firmă).
   const r = await pool.query(
-    `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM') AS luna,
+    `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM') AS luna, model, company_id,
             COUNT(*)::int AS questions,
-            COUNT(DISTINCT company_id)::int AS firme,
             COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
             COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
             COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
             COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
        FROM ai_usage
       WHERE kind = ANY($1) AND created_at >= $2
-      GROUP BY 1 ORDER BY 1`, [k, d]);
-  return r.rows;
+      GROUP BY 1, 2, 3 ORDER BY 1`, [k, d]);
+  const firme = {};
+  r.rows.forEach(function (x) {   // ca COUNT(DISTINCT company_id): consumul fără firmă nu e o firmă
+    firme[x.luna] = firme[x.luna] || new Set();
+    if (x.company_id != null) firme[x.luna].add(String(x.company_id));
+  });
+  return _strangePeModele(r.rows, function (x) { return x.luna; }).map(function (x) {
+    delete x.company_id;
+    x.firme = firme[x.luna] ? firme[x.luna].size : 0;
+    return x;
+  });
 }
 // Facturile din care se poate citi ce am facturat pe RA Insight. Doar liniile ne trebuie — nu tragem
 // toată factura. Ciornele și cele anulate NU sunt venit, deci nici nu vin de la bază. Nici proformele:

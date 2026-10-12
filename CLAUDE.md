@@ -503,8 +503,13 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   (`cache_control` pe cerere), blocurile „thinking" trimise înapoi neschimbate, nota „Gata cu interogările" adăugată după
   ultimele rezultate și răspunsul final cu `tool_choice: none`. Haiku 4.5 rămâne pe drumul vechi (semn mutat, notă în
   instrucțiuni). `stop_reason: 'refusal'` → text pe față (`TEXT_REFUZ`).
-- **`onUsage(usage, model)`** și `ai_usage.model`: consumul ține minte modelul. ⚠ Panourile de cost încă socotesc din
-  tokeni pe prețurile modelului de bază — **înainte să trecem clienții pe alt model, panourile se socotesc pe model**.
+- **`onUsage(usage, model)`** și `ai_usage.model`: consumul ține minte modelul. **Panourile de cost socotesc pe model**
+  (12.10, când Robert a trecut RA Insight pe Haiku 5.5 din Railway, `AI_AGENT_MODEL=claude-haiku-5-5`): în db.js,
+  `getAiMonthUsageByCompany` / `getAiUsageByCompany` / `getAiUsageByMonth` adună pe (cheie, model) și întorc `cost_usd`
+  (`_strangePeModele` → `_costUsdRand` → `ai.costUsd`, singura formulă); rândurile fără model (de dinainte de 08.10) =
+  `MODEL_RANDURI_VECHI` (Haiku 4.5), NU modelul de azi. Dashboard, „Utilizare RA Insight" și istoricul ei citesc `cost_usd`;
+  pagina ia costul rândului de la server (`_raxCostRand`). NU mai înmulți tokeni adunați cu prețul unui singur model.
+  ⚠ Estimarea din Ofertare (`_aiqCost`, grila pe cont) e încă măsurată pe Haiku 4.5 — e partea prudentă (Haiku 5.5 e mai ieftin).
 - **„Proba modelelor"** (Administrare → Utilizare RA Insight, `raxProbaModele`, blocul între sentinele): rutele
   `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
   Răspunde ACEEAȘI funcție, `_raInsight(await _cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al

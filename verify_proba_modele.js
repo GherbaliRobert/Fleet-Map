@@ -12,7 +12,9 @@
 //      modelele cerute chiar sunt chemate, în ordine; costul fiecărui răspuns e pe prețurile modelului; nimic nu ajunge în
 //      conversațiile cuiva și nici în fondul firmei; o singură probă deodată; „Oprește" oprește; rând în jurnal;
 //   3. pagina: butonul din panoul „Utilizare RA Insight", textul modelului scăpat înainte de afișare, costurile luate de
-//      la server.
+//      la server;
+//   4. (12.10, RA Insight trece pe Haiku 5.5) panourile de cost — Dashboard, Utilizare RA Insight și istoricul ei — socotesc
+//      fiecare răspuns pe prețurile modelului care a răspuns; rândurile vechi, fără model scris, ca Haiku 4.5.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -218,6 +220,37 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     T('„Oprește" oprește proba (mai puține răspunsuri decât 12, marcată „oprită")', q && q.gata && q.oprita && q.facute < 12, JSON.stringify(q && { facute: q.facute, oprita: q.oprita }));
     const strain = await json('GET', '/api/admin/insight/proba-modele/nu-exista', S);
     T('o probă care nu există: 404', strain.status === 404);
+
+    // ─── Panourile de cost socotesc pe MODELUL fiecărui răspuns (Robert, 12.10: RA Insight trece pe Haiku 5.5) ───
+    // O firmă cu trei răspunsuri: unul vechi, fără model scris (de dinainte de 08.10 = Haiku 4.5), unul pe Haiku 5.5, unul
+    // pe Sonnet 5.5. Corect: 0,10 $ + 0,10 $ + 0,20 $ = 0,40 $ (0,368 €). Cu toți tokenii socotiți ca Haiku 4.5, cum făceau
+    // panourile până pe 12.10, ar fi ieșit 1,20 $ — de trei ori mai mult.
+    console.log('\n4. Panourile de cost, pe modelul fiecărui răspuns');
+    const cf = (await json('POST', '/api/companies', S, { name: 'Firma Cost Model SRL' })).j;
+    await json('PUT', '/api/companies/' + cf.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+    await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 } });
+    await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 1000000 }, model: 'claude-haiku-5-5' });
+    await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 }, model: 'claude-sonnet-5-5' });
+    const ov = await json('GET', '/api/admin/overview?days=30', S);
+    const rOv = (ov.j.companies || []).filter((r) => String(r.id) === String(cf.id))[0] || {};
+    T('Dashboard: costul firmei = 0,40 $ (fiecare răspuns pe prețul modelului lui), nu 1,20 $',
+      rOv.ai_cost_usd === 0.4 && rOv.ai_cost_eur === 0.368 && rOv.ai_calls === 3, JSON.stringify({ usd: rOv.ai_cost_usd, eur: rOv.ai_cost_eur, n: rOv.ai_calls }));
+    const sumaRanduri = (ov.j.companies || []).reduce((s, r) => s + (Number(r.ai_cost_usd) || 0), 0) + (Number(ov.j.platform && ov.j.platform.ai_cost_usd) || 0);
+    T('Dashboard: totalul = suma rândurilor (firmele + consumul nostru, fiecare pe modelul lui), nu socotit din tokenii adunați',
+      ov.j.totals && ov.j.totals.ai_cost_usd >= 0.4 && Math.abs(ov.j.totals.ai_cost_usd - sumaRanduri) < 0.01 && (ov.j.platform || {}).ai_cost_usd > 0,
+      JSON.stringify({ total: ov.j.totals && ov.j.totals.ai_cost_usd, randuri: sumaRanduri, noi: ov.j.platform && ov.j.platform.ai_cost_usd }));
+    const ua = await json('GET', '/api/admin/ai-usage', S);
+    const rUa = (ua.j.rows || []).filter((r) => String(r.company_id || r.id) === String(cf.id))[0] || {};
+    T('Utilizare RA Insight: costul firmei pe luna asta = 0,37 € (nu 1,10 €), pe 3 întrebări', rUa.costEur === 0.37 && rUa.used === 3, JSON.stringify({ c: rUa.costEur, u: rUa.used }));
+    const lunaAcum = new Date().toISOString().slice(0, 7);
+    const mUa = (ua.j.istoric || []).filter((m) => m.luna === lunaAcum)[0] || {};
+    T('Utilizare RA Insight, istoricul: luna asta costă 0,37 € și numără firma o singură dată (deși a folosit trei modele)',
+      mUa.costEur === 0.37 && mUa.firme === 1 && mUa.intrebari === 3, JSON.stringify({ c: mUa.costEur, f: mUa.firme, q: mUa.intrebari }));
+    const DBS = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
+    T('rândurile vechi, fără model scris, se socotesc ca Haiku 4.5 (modelul de atunci), nu ca modelul de azi',
+      /const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';/.test(DBS) && /r\.model \|\| MODEL_RANDURI_VECHI/.test(DBS));
+    T('pagina ia costul de pe rând de la server, nu-l mai socotește pe prețul Haiku 4.5',
+      (PAG.match(/_raxCostRand\(c\)/g) || []).length === 1 && (PAG.match(/_raxCostRand\(pf\)/g) || []).length === 1 && !/\$' \+ _raxCost\(c\.ai_input/.test(PAG));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

@@ -181,6 +181,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   mai scump pe aceeași cantitate de text. Dacă alegeți altul decât Haiku 4.5, refacem socoteala prețurilor pe cont
   (14 / 17 / 19 / 25 / 35 de lei) înainte să-l pornim la clienți. **Rulați-o doar pe firma noastră**, nu pe datele unui
   client fără acordul lui.
+  **12.10:** Robert a ales Haiku 5.5 și l-a pus deja în Railway (`AI_AGENT_MODEL`); prețurile pe cont rămân (modelul e mai
+  ieftin, deci n-avem ce reface). Rămâne proba, ca verificare: dacă vreun răspuns pe Haiku 5.5 iese „eroare" sau e mai slab
+  decât pe Haiku 4.5, se șterge variabila din Railway și RA Insight revine pe Haiku 4.5.
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -256,6 +259,34 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-12
+
+### FONDATOR · RA Insight pe Haiku 5.5; panourile de cost socotesc pe modelul fiecărui răspuns
+
+Robert (12.10): *„mergem pe ce avem deja, și îi schimb din Railway în Haiku 5.5"*, apoi *„1. poți repara, 2. am schimbat"*.
+Agentul din consola Anthropic („Fleet GPS Management Agent") NU s-a adăugat: era un agent gol, nelegat de datele noastre,
+și ar fi fost al doilea RA Insight, mai scump pe întrebare.
+
+1. **RA Insight răspunde de azi cu Haiku 5.5** — schimbat de Robert în Railway (`AI_AGENT_MODEL=claude-haiku-5-5`). Pe
+   întrebare ne costă cam de 10 ori mai puțin decât Haiku 4.5 (la o flotă de 10 mașini, ~0,005 lei în loc de ~0,033).
+   Clienții nu văd nicio diferență la bani: același cont, același fond de întrebări. Scanarea actelor și Scrisoarea de
+   luni au rămas pe Haiku 4.5 (`AI_MODEL` neatins).
+2. **Panourile de cost socotesc acum fiecare răspuns pe prețul modelului care l-a dat.** Până azi adunau toți tokenii și
+   îi înmulțeau cu prețul Haiku 4.5: după schimbare, RA Insight ar fi apărut de 10 ori mai scump decât e. Consumul de
+   dinainte de 08.10 (când nu se scria modelul) se socotește ca Haiku 4.5 — modelul de atunci. Se vede în: Dashboard
+   (costul pe firmă, rândul nostru și totalul), „Utilizare RA Insight" (costul pe firmă, profitul) și istoricul ei lunar.
+   Tabelul din Dashboard socotea, în plus, costul pe rând în pagină, tot pe prețul Haiku 4.5 și fără cache — acum îl ia
+   de la server.
+
+- **Ce am schimbat:** `db.js` (cele trei adunări ale consumului, pe model, cu `cost_usd`), `server.js` (Dashboard, „Utilizare
+  RA Insight", istoricul; ruta de probă `/api/test/ai-usage` primește și modelul), `public/index.html` (costul pe rând din
+  Dashboard), `CLAUDE.md`. Telefonul nu se schimbă: primește cifrele gata socotite.
+- **Probe:** `verify_proba_modele.js` (+6, secțiunea 4, pe server pornit): o firmă cu un răspuns vechi (Haiku 4.5), unul pe
+  Haiku 5.5 și unul pe Sonnet 5.5 costă 0,40 $, nu 1,20 $ — în Dashboard, în „Utilizare RA Insight" și în istoric (unde
+  firma se numără o dată, deși a folosit trei modele). Plus `npm test` întreg.
+- **Ce vede fondatorul:** costurile AI adevărate, mai mici de acum încolo.
+- **Ce vede clientul:** nimic diferit la bani; răspunsurile lui RA Insight vin de la Haiku 5.5.
+- **De știut:** „Proba modelelor" (cele 20 de întrebări pe Haiku 5.5) nu s-a rulat înainte de schimbare — a rămas la „De
+  amintit". Estimarea costului din Ofertare e încă pe Haiku 4.5: e partea prudentă, grila pe cont nu pierde nimic.
 
 ### AMÂNDOI · Flota pentru simulator: semiremorcile și remorcile, fila „Încărcare", filtrul pe fel (etapa 1, pasul 2)  — `406912a`
 

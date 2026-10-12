@@ -20937,6 +20937,9 @@ const pozitii = await r.json();</code></pre>
     var RAX_TOK_IN_RATE = 1.0, RAX_TOK_OUT_RATE = 5.0; // $/1M tokeni (Haiku, estimativ — ajustează după prețul real)
     function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
     function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
+    // Costul unui rând din tabel: cel socotit de server pe modelul fiecărui răspuns (Haiku 4.5 / 5.5 / Sonnet, 12.10).
+    // Socoteala de mai sus, pe prețul Haiku 4.5, rămâne doar pentru un server vechi care nu trimite `ai_cost_usd`.
+    function _raxCostRand(r) { return (r && r.ai_cost_usd != null) ? (Number(r.ai_cost_usd) || 0) : _raxCost(r && r.ai_input, r && r.ai_output); }
     function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
     function _raxHealthCell(h) {
       if (!h || !h.live) return '<span style="color:var(--text-muted);">—</span>';
@@ -21079,7 +21082,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td>' + _raxLimitCell(c) + '</tr>';
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCostRand(c).toFixed(3) + '</td>' + _raxLimitCell(c) + '</tr>';
         }).join('');
         // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
         var pf = d.platform || {};
@@ -21089,7 +21092,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCostRand(pf).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
           '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Cereri API</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită (cereri)</th></tr></thead><tbody>' +
