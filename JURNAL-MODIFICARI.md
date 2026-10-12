@@ -260,7 +260,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### FONDATOR · RA Insight pe Haiku 5.5; panourile de cost socotesc pe modelul fiecărui răspuns
+### FONDATOR · RA Insight pe Haiku 5.5; panourile de cost socotesc pe modelul fiecărui răspuns — `2f09975`
 
 Robert (12.10): *„mergem pe ce avem deja, și îi schimb din Railway în Haiku 5.5"*, apoi *„1. poți repara, 2. am schimbat"*.
 Agentul din consola Anthropic („Fleet GPS Management Agent") NU s-a adăugat: era un agent gol, nelegat de datele noastre,
