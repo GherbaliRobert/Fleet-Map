@@ -44,6 +44,8 @@ const BUSINESS_TABLES = [
   'stoc_echipamente',
   // Safe Drive (06.10): cine a condus ce mașină și când (nu se poate reface din poziții) și discuțiile șefului cu șoferii.
   'istoric_soferi', 'safe_drive_discutii',
+  // Semiremorcile și remorcile firmelor (12.10): flota fără aparat GPS, scrisă de client — nu se reface din nimic.
+  'remorci',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —

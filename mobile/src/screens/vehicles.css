@@ -86,3 +86,15 @@
 .tour3d-btn { border: none; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 800; font-family: inherit; cursor: pointer; }
 .tour3d-btn.back { background: var(--bg-dark); color: var(--text-primary); }
 .tour3d-btn.next { background: var(--accent); color: #06210f; }
+
+/* Filtrul pe fel (camioane, autotractoare…) + intrarea spre semiremorci (simulatorul de încărcare, 12.10).
+   Un rând care se derulează în lateral, ca să nu împingă harta în jos pe telefoanele înguste. */
+.vfel { display: flex; gap: 6px; padding: 0 14px 10px; overflow-x: auto; scrollbar-width: none; }
+.vfel::-webkit-scrollbar { display: none; }
+.vfel-b { flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;
+  border-radius: 18px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary);
+  font-size: 12.5px; font-weight: 700; font-family: inherit; white-space: nowrap; }
+.vfel-b .n { font-size: 11.5px; font-weight: 800; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.vfel-b.on { border-color: var(--accent); color: var(--text-primary); background: var(--bg-dark); }
+.vfel-b.on .n { color: var(--text-primary); }
+.vfel-b.rem { color: var(--text-primary); }

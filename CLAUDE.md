@@ -1761,6 +1761,31 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   (`_applyCompanySettingsPatch` șterge cheia). Ecranele citesc „ales / automat" din `_accesModule` (features_setate,
   dupa_flota, flota_grea) — nu-și socotesc flota.
 
+### Flota pentru simulatorul de încărcare (Robert, 12.10: „să poți alege din flota pe care o ai deja… 3.5t, 7t")
+- **Regulile stau în `incarcare.js`** (curat): `FELURI_VEHICUL` (autotractor fără caroserie, dubă 3,5 t, camion 7,5 / 12 /
+  18 t, altul), `FEL_REMORCA` + `TIPURI_REMORCA` (semiremorca ≠ remorca cu proțap), `curataRemorca`, `curataCaroserie`,
+  `paletiEur` / `paletiInd`. Cifrele obișnuite ajung la ecrane DOAR prin `GET /api/incarcare/meta` (+ `tipuriCuMarfa`) —
+  pagina și telefonul NU le scriu (proba caută zecimale în blocurile paginii).
+- **Semiremorcile: tabela `remorci`** (a firmei; în `BUSINESS_TABLES`; pleacă cu firma în `deleteCompany`).
+  `/api/remorci`: modulul `incarcare` pe toate patru rutele, scrierea cu `requireEdit('vehicule')`, `ownsRow` → 404, firma
+  o ia serverul (clientul nu alege; noi alegem `company_id`, fără firmă = 400). O semiremorcă trecută intră în flota care
+  pornește simulatorul (`firmeCuFlotaGrea` face UNION cu `remorci`; POST → `setFlotaGreaFirma`, DELETE → reîncărcare).
+- **Fila „Încărcare" = coloanele `inc_*` pe `devices`** (în `VEHICLE_DETAIL_COLS`; metrii în `DECIMAL_COLS`). Ruta
+  `/details` le trece prin `incarcare.curataCaroserie` (400 pe față) și cere ca `inc_remorca_id` să fie a firmei mașinii.
+  `inc_remorca_id` se golește la ștergerea semiremorcii (`deleteRemorca`) și la mutarea mașinii pe altă firmă
+  (`setDeviceCompany`). Sarcina utilă rămâne `payload`, limitele pe axe în „Config Camion".
+- **Regulile ecranului sunt CURATE și pe două părți**, legate prin `verify_flota_incarcare.js`, care le rulează pe aceleași
+  cazuri: pagina — blocurile „fila Încărcare" (`_incVizibile`, `_incObisnuite`, `_incDeTrimis`), „semiremorcile din flotă"
+  (`_remRandText`, `_remObisnuite`), „felul vehiculului" (`_VEH_FELURI`, `_vehFelul` + `markerCategory`) ↔ telefon
+  `mobile/src/lib/incarcare.ts`. Schimbi una → o schimbi și pe cealaltă. Schimbarea felului înlocuiește doar căsuțele
+  goale sau rămase cu cifra felului dinainte (ce a scris omul rămâne); „Pune cifrele obișnuite" — toate (sarcina utilă
+  doar goală / neatinsă).
+- **Filtrul pe fel urmează PICTOGRAMA din listă** (`markerCategory`: iconița aleasă întâi, apoi felul), nu desenul de pe
+  telefon (`vehCatOf` are mai puține desene). De aceea lista telefonului (`refreshRoster`) ține și `icon`.
+- **Pe telefon semiremorcile au ecranul lor** (`/remorci`, din Vehicule): lista de vehicule e harta vie. Pe web stau ca
+  rânduri în Administrare → Vehicule (`st-rem`, fără semnal). Diferență dinadins.
+- Fereastra semiremorcii (`#rem-modal`) stă peste lista de vehicule (`z-index: 2100`). Simulatorul în sine: pasul 3.
+
 ### Fereastra „Companie" (`#rax-codetail-overlay`) — capcanele ei, măsurate
 Se deschide din Companii (clic pe firmă), din „Deschide firma" (Dispozitive, Tahograf) — o singură
 fereastră (opt file din 12.10). Două lucruri din ea s-au reparat pe măsurători, nu din ochi (Alin, 18.09):

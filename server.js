@@ -195,6 +195,7 @@ const anafFirme = require('./anaf_firme');          // datele firmei după CUI, 
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 let facturaPdf = null; try { facturaPdf = require('./factura_pdf'); } catch (e) { /* opțional: fără pdfkit nu se face hârtia facturii */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
+const incarcare = require('./incarcare');   // simulatorul de încărcare: tipurile de remorci, cifrele obișnuite, ce se poate scrie (12.10)
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
@@ -9115,6 +9116,54 @@ app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requir
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Simulatorul de încărcare: semiremorcile și remorcile firmei (Robert, 12.10) ───
+// Cifrele obișnuite (felurile de camion, tipurile de semiremorcă) vin DOAR de aici — ecranele nu le scriu a doua oară.
+// `tipuriCuMarfa` = felurile de vehicul la care fișa arată fila „Încărcare" (aceeași listă care aprinde modulul).
+app.get('/api/incarcare/meta', requireAuth, (req, res) => { res.json(Object.assign(incarcare.meta(), { tipuriCuMarfa: plans ? plans.TIPURI_CU_MARFA : [] })); });
+// Lista: oricine din firmă (ca vehiculele); scrierea: cine poate edita vehiculele. Modulul „Simulator încărcare" pornit.
+app.get('/api/remorci', requireAuth, withCompany, requireFeature('incarcare'), async (req, res) => {
+  try {
+    let cid = req.isSuper ? null : req.companyId;
+    if (req.isSuper && req.query.company_id) cid = parseInt(req.query.company_id, 10) || null;
+    if (!req.isSuper && cid == null) return res.json([]);
+    res.json(await db.listRemorci(cid));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/remorci', requireAuth, requireEdit('vehicule'), withCompany, requireFeature('incarcare'), async (req, res) => {
+  try {
+    const c = incarcare.curataRemorca(req.body);
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    // Ca la e-Transport: un rând fără firmă n-ar fi văzut de nimeni. Super-adminul alege firma.
+    let coId = req.companyId;
+    if (coId == null && req.isSuper && req.body && req.body.company_id != null && String(req.body.company_id) !== '') coId = parseInt(req.body.company_id, 10);
+    if (coId == null || !(await db.getCompanyById(coId))) return res.status(400).json({ error: 'Semiremorca trebuie să fie a unei firme — alege firma.' });
+    const r = await db.createRemorca(coId, c.rand);
+    auditReq(req, 'create', 'remorca', r.id, { fel: r.fel, plate: r.plate });
+    plans.setFlotaGreaFirma(coId, true);
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/remorci/:id', requireAuth, requireEdit('vehicule'), withCompany, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'remorci', req.params.id))) return res.status(404).json({ error: 'Nu există.' });
+    const c = incarcare.curataRemorca(req.body);
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    const r = await db.updateRemorca(req.params.id, c.rand);
+    auditReq(req, 'update', 'remorca', req.params.id, { plate: c.rand.plate });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/remorci/:id', requireAuth, requireEdit('vehicule'), withCompany, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'remorci', req.params.id))) return res.status(404).json({ error: 'Nu există.' });
+    const r = await db.getRemorca(req.params.id);
+    await db.deleteRemorca(req.params.id);
+    auditReq(req, 'delete', 'remorca', req.params.id, { plate: r && r.plate });
+    await _flotaGreaReincarca();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───
 app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
@@ -10462,6 +10511,18 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
     // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
     if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; delete b.gps_model; delete b.sim_number; }
     if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
+    // Fila „Încărcare" (12.10): cifrele trec prin regulile simulatorului; semiremorca obișnuită trebuie să fie a firmei mașinii.
+    if (incarcare.CAMPURI_CAROSERIE.some(function (k) { return b[k] !== undefined; })) {
+      const cc = incarcare.curataCaroserie(b);
+      if (cc.eroare) return res.status(400).json({ error: cc.eroare });
+      incarcare.CAMPURI_CAROSERIE.forEach(function (k) { delete b[k]; });
+      if (cc.campuri.inc_remorca_id != null) {
+        const rem = await db.getRemorca(cc.campuri.inc_remorca_id);
+        const dev = await db.getDeviceFull(imei);
+        if (!rem || !dev || rem.company_id == null || rem.company_id !== dev.company_id) return res.status(400).json({ error: 'Semiremorca aleasă nu e a firmei acestui vehicul.' });
+      }
+      Object.assign(b, cc.campuri);
+    }
     // „Km la bord" (index manual pt. mașini fără CAN): reținem valoarea veche ÎNAINTE de update, ca să (re)facem snapshot-ul
     // contorului GPS DOAR când operatorul chiar schimbă valoarea — altfel orice resalvare a fișei ar rebaza contorul și
     // ar pierde km-ii deja parcurși de la montare. Fișa trimite mereu câmpul, deci comparăm explicit vechi vs nou.

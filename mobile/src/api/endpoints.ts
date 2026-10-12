@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { IncMeta, Remorca } from '../lib/incarcare';
 
 export interface IO { ignition?: number; external_voltage?: number; gsm_signal?: number; can_total_mileage?: number; total_odometer?: number; can_fuel_level_liters?: number; fuel_level_liters?: number; [k: string]: any; }
 export interface Position {
@@ -413,6 +414,11 @@ export const Api = {
   etransportTipuri: () => api<{ tipuri: { cod: string; label: string; zile: number }[] }>('/api/etransport/tipuri'),
   // Adăugare / ștergere: serverul cere dreptul „modifică flota" (requireFleet); firma se ia de pe vehicul.
   createEtransport: (b: any) => api<any>('/api/etransport', { method: 'POST', body: b }),
+  // ── Simulatorul de încărcare (12.10): cifrele obișnuite + semiremorcile și remorcile firmei ──
+  incarcareMeta: () => api<IncMeta>('/api/incarcare/meta'),
+  remorci: (companyId?: number | null) => api<Remorca[]>('/api/remorci' + (companyId ? '?company_id=' + encodeURIComponent(String(companyId)) : '')),
+  salveazaRemorca: (id: number | null, b: any) => api<Remorca>('/api/remorci' + (id ? '/' + encodeURIComponent(String(id)) : ''), { method: id ? 'PUT' : 'POST', body: b }),
+  stergeRemorca: (id: number) => api<{ ok: boolean }>('/api/remorci/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
   deleteEtransport: (id: number) => api<any>(`/api/etransport/${id}`, { method: 'DELETE' }),
   tachoFiles: () => api<any[]>('/api/tacho'),
   tachoFile: (id: number) => api<any>(`/api/tacho/${id}`),

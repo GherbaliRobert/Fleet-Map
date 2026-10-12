@@ -194,6 +194,9 @@ export async function refreshRoster() {
       .map((d: any) => ({
         // company_id, nu doar numele: ecranul de alerte filtrează vehiculele după compania aleasă.
         imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
+        // iconița aleasă în fișă: fără ea, o mașină care n-a transmis încă își lua desenul doar după fel, iar filtrul
+        // pe fel (lib/incarcare.ts) ar fi grupat-o altfel decât pagina, care citește întâi iconița
+        icon: d.icon,
         company_name: d.company_name, company_id: d.company_id,
         latitude: d.latitude, longitude: d.longitude, speed: d.speed, angle: d.angle, satellites: d.satellites,
         timestamp: d.last_position_time || null, io: d.io_data || {},

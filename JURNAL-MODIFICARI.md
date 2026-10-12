@@ -257,6 +257,42 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
+### AMÂNDOI · Flota pentru simulator: semiremorcile și remorcile, fila „Încărcare", filtrul pe fel (etapa 1, pasul 2)
+
+Robert (12.10): *„să adăugăm semiremorcile în aplicație, ca atunci când te duci să faci o simulare să nu fii nevoit să
+bagi dimensiunile de fiecare dată, și să poți alege din flota pe care o ai deja… și pentru camioane, de exemplu 3.5t,
+7t"* + *„le diferențiem, și vreau să adăugăm și un icon când vedem lista de vehicule, buton de filtrare"*.
+
+1. **Semiremorcile și remorcile cu proțap** se trec în flotă (o dată, cu dimensiunile interioare, sarcina, tara, axele).
+   Le trece clientul — n-au aparat GPS de-al nostru. Alegi tipul (prelată, mega, frigo, box, platformă; la remorci
+   prelată 7,7 m, box, frigo) și se pun singure cifrele obișnuite; le corectezi după talon. Pe web stau în
+   Administrare → Vehicule, ca rânduri cu desenul de remorcă și „fără aparat GPS"; pe telefon, în ecranul „Semiremorci și
+   remorci", deschis din Vehicule.
+2. **Fila „Încărcare" în fișa vehiculului** (web: lângă „Config Camion"; telefon: secțiune pliabilă): felul — autotractor,
+   dubă 3,5 t, camion 7,5 / 12 / 18 t, altul —, caroseria (la autotractor nu: are șa), axele, tara pe axe și semiremorca
+   obișnuită. Schimbi felul → se schimbă cifrele pe care nu le-ai atins; ce ai scris tu rămâne. Fila apare doar când firma
+   are simulatorul pornit și vehiculul cară marfă.
+3. **Filtrul pe fel** în lista de vehicule (web: lista „Toate felurile"; telefon: un rând de butoane): autoturisme, dube,
+   camioane, autotractoare, semiremorci, remorci, utilaje — cu câte sunt din fiecare.
+4. O semiremorcă trecută **pornește singură simulatorul** firmei (ca un camion), iar ștearsă îl oprește la loc.
+
+- **Ce am schimbat:** `incarcare.js` (nou, curat: felurile, tipurile, ce se poate scrie, paleții); `db.js` (zece coloane
+  „Încărcare" pe vehicul, tabela `remorci`, ștergerea cu firma, dezlegarea la ștergere și la mutarea mașinii pe altă
+  firmă); `backup.js` (`remorci` intră în copie); `server.js` (`/api/incarcare/meta`, `/api/remorci` — modulul pornit,
+  scrierea cu „editare vehicule", fiecare firmă doar ale ei; fila trece prin regulile simulatorului și refuză pe față);
+  `public/index.html` (fila, lista, fereastra semiremorcii, filtrul); telefonul — `lib/incarcare.ts`,
+  `IncarcareFisa.tsx`, `screens/Remorci.tsx`, `VehicleDetail.tsx`, `Vehicles.tsx`, `App.tsx`, `endpoints.ts`. Tot pe
+  telefon: lista păstrează acum iconița aleasă și la mașinile care n-au transmis încă (altfel filtrul le grupa altfel decât
+  web-ul). Salvarea fișei pe web arată acum motivul refuzului („Lungimea: între 1 și 20"), nu doar „Eroare la salvare".
+- **Probe:** `verify_flota_incarcare.js` (nouă, în `npm test`, 79): regulile, baza și copia, rutele, pagina fără cifre
+  scrise de mână, regulile paginii și ale telefonului RULATE pe aceleași cazuri (peste 2.000: felurile, cifrele la
+  schimbarea felului, ce pleacă la salvare, rândul semiremorcii, felul fiecărui vehicul), plus server pornit (modulul oprit
+  refuză, firmele nu-și văd semiremorcile între ele, vizualizatorul doar citește, fișa primește doar cifre cu sens,
+  dezlegările, o semiremorcă pornește și oprește simulatorul). Verificat pe ecran, web și telefon.
+- **Ce vede fondatorul:** aceleași ecrane; noi alegem firma când trecem o semiremorcă.
+- **Ce vede clientul:** cu simulatorul pornit — butoanele „Semiremorcă" / „Remorcă" în Vehicule, rândurile lor, fila
+  „Încărcare" la camioane și autotractoare; filtrul pe fel, oricum. Simulatorul în sine vine la pasul 3.
+
 ### FONDATOR · Fereastra firmei: filele „Stare" și „Acces"; simulatorul de încărcare pornit după flotă (etapa 1, pasul 1)  — `7104a69`
 
 Robert (12.10), la simulatorul de încărcare: *„inclus în abonament, dar noi ca admini să putem configura profilul

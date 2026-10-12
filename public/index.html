@@ -623,6 +623,9 @@
         <button class="edit-tab" data-tab="truck" onclick="switchEditTab('truck', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-truck"></i> Config Camion
         </button>
+        <button class="edit-tab" data-tab="incarcare" onclick="switchEditTab('incarcare', this)" style="display:none;padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-boxes-stacked"></i> Încărcare
+        </button>
         <button class="edit-tab" data-tab="calibration" onclick="switchEditTab('calibration', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-tint"></i> Sonda combustibil
         </button>
@@ -834,6 +837,49 @@
         </div>
       </div>
 
+      <!-- Tab: Încărcare (simulatorul de încărcare, Robert 12.10) — cifrele obișnuite vin de la server (/api/incarcare/meta) -->
+      <div id="edit-tab-incarcare" class="edit-tab-content" style="display:none;">
+        <style>
+          #edit-tab-incarcare .inc-sec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--text-secondary);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+          #edit-tab-incarcare .inc-g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+          #edit-tab-incarcare .inc-g .form-group{margin-bottom:0;}
+          #edit-tab-incarcare .inc-nota{background:var(--bg-dark);padding:10px 12px;border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.45;}
+          #edit-tab-incarcare .inc-sub{font-size:11px;color:var(--text-muted);margin-top:6px;}
+          @media (max-width: 480px){ #edit-tab-incarcare .inc-g{grid-template-columns:1fr 1fr;} }
+        </style>
+        <div class="inc-nota"><i class="fas fa-info-circle" style="color:var(--text-muted);"></i>
+          Simulatorul de încărcare folosește cifrele de aici, ca să nu le scrii la fiecare plan. Alege felul vehiculului — se pun cifrele obișnuite —, apoi corectează-le după fișa tehnică a mașinii.</div>
+        <div class="inc-g" style="grid-template-columns:2fr 1fr;margin-top:12px;align-items:end;">
+          <div class="form-group"><label>Felul vehiculului</label><select id="edit-inc-fel" onchange="incFelSchimbat()"></select></div>
+          <div class="form-group"><button type="button" class="btn-sm" id="edit-inc-obisnuite" onclick="incPuneObisnuite(true)" style="width:100%;height:38px;font-size:12px;font-weight:700;"><i class="fas fa-rotate"></i> Pune cifrele obișnuite</button></div>
+        </div>
+        <div id="edit-inc-caroserie">
+          <div class="inc-sec">Caroseria (interior, în metri)</div>
+          <div class="inc-g">
+            <div class="form-group"><label>Lungime</label><input type="number" step="0.01" id="edit-inc-lungime"></div>
+            <div class="form-group"><label>Lățime</label><input type="number" step="0.01" id="edit-inc-latime"></div>
+            <div class="form-group"><label>Înălțime</label><input type="number" step="0.01" id="edit-inc-inaltime"></div>
+          </div>
+        </div>
+        <div class="inc-sec">Axele (în metri)</div>
+        <div class="inc-g">
+          <div class="form-group"><label>Ampatament</label><input type="number" step="0.01" id="edit-inc-ampatament"></div>
+          <div class="form-group" id="edit-inc-axa-caroserie-g"><label>De la axa față la caroserie</label><input type="number" step="0.01" id="edit-inc-axa-caroserie"></div>
+          <div class="form-group" id="edit-inc-sa-axa-g"><label>Șaua în fața axei motoare</label><input type="number" step="0.01" id="edit-inc-sa-axa"></div>
+        </div>
+        <div class="inc-sec">Tara pe axe (kg)</div>
+        <div class="inc-g">
+          <div class="form-group"><label>Pe axa față</label><input type="number" id="edit-inc-tara-fata"></div>
+          <div class="form-group"><label>Pe axa din spate</label><input type="number" id="edit-inc-tara-spate"></div>
+        </div>
+        <div id="edit-inc-remorca-g">
+          <div class="inc-sec" id="edit-inc-remorca-et">Semiremorca obișnuită</div>
+          <div class="form-group" style="margin-bottom:0;"><select id="edit-inc-remorca"></select></div>
+          <div class="inc-sub" id="edit-inc-remorca-sub"></div>
+        </div>
+        <div class="inc-sub" style="margin-top:14px;">Sarcina utilă se scrie în „Detalii vehicul”; limitele pe axe, în „Config Camion”.</div>
+      </div>
+
       <!-- Tab: Tank Calibration -->
       <div id="edit-tab-calibration" class="edit-tab-content" style="display:none;">
         <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
@@ -918,6 +964,59 @@
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
         <i class="fas fa-save"></i> Salveaza
       </button>
+    </div>
+  </div>
+
+  <!-- Semiremorcă / remorcă (simulatorul de încărcare, Robert 12.10). Peste lista de vehicule, deci deasupra ei (z-index). -->
+  <div id="rem-modal" class="modal-overlay" style="z-index:2100;">
+    <div class="modal" style="width:620px;max-width:95vw;max-height:92vh;overflow-y:auto;">
+      <style>
+        #rem-modal .rem-g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+        #rem-modal .rem-g .form-group{margin-bottom:0;}
+        #rem-modal .rem-sec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--text-secondary);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+        #rem-modal .rem-nota{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.4;}
+        #rem-modal .rem-err{display:none;margin-top:12px;padding:9px 12px;border-radius:8px;font-size:12.5px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);}
+        body:not(.dark) #rem-modal .rem-err{color:#b91c1c;}
+        #rem-modal .rem-bara{display:flex;gap:8px;margin-top:16px;align-items:center;}
+        #rem-modal .rem-bara .btn-sm{height:40px;padding:0 14px;font-size:12.5px;font-weight:700;}
+        @media (max-width: 480px){ #rem-modal .rem-g{grid-template-columns:1fr 1fr;} }
+      </style>
+      <h2>
+        <span><i class="fas fa-trailer" style="margin-right:8px;color:var(--text-secondary);"></i> <span id="rem-titlu">Semiremorcă</span></span>
+        <button class="close-btn" onclick="remInchide()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <input type="hidden" id="rem-id">
+      <div class="form-group" id="rem-co-g" style="display:none;"><label>Firma</label><select id="rem-co"></select></div>
+      <div class="rem-g" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Ce este</label><select id="rem-fel" onchange="remFelSchimbat()"></select></div>
+        <div class="form-group"><label>Tipul</label><select id="rem-tip" onchange="remTipSchimbat()"></select></div>
+        <div class="form-group"><label>Nr. înmatriculare *</label><input type="text" id="rem-plate" style="text-transform:uppercase;" maxlength="20"></div>
+        <div class="form-group"><label>Marcă / model</label><input type="text" id="rem-model" maxlength="80" placeholder="ex: Schmitz S.CS"></div>
+      </div>
+      <div class="rem-nota" id="rem-cuplare"></div>
+      <div class="rem-sec">Spațiul de încărcare (interior, în metri)</div>
+      <div class="rem-g">
+        <div class="form-group"><label>Lungime *</label><input type="number" step="0.01" id="rem-lungime"></div>
+        <div class="form-group"><label>Lățime *</label><input type="number" step="0.01" id="rem-latime"></div>
+        <div class="form-group"><label>Înălțime *</label><input type="number" step="0.01" id="rem-inaltime"></div>
+      </div>
+      <div class="rem-sec">Greutăți și axe</div>
+      <div class="rem-g">
+        <div class="form-group"><label>Sarcină utilă (kg)</label><input type="number" id="rem-sarcina"></div>
+        <div class="form-group"><label>Tara (kg)</label><input type="number" id="rem-tara"></div>
+        <div class="form-group"><label>Număr de axe</label><input type="number" id="rem-axe" min="1" max="5"></div>
+        <div class="form-group"><label id="rem-pivot-et">De la pivot la axe (m)</label><input type="number" step="0.01" id="rem-pivot"></div>
+        <div class="form-group" id="rem-axafata-g"><label>Până la axa față (m)</label><input type="number" step="0.01" id="rem-axafata"></div>
+        <div class="form-group"><label>Limita pe axe (kg)</label><input type="number" id="rem-limita"></div>
+      </div>
+      <div class="form-group" style="margin-top:12px;"><label>Note</label><textarea id="rem-note" rows="2" style="width:100%;resize:vertical;" maxlength="500"></textarea></div>
+      <div class="rem-err" id="rem-err"></div>
+      <div class="rem-bara">
+        <button type="button" class="btn-sm btn-danger" id="rem-sterge" onclick="remSterge()" style="display:none;"><i class="fas fa-trash"></i> Șterge</button>
+        <span style="flex:1;"></span>
+        <button type="button" class="btn-sm" onclick="remInchide()">Renunță</button>
+        <button type="button" class="btn btn-primary" id="rem-salveaza" onclick="remSalveaza()" style="width:auto;padding:0 18px;height:40px;"><i class="fas fa-save"></i> Salvează</button>
+      </div>
     </div>
   </div>
 
@@ -2036,7 +2135,7 @@ const pozitii = await r.json();</code></pre>
           #atab-vehicles .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
           #atab-vehicles .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
           #veh-search { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-family: inherit; font-size: 13px; }
-          #veh-co-filter { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); padding: 0 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; }
+          #veh-co-filter, #veh-fel-filter { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); padding: 0 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; }
           #veh-count { font-size: 12px; font-weight: 800; color: var(--veh-ink); background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
 
           /* Cap de coloane + rânduri */
@@ -2059,6 +2158,9 @@ const pozitii = await r.json();</code></pre>
           .veh-row:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(15, 23, 42, .08); }
           .veh-pic { width: 46px; height: 38px; border-radius: 9px; background: rgba(63, 224, 125, .12); display: flex; align-items: center; justify-content: center; color: var(--veh-ink); }
           .veh-row.st-off .veh-pic { background: var(--bg-dark); color: var(--text-muted); }
+          /* Semiremorcă / remorcă fără aparat GPS: n-are „semnal", deci nici culoarea lui — muchia neutră. */
+          .veh-row.st-rem { border-left-color: var(--text-muted); }
+          .veh-row.st-rem .veh-pic { background: var(--bg-dark); color: var(--text-secondary); }
           .veh-nm { font-weight: 800; font-size: 13.5px; line-height: 1.25; color: var(--text-primary); }
           .veh-pl { font-size: 11.5px; font-weight: 800; letter-spacing: .5px; color: var(--veh-ink); }
           /* Fără asta, celulele de grilă refuză să coboare sub lățimea conținutului (min-width: auto
@@ -2079,6 +2181,7 @@ const pozitii = await r.json();</code></pre>
             </div>
             <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" class="toolbar-spacer">
             <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie"></select>
+            <select id="veh-fel-filter" onchange="renderVehicles()" title="Arată doar un fel de vehicul"></select>
             <span id="veh-count" class="toolbar-count"></span>
             <span class="tb-lbl">Exportă:</span>
             <span class="exp-grp"><button class="btn-sm" onclick="exportVehicles('csv')" title="CSV brut, cu toate câmpurile — se poate edita și re-importa"><i class="fas fa-file-csv"></i> CSV</button>
@@ -2088,6 +2191,9 @@ const pozitii = await r.json();</code></pre>
                  dar nu adaugă și nu importă aparate. Serverul refuză oricum — astea doar nu mai promit. -->
             <button class="btn-sm super-only" onclick="downloadTemplate()" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
             <button class="btn-sm super-only" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
+            <!-- Semiremorcile și remorcile (simulatorul de încărcare, 12.10): le trece CLIENTUL — n-au aparat GPS de-al nostru. -->
+            <button class="btn-sm" id="veh-add-semi" style="display:none;" onclick="remDeschide(null, 'semiremorca')" title="Trece o semiremorcă în flotă"><i class="fas fa-trailer"></i> Semiremorcă</button>
+            <button class="btn-sm" id="veh-add-rem" style="display:none;" onclick="remDeschide(null, 'remorca')" title="Trece o remorcă cu proțap în flotă"><i class="fas fa-trailer"></i> Remorcă</button>
             <button class="btn-sm btn-primary super-only" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
             <input type="file" id="veh-import-file" accept=".csv,text/csv" style="display:none;" onchange="importVehiclesFile(this)">
           </div>
@@ -6685,7 +6791,28 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Vehicule (management) ───
-    let vehAll = [], vehScope = 'active', vehGroups = {}, vehDrivers = {};
+    let vehAll = [], vehScope = 'active', vehGroups = {}, vehDrivers = {}, vehRemorci = [];
+    // ── începe „felul vehiculului" ──
+    // Filtrul „ce fel": felurile se strâng după pictograma din listă (markerCategory), ca să nu avem a doua listă de
+    // tipuri. Semiremorcile și remorcile fără GPS (simulatorul de încărcare) au felul lor; cele cu aparat — „Remorci".
+    // Oglindit pe telefon (mobile/src/lib/incarcare.ts → felulVehiculului), legat prin verify_flota_incarcare.js.
+    const _VEH_FELURI = [
+      ['auto', 'Autoturisme', ['car', 'electric', 'phev', 'hybrid', 'cng', 'ambulance', 'motorcycle']],
+      ['duba', 'Dube', ['van']],
+      ['camion', 'Camioane', ['truck', 'tir', 'mixer']],
+      ['autotractor', 'Autotractoare', ['autotractor']],
+      ['semiremorca', 'Semiremorci', []],
+      ['remorca', 'Remorci', ['trailer', 'trailer_tech']],
+      ['utilaj', 'Utilaje și tractoare', ['utilaj', 'tractor', 'excavator', 'forklift', 'combine', 'generator']],
+      ['altele', 'Altele', null]
+    ];
+    function _vehFelul(d) {
+      if (d && d._remorca) return d.fel === 'remorca' ? 'remorca' : 'semiremorca';
+      const c = markerCategory(d);
+      const g = _VEH_FELURI.find(function (x) { return x[2] && x[2].indexOf(c) >= 0; });
+      return g ? g[0] : 'altele';
+    }
+    // ── sfârșit „felul vehiculului" ──
     // ─── Companii (cache pentru filtrele super-admin pe Șoferi/Vehicule) ───
     var _adminCompanies = null;
     async function ensureAdminCompanies() {
@@ -6715,6 +6842,16 @@ const pozitii = await r.json();</code></pre>
         vehGroups = {}; (Array.isArray(gr) ? gr : []).forEach(g => vehGroups[g.id] = g.name);
         vehDrivers = {}; (Array.isArray(dr) ? dr : []).forEach(d => vehDrivers[d.id] = (d.name || d.full_name));
       } catch (e) { vehAll = []; }
+      // Semiremorcile și remorcile firmei — doar cu modulul „Simulator încărcare" (serverul refuză oricum fără el).
+      vehRemorci = [];
+      if (window._incModulPornit && window._incModulPornit()) {
+        try {
+          const [rr] = await Promise.all([fetch('/api/remorci').then(r => r.ok ? r.json() : []), _remMeta()]);
+          vehRemorci = Array.isArray(rr) ? rr.map(r => Object.assign({ _remorca: true }, r)) : [];
+        } catch (e) { vehRemorci = []; }
+      }
+      const _poateRem = !!(window._incModulPornit && window._incModulPornit()) && (can('manageFleet') || !!(currentUser && currentUser.isSuper));
+      ['veh-add-semi', 'veh-add-rem'].forEach(id => { const b = document.getElementById(id); if (b) b.style.display = _poateRem ? '' : 'none'; });
       if (currentUser && currentUser.isSuper) { await ensureAdminCompanies(); fillCompanyOptions(document.getElementById('veh-co-filter'), true); }
       renderVehicles();
     }
@@ -6731,12 +6868,27 @@ const pozitii = await r.json();</code></pre>
       const q = (document.getElementById('veh-search').value || '').toLowerCase();
       if (vehScope === 'archived' && !(currentUser && currentUser.isSuper)) vehScope = 'active'; // un cont schimbat pe aceeași pagină
       let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
+      if (vehScope !== 'archived') rows = rows.concat(vehRemorci);   // semiremorcile nu se arhivează: se șterg
       const _coF = document.getElementById('veh-co-filter'); const _fco = (currentUser && currentUser.isSuper && _coF && _coF.value) ? String(_coF.value) : '';
       if (_fco) rows = rows.filter(d => String(d.company_id) === _fco);
-      if (q) rows = rows.filter(d => raCauta(q, d.name, d.plate, d.brand, d.imei));
-      document.getElementById('veh-count').textContent = rows.length + ' vehicule';
+      if (q) rows = rows.filter(d => raCauta(q, d.name, d.plate, d.brand, d.imei, d.model));
+      // Filtrul pe fel: lista se face din ce e pe ecran (după firmă și căutare), cu câte sunt; un fel cu zero nu apare.
+      const _felSel = document.getElementById('veh-fel-filter');
+      if (_felSel) {
+        const nr = {}; rows.forEach(d => { const f = _vehFelul(d); nr[f] = (nr[f] || 0) + 1; });
+        const ales = _felSel.value;
+        _felSel.innerHTML = '<option value="">Toate felurile</option>' + _VEH_FELURI.filter(f => nr[f[0]] || f[0] === ales)
+          .map(f => '<option value="' + f[0] + '">' + f[1] + ' (' + (nr[f[0]] || 0) + ')</option>').join('');
+        _felSel.value = ales;
+        _felSel.style.display = Object.keys(nr).length > 1 || ales ? '' : 'none';   // un singur fel → filtrul n-are ce face
+        if (ales) rows = rows.filter(d => _vehFelul(d) === ales);
+      }
+      const _nSemi = rows.filter(d => d._remorca && d.fel !== 'remorca').length, _nRem = rows.filter(d => d._remorca && d.fel === 'remorca').length;
+      document.getElementById('veh-count').textContent = (rows.length - _nSemi - _nRem) + ' vehicule'
+        + (_nSemi ? ' · ' + _nSemi + (_nSemi === 1 ? ' semiremorcă' : ' semiremorci') : '') + (_nRem ? ' · ' + _nRem + (_nRem === 1 ? ' remorcă' : ' remorci') : '');
       const now = Date.now();
       document.getElementById('veh-rows').innerHTML = rows.map(d => {
+        if (d._remorca) return _remRand(d, esc);
         const lastT = d.last_position_time || d.last_seen;
         const mins = lastT ? (now - new Date(lastT).getTime()) / 60000 : Infinity;
         const archived = d.status === 'archived';
@@ -6765,6 +6917,138 @@ const pozitii = await r.json();</code></pre>
         </div>`;
       }).join('') || '<div class="veh-empty">Niciun vehicul.</div>';
     }
+    // ── începe „semiremorcile din flotă" ──
+    // Semiremorcile și remorcile cu proțap (simulatorul de încărcare, Robert 12.10: „să poți alege din flota pe care o ai
+    // deja"). Tipurile și cifrele obișnuite vin de la server (GET /api/incarcare/meta → incarcare.js); serverul curăță ce
+    // se scrie (curataRemorca) și refuză pe față. Pagina nu socotește nimic.
+    let _remMetaC = null;
+    async function _remMeta() {
+      if (!_remMetaC) { try { const r = await fetch('/api/incarcare/meta'); if (r.ok) _remMetaC = await r.json(); } catch (e) { /* fără meta: fără tipuri */ } }
+      return _remMetaC;
+    }
+    function _remFelEt(fel) { const f = ((_remMetaC && _remMetaC.felRemorca) || []).find(x => x.id === fel); return f ? f.et : (fel === 'remorca' ? 'Remorcă cu proțap' : 'Semiremorcă'); }
+    function _remTipuri(fel) { return ((_remMetaC && _remMetaC.tipuriRemorca) || {})[fel] || []; }
+    function _remCifra(n) { return n == null || n === '' ? '' : Number(n).toLocaleString('ro-RO', { maximumFractionDigits: 2 }); }
+    // CURATE, oglindite pe telefon (lib/incarcare.ts → remorcaText / remorcaObisnuite), legate prin verify_flota_incarcare.js.
+    // Rândul de sub număr: „Semiremorcă · Mega · 13,62 × 2,48 × 3 m".
+    function _remRandText(r, meta) {
+      const fel = ((meta && meta.felRemorca) || []).find(x => x.id === r.fel);
+      const tip = (((meta && meta.tipuriRemorca) || {})[r.fel] || []).find(t => t.id === r.tip);
+      const dim = (r.lungime_m && r.latime_m && r.inaltime_m) ? _remCifra(r.lungime_m) + ' × ' + _remCifra(r.latime_m) + ' × ' + _remCifra(r.inaltime_m) + ' m' : '';
+      return [fel ? fel.et : (r.fel === 'remorca' ? 'Remorcă cu proțap' : 'Semiremorcă'), tip ? tip.et : (r.model || ''), dim].filter(Boolean).join(' · ');
+    }
+    // Tipul ales → cifrele lui obișnuite, peste valori (text, ca în căsuțe). `peste` = toate; altfel doar căsuțele goale.
+    const _REM_DIN_TIP = [['lungime_m', 'lungime'], ['latime_m', 'latime'], ['inaltime_m', 'inaltime'], ['sarcina_kg', 'sarcina'], ['tara_kg', 'tara'],
+      ['nr_axe', 'axe'], ['pivot_axe_m', 'pivotAxe'], ['axa_fata_m', 'axaFata'], ['limita_axe_kg', 'limitaAxe']];
+    function _remObisnuite(val, fel, tip, peste, meta) {
+      const out = Object.assign({}, val);
+      const t = (((meta && meta.tipuriRemorca) || {})[fel] || []).find(x => x.id === tip);
+      if (!t) return out;
+      _REM_DIN_TIP.forEach(function (p) {
+        const x = p[1] === 'pivotAxe' ? (t.pivotAxe != null ? t.pivotAxe : t.ampatament) : t[p[1]];
+        if (x != null && (peste || out[p[0]] === '' || out[p[0]] == null)) out[p[0]] = String(x);
+      });
+      return out;
+    }
+    // Rândul din lista de vehicule — aceleași coloane ca un vehicul, fără semnal (n-are aparat de-al nostru).
+    function _remRand(r, esc) {
+      const sub = _remRandText(r, _remMetaC);
+      const poate = can('manageFleet') || !!(currentUser && currentUser.isSuper);
+      return `<div class="veh-row st-rem" title="${esc(_remFelEt(r.fel))} — fără aparat GPS">
+          <div class="veh-c-pic"><span class="veh-pic">${vehicleSilhouetteSVG('trailer', 'currentColor', 30)}</span></div>
+          <div class="veh-c-veh"><div class="veh-nm">${esc(r.plate)}</div><div class="veh-sub">${esc(sub)}</div></div>
+          <div class="veh-c-grp veh-cel">—</div>
+          <div class="veh-c-drv veh-cel">—</div>
+          <div class="veh-c-last"><div class="veh-cel">fără aparat GPS</div><div class="veh-sub">${r.sarcina_kg ? esc(_remCifra(r.sarcina_kg)) + ' kg sarcină utilă' : ''}</div></div>
+          <div class="veh-c-co veh-cel veh-co-col">${esc(r.company_name || '')}</div>
+          <div class="veh-c-act veh-act">
+            ${poate ? `<button class="btn-sm" title="Editează" onclick="remDeschide(${Number(r.id)})"><i class="fas fa-pen"></i></button>` : ''}
+          </div>
+        </div>`;
+    }
+    function _remErr(t) { const e = document.getElementById('rem-err'); if (!e) return; e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; }
+    function _remArataFel() {
+      const fel = document.getElementById('rem-fel').value;
+      const f = ((_remMetaC && _remMetaC.felRemorca) || []).find(x => x.id === fel);
+      const et = f ? f.et : 'Semiremorcă';
+      document.getElementById('rem-titlu').textContent = document.getElementById('rem-id').value ? et : 'Adaugă ' + et.charAt(0).toLowerCase() + et.slice(1);
+      document.getElementById('rem-cuplare').textContent = f ? 'Se cuplează ' + f.cuplare + '.' : '';
+      document.getElementById('rem-pivot-et').textContent = fel === 'remorca' ? 'Ampatament (m)' : 'De la pivot la axe (m)';
+      document.getElementById('rem-axafata-g').style.display = fel === 'remorca' ? '' : 'none';
+    }
+    function _remUmpleTipuri(ales) {
+      const fel = document.getElementById('rem-fel').value;
+      const sel = document.getElementById('rem-tip');
+      sel.innerHTML = _remTipuri(fel).map(t => '<option value="' + t.id + '">' + _docEscV(t.et) + '</option>').join('') + '<option value="">Altul (scriu eu)</option>';
+      sel.value = ales != null ? ales : (_remTipuri(fel)[0] ? _remTipuri(fel)[0].id : '');
+    }
+    function _docEscV(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    // Căsuțele ferestrei ↔ coloanele rândului
+    const _REM_CASUTE = { lungime_m: 'rem-lungime', latime_m: 'rem-latime', inaltime_m: 'rem-inaltime', sarcina_kg: 'rem-sarcina', tara_kg: 'rem-tara',
+      nr_axe: 'rem-axe', pivot_axe_m: 'rem-pivot', axa_fata_m: 'rem-axafata', limita_axe_kg: 'rem-limita' };
+    // Tipul ales → cifrele obișnuite. La o semiremorcă NOUĂ se pun peste tot; la una salvată, doar în căsuțele goale.
+    function _remPuneTip(peste) {
+      const val = {}; Object.keys(_REM_CASUTE).forEach(k => { val[k] = document.getElementById(_REM_CASUTE[k]).value; });
+      const nou = _remObisnuite(val, document.getElementById('rem-fel').value, document.getElementById('rem-tip').value, peste, _remMetaC);
+      Object.keys(_REM_CASUTE).forEach(k => { document.getElementById(_REM_CASUTE[k]).value = nou[k] == null ? '' : nou[k]; });
+    }
+    window.remFelSchimbat = function () { _remArataFel(); _remUmpleTipuri(null); _remPuneTip(!document.getElementById('rem-id').value); };
+    window.remTipSchimbat = function () { _remPuneTip(!document.getElementById('rem-id').value); };
+    window.remDeschide = async function (id, fel) {
+      await _remMeta();
+      const r = id != null ? vehRemorci.find(x => Number(x.id) === Number(id)) : null;
+      if (id != null && !r) return;
+      _remErr('');
+      document.getElementById('rem-id').value = r ? r.id : '';
+      document.getElementById('rem-fel').innerHTML = ((_remMetaC && _remMetaC.felRemorca) || []).map(f => '<option value="' + f.id + '">' + _docEscV(f.et) + '</option>').join('');
+      document.getElementById('rem-fel').value = r ? r.fel : (fel || 'semiremorca');
+      _remArataFel();
+      _remUmpleTipuri(r ? (r.tip || '') : null);
+      const set = (k, v) => { const el = document.getElementById(k); if (el) el.value = v == null ? '' : v; };
+      set('rem-plate', r && r.plate); set('rem-model', r && r.model);
+      set('rem-lungime', r && r.lungime_m); set('rem-latime', r && r.latime_m); set('rem-inaltime', r && r.inaltime_m);
+      set('rem-sarcina', r && r.sarcina_kg); set('rem-tara', r && r.tara_kg); set('rem-axe', r && r.nr_axe);
+      set('rem-pivot', r && r.pivot_axe_m); set('rem-axafata', r && r.axa_fata_m); set('rem-limita', r && r.limita_axe_kg); set('rem-note', r && r.note);
+      if (!r) _remPuneTip(true);
+      // Firma: doar noi o alegem (clientul scrie în firma lui). Pe o semiremorcă salvată nu se mută.
+      const coG = document.getElementById('rem-co-g'), super_ = !!(currentUser && currentUser.isSuper);
+      coG.style.display = super_ && !r ? '' : 'none';
+      if (super_ && !r) {
+        await ensureAdminCompanies(); const sel = document.getElementById('rem-co'); fillCompanyOptions(sel, false);
+        const f = document.getElementById('veh-co-filter'); if (f && f.value) sel.value = f.value;
+      }
+      document.getElementById('rem-sterge').style.display = r ? '' : 'none';
+      document.getElementById('rem-modal').classList.add('visible');
+    };
+    window.remInchide = function () { document.getElementById('rem-modal').classList.remove('visible'); };
+    window.remSalveaza = async function () {
+      const id = document.getElementById('rem-id').value;
+      const v = k => document.getElementById(k).value;
+      const corp = { fel: v('rem-fel'), tip: v('rem-tip') || null, plate: v('rem-plate'), model: v('rem-model'),
+        lungime_m: v('rem-lungime'), latime_m: v('rem-latime'), inaltime_m: v('rem-inaltime'), sarcina_kg: v('rem-sarcina'), tara_kg: v('rem-tara'),
+        nr_axe: v('rem-axe'), pivot_axe_m: v('rem-pivot'), axa_fata_m: v('rem-axafata'), limita_axe_kg: v('rem-limita'), note: v('rem-note') };
+      if (!id && currentUser && currentUser.isSuper) corp.company_id = v('rem-co') || null;
+      const b = document.getElementById('rem-salveaza'); b.disabled = true;
+      try {
+        const r = await fetch('/api/remorci' + (id ? '/' + encodeURIComponent(id) : ''), { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corp) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { _remErr(j.error || 'Nu s-a putut salva.'); return; }
+        remInchide();
+        if (typeof window.raxToast === 'function') window.raxToast(id ? 'Salvat.' : _remFelEt(corp.fel) + ' adăugată în flotă.');
+        await loadVehicles();
+      } catch (e) { _remErr('Nu s-a putut salva — verifică legătura.'); }
+      finally { b.disabled = false; }
+    };
+    window.remSterge = async function () {
+      const id = document.getElementById('rem-id').value; if (!id) return;
+      const r = vehRemorci.find(x => String(x.id) === String(id));
+      if (!await raConfirm('Ștergi ' + _remFelEt(r && r.fel).toLowerCase() + ' ' + ((r && r.plate) || '') + ' din flotă? Vehiculele care o aveau ca „obișnuită" rămân fără ea.')) return;
+      const x = await fetch('/api/remorci/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!x.ok) { const j = await x.json().catch(() => ({})); _remErr(j.error || 'Nu s-a putut șterge.'); return; }
+      remInchide(); await loadVehicles();
+    };
+    // ── sfârșit „semiremorcile din flotă" ──
+
     async function createVehicle() {
       const imei = (document.getElementById('veh-new-imei').value || '').trim();
       if (!/^\d{10,20}$/.test(imei)) { alert('IMEI invalid (10–20 cifre)'); return; }
@@ -17384,6 +17668,125 @@ const pozitii = await r.json();</code></pre>
     // setare, și nu trebuie să se transforme tăcut în comportamentul obișnuit.
     let _taburiToate = false;
 
+    // ── începe „fila Încărcare" ──
+    // Fila „Încărcare" din fișa vehiculului (simulatorul de încărcare, Robert 12.10). Cifrele obișnuite (felurile de
+    // camion, tipurile de semiremorcă) vin de la server — GET /api/incarcare/meta, din incarcare.js; pagina NU le scrie.
+    // Fila se vede când firma are modulul „Simulator încărcare" și vehiculul cară marfă (`tipuriCuMarfa`, aceeași listă
+    // care aprinde modulul), sau când are deja felul ales. Serverul curăță cifrele (incarcare.curataCaroserie).
+    // Regula stă în trei funcții CURATE (_incVizibile, _incObisnuite, _incDeTrimis), oglindite pe telefon în
+    // mobile/src/lib/incarcare.ts și legate prin verify_flota_incarcare.js, care le rulează pe amândouă.
+    let _incMeta = null, _incRemorci = [];
+    async function _incIncarca() {
+      if (!_incMeta) { try { const r = await fetch('/api/incarcare/meta'); if (r.ok) _incMeta = await r.json(); } catch (e) { /* fără meta, fila tace */ } }
+      return _incMeta;
+    }
+    window._incModulPornit = function () {
+      if (!currentUser) return false;
+      if (currentUser.isSuper || currentUser.role === 'superadmin') return true;
+      return !!(currentUser.features && currentUser.features.incarcare === true);
+    };
+    // coloana din bază ↔ cifra obișnuită din meta; căsuța de pe ecran = 'edit-' + coloana cu liniuțe
+    const _INC_CHEI = [['inc_lungime', 'lungime'], ['inc_latime', 'latime'], ['inc_inaltime', 'inaltime'], ['inc_ampatament', 'ampatament'],
+      ['inc_axa_caroserie', 'axaCaroserie'], ['inc_sa_axa', 'sa'], ['inc_tara_fata', 'taraFata'], ['inc_tara_spate', 'taraSpate']];
+    const _INC_CAROSERIE = ['inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_axa_caroserie'];
+    function _incFelDin(meta, id) { return ((meta && meta.feluriVehicul) || []).find(function (f) { return f.id === id; }) || null; }
+    // Ce are sens felul ales: autotractorul n-are caroserie (are șa); restul n-au șa. Semiremorci la autotractor,
+    // remorci cu proțap la restul.
+    function _incVizibile(fel, meta) {
+      const f = _incFelDin(meta, fel), tractor = fel === 'autotractor';
+      return { caroserie: !f || f.caroserie !== false, sa: tractor, felRemorca: tractor ? 'semiremorca' : 'remorca' };
+    }
+    // Cifrele obișnuite ale felului peste valori (text, ca în căsuțe). Se schimbă căsuțele goale și cele rămase cu cifra
+    // felului DINAINTE (neatinse de om); `peste` = toate. Sarcina utilă (în „Detalii vehicul") — doar goală sau neatinsă.
+    function _incObisnuite(val, fel, felVechi, peste, meta) {
+      const out = Object.assign({}, val), f = _incFelDin(meta, fel), v = _incFelDin(meta, felVechi);
+      if (!f) return out;
+      const neatins = function (cur, vechi) { return cur === '' || cur == null || (vechi != null && Number(cur) === Number(vechi)); };
+      _INC_CHEI.forEach(function (c) {
+        if (f[c[1]] == null) return;
+        if (peste || neatins(out[c[0]], v ? v[c[1]] : null)) out[c[0]] = String(f[c[1]]);
+      });
+      if (f.sarcina != null && neatins(out.payload, v ? v.sarcina : null)) out.payload = String(f.sarcina);
+      return out;
+    }
+    // Ce pleacă la salvare (fără modul nu se cheamă). Câmpurile care nu se potrivesc felului pleacă goale.
+    function _incDeTrimis(val, fel, meta) {
+      const vz = _incVizibile(fel, meta), out = { inc_fel: fel || null };
+      _INC_CHEI.forEach(function (c) {
+        let x = val[c[0]] == null ? '' : String(val[c[0]]).trim();
+        if ((c[0] === 'inc_sa_axa' && !vz.sa) || (_INC_CAROSERIE.indexOf(c[0]) >= 0 && !vz.caroserie)) x = '';
+        out[c[0]] = x === '' ? null : x;
+      });
+      out.inc_remorca_id = val.inc_remorca_id ? String(val.inc_remorca_id) : null;
+      return out;
+    }
+    // ── lipirea de ecran (DOM) ──
+    const _incId = function (col) { return 'edit-' + col.replace(/_/g, '-'); };
+    function _incCitesteEcran() {
+      const val = {};
+      _INC_CHEI.forEach(function (c) { const el = document.getElementById(_incId(c[0])); val[c[0]] = el ? el.value : ''; });
+      const sar = document.getElementById('edit-payload'); val.payload = sar ? sar.value : '';
+      val.inc_remorca_id = (document.getElementById('edit-inc-remorca') || {}).value || '';
+      return val;
+    }
+    function _incScrieEcran(val) {
+      _INC_CHEI.forEach(function (c) { const el = document.getElementById(_incId(c[0])); if (el && val[c[0]] !== undefined) el.value = val[c[0]] == null ? '' : val[c[0]]; });
+      const sar = document.getElementById('edit-payload'); if (sar && val.payload !== undefined) sar.value = val.payload == null ? '' : val.payload;
+    }
+    async function incUmple(dev) {
+      const m = await _incIncarca();
+      const sel = document.getElementById('edit-inc-fel'); if (!sel) return;
+      sel.innerHTML = '<option value="">— Alege —</option>' + ((m && m.feluriVehicul) || []).map(function (f) { return '<option value="' + _docEsc(f.id) + '">' + _docEsc(f.et) + '</option>'; }).join('');
+      sel.value = (dev && dev.inc_fel) || '';
+      sel.dataset.vechi = sel.value;
+      const val = {};
+      _INC_CHEI.forEach(function (c) { val[c[0]] = (dev && dev[c[0]] != null && dev[c[0]] !== '') ? String(Number(dev[c[0]])) : ''; });
+      _incScrieEcran(val);
+      _incRemorci = [];
+      if (window._incModulPornit()) {
+        try {
+          const q = (currentUser && currentUser.isSuper && dev && dev.company_id) ? '?company_id=' + encodeURIComponent(dev.company_id) : '';
+          const r = await fetch('/api/remorci' + q);
+          if (r.ok) { const j = await r.json(); _incRemorci = Array.isArray(j) ? j : []; }
+        } catch (e) { _incRemorci = []; }
+      }
+      _incArata((dev && dev.inc_remorca_id) || null);
+    }
+    function _incArata(remorcaAleasa) {
+      const fel = (document.getElementById('edit-inc-fel') || {}).value || '';
+      const vz = _incVizibile(fel, _incMeta), tractor = vz.sa;
+      const vezi = function (id, da) { const el = document.getElementById(id); if (el) el.style.display = da ? '' : 'none'; };
+      vezi('edit-inc-caroserie', vz.caroserie);
+      vezi('edit-inc-axa-caroserie-g', vz.caroserie);
+      vezi('edit-inc-sa-axa-g', vz.sa);
+      const sel = document.getElementById('edit-inc-remorca'); if (!sel) return;
+      const pastrat = remorcaAleasa != null ? String(remorcaAleasa) : sel.value;
+      const lista = _incRemorci.filter(function (r) { return r.fel === vz.felRemorca; });
+      const et = document.getElementById('edit-inc-remorca-et'); if (et) et.textContent = tractor ? 'Semiremorca obișnuită' : 'Remorca obișnuită (cu proțap)';
+      sel.innerHTML = '<option value="">— Fără —</option>' + lista.map(function (r) { return '<option value="' + r.id + '">' + _docEsc(r.plate + (r.model ? ' · ' + r.model : '')) + '</option>'; }).join('');
+      sel.value = lista.some(function (r) { return String(r.id) === pastrat; }) ? pastrat : '';
+      const sub = document.getElementById('edit-inc-remorca-sub');
+      if (sub) sub.textContent = lista.length ? 'Simulatorul o propune prima când alegi vehiculul ăsta.'
+        : (tractor ? 'Firma n-are încă semiremorci trecute — le adaugi din Administrare → Vehicule.' : 'Firma n-are remorci cu proțap trecute — le adaugi din Administrare → Vehicule.');
+      vezi('edit-inc-remorca-g', !!fel && window._incModulPornit());
+    }
+    window.incFelSchimbat = function () {
+      const sel = document.getElementById('edit-inc-fel');
+      const vechi = sel.dataset.vechi || '';
+      sel.dataset.vechi = sel.value;
+      _incArata(null);
+      _incScrieEcran(_incObisnuite(_incCitesteEcran(), sel.value, vechi, false, _incMeta));
+    };
+    window.incPuneObisnuite = function () {
+      const fel = (document.getElementById('edit-inc-fel') || {}).value || '';
+      _incScrieEcran(_incObisnuite(_incCitesteEcran(), fel, '', true, _incMeta));
+    };
+    function incCulege() {
+      if (!window._incModulPornit()) return {};
+      return _incDeTrimis(_incCitesteEcran(), (document.getElementById('edit-inc-fel') || {}).value || '', _incMeta);
+    }
+    // ── sfârșit „fila Încărcare" ──
+
     async function aplicaVizibilitateTaburi(dev, areSonde) {
       if (areSonde !== undefined) _areSondeCurent = !!areSonde;
       // Refolosim încărcătorul de preferințe care există deja (cu cache) — nu adăugăm un al doilea
@@ -17397,6 +17800,11 @@ const pozitii = await r.json();</code></pre>
       // că exact cine a cerut curățenia n-o vedea niciodată.
       const arataCamion = (cfg.tab_camion !== false) && (_taburiToate || TIPURI_CU_AXE.indexOf(tip) >= 0);
       const arataSonde = (cfg.tab_sonde !== false) && (_taburiToate || _areSondeCurent);
+      // Fila „Încărcare": modulul firmei + un vehicul care cară marfă (lista serverului) sau cu felul deja ales.
+      const incPornit = window._incModulPornit && window._incModulPornit();
+      if (incPornit) await _incIncarca();
+      const arataInc = !!incPornit && (_taburiToate || ((_incMeta && _incMeta.tipuriCuMarfa) || []).indexOf(tip) >= 0
+        || !!((document.getElementById('edit-inc-fel') || {}).value));
       const pune = (numeTab, vizibil) => {
         const b = document.querySelector('.edit-tab[data-tab="' + numeTab + '"]');
         if (b) b.style.display = vizibil ? '' : 'none';
@@ -17404,10 +17812,11 @@ const pozitii = await r.json();</code></pre>
       pune('truck', arataCamion);
       pune('calibration', arataSonde);
       pune('sensors', arataSonde);
+      pune('incarcare', arataInc);
 
       // Butonul „arată tot" apare DOAR la super-admin și DOAR când chiar există file ascunse —
       // altfel ar fi un buton care nu face nimic, adică zgomot.
-      const ascunse = (!arataCamion) || (!arataSonde);
+      const ascunse = (!arataCamion) || (!arataSonde) || (!!incPornit && !arataInc);
       let b = document.getElementById('edit-tabs-all');
       if (currentUser && currentUser.isSuper && ascunse && !_taburiToate) {
         if (!b) {
@@ -17894,6 +18303,7 @@ const pozitii = await r.json();</code></pre>
        'edit-axle1', 'edit-axle2', 'edit-axle3', 'edit-axle4', 'edit-axle5'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      { const _if = document.getElementById('edit-inc-fel'); if (_if) _if.value = ''; }   // fila „Încărcare" a mașinii dinainte
 
       try {
         const res = await fetch('/api/devices/' + imei + '/full');
@@ -17937,6 +18347,7 @@ const pozitii = await r.json();</code></pre>
           setIconPicker(dev.icon || iconFromType(dev.vehicle_type) || 'car'); setv('edit-notes', dev.notes);
           if (dev.color) setv('edit-color', dev.color);
           await populateEditGroupsDrivers(dev.group_id, dev.driver_id);
+          await incUmple(dev);   // fila „Încărcare" — înainte de aplicaVizibilitateTaburi, care se uită la felul ales
 
           // Truck config
           document.getElementById('edit-tare').value = dev.tare_weight || '';
@@ -18005,6 +18416,7 @@ const pozitii = await r.json();</code></pre>
         color: (document.getElementById('edit-color').value || null),
         notes: strOrNull('edit-notes')
       };
+      Object.assign(details, incCulege());   // fila „Încărcare" (doar cu modulul pornit)
       const res = await fetch('/api/devices/' + imei + '/details', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -18012,7 +18424,9 @@ const pozitii = await r.json();</code></pre>
       });
 
       if (!res.ok) {
-        alert('Eroare la salvare');
+        // Serverul spune ce nu e bine (ex. „Lungimea: între 1 și 20") — se arată, nu doar „eroare".
+        let _e = {}; try { _e = await res.json(); } catch (e) { /* fără corp */ }
+        alert(_e.error || 'Eroare la salvare');
         return;
       }
 

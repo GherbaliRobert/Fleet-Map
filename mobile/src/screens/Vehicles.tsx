@@ -15,6 +15,7 @@ import './vehicles.css';
 import './detail.css'; // .sheet-ov / .sheet
 import '../components/locFlota.css';
 import { nrDe } from '../lib/numar';
+import { FELURI_FILTRU, felulVehiculului, modulIncarcare } from '../lib/incarcare';
 
 const dupaNume = (a: Position, b: Position) => (a.name || a.imei).localeCompare(b.name || b.imei);
 
@@ -33,6 +34,8 @@ export function Vehicles() {
   const [alegere, setAlegere] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState('');
+  // Filtrul pe fel (camioane, autotractoare, dube…) — aceleași grupe ca pe web (lib/incarcare.ts = oglinda paginii).
+  const [fel, setFel] = useState('');
   useEffect(() => {
     if (dinAdresa) { setFilter(dinAdresa); setShowMap(true); }
   }, [statusParam]);
@@ -48,10 +51,16 @@ export function Vehicles() {
 
   // Ordinea: alegerea (bifele) → căutarea → cadranul. „Dintre cele alese, cele în mișcare".
   // Pe telefon cadranul și căutarea filtrează și harta — dar amândouă rămân mereu la vedere, deasupra ei.
-  const filtered = alese
-    .filter((v) => raCauta(q, v.name, v.plate, v.imei))
+  const cautate = alese.filter((v) => raCauta(q, v.name, v.plate, v.imei));
+  // Felurile se numără din ce vezi (alegere + căutare); un fel cu zero nu apare, iar cu un singur fel filtrul tace.
+  const nrFel: Record<string, number> = {};
+  cautate.forEach((v) => { const f = felulVehiculului(v); nrFel[f] = (nrFel[f] || 0) + 1; });
+  const feluriVazute = FELURI_FILTRU.filter((f) => nrFel[f[0]] || f[0] === fel);
+  const filtered = cautate
+    .filter((v) => !fel || felulVehiculului(v) === fel)
     .filter((v) => potrivesteStarea(v, filter, off))
     .sort(dupaNume);
+  const cuRemorci = modulIncarcare(me.value);
 
   // Exportul listei de vehicule: ca pe web (Management → Vehicule), doar pentru cine poate modifica flota
   // și n-are ecranul „Vehicule" tăiat din rol.
@@ -142,6 +151,25 @@ export function Vehicles() {
           </button>
         ))}
       </div>
+
+      {(feluriVazute.length > 1 || fel || cuRemorci) && (
+        <div class="vfel" role="group" aria-label="Felul vehiculului">
+          {(feluriVazute.length > 1 || fel) && <>
+            <button class={'vfel-b' + (!fel ? ' on' : '')} onClick={() => setFel('')}>Toate</button>
+            {feluriVazute.map((f) => (
+              <button class={'vfel-b' + (fel === f[0] ? ' on' : '')} onClick={() => setFel(fel === f[0] ? '' : f[0])}>
+                {f[1]} <span class="n">{nrFel[f[0]] || 0}</span>
+              </button>
+            ))}
+          </>}
+          {/* Semiremorcile și remorcile fără GPS n-au loc pe harta vie: au ecranul lor (pe web, rânduri în Vehicule). */}
+          {cuRemorci && (
+            <button class="vfel-b rem" onClick={() => loc.route('/remorci')}>
+              <Icon name="truck" size={14} /> Semiremorci și remorci <Icon name="chevronR" size={13} />
+            </button>
+          )}
+        </div>
+      )}
 
       {showMap ? (
         <div class="vmap-wrap">

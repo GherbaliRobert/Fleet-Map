@@ -22,6 +22,7 @@ import { FuelStats } from './screens/FuelStats';
 import { FuelPrice } from './screens/FuelPrice';
 import { AdminDrivers } from './screens/AdminDrivers';
 import { AdminGroups } from './screens/AdminGroups';
+import { Remorci } from './screens/Remorci';
 import { AdminMaintenance } from './screens/AdminMaintenance';
 import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
@@ -98,6 +99,7 @@ const P = {
   geofences: pazit('hotspot', AdminGeofences, 'Zone'), // zonele stau pe server sub ecranul „hotspot"
   drivers: pazit('soferi', AdminDrivers, 'Șoferi'),
   groups: pazit('grupe', AdminGroups, 'Grupe'),
+  remorci: pazit('vehicule', Remorci, 'Semiremorci și remorci'),   // simulatorul de încărcare (12.10)
   alerts: pazit('alerte', AdminAlerts, 'Alerte'),
   maintenance: pazit('mentenanta', AdminMaintenance, 'Mentenanță'),
   documents: pazit('documente', AdminDocuments, 'Documente vehicule'),
@@ -224,6 +226,7 @@ function Shell() {
         <Route path="/fuelprice" component={FuelPrice} />
         <Route path="/admin/drivers" component={P.drivers} />
         <Route path="/admin/groups" component={P.groups} />
+        <Route path="/remorci" component={P.remorci} />
         <Route path="/admin/maintenance" component={P.maintenance} />
         <Route path="/admin/alerts" component={P.alerts} />
         <Route path="/admin/users" component={AdminUsers} />

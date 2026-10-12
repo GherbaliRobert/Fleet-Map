@@ -371,8 +371,41 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_km NUMERIC(12,1);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_dev_m NUMERIC(14,1);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_at TIMESTAMPTZ;
+        -- Fila „Încărcare" din fișa vehiculului (simulatorul de încărcare, 12.10): felul, caroseria (metri, interior),
+        -- axele (ampatament, de la axa față la caroserie, șaua față de axa motoare), tara pe axe și semiremorca obișnuită.
+        -- Sarcina utilă e coloana payload, limitele pe axe stau în „Config Camion". Regulile: incarcare.js.
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_fel VARCHAR(16);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_lungime NUMERIC(6,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_latime NUMERIC(5,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_inaltime NUMERIC(5,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_ampatament NUMERIC(5,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_axa_caroserie NUMERIC(5,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_sa_axa NUMERIC(5,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_tara_fata INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_tara_spate INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_remorca_id INTEGER;
       END $$
     `);
+    // ─── Semiremorcile și remorcile cu proțap (simulatorul de încărcare, Robert 12.10: „să adăugăm semiremorcile în
+    // aplicație… să nu fii nevoit să bagi dimensiunile de fiecare dată") ─────────────────────────────────────────
+    // Flota care n-are (de obicei) aparat GPS. Un rând = o semiremorcă sau o remorcă a unei firme. `pivot_axe_m` =
+    // la semiremorcă distanța de la pivot la mijlocul axelor, la remorcă ampatamentul; `axa_fata_m` doar la remorcă.
+    // `imei` = aparatul GPS, dacă are unul. Regulile (ce se poate scrie, tipurile obișnuite): incarcare.js.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS remorci (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        fel VARCHAR(12) NOT NULL DEFAULT 'semiremorca',
+        tip VARCHAR(20),
+        plate VARCHAR(20), model VARCHAR(80),
+        lungime_m NUMERIC(6,2), latime_m NUMERIC(5,2), inaltime_m NUMERIC(5,2),
+        sarcina_kg INTEGER, tara_kg INTEGER, nr_axe SMALLINT,
+        pivot_axe_m NUMERIC(5,2), axa_fata_m NUMERIC(5,2), limita_axe_kg INTEGER,
+        imei VARCHAR(20), note TEXT,
+        created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_remorci_firma ON remorci(company_id)`);
     // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
     // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
     // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
@@ -2900,6 +2933,7 @@ async function completeazaDosarFirma(id, d) {
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
   await pool.query('DELETE FROM ai_usage WHERE company_id = $1', [id]); // altfel consumul orfan rămâne în totaluri, fără companie în tabel
+  await pool.query('DELETE FROM remorci WHERE company_id = $1', [id]);  // semiremorcile firmei n-au sens fără ea (și n-ar mai fi ale nimănui)
   await pool.query('DELETE FROM companies WHERE id = $1', [id]);
 }
 // Toate IMEI-urile unei companii (pt. scoping viewAll pe companie)
@@ -2913,8 +2947,49 @@ async function firmeCuFlotaGrea(tipuri) {
   const t = (tipuri || []).filter(Boolean);
   if (!t.length) return [];
   const ph = t.map(function (_, i) { return '$' + (i + 1); }).join(', ');
-  const r = await pool.query("SELECT DISTINCT company_id FROM devices WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' AND vehicle_type IN (" + ph + ")", t);
+  // + firmele care au trecut semiremorci sau remorci (de obicei fără GPS, deci nu sunt în devices)
+  const r = await pool.query("SELECT DISTINCT company_id FROM devices WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' AND vehicle_type IN (" + ph + ")" +
+    " UNION SELECT DISTINCT company_id FROM remorci WHERE company_id IS NOT NULL", t);
   return r.rows.map(function (x) { return Number(x.company_id); });
+}
+// ─── Semiremorcile și remorcile unei firme (simulatorul de încărcare). Rândul vine deja curățat (incarcare.curataRemorca).
+const _REMORCA_COLS = ['fel', 'tip', 'plate', 'model', 'lungime_m', 'latime_m', 'inaltime_m', 'sarcina_kg', 'tara_kg', 'nr_axe',
+  'pivot_axe_m', 'axa_fata_m', 'limita_axe_kg', 'imei', 'note'];
+// NUMERIC vine din pg ca text („13.60"); ecranele primesc numere.
+function _remorcaNum(x) {
+  if (!x) return x;
+  ['lungime_m', 'latime_m', 'inaltime_m', 'pivot_axe_m', 'axa_fata_m'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+  ['company_id', 'sarcina_kg', 'tara_kg', 'nr_axe', 'limita_axe_kg', 'created_at', 'updated_at'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+  return x;
+}
+async function listRemorci(companyId) {   // companyId null = toate (super-admin)
+  const r = companyId == null
+    ? await pool.query('SELECT r.*, c.name AS company_name FROM remorci r LEFT JOIN companies c ON c.id = r.company_id ORDER BY r.plate')
+    : await pool.query('SELECT * FROM remorci WHERE company_id = $1 ORDER BY plate', [companyId]);
+  return r.rows.map(_remorcaNum);
+}
+async function getRemorca(id) {
+  const r = await pool.query('SELECT * FROM remorci WHERE id = $1', [parseInt(id, 10)]);
+  return _remorcaNum(r.rows[0] || null);
+}
+async function createRemorca(companyId, rand) {
+  const acum = Date.now(), vals = [companyId], cols = ['company_id'];
+  _REMORCA_COLS.forEach(function (k) { if (rand[k] !== undefined) { cols.push(k); vals.push(rand[k]); } });
+  cols.push('created_at', 'updated_at'); vals.push(acum, acum);
+  const r = await pool.query('INSERT INTO remorci (' + cols.join(', ') + ') VALUES (' + cols.map(function (_, i) { return '$' + (i + 1); }).join(', ') + ') RETURNING *', vals);
+  return _remorcaNum(r.rows[0]);
+}
+async function updateRemorca(id, rand) {
+  const sets = [], vals = [parseInt(id, 10)];
+  _REMORCA_COLS.forEach(function (k) { if (rand[k] !== undefined) { vals.push(rand[k]); sets.push(k + ' = $' + vals.length); } });
+  vals.push(Date.now()); sets.push('updated_at = $' + vals.length);
+  const r = await pool.query('UPDATE remorci SET ' + sets.join(', ') + ' WHERE id = $1 RETURNING *', vals);
+  return _remorcaNum(r.rows[0] || null);
+}
+async function deleteRemorca(id) {
+  const n = parseInt(id, 10);
+  await pool.query('UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = $1', [n]);   // nu rămâne legată de o mașină
+  await pool.query('DELETE FROM remorci WHERE id = $1', [n]);
 }
 // Ca getCompanyImeis, dar EXCLUDE vehiculele arhivate — pentru rapoarte/analitice (nu pentru scoping de acces).
 async function getCompanyActiveImeis(companyId) {
@@ -2936,6 +3011,7 @@ async function setDeviceCompany(imei, companyId) {
   // nouă (28.09). Pe aceeași firmă (o salvare repetată) nu se atinge.
   await pool.query(
     `UPDATE devices SET abonament_de_la = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE abonament_de_la END,
+            inc_remorca_id = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE inc_remorca_id END,
             company_id = $2::int
       WHERE imei = $1`, [imei, companyId || null]);
   await _purgeDeviceFeed([imei]);
@@ -3302,7 +3378,7 @@ async function updateAgentFinding(id, status, companyId) {
 
 // company_id al unei entități (pentru verificarea proprietății la update/delete pe id)
 async function getRowCompany(table, id) {
-  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1, vehicle_documents: 1, webhooks: 1 };
+  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1, vehicle_documents: 1, webhooks: 1, remorci: 1 };
   if (!allow[table]) return undefined;
   const r = await pool.query(`SELECT company_id FROM ${table} WHERE id = $1`, [parseInt(id)]);
   return r.rows[0] ? r.rows[0].company_id : undefined;
@@ -3429,16 +3505,21 @@ const VEHICLE_DETAIL_COLS = [
   // Fișa vehiculului le trimite dintotdeauna (index.html, secțiunea „Administrativ & afișare"),
   // dar lipseau de aici — deci se salvau DOAR prin PUT /api/devices/:imei (alt formular), iar din
   // fișă se pierdeau tăcut: completai modelul de GPS, apăsai Salvează, câmpul rămânea gol.
-  'gps_model', 'sim_number'
+  'gps_model', 'sim_number',
+  // Fila „Încărcare" (12.10) — curățate întâi de incarcare.curataCaroserie, în ruta /details.
+  'inc_fel', 'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa',
+  'inc_tara_fata', 'inc_tara_spate', 'inc_remorca_id'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'axle_count', 'odo_base_km', 'temp_min', 'temp_max'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'axle_count', 'odo_base_km', 'temp_min', 'temp_max',
+  'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa', 'inc_tara_fata', 'inc_tara_spate', 'inc_remorca_id'
 ]);
 // Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
 // altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.
-const DECIMAL_COLS = new Set(['consumption_city', 'consumption_idle', 'consumption_road']);
+const DECIMAL_COLS = new Set(['consumption_city', 'consumption_idle', 'consumption_road',
+  'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa']);
 // Update parțial: actualizează doar câmpurile trimise, din whitelist
 async function updateVehicleDetails(imei, fields) {
   const sets = [], vals = [imei];
@@ -5710,7 +5791,7 @@ module.exports = {
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
-  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,

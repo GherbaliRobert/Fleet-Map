@@ -15,6 +15,8 @@ import {
   ConfigCamionForm, camionDinFull, camionDeTrimis, CHEI_CAMION, CHEI_GREUTATI_CAMION,
 } from '../components/VehicleSpecs';
 import { TIPURI_CU_AXE } from '../components/vehCategorii';
+import { IncarcareForm } from '../components/IncarcareFisa';
+import { modulIncarcare, incDinFull, incDeTrimis, type IncMeta, type Remorca } from '../lib/incarcare';
 import {
   SondaSimplaForm, SondeAvansatForm, SenzoriVedere, calibDinFull, calibDeTrimis, sondeDinServer, sondeDeTrimis,
   type RandCal, type SondaEdit,
@@ -124,6 +126,9 @@ export function VehicleDetail() {
   // Filele tehnice din foaia de editare (Config Camion, Sonda combustibil, Sonde avansat). Se trimit la server
   // DOAR dacă omul a schimbat ceva în ele — rutele lor înlocuiesc tot, deci un apel inutil e un risc inutil.
   const camInit = useRef<Record<string, string>>({});
+  // Fila „Încărcare" (simulatorul de încărcare): cifrele obișnuite de la server + semiremorcile firmei.
+  const [incMeta, setIncMeta] = useState<IncMeta | null>(null);
+  const [incRemorci, setIncRemorci] = useState<Remorca[]>([]);
   const [calRows, setCalRowsRaw] = useState<RandCal[]>([]);
   const [calDirty, setCalDirty] = useState(false);
   const [sondeEdit, setSondeEditRaw] = useState<SondaEdit[] | null>(null);
@@ -186,8 +191,12 @@ export function VehicleDetail() {
       driver_id: (full as any)?.driver_id != null ? String((full as any).driver_id) : '',
       group_id: (full as any)?.group_id != null ? String((full as any).group_id) : '',
       can_interface: (full as any)?.can_interface || '',
-    }));
+    }, incDinFull(full)));
     setEditOpen(true);
+    if (modulIncarcare(me.value)) {
+      if (!incMeta) Api.incarcareMeta().then(setIncMeta).catch(() => {});
+      Api.remorci(me.value?.isSuper ? (full as any)?.company_id : null).then((r) => setIncRemorci(Array.isArray(r) ? r : [])).catch(() => setIncRemorci([]));
+    }
     if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
     if (!groups.length) Api.groupsAll().then((g) => setGroups(Array.isArray(g) ? g : [])).catch(() => {});
   }
@@ -227,6 +236,9 @@ export function VehicleDetail() {
   const arataSonde = prefs.tab_sonde !== false && areSonde;
   const arataCamionLa = (tip: any) => prefs.tab_camion !== false && TIPURI_CU_AXE.includes(String(tip || ''));
   const arataCamionEdit = arataCamionLa(ef.vehicle_type);
+  // „Încărcare": modulul firmei + un vehicul care cară marfă (lista serverului) sau cu felul deja ales — ca pe web.
+  const incPornit = modulIncarcare(me.value);
+  const arataIncEdit = incPornit && (((incMeta && incMeta.tipuriCuMarfa) || []).includes(String(ef.vehicle_type || '')) || !!ef.inc_fel);
 
   async function saveEdit() {
     setSavingEdit(true);
@@ -236,6 +248,7 @@ export function VehicleDetail() {
       // Modelul GPS și cartela SIM NU pleacă de aici (sunt doar de citit).
       const spec: any = specsDeTrimis(ef);
       spec.name = ef.name || null; spec.plate = ef.plate || null; spec.vehicle_type = ef.vehicle_type || null;
+      if (incPornit) Object.assign(spec, incDeTrimis(ef, String(ef.inc_fel || ''), incMeta));   // fila „Încărcare"
       await Api.updateDeviceDetails(imei, spec);
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
       if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
@@ -494,6 +507,16 @@ export function VehicleDetail() {
                       <Icon name="truck" size={15} color="var(--accent)" /> Config Camion
                     </summary>
                     <div style="padding:11px 13px 4px"><ConfigCamionForm val={ef} set={setEF} /></div>
+                  </details>
+                )}
+                {arataIncEdit && (
+                  <details style="border:1px solid var(--border);border-radius:11px;margin-bottom:9px;overflow:hidden">
+                    <summary style="padding:11px 13px;cursor:pointer;font-size:13px;font-weight:700;background:var(--bg-dark);display:flex;align-items:center;gap:8px">
+                      <Icon name="boxes" size={15} color="var(--accent)" /> Încărcare
+                    </summary>
+                    <div style="padding:11px 13px 12px">
+                      <IncarcareForm val={ef} meta={incMeta} remorci={incRemorci} setMulte={(patch) => setEf((p) => ({ ...p, ...patch }))} />
+                    </div>
                   </details>
                 )}
                 {arataSonde && (
