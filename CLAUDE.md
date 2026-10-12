@@ -1742,9 +1742,28 @@ nicio parolă. NU o construi din proprie inițiativă; e trecută la „De verif
   firma are administratori, formularul nu se vede deloc: nu ne băgăm în gospodăria ei.
 - Linkul de parolă se arată cu ACEEAȘI fereastră peste tot (`window._usrAratLinkul`). Nu scrie alta.
 
+### Fereastra „Companie" — filele „Stare" și „Acces" (Robert, 12.10: „un dashboard pentru fiecare companie… prin taburi")
+Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract ·
+**Acces** (ultima). Pe telefon (`CompanySheet.tsx`) aceleași, în aceeași ordine.
+- **„Stare" = relația NOASTRĂ cu firma** (acces, contract, bani, aparate, RA Insight ca cifre, module, drumul) — NU ce
+  face firma în aplicație (regula lui Robert). Socoteala e curată și pe două părți: `_raxStareCartonase` (pagină, între
+  reperele „fila Stare") ↔ `cartonaseStare` (mobile/src/lib/companii.ts); `verify_firma_stare.js` le rulează pe aceleași
+  firme. Schimbi un text într-o parte → îl schimbi și în cealaltă. Datele vin din același `/overview` (`insight` = doar
+  conturi / fond / folosite).
+- **„Acces" = comutatoarele modulelor, agenții AI, limita AI.** Panoul separat (`rax-cfg-overlay`) a fost ȘTERS;
+  `raxOpenCompanyConfig(id)` deschide fereastra pe „Acces". NU pune înapoi a doua cale. Modulele: `_RAX_MODS` (web) =
+  `MODULE_FIRMA` (telefon), legate prin probă.
+- **Modulul `incarcare` (simulatorul) merge DUPĂ FLOTĂ cât nu-l alegem noi** (Robert: „1.a"): `plans.featuresFor` →
+  `areFlotaGrea(id)`, flota ținută minte de server (`_flotaGreaReincarca` → `db.firmeCuFlotaGrea(plans.TIPURI_CU_MARFA)`).
+  Se reîncarcă la pornire, la 2 minute și la orice cale care schimbă felul sau firma unui vehicul (aparat nou, import,
+  `_trecePeFirma`, `PUT /api/devices/:imei` + `/details`, arhivare / restaurare). O cale NOUĂ de felul ăsta cheamă și ea
+  `_flotaGreaReincarca()`. Ales de noi = `settings.features.incarcare` (true / false); `null` = „Înapoi la automat"
+  (`_applyCompanySettingsPatch` șterge cheia). Ecranele citesc „ales / automat" din `_accesModule` (features_setate,
+  dupa_flota, flota_grea) — nu-și socotesc flota.
+
 ### Fereastra „Companie" (`#rax-codetail-overlay`) — capcanele ei, măsurate
 Se deschide din Companii (clic pe firmă), din „Deschide firma" (Dispozitive, Tahograf) — o singură
-fereastră, șase file. Două lucruri din ea s-au reparat pe măsurători, nu din ochi (Alin, 18.09):
+fereastră (opt file din 12.10). Două lucruri din ea s-au reparat pe măsurători, nu din ochi (Alin, 18.09):
 
 - **Înălțime fixă** (`height: min(82vh, 620px)`), cap și file `flex:0 0 auto`, corpul cu derularea lui.
   Înainte sărea de la 185px (Facturi) la 705px (Abonament) la fiecare clic pe filă.

@@ -5,7 +5,8 @@ import { showToast } from '../app/store';
 import { Icon, type IconName } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { LinkParolaSheet, pregatesteLinkul, type LinkParola } from '../components/LinkParolaSheet';
-import { CompanyEditSheet, CompanyConfigSheet } from '../components/CompanyEdit';
+import { CompanyEditSheet, CompanyAcces } from '../components/CompanyEdit';
+import { stareAparat } from '../lib/semnal';
 // Comparația contract ↔ factură: o singură bucată, a ecranelor Contracte (aceeași și în dosarul firmei).
 import { Comparatie } from '../components/ContractAnexa';
 // Drumul clientului și butoanele lui: aceleași bucăți ca în dosar și în lista Contracte.
@@ -20,7 +21,7 @@ import { lunaText, metodaText, rutaFactura, stareClient, trimisaText, INTREB_PRO
 import { DocumentFactura } from '../components/DocumentFactura';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import {
-  accesDetalii, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, nrUseri, nrVeh, ROL_ET, rutaDosar, rutaFisa,
+  accesDetalii, cartonaseStare, contacte, dataOraRo, dataRo, dosarPastila, EMAIL_OK, MODULE_FIRMA, nrUseri, nrVeh, ROL_ET, rutaDosar, rutaFisa,
 } from '../lib/companii';
 import './admin.css';
 import './detail.css';
@@ -28,17 +29,20 @@ import './firma.css';
 import './companii.css';
 
 // Fișa unei firme (fondatori), ca fereastra de pe web (raxOpenCompanyDetail), pe file:
-// Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract.
+// Stare · Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract · Acces.
 // Totul vine dintr-un singur apel (/api/companies/:id/overview). Rutele sunt requireSuperadmin pe server;
 // ecranul e învelit în doarSuper (App.tsx). Adresa: /admin/companies/:id?tab=<fila>.
+// „Stare" și „Acces" (12.10, Robert: „un dashboard pentru fiecare companie… prin taburi"): „Stare" se deschide prima.
 
 const FILE: { k: string; et: string; ic: IconName }[] = [
+  { k: 'stare', et: 'Stare', ic: 'gauge' },
   { k: 'detalii', et: 'Detalii', ic: 'idCard' },
   { k: 'utilizatori', et: 'Utilizatori', ic: 'user' },
   { k: 'vehicule', et: 'Vehicule', ic: 'car' },
   { k: 'facturi', et: 'Facturi', ic: 'report' },
   { k: 'abonament', et: 'Abonament & plăți', ic: 'coins' },
   { k: 'contract', et: 'Contract', ic: 'fileSignature' },
+  { k: 'acces', et: 'Acces', ic: 'key' },
 ];
 const esteFirma = (o: any, id: any) => !!(o && o.company && id != null && Number(o.company.id) === Number(id));
 const lei2 = (v: any) => (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' lei';
@@ -47,11 +51,11 @@ export function CompanySheet() {
   const loc = useLocation();
   const { params } = useRoute();
   const id = Number(params.id);
-  const filaCeruta = String(((loc.query || {}) as any).tab || 'detalii');
-  const [fila, setFila] = useState(FILE.some((f) => f.k === filaCeruta) ? filaCeruta : 'detalii');
+  const filaCeruta = String(((loc.query || {}) as any).tab || 'stare');
+  const [fila, setFila] = useState(FILE.some((f) => f.k === filaCeruta) ? filaCeruta : 'stare');
   const [ov, setOv] = useState<any | null>(null);
   const [err, setErr] = useState('');
-  const [foaie, setFoaie] = useState<'' | 'edit' | 'config' | 'sterge'>('');
+  const [foaie, setFoaie] = useState<'' | 'edit' | 'sterge'>('');
   const [stergBusy, setStergBusy] = useState(false);
   // Firma deschisă ACUM. Fișa unei firme mari se încarcă greu: un răspuns întârziat al altei firme
   // (sau venit după ce ai plecat de pe ecran) NU are voie să ajungă aici — i-ar pune CUI-ul, IBAN-ul și
@@ -125,21 +129,19 @@ export function CompanySheet() {
               ))}
             </div>
 
-            {fila === 'detalii' && <Detalii o={o} onEdit={() => setFoaie('edit')} onConfig={() => setFoaie('config')} onSterge={() => setFoaie('sterge')} />}
+            {fila === 'stare' && <Stare o={o} onFila={alegeFila} onReload={incarca} />}
+            {fila === 'detalii' && <Detalii o={o} onEdit={() => setFoaie('edit')} onConfig={() => alegeFila('acces')} onSterge={() => setFoaie('sterge')} />}
             {fila === 'utilizatori' && <Utilizatori o={o} onReload={incarca} />}
             {fila === 'vehicule' && <Vehicule o={o} />}
             {fila === 'facturi' && <Facturi o={o} onReload={incarca} />}
             {fila === 'abonament' && <CompanyAbonament ov={o} onReload={incarca} onFacturi={deschideFacturi} />}
             {fila === 'contract' && <Contract o={o} onDosar={() => loc.route(rutaDosar(id))} onReload={incarca} />}
+            {fila === 'acces' && <CompanyAcces companyId={id} areFond={areFond} onChanged={incarca} onOferta={() => alegeFila('abonament')} />}
           </>
         )}
       </div>
 
       {o && foaie === 'edit' && <CompanyEditSheet company={co} onClose={() => setFoaie('')} onSaved={() => { setFoaie(''); incarca(); }} />}
-      {o && foaie === 'config' && (
-        <CompanyConfigSheet companyId={id} areFond={areFond} onClose={() => setFoaie('')} onChanged={incarca}
-          onOferta={() => { setFoaie(''); alegeFila('abonament'); }} />
-      )}
       {o && foaie === 'sterge' && (
         <Confirma title={'Șterge compania „' + (co.name || '') + '"?'} danger busy={stergBusy} okLabel="Șterge definitiv"
           text={'Acțiunea este IREVERSIBILĂ.\nVa șterge și consumul de tokeni AI asociat.'}
@@ -147,6 +149,34 @@ export function CompanySheet() {
           onOk={sterge} onCancel={() => setFoaie('')} />
       )}
     </div>
+  );
+}
+
+// ─── Stare (_raxCodStare): relația NOASTRĂ cu firma, dintr-o privire ─────────────────────────────────────────
+// Acces, contract, bani, aparate, RA Insight, module, drumul clientului — nu ce face firma în aplicație. Cartonașele
+// vin din cartonaseStare (lib/companii.ts), perechea lui _raxStareCartonase din pagină (verify_firma_stare.js le rulează
+// pe aceleași firme). Drumul și butonul pasului următor sunt ACELEAȘI bucăți ca pe fila Contract.
+const FILA_ET: Record<string, string> = { contract: 'Contract', facturi: 'Facturi', vehicule: 'Vehicule', acces: 'Acces' };
+function Stare({ o, onFila, onReload }: { o: any; onFila: (k: string) => void; onReload: () => void }) {
+  const pasi = usePasiContract({ trimitePeEmail: !!o.trimite_pe_email, laSchimbat: onReload });
+  const rand = randDinFisa(o);
+  const lista = cartonaseStare(o, Date.now(), { stari: CTR_STARI, semnal: stareAparat, module: MODULE_FIRMA.map((m) => ({ k: m.key, et: m.label })) });
+  return (
+    <>
+      <div class="co-stare">
+        {lista.map((x) => (
+          <div class="co-st">
+            <span class="k">{x.k}</span>
+            <span class={'v' + (x.ton ? ' ' + x.ton : '')}>{x.v}</span>
+            {x.d ? <span class="d">{x.d}</span> : null}
+            {x.fila ? <button class="fm-btn" style="align-self:flex-start;margin-top:6px" onClick={() => onFila(x.fila)}>{FILA_ET[x.fila]} →</button> : null}
+          </div>
+        ))}
+      </div>
+      {o.contract && o.drum ? <div style="margin-bottom:12px"><DrumClient drum={o.drum} buton={(k) => pasi.butonDrum(k, rand)} /></div> : null}
+      <div class="co-note"><Icon name="lock" size={12} /> Aici stă doar ce ține de relația noastră cu firma: acces, contract, bani, aparate, module. Nu și ce face firma în aplicație.</div>
+      {pasi.ui}
+    </>
   );
 }
 

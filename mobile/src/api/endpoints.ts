@@ -191,7 +191,8 @@ export const Api = {
   sendMontajContract: (id: number, b: { catre: string }) =>
     api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/montaj/contracte/${id}/trimite`, { method: 'POST', body: b }),
   montajLucrari: () => api<{ stari: Record<string, string>; lucrari: any[] }>('/api/montaj/lucrari'),
-  setCompanyFeatures: (id: number, features: Record<string, boolean>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
+  // `null` pe o cheie = „înapoi la automat" (simulatorul de încărcare merge atunci după flotă).
+  setCompanyFeatures: (id: number, features: Record<string, boolean | null>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
   // Limita VECHE de întrebări AI pe lună (null = nelimitat). Contează doar la firmele fără fond RA Insight pe cont.
   setCompanyAiLimit: (id: number, limit: number | null) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
   // Venitul lunar pe firmă + total, socotit pe server cu motorul facturii (același ca registrul de clienți).

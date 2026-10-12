@@ -255,6 +255,41 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
 
+## 2026-10-12
+
+### FONDATOR · Fereastra firmei: filele „Stare" și „Acces"; simulatorul de încărcare pornit după flotă (etapa 1, pasul 1)
+
+Robert (12.10), la simulatorul de încărcare: *„inclus în abonament, dar noi ca admini să putem configura profilul
+companiei și să bifăm la ce au ei acces… vreau să avem un fel de dashboard pentru fiecare companie, care să fie accesat
+din lista firmelor, să se deschidă un modal și acolo să ai tot prin taburi"*; apoi *„1.a"* (simulatorul pornit singur la
+firmele cu camioane, dube sau remorci) și *„este ok"* la ordinea pașilor (macheta:
+https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
+
+Fereastra firmei exista deja (Companii → clic pe firmă, șase file). Acum are opt:
+1. **„Stare", prima și cea care se deschide**: accesul, contractul, facturile și plățile (câte sunt de plată, una trecută
+   de scadență, ultima plată), aparatele (câte comunică, cine e fără semnal), RA Insight (conturi și cât din fond —
+   doar cifre), modulele pornite și drumul clientului. Doar relația noastră cu firma — nu ce face firma în aplicație.
+2. **„Acces", ultima**: comutatoarele modulelor, agenții AI și limita AI. Stăteau într-un panou separat („Configurează" /
+   „Module & limite"); panoul a plecat, iar butoanele vechi duc pe fila asta.
+3. **Modulul nou „Simulator încărcare"** (inclus în abonament): cât nu-l alegem noi, merge **după flotă** — pornit singur
+   la firmele care au autotractoare, camioane, TIR-uri, dube sau remorci, oprit la celelalte. Sub comutator scrie
+   „Automat, după flotă: pornit / oprit — …"; pornit sau oprit de mână scrie „Ales de noi, de mână." cu butonul
+   „Înapoi la automat". O dubă trecută în fișa unei firme îi pornește simulatorul pe loc.
+
+- **Ce am schimbat:** `plans.js` (modulul `incarcare`, felurile care cară marfă, ce e ales de noi); `db.js`
+  (`firmeCuFlotaGrea`); `server.js` (flota se reîncarcă la pornire, la 2 minute și la orice schimbare care o mută —
+  aparat nou, import, mutare pe firmă, felul vehiculului, arhivare; `null` = înapoi la automat; fișa firmei aduce RA
+  Insight ca cifre); `public/index.html` (filele, `_raxStareCartonase`, fila „Acces"); telefonul — `CompanySheet.tsx`,
+  `CompanyEdit.tsx` (fila „Acces" în locul foii „Module & limite"), `lib/companii.ts` (`cartonaseStare`, modulele,
+  vorbele). Simulatorul în sine vine la pasul 3; pe telefon, filele noi intră în APK-ul de la finalul etapei.
+- **Probe:** `verify_firma_stare.js` (nouă, în `npm test`, 63): regula modulului, legăturile de pe server, filele și
+  ordinea pe web și pe telefon, aceleași module și vorbe, cartonașele „Stării" — socoteala paginii și a telefonului
+  rulate pe 17 firme, același rezultat —, plus server pornit (camionul pornește simulatorul, alegerea noastră îl
+  oprește, „înapoi la automat" îl repornește). `verify_companii.js`, rescrisă pe regula nouă (clasa ferestrei stă acum
+  pe fereastra firmei, nu pe panoul care a plecat). Verificat pe ecran, web și telefon.
+- **Ce vede fondatorul:** clic pe o firmă → se deschide pe „Stare"; modulele se pornesc din „Acces".
+- **Ce vede clientul:** nimic nou încă. Simulatorul apare în meniul lui la pasul 3, doar dacă modulul e pornit.
+
 ## 2026-10-09
 
 ### AMÂNDOI · Marca este „RA Track", ca domeniul ratrack.ro — `351e2e1`

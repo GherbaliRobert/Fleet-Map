@@ -469,6 +469,13 @@ async function loadRegisteredImeis() {
     registeredLoaded = true;
     console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate + ${stocImeis.size} în stoc (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
   } catch (e) { console.error('[STRICT] loadRegisteredImeis:', e.message); }
+  await _flotaGreaReincarca();
+}
+// Ce firme au vehicule care cară marfă — din asta merge singur simulatorul de încărcare (plans.featuresFor), cât nu
+// l-am ales de mână. Se reîncarcă odată cu lista de aparate (la pornire și la 2 minute) și pe loc, la o schimbare.
+async function _flotaGreaReincarca() {
+  try { if (plans && plans.setFlotaGrea) plans.setFlotaGrea(await db.firmeCuFlotaGrea(plans.TIPURI_CU_MARFA)); }
+  catch (e) { console.error('[FLOTA] firmele cu marfă:', e.message); }
 }
 function _imeiPrimit(imei) { return registeredImeis.has(imei) || stocImeis.has(imei); }
 // ─── Ziua în care pornește abonamentul unei mașini (decizie Alin, 28.09: „pe zile, din ziua în care aparatul
@@ -6004,7 +6011,17 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     };
     // Counts pentru FACTURARE (model direct, 2 trepte): „cu CAN" = bill_can, restul „fără CAN".
     const billCounts = { can: vehicles.filter(v => v.bill_can).length, none: vehicles.filter(v => !v.bill_can).length, fms: 0 };
+    // Flota firmei e chiar aici: simulatorul de încărcare (după flotă) se socotește pe ce vedem acum, nu pe lista de acum 2 minute.
+    if (plans && plans.setFlotaGreaFirma) plans.setFlotaGreaFirma(id, vehicles.some(function (v) { return plans.TIPURI_CU_MARFA.indexOf(v.vehicle_type) >= 0; }));
     const features = plans ? plans.featuresFor(company) : {};
+    // Fila „Stare": RA Insight pe firmă — câte conturi, cât din fond (aceeași socoteală ca „Utilizare RA Insight"). Doar
+    // numere: nu cine ce a întrebat.
+    let insight = null;
+    try {
+      const uz = ((await db.getAiMonthUsageByCompany()) || []).filter(function (u) { return Number(u.company_id) === id; })[0] || {};
+      const ri = _insightFirma(company, uz, users, {}, { areModul: !!features.ai_assistant });
+      insight = { enabled: ri.enabled, conturi: ri.conturi, fond: ri.fond, used: ri.used, ramase: ri.ramase, epuizat: ri.epuizat };
+    } catch (e) { insight = null; }
     const price = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : null;
     // Dosarul juridic vine în același apel ca restul: fila „Contract" nu trebuie să mai ceară o dată.
     let contract = null, istoric = [];
@@ -6084,6 +6101,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           efactura_status: f.efactura_status || null }; });
     } catch (e) { facturi = []; }
     res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, facturi, offer, price, features,
+      ..._accesModule(company), insight,
       neplata: npFirma.faza === 'ok' ? null : npFirma,
       ai_quota: _aiQuotaFromSettings(company.settings),
       // Păstrarea istoricului firmei + cifrele regulii, ca ecranul să nu le scrie a doua oară.
@@ -8072,6 +8090,7 @@ async function _trecePeFirma(req, imei, companyId) {
   auditReq(req, 'assign_company', 'device', imei, { companyId });
   // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc).
   if (companyId != null) await _stocLaFirma(imei, companyId, _cine(req));
+  await _flotaGreaReincarca();   // un camion mutat pe o firmă îi pornește singur simulatorul de încărcare (dacă nu l-am ales noi)
 }
 app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -9868,12 +9887,14 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
       auditReq(req, 'adopt', 'device', imei, { companyId: adoptCompany });
       await _stocLaFirma(imei, adoptCompany, _cine(req));
+      await _flotaGreaReincarca();   // un camion nou pe firmă îi pornește simulatorul de încărcare (după flotă)
       return res.json({ ok: true, adopted: true, imei });
     }
 
     await db.createDevice(imei, fields, companyId);
     if (instIssue) await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, JSON.stringify(instIssue)]);
     registeredImeis.add(imei); deviceAttempts.delete(imei); // pre-înregistrat → intră în allow-list (mod strict)
+    await _flotaGreaReincarca();   // un camion nou pe firmă îi pornește simulatorul de încărcare (după flotă)
     _uitaPornirea(imei);   // rând nou: nicio zi de pornire ținută minte de la un rând șters (pct. 12)
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
@@ -10012,6 +10033,7 @@ app.post('/api/devices/import', requireAuth, requireSuperadmin, withScope, async
       } catch (e) { errors.push({ line: i + 2, imei, error: e.message }); }
     }
     invalidateAccessCache();
+    await _flotaGreaReincarca();   // felurile vehiculelor importate → simulatorul de încărcare (după flotă)
     auditReq(req, 'import', 'device', null, { created, updated, errors: errors.length });
     res.json({ created, updated, errors: errors.slice(0, 50) });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -10036,12 +10058,14 @@ app.put('/api/devices/:imei/status', requireAuth, requireSuperadmin, withScope, 
       livePositions.delete(imei);
       broadcastWs({ type: 'removed', data: { imei } }); // scoate marker-ul din sesiunile web/mobil deschise
       auditReq(req, 'update', 'device', imei, { status, archived_positions: archived });
+      await _flotaGreaReincarca();   // arhivatul nu mai numără la flota care cară marfă
       return res.json({ ok: true, status, archived_positions: archived });
     }
     // Restaurare: reia ingestul. Istoricul rămâne în positions_archive (getDeviceHistory face UNION → fără pierderi).
     await db.setDeviceStatus(imei, status);
     archivedImeis.delete(imei);
     registeredImeis.add(imei); // reintră în allow-list (mod strict)
+    await _flotaGreaReincarca();
     auditReq(req, 'update', 'device', imei, { status });
     res.json({ ok: true, status });
   } catch (err) {
@@ -10401,6 +10425,7 @@ app.put('/api/devices/:imei', requireAuth, requireEdit('vehicule'), withScope, a
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
     invalidateLiveEnrichCache(); // /api/live ia identitatea din acest cache → invalidează ca să nu servească nr. vechi
+    if (vehicle_type !== undefined) await _flotaGreaReincarca();   // felul vehiculului → simulatorul de încărcare (după flotă)
     // Inventar echipament GPS (model tracker + cartelă SIM) — se completează la instalare.
     // Modelul aparatului și cartela SIM sunt date de ECHIPAMENT, nu de vehicul: se completează la
     // instalare, de noi. Clientul le vede („Aparate GPS”), dar nu le scrie.
@@ -10461,6 +10486,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
     }
     if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
+    if (b.vehicle_type !== undefined) await _flotaGreaReincarca();   // felul vehiculului → simulatorul de încărcare (după flotă)
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
     // Reflectă imediat în live (WebSocket) pentru câmpurile vizibile pe hartă/listă
     const pos = livePositions.get(imei);
@@ -14690,6 +14716,16 @@ app.put('/api/device-groups/:id/work-schedule', requireAuth, requireEdit('grupe'
     res.json({ ok: true, work_schedule: w });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Fila „Acces" din fereastra firmei (web + telefon, 12.10): ce am ales NOI de mână, ce merge singur după flotă și
+// din ce. Ecranele scriu „automat" / „ales de noi" din asta — nu-și fac a doua regulă.
+function _accesModule(co) {
+  return {
+    features_setate: plans ? plans.featuresSetate(co) : {},
+    dupa_flota: plans ? plans.FEATURE_DUPA_FLOTA.slice() : [],
+    flota_grea: plans ? plans.areFlotaGrea(co && co.id) : false,
+    tipuri_cu_marfa: plans ? plans.TIPURI_CU_MARFA.slice() : []
+  };
+}
 // Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
 async function _applyCompanySettingsPatch(companyId, body, opts) {
   const cur = await db.getCompanySettings(companyId);
@@ -14708,7 +14744,11 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   if (body.features && typeof body.features === 'object' && opts && opts.allowFeatures) { // features (plan/billing) = STRICT super-admin; company_admin nu și le poate auto-activa
     const fvalid = (plans && plans.FEATURE_KEYS) || [];
     const f = Object.assign({}, cur.features || {});
-    fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
+    fvalid.forEach(function (k) {
+      if (typeof body.features[k] === 'boolean') f[k] = body.features[k];
+      // `null` = „înapoi la automat": cheia iese din setări și modulul merge iar după implicit / după flotă (plans.js).
+      else if (body.features[k] === null) delete f[k];
+    });
     next.features = f;
   }
   // Cota AI (comercial: se negociază în ofertă) → STRICT super-admin, ca și `features`.
@@ -14775,7 +14815,8 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const agentiImplicit = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings),
+      ..._accesModule(co) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -14948,7 +14989,7 @@ app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (re
     await _applyCompanySettingsPatch(id, { features: (req.body && req.body.features) || {} }, { allowFeatures: true });
     const co2 = await db.getCompanyById(id);
     auditReq(req, 'update', 'company_features', id, { features: req.body && req.body.features });
-    res.json({ ok: true, features: plans.featuresFor(co2) });
+    res.json({ ok: true, features: plans.featuresFor(co2), ..._accesModule(co2) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Oferta unei firme (super-admin) ────────────────────────────────────────────────────────────

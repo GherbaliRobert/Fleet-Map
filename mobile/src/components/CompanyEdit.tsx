@@ -3,13 +3,13 @@ import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
-import { contacte, type Contact } from '../lib/companii';
+import { contacte, type Contact, MODULE_FIRMA, MOD_ALES, MOD_INAPOI, modulAutoText } from '../lib/companii';
 import '../screens/admin.css';
 import '../screens/detail.css';
 import '../screens/firma.css';
 import '../screens/companii.css';
 
-// Foile fișei unei firme (fondatori): „Editează datele companiei" și „Module & limite".
+// Fișa unei firme (fondatori): foaia „Editează datele companiei" și fila „Acces" (până pe 12.10, foaia „Module & limite").
 // Aceleași câmpuri, texte și rute ca pe web (raxEditCompany / raxOpenCompanyConfig).
 
 const nul = (v: any) => { const s = String(v == null ? '' : v).trim(); return s || null; };
@@ -129,34 +129,40 @@ function agentiDeAratat(catalog: AgentRand[] | null, cfg: any): AgentRand[] {
   impliciti.concat(scrisi).forEach((k: any) => pune(k));
   return out;
 }
-const MODULE = [
-  { key: 'agents', label: 'Agenți AI', sub: 'Master — permite rularea agenților AI de mai jos' },
-  { key: 'ai_assistant', label: 'Asistent AI', sub: 'Chat AI + RA Insight în aplicație' },
-  { key: 'etransport', label: 'e-Transport', sub: 'Modul ANAF e-Transport (coduri UIT)' },
-  { key: 'tahograf', label: 'Tahograf', sub: 'Analiză fișiere tahograf (.ddd)' },
-];
-export function CompanyConfigSheet({ companyId, areFond, onClose, onChanged, onOferta }: {
-  companyId: number; areFond: boolean; onClose: () => void; onChanged: () => void; onOferta: () => void;
+// ─── Fila „Acces" a fișei firmei (12.10): modulele, agenții AI și limita AI ───────────────────────────────────────
+// Până pe 12.10 era foaia „Module & limite"; acum e o filă a fișei, ca pe web (fila „Acces", _raxRenderCfg). Modulele
+// vin din lib/companii (MODULE_FIRMA, legate de web prin verify_firma_stare.js), iar „automat / ales de noi" din ce
+// spune serverul (features_setate, dupa_flota, flota_grea) — telefonul nu socotește flota a doua oară.
+export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
+  companyId: number; areFond: boolean; onChanged: () => void; onOferta: () => void;
 }) {
   const [cfg, setCfg] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [catalog, setCatalog] = useState<AgentRand[] | null>(null);
   const [feats, setFeats] = useState<Record<string, boolean>>({});
+  const [setate, setSetate] = useState<Record<string, boolean>>({});
+  const [flotaGrea, setFlotaGrea] = useState(false);
   const [ags, setAgs] = useState<string[]>([]);
   const [lim, setLim] = useState('');
   const [busy, setBusy] = useState(false);
-  useInapoiInchide(true, () => { onClose(); return true; });
 
+  // Răspunsul serverului e adevărul: comutatoarele și „automat / ales de noi".
+  function dupaRaspuns(r: any) {
+    if (r && r.features) setFeats(Object.assign({}, r.features));
+    if (r && r.features_setate) setSetate(Object.assign({}, r.features_setate));
+    if (r && r.flota_grea !== undefined) setFlotaGrea(!!r.flota_grea);
+  }
   function citeste() {
     return Api.companySettingsOf(companyId).then((s: any) => {
       setCfg(s);
-      setFeats(Object.assign({}, (s && s.features) || {}));
+      dupaRaspuns(s);
       // Starea de pornire = lista scrisă pe firmă; fără ea, implicitul ofertei (agenti_implicit).
       setAgs(Array.isArray(s && s.enabled_agents) ? s.enabled_agents.slice() : ((s && s.agenti_implicit) || []).slice());
       setLim(s && s.ai_monthly_limit != null ? String(s.ai_monthly_limit) : '');
     });
   }
   useEffect(() => {
+    setCfg(null); setErr('');
     citeste().catch((e: any) => setErr(e?.message || 'Eroare la încărcare.'));
     Api.aiAgents().then((r) => setCatalog((r && r.agents) || [])).catch(() => setCatalog([]));
   }, [companyId]);
@@ -166,12 +172,21 @@ export function CompanyConfigSheet({ companyId, areFond, onClose, onChanged, onO
     setFeats({ ...feats, [key]: on });
     try {
       const r: any = await Api.setCompanyFeatures(companyId, { [key]: on });
-      if (r && r.features) setFeats(Object.assign({}, r.features));
+      dupaRaspuns(r);
       showToast('Modul ' + (on ? 'activat' : 'dezactivat'));
       // La comutatorul master se recitește lista de agenți: fără listă scrisă, implicitul se schimbă cu el.
       if (key === 'agents') citeste().catch(() => {});
       onChanged();
     } catch (e: any) { setFeats(prev); showToast(e?.message || 'Eroare', true); }
+  }
+  // „Înapoi la automat": cheia iese din setările firmei, iar modulul merge iar după flotă (ca pe web: raxCfgAutomat).
+  async function automat(key: string) {
+    try {
+      const r: any = await Api.setCompanyFeatures(companyId, { [key]: null });
+      dupaRaspuns(r);
+      showToast('Merge din nou după flotă');
+      onChanged();
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
   }
   async function agent(key: string) {
     if (!feats.agents) return;
@@ -192,56 +207,61 @@ export function CompanyConfigSheet({ companyId, areFond, onClose, onChanged, onO
 
   const agOff = !feats.agents;
   const lista = agentiDeAratat(catalog, cfg);
+  const dupaFlota: string[] = (cfg && Array.isArray(cfg.dupa_flota)) ? cfg.dupa_flota : [];
+  const ales = (k: string) => Object.prototype.hasOwnProperty.call(setate, k);
   return (
-    <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div class="sheet" style="max-height:92vh">
-        <div class="sheet-h"><b><Icon name="settings" size={17} color="var(--co-ok)" /> {cfg && cfg.name ? 'Configurare: ' + cfg.name : 'Configurare companie'}</b>
-          <button class="h-btn" onClick={onClose} aria-label="Închide"><Icon name="x" /></button></div>
-        <div class="sheet-body">
-          {err && <div class="co-msg rau">{err}</div>}
-          {!cfg && !err && <div class="spin" style="margin:16px auto" />}
-          {cfg && (
+    <>
+      {err && <div class="co-msg rau">{err}</div>}
+      {!cfg && !err && <div class="spin" style="margin:16px auto" />}
+      {cfg && (
+        <div class="fm-card pad">
+          <div class="fm-sec" style="margin-top:0">Oferta firmei</div>
+          <button class="fm-btn acc" onClick={onOferta}><Icon name="coins" size={15} /> Vezi / schimbă oferta</button>
+          <div class="co-note">Prețul și modulele vin din oferta semnată. Tot ce e mai jos le suprascrie, pe firma asta.</div>
+
+          <div class="fm-sec">Module (acces funcții)</div>
+          {MODULE_FIRMA.map((m) => (
             <>
-              <div class="fm-sec" style="margin-top:4px">Oferta firmei</div>
-              <button class="fm-btn acc" onClick={onOferta}><Icon name="coins" size={15} /> Vezi / schimbă oferta</button>
-              <div class="co-note">Prețul și modulele vin din oferta semnată. Tot ce e mai jos le suprascrie, pe firma asta.</div>
-
-              <div class="fm-sec">Module (acces funcții)</div>
-              {MODULE.map((m) => (
-                <button class="fm-tgl" onClick={() => modul(m.key)} role="switch" aria-checked={!!feats[m.key]}>
-                  <span class="lbl">{m.label}<small>{m.sub}</small></span>
-                  <span class={'sw' + (feats[m.key] ? ' on' : '')} />
-                </button>
-              ))}
-
-              <div class="fm-sec">Agenți AI{agOff ? <span style="color:var(--co-warn);text-transform:none;letter-spacing:0;font-weight:700"> (modul oprit → niciunul nu rulează)</span> : null}</div>
-              {catalog == null && <div class="spin" style="margin:8px auto" />}
-              {catalog != null && lista.length === 0 && <div class="co-note">{agOff
-                ? 'Pornește modulul „Agenți AI" de mai sus — apoi agenții apar aici.'
-                : 'Lista agenților nu s-a putut încărca.'}</div>}
-              {catalog != null && lista.map((a) => {
-                const on = ags.indexOf(a.key) >= 0;
-                return (
-                  <button class="fm-tgl" disabled={agOff} style={agOff ? 'opacity:.55' : ''} onClick={() => agent(a.key)} role="switch" aria-checked={on}>
-                    <span class="lbl">{a.name}{a.desc ? <small>{a.desc}</small> : null}</span>
-                    <span class={'sw' + (on ? ' on' : '')} />
-                  </button>
-                );
-              })}
-
-              <div class="fm-sec">Limită AI lunară (cereri / prompturi)</div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <input class="fm-in" style="flex:1" type="number" inputMode="numeric" min="0" step="10" value={lim}
-                  placeholder="ex: 500 — gol = nelimitat" onInput={(e: any) => setLim(e.target.value)} />
-                <button class="fm-btn acc" disabled={busy} onClick={salveazaLimita}><Icon name="check" size={15} /> Salvează</button>
-              </div>
-              <div class="co-note">{areFond
-                ? 'Firma are fond RA Insight — limita asta nu se mai aplică.'
-                : 'Număr maxim de cereri AI (prompturi) la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.'}</div>
+              <button class="fm-tgl" onClick={() => modul(m.key)} role="switch" aria-checked={!!feats[m.key]}>
+                <span class="lbl">{m.label}<small>{m.sub}</small>
+                  {dupaFlota.indexOf(m.key) >= 0 && (ales(m.key)
+                    ? <small style="color:var(--co-warn);font-weight:800">{MOD_ALES}</small>
+                    : <small style="color:var(--co-ok);font-weight:800">{modulAutoText(flotaGrea)}</small>)}
+                </span>
+                <span class={'sw' + (feats[m.key] ? ' on' : '')} />
+              </button>
+              {dupaFlota.indexOf(m.key) >= 0 && ales(m.key) && (
+                <button class="fm-btn" style="margin:2px 0 8px" onClick={() => automat(m.key)}>{MOD_INAPOI}</button>
+              )}
             </>
-          )}
+          ))}
+
+          <div class="fm-sec">Agenți AI{agOff ? <span style="color:var(--co-warn);text-transform:none;letter-spacing:0;font-weight:700"> (modul oprit → niciunul nu rulează)</span> : null}</div>
+          {catalog == null && <div class="spin" style="margin:8px auto" />}
+          {catalog != null && lista.length === 0 && <div class="co-note">{agOff
+            ? 'Pornește modulul „Agenți AI" de mai sus — apoi agenții apar aici.'
+            : 'Lista agenților nu s-a putut încărca.'}</div>}
+          {catalog != null && lista.map((a) => {
+            const on = ags.indexOf(a.key) >= 0;
+            return (
+              <button class="fm-tgl" disabled={agOff} style={agOff ? 'opacity:.55' : ''} onClick={() => agent(a.key)} role="switch" aria-checked={on}>
+                <span class="lbl">{a.name}{a.desc ? <small>{a.desc}</small> : null}</span>
+                <span class={'sw' + (on ? ' on' : '')} />
+              </button>
+            );
+          })}
+
+          <div class="fm-sec">Limită AI lunară (cereri / prompturi)</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="fm-in" style="flex:1" type="number" inputMode="numeric" min="0" step="10" value={lim}
+              placeholder="ex: 500 — gol = nelimitat" onInput={(e: any) => setLim(e.target.value)} />
+            <button class="fm-btn acc" disabled={busy} onClick={salveazaLimita}><Icon name="check" size={15} /> Salvează</button>
+          </div>
+          <div class="co-note">{areFond
+            ? 'Firma are fond RA Insight — limita asta nu se mai aplică.'
+            : 'Număr maxim de cereri AI (prompturi) la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.'}</div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

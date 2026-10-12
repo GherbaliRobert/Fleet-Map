@@ -96,8 +96,11 @@ sect('4. Limbajul vizual al ecranului e într-un singur loc');
 // Regulile stau sub `.raco`, pusă pe corpul ecranului. Dacă dispare clasa, ecranul se întoarce
 // tăcut la câmpurile palide de dinainte — nimic nu s-ar sparge, doar ar arăta prost.
 T('corpul ecranului poartă clasa', /<div class="rax-body raco">/.test(html));
-T('și ferestrele lui (Editează / Configurare) poartă aceeași clasă',
-  /<div class="rax-body raco" id="rax-coedit-body">/.test(html) && /<div class="rax-body raco" id="rax-cfg-body">/.test(html));
+// Din 12.10 „Configurare" (modulele, agenții, limita AI) nu mai e o fereastră separată, ci fila „Acces" a ferestrei
+// firmei (verify_firma_stare.js): clasa trebuie să fie pe corpul ferestrei firmei, unde se desenează fila.
+T('și ferestrele lui (Editează / fereastra firmei, cu fila „Acces") poartă aceeași clasă',
+  /<div class="rax-body raco" id="rax-coedit-body">/.test(html) && /<div class="rax-body raco" id="rax-cod-body">/.test(html) &&
+  !/id="rax-cfg-body"/.test(html));
 T('regulile există în CSS-ul aplicației, nu împrăștiate în pagină', /\.raco \.raco-card \{/.test(css) && /\.raco \.rax-field \{/.test(css));
 T('câmpurile au aceeași formă ca în Setări (1,5px + inel la focus)',
   /\.raco \.rax-field \{[^}]*1\.5px solid var\(--border\)/.test(css) &&

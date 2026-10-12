@@ -1396,6 +1396,23 @@
     .rax-cod-tab i { font-size: 12px; }
     .rax-cod-tab:hover { border-color: var(--accent); color: var(--accent); }
     .rax-cod-tab.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
+    /* Fila „Stare" din fereastra firmei (12.10): cartonașe, câte un subiect pe fiecare. */
+    .raco-stare { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .raco-st { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .raco-st .k { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+    .raco-st .v { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+    .raco-st .d { font-size: 12px; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
+    .raco-st .a { margin-top: auto; padding-top: 6px; }
+    .raco-st-nota { font-size: 11.5px; color: var(--text-muted); margin-top: 12px; }
+    /* Culorile de stare, cu pereche pe tema deschisă (verdele casei pe alb abia trece de 1,7). */
+    .raco-st .v.ok, .raco-auto.ok { color: var(--accent); }
+    .raco-st .v.warn, .raco-auto.warn { color: var(--orange); }
+    .raco-st .v.bad { color: var(--red); }
+    .raco-st .v.mut { color: var(--text-muted); }
+    body:not(.dark) .raco-st .v.ok, body:not(.dark) .raco-auto.ok { color: #166534; }
+    body:not(.dark) .raco-st .v.warn, body:not(.dark) .raco-auto.warn { color: #c2410c; }
+    body:not(.dark) .raco-st .v.bad { color: #b91c1c; }
+    .raco-auto { font-size: 11.5px; font-weight: 700; }
     /* Fereastra „Companie" ține o înălțime STABILĂ, indiferent de filă. Înainte sărea de la 185px
        (Facturi, aproape goală) la 705px (Abonament) — se zbătea sub mouse la fiecare clic pe filă, iar
        pe cea mai plină ajungea lipită de marginile ecranului și părea tăiată (Alin, 18.09).
@@ -19911,13 +19928,7 @@ const pozitii = await r.json();</code></pre>
 
   <!-- Vechiul panou flotant de agenți a fost eliminat: pagina „Agenți AI" din meniul lateral îl înlocuiește complet. -->
 
-  <!-- Configurare per-companie (super-admin): plan + module + agenți AI + limită AI într-un singur loc -->
-  <div class="rax-overlay" id="rax-cfg-overlay">
-    <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-sliders" style="color:var(--accent)"></i> <span id="rax-cfg-title">Configurare companie</span></h3><button class="rax-x" onclick="_raxBackFromSub('rax-cfg-overlay')">&times;</button></div>
-      <div class="rax-body raco" id="rax-cfg-body"><div class="rax-co-meta">Se încarcă…</div></div>
-    </div>
-  </div>
+  <!-- Modulele, agenții AI și limita AI ale unei firme stau din 12.10 în fereastra firmei, fila „Acces" (raxCodTab('acces')). -->
 
   <!-- Înregistrare plată / factură (super-admin) -->
   <div class="rax-overlay" id="rax-pay-overlay">
@@ -21040,13 +21051,17 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { alert('Eroare: ' + e.message); raxLoadCompanies(); }
     };
 
-    // ─── Configurare per-companie (super-admin): module + agenți AI + limită AI într-un singur ecran ───
+    // ─── Fila „Acces" din fereastra firmei (super-admin): module + agenți AI + limită AI ───
+    // Până pe 12.10 stăteau într-un panou separat („Configurează" / „Module & limite"); acum sunt o filă a ferestrei,
+    // lângă „Stare" (Robert: „un dashboard pentru fiecare companie… totul prin taburi"). O SINGURĂ cale: butoanele vechi
+    // (raxOpenCompanyConfig) deschid fereastra pe fila asta.
     var _raxCfg = null;
     var _RAX_MODS = [
       ['agents', 'Agenți AI', 'Master — permite rularea agenților AI de mai jos'],
       ['ai_assistant', 'Asistent AI', 'Chat AI + RA Insight în aplicație'],
       ['etransport', 'e-Transport', 'Modul ANAF e-Transport (coduri UIT)'],
-      ['tahograf', 'Tahograf', 'Analiză fișiere tahograf (.ddd)']
+      ['tahograf', 'Tahograf', 'Analiză fișiere tahograf (.ddd)'],
+      ['incarcare', 'Simulator încărcare', 'Planul de încărcare, semiremorcile și remorcile, fila „Încărcare” din fișa vehiculului — inclus în abonament']
     ];
     var _RAX_AGS = [
       ['watch', 'RA Watch', 'Vehicule offline + scădere combustibil + ralanti prelungit'],
@@ -21058,7 +21073,7 @@ const pozitii = await r.json();</code></pre>
     ];
     // Doar UN panou de companie deschis odată (drill-down / config / editare / plată) — fără stivuire de modaluri.
     function _raxSoloOverlay(keepId) {
-      ['rax-codetail-overlay', 'rax-cfg-overlay', 'rax-coedit-overlay', 'rax-pay-overlay'].forEach(function (id) {
+      ['rax-codetail-overlay', 'rax-coedit-overlay', 'rax-pay-overlay'].forEach(function (id) {
         if (id !== keepId) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
       });
     }
@@ -21066,42 +21081,49 @@ const pozitii = await r.json();</code></pre>
     window._raxBackFromSub = function (overlayId) {
       var el = document.getElementById(overlayId); if (el) el.classList.remove('open');
       if (window.raxLoadCompanies) raxLoadCompanies();
-      if (window._raxSubReturnId) { var r = window._raxSubReturnId; window._raxSubReturnId = null; raxOpenCompanyDetail(r); }
+      if (window._raxSubReturnId) { var r = window._raxSubReturnId; window._raxSubReturnId = null; raxOpenCompanyDetail(r, window._raxCodFila); }
     };
-    window.raxOpenCompanyConfig = async function (id) {
-      var ov = document.getElementById('rax-cfg-overlay'); if (!ov) return;
-      var body = document.getElementById('rax-cfg-body');
-      document.getElementById('rax-cfg-title').textContent = 'Configurare companie';
-      if (body) body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
-      window._raxSubReturnId = (document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) ? (window._raxCodId || id) : null;
-      _raxSoloOverlay('rax-cfg-overlay');
-      ov.classList.add('open');
+    // Butoanele vechi („Configurează" de pe rândul firmei, „Module & limite" din Detalii) duc în fereastra firmei, pe „Acces".
+    window.raxOpenCompanyConfig = function (id) { raxOpenCompanyDetail(id, 'acces'); };
+    async function _raxCodAccesIncarca(id) {
+      var body = document.getElementById('rax-cod-acces'); if (!body) return;
       var cfg;
       try { cfg = await fetch('/api/companies/' + id + '/settings', { credentials: 'same-origin' }).then(function (x) { return x.json(); }); }
-      catch (e) { if (body) body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
-      if (!cfg || cfg.error) { if (body) body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + esc((cfg && cfg.error) || 'Eroare') + '</div>'; return; }
-      document.getElementById('rax-cfg-title').textContent = 'Configurare: ' + (cfg.name || ('#' + id));
+      catch (e) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      if (window._raxCodId !== id) return;   // între timp s-a deschis altă firmă
+      if (!cfg || cfg.error) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + esc((cfg && cfg.error) || 'Eroare') + '</div>'; return; }
       _raxCfg = {
         id: id, feats: Object.assign({}, cfg.features || {}),
+        setate: Object.assign({}, cfg.features_setate || {}), dupaFlota: cfg.dupa_flota || [], flotaGrea: !!cfg.flota_grea,
         agents: (cfg.enabled_agents != null ? cfg.enabled_agents.slice() : (cfg.agenti_implicit || []).slice()),
         plan: cfg.plan || 'start', aiLimit: (cfg.ai_monthly_limit != null ? cfg.ai_monthly_limit : '')
       };
       _raxRenderCfg();
-    };
+    }
+    // Sub un modul care merge DUPĂ FLOTĂ (simulatorul): dacă e automat sau ales de noi, și de ce. Textele se scriu
+    // din ce spune serverul (features_setate, flota_grea) — ecranul nu socotește flota a doua oară.
+    function _raxModAuto(s, key) {
+      if ((s.dupaFlota || []).indexOf(key) < 0) return '';
+      var ales = Object.prototype.hasOwnProperty.call(s.setate || {}, key);
+      if (ales) return '<br><span class="raco-auto warn">Ales de noi, de mână.</span> ' +
+        '<button class="rax-btn" style="padding:2px 8px;font-size:11px;margin-left:4px;" onclick="raxCfgAutomat(\'' + key + '\')">Înapoi la automat</button>';
+      return '<br><span class="raco-auto ok">Automat, după flotă: ' +
+        (s.flotaGrea ? 'pornit — firma are camioane, dube sau remorci.' : 'oprit — firma n-are camioane, dube sau remorci.') + '</span>';
+    }
     function _raxRenderCfg() {
       var s = _raxCfg; if (!s) return;
-      var body = document.getElementById('rax-cfg-body'); if (!body) return;
+      var body = document.getElementById('rax-cod-acces'); if (!body) return;
       var SEC = 'margin:0 0 18px;', H = 'font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text-primary);';
       var ROW = 'display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;';
       var CK = 'width:18px;height:18px;accent-color:var(--accent);cursor:pointer;margin-top:1px;flex:0 0 auto;';
       var INP = 'box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;';
       var html = '<div style="' + SEC + '"><div style="' + H + '">Oferta firmei</div>' +
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
-        '<button class="rax-btn primary" onclick="document.getElementById(\'rax-cfg-overlay\').classList.remove(\'open\'); raxOpenCompanyDetail(' + s.id + ', \'abonament\');"><i class="fas fa-tag"></i> Vezi / schimbă oferta</button></div>' +
+        '<button class="rax-btn primary" onclick="raxCodTab(\'abonament\')"><i class="fas fa-tag"></i> Vezi / schimbă oferta</button></div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Prețul și modulele vin din oferta semnată. Tot ce e mai jos le suprascrie, pe firma asta.</div></div>';
       html += '<div style="' + SEC + '"><div style="' + H + '">Module (acces funcții)</div>' +
         _RAX_MODS.map(function (m) {
-          return '<div style="' + ROW + 'cursor:default;"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)"><span class="sl"></span></label></div>';
+          return '<div style="' + ROW + 'cursor:default;"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span>' + _raxModAuto(s, m[0]) + '</span><label class="rax-sw"><input type="checkbox" aria-label="' + m[1] + '" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
       var agOff = !s.feats.agents;
       html += '<div style="' + SEC + '"><div style="' + H + '">Agenți AI' + (agOff ? ' <span style="font-size:10px;color:var(--orange);font-weight:600;">(modul oprit → niciunul nu rulează)</span>' : '') + '</div>' +
@@ -21122,9 +21144,27 @@ const pozitii = await r.json();</code></pre>
         var b = { features: {} }; b.features[key] = !!on;
         var j = await fetch('/api/companies/' + _raxCfg.id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).then(function (r) { return r.json(); });
         if (j.error) { alert(j.error); return; }
-        if (j.features) _raxCfg.feats = j.features;
+        _raxCfgDupaRaspuns(j);
         (window.raxToast || function () {})('Modul ' + (on ? 'activat' : 'dezactivat'), 'success');
-        if (key === 'agents') _raxRenderCfg();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    // Răspunsul serverului e adevărul: comutatoarele, „automat / ales de noi" și fila „Stare" (modulele pornite).
+    function _raxCfgDupaRaspuns(j) {
+      if (j.features) _raxCfg.feats = j.features;
+      if (j.features_setate) _raxCfg.setate = j.features_setate;
+      if (j.flota_grea !== undefined) _raxCfg.flotaGrea = !!j.flota_grea;
+      if (window._raxCod && j.features) { window._raxCod.features = j.features; window._raxCod.features_setate = j.features_setate; }
+      _raxRenderCfg();
+    }
+    // „Înapoi la automat": cheia iese din setările firmei, iar modulul merge iar după flotă.
+    window.raxCfgAutomat = async function (key) {
+      if (!_raxCfg) return;
+      try {
+        var b = { features: {} }; b.features[key] = null;
+        var j = await fetch('/api/companies/' + _raxCfg.id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        _raxCfgDupaRaspuns(j);
+        (window.raxToast || function () {})('Merge din nou după flotă', 'success');
       } catch (e) { alert('Eroare: ' + e.message); }
     };
     window.raxCfgToggleAgent = async function (key, on) {
@@ -21732,14 +21772,110 @@ const pozitii = await r.json();</code></pre>
       if (Array.isArray(c)) return c;
       try { var p = JSON.parse(c || '[]'); return Array.isArray(p) ? p : []; } catch (e) { return []; }
     }
-    function _raxCodDetalii(d) {
-      var c = d.company, a = d.access || {};
-      // Accesul: activ, restanță (în cele 15 zile de după scadență) sau oprit. Fără dată „până la":
-      // ceasul pe perioade plătite a fost scos pe 28.09.
+    // ─── Fila „Stare" (12.10, Robert: „un dashboard pentru fiecare companie… status, mașini, facturi și plăți") ───
+    // Relația NOASTRĂ cu firma, dintr-o privire: accesul, contractul, banii, aparatele, RA Insight, modulele, drumul
+    // clientului. NU ce face firma în aplicație (regula lui Robert: „nu vrem să vedem ce face o companie, ce setări își
+    // fac"). Totul din același /overview, cu regulile care există deja (CTR_STARI, agpsStare, _raxDrumHtml): fila nu
+    // socotește nimic a doua oară. Socoteala e CURATĂ (_raxStareCartonase): telefonul are perechea ei
+    // (cartonaseStare, mobile/src/lib/companii.ts), iar verify_firma_stare.js le rulează pe amândouă pe aceleași firme.
+    // ── începe „fila Stare" ──
+    // Accesul: activ, restanță (în cele 15 zile de după scadență) sau oprit. Fără dată „până la": ceasul pe perioade
+    // plătite a fost scos pe 28.09. Un singur loc pentru cuvinte și culoare — îl citesc „Stare" și „Detalii".
+    function _raxAccesEt(a) {
+      a = a || {};
       var np0 = a.neplata || null;
-      var accLbl = a.status === 'expired' ? (a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată')
+      var lbl = a.status === 'expired' ? (a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată')
         : (a.status === 'grace' ? ('Restanță — ' + (np0 ? np0.zilePanaLaSuspendare + ' zile până la suspendare' : 'factură neachitată')) : 'Activ');
-      var accColor = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--orange)' : 'var(--accent)');
+      var col = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--orange)' : 'var(--accent)');
+      var cls = a.status === 'expired' ? 'bad' : (a.status === 'grace' ? 'warn' : 'ok');   // culoarea cu pereche pe tema deschisă
+      return [lbl, col, cls];
+    }
+    // dep = { stari: CTR_STARI, semnal: agpsStare, module: [{ k, et }] } — regulile celelalte, date din afară, ca proba
+    // să poată rula socoteala cu aceleași reguli pe web și pe telefon. Întoarce cartonașele: { k, v, d, ton, fila }.
+    function _raxStareCartonase(d, acum, dep) {
+      var c = d.company || {}, a = d.access || {};
+      var dt = function (v) {
+        if (v == null || v === '') return null;
+        var s = String(v).trim(), x = /^\d+$/.test(s) ? new Date(Number(s)) : new Date(s);
+        return isNaN(x.getTime()) ? null : x;
+      };
+      var zi = function (v) { var x = dt(v); return x ? x.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—'; };
+      var lei = function (n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei'; };
+      var de = function (n) { var r = Math.abs(n) % 100; return (n !== 0 && (r === 0 || r >= 20)) ? ' de ' : ' '; };
+      var out = [];
+      // 1. Accesul
+      var acc = _raxAccesEt(a);
+      out.push({ k: 'Accesul', v: acc[0], ton: acc[2], fila: '',
+        d: a.status === 'expired'
+          ? ((a.motiv === 'manual' && c.suspend_reason) ? 'Motivul nostru: ' + c.suspend_reason : 'Firma nu mai intră în aplicație.')
+          : (a.status === 'grace' ? 'O factură e trecută de scadență.' : 'Nicio factură trecută de scadență.') });
+      // 2. Contractul
+      var ct = d.contract;
+      if (c.is_demo) out.push({ k: 'Contractul', v: 'Compania demo', d: 'Nu are contract.', ton: '', fila: '' });
+      else if (!ct) out.push({ k: 'Contractul', v: 'Fără contract', d: 'Firma nu are încă un contract în aplicație.', ton: 'warn', fila: 'contract' });
+      else {
+        var stc = dep.stari[ct.status] || dep.stari.ciorna;
+        out.push({ k: 'Contractul', v: stc[0].charAt(0).toUpperCase() + stc[0].slice(1), fila: 'contract',
+          d: (ct.number || 'fără număr') + (d.sfarsit ? ' · până pe ' + zi(d.sfarsit) : (ct.status === 'activ' ? ' · pe durată nedeterminată' : '')),
+          ton: ct.status === 'incheiat' ? 'bad' : (ct.status === 'activ' ? 'ok' : '') });
+      }
+      // 3. Facturi și plăți
+      var deschise = (d.facturi || []).filter(function (f) { return f.status !== 'paid' && f.status !== 'canceled'; });
+      var sumaD = deschise.reduce(function (s, f) { return s + (Number(f.total) || 0); }, 0);
+      var trecute = deschise.filter(function (f) { var x = dt(f.due_date); return x && x.getTime() < acum; }).length;
+      var urm = deschise.map(function (f) { return dt(f.due_date); }).filter(Boolean).sort(function (x, y) { return x - y; })[0];
+      var pl = (d.payments || []).slice().sort(function (x, y) { return (dt(y.paid_at || y.created_at) || 0) - (dt(x.paid_at || x.created_at) || 0); })[0];
+      var n = deschise.length;
+      var fD = (n ? lei(sumaD) + (trecute ? ' · ' + trecute + (trecute === 1 ? ' trecută' : ' trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
+        (pl ? 'ultima plată: ' + lei(pl.amount_ron) + ', pe ' + zi(pl.paid_at || pl.created_at) : 'nicio plată încă');
+      out.push({ k: 'Facturi și plăți', v: n ? (n === 1 ? '1 document de plată' : n + de(n) + 'documente de plată') : 'Totul e plătit',
+        d: fD.charAt(0).toUpperCase() + fD.slice(1), ton: trecute ? 'warn' : (n ? '' : 'ok'), fila: 'facturi' });
+      // 4. Aparatele (semnalul: agpsStare, ca la „Dispozitive" și „Aparate GPS")
+      var veh = d.vehicles || [], nr = { ok: 0, tacut: 0, mut: 0, niciodata: 0 }, probl = [];
+      veh.forEach(function (v) {
+        var s = dep.semnal(v.last_position_time, acum);
+        if (nr[s.k] != null) nr[s.k]++;
+        if (s.k === 'mut' || s.k === 'niciodata') probl.push((v.plate || v.name || v.imei) + ': ' + s.t);
+      });
+      out.push({ k: 'Aparatele', fila: 'vehicule',
+        v: veh.length ? veh.length + (veh.length === 1 ? ' aparat' : de(veh.length) + 'aparate') + ' · ' + nr.ok + ' comunică' : 'Niciun aparat',
+        d: probl.length ? probl.slice(0, 3).join('; ') + (probl.length > 3 ? ' · și încă ' + (probl.length - 3) : '')
+          : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive".'),
+        ton: probl.length ? 'bad' : (nr.tacut ? 'warn' : (veh.length ? 'ok' : '')) });
+      // 5. RA Insight (doar numere — nu cine ce a întrebat)
+      var ri = d.insight || null;
+      if (!ri || !ri.enabled) out.push({ k: 'RA Insight', v: 'Oprit', d: 'Nu e în oferta firmei.', ton: 'mut', fila: '' });
+      else out.push({ k: 'RA Insight', fila: '', ton: ri.epuizat ? 'warn' : '',
+        v: ri.conturi + (ri.conturi === 1 ? ' cont' : de(ri.conturi) + 'conturi'),
+        d: ri.fond ? ri.used + ' din ' + ri.fond + de(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
+          : ri.used + de(ri.used) + 'întrebări luna asta · fără plafon' });
+      // 6. Modulele (din aceeași listă ca fila „Acces")
+      var f = d.features || {};
+      var pornite = (dep.module || []).filter(function (m) { return f[m.k]; }).map(function (m) { return m.et; });
+      out.push({ k: 'Modulele', fila: 'acces', ton: '', d: pornite.join(', '),
+        v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : pornite.length + ' module pornite') : 'Niciun modul pornit' });
+      return out;
+    }
+    // ── sfârșit „fila Stare" ──
+    var _RAX_FILA_ET = { contract: 'Contract', facturi: 'Facturi', vehicule: 'Vehicule', acces: 'Acces' };
+    function _raxCodStare(d) {
+      var c = d.company || {};
+      var lista = _raxStareCartonase(d, Date.now(), {
+        stari: CTR_STARI, semnal: (typeof agpsStare === 'function') ? agpsStare : function () { return { k: '', t: '' }; },
+        module: _RAX_MODS.map(function (m) { return { k: m[0], et: m[1] }; })
+      });
+      var drum = d.drum ? _raxDrumHtml(d.drum, d.contract, c.id) : '';   // aceeași bucată ca pe fila „Contract"
+      return '<div class="raco-stare">' + lista.map(function (x) {
+          return '<div class="raco-st"><span class="k">' + esc(x.k) + '</span><span class="v' + (x.ton ? ' ' + x.ton : '') + '">' + esc(x.v) + '</span>' +
+            (x.d ? '<span class="d">' + esc(x.d) + '</span>' : '') +
+            (x.fila ? '<span class="a"><button class="rax-btn" style="padding:4px 10px;font-size:12px;" onclick="raxCodTab(\'' + x.fila + '\')">' + _RAX_FILA_ET[x.fila] + ' →</button></span>' : '') + '</div>';
+        }).join('') + '</div>' +
+        (drum ? '<div style="margin-top:12px;">' + drum + '</div>' : '') +
+        '<div class="raco-st-nota"><i class="fas fa-lock"></i> Aici stă doar ce ține de relația noastră cu firma: acces, contract, bani, aparate, module. Nu și ce face firma în aplicație.</div>';
+    }
+    function _raxCodDetalii(d) {
+      var c = d.company;
+      var _acc = _raxAccesEt(d.access), accLbl = _acc[0], accColor = _acc[1];
       function kv(k, v) { return '<div class="rax-kv"><span class="k">' + esc(k) + '</span><span class="v">' + (v ? esc(v) : '<span style="color:var(--text-muted)">—</span>') + '</span></div>'; }
       var contacts = _raxParseContacts(c.contacts);
       var contactsHtml = contacts.length
@@ -21759,7 +21895,7 @@ const pozitii = await r.json();</code></pre>
         '</div>' +
         '<div class="rax-cod-sect"><h4>Persoane de contact</h4>' + contactsHtml + '</div>' +
         '<div class="rax-cod-actiuni"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
-        '<button class="rax-btn" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Module &amp; limite</button></div>';
+        '<button class="rax-btn" onclick="raxCodTab(\'acces\')"><i class="fas fa-sliders"></i> Module &amp; limite</button></div>';
     }
     // ── începe „administratorii firmei" ──
     // Din 16.09, administratorii unei firme sunt treaba FIRMEI: adminul ei poate face sau promova alt
@@ -24662,9 +24798,11 @@ const pozitii = await r.json();</code></pre>
 
     window.raxCodTab = function (tab) {
       var d = window._raxCod; if (!d) return;
+      window._raxCodFila = tab;   // reîmprospătarea după o editare rămâne pe fila pe care erai, nu sare pe „Stare"
       document.querySelectorAll('#rax-codetail-overlay .rax-cod-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ct') === tab); });
       var body = document.getElementById('rax-cod-body'); if (!body) return;
-      body.innerHTML = tab === 'utilizatori' ? _raxCodUsers(d) : tab === 'vehicule' ? _raxCodVehicule(d) : tab === 'facturi' ? _raxCodFacturi(d) : tab === 'abonament' ? _raxCodAbonament(d) : tab === 'contract' ? _raxCodContract(d) : _raxCodDetalii(d);
+      body.innerHTML = tab === 'stare' ? _raxCodStare(d) : tab === 'utilizatori' ? _raxCodUsers(d) : tab === 'vehicule' ? _raxCodVehicule(d) : tab === 'facturi' ? _raxCodFacturi(d) : tab === 'abonament' ? _raxCodAbonament(d) : tab === 'contract' ? _raxCodContract(d) : tab === 'acces' ? '<div id="rax-cod-acces"><div class="rax-co-meta" style="padding:20px;">Se încarcă…</div></div>' : _raxCodDetalii(d);
+      if (tab === 'acces') _raxCodAccesIncarca(d.company.id);
     };
     window.raxCloseCompanyDetail = function () { var ov = document.getElementById('rax-codetail-overlay'); if (ov) ov.classList.remove('open'); };
     window.raxOpenCompanyDetail = async function (id, tab) {
@@ -24674,12 +24812,14 @@ const pozitii = await r.json();</code></pre>
         ov.innerHTML = '<div class="rax-card" style="max-width:900px;">' +
             '<div class="rax-head"><h3 id="rax-cod-title"><i class="fas fa-building" style="color:var(--accent)"></i> Companie</h3><button class="rax-x" onclick="raxCloseCompanyDetail()">&times;</button></div>' +
             '<div class="rax-cod-tabs">' +
-              '<button class="rax-cod-tab on" data-ct="detalii" onclick="raxCodTab(\'detalii\')"><i class="fas fa-id-card"></i> Detalii</button>' +
+              '<button class="rax-cod-tab on" data-ct="stare" onclick="raxCodTab(\'stare\')"><i class="fas fa-gauge"></i> Stare</button>' +
+              '<button class="rax-cod-tab" data-ct="detalii" onclick="raxCodTab(\'detalii\')"><i class="fas fa-id-card"></i> Detalii</button>' +
               '<button class="rax-cod-tab" data-ct="utilizatori" onclick="raxCodTab(\'utilizatori\')"><i class="fas fa-users"></i> Utilizatori</button>' +
               '<button class="rax-cod-tab" data-ct="vehicule" onclick="raxCodTab(\'vehicule\')"><i class="fas fa-car"></i> Vehicule</button>' +
               '<button class="rax-cod-tab" data-ct="facturi" onclick="raxCodTab(\'facturi\')"><i class="fas fa-receipt"></i> Facturi</button>' +
               '<button class="rax-cod-tab" data-ct="abonament" onclick="raxCodTab(\'abonament\')"><i class="fas fa-tags"></i> Abonament &amp; plăți</button>' +
               '<button class="rax-cod-tab" data-ct="contract" onclick="raxCodTab(\'contract\')"><i class="fas fa-file-signature"></i> Contract</button>' +
+              '<button class="rax-cod-tab" data-ct="acces" onclick="raxCodTab(\'acces\')"><i class="fas fa-toggle-on"></i> Acces</button>' +
             '</div>' +
             '<div class="rax-body raco" id="rax-cod-body"><div class="rax-co-meta" style="padding:20px;">Se încarcă…</div></div>' +
           '</div>';
@@ -24696,11 +24836,11 @@ const pozitii = await r.json();</code></pre>
         window._raxCod = d;
         document.getElementById('rax-cod-title').innerHTML = '<i class="fas fa-building" style="color:var(--accent)"></i> ' + esc(d.company.name) +
           ' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ' + (d.counts.vehicles || 0) + ' vehicule · ' + (d.counts.users || 0) + ' utilizatori</span>';
-        raxCodTab(tab || 'detalii');
+        raxCodTab(tab || 'stare');
       } catch (e) { var b = document.getElementById('rax-cod-body'); if (b) b.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; }
     };
     // Reîmprospătează drill-down-ul deschis după o editare a companiei
-    window.raxRefreshOpenDetail = function () { if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId); };
+    window.raxRefreshOpenDetail = function () { if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, window._raxCodFila); };
 
     // ─── Facturare (super-admin): tabel cu toate plățile + modal de înregistrare ───
     var _billingData = [], _billingTotal = 0;

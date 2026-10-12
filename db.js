@@ -2907,6 +2907,15 @@ async function getCompanyImeis(companyId) {
   const r = await pool.query('SELECT imei FROM devices WHERE company_id = $1', [companyId]);
   return r.rows.map(x => x.imei);
 }
+// Firmele care au cel puțin un vehicul nearhivat de un fel care cară marfă (plans.TIPURI_CU_MARFA) — din asta merge
+// singur simulatorul de încărcare, cât nu l-am ales noi de mână.
+async function firmeCuFlotaGrea(tipuri) {
+  const t = (tipuri || []).filter(Boolean);
+  if (!t.length) return [];
+  const ph = t.map(function (_, i) { return '$' + (i + 1); }).join(', ');
+  const r = await pool.query("SELECT DISTINCT company_id FROM devices WHERE company_id IS NOT NULL AND status IS DISTINCT FROM 'archived' AND vehicle_type IN (" + ph + ")", t);
+  return r.rows.map(function (x) { return Number(x.company_id); });
+}
 // Ca getCompanyImeis, dar EXCLUDE vehiculele arhivate — pentru rapoarte/analitice (nu pentru scoping de acces).
 async function getCompanyActiveImeis(companyId) {
   const r = await pool.query("SELECT imei FROM devices WHERE company_id = $1 AND status IS DISTINCT FROM 'archived'", [companyId]);
@@ -5701,7 +5710,7 @@ module.exports = {
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
-  getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,

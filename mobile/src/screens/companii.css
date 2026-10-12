@@ -142,3 +142,16 @@ button.co-pill { min-height: 30px; }
 /* Pastila de filtru cu ton roșu (Fără contract, Suspendate) — portocaliul e .fm-chip.cald din firma.css */
 .fm-chip.co-rau { border-color: var(--red); color: var(--red); }
 .fm-chip.co-rau b { color: var(--red); }
+
+/* Fila „Stare" a fișei firmei (12.10): cartonașe, câte un subiect pe fiecare — ca pe web (.raco-st). Culorile vin din
+   --co-ok / --co-warn, care au pereche pe tema luminoasă (sus, în fișier). */
+.co-stare { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+@media (min-width: 560px) { .co-stare { grid-template-columns: 1fr 1fr; } }
+.co-st { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.co-st .k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.co-st .v { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.co-st .v.ok { color: var(--co-ok); }
+.co-st .v.warn { color: var(--co-warn); }
+.co-st .v.bad { color: var(--red); }
+.co-st .v.mut { color: var(--text-muted); }
+.co-st .d { font-size: 13px; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }

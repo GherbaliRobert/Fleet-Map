@@ -96,13 +96,36 @@ function computeCompanyPrice(company, canCounts, opts) {
 //   agenții — PORNIȚI (gratuiți, parte din produs);
 //   restul — OPRITE până le aprinde oferta semnată.
 // `settings.features` (scris de ofertă sau de mână, din Configurează) bate întotdeauna implicitul.
-const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll'];
-const FEATURE_IMPLICIT = { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false };
+const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll', 'incarcare'];
+const FEATURE_IMPLICIT = { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false, incarcare: false };
+// Simulatorul de încărcare (Robert, 12.10: „inclus în abonament" + „1.a"): neales de noi, merge DUPĂ FLOTĂ — pornit la
+// firmele care au vehicule care cară marfă (TIPURI_CU_MARFA), oprit la celelalte. Ales de noi (true / false în
+// `settings.features`), rămâne cum l-am pus; `null` îl întoarce la automat. Flota o ține minte serverul (setFlotaGrea),
+// fiindcă featuresFor e chemată pe loc, în multe locuri, și n-are bază de date.
+const FEATURE_DUPA_FLOTA = ['incarcare'];
+// Valorile din lista „Categorie" a fișei, plus scrierile cu diacritice și cele englezești care pot veni din importuri vechi
+// (aceleași pe care le recunoaște iconița vehiculului de pe hartă).
+const TIPURI_CU_MARFA = ['Autotractor', 'Camion', 'TIR', 'Duba', 'Dubă', 'Remorca', 'Remorcă', 'autotractor', 'truck', 'tir', 'van', 'trailer'];
+let _flotaGrea = new Set();
+function setFlotaGrea(ids) { _flotaGrea = new Set((ids || []).map(Number)); }
+function setFlotaGreaFirma(id, are) { if (are) _flotaGrea.add(Number(id)); else _flotaGrea.delete(Number(id)); }
+function areFlotaGrea(id) { return id != null && _flotaGrea.has(Number(id)); }
+function _setariFirma(company) { return (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {}; }
 function featuresFor(company) {
-  const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
-  const ov = (settings && settings.features) || {};
+  const ov = (_setariFirma(company).features) || {};
   const out = {};
-  FEATURE_KEYS.forEach(function (k) { out[k] = (typeof ov[k] === 'boolean') ? ov[k] : !!FEATURE_IMPLICIT[k]; });
+  FEATURE_KEYS.forEach(function (k) {
+    if (typeof ov[k] === 'boolean') out[k] = ov[k];
+    else if (FEATURE_DUPA_FLOTA.indexOf(k) >= 0) out[k] = areFlotaGrea(company && company.id);
+    else out[k] = !!FEATURE_IMPLICIT[k];
+  });
+  return out;
+}
+// Ce am ales NOI, de mână (sau oferta): doar cheile scrise. Ce lipsește de aici merge după implicit / după flotă.
+function featuresSetate(company) {
+  const ov = (_setariFirma(company).features) || {};
+  const out = {};
+  FEATURE_KEYS.forEach(function (k) { if (typeof ov[k] === 'boolean') out[k] = ov[k]; });
   return out;
 }
 
@@ -120,5 +143,6 @@ function enabledAgentsFor(company) {
 // `effectivePlan` rămâne ca nume vechi, ca să nu rupă apelurile existente — dar întoarce OFERTA.
 module.exports = {
   ofertaFirmei, effectivePlan: ofertaFirmei, computeCompanyPrice,
-  ALL_AGENT_KEYS, enabledAgentsFor, FEATURE_KEYS, featuresFor
+  ALL_AGENT_KEYS, enabledAgentsFor, FEATURE_KEYS, featuresFor, featuresSetate,
+  FEATURE_DUPA_FLOTA, TIPURI_CU_MARFA, setFlotaGrea, setFlotaGreaFirma, areFlotaGrea
 };

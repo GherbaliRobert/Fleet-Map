@@ -181,3 +181,97 @@ export function contacte(v: any): Contact[] {
 
 // Emailul, verificat ca pe web (raxCoAddAdmin) — serverul îl verifică oricum din nou.
 export const EMAIL_OK = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+// ─── Fișa firmei, filele „Stare" și „Acces" (12.10, Robert: „un dashboard pentru fiecare companie… prin taburi") ───
+// Modulele firmei, în ordinea și cu vorbele de pe web (_RAX_MODS). Le citesc fila „Acces" (comutatoarele) și „Stare"
+// (modulele pornite). Legate de web prin verify_firma_stare.js.
+export const MODULE_FIRMA = [
+  { key: 'agents', label: 'Agenți AI', sub: 'Master — permite rularea agenților AI de mai jos' },
+  { key: 'ai_assistant', label: 'Asistent AI', sub: 'Chat AI + RA Insight în aplicație' },
+  { key: 'etransport', label: 'e-Transport', sub: 'Modul ANAF e-Transport (coduri UIT)' },
+  { key: 'tahograf', label: 'Tahograf', sub: 'Analiză fișiere tahograf (.ddd)' },
+  { key: 'incarcare', label: 'Simulator încărcare', sub: 'Planul de încărcare, semiremorcile și remorcile, fila „Încărcare” din fișa vehiculului — inclus în abonament' },
+];
+// Sub modulul care merge DUPĂ FLOTĂ (simulatorul): ales de noi sau automat, și de ce — vorbele web-ului (_raxModAuto).
+// Ce e „după flotă" și dacă firma are vehicule care cară marfă le spune serverul (dupa_flota, flota_grea).
+export const MOD_ALES = 'Ales de noi, de mână.';
+export const MOD_INAPOI = 'Înapoi la automat';
+export function modulAutoText(flotaGrea: boolean): string {
+  return 'Automat, după flotă: ' + (flotaGrea ? 'pornit — firma are camioane, dube sau remorci.' : 'oprit — firma n-are camioane, dube sau remorci.');
+}
+
+// Cartonașele filei „Stare": relația NOASTRĂ cu firma (acces, contract, bani, aparate, RA Insight, module) — nu ce face
+// firma în aplicație. Perechea lui _raxStareCartonase din pagină, rulată de probă pe aceleași firme: schimbi una, o
+// schimbi și pe cealaltă. `dep` = regulile celelalte (stările contractului, semnalul aparatului, modulele).
+export type Cartonas = { k: string; v: string; d: string; ton: '' | 'ok' | 'warn' | 'bad' | 'mut'; fila: string };
+export type StareDep = {
+  stari: Record<string, [string, string]>;
+  semnal: (lastTx: unknown, acum: number) => { k: string; t: string };
+  module: { k: string; et: string }[];
+};
+export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] {
+  const c = (o && o.company) || {}, a = (o && o.access) || {};
+  const dt = (v: any): Date | null => {
+    if (v == null || v === '') return null;
+    const s = String(v).trim(), x = /^\d+$/.test(s) ? new Date(Number(s)) : new Date(s);
+    return isNaN(x.getTime()) ? null : x;
+  };
+  const zi = (v: any) => { const x = dt(v); return x ? x.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—'; };
+  const lei = (n: any) => (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei';
+  const deN = (n: number) => { const r = Math.abs(n) % 100; return (n !== 0 && (r === 0 || r >= 20)) ? ' de ' : ' '; };
+  const out: Cartonas[] = [];
+  // 1. Accesul
+  out.push({ k: 'Accesul', v: accesDetalii(a).et, fila: '',
+    ton: a.status === 'expired' ? 'bad' : (a.status === 'grace' ? 'warn' : 'ok'),
+    d: a.status === 'expired'
+      ? ((a.motiv === 'manual' && c.suspend_reason) ? 'Motivul nostru: ' + c.suspend_reason : 'Firma nu mai intră în aplicație.')
+      : (a.status === 'grace' ? 'O factură e trecută de scadență.' : 'Nicio factură trecută de scadență.') });
+  // 2. Contractul
+  const ct = o && o.contract;
+  if (c.is_demo) out.push({ k: 'Contractul', v: 'Compania demo', d: 'Nu are contract.', ton: '', fila: '' });
+  else if (!ct) out.push({ k: 'Contractul', v: 'Fără contract', d: 'Firma nu are încă un contract în aplicație.', ton: 'warn', fila: 'contract' });
+  else {
+    const stc = dep.stari[ct.status] || dep.stari.ciorna;
+    out.push({ k: 'Contractul', v: stc[0].charAt(0).toUpperCase() + stc[0].slice(1), fila: 'contract',
+      d: (ct.number || 'fără număr') + (o.sfarsit ? ' · până pe ' + zi(o.sfarsit) : (ct.status === 'activ' ? ' · pe durată nedeterminată' : '')),
+      ton: ct.status === 'incheiat' ? 'bad' : (ct.status === 'activ' ? 'ok' : '') });
+  }
+  // 3. Facturi și plăți
+  const deschise = ((o && o.facturi) || []).filter((f: any) => f.status !== 'paid' && f.status !== 'canceled');
+  const sumaD = deschise.reduce((s: number, f: any) => s + (Number(f.total) || 0), 0);
+  const trecute = deschise.filter((f: any) => { const x = dt(f.due_date); return !!x && x.getTime() < acum; }).length;
+  const urm = deschise.map((f: any) => dt(f.due_date)).filter(Boolean).sort((x: any, y: any) => x - y)[0] as Date | undefined;
+  const pl = ((o && o.payments) || []).slice().sort((x: any, y: any) => ((dt(y.paid_at || y.created_at) as any) || 0) - ((dt(x.paid_at || x.created_at) as any) || 0))[0];
+  const n = deschise.length;
+  const fD = (n ? lei(sumaD) + (trecute ? ' · ' + trecute + (trecute === 1 ? ' trecută' : ' trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
+    (pl ? 'ultima plată: ' + lei(pl.amount_ron) + ', pe ' + zi(pl.paid_at || pl.created_at) : 'nicio plată încă');
+  out.push({ k: 'Facturi și plăți', v: n ? (n === 1 ? '1 document de plată' : n + deN(n) + 'documente de plată') : 'Totul e plătit',
+    d: fD.charAt(0).toUpperCase() + fD.slice(1), ton: trecute ? 'warn' : (n ? '' : 'ok'), fila: 'facturi' });
+  // 4. Aparatele (semnalul: stareAparat, ca „Aparate GPS" — legat de agpsStare de pe web)
+  const veh: any[] = (o && o.vehicles) || [];
+  const nr: Record<string, number> = { ok: 0, tacut: 0, mut: 0, niciodata: 0 };
+  const probl: string[] = [];
+  veh.forEach((v) => {
+    const s = dep.semnal(v.last_position_time, acum);
+    if (nr[s.k] != null) nr[s.k]++;
+    if (s.k === 'mut' || s.k === 'niciodata') probl.push((v.plate || v.name || v.imei) + ': ' + s.t);
+  });
+  out.push({ k: 'Aparatele', fila: 'vehicule',
+    v: veh.length ? veh.length + (veh.length === 1 ? ' aparat' : deN(veh.length) + 'aparate') + ' · ' + nr.ok + ' comunică' : 'Niciun aparat',
+    d: probl.length ? probl.slice(0, 3).join('; ') + (probl.length > 3 ? ' · și încă ' + (probl.length - 3) : '')
+      : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive".'),
+    ton: probl.length ? 'bad' : (nr.tacut ? 'warn' : (veh.length ? 'ok' : '')) });
+  // 5. RA Insight (doar numere — nu cine ce a întrebat)
+  const ri = (o && o.insight) || null;
+  if (!ri || !ri.enabled) out.push({ k: 'RA Insight', v: 'Oprit', d: 'Nu e în oferta firmei.', ton: 'mut', fila: '' });
+  else out.push({ k: 'RA Insight', fila: '', ton: ri.epuizat ? 'warn' : '',
+    v: ri.conturi + (ri.conturi === 1 ? ' cont' : deN(ri.conturi) + 'conturi'),
+    d: ri.fond ? ri.used + ' din ' + ri.fond + deN(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
+      : ri.used + deN(ri.used) + 'întrebări luna asta · fără plafon' });
+  // 6. Modulele (aceeași listă ca fila „Acces")
+  const f = (o && o.features) || {};
+  const pornite = (dep.module || []).filter((m) => f[m.k]).map((m) => m.et);
+  out.push({ k: 'Modulele', fila: 'acces', ton: '', d: pornite.join(', '),
+    v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : pornite.length + ' module pornite') : 'Niciun modul pornit' });
+  return out;
+}
