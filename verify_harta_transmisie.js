@@ -81,5 +81,31 @@ T('fără poziție, adresa scrie „—" în loc să se învârtă la nesfârși
 const zboruri = (html.match(/map\.flyTo\(\[data\.latitude, data\.longitude\]/g) || []).length;
 T('un singur zbor la poziția mașinii din listă, cel păzit', zboruri === 1, zboruri);
 
+// ─── 5. Fișa unei mașini fără nicio poziție se SALVEAZĂ până la capăt ─────────────────────────────────
+console.log('\n5. „Salvează" în fișa unei mașini fără nicio poziție duce treaba la capăt');
+// Găsit pe 12.10 (Robert: „o rezolvăm acum"): după salvare, updateMarker punea mașina pe hartă la [null, null], Leaflet
+// arunca, iar lista nu se mai reîmprospăta — numărul schimbat rămânea cel vechi până la reîncărcarea paginii.
+// updateMarker se decupează din pagină și se rulează cu o hartă de carton care aruncă exact ca Leaflet.
+const UM = fnPag('function updateMarker(data)');
+function ruleazaUM(date) {
+  const st = { lista: 0, markere: 0 };
+  const L = { marker: (ll) => { if (ll[0] == null || ll[1] == null) throw new Error('Leaflet: poziție goală'); st.markere++; return { addTo() { return this; }, on() {}, setLatLng() {}, setIcon() {} }; } };
+  const f = new Function('L', 'st', 'devices', 'markers',
+    'var map3dOn = false, _ml3dLayer = null, selectedImei = null, detailPanelImei = null, _spiderActive = null, map = {};' +
+    'var window = { innerWidth: 1200 };' +
+    'function isDeviceOnline() { return false; } function createIcon() { return {}; } function push3dData() {}' +
+    'function updateDeviceList() { st.lista++; } function scheduleGrouping() {} function panFollowVehicle() {}' +
+    'function updateDetailPanel() {} function updateDetailIoPanel() {}\n' + UM + '\nreturn updateMarker;');
+  const devices = new Map(), markers = new Map();
+  let eroare = null;
+  try { f(L, st, devices, markers)(date); } catch (e) { eroare = e.message; }
+  return { eroare, lista: st.lista, markere: st.markere, inLista: devices.has(date.imei) };
+}
+const fara = ruleazaUM({ imei: '861', name: 'Camion nou', plate: 'TM 01 XYZ', latitude: null, longitude: null });
+T('fără poziție: nicio eroare, mașina rămâne în listă, lista se reîmprospătează, fără marker',
+  !fara.eroare && fara.inLista && fara.lista === 1 && fara.markere === 0, JSON.stringify(fara));
+const cu = ruleazaUM({ imei: '862', name: 'Camion', latitude: 45.75, longitude: 21.22 });
+T('cu poziție: markerul se pune ca înainte', !cu.eroare && cu.markere === 1 && cu.lista === 1, JSON.stringify(cu));
+
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

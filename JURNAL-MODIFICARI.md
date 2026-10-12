@@ -268,6 +268,19 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
+### AMÂNDOI · Fișa unei mașini care n-a transmis încă se salvează până la capăt (găsit pe drum; Robert: „o rezolvăm acum")
+
+La o mașină cu aparatul pus, dar fără nicio poziție încă (de exemplu un camion montat azi), „Salvează" din fișă scria
+datele, dar apoi harta încerca s-o pună pe hartă la o poziție goală și se oprea cu o eroare: lista nu se mai
+reîmprospăta, iar numărul schimbat din „TM 01 ABC" în „TM 01 XYZ" rămânea cel vechi până la reîncărcarea paginii.
+Acum mașina fără poziție rămâne în listă, fără semn pe hartă, iar lista se reîmprospătează pe loc.
+
+- **Ce am schimbat:** `public/index.html` (`updateMarker`: fără poziție, nu pune semn pe hartă). Doar pe web — telefonul
+  n-avea problema.
+- **Probe:** `verify_harta_transmisie.js`, secțiunea 5 (nouă): bucata din pagină rulată cu o hartă care aruncă exact ca
+  cea adevărată — fără poziție nicio eroare și lista reîmprospătată, cu poziție semnul se pune ca înainte.
+- **Ce vede fondatorul / clientul:** același lucru — salvarea fișei unui vehicul nou se vede imediat în listă.
+
 ### AMÂNDOI · Emailul pleacă prin Brevo (merge și pe Railway Hobby), pe o singură cale — `7ba41bf`
 
 Robert (12.10): *„am făcut contul [Brevo], îl putem integra în ratrack? văd că au API"*. Da: Railway Hobby blochează

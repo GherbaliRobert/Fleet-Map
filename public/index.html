@@ -15120,6 +15120,14 @@ const pozitii = await r.json();</code></pre>
       devices.set(imei, data);
       if (map3dOn && _ml3dLayer) { try { push3dData(); } catch (e) {} }
 
+      // O mașină fără nicio poziție (aparatul pus, încă netransmis) n-are loc pe hartă: rămâne în listă, fără marker.
+      // Leaflet aruncă la L.marker([null, null]) — după „Salvează" în fișa ei, lista nu se mai reîmprospăta (12.10).
+      if (latitude == null || longitude == null || isNaN(+latitude) || isNaN(+longitude)) {
+        if (detailPanelImei === imei) { updateDetailPanel(imei); updateDetailIoPanel(imei); }
+        updateDeviceList();
+        return;
+      }
+
       const isSelected = imei === selectedImei;
       const isOnline = isDeviceOnline(data);
       const icon = createIcon(angle, speed, isSelected, io, isOnline, data);
