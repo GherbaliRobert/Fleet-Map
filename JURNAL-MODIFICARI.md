@@ -126,6 +126,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **13.10 (seara):** `RA-Track-1.0.14-debug.apk`, pe Desktop — tot ce e în 1.0.13, plus: atașarea remorcii la un vehicul
   (și „Deschide în simulator"), desenul nou din simulator, panoul Mail cu „Răspunde tuturor", „Redirecționează" și
   semnătura. Se instalează ea, în locul lui 1.0.13.
+  **13.10 (seara, mai târziu):** `RA-Track-1.0.15-debug.apk`, pe Desktop — tot ce e în 1.0.14, plus: desenul vehiculului,
+  a doua trecere; panoul Mail complet (Spam, Coș, bife, butoanele pe rând, ciornele, adresele sugerate, steaua) și câmpul
+  „Funcția" în Contul meu și în fișa omului. Se instalează ea, în locul lui 1.0.14.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -300,7 +303,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
-### AMÂNDOI · Mailul complet: dosarele Spam și Coș, bife pe mai multe, butoanele pe rând, ciornele, adresele sugerate, steaua; funcția în semnătură
+### AMÂNDOI · Mailul complet: dosarele Spam și Coș, bife pe mai multe, butoanele pe rând, ciornele, adresele sugerate, steaua; funcția în semnătură — `89c6ee3`
 
 Robert (13.10): *„la semnătură vreau să fie și funcția și adresa de mail, vreau să avem butoanele direct în lista de mail
 (reply, ștergere și ce mai e), vreau să putem avea acțiuni multiple, de bifare și după ștergere, secțiune de spam, vreau să fie
