@@ -129,6 +129,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **13.10 (seara, mai târziu):** `RA-Track-1.0.15-debug.apk`, pe Desktop — tot ce e în 1.0.14, plus: desenul vehiculului,
   a doua trecere; panoul Mail complet (Spam, Coș, bife, butoanele pe rând, ciornele, adresele sugerate, steaua) și câmpul
   „Funcția" în Contul meu și în fișa omului. Se instalează ea, în locul lui 1.0.14.
+  **13.10 (seara, ultima):** `RA-Track-1.0.16-debug.apk`, pe Desktop — tot ce e în 1.0.15, plus butoanele simulatorului (și
+  ale planului șoferului) lipite de marginea de jos a ecranului. Se instalează ea, în locul lui 1.0.15.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -302,6 +304,19 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-13
+
+### AMÂNDOI · Telefon: butoanele simulatorului stau la marginea de jos a ecranului
+
+Robert (13.10, cu captura): *„butoanele trebuie să fie la marginea de jos"*. Pe telefon, „PDF" și „Trimite șoferului" stăteau
+ridicate cam cât bara de file de jos — dar pe ecranul simulatorului bara de file nu există, așa că pluteau peste mijlocul
+paginii (peste „Greutatea pe osii").
+
+- **Ce am schimbat:** bara cu butoane e acum lipită de marginea de jos, cu fundalul ei și o linie subțire deasupra; golul lăsat
+  sub pagină pentru vechea poziție s-a micșorat. La fel pe ecranul șoferului („Am încărcat" / „Am o problemă"), care folosea
+  aceeași bară. `mobile/src/screens/simulator.css` (`.ts-jos`, `.ts-pad`); proba `verify_plan_incarcare.js` păzește acum ca bara
+  să stea jos (și că ecranele astea n-au bara de file). Văzut desenat, pe ambele teme. APK 1.0.16.
+- **Ce vede fondatorul:** pe telefon, în Simulator încărcare, butoanele jos, la margine.
+- **Ce vede clientul:** la fel — dispecerul în simulator, șoferul în planul lui.
 
 ### AMÂNDOI · Mailul complet: dosarele Spam și Coș, bife pe mai multe, butoanele pe rând, ciornele, adresele sugerate, steaua; funcția în semnătură — `89c6ee3`
 

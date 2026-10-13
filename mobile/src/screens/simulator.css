@@ -1,6 +1,6 @@
 /* Simulatorul de încărcare și planurile, pe telefon (pasul 4, 12.10). Desenul vine din lib/simDesen.ts (aceleași clase ca
    pe web: sim-cab1, sim-podea…), deci culorile lui stau aici, pe ambele teme. Implicit tema închisă; [data-theme="light"]. */
-.ts-pad { padding: 12px 14px 110px; display: flex; flex-direction: column; gap: 12px; }
+.ts-pad { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 .ts-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .ts-lbl { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
 .ts-mut { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
@@ -36,8 +36,10 @@
 .ts-axr b { white-space: nowrap; }
 .ts-msg { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45; border: 1px solid var(--border); color: var(--text-primary); }
 .ts-msg.ton-rosu { border-color: #ef4444; background: #2a1416; } .ts-msg.ton-galben { border-color: #eab308; background: #2a2410; } .ts-msg.ton-verde { border-color: #2BB763; background: #14281D; }
-.ts-jos { position: fixed; left: 0; right: 0; bottom: calc(var(--tabbar-h, 64px) + var(--sab, 0px) + 8px); display: flex; gap: 8px; padding: 0 14px; z-index: 5; }
-.ts-jos .ts-btn { flex: 1 1 0; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+/* Bara de jos (simulatorul, planul șoferului): lipită de marginea de jos a ecranului — pe ecranele astea nu e bara de file,
+   deci nu se lasă loc pentru ea (Robert, 13.10: „butoanele trebuie să fie la marginea de jos"; stăteau în mijlocul paginii). */
+.ts-jos { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 14px calc(10px + var(--sab, 0px)); background: var(--bg-panel); border-top: 1px solid var(--border); z-index: 5; }
+.ts-jos .ts-btn { flex: 1 1 0; }
 .ts-pasi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .ts-pasi li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-primary); }
 .ts-pasi li > span:last-child { display: flex; flex-direction: column; gap: 2px; }

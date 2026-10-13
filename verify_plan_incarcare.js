@@ -309,6 +309,11 @@ if (toate.every(Boolean) && tok('bg-card', true)) {
 T('desenul de pe telefon are culorile lui pe ambele teme (structura, roțile, centrul de greutate)',
   ['sim-cab1', 'sim-podea', 'sim-perete', 'sim-contur', 'sim-roata', 'sim-axa', 'sim-cg', 'sim-tl'].every((k) => new RegExp('\\.ts-svg \\.' + k + '\\b').test(M.css) && new RegExp(':root\\[data-theme="light"\\] \\.ts-svg \\.' + k + '\\b').test(M.css)));
 T('butonul plin are textul închis al casei pe verde (#06210F), ca pe web', /\.ts-btn\.pri \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(M.css));
+// Robert, 13.10 (captura): „butoanele trebuie să fie la marginea de jos" — stăteau ridicate cât bara de file, pe ecrane fără ea.
+const _fileApp = (M.app.match(/const showTabs = [^;]*;/) || [''])[0];
+T('bara cu butoanele (simulatorul, planul șoferului) stă la marginea de jos: ecranele astea n-au bara de file',
+  /\.ts-jos \{ position: fixed; left: 0; right: 0; bottom: 0;[^}]*padding: 10px 14px calc\(10px \+ var\(--sab, 0px\)\);/.test(M.css) &&
+  !/\.ts-jos \{[^}]*tabbar-h/.test(M.css) && _fileApp.length > 20 && !/incarcare/.test(_fileApp), _fileApp);
 
 // ─── 5. Pe server pornit ─────────────────────────────────────────────────────────────────────────────────────────
 const PORT = 3495, DIR = '.plan-incarcare-db';

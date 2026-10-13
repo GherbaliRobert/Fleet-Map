@@ -1996,7 +1996,8 @@ problemă"; anunțul ajunge la cine l-a trimis. Macheta aprobată: artboard-ul �
 - **Desenul e UNUL:** `_simSvg` (pagina, blocul „desenul simulatorului", curat) și `mobile/src/lib/simDesen.ts` = COPIA
   întocmai. Schimbi desenul pe web → copiezi blocul pe telefon; proba compară SVG-ul pe 210 combinații și textul funcțiilor.
 - **Telefonul:** `/incarcare` (simulatorul; deschide planul din `?plan=`), `/incarcare/planuri` (lista), `/incarcare/plan/:id`
-  (ecranul șoferului). Nu socotește nimic; „Ai schimbat planul" e SOCOTIT (ce e pe ecran față de planul salvat), nu ținut
+  (ecranul șoferului). Bara de butoane `.ts-jos` stă LIPITĂ de marginea de jos (`bottom: 0` + `--sab`): ecranele astea n-au
+  bara de file (`showTabs` din App.tsx); pe 13.10 stătea ridicată cât bara de file și plutea peste pagină (Robert, captură). Nu socotește nimic; „Ai schimbat planul" e SOCOTIT (ce e pe ecran față de planul salvat), nu ținut
   minte. Șoferul pe web primește planul din anunț (fereastra `simPlanSofer`); lista „Planurile de încărcare" e pe telefon.
 - **Cuvântul „plan":** „planul de încărcare" e altă noțiune decât planurile de preț (ca „plan de service") și apare pe
   ecrane; o etichetă care începe cu „Plan" singur NU (`verify_fara_planuri.js` o prinde — „Plan nou" a devenit „Începe altul").
