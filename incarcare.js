@@ -242,6 +242,46 @@ function vehiculDin(dev) {
   if (v.tare[1] == null) v.tare[1] = 0;
   return v;
 }
+// ─── Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator") ───
+// O SINGURĂ regulă, pentru ecrane (`_incFlota` → `remorci_ids` / `remorci_mesaj`) și pentru simulare (`_incSimulareDin`):
+// la autotractor — o semiremorcă; la camion (are cârlig) — o remorcă cu proțap; la dubă — nimic; mereu din firma vehiculului.
+function felCuplat(v) { return !v ? null : (v.tip === 'trac' ? 'semiremorca' : (v.carlig ? 'remorca' : null)); }
+function _aceeasiFirma(a, b) { return a != null && b != null && Number(a) === Number(b); }
+function remorcaPotrivita(v, r) { const fel = felCuplat(v); return !!(fel && r && r.fel === fel && _aceeasiFirma(r.company_id, v.company_id)); }
+// Lista pentru ecran + DE CE lipsește o remorcă trecută. Până pe 13.10 ecranele ascundeau pe tăcute o remorcă de alt fel
+// sau din altă firmă (la camion, grupul nici nu apărea). `gol` = firma n-are nimic de felul ăsta: ecranul își spune
+// singur unde se adaugă (locul diferă pe web și pe telefon). `v`: { tip, carlig, company_id, company_name? };
+// `remorci`: [{ id, fel, plate, company_id, company_name? }] — la noi, ale tuturor firmelor; la client, doar ale lui.
+function remorciPentru(v, remorci) {
+  const toate = Array.isArray(remorci) ? remorci : [];
+  if (!v) return { ids: [], mesaj: null, gol: false };
+  const fel = felCuplat(v);
+  const ids = toate.filter((r) => remorcaPotrivita(v, r)).map((r) => r.id);
+  if (ids.length) return { ids, mesaj: null, gol: false };
+  const aleFirmei = toate.filter((r) => _aceeasiFirma(r.company_id, v.company_id));
+  const numere = (l) => l.slice(0, 3).map((r) => r.plate || ('#' + r.id)).join(', ') + (l.length > 3 ? ' și încă ' + (l.length - 3) : '');
+  const una = (l) => l.length === 1;
+  if (!fel) {
+    return { ids, gol: false, mesaj: aleFirmei.length
+      ? 'La o dubă de 3,5 t nu se cuplează remorci (' + numere(aleFirmei) + '). Alege un camion sau un autotractor.' : null };
+  }
+  const altFel = aleFirmei.filter((r) => r.fel !== fel);
+  if (altFel.length) {
+    return { ids, gol: false, mesaj: fel === 'semiremorca'
+      ? numere(altFel) + (una(altFel) ? ' e trecută ca remorcă cu proțap' : ' sunt trecute ca remorci cu proțap') +
+        ' — la autotractor se cuplează doar o semiremorcă. Dacă e de fapt semiremorcă, schimbă-i felul din fișa ei.'
+      : numere(altFel) + (una(altFel) ? ' e trecută ca semiremorcă — ea se cuplează' : ' sunt trecute ca semiremorci — ele se cuplează') +
+        ' doar la un autotractor. Dacă vehiculul ăsta e de fapt autotractor, schimbă-i felul în fișa lui (fila „Încărcare”).' };
+  }
+  const altaFirma = toate.filter((r) => r.fel === fel && !_aceeasiFirma(r.company_id, v.company_id));
+  if (altaFirma.length) {
+    const f = altaFirma[0].company_name;
+    return { ids, gol: false, mesaj: numere(altaFirma) + (una(altaFirma) ? ' e trecută' : ' sunt trecute') + ' la ' +
+      (f ? 'firma „' + f + '”' : 'altă firmă') + ', nu la firma acestui vehicul' + (v.company_name ? ' („' + v.company_name + '”)' : '') +
+      '. O remorcă se cuplează doar în firma ei.' };
+  }
+  return { ids, mesaj: null, gol: true };
+}
 function _tipRemorca(fel, id) { const l = TIPURI_REMORCA[fel] || []; return l.find((t) => t.id === id) || l[0]; }
 function semiDin(r) {
   const tip = _tipRemorca('semiremorca', r.tip), presupuse = [];
@@ -509,4 +549,4 @@ function meta() {
 
 module.exports = { FELURI_VEHICUL, FEL_REMORCA, TIPURI_REMORCA, CAMPURI_CAROSERIE, paletiEur, paletiInd, curataRemorca, curataCaroserie, meta, _nr,
   PRESETURI_MARFA, MODURI, CULORI_OPRIRI, MAX_OPRIRI, MAX_RANDURI_MARFA, MAX_BUC, STRAT_MAX, PIVOT_DE_LA_FATA, PARTE_TARA_PIVOT, MASA_TREN, AXA_FATA_MIN, PRAG_ATENTIE,
-  curataMarfa, curataOpriri, felDinTip, vehiculDin, semiDin, remorcaDin, aranjeaza, osii, simuleaza, cand, stareaPlanului, notaSofer };
+  curataMarfa, curataOpriri, felDinTip, vehiculDin, felCuplat, remorcaPotrivita, remorciPentru, semiDin, remorcaDin, aranjeaza, osii, simuleaza, cand, stareaPlanului, notaSofer };

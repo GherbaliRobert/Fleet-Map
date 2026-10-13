@@ -1873,6 +1873,13 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   cară marfă, fără demo / arhivate; semiremorcile), `POST /api/incarcare/simuleaza`, `POST /api/incarcare/pdf`. Ecranul și
   hârtia trec prin ACEEAȘI `_incSimulare` (drepturile pe vehicul — `canAccessImei`, deci vizualizatorul doar pe mașinile
   lui —, semiremorca firmei vehiculului, de felul potrivit). Telefonul (etapa următoare) le folosește pe aceleași.
+- **Ce se cuplează la un vehicul = O regulă: `incarcare.remorciPentru` / `remorcaPotrivita` / `felCuplat`** (13.10, Robert:
+  „am adăugat o remorcă dar tot nu-mi apare în simulator"): autotractor → semiremorcă, camion → remorcă cu proțap, dubă →
+  nimic, mereu din firma vehiculului. `_incFlota` pune pe fiecare vehicul `remorci_ids` + `remorci_mesaj` (DE CE lipsește:
+  alt fel, altă firmă, dubă) + `remorci_gol`; `_incSimulareDin` verifică tot cu `remorcaPotrivita`. Pagina
+  (`remorciPotrivite`, `alegeri`) și telefonul (`Simulator.tsx`, `potrivite`) NU mai filtrează singure: până pe 13.10
+  regula era scrisă de patru ori în ecrane, iar o remorcă de alt fel dispărea pe tăcute (la camion, grupul nici nu apărea).
+  Un TIR trecut „Camion" (`felDinTip`) e camion — mesajul îi spune omului să schimbe felul în fila „Încărcare".
 - **Pagina nu socotește** (blocul „simulatorul de încărcare", între repere): trimite alegerile și desenează ce primește.
   Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
   din macheta aprobată și citește corpurile, coletele și axele de la server; cabina e doar reper. Planul în lucru se ține în

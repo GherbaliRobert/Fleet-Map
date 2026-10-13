@@ -7124,12 +7124,12 @@ const pozitii = await r.json();</code></pre>
       const iconVeh = (fel) => (fel === 'autotractor' ? IC.trac : (fel === 'duba35' ? IC.van : IC.truck));
       const culoare = (n) => { const c = (S.meta && S.meta.culoriOpriri) || ['#3B82F6']; return c[(Math.max(1, n) - 1) % c.length]; };
       const vehAles = () => ((S.flota && S.flota.vehicule) || []).find((v) => v.imei === S.imei) || null;
-      // Ce se poate cupla la vehiculul ales: semiremorcile firmei lui (autotractor) sau remorcile cu proțap (camion cu cârlig).
+      // Ce se poate cupla la vehiculul ales (semiremorcile firmei lui la autotractor, remorcile cu proțap la camion): lista o
+      // dă serverul (`remorci_ids`, din incarcare.remorciPentru), împreună cu motivul când nu e nimic (`remorci_mesaj`).
       const remorciPotrivite = (v) => {
         if (!v || !S.flota) return [];
-        const fel = v.tip === 'trac' ? 'semiremorca' : (v.carlig ? 'remorca' : null);
-        if (!fel) return [];
-        return S.flota.remorci.filter((r) => r.fel === fel && r.company_id === v.company_id);
+        const ids = (v.remorci_ids || []).map(String);
+        return S.flota.remorci.filter((r) => ids.indexOf(String(r.id)) >= 0);
       };
       function alegeVehicul(imei, pastreaza) {
         S.imei = imei;
@@ -7217,12 +7217,16 @@ const pozitii = await r.json();</code></pre>
           h += '<div class="sim-grup"><span class="sim-lbl">Semiremorca (din flotă)</span><div class="sim-chips">' +
             (lista.length ? lista.map((r) => '<button class="sim-chip' + (String(r.id) === String(S.remorcaId) ? ' on' : '') + '" onclick="simRemorca(\'' + r.id + '\')">' + icon(IC.semi) +
               '<span class="sim-ct">' + esc(r.plate) + '<small>' + esc(r.sub) + '</small></span></button>').join('')
-              : '<span class="sim-mut">Firma n-are semiremorci trecute — le adaugi din Management → Vehicule (butonul „Semiremorcă”).</span>') + '</div></div>';
+              : '<span class="sim-mut sim-remmotiv"><i class="fas fa-circle-info"></i> ' + esc(v.remorci_mesaj || 'Firma n-are semiremorci trecute — le adaugi din Management → Vehicule (butonul „Semiremorcă”).') + '</span>') + '</div></div>';
         } else if (v && v.carlig && lista.length) {
           h += '<div class="sim-grup"><span class="sim-lbl">Remorca cu proțap (din flotă)</span><div class="sim-chips">' +
             '<button class="sim-chip' + (!S.remorcaId ? ' on' : '') + '" onclick="simRemorca(\'\')">' + icon(IC.none) + '<span class="sim-ct">Fără remorcă<small>doar camionul</small></span></button>' +
             lista.map((r) => '<button class="sim-chip' + (String(r.id) === String(S.remorcaId) ? ' on' : '') + '" onclick="simRemorca(\'' + r.id + '\')">' + icon(IC.rem) +
               '<span class="sim-ct">' + esc(r.plate) + '<small>' + esc(r.sub) + '</small></span></button>').join('') + '</div></div>';
+        } else if (v && v.remorci_mesaj) {
+          // O remorcă trecută care nu se cuplează aici (alt fel, altă firmă, dubă): se spune de ce, nu dispare pe tăcute.
+          h += '<div class="sim-grup"><span class="sim-lbl">Remorca (din flotă)</span><div class="sim-chips">' +
+            '<span class="sim-mut sim-remmotiv"><i class="fas fa-circle-info"></i> ' + esc(v.remorci_mesaj) + '</span></div></div>';
         }
         h += '<div class="sim-grup"><span class="sim-lbl">Cum se așază</span><div class="sim-chips">' +
           ((S.meta && S.meta.moduri) || []).map((m) => '<button class="sim-chip' + (m.id === S.mod ? ' on' : '') + '" onclick="simMod(\'' + m.id + '\')"><span class="sim-ct">' + esc(m.et) + '<small>' + esc(m.sub) + '</small></span></button>').join('') +

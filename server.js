@@ -9195,7 +9195,14 @@ async function _incFlota(req) {
       presupuse: v.presupuse.length, lipsa: v.lipsa, remorca_id: d.inc_remorca_id || null });
   });
   vehicule.sort((a, b) => String(a.plate).localeCompare(String(b.plate), 'ro'));
-  const remorci = (await db.listRemorci(req.isSuper ? null : req.companyId)).map((r) => {
+  const brute = await db.listRemorci(req.isSuper ? null : req.companyId);
+  // Ce se cuplează la fiecare vehicul și, când nu e nimic, DE CE (13.10): o singură regulă, incarcare.remorciPentru —
+  // ecranele (web, telefon) nu mai filtrează singure.
+  vehicule.forEach((v) => {
+    const p = incarcare.remorciPentru(v, brute);
+    v.remorci_ids = p.ids; v.remorci_mesaj = p.mesaj; v.remorci_gol = p.gol;
+  });
+  const remorci = brute.map((r) => {
     const tip = ((incarcare.TIPURI_REMORCA[r.fel] || []).find((t) => t.id === r.tip) || {}).et;
     return { id: r.id, fel: r.fel, plate: r.plate, company_id: r.company_id,
       sub: [tip || r.model, r.lungime_m && !/\d m$/.test(tip || '') ? String(r.lungime_m).replace('.', ',') + ' m' : ''].filter(Boolean).join(' · ') };
@@ -9223,14 +9230,14 @@ async function _incSimulareDin(dev, b) {
   let semi = null, remorca = null;
   if (b.remorca_id != null && b.remorca_id !== '') {
     const r = await db.getRemorca(b.remorca_id);
-    if (!r || r.company_id == null || r.company_id !== dev.company_id) return { status: 400, eroare: 'Semiremorca aleasă nu e a firmei vehiculului.' };
-    if (veh.tip === 'trac') {
-      if (r.fel !== 'semiremorca') return { status: 400, eroare: 'La autotractor se cuplează o semiremorcă, nu o remorcă cu proțap.' };
-      semi = incarcare.semiDin(r);
-    } else {
-      if (r.fel !== 'remorca' || !veh.carlig) return { status: 400, eroare: 'La vehiculul ăsta nu se poate cupla remorca aleasă.' };
-      remorca = incarcare.remorcaDin(r);
+    // Aceeași regulă ca lista din ecran (incarcare.remorcaPotrivita): ce se oferă acolo, trece și aici.
+    const vf = Object.assign({}, veh, { company_id: dev.company_id });
+    if (!r || r.company_id == null || Number(r.company_id) !== Number(dev.company_id)) return { status: 400, eroare: 'Semiremorca aleasă nu e a firmei vehiculului.' };
+    if (!incarcare.remorcaPotrivita(vf, r)) {
+      return { status: 400, eroare: veh.tip === 'trac' ? 'La autotractor se cuplează o semiremorcă, nu o remorcă cu proțap.' : 'La vehiculul ăsta nu se poate cupla remorca aleasă.' };
     }
+    if (veh.tip === 'trac') semi = incarcare.semiDin(r);
+    else remorca = incarcare.remorcaDin(r);
   }
   const rez = incarcare.simuleaza({ vehicul: veh, semi, remorca, marfa: cm.marfa, mod: b.mod, opriri: b.opriri });
   if (rez.eroare) return { status: 400, eroare: rez.eroare };

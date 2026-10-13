@@ -121,6 +121,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
   **13.10:** APK nou — `RA-Track-1.0.12-debug.apk`, pe Desktop: simulatorul de încărcare și planurile șoferului („Am
   încărcat"), plus panoul Mail (etapa 2). Înlocuiește 1.0.10 / 1.0.11. Rămâne instalarea pe telefoane.
+  **13.10 (mai târziu):** `RA-Track-1.0.13-debug.apk`, pe Desktop — tot ce e în 1.0.12, plus motivul scris în simulator
+  când o remorcă nu se cuplează la vehiculul ales. Se instalează ea, în locul lui 1.0.12.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -291,6 +293,30 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-13
+
+### AMÂNDOI · Simulatorul spune de ce nu apare o remorcă — `…`
+
+Robert (13.10): *„am adăugat o remorcă dar tot nu îmi apare în simulator"*.
+
+Simulatorul cuplează la un **autotractor** doar o **semiremorcă**, la un **camion** doar o **remorcă cu proțap**, la o dubă
+nimic — și numai din firma vehiculului. O remorcă care nu se potrivea dispărea fără niciun cuvânt (la un camion, rândul
+„Remorca" nici nu apărea). Cel mai des: un TIR trecut în fișă ca „Camion" (simulatorul îl socotește camion de 12 t) și o
+semiremorcă adăugată la el.
+
+1. **Acum simulatorul scrie motivul**, sub „Remorca (din flotă)", de exemplu: „B 78 SEM e trecută ca semiremorcă — ea se
+   cuplează doar la un autotractor. Dacă vehiculul ăsta e de fapt autotractor, schimbă-i felul în fișa lui (fila
+   „Încărcare")". La fel pentru o remorcă cu proțap la autotractor, pentru o dubă și (doar la noi) pentru o remorcă trecută
+   la altă firmă decât vehiculul.
+2. **Regula e una singură, pe server**, folosită și de lista din ecran, și de simulare (era scrisă de patru ori în ecrane).
+
+- **Ce am schimbat:** `incarcare.js` (`remorciPentru`, `remorcaPotrivita`, `felCuplat`), `server.js` (lista simulatorului
+  și verificarea simulării), `public/index.html` (blocul simulatorului), telefonul (`Simulator.tsx`). APK nou: 1.0.13.
+- **Probe:** `verify_simulator.js` (14 verificări noi, pe reguli și pe server pornit, cu un TIR trecut „Camion"), plus
+  `verify_flota_incarcare.js`, `verify_plan_incarcare.js`. Văzut pe ecran: camionul cu semiremorca, cu motivul scris.
+- **Ce vede fondatorul și clientul:** același lucru — motivul pe ecran, în locul unui rând gol. Ca să apară semiremorca:
+  Management → Vehicule → fișa TIR-ului → fila „Încărcare" → felul „Autotractor".
 
 ## 2026-10-12
 

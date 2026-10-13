@@ -45,14 +45,17 @@ export function Simulator() {
 
   const vehs = (flota && flota.vehicule) || [];
   const v = vehs.find((x) => x.imei === imei) || null;
-  const remorci = !v || !flota ? [] : flota.remorci.filter((r) => r.company_id === v.company_id && r.fel === (v.tip === 'trac' ? 'semiremorca' : (v.carlig ? 'remorca' : '-')));
+  // Ce se cuplează la un vehicul o spune serverul (`remorci_ids` + motivul `remorci_mesaj`, din incarcare.remorciPentru) —
+  // ca pe web; telefonul nu mai filtrează singur (13.10: o remorcă de alt fel dispărea pe tăcute).
+  const potrivite = (vv: any, f: any): any[] => (!vv || !f ? [] : f.remorci.filter((r: any) => (vv.remorci_ids || []).map(String).indexOf(String(r.id)) >= 0));
+  const remorci = potrivite(v, flota);
   const culoare = (n: number) => { const c = (meta && meta.culoriOpriri) || ['#3B82F6']; return c[(Math.max(1, n) - 1) % c.length]; };
 
   function alegeVehicul(x: string, pastreaza?: boolean, rid?: string) {
     setImei(x);
     const vv = vehs.find((y) => y.imei === x) || (flota && flota.vehicule.find((y) => y.imei === x));
     if (!vv || !flota) return;
-    const lista = flota.remorci.filter((r) => r.company_id === vv.company_id && r.fel === (vv.tip === 'trac' ? 'semiremorca' : (vv.carlig ? 'remorca' : '-')));
+    const lista = potrivite(vv, flota);
     const pref = rid != null ? rid : (pastreaza ? remorcaId : '');
     if (lista.some((r) => String(r.id) === String(pref))) { setRemorcaId(String(pref)); return; }
     const obis = lista.find((r) => String(r.id) === String(vv.remorca_id));
@@ -87,7 +90,7 @@ export function Simulator() {
         const prim = pref || f.vehicule[0];
         if (prim) {
           setImei(prim.imei);
-          const lista = f.remorci.filter((r: any) => r.company_id === prim.company_id && r.fel === (prim.tip === 'trac' ? 'semiremorca' : (prim.carlig ? 'remorca' : '-')));
+          const lista = potrivite(prim, f);
           const rid = pref && lista.some((r: any) => String(r.id) === String(t.remorcaId)) ? String(t.remorcaId) : (lista.find((r: any) => String(r.id) === String(prim.remorca_id)) || (prim.tip === 'trac' ? lista[0] : null) || { id: '' }).id;
           setRemorcaId(rid ? String(rid) : '');
         }
@@ -193,7 +196,11 @@ export function Simulator() {
               {v && v.tip === 'trac' && <>
                 <span class="ts-lbl">Semiremorca (din flotă)</span>
                 {remorci.length ? <div class="ts-scroll">{remorci.map((r) => <button class={'ts-chip' + (String(r.id) === remorcaId ? ' on' : '')} onClick={() => setRemorcaId(String(r.id))}>{r.plate}<small>{r.sub}</small></button>)}</div>
-                  : <span class="ts-mut">Firma n-are semiremorci trecute — le adaugi din Vehicule → Semiremorci și remorci.</span>}
+                  : <span class="ts-mut">{v.remorci_mesaj || 'Firma n-are semiremorci trecute — le adaugi din Vehicule → Semiremorci și remorci.'}</span>}
+              </>}
+              {v && v.tip !== 'trac' && !remorci.length && v.remorci_mesaj && <>
+                <span class="ts-lbl">Remorca (din flotă)</span>
+                <span class="ts-mut">{v.remorci_mesaj}</span>
               </>}
               {v && v.tip !== 'trac' && v.carlig && remorci.length > 0 && <>
                 <span class="ts-lbl">Remorca cu proțap (din flotă)</span>

@@ -160,6 +160,43 @@ T('numele fișierului: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.
 const PS = citeste('incarcare_pdf.js');
 T('hârtia nu socotește (nicio regulă de-a lui incarcare.js) și folosește logo-ul pentru fundal alb', !/aranjeaza|osii\(|simuleaza\(/.test(PS) && /logo-light\.png/.test(PS));
 
+// ─── 4b. Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator") ───
+// O remorcă trecută dispărea pe tăcute când era de alt fel sau din altă firmă. Acum: o regulă (remorciPentru), lista și
+// motivul vin de la server, iar ecranele doar le arată.
+sect('4b. Ce se cuplează la un vehicul');
+{
+  const trac = { tip: 'trac', company_id: 1, company_name: 'Alfa' }, cam = { tip: 'rigid', carlig: true, company_id: 1 }, duba = { tip: 'rigid', carlig: false, company_id: 1 };
+  const R1 = { id: 1, fel: 'remorca', plate: 'B 1 REM', company_id: 1 }, S1 = { id: 2, fel: 'semiremorca', plate: 'B 2 SEM', company_id: 1 };
+  const S2 = { id: 3, fel: 'semiremorca', plate: 'B 3 SEM', company_id: 2, company_name: 'Beta' };
+  let p = I.remorciPentru(trac, [R1, S1, S2]);
+  T('autotractorul primește doar semiremorcile firmei lui', J(p) === J({ ids: [2], mesaj: null, gol: false }), J(p));
+  p = I.remorciPentru(cam, [R1, S1, S2]);
+  T('camionul primește doar remorcile cu proțap ale firmei lui', J(p.ids) === J([1]) && p.mesaj === null, J(p));
+  p = I.remorciPentru(trac, [R1]);
+  T('autotractor + doar o remorcă cu proțap: se spune de ce lipsește',
+    p.ids.length === 0 && p.mesaj === 'B 1 REM e trecută ca remorcă cu proțap — la autotractor se cuplează doar o semiremorcă. Dacă e de fapt semiremorcă, schimbă-i felul din fișa ei.', J(p));
+  p = I.remorciPentru(cam, [S1, Object.assign({}, S1, { id: 9, plate: 'B 9 SEM' })]);
+  T('camion + doar semiremorci (cazul lui Robert, un TIR trecut „Camion"): se spune de ce, la plural',
+    p.ids.length === 0 && /^B 2 SEM, B 9 SEM sunt trecute ca semiremorci — ele se cuplează doar la un autotractor\. Dacă vehiculul ăsta e de fapt autotractor, schimbă-i felul în fișa lui/.test(p.mesaj || ''), J(p));
+  p = I.remorciPentru(trac, [S2]);
+  T('semiremorca altei firme (doar la noi se vede): se spune firma ei și firma vehiculului',
+    p.ids.length === 0 && p.mesaj === 'B 3 SEM e trecută la firma „Beta”, nu la firma acestui vehicul („Alfa”). O remorcă se cuplează doar în firma ei.', J(p));
+  p = I.remorciPentru(duba, [R1]);
+  T('duba: nu cuplează nimic, iar o remorcă trecută primește motivul', p.ids.length === 0 && /^La o dubă de 3,5 t nu se cuplează remorci \(B 1 REM\)/.test(p.mesaj || ''), J(p));
+  T('fără nicio remorcă de felul potrivit, nicăieri: „gol" (fiecare ecran spune unde se adaugă); duba fără remorci: nimic',
+    J(I.remorciPentru(trac, [])) === J({ ids: [], mesaj: null, gol: true }) && J(I.remorciPentru(cam, [])) === J({ ids: [], mesaj: null, gol: true }) &&
+    J(I.remorciPentru(duba, [])) === J({ ids: [], gol: false, mesaj: null }));
+  T('firma se compară ca număr (din bază poate veni și ca text)', I.remorcaPotrivita(trac, Object.assign({}, S1, { company_id: '1' })) && !I.remorcaPotrivita(trac, Object.assign({}, S1, { company_id: null })));
+  T('serverul: flota pune pe fiecare vehicul lista și motivul (remorciPentru), iar simularea verifică cu ACEEAȘI regulă',
+    /const p = incarcare\.remorciPentru\(v, brute\);\s*v\.remorci_ids = p\.ids; v\.remorci_mesaj = p\.mesaj; v\.remorci_gol = p\.gol;/.test(server) &&
+    /if \(!incarcare\.remorcaPotrivita\(vf, r\)\)/.test(server));
+  const tel = citeste('mobile/src/screens/Simulator.tsx');
+  T('pagina și telefonul nu mai filtrează singure remorcile: iau lista de la server și arată motivul',
+    /const ids = \(v\.remorci_ids \|\| \[\]\)\.map\(String\);/.test(html) && !/r\.fel === fel && r\.company_id === v\.company_id/.test(html) && /esc\(v\.remorci_mesaj\)/.test(html) &&
+    /\(vv\.remorci_ids \|\| \[\]\)\.map\(String\)/.test(tel) && !/r\.company_id === v\.company_id && r\.fel ===/.test(tel) && !/r\.company_id === prim\.company_id/.test(tel) &&
+    (tel.match(/v\.remorci_mesaj/g) || []).length >= 2);
+}
+
 // ─── 5. Pe server pornit ─────────────────────────────────────────────────────────────────────────────────────────
 const PORT = 3490, DIR = '.simulator-db';
 try { fs.rmSync(path.join(ROOT, DIR), { recursive: true, force: true }); } catch (e) {}
@@ -226,6 +263,21 @@ async function intra(user, parola) {
   T('altă firmă nu simulează pe vehiculul primei (403)', x.s === 403, x.s);
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { remorca_id: altaSemi.id }));
   T('semiremorca altei firme: refuz pe față', x.s === 400 && x.j.error === 'Semiremorca aleasă nu e a firmei vehiculului.', J(x));
+  // Cazul lui Robert (13.10): un TIR trecut „Camion" + o semiremorcă. Înainte, simulatorul nu arăta nimic și nu spunea nimic.
+  await S.POST('/api/devices', { imei: '861000000350004', name: 'MAN TGX', plate: 'B 04 CAM', company_id: T2, vehicle_type: 'Camion' });
+  x = await A2.GET('/api/incarcare/flota');
+  const cam2 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350004')[0] || {};
+  T('flota: camionul nu primește semiremorca firmei, dar află de ce (felul vehiculului)', x.s === 200 && J(cam2.remorci_ids) === '[]' &&
+    /^B 51 SEM e trecută ca semiremorcă — ea se cuplează doar la un autotractor\./.test(cam2.remorci_mesaj || ''), J(cam2));
+  x = await A2.POST('/api/incarcare/simuleaza', { imei: '861000000350004', remorca_id: altaSemi.id, marfa: [EUR(2)] });
+  T('…iar simularea o refuză cu aceeași regulă', x.s === 400 && x.j.error === 'La vehiculul ăsta nu se poate cupla remorca aleasă.', J(x));
+  await A2.PUT('/api/devices/861000000350004/details', { inc_fel: 'autotractor', inc_ampatament: 3.7, inc_sa_axa: 0.6 });
+  x = await A2.GET('/api/incarcare/flota');
+  const trac2 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350004')[0] || {};
+  T('trecut pe „Autotractor" în fila Încărcare: semiremorca apare în simulator', J(trac2.remorci_ids) === J([altaSemi.id]) && trac2.remorci_mesaj === null, J(trac2));
+  x = await S.GET('/api/incarcare/flota');
+  const trac1 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350001')[0] || {};
+  T('la noi (toate firmele): fiecare vehicul primește doar remorcile firmei lui', J(trac1.remorci_ids) === J([semi.id]), J(trac1));
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { imei: '861000000350002' }));
   T('un autoturism: „nu cară marfă"', x.s === 400 && /nu cară marfă/.test(x.j.error || ''), J(x));
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { marfa: [{ nume: 'X', lungime: 0, latime: 80, inaltime: 100 }] }));
