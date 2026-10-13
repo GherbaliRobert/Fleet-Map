@@ -296,7 +296,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
-### AMÂNDOI · Simulatorul spune de ce nu apare o remorcă — `…`
+### AMÂNDOI · Simulatorul spune de ce nu apare o remorcă — `6fb01f6`
 
 Robert (13.10): *„am adăugat o remorcă dar tot nu îmi apare în simulator"*.
 
