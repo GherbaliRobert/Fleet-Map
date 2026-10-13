@@ -307,7 +307,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
-### AMÂNDOI · Desenul planului de încărcare, mai puțin „desen animat": colțuri rotunde, fără contururi groase
+### AMÂNDOI · Desenul planului de încărcare, mai puțin „desen animat": colțuri rotunde, fără contururi groase — `7834e06`
 
 Robert (13.10): *„mai lucrează la desenul planului de încărcare, acum are grafica din desene animate, fă-le ceva mai
 rotunjite"*. Ce dădea aerul de desen animat: culori plate, un contur închis pe fiecare bucată și colțuri ascuțite peste tot
@@ -331,7 +331,7 @@ rotunjite"*. Ce dădea aerul de desen animat: culori plate, un contur închis pe
 - **Ce vede fondatorul:** desenul din simulator și de pe plan, mai rotund și mai curat.
 - **Ce vede clientul:** la fel — dispecerul în simulator, șoferul în planul lui, toți pe PDF.
 
-### AMÂNDOI · Telefon: butoanele simulatorului stau la marginea de jos a ecranului
+### AMÂNDOI · Telefon: butoanele simulatorului stau la marginea de jos a ecranului — `db04203`
 
 Robert (13.10, cu captura): *„butoanele trebuie să fie la marginea de jos"*. Pe telefon, „PDF" și „Trimite șoferului" stăteau
 ridicate cam cât bara de file de jos — dar pe ecranul simulatorului bara de file nu există, așa că pluteau peste mijlocul
