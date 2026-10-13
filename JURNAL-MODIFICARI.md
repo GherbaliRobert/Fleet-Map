@@ -58,7 +58,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
   **12.10:** Robert — „rămâne în stand by".
-- [ ] **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
+- [x] **FĂCUT (13.10): Robert — „position retentions nu am în Railway”.** **Robert: șterge `POSITION_RETENTION_DAYS` din Railway**, dacă e setată. Nu se mai citește
   nicăieri; „Stare producție" o arată portocaliu cât timp stă acolo.
 - [ ] **Robert: e-Factura (ANAF). Adăugat pe 25.09, găsit când am explicat „Prima factură".** Fără
   tokenul ANAF, facturile emise în aplicație **nu ajung deloc la ANAF**. Cu token, dar fără
