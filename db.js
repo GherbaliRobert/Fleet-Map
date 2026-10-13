@@ -1656,6 +1656,48 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_atasamente_mail ON mail_atasamente(mail_id)`);
+    // ─── Panoul Mail, 13.10 (Robert: „vreau să fie un mail cât mai complet"): dosarele (Primite / Spam / Coș; Trimise / Coș),
+    // steaua, expeditorii marcați ca spam și ciornele. `dosar_la` = când a intrat în Spam / Coș (se golesc singure după 30 de
+    // zile); `dosar_inainte` = de unde a venit în Coș (acolo se întoarce la „Recuperează").
+    await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar VARCHAR(8) NOT NULL DEFAULT 'primite'`);
+    await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar_la TIMESTAMP`);
+    await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar_inainte VARCHAR(8)`);
+    await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS stea BOOLEAN NOT NULL DEFAULT false`);
+    await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS dosar VARCHAR(8) NOT NULL DEFAULT 'trimise'`);
+    await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS dosar_la TIMESTAMP`);
+    await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS stea BOOLEAN NOT NULL DEFAULT false`);
+    // Expeditorii marcați ca spam, pe adresa NOASTRĂ pe care au scris (pe contact@ îi vede toată echipa; pe una personală,
+    // doar omul ei): emailurile lor următoare merg direct în Spam (Robert, 13.10: „2. a").
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mail_spam_expeditori (
+        catre VARCHAR(200) NOT NULL,
+        expeditor VARCHAR(320) NOT NULL,
+        marcat_de INTEGER,
+        marcat_la TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (catre, expeditor)
+      )
+    `);
+    // Ciornele: ale OMULUI care scrie (nu ale adresei), salvate singure din fereastra de scris. Fără atașamente.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mail_ciorne (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        de_la VARCHAR(320),
+        catre TEXT,
+        cc TEXT,
+        subiect TEXT,
+        text TEXT,
+        raspuns_la BIGINT,
+        redir_primit BIGINT,
+        redir_trimis BIGINT,
+        tuturor BOOLEAN NOT NULL DEFAULT false,
+        creat_la TIMESTAMP DEFAULT NOW(),
+        actualizat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_ciorne_om ON mail_ciorne(user_id, actualizat_la DESC)`);
+    // Funcția omului (Robert, 13.10: „la semnătură vreau să fie și funcția") — în fișă, lângă telefon.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS functie VARCHAR(120)`);
 
     // ─── Safe Drive (RA Insight, pasul 3) ───
     // Rezumatul unei ZILE (ora României) pe mașină și pe șofer: km, mers, manevre bruște, viteză, ralanti, plus orele și
@@ -2260,10 +2302,12 @@ async function listMailTrimise(adrese, o) {
     p.push('%' + String(o.cauta).toLowerCase().slice(0, 100).replace(/[\\%_]/g, '\\$&') + '%');
     w += ' AND (LOWER(m.catre) LIKE $' + p.length + ' OR LOWER(COALESCE(m.cc, \'\')) LIKE $' + p.length + ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
   }
+  w += " AND m.dosar = 'trimise'";   // cele din Coș au lista lor
+  if (o.stea) w += ' AND m.stea';
   p.push(lim + 1); p.push(off);
   const r = await pool.query(
     `SELECT m.id, m.creat_la, m.de_la, m.catre, m.cc, m.subiect, m.fel, m.company_id, c.name AS company_name, m.user_id,
-            u.full_name AS user_name, m.atasamente, m.stare, m.eroare, m.cale
+            u.full_name AS user_name, m.atasamente, m.stare, m.eroare, m.cale, m.dosar, m.dosar_la, m.stea
        FROM mail_trimise m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users u ON u.id = m.user_id
       WHERE ${w} ORDER BY m.id DESC LIMIT $${p.length - 1} OFFSET $${p.length}`, p);
   return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
@@ -2273,6 +2317,143 @@ async function listMailTrimise(adrese, o) {
 async function stergeMailTrimis(id) {
   await pool.query('UPDATE mail_primite SET raspuns_id = NULL WHERE raspuns_id = $1', [id]);
   await pool.query('DELETE FROM mail_trimise WHERE id = $1', [id]);
+}
+// ─── 13.10: dosarele, steaua, spamul, ciornele, sugestiile ───
+const _adr = function (l) { return (l || []).map(function (a) { return String(a).toLowerCase(); }); };
+// Câte sunt în Spam și în Coș (eticheta dosarelor), pe adresele omului.
+async function mailNumarDosare(adrese) {
+  const a = _adr(adrese);
+  const r = await pool.query(`SELECT
+      (SELECT COUNT(*)::int FROM mail_primite WHERE catre = ANY($1) AND dosar = 'spam') AS spam,
+      (SELECT COUNT(*)::int FROM mail_primite WHERE catre = ANY($1) AND dosar = 'cos')
+        + (SELECT COUNT(*)::int FROM mail_trimise WHERE de_la = ANY($1) AND dosar = 'cos') AS cos`, [a]);
+  return { spam: Number(r.rows[0].spam) || 0, cos: Number(r.rows[0].cos) || 0 };
+}
+// Coșul: emailurile primite și cele trimise de pe adresele omului, cele mai noi șterse întâi.
+async function listMailCos(adrese, o) {
+  o = o || {};
+  const lim = Math.min(Math.max(parseInt(o.limit) || 50, 1), 200), off = Math.max(parseInt(o.offset) || 0, 0);
+  const r = await pool.query(
+    `SELECT * FROM (
+       SELECT 'primit' AS sursa, m.id, m.primit_la AS la, m.catre AS adresa, m.de_la, m.de_nume, NULL::text AS catre_lista, m.subiect,
+              m.dosar_la, m.atasamente, m.stea, NULL::varchar AS fel, c.name AS company_name
+         FROM mail_primite m LEFT JOIN companies c ON c.id = m.company_id WHERE m.catre = ANY($1) AND m.dosar = 'cos'
+       UNION ALL
+       SELECT 'trimis' AS sursa, t.id, t.creat_la AS la, t.de_la AS adresa, t.de_la, NULL, t.catre, t.subiect,
+              t.dosar_la, t.atasamente, t.stea, t.fel, c.name AS company_name
+         FROM mail_trimise t LEFT JOIN companies c ON c.id = t.company_id WHERE t.de_la = ANY($1) AND t.dosar = 'cos'
+     ) x ORDER BY dosar_la DESC NULLS LAST, id DESC LIMIT $2 OFFSET $3`, [_adr(adrese), lim + 1, off]);
+  return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
+}
+// Mută emailuri între dosare (numărătoarea din RETURNING: `rowCount` lipsește în PGlite). În Coș se ține minte de unde au venit (`dosar_inainte`); la ieșirea din Coș / Spam se golește
+// ziua (`dosar_la`). Întoarce câte s-au mutat.
+async function mailMutaPrimite(ids, dosar) {
+  const l = (ids || []).map(Number).filter(Number.isFinite);
+  if (!l.length) return 0;
+  const r = dosar === 'cos'
+    ? await pool.query("UPDATE mail_primite SET dosar_inainte = dosar, dosar = 'cos', dosar_la = NOW() WHERE id = ANY($1) AND dosar <> 'cos' RETURNING id", [l])
+    : await pool.query('UPDATE mail_primite SET dosar = $2, dosar_la = CASE WHEN $3 THEN NOW() ELSE NULL END, dosar_inainte = NULL WHERE id = ANY($1) RETURNING id', [l, dosar, dosar === 'spam']);
+  return (r.rows || []).length;
+}
+async function mailRecupereazaPrimite(ids) {
+  const l = (ids || []).map(Number).filter(Number.isFinite);
+  if (!l.length) return 0;
+  const r = await pool.query("UPDATE mail_primite SET dosar = COALESCE(dosar_inainte, 'primite'), dosar_la = CASE WHEN dosar_inainte = 'spam' THEN NOW() ELSE NULL END, dosar_inainte = NULL WHERE id = ANY($1) AND dosar = 'cos' RETURNING id", [l]);
+  return (r.rows || []).length;
+}
+async function mailMutaTrimise(ids, dosar) {
+  const l = (ids || []).map(Number).filter(Number.isFinite);
+  if (!l.length) return 0;
+  const r = dosar === 'cos'
+    ? await pool.query("UPDATE mail_trimise SET dosar = 'cos', dosar_la = NOW() WHERE id = ANY($1) AND dosar <> 'cos' RETURNING id", [l])
+    : await pool.query("UPDATE mail_trimise SET dosar = 'trimise', dosar_la = NULL WHERE id = ANY($1) AND dosar = 'cos' RETURNING id", [l]);
+  return (r.rows || []).length;
+}
+async function mailStea(sursa, ids, da) {
+  const l = (ids || []).map(Number).filter(Number.isFinite);
+  if (!l.length) return 0;
+  const r = await pool.query('UPDATE ' + (sursa === 'trimis' ? 'mail_trimise' : 'mail_primite') + ' SET stea = $2 WHERE id = ANY($1) RETURNING id', [l, !!da]);
+  return (r.rows || []).length;
+}
+async function mailCitit(ids, userId, citit) {
+  const l = (ids || []).map(Number).filter(Number.isFinite);
+  if (!l.length) return 0;
+  const r = citit
+    ? await pool.query('UPDATE mail_primite SET citit_la = NOW(), citit_de = $2 WHERE id = ANY($1) AND citit_la IS NULL RETURNING id', [l, userId || null])
+    : await pool.query('UPDATE mail_primite SET citit_la = NULL, citit_de = NULL WHERE id = ANY($1) RETURNING id', [l]);
+  return (r.rows || []).length;
+}
+// Expeditorii marcați ca spam (pe adresa noastră pe care au scris).
+async function mailSpamExpeditor(catre, expeditor, userId, da) {
+  const c = String(catre || '').toLowerCase(), e = String(expeditor || '').toLowerCase();
+  if (!c || !e) return;
+  if (da) await pool.query('INSERT INTO mail_spam_expeditori (catre, expeditor, marcat_de) VALUES ($1, $2, $3) ON CONFLICT (catre, expeditor) DO NOTHING', [c, e, userId || null]);
+  else await pool.query('DELETE FROM mail_spam_expeditori WHERE catre = $1 AND expeditor = $2', [c, e]);
+}
+async function mailEsteSpam(catre, expeditor) {
+  const r = await pool.query('SELECT 1 FROM mail_spam_expeditori WHERE catre = $1 AND expeditor = $2', [String(catre || '').toLowerCase(), String(expeditor || '').toLowerCase()]);
+  return !!r.rows[0];
+}
+// Golirea Spamului și a Coșului după `zile` (Robert, 13.10: „1, da" — 30 de zile). Atașamentele pleacă odată cu emailul.
+async function stergeMailDosareVechi(zile) {
+  const z = Math.max(1, parseInt(zile) || 30);
+  const v = await pool.query("SELECT id FROM mail_primite WHERE dosar IN ('cos', 'spam') AND dosar_la IS NOT NULL AND dosar_la < NOW() - ($1 || ' days')::interval", [String(z)]);
+  const ids = v.rows.map(function (x) { return Number(x.id); });
+  if (ids.length) {
+    await pool.query('DELETE FROM mail_atasamente WHERE mail_id = ANY($1)', [ids]);
+    await pool.query('DELETE FROM mail_primite WHERE id = ANY($1)', [ids]);
+  }
+  const t = await pool.query("DELETE FROM mail_trimise WHERE dosar = 'cos' AND dosar_la IS NOT NULL AND dosar_la < NOW() - ($1 || ' days')::interval RETURNING id", [String(z)]);
+  return { primite: ids.length, trimise: (t.rows || []).length };
+}
+// Ciornele omului.
+const _CIORNE_MAX = 100;
+async function listMailCiorne(userId) {
+  const r = await pool.query('SELECT * FROM mail_ciorne WHERE user_id = $1 ORDER BY actualizat_la DESC LIMIT $2', [userId, _CIORNE_MAX]);
+  return r.rows;
+}
+async function getMailCiorna(id, userId) {
+  const r = await pool.query('SELECT * FROM mail_ciorne WHERE id = $1 AND user_id = $2', [id, userId]);
+  return r.rows[0] || null;
+}
+async function salveazaMailCiorna(userId, c) {
+  const v = [c.de_la || null, c.catre || null, c.cc || null, c.subiect || null, c.text || null, c.raspuns_la || null, c.redir_primit || null, c.redir_trimis || null, !!c.tuturor];
+  if (c.id) {
+    const r = await pool.query(`UPDATE mail_ciorne SET de_la = $3, catre = $4, cc = $5, subiect = $6, text = $7, raspuns_la = $8, redir_primit = $9,
+      redir_trimis = $10, tuturor = $11, actualizat_la = NOW() WHERE id = $1 AND user_id = $2 RETURNING id`, [c.id, userId].concat(v));
+    return r.rows[0] ? Number(r.rows[0].id) : null;
+  }
+  const n = await pool.query('SELECT COUNT(*)::int AS n FROM mail_ciorne WHERE user_id = $1', [userId]);
+  if ((Number(n.rows[0].n) || 0) >= _CIORNE_MAX) return null;
+  const r = await pool.query(`INSERT INTO mail_ciorne (user_id, de_la, catre, cc, subiect, text, raspuns_la, redir_primit, redir_trimis, tuturor)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`, [userId].concat(v));
+  return Number(r.rows[0].id);
+}
+async function stergeMailCiorna(id, userId) {
+  const r = await pool.query('DELETE FROM mail_ciorne WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
+  return ((r.rows || []).length) > 0;
+}
+async function numarMailCiorne(userId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM mail_ciorne WHERE user_id = $1', [userId]);
+  return Number(r.rows[0].n) || 0;
+}
+// Adresele sugerate la „Către" / „Cc": cei care ne-au scris pe adresele omului, cei cărora le-am scris de pe ele, firmele
+// (adresa de contact) și oamenii firmelor. Doar candidații — serverul le alege și le ordonează.
+async function mailSugestii(q, adrese) {
+  const t = '%' + String(q || '').toLowerCase().slice(0, 60).replace(/[\\%_]/g, '\\$&') + '%';
+  const a = _adr(adrese);
+  const [pr, tr, co, us] = await Promise.all([
+    pool.query(`SELECT LOWER(de_la) AS adresa, MAX(de_nume) AS nume, MAX(primit_la) AS cand FROM mail_primite
+      WHERE catre = ANY($2) AND dosar <> 'spam' AND de_la IS NOT NULL AND (LOWER(de_la) LIKE $1 OR LOWER(COALESCE(de_nume, '')) LIKE $1) GROUP BY LOWER(de_la) LIMIT 30`, [t, a]),
+    pool.query(`SELECT catre, cc, creat_la AS cand FROM mail_trimise WHERE de_la = ANY($2) AND (LOWER(catre) LIKE $1 OR LOWER(COALESCE(cc, '')) LIKE $1)
+      ORDER BY id DESC LIMIT 60`, [t, a]),
+    pool.query(`SELECT LOWER(contact_email) AS adresa, name AS nume FROM companies WHERE contact_email IS NOT NULL AND contact_email <> ''
+      AND (LOWER(contact_email) LIKE $1 OR LOWER(name) LIKE $1) LIMIT 20`, [t]),
+    // Dintre conturi, doar administratorii firmelor (și ai noștri): pe ei îi avem de scris; restul oamenilor unei firme e treaba ei.
+    pool.query(`SELECT LOWER(COALESCE(NULLIF(email, ''), username)) AS adresa, full_name AS nume FROM users WHERE active IS NOT false
+      AND role IN ('superadmin', 'company_admin', 'admin') AND (LOWER(COALESCE(email, '')) LIKE $1 OR LOWER(username) LIKE $1 OR LOWER(COALESCE(full_name, '')) LIKE $1) LIMIT 20`, [t]),
+  ]);
+  return { primite: pr.rows, trimise: tr.rows, firme: co.rows, oameni: us.rows };
 }
 async function getMailTrimis(id) {
   const r = await pool.query(
@@ -2306,13 +2487,14 @@ async function noteazaMailPrimit(m) {
     const atas = Array.isArray(m.atasamente) ? m.atasamente.slice(0, 50) : [];
     const r = await client.query(
       `INSERT INTO mail_primite (catre, de_la, de_nume, raspuns_catre, antet_catre, antet_cc, subiect, text, html, mesaj_id, in_reply_to,
-         referinte, trimis_la, company_id, atasamente, intreg, verificare, octeti)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
+         referinte, trimis_la, company_id, atasamente, intreg, verificare, octeti, dosar, dosar_la)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
       [m.catre, m.de_la || null, m.de_nume || null, m.raspuns_catre || null, m.antet_catre || null, m.antet_cc || null, m.subiect || null,
         m.text || null, m.html || null, m.mesaj_id || null, m.in_reply_to || null, m.referinte || null, m.trimis_la || null,
         m.company_id != null ? m.company_id : null,
         JSON.stringify(atas.filter(function (a) { return !a.inCorp; }).map(function (a) { return { nume: a.nume, octeti: a.octeti, pastrat: !!a.pastrat }; })),
-        m.intreg !== false, m.verificare || null, m.octeti != null ? m.octeti : null]);
+        m.intreg !== false, m.verificare || null, m.octeti != null ? m.octeti : null,
+        m.dosar === 'spam' ? 'spam' : 'primite', m.dosar === 'spam' ? new Date() : null]);
     const id = Number(r.rows[0].id);
     for (const a of atas) {
       await client.query('INSERT INTO mail_atasamente (mail_id, nume, tip, octeti, cid, in_corp, continut_b64) VALUES ($1,$2,$3,$4,$5,$6,$7)',
@@ -2324,7 +2506,7 @@ async function noteazaMailPrimit(m) {
   finally { client.release(); }
 }
 const _MAIL_PRIMIT_CAMPURI = `m.id, m.primit_la, m.catre, m.de_la, m.de_nume, m.subiect, m.trimis_la, m.company_id, c.name AS company_name,
-  m.atasamente, m.intreg, m.verificare, m.citit_la, m.raspuns_la, m.raspuns_de, ur.full_name AS raspuns_de_nume`;
+  m.atasamente, m.intreg, m.verificare, m.citit_la, m.raspuns_la, m.raspuns_de, ur.full_name AS raspuns_de_nume, m.dosar, m.dosar_la, m.stea`;
 // Lista (fără corp), DOAR pe adresele primite (cele pe care le vede omul). `cauta`: în expeditor sau subiect.
 async function listMailPrimite(adrese, o) {
   o = o || {};
@@ -2337,6 +2519,8 @@ async function listMailPrimite(adrese, o) {
       ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
   }
   if (o.necitite) w += ' AND m.citit_la IS NULL';
+  p.push(o.dosar === 'spam' ? 'spam' : 'primite'); w += ' AND m.dosar = $' + p.length;   // Coșul are lista lui (listMailCos)
+  if (o.stea) w += ' AND m.stea';
   p.push(lim + 1); p.push(off);
   const r = await pool.query(
     `SELECT ${_MAIL_PRIMIT_CAMPURI}
@@ -2377,7 +2561,7 @@ async function stergeMailPrimit(id) {
 }
 // Câte necitite are fiecare adresă (bulina de pe rândul „Mail" și de pe fiecare adresă).
 async function mailNecitite(adrese) {
-  const r = await pool.query(`SELECT catre, COUNT(*)::int AS n FROM mail_primite WHERE catre = ANY($1) AND citit_la IS NULL GROUP BY catre`,
+  const r = await pool.query(`SELECT catre, COUNT(*)::int AS n FROM mail_primite WHERE catre = ANY($1) AND citit_la IS NULL AND dosar = 'primite' GROUP BY catre`,
     [(adrese || []).map(function (a) { return String(a).toLowerCase(); })]);
   const out = {}; r.rows.forEach(function (x) { out[x.catre] = Number(x.n) || 0; });
   return out;
@@ -4493,7 +4677,7 @@ async function getUsers(companyId) {
   const where = companyId != null ? "WHERE u.company_id = $1 AND u.role <> 'superadmin'" : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
+    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
       -- Data până la care are acces (conturile demo aprobate expiră). Fără ea, ecranul nu putea
       -- spune „expiră în 3 zile" — se afla doar intrând în fișa omului.
       u.access_until,
@@ -4552,7 +4736,7 @@ async function getUserById(id) {
   const result = await pool.query(
     // role_slug = rolul PROPRIU al firmei, dacă omul are unul. Fără el aici, refreshAuth nu-l vede și
     // ajustările rolului propriu n-ar avea niciun efect.
-    'SELECT id, username, role, role_slug, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat FROM users WHERE id = $1',
+    'SELECT id, username, role, role_slug, full_name, email, phone, functie, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -4586,7 +4770,7 @@ async function getPasswordHash(id) {
 // și numai câmpurile trimise.
 async function setUserContact(id, campuri) {
   const set = [], p = [id];
-  for (const k of ['full_name', 'phone']) {
+  for (const k of ['full_name', 'phone', 'functie']) {
     if (!Object.prototype.hasOwnProperty.call(campuri || {}, k)) continue;
     const v = campuri[k];
     p.push(v === null || v === '' ? null : String(v));
@@ -6133,6 +6317,8 @@ module.exports = {
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, stergeMailTrimis, mailSpatiu,
+  mailNumarDosare, listMailCos, mailMutaPrimite, mailRecupereazaPrimite, mailMutaTrimise, mailStea, mailCitit, mailSpamExpeditor, mailEsteSpam,
+  stergeMailDosareVechi, listMailCiorne, getMailCiorna, salveazaMailCiorna, stergeMailCiorna, numarMailCiorne, mailSugestii,
   noteazaMailPrimit, listMailPrimite, getMailPrimit, atasamenteMailPrimit, getAtasamentMailPrimit, marcheazaMailCitit, marcheazaMailRaspuns, stergeMailPrimit, mailNecitite, firmaDupaEmail,
   listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,

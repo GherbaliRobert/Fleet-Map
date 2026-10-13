@@ -84,9 +84,11 @@ function _cuCadru(m) {
   return Object.assign({}, m, { html: cadru(html), attachments: (m.attachments || []).concat([LOGO]) });
 }
 
-// ─── Semnătura (Robert, 13.10: „2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon") ───
-// Doar pe emailurile scrise din panoul Mail. Numele și telefonul din fișa omului (users.full_name / phone); pe adresa
-// comună, „Echipa RA Track", fără telefon. Un număr românesc de 10 cifre se scrie pe grupe: „0729 699 847".
+// ─── Semnătura (Robert, 13.10: „2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon"; apoi „la
+// semnătură vreau să fie și funcția și adresa de mail") ───
+// Doar pe emailurile scrise din panoul Mail. Numele, funcția și telefonul din fișa omului (users.full_name / functie / phone),
+// adresa de pe care pleacă; pe adresa comună, „Echipa RA Track", fără funcție și telefon. Un număr românesc de 10 cifre se
+// scrie pe grupe: „0729 699 847".
 function _tel(t) {
   const s = String(t || '').trim(), c = s.replace(/[\s.\-()]/g, '');
   return /^0\d{9}$/.test(c) ? c.slice(0, 4) + ' ' + c.slice(4, 7) + ' ' + c.slice(7) : s;
@@ -94,14 +96,21 @@ function _tel(t) {
 function semnatura(o) {
   o = o || {};
   const nume = String(o.nume || '').trim() || 'Echipa RA Track';
+  const functie = String(o.functie || '').trim();
   const tel = _tel(o.telefon);
-  const firma = /RA Track/.test(nume) ? '' : 'RA Track · ';
-  const randuri = [nume, firma + 'ratrack.ro'].concat(tel ? ['Tel. ' + tel] : []);
+  const email = String(o.email || '').trim().toLowerCase();
+  const echipa = /RA Track/.test(nume);
+  const rand2 = echipa ? '' : (functie ? functie + ' · RA Track' : 'RA Track');
+  const rand3 = (email ? email + ' · ' : '') + 'ratrack.ro';
+  const randuri = [nume].concat(rand2 ? [rand2] : [], [rand3], tel ? ['Tel. ' + tel] : []);
+  const link = '<a href="' + _baza() + '" style="color:#15803d;text-decoration:none;">ratrack.ro</a>';
   return {
     text: '\n\n--\n' + randuri.join('\n'),
     rand: randuri.join(' · '),   // cum se arată pe ecran, sub mesaj
     html: '<div style="margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.5;color:#475569;">'
-      + '<b style="color:#1a2235;">' + _esc(nume) + '</b><br>' + _esc(firma) + '<a href="' + _baza() + '" style="color:#15803d;text-decoration:none;">ratrack.ro</a>'
+      + '<b style="color:#1a2235;">' + _esc(nume) + '</b>'
+      + (rand2 ? '<br>' + _esc(rand2) : '')
+      + '<br>' + (email ? '<a href="mailto:' + _esc(email) + '" style="color:#15803d;text-decoration:none;">' + _esc(email) + '</a> · ' : '') + link
       + (tel ? '<br>Tel. ' + _esc(tel) : '') + '</div>',
   };
 }

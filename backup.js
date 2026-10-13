@@ -52,6 +52,9 @@ const BUSINESS_TABLES = [
   'mail_trimise',
   // …și ce ne-au scris ei (etapa 2): emailurile primite, fără atașamente (vezi mai jos). Nu se refac din nimic.
   'mail_primite',
+  // Panoul Mail, 13.10: expeditorii marcați ca spam și ciornele — alegeri ale oamenilor, nu se refac din nimic.
+  'mail_spam_expeditori',
+  'mail_ciorne',
 ];
 
 // Ce NU intră în copie, cu motivul. Orice tabel creat în db.js trebuie să fie ori în BUSINESS_TABLES, ori aici —

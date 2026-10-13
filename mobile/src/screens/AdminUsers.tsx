@@ -168,7 +168,7 @@ export function AdminUsers() {
     setNotice(null);
   }
   function openEdit(u: any) {
-    setForm({ username: u.username, full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', role: userRoleKey(u), active: u.active !== false });
+    setForm({ username: u.username, full_name: u.full_name || '', email: u.email || '', phone: u.phone || '', functie: u.functie || '', role: userRoleKey(u), active: u.active !== false });
     setFormErr('');
     setEditing(u);
   }
@@ -276,7 +276,7 @@ export function AdminUsers() {
     try {
       if (isEdit) {
         // Emailul pleacă TĂIAT (ca pe web): un spațiu scăpat ar ajunge în bază, iar linkul de parolă ar pleca pe o adresă greșită.
-        const body: any = { full_name, email: String(form.email || '').trim() || null, phone: form.phone || null, active: form.active };
+        const body: any = { full_name, email: String(form.email || '').trim() || null, phone: form.phone || null, functie: String(form.functie || '').trim(), active: form.active };
         // Rolul pleacă DOAR dacă adminul l-a schimbat: altfel o simplă corectură de telefon ar muta un om de pe
         // rolul propriu pe cel standard (sau ar fi refuzată ca „Rol invalid" la rolurile pe care nu le poate atinge).
         if (!lockRole && !isSelf && form.role !== initialRole) {
@@ -642,6 +642,7 @@ export function AdminUsers() {
                 )}
                 <div class="frm-row">
                   <div class="fld"><label>Telefon</label><input type="tel" value={form.phone} onInput={(e) => setF('phone', (e.target as HTMLInputElement).value)} /></div>
+                  {isEdit && <div class="fld"><label>Funcție</label><input value={form.functie || ''} maxLength={120} placeholder="ex. Director general" onInput={(e) => setF('functie', (e.target as HTMLInputElement).value)} /></div>}
                 </div>
                 <div class="fld"><label>Rol</label>
                   {lockRole ? (

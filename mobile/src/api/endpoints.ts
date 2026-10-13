@@ -15,6 +15,7 @@ export interface Me {
   // „Contul meu": numele afișat (în locul emailului) și telefonul omului; roleLabel = numele rolului dat
   // de firmă („Operator depou", roluri proprii) — null când firma n-a redenumit nimic.
   full_name?: string | null; phone?: string | null; roleLabel?: string | null;
+  functie?: string | null; // 13.10: funcția omului (apare în semnătura emailurilor din panoul Mail)
 }
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
@@ -53,7 +54,7 @@ export const Api = {
     api<{ token: string } & Me>('/api/mobile/login', { method: 'POST', auth: false, body: { username, password, device } }),
   me: () => api<Me>('/api/me'),
   // ── Contul meu (oricine): numele afișat, telefonul și propria parolă ──
-  saveProfile: (b: { full_name?: string; phone?: string }) => api<{ ok: boolean; full_name: string; phone: string }>('/api/me/profile', { method: 'PUT', body: b }),
+  saveProfile: (b: { full_name?: string; phone?: string; functie?: string }) => api<{ ok: boolean; full_name: string; phone: string; functie: string }>('/api/me/profile', { method: 'PUT', body: b }),
   // Se cere parola de acum: o sesiune lăsată deschisă nu devine preluarea contului. Răspunsurile de refuz
   // sunt 400/403/429 (niciodată 401), deci omul nu e delogat dacă greșește parola veche.
   changePassword: (veche: string, noua: string) => api<{ ok: boolean }>('/api/me/password', { method: 'POST', body: { veche, noua } }),
@@ -265,20 +266,27 @@ export const Api = {
   saveCompanySettings: (b: any) => api<any>('/api/companies/me/settings', { method: 'PUT', body: b }),
   // ── Super-admin: panoul Mail (12.10) — aceleași rute ca pe web (Administrare → Mail) ──
   mailAdrese: () => api<any>('/api/mail/adrese'),
-  mailTrimise: (q: { adresa?: string; cauta?: string; pagina?: number }) => api<any>('/api/mail/trimise?pagina=' + (q.pagina || 0)
-    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '')),
+  mailTrimise: (q: { adresa?: string; cauta?: string; pagina?: number; stea?: boolean }) => api<any>('/api/mail/trimise?pagina=' + (q.pagina || 0)
+    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '') + (q.stea ? '&stea=1' : '')),
   mailTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`),
   mailTrimite: (b: any) => api<any>('/api/mail/trimite', { method: 'POST', body: b }),
   // Etapa 2: „Primite" (deschis = citit; răspunsul pleacă tot prin mailTrimite, cu `raspunsLa`).
-  mailPrimite: (q: { adresa?: string; cauta?: string; pagina?: number }) => api<any>('/api/mail/primite?pagina=' + (q.pagina || 0)
-    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '')),
+  mailPrimite: (q: { adresa?: string; cauta?: string; pagina?: number; stea?: boolean; dosar?: 'spam' }) => api<any>('/api/mail/primite?pagina=' + (q.pagina || 0)
+    + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '') + (q.stea ? '&stea=1' : '')
+    + (q.dosar ? '&dosar=' + q.dosar : '')),
   mailPrimit: (id: number) => api<any>(`/api/mail/primite/${id}`),
   mailNecitit: (id: number) => api<any>(`/api/mail/primite/${id}/necitit`, { method: 'POST', body: {} }),
-  mailStergePrimit: (id: number) => api<any>(`/api/mail/primite/${id}`, { method: 'DELETE' }),
   mailNecitite: () => api<{ total: number; peAdresa: Record<string, number> }>('/api/mail/necitite'),
-  // 13.10: „Șterge" în „Trimise" (doar emailurile scrise de mână — o păzește serverul); „Răspunde tuturor" și
-  // „Redirecționează" pleacă tot prin mailTrimite (cu `cc`, `redirectioneazaPrimit` / `redirectioneazaTrimis`).
-  mailStergeTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`, { method: 'DELETE' }),
+  // 13.10: „Răspunde tuturor" și „Redirecționează" pleacă tot prin mailTrimite (cu `cc`, `redirectioneazaPrimit` /
+  // `redirectioneazaTrimis`). „Șterge" (primite și trimise) = mailActiune('sterge') — în Coș; serverul păzește ce se poate șterge.
+  // Etapa 3 (13.10): dosarele Spam și Coș, steaua, citit / necitit, „Nu e spam", „Recuperează", „Șterge definitiv" — toate pe
+  // O rută (`elemente` = [{ sursa: 'primit' | 'trimis', id }]); textul de după îl scrie serverul. Ciornele sunt ale omului.
+  mailActiune: (actiune: string, elemente: { sursa: string; id: number }[]) => api<{ facute: number; negasite: number; text: string; dovada?: boolean }>('/api/mail/actiune', { method: 'POST', body: { actiune, elemente } }),
+  mailCos: (q: { adresa?: string; pagina?: number }) => api<any>('/api/mail/cos?pagina=' + (q.pagina || 0) + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '')),
+  mailCiorne: () => api<{ ciorne: any[] }>('/api/mail/ciorne'),
+  mailSalveazaCiorna: (b: any) => api<{ id: number }>('/api/mail/ciorne', { method: 'POST', body: b }),
+  mailStergeCiorna: (id: number) => api<any>(`/api/mail/ciorne/${id}`, { method: 'DELETE' }),
+  mailSugestii: (q: string) => api<{ sugestii: { adresa: string; nume?: string; sursa?: string }[] }>('/api/mail/sugestii?q=' + encodeURIComponent(q)),
   // ── Super-admin: Cereri de cont demo (formularul public de pe landing) ──
   demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),

@@ -164,7 +164,7 @@ function formularWeb(cookie, eSuper, proprii) {
   };
   const camp = () => ({ value: '', textContent: '', innerHTML: '', style: {}, classList: { add() {}, remove() {} } });
   const el = { 'ue-role': sel };
-  for (const id of ['ue-id', 'ue-title', 'ue-active', 'ue-fullname', 'ue-email', 'ue-phone', 'ue-password', 'ue-devices', 'ue-groups', 'user-edit-modal', 'ue-access-wrap']) el[id] = camp();
+  for (const id of ['ue-id', 'ue-title', 'ue-active', 'ue-fullname', 'ue-email', 'ue-phone', 'ue-functie', 'ue-password', 'ue-devices', 'ue-groups', 'user-edit-modal', 'ue-access-wrap']) el[id] = camp();
   const alerte = [];
   const ctx = {
     document: {
@@ -357,9 +357,11 @@ function formularWeb(cookie, eSuper, proprii) {
   await f.ctx.openUserEdit(disp.id);
   T('formularul web deschide omul cu rolul propriu ales', f.sel.value === rolNou.rol, f.sel.value);
   f.el['ue-phone'].value = '0733000333';
+  f.el['ue-functie'].value = 'Dispecer de tură';   // 13.10: funcția din fișă (apare în semnătura emailurilor noastre)
   await f.ctx.saveUserEdit();
   u = await omul();
   T('salvat din formular cu alt număr → rolul propriu rămâne', !f.alerte.length && u.role_slug === rolNou.rol && u.phone === '0733000333', f.alerte.join(' | ') + ' ' + u.role_slug);
+  T('…iar funcția scrisă în fișă se salvează', u.functie === 'Dispecer de tură', u.functie);
   f = formularWeb(ckSef, false, PROPRII);
   await f.ctx.openUserEdit(disp.id);
   f.sel.value = 'dispatcher';                       // rolul standard din care derivă, ales de mână

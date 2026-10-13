@@ -300,6 +300,49 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
+### AMÂNDOI · Mailul complet: dosarele Spam și Coș, bife pe mai multe, butoanele pe rând, ciornele, adresele sugerate, steaua; funcția în semnătură
+
+Robert (13.10): *„la semnătură vreau să fie și funcția și adresa de mail, vreau să avem butoanele direct în lista de mail
+(reply, ștergere și ce mai e), vreau să putem avea acțiuni multiple, de bifare și după ștergere, secțiune de spam, vreau să fie
+un mail cât mai complet"*; apoi *„1, da · 2. a · 3. a, b, c · 4. da"*.
+
+1. **Semnătura** are acum și **funcția** și **adresa** de pe care pleacă: „Robert Gherbali · Director general · RA Track ·
+   robert.gherbali@ratrack.ro · ratrack.ro · Tel. 0729 699 847"; pe contact@: „Echipa RA Track · contact@ratrack.ro ·
+   ratrack.ro". Funcția se scrie în fișa omului (Gestiune → Utilizatori → rândul lui) sau în Setări → Contul meu.
+2. **Cinci dosare:** Primite · Trimise · Ciorne · Spam · Coș, fiecare cu numărul lui.
+3. **Butoanele direct pe rând** (la trecerea mouse-ului; pe telefon stau mereu): Răspunde, Redirecționează, Citit / Necitit,
+   Spam, Șterge; în Spam — „Nu e spam" și Șterge; în Coș — „Recuperează" și „Șterge definitiv".
+4. **Bife:** fiecare email are o căsuță, iar sus „Selectează tot"; cu ceva bifat, bara arată câte și ce se poate face cu ele
+   deodată (citit, necitit, stea, spam, șterge; în Coș: recuperează, șterge definitiv).
+5. **Coșul** (Robert: „1, da"): „Șterge" nu mai șterge pe loc — mută în Coș, de unde se poate recupera (înapoi de unde a
+   venit). Coșul se golește singur după 30 de zile; „Șterge definitiv" (doar din Coș) întreabă înainte.
+6. **Spamul** (Robert: „2. a"): ajung singure în Spam DOAR emailurile expeditorilor marcați de voi, pe adresa pe care i-ați
+   marcat. „Nu e spam" îl scoate de pe listă. Un email care ajunge în Spam nu mai sună. Spamul se golește singur după 30 de zile.
+7. **Ciornele** (3. a): ce scrii se salvează singur (fără atașamente), la o secundă și jumătate după ultima literă și la
+   închiderea ferestrei. Ciornele sunt ale omului care le-a scris. După ce emailul pleacă, ciorna lui se șterge.
+8. **Adresele sugerate** (3. b): la „Către" și „Cc", de la două litere: cine ne-a scris, cui i-am scris, firmele, administratorii
+   firmelor. Fără adresele noastre; fără ce a venit pe adresa personală a altui fondator.
+9. **Steaua** (3. c): pe orice email, primit sau trimis; butonul „Cu stea" le arată doar pe ele.
+10. La fel pe telefon (4. da) — APK 1.0.15.
+
+- **Ce am schimbat:** `server.js` (o singură funcție pentru toate acțiunile, `_mailActiune`, folosită de ruta nouă și de cele
+  două rute vechi de ștergere; Coșul, ciornele, sugestiile, golirea zilnică; primirea se uită pe lista expeditorilor marcați;
+  funcția în profil și în fișă), `db.js` (dosarele, steaua, lista de spam, ciornele), `mailer.js` (semnătura), `backup.js`
+  (lista de spam și ciornele intră în copie), `public/index.html` (dosarele, bara, rândurile, ciornele, sugestiile, câmpul
+  Funcție), telefonul (`Mail.tsx`, rutele, pictogramele, Funcția în Contul meu și în fișa omului).
+- **Găsit pe drum și reparat în aceeași lucrare:** butonul „Spam" dădea eroare de bază de date (același parametru folosit și ca
+  text și ca valoare); iar pe baza locală (cea a probelor) numărătoarea rândurilor schimbate lipsea, deci mesajul de după
+  acțiune ar fi spus „Nimic de schimbat". Prinse de proba nouă, înainte de livrare.
+- **Probe:** `verify_mail_dosare.js` (nouă, 49, în `npm test`, cu Brevo fals și emailuri primite făcute ca de la Cloudflare):
+  dosarele la fel pe pagină și pe telefon, spamul pe adresă, Coșul cu recuperarea (și înapoi în Spam), ștergerea definitivă
+  cu atașamentul, golirea după 30 de zile pe o bază a ei, cine vede ce (nici acțiuni, nici Coș, nici sugestii pe adresa altuia),
+  dovada (facturile / invitațiile rămân), ciornele, sugestiile, steaua, funcția, jurnalul fără conținut. `verify_mail_raspuns.js`
+  și `verify_mail_primite.js` rescrise pe regula nouă (semnătura cu funcția și adresa; „Șterge" = în Coș, apoi definitiv).
+  Panoul văzut desenat pe calculator și la lățime de telefon; contrastul măsurat pe ambele teme (toate ≥ 4,5).
+- **Ce vede fondatorul:** panoul Mail complet; câmpul „Funcție" în fișa omului și în Contul meu.
+- **Ce vede clientul:** câmpul „Funcție" în fișa omului și în Contul meu (nu-l folosește nimic altceva la el); emailurile
+  noastre îi vin cu semnătura nouă.
+
 ### AMÂNDOI · Vehiculul din simulator, a doua trecere; planul PDF are același desen ca ecranul — `c207f2b`
 
 Robert (13.10): *„1, nu ne interesează / 2 da, dar mai lucrează la desenul mașinii"* (1 = atașamentele pentru utilaje — nu

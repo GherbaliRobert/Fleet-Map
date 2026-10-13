@@ -116,8 +116,9 @@ const fals = http.createServer((req, res) => {
   console.log('7. Pagina, telefonul, Worker-ul, copia');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
   const BLOC = (PAG.match(/── începe „Panoul Mail"[\s\S]*?── sfârșit „Panoul Mail" ──/) || [''])[0];
-  T('pagina: filele Primite / Trimise, cu rutele serverului (listă, deschis, necitit, șters, atașament, bulina)',
-    ['/api/mail/primite', '/api/mail/necitite', "/necitit'", "'/atasamente/'"].every((r) => BLOC.indexOf(r) >= 0) && /method: 'DELETE'/.test(BLOC) && /window\.raxMailFila = function/.test(BLOC));
+  T('pagina: filele Primite / Trimise (și celelalte dosare), cu rutele serverului (listă, deschis, necitit, șters = acțiunea „sterge", atașament, bulina)',
+    ['/api/mail/primite', '/api/mail/necitite', "/necitit'", "'/atasamente/'", "'/api/mail/actiune'"].every((r) => BLOC.indexOf(r) >= 0) &&
+    /window\.raxMailSterge = function \(id\) \{ raxMailActiune\('sterge', \[\{ sursa: 'primit', id: Number\(id\) \}\]\); \};/.test(BLOC) && /window\.raxMailFila = function/.test(BLOC));
   T('pagina: emailul PRIMIT în cadru izolat (fără scripturi), linkurile în altă filă, imaginile din afară oprite până la „Arată imaginile"',
     /if \(primit\) f\.setAttribute\('sandbox', 'allow-popups allow-popups-to-escape-sandbox'\);\s*else f\.setAttribute\('sandbox', ''\);/.test(BLOC) &&
     /img-src ' \+ \(!primit \|\| cuImagini \? 'https: ' : ''\) \+ 'data:/.test(BLOC) && /<base target="_blank">/.test(BLOC) && /raxMailImagini/.test(BLOC));
@@ -131,11 +132,12 @@ const fals = http.createServer((req, res) => {
   const EP = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'api', 'endpoints.ts'), 'utf8');
   const PUSH = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'lib', 'push.ts'), 'utf8');
   T('telefonul: aceleași rute ca pagina', ['/api/mail/primite?pagina=', '/api/mail/primite/${id}', '/api/mail/primite/${id}/necitit', '/api/mail/necitite'].every((r) => EP.indexOf(r) >= 0) &&
-    /'\/api\/mail\/primite\/' \+ deschis\.id \+ '\/atasamente\/' \+ a\.id/.test(MOB) && /mailTrimite\(raspunsLa \? \{ \.\.\.rest, atasamente, raspunsLa \}/.test(MOB));
+    /'\/api\/mail\/primite\/' \+ deschis\.id \+ '\/atasamente\/' \+ a\.id/.test(MOB) && /const legat = raspunsLa \? \{ raspunsLa \}/.test(MOB) &&
+    /mailTrimite\(\{ \.\.\.rest, atasamente, \.\.\.legat/.test(MOB));
   const CUVINTE = ['Niciun email primit încă.', 'Caută după expeditor sau subiect…', 'Emailurile primite pe adresele de mai jos ajung aici.',
     'Primirea nu e pornită încă: emailurile nu ajung aici până nu se leagă Cloudflare (parola de primire în Railway și în Cloudflare).',
     'Imaginile din afară sunt oprite.', 'Arată imaginile', 'Marchează necitit', 'Răspunde', 'expeditor nedovedit', 'doar numele',
-    'Ștergi emailul, cu atașamentele lui? Nu se mai poate recupera.', 'Răspunsul a plecat ✓', 'răspunsul merge la'];
+    'Ștergi definitiv emailul, cu atașamentele lui?', ' Nu se mai poate recupera.', 'Răspunsul a plecat ✓', 'răspunsul merge la'];
   const lipsa = CUVINTE.filter((t) => MOB.indexOf(t) < 0 || BLOC.indexOf(t) < 0);
   T('telefonul: aceleași cuvinte ca pagina', !lipsa.length, lipsa.join(' | '));
   T('telefonul: emailul primit tot în cadru izolat; imaginile din afară doar la cerere', (MOB.match(/<iframe sandbox=""/g) || []).length === 2 && /srcdoc=\{csp\(imagini\)/.test(MOB));
@@ -329,12 +331,20 @@ const fals = http.createServer((req, res) => {
     T('…iar după primele emailuri, ziua și ora ultimului', /^pornit — ultimul email primit: /.test(hl1.detail || ''), JSON.stringify(hl1));
     const sp = (await json('GET', '/api/mail/adrese', R)).j.spatiu || {};
     T('indicatorul de încărcare numără și emailurile primite (cu atașamentele lor)', sp.numar >= 36 && sp.mailOcteti > 0, JSON.stringify(sp));
-    const st = await json('DELETE', '/api/mail/primite/' + (lR.filter((m) => m.subiect === 'Confirmați contul')[0] || {}).id, A);
-    const dupaSt = await json('GET', '/api/mail/primite/' + (lR.filter((m) => m.subiect === 'Confirmați contul')[0] || {}).id, R);
+    const idSt = (lR.filter((m) => m.subiect === 'Confirmați contul')[0] || {}).id;
+    const st = await json('DELETE', '/api/mail/primite/' + idSt, A);
+    const dinCos = (await json('GET', '/api/mail/primite/' + idSt, R)).j;
+    const inPrimite = ((await json('GET', '/api/mail/primite', R)).j.mailuri || []).some((m) => m.id === idSt);
+    const cosR = ((await json('GET', '/api/mail/cos', R)).j.mailuri || []).some((m) => m.sursa === 'primit' && m.id === idSt);
+    T('„Șterge" (Alin, pe adresa comună): emailul pleacă din Primite în Coș, pentru toți (Robert îl vede în Coș)',
+      st.status === 200 && dinCos.dosar === 'cos' && !inPrimite && cosR, st.status + ' ' + dinCos.dosar + ' ' + inPrimite + ' ' + cosR);
+    const stDef = await json('DELETE', '/api/mail/primite/' + idSt + '?definitiv=1', A);
+    const dupaSt = await json('GET', '/api/mail/primite/' + idSt, R);
     const aud = await json('GET', '/api/audit?limit=200', S);
     const randuri = Array.isArray(aud.j) ? aud.j : (aud.j.rows || aud.j.entries || aud.j.logs || []);
-    T('„Șterge" (Alin, pe adresa comună): emailul dispare pentru toți, cu rând în audit (fără conținut)',
-      st.status === 200 && dupaSt.status === 404 && randuri.some((r) => r.action === 'mail_primit_sters') && !JSON.stringify(randuri).includes('Dați clic'), st.status + ' ' + dupaSt.status);
+    T('…din Coș, „Șterge definitiv": dispare pentru toți, cu rânduri în audit (fără conținut)',
+      stDef.status === 200 && dupaSt.status === 404 && randuri.some((r) => r.action === 'mail_sterge') && randuri.some((r) => r.action === 'mail_definitiv') &&
+      !JSON.stringify(randuri).includes('Dați clic'), stDef.status + ' ' + dupaSt.status);
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

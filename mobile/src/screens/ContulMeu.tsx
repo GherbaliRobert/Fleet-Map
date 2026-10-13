@@ -42,12 +42,16 @@ export function ContulMeu() {
   // (ex. /api/me picat la autentificare) ar fi trimis la „Salvează" și ar fi călcat numele de pe cont.
   const numeCont = u?.full_name || '';
   const telCont = u?.phone || '';
+  const functieCont = u?.functie || '';
   const [nume, setNume] = useState<string>(numeCont);
   const [tel, setTel] = useState<string>(telCont);
+  const [functie, setFunctie] = useState<string>(functieCont);
   const [atinsNume, setAtinsNume] = useState(false);
   const [atinsTel, setAtinsTel] = useState(false);
+  const [atinsFunctie, setAtinsFunctie] = useState(false);
   useEffect(() => { if (!atinsNume) setNume(numeCont); }, [numeCont]);
   useEffect(() => { if (!atinsTel) setTel(telCont); }, [telCont]);
+  useEffect(() => { if (!atinsFunctie) setFunctie(functieCont); }, [functieCont]);
   const [msgCont, setMsgCont] = useState<Mesaj>(null);
   const [salvezCont, setSalvezCont] = useState(false);
 
@@ -79,9 +83,10 @@ export function ContulMeu() {
     if (salvezCont) return;
     // Trimitem DOAR ce a schimbat omul față de profilul de pe cont (serverul lasă neatins un câmp netrimis):
     // cine își schimbă doar telefonul nu poate șterge din greșeală numele, nici dacă telefonul nu-l știa.
-    const body: { full_name?: string; phone?: string } = {};
+    const body: { full_name?: string; phone?: string; functie?: string } = {};
     if (nume.trim() !== numeCont.trim()) body.full_name = nume;
     if (tel.trim() !== telCont.trim()) body.phone = tel;
+    if (functie.trim() !== functieCont.trim()) body.functie = functie;
     if (!Object.keys(body).length) { setMsgCont({ t: 'Nu ai schimbat nimic.' }); return; }
     setSalvezCont(true);
     setMsgCont({ t: 'Se salvează…' });
@@ -90,12 +95,12 @@ export function ContulMeu() {
       // Numele se schimbă pe loc și în capul meniului — altfel omul salvează și crede că nu s-a întâmplat nimic.
       const cur = me.value;
       if (cur) {
-        const m = { ...cur, full_name: d.full_name || null, phone: d.phone || null };
+        const m = { ...cur, full_name: d.full_name || null, phone: d.phone || null, functie: d.functie || null };
         me.value = m;
         saveUser(m).catch(() => { /* copia locală se reface la următorul /api/me */ });
       }
-      setNume(d.full_name || ''); setTel(d.phone || '');
-      setAtinsNume(false); setAtinsTel(false); // de acum câmpurile urmează iar profilul
+      setNume(d.full_name || ''); setTel(d.phone || ''); setFunctie(d.functie || '');
+      setAtinsNume(false); setAtinsTel(false); setAtinsFunctie(false); // de acum câmpurile urmează iar profilul
       setMsgCont({ t: 'Salvat ✓', fel: 'bun' });
     } catch (e: any) {
       setMsgCont({ t: (e && e.message) || 'Nu s-a putut salva.', fel: 'rau' });
@@ -179,6 +184,11 @@ export function ContulMeu() {
               <label for="cm-tel">Telefon</label>
               <input id="cm-tel" type="tel" inputMode="tel" autocomplete="tel" maxLength={30} placeholder="07xx xxx xxx"
                 value={tel} onInput={(e) => { setAtinsTel(true); setTel((e.target as HTMLInputElement).value); }} />
+            </div>
+            <div class="fld">
+              <label for="cm-functie">Funcția</label>
+              <input id="cm-functie" type="text" autocomplete="organization-title" maxLength={120} placeholder="ex. Director general"
+                value={functie} onInput={(e) => { setAtinsFunctie(true); setFunctie((e.target as HTMLInputElement).value); }} />
             </div>
             <div class="fld">
               <label for="cm-mail">Adresa de email (numele de utilizator)</label>

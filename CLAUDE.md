@@ -240,9 +240,11 @@ avem în fișă numărul de telefon · 3. da · 4. da".
   contracte, neplată, rapoarte, panoul Mail): sigla albă pe `#0B0E11`, linia `#3FE07D`, rândul cu ratrack.ro. Un HTML care
   are deja `cid:logo@ratrack.ro` (emailul cu factura) nu-l primește a doua oară; `cadru: false` îl oprește. NU scrie chenare
   pe la rute: ar ieși două. „Trimise" ține conținutul FĂRĂ chenar. La Brevo sigla se cere de pe site (`_pentruBrevo`).
-- **Semnătura: `mailer.semnatura({ nume, telefon })`** — personală = `users.full_name` + `users.phone` (din fișă; „0729 699 847"
-  pe grupe), comună = „Echipa RA Track". O alege serverul (`_mailSemnatura`); `/api/mail/adrese` dă `semnatura` (rândul de pe
-  ecran) și `faraTelefon`. **`mailer.cuSemnatura(text, citat, semn)`** o pune sub textul omului și DEASUPRA citatului /
+- **Semnătura: `mailer.semnatura({ nume, functie, telefon, email })`** — personală = `users.full_name` + `users.functie` +
+  adresa de pe care pleacă + `users.phone` (din fișă; „0729 699 847" pe grupe): „Nume · Funcție · RA Track · adresa · ratrack.ro
+  · Tel."; comună = „Echipa RA Track · contact@ratrack.ro · ratrack.ro". O alege serverul (`_mailSemnatura`); `/api/mail/adrese`
+  dă `semnatura` (rândul de pe ecran), `faraTelefon` și `faraFunctie`. Funcția (`users.functie`, ≤ 120): fișa omului
+  (`PUT /api/users/:id`, web `ue-functie`, telefon AdminUsers) și Contul meu (`/api/me/profile`, `pref-functie` / `cm-functie`). **`mailer.cuSemnatura(text, citat, semn)`** o pune sub textul omului și DEASUPRA citatului /
   mesajului redirecționat, pe care serverul îl recunoaște refăcându-l (`mailPrimit.citat`, `pentruRedirectionare…`); citatul
   schimbat de om → semnătura la capăt. Ecranele doar arată rândul primit — NU scrie semnătura în pagină sau pe telefon.
 - **„Răspunde tuturor": `mailPrimit.pentruRaspunsTuturor(m, toateAdreseleNoastre)`** — `cc` = „Către" + „Cc", fără adresele
@@ -251,9 +253,40 @@ avem în fișă numărul de telefon · 3. da · 4. da".
 - **„Redirecționează"**: `redirectioneazaPrimit` (atașamentele păstrate merg și ele, din `mail_atasamente`) sau
   `redirectioneazaTrimis` (doar textul — la „Trimise" atașamentele sunt doar nume; `faraAtasamente` o spune). „Fwd:" o dată
   (`subiectRedirectionare`); felul `redirectionat`. Răspuns ȘI redirecționare deodată → 400; al altuia → 404.
-- **„Șterge" la trimise: `MAIL_TRIMISE_STERGIBILE`** (mesaj / raspuns / redirectionat) — o listă, folosită de ruta DELETE și de
-  `sePoateSterge`; restul → 403 „sunt dovada". Ștersul unui răspuns golește doar `mail_primite.raspuns_id` (rămâne „Răspuns de…").
+- **„Șterge" la trimise: `MAIL_TRIMISE_STERGIBILE`** (mesaj / raspuns / redirectionat) — o listă, folosită de `_mailRand`
+  (`sePoateSterge`), de ruta DELETE și de `_mailActiune`; restul → 403 / `dovada` „sunt dovada". Ștersul DEFINITIV al unui
+  răspuns golește doar `mail_primite.raspuns_id` (rămâne „Răspuns de…").
 - Păzit de `verify_mail_raspuns.js` (în `npm test`; pe server pornit, Brevo fals, emailuri primite ca de la Worker).
+
+### Panoul Mail — 13.10 (etapa 3): Spam, Coș, bife, butoanele pe rând, ciorne, sugestii, stea
+Robert: „un mail cât mai complet" — „1, da · 2. a · 3. a, b, c · 4. da".
+- **Dosarele stau pe rând:** `mail_primite.dosar` = primite / spam / cos, `mail_trimise.dosar` = trimise / cos, cu `dosar_la`
+  (de când) și, la primite, `dosar_inainte` (de unde a venit în Coș — „Recuperează" îl pune înapoi acolo, Spam inclusiv).
+  Listele vechi (`listMailPrimite` / `listMailTrimise`, necitite, bulina) văd doar dosarul lor. `stea` pe amândouă tabelele.
+- **O SINGURĂ funcție pentru acțiuni: `_mailActiune(req, elemente, actiune)`** (`MAIL_ACTIUNI`: citit, necitit, stea, farastea,
+  spam, nuspam, sterge, recupereaza, definitiv), chemată de `POST /api/mail/actiune` (≤ 200 deodată) și de cele două rute DELETE
+  vechi (primul DELETE → Coș, `?definitiv=1` din Coș → șters). Vizibilitatea ca peste tot (`_mailVazute`): ce nu e al tău =
+  `negasite`, nu eroare. Textul de după îl scrie serverul (`text`); jurnal `mail_<acțiune>` fără conținut. Pagina are o singură
+  cerere (`raxMailActiune`), telefonul una (`actiune`) — păzit prin numărare. NU scrie a doua cale.
+- **„Șterge" = în Coș, fără întrebare; „Șterge definitiv" = doar din Coș, cu întrebare.** Coșul și Spamul se golesc după
+  `MAIL_ZILE_DOSARE` = 30 (`golesteMailVechi` → `db.stergeMailDosareVechi`, zilnic, cu atașamentele; de mână
+  `POST /api/admin/mail/goleste-vechi`). Ecranele iau zilele de la server (`dosare.zile`, `golitText`).
+- **Spamul („2. a"): DOAR expeditorii marcați de noi**, pe adresa pe care i-am marcat (`mail_spam_expeditori (catre, expeditor)`).
+  „Spam" îl adaugă, „Nu e spam" îl scoate; primirea (`/api/mail/primeste`) pune emailul lui direct în Spam și NU-l anunță.
+  NU adăuga filtre ghicite (fără SPF/DKIM, cuvinte) fără hotărârea lor — Robert a ales „a".
+- **Ciornele: `mail_ciorne`, ale omului** (`user_id` în WHERE, 404 pentru altul), ≤ 100, fără atașamente. Ecranele le salvează
+  singure la 1,5 s după ultima literă și la închidere; fereastra goală nu face ciornă; `ciorna` trimis la „Trimite" → serverul
+  o șterge după ce a plecat emailul.
+- **Sugestiile (`GET /api/mail/sugestii`, ≥ 2 litere, ≤ 8):** cine a scris pe adresele văzute (fără Spam), cui i-am scris de pe
+  ele, `companies.contact_email`, iar dintre conturi DOAR administratorii (superadmin / company_admin / admin) — restul
+  oamenilor unei firme e treaba ei. Fără adresele noastre.
+- ⚠ **În db.js, numărătoarea vine din `RETURNING id`** (`rows.length`): `rowCount` lipsește în PGlite — mesajul de după ar fi
+  „Nimic de schimbat". Și NU folosi același `$n` și ca valoare de coloană, și într-o comparație cu text (`CASE WHEN $2 = 'spam'`):
+  PostgreSQL refuză („inconsistent types"); dă-i un parametru boolean separat. Prinse amândouă de probă pe 13.10.
+- Bara de deasupra listei stă MEREU (cu „Selectează tot"), ca prima bifă să nu împingă lista; butoanele de pe rând apar la
+  hover, iar sub `@media (hover:none)` și pe telefon stau la vedere.
+- Lista de spam și ciornele sunt în `BUSINESS_TABLES`. Păzit de `verify_mail_dosare.js` (în `npm test`; golirea pe o bază a
+  ei, `--faza=golire`).
 
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
