@@ -20,6 +20,8 @@ const TON = (t?: string) => 'ton-' + (t || 'gri');
 export function Simulator() {
   const loc = useLocation();
   const planDinAdresa = String(((loc.query || {}) as any).plan || '');
+  // Din fișa remorcii („Deschide în simulator", 13.10): vehiculul la care e atașată și remorca, gata alese.
+  const vehDinAdresa = String(((loc.query || {}) as any).vehicul || ''), remDinAdresa = String(((loc.query || {}) as any).remorca || '');
   const [meta, setMeta] = useState<(IncMeta & any) | null>(null);
   const [flota, setFlota] = useState<{ vehicule: any[]; remorci: any[] } | null>(null);
   const [err, setErr] = useState('');
@@ -86,9 +88,14 @@ export function Simulator() {
         }
         let t: any = null; try { t = JSON.parse(localStorage.getItem(CHEIE) || 'null'); } catch { t = null; }
         if (t && Array.isArray(t.marfa)) { setMarfa(t.marfa); setOpriri(Array.isArray(t.opriri) && t.opriri.length ? t.opriri : ['Oprirea 1']); setMod(t.mod || 'opriri'); }
+        const cerut = vehDinAdresa ? f.vehicule.find((x: any) => x.imei === vehDinAdresa) : null;
         const pref = t && f.vehicule.find((x: any) => x.imei === t.imei);
-        const prim = pref || f.vehicule[0];
-        if (prim) {
+        const prim = cerut || pref || f.vehicule[0];
+        if (cerut) {
+          setImei(cerut.imei);
+          const l = potrivite(cerut, f);
+          setRemorcaId(l.some((r: any) => String(r.id) === remDinAdresa) ? remDinAdresa : String((l.find((r: any) => String(r.id) === String(cerut.remorca_id)) || { id: '' }).id));
+        } else if (prim) {
           setImei(prim.imei);
           const lista = potrivite(prim, f);
           const rid = pref && lista.some((r: any) => String(r.id) === String(t.remorcaId)) ? String(t.remorcaId) : (lista.find((r: any) => String(r.id) === String(prim.remorca_id)) || (prim.tip === 'trac' ? lista[0] : null) || { id: '' }).id;
@@ -96,7 +103,7 @@ export function Simulator() {
         }
       } catch (e: any) { setErr(e?.status === 403 ? 'Simulatorul de încărcare nu e pornit pentru firma ta.' : (e?.message || 'Eroare la încărcare')); }
     })();
-  }, [planDinAdresa]);
+  }, [planDinAdresa, vehDinAdresa]);
 
   // Fiecare schimbare: serverul socotește (cu o mică pauză, ca să nu plece o cerere la fiecare literă).
   useEffect(() => {

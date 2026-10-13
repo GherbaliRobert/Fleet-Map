@@ -990,7 +990,7 @@
         <button class="close-btn" onclick="remInchide()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
       <input type="hidden" id="rem-id">
-      <div class="form-group" id="rem-co-g" style="display:none;"><label>Firma</label><select id="rem-co"></select></div>
+      <div class="form-group" id="rem-co-g" style="display:none;"><label>Firma</label><select id="rem-co" onchange="remCoSchimbat()"></select></div>
       <div class="rem-g" style="grid-template-columns:1fr 1fr;">
         <div class="form-group"><label>Ce este</label><select id="rem-fel" onchange="remFelSchimbat()"></select></div>
         <div class="form-group"><label>Tipul</label><select id="rem-tip" onchange="remTipSchimbat()"></select></div>
@@ -998,6 +998,11 @@
         <div class="form-group"><label>Marcă / model</label><input type="text" id="rem-model" maxlength="80" placeholder="ex: Schmitz S.CS"></div>
       </div>
       <div class="rem-nota" id="rem-cuplare"></div>
+      <!-- Atașarea la un vehicul (13.10): lista și motivul vin de la server (GET /api/remorci/cuplare). -->
+      <div class="rem-sec">Atașată la vehiculul</div>
+      <div class="form-group" style="margin-bottom:0;"><select id="rem-atasare"></select></div>
+      <div class="rem-nota" id="rem-atasare-nota"></div>
+      <div id="rem-sim-g" style="display:none;margin-top:8px;"><button type="button" class="btn-sm" onclick="remSimuleaza()"><i class="fas fa-boxes-stacked"></i> Deschide în simulator</button></div>
       <div class="rem-sec">Spațiul de încărcare (interior, în metri)</div>
       <div class="rem-g">
         <div class="form-group"><label>Lungime *</label><input type="number" step="0.01" id="rem-lungime"></div>
@@ -7004,13 +7009,14 @@ const pozitii = await r.json();</code></pre>
       const poate = can('manageFleet') || !!(currentUser && currentUser.isSuper);
       return `<div class="veh-row st-rem" title="${esc(_remFelEt(r.fel))} — fără aparat GPS">
           <div class="veh-c-pic"><span class="veh-pic">${vehicleSilhouetteSVG('trailer', 'currentColor', 30)}</span></div>
-          <div class="veh-c-veh"><div class="veh-nm">${esc(r.plate)}</div><div class="veh-sub">${esc(sub)}</div></div>
+          <div class="veh-c-veh"><div class="veh-nm">${esc(r.plate)}</div><div class="veh-sub">${esc(sub)}</div>${r.atasata_plate ? `<div class="veh-sub"><i class="fas fa-link"></i> atașată la ${esc(r.atasata_plate)}</div>` : ''}</div>
           <div class="veh-c-grp veh-cel">—</div>
           <div class="veh-c-drv veh-cel">—</div>
           <div class="veh-c-last"><div class="veh-cel">fără aparat GPS</div><div class="veh-sub">${r.sarcina_kg ? esc(_remCifra(r.sarcina_kg)) + ' kg sarcină utilă' : ''}</div></div>
           <div class="veh-c-co veh-cel veh-co-col">${esc(r.company_name || '')}</div>
           <div class="veh-c-act veh-act">
-            ${poate ? `<button class="btn-sm" title="Editează" onclick="remDeschide(${Number(r.id)})"><i class="fas fa-pen"></i></button>` : ''}
+            ${poate ? `<button class="btn-sm" title="Editează" onclick="remDeschide(${Number(r.id)})"><i class="fas fa-pen"></i></button>
+            <button class="btn-sm btn-danger" title="Șterge" onclick="remSterge(${Number(r.id)})"><i class="fas fa-trash"></i></button>` : ''}
           </div>
         </div>`;
     }
@@ -7040,7 +7046,38 @@ const pozitii = await r.json();</code></pre>
       const nou = _remObisnuite(val, document.getElementById('rem-fel').value, document.getElementById('rem-tip').value, peste, _remMetaC);
       Object.keys(_REM_CASUTE).forEach(k => { document.getElementById(_REM_CASUTE[k]).value = nou[k] == null ? '' : nou[k]; });
     }
-    window.remFelSchimbat = function () { _remArataFel(); _remUmpleTipuri(null); _remPuneTip(!document.getElementById('rem-id').value); };
+    window.remFelSchimbat = function () { _remArataFel(); _remUmpleTipuri(null); _remPuneTip(!document.getElementById('rem-id').value); _remCuplare(); };
+    window.remCoSchimbat = function () { _remCuplare(); };
+    // Atașarea la un vehicul (13.10, Robert: „buton … de atașare la un vehicul”): ce vehicule se pot alege și DE CE nu e
+    // niciunul le spune serverul (incarcare.vehiculePentruRemorca). Pentru una salvată se întreabă după id (cu atașarea ei);
+    // pentru una nouă sau cu felul schimbat în fereastră, după fel + firmă.
+    let _remAtasInit = '', _remCuplareSeq = 0;   // _remAtasInit = vehiculul la care e atașată ACUM (din bază), ca să știm dacă s-a schimbat
+    async function _remCuplare() {
+      const sel = document.getElementById('rem-atasare'), nota = document.getElementById('rem-atasare-nota'), simG = document.getElementById('rem-sim-g');
+      if (!sel) return;
+      const id = document.getElementById('rem-id').value, fel = document.getElementById('rem-fel').value;
+      const r = id ? vehRemorci.find(x => String(x.id) === String(id)) : null;
+      const coSel = document.getElementById('rem-co');
+      const co = r ? r.company_id : (currentUser && currentUser.isSuper && coSel ? coSel.value : '');
+      const q = (r && r.fel === fel) ? 'id=' + encodeURIComponent(id) : 'fel=' + encodeURIComponent(fel) + (co ? '&company_id=' + encodeURIComponent(co) : '');
+      const seq = ++_remCuplareSeq;
+      sel.innerHTML = '<option value="">Se încarcă…</option>'; sel.disabled = true; nota.textContent = ''; simG.style.display = 'none';
+      let j = null;
+      try { const x = await fetch('/api/remorci/cuplare?' + q); j = x.ok ? await x.json() : null; } catch (e) { j = null; }
+      if (seq !== _remCuplareSeq) return;
+      if (!j) { sel.innerHTML = '<option value="">— neatașată —</option>'; nota.textContent = 'Lista vehiculelor nu s-a putut încărca.'; return; }
+      const ales = (r && r.fel === fel && j.atasata) ? j.atasata.imei : '';
+      sel.innerHTML = '<option value="">— neatașată —</option>' + (j.vehicule || []).map(v => '<option value="' + _docEscV(v.imei) + '">' + _docEscV(v.plate + (v.sub ? ' — ' + v.sub : '')) + '</option>').join('');
+      sel.value = ales; sel.disabled = !(j.vehicule || []).length;
+      nota.textContent = j.faraFirma ? 'Alege întâi firma.' : (j.mesaj || '');
+      simG.style.display = (id && ales) ? '' : 'none';
+    }
+    // „Deschide în simulator”: vehiculul la care e atașată, cu ea, gata de simulat.
+    window.remSimuleaza = function () {
+      const id = document.getElementById('rem-id').value, imei = _remAtasInit;
+      if (!id || !imei || typeof window.simDeschideVehicul !== 'function') return;
+      remInchide(); window.simDeschideVehicul(imei, id);
+    };
     window.remTipSchimbat = function () { _remPuneTip(!document.getElementById('rem-id').value); };
     window.remDeschide = async function (id, fel) {
       await _remMeta();
@@ -7066,7 +7103,9 @@ const pozitii = await r.json();</code></pre>
         const f = document.getElementById('veh-co-filter'); if (f && f.value) sel.value = f.value;
       }
       document.getElementById('rem-sterge').style.display = r ? '' : 'none';
+      _remAtasInit = (r && r.atasata_imei) ? String(r.atasata_imei) : '';
       document.getElementById('rem-modal').classList.add('visible');
+      _remCuplare();
     };
     window.remInchide = function () { document.getElementById('rem-modal').classList.remove('visible'); };
     window.remSalveaza = async function () {
@@ -7081,18 +7120,31 @@ const pozitii = await r.json();</code></pre>
         const r = await fetch('/api/remorci' + (id ? '/' + encodeURIComponent(id) : ''), { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corp) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) { _remErr(j.error || 'Nu s-a putut salva.'); return; }
+        // Atașarea (13.10): doar dacă s-a schimbat vehiculul ales. Una nouă își ține id-ul în fereastră, ca o a doua apăsare
+        // (după o atașare refuzată) să n-o mai adauge o dată.
+        const rid = id || j.id;
+        if (!id && rid) document.getElementById('rem-id').value = rid;
+        const vrea = (document.getElementById('rem-atasare') || {}).value || '';
+        let atasMsg = '';
+        if (rid && vrea !== _remAtasInit) {
+          const ra = await fetch('/api/remorci/' + encodeURIComponent(rid) + '/atasare', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imei: vrea || null }) });
+          const ja = await ra.json().catch(() => ({}));
+          if (!ra.ok) { await loadVehicles(); _remErr(ja.error || 'Remorca s-a salvat, dar nu s-a putut atașa.'); return; }
+          const sel = document.getElementById('rem-atasare'), opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+          atasMsg = vrea ? ' Atașată la ' + (opt ? opt.textContent.split(' — ')[0] : vrea) + ' — o găsești în simulator, la vehiculul ăsta.' : ' Desprinsă de vehicul.';
+        }
         remInchide();
-        if (typeof window.raxToast === 'function') window.raxToast(id ? 'Salvat.' : _remFelEt(corp.fel) + ' adăugată în flotă.');
+        if (typeof window.raxToast === 'function') window.raxToast((id ? 'Salvat.' : _remFelEt(corp.fel) + ' adăugată în flotă.') + atasMsg);
         await loadVehicles();
       } catch (e) { _remErr('Nu s-a putut salva — verifică legătura.'); }
       finally { b.disabled = false; }
     };
-    window.remSterge = async function () {
-      const id = document.getElementById('rem-id').value; if (!id) return;
+    window.remSterge = async function (dinRand) {
+      const id = dinRand != null ? String(dinRand) : document.getElementById('rem-id').value; if (!id) return;
       const r = vehRemorci.find(x => String(x.id) === String(id));
       if (!await raConfirm('Ștergi ' + _remFelEt(r && r.fel).toLowerCase() + ' ' + ((r && r.plate) || '') + ' din flotă? Vehiculele care o aveau ca „obișnuită" rămân fără ea.')) return;
       const x = await fetch('/api/remorci/' + encodeURIComponent(id), { method: 'DELETE' });
-      if (!x.ok) { const j = await x.json().catch(() => ({})); _remErr(j.error || 'Nu s-a putut șterge.'); return; }
+      if (!x.ok) { const j = await x.json().catch(() => ({})); if (dinRand != null) { if (typeof window.raxToast === 'function') window.raxToast(j.error || 'Nu s-a putut șterge.', 'error'); } else _remErr(j.error || 'Nu s-a putut șterge.'); return; }
       remInchide(); await loadVehicles();
     };
     // ── sfârșit „semiremorcile din flotă" ──
@@ -7410,6 +7462,21 @@ const pozitii = await r.json();</code></pre>
         alegeVehicul(p.imei, true); S.remorcaId = p.remorca_id ? String(p.remorca_id) : '';
         S.deschis = -1;
         simInchide(); schelet(); simuleaza(true, true);
+      };
+      // Din fereastra remorcii (13.10, „Deschide în simulator"): vehiculul la care e atașată, cu ea aleasă. Flota se cere din
+      // nou (atașarea tocmai s-a schimbat); se pornește un plan nou, cu marfa de până acum.
+      window.simDeschideVehicul = async function (imei, remorcaId) {
+        if (currentView !== 'incarcare') { showView('incarcare'); await new Promise((ok) => setTimeout(ok, 50)); }
+        await window.renderIncarcarePage();
+        if (!S.flota || !(S.flota.vehicule || []).some((v) => v.imei === imei)) {
+          if (window.raxToast) window.raxToast('Vehiculul nu apare în simulator — alege-i felul în fișă (fila „Încărcare").', 'err');
+          return;
+        }
+        S.planId = null; S.plan = null; S.modificat = false;
+        alegeVehicul(imei, false);
+        if (remorciPotrivite(vehAles()).some((r) => String(r.id) === String(remorcaId))) S.remorcaId = String(remorcaId);
+        S.deschis = -1;
+        schelet(); simuleaza(true, true);
       };
       window.simStergePlan = async function (id) {
         if (!await raConfirm('Ștergi planul? Dacă l-ai trimis, șoferul nu-l mai vede.')) return;

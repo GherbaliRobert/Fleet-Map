@@ -1880,6 +1880,12 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   (`remorciPotrivite`, `alegeri`) și telefonul (`Simulator.tsx`, `potrivite`) NU mai filtrează singure: până pe 13.10
   regula era scrisă de patru ori în ecrane, iar o remorcă de alt fel dispărea pe tăcute (la camion, grupul nici nu apărea).
   Un TIR trecut „Camion" (`felDinTip`) e camion — mesajul îi spune omului să schimbe felul în fila „Încărcare".
+- **Atașarea din fișa remorcii** (13.10, Robert): legătura e TOT `devices.inc_remorca_id` (aceeași ca în fila „Încărcare" a
+  vehiculului) — NU face o a doua. `GET /api/remorci/cuplare` (`?id=` sau `?fel=&company_id=`) → vehiculele potrivite
+  (`incarcare.vehiculePentruRemorca`, pe `remorcaPotrivita`) + motivul; `PUT /api/remorci/:id/atasare { imei | null }`
+  (`requireEdit('vehicule')`, ownsRow, 400 pe nepotrivire) → `db.atasezaRemorca`: o remorcă la UN vehicul (se desprinde de
+  oricare altul). `listRemorci` întoarce `atasata_imei` / `atasata_plate`. „Deschide în simulator" = `simDeschideVehicul`
+  (web) / `/incarcare?vehicul=&remorca=` (telefon). Rândul remorcii are „Șterge" (`remSterge(id)` primește id-ul de pe rând).
 - **Pagina nu socotește** (blocul „simulatorul de încărcare", între repere): trimite alegerile și desenează ce primește.
   Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
   din macheta aprobată și citește corpurile, coletele și axele de la server; cabina e doar reper. Planul în lucru se ține în

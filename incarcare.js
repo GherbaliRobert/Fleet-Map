@@ -282,6 +282,25 @@ function remorciPentru(v, remorci) {
   }
   return { ids, mesaj: null, gol: true };
 }
+// Invers, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul"): la ce vehicule ale firmei ei se poate
+// atașa, cu ACEEAȘI regulă (remorcaPotrivita), și — când nu e niciunul — de ce. `vehicule`: [{ imei, plate, tip, carlig,
+// company_id }] — `tip` null = vehicul care nu cară marfă (autoturism), pus doar ca să se poată spune motivul.
+function vehiculePentruRemorca(r, vehicule) {
+  const toate = (Array.isArray(vehicule) ? vehicule : []).filter((v) => v && r && _aceeasiFirma(v.company_id, r.company_id));
+  const imeis = toate.filter((v) => remorcaPotrivita(v, r)).map((v) => v.imei);
+  if (imeis.length || !r) return { imeis, mesaj: null };
+  const numere = (l) => l.slice(0, 3).map((v) => v.plate || v.imei).join(', ') + (l.length > 3 ? ' și încă ' + (l.length - 3) : '');
+  const trac = toate.filter((v) => v.tip === 'trac'), camioane = toate.filter((v) => v.tip && v.tip !== 'trac' && v.carlig);
+  const cum = ' Felul se alege în fișa vehiculului, fila „Încărcare”.';
+  if (r.fel === 'semiremorca') {
+    return { imeis, mesaj: camioane.length
+      ? 'Semiremorca se atașează doar la un autotractor, iar firma are doar camioane (' + numere(camioane) + '). Dacă unul e de fapt autotractor, schimbă-i felul.' + cum
+      : 'Firma n-are niciun autotractor în flotă — semiremorca se atașează doar la un autotractor.' + cum };
+  }
+  return { imeis, mesaj: trac.length
+    ? 'Remorca cu proțap se atașează doar la un camion, iar firma are doar autotractoare (' + numere(trac) + ').' + cum
+    : 'Firma n-are niciun camion în flotă — remorca cu proțap se atașează doar la un camion (autoturismele și dubele nu trag remorci în simulator).' + cum };
+}
 function _tipRemorca(fel, id) { const l = TIPURI_REMORCA[fel] || []; return l.find((t) => t.id === id) || l[0]; }
 function semiDin(r) {
   const tip = _tipRemorca('semiremorca', r.tip), presupuse = [];
@@ -549,4 +568,4 @@ function meta() {
 
 module.exports = { FELURI_VEHICUL, FEL_REMORCA, TIPURI_REMORCA, CAMPURI_CAROSERIE, paletiEur, paletiInd, curataRemorca, curataCaroserie, meta, _nr,
   PRESETURI_MARFA, MODURI, CULORI_OPRIRI, MAX_OPRIRI, MAX_RANDURI_MARFA, MAX_BUC, STRAT_MAX, PIVOT_DE_LA_FATA, PARTE_TARA_PIVOT, MASA_TREN, AXA_FATA_MIN, PRAG_ATENTIE,
-  curataMarfa, curataOpriri, felDinTip, vehiculDin, felCuplat, remorcaPotrivita, remorciPentru, semiDin, remorcaDin, aranjeaza, osii, simuleaza, cand, stareaPlanului, notaSofer };
+  curataMarfa, curataOpriri, felDinTip, vehiculDin, felCuplat, remorcaPotrivita, remorciPentru, vehiculePentruRemorca, semiDin, remorcaDin, aranjeaza, osii, simuleaza, cand, stareaPlanului, notaSofer };

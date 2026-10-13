@@ -297,6 +297,29 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
+### AMÂNDOI · Remorca se atașează la un vehicul din fișa ei; „Șterge" pe rândul ei; „Deschide în simulator" — `…`
+
+Robert (13.10): *„vreau și buton în meniul de configurare al remorcii/semiremorcii de atașare la un vehicul"*, *„vreau și
+buton de ștergere"*, *„automat când atașez semiremorca, aș vrea … în simulator încărcare să pot face simularea"*.
+
+1. **În fereastra remorcii: „Atașată la vehiculul"** — alegi vehiculul (doar cele la care se potrivește: semiremorca la un
+   autotractor, remorca cu proțap la un camion, din firma ei). Când nu e niciunul, scrie de ce, de exemplu: „Firma n-are
+   niciun camion în flotă — remorca cu proțap se atașează doar la un camion…". O remorcă stă la un singur vehicul: atașată
+   la altul, se desprinde de primul.
+2. **Simulatorul o pune singur** când alegi vehiculul ei; în fereastră, butonul **„Deschide în simulator"** te duce direct
+   acolo, cu vehiculul și remorca alese.
+3. **Pe rândul remorcii, în Vehicule:** „atașată la B 01 TIR" și butonul roșu **„Șterge"** (cu întrebare).
+4. Pe telefon (Vehicule → Semiremorci și remorci): aceeași alegere, același motiv, „Deschide în simulator".
+
+- **Ce am schimbat:** `incarcare.js` (`vehiculePentruRemorca`, aceeași regulă ca simularea), `db.js` (la ce vehicul e
+  atașată, atașarea), `server.js` (`GET /api/remorci/cuplare`, `PUT /api/remorci/:id/atasare`), `public/index.html`
+  (rândul, fereastra, `simDeschideVehicul`), telefonul (`Remorci.tsx`, `Simulator.tsx`, rutele). APK: următorul.
+- **Probe:** `verify_simulator.js` (16 verificări noi, și pe server pornit: lista, refuzurile, desprinderea, mutarea la alt
+  autotractor), `verify_flota_incarcare.js` (6 rute acum). Văzut pe ecran: fereastra cu motivul, atașarea, simulatorul
+  deschis cu amândouă alese.
+- **Ce vede fondatorul și clientul:** același lucru. În captura lui Robert, firma „Unitip Test" are doar autoturisme —
+  remorca cu proțap n-are la ce se prinde până nu există un camion (felul se alege în fila „Încărcare" a vehiculului).
+
 ### AMÂNDOI · Simulatorul spune de ce nu apare o remorcă — `6fb01f6`
 
 Robert (13.10): *„am adăugat o remorcă dar tot nu îmi apare în simulator"*.

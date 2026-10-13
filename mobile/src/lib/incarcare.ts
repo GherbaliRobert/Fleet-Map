@@ -25,6 +25,7 @@ export type Remorca = {
   id: number; company_id: number | null; company_name?: string; fel: string; tip: string | null; plate: string; model: string | null;
   lungime_m: number | null; latime_m: number | null; inaltime_m: number | null; sarcina_kg: number | null; tara_kg: number | null;
   nr_axe: number | null; pivot_axe_m: number | null; axa_fata_m: number | null; limita_axe_kg: number | null; imei: string | null; note: string | null;
+  atasata_imei?: string | null; atasata_plate?: string | null;   // la ce vehicul e atașată (13.10)
 };
 
 // Adresele planurilor (pasul 4): șoferul își vede planul primit; dispecerul îl deschide în simulator. UNA fiecare —

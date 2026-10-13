@@ -3236,10 +3236,13 @@ function _remorcaNum(x) {
 }
 async function listRemorci(companyId) {   // companyId null = toate (super-admin)
   const r = companyId == null
-    ? await pool.query('SELECT r.*, c.name AS company_name FROM remorci r LEFT JOIN companies c ON c.id = r.company_id ORDER BY r.plate')
-    : await pool.query('SELECT * FROM remorci WHERE company_id = $1 ORDER BY plate', [companyId]);
+    ? await pool.query('SELECT r.*, c.name AS company_name, ' + _REM_ATASATA + ' FROM remorci r LEFT JOIN companies c ON c.id = r.company_id ORDER BY r.plate')
+    : await pool.query('SELECT r.*, ' + _REM_ATASATA + ' FROM remorci r WHERE r.company_id = $1 ORDER BY r.plate', [companyId]);
   return r.rows.map(_remorcaNum);
 }
+// La ce vehicul e atașată (13.10): vehiculul nearhivat care o are ca semiremorcă / remorcă (`inc_remorca_id`).
+const _REM_ATASATA = "(SELECT d.imei FROM devices d WHERE d.inc_remorca_id = r.id AND d.status IS DISTINCT FROM 'archived' ORDER BY d.imei LIMIT 1) AS atasata_imei, " +
+  "(SELECT COALESCE(NULLIF(d.plate, ''), d.name, d.imei) FROM devices d WHERE d.inc_remorca_id = r.id AND d.status IS DISTINCT FROM 'archived' ORDER BY d.imei LIMIT 1) AS atasata_plate";
 async function getRemorca(id) {
   const r = await pool.query('SELECT * FROM remorci WHERE id = $1', [parseInt(id, 10)]);
   return _remorcaNum(r.rows[0] || null);
@@ -3257,6 +3260,13 @@ async function updateRemorca(id, rand) {
   vals.push(Date.now()); sets.push('updated_at = $' + vals.length);
   const r = await pool.query('UPDATE remorci SET ' + sets.join(', ') + ' WHERE id = $1 RETURNING *', vals);
   return _remorcaNum(r.rows[0] || null);
+}
+// Atașarea din fișa remorcii (13.10): o remorcă stă la UN vehicul — se desprinde de oricare altul, apoi (dacă e ales) se
+// prinde de cel nou. Regula „se potrivește?" o verifică serverul înainte (incarcare.remorcaPotrivita).
+async function atasezaRemorca(id, imei) {
+  const n = parseInt(id, 10);
+  await pool.query('UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = $1', [n]);
+  if (imei) await pool.query('UPDATE devices SET inc_remorca_id = $1 WHERE imei = $2', [n, String(imei)]);
 }
 async function deleteRemorca(id) {
   const n = parseInt(id, 10);
@@ -6126,7 +6136,7 @@ module.exports = {
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
-  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca,
+  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, atasezaRemorca,
   creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,

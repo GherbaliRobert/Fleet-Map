@@ -1,7 +1,7 @@
 // Semiremorcile și remorcile cu proțap (simulatorul de încărcare, Robert 12.10) — pe web stau în Administrare → Vehicule,
 // ca rânduri fără semnal. Pe telefon lista de vehicule e harta vie (stări, poziții), deci ele au ecranul lor, deschis din
 // Vehicule. Aceleași rute (/api/remorci), aceleași reguli (lib/incarcare.ts = oglinda paginii); serverul curăță tot.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { me, showToast } from '../app/store';
@@ -26,6 +26,11 @@ export function Remorci() {
   const [busy, setBusy] = useState(false);
   const [eroare, setEroare] = useState('');
   const [del, setDel] = useState(false);
+  // Atașarea la un vehicul (13.10, ca pe web): lista și motivul de la server (/api/remorci/cuplare); `atasInit` = cum e acum în bază.
+  const [cup, setCup] = useState<{ vehicule: { imei: string; plate: string; sub: string }[]; mesaj: string | null; faraFirma?: boolean } | null>(null);
+  const [atas, setAtas] = useState('');
+  const [atasInit, setAtasInit] = useState('');
+  const cupSeq = useRef(0);
 
   async function reload() {
     setErr('');
@@ -49,12 +54,26 @@ export function Remorci() {
       if (isSuper) v.company_id = '';
     }
     setEroare(''); setId(r ? r.id : null); setForm(v);
+    const init = r && r.atasata_imei ? String(r.atasata_imei) : '';
+    setAtasInit(init); setAtas(init);
+    incarcaCuplare(r, v.fel, v.company_id);
+  }
+  async function incarcaCuplare(r: Remorca | null, felNou: string, firma?: string) {
+    const s2 = ++cupSeq.current;
+    setCup(null);
+    try {
+      const j = await Api.remorciCuplare(r && r.fel === felNou ? { id: r.id } : { fel: felNou, company_id: r ? r.company_id : (firma || null) });
+      if (s2 !== cupSeq.current) return;
+      setCup(j);
+      if (!(r && r.fel === felNou)) setAtas('');
+    } catch (e: any) { if (s2 === cupSeq.current) setCup({ vehicule: [], mesaj: 'Lista vehiculelor nu s-a putut încărca.' }); }
   }
   const pune = (patch: Record<string, string>) => setForm((p) => (p ? { ...p, ...patch } : p));
   function alegeFel(fel: string) {
     if (!form || !meta) return;
     const tip = ((meta.tipuriRemorca[fel] || [])[0] || { id: '' }).id;
     setForm(remorcaObisnuite({ ...form, fel, tip }, fel, tip, id == null, meta) as Record<string, string>);
+    incarcaCuplare(id != null ? (list || []).find((x) => x.id === id) || null : null, fel, form.company_id);
   }
   function alegeTip(tip: string) {
     if (!form || !meta) return;
@@ -68,8 +87,17 @@ export function Remorci() {
     if (id == null && isSuper) b.company_id = form.company_id || null;
     setBusy(true); setEroare('');
     try {
-      await Api.salveazaRemorca(id, b);
-      showToast(id != null ? 'Salvat' : (form.fel === 'remorca' ? 'Remorcă adăugată' : 'Semiremorcă adăugată'));
+      const salvata = await Api.salveazaRemorca(id, b);
+      const rid = id != null ? id : (salvata && salvata.id);
+      if (id == null && rid) setId(rid);   // o a doua apăsare (după o atașare refuzată) n-o mai adaugă o dată
+      let msg = id != null ? 'Salvat' : (form.fel === 'remorca' ? 'Remorcă adăugată' : 'Semiremorcă adăugată');
+      if (rid && atas !== atasInit) {
+        try { await Api.atasezaRemorca(rid, atas || null); }
+        catch (e: any) { await reload(); setEroare(e?.message || 'S-a salvat, dar nu s-a putut atașa.'); return; }
+        const v = (cup?.vehicule || []).find((x) => x.imei === atas);
+        msg += atas ? ' · atașată la ' + (v ? v.plate : atas) : ' · desprinsă de vehicul';
+      }
+      showToast(msg);
       setForm(null); await reload();
     } catch (e: any) { setEroare(e?.message || 'Nu s-a putut salva.'); }
     finally { setBusy(false); }
@@ -122,6 +150,7 @@ export function Remorci() {
                   <span style="display:block;font-size:12px;color:var(--text-muted);margin-top:2px">
                     {[r.sarcina_kg ? Number(r.sarcina_kg).toLocaleString('ro-RO') + ' kg sarcină utilă' : '', isSuper ? r.company_name : ''].filter(Boolean).join(' · ') || 'fără aparat GPS'}
                   </span>
+                  {r.atasata_plate && <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:2px;font-weight:700">🔗 atașată la {r.atasata_plate}</span>}
                 </span>
                 {canWrite && <Icon name="edit" size={17} />}
               </button>
@@ -143,7 +172,7 @@ export function Remorci() {
               <div class="frm">
                 {isSuper && id == null && (
                   <div class="fld"><label>Firma <span class="req">*</span></label>
-                    <select value={form.company_id || ''} onChange={(e) => pune({ company_id: (e.target as HTMLSelectElement).value })}>
+                    <select value={form.company_id || ''} onChange={(e) => { const c = (e.target as HTMLSelectElement).value; pune({ company_id: c }); incarcaCuplare(null, form.fel, c); }}>
                       <option value="">— alege compania —</option>
                       {firme.map((c) => <option value={String(c.id)}>{c.name}</option>)}
                     </select>
@@ -154,6 +183,16 @@ export function Remorci() {
                     {meta.felRemorca.map((f) => <option value={f.id}>{f.et}</option>)}
                   </select>
                   {fel && <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Se cuplează {fel.cuplare}.</div>}
+                </div>
+                <div class="fld"><label>Atașată la vehiculul</label>
+                  <select value={atas} disabled={!cup || !cup.vehicule.length} onChange={(e) => setAtas((e.target as HTMLSelectElement).value)}>
+                    <option value="">{cup ? '— neatașată —' : 'Se încarcă…'}</option>
+                    {(cup?.vehicule || []).map((v) => <option value={v.imei}>{v.plate + (v.sub ? ' — ' + v.sub : '')}</option>)}
+                  </select>
+                  {cup && (cup.faraFirma || cup.mesaj) && <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">{cup.faraFirma ? 'Alege întâi firma.' : cup.mesaj}</div>}
+                  {id != null && atasInit && atas === atasInit && (
+                    <button type="button" class="fl-ab" style="margin-top:8px" onClick={() => loc.route('/incarcare?vehicul=' + encodeURIComponent(atasInit) + '&remorca=' + encodeURIComponent(String(id)))}>Deschide în simulator</button>
+                  )}
                 </div>
                 <div class="fld"><label>Tipul</label>
                   <select value={form.tip} onChange={(e) => alegeTip((e.target as HTMLSelectElement).value)}>

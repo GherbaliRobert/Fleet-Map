@@ -432,6 +432,10 @@ export const Api = {
   remorci: (companyId?: number | null) => api<Remorca[]>('/api/remorci' + (companyId ? '?company_id=' + encodeURIComponent(String(companyId)) : '')),
   salveazaRemorca: (id: number | null, b: any) => api<Remorca>('/api/remorci' + (id ? '/' + encodeURIComponent(String(id)) : ''), { method: id ? 'PUT' : 'POST', body: b }),
   stergeRemorca: (id: number) => api<{ ok: boolean }>('/api/remorci/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
+  // Atașarea la un vehicul (13.10): ce vehicule se pot alege (și de ce nu e niciunul), apoi atașarea — ca pe web.
+  remorciCuplare: (q: { id?: number | null; fel?: string; company_id?: string | number | null }) => api<{ vehicule: { imei: string; plate: string; sub: string }[]; mesaj: string | null; atasata: { imei: string; plate: string } | null; faraFirma?: boolean }>(
+    '/api/remorci/cuplare?' + (q.id ? 'id=' + encodeURIComponent(String(q.id)) : 'fel=' + encodeURIComponent(q.fel || 'semiremorca') + (q.company_id ? '&company_id=' + encodeURIComponent(String(q.company_id)) : ''))),
+  atasezaRemorca: (id: number, imei: string | null) => api<any>('/api/remorci/' + encodeURIComponent(String(id)) + '/atasare', { method: 'PUT', body: { imei } }),
   // ── Simulatorul și planurile de încărcare (pasul 4, 12.10) — aceleași rute ca pagina; serverul socotește tot ──
   incarcareFlota: () => api<{ vehicule: any[]; remorci: any[] }>('/api/incarcare/flota'),
   simuleaza: (b: any) => api<any>('/api/incarcare/simuleaza', { method: 'POST', body: b }),

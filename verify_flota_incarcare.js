@@ -98,11 +98,12 @@ T('semiremorcile pornesc și ele simulatorul (firmeCuFlotaGrea le adună)', /UNI
 // ─── 3. Serverul ─────────────────────────────────────────────────────────────────────────────────────────────────
 sect('3. Serverul: modulul păzește, scrierea cere „editare vehicule"');
 const rute = server.match(/app\.(get|post|put|delete)\('\/api\/remorci[^']*'[^\n]*/g) || [];
-T('patru rute pentru semiremorci', rute.length === 4, rute.length);
+// Șase din 13.10: lista, adăugarea, schimbarea, ștergerea + ce vehicule se pot alege (cuplare) și atașarea la un vehicul.
+T('șase rute pentru semiremorci', rute.length === 6, rute.length);
 T('toate cer modulul „incarcare"', rute.every((r) => /requireFeature\('incarcare'\)/.test(r)));
-T('scrierea cere „editare vehicule"; citirea, doar firma', rute.filter((r) => /^app\.(post|put|delete)/.test(r)).every((r) => /requireEdit\('vehicule'\)/.test(r)) && !/requireEdit/.test(rute.find((r) => /^app\.get/.test(r)) || ''));
-T('schimbarea și ștergerea verifică firma rândului (ownsRow, 404 ca la un rând care nu există)',
-  (server.match(/if \(!\(await ownsRow\(req, 'remorci', req\.params\.id\)\)\) return res\.status\(404\)/g) || []).length === 2);
+T('scrierea cere „editare vehicule"; citirea, doar firma', rute.filter((r) => /^app\.(post|put|delete)/.test(r)).every((r) => /requireEdit\('vehicule'\)/.test(r)) && rute.filter((r) => /^app\.get/.test(r)).every((r) => !/requireEdit/.test(r)));
+T('schimbarea, ștergerea și atașarea verifică firma rândului (ownsRow, 404 ca la un rând care nu există)',
+  (server.match(/if \(!\(await ownsRow\(req, 'remorci', req\.params\.id\)\)\) return res\.status\(404\)/g) || []).length === 3);
 T('un rând fără firmă se refuză (super-adminul alege firma)', /Semiremorca trebuie să fie a unei firme — alege firma\./.test(server));
 T('scrierea trece prin incarcare.curataRemorca', (server.match(/incarcare\.curataRemorca\(req\.body\)/g) || []).length === 2);
 T('fila „Încărcare" trece prin incarcare.curataCaroserie, iar semiremorca trebuie să fie a firmei mașinii',

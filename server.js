@@ -9177,6 +9177,61 @@ app.delete('/api/remorci/:id', requireAuth, requireEdit('vehicule'), withCompany
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ─── Atașarea la un vehicul, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul"; „automat când atașez
+// semiremorca … să pot face simularea") ───
+// Atașată = vehiculul o are ca semiremorcă / remorcă (`devices.inc_remorca_id`, aceeași legătură ca în fila „Încărcare"
+// a vehiculului): simulatorul o pune singur când alegi vehiculul. Ce vehicule se pot alege și DE CE nu e niciunul spune
+// incarcare.vehiculePentruRemorca (aceeași regulă ca simularea). Vehiculele: ale firmei remorcii, pe care omul le vede.
+async function _vehiculeCuplare(req, companyId) {
+  if (companyId == null) return [];
+  const devs = (await db.getDevices(companyId)).filter((d) => d.status !== 'archived' && canAccessImei(req, d.imei));
+  return devs.map((d) => {
+    const v = incarcare.vehiculDin(d);
+    return { imei: d.imei, plate: d.plate || d.name || d.imei, sub: [d.brand, d.model].filter(Boolean).join(' '), company_id: d.company_id,
+      tip: v ? v.tip : null, carlig: !!(v && v.carlig), felEt: v ? v.felEt : null, remorca_id: d.inc_remorca_id || null };
+  });
+}
+async function _cuplare(req, r) {
+  const vehs = await _vehiculeCuplare(req, r.company_id);
+  const p = incarcare.vehiculePentruRemorca(r, vehs);
+  const atasat = r.id != null ? vehs.find((v) => Number(v.remorca_id) === Number(r.id)) : null;
+  return { vehicule: vehs.filter((v) => p.imeis.indexOf(v.imei) >= 0).map((v) => ({ imei: v.imei, plate: v.plate, sub: [v.sub, v.felEt].filter(Boolean).join(' · ') })),
+    mesaj: p.mesaj, atasata: atasat ? { imei: atasat.imei, plate: atasat.plate } : null };
+}
+// Pentru fereastra remorcii: `id` (una salvată) sau `fel` + firma (una nouă; firma o alegem doar noi).
+app.get('/api/remorci/cuplare', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (req.query.id) {
+      if (!(await ownsRow(req, 'remorci', req.query.id))) return res.status(404).json({ error: 'Nu există.' });
+      const r = await db.getRemorca(req.query.id);
+      if (!r) return res.status(404).json({ error: 'Nu există.' });
+      return res.json(await _cuplare(req, r));
+    }
+    const fel = req.query.fel === 'remorca' ? 'remorca' : 'semiremorca';
+    let cid = req.companyId;
+    if (req.isSuper && req.query.company_id) cid = parseInt(req.query.company_id, 10) || null;
+    if (cid == null) return res.json({ vehicule: [], mesaj: null, atasata: null, faraFirma: true });
+    res.json(await _cuplare(req, { id: null, fel, company_id: cid }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/remorci/:id/atasare', requireAuth, requireEdit('vehicule'), withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'remorci', req.params.id))) return res.status(404).json({ error: 'Nu există.' });
+    const r = await db.getRemorca(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Nu există.' });
+    const imei = req.body && req.body.imei ? String(req.body.imei) : null;
+    if (imei) {
+      const v = (await _vehiculeCuplare(req, r.company_id)).find((x) => x.imei === imei);
+      if (!v) return res.status(400).json({ error: 'Vehiculul ales nu e al firmei remorcii.' });
+      if (!incarcare.remorcaPotrivita(v, r)) {
+        return res.status(400).json({ error: r.fel === 'semiremorca' ? 'Semiremorca se atașează doar la un autotractor.' : 'Remorca cu proțap se atașează doar la un camion.' });
+      }
+    }
+    await db.atasezaRemorca(r.id, imei);
+    auditReq(req, 'update', 'remorca', r.id, { plate: r.plate, atasata_la: imei });
+    res.json(await _cuplare(req, r));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ─── Simulatorul de încărcare (pasul 3, 12.10: „cu 3D și greutatea pe osii") ───
 // Regulile (cum se așază marfa, osiile, textele) stau în incarcare.js; aici doar se adună datele și se verifică drepturile.
