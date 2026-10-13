@@ -4285,27 +4285,59 @@ body.dark .sim .sim-msg.ton-verde { border-color: #2BB763; background: #14281D; 
 .sim .ton-verde { color: #166534; } .sim .ton-galben { color: #b45309; } .sim .ton-rosu { color: #b91c1c; } .sim .ton-gri { color: var(--text-secondary); }
 body.dark .sim .ton-verde { color: #3FE07D; } body.dark .sim .ton-galben { color: #eab308; } body.dark .sim .ton-rosu { color: #f87171; }
 /* Desenul: structura vehiculului, pe fiecare temă. */
-.sim-svg .sim-cab1 { fill: #cbd5e1; } .sim-svg .sim-cab2 { fill: #e2e8f0; } .sim-svg .sim-cab3 { fill: #94a3b8; }
-.sim-svg .sim-geam { fill: #64748b; } .sim-svg .sim-bara { fill: #94a3b8; }
+.sim-svg .sim-cab1 { fill: #e2e8f0; } .sim-svg .sim-cab2 { fill: #f1f5f9; } .sim-svg .sim-cab3 { fill: #cbd5e1; }
+.sim-svg .sim-geam { fill: #6b829b; } .sim-svg .sim-bara { fill: #94a3b8; }
 .sim-svg .sim-podea { fill: #e2e8f0; } .sim-svg .sim-perete { fill: #f8fafc; } .sim-svg .sim-perete2 { fill: #eef2f6; }
-.sim-svg .sim-cab1, .sim-svg .sim-cab2, .sim-svg .sim-cab3, .sim-svg .sim-geam, .sim-svg .sim-bara, .sim-svg .sim-podea, .sim-svg .sim-perete, .sim-svg .sim-perete2 { stroke: #94a3b8; stroke-width: 1; stroke-linejoin: round; }
+.sim-svg .sim-cab1, .sim-svg .sim-cab2, .sim-svg .sim-cab3, .sim-svg .sim-geam, .sim-svg .sim-bara, .sim-svg .sim-podea, .sim-svg .sim-perete, .sim-svg .sim-perete2 { stroke: #8391a5; stroke-width: 1; stroke-linejoin: round; }
 .sim-svg .sim-contur { fill: none; stroke: #64748b; stroke-width: 1.2; stroke-dasharray: 4 3; }
 .sim-svg .sim-cutie { stroke: #ffffff; stroke-width: .7; stroke-linejoin: round; }
-.sim-svg .sim-roata { fill: #334155; stroke: #1e293b; stroke-width: 2.2; }
+.sim-svg .sim-roata { fill: #1f2937; stroke: #111827; stroke-width: 1; }
 .sim-svg .sim-axa { stroke: #475569; stroke-width: 1.2; stroke-dasharray: 3 3; }
 .sim-svg .sim-cg { stroke: #15803d; stroke-width: 2.2; stroke-dasharray: 6 4; }
 .sim-svg .sim-tl { fill: #475569; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; }
 body.dark .sim-svg { background: #0E1217; }
-body.dark .sim-svg .sim-cab1 { fill: #2c343e; } body.dark .sim-svg .sim-cab2 { fill: #38414c; } body.dark .sim-svg .sim-cab3 { fill: #232a33; }
-body.dark .sim-svg .sim-geam { fill: #5b6b7d; } body.dark .sim-svg .sim-bara { fill: #5b6675; }
+body.dark .sim-svg .sim-cab1 { fill: #46505c; } body.dark .sim-svg .sim-cab2 { fill: #56616e; } body.dark .sim-svg .sim-cab3 { fill: #323a44; }
+body.dark .sim-svg .sim-geam { fill: #34495d; } body.dark .sim-svg .sim-bara { fill: #5b6675; }
 body.dark .sim-svg .sim-podea { fill: #1b2129; } body.dark .sim-svg .sim-perete { fill: #13181e; } body.dark .sim-svg .sim-perete2 { fill: #171c23; }
 body.dark .sim-svg .sim-cab1, body.dark .sim-svg .sim-cab2, body.dark .sim-svg .sim-cab3, body.dark .sim-svg .sim-geam, body.dark .sim-svg .sim-bara, body.dark .sim-svg .sim-podea, body.dark .sim-svg .sim-perete, body.dark .sim-svg .sim-perete2 { stroke: #3a434e; }
 body.dark .sim-svg .sim-contur { stroke: #8A93A3; }
 body.dark .sim-svg .sim-cutie { stroke: #0B0E11; }
-body.dark .sim-svg .sim-roata { fill: #0B0E11; stroke: #5b6675; }
+body.dark .sim-svg .sim-roata { fill: #0B0E11; stroke: #4a5563; }
 body.dark .sim-svg .sim-axa { stroke: #C2CAD6; }
 body.dark .sim-svg .sim-cg { stroke: #3FE07D; }
 body.dark .sim-svg .sim-tl { fill: #8A93A3; }
+/* 13.10 — desenul mai aproape de un vehicul adevărat: parbrizul, ușa, farul, bara, aripa, oglinzile, șasiul, rezervorul,
+   picioarele semiremorcii, roata cu jantă, umbra și drumul. Fiecare cu pereche pe tema întunecată. */
+.sim-svg .sim-parbriz { fill: #5f7c99; stroke: #475569; stroke-width: 1; }
+.sim-svg .sim-usa { fill: none; stroke: #94a3b8; stroke-width: 1; }
+.sim-svg .sim-far { fill: #fde68a; stroke: #d97706; stroke-width: .8; }
+.sim-svg .sim-barafata { fill: #334155; }
+.sim-svg .sim-aripa { fill: #1e293b; }
+.sim-svg .sim-oglinda { fill: #334155; stroke: #1e293b; stroke-width: .6; }
+.sim-svg .sim-sasiu { fill: #475569; }
+.sim-svg .sim-rezervor { fill: #cbd5e1; stroke: #64748b; stroke-width: .8; }
+.sim-svg .sim-picior { fill: #64748b; }
+.sim-svg .sim-umbra { fill: rgba(15,23,42,.13); }
+.sim-svg .sim-sol { stroke: #cbd5e1; stroke-width: 2; }
+.sim-svg .sim-roata2 { fill: #475569; }
+.sim-svg .sim-janta { fill: #e2e8f0; stroke: #94a3b8; stroke-width: .8; }
+.sim-svg .sim-butuc { fill: #94a3b8; }
+.sim-svg .sim-grila { fill: #475569; stroke: #334155; stroke-width: .8; }
+body.dark .sim-svg .sim-parbriz { fill: #2d4459; stroke: #1b2129; stroke-width: 1; }
+body.dark .sim-svg .sim-usa { fill: none; stroke: #2a323c; stroke-width: 1; }
+body.dark .sim-svg .sim-far { fill: #facc15; stroke: #a16207; stroke-width: .8; }
+body.dark .sim-svg .sim-barafata { fill: #151a20; }
+body.dark .sim-svg .sim-aripa { fill: #080a0d; }
+body.dark .sim-svg .sim-oglinda { fill: #151a20; stroke: #050608; stroke-width: .6; }
+body.dark .sim-svg .sim-sasiu { fill: #1a2028; }
+body.dark .sim-svg .sim-rezervor { fill: #5b6675; stroke: #2a323c; stroke-width: .8; }
+body.dark .sim-svg .sim-picior { fill: #3a434e; }
+body.dark .sim-svg .sim-umbra { fill: rgba(0,0,0,.45); }
+body.dark .sim-svg .sim-sol { stroke: #232a33; stroke-width: 2; }
+body.dark .sim-svg .sim-roata2 { fill: #050608; }
+body.dark .sim-svg .sim-janta { fill: #8A93A3; stroke: #5b6675; stroke-width: .8; }
+body.dark .sim-svg .sim-butuc { fill: #3a434e; }
+body.dark .sim-svg .sim-grila { fill: #151a20; stroke: #050608; stroke-width: .8; }
 /* Planurile de încărcare (pasul 4, 12.10): butonul plin, bara planului deschis, fereastra (lista, cui trimiți, planul
    șoferului). Fereastra stă la nivelul paginii, cu clasa .sim pe ea, ca să ia aceleași tonuri. */
 .sim .sim-btn.sim-pri { background: var(--accent); border-color: var(--accent); color: #06210F; }

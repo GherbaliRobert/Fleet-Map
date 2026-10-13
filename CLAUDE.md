@@ -1910,7 +1910,13 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   (web) / `/incarcare?vehicul=&remorca=` (telefon). Rândul remorcii are „Șterge" (`remSterge(id)` primește id-ul de pe rând).
 - **Pagina nu socotește** (blocul „simulatorul de încărcare", între repere): trimite alegerile și desenează ce primește.
   Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
-  din macheta aprobată și citește corpurile, coletele și axele de la server; cabina e doar reper. Planul în lucru se ține în
+  din macheta aprobată și citește corpurile, coletele și axele de la server. **Din 13.10 vehiculul arată a vehicul** (Robert:
+  „desenele mai realiste, cel puțin mașina arată rău"): cabina e un corp cu profil (`prisma` — profil x–z întins pe y; se
+  desenează doar fețele cu normala spre privitor, `V` pe vedere: lateral `[0.35, -1, 0.625]`, 3D `[sin, cos, SA/CA]`), cu
+  parbriz, geam, ușă, far, bară, aripă, oglinzi și față (grila, din 3D); duba are capotă (două corpuri convexe — un profil
+  concav s-ar acoperi singur). Sub corpuri: șasiul, rezervorul, picioarele semiremorcii, proțapul; roțile cu jantă (și în
+  3D, și de sus), umbra și drumul. Podeaua de marfă e la `G` deasupra drumului (1,15 m; duba 0,62). Orice clasă nouă din
+  desen primește culoare pe AMBELE teme, pe web (`app.css`, `.sim-svg`) ȘI pe telefon (`simulator.css`, `.ts-svg`). Planul în lucru se ține în
   `localStorage` (cu try/catch) — o comoditate, nu o salvare. Rândul `#nav-incarcare` (data-view) se arată din `updateFabs`
   — din pasul 4 doar celui care face planuri (vezi mai jos, `_incDispecer`).
 - **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește;

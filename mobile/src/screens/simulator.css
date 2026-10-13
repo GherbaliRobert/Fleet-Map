@@ -58,25 +58,56 @@
 /* pe fundalul gălbui al mesajului, chihlimbarul obișnuit iese 4,2 (măsurat) — aici unul mai închis */
 :root[data-theme="light"] .ts-pad .ts-msg.ton-galben, :root[data-theme="light"] .sheet .ts-msg.ton-galben { color: #92400e; }
 /* desenul — aceleași clase ca pe web */
-.ts-svg .sim-cab1 { fill: #2c343e; } .ts-svg .sim-cab2 { fill: #38414c; } .ts-svg .sim-cab3 { fill: #232a33; }
-.ts-svg .sim-geam { fill: #5b6b7d; } .ts-svg .sim-bara { fill: #5b6675; }
+.ts-svg .sim-cab1 { fill: #46505c; } .ts-svg .sim-cab2 { fill: #56616e; } .ts-svg .sim-cab3 { fill: #323a44; }
+.ts-svg .sim-geam { fill: #34495d; } .ts-svg .sim-bara { fill: #5b6675; }
 .ts-svg .sim-podea { fill: #1b2129; } .ts-svg .sim-perete { fill: #13181e; } .ts-svg .sim-perete2 { fill: #171c23; }
 .ts-svg .sim-cab1, .ts-svg .sim-cab2, .ts-svg .sim-cab3, .ts-svg .sim-geam, .ts-svg .sim-bara, .ts-svg .sim-podea, .ts-svg .sim-perete, .ts-svg .sim-perete2 { stroke: #3a434e; stroke-width: 1; stroke-linejoin: round; }
 .ts-svg .sim-contur { fill: none; stroke: #8A93A3; stroke-width: 1.2; stroke-dasharray: 4 3; }
 .ts-svg .sim-cutie { stroke: #0B0E11; stroke-width: .7; stroke-linejoin: round; }
-.ts-svg .sim-roata { fill: #0B0E11; stroke: #5b6675; stroke-width: 2.2; }
+.ts-svg .sim-roata { fill: #0B0E11; stroke: #4a5563; stroke-width: 1; }
 .ts-svg .sim-axa { stroke: #C2CAD6; stroke-width: 1.2; stroke-dasharray: 3 3; }
 .ts-svg .sim-cg { stroke: #3FE07D; stroke-width: 2.2; stroke-dasharray: 6 4; }
 .ts-svg .sim-tl { fill: #8A93A3; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; }
 :root[data-theme="light"] .ts-svg { background: #f1f5f9; }
-:root[data-theme="light"] .ts-svg .sim-cab1 { fill: #cbd5e1; } :root[data-theme="light"] .ts-svg .sim-cab2 { fill: #e2e8f0; } :root[data-theme="light"] .ts-svg .sim-cab3 { fill: #94a3b8; }
-:root[data-theme="light"] .ts-svg .sim-geam { fill: #64748b; } :root[data-theme="light"] .ts-svg .sim-bara { fill: #94a3b8; }
+:root[data-theme="light"] .ts-svg .sim-cab1 { fill: #e2e8f0; } :root[data-theme="light"] .ts-svg .sim-cab2 { fill: #f1f5f9; } :root[data-theme="light"] .ts-svg .sim-cab3 { fill: #cbd5e1; }
+:root[data-theme="light"] .ts-svg .sim-geam { fill: #6b829b; } :root[data-theme="light"] .ts-svg .sim-bara { fill: #94a3b8; }
 :root[data-theme="light"] .ts-svg .sim-podea { fill: #e2e8f0; } :root[data-theme="light"] .ts-svg .sim-perete { fill: #f8fafc; } :root[data-theme="light"] .ts-svg .sim-perete2 { fill: #eef2f6; }
 :root[data-theme="light"] .ts-svg .sim-cab1, :root[data-theme="light"] .ts-svg .sim-cab2, :root[data-theme="light"] .ts-svg .sim-cab3, :root[data-theme="light"] .ts-svg .sim-geam,
 :root[data-theme="light"] .ts-svg .sim-bara, :root[data-theme="light"] .ts-svg .sim-podea, :root[data-theme="light"] .ts-svg .sim-perete, :root[data-theme="light"] .ts-svg .sim-perete2 { stroke: #94a3b8; }
 :root[data-theme="light"] .ts-svg .sim-contur { stroke: #64748b; }
 :root[data-theme="light"] .ts-svg .sim-cutie { stroke: #ffffff; }
-:root[data-theme="light"] .ts-svg .sim-roata { fill: #334155; stroke: #1e293b; }
+:root[data-theme="light"] .ts-svg .sim-roata { fill: #1f2937; stroke: #111827; }
 :root[data-theme="light"] .ts-svg .sim-axa { stroke: #475569; }
 :root[data-theme="light"] .ts-svg .sim-cg { stroke: #15803d; }
 :root[data-theme="light"] .ts-svg .sim-tl { fill: #475569; }
+/* 13.10 — piesele noi ale desenului (ca pe web): implicit tema închisă, apoi cea deschisă. */
+.ts-svg .sim-parbriz { fill: #2d4459; stroke: #1b2129; stroke-width: 1; }
+.ts-svg .sim-usa { fill: none; stroke: #2a323c; stroke-width: 1; }
+.ts-svg .sim-far { fill: #facc15; stroke: #a16207; stroke-width: .8; }
+.ts-svg .sim-barafata { fill: #151a20; }
+.ts-svg .sim-aripa { fill: #080a0d; }
+.ts-svg .sim-oglinda { fill: #151a20; stroke: #050608; stroke-width: .6; }
+.ts-svg .sim-sasiu { fill: #1a2028; }
+.ts-svg .sim-rezervor { fill: #5b6675; stroke: #2a323c; stroke-width: .8; }
+.ts-svg .sim-picior { fill: #3a434e; }
+.ts-svg .sim-umbra { fill: rgba(0,0,0,.45); }
+.ts-svg .sim-sol { stroke: #232a33; stroke-width: 2; }
+.ts-svg .sim-roata2 { fill: #050608; }
+.ts-svg .sim-janta { fill: #8A93A3; stroke: #5b6675; stroke-width: .8; }
+.ts-svg .sim-butuc { fill: #3a434e; }
+.ts-svg .sim-grila { fill: #151a20; stroke: #050608; stroke-width: .8; }
+:root[data-theme="light"] .ts-svg .sim-parbriz { fill: #5f7c99; stroke: #475569; stroke-width: 1; }
+:root[data-theme="light"] .ts-svg .sim-usa { fill: none; stroke: #94a3b8; stroke-width: 1; }
+:root[data-theme="light"] .ts-svg .sim-far { fill: #fde68a; stroke: #d97706; stroke-width: .8; }
+:root[data-theme="light"] .ts-svg .sim-barafata { fill: #334155; }
+:root[data-theme="light"] .ts-svg .sim-aripa { fill: #1e293b; }
+:root[data-theme="light"] .ts-svg .sim-oglinda { fill: #334155; stroke: #1e293b; stroke-width: .6; }
+:root[data-theme="light"] .ts-svg .sim-sasiu { fill: #475569; }
+:root[data-theme="light"] .ts-svg .sim-rezervor { fill: #cbd5e1; stroke: #64748b; stroke-width: .8; }
+:root[data-theme="light"] .ts-svg .sim-picior { fill: #64748b; }
+:root[data-theme="light"] .ts-svg .sim-umbra { fill: rgba(15,23,42,.13); }
+:root[data-theme="light"] .ts-svg .sim-sol { stroke: #cbd5e1; stroke-width: 2; }
+:root[data-theme="light"] .ts-svg .sim-roata2 { fill: #475569; }
+:root[data-theme="light"] .ts-svg .sim-janta { fill: #e2e8f0; stroke: #94a3b8; stroke-width: .8; }
+:root[data-theme="light"] .ts-svg .sim-butuc { fill: #94a3b8; }
+:root[data-theme="light"] .ts-svg .sim-grila { fill: #475569; stroke: #334155; stroke-width: .8; }

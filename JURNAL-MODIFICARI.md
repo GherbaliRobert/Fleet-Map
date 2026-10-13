@@ -123,6 +123,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   încărcat"), plus panoul Mail (etapa 2). Înlocuiește 1.0.10 / 1.0.11. Rămâne instalarea pe telefoane.
   **13.10 (mai târziu):** `RA-Track-1.0.13-debug.apk`, pe Desktop — tot ce e în 1.0.12, plus motivul scris în simulator
   când o remorcă nu se cuplează la vehiculul ales. Se instalează ea, în locul lui 1.0.12.
+  **13.10 (seara):** `RA-Track-1.0.14-debug.apk`, pe Desktop — tot ce e în 1.0.13, plus: atașarea remorcii la un vehicul
+  (și „Deschide în simulator"), desenul nou din simulator, panoul Mail cu „Răspunde tuturor", „Redirecționează" și
+  semnătura. Se instalează ea, în locul lui 1.0.13.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -329,7 +332,23 @@ Robert (13.10): *„vreau să facem și un template de mail cu logo, vreau să p
 - **Ce vede fondatorul:** butoanele noi în panoul Mail, Cc, semnătura sub mesaj.
 - **Ce vede clientul:** emailurile noastre arată acum la fel, cu sigla RA Track sus.
 
-### AMÂNDOI · Remorca se atașează la un vehicul din fișa ei; „Șterge" pe rândul ei; „Deschide în simulator" — `…`
+### AMÂNDOI · Simulatorul: vehiculul desenat ca un vehicul — `…`
+
+Robert (13.10): *„la simulator, vreau să avem desenele mai realiste, cel puțin mașina arată rău"*.
+
+1. **Cabina** nu mai e o cutie: parbriz înclinat, geam lateral, ușă, far, bară, oglinzi, aripa roții; din față (în 3D) se
+   văd grila, farurile și bara. **Duba** are capotă.
+2. **Dedesubt:** șasiul, rezervorul de motorină, picioarele de sprijin ale semiremorcii, proțapul remorcii.
+3. **Roțile** au jantă și se văd acum și în 3D și de sus; vehiculul stă pe drum, cu umbră.
+4. Aceleași desene pe telefon (aceeași funcție, copiată întocmai) și pe ambele teme.
+
+- **Ce am schimbat:** `public/index.html` (blocul „desenul simulatorului"), `mobile/src/lib/simDesen.ts` (copia), culorile
+  pieselor noi în `public/css/app.css` și `mobile/src/screens/simulator.css`. Cifrele simulării (osii, greutăți) nu se schimbă.
+- **Probe:** desenul web = desenul telefonului pe 180 de combinații (cazuri × vederi × unghiuri), fără cifre stricate;
+  `verify_plan_incarcare.js`, `verify_simulator.js`. Văzut în imagini: lateral, 3D din spate și din față, de sus, pe ambele teme.
+- **Ce vede fondatorul și clientul:** același lucru — desenul nou în simulator și în planul șoferului.
+
+### AMÂNDOI · Remorca se atașează la un vehicul din fișa ei; „Șterge" pe rândul ei; „Deschide în simulator" — `b67cbec`
 
 Robert (13.10): *„vreau și buton în meniul de configurare al remorcii/semiremorcii de atașare la un vehicul"*, *„vreau și
 buton de ștergere"*, *„automat când atașez semiremorca, aș vrea … în simulator încărcare să pot face simularea"*.
