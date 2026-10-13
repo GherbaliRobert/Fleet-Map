@@ -211,7 +211,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   vă dă adresa personală după emailul contului: Utilizatori → fișa ta → Email = robert.gherbali@ratrack.ro (Robert),
   alin.tilvar@ratrack.ro (Alin). Numele cu care vă autentificați nu se schimbă. Fără asta, fiecare vede doar contact@.
   Din etapa 2 (12.10), tot de aici depinde și ce emailuri PRIMITE vede fiecare.
-- [ ] **Robert: primirea emailurilor, în Cloudflare și Railway. Adăugat pe 12.10 (panoul Mail, etapa 2).** Până atunci,
+- [x] **FĂCUT (13.10): Robert — „am terminat”** (verificat din afară: MX-urile Cloudflare și „v=spf1” în DNS, iar serverul are
+  parola — răspunde 401, nu 503; Worker-ul și regulile se văd doar cu proba de la pasul 6). **Robert: primirea emailurilor, în Cloudflare și Railway. Adăugat pe 12.10 (panoul Mail, etapa 2).** Până atunci,
   fila „Primite" rămâne goală, iar emailurile trimise pe contact@ nu ajung nicăieri (domeniul n-are încă unde să le
   primească). Pașii:
   1. Railway → serviciul aplicației → Variables → `MAIL_INBOUND_SECRET` = o parolă lungă, inventată (40 de litere și cifre).
