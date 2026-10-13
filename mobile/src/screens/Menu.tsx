@@ -6,6 +6,7 @@ import { temaCont } from '../app/store';
 import { Api } from '../api/endpoints';
 import { API_BASE } from '../api/client'; // documentele legale sunt servite de server, nu împachetate în APK
 import { Icon, type IconName } from '../components/Icon';
+import { modulIncarcare, RUTA_PLANURI } from '../lib/incarcare';
 import './menu.css';
 import './detail.css'; // pentru .sheet*
 
@@ -91,6 +92,10 @@ export function Menu() {
         {perms.manageFleet && modul('etoll') && vede('tollro') && item('route', 'Taxa de drum (TollRo)', () => loc.route('/etoll'))}
         {!u?.isSuper && perms.manageFleet && perms.viewReports && modul('tahograf') && vede('tahograf') && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
         {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
+        {/* Simulatorul de încărcare (12.10), ca pe web: îl deschide cine poate modifica flota și dispecerul firmei. Planurile
+            primite le găsește oricine din firmă — șoferul își vede aici planul trimis de dispecer. */}
+        {modulIncarcare(u) && (u?.isSuper || perms.manageFleet || u?.role === 'dispatcher') && item('boxes', 'Simulator încărcare', () => loc.route('/incarcare'))}
+        {modulIncarcare(u) && item('clipboard', 'Planurile de încărcare', () => loc.route(RUTA_PLANURI))}
         {perms.viewReports && vede('hotspot') && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 
         {(perms.manageFleet || perms.manageUsers) && areAdmin && (

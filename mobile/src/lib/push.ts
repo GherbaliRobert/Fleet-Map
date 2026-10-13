@@ -6,6 +6,7 @@ import { showToast } from '../app/store';
 import { rutaFactura } from './factura';
 import { rutaCalendarMontaj } from './calendarMontaj';
 import { RUTA_NEASIGNATE } from './contracte';
+import { rutaPlanSofer, rutaPlanSimulator, RUTA_PLANURI } from './incarcare';
 
 let registered = false;
 
@@ -20,7 +21,7 @@ let registered = false;
 //   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
 //   • termenul de montaj („Montaj, mai sunt N zile" / „Termenul de montaj a trecut") → calendarul, pe contractul din
 //     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
-export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'mail_nou'];
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou'];
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
 export function dateAnunt(d: any): any {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -48,6 +49,11 @@ export function adresaAnunt(tip: any, date: any): string | null {
     return firma != null ? rutaFactura(firma, 'unica', { lucrari: Array.isArray(d.lucrari) ? d.lucrari : [] }) : '/billing';
   }
   if (tip === 'demo_request') return '/admin/demo-requests';
+  // Planurile de încărcare (12.10): șoferul — planul primit; dispecerul („Am încărcat" / „Am o problemă") — planul, în simulator.
+  if (tip === 'plan_incarcare' || tip === 'plan_incarcat' || tip === 'plan_problema') {
+    const id = idFirma(d.planId);
+    return id == null ? RUTA_PLANURI : (tip === 'plan_incarcare' ? rutaPlanSofer(id) : rutaPlanSimulator(id));
+  }
   if (tip === 'montaj_termen') {
     const ctr = idFirma(d.contractId);   // același fel de id: un număr întreg pozitiv
     return ctr != null ? rutaCalendarMontaj(ctr) : '/admin/montaj?fila=calendar';

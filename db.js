@@ -406,6 +406,21 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_remorci_firma ON remorci(company_id)`);
+    // ─── Planurile de încărcare (simulatorul, pasul 4, 12.10): ce a pus dispecerul (vehiculul, semiremorca, marfa,
+    // opririle) și drumul planului: trimis cui, când, „Am încărcat" / „Am o problemă" de la șofer. Cifrele NU se țin:
+    // se socotesc din nou la fiecare deschidere (incarcare.simuleaza), cu fișa de azi a vehiculului.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS planuri_incarcare (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER, imei VARCHAR(20), remorca_id INTEGER,
+        nume VARCHAR(80), mod VARCHAR(12), opriri TEXT, marfa TEXT,
+        creat_de INTEGER, creat_de_nume VARCHAR(120), creat_la BIGINT, actualizat_la BIGINT,
+        trimis_catre INTEGER, trimis_catre_nume VARCHAR(120), trimis_de INTEGER, trimis_la BIGINT,
+        incarcat_la BIGINT, problema_la BIGINT, problema_text TEXT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_firma ON planuri_incarcare(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_catre ON planuri_incarcare(trimis_catre)`);
     // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
     // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
     // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
@@ -3190,6 +3205,7 @@ async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
   await pool.query('DELETE FROM ai_usage WHERE company_id = $1', [id]); // altfel consumul orfan rămâne în totaluri, fără companie în tabel
   await pool.query('DELETE FROM remorci WHERE company_id = $1', [id]);  // semiremorcile firmei n-au sens fără ea (și n-ar mai fi ale nimănui)
+  await pool.query('DELETE FROM planuri_incarcare WHERE company_id = $1', [id]);
   await pool.query('DELETE FROM companies WHERE id = $1', [id]);
 }
 // Toate IMEI-urile unei companii (pt. scoping viewAll pe companie)
@@ -3245,8 +3261,60 @@ async function updateRemorca(id, rand) {
 async function deleteRemorca(id) {
   const n = parseInt(id, 10);
   await pool.query('UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = $1', [n]);   // nu rămâne legată de o mașină
+  await pool.query('UPDATE planuri_incarcare SET remorca_id = NULL WHERE remorca_id = $1', [n]);
   await pool.query('DELETE FROM remorci WHERE id = $1', [n]);
 }
+// ─── Planurile de încărcare (pasul 4) ───
+function _planRand(x) {
+  if (!x) return x;
+  const json = (v, implicit) => { if (v && typeof v === 'object') return v; try { const j = JSON.parse(v); return j == null ? implicit : j; } catch (e) { return implicit; } };
+  x.opriri = json(x.opriri, []); x.marfa = json(x.marfa, []);
+  ['id', 'company_id', 'remorca_id', 'creat_de', 'creat_la', 'actualizat_la', 'trimis_catre', 'trimis_de', 'trimis_la', 'incarcat_la', 'problema_la']
+    .forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+  return x;
+}
+async function creeazaPlan(p) {
+  const acum = Date.now();
+  const r = await pool.query(`INSERT INTO planuri_incarcare (company_id, imei, remorca_id, nume, mod, opriri, marfa, creat_de, creat_de_nume, creat_la, actualizat_la)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10) RETURNING *`,
+    [p.company_id, p.imei, p.remorca_id || null, p.nume || null, p.mod || 'opriri', JSON.stringify(p.opriri || []), JSON.stringify(p.marfa || []), p.creat_de || null, p.creat_de_nume || null, acum]);
+  return _planRand(r.rows[0]);
+}
+// Planul schimbat trebuie trimis din nou: „trimis", „încărcat" și „problema" se golesc (destinatarul rămâne, ca propunere).
+async function actualizeazaPlan(id, p) {
+  const r = await pool.query(`UPDATE planuri_incarcare SET imei = $2, remorca_id = $3, nume = $4, mod = $5, opriri = $6, marfa = $7, actualizat_la = $8,
+    trimis_la = NULL, incarcat_la = NULL, problema_la = NULL, problema_text = NULL WHERE id = $1 RETURNING *`,
+    [parseInt(id, 10), p.imei, p.remorca_id || null, p.nume || null, p.mod || 'opriri', JSON.stringify(p.opriri || []), JSON.stringify(p.marfa || []), Date.now()]);
+  return _planRand(r.rows[0] || null);
+}
+async function getPlan(id) {
+  const r = await pool.query('SELECT * FROM planuri_incarcare WHERE id = $1', [parseInt(id, 10)]);
+  return _planRand(r.rows[0] || null);
+}
+// toateFirmei = dispecerul vede planurile firmei; altfel doar ce a făcut el sau ce i s-a trimis lui.
+async function listPlanuri(o) {
+  const r = o.toateFirmei && o.companyId != null
+    ? await pool.query('SELECT * FROM planuri_incarcare WHERE company_id = $1 ORDER BY actualizat_la DESC LIMIT 60', [o.companyId])
+    : await pool.query('SELECT * FROM planuri_incarcare WHERE trimis_catre = $1 OR creat_de = $1 ORDER BY actualizat_la DESC LIMIT 60', [o.userId]);
+  return r.rows.map(_planRand);
+}
+async function trimitePlan(id, catre, catreNume, deLa) {
+  const acum = Date.now();
+  const r = await pool.query(`UPDATE planuri_incarcare SET trimis_catre = $2, trimis_catre_nume = $3, trimis_de = $5, trimis_la = $4, actualizat_la = $4,
+    incarcat_la = NULL, problema_la = NULL, problema_text = NULL WHERE id = $1 RETURNING *`, [parseInt(id, 10), catre, catreNume || null, acum, deLa || null]);
+  return _planRand(r.rows[0] || null);
+}
+async function planIncarcat(id) {
+  const acum = Date.now();
+  const r = await pool.query('UPDATE planuri_incarcare SET incarcat_la = $2, actualizat_la = $2 WHERE id = $1 RETURNING *', [parseInt(id, 10), acum]);
+  return _planRand(r.rows[0] || null);
+}
+async function planProblema(id, text) {
+  const acum = Date.now();
+  const r = await pool.query('UPDATE planuri_incarcare SET problema_la = $2, problema_text = $3, actualizat_la = $2 WHERE id = $1 RETURNING *', [parseInt(id, 10), acum, text]);
+  return _planRand(r.rows[0] || null);
+}
+async function stergePlan(id) { await pool.query('DELETE FROM planuri_incarcare WHERE id = $1', [parseInt(id, 10)]); }
 // Ca getCompanyImeis, dar EXCLUDE vehiculele arhivate — pentru rapoarte/analitice (nu pentru scoping de acces).
 async function getCompanyActiveImeis(companyId) {
   const r = await pool.query("SELECT imei FROM devices WHERE company_id = $1 AND status IS DISTINCT FROM 'archived'", [companyId]);
@@ -6058,7 +6126,8 @@ module.exports = {
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
-  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca,
+  creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,

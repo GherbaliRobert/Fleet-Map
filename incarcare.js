@@ -292,7 +292,7 @@ function aranjeaza(corpuri, marfa, mod) {
   const gs = marfa.map((it, i) => { const o = _orient(it, corpuri[0]); return { it, i, wpm: o ? it.kg * o.straturi * o.n / o.along : 0 }; });
   if (mod === 'echilibrat') gs.sort((p, q) => (p.wpm - q.wpm) || (p.i - q.i));
   else gs.sort((p, q) => (q.it.oprire - p.it.oprire) || (p.i - q.i));
-  const cutii = [], ramase = marfa.map(() => 0), ordine = [];
+  const cutii = [], ramase = marfa.map(() => 0), ordine = [], ordineMarfa = [];
   let incarcate = 0, total = 0, kg = 0, vol = 0, mxw = 0;
   gs.forEach((g) => {
     const it = g.it;
@@ -321,8 +321,9 @@ function aranjeaza(corpuri, marfa, mod) {
       rest -= take; xs[k] += o.along; C[k].folosit = Math.max(C[k].folosit, xs[k]); pus = true;
     }
     if (pus && ordine[ordine.length - 1] !== it.oprire) ordine.push(it.oprire);
+    if (pus) ordineMarfa.push(g.i);
   });
-  return { cutii, ramase, corpuri: C, incarcate, total, kg, vol, xcw: kg ? mxw / kg / 100 : 0, ordine };
+  return { cutii, ramase, corpuri: C, incarcate, total, kg, vol, xcw: kg ? mxw / kg / 100 : 0, ordine, ordineMarfa };
 }
 
 // Greutatea pe fiecare axă (kg), din momentele față de axe. Tara pe axe vine din fila „Încărcare", limitele din „Config Camion".
@@ -359,7 +360,7 @@ function osii(veh, semi, rem, C) {
 function simuleaza(o) {
   const veh = o.vehicul, trac = veh.tip === 'trac', mod = MODURI.some((m) => m.id === o.mod) ? o.mod : 'opriri';
   const opriri = curataOpriri(o.opriri), marfa = o.marfa || [];
-  if (veh.lipsa && veh.lipsa.length) return { eroare: 'Completează în fișa vehiculului (fila „Încărcare"): ' + veh.lipsa.join(', ') + '.' };
+  if (veh.lipsa && veh.lipsa.length) return { eroare: 'Completează în fișa vehiculului (fila „Încărcare”): ' + veh.lipsa.join(', ') + '.' };
   if (trac && !o.semi) return { eroare: 'Alege semiremorca.' };
   const semi = trac ? o.semi : null, rem = !trac && veh.carlig ? (o.remorca || null) : null;
   const corpuri = trac ? [{ L: semi.L, W: semi.W, H: semi.H, pay: semi.pay, x0: 0 }] : [{ L: veh.L, W: veh.W, H: veh.H, pay: veh.pay, x0: 0 }];
@@ -425,12 +426,35 @@ function simuleaza(o) {
   }
   const presupuse = [].concat(veh.presupuse || [], semi ? semi.presupuse : [], rem ? rem.presupuse : []);
   if (presupuse.length) {
-    mesaje.push({ fel: 'galben', text: 'Cifre obișnuite, nu ale mașinii: ' + presupuse.join(', ') + '. Le scrii o dată în fișă (fila „Încărcare" și „Config Camion") sau la semiremorcă.' });
+    mesaje.push({ fel: 'galben', text: 'Cifre obișnuite, nu ale mașinii: ' + presupuse.join(', ') + '. Le scrii o dată în fișă (fila „Încărcare” și „Config Camion”) sau la semiremorcă.' });
   }
   const rosii = mesaje.filter((m) => m.fel === 'rosu').length;
   if (!rosii && marfa.length) mesaje.push({ fel: 'verde', text: 'Greutatea pe osii e în limite.' });
   const stare = !marfa.length ? { fel: 'gri', text: 'Adaugă marfa' } : (rosii ? { fel: 'galben', text: 'De corectat: ' + rosii } : { fel: 'verde', text: 'Gata de încărcat' });
 
+  // Pentru șofer (pasul 4): ordinea de încărcare pas cu pas, rezumatul osiilor și al spațiului — tot texte gata scrise.
+  const numeOp = (n) => opriri[n - 1] || ('Oprirea ' + n);
+  const pasi = P.ordineMarfa.map((i, k, arr) => {
+    const it = marfa[i], inc = it.buc - P.ramase[i], ale = P.cutii.filter((c) => c.i === i);
+    const det = [], unu = inc === 1;   // „primul, lipit" la o singură bucată, „primii, lipiți" la mai multe
+    if (k === 0) det.push(arr.length > 1 ? (unu ? 'Primul, lipit de peretele din față.' : 'Primii, lipiți de peretele din față.') : (unu ? 'Lipit de peretele din față.' : 'Lipiți de peretele din față.'));
+    else if (k === arr.length - 1) det.push(unu ? 'Ultimul, spre uși: se descarcă primul.' : 'Ultimii, spre uși: se descarcă primii.');
+    if (rem && ale.length) det.push(ale.every((c) => c.c === 1) ? 'În remorcă.' : (ale.some((c) => c.c === 1) ? 'În camion și în remorcă.' : 'În camion.'));
+    if (ale.some((c) => c.z0 > 0)) det.push('Câte ' + STRAT_MAX + ', unul peste altul.');
+    det.push(nf0(it.kg) + ' kg bucata.');
+    if (P.ramase[i]) det.push('Nu încap ' + P.ramase[i] + '.');
+    return { nr: k + 1, oprire: it.oprire, culoare: CULORI_OPRIRI[(it.oprire - 1) % CULORI_OPRIRI.length], text: numeOp(it.oprire) + ' — ' + inc + ' × ' + it.nume, detaliu: det.join(' ') };
+  });
+  const rosiiOsii = AX.list.some((a) => a.lim && a.kg > a.lim) || !!AX.extra || (AX.lim && AX.tot > AX.lim);
+  const osiiRezumat = {
+    fel: !marfa.length ? 'gri' : (rosiiOsii ? 'rosu' : 'verde'),
+    titlu: 'Greutatea pe osii: ' + (rosiiOsii ? 'de corectat' : 'în regulă'),
+    text: osiiTxt.map((a, i) => (i ? a.nume.charAt(0).toLowerCase() + a.nume.slice(1) : a.nume) + ' ' + a.text).join(' · ') + ' · total ' + masa.text
+  };
+  // Ce nu încape deloc nu apare în pași: șoferul trebuie să afle totuși ce rămâne la rampă.
+  const ramase = P.ramase.map((n, i) => (n ? n + ' × ' + marfa[i].nume : null)).filter(Boolean).join(', ');
+  const rezumatSofer = { greutate: nf0(P.kg) + ' kg · ' + P.incarcate + de(P.incarcate) + (P.incarcate === 1 ? 'colet' : 'colete'), liber: 'liber ' + nf1(Math.max(0, Ltot - folosit)) + ' m', lungime: nf1(Ltot) + ' m',
+    ramane: ramase ? 'Rămân la rampă (nu încap): ' + ramase + '.' : '' };
   const folositeOpriri = {};
   marfa.forEach((it) => { folositeOpriri[it.oprire] = true; });
   const legenda = opriri.map((nume, i) => ({ nr: i + 1, nume, culoare: CULORI_OPRIRI[i % CULORI_OPRIRI.length] })).filter((x) => folositeOpriri[x.nr]);
@@ -443,13 +467,38 @@ function simuleaza(o) {
       dims: it.lungime + ' × ' + it.latime + ' × ' + it.inaltime + ' cm', kgText: nf0(it.kg) + ' kg bucata',
       oprireText: 'Oprirea ' + it.oprire + ' · ' + numeOprire(it.oprire),
       suprapusText: it.suprapus ? 'Se pot pune câte ' + STRAT_MAX + ' unul peste altul' : 'Nu se pun unul peste altul' })),
-    indicatori, osii: osiiTxt, masa, mesaje, stare, legenda,
+    indicatori, osii: osiiTxt, masa, mesaje, stare, legenda, pasi, osiiRezumat, rezumatSofer,
     titlu: trac ? 'Semiremorca · ' + semi.plate + ' (' + semi.tipEt + ')' : 'Caroseria · ' + veh.plate + (rem ? ' + remorca ' + rem.plate : ''),
     dimensiuni: corpuri.map((B, i) => (i ? 'remorca ' : 'interior ') + nf2(B.L) + ' × ' + nf2(B.W) + ' × ' + nf2(B.H) + ' m').join(' · '),
     ordineText: P.ordine.length ? 'Se încarcă în ordinea: ' + P.ordine.map(numeOprire).join(' → ') + ' (prima lângă peretele din față).' : '',
     xcwText: P.kg ? 'Centrul de greutate al mărfii: la ' + nf1(P.xcw) + ' m de peretele din față' : 'Nicio marfă încărcată',
     vehicul: { plate: veh.plate, fel: veh.fel, felEt: veh.felEt, tip: veh.tip }
   };
+}
+
+// ─── Planurile de încărcare (pasul 4, 12.10): starea unui plan, scrisă o dată, pentru web, telefon și anunțuri ───
+// Ora se scrie pe ora României: „azi, 09:12", „ieri, 18:40", „10.10, 07:05".
+function cand(ms, acum) {
+  if (!ms) return '';
+  const zi = (t) => new Date(t).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' });
+  const ora = new Date(Number(ms)).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' });
+  const a = acum || Date.now();
+  if (zi(ms) === zi(a)) return 'azi, ' + ora;
+  if (zi(ms) === zi(a - 86400000)) return 'ieri, ' + ora;
+  return new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit' }) + ', ' + ora;
+}
+// Ce s-a întâmplat ultima dată cu planul: ciornă → trimis → încărcat (sau „Am o problemă").
+function stareaPlanului(p, acum) {
+  p = p || {};
+  const cine = p.trimis_catre_nume || 'șofer';
+  if (p.problema_la && (!p.incarcat_la || p.problema_la > p.incarcat_la)) return { fel: 'rosu', cheie: 'problema', text: 'Problemă de la ' + cine + ', ' + cand(p.problema_la, acum) + ': „' + (p.problema_text || '') + '”' };
+  if (p.incarcat_la) return { fel: 'verde', cheie: 'incarcat', text: 'Încărcat — ' + cine + ', ' + cand(p.incarcat_la, acum) };
+  if (p.trimis_la) return { fel: 'galben', cheie: 'trimis', text: 'Trimis lui ' + cine + ', ' + cand(p.trimis_la, acum) + ' — așteaptă „Am încărcat”' };
+  return { fel: 'gri', cheie: 'ciorna', text: 'Netrimis' };
+}
+// Textul de pe ecranul șoferului, sub plan (machetă, 12.10).
+function notaSofer(p, acum) {
+  return 'Trimis de ' + (p.trimis_de_nume || 'dispecer') + ' ' + cand(p.trimis_la, acum) + '. Dacă se schimbă marfa la rampă, spune-i: reface planul și ți-l trimite din nou.';
 }
 
 // Ce trimite /api/incarcare/meta: tot ce trebuie ecranelor ca să propună cifrele obișnuite.
@@ -460,4 +509,4 @@ function meta() {
 
 module.exports = { FELURI_VEHICUL, FEL_REMORCA, TIPURI_REMORCA, CAMPURI_CAROSERIE, paletiEur, paletiInd, curataRemorca, curataCaroserie, meta, _nr,
   PRESETURI_MARFA, MODURI, CULORI_OPRIRI, MAX_OPRIRI, MAX_RANDURI_MARFA, MAX_BUC, STRAT_MAX, PIVOT_DE_LA_FATA, PARTE_TARA_PIVOT, MASA_TREN, AXA_FATA_MIN, PRAG_ATENTIE,
-  curataMarfa, curataOpriri, felDinTip, vehiculDin, semiDin, remorcaDin, aranjeaza, osii, simuleaza };
+  curataMarfa, curataOpriri, felDinTip, vehiculDin, semiDin, remorcaDin, aranjeaza, osii, simuleaza, cand, stareaPlanului, notaSofer };

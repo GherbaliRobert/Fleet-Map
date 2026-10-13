@@ -1484,8 +1484,8 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
 - **Stripe a fost scos de tot** (plată cu cardul, abonamente, webhook, perioadă de probă). Se
   încasează prin transfer bancar, pe factură. Dacă vreodată vom vrea card, se face atunci — legat de
   ofertă, nu de planuri.
-- **Cuvântul „plan" nu are ce căuta în interfață.** Singura excepție: „plan de service/mentenanță"
-  al unui vehicul — altă noțiune, rămâne.
+- **Cuvântul „plan" nu are ce căuta în interfață.** Excepțiile: „plan de service/mentenanță" al unui vehicul și
+  „planul de încărcare" din simulator (12.10) — alte noțiuni, rămân; tot fără etichete care încep cu „Plan" singur.
 - Păzit de `verify_fara_planuri.js` (în `npm test`): dacă reapare un tabel de planuri, o valoare
   implicită luată din plan, Stripe, sau eticheta „Plan" pe ecran — proba pică.
 - ⚠ **Factura citește NUMELE modelelor din `plans.js`** (`oferta` / `trepte` / `fix`). Pe 15.09 au
@@ -1877,12 +1877,46 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
   din macheta aprobată și citește corpurile, coletele și axele de la server; cabina e doar reper. Planul în lucru se ține în
   `localStorage` (cu try/catch) — o comoditate, nu o salvare. Rândul `#nav-incarcare` (data-view) se arată din `updateFabs`
-  (`me.isSuper || feats.incarcare === true`).
+  — din pasul 4 doar celui care face planuri (vezi mai jos, `_incDispecer`).
 - **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește;
   marfa și osiile trec pe pagina a doua doar dacă nu încap. Nume: „RA-Track - Plan de încărcare {număr} - {zi}.pdf”.
   Descărcarea = blob + `_numeDinAntet`.
 - Culorile: tonurile și structura desenului au pereche pe ambele teme (verdele pe alb = `#166534`, măsurat ≥ 4,5).
 - Păzit de `verify_simulator.js` (în `npm test`), inclusiv pe server pornit.
+
+### Planurile de încărcare (pasul 4, 12.10: „hai cu etapa 4" — telefonul, șoferul, „Am încărcat")
+Dispecerul trimite planul unui om al firmei (de obicei șoferul), care îl vede pe telefon și apasă „Am încărcat" sau „Am o
+problemă"; anunțul ajunge la cine l-a trimis. Macheta aprobată: artboard-ul „Telefon" = ecranul șoferului.
+- **Se țin doar ALEGERILE** (tabela `planuri_incarcare`: vehicul, semiremorcă, mod, opriri, marfă + cine / când a trimis,
+  încărcat, problema). Cifrele se socotesc din nou la fiecare deschidere, prin `_incSimulareDin` (pe care o cheamă și
+  `_incSimulare`) — o fișă schimbată schimbă și planul. NU salva rezultatul simulării.
+- **Textele stau în `incarcare.js`:** `stareaPlanului` (netrimis / trimis / încărcat / problemă — cea mai nouă dintre
+  încărcat și problemă câștigă), `cand` (ora pe ora României: „azi, 09:12", „ieri, …", „10.10, …"), `notaSofer`, iar din
+  `simuleaza`: `pasi` (ordinea de încărcare, singular la o bucată), `osiiRezumat`, `rezumatSofer` (cu `ramane` — ce nu
+  încape DELOC nu e un pas, dar șoferul trebuie să afle). Pagina și telefonul doar le arată.
+- **Cine face și trimite planuri: `_incDispecer`** = super-admin, cine are `manageFleet` (admin, manager) SAU rolul
+  `dispatcher` (n-are `manageFleet`, dar planul e treaba lui). Aceeași regulă pe web (`updateFabs`, rândul din meniu) și pe
+  telefon (meniul, `PlanuriIncarcare`) — legate prin probă. Robert o poate restrânge (la „De amintit", 12.10).
+- **Cine vede un plan: `_incVedePlanul`** — cui i s-a trimis (cât e trimis: `_incAlMeu`), cine l-a făcut / trimis, și
+  cine face planuri în firma planului, cu vehiculul în drepturi. Șoferul NU are nevoie de drepturi pe camion. Planul reluat
+  (PUT) redevine netrimis și dispare de la șofer; deschis din anunțul vechi, îi spune „Dispecerul reface planul…".
+- **Noi (super-admin) nu vedem planurile firmelor** — doar pe cele făcute de noi (`creat_de`), și doar pe ele le schimbăm
+  (Robert: „nu vrem să vedem ce face o companie"). NU lărgi `listPlanuri` / `_incVedePlanul` pentru super-admin.
+- **Trimiterea:** doar unui om ACTIV al firmei planului, cu acces neexpirat, nu unui cont de platformă; planul fără marfă nu
+  se salvează și nu se trimite. Lista de oameni (`/api/incarcare/destinatari`) vine cu rolul scris de server (`_incRolEt`:
+  rolul propriu → numele dat de firmă → numele standard) — ecranele nu-și țin liste de nume de roluri.
+- **Anunțurile** (`_incAnunta`: notificare + WebSocket + push, `data.planId`): `plan_incarcare` la șofer → planul lui;
+  `plan_incarcat` / `plan_problema` (cu textul, ≤ 300) la cine a trimis → planul, în simulator. Web: `notifPlan`; telefon:
+  `adresaAnunt` (lib/push.ts) cu adresele din lib/incarcare.ts (`rutaPlanSofer`, `rutaPlanSimulator`, `RUTA_PLANURI`).
+- **Desenul e UNUL:** `_simSvg` (pagina, blocul „desenul simulatorului", curat) și `mobile/src/lib/simDesen.ts` = COPIA
+  întocmai. Schimbi desenul pe web → copiezi blocul pe telefon; proba compară SVG-ul pe 210 combinații și textul funcțiilor.
+- **Telefonul:** `/incarcare` (simulatorul; deschide planul din `?plan=`), `/incarcare/planuri` (lista), `/incarcare/plan/:id`
+  (ecranul șoferului). Nu socotește nimic; „Ai schimbat planul" e SOCOTIT (ce e pe ecran față de planul salvat), nu ținut
+  minte. Șoferul pe web primește planul din anunț (fereastra `simPlanSofer`); lista „Planurile de încărcare" e pe telefon.
+- **Cuvântul „plan":** „planul de încărcare" e altă noțiune decât planurile de preț (ca „plan de service") și apare pe
+  ecrane; o etichetă care începe cu „Plan" singur NU (`verify_fara_planuri.js` o prinde — „Plan nou" a devenit „Începe altul").
+- Păzit de `verify_plan_incarcare.js` (în `npm test`), inclusiv pe server pornit, plus `verify_simulator.js` și
+  `verify_telefon_lot5.js` (adresele anunțurilor).
 
 ### Fereastra „Companie" (`#rax-codetail-overlay`) — capcanele ei, măsurate
 Se deschide din Companii (clic pe firmă), din „Deschide firma" (Dispozitive, Tahograf) — o singură

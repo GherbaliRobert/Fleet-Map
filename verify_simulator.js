@@ -81,7 +81,7 @@ const greu = I.simuleaza({ vehicul: plin, semi: SEMI, marfa: [EUR(24, { kg: 1000
 T('peste limită: roșu, cu cât și încotro se mută marfa', greu.mesaje.some((m) => m.fel === 'rosu' && /trece cu \d+,\d t peste limită — mută marfa grea spre (spate|față)\./.test(m.text)) && /^De corectat: \d+$/.test(greu.stare.text), J(greu.mesaje));
 const spate = I.simuleaza({ vehicul: CAMION, marfa: [EUR(3, { kg: 1800 }), EUR(3, { kg: 1, oprire: 2 })], opriri: ['A', 'B'], mod: 'echilibrat' });
 T('axa din față prea descărcată: galben, cu procentul', spate.mesaje.some((m) => m.fel === 'galben' && /^Axa față duce doar \d+% din masa totală/.test(m.text)) || spate.osii[0].kg / spate.masa.kg >= I.AXA_FATA_MIN, J(spate.mesaje));
-T('„Altul" fără caroserie în fișă: nu se ghicește, se cere', /^Completează în fișa vehiculului \(fila „Încărcare"\): /.test(I.simuleaza({ vehicul: I.vehiculDin({ imei: '5', inc_fel: 'altul' }), marfa: [] }).eroare || ''));
+T('„Altul" fără caroserie în fișă: nu se ghicește, se cere', /^Completează în fișa vehiculului \(fila „Încărcare”\): /.test(I.simuleaza({ vehicul: I.vehiculDin({ imei: '5', inc_fel: 'altul' }), marfa: [] }).eroare || ''));
 T('autotractor fără semiremorcă: „Alege semiremorca."', I.simuleaza({ vehicul: TRAC, marfa: [] }).eroare === 'Alege semiremorca.');
 const sfat = (v, rr) => (I.simuleaza({ vehicul: v, remorca: rr, marfa: [EUR(60, { kg: 100 })] }).mesaje[0] || {}).text || '';
 T('sfatul „adaugă o remorcă" doar când chiar se poate (camion fără remorcă), nu la dubă, la autotractor sau cu remorca pusă',
@@ -108,8 +108,9 @@ T('presetările, modurile și culorile opririlor vin din /api/incarcare/meta', /
 T('cele trei vederi: Lateral, De sus, 3D (rotit cu butoanele sau trăgând cu mouse-ul)',
   /\[\['lat', 'Lateral'\], \['sus', 'De sus'\], \['3d', '3D'\]\]/.test(BS) && /simRoteste\(-45\)/.test(BS) && /addEventListener\('pointermove'/.test(BS));
 T('planul în lucru se ține în browser cu try/catch (o comoditate, nu o salvare)', /try \{ localStorage\.setItem\(CHEIE/.test(BS) && /try \{ const j = JSON\.parse\(localStorage\.getItem\(CHEIE/.test(BS));
-T('rândul din meniu poartă data-view și se arată doar cu modulul firmei (noi îl vedem mereu)',
-  /id="nav-incarcare" data-view="incarcare" onclick="showView\('incarcare'\)"/.test(html) && /nc\.style\.display = \(me\.isSuper \|\| feats\.incarcare === true\)/.test(html));
+T('rândul din meniu poartă data-view și se arată doar cu modulul firmei, celui care face planuri (modifică flota sau e dispecer; pasul 4) — noi îl vedem mereu',
+  /id="nav-incarcare" data-view="incarcare" onclick="showView\('incarcare'\)"/.test(html) &&
+  /nc\.style\.display = \(me\.isSuper \|\| \(feats\.incarcare === true && \(\(me\.permissions && me\.permissions\.manageFleet\) \|\| me\.role === 'dispatcher'\)\)\)/.test(html));
 T('vederea e înregistrată (VIEW_PANELS + VIEW_OPENERS)', /incarcare: 'incarcare-view'/.test(html) && /incarcare: 'renderIncarcarePage'/.test(html) && /<div id="incarcare-view" class="modal-overlay"><\/div>/.test(html));
 T('PDF-ul se descarcă cu numele din antet (_numeDinAntet)', /window\._numeDinAntet\(r, /.test(BS));
 T('desenul are pereche de culori pe tema închisă (structura, roțile, centrul de greutate)',
@@ -126,7 +127,11 @@ T('vehiculul: drepturile pe el (canAccessImei), nu arhivat, care cară marfă',
   /if \(!imei \|\| !canAccessImei\(req, imei\)\) return \{ status: 403/.test(server) && /if \(!dev \|\| dev\.status === 'archived'\) return \{ status: 404/.test(server) && /Vehiculul ăsta nu cară marfă/.test(server));
 T('semiremorca / remorca: a firmei vehiculului, de felul potrivit', /Semiremorca aleasă nu e a firmei vehiculului\./.test(server) && /La autotractor se cuplează o semiremorcă/.test(server));
 T('flota simulatorului: fără demo (în afara contului demo), fără arhivate', /async function _incFlota\(req\) \{[\s\S]{0,500}DEMO_SET\.has[\s\S]{0,200}d\.status !== 'archived'/.test(server));
-T('ecranul și hârtia trec prin ACEEAȘI simulare (_incSimulare, de două ori)', (server.match(/await _incSimulare\(req\)/g) || []).length === 2);
+// Pasul 4: și salvarea planului trece pe acolo; planul deschis / trimis se socotește prin _incSimulareDin, pe care o
+// cheamă și _incSimulare — o singură regulă, oricare ar fi ușa.
+T('ecranul, hârtia și salvarea planului trec prin ACEEAȘI simulare (_incSimulare, de trei ori), care cheamă _incSimulareDin',
+  (server.match(/await _incSimulare\(req\)/g) || []).length === 3 && /return _incSimulareDin\(await db\.getDeviceFull\(imei\), b\);/.test(server),
+  (server.match(/await _incSimulare\(req\)/g) || []).length);
 T('descărcarea hârtiei intră în jurnal (export plan_incarcare)', /auditReq\(req, 'export', 'plan_incarcare'/.test(server));
 
 // ─── 4. Hârtia ───────────────────────────────────────────────────────────────────────────────────────────────────

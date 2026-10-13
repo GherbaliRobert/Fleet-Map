@@ -23,6 +23,10 @@ import { FuelPrice } from './screens/FuelPrice';
 import { AdminDrivers } from './screens/AdminDrivers';
 import { AdminGroups } from './screens/AdminGroups';
 import { Remorci } from './screens/Remorci';
+// Simulatorul și planurile de încărcare (pasul 4, 12.10): dispecerul așază marfa și trimite planul; șoferul îl vede aici.
+import { Simulator } from './screens/Simulator';
+import { PlanSofer } from './screens/PlanSofer';
+import { PlanuriIncarcare } from './screens/PlanuriIncarcare';
 import { AdminMaintenance } from './screens/AdminMaintenance';
 import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
@@ -229,6 +233,9 @@ function Shell() {
         <Route path="/admin/drivers" component={P.drivers} />
         <Route path="/admin/groups" component={P.groups} />
         <Route path="/remorci" component={P.remorci} />
+        <Route path="/incarcare" component={Simulator} />
+        <Route path="/incarcare/planuri" component={PlanuriIncarcare} />
+        <Route path="/incarcare/plan/:id" component={PlanSofer} />
         <Route path="/admin/maintenance" component={P.maintenance} />
         <Route path="/admin/alerts" component={P.alerts} />
         <Route path="/admin/users" component={AdminUsers} />

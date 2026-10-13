@@ -198,7 +198,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
   „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
   mașini reale ar umple discul în 2–3 săptămâni.
-- [ ] **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
+- [x] **FĂCUT (12.10): Robert a reglat ora laptopului.** **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
   Setări Windows → Oră și limbă → Dată și oră → „Setează ora automat” pornit → „Sincronizează acum”, apoi F5 în pagină.
@@ -221,6 +221,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
      Worker" → ra-mail.
   6. Proba: trimiteți un email pe contact@ratrack.ro de pe telefon. Apare în Administrare → Mail → Primite, iar în „Stare
      producție" rândul „Email primit" scrie ora lui. Dacă ajunge doar în căsuța de rezervă, îmi spuneți.
+- [ ] **Voi: cine face și trimite planurile de încărcare. Adăugat pe 12.10 (simulatorul, pasul 4).** Acum: adminul,
+  managerul și dispecerul firmei (rolul „Dispecer"); șoferul doar primește planul. Rolul „Dispecer" n-are dreptul de a
+  modifica flota, dar planul de încărcare e treaba lui — de-aia l-am lăsat. Dacă vreți doar adminul și managerul, îmi
+  spuneți și schimb.
 
 ---
 
@@ -286,6 +290,51 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-12
+
+### AMÂNDOI · Planurile de încărcare: „Trimite șoferului", planul pe telefonul șoferului, „Am încărcat" (etapa 1, pasul 4) — `…`
+
+Robert (12.10): *„hai cu etapa 4"*; ordinea aprobată: *„(4) telefonul"*. Făcut după macheta aprobată (artboard-ul „Telefon",
+https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
+
+1. **„Trimite șoferului"** (web și telefon): dispecerul așază marfa în simulator și apasă butonul; planul se salvează
+   singur și pleacă la omul ales din firmă (de obicei șoferul). „Planuri" arată planurile firmei, cu starea fiecăruia:
+   netrimis, trimis lui X (așteaptă „Am încărcat"), încărcat, problemă.
+2. **Șoferul primește un anunț** („Plan de încărcare: B 01 TIR") și deschide planul pe telefon: marfa văzută de sus,
+   ordinea de încărcare pas cu pas („Cluj-Napoca — 6 × Paleți industriali · Primii, lipiți de peretele din față"), ce
+   rămâne la rampă (dacă nu încape tot), greutatea pe osii pe scurt și cine i l-a trimis. Nu are nevoie de drepturi pe
+   camion: vede doar planul.
+3. **Două butoane la șofer:** „Am încărcat" și „Am o problemă" (scrie pe scurt ce s-a întâmplat, de ex. „au venit 2 paleți
+   în plus"). Dispecerul primește anunțul pe loc, iar planul se face verde, respectiv roșu.
+4. **Planul schimbat după ce a fost trimis** redevine „netrimis": la șofer dispare până pleacă din nou, iar dacă îl
+   deschide din anunțul vechi, află că dispecerul îl reface.
+5. **Simulatorul și pe telefon**, ca pe web: vehiculul, semiremorca, opririle, marfa, cele trei vederi (lateral, de sus,
+   3D rotit cu degetul), osiile, PDF-ul. Meniu: „Simulator încărcare" (cine face planuri) și „Planurile de încărcare"
+   (oricine din firmă — acolo își găsește șoferul planul).
+6. **Cine face și trimite planuri:** adminul, managerul și dispecerul firmei (rolul „Dispecer"). Șoferul doar primește.
+   (Rolul „Dispecer" nu are dreptul de a modifica flota; l-am lăsat totuși să facă planuri — e întrebarea de la „De amintit".)
+7. **Noi (super-admin) nu vedem planurile firmelor**, doar pe cele făcute de noi (Robert: „nu vrem să vedem ce face o
+   companie").
+8. **Găsite pe drum, mici, reparate:** lista „Cui trimiți planul?" scria rolul în engleză („dispatcher") — acum „Dispecer",
+   „Viewer", „Admin companie", scris de server pentru web și telefon; ghilimelele de închidere ieșeau drepte („…") în
+   textele noi ale simulatorului — acum „…”; o singură bucată se scrie la singular („Ultimul, spre uși: se descarcă primul").
+
+- **Ce am schimbat:** `incarcare.js` (starea planului, ora pe ora României, pașii pentru șofer, ce rămâne la rampă, nota de
+  sub plan), `db.js` (tabela `planuri_incarcare`), `backup.js`, `server.js` (rutele `/api/incarcare/planuri…`,
+  `/destinatari`, „Am încărcat" / „Am o problemă", anunțurile), `public/index.html` + `public/css/app.css` (butonul,
+  planurile, fereastra șoferului, anunțurile), telefonul (`screens/Simulator.tsx`, `PlanSofer.tsx`, `PlanuriIncarcare.tsx`,
+  `simulator.css`, `lib/simDesen.ts` = copia întocmai a desenului de pe web, meniul, rutele, adresele anunțurilor în
+  `push.ts`). APK: 1.0.12, împreună cu panoul Mail (etapa 2).
+- **Probe:** `verify_plan_incarcare.js` (nouă, 85, în `npm test`): textele, desenul identic pe web și pe telefon pe 210
+  combinații (o stricăciune de o cifră în copia telefonului o face să pice — încercat), pagina, telefonul (rutele, meniul,
+  contrastul pe ambele teme), plus server pornit: salvarea, trimiterea doar unui om activ al firmei, șoferul fără drepturi
+  pe camion, anunțurile, altă firmă și noi fără acces, planul reluat, ștergerea, modulul oprit. Rescrise pe regula nouă:
+  `verify_simulator.js` (rândul din meniu: cine face planuri; ecranul, hârtia și salvarea trec prin aceeași simulare),
+  `verify_telefon_lot5.js` (anunțurile planurilor duc la plan). Văzut pe telefon (ca dispecer și ca șofer) și pe web;
+  contrastul măsurat pe ambele teme (galbenul de pe mesaje, 4,2 → 6,0, reparat).
+- **Ce vede fondatorul:** simulatorul, cu planurile LUI; planurile firmelor nu.
+- **Ce vede clientul:** dispecerul — „Trimite șoferului", planurile firmei, anunțurile „Încărcat" / „Problemă"; șoferul —
+  anunțul și planul pe telefon, cu cele două butoane. **Șoferul trebuie să aibă cont în aplicație** (Utilizatori → Adaugă,
+  de obicei rolul „Viewer"); fișa „Șoferi" nu e încă legată de conturi.
 
 ### FONDATOR · Panoul Mail, etapa 2: „Primite" și „Răspunde" — `e3d51a2`
 

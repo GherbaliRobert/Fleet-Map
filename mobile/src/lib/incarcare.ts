@@ -27,6 +27,12 @@ export type Remorca = {
   nr_axe: number | null; pivot_axe_m: number | null; axa_fata_m: number | null; limita_axe_kg: number | null; imei: string | null; note: string | null;
 };
 
+// Adresele planurilor (pasul 4): șoferul își vede planul primit; dispecerul îl deschide în simulator. UNA fiecare —
+// le folosesc lista, anunțurile și push-ul (lib/push.ts).
+export const rutaPlanSofer = (id: number | string) => '/incarcare/plan/' + encodeURIComponent(String(id));
+export const rutaPlanSimulator = (id: number | string) => '/incarcare?plan=' + encodeURIComponent(String(id));
+export const RUTA_PLANURI = '/incarcare/planuri';
+
 // Modulul „Simulator încărcare": al firmei (features.incarcare), iar noi îl avem mereu.
 export function modulIncarcare(me: any): boolean {
   if (!me) return false;

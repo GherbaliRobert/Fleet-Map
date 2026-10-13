@@ -9210,8 +9210,12 @@ async function _incSimulare(req) {
   const b = req.body || {};
   const imei = String(b.imei || '');
   if (!imei || !canAccessImei(req, imei)) return { status: 403, eroare: 'Acces interzis la vehicul.' };
-  const dev = await db.getDeviceFull(imei);
-  if (!dev || dev.status === 'archived') return { status: 404, eroare: 'Vehiculul nu există.' };
+  return _incSimulareDin(await db.getDeviceFull(imei), b);
+}
+// Simularea pe un vehicul deja găsit (drepturile le verifică cine cheamă). Planul trimis unui șofer o refolosește: el
+// vede planul primit chiar dacă n-are camionul în lista lui.
+async function _incSimulareDin(dev, b) {
+  if (!dev || dev.status === 'archived') return { status: 404, eroare: 'Vehiculul nu mai e în flotă.' };
   const veh = incarcare.vehiculDin(dev);
   if (!veh) return { status: 400, eroare: 'Vehiculul ăsta nu cară marfă — alege un autotractor, un camion sau o dubă.' };
   const cm = incarcare.curataMarfa(b.marfa || []);
@@ -9230,7 +9234,7 @@ async function _incSimulare(req) {
   }
   const rez = incarcare.simuleaza({ vehicul: veh, semi, remorca, marfa: cm.marfa, mod: b.mod, opriri: b.opriri });
   if (rez.eroare) return { status: 400, eroare: rez.eroare };
-  return { rezultat: rez };
+  return { rezultat: rez, dev, marfa: cm.marfa, opriri: incarcare.curataOpriri(b.opriri), remorcaId: (semi || remorca) ? (semi || remorca).id : null };
 }
 app.post('/api/incarcare/simuleaza', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
   try {
@@ -9251,6 +9255,163 @@ app.post('/api/incarcare/pdf', requireAuth, withScope, requireFeature('incarcare
     res.setHeader('Content-Disposition', _antetDescarcare(incarcarePdf.numeFisier(s.rezultat, acum)));
     incarcarePdf.planPdf(s.rezultat, { generatLa: acum }).pipe(res);
   } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
+// ─── Planurile de încărcare (pasul 4, 12.10): dispecerul trimite planul unui om din firmă (de obicei șoferul), care îl
+// vede pe telefon și apasă „Am încărcat" sau „Am o problemă"; dispecerul primește anunțul. Se țin doar alegerile; cifrele
+// se socotesc din nou la fiecare deschidere. Planurile sunt ale FIRMEI: noi (super-admin) nu vedem planurile clienților —
+// doar pe cele făcute de noi (Robert: „nu vrem să vedem ce face o companie").
+// Cine face și trimite planuri: cine poate modifica flota (adminul, managerul) și dispecerul firmei — rolul „Dispecer"
+// nu modifică flota, dar planul de încărcare e treaba lui (în machetă, „dispecerul"). Șoferul doar primește.
+const _incDispecer = (req) => req.isSuper || permReq(req, 'manageFleet') || getAuth(req).role === 'dispatcher';
+async function _incNumeOm(id) { try { const u = await db.getUserById(id); return u ? (u.full_name || u.username || ('#' + id)) : null; } catch (e) { return null; } }
+async function _incAnunta(userId, companyId, tip, gravitate, titlu, corp, date) {
+  if (!userId) return;
+  const n = await db.createNotification({ type: tip, severity: gravitate, companyId: companyId || null, userId, imei: null, title: titlu, body: corp, data: date || {} });
+  try { broadcastWsToUser(userId, { type: 'notification', data: n }); } catch (e) {}
+  try { await sendPushToUser(userId, { title: n.title, body: n.body, data: { type: n.type, notifId: n.id, planId: (date || {}).planId } }); } catch (e) {}
+}
+async function _incPlacute(imeis) {
+  const m = {};
+  const l = Array.from(new Set(imeis.filter(Boolean)));
+  if (!l.length) return m;
+  const r = await db.pool.query('SELECT imei, plate, name FROM devices WHERE imei = ANY($1)', [l]);
+  r.rows.forEach((d) => { m[d.imei] = d.plate || d.name || d.imei; });
+  return m;
+}
+// Cine vede un plan: cui i s-a trimis (cât e trimis — un plan reluat de dispecer dispare de la șofer până pleacă din
+// nou), cine l-a făcut / trimis, și dispecerii firmei cu vehiculul în drepturi.
+const _incAlMeu = (p, eu) => !!(p && p.trimis_catre === eu && p.trimis_la);
+function _incVedePlanul(req, p) {
+  const eu = getAuth(req).userId;
+  if (!p) return false;
+  if (_incAlMeu(p, eu) || p.creat_de === eu || p.trimis_de === eu) return true;
+  return !req.isSuper && p.company_id === req.companyId && _incDispecer(req) && canAccessImei(req, p.imei);
+}
+function _incPlanCurat(p, placute, eu, acum) {
+  return { id: p.id, nume: p.nume, imei: p.imei, vehicul: placute[p.imei] || p.imei, remorca_id: p.remorca_id, mod: p.mod, opriri: p.opriri, marfa: p.marfa,
+    creat_de_nume: p.creat_de_nume, trimis_catre: p.trimis_catre, trimis_catre_nume: p.trimis_catre_nume, trimis_la: p.trimis_la, incarcat_la: p.incarcat_la,
+    actualizat_la: p.actualizat_la, stare: incarcare.stareaPlanului(p, acum), alMeu: _incAlMeu(p, eu) };
+}
+app.get('/api/incarcare/planuri', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    const eu = getAuth(req).userId, acum = Date.now();
+    const lista = await db.listPlanuri({ toateFirmei: !req.isSuper && _incDispecer(req), companyId: req.companyId, userId: eu });
+    const vazute = lista.filter((p) => _incVedePlanul(req, p));
+    const placute = await _incPlacute(vazute.map((p) => p.imei));
+    res.json(vazute.map((p) => _incPlanCurat(p, placute, eu, acum)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Oamenii firmei cărora li se poate trimite un plan (conturile active; fără conturile noastre). Rolul vine scris pe
+// înțelesul omului — rolul propriu al firmei, numele dat de firmă, apoi cel standard —, ca web-ul și telefonul să nu-și
+// țină fiecare lista lor de nume.
+const _incRolEt = (u, aj) => u.role_slug_name || numeRol(u.role, aj, u.role_slug) || (u.role === 'company_admin' || u.role === 'admin' ? 'Admin companie' : (ROLE_LABELS_RO[u.role] || u.role));
+app.get('/api/incarcare/destinatari', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!_incDispecer(req)) return res.status(403).json({ error: 'Acces interzis' });
+    const cid = req.isSuper ? (parseInt(req.query.company_id, 10) || null) : req.companyId;
+    if (cid == null) return res.json([]);
+    const oameni = (await db.getUsers(cid)).filter((u) => u.active !== false && u.role !== 'superadmin' && !(u.access_until && Number(u.access_until) < Date.now()));
+    const aj = await roluriCompaniei(cid);
+    res.json(oameni.map((u) => ({ id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj) })).sort((a, b) => String(a.nume).localeCompare(String(b.nume), 'ro')));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/incarcare/planuri/:id', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    const p = await db.getPlan(req.params.id), eu = getAuth(req).userId, acum = Date.now();
+    if (!_incVedePlanul(req, p)) {
+      // Șoferul deschide anunțul unui plan pe care dispecerul tocmai îl reface: îi spunem asta, nu „nu există".
+      if (p && p.trimis_catre === eu) return res.status(404).json({ error: 'Dispecerul reface planul — ți-l trimite din nou când e gata.' });
+      return res.status(404).json({ error: 'Planul nu există.' });
+    }
+    const s = await _incSimulareDin(await db.getDeviceFull(p.imei), { remorca_id: p.remorca_id, marfa: p.marfa, mod: p.mod, opriri: p.opriri });
+    const placute = await _incPlacute([p.imei]);
+    p.trimis_de_nume = p.trimis_de ? await _incNumeOm(p.trimis_de) : null;
+    res.json({ plan: _incPlanCurat(p, placute, eu, acum), rezultat: s.rezultat || null, eroare: s.eroare || null,
+      notaSofer: p.trimis_la ? incarcare.notaSofer(p, acum) : '', poateEdita: _incDispecer(req) && (req.isSuper ? p.creat_de === eu : p.company_id === req.companyId) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Salvează planul de pe ecran (nou, sau peste unul existent — care trebuie atunci trimis din nou).
+async function _incSalveaza(req, res, id) {
+  if (!_incDispecer(req)) return res.status(403).json({ error: 'Acces interzis' });
+  const eu = getAuth(req).userId;
+  let vechi = null;
+  if (id != null) {
+    vechi = await db.getPlan(id);
+    if (!vechi || !(req.isSuper ? vechi.creat_de === eu : vechi.company_id === req.companyId)) return res.status(404).json({ error: 'Planul nu există.' });
+  }
+  const s = await _incSimulare(req);
+  if (s.eroare) return res.status(s.status).json({ error: s.eroare });
+  if (!s.marfa.length) return res.status(400).json({ error: 'Adaugă marfa înainte să salvezi planul.' });
+  if (vechi && vechi.company_id !== s.dev.company_id) return res.status(400).json({ error: 'Planul e al altei firme.' });
+  const b = req.body || {};
+  const date = { company_id: s.dev.company_id, imei: s.dev.imei, remorca_id: s.remorcaId, nume: String(b.nume || '').trim().slice(0, 80) || null,
+    mod: s.rezultat.mod, opriri: s.opriri, marfa: s.marfa };
+  const p = vechi ? await db.actualizeazaPlan(id, date) : await db.creeazaPlan(Object.assign(date, { creat_de: eu, creat_de_nume: await _incNumeOm(eu) }));
+  auditReq(req, vechi ? 'update' : 'create', 'plan_incarcare', p.id, { imei: p.imei, colete: s.rezultat.total });
+  res.json(_incPlanCurat(p, await _incPlacute([p.imei]), eu, Date.now()));
+}
+app.post('/api/incarcare/planuri', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try { await _incSalveaza(req, res, null); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/incarcare/planuri/:id', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try { await _incSalveaza(req, res, parseInt(req.params.id, 10)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/incarcare/planuri/:id', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!_incDispecer(req)) return res.status(403).json({ error: 'Acces interzis' });
+    const p = await db.getPlan(req.params.id), eu = getAuth(req).userId;
+    if (!p || !(req.isSuper ? p.creat_de === eu : p.company_id === req.companyId)) return res.status(404).json({ error: 'Planul nu există.' });
+    await db.stergePlan(p.id);
+    auditReq(req, 'delete', 'plan_incarcare', p.id, { imei: p.imei });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Trimite șoferului": unui om ACTIV al firmei planului (nu unui cont de-al nostru); anunț în aplicație și pe telefon.
+app.post('/api/incarcare/planuri/:id/trimite', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try {
+    if (!_incDispecer(req)) return res.status(403).json({ error: 'Acces interzis' });
+    const p = await db.getPlan(req.params.id), eu = getAuth(req).userId;
+    if (!p || !(req.isSuper ? p.creat_de === eu : p.company_id === req.companyId)) return res.status(404).json({ error: 'Planul nu există.' });
+    const catre = await db.getUserById(parseInt((req.body || {}).user_id, 10));
+    if (!catre || catre.company_id !== p.company_id || catre.role === 'superadmin' || catre.active === false || (catre.access_until && Number(catre.access_until) < Date.now())) {
+      return res.status(400).json({ error: 'Alege un om din firmă, cu cont activ.' });
+    }
+    const s = await _incSimulareDin(await db.getDeviceFull(p.imei), { remorca_id: p.remorca_id, marfa: p.marfa, mod: p.mod, opriri: p.opriri });
+    if (s.eroare) return res.status(400).json({ error: s.eroare });
+    if (!s.marfa.length) return res.status(400).json({ error: 'Planul n-are marfă — adaug-o și salvează din nou.' });
+    const nume = catre.full_name || catre.username;
+    const t = await db.trimitePlan(p.id, catre.id, nume, eu);
+    const placute = await _incPlacute([p.imei]), deLa = await _incNumeOm(eu);
+    await _incAnunta(catre.id, p.company_id, 'plan_incarcare', 'info', 'Plan de încărcare: ' + (placute[p.imei] || p.imei),
+      'De la ' + (deLa || 'dispecer') + ' · ' + s.rezultat.rezumatSofer.greutate + '. Deschide-l pentru ordinea de încărcare.', { planId: p.id });
+    auditReq(req, 'send', 'plan_incarcare', p.id, { catre: catre.id });
+    res.json(_incPlanCurat(t, placute, eu, Date.now()));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Butoanele șoferului: doar cui i s-a trimis planul. Anunțul pleacă la cine l-a trimis.
+async function _incRaspunsSofer(req, res, fel) {
+  const p = await db.getPlan(req.params.id), eu = getAuth(req).userId;
+  if (!_incAlMeu(p, eu)) return res.status(404).json({ error: p && p.trimis_catre === eu ? 'Dispecerul reface planul — ți-l trimite din nou când e gata.' : 'Planul nu există.' });
+  const placute = await _incPlacute([p.imei]), vehicul = placute[p.imei] || p.imei, cine = await _incNumeOm(eu);
+  let t;
+  if (fel === 'incarcat') {
+    t = await db.planIncarcat(p.id);
+    await _incAnunta(p.trimis_de || p.creat_de, p.company_id, 'plan_incarcat', 'info', 'Încărcat: ' + vehicul, (cine || 'Șoferul') + ' a apăsat „Am încărcat”.', { planId: p.id });
+  } else {
+    const text = String((req.body || {}).text || '').trim().slice(0, 300);
+    if (!text) return res.status(400).json({ error: 'Scrie pe scurt ce s-a întâmplat.' });
+    t = await db.planProblema(p.id, text);
+    await _incAnunta(p.trimis_de || p.creat_de, p.company_id, 'plan_problema', 'warning', 'Problemă la încărcare: ' + vehicul, (cine || 'Șoferul') + ': „' + text + '”', { planId: p.id });
+  }
+  auditReq(req, fel === 'incarcat' ? 'loaded' : 'problem', 'plan_incarcare', p.id, {});
+  res.json(_incPlanCurat(t, placute, eu, Date.now()));
+}
+app.post('/api/incarcare/planuri/:id/incarcat', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try { await _incRaspunsSofer(req, res, 'incarcat'); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/incarcare/planuri/:id/problema', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
+  try { await _incRaspunsSofer(req, res, 'problema'); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───

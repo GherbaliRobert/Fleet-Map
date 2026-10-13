@@ -46,6 +46,8 @@ const BUSINESS_TABLES = [
   'istoric_soferi', 'safe_drive_discutii',
   // Semiremorcile și remorcile firmelor (12.10): flota fără aparat GPS, scrisă de client — nu se reface din nimic.
   'remorci',
+  // Planurile de încărcare (12.10): ce a pus dispecerul și ce a confirmat șoferul — nu se refac din nimic.
+  'planuri_incarcare',
   // Panoul Mail (12.10): ce le-am trimis clienților și partenerilor (facturi, contracte, mesajele noastre). Nu se reface.
   'mail_trimise',
   // …și ce ne-au scris ei (etapa 2): emailurile primite, fără atașamente (vezi mai jos). Nu se refac din nimic.

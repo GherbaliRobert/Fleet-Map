@@ -4306,6 +4306,23 @@ body.dark .sim-svg .sim-roata { fill: #0B0E11; stroke: #5b6675; }
 body.dark .sim-svg .sim-axa { stroke: #C2CAD6; }
 body.dark .sim-svg .sim-cg { stroke: #3FE07D; }
 body.dark .sim-svg .sim-tl { fill: #8A93A3; }
+/* Planurile de încărcare (pasul 4, 12.10): butonul plin, bara planului deschis, fereastra (lista, cui trimiți, planul
+   șoferului). Fereastra stă la nivelul paginii, cu clasa .sim pe ea, ca să ia aceleași tonuri. */
+.sim .sim-btn.sim-pri { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.sim .sim-btn.sim-pri:disabled { opacity: .5; }
+.sim-pbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; flex-wrap: wrap; }
+.sim-pbt { display: flex; flex-direction: column; gap: 2px; flex: 1 1 200px; min-width: 0; color: var(--text-primary); font-size: 13.5px; }
+.sim-ov { position: fixed; inset: 0; z-index: 2200; background: rgba(0, 0, 0, .55); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+.sim.sim-ovc { width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; gap: 12px; margin: 0; }
+.sim-ovcap { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sim-plist { display: flex; flex-direction: column; gap: 8px; }
+.sim-prow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); flex-wrap: wrap; }
+.sim-om { cursor: pointer; }
+.sim-om input { width: 18px; height: 18px; accent-color: var(--accent); }
+.sim-pasi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sim-pasi li { display: flex; gap: 10px; align-items: flex-start; color: var(--text-primary); font-size: 13.5px; }
+.sim-pasi li > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.sim-pnr { width: 26px; height: 26px; border-radius: 8px; color: #fff; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 @media (max-width: 768px) {
   .sim { padding: 12px 12px 24px; }
   .sim-marfa, .sim-osii { max-width: none; }

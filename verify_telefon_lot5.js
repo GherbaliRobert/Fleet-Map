@@ -772,11 +772,14 @@ async function parteaAnunturi() {
     const r = (citeste('mobile/src/lib/calendarMontaj.ts').match(/export const rutaCalendarMontaj = [^\n]+\n/) || [''])[0];
     CAL = modul(tsJs(r, 'calendarMontaj-ruta.ts'), 'calendarMontaj-ruta.ts').exp;
   } catch (e) { console.log('    (calendarMontaj.ts: ' + e.message + ')'); }
+  // Adresele planurilor de încărcare (lib/incarcare.ts, curat, fără importuri — simulatorul, pasul 4, 12.10): modulul ADEVĂRAT.
+  let INC = {};
+  try { INC = modul(tsJs(citeste('mobile/src/lib/incarcare.ts'), 'incarcare.ts'), 'incarcare.ts').exp; } catch (e) { console.log('    (incarcare.ts: ' + e.message + ')'); }
   try {
     P = modul(tsJs(S.push.split('(import.meta as any).env').join('({})'), 'push.ts'), 'push.ts', {
       '@capacitor/core': { Capacitor: { isNativePlatform: () => false, getPlatform: () => 'web' } },
       '../api/endpoints': { Api: {} }, '../app/store': { showToast: () => {} },
-      './factura': F, './contracte': CTR, './calendarMontaj': CAL,
+      './factura': F, './contracte': CTR, './calendarMontaj': CAL, './incarcare': INC,
     }).exp;
   } catch (e) { console.log('    (push.ts: ' + e.message + ')'); }
   T('lib/push.ts se traduce și rulează, cu importurile lui (rutaFactura, RUTA_NEASIGNATE)',
@@ -817,7 +820,16 @@ async function parteaAnunturi() {
     P.adresaAnunt('montaj_termen', { contractId: 17, companyId: 4 }) === '/admin/montaj?fila=calendar&contract=17'
     && P.adresaAnunt('montaj_termen', {}) === '/admin/montaj?fila=calendar'
     && /_anuntaSuperadmini\(supers, 'montaj_termen'[\s\S]{0,200}\{ key: cheie, contractId: c\.id, companyId: c\.company_id/.test(S.server));
-  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['aparate_noi', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen']) &&
+  // Planurile de încărcare (12.10): șoferul — planul primit; dispecerul („Am încărcat" / „Am o problemă") — planul, în simulator.
+  T('„Plan de încărcare" duce șoferul la planul lui; „Încărcat" / „Problemă" duc dispecerul la plan, în simulator; fără plan — lista',
+    P.adresaAnunt('plan_incarcare', { planId: 35 }) === '/incarcare/plan/35' && P.adresaAnunt('plan_incarcat', { planId: 35 }) === '/incarcare?plan=35'
+    && P.adresaAnunt('plan_problema', J({ planId: 7 })) === '/incarcare?plan=7' && P.adresaAnunt('plan_incarcare', {}) === '/incarcare/planuri'
+    && P.adresaAnunt('plan_problema', { planId: 'x' }) === '/incarcare/planuri'
+    && INC.rutaPlanSofer && P.adresaAnunt('plan_incarcare', { planId: 35 }) === INC.rutaPlanSofer(35) && P.adresaAnunt('plan_incarcat', { planId: 35 }) === INC.rutaPlanSimulator(35),
+    [P.adresaAnunt('plan_incarcare', { planId: 35 }), P.adresaAnunt('plan_incarcat', { planId: 35 }), P.adresaAnunt('plan_incarcare', {})].join(' | '));
+  T('push.ts își ia adresele planurilor din lib/incarcare.ts (nu le scrie a doua oară)',
+    /import \{ rutaPlanSofer, rutaPlanSimulator, RUTA_PLANURI \} from '\.\/incarcare';/.test(S.push) && !/'\/incarcare\/plan\//.test(S.push) && !/'\/incarcare\?plan=/.test(S.push));
+  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['aparate_noi', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
     P.TIPURI_CU_LOC.every((t) => P.adresaAnunt(t, { company_id: 3 }) !== null));
   {
     const u = P.adresaAnunt('aparate_noi', { imeis: [A1, A2, 'TEST111'], company_id: 42 });

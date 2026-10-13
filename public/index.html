@@ -7104,11 +7104,11 @@ const pozitii = await r.json();</code></pre>
     // ajunge pe hârtie (POST /api/incarcare/pdf) și, mai târziu, pe telefon. Aici stau doar alegerile omului și desenul.
     (function () {
       const S = { meta: null, flota: null, imei: '', remorcaId: '', mod: 'opriri', opriri: ['Oprirea 1'], marfa: [], view: 'lat', yaw: 32,
-        rez: null, eroare: '', seq: 0, deschis: -1, timer: null };
+        rez: null, eroare: '', seq: 0, deschis: -1, timer: null, planId: null, plan: null, modificat: false };
       const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const $s = (id) => document.getElementById(id);
       const CHEIE = 'ra_sim_plan';   // planul în lucru, ținut minte în browserul omului (o comoditate, nu o salvare)
-      const tine = () => { try { localStorage.setItem(CHEIE, JSON.stringify({ imei: S.imei, remorcaId: S.remorcaId, mod: S.mod, opriri: S.opriri, marfa: S.marfa })); } catch (e) { /* fără stocare */ } };
+      const tine = () => { try { localStorage.setItem(CHEIE, JSON.stringify({ imei: S.imei, remorcaId: S.remorcaId, mod: S.mod, opriri: S.opriri, marfa: S.marfa, planId: S.planId, modificat: S.modificat })); } catch (e) { /* fără stocare */ } };
       const citeste = () => { try { const j = JSON.parse(localStorage.getItem(CHEIE) || 'null'); if (j && typeof j === 'object') return j; } catch (e) { /* nimic */ } return null; };
       // Pictogramele de pe butoane (doar desen, ca în machetă).
       const ROATA = (x, y) => ' M' + (x - 1.8) + ' ' + y + 'a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0';
@@ -7157,7 +7157,10 @@ const pozitii = await r.json();</code></pre>
           return;
         }
         const tinut = citeste();
-        if (tinut && !S.marfa.length) { S.mod = tinut.mod || 'opriri'; S.opriri = Array.isArray(tinut.opriri) && tinut.opriri.length ? tinut.opriri : ['Oprirea 1']; S.marfa = Array.isArray(tinut.marfa) ? tinut.marfa : []; S.remorcaId = tinut.remorcaId || ''; }
+        if (tinut && !S.marfa.length) { S.mod = tinut.mod || 'opriri'; S.opriri = Array.isArray(tinut.opriri) && tinut.opriri.length ? tinut.opriri : ['Oprirea 1']; S.marfa = Array.isArray(tinut.marfa) ? tinut.marfa : []; S.remorcaId = tinut.remorcaId || ''; S.planId = tinut.planId || null; S.modificat = !!tinut.modificat; }
+        if (S.planId) {
+          try { const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(S.planId)); if (r.ok) S.plan = (await r.json()).plan; else { S.planId = null; S.plan = null; S.modificat = false; } } catch (e) { /* rămâne cum era */ }
+        }
         const vehs = S.flota.vehicule || [];
         if (!vehs.some((v) => v.imei === S.imei)) {
           const pref = tinut && vehs.find((v) => v.imei === tinut.imei);
@@ -7177,7 +7180,10 @@ const pozitii = await r.json();</code></pre>
         host.innerHTML =
           '<div class="sim-cap"><div><div class="sim-mut">Flotă</div><div class="sim-titlu">Simulator de încărcare</div></div>' +
           '<span class="sim-flex"></span><span class="sim-stare" id="sim-stare"></span>' +
-          '<button class="sim-btn" id="sim-pdf" onclick="simPdf()"><i class="fas fa-file-pdf"></i> Descarcă PDF</button></div>' +
+          '<button class="sim-btn" onclick="simPlanuri()"><i class="fas fa-list-check"></i> Planuri</button>' +
+          '<button class="sim-btn" id="sim-pdf" onclick="simPdf()"><i class="fas fa-file-pdf"></i> Descarcă PDF</button>' +
+          '<button class="sim-btn sim-pri" id="sim-trimite" onclick="simTrimite()"><i class="fas fa-paper-plane"></i> Trimite șoferului</button></div>' +
+          '<div id="sim-planbar"></div>' +
           '<div class="sim-card sim-alegeri" id="sim-alegeri"></div>' +
           '<div class="sim-ind" id="sim-ind"></div>' +
           '<div class="sim-corp">' +
@@ -7196,7 +7202,7 @@ const pozitii = await r.json();</code></pre>
         svg.addEventListener('pointermove', (e) => { if (!trag) return; S.yaw = (((trag.yaw + (e.clientX - trag.x) * 0.45) % 360) + 360) % 360; deseneaza(); });
         const gata = () => { trag = null; };
         svg.addEventListener('pointerup', gata); svg.addEventListener('pointercancel', gata);
-        alegeri(); marfa(); rezultat();
+        alegeri(); marfa(); rezultat(); planBar();
       }
 
       // ─── Alegerile: vehiculul, semiremorca / remorca, cum se așază, opririle ───
@@ -7290,7 +7296,8 @@ const pozitii = await r.json();</code></pre>
 
       // ─── Serverul socotește; aici doar se trimite și se arată ───
       const corp = () => ({ imei: S.imei, remorca_id: S.remorcaId || null, mod: S.mod, opriri: S.opriri, marfa: S.marfa });
-      function simuleaza(acum) {
+      function simuleaza(acum, faraSchimbare) {
+        if (S.planId && !faraSchimbare && !S.modificat) { S.modificat = true; planBar(); }
         tine();
         clearTimeout(S.timer);
         S.timer = setTimeout(async () => {
@@ -7311,6 +7318,7 @@ const pozitii = await r.json();</code></pre>
         const st = $s('sim-stare');
         if (st) { st.className = 'sim-stare ' + TON(R ? R.stare.fel : 'gri'); st.textContent = R ? R.stare.text : (S.eroare ? 'De corectat' : '…'); }
         const pdf = $s('sim-pdf'); if (pdf) pdf.disabled = !R;
+        const tr = $s('sim-trimite'); if (tr) tr.disabled = !R || !S.marfa.length;
         const ind = $s('sim-ind');
         if (ind) ind.innerHTML = R ? R.indicatori.map((x) => '<div class="sim-card sim-i"><span class="sim-lbl">' + esc(x.et) + '</span>' +
           '<div class="sim-iv"><span class="sim-ival ' + TON(x.ton) + '">' + esc(x.val) + '</span><span class="sim-mut">' + esc(x.tot) + '</span></div>' +
@@ -7349,16 +7357,144 @@ const pozitii = await r.json();</code></pre>
         finally { if (b) b.disabled = !S.rez; }
       };
 
-      // ─── Desenul (lateral, de sus, 3D rotibil) — portat din macheta aprobată; doar desen, din ce trimite serverul ───
-      function _mix(hex, spreAlb, t) {
+      // ─── Planurile (pasul 4, 12.10): se salvează alegerile, se trimit unui om al firmei, el apasă „Am încărcat" ───
+      // Starea și textele le scrie serverul (incarcare.stareaPlanului); aici doar se arată și se trimite.
+      function _ov() {
+        let o = $s('sim-ov');
+        if (!o) {
+          o = document.createElement('div'); o.id = 'sim-ov'; o.className = 'sim-ov';
+          o.addEventListener('click', (e) => { if (e.target === o) simInchide(); });
+          o.innerHTML = '<div class="sim sim-ovc" id="sim-ovc" role="dialog" aria-modal="true"></div>';
+          document.body.appendChild(o);
+        }
+        o.style.display = 'flex';
+        return $s('sim-ovc');
+      }
+      window.simInchide = function () { const o = $s('sim-ov'); if (o) o.style.display = 'none'; };
+      const _cap = (titlu) => '<div class="sim-ovcap"><span class="sim-mtit">' + titlu + '</span><button class="sim-ib" onclick="simInchide()" aria-label="Închide">✕</button></div>';
+      function planBar() {
+        const b = $s('sim-planbar'); if (!b) return;
+        if (!S.planId || !S.plan) { b.innerHTML = ''; return; }
+        const st = S.plan.stare || {};
+        b.innerHTML = '<div class="sim-card sim-pbar"><span class="sim-dot ' + TON(st.fel) + '" style="background:currentColor"></span>' +
+          '<span class="sim-pbt"><b>' + esc(S.plan.nume || ('Planul #' + S.plan.id)) + ' · ' + esc(S.plan.vehicul || '') + '</b><span class="sim-mut">' +
+          esc(S.modificat ? 'Ai schimbat planul — la „Trimite șoferului” pleacă din nou.' : st.text) + '</span></span>' +
+          '<button class="sim-btn sim-mic" onclick="simPlanNou()" title="Începe un plan de încărcare nou (marfa rămâne pe ecran)">Începe altul</button></div>';
+      }
+      window.simPlanNou = function () { S.planId = null; S.plan = null; S.modificat = false; tine(); planBar(); };
+      window.simPlanuri = async function () {
+        const c = _ov();
+        c.innerHTML = _cap('Planurile de încărcare') + '<div class="sim-mut">Se încarcă…</div>';
+        let l = [];
+        try { const r = await fetch('/api/incarcare/planuri'); l = r.ok ? await r.json() : []; } catch (e) { l = []; }
+        c.innerHTML = _cap('Planurile de încărcare') + (l.length ? '<div class="sim-plist">' + l.map((p) => '<div class="sim-prow"><span class="sim-dot ' + TON(p.stare.fel) + '" style="background:currentColor"></span>' +
+          '<span class="sim-pbt"><b>' + esc(p.vehicul) + ' · ' + esc(p.nume || ('Planul #' + p.id)) + '</b><span class="sim-mut">' + esc(p.stare.text) + (p.creat_de_nume ? ' · făcut de ' + esc(p.creat_de_nume) : '') + '</span></span>' +
+          (p.alMeu && p.stare.cheie !== 'ciorna' ? '<button class="sim-btn sim-mic" onclick="simPlanSofer(' + p.id + ')">Pentru mine</button>' : '') +
+          '<button class="sim-btn sim-mic" onclick="simDeschidePlan(' + p.id + ')">Deschide</button>' +
+          '<button class="sim-ib" onclick="simStergePlan(' + p.id + ')" aria-label="Șterge planul" title="Șterge planul"><i class="fas fa-trash"></i></button></div>').join('') + '</div>'
+          : '<div class="sim-mut">Niciun plan încă. Așezi marfa și apeși „Trimite șoferului”: planul se salvează și pleacă.</div>');
+      };
+      window.simDeschidePlan = async function (id) {
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(id));
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { if (window.raxToast) window.raxToast(j.error || 'Planul nu s-a putut deschide.', 'err'); return; }
+        const p = j.plan;
+        if (currentView !== 'incarcare') { showView('incarcare'); await new Promise((ok) => setTimeout(ok, 50)); }
+        if (!S.flota) await window.renderIncarcarePage();
+        S.planId = p.id; S.plan = p; S.modificat = false;
+        S.mod = p.mod || 'opriri'; S.opriri = (p.opriri && p.opriri.length) ? p.opriri.slice() : ['Oprirea 1']; S.marfa = (p.marfa || []).map((x) => Object.assign({}, x));
+        alegeVehicul(p.imei, true); S.remorcaId = p.remorca_id ? String(p.remorca_id) : '';
+        S.deschis = -1;
+        simInchide(); schelet(); simuleaza(true, true);
+      };
+      window.simStergePlan = async function (id) {
+        if (!await raConfirm('Ștergi planul? Dacă l-ai trimis, șoferul nu-l mai vede.')) return;
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(id), { method: 'DELETE' });
+        if (!r.ok) { const j = await r.json().catch(() => ({})); if (window.raxToast) window.raxToast(j.error || 'Nu s-a putut șterge.', 'err'); return; }
+        if (String(S.planId) === String(id)) simPlanNou();
+        simPlanuri();
+      };
+      // „Trimite șoferului": se salvează (planul nou, sau peste cel deschis), apoi se alege omul.
+      window.simTrimite = async function () {
+        const b = $s('sim-trimite'); if (b) b.disabled = true;
+        try {
+          if (!S.planId || S.modificat) {
+            const r = await fetch('/api/incarcare/planuri' + (S.planId ? '/' + encodeURIComponent(S.planId) : ''), { method: S.planId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corp()) });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { if (window.raxToast) window.raxToast(j.error || 'Planul nu s-a putut salva.', 'err'); return; }
+            S.planId = j.id; S.plan = j; S.modificat = false; tine(); planBar();
+          }
+          const v = vehAles();
+          const q = currentUser && currentUser.isSuper && v ? '?company_id=' + encodeURIComponent(v.company_id) : '';
+          const oameni = await fetch('/api/incarcare/destinatari' + q).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+          const c = _ov();
+          const ales = S.plan && S.plan.trimis_catre;
+          c.innerHTML = _cap('Cui trimiți planul?') +
+            '<div class="sim-mut">Omul ales îl vede în aplicația de pe telefon (Meniu → Planurile mele de încărcare) și primește un anunț. Trebuie să aibă cont în aplicație.</div>' +
+            (oameni.length ? '<div class="sim-plist">' + oameni.map((o) => '<label class="sim-prow sim-om"><input type="radio" name="sim-catre" value="' + o.id + '"' + (o.id === ales ? ' checked' : '') + '>' +
+              '<span class="sim-pbt"><b>' + esc(o.nume) + '</b><span class="sim-mut">' + esc(o.rol) + '</span></span></label>').join('') + '</div>' +
+              '<div class="sim-chips" style="justify-content:flex-end"><button class="sim-btn" onclick="simInchide()">Renunță</button><button class="sim-btn sim-pri" onclick="simTrimiteLa()"><i class="fas fa-paper-plane"></i> Trimite</button></div>'
+              : '<div class="sim-mut">Firma n-are încă oameni cu cont în aplicație. Îi adaugi din Setări → Utilizatori.</div>');
+        } finally { if (b) b.disabled = !S.rez; }
+      };
+      window.simTrimiteLa = async function () {
+        const x = document.querySelector('input[name="sim-catre"]:checked');
+        if (!x) { if (window.raxToast) window.raxToast('Alege cui trimiți planul.', 'warn'); return; }
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(S.planId) + '/trimite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: Number(x.value) }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { if (window.raxToast) window.raxToast(j.error || 'Planul nu s-a putut trimite.', 'err'); return; }
+        S.plan = j; S.modificat = false; tine(); planBar(); simInchide();
+        if (window.raxToast) window.raxToast('Trimis lui ' + (j.trimis_catre_nume || '') + '.', 'ok');
+      };
+      // Planul văzut de cel căruia i s-a trimis (ca pe telefon): ordinea de încărcare, osiile și cele două butoane.
+      window.simPlanSofer = async function (id) {
+        const c = _ov();
+        c.innerHTML = _cap('Planul de încărcare') + '<div class="sim-mut">Se încarcă…</div>';
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(id));
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { c.innerHTML = _cap('Planul de încărcare') + '<div class="sim-mut">' + esc(j.error || 'Planul nu s-a putut deschide.') + '</div>'; return; }
+        const p = j.plan, R = j.rezultat, st = p.stare || {};
+        if (!S.meta) { try { S.meta = await fetch('/api/incarcare/meta').then((x) => x.json()); } catch (e) { /* culorile rămân cele de bază */ } }
+        c.innerHTML = _cap('Planul de încărcare') +
+          '<div class="sim-mut">' + esc(p.vehicul) + (R ? ' · ' + esc(R.titlu) : '') + '</div>' +
+          (R ? '<div class="sim-mut"><b>' + esc(R.rezumatSofer.greutate) + '</b> · ' + esc(R.rezumatSofer.liber) + ' din ' + esc(R.rezumatSofer.lungime) + '</div>' +
+            '<svg class="sim-svg" viewBox="0 0 960 330" role="img" aria-label="Văzut de sus">' + _simSvg(R, 'sus', 32, culoare) + '</svg>' +
+            '<div class="sim-mtit">Ordinea de încărcare</div><ol class="sim-pasi">' + R.pasi.map((x) => '<li><span class="sim-pnr" style="background:' + x.culoare + '">' + x.nr + '</span><span><b>' + esc(x.text) + '</b><span class="sim-mut">' + esc(x.detaliu) + '</span></span></li>').join('') + '</ol>' +
+            (R.rezumatSofer.ramane ? '<div class="sim-msg ton-rosu">' + esc(R.rezumatSofer.ramane) + '</div>' : '') +
+            '<div class="sim-msg ' + TON(R.osiiRezumat.fel) + '"><b>' + esc(R.osiiRezumat.titlu) + '</b><br>' + esc(R.osiiRezumat.text) + '</div>'
+            : '<div class="sim-msg ton-rosu">' + esc(j.eroare || '') + '</div>') +
+          '<div class="sim-mut">' + esc(j.notaSofer || '') + '</div>' +
+          '<div class="sim-msg ' + TON(st.fel) + '">' + esc(st.text) + '</div>' +
+          (p.alMeu ? '<div class="sim-chips" style="justify-content:flex-end"><button class="sim-btn" onclick="simProblema(' + p.id + ')"><i class="fas fa-triangle-exclamation"></i> Am o problemă</button>' +
+            '<button class="sim-btn sim-pri" onclick="simIncarcat(' + p.id + ')"><i class="fas fa-check"></i> Am încărcat</button></div>' : '');
+      };
+      window.simIncarcat = async function (id) {
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(id) + '/incarcat', { method: 'POST' });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { if (window.raxToast) window.raxToast(j.error || 'Nu s-a putut trimite.', 'err'); return; }
+        if (window.raxToast) window.raxToast('Dispecerul a primit anunțul.', 'ok');
+        simPlanSofer(id);
+      };
+      window.simProblema = async function (id) {
+        const text = window.prompt('Ce s-a întâmplat? (ajunge la dispecer)');
+        if (!text || !text.trim()) return;
+        const r = await fetch('/api/incarcare/planuri/' + encodeURIComponent(id) + '/problema', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text.trim() }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { if (window.raxToast) window.raxToast(j.error || 'Nu s-a putut trimite.', 'err'); return; }
+        if (window.raxToast) window.raxToast('Dispecerul a primit anunțul.', 'ok');
+        simPlanSofer(id);
+      };
+
+      // ── începe „desenul simulatorului" ──
+      // Desenul (lateral, de sus, 3D rotibil) — portat din macheta aprobată; doar desen, din ce trimite serverul. CURAT:
+      // primește rezultatul simulării, vederea, unghiul și culoarea unei opriri și întoarce SVG-ul. Telefonul are aceeași
+      // funcție (mobile/src/lib/simDesen.ts); verify_plan_incarcare.js le rulează pe amândouă și cere același desen.
+      function _simMix(hex, spreAlb, t) {
         const a = parseInt(hex.slice(1), 16), r = (a >> 16) & 255, g = (a >> 8) & 255, b = a & 255, T = spreAlb ? 255 : 0;
         return 'rgb(' + Math.round(r + (T - r) * t) + ',' + Math.round(g + (T - g) * t) + ',' + Math.round(b + (T - b) * t) + ')';
       }
-      function deseneaza() {
-        const svg = $s('sim-svg'); if (!svg) return;
-        const R = S.rez;
-        svg.style.cursor = S.view === '3d' ? 'grab' : 'default';
-        if (!R) { svg.innerHTML = ''; return; }
+      function _simSvg(R, view, yaw, culoare) {
+        if (!R) return '';
         const VBW = 960, VBH = 330, bodies = R.corpuri, boxes = R.cutii, trac = R.trac;
         const axX = R.axe.map((a) => a.x);
         const cabLen = trac ? 2.3 : (R.vehicul.fel === 'duba35' ? 1.5 : 2.1), gap = trac ? 0.45 : 0.12;
@@ -7369,7 +7505,7 @@ const pozitii = await r.json();</code></pre>
         const back = [], front = [], wheels = [], lines = [], texts = []; let polys = [];
         const P2s = (q) => q[0].toFixed(1) + ',' + q[1].toFixed(1);
         const remBara = bodies[1] ? [bodies[0].L, bodies[1].x0] : null;
-        if (S.view === 'lat') {
+        if (view === 'lat') {
           const oy = VBH - 58, totLen = (cabX1 - cabX0) + endX + Wmax * 0.35;
           const s = Math.min((VBW - 60) / totLen, (oy - 16) / (Math.max(Hmax, cabH) * 0.8 + Wmax * 0.5), 95);
           const ox = 30 - cabX0 * s + ((VBW - 60) - totLen * s) / 2;
@@ -7395,12 +7531,12 @@ const pozitii = await r.json();</code></pre>
           });
           boxes.slice().sort((p, q) => (q.y0 - p.y0) || (p.z0 - q.z0) || ((bodies[p.c].x0 * 100 + p.x0) - (bodies[q.c].x0 * 100 + q.x0))).forEach((bx) => {
             const c = culoare(bx.oprire), X = bodies[bx.c].x0;
-            polys = polys.concat(faces(X + bx.x0 / 100, X + bx.x1 / 100, bx.y0 / 100, bx.y1 / 100, bx.z0 / 100, bx.z1 / 100, c, _mix(c, true, 0.28), _mix(c, false, 0.3), 'sim-cutie'));
+            polys = polys.concat(faces(X + bx.x0 / 100, X + bx.x1 / 100, bx.y0 / 100, bx.y1 / 100, bx.z0 / 100, bx.z1 / 100, c, _simMix(c, true, 0.28), _simMix(c, false, 0.3), 'sim-cutie'));
           });
           const r = 0.48 * s * 0.85;
           axX.forEach((x) => { const q = pr(x, 0, 0); wheels.push({ cx: q[0], cy: q[1] + r * 0.35, r }); });
           if (R.kg > 0) { const c1 = pr(R.xcw, 0, 0), c2 = pr(R.xcw, bodies[0].W, 0); lines.push({ cls: 'sim-cg', a: c1, b: c2 }); }
-        } else if (S.view === 'sus') {
+        } else if (view === 'sus') {
           const totS = (cabX1 - cabX0) + endX;
           const s2 = Math.min((VBW - 60) / totS, (VBH - 90) / Wmax);
           const ox2 = 30 - cabX0 * s2 + ((VBW - 60) - totS * s2) / 2, oy2 = (VBH - Wmax * s2) / 2 + 4;
@@ -7413,14 +7549,14 @@ const pozitii = await r.json();</code></pre>
             const c = culoare(bx.oprire), X = bodies[bx.c].x0;
             const x0 = X + bx.x0 / 100, x1 = X + bx.x1 / 100, y0 = bx.y0 / 100, y1 = bx.y1 / 100;
             polys.push({ cls: 'sim-cutie', fill: c, pts: rect(x0, y0, x1, y1) });
-            if (bx.z0 > 0) { const ix = (x1 - x0) * 0.22, iy = (y1 - y0) * 0.22; polys.push({ cls: 'sim-cutie', fill: _mix(c, true, 0.45), pts: rect(x0 + ix, y0 + iy, x1 - ix, y1 - iy) }); }
+            if (bx.z0 > 0) { const ix = (x1 - x0) * 0.22, iy = (y1 - y0) * 0.22; polys.push({ cls: 'sim-cutie', fill: _simMix(c, true, 0.45), pts: rect(x0 + ix, y0 + iy, x1 - ix, y1 - iy) }); }
           });
           axX.forEach((x) => { lines.push({ cls: 'sim-axa', a: q2(x, -0.22), b: q2(x, Wmax + 0.22) }); });
           if (R.kg > 0) lines.push({ cls: 'sim-cg', a: q2(R.xcw, 0), b: q2(R.xcw, Wmax) });
           const tf = q2(cabX0, -0.35), tu = q2(endX, -0.35), ta = q2(axX[axX.length - 1], Wmax + 0.62);
           texts.push({ x: tf[0], y: tf[1], a: 'start', t: 'față' }, { x: tu[0], y: tu[1], a: 'end', t: 'uși' }, { x: ta[0], y: ta[1], a: 'middle', t: 'axe' });
         } else {
-          const phi = S.yaw * Math.PI / 180, cp = Math.cos(phi), sp = Math.sin(phi), SA = 0.55, CA = 0.83;
+          const phi = yaw * Math.PI / 180, cp = Math.cos(phi), sp = Math.sin(phi), SA = 0.55, CA = 0.83;
           const cxw = (cabX0 + endX) / 2, cyw = Wmax / 2;
           const r3 = (x, y, z) => { const dx = x - cxw, dy = y - cyw, yr = dx * sp + dy * cp; return [dx * cp - dy * sp, yr * SA - z * CA, yr]; };
           let mnU = 1e9, mxU = -1e9, mnV = 1e9, mxV = -1e9;
@@ -7435,11 +7571,11 @@ const pozitii = await r.json();</code></pre>
           const box3 = (x0, x1, y0, y1, z0, z1, baza, cls, clsF) => {
             const f = [], cut = cls === 'sim-cutie';
             const ch = (nume, fill, pp) => f.push(cut ? { cls, fill, pts: pts3(pp) } : { cls: clsF[nume], pts: pts3(pp) });
-            if (sp > 0.001) ch('cap', cut ? _mix(baza, false, 0.3) : null, [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]]);
-            if (sp < -0.001) ch('cap', cut ? _mix(baza, false, 0.3) : null, [[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]]);
+            if (sp > 0.001) ch('cap', cut ? _simMix(baza, false, 0.3) : null, [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]]);
+            if (sp < -0.001) ch('cap', cut ? _simMix(baza, false, 0.3) : null, [[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]]);
             if (cp > 0.001) ch('lat', baza, [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]);
             if (cp < -0.001) ch('lat', baza, [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]]);
-            ch('sus', cut ? _mix(baza, true, 0.28) : null, [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]);
+            ch('sus', cut ? _simMix(baza, true, 0.28) : null, [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]);
             return f;
           };
           const cab = box3(cabX0, cabX1, bodies[0].W * 0.03, bodies[0].W * 0.97, 0.15, cabH, null, 'cab', { cap: 'sim-cab3', lat: 'sim-cab1', sus: 'sim-cab2' });
@@ -7462,12 +7598,18 @@ const pozitii = await r.json();</code></pre>
           if (R.kg > 0) lines.push({ cls: 'sim-cg', a: p3(R.xcw, 0, 0), b: p3(R.xcw, Wmax, 0) });
         }
         const poli = (p) => '<polygon class="' + p.cls + '" points="' + p.pts + '"' + (p.fill ? ' fill="' + p.fill + '"' : '') + '></polygon>';
-        svg.innerHTML = back.map(poli).join('') +
+        return back.map(poli).join('') +
           wheels.map((w) => '<circle class="sim-roata" cx="' + w.cx.toFixed(1) + '" cy="' + w.cy.toFixed(1) + '" r="' + w.r.toFixed(1) + '"></circle>').join('') +
           polys.map(poli).join('') +
           lines.map((l) => '<line class="' + l.cls + '" x1="' + l.a[0].toFixed(1) + '" y1="' + l.a[1].toFixed(1) + '" x2="' + l.b[0].toFixed(1) + '" y2="' + l.b[1].toFixed(1) + '"></line>').join('') +
           front.map(poli).join('') +
           texts.map((t) => '<text class="sim-tl" x="' + t.x.toFixed(1) + '" y="' + t.y.toFixed(1) + '" text-anchor="' + t.a + '">' + t.t + '</text>').join('');
+      }
+      // ── sfârșit „desenul simulatorului" ──
+      function deseneaza() {
+        const svg = $s('sim-svg'); if (!svg) return;
+        svg.style.cursor = S.view === '3d' ? 'grab' : 'default';
+        svg.innerHTML = _simSvg(S.rez, S.view, S.yaw, culoare);
       }
     })();
     // ── sfârșit „simulatorul de încărcare" ──
@@ -12986,7 +13128,11 @@ const pozitii = await r.json();</code></pre>
         // Anunțurile noastre de lucru (30.09) duc drept la treaba de făcut, nu în modalul cu hartă: aparatele noi, bifate
         // în Dispozitive → Neasignate; montajul de facturat, cu factura pregătită.
         const isAparateNoi = (n.type === 'aparate_noi'), isMontajFact = (n.type === 'montaj_de_facturat');
-        const clickAttr = isAparateNoi
+        // Planurile de încărcare (12.10): șoferul deschide planul primit; dispecerul, planul în simulator.
+        const isPlan = /^plan_(incarcare|incarcat|problema)$/.test(n.type);
+        const clickAttr = isPlan
+          ? `onclick="notifPlan(${Number(n.id)}, '${n.type}')" title="Deschide planul de încărcare"`
+          : isAparateNoi
           ? `onclick="notifAparateNoi(${Number(n.id)})" title="Deschide Dispozitive → Neasignate, cu aparatele bifate"`
           : isMontajFact
           ? `onclick="notifMontajDeFacturat(${Number(n.id)})" title="Pregătește factura montajului"`
@@ -13028,6 +13174,13 @@ const pozitii = await r.json();</code></pre>
       closeNotifications();
       if (typeof showView === 'function') showView('administrare');
       setTimeout(function () { if (window.raxDevDeschideNeasignate) raxDevDeschideNeasignate({ imeis: d.imeis || [], firma: d.company_id != null ? d.company_id : null }); }, 180);
+    }
+    function notifPlan(id, tip) {
+      const d = _notifDate[id] || {};
+      closeNotifications();
+      if (!d.planId) return;
+      if (tip === 'plan_incarcare') { if (window.simPlanSofer) window.simPlanSofer(d.planId); }
+      else if (window.simDeschidePlan) window.simDeschidePlan(d.planId);
     }
     function notifMontajDeFacturat(id) {
       const d = _notifDate[id] || {};
@@ -20858,7 +21011,7 @@ const pozitii = await r.json();</code></pre>
       // (e aceeași discuție, iar bula ar acoperi caseta de scris).
       var ni = $('nav-insight'); if (ni) ni.style.display = (feats.ai_assistant !== false) ? '' : 'none';
       // Simulatorul de încărcare: modulul firmei (după flotă sau ales de noi); noi îl vedem mereu.
-      var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || feats.incarcare === true) ? '' : 'none';
+      var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || (feats.incarcare === true && ((me.permissions && me.permissions.manageFleet) || me.role === 'dispatcher'))) ? '' : 'none';
       if (typeof currentView !== 'undefined' && currentView === 'insight') $('rax-fabs').style.display = 'none';
     }
     window._raxUpdateFabs = updateFabs;   // showView o cheamă când ieși din secțiunea RA Insight
