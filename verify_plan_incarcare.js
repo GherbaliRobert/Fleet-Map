@@ -10,7 +10,8 @@
 //   1. textele planului (incarcare.js): starea (netrimis / trimis / încărcat / problemă), ora pe ora României, nota de
 //      sub plan, pașii (în ordinea în care se încarcă), ce rămâne la rampă, rezumatul osiilor și al spațiului;
 //   2. desenul e UNUL: blocul paginii („desenul simulatorului") și copia telefonului (mobile/src/lib/simDesen.ts) dau
-//      ACELAȘI SVG pe aceleași simulări (autotractor, camion, camion + remorcă, dubă; trei vederi; zece unghiuri);
+//      ACELAȘI SVG pe aceleași simulări (autotractor, camion, camion + remorcă, dubă; trei vederi; zece unghiuri); fiecare
+//      piesă are culori pe ambele teme (web + telefon); hârtia PDF pune pe pagină ACELAȘI desen (incarcare_pdf.js);
 //   3. pagina: „Trimite șoferului", planurile, fereastra șoferului, anunțurile (notifPlan); pagina nu socotește;
 //   4. telefonul: ecranele (simulatorul, planul șoferului, lista), rutele, meniul, adresele (aceleași ca anunțurile),
 //      pe aceleași rute ale serverului; telefonul nu socotește; culorile au pereche pe ambele teme (contrast măsurat);
@@ -159,6 +160,44 @@ T('culoarea unei opriri se alege la fel pe web și pe telefon (din culorile trim
   /const culoare = \(n\) => \{ const c = \(S\.meta && S\.meta\.culoriOpriri\) \|\| \['#3B82F6'\]; return c\[\(Math\.max\(1, n\) - 1\) % c\.length\]; \};/.test(html) &&
   /const culoare = \(n: number\) => \{ const c = \(meta && meta\.culoriOpriri\) \|\| \['#3B82F6'\]; return c\[\(Math\.max\(1, n\) - 1\) % c\.length\]; \};/.test(M.simulator) &&
   /const culoare = \(n: number\) => culori\[\(Math\.max\(1, n\) - 1\) % culori\.length\];/.test(M.sofer) && /m\.culoriOpriri/.test(M.sofer));
+// 13.10 (Robert: „mai lucrează la desenul mașinii" + „da" la hârtie): fiecare piesă a desenului are culorile ei pe AMBELE
+// teme, pe web și pe telefon (altfel iese neagră), iar hârtia PDF pune pe pagină ACELAȘI desen — citit din pagină, cu
+// culorile temei deschise — nu un al doilea.
+const claseDesen = {};
+if (WEB.simSvg) CAZURI.forEach(([, R]) => VEDERI.forEach((v) => [0, 32, 215, 300].forEach((y) => {
+  (WEB.simSvg(R, v, y, culoare).match(/class="sim-[\w-]+"/g) || []).forEach((m) => { claseDesen[m.slice(7, -1)] = 1; });
+})));
+const CLASE = Object.keys(claseDesen);
+const areRegula = (k) => [new RegExp('(^|\\}\\s*|,\\s*)\\.sim-svg \\.' + k + '\\b', 'm').test(css), new RegExp('body\\.dark \\.sim-svg \\.' + k + '\\b').test(css),
+  new RegExp('(^|\\}\\s*|,\\s*)\\.ts-svg \\.' + k + '\\b', 'm').test(M.css), new RegExp(':root\\[data-theme="light"\\] \\.ts-svg \\.' + k + '\\b').test(M.css)];
+const faraCuloare = CLASE.filter((k) => !areRegula(k).every(Boolean));
+T('fiecare piesă a desenului (' + CLASE.length + ' de clase) are culori pe ambele teme, pe web și pe telefon', CLASE.length >= 35 && !faraCuloare.length,
+  CLASE.length + ' · ' + faraCuloare.map((k) => k + ' ' + areRegula(k).map((x) => (x ? '✓' : '✗')).join('')).join(', '));
+const PDFP = require('./incarcare_pdf.js');
+const DP = PDFP.desenPagina();
+const faraPeHartie = CLASE.filter((k) => !(DP && DP.stil[k] && (DP.stil[k].fill || DP.stil[k].stroke)));
+T('hârtia citește desenul din pagină (blocul „desenul simulatorului") și culorile temei deschise din app.css, pentru fiecare piesă',
+  !!DP && typeof DP.simSvg === 'function' && !!DP.stil._fond && !faraPeHartie.length, DP ? faraPeHartie.join(', ') : 'desenul nu s-a încărcat');
+if (DP && WEB.simSvg) {
+  const PDFDocument = require('pdfkit');
+  const cate = (s, el) => (s.match(new RegExp('<' + el + ' ', 'g')) || []).length;
+  const rau = [];
+  CAZURI.forEach(([nume, R]) => {
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+    doc.registerFont('Nunito', path.join(ROOT, 'fonts', 'DejaVuSans.ttf'));
+    doc.registerFont('Nunito-Bold', path.join(ROOT, 'fonts', 'DejaVuSans-Bold.ttf'));
+    let poli = 0, pagini = 1;
+    const p0 = doc.polygon.bind(doc);
+    doc.polygon = function () { poli++; return p0.apply(null, arguments); };
+    doc.on('pageAdded', () => { pagini++; });
+    PDFP.scriePlan(doc, R, { generatLa: ACUM });
+    doc.end();
+    const astept = cate(WEB.simSvg(R, 'sus', 32, culoare), 'polygon') + cate(WEB.simSvg(R, 'lat', 32, culoare), 'polygon');
+    if (poli !== astept || pagini !== 1) rau.push(nume + ': ' + poli + ' poligoane (ecranul: ' + astept + '), ' + pagini + ' pagini');
+  });
+  T('hârtia pune pe pagină exact poligoanele ecranului (de sus + lateral), pe o pagină, pe toate cele ' + CAZURI.length + ' simulări', !rau.length, rau.join('; '));
+}
+T('hârtia nu mai are al doilea desen (cabina dreptunghi, axele cerc, scara proprie)', !/doc\.rect\(X\(|doc\.circle\(X\(|const cabX1 = rez\.trac/.test(citeste('incarcare_pdf.js')));
 
 // ─── 3. Pagina ───────────────────────────────────────────────────────────────────────────────────────────────────
 sect('3. Pagina: „Trimite șoferului", planurile, fereastra șoferului, anunțurile');

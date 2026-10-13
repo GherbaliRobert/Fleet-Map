@@ -1911,16 +1911,27 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
 - **Pagina nu socotește** (blocul „simulatorul de încărcare", între repere): trimite alegerile și desenează ce primește.
   Presetările, modurile, culorile opririlor vin din `/api/incarcare/meta`. Desenul (lateral, de sus, 3D rotibil) e portat
   din macheta aprobată și citește corpurile, coletele și axele de la server. **Din 13.10 vehiculul arată a vehicul** (Robert:
-  „desenele mai realiste, cel puțin mașina arată rău"): cabina e un corp cu profil (`prisma` — profil x–z întins pe y; se
-  desenează doar fețele cu normala spre privitor, `V` pe vedere: lateral `[0.35, -1, 0.625]`, 3D `[sin, cos, SA/CA]`), cu
-  parbriz, geam, ușă, far, bară, aripă, oglinzi și față (grila, din 3D); duba are capotă (două corpuri convexe — un profil
-  concav s-ar acoperi singur). Sub corpuri: șasiul, rezervorul, picioarele semiremorcii, proțapul; roțile cu jantă (și în
-  3D, și de sus), umbra și drumul. Podeaua de marfă e la `G` deasupra drumului (1,15 m; duba 0,62). Orice clasă nouă din
-  desen primește culoare pe AMBELE teme, pe web (`app.css`, `.sim-svg`) ȘI pe telefon (`simulator.css`, `.ts-svg`). Planul în lucru se ține în
+  „desenele mai realiste, cel puțin mașina arată rău"; apoi „mai lucrează la desenul mașinii"): cabina e un corp cu profil
+  (`prisma` — profil x–z întins pe y; se desenează doar fețele cu normala spre privitor, `V` pe vedere: lateral
+  `[0.35, -1, 0.625]`, 3D `[sin, cos, SA/CA]`; capătul dinspre privitor se pune ULTIMUL, ca un profil cu scobituri — duba,
+  capotă + parbriz — să nu se acopere singur), rotunjită sus, cu parbriz, geam, ușă, mânere, trepte, partea de jos închisă
+  (`sim-cabjos`) și dunga, far, bară, aripă, oglinzi pe braț și față (grila, din 3D); deflectoarele (lateral la autotractor;
+  pe acoperiș când caroseria e cu peste 0,22 m mai înaltă decât cabina). Duba e dintr-o bucată (partea de jos continuă, cu
+  scobitura roții). Sub corpuri: șasiul, rama podelei, rezervorul cu chingi, picioarele semiremorcii, proțapul, bara din
+  spate; pe partea privitorului (`laturi`): aripile și apărătorile de noroi, bara laterală, lămpile galbene și cele roșii din
+  spate; roțile cu jantă (și în 3D, și de sus), umbra și drumul. Podeaua de marfă e la `G` deasupra drumului (1,15 m; duba
+  0,62). Orice clasă nouă din desen primește culoare pe AMBELE teme, pe web (`app.css`, `.sim-svg`) ȘI pe telefon
+  (`simulator.css`, `.ts-svg`) — păzit: proba adună clasele din desen și le caută în toate patru locurile. Planul în lucru se ține în
   `localStorage` (cu try/catch) — o comoditate, nu o salvare. Rândul `#nav-incarcare` (data-view) se arată din `updateFabs`
   — din pasul 4 doar celui care face planuri (vezi mai jos, `_incDispecer`).
-- **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește;
-  marfa și osiile trec pe pagina a doua doar dacă nu încap. Nume: „RA-Track - Plan de încărcare {număr} - {zi}.pdf”.
+- **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește.
+  **Desenul de pe hârtie E desenul ecranului** (13.10, Robert: „da"): `desenPagina()` citește blocul „desenul
+  simulatorului" din `public/index.html` (în vm) și culorile temei deschise din `app.css` (regulile `.sim-svg .sim-…` fără
+  `body.dark`; fondul din `.sim-svg`), apoi pune pe pagină poligoanele, liniile și etichetele SVG-ului — vederea de sus și
+  cea laterală, una lângă alta. NU scrie al doilea desen pe hârtie: schimbi desenul în pagină, se schimbă și pe hârtie (o
+  clasă fără culoare pe tema deschisă iese neagră și acolo). Fără desen citit, hârtia scrie „Desenul nu s-a putut încărca."
+  — nu desenează altul. Păzit de `verify_plan_incarcare.js` (aceleași poligoane, o pagină, pe 7 simulări).
+  Marfa și osiile trec pe pagina a doua doar dacă nu încap. Nume: „RA-Track - Plan de încărcare {număr} - {zi}.pdf”.
   Descărcarea = blob + `_numeDinAntet`.
 - Culorile: tonurile și structura desenului au pereche pe ambele teme (verdele pe alb = `#166534`, măsurat ≥ 4,5).
 - Păzit de `verify_simulator.js` (în `npm test`), inclusiv pe server pornit.

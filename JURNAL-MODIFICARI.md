@@ -300,6 +300,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
+### AMÂNDOI · Vehiculul din simulator, a doua trecere; planul PDF are același desen ca ecranul — `…`
+
+Robert (13.10): *„1, nu ne interesează / 2 da, dar mai lucrează la desenul mașinii"* (1 = atașamentele pentru utilaje — nu
+s-a făcut nimic; 2 = planul PDF desenat la fel ca ecranul).
+
+1. **Cabina** e rotunjită sus; partea de jos e închisă la culoare, până deasupra roții, cu o dungă verde; ușa are mâner,
+   în spatele ei e mânerul de urcare, sub ea trei trepte; oglinzile stau pe un braț. Autotractorul are deflectoarele
+   laterale din spatele cabinei; un camion cu caroseria mult mai înaltă decât cabina are deflector pe acoperiș.
+2. **Duba** e dintr-o bucată: capotă, parbriz culcat, acoperișul la nivelul caroseriei, partea de jos continuă până în
+   spate, cu scobitura roții, și lămpile din spate pe stâlpi.
+3. **Dedesubt și pe lateral:** rama podelei cu lămpi galbene, aripi și apărători de noroi la roțile din spate, bara de
+   protecție laterală și cea din spate, lămpile roșii, rezervorul rotunjit cu chingi, jantele cu două inele.
+4. **Planul PDF** desenează acum exact desenul de pe ecran (vederea de sus și cea laterală, una lângă alta), cu culorile
+   temei deschise. Înainte, hârtia avea desenul ei, cu cabina un dreptunghi. Tot pe o pagină.
+
+- **Ce am schimbat:** blocul „desenul simulatorului" din `public/index.html` și copia telefonului
+  (`mobile/src/lib/simDesen.ts`); culorile pieselor noi pe ambele teme (`public/css/app.css`,
+  `mobile/src/screens/simulator.css`); `incarcare_pdf.js` citește desenul din pagină și culorile din `app.css` (nu mai are
+  desen propriu). Cifrele simulării nu se schimbă.
+- **Probe:** `verify_plan_incarcare.js` (89; noi: fiecare piesă a desenului are culori pe ambele teme, pe web și pe telefon;
+  hârtia pune pe pagină exact poligoanele ecranului, pe o pagină, pe 7 simulări), `verify_simulator.js` (99),
+  `verify_flota_incarcare.js` (79). Văzut în imagini (lateral, 3D din spate și din față, de sus, ambele teme), pe PDF-ul
+  generat și în aplicația pornită — nicio piesă neagră.
+- **Ce vede fondatorul și clientul:** același lucru — desenul nou în simulator, în planul șoferului și pe planul PDF
+  descărcat. Pe telefon, cu APK-ul următor.
+
 ### AMÂNDOI · Emailurile cu sigla casei; semnătura; „Răspunde tuturor", „Redirecționează", „Șterge" la cele trimise — `43ca7a2`
 
 Robert (13.10): *„vreau să facem și un template de mail cu logo, vreau să putem face și forward, replay la mail, replay all,

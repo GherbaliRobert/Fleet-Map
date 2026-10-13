@@ -1,17 +1,18 @@
 // incarcare_pdf.js — planul de încărcare pe hârtie (simulatorul, pasul 3, 12.10; butonul „Descarcă PDF" din machetă).
 //
 // Primește REZULTATUL simulării (incarcare.simuleaza, aceleași cifre și texte ca pe ecran) și îl desenează: cifrele de sus,
-// desenul văzut de sus și din lateral, marfa, greutatea pe osii și ce e de corectat. Nu socotește nimic: dacă ar socoti,
-// hârtia s-ar putea despărți de ecran. Logo-ul casei pentru fundal alb (logo-light.png), fonturile cu diacritice, numele
-// după regula casei: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf".
+// desenul văzut de sus și din lateral (același desen ca ecranul, citit din pagină), marfa, greutatea pe osii și ce e de
+// corectat. Nu socotește nimic: dacă ar socoti, hârtia s-ar putea despărți de ecran. Logo-ul casei pentru fundal alb
+// (logo-light.png), fonturile cu diacritice, numele după regula casei: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf".
 //
 // Fișierul e CURAT: nu atinge baza și nu știe de rute.
 
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
-const TEXT = '#1a2235', GRI = '#64748b', LINIE = '#cbd5e1', FUNDAL = '#f8fafc', PODEA = '#eef2f6';
+const TEXT = '#1a2235', GRI = '#64748b', LINIE = '#cbd5e1', FUNDAL = '#f8fafc';
 const TON = { verde: '#15803d', galben: '#b45309', rosu: '#b91c1c', gri: '#64748b' };
 
 let _logoBuf = null, _logoTried = false;
@@ -28,64 +29,117 @@ function numeFisier(rez, ms) {
   return 'RA-Track - Plan de încărcare' + (v ? ' ' + v : '') + ' - ' + _zi(ms || Date.now()) + '.pdf';
 }
 
-// O culoare mai deschisă (pentru stratul de deasupra, văzut de sus).
-function _deschis(hex, t) {
-  const a = parseInt(String(hex).slice(1), 16), r = (a >> 16) & 255, g = (a >> 8) & 255, b = a & 255;
-  const m = (c) => Math.round(c + (255 - c) * t);
-  return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')';
+// Desenul de pe hârtie = desenul de pe ecran (Robert, 13.10: „da" la „refac la fel și desenul de pe hârtie?"). Hârtia NU are
+// al doilea desen: citește funcția paginii (public/index.html, blocul „desenul simulatorului" — aceeași pe care o copiază și
+// telefonul) și culorile temei deschise din public/css/app.css, apoi pune pe hârtie poligoanele, liniile și etichetele pe
+// care le-ar pune ecranul. Se citesc o dată, la primul plan; fără ele, hârtia spune că desenul lipsește (nu desenează altul).
+const REPER_DESEN = ['// ── începe „desenul simulatorului" ──', '// ── sfârșit „desenul simulatorului" ──'];
+let _desenCitit = null;
+function desenPagina() {
+  if (_desenCitit) return _desenCitit.simSvg ? _desenCitit : null;
+  _desenCitit = {};
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const a = html.indexOf(REPER_DESEN[0]), b = html.indexOf(REPER_DESEN[1]);
+    if (a < 0 || b < a) return null;
+    const m = { exports: {} };
+    vm.runInNewContext(html.slice(a, b) + '\nmodule.exports = { simSvg: _simSvg };', { module: m }, { filename: 'index.html#desenul-simulatorului', timeout: 2000 });
+    const stil = _stilDesen(fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8'));
+    if (typeof m.exports.simSvg === 'function') _desenCitit = { simSvg: m.exports.simSvg, stil };
+  } catch (e) { _desenCitit = {}; }
+  return _desenCitit.simSvg ? _desenCitit : null;
 }
 
-// Desenul: corpurile (spațiile de încărcare), marfa colorată pe opriri, axele, centrul de greutate. `vedere` = 'sus' | 'lateral'.
+// Culorile temei deschise: regulile „.sim-svg .sim-…" (nu cele cu body.dark); fondul din „.sim-svg { background }".
+function _stilDesen(css) {
+  const st = { _fond: null };
+  css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/([^{}]+)\{([^}]*)\}/g, (tot, sel, decl) => {
+    const d = {};
+    decl.split(';').forEach((x) => { const i = x.indexOf(':'); if (i > 0) d[x.slice(0, i).trim()] = x.slice(i + 1).trim(); });
+    sel.split(',').map((s) => s.trim()).forEach((s) => {
+      const k = /^\.sim-svg \.(sim-[\w-]+)$/.exec(s);
+      if (k) st[k[1]] = Object.assign(st[k[1]] || {}, d);
+      else if (s === '.sim-svg' && d.background) st._fond = d.background;
+    });
+    return tot;
+  });
+  return st;
+}
+
+// O culoare din CSS / SVG pentru PDFKit: { c, a } (a = opacitatea), sau null pentru „none".
+function _culoare(c) {
+  if (!c || c === 'none' || c === 'transparent') return null;
+  let m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c);
+  if (m) return { c: '#' + (m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1]), a: 1 };
+  m = /^rgba?\(([^)]+)\)$/i.exec(c);
+  if (m) { const p = m[1].split(',').map((x) => parseFloat(x)); return { c: [p[0], p[1], p[2]], a: p.length > 3 ? p[3] : 1 }; }
+  return { c, a: 1 };
+}
+
+// Ce a scris desenul paginii, în ordine: poligoane, linii, etichete.
+function _formeSvg(svg) {
+  const out = [], at = (s, n) => { const m = new RegExp('(?:^|\\s)' + n + '="([^"]*)"').exec(s); return m ? m[1] : null; };
+  String(svg || '').replace(/<(polygon|line|text)\s([^>]*)>([^<]*)<\/\1>/g, (tot, el, a, t) => {
+    const o = { el, cls: at(a, 'class') };
+    if (el === 'polygon') { o.pts = at(a, 'points').split(' ').map((p) => p.split(',').map(Number)); o.fill = at(a, 'fill'); }
+    else if (el === 'line') { o.a = [+at(a, 'x1'), +at(a, 'y1')]; o.b = [+at(a, 'x2'), +at(a, 'y2')]; }
+    else { o.x = +at(a, 'x'); o.y = +at(a, 'y'); o.anchor = at(a, 'text-anchor'); o.t = t; }
+    out.push(o);
+    return tot;
+  });
+  return out;
+}
+
+// Desenul unei vederi ('sus' | 'lateral') într-o casetă w × h, cu fondul ecranului; desenul își păstrează proporțiile și
+// stă la mijloc. Întoarce înălțimea casetei.
 function _desen(doc, rez, x, y, w, h, vedere) {
+  const D = desenPagina();
+  if (!D) { doc.font('Nunito').fontSize(8).fillColor(GRI).text('Desenul nu s-a putut încărca.', x, y + 4, { width: w, lineBreak: false }); return 18; }
   const culori = {};
   (rez.legenda || []).forEach((l) => { culori[l.nr] = l.culoare; });
-  const corpuri = rez.corpuri || [];
-  const ultim = corpuri[corpuri.length - 1] || { x0: 0, L: 1, W: 1, H: 1 };
-  const axeX = (rez.axe || []).map((a) => a.x);
-  // Cabina, doar ca reper (ca pe ecran): cuprinde axa din față, se oprește în fața spațiului de încărcare.
-  const cabX1 = rez.trac ? -0.45 : -0.12, cabX0 = Math.min(cabX1 - (rez.trac ? 2.3 : 1.8), (axeX.length ? axeX[0] : 0) - 0.8);
-  const cabH = rez.trac ? 3.0 : Math.min(((corpuri[0] || {}).H || 2) + 0.25, 2.9);
-  const xMin = Math.min(cabX0, ...axeX) - 0.3, xMax = Math.max(ultim.x0 + ultim.L, ...axeX) + 0.4;
-  const adanc = vedere === 'sus' ? Math.max(...corpuri.map((B) => B.W)) : Math.max(cabH, ...corpuri.map((B) => B.H));
-  const s = Math.min(w / (xMax - xMin), (h - 18) / adanc);
-  const X = (m) => x + (m - xMin) * s;
-  const bazaY = vedere === 'sus' ? y + 4 : y + 4 + adanc * s;           // la lateral, podeaua e jos
-  const Y = (m) => (vedere === 'sus' ? bazaY + m * s : bazaY - m * s);
-  doc.save();
-  if (vedere === 'sus') doc.rect(X(cabX0), Y(0.03 * corpuri[0].W), (cabX1 - cabX0) * s, 0.94 * corpuri[0].W * s).lineWidth(0.6).fillAndStroke('#e2e8f0', LINIE);
-  else doc.rect(X(cabX0), Y(cabH), (cabX1 - cabX0) * s, (cabH - 0.15) * s).lineWidth(0.6).fillAndStroke('#e2e8f0', LINIE);
-  corpuri.forEach((B) => {
-    const ad = vedere === 'sus' ? B.W : B.H;
-    doc.rect(X(B.x0), vedere === 'sus' ? Y(0) : Y(ad), B.L * s, ad * s).fillAndStroke(PODEA, LINIE);
+  const forme = _formeSvg(D.simSvg(rez, vedere === 'sus' ? 'sus' : 'lat', 32, (n) => culori[n] || '#3B82F6'));
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  const ia = (p) => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); };
+  forme.forEach((f) => {
+    if (f.pts) f.pts.forEach(ia);
+    else if (f.a) { ia(f.a); ia(f.b); }
+    else { const l = f.anchor === 'end' ? -30 : (f.anchor === 'middle' ? -15 : 0); ia([f.x + l, f.y - 11]); ia([f.x + l + 30, f.y + 2]); }
   });
-  const cutii = (rez.cutii || []).slice().sort((p, q) => (vedere === 'sus' ? p.z0 - q.z0 : q.y0 - p.y0));
-  cutii.forEach((c) => {
-    const B = corpuri[c.c] || corpuri[0], baza = culori[c.oprire] || '#3B82F6';
-    const x0 = B.x0 + c.x0 / 100, x1 = B.x0 + c.x1 / 100;
-    if (vedere === 'sus') {
-      const y0 = c.y0 / 100, y1 = c.y1 / 100;
-      doc.rect(X(x0), Y(y0), (x1 - x0) * s, (y1 - y0) * s).lineWidth(0.4).fillAndStroke(c.z0 > 0 ? _deschis(baza, 0.45) : baza, '#ffffff');
+  const pad = 8, k = Math.min((w - 2 * pad) / Math.max(1, x1 - x0), (h - 2 * pad) / Math.max(1, y1 - y0));
+  const dx = x + (w - (x1 - x0) * k) / 2 - x0 * k, dy = y + (h - (y1 - y0) * k) / 2 - y0 * k;
+  const P = (p) => [dx + p[0] * k, dy + p[1] * k];
+  const fond = _culoare(D.stil._fond);
+  doc.save();
+  if (fond) doc.roundedRect(x, y, w, h, 6).fillColor(fond.c, fond.a).fill();
+  const linie = (s) => {
+    doc.lineWidth(Math.max(0.25, (parseFloat(s['stroke-width']) || 1) * k)).lineJoin('round');
+    const d = String(s['stroke-dasharray'] || '').split(/[\s,]+/).map(parseFloat).filter((v) => v > 0);
+    if (d.length) doc.dash(d[0] * k, { space: (d[1] || d[0]) * k }); else doc.undash();
+  };
+  forme.forEach((f) => {
+    const s = D.stil[f.cls] || {};
+    if (f.el === 'polygon') {
+      const fill = _culoare(f.fill || s.fill || '#000000'), stroke = _culoare(s.stroke);
+      doc.polygon(...f.pts.map(P));
+      if (fill && stroke) { linie(s); doc.fillColor(fill.c, fill.a).strokeColor(stroke.c, stroke.a).fillAndStroke(); }
+      else if (fill) doc.fillColor(fill.c, fill.a).fill();
+      else if (stroke) { linie(s); doc.strokeColor(stroke.c, stroke.a).stroke(); }
+    } else if (f.el === 'line') {
+      const stroke = _culoare(s.stroke);
+      if (!stroke) return;
+      linie(s);
+      doc.moveTo(...P(f.a)).lineTo(...P(f.b)).strokeColor(stroke.c, stroke.a).stroke();
     } else {
-      const z0 = c.z0 / 100, z1 = c.z1 / 100;
-      doc.rect(X(x0), Y(z1), (x1 - x0) * s, (z1 - z0) * s).lineWidth(0.4).fillAndStroke(baza, '#ffffff');
+      const fill = _culoare(s.fill) || { c: GRI, a: 1 }, fs2 = (parseFloat(s['font-size']) || 12) * k;
+      doc.font('Nunito-Bold').fontSize(fs2).fillColor(fill.c, fill.a);
+      const tw = doc.widthOfString(f.t), p = P([f.x, f.y]);
+      doc.text(f.t, p[0] - (f.anchor === 'end' ? tw : (f.anchor === 'middle' ? tw / 2 : 0)), p[1] - fs2 * 0.8, { lineBreak: false });
     }
   });
-  // Axele: liniuțe sub podea (lateral) sau punctate de-a curmezișul (de sus).
-  doc.lineWidth(0.8).strokeColor(GRI);
-  (rez.axe || []).forEach((a) => {
-    if (vedere === 'sus') doc.moveTo(X(a.x), y).lineTo(X(a.x), y + adanc * s + 8).dash(2, { space: 2 }).stroke().undash();
-    else doc.circle(X(a.x), bazaY + 6, 4.5).fillAndStroke('#ffffff', GRI);
-  });
-  if (rez.kg > 0) {
-    doc.lineWidth(1.2).strokeColor('#15803d');
-    if (vedere === 'sus') doc.moveTo(X(rez.xcw), y).lineTo(X(rez.xcw), y + adanc * s + 8).dash(4, { space: 3 }).stroke().undash();
-    else doc.moveTo(X(rez.xcw), bazaY).lineTo(X(rez.xcw), bazaY - adanc * s).dash(4, { space: 3 }).stroke().undash();
-  }
+  doc.undash();
   doc.restore();
-  doc.font('Nunito').fontSize(7).fillColor(GRI);
-  doc.text('față', X(cabX0), y - 9, { width: 40, lineBreak: false });
-  doc.text('uși', X(ultim.x0 + ultim.L) - 40, y - 9, { width: 40, align: 'right', lineBreak: false });
-  return adanc * s + 14;   // cât a ocupat desenul, în înălțime
+  doc.fillOpacity(1).strokeOpacity(1);
+  return h;
 }
 
 function scriePlan(doc, rez, o) {
@@ -113,11 +167,13 @@ function scriePlan(doc, rez, o) {
   });
   y += 54;
 
-  // Desenele: de sus și din lateral.
-  doc.font('Nunito-Bold').fontSize(9).fillColor(TEXT).text('Văzut de sus', left, y, { width: W });
-  y += 20 + _desen(doc, rez, left, y + 20, W, 84, 'sus');
-  doc.font('Nunito-Bold').fontSize(9).fillColor(TEXT).text('Văzut din lateral', left, y, { width: W });
-  y += 20 + _desen(doc, rez, left, y + 20, W, 92, 'lateral') + 2;
+  // Desenele, unul lângă altul: de sus și din lateral — aceleași ca pe ecran.
+  const colD = (W - 12) / 2, hD = 140;
+  doc.font('Nunito-Bold').fontSize(9).fillColor(TEXT).text('Văzut de sus', left, y, { width: colD, lineBreak: false });
+  doc.font('Nunito-Bold').fontSize(9).fillColor(TEXT).text('Văzut din lateral', left + colD + 12, y, { width: colD, lineBreak: false });
+  _desen(doc, rez, left, y + 14, colD, hD, 'sus');
+  _desen(doc, rez, left + colD + 12, y + 14, colD, hD, 'lateral');
+  y += 14 + hD + 10;
   // Legenda opririlor + ordinea de încărcare.
   let lx = left;
   (rez.legenda || []).forEach((l) => {
@@ -191,4 +247,4 @@ function planPdf(rez, o) {
   return doc;
 }
 
-module.exports = { planPdf, scriePlan, numeFisier };
+module.exports = { planPdf, scriePlan, numeFisier, desenPagina };
