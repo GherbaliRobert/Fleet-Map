@@ -41,7 +41,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Contabilul: aparatele închiriate. Adăugat pe 25.09.** Rămân ale noastre, deci intră în evidența
   firmei (mijloace fixe sau obiecte de inventar, cu amortizarea lor), iar pe factură apare rândul „Chirie
   echipament". De întrebat: cum le trecem și dacă rândul de pe factură e scris cum trebuie.
-- [ ] **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
+- [x] **FĂCUT (13.10): Robert a pus Brevo** (Robert: „am făcut asta”; verificat din afară: `brevo-code`, cele două DKIM pe
+  CNAME și DMARC sunt în DNS; aplicația a repornit după variabile). **Robert: emailul serverului (SMTP)**, pe Railway. Până atunci nu pleacă nimic pe email: nici
   contractele („Trimite la semnat" devine „Am trimis-o" și îl trimiteți voi), nici invitațiile, nici
   facturile. **08.10:** sunteți pe Hobby (Robert), iar pe Hobby Railway blochează exact calea pe care trimite aplicația
   azi (SMTP) — o setare nu ajunge. Ori adaptăm aplicația la Brevo (gratuit, 300 de emailuri pe zi; direcția din 03.10,
