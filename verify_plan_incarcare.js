@@ -127,6 +127,20 @@ try {
   TEL = ruleaza(cod, 'simDesen.ts');
 } catch (e) { console.log('    (simDesen.ts: ' + e.message + ')'); }
 T('amândouă se încarcă și desenează', typeof WEB.simSvg === 'function' && typeof TEL.simSvg === 'function');
+// Robert, 13.10: „acum are grafica din desene animate, fă-le ceva mai rotunjite". Colțurile rotunde vin dintr-o singură
+// funcție (_simRot): profilul cabinei (în metri) și formele plate (în pixeli, la ieșire); marfa nu mai are linii albe.
+let rotOk = false;
+try {
+  const RT = vm.runInNewContext(blocDesen + '\n_simRot;', {});
+  const pat = RT([[0, 0], [10, 0], [10, 10], [0, 10]], 2, 4).pts, rad = RT([[0, 0], [1, 0], [1, 1]], 0, 4).pts;
+  rotOk = pat.length === 20 && pat.every((q) => q[0] >= -1e-9 && q[0] <= 10 + 1e-9 && q[1] >= -1e-9 && q[1] <= 10 + 1e-9) &&
+    !pat.some((q) => (q[0] === 0 || q[0] === 10) && (q[1] === 0 || q[1] === 10)) && rad.length === 3;
+} catch (e) { rotOk = false; }
+T('colțurile rotunde: _simRot face arce tangente (un pătrat nu mai are niciun colț ascuțit); raza 0 lasă colțul cum e', rotOk);
+T('…cabina are profilul rotunjit (parbrizul rămâne geam), formele plate și marfa au colț moale, fâșiile cabinei n-au contur',
+  /const cabine = duba\s*\? \[cabRot\(/.test(blocDesen) && /const ROT = \{[^}]*'sim-cutie': [\d.]+/.test(blocDesen) &&
+  /\.sim-svg \.sim-cab2 \{ fill: #ffffff; stroke: #ffffff; \}/.test(css) && /\.sim-svg \.sim-cutie \{ stroke: rgba\(15,23,42,\.22\); stroke-width: \.6; \}/.test(css) &&
+  (WEB.simSvg ? (WEB.simSvg(I.simuleaza({ vehicul: DUBA, marfa: [EUR(1)] }), 'lat', 32, () => '#3B82F6').match(/class="sim-muchie"/g) || []).length > 0 : false));
 const culoare = (n) => I.CULORI_OPRIRI[(Math.max(1, n) - 1) % I.CULORI_OPRIRI.length];
 const CAZURI = [
   ['autotractor + prelată, trei opriri', I.simuleaza({ vehicul: TRAC, semi: I.semiDin(PRELATA), marfa: MIX, mod: 'opriri', opriri: OPRIRI })],

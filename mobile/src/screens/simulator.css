@@ -132,3 +132,14 @@
 :root[data-theme="light"] .ts-svg .sim-lampa { fill: #f59e0b; stroke: #b45309; stroke-width: .5; }
 :root[data-theme="light"] .ts-svg .sim-stop { fill: #ef4444; stroke: #991b1b; stroke-width: .5; }
 :root[data-theme="light"] .ts-svg .sim-rama { fill: #64748b; stroke: #475569; stroke-width: .5; }
+/* 13.10 (Robert: „are grafica din desene animate, fă-le ceva mai rotunjite") — aceleași margini ca pe web (app.css): fâșiile
+   cabinei și parbrizul se contopesc, restul are o margine discretă, marfa o margine închisă și subțire. */
+.ts-svg .sim-cab2 { stroke: #56616e; } .ts-svg .sim-cab3 { stroke: #323a44; } .ts-svg .sim-parbriz { stroke: #2d4459; }
+.ts-svg .sim-cab4 { fill: #454f5b; stroke: #454f5b; stroke-linejoin: round; } .ts-svg .sim-muchie { fill: none; stroke: #303843; stroke-width: .8; stroke-linejoin: round; }
+.ts-svg .sim-cab1, .ts-svg .sim-geam, .ts-svg .sim-bara, .ts-svg .sim-podea, .ts-svg .sim-perete, .ts-svg .sim-perete2 { stroke: #303843; stroke-width: .8; }
+.ts-svg .sim-cutie { stroke: rgba(0,0,0,.45); stroke-width: .6; }
+:root[data-theme="light"] .ts-svg .sim-cab2 { fill: #ffffff; stroke: #ffffff; } :root[data-theme="light"] .ts-svg .sim-cab3 { stroke: #cbd5e1; } :root[data-theme="light"] .ts-svg .sim-parbriz { stroke: #5f7c99; }
+:root[data-theme="light"] .ts-svg .sim-cab1, :root[data-theme="light"] .ts-svg .sim-geam, :root[data-theme="light"] .ts-svg .sim-bara,
+:root[data-theme="light"] .ts-svg .sim-podea, :root[data-theme="light"] .ts-svg .sim-perete, :root[data-theme="light"] .ts-svg .sim-perete2 { stroke: #aab6c6; stroke-width: .8; }
+:root[data-theme="light"] .ts-svg .sim-cutie { stroke: rgba(15,23,42,.22); stroke-width: .6; }
+:root[data-theme="light"] .ts-svg .sim-cab4 { fill: #e4e9ef; stroke: #e4e9ef; } :root[data-theme="light"] .ts-svg .sim-muchie { stroke: #aab6c6; }

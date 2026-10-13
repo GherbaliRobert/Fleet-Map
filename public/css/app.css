@@ -4357,6 +4357,17 @@ body.dark .sim-svg .sim-protectie { fill: #4a5563; stroke: #262d36; stroke-width
 body.dark .sim-svg .sim-lampa { fill: #f59e0b; stroke: #92400e; stroke-width: .5; }
 body.dark .sim-svg .sim-stop { fill: #dc2626; stroke: #7f1d1d; stroke-width: .5; }
 body.dark .sim-svg .sim-rama { fill: #2a323c; stroke: #1b2129; stroke-width: .5; }
+/* 13.10 (Robert: „are grafica din desene animate, fă-le ceva mai rotunjite"): fără contur închis pe fiecare bucată. Fâșiile
+   din care e făcută curbura cabinei și parbrizul se contopesc (conturul = culoarea lor); restul păstrează o margine discretă;
+   marfa are o margine închisă și subțire în locul liniilor albe. */
+.sim-svg .sim-cab2 { fill: #ffffff; stroke: #ffffff; } .sim-svg .sim-cab3 { stroke: #cbd5e1; } .sim-svg .sim-parbriz { stroke: #5f7c99; }
+.sim-svg .sim-cab4 { fill: #e4e9ef; stroke: #e4e9ef; stroke-linejoin: round; } .sim-svg .sim-muchie { fill: none; stroke: #aab6c6; stroke-width: .8; stroke-linejoin: round; }
+.sim-svg .sim-cab1, .sim-svg .sim-geam, .sim-svg .sim-bara, .sim-svg .sim-podea, .sim-svg .sim-perete, .sim-svg .sim-perete2 { stroke: #aab6c6; stroke-width: .8; }
+.sim-svg .sim-cutie { stroke: rgba(15,23,42,.22); stroke-width: .6; }
+body.dark .sim-svg .sim-cab2 { stroke: #56616e; } body.dark .sim-svg .sim-cab3 { stroke: #323a44; } body.dark .sim-svg .sim-parbriz { stroke: #2d4459; }
+body.dark .sim-svg .sim-cab1, body.dark .sim-svg .sim-geam, body.dark .sim-svg .sim-bara, body.dark .sim-svg .sim-podea, body.dark .sim-svg .sim-perete, body.dark .sim-svg .sim-perete2 { stroke: #303843; stroke-width: .8; }
+body.dark .sim-svg .sim-cutie { stroke: rgba(0,0,0,.45); stroke-width: .6; }
+body.dark .sim-svg .sim-cab4 { fill: #454f5b; stroke: #454f5b; } body.dark .sim-svg .sim-muchie { stroke: #303843; }
 /* Planurile de încărcare (pasul 4, 12.10): butonul plin, bara planului deschis, fereastra (lista, cui trimiți, planul
    șoferului). Fereastra stă la nivelul paginii, cu clasa .sim pe ea, ca să ia aceleași tonuri. */
 .sim .sim-btn.sim-pri { background: var(--accent); border-color: var(--accent); color: #06210F; }

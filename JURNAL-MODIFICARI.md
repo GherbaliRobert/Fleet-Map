@@ -131,6 +131,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „Funcția" în Contul meu și în fișa omului. Se instalează ea, în locul lui 1.0.14.
   **13.10 (seara, ultima):** `RA-Track-1.0.16-debug.apk`, pe Desktop — tot ce e în 1.0.15, plus butoanele simulatorului (și
   ale planului șoferului) lipite de marginea de jos a ecranului. Se instalează ea, în locul lui 1.0.15.
+  **13.10 (noaptea):** `RA-Track-1.0.17-debug.apk`, pe Desktop — tot ce e în 1.0.16, plus desenul planului de încărcare cu
+  colțuri rotunde, fără contururi groase. Se instalează ea, în locul lui 1.0.16.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -304,6 +306,30 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-13
+
+### AMÂNDOI · Desenul planului de încărcare, mai puțin „desen animat": colțuri rotunde, fără contururi groase
+
+Robert (13.10): *„mai lucrează la desenul planului de încărcare, acum are grafica din desene animate, fă-le ceva mai
+rotunjite"*. Ce dădea aerul de desen animat: culori plate, un contur închis pe fiecare bucată și colțuri ascuțite peste tot
+(marfa avea și linii albe între fețe).
+
+1. **Cabina** are colțuri rotunde adevărate: acoperișul se rotunjește spre parbriz, spatele și fața de jos au colțuri moi
+   (la camion, autotractor și dubă). Curbura are o nuanță la mijloc, ca trecerea de la acoperiș la față să fie lină.
+2. **Fără contururi groase:** fâșiile cabinei se contopesc, iar conturul se vede doar pe marginea dinspre fundal, subțire.
+   Acoperișul e alb (înainte avea culoarea fondului).
+3. **Marfa** are colțuri moi și o margine închisă, subțire, în locul liniilor albe.
+4. **Geamurile, ușa, farurile, barele, treptele, lămpile, umbra** au colțuri rotunde; roțile și aripile sunt mai fine.
+5. Vederea de sus: cabina dintr-o bucată, cu colțurile din față rotunde și parbrizul pe ea; marfa, roțile și podeaua, moi.
+6. Același desen pe web, pe telefon (APK 1.0.17) și pe planul PDF.
+
+- **Ce am schimbat:** blocul „desenul simulatorului" din `public/index.html` (o funcție nouă de colțuri rotunde, `_simRot`,
+  folosită de profilul cabinei și de formele plate), copia telefonului `mobile/src/lib/simDesen.ts`, culorile din `app.css`
+  (`.sim-svg`) și `simulator.css` (`.ts-svg`), pe ambele teme. Hârtia PDF nu s-a schimbat: citește desenul din pagină (tot
+  poligoane). Probe: `verify_plan_incarcare.js` (+2: colțurile rotunde, cabina rotunjită și marfa fără linii albe; desenul
+  web = telefon pe 210 combinații; contrastul pe ambele teme), `verify_simulator.js` — trec. Văzut desenat pe ambele teme și
+  pe PDF.
+- **Ce vede fondatorul:** desenul din simulator și de pe plan, mai rotund și mai curat.
+- **Ce vede clientul:** la fel — dispecerul în simulator, șoferul în planul lui, toți pe PDF.
 
 ### AMÂNDOI · Telefon: butoanele simulatorului stau la marginea de jos a ecranului
 

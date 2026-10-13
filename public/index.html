@@ -7604,6 +7604,33 @@ const pozitii = await r.json();</code></pre>
         const a = parseInt(hex.slice(1), 16), r = (a >> 16) & 255, g = (a >> 8) & 255, b = a & 255, T = spreAlb ? 255 : 0;
         return 'rgb(' + Math.round(r + (T - r) * t) + ',' + Math.round(g + (T - g) * t) + ',' + Math.round(b + (T - b) * t) + ')';
       }
+      // Colțurile rotunde (13.10, Robert: „acum are grafica din desene animate, fă-le ceva mai rotunjite"): fiecare vârf al unui
+      // contur închis devine un arc tangent la cele două laturi (`raze` = un număr sau unul pe vârf; 0 = rămâne colț). Raza se
+      // micșorează singură când latura e prea scurtă. Întoarce punctele și, pentru fiecare, vârful din care vine (`din`) — așa
+      // se regăsesc laturile drepte (parbrizul cabinei rămâne geam și după rotunjire).
+      function _simRot(pts, raze, n) {
+        const L = pts.length, out = [], din = [];
+        if (L < 3) return { pts: pts.slice(), din: pts.map((q, i) => i) };
+        for (let i = 0; i < L; i++) {
+          const P = pts[i], A = pts[(i + L - 1) % L], B = pts[(i + 1) % L];
+          let rr = Array.isArray(raze) ? (raze[i] || 0) : raze;
+          const ax = A[0] - P[0], ay = A[1] - P[1], bx = B[0] - P[0], by = B[1] - P[1], la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+          if (!(rr > 0) || la < 1e-9 || lb < 1e-9) { out.push(P); din.push(i); continue; }
+          const ux = ax / la, uy = ay / la, vx = bx / lb, vy = by / lb, th = Math.acos(Math.max(-1, Math.min(1, ux * vx + uy * vy)));
+          if (th < 1e-3 || Math.PI - th < 1e-3) { out.push(P); din.push(i); continue; }
+          let d = rr / Math.tan(th / 2);
+          const dm = 0.45 * Math.min(la, lb);
+          if (d > dm) { d = dm; rr = d * Math.tan(th / 2); }
+          const sx = ux + vx, sy = uy + vy, sl = Math.hypot(sx, sy), h = rr / Math.sin(th / 2), cx = P[0] + sx / sl * h, cy = P[1] + sy / sl * h;
+          const a1 = Math.atan2(P[1] + uy * d - cy, P[0] + ux * d - cx);
+          let da = Math.atan2(P[1] + vy * d - cy, P[0] + vx * d - cx) - a1;
+          while (da > Math.PI) da -= 2 * Math.PI;
+          while (da < -Math.PI) da += 2 * Math.PI;
+          const k = n || 5;
+          for (let j = 0; j <= k; j++) { const a = a1 + da * j / k; out.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a)]); din.push(i); }
+        }
+        return { pts: out, din };
+      }
       function _simSvg(R, view, yaw, culoare) {
         if (!R) return '';
         const VBW = 960, VBH = 330, bodies = R.corpuri, boxes = R.cutii, trac = R.trac, duba = R.vehicul.fel === 'duba35';
@@ -7631,15 +7658,20 @@ const pozitii = await r.json();</code></pre>
         const xW = (z) => f + 0.12 + 0.25 * (z - zw) / (cabH - 0.12 - zw);
         const xA = (z) => f + 0.5 + 0.5 * (z - zh) / (cabH - 0.14 - zh);
         // Un corp drept: profil în x–z (sens trigonometric, z în sus), întins pe y de la yA la yB. Doar fețele întoarse spre
-        // privitor (normala · V > 0); `cl` = clasele { lat, sus, cap, geam }, `geam` = muchiile (indici) care sunt geam. Capătul
+        // privitor (normala · V > 0); `cl` = clasele { lat, sus, mij, cap, geam, muchie }, `geam` = muchiile (indici) care sunt
+        // geam. Pe o curbură (`mij`) trecerea de la acoperiș la față are o nuanță la mijloc; fâșiile nu au contur (se contopesc),
+        // iar marginea dinspre partea cealaltă a fiecărei fâșii se trage subțire (`muchie`) — e conturul corpului pe fond. Capătul
         // dinspre privitor se pune la urmă: nimic din corp nu stă în fața lui (contează la profilele cu scobituri, ca duba).
         const prisma = (prof, yA, yB, P, V, cl, geam) => {
           const out = [], pp = (arr) => arr.map((q) => P2s(P(q[0], q[1], q[2]))).join(' ');
+          const yD = V[1] < -1e-6 ? yB : (V[1] > 1e-6 ? yA : null);      // partea dinspre fundal
           prof.forEach((a, i) => {
             const b = prof[(i + 1) % prof.length], nx = b[1] - a[1], nz = a[0] - b[0];
             if (nx * V[0] + nz * V[2] <= 1e-6) return;
-            const cls = geam && geam.indexOf(i) >= 0 ? cl.geam : (nz / (Math.hypot(nx, nz) || 1) > 0.7 ? cl.sus : cl.cap);
+            const nn = nz / (Math.hypot(nx, nz) || 1);
+            const cls = geam && geam.indexOf(i) >= 0 ? cl.geam : (cl.mij ? (nn > 0.8 ? cl.sus : (nn > 0.3 ? cl.mij : cl.cap)) : (nn > 0.7 ? cl.sus : cl.cap));
             out.push({ cls, pts: pp([[a[0], yA, a[1]], [b[0], yA, b[1]], [b[0], yB, b[1]], [a[0], yB, a[1]]]) });
+            if (cl.muchie && yD != null) out.push({ cls: cl.muchie, pts: pp([[a[0], yD, a[1]], [b[0], yD, b[1]]]) });
           });
           if (-V[1] > 1e-6) out.push({ cls: cl.lat, pts: pp(prof.map((q) => [q[0], yA, q[1]])) });
           if (V[1] > 1e-6) out.push({ cls: cl.lat, pts: pp(prof.map((q) => [q[0], yB, q[1]])) });
@@ -7649,17 +7681,24 @@ const pozitii = await r.json();</code></pre>
         // O formă plată: pe o parte a vehiculului (planul y, puncte [x, z]) sau pe un capăt (planul x, puncte [y, z]).
         const fy = (y, P, cls, arr) => ({ cls, pts: arr.map((q) => P2s(P(q[0], y, q[1]))).join(' ') });
         const fx = (x, P, cls, arr) => ({ cls, pts: arr.map((q) => P2s(P(x, q[0], q[1]))).join(' ') });
-        // Cabina: la camion și autotractor rotunjită sus, cu parbrizul (muchia 7); duba dintr-o bucată, cu capotă (parbrizul = 5).
-        const CAB = { lat: 'sim-cab1', sus: 'sim-cab2', cap: 'sim-cab3', geam: 'sim-parbriz' };
+        // Cabina: un profil de bază cu raza fiecărui colț (în metri), rotunjit cu _simRot — acoperișul se rotunjește spre parbriz,
+        // spatele și fața de jos au colțuri moi. La camion și autotractor parbrizul e latura care pleacă din colțul acoperișului
+        // (vârful 3); duba e dintr-o bucată, cu capotă: parbrizul tot din vârful 3, capota se rotunjește spre bot.
+        const CAB = { lat: 'sim-cab1', sus: 'sim-cab2', mij: 'sim-cab4', cap: 'sim-cab3', geam: 'sim-parbriz', muchie: 'sim-muchie' };
+        const cabRot = (baza, raze, geamDe) => {
+          const o = _simRot(baza, raze, 6), g = [];
+          o.din.forEach((v, k) => { if (v === geamDe && o.din[(k + 1) % o.din.length] === (geamDe + 1) % baza.length) g.push(k); });
+          return { prof: o.pts, geam: g };
+        };
         const cabine = duba
-          ? [{ prof: [[f, zb], [r, zb], [r, cabH], [f + 1.22, cabH], [f + 1.08, cabH - 0.05], [f + 1.0, cabH - 0.14], [f + 0.5, zh], [f + 0.14, zh - 0.05], [f + 0.04, zh - 0.18]], geam: [5] }]
-          : [{ prof: [[f, zb], [r, zb], [r, cabH - 0.1], [r - 0.04, cabH - 0.03], [r - 0.12, cabH], [f + 0.62, cabH], [f + 0.46, cabH - 0.03], [f + 0.37, cabH - 0.12], [f + 0.12, zw]], geam: [7] }];
-        const cerc = (x, y, zc0, rr, P) => { const a = []; for (let i = 0; i < 18; i++) { const t = i * Math.PI / 9; a.push(P2s(P(x + rr * Math.cos(t), y, zc0 + rr * Math.sin(t)))); } return a.join(' '); };
+          ? [cabRot([[f, zb], [r, zb], [r, cabH], [xA(cabH), cabH], [f + 0.5, zh], [f + 0.02, zh - 0.14]], [0.05, 0.02, 0.12, 0.26, 0.16, 0.15], 3)]
+          : [cabRot([[f, zb], [r, zb], [r, cabH], [xW(cabH), cabH], [f + 0.12, zw]], [0.05, 0.02, 0.15, 0.3, 0.1], 3)];
+        const cerc = (x, y, zc0, rr, P) => { const a = []; for (let i = 0; i < 32; i++) { const t = i * Math.PI / 16; a.push(P2s(P(x + rr * Math.cos(t), y, zc0 + rr * Math.sin(t)))); } return a.join(' '); };
         const roata = (x, y, P, departe) => (departe ? [{ cls: 'sim-roata2', pts: cerc(x, y, zr, rw, P) }]
           : [{ cls: 'sim-roata', pts: cerc(x, y, zr, rw, P) }, { cls: 'sim-janta', pts: cerc(x, y, zr, rw * 0.62, P) },
              { cls: 'sim-janta2', pts: cerc(x, y, zr, rw * 0.44, P) }, { cls: 'sim-butuc', pts: cerc(x, y, zr, rw * 0.18, P) }]);
         // Aripa roții (scobitura întunecată din caroserie): semicercul de deasupra roții, tăiat jos la `zj` și sus la `zs`.
-        const aripa = (x, zj, zs) => { const a = [], ra = rw * 1.18; for (let i = 0; i <= 12; i++) { const t = i * Math.PI / 12; a.push([x + ra * Math.cos(t), Math.min(zs, Math.max(zj, zr + ra * Math.sin(t)))]); } return a; };
+        const aripa = (x, zj, zs) => { const a = [], ra = rw * 1.18; for (let i = 0; i <= 20; i++) { const t = i * Math.PI / 20; a.push([x + ra * Math.cos(t), Math.min(zs, Math.max(zj, zr + ra * Math.sin(t)))]); } return a; };
         // Ce se vede pe partea cabinei întoarsă spre privitor (y).
         const detalii = (y, P) => {
           const F = (cls, arr) => fy(y, P, cls, arr), d = [];
@@ -7868,26 +7907,29 @@ const pozitii = await r.json();</code></pre>
           const ox2 = 30 - (cabX0 - 0.2) * s2 + ((VBW - 60) - totS * s2) / 2, oy2 = (VBH - Wmax * s2) / 2 + 4;
           const q2 = (x, y) => [ox2 + x * s2, oy2 + y * s2];
           const rect = (x0, y0, x1, y1) => [q2(x0, y0), q2(x1, y0), q2(x1, y1), q2(x0, y1)].map(P2s).join(' ');
+          // Colțurile, în metri pe desen (s2 pixeli pe metru): roțile, oglinzile, cabina, podeaua, marfa.
+          const rot = (m) => m * s2;
           R.axe.forEach((a) => {
             const W = (a.x >= 0 && bodies.length > 1 && a.x >= bodies[1].x0) ? bodies[1].W : W0;
-            back.push({ cls: 'sim-roata', pts: rect(a.x - rw, -0.1, a.x + rw, 0.28) }, { cls: 'sim-roata', pts: rect(a.x - rw, W - 0.28, a.x + rw, W + 0.1) });
+            back.push({ cls: 'sim-roata', pts: rect(a.x - rw, -0.1, a.x + rw, 0.28), rot: rot(0.08) }, { cls: 'sim-roata', pts: rect(a.x - rw, W - 0.28, a.x + rw, W + 0.1), rot: rot(0.08) });
           });
           const xo = duba ? f + 0.56 : xW(zw + 0.3) - 0.1;
-          back.push({ cls: 'sim-oglinda', pts: rect(xo, cy0 - 0.26, xo + 0.12, cy0 - 0.06) }, { cls: 'sim-oglinda', pts: rect(xo, cy1 + 0.06, xo + 0.12, cy1 + 0.26) });
+          back.push({ cls: 'sim-oglinda', pts: rect(xo, cy0 - 0.26, xo + 0.12, cy0 - 0.06), rot: rot(0.04) }, { cls: 'sim-oglinda', pts: rect(xo, cy1 + 0.06, xo + 0.12, cy1 + 0.26), rot: rot(0.04) });
           if (gap >= 0.3) back.push({ cls: 'sim-cab3', pts: rect(r - 0.02, cy0 - 0.03, r + gap - 0.1, cy0) }, { cls: 'sim-cab3', pts: rect(r - 0.02, cy1, r + gap - 0.1, cy1 + 0.03) });
-          if (duba) {
-            back.push({ cls: 'sim-cab1', pts: rect(f, cy0, f + 0.5, cy1) }, { cls: 'sim-parbriz', pts: rect(f + 0.5, cy0, f + 1.0, cy1) }, { cls: 'sim-cab2', pts: rect(f + 1.0, cy0, r, cy1) });
-          } else {
-            back.push({ cls: 'sim-cab3', pts: rect(f, cy0, f + 0.12, cy1) }, { cls: 'sim-parbriz', pts: rect(f + 0.12, cy0, f + 0.4, cy1) }, { cls: 'sim-cab2', pts: rect(f + 0.4, cy0, r, cy1) });
-            if (defl) back.push({ cls: 'sim-cab3', pts: rect(r - Lc * 0.6, cy0 + 0.1, r - 0.04, cy1 - 0.1) });
+          const cabSus = _simRot([q2(f, cy0), q2(r, cy0), q2(r, cy1), q2(f, cy1)], [rot(0.3), rot(0.06), rot(0.06), rot(0.3)], 6).pts.map(P2s).join(' ');
+          back.push({ cls: 'sim-cab2', pts: cabSus }, { cls: 'sim-muchie', pts: cabSus });
+          if (duba) back.push({ cls: 'sim-cab1', pts: rect(f + 0.08, cy0 + 0.1, f + 0.5, cy1 - 0.1), rot: rot(0.14) }, { cls: 'sim-parbriz', pts: rect(f + 0.52, cy0 + 0.08, f + 1.0, cy1 - 0.08), rot: rot(0.1) });
+          else {
+            back.push({ cls: 'sim-parbriz', pts: rect(f + 0.13, cy0 + 0.08, f + 0.42, cy1 - 0.08), rot: rot(0.08) });
+            if (defl) back.push({ cls: 'sim-cab3', pts: rect(r - Lc * 0.6, cy0 + 0.1, r - 0.04, cy1 - 0.1), rot: rot(0.12) });
           }
           if (remBara) back.push({ cls: 'sim-bara', pts: rect(remBara[0], bodies[0].W / 2 - 0.06, remBara[1], bodies[0].W / 2 + 0.06) });
-          bodies.forEach((B) => { back.push({ cls: 'sim-podea', pts: rect(B.x0, 0, B.x0 + B.L, B.W) }); });
+          bodies.forEach((B) => { back.push({ cls: 'sim-podea', pts: rect(B.x0, 0, B.x0 + B.L, B.W), rot: rot(0.06) }); });
           boxes.slice().sort((p, q) => p.z0 - q.z0).forEach((bx) => {
             const c = culoare(bx.oprire), X = bodies[bx.c].x0;
             const x0 = X + bx.x0 / 100, x1 = X + bx.x1 / 100, y0 = bx.y0 / 100, y1 = bx.y1 / 100;
-            polys.push({ cls: 'sim-cutie', fill: c, pts: rect(x0, y0, x1, y1) });
-            if (bx.z0 > 0) { const ix = (x1 - x0) * 0.22, iy = (y1 - y0) * 0.22; polys.push({ cls: 'sim-cutie', fill: _simMix(c, true, 0.45), pts: rect(x0 + ix, y0 + iy, x1 - ix, y1 - iy) }); }
+            polys.push({ cls: 'sim-cutie', fill: c, pts: rect(x0, y0, x1, y1), rot: rot(0.05) });
+            if (bx.z0 > 0) { const ix = (x1 - x0) * 0.22, iy = (y1 - y0) * 0.22; polys.push({ cls: 'sim-cutie', fill: _simMix(c, true, 0.45), pts: rect(x0 + ix, y0 + iy, x1 - ix, y1 - iy), rot: rot(0.04) }); }
           });
           axX.forEach((x) => { lines.push({ cls: 'sim-axa', a: q2(x, -0.22), b: q2(x, Wmax + 0.22) }); });
           if (R.kg > 0) lines.push({ cls: 'sim-cg', a: q2(R.xcw, 0), b: q2(R.xcw, Wmax) });
@@ -7938,7 +7980,16 @@ const pozitii = await r.json();</code></pre>
           if (cabD >= corpD) front.push(...cab);
           if (R.kg > 0) lines.push({ cls: 'sim-cg', a: p3(R.xcw, 0, 0), b: p3(R.xcw, Wmax, 0) });
         }
-        const poli = (p) => '<polygon class="' + p.cls + '" points="' + p.pts + '"' + (p.fill ? ' fill="' + p.fill + '"' : '') + '></polygon>';
+        // Formele plate primesc colțuri rotunde la ieșire (în pixeli): geamul, ușa, farurile, barele, treptele, lămpile, marfa,
+        // umbra. Corpurile cu mai multe fețe (cabina, pereții) NU — între două fețe rotunjite s-ar vedea o scobitură; cabina are
+        // colțurile rotunde în profil (mai sus).
+        const ROT = { 'sim-geam': 5, 'sim-usa': 5, 'sim-far': 3, 'sim-barafata': 3, 'sim-cabjos': 2, 'sim-oglinda': 2, 'sim-treapta': 2,
+          'sim-maner': 1.5, 'sim-lampa': 1.5, 'sim-stop': 2, 'sim-protectie': 1.2, 'sim-grila': 3, 'sim-cutie': 2.6, 'sim-umbra': 16 };
+        const poli = (p) => {
+          const rr = p.rot != null ? p.rot : (ROT[p.cls] || 0);
+          const pts = rr > 0.3 ? _simRot(p.pts.split(' ').map((q) => q.split(',').map(Number)), rr, 3).pts.map(P2s).join(' ') : p.pts;
+          return '<polygon class="' + p.cls + '" points="' + pts + '"' + (p.fill ? ' fill="' + p.fill + '"' : '') + '></polygon>';
+        };
         const linie = (l) => '<line class="' + l.cls + '" x1="' + l.a[0].toFixed(1) + '" y1="' + l.a[1].toFixed(1) + '" x2="' + l.b[0].toFixed(1) + '" y2="' + l.b[1].toFixed(1) + '"></line>';
         return lines.filter((l) => l.cls === 'sim-sol').map(linie).join('') +
           back.map(poli).join('') + mid.map(poli).join('') + polys.map(poli).join('') +

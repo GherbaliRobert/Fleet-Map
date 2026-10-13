@@ -1957,6 +1957,14 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   (`simulator.css`, `.ts-svg`) — păzit: proba adună clasele din desen și le caută în toate patru locurile. Planul în lucru se ține în
   `localStorage` (cu try/catch) — o comoditate, nu o salvare. Rândul `#nav-incarcare` (data-view) se arată din `updateFabs`
   — din pasul 4 doar celui care face planuri (vezi mai jos, `_incDispecer`).
+- **Colțurile sunt rotunde (13.10, seara; Robert: „are grafica din desene animate, fă-le ceva mai rotunjite"):** O funcție,
+  `_simRot(pts, raze, n)` (în bloc), face arce tangente — profilul cabinei (`cabRot`: profil de bază + raza fiecărui colț în
+  metri; parbrizul = latura dreaptă care pleacă din vârful 3) și formele plate la ieșire (`ROT` pe clasă, în pixeli; în vederea
+  de sus `rot` pe formă). Corpurile cu mai multe fețe (cabina, pereții) NU se rotunjesc față cu față — s-ar vedea scobituri
+  între fețe. Fâșiile cabinei n-au contur (stroke = fill), marginea dinspre fundal e `sim-muchie`, curbura are nuanța
+  `sim-cab4`, acoperișul (`sim-cab2`) e alb pe tema deschisă (avea culoarea fondului); marfa are margine închisă, subțire, nu
+  linii albe. Fără `<path>` / `<circle>`: hârtia (`_formeSvg`) citește doar poligoane, linii și text — o rotunjire = mai multe
+  puncte în poligon. Păzit de `verify_plan_incarcare.js` (secțiunea 2).
 - **Hârtia: `incarcare_pdf.js`** (curat, A4 culcat, `logo-light.png`): desenează rezultatul simulării, nu socotește.
   **Desenul de pe hârtie E desenul ecranului** (13.10, Robert: „da"): `desenPagina()` citește blocul „desenul
   simulatorului" din `public/index.html` (în vm) și culorile temei deschise din `app.css` (regulile `.sim-svg .sim-…` fără
