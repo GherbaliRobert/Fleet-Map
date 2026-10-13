@@ -300,7 +300,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
-### AMÂNDOI · Vehiculul din simulator, a doua trecere; planul PDF are același desen ca ecranul — `…`
+### AMÂNDOI · Vehiculul din simulator, a doua trecere; planul PDF are același desen ca ecranul — `c207f2b`
 
 Robert (13.10): *„1, nu ne interesează / 2 da, dar mai lucrează la desenul mașinii"* (1 = atașamentele pentru utilaje — nu
 s-a făcut nimic; 2 = planul PDF desenat la fel ca ecranul).
