@@ -332,7 +332,7 @@ Robert (13.10): *„vreau să facem și un template de mail cu logo, vreau să p
 - **Ce vede fondatorul:** butoanele noi în panoul Mail, Cc, semnătura sub mesaj.
 - **Ce vede clientul:** emailurile noastre arată acum la fel, cu sigla RA Track sus.
 
-### AMÂNDOI · Simulatorul: vehiculul desenat ca un vehicul — `…`
+### AMÂNDOI · Simulatorul: vehiculul desenat ca un vehicul — `7ab438a`
 
 Robert (13.10): *„la simulator, vreau să avem desenele mai realiste, cel puțin mașina arată rău"*.
 
