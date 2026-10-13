@@ -62,8 +62,8 @@ const fals = http.createServer((req, res) => {
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
   T('rapoartele programate ale unei firme NU intră în „Trimise" (fără jurnal)', /channels\.sendEmailTo\(rcp, subject, text, attachments\)/.test(RS) && !/jurnal/.test(RS));
-  T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj)',
-    ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /fel: primit \? 'raspuns' : 'mesaj'/.test(SRV))));
+  T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj; din 13.10 și redirecționat)',
+    ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /const fel = primit \? 'raspuns' : \(redirPrimit \|\| redirTrimis\) \? 'redirectionat' : 'mesaj';/.test(SRV) && /jurnal: \{ fel: fel, userId: uid/.test(SRV))));
 
   // ─── Server pornit ─────────────────────────────────────────────────────────────────────────────────
   await new Promise((r) => fals.listen(0, '127.0.0.1', r));

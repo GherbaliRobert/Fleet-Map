@@ -59,6 +59,67 @@ function _htmlDinText(text) {
 }
 function _baza() { return String(process.env.BASE_URL || 'https://ratrack.ro').replace(/\/$/, ''); }
 
+// ─── Chenarul casei (Robert, 13.10: „un template de mail cu logo" — „1, b": pe TOATE emailurile care pleacă din aplicație) ───
+// Ca emailul cu factura: bandă închisă cu sigla (imaginea albă) și linia verde, textul pe alb, un rând cu ratrack.ro dedesubt.
+// Se pune singur în send(): invitații, linkuri de parolă, contracte, avertismente, rapoarte, panoul Mail. Un email care își
+// are deja antetul cu sigla (factura) nu-l mai primește a doua oară; `cadru: false` îl oprește dinadins.
+// Sigla vine „în corp" (cid); la Brevo, care nu primește cid, _pentruBrevo o cere de pe site (public/logo.png).
+const LOGO_CID = 'logo@ratrack.ro';
+const LOGO = { filename: 'logo.png', path: path.join(PUBLIC_DIR, 'logo.png'), cid: LOGO_CID, contentType: 'image/png' };
+function cadru(continut) {
+  return '<div style="background:#f1f5f9;padding:24px 10px;">'
+    + '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#1a2235;">'
+      + '<div style="background:#0B0E11;padding:18px 20px 16px;border-radius:10px 10px 0 0;border-bottom:3px solid #3FE07D;">'
+        + '<img src="cid:' + LOGO_CID + '" width="180" height="35" alt="RA Track" style="display:block;border:0;color:#fff;font:bold 20px Arial,Helvetica,sans-serif;"></div>'
+      + '<div style="background:#ffffff;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px;padding:22px 20px;font-size:14px;line-height:1.55;color:#1a2235;">'
+        + continut + '</div>'
+      + '<div style="text-align:center;font-size:12px;color:#475569;padding:12px 8px 0;">RA Track · monitorizare GPS pentru flote · '
+        + '<a href="' + _baza() + '" style="color:#15803d;text-decoration:none;">ratrack.ro</a></div>'
+    + '</div></div>';
+}
+function _cuCadru(m) {
+  if (m.cadru === false) return m;
+  const html = m.html || _htmlDinText(m.text);
+  if (html.indexOf('cid:' + LOGO_CID) >= 0) return m;   // își are deja antetul cu sigla (emailul cu factura)
+  return Object.assign({}, m, { html: cadru(html), attachments: (m.attachments || []).concat([LOGO]) });
+}
+
+// ─── Semnătura (Robert, 13.10: „2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon") ───
+// Doar pe emailurile scrise din panoul Mail. Numele și telefonul din fișa omului (users.full_name / phone); pe adresa
+// comună, „Echipa RA Track", fără telefon. Un număr românesc de 10 cifre se scrie pe grupe: „0729 699 847".
+function _tel(t) {
+  const s = String(t || '').trim(), c = s.replace(/[\s.\-()]/g, '');
+  return /^0\d{9}$/.test(c) ? c.slice(0, 4) + ' ' + c.slice(4, 7) + ' ' + c.slice(7) : s;
+}
+function semnatura(o) {
+  o = o || {};
+  const nume = String(o.nume || '').trim() || 'Echipa RA Track';
+  const tel = _tel(o.telefon);
+  const firma = /RA Track/.test(nume) ? '' : 'RA Track · ';
+  const randuri = [nume, firma + 'ratrack.ro'].concat(tel ? ['Tel. ' + tel] : []);
+  return {
+    text: '\n\n--\n' + randuri.join('\n'),
+    rand: randuri.join(' · '),   // cum se arată pe ecran, sub mesaj
+    html: '<div style="margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.5;color:#475569;">'
+      + '<b style="color:#1a2235;">' + _esc(nume) + '</b><br>' + _esc(firma) + '<a href="' + _baza() + '" style="color:#15803d;text-decoration:none;">ratrack.ro</a>'
+      + (tel ? '<br>Tel. ' + _esc(tel) : '') + '</div>',
+  };
+}
+// Mesajul scris de om + semnătura: sub textul lui și DEASUPRA mesajului citat / redirecționat, când acela e încă în text
+// (neschimbat); altfel, la capăt. Citatul iese în HTML cu o linie gri în stânga.
+function cuSemnatura(text, citat, semn) {
+  const t = String(text || '');
+  const c = String(citat || '').trim();
+  const i = c ? t.lastIndexOf(c) : -1;
+  const sus = (i >= 0 ? t.slice(0, i) : t).replace(/\s+$/, '');
+  const jos = i >= 0 ? t.slice(i) : '';
+  return {
+    text: sus + semn.text + (jos ? '\n\n' + jos : ''),
+    html: (sus ? _htmlDinText(sus) : '') + semn.html
+      + (jos ? '<div style="margin-top:18px;padding-left:12px;border-left:3px solid #e2e8f0;color:#64748b;">' + _htmlDinText(jos) + '</div>' : ''),
+  };
+}
+
 // Atașamentele în forma nodemailer ({ filename, content | path, cid, encoding }) → forma Brevo ({ name, content base64 }).
 // Brevo NU primește imagini „în corp" (cid): una din public/ (sigla din emailul cu factura) se cere de pe site, de la
 // aceeași adresă; altfel imaginea lipsește și rămâne textul ei (alt). Nu se trimite ca atașament: ar apărea ca fișier.
@@ -87,6 +148,7 @@ function _pentruBrevo(m) {
     htmlContent: html,
   };
   if (m.text) corp.textContent = String(m.text);
+  if (m.cc) { const cc = _destinatari(m.cc); if (cc.length) corp.cc = cc; }   // „Răspunde tuturor" (13.10)
   if (m.replyTo) corp.replyTo = _adresa(m.replyTo);
   if (atas.length) corp.attachment = atas;
   // Un răspuns din panoul Mail (etapa 2) spune la ce email răspunde, ca programul omului să-l pună în aceeași discuție.
@@ -129,6 +191,7 @@ async function _noteaza(m, r) {
     return await _jurnal({
       de_la: _adresa(m.from || fromAddr()).email.toLowerCase(),
       catre: _destinatari(m.to).map(function (x) { return x.email; }).join(', '),
+      cc: m.cc ? _destinatari(m.cc).map(function (x) { return x.email; }).join(', ') || null : null,
       subiect: m.subject || '(fără subiect)', text: m.text || null, html: m.html || null,
       atasamente: (m.attachments || []).filter(function (a) { return a && !a.cid; }).map(function (a) {
         const n = Buffer.isBuffer(a.content) ? a.content.length : (typeof a.content === 'string' ? Buffer.byteLength(a.content, a.encoding || 'utf8') : null);
@@ -142,11 +205,14 @@ async function _noteaza(m, r) {
   } catch (e) { return null; /* jurnalul nu are voie să strice trimiterea */ }
 }
 
-// send({to, subject, html, text, attachments, replyTo, from?, inReplyTo?, references?, jurnal?}) → { ok, id?, error?, jurnalId? }. Nu aruncă (best-effort).
+// send({to, cc?, subject, html, text, attachments, replyTo, from?, inReplyTo?, references?, jurnal?, cadru?}) → { ok, id?, error?, jurnalId? }. Nu aruncă (best-effort).
+// Chenarul casei se pune aici (_cuCadru), o dată pentru toate căile; „Trimise" ține emailul fără el (conținutul scris).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
 // `from`: altă adresă de-a noastră decât cea implicită (panoul Mail: robert.gherbali@…); o verifică serverul, nu aici.
 async function send(m) {
   if (!m || !m.to) return { ok: false, error: 'Fără destinatar' };
+  const scris = m;   // ce a scris omul / aplicația — așa intră în „Trimise"
+  m = _cuCadru(m);
   let r;
   if (fel() === 'brevo') r = await _trimiteBrevo(m);
   else {
@@ -154,13 +220,13 @@ async function send(m) {
     if (!tx) r = { ok: false, error: 'Email neconfigurat (nici Brevo, nici SMTP)' };
     else {
       try {
-        const info = await tx.sendMail({ from: m.from || fromAddr(), to: m.to, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments,
+        const info = await tx.sendMail({ from: m.from || fromAddr(), to: m.to, cc: m.cc || undefined, replyTo: m.replyTo || undefined, subject: m.subject || '(fără subiect)', html: m.html, text: m.text, attachments: m.attachments,
           inReplyTo: m.inReplyTo || undefined, references: m.inReplyTo ? (m.references || m.inReplyTo) : undefined });
         r = { ok: true, id: info && info.messageId };
       } catch (e) { r = { ok: false, error: e.message }; }
     }
   }
-  const jid = await _noteaza(m, r);
+  const jid = await _noteaza(scris, r);
   if (jid != null) r.jurnalId = jid;   // rândul din „Trimise" (răspunsul se leagă de emailul primit)
   return r;
 }
@@ -177,4 +243,4 @@ async function verify() {
   try { await tx.verify(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
 }
 
-module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo };
+module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo, cadru, semnatura, cuSemnatura, LOGO_CID, _cuCadru };

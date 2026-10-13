@@ -3237,6 +3237,9 @@ const pozitii = await r.json();</code></pre>
     .mail-atas{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
     .mail-atas-mort{opacity:.65;cursor:default}
     .mail-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+    /* 13.10: semnătura de sub mesaj și atașamentele care merg mai departe la „Redirecționează". */
+    .mail-semn{font-size:12px;line-height:1.5;color:var(--text-secondary);margin-top:6px;overflow-wrap:anywhere}
+    .mail-semn b{color:var(--text-primary);font-weight:700}
     .agp-fa{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
     .agp-fb{display:inline-flex;align-items:center;gap:6px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
     .agp-fb:hover{border-color:var(--accent);color:var(--text-primary)}
@@ -28791,7 +28794,7 @@ const pozitii = await r.json();</code></pre>
     // răspuns (subiectul „Re:", mesajul citat) le dă serverul. Scheletul (filele, bara cu căutarea) se desenează o dată;
     // căutarea redesenează doar lista — altfel caseta își pierde cursorul după prima literă (capcana de la Inventar).
     var _mail = { fila: 'primite', adrese: [], activ: false, cale: null, primire: false, limite: {}, filtru: '', cauta: '', pagina: 0, lista: [], maiSunt: false,
-      cautaT: null, seq: 0, deschis: null, raspunsLa: null };
+      cautaT: null, seq: 0, deschis: null, deschisTrimis: null, raspunsLa: null, redir: null };
     function _mailOct(n) {
       n = Number(n) || 0;
       if (n >= 1073741824) return (n / 1073741824).toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' GB';
@@ -28951,13 +28954,18 @@ const pozitii = await r.json();</code></pre>
       var m = null;
       try { m = await fetch('/api/mail/trimise/' + Number(id), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
       if (!m) { $('mail-ov-b').innerHTML = '<div class="rax-co-meta">Emailul nu se poate deschide.</div>'; return; }
+      _mail.deschisTrimis = m;
       $('mail-ov-t').textContent = m.subiect || '(fără subiect)';
       $('mail-ov-b').innerHTML = '<div class="dq-meta" style="margin:0 0 10px;line-height:1.7;">'
-        + '<b>De la:</b> ' + esc(m.de_la) + '<br><b>Către:</b> ' + esc(m.catre) + '<br><b>Când:</b> ' + _mailCand(m.la)
+        + '<b>De la:</b> ' + esc(m.de_la) + '<br><b>Către:</b> ' + esc(m.catre) + (m.cc ? '<br><b>Cc:</b> ' + esc(m.cc) : '') + '<br><b>Când:</b> ' + _mailCand(m.la)
         + ' · <span class="rax-tag">' + esc(m.felText) + '</span>' + (m.firma ? ' · ' + esc(m.firma) : '') + ' · ' + esc(m.cine)
         + (m.stare === 'esuat' ? '<br><span class="mail-err"><b>N-a plecat:</b> ' + esc(m.eroare || '') + '</span>' : '')
         + ((m.atasamente || []).length ? '<br><b>Atașamente:</b> ' + m.atasamente.map(function (x) { return esc(x.nume) + (x.octeti ? ' (' + _mailOct(x.octeti) + ')' : ''); }).join(', ') : '')
-        + '</div><div id="mail-ov-corp"></div>';
+        + '</div><div id="mail-ov-corp"></div>'
+        + '<div class="mail-acts">'
+          + (m.sePoateSterge ? '<button class="rax-btn" onclick="raxMailStergeTrimis(' + Number(m.id) + ')"><i class="fas fa-trash"></i> Șterge</button>' : '')
+          + '<button class="rax-btn primary" onclick="raxMailRedirectioneaza(\'trimis\')"' + (_mail.activ ? '' : ' disabled title="Serverul n-are email configurat"') + '><i class="fas fa-share"></i> Redirecționează</button>'
+        + '</div>';
       _mailArataCorp(m, false, true);
     };
     window.raxMailDeschidePrimit = async function (id) {
@@ -28990,6 +28998,8 @@ const pozitii = await r.json();</code></pre>
         + '<div class="mail-acts">'
           + '<button class="rax-btn" onclick="raxMailSterge(' + Number(m.id) + ')"><i class="fas fa-trash"></i> Șterge</button>'
           + '<button class="rax-btn" onclick="raxMailNecitit(' + Number(m.id) + ')"><i class="fas fa-envelope"></i> Marchează necitit</button>'
+          + '<button class="rax-btn" onclick="raxMailRedirectioneaza(\'primit\')"' + (_mail.activ ? '' : ' disabled title="Serverul n-are email configurat"') + '><i class="fas fa-share"></i> Redirecționează</button>'
+          + (m.pentruRaspunsTuturor && m.pentruRaspunsTuturor.cc ? '<button class="rax-btn" onclick="raxMailRaspundeTuturor()"' + (_mail.activ ? '' : ' disabled title="Serverul n-are email configurat"') + '><i class="fas fa-reply-all"></i> Răspunde tuturor</button>' : '')
           + '<button class="rax-btn primary" onclick="raxMailRaspunde()"' + (_mail.activ ? '' : ' disabled title="Serverul n-are email configurat"') + '><i class="fas fa-reply"></i> Răspunde</button>'
         + '</div>';
       _mailArataCorp(m, true, false);
@@ -29035,33 +29045,70 @@ const pozitii = await r.json();</code></pre>
       var m = _mail.deschis; if (!m || !m.pentruRaspuns) return;
       raxMailScrie({ raspunsLa: m.id, de_la: m.pentruRaspuns.de_la, catre: m.pentruRaspuns.catre, subiect: m.pentruRaspuns.subiect, text: m.pentruRaspuns.text });
     };
+    // „Răspunde tuturor" (13.10): Cc-ul (toți din „Către" și „Cc", fără adresele noastre) îl alege serverul.
+    window.raxMailRaspundeTuturor = function () {
+      var m = _mail.deschis, p = m && m.pentruRaspunsTuturor; if (!p) return;
+      raxMailScrie({ raspunsLa: m.id, tuturor: true, de_la: p.de_la, catre: p.catre, cc: p.cc, subiect: p.subiect, text: p.text });
+    };
+    // „Redirecționează" (13.10): un email primit (atașamentele lui merg și ele) sau unul trimis de noi (doar textul).
+    window.raxMailRedirectioneaza = function (fel) {
+      var m = fel === 'trimis' ? _mail.deschisTrimis : _mail.deschis, p = m && m.pentruRedirectionare; if (!p) return;
+      raxMailScrie({ redir: fel === 'trimis' ? { trimis: m.id } : { primit: m.id }, de_la: p.de_la, catre: '', subiect: p.subiect, text: p.text,
+        atasamenteRedir: p.atasamente || [], faraAtasamente: !!p.faraAtasamente });
+    };
+    window.raxMailStergeTrimis = async function (id) {
+      if (!await raConfirm('Ștergi emailul din „Trimise"? Nu se mai poate recupera (destinatarul îl are deja).', { okLabel: 'Șterge' })) return;
+      try {
+        var r = await fetch('/api/mail/trimise/' + Number(id), { method: 'DELETE', credentials: 'same-origin' });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok) { raxToast(j.error || 'Nu s-a putut șterge.', 'error', 6000); return; }
+        raxToast('Emailul a fost șters.', 'success');
+        raxMailInchide(); raxLoadMail();
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+    };
+    // Semnătura adresei alese, sub mesaj (o scrie serverul; aici doar se arată).
+    window.raxMailSemn = function () {
+      var b = $('mail-semn'), sel = $('mail-de'); if (!b || !sel) return;
+      var a = _mail.adrese.filter(function (x) { return x.adresa === sel.value; })[0] || {};
+      b.innerHTML = '<i class="fas fa-signature"></i> Semnătura se adaugă singură: <b>' + esc(a.semnatura || '') + '</b>'
+        + (a.faraTelefon ? '<br>Telefonul se ia din fișa ta (Gestiune → Utilizatori → rândul tău → Telefon).' : '');
+    };
     window.raxMailScrie = function (pre) {
       if (!_mail.activ) { raxToast('Serverul n-are email configurat.', 'error'); return; }
       pre = pre || null;
       _mail.raspunsLa = pre && pre.raspunsLa != null ? pre.raspunsLa : null;
+      _mail.redir = pre && pre.redir ? pre.redir : null;
       var ov = _mailOv();
-      $('mail-ov-t').textContent = _mail.raspunsLa ? 'Răspuns' : 'Email nou';
+      $('mail-ov-t').textContent = _mail.raspunsLa ? (pre.tuturor ? 'Răspuns tuturor' : 'Răspuns') : (_mail.redir ? 'Redirecționare' : 'Email nou');
       var aMea = _mail.adrese.filter(function (x) { return x.aMea; })[0];
       // Răspunsul pleacă de pe adresa pe care a venit emailul (așa cere și serverul).
       var adrese = _mail.raspunsLa ? _mail.adrese.filter(function (x) { return x.adresa === pre.de_la; }) : _mail.adrese;
+      // Redirecționarea pleacă implicit de pe adresa emailului (dacă e a ta), dar se poate alege alta.
+      var preAles = pre && pre.de_la && _mail.adrese.some(function (x) { return x.adresa === pre.de_la; }) ? pre.de_la : null;
       var deLa = adrese.map(function (x) {
-        return '<option value="' + esc(x.adresa) + '"' + ((_mail.raspunsLa || (aMea ? x === aMea : x.comuna)) ? ' selected' : '') + '>' + esc(x.nume + ' <' + x.adresa + '>') + '</option>';
+        return '<option value="' + esc(x.adresa) + '"' + ((_mail.raspunsLa || (preAles ? x.adresa === preAles : (aMea ? x === aMea : x.comuna))) ? ' selected' : '') + '>' + esc(x.nume + ' <' + x.adresa + '>') + '</option>';
       }).join('');
+      var redirAtas = pre && (pre.atasamenteRedir || []).length
+        ? '<div class="mail-semn"><i class="fas fa-paperclip"></i> Merg mai departe și atașamentele emailului: ' + pre.atasamenteRedir.map(function (x) { return esc(x.nume) + ' (' + _mailOct(x.octeti) + ')'; }).join(', ') + '</div>'
+        : (pre && pre.faraAtasamente ? '<div class="mail-semn"><i class="fas fa-circle-info"></i> Atașamentele emailurilor trimise nu se păstrează la noi: se redirecționează doar textul.</div>' : '');
       var lim = _mail.limite || {};
       $('mail-ov-b').innerHTML = '<div class="mail-f">'
-        + '<label for="mail-de">De la</label><select id="mail-de" class="rax-field"' + (_mail.raspunsLa ? ' disabled' : '') + '>' + deLa + '</select>'
+        + '<label for="mail-de">De la</label><select id="mail-de" class="rax-field" onchange="raxMailSemn()"' + (_mail.raspunsLa ? ' disabled' : '') + '>' + deLa + '</select>'
         + '<label for="mail-catre">Către</label><input id="mail-catre" class="rax-field" type="text" autocomplete="off" placeholder="adresa@firma.ro — mai multe, despărțite prin virgulă">'
+        + '<label for="mail-cc">Cc</label><input id="mail-cc" class="rax-field" type="text" autocomplete="off" placeholder="opțional — mai multe, despărțite prin virgulă">'
         + '<label for="mail-subiect">Subiect</label><input id="mail-subiect" class="rax-field" type="text" maxlength="200" autocomplete="off">'
         + '<label for="mail-text">Mesaj</label><textarea id="mail-text"></textarea>'
+        + '<div class="mail-semn" id="mail-semn"></div>' + redirAtas
         + '<label for="mail-fis">Atașamente (cel mult ' + _mailOct(lim.atasamenteOcteti || 0) + ' în total)</label><input id="mail-fis" type="file" multiple>'
         + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">'
           + '<button class="rax-btn" onclick="raxMailInchide()">Renunță</button>'
           + '<button class="rax-btn primary" id="mail-trimite" onclick="raxMailTrimite()"><i class="fas fa-paper-plane"></i> Trimite</button></div>'
         + '</div>';
-      if (pre) { $('mail-catre').value = pre.catre || ''; $('mail-subiect').value = pre.subiect || ''; $('mail-text').value = pre.text || ''; }
+      if (pre) { $('mail-catre').value = pre.catre || ''; $('mail-cc').value = pre.cc || ''; $('mail-subiect').value = pre.subiect || ''; $('mail-text').value = pre.text || ''; }
+      raxMailSemn();
       ov.classList.add('open');
       setTimeout(function () {
-        if (_mail.raspunsLa) { var t = $('mail-text'); if (t) { t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
+        if (_mail.raspunsLa || (_mail.redir && pre && pre.catre)) { var t = $('mail-text'); if (t) { t.focus(); t.setSelectionRange(0, 0); t.scrollTop = 0; } }
         else { var c = $('mail-catre'); if (c) c.focus(); }
       }, 30);
     };
@@ -29082,13 +29129,15 @@ const pozitii = await r.json();</code></pre>
       btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se trimite…';
       try {
         var atas = await Promise.all(fis.map(_mailCiteste));
-        var corp = { de_la: $('mail-de').value, catre: $('mail-catre').value, subiect: $('mail-subiect').value, text: $('mail-text').value, atasamente: atas };
+        var corp = { de_la: $('mail-de').value, catre: $('mail-catre').value, cc: $('mail-cc').value, subiect: $('mail-subiect').value, text: $('mail-text').value, atasamente: atas };
         if (_mail.raspunsLa) corp.raspunsLa = _mail.raspunsLa;
+        else if (_mail.redir && _mail.redir.primit) corp.redirectioneazaPrimit = _mail.redir.primit;
+        else if (_mail.redir && _mail.redir.trimis) corp.redirectioneazaTrimis = _mail.redir.trimis;
         var r = await fetch('/api/mail/trimite', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corp) });
         var j = {}; try { j = await r.json(); } catch (e) {}
         if (!r.ok) { raxToast(j.error || 'Emailul n-a plecat.', 'error', 7000); btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Trimite'; return; }
-        raxToast(_mail.raspunsLa ? 'Răspunsul a plecat ✓' : 'Emailul a plecat ✓', 'success');
-        _mail.raspunsLa = null;
+        raxToast(_mail.raspunsLa ? 'Răspunsul a plecat ✓' : (_mail.redir ? 'Emailul a fost redirecționat ✓' : 'Emailul a plecat ✓'), 'success');
+        _mail.raspunsLa = null; _mail.redir = null;
         raxMailInchide();
         raxLoadMail();
       } catch (e) {

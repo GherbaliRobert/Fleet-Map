@@ -233,6 +233,28 @@ telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin
 - Păzit de `verify_mail_primite.js` (în `npm test`; emailuri brute ca de la Worker, pe server pornit, Brevo fals),
   `verify_mail.js`, `verify_telefon_lot5.js` (anunțul pe telefon).
 
+### Panoul Mail — 13.10: chenarul cu sigla, semnătura, „Răspunde tuturor", „Redirecționează", „Șterge" la trimise
+Robert: „template de mail cu logo… forward, reply, reply all, ștergere"; „1, b · 2 da pentru robert 0729699847, trebuie să
+avem în fișă numărul de telefon · 3. da · 4. da".
+- **Chenarul casei se pune în `mailer.send` (`_cuCadru` → `cadru`), o dată pentru TOATE emailurile** (invitații, parole,
+  contracte, neplată, rapoarte, panoul Mail): sigla albă pe `#0B0E11`, linia `#3FE07D`, rândul cu ratrack.ro. Un HTML care
+  are deja `cid:logo@ratrack.ro` (emailul cu factura) nu-l primește a doua oară; `cadru: false` îl oprește. NU scrie chenare
+  pe la rute: ar ieși două. „Trimise" ține conținutul FĂRĂ chenar. La Brevo sigla se cere de pe site (`_pentruBrevo`).
+- **Semnătura: `mailer.semnatura({ nume, telefon })`** — personală = `users.full_name` + `users.phone` (din fișă; „0729 699 847"
+  pe grupe), comună = „Echipa RA Track". O alege serverul (`_mailSemnatura`); `/api/mail/adrese` dă `semnatura` (rândul de pe
+  ecran) și `faraTelefon`. **`mailer.cuSemnatura(text, citat, semn)`** o pune sub textul omului și DEASUPRA citatului /
+  mesajului redirecționat, pe care serverul îl recunoaște refăcându-l (`mailPrimit.citat`, `pentruRedirectionare…`); citatul
+  schimbat de om → semnătura la capăt. Ecranele doar arată rândul primit — NU scrie semnătura în pagină sau pe telefon.
+- **„Răspunde tuturor": `mailPrimit.pentruRaspunsTuturor(m, toateAdreseleNoastre)`** — `cc` = „Către" + „Cc", fără adresele
+  noastre, fără destinatar, fără dubluri; gol → butonul nu apare. `send({ cc })` (Brevo `cc`, nodemailer `cc`);
+  `mail_trimise.cc`; destinatari + Cc ≤ `MAIL_DESTINATARI_MAX`.
+- **„Redirecționează"**: `redirectioneazaPrimit` (atașamentele păstrate merg și ele, din `mail_atasamente`) sau
+  `redirectioneazaTrimis` (doar textul — la „Trimise" atașamentele sunt doar nume; `faraAtasamente` o spune). „Fwd:" o dată
+  (`subiectRedirectionare`); felul `redirectionat`. Răspuns ȘI redirecționare deodată → 400; al altuia → 404.
+- **„Șterge" la trimise: `MAIL_TRIMISE_STERGIBILE`** (mesaj / raspuns / redirectionat) — o listă, folosită de ruta DELETE și de
+  `sePoateSterge`; restul → 403 „sunt dovada". Ștersul unui răspuns golește doar `mail_primite.raspuns_id` (rămâne „Răspuns de…").
+- Păzit de `verify_mail_raspuns.js` (în `npm test`; pe server pornit, Brevo fals, emailuri primite ca de la Worker).
+
 ## Cache / deploy (context util)
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).

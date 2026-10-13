@@ -297,6 +297,38 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
+### AMÂNDOI · Emailurile cu sigla casei; semnătura; „Răspunde tuturor", „Redirecționează", „Șterge" la cele trimise — `…`
+
+Robert (13.10): *„vreau să facem și un template de mail cu logo, vreau să putem face și forward, replay la mail, replay all,
+ștergere"*; apoi *„1, b · 2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon · 3. da · 4. da"*.
+
+1. **Chenarul casei pe TOATE emailurile care pleacă din aplicație** (invitații, linkuri de parolă, contracte, avertismente
+   de neplată, rapoarte programate, cele scrise din panoul Mail): bandă închisă cu sigla RA Track și linia verde, textul pe
+   alb, iar jos un rând „RA Track · monitorizare GPS pentru flote · ratrack.ro". Emailul cu factura își păstrează antetul lui
+   (are deja sigla).
+2. **Semnătura**, sub textul scris din panou: pe adresa personală — numele și telefonul **din fișa omului** (Robert:
+   „Robert Gherbali · RA Track · ratrack.ro · Tel. 0729 699 847"); pe contact@ — „Echipa RA Track". Se vede sub mesaj, în
+   fereastra de scris. Fără telefon în fișă, fereastra spune unde se pune (Gestiune → Utilizatori → rândul tău → Telefon).
+3. **„Răspunde tuturor"** pe un email primit: la expeditor, iar în Cc toți ceilalți din „Către" și „Cc", fără adresele
+   noastre. Butonul apare doar când chiar e cineva în plus. Fereastra de scris are acum și câmpul **Cc**.
+4. **„Redirecționează"**: un email primit pleacă mai departe cu atașamentele lui; unul trimis de noi — doar textul (la
+   „Trimise" atașamentele nu se păstrează, doar numele lor; fereastra o spune). Subiectul primește „Fwd:", iar semnătura
+   stă deasupra mesajului redirecționat, ca la răspuns deasupra citatului.
+5. **„Șterge" la emailurile trimise**: doar cele scrise de mână (mesaje, răspunsuri, redirecționări). Facturile,
+   contractele, avertismentele și invitațiile rămân — sunt dovada că le-am trimis.
+6. La fel pe telefon (APK 1.0.14).
+
+- **Ce am schimbat:** `mailer.js` (chenarul, pus o dată pentru toate emailurile; semnătura; Cc), `mail_primit.js` („Răspunde
+  tuturor", „Redirecționează"), `db.js` (coloana `cc` la „Trimise", ștergerea unui email trimis), `server.js` (rutele
+  panoului Mail), `public/index.html` (butoanele, Cc, semnătura sub mesaj), telefonul (`Mail.tsx`, rutele).
+- **Probe:** `verify_mail_raspuns.js` (nouă, 45, în `npm test`, cu Brevo fals și emailuri primite făcute ca de la Cloudflare):
+  chenarul pe invitații și pe emailurile din panou (și nu pe factură), semnătura cu telefonul din fișă, Cc-ul la „Răspunde
+  tuturor", atașamentul redirecționat cu exact octeții primiți, refuzurile, ștergerea (doar ce e scris de mână, doar ale
+  tale). `verify_mail.js` rescrisă pe regula nouă (un email scris e mesaj, răspuns sau redirecționat). Emailul de probă
+  văzut desenat; contrastul rândului de jos urcat la ~7 (era 4,4).
+- **Ce vede fondatorul:** butoanele noi în panoul Mail, Cc, semnătura sub mesaj.
+- **Ce vede clientul:** emailurile noastre arată acum la fel, cu sigla RA Track sus.
+
 ### AMÂNDOI · Remorca se atașează la un vehicul din fișa ei; „Șterge" pe rândul ei; „Deschide în simulator" — `…`
 
 Robert (13.10): *„vreau și buton în meniul de configurare al remorcii/semiremorcii de atașare la un vehicul"*, *„vreau și

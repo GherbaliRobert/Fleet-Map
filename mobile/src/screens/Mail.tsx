@@ -8,7 +8,8 @@ import './detail.css';
 import './admin.css';
 
 // Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail" — „și pe telefon, bineînțeles"), ca pe web
-// (Administrare → Mail): etapa 1 „Trimise" + „Scrie", etapa 2 „Primite" + „Răspunde". Telefonul NU hotărăște nimic: ce
+// (Business → Mail): etapa 1 „Trimise" + „Scrie", etapa 2 „Primite" + „Răspunde"; 13.10: „Răspunde tuturor", „Redirecționează",
+// „Șterge" la emailurile scrise de mână, semnătura și chenarul cu sigla (pus de server). Telefonul NU hotărăște nimic: ce
 // adrese vezi (adresa comună + a ta), câte sunt necitite, starea fiecărui email, spațiul ocupat, felul emailului,
 // avertismentele și ce se pune în răspuns (subiectul „Re:", mesajul citat) le dă serverul. Aceleași cuvinte ca pe web.
 // Pe telefon, linkurile din emailurile primite rămân oprite (cadrul gol, sandbox=""): o filă nouă deschisă din cadru
@@ -66,7 +67,9 @@ export function Mail() {
   const [imagini, setImagini] = useState(false);
   const [scrie, setScrie] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState<{ de_la: string; catre: string; subiect: string; text: string; raspunsLa: number | null }>({ de_la: '', catre: '', subiect: '', text: '', raspunsLa: null });
+  type Form = { de_la: string; catre: string; cc: string; subiect: string; text: string; raspunsLa: number | null; tuturor?: boolean;
+    redir?: { primit?: number; trimis?: number } | null; atasamenteRedir?: any[]; faraAtasamente?: boolean };
+  const [form, setForm] = useState<Form>({ de_la: '', catre: '', cc: '', subiect: '', text: '', raspunsLa: null });
   const fisRef = useRef<HTMLInputElement>(null);
   const cautaT = useRef<any>(null);
   const seq = useRef(0);
@@ -115,8 +118,12 @@ export function Mail() {
     if (!meta?.activ) { showToast('Serverul n-are email configurat.', true); return; }
     const adr = meta.adrese || [];
     const aMea = adr.find((x: any) => x.aMea);
-    if (pre) setForm({ de_la: pre.de_la, catre: pre.catre || '', subiect: pre.subiect || '', text: pre.text || '', raspunsLa: pre.raspunsLa });
-    else setForm({ de_la: (aMea || adr.find((x: any) => x.comuna) || adr[0] || {}).adresa || '', catre: '', subiect: '', text: '', raspunsLa: null });
+    const implicit = (aMea || adr.find((x: any) => x.comuna) || adr[0] || {}).adresa || '';
+    // Redirecționarea pleacă implicit de pe adresa emailului (dacă e a ta), dar se poate alege alta; răspunsul — doar de pe ea.
+    const deLaPre = pre && pre.de_la && adr.some((x: any) => x.adresa === pre.de_la) ? pre.de_la : implicit;
+    if (pre) setForm({ de_la: pre.raspunsLa ? pre.de_la : deLaPre, catre: pre.catre || '', cc: pre.cc || '', subiect: pre.subiect || '', text: pre.text || '',
+      raspunsLa: pre.raspunsLa || null, tuturor: !!pre.tuturor, redir: pre.redir || null, atasamenteRedir: pre.atasamenteRedir || [], faraAtasamente: !!pre.faraAtasamente });
+    else setForm({ de_la: implicit, catre: '', cc: '', subiect: '', text: '', raspunsLa: null });
     setScrie(true);
   }
   // „Răspunde": adresa, destinatarul, subiectul și mesajul citat le-a pus serverul (pentruRaspuns).
@@ -124,6 +131,24 @@ export function Mail() {
     const p = deschis?.pentruRaspuns; if (!p) return;
     nou({ ...p, raspunsLa: deschis.id });
     setDeschis(null);
+  }
+  // „Răspunde tuturor": Cc-ul (toți din „Către" și „Cc", fără adresele noastre) îl alege serverul (pentruRaspunsTuturor).
+  function raspundeTuturor() {
+    const p = deschis?.pentruRaspunsTuturor; if (!p) return;
+    nou({ ...p, raspunsLa: deschis.id, tuturor: true });
+    setDeschis(null);
+  }
+  // „Redirecționează": un email primit (atașamentele lui merg și ele) sau unul trimis de noi (doar textul).
+  function redirectioneaza() {
+    const p = deschis?.pentruRedirectionare; if (!p) return;
+    nou({ de_la: p.de_la, catre: '', subiect: p.subiect, text: p.text, redir: deschis.primit ? { primit: deschis.id } : { trimis: deschis.id },
+      atasamenteRedir: p.atasamente || [], faraAtasamente: !!p.faraAtasamente });
+    setDeschis(null);
+  }
+  async function stergeTrimis() {
+    if (!confirm('Ștergi emailul din „Trimise"? Nu se mai poate recupera (destinatarul îl are deja).')) return;
+    try { await Api.mailStergeTrimis(deschis.id); showToast('Emailul a fost șters.'); setDeschis(null); reload(); }
+    catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge.', true); }
   }
   async function trimite() {
     const fis = Array.from(fisRef.current?.files || []);
@@ -133,9 +158,10 @@ export function Mail() {
     setBusy(true);
     try {
       const atasamente = await Promise.all(fis.map(citeste));
-      const { raspunsLa, ...rest } = form;
-      await Api.mailTrimite(raspunsLa ? { ...rest, atasamente, raspunsLa } : { ...rest, atasamente });
-      showToast(raspunsLa ? 'Răspunsul a plecat ✓' : 'Emailul a plecat ✓');
+      const { raspunsLa, tuturor, redir, atasamenteRedir, faraAtasamente, ...rest } = form;
+      const legat = raspunsLa ? { raspunsLa } : redir?.primit ? { redirectioneazaPrimit: redir.primit } : redir?.trimis ? { redirectioneazaTrimis: redir.trimis } : {};
+      await Api.mailTrimite(raspunsLa ? { ...rest, atasamente, raspunsLa } : { ...rest, atasamente, ...legat });
+      showToast(raspunsLa ? 'Răspunsul a plecat ✓' : redir ? 'Emailul a fost redirecționat ✓' : 'Emailul a plecat ✓');
       setScrie(false); reload();
     } catch (e: any) { showToast(e?.message || 'Emailul n-a plecat.', true); }
     finally { setBusy(false); }
@@ -306,6 +332,8 @@ export function Mail() {
                     : <div style="white-space:pre-wrap;font-size:14px;line-height:1.55;overflow-wrap:anywhere">{deschis.text || ''}</div>}
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
                     <button class="btn btn-primary" disabled={!meta?.activ} onClick={raspunde} style="flex:1 1 100%"><Icon name="mail" size={16} /> Răspunde</button>
+                    {deschis.pentruRaspunsTuturor?.cc ? <button class="btn" disabled={!meta?.activ} onClick={raspundeTuturor} style={'flex:1;' + btnAlt}>Răspunde tuturor</button> : null}
+                    <button class="btn" disabled={!meta?.activ} onClick={redirectioneaza} style={'flex:1;' + btnAlt}>Redirecționează</button>
                     <button class="btn" onClick={necitit} style={'flex:1;' + btnAlt}>Marchează necitit</button>
                     <button class="btn" onClick={sterge} style={'flex:1;' + btnAlt + ';color:var(--red)'}>Șterge</button>
                   </div>
@@ -313,7 +341,7 @@ export function Mail() {
               ) : (
                 <>
                   <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.7;margin-bottom:10px;overflow-wrap:anywhere">
-                    <b>De la:</b> {deschis.de_la}<br /><b>Către:</b> {deschis.catre}<br /><b>Când:</b> {cand(deschis.la)} · {deschis.felText}
+                    <b>De la:</b> {deschis.de_la}<br /><b>Către:</b> {deschis.catre}{deschis.cc ? <><br /><b>Cc:</b> {deschis.cc}</> : null}<br /><b>Când:</b> {cand(deschis.la)} · {deschis.felText}
                     {deschis.firma ? ' · ' + deschis.firma : ''} · {deschis.cine}
                     {deschis.stare === 'esuat' && <><br /><span style="color:var(--red)"><b>N-a plecat:</b> {deschis.eroare}</span></>}
                     {(deschis.atasamente || []).length ? <><br /><b>Atașamente:</b> {deschis.atasamente.map((x: any) => x.nume + (x.octeti ? ' (' + oct(x.octeti) + ')' : '')).join(', ')}</> : null}
@@ -323,6 +351,10 @@ export function Mail() {
                     ? <iframe sandbox="" referrerpolicy="no-referrer" title="Conținutul emailului" style="width:100%;min-height:380px;border:1px solid var(--border);border-radius:10px;background:#fff"
                         srcdoc={csp(true) + deschis.html} />
                     : <div style="white-space:pre-wrap;font-size:14px;line-height:1.55;overflow-wrap:anywhere">{deschis.text || ''}</div>}
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+                    <button class="btn btn-primary" disabled={!meta?.activ} onClick={redirectioneaza} style="flex:1 1 100%">Redirecționează</button>
+                    {deschis.sePoateSterge ? <button class="btn" onClick={stergeTrimis} style={'flex:1;' + btnAlt + ';color:var(--red)'}>Șterge</button> : null}
+                  </div>
                 </>
               )}
             </div>
@@ -333,7 +365,7 @@ export function Mail() {
       {scrie && (
         <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !busy) setScrie(false); }}>
           <div class="sheet" style="max-height:94vh">
-            <div class="sheet-h"><b><Icon name="edit" size={18} color="var(--accent)" /> {form.raspunsLa ? 'Răspuns' : 'Email nou'}</b>
+            <div class="sheet-h"><b><Icon name="edit" size={18} color="var(--accent)" /> {form.raspunsLa ? (form.tuturor ? 'Răspuns tuturor' : 'Răspuns') : (form.redir ? 'Redirecționare' : 'Email nou')}</b>
               <button class="h-btn" onClick={() => !busy && setScrie(false)} aria-label="Închide"><Icon name="x" /></button></div>
             <div class="sheet-body">
               <label style={eticheta}>De la</label>
@@ -344,10 +376,25 @@ export function Mail() {
               <label style={eticheta}>Către</label>
               <input type="email" value={form.catre} onInput={(e) => setForm({ ...form, catre: (e.target as HTMLInputElement).value })}
                 placeholder="adresa@firma.ro — mai multe, despărțite prin virgulă" style={camp} />
+              <label style={eticheta}>Cc</label>
+              <input type="email" value={form.cc} onInput={(e) => setForm({ ...form, cc: (e.target as HTMLInputElement).value })}
+                placeholder="opțional — mai multe, despărțite prin virgulă" style={camp} />
               <label style={eticheta}>Subiect</label>
               <input type="text" maxLength={200} value={form.subiect} onInput={(e) => setForm({ ...form, subiect: (e.target as HTMLInputElement).value })} style={camp} />
               <label style={eticheta}>Mesaj</label>
               <textarea value={form.text} onInput={(e) => setForm({ ...form, text: (e.target as HTMLTextAreaElement).value })} style={camp + ';min-height:170px;resize:vertical;line-height:1.5'} />
+              {/* Semnătura adresei alese o scrie serverul (din fișa omului); aici doar se arată. */}
+              {(() => { const a = (meta?.adrese || []).find((x: any) => x.adresa === form.de_la) || {}; return (
+                <div style="font-size:12px;line-height:1.5;color:var(--text-secondary);margin-top:6px;overflow-wrap:anywhere">
+                  Semnătura se adaugă singură: <b style="color:var(--text-primary)">{a.semnatura || ''}</b>
+                  {a.faraTelefon ? <><br />Telefonul se ia din fișa ta (Gestiune → Utilizatori → rândul tău → Telefon).</> : null}
+                </div>); })()}
+              {(form.atasamenteRedir || []).length > 0 && (
+                <div style="font-size:12px;line-height:1.5;color:var(--text-secondary);margin-top:6px;overflow-wrap:anywhere">
+                  📎 Merg mai departe și atașamentele emailului: {(form.atasamenteRedir || []).map((x: any) => x.nume + ' (' + oct(x.octeti) + ')').join(', ')}
+                </div>)}
+              {form.faraAtasamente && (
+                <div style="font-size:12px;line-height:1.5;color:var(--text-secondary);margin-top:6px">Atașamentele emailurilor trimise nu se păstrează la noi: se redirecționează doar textul.</div>)}
               <label style={eticheta}>Atașamente (cel mult {oct(meta?.limite?.atasamenteOcteti)} în total)</label>
               <input ref={fisRef} type="file" multiple style="font-size:13px;color:var(--text-secondary)" />
               <button class="btn btn-primary" disabled={busy} onClick={trimite} style="width:100%;margin-top:16px">{busy ? 'Se trimite…' : 'Trimite'}</button>

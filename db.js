@@ -1606,6 +1606,8 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_trimise_de_la ON mail_trimise(de_la, id DESC)`);
     // Etapa 2 (12.10): răspunsul scris din panoul Mail ține minte la ce email primit răspunde.
     await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS raspuns_pentru BIGINT`);
+    // 13.10: „Răspunde tuturor" pune oameni și în Cc — se țin separat de „Către", ca pe ecran să se vadă cine e unde.
+    await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS cc TEXT`);
     // Fila „Primite": ce ne scriu oamenii pe adresele noastre (contact@ și ale fondatorilor), adus de Cloudflare
     // (mail_primit.js). `catre` = adresa NOASTRĂ pe care a venit — de ea depinde cine îl vede. Citit / răspuns: o dată pe
     // email (adresa comună e a tuturor: dacă a răspuns Alin, Robert vede asta). Fără ștergere automată, ca „Trimise".
@@ -2239,12 +2241,12 @@ const _MAIL_CORP_MAX = 200000;
 async function noteazaMailTrimis(r) {
   const taie = function (s, n) { return s == null ? null : String(s).slice(0, n || _MAIL_CORP_MAX); };
   const q = await pool.query(
-    `INSERT INTO mail_trimise (de_la, catre, subiect, fel, company_id, user_id, text, html, atasamente, stare, eroare, cale, mesaj_id, raspuns_pentru)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
+    `INSERT INTO mail_trimise (de_la, catre, subiect, fel, company_id, user_id, text, html, atasamente, stare, eroare, cale, mesaj_id, raspuns_pentru, cc)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
     [taie(r.de_la, 200) || '', taie(r.catre, 4000) || '', taie(r.subiect, 500), taie(r.fel, 30), r.companyId != null ? r.companyId : null,
       r.userId != null ? r.userId : null, taie(r.text), taie(r.html), JSON.stringify(Array.isArray(r.atasamente) ? r.atasamente.slice(0, 30) : []),
       r.stare === 'esuat' ? 'esuat' : 'trimis', taie(r.eroare, 1000), taie(r.cale, 10), taie(r.mesajId, 200),
-      r.raspunsPentru != null ? r.raspunsPentru : null]);
+      r.raspunsPentru != null ? r.raspunsPentru : null, taie(r.cc, 4000)]);
   return q.rows[0] ? q.rows[0].id : null;
 }
 // Lista (fără corp), DOAR de pe adresele primite — cele pe care le vede omul (serverul le alege). `cauta`: în destinatari
@@ -2256,15 +2258,21 @@ async function listMailTrimise(adrese, o) {
   let w = 'm.de_la = ANY($1)';
   if (o.cauta) {
     p.push('%' + String(o.cauta).toLowerCase().slice(0, 100).replace(/[\\%_]/g, '\\$&') + '%');
-    w += ' AND (LOWER(m.catre) LIKE $' + p.length + ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
+    w += ' AND (LOWER(m.catre) LIKE $' + p.length + ' OR LOWER(COALESCE(m.cc, \'\')) LIKE $' + p.length + ' OR LOWER(COALESCE(m.subiect, \'\')) LIKE $' + p.length + ')';
   }
   p.push(lim + 1); p.push(off);
   const r = await pool.query(
-    `SELECT m.id, m.creat_la, m.de_la, m.catre, m.subiect, m.fel, m.company_id, c.name AS company_name, m.user_id,
+    `SELECT m.id, m.creat_la, m.de_la, m.catre, m.cc, m.subiect, m.fel, m.company_id, c.name AS company_name, m.user_id,
             u.full_name AS user_name, m.atasamente, m.stare, m.eroare, m.cale
        FROM mail_trimise m LEFT JOIN companies c ON c.id = m.company_id LEFT JOIN users u ON u.id = m.user_id
       WHERE ${w} ORDER BY m.id DESC LIMIT $${p.length - 1} OFFSET $${p.length}`, p);
   return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
+}
+// „Șterge" pe un email trimis (13.10): doar cele scrise de mână — regula o păzește serverul. Emailul primit la care era
+// răspunsul își păstrează „Răspuns de …, pe …" (s-a răspuns), doar legătura spre rând se golește.
+async function stergeMailTrimis(id) {
+  await pool.query('UPDATE mail_primite SET raspuns_id = NULL WHERE raspuns_id = $1', [id]);
+  await pool.query('DELETE FROM mail_trimise WHERE id = $1', [id]);
 }
 async function getMailTrimis(id) {
   const r = await pool.query(
@@ -6124,7 +6132,7 @@ module.exports = {
   abonamentLuna, pornesteAbonamentul, setAbonamentDeLa, migreazaPornireaAbonamentelor,
   marcheazaMontajeFacturate, getDeviceByImei,
   pruneAgentFindings,
-  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, mailSpatiu,
+  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, stergeMailTrimis, mailSpatiu,
   noteazaMailPrimit, listMailPrimite, getMailPrimit, atasamenteMailPrimit, getAtasamentMailPrimit, marcheazaMailCitit, marcheazaMailRaspuns, stergeMailPrimit, mailNecitite, firmaDupaEmail,
   listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,

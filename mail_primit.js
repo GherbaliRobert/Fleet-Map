@@ -116,6 +116,48 @@ function pentruRaspuns(m) {
   return { de_la: m.catre, catre: m.raspuns_catre || m.de_la || '', subiect: subiectRaspuns(m.subiect), text: citat(m) };
 }
 
+// ─── „Răspunde tuturor" și „Redirecționează" (Robert, 13.10: „4. da") ───
+// Adresele dintr-un antet („Ion <ion@x.ro>, b@y.ro") → ['ion@x.ro', 'b@y.ro'].
+function adreseDin(s) { return (String(s || '').match(/[^\s<>,;"'()]+@[^\s<>,;"'()]+\.[^\s<>,;"'()]+/g) || []).map(_email); }
+// La cine merge răspunsul (expeditorul / adresa lui de răspuns) + în Cc toți cei din „Către" și „Cc", fără adresele NOASTRE
+// (`ale` = toate: comuna și ale fondatorilor) și fără dubluri. `cc` gol = nu e nimeni în plus (ecranul nu arată butonul).
+function pentruRaspunsTuturor(m, ale) {
+  const noi = (ale || []).map(_email);
+  const r = pentruRaspuns(m);
+  const catre = _email(r.catre);
+  const cc = [];
+  adreseDin(m.antet_catre).concat(adreseDin(m.antet_cc)).forEach(function (a) {
+    if (!a || a === catre || noi.indexOf(a) >= 0 || cc.indexOf(a) >= 0) return;
+    cc.push(a);
+  });
+  return Object.assign({}, r, { cc: cc.join(', ') });
+}
+// „Fwd: " o singură dată.
+function subiectRedirectionare(s) {
+  const t = String(s || '').trim() || '(fără subiect)';
+  return (/^(fwd|fw|tr|redirecționat|redirectionat)\s*:/i.test(t) ? t : 'Fwd: ' + t).slice(0, 200);
+}
+const REDIR_MAX = 40000;   // textul mesajului redirecționat (un email scris are voie la 50.000 de caractere)
+// Mesajul redirecționat, sub ce scrie omul (ca la Gmail): antetul lui și textul întreg.
+function blocRedirectionat(o) {
+  let t = String(o.text || '').replace(/\r\n/g, '\n').trim();
+  if (t.length > REDIR_MAX) t = t.slice(0, REDIR_MAX).replace(/\s+\S*$/, '') + ' […]';
+  const cand = _cand(o.cand);
+  return '\n\n---------- Mesaj redirecționat ----------\nDe la: ' + (o.de || '—') + (cand ? '\nData: ' + cand : '')
+    + '\nSubiect: ' + (o.subiect || '(fără subiect)') + '\nCătre: ' + (o.catre || '—') + (o.cc ? '\nCc: ' + o.cc : '') + '\n\n' + t;
+}
+// Un email PRIMIT: pleacă implicit de pe adresa pe care a venit; atașamentele păstrate merg și ele (le pune serverul).
+function pentruRedirectionare(m) {
+  return { de_la: m.catre, catre: '', subiect: subiectRedirectionare(m.subiect),
+    text: blocRedirectionat({ de: m.de_nume ? m.de_nume + ' <' + m.de_la + '>' : m.de_la, cand: m.trimis_la || m.primit_la, subiect: m.subiect,
+      catre: m.antet_catre || m.catre, cc: m.antet_cc, text: m.text || textDinHtml(m.html) }) };
+}
+// Un email TRIMIS de noi: doar textul (la „Trimise" atașamentele nu se păstrează, doar numele lor).
+function pentruRedirectionareTrimis(t) {
+  return { de_la: t.de_la, catre: '', subiect: subiectRedirectionare(t.subiect),
+    text: blocRedirectionat({ de: t.de_la, cand: t.creat_la, subiect: t.subiect, catre: t.catre, cc: t.cc, text: t.text || textDinHtml(t.html) }) };
+}
+
 // Imaginile din corp (cid:) → date puse în pagină, din atașamentele păstrate. Doar imagini și doar până la
 // IMAGINE_IN_CORP_MAX; restul rămân ca link mort (cadrul nu cere nimic din afară).
 function cuImagini(html, atasamente) {
@@ -139,4 +181,5 @@ function anunt(adresa, n) {
 module.exports = {
   EMAIL_MAX, TEXT_MAX, HTML_MAX, ATAS_PASTRAT_MAX, IMAGINE_IN_CORP_MAX, CITAT_MAX,
   citeste, verificare, adresaNoastra, subiectRaspuns, citat, pentruRaspuns, cuImagini, anunt, textDinHtml, cand: _cand,
+  adreseDin, pentruRaspunsTuturor, subiectRedirectionare, blocRedirectionat, pentruRedirectionare, pentruRedirectionareTrimis, REDIR_MAX,
 };

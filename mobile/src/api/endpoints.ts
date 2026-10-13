@@ -276,6 +276,9 @@ export const Api = {
   mailNecitit: (id: number) => api<any>(`/api/mail/primite/${id}/necitit`, { method: 'POST', body: {} }),
   mailStergePrimit: (id: number) => api<any>(`/api/mail/primite/${id}`, { method: 'DELETE' }),
   mailNecitite: () => api<{ total: number; peAdresa: Record<string, number> }>('/api/mail/necitite'),
+  // 13.10: „Șterge" în „Trimise" (doar emailurile scrise de mână — o păzește serverul); „Răspunde tuturor" și
+  // „Redirecționează" pleacă tot prin mailTrimite (cu `cc`, `redirectioneazaPrimit` / `redirectioneazaTrimis`).
+  mailStergeTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`, { method: 'DELETE' }),
   // ── Super-admin: Cereri de cont demo (formularul public de pe landing) ──
   demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),
