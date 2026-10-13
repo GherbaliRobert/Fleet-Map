@@ -297,7 +297,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-13
 
-### AMÂNDOI · Emailurile cu sigla casei; semnătura; „Răspunde tuturor", „Redirecționează", „Șterge" la cele trimise — `…`
+### AMÂNDOI · Emailurile cu sigla casei; semnătura; „Răspunde tuturor", „Redirecționează", „Șterge" la cele trimise — `43ca7a2`
 
 Robert (13.10): *„vreau să facem și un template de mail cu logo, vreau să putem face și forward, replay la mail, replay all,
 ștergere"*; apoi *„1, b · 2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon · 3. da · 4. da"*.
