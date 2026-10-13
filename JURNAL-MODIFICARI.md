@@ -118,6 +118,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **09.10:** APK-ul e construit — `RA-Track-1.0.10-debug.apk`, pe Desktop (înlocuiește 1.0.9 de mai devreme, azi). Are
   tot ce e mai sus, plus sigla oficială și numele „RA Track". Rămâne doar instalarea pe telefoane.
   (02.10: tot acolo, banda din Dispozitive arhivate trimite la „Descarcă tot istoricul", de pe calculator.)
+  **13.10:** APK nou — `RA-Track-1.0.12-debug.apk`, pe Desktop: simulatorul de încărcare și planurile șoferului („Am
+  încărcat"), plus panoul Mail (etapa 2). Înlocuiește 1.0.10 / 1.0.11. Rămâne instalarea pe telefoane.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -291,7 +293,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-12
 
-### AMÂNDOI · Planurile de încărcare: „Trimite șoferului", planul pe telefonul șoferului, „Am încărcat" (etapa 1, pasul 4) — `…`
+### AMÂNDOI · Planurile de încărcare: „Trimite șoferului", planul pe telefonul șoferului, „Am încărcat" (etapa 1, pasul 4) — `b6072f2`
 
 Robert (12.10): *„hai cu etapa 4"*; ordinea aprobată: *„(4) telefonul"*. Făcut după macheta aprobată (artboard-ul „Telefon",
 https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
@@ -323,7 +325,7 @@ https://claude.ai/artifact/PWP7LniWePGuqT6trLrNMJ).
   `/destinatari`, „Am încărcat" / „Am o problemă", anunțurile), `public/index.html` + `public/css/app.css` (butonul,
   planurile, fereastra șoferului, anunțurile), telefonul (`screens/Simulator.tsx`, `PlanSofer.tsx`, `PlanuriIncarcare.tsx`,
   `simulator.css`, `lib/simDesen.ts` = copia întocmai a desenului de pe web, meniul, rutele, adresele anunțurilor în
-  `push.ts`). APK: 1.0.12, împreună cu panoul Mail (etapa 2).
+  `push.ts`). APK: 1.0.12 (construit pe 13.10, `RA-Track-1.0.12-debug.apk` pe Desktop), împreună cu panoul Mail (etapa 2).
 - **Probe:** `verify_plan_incarcare.js` (nouă, 85, în `npm test`): textele, desenul identic pe web și pe telefon pe 210
   combinații (o stricăciune de o cifră în copia telefonului o face să pice — încercat), pagina, telefonul (rutele, meniul,
   contrastul pe ambele teme), plus server pornit: salvarea, trimiterea doar unui om activ al firmei, șoferul fără drepturi
