@@ -23419,9 +23419,11 @@ const pozitii = await r.json();</code></pre>
     var _raxAbo = null;
     function _raxN(v) { v = parseFloat(v); return (isFinite(v) && v >= 0) ? v : 0; }
     // Oglindă client-side a plans.computeCompanyPrice (model DIRECT) — preview live, fără apel server.
-    function _raxClientPrice(counts, o, feats) {
+    // „Asistent AI" (suma fixă veche) intră doar unde modulul e pornit DE NOI (`setate`), ca în plans.js: din 14.10 RA Insight
+    // e pornit implicit la toate firmele (pachetul Start, inclus), fără să se plătească ceva.
+    function _raxClientPrice(counts, o, feats, setate) {
       var none = +counts.none || 0, can = +counts.can || 0, total = none + can;
-      var aiA = (feats.ai_assistant ? _raxN(o.aiAssistantRON) : 0), aiAg = (feats.agents ? _raxN(o.aiAgentsRON) : 0), ai = aiA + aiAg;
+      var aiA = (feats.ai_assistant && setate && setate.ai_assistant === true ? _raxN(o.aiAssistantRON) : 0), aiAg = (feats.agents ? _raxN(o.aiAgentsRON) : 0), ai = aiA + aiAg;
       if (o.priceNoneRON !== '' && o.priceNoneRON != null) {
         var pn = _raxN(o.priceNoneRON), pc = (o.priceCanRON !== '' && o.priceCanRON != null) ? _raxN(o.priceCanRON) : pn;
         var noneT = pn * none, canT = pc * can;
@@ -23436,7 +23438,7 @@ const pozitii = await r.json();</code></pre>
       var s = {}; vehicles.forEach(function (v) { if (v.bill_can) s[v.imei] = true; }); // bife CAN inițiale (override sau auto)
       _raxAbo = {
         id: c.id, vehicles: vehicles, canImeis: s,
-        feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
+        feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}), setate: Object.assign({}, d.features_setate || {}),
         aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0 }, d.ai_quota || {}),
         // Păstrarea istoricului firmei și cifrele regulii (incluse / cel mult) — amândouă de la server.
         pastrare: d.pastrare || null, pastrareRegula: d.pastrare_regula || null,
@@ -23667,7 +23669,7 @@ const pozitii = await r.json();</code></pre>
       if (!_raxAbo) return;
       _raxAboReadFields();
       var canN = _raxAboCanCount(), totalN = _raxAbo.vehicles.length, noneN = Math.max(0, totalN - canN);
-      var pr = _raxClientPrice({ none: noneN, can: canN }, _raxAbo.offer, _raxAbo.feats);
+      var pr = _raxClientPrice({ none: noneN, can: canN }, _raxAbo.offer, _raxAbo.feats, _raxAbo.setate);
       _raxAbo._price = pr;
       var pastLei = (_raxAbo.pastrare && _raxAbo.pastrare.platita) ? (Number(_raxAbo.pastrare.pretRON) || 0) : 0;
       var chLei = (_raxAbo.chirie && Number(_raxAbo.chirie.totalRON)) || 0;
@@ -23732,12 +23734,12 @@ const pozitii = await r.json();</code></pre>
     };
     window.raxAboToggleFeat = async function (key, on) {
       if (!_raxAbo) return;
-      _raxAbo.feats[key] = !!on; raxAboRecalc();
+      _raxAbo.feats[key] = !!on; _raxAbo.setate[key] = !!on; raxAboRecalc();
       try {
         var b = { features: {} }; b.features[key] = !!on;
         var j = await fetch('/api/companies/' + _raxAbo.id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).then(function (r) { return r.json(); });
         if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
-        if (j.features) { _raxAbo.feats = Object.assign(_raxAbo.feats, j.features); raxAboRecalc(); }
+        if (j.features) { _raxAbo.feats = Object.assign(_raxAbo.feats, j.features); if (j.features_setate) _raxAbo.setate = j.features_setate; raxAboRecalc(); }
         (window.raxToast || function () { })('Modul ' + (on ? 'activat' : 'dezactivat'), 'success');
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };

@@ -280,16 +280,17 @@ T('ai_raport.js nu citește rânduri după poziție (row[N]) — doar după nume
 // ─── 3. Sursa ───────────────────────────────────────────────────────────────────────────────────────
 console.log('\n3. Sursa: fără model, aceleași opțiuni ca ecranul Rapoarte, fără „gratuit"/„fond" pe ecran');
 const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-const ruta = (SRV.split("app.post('/api/reports/ai-raport'")[1] || '').split('\n});')[0];
+// Motorul pe reguli stă într-o funcție (14.10, pachetele: îl cheamă și RA Insight pe Start); ruta doar îl cheamă.
+const ruta = (SRV.split('async function _aiRaportCore(')[1] || '').split('\n}\n')[0] + (SRV.split("app.post('/api/reports/ai-raport'")[1] || '').split('\n});')[0];
 const antet = (SRV.match(/app\.post\('\/api\/reports\/ai-raport',[^\n]*/) || [''])[0];
-T('ruta cere doar „vede rapoarte" — nu loc RA Insight, nu modulul RA Insight', /requirePerm\('viewReports'\)/.test(antet) && !/requireAiSeat|requireFeature\('ai_assistant'\)/.test(antet), antet);
+T('ruta cere „vede rapoarte"; pe o firmă cu pachet (14.10) și contul RA Insight — pe Start, al administratorului (_poartaReguliPachet)', /requirePerm\('viewReports'\)/.test(antet) && !/requireAiSeat|requireFeature\('ai_assistant'\)/.test(antet) && /_poartaReguliPachet\(req\)/.test(ruta), antet);
 T('ruta nu cheamă modelul și nu numără nimic din fond', ruta.length > 500 && !/runAgent|anthropic|recordAiUsage|_regulileFonduluiAi|ai\.chat/.test(ruta));
 // Cine cheamă opțiunile, pe nume: ecranul Rapoarte, AI Raport și ramurile RA Insight Combustibil și Ore de condus (07.10) —
 // toate aceeași funcție; nicio a doua listă de opțiuni.
 T('opțiunile raportului vin din ACEEAȘI funcție ca ecranul (ecranul, AI Raport, ramurile Combustibil și Ore de condus)', (SRV.match(/_optiuniRaport\(/g) || []).length === 5 &&
   /const opts = _optiuniRaport\(req\.query, _cs\);/.test(SRV) && /const opts = _optiuniRaport\(\{\}, cs\);/.test(SRV) && (SRV.match(/_optiuniRaport\(\{\}, f\.cs\)/g) || []).length === 2 &&
   /async function _ramCombustibil\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV) && /async function _ramOreCondus\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV), (SRV.match(/_optiuniRaport\(/g) || []).length);
-T('mașinile: aceeași regulă ca rapoartele (fără arhivate, fără demo); `imei` din corp e aruncat', /delete b\.imei/.test(ruta) && /resolveReportImeis\(req\)/.test(ruta));
+T('mașinile: aceeași regulă ca rapoartele (fără arhivate, fără demo); `imei` din corp e aruncat', /delete req\.body\.imei/.test(ruta) && /resolveReportImeis\(req\)/.test(ruta));
 T('rolul tăiat se respectă și aici (poateRaport)', /poateRaport\(req, u\.raport\)/.test(ruta));
 T('în jurnal: doar subiectul și câte mașini — nu textul întrebării', /auditReq\(req, 'ai_raport', 'report', null, \{ subiect: u\.subiect, masini: imeis\.length \}\)/.test(ruta) && !/auditReq\([^)]*text/.test(ruta));
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
@@ -369,7 +370,8 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   const PAROLA = 'Str4da-Verde-2026';
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Raport SRL' })).j;
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma Raport SRL' })).j;
-  // Firma 1 ARE RA Insight (ca să vedem că fondul nu se mișcă); firma 2 NU îl are deloc (AI Raport tot merge).
+  // Firma 1 ARE RA Insight pe regula veche (ca să vedem că fondul nu se mișcă); firma 2 n-are nimic scris = pachetul Start
+  // (14.10): AI Raport îi răspunde administratorului, din cele 50 de răspunsuri pe butoane.
   await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
   await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   async function om(username, role, companyId, loc) {
@@ -410,7 +412,7 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
 
   // a) întrebările gata făcute
   const iq = await json('GET', '/api/reports/ai-raport/intrebari', ckAlt);
-  T('întrebările gata făcute: și pentru firma FĂRĂ RA Insight', iq.status === 200 && iq.j.intrebari.length === A.INTREBARI_GATA.length);
+  T('întrebările gata făcute: și pentru firma pe Start (fără AI)', iq.status === 200 && iq.j.intrebari.length === A.INTREBARI_GATA.length);
 
   // b) cifrele = cifrele raportului
   const q1 = await json('POST', '/api/reports/ai-raport', ckSef, { text: 'Câți km a făcut B 154 UIP săptămâna trecută?' });
@@ -464,7 +466,7 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   const q4 = await json('POST', '/api/reports/ai-raport', ckSef, { text: 'de ce consumă B 77 RAT atât?' });
   T('„de ce" → trimite la RA Insight (spreInsight), cui are loc RA Insight', q4.j.neinteles && q4.j.spreInsight === true);
   const q4b = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'de ce consumă atât?' });
-  T('…în firma FĂRĂ RA Insight nu-l trimite acolo (nu-i promite ce nu are): îi dă butoane cu cifre', q4b.j.neinteles && !q4b.j.spreInsight && (q4b.j.alege || []).length > 0, q4b.text.slice(0, 200));
+  T('…în firma pe Start (fără AI) nu-l trimite acolo (nu-i promite ce nu are): îi dă butoane cu cifre', q4b.j.neinteles && !q4b.j.spreInsight && (q4b.j.alege || []).length > 0, q4b.text.slice(0, 200));
   toate.push(q4.text, q4b.text);
   // d2) ce expiră, pe raportul adevărat: un ITP peste 3 zile la B 154 UIP, un RCA expirat acum 5 zile la B 77 RAT
   const ziISO = (ms) => new Date(ms).toISOString().slice(0, 10);
@@ -483,14 +485,14 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   T('fondul RA Insight al firmei nu s-a mișcat', (await json('GET', '/api/ai/quota', ckSef)).j.used === fond0);
   // f) fără loc RA Insight și într-o firmă fără RA Insight: merge
   const q5 = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'km săptămâna asta' });
-  T('firma FĂRĂ RA Insight: AI Raport răspunde (e gratuit, al tuturor)', q5.status === 200 && !!q5.j.raspuns && /Flota a parcurs|a parcurs/.test(q5.j.raspuns.text || ''), q5.text.slice(0, 160));
+  T('firma pe Start: AI Raport răspunde administratorului și se numără din cele 50', q5.status === 200 && !!q5.j.raspuns && /Flota a parcurs|a parcurs/.test(q5.j.raspuns.text || '') && q5.j.pachet && q5.j.pachet.cod === 'start' && q5.j.pachet.ramase < 50, q5.text.slice(0, 160));
   // g) nimeni nu vede mașinile altei firme
   const furt1 = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'Câți km a făcut B 154 UIP săptămâna trecută?' });
   T('altă firmă, cu numărul nostru: nu-l recunoaște, răspunde doar despre flota ei', furt1.status === 200 && !(furt1.j.sursa && furt1.j.sursa.imeis) && furt1.text.indexOf('Dacia Logan') < 0 && furt1.text.indexOf('154 UIP') < 0, furt1.text.slice(0, 200));
   const furt2 = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'și săptămâna asta?', context: { subiect: 'km', masini: [DEV[0].imei, DEV[1].imei], perioada: q1.j.context.perioada } });
   T('…nici cu `context` trimis de mână cu mașinile noastre (se curăță pe server)', furt2.status === 200 && !(furt2.j.context && furt2.j.context.masini) && furt2.text.indexOf('Dacia Logan') < 0, furt2.text.slice(0, 200));
   const furt3 = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'km săptămâna asta', imei: DEV[0].imei });
-  T('…nici cu `imei` în corp (aruncat)', furt3.status === 200 && furt3.text.indexOf('Dacia Logan') < 0);
+  T('…nici cu `imei` în corp (aruncat)', furt3.status === 200 && furt3.text.indexOf('Dacia Logan') < 0, furt3.status + ' ' + furt3.text.slice(0, 300));
   const furt4 = await json('POST', '/api/reports/ai-raport?imei=' + DEV[0].imei, ckAlt, { text: 'km săptămâna asta' });
   T('…nici cu `?imei=` în adresă (refuz)', furt4.status === 403, furt4.status);
   // h) drepturile din rol

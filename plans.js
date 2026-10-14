@@ -55,7 +55,10 @@ function computeCompanyPrice(company, canCounts, opts) {
   const eff = ofertaFirmei(company) || {};
   const num = function (v) { return (v != null && isFinite(v)) ? Number(v) : 0; };
   const feats = opts.features || null;
-  const aiAssistOn = feats ? !!feats.ai_assistant : true;
+  // „Asistent AI" (suma fixă pe firmă, forma veche) se plătește doar unde modulul a fost PORNIT DE NOI (oferta sau de mână).
+  // Din 14.10 RA Insight e pornit implicit la toate firmele (pachetul Start, inclus) — fără rândul ăsta, o sumă veche
+  // scrisă într-o fișă ar fi apărut pe factură la o firmă care n-a cumpărat nimic.
+  const aiAssistOn = (feats ? !!feats.ai_assistant : true) && featuresSetate(company).ai_assistant === true;
   const aiAgentsOn = feats ? !!feats.agents : true;
   const mk = function (model, perVehicleTotal, aiTotal, bd) {
     return {
@@ -94,10 +97,12 @@ function computeCompanyPrice(company, canCounts, opts) {
 
 // Modulele unei firme. Implicit FIX, nu dintr-un tabel de planuri:
 //   agenții — PORNIȚI (gratuiți, parte din produs);
+//   RA Insight — PORNIT (din 14.10: orice firmă începe cu pachetul Start, inclus în contract; ce primește stă în
+//                pachete.js, nu aici — Start e fără AI, doar pe butoane, doar pentru administrator);
 //   restul — OPRITE până le aprinde oferta semnată.
 // `settings.features` (scris de ofertă sau de mână, din Configurează) bate întotdeauna implicitul.
 const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll', 'incarcare'];
-const FEATURE_IMPLICIT = { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false, incarcare: false };
+const FEATURE_IMPLICIT = { agents: true, ai_assistant: true, etransport: false, tahograf: false, etoll: false, incarcare: false };
 // Simulatorul de încărcare (Robert, 12.10: „inclus în abonament" + „1.a"): neales de noi, merge DUPĂ FLOTĂ — pornit la
 // firmele care au vehicule care cară marfă (TIPURI_CU_MARFA), oprit la celelalte. Ales de noi (true / false în
 // `settings.features`), rămâne cum l-am pus; `null` îl întoarce la automat. Flota o ține minte serverul (setFlotaGrea),

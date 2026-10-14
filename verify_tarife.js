@@ -589,7 +589,7 @@ T('spune firma, omul și câte conturi are acum',
   /a activat încă un cont/.test(server) && /Firma are acum ' \+ seats/.test(server));
 T('spune și cât face pe factură', /factura lunii: ' \+ \(seats \* pret\)/.test(server));
 T('spune că accesul e deja activ și cum se retrage', /Accesul e deja activ/.test(server));
-T('doar la APRINDERE, nu și la stingere', /if \(on\) \{[\s\S]{0,900}ai_seat_on/.test(server));
+T('doar la APRINDERE, nu și la stingere — și doar pe regula pe cont (pe un pachet prețul e fix pe firmă, 14.10)', /if \(on && !pT\) \{[\s\S]{0,900}ai_seat_on/.test(server));
 T('din notificare se ajunge în fișa firmei',
   /d\.type === 'ai_seat_on'[\s\S]{0,300}raxOpenCompanyDetail/.test(html));
 T('pe fila de abonament', /raxOpenCompanyDetail\(' \+ Number\(d\.data\.company_id\) \+ ', \\'abonament\\'\)/.test(html));

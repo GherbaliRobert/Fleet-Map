@@ -220,6 +220,7 @@ const ai = require('./ai');
 const insight = require('./insight');   // RA Insight: fișa flotei (număr, nume, șofer, grupă), perioadele pe ora României, memoria
 const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": pașii adevărați, citiți gratuit sau prin RA Insight
 const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
+const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
@@ -3012,14 +3013,23 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     // Câte conturi erau ÎNAINTE. La STINGERE, ăsta e numărul care trebuie plătit pe luna în curs:
     // fără el, un cont aprins în octombrie și stins pe 3 noiembrie ar fi mers trei zile pe gratis.
     const seatsInainte = await db.getAiSeats(tinta.company_id);
+    // Pachetele (14.10): câte conturi are pachetul și cine poate primi unul (pe Start doar administratorul). Prețul e fix pe
+    // firmă, deci un cont în plus nu schimbă factura: fără vârful lunii și fără anunțul nostru de venit nou.
+    const coT = await db.getCompanyById(tinta.company_id).catch(function () { return null; });
+    const pT = _pachetCo(coT);
+    if (pT && on && !tinta.ai_seat) {
+      const refuz = pachete.refuzLoc(pT, seatsInainte, tinta.role);
+      if (refuz) return res.status(409).json({ error: refuz, pachet: pT.cod });
+    }
     const u = await db.setUserAiSeat(id, on);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
+    if (!on) await db.setUserAiLimita(id, null).catch(function () {});   // fără cont, nicio întrebare rezervată
     // Locurile se numără în firma OMULUI: la super-admin req.companyId e gol și ieșea numărul pe toată platforma.
     const seats = await db.getAiSeats(tinta.company_id);
-    // Vârful lunii urcă la ORICE schimbare, cu cel mai mare dintre „înainte" și „după".
-    await _urcaSeatsPeak(tinta.company_id, Math.max(seatsInainte, seats)).catch(function () {});
-    auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats });
-    if (on) {
+    // Vârful lunii urcă la ORICE schimbare, cu cel mai mare dintre „înainte" și „după" (doar pe regula veche, pe cont).
+    if (!pT) await _urcaSeatsPeak(tinta.company_id, Math.max(seatsInainte, seats)).catch(function () {});
+    auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats, pachet: pT ? pT.cod : undefined });
+    if (on && !pT) {
       // ȘI AFLĂM ȘI NOI. Un cont în plus e venit nou; până acum nu-l vedea nimeni până la factură.
       // Notificarea are compania NULL → ajunge doar la super-admini, nu în clopoțelul clientului.
       try {
@@ -3038,6 +3048,29 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
       } catch (e) { /* notificarea nu trebuie să oprească activarea */ }
     }
     res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Câte întrebări pe lună are un om (Pro și Business). null / gol = „la comun". Le dă administratorul firmei.
+app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
+    const tinta = await db.getUserById(id);
+    if (!tinta) return res.status(404).json({ error: 'Utilizator inexistent' });
+    if (!tinta.ai_seat) return res.status(400).json({ error: 'Omul nu are RA Insight. Dă-i întâi contul, apoi întrebările.' });
+    const co = await db.getCompanyById(tinta.company_id).catch(function () { return null; });
+    const p = _pachetCo(co);
+    if (!p) return res.status(400).json({ error: 'Firma e încă pe regula veche, pe cont: întrebările sunt la comun.' });
+    const b = req.body || {};
+    const limita = (b.limita == null || b.limita === '') ? null : Number(b.limita);
+    const oameni = await db.getAiSeatHolders(tinta.company_id);
+    const sumaAltor = oameni.reduce(function (a, h) { return a + (h.id !== id && h.ai_limita != null ? Number(h.ai_limita) || 0 : 0); }, 0);
+    const refuz = pachete.refuzLimita(p, limita, sumaAltor);
+    if (refuz) return res.status(400).json({ error: refuz });
+    const u = await db.setUserAiLimita(id, limita);
+    auditReq(req, 'ai_limita', 'user', id, { username: tinta.username, limita: limita });
+    res.json({ ok: true, id: id, ai_limita: u ? u.ai_limita : limita });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
@@ -3660,6 +3693,13 @@ async function _urcaSeatsPeak(companyId, seats) {
 // arătăm clientului socoteala noastră de tokeni.
 async function _fondEpuizat(req) {
   if (req.companyId == null) return null;
+  // Pachetele (14.10): pe Start nu se pune nicio întrebare liberă (fără AI); la celelalte, cota, limita omului și plasa.
+  const sp = await _starePachet(req.companyId, req.auth && req.auth.userId, { strict: true });
+  if (sp) {
+    if (!sp.pachet.ai) return { limited: true, doarButoane: true, pachet: sp.st.cod, reply: pachete.textDoarButoane() };
+    if (sp.st.blocat) return { limited: true, pachet: sp.st.cod, motiv: sp.st.motiv, fondEpuizat: { fond: sp.st.intrebari, motiv: sp.st.motiv }, reply: pachete.textBlocat(sp.st, Date.now()) };
+    return null;
+  }
   const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId, { strict: true });
   if (st.unlimited || !st.questions) return null;
   if (st.used < st.questions) return null;
@@ -3696,6 +3736,9 @@ async function aiQuotaState(companyId, userId, opts) {
   const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const base = { questions: 0, seats: 0, questionsPerSeat: 0, used: 0, usedByMe: 0, remaining: null, unlimited: true, blocked: false, periodEnd: periodEnd.toISOString() };
   if (companyId == null) return base; // super-admin: fără cotă
+  // Pachetele RA Insight (14.10): firma pe un pachet (orice firmă fără regula veche e pe Start) are starea ei.
+  const sp = await _starePachet(companyId, userId, { strict: strict });
+  if (sp) return _cotaDinPachet(sp.st, periodEnd);
   let co = null; try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; }
   const q = _aiQuotaFromSettings(co && co.settings);
   // Compatibilitate: dacă un client are doar limita VECHE (`ai_monthly_limit`), o folosim ca număr de
@@ -3721,6 +3764,97 @@ async function aiQuotaState(companyId, userId, opts) {
     periodEnd: periodEnd.toISOString()
   };
 }
+// ─── Pachetele RA Insight (14.10) — starea pe server ──────────────────────────────────────────────────────────────────
+// Regulile stau în pachete.js; aici se adună cifrele: câte întrebări a pus firma și omul, limitele, costul REAL al lunii
+// (pe modelul fiecărui răspuns, `db.costAiLunaFirma`) și cât din el a fost analiză aprofundată. null = firma e pe regula
+// veche, pe cont (o citește aiQuotaState mai jos). `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
+function _pachetCo(co) { return co ? pachete.pachetFirma(co.settings) : null; }
+// Are firma RA Insight cu AI (Basic în sus, sau regula veche cu modulul)? Start e fără AI.
+function _firmaAreAi(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !p || p.ai; }
+// Are firma ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte)? De la Basic în sus.
+function _firmaAreRamuri(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !p || p.ramuri; }
+async function _eurRonAcum() {
+  try { const st = await getSystemSettings(); if (st.curs_eur > 1 && st.curs_eur < 100) return st.curs_eur; } catch (e) {}
+  try { return (await fxEurRon()).eur || EUR_RON_FALLBACK; } catch (e) { return EUR_RON_FALLBACK; }
+}
+async function _starePachet(companyId, userId, opts) {
+  const strict = !!(opts && opts.strict);
+  if (companyId == null) return null;
+  let co = null;
+  try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; return null; }
+  const p = _pachetCo(co);
+  if (!p) return null;
+  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, aprofLei = 0, conturi = 0;
+  try {
+    const oameni = await db.getAiSeatHolders(companyId);
+    conturi = oameni.length;
+    if (p.ai) {
+      folositeFirma = (await db.getAiMonthUsage(companyId)).questions;
+      const peOm = {};
+      (await db.getAiMonthUsageByUser(companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
+      oameni.forEach(function (h) {
+        if (h.ai_limita != null) { sumaLimite += Number(h.ai_limita) || 0; folositeCuLimita += peOm[h.id] || 0; }
+        if (userId != null && h.id === userId) limitaOm = h.ai_limita;
+      });
+      if (userId != null) folositeOm = peOm[userId] || 0;
+      const c = await db.costAiLunaFirma(companyId);
+      const k = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
+      costLei = c.usd * k; aprofLei = c.aprofundatUsd * k;
+    } else {
+      const rr = await db.raspunsuriReguliLuna(companyId, userId);
+      folositeFirma = rr.firma; folositeOm = rr.om;
+    }
+  } catch (e) { if (strict) throw e; }
+  const st = pachete.stare({ pachet: p, peOm: userId != null, folositeFirma: folositeFirma, folositeOm: folositeOm, limitaOm: limitaOm, sumaLimite: sumaLimite,
+    folositeCuLimita: folositeCuLimita, costLei: costLei, costAprofundatLei: aprofLei });
+  st.conturiDate = conturi;
+  return { co: co, pachet: p, st: st };
+}
+// Ce vede omul (bara, caseta pachetului): FĂRĂ bani — costul și plasa sunt doar pentru noi.
+function _cotaDinPachet(st, periodEnd) {
+  return {
+    questions: st.intrebari, seats: st.conturiDate || 0, questionsPerSeat: 0, used: st.folosite, usedByMe: st.folositeOm,
+    remaining: st.ramase, unlimited: false, blocked: st.blocat, motiv: st.motiv, periodEnd: periodEnd.toISOString(),
+    pachet: { cod: st.cod, nume: st.nume, ai: st.ai, ramuri: st.ramuri, imparte: st.imparte, conturi: st.conturi, intrebari: st.intrebari,
+      limitaOm: st.limitaOm, ramaseOm: st.ramaseOm, comun: st.comun, ramaseComun: st.ramaseComun, sumaLimite: st.sumaLimite,
+      text: pachete.textRamase(st, Date.now()) }
+  };
+}
+// Firma pe un pachet fără niciun cont dat: administratorul care deschide RA Insight primește singur primul loc
+// (Alin, 14.10: „orice firmă începe cu Start — administratorul"). Întoarce true dacă omul are acum loc.
+async function _asiguraLocAdmin(u) {
+  if (!u || u.ai_seat) return !!(u && u.ai_seat);
+  if (!pachete.esteAdmin(u.role) || u.company_id == null) return false;
+  try {
+    const co = await db.getCompanyById(u.company_id);
+    const p = _pachetCo(co);
+    if (!p || !(co && plans && plans.featuresFor(co).ai_assistant)) return false;
+    if ((await db.getAiSeats(u.company_id)) > 0) return false;
+    await db.setUserAiSeat(u.id, true);
+    return true;
+  } catch (e) { return false; }
+}
+// Analiza aprofundată (Sonnet) pornește doar dacă o pornim noi (Alin, 14.10: „doar dacă proba arată că Haiku 5.5 e slab").
+const MODEL_APROFUNDAT = process.env.AI_MODEL_APROFUNDAT || 'claude-sonnet-5-5';
+let _aprofCache = null, _aprofTs = 0;
+async function _aprofundataPornita() {
+  if (_aprofCache != null && Date.now() - _aprofTs < 30000) return _aprofCache;
+  let v = false; try { v = (await db.getSetting('ai_analiza_aprofundata')) === 'on'; } catch (e) {}
+  _aprofCache = v; _aprofTs = Date.now();
+  return v;
+}
+// Ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte) sunt de la Basic în sus.
+async function requireRamuri(req, res, next) {
+  if (req.isSuper || req.companyId == null) return next();
+  try {
+    const co = await db.getCompanyById(req.companyId);
+    if (_firmaAreRamuri(co)) return next();
+    const p = _pachetCo(co);
+    return res.status(403).json({ error: 'ramuri_pachet', pachet: p ? p.cod : null,
+      message: 'Ramurile (Safe Drive & costuri, Combustibil, Ore de condus, Mentenanță & acte) sunt de la pachetul Basic în sus.' });
+  } catch (e) { return res.status(500).json({ error: e.message }); }
+}
+
 // ─── Curs valutar EUR→RON (BNR, oficial) — pentru ofertare/facturare în ambele monede ───
 // BNR publică o dată pe zi lucrătoare (~13:00). Cache în memorie; dacă interogarea eșuează,
 // păstrăm ultima valoare bună, iar la pornire cădem pe EUR_RON_RATE (implicit 5.0).
@@ -3993,8 +4127,9 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
     const st = await aiQuotaState(a.companyId, a.userId);
     // Are omul ăsta loc de RA Insight? Bara se arată doar cui îl are.
     let loc = true;
-    try { if (a.companyId != null && a.userId != null && !isSuper(a.role)) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat); } } catch (e) {}
-    res.json(Object.assign({ ok: true, seat: loc }, st));
+    try { if (a.companyId != null && a.userId != null && !isSuper(a.role)) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat) || await _asiguraLocAdmin(u); } } catch (e) {}
+    const st2 = loc && st.pachet ? await aiQuotaState(a.companyId, a.userId) : st;   // locul tocmai dat → seats corect
+    res.json(Object.assign({ ok: true, seat: loc }, st2));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -4007,8 +4142,9 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
 const MESAJ_FARA_LOC_AI = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei îl poate porni din Utilizatori, așa că cere-i acces.';
 function requireAiSeat(req, res, next) {
   if (req.isSuper || req.companyId == null) return next();
-  db.getUserById(req.auth && req.auth.userId).then(function (u) {
+  db.getUserById(req.auth && req.auth.userId).then(async function (u) {
     if (u && u.ai_seat) return next();
+    if (await _asiguraLocAdmin(u)) return next();
     const corp = { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_AI, reply: MESAJ_FARA_LOC_AI, seatMissing: true };
     // Aplicația de telefon VECHE (autentificare cu cheie) transformă orice 403 într-un text fix și greșit
     // („modulul nu e activ pe plan") și citește doar câmpul `reply`. Ca să vadă motivul real, primește
@@ -4043,6 +4179,18 @@ app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'),
 // cont nu-l poate cere (până pe 14.10 putea, din ce plăteau colegii; Alin, 14.10: „rezolvăm").
 app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
+    // Pachetele (14.10): pe Start (fără AI) și când luna s-a oprit, rezumatul se face pe reguli, din cifrele tabelului.
+    // Pe Start se numără din cele 50 de răspunsuri; când cele 50 s-au dus, se spune până când.
+    if (req.companyId != null) {
+      const spR = await _starePachet(req.companyId, req.auth && req.auth.userId, { strict: true });
+      if (spR && (!spR.pachet.ai || spR.st.blocat)) {
+        if (!spR.pachet.ai && spR.st.blocat) return res.json({ summary: pachete.textBlocat(spR.st, Date.now()), limited: true });
+        const repR = (req.body && req.body.report) || {};
+        const summary = aiRaport.rezumatTabel(repR.columns, repR.rows);
+        const pachetR = await _numaraRaspunsReguli(req, spR, 'rezumat', 'rezumat');
+        return res.json({ summary: summary, reguli: true, pachet: pachetR });
+      }
+    }
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
     // Rezumatul se numără în fondul firmei ('report'), deci trece prin aceleași reguli ca RA Insight: la epuizare se
@@ -4183,6 +4331,80 @@ function _insightInteles(sources, folosite, gasite, areIstoric, inPlus) {
   return out;
 }
 
+// ─── RA Insight pe reguli (pachetele, 14.10) ─────────────────────────────────────────────────────────────────────────
+// Pe Start și când luna s-a oprit (cota, limita omului, plasa): răspunde motorul pe reguli (`_aiRaportCore`, același ca
+// fila „AI Raport"), în aceeași discuție, cu același „Am înțeles", aceleași butoane și „Deschide raportul". Ce s-a
+// discutat pe reguli stă în contextul conversației (`ctx.ar`), ca „și luna trecută?" să meargă. Pe Start se numără doar
+// răspunsurile date (o întrebare neînțeleasă nu se numără). Cu `incearca` (un buton pe Basic / Pro / Business, unde
+// butoanele n-au limită): ce nu înțeleg regulile nu primește răspuns aici (întoarce false) și merge la RA Insight.
+async function _insightPeReguli(req, res, x) {
+  const sp = x.sp, st = sp.st;
+  const start = !sp.pachet.ai;
+  let pachetInfo = _pachetPeEcran(st);
+  async function gata(reply, extra, ctxNou) {
+    const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
+    const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st.cod }, ctxNou || x.ctx);
+    return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: pachetInfo });
+  }
+  if (start && st.blocat) return gata(pachete.textBlocat(st, Date.now()));
+  const ctxAr = (x.ctx && x.ctx.ar) || {};
+  const out = await _aiRaportCore(req, String(x.message || '').slice(0, 500), ctxAr);
+  if (!out || out._status) return gata('Nu ai acces la rapoarte, deci nu am din ce răspunde pe butoane.');
+  const ctxNou = Object.assign({}, x.ctx, { ar: out.context || ctxAr });
+  const peImei = {}; (x.fisa || []).forEach(function (v) { peImei[v.imei] = v; });
+  const sursa = function (z) {
+    if (!z || !z.type) return [];
+    const una = Array.isArray(z.imeis) && z.imeis.length === 1 ? z.imeis[0] : null;
+    return [{ type: z.type, label: z.label, imei: una || undefined, vehicle: una && peImei[una] ? insight.eticheta(peImei[una]) : undefined, from: z.from, to: z.to }];
+  };
+  if (out.neinteles) {
+    if (x.incearca) return false;   // un buton pe Basic / Pro / Business pe care regulile nu-l știu: merge la RA Insight
+    // O întrebare liberă („de ce", „compară", „ce să fac") nu se poate pe reguli: pe Start spunem de la ce pachet merge,
+    // iar când luna s-a oprit, de ce și până când.
+    const text = out.motiv === 'pentru_insight' ? (start ? pachete.textDoarButoane() : pachete.textBlocat(st, Date.now())) : out.text;
+    return gata(text, { alege: Array.isArray(out.alege) ? out.alege : [], sources: sursa(out.sursa) }, ctxNou);
+  }
+  const r = out.raspuns || {};
+  let reply = String(r.text || '');
+  if (Array.isArray(r.tiles) && r.tiles.length > 1) reply += '\n\n' + r.tiles.map(function (t) { return t.et + ': **' + t.val + '**'; }).join(' · ');
+  (r.sugestii || []).forEach(function (sg) { if (sg && sg.text) reply += '\n\n' + sg.text; });
+  // Când luna s-a oprit, primul răspuns pe butoane din discuție spune de ce și până când; următoarele, doar răspunsul.
+  const opritCheie = st.blocat ? st.motiv + '|' + new Date().toISOString().slice(0, 7) : null;
+  if (!start && opritCheie && (x.ctx || {}).opritSpus !== opritCheie) { reply = pachete.textBlocat(st, Date.now()) + '\n\n' + reply; ctxNou.opritSpus = opritCheie; }
+  pachetInfo = await _numaraRaspunsReguli(req, sp, out._u && out._u.subiect, x.usa || 'insight');
+  return gata(reply, { inteles: out.inteles || [], sources: sursa(out.sursa), urmari: Array.isArray(r.urmari) ? r.urmari : [] }, ctxNou);
+}
+// Ce arată ecranul lângă caseta de scris, după un răspuns: pachetul, câte au rămas și dacă s-a oprit. FĂRĂ bani.
+function _pachetPeEcran(st) {
+  return { cod: st.cod, nume: st.nume, oprit: st.blocat ? st.motiv : null, ramase: st.ramase, intrebari: st.intrebari, text: pachete.textRamase(st, Date.now()) };
+}
+// Un răspuns pe reguli s-a dat (chatul RA Insight sau fila AI Raport): O SINGURĂ numărătoare. Se scrie în `ai_reguli`
+// (pe Start, din cele 50; la celelalte doar pentru statistică — butoanele n-au limită) și în jurnal, fără text.
+async function _numaraRaspunsReguli(req, sp, subiect, usa) {
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  try { await db.noteazaRaspunsReguli(req.companyId, userId); } catch (e) { /* numărătoarea nu oprește răspunsul */ }
+  auditReq(req, 'ai_reguli', 'assistant', null, { pachet: sp.st.cod, subiect: subiect, via: usa });
+  let st = sp.st;
+  if (!sp.pachet.ai) {
+    const f = st.folosite + 1;
+    st = Object.assign({}, st, { folosite: f, ramase: Math.max(0, st.intrebari - f), blocat: f >= st.intrebari, motiv: f >= st.intrebari ? 'cota' : null });
+  }
+  return _pachetPeEcran(st);
+}
+// Cine folosește motorul pe reguli pe o firmă cu pachet (fila AI Raport): cine are cont RA Insight — pe Start doar
+// administratorul, care îl primește singur —, cu modulul pornit. Firma pe regula veche, pe cont: ca înainte (pentru toți).
+// { status, corp } = refuz · { gata } = răspuns gata (Start, fără răspunsuri rămase) · { sp } = merge, se numără · {} = regula veche.
+async function _poartaReguliPachet(req) {
+  if (req.isSuper || req.companyId == null) return {};
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  const sp = await _starePachet(req.companyId, userId, { strict: true });
+  if (!sp) return {};
+  if (!(plans && plans.featuresFor(sp.co).ai_assistant)) return { status: 403, corp: { error: 'ai_oprit', message: 'RA Insight e oprit pentru firma ta.' } };
+  const u = await db.getUserById(userId);
+  if (!(u && u.ai_seat) && !(await _asiguraLocAdmin(u))) return { status: 403, corp: { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_AI, seatMissing: true } };
+  if (!sp.pachet.ai && sp.st.blocat) return { gata: { neinteles: true, motiv: 'pachet_epuizat', text: pachete.textBlocat(sp.st, Date.now()), pachet: _pachetPeEcran(sp.st) } };
+  return { sp: sp };
+}
 async function _raInsight(req, res, opts) {
   const o = opts || {};
   try {
@@ -4252,6 +4474,15 @@ async function _raInsight(req, res, opts) {
       }
     } catch (e) { /* dacă răspunsul rapid pică, merge întrebarea la RA Insight */ }
 
+    // 2) Pachetele (14.10): pe Start (fără AI) sau când RA Insight s-a oprit pe lună (s-au terminat întrebările, limita
+    //    omului, plasa), răspunde motorul pe reguli — același ca „AI Raport". Pe Start, din cele 50 de răspunsuri.
+    if (!o.proba && req.companyId != null) {
+      const sp = await _starePachet(req.companyId, userId, { strict: true });
+      if (sp && (!sp.pachet.ai || sp.st.blocat)) return await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa });
+      // Pe Basic, Pro și Business, butoanele (întrebările gata scrise, continuările, alegerile) răspund pe reguli, fără
+      // limită (macheta din 14.10: „Răspunsurile pe butoane, fără limită"); ce nu știu regulile merge la RA Insight.
+      if (sp && b.buton === true && await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa, incearca: true })) return;
+    }
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
     // Fondul firmei: dacă s-a terminat, se oprește cu explicație (aceeași poartă pentru toate ușile).
     if (!o.proba && await _regulileFonduluiAi(req, res)) return;   // proba modelelor e costul nostru, nu al firmei
@@ -4494,7 +4725,16 @@ async function _raInsight(req, res, opts) {
     ];
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
-    const model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
+    let model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
+    // Analiza aprofundată (Pro / Business, 14.10): la „de ce", „compară", „ce să fac", cât ține bugetul lunii, dacă e pornită.
+    let aprofundat = false;
+    if (!o.proba && req.companyId != null) {
+      try {
+        const sp = await _starePachet(req.companyId, userId);
+        if (sp && pachete.alegeModel({ pachet: sp.pachet, pornita: await _aprofundataPornita(), analiza: aiRaport.PENTRU_INSIGHT.test(insight.norm(message)),
+          cheltuitLei: sp.st.aprofundatCheltuitLei }) === 'aprofundat') { model = MODEL_APROFUNDAT; aprofundat = true; }
+      } catch (e) { /* fără stare: modelul obișnuit */ }
+    }
     const t0 = Date.now();
     const result = await ai.runAgent({
       system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
@@ -4538,16 +4778,21 @@ async function _raInsight(req, res, opts) {
     // Întrebările de continuare de sub răspuns (Alin, 08.10: „da"): ACEEAȘI regulă ca la AI Raport (aiRaport.urmari), din
     // raportul citit ultimul. Gata scrise, gratuite până le apasă omul — apăsate, sunt o întrebare ca oricare alta.
     let urmari = [];
+    const subR = ultima ? aiRaport.SUBIECTE.find(function (x) { return x.raport === ultima.type; }) : null;
+    const uR = subR ? { subiect: subR.k, masini: imeisSurse.length === 1 ? imeisSurse : null,
+      perioada: { from: ultima.from, to: ultima.to, inainte: subR.k === 'scadente', acum: subR.k === 'locatie' } } : null;
     if (ultima && !alege.length) {
-      const subR = aiRaport.SUBIECTE.find(function (x) { return x.raport === ultima.type; });
-      urmari = aiRaport.urmari({ subiect: subR ? subR.k : null, masini: imeisSurse.length === 1 ? imeisSurse : null,
-        perioada: { from: ultima.from, to: ultima.to, inainte: !!(subR && subR.k === 'scadente'), acum: !!(subR && subR.k === 'locatie') } }, null);
+      urmari = aiRaport.urmari(uR || { subiect: null, masini: imeisSurse.length === 1 ? imeisSurse : null,
+        perioada: { from: ultima.from, to: ultima.to, inainte: false, acum: false } }, null);
     }
+    // Discuția pe reguli (pachetele, 14.10): continuările apăsate pe Basic / Pro / Business răspund pe reguli, deci regulile
+    // trebuie să știe ce s-a citit ultima oară. Fără raport recunoscut, nicio discuție veche pe reguli.
+    if (uR) ctxNou.ar = aiRaport.contextul(uR, ultima.from, ultima.to); else delete ctxNou.ar;
 
     const verificare = _verificaRaspunsul(reply, message, dateCitite, citite);
-    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare || undefined }, ctxNou);
+    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare || undefined, aprofundat: aprofundat || undefined }, ctxNou);
     if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined });
-    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare },
+    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare, aprofundat: aprofundat || undefined },
       o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz } : {}));
   } catch (e) {
     console.warn('[RA Insight]', e.message);
@@ -4564,6 +4809,19 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
 // una lângă alta, cu costul ADEVĂRAT al fiecăruia (din tokenii întorși, pe prețurile modelului — ai.MODELE). Răspunde
 // ACEEAȘI funcție ca pentru client (_raInsight, cu `proba`): fără conversație salvată, fără fondul firmei, fără răspunsul
 // rapid; consumul se scrie pe noi (rând fără firmă, felul „proba_modele"). O singură probă deodată, ținută în memorie.
+// Comutatorul analizei aprofundate (Sonnet la Pro / Business, cu bugetul pachetului). Oprit până hotărâm după probă.
+app.get('/api/admin/insight/aprofundat', requireAuth, requireSuperadmin, async (req, res) => {
+  res.json({ pornita: await _aprofundataPornita(), model: MODEL_APROFUNDAT, bugete: pachete.PACHETE.filter(function (x) { return x.sonnetLei > 0; }).map(function (x) { return { cod: x.cod, nume: x.nume, lei: x.sonnetLei }; }) });
+});
+app.put('/api/admin/insight/aprofundat', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const on = !!(req.body && req.body.pornita);
+    await db.setSetting('ai_analiza_aprofundata', on ? 'on' : 'off');
+    _aprofCache = null;
+    auditReq(req, 'update', 'ai_analiza_aprofundata', null, { pornita: on });
+    res.json({ ok: true, pornita: on });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 const PROBA_MAX_INTREBARI = 20;
 const _probe = new Map();      // id → proba (ultimele 5)
 let _probaInLucru = null;
@@ -4953,12 +5211,12 @@ async function _sdLuna(req, o) {
   }
   return Object.assign(comun, safeDrive.alcatuieste(de), { inaintePregatire: !inaintePregatita });
 }
-app.get('/api/insight/safe-drive', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.get('/api/insight/safe-drive', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try { res.json(await _sdLuna(req, { luna: req.query.luna, grupa: req.query.grupa })); }
   catch (e) { console.warn('[SAFE DRIVE]', e.message); res.status(500).json({ error: 'Safe Drive: ' + e.message }); }
 });
 // Prețurile pe eveniment (frânare / accelerare / viraj brusc, pe clasa mașinii) — ale firmei. Le scrie cine conduce flota.
-app.put('/api/insight/safe-drive/preturi', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), async (req, res) => {
+app.put('/api/insight/safe-drive/preturi', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireRamuri, async (req, res) => {
   try {
     if (req.companyId == null) return res.status(400).json({ error: 'Prețurile sunt ale unei firme: alege întâi firma.' });
     const p = condus.preturi((req.body || {}).preturi);   // doar numere între 0 și 100 de lei; altceva → prețul de pornire
@@ -4969,7 +5227,7 @@ app.put('/api/insight/safe-drive/preturi', requireAuth, requireFleet, withScope,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „Am vorbit cu el": ziua în care șeful a discutat cu un șofer. Ziua o scrie serverul; nota e scurtă și opțională.
-app.post('/api/insight/safe-drive/discutie', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.post('/api/insight/safe-drive/discutie', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const b = req.body || {};
     const sofer = await db.getDriverById(parseInt(b.driverId) || 0);
@@ -4981,7 +5239,7 @@ app.post('/api/insight/safe-drive/discutie', requireAuth, requireFleet, withScop
     res.json({ ok: true, id: d.id, la: Number(d.la) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.delete('/api/insight/safe-drive/discutie/:id', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.delete('/api/insight/safe-drive/discutie/:id', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const ok = await db.stergeDiscutieSafeDrive(req.params.id, req.companyId);
     if (!ok) return res.status(404).json({ error: 'Discuția nu există.' });
@@ -4998,7 +5256,7 @@ async function safeDriveNoaptea(acum, fortat) {
   if (!fortat && (_sdNoapteZi === azi || ora < 2 || ora >= 6)) return { sarit: true };
   _sdNoapteZi = azi;
   const de = condus.zi(t - 3 * 86400000), pana = condus.zi(t - 86400000);
-  const firme = (await db.getCompanies()).filter(function (co) { return co.id !== demoCompanyId && plans && plans.featuresFor(co).ai_assistant; });
+  const firme = (await db.getCompanies()).filter(function (co) { return co.id !== demoCompanyId && _firmaAreRamuri(co); });   // ramurile: de la Basic în sus
   const peFirma = new Set(firme.map(function (co) { return co.id; }));
   const r = await db.pool.query("SELECT imei, company_id FROM devices WHERE status IS DISTINCT FROM 'archived' AND company_id IS NOT NULL");
   const imeis = r.rows.filter(function (d) { return peFirma.has(d.company_id) && !DEMO_SET.has(d.imei); }).map(function (d) { return d.imei; });
@@ -5065,7 +5323,7 @@ async function _ramMentenanta(req) {
   return { randuri: ord, rezumat: ramuri.rezumatMentenanta(ord, faraData),
     explicatii: ramuri.explicatiiMentenanta({ docDays: L0.docDays, days: L0.days, km: L0.km, permis: prag }) };
 }
-app.get('/api/insight/mentenanta', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.get('/api/insight/mentenanta', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try { res.json(await _ramMentenanta(req)); }
   catch (e) { console.warn('[MENTENANȚĂ]', e.message); res.status(500).json({ error: 'Mentenanță & acte: ' + e.message }); }
 });
@@ -5158,7 +5416,7 @@ async function _ramCombustibil(req, o) {
   return Object.assign(comun, ramuri.alcatuiesteCombustibil({ masini: masini, cm: g.rez.cm, cmI: g.rez.cmI, ev: g.rez.ev,
     panaAzi: p.panaAzi, etInainte: p.etInainte, inaintePregatita: true }));
 }
-app.get('/api/insight/combustibil', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.get('/api/insight/combustibil', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try { res.json(await _ramCombustibil(req, { luna: req.query.luna, grupa: req.query.grupa })); }
   catch (e) { console.warn('[COMBUSTIBIL]', e.message); res.status(500).json({ error: 'Combustibil: ' + e.message }); }
 });
@@ -5215,7 +5473,7 @@ async function _ramOreCondus(req, o) {
   return Object.assign(comun, { atentie: g.rez.atentie }, ramuri.alcatuiesteOreCondus({ valori: g.rez.v, valoriInainte: g.rez.vi, azi: p.azi,
     eticheta: p.eticheta, etInainte: p.etInainte, panaAzi: p.panaAzi, inaintePregatita: true, acum: acum }));
 }
-app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try { res.json(await _ramOreCondus(req, { saptamana: req.query.saptamana, grupa: req.query.grupa })); }
   catch (e) { console.warn('[ORE DE CONDUS]', e.message); res.status(500).json({ error: 'Ore de condus: ' + e.message }); }
 });
@@ -5232,7 +5490,8 @@ async function _cerereOm(u) {
   return { companyId: u.company_id, isSuper: false, allowedImeis: await getAllowedImeiSet(u.id, u.role, u.company_id),
     auth: { userId: u.id, role: u.role, username: u.username } };
 }
-async function _fapteScrisoare(req, acum) {
+async function _fapteScrisoare(req, acum, opt) {
+  const faraSafeDrive = !!(opt && opt.faraSafeDrive);   // pachetul Start: fără ramuri, deci fără socoteala grea de Safe Drive
   const f = await _ramFlota(req);
   if (!f.devices.length) return null;
   const iso = function (ms) { return new Date(ms).toISOString(); };
@@ -5242,20 +5501,23 @@ async function _fapteScrisoare(req, acum) {
   const cb = await _ramCombustibil(req, { perioada: { cheie: 'sapt-' + luni, de: de, pana: pana, deI: deI, panaI: de, panaAzi: false, eticheta: eticheta, etInainte: etInainte, grupa: null }, asteptaMs: 180000 });
   const hc = await _ramOreCondus(req, { saptamana: luni, asteptaMs: 180000 });
   // Safe Drive: zilele săptămânii și ale celei dinainte (socotite întâi, dacă lipsesc — tura de noapte face doar 3 zile).
-  const sf = await _sdFlota(req), imeis = sf.masini.map(function (m) { return m.imei; });
-  const a = await _sdAsigura(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6), acum);
-  if (a.ramase) await Promise.race([a.gata, new Promise(function (ok) { setTimeout(ok, 180000); })]);
-  const zile = await db.citesteZileCondus(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6));
-  const sd = safeDrive.saptamana({ masini: sf.masini, soferi: sf.soferi, preturi: condus.preturi(sf.cs.safe_drive && sf.cs.safe_drive.preturi),
-    zile: zile.filter(function (r) { return r.zi >= luni; }), zileInainte: zile.filter(function (r) { return r.zi < luni; }) });
+  let sd = null;
+  if (!faraSafeDrive) {
+    const sf = await _sdFlota(req), imeis = sf.masini.map(function (m) { return m.imei; });
+    const a = await _sdAsigura(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6), acum);
+    if (a.ramase) await Promise.race([a.gata, new Promise(function (ok) { setTimeout(ok, 180000); })]);
+    const zile = await db.citesteZileCondus(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6));
+    sd = safeDrive.saptamana({ masini: sf.masini, soferi: sf.soferi, preturi: condus.preturi(sf.cs.safe_drive && sf.cs.safe_drive.preturi),
+      zile: zile.filter(function (r) { return r.zi >= luni; }), zileInainte: zile.filter(function (r) { return r.zi < luni; }) });
+  }
   const mt = await _ramMentenanta(req);
   return ramuri.fapteScrisoare({ luni: luni, eticheta: eticheta, etInainte: etInainte, masini: f.devices.length,
     cb: cb.pregatire ? null : cb, hc: hc.pregatire ? null : hc, sd: sd, mt: mt });
 }
 // Textul scrisorii: RA Insight (din fapte), cu paza cifrelor; altfel cel pe reguli. { text, scrisDe }
-async function _scrieScrisoarea(fapte, companyId) {
+async function _scrieScrisoarea(fapte, companyId, opt) {
   const rezerva = { text: ramuri.textScrisoare(fapte), scrisDe: 'reguli' };
-  if (!ai.aiEnabled()) return rezerva;
+  if (!ai.aiEnabled() || (opt && opt.faraAi)) return rezerva;   // pachetul Start: scrisoarea pe reguli
   try {
     const text = await ai.callClaude({
       system: [{ type: 'text', text: ramuri.instructiuniScrisoare(), cache_control: { type: 'ephemeral' } }],
@@ -5290,7 +5552,15 @@ async function scrisoareaDeLuniTick(acum) {
       try {
         const st = await _accessStatusCached(co.id);
         if (st && st.status === 'expired') { _scrisoareFacute.add(cheie); continue; }
-        const r = await db.pool.query("SELECT id, username, full_name, role, company_id, access_until FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false", [co.id]);
+        const cuLoc = "SELECT id, username, full_name, role, company_id, access_until FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false";
+        let r = await db.pool.query(cuLoc, [co.id]);
+        const pF = _pachetCo(co);
+        // Pachetele (14.10): pe o firmă fără niciun cont dat, locul pachetului e al administratorului (pe Start, doar el) —
+        // îl primește acum, ca la prima deschidere a lui RA Insight, și primește și scrisoarea.
+        if (pF && !r.rows.length) {
+          const a = await db.pool.query("SELECT id, role, company_id, ai_seat FROM users WHERE company_id = $1 AND role IN ('company_admin','admin') AND active IS NOT false ORDER BY id LIMIT 1", [co.id]);
+          if (a.rows[0] && await _asiguraLocAdmin(a.rows[0])) r = await db.pool.query(cuLoc, [co.id]);
+        }
         const oameni = r.rows.filter(function (u) { return !u.access_until || Number(u.access_until) > t; });
         const au = await db.auScrisoarea(oameni.map(function (u) { return u.id; }), luni);
         const grupe = {};
@@ -5302,9 +5572,9 @@ async function scrisoareaDeLuniTick(acum) {
         out.firme++;
         for (const k of Object.keys(grupe)) {
           const g = grupe[k];
-          const fapte = await _fapteScrisoare(g.req, t);
+          const fapte = await _fapteScrisoare(g.req, t, { faraSafeDrive: !!(pF && !pF.ramuri) });
           if (!fapte || fapte.nimic) { out.faraNimic += g.oameni.length; continue; }
-          const sc = await _scrieScrisoarea(fapte, co.id);
+          const sc = await _scrieScrisoarea(fapte, co.id, { faraAi: !!(pF && !pF.ai) });
           for (const u of g.oameni) {
             const id = await db.scrieScrisoare({ userId: u.id, companyId: co.id, saptamana: luni, eticheta: fapte.eticheta, fapte: fapte, text: sc.text, scrisDe: sc.scrisDe });
             if (!id) continue;
@@ -5336,7 +5606,7 @@ app.get('/api/insight/scrisori/:id', requireAuth, withScope, requireFeature('ai_
 
 // Numerele de lângă ramuri (ca pe macheta din 02.10): câte lucruri cer atenție în fiecare. Doar din ce e deja socotit —
 // deschiderea secțiunii nu pornește nicio socoteală grea. O ramură fără număr nu apare în răspuns.
-app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   const out = {};
   try { const m = await _ramMentenanta(req); out.mentenanta = m.rezumat.depasite + m.rezumat.curand; } catch (e) { /* fără număr */ }
   try { const s = await _sdLuna(req, { doarGata: true }); if (!s.gol && !s.pregatire) out.safedrive = (s.recomandari || []).filter(function (x) { return x.fel === 'atentie'; }).length; } catch (e) { /* fără număr */ }
@@ -5495,6 +5765,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
         const _co = await db.getCompanyById(storeCompany);
         const _f = (plans && _co) ? plans.featuresFor(_co) : null;
         if (_f && _f.ai_assistant === false) _aiAllowed = false;
+        if (_co && !_firmaAreAi(_co)) _aiAllowed = false;   // pachetul Start e fără AI
       } catch (e) {}
       if (_aiAllowed && await aiLimitReached(storeCompany)) _aiAllowed = false;
     }
@@ -14339,20 +14610,21 @@ async function _areRaInsight(req) {
   if (req.isSuper || req.companyId == null) return true;
   try {
     const co = await db.getCompanyById(req.companyId);
-    if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false;
+    if (!_firmaAreAi(co)) return false;   // fără modul, sau pe pachetul Start (fără AI)
     const u = await db.getUserById(req.auth && req.auth.userId);
     return !!(u && u.ai_seat);
   } catch (e) { return false; }
 }
-app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
-  try {
-    if (_aiRaportPreaDes(req.auth && req.auth.userId)) return res.status(429).json({ error: 'Prea multe întrebări într-un minut. Mai așteaptă puțin.' });
-    const b = req.body || {};
-    const text = String(b.text || '').slice(0, 500).trim();
+// ─── Motorul pe reguli (AI Raport), O SINGURĂ dată (14.10) ────────────────────────────────────────────────────────────
+// Îl cheamă fila „AI Raport" din Rapoarte și RA Insight pe pachetul Start (sau când s-au terminat întrebările lunii):
+// aceleași cuvinte, aceleași rapoarte, aceleași cifre. Întoarce ce primea ecranul de la rută (`_status` = cod de eroare).
+async function _aiRaportCore(req, text, c0in) {
+    const b = { text: text, context: c0in };
+    // Mașina o alege întrebarea, nu un câmp trimis pe lângă: `imei` din corp nu ajunge nici la resolveReportImeis (l-ar citi).
+    if (req.body && req.body.imei != null) delete req.body.imei;
     // Mașinile la care are acces omul — aceeași regulă ca la rapoarte (fără arhivate, fără mașinile demo pe flota reală).
-    if (b.imei != null) delete b.imei;   // mașina o alege întrebarea, nu un câmp trimis pe lângă
     const accesibile = await resolveReportImeis(req);
-    if (!accesibile) return res.status(403).json({ error: 'Acces interzis' });
+    if (!accesibile) return { _status: 403, error: 'Acces interzis' };
     const setAcc = new Set(accesibile);
     const scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
     let devices = await db.getDevices(scope === -1 ? -1 : scope);
@@ -14374,19 +14646,19 @@ app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), with
       const ne = Object.assign({ neinteles: true, motiv: u.motiv, context: u.context || ctx }, aiRaport.neinteles(u, fisa, { areInsight: await _areRaInsight(req), etRaport: etRaport }));
       // Un raport pe care AI Raport nu-l citește: butonul „Deschide raportul", cu mașina și perioada din întrebare.
       if (u.motiv === 'alt_raport') {
-        if (!reports.REPORTS[u.raport] || !poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul ăsta — l-a tăiat firma din rolul tău.', context: ne.context });
+        if (!reports.REPORTS[u.raport] || !poateRaport(req, u.raport)) return ({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul ăsta — l-a tăiat firma din rolul tău.', context: ne.context });
         ne.sursa = { type: u.raport, label: reports.REPORTS[u.raport].label, from: u.perioada.from, to: u.perioada.to, imeis: u.masini || null };
       }
-      return res.json(ne);
+      return (ne);
     }
     const def = reports.REPORTS[u.raport];
-    if (!def) return res.json({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx });
-    if (!poateRaport(req, u.raport)) return res.json({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx });
+    if (!def) return ({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx });
+    if (!poateRaport(req, u.raport)) return ({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx });
     // Perioada: cel mult MAX_ZILE (scadențele privesc înainte și nu încarcă istoricul).
     let from = u.perioada.from, to = u.perioada.to, taiat = false;
     if (u.subiect !== 'scadente' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
     const imeis = u.masini || accesibile;
-    if (!imeis.length) return res.json({ neinteles: true, motiv: 'fara_masini', text: 'Nu ai nicio mașină la care să ai acces, deci nu am din ce răspunde.', context: ctx });
+    if (!imeis.length) return ({ neinteles: true, motiv: 'fara_masini', text: 'Nu ai nicio mașină la care să ai acces, deci nu am din ce răspunde.', context: ctx });
     const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
     const opts = _optiuniRaport({}, cs);
     const rep = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
@@ -14404,11 +14676,28 @@ app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), with
     const r = aiRaport.raspunde(Object.assign({}, u, { perioada: Object.assign({}, u.perioada, { from: from, to: to }) }), rep, extra);
     if (taiat) r.sugestii.unshift({ fel: 'info', text: 'Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se scoate din „Generează rapoarte".' });
     auditReq(req, 'ai_raport', 'report', null, { subiect: u.subiect, masini: imeis.length });
-    res.json({
-      inteles: aiRaport.inteles(u, fisa), raspuns: r,
+    return ({
+      inteles: aiRaport.inteles(u, fisa), raspuns: r, _u: u, _fisa: fisa,
       sursa: { type: u.raport, label: def.label, from: from, to: to, imeis: u.masini || null },
       context: aiRaport.contextul(u, from, to)
     });
+}
+app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (_aiRaportPreaDes(req.auth && req.auth.userId)) return res.status(429).json({ error: 'Prea multe întrebări într-un minut. Mai așteaptă puțin.' });
+    const b = req.body || {};
+    // Pachetele (14.10): AI Raport e motorul pe reguli al lui RA Insight. Pe o firmă cu pachet îl folosește doar cine are
+    // cont RA Insight (pe Start, administratorul), iar pe Start fiecare răspuns se numără din cele 50, ca în chat.
+    const poarta = await _poartaReguliPachet(req);
+    if (poarta.status) return res.status(poarta.status).json(poarta.corp);
+    if (poarta.gata) return res.json(poarta.gata);
+    const out = await _aiRaportCore(req, String(b.text || '').slice(0, 500).trim(), b.context);
+    if (out && out._status) return res.status(out._status).json({ error: out.error });
+    if (out) {
+      if (poarta.sp && !out.neinteles) out.pachet = await _numaraRaspunsReguli(req, poarta.sp, out._u && out._u.subiect, 'ai_raport');
+      delete out._u; delete out._fisa;
+    }
+    res.json(out);
   } catch (e) {
     console.warn('[AI Raport]', e.message);
     res.status(500).json({ error: 'AI Raport: ' + e.message });
@@ -15157,6 +15446,16 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   } else if (body.ai_quota === null && opts && opts.allowFeatures) {
     delete next.ai_quota; // fără cotă = nelimitat
   }
+  // Pachetul RA Insight (14.10) → STRICT super-admin (oferta, fișa firmei, trecerea din aplicație o scrie prin rutele ei).
+  // `null` = înapoi la Start (orice firmă fără pachet e pe Start). Un pachet pus scoate regula veche pe cont, ca firma să nu
+  // fie socotită de două ori. Datele greșite nu ajung aici: ruta le refuză (400).
+  if (body.ai_pachet !== undefined && opts && opts.allowFeatures) {
+    if (body.ai_pachet === null) delete next.ai_pachet;
+    else {
+      const ap = pachete.curataPachet(body.ai_pachet);
+      if (ap) { if (ap.de_la == null) ap.de_la = Date.now(); next.ai_pachet = ap; delete next.ai_quota; }
+    }
+  }
   // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
   // `null` sau 12 luni și mai puțin = înapoi la cele 12 incluse. Un număr stricat nu ajunge aici: ruta
   // îl refuză înainte (400) — nu se ghicește o regulă după care se șterg date.
@@ -15220,14 +15519,20 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
             ': istoricul mai vechi se șterge definitiv la următoarea rulare. Confirmă pe ecran ca să meargă mai departe.' });
       }
     }
+    // Pachetul RA Insight: un cod necunoscut sau un preț stricat se refuză pe față, nu se ghicește.
+    if (b.ai_pachet !== undefined && b.ai_pachet !== null && !pachete.curataPachet(b.ai_pachet)) {
+      return res.status(400).json({ error: 'Pachet RA Insight necunoscut. Alege: ' + pachete.PACHETE.map(function (x) { return x.nume; }).join(', ') + '.' });
+    }
+    const pachetInainte = b.ai_pachet !== undefined ? _pachetCo(await db.getCompanyById(id).catch(function () { return null; })) : null;
     const next = await _applyCompanySettingsPatch(id, b, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
     const det = { keys: Object.keys(b) };
+    if (b.ai_pachet !== undefined) det.ai_pachet = { de: pachetInainte ? pachetInainte.cod : null, la: next.ai_pachet ? next.ai_pachet.cod : 'start' };
     // O păstrare coborâtă ȘTERGE date la următoarea rulare: se scrie în jurnal de la cât la cât, ca să
     // se poată spune oricând cine a hotărât și când.
     if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni, confirmat: b.confirmaStergere === true };
     auditReq(req, 'update', 'company_settings', id, det);
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null,
-      pastrare: contracte.pastrareFirma(next) });
+      ai_pachet: next.ai_pachet || null, pastrare: contracte.pastrareFirma(next) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Catalog IO Teltonika (138 ID-uri din wiki + override-uri globale super-admin) ─────────
@@ -18228,6 +18533,14 @@ app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
 // Endpoint de test (DOAR cu SEED_TEST=1) — scrie o întrebare consumată, ca să se poată proba
 // fondul lunii, depășirea și rândul de pe factură fără să cheltuim bani pe model.
 if (process.env.SEED_TEST === '1') {
+  // Răspunsurile pe butoane ale unei luni (pachetul Start: 50), ca proba să nu pună 50 de întrebări una câte una.
+  app.post('/api/test/ai-reguli', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {}, n = Math.min(500, Math.max(0, parseInt(b.n) || 0));
+      for (let i = 0; i < n; i++) await db.noteazaRaspunsReguli(parseInt(b.companyId), b.userId != null ? parseInt(b.userId) : null);
+      res.json({ ok: true, n: n });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.post('/api/test/ai-usage', requireAuth, async (req, res) => {
     try {
       // `usage` și `model` sunt opționale: proba costului pe model (12.10) scrie consum de pe modele diferite.

@@ -1386,6 +1386,17 @@ async function initDb() {
     // Modelul care a răspuns (08.10): prețurile diferă de la model la model (ai.MODELE). Gol = rândurile vechi, scrise
     // toate cu modelul de bază de atunci (Haiku 4.5).
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS model VARCHAR(40)`);
+    // Pachetele RA Insight (14.10): răspunsurile pe butoane (fără AI). Pe Start se numără (50 pe lună); la celelalte pachete
+    // nu se numără, dar le vedem în tabloul nostru. Tabelă separată de ai_usage, ca să nu umfle cifrele de consum AI.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_reguli (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_ai_reguli_firma_luna ON ai_reguli (company_id, created_at)');
     await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
 
     // Preferințe UI per user (toggle-uri: overspeed_heatmap, replay_marker, etc.) — separat de notification_prefs ca să nu interfere
@@ -1450,6 +1461,8 @@ async function initDb() {
     // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele"
     // putea întreba — adică toată firma, la prețul unui singur cont.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_seat BOOLEAN DEFAULT false');
+    // Pachetele RA Insight (14.10): câte întrebări pe lună i-a dat administratorul omului (NULL = „la comun”, din ce nu e dat nimănui).
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_limita INTEGER');
     // UN SINGUR NUME pentru administratorul unei firme. A purtat două, după calea pe care a fost
     // făcut: „company_admin" (Companii → Client nou) și „admin" (formularul din Utilizatori).
     // Drepturile erau identice, dar în aceeași listă apăreau două etichete pentru aceeași putere.
@@ -3396,6 +3409,7 @@ async function completeazaDosarFirma(id, d) {
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
   await pool.query('DELETE FROM ai_usage WHERE company_id = $1', [id]); // altfel consumul orfan rămâne în totaluri, fără companie în tabel
+  await pool.query('DELETE FROM ai_reguli WHERE company_id = $1', [id]);
   await pool.query('DELETE FROM remorci WHERE company_id = $1', [id]);  // semiremorcile firmei n-au sens fără ea (și n-ar mai fi ale nimănui)
   await pool.query('DELETE FROM planuri_incarcare WHERE company_id = $1', [id]);
   await pool.query('DELETE FROM companies WHERE id = $1', [id]);
@@ -4542,6 +4556,47 @@ async function setUserAiSeat(userId, on) {
   const r = await pool.query('UPDATE users SET ai_seat = $2 WHERE id = $1 RETURNING id, username, ai_seat', [userId, !!on]);
   return r.rows[0] || null;
 }
+// ─── Pachetele RA Insight (14.10) ──────────────────────────────────────────────────────────────────────────────────────
+// Limita pe om (NULL = „la comun”). Stingerea locului șterge și limita: un om fără RA Insight nu ține întrebări rezervate.
+async function setUserAiLimita(userId, limita) {
+  const r = await pool.query('UPDATE users SET ai_limita = $2 WHERE id = $1 RETURNING id, username, ai_seat, ai_limita', [userId, limita == null ? null : Math.round(Number(limita))]);
+  return r.rows[0] || null;
+}
+// Oamenii cu RA Insight ai unei firme (activi), cu limita lor — pentru împărțirea întrebărilor și pentru poartă.
+async function getAiSeatHolders(companyId) {
+  const r = await pool.query(
+    "SELECT id, username, full_name, role, ai_limita FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false AND role <> 'superadmin' ORDER BY id",
+    [companyId]);
+  return r.rows;
+}
+// Răspunsurile pe butoane (fără AI): pe Start se numără (50 pe lună); la celelalte pachete nu se numără.
+async function noteazaRaspunsReguli(companyId, userId) {
+  await pool.query('INSERT INTO ai_reguli (company_id, user_id) VALUES ($1, $2)', [companyId != null ? companyId : null, userId != null ? userId : null]);
+}
+// Câte răspunsuri pe butoane a primit firma luna asta (pe Start: din cele 50) și câte omul.
+async function raspunsuriReguliLuna(companyId, userId) {
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS firma, COUNT(*) FILTER (WHERE user_id IS NOT DISTINCT FROM $2)::int AS om
+       FROM ai_reguli WHERE company_id = $1 AND created_at >= date_trunc('month', NOW())`, [companyId, userId != null ? userId : null]);
+  return { firma: Number(r.rows[0] && r.rows[0].firma) || 0, om: Number(r.rows[0] && r.rows[0].om) || 0 };
+}
+// Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni. `aprofundat` =
+// partea răspunsurilor date de Sonnet (analiza aprofundată), cu bugetul ei.
+async function costAiLunaFirma(companyId) {
+  const r = await pool.query(
+    `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+       FROM ai_usage
+      WHERE company_id = $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())
+      GROUP BY model`, [companyId, AI_BILLABLE_KINDS.concat(['scrisoare'])]);
+  let usd = 0, aprofundatUsd = 0;
+  r.rows.forEach(function (x) {
+    const c = _costUsdRand(x);
+    usd += c;
+    if (/sonnet/i.test(String(x.model || ''))) aprofundatUsd += c;
+  });
+  return { usd: usd, aprofundatUsd: aprofundatUsd };
+}
 // Cine a consumat luna asta, pe om — pentru ca adminul firmei să vadă unde se duc întrebările.
 async function getAiMonthUsageByUser(companyId, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
@@ -4677,7 +4732,7 @@ async function getUsers(companyId) {
   const where = companyId != null ? "WHERE u.company_id = $1 AND u.role <> 'superadmin'" : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
+    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat, u.ai_limita,
       -- Data până la care are acces (conturile demo aprobate expiră). Fără ea, ecranul nu putea
       -- spune „expiră în 3 zile" — se afla doar intrând în fișa omului.
       u.access_until,
@@ -4736,7 +4791,7 @@ async function getUserById(id) {
   const result = await pool.query(
     // role_slug = rolul PROPRIU al firmei, dacă omul are unul. Fără el aici, refreshAuth nu-l vede și
     // ajustările rolului propriu n-ar avea niciun efect.
-    'SELECT id, username, role, role_slug, full_name, email, phone, functie, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat FROM users WHERE id = $1',
+    'SELECT id, username, role, role_slug, full_name, email, phone, functie, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat, ai_limita FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -6306,6 +6361,7 @@ module.exports = {
   listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
+  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, costAiLunaFirma,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,

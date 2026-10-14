@@ -56,8 +56,8 @@ T('cu camioane / dube / remorci: pornit singur', plans.featuresFor(firma(901)).i
 T('ales de noi „oprit" bate flota', plans.featuresFor(firma(901, { incarcare: false })).incarcare === false);
 plans.setFlotaGrea([]);
 T('ales de noi „pornit" bate lipsa flotei', plans.featuresFor(firma(901, { incarcare: true })).incarcare === true);
-T('celelalte module își păstrează implicitul (agenții porniți, restul oprite)',
-  J(plans.featuresFor(firma(902))) === J({ agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false, incarcare: false }));
+T('celelalte module își păstrează implicitul (agenții și RA Insight — pachetul Start — porniți, restul oprite)',
+  J(plans.featuresFor(firma(902))) === J({ agents: true, ai_assistant: true, etransport: false, tahograf: false, etoll: false, incarcare: false }));
 T('„ales de noi" = doar cheile scrise', J(plans.featuresSetate(firma(903, { incarcare: false, agents: true, nimic: 1 }))) === J({ agents: true, incarcare: false }));
 T('felurile care cară marfă: autotractor, camion, TIR, dubă, remorcă (și scrierile vechi)',
   ['Autotractor', 'Camion', 'TIR', 'Duba', 'Remorca', 'truck', 'van', 'trailer'].every((t) => plans.TIPURI_CU_MARFA.indexOf(t) >= 0) &&

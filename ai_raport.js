@@ -147,6 +147,9 @@ function _interval(t, z, now) {
   if (pana - de > MAX_ZILE * ZI) return _per(pana - MAX_ZILE * ZI, pana, now, { taiat: true });
   return _per(de, pana, now);
 }
+// Numerele scrise cu litere într-o perioadă („ultimele două luni").
+const _NUM = { doua: 2, trei: 3, patru: 4, cinci: 5, sase: 6 };
+const _NUM_CUV = Object.keys(_NUM).join('|');
 // Întoarce { from, to, eticheta } sau null dacă textul nu spune nicio perioadă. `s` = subiectul (scadențele privesc înainte).
 function perioadaDin(t, acum, s) {
   const now = acum != null ? Number(acum) : Date.now();
@@ -162,6 +165,14 @@ function perioadaDin(t, acum, s) {
   }
   const iv = _interval(t, z, now);
   if (iv) return iv;
+  // „ultimele 3 luni", „ultimele două luni", „ultimele 2 săptămâni" (Alin, 14.10: „odată cu Start" — până atunci
+  // răspundea pe ultimele 7 zile). Lunile sunt de calendar (14 iulie – 14 octombrie), tăiate la MAX_ZILE.
+  if ((m = new RegExp('\\bultim(?:ele|a|ii)? (\\d{1,2}|' + _NUM_CUV + ') (?:de )?(luni|saptamani)\\b').exec(t))) {
+    const n = Math.max(1, /^\d+$/.test(m[1]) ? +m[1] : _NUM[m[1]]);
+    const de = m[2] === 'luni' ? _zi(z.y, z.m0 - n, z.d) : now - n * 7 * ZI;
+    if (now - de > MAX_ZILE * ZI) return _per(now - MAX_ZILE * ZI, now, now, { taiat: true });
+    return _per(de, now, now);
+  }
   // „duminică", „marțea trecută", „în weekend", „de luni până miercuri" — regula e în insight.js, aceeași pentru
   // răspunsul rapid; înaintea lui „azi", ca „de luni până azi" să fie săptămâna, nu ziua de azi (până pe 14.10 aici ieșeau „ultimele 7 zile", iar acolo „acum").
   const zs = I.ziuaSaptamanii(t, now);
@@ -203,7 +214,7 @@ function perioadaDin(t, acum, s) {
   return null;
 }
 // Textul spune DOAR o perioadă („ieri?", „luna trecută", „în septembrie") — nimic altceva cu înțeles.
-const _UMPLUTURA = /\b(si|dar|iar|apoi|acum|pe|in|din|la|de|pentru|cat|cati|cate|ce|care|cu|al|a|ale|lui|asta|aceasta|curenta|trecuta|trecut|trecutul|precedenta|anterioara|azi|astazi|ieri|aseara|alaltaieri|saptamana|luna|ultimele|ultima|ultimii|zile|zi|anul|luni|lunea|marti|martea|miercuri|miercurea|joi|joia|vineri|vinerea|sambata|duminica|weekend|weekendul|pana|intre|\d+|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|sept|octombrie|noiembrie|decembrie)\b/g;
+const _UMPLUTURA = /\b(si|dar|iar|apoi|acum|pe|in|din|la|de|pentru|cat|cati|cate|ce|care|cu|al|a|ale|lui|asta|aceasta|curenta|trecuta|trecut|trecutul|precedenta|anterioara|azi|astazi|ieri|aseara|alaltaieri|saptamana|saptamani|luna|ultimele|ultima|ultimii|zile|zi|anul|luni|doua|trei|patru|cinci|sase|lunea|marti|martea|miercuri|miercurea|joi|joia|vineri|vinerea|sambata|duminica|weekend|weekendul|pana|intre|\d+|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|sept|octombrie|noiembrie|decembrie)\b/g;
 function _doarPerioada(t) { return !String(t).replace(/[^a-z0-9 ]/g, ' ').replace(_UMPLUTURA, ' ').trim(); }
 // Fără perioadă spusă: ultimele 7 zile; la „ce expiră" — următoarele 30 de zile; la „unde e / de cât timp stă" — ACUM,
 // citit pe ultimele 30 de zile (raportul „Ultima locație" caută ultima oprire în perioadă: pe 7 zile, o mașină parcată
@@ -956,8 +967,56 @@ const INTREBARI_GATA = [
   { k: 'clasament', text: 'Clasamentul șoferilor în ultimele 30 de zile', ic: 'fa-ranking-star' },
 ];
 
+// ─── Rezumatul unui tabel, pe reguli (14.10) ─────────────────────────────────────────────────────────────────────────
+// Pe pachetul Start (fără AI) și când întrebările lunii s-au terminat, „Rezumă raportul" spune din cifrele tabelului: câte
+// rânduri, totalul coloanelor care se adună (km, litri, lei, ore…) și cea mai mare valoare, cu rândul ei. Nimic ghicit:
+// o celulă e număr doar dacă e scrisă ca număr (cu unitatea ei, cel mult); datele, orele, locurile și indexurile se sar.
+const _COL_SARITA = /(data|ora\b|ore\s+de\s+la|inceput|început|sfarsit|sfârșit|plecare|sosire|locat|locaț|adres|lat|lng|index|imei|nr\.|număr|numar|serie|telefon)/i;
+const _COL_SE_ADUNA = /(km|distan|litri|\(l\)|\bl\b|lei|ron|cost|ore\b|consum total|alimentat|cantitate|evenimente|opriri|curse|depășiri|depasiri)/i;
+const _COL_MAXIM = /(km\/h|vitez|limit|scor|medi|max|%|procent|nivel|temperat|l\/100)/i;   // nu se adună: se spune cel mai mare
+function _celulaNumar(v) {
+  if (typeof v === 'number') return v;
+  const m = /^\s*(-?[\d.]+(?:,\d+)?)\s*(km|l|lei|ron|kg|%|km\/h)?\s*$/i.exec(String(v == null ? '' : v));
+  return m ? _numar(m[1]) : NaN;
+}
+function rezumatTabel(columns, rows) {
+  const cols = (Array.isArray(columns) ? columns : []).map(function (c) { return String(c == null ? '' : c); });
+  const rs = (Array.isArray(rows) ? rows : []).filter(Array.isArray);
+  if (!rs.length) return 'Tabelul e gol: nu am ce rezuma.';
+  const de = function (n) { const r = Math.abs(n) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; };
+  const out = ['**' + rs.length + de(rs.length) + (rs.length === 1 ? 'rând' : 'rânduri') + '** în raport.'];
+  // Eticheta unui rând: prima coloană care nu e număr (de obicei „Vehicul").
+  let colEt = 0;
+  for (let j = 0; j < cols.length; j++) { if (rs.some(function (r) { return r[j] != null && String(r[j]).trim() && isNaN(_celulaNumar(r[j])); })) { colEt = j; break; } }
+  let puse = 0;
+  for (let j = 0; j < cols.length && puse < 4; j++) {
+    if (j === colEt || _COL_SARITA.test(cols[j])) continue;
+    const val = rs.map(function (r) { return _celulaNumar(r[j]); });
+    const bune = val.filter(function (x) { return Number.isFinite(x); });
+    if (bune.length < Math.max(1, Math.ceil(rs.length * 0.6))) continue;
+    if (bune.every(function (x) { return x === bune[0]; }) && rs.length > 1) continue;   // aceeași cifră peste tot: nu spune nimic
+    // Se adună: după capul coloanei sau după unitatea scrisă în celule („47 km", „36,6 l", „84 lei"); viteza, scorul, media nu.
+    const cuUnitate = rs.filter(function (r) { return /\d\s*(km|l|lei|ron)\s*$/i.test(String(r[j] == null ? '' : r[j])) && !/km\/h/i.test(String(r[j])); }).length >= Math.ceil(rs.length * 0.6);
+    const seAduna = !_COL_MAXIM.test(cols[j]) && (_COL_SE_ADUNA.test(cols[j]) || cuUnitate);
+    let iMax = -1; val.forEach(function (x, i) { if (Number.isFinite(x) && (iMax < 0 || x > val[iMax])) iMax = i; });
+    const f = function (x) { return (Math.round(x * 10) / 10).toLocaleString('ro-RO'); };
+    const cine = iMax >= 0 ? String(rs[iMax][colEt] == null ? '' : rs[iMax][colEt]).trim() : '';
+    let um = ''; for (const r of rs) { const m = /\d\s*(km|l|lei|ron)\s*$/i.exec(String(r[j] == null ? '' : r[j])); if (m) { um = ' ' + m[1].toLowerCase(); break; } }
+    if (seAduna && rs.length > 1) {
+      const tot = bune.reduce(function (a, x) { return a + x; }, 0);
+      out.push('• **' + cols[j] + '**: în total **' + f(tot) + um + '**' + (cine ? '; cel mai mult la ' + cine + ' (' + f(val[iMax]) + um + ')' : '') + '.');
+    } else {
+      out.push('• **' + cols[j] + '**: cel mai mare **' + f(val[iMax]) + um + '**' + (cine ? ', la ' + cine : '') + '.');
+    }
+    puse++;
+  }
+  if (out.length === 1) out.push('Coloanele lui nu au cifre care să se poată aduna sau compara.');
+  return out.join('\n');
+}
+
 module.exports = {
+  rezumatTabel,
   SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, ALEGERI_RAPORT, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,
   intelege, contextul, inteles, raspunde, neinteles, urmari, perioadaDin, perioadaImplicita, perioadaAnterioara, perioadaDinainte,
-  subiectDin, nr, cant, _numar,
+  subiectDin, nr, cant, _numar, PENTRU_INSIGHT,
 };

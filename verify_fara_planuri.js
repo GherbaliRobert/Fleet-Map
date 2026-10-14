@@ -43,11 +43,15 @@ console.log('\n3. Modulele și agenții nu mai depind de plan');
 ['standard', 'start', 'pro', 'premium', 'enterprise', undefined].forEach(function (pl) {
   const f = preturi.featuresFor({ plan: pl });
   T('agenții porniți pe „' + (pl || 'fără plan') + '"', f.agents === true);
+  // Din 14.10 RA Insight e pornit la orice firmă: pachetul Start e inclus în contract (ce primește stă în pachete.js).
+  T('RA Insight pornit pe „' + (pl || 'fără plan') + '" (pachetul Start, inclus)', f.ai_assistant === true);
   T('și modulele cu plată oprite pe „' + (pl || 'fără plan') + '"',
-    f.ai_assistant === false && f.tahograf === false && f.etransport === false && f.etoll === false);
+    f.tahograf === false && f.etransport === false && f.etoll === false);
 });
 T('oferta aprinde modulul, nu planul',
-  preturi.featuresFor({ plan: 'start', settings: { features: { ai_assistant: true } } }).ai_assistant === true);
+  preturi.featuresFor({ plan: 'start', settings: { features: { tahograf: true } } }).tahograf === true);
+T('iar RA Insight se poate opri pe o firmă (cine nu vrea AI-ul), tot din setări, nu din plan',
+  preturi.featuresFor({ plan: 'pro', settings: { features: { ai_assistant: false } } }).ai_assistant === false);
 T('toți cei 6 agenți, la orice firmă', preturi.enabledAgentsFor({ plan: 'start' }).length === 6);
 
 console.log('\n4. Codul nu mai citește coloana `plan`');

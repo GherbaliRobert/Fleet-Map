@@ -106,9 +106,12 @@ T('comutatorul per firmă poate să-i OPREASCĂ',
 T('și poate alege doar o parte din ei',
   plans.enabledAgentsFor({ plan: 'standard', settings: { enabled_agents: ['watch'] } }).join() === 'watch');
 // Ce se VINDE rămâne oprit până îl aprinde oferta — altfel am da pe gratis module cu plată.
-['ai_assistant', 'tahograf', 'etransport', 'etoll'].forEach(function (k) {
+['tahograf', 'etransport', 'etoll'].forEach(function (k) {
   T('„' + k + '" rămâne oprit implicit (se vinde)', plans.featuresFor({ plan: 'standard' })[k] === false);
 });
+// RA Insight (14.10): pornit la toate firmele — pachetul Start e inclus în contract; ce se vinde (AI, ramuri) stă în pachet.
+T('„ai_assistant" pornit implicit (pachetul Start, inclus); ce se plătește vine din pachet', plans.featuresFor({ plan: 'standard' }).ai_assistant === true &&
+  require('./pachete').pachetFirma({}).cod === 'start' && require('./pachete').pachetFirma({}).ai === false);
 
 console.log('\n8. Secțiunea agenților nu mai dispare');
 const ag = taie(html, '// ─── începe „Ce veghează agenții"', '// ─── sfârșit „Ce veghează agenții" ──');
