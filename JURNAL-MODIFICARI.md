@@ -135,6 +135,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   colțuri rotunde, fără contururi groase. Se instalează ea, în locul lui 1.0.16.
   **14.10:** `RA-Track-1.0.18-debug.apk`, pe Desktop — tot ce e în 1.0.17, plus numele „… | RA Track" la „De la" în Mail.
   Se instalează ea, în locul lui 1.0.17.
+  **14.10 (după-amiaza):** `RA-Track-1.0.19-debug.apk`, pe Desktop — tot ce e în 1.0.18, plus pozele din emailurile primite
+  (cele mari și cele atașate) și pachetele RA Insight ale lui Alin. Se instalează ea, în locul lui 1.0.18.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -324,7 +326,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
-### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei
+### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei — `9717197`
 
 Robert (14.10): *„nu pot să văd imaginile din mailuri pe mobile… nici pe web nu pot să le văd"* și *„vreau ca rapoartele de pe
 mail, când sunt descărcate direct din mail, să aibă numele sub brand RA Track, ca cele descărcate din platformă"*.
