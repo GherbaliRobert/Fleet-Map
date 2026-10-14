@@ -300,6 +300,16 @@ Robert: „un mail cât mai complet" — „1, da · 2. a · 3. a, b, c · 4. da
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).
 - Verificarea versiunii LIVE: `ratrack.ro/api/health` → câmpul `version` = prefixul commit-ului deployat.
+- **Banda „A apărut o versiune nouă" (Robert, 14.10: „vreau doar banda").** La o publicare clientul rămâne pe pagina veche
+  până o reîncarcă. `amprentaPaginii()` (server.js) = amprenta fișierelor din `public/` pe care le încarcă pagina
+  (`index.html`, `css/`, `js/`, `vendor/`) + scripturile făcute din module (`_LICENSE_JS`…); `/app` o scrie în
+  `<meta name="ra-pagina">` (`_paginaCuAmprenta` — de aceea `/app` NU mai e `sendFile`), `/api/health` o dă ca `pagina`.
+  Pagina (blocul „banda «A apărut o versiune nouă»") compară la 5 minute, la revenirea în filă și la reconectarea hărții
+  live (`_wsCazuta`); alta → `.ver-noua` sus, cu „Reîncarcă". **NU reîncarcă singură** (formulare pe jumătate), „×" = o oră.
+  O publicare doar de server NU o aprinde. Un fișier nou pe care îl încarcă pagina din alt dosar → adaugă-l în
+  `_paginaFisiere`, altfel schimbarea lui nu aprinde banda. Telefonul nu o are (se schimbă prin APK). Celelalte variante
+  discutate atunci (oprirea blândă cu `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`, „Wait for CI", publicări la ore fixe, două
+  servere) NU s-au ales — nu le face fără el. Păzit de `verify_versiune_noua.js` (în `npm test`).
 
 ## Site-ul public (ratrack.ro) — ce citește Google (02.10)
 

@@ -6,6 +6,8 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Amprenta paginii: o scrie serverul la încărcare (banda „A apărut o versiune nouă", 14.10). Lasă-l gol aici. -->
+  <meta name="ra-pagina" content="">
   <title>RA Track — Monitorizare flotă</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
@@ -4050,6 +4052,7 @@ const pozitii = await r.json();</code></pre>
           if (__wasControlled && !window.__raxReloading) { window.__raxReloading = true; location.reload(); }
         });
       }
+      verPorneste(); // banda „A apărut o versiune nouă" (14.10)
 
       // Hide sidebar on mobile by default
       if (window.innerWidth <= 768) {
@@ -14678,6 +14681,51 @@ const pozitii = await r.json();</code></pre>
     // Textul vine de la server (`neplata.mesajClient`), scris o singură dată pentru email și aplicație.
     // (Până pe 28.09 banda vorbea de abonament „expirat" — ceasul vechi „acces până la", scos atunci.)
     // Super-adminul nu e afectat.
+    // ═══ banda „A apărut o versiune nouă" (14.10, Robert) — început ═══
+    // Pagina își știe amprenta (meta „ra-pagina", scrisă de server la încărcare) și o compară cu cea de pe server
+    // (/api/health → pagina): la 5 minute, când fila revine în față și când harta live se reconectează (o publicare
+    // închide legătura). Alta → banda de sus, cu „Reîncarcă". NU reîncarcă singură: omul poate fi la jumătatea unui
+    // formular. „×" o ascunde o oră. O publicare care schimbă doar serverul nu mișcă amprenta, deci nu aprinde banda.
+    var VER_PAS_MS = 5 * 60 * 1000, VER_ASCUNSA_MS = 60 * 60 * 1000, VER_PAUZA_MS = 15 * 1000;
+    var _ver = { pagina: (function () { var m = document.querySelector('meta[name="ra-pagina"]'); return (m && m.content) || ''; })(), ascunsaLa: 0, ultima: 0, pornit: false };
+    function verDeArata(pePagina, peServer, ascunsaLa, acum) {
+      if (!pePagina || !peServer || pePagina === peServer) return false;
+      return !(ascunsaLa && acum - ascunsaLa < VER_ASCUNSA_MS);
+    }
+    function verVerifica(deLaCeas) {
+      var acum = Date.now();
+      if (!deLaCeas && acum - _ver.ultima < VER_PAUZA_MS) return;
+      _ver.ultima = acum;
+      fetch('/api/health', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var p = j && j.pagina;
+        if (!p) return;
+        if (!_ver.pagina) { _ver.pagina = p; return; } // pagina venită fără amprentă (din copia offline): prima văzută e a ei
+        if (verDeArata(_ver.pagina, p, _ver.ascunsaLa, Date.now())) verArata();
+      }).catch(function () {});
+    }
+    function verArata() {
+      var el = document.getElementById('ver-noua');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'ver-noua'; el.className = 'ver-noua'; el.setAttribute('role', 'status');
+        el.innerHTML = '<i class="fa-solid fa-rotate"></i>'
+          + '<span class="ver-noua-txt"><b>A apărut o versiune nouă a aplicației.</b> Reîncarcă pagina când termini ce lucrezi.</span>'
+          + '<button type="button" class="ver-noua-btn" onclick="verReincarca()">Reîncarcă</button>'
+          + '<button type="button" class="ver-noua-x" onclick="verAscunde()" title="Mai târziu" aria-label="Mai târziu">&times;</button>';
+        document.body.appendChild(el);
+      }
+      el.style.display = 'flex';
+    }
+    window.verReincarca = function () { location.reload(); };
+    window.verAscunde = function () { _ver.ascunsaLa = Date.now(); var el = document.getElementById('ver-noua'); if (el) el.style.display = 'none'; };
+    function verPorneste() {
+      if (_ver.pornit) return;
+      _ver.pornit = true;
+      setInterval(function () { verVerifica(true); }, VER_PAS_MS);
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') verVerifica(false); });
+      verVerifica(true);
+    }
+    // ═══ banda „A apărut o versiune nouă" — sfârșit ═══
+
     function applyAccessBanner() {
       var a = currentUser && currentUser.access;
       var el = document.getElementById('access-banner');
@@ -18546,6 +18594,7 @@ const pozitii = await r.json();</code></pre>
     // profilului (la 4 secunde); aici doar nu mai batem la ușă la fiecare 3 secunde: o dată pe minut. Când profilul
     // spune că accesul a revenit, harta se reconectează PE LOC (_wsAccesRevenit, chemată de applyAccessBanner).
     var _wsAccesOprit = false, _wsReia = null;
+    var _wsCazuta = false; // legătura a căzut și se reia: la revenire, pagina întreabă de versiune (banda „versiune nouă")
     function connectWs() {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(protocol + '//' + location.host);
@@ -18554,6 +18603,8 @@ const pozitii = await r.json();</code></pre>
       ws.onopen = () => {
         statusEl.innerHTML = '<span class="ws-dot"></span><span>Conectat &mdash; date live</span>';
         statusEl.className = 'ws-connected';
+        // Legătura revine după o cădere (o publicare o închide): poate a apărut o versiune nouă a paginii.
+        if (_wsCazuta) { _wsCazuta = false; if (typeof verVerifica === 'function') verVerifica(false); }
       };
 
       ws.onmessage = (event) => {
@@ -18632,6 +18683,7 @@ const pozitii = await r.json();</code></pre>
         statusEl.innerHTML = _wsAccesOprit ? '<span class="ws-dot"></span><span>Oprit &mdash; accesul firmei e suspendat</span>'
           : '<span class="ws-dot"></span><span>Deconectat &mdash; reconectare...</span>';
         statusEl.className = 'ws-disconnected';
+        _wsCazuta = true;
         _wsReia = setTimeout(connectWs, _wsAccesOprit ? 60000 : 3000);
       };
 

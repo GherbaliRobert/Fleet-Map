@@ -326,6 +326,29 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
+### AMÂNDOI · Banda „A apărut o versiune nouă" (aplicația web)
+
+Robert (14.10): *„cum putem face să actualizăm aplicația în timp real și în același timp clientul să aibă acces în
+continuare?"*, apoi, din cele cinci variante: *„vreau doar o bandă «A apărut o versiune nouă»"*.
+
+La o publicare, clientul nu iese din cont și nu se pierde nicio poziție, dar cine are aplicația deschisă rămâne pe pagina
+veche până o reîncarcă — și un buton schimbat între timp îi poate da eroare. Acum, când publicăm o pagină nouă, apare sus,
+la mijloc, o bandă: „A apărut o versiune nouă a aplicației. Reîncarcă pagina când termini ce lucrezi." + **Reîncarcă** + „×".
+
+- Pagina **nu se reîncarcă singură** (omul poate fi la jumătatea unui formular); „×" o ascunde o oră.
+- Se uită la versiune la 5 minute, când revii în filă și imediat după ce harta live se reconectează (o publicare o
+  închide), deci banda apare la câteva secunde după publicare.
+- O publicare care schimbă **doar serverul** nu o aprinde: se compară amprenta paginii (pagina, stilurile, scripturile),
+  nu numărul publicării.
+- Telefonul nu are nevoie de ea: aplicația de pe telefon se schimbă doar prin APK.
+
+- **Ce am schimbat:** `server.js` (`amprentaPaginii` — amprenta fișierelor din `public/` pe care le încarcă pagina +
+  scripturile făcute din module; `/app` o scrie în pagină, `/api/health` o dă ca `pagina`), pagina (blocul „banda «A apărut o
+  versiune nouă»", pornit după autentificare și la reconectarea hărții live), `app.css` (`.ver-noua`, pe ambele teme;
+  contrast măsurat ≥ 7). Probă nouă: `verify_versiune_noua.js` (41, în `npm test`).
+- **Ce vede fondatorul:** banda, după fiecare publicare care schimbă ecranele, dacă are aplicația deschisă.
+- **Ce vede clientul:** aceeași bandă; reîncarcă când vrea.
+
 ### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei — `986e121`
 
 Robert (14.10): *„nu pot să văd imaginile din mailuri pe mobile… nici pe web nu pot să le văd"* și *„vreau ca rapoartele de pe

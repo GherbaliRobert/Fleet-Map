@@ -1389,7 +1389,8 @@ for (const p of PAGINI_PUBLICE) {
   });
 }
 
-app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+// Pagina pleacă cu amprenta ei scrisă înăuntru (banda „A apărut o versiune nouă", 14.10 — vezi `amprentaPaginii`).
+app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('html'); res.send(_paginaCuAmprenta()); });
 // Documentație API pentru clienți (publică, fără secrete)
 app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'api-docs.html')));
 app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });
@@ -1436,6 +1437,44 @@ const _IOFMT_JS = 'window.RA_IOFMT=(function(){' +
   '\nreturn {formatIoValue:formatIoValue,formatIoLabel:formatIoLabel};})();';
 app.get('/js/io-format.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_IOFMT_JS); });
 
+// ─── Versiunea paginii: banda „A apărut o versiune nouă" (14.10, Robert: „vreau doar banda") ───
+// Amprenta a tot ce încarcă aplicația web: pagina, stilurile, scripturile — și cele făcute mai sus din module. O publicare
+// care schimbă DOAR serverul n-o mișcă, deci banda apare doar când pagina pe care omul o ține deschisă e alta decât cea de
+// pe server. `/app` o scrie în pagină (meta „ra-pagina"), `/api/health` o dă la cerere. Se refăce doar când un fișier și-a
+// schimbat mărimea sau ora (local, în lucru); pe Railway fișierele nu se mai schimbă după pornire.
+const _PAGINA_META = '<meta name="ra-pagina" content="">';
+const _pagina = { semn: null, amprenta: '', html: null, htmlSemn: null };
+function _paginaFisiere() {
+  const pub = path.join(__dirname, 'public');
+  const lista = [path.join(pub, 'index.html')];
+  for (const d of ['css', 'js', 'vendor']) {
+    let nume = [];
+    try { nume = fs.readdirSync(path.join(pub, d)).filter((n) => /\.(css|js)$/.test(n)).sort(); } catch (e) {}
+    for (const n of nume) lista.push(path.join(pub, d, n));
+  }
+  return lista;
+}
+function _semnFisiere(fisiere) {
+  return fisiere.map((f) => { try { const s = fs.statSync(f); return f + ':' + s.size + ':' + s.mtimeMs; } catch (e) { return f + ':-'; } }).join('|');
+}
+function amprentaPaginii() {
+  const fis = _paginaFisiere();
+  const semn = _semnFisiere(fis);
+  if (semn !== _pagina.semn) {
+    const h = crypto.createHash('sha1');
+    for (const f of fis) { try { h.update(fs.readFileSync(f)); } catch (e) {} }
+    for (const s of [_LICENSE_JS, _MAINT_JS, _CANFLAGS_JS, _CANICONS_JS, _IOFMT_JS]) h.update(String(s));
+    _pagina.semn = semn; _pagina.amprenta = h.digest('hex').slice(0, 12);
+  }
+  return _pagina.amprenta;
+}
+function _paginaCuAmprenta() {
+  const f = path.join(__dirname, 'public', 'index.html');
+  const semn = _semnFisiere([f]);
+  if (_pagina.html === null || semn !== _pagina.htmlSemn) { _pagina.html = fs.readFileSync(f, 'utf8'); _pagina.htmlSemn = semn; }
+  return _pagina.html.replace(_PAGINA_META, '<meta name="ra-pagina" content="' + amprentaPaginii() + '">');
+}
+
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
 const _startedAt = Date.now();
 app.get('/api/health', async (req, res) => {
@@ -1448,6 +1487,7 @@ app.get('/api/health', async (req, res) => {
     mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
     uptime_s: Math.round((Date.now() - _startedAt) / 1000),
     version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7),
+    pagina: (function () { try { return amprentaPaginii(); } catch (e) { return null; } })(), // banda „versiune nouă"
     fcm: !!_fcm, // push nativ (FCM) activ = FIREBASE_SA_JSON setat + init reușit
     fcm_status: _fcmStatus // 'active' | 'unset' | 'error: <mesaj>'
   });

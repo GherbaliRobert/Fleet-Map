@@ -4480,3 +4480,21 @@ body.dark .sim-svg .sim-cab4 { fill: #454f5b; stroke: #454f5b; } body.dark .sim-
   .sim-marfa, .sim-osii { max-width: none; }
   .sim-oprire input { width: 96px; }
 }
+
+/* ═══ Banda „A apărut o versiune nouă" (14.10, Robert) ═══
+   Sus, la mijloc, sub bara de sus: peste hartă, sub ferestre (care au z-index mai mare), departe de mesajele de jos.
+   Butonul are fundalul LUI (verdele casei) — nu se bazează pe regulile .btn-primary ale ecranelor. */
+.ver-noua { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--topbar-h) + var(--sat) + 10px); z-index: 1500; display: none; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border-light); box-shadow: 0 8px 28px rgba(0, 0, 0, .22); font-size: 13px; line-height: 1.35; }
+.ver-noua > i { color: #166534; flex: 0 0 auto; }
+.ver-noua-txt { flex: 1 1 auto; min-width: 0; }
+.ver-noua-txt b { font-weight: 700; }
+.ver-noua-btn { flex: 0 0 auto; background: #3FE07D; color: #06210F; border: 0; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ver-noua-btn:hover { background: #52EC8D; }
+.ver-noua-x { flex: 0 0 auto; background: transparent; border: 0; color: var(--text-secondary); font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 8px; cursor: pointer; }
+.ver-noua-x:hover { background: var(--bg-dark); color: var(--text-primary); }
+body.dark .ver-noua { border-color: var(--border); box-shadow: 0 8px 28px rgba(0, 0, 0, .55); }
+body.dark .ver-noua > i { color: #3FE07D; }
+@media (max-width: 768px) {
+  .ver-noua { font-size: 12.5px; gap: 8px; padding: 8px 6px 8px 12px; }
+  .ver-noua-txt b { display: block; }
+}
