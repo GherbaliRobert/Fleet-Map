@@ -314,7 +314,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
-### AMÂNDOI · RA Insight știe zilele săptămânii; „Rezumă raportul" cere cont RA Insight — `(commit-ul vine)`
+### AMÂNDOI · RA Insight știe zilele săptămânii; „Rezumă raportul" cere cont RA Insight — `2a298a8`
 
 Alin (14.10), la întrebarea 12 din „Planurile RA Insight": *„Rezolvăm bug-urile menționate (zilele săptămânii și verificare
 cont la rezumate)."*
