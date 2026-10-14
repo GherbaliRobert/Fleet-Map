@@ -326,7 +326,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
-### AMÂNDOI · Banda „A apărut o versiune nouă" (aplicația web)
+### AMÂNDOI · Banda „A apărut o versiune nouă" (aplicația web) — `4f9f91a`
 
 Robert (14.10): *„cum putem face să actualizăm aplicația în timp real și în același timp clientul să aibă acces în
 continuare?"*, apoi, din cele cinci variante: *„vreau doar o bandă «A apărut o versiune nouă»"*.
