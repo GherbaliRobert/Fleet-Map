@@ -518,7 +518,7 @@ pachet «cere ofertă»"*; eticheta „analiză aprofundată" — *„da"*; ordi
 - **Ce vede fondatorul:** blocul pachetelor în tablou, rândul pachetului pe fiecare firmă, anunțul de plasă, soldul Anthropic.
 - **Ce vede clientul:** administratorul — pagina „Pachet și conturi" și legătura ei din Utilizatori; colegii, nimic nou.
 
-### AMÂNDOI · Pachetele RA Insight, pașii 5 și 6: oferta, contractul, factura; trecerea la alt pachet din aplicație
+### AMÂNDOI · Pachetele RA Insight, pașii 5 și 6: oferta, contractul, factura; trecerea la alt pachet din aplicație — `48c74e5`
 
 1. **Oferta** (Ofertare Live, cartea 3): RA Insight se alege dintr-o listă — Start (inclus), Basic, Pro, Business — cu prețul
    pachetului alături (10 / 20 / 30 de lei, din „Prețurile noastre", se poate negocia). Dedesubt, doar pentru noi: ce primește
@@ -546,6 +546,21 @@ pachet «cere ofertă»"*; eticheta „analiză aprofundată" — *„da"*; ordi
   în „Trimise", emailul de confirmare.
 - **Ce vede clientul:** pe ofertă și în contract, pachetul și prețurile; pe factură, rândul pachetului; administratorul își
   schimbă singur pachetul din „Vezi pachetele", cu confirmare și PDF pe email.
+
+### CLIENT · Pachetele RA Insight, pasul 7: pagina pachetelor pe ratrack.ro, fără prețuri
+
+1. **Pagină nouă: ratrack.ro/pachete-ra-insight** — cele patru pachete, cu ce primește fiecare (aceleași texte ca în aplicație),
+   „Inclus în orice contract" la Start și **„Cere ofertă"** la Basic, Pro și Business, fără niciun preț. Dedesubt: cum se
+   schimbă pachetul (din aplicație, de către administrator; mai mare de azi, luna pe zile; mai mic de la 1) și trei întrebări.
+2. Prima pagină o leagă din subsol și din banda RA Insight; harta site-ului o are.
+3. **Pagina „Agenți AI" spunea încă „RA Insight se plătește pentru fiecare cont"** — de azi nu mai e adevărat. Acum: pachetul
+   Start inclus, celelalte pe firmă, cu legătura spre pachete.
+
+- **Ce am schimbat:** `public/pachete-ra-insight.html` (nou), `public/agenti-ai.html`, `public/landing.html`, `server.js`
+  (`PAGINI_PUBLICE`). Proba: `verify_site_public.js` compară textele pachetelor de pe pagină cu cele din aplicație și pică la
+  orice preț scris pe pagină.
+- **Ce vede fondatorul:** nimic nou în aplicație.
+- **Ce vede clientul (și orice vizitator):** pagina pachetelor pe site, fără prețuri.
 
 ---
 

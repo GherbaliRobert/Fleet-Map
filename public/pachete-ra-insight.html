@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <!-- Analytics (GA4) se încarcă DOAR după consimțământ explicit — vezi public/js/consent.js. -->
+  <script src="/js/consent.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pachetele RA Insight: Start, Basic, Pro, Business | RA Track</title>
+  <meta name="description" content="RA Insight, asistentul pe care îl întrebați în română despre flotă, în patru pachete pe firmă: Start, inclus în orice contract, apoi Basic, Pro și Business. Prețul îl primiți în ofertă.">
+  <link rel="canonical" href="https://ratrack.ro/pachete-ra-insight">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0B0E11">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="RA Track">
+  <meta property="og:locale" content="ro_RO">
+  <meta property="og:url" content="https://ratrack.ro/pachete-ra-insight">
+  <meta property="og:title" content="Pachetele RA Insight: Start, Basic, Pro, Business">
+  <meta property="og:description" content="Asistentul flotei, în patru pachete pe firmă. Start e inclus în orice contract; pentru celelalte, cereți o ofertă.">
+  <meta property="og:image" content="https://ratrack.ro/og-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Ce primește fiecare pachet e scris O DATĂ, în pachete.js (DESCRIERE / publice), aceleași texte ca în aplicație.
+       Pagina le copiază, iar verify_site_public.js le compară cuvânt cu cuvânt cu pachete.publice({ cuPret: false }).
+       Fără prețuri (Alin, 14.10: „nu afișăm prețurile, sub fiecare plan, «cere ofertă»"). Întrebările de la final sunt
+       IDENTICE cu cele din datele pentru Google. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "RA Track",
+            "item": "https://ratrack.ro/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Pachetele RA Insight",
+            "item": "https://ratrack.ro/pachete-ra-insight"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "inLanguage": "ro-RO",
+        "url": "https://ratrack.ro/pachete-ra-insight",
+        "isPartOf": {
+          "@id": "https://ratrack.ro/#site"
+        },
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Ce se întâmplă când se termină întrebările lunii?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Pe Basic, Pro și Business, RA Insight vă răspunde mai departe pe butoane — unde e o mașină, câți kilometri a făcut, unde a stat, ce acte expiră — până pe 1, când întrebările se reîncarcă. Pe Start, cele 50 de răspunsuri se reîncarcă tot pe 1. Nu se plătește nimic în plus."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Pot schimba pachetul?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, de la 1 a lunii următoare. Confirmarea vine pe email, în PDF."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ce date vede RA Insight?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Doar ce vede contul care întreabă. Pe Start nu pleacă nimic în afara aplicației: răspunsurile vin din rapoartele ei. De la Basic în sus, pentru un răspuns, datele de care e nevoie se trimit furnizorului modelului (Anthropic), cum scrie în politica de confidențialitate."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root{--bg:#0B0E11;--bg2:#11161B;--text:#E6EAF0;--muted:#9AA6B2;--accent:#3FE07D;--border:#1F2730}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15.5px/1.75 'Nunito',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    header{padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+    header a{display:inline-flex;align-items:center;gap:10px;color:var(--text)}header a:hover{text-decoration:none}
+    header img{height:26px}.brand{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1}
+    .firimituri{font-size:13px;color:var(--muted);margin:0}.firimituri a{color:var(--muted)}
+    h1{font-size:28px;line-height:1.25;margin:10px 0 12px}
+    .intro{color:#CBD3DC;font-size:16.5px;margin:0;max-width:820px}
+    h2{font-size:20px;line-height:1.35;margin:38px 0 10px;color:#fff;font-weight:800}
+    h3{font-size:16.5px;margin:20px 0 6px;color:#fff;font-weight:700}
+    p{margin:10px 0;color:#CBD3DC}
+    ul{padding-left:20px;margin:10px 0}li{margin:7px 0;color:#CBD3DC}
+    p b,li b{color:#fff}
+    .pachete{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 6px}
+    @media (max-width:900px){.pachete{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.pachete{grid-template-columns:minmax(0,1fr)}}
+    .pachet{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
+    .pachet h3{margin:0;font-size:18px;font-weight:800}
+    .pachet .pret{margin:4px 0 10px;font-size:13px;color:var(--muted)}
+    .pachet .pret b{font-size:20px;color:#fff;font-weight:800}
+    .pachet .titlu{font-weight:700;color:#fff;font-size:14.5px;line-height:1.45;margin:0}
+    .pachet .pentru{font-size:13.5px;color:var(--muted);margin:2px 0 10px}
+    .pachet ul{list-style:none;padding:0;margin:0 0 12px;display:grid;gap:6px}
+    .pachet li{margin:0;font-size:13.5px;line-height:1.5;padding-left:20px;position:relative}
+    .pachet li::before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:800}
+    .pachet li.nu{color:var(--muted)}
+    .pachet li.nu::before{content:"–";color:var(--muted)}
+    .pachet .cere{margin-top:auto;display:block;text-align:center;font-weight:700;border:1px solid var(--accent);border-radius:999px;padding:7px 10px;font-size:13.5px}
+    .pachet .cere:hover{text-decoration:none;background:rgba(63,224,125,.08)}
+    .toate{font-size:14px;color:var(--muted);margin:12px 0 0}
+    details{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:10px 0}
+    details[open]{border-color:#2A3540}
+    summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:flex-start}
+    summary::-webkit-details-marker{display:none}
+    summary::before{content:"+";color:var(--accent);font-weight:800;font-size:18px;line-height:1.3;flex:none}
+    details[open] summary::before{content:"\2013"}
+    summary h3{margin:0;font-size:16px}
+    details p{margin:10px 0 0}
+    .cta{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:16px 18px;margin:36px 0 0}
+    .cta p{margin:6px 0 0;color:var(--muted)}
+    .vezi{margin:26px 0 0;font-size:14px;color:var(--muted)}
+    .back{display:inline-block;margin-top:18px;font-size:14px}
+    @media (max-width:560px){h1{font-size:24px}h2{font-size:18.5px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><a href="/"><img src="/logo-mark.png" alt="RA"><span class="brand">Track</span></a></header>
+    <nav class="firimituri" aria-label="Unde vă aflați"><a href="/">RA Track</a> › Pachetele RA Insight</nav>
+
+    <h1>Pachetele RA Insight</h1>
+    <p class="intro">RA Insight e asistentul flotei: îl întrebați în limba română, iar el caută răspunsul în rapoartele aplicației — câți kilometri a făcut o mașină, de ce a crescut consumul, ce acte expiră luna asta. Se alege pe firmă, într-unul din cele patru pachete de mai jos. Start e inclus în orice contract; pentru celelalte, prețul îl primiți în ofertă.</p>
+
+    <div class="pachete">
+      <div class="pachet">
+        <h3>Start</h3>
+        <div class="pret"><b>Inclus</b> în orice contract</div>
+        <p class="titlu">Răspunsuri pe loc, pe butoane.</p>
+        <p class="pentru">Pentru orice firmă, din prima zi.</p>
+        <ul>
+          <li>1 cont: administratorul</li>
+          <li>50 de răspunsuri pe lună: unde e o mașină, câți km, unde a stat, ce acte expiră</li>
+          <li>Scrisoarea de luni</li>
+          <li class="nu">Întrebări libere („de ce?”, „ce să fac?”)</li>
+          <li class="nu">Ramurile</li>
+        </ul>
+      </div>
+      <div class="pachet">
+        <h3>Basic</h3>
+        <div class="pret">Cere ofertă</div>
+        <p class="titlu">Întreabă orice despre flota ta.</p>
+        <p class="pentru">Pentru patron și încă un om.</p>
+        <ul>
+          <li>2 conturi</li>
+          <li>200 de întrebări pe lună, la comun</li>
+          <li>Întrebări în cuvintele tale: „De ce a crescut consumul la Caddy?”</li>
+          <li>Ramurile: Safe Drive &amp; costuri, Combustibil, Ore de condus, Mentenanță &amp; acte</li>
+          <li>Răspunsurile pe butoane, fără limită</li>
+          <li>Scrisoarea de luni scrisă de RA Insight</li>
+        </ul>
+        <a class="cere" href="/#contact">Cere ofertă</a>
+      </div>
+      <div class="pachet">
+        <h3>Pro</h3>
+        <div class="pret">Cere ofertă</div>
+        <p class="titlu">Toată echipa întreabă, tu împarți întrebările.</p>
+        <p class="pentru">Pentru firme cu dispecerat.</p>
+        <ul>
+          <li>Până la 5 conturi</li>
+          <li>600 de întrebări pe lună</li>
+          <li>Împarți întrebările pe oameni</li>
+          <li>Tot ce are Basic</li>
+        </ul>
+        <a class="cere" href="/#contact">Cere ofertă</a>
+      </div>
+      <div class="pachet">
+        <h3>Business</h3>
+        <div class="pret">Cere ofertă</div>
+        <p class="titlu">Oricâți oameni, 1.000 de întrebări.</p>
+        <p class="pentru">Pentru flote mari, cu mai multe echipe.</p>
+        <ul>
+          <li>Conturi nelimitate</li>
+          <li>1.000 de întrebări pe lună</li>
+          <li>Împarți întrebările pe oameni</li>
+          <li>Tot ce are Pro</li>
+        </ul>
+        <a class="cere" href="/#contact">Cere ofertă</a>
+      </div>
+    </div>
+    <p class="toate">În toate: fiecare om își vede doar conversațiile lui · cifrele vin din rapoartele aplicației și se verifică singure · nu se plătește nimic peste preț · se reîncarcă pe 1.</p>
+
+    <h2>Cum se schimbă pachetul</h2>
+    <ul>
+      <li><b>Din aplicație, de către administratorul firmei.</b> Alege pachetul, citește ce se schimbă și confirmă; confirmarea vine pe email, în PDF.</li>
+      <li><b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile, pentru fiecare pachet.</li>
+      <li><b>Un pachet mai mic</b> se aplică de la 1 a lunii următoare.</li>
+    </ul>
+    <p>RA Insight folosește, de la Basic în sus, un model de limbaj (Claude, de la Anthropic) și vede doar ce vede contul care întreabă: un utilizator cu acces la cinci mașini primește răspunsuri despre acele cinci.</p>
+
+    <h2>Întrebări despre pachete</h2>
+    <details>
+      <summary><h3>Ce se întâmplă când se termină întrebările lunii?</h3></summary>
+      <p>Pe Basic, Pro și Business, RA Insight vă răspunde mai departe pe butoane — unde e o mașină, câți kilometri a făcut, unde a stat, ce acte expiră — până pe 1, când întrebările se reîncarcă. Pe Start, cele 50 de răspunsuri se reîncarcă tot pe 1. Nu se plătește nimic în plus.</p>
+    </details>
+    <details>
+      <summary><h3>Pot schimba pachetul?</h3></summary>
+      <p>Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, de la 1 a lunii următoare. Confirmarea vine pe email, în PDF.</p>
+    </details>
+    <details>
+      <summary><h3>Ce date vede RA Insight?</h3></summary>
+      <p>Doar ce vede contul care întreabă. Pe Start nu pleacă nimic în afara aplicației: răspunsurile vin din rapoartele ei. De la Basic în sus, pentru un răspuns, datele de care e nevoie se trimit furnizorului modelului (Anthropic), cum scrie în <a href="/confidentialitate">politica de confidențialitate</a>.</p>
+    </details>
+
+    <div class="cta">
+      <b>Vreți RA Insight pe flota dumneavoastră?</b>
+      <p>Cereți un <a href="/#contact">cont demonstrativ</a>, cu mașini de probă, sau o ofertă pentru flota dumneavoastră — pachetul RA Insight intră în ea.</p>
+    </div>
+
+    <p class="vezi">Vedeți și: <a href="/agenti-ai">agenții AI</a> · <a href="/monitorizare-combustibil">monitorizarea combustibilului</a> · <a href="/intrebari-frecvente">întrebări frecvente</a></p>
+    <a class="back" href="/">← Înapoi la pagina principală</a>
+  </div>
+</body>
+</html>

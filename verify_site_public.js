@@ -243,6 +243,8 @@ const blocAlerte = (IX.match(/const ALERT_TYPES = \[([\s\S]*?)\n\s*\];/) || [nul
 const nAlerte = (blocAlerte.match(/\{ v:'/g) || []).length;
 const nLucrari = (MT.WORK || []).length;
 const watchOrar = /setInterval\(runAgentsWorker, 60 \* 60 \* 1000\)/.test(SRV);
+const PK = require('./pachete.js');
+const PKJS = citeste('pachete.js');
 const LEGATE = [
   // [pagina, textul exact de pe pagină, e încă adevărat în cod?, unde se uită, (rândul din DE_HOTARAT care îl ține adormit)]
   ['/', '— 16 tipuri, cu pragurile tale', nAlerte === 16, 'ALERT_TYPES din public/index.html are ' + nAlerte + ' tipuri', 'primaPagina'],
@@ -262,12 +264,40 @@ const LEGATE = [
   ['/agenti-ai', 'cel mult 4h30 fără o pauză de 45 de minute și 9 ore pe zi', /CONT_LIMIT_MIN = 270, DAILY_LIMIT_MIN = 540/.test(AG) && /segmentTrack\(pts, 45 \* 60\)/.test(AG), 'limitele din raCompliance (agents.js)'],
   ['/agenti-ai', 'o oprire de cel puțin 45 de minute e socotită pauză', /segmentTrack\(pts, 45 \* 60\)/.test(AG), 'pauza din raCompliance (agents.js)'],
   ['/agenti-ai', 'reapare abia după 12 ore', /if \(ageH < 12\) return null;/.test(DBJS), 'fereastra din createAgentFinding (db.js)'],
+  // Pachetele RA Insight (14.10): regula trecerii și Start, din pachete.js.
+  ['/agenti-ai', 'RA Insight are pachetul Start inclus', PK.dupaCod('start').pret === 0, 'Start din pachete.js nu mai e inclus (0 lei)'],
+  ['/pachete-ra-insight', 'Pe Start, cele 50 de răspunsuri se reîncarcă tot pe 1', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
+  ['/pachete-ra-insight', '<b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile', /const deLa = inceputZi\(acum\)/.test(PKJS) && /function liniiFactura\(o\)/.test(PKJS), 'trecerea la un pachet mai mare din pachete.js (din ziua confirmării, pe zile)'],
+  ['/pachete-ra-insight', '<b>Un pachet mai mic</b> se aplică de la 1 a lunii următoare', /const deLa = inceputLunaUrm\(acum\)/.test(PKJS), 'trecerea la un pachet mai mic din pachete.js (de la 1 a lunii următoare)'],
+  ['/pachete-ra-insight', 'confirmarea vine pe email, în PDF', /_trimiteConfirmarePachet\(rand, r\.co, u\)/.test(SRV), 'emailul confirmării (server.js)'],
 ];
 for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   if (doarme && DE_HOTARAT[doarme]) continue;
   const html = HTML[cale] || '';
   check(html.includes(t), cale + ': nu mai găsesc pe pagină „' + t + '" — dacă ai schimbat textul, schimbă-l și în verify_site_public.js');
   check(adevarat, cale + ': pagina scrie „' + t.replace(/<[^>]+>/g, '') + '", dar regula din cod s-a schimbat (' + unde + '). Schimbă textul paginii.');
+}
+
+// ── 3c. Pachetele RA Insight pe site: aceleași texte ca în aplicație, fără prețuri (14.10) ──────────────
+// Ce primește fiecare pachet stă O DATĂ în pachete.js (DESCRIERE → publice). Pagina îl copiază; aici se compară cuvânt cu
+// cuvânt cu publice({ cuPret: false }) — schimbi un rând într-o parte, proba pică până îl schimbi și în cealaltă.
+// Alin, 14.10: „nu afișăm prețurile, sub fiecare plan, «cere ofertă»".
+{
+  const html = HTML['/pachete-ra-insight'] || '';
+  const vazut = faraMarcaj(corpul(html));
+  const pub = PK.publice({ cuPret: false, aprofundat: false });
+  for (const p of pub) {
+    const bucati = [p.nume, p.titlu, p.pentru, p.subPret].concat(p.include, p.fara);
+    for (const b of bucati) check(vazut.includes(b), '/pachete-ra-insight: pachetul ' + p.nume + ' — lipsește pe pagină „' + b + '" (din pachete.js)');
+  }
+  check(vazut.includes(PK.IN_TOATE), '/pachete-ra-insight: lipsește rândul „În toate: …" din pachete.js');
+  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/pachete-ra-insight: pe pagină apare un preț — pe site nu se afișează prețuri, doar „Cere ofertă"');
+  check((html.match(/>Cere ofertă</g) || []).length >= 3, '/pachete-ra-insight: sub fiecare pachet plătit trebuie „Cere ofertă"');
+  // Nicio pagină nu mai spune că RA Insight se plătește „pe cont" (regula veche, până pe 14.10).
+  for (const p of PAGINI) {
+    const v = faraMarcaj(corpul(HTML[p.cale] || ''));
+    check(!/pentru fiecare cont care îl folosește|Se activează pe cont|fiecare loc aduce/.test(v), p.cale + ': pagina spune încă regula veche, „RA Insight pe cont" — din 14.10 se vinde în pachete pe firmă');
+  }
 }
 
 // ── 4. Pe serverul pornit ───────────────────────────────────────────────────────────────────────────

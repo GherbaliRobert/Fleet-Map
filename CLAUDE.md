@@ -42,7 +42,7 @@ Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă în
 
 **Fontul standard, peste tot, este `Nunito`** — în aplicație ȘI pe paginile publice. Orice modificare de UI se face sub acest font; nu introduce alt font pentru text.
 
-- **Încărcare:** din Google Fonts (`Nunito:wght@400;500;600;700;800`), inclus în `<head>`-ul fiecărei pagini: `public/index.html`, `set-password.html` și toate paginile site-ului public din `PAGINI_PUBLICE` (server.js) — prima pagină, cele trei pagini pe funcții, întrebările frecvente, Termeni, Confidențialitate; pe acestea îl cere `verify_site_public.js`.
+- **Încărcare:** din Google Fonts (`Nunito:wght@400;500;600;700;800`), inclus în `<head>`-ul fiecărei pagini: `public/index.html`, `set-password.html` și toate paginile site-ului public din `PAGINI_PUBLICE` (server.js) — prima pagină, cele trei pagini pe funcții, pachetele RA Insight, întrebările frecvente, Termeni, Confidențialitate; pe acestea îl cere `verify_site_public.js`.
 - **Aplicare globală (app):** în `public/css/app.css`, pe `body`:
   `font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;`
 - **Controale de formular:** `button, input, select, textarea { font-family: inherit; }`.
@@ -313,8 +313,8 @@ Robert: „un mail cât mai complet" — „1, da · 2. a · 3. a, b, c · 4. da
 
 ## Site-ul public (ratrack.ro) — ce citește Google (02.10)
 
-Robert, după analiza SEO: *„fă tot ce poți tu"*. Site-ul are acum 7 pagini: prima pagină, trei pagini pe funcții
-(**`/monitorizare-combustibil`**, **`/alerte-itp-rca-rovinieta`**, **`/agenti-ai`**), întrebările frecvente, Termeni,
+Robert, după analiza SEO: *„fă tot ce poți tu"*. Site-ul are acum 8 pagini: prima pagină, trei pagini pe funcții
+(**`/monitorizare-combustibil`**, **`/alerte-itp-rca-rovinieta`**, **`/agenti-ai`**), **`/pachete-ra-insight`** (14.10), întrebările frecvente, Termeni,
 Confidențialitate.
 
 - **`PAGINI_PUBLICE` (server.js) e SINGURA listă:** din ea ies sitemap-ul, adresele „frumoase" și redirecționarea
@@ -685,14 +685,14 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
 
-### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–6 GATA (regula, chatul, conturile, tabloul, oferta, trecerea)
+### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–7 GATA (regula, chatul, conturile, tabloul, oferta, trecerea, site-ul)
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
 fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
 împărțirea pe oameni, analiza aprofundată) · **Business** 30 lei (conturi nelimitate, 1.000). Se reîncarcă pe 1; FĂRĂ pachete de
 întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
 mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" ✅ · 4 tabloul nostru ✅ · 5 oferta,
 contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) ✅ · 6 trecerea din aplicație (confirmare cu
-bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") · 8 telefonul.
+bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") ✅ · 8 telefonul.
 - **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, limitaVeche)` (fără nimic scris = Start;
   `ai_quota` cu întrebări pe cont / cotă fixă sau `companies.ai_monthly_limit` = regula VECHE → null, o citește codul vechi),
   `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
@@ -767,6 +767,11 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `liniiFirma`): luna întreagă la pachetul de pe 1 a lunii (în avans), iar pentru luna trecută — zilele pe bucăți (firma cu
   primul aparat pornit atunci) sau diferența pe zile pentru fiecare trecere la un pachet mai mare („RA Insight — trecerea la
   pachetul Pro, 14–31.10.2026 (18 zile)"). O trecere la un pachet mai mic nu dă bani înapoi. Aceeași regulă ca abonamentul.
+- **Pasul 7, pagina pachetelor:** în aplicație = „Vezi pachetele" (`/api/insight/pachete`, prețurile pentru firmă); pe site =
+  **`/pachete-ra-insight`** (în `PAGINI_PUBLICE`, legată din subsolul și din banda RA Insight a primei pagini), FĂRĂ prețuri:
+  „Inclus în orice contract" la Start, „Cere ofertă" la celelalte. Textele pachetelor sunt COPIA lui `pachete.publice({ cuPret:
+  false })` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină. Schimbi `DESCRIERE` în
+  pachete.js → schimbi și pagina (și `amprenta` / `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
 - Păzit de `verify_pachete.js` (în `npm test`; 212, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
   `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`.
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
