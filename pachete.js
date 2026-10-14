@@ -40,9 +40,10 @@ function _setari(settings) {
   return settings;
 }
 // Pachetul firmei, din setările ei. Fără pachet scris → Start (Alin, 14.10: „orice firmă începe cu Start").
-// Firma rămasă pe regula VECHE, pe cont (`ai_quota` cu întrebări pe cont sau cotă fixă) → null: o citește regula veche
-// până o mutăm noi pe un pachet, din fișa firmei. Prețul semnat (`pretRON`) bate prețul de pornire.
-function pachetFirma(settings) {
+// Firma rămasă pe regula VECHE, pe cont (`ai_quota` cu întrebări pe cont sau cotă fixă, ori limita cea mai veche,
+// `companies.ai_monthly_limit` = `limitaVeche`) → null: o citește regula veche până o mutăm noi pe un pachet, din fișa
+// firmei. Prețul semnat (`pretRON`) bate prețul de pornire.
+function pachetFirma(settings, limitaVeche) {
   const s = _setari(settings);
   const ap = s.ai_pachet;
   if (ap && typeof ap === 'object' && dupaCod(ap.cod)) {
@@ -53,7 +54,7 @@ function pachetFirma(settings) {
     return p;
   }
   const q = s.ai_quota || {};
-  if (Number(q.questionsPerSeat) > 0 || Number(q.questions) > 0) return null;   // regula veche, pe cont
+  if (Number(q.questionsPerSeat) > 0 || Number(q.questions) > 0 || Number(limitaVeche) > 0) return null;   // regula veche
   const p = dupaCod('start');
   p.pretRON = 0; p.deLa = null;
   return p;
@@ -185,15 +186,60 @@ function textDoarButoane() {
   return 'Asta e o întrebare liberă: răspund la ea de la pachetul **Basic** (200 de întrebări pe lună). Pe **Start** răspund la ' +
     'întrebările de pe butoane: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră, rapoartele.';
 }
+// Cât arată ecranul că a rămas: la plasă, 0 (RA Insight s-a oprit pe lună, oricâte întrebări ar fi rămas — macheta din 14.10:
+// „0 din 200 rămase · se reîncarcă pe 1"); clientul nu află de costuri.
+function ramaseAfisate(st) { return st.motiv === 'plasa' ? 0 : st.ramase; }
 // Rândul scurt de pe ecran: „412 din 600 rămase în octombrie" / „34 din 50 de răspunsuri pe butoane rămase".
 function textRamase(st, acum) {
   const r = reincarcare(acum);
   if (st.cod === 'start') return st.ramase + ' din ' + st.intrebari + deNr(st.intrebari) + 'răspunsuri pe butoane rămase în ' + r.luna;
-  return st.ramase + ' din ' + st.intrebari + ' rămase în ' + r.luna;
+  return ramaseAfisate(st) + ' din ' + st.intrebari + ' rămase în ' + r.luna;
+}
+
+// Contorul de lângă caseta de scris: „34 din 50" / „îți rămân 38" (omul cu limită) / „0 din 200".
+function textScurt(st) {
+  if (st.imparte && st.limitaOm != null) return 'îți rămân ' + (st.motiv === 'plasa' ? 0 : st.ramaseOm);
+  if (st.motiv === 'comun') return 'îți rămân 0';
+  return ramaseAfisate(st) + ' din ' + st.intrebari;
+}
+// Al doilea rând din caseta pachetului, la omul cu limită (Pro, Business): „Tu: 38 din 100 (limita dată de administrator)".
+function textOm(st) {
+  if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările lăsate la comun';
+  if (!(st.imparte && st.limitaOm != null)) return null;
+  return 'Tu: ' + (st.motiv === 'plasa' ? 0 : st.ramaseOm) + ' din ' + st.limitaOm + ' (limita dată de administrator)';
+}
+function textReincarcare(acum) { return 'Se reîncarcă pe 1 ' + reincarcare(acum).urmatoarea + '.'; }
+
+// ─── Ce primește fiecare pachet, pe înțeles (macheta din 14.10, aprobată) — UN singur loc, pentru aplicație și site ───
+// Doar ce face aplicația AZI. Analiza aprofundată se scrie doar cât e pornită (o pornim noi, după probă).
+const DESCRIERE = {
+  start: { titlu: 'Răspunsuri pe loc, pe butoane.', pentru: 'Pentru orice firmă, din prima zi.',
+    include: ['1 cont: administratorul', '50 de răspunsuri pe lună: unde e o mașină, câți km, unde a stat, ce acte expiră', 'Scrisoarea de luni'],
+    fara: ['Întrebări libere („de ce?”, „ce să fac?”)', 'Ramurile'] },
+  basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.',
+    include: ['2 conturi', '200 de întrebări pe lună, la comun', 'Întrebări în cuvintele tale: „De ce a crescut consumul la Caddy?”',
+      'Ramurile: Safe Drive & costuri, Combustibil, Ore de condus, Mentenanță & acte', 'Răspunsurile pe butoane, fără limită', 'Scrisoarea de luni scrisă de RA Insight'] },
+  pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.',
+    include: ['Până la 5 conturi', '600 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată la „de ce” și „ce să fac”' }, 'Tot ce are Basic'] },
+  business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.',
+    include: ['Conturi nelimitate', '1.000 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată, cu buget mai mare' }, 'Tot ce are Pro'] },
+};
+const IN_TOATE = 'În toate: fiecare om își vede doar conversațiile lui · cifrele vin din rapoartele aplicației și se verifică singure · nu se plătește nimic peste preț · se reîncarcă pe 1.';
+// Lista pentru ecrane: o = { aprofundat: pornită?, cuPret: false pe site (Alin, 14.10: „nu afișăm prețurile, «cere ofertă»") }.
+function publice(o) {
+  o = o || {};
+  return PACHETE.map(function (p) {
+    const d = DESCRIERE[p.cod];
+    const include = d.include.map(function (x) { return typeof x === 'string' ? x : (o.aprofundat ? x.aprofundat : null); }).filter(Boolean);
+    const out = { cod: p.cod, nume: p.nume, titlu: d.titlu, pentru: d.pentru, include: include, fara: d.fara || [] };
+    if (o.cuPret !== false) out.pret = p.pret === 0 ? 'Inclus' : p.pret + deNr(p.pret) + 'lei';
+    out.subPret = p.pret === 0 ? 'în orice contract' : (o.cuPret !== false ? '/ lună' : 'Cere ofertă');
+    return out;
+  });
 }
 
 module.exports = {
-  PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI,
+  PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
-  reincarcare, textBlocat, textDoarButoane, textRamase, deNr,
+  reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
 };

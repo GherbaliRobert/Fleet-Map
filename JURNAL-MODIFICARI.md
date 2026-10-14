@@ -246,6 +246,14 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   managerul și dispecerul firmei (rolul „Dispecer"); șoferul doar primește planul. Rolul „Dispecer" n-are dreptul de a
   modifica flota, dar planul de încărcare e treaba lui — de-aia l-am lăsat. Dacă vreți doar adminul și managerul, îmi
   spuneți și schimb.
+- [ ] **Voi: pachetul RA Insight pe firmele care întreabă cu AI. Adăugat pe 14.10 (pachetele, pașii 1–2).** De la livrarea
+  asta, orice firmă fără pachet scris e pe **Start** (doar administratorul, 50 de răspunsuri pe butoane, fără AI). Firmele
+  care trebuie să întrebe RA Insight cu AI — și firma noastră, pe care probați — se pun pe Basic, Pro sau Business din
+  Companii → firma → fila **„Acces"** → „Pachet RA Insight". Firmele rămase pe regula veche, pe cont (întrebări pe cont
+  scrise în „Abonament & plăți"), merg ca până acum până le mutați. Pe factură, pachetul ajunge abia la pasul ofertei (5).
+- [ ] **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
+  („doar dacă proba arată că Haiku 5.5 e slab"). Se pornește dintr-un comutator al nostru, după probă; cât e oprită, nici
+  „Vezi pachetele" nu o promite.
 
 ---
 
@@ -298,7 +306,7 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
 | **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
 | **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | ✅ 08.10 |
-| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 plasa hotărâtă (14.10); macheta trimisă — de construit după „da” |
+| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 în construcție (14.10, „spor"): ✅ 1 regula pe server · ✅ 2 chatul · ⬜ 3 „Pachet și conturi" · ⬜ 4 tabloul nostru · ⬜ 5 oferta, contractul, factura · ⬜ 6 trecerea din aplicație · ⬜ 7 pagina pachetelor · ⬜ 8 telefonul |
 | **Cap. 2** | Traiectoria RA Insight, recroită după pachete (bula → secțiunea; AI Raport → comenzi care fac rapoarte în Istoric; acțiuni după „Da"; nume nou pentru Safe Drive) | ⬜ după capitolul 1 |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ⬜ |
@@ -382,6 +390,46 @@ pachetelor RA Insight"*. Macheta trimisă (https://claude.ai/artifact/9wS8uM91yV
 beneficiile, chatul pe Start / Pro / la capăt, „Pachet și conturi" (împărțirea întrebărilor), trecerea (propus: clauză în
 contract + confirmare în aplicație + PDF pe email + factură pe zile, fără Stripe), tabloul nostru de costuri, oferta, secțiunea
 de pe site. Construcția pornește după „da" la machetă.
+
+**A treia rundă (14.10), la cele 8 întrebări din machetă:** machetele — *„da, le mai retușăm"*; împărțirea întrebărilor în
+pagina „Pachet și conturi", doar pentru administrator — *„da"*; trecerea: clauză în contract + confirmare în aplicație + PDF
+pe email + factură pe zile, fără Stripe — *„da"*; contractele semnate — *„nu îți face griji, nu avem real niciun contract
+semnat"*; „Rezumă raportul" pe Start pe reguli, de la Basic cu AI — *„da"*; pe site *„nu afișăm prețurile, sub fiecare
+pachet «cere ofertă»"*; eticheta „analiză aprofundată" — *„da"*; ordinea construcției — *„da. spor."*
+
+### AMÂNDOI · Pachetele RA Insight, pașii 1 și 2: regula pe server și chatul — `c5176c0` + commit-ul pasului 2
+
+1. **Orice firmă e pe Start** până îi punem alt pachet: RA Insight îl are doar **administratorul** (îl primește singur
+   când deschide RA Insight), cu **50 de răspunsuri pe butoane pe lună**, fără AI. O întrebare liberă („de ce?") primește
+   „răspund la ea de la pachetul Basic" și nu se numără. „Rezumă raportul" pe Start face rezumatul din cifrele tabelului
+   (fără AI), din aceleași 50. Ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte) apar încuiate, cu
+   „· Basic". Scrisoarea de luni pe Start e scrisă pe reguli.
+2. **Basic / Pro / Business**: 2 / până la 5 / oricâte conturi, 200 / 600 / 1.000 de întrebări pe lună, la comun. Butoanele
+   (cartonașele, continuările, alegerile, întrebarea făcută doar din butoanele casetei) răspund pe reguli și **nu se
+   numără**; ce scrii de mână e o întrebare. Pe Pro și Business, administratorul poate da unui om o limită (de pe
+   server; pagina „Pachet și conturi" vine la pasul 3).
+3. **Plasa de 80%**: când o firmă a costat 8 / 16 / 24 de lei într-o lună (din costul real, pe model), RA Insight răspunde
+   doar pe butoane până pe 1, cu „a ajuns la limita lunii… fără niciun cost în plus" — fără cifre de bani.
+4. **Analiza aprofundată** (Sonnet, 5 lei pe Pro, 8 pe Business) e construită, dar **oprită**; pornită, răspunde la „de ce",
+   „compară", „ce să fac", cu eticheta „analiză aprofundată", cât ține bugetul.
+5. **Chatul**, ca în machetă: caseta pachetului în stânga jos (pachetul, cât a rămas, „Tu: 38 din 100" la omul cu limită,
+   „Vezi pachetele →" doar la administrator), contorul lângă caseta de scris („34 din 50", „îți rămân 38"), pastila
+   „Pachet Pro" sus, mesajul de la capăt în caseta portocalie cu Mașina / Perioada / Raport / Vezi pachetele, fereastra cu
+   cele patru pachete. Fila AI Raport cere și ea cont RA Insight pe o firmă cu pachet (pe Start, al administratorului).
+6. **Fila „Acces" a firmei** (noi): „Pachet RA Insight" — Start / Basic / Pro / Business, cu întrebare.
+7. **„Ultimele 3 luni"** (și „ultimele două luni", „ultimele 2 săptămâni") înțelese pe reguli — până azi ieșeau ultimele 7 zile.
+
+- **Ce am schimbat:** `pachete.js` (nou: pachetele, conturile, limitele, starea, plasa, analiza aprofundată, textele,
+  descrierile pentru aplicație și site), `server.js` (starea pe server, RA Insight pe reguli pe Start și când luna s-a
+  oprit, o singură numărătoare a răspunsurilor pe butoane, ramurile de la Basic, limita pe om, rutele pachetelor și ale
+  comutatorului), `db.js` (limita pe om, răspunsurile pe butoane, costul real al lunii), `ai_raport.js` (perioadele,
+  rezumatul pe reguli), `plans.js` (RA Insight pornit implicit; suma veche „Asistent AI" doar unde modulul e pornit de
+  noi), `public/index.html` + `app.css` (chatul, fereastra pachetelor, fila „Acces"). Probe: `verify_pachete.js` (nou, 124,
+  în `npm test`) + probele vechi rescrise pe regula nouă.
+- **Ce vede fondatorul:** în fila „Acces" a fiecărei firme, pachetul ei și butoanele de schimbat; în „Utilizare RA Insight",
+  firma pe Start are fondul de 50 de răspunsuri pe butoane. Firmele pe regula veche (întrebări pe cont) rămân cum erau.
+- **Ce vede clientul:** administratorul unei firme fără pachet are RA Insight pe Start (50 de răspunsuri pe butoane);
+  colegii lui, până la Basic, nu. Pe un pachet cu AI, caseta și contorul arată cât a rămas; la capăt, mesajul până pe 1.
 
 ---
 

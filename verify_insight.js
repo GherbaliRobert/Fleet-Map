@@ -361,7 +361,8 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde" (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
   // Ramurile livrate (pasul 3: Safe Drive; pasul 4: Combustibil, Mentenanță & acte…) se arată și au pagina lor;
   // cele încă nelivrate (gata: false) rămân ascunse.
-  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+', ic: 'fa-[\w-]+', gata: (true|false) \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
+  // `pachet: true` (14.10) = ramura e de la pachetul Basic în sus (pe Start apare încuiată) — tot livrată.
+  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+', ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
   // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
   T('ramurile livrate se arată și au pagina lor (Safe Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
     ['safedrive', 'combustibil', 'mentenanta'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&

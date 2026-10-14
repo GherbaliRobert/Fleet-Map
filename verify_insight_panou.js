@@ -34,7 +34,7 @@ function taie(sursa, start, capat, unde) {
 const bucataQuota = taie(server, 'function _aiQuotaFromSettings(settings) {', '\n// ─── Câte conturi', 'server.js');
 const bucataLuna = taie(server, 'function _lunaAcum()', '\nasync function _urcaSeatsPeak', 'server.js');
 const bucataFirma = taie(server, '// ── începe „Socoteala RA Insight pe o firmă"', '// ── sfârșit „Socoteala RA Insight pe o firmă" ──', 'server.js');
-const _insightFirma = new Function(bucataQuota + '\n' + bucataLuna + '\n' + bucataFirma + '\n; return _insightFirma;')();
+const _insightFirma = new Function('pachete', bucataQuota + '\n' + bucataLuna + '\n' + bucataFirma + '\n; return _insightFirma;')(require('./pachete'));
 
 const LUNA = new Date().toISOString().slice(0, 7);
 const setari = (o) => ({ ai_quota: o });
@@ -87,8 +87,11 @@ T('și apare în listă, nu e ascuns', r.oameni.some(o => o.nume === 'Fără con
 r = _insightFirma({ id: 6, name: 'X', settings: setari({ questionsPerSeat: 50 }) }, { questions: 0 },
   [om(1, 'A', true)], {}, { areModul: true, costEur: 0 });
 T('fără preț pe cont nu se facturează nimic', r.venitLei === 0 && r.pretCont === 0, JSON.stringify({ v: r.venitLei, p: r.pretCont }));
-r = _insightFirma({ id: 7, name: 'X', settings: {} }, { questions: 40 }, [], {}, { areModul: true, costEur: 0 });
-T('firmă cu modul dar fără fond = nelimitat, pe banii noștri', r.fond === 0 && r.pct === null, JSON.stringify({ f: r.fond, p: r.pct }));
+r = _insightFirma({ id: 7, name: 'X', settings: {} }, { questions: 40 }, [], {}, { areModul: true, costEur: 0, reguli: 12 });
+// Din 14.10, firma fără nimic scris e pe pachetul Start (inclus): 50 de răspunsuri pe butoane, fără AI, 0 lei.
+T('firmă fără nimic scris = pachetul Start: fondul = 50 de răspunsuri pe butoane (numărate din reguli), 0 lei', r.fond === 50 && r.used === 12 && r.pachet && r.pachet.cod === 'start' && r.venitLei === 0, JSON.stringify({ f: r.fond, u: r.used, p: r.pachet }));
+r = _insightFirma({ id: 9, name: 'Pro', settings: { ai_pachet: { cod: 'pro', pretRON: 18 } } }, { questions: 40 }, [om(1, 'A', true), om(2, 'B', true)], {}, { areModul: true, costEur: 0 });
+T('pachetul Pro: 600 de întrebări (AI), venitul = prețul semnat, fix pe firmă (nu pe cont)', r.fond === 600 && r.used === 40 && r.venitLei === 18 && r.pretCont === 0 && !r.vechi, JSON.stringify({ f: r.fond, v: r.venitLei }));
 
 sect('5. Contractele vechi, cu cotă fixă pe firmă');
 r = _insightFirma({ id: 8, name: 'Vechi', settings: setari({ questions: 100 }) }, { questions: 100 },

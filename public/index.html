@@ -3462,7 +3462,7 @@ const pozitii = await r.json();</code></pre>
       <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div class="rin-intro">
           <span class="ic"><i class="fas fa-comments"></i></span>
-          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației.</span>
+          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației.<span class="rin-pachet" id="rin-pachet" style="display:none;"></span></span>
           <button type="button" class="rin-nou" onclick="rinReset()" title="Uită mașina și perioada discutate"><i class="fas fa-rotate-left"></i> Începe din nou</button>
         </div>
         <div id="rin-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
@@ -4736,10 +4736,20 @@ const pozitii = await r.json();</code></pre>
     // ── sfârșit „lista de utilizatori" ──
     // Pornește/oprește RA Insight pe un cont. Se cere confirmare la PORNIRE, fiindcă se facturează.
     window.raxAiSeat = async function (id, on) {
+      // Pachetele RA Insight (14.10): prețul e al pachetului, fix pe firmă — un cont în plus nu schimbă factura, doar intră
+      // în numărul de conturi al pachetului (îl spune serverul, cu 409, când e plin).
+      var qp = null;
+      if (on) { try { qp = await fetch('/api/ai/quota', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {} }
+      if (on && qp && qp.pachet) {
+        var pk = qp.pachet;
+        if (!await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n' +
+          'Pachetul ' + pk.nume + ' are ' + (pk.conturi == null ? 'conturi nelimitate' : (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '. Prețul pachetului rămâne același, oricâte conturi dai.',
+          { title: 'Dai RA Insight acestui cont?', okLabel: 'Dă-i acces' })) return;
+      }
       // Se facturează VÂRFUL lunii — cel mai mare număr de conturi aprinse deodată. De aceea ordinea
       // contează la o înlocuire: dacă aprinzi contul nou înainte să-l scoți pe cel plecat, firma a
       // avut două deodată și se plătesc două. Adminul afla asta abia pe factură.
-      if (on && !await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n' +
+      else if (on && !await raConfirm('Contul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n' +
         'Se facturează ca un cont în plus, în fiecare lună, până când îl retragi.\n\n' +
         'Dacă înlocuiești pe cineva: scoate-l întâi pe cel care pleacă. Altfel luna asta se socotesc două conturi, nu unul.',
         { title: 'Dai RA Insight acestui cont?', okLabel: 'Dă-i acces' })) return;
@@ -11518,6 +11528,8 @@ const pozitii = await r.json();</code></pre>
     // Pune o bucată de text (numărul mașinii, perioada) în casetă, acolo unde e cursorul, cu spațiile potrivite.
     window._chatPuneInText = function (ta, bucata) {
       if (!ta) return;
+      // Întrebarea făcută DOAR din butoane (caseta goală sau tot din butoane) poartă semnul `buton` (pachetele, 14.10).
+      if (!String(ta.value || '').trim() || ta.dataset.buton === '1') ta.dataset.buton = '1'; else delete ta.dataset.buton;
       var v = ta.value, a = ta.selectionStart != null ? ta.selectionStart : v.length, b = ta.selectionEnd != null ? ta.selectionEnd : v.length;
       var inainte = v.slice(0, a), dupa = v.slice(b);
       var pune = (inainte && !/\s$/.test(inainte) ? ' ' : '') + bucata + (dupa && !/^\s/.test(dupa) ? ' ' : '');
@@ -11533,14 +11545,16 @@ const pozitii = await r.json();</code></pre>
     // mașina, ține minte, socotește; ecranul doar arată. Textele venite de la server se pun cu textContent.
     // ── începe „secțiunea RA Insight" ──
     (function () {
-      var S = { lista: [], conv: null, mesaje: [], ramura: 'general', trimite: false, faraLoc: null, cautaT: null, ghid: null, ghidAles: null };
+      var S = { lista: [], conv: null, mesaje: [], ramura: 'general', trimite: false, faraLoc: null, cautaT: null, ghid: null, ghidAles: null,
+        pachet: null, peReguli: false, subiecte: null };
       // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
-        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true },
-        { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true },
-        { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true },
-        { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true },
+        // `pachet: true` = ramură de la Basic în sus (pachetele RA Insight, 14.10); pe Start apare încuiată, cu „· Basic".
+        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true, pachet: true },
+        { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true, pachet: true },
+        { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true, pachet: true },
+        { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true, pachet: true },
         { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true },
         { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'fa-envelope-open-text', gata: true }
       ];
@@ -11552,6 +11566,8 @@ const pozitii = await r.json();</code></pre>
         { ic: 'fa-hourglass-half', t: 'Cine a stat cel mai mult în ralanti?', s: 'Luna asta, cu litrii și leii pierduți', q: 'Cine a stat cel mai mult în ralanti luna asta?' },
         { ic: 'fa-calendar-check', t: 'Ce acte expiră curând?', s: 'ITP, RCA, rovinietă și revizii — următoarele 30 de zile', q: 'Ce acte expiră în următoarele 30 de zile?' }
       ];
+      // Pe butoane (Start, sau luna oprită) primul cartonaș e unul la care răspund regulile — „ce probleme are flota" cere AI.
+      var CARDURI_REGULI = [{ ic: 'fa-location-dot', t: 'Ce a făcut flota ieri?', s: 'Pe fiecare mașină: când a plecat, câți km, unde a stat', q: 'Ce a făcut flota ieri?' }].concat(CARDURI.slice(1));
       function prenume() { var u = window.currentUser || {}; var f = String(u.full_name || '').trim().split(/\s+/)[0] || ''; return f && f.indexOf('@') < 0 ? f : ''; }
       function $i(id) { return document.getElementById(id); }
       function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
@@ -11590,7 +11606,7 @@ const pozitii = await r.json();</code></pre>
         try { var fb = $i('rax-fabs'); if (fb) fb.style.display = 'none'; } catch (e) {}
         if (!host._gata) schelet(host);
         deseneazaRamuri();
-        incarcaFond();
+        incarcaPachet();
         incarcaNumere();
         await incarcaLista();
         // Bula din colț a pornit între timp o discuție? O continuăm aici.
@@ -11618,7 +11634,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="insp-dr-col">' +
           '<div class="insp-top">' +
           '<button class="chat-ib insp-meniu" onclick="insightComutaStanga()" title="Conversații și ramuri" aria-label="Conversații și ramuri"><i class="fas fa-bars"></i></button>' +
-          '<div class="insp-titlu" id="insp-titlu">RA Insight</div>' +
+          '<div class="insp-titlu" id="insp-titlu">RA Insight</div><span class="insp-pk-top" id="insp-pk-top" style="display:none;"></span>' +
           '<div class="insp-top-dr">' +
           '<button class="chat-ib" onclick="insightNotite()" title="Notițele firmei" aria-label="Notițele firmei"><i class="fas fa-note-sticky"></i></button>' +
           '<button class="chat-ib" id="insp-mai" onclick="insightMeniuConv(this)" title="Redenumește sau șterge conversația" aria-label="Mai multe" style="display:none;"><i class="fas fa-ellipsis"></i></button>' +
@@ -11637,9 +11653,21 @@ const pozitii = await r.json();</code></pre>
         var m = $i('insp-mai'); if (m) m.style.display = (S.ramura === 'general' && S.conv && S.conv.id) ? '' : 'none';
         var ins = $i('insp'); if (ins) ins.classList.toggle('pe-ramura', S.ramura !== 'general');
       }
-      async function incarcaFond() {
+      // ── Pachetele RA Insight (14.10, macheta aprobată): caseta din stânga jos, contorul de lângă casetă, Start pe butoane ──
+      // Cifrele și textele vin de la server (/api/ai/quota → `pachet`); ecranul doar le arată. Fără bani.
+      function esteAdmin() { var r = String((window.currentUser || {}).role || ''); return r === 'company_admin' || r === 'admin'; }
+      async function incarcaPachet() {
         var box = $i('insp-fond'); if (!box) return;
         var q = null; try { q = (await cere('GET', '/api/ai/quota')).j; } catch (e) {}
+        S.pachet = (q && !q.error && q.pachet) || null;
+        var eraPeReguli = S.peReguli;
+        S.peReguli = !!(S.pachet && (!S.pachet.ai || q.blocked));
+        // Conversația nouă, deja desenată: cartonașele depind de pachet (pe butoane, altul primul).
+        if (eraPeReguli !== S.peReguli && !S.mesaje.length && S.ramura === 'general' && $i('insp-salut')) deseneazaMain();
+        actualizeazaCaseta();
+        deseneazaRamuri();
+        var top = $i('insp-pk-top'); if (top) { top.style.display = S.pachet ? '' : 'none'; top.textContent = S.pachet ? 'Pachet ' + S.pachet.nume : ''; }
+        if (S.pachet) return deseneazaPachet(box, q);
         if (!q || q.error || q.unlimited || !q.questions) { box.style.display = 'none'; return; }
         var pct = Math.max(0, Math.min(100, Math.round((q.remaining / Math.max(1, q.questions)) * 100)));
         var luna = q.periodEnd ? new Date(new Date(q.periodEnd).getTime() - 86400000).toLocaleDateString('ro-RO', { month: 'long' }) : '';
@@ -11649,6 +11677,32 @@ const pozitii = await r.json();</code></pre>
         box.appendChild(el('div', 'insp-fond-s', q.remaining + ' din ' + (window._raxNrI ? window._raxNrI(q.questions) : q.questions + ' întrebări') + ' rămase'));
         box.style.display = '';
       }
+      function deseneazaPachet(box, q) {
+        var p = S.pachet;
+        box.innerHTML = '';
+        var t = el('div', 'insp-pk-t'); t.appendChild(el('span', null, 'Pachet ' + p.nume));
+        if (p.cod === 'start') t.appendChild(el('span', 'insp-pk-pill', 'inclus'));
+        box.appendChild(t);
+        var bara = function (ramase, din, cls) {
+          var b = el('div', 'bar' + (cls ? ' ' + cls : ''));
+          var pct = Math.max(0, Math.min(100, Math.round((ramase / Math.max(1, din)) * 100)));
+          var i = el('b'); i.style.width = pct + '%'; b.appendChild(i); return b;
+        };
+        box.appendChild(bara(q.blocked ? q.questions : q.remaining, q.questions, q.blocked ? 'w' : (p.textOm ? 'p' : '')));   // oprit = bara plină, portocalie
+        box.appendChild(el('div', 'insp-fond-s', p.text + (q.blocked ? ' · ' + String(p.reincarcare || '').replace(/^S/, 's').replace(/\.$/, '') : '')));
+        if (p.textOm) { if (p.limitaOm != null) box.appendChild(bara(q.blocked ? p.limitaOm : p.ramaseOm, p.limitaOm, q.blocked ? 'w' : '')); box.appendChild(el('div', 'insp-fond-s', p.textOm)); }
+        if (esteAdmin()) { var a = el('button', 'insp-pk-vezi', 'Vezi pachetele →'); a.type = 'button'; a.onclick = function () { window.insightPachete(); }; box.appendChild(a); }
+        box.style.display = '';
+      }
+      // Contorul de lângă casetă, textul din casetă și butoanele ei: pe butoane (Start, sau luna oprită) apare „Raport"; ramurile,
+      // doar unde pachetul le are.
+      function actualizeazaCaseta() {
+        var c = $i('insp-cnt'); if (c) { c.textContent = S.pachet ? String(S.pachet.scurt || '') : ''; c.style.display = S.pachet ? '' : 'none'; c.classList.toggle('gata', !!(S.pachet && S.peReguli && S.pachet.ai)); }
+        var i = $i('insp-input'); if (i) i.placeholder = !S.peReguli ? 'Întreabă RA Insight…' : (S.pachet && !S.pachet.ai ? 'Alege din butoane sau scrie…' : 'Alege din butoane…');
+        var br = $i('insp-b-raport'); if (br) br.style.display = S.peReguli ? '' : 'none';
+        var bm = $i('insp-b-ramuri'); if (bm) bm.style.display = (S.pachet && !S.pachet.ramuri) ? 'none' : '';
+      }
+      function ramuraIncuiata(r) { return !!(r && r.pachet && S.pachet && !S.pachet.ramuri); }
       // Numerele de lângă ramuri (ca pe macheta din 02.10) — doar din ce e deja socotit pe server.
       async function incarcaNumere() {
         var r = null; try { r = await cere('GET', '/api/insight/ramuri'); } catch (e) {}
@@ -11666,9 +11720,11 @@ const pozitii = await r.json();</code></pre>
         var box = $i('insp-ramuri'); if (!box) return;
         box.innerHTML = '';
         RAMURI.filter(function (r) { return r.gata && r.k !== 'general'; }).forEach(function (r) {
-          var b = el('button', 'insp-ram' + (S.ramura === r.k ? ' act' : ''));
-          b.innerHTML = '<span class="ic"><i class="fas ' + r.ic + '"></i></span>';
+          var inc = ramuraIncuiata(r);
+          var b = el('button', 'insp-ram' + (S.ramura === r.k ? ' act' : '') + (inc ? ' lock' : ''));
+          b.innerHTML = '<span class="ic"><i class="fas ' + (inc ? 'fa-lock' : r.ic) + '"></i></span>';
           b.appendChild(document.createTextNode(r.et));
+          if (inc) { b.appendChild(el('span', 'insp-ram-pk', '· Basic')); b.title = 'De la pachetul Basic în sus'; }
           // Câte lucruri cer atenție în ramură (le numără serverul; vezi incarcaNumere).
           var n = S.numere && S.numere[r.k];
           if (n > 0) { var nr = el('span', 'insp-nr', String(n)); nr.title = n === 1 ? 'Un lucru cere atenție' : n + ' lucruri cer atenție'; b.appendChild(nr); }
@@ -11707,6 +11763,7 @@ const pozitii = await r.json();</code></pre>
           main.appendChild(card);
           return;
         }
+        if (ramuraIncuiata(RAMURI.filter(function (x) { return x.k === S.ramura; })[0])) return deseneazaIncuiata(main);
         if (S.ramura === 'ghid') return deseneazaGhid(main);
         if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
         if (S.ramura === 'combustibil') return deseneazaCombustibil(main, S.cbLuna);
@@ -11720,13 +11777,13 @@ const pozitii = await r.json();</code></pre>
           sal.innerHTML = '<span class="insp-stea mare"><i class="fas fa-wand-magic-sparkles"></i></span>';
           sal.appendChild(el('h2', null, (prenume() ? 'Bună, ' + prenume() + '! ' : 'Bună! ') + 'Ce vrei să afli despre flotă?'));
           sal.appendChild(el('p', null, 'Spune mașina după număr, nume sau șofer. Țin minte discuția, iar cifrele vin din rapoartele aplicației.'));
-          var cw = el('div'); cw.innerHTML = caseta(); sal.appendChild(cw.firstChild);
+          var cw = el('div'); cw.innerHTML = caseta(); sal.appendChild(cw.firstChild); actualizeazaCaseta();
           var cr = el('div', 'insp-carduri');
-          CARDURI.forEach(function (c) {
+          (S.peReguli ? CARDURI_REGULI : CARDURI).forEach(function (c) {
             var b = el('button', 'insp-card-q'); b.type = 'button';
             b.innerHTML = '<i class="fas ' + c.ic + '"></i>';
             var d = el('span'); d.appendChild(el('b', null, c.t)); d.appendChild(el('span', null, c.s)); b.appendChild(d);
-            b.onclick = function () { window.insightTrimite(c.q); };
+            b.onclick = function () { window.insightTrimite(c.q, { buton: true }); };
             cr.appendChild(b);
           });
           sal.appendChild(cr);
@@ -11736,23 +11793,36 @@ const pozitii = await r.json();</code></pre>
           '<button class="chat-jos" id="insp-jos" onclick="insightLaCapat()" title="La ultimul mesaj" aria-label="La ultimul mesaj"><i class="fas fa-arrow-down"></i></button>' +
           '<div class="insp-scrie">' + caseta() +
           '<div class="insp-nota"><span><i class="fas fa-lock"></i>Vede doar mașinile la care ai acces.</span><span><i class="fas fa-circle-info"></i>Cifrele vin din rapoartele aplicației.</span></div></div>';
+        actualizeazaCaseta();
         var box = $i('insp-msgs');
         S.mesaje.forEach(function (m) { box.appendChild(m.rol === 'user' ? bulaOm(m.text) : bulaAi(m)); });
         // Întrebările de continuare: doar sub ULTIMUL răspuns.
         var ult = S.mesaje[S.mesaje.length - 1];
-        if (ult && ult.rol !== 'user' && ult.extra && Array.isArray(ult.extra.urmari) && ult.extra.urmari.length) box.appendChild(window._chatUrmari(ult.extra.urmari, function (t) { window.insightTrimite(t); }));
+        if (ult && ult.rol !== 'user' && ult.extra && Array.isArray(ult.extra.urmari) && ult.extra.urmari.length) box.appendChild(window._chatUrmari(ult.extra.urmari, function (t) { window.insightTrimite(t, { buton: true }); }));
         box.onscroll = arataJos;
         box.scrollTop = box.scrollHeight;
         arataJos();
       }
-      // Caseta de scris: rotundă, cu Mașina / Perioada / Ramuri și butonul rotund ↑ (gri cât e goală).
+      // O ramură de la Basic, deschisă pe Start: ce e în ea și de la ce pachet merge (fără să ceară nimic serverului).
+      function deseneazaIncuiata(main) {
+        var r = RAMURI.filter(function (x) { return x.k === S.ramura; })[0] || {};
+        main.innerHTML = '';
+        var card = el('div', 'insp-card insp-incuiat');
+        card.appendChild(el('h3', null, r.et || 'Ramura'));
+        card.appendChild(el('div', null, 'Ramurile (Safe Drive & costuri, Combustibil, Ore de condus, Mentenanță & acte) sunt de la pachetul Basic în sus. Pe Start răspund la întrebările de pe butoane: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră.'));
+        if (esteAdmin()) { var b = el('button', 'chat-pas'); b.type = 'button'; b.innerHTML = '<i class="fas fa-layer-group"></i>'; b.appendChild(document.createTextNode('Vezi pachetele')); b.onclick = function () { window.insightPachete(); }; card.appendChild(b); }
+        main.appendChild(card);
+      }
+      // Caseta de scris: rotundă, cu Mașina / Perioada / Ramuri (sau Raport, pe butoane), contorul pachetului și butonul ↑.
       function caseta() {
         return '<div class="chat-caseta">' +
-          '<textarea id="insp-input" rows="1" placeholder="Întreabă RA Insight…" onkeydown="insightTasta(event)" oninput="insightCreste(this)"></textarea>' +
+          '<textarea id="insp-input" rows="1" placeholder="Întreabă RA Insight…" onkeydown="insightTasta(event)" oninput="insightCreste(this, event)"></textarea>' +
           '<div class="chat-unelte">' +
           '<button type="button" class="chat-un" onclick="insightAlegeMasina(this)" title="Alege mașina"><i class="fas fa-car-side"></i><span class="et">Mașina</span></button>' +
           '<button type="button" class="chat-un" onclick="insightAlegePerioada(this)" title="Alege perioada"><i class="fas fa-calendar"></i><span class="et">Perioada</span></button>' +
-          '<button type="button" class="chat-un" onclick="insightAlegeRamura(this)" title="Deschide o ramură"><i class="fas fa-layer-group"></i><span class="et">Ramuri</span></button>' +
+          '<button type="button" class="chat-un" id="insp-b-raport" onclick="insightAlegeRaport(this)" title="Alege ce vrei să afli" style="display:none;"><i class="fas fa-file-lines"></i><span class="et">Raport</span></button>' +
+          '<button type="button" class="chat-un" id="insp-b-ramuri" onclick="insightAlegeRamura(this)" title="Deschide o ramură"><i class="fas fa-layer-group"></i><span class="et">Ramuri</span></button>' +
+          '<span class="chat-cnt" id="insp-cnt" style="display:none;" title="Cât a mai rămas luna asta"></span>' +
           '<button type="button" id="insp-trimite" class="chat-trimite gol" onclick="insightTrimite()" title="Trimite" aria-label="Trimite"><i class="fas fa-arrow-up"></i></button>' +
           '</div></div>';
       }
@@ -11778,9 +11848,23 @@ const pozitii = await r.json();</code></pre>
         var bub = el('div', 'bub');
         var x = m.extra || {};
         if (window._insightExtra) { var ii = window._insightExtra({ inteles: x.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
-        var txt = el('div', 'insp-txt'); txt.innerHTML = md(m.text); bub.appendChild(txt);
+        if (x.aprofundat) { var ap = el('div', 'chat-aprof-r'); ap.appendChild(el('span', 'chat-aprof', 'analiză aprofundată')); bub.appendChild(ap); }
+        // Mesajul pachetului (Start, luna oprită): în caseta de avertizare, cu butoanele de mai departe. Restul răspunsului, sub ea.
+        var textAi = String(m.text || '');
+        if (x.limita || x.pachetMesaj) {
+          var lim = el('div', 'chat-lim'); lim.innerHTML = md(x.limita ? textAi : x.pachetMesaj);
+          var lc = el('div', 'chat-lim-b');
+          [['Mașina', 'fa-car-side', function (b) { window.insightAlegeMasina(b); }], ['Perioada', 'fa-calendar', function (b) { window.insightAlegePerioada(b); }],
+            ['Raport', 'fa-file-lines', function (b) { window.insightAlegeRaport(b); }]].forEach(function (d) {
+            var b = el('button', 'chat-pas'); b.type = 'button'; b.innerHTML = '<i class="fas ' + d[1] + '"></i>'; b.appendChild(document.createTextNode(d[0])); b.onclick = function () { d[2](b); }; lc.appendChild(b);
+          });
+          if (esteAdmin()) { var bv = el('button', 'chat-pas ins'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); }; lc.appendChild(bv); }
+          lim.appendChild(lc); bub.appendChild(lim);
+          if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
+        }
+        if (!x.limita) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
-        if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
+        if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t, { buton: true }); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
         if (surse.length) {
           var su = el('div', 'insp-surse');
@@ -11814,11 +11898,14 @@ const pozitii = await r.json();</code></pre>
         return row;
       }
 
-      window.insightTrimite = async function (text) {
+      // `opt.buton` = întrebarea vine de pe un buton (cartonaș, continuare, alegere) sau e făcută doar din butoanele casetei:
+      // pe Basic / Pro / Business răspund regulile, fără să se numere (pachetele, 14.10). Scrisă de mână = o întrebare.
+      window.insightTrimite = async function (text, opt) {
         var inp = $i('insp-input');
         var msg = String(text != null ? text : (inp ? inp.value : '')).trim();
         if (!msg || S.trimite) return;
-        if (inp) { inp.value = ''; window.insightCreste(inp); }
+        var buton = !!(opt && opt.buton) || (text == null && !!inp && inp.dataset.buton === '1');
+        if (inp) { inp.value = ''; delete inp.dataset.buton; window.insightCreste(inp); }
         S.trimite = true;
         if (S.ramura !== 'general') { S.ramura = 'general'; deseneazaRamuri(); }
         S.mesaje.push({ rol: 'user', text: msg });
@@ -11831,6 +11918,7 @@ const pozitii = await r.json();</code></pre>
         if (box) { box.appendChild(gand); box.scrollTop = box.scrollHeight; }
         try {
           var corp = { message: msg };
+          if (buton) corp.buton = true;
           if (S.conv && S.conv.id) corp.conversatieId = S.conv.id; else corp.nou = true;
           var r = await cere('POST', '/api/insight/intreaba', corp);
           gand.remove();
@@ -11838,14 +11926,15 @@ const pozitii = await r.json();</code></pre>
           if (r.s === 404) { S.conv = null; window._raxConvId = null; }
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
-            extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare } };
+            extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
+              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
-            if (Array.isArray(j.urmari) && j.urmari.length) box.appendChild(window._chatUrmari(j.urmari, function (t) { window.insightTrimite(t); }));
+            if (Array.isArray(j.urmari) && j.urmari.length) box.appendChild(window._chatUrmari(j.urmari, function (t) { window.insightTrimite(t, { buton: true }); }));
             box.scrollTop = box.scrollHeight; arataJos();
           }
-          incarcaFond();
+          incarcaPachet();
           incarcaLista().then(setTitlu);
         } catch (e) {
           gand.remove();
@@ -11876,9 +11965,49 @@ const pozitii = await r.json();</code></pre>
       window.insightAlegeRamura = function (btn) {
         var l = RAMURI.filter(function (r) { return r.gata && r.k !== 'general'; }).map(function (r) {
           var n = (S.numere && S.numere[r.k]) || 0;
+          if (ramuraIncuiata(r)) return { text: r.et, sub: 'de la pachetul Basic', fa: 'fa-lock', k: r.k };
           return { text: r.et, sub: n > 0 ? (n === 1 ? '1 lucru de văzut' : n + (n % 100 === 0 || n % 100 >= 20 ? ' de lucruri' : ' lucruri') + ' de văzut') : '', fa: r.ic, k: r.k };
         });
         window._chatAlege(btn, 'Deschide o ramură', l, function (x) { window.insightRamura(x.k); });
+      };
+      // „Raport" (pe butoane): ce se poate afla, din aceeași listă ca AI Raport (o dă serverul).
+      window.insightAlegeRaport = async function (btn) {
+        if (!S.subiecte) {
+          var r = await cere('GET', '/api/reports/ai-raport/intrebari');
+          S.subiecte = ((r.j && r.j.subiecte) || []).map(function (x) { return { text: String(x.text || ''), pune: String(x.pune || ''), fa: 'fa-file-lines' }; });
+        }
+        window._chatAlege(btn, 'Ce vrei să afli', S.subiecte, function (x) { window._chatPuneInText($i('insp-input'), x.pune); });
+      };
+      // „Vezi pachetele" (administratorul): cele patru pachete, ce primește fiecare și care e al firmei. Textele, de la server.
+      window.insightPachete = async function () {
+        var r = await cere('GET', '/api/insight/pachete');
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu am putut încărca pachetele.', 'error'); return; }
+        var j = r.j, vechi = $i('insp-pk-ov'); if (vechi) vechi.remove();
+        var ov = el('div', 'insp-pk-ov'); ov.id = 'insp-pk-ov';
+        var bx = el('div', 'insp-pk-box'); bx.setAttribute('role', 'dialog'); bx.setAttribute('aria-label', 'Pachetele RA Insight');
+        var cap = el('div', 'insp-pk-cap');
+        var tw = el('div'); tw.appendChild(el('h3', null, 'Pachetele RA Insight')); tw.appendChild(el('div', 'insp-pk-sub', j.reincarcare || '')); cap.appendChild(tw);
+        var bi = el('button', 'chat-ib'); bi.type = 'button'; bi.title = 'Închide'; bi.setAttribute('aria-label', 'Închide'); bi.innerHTML = '<i class="fas fa-xmark"></i>'; bi.onclick = function () { ov.remove(); };
+        cap.appendChild(bi); bx.appendChild(cap);
+        var gr = el('div', 'insp-pk-gr');
+        (j.pachete || []).forEach(function (p) {
+          var al = p.cod === j.actual;
+          var c = el('div', 'insp-pk-c' + (al ? ' al' : ''));
+          if (al) c.appendChild(el('div', 'insp-pk-tau', 'Pachetul tău'));
+          c.appendChild(el('div', 'insp-pk-n', p.nume));
+          var pr = el('div', 'insp-pk-pr'); pr.appendChild(el('b', null, p.pret || '')); pr.appendChild(el('span', null, ' ' + (p.subPret || ''))); c.appendChild(pr);
+          c.appendChild(el('div', 'insp-pk-ti', p.titlu)); c.appendChild(el('div', 'insp-pk-pe', p.pentru));
+          var ul = el('ul');
+          (p.include || []).forEach(function (t) { var li = el('li'); li.innerHTML = '<i class="fas fa-check"></i>'; li.appendChild(document.createTextNode(t)); ul.appendChild(li); });
+          (p.fara || []).forEach(function (t) { var li = el('li', 'nu'); li.innerHTML = '<i class="fas fa-minus"></i>'; li.appendChild(document.createTextNode(t)); ul.appendChild(li); });
+          c.appendChild(ul); gr.appendChild(c);
+        });
+        bx.appendChild(gr);
+        bx.appendChild(el('div', 'insp-pk-toate', j.inToate || ''));
+        bx.appendChild(el('div', 'insp-pk-schimb', 'Pentru alt pachet, scrie-ne' + (j.contact ? ' pe ' + j.contact : '') + ' — îl schimbăm noi.'));
+        ov.appendChild(bx);
+        ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+        document.body.appendChild(ov);
       };
       window.insightCautaArata = function () {
         var c = $i('insp-cauta'); if (!c) return;
@@ -11887,7 +12016,11 @@ const pozitii = await r.json();</code></pre>
         if (arata) c.focus(); else if (c.value) { c.value = ''; incarcaLista(); }
       };
       window.insightTasta = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.insightTrimite(); } };
-      window.insightCreste = function (t) { if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; window._chatStareTrimite(t, $i('insp-trimite')); };
+      window.insightCreste = function (t, ev) {
+        if (!t) return;
+        if (ev && ev.inputType) delete t.dataset.buton;   // o literă scrisă de mână: nu mai e o întrebare de pe butoane
+        t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; window._chatStareTrimite(t, $i('insp-trimite'));
+      };
       window.insightNou = function () {
         S.conv = null; S.mesaje = []; S.ramura = 'general'; window._raxConvId = null;
         deseneazaRamuri(); deseneazaLista(); deseneazaMain();
@@ -12731,8 +12864,10 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/reports/ai-raport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ text: msg, context: deLaZero ? {} : (_rinCtx || {}) }) });
         var j = {}; try { j = await r.json(); } catch (e) {}
         if (thinking) { thinking.remove(); thinking = null; }
-        if (!r.ok) { rinAddMsg('ai', String(j.error || ('Nu am putut răspunde acum (eroare ' + r.status + ').'))); return; }
+        if (!r.ok) { rinAddMsg('ai', String(j.message || j.error || ('Nu am putut răspunde acum (eroare ' + r.status + ').'))); return; }
         if (j.context) _rinCtx = j.context;
+        // Pe pachetul Start răspunsurile se numără (14.10): cât a mai rămas, scris de server.
+        var rp = document.getElementById('rin-pachet'); if (rp) { rp.textContent = (j.pachet && j.pachet.cod === 'start' && j.pachet.text) ? j.pachet.text : ''; rp.style.display = rp.textContent ? '' : 'none'; }
         var row = rinAddMsg('ai', ''), bub = row && row.querySelector('.rax-msg.ai');
         if (bub) rinRaspuns(bub, j, msg);
         var wrap = document.getElementById('rin-msgs');
@@ -21720,6 +21855,19 @@ const pozitii = await r.json();</code></pre>
       var q = null;
       try { q = await fetch('/api/ai/quota', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
       if (!q || q.error || q.unlimited) { box.style.display = 'none'; return; } // fără cotă → nu arătăm nimic
+      // Pachetele RA Insight (14.10): pachetul, cât a rămas și când se reîncarcă — textele de la server, puse ca text.
+      if (q.pachet) {
+        var pk = q.pachet, pctP = q.blocked ? 100 : Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
+        box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
+        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:5px;"><span style="color:var(--text-secondary);"><b class="pk-n"></b> · <span class="pk-t"></span></span>'
+          + (q.blocked ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-pause"></i> pe butoane până pe 1</span>' : '') + '</div>'
+          + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pctP + '%;background:' + (q.blocked ? 'var(--orange)' : 'var(--accent)') + ';"></div></div>'
+          + '<div class="pk-s" style="font-size:10.5px;color:var(--text-muted);margin-top:5px;"></div>';
+        box.querySelector('.pk-n').textContent = 'Pachet ' + pk.nume;
+        box.querySelector('.pk-t').textContent = pk.text || '';
+        box.querySelector('.pk-s').textContent = pk.textOm || pk.reincarcare || '';
+        return;
+      }
       var pct = Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
       var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : ''; // „1 octombrie": luna scurtă („oct.") ieșea cu două puncte la final de propoziție
       // Fondul e AL FIRMEI (conturile ei × întrebările fiecăruia), dar omul vrea să știe și cât a
@@ -22494,7 +22642,8 @@ const pozitii = await r.json();</code></pre>
         id: id, feats: Object.assign({}, cfg.features || {}),
         setate: Object.assign({}, cfg.features_setate || {}), dupaFlota: cfg.dupa_flota || [], flotaGrea: !!cfg.flota_grea,
         agents: (cfg.enabled_agents != null ? cfg.enabled_agents.slice() : (cfg.agenti_implicit || []).slice()),
-        plan: cfg.plan || 'start', aiLimit: (cfg.ai_monthly_limit != null ? cfg.ai_monthly_limit : '')
+        plan: cfg.plan || 'start', aiLimit: (cfg.ai_monthly_limit != null ? cfg.ai_monthly_limit : ''),
+        pachet: cfg.ai_pachet || null, pachete: Array.isArray(cfg.pachete) ? cfg.pachete : null
       };
       _raxRenderCfg();
     }
@@ -22519,6 +22668,16 @@ const pozitii = await r.json();</code></pre>
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
         '<button class="rax-btn primary" onclick="raxCodTab(\'abonament\')"><i class="fas fa-tag"></i> Vezi / schimbă oferta</button></div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Prețul și modulele vin din oferta semnată. Tot ce e mai jos le suprascrie, pe firma asta.</div></div>';
+      // Pachetul RA Insight (14.10): îl punem noi, de aici. Lista, prețurile de listă și pachetul firmei vin de la server.
+      if (s.pachete) {
+        html += '<div style="' + SEC + '"><div style="' + H + '">Pachet RA Insight</div><div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          s.pachete.map(function (p) {
+            var al = !!(s.pachet && s.pachet.cod === p.cod);
+            return '<button class="rax-btn' + (al ? ' primary' : '') + '"' + (al ? ' aria-pressed="true"' : '') + ' onclick="raxCfgPachet(\'' + esc(p.cod) + '\')">' + esc(p.nume) + ' · ' + (p.pret ? p.pret + (p.pret % 100 >= 20 || p.pret % 100 === 0 ? ' de lei' : ' lei') : 'inclus') + '</button>';
+          }).join('') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">' + (s.pachet ? 'Acum: <b>' + esc(s.pachet.nume) + '</b>' + (s.pachet.deLa ? ', din ' + new Date(s.pachet.deLa).toLocaleDateString('ro-RO') : '') + '.' : 'Acum: <b>regula veche, pe cont</b> (întrebările pe cont, din „Abonament &amp; plăți").') +
+          ' Start = doar administratorul, pe butoane (fără AI); Basic, Pro, Business = cu AI și ramuri. Pe factură ajunge odată cu oferta pe pachete.</div></div>';
+      }
       html += '<div style="' + SEC + '"><div style="' + H + '">Module (acces funcții)</div>' +
         _RAX_MODS.map(function (m) {
           return '<div style="' + ROW + 'cursor:default;"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span>' + _raxModAuto(s, m[0]) + '</span><label class="rax-sw"><input type="checkbox" aria-label="' + m[1] + '" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)"><span class="sl"></span></label></div>';
@@ -22564,6 +22723,21 @@ const pozitii = await r.json();</code></pre>
         _raxCfgDupaRaspuns(j);
         (window.raxToast || function () {})('Merge din nou după flotă', 'success');
       } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    // Pune pachetul RA Insight pe firmă (super-admin). Serverul îl scrie și scoate regula veche, pe cont.
+    window.raxCfgPachet = async function (cod) {
+      if (!_raxCfg) return;
+      var p = (_raxCfg.pachete || []).filter(function (x) { return x.cod === cod; })[0]; if (!p) return;
+      if (_raxCfg.pachet && _raxCfg.pachet.cod === cod) return;
+      var ok = await raConfirm('RA Insight trece pe loc pe pachetul ' + p.nume + (p.cod === 'start' ? ' (doar administratorul, pe butoane).' : ' (' + (p.conturi == null ? 'conturi nelimitate' : 'până la ' + p.conturi + ' ' + (p.conturi === 1 ? 'cont' : 'conturi')) + ', ' + p.intrebari + (p.intrebari % 100 >= 20 || p.intrebari % 100 === 0 ? ' de' : '') + ' întrebări pe lună).') + ' Pe factură ajunge odată cu oferta pe pachete.', { title: 'Pachetul ' + p.nume + '?', danger: false, okLabel: 'Trece pe ' + p.nume, icon: 'fa-wand-magic-sparkles' });
+      if (!ok) return;
+      try {
+        var j = await fetch('/api/companies/' + _raxCfg.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_pachet: { cod: cod } }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        _raxCfg.pachet = j.ai_pachet ? { cod: j.ai_pachet.cod, nume: p.nume, pretRON: j.ai_pachet.pretRON, deLa: j.ai_pachet.de_la } : null;
+        _raxRenderCfg();
+        (window.raxToast || function () {})('Pachet RA Insight ' + p.nume, 'success');
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
     window.raxCfgToggleAgent = async function (key, on) {
       if (!_raxCfg) return;

@@ -433,7 +433,8 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - **Statisticile pentru noi** (`GET /api/admin/insight/statistici`, super-admin): numere (răspunsuri, 👍/👎, conversații,
   rapoartele rulate) — NICIODATĂ textul conversațiilor. Ecranul lor vine cu ramurile.
 - **„AI Raport" (Rapoarte → fila `rep-tab-insight`, butonul `rep-tab-btn-insight`)**: întrebări despre rapoarte, pe REGULI,
-  fără model, fără fond, fără loc RA Insight — doar `viewReports` (și ecranul „rapoarte"). Înțelegerea și propozițiile stau
+  fără model — `viewReports` (și ecranul „rapoarte"); din 14.10, pe o firmă cu pachet RA Insight cere și contul (pe Start, al
+  administratorului, din cele 50 de răspunsuri) — vezi „Pachetele RA Insight". Înțelegerea și propozițiile stau
   în `ai_raport.js` (`intelege`, `raspunde`, `neinteles`, `INTREBARI_GATA`); ruta: `POST /api/reports/ai-raport` +
   `GET /api/reports/ai-raport/intrebari`. Contextul („și luna trecută?") îl întoarce serverul și ecranul i-l trimite înapoi
   (`_rinCtx`); serverul îl CURĂȚĂ (doar mașini accesibile). `imei` din corp e aruncat. Plafon: 30 de întrebări pe minut pe om.
@@ -668,28 +669,59 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
 
-### ⚠ Pachetele RA Insight — HOTĂRÂTE pe 14.10, NECONSTRUITE încă (Alin, capitolul 1)
-Alin a schimbat regula: RA Insight trece de la „cont cu cont" (mai jos) la **pachete fixe pe FIRMĂ** — **Start** 0 lei
-(1 cont, administratorul; 50 de întrebări pe reguli, fără AI) · **Basic** 10 lei (2 conturi, 200 de întrebări, Haiku 5.5) ·
-**Pro** 20 lei (3–5 conturi, 600, Haiku 5.5 + Sonnet) · **Business** 30 lei (conturi nelimitate, adminul împarte cota; 1.000).
-Se reîncarcă pe 1; adminul trece la un pachet mai mare din aplicație; pe ecran „Pachet RA Insight Pro", NU „Plan"; clienții
-semnați își păstrează contractul. Platforma rămâne fără planuri (ofertă → contract → abonament pe mașină).
-- **Până se construiește, regula pe cont de mai jos rămâne în cod.** NU construi în continuare pe locurile plătite pe cont.
-  **Hotărât pe 14.10 (a doua rundă):** plasa de siguranță — o firmă costă cel mult 80% din prețul pachetului (8 / 16 / 24 de lei),
-  din costul REAL pe răspuns (`cost_usd`, socotit pe model din 12.10); peste, RA Insight răspunde doar pe butoane până pe 1;
-  analiza aprofundată (Sonnet) cu buget de 5 lei la Pro și 8 la Business, pornită doar dacă proba arată că Haiku 5.5 e slab,
-  iar costurile se văd în tabloul nostru de fondator (pe firmă: cost real, cât din plasă, cât din buget); Start = DOAR
-  administratorul, pe butoane; ramurile de la Basic în sus; Pro până la 5 conturi, clientul își împarte întrebările; FĂRĂ
-  pachete de întrebări în plus (200 / 600 / 1.000 și atât); „Rezumă raportul" doar cu cont. Încă de hotărât (macheta din
-  14.10): unde stă împărțirea întrebărilor, forma juridică a trecerii la alt pachet (propus: clauză în contract + confirmare
-  în aplicație + PDF pe email, fără Stripe), prețurile pe site. Construcția începe după „da" la machetă, cu chatul întâi.
+### Pachetele RA Insight (Alin, 14.10, capitolul 1) — în construcție: pașii 1–2 GATA (regula pe server + chatul)
+RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
+fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
+împărțirea pe oameni, analiza aprofundată) · **Business** 30 lei (conturi nelimitate, 1.000). Se reîncarcă pe 1; FĂRĂ pachete de
+întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
+mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" · 4 tabloul nostru · 5 oferta,
+contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) · 6 trecerea din aplicație (confirmare cu
+bifă, PDF pe email, fără Stripe) · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") · 8 telefonul.
+- **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, limitaVeche)` (fără nimic scris = Start;
+  `ai_quota` cu întrebări pe cont / cotă fixă sau `companies.ai_monthly_limit` = regula VECHE → null, o citește codul vechi),
+  `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
+  ordine: plasa → cota firmei → limita omului → partea la comun; limita și partea la comun doar cu `peOm`), `alegeModel`, textele
+  (`textBlocat`, `textDoarButoane`, `textRamase`, `textScurt`, `textOm`, `ramaseAfisate` — la plasă ecranul arată 0),
+  `DESCRIERE` / `publice` (ce primește fiecare pachet — pentru aplicație ȘI site; analiza aprofundată doar cât e pornită; pe site
+  fără prețuri). NU scrie a doua cifră de pachet sau al doilea text în pagină ori pe telefon.
+- **Pe server:** `_starePachet(companyId, userId, { strict })` adună cifrele (întrebările AI din `ai_usage`, pe Start răspunsurile
+  din `ai_reguli`, limitele, costul REAL al lunii `db.costAiLunaFirma` × `ai.USD_EUR` × cursul) → `pachete.stare`.
+  `aiQuotaState` → `_cotaDinPachet` (FĂRĂ bani: costul și plasa nu pleacă la client). Pe Start și când luna s-a oprit, RA Insight
+  răspunde pe reguli: `_insightPeReguli` → `_aiRaportCore` (ACELAȘI motor ca fila AI Raport; ruta doar îl cheamă). Pe Basic+,
+  `buton: true` (cartonașe, continuări, alegeri, caseta făcută doar din butoane) încearcă întâi regulile — nu se numără; ce nu
+  înțeleg merge la model. După un răspuns AI, `ctx.ar` = contextul pe reguli al ultimului raport (continuările merg pe reguli).
+- **O SINGURĂ numărătoare a răspunsurilor pe butoane: `_numaraRaspunsReguli`** (chat, fila AI Raport, „Rezumă raportul"); doar ea
+  scrie `ai_reguli` (în afară de ruta de probă). Pe Start se numără din 50; la celelalte, doar pentru statistică. Păzit prin numărare.
+- `requireAiSeat` și `/api/ai/quota` dau singure locul administratorului pe o firmă cu pachet fără niciun cont (`_asiguraLocAdmin`;
+  și scrisoarea de luni). Fila AI Raport pe o firmă cu pachet: `_poartaReguliPachet` (cont RA Insight; pe Start, din 50). Pe regula
+  veche, AI Raport rămâne al tuturor.
+- **Ramurile: `requireRamuri`** pe cele 8 rute (de la Basic). Tura de noapte Safe Drive doar la firmele cu ramuri; scrisoarea de luni
+  pe Start = pe reguli, fără Safe Drive; rezumatul agenților nu cheamă modelul pe Start (`_firmaAreAi`).
+- **Plasa = 80% din prețul pachetului** (`PLASA`), din costul real; analiza aprofundată (`MODEL_APROFUNDAT`, implicit Sonnet 5.5)
+  doar la Pro / Business, doar pornită (`ai_analiza_aprofundata`, `GET/PUT /api/admin/insight/aprofundat`, OPRITĂ până după
+  probă), doar la `aiRaport.PENTRU_INSIGHT`, cât ține bugetul (cu `REZERVA_APROFUNDAT_LEI`).
+- **Pachetul îl punem NOI:** fila „Acces" a firmei (`raxCfgPachet` → `PUT /api/companies/:id/settings { ai_pachet: { cod } }`,
+  doar super-admin, `curataPachet`, 400 pe cod necunoscut, scoate `ai_quota`, rând în audit de la cât la cât). Limita pe om:
+  `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
+- `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. „Asistent AI"
+  (suma fixă veche din `custom_plan`) se plătește DOAR unde modulul e pornit de noi (`featuresSetate`), și în previzualizarea din
+  „Abonament & plăți" (`_raxClientPrice(…, setate)`).
+- **Pe ecran** (blocul „secțiunea RA Insight"): `incarcaPachet` / `deseneazaPachet` / `actualizeazaCaseta` (doar textele serverului:
+  `pachet.text`, `scurt`, `textOm`, `reincarcare`), ramurile cu `pachet: true` încuiate pe Start (`ramuraIncuiata`,
+  `deseneazaIncuiata`), „Raport" în loc de „Ramuri" pe butoane, `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
+  `pachetMesaj` de la server) în `.chat-lim`, eticheta `.chat-aprof`, „Vezi pachetele" (`insightPachete`, doar administratorul).
+  Bula din colț și fila AI Raport arată pachetul tot din textele serverului.
+- Păzit de `verify_pachete.js` (în `npm test`; 124, pe server pornit cu modelul simulat).
+- **Încă de făcut, în ordinea de mai sus.** Până la pasul 5 pachetul NU ajunge pe factură; până atunci firmele pe regula veche
+  (pe cont) se facturează ca înainte. Când se face pasul 5, grila pe cont (`AIQ_PRET_LOC`) și facturarea pe vârful lunii ies
+  pentru ofertele noi, iar regula „RA Track NU funcționează pe planuri" se scrie cu excepția pachetelor RA Insight.
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
   cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
   1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
-- Când se construiește: regula „RA Tracks NU funcționează pe planuri" și `verify_fara_planuri.js` se rescriu pe regula nouă
-  (platforma fără planuri, RA Insight cu pachete), iar grila pe cont (`AIQ_PRET_LOC`) și facturarea pe vârful lunii ies.
 
-### Cum se tarifează RA Insight (socotit cu Alin, 23.09)
+### Cum se tarifează RA Insight (socotit cu Alin, 23.09) — REGULA VECHE, pe cont
+⚠ Din 14.10 RA Insight trece pe pachete (mai sus). Regula de aici rămâne pentru firmele deja scrise pe cont și pentru calculatorul
+de ofertă, până la pasul 5 (oferta pe pachete). NU construi lucruri noi pe ea.
 
 **Prețul unui CONT depinde DOAR de câte mașini are firma**, în cinci trepte (`AIQ_PRET_LOC`).
 Numărul de întrebări pe cont (`aiqN`) e un buton SEPARAT: **nu schimbă prețul**, schimbă doar cât ne
@@ -1562,7 +1594,8 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
 - Prețul unei firme vine DOAR din `companies.custom_plan` (oferta). **Fără ofertă → 0 lei**, iar
   firma se vede ca atare în registrul de clienți. Nu inventa un preț implicit.
 - Modulele vin din `settings.features`, scrise de ofertă. Implicitul e FIX, nu dintr-un tabel:
-  **agenții AI porniți** (sunt gratuiți, parte din produs), **restul oprite** (se vind).
+  **agenții AI porniți** (sunt gratuiți, parte din produs), **RA Insight pornit** (din 14.10: pachetul Start e inclus; ce se
+  plătește stă în pachetul RA Insight, singura excepție cu pachete — vezi „Pachetele RA Insight"), **restul oprite** (se vind).
 - Coloana `companies.plan` a rămas în bază ca să nu pierdem date vechi, dar **nu o citește nimeni**.
 - **Stripe a fost scos de tot** (plată cu cardul, abonamente, webhook, perioadă de probă). Se
   încasează prin transfer bancar, pe factură. Dacă vreodată vom vrea card, se face atunci — legat de

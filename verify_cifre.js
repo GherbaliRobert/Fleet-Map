@@ -97,7 +97,7 @@ const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'u
 T('banda e o singură piesă (_insightExtra, partea „verificare"), cu textul pus ca text', /parte === 'verificare'/.test(PAG) && /li\.textContent = t;/.test(PAG) && /tt\.textContent = 'De verificat';/.test(PAG));
 T('o folosesc secțiunea RA Insight și bula din colț', /_insightExtra\(\{ verificare: x\.verificare \}, null, 'verificare'\)/.test(PAG) && /_insightExtra\(j, null, 'verificare'\)/.test(PAG));
 // Scăparea din 08.10, prinsă de capturi: răspunsul proaspăt din secțiune nu ducea banda mai departe (apărea doar la redeschidere).
-T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /extra: \{ sources: j\.sources, inteles: j\.inteles, alege: j\.alege, source: j\.source, urmari: j\.urmari, verificare: j\.verificare \}/.test(PAG));
+T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /extra: \{ sources: j\.sources, inteles: j\.inteles, alege: j\.alege, source: j\.source, urmari: j\.urmari, verificare: j\.verificare[,\s]/.test(PAG));
 T('ramura Combustibil spune „De verificat" sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));
 T('textul benzii are culoarea textului (contrast sigur pe ambele teme); chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată',
   /\.chat-verif \{[^}]*color: var\(--text-primary\)/.test(CSS) && /\.chat-verif > i \{ color: #b45309;/.test(CSS) && /body\.dark \.chat-verif > i \{ color: #fbbf24; \}/.test(CSS));

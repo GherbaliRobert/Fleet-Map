@@ -4580,6 +4580,12 @@ async function raspunsuriReguliLuna(companyId, userId) {
        FROM ai_reguli WHERE company_id = $1 AND created_at >= date_trunc('month', NOW())`, [companyId, userId != null ? userId : null]);
   return { firma: Number(r.rows[0] && r.rows[0].firma) || 0, om: Number(r.rows[0] && r.rows[0].om) || 0 };
 }
+// Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
+async function raspunsuriReguliLunaToate() {
+  const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
+  const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
+  return out;
+}
 // Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni. `aprofundat` =
 // partea răspunsurilor date de Sonnet (analiza aprofundată), cu bugetul ei.
 async function costAiLunaFirma(companyId) {
@@ -6361,7 +6367,7 @@ module.exports = {
   listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
-  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, costAiLunaFirma,
+  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, costAiLunaFirma,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
