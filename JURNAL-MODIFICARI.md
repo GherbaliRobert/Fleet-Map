@@ -326,7 +326,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
-### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei — `9717197`
+### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei — `986e121`
 
 Robert (14.10): *„nu pot să văd imaginile din mailuri pe mobile… nici pe web nu pot să le văd"* și *„vreau ca rapoartele de pe
 mail, când sunt descărcate direct din mail, să aibă numele sub brand RA Track, ca cele descărcate din platformă"*.
