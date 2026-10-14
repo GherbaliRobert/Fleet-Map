@@ -16966,12 +16966,15 @@ async function _mailAdrese(req) {
   const c = mailer ? mailer.adresa(mailer.fromAddr()) : { email: 'contact@ratrack.ro' };
   const comuna = String(c.email || '').toLowerCase();
   const dom = comuna.split('@')[1] || '';
-  const out = [{ adresa: comuna, nume: c.name || 'RA Track', comuna: true, aMea: false }];
+  // `expeditor` = numele pe care îl vede cine primește emailul (Robert, 14.10: „numele persoanei | RA Track"); pe adresa
+  // comună, numele firmei. `nume` rămâne numele omului (semnătura îl folosește).
+  const out = [{ adresa: comuna, nume: c.name || 'RA Track', expeditor: c.name || 'RA Track', comuna: true, aMea: false }];
   const r = await db.pool.query("SELECT id, full_name, email, username, phone, functie FROM users WHERE role = 'superadmin' AND active IS NOT false ORDER BY id");
   r.rows.forEach(function (u) {
     const e = String(u.email || u.username || '').trim().toLowerCase();
     if (!dom || !e.endsWith('@' + dom) || e === comuna || out.some(function (x) { return x.adresa === e; })) return;
-    out.push({ adresa: e, nume: u.full_name || e, comuna: false, aMea: u.id === (req.auth && req.auth.userId), userId: u.id, telefon: u.phone || null, functie: u.functie || null });
+    out.push({ adresa: e, nume: u.full_name || e, expeditor: u.full_name ? String(u.full_name).trim() + ' | RA Track' : 'RA Track', comuna: false,
+      aMea: u.id === (req.auth && req.auth.userId), userId: u.id, telefon: u.phone || null, functie: u.functie || null });
   });
   return out;
 }
@@ -17093,7 +17096,7 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
       : redirTrimis ? mailPrimit.pentruRedirectionareTrimis(redirTrimis).text : '';
     const corpEmail = mailer.cuSemnatura(text, citatOriginal, _mailSemnatura(de));
     const fel = primit ? 'raspuns' : (redirPrimit || redirTrimis) ? 'redirectionat' : 'mesaj';
-    const r = await mailer.send({ from: de.nume + ' <' + de.adresa + '>', replyTo: de.adresa, to: catre.join(', '), cc: cc.length ? cc.join(', ') : undefined,
+    const r = await mailer.send({ from: '"' + String(de.expeditor || de.nume).replace(/["\\\r\n]/g, '') + '" <' + de.adresa + '>', replyTo: de.adresa, to: catre.join(', '), cc: cc.length ? cc.join(', ') : undefined,
       subject: subiect, text: corpEmail.text, html: corpEmail.html,
       attachments: atas,
       inReplyTo: primit && primit.mesaj_id ? primit.mesaj_id : undefined,

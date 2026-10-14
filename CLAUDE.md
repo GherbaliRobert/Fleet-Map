@@ -191,6 +191,9 @@ telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin
   (nu ne uităm la ce face o companie). Un email nou al nostru = `jurnal` la trimitere; altfel nu apare.
 - **„Scrie"** (`POST /api/mail/trimite`): de pe o adresă văzută, cel mult 20 de destinatari, 4 MB de atașamente (JSON are
   6 MB), 60 de emailuri pe oră de om; `replyTo` = adresa de pe care pleacă; rând în audit `mail_trimis` fără conținut.
+  Numele care se vede la destinatar = `expeditor` din `_mailAdrese` (Robert, 14.10): pe adresa personală „Nume | RA Track"
+  (din fișă; fără nume, „RA Track"), pe cea comună numele firmei. `nume` rămâne numele omului (semnătura). Lista „De la" de pe
+  web și telefon arată `expeditor`. Păzit de `verify_mail.js`.
 - **Fără ștergere automată** (Robert: „mai bine de 12 luni, vom avea un indice de încărcare"): indicatorul arată cât
   ocupă mailul și toată baza din discul ei (`railway_volume_gb`, implicit 5 GB), portocaliu de la 70%.
 - HTML-ul unui email se arată într-un `<iframe sandbox="">` cu `srcdoc` și CSP propriu (fără scripturi).
