@@ -29573,7 +29573,7 @@ const pozitii = await r.json();</code></pre>
       // Redirecționarea pleacă implicit de pe adresa emailului (dacă e a ta), dar se poate alege alta.
       var preAles = pre && pre.de_la && _mail.adrese.some(function (x) { return x.adresa === pre.de_la; }) ? pre.de_la : null;
       var deLa = adrese.map(function (x) {
-        return '<option value="' + esc(x.adresa) + '"' + ((_mail.raspunsLa || (preAles ? x.adresa === preAles : (aMea ? x === aMea : x.comuna))) ? ' selected' : '') + '>' + esc(x.nume + ' <' + x.adresa + '>') + '</option>';
+        return '<option value="' + esc(x.adresa) + '"' + ((_mail.raspunsLa || (preAles ? x.adresa === preAles : (aMea ? x === aMea : x.comuna))) ? ' selected' : '') + '>' + esc((x.expeditor || x.nume) + ' <' + x.adresa + '>') + '</option>';
       }).join('');
       var redirAtas = pre && (pre.atasamenteRedir || []).length
         ? '<div class="mail-semn"><i class="fas fa-paperclip"></i> Merg mai departe și atașamentele emailului: ' + pre.atasamenteRedir.map(function (x) { return esc(x.nume) + ' (' + _mailOct(x.octeti) + ')'; }).join(', ') + '</div>'

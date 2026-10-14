@@ -133,6 +133,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   ale planului șoferului) lipite de marginea de jos a ecranului. Se instalează ea, în locul lui 1.0.15.
   **13.10 (noaptea):** `RA-Track-1.0.17-debug.apk`, pe Desktop — tot ce e în 1.0.16, plus desenul planului de încărcare cu
   colțuri rotunde, fără contururi groase. Se instalează ea, în locul lui 1.0.16.
+  **14.10:** `RA-Track-1.0.18-debug.apk`, pe Desktop — tot ce e în 1.0.17, plus numele „… | RA Track" la „De la" în Mail.
+  Se instalează ea, în locul lui 1.0.17.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -313,6 +315,18 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-14
+
+### FONDATOR · Emailurile de pe adresa ta pleacă cu „Numele tău | RA Track"
+
+Robert (14.10): *„vreau ca atunci când cineva primește mail de la noi pers@ratrack.ro, să scrie numele persoanei | RA Track"*.
+
+- **Ce am schimbat:** un email scris din panoul Mail de pe adresa personală (ex. robert.gherbali@ratrack.ro) apare la cel care
+  îl primește ca venind de la **„Robert Gherbali | RA Track"**; de pe contact@ rămâne **„RA Track"**. Numele vine din fișa
+  omului (fără nume în fișă: „RA Track"). În fereastra de scris, la „De la", se vede exact numele care pleacă. `server.js`
+  (`_mailAdrese` → `expeditor`, folosit la trimitere), pagina și telefonul (lista „De la"). Proba `verify_mail.js` cere numele
+  nou; celelalte probe de mail trec. APK 1.0.18.
+- **Ce vede fondatorul:** la „De la", „Robert Gherbali | RA Track <robert.gherbali@ratrack.ro>".
+- **Ce vede clientul:** emailurile noastre personale îi vin de la „Robert Gherbali | RA Track".
 
 ### AMÂNDOI · RA Insight știe zilele săptămânii; „Rezumă raportul" cere cont RA Insight — `2a298a8`
 

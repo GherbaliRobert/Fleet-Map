@@ -127,8 +127,8 @@ const fals = http.createServer((req, res) => {
     const s1 = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: 'sef@client.ro, contabil@client.ro', subiect: 'Oferta RA Track',
       text: 'Bună ziua,\nvă trimit oferta.\nRobert', atasamente: [{ nume: 'Oferta.pdf', b64: PDF.toString('base64') }] });
     const e1 = primite[primite.length - 1];
-    T('„Scrie" de pe adresa lui: pleacă prin Brevo, cu numele lui, răspunsul înapoi la el, doi destinatari și PDF-ul',
-      s1.status === 200 && primite.length === n1 + 1 && e1.corp.sender.email === 'robert.gherbali@ratrack.ro' && e1.corp.sender.name === 'Robert Gherbali' &&
+    T('„Scrie" de pe adresa lui: pleacă prin Brevo, cu numele lui urmat de „| RA Track" (Robert, 14.10), răspunsul înapoi la el, doi destinatari și PDF-ul',
+      s1.status === 200 && primite.length === n1 + 1 && e1.corp.sender.email === 'robert.gherbali@ratrack.ro' && e1.corp.sender.name === 'Robert Gherbali | RA Track' &&
       e1.corp.replyTo && e1.corp.replyTo.email === 'robert.gherbali@ratrack.ro' && e1.corp.to.length === 2 && e1.corp.attachment[0].name === 'Oferta.pdf',
       JSON.stringify({ st: s1.status, j: s1.j, s: e1 && e1.corp.sender }).slice(0, 250));
     const s2 = await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: 'client@firma.ro', subiect: 'Programare montaj', text: 'Vă confirmăm ziua.' });

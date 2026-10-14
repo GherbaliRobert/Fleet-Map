@@ -557,7 +557,7 @@ export function Mail() {
               <label style={eticheta}>De la</label>
               {/* Răspunsul pleacă de pe adresa pe care a venit emailul (așa cere și serverul). */}
               <select value={form.de_la} disabled={!!form.raspunsLa} onChange={(e) => setF({ de_la: (e.target as HTMLSelectElement).value })} style={camp}>
-                {(meta?.adrese || []).filter((a: any) => !form.raspunsLa || a.adresa === form.de_la).map((a: any) => <option value={a.adresa}>{a.nume + ' <' + a.adresa + '>'}</option>)}
+                {(meta?.adrese || []).filter((a: any) => !form.raspunsLa || a.adresa === form.de_la).map((a: any) => <option value={a.adresa}>{(a.expeditor || a.nume) + ' <' + a.adresa + '>'}</option>)}
               </select>
               <label style={eticheta}>Către</label>
               <input type="text" inputMode="email" autocapitalize="off" autocomplete="off" spellcheck={false} value={form.catre}
