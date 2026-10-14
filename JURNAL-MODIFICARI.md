@@ -192,7 +192,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   duc marfa Z la Cluj — ce acte îmi trebuie?": RA Insight pune laolaltă ce știe aplicația (mașina, permisul, actele) și
   regulile (aviz, CMR, cod UIT, ADR, ATP…). Recomandarea mea: după ce aducem internetul în RA Insight, cu lista de reguli
   verificată de un specialist în transport și cu sursa pe fiecare răspuns.
-- [ ] **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Track, ca la Sezamo). Adăugat pe 08.10.**
+- [x] **HOTĂRÂT (09.10): fără MCP** (Alin, la întrebarea 5 din „Traiectoria RA Insight": *„da, atât, fără MCP"* — RA Insight
+  numește șoferii, dar nu legăm RA Track de ChatGPT / Claude ale clientului). **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Track, ca la Sezamo). Adăugat pe 08.10.**
   Analiza pe criterii: `docs/RA-Track-MCP-Analiza.pdf` (5 pagini). De hotărât, pe scurt: (1) întâi întrebăm 15–20 de
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
@@ -207,6 +208,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **12.10:** Robert a ales Haiku 5.5 și l-a pus deja în Railway (`AI_AGENT_MODEL`); prețurile pe cont rămân (modelul e mai
   ieftin, deci n-avem ce reface). Rămâne proba, ca verificare: dacă vreun răspuns pe Haiku 5.5 iese „eroare" sau e mai slab
   decât pe Haiku 4.5, se șterge variabila din Railway și RA Insight revine pe Haiku 4.5.
+  **14.10:** Alin: *„nu rulez eu nicio probă"*; o rulez eu, cu cheia pe care o pune Robert (*„deja a pus ceva"*). În sesiunea
+  mea din 14.10 cheia NU se vede: trebuie pusă în setările mediului de lucru Claude (meniul mediului din bara de sus a
+  sesiunii → Edit → „Network secrets" sau variabilă de mediu), cu numele `RA_PROBA_ANTHROPIC_KEY` — nu în Railway — și o
+  vede abia sesiunea următoare. Altfel: Robert apasă „Proba modelelor" pe ratrack.ro, pe firma noastră (2 minute).
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -292,7 +297,9 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 |---|---|---|
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
 | **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
-| **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | 🔶 acum |
+| **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | ✅ 08.10 |
+| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 de confirmat plasa (plafonul de cost), apoi de construit |
+| **Cap. 2** | Traiectoria RA Insight, recroită după pachete (bula → secțiunea; AI Raport → comenzi care fac rapoarte în Istoric; acțiuni după „Da"; nume nou pentru Safe Drive) | ⬜ după capitolul 1 |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ⬜ |
 | **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da") | ⬜ |
@@ -302,6 +309,66 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+
+---
+
+## 2026-10-14
+
+### AMÂNDOI · RA Insight știe zilele săptămânii; „Rezumă raportul" cere cont RA Insight — `(commit-ul vine)`
+
+Alin (14.10), la întrebarea 12 din „Planurile RA Insight": *„Rezolvăm bug-urile menționate (zilele săptămânii și verificare
+cont la rezumate)."*
+
+1. **Zilele săptămânii și weekendul.** „Unde a fost Loganul duminică?" primea răspunsul rapid despre ACUM (unde e mașina
+   acum), iar „Câți km a făcut B 154 UIP în weekend?" primea „Distanță azi: 0 km". AI Raport citea aceleași întrebări ca
+   „ultimele 7 zile", iar „de luni până azi" ca „azi". Acum, cu o singură regulă pentru amândouă:
+   - „duminică" = cea mai apropiată duminică (azi, dacă azi e duminică); „marțea trecută" = cea dinainte de azi;
+   - „în weekend" = sâmbătă + duminică (cel de acum, dacă suntem în el); „weekendul trecut" = cel dinainte;
+   - „de luni (până acum / azi)" = săptămâna în curs; „de luni până miercuri" = cele trei zile;
+   - „ultimele 3 luni" rămâne luni de calendar, nu ziua de luni;
+   - „și marți?" după o întrebare e o continuare: păstrează subiectul și mașina, schimbă ziua.
+   Răspunsul rapid gratuit se dă la o parte la orice zi a săptămânii (răspunde RA Insight), ca la „ieri" sau „luna trecută".
+2. **„Rezumă raportul" cere cont RA Insight**, ca ușile lui RA Insight. Rezumatul se numără din întrebările firmei; până azi
+   îl putea cere și un om fără cont, din ce plăteau colegii. Omul fără cont primește același mesaj ca la RA Insight
+   („…Administratorul firmei îl poate porni din Utilizatori"), iar nimic nu pleacă spre model.
+
+- **Ce am schimbat:** `insight.js` (`ziuaSaptamanii`, folosită de `potrivitPentruRapid`), `ai_raport.js` (`perioadaDin` o
+  cheamă înaintea lui „azi"; zilele intră și în cuvintele unei continuări), `server.js` (`requireAiSeat` pe
+  `/api/ai/report-summary`). Probe: `verify_insight.js` (+6: zilele pe o miercuri și pe o sâmbătă, „trecută", intervalul,
+  „ultimele 3 luni", duminica de 25 de ore la trecerea pe ora de iarnă), `verify_ai_raport.js` (+6),
+  `verify_paritate_telefon.js` (+1, pe server pornit: omul fără cont, refuz, fără model), `verify_tarife.js` (+1, poarta pe rută).
+- **Ce vede fondatorul:** la fel ca clientul.
+- **Ce vede clientul:** la „ce a făcut B 154 UIP duminică?" primește duminica, nu „acum" sau ultima săptămână. Un om fără
+  cont RA Insight nu mai poate cere rezumatul unui raport (vede de ce și cine îi poate da acces).
+
+### FONDATOR · Capitolul 1, pachetele RA Insight: hotărârile din 14.10 și simulările (nimic schimbat în aplicație încă)
+
+Alin (14.10) a răspuns la cele 12 întrebări din „Planurile RA Insight" (https://claude.ai/artifact/DVQF6k5uQboSoP3WwEJ9jS)
+și a pus pachetele lui:
+
+| Pachet | Conturi | Întrebări pe lună, la comun | Creierul | Preț |
+|---|---|---|---|---|
+| Start | 1 (administratorul) | 50, pe reguli (fără AI) | butoane / reguli | 0 lei, inclus |
+| Basic | 2 | 200 | Haiku 5.5 | 10 lei |
+| Pro | 3–5 | 600 | Haiku 5.5 + Sonnet | 20 lei |
+| Business | nelimitate (adminul împarte cota) | 1.000 | Haiku 5.5 + Sonnet | 30 lei |
+
+Restul răspunsurilor: pachete fixe pe FIRMĂ, telematica rămâne pe mașină (1); se reîncarcă pe 1 (2); Start inclus (3);
+adminul dă conturile oricui (5); trecerea la un pachet mai mare oricând, din aplicație, de admin (8); cheia de probă o pune
+Robert (9); pe ecran „Pachet RA Insight Pro", nu „Plan" (10); clienții semnați își păstrează contractul (11); reparațiile de
+mai sus (12). A cerut simulări pe cifre, pe mai multe flote, „cu câte conturi supraviețuiesc din 100 de dolari".
+
+- **Măsurat** (aplicația pornită, model simulat, fără cost): aceleași 20 de întrebări pe flote de 10, 25, 50, 100, 200, 500 și
+  1.000 de mașini. Pe Haiku 5.5 o întrebare obișnuită costă 0,43–0,49 bani, una grea 1,2–1,3 bani, cea mai rea cu putință
+  3,7–4,6 bani; de la 200 de mașini în sus costul nu mai crește deloc (uneltele aduc cel mult 25 de rânduri, starea live cel
+  mult 200 de mașini).
+- **Simulările** (pagina „Calculul pachetelor RA Insight", https://claude.ai/artifact/9kouq9HxqjxhJsijtV3Gd1): la prețurile lui Alin, într-o lună obișnuită rămân ~9 lei din
+  Basic, ~13 lei din Pro, ~19 lei din Business. Cu 100 de dolari (~460 de lei) se țin, o lună, între 59 și 1.600 de firme
+  Basic, după cât întreabă. Pierdere poate apărea doar dacă toate întrebările lunii sunt la maximum — de aceea propun o
+  plasă: **plafonul de cost pe firmă = 80% din prețul pachetului** (8 / 16 / 24 de lei), din costul real pe răspuns (pe care
+  aplicația îl socotește pe model din 12.10), plus un buget pentru Sonnet (5 lei la Pro, 8 la Business). Se confirmă cu Alin.
+- **Nimic nu s-a schimbat încă în aplicație** pentru pachete: regula pe cont (14–35 de lei) rămâne până la construcție.
+- **Ce vede fondatorul / clientul:** încă nimic.
 
 ---
 

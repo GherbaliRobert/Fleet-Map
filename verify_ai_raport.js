@@ -81,6 +81,16 @@ T('…aceeași cu diacritice, „unde e B 154 UIP", „B 154 UIP e oprită?", �
 T('„unde e B 154 UIP azi" e tot ACUM (citit pe o zi, o mașină parcată de ieri ar fi ieșit „de la miezul nopții")', U('unde e B 154 UIP azi').perioada.acum === true);
 const s2 = U('unde a stat B 154 UIP ieri');
 T('„unde a stat B 154 UIP ieri" (trecut) → Staționări, ieri', s2.ok && s2.subiect === 'opriri' && s2.perioada.eticheta === 'ieri', JSON.stringify(s2).slice(0, 160));
+// Zilele săptămânii (Alin, 14.10: „rezolvăm"): până atunci „duminică" și „în weekend" ieșeau „ultimele 7 zile". ACUM = vineri, 02.10.
+const zs1 = U('unde a stat B 154 UIP duminică'), zs2 = U('câți km a făcut B 154 UIP în weekend'), zs3 = U('câți km a făcut B 154 UIP de luni până azi');
+T('„duminică" → duminica trecută (27 septembrie), nu ultimele 7 zile', zs1.ok && zs1.subiect === 'opriri' && zs1.perioada.eticheta === '27 septembrie', JSON.stringify(zs1.perioada));
+T('„în weekend" → sâmbătă + duminică (26–27 septembrie)', zs2.ok && zs2.perioada.eticheta === '26–27 septembrie', JSON.stringify(zs2.perioada));
+T('„de luni până azi" → săptămâna în curs, nu doar azi', zs3.ok && zs3.perioada.eticheta === '28 septembrie – azi', JSON.stringify(zs3.perioada));
+T('„vineri" într-o vineri = azi; „vinerea trecută" = 25 septembrie', U('câți km a făcut B 154 UIP vineri').perioada.eticheta === 'azi' && U('câți km a făcut B 154 UIP vinerea trecută').perioada.eticheta === '25 septembrie');
+const zsC = U('câți km a făcut B 154 UIP ieri');
+const zs4 = U('și marți?', { subiect: zsC.subiect, masini: zsC.masini, perioada: { from: zsC.perioada.from, to: zsC.perioada.to } });
+T('„și marți?" e o continuare: păstrează subiectul și mașina, schimbă ziua (29 septembrie)', zs4.ok && zs4.subiect === 'km' && zs4.mem.subiect && zs4.mem.masini && zs4.perioada.eticheta === '29 septembrie', JSON.stringify(zs4).slice(0, 160));
+T('„ultimele 3 luni" nu e ziua de luni', U('consumul lui B 154 UIP în ultimele 3 luni').perioada.eticheta !== '28 septembrie');
 T('„cât a staționat … săptămâna trecută", „staționările de azi" → Staționări', U('cât a staționat B 154 UIP săptămâna trecută').subiect === 'opriri' && U('staționările lui B 154 UIP de azi').subiect === 'opriri');
 const s3 = U('B 154 UIP');
 T('doar mașina, fără subiect → „Ce vrei să afli despre B 154 UIP?", cu mașina ținută minte', !s3.ok && s3.motiv === 'doar_masina' && s3.context.masini.join() === DEV[0].imei && /Ce vrei să afli despre \*\*B 154 UIP · Dacia Logan 3\*\*/.test(A.neinteles(s3, F).text), JSON.stringify(s3).slice(0, 200));

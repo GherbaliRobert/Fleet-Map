@@ -502,6 +502,8 @@ T('RA Insight se deschide doar cui are loc', /function requireAiSeat\(req, res, 
 const usiAi = server.split('\n').filter((l) => /_raInsight\(req, res, \{/.test(l));
 T('poarta e pusă pe toate ușile lui RA Insight (secțiunea, Rapoarte, „Asistent AI" vechi)',
   usiAi.length === 3 && usiAi.every((l) => /requireFeature\('ai_assistant'\), requireAiSeat/.test(l)), usiAi.length + ' uși');
+T('și pe „Rezumă raportul" (se numără din întrebările firmei; până pe 14.10 îl putea cere și omul fără cont)',
+  /app\.post\('\/api\/ai\/report-summary', requireAuth, requirePerm\('viewReports'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat,/.test(server));
 T('și pe conversațiile omului (listă, citire, redenumire, ștergere, 👍/👎)',
   (server.match(/app\.\w+\('\/api\/insight\/(conversatii|mesaje)[^']*', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length === 5);
 T('mesajul spune cine poate porni contul', /Administratorul firmei îl poate porni din Utilizatori/.test(server));

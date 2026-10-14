@@ -398,6 +398,13 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
   subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
+- **Zilele săptămânii și weekendul: O regulă, `insight.ziuaSaptamanii(text, acum)`** (14.10, Alin: „rezolvăm"), folosită de
+  `potrivitPentruRapid` (orice zi a săptămânii → nu e rapid) și de `ai_raport.perioadaDin` (ÎNAINTEA lui „azi", ca „de luni
+  până azi" să fie săptămâna). „duminică" = cea mai apropiată (azi, dacă azi e duminică), „…trecută" = cea dinainte de azi,
+  „în weekend" = sâmbătă + duminică (cel de acum doar sâmbăta / duminica), „de luni până miercuri" = intervalul. „luni" după un
+  număr sau după „ultimele" = luni de calendar. Până pe 14.10: „duminică" primea „acum" (rapid) sau ultimele 7 zile (AI Raport).
+- **„Rezumă raportul" (`/api/ai/report-summary`) are poarta contului (`requireAiSeat`)**, ca ușile lui RA Insight: se numără
+  din întrebările firmei (14.10; până atunci îl cerea și omul fără cont). O ușă nouă care consumă întrebări primește poarta.
 - **Instrucțiunile în DOUĂ bucăți:** partea fixă (`_insightInstructiuni`, cu `cache_control`) + contextul întrebării
   (`_insightContext`: ora, mașinile recunoscute, ce s-a discutat). NU pune ora sau mașinile în partea fixă — ar strica cache-ul.
 - **Plafonul de întrebări AI pe minut (`RL_AI`) cuprinde și `/api/insight/intreaba`**, nu doar `/api/ai/*`. O ușă nouă de AI
@@ -660,6 +667,22 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 - **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
+
+### ⚠ Pachetele RA Insight — HOTĂRÂTE pe 14.10, NECONSTRUITE încă (Alin, capitolul 1)
+Alin a schimbat regula: RA Insight trece de la „cont cu cont" (mai jos) la **pachete fixe pe FIRMĂ** — **Start** 0 lei
+(1 cont, administratorul; 50 de întrebări pe reguli, fără AI) · **Basic** 10 lei (2 conturi, 200 de întrebări, Haiku 5.5) ·
+**Pro** 20 lei (3–5 conturi, 600, Haiku 5.5 + Sonnet) · **Business** 30 lei (conturi nelimitate, adminul împarte cota; 1.000).
+Se reîncarcă pe 1; adminul trece la un pachet mai mare din aplicație; pe ecran „Pachet RA Insight Pro", NU „Plan"; clienții
+semnați își păstrează contractul. Platforma rămâne fără planuri (ofertă → contract → abonament pe mașină).
+- **Până se construiește, regula pe cont de mai jos rămâne în cod.** NU construi în continuare pe locurile plătite pe cont și
+  nu face pachetele din proprie inițiativă: întâi Alin confirmă plasa de siguranță propusă (plafonul de cost pe firmă = 80% din
+  prețul pachetului, din costul REAL pe răspuns — `cost_usd`, socotit pe model din 12.10 —, plus bugetul de Sonnet: 5 lei la
+  Pro, 8 la Business) și întrebările deschise din pagina „Calculul pachetelor RA Insight".
+- **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
+  cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
+  1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
+- Când se construiește: regula „RA Tracks NU funcționează pe planuri" și `verify_fara_planuri.js` se rescriu pe regula nouă
+  (platforma fără planuri, RA Insight cu pachete), iar grila pe cont (`AIQ_PRET_LOC`) și facturarea pe vârful lunii ies.
 
 ### Cum se tarifează RA Insight (socotit cu Alin, 23.09)
 

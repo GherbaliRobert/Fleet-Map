@@ -99,6 +99,19 @@ T('întrebarea lui Alin scrisă CORECT („kilometri … săptămâna trecută")
 T('„km și consum azi" → NU rapid (răspunsul rapid știe doar km)', !rapid('km si consum azi'));
 T('o continuare („și ieri?") într-o discuție → NU rapid', !rapid('si ieri?', true));
 T('„unde e Loganul?" cu trei Logan → NU rapid (întâi se lămurește care)', !rapid('unde e loganul?'));
+// Zilele săptămânii (Alin, 14.10): „Unde a fost Loganul duminică?" primea unde e ACUM, „în weekend" — „Distanță azi: 0 km".
+T('„duminică", „în weekend", „de luni până acum", „marțea trecută" → NU rapid (altă zi decât acum)',
+  !rapid('Unde a fost B 154 UIP duminică?') && !rapid('Câți kilometri a făcut B 154 UIP în weekend?') && !rapid('Câți km de luni până acum?') && !rapid('ce a făcut flota marțea trecută'));
+T('„ultimele 3 luni" nu e ziua de luni (și tot nu e rapid, fiindcă e altă perioadă)', I.ziuaSaptamanii('consumul în ultimele 3 luni') === null && I.ziuaSaptamanii('acum două luni') === null);
+const MIE = Date.parse('2026-10-14T09:00:00Z'), SAM = Date.parse('2026-10-17T09:00:00Z');   // miercuri / sâmbătă
+const zs = (t, a) => { const r = I.ziuaSaptamanii(t, a); return r ? I.etichetaPerioadei(r.from, r.to, a) : null; };
+T('miercuri 14.10: „duminică" = 11 octombrie, „în weekend" = 10–11 octombrie, „marți" = ieri, „miercuri" = azi',
+  zs('duminică', MIE) === '11 octombrie' && zs('în weekend', MIE) === '10–11 octombrie' && zs('marți', MIE) === 'ieri' && zs('miercuri', MIE) === 'azi',
+  [zs('duminică', MIE), zs('în weekend', MIE), zs('marți', MIE), zs('miercuri', MIE)].join(' | '));
+T('„miercurea trecută" = 7 octombrie; „de luni până miercuri" = 12 octombrie – azi', zs('miercurea trecută', MIE) === '7 octombrie' && zs('de luni până miercuri', MIE) === '12 octombrie – azi', zs('miercurea trecută', MIE) + ' | ' + zs('de luni până miercuri', MIE));
+T('sâmbătă 17.10: „în weekend" = weekendul de acum (de azi), „weekendul trecut" = 10–11 octombrie', zs('în weekend', SAM) === 'azi' && zs('weekendul trecut', SAM) === '10–11 octombrie', zs('în weekend', SAM) + ' | ' + zs('weekendul trecut', SAM));
+const TRECERE = I.ziuaSaptamanii('duminică', Date.parse('2026-10-26T09:00:00Z'));
+T('duminica trecerii la ora de iarnă (25.10) are 25 de ore, ca ziua României', Date.parse(TRECERE.to) - Date.parse(TRECERE.from) === 25 * 3600000, JSON.stringify(TRECERE));
 
 // ─── 4. Memoria trimisă modelului ───────────────────────────────────────────────────────────────────
 console.log('\n4. Ce vede modelul din discuție');

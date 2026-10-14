@@ -162,6 +162,10 @@ function perioadaDin(t, acum, s) {
   }
   const iv = _interval(t, z, now);
   if (iv) return iv;
+  // „duminică", „marțea trecută", „în weekend", „de luni până miercuri" — regula e în insight.js, aceeași pentru
+  // răspunsul rapid; înaintea lui „azi", ca „de luni până azi" să fie săptămâna, nu ziua de azi (până pe 14.10 aici ieșeau „ultimele 7 zile", iar acolo „acum").
+  const zs = I.ziuaSaptamanii(t, now);
+  if (zs) return _per(zs.from, zs.to, now);
   if (/\balaltaieri\b/.test(t)) return _per(_zi(z.y, z.m0, z.d - 2), _zi(z.y, z.m0, z.d - 1), now);
   if (/\b(ieri|aseara|azi-?\s?noapte|noaptea trecuta)\b/.test(t)) return _per(_zi(z.y, z.m0, z.d - 1), azi0, now);
   if (/\b(azi|astazi|de dimineata|in dimineata asta)\b/.test(t)) return _per(azi0, now, now);
@@ -199,7 +203,7 @@ function perioadaDin(t, acum, s) {
   return null;
 }
 // Textul spune DOAR o perioadă („ieri?", „luna trecută", „în septembrie") — nimic altceva cu înțeles.
-const _UMPLUTURA = /\b(si|dar|iar|apoi|acum|pe|in|din|la|de|pentru|cat|cati|cate|ce|care|cu|al|a|ale|lui|asta|aceasta|curenta|trecuta|precedenta|anterioara|azi|astazi|ieri|aseara|alaltaieri|saptamana|luna|ultimele|ultima|ultimii|zile|zi|anul|\d+|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|sept|octombrie|noiembrie|decembrie)\b/g;
+const _UMPLUTURA = /\b(si|dar|iar|apoi|acum|pe|in|din|la|de|pentru|cat|cati|cate|ce|care|cu|al|a|ale|lui|asta|aceasta|curenta|trecuta|trecut|trecutul|precedenta|anterioara|azi|astazi|ieri|aseara|alaltaieri|saptamana|luna|ultimele|ultima|ultimii|zile|zi|anul|luni|lunea|marti|martea|miercuri|miercurea|joi|joia|vineri|vinerea|sambata|duminica|weekend|weekendul|pana|intre|\d+|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|sept|octombrie|noiembrie|decembrie)\b/g;
 function _doarPerioada(t) { return !String(t).replace(/[^a-z0-9 ]/g, ' ').replace(_UMPLUTURA, ' ').trim(); }
 // Fără perioadă spusă: ultimele 7 zile; la „ce expiră" — următoarele 30 de zile; la „unde e / de cât timp stă" — ACUM,
 // citit pe ultimele 30 de zile (raportul „Ultima locație" caută ultima oprire în perioadă: pe 7 zile, o mașină parcată

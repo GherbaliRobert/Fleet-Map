@@ -4039,7 +4039,9 @@ async function _regulileFonduluiAi(req, res) {
 // Istoricul trimis de telefon (`history`) nu mai contează: discuția o ține serverul (ultima conversație de curând).
 app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'chat_vechi' }));
 
-app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+// Poarta contului (requireAiSeat), ca la ușile lui RA Insight: rezumatul se numără din întrebările firmei, deci un om fără
+// cont nu-l poate cere (până pe 14.10 putea, din ce plăteau colegii; Alin, 14.10: „rezolvăm").
+app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });

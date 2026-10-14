@@ -262,6 +262,54 @@ function perioada(input, acum) {
   if (!(from < to)) { from = now - 7 * 86400000; to = now; }
   return { from: new Date(from).toISOString(), to: new Date(to).toISOString() };
 }
+// ─── Zilele săptămânii și weekendul (Alin, 14.10: „rezolvăm") ──────────────────────────────────────
+// „Unde a fost Loganul duminică?" primea răspunsul rapid despre ACUM, „câți km în weekend?" — „Distanță azi: 0 km", iar
+// AI Raport citea ambele ca „ultimele 7 zile". O singură regulă, folosită de amândouă: întoarce perioada sau null.
+//   „marți" = cea mai apropiată marți (azi, dacă azi e marți); „marțea trecută" = cea dinainte de azi;
+//   „în weekend" = sâmbătă + duminică (cel de acum, dacă suntem în el); „weekendul trecut" = cel dinainte;
+//   „de luni (până acum)" = săptămâna în curs; „de luni până miercuri" = cele trei zile.
+// „luni" după un număr sau după „ultimele" e luna de calendar („ultimele 3 luni"), nu ziua.
+const _ZILE_SAPT = { luni: 1, lunea: 1, marti: 2, martea: 2, miercuri: 3, miercurea: 3, joi: 4, joia: 4, vineri: 5, vinerea: 5, sambata: 6, duminica: 7 };
+const _NU_E_ZIUA = /(?:^| )(?:\d+|o|doua|trei|patru|cinci|sase|sapte|opt|noua|zece|unsprezece|douasprezece|ultimele|ultimii|cateva|cele|multe|mai multe) $/;
+function _zileDinText(t) {
+  const out = [];
+  const re = /(?:^| )(luni|lunea|marti|martea|miercuri|miercurea|joi|joia|vineri|vinerea|sambata|duminica)(?= |$)/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const inainte = t.slice(0, m.index + (m[0][0] === ' ' ? 1 : 0));
+    if (m[1] === 'luni' && (_NU_E_ZIUA.test(inainte) || / luni de zile/.test(t.slice(m.index)))) continue;
+    out.push(_ZILE_SAPT[m[1]]);
+  }
+  return out;
+}
+function ziuaSaptamanii(text, acum) {
+  const t = norm(text).replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!t) return null;
+  const now = acum != null ? Number(acum) : Date.now();
+  const z = _parti(now);
+  const trecut = /(?:^| )(trecut\w*|precedent\w*|anterioar\w*)(?= |$)/.test(t);
+  const iso = function (a, b) { return { from: new Date(a).toISOString(), to: new Date(Math.min(now, b)).toISOString() }; };
+  const ziua = function (dd) { return inceputZiRO(z.y, z.m0, z.d + dd); };
+  if (/(?:^| )(weekend\w*|wekend\w*|week end\w*|sfarsit\w* de saptamana)(?= |$)/.test(t)) {
+    let sam = 6 - z.dow;                                // sâmbăta săptămânii în curs, față de azi
+    if (z.dow < 6 || trecut) sam -= 7;                  // weekendul de acum doar sâmbătă / duminică, fără „trecut"
+    return iso(ziua(sam), ziua(sam + 2));
+  }
+  const zile = _zileDinText(t);
+  if (!zile.length) return null;
+  // „de luni (până acum / azi)": săptămâna în curs
+  if (zile.length === 1 && zile[0] === 1 && /(?:^| )de (?:la )?luni(?: pana (?:acum|azi|astazi|in prezent))?(?= |$)/.test(t) && !trecut) return iso(ziua(1 - z.dow), now);
+  const inapoi = function (zi, panaLa) { let d = (panaLa - zi + 7) % 7; return d; };
+  const ultima = zile[zile.length - 1];
+  let d2 = inapoi(ultima, z.dow);
+  if (d2 === 0 && trecut) d2 = 7;
+  if (zile.length >= 2) {                              // „de luni până miercuri", „între luni și miercuri"
+    const d1 = d2 + inapoi(zile[0], ultima);
+    return iso(ziua(-d1), ziua(-d2 + 1));
+  }
+  return iso(ziua(-d2), ziua(-d2 + 1));
+}
+
 const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 // { from, to } → cum o spune omul: „azi", „ieri", „21–27 septembrie", „septembrie 2026", „1 octombrie – azi".
 function etichetaPerioadei(from, to, acum) {
@@ -297,6 +345,7 @@ function potrivitPentruRapid(text, gasite, areContext) {
   if (!t) return false;
   if (gasite && (gasite.grupe.length || gasite.ambigue.length)) return false;
   if (ALTA_PERIOADA.test(t)) return false;
+  if (ziuaSaptamanii(text)) return false;              // „duminică", „în weekend", „de luni" — altă zi decât acum
   if (ALT_SUBIECT.test(t)) return false;
   // o continuare („și ieri?", „dar Loganul?") ține de discuție, nu de o întrebare nouă
   if (areContext && /^(si|dar|iar|apoi|ok|bine)\b/.test(t)) return false;
@@ -345,6 +394,6 @@ const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu exper
 
 module.exports = {
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
-  inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI,
+  inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
   potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL,
 };

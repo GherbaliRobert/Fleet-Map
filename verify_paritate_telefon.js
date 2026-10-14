@@ -420,6 +420,12 @@ function formularWeb(cookie, eSuper, proprii) {
     T(cale + ', telefon: motivul ajunge în „reply", singurul câmp citit de aplicația veche',
       t.status === 200 && t.j.seatMissing === true && /Administratorul firmei îl poate porni din Utilizatori/.test(t.j.reply || ''), t.status + ' ' + t.text.slice(0, 120));
   }
+  // „Rezumă raportul" e tot o întrebare către RA Insight (se numără din întrebările firmei): până pe 14.10 o putea
+  // pune și omul fără cont, consumând din ce au plătit colegii (Alin, 14.10: „rezolvăm"). Același refuz ca la uși.
+  const rezFara = await json('POST', '/api/ai/report-summary', ckFara, { type: 'tabel', report: { columns: ['Vehicul', 'Km'], rows: [['AR-01-PAR', '120']] } });
+  T('„Rezumă raportul", omul fără cont: același refuz (contul, nu planul), fără model',
+    rezFara.status === 403 && rezFara.j.error === 'ai_seat_missing' && rezFara.j.reply === rezFara.j.message && /Administratorul firmei îl poate porni din Utilizatori/.test(rezFara.j.reply || ''),
+    rezFara.status + ' ' + rezFara.text.slice(0, 120));
   T('nimic nu a ajuns la model', apeluriAi() === 0, apeluriAi());
 
   const ion = await om('ion@paritate.ro', 'manager', co.id, ckSef);
