@@ -34,7 +34,7 @@ function taie(sursa, start, capat, unde) {
 const bucataQuota = taie(server, 'function _aiQuotaFromSettings(settings) {', '\n// ─── Câte conturi', 'server.js');
 const bucataLuna = taie(server, 'function _lunaAcum()', '\nasync function _urcaSeatsPeak', 'server.js');
 const bucataFirma = taie(server, '// ── începe „Socoteala RA Insight pe o firmă"', '// ── sfârșit „Socoteala RA Insight pe o firmă" ──', 'server.js');
-const _insightFirma = new Function('pachete', bucataQuota + '\n' + bucataLuna + '\n' + bucataFirma + '\n; return _insightFirma;')(require('./pachete'));
+const _insightFirma = new Function('pachete', 'plans', bucataQuota + '\n' + bucataLuna + '\n' + bucataFirma + '\n; return _insightFirma;')(require('./pachete'), require('./plans'));
 
 const LUNA = new Date().toISOString().slice(0, 7);
 const setari = (o) => ({ ai_quota: o });

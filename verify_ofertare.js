@@ -280,14 +280,15 @@ T('niciun câmp de preț nu apare de două ori', deDouaOri.length === 0, deDouaO
 // ⚠ Prima variantă a probei căuta textul „Tarife lunare (editabile)" — care a rămas în comentariul
 // care explică de ce panoul a fost scos. Trecea degeaba. Acum se verifică LOCUL fiecărui preț:
 // trebuie să fie în cartea lucrului pe care-l prețuiește, iar panoul pliat să nu mai existe deloc.
-// ⚠ Se caută ÎNCEPÂND de la cartea respectivă, nu de la capul fișierului: `of-pAiA` apare întâi
+// ⚠ Se caută ÎNCEPÂND de la cartea respectivă, nu de la capul fișierului: `of-pPachet` apare întâi
 // în `_ofReadCfg`, cu mii de rânduri mai sus, iar un `indexOf` de la zero găsea acolo și striga
 // degeaba. Ce ne interesează e unde e DESENAT câmpul.
 const carte = (nume) => html.indexOf('var ' + nume + ' = card(');
 const undeE = (id, de) => html.indexOf("'of-" + id + "'", carte(de));
 const PASI = [
   ['pPlain', 'vehCard', 'featCard'], ['pCan', 'vehCard', 'featCard'], ['pFms', 'vehCard', 'featCard'],
-  ['pAiA', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
+  // Prețul pachetului RA Insight (14.10) stă lângă alegerea pachetului, în cartea 3.
+  ['pPachet', 'featCard', 'montajCard'], ['ret24', 'featCard', 'montajCard'],
   ['ret36', 'featCard', 'montajCard'], ['retCustom', 'featCard', 'montajCard'],
   ['mGps', 'montajCard', 'deviceCard'], ['mLvCan', 'montajCard', 'deviceCard'],
   ['mCanInc', 'montajCard', 'deviceCard'], ['mFms', 'montajCard', 'deviceCard'],
@@ -567,17 +568,17 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   T('ce am trecut rămâne', tar1.dFmc650 === 133 && tar1.mGps === 111, JSON.stringify({ d: tar1.dFmc650, m: tar1.mGps }));
   T('ce am lăsat gol înseamnă „ia-l din cod", nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
   T('și o cifră fără sens, la fel', tar1.pCan === null, JSON.stringify(tar1.pCan));
-  // Două căi de salvare, chei diferite: tabloul „Prețurile noastre" (cu grila RA Insight) și butonul
-  // „Salvează ca tarifele noastre" din cărți (fără ea). A doua NU are voie s-o șteargă pe prima.
-  await PUT('/api/admin/system-settings', { tarife_lista: { aiqPana10: 22, aiqPana25: 18 } });
+  // Două căi de salvare, chei diferite: tabloul „Prețurile noastre" (cu prețurile pachetelor RA Insight) și butonul
+  // „Salvează ca tarifele noastre" din cărți (fără ele). A doua NU are voie să le șteargă pe primele.
+  await PUT('/api/admin/system-settings', { tarife_lista: { pkPro: 22, pkBusiness: 33 } });
   await PUT('/api/admin/system-settings', { tarife_lista: { pPlain: 31, mGps: 115 } });   // ca din cărți
   const tar2 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};
-  T('grila RA Insight din tablou supraviețuiește unei salvări din cărți',
-    tar2.aiqPana10 === 22 && tar2.aiqPana25 === 18, JSON.stringify({ a10: tar2.aiqPana10, a25: tar2.aiqPana25 }));
+  T('prețurile pachetelor RA Insight din tablou supraviețuiesc unei salvări din cărți',
+    tar2.pkPro === 22 && tar2.pkBusiness === 33, JSON.stringify({ pro: tar2.pkPro, business: tar2.pkBusiness }));
   T('iar salvarea din cărți și-a scris cifrele ei', tar2.pPlain === 31 && tar2.mGps === 115,
     JSON.stringify({ p: tar2.pPlain, m: tar2.mGps }));
   T('și ce se salvase înainte, netrimis acum, a rămas', tar2.dFmc650 === 133, JSON.stringify(tar2.dFmc650));
-  T('prețul unic vechi al contului (pAiA) nu mai e în listă', !('pAiA' in tar2));
+  T('prețul unic vechi al contului (pAiA) și grila pe cont (aiqPana…) nu mai sunt în listă', !('pAiA' in tar2) && !('aiqPana10' in tar2));
 
   sect('7d. Pe server pornit: oferta chiar vine ca fișier');
   const pdfResp = await POST('/api/admin/offers/pdf', {

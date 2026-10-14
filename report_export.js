@@ -494,7 +494,10 @@ function _ofIncluse(o) {
   L.push('Aplicație de telefon (Android), cu aceleași date ca în calculator');
   if (o.tahograf) L.push('Modulul Tahograf: descărcarea fișierelor .DDD și urmărirea termenelor legale');
   if (o.etransport) L.push('Modulul e-Transport: generarea codurilor UIT și raportarea poziției către ANAF');
-  if (o.aiA) {
+  // Pachetul RA Insight (14.10, pasul 5): ce primește clientul, din pachete.js. Ofertele vechi (pe cont), ca înainte.
+  const pkO = o.aiPachet && o.aiPachet.cod ? require('./pachete').dupaCod(o.aiPachet.cod) : null;
+  if (pkO) L.push('RA Insight ' + pkO.nume + ': ' + require('./pachete').descriere(pkO) + (pkO.ai ? '' : ' (inclus)'));
+  else if (o.aiA) {
     const n = Math.max(1, Number(o.aiqConturi) || 1), f = Number(o.aiqFond) || 0;
     L.push('RA Insight, pe ' + n + ' ' + (n === 1 ? 'cont' : 'conturi') + ': '
       + (f > 0 ? f + ' ' + _ofDe(f) + 'întrebări pe lună, dintr-un fond comun al companiei'
@@ -683,7 +686,18 @@ function renderOfertaPdf(doc, o) {
         + ' și demontarea lor' + (Number(o.tarifDemontare) > 0 ? ', de ' + _bani(o.tarifDemontare, 'lei') + ' pe aparat.' : '.'),
       'La încetarea contractului, aparatele se returnează: vehiculele se pun la dispoziție pentru demontare în cel mult ' + zRet + ' ' + _ofDe(zRet) + 'zile. La sfârșitul contractului, demontarea o facem noi, fără cost. Aparatele nereturnate sau deteriorate se plătesc la valoarea lor din contract.');
   }
-  if (o.aiA && Number(o.pretCont) > 0) {
+  // Pachetul RA Insight (14.10, pasul 5): prețul pachetului ales, al celorlalte și clauza de trecere — ca în Anexa nr. 1.
+  const PKc = require('./pachete');
+  const pkC = o.aiPachet && o.aiPachet.cod ? PKc.dupaCod(o.aiPachet.cod) : null;
+  if (pkC) {
+    const lista = o.aiPachet.lista || {};
+    const toate = PKc.PACHETE.map(function (x) {
+      if (!x.ai) return x.nume + ' — inclus';
+      const v = x.cod === pkC.cod ? o.aiPachet.pretRON : lista[x.cod];
+      return v != null ? x.nume + ' — ' + _bani(v, 'lei') + '/lună' : null;
+    }).filter(Boolean);
+    conditii.splice(2, 0, 'RA Insight: pachetul ' + pkC.nume + '. Pachetele: ' + toate.join(' · ') + '. ' + PKc.CLAUZA_TRECERE.replace('administratorul Beneficiarului', 'administratorul firmei'));
+  } else if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
       + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
       + 'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.');

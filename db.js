@@ -1397,6 +1397,30 @@ async function initDb() {
       )
     `);
     await client.query('CREATE INDEX IF NOT EXISTS idx_ai_reguli_firma_luna ON ai_reguli (company_id, created_at)');
+    // Trecerile la alt pachet RA Insight, confirmate din aplicație (pasul 6): cine, când, de pe ce adresă și TEXTUL exact pe care
+    // l-a confirmat — confirmarea ține loc de act adițional, deci e dovadă și rămâne și după ștergerea firmei (ca un contract).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pachet_treceri (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER,
+        user_nume TEXT,
+        de_la VARCHAR(20),
+        la VARCHAR(20),
+        sens VARCHAR(12),
+        pret_vechi NUMERIC(10,2),
+        pret_nou NUMERIC(10,2),
+        aplicat_de_la BIGINT,
+        text TEXT,
+        ip VARCHAR(80),
+        user_agent VARCHAR(300),
+        creat_la BIGINT,
+        email_catre TEXT,
+        email_trimis BOOLEAN DEFAULT false,
+        email_motiv TEXT
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_pachet_treceri_firma ON pachet_treceri (company_id, creat_la)');
     await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
 
     // Preferințe UI per user (toggle-uri: overspeed_heatmap, replay_marker, etc.) — separat de notification_prefs ca să nu interfere
@@ -4571,6 +4595,33 @@ async function getAiSeatHolders(companyId) {
     [companyId]);
   return r.rows;
 }
+// Trecerile la alt pachet RA Insight (pasul 6). Rândul se scrie o dată; după email se scrie doar cum a plecat emailul.
+function _trecereNum(x) {
+  if (!x) return x;
+  ['id', 'company_id', 'user_id', 'aplicat_de_la', 'creat_la'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+  ['pret_vechi', 'pret_nou'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+  return x;
+}
+async function noteazaTrecerePachet(o) {
+  const r = await pool.query(
+    `INSERT INTO pachet_treceri (company_id, user_id, user_nume, de_la, la, sens, pret_vechi, pret_nou, aplicat_de_la, text, ip, user_agent, creat_la)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+    [o.companyId, o.userId, String(o.userNume || '').slice(0, 200), o.de, o.la, o.sens, o.pretVechi, o.pretNou, o.deLa, String(o.text || ''),
+      String(o.ip || '').slice(0, 80), String(o.userAgent || '').slice(0, 300), Date.now()]);
+  return _trecereNum(r.rows[0]);
+}
+async function emailTrecerePachet(id, catre, trimis, motiv) {
+  await pool.query('UPDATE pachet_treceri SET email_catre = $2, email_trimis = $3, email_motiv = $4 WHERE id = $1',
+    [id, catre || null, !!trimis, motiv ? String(motiv).slice(0, 300) : null]);
+}
+async function getTrecerePachet(id) {
+  const r = await pool.query('SELECT * FROM pachet_treceri WHERE id = $1', [parseInt(id, 10)]);
+  return _trecereNum(r.rows[0] || null);
+}
+async function listTreceriPachet(companyId, limit) {
+  const r = await pool.query('SELECT * FROM pachet_treceri WHERE company_id = $1 ORDER BY creat_la DESC LIMIT $2', [companyId, Math.min(200, parseInt(limit, 10) || 50)]);
+  return r.rows.map(_trecereNum);
+}
 // Răspunsurile pe butoane (fără AI): pe Start se numără (50 pe lună); la celelalte pachete nu se numără.
 async function noteazaRaspunsReguli(companyId, userId) {
   await pool.query('INSERT INTO ai_reguli (company_id, user_id) VALUES ($1, $2)', [companyId != null ? companyId : null, userId != null ? userId : null]);
@@ -6384,7 +6435,7 @@ module.exports = {
   listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
-  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
+  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,

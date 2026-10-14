@@ -1,3 +1,4 @@
+const pachete = require('./pachete');   // pachetele RA Insight (14.10): prețul fix pe firmă intră în motorul de preț
 // oferte.js — prețul unei firme la RA Track.
 //
 // RA Track NU funcționează pe planuri și n-a funcționat niciodată așa. Fiecare client primește o
@@ -44,6 +45,18 @@ function ofertaFirmei(company) {
   };
 }
 
+// Pachetele RA Insight (14.10): ce pachet are firma. Regula VECHE (întrebări pe cont / cotă fixă în `ai_quota`, limita cea mai
+// veche `companies.ai_monthly_limit`, sau suma fixă „Asistent AI" din ofertă cu modulul pornit de noi) → null: o citește
+// codul vechi. Altfel pachetul scris, iar fără nimic — Start. O SINGURĂ dată, aici; serverul (`_pachetCo`) o folosește.
+function aiVechi(company) {
+  const eff = ofertaFirmei(company) || {};
+  return Number(company && company.ai_monthly_limit) > 0 ||
+    (Number(eff.aiAssistantRON) > 0 && featuresSetate(company).ai_assistant === true);
+}
+// `acum` = clipa la care se citește (implicit: acum) — o trecere la un pachet mai mic, programată de la 1 a lunii următoare,
+// devine pachetul firmei din clipa aceea (pachete.pachetFirma).
+function pachetAi(company, acum) { return company ? pachete.pachetFirma(_setariFirma(company), aiVechi(company), acum == null ? Date.now() : acum) : null; }
+
 function computeCompanyPrice(company, canCounts, opts) {
   opts = opts || {};
   const cc = canCounts || {};
@@ -60,10 +73,15 @@ function computeCompanyPrice(company, canCounts, opts) {
   // scrisă într-o fișă ar fi apărut pe factură la o firmă care n-a cumpărat nimic.
   const aiAssistOn = (feats ? !!feats.ai_assistant : true) && featuresSetate(company).ai_assistant === true;
   const aiAgentsOn = feats ? !!feats.agents : true;
+  // Pachetul RA Insight (pasul 5): un preț fix pe FIRMĂ, pe orice fel de ofertă (și fără ofertă) — „RA Insight Pro" pe factură
+  // și în registru, din același loc. Start = 0. Cu modulul oprit de noi, nimic.
+  const pk = (feats ? !!feats.ai_assistant : true) ? pachetAi(company) : null;
+  const pachetLei = pk && pk.ai ? num(pk.pretRON) : 0;
   const mk = function (model, perVehicleTotal, aiTotal, bd) {
     return {
-      model: model, perVehicleTotal: perVehicleTotal, aiTotal: aiTotal, monthlyTotal: perVehicleTotal + aiTotal,
-      breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiAssistant: 0, aiAgents: 0, counts: { none: none, can: can, fms: fms, total: total } }, bd)
+      model: model, perVehicleTotal: perVehicleTotal, aiTotal: aiTotal + pachetLei, monthlyTotal: perVehicleTotal + aiTotal + pachetLei,
+      breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiAssistant: 0, aiAgents: 0, aiPachet: pachetLei,
+        aiPachetEticheta: pachetLei > 0 ? pachete.eticheta(pk) : null, counts: { none: none, can: can, fms: fms, total: total } }, bd)
     };
   };
   // DIRECT pe tip: preț ÎNTREG/vehicul fără CAN + preț ÎNTREG/vehicul cu CAN (+ FMS opțional). Cel mai intuitiv
@@ -147,7 +165,7 @@ function enabledAgentsFor(company) {
 
 // `effectivePlan` rămâne ca nume vechi, ca să nu rupă apelurile existente — dar întoarce OFERTA.
 module.exports = {
-  ofertaFirmei, effectivePlan: ofertaFirmei, computeCompanyPrice,
+  ofertaFirmei, effectivePlan: ofertaFirmei, computeCompanyPrice, pachetAi, aiVechi,
   ALL_AGENT_KEYS, enabledAgentsFor, FEATURE_KEYS, featuresFor, featuresSetate,
   FEATURE_DUPA_FLOTA, TIPURI_CU_MARFA, setFlotaGrea, setFlotaGreaFirma, areFlotaGrea
 };

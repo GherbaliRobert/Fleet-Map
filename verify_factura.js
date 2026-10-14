@@ -49,6 +49,7 @@ const venit = new Function('plans', 'contracte', bucataQ + '\n' + bucataL + '\n'
 
 const firma = (plan, quota, features, pastrare) => ({ id: 1, name: 'Transport Probă SRL', custom_plan: plan,
   settings: Object.assign({}, quota ? { ai_quota: quota } : {}, features ? { features: features } : {}, pastrare ? { pastrare: pastrare } : {}) });
+const pachet = (plan, ap, features) => ({ id: 2, name: 'Pachet Probă SRL', custom_plan: plan, settings: Object.assign({ ai_pachet: ap }, features ? { features: features } : {}) });
 // Conturile RA Insight intră pe factură prin billCounts.raInsight, exact cum le pune _companyBillCounts.
 const factura = (co, nr, conturi) => {
   const q = (co.settings && co.settings.ai_quota) || {};
@@ -75,7 +76,13 @@ const CAZURI = [
   ['păstrarea istoricului 24 de luni × 50 lei se adaugă', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 24, pretRON: 50 }), { none: 2, can: 3, fms: 0 }, 0, 243],
   ['...36 de luni, cu RA Insight alături', firma({ priceNoneRON: 29, priceCanRON: 45 }, { questionsPerSeat: 100, seatPriceRON: 14 }, null, { luni: 36, pretRON: 100 }), { none: 2, can: 3, fms: 0 }, 2, 321],
   ['12 luni sunt incluse: nu se facturează nimic în plus', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 12, pretRON: 50 }), { none: 2, can: 3, fms: 0 }, 0, 193],
-  ['24 de luni date gratis (0 lei): fără rând', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 24, pretRON: 0 }), { none: 2, can: 3, fms: 0 }, 0, 193]
+  ['24 de luni date gratis (0 lei): fără rând', firma({ priceNoneRON: 29, priceCanRON: 45 }, null, null, { luni: 24, pretRON: 0 }), { none: 2, can: 3, fms: 0 }, 0, 193],
+  // Pachetele RA Insight (14.10, pasul 5): un preț fix pe firmă, din motorul de preț — pe factură și în registru.
+  ['pachetul RA Insight Pro (20 de lei) se adaugă, oricâte conturi', pachet({ priceNoneRON: 29, priceCanRON: 45 }, { cod: 'pro', pretRON: 20 }), { none: 2, can: 3, fms: 0 }, 0, 213],
+  ['…cu prețul semnat (18 lei), nu cel de listă', pachet({ priceNoneRON: 29 }, { cod: 'business', pretRON: 18 }), { none: 1, can: 0, fms: 0 }, 0, 47],
+  ['pachetul Start: inclus, fără rând', pachet({ priceNoneRON: 29 }, { cod: 'start' }), { none: 1, can: 0, fms: 0 }, 0, 29],
+  ['firmă fără ofertă, pe Basic: doar pachetul', pachet(null, { cod: 'basic', pretRON: 10 }), { none: 0, can: 0, fms: 0 }, 0, 10],
+  ['pachetul și modulul RA Insight oprit de noi: nimic', pachet({ priceNoneRON: 29 }, { cod: 'pro', pretRON: 20 }, { ai_assistant: false }), { none: 1, can: 0, fms: 0 }, 0, 29]
 ];
 for (const [nume, co, nr, conturi, astept] of CAZURI) {
   const f = factura(co, nr, conturi);
@@ -93,6 +100,9 @@ T('mașinile cu CAN au rândul lor, cu cantitatea și prețul lor',
   !!rand(/cu CAN/) && rand(/cu CAN/).qty === 3 && rand(/cu CAN/).unitPrice === 45, JSON.stringify(rand(/cu CAN/)));
 T('conturile de RA Insight au rândul lor', !!rand(/RA Insight/) && rand(/RA Insight/).net === 28);
 T('TVA-ul se pune pe fiecare rând', f1.lines.every(l => Math.abs(l.vat - Math.round(l.net * 19) / 100) < 0.005));
+const fp = factura(pachet({ priceNoneRON: 29 }, { cod: 'pro', pretRON: 20 }), { none: 1, can: 0, fms: 0 }, 3);
+const rpk = fp.lines.filter(l => /^RA Insight/.test(l.desc));
+T('pachetul are UN rând, „RA Insight Pro", 1 × 20 de lei — chiar dacă firma are conturi aprinse', rpk.length === 1 && rpk[0].desc === 'RA Insight Pro' && rpk[0].qty === 1 && rpk[0].net === 20, JSON.stringify(rpk));
 T('totalul = fără TVA + TVA', Math.abs(f1.total - (f1.subtotal + f1.vatAmount)) < 0.005);
 const f2 = factura(firma({ priceNoneRON: 29 }, null, null, { luni: 24, pretRON: 50 }), { none: 1, can: 0, fms: 0 }, 0);
 const rp = f2.lines.filter(l => /^Păstrarea istoricului/.test(l.desc))[0];

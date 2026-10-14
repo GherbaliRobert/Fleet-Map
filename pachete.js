@@ -43,14 +43,22 @@ function _setari(settings) {
 // Firma rămasă pe regula VECHE, pe cont (`ai_quota` cu întrebări pe cont sau cotă fixă, ori limita cea mai veche,
 // `companies.ai_monthly_limit` = `limitaVeche`) → null: o citește regula veche până o mutăm noi pe un pachet, din fișa
 // firmei. Prețul semnat (`pretRON`) bate prețul de pornire.
-function pachetFirma(settings, limitaVeche) {
+// `acum` (ms): o trecere la un pachet mai mic, programată de la 1 a lunii următoare (`ai_pachet_urmator`, pasul 6), devine
+// pachetul firmei din clipa aceea; până atunci stă în `urmator` (ecranele scriu „Basic din 1 noiembrie").
+function pachetFirma(settings, limitaVeche, acum) {
   const s = _setari(settings);
-  const ap = s.ai_pachet;
+  const um = s.ai_pachet_urmator && typeof s.ai_pachet_urmator === 'object' && dupaCod(s.ai_pachet_urmator.cod) ? s.ai_pachet_urmator : null;
+  const aplicat = um && Number.isFinite(Number(acum)) && Number(acum) >= Number(um.de_la);
+  const ap = aplicat ? um : s.ai_pachet;
   if (ap && typeof ap === 'object' && dupaCod(ap.cod)) {
     const p = dupaCod(ap.cod);
     const pret = Number(ap.pretRON);
     p.pretRON = Number.isFinite(pret) && pret >= 0 ? r2(pret) : p.pret;
     p.deLa = Number.isFinite(Number(ap.de_la)) ? Number(ap.de_la) : null;
+    if (um && !aplicat) {
+      const u = dupaCod(um.cod), pu = Number(um.pretRON);
+      p.urmator = { cod: u.cod, nume: u.nume, pretRON: Number.isFinite(pu) && pu >= 0 ? r2(pu) : u.pret, deLa: Number(um.de_la) };
+    }
     return p;
   }
   const q = s.ai_quota || {};
@@ -60,7 +68,8 @@ function pachetFirma(settings, limitaVeche) {
   return p;
 }
 // Ce se scrie pe firmă când îi punem un pachet (super-admin, oferta, trecerea din aplicație). null = date greșite.
-function curataPachet(b) {
+// `preturi` = prețurile de listă de azi (preturiLista) — fără preț trimis, se ia cel de listă.
+function curataPachet(b, preturi) {
   if (!b || typeof b !== 'object') return null;
   const p = dupaCod(b.cod);
   if (!p) return null;
@@ -69,7 +78,7 @@ function curataPachet(b) {
     const pret = Number(b.pretRON);
     if (!Number.isFinite(pret) || pret < 0 || pret > 100000) return null;
     out.pretRON = r2(pret);
-  } else out.pretRON = p.pret;
+  } else out.pretRON = preturi && preturi[p.cod] != null ? preturi[p.cod] : p.pret;
   if (b.de_la != null && Number.isFinite(Number(b.de_la))) out.de_la = Math.round(Number(b.de_la));
   return out;
 }
@@ -234,6 +243,183 @@ function notaConturi(p) {
     'întrebări ale pachetului. Un om ajuns la limita lui primește „Ai folosit cele … întrebări date de administrator”.';
 }
 
+// ─── Oferta, contractul, factura (pasul 5) ─────────────────────────────────────────────────────────────────────────────
+// Cât ne costă o întrebare obișnuită pe Haiku 5.5 (măsurat 09–14.10: 0,43–0,49 bani) — capătul prudent. Cu el și cu bugetul
+// de analiză aprofundată (cheltuit tot, ca să fim prudenți) se scrie „ce rămâne la noi" în ofertă; cel mai rău caz e plasa.
+const COST_INTREBARE_LEI = 0.0049;
+function eticheta(p) { return 'RA Insight ' + p.nume; }
+// „2 conturi · 200 de întrebări pe lună" — pentru ofertă, contract și factură.
+function descriere(p) {
+  if (!p.ai) return 'doar administratorul · ' + cant(p.intrebari, 'răspuns', 'răspunsuri') + ' pe butoane pe lună';
+  const nr = function (n) { return Number(n).toLocaleString('ro-RO') + deNr(n); };
+  return (p.conturi == null ? 'conturi nelimitate' : (p.conturi === 2 ? '2 conturi' : 'până la ' + cant(p.conturi, 'cont', 'conturi'))) + ' · ' +
+    nr(p.intrebari) + 'întrebări pe lună';
+}
+// Ce rămâne la noi dintr-un pachet, pe lună: „obișnuit" = toate întrebările la costul obișnuit + tot bugetul de Sonnet;
+// „minim" = plasa (o firmă nu ne poate costa mai mult de 80% din preț). Doar pentru noi — nu ajunge pe hârtia clientului.
+function marja(cod, pretRON) {
+  const p = dupaCod(cod); if (!p || !p.ai) return { obisnuit: 0, minim: 0 };
+  const pret = Number(pretRON != null ? pretRON : p.pret) || 0;
+  return { obisnuit: r2(pret - p.intrebari * COST_INTREBARE_LEI - p.sonnetLei), minim: r2(pret * (1 - PLASA)) };
+}
+// Clauza trecerii la alt pachet (macheta din 14.10, varianta B): scrisă în contract și în condițiile ofertei. O citește
+// juristul odată cu restul contractului (la „De amintit").
+const CLAUZA_TRECERE = 'Pachetul RA Insight se poate schimba oricând de administratorul Beneficiarului, din aplicație; confirmarea din ' +
+  'aplicație ține loc de act adițional. Trecerea la un pachet mai mare se aplică din ziua confirmării, iar luna respectivă se ' +
+  'facturează pe zile, pentru fiecare pachet. Trecerea la un pachet mai mic se aplică de la 1 a lunii următoare.';
+
+// ─── Trecerea la alt pachet, din aplicație (pasul 6; macheta din 14.10, varianta B) ───────────────────────────────────
+// Administratorul firmei alege; mai mare = din ziua confirmării, iar luna se facturează pe zile (diferența, pe factura lunii
+// următoare — ca la aparatele pornite în cursul lunii, abonament.js); mai mic = de la 1 a lunii următoare. Confirmarea din
+// aplicație ține loc de act adițional (CLAUZA_TRECERE), iar PDF-ul ei pleacă pe email. Totul pe ORA ROMÂNIEI.
+const ORDINE = { start: 0, basic: 1, pro: 2, business: 3 };
+function _partiRo(t) {
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(Number(t))).forEach(function (x) { if (x.type !== 'literal') p[x.type] = +x.value; });
+  return p;
+}
+function ziuaRo(t) { const p = _partiRo(t); return { an: p.year, luna: p.month, zi: p.day }; }
+// Clipa în care începe ziua (an, luna, zi) la București (miezul nopții, cu ora de vară / iarnă).
+function ziRo(an, luna, zi) {
+  const g = Date.UTC(an, luna - 1, zi), p = _partiRo(g);
+  return g - (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - g);
+}
+function zileLuna(an, luna) { return new Date(Date.UTC(an, luna, 0)).getUTCDate(); }
+function inceputZi(t) { const z = ziuaRo(t); return ziRo(z.an, z.luna, z.zi); }
+function inceputLunaUrm(t) { const z = ziuaRo(t); return z.luna === 12 ? ziRo(z.an + 1, 1, 1) : ziRo(z.an, z.luna + 1, 1); }
+function dataScurta(t) { const z = ziuaRo(t); return String(z.zi).padStart(2, '0') + '.' + String(z.luna).padStart(2, '0') + '.' + z.an; }
+function dataLunga(t) { const z = ziuaRo(t); return z.zi + ' ' + LUNI[z.luna - 1] + ' ' + z.an; }
+function _bani(x) { return (Number(x) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei'; }
+function _pePachet(p, pret) { return 'pachetul RA Insight ' + p.nume + ' (' + (p.ai ? _lei(pret) + ' pe lună, fără TVA' : 'inclus, fără cost') + ')'; }
+const FINAL_CONFIRMARE = 'Confirm, ca administrator al firmei, această schimbare. Confirmarea din aplicație ține loc de act adițional la contract.';
+
+// Istoricul pachetului unei firme, pentru factură: [{ de_la, cod, pretRON }] în ordine, cu trecerea programată (dacă e).
+// Firmele cu pachet de dinainte de istoric (pașii 1–5) pornesc de la pachetul de azi, din ziua în care l-au primit.
+function istoricFirma(settings) {
+  const s = _setari(settings);
+  let l = Array.isArray(s.ai_pachet_istoric) ? s.ai_pachet_istoric.filter(function (x) { return x && dupaCod(x.cod) && Number.isFinite(Number(x.de_la)); }) : [];
+  if (!l.length && s.ai_pachet && dupaCod(s.ai_pachet.cod)) l = [{ de_la: Number(s.ai_pachet.de_la) || 0, cod: s.ai_pachet.cod, pretRON: s.ai_pachet.pretRON }];
+  const um = s.ai_pachet_urmator;
+  if (um && dupaCod(um.cod) && Number.isFinite(Number(um.de_la))) l = l.filter(function (x) { return Number(x.de_la) < Number(um.de_la); }).concat([um]);
+  return l.map(function (x) { const p = dupaCod(x.cod), v = Number(x.pretRON); return { de_la: Number(x.de_la), cod: p.cod, pretRON: Number.isFinite(v) && v >= 0 ? r2(v) : p.pret }; })
+    .sort(function (a, b) { return a.de_la - b.de_la; });
+}
+// O intrare nouă în istoric: tot ce era de la ea încolo (o trecere programată) se înlocuiește. Cel mult 60 de intrări.
+function adaugaIstoric(settings, intrare) {
+  const l = istoricFirma(settings).filter(function (x) { return x.de_la < Number(intrare.de_la); });
+  l.push({ de_la: Number(intrare.de_la), cod: intrare.cod, pretRON: r2(intrare.pretRON) });
+  return l.slice(-60);
+}
+// Trecerea programată care a ajuns la zi devine pachetul firmei (se scrie la prima schimbare de după, ca istoricul să o țină).
+// Întoarce setările de scris (o copie) — fără efect dacă n-are ce muta.
+function consolideaza(settings, acum) {
+  const s = Object.assign({}, _setari(settings)), um = s.ai_pachet_urmator;
+  if (!(um && dupaCod(um.cod) && Number(acum) >= Number(um.de_la))) return s;
+  s.ai_pachet_istoric = istoricFirma(s);
+  s.ai_pachet = { cod: um.cod, pretRON: um.pretRON, de_la: Number(um.de_la) };
+  delete s.ai_pachet_urmator;
+  return s;
+}
+// Pachetul (și prețul) la o clipă; înainte de prima intrare = Start, 0 lei.
+function pretLa(istoric, t) {
+  let e = null;
+  (istoric || []).forEach(function (x) { if (x.de_la <= t) e = x; });
+  return e || { de_la: 0, cod: 'start', pretRON: 0 };
+}
+// Zilele lunii (an, luna), din ziua `deLaZi`, strânse pe bucăți cu același pachet și același preț.
+function bucatiLuna(istoric, an, luna, deLaZi) {
+  const n = zileLuna(an, luna), out = [];
+  for (let d = Math.max(1, deLaZi || 1); d <= n; d++) {
+    const e = pretLa(istoric, ziRo(an, luna, d) + 12 * 3600000);
+    const u = out[out.length - 1];
+    if (u && u.cod === e.cod && u.pretRON === e.pretRON) { u.zf = d; u.zile++; } else out.push({ cod: e.cod, pretRON: e.pretRON, zi: d, zf: d, zile: 1 });
+  }
+  return out;
+}
+// Rândurile pachetului pe factura lunii M (an, luna) — ACEEAȘI regulă ca abonamentul (abonament.js):
+//   intreaga:   firma avea aparate pornite înainte de 1 M → luna M întreagă, la pachetul de pe 1 M;
+//   partialaZi: primul aparat a pornit în M-1, din ziua asta → zilele din M-1, pe bucăți, fiecare la pachetul ei;
+//   altfel, dacă M-1 s-a facturat întreagă (anterioaraIntreaga) → diferența pe zile pentru fiecare trecere la un pachet mai
+//   mare din M-1 (luna M-1 s-a facturat în avans, pe 1, la pachetul de atunci). O trecere la un pachet mai mic nu dă bani înapoi
+//   (se aplică de la 1 a lunii următoare, deci nu cade în mijlocul unei luni).
+// Întoarce [{ desc, pret }] — prețul pe rând, rotunjit la ban; TVA-ul îl pune factura.
+function liniiFactura(o) {
+  const ist = o.istoric || [], M = { an: o.an, luna: o.luna };
+  const P = M.luna === 1 ? { an: M.an - 1, luna: 12 } : { an: M.an, luna: M.luna - 1 };
+  const nP = zileLuna(P.an, P.luna), ll = String(P.luna).padStart(2, '0');
+  const per = function (b) { return (b.zi === b.zf ? String(b.zi) : b.zi + '–' + b.zf) + '.' + ll + '.' + P.an + ' (' + cant(b.zile, 'zi', 'zile') + ')'; };
+  const out = [];
+  if (o.intreaga) {
+    const e = pretLa(ist, ziRo(M.an, M.luna, 1) + 3600000);
+    if (e.pretRON > 0) out.push({ desc: eticheta(dupaCod(e.cod)) + ' — ' + LUNI[M.luna - 1] + ' ' + M.an, pret: e.pretRON });
+  }
+  if (o.partialaZi) {
+    bucatiLuna(ist, P.an, P.luna, o.partialaZi).forEach(function (b) {
+      if (b.pretRON > 0) out.push({ desc: eticheta(dupaCod(b.cod)) + ' — ' + per(b), pret: r2(b.pretRON * b.zile / nP) });
+    });
+  } else if (o.anterioaraIntreaga) {
+    const ref = pretLa(ist, ziRo(P.an, P.luna, 1) + 3600000);
+    bucatiLuna(ist, P.an, P.luna, 1).forEach(function (b) {
+      if (b.pretRON > ref.pretRON) out.push({ desc: 'RA Insight — trecerea la pachetul ' + dupaCod(b.cod).nume + ', ' + per(b), pret: r2((b.pretRON - ref.pretRON) * b.zile / nP) });
+    });
+  }
+  return out;
+}
+// Ce se întâmplă dacă administratorul alege pachetul `la`: o = { actual (pachetFirma, cu `urmator`), la, pretNou (prețul
+// pachetului ales pentru firma asta — din contract sau lista de azi), conturi (câți au RA Insight acum), firma (numele), acum }.
+// Întoarce { refuz } sau { sens: 'sus' | 'jos' | 'anulare', deLa, text } — textul e exact cel pe care îl confirmă omul.
+function trecere(o) {
+  const a = o.actual, n = dupaCod(o.la), acum = Number(o.acum) || Date.now(), F = String(o.firma || 'Firma').trim();
+  if (!a) return { refuz: 'Firma e pe regula veche, pe cont. Pentru pachete, scrie-ne și o trecem noi.' };
+  if (!n) return { refuz: 'Pachetul ales nu există. Pachetele: Start, Basic, Pro, Business.' };
+  const pV = r2(a.pretRON), pN = n.ai ? r2(o.pretNou) : 0;
+  if (n.ai && !(pN > 0)) return { refuz: 'Pachetul ' + n.nume + ' n-are încă preț. Scrie-ne și îl punem noi.' };
+  const de = { de: a.cod, la: n.cod, pretVechi: pV, pretNou: pN, numeVechi: a.nume, numeNou: n.nume };
+  if (n.cod === a.cod) {
+    if (!a.urmator) return { refuz: 'Firma are deja pachetul ' + n.nume + '.' };
+    return Object.assign(de, { sens: 'anulare', deLa: acum, pretNou: pV,
+      text: 'Firma ' + F + ' rămâne pe ' + _pePachet(a, pV) + '. Trecerea la pachetul ' + a.urmator.nume + ', programată din ' + dataLunga(a.urmator.deLa) + ', se anulează. ' + FINAL_CONFIRMARE });
+  }
+  if (ORDINE[n.cod] > ORDINE[a.cod]) {
+    const deLa = inceputZi(acum), z = ziuaRo(deLa), nL = zileLuna(z.an, z.luna), ramase = nL - z.zi + 1;
+    const dif = r2((pN - pV) * ramase / nL);
+    const urm = LUNI[z.luna % 12];
+    return Object.assign(de, { sens: 'sus', deLa: deLa, diferenta: dif, zileRamase: ramase,
+      text: 'Firma ' + F + ' trece de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + ', din ' + dataLunga(deLa) + '. ' +
+        'Luna ' + LUNI[z.luna - 1] + ' se facturează pe zile: pentru ' + (ramase === nL ? 'toată luna' : 'cele ' + cant(ramase, 'zi rămasă', 'zile rămase')) +
+        ' se adaugă diferența de ' + _bani(dif) + ' fără TVA, pe factura din 1 ' + urm + '. ' + FINAL_CONFIRMARE });
+  }
+  const loc = n.conturi, c = Math.max(0, Math.round(Number(o.conturi) || 0));
+  if (loc != null && c > loc) {
+    return { refuz: n.cod === 'start'
+      ? 'Pe Start, RA Insight îl are doar administratorul; acum îl au ' + cant(c, 'om', 'oameni') + '. Oprește-l întâi celorlalți din „Pachet și conturi”, apoi alege din nou.'
+      : 'Pachetul ' + n.nume + ' are ' + cant(loc, 'cont', 'conturi') + '; acum RA Insight îl au ' + cant(c, 'om', 'oameni') + '. Oprește întâi ' + cant(c - loc, 'cont', 'conturi') + ' din „Pachet și conturi”, apoi alege din nou.' };
+  }
+  const deLa = inceputLunaUrm(acum);
+  return Object.assign(de, { sens: 'jos', deLa: deLa,
+    text: 'Firma ' + F + ' trece de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + ', din ' + dataLunga(deLa) + '. Până atunci rămâne pachetul ' + a.nume + '.' +
+      (n.cod === 'start' ? ' Pe Start, RA Insight îl are doar administratorul, cu răspunsuri pe butoane, fără AI.' : '') + ' ' + FINAL_CONFIRMARE });
+}
+// Ce scrie serverul după confirmare (ecranul doar îl arată). `email` = { trimis, catre } — cum a plecat confirmarea.
+function textDupaTrecere(t, email) {
+  const conf = email && email.trimis ? ' Confirmarea a plecat pe email (' + email.catre + '), în PDF.'
+    : ' Confirmarea, în PDF, o găsești în „Pachet și conturi”' + (email && email.motiv ? ' (emailul n-a plecat: ' + email.motiv + ')' : '') + '.';
+  if (t.sens === 'sus') return 'Gata: firma are pachetul ' + t.numeNou + ' de azi.' + conf;
+  if (t.sens === 'jos') return 'Gata: firma trece pe pachetul ' + t.numeNou + ' din ' + dataLunga(t.deLa) + '. Până atunci rămâne ' + t.numeVechi + '.' + conf;
+  return 'Gata: firma rămâne pe pachetul ' + t.numeVechi + '.' + conf;
+}
+// Butonul din fereastra de confirmare și rândul din „Confirmările" firmei.
+function butonTrecere(t) {
+  if (t.sens === 'sus') return 'Trec la ' + t.numeNou + ' de azi';
+  if (t.sens === 'jos') return 'Trec la ' + t.numeNou + ' din ' + dataLunga(t.deLa);
+  return 'Rămân pe ' + t.numeVechi;
+}
+function rezumatTrecere(r) {
+  const n = function (c) { const p = dupaCod(c); return p ? p.nume : c; };
+  return r.sens === 'anulare' ? 'Rămâne ' + n(r.de_la) + ' (trecerea programată, anulată)' : n(r.de_la) + ' → ' + n(r.la) + ', din ' + dataScurta(r.aplicat_de_la);
+}
+
 // ─── Ce primește fiecare pachet, pe înțeles (macheta din 14.10, aprobată) — UN singur loc, pentru aplicație și site ───
 // Doar ce face aplicația AZI. Analiza aprofundată se scrie doar cât e pornită (o pornim noi, după probă).
 const DESCRIERE = {
@@ -249,14 +435,28 @@ const DESCRIERE = {
     include: ['Conturi nelimitate', '1.000 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată, cu buget mai mare' }, 'Tot ce are Pro'] },
 };
 const IN_TOATE = 'În toate: fiecare om își vede doar conversațiile lui · cifrele vin din rapoartele aplicației și se verifică singure · nu se plătește nimic peste preț · se reîncarcă pe 1.';
-// Lista pentru ecrane: o = { aprofundat: pornită?, cuPret: false pe site (Alin, 14.10: „nu afișăm prețurile, «cere ofertă»") }.
+// Prețurile de listă: cele din cod, peste care se pun cele din „Prețurile noastre" (`tarife_lista`: pkBasic / pkPro /
+// pkBusiness). O cifră lipsă sau stricată → prețul din cod, niciodată 0 (un pachet nu se dă pe gratis din greșeală).
+const CHEI_PRET = { basic: 'pkBasic', pro: 'pkPro', business: 'pkBusiness' };
+function preturiLista(tarife) {
+  const t = tarife || {}, out = {};
+  PACHETE.forEach(function (p) {
+    const k = CHEI_PRET[p.cod], v = k ? Number(t[k]) : NaN;
+    out[p.cod] = k && t[k] != null && t[k] !== '' && Number.isFinite(v) && v > 0 ? r2(v) : p.pret;
+  });
+  return out;
+}
+// Lista pentru ecrane: o = { aprofundat: pornită?, cuPret: false pe site (Alin, 14.10: „nu afișăm prețurile, «cere ofertă»"),
+// preturi: preturiLista(...) }.
 function publice(o) {
   o = o || {};
+  const pr = o.preturi || {};
   return PACHETE.map(function (p) {
     const d = DESCRIERE[p.cod];
     const include = d.include.map(function (x) { return typeof x === 'string' ? x : (o.aprofundat ? x.aprofundat : null); }).filter(Boolean);
     const out = { cod: p.cod, nume: p.nume, titlu: d.titlu, pentru: d.pentru, include: include, fara: d.fara || [] };
-    if (o.cuPret !== false) out.pret = p.pret === 0 ? 'Inclus' : p.pret + deNr(p.pret) + 'lei';
+    const lei = pr[p.cod] != null ? pr[p.cod] : p.pret;
+    if (o.cuPret !== false) out.pret = lei === 0 ? 'Inclus' : _lei(lei);
     out.subPret = p.pret === 0 ? 'în orice contract' : (o.cuPret !== false ? '/ lună' : 'Cere ofertă');
     return out;
   });
@@ -267,4 +467,7 @@ module.exports = {
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
   cartonaseConturi, textFolositeOm, notaConturi,
+  COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
+  ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,
+  istoricFirma, adaugaIstoric, consolideaza, pretLa, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,
 };

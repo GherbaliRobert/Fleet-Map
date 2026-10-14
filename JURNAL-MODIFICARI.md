@@ -32,6 +32,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   dacă avansul nu vine în 30 de zile (VII). **Din 02.10, și paginile publice Termeni și Confidențialitate** de pe
   ratrack.ro: sunt ciorne, cu nota „Document-model… înainte de lansare" pe ele și cu goluri de completat
   („[lunar/anual]", „[30] de zile", „[12] luni", „[Railway / furnizor cloud]", „[furnizor SMTP]").
+  **Din 14.10, și pachetele RA Insight:** clauza de trecere („confirmarea din aplicație ține loc de act adițional") din contract
+  și ofertă, plus hârtia confirmării (bifă + contul omului + ora + adresa IP + email cu PDF, fără semnătură) — e de ajuns așa?
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -254,10 +256,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   asta, orice firmă fără pachet scris e pe **Start** (doar administratorul, 50 de răspunsuri pe butoane, fără AI). Firmele
   care trebuie să întrebe RA Insight cu AI — și firma noastră, pe care probați — se pun pe Basic, Pro sau Business din
   Companii → firma → fila **„Acces"** → „Pachet RA Insight". Firmele rămase pe regula veche, pe cont (întrebări pe cont
-  scrise în „Abonament & plăți"), merg ca până acum până le mutați. Pe factură, pachetul ajunge abia la pasul ofertei (5).
+  scrise în „Abonament & plăți"), merg ca până acum până le mutați. **Din pașii 5–6 (14.10)** pachetul ajunge și pe factură
+  (un rând fix pe lună), iar o firmă cu pachet își poate schimba singură pachetul din aplicație.
 - [ ] **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
   („doar dacă proba arată că Haiku 5.5 e slab"). Se pornește dintr-un comutator al nostru, după probă; cât e oprită, nici
   „Vezi pachetele" nu o promite.
+- [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
+  „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
+  lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
+  RA Insight. (2) „Vezi pachetele" cu butoanele „Alege …" și fereastra de confirmare (textul de la server, bifa, „Trec la …"),
+  pe rutele `/api/insight/pachet-trecere`; „Pachet și conturi" cu ce e programat și lista confirmărilor, cu PDF.
 
 ---
 
@@ -491,7 +499,7 @@ pachet «cere ofertă»"*; eticheta „analiză aprofundată" — *„da"*; ordi
 - **Ce vede clientul:** administratorul unei firme fără pachet are RA Insight pe Start (50 de răspunsuri pe butoane);
   colegii lui, până la Basic, nu. Pe un pachet cu AI, caseta și contorul arată cât a rămas; la capăt, mesajul până pe 1.
 
-### AMÂNDOI · Pachetele RA Insight, pașii 3 și 4: „Pachet și conturi" și tabloul nostru de costuri
+### AMÂNDOI · Pachetele RA Insight, pașii 3 și 4: „Pachet și conturi" și tabloul nostru de costuri — `ad53166`
 
 1. **„Pachet și conturi"** (doar administratorul firmei), deschisă din caseta pachetului („Pachet și conturi →") și din
    Setări → Utilizatori: sus, pachetul (cu prețul lui), câte întrebări au rămas, câte conturi (și câte se mai pot da),
@@ -509,6 +517,35 @@ pachet «cere ofertă»"*; eticheta „analiză aprofundată" — *„da"*; ordi
   costul lunii pe toată platforma, răspunsurile pe butoane pe om), `public/index.html` + `app.css`. Proba: `verify_pachete.js`.
 - **Ce vede fondatorul:** blocul pachetelor în tablou, rândul pachetului pe fiecare firmă, anunțul de plasă, soldul Anthropic.
 - **Ce vede clientul:** administratorul — pagina „Pachet și conturi" și legătura ei din Utilizatori; colegii, nimic nou.
+
+### AMÂNDOI · Pachetele RA Insight, pașii 5 și 6: oferta, contractul, factura; trecerea la alt pachet din aplicație
+
+1. **Oferta** (Ofertare Live, cartea 3): RA Insight se alege dintr-o listă — Start (inclus), Basic, Pro, Business — cu prețul
+   pachetului alături (10 / 20 / 30 de lei, din „Prețurile noastre", se poate negocia). Dedesubt, doar pentru noi: ce primește
+   pachetul și ce ne rămâne (Pro la 20 de lei: ~12,06 lei într-o lună obișnuită, cel puțin 4 lei în cel mai rău caz). Grila
+   veche „pe cont, după flotă" a ieșit. Pe hârtia ofertei: pachetul, prețurile tuturor pachetelor și clauza de trecere.
+2. **Contractul**: pachetul ales, cu prețul lui, prețurile celorlalte la data semnării și clauza: *pachetul se schimbă din
+   aplicație; confirmarea ține loc de act adițional; mai mare — din ziua confirmării, luna pe zile; mai mic — de la 1 a lunii
+   următoare.* Contractul făcut din ofertă pune pachetul pe firmă (dacă firma n-are deja unul cu AI).
+3. **Factura**: un rând fix, „RA Insight Pro — noiembrie 2026"; o trecere la un pachet mai mare în cursul lunii adaugă pe factura
+   următoare diferența pe zile (Basic → Pro pe 14 octombrie: 5,81 lei pentru cele 18 zile rămase).
+4. **Trecerea din aplicație** (administratorul firmei): „Vezi pachetele" → „Alege Pro" → fereastra cu textul exact (de la ce
+   dată, cât, diferența pe zile) → bifa „Am citit și sunt de acord" → „Trec la Pro de azi". Confirmarea pleacă pe email (firmei
+   și lui), în PDF, și rămâne în „Pachet și conturi" → „Schimbările de pachet". Un pachet mai mic se programează de la 1 a lunii
+   următoare (și se poate anula până atunci, cu „Rămân pe Pro"); cu mai mulți oameni cu RA Insight decât are pachetul cel mic,
+   aplicația cere întâi să-i oprească.
+
+- **Ce am schimbat:** `pachete.js` (prețurile de listă, „ce rămâne la noi", clauza, trecerea, factura pe zile din istoric, ora
+  României), `plans.js` (prețul pachetului în prețul firmei), `server.js` (oferta, contractul, factura, rutele trecerii, emailul
+  confirmării, prețurile pe firmă; telefonul vechi — bifa RA Insight citită ca Basic), `contracts.js` + `contract_pdf.js`
+  (anexa, clauza, hârtia confirmării), `report_export.js` (hârtia ofertei), `db.js` (tabela `pachet_treceri`), `backup.js`,
+  `public/index.html` + `app.css`. Probe rescrise pe regula nouă: `verify_tarife.js`, `verify_ofertare.js`,
+  `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`; `verify_pachete.js` a crescut la 212 (cu email fals).
+- **Ce vede fondatorul:** în ofertă, alegerea pachetului și „ce rămâne la noi"; în „Prețurile noastre", trei rânduri
+  (Basic / Pro / Business); în fila „Acces" a firmei, trecerea programată de client; anunțul „RA Insight: Firma X — Basic → Pro";
+  în „Trimise", emailul de confirmare.
+- **Ce vede clientul:** pe ofertă și în contract, pachetul și prețurile; pe factură, rândul pachetului; administratorul își
+  schimbă singur pachetul din „Vezi pachetele", cu confirmare și PDF pe email.
 
 ---
 

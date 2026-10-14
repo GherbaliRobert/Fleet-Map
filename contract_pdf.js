@@ -407,6 +407,22 @@ function scrieContract(doc, date) {
           'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.'
         : 'Numărul de întrebări nu este limitat.'));
   }
+  // Pachetul RA Insight (14.10, pasul 5): pachetul ales, prețurile celorlalte și clauza de trecere din aplicație.
+  if (anexa.aiPachet && anexa.aiPachet.cod) {
+    const PK = require('./pachete');
+    const pk = PK.dupaCod(anexa.aiPachet.cod);
+    if (pk) {
+      const lista = anexa.aiPachet.lista || {};
+      const alte = PK.PACHETE.map(function (x) {
+        if (x.cod === pk.cod) return null;
+        if (!x.ai) return x.nume + ' — inclus';
+        return lista[x.cod] != null ? x.nume + ' — ' + _bani(lista[x.cod], anexa.currency) + ' pe lună' : null;
+      }).filter(Boolean);
+      _p(doc, 'RA Insight: pachetul ' + pk.nume + ' (' + PK.descriere(pk) + ')' +
+        (pk.ai ? ', ' + _bani(anexa.aiPachet.pretRON, anexa.currency) + ' pe lună, fără TVA' : ', inclus') + '. ' +
+        (alte.length ? 'Celelalte pachete, la data semnării: ' + alte.join('; ') + '. ' : '') + PK.CLAUZA_TRECERE);
+    }
+  }
   // Aparatele ÎNCHIRIATE (25.09): ale Prestatorului, cu chiria pe rând separat și durata minimă.
   const chirieA = anexa.chirie && (anexa.chirie.aparate || []).length ? anexa.chirie : null;
   const luniMinCh = chirieA ? (Number(chirieA.luniMin) || C.CHIRIE_LUNI_MIN) : 0;
@@ -675,6 +691,65 @@ function actPdf(date) {
   return doc;
 }
 
+// ─── Confirmarea trecerii la alt pachet RA Insight (pasul 6, 14.10) ─────────────────────────────────────
+// Administratorul firmei schimbă pachetul din aplicație; confirmarea ține loc de act adițional (clauza din contract,
+// pachete.CLAUZA_TRECERE). Hârtia NU se semnează: spune CE s-a confirmat (textul exact), CINE, CÂND și de pe ce adresă.
+// Pleacă pe email ambelor părți, iar rândul (`pachet_treceri`) rămâne dovada.
+function scrieConfirmarePachet(doc, date) {
+  const t = date.trecere || {};
+  const firma = date.firma || {};
+  const em = date.emitent || {};
+  const contract = date.contract || null;
+  const { left, w } = _ST(doc);
+  const sus = doc.page.margins.top;
+  const lg = _logo();
+  if (lg) { try { doc.image(lg, left, sus, { height: 22 }); } catch (e) {} }
+  doc.fillColor(GRI).font('Nunito').fontSize(9)
+    .text('Confirmarea nr. ' + _sauLinie(t.id) + ' / ' + _data(t.creat_la), left, sus + 7, { width: w, align: 'right' });
+  const yLinie = sus + 30;
+  doc.moveTo(left, yLinie).lineTo(left + w, yLinie).strokeColor(VERDE).lineWidth(2).stroke();
+  doc.y = yLinie + 14;
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(15).text('CONFIRMARE — PACHETUL RA INSIGHT', left, doc.y, { width: w, align: 'center' });
+  if (contract && contract.number) {
+    doc.font('Nunito').fontSize(9).fillColor(GRI)
+      .text('la contractul de prestări servicii nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), left, doc.y + 2, { width: w, align: 'center' });
+  }
+  doc.x = left; doc.y += 16;
+  _titlu(doc, 'I. PĂRȚILE');
+  _parte(doc, 'PRESTATOR', {
+    name: em.name, cui: em.cui, reg_com: em.reg_com,
+    address: [em.address, em.city, em.county].filter(Boolean).join(', '),
+    email: em.email, phone: em.phone
+  });
+  _parte(doc, 'BENEFICIAR', { name: firma.name, cui: firma.cui, reg_com: firma.reg_com, address: firma.address, email: firma.contact_email, phone: firma.phone });
+  _titlu(doc, 'II. CE S-A CONFIRMAT');
+  _p(doc, t.text || '');
+  _titlu(doc, 'III. CINE ȘI CÂND');
+  const ora = t.creat_la ? new Date(Number(t.creat_la)).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '____________';
+  _p(doc, 'Confirmat din aplicația RA Track de ' + _sauLinie(t.user_nume) + ', administratorul firmei, pe ' + ora + ' (ora României)' +
+    (t.ip ? ', de la adresa IP ' + t.ip : '') + '.');
+  _p(doc, 'Schimbarea produce efecte din ' + _data(t.aplicat_de_la) + '. Restul clauzelor contractului rămân neschimbate. ' +
+    'Documentul se trimite pe email ambelor părți și se păstrează în aplicație; nu se semnează separat.');
+}
+function confirmarePachetPdf(date) {
+  const doc = new PDFDocument({ size: 'A4', margin: 50, info: { Title: 'Confirmare pachet RA Insight', Author: 'RA Track' } });
+  try {
+    doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
+    doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));
+  } catch (e) {
+    try { doc.registerFont('Nunito', 'Helvetica'); doc.registerFont('Nunito-Bold', 'Helvetica-Bold'); } catch (e2) {}
+  }
+  scrieConfirmarePachet(doc, date);
+  doc.end();
+  return doc;
+}
+// „RA-Track - Confirmare pachet RA Insight - Transport Alfa SRL - 14.10.2026.pdf"
+function numeConfirmarePachet(firma, ms) {
+  const curat = function (x) { return String(x || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
+  const cine = curat(firma && firma.name);
+  return 'RA-Track - Confirmare pachet RA Insight' + (cine ? ' - ' + cine : '') + ' - ' + curat(_data(ms)) + '.pdf';
+}
+
 // Randează contractul într-un flux (răspunsul HTTP). Întoarce documentul, ca apelantul să-l poată lega.
 function contractPdf(date) {
   const doc = new PDFDocument({
@@ -851,4 +926,5 @@ function contractMontajPdf(date) {
   return doc;
 }
 
-module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier, contractMontajPdf, scrieContractMontaj };
+module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier, contractMontajPdf, scrieContractMontaj,
+  confirmarePachetPdf, scrieConfirmarePachet, numeConfirmarePachet };

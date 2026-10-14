@@ -660,7 +660,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   (`_strangePeModele` → `_costUsdRand` → `ai.costUsd`, singura formulă); rândurile fără model (de dinainte de 08.10) =
   `MODEL_RANDURI_VECHI` (Haiku 4.5), NU modelul de azi. Dashboard, „Utilizare RA Insight" și istoricul ei citesc `cost_usd`;
   pagina ia costul rândului de la server (`_raxCostRand`). NU mai înmulți tokeni adunați cu prețul unui singur model.
-  ⚠ Estimarea din Ofertare (`_aiqCost`, grila pe cont) e încă măsurată pe Haiku 4.5 — e partea prudentă (Haiku 5.5 e mai ieftin).
+  Ofertare: „ce rămâne la noi” dintr-un pachet folosește `pachete.COST_INTREBARE_LEI` (Haiku 5.5, capătul prudent al măsurătorii).
 - **„Proba modelelor"** (Administrare → Utilizare RA Insight, `raxProbaModele`, blocul între sentinele): rutele
   `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
   Răspunde ACEEAȘI funcție, `_raInsight(await _cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al
@@ -679,22 +679,20 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 
 - **Monedă dublă:** toate sumele apar în lei ȘI euro, la cursul dat de `GET /api/fx`. Clientul are
   `window.raFx()` → `{ eur, date, sursa }`.
-- **RA Insight se vinde pe CONT**, iar prețul contului depinde DOAR de mărimea flotei — vezi
-  „Cum se tarifează RA Insight" mai jos. (⚠ Paragraful vechi de aici descria pachete de apeluri cu
-  `AIQ_PRICE` = 19/29/49/59 și `AIQ_SUGGEST`. **Nu mai există în cod** din 11.09, când s-a trecut pe
-  cont; nota a rămas în urmă până pe 23.09.)
+- **RA Insight se vinde în PACHETE pe firmă** (din 14.10, pasul 5) — vezi „Pachetele RA Insight" mai jos. Grila pe cont după
+  mărimea flotei a ieșit din ofertă; ofertele VECHI, pe cont, se redeschid pe Basic (de verificat prețul înainte de salvare).
 - **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
 
-### Pachetele RA Insight (Alin, 14.10, capitolul 1) — în construcție: pașii 1–2 GATA (regula pe server + chatul)
+### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–6 GATA (regula, chatul, conturile, tabloul, oferta, trecerea)
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
 fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
 împărțirea pe oameni, analiza aprofundată) · **Business** 30 lei (conturi nelimitate, 1.000). Se reîncarcă pe 1; FĂRĂ pachete de
 întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
-mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" · 4 tabloul nostru · 5 oferta,
-contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) · 6 trecerea din aplicație (confirmare cu
-bifă, PDF pe email, fără Stripe) · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") · 8 telefonul.
+mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" ✅ · 4 tabloul nostru ✅ · 5 oferta,
+contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) ✅ · 6 trecerea din aplicație (confirmare cu
+bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") · 8 telefonul.
 - **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, limitaVeche)` (fără nimic scris = Start;
   `ai_quota` cu întrebări pe cont / cotă fixă sau `companies.ai_monthly_limit` = regula VECHE → null, o citește codul vechi),
   `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
@@ -739,94 +737,54 @@ bifă, PDF pe email, fără Stripe) · 7 pagina pachetelor (aplicație + site, p
   `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
   `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic = setarea `anthropic_sold` (`PUT /api/admin/insight/sold`),
   zilele = sold ÷ (costul lunii pe toată platforma ÷ ziua lunii). Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
-- Păzit de `verify_pachete.js` (în `npm test`; 142, pe server pornit cu modelul simulat).
-- **Încă de făcut, în ordinea de mai sus.** Până la pasul 5 pachetul NU ajunge pe factură; până atunci firmele pe regula veche
-  (pe cont) se facturează ca înainte. Când se face pasul 5, grila pe cont (`AIQ_PRET_LOC`) și facturarea pe vârful lunii ies
-  pentru ofertele noi, iar regula „RA Track NU funcționează pe planuri" se scrie cu excepția pachetelor RA Insight.
+- **Pasul 5, oferta → contract → firmă → factură:** prețurile de listă = `tarife_lista.pkBasic / pkPro / pkBusiness` („Prețurile
+  noastre"), citite DOAR prin `pachete.preturiLista` (serverul: `_preturiPachete`; gol / 0 / text → prețul din cod, niciodată 0).
+  În ofertă: cartea 3, `of-aiPachet` (pornește pe Start) + `of-pPachet` (propus din listă prin `_ofPropunePachet`, negociabil) —
+  blocul „pachetele RA Insight în ofertă" (`_ofPachetMarja` = `pachete.marja`, „ce rămâne la noi" DOAR pentru noi; ce primește
+  pachetul din `_ofMeta.pachete`, de la `_ofMetaPachete`, aceeași pentru telefon). UN rând `fel: 'ai'` cu `pachet` în `_ofCalc`;
+  ofertele vechi (pe cont) se socotesc pe ramura veche. Hârtia ofertei: „ce include" + condiția cu toate prețurile și
+  `pachete.CLAUZA_TRECERE` (pentru „administratorul firmei"). Contractul: `annex.aiPachet = { cod, nume, pretRON, lista }`
+  (`contracte.facAnexa`, păstrat de `dinAnexaDePastrat`) + paragraful din IV cu clauza. Pe firmă: `_aplicaOfertaPeFirma` scrie
+  `ai_pachet` DOAR dacă firma n-are deja un pachet cu AI. Ce pachet are o firmă = O regulă: `plans.pachetAi(company, acum)`
+  (`aiVechi` = regula veche), folosită de `_pachetCo`. Prețul lunar: `computeCompanyPrice` → `breakdown.aiPachet` +
+  `aiPachetEticheta` („RA Insight Pro") → factura (`buildInvoiceLines`, înaintea regulii pe cont) și registrul. „Contract ↔
+  factură": pachetul din contract lângă rândul facturii. Telefonul de dinainte de pachete trimite încă bifa `aiA` la socoteala
+  ofertei: serverul o citește ca Basic (`_ofSocoteste`), până la APK-ul nou.
+- **Pasul 6, trecerea din aplicație** (administratorul firmei, NU noi — noi punem pachetul din fila „Acces"): „Vezi pachetele" →
+  „Alege Pro" (`insightTrecere`) → fereastra cu textul EXACT de la server + bifa „Am citit și sunt de acord" → confirmarea.
+  Regula și textul: `pachete.trecere` — mai mare = din ziua confirmării (`inceputZi`, ora României), luna pe zile; mai mic = de la
+  1 a lunii următoare (`ai_pachet_urmator`, programat; `pachetFirma(…, acum)` îl ia din clipa lui, fără ceas), refuzat cu mai
+  mulți oameni cu RA Insight decât are pachetul cel mic; același pachet cu o trecere programată = anularea ei. Prețul pentru firmă:
+  `_preturiPachetFirma` (lista de azi, peste ea prețurile din contract și prețul pachetului de acum). Rutele:
+  `GET/POST /api/insight/pachet-trecere` (`manageUsers`, nu super-admin, nu demo, nu regula veche — `_poateSchimbaPachet`; POST
+  cere `acord: true` și ACELAȘI text, altfel 409 cu textul nou), `GET /api/insight/pachet-trecere/:id/pdf` (firma ei sau noi; altfel
+  404). Se scrie O DATĂ, prin `_applyCompanySettingsPatch` (`opts.trecere`), iar orice schimbare de pachet (și cea pusă de noi)
+  intră în `settings.ai_pachet_istoric` (`pachete.adaugaIstoric`, `consolideaza`). Dovada: tabela `pachet_treceri` (cine, când,
+  IP, textul; în `BUSINESS_TABLES`; NU se șterge cu firma), rând în audit `ai_pachet_trecere`, anunț `pachet_trecere` la noi,
+  emailul cu PDF-ul (`contract_pdf.confirmarePachetPdf`, felul `pachet` în „Trimise") firmei și omului — eșecul se scrie pe rând
+  și se spune în mesaj (`textDupaTrecere`). „Pachet și conturi" arată ce e programat și „Schimbările de pachet", cu PDF.
+- **Factura pe zile, din istoric: `pachete.liniiFactura`** (chemată de `_liniiAbonament`; pachetul de azi e scos din
+  `liniiFirma`): luna întreagă la pachetul de pe 1 a lunii (în avans), iar pentru luna trecută — zilele pe bucăți (firma cu
+  primul aparat pornit atunci) sau diferența pe zile pentru fiecare trecere la un pachet mai mare („RA Insight — trecerea la
+  pachetul Pro, 14–31.10.2026 (18 zile)"). O trecere la un pachet mai mic nu dă bani înapoi. Aceeași regulă ca abonamentul.
+- Păzit de `verify_pachete.js` (în `npm test`; 212, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
+  `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`.
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
   cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
   1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
 
-### Cum se tarifează RA Insight (socotit cu Alin, 23.09) — REGULA VECHE, pe cont
-⚠ Din 14.10 RA Insight trece pe pachete (mai sus). Regula de aici rămâne pentru firmele deja scrise pe cont și pentru calculatorul
-de ofertă, până la pasul 5 (oferta pe pachete). NU construi lucruri noi pe ea.
-
-**Prețul unui CONT depinde DOAR de câte mașini are firma**, în cinci trepte (`AIQ_PRET_LOC`).
-Numărul de întrebări pe cont (`aiqN`) e un buton SEPARAT: **nu schimbă prețul**, schimbă doar cât ne
-costă pe noi. Confuzia „50 de întrebări = 19 lei" e firească și greșită — 19 lei e treapta 26–50 de
-mașini, oricâte întrebări ar avea contul.
-
-**Pachetul vândut e 100 de întrebări pe cont** (era 50 până pe 23.09). Selectorul din ofertă
-pornește pe 100; 150 și 200 rămân în listă, dar se dau negociat, cu ochii pe blocul de cost.
-
-| Flota | Un cont |
-|---|---|
-| ≤ 10 | **14 lei** |
-| 11–25 | **17 lei** |
-| 26–50 | 19 lei |
-| 51–100 | 25 lei |
-| > 100 | 35 lei |
-
-⚠ Primele două trepte au urcat pe 23.09 (12 → 14, 15 → 17) **odată cu** trecerea la 100 de
-întrebări: dublarea fondului dubla și costul, iar la flotele mici treapta era deja stoarsă. Cele de
-sus n-au avut nevoie. **Nu cobora treptele fără să refaci socoteala de mai jos.**
-
-**Ce ne costă o întrebare:** `0,030 lei + 0,00028 × nVehicule` (`_aiqCost`) — măsurat în septembrie
-pe aplicația pornită, cu Haiku 4.5 și prompt caching. Crește cu flota fiindcă fiecare mașină adaugă
-~41 de tokeni la starea live, recitiți la fiecare rundă. **Scenariul negru** (`AIQ_GREU = 2,5`):
-clientul pune numai întrebări care storc tot ȘI consumă fondul până la ultima.
-
-**Ce rămâne dintr-un cont, pe lună, la 100 de întrebări, în scenariul negru:**
-
-| Flota | Cont | rămâne | ieșim pe zero la |
-|---|---|---|---|
-| 10 | 14 lei | **5,80 lei** | 170 |
-| 25 | 17 lei | **7,75 lei** | 183 |
-| 26 | 19 lei | **9,68 lei** | 203 |
-| 50 | 19 lei | **8,00 lei** | 172 |
-| 100 | 25 lei | **10,50 lei** | 172 |
-| 200 | 35 lei | **13,50 lei** | 162 |
-
-- **Marja e cea mai bună imediat DUPĂ o treaptă, cea mai slabă imediat ÎNAINTE** (26 de mașini: 9,68
-  lei; 25 de mașini: 7,75 — pentru o mașină în minus). Prețul urcă în trepte, costul crește lin.
-  Punctele subțiri sunt fix **10, 25, 50 și 100** de mașini.
-- **Minimul grilei e 5,80 lei, la 10 mașini.** ⚠ Când am propus treptele 14/17 i-am spus lui Alin că
-  „nicio flotă nu coboară sub 7 lei" — **greșit**: pentru 7+ peste tot, prima treaptă ar trebui 16
-  (atunci minimul e 7,75). S-a rămas pe 14/17, cu cifra adevărată scrisă aici. Pragul din
-  `verify_tarife.js` (`PRAG_RAMANE = 5.5`) e cel pe care grila îl ține cu adevărat.
-- ⚠ **Formula de cost e o dreaptă, dar măsurătoarea se aplatizează sus:** la 200 de mașini formula
-  zice 0,086 lei, măsurat e 0,0521. Deci la flote mari suntem MAI în siguranță decât arată tabelul.
-  Nu „corecta" formula ca să fie mai strânsă — marja de siguranță e deliberată.
-- ⚠ **Fondul e COMUN pe firmă** (`conturi × aiqN`). Un om poate mânca partea colegilor, deci
-  scenariul negru e mai ușor de atins la nivel de firmă decât pe cont. E argumentul pentru prudență.
-- **Peste fond NU se vinde nimic.** Când fondul se termină, RA Insight se oprește până luna
-  următoare. Serverul aruncă din setări comutatoarele vechi (`overage`, `overagePriceEur`,
-  `extraAcceptedMonth`), iar un `acceptExtra` trimis de un ecran vechi e **ignorat** — păzit de
-  `verify_paritate_telefon.js`, care insistă de trei ori și verifică să nu treacă nimic.
-
-**Grila se editează din „Prețurile noastre" (23.09).** Fiecare treaptă din `AIQ_PRET_LOC` are
-`implicit` (prețul din cod), `lei` (cel folosit acum) și `cheie` (`aiqPana10`, `aiqPana25`,
-`aiqPana50`, `aiqPana100`, `aiqPeste100`), salvată în `tarife_lista`. `_aiqAplicaLista(t)` pune
-lista peste grilă — chemată la încărcare și după AMBELE salvări. Treaptă golită, 0 sau text → înapoi
-la `implicit`, **niciodată la 0** (ar da conturi pe gratis). Granițele (10/25/50/100) NU se editează.
-
-- ⚠ **Rândul vechi „Un cont, pe lună" (`pAiA`) a fost un buton MORT**: grila îl călca pe tăcute
-  (22 de lei salvați → oferta tot 14 propunea). A ieșit din `_PRET_GRUPURI` și din `TARIF_CHEI`.
-  Nu-l pune la loc — prețul contului e grila, nu o cifră.
-- ⚠ **`_OF_PRETURI_DEF.pAiA = 14` rămâne, dar ca PLASĂ, nu ca preț de listă.** Câmpul `of-pAiA` e
-  umplut din grilă; dacă cineva îl golește, socoteala cade pe plasă. Am scos-o o dată și totalul a
-  ieșit NaN. E legată printr-o probă de `AIQ_PRET_LOC[0].implicit`.
-- **Ce vede clientul la fond epuizat:** „**oprit** până pe …" și „fără niciun cost în plus". NU
-  „extra" — rămăsese de pe vremea când peste fond se plătea și suna a factură în plus.
-- **„Un cont în plus aduce încă N"** se scrie DOAR pe regula pe cont (`questionsPerSeat > 0`), cu
-  cifra firmei. Pe cota fixă veche un cont în plus nu aduce nimic; un `|| 50` de rezervă promitea
-  asta pe web, pe server ȘI pe telefon. NU pune o cifră de rezervă în fraza asta.
-- **Clienții deja semnați își păstrează regula** (de ex. 50 de întrebări, prețul vechi). Trecerea la
-  100 și la 14/17 e pentru ofertele NOI. Se schimbă firmă cu firmă, din „Abonament & plăți".
-- ⚠ **Telefonul** (`mobile/src/components/ChatScreen.tsx`) mai are interfața veche de plată peste
-  fond. Nu se aprinde (serverul nu mai trimite `overage*` / `needsExtraConsent`), dar se curăță la
-  următorul APK — e pe lista de dinainte de lansare.
-- Păzit capăt la capăt de `verify_tarife.js` și `verify_ofertare.js`; cele de bani, pe server pornit.
+### Regula VECHE, pe cont (11.09–14.10) — doar pentru firmele scrise așa
+Din 14.10 RA Insight se vinde pe pachete (mai sus); grila pe cont (cinci trepte după mărimea flotei, `AIQ_PRET_LOC`, „cât ne costă
+o întrebare" măsurat pe Haiku 4.5, `aiqPana10…` în „Prețurile noastre") a ieșit din ofertă la pasul 5 și cheile ei cad din
+`tarife_lista` la prima salvare. NU construi lucruri noi pe ea. Ce rămâne în cod, pentru firmele deja pe cont (`ai_quota`):
+- Fondul lunii = conturi aprinse × întrebări pe cont (`questionsPerSeat`; 0 = nelimitat), factura pe vârful lunii (`seatsPeak`),
+  „RA Insight — conturi (N × preț)". Peste fond NU se vinde nimic (comutatoarele vechi `overage*` se aruncă; `acceptExtra` e
+  ignorat — păzit de `verify_paritate_telefon.js`). Clientul vede „oprit până pe …" și „fără niciun cost în plus".
+- „Un cont în plus aduce încă N" se scrie DOAR pe regula pe cont, cu cifra firmei — fără `|| 50` de rezervă.
+- O ofertă veche (cu `aiA` / `aiqN` / `aiqSeats`) redeschisă se socotește pe ramura ei din `_ofCalc` (`p.pAiA` — rămas în
+  `_OF_PRETURI_DEF` DOAR pentru ele) și se redeschide în formular pe Basic.
+- ⚠ **Telefonul** (`mobile/src/components/ChatScreen.tsx`) mai are interfața veche de plată peste fond; nu se aprinde. Se curăță
+  la următorul APK.
 
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.
@@ -958,7 +916,7 @@ aparate mai ieftine sau instalatori mai scumpi."* Toate cele 19 prețuri sunt c�
 |---|---|
 | lunar pe mașină (`pPlain`, `pCan`, `pFms`) | **2. Flota clientului** |
 | păstrarea datelor (`ret24/36/Custom`; 12 luni sunt incluse, fără preț) | **3. Ce mai primește clientul** |
-| un cont de RA Insight (`pAiA`) | **3.**, lângă comutator |
+| pachetul RA Insight (`of-aiPachet` + prețul `pPachet`) | **3.**, lângă alegerea pachetului |
 | montajul (`mGps`, `mLvCan`, …) | **4. Montajul**, prin `qp()`, lângă cantitate |
 | aparatele (`dFmc130`, …) | **5. Aparatele**, prin `qp()`, lângă cantitate |
 
@@ -1132,13 +1090,10 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
   apăruseră descrieri vechi, nesincronizate.
 - Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
-- **RA Insight se vinde pe CONT (din 11.09), nu pe firmă.** Ce se setează pe companie (doar
-  super-admin): `settings.ai_quota = { questionsPerSeat, seatPriceRON }`. Fondul lunii = *conturi
-  aprinse × întrebări pe cont*; când se termină, SE OPREȘTE (nu există depășire contra cost — a fost
-  scoasă deliberat, ca să nu vadă clientul prețuri pe întrebare). Vârful lunii se ține în
-  `ai_quota.seatsPeak = { luna, n }` și e numărul care se facturează. Forma VECHE, `questions`
-  (cotă fixă pe firmă), rămâne respectată pentru contractele deja semnate. Fără nimic = nelimitat.
-  Locul de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori**.
+- **RA Insight se vinde pe PACHETE pe firmă (din 14.10)** — `settings.ai_pachet = { cod, pretRON, de_la }` (+ `ai_pachet_urmator`,
+  `ai_pachet_istoric`), vezi „Pachetele RA Insight". Regula de dinainte, pe CONT (`settings.ai_quota = { questionsPerSeat,
+  seatPriceRON }`, vârful lunii `seatsPeak`, forma și mai veche `questions`), rămâne respectată pentru firmele scrise așa. Locul
+  de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori** sau din „Pachet și conturi".
 
 ## Contracte — dosarul juridic (reguli din 23.09)
 

@@ -2849,8 +2849,10 @@ function _costuriCurate(b) {
 // prețul contului îl dă GRILA pe mărimea flotei (`AIQ_PRET_LOC` din pagină), care călca pe tăcute
 // orice cifră salvată aici: Alin putea scrie 22 de lei în „Prețurile noastre" și oferta tot 14
 // propunea. Acum se salvează chiar treptele grilei — cele cinci chei `aiq…` de mai jos.
+// Pachetele RA Insight (14.10, pasul 5): prețurile de listă ale pachetelor (pkBasic / pkPro / pkBusiness) au luat locul
+// grilei pe cont (aiqPana10 … aiqPeste100, scoasă: cade singură la prima salvare). Le citește pachete.preturiLista.
 const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiAg', 'pTahograf', 'pEtransport',
-  'aiqPana10', 'aiqPana25', 'aiqPana50', 'aiqPana100', 'aiqPeste100',
+  'pkBasic', 'pkPro', 'pkBusiness',
   // `ret6` / `ret12` au ieșit pe 24.09: 12 luni de istoric sunt incluse pentru toți, deci n-au preț.
   'ret24', 'ret36', 'retCustom',
   'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',
@@ -3808,7 +3810,7 @@ async function aiQuotaState(companyId, userId, opts) {
 // Regulile stau în pachete.js; aici se adună cifrele: câte întrebări a pus firma și omul, limitele, costul REAL al lunii
 // (pe modelul fiecărui răspuns, `db.costAiLunaFirma`) și cât din el a fost analiză aprofundată. null = firma e pe regula
 // veche, pe cont (o citește aiQuotaState mai jos). `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
-function _pachetCo(co) { return co ? pachete.pachetFirma(co.settings, co.ai_monthly_limit) : null; }
+function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // regula stă în plans.js (pachetAi + aiVechi)
 // Are firma RA Insight cu AI (Basic în sus, sau regula veche cu modulul)? Start e fără AI.
 function _firmaAreAi(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !p || p.ai; }
 // Are firma ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte)? De la Basic în sus.
@@ -3919,6 +3921,8 @@ async function plasaAnuntTick() {
   try { await db.setSetting('ai_plasa_anuntat', JSON.stringify(facute)); } catch (e) {}
   return { anuntate: noi.map(function (x) { return x.cheie; }) };
 }
+// Prețurile de listă ale pachetelor, azi: cele din cod, peste care se pun cele din „Prețurile noastre".
+async function _preturiPachete() { let t = {}; try { t = (await getSystemSettings()).tarife_lista || {}; } catch (e) {} return pachete.preturiLista(t); }
 // Analiza aprofundată (Sonnet) pornește doar dacă o pornim noi (Alin, 14.10: „doar dacă proba arată că Haiku 5.5 e slab").
 const MODEL_APROFUNDAT = process.env.AI_MODEL_APROFUNDAT || 'claude-sonnet-5-5';
 let _aprofCache = null, _aprofTs = 0;
@@ -4010,7 +4014,7 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
   // Vârful lunii: dacă cineva a stins un cont după ce l-a ținut aprins, factura tot pe el îl ia.
   // Pachetele RA Insight (14.10): fondul = întrebările pachetului (pe Start, răspunsurile pe butoane — `o.reguli`), venitul =
   // prețul pachetului, fix pe firmă. Firma rămasă pe regula veche, pe cont, se socotește ca până acum.
-  const pk = pachete.pachetFirma(c && c.settings, c && c.ai_monthly_limit);
+  const pk = plans.pachetAi(c);
   const deFacturat = pk ? conturi : Math.max(conturi, _seatsPeakLuna(c));
   const peCont = pk ? 0 : q.questionsPerSeat;
   const fond = pk ? pk.intrebari : (peCont > 0 ? conturi * peCont : q.questions);
@@ -4954,21 +4958,142 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
         folosite: peOm[u.id] || 0, folositeText: u.ai_seat || peOm[u.id] ? pachete.textFolositeOm(lim, peOm[u.id] || 0) : null,
         nuPoate: u.ai_seat ? null : pachete.refuzLoc(p, conturi, u.role) };
     }).sort(function (a, b) { return (b.loc - a.loc) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
+    // Trecerea programată (un pachet mai mic, de la 1 a lunii următoare) și confirmările firmei, cu PDF-ul fiecăreia (pasul 6).
+    const treceri = (await db.listTreceriPachet(req.companyId, 20).catch(function () { return []; })).map(function (r) {
+      return { id: r.id, cand: pachete.dataScurta(r.creat_la), cine: r.user_nume || '', rezumat: pachete.rezumatTrecere(r),
+        email: r.email_trimis ? 'trimisă pe email' : 'emailul n-a plecat', pdf: '/api/insight/pachet-trecere/' + r.id + '/pdf' };
+    });
     res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari },
+      urmator: p.urmator ? 'Din ' + pachete.dataLunga(p.urmator.deLa) + ' firma trece pe pachetul ' + p.urmator.nume + ' (ales de administrator). Până atunci rămâne ' + p.nume + '.' : null,
+      treceri: treceri,
       cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni, nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Vezi pachetele" (administratorul firmei, din caseta pachetului): ce primește fiecare pachet, cu prețul de listă, și care e al
-// firmei. Descrierile stau în pachete.js (aceleași pe site, fără prețuri). Trecerea din aplicație vine la pasul ei.
+// Prețurile pachetelor PENTRU O FIRMĂ: lista de azi, peste care stau cele din contractul ei (Anexa nr. 1: pachetul ales și
+// prețurile celorlalte la semnare) și prețul pachetului pe care îl are acum (negociat). O singură socoteală — „Vezi pachetele"
+// și trecerea din aplicație o folosesc pe ea, ca omul să confirme prețul pe care îl vede.
+async function _preturiPachetFirma(co) {
+  const out = Object.assign({}, await _preturiPachete());
+  try {
+    const c = await db.getCompanyContract(co.id);
+    if (c && c.status !== 'incheiat') {
+      const ap = (contracte.anexaInVigoare(c, await db.listActe(c.id)) || {}).aiPachet;
+      if (ap && ap.cod) {
+        Object.keys(ap.lista || {}).forEach(function (k) { if (out[k] != null && Number(ap.lista[k]) > 0) out[k] = Number(ap.lista[k]); });
+        if (out[ap.cod] != null && Number(ap.pretRON) > 0) out[ap.cod] = Number(ap.pretRON);
+      }
+    }
+  } catch (e) {}
+  const p = _pachetCo(co); if (p && p.ai) out[p.cod] = p.pretRON;
+  return out;
+}
+// Poate omul ăsta schimba pachetul firmei? Administratorul ei, din contul lui (nu noi — noi îl punem din fila „Acces”), pe
+// o firmă cu pachet (nu pe regula veche, nu pe demo).
+function _poateSchimbaPachet(req, co) { return !!(co && !req.isSuper && req.companyId != null && permReq(req, 'manageUsers') && !co.is_demo && _pachetCo(co)); }
+// „Vezi pachetele" (administratorul firmei, din caseta pachetului): ce primește fiecare pachet, cu prețul pentru firma lui, care
+// e al firmei și ce e programat. Descrierile stau în pachete.js (aceleași pe site, fără prețuri). Din pasul 6, administratorul
+// trece singur la alt pachet de aici (`/api/insight/pachet-trecere`).
 app.get('/api/insight/pachete', requireAuth, withScope, async (req, res) => {
   try {
-    let actual = null, pretRON = null;
-    if (req.companyId != null) { const co = await db.getCompanyById(req.companyId).catch(function () { return null; }); const p = _pachetCo(co); if (p) { actual = p.cod; pretRON = p.pretRON; } }
+    let actual = null, pretRON = null, urmator = null, co = null, preturi = await _preturiPachete();
+    if (req.companyId != null) {
+      co = await db.getCompanyById(req.companyId).catch(function () { return null; });
+      const p = _pachetCo(co);
+      if (p) { actual = p.cod; pretRON = p.pretRON; if (p.urmator) urmator = { cod: p.urmator.cod, nume: p.urmator.nume, deLa: p.urmator.deLa, text: 'Din ' + pachete.dataLunga(p.urmator.deLa) + ': pachetul ' + p.urmator.nume + '.', scurt: 'Programat din ' + pachete.dataLunga(p.urmator.deLa) }; }
+      if (co) preturi = await _preturiPachetFirma(co);
+    }
     let contact = null; try { contact = ((await getSystemSettings()).invoice_issuer || {}).email || null; } catch (e) {}
-    res.json({ pachete: pachete.publice({ aprofundat: await _aprofundataPornita() }), actual: actual, pretRON: pretRON, inToate: pachete.IN_TOATE,
-      reincarcare: pachete.textReincarcare(Date.now()), contact: contact });
+    const poate = _poateSchimbaPachet(req, co);
+    res.json({ pachete: pachete.publice({ aprofundat: await _aprofundataPornita(), preturi: preturi }), actual: actual, pretRON: pretRON, urmator: urmator, inToate: pachete.IN_TOATE,
+      reincarcare: pachete.textReincarcare(Date.now()), contact: contact, poateSchimba: poate,
+      schimbText: poate ? 'Alegi alt pachet chiar de aici: mai mare — de azi, cu luna socotită pe zile; mai mic — de la 1 a lunii următoare. Confirmarea îți vine pe email, în PDF.'
+        : 'Pentru alt pachet, scrie-ne' + (contact ? ' pe ' + contact : '') + ' — îl schimbăm noi.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ─── Trecerea la alt pachet, din aplicație (pasul 6) ─────────────────────────────────────────────────────────────────────
+// Regula și textul stau în pachete.trecere; aici se adună cifrele (prețul pentru firmă, câte conturi are). Textul arătat omului
+// e EXACT cel pe care îl confirmă: la confirmare se socotește din nou și, dacă s-a schimbat ceva între timp, se cere din nou.
+async function _trecereFirma(req, cod) {
+  const co = await db.getCompanyById(req.companyId).catch(function () { return null; });
+  if (!_poateSchimbaPachet(req, co)) return { status: 403, error: 'Pachetul îl schimbă administratorul firmei, din contul lui.' };
+  const preturi = await _preturiPachetFirma(co);
+  const conturi = (await db.getAiSeatHolders(co.id)).length;
+  const t = pachete.trecere({ actual: _pachetCo(co), la: String(cod || ''), pretNou: preturi[String(cod || '')], conturi: conturi, firma: co.name, acum: Date.now() });
+  if (t.refuz) return { status: 400, error: t.refuz };
+  return { co: co, t: t };
+}
+app.get('/api/insight/pachet-trecere', requireAuth, requirePerm('manageUsers'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    const r = await _trecereFirma(req, req.query.cod);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    res.json({ sens: r.t.sens, la: r.t.la, deLa: r.t.deLa, text: r.t.text, buton: pachete.butonTrecere(r.t), bifa: 'Am citit și sunt de acord, în numele firmei.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/insight/pachet-trecere', requireAuth, requirePerm('manageUsers'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const r = await _trecereFirma(req, b.cod);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    if (b.acord !== true) return res.status(400).json({ error: 'Bifează „Am citit și sunt de acord", apoi confirmă.' });
+    if (String(b.text || '') !== r.t.text) return res.status(409).json({ error: 'Ceva s-a schimbat de când ai deschis fereastra (prețul, ziua sau conturile). Citește din nou și confirmă.', text: r.t.text, buton: pachete.butonTrecere(r.t) });
+    await _applyCompanySettingsPatch(r.co.id, { ai_pachet_trecere: r.t }, { trecere: true });
+    const a = getAuth(req) || {};
+    const u = await db.getUserById(a.userId).catch(function () { return null; });
+    const rand = await db.noteazaTrecerePachet({ companyId: r.co.id, userId: a.userId, userNume: (u && (u.full_name || u.username)) || a.username,
+      de: r.t.de, la: r.t.la, sens: r.t.sens, pretVechi: r.t.pretVechi, pretNou: r.t.pretNou, deLa: r.t.deLa, text: r.t.text,
+      ip: clientIp(req), userAgent: req.headers['user-agent'] });
+    auditReq(req, 'ai_pachet_trecere', 'company', r.co.id, { de: r.t.de, la: r.t.la, sens: r.t.sens, de_la: r.t.deLa, trecere: rand.id });
+    const email = await _trimiteConfirmarePachet(rand, r.co, u);
+    try {
+      const supers = (await db.getAllActiveUsers()).filter(function (x) { return x.role === 'superadmin'; });
+      await _anuntaSuperadmini(supers, 'pachet_trecere', 'info', 'RA Insight: ' + r.co.name + ' — ' + pachete.rezumatTrecere(rand), r.t.text, { company_id: r.co.id, trecere: rand.id });
+    } catch (e) {}
+    res.json({ ok: true, sens: r.t.sens, deLa: r.t.deLa, mesaj: pachete.textDupaTrecere(r.t, email), email: email, trecereId: rand.id,
+      pdf: '/api/insight/pachet-trecere/' + rand.id + '/pdf' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Confirmarea, ca PDF: administratorul firmei (doar ale firmei lui) și noi. „Nu e a ta" și „nu există" = 404, ca la facturi.
+app.get('/api/insight/pachet-trecere/:id/pdf', requireAuth, withScope, async (req, res) => {
+  try {
+    const rand = await db.getTrecerePachet(req.params.id);
+    if (!rand || !(req.isSuper || (permReq(req, 'manageUsers') && req.companyId != null && Number(req.companyId) === Number(rand.company_id)))) return res.status(404).json({ error: 'Confirmarea nu există.' });
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const co = await db.getCompanyById(rand.company_id).catch(function () { return null; }) || { name: '' };
+    const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    let contract = null; try { contract = await db.getCompanyContract(rand.company_id); } catch (e) {}
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', _antetDescarcare(contractPdf.numeConfirmarePachet(co, rand.creat_la)));
+    contractPdf.confirmarePachetPdf({ trecere: rand, firma: co, emitent: emitent, contract: contract }).pipe(res);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Emailul confirmării: firmei (adresa ei) și omului care a confirmat, cu PDF-ul atașat. Eșecul se scrie pe rând, nu se înghite.
+async function _trimiteConfirmarePachet(rand, co, u) {
+  const catre = Array.from(new Set([co.contact_email, u && (u.email || u.username)].map(function (x) { return String(x || '').trim().toLowerCase(); })
+    .filter(function (x) { return _EMAIL_RE.test(x); })));
+  let rez;
+  if (!catre.length) rez = { trimis: false, motiv: 'firma n-are adresă de email' };
+  else if (!mailer || !mailer.enabled()) rez = { trimis: false, motiv: 'emailul nu e configurat pe server' };
+  else if (!contractPdf) rez = { trimis: false, motiv: 'generatorul de PDF lipsește' };
+  else {
+    try {
+      const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+      let contract = null; try { contract = await db.getCompanyContract(co.id); } catch (e) {}
+      const pdf = await _pdfInBuffer(contractPdf.confirmarePachetPdf({ trecere: rand, firma: co, emitent: emitent, contract: contract }));
+      const noi = emitent.name || 'RA Track';
+      const m = await mailer.send({
+        to: catre, replyTo: emitent.email || undefined,
+        subject: 'Confirmare: pachetul RA Insight — ' + (co.name || '') + ' · ' + noi,
+        text: 'Bună ziua,\n\nVă trimitem confirmarea schimbării pachetului RA Insight, făcută din aplicație:\n\n' + rand.text +
+          '\n\nConfirmarea ține loc de act adițional la contract și o găsiți atașată, în PDF.\n\nVă mulțumim,\n' + noi,
+        attachments: [{ filename: contractPdf.numeConfirmarePachet(co, rand.creat_la), content: pdf, contentType: 'application/pdf' }],
+        jurnal: { fel: 'pachet', companyId: co.id }
+      });
+      rez = m && m.ok ? { trimis: true, catre: catre.join(', ') } : { trimis: false, motiv: (m && m.error) || 'eroare necunoscută' };
+    } catch (e) { rez = { trimis: false, motiv: e.message }; }
+  }
+  try { await db.emailTrecerePachet(rand.id, catre.join(', '), rez.trimis, rez.motiv); } catch (e) {}
+  return rez;
+}
 // Soldul de la Anthropic (pasul 4): îl scriem noi, din pagina lor de facturare; ziua o pune serverul.
 app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -6525,7 +6650,11 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
               dinOferta: !cuAparate && (anexa.vehiculeOferta || []).length > 0 },
             factura: { lei: r2(suma(liniiMasini, 'net')), nr: (bc.none || 0) + (bc.can || 0) + (bc.fms || 0) }
           },
-          raInsight: (Number(anexa.aiSeatPriceRON) > 0 || liniiAi.length) ? {
+          // Pachetul RA Insight (14.10): pachetul și prețul din contract lângă rândul de pe factură — se compară direct.
+          raInsight: anexa.aiPachet ? {
+            pachet: true, contractNume: anexa.aiPachet.nume || null, contractLei: r2(anexa.aiPachet.pretRON),
+            facturaNume: liniiAi.length ? liniiAi[0].desc.replace(/ — .*$/, '') : null, facturaLei: r2(suma(liniiAi, 'net'))
+          } : (Number(anexa.aiSeatPriceRON) > 0 || liniiAi.length) ? {
             contractPretCont: Number(anexa.aiSeatPriceRON) || null,
             contractConturi: suma(servicii.filter(function (x) { return x.fel === 'ai'; }), 'cant'),
             facturaConturi: bc.raInsight ? bc.raInsight.seats : 0,
@@ -7831,8 +7960,18 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
   if (cfg.tahograf) deAprinsManual.push('tahograf');
   if (cfg.etransport) deAprinsManual.push('etransport');
   const patch = {};
-  if (cfg.aiA) patch.features = { ai_assistant: true };
-  if (cfg.aiA) {
+  // Pachetul RA Insight (14.10, pasul 5): oferta nouă vinde un pachet (`cfg.aiPachet`, prețul negociat `aiPachetPret`). Se scrie
+  // pe firmă DOAR dacă firma n-are deja un pachet cu AI — unul negociat separat nu se calcă. Ofertele vechi (pe cont) — ca înainte.
+  const _pkOf = cfg.aiPachet ? pachete.dupaCod(cfg.aiPachet) : null;
+  if (_pkOf) {
+    const coPk = await db.getCompanyById(companyId).catch(function () { return null; });
+    const areDeja = _pachetCo(coPk);
+    if (!(areDeja && areDeja.ai)) {
+      patch.features = { ai_assistant: true };
+      patch.ai_pachet = { cod: _pkOf.cod, pretRON: cfg.aiPachetPret != null && cfg.aiPachetPret !== '' ? Number(cfg.aiPachetPret) : undefined };
+    }
+  } else if (cfg.aiA) patch.features = { ai_assistant: true };
+  if (!_pkOf && cfg.aiA) {
     // aiqN = câte întrebări aduce UN CONT pe lună; 0 = nelimitat (fără plafon).
     // Fondul lunii se face din locurile aprinse × aiqN — deci aici se scrie regula, nu suma.
     const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
@@ -7949,8 +8088,11 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           // aparatelor să nu mai taie RA Insight și păstrarea datelor din preț.
           vehiculeOferta: rl ? rl.vehiculeOferta : null, servicii: rl ? rl.servicii : null,
           // Prețul unui cont de RA Insight ajunge în contract, ca regula să fie semnată, nu presupusă.
-          aiSeatPriceRON: _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
-          aiQuestionsPerSeat: Number(_cfgOf.aiqN) || 0,
+          aiSeatPriceRON: !_cfgOf.aiPachet && _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
+          aiQuestionsPerSeat: !_cfgOf.aiPachet ? (Number(_cfgOf.aiqN) || 0) : 0,
+          // Pachetul RA Insight (14.10): cel ales, cu prețul negociat, și prețurile celorlalte de la data ofertei — se semnează.
+          aiPachet: _cfgOf.aiPachet ? { cod: _cfgOf.aiPachet, pretRON: _cfgOf.aiPachetPret,
+            lista: { basic: _prOf.pkBasic, pro: _prOf.pkPro, business: _prOf.pkBusiness } } : null,
           // Câte luni se păstrează istoricul, dacă s-a cumpărat mai mult decât cele 12 incluse: se semnează.
           pastrareLuni: (_pastrareDinOferta(oferta, dinOferta) || {}).luni || null,
           // Aparatele ÎNCHIRIATE: ale noastre, cu chiria și valoarea lor — pentru clauze (25.09).
@@ -15622,12 +15764,30 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   // Pachetul RA Insight (14.10) → STRICT super-admin (oferta, fișa firmei, trecerea din aplicație o scrie prin rutele ei).
   // `null` = înapoi la Start (orice firmă fără pachet e pe Start). Un pachet pus scoate regula veche pe cont, ca firma să nu
   // fie socotită de două ori. Datele greșite nu ajung aici: ruta le refuză (400).
+  // Fiecare schimbare intră și în istoric (`ai_pachet_istoric`): factura socotește pe zile din el (pachete.liniiFactura), iar o
+  // trecere programată rămasă (`ai_pachet_urmator`) se anulează — ce pune super-adminul bate ce era programat.
   if (body.ai_pachet !== undefined && opts && opts.allowFeatures) {
-    if (body.ai_pachet === null) delete next.ai_pachet;
-    else {
-      const ap = pachete.curataPachet(body.ai_pachet);
-      if (ap) { if (ap.de_la == null) ap.de_la = Date.now(); next.ai_pachet = ap; delete next.ai_quota; }
+    const acum = Date.now();
+    const ap = body.ai_pachet === null ? null : pachete.curataPachet(body.ai_pachet, await _preturiPachete());
+    if (body.ai_pachet === null || ap) {
+      Object.assign(next, pachete.consolideaza(next, acum));
+      if (ap && ap.de_la == null) ap.de_la = acum;
+      next.ai_pachet_istoric = pachete.adaugaIstoric(next, ap ? { de_la: ap.de_la, cod: ap.cod, pretRON: ap.pretRON } : { de_la: acum, cod: 'start', pretRON: 0 });
+      delete next.ai_pachet_urmator;
+      if (ap) { next.ai_pachet = ap; delete next.ai_quota; } else delete next.ai_pachet;
     }
+  }
+  // Trecerea din aplicație (pasul 6): administratorul firmei, după confirmare — DOAR prin ruta ei (`opts.trecere`), cu ce a
+  // socotit pachete.trecere. Mai mare = de azi (în istoric); mai mic = programat (`ai_pachet_urmator`); anulare = îl scoate.
+  if (body.ai_pachet_trecere && opts && opts.trecere) {
+    const t = body.ai_pachet_trecere;
+    Object.assign(next, pachete.consolideaza(next, Date.now()));
+    if (t.sens === 'sus') {
+      next.ai_pachet_istoric = pachete.adaugaIstoric(next, { de_la: t.deLa, cod: t.la, pretRON: t.pretNou });
+      next.ai_pachet = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa };
+      delete next.ai_pachet_urmator; delete next.ai_quota;
+    } else if (t.sens === 'jos') next.ai_pachet_urmator = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa };
+    else if (t.sens === 'anulare') delete next.ai_pachet_urmator;
   }
   // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
   // `null` sau 12 luni și mai puțin = înapoi la cele 12 incluse. Un număr stricat nu ajunge aici: ruta
@@ -15668,8 +15828,10 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const agentiImplicit = plans && plans.enabledAgentsFor(co);
     res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings),
       // Pachetul RA Insight (14.10): cel ales (null = regula veche, pe cont) și lista, cu prețurile de listă — fila „Acces".
-      ai_pachet: (function () { const p = _pachetCo(co); return p ? { cod: p.cod, nume: p.nume, pretRON: p.pretRON, deLa: p.deLa } : null; })(),
-      pachete: pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, pret: p.pret, conturi: p.conturi, intrebari: p.intrebari }; }),
+      ai_pachet: (function () { const p = _pachetCo(co); return p ? { cod: p.cod, nume: p.nume, pretRON: p.pretRON, deLa: p.deLa,
+        // Trecerea programată de administratorul firmei (pasul 6): o vedem și noi, cu ziua ei.
+        urmator: p.urmator ? 'Programat de administratorul firmei: pachetul ' + p.urmator.nume + ' din ' + pachete.dataLunga(p.urmator.deLa) + '.' : null } : null; })(),
+      pachete: (function (pr) { return pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, pret: pr[p.cod], conturi: p.conturi, intrebari: p.intrebari }; }); })(await _preturiPachete()),
       ..._accesModule(co) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -16007,7 +16169,10 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   // RA Insight se facturează pe CONT (loc), nu pe firmă. Un singur rând, previzibil: câte conturi a
   // avut firma luna asta × prețul unui cont. Fără cost suplimentar, fără socoteli pe întrebări.
   const ra = (billCounts && billCounts.raInsight) || null;
-  if (ra && ra.seats > 0 && ra.seatPriceRON > 0) {
+  // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro", din motorul de preț (plans.js) — ca registrul.
+  if (bd.aiPachet > 0) {
+    add(bd.aiPachetEticheta || 'RA Insight', 1, bd.aiPachet);
+  } else if (ra && ra.seats > 0 && ra.seatPriceRON > 0) {
     add('RA Insight — conturi (' + ra.seats + ' × ' + ra.seatPriceRON.toFixed(2) + ' lei)' +
       (ra.seats > ra.seatsAcum ? ' — cel mult active în luna aceasta' : ''), ra.seats, ra.seats * ra.seatPriceRON);
   } else {
@@ -16054,9 +16219,15 @@ function _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raIns
     if (model === 'fix') return [];
     return buildInvoiceLines(faraFirma, Object.assign({ none: 0, can: 0, fms: 0 }, nr, { raInsight: null }), { ai_assistant: false, agents: false }, vr).lines;
   };
+  // Pachetul RA Insight (pasul 6) NU intră aici cu prețul de azi: se socotește pe zile, din istoricul firmei (mai jos,
+  // pachete.liniiFactura) — o trecere la un pachet mai mare din luna trecută își adaugă diferența. Regula veche, pe cont, rămâne.
+  const pkAzi = plans ? plans.pachetAi(company) : null;
+  const cuPachet = !!(pkAzi && features && features.ai_assistant);
+  const setariCo = (typeof company.settings === 'string' ? (function () { try { return JSON.parse(company.settings); } catch (e) { return {}; } })() : company.settings) || {};
+  const coFaraPachet = cuPachet ? Object.assign({}, company, { settings: Object.assign({}, setariCo, { ai_pachet: null, ai_pachet_urmator: null, ai_pachet_istoric: null }) }) : company;
   // Ce nu ține de o mașină: RA Insight, păstrarea istoricului, chiria, tariful fix — cu zero mașini.
   const liniiFirma = function () {
-    return buildInvoiceLines(company, { none: 0, can: 0, fms: 0, raInsight: raInsight || null }, features, vr).lines;
+    return buildInvoiceLines(coFaraPachet, { none: 0, can: 0, fms: 0, raInsight: raInsight || null }, features, vr).lines;
   };
   const M = imp.luna, P = imp.lunaAnterioara;
   const peLuna = ' — ' + abonament.numeLuna(M.an, M.luna);
@@ -16076,6 +16247,11 @@ function _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raIns
   if (imp.firma.partiala) {
     const fp = imp.firma.partiala;
     liniiFirma().forEach(function (l) { lines.push(abonament.scaleaza(l, fp.fractie, peZile(fp.zi, fp.zile), vr)); });
+  }
+  if (cuPachet) {
+    pachete.liniiFactura({ istoric: pachete.istoricFirma(setariCo), an: M.an, luna: M.luna, intreaga: imp.firma.intreaga,
+      partialaZi: imp.firma.partiala ? imp.firma.partiala.zi : null, anterioaraIntreaga: imp.firma.intreaga && !imp.firma.partiala })
+      .forEach(function (l) { lines.push(abonament.scaleaza({ desc: l.desc, qty: 1, net: l.pret }, 1, '', vr)); });
   }
   const bune = lines.filter(function (l) { return l.net > 0; });
   const subtotal = Math.round(bune.reduce(function (x, l) { return x + l.net; }, 0) * 100) / 100;
@@ -17103,7 +17279,7 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
 // una pentru fiecare fondator (super-admin activ) cu email pe același domeniu (robert.gherbali@…, alin.tilvar@…), pe care
 // o vede și de pe care scrie DOAR el (Robert, 12.10: „1 este ok"). Fără listă scrisă de mână: un fondator nou cu adresă pe
 // domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
-const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', neplata: 'Neplată',
+const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', pachet: 'Pachet RA Insight', neplata: 'Neplată',
   invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj', raspuns: 'Răspuns',
   redirectionat: 'Redirecționat' };
 // „Șterge" în „Trimise" (Robert, 13.10: „3. da"): DOAR emailurile scrise de mână. Facturile, contractele, avertismentele și
@@ -17737,8 +17913,16 @@ app.post('/api/admin/offers/pdf', requireAuth, requireSuperadmin, async (req, re
 app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => {
   res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT,
     // Închirierea (25.09): durata minimă și marja se socotesc în pagină, dar cifrele vin DE AICI.
-    chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR } });
+    chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR },
+    // Pachetele RA Insight (14.10, pasul 5): ce primește fiecare și cum se socotește „ce rămâne la noi" (costul unei întrebări
+    // obișnuite și plasa) — pagina le citește de aici; prețurile de listă sunt în tarifele ofertei (pkBasic / pkPro / pkBusiness).
+    ..._ofMetaPachete() });
 });
+// O SINGURĂ dată, pentru ruta de mai sus și pentru socoteala ofertei de pe telefon (`_ofSocoteste`).
+function _ofMetaPachete() {
+  return { pachete: pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, ai: p.ai, conturi: p.conturi, intrebari: p.intrebari, sonnetLei: p.sonnetLei, descriere: pachete.descriere(p) }; }),
+    pachetCost: { intrebareLei: pachete.COST_INTREBARE_LEI, plasa: pachete.PLASA } };
+}
 // Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
 // server, la fel ca oriunde altundeva unde un fapt se naște dintr-o apăsare de buton.
 app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (req, res) => {
@@ -18120,14 +18304,13 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
       if (!_ofComenzi.has(P)) { await _ofComenziCurate(P); curat(); }
       // Ce știe pagina de la server: cursul, lista casei (cu treptele RA Insight), costurile, termenul.
       P._fxRate = fx.eur; P._fxDate = fx.date || ''; P._fxSursa = fx.source || '';
-      P._tarifeLista = (st && st.tarife_lista) || {};
-      P._aiqAplicaLista(P._tarifeLista);
+      P._tarifeLista = (st && st.tarife_lista) || {};   // cu prețurile pachetelor RA Insight (pkBasic / pkPro / pkBusiness)
       P._cursNostru = st && st.curs_eur != null ? st.curs_eur : null;
       P._cursNostruData = (st && st.curs_eur_data) || '';
       P._costNoastre = (st && st.costuri_noastre) || {};
       P._ofMeta = { stari: OFERTA_STARI.slice(), valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT.map((x) => Object.assign({}, x)),
         // Închirierea (25.09): aceleași cifre ca `GET /api/admin/offers/meta`, pe care o citește pagina web.
-        chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR } };
+        chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR }, ..._ofMetaPachete() };
       P._ofAtinse = {};
       const pag = oferta ? _ofPentruPagina(oferta) : null;
       P._raxOf = { editingId: null, offers: pag ? [pag] : [], prices: P._ofTarifeDeBaza() };
@@ -18171,6 +18354,14 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         }
         potriveste();
         P.raxLoadOfertare(); await _ofGata();
+        // Telefonul de dinainte de pachete (14.10) are încă bifa „RA Insight” (`aiA`, cu prețul pe cont), pe care pagina n-o mai
+        // are: cât o trimite, bifa hotărăște — pusă = Basic (cel mai apropiat) sau pachetul plătit deja ales, scoasă = Start.
+        // Altfel oferta de pe telefon ar pierde RA Insight pe tăcute. Telefonul nou nu trimite `aiA`. Până la APK-ul nou.
+        if ('aiA' in b.campuri) {
+          const pus = b.campuri.aiA === true || b.campuri.aiA === 'true', ales = String(b.campuri.aiPachet || '');
+          b.campuri = Object.assign({}, b.campuri, { aiPachet: pus ? (['basic', 'pro', 'business'].includes(ales) ? ales : 'basic') : 'start' });
+          if (Array.isArray(b.schimbate) && b.schimbate.includes('aiA')) b.schimbate = b.schimbate.concat(['aiPachet']);
+        }
         const pune = (k, v) => {
           const e = el('of-' + k); if (!e || !/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) return null;
           if (e.type === 'checkbox') e.checked = (v === true || v === 'true' || v === 1 || v === '1');
@@ -18224,8 +18415,9 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         out.r = JSON.parse(JSON.stringify(r));
         const cutie = (id) => _ofCurat((el(id) || {}).innerHTML || '');
         out.html = { rezumat: cutie('rax-of-summary'), aiA: cutie('of-mod-hint-aiA'), tahograf: cutie('of-mod-hint-tahograf'),
-          etransport: cutie('of-mod-hint-etransport'), aiqCost: cutie('of-aiq-cost') };
-        out.arata = { aiq: ((el('of-aiq-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none',
+          etransport: cutie('of-mod-hint-etransport'), aiqCost: '' };
+        // RA Insight pe pachete (14.10): nu mai există caseta conturilor („aiq"); prețul pachetului se arată cât e ales unul cu AI.
+        out.arata = { aiq: false, pachetPret: ((el('of-pPachet-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none',
           inchiriere: typeof P._ofInchiriere === 'function' ? !!P._ofInchiriere() : false };
         // Închirierea: explicația de sub aparate și, lângă fiecare chirie, cât ne costă aparatul (din pagină).
         // (Chiria propusă o pune deja `raxOfRecalc`, mai sus; aici doar textul explicației, scris de butonul web.)

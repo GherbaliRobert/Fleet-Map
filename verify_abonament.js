@@ -86,7 +86,8 @@ sect('2. Factura lunii, pe server (bucata adevărată din server.js, cu plans.js
 {
   const bucataF = taie(server, 'function buildInvoiceLines(', '\nfunction _clientSnapshot');
   const bucataL = taie(server, 'function _liniiAbonament(', '\nasync function facturaAbonamentLuna');
-  const f = new Function('plans', 'contracte', 'abonament', bucataF.split('\n// ─── Factura de ABONAMENT')[0] + '\n' + bucataL + '\nreturn { buildInvoiceLines, _liniiAbonament };')(plans, contracte, A);
+  // Pachetul RA Insight (14.10) se socotește în factura lunii din istoricul firmei (pachete.liniiFactura) — se dă și el.
+  const f = new Function('plans', 'contracte', 'abonament', 'pachete', bucataF.split('\n// ─── Factura de ABONAMENT')[0] + '\n' + bucataL + '\nreturn { buildInvoiceLines, _liniiAbonament };')(plans, contracte, A, require('./pachete'));
   const firma = { id: 1, name: 'Transport SRL', custom_plan: { priceNoneRON: 29, priceCanRON: 45, priceFmsRON: 65 }, settings: {} };
   const feat = plans.featuresFor(firma);
   // Regim: 2 fără CAN + 3 cu CAN, toate pornite demult → EXACT factura dintotdeauna.
@@ -94,6 +95,13 @@ sect('2. Factura lunii, pe server (bucata adevărată din server.js, cu plans.js
   const noi = f._liniiAbonament(firma, vechi, 2026, 11, feat, 19, null);
   const dint = f.buildInvoiceLines(firma, { none: 2, can: 3, fms: 0 }, feat, 19);
   T('luna întreagă, toate pornite demult → aceeași sumă ca factura veche (193 lei)', Math.abs(noi.subtotal - dint.subtotal) < 0.005 && noi.subtotal === 193, noi.subtotal + ' vs ' + dint.subtotal);
+  // Cu pachetul RA Insight Pro (20 lei) de demult: aceeași sumă ca factura de o lună întreagă, cu rândul pachetului pe luna facturii.
+  const cuPk = Object.assign({}, firma, { settings: { ai_pachet: { cod: 'pro', pretRON: 20, de_la: ms(2026, 1, 5) } } });
+  const fPk = plans.featuresFor(cuPk);
+  const noiPk = f._liniiAbonament(cuPk, vechi, 2026, 11, fPk, 19, null), dintPk = f.buildInvoiceLines(cuPk, { none: 2, can: 3, fms: 0 }, fPk, 19);
+  T('…și cu pachetul RA Insight Pro (20 lei) de demult: tot aceeași sumă (213 lei), cu rândul „RA Insight Pro — noiembrie 2026"',
+    noiPk.subtotal === 213 && Math.abs(noiPk.subtotal - dintPk.subtotal) < 0.005 && noiPk.lines.some((l) => l.desc === 'RA Insight Pro — noiembrie 2026' && l.net === 20),
+    noiPk.subtotal + ' vs ' + dintPk.subtotal + ' · ' + noiPk.lines.map((l) => l.desc).join(' | '));
   T('rândurile poartă luna („— noiembrie 2026")', noi.lines.every((l) => / — noiembrie 2026$/.test(l.desc)), noi.lines.map((l) => l.desc).join(' | '));
   T('și factura știe ce lună acoperă („2026-11")', noi.luna === '2026-11');
   // Exemplul lui Alin: 50 de mașini cu CAN, montate 10–14 octombrie, câte 10 pe zi.

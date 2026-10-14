@@ -3359,15 +3359,8 @@
 .rax-pret-c{ width:82px; display:inline-flex; flex-direction:column; align-items:flex-end; gap:1px; }
 .rax-pret-c em{ font-style:normal; font-size:9.5px; line-height:1.2; color:var(--text-muted); white-space:nowrap; }
 .rax-pret-n{ font-size:10.5px; color:var(--text-muted); line-height:1.45; margin:4px 0 2px; }
-/* Caseta cotei RA Insight: trei câmpuri cu eticheta DEASUPRA, nu înșirate pe un rând care se rupe. */
-.raof-q{ margin:2px 0 12px 24px; padding:12px 14px; border-left:2px solid var(--accent);
-  background:var(--bg-panel); border-radius:0 11px 11px 0; }
-.raof-q3{ display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:10px; margin-bottom:10px; }
-.raof-q3 > div{ display:flex; flex-direction:column; gap:4px; min-width:0; }
-.raof-q3 label{ font-size:10.5px; font-weight:700; color:var(--text-muted);
-  text-transform:uppercase; letter-spacing:.3px; }
-.raof-q3 .rax-field, .raof-q3 select{ width:100%; margin:0; }
-.raof-q3 .um{ font-size:10.5px; color:var(--text-muted); }
+/* Caseta cotei RA Insight pe CONT (conturi × întrebări) a plecat pe 14.10, odată cu pachetele: RA Insight se alege acum
+   dintr-o listă de pachete, cu prețul lângă ea. */
 
 /* ── Câmpuri și butoane, sub aceeași marcă, în toată Administrarea ──────────────────────────────
    Rețeta a fost făcută întâi pentru Ofertare Live: câmpuri mai înalte, cu marginea verde când scrii
@@ -4046,6 +4039,25 @@ body.dark .insp-pk-c li i { color: var(--accent); }
 .insp-pk-c li.nu i { color: var(--text-muted); }
 .insp-pk-toate { margin-top: 14px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
 .insp-pk-schimb { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+/* Trecerea la alt pachet (pasul 6): butonul de pe cartonaș, ce e programat, fereastra de confirmare */
+.insp-pk-alege { margin-top: 12px; width: 100%; justify-content: center; }
+/* Ofertare Live, sub alegerea pachetului: „ce rămâne la noi" — verdele casei pe alb e 1,7, deci verde închis pe tema deschisă */
+.of-pk-bun { color: #166534; }
+body.dark .of-pk-bun { color: var(--accent); }
+.of-pk-rau { color: #b91c1c; }
+body.dark .of-pk-rau { color: #f87171; }
+.insp-pk-urm { margin-top: 12px; font-size: 12px; font-weight: 700; color: #92400e; border: 1px solid #b45309; border-radius: 99px; padding: 4px 10px; text-align: center; }
+body.dark .insp-pk-urm { color: #fbbf24; border-color: #f59e0b; }
+.insp-pk-urmtext { font-weight: 700; color: var(--text-primary); }
+.insp-pt-box { width: min(580px, 100%); }
+.insp-pt-text { font-size: 13.5px; line-height: 1.55; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.insp-pt-bifa { display: flex; align-items: flex-start; gap: 9px; margin: 14px 2px; font-size: 13px; font-weight: 700; color: var(--text-primary); cursor: pointer; }
+.insp-pt-bifa input { margin-top: 2px; width: 16px; height: 16px; flex: 0 0 auto; accent-color: #166534; }
+body.dark .insp-pt-bifa input { accent-color: var(--accent); }
+.insp-pt-act { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.chat-pas.insp-pt-ok { background: #166534; border-color: #166534; color: #fff; }
+body.dark .chat-pas.insp-pt-ok { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.chat-pas.insp-pt-ok:disabled { opacity: .45; cursor: not-allowed; }
 /* „Pachet și conturi" (pasul 3): cartonașele, tabelul oamenilor, limitele */
 .pkc { width: 100%; max-width: 1040px; margin: 0 auto; padding: 18px 18px 28px; box-sizing: border-box; display: grid; gap: 14px; align-content: start; overflow-y: auto; min-height: 0; }
 .pkc-cap { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -4065,6 +4077,15 @@ body.dark .insp-pk-c li i { color: var(--accent); }
 .pkc-lim { width: 108px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
 .pkc-gol { color: var(--text-muted); }
 .pkc-nota { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+.pkc-urm { border: 1px solid #b45309; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--text-primary); background: rgba(180,83,9,.07); }
+body.dark .pkc-urm { border-color: #f59e0b; background: rgba(245,158,11,.08); }
+.pkc-tr { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 8px; }
+.pkc-tr h3 { margin: 0; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.pkc-tr-r { display: grid; grid-template-columns: 86px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; font-size: 12.5px; }
+.pkc-tr-z { color: var(--text-secondary); font-weight: 700; }
+.pkc-tr-t { color: var(--text-primary); font-weight: 700; }
+.pkc-tr-c { color: var(--text-secondary); }
+@media (max-width: 640px) { .pkc-tr-r { grid-template-columns: minmax(0, 1fr) auto; } .pkc-tr-c { grid-column: 1 / -1; } }
 /* Tabloul nostru: pachetele RA Insight (pasul 4) */
 .aiu-pk { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 10px; }
 .aiu-pk-t { border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; background: var(--bg-dark); }

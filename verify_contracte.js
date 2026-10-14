@@ -316,8 +316,11 @@ T('serverul leagă oferta de firmă și de contract la creare',
   /await db\.legOferta\(oferta\.id, \{ company_id: id, contract_id: c\.id \}\)/.test(server));
 T('prețul din ofertă intră în anexa contractului',
   /date\.annex = contracte\.facAnexa\(\[\], \{[\s\S]{0,120}monthlyTotal: Number\(oferta\.monthly_total\)/.test(server));
-T('și prețul unui cont de RA Insight, ca regula să fie semnată',
-  /aiSeatPriceRON: _cfgOf\.aiA \?/.test(server) && /aiQuestionsPerSeat: Number\(_cfgOf\.aiqN\)/.test(server));
+// Din 14.10: oferta nouă duce PACHETUL RA Insight (cu prețurile celorlalte); cea veche, pe cont, prețul contului.
+T('și pachetul RA Insight (cu prețul lui și al celorlalte), ca regula să fie semnată',
+  /aiPachet: _cfgOf\.aiPachet \? \{ cod: _cfgOf\.aiPachet, pretRON: _cfgOf\.aiPachetPret,/.test(server));
+T('iar la o ofertă veche, pe cont, prețul unui cont',
+  /aiSeatPriceRON: !_cfgOf\.aiPachet && _cfgOf\.aiA \?/.test(server) && /aiQuestionsPerSeat: !_cfgOf\.aiPachet \? \(Number\(_cfgOf\.aiqN\) \|\| 0\) : 0/.test(server));
 T('dar aparatele NU vin din ofertă (acolo sunt doar numere)',
   /Aparatele NU vin din ofertă/.test(server));
 T('traseul „client nou" poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));

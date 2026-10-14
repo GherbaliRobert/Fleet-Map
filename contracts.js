@@ -407,6 +407,17 @@ function facAnexa(vehicule, pret) {
     // rezervă din vremea pachetului de 50): hârtia promitea 50, iar firma primea nelimitat.
     out.aiQuestionsPerSeat = Math.max(0, Math.round(Number(pret.aiQuestionsPerSeat) || 0));
   }
+  // Pachetul RA Insight (14.10, pasul 5): pachetul ales, cu prețul negociat, și prețurile celorlalte la data ofertei — ca hârtia
+  // să le spună (clauza de trecere din aplicație se sprijină pe ele). Pachet necunoscut → nimic.
+  const ap = pret && pret.aiPachet;
+  const pk = ap && ap.cod ? require('./pachete').dupaCod(ap.cod) : null;
+  if (pk) {
+    const r2p = function (v) { const x = Number(v); return Number.isFinite(x) && x >= 0 ? Math.round(x * 100) / 100 : null; };
+    const lista = {};
+    if (ap.lista && typeof ap.lista === 'object') ['basic', 'pro', 'business'].forEach(function (k) { const v = r2p(ap.lista[k]); if (v != null) lista[k] = v; });
+    out.aiPachet = { cod: pk.cod, nume: pk.nume, pretRON: r2p(ap.pretRON) != null ? r2p(ap.pretRON) : pk.pret };
+    if (Object.keys(lista).length) out.aiPachet.lista = lista;
+  }
   // Câte luni se păstrează istoricul intră în ce se SEMNEAZĂ: hârtia o spune, iar peste un an cifra
   // din contract nu trebuie să depindă de ce scrie azi pe firmă. Doar peste cele 12 incluse.
   const pl = Math.round(Number(pret && pret.pastrareLuni));
@@ -544,7 +555,7 @@ function drumulClientului(d) {
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
-  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
+  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'aiPachet', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
     if (a[k] != null) out[k] = a[k];
   });
   return out;
