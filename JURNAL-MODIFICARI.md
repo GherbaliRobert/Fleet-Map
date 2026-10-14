@@ -298,7 +298,7 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
 | **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
 | **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | ✅ 08.10 |
-| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 de confirmat plasa (plafonul de cost), apoi de construit |
+| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 plasa hotărâtă (14.10); macheta trimisă — de construit după „da” |
 | **Cap. 2** | Traiectoria RA Insight, recroită după pachete (bula → secțiunea; AI Raport → comenzi care fac rapoarte în Istoric; acțiuni după „Da"; nume nou pentru Safe Drive) | ⬜ după capitolul 1 |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ⬜ |
@@ -369,6 +369,19 @@ mai sus (12). A cerut simulări pe cifre, pe mai multe flote, „cu câte contur
   aplicația îl socotește pe model din 12.10), plus un buget pentru Sonnet (5 lei la Pro, 8 la Business). Se confirmă cu Alin.
 - **Nimic nu s-a schimbat încă în aplicație** pentru pachete: regula pe cont (14–35 de lei) rămâne până la construcție.
 - **Ce vede fondatorul / clientul:** încă nimic.
+
+**A doua rundă (14.10), la cele 10 întrebări din pagina simulărilor:** plasa de 80% — *„DA"*; bugetul de analiză aprofundată
+(Sonnet 5 / 8 lei, doar dacă proba arată că Haiku 5.5 e slab) — *„DA, dar să știm și noi în dashboard-ul nostru de fondator
+costurile"*; Start — *„doar el [administratorul] o să aibă RA Insight"*; ramurile de la Basic în sus, plus *„o pagină pentru
+aceste planuri… și în home… frumos, pe înțeles"* (întâi macheta); Pro până la 5 conturi, iar clientul își împarte singur
+întrebările (unde — de propus); **fără „+500 de întrebări"** la Business: rămân 200 / 600 / 1.000; trecerea la alt pachet din
+aplicație, facturată din clipa alegerii — forma juridică și plata, de propus (act adițional / Stripe / altceva); construcția
+începe cu macheta chatului; „ultimele 3 luni" odată cu Start. Despre „Rezumă raportul": *„orice firmă începe cu Start —
+administratorul, un singur cont, rezumă; cei care nu au cont nu pot rezuma"* + *„să modifici în ofertă și să treci opțiunea
+pachetelor RA Insight"*. Macheta trimisă (https://claude.ai/artifact/9wS8uM91yVr5t15HQLog1U): pachetele cu descrierea și
+beneficiile, chatul pe Start / Pro / la capăt, „Pachet și conturi" (împărțirea întrebărilor), trecerea (propus: clauză în
+contract + confirmare în aplicație + PDF pe email + factură pe zile, fără Stripe), tabloul nostru de costuri, oferta, secțiunea
+de pe site. Construcția pornește după „da" la machetă.
 
 ---
 

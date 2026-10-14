@@ -674,10 +674,15 @@ Alin a schimbat regula: RA Insight trece de la „cont cu cont" (mai jos) la **p
 **Pro** 20 lei (3–5 conturi, 600, Haiku 5.5 + Sonnet) · **Business** 30 lei (conturi nelimitate, adminul împarte cota; 1.000).
 Se reîncarcă pe 1; adminul trece la un pachet mai mare din aplicație; pe ecran „Pachet RA Insight Pro", NU „Plan"; clienții
 semnați își păstrează contractul. Platforma rămâne fără planuri (ofertă → contract → abonament pe mașină).
-- **Până se construiește, regula pe cont de mai jos rămâne în cod.** NU construi în continuare pe locurile plătite pe cont și
-  nu face pachetele din proprie inițiativă: întâi Alin confirmă plasa de siguranță propusă (plafonul de cost pe firmă = 80% din
-  prețul pachetului, din costul REAL pe răspuns — `cost_usd`, socotit pe model din 12.10 —, plus bugetul de Sonnet: 5 lei la
-  Pro, 8 la Business) și întrebările deschise din pagina „Calculul pachetelor RA Insight".
+- **Până se construiește, regula pe cont de mai jos rămâne în cod.** NU construi în continuare pe locurile plătite pe cont.
+  **Hotărât pe 14.10 (a doua rundă):** plasa de siguranță — o firmă costă cel mult 80% din prețul pachetului (8 / 16 / 24 de lei),
+  din costul REAL pe răspuns (`cost_usd`, socotit pe model din 12.10); peste, RA Insight răspunde doar pe butoane până pe 1;
+  analiza aprofundată (Sonnet) cu buget de 5 lei la Pro și 8 la Business, pornită doar dacă proba arată că Haiku 5.5 e slab,
+  iar costurile se văd în tabloul nostru de fondator (pe firmă: cost real, cât din plasă, cât din buget); Start = DOAR
+  administratorul, pe butoane; ramurile de la Basic în sus; Pro până la 5 conturi, clientul își împarte întrebările; FĂRĂ
+  pachete de întrebări în plus (200 / 600 / 1.000 și atât); „Rezumă raportul" doar cu cont. Încă de hotărât (macheta din
+  14.10): unde stă împărțirea întrebărilor, forma juridică a trecerii la alt pachet (propus: clauză în contract + confirmare
+  în aplicație + PDF pe email, fără Stripe), prețurile pe site. Construcția începe după „da" la machetă, cu chatul întâi.
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
   cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
   1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
