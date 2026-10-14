@@ -316,7 +316,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
-### FONDATOR · Emailurile de pe adresa ta pleacă cu „Numele tău | RA Track"
+### FONDATOR · Emailurile de pe adresa ta pleacă cu „Numele tău | RA Track" — `9904361`
 
 Robert (14.10): *„vreau ca atunci când cineva primește mail de la noi pers@ratrack.ro, să scrie numele persoanei | RA Track"*.
 
