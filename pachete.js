@@ -210,6 +210,30 @@ function textOm(st) {
 }
 function textReincarcare(acum) { return 'Se reîncarcă pe 1 ' + reincarcare(acum).urmatoarea + '.'; }
 
+// ─── „Pachet și conturi" (pasul 3): cartonașele de sus, cât a folosit fiecare om, nota de jos ───────────────────────────
+function _lei(x) { const n = Number(x) || 0; return Number.isInteger(n) ? n + deNr(n) + 'lei' : n.toLocaleString('ro-RO') + ' lei'; }
+function cartonaseConturi(st, conturiDate, acum) {
+  const r = reincarcare(acum), date = Number(conturiDate) || 0;
+  const out = [
+    { k: 'pachet', titlu: 'Pachetul', val: st.nume, sub: st.pretRON > 0 ? _lei(st.pretRON) + ' pe lună' : 'inclus în contract' },
+    { k: 'intrebari', titlu: st.cod === 'start' ? 'Răspunsuri pe butoane rămase' : 'Întrebări rămase', val: String(ramaseAfisate(st)),
+      sub: 'din ' + st.intrebari + ' · se reîncarcă pe 1 ' + r.urmatoarea },
+    { k: 'conturi', titlu: 'Conturi', val: String(date),
+      sub: st.conturi == null ? 'conturi nelimitate' : 'din ' + st.conturi + (date < st.conturi ? ' · mai poți da ' + (st.conturi - date === 1 ? 'unul' : (st.conturi - date)) : ' · toate date') }
+  ];
+  if (st.imparte) out.push({ k: 'limite', titlu: 'Limite puse', val: String(st.sumaLimite),
+    sub: st.sumaLimite ? 'restul de ' + st.comun + ' sunt la comun' : 'toate cele ' + st.intrebari + ' sunt la comun' });
+  return out;
+}
+// „58 din 200" (omul cu limită) / „64" (la comun) — câte a folosit în luna asta.
+function textFolositeOm(limita, folosite) { return limita != null ? (Number(folosite) || 0) + ' din ' + limita : String(Number(folosite) || 0); }
+function notaConturi(p) {
+  if (p.cod === 'start') return 'Pe Start, RA Insight îl are doar administratorul. De la Basic îl pot avea și colegii.';
+  if (!p.imparte) return 'Pe ' + p.nume + ', întrebările sunt la comun, pentru toți cei cu RA Insight. Împărțirea pe oameni e de la Pro.';
+  return '„La comun” = folosește din întrebările care nu sunt date nimănui. Limitele nu pot trece de cele ' + p.intrebari + deNr(p.intrebari) +
+    'întrebări ale pachetului. Un om ajuns la limita lui primește „Ai folosit cele … întrebări date de administrator”.';
+}
+
 // ─── Ce primește fiecare pachet, pe înțeles (macheta din 14.10, aprobată) — UN singur loc, pentru aplicație și site ───
 // Doar ce face aplicația AZI. Analiza aprofundată se scrie doar cât e pornită (o pornim noi, după probă).
 const DESCRIERE = {
@@ -242,4 +266,5 @@ module.exports = {
   PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
+  cartonaseConturi, textFolositeOm, notaConturi,
 };

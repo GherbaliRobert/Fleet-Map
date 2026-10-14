@@ -3939,7 +3939,8 @@ body.dark .insp-pk-pill { border-color: var(--accent); color: var(--accent); }
 .insp-pk-vezi { margin-top: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .insp-pk-vezi { color: var(--accent); }
 .insp-pk-vezi:hover { text-decoration: underline; }
-@media (max-width: 600px) { .insp-pk-top { display: none !important; } }   /* pe telefon titlul are nevoie de loc; pachetul e în sertar */
+@media (max-width: 600px) { .insp-pk-top { display: none !important; } }
+.insp.pe-ramura .insp-pk-top { display: none !important; }   /* pe o ramură (și „Pachet și conturi") titlul nu se vede: pastila n-ar avea lângă ce sta */   /* pe telefon titlul are nevoie de loc; pachetul e în sertar */
 .insp-pk-top { margin-left: 8px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); white-space: nowrap; flex: none; }
 .insp-ram.lock { color: var(--text-muted); }
 .insp-ram.lock .ic { color: var(--text-muted); }
@@ -4045,6 +4046,40 @@ body.dark .insp-pk-c li i { color: var(--accent); }
 .insp-pk-c li.nu i { color: var(--text-muted); }
 .insp-pk-toate { margin-top: 14px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
 .insp-pk-schimb { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+/* „Pachet și conturi" (pasul 3): cartonașele, tabelul oamenilor, limitele */
+.pkc { width: 100%; max-width: 1040px; margin: 0 auto; padding: 18px 18px 28px; box-sizing: border-box; display: grid; gap: 14px; align-content: start; overflow-y: auto; min-height: 0; }
+.pkc-cap { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pkc-cap h2 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text-primary); }
+.pkc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.pkc-tile { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: var(--bg-panel); }
+.pkc-t { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.pkc-v { font-size: 24px; font-weight: 800; color: var(--text-primary); margin: 2px 0; }
+.pkc-s { font-size: 12px; color: var(--text-secondary); }
+.pkc-tbl-w { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); }
+.pkc-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pkc-tbl th { text-align: left; font-size: 11.5px; font-weight: 800; color: var(--text-secondary); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.pkc-tbl td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); vertical-align: middle; }
+.pkc-tbl tr:last-child td { border-bottom: 0; }
+.pkc-om { font-weight: 700; }
+.pkc-nu { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; max-width: 260px; line-height: 1.35; }
+.pkc-lim { width: 108px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
+.pkc-gol { color: var(--text-muted); }
+.pkc-nota { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+/* Tabloul nostru: pachetele RA Insight (pasul 4) */
+.aiu-pk { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.aiu-pk-t { border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; background: var(--bg-dark); }
+.aiu-pk-t .k { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+.aiu-pk-t .v { font-size: 21px; font-weight: 800; color: var(--text-primary); margin: 2px 0; }
+.aiu-pk-t .s { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+.aiu-pk-l { padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
+body.dark .aiu-pk-l { color: var(--accent); }
+.aiu-pk-al { margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(245,158,11,.55); background: rgba(245,158,11,.08); font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
+.aiu-pk-al i { color: #b45309; }
+body.dark .aiu-pk-al i { color: #fbbf24; }
+.aiu-pk-ap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; font-size: 12.5px; color: var(--text-secondary); }
+.aiu-pk-r { margin-top: 6px; font-size: 12px; color: var(--text-primary); display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.rau-pk { margin-left: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
+body.dark .rau-pk { color: var(--accent); }
 .chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
 /* „De verificat" sub un răspuns RA Insight (cifre.js): textul pe culoarea textului (contrast sigur pe ambele teme), chihlimbarul doar
    pe chenar și pe iconiță. Alin, 08.10: „să aibă grijă cumva să nu dea greșit". */

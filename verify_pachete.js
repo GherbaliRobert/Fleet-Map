@@ -85,6 +85,11 @@ T('limita cea mai veche de pe firmă (ai_monthly_limit) = regula veche, nu Start
 const pub = P.publice({ aprofundat: false }), pubSite = P.publice({ cuPret: false, aprofundat: true });
 T('descrierile pachetelor: un singur loc, cu ce primește fiecare (Start: ce NU are)', pub.length === 4 && pub[0].fara.length === 2 && pub[1].include.some((x) => /Ramurile/.test(x)) && pub[0].pret === 'Inclus' && pub[2].pret === '20 de lei');
 T('analiza aprofundată se scrie doar cât e pornită (doar ce face aplicația azi)', !pub[2].include.some((x) => /aprofundat/i.test(x)) && pubSite[2].include.some((x) => /aprofundat/i.test(x)));
+const stPro = st('pro', { folositeFirma: 188, sumaLimite: 300 });
+const cc = P.cartonaseConturi(stPro, 4, OCT);
+T('„Pachet și conturi": Pro · 20 de lei pe lună · 412 din 600 · 4 din 5 (mai poți da unul) · 300 de limite, restul la comun', cc.map((x) => x.val + '|' + x.sub).join(' / ') === 'Pro|20 de lei pe lună / 412|din 600 · se reîncarcă pe 1 noiembrie / 4|din 5 · mai poți da unul / 300|restul de 300 sunt la comun', cc.map((x) => x.val + '|' + x.sub).join(' / '));
+T('„Pachet și conturi" pe Start: trei cartonașe (fără limite), „inclus în contract", „1 din 1 · toate date"', P.cartonaseConturi(st('start', { folositeFirma: 16 }), 1, OCT).map((x) => x.val + '|' + x.sub).join(' / ') === 'Start|inclus în contract / 34|din 50 · se reîncarcă pe 1 noiembrie / 1|din 1 · toate date');
+T('cât a folosit omul: „58 din 200" cu limită, „64" la comun; nota spune ce înseamnă „la comun"', P.textFolositeOm(200, 58) === '58 din 200' && P.textFolositeOm(null, 64) === '64' && /La comun/.test(P.notaConturi(P.dupaCod('pro'))) && /doar administratorul/.test(P.notaConturi(P.dupaCod('start'))));
 T('pe site, fără prețuri: „Cere ofertă" (Alin, 14.10)', pubSite.every((x) => x.pret == null) && pubSite[1].subPret === 'Cere ofertă' && pubSite[0].subPret === 'în orice contract');
 
 // ─── 2. Sursa ───────────────────────────────────────────────────────────────────────────────────────
@@ -108,6 +113,10 @@ T('pagina: „Vezi pachetele" doar la administrator; fereastra cere /api/insight
 T('pagina: ramurile de la Basic apar încuiate pe Start („· Basic"), cu pagina lor de lămurire', /ramuraIncuiata\(r\)/.test(blocIns) && /'· Basic'/.test(blocIns) && /deseneazaIncuiata\(main\)/.test(blocIns) && /pachet: true \}/.test(blocIns));
 T('pagina: butoanele (cartonașe, continuări, alegeri, casetă făcută din butoane) trimit `buton`, scrisul de mână nu', (blocIns.match(/insightTrimite\(t, \{ buton: true \}\)/g) || []).length === 3 && /insightTrimite\(c\.q, \{ buton: true \}\)/.test(blocIns) && /if \(buton\) corp\.buton = true;/.test(blocIns) && /if \(ev && ev\.inputType\) delete t\.dataset\.buton;/.test(blocIns) && /ta\.dataset\.buton = '1'/.test(PAG));
 T('pagina: mesajul pachetului în caseta de avertizare; eticheta „analiză aprofundată"', /x\.limita \|\| x\.pachetMesaj/.test(blocIns) && /'chat-aprof', 'analiză aprofundată'/.test(blocIns) && /aprofundat: j\.aprofundat, limita: j\.limita, pachetMesaj: j\.pachetMesaj/.test(blocIns));
+T('„Pachet și conturi": pagina în secțiune (doar textele serverului), deschisă din caseta pachetului și din Utilizatori', /async function deseneazaPachetConturi\(main\)/.test(blocIns) && /cere\('GET', '\/api\/insight\/pachet-conturi'\)/.test(blocIns) && /'Pachet și conturi →'\); a\.type = 'button'; a\.onclick = function \(\) \{ window\.insightRamura\('pachet'\); \}/.test(blocIns) && /onclick="insightPachetConturi\(\)"/.test(PAG));
+T('…conturile și limitele pleacă pe rutele lor (ai-seat, ai-limita), nu pe o cale nouă', /cere\('PUT', '\/api\/users\/' \+ id \+ '\/ai-seat'/.test(blocIns) && /cere\('PUT', '\/api\/users\/' \+ id \+ '\/ai-limita'/.test(blocIns));
+T('tabloul nostru: blocul pachetelor și rândul pachetului pe cartonașul firmei, din cifrele serverului', /function _aiuPachete\(p\)/.test(PAG) && /function _aiuPachetRand\(r\)/.test(PAG) && /_aiuPachete\(d\.pachete\)/.test(PAG) && /fetch\('\/api\/admin\/insight\/aprofundat', \{ method: 'PUT'/.test(PAG) && /fetch\('\/api\/admin\/insight\/sold', \{ method: 'PUT'/.test(PAG));
+T('anunțul pentru noi la 60% din plasă și la plasă: o dată pe firmă, lună și prag, ținut minte în setări', /const PLASA_ANUNT_PROCENT = 60;/.test(SRV) && /_anuntaSuperadmini\(supers, 'ai_plasa'/.test(SRV) && /db\.setSetting\('ai_plasa_anuntat'/.test(SRV) && /setInterval\(\(\) => plasaAnuntTick\(\)/.test(SRV));
 T('fila „Acces" a firmei: pachetul se pune de aici (super-admin), cu întrebare', /window\.raxCfgPachet = async function \(cod\)/.test(PAG) && /body: JSON\.stringify\(\{ ai_pachet: \{ cod: cod \} \}\)/.test(PAG));
 T('„Dai RA Insight acestui cont?" pe un pachet nu mai spune că se facturează un cont în plus', /Prețul pachetului rămâne același, oricâte conturi dai\./.test(PAG));
 const plans = require('./plans');
@@ -223,6 +232,10 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const lib = await intreaba(adm, 'De ce a crescut consumul?');
   T('întrebarea liberă pe Start: „de la pachetul Basic", fără model, fără să se numere', lib.status === 200 && lib.j.source === 'reguli' && /de la pachetul \*\*Basic\*\*/.test(lib.j.reply || '') && nCereri() === n0 && (await cota(adm)).used === 0, lib.status + ' ' + (lib.j.reply || '').slice(0, 80));
   T('…marcată ca mesaj al pachetului (ecranul îl pune în caseta de avertizare), și păstrat așa în conversație', lib.j.limita === true && ((await json('GET', '/api/insight/conversatii/' + lib.j.conversatieId, adm.ck)).j.mesaje || []).some((m) => m.extra && m.extra.limita === true));
+  const pcS = await json('GET', '/api/insight/pachet-conturi', adm.ck);
+  const manPc = (pcS.j.oameni || []).find((o) => o.nume === 'dispecer');
+  T('„Pachet și conturi" pe Start: trei cartonașe, administratorul cu cont, managerul nu poate („doar administratorul")', pcS.status === 200 && (pcS.j.cartonase || []).length === 3 && (pcS.j.oameni || [])[0].loc === true && !!manPc && /doar administratorul/.test(manPc.nuPoate || ''), pcS.text.slice(0, 200));
+  T('…pagina e doar a administratorului (managerul: 403)', (await json('GET', '/api/insight/pachet-conturi', man.ck)).status === 403);
   const pk0 = await json('GET', '/api/insight/pachete', adm.ck);
   T('„Vezi pachetele": cele patru, cu ce primește fiecare, pachetul firmei = Start; fără analiza aprofundată cât e oprită', pk0.status === 200 && (pk0.j.pachete || []).length === 4 && pk0.j.actual === 'start' && !JSON.stringify(pk0.j.pachete).match(/aprofundat/i) && /Se reîncarcă pe 1/.test(pk0.j.reincarcare || ''), pk0.text.slice(0, 160));
   T('caseta: contorul „50 din 50" și reîncărcarea, scrise de server', q0.pachet.scurt === '50 din 50' && /Se reîncarcă pe 1 /.test(q0.pachet.reincarcare || ''));
@@ -285,6 +298,21 @@ const LUNA = P.reincarcare(Date.now()).luna;
   T('…a doua întrebare din aceeași discuție nu mai repetă explicația', plBut2.j.source === 'reguli' && !/a ajuns la limita lunii/.test(plBut2.j.reply || ''), (plBut2.j.reply || '').slice(0, 80));
   const plRez = await json('POST', '/api/ai/report-summary', bAdm.ck, { type: 'utilization', report: { columns: ['Vehicul', 'Km'], rows: [['B 202 BAS', '30 km']] } });
   T('„Rezumă raportul" după plasă: pe reguli, fără model', plRez.j.reguli === true && nCereri() === n2);
+  // Tabloul nostru (pasul 4)
+  const uz = await json('GET', '/api/admin/ai-usage', S);
+  const rB = (uz.j.rows || []).find((r) => r.id === coB.id) || {};
+  T('tabloul nostru: firma Basic cu plasa ei (9,20 lei = 115% din 8 lei), încasăm 10 lei, ne rămân 0,80 lei', rB.pachet && rB.pachet.cod === 'basic' && rB.plasa && rB.plasa.plafonLei === 8 && rB.plasa.procent === 115 && rB.plasa.costLei === 9.2 && rB.venitLei === 10 && rB.ramanLei === 0.8, JSON.stringify({ p: rB.pachet, pl: rB.plasa, v: rB.venitLei, r: rB.ramanLei }));
+  T('…și în rezumat: câte firme pe pachete, ce încasăm, cine e lângă plasă', uz.j.pachete && uz.j.pachete.peCod.start >= 1 && uz.j.pachete.peCod.basic === 1 && uz.j.pachete.venitLei >= 10 && (uz.j.pachete.langaPlasa || []).some((x) => x.id === coB.id && x.procent >= 100), JSON.stringify(uz.j.pachete || {}).slice(0, 240));
+  T('tabloul nostru e doar al nostru (administratorul firmei: 403)', (await json('GET', '/api/admin/ai-usage', bAdm.ck)).status === 403);
+  const c1 = await json('POST', '/api/test/ceasuri', S, { plasa: true });
+  const c2 = await json('POST', '/api/test/ceasuri', S, { plasa: true });
+  const notP = ((await json('GET', '/api/notifications?limit=80', S)).j || []).filter((n) => n.type === 'ai_plasa');
+  T('anunțul pentru noi: „a atins plasa", o singură dată (a doua trecere nu-l repetă), fără firmă pe notificare', (c1.j.plasa.anuntate || []).some((k) => k.indexOf(coB.id + '|') === 0 && /\|100$/.test(k)) && !(c2.j.plasa.anuntate || []).length && notP.some((n) => /Firma Basic SRL a atins plasa/.test(n.title)), JSON.stringify(c1.j.plasa) + ' / ' + JSON.stringify(notP.map((n) => n.title)));
+  T('…clientul nu-l primește', !(((await json('GET', '/api/notifications?limit=80', bAdm.ck)).j || []).some((n) => n.type === 'ai_plasa')));
+  const sl0 = await json('PUT', '/api/admin/insight/sold', S, { usd: 'mult' });
+  const sl1 = await json('PUT', '/api/admin/insight/sold', S, { usd: '46.5' });
+  T('soldul Anthropic: îl scriem noi (o sumă), aplicația spune pentru câte zile ajunge la ritmul lunii', sl0.status === 400 && sl1.status === 200 && sl1.j.sold && sl1.j.sold.usd === 46.5 && Number.isInteger(sl1.j.sold.zile) && (await json('GET', '/api/admin/ai-usage', S)).j.pachete.sold.usd === 46.5, JSON.stringify(sl1.j));
+  T('…doar noi (administratorul firmei: 403)', (await json('PUT', '/api/admin/insight/sold', bAdm.ck, { usd: 1 })).status === 403);
 
   // ── c) Pro ───────────────────────────────────────────────────────────────────────────────────────
   console.log('   c) Pro');
@@ -314,6 +342,9 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const limAp = await json('PUT', '/api/users/' + pA.id + '/ai-limita', pAdm.ck, { limita: 597 });
   T('Anei i se dau 597: la comun rămân 3, deja folosite (Bogdan 1 + 2 de-ale firmei de mai jos)', limAp.status === 200);
   for (let i = 0; i < 2; i++) await json('POST', '/api/test/ai-usage', S, { companyId: coP.id, userId: pAdm.id, kind: 'insight' });
+  const pcP = await json('GET', '/api/insight/pachet-conturi', pAdm.ck);
+  const anaPc = (pcP.j.oameni || []).find((o) => o.nume === 'ana');
+  T('„Pachet și conturi" pe Pro: patru cartonașe, Ana cu limita 597 și „2 din 597" folosite', pcP.status === 200 && (pcP.j.cartonase || []).length === 4 && !!anaPc && anaPc.limita === 597 && anaPc.folositeText === '2 din 597' && pcP.j.pachet.imparte === true, JSON.stringify(anaPc));
   const qB = await cota(pB);
   T('Bogdan: partea la comun s-a terminat (comun), Ana are încă din ale ei', qB.blocked === true && qB.motiv === 'comun' && (await cota(pA)).blocked === false, JSON.stringify({ b: qB.blocked, m: qB.motiv, c: qB.pachet && qB.pachet.comun }));
   const bogCom = await intreaba(pB, 'De ce a crescut consumul?');
@@ -360,6 +391,7 @@ const LUNA = P.reincarcare(Date.now()).luna;
   await loc(vAdm);
   const qV = await cota(vAdm);
   T('firma pe regula veche (50 pe cont): fond = conturi × 50, fără pachet', qV.questions === 50 && !qV.pachet, JSON.stringify(qV).slice(0, 160));
+  T('…„Pachet și conturi" îi spune că e pe regula veche', (await json('GET', '/api/insight/pachet-conturi', vAdm.ck)).j.vechi === true);
   const arV = await json('POST', '/api/reports/ai-raport', vFara.ck, { text: 'Ce acte expiră?' });
   T('…și fila AI Raport rămâne pentru toți, ca înainte', arV.status === 200 && !!arV.j.raspuns && !arV.j.pachet, arV.status);
   const rau = await json('PUT', '/api/companies/' + coB.id + '/settings', S, { ai_pachet: { cod: 'gold' } });

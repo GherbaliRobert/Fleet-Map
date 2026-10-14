@@ -714,7 +714,17 @@ bifă, PDF pe email, fără Stripe) · 7 pagina pachetelor (aplicație + site, p
   `deseneazaIncuiata`), „Raport" în loc de „Ramuri" pe butoane, `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
   `pachetMesaj` de la server) în `.chat-lim`, eticheta `.chat-aprof`, „Vezi pachetele" (`insightPachete`, doar administratorul).
   Bula din colț și fila AI Raport arată pachetul tot din textele serverului.
-- Păzit de `verify_pachete.js` (în `npm test`; 124, pe server pornit cu modelul simulat).
+- **Pasul 3, „Pachet și conturi"** (blocul secțiunii, `S.ramura === 'pachet'` → `deseneazaPachetConturi`; din caseta pachetului
+  și din Utilizatori, `insightPachetConturi`): `GET /api/insight/pachet-conturi` (`manageUsers`) → cartonașele
+  (`pachete.cartonaseConturi`), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota (`notaConturi`).
+  Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale.
+- **Pasul 4, tabloul nostru** (`/api/admin/ai-usage` → `pachete` + `plasa` / `aprofundat` / `ramanLei` pe rând; în pagină
+  `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany` cu scrisoarea de luni, pe model
+  (`cost_aprofundat_usd` = partea Sonnet), la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
+  `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
+  `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic = setarea `anthropic_sold` (`PUT /api/admin/insight/sold`),
+  zilele = sold ÷ (costul lunii pe toată platforma ÷ ziua lunii). Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
+- Păzit de `verify_pachete.js` (în `npm test`; 142, pe server pornit cu modelul simulat).
 - **Încă de făcut, în ordinea de mai sus.** Până la pasul 5 pachetul NU ajunge pe factură; până atunci firmele pe regula veche
   (pe cont) se facturează ca înainte. Când se face pasul 5, grila pe cont (`AIQ_PRET_LOC`) și facturarea pe vârful lunii ies
   pentru ofertele noi, iar regula „RA Track NU funcționează pe planuri" se scrie cu excepția pachetelor RA Insight.

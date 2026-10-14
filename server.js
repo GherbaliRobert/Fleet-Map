@@ -3834,6 +3834,51 @@ async function _asiguraLocAdmin(u) {
     return true;
   } catch (e) { return false; }
 }
+// Tabloul nostru (pasul 4): de la cât din plasă ne anunță aplicația (și o dată când o atinge).
+const PLASA_ANUNT_PROCENT = 60;
+// Soldul de la Anthropic: îl scriem noi, de mână (Anthropic nu-l dă printr-o cerere), cu ziua; aplicația socotește, după
+// ritmul lunii, pentru câte zile mai ajunge. { usd, la, zile } sau null.
+async function _soldAnthropic() {
+  let s = null; try { s = JSON.parse((await db.getSetting('anthropic_sold')) || 'null'); } catch (e) { s = null; }
+  if (!s || !(Number(s.usd) >= 0)) return null;
+  let zile = null;
+  try {
+    const cost = await db.costAiLunaToata(), zi = new Date().getUTCDate();
+    const peZi = cost / Math.max(1, zi);
+    if (peZi > 0) zile = Math.floor(Number(s.usd) / peZi);
+  } catch (e) {}
+  return { usd: Math.round(Number(s.usd) * 100) / 100, la: Number(s.la) || null, zile: zile };
+}
+// Anunțul pentru noi: o firmă a trecut de 60% din plasă, sau a atins-o (de acum răspunde pe butoane până pe 1). O dată pe
+// firmă, pe lună și pe prag (cheia stă în setări, ca o repornire să nu-l repete). Fără firma demo.
+async function plasaAnuntTick() {
+  const luna = new Date().toISOString().slice(0, 7);
+  let facute = []; try { facute = JSON.parse((await db.getSetting('ai_plasa_anuntat')) || '[]'); } catch (e) { facute = []; }
+  facute = (Array.isArray(facute) ? facute : []).filter(function (k) { return String(k).indexOf('|' + luna + '|') > 0; });
+  const noi = [];
+  for (const co of await db.getCompanies()) {
+    if (co.id === demoCompanyId || co.is_demo) continue;
+    const p = _pachetCo(co); if (!p || !p.ai || !_firmaAreAi(co)) continue;
+    const plafon = pachete.plafonLei(p); if (!(plafon > 0)) continue;
+    let lei = 0; try { lei = (await db.costAiLunaFirma(co.id)).usd * (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum()); } catch (e) { continue; }
+    const procent = Math.round((lei / plafon) * 100);
+    const prag = procent >= 100 ? 100 : (procent >= PLASA_ANUNT_PROCENT ? PLASA_ANUNT_PROCENT : 0);
+    if (!prag) continue;
+    const cheie = co.id + '|' + luna + '|' + prag;
+    if (facute.indexOf(cheie) >= 0) continue;
+    noi.push({ co: co, p: p, procent: procent, prag: prag, plafon: plafon, cheie: cheie });
+  }
+  if (!noi.length) return { anuntate: [] };
+  let supers = []; try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+  for (const x of noi) {
+    const titlu = x.prag >= 100 ? 'RA Insight: ' + x.co.name + ' a atins plasa' : 'RA Insight: ' + x.co.name + ' a trecut de ' + PLASA_ANUNT_PROCENT + '% din plasă';
+    const corp = 'Pachet ' + x.p.nume + ': ' + x.procent + '% din ' + x.plafon.toLocaleString('ro-RO') + ' lei luna asta.' +
+      (x.prag >= 100 ? ' De acum răspunde doar pe butoane, până pe 1.' : ' La 100%, trece pe butoane până pe 1.');
+    try { await _anuntaSuperadmini(supers, 'ai_plasa', x.prag >= 100 ? 'warning' : 'info', titlu, corp, { company_id: x.co.id, procent: x.procent }); facute.push(x.cheie); } catch (e) {}
+  }
+  try { await db.setSetting('ai_plasa_anuntat', JSON.stringify(facute)); } catch (e) {}
+  return { anuntate: noi.map(function (x) { return x.cheie; }) };
+}
 // Analiza aprofundată (Sonnet) pornește doar dacă o pornim noi (Alin, 14.10: „doar dacă proba arată că Haiku 5.5 e slab").
 const MODEL_APROFUNDAT = process.env.AI_MODEL_APROFUNDAT || 'claude-sonnet-5-5';
 let _aprofCache = null, _aprofTs = 0;
@@ -3932,6 +3977,11 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
   const used = pk && !pk.ai ? (Number(o.reguli) || 0) : (Number(u.questions) || 0);
   const costEur = Math.round((Number(o.costEur) || 0) * 100) / 100;
   const venitLei = pk ? Math.round((Number(pk.pretRON) || 0) * 100) / 100 : (q.seatPriceRON > 0 ? Math.round(deFacturat * q.seatPriceRON * 100) / 100 : 0);
+  // Tabloul nostru (pasul 4): cât din plasă a folosit firma (costul real, cu scrisoarea de luni) și cât din bugetul de analiză
+  // aprofundată. Doar pentru noi — clientul nu vede niciodată costurile.
+  const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
+  const plasa = pk && pk.ai ? { plafonLei: pachete.plafonLei(pk), costLei: r2(o.costPlasaLei), procent: pachete.plafonLei(pk) > 0 ? Math.round(Math.min(9.99, (Number(o.costPlasaLei) || 0) / pachete.plafonLei(pk)) * 100) : 0 } : null;
+  const aprofundat = pk && pk.sonnetLei > 0 ? { bugetLei: pk.sonnetLei, cheltuitLei: r2(o.aprofundatLei) } : null;
   // Cine are cont, plus oricine a întrebat luna asta (dacă apare aici cineva FĂRĂ cont, e o gaură
   // pe care vrem s-o vedem, nu s-o ascundem).
   const oameniRow = lista
@@ -3958,6 +4008,8 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
     fond: fond,                                   // 0 = fără fond (nelimitat, doar pe regula veche)
     vechi: !pk && !peCont && !!q.questions,       // cotă fixă, din contractele vechi
     pachet: pk ? { cod: pk.cod, nume: pk.nume, pretRON: pk.pretRON, ai: pk.ai } : null,
+    plasa: plasa, aprofundat: aprofundat,
+    ramanLei: pk ? r2((Number(pk.pretRON) || 0) - (Number(o.costPlasaLei) || 0)) : null,
     used: used,
     ramase: fond ? Math.max(0, fond - used) : null,
     pct: fond ? Math.round((used / fond) * 100) : null,
@@ -4079,11 +4131,17 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     });
     const pePersoana = {}; peOm.forEach(function (r) { pePersoana[r.user_id] = r; });
     const reguliPeFirma = await db.raspunsuriReguliLunaToate().catch(function () { return {}; });   // pachetul Start: răspunsurile pe butoane
+    // Plasa pachetelor: costul real al lunii, cu scrisoarea de luni (ca în _starePachet), în lei, la cursul de azi.
+    const kLei = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
+    const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_BILLABLE_KINDS.concat(['scrisoare'])).catch(function () { return []; })) || []).forEach(function (x) {
+      if (x.company_id != null) plasaPeFirma[x.company_id] = { lei: (Number(x.cost_usd) || 0) * kLei, aprofLei: (Number(x.cost_aprofundat_usd) || 0) * kLei };
+    });
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
       const cost = ai ? (Number(u.cost_usd) || 0) * ai.USD_EUR : 0;   // pe modelul fiecărui răspuns (db.js)
-      const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost, reguli: reguliPeFirma[c.id] || 0 });
+      const pl = plasaPeFirma[c.id] || { lei: 0, aprofLei: 0 };
+      const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost, reguli: reguliPeFirma[c.id] || 0, costPlasaLei: pl.lei, aprofundatLei: pl.aprofLei });
       const ist = facturatPeFirma[c.id] || null;
       r.facturatLei = ist ? ist.facturatLei : 0;   // ce i-am facturat pe RA Insight în perioada citită
       r.incasatLei = ist ? ist.incasatLei : 0;
@@ -4095,6 +4153,20 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
     const costEur = suma(function (r) { return r.costEur; });
     const venitLei = suma(function (r) { return r.venitLei; });
+    // Pachetele (pasul 4): câte firme pe fiecare, ce încasăm din ele, cât ne costă, cine e lângă plasă (≥ 60%) sau a atins-o.
+    const cuPachet = rows.filter(function (r) { return r.pachet && r.enabled; });
+    const peCod = {}; pachete.CODURI.forEach(function (k) { peCod[k] = 0; }); cuPachet.forEach(function (r) { peCod[r.pachet.cod]++; });
+    const pacheteSum = {
+      peCod: peCod,
+      venitLei: Math.round(cuPachet.reduce(function (s, r) { return s + r.venitLei; }, 0) * 100) / 100,
+      costLei: Math.round(cuPachet.reduce(function (s, r) { return s + (r.plasa ? r.plasa.costLei : 0); }, 0) * 100) / 100,
+      aprofundatLei: Math.round(cuPachet.reduce(function (s, r) { return s + (r.aprofundat ? r.aprofundat.cheltuitLei : 0); }, 0) * 100) / 100,
+      langaPlasa: cuPachet.filter(function (r) { return r.plasa && r.plasa.procent >= PLASA_ANUNT_PROCENT; })
+        .map(function (r) { return { id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei }; })
+        .sort(function (a, b) { return b.procent - a.procent; }),
+      aprofundataPornita: await _aprofundataPornita(),
+      sold: await _soldAnthropic()
+    };
     // Luna curentă, încă nefacturată, primește estimarea — altfel dashboard-ul ar arăta gol tocmai
     // în luna despre care știm cel mai mult.
     const lunaAsta = _lunaAcum();
@@ -4121,6 +4193,7 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
         istoricLuni: LUNI_ISTORIC
       },
       istoric: istoric,
+      pachete: pacheteSum,
       fxEur: fx.eur || EUR_RON_FALLBACK
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -4820,6 +4893,31 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
 // una lângă alta, cu costul ADEVĂRAT al fiecăruia (din tokenii întorși, pe prețurile modelului — ai.MODELE). Răspunde
 // ACEEAȘI funcție ca pentru client (_raInsight, cu `proba`): fără conversație salvată, fără fondul firmei, fără răspunsul
 // rapid; consumul se scrie pe noi (rând fără firmă, felul „proba_modele"). O singură probă deodată, ținută în memorie.
+// „Pachet și conturi" (pachetele RA Insight, pasul 3 — macheta din 14.10): administratorul firmei vede pachetul, câte au
+// rămas, cine are RA Insight și câte întrebări a folosit fiecare; conturile și limitele le dă pe rutele lor (ai-seat,
+// ai-limita). Textele le scrie pachete.js; ecranul doar le arată.
+app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), withScope, async (req, res) => {
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Pagina e a unei firme: alege întâi firma.' });
+    const sp = await _starePachet(req.companyId, null);
+    if (!sp) return res.json({ vechi: true, mesaj: 'Firma e pe regula veche, cu întrebări pe cont (scrise în contract). Conturile le dai din Utilizatori; pentru un pachet, scrie-ne.' });
+    const p = sp.pachet, st = sp.st, acum = Date.now();
+    const users = (await db.getUsers(req.companyId)).filter(function (u) { return u.active !== false && u.role !== 'superadmin' && !(u.access_until && Number(u.access_until) < acum); });
+    const aj = await roluriCompaniei(req.companyId);
+    let peOm = {};
+    if (p.ai) (await db.getAiMonthUsageByUser(req.companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
+    else peOm = await db.raspunsuriReguliPeOm(req.companyId);
+    const conturi = users.filter(function (u) { return u.ai_seat; }).length;
+    const oameni = users.map(function (u) {
+      const lim = p.imparte && u.ai_seat && u.ai_limita != null ? Number(u.ai_limita) : null;
+      return { id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj), loc: !!u.ai_seat, limita: lim,
+        folosite: peOm[u.id] || 0, folositeText: u.ai_seat || peOm[u.id] ? pachete.textFolositeOm(lim, peOm[u.id] || 0) : null,
+        nuPoate: u.ai_seat ? null : pachete.refuzLoc(p, conturi, u.role) };
+    }).sort(function (a, b) { return (b.loc - a.loc) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
+    res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari },
+      cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni, nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // „Vezi pachetele" (administratorul firmei, din caseta pachetului): ce primește fiecare pachet, cu prețul de listă, și care e al
 // firmei. Descrierile stau în pachete.js (aceleași pe site, fără prețuri). Trecerea din aplicație vine la pasul ei.
 app.get('/api/insight/pachete', requireAuth, withScope, async (req, res) => {
@@ -4829,6 +4927,18 @@ app.get('/api/insight/pachete', requireAuth, withScope, async (req, res) => {
     let contact = null; try { contact = ((await getSystemSettings()).invoice_issuer || {}).email || null; } catch (e) {}
     res.json({ pachete: pachete.publice({ aprofundat: await _aprofundataPornita() }), actual: actual, pretRON: pretRON, inToate: pachete.IN_TOATE,
       reincarcare: pachete.textReincarcare(Date.now()), contact: contact });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Soldul de la Anthropic (pasul 4): îl scriem noi, din pagina lor de facturare; ziua o pune serverul.
+app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const v = req.body && req.body.usd;
+    if (v === null || v === '') { await db.setSetting('anthropic_sold', ''); return res.json({ ok: true, sold: null }); }
+    const usd = Number(v);
+    if (!Number.isFinite(usd) || usd < 0 || usd > 1000000) return res.status(400).json({ error: 'Soldul e o sumă în dolari (0 sau mai mult).' });
+    await db.setSetting('anthropic_sold', JSON.stringify({ usd: Math.round(usd * 100) / 100, la: Date.now() }));
+    auditReq(req, 'update', 'anthropic_sold', null, { usd: usd });
+    res.json({ ok: true, sold: await _soldAnthropic() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Comutatorul analizei aprofundate (Sonnet la Pro / Business, cu bugetul pachetului). Oprit până hotărâm după probă.
@@ -18586,7 +18696,8 @@ if (process.env.SEED_TEST === '1') {
   app.post('/api/test/ceasuri', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {}, acum = Number(b.acum) || Date.now();
-      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined });
+      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined,
+        plasa: b.plasa ? await plasaAnuntTick() : undefined });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   // Raportul instalatorului, până îl face Robert: aceeași funcție pe care o va chema el.
@@ -19327,6 +19438,8 @@ async function start() {
   // între 8 și 20 (o săptămână se încheie duminică la miezul nopții — anunțul vine luni dimineață, nu noaptea).
   setTimeout(() => montajDeFacturatTick().catch(() => {}), 4 * 60 * 1000);
   setInterval(() => montajDeFacturatTick().catch(() => {}), 60 * 60 * 1000);
+  // Pachetele RA Insight (pasul 4): anunțul pentru noi la 60% din plasă și la plasă — la 15 minute.
+  setInterval(() => plasaAnuntTick().catch(() => {}), 15 * 60 * 1000);
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);

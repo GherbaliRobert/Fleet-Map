@@ -1860,13 +1860,15 @@ function _strangePeModele(rows, cheie) {
     const k = cheie(r);
     let o = out.get(k);
     if (!o) {
-      o = Object.assign({}, r, { cost_usd: 0 });
+      o = Object.assign({}, r, { cost_usd: 0, cost_aprofundat_usd: 0 });
       delete o.model;
       _AI_SUME.forEach(function (f) { if (f in r) o[f] = 0; });
       out.set(k, o);
     }
     _AI_SUME.forEach(function (f) { if (f in r) o[f] += Number(r[f]) || 0; });
-    o.cost_usd += _costUsdRand(r);
+    const c = _costUsdRand(r);
+    o.cost_usd += c;
+    if (/sonnet/i.test(String(r.model || ''))) o.cost_aprofundat_usd += c;   // analiza aprofundată (pachetele RA Insight, 14.10)
     if (r.last_used && (!o.last_used || new Date(r.last_used) > new Date(o.last_used))) o.last_used = r.last_used;
   });
   return Array.from(out.values());
@@ -4580,10 +4582,25 @@ async function raspunsuriReguliLuna(companyId, userId) {
        FROM ai_reguli WHERE company_id = $1 AND created_at >= date_trunc('month', NOW())`, [companyId, userId != null ? userId : null]);
   return { firma: Number(r.rows[0] && r.rows[0].firma) || 0, om: Number(r.rows[0] && r.rows[0].om) || 0 };
 }
+// Tot ce ne-a costat AI-ul luna asta, pe toată platforma (orice fel: RA Insight, scrisori, acte citite, probe) — ritmul
+// după care tabloul nostru socotește pentru câte zile mai ajunge soldul de la Anthropic.
+async function costAiLunaToata() {
+  const r = await pool.query(
+    `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+       FROM ai_usage WHERE created_at >= date_trunc('month', NOW()) GROUP BY model`);
+  return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
+}
 // Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
 async function raspunsuriReguliLunaToate() {
   const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
   const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
+  return out;
+}
+// Răspunsurile pe butoane ale lunii, pe oamenii unei firme („Pachet și conturi" pe Start): { user_id: n }.
+async function raspunsuriReguliPeOm(companyId) {
+  const r = await pool.query("SELECT user_id, COUNT(*)::int AS n FROM ai_reguli WHERE company_id = $1 AND created_at >= date_trunc('month', NOW()) GROUP BY user_id", [companyId]);
+  const out = {}; r.rows.forEach(function (x) { if (x.user_id != null) out[x.user_id] = Number(x.n) || 0; });
   return out;
 }
 // Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni. `aprofundat` =
@@ -6367,7 +6384,7 @@ module.exports = {
   listeCompat, puneListaCompat,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
-  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, costAiLunaFirma,
+  setUserAiLimita, getAiSeatHolders, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
