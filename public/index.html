@@ -28772,7 +28772,7 @@ const pozitii = await r.json();</code></pre>
     function _aiuSemnale(r) {
       var s = [];
       if (r.folosFaraCont) s.push({ c: 'var(--red)', t: r.folosFaraCont + (r.folosFaraCont === 1 ? ' om a întrebat fără să aibă cont' : ' oameni au întrebat fără să aibă cont') + ' — ar trebui să fie imposibil, verifică.' });
-      if (r.epuizat) s.push({ c: 'var(--red)', t: r.pachet ? 'Întrebările lunii s-au terminat. RA Insight răspunde doar pe butoane până pe 1.' : 'Fondul lunii s-a terminat. Clientul primește doar întrebările gratuite până pe 1.' });
+      if (r.epuizat) s.push({ c: 'var(--red)', t: r.pachet ? 'Întrebările lunii s-au terminat: până pe 1, doar răspunsuri pe butoane.' : 'Fondul lunii s-a terminat. Clientul primește doar întrebările gratuite până pe 1.' });
       else if (r.pct != null && r.pct >= 80) s.push({ c: 'var(--orange)', t: 'A consumat ' + r.pct + '% din fond — mai are ' + window._raxNrI(r.ramase) + '.' });
       if (r.contFaraFolos) s.push({ c: 'var(--orange)', t: r.contFaraFolos + (r.pachet ? (r.contFaraFolos === 1 ? ' cont dat, nefolosit' : ' conturi date, nefolosite') : (r.contFaraFolos === 1 ? ' cont plătit, nefolosit' : ' conturi plătite, nefolosite')) + ' luna asta — merită un telefon.' });
       if (r.contPeInactiv) s.push({ c: 'var(--text-muted)', t: r.contPeInactiv + (r.contPeInactiv === 1 ? ' cont e pe un om dezactivat' : ' conturi sunt pe oameni dezactivați') + ' — nu se facturează.' });
