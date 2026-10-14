@@ -24,7 +24,11 @@ const EMAIL_MAX = 30 * 1024 * 1024;        // Cloudflare primește cel mult 25 M
 const TEXT_MAX = 200000;                   // ca la „Trimise"
 const HTML_MAX = 500000;                   // un buletin lung tot încape; peste, se păstrează doar textul (nu un HTML tăiat)
 const ATAS_PASTRAT_MAX = 10 * 1024 * 1024; // atașamentele păstrate pe un email, adunate; peste, rămâne doar numele
-const IMAGINE_IN_CORP_MAX = 2 * 1024 * 1024; // o imagine din corp (cid:) se arată doar până la atât
+// O imagine din corp (cid:) se arată până la cât se păstrează pe un email (14.10, Robert: „nu pot să văd imaginile din
+// mailuri"): era 2 MB, iar o poză de telefon are 3–5 MB — rămânea „cid:", adică o imagine ruptă.
+const IMAGINE_IN_CORP_MAX = ATAS_PASTRAT_MAX;
+// Pozele care se pot arăta în pagină: doar imagini „de pixeli". SVG NU (poate purta scripturi).
+const IMAGINE_ARATATA = /^image\/(png|jpe?g|gif|webp|bmp)$/i;
 const CITAT_MAX = 4000;                    // cât din mesajul primit se citează în răspuns
 
 function _taie(s, n) { return s == null ? null : String(s).slice(0, n); }
@@ -170,6 +174,16 @@ function cuImagini(html, atasamente) {
   return h;
 }
 
+// Pozele atașate care NU sunt deja în corp (iPhone-ul trimite poza ca atașament lângă un text simplu; unele programe pun
+// o poză „inline" fără s-o lege de text): se arată sub email, ca imagini — tot din ce s-a păstrat, ca date în pagină.
+// `html` = corpul ORIGINAL (cu „cid:"), ca să se știe ce e deja în el.
+function imaginiAtasate(html, atasamente) {
+  const h = String(html || '');
+  return (atasamente || []).filter(function (a) {
+    return a && a.continut_b64 && IMAGINE_ARATATA.test(a.tip || '') && (a.octeti || 0) <= IMAGINE_IN_CORP_MAX && !(a.cid && h.indexOf('cid:' + a.cid) >= 0);
+  }).map(function (a) { return { id: Number(a.id), nume: a.nume, src: 'data:' + String(a.tip).toLowerCase() + ';base64,' + a.continut_b64 }; });
+}
+
 // Anunțul din aplicație: fără nume, fără subiect (ca la cererile demo: datele omului stau doar în panou, nu și în
 // telefoanele noastre, prin serverele de notificări).
 function anunt(adresa, n) {
@@ -180,6 +194,6 @@ function anunt(adresa, n) {
 
 module.exports = {
   EMAIL_MAX, TEXT_MAX, HTML_MAX, ATAS_PASTRAT_MAX, IMAGINE_IN_CORP_MAX, CITAT_MAX,
-  citeste, verificare, adresaNoastra, subiectRaspuns, citat, pentruRaspuns, cuImagini, anunt, textDinHtml, cand: _cand,
+  citeste, verificare, adresaNoastra, subiectRaspuns, citat, pentruRaspuns, cuImagini, imaginiAtasate, anunt, textDinHtml, cand: _cand,
   adreseDin, pentruRaspunsTuturor, subiectRedirectionare, blocRedirectionat, pentruRedirectionare, pentruRedirectionareTrimis, REDIR_MAX,
 };

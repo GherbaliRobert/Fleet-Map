@@ -93,7 +93,7 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
 **Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Track.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
 
 - **Numele fișierului:** `RA-Track - Raport {Nume raport} - {data generării}`
-  (ex. `RA-Track - Raport Traseu - 06.07.2026.xlsx` / `.pdf`). „Numele raportului" = `label`-ul din catalogul din `reports.js`. Setat **într-un singur loc**: `report_export.js` → `sendReport()`.
+  (ex. `RA-Track - Raport Traseu - 06.07.2026.xlsx` / `.pdf`). „Numele raportului" = `label`-ul din catalogul din `reports.js`. Setat **într-un singur loc**: `report_export.js` → `numeRaport(report)`, folosit de `sendReport()` (descărcarea) ȘI de raportul programat trimis pe email (`report_schedules.js`, atașamentul — până pe 14.10 pleca „utilization_2026-10-13.xlsx"). Păzit de `verify_mail.js`.
 - **Logo în Excel:** imaginea reală pe **rândul 1 al FIECĂREI foi** (Sumar + fiecare vehicul); titlul/perioada/tabelul coboară dedesubt. Vezi `xlLogoId` / `xlPlaceLogo` / `xlWriteTable` + `toXlsx` / `toXlsxMultiSheet`.
 - **Logo în PDF:** aceeași imagine reală, înglobată în antet cu `doc.image()` (NU redesenată cu forme/text). Vezi `renderPdf`.
 - **Fișier de logo pentru fundal ALB = `public/logo-light.png`** (varianta ÎNCHISĂ). ⚠️ Capcană de denumire: `logo.png` e varianta **ALBĂ** (pentru fundal închis, ca în app) — pe alb devine invizibilă („arată pe alb"). Pentru orice export pe fundal alb folosește `logo-light.png`.
@@ -221,6 +221,11 @@ telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin
   Firma expeditorului: `db.firmaDupaEmail` (om al firmei sau `contact_email`), doar ca etichetă.
 - **Atașamentul se DESCARCĂ** (`application/octet-stream` + `_antetDescarcare`), niciodată deschis cu tipul lui: un HTML
   trimis de oricine ar rula pe adresa noastră. NU servi atașamente „inline".
+- **Pozele (14.10, Robert: „nu pot să văd imaginile din mailuri"):** poza din corp (`cid:`) se arată până la
+  `IMAGINE_IN_CORP_MAX` = `ATAS_PASTRAT_MAX` (10 MB; era 2 MB, iar o poză de telefon are 3–5 MB și rămânea ruptă). Pozele
+  atașate care nu sunt în corp (iPhone: text simplu + poză) = `mailPrimit.imaginiAtasate(htmlOriginal, atas)` → `imagini`
+  (date `data:` în răspuns, doar png / jpeg / gif / webp / bmp — NU SVG), arătate sub email pe web (`.mail-imagini`) și pe
+  telefon; un clic = descărcarea atașamentului. Imaginile de pe internet rămân la „Arată imaginile".
 - **Cadrul unui email PRIMIT, pe web:** `sandbox="allow-popups allow-popups-to-escape-sandbox"` + `<base target="_blank">`
   (linkurile, în altă filă), CSP fără `https:` la imagini până la „Arată imaginile" (altfel expeditorul află când l-ai
   deschis). **Pe telefon rămâne `sandbox=""`** (o filă nouă din cadru n-are unde să meargă în aplicație). Un font de bază

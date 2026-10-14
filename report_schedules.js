@@ -103,7 +103,8 @@ async function runSchedule(s, deps, now) {
   const report = await reports.runReport(db, s.report_type, imeis, from, to, opts, s.company_id);
   const fmt = (s.format === 'xlsx') ? 'xlsx' : 'pdf';
   const buf = fmt === 'xlsx' ? await reportExport.toXlsx(report) : await reportExport.toPdf(report);
-  const filename = (report.type || 'raport') + '_' + from.slice(0, 10) + '.' + fmt;
+  // Numele casei, ca la descărcarea din platformă (Robert, 14.10): „RA-Track - Raport Utilizare flotă - 14.10.2026.xlsx".
+  const filename = reportExport.numeRaport(report) + '.' + fmt;
 
   // Salvează în Istoric rapoarte → apare automat, descărcabil (Excel/PDF), pe user-ul programării.
   let historyId = null, historyError = null;

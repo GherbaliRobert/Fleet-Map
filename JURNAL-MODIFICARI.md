@@ -324,6 +324,27 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-14
 
+### AMÂNDOI · Pozele din emailurile primite se văd; raportul trimis pe email are numele casei
+
+Robert (14.10): *„nu pot să văd imaginile din mailuri pe mobile… nici pe web nu pot să le văd"* și *„vreau ca rapoartele de pe
+mail, când sunt descărcate direct din mail, să aibă numele sub brand RA Track, ca cele descărcate din platformă"*.
+
+1. **Pozele din Mail (web și telefon).** Se pierdeau în două cazuri: o poză lipită în text mai mare de 2 MB (o poză de
+   telefon are 3–5 MB) rămânea ruptă, iar o poză trimisă ca atașament (așa trimite iPhone-ul) se vedea doar ca nume de
+   fișier. Acum: poza din text se arată până la 10 MB (cât se păstrează pe un email), iar pozele atașate apar sub email, ca
+   imagini; un clic pe ele le descarcă. Emailurile deja primite se văd și ele, la redeschidere. Imaginile luate de pe
+   internet (buletinele firmelor) rămân oprite până la „Arată imaginile" — așa nu află expeditorul când ai deschis emailul.
+2. **Raportul programat, trimis pe email**, pleacă acum cu numele casei, ca la descărcarea din platformă:
+   „RA-Track - Raport Index km ore - 14.10.2026.xlsx" (era „utilization_2026-10-13.xlsx").
+
+- **Ce am schimbat:** `mail_primit.js` (limita pozelor din text = cât se păstrează pe email; `imaginiAtasate` — pozele de
+  pixeli care nu sunt deja în text, fără SVG), `server.js` (emailul deschis poartă `imagini`), pagina și telefonul (pozele sub
+  email), `report_export.js` (`numeRaport`, un singur loc pentru nume) și `report_schedules.js` (îl folosește). Probe:
+  `verify_mail_primite.js` (+6: poza de 3 MB, poza de iPhone, regula, pagina, telefonul), `verify_mail.js` (+2: raportul
+  programat pleacă pe email cu numele casei). APK 1.0.19.
+- **Ce vede fondatorul:** pozele în emailurile din panoul Mail.
+- **Ce vede clientul:** rapoartele programate îi vin pe email cu numele „RA-Track - Raport …".
+
 ### FONDATOR · Emailurile de pe adresa ta pleacă cu „Numele tău | RA Track" — `9904361`
 
 Robert (14.10): *„vreau ca atunci când cineva primește mail de la noi pers@ratrack.ro, să scrie numele persoanei | RA Track"*.

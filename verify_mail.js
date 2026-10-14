@@ -187,6 +187,24 @@ const fals = http.createServer((req, res) => {
     const aud = await json('GET', '/api/audit?limit=100', S);
     const randuri = Array.isArray(aud.j) ? aud.j : (aud.j.rows || aud.j.entries || aud.j.logs || []);
     T('rând în jurnalul de audit pentru fiecare email scris (fără conținut)', randuri.some((r) => r.action === 'mail_trimis') && !JSON.stringify(randuri).includes('vă trimit oferta'));
+
+    // Raportul programat, trimis pe email (Robert, 14.10): atașamentul poartă numele casei, ca la descărcarea din platformă —
+    // „RA-Track - Raport {numele raportului} - {ziua}.xlsx" (era „utilization_2026-10-13.xlsx").
+    await json('POST', '/api/devices', S, { imei: '861000000399001', name: 'Logan Mail', plate: 'B 99 MAI', company_id: co.id });
+    const prog = (await json('POST', '/api/report-schedules', F, { report_type: 'utilization', period: 'last7', frequency: 'daily', hour: 6, format: 'xlsx', recipients: 'rapoarte@firma-mail.ro' })).j;
+    const n0r = primite.length;
+    const rul = await json('POST', '/api/report-schedules/' + prog.id + '/run', F);
+    const eR = primite.slice(n0r).filter((x) => x.corp.to && x.corp.to.some((t) => t.email === 'rapoarte@firma-mail.ro'))[0];
+    const etR = require('./reports').REPORTS.utilization.label, pz = (x) => String(x).padStart(2, '0'), azi = new Date();
+    // Ca la descărcare: caracterele care nu pot sta într-un nume de fișier („/" din „Index km / ore") se scot.
+    const asteptat = ('RA-Track - Raport ' + etR + ' - ' + pz(azi.getDate()) + '.' + pz(azi.getMonth() + 1) + '.' + azi.getFullYear())
+      .replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() + '.xlsx';
+    const numeAt = eR && eR.corp.attachment && eR.corp.attachment[0] && eR.corp.attachment[0].name;
+    T('raportul programat pleacă pe email cu numele casei, ca din platformă („' + asteptat + '")', rul.status === 200 && numeAt === asteptat,
+      JSON.stringify({ st: rul.status, j: rul.j, nume: numeAt }).slice(0, 300));
+    T('…și numele vine dintr-un singur loc (descărcarea și emailul folosesc aceeași funcție)',
+      /const filename = reportExport\.numeRaport\(report\) \+ '\.' \+ fmt;/.test(fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8')) &&
+      /const name = numeRaport\(report\);/.test(fs.readFileSync(path.join(__dirname, 'report_export.js'), 'utf8')));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

@@ -17509,7 +17509,7 @@ app.get('/api/mail/primite/:id', requireAuth, requireSuperadmin, async (req, res
     if (!m.citit_la) { await db.marcheazaMailCitit(Number(m.id), req.auth.userId, true); m.citit_la = new Date(); }
     const atas = await db.atasamenteMailPrimit(Number(m.id), true);
     res.json(Object.assign(_mailPrimitRand(m), {
-      text: m.text || null, html: m.html ? mailPrimit.cuImagini(m.html, atas) : null,
+      text: m.text || null, html: m.html ? mailPrimit.cuImagini(m.html, atas) : null, imagini: mailPrimit.imaginiAtasate(m.html, atas),
       antet_catre: m.antet_catre || null, antet_cc: m.antet_cc || null, raspuns_catre: m.raspuns_catre || null,
       atasamente: atas.filter(function (a) { return !a.in_corp; }).map(function (a) { return { id: Number(a.id), nume: a.nume, tip: a.tip, octeti: a.octeti, pastrat: !!a.continut_b64 }; }),
       avertisment: m.verificare === 'picat' ? MAIL_TEXT_VERIFICARE : null,

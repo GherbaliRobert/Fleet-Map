@@ -3241,6 +3241,9 @@ const pozitii = await r.json();</code></pre>
     /* 13.10: semnătura de sub mesaj și atașamentele care merg mai departe la „Redirecționează". */
     .mail-semn{font-size:12px;line-height:1.5;color:var(--text-secondary);margin-top:6px;overflow-wrap:anywhere}
     .mail-semn b{color:var(--text-primary);font-weight:700}
+    /* 14.10: pozele atașate (ca iPhone-ul), arătate sub email. */
+    .mail-imagini{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .mail-imagini img{max-width:100%;max-height:420px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer}
     /* 13.10: dosarele, bifele, steaua, butoanele de pe rând, bara pentru cele bifate, adresele sugerate. */
     .mail-file{overflow-x:auto;scrollbar-width:none}
     .mail-file::-webkit-scrollbar{display:none}
@@ -29799,6 +29802,9 @@ const pozitii = await r.json();</code></pre>
         + (atas ? '<div class="mail-atas">' + atas + '</div>' : '')
         + (cuImaginiDinAfara ? '<div class="mail-stare" id="mail-ov-imagini"><i class="fas fa-image"></i> Imaginile din afară sunt oprite. <button class="btn-sm" onclick="raxMailImagini()">Arată imaginile</button></div>' : '')
         + '<div id="mail-ov-corp"></div>'
+        + ((m.imagini || []).length ? '<div class="mail-imagini">' + m.imagini.map(function (i) {
+            return '<img src="' + i.src + '" alt="' + esc(i.nume || '') + '" title="' + esc((i.nume || 'Imagine') + ' — clic ca s-o descarci') + '" onclick="raxMailAtasament(' + Number(m.id) + ', ' + Number(i.id) + ')">';
+          }).join('') + '</div>' : '')
         + '<div class="mail-acts">' + _mailActeDeschis(m, 'primit')
           + (m.dosar === 'cos' ? '' : '<button class="rax-btn" onclick="raxMailSterge(' + Number(m.id) + ')"><i class="fas fa-trash"></i> Șterge</button>')
           + '<button class="rax-btn" onclick="raxMailNecitit(' + Number(m.id) + ')"><i class="fas fa-envelope"></i> Marchează necitit</button>'

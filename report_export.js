@@ -404,9 +404,15 @@ function contentDisposition(filename) {
   return 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(filename);
 }
 
+// Numele unui raport, fără extensie: „RA-Track - Raport Traseu - 06.07.2026". UN singur loc — descărcarea din platformă
+// (sendReport) și raportul programat trimis pe email (report_schedules.js) îl folosesc pe același (Robert, 14.10).
+function numeRaport(report) {
+  return safeName('RA-Track - Raport ' + ((report && (report.label || report.type)) || '') + ' - ' + datePart());
+}
+
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
-  const name = safeName('RA-Track - Raport ' + (report.label || report.type) + ' - ' + datePart()); // ex: „RA-Track - Raport Traseu - 06.07.2026"
+  const name = numeRaport(report); // ex: „RA-Track - Raport Traseu - 06.07.2026"
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1108,6 +1114,6 @@ async function istoricCompletXlsx(iesire, o) {
 }
 // ─── sfârșit „istoricul complet, scris în flux" ──────────────────────────────────────────────────
 
-module.exports = { toXlsx, toPdf, sendReport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx,
+module.exports = { toXlsx, toPdf, sendReport, numeRaport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx,
   traseuVehicul, traseuCaRaport, traseuPreaMare, directieTraseu, hmTraseu, kmTraseu, durataDepasiri, TRASEU_COLOANE, TRASEU_MAX_POZITII,
   traseuRand, lunaPozitiei, istoricPeLuni, istoricCompletXlsx, ISTORIC_COLOANE, safeName, datePart };

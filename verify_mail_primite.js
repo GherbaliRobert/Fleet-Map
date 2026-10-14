@@ -108,6 +108,16 @@ const fals = http.createServer((req, res) => {
   const h = mp.cuImagini('<img src="cid:a"><img src="cid:b"><img src="cid:c">', [{ cid: 'a', tip: 'image/png', octeti: 10, continut_b64: 'QUJD' },
     { cid: 'b', tip: 'application/pdf', octeti: 10, continut_b64: 'QUJD' }, { cid: 'c', tip: 'image/png', octeti: mp.IMAGINE_IN_CORP_MAX + 1, continut_b64: 'QUJD' }]);
   T('imaginile din corp: doar imagini, doar până la ' + Math.round(mp.IMAGINE_IN_CORP_MAX / 1048576) + ' MB', h === '<img src="data:image/png;base64,QUJD"><img src="cid:b"><img src="cid:c">', h);
+  // Robert, 14.10: „nu pot să văd imaginile din mailuri" — o poză de telefon (3–5 MB) trecea de 2 MB și rămânea „cid:", iar
+  // poza trimisă ca atașament (iPhone) se vedea doar ca nume de fișier.
+  T('o poză de telefon încape: imaginea din corp se arată până la cât se păstrează pe un email (cel puțin 10 MB)',
+    mp.IMAGINE_IN_CORP_MAX === mp.ATAS_PASTRAT_MAX && mp.ATAS_PASTRAT_MAX >= 10 * 1048576);
+  const ia = mp.imaginiAtasate('<img src="cid:x">', [{ id: 1, cid: 'x', tip: 'image/png', octeti: 10, continut_b64: 'QUJD' },
+    { id: 2, tip: 'image/jpeg', octeti: 10, continut_b64: 'QUJD', nume: 'IMG_1.jpg' }, { id: 3, cid: 'y', tip: 'image/png', octeti: 10, continut_b64: 'QUJD', nume: 'y.png' },
+    { id: 4, tip: 'image/svg+xml', octeti: 10, continut_b64: 'QUJD' }, { id: 5, tip: 'application/pdf', octeti: 10, continut_b64: 'QUJD' },
+    { id: 6, tip: 'image/png', octeti: 10 }, { id: 7, tip: 'image/png', octeti: mp.IMAGINE_IN_CORP_MAX + 1, continut_b64: 'QUJD' }]);
+  T('pozele atașate se arată sub email: cele care nu sunt deja în corp, doar imagini de pixeli (fără SVG), doar cele păstrate',
+    JSON.stringify(ia.map((x) => x.id)) === '[2,3]' && ia[0].src === 'data:image/jpeg;base64,QUJD' && ia[0].nume === 'IMG_1.jpg', JSON.stringify(ia));
   const a1 = mp.anunt('contact@ratrack.ro', 1), a3 = mp.anunt('contact@ratrack.ro', 3), a20 = mp.anunt('contact@ratrack.ro', 20);
   T('anunțul: „Email nou", „3 emailuri noi", „20 de emailuri noi" — fără nume, fără subiect',
     a1.titlu === 'Email nou pe contact@ratrack.ro' && a3.titlu === '3 emailuri noi pe contact@ratrack.ro' && a20.titlu === '20 de emailuri noi pe contact@ratrack.ro' && /ca să le citești/.test(a3.corp));
@@ -128,6 +138,8 @@ const fals = http.createServer((req, res) => {
     /<span>Mail<\/span><span class="nav-mail-nr" id="nav-mail-nr"/.test(PAG) && /currentUser\.role === 'superadmin' && window\._mailNumara\) \{ window\._mailNumara\(\);/.test(PAG) &&
     /notif\.type === 'mail_nou' && window\._mailNumara\) window\._mailNumara\(\)/.test(PAG) && /_notifDate\[id\]\.mail\) \{ closeNotifications\(\); if \(window\.raxMailFila\) window\.raxMailFila\('primite', true\); goSistem\('mail'\);/.test(PAG));
   T('pagina: atributele cheamă funcții de pe window, nu scriu în variabile', !/on(click|input)="_mail\./.test(BLOC));
+  T('pagina: pozele atașate stau sub email, iar un clic le descarcă (ca atașamentul)',
+    /\(m\.imagini \|\| \[\]\)\.length \? '<div class="mail-imagini">'/.test(BLOC) && /onclick="raxMailAtasament\(' \+ Number\(m\.id\) \+ ', ' \+ Number\(i\.id\) \+ '\)"/.test(BLOC));
   const MOB = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'screens', 'Mail.tsx'), 'utf8');
   const EP = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'api', 'endpoints.ts'), 'utf8');
   const PUSH = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'lib', 'push.ts'), 'utf8');
@@ -141,6 +153,7 @@ const fals = http.createServer((req, res) => {
   const lipsa = CUVINTE.filter((t) => MOB.indexOf(t) < 0 || BLOC.indexOf(t) < 0);
   T('telefonul: aceleași cuvinte ca pagina', !lipsa.length, lipsa.join(' | '));
   T('telefonul: emailul primit tot în cadru izolat; imaginile din afară doar la cerere', (MOB.match(/<iframe sandbox=""/g) || []).length === 2 && /srcdoc=\{csp\(imagini\)/.test(MOB));
+  T('telefonul: pozele atașate sub email, ca pe pagină (o atingere = descărcare)', /\(deschis\.imagini \|\| \[\]\)\.length > 0 &&/.test(MOB) && /onClick=\{\(\) => atasament\(\{ id: i\.id, nume: i\.nume \}\)\}/.test(MOB));
   T('telefonul: anunțul „Email nou" duce în Mail', /if \(tip === 'mail_nou'\) return '\/admin\/mail';/.test(PUSH) && /TIPURI_CU_LOC = \[[^\]]*'mail_nou'/.test(PUSH));
   const W = fs.readFileSync(path.join(__dirname, 'tools', 'mail-worker.mjs'), 'utf8');
   T('Worker-ul: trimite emailul întreg cu parola și adresa; la orice „nu" (sau „nu întreg") îl duce în rezervă; fără rezervă, îl refuză (expeditorul află)',
@@ -327,6 +340,24 @@ const fals = http.createServer((req, res) => {
     T('emailul prea mare: intră, răspunde „nu întreg" (ca Worker-ul să-l ducă și în rezervă), atașamentul doar cu numele, textul scris de server',
       pm.status === 200 && pm.j.intreg === false && (pmD.atasamente || [])[0].pastrat === false && /prea mare/.test(pmD.neintreg || '') && pmAt.status === 404,
       JSON.stringify(pm.j) + ' ' + pmAt.status);
+    // Pozele (14.10): una mare lipită în text (3 MB, ca de pe telefon) și una trimisă ca atașament lângă un text simplu (iPhone).
+    const b64l = (b) => b.toString('base64').replace(/.{76}/g, '$&\r\n');
+    const pozaMare = Buffer.concat([Buffer.from('\x89PNG proba'), Buffer.alloc(3 * 1024 * 1024)]);
+    const rawMare = ['From: Ion <poze1@client.ro>', 'To: contact@ratrack.ro', 'Subject: Poza de pe telefon', 'Message-ID: <poza1.' + Date.now() + '@client.ro>',
+      'MIME-Version: 1.0', 'Content-Type: multipart/related; boundary="R1"', '', '--R1', 'Content-Type: text/html; charset=utf-8', '', '<p>Poza:</p><img src="cid:ii_tel">',
+      '--R1', 'Content-Type: image/jpeg; name="tel.jpg"', 'Content-Disposition: inline; filename="tel.jpg"', 'Content-Transfer-Encoding: base64', 'Content-ID: <ii_tel>', '',
+      b64l(pozaMare), '--R1--', ''].join('\r\n');
+    const rawIph = ['From: Ana <poze2@client.ro>', 'To: contact@ratrack.ro', 'Subject: Uite poza', 'Message-ID: <poza2.' + Date.now() + '@client.ro>',
+      'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="M1"', '', '--M1', 'Content-Type: text/plain; charset=utf-8', '', 'Uite poza.',
+      '--M1', 'Content-Type: image/jpeg; name="IMG_0001.jpg"', 'Content-Disposition: inline; filename="IMG_0001.jpg"', 'Content-Transfer-Encoding: base64', '',
+      b64l(Buffer.from('JPEG proba')), '--M1--', ''].join('\r\n');
+    const pMare = await primeste(Buffer.from(rawMare), 'contact@ratrack.ro'), pIph = await primeste(Buffer.from(rawIph), 'contact@ratrack.ro');
+    const dMare = (await json('GET', '/api/mail/primite/' + pMare.j.id, R)).j, dIph = (await json('GET', '/api/mail/primite/' + pIph.j.id, R)).j;
+    T('o poză de 3 MB lipită în text se vede (nu mai rămâne „cid:")', pMare.status === 200 && /<img src="data:image\/jpeg;base64,/.test(dMare.html || '') && !/cid:/.test(dMare.html || ''),
+      String(dMare.html || '').slice(0, 120));
+    T('poza trimisă ca atașament lângă un text simplu (iPhone) se arată sub email și se poate descărca', pIph.status === 200 && (dIph.imagini || []).length === 1 &&
+      dIph.imagini[0].nume === 'IMG_0001.jpg' && dIph.imagini[0].src === 'data:image/jpeg;base64,' + Buffer.from('JPEG proba').toString('base64') &&
+      (dIph.atasamente || []).some((a) => a.id === dIph.imagini[0].id && a.pastrat), JSON.stringify({ im: (dIph.imagini || []).map((x) => x.nume), at: dIph.atasamente }));
     const hl1 = ((await json('GET', '/api/admin/health', R)).j.checks || []).filter((c) => c.key === 'mail_primit')[0] || {};
     T('…iar după primele emailuri, ziua și ora ultimului', /^pornit — ultimul email primit: /.test(hl1.detail || ''), JSON.stringify(hl1));
     const sp = (await json('GET', '/api/mail/adrese', R)).j.spatiu || {};

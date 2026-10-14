@@ -514,6 +514,15 @@ export function Mail() {
                     ? <iframe sandbox="" referrerpolicy="no-referrer" title="Conținutul emailului" style="width:100%;min-height:380px;border:1px solid var(--border);border-radius:10px;background:#fff"
                         srcdoc={csp(imagini) + '<meta name="referrer" content="no-referrer">' + deschis.html} />
                     : <div style="white-space:pre-wrap;font-size:14px;line-height:1.55;overflow-wrap:anywhere">{deschis.text || ''}</div>}
+                  {/* Pozele atașate (ca iPhone-ul), sub email; o atingere = descărcare, ca atașamentul. */}
+                  {(deschis.imagini || []).length > 0 && (
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+                      {deschis.imagini.map((i: any) => (
+                        <img src={i.src} alt={i.nume || ''} onClick={() => atasament({ id: i.id, nume: i.nume })}
+                          style="max-width:100%;max-height:420px;border-radius:10px;border:1px solid var(--border);background:#fff" />
+                      ))}
+                    </div>
+                  )}
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
                     {deschis.dosar !== 'cos' && <button class="btn btn-primary" disabled={!meta?.activ} onClick={() => raspunde()} style="flex:1 1 100%"><Icon name="reply" size={16} /> Răspunde</button>}
                     {deschis.dosar !== 'cos' && deschis.pentruRaspunsTuturor?.cc ? <button class="btn" disabled={!meta?.activ} onClick={raspundeTuturor} style={'flex:1;' + btnAlt}>Răspunde tuturor</button> : null}
