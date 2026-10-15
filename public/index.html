@@ -11595,7 +11595,15 @@ const pozitii = await r.json();</code></pre>
         box.innerHTML = '';
         box.appendChild(el('div', 'insp-fond-t', 'Întrebări' + (luna ? ' în ' + luna : ' luna asta')));
         var bar = el('div', 'bar'); bar.innerHTML = '<b style="width:' + pct + '%"></b>'; box.appendChild(bar);
-        box.appendChild(el('div', 'insp-fond-s', q.remaining + ' din ' + (window._raxNrI ? window._raxNrI(q.questions) : q.questions + ' întrebări') + ' rămase'));
+        // Regula veche, pe cont (firmele scrise așa înainte de pachete): la fond epuizat RA Insight se oprește până pe 1, fără niciun
+        // cost în plus; „Un cont în plus aduce încă N" doar pe regula pe cont, cu cifra firmei (fără o cifră de rezervă). Până pe
+        // 15.10 le scria bara bulei din colț; bula duce acum aici.
+        var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '';
+        var peCont = Number(q.questionsPerSeat) || 0;
+        var inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + window._raxNrI(peCont) + ' pe lună.' : '';
+        if (q.blocked || q.remaining <= 0) box.appendChild(el('div', 'insp-fond-s', 'Fondul lunii s-a terminat: oprit până pe ' + reset + ', fără niciun cost în plus.'));
+        else box.appendChild(el('div', 'insp-fond-s', q.remaining + ' din ' + window._raxNrI(q.questions) + ' rămase'));
+        if (inPlus) box.appendChild(el('div', 'insp-fond-s', inPlus));
         box.style.display = '';
       }
       function deseneazaPachet(box, q) {

@@ -569,19 +569,21 @@ T('poarta fondului e chemată din toate căile de AI (RA Insight, cu toate ușil
   (server.match(/proba: \{ model: m \}/g) || []).length === 1,
   String((server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
 T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
-// Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
-T('bara propune contul în plus', /'Un cont în plus aduce încă ' \+ window\._raxNrI\(peCont\)/.test(html));
+// Pe ecran, caseta nu spune „la epuizare se oprește" sec, ci ce poate face omul. Din 15.10 o scrie caseta din stânga a secțiunii
+// RA Insight (bula din colț nu mai are bara ei: duce în secțiune), deci se caută în blocul secțiunii.
+const sectIns = (html.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+T('caseta propune contul în plus', /'Un cont în plus aduce încă ' \+ window\._raxNrI\(peCont\)/.test(sectIns));
 // ⚠ Dar DOAR pe regula pe cont. Pe cota fixă veche, un cont în plus nu aduce nimic — iar „|| 50"-ul
 // de rezervă promitea tocmai asta, și pe web, și pe server, și pe telefon (găsit 23.09).
 T('și numai unde e adevărat (regula pe cont), fără „50" pus de rezervă',
-  /var inPlus = peCont > 0 \?/.test(html) && !/questionsPerSeat \|\| 50/.test(html)
+  /var inPlus = peCont > 0 \?/.test(sectIns) && !/questionsPerSeat \|\| 50/.test(html)
   && !/questionsPerSeat \|\| 50/.test(server)
   && !/perSeat \|\| 50/.test(fs.readFileSync('./mobile/src/components/ChatScreen.tsx', 'utf8')));
 // „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește
 // nimic — RA Insight se oprește. Citit de un client, „extra" suna a factură în plus.
 T('la fond epuizat, clientul vede „oprit", nu „extra"',
-  !/fa-circle-exclamation"><\/i> extra</.test(html) && /oprit până pe ' \+ reset/.test(html));
-T('și i se spune că NU plătește nimic în plus', /fără niciun cost în plus/.test(html));
+  !/fa-circle-exclamation"><\/i> extra</.test(html) && /oprit până pe ' \+ reset/.test(sectIns));
+T('și i se spune că NU plătește nimic în plus', /fără niciun cost în plus/.test(sectIns));
 T('oferta acceptată nu mai scrie niciun preț pe întrebare',
   /patch\.ai_quota = n > 0 \? \{ questionsPerSeat: n, seatPriceRON: seatPrice \} : null;/.test(server));
 T('factura are UN singur rând de RA Insight', /RA Insight — conturi \(/.test(server) &&
