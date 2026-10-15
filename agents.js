@@ -104,6 +104,13 @@ function _hasAnyTachoSignal(p) {
 //  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L)
 //  (3) Ralanti prelungit > prag (implicit IDLE_MIN_MINUTES = 120 min)
 // Toate pragurile configurabile per companie prin ctx.alertThresholds (cu fallback la constantele globale).
+// „Nu transmite" (RA Watch): mai mult decât pragul firmei (offlineMin, implicit OFFLINE_MIN) și mai puțin de 7 zile — un aparat
+// tăcut de o săptămână e o problemă veche, nu una de azi. O SINGURĂ regulă: RA Watch și „Azi la tine" din RA Insight.
+const FARA_SEMNAL_MAX_MIN = 7 * 24 * 60;
+function esteFaraSemnal(ageMin, offlineMin) {
+  const prag = Number.isFinite(offlineMin) && offlineMin > 0 ? offlineMin : OFFLINE_MIN;
+  return ageMin > prag && ageMin < FARA_SEMNAL_MAX_MIN;
+}
 async function raWatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
   const thresholds = (ctx && ctx.alertThresholds) || {};
@@ -141,7 +148,7 @@ async function raWatch(ctx) {
     const lastTs = (live && live.timestamp) ? new Date(live.timestamp).getTime() : (lastSeenByImei ? lastSeenByImei.get(imei) : null);
     if (Number.isFinite(lastTs)) {
       const ageMin = (now - lastTs) / 60000;
-      if (ageMin > offlineMin && ageMin < 7 * 24 * 60) {
+      if (esteFaraSemnal(ageMin, offlineMin)) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
         findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Verifică dispozitivul/alimentarea/sim-ul.' });
@@ -490,6 +497,14 @@ async function raClient(ctx) {
 }
 
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───
+// „Liberă acum" (RA Dispatch): a transmis mai recent decât pragul firmei (dispOnlineMin, implicit 65 de minute) și stă pe loc.
+// O SINGURĂ regulă: agentul și „Azi la tine" din RA Insight.
+const LIBER_ONLINE_MIN = 65;
+function esteLiber(live, now, onlineMin) {
+  if (!live || !live.timestamp) return false;
+  const prag = (Number.isFinite(onlineMin) && onlineMin > 0 ? onlineMin : LIBER_ONLINE_MIN) * 60000;
+  return (now - new Date(live.timestamp).getTime()) < prag && (live.speed || 0) <= 3;
+}
 async function raDispatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
   const th = (ctx && ctx.alertThresholds) || {}; // praguri reglabile per companie (fallback la valorile clasice)
@@ -498,10 +513,8 @@ async function raDispatch(ctx) {
   const IDLE_KM = (Number.isFinite(th.dispIdleKm) && th.dispIdleKm > 0) ? th.dispIdleKm : 1;
   const available = [];
   for (const imei of imeis) {
-    const live = livePositions.get(imei); if (!live || !live.timestamp) continue;
-    const online = (now - new Date(live.timestamp).getTime()) < ONLINE_MS;
-    const stopped = (live.speed || 0) <= 3;
-    if (online && stopped) available.push({ imei, name: labelOf(live, imei) });
+    const live = livePositions.get(imei);
+    if (esteLiber(live, now, ONLINE_MS / 60000)) available.push({ imei, name: labelOf(live, imei) });
   }
   if (available.length) {
     const n = available.length;
@@ -569,4 +582,4 @@ async function runAll(base, allowedKeys) {
   return { findings: all, meta };
 }
 
-module.exports = { AGENTS, runAgent, runAll };
+module.exports = { AGENTS, runAgent, runAll, esteFaraSemnal, esteLiber, OFFLINE_MIN };

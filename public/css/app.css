@@ -3869,9 +3869,6 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .ins-alege button { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .ins-alege button i { color: var(--text-muted); margin-right: 6px; }
 .ins-alege button:hover { background: var(--bg-dark); }
-.rax-ai-nou { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
-.rax-ai-nou i { margin-right: 4px; }
-.rax-ai-nou:hover { color: var(--text-primary); border-color: var(--accent); }
 /* Butoanele „deschide raportul" de sub un răspuns: text plin pe fond neutru, cu dunga verde a casei. */
 .ins-src { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 4px 8px; cursor: pointer; }
 .ins-src i { color: var(--text-muted); }
@@ -4009,7 +4006,6 @@ body.dark .chat-sursa i { color: var(--accent); }
 .chat-lim-b { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 /* Eticheta „analiză aprofundată" (Pro / Business, când răspunde Sonnet) */
 .chat-aprof-r { margin: 0 0 6px; }
-.rin-pachet { display: block; margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
 .chat-aprof { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 1px 9px; border-radius: 999px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); }
 body:not(.dark) .chat-aprof, body:not(.dark) .insp-pk-top { color: #6d28d9; }   /* pastilele mici: violet mai închis pe tema deschisă (≥ 4,5) */
 /* „Vezi pachetele": fereastra cu cele patru pachete */
@@ -4113,7 +4109,6 @@ body.dark .chat-verif > i { color: #fbbf24; }
 .sdp-verif td { font-size: 12px; color: var(--text-primary); background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b; padding: 5px 10px !important; }
 .sdp-verif td i { color: #b45309; }
 body.dark .sdp-verif td i { color: #fbbf24; }
-#rin-msgs .chat-urm, #rax-ai-msgs .chat-urm { margin: -4px 0 0 38px; }
 .chat-urm button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 99px; border: 1px dashed var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .chat-urm button i { font-size: 11px; color: var(--text-muted); }
 .chat-urm button:hover { color: var(--text-primary); border-style: solid; border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
@@ -4519,3 +4514,58 @@ body.dark .ver-noua > i { color: #3FE07D; }
   .ver-noua { font-size: 12.5px; gap: 8px; padding: 8px 6px 8px 12px; }
   .ver-noua-txt b { display: block; }
 }
+
+/* ── RA Insight, Capitolul 2, pasul 1 (15.10): „Azi la tine", cartonașul raportului cerut în cuvinte, punctul mov de pe bulă,
+   eticheta „din RA Insight" din Istoric și rezumatul de deasupra raportului. Textul pe --text-primary / --text-secondary; culorile
+   doar pe puncte, dungi și chenare, cu pereche pe tema închisă. ── */
+.azi { width: 100%; text-align: left; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin: 4px 0 14px; box-sizing: border-box; }
+.azi-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.azi-tit { font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
+.azi-cand { font-size: 12px; color: var(--text-secondary); }
+.azi-gol { font-size: 13px; color: var(--text-secondary); padding: 6px 0 2px; }
+.azi-r { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--border); }
+.azi-cap + .azi-r { border-top: none; }
+.azi-st { width: 9px; height: 9px; border-radius: 50%; background: #15803d; }
+.azi-st.r { background: #dc2626; } .azi-st.w { background: #d97706; } .azi-st.b { background: #2563eb; }
+body.dark .azi-st { background: #3FE07D; } body.dark .azi-st.r { background: #ef4444; } body.dark .azi-st.w { background: #fbbf24; } body.dark .azi-st.b { background: #60a5fa; }
+.azi-mij { min-width: 0; }
+.azi-ag { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.azi-tx { font-size: 13.5px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.azi-tx b { font-weight: 800; }
+.azi-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.azi-acts .chat-pas { margin: 0; }
+.azi-jos { font-size: 12px; color: var(--text-secondary); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 2px; }
+.azi-set { font: inherit; font-size: 12px; font-weight: 800; color: #15803d; background: none; border: none; padding: 0; cursor: pointer; }
+body.dark .azi-set { color: var(--accent); }
+.azi-set:hover { text-decoration: underline; }
+@media (max-width: 760px) {
+  .azi-r { grid-template-columns: 9px minmax(0, 1fr); }
+  .azi-acts { grid-column: 2; justify-content: flex-start; }
+}
+.chat-rap { border: 1px solid var(--border); border-left: 3px solid #2563eb; border-radius: 12px; background: var(--bg-panel); padding: 10px 12px; margin: 8px 0 4px; display: grid; gap: 7px; }
+body.dark .chat-rap { border-left-color: #60a5fa; }
+.chat-rap-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); flex-wrap: wrap; }
+.chat-rap-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--bg-dark); color: var(--text-secondary); flex: none; font-size: 12px; }
+.chat-rap-t { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.chat-rap-p { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 99px; border: 1px solid #15803d; color: #166534; }
+body.dark .chat-rap-p { border-color: var(--accent); color: var(--accent); }
+.chat-rap-k { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--text-primary); }
+.chat-rap-k .l { color: var(--text-secondary); margin-right: 5px; }
+.chat-rap-k b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.chat-rap-s { font-size: 12px; color: var(--text-secondary); }
+.chat-rap-b { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-rap-b .chat-pas { margin: 0; }
+.chat-pas.chat-rap-dg { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.chat-pas.chat-rap-dg i { color: #06210F; }
+#rax-main-fab.are-nou::after { content: ''; position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #7c3aed; box-shadow: 0 0 0 2px var(--bg-panel); }
+body.dark #rax-main-fab.are-nou::after { background: #a78bfa; }
+.rh-ins { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #6d28d9; background: rgba(124,58,237,.10); border: 1px solid rgba(124,58,237,.35); border-radius: 6px; padding: 2px 6px; vertical-align: middle; white-space: nowrap; }
+body.dark .rh-ins { color: #c4b5fd; background: rgba(167,139,250,.14); border-color: rgba(167,139,250,.4); }
+.rep-rezumat { margin: 0 0 12px; padding: 10px 14px; background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid #7c3aed; border-radius: 8px; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
+body.dark .rep-rezumat { border-left-color: #a78bfa; }
+.rep-rezumat-t { font-weight: 800; margin-bottom: 4px; color: var(--text-primary); }
+.rep-rezumat-t i { color: #6d28d9; margin-right: 4px; }
+body.dark .rep-rezumat-t i { color: #a78bfa; }
+/* RA Drive (fosta „Safe Drive & costuri", 15.10): numele scurt și subtitlul lui, în stânga și în capul paginii. */
+.insp-ram-sub { margin-left: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.sdp-cap h2 .sdp-sub { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }

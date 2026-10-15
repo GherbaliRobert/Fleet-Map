@@ -134,7 +134,7 @@ function recomandariCombustibil(x) {
   const out = [];
   x.pesteNorma.slice(0, 2).forEach(function (m) {
     out.push({ fel: 'atentie', text: m.eticheta + ' a consumat ' + nr(m.l100, 1) + ' L la 100 km, cu ' + m.peste + '% peste cât are trecut în fișă (' + nr(m.norma, 1) +
-      '). Merită verificat: încărcătura, presiunea în anvelope, felul în care se conduce (vezi Safe Drive) — sau dacă cifra din fișă e cea potrivită.' });
+      '). Merită verificat: încărcătura, presiunea în anvelope, felul în care se conduce (vezi RA Drive) — sau dacă cifra din fișă e cea potrivită.' });
   });
   if (x.scaderi.length) {
     const s = x.scaderi[0];
@@ -292,7 +292,7 @@ function textScrisoare(f) {
     p.push('Condusul a costat în plus ~' + lei(f.safeDrive.lei) + (f.safeDrive.leiInainte != null ? ' (săptămâna dinainte: ~' + lei(f.safeDrive.leiInainte) + ')' : '') +
       (f.safeDrive.scor != null ? '; scorul flotei: ' + f.safeDrive.scor + ' — ' + f.safeDrive.nota : '') + '.' +
       (s0 ? ' Cel mai mult: ' + s0.sofer + ', ~' + lei(s0.lei) + '.' : ''));
-    if (s0 && s0.lei >= 20) deFacut.push('Vorbește cu ' + s0.sofer + ' despre felul în care conduce (Safe Drive).');
+    if (s0 && s0.lei >= 20) deFacut.push('Vorbește cu ' + s0.sofer + ' despre felul în care conduce (RA Drive).');
   }
   if (f.oreCondus && f.oreCondus.incalcariTotal) {
     p.push((f.oreCondus.incalcariTotal === 1 ? 'O încălcare' : cant(f.oreCondus.incalcariTotal, 'încălcare', 'încălcări')) + ' a orelor de condus (Reg. 561): ' +

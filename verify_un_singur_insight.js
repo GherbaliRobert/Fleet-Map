@@ -1,0 +1,250 @@
+// verify_un_singur_insight.js — Capitolul 2, pasul 1 (Alin, 15.10, macheta aprobată: „1da 2.da 3. Da"): un singur RA Insight.
+//
+// Ce păzește:
+//   1. „Azi la tine" (azi_la_tine.js): rândurile din ce au găsit agenții, cu regulile agenților (agents.esteFaraSemnal /
+//      esteLiber), butoanele lor, ordinea, cheile pentru punctul mov de pe bulă — pe reguli, fără model, nenumărat;
+//   2. rapoartele cerute în cuvinte (ai_raport.comanda): fiecare raport din catalog e înțeles după numele lui, o întrebare
+//      („câți km…") rămâne întrebare, continuările („Și pentru toată flota?", „Și ziua dinainte?", mașina aleasă) se înțeleg;
+//   3. pagina: bula duce în secțiune (fără chatul ei), „Agenți AI" iese din meniu pentru cine are cont RA Insight, „Azi la
+//      tine" și cartonașul raportului se desenează din ce dă serverul (curățat), Istoric rapoarte are eticheta „din RA Insight",
+//      „Rezumă cu RA Insight" scrie deasupra raportului, ramura se cheamă RA Drive;
+//   4. serverul: o singură scriere în Istoric (_istoricRaport), cererea înaintea răspunsului rapid, /api/me spune `aiCont`;
+//   5. pe server pornit, cu modelul simulat: cererea de raport → Istoric (status „insight"), cartonaș, Excel, continuări, alegerea
+//      mașinii; pe Basic nu se numără, pe Start se numără din 50; „Azi la tine" cu o mașină tăcută, o scădere de combustibil și
+//      una liberă — nenumărat; super-adminul primește un răspuns gol; omul fără cont, 403. ZERO cereri către model.
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
+const { puneParola } = require('./test_parola');
+const azi = require('./azi_la_tine');
+const AR = require('./ai_raport');
+const reports = require('./reports');
+const agents = require('./agents');
+const I = require('./insight');
+
+let ok = 0, rele = 0;
+function T(nume, cond, detalii) {
+  if (cond) { ok++; console.log('  ✓ ' + nume); }
+  else { rele++; console.log('  ✗ ' + nume + (detalii !== undefined ? '  → ' + String(detalii).slice(0, 400) : '')); }
+}
+const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8');
+const AG = fs.readFileSync(path.join(__dirname, 'agents.js'), 'utf8');
+
+// ─── 1. „Azi la tine" ───────────────────────────────────────────────────────────────────────────────
+console.log('1. „Azi la tine": rândurile, din ce au găsit agenții');
+const toti = ['watch', 'care', 'dispatch', 'client', 'optimize', 'compliance'];
+const r0 = azi.randuri({ agenti: toti, offlineMin: 60,
+  faraSemnal: [{ imei: 'A', eticheta: 'B 268 ROY · Dacia', nr: 'B 268 ROY', minute: 180 }, { imei: 'B', eticheta: 'IF 07 TRX · Ford', nr: 'IF 07 TRX', minute: 80 }],
+  constatari: [{ agent: 'watch', severity: 'critical', fkey: 'fuel_theft_A', title: 'Dacia (B 268 ROY): posibil furt combustibil ~38 L după pornire', imei: 'A', eticheta: 'B 268 ROY · Dacia', nr: 'B 268 ROY' }],
+  termene: [{ stare: 'curand', cine: 'B 154 UIP · Logan', ce: 'ITP', cand: 'expiră pe 17.10' }],
+  libere: 3, ieri: { km: 1240.4, active: 9, total: 11, top: { eticheta: 'B 154 UIP · Logan', km: 318.2 } } });
+const txt = r0.randuri.map((r) => r.text);
+T('două mașini tăcute: un rând, pragul în vorbe, cele mai vechi primele, cu durata fiecăreia', txt[0] === '2 mașini nu transmit de peste o oră: **B 268 ROY · Dacia** (de 3 h), **IF 07 TRX · Ford** (de 1 h 20 min).' && r0.randuri[0].nivel === 'r', txt[0]);
+T('…cu „Pe hartă" pe amândouă', JSON.stringify(r0.randuri[0].butoane) === JSON.stringify([{ fel: 'harta', text: 'Pe hartă', imeis: ['A', 'B'] }]), JSON.stringify(r0.randuri[0].butoane));
+const fuel = r0.randuri.find((r) => r.cheie === 'fuel_theft_A');
+T('scăderea de combustibil: propoziția agentului, roșu, „Pe hartă" și „De ce?" (întrebarea pentru RA Insight, cu numărul mașinii)', !!fuel && fuel.nivel === 'r' && fuel.butoane[1].fel === 'dece' && /B 268 ROY/.test(fuel.butoane[1].trimite), JSON.stringify(fuel));
+T('actele: „Urmează: ITP la **…** — expiră pe 17.10." cu butonul „Actele" (ramura, altfel întrebarea pe reguli)', txt.indexOf('Urmează: ITP la **B 154 UIP · Logan** — expiră pe 17.10.') >= 0 && r0.randuri.find((r) => r.agent === 'care').butoane[0].ramura === 'mentenanta');
+T('mașinile libere (RA Dispatch): „3 mașini sunt libere acum…", „Care sunt?" = întrebarea pe reguli', txt.some((t) => /^3 mașini sunt libere acum/.test(t)) && r0.randuri.find((r) => r.agent === 'dispatch').butoane[0].trimite === 'Care mașini sunt oprite acum?');
+T('ieri: km cu punct de mii, câte au mers și au stat, cea mai activă — la capăt', txt[txt.length - 1] === 'Ieri: **1.240 km**, 9 mașini au mers, 2 au stat. Cea mai activă: **B 154 UIP · Logan**, 318 km.' && r0.randuri[r0.randuri.length - 1].cheie === 'ieri', txt[txt.length - 1]);
+T('ordinea: roșu, portocaliu, albastru, verde', r0.randuri.map((r) => r.nivel).join('') === 'rrwbg', r0.randuri.map((r) => r.nivel).join(''));
+T('cheile punctului mov: doar rândurile care cer atenție (roșu, portocaliu)', JSON.stringify(r0.chei) === JSON.stringify(['offline:A,B', 'fuel_theft_A', 'care:curand:1']), JSON.stringify(r0.chei));
+const r1 = azi.randuri({ agenti: ['client'], offlineMin: 90, faraSemnal: [{ imei: 'A', eticheta: 'X', minute: 200 }], libere: 2, ieri: { km: 0, active: 0, total: 3 } });
+T('un agent oprit la firmă nu are rânduri; ieri fără drum: „Ieri n-a mers nicio mașină." fără buton', r1.randuri.length === 1 && r1.randuri[0].text === 'Ieri n-a mers nicio mașină.' && r1.randuri[0].butoane.length === 0 && r1.chei.length === 0, JSON.stringify(r1));
+const multe = azi.randuri({ agenti: toti, offlineMin: 60, constatari: Array.from({ length: 9 }, (x, i) => ({ agent: 'watch', severity: 'critical', fkey: 'fuel_' + i, title: 'T' + i, imei: 'I' + i })), ieri: { km: 10, active: 1, total: 1 } });
+T('cel mult ' + azi.MAX_RANDURI + ' rânduri, iar ziua de ieri rămâne', multe.randuri.length === azi.MAX_RANDURI && multe.randuri[azi.MAX_RANDURI - 1].cheie === 'ieri');
+T('pragul în vorbe: 60 → o oră, 120 → 2 ore, 30 → 30 de minute, 15 → 15 minute', azi.pragText(60) === 'de peste o oră' && azi.pragText(120) === 'de peste 2 ore' && azi.pragText(30) === 'de peste 30 de minute' && azi.pragText(15) === 'de peste 15 minute');
+T('duratele: 45 min, 3 h, 1 h 20 min, o zi, 3 zile, 25 de zile', ['45 min', '3 h', '1 h 20 min', 'o zi', '3 zile', '25 de zile'].join('|') === [45, 180, 80, 1500, 4400, 36000].map(azi.durata).join('|'), [45, 180, 80, 1500, 4400, 36000].map(azi.durata).join('|'));
+T('fiecare raport din butoane e o cerere înțeleasă de comanda pe reguli', r0.randuri.concat(multe.randuri).concat(azi.randuri({ agenti: toti, constatari: [{ agent: 'watch', fkey: 'idle_A', title: 'x', imei: 'A', nr: 'B 1 X' }, { agent: 'compliance', severity: 'warning', fkey: 'c1', title: 'y', imei: 'A', nr: 'B 1 X' }, { agent: 'optimize', fkey: 'opt_eco_A', title: 'z', imei: 'A' }] }).randuri)
+  .every((r) => r.butoane.filter((b) => b.fel === 'raport').every((b) => { const u = AR.comanda(b.trimite, null, [], Date.now()); return u && u.ok; })));
+console.log('   regulile agenților: una singură');
+T('„nu transmite" = peste pragul firmei și sub 7 zile (RA Watch și „Azi la tine")', agents.esteFaraSemnal(61, 60) && !agents.esteFaraSemnal(59, 60) && !agents.esteFaraSemnal(7 * 1440 + 1, 60) && agents.esteFaraSemnal(61, null) && /if \(esteFaraSemnal\(ageMin, offlineMin\)\)/.test(AG));
+const acum = Date.now();
+T('„liberă" = a transmis sub prag și stă pe loc (RA Dispatch și „Azi la tine")', agents.esteLiber({ timestamp: new Date(acum - 60000).toISOString(), speed: 0 }, acum, 65) && !agents.esteLiber({ timestamp: new Date(acum - 60000).toISOString(), speed: 20 }, acum, 65) && !agents.esteLiber({ timestamp: new Date(acum - 70 * 60000).toISOString(), speed: 0 }, acum, 65) && /if \(esteLiber\(live, now, ONLINE_MS \/ 60000\)\)/.test(AG));
+T('serverul le cheamă pe aceleași (agents.esteFaraSemnal / esteLiber), cu pragurile firmei', /agents\.esteFaraSemnal\(min, th\.offlineMin\)/.test(SRV) && /agents\.esteLiber\(livePositions\.get\(imei\), acum, th\.dispOnlineMin\)/.test(SRV));
+
+// ─── 2. Rapoartele cerute în cuvinte ────────────────────────────────────────────────────────────────
+console.log('\n2. Rapoartele cerute în cuvinte');
+const FISA = I.fisaFlotei([{ imei: '1', name: 'Dacia Logan', plate: 'B 101 BAS' }, { imei: '2', name: 'Dacia Logan', plate: 'B 202 BAS' }, { imei: '3', name: 'Ford Transit', plate: 'B 303 BAS' }], {});
+const gresite = Object.keys(reports.REPORTS).filter((k) => { const u = AR.comanda('Fă-mi raportul „' + reports.REPORTS[k].label + '”', null, FISA, acum); return !u || (u.raport || (u.context && u.context.raport)) !== k; });
+T('fiecare raport din catalog e înțeles după numele lui („Fă-mi raportul „…”", ce pune butonul „Raport")', gresite.length === 0, gresite.join(', '));
+T('Hotspot și CAN detaliat cer o alegere făcută în Rapoarte (butonul care le deschide)', AR.comanda('Fă-mi raportul „Raport Hotspot”', null, FISA, acum).motiv === 'cu_alegeri' && AR.comanda('Fă-mi raportul „CAN detaliat (istoric)”', null, FISA, acum).motiv === 'cu_alegeri');
+const c1 = AR.comanda('Fă-mi foaia de parcurs pentru B 303 BAS, săptămâna trecută', null, FISA, acum);
+T('„fă-mi foaia de parcurs pentru B 303 BAS, săptămâna trecută" → foaia de parcurs, mașina, săptămâna trecută', c1 && c1.ok && c1.raport === 'trips' && JSON.stringify(c1.masini) === '["3"]' && c1.perioada.eticheta === I.etichetaPerioadei(I.perioada({ period: 'last_week' }, acum).from, I.perioada({ period: 'last_week' }, acum).to), JSON.stringify(c1));
+T('o întrebare rămâne întrebare (răspunsul cu cifre): „câți km a făcut flota săptămâna trecută?", „dă-mi consumul de luna trecută"', AR.comanda('Câți km a făcut flota săptămâna trecută?', null, FISA, acum) === null && AR.comanda('dă-mi consumul de luna trecută', null, FISA, acum) === null && AR.comanda('De ce a crescut consumul?', null, FISA, acum) === null);
+T('„generează raportul de consum pe luna trecută" → cerere (cu „raport" ajunge și un nume obișnuit)', AR.comanda('generează raportul de consum pe luna trecută', null, FISA, acum).raport === 'consumption');
+T('„fă-mi raportul" fără nume → „Ce raport vrei?"', AR.comanda('fă-mi raportul', null, FISA, acum).motiv === 'fara_raport');
+const amb = AR.comanda('Fă-mi foaia de parcurs pentru Logan, azi', null, FISA, acum);
+T('două Logan-uri: îndoiala nu se rezolvă pe ghicite (variantele), cererea rămâne ținută minte', amb.motiv === 'ambiguu' && amb.variante.length === 2 && amb.context.raport === 'trips' && !!amb.context.perioada, JSON.stringify(amb));
+const ales = AR.comanda('B 202 BAS', amb.context, FISA, acum);
+T('…mașina aleasă din butoane = aceeași cerere, pe ea, pe aceeași perioadă', ales && ales.ok && ales.raport === 'trips' && JSON.stringify(ales.masini) === '["2"]' && ales.perioada.from === amb.context.perioada.from, JSON.stringify(ales));
+const ctx1 = AR.contextulComenzii(c1, c1.perioada.from, c1.perioada.to);
+const urm = AR.urmariComanda(c1);
+T('continuările de sub cartonaș: perioada dinainte și toată flota', urm.map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și pentru toată flota?', urm.map((x) => x.text).join(' | '));
+const uFlota = AR.comanda('Și pentru toată flota?', ctx1, FISA, acum), uInainte = AR.comanda('Și săptămâna dinainte?', ctx1, FISA, acum);
+T('…fiecare înțeleasă: același raport pe toată flota / pe săptămâna dinainte, pe aceeași mașină', uFlota && uFlota.ok && uFlota.masini === null && uFlota.raport === 'trips' && uInainte && uInainte.ok && JSON.stringify(uInainte.masini) === '["3"]' && Date.parse(uInainte.perioada.to) === Date.parse(c1.perioada.from), JSON.stringify([uFlota, uInainte]).slice(0, 300));
+T('după o cerere, o întrebare nouă („și consumul?") NU e luată drept continuare a cererii', AR.comanda('și consumul?', ctx1, FISA, acum) === null);
+
+// ─── 3. Pagina ──────────────────────────────────────────────────────────────────────────────────────
+console.log('\n3. Pagina');
+T('bula din colț duce în secțiune; fereastra ei mică și chatul ei au plecat', /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG) && PAG.indexOf('id="rax-ai-overlay"') < 0 && PAG.indexOf('raxSendAI') < 0 && PAG.indexOf("fetch('/api/ai/reports-agent'") < 0);
+T('punctul mov: „Azi la tine" verificat cel mult o dată la 5 minute, doar cu cont, cheile văzute ținute în browser (cu try/catch)', /if \(!\(me && me\.aiCont && appVisible\(\)\)/.test(PAG) && /Date\.now\(\) - _aziUltima < 5 \* 60000/.test(PAG) && /try \{ localStorage\.setItem\(_aziCheie\(\)/.test(PAG) && /#rax-main-fab\.are-nou::after/.test(CSS));
+T('„Agenți AI" iese din meniu pentru cine are cont RA Insight (colegii fără cont îl păstrează)', /na\.style\.display = \(feats\.agents !== false && me\.permissions && me\.permissions\.viewReports && !me\.aiCont\) \? '' : 'none';/.test(PAG));
+const SECT = (PAG.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+T('„Azi la tine" stă sub salut, la o conversație nouă, și cere serverul (nu socotește nimic)', /var az = el\('div', 'azi'\); az\.id = 'insp-azi'; az\.style\.display = 'none'; sal\.appendChild\(az\); deseneazaAzi\(az\);/.test(SECT) && (SECT.match(/cere\('GET', '\/api\/insight\/azi'\)/g) || []).length === 1);
+T('…textul (cu numele mașinilor, scrise de oameni) trece prin mdScurt, care curăță întâi; etichetele cu textContent', /function mdScurt\(t\) \{ return String\(t \|\| ''\)\.replace\(\/&\/g, '&amp;'\)\.replace\(\/<\/g, '&lt;'\)/.test(SECT) && /tx\.innerHTML = mdScurt\(rd\.text\)/.test(SECT) && /el\('div', 'azi-ag', rd\.nume\)/.test(SECT));
+T('…„De ce?" doar unde RA Insight are AI acum; „Setările agenților →" deschide pagina agenților', /if \(b\.fel === 'dece' && !areAi\(\)\) return;/.test(SECT) && /ls\.onclick = function \(\) \{ showView\('agenti'\); \};/.test(SECT) && /if \(window\._aziVazut\) window\._aziVazut\(j\.chei \|\| \[\]\);/.test(SECT));
+T('cartonașul raportului: din `raport` (de la server), „Deschide raportul" → Istoric, „Descarcă Excel" → fișierul din Istoric', /if \(x\.raport && x\.raport\.label\) bub\.appendChild\(cartonasRaport\(x\.raport\)\);/.test(SECT) && /repViewHistory\(id\)/.test(SECT) && /repExportHistory\(rp\.id, 'xlsx'\)/.test(SECT) && /pachetMesaj: j\.pachetMesaj, raport: j\.raport \}/.test(SECT));
+T('butonul „Raport" din casetă: lista o dă serverul (drepturile omului), alesul se pune în text', /cere\('GET', '\/api\/insight\/rapoarte'\)/.test(SECT) && /br\.style\.display = poateRapoarte\(\) \? '' : 'none';/.test(SECT));
+T('Istoric rapoarte: eticheta „din RA Insight" pe rapoartele cerute în cuvinte', /h\.status === 'insight' \? '<span class="rh-ins"/.test(PAG) && /\.rh-ins \{/.test(CSS) && /body\.dark \.rh-ins/.test(CSS));
+T('„Rezumă cu RA Insight": rezumatul apare deasupra raportului (fără fereastra bulei), curățat; raportul nou îl golește', /<div id="rep-rezumat" class="rep-rezumat" style="display:none;"><\/div>/.test(PAG) && /c\.innerHTML = esc\(text\)\.replace/.test(PAG) && /var _rz = document\.getElementById\('rep-rezumat'\)/.test(PAG) && PAG.indexOf('raxSummarizeVisibleReport') < 0);
+T('ramura se cheamă RA Drive, cu subtitlul „condus & costuri" (în stânga și în capul paginii)', /et: 'RA Drive', sub: 'condus & costuri'/.test(PAG) && /if \(r\.sub\) b\.appendChild\(el\('span', 'insp-ram-sub', r\.sub\)\);/.test(PAG) && PAG.indexOf("'Safe Drive & costuri'") < 0);
+T('culorile noi au pereche pe tema închisă (puncte, chenarul raportului, eticheta, rezumatul)', /body\.dark \.azi-st\.r/.test(CSS) && /body\.dark \.chat-rap \{/.test(CSS) && /body\.dark \.chat-rap-p/.test(CSS) && /body\.dark \.rep-rezumat/.test(CSS) && /body\.dark \.azi-set/.test(CSS));
+
+// ─── 4. Serverul ────────────────────────────────────────────────────────────────────────────────────
+console.log('\n4. Serverul');
+T('Istoric rapoarte are O SINGURĂ scriere în server (_istoricRaport): pagina pe loc, în fundal, și RA Insight', (SRV.match(/db\.saveReportHistory\(/g) || []).length === 1 && (SRV.match(/await _istoricRaport\(/g) || []).length === 3 && /status: 'insight' \}\);/.test(SRV));
+T('cererea de raport e întâia în RA Insight (înaintea răspunsului rapid), o singură dată; proba modelelor o sare', (SRV.match(/await _insightComanda\(req, res, /g) || []).length === 1 && SRV.indexOf('await _insightComanda(req, res, ') < SRV.indexOf('// 1) Răspuns rapid, LOCAL și GRATUIT') && /if \(!o\.proba && await _insightComanda\(/.test(SRV));
+T('cererea: aceleași drepturi ca Rapoarte (viewReports + poateRaport) și aceleași opțiuni (_optiuniRaport)', /if \(!permReq\(req, 'viewReports'\)\)/.test(SRV) && /if \(!poateRaport\(req, u\.raport\)\)/.test(SRV) && /const opts = _optiuniRaport\(\{\}, cs\);\n  const report = await reports\.runReport\(db, u\.raport/.test(SRV));
+T('…se numără prin ACEEAȘI numărătoare a răspunsurilor pe reguli (pe Start din 50; altfel doar statistică)', /pachetInfo = await _numaraRaspunsReguli\(req, sp, 'raport_' \+ u\.raport/.test(SRV));
+T('/api/me spune dacă omul are cont RA Insight (nu și noi: păstrăm pagina agenților în meniu)', /aiCont: !isSuper\(a\.role\) && features\.ai_assistant !== false && aiSeat,/.test(SRV));
+T('„Azi la tine" cere contul RA Insight, dar nu se numără (fără _numaraRaspunsReguli, fără model)', /app\.get\('\/api\/insight\/azi', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat,/.test(SRV) && !/async function _aziLaTine[\s\S]*?(_numaraRaspunsReguli|callClaude|runAgent)[\s\S]*?\napp\.get\('\/api\/insight\/azi'/.test(SRV));
+
+// ─── 5. Pe server pornit ────────────────────────────────────────────────────────────────────────────
+const PORT = 3315, TCP = 5315;
+const DIR = path.join(os.tmpdir(), 'rax_unsingur_' + Date.now());
+const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl';
+const B = 'http://127.0.0.1:' + PORT;
+fs.writeFileSync(PRELOAD, [
+  "const fs = require('fs');",
+  'const orig = globalThis.fetch;',
+  'globalThis.fetch = async function (url, opts) {',
+  "  const u = String((url && url.url) || url);",
+  "  if (u.indexOf('https://api.anthropic.com/') === 0) {",
+  "    try { fs.appendFileSync(process.env.PROBA_AI_LOG, String((opts && opts.body) || '').slice(0, 200) + '\\n'); } catch (e) {}",
+  "    return new Response(JSON.stringify({ content: [{ type: 'text', text: 'RASPUNS_DE_PROBA' }], stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 20 } }), { status: 200, headers: { 'content-type': 'application/json' } });",
+  '  }',
+  "  if (!/^https?:\\/\\/(127\\.0\\.0\\.1|localhost)[:/]/.test(u)) throw new Error('proba: fara retea');",
+  '  return orig.apply(this, arguments);',
+  '};',
+].join('\n'));
+fs.writeFileSync(AI_LOG, '');
+const env = Object.assign({}, process.env, {
+  NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_unsingur', DEMO_DISABLED: 'true',
+  PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR, PROBA_AI_LOG: AI_LOG, EUR_RON_RATE: '5', RATE_LIMIT_ENABLED: 'false',
+});
+['DATABASE_URL', 'ANTHROPIC_API_KEY', 'AI_AGENT_MODEL', 'AI_MODEL', 'AI_MODEL_APROFUNDAT', 'BREVO_API_KEY', 'SMTP_HOST'].forEach((k) => { delete env[k]; });
+const srv = spawn(process.execPath, ['-r', PRELOAD, 'server.js'], { cwd: __dirname, env, stdio: ['ignore', 'ignore', 'inherit'] });
+let terminat = false;
+srv.on('exit', (c) => { if (!terminat) { console.log('  ✗ serverul probei s-a oprit singur (cod ' + c + ')'); curata(); process.exit(1); } });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function curata() { for (const f of [PRELOAD, AI_LOG]) { try { fs.rmSync(f, { force: true }); } catch (e) {} } try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {} }
+function gata(code) { terminat = true; try { srv.kill(); } catch (e) {} setTimeout(() => { curata(); process.exit(code); }, 800); }
+async function login(u, pw) {
+  const r = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: pw }) });
+  if (!r.ok) return null;
+  return (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')]).filter(Boolean).map((c) => c.split(';')[0]).join('; ');
+}
+async function json(m, u, cine, body) {
+  const h = { 'Content-Type': 'application/json' };
+  if (cine) h.Cookie = cine;
+  const r = await fetch(B + u, { method: m, headers: h, body: body ? JSON.stringify(body) : undefined });
+  const text = await r.text();
+  let j = null; try { j = JSON.parse(text); } catch (e) {}
+  return { status: r.status, j: j || {}, text, tip: r.headers.get('content-type') || '' };
+}
+const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean).length;
+
+(async () => {
+  let pornit = false;
+  for (let i = 0; i < 360 && !pornit; i++) { try { const r = await fetch(B + '/api'); if (r.ok) pornit = true; } catch (e) {} if (!pornit) await sleep(500); }
+  if (!pornit) { console.log('serverul nu a pornit'); return gata(1); }
+  console.log('\n5. Pe server pornit (modelul simulat: orice cerere către el se numără; trebuie să rămână ZERO)');
+  const S = await login('admin', 'test1234');
+  if (!S) { console.log('nu m-am putut autentifica ca super-admin'); return gata(1); }
+  await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
+  const PAROLA = 'Str4da-Verde-2026';
+  async function om(username, role, companyId) {
+    const r = await json('POST', '/api/users', S, { username, full_name: username.split('@')[0], role, company_id: companyId });
+    if (r.j && r.j.link) await puneParola(r.j, PAROLA, B);
+    return Object.assign({}, r.j, { ck: await login(username, PAROLA) });
+  }
+  // Firma pe Basic: trei mașini (două Logan-uri, ca să se vadă alegerea), un administrator cu cont, un manager fără.
+  const coB = (await json('POST', '/api/companies', S, { name: 'Firma Basic SRL' })).j;
+  await json('PUT', '/api/companies/' + coB.id + '/settings', S, { ai_pachet: { cod: 'basic' } });
+  const MAS = [['350000000071001', 'Dacia Logan', 'B 101 BAS'], ['350000000071002', 'Dacia Logan', 'B 202 BAS'], ['350000000071003', 'Ford Transit', 'B 303 BAS'], ['350000000071004', 'VW Caddy', 'B 404 BAS']];
+  await json('POST', '/api/devices/import', S, { rows: MAS.map((m) => ({ imei: m[0], nume: m[1], nr_inmatriculare: m[2] })) });
+  for (const m of MAS) await json('PUT', '/api/devices/' + m[0] + '/company', S, { company_id: coB.id });
+  const adm = await om('sef@basic.ro', 'company_admin', coB.id);
+  const man = await om('dispecer@basic.ro', 'manager', coB.id);
+  await json('PUT', '/api/users/' + adm.id + '/ai-seat', S, { on: true });
+  const t = Date.now();
+  // B 101: drum azi, apoi oprit acum (liberă). B 202: tăcută de 2 ore. B 303: scădere de combustibil azi (80 → 40 l). B 404: n-a transmis niciodată.
+  for (let k = 0; k < 6; k++) await json('POST', '/api/test/simulate', S, { imei: MAS[0][0], name: MAS[0][1], speed: k < 5 ? 50 : 0, io: { ignition: k < 5 ? 1 : 0 }, ts: new Date(t - (6 - k) * 60000).toISOString(), lat: 44.43 + k * 0.01, lng: 26.1 });
+  await json('POST', '/api/test/simulate', S, { imei: MAS[1][0], name: MAS[1][1], speed: 0, io: { ignition: 0 }, ts: new Date(t - 120 * 60000).toISOString() });
+  for (const [i, l] of [[0, 80], [1, 79.5], [2, 40]]) await json('POST', '/api/test/simulate', S, { imei: MAS[2][0], name: MAS[2][1], speed: 0, io: { ignition: 0, fuel_level_liters: l }, ts: new Date(t - (40 - i * 10) * 60000).toISOString() });
+  T('pregătire: firma pe Basic, patru mașini, administratorul cu cont, managerul fără', !!(coB.id && adm.ck && man.ck));
+  const me1 = await json('GET', '/api/me', adm.ck), me2 = await json('GET', '/api/me', man.ck), me0 = await json('GET', '/api/me', S);
+  T('/api/me: `aiCont` la administratorul cu cont (meniul fără „Agenți AI"), nu la manager și nu la noi', me1.j.aiCont === true && me2.j.aiCont === false && me0.j.aiCont === false, [me1.j.aiCont, me2.j.aiCont, me0.j.aiCont].join(','));
+
+  const q0 = (await json('GET', '/api/ai/quota', adm.ck)).j;
+  // a) cererea de raport
+  const r1 = await json('POST', '/api/insight/intreaba', adm.ck, { message: 'Fă-mi foaia de parcurs pentru B 101 BAS, azi', nou: true });
+  const rp = r1.j.raport || {};
+  T('„Fă-mi foaia de parcurs pentru B 101 BAS, azi" → pe reguli, cu cartonașul raportului', r1.status === 200 && r1.j.source === 'reguli' && rp.label === 'Foaie de parcurs' && /B 101 BAS/.test(rp.vehicul || '') && rp.perioada === 'azi' && Number(rp.id) > 0 && Array.isArray(rp.kpi), r1.status + ' ' + r1.text.slice(0, 300));
+  T('…răspunsul spune ce a făcut și până când stă în Istoric', /Am făcut raportul \*\*„Foaie de parcurs”\*\* pentru \*\*B 101 BAS/.test(r1.j.reply || '') && /Istoric rapoarte/.test(r1.j.reply || '') && /^\d{2}\.\d{2}$/.test(rp.pana || ''), r1.j.reply);
+  T('…„Am înțeles" spune raportul, mașina și perioada', (r1.j.inteles || []).map((x) => x.text).join(' | ') === 'Foaie de parcurs | B 101 BAS · Dacia Logan | azi', (r1.j.inteles || []).map((x) => x.text).join(' | '));
+  const ist = await json('GET', '/api/reports/history', adm.ck);
+  const rand = (Array.isArray(ist.j) ? ist.j : []).find((h) => h.id === rp.id);
+  T('raportul e în Istoric rapoarte, cu eticheta „din RA Insight" (status) și 7 zile', !!rand && rand.status === 'insight' && rand.report_type === 'trips' && Math.round((Date.parse(rand.expires_at) - Date.parse(rand.generated_at)) / 86400000) === 7, JSON.stringify(rand));
+  const vz = await json('GET', '/api/reports/history/' + rp.id, adm.ck);
+  const xl = await json('GET', '/api/reports/history/' + rp.id + '?format=xlsx', adm.ck);
+  T('„Deschide raportul" îl găsește întreg, iar „Descarcă Excel" dă fișierul (același drum ca din Istoric)', vz.status === 200 && vz.j.report && Array.isArray(vz.j.report.rows) && xl.status === 200 && /spreadsheet/.test(xl.tip), vz.status + ' ' + xl.status + ' ' + xl.tip);
+  T('…și n-a mers la model; pe Basic nu se numără', nModel() === 0 && (await json('GET', '/api/ai/quota', adm.ck)).j.used === q0.used, nModel() + ' / ' + q0.used);
+  const cid = r1.j.conversatieId;
+  T('continuările de sub cartonaș: perioada dinainte și toată flota', (r1.j.urmari || []).map((x) => x.text).join(' | ') === 'Și ziua dinainte? | Și pentru toată flota?', (r1.j.urmari || []).map((x) => x.text).join(' | '));
+  const r2 = await json('POST', '/api/insight/intreaba', adm.ck, { message: 'Și pentru toată flota?', conversatieId: cid, buton: true });
+  T('„Și pentru toată flota?" → același raport, pe toată flota, alt rând în Istoric', r2.status === 200 && (r2.j.raport || {}).vehicul === 'toată flota' && (r2.j.raport || {}).label === 'Foaie de parcurs' && r2.j.raport.id !== rp.id, r2.text.slice(0, 200));
+  const r3 = await json('POST', '/api/insight/intreaba', adm.ck, { message: 'Și ziua dinainte?', conversatieId: cid, buton: true });
+  T('„Și ziua dinainte?" → același raport, ieri', r3.status === 200 && (r3.j.raport || {}).perioada === 'ieri', r3.text.slice(0, 200));
+  const a1 = await json('POST', '/api/insight/intreaba', adm.ck, { message: 'Fă-mi foaia de parcurs pentru Logan, azi', nou: true });
+  T('„…pentru Logan" (sunt două): întreabă care, cu butoane, fără raport', a1.status === 200 && !a1.j.raport && (a1.j.alege || []).length === 2 && /Pentru care fac raportul/.test(a1.j.reply || ''), a1.text.slice(0, 200));
+  const a2 = await json('POST', '/api/insight/intreaba', adm.ck, { message: 'B 202 BAS', conversatieId: a1.j.conversatieId, buton: true });
+  T('…mașina aleasă primește raportul cerut', a2.status === 200 && /B 202 BAS/.test((a2.j.raport || {}).vehicul || '') && (a2.j.raport || {}).label === 'Foaie de parcurs', a2.text.slice(0, 200));
+  const conv = await json('GET', '/api/insight/conversatii/' + cid, adm.ck);
+  T('cartonașul rămâne în conversație (se vede și la redeschidere)', (conv.j.mesaje || []).some((m) => m.extra && m.extra.raport && m.extra.raport.id === rp.id));
+  const lst = await json('GET', '/api/insight/rapoarte', adm.ck);
+  T('butonul „Raport": lista rapoartelor care se pot cere (fără Hotspot și CAN detaliat), fiecare cu textul pus în casetă', lst.status === 200 && (lst.j.rapoarte || []).length === Object.keys(reports.REPORTS).length - 2 && !(lst.j.rapoarte || []).some((x) => x.tip === 'hotspot' || x.tip === 'can_detail') && (lst.j.rapoarte || []).every((x) => /^Fă-mi raportul „/.test(x.pune)), lst.text.slice(0, 160));
+  const fara = await json('POST', '/api/insight/intreaba', man.ck, { message: 'Fă-mi foaia de parcurs, azi', nou: true });
+  T('omul fără cont RA Insight nu ajunge la cerere (403, cine îi poate da acces)', fara.status === 403 && fara.j.seatMissing === true, fara.status);
+
+  // b) „Azi la tine"
+  await json('POST', '/api/agents/run', adm.ck, { agent: 'watch' });   // RA Watch scrie scăderea de azi (ca din oră în oră)
+  const qA = (await json('GET', '/api/ai/quota', adm.ck)).j;
+  const az = await json('GET', '/api/insight/azi', adm.ck);
+  const tx = (az.j.randuri || []).map((r) => r.text).join(' ¦ ');
+  T('„Azi la tine": mașina tăcută de 2 ore (cea care n-a transmis niciodată nu e „tăcută")', az.status === 200 && /\*\*B 202 BAS · Dacia Logan\*\* nu transmite de 2 h/.test(tx) && !/B 404 BAS/.test(tx), az.status + ' ' + tx);
+  T('…scăderea de combustibil scrisă de RA Watch azi, cu „De ce?"', (az.j.randuri || []).some((r) => r.agent === 'watch' && /combustibil/.test(r.text) && /B 303 BAS|Ford Transit/.test(r.text) && r.butoane.some((b) => b.fel === 'dece')), tx);
+  T('…mașinile libere acum (RA Dispatch) și ziua de ieri, la capăt', /sunt libere acum|e liberă acum/.test(tx) && (az.j.randuri || []).slice(-1)[0].cheie === 'ieri', tx);
+  T('…cheile punctului mov (tăcută, combustibil) și ora socotelii', (az.j.chei || []).length >= 2 && !isNaN(Date.parse(az.j.la)), JSON.stringify(az.j.chei));
+  T('…nu se numără și nu merge la model', nModel() === 0 && (await json('GET', '/api/ai/quota', adm.ck)).j.used === qA.used);
+  T('noi (super-admin) n-avem o flotă pentru „Azi la tine": răspuns gol', (await json('GET', '/api/insight/azi', S)).j.platforma === true);
+  T('omul fără cont: 403', (await json('GET', '/api/insight/azi', man.ck)).status === 403);
+
+  // c) Start: cererea de raport se numără din cele 50
+  const coS = (await json('POST', '/api/companies', S, { name: 'Firma Start SRL' })).j;
+  await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000071101', nume: 'Dacia Logan', nr_inmatriculare: 'B 101 STA' }] });
+  await json('PUT', '/api/devices/350000000071101/company', S, { company_id: coS.id });
+  const admS = await om('sef@start.ro', 'company_admin', coS.id);
+  const qs0 = (await json('GET', '/api/ai/quota', admS.ck)).j;
+  const s1 = await json('POST', '/api/insight/intreaba', admS.ck, { message: 'Fă-mi raportul „Staționări” pentru toată flota, ieri', nou: true });
+  const qs1 = (await json('GET', '/api/ai/quota', admS.ck)).j;
+  T('pe Start, cererea de raport se face pe reguli și se numără din cele 50', s1.status === 200 && (s1.j.raport || {}).label === 'Staționări' && qs0.pachet && qs0.pachet.cod === 'start' && qs1.used === qs0.used + 1 && s1.j.pachet && s1.j.pachet.ramase === 49, s1.status + ' ' + JSON.stringify([qs0.used, qs1.used, s1.j.pachet]));
+  T('ZERO cereri către model în toată proba', nModel() === 0, nModel());
+
+  console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
+  gata(rele ? 1 : 0);
+})().catch((e) => { console.log('  ✗ proba a crăpat: ' + (e && e.stack || e)); gata(1); });

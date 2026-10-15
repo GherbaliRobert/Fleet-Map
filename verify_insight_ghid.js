@@ -31,10 +31,11 @@ const SECT = G.publice();
 console.log('1. Fiecare nume citat în ghid există pe ecran');
 // Exemple de întrebări (ce scrie omul), nu nume de butoane — și un text cu cifra pusă de aplicație.
 const EXEMPLE = {
-  'consumul lui B 154 UIP luna trecută': 'exemplu de întrebare scrisă de om',
-  'și august?': 'exemplu de continuare scrisă de om',
-  'dar B 155 UIP?': 'exemplu de continuare scrisă de om',
-  'din raportul Staționări': 'exemplu de continuare scrisă de om (Alin, 07.10: „din raport staționări")',
+  // Din 15.10 fila „AI Raport" a ieșit din Rapoarte (exemplele ei au plecat cu ea); rapoartele se cer în cuvinte din RA Insight.
+  'fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută': 'exemplu de cerere de raport scrisă de om',
+  // Până pe 15.10 le scria și salutul bulei din colț (care nu mai are un chat al ei); în ghid sunt exemple de ce scrie omul.
+  'și săptămâna dinainte?': 'exemplu de continuare scrisă de om',
+  'câți km azi': 'exemplu de întrebare scrisă de om (răspunsul rapid)',
   'mai are N zile': 'textul are cifra pusă de aplicație (\'mai are \' + zile)',
 };
 const citate = [];

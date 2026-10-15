@@ -362,17 +362,23 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // Ramurile livrate (pasul 3: Safe Drive; pasul 4: Combustibil, Mentenanță & acte…) se arată și au pagina lor;
   // cele încă nelivrate (gata: false) rămân ascunse.
   // `pachet: true` (14.10) = ramura e de la pachetul Basic în sus (pe Start apare încuiată) — tot livrată.
-  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+', ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
+  // `sub` (15.10) = subtitlul unei ramuri (RA Drive · „condus & costuri").
+  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
   // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
-  T('ramurile livrate se arată și au pagina lor (Safe Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
+  T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
     ['safedrive', 'combustibil', 'mentenanta'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
     (PAG.match(/RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general'; \}\)/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
   T('chatul modern: caseta cu Mașina / Perioada / Ramuri și butonul rotund; „Conversație nouă" și ☰ / ✎ pentru telefon', /onclick="insightAlegeMasina\(this\)"/.test(PAG) && /onclick="insightAlegePerioada\(this\)"/.test(PAG) && /onclick="insightAlegeRamura\(this\)"/.test(PAG) &&
     /id="insp-trimite" class="chat-trimite gol"/.test(PAG) && /class="insp-nou" onclick="insightNou\(\)"/.test(PAG) && /chat-ib insp-meniu/.test(PAG) && /chat-ib insp-nou-tel/.test(PAG));
-  T('piesele chatului sunt scrise O DATĂ și folosite de secțiune, bula din colț și AI Raport (continuările, Copiază, Mașina, Perioada)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && (PAG.match(/window\._chatUrmari\(/g) || []).length >= 4 &&
-    (PAG.match(/window\._chatActiuni = function/g) || []).length === 1 && (PAG.match(/window\._chatActiuni\(/g) || []).length >= 3 && (PAG.match(/window\._CHAT_PERIOADE = \[/g) || []).length === 1 && (PAG.match(/window\._CHAT_PERIOADE,/g) || []).length >= 3);
-  T('discuția din secțiune e ACEEAȘI cu bula din colț (o singură conversație curentă)', (PAG.match(/window\._raxConvId/g) || []).length >= 4);
+  // Capitolul 2, pasul 1 (15.10): secțiunea e SINGURUL chat din pagină — bula din colț duce în ea, iar fila „AI Raport" a
+  // ieșit din Rapoarte. Piesele chatului rămân scrise o dată; nu mai există a doua casetă (a bulei sau a filei).
+  const SECT_INS = (PAG.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+  T('piesele chatului sunt scrise O DATĂ și le folosește secțiunea — singurul chat din pagină (fără caseta bulei, fără fila AI Raport)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatUrmari\(/g) || []).length >= 2 &&
+    (PAG.match(/window\._chatActiuni = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatActiuni\(/g) || []).length >= 1 && (PAG.match(/window\._CHAT_PERIOADE = \[/g) || []).length === 1 && (SECT_INS.match(/window\._CHAT_PERIOADE,/g) || []).length >= 1 &&
+    PAG.indexOf('id="rax-ai-input"') < 0 && PAG.indexOf('id="rin-input"') < 0 && PAG.indexOf('id="rep-tab-insight"') < 0 && PAG.indexOf("fetch('/api/reports/ai-raport'") < 0);
+  T('bula din colț duce în secțiune, pe ACEEAȘI conversație (o singură conversație curentă)', /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG) &&
+    /if \(!S\.conv && window\._raxConvId && S\.ramura === 'general'\) \{ await window\.insightDeschide\(window\._raxConvId\); return; \}/.test(PAG) && (PAG.match(/window\._raxConvId/g) || []).length >= 4);
   // notițele firmei
   const n0 = await json('GET', '/api/insight/notite', ckSef);
   T('notițele firmei: goale la început, plafon de 1.500 de caractere, șeful le poate scrie', n0.status === 200 && n0.j.text === '' && n0.j.max === 1500 && n0.j.poateScrie === true, n0.text.slice(0, 120));
@@ -405,9 +411,9 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const rezS = JSON.stringify((cs.messages || []).slice(-1)[0]);
   const pagS = await json('GET', '/api/insight/safe-drive', ckSef);
   T('„cât ne-a costat condusul" → unealta safe_drive; modelul primește costul pe feluri, mașinile și spusa „estimate"', qs.status === 200 && /cost_lei/.test(rezS) && /combustibil_accelerari/.test(rezS) && /ESTIMATE/.test(rezS) && !/latitude|"lat"|"lng"/.test(rezS), rezS.slice(0, 240));
-  T('…cu aceeași lună și aceleași mașini ca pagina Safe Drive', pagS.status === 200 && rezS.indexOf(pagS.j.eticheta) >= 0 && (pagS.j.masini || []).every((m) => rezS.indexOf(m.eticheta) >= 0), pagS.status + ' ' + (pagS.j.eticheta || pagS.text.slice(0, 120)));
-  T('…iar „Am înțeles" spune Safe Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'Safe Drive & costuri') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
-  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*safe_drive — Safe Drive & costuri/.test(String(cs.system[0].text)));
+  T('…cu aceeași lună și aceleași mașini ca pagina RA Drive', pagS.status === 200 && rezS.indexOf(pagS.j.eticheta) >= 0 && (pagS.j.masini || []).every((m) => rezS.indexOf(m.eticheta) >= 0), pagS.status + ' ' + (pagS.j.eticheta || pagS.text.slice(0, 120)));
+  T('…iar „Am înțeles" spune RA Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'RA Drive') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
+  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*safe_drive — RA Drive \(condus & costuri/.test(String(cs.system[0].text)));
   // Combustibil (pasul 4): ACEEAȘI funcție ca pagina (_ramCombustibil), fără coordonate. Întâi un drum scurt pentru
   // B 154 UIP (8 km, în ultimele minute); luna se ia din ceasul ADEVĂRAT, pe ora României — luna drumului.
   const t0 = Date.now() - 9 * 60000;
@@ -439,7 +445,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const rezM = JSON.stringify((cm.messages || []).slice(-1)[0]);
   T('„ce acte expiră" → unealta mentenanta_acte; modelul primește ce a trecut de termen, ce urmează și preavizul', qm.status === 200 && /trecute_de_termen/.test(rezM) && /urmeaza/.test(rezM) && /preaviz/.test(rezM), rezM.slice(0, 240));
   T('…iar „Am înțeles" spune Mentenanță & acte', (qm.j.inteles || []).some((x) => x.text === 'Mentenanță & acte'), JSON.stringify(qm.j.inteles));
-  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, scrisoarea de luni)', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
+  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, scrisoarea de luni, „Azi la tine")', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 5);
   // un raport tăiat din rol nu se scoate nici prin RA Insight
   await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: ['consumption'] });
   coada([unealta('run_report', { type: 'consumption', vehicle: 'B 154 UIP', period: 'last_week' }), text('Nu ai acces la raportul de consum.')]);

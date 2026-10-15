@@ -266,8 +266,9 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('copia de siguranță: istoricul șoferilor și discuțiile intră; zilele nu (se refac din poziții)', BK.BUSINESS_TABLES.includes('istoric_soferi') && BK.BUSINESS_TABLES.includes('safe_drive_discutii') && !!BK.BACKUP_EXCLUDED.zile_condus);
   // Pagina (secțiunea RA Insight): arată, nu socotește; textele serverului cu textContent
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  const bloc = (PAG.split('// ─── Ramura „Safe Drive & costuri"')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
-  T('pagina: ramura Safe Drive se arată (gata: true) și are pagina ei', /k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true/.test(PAG) && /if \(S\.ramura === 'safedrive'\) return deseneazaSafeDrive\(main, S\.sdLuna\);/.test(PAG) && bloc.length > 1000);
+  // Ramura se cheamă RA Drive din 15.10 (Alin: „2.da"), cu subtitlul „condus & costuri".
+  const bloc = (PAG.split('// ─── Ramura „RA Drive"')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+  T('pagina: ramura RA Drive (fosta Safe Drive) se arată (gata: true) și are pagina ei', /k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'fa-shield-halved', gata: true/.test(PAG) && /if \(S\.ramura === 'safedrive'\) return deseneazaSafeDrive\(main, S\.sdLuna\);/.test(PAG) && bloc.length > 1000);
   T('pagina nu socotește nimic: fără praguri, prețuri sau „o treime" scrise în ea', !/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/.test(bloc), (bloc.match(/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/) || [])[0]);
   T('pagina: o singură cerere pentru lună, una pentru discuție (+ scoaterea), una pentru prețuri', (bloc.match(/'\/api\/insight\/safe-drive'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/discutie'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/discutie\/'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/preturi'/g) || []).length === 1);
   const ih = bloc.match(/innerHTML = [^;]*;/g) || [];

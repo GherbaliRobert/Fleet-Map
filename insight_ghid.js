@@ -37,21 +37,21 @@ const SECTIUNI = [
       'Alege categoria (Monitorizare, Consum carburant, Date CAN, Senzori, Evenimente & zone, Siguranță & EcoDrive) și apasă cardul raportului.',
       'La „Vehicul" alege o mașină sau „Toată flota"; la „Interval orar" alege perioada (sau „Azi", „Ieri", „7 zile", „30 zile").',
       'Apasă „Generează", apoi „Vezi raportul".',
-      'Sub tabel, la „Descarcă:", apasă „Excel" sau „PDF" (fișierul are numele și logo-ul RA Track); „Rezumă cu RA Insight" scrie pe scurt ce arată raportul.'
+      'Sub tabel, la „Descarcă:", apasă „Excel" sau „PDF" (fișierul are numele și logo-ul RA Track); „Rezumă cu RA Insight" scrie pe scurt, deasupra raportului, ce arată.'
     ],
-    detalii: 'Fila „Istoric rapoarte" păstrează rapoartele generate 7 zile, apoi se șterg singure. Fila „AI Raport" răspunde pe loc la întrebări despre rapoarte.',
+    detalii: 'Fila „Istoric rapoarte" păstrează rapoartele generate 7 zile, apoi se șterg singure — și pe cele cerute din RA Insight (cu eticheta „din RA Insight").',
     cuvinte: ['raport', 'rapoarte', 'genereaza', 'descarca', 'excel', 'pdf', 'istoric rapoarte', 'categorie']
   },
   {
-    cheie: 'ai_raport', titlu: 'AI Raport: întrebi despre rapoarte', unde: 'Meniu → Rapoarte → fila „AI Raport"',
+    cheie: 'raport_cerut', titlu: 'Un raport cerut în cuvinte, din RA Insight', unde: 'Meniu → RA Insight',
     pasi: [
-      'Apasă o întrebare gata făcută (de exemplu „Km săptămâna asta"), sau scrie una simplu: ce, care mașină, ce perioadă — „consumul lui B 154 UIP luna trecută".',
-      'Citește răspunsul: cifrele raportului, puse în propoziții, cu sugestii.',
-      'Continuă scurt: „și august?", „dar B 155 UIP?", „din raportul Staționări" — ține minte mașina și perioada.',
-      'Pentru „de ce", comparații sau sfaturi apasă „Întreabă RA Insight".'
+      'În caseta lui RA Insight scrie ce raport vrei, pentru ce mașină și ce perioadă — de exemplu „fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută" —, sau apasă „Raport" și alege din listă.',
+      'Raportul se face ca din Rapoarte și intră în „Istoric rapoarte"; în discuție vezi cifrele lui de sus.',
+      'Apasă „Deschide raportul" ca să-l vezi întreg, sau „Descarcă Excel".',
+      'Continuă scurt, din butoanele de sub el: același raport pentru toată flota sau pentru perioada dinainte.'
     ],
-    detalii: 'AI Raport îl are oricine vede Rapoartele. Răspunde din aceleași rapoarte ca ecranul: km, consum, costuri, staționări, unde e o mașină acum și de cât timp stă, ce a făcut într-o zi, curse, viteză, ralanti, ce expiră.',
-    cuvinte: ['ai raport', 'intrebare despre raport', 'gratuit', 'rapid', 'fila']
+    detalii: 'Merge cu oricare dintre rapoartele la care ai acces în Rapoarte (afară de Hotspot și CAN detaliat, unde zona și semnalele se aleg în Rapoarte). Cererea clară se face fără AI: de la Basic nu se numără, pe Start se numără din cele 50 de răspunsuri. În Istoric stă 7 zile, cu eticheta „din RA Insight".',
+    cuvinte: ['raport cerut', 'cere un raport', 'foaie de parcurs', 'fa-mi raportul', 'genereaza raportul', 'raport in istoric', 'ai raport']
   },
   {
     cheie: 'programate', titlu: 'Un raport trimis singur pe email', unde: 'Meniu → Rapoarte → butonul „Programări" (dreapta sus)',
@@ -92,7 +92,7 @@ const SECTIUNI = [
       'Aplicația citește actul și completează singură câmpurile (tip, serie, emitent, date, cost).',
       'Verifică și apasă „Adaugă actul".'
     ],
-    detalii: 'Implicit primești avertizare cu 30 de zile înainte de expirare (rândul se colorează și vine o notificare). Pragul se schimbă din Agenți AI → RA Care → „Praguri".',
+    detalii: 'Implicit primești avertizare cu 30 de zile înainte de expirare (rândul se colorează și vine o notificare). Pragul se schimbă din pagina agenților (Agenți AI, sau din RA Insight → „Azi la tine" → „Setările agenților") → RA Care → „Praguri".',
     cuvinte: ['acte', 'act', 'document', 'documente', 'itp', 'rca', 'casco', 'rovinieta', 'expira', 'talon', 'scanare', 'poza']
   },
   {
@@ -138,8 +138,9 @@ const SECTIUNI = [
     cuvinte: ['utilizator', 'cont nou', 'coleg', 'angajat', 'parola', 'link', 'rol', 'acces']
   },
   {
-    cheie: 'ra_insight', titlu: 'RA Insight: cine îl are și cum se folosește', unde: 'Meniu → RA Insight (și bula rotundă din colț)',
+    cheie: 'ra_insight', titlu: 'RA Insight: cine îl are și cum se folosește', unde: 'Meniu → RA Insight (sau bula rotundă din colț, care te duce acolo)',
     pasi: [
+      'La o conversație nouă, sub salut, „Azi la tine" arată ce au găsit agenții azi (mașini fără semnal, scăderi de combustibil, acte care expiră, ziua de ieri), cu butoanele lor; nu se numără.',
       'Adminul firmei îl pornește pe contul omului: Setări → Utilizatori → iconița baghetă de pe rând → „Dă-i acces" (se facturează un cont în plus).',
       'În meniul „RA Insight" scrie întrebarea în caseta de jos; spune mașina după număr, nume sau șofer — sau alege-o cu butonul „Mașina", iar perioada cu „Perioada".',
       'Continuă discuția: scrie („și săptămâna dinainte?") sau apasă una dintre întrebările gata scrise de sub răspuns; „Conversație nouă" o ia de la capăt.',
@@ -149,15 +150,15 @@ const SECTIUNI = [
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei']
   },
   {
-    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Safe Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Ramuri',
+    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: RA Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Ramuri',
     pasi: [
-      'În stânga, la „Ramuri", alege pagina: „Safe Drive & costuri", „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
+      'În stânga, la „Ramuri", alege pagina: „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
       'Sus alegi luna (la „Ore de condus", săptămâna) și mașinile: toată flota sau o grupă.',
       'Numărul de lângă o ramură = câte lucruri cer atenție acolo (de exemplu actele trecute de termen sau o scrisoare necitită).',
       '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
     ],
     detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Scrisoarea de luni vine lunea la 8, cu un anunț, și nu se scade nici ea din fond.',
-    cuvinte: ['ramura', 'ramuri', 'safe drive', 'scrisoarea de luni', 'scrisoare', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+    cuvinte: ['ramura', 'ramuri', 'ra drive', 'safe drive', 'scrisoarea de luni', 'scrisoare', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
   },
   {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',
@@ -197,8 +198,9 @@ const SECTIUNI = [
     cuvinte: ['factura', 'facturi', 'plata', 'proforma', 'abonament']
   },
   {
-    cheie: 'agenti', titlu: 'Cei 6 agenți AI', unde: 'Meniu → Agenți AI',
+    cheie: 'agenti', titlu: 'Cei 6 agenți AI', unde: 'Meniu → Agenți AI; Meniu → RA Insight → „Azi la tine" → „Setările agenților"',
     pasi: [
+      'Cu cont RA Insight, ce au găsit agenții azi vezi în RA Insight, la „Azi la tine"; pagina lor se deschide de acolo, din „Setările agenților".',
       'Apasă un agent → „Deschide agentul" ca să vezi ce a găsit.',
       '„Rulează" verifică acum; „Praguri" schimbă limitele (adminul firmei).'
     ],

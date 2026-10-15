@@ -95,7 +95,8 @@ console.log('\n5. Pagina: banda „De verificat" și nota din ramura Combustibil
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8');
 T('banda e o singură piesă (_insightExtra, partea „verificare"), cu textul pus ca text', /parte === 'verificare'/.test(PAG) && /li\.textContent = t;/.test(PAG) && /tt\.textContent = 'De verificat';/.test(PAG));
-T('o folosesc secțiunea RA Insight și bula din colț', /_insightExtra\(\{ verificare: x\.verificare \}, null, 'verificare'\)/.test(PAG) && /_insightExtra\(j, null, 'verificare'\)/.test(PAG));
+// Din 15.10 bula din colț nu mai are un chat al ei (duce în secțiune): banda o desenează doar secțiunea, pe fiecare răspuns.
+T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo)', /_insightExtra\(\{ verificare: x\.verificare \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG));
 // Scăparea din 08.10, prinsă de capturi: răspunsul proaspăt din secțiune nu ducea banda mai departe (apărea doar la redeschidere).
 T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /extra: \{ sources: j\.sources, inteles: j\.inteles, alege: j\.alege, source: j\.source, urmari: j\.urmari, verificare: j\.verificare[,\s]/.test(PAG));
 T('ramura Combustibil spune „De verificat" sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));

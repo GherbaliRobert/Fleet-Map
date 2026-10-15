@@ -181,7 +181,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   lună), dar azi nu trimite nimic la ANAF — îl trecem „în pregătire", fără preț?; (2) numărul-șablon „+40 7XX" de pe
   prima pagină: îl ascundem până aveți alt număr?; (3) cu ce flote începem: mixte locale sau transportatori cu camioane?;
   (4) cardurile de combustibil rămân scoase?; (5) prețuri publice pe site sau doar un calculator de economii?
-- [ ] **Alin: prețurile de pornire din Safe Drive. Adăugat pe 06.10.** Cât costă o manevră bruscă (frânare / accelerare /
+- [ ] **Alin: prețurile de pornire din RA Drive (fostul Safe Drive). Adăugat pe 06.10.** Cât costă o manevră bruscă (frânare / accelerare /
   viraj), în lei: autoturism 0,20 / 0,15 / 0,10; dubă 0,40 / 0,30 / 0,20; camion 1,50 / 1,00 / 0,50. Sunt estimarea mea
   (combustibilul aruncat + tocirea frânelor și a anvelopelor). Le confirmi sau îmi dai cifrele tale? Fiecare firmă și le
   poate schimba oricum, din Safe Drive → „Cum se socotește".
@@ -204,7 +204,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
   trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
-- [ ] **Voi: rulați „Proba modelelor" și alegeți modelul lui RA Insight. Adăugat pe 08.10.** Administrare → Utilizare
+- [ ] **Voi: rulați „Proba modelelor" și alegeți modelul lui RA Insight. Adăugat pe 08.10.** **15.10:** cheia e pe ratrack.ro și
+  RA Insight merge pe Haiku 5.5; proba se apasă de acolo (Robert): Administrare → „Utilizare RA Insight" → „Proba modelelor" →
+  Firma „RA Track Demo" → bifate Haiku 5.5 și Sonnet 5.5 → „Pornește proba" → capturi cu rezultatul, trimise mie. Eu judec româna și
+  socotesc costul în lei. Mai jos, nota din 08.10: Administrare → Utilizare
   RA Insight → „Proba modelelor": alegeți firma noastră (cea cu B 154 UIP), lăsați cele 20 de întrebări și apăsați
   „Pornește proba" (costă cam 5–10 lei, din contul nostru Anthropic). Citiți răspunsurile una lângă alta și spuneți-mi
   modelul. Prețuri oficiale pe 08.10: Haiku 5.5 e de 10 ori mai ieftin decât Haiku 4.5 de azi; Sonnet 5.5, de 2 ori
@@ -266,6 +269,14 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
   RA Insight. (2) „Vezi pachetele" cu butoanele „Alege …" și fereastra de confirmare (textul de la server, bifa, „Trec la …"),
   pe rutele `/api/insight/pachet-trecere`; „Pachet și conturi" cu ce e programat și lista confirmărilor, cu PDF.
+- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** Pe web sunt gata;
+  pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
+  serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
+  → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
+  (ruta rămâne până la APK); (5) „Agenți AI" ascuns când `/api/me` dă `aiCont`; (6) numele RA Drive în loc de Safe Drive.
+- [ ] **Alin: unde stă calea spre setările agenților. Adăugat pe 15.10.** Ai spus întâi „da" (varianta A), apoi că nu e clar. Am
+  construit A: linkul „Setările agenților →" sub „Azi la tine", în RA Insight. Varianta B ar fi un rând în Setări. Spune-mi dacă
+  rămâne A.
 
 ---
 
@@ -331,6 +342,41 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-15
+
+### AMÂNDOI · RA Insight, Capitolul 2, pasul 1: un singur RA Insight
+
+Alin (15.10), după macheta „Un singur RA Insight": *„1da 2.da 3. Da"* — macheta e bună, setările agenților se deschid din
+„Azi la tine", un raport cerut din RA Insight stă 7 zile în Istoric, ca toate.
+
+Ce se schimbă pe ecran, pentru cine are cont RA Insight:
+- **Bula rotundă din colț** nu mai deschide o fereastră mică cu chatul ei: te duce în RA Insight, pe conversația la care ai
+  rămas. Are un **punct mov** când „Azi la tine" are ceva nou de la ultima deschidere.
+- **„Azi la tine"**: la o conversație nouă, sub salut, ce au găsit agenții azi — mașinile care nu transmit, scăderile de
+  combustibil, actele care expiră, mașinile libere acum, ziua de ieri —, fiecare cu butoanele lui („Pe hartă", „Actele",
+  „Foaia de parcurs", „De ce?"). Fără AI și **nu se numără, pe niciun pachet**. Jos: „Setările agenților →".
+- **Rapoartele se cer în cuvinte**: „fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută" (sau butonul „Raport" și
+  alegi din listă). Raportul se face ca din Rapoarte, intră în **Istoric rapoarte** (7 zile, cu eticheta „din RA Insight"), iar
+  în discuție vezi cifrele de sus, „Deschide raportul" și „Descarcă Excel". Merge cu toate rapoartele (afară de Hotspot și CAN
+  detaliat, care cer o alegere în Rapoarte). Cererea clară se face fără AI: de la Basic nu se numără; pe Start, din cele 50.
+- **Rapoarte: fila „AI Raport" a ieșit** (ce făcea, face acum RA Insight). „Rezumă cu RA Insight" de sub un raport scrie acum
+  rezumatul deasupra raportului.
+- **„Agenți AI" iese din meniu** pentru cine are cont RA Insight (pagina lor se deschide din „Azi la tine"); colegii fără cont
+  o păstrează în meniu.
+- **Safe Drive se cheamă RA Drive** („condus & costuri"), peste tot: RA Insight, răspunsurile, ghidul, pachetele din aplicație și
+  pagina pachetelor de pe ratrack.ro. Cifrele și regulile rămân aceleași.
+
+- **Ce am schimbat:** `azi_la_tine.js` (nou, regulile și textele „Azi la tine"), `agents.js` (regulile „nu transmite" și
+  „liberă" scrise o dată, folosite de agenți și de „Azi la tine"), `ai_raport.js` (`comanda`: ce raport, ce mașină, ce perioadă),
+  `server.js` (`_insightComanda`, `_aziLaTine` + `/api/insight/azi`, `/api/insight/rapoarte`, o singură scriere în Istoric —
+  `_istoricRaport`, `aiCont` în `/api/me`, RA Drive), pagina (bula, „Azi la tine", cartonașul raportului, butonul „Raport", fila
+  AI Raport scoasă, meniul, rezumatul din Rapoarte), `app.css`, `insight_ghid.js`, `pachete.js`, pagina publică a pachetelor.
+  Probă nouă: `verify_un_singur_insight.js` (70, pe server pornit, zero cereri către model); probele vechi mutate pe regula nouă.
+- **Ce vede fondatorul:** ca super-admin, „Agenți AI" rămâne în meniu (acolo puneți pragurile platformei), iar „Azi la tine" e
+  gol — noi n-avem o flotă a noastră. Ca să vedeți ce vede clientul, intrați cu un cont de client care are RA Insight.
+- **Ce vede clientul:** tot ce e mai sus. Colegii fără cont RA Insight văd ca înainte (cu „Agenți AI" în meniu), dar fără fila
+  „AI Raport" în Rapoarte.
 
 ## 2026-10-14
 

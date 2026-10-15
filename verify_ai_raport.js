@@ -287,30 +287,25 @@ T('ruta cere „vede rapoarte"; pe o firmă cu pachet (14.10) și contul RA Insi
 T('ruta nu cheamă modelul și nu numără nimic din fond', ruta.length > 500 && !/runAgent|anthropic|recordAiUsage|_regulileFonduluiAi|ai\.chat/.test(ruta));
 // Cine cheamă opțiunile, pe nume: ecranul Rapoarte, AI Raport și ramurile RA Insight Combustibil și Ore de condus (07.10) —
 // toate aceeași funcție; nicio a doua listă de opțiuni.
-T('opțiunile raportului vin din ACEEAȘI funcție ca ecranul (ecranul, AI Raport, ramurile Combustibil și Ore de condus)', (SRV.match(/_optiuniRaport\(/g) || []).length === 5 &&
+T('opțiunile raportului vin din ACEEAȘI funcție ca ecranul (ecranul, AI Raport, rapoartele cerute din RA Insight, ramurile Combustibil și Ore de condus)', (SRV.match(/_optiuniRaport\(/g) || []).length === 6 &&
   /const opts = _optiuniRaport\(req\.query, _cs\);/.test(SRV) && /const opts = _optiuniRaport\(\{\}, cs\);/.test(SRV) && (SRV.match(/_optiuniRaport\(\{\}, f\.cs\)/g) || []).length === 2 &&
   /async function _ramCombustibil\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV) && /async function _ramOreCondus\([\s\S]*?_optiuniRaport\(\{\}, f\.cs\)/.test(SRV), (SRV.match(/_optiuniRaport\(/g) || []).length);
 T('mașinile: aceeași regulă ca rapoartele (fără arhivate, fără demo); `imei` din corp e aruncat', /delete req\.body\.imei/.test(ruta) && /resolveReportImeis\(req\)/.test(ruta));
 T('rolul tăiat se respectă și aici (poateRaport)', /poateRaport\(req, u\.raport\)/.test(ruta));
 T('în jurnal: doar subiectul și câte mașini — nu textul întrebării', /auditReq\(req, 'ai_raport', 'report', null, \{ subiect: u\.subiect, masini: imeis\.length \}\)/.test(ruta) && !/auditReq\([^)]*text/.test(ruta));
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-T('pagina: o singură cerere către AI Raport; fila nu mai cheamă RA Insight (plătit)', (PAG.match(/fetch\('\/api\/reports\/ai-raport'/g) || []).length === 1 && PAG.indexOf("'/api/insight/run'") < 0 && PAG.indexOf("'/api/insight/presets'") < 0);
-T('pagina: întrebările gata făcute vin de la server, nu scrise în pagină', /fetch\('\/api\/reports\/ai-raport\/intrebari'/.test(PAG) && PAG.indexOf('Km săptămâna asta') < 0);
-T('pagina: fila se numește „AI Raport", FĂRĂ eticheta „GRATUIT" (Alin, 07.10)', /id="rep-tab-btn-insight"[^>]*>[\s\S]{0,120}AI Raport/.test(PAG) && PAG.indexOf('rin-gratis') < 0 && PAG.indexOf('>GRATUIT<') < 0);
-// Fila AI Raport și funcțiile ei din pagină: niciun „gratuit", niciun „fond" (fila, intro, răspunsurile).
-const filaAR = (PAG.split('<div id="rep-tab-insight"')[1] || '').split('<!-- ═══ Hotspot')[0];
-const codAR = (PAG.split('var _rinCtx = null')[1] || '').split('async function rinOpenReport')[0];
-T('pagina: fila și codul AI Raport nu spun „gratuit", „fond" sau „se scade"', filaAR.length > 300 && codAR.length > 2000 && !/gratuit|fond|se scade/i.test(filaAR.replace(/<!--[\s\S]*?-->/g, '')) && !/gratuit|fondul|se scade/i.test(codAR.replace(/\/\/[^\n]*/g, '')), (codAR.match(/.{30}(gratuit|fondul).{20}/i) || [])[0]);
+// Capitolul 2, pasul 1 (15.10, macheta aprobată): fila „AI Raport" a ieșit din Rapoarte — rapoartele se cer acum în cuvinte, din
+// RA Insight (comanda de mai jos, secțiunea 5). Ruta rămâne DOAR pentru telefonul cu aplicația veche; motorul ei (_aiRaportCore)
+// răspunde mai departe pe Start și când luna s-a oprit, în RA Insight.
+T('pagina: fila „AI Raport" a ieșit din Rapoarte — fără buton, fără fereastră, fără cerere către ruta ei', PAG.indexOf('id="rep-tab-btn-insight"') < 0 && PAG.indexOf('id="rep-tab-insight"') < 0 &&
+  PAG.indexOf("fetch('/api/reports/ai-raport'") < 0 && PAG.indexOf("'/api/reports/ai-raport/intrebari'") < 0 && !/function rin(Ask|Init|Raspuns|Reset|AddMsg)\b/.test(PAG) && PAG.indexOf("'/api/insight/run'") < 0 && PAG.indexOf("'/api/insight/presets'") < 0);
+T('pagina: „Deschide raportul" de sub răspunsurile RA Insight deschide raportul cu mașina și perioada (rinOpenReport rămâne)', /async function rinOpenReport\(type, imei, from, to\)/.test(PAG) && /rinOpenReport\(s\.type, s\.imei \|\| ''\)/.test(PAG));
+T('pagina: întrebările gata făcute nu sunt scrise în pagină', PAG.indexOf('Km săptămâna asta') < 0);
+T('serverul: ruta AI Raport rămâne pentru telefonul vechi, cu același motor ca RA Insight pe reguli', /app\.post\('\/api\/reports\/ai-raport', requireAuth, requirePerm\('viewReports'\), withScope,/.test(SRV) && (SRV.match(/await _aiRaportCore\(req, /g) || []).length === 2);
 T('serverul nu mai trimite `gratuit: true` în răspunsurile AI Raport', ruta.indexOf('gratuit') < 0);
-T('pagina: o întrebare gata făcută pornește de la zero (e despre flotă); butoanele din răspuns țin minte discuția', /b\.onclick = function \(\) \{ rinAsk\(String\(q\.text \|\| ''\), true\); \};/.test(PAG) && /context: deLaZero \? \{\} : \(_rinCtx \|\| \{\}\)/.test(PAG) && /function \(t\) \{ rinAsk\(t\); \}/.test(PAG));
-T('pagina: raportul pe care AI Raport nu-l citește are butonul „Deschide raportul" (același cu cel de sub răspunsuri)', /if \(j\.sursa && j\.sursa\.type\) w\.appendChild\(_rinButonRaport\(j\.sursa\)\)/.test(PAG) && /if \(j\.sursa && j\.sursa\.type\) acts\.appendChild\(_rinButonRaport\(j\.sursa\)\)/.test(PAG));
 T('serverul: întrebarea neînțeleasă întoarce ce s-a ținut minte (mașina), iar după răspuns discuția vine din ai_raport.js', /context: u\.context \|\| ctx/.test(ruta) && /context: aiRaport\.contextul\(u, from, to\)/.test(ruta));
 T('serverul: „Unde e acum" spune vechimea locului cu ACELEAȘI cuvinte ca Inventarul (_invSemnalText), nu cu praguri noi', /semnal: _invSemnalText/.test(ruta));
-// Chatul modern (08.10): caseta rotundă cu Mașina / Perioada / Raport, continuările sub răspuns, Copiază — aceleași piese ca RA Insight.
-T('pagina: caseta AI Raport are Mașina, Perioada, Raport și butonul rotund de trimis', /onclick="rinAlegeMasina\(this\)"/.test(PAG) && /onclick="rinAlegePerioada\(this\)"/.test(PAG) && /onclick="rinAlegeRaport\(this\)"/.test(PAG) && /class="chat-trimite gol" id="rin-send"/.test(PAG));
-T('pagina: continuările și Copiază vin din piesele COMUNE ale chatului (o singură scriere, folosită și de RA Insight)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && /wrap\.appendChild\(window\._chatUrmari\(urm, function \(t\) \{ rinAsk\(t\); \}\)\)/.test(PAG) && /bub\.appendChild\(window\._chatActiuni\(String\(x\.text \|\| ''\)\)\)/.test(PAG));
-T('serverul: subiectele butonului „Raport" vin din ai_raport.js (nu sunt scrise în pagină)', /subiecte: aiRaport\.ALEGERI_RAPORT\.map/.test(SRV) && PAG.indexOf('costurile cu combustibilul') < 0);
-T('pagina: textele venite de la server trec prin textContent sau prin rinMd (care curăță)', /tx\.innerHTML = rinMd\(String\(x\.text/.test(PAG) && /bub\.innerHTML = rinMd\(String\(j\.text/.test(PAG) && /it\.appendChild\(el\('span', null, s\.text\)\)/.test(PAG));
+T('serverul: subiectele butonului „Raport" (telefonul vechi) vin din ai_raport.js (nu sunt scrise în pagină)', /subiecte: aiRaport\.ALEGERI_RAPORT\.map/.test(SRV) && PAG.indexOf('costurile cu combustibilul') < 0);
 
 // ─── 4. Pe server pornit ────────────────────────────────────────────────────────────────────────────
 const PORT = 3293, TCP = 5293;

@@ -543,15 +543,6 @@
         .rep-tab i { font-size: 16px !important; }
         .rep-tab .rt-long { display: inline !important; }
         .rep-tab .rt-short { display: none !important; }
-        /* Lista de mesaje cu înălțime PLAFONATĂ raportat la ecran → scrollează în interior și NU împinge
-           inputul afară. Fără overflow:hidden pe modal = inputul NU mai e tăiat, rămâne mereu vizibil sub ea. */
-        #rin-msgs { flex: 0 1 auto !important; max-height: calc(88dvh - 340px) !important; min-height: 130px !important; overflow-y: auto !important; overscroll-behavior: contain; padding: 6px 0 !important; gap: 10px !important; }
-        #rep-tab-insight .rax-row.user .rax-msg { max-width: 86% !important; }
-        /* Sugestii compacte pe un rând scrollabil */
-        #rin-suggest { flex: 0 0 auto !important; flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; margin: 6px 0 !important; padding-bottom: 2px; }
-        #rin-suggest .rin-chip { flex: 0 0 auto !important; white-space: nowrap !important; max-width: 80vw !important; overflow: hidden; text-overflow: ellipsis; }
-        #rin-inputbar { flex: 0 0 auto !important; }
-        #rin-send { flex: 0 0 auto !important; }
 
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
         .rax-card { max-width: 100% !important; max-height: 90vh; border-radius: 12px 12px 0 0; }
@@ -1403,38 +1394,6 @@
     .rep-trunchiat { margin:-4px 0 10px; padding:8px 12px; border:1px solid var(--border); border-left:3px solid #c2410c; border-radius:8px; background:var(--bg-dark); color:var(--text-primary); font-size:12.5px; line-height:1.45; }
     .rep-trunchiat i { color:#c2410c; margin-right:4px; }
     body.dark .rep-trunchiat { border-left-color:var(--orange); } body.dark .rep-trunchiat i { color:var(--orange); }
-    .rin-chip, .rin-src { white-space:normal; text-align:left; font-size:12px; line-height:1.3; height:auto; }
-    .rin-chip { color:var(--text-primary); }
-    .rin-chip i { color:var(--text-muted); margin-right:2px; }
-    /* Verdele casei ca TEXT pe alb nu se citește (1,6) — culoarea stă pe dunga din stânga, textul e închis (02.10, măsurat). */
-    .rin-src { color:var(--text-primary); border-left:3px solid var(--accent); }
-    .rin-src i { color:var(--text-muted); }
-    .rin-src:hover { border-color:var(--accent); }
-    .rin-kpis { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; }
-    .rin-kpi { background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:9px; padding:8px 12px; min-width:100px; }
-    .rin-kpi .v { font-weight:800; font-size:17px; color:var(--text-primary); }
-    .rin-kpi .l { font-size:11px; color:var(--text-secondary); margin-top:2px; }
-    /* AI Raport (02.10): intro, sugestiile, rândul de butoane de sub răspuns. Fără eticheta „GRATUIT" (Alin, 07.10). */
-    .rin-intro { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:12px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg-dark); color:var(--text-secondary); font-size:12.5px; line-height:1.45; }
-    .rin-intro .ic { width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); flex:0 0 auto; }
-    .rin-intro .tx { flex:1; min-width:0; }
-    .rin-nou { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; background:var(--bg-panel); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .rin-nou i { color:var(--text-muted); }
-    .rin-nou:hover { border-color:var(--accent); }
-    .rin-sug { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-    .rin-sug-i { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.45; color:var(--text-primary); background:var(--bg-panel); border:1px solid var(--border); border-left:3px solid var(--text-muted); border-radius:8px; padding:7px 10px; }
-    .rin-sug-i i { margin-top:2px; font-size:12px; color:var(--text-muted); flex:0 0 auto; }
-    .rin-sug-i.bun { border-left-color:#15803d; } .rin-sug-i.bun i { color:#15803d; }
-    .rin-sug-i.atentie { border-left-color:#c2410c; } .rin-sug-i.atentie i { color:#c2410c; }
-    body.dark .rin-sug-i.bun { border-left-color:var(--accent); } body.dark .rin-sug-i.bun i { color:var(--accent); }
-    body.dark .rin-sug-i.atentie { border-left-color:var(--orange); } body.dark .rin-sug-i.atentie i { color:var(--orange); }
-    .rin-acts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:10px; }
-    @media (max-width:600px) { .rin-intro { flex-wrap:wrap; } .rin-intro .tx { flex-basis:calc(100% - 40px); } }
-    .rin-tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:9px; margin-top:8px; background:var(--bg-panel); }
-    .rin-tbl { border-collapse:collapse; font-size:12px; white-space:nowrap; min-width:100%; }
-    .rin-tbl th { text-align:left; color:var(--text-secondary); padding:7px 10px; border-bottom:1px solid var(--border); }
-    .rin-tbl tbody tr:last-child td { border-bottom:none; }
-    .rin-tbl td { padding:7px 10px; border-bottom:1px solid var(--border); }
 
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
     #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
@@ -3319,8 +3278,6 @@ const pozitii = await r.json();</code></pre>
       <div class="rep-tabs">
         <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repTabGenerate()"><i class="fas fa-circle-plus"></i> <span class="rt-long">Generează rapoarte</span><span class="rt-short">Generează</span></button>
         <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> <span class="rt-long">Istoric rapoarte</span><span class="rt-short">Istoric</span></button>
-        <!-- „AI Raport" (02.10): întrebări despre rapoarte, pe reguli, fără model. RA Insight are secțiunea lui în meniu. -->
-        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-comments"></i> <span class="rt-long">AI Raport</span><span class="rt-short">AI Raport</span></button>
       </div>
       <!-- TAB: Generează rapoarte -->
       <div id="rep-tab-generate" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -3419,6 +3376,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
         </div><!-- /rep-controls -->
+        <div id="rep-rezumat" class="rep-rezumat" style="display:none;"></div>
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;"></div>
         <div id="rep-charts"></div>
         <div id="rep-vehview" style="margin-bottom:10px;"></div>
@@ -3461,30 +3419,6 @@ const pozitii = await r.json();</code></pre>
           </table>
         </div>
         <div id="rep-history-empty" style="display:none;text-align:center;color:var(--text-muted);padding:28px;">Nu ai generat niciun raport în ultimele 7 zile.</div>
-      </div>
-
-      <!-- TAB: AI Raport — întrebări despre rapoarte, pe reguli, fără model (zero tokeni) -->
-      <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
-        <div class="rin-intro">
-          <span class="ic"><i class="fas fa-comments"></i></span>
-          <span class="tx">Întreabă despre rapoarte: ce, cât, când, care mașină. Răspunde pe loc, din rapoartele aplicației.<span class="rin-pachet" id="rin-pachet" style="display:none;"></span></span>
-          <button type="button" class="rin-nou" onclick="rinReset()" title="Uită mașina și perioada discutate"><i class="fas fa-rotate-left"></i> Începe din nou</button>
-        </div>
-        <div id="rin-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
-        <div id="rin-msgs" style="overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:12px;padding:8px 2px;"></div>
-        <div id="rin-suggest" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px;"></div>
-        <div id="rin-inputbar" style="padding-top:8px;">
-          <!-- Caseta rotundă a chatului modern (08.10): Mașina / Perioada / Raport pun textul în întrebare; ↑ e gri cât e goală. -->
-          <div class="chat-caseta">
-            <textarea id="rin-input" rows="1" placeholder="Întreabă despre rapoarte…"></textarea>
-            <div class="chat-unelte">
-              <button type="button" class="chat-un" onclick="rinAlegeMasina(this)" title="Alege mașina"><i class="fas fa-car-side"></i><span class="et">Mașina</span></button>
-              <button type="button" class="chat-un" onclick="rinAlegePerioada(this)" title="Alege perioada"><i class="fas fa-calendar"></i><span class="et">Perioada</span></button>
-              <button type="button" class="chat-un" onclick="rinAlegeRaport(this)" title="Alege ce vrei să afli"><i class="fas fa-file-lines"></i><span class="et">Raport</span></button>
-              <button type="button" class="chat-trimite gol" id="rin-send" onclick="rinAsk()" title="Trimite" aria-label="Trimite"><i class="fas fa-arrow-up"></i></button>
-            </div>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -11355,43 +11289,14 @@ const pozitii = await r.json();</code></pre>
     // ─── Tab-uri Rapoarte (Generează / Istoric) ───
     function repShowTab(tab) {
       repActiveTab = tab;
-      var gen = document.getElementById('rep-tab-generate'), his = document.getElementById('rep-tab-history'), ins = document.getElementById('rep-tab-insight');
-      var bg = document.getElementById('rep-tab-btn-generate'), bh = document.getElementById('rep-tab-btn-history'), bi = document.getElementById('rep-tab-btn-insight');
+      // Două file (15.10): „AI Raport" a ieșit din Rapoarte — rapoartele se cer acum în cuvinte, din RA Insight.
+      var gen = document.getElementById('rep-tab-generate'), his = document.getElementById('rep-tab-history');
+      var bg = document.getElementById('rep-tab-btn-generate'), bh = document.getElementById('rep-tab-btn-history');
       if (gen) gen.style.display = (tab === 'generate') ? 'flex' : 'none';
       if (his) his.style.display = (tab === 'history') ? 'flex' : 'none';
-      if (ins) ins.style.display = (tab === 'insight') ? 'flex' : 'none';
       if (bg) bg.classList.toggle('active', tab === 'generate');
       if (bh) bh.classList.toggle('active', tab === 'history');
-      if (bi) bi.classList.toggle('active', tab === 'insight');
       if (tab === 'history') loadReportHistory();
-      if (tab === 'insight') rinInit();
-    }
-    // ─── Fila „AI Raport” (02.10: era „RA Insight”, plătit; acum gratuit, pe reguli) — bulele discuției ───
-    var rinBusy = false, rinInited = false;
-    function rinMd(t) {
-      var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-      var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
-      return esc(t).split('\n').map(function (ln) {
-        var l = ln.replace(/\s+$/, ''), tr = l.trim();
-        if (tr === '') return '<div style="height:6px"></div>';
-        if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
-        if (/^[•\-]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-]\s+/, '')) + '</div>';
-        return '<div>' + bold(l) + '</div>';
-      }).join('');
-    }
-    function rinAddMsg(role, html, raw) {
-      var wrap = document.getElementById('rin-msgs'); if (!wrap) return null;
-      var row = document.createElement('div'); row.className = 'rax-row ' + role;
-      if (role === 'ai') {
-        var av = document.createElement('div'); av.className = 'rax-av'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
-        var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = (raw ? html : rinMd(html));
-        row.appendChild(av); row.appendChild(m);
-      } else if (role === 'user') {
-        var mu = document.createElement('div'); mu.className = 'rax-msg user'; mu.textContent = html; row.appendChild(mu);
-      } else {
-        var ms = document.createElement('div'); ms.className = 'rax-msg sys'; ms.innerHTML = html; row.appendChild(ms);
-      }
-      wrap.appendChild(row); wrap.scrollTop = wrap.scrollHeight; return row;
     }
     // ─── RA Insight: „Am înțeles" + butoanele de ales (02.10) ───
     // Sub fiecare răspuns: ce a căutat RA Insight cu adevărat (mașina, perioada, raportul), ca omul să vadă dacă
@@ -11561,12 +11466,13 @@ const pozitii = await r.json();</code></pre>
     // ── începe „secțiunea RA Insight" ──
     (function () {
       var S = { lista: [], conv: null, mesaje: [], ramura: 'general', trimite: false, faraLoc: null, cautaT: null, ghid: null, ghidAles: null,
-        pachet: null, peReguli: false, subiecte: null };
+        pachet: null, peReguli: false, rapoarte: null };
       // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
         // `pachet: true` = ramură de la Basic în sus (pachetele RA Insight, 14.10); pe Start apare încuiată, cu „· Basic".
-        { k: 'safedrive', et: 'Safe Drive & costuri', ic: 'fa-shield-halved', gata: true, pachet: true },
+        // RA Drive = fosta „Safe Drive & costuri" (Alin, 15.10: „2.da"), cu subtitlul ei.
+        { k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'fa-shield-halved', gata: true, pachet: true },
         { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true, pachet: true },
         { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true, pachet: true },
         { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true, pachet: true },
@@ -11714,10 +11620,13 @@ const pozitii = await r.json();</code></pre>
       function actualizeazaCaseta() {
         var c = $i('insp-cnt'); if (c) { c.textContent = S.pachet ? String(S.pachet.scurt || '') : ''; c.style.display = S.pachet ? '' : 'none'; c.classList.toggle('gata', !!(S.pachet && S.peReguli && S.pachet.ai)); }
         var i = $i('insp-input'); if (i) i.placeholder = !S.peReguli ? 'Întreabă RA Insight…' : (S.pachet && !S.pachet.ai ? 'Alege din butoane sau scrie…' : 'Alege din butoane…');
-        var br = $i('insp-b-raport'); if (br) br.style.display = S.peReguli ? '' : 'none';
+        var br = $i('insp-b-raport'); if (br) br.style.display = poateRapoarte() ? '' : 'none';   // rapoartele se cer și în cuvinte (15.10)
         var bm = $i('insp-b-ramuri'); if (bm) bm.style.display = (S.pachet && !S.pachet.ramuri) ? 'none' : '';
       }
       function ramuraIncuiata(r) { return !!(r && r.pachet && S.pachet && !S.pachet.ramuri); }
+      function poateRapoarte() { var u = window.currentUser || {}; return !!(u.isSuper || (u.permissions && u.permissions.viewReports)); }
+      // Are RA Insight AI acum (nu e pe butoane)? Butoanele „De ce?" din „Azi la tine" sunt întrebări pentru el.
+      function areAi() { return !S.peReguli && !(S.pachet && !S.pachet.ai); }
       // Numerele de lângă ramuri (ca pe macheta din 02.10) — doar din ce e deja socotit pe server.
       async function incarcaNumere() {
         var r = null; try { r = await cere('GET', '/api/insight/ramuri'); } catch (e) {}
@@ -11739,6 +11648,7 @@ const pozitii = await r.json();</code></pre>
           var b = el('button', 'insp-ram' + (S.ramura === r.k ? ' act' : '') + (inc ? ' lock' : ''));
           b.innerHTML = '<span class="ic"><i class="fas ' + (inc ? 'fa-lock' : r.ic) + '"></i></span>';
           b.appendChild(document.createTextNode(r.et));
+          if (r.sub) b.appendChild(el('span', 'insp-ram-sub', r.sub));
           if (inc) { b.appendChild(el('span', 'insp-ram-pk', '· Basic')); b.title = 'De la pachetul Basic în sus'; }
           // Câte lucruri cer atenție în ramură (le numără serverul; vezi incarcaNumere).
           var n = S.numere && S.numere[r.k];
@@ -11792,7 +11702,8 @@ const pozitii = await r.json();</code></pre>
           var sal = $i('insp-salut');
           sal.innerHTML = '<span class="insp-stea mare"><i class="fas fa-wand-magic-sparkles"></i></span>';
           sal.appendChild(el('h2', null, (prenume() ? 'Bună, ' + prenume() + '! ' : 'Bună! ') + 'Ce vrei să afli despre flotă?'));
-          sal.appendChild(el('p', null, 'Spune mașina după număr, nume sau șofer. Țin minte discuția, iar cifrele vin din rapoartele aplicației.'));
+          sal.appendChild(el('p', null, 'Spune mașina după număr, nume sau șofer. Țin minte discuția, iar cifrele vin din rapoartele aplicației. Poți cere și un raport întreg: „fă-mi foaia de parcurs pentru flotă, săptămâna trecută”.'));
+          var az = el('div', 'azi'); az.id = 'insp-azi'; az.style.display = 'none'; sal.appendChild(az); deseneazaAzi(az);
           var cw = el('div'); cw.innerHTML = caseta(); sal.appendChild(cw.firstChild); actualizeazaCaseta();
           var cr = el('div', 'insp-carduri');
           (S.peReguli ? CARDURI_REGULI : CARDURI).forEach(function (c) {
@@ -11906,10 +11817,89 @@ const pozitii = await r.json();</code></pre>
         main.innerHTML = '';
         var card = el('div', 'insp-card insp-incuiat');
         card.appendChild(el('h3', null, r.et || 'Ramura'));
-        card.appendChild(el('div', null, 'Ramurile (Safe Drive & costuri, Combustibil, Ore de condus, Mentenanță & acte) sunt de la pachetul Basic în sus. Pe Start răspund la întrebările de pe butoane: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră.'));
+        card.appendChild(el('div', null, 'Ramurile (RA Drive, Combustibil, Ore de condus, Mentenanță & acte) sunt de la pachetul Basic în sus. Pe Start răspund la întrebările de pe butoane: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră.'));
         if (esteAdmin()) { var b = el('button', 'chat-pas'); b.type = 'button'; b.innerHTML = '<i class="fas fa-layer-group"></i>'; b.appendChild(document.createTextNode('Vezi pachetele')); b.onclick = function () { window.insightPachete(); }; card.appendChild(b); }
         main.appendChild(card);
       }
+      // ── „Azi la tine" (Capitolul 2, pasul 1, macheta din 15.10): ce au găsit agenții, sub salut. Rândurile și butoanele le
+      // scrie serverul (azi_la_tine.js); aici doar se desenează — textul, cu **îngroșat**, trece prin mdScurt, care curăță întâi.
+      // Nu se numără; butoanele care pun o întrebare pleacă pe reguli (`buton`), afară de „De ce?" (RA Insight, doar cu AI).
+      function mdScurt(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
+      async function deseneazaAzi(box) {
+        var r = null; try { r = await cere('GET', '/api/insight/azi'); } catch (e) {}
+        if (!r || r.s !== 200 || !r.j || r.j.platforma || !document.body.contains(box)) { box.style.display = 'none'; return; }
+        var j = r.j;
+        box.innerHTML = '';
+        var cap = el('div', 'azi-cap'); cap.appendChild(el('span', 'azi-tit', 'Azi la tine'));
+        cap.appendChild(el('span', 'azi-cand', 'de la agenți' + (j.la ? ' · ' + cand(j.la) : '')));
+        box.appendChild(cap);
+        if (!(j.randuri || []).length) box.appendChild(el('div', 'azi-gol', 'Agenții n-au găsit nimic de semnalat azi.'));
+        (j.randuri || []).forEach(function (rd) {
+          var row = el('div', 'azi-r');
+          row.appendChild(el('span', 'azi-st ' + (/^[rwbg]$/.test(rd.nivel) ? rd.nivel : 'g')));
+          var mij = el('div', 'azi-mij'); mij.appendChild(el('div', 'azi-ag', rd.nume));
+          var tx = el('div', 'azi-tx'); tx.innerHTML = mdScurt(rd.text); mij.appendChild(tx); row.appendChild(mij);
+          var acts = el('div', 'azi-acts');
+          (rd.butoane || []).forEach(function (b) {
+            if (b.fel === 'dece' && !areAi()) return;
+            if (b.fel === 'harta' && !(b.imeis || []).length) return;
+            if (b.fel === 'raport' && !poateRapoarte()) return;
+            var bt = el('button', 'chat-pas' + (b.fel === 'dece' ? ' ins' : ''), b.text); bt.type = 'button';
+            bt.onclick = function () { aziButon(b); };
+            acts.appendChild(bt);
+          });
+          row.appendChild(acts);
+          box.appendChild(row);
+        });
+        var u = window.currentUser || {};
+        if (u.features && u.features.agents !== false && u.permissions && u.permissions.viewReports) {
+          var jos = el('div', 'azi-jos', 'Pragurile agenților și care sunt porniți: ');
+          var ls = el('button', 'azi-set', 'Setările agenților →'); ls.type = 'button'; ls.onclick = function () { showView('agenti'); };
+          jos.appendChild(ls); box.appendChild(jos);
+        }
+        box.style.display = '';
+        if (window._aziVazut) window._aziVazut(j.chei || []);
+      }
+      function aziButon(b) {
+        if (b.fel === 'harta') { showView('localizare'); setTimeout(function () { try { selectDevice(b.imeis[0]); } catch (e) {} }, 150); return; }
+        if (b.fel === 'acte') { var rm = RAMURI.filter(function (x) { return x.k === b.ramura; })[0]; if (rm && rm.gata && !ramuraIncuiata(rm)) { window.insightRamura(b.ramura); return; } }
+        if (b.fel === 'dece') { window.insightTrimite(b.trimite); return; }
+        if (b.trimite) window.insightTrimite(b.trimite, { buton: true });
+      }
+      // Cartonașul unui raport cerut în cuvinte: numele, mașina, perioada, cifrele de sus (scrise de server), câte rânduri și până
+      // când stă în Istoric; „Deschide raportul" (Rapoarte → Istoric, pe raportul ăsta) și „Descarcă Excel" (fișierul din Istoric).
+      function cartonasRaport(rp) {
+        var c = el('div', 'chat-rap');
+        var h = el('div', 'chat-rap-h'); h.innerHTML = '<span class="ic"><i class="fas fa-file-lines"></i></span>';
+        h.appendChild(el('span', 'chat-rap-t', rp.label + ' — ' + (rp.vehicul || '') + (rp.perioada ? ' — ' + rp.perioada : '')));
+        h.appendChild(el('span', 'chat-rap-p', rp.gol ? 'fără rânduri' : 'gata'));
+        c.appendChild(h);
+        if ((rp.kpi || []).length) {
+          var k = el('div', 'chat-rap-k');
+          rp.kpi.forEach(function (x) { var d = el('span'); d.appendChild(el('span', 'l', x.et)); d.appendChild(el('b', null, x.val)); k.appendChild(d); });
+          c.appendChild(k);
+        }
+        var n = Number(rp.randuri) || 0;
+        c.appendChild(el('div', 'chat-rap-s', (n ? n + (n === 1 ? ' rând' : (n % 100 === 0 || n % 100 >= 20 ? ' de rânduri' : ' rânduri')) + ' · ' : '') + 'în Istoric rapoarte până pe ' + (rp.pana || '')));
+        if (rp.id) {
+          var bs = el('div', 'chat-rap-b');
+          var bd = el('button', 'chat-pas chat-rap-dg'); bd.type = 'button'; bd.innerHTML = '<i class="fas fa-up-right-from-square"></i>'; bd.appendChild(document.createTextNode('Deschide raportul'));
+          bd.onclick = function () { window.insightDeschideRaport(rp.id); };
+          var bx = el('button', 'chat-pas'); bx.type = 'button'; bx.innerHTML = '<i class="fas fa-file-excel"></i>'; bx.appendChild(document.createTextNode('Descarcă Excel'));
+          bx.onclick = function () { try { repExportHistory(rp.id, 'xlsx'); } catch (e) {} };
+          bs.appendChild(bd); bs.appendChild(bx); c.appendChild(bs);
+        }
+        return c;
+      }
+      // Rapoarte → Istoric, pe raportul cerut. Pagina Rapoarte își încarcă întâi catalogul (prima deschidere): așteptăm să fie gata.
+      window.insightDeschideRaport = function (id) {
+        showView('rapoarte');
+        var n = 0;
+        (function asteapta() {
+          if (typeof repCatalog !== 'undefined' && repCatalog) { setTimeout(function () { try { repViewHistory(id); } catch (e) {} }, 60); return; }
+          if (++n < 50) setTimeout(asteapta, 100);
+        })();
+      };
       // Caseta de scris: rotundă, cu Mașina / Perioada / Ramuri (sau Raport, pe butoane), contorul pachetului și butonul ↑.
       function caseta() {
         return '<div class="chat-caseta">' +
@@ -11960,6 +11950,7 @@ const pozitii = await r.json();</code></pre>
           if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
         }
         if (!x.limita) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
+        if (x.raport && x.raport.label) bub.appendChild(cartonasRaport(x.raport));
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
         if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t, { buton: true }); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
@@ -12024,7 +12015,7 @@ const pozitii = await r.json();</code></pre>
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
-              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj } };
+              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
@@ -12067,13 +12058,14 @@ const pozitii = await r.json();</code></pre>
         });
         window._chatAlege(btn, 'Deschide o ramură', l, function (x) { window.insightRamura(x.k); });
       };
-      // „Raport" (pe butoane): ce se poate afla, din aceeași listă ca AI Raport (o dă serverul).
+      // „Raport" (Capitolul 2, pasul 1): rapoartele pe care le poți cere în cuvinte — lista o dă serverul, cu drepturile tale.
+      // Alesul pune „Fă-mi raportul „…”" în casetă; adaugi mașina și perioada (scrise sau din butoane) și trimiți.
       window.insightAlegeRaport = async function (btn) {
-        if (!S.subiecte) {
-          var r = await cere('GET', '/api/reports/ai-raport/intrebari');
-          S.subiecte = ((r.j && r.j.subiecte) || []).map(function (x) { return { text: String(x.text || ''), pune: String(x.pune || ''), fa: 'fa-file-lines' }; });
+        if (!S.rapoarte) {
+          var r = await cere('GET', '/api/insight/rapoarte');
+          S.rapoarte = ((r.j && r.j.rapoarte) || []).map(function (x) { return { text: String(x.text || ''), sub: String(x.sub || ''), pune: String(x.pune || ''), fa: 'fa-file-lines' }; });
         }
-        window._chatAlege(btn, 'Ce vrei să afli', S.subiecte, function (x) { window._chatPuneInText($i('insp-input'), x.pune); });
+        window._chatAlege(btn, 'Ce raport fac?', S.rapoarte, function (x) { window._chatPuneInText($i('insp-input'), x.pune); });
       };
       // „Vezi pachetele" (administratorul): cele patru pachete, ce primește fiecare și care e al firmei. Textele, de la server.
       window.insightPachete = async function () {
@@ -12279,7 +12271,7 @@ const pozitii = await r.json();</code></pre>
         t.appendChild(b);
       }
 
-      // ─── Ramura „Safe Drive & costuri" (pasul 3, 06.10; după macheta din 02.10): cum conduc mașinile și șoferii și cât
+      // ─── Ramura „RA Drive" (fosta „Safe Drive & costuri"; pasul 3, 06.10; după macheta din 02.10): cum conduc mașinile și șoferii și cât
       // costă, în lei. Serverul socotește tot (safe_drive.js + condus.js — aceleași praguri și același scor ca raportul
       // EcoDrive) și scrie textele („față de august", „Cum se socotește", recomandările); pagina doar le arată, cu textContent.
       function sdLei(n) { var r = Math.round(Number(n) || 0), v = Math.abs(r) % 100; return r === 1 ? '1 leu' : r.toLocaleString('ro-RO') + ((v === 0 && r) || v >= 20 ? ' de lei' : ' lei'); }
@@ -12306,13 +12298,13 @@ const pozitii = await r.json();</code></pre>
         var vechi = main.querySelector('.sdp'), sus = vechi ? vechi.scrollTop : 0;
         main.innerHTML = ''; main.appendChild(pag);
         if (r.s !== 200) {
-          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Safe Drive nu s-a putut deschide'));
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'RA Drive nu s-a putut deschide'));
           c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
         }
         S.sdLuna = j.lunaAleasa; S.sdGrupa = j.grupaAleasa;
         // Capul: titlul, luna, grupa, „Întreabă RA Insight"
         var cap = el('div', 'sdp-cap');
-        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-shield-halved"></i> '; h2.appendChild(document.createTextNode('Safe Drive & costuri')); cap.appendChild(h2);
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-shield-halved"></i> '; h2.appendChild(document.createTextNode('RA Drive')); h2.appendChild(el('span', 'sdp-sub', 'condus & costuri')); cap.appendChild(h2);
         var dr = el('div', 'sdp-dr');
         var sel = el('select', 'sdp-sel'); sel.setAttribute('aria-label', 'Luna');
         (j.luni || []).forEach(function (l) { var o = el('option', null, l.eticheta.charAt(0).toUpperCase() + l.eticheta.slice(1)); o.value = l.luna; if (l.luna === j.lunaAleasa) o.selected = true; sel.appendChild(o); });
@@ -12338,7 +12330,7 @@ const pozitii = await r.json();</code></pre>
         }
         if (j.gol || !(j.masini || []).length) {
           var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, j.gol ? 'Nicio mașină de arătat' : 'Nimic de arătat în ' + (j.eticheta || 'luna asta')));
-          g0.appendChild(el('div', null, j.gol ? 'Safe Drive se uită la mașinile la care ai acces — acum nu e niciuna.' : 'Mașinile n-au mers (sau n-au trimis poziții) în perioada asta. Alege altă lună de sus.'));
+          g0.appendChild(el('div', null, j.gol ? 'RA Drive se uită la mașinile la care ai acces — acum nu e niciuna.' : 'Mașinile n-au mers (sau n-au trimis poziții) în perioada asta. Alege altă lună de sus.'));
           pag.appendChild(g0); return;
         }
         var f = j.flota || {}, fa = j.fata || {}, c = f.cost || {}, lim = (j.praguri || {}).limita || '';
@@ -12390,7 +12382,7 @@ const pozitii = await r.json();</code></pre>
           });
           sS.appendChild(tS.w);
           sS.appendChild(el('div', 'sdp-mic', 'Treci cu mouse-ul peste cost ca să vezi din ce e făcut. Fiecare zi merge pe cine conducea mașina atunci.'));
-        } else sS.appendChild(el('div', 'sdp-mic', 'Mașinile n-au șoferi trecuți în aplicație. Îi treci din Management → Șoferi, iar de atunci Safe Drive îi arată aici.'));
+        } else sS.appendChild(el('div', 'sdp-mic', 'Mașinile n-au șoferi trecuți în aplicație. Îi treci din Management → Șoferi, iar de atunci RA Drive îi arată aici.'));
         var sU = sdSect(doua, 'Unde și când se repetă', 'fa-location-dot');
         (j.locuri || []).forEach(function (x) {
           var a = el('a', 'sdp-loc'); a.href = 'https://www.google.com/maps?q=' + x.lat + ',' + x.lng; a.target = '_blank'; a.rel = 'noopener';
@@ -12839,7 +12831,7 @@ const pozitii = await r.json();</code></pre>
         };
         if (f.drum) tile('fa-road', 'Drum', sdNr(f.drum.km) + ' km', f.drum.masini === 1 ? 'o mașină a mers' : f.drum.masini + ' mașini au mers', null);
         if (f.combustibil) tile('fa-gas-pump', 'Combustibil', sdLei(f.combustibil.lei), sdCant(f.combustibil.litri, 'litru', 'litri') + (f.combustibil.fata ? ' · ' + f.combustibil.fata : ''), ['combustibil', 'Combustibil'], f.combustibil.scaderiTotal || f.combustibil.pesteNorma.length ? 'atentie' : '');
-        if (f.safeDrive) tile('fa-shield-halved', 'Condusul a costat în plus', f.safeDrive.lei ? '~' + sdLei(f.safeDrive.lei) : '0 lei', f.safeDrive.scor != null ? 'scorul flotei: ' + f.safeDrive.scor + ' · ' + f.safeDrive.nota : '', ['safedrive', 'Safe Drive']);
+        if (f.safeDrive) tile('fa-shield-halved', 'Condusul a costat în plus', f.safeDrive.lei ? '~' + sdLei(f.safeDrive.lei) : '0 lei', f.safeDrive.scor != null ? 'scorul flotei: ' + f.safeDrive.scor + ' · ' + f.safeDrive.nota : '', ['safedrive', 'RA Drive']);
         if (f.oreCondus) tile('fa-stopwatch', 'Ore de condus', f.oreCondus.total, f.oreCondus.incalcariTotal ? (f.oreCondus.incalcariTotal === 1 ? 'o încălcare' : f.oreCondus.incalcariTotal + ' încălcări') : (f.oreCondus.seAplica ? 'nicio încălcare' : 'Reg. 561 nu se aplică'), ['orecondus', 'Ore de condus'], f.oreCondus.incalcariTotal ? 'rosu' : '');
         if (f.acte) tile('fa-screwdriver-wrench', 'Acte și revizii', String((f.acte.trecuteTotal || 0) + (f.acte.urmeazaTotal || 0)), (f.acte.trecuteTotal ? (f.acte.trecuteTotal === 1 ? 'unul trecut de termen' : f.acte.trecuteTotal + ' trecute de termen') : 'nimic trecut de termen') + (f.acte.urmeazaTotal ? ' · ' + (f.acte.urmeazaTotal === 1 ? 'unul vine' : f.acte.urmeazaTotal + ' vin') + ' săptămâna asta' : ''), ['mentenanta', 'Mentenanță & acte'], f.acte.trecuteTotal ? 'rosu' : (f.acte.urmeazaTotal ? 'atentie' : ''));
         pag.appendChild(tl);
@@ -12865,10 +12857,10 @@ const pozitii = await r.json();</code></pre>
       };
       window.insightSdIntreaba = function (j) {
         S.ramura = 'general'; S.conv = null; S.mesaje = []; window._raxConvId = null; deseneazaRamuri(); deseneazaMain();
-        var i = $i('insp-input'); if (i) { i.value = 'Despre Safe Drive, ' + ((j && j.eticheta) || '') + ': '; window.insightCreste(i); i.focus(); }
+        var i = $i('insp-input'); if (i) { i.value = 'Despre RA Drive, ' + ((j && j.eticheta) || '') + ': '; window.insightCreste(i); i.focus(); }
       };
       window.insightSdDiscutie = async function (id, nume) {
-        var nota = await raConfirm('De azi, Safe Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', { title: 'Ai vorbit cu ' + nume + '?', danger: false, okLabel: 'Da, am vorbit', icon: 'fa-comments', field: { label: 'O notă scurtă (nu e obligatorie)', value: '' } });
+        var nota = await raConfirm('De azi, RA Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', { title: 'Ai vorbit cu ' + nume + '?', danger: false, okLabel: 'Da, am vorbit', icon: 'fa-comments', field: { label: 'O notă scurtă (nu e obligatorie)', value: '' } });
         if (nota === false) return;
         var r = await cere('POST', '/api/insight/safe-drive/discutie', { driverId: id, nota: String(nota || '').trim() });
         if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut salva.', 'error'); return; }
@@ -12876,7 +12868,7 @@ const pozitii = await r.json();</code></pre>
         var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
       };
       window.insightSdScoate = async function (id) {
-        if (!await raConfirm('Discuția dispare din Safe Drive (de exemplu, dacă ai trecut-o din greșeală).', { title: 'Scoți discuția?', okLabel: 'Scoate' })) return;
+        if (!await raConfirm('Discuția dispare din RA Drive (de exemplu, dacă ai trecut-o din greșeală).', { title: 'Scoți discuția?', okLabel: 'Scoate' })) return;
         var r = await cere('DELETE', '/api/insight/safe-drive/discutie/' + encodeURIComponent(id));
         if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut scoate.', 'error'); return; }
         var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
@@ -12891,140 +12883,6 @@ const pozitii = await r.json();</code></pre>
       };
     })();
     // ── sfârșit „secțiunea RA Insight" ──
-    function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }
-    // ─── AI Raport (Rapoarte → fila „AI Raport", 02.10): întrebări despre rapoarte, pe REGULI — gratuit ───
-    // Alin: „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul care costă".
-    // Serverul înțelege întrebarea, rulează raportul aplicației și scrie răspunsul (ai_raport.js); ecranul doar îl arată.
-    // Ce s-a discutat (subiectul, mașina, perioada) vine de la server în `context` și i se trimite înapoi la întrebarea
-    // următoare („și luna trecută?"). Nu cere loc RA Insight și nu se numără din fond. Textele venite de la server se pun
-    // cu textContent (sau prin rinMd, care le curăță întâi).
-    var _rinCtx = null, _rinSubiecte = [];
-    // Butoanele din casetă (aceleași piese ca la RA Insight): mașina, perioada și subiectul se pun în întrebare, unde e cursorul.
-    function rinAlegeMasina(btn) { window._chatMasini().then(function (l) { window._chatAlege(btn, 'Alege mașina', l, function (x) { window._chatPuneInText(document.getElementById('rin-input'), x.pune); }); }); }
-    function rinAlegePerioada(btn) { window._chatAlege(btn, 'Alege perioada', window._CHAT_PERIOADE, function (x) { window._chatPuneInText(document.getElementById('rin-input'), x.pune); }); }
-    function rinAlegeRaport(btn) { window._chatAlege(btn, 'Ce vrei să afli', _rinSubiecte, function (x) { window._chatPuneInText(document.getElementById('rin-input'), x.pune); }); }
-    function rinInit() {
-      var inp = document.getElementById('rin-input');
-      if (inp && !inp._wired) {
-        inp._wired = true;
-        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rinAsk(); } });
-        inp.addEventListener('input', function () { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 120) + 'px'; window._chatStareTrimite(inp, document.getElementById('rin-send')); });
-      }
-      if (rinInited) return;
-      rinInited = true;
-      // Întrebările gata făcute vin de la server (aceeași listă pe care o probează serverul) — nu se scriu aici.
-      var pbox = document.getElementById('rin-presets');
-      if (pbox) fetch('/api/reports/ai-raport/intrebari', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) {
-        _rinSubiecte = ((j && j.subiecte) || []).map(function (x) { return { text: String(x.text || ''), pune: String(x.pune || ''), fa: 'fa-file-lines' }; });
-        pbox.innerHTML = '';
-        ((j && j.intrebari) || []).forEach(function (q) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'btn-sm rin-chip';
-          var ic = document.createElement('i'); ic.className = 'fas ' + (/^fa-[a-z0-9-]+$/.test(String(q.ic || '')) ? q.ic : 'fa-bolt');
-          b.appendChild(ic); b.appendChild(document.createTextNode(' ' + String(q.text || '')));
-          // O întrebare gata făcută e despre flotă (n-are mașină în ea): pornește de la zero, nu pe mașina discutată.
-          b.onclick = function () { rinAsk(String(q.text || ''), true); };
-          pbox.appendChild(b);
-        });
-      }).catch(function () {});
-      rinAddMsg('ai', 'Întreabă-mă ce vrei să afli din rapoarte: **ce, cât, când, care mașină**. Răspund pe loc, din rapoartele aplicației.');
-    }
-    // „Începe din nou": uită ce s-a discutat (mașina, perioada) și golește discuția.
-    function rinReset() {
-      _rinCtx = null;
-      var w = document.getElementById('rin-msgs'); if (w) w.innerHTML = '';
-      var pb = document.getElementById('rin-presets'); if (pb) pb.style.display = 'flex';
-      rinAddMsg('ai', 'Am început din nou. Ce vrei să afli din rapoarte?');
-    }
-    // Butonul „Întreabă RA Insight" are rost doar unde RA Insight există pentru om (rândul lui din meniu e aprins).
-    function _rinAreInsight() { var n = document.getElementById('nav-insight'); return !!n && n.style.display !== 'none' && typeof window.insightAsk === 'function'; }
-    function rinRaspuns(bub, j, intrebarea) {
-      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
-      if (j.neinteles) {
-        bub.innerHTML = rinMd(String(j.text || ''));
-        if (Array.isArray(j.alege) && j.alege.length) bub.appendChild(window._insightExtra({ alege: j.alege }, function (t) { rinAsk(t); }));
-        var w = el('div', 'rin-acts');
-        // Un raport pe care AI Raport nu-l citește (supraturații, PTO, senzori…): deschis direct, cu mașina și perioada.
-        if (j.sursa && j.sursa.type) w.appendChild(_rinButonRaport(j.sursa));
-        if (j.spreInsight && _rinAreInsight()) {
-          var bi = el('button', 'chat-pas'); bi.type = 'button';
-          bi.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
-          bi.appendChild(document.createTextNode('Întreabă RA Insight'));
-          bi.onclick = function () { window.insightAsk(intrebarea); };
-          w.appendChild(bi);
-        }
-        if (w.childNodes.length) bub.appendChild(w);
-        return;
-      }
-      var x = j.raspuns || {};
-      bub.innerHTML = '';
-      if (window._insightExtra) { var ii = window._insightExtra({ inteles: j.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
-      var tx = el('div', 'rin-txt'); tx.innerHTML = rinMd(String(x.text || '')); bub.appendChild(tx);
-      if (Array.isArray(x.tiles) && x.tiles.length) {
-        var k = el('div', 'rin-kpis');
-        x.tiles.forEach(function (t) { var c = el('div', 'rin-kpi'); c.appendChild(el('div', 'v', t.val)); c.appendChild(el('div', 'l', t.et)); k.appendChild(c); });
-        bub.appendChild(k);
-      }
-      if (x.tabel && Array.isArray(x.tabel.randuri) && x.tabel.randuri.length) {
-        var tw = el('div', 'rin-tbl-wrap'), tb = el('table', 'rin-tbl'), th = el('thead'), trh = el('tr'), tbd = el('tbody');
-        (x.tabel.coloane || []).forEach(function (c) { trh.appendChild(el('th', null, c)); });
-        th.appendChild(trh); tb.appendChild(th);
-        x.tabel.randuri.forEach(function (rw) { var tr = el('tr'); (rw || []).forEach(function (c) { tr.appendChild(el('td', null, c)); }); tbd.appendChild(tr); });
-        tb.appendChild(tbd); tw.appendChild(tb); bub.appendChild(tw);
-      }
-      if (Array.isArray(x.sugestii) && x.sugestii.length) {
-        var sg = el('div', 'rin-sug');
-        x.sugestii.forEach(function (s) {
-          var fel = ({ bun: 'bun', atentie: 'atentie', info: 'info' })[s.fel] || 'info';
-          var it = el('div', 'rin-sug-i ' + fel);
-          it.appendChild(el('i', 'fas ' + (fel === 'bun' ? 'fa-circle-check' : (fel === 'atentie' ? 'fa-triangle-exclamation' : 'fa-circle-info'))));
-          it.appendChild(el('span', null, s.text));
-          sg.appendChild(it);
-        });
-        bub.appendChild(sg);
-      }
-      var acts = el('div', 'rin-acts');
-      if (j.sursa && j.sursa.type) acts.appendChild(_rinButonRaport(j.sursa));
-      if (acts.childNodes.length) bub.appendChild(acts);
-      bub.appendChild(window._chatActiuni(String(x.text || '')));
-    }
-    // „Deschide raportul „…”": același buton sub un răspuns și sub un raport pe care AI Raport nu-l citește.
-    function _rinButonRaport(s0) {
-      var bo = document.createElement('button'); bo.type = 'button'; bo.className = 'chat-pas';
-      bo.innerHTML = '<i class="fas fa-file-lines"></i>';
-      bo.appendChild(document.createTextNode('Deschide raportul „' + String(s0.label || s0.type) + '”'));
-      bo.onclick = function () { rinOpenReport(s0.type, (Array.isArray(s0.imeis) && s0.imeis.length === 1) ? s0.imeis[0] : '', s0.from, s0.to); };
-      return bo;
-    }
-    async function rinAsk(preset, deLaZero) {
-      if (rinBusy) return;
-      var inp = document.getElementById('rin-input');
-      var msg = ((preset != null ? preset : (inp ? inp.value : '')) || '').trim();
-      if (!msg) return;
-      if (inp) { inp.value = ''; inp.style.height = 'auto'; window._chatStareTrimite(inp, document.getElementById('rin-send')); }
-      var mw = document.getElementById('rin-msgs');
-      if (mw) Array.prototype.forEach.call(mw.querySelectorAll('.chat-urm'), function (n) { n.remove(); });
-      var pb = document.getElementById('rin-presets'); if (pb) pb.style.display = 'none';   // întrebările gata făcute: doar la început
-      rinAddMsg('user', msg);
-      rinBusy = true;
-      var btn = document.getElementById('rin-send'); if (btn) btn.disabled = true;
-      var thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
-      try {
-        var r = await fetch('/api/reports/ai-raport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ text: msg, context: deLaZero ? {} : (_rinCtx || {}) }) });
-        var j = {}; try { j = await r.json(); } catch (e) {}
-        if (thinking) { thinking.remove(); thinking = null; }
-        if (!r.ok) { rinAddMsg('ai', String(j.message || j.error || ('Nu am putut răspunde acum (eroare ' + r.status + ').'))); return; }
-        if (j.context) _rinCtx = j.context;
-        // Pe pachetul Start răspunsurile se numără (14.10): cât a mai rămas, scris de server.
-        var rp = document.getElementById('rin-pachet'); if (rp) { rp.textContent = (j.pachet && j.pachet.cod === 'start' && j.pachet.text) ? j.pachet.text : ''; rp.style.display = rp.textContent ? '' : 'none'; }
-        var row = rinAddMsg('ai', ''), bub = row && row.querySelector('.rax-msg.ai');
-        if (bub) rinRaspuns(bub, j, msg);
-        var wrap = document.getElementById('rin-msgs');
-        var urm = j.raspuns && Array.isArray(j.raspuns.urmari) ? j.raspuns.urmari : [];
-        if (wrap && urm.length) wrap.appendChild(window._chatUrmari(urm, function (t) { rinAsk(t); }));
-        if (wrap) wrap.scrollTop = wrap.scrollHeight;
-      } catch (e) { if (thinking) thinking.remove(); rinAddMsg('ai', 'Eroare de rețea: ' + e.message); }
-      finally { rinBusy = false; if (btn) btn.disabled = false; }
-    }
     // „Deschide raportul": cardul raportului, cu mașina și perioada din răspuns (scadențele au selectorul lor de lună).
     async function rinOpenReport(type, imei, from, to) {
       repShowTab('generate');
@@ -13082,7 +12940,7 @@ const pozitii = await r.json();</code></pre>
         var _isSched = (h.status === 'scheduled') || (h.signature && h.signature.indexOf('sched') === 0);
         var schedTag = _isSched
           ? '<span class="rh-sched" title="Generat automat de o programare"><i class="fas fa-clock"></i> Programat</span> '
-          : '';
+          : (h.status === 'insight' ? '<span class="rh-ins" title="Cerut în cuvinte, din RA Insight"><i class="fas fa-wand-magic-sparkles"></i> din RA Insight</span> ' : '');
         return '<tr' + (_isSched ? ' class="rh-row-sched"' : '') + '>' +
           '<td class="rh-cbcell" data-label="Selectează"><input type="checkbox" class="rh-cb" value="' + h.id + '" onclick="rhUpdateBulkBar()"></td>' +
           '<td class="rh-name" data-label="Denumire raport" title="' + E(h.label || h.report_type) + '">' + schedTag + '<span class="rh-name-txt">' + E(h.label || h.report_type) + '</span></td>' +
@@ -13319,6 +13177,7 @@ const pozitii = await r.json();</code></pre>
     }
     function renderReport(data) {
       lastReport = data; _repSort = null; _repFilter = null; _repPage = 0;
+      var _rz = document.getElementById('rep-rezumat'); if (_rz) { _rz.style.display = 'none'; _rz.innerHTML = ''; }   // rezumatul era al raportului de dinainte
       // Intervalul pentru care a fost generat raportul (de la – până la), sub titlu.
       var _rp = document.getElementById('rep-period');
       if (_rp) { if (data && data.periodLabel) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> ' + _repEsc(data.periodLabel); _rp.style.display = ''; } else if (data && data.from && data.to) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> Interval: ' + repFmtDT(data.from) + ' – ' + repFmtDT(data.to); _rp.style.display = ''; } else { _rp.textContent = ''; _rp.style.display = 'none'; } }
@@ -18016,22 +17875,6 @@ const pozitii = await r.json();</code></pre>
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
     })();
 
-    // #9: pe iOS tastatura nu micșorează vh/fixed → input-ul chat-ului AI ajunge sub tastatură.
-    // visualViewport dă înălțimea VIZIBILĂ; redimensionăm overlay-ul ca să stea peste tastatură.
-    (function aiKeyboardFix() {
-      if (!window.visualViewport) return;
-      function adjust() {
-        var ov = document.getElementById('rax-ai-overlay'); if (!ov) return;
-        if (ov.classList.contains('open') && window.innerWidth <= 768) {
-          var vv = window.visualViewport;
-          ov.style.top = vv.offsetTop + 'px';
-          ov.style.height = vv.height + 'px';
-        } else { ov.style.top = ''; ov.style.height = ''; }
-      }
-      window.visualViewport.addEventListener('resize', adjust);
-      window.visualViewport.addEventListener('scroll', adjust);
-    })();
-
     // Încadrează harta pe TOT traseul. Pe mobil rezervă jumătatea de jos pentru bottom-sheet
     // (altfel traseul ajunge în spatele panoului și se vede doar o fâșie). Folosit de toate fluxurile de rută.
     function fitRouteToMap(points) {
@@ -21173,31 +21016,11 @@ const pozitii = await r.json();</code></pre>
     .rax-head h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .rax-x { -webkit-appearance: none; appearance: none; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; }
     .rax-body { padding: 14px 16px; overflow: auto; }
-    /* AI chat — redesign */
-    #rax-ai-msgs { display: flex; flex-direction: column; gap: 12px; min-height: 180px; }
-    /* Chatul modern (08.10): întrebarea în bulă rotundă, la dreapta; răspunsul fără chenar, lângă un semn mic. */
-    .rax-row { display: flex; gap: 10px; align-items: flex-start; max-width: 100%; }
-    .rax-row.user { justify-content: flex-end; }
-    .rax-row.sys { justify-content: center; }
-    .rax-av { width: 28px; height: 28px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: #15803d; display: grid; place-items: center; font-size: 12.5px; flex-shrink: 0; }
-    body.dark .rax-av { color: var(--accent); }
-    .rax-av.insight, body.dark .rax-av.insight { background: color-mix(in srgb, var(--purple) 14%, transparent); color: var(--purple); }
-    .rax-msg { font-size: 14px; line-height: 1.6; max-width: 86%; word-wrap: break-word; overflow-wrap: anywhere; }
-    .rax-row.user .rax-msg { background: color-mix(in srgb, var(--text-primary) 7%, var(--bg-panel)); color: var(--text-primary); border-radius: 20px; padding: 9px 15px; font-weight: 600; }
-    .rax-row.ai .rax-msg { background: transparent; color: var(--text-primary); padding: 3px 0 0; flex: 1; min-width: 0; max-width: none; }
-    .rax-msg.sys { background: transparent; color: var(--text-muted); font-size: 12px; padding: 4px 8px; border: none; }
     .rax-md-h { font-weight: 700; font-size: 14px; margin: 1px 0 5px; }
     .rax-md-li { padding-left: 2px; margin: 2px 0; }
-    .rax-msg strong { font-weight: 700; }
     .rax-typing i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); margin: 0 2px; animation: raxblink 1.3s infinite both; }
     .rax-typing i:nth-child(2) { animation-delay: .2s; } .rax-typing i:nth-child(3) { animation-delay: .4s; }
     @keyframes raxblink { 0%,80%,100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
-    #rax-ai-foot { padding: 8px 12px 12px; }
-    .rax-send { -webkit-appearance: none; appearance: none; border: none; background: var(--accent); color: #06210F; border-radius: 12px; width: 42px; height: 42px; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: transform .1s; }
-    .rax-send:active { transform: scale(.94); }
-    .rax-suggest { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
-    .rax-chip { font-size: 12px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); border-radius: 18px; padding: 7px 12px; cursor: pointer; transition: border-color .12s, color .12s; }
-    .rax-chip:hover { border-color: var(--accent); color: var(--accent); }
     /* Selector vehicul cu căutare (searchable combobox peste un <select> nativ) — modernizat 2026 */
     .ss-wrap { position: relative; }
     .ss-native { display: none !important; }
@@ -21397,34 +21220,6 @@ const pozitii = await r.json();</code></pre>
     <button class="rax-fab insight" id="rax-main-fab" onclick="raxToggleAI()" aria-label="RA Insight" title="RA Insight — asistentul flotei">
       <i class="fas fa-wand-magic-sparkles" id="rax-main-icon"></i>
     </button>
-  </div>
-
-  <div class="rax-overlay" id="rax-ai-overlay">
-    <div class="rax-card" style="max-width:480px;height:78vh;height:78dvh;">
-      <div class="rax-head">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="rax-av insight" style="width:34px;height:34px;font-size:15px;"><i class="fas fa-wand-magic-sparkles"></i></div>
-          <div><h3 style="margin:0;">RA Insight</h3><div style="font-size:11px;color:var(--text-secondary);"><span style="color:var(--accent);">●</span> asistentul flotei · live · istoric · alerte</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <!-- RA Insight ține minte discuția (02.10). Butonul ăsta o ia de la capăt. -->
-          <button class="rax-ai-nou" onclick="raxAiNou()" title="Începe o conversație nouă"><i class="fas fa-plus"></i> Conversație nouă</button>
-          <button class="rax-x" onclick="raxToggleAI()">&times;</button>
-        </div>
-      </div>
-      <div id="rax-ai-quota" style="display:none;"></div>
-      <div class="rax-body" id="rax-ai-msgs"></div>
-      <div id="rax-ai-foot">
-        <div class="chat-caseta">
-          <textarea id="rax-ai-input" rows="1" placeholder="Întreabă RA Insight…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();raxSendAI();}" oninput="raxAiCreste(this)"></textarea>
-          <div class="chat-unelte">
-            <button type="button" class="chat-un" onclick="raxAiAlegeMasina(this)" title="Alege mașina"><i class="fas fa-car-side"></i><span class="et">Mașina</span></button>
-            <button type="button" class="chat-un" onclick="raxAiAlegePerioada(this)" title="Alege perioada"><i class="fas fa-calendar"></i><span class="et">Perioada</span></button>
-            <button type="button" class="chat-trimite gol" id="rax-ai-trimite" onclick="raxSendAI()" title="Trimite" aria-label="Trimite"><i class="fas fa-arrow-up"></i></button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="rax-overlay" id="rax-co-overlay">
@@ -21697,7 +21492,7 @@ const pozitii = await r.json();</code></pre>
 
   <script>
   (function () {
-    var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
+    var me = null, aiEnabled = false, companiesCache = [];
     function $(id) { return document.getElementById(id); }
     function appVisible() { var a = $('app'); return a && a.classList.contains('visible'); }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
@@ -21730,13 +21525,16 @@ const pozitii = await r.json();</code></pre>
       if (feats.ai_assistant === false) $('rax-fabs').style.display = 'none';
       // RA Insight (asistentul unificat) răspunde și pe rapoarte → necesită permisiunea viewReports.
       if (!(me.isSuper || (me.permissions && me.permissions.viewReports))) $('rax-fabs').style.display = 'none';
-      var na = $('nav-agenti'); if (na) na.style.display = (feats.agents !== false && me.permissions && me.permissions.viewReports) ? '' : 'none';
+      // „Agenți AI" iese din meniu pentru cine are cont RA Insight (Capitolul 2, pasul 1): agenții îi apar în „Azi la tine", iar
+      // pagina lor (pragurile) se deschide de acolo, din „Setările agenților". Colegii fără cont o păstrează în meniu.
+      var na = $('nav-agenti'); if (na) na.style.display = (feats.agents !== false && me.permissions && me.permissions.viewReports && !me.aiCont) ? '' : 'none';
       // RA Insight: rândul lui din meniu, când firma are modulul. Bula din colț tace cât e deschisă secțiunea
       // (e aceeași discuție, iar bula ar acoperi caseta de scris).
       var ni = $('nav-insight'); if (ni) ni.style.display = (feats.ai_assistant !== false) ? '' : 'none';
       // Simulatorul de încărcare: modulul firmei (după flotă sau ales de noi); noi îl vedem mereu.
       var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || (feats.incarcare === true && ((me.permissions && me.permissions.manageFleet) || me.role === 'dispatcher'))) ? '' : 'none';
       if (typeof currentView !== 'undefined' && currentView === 'insight') $('rax-fabs').style.display = 'none';
+      _aziVerifica();
     }
     window._raxUpdateFabs = updateFabs;   // showView o cheamă când ieși din secțiunea RA Insight
     setInterval(refresh, 4000); refresh();
@@ -22042,218 +21840,28 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
     };
 
-    // ── AI ──
-    var SUGG = ['Unde sunt vehiculele acum?', 'Ce probleme are flota?', 'Km — săptămâna asta', 'Consum — 30 zile'];
-    // ─── Contor întrebări (ca la Claude): cât mai ai din luna curentă ───
-    // (Până pe 23.09 titlul spunea „+ ce te costă peste cotă". Peste cotă nu mai costă nimic, fiindcă
-    // nu mai există nimic peste cotă: la epuizare RA Insight se oprește. Vezi CLAUDE.md.)
-    window.raxLoadQuota = async function () {
-      var box = $('rax-ai-quota'); if (!box) return;
-      var q = null;
-      try { q = await fetch('/api/ai/quota', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
-      if (!q || q.error || q.unlimited) { box.style.display = 'none'; return; } // fără cotă → nu arătăm nimic
-      // Pachetele RA Insight (14.10): pachetul, cât a rămas și când se reîncarcă — textele de la server, puse ca text.
-      if (q.pachet) {
-        var pk = q.pachet, pctP = q.blocked ? 100 : Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
-        box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
-        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:5px;"><span style="color:var(--text-secondary);"><b class="pk-n"></b> · <span class="pk-t"></span></span>'
-          + (q.blocked ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-pause"></i> pe butoane până pe 1</span>' : '') + '</div>'
-          + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pctP + '%;background:' + (q.blocked ? 'var(--orange)' : 'var(--accent)') + ';"></div></div>'
-          + '<div class="pk-s" style="font-size:10.5px;color:var(--text-muted);margin-top:5px;"></div>';
-        box.querySelector('.pk-n').textContent = 'Pachet ' + pk.nume;
-        box.querySelector('.pk-t').textContent = pk.text || '';
-        box.querySelector('.pk-s').textContent = pk.textOm || pk.reincarcare || '';
-        return;
-      }
-      var pct = Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
-      var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : ''; // „1 octombrie": luna scurtă („oct.") ieșea cu două puncte la final de propoziție
-      // Fondul e AL FIRMEI (conturile ei × întrebările fiecăruia), dar omul vrea să știe și cât a
-      // pus el. Amândouă, pe același rând, ca bara să spună o poveste completă.
-      var aleMele = Number(q.usedByMe) || 0;
-      var over = q.remaining <= 0;
-      var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
-      var head, sub;
-      // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont (`questionsPerSeat`). La o
-      // firmă pe forma VECHE (cotă fixă), un cont în plus nu aduce nicio întrebare — iar „|| 50"-ul
-      // de rezervă de aici îi promitea tocmai asta (găsit 23.09). Fără regula pe cont, fraza lipsește.
-      var peCont = Number(q.questionsPerSeat) || 0;
-      var inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + window._raxNrI(peCont) + ' pe lună.' : '';
-      if (over) {
-        head = '<b>Fondul lunii s-a terminat</b>';
-        // Data stă deja în eticheta portocalie („oprit până pe …"); aici ar fi fost a doua oară, pe
-        // rândul imediat de dedesubt. Rândul spune doar ce poate face omul — dacă poate face ceva.
-        sub = inPlus || ('Se reînnoiește pe ' + reset + '.');
-      } else {
-        head = '<b>' + q.remaining + '</b> din ' + window._raxNrI(q.questions) + ' rămase' +
-          (q.seats > 1 ? ' <span style="opacity:.7;">· fond comun, ' + q.seats + ' conturi</span>' : '');
-        sub = 'Se reînnoiește pe ' + reset + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '');
-      }
-      box.style.display = 'block';
-      box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
-      box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:5px;">'
-        + '<span style="color:var(--text-secondary);">' + head + '</span>'
-        // „oprit", nu „extra": „extra" rămăsese de pe vremea când, peste fond, clientul PLĂTEA în
-        // plus. Acum nu plătește nimic — RA Insight doar se oprește. Citit de un client, „extra"
-        // ar fi sunat a factură în plus (găsit 23.09).
-        + (over ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-pause"></i> oprit până pe ' + reset + '</span>' : '')
-        + '</div>'
-        + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';transition:width .3s;"></div></div>'
-        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;">' + sub + '</div>'
-        // „Cum se socotește" — scris o dată, la îndemână, ca nimeni să nu ghicească ce se numără.
-        + '<details style="margin-top:5px;"><summary style="font-size:10.5px;color:var(--text-muted);cursor:pointer;list-style:none;">Cum se socotește ▾</summary>'
-        + '<div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;margin-top:4px;padding-left:2px;">'
-        + '• O întrebare pusă aici = 1, oricât de complicat e răspunsul.<br>'
-        + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
-        + (peCont > 0
-            ? '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + window._raxNrI(peCont) + '.<br>'
-            : '• Fondul e al firmei: ' + window._raxNrI(q.questions) + ' pe lună.<br>')
-        + '• Se reînnoiește pe ' + reset + '.'
-        + '<br>• Când se termină, RA Insight se oprește până la reînnoire — fără niciun cost în plus.'
-        + (inPlus ? '<br>• ' + inPlus : '')
-        + '</div></details>';
-    };
-    window.raxToggleAI = function () {
-      var ov = $('rax-ai-overlay'); var open = !ov.classList.contains('open');
-      ov.classList.toggle('open', open);
-      if (open) { try { raxLoadQuota(); } catch (e) {} }
-      if (!open) { ov.style.top = ''; ov.style.height = ''; } // #9: reset poziționarea de tastatură la închidere
-      if (open && !$('rax-ai-msgs').dataset.init) raxAiSalut();
-      if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
-    };
-    // Salutul și întrebările rapide — la prima deschidere și la „Conversație nouă".
-    function raxAiSalut() {
-        $('rax-ai-msgs').dataset.init = '1';
-        // Întotdeauna: salut + întrebări rapide (răspund LOCAL, instant, fără tokeni AI)
-        addMsg('ai', 'Salut! Sunt **RA Insight** — asistentul flotei tale. Întreabă-mă orice: o mașină după **număr**, nume sau șofer, ce **probleme** are flota, sau analize pe perioadă (km, consum, viteze). **Țin minte discuția**: poți continua cu „și săptămâna dinainte?".');
-        var s = document.createElement('div'); s.className = 'rax-suggest';
-        SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
-        var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
-        $('rax-ai-msgs').appendChild(s);
-        // Întrebările libere au nevoie de cheia AI — gestionată DOAR de super-admin (din Dashboard), nu aici.
-        if (!aiEnabled) {
-          addMsg('sys', (me && me.isSuper)
-            ? 'Întrebările rapide merg fără AI. Asistentul liber se activează din Dashboard → secțiunea „AI" (cheie + limite per companie).'
-            : 'Întrebările rapide merg instant. Asistentul complet e gestionat de administratorul platformei.');
-        }
-    }
-    // „Conversație nouă": se golește bula, iar următoarea întrebare pornește o discuție de la zero pe server.
-    window.raxAiNou = function () {
-      window._raxConvId = null;
-      $('rax-ai-msgs').innerHTML = '';
-      raxAiSalut();
-      setTimeout(function () { $('rax-ai-input').focus(); }, 50);
-    };
-    function raxMd(t) {
-      var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-      var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
-      return esc(t).split('\n').map(function (ln) {
-        var l = ln.replace(/\s+$/, ''), tr = l.trim();
-        if (tr === '') return '<div style="height:6px"></div>';
-        if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
-        if (/^[•\-]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-]\s+/, '')) + '</div>';
-        return '<div>' + bold(l) + '</div>';
-      }).join('');
-    }
-    function addMsg(role, text) {
-      var row = document.createElement('div'); row.className = 'rax-row ' + role;
-      if (role === 'ai') {
-        var av = document.createElement('div'); av.className = 'rax-av insight'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
-        var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = raxMd(text);
-        row.appendChild(av); row.appendChild(m);
-      } else if (role === 'user') {
-        var mu = document.createElement('div'); mu.className = 'rax-msg user'; mu.textContent = text; row.appendChild(mu);
-      } else {
-        var ms = document.createElement('div'); ms.className = 'rax-msg sys'; ms.innerHTML = text; row.appendChild(ms);
-      }
-      $('rax-ai-msgs').appendChild(row); $('rax-ai-msgs').scrollTop = $('rax-ai-msgs').scrollHeight; return row;
-    }
-    window.raxSaveKey = async function () {
-      var inp = $('rax-ai-key'), msg = $('rax-ai-key-msg'); if (!inp) return;
-      var key = (inp.value || '').trim(); msg.style.color = 'var(--red)';
-      if (!key) { msg.textContent = 'Lipește cheia.'; return; }
-      msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se activează…';
-      try {
-        var r = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) });
-        var j = await r.json();
-        if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
-        aiEnabled = true;
-        $('rax-ai-msgs').innerHTML = ''; $('rax-ai-msgs').dataset.init = '';
-        raxToggleAI(); raxToggleAI(); // închide + redeschide → re-init cu chat activ
-      } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
-    };
-    // „1 întrebare", „10 întrebări", „50 de întrebări" — de la 20 în sus româna cere „de" (ca nDe() de pe telefon).
-    // Bula din colț (08.10): caseta crește cu textul, ↑ e gri cât e goală; Mașina / Perioada pun textul unde e cursorul.
-    window.raxAiCreste = function (t) { if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; if (window._chatStareTrimite) window._chatStareTrimite(t, $('rax-ai-trimite')); };
-    window.raxAiAlegeMasina = async function (btn) { var l = await window._chatMasini(); window._chatAlege(btn, 'Alege mașina', l, function (x) { window._chatPuneInText($('rax-ai-input'), x.pune); }); };
-    window.raxAiAlegePerioada = function (btn) { window._chatAlege(btn, 'Alege perioada', window._CHAT_PERIOADE, function (x) { window._chatPuneInText($('rax-ai-input'), x.pune); }); };
+    // ── Bula din colț (Capitolul 2, pasul 1 — Alin, 15.10: „bula duce în meniul RA Insight") ──
+    // Nu mai e un chat al ei: te duce în secțiunea RA Insight, pe conversația la care ai rămas (window._raxConvId). Punctul mov
+    // = „Azi la tine" are ceva nou (un rând care cere atenție, nevăzut încă) de la ultima deschidere. Ce ai văzut se ține în
+    // browser — o comoditate, nu o evidență: fără el, punctul apare din nou și atât.
+    window.raxToggleAI = function () { showView('insight'); };
     window._raxNrI = function (n) { n = Number(n) || 0; var r = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((r === 0 && n) || r >= 20 ? ' de ' : ' ') + 'întrebări'; };
-    window.raxSendAI = async function () {
-      var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
-      inp.value = ''; raxAiCreste(inp);
-      Array.prototype.forEach.call($('rax-ai-msgs').querySelectorAll('.chat-urm'), function (n) { n.remove(); });
-      addMsg('user', msg);
-      var thinking = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
+    function _aziCheie() { return 'ra_azi_vazut_' + ((me && me.username) || ''); }
+    function _aziCitite() { try { var v = JSON.parse(localStorage.getItem(_aziCheie()) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+    function _aziPunct(on) { var f = $('rax-main-fab'); if (f) f.classList.toggle('are-nou', !!on); }
+    window._aziVazut = function (chei) { try { localStorage.setItem(_aziCheie(), JSON.stringify((chei || []).slice(0, 60))); } catch (e) {} _aziPunct(false); };
+    var _aziUltima = 0;
+    async function _aziVerifica() {
+      if (!(me && me.aiCont && appVisible()) || (typeof currentView !== 'undefined' && currentView === 'insight')) return;
+      if (Date.now() - _aziUltima < 5 * 60000) return;
+      _aziUltima = Date.now();
       try {
-        // RA Insight unificat: „unde/oprite/status" primesc răspuns local gratuit pe server (short-circuit),
-        // restul rulează pe agentul cu unelte (live + istoric + alerte) și întorc și sursele (rapoartele folosite).
-        // RA Insight ține minte discuția (02.10): trimitem conversația în care suntem. Bula deschisă proaspăt
-        // pornește una nouă (`nou`), ca omul să nu vorbească, fără să știe, în continuarea unei discuții vechi.
-        var corp = { message: msg };
-        if (window._raxConvId) corp.conversatieId = window._raxConvId; else corp.nou = true;
-        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
-        var j = await r.json();
-        thinking.remove();
-        try { raxLoadQuota(); } catch (e) {} // contorul scade imediat după întrebare
-        if (r.status === 404) window._raxConvId = null;            // conversația a fost ștearsă între timp
-        else if (j.conversatieId) window._raxConvId = j.conversatieId;
-        var reply = j.reply || j.error || 'Eroare AI.';
-        var row = addMsg('ai', reply);
-        var b0 = row && row.querySelector('.rax-msg.ai');
-        if (b0 && window._insightExtra) {
-          // „Am înțeles" deasupra răspunsului, butoanele de ales (când RA Insight întreabă „care dintre ele?") dedesubt
-          var ii = window._insightExtra(j, null, 'inteles'); if (ii.childNodes.length) b0.insertBefore(ii, b0.firstChild);
-          var vv = window._insightExtra(j, null, 'verificare'); if (vv.childNodes.length) b0.appendChild(vv);
-          var aa = window._insightExtra(j, function (t) { $('rax-ai-input').value = t; raxSendAI(); }, 'alege'); if (aa.childNodes.length) b0.appendChild(aa);
-        }
-        if (b0 && Array.isArray(j.sources) && j.sources.length) {
-          var wrap = document.createElement('div'); wrap.className = 'insp-surse';
-          j.sources.slice(0, 6).forEach(function (s) {
-            var c = document.createElement('button'); c.type = 'button'; c.className = 'chat-pas';
-            c.innerHTML = '<i class="fas fa-file-lines"></i>';
-            c.appendChild(document.createTextNode(String(s.label || s.type || 'Raport') + (s.vehicle ? ' · ' + s.vehicle : '')));
-            c.title = 'Deschide raportul în Rapoarte';
-            c.onclick = function () { try { raxToggleAI(); } catch (e) {} showView('rapoarte'); setTimeout(function () { try { rinOpenReport(s.type, s.imei || ''); } catch (e) {} }, 80); };
-            wrap.appendChild(c);
-          });
-          b0.appendChild(wrap);
-        }
-        if (b0 && window._chatActiuni) b0.appendChild(window._chatActiuni(reply));
-        if (row && Array.isArray(j.urmari) && j.urmari.length && window._chatUrmari) {
-          $('rax-ai-msgs').appendChild(window._chatUrmari(j.urmari, function (t) { $('rax-ai-input').value = t; raxSendAI(); }));
-          $('rax-ai-msgs').scrollTop = $('rax-ai-msgs').scrollHeight;
-        }
-        aiHistory.push({ role: 'user', content: msg }); aiHistory.push({ role: 'assistant', content: reply });
-      } catch (e) { thinking.remove(); addMsg('ai', 'Eroare de rețea: ' + e.message); }
-    };
-
-    // Rezumat AI peste raportul vizibil (scrapează tabelul din DOM, fără a atinge JS-ul principal)
-    window.raxSummarizeVisibleReport = async function () {
-      var tables = Array.prototype.slice.call(document.querySelectorAll('table')).filter(function (t) { return t.offsetParent !== null && t.querySelectorAll('tr').length > 1; });
-      if (!tables.length) { addMsg('ai', 'Deschide întâi un raport (Rapoarte → alege un raport → Generează), apoi apasă din nou.'); return; }
-      var table = tables.sort(function (a, b) { return b.querySelectorAll('tr').length - a.querySelectorAll('tr').length; })[0];
-      var head = Array.prototype.slice.call(table.querySelectorAll('thead th, tr:first-child th')).map(function (th) { return th.textContent.trim(); });
-      var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr')).slice(0, 60).map(function (tr) { return Array.prototype.slice.call(tr.children).map(function (td) { return td.textContent.trim(); }); });
-      if (!rows.length) rows = Array.prototype.slice.call(table.querySelectorAll('tr')).slice(1, 60).map(function (tr) { return Array.prototype.slice.call(tr.children).map(function (td) { return td.textContent.trim(); }); });
-      addMsg('user', 'Rezumă raportul afișat (' + rows.length + ' rânduri)');
-      var th = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
-      try {
-        var corp = { type: 'tabel', report: { columns: head, rows: rows } };
-        var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
-        var j = await r.json(); th.remove();
-        try { raxLoadQuota(); } catch (e) {}
-        addMsg('ai', j.summary || j.reply || j.error || 'Eroare la rezumat.');
-      } catch (e) { th.remove(); addMsg('ai', 'Eroare: ' + e.message); }
-    };
+        var j = await fetch('/api/insight/azi', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; });
+        if (!j || !Array.isArray(j.chei)) return;
+        var vazute = _aziCitite();
+        _aziPunct(j.chei.some(function (k) { return vazute.indexOf(k) < 0; }));
+      } catch (e) { /* fără punct */ }
+    }
 
     // ── Companii ──
     window.raxOpenCompanies = async function () { $('rax-co-overlay').classList.add('open'); if (window.coNouRandeaza) window.coNouRandeaza(); await raxLoadCompanies(); raxLoadUnassigned(); raxMoveLoadAll(); };
@@ -33382,11 +32990,28 @@ const pozitii = await r.json();</code></pre>
         var inp = document.getElementById('insp-input'); if (inp) { if (prefill) inp.value = prefill; inp.focus(); }
       }, 300);
     };
-    // „Rezumă cu RA Insight" din antetul raportului → deschide asistentul + rezumă tabelul vizibil.
-    window.insightSummarizeReport = function () {
-      var ov = $('rax-ai-overlay');
-      if (ov && !ov.classList.contains('open')) { try { raxToggleAI(); } catch (e) {} }
-      setTimeout(function () { try { raxSummarizeVisibleReport(); } catch (e) {} }, 180);
+    // „Rezumă cu RA Insight" de sub un raport. Din 15.10 bula nu mai are un chat al ei, deci rezumatul apare chiar deasupra
+    // raportului (#rep-rezumat). Același drum ca înainte: tabelul de pe ecran → /api/ai/report-summary (cu poarta contului;
+    // de la Basic îl scrie RA Insight, pe Start se face din cifrele tabelului). Textul venit de la server se curăță întâi.
+    window.insightSummarizeReport = async function () {
+      var box = $('rep-rezumat'), table = $('rep-table'); if (!box) return;
+      var head = table ? Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); }) : [];
+      var rows = table ? Array.prototype.slice.call(table.querySelectorAll('tbody tr')).slice(0, 60).map(function (tr) { return Array.prototype.map.call(tr.children, function (td) { return td.textContent.trim(); }); }) : [];
+      box.style.display = '';
+      if (!rows.length) { box.textContent = 'Generează întâi raportul, apoi apasă din nou.'; return; }
+      box.innerHTML = '<span class="rax-typing"><i></i><i></i><i></i></span>';
+      try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+      var j = {};
+      try {
+        var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'tabel', report: { columns: head, rows: rows } }) });
+        j = await r.json().catch(function () { return {}; });
+      } catch (e) { j = { error: 'Eroare de rețea: ' + e.message }; }
+      var text = String(j.summary || j.reply || j.message || j.error || 'Nu am putut face rezumatul acum.');
+      box.innerHTML = '';
+      var t = document.createElement('div'); t.className = 'rep-rezumat-t'; t.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Rezumat'; box.appendChild(t);
+      var c = document.createElement('div');
+      c.innerHTML = esc(text).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+      box.appendChild(c);
     };
 
     // ── Abonamentul meu ──

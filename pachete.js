@@ -428,7 +428,7 @@ const DESCRIERE = {
     fara: ['Întrebări libere („de ce?”, „ce să fac?”)', 'Ramurile'] },
   basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.',
     include: ['2 conturi', '200 de întrebări pe lună, la comun', 'Întrebări în cuvintele tale: „De ce a crescut consumul la Caddy?”',
-      'Ramurile: Safe Drive & costuri, Combustibil, Ore de condus, Mentenanță & acte', 'Răspunsurile pe butoane, fără limită', 'Scrisoarea de luni scrisă de RA Insight'] },
+      'Ramurile: RA Drive (condus & costuri), Combustibil, Ore de condus, Mentenanță & acte', 'Răspunsurile pe butoane, fără limită', 'Scrisoarea de luni scrisă de RA Insight'] },
   pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.',
     include: ['Până la 5 conturi', '600 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată la „de ce” și „ce să fac”' }, 'Tot ce are Basic'] },
   business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.',

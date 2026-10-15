@@ -1014,7 +1014,127 @@ function rezumatTabel(columns, rows) {
   return out.join('\n');
 }
 
+// ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10: „generează foaia de parcurs pentru flotă / mașina X
+// pe perioada Y") ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+// O CERERE („fă-mi", „generează", „scoate-mi"… + „raport" sau un nume tare, ca „foaia de parcurs") nu primește o propoziție:
+// serverul face raportul întreg, ca din pagina Rapoarte, și îl pune în Istoric rapoarte. O ÎNTREBARE („câți km a făcut…")
+// rămâne la `intelege` / RA Insight. Aici doar înțelegerea: ce raport (cheia din catalogul reports.js), ce mașini, ce
+// perioadă. Fără bază, fără model.
+const CERE_RAPORT = /\b(fa|fa-mi|fa-ne|faceti|faceti-mi|genereaza\w*|genera\w*|scoate|scoate-mi|scoateti|da-mi|dati-mi|vreau|as vrea|trimite-mi|pregateste\w*|exporta\w*|descarca\w*|arata-mi|deschide-mi|creeaza\w*|fa un|fa o)\b/;
+const CUVANT_RAPORT = /\braport\w*\b/;
+// Numele rapoartelor, cum le spune omul. Cel mai lung întâi („can detaliat" înaintea lui „can"). `tare` = numele singur, fără
+// „raport", ajunge pentru o cerere („fă-mi foaia de parcurs"); celelalte cer și cuvântul „raport" („fă-mi raportul de consum"),
+// ca „dă-mi consumul de luna trecută" să rămână o întrebare cu cifre.
+const NUME_RAPOARTE = [
+  { raport: 'trips', tare: true, re: /\b(foaie de parcurs|foaia de parcurs|foile de parcurs|foi de parcurs)\b/ },
+  { raport: 'trips', re: /\b(curse|cursele|cursa)\b/ },
+  { raport: 'can_detail', re: /\bcan detaliat\b/ },
+  { raport: 'ecodrive_drivers', tare: true, re: /\b(clasament(ul)? (al )?soferi\w*|clasament ecodrive)\b/ },
+  { raport: 'hos', tare: true, re: /\b(condus (si|&) repaus|reg(ulamentul)? 561)\b/ },
+  { raport: 'daily', tare: true, re: /\b(situatie zilnica|situatia zilnica)\b/ },
+  { raport: 'location', tare: true, re: /\b(ultima locatie|ultima pozitie)\b/ },
+  { raport: 'driver', tare: true, re: /\bpontaj\w*\b/ },
+  { raport: 'enginehours', re: /\bore (de )?motor\b/ },
+  { raport: 'fuel_anomaly', re: /\banomali\w*\b/ },
+  { raport: 'fuelprobe', re: /\bsonda\w*\b/ },
+  { raport: 'speeding', re: /\b(depasir\w* (de )?vitez\w*|vitez\w*)\b/ },
+  { raport: 'geofence', re: /\b(vizite in zone|vizite\w*|zone(le)?)\b/ },
+  { raport: 'hotspot', re: /\bhotspot\w*\b/ },
+  { raport: 'stops', re: /\b(stationar\w*|oprir\w*)\b/ },
+  { raport: 'route', re: /\b(traseu\w*|trasee)\b/ },
+  { raport: 'idling', re: /\bralanti\w*\b/ },
+  { raport: 'utilization', re: /\b(index km|index|km|kilometr\w*)\b/ },
+  { raport: 'analytic', re: /\b(analitic\w*|date brute)\b/ },
+  { raport: 'uptime', re: /\bdisponibilitat\w*\b/ },
+  { raport: 'due', re: /\b(scadent\w*|expirar\w*|acte(le)?)\b/ },
+  { raport: 'costs', re: /\bcost\w*\b/ },
+  { raport: 'consumption', re: /\b(consum\w*|carburant\w*|combustibil\w*)\b/ },
+  { raport: 'fuel', re: /\b(aliment\w*|scader\w*)\b/ },
+  { raport: 'emissions', re: /\b(emisii\w*|co2)\b/ },
+  { raport: 'overrev', re: /\b(supratura\w*|turati\w*)\b/ },
+  { raport: 'pto', re: /\b(pto|priza de putere)\b/ },
+  { raport: 'weight', re: /\b(greutat\w*)\b/ },
+  { raport: 'tipping', re: /\bbascul\w*\b/ },
+  { raport: 'arm', re: /\bbrat\w*\b/ },
+  { raport: 'iot', re: /\b(iot|temperatur\w*)\b/ },
+  { raport: 'events', re: /\b(evenimente\w*|alert\w*)\b/ },
+  { raport: 'ecodrive', re: /\b(ecodrive|eco drive|stil(ul)? de condus|comportament\w*)\b/ },
+  { raport: 'ecodrive_drivers', re: /\bclasament\w*\b/ },
+  { raport: 'hos', re: /\b(ore(le)? de condus|tahograf\w*)\b/ },
+  { raport: 'can', re: /\b(date can|can)\b/ },
+];
+// Rapoartele care cer o alegere pe care o cerere în cuvinte nu o are (zona hotspot-ului, semnalele CAN): primesc butonul
+// care deschide raportul în Rapoarte, unde se alege.
+const RAPOARTE_CU_ALEGERI = ['hotspot', 'can_detail'];
+// Butoanele „Ce raport vrei?" (o cerere fără nume de raport).
+const RAPOARTE_PROPUSE = ['trips', 'stops', 'daily', 'consumption', 'speeding', 'due'];
+function numeRaportDin(t) { for (const n of NUME_RAPOARTE) if (n.re.test(t)) return n; return null; }
+// Perioada fără nimic spus: aceeași ca la întrebări (subiectul raportului, dacă are unul): 7 zile; scadențele — 30 înainte.
+function _perioadaComenzii(raport, t, acum) {
+  const s = SUBIECTE.find(function (x) { return x.raport === raport; }) || null;
+  return perioadaDin(t, acum, s) || perioadaImplicita(s, acum);
+}
+// text = ce a scris omul; cmd = cererea de dinainte din discuție ({ raport, masini, grupa, perioada }), pentru „Și pentru
+// toată flota?" / „Și săptămâna dinainte?" / mașina aleasă dintre mai multe. Întoarce null (nu e o cerere de raport) sau
+// { ok: true, raport, masini (null = toată flota), grupa, perioada, mem } sau { ok: false, motiv: 'fara_raport' | 'ambiguu' |
+// 'cu_alegeri', variante?, raport?, context } — `context` = ce se ține minte (cererea de până acum).
+function comanda(text, cmd, fisa, acum) {
+  const t = I.norm(text);
+  if (!t) return null;
+  const c = cmd && typeof cmd === 'object' ? cmd : null;
+  const nume = numeRaportDin(t);
+  const cere = CERE_RAPORT.test(t) && (CUVANT_RAPORT.test(t) || !!(nume && nume.tare));
+  let raport = nume ? nume.raport : null, continuare = false;
+  if (!cere) {
+    // O continuare a cererii de dinainte: fără verb și fără alt subiect, doar altă mașină, toată flota, altă perioadă.
+    if (!c || !c.raport || PENTRU_INSIGHT.test(t) || subiectDin(t) || (nume && nume.raport !== c.raport)) return null;
+    const g0 = I.gasesteInText(text, fisa || []);
+    const numeste = g0.masini.length || g0.grupe.length || g0.ambigue.length;
+    if (!(numeste || TOATA_FLOTA.test(t) || DINAINTE.test(t) || _doarPerioada(t))) return null;
+    raport = c.raport; continuare = true;
+  }
+  const mem = { subiect: continuare, masini: false, perioada: false };
+  const g = I.gasesteInText(text, fisa || []);
+  let masini = null, grupa = null, numite = false;
+  if (g.masini.length) { masini = g.masini.map(function (v) { return v.imei; }); numite = true; }
+  else if (g.grupe.length === 1) { masini = g.grupe[0].masini.map(function (v) { return v.imei; }); grupa = g.grupe[0].nume; numite = true; }
+  else if (g.ambigue.length) {
+    const vaz = new Set(), unice = [];
+    [].concat.apply([], g.ambigue.map(function (a) { return a.variante; })).forEach(function (v) { if (!vaz.has(v.imei)) { vaz.add(v.imei); unice.push(v); } });
+    if (unice.length === 1) { masini = [unice[0].imei]; numite = true; }
+    else {
+      const p0 = perioadaDin(t, acum, null);
+      return { ok: false, motiv: 'ambiguu', variante: unice, raport: raport,
+        context: { raport: raport, masini: null, grupa: null, perioada: p0 ? { from: p0.from, to: p0.to } : (c && continuare ? c.perioada : null) } };
+    }
+  }
+  if (!raport) return { ok: false, motiv: 'fara_raport', context: { raport: null, masini: masini, grupa: grupa, perioada: null } };
+  // Mașina rămâne la o continuare („Și săptămâna dinainte?"), nu la „toată flota".
+  if (!numite && continuare && c && Array.isArray(c.masini) && c.masini.length && !TOATA_FLOTA.test(t)) { masini = c.masini.slice(); grupa = c.grupa || null; mem.masini = true; }
+  const s = SUBIECTE.find(function (x) { return x.raport === raport; }) || null;
+  let p = perioadaDin(t, acum, s);
+  if (!p && continuare && c && c.perioada && c.perioada.from && DINAINTE.test(t) && raport !== 'due') p = perioadaDinainte(c.perioada, acum);
+  if (!p && continuare && c && c.perioada && c.perioada.from && raport !== 'due') { p = _per(c.perioada.from, c.perioada.to, acum); mem.perioada = true; }
+  if (!p) p = _perioadaComenzii(raport, t, acum);
+  if (RAPOARTE_CU_ALEGERI.indexOf(raport) >= 0) return { ok: false, motiv: 'cu_alegeri', raport: raport, masini: masini, perioada: p, context: { raport: null } };
+  return { ok: true, raport: raport, masini: masini, grupa: grupa, perioada: p, mem: mem };
+}
+// Ce ține minte discuția după o cerere (pentru continuările de mai sus).
+function contextulComenzii(u, from, to) {
+  return { raport: u.raport, masini: u.masini || null, grupa: u.grupa || null, perioada: (u.perioada && u.perioada.acum) ? null : { from: from, to: to } };
+}
+// Continuările de sub cartonașul raportului: perioada de dinainte și flota (după o mașină) — fiecare trebuie înțeleasă de
+// `comanda` cu discuția de după (păzit de probă).
+function urmariComanda(u) {
+  const out = [];
+  const p = u && u.perioada;
+  if (p && p.from && p.to && !p.acum && !p.inainte) out.push('Și ' + UNITATE_TEXT[_unitate(p)] + ' dinainte?');
+  if (u && Array.isArray(u.masini) && u.masini.length) out.push('Și pentru toată flota?');
+  return out.map(function (t) { return { text: t, trimite: t }; });
+}
+
 module.exports = {
+  CERE_RAPORT, NUME_RAPOARTE, RAPOARTE_CU_ALEGERI, RAPOARTE_PROPUSE, comanda, contextulComenzii, urmariComanda, numeRaportDin,
   rezumatTabel,
   SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, ALEGERI_RAPORT, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,
   intelege, contextul, inteles, raspunde, neinteles, urmari, perioadaDin, perioadaImplicita, perioadaAnterioara, perioadaDinainte,

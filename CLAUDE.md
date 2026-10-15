@@ -450,7 +450,9 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - **`run_report` respectă rapoartele tăiate din rol** (`poateRaport`) — înainte RA Insight le rula oricum.
 - **Statisticile pentru noi** (`GET /api/admin/insight/statistici`, super-admin): numere (răspunsuri, 👍/👎, conversații,
   rapoartele rulate) — NICIODATĂ textul conversațiilor. Ecranul lor vine cu ramurile.
-- **„AI Raport" (Rapoarte → fila `rep-tab-insight`, butonul `rep-tab-btn-insight`)**: întrebări despre rapoarte, pe REGULI,
+- **„AI Raport" (Rapoarte → fila `rep-tab-insight`, butonul `rep-tab-btn-insight`) — fila a fost SCOASĂ pe 15.10** (Capitolul 2,
+  pasul 1: rapoartele se cer în cuvinte, din RA Insight); ruta și motorul rămân — vezi „Capitolul 2, pasul 1". Ce urmează e regula
+  motorului: întrebări despre rapoarte, pe REGULI,
   fără model — `viewReports` (și ecranul „rapoarte"); din 14.10, pe o firmă cu pachet RA Insight cere și contul (pe Start, al
   administratorului, din cele 50 de răspunsuri) — vezi „Pachetele RA Insight". Înțelegerea și propozițiile stau
   în `ai_raport.js` (`intelege`, `raspunde`, `neinteles`, `INTREBARI_GATA`); ruta: `POST /api/reports/ai-raport` +
@@ -490,7 +492,7 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
   filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
 
-### Pasul 3 (06.10): Safe Drive & costuri — ramura din RA Insight (după macheta din 02.10)
+### Pasul 3 (06.10): Safe Drive & costuri — ramura din RA Insight (după macheta din 02.10; din 15.10 se cheamă **RA Drive**)
 - **Regulile stau într-un singur loc: `condus.js`** (curat): pragurile și scorul EcoDrive (`PRAGURI`, `scor`, `scorFlota`
   — rapoartele `ecodrive` / `ecodrive_drivers` le citesc de acolo), litrii (`litri`: ralantiul măsurat din contor sau
   ore × L/h; viteza = Σ km × ((v/90)² − 1) × consum × `PARTE_AER` = ⅓), leii (`costuri`: ralanti, viteză, `accel` =
@@ -593,8 +595,8 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - **Piesele comune stau O DATĂ în pagină** (lângă `window._insightExtra`): `_chatTextSimplu`, `_chatCopiaza`, `_chatActiuni`
   (Copiază), `_chatUrmari` (întrebările de continuare), `_chatAlege` (lista care se deschide deasupra unui buton: Mașina,
   Perioada, Ramuri, Raport, ⋯), `_chatMasini` (din `/api/devices` — aceeași listă ca harta: fără arhivate, fără demo),
-  `_CHAT_PERIOADE`, `_chatPuneInText`, `_chatStareTrimite`. Secțiunea, bula și AI Raport le cheamă de acolo (păzit prin
-  numărare în `verify_insight.js`). NU scrie a doua variantă în alt loc. Stilurile lor: `.chat-*` în app.css.
+  `_CHAT_PERIOADE`, `_chatPuneInText`, `_chatStareTrimite`. Din 15.10 le cheamă doar secțiunea — bula duce în ea, iar fila AI
+  Raport a ieșit (păzit în `verify_insight.js`: nicio a doua casetă). NU scrie a doua variantă în alt loc. Stilurile: `.chat-*`.
 - **`_insightExtra(j, laAlegere, parte)`**: `'inteles'` = doar „Am înțeles" (DEASUPRA răspunsului), `'alege'` = doar butoanele
   (dedesubt). Tot o singură funcție pentru toate trei locurile.
 - **Întrebările de continuare: o regulă, `aiRaport.urmari(u, primaMasina)`** (ai_raport.js) — perioada dinainte („Și
@@ -602,8 +604,8 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   (`URMATORUL`), mașina (prima din tabel, `_primaDinTabel`, ori „Și pe toată flota?"). AI Raport le pune în `raspuns.urmari`;
   RA Insight le face din raportul citit ultimul (`_raInsight`, doar cu surse și fără butoane de ales) și le păstrează în
   mesaj (`extra.urmari`). Răspunsul rapid nu le are. Proba cere ca FIECARE să fie înțeleasă cu discuția de după.
-- **Butonul „Raport" (AI Raport)**: lista vine de la server (`ALEGERI_RAPORT` → `GET /api/reports/ai-raport/intrebari`
-  `subiecte`); fiecare cuvânt trebuie să numească subiectul lui (păzit).
+- **Butonul „Raport"**: din 15.10, în RA Insight, = rapoartele care se pot cere în cuvinte (`GET /api/insight/rapoarte`, vezi
+  „Capitolul 2, pasul 1"). `ALEGERI_RAPORT` (`/api/reports/ai-raport/intrebari` `subiecte`) rămâne doar pentru telefonul vechi.
 - **Secțiunea:** stânga `.insp-st` (pe telefon sertar: `st-deschis` + `.insp-umbra`; pe calculator se ascunde: `st-ascuns`)
   — `insightComutaStanga(v)`, `inchideSertar()`; dreapta `.insp-dr-col` = bara `.insp-top` (titlul din `setTitlu()`, ⋯ =
   `insightMeniuConv`) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
@@ -673,6 +675,45 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   luni. Un singur loc.
 - Păzit de `verify_proba_modele.js` (în `npm test`; 41, cu API-ul simulat în proces și pe server pornit).
 
+### Capitolul 2, pasul 1 (15.10): un singur RA Insight (Alin: „1da 2.da 3. Da", macheta aprobată)
+Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în cuvinte, fila „AI Raport" a ieșit din Rapoarte,
+„Agenți AI" iese din meniu pentru cine are cont RA Insight, Safe Drive se cheamă **RA Drive** („condus & costuri").
+- **Bula din colț** (`window.raxToggleAI` = `showView('insight')`): fereastra ei (`#rax-ai-overlay`) și chatul ei au fost SCOASE;
+  te duce în secțiune, pe `window._raxConvId`. **Punctul mov** (`#rax-main-fab.are-nou`): `_aziVerifica` (din `updateFabs`, cel
+  mult o dată la 5 minute, doar cu `me.aiCont`) cere `/api/insight/azi` și îl aprinde dacă o cheie din `chei` nu e printre cele
+  văzute (`localStorage`, cu try/catch — o comoditate); „Azi la tine" desenat le marchează văzute (`window._aziVazut`).
+- **„Azi la tine"**: regulile și textele în **`azi_la_tine.js`** (curat; `randuri(d)` → `{ randuri, chei }`), datele în
+  `_aziLaTine(req)` (server.js, ținut minte 2 min pe om): mașinile tăcute cu **`agents.esteFaraSemnal`** (aceeași regulă ca RA
+  Watch, pragul firmei, sub 7 zile; aparatul care n-a transmis niciodată nu e tăcut), ce au scris agenții AZI (`agent_findings`,
+  fără „offline", pe mașinile omului), termenele din `_ramMentenanta`, mașinile libere cu **`agents.esteLiber`** (RA Dispatch),
+  ieri din curse. Doar agenții porniți la firmă. `GET /api/insight/azi` = `requireAiSeat`; **nu se numără, pe niciun pachet**
+  (fără `_numaraRaspunsReguli`, fără model). Noi (super-admin) primim `platforma: true`, gol. Butoanele: `harta`, `intreaba` /
+  `raport` (pe reguli, `buton`), `dece` (RA Insight, doar cu AI — `areAi()`), `acte` (ramura, altfel întrebarea). Pagina doar
+  desenează (`deseneazaAzi`, textul prin `mdScurt`, care curăță întâi); „Setările agenților →" = `showView('agenti')`.
+- **Rapoartele cerute în cuvinte**: înțelegerea în **`ai_raport.comanda(text, ctx.cmd, fisa, acum)`** — o CERERE = un verb
+  (`CERE_RAPORT`: fă-mi, generează, scoate…) + „raport" sau un nume tare (`NUME_RAPOARTE`, `tare`: foaia de parcurs…); o întrebare
+  („câți km…", „dă-mi consumul") rămâne întrebare. Fiecare raport din catalog trebuie înțeles după `Fă-mi raportul „<label>”`
+  (păzit). Continuările (`urmariComanda`: perioada dinainte, toată flota; mașina aleasă dintre mai multe) merg pe `ctx.cmd`
+  (`contextulComenzii`), șters la prima întrebare care nu e cerere. Hotspot și CAN detaliat (`RAPOARTE_CU_ALEGERI`) primesc
+  butonul spre Rapoarte. Pe server: **`_insightComanda`**, chemată O DATĂ, întâia în `_raInsight` (înaintea răspunsului rapid; nu
+  la proba modelelor) — drepturile Rapoartelor (`viewReports` + `poateRaport`), `_optiuniRaport`, `aiRaport.MAX_ZILE`, iar
+  raportul intră în Istoric prin **`_istoricRaport`** — SINGURA scriere în `report_history` din server.js (pagina pe loc, în
+  fundal, RA Insight cu `status: 'insight'`; `ZILE_ISTORIC_RAPOARTE` = 7). Se numără prin `_numaraRaspunsReguli` (Start: din 50;
+  altfel statistică). Răspunsul: textul + `raport` (cartonașul: id, label, vehicul, perioada, `kpi` din sumar — `_kpiRaport`,
+  rânduri, până când), păstrat în mesaj. Butonul „Raport" din casetă = `GET /api/insight/rapoarte` (catalogul, cu drepturi).
+- **Pagina**: cartonașul (`cartonasRaport`) cu „Deschide raportul" (`insightDeschideRaport` → Rapoarte, așteaptă catalogul,
+  `repViewHistory(id)`) și „Descarcă Excel" (`repExportHistory`); Istoric rapoarte: eticheta `.rh-ins` „din RA Insight". „Rezumă cu
+  RA Insight" scrie deasupra raportului (`#rep-rezumat`; `renderReport` îl golește), tot prin `/api/ai/report-summary`.
+- **Fila „AI Raport" SCOASĂ** (buton, fereastră, codul `rin*` afară de `rinOpenReport`, care deschide raportul de sub răspunsurile
+  RA Insight). `POST /api/reports/ai-raport` și `_aiRaportCore` RĂMÂN: telefonul vechi și RA Insight pe reguli (Start, luna oprită).
+- **„Agenți AI" din meniu**: ascuns când `me.aiCont` (`/api/me`: nu super-admin, modulul pornit, `users.ai_seat`). Noi îl
+  păstrăm (pragurile platformei). Pagina se deschide și din „Azi la tine" → „Setările agenților" (Alin: varianta A, de confirmat).
+- **RA Drive**: ce vede omul și ce citește modelul (ramura, unealta `safe_drive`, „Am înțeles", ghidul, pachete.js `DESCRIERE` +
+  pagina publică). Numele tehnice rămân (`safedrive`, `safe_drive`, `_sdLuna`). Cine spune „Safe Drive" e înțeles tot de unealtă.
+- Ghidul: capitolul `raport_cerut` (în locul lui `ai_raport`), „Azi la tine" în `ra_insight`, drumul spre agenți.
+- Păzit de **`verify_un_singur_insight.js`** (în `npm test`; 70, pe server pornit, ZERO cereri către model), plus `verify_ai_raport.js`,
+  `verify_insight.js`, `verify_cifre.js`, `verify_insight_ghid.js`, `verify_safe_drive.js`, `verify_site_public.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
@@ -706,7 +747,7 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   răspunde pe reguli: `_insightPeReguli` → `_aiRaportCore` (ACELAȘI motor ca fila AI Raport; ruta doar îl cheamă). Pe Basic+,
   `buton: true` (cartonașe, continuări, alegeri, caseta făcută doar din butoane) încearcă întâi regulile — nu se numără; ce nu
   înțeleg merge la model. După un răspuns AI, `ctx.ar` = contextul pe reguli al ultimului raport (continuările merg pe reguli).
-- **O SINGURĂ numărătoare a răspunsurilor pe butoane: `_numaraRaspunsReguli`** (chat, fila AI Raport, „Rezumă raportul"); doar ea
+- **O SINGURĂ numărătoare a răspunsurilor pe butoane: `_numaraRaspunsReguli`** (chat, ruta AI Raport, „Rezumă raportul", rapoartele cerute în cuvinte); doar ea
   scrie `ai_reguli` (în afară de ruta de probă). Pe Start se numără din 50; la celelalte, doar pentru statistică. Păzit prin numărare.
 - `requireAiSeat` și `/api/ai/quota` dau singure locul administratorului pe o firmă cu pachet fără niciun cont (`_asiguraLocAdmin`;
   și scrisoarea de luni). Fila AI Raport pe o firmă cu pachet: `_poartaReguliPachet` (cont RA Insight; pe Start, din 50). Pe regula
@@ -726,7 +767,7 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `pachet.text`, `scurt`, `textOm`, `reincarcare`), ramurile cu `pachet: true` încuiate pe Start (`ramuraIncuiata`,
   `deseneazaIncuiata`), „Raport" în loc de „Ramuri" pe butoane, `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
   `pachetMesaj` de la server) în `.chat-lim`, eticheta `.chat-aprof`, „Vezi pachetele" (`insightPachete`, doar administratorul).
-  Bula din colț și fila AI Raport arată pachetul tot din textele serverului.
+  Din 15.10 bula din colț duce în secțiune (nu mai are caseta ei), iar fila AI Raport a ieșit din Rapoarte.
 - **Pasul 3, „Pachet și conturi"** (blocul secțiunii, `S.ramura === 'pachet'` → `deseneazaPachetConturi`; din caseta pachetului
   și din Utilizatori, `insightPachetConturi`): `GET /api/insight/pachet-conturi` (`manageUsers`) → cartonașele
   (`pachete.cartonaseConturi`), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota (`notaConturi`).

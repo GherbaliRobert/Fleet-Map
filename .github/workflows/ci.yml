@@ -46,6 +46,7 @@ jobs:
           node --check cifre.js
           node --check preaviz.js
           node --check pachete.js
+          node --check azi_la_tine.js
           node --check tacho.js
           node --check geocode.js
           # ⚠ NU adăuga aici un fișier fără să-l ai în depozit. `billing.js` a rămas scris în lista
