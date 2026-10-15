@@ -273,9 +273,14 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
-  (ruta rămâne până la APK); (5) „Agenți AI" ascuns când `/api/me` dă `aiCont`; (6) numele RA Drive în loc de Safe Drive.
+  (ruta rămâne până la APK); (5) „Agenți AI" ascuns când `/api/me` dă `aiCont`; (6) numele RA Drive în loc de Safe Drive;
+  (7) **adăugat tot pe 15.10 — RA Insight „mai simplu"** (macheta aprobată de Alin): salutul „Salut, {prenume}! Cu ce te pot ajuta?",
+  un singur „+" în casetă, trei butoane scurte, „Azi la tine" pe cel mult trei rânduri apăsate o dată (`deVazut` din răspuns), meniul
+  „⋯" (Pachet și conturi, Notițele firmei, Setările agenților, Ghidul), pachetul pe un rând, răspunsul cu titlu scurt și cel mult
+  două butoane, cartonașul raportului cu `note`.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
-  „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face.
+  „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
+  mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
 
 ---
 
@@ -344,7 +349,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-15
 
-### AMÂNDOI · RA Insight, mai simplu: mai puține butoane pe ecran (macheta „mai simplu")
+### AMÂNDOI · RA Insight, mai simplu: mai puține butoane pe ecran (macheta „mai simplu") — `0540148`
 
 Alin (15.10): *„ra insight mi se pare greu de utilizat… multe butoane, multe informații… trebuie să fie ușoară"*. După macheta
 „RA Insight, mai simplu": *„1. da, 2. da"*. Pe ecranul gol erau ~35 de butoane și casete; acum ~12. Nicio funcție nu s-a pierdut —
