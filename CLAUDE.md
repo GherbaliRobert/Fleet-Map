@@ -716,6 +716,12 @@ Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în 
   `verify_insight.js`, `verify_cifre.js`, `verify_insight_ghid.js`, `verify_safe_drive.js`, `verify_site_public.js`.
 
 ### RA Insight, mai simplu (15.10; Alin: „ra insight mi se pare greu de utilizat… trebuie să fie ușoară" → macheta, „1. da, 2. da")
+**Hotărâri de după (15.10):** (1) **harta (Localizare) rămâne CUM E** — Alin, după simularea „Azi / Propun": „NU. Lăsăm așa cum
+este". NU propune din nou simplificarea altor ecrane din proprie inițiativă; doar dacă o cere el, pe un ecran anume. (2) **Asistentul
+AI al fondatorilor** (restanți, facturi, cel mai profitabil client) se face **după ce terminăm RA Insight** — macheta din 15.10 e
+făcută, dar nu se construiește înainte („hai să lăsăm AI-ul pentru fondator pentru când terminăm RA Insight"). (3) Când explici unde
+se vede ceva, spune ÎNTÂI cu ce cont (fondator / administratorul firmei / om al firmei) și dă poze cu locul marcat, nu doar drumul în
+cuvinte — „explică ca la proști: unde intru, ce fac, toți pașii".
 Pe ecranul gol erau ~35 de butoane și casete; acum ~12. **Nicio funcție nu s-a pierdut: s-a mutat într-un singur loc** — „+", „⋯"
 sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc pentru același lucru = ce am scos).
 - **Salutul:** „Salut, {prenume}! Cu ce te pot ajuta?" (`prenume()`, din `currentUser.full_name`), fără iconița mare și paragraful.
@@ -871,6 +877,14 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   („200 de întrebări pe lună, la comun") rămâne: spune ce primește pachetul, nu e alegerea de pe om.
 - Ghidul (`ra_insight`) spune drumul nou și nu mai pomenește factura unui cont. Telefonul (Robert, APK-ul următor): eticheta în loc de
   bagheta din AdminUsers pe firmele cu pachet, „Fără limită / Cel mult" în „Pachet și conturi".
+- ⚠ **Administratorul fără cont RA Insight al lui intră TOT în „Pachet și conturi"** (`deseneazaMain`: `S.ramura === 'pachet' &&
+  esteAdmin()` ÎNAINTEA blocului `S.faraLoc`; în „⋯" `esteAdmin() && (S.pachet || S.faraLoc)`; pe cartonașul „nu e pornit", butonul
+  „Deschide Pachet și conturi"). Ruta cere `manageUsers`, nu cont. Prins pe 15.10 din pozele ghidului: un administrator care își
+  stinsese contul (sau le dăduse colegilor) rămânea încuiat pe dinafară — iar din Utilizatori nu mai poate da conturi. NU muta
+  verificarea contului înaintea paginii.
+- **Fondatorul NU vede „Pachet și conturi"** (n-are pachet, n-are firmă): ca s-o vadă, intră cu contul administratorului unei firme cu
+  pachet (Alin, 15.10: „cu contul de administrator văd, cu cel de fondator nu — am înțeles"). Ghidul cu poze (pas cu pas) i-a fost
+  dat atunci; dacă o mai cere, refă pozele, nu-i descrie din cuvinte.
 - Păzit de `verify_pachete.js` (rezumatul, cuvintele, Utilizatori, mesajul, pe server pornit), `verify_tarife.js` (cartonașele și rândul
   banilor, rulate), `verify_oferta_telefon.js` (descrierea pentru telefon).
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc

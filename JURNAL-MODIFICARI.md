@@ -352,6 +352,20 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-15
 
+### CLIENT · Administratorul fără cont RA Insight al lui ajunge tot în „Pachet și conturi" — `053805d`, `8791d4d`
+
+Găsit pe 15.10, când am făcut pozele pentru ghidul „Unde vezi Pachet și conturi": de când conturile se dau doar din „Pachet și conturi",
+un administrator de firmă care își oprise propriul cont RA Insight (sau le dăduse pe toate colegilor) vedea „RA Insight nu e pornit pe
+contul tău" și nu mai avea de unde da conturi. Era o greșeală a schimbării de azi, nu o problemă veche, așa că am reparat-o pe loc.
+
+- **Ce am schimbat:** pagina (secțiunea RA Insight: „Pachet și conturi" se deschide pentru administrator și fără cont al lui, din „⋯" și
+  dintr-un buton pe cartonașul „nu e pornit"), `app.css`; probe noi în `verify_pachete.js` (pe server pornit: își oprește contul, intră,
+  și-l dă înapoi) și `verify_un_singur_insight.js`.
+- **Ce vede fondatorul:** nimic nou (fondatorul nu vede „Pachet și conturi"; se vede intrând cu contul administratorului unei firme).
+- **Ce vede clientul:** administratorul își poate da singur contul înapoi; nu mai rămâne blocat.
+- **Hotărâri tot de azi:** harta rămâne cum e (Alin: „NU. Lăsăm așa cum este"); asistentul AI al fondatorilor se face după ce terminăm
+  RA Insight.
+
 ### AMÂNDOI · Pachetul RA Insight în ofertă, pe cartonașe; conturile dintr-un singur loc; „Fără limită / Cel mult" (macheta „Pachet și conturi") — `560535f`
 
 Alin (15.10), după macheta „Pachetul în ofertă și conturile la client": *„da la toate cele 5"*.
