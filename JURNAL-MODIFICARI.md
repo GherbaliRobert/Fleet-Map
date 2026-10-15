@@ -277,7 +277,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (7) **adăugat tot pe 15.10 — RA Insight „mai simplu"** (macheta aprobată de Alin): salutul „Salut, {prenume}! Cu ce te pot ajuta?",
   un singur „+" în casetă, trei butoane scurte, „Azi la tine" pe cel mult trei rânduri apăsate o dată (`deVazut` din răspuns), meniul
   „⋯" (Pachet și conturi, Notițele firmei, Setările agenților, Ghidul), pachetul pe un rând, răspunsul cu titlu scurt și cel mult
-  două butoane, cartonașul raportului cu `note`.
+  două butoane, cartonașul raportului cu `note`; (8) **tot pe 15.10 — conturile dintr-un singur loc** (macheta „Pachet și conturi"): în
+  AdminUsers, pe o firmă cu pachet, doar eticheta „RA Insight" în locul butonului (bagheta rămâne pe regula veche), iar în „Pachet și
+  conturi" „Fără limită / Cel mult … pe lună" în loc de caseta „la comun" și rândul `rezumat` în locul cartonașelor (cartonașele rămân în
+  răspuns până atunci).
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -348,6 +351,29 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-15
+
+### AMÂNDOI · Pachetul RA Insight în ofertă, pe cartonașe; conturile dintr-un singur loc; „Fără limită / Cel mult" (macheta „Pachet și conturi")
+
+Alin (15.10), după macheta „Pachetul în ofertă și conturile la client": *„da la toate cele 5"*.
+
+- **Ofertare Live, cartea 3:** cele patru pachete (Start · Basic · Pro · Business) stau unul lângă altul, cu conturile, întrebările și
+  prețul din lista noastră. Apeși pe unul și prețul se pune singur; pe cel ales se poate negocia prețul, chiar în cartonaș.
+- **Banii noștri, pe un rând** (doar pentru noi, nu ajung pe oferta clientului): „Ne rămân ~12 lei pe lună din pachet (cel puțin 4 lei,
+  oricât ar întreba)".
+- **Conturile de RA Insight se dau dintr-un singur loc:** RA Insight → ⋯ → „Pachet și conturi". În Utilizatori rămâne doar eticheta
+  „RA Insight" pe rândul omului și linkul „Schimbă în Pachet și conturi →" (butonul cu bagheta rămâne doar la firmele vechi, pe cont).
+- **Pe om, pe Pro și Business: „Fără limită" sau „Cel mult … pe lună"**, în loc de „la comun". Sus, un rând: „Conturi: 3 din 5 ·
+  Întrebări rămase: 412 din 600 (se reîncarcă pe 1 noiembrie)" și, dacă e cazul, cât e dat cu limită.
+- **Textele vechi corectate:** ghidul nu mai spune „se facturează un cont în plus" (la pachete nu e adevărat), iar omul fără cont află
+  că i-l dă administratorul din „Pachet și conturi".
+
+- **Ce am schimbat:** pagina (cartea 3 din Ofertare Live, „Pachet și conturi", rândul din Utilizatori), `app.css`, `pachete.js`
+  (`rezumatConturi`, cuvintele „Fără limită"), `server.js` (rezumatul și câte au rămas în „Pachet și conturi", mesajul pentru omul fără
+  cont, descrierea pachetului pentru oferta de pe telefon), `insight_ghid.js`. Probele `verify_pachete.js`, `verify_tarife.js`,
+  `verify_oferta_telefon.js` mutate pe regula nouă.
+- **Ce vede fondatorul:** cartonașele în ofertă și rândul „Ne rămân…".
+- **Ce vede clientul:** „Pachet și conturi" mai simplu și un singur loc pentru conturi; Utilizatori doar cu eticheta. Telefonul — la
+  APK-ul următor (în lista lui Robert).
 
 ### AMÂNDOI · RA Insight, mai simplu: mai puține butoane pe ecran (macheta „mai simplu") — `0540148`
 

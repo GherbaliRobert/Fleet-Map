@@ -4553,6 +4553,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="rau-sus">' +
             '<strong>' + esc(u.full_name || u.username) + '</strong>' +
             '<span class="role ' + esc(u.role) + '">' + esc(_usrRoleLabel(u.role)) + '</span>' +
+            (_usrPachet && u.ai_seat ? '<span class="rau-ra" title="Are RA Insight. Se schimbă din „Pachet și conturi”.">RA Insight</span>' : '') +
             semne +
           '</div>' +
           '<div class="rau-meta">' +
@@ -4566,9 +4567,10 @@ const pozitii = await r.json();</code></pre>
           '<button class="btn-sm" title="' + (vaz.niciodata ? 'N-a intrat niciodată — retrimite-i linkul de parolă' : 'Trimite-i un link ca să-și pună altă parolă') + '"' +
           ' onclick="_usrLinkParola(' + u.id + ')"' + (vaz.niciodata ? ' style="color:var(--orange);border-color:var(--orange);"' : '') + '>' +
           '<i class="fas fa-paper-plane"></i></button>' +
-          // RA Insight se plătește PE CONT. Bifa de aici e o decizie cu bani în spate, așa că scrie
-          // limpede ce face, nu doar „AI" — iar conturile aprinse se văd numărate în capul listei.
-          (u.role === 'superadmin' ? '' :
+          // RA Insight pe un PACHET (macheta din 15.10, Alin: „3. da"): conturile se dau DOAR din „Pachet și conturi" — aici
+          // rămâne eticheta pe rândul omului (`_usrRaEticheta`) și linkul din capul listei. Butonul de mai jos e doar pentru firmele
+          // rămase pe regula veche (pe cont), unde un cont aprins se facturează.
+          (u.role === 'superadmin' || _usrPachet ? '' :
             '<button class="btn-sm" title="' + (u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai (se facturează un cont în plus)') + '"' +
             ' onclick="raxAiSeat(' + u.id + ',' + (u.ai_seat ? 'false' : 'true') + ')"' +
             ' style="' + (u.ai_seat ? 'color:var(--accent);border-color:var(--accent);' : 'opacity:.55;') + '">' +
@@ -4808,7 +4810,7 @@ const pozitii = await r.json();</code></pre>
       return '<div class="rau-seats"><i class="fas fa-wand-magic-sparkles"></i> <b>' + n + '</b> ' +
         (n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight') +
         (pk ? ' <span>— pachetul ' + esc(pk.nume) + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '.</span> ' +
-          '<button type="button" class="rau-pk" onclick="insightPachetConturi()">Pachet și conturi →</button>'
+          '<button type="button" class="rau-pk" onclick="insightPachetConturi()">Schimbă în Pachet și conturi →</button>'
           : ' <span>— la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.</span>') + '</div>';
     }
     // Sub numărul de pe cartonașul „Utilizatori" (Acasă), starea — ca la Companii. Vezi dintr-o
@@ -11740,8 +11742,10 @@ const pozitii = await r.json();</code></pre>
         box.scrollTop = box.scrollHeight;
         arataJos();
       }
-      // ── „Pachet și conturi" (pasul 3, macheta din 14.10): doar administratorul. Pachetul, cât a rămas, cine are RA Insight și,
-      // pe Pro / Business, câte întrebări are fiecare. Cifrele și textele le dă serverul; conturile și limitele, pe rutele lor.
+      // ── „Pachet și conturi" (pasul 3, macheta din 14.10; simplificat după macheta din 15.10, Alin: „3. da, 4. da"): doar
+      // administratorul. SINGURUL loc în care dă RA Insight colegilor și, pe Pro / Business, câte întrebări are fiecare („Fără limită"
+      // sau „Cel mult … pe lună"). Sus, unul-două rânduri (`rezumat`, de la server) în locul cartonașelor. Cifrele și textele le dă
+      // serverul; conturile și limitele pleacă pe rutele lor.
       async function deseneazaPachetConturi(main) {
         main.innerHTML = '<div class="insp-card"><span class="rax-typing"><i></i><i></i><i></i></span></div>';
         var r = await cere('GET', '/api/insight/pachet-conturi');
@@ -11751,16 +11755,23 @@ const pozitii = await r.json();</code></pre>
         if (r.s !== 200) { w.appendChild(el('div', 'insp-card', r.j.error || 'Pagina e doar a administratorului firmei.')); main.appendChild(w); return; }
         var j = r.j;
         if (j.vechi) { w.appendChild(el('div', 'insp-card', j.mesaj || '')); main.appendChild(w); return; }
-        var cap = el('div', 'pkc-cap'); cap.appendChild(el('h2', null, 'Pachet și conturi'));
+        var cap = el('div', 'pkc-cap'); var h2 = el('h2', null, 'Pachet și conturi');
+        if (j.pachet && j.pachet.nume) h2.appendChild(el('span', 'pkc-pill', j.pachet.nume));
+        cap.appendChild(h2);
         var bv = el('button', 'chat-pas'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); };
         cap.appendChild(bv); w.appendChild(cap);
         if (j.urmator) w.appendChild(el('div', 'pkc-urm', j.urmator));
-        var ct = el('div', 'pkc-tiles');
-        (j.cartonase || []).forEach(function (c) { var d = el('div', 'pkc-tile'); d.appendChild(el('div', 'pkc-t', c.titlu)); d.appendChild(el('div', 'pkc-v', c.val)); d.appendChild(el('div', 'pkc-s', c.sub)); ct.appendChild(d); });
-        w.appendChild(ct);
+        var rz = el('div', 'pkc-rez');
+        (j.rezumat || []).forEach(function (t, i) { rz.appendChild(el('div', i ? 'pkc-rez-2' : null, t)); });
+        if (j.pachet && j.pachet.intrebari) {
+          var bar = el('div', 'pkc-bar'), bi = el('b');
+          bi.style.width = Math.max(0, Math.min(100, Math.round((Number(j.pachet.ramase) || 0) / j.pachet.intrebari * 100))) + '%';
+          bar.appendChild(bi); rz.appendChild(bar);
+        }
+        w.appendChild(rz);
         var imp = !!(j.pachet && j.pachet.imparte);
         var tw = el('div', 'pkc-tbl-w'), tb = el('table', 'pkc-tbl'), th = el('thead'), tr = el('tr');
-        ['Om', 'Rol', 'RA Insight'].concat(imp ? ['Limită pe lună'] : []).concat(['Folosite în ' + (j.luna || 'luna asta')]).forEach(function (h) { tr.appendChild(el('th', null, h)); });
+        ['Om', 'Rol', 'RA Insight'].concat(imp ? ['Întrebări pe lună'] : []).concat(['Folosite în ' + (j.luna || 'luna asta')]).forEach(function (h) { tr.appendChild(el('th', null, h)); });
         th.appendChild(tr); tb.appendChild(th);
         var tbd = el('tbody');
         (j.oameni || []).forEach(function (o) {
@@ -11776,10 +11787,21 @@ const pozitii = await r.json();</code></pre>
           if (imp) {
             var tdM = el('td');
             if (o.loc) {
-              var inp = document.createElement('input'); inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.className = 'pkc-lim'; inp.placeholder = 'la comun';
-              inp.value = o.limita != null ? String(o.limita) : ''; inp.setAttribute('aria-label', 'Limita pe lună pentru ' + o.nume);
-              inp.onchange = function () { window.insightLimita(o.id, inp.value); };
-              tdM.appendChild(inp);
+              // „Fără limită" / „Cel mult … pe lună" (macheta din 15.10): caseta cifrei apare doar la „Cel mult".
+              var sel = document.createElement('select'); sel.className = 'pkc-sel'; sel.setAttribute('aria-label', 'Întrebări pe lună pentru ' + o.nume);
+              [['fara', 'Fără limită'], ['cel', 'Cel mult…']].forEach(function (x) { var op = document.createElement('option'); op.value = x[0]; op.textContent = x[1]; sel.appendChild(op); });
+              var cuLim = o.limita != null; sel.value = cuLim ? 'cel' : 'fara';
+              var inp = document.createElement('input'); inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.className = 'pkc-lim';
+              inp.value = cuLim ? String(o.limita) : ''; inp.setAttribute('aria-label', 'Cel mult câte întrebări pe lună pentru ' + o.nume);
+              var pe = el('span', 'pkc-pel', 'pe lună');
+              var arata = function (v) { inp.style.display = v ? '' : 'none'; pe.style.display = v ? '' : 'none'; };
+              arata(cuLim);
+              sel.onchange = function () {
+                if (sel.value === 'fara') { arata(false); if (cuLim) window.insightLimita(o.id, ''); }
+                else { arata(true); inp.focus(); }
+              };
+              inp.onchange = function () { if (String(inp.value).trim() !== '') window.insightLimita(o.id, inp.value); };
+              tdM.appendChild(sel); tdM.appendChild(inp); tdM.appendChild(pe);
             } else tdM.appendChild(el('span', 'pkc-gol', '—'));
             row.appendChild(tdM);
           }
@@ -11811,12 +11833,12 @@ const pozitii = await r.json();</code></pre>
         else (window.raxToast || function () {})(on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"', 'success');
         incarcaPachet(); deseneazaMain();
       };
-      // Limita pe lună a unui om (Pro / Business); gol = la comun. Serverul spune dacă trece de întrebările pachetului.
+      // Limita pe lună a unui om (Pro / Business); gol = „Fără limită". Serverul spune dacă trece de întrebările pachetului.
       window.insightLimita = async function (id, val) {
         var v = String(val == null ? '' : val).trim();
         var r = await cere('PUT', '/api/users/' + id + '/ai-limita', { limita: v === '' ? null : Number(v) });
         if (r.s !== 200) (window.raxToast || alert)(r.j.error || 'Nu s-a putut salva limita.', 'error');
-        else (window.raxToast || function () {})(v === '' ? 'Întrebările lui sunt acum la comun' : 'Limita s-a salvat', 'success');
+        else (window.raxToast || function () {})(v === '' ? 'Fără limită: folosește din întrebările firmei' : 'Limita s-a salvat: cel mult ' + v + ' pe lună', 'success');
         incarcaPachet(); deseneazaMain();
       };
       // „Pachet și conturi" deschis din alt ecran (Setări → Utilizatori).
@@ -27723,23 +27745,48 @@ const pozitii = await r.json();</code></pre>
       _ofPropunePachet();
       raxOfRecalc();
     };
+    // Cele patru pachete, unul lângă altul (macheta din 15.10, Alin: „1. da"): un clic pe un cartonaș = alegerea din lista
+    // ascunsă `of-aiPachet` (pe care o citește și telefonul). Clicul pe pachetul deja ales (și în caseta prețului) nu face nimic.
+    window.raxOfPachetAlege = function (cod) {
+      var s = document.getElementById('of-aiPachet'); if (!s || s.value === cod) return;
+      s.value = cod; window.raxOfPachet();
+    };
+    function _ofPkNr(n) { var r = Math.abs(Number(n) || 0) % 100; return Number(n).toLocaleString('ro-RO') + (r >= 1 && r <= 19 ? ' ' : ' de '); }
+    // Cartonașele: numele, prețul (lista casei; la cel ales, caseta prețului negociat), conturile și întrebările — din meta-ul
+    // serverului (pachete.js). Caseta prețului se MUTĂ în cartonașul ales (nu se face alta: `of-pPachet` rămâne una).
+    function _ofPachetCarduri(cod) {
+      var pr = _ofReadPrices() || {}, w = document.getElementById('of-pPachet-wrap');
+      ((_ofMeta && _ofMeta.pachete) || []).forEach(function (m) {
+        var c = document.getElementById('of-pkc-' + m.cod); if (!c) return;
+        var ales = m.cod === cod, k = _OF_PK_CHEI[m.cod];
+        c.className = 'of-pkc' + (ales ? ' al' : ''); c.setAttribute('aria-pressed', ales ? 'true' : 'false'); c.title = m.descriere || '';
+        var n = document.getElementById('of-pkn-' + m.cod); if (n) n.textContent = m.nume + (ales ? ' ✓' : '');
+        var l = document.getElementById('of-pkl-' + m.cod);
+        if (l) { l.textContent = !k ? 'inclus' : (Number(pr[k]) || 0).toLocaleString('ro-RO') + ' lei'; l.style.display = ales && k ? 'none' : ''; }
+        var a = document.getElementById('of-pkm1-' + m.cod); if (a) a.textContent = !m.ai ? 'doar adminul' : (m.conturi == null ? 'conturi nelimitate' : m.conturi + ' conturi');
+        var b = document.getElementById('of-pkm2-' + m.cod); if (b) b.textContent = _ofPkNr(m.intrebari) + (m.ai ? 'întrebări' : 'răspunsuri pe butoane');
+        var slot = document.getElementById('of-pks-' + m.cod);
+        if (ales && k && slot && w && w.parentNode !== slot && slot.appendChild) slot.appendChild(w);
+      });
+    }
     function _ofPropunePachet() {
       var cod = (document.getElementById('of-aiPachet') || {}).value || 'start';
       var k = _OF_PK_CHEI[cod], p = _ofReadPrices();
       var w = document.getElementById('of-pPachet-wrap'); if (w) w.style.display = k ? 'inline-flex' : 'none';
       if (k) _ofPropune('of-pPachet', Number(p[k]) || 0);
     }
-    // Sub alegere: ce primește clientul și, doar pentru noi, ce rămâne la noi.
+    // Sub cartonașe, un singur rând, doar pentru noi (macheta din 15.10, Alin: „2. da"): cât ne rămâne pe lună din pachet, într-o
+    // lună obișnuită, și cel puțin cât (plasa: o firmă nu ne poate costa mai mult de 80% din preț). Ce primește clientul stă pe cartonaș.
     function _ofHintPachet(r) {
-      var box = document.getElementById('of-mod-hint-aiA'); if (!box) return;
-      var w = document.getElementById('of-pPachet-wrap'); if (w) w.style.display = (r.cfg.aiPachet && r.cfg.aiPachet !== 'start') ? 'inline-flex' : 'none';
       var cod = r.cfg.aiPachet || 'start', m = _ofPachetMeta(cod);
+      var w = document.getElementById('of-pPachet-wrap'); if (w) w.style.display = (r.cfg.aiPachet && r.cfg.aiPachet !== 'start') ? 'inline-flex' : 'none';
+      _ofPachetCarduri(cod);
+      var box = document.getElementById('of-mod-hint-aiA'); if (!box) return;
       if (!m) { box.innerHTML = ''; return; }
-      var h = '<b style="color:var(--text-secondary);">' + esc(m.descriere) + '</b>';
       var mj = _ofPachetMarja(cod, Number(r.cfg.aiPachetPret) || 0);
-      if (mj) h += '<br>Ce rămâne la noi: ~<b class="' + (mj.obisnuit > 0 ? 'of-pk-bun' : 'of-pk-rau') + '">' + _bani2(mj.obisnuit) + '</b> într-o lună obișnuită, cel puțin <b>' + _bani2(mj.minim) + '</b> în cel mai rău caz (plasa de ' + Math.round(((_ofMeta.pachetCost || {}).plasa || 0) * 100) + '%).';
-      else h += ' — inclus în orice contract, fără cost pentru noi.';
-      box.innerHTML = h;
+      box.innerHTML = mj
+        ? 'Ne rămân <b class="' + (mj.obisnuit > 0 ? 'of-pk-bun' : 'of-pk-rau') + '">~' + _bani2(Math.round(mj.obisnuit)) + ' pe lună</b> din pachet (cel puțin <b>' + _bani2(mj.minim) + '</b>, oricât ar întreba).'
+        : 'Start e inclus în orice contract, fără cost pentru noi.';
     }
     function _bani2(x) { return (Number(x) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' lei'; }
     // ── sfârșit „pachetele RA Insight în ofertă" ──
@@ -28382,7 +28429,7 @@ const pozitii = await r.json();</code></pre>
       if (r.pachet && !r.pachet.ai) {
         l.push('Pachet <b>Start</b>, inclus: <b>' + window._raxNrI(r.fond).replace('întrebări', 'răspunsuri') + '</b> pe butoane pe lună, doar administratorul. Fără AI — nu ne costă tokeni.');
       } else if (r.pachet) {
-        l.push('Pachet <b>' + esc(r.pachet.nume) + '</b>: <b>' + window._raxNrI(r.fond) + '</b> pe lună, la comun pentru toată firma (' + r.conturi + ' ' + (r.conturi === 1 ? 'cont dat' : 'conturi date') + ').');
+        l.push('Pachet <b>' + esc(r.pachet.nume) + '</b>: <b>' + window._raxNrI(r.fond) + '</b> pe lună, pentru toată firma (' + r.conturi + ' ' + (r.conturi === 1 ? 'cont dat' : 'conturi date') + ').');
         l.push('Prețul pachetului: ' + _aiuLei(r.venitLei) + ' pe lună, fix pe firmă. Plasa: RA Insight trece pe butoane când costul real ajunge la 80% din preț.');
       } else if (r.peCont > 0 && r.conturi === 0 && r.deFacturat === 0) {
         // „0 conturi × 50 = 0 întrebări" e o socoteală care nu spune nimic. Adevărul e altul:
@@ -29712,12 +29759,19 @@ const pozitii = await r.json();</code></pre>
         'De aici pornește tot: abonamentul lunar, cantitățile de montaj și aparatele de cumpărat.');
       var featCard = card('<i class="fas fa-puzzle-piece"></i> 3. Ce mai primește clientul',
         // RA Insight, pe PACHETE (14.10): Start inclus · Basic · Pro · Business — prețul pe firmă, din lista casei, negociabil.
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;"><span style="font-size:12.5px;flex:1;min-width:90px;"><b>RA Insight</b></span>' +
-          '<select id="of-aiPachet" class="rax-field" onchange="raxOfPachet()" style="width:auto;">' +
+        // Macheta din 15.10 (Alin: „1. da, 2. da"): cele patru pachete, unul lângă altul; lista de mai jos rămâne ASCUNSĂ — din ea citesc
+        // socoteala și telefonul (`formular`). Caseta prețului negociat se mută în cartonașul ales (`_ofPachetCarduri`).
+        '<div style="font-size:12.5px;margin-bottom:6px;"><b>RA Insight</b></div>' +
+          '<select id="of-aiPachet" class="rax-field" onchange="raxOfPachet()" style="display:none;">' +
             '<option value="start" selected>Start — inclus</option><option value="basic">Basic</option><option value="pro">Pro</option><option value="business">Business</option>' +
           '</select>' +
-          '<span id="of-pPachet-wrap" style="display:none;align-items:center;gap:6px;">' + fNum('of-pPachet', p.pkPro, '', 70, 0.01) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></span></div>' +
-        '<div id="of-mod-hint-aiA" style="font-size:11px;color:var(--text-secondary);margin:0 0 8px 0;line-height:1.45;"></div>' +
+          '<div class="of-pk4">' + ['start', 'basic', 'pro', 'business'].map(function (c) {
+            return '<div class="of-pkc" id="of-pkc-' + c + '" role="button" tabindex="0" aria-pressed="false" onclick="raxOfPachetAlege(\'' + c + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();raxOfPachetAlege(\'' + c + '\');}">' +
+              '<b id="of-pkn-' + c + '"></b><span class="of-pkc-pr"><span id="of-pkl-' + c + '"></span><span id="of-pks-' + c + '"></span></span>' +
+              '<span class="of-pkc-m" id="of-pkm1-' + c + '"></span><span class="of-pkc-m" id="of-pkm2-' + c + '"></span></div>';
+          }).join('') + '</div>' +
+          '<span id="of-pPachet-wrap" style="display:none;align-items:center;gap:4px;">' + fNum('of-pPachet', p.pkPro, '', 58, 0.01) + '<span style="font-size:11px;color:var(--text-muted);">lei</span></span>' +
+        '<div id="of-mod-hint-aiA" style="font-size:12px;color:var(--text-secondary);margin:8px 0 10px 0;line-height:1.45;"></div>' +
         // Cei 6 agenți (Watch/Dispatch/Care/Optimize/Compliance/Client) rulează pe reguli fixe, ZERO tokeni AI
         // → nu ne costă nimic, deci nu se facturează separat. Incluși în abonament, nu ca add-on.
         // Module care se aprind per client. Se vând lunar și se aprind singure la activare.

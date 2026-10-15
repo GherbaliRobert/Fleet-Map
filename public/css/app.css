@@ -4039,6 +4039,18 @@ body.dark .insp-pk-c li i { color: var(--accent); }
 body.dark .of-pk-bun { color: var(--accent); }
 .of-pk-rau { color: #b91c1c; }
 body.dark .of-pk-rau { color: #f87171; }
+/* Ofertare Live, cartea 3 (macheta din 15.10): cele patru pachete RA Insight, unul lângă altul; cel ales are chenarul verde și caseta
+   prețului negociat înăuntru. */
+.of-pk4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .of-pk4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.of-pkc { border: 1px solid var(--border); border-radius: 11px; background: var(--bg-panel); padding: 9px 10px; display: grid; gap: 2px; align-content: start; cursor: pointer; font-size: 12px; color: var(--text-secondary); min-width: 0; }
+.of-pkc:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.of-pkc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.of-pkc b { font-size: 13px; font-weight: 800; color: var(--text-primary); }
+.of-pkc-pr { font-weight: 800; color: var(--text-primary); font-size: 13px; min-height: 28px; display: flex; align-items: center; }
+.of-pkc.al { border-color: #166534; box-shadow: inset 0 0 0 1px #166534; cursor: default; }
+body.dark .of-pkc.al { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.of-pkc .rax-field, .of-pkc input { margin: 0; }
 .insp-pk-urm { margin-top: 12px; font-size: 12px; font-weight: 700; color: #92400e; border: 1px solid #b45309; border-radius: 99px; padding: 4px 10px; text-align: center; }
 body.dark .insp-pk-urm { color: #fbbf24; border-color: #f59e0b; }
 .insp-pk-urmtext { font-weight: 700; color: var(--text-primary); }
@@ -4051,15 +4063,19 @@ body.dark .insp-pt-bifa input { accent-color: var(--accent); }
 .chat-pas.insp-pt-ok { background: #166534; border-color: #166534; color: #fff; }
 body.dark .chat-pas.insp-pt-ok { background: var(--accent); border-color: var(--accent); color: #06210F; }
 .chat-pas.insp-pt-ok:disabled { opacity: .45; cursor: not-allowed; }
-/* „Pachet și conturi" (pasul 3): cartonașele, tabelul oamenilor, limitele */
+/* „Pachet și conturi" (pasul 3): rezumatul, tabelul oamenilor, limitele */
 .pkc { width: 100%; max-width: 1040px; margin: 0 auto; padding: 18px 18px 28px; box-sizing: border-box; display: grid; gap: 14px; align-content: start; overflow-y: auto; min-height: 0; }
 .pkc-cap { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .pkc-cap h2 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text-primary); }
-.pkc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.pkc-tile { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: var(--bg-panel); }
-.pkc-t { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
-.pkc-v { font-size: 24px; font-weight: 800; color: var(--text-primary); margin: 2px 0; }
-.pkc-s { font-size: 12px; color: var(--text-secondary); }
+/* Macheta din 15.10: sus, unul-două rânduri cu bara (în locul cartonașelor); pe rând „Fără limită" / „Cel mult … pe lună". */
+.pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #6d28d9; background: color-mix(in srgb, var(--purple) 14%, transparent); }
+body.dark .pkc-pill { color: var(--purple); }
+.pkc-rez { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+.pkc-rez-2 { font-weight: 600; color: var(--text-secondary); font-size: 12.5px; }
+.pkc-bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin-top: 6px; }
+.pkc-bar b { display: block; height: 100%; background: var(--accent); }
+.pkc-sel { background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; margin-right: 6px; }
+.pkc-pel { font-size: 12px; color: var(--text-secondary); margin-left: 6px; }
 .pkc-tbl-w { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); }
 .pkc-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pkc-tbl th { text-align: left; font-size: 11.5px; font-weight: 800; color: var(--text-secondary); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -4067,7 +4083,7 @@ body.dark .chat-pas.insp-pt-ok { background: var(--accent); border-color: var(--
 .pkc-tbl tr:last-child td { border-bottom: 0; }
 .pkc-om { font-weight: 700; }
 .pkc-nu { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; max-width: 260px; line-height: 1.35; }
-.pkc-lim { width: 108px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
+.pkc-lim { width: 84px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
 .pkc-gol { color: var(--text-muted); }
 .pkc-nota { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
 .pkc-urm { border: 1px solid #b45309; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--text-primary); background: rgba(180,83,9,.07); }
@@ -4094,6 +4110,9 @@ body.dark .aiu-pk-al i { color: #fbbf24; }
 .aiu-pk-r { margin-top: 6px; font-size: 12px; color: var(--text-primary); display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .rau-pk { margin-left: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .rau-pk { color: var(--accent); }
+/* Eticheta „RA Insight" pe rândul omului (macheta din 15.10): pe un pachet, conturile se schimbă doar din „Pachet și conturi". */
+.rau-ra { margin-left: 6px; font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; color: #6d28d9; background: color-mix(in srgb, var(--purple) 14%, transparent); white-space: nowrap; }
+body.dark .rau-ra { color: var(--purple); }
 .chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
 /* „De verificat" sub un răspuns RA Insight (cifre.js): textul pe culoarea textului (contrast sigur pe ambele teme), chihlimbarul doar
    pe chenar și pe iconiță. Alin, 08.10: „să aibă grijă cumva să nu dea greșit". */

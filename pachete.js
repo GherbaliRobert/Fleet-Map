@@ -101,10 +101,11 @@ function refuzLoc(p, conturiAcum, rol) {
 }
 
 // ─── Împărțirea întrebărilor pe oameni (Pro și Business) ─────────────────────────────────────────────────────────────
-// `limita` = întrebările date omului pe lună (null = „la comun"). `sumaAltor` = limitele celorlalți. null = bine.
+// `limita` = întrebările date omului pe lună (null = „Fără limită": folosește din ce nu e dat nimănui cu limită). `sumaAltor` =
+// limitele celorlalți. null = bine. (Macheta din 15.10, Alin: „4. da" — pe ecran „Fără limită" / „Cel mult … pe lună", nu „la comun".)
 function refuzLimita(p, limita, sumaAltor) {
   if (!p) return 'Firma nu are un pachet RA Insight.';
-  if (!p.imparte) return 'Pe pachetul ' + p.nume + ' întrebările sunt la comun. Împărțirea pe oameni e de la Pro în sus.';
+  if (!p.imparte) return 'Pe pachetul ' + p.nume + ' toți cei cu RA Insight folosesc aceleași întrebări. Limita pe om e de la Pro în sus.';
   if (limita == null) return null;
   const n = Number(limita);
   if (!Number.isInteger(n) || n < 0) return 'Limita e un număr întreg de întrebări (0 sau mai mult).';
@@ -184,7 +185,7 @@ function textBlocat(st, acum) {
       ' Pentru mai multe, vorbește cu administratorul firmei.';
   }
   if (st.motiv === 'comun') {
-    return 'S-au terminat întrebările lăsate la comun pentru ' + r.luna + ' (celelalte sunt date colegilor). ' + pe1 + ' ' + PE_BUTOANE +
+    return 'S-au terminat întrebările pentru cei fără limită din ' + r.luna + ' (celelalte sunt date pe nume colegilor). ' + pe1 + ' ' + PE_BUTOANE +
       ' Pentru mai multe, vorbește cu administratorul firmei.';
   }
   // plasa: clientul NU află de costuri — află doar că RA Insight s-a oprit pe luna asta și când revine.
@@ -213,7 +214,7 @@ function textScurt(st) {
 }
 // Al doilea rând din caseta pachetului, la omul cu limită (Pro, Business): „Tu: 38 din 100 (limita dată de administrator)".
 function textOm(st) {
-  if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările lăsate la comun';
+  if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările pentru cei fără limită';
   if (!(st.imparte && st.limitaOm != null)) return null;
   return 'Tu: ' + (st.motiv === 'plasa' ? 0 : st.ramaseOm) + ' din ' + st.limitaOm + ' (limita dată de administrator)';
 }
@@ -230,17 +231,30 @@ function cartonaseConturi(st, conturiDate, acum) {
     { k: 'conturi', titlu: 'Conturi', val: String(date),
       sub: st.conturi == null ? 'conturi nelimitate' : 'din ' + st.conturi + (date < st.conturi ? ' · mai poți da ' + (st.conturi - date === 1 ? 'unul' : (st.conturi - date)) : ' · toate date') }
   ];
-  if (st.imparte) out.push({ k: 'limite', titlu: 'Limite puse', val: String(st.sumaLimite),
-    sub: st.sumaLimite ? 'restul de ' + st.comun + ' sunt la comun' : 'toate cele ' + st.intrebari + ' sunt la comun' });
+  if (st.imparte) out.push({ k: 'limite', titlu: 'Date cu limită', val: String(st.sumaLimite),
+    sub: st.sumaLimite ? 'ceilalți folosesc restul de ' + st.comun : 'nimeni n-are limită' });
   return out;
 }
-// „58 din 200" (omul cu limită) / „64" (la comun) — câte a folosit în luna asta.
+// „Pachet și conturi" pe ecranul web (macheta din 15.10, Alin: „3. da, 4. da"): în locul cartonașelor, unul-două rânduri —
+// câte conturi s-au dat, câte întrebări au rămas și, pe Pro / Business, cât e dat pe nume. (Cartonașele rămân în răspuns pentru
+// telefonul de azi.)
+function rezumatConturi(st, conturiDate, acum) {
+  const r = reincarcare(acum), date = Number(conturiDate) || 0;
+  const conturi = st.conturi == null ? 'Conturi: ' + date + ' (nelimitate)' : 'Conturi: ' + date + ' din ' + st.conturi;
+  const ramase = (st.cod === 'start' ? 'Răspunsuri pe butoane rămase: ' : 'Întrebări rămase: ') + ramaseAfisate(st) + ' din ' + st.intrebari +
+    ' (se reîncarcă pe 1 ' + r.urmatoarea + ')';
+  const out = [conturi + ' · ' + ramase];
+  if (st.imparte && st.sumaLimite) out.push('Date cu limită: ' + cant(st.sumaLimite, 'întrebare', 'întrebări') + ' · ceilalți folosesc restul de ' + st.comun + '.');
+  return out;
+}
+// „58 din 200" (omul cu limită) / „64" (fără limită) — câte a folosit în luna asta.
 function textFolositeOm(limita, folosite) { return limita != null ? (Number(folosite) || 0) + ' din ' + limita : String(Number(folosite) || 0); }
 function notaConturi(p) {
   if (p.cod === 'start') return 'Pe Start, RA Insight îl are doar administratorul. De la Basic îl pot avea și colegii.';
-  if (!p.imparte) return 'Pe ' + p.nume + ', întrebările sunt la comun, pentru toți cei cu RA Insight. Împărțirea pe oameni e de la Pro.';
-  return '„La comun” = folosește din întrebările care nu sunt date nimănui. Limitele nu pot trece de cele ' + p.intrebari + deNr(p.intrebari) +
-    'întrebări ale pachetului. Un om ajuns la limita lui primește „Ai folosit cele … întrebări date de administrator”.';
+  if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + p.intrebari + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Pro.';
+  return '„Fără limită” = omul folosește din întrebările firmei care nu sunt date cu limită altcuiva. „Cel mult … pe lună” = omul se ' +
+    'oprește la cifra aceea, iar întrebările lui nu le folosesc ceilalți. Limitele nu pot trece de cele ' + p.intrebari + deNr(p.intrebari) +
+    'întrebări ale pachetului.';
 }
 
 // ─── Oferta, contractul, factura (pasul 5) ─────────────────────────────────────────────────────────────────────────────
@@ -466,7 +480,7 @@ module.exports = {
   PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
-  cartonaseConturi, textFolositeOm, notaConturi,
+  cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi,
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
   ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,
   istoricFirma, adaugaIstoric, consolideaza, pretLa, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,

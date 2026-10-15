@@ -248,8 +248,10 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   T('un preț RA Insight negociat nu e călcat de numărul de mașini', ev2.j.campuri.pPachet === '17' && ev2.j.campuri.dq130 === '60', ev2.j.campuri.pPachet + ' / ' + ev2.j.campuri.dq130);
   const ev3 = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, ev2.j.campuri, { aiPachet: 'business' }), atinse: ev2.j.atinse, schimbate: ['aiPachet'] });
   T('alt pachet = altă propunere de preț (ca pe web): Business → 30 de lei, prețul negociat se uită', ev3.j.campuri.pPachet === '30' && !lista(ev3.j.atinse).includes('pPachet'), ev3.j.campuri.pPachet + ' / ' + JSON.stringify(ev3.j.atinse));
-  T('ce primește pachetul și ce rămâne la noi vin din pagină, doar pentru noi',
-    /conturi nelimitate · 1\.000 de întrebări pe lună/.test(ev3.j.html.aiA) && /Ce rămâne la noi/.test(ev3.j.html.aiA) && ev3.j.html.aiqCost === '', ev3.j.html.aiA.slice(0, 160));
+  // Macheta din 15.10: pe web ce primește pachetul stă pe cartonașe; telefonul (fără cartonașe) primește descrierea din pachete.js
+  // înaintea rândului cu banii noștri, scris de pagină.
+  T('ce primește pachetul (pachete.js) și ce rămâne la noi (rândul paginii), doar pentru noi',
+    /conturi nelimitate · 1\.000 de întrebări pe lună/.test(ev3.j.html.aiA) && /Ne rămân/.test(ev3.j.html.aiA) && /cel puțin/.test(ev3.j.html.aiA) && ev3.j.html.aiqCost === '', ev3.j.html.aiA.slice(0, 200));
   const CTR = require('./contracts');
   const inch = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign(faraPrefix(flota({ 'of-dq130': 20 })), { echipMod: 'inchiriaza', contract: '12' }), atinse: [], schimbate: ['echipMod'] });
   const ic = (inch.j && inch.j.campuri) || {};

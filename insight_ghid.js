@@ -141,7 +141,8 @@ const SECTIUNI = [
     cheie: 'ra_insight', titlu: 'RA Insight: cine îl are și cum se folosește', unde: 'Meniu → RA Insight (sau bula rotundă din colț, care te duce acolo)',
     pasi: [
       'La o conversație nouă, sub salut, „Azi la tine" arată cel mult trei lucruri găsite azi de agenți (mașini fără semnal, scăderi de combustibil, acte care expiră, ziua de ieri); apeși rândul și te duce unde trebuie. Nu se numără.',
-      'Adminul firmei îl pornește pe contul omului: Setări → Utilizatori → iconița baghetă de pe rând → „Dă-i acces" (se facturează un cont în plus).',
+      'Adminul firmei îl dă colegilor dintr-un singur loc: RA Insight → butonul cu trei puncte → „Pachet și conturi" (sau Setări → Utilizatori → „Schimbă în Pachet și conturi"); pornește comutatorul de pe rândul omului. Prețul pachetului rămâne același, oricâte conturi dă, până la numărul pachetului.',
+      'Pe Pro și Business, tot acolo alege pentru fiecare om „Fără limită" sau „Cel mult…" întrebări pe lună.',
       'În meniul „RA Insight" scrie întrebarea în casetă; spune mașina după număr, nume sau șofer — sau apasă „+" și alege „Mașina", „Perioada" ori „Raport".',
       'Continuă discuția: scrie („și săptămâna dinainte?") sau apasă una dintre întrebările gata scrise de sub răspuns; „Conversație nouă" o ia de la capăt.',
       'Conversațiile rămân în stânga, cu „Caută în conversații"; le vezi doar tu, 12 luni. Pe telefon, stânga se deschide din butonul cu trei linii.',

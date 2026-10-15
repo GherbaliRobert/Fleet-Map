@@ -4266,12 +4266,19 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
 // Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces. Înainte, telefonul arăta
 // „Modulul AI nu e activ pe planul companiei" și omul pleca să caute un abonament care exista deja.
 const MESAJ_FARA_LOC_AI = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei îl poate porni din Utilizatori, așa că cere-i acces.';
+// Pe un pachet RA Insight (15.10, Alin: „3. da, 5. da") conturile se dau doar din „Pachet și conturi": mesajul spune drumul acela.
+// Regula veche (pe cont) le dă tot din Utilizatori.
+const MESAJ_FARA_LOC_PACHET = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”, așa că cere-i acces.';
+async function _mesajFaraLoc(companyId) {
+  try { return _pachetCo(await db.getCompanyById(companyId)) ? MESAJ_FARA_LOC_PACHET : MESAJ_FARA_LOC_AI; } catch (e) { return MESAJ_FARA_LOC_AI; }
+}
 function requireAiSeat(req, res, next) {
   if (req.isSuper || req.companyId == null) return next();
   db.getUserById(req.auth && req.auth.userId).then(async function (u) {
     if (u && u.ai_seat) return next();
     if (await _asiguraLocAdmin(u)) return next();
-    const corp = { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_AI, reply: MESAJ_FARA_LOC_AI, seatMissing: true };
+    const mesaj = await _mesajFaraLoc(req.companyId);
+    const corp = { error: 'ai_seat_missing', message: mesaj, reply: mesaj, seatMissing: true };
     // Aplicația de telefon VECHE (autentificare cu cheie) transformă orice 403 într-un text fix și greșit
     // („modulul nu e activ pe plan") și citește doar câmpul `reply`. Ca să vadă motivul real, primește
     // răspunsul ca text. Nimic nu ajunge la model și nimic nu se numără — e tot un refuz.
@@ -4629,7 +4636,7 @@ async function _poartaReguliPachet(req) {
   if (!sp) return {};
   if (!(plans && plans.featuresFor(sp.co).ai_assistant)) return { status: 403, corp: { error: 'ai_oprit', message: 'RA Insight e oprit pentru firma ta.' } };
   const u = await db.getUserById(userId);
-  if (!(u && u.ai_seat) && !(await _asiguraLocAdmin(u))) return { status: 403, corp: { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_AI, seatMissing: true } };
+  if (!(u && u.ai_seat) && !(await _asiguraLocAdmin(u))) return { status: 403, corp: { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_PACHET, seatMissing: true } };   // aici firma are pachet (sp)
   if (!sp.pachet.ai && sp.st.blocat) return { gata: { neinteles: true, motiv: 'pachet_epuizat', text: pachete.textBlocat(sp.st, Date.now()), pachet: _pachetPeEcran(sp.st) } };
   return { sp: sp };
 }
@@ -5069,10 +5076,12 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       return { id: r.id, cand: pachete.dataScurta(r.creat_la), cine: r.user_nume || '', rezumat: pachete.rezumatTrecere(r),
         email: r.email_trimis ? 'trimisă pe email' : 'emailul n-a plecat', pdf: '/api/insight/pachet-trecere/' + r.id + '/pdf' };
     });
-    res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari },
+    res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari, ramase: pachete.ramaseAfisate(st) },
       urmator: p.urmator ? 'Din ' + pachete.dataLunga(p.urmator.deLa) + ' firma trece pe pachetul ' + p.urmator.nume + ' (ales de administrator). Până atunci rămâne ' + p.nume + '.' : null,
       treceri: treceri,
-      cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni, nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna });
+      // `rezumat` = ecranul web (un rând, macheta din 15.10); `cartonase` rămân pentru telefonul de azi.
+      rezumat: pachete.rezumatConturi(st, conturi, acum), cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni,
+      nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Prețurile pachetelor PENTRU O FIRMĂ: lista de azi, peste care stau cele din contractul ei (Anexa nr. 1: pachetul ales și
@@ -18592,7 +18601,11 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         out.atinse = Object.keys(P._ofAtinse || {}).filter((k) => P._ofAtinse[k] && /^of-/.test(k) && el(k)).map((k) => k.slice(3));
         out.r = JSON.parse(JSON.stringify(r));
         const cutie = (id) => _ofCurat((el(id) || {}).innerHTML || '');
-        out.html = { rezumat: cutie('rax-of-summary'), aiA: cutie('of-mod-hint-aiA'), tahograf: cutie('of-mod-hint-tahograf'),
+        // RA Insight: pe web, ce primește pachetul stă pe cele patru cartonașe (macheta din 15.10), iar sub ele doar banii noștri.
+        // Telefonul nu are cartonașele: primește descrierea pachetului ales (pachete.js) înaintea aceluiași rând.
+        const pkAles = pachete.dupaCod((r && r.cfg && r.cfg.aiPachet) || 'start');
+        const aiA = _ofCurat((pkAles ? '<b>' + pachete.descriere(pkAles) + '</b><br>' : '') + ((el('of-mod-hint-aiA') || {}).innerHTML || ''));
+        out.html = { rezumat: cutie('rax-of-summary'), aiA: aiA, tahograf: cutie('of-mod-hint-tahograf'),
           etransport: cutie('of-mod-hint-etransport'), aiqCost: '' };
         // RA Insight pe pachete (14.10): nu mai există caseta conturilor („aiq"); prețul pachetului se arată cât e ales unul cu AI.
         out.arata = { aiq: false, pachetPret: ((el('of-pPachet-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none',

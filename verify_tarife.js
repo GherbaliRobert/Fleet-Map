@@ -80,11 +80,14 @@ sect('1. Pachetele RA Insight în ofertă — prețul de listă și „ce rămâ
 const pachete = require('./pachete');
 const _metaA = server.indexOf('function _ofMetaPachete()');
 const META = new Function('pachete', server.slice(_metaA, server.indexOf('\n}\n', _metaA) + 3) + '; return _ofMetaPachete();')(pachete);
-const _elPk = { 'of-aiPachet': { value: 'pro' }, 'of-pPachet-wrap': { style: {} }, 'of-mod-hint-aiA': { innerHTML: '' } };
+// Cele patru cartonașe din ofertă (macheta din 15.10): nodurile lor, ca să se vadă ce scrie pe fiecare și unde ajunge caseta prețului.
+const _nodPk = (id) => { const n = { id, style: {}, textContent: '', className: '', title: '', parentNode: null, atr: {}, setAttribute(k, v) { n.atr[k] = v; }, appendChild(c) { c.parentNode = n; n.copil = c; return c; } }; return n; };
+const _elPk = { 'of-aiPachet': { value: 'pro' }, 'of-pPachet-wrap': { style: {}, parentNode: null }, 'of-mod-hint-aiA': { innerHTML: '' } };
+['start', 'basic', 'pro', 'business'].forEach((c) => ['of-pkc-', 'of-pkn-', 'of-pkl-', 'of-pkm1-', 'of-pkm2-', 'of-pks-'].forEach((pre) => { _elPk[pre + c] = _nodPk(pre + c); }));
 const _winPk = {}, _atinsePk = {}, _propusePk = [];
 let _preturiPk = { pkBasic: 10, pkPro: 20, pkBusiness: 30 };
 const PK = new Function('document', 'window', '_ofMeta', '_ofAtinse', '_ofPropune', '_ofReadPrices', 'raxOfRecalc', 'esc',
-  decupez('pachetele RA Insight în ofertă') + '\n; return { _OF_PK_CHEI, _ofPachetMeta, _ofPachetMarja, _ofPropunePachet, _ofHintPachet };')(
+  decupez('pachetele RA Insight în ofertă') + '\n; return { _OF_PK_CHEI, _ofPachetMeta, _ofPachetMarja, _ofPropunePachet, _ofHintPachet, _ofPachetCarduri };')(
   { getElementById: (id) => _elPk[id] || null }, _winPk, META, _atinsePk, (id, v) => _propusePk.push([id, v]), () => _preturiPk, () => {}, (x) => String(x));
 const DEF = calculator(flota())._OF_PRETURI_DEF;
 const PLATITE = pachete.PACHETE.filter((p) => p.ai);
@@ -130,13 +133,29 @@ _winPk.raxOfPachet();
 T('alt pachet ales → prețul scris de mână se uită și se propune cel al pachetului nou',
   _atinsePk['of-pPachet'] === false && JSON.stringify(_propusePk[_propusePk.length - 1]) === JSON.stringify(['of-pPachet', 33]), JSON.stringify(_propusePk));
 PK._ofHintPachet({ cfg: { aiPachet: 'pro', aiPachetPret: 20 } });
-T('sub alegere: ce primește clientul și, doar pentru noi, ce rămâne la noi',
-  /până la 5 conturi · 600 de întrebări pe lună/.test(_elPk['of-mod-hint-aiA'].innerHTML) && /Ce rămâne la noi: ~/.test(_elPk['of-mod-hint-aiA'].innerHTML)
-  && /12,06 lei/.test(_elPk['of-mod-hint-aiA'].innerHTML), _elPk['of-mod-hint-aiA'].innerHTML);
+// Macheta din 15.10 (Alin: „2. da"): sub cartonașe, un singur rând cu banii noștri.
+T('sub cartonașe, doar pentru noi, un rând: „Ne rămân ~12 lei pe lună din pachet (cel puțin 4 lei, oricât ar întreba)"',
+  /Ne rămân <b class="of-pk-bun">~12 lei pe lună<\/b> din pachet \(cel puțin <b>4 lei<\/b>, oricât ar întreba\)\./.test(_elPk['of-mod-hint-aiA'].innerHTML), _elPk['of-mod-hint-aiA'].innerHTML);
+// Macheta din 15.10 (Alin: „1. da"): cele patru pachete unul lângă altul, din meta-ul serverului (pachete.js), cu prețul listei casei.
+T('cartonașele: Pro ales (chenarul verde, ✓), ceilalți nu', _elPk['of-pkc-pro'].className === 'of-pkc al' && _elPk['of-pkn-pro'].textContent === 'Pro ✓' && ['start', 'basic', 'business'].every((c) => _elPk['of-pkc-' + c].className === 'of-pkc'),
+  ['start', 'basic', 'pro', 'business'].map((c) => _elPk['of-pkc-' + c].className).join(','));
+T('…pe fiecare: conturile și întrebările (din pachete.js), prețul din lista casei („inclus" la Start)',
+  _elPk['of-pkm1-start'].textContent === 'doar adminul' && _elPk['of-pkm2-start'].textContent === '50 de răspunsuri pe butoane' && _elPk['of-pkl-start'].textContent === 'inclus'
+  && _elPk['of-pkm1-basic'].textContent === '2 conturi' && _elPk['of-pkm2-basic'].textContent === '200 de întrebări' && _elPk['of-pkl-basic'].textContent === '12 lei'
+  && _elPk['of-pkm1-pro'].textContent === '5 conturi' && _elPk['of-pkm2-pro'].textContent === '600 de întrebări'
+  && _elPk['of-pkm1-business'].textContent === 'conturi nelimitate' && _elPk['of-pkm2-business'].textContent === '1.000 de întrebări' && _elPk['of-pkl-business'].textContent === '33 lei',
+  ['start', 'basic', 'pro', 'business'].map((c) => _elPk['of-pkl-' + c].textContent + '|' + _elPk['of-pkm1-' + c].textContent + '|' + _elPk['of-pkm2-' + c].textContent).join(' / '));
+T('…caseta prețului negociat (una singură) se mută în cartonașul ales; prețul de listă de acolo se ascunde', _elPk['of-pks-pro'].copil === _elPk['of-pPachet-wrap'] && _elPk['of-pkl-pro'].style.display === 'none' && _elPk['of-pkl-basic'].style.display === '');
+const _nPk = _propusePk.length;
+_elPk['of-aiPachet'].value = 'pro'; _winPk.raxOfPachetAlege('pro');
+T('clicul pe pachetul deja ales (sau în caseta prețului) nu schimbă nimic', _propusePk.length === _nPk && _elPk['of-aiPachet'].value === 'pro');
+_winPk.raxOfPachetAlege('basic');
+T('clicul pe alt cartonaș = alegerea din lista ascunsă + prețul lui propus din listă', _elPk['of-aiPachet'].value === 'basic' && JSON.stringify(_propusePk[_propusePk.length - 1]) === JSON.stringify(['of-pPachet', 12]), JSON.stringify(_propusePk.slice(-1)));
 PK._ofHintPachet({ cfg: { aiPachet: 'start', aiPachetPret: 0 } });
-T('la Start: „inclus în orice contract", fără marjă', /inclus în orice contract/.test(_elPk['of-mod-hint-aiA'].innerHTML) && !/Ce rămâne/.test(_elPk['of-mod-hint-aiA'].innerHTML),
+T('la Start: „inclus în orice contract", fără bani', /inclus în orice contract/.test(_elPk['of-mod-hint-aiA'].innerHTML) && !/Ne rămân/.test(_elPk['of-mod-hint-aiA'].innerHTML),
   _elPk['of-mod-hint-aiA'].innerHTML);
-T('ce rămâne la noi NU ajunge pe hârtia clientului', !/_ofPachetMarja|Ce rămâne la noi/.test(fs.readFileSync('./report_export.js', 'utf8')));
+T('ce rămâne la noi NU ajunge pe hârtia clientului', !/_ofPachetMarja|Ce rămâne la noi|Ne rămân/.test(fs.readFileSync('./report_export.js', 'utf8')));
+T('lista pachetelor rămâne în pagină, ASCUNSĂ, cu aceleași patru alegeri (din ea citesc socoteala și telefonul)', /<select id="of-aiPachet" class="rax-field" onchange="raxOfPachet\(\)" style="display:none;">/.test(html));
 // Selectorul pornește pe Start (orice firmă pornește pe Start — Alin, 14.10).
 T('selectorul de pachet pornește pe Start', /<option value="start" selected>Start — inclus<\/option>/.test(html));
 

@@ -802,10 +802,11 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `pachetMesaj` de la server) în `.chat-lim`, eticheta `.chat-aprof`, „Vezi pachetele" (`insightPachete`, doar administratorul).
   Din 15.10 bula din colț duce în secțiune (nu mai are caseta ei), fila AI Raport a ieșit din Rapoarte, iar pachetul stă pe UN rând
   jos în stânga (macheta „mai simplu").
-- **Pasul 3, „Pachet și conturi"** (blocul secțiunii, `S.ramura === 'pachet'` → `deseneazaPachetConturi`; din caseta pachetului
-  și din Utilizatori, `insightPachetConturi`): `GET /api/insight/pachet-conturi` (`manageUsers`) → cartonașele
-  (`pachete.cartonaseConturi`), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota (`notaConturi`).
-  Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale.
+- **Pasul 3, „Pachet și conturi"** (blocul secțiunii, `S.ramura === 'pachet'` → `deseneazaPachetConturi`; din rândul pachetului,
+  din „⋯" și din Utilizatori, `insightPachetConturi`): `GET /api/insight/pachet-conturi` (`manageUsers`) → `rezumat` (pe web, din
+  15.10) + `cartonase` (doar pentru telefonul de azi), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota
+  (`notaConturi`). Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale. Vezi și „Pachetul în
+  ofertă și conturile la client", mai jos.
 - **Pasul 4, tabloul nostru** (`/api/admin/ai-usage` → `pachete` + `plasa` / `aprofundat` / `ramanLei` pe rând; în pagină
   `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany` cu scrisoarea de luni, pe model
   (`cost_aprofundat_usd` = partea Sonnet), la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
@@ -814,7 +815,7 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   zilele = sold ÷ (costul lunii pe toată platforma ÷ ziua lunii). Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
 - **Pasul 5, oferta → contract → firmă → factură:** prețurile de listă = `tarife_lista.pkBasic / pkPro / pkBusiness` („Prețurile
   noastre"), citite DOAR prin `pachete.preturiLista` (serverul: `_preturiPachete`; gol / 0 / text → prețul din cod, niciodată 0).
-  În ofertă: cartea 3, `of-aiPachet` (pornește pe Start) + `of-pPachet` (propus din listă prin `_ofPropunePachet`, negociabil) —
+  În ofertă: cartea 3, `of-aiPachet` (pornește pe Start; din 15.10 ASCUNS, sub cele patru cartonașe) + `of-pPachet` (propus din listă prin `_ofPropunePachet`, negociabil) —
   blocul „pachetele RA Insight în ofertă" (`_ofPachetMarja` = `pachete.marja`, „ce rămâne la noi" DOAR pentru noi; ce primește
   pachetul din `_ofMeta.pachete`, de la `_ofMetaPachete`, aceeași pentru telefon). UN rând `fel: 'ai'` cu `pachet` în `_ofCalc`;
   ofertele vechi (pe cont) se socotesc pe ramura veche. Hârtia ofertei: „ce include" + condiția cu toate prețurile și
@@ -847,8 +848,31 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   „Inclus în orice contract" la Start, „Cere ofertă" la celelalte. Textele pachetelor sunt COPIA lui `pachete.publice({ cuPret:
   false })` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină. Schimbi `DESCRIERE` în
   pachete.js → schimbi și pagina (și `amprenta` / `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
-- Păzit de `verify_pachete.js` (în `npm test`; 212, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
+- Păzit de `verify_pachete.js` (în `npm test`; 220, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
   `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`.
+
+### Pachetul în ofertă și conturile la client (15.10; macheta „Pachet și conturi", Alin: „da la toate cele 5")
+- **Oferta, cartea 3: cele patru pachete unul lângă altul** (`.of-pk4`, cartonașele `of-pkc-<cod>`; `raxOfPachetAlege(cod)`). Lista
+  `of-aiPachet` RĂMÂNE în pagină, ascunsă: din ea citesc socoteala și telefonul (`formular`, opțiunile) — NU o scoate. Textele
+  cartonașelor vin din meta-ul serverului (`_ofMeta.pachete`, din pachete.js) și din lista casei (`_ofReadPrices`), prin
+  `_ofPachetCarduri`; caseta prețului negociat `of-pPachet` e UNA și se MUTĂ în cartonașul ales (nu face a doua). Clicul pe pachetul
+  deja ales (și în caseta prețului) nu face nimic. Cartonașul e `div role="button"` (o casetă într-un `<button>` n-ar merge).
+- **Banii noștri pe un rând** (`_ofHintPachet`, `#of-mod-hint-aiA`): „Ne rămân ~X lei pe lună din pachet (cel puțin Y lei, oricât
+  ar întreba)" = `pachete.marja` (obișnuit, rotunjit la leu; minim = plasa). La Start: „Start e inclus în orice contract, fără cost
+  pentru noi." Nu ajunge pe hârtia clientului (păzit). Telefonul n-are cartonașele: ruta `/api/admin/offers/calc` pune înaintea
+  rândului descrierea pachetului ales (`pachete.descriere`).
+- **Conturile RA Insight se dau DOAR din „Pachet și conturi"** pe o firmă cu pachet: în Utilizatori, pe rândul omului, doar eticheta
+  `.rau-ra` „RA Insight" + capul listei cu „Schimbă în Pachet și conturi →"; butonul baghetă (`raxAiSeat`) rămâne DOAR pe regula
+  veche (pe cont, `_usrPachet` gol) și la fondator. Omul fără cont află drumul: `_mesajFaraLoc(companyId)` →
+  `MESAJ_FARA_LOC_PACHET` („…din RA Insight → „Pachet și conturi”") pe pachet, `MESAJ_FARA_LOC_AI` („din Utilizatori") pe regula veche.
+- **Pe om: „Fără limită" / „Cel mult … pe lună"** (`select.pkc-sel` + caseta cifrei doar la „Cel mult"), NU „la comun". Aceleași
+  cuvinte în textele serverului: `refuzLimita`, `textBlocat` (motivul `comun`), `textOm`, `notaConturi`, cartonașul `limite` („Date cu
+  limită"). Sus, `pachete.rezumatConturi` (unul-două rânduri) + bara, în locul cartonașelor. Descrierea pachetului Basic de pe site
+  („200 de întrebări pe lună, la comun") rămâne: spune ce primește pachetul, nu e alegerea de pe om.
+- Ghidul (`ra_insight`) spune drumul nou și nu mai pomenește factura unui cont. Telefonul (Robert, APK-ul următor): eticheta în loc de
+  bagheta din AdminUsers pe firmele cu pachet, „Fără limită / Cel mult" în „Pachet și conturi".
+- Păzit de `verify_pachete.js` (rezumatul, cuvintele, Utilizatori, mesajul, pe server pornit), `verify_tarife.js` (cartonașele și rândul
+  banilor, rulate), `verify_oferta_telefon.js` (descrierea pentru telefon).
 - **Măsurat (09–14.10, model simulat):** costul unei întrebări NU depinde de flotă de la 200 de mașini în sus (uneltele aduc
   cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
   1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
@@ -1173,7 +1197,8 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
 - **RA Insight se vinde pe PACHETE pe firmă (din 14.10)** — `settings.ai_pachet = { cod, pretRON, de_la }` (+ `ai_pachet_urmator`,
   `ai_pachet_istoric`), vezi „Pachetele RA Insight". Regula de dinainte, pe CONT (`settings.ai_quota = { questionsPerSeat,
   seatPriceRON }`, vârful lunii `seatsPeak`, forma și mai veche `questions`), rămâne respectată pentru firmele scrise așa. Locul
-  de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori** sau din „Pachet și conturi".
+  de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din „Pachet și conturi" (pe un pachet, DOAR de acolo — din
+  15.10) sau, pe regula veche, din **Utilizatori**.
 
 ## Contracte — dosarul juridic (reguli din 23.09)
 
