@@ -707,7 +707,7 @@ Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în 
 - **Fila „AI Raport" SCOASĂ** (buton, fereastră, codul `rin*` afară de `rinOpenReport`, care deschide raportul de sub răspunsurile
   RA Insight). `POST /api/reports/ai-raport` și `_aiRaportCore` RĂMÂN: telefonul vechi și RA Insight pe reguli (Start, luna oprită).
 - **„Agenți AI" din meniu**: ascuns când `me.aiCont` (`/api/me`: nu super-admin, modulul pornit, `users.ai_seat`). Noi îl
-  păstrăm (pragurile platformei). Pagina se deschide și din „Azi la tine" → „Setările agenților" (Alin: varianta A, de confirmat).
+  păstrăm (pragurile platformei). Pagina se deschide și din „Azi la tine" → „Setările agenților" (Alin, 15.10: „da" — varianta A; NU pune un rând în Setări).
 - **RA Drive**: ce vede omul și ce citește modelul (ramura, unealta `safe_drive`, „Am înțeles", ghidul, pachete.js `DESCRIERE` +
   pagina publică). Numele tehnice rămân (`safedrive`, `safe_drive`, `_sdLuna`). Cine spune „Safe Drive" e înțeles tot de unealtă.
 - Ghidul: capitolul `raport_cerut` (în locul lui `ai_raport`), „Azi la tine" în `ra_insight`, drumul spre agenți.

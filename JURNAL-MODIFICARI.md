@@ -274,9 +274,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
   (ruta rămâne până la APK); (5) „Agenți AI" ascuns când `/api/me` dă `aiCont`; (6) numele RA Drive în loc de Safe Drive.
-- [ ] **Alin: unde stă calea spre setările agenților. Adăugat pe 15.10.** Ai spus întâi „da" (varianta A), apoi că nu e clar. Am
-  construit A: linkul „Setările agenților →" sub „Azi la tine", în RA Insight. Varianta B ar fi un rând în Setări. Spune-mi dacă
-  rămâne A.
+- [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
+  „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face.
 
 ---
 
