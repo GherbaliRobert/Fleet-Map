@@ -352,7 +352,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-15
 
-### AMÂNDOI · Pachetul RA Insight în ofertă, pe cartonașe; conturile dintr-un singur loc; „Fără limită / Cel mult" (macheta „Pachet și conturi")
+### AMÂNDOI · Pachetul RA Insight în ofertă, pe cartonașe; conturile dintr-un singur loc; „Fără limită / Cel mult" (macheta „Pachet și conturi") — `560535f`
 
 Alin (15.10), după macheta „Pachetul în ofertă și conturile la client": *„da la toate cele 5"*.
 
