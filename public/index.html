@@ -11697,15 +11697,22 @@ const pozitii = await r.json();</code></pre>
       function deseneazaMain() {
         var main = $i('insp-main'); if (!main) return;
         setTitlu();
+        // „Pachet și conturi" e SINGURUL loc din care se dau conturile (macheta din 15.10): administratorul firmei ajunge acolo și
+        // fără un cont RA Insight al lui (de ex. le-a dat pe amândouă colegilor), altfel ar rămâne încuiat pe dinafară.
+        if (S.ramura === 'pachet' && esteAdmin()) return deseneazaPachetConturi(main);
         if (S.faraLoc) {
           main.innerHTML = '';
           var card = el('div', 'insp-card');
           card.appendChild(el('h3', null, 'RA Insight nu e pornit pe contul tău'));
           card.appendChild(el('div', null, S.faraLoc));
+          if (esteAdmin()) {
+            card.appendChild(el('div', 'insp-card-adm', 'Ești administratorul firmei: îți poți da contul singur, din „Pachet și conturi”.'));
+            var bpc = el('button', 'chat-pas'); bpc.type = 'button'; bpc.innerHTML = '<i class="fas fa-layer-group"></i>'; bpc.appendChild(document.createTextNode('Deschide Pachet și conturi'));
+            bpc.onclick = function () { window.insightRamura('pachet'); }; card.appendChild(bpc);
+          }
           main.appendChild(card);
           return;
         }
-        if (S.ramura === 'pachet') return deseneazaPachetConturi(main);
         if (ramuraIncuiata(RAMURI.filter(function (x) { return x.k === S.ramura; })[0])) return deseneazaIncuiata(main);
         if (S.ramura === 'ghid') return deseneazaGhid(main);
         if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
@@ -12075,7 +12082,7 @@ const pozitii = await r.json();</code></pre>
       window.insightMeniu = function (btn) {
         var u = window.currentUser || {}, l = [];
         if (eTelefon() && (S.conv || S.ramura !== 'general')) l.push({ text: 'Conversație nouă', fa: 'fa-plus', k: 'nou' });
-        if (esteAdmin() && S.pachet) l.push({ text: 'Pachet și conturi', fa: 'fa-layer-group', k: 'pachet' });
+        if (esteAdmin() && (S.pachet || S.faraLoc)) l.push({ text: 'Pachet și conturi', fa: 'fa-layer-group', k: 'pachet' });
         l.push({ text: 'Notițele firmei', fa: 'fa-note-sticky', k: 'notite' });
         if (u.features && u.features.agents !== false && u.permissions && u.permissions.viewReports) l.push({ text: 'Setările agenților', fa: 'fa-robot', k: 'agenti' });
         l.push({ text: 'Ghidul aplicației', fa: 'fa-graduation-cap', k: 'ghid' });

@@ -3975,6 +3975,7 @@ body.dark .insp-fond.w { color: #fbbf24; }
 .insp-btn.prim i { color: inherit; }
 .insp-card { max-width: 620px; margin: 32px auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; color: var(--text-secondary); line-height: 1.55; }
 .insp-card h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 800; }
+.insp-card-adm { margin: 12px 0 10px; color: var(--text-primary); font-weight: 700; }   /* administratorul fără cont: drumul spre „Pachet și conturi" */
 /* ── piesele comune ale chatului (RA Insight, bula din colț, AI Raport) ── */
 .chat-ib { width: 32px; height: 32px; border-radius: 9px; border: 0; background: transparent; color: var(--text-secondary); display: inline-grid; place-items: center; font-size: 13px; cursor: pointer; flex: none; }
 .chat-ib:hover { background: var(--bg-dark); color: var(--text-primary); }
