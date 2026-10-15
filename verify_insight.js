@@ -363,14 +363,17 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // cele încă nelivrate (gata: false) rămân ascunse.
   // `pachet: true` (14.10) = ramura e de la pachetul Basic în sus (pe Start apare încuiată) — tot livrată.
   // `sub` (15.10) = subtitlul unei ramuri (RA Drive · „condus & costuri").
-  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
+  // `meniu: true` (15.10, macheta „mai simplu") = stă în „⋯" (ghidul), nu sub „Pagini".
+  const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)?(?:, meniu: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
   // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
   T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
     ['safedrive', 'combustibil', 'mentenanta'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
-    (PAG.match(/RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general'; \}\)/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
-  T('chatul modern: caseta cu Mașina / Perioada / Ramuri și butonul rotund; „Conversație nouă" și ☰ / ✎ pentru telefon', /onclick="insightAlegeMasina\(this\)"/.test(PAG) && /onclick="insightAlegePerioada\(this\)"/.test(PAG) && /onclick="insightAlegeRamura\(this\)"/.test(PAG) &&
-    /id="insp-trimite" class="chat-trimite gol"/.test(PAG) && /class="insp-nou" onclick="insightNou\(\)"/.test(PAG) && /chat-ib insp-meniu/.test(PAG) && /chat-ib insp-nou-tel/.test(PAG));
+    (PAG.match(/function pagini\(\) \{ return RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general' && !r\.meniu; \}\); \}/g) || []).length === 1 && (PAG.match(/pagini\(\)\.forEach\(/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
+  // Macheta „mai simplu" (15.10): Mașina / Perioada / Raport stau sub „+"; ramurile sub „Pagini ▸"; conversație nouă din stânga
+  // (și din „⋯" pe telefon); ☰ pentru telefon.
+  T('chatul: caseta cu „+" (Mașina / Perioada / Raport) și butonul rotund; „Conversație nouă" și ☰ pentru telefon', /onclick="insightPlus\(this\)"/.test(PAG) && /window\.insightAlegeMasina\(btn\)/.test(PAG) && /window\.insightAlegePerioada\(btn\)/.test(PAG) &&
+    /id="insp-trimite" class="chat-trimite gol"/.test(PAG) && /class="insp-nou" onclick="insightNou\(\)"/.test(PAG) && /chat-ib insp-meniu/.test(PAG) && /if \(eTelefon\(\) && \(S\.conv \|\| S\.ramura !== 'general'\)\) l\.push\(\{ text: 'Conversație nouă'/.test(PAG));
   // Capitolul 2, pasul 1 (15.10): secțiunea e SINGURUL chat din pagină — bula din colț duce în ea, iar fila „AI Raport" a
   // ieșit din Rapoarte. Piesele chatului rămân scrise o dată; nu mai există a doua casetă (a bulei sau a filei).
   const SECT_INS = (PAG.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];

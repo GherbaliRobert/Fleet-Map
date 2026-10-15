@@ -344,6 +344,35 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-15
 
+### AMÂNDOI · RA Insight, mai simplu: mai puține butoane pe ecran (macheta „mai simplu")
+
+Alin (15.10): *„ra insight mi se pare greu de utilizat… multe butoane, multe informații… trebuie să fie ușoară"*. După macheta
+„RA Insight, mai simplu": *„1. da, 2. da"*. Pe ecranul gol erau ~35 de butoane și casete; acum ~12. Nicio funcție nu s-a pierdut —
+s-a mutat într-un singur loc.
+
+- **Salutul:** „Salut, Alin! Cu ce te pot ajuta?" (prenumele fiecăruia), fără iconița mare și paragraful de sub el.
+- **Caseta:** un singur buton **„+"** → Mașina, Perioada, Raport. Sub casetă, **trei butoane scurte** („Ce probleme are flota?",
+  „Km săptămâna trecută", „Ce acte expiră?") în locul celor patru cartonașe.
+- **„Azi la tine":** cel mult **trei rânduri**, ce cere atenție întâi; sus „N de văzut". **Un rând = un clic** (harta, actele, raportul,
+  întrebarea). Unde singurul pas e „De ce?" (o întrebare pentru RA Insight, care se numără), scrie „De ce?" pe rând, ca omul să știe.
+- **Meniul „⋯"** (sus, în dreapta): Pachet și conturi (doar administratorul firmei), Notițele firmei, Setările agenților, Ghidul
+  aplicației, Redenumește / Șterge conversația; dedesubt, cât se păstrează conversațiile. Au plecat de pe ecran: iconița de notițe,
+  eticheta pachetului de sus, butonul de închidere, linkurile „Pachet și conturi →" și „Setările agenților →".
+- **Stânga:** Conversație nouă, „Caută în conversații" (un rând), conversațiile pe zile, **„Pagini ▸"** (RA Drive, Combustibil,
+  Mentenanță & acte, Ore de condus, Scrisoarea de luni — se deschid la nevoie, cu numărul de lucruri de văzut lângă) și **un rând cu
+  pachetul**: „Basic · 188 din 200" (amănuntul la trecerea cu mouse-ul; administratorul ajunge din el în „Pachet și conturi").
+- **Fondatorul vede contorul:** „Fondator · fără limită", jos în stânga și lângă casetă (noi n-avem pachet, de-aia nu apărea nimic).
+- **Un răspuns:** „Am înțeles" e acum un **titlu scurt** („Km parcurși · B 303 BAS · Ford Transit · ieri"), fără bule; cel mult **două**
+  butoane spre rapoarte; Copiază · 👍 · 👎 · „Din raportul…" apar când treci cu mouse-ul (pe telefon, la vedere). Sub un raport cerut
+  se vede doar cartonașul lui (cu „E și în Istoric rapoarte, până pe …" și, dacă e cazul, ce trebuie știut despre el).
+
+- **Ce am schimbat:** pagina (secțiunea RA Insight: scheletul, caseta, „+", „⋯", „Pagini", „Azi la tine", răspunsul, rândul
+  pachetului), `app.css`, `azi_la_tine.js` (trei rânduri, `deVazut`), `server.js` (cartonașul raportului poartă `note`),
+  `insight_ghid.js` (ghidul spune noile butoane). Probele `verify_un_singur_insight.js` (81), `verify_insight.js`, `verify_pachete.js`
+  mutate pe regula nouă.
+- **Ce vede fondatorul:** contorul „Fondator · fără limită" și salutul cu prenumele; restul, ca un client.
+- **Ce vede clientul:** ecranul de mai sus. Telefonul (aplicația lui Robert) rămâne cum e până la APK-ul următor.
+
 ### AMÂNDOI · RA Insight, Capitolul 2, pasul 1: un singur RA Insight — `9c7a13d`, `ea0bccd`
 
 Alin (15.10), după macheta „Un singur RA Insight": *„1da 2.da 3. Da"* — macheta e bună, setările agenților se deschid din

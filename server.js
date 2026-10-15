@@ -4582,9 +4582,13 @@ async function _insightComanda(req, res, x) {
     randuri: rows.length, gol: !rows.length };
   let reply = 'Am făcut raportul **„' + label + '”** pentru **' + vehicul + '**, ' + (perEt === 'acum' ? 'acum' : '**' + perEt + '**') + '. ' +
     (rows.length ? 'Îl găsești în Istoric rapoarte până pe ' + panaTxt + '.' : 'În perioada asta nu are niciun rând; l-am pus totuși în Istoric rapoarte, până pe ' + panaTxt + '.');
-  if (taiat) reply += '\n\nAm luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se face din pagina Rapoarte.';
+  // Ce trebuie știut despre raport stă și în cartonaș (`note`): pe ecran, sub un raport cerut, se vede cartonașul, nu textul.
+  const note = [];
+  if (taiat) note.push('Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se face din pagina Rapoarte.');
   const tr = Array.isArray(report.trunchiat) ? report.trunchiat : [];
-  if (tr.length) reply += '\n\nAtenție: perioada are prea multe poziții, așa că raportul s-a oprit înainte de capăt. Cere o perioadă mai scurtă.';
+  if (tr.length) note.push('Atenție: perioada are prea multe poziții, așa că raportul s-a oprit înainte de capăt. Cere o perioadă mai scurtă.');
+  note.forEach(function (n) { reply += '\n\n' + n; });
+  if (note.length) card.note = note;
   const inteles = aiRaport.inteles(Object.assign({}, u, { et: label, perioada: Object.assign({}, u.perioada, { eticheta: perEt, implicita: u.perioada.implicita }) }), x.fisa);
   const urmari = aiRaport.urmariComanda(Object.assign({}, u, { perioada: { from: from, to: to, acum: u.perioada.acum, inainte: u.perioada.inainte } }));
   // Discuția: cererea (pentru continuările ei), plus mașina, perioada și subiectul pentru întrebările de după („și consumul?").

@@ -5,11 +5,11 @@
 // să se numere, pe niciun pachet (Alin: „3. Da").
 //
 // Curat: fără bază, fără rețea. Serverul adună datele (regulile agenților: agents.esteFaraSemnal / esteLiber, listele de
-// termene: preaviz.js prin _ramMentenanta), aici se scriu rândurile. Păzit de verify_azi_la_tine.js.
+// termene: preaviz.js prin _ramMentenanta), aici se scriu rândurile. Păzit de verify_un_singur_insight.js.
 'use strict';
 
 const NUME = { watch: 'RA Watch', care: 'RA Care', dispatch: 'RA Dispatch', client: 'RA Client', optimize: 'RA Optimize', compliance: 'RA Compliance' };
-const MAX_RANDURI = 6;      // „Azi la tine" e o privire, nu o listă: restul stă în paginile lor
+const MAX_RANDURI = 3;      // „Azi la tine" e o privire, nu o listă: restul stă în paginile lor (Alin, 15.10: macheta „mai simplu")
 const MAX_NUME = 3;         // câte mașini se scriu pe nume într-un rând
 const ORDINE = { r: 0, w: 1, b: 2, g: 3 };
 
@@ -43,7 +43,9 @@ function lista(nume, n) { return nume.slice(0, MAX_NUME).join(', ') + (n > MAX_N
 //   libere: număr — mașinile libere acum (agents.esteLiber);
 //   ieri: { km, active, total, top: { eticheta, nr, km } } | null — ziua de ieri (cursele).
 // }
-// Întoarce { randuri: [{ agent, nume, nivel: 'r'|'w'|'b'|'g', cheie, text (cu **bold**), butoane: [...] }], chei: [...] }.
+// Întoarce { randuri: [{ agent, nume, nivel: 'r'|'w'|'b'|'g', cheie, text (cu **bold**), butoane: [...] }], chei: [...], deVazut }.
+// Pe ecran un rând se apasă O DATĂ (macheta din 15.10): pagina ia primul buton pe care omul îl poate folosi; „De ce?” (o întrebare
+// pentru RA Insight, care se numără) stă după butoanele gratuite, ca un clic pe rând să nu consume o întrebare fără să știe.
 // Butoanele: { fel: 'harta', imeis } · { fel: 'intreaba', trimite } (pe reguli) · { fel: 'raport', trimite } (o cerere de raport,
 // pe reguli) · { fel: 'dece', trimite } (o întrebare pentru RA Insight — doar unde pachetul are AI) · { fel: 'acte', ramura,
 // trimite } (ramura „Mentenanță & acte"; fără ramuri, întrebarea pe reguli). `chei` = rândurile care cer atenție (roșu,
@@ -111,13 +113,15 @@ function randuri(d) {
     pune('client', 'g', 'ieri', text, i.active > 0 ? [{ fel: 'raport', text: 'Foaia de parcurs', trimite: 'Fă-mi foaia de parcurs pentru toată flota, ieri' }] : []);
   }
 
-  // Ce cere atenție întâi; ziua de ieri rămâne la capăt, oricâte ar fi.
+  // Ce cere atenție întâi; ziua de ieri, la capăt — doar dacă mai e loc (cu trei rânduri, ce cere atenție are întâietate).
   const ordonate = out.map(function (r, i) { return { r: r, i: i }; })
     .sort(function (a, b) { return (ORDINE[a.r.nivel] - ORDINE[b.r.nivel]) || (a.i - b.i); }).map(function (o) { return o.r; });
   const ieri = ordonate.filter(function (r) { return r.cheie === 'ieri'; });
-  const restul = ordonate.filter(function (r) { return r.cheie !== 'ieri'; }).slice(0, MAX_RANDURI - ieri.length);
-  const finale = restul.concat(ieri);
-  return { randuri: finale, chei: finale.filter(function (r) { return r.nivel === 'r' || r.nivel === 'w'; }).map(function (r) { return r.cheie; }) };
+  const restul = ordonate.filter(function (r) { return r.cheie !== 'ieri'; });
+  const finale = restul.slice(0, MAX_RANDURI).concat(restul.length < MAX_RANDURI ? ieri : []);
+  const atentie = function (r) { return r.nivel === 'r' || r.nivel === 'w'; };
+  // `deVazut` = câte cer atenție de tot (și cele care nu încap în cele trei rânduri): „5 de văzut".
+  return { randuri: finale, chei: finale.filter(atentie).map(function (r) { return r.cheie; }), deVazut: ordonate.filter(atentie).length };
 }
 
 module.exports = { randuri, durata, pragText, NUME, MAX_RANDURI };

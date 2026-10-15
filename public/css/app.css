@@ -3860,11 +3860,11 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 /* ─── RA Insight: „Am înțeles", butoanele de ales, „Conversație nouă" (02.10) ─── */
 .ins-extra { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .ins-extra:empty { display: none; }
-.ins-int { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-secondary); } /* --text-muted ieșea 4,3 pe tema deschisă (măsurat) */
-.ins-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
-.ins-chip i { font-size: 10px; color: var(--text-muted); }
-.ins-chip.mem, .ins-chip.mem i { color: var(--purple); }
-.ins-chip.mem { border-color: var(--purple); }
+/* „Am înțeles" = titlul scurt al răspunsului (macheta „mai simplu", 15.10): fără bule. --text-muted ieșea 4,3 pe tema deschisă. */
+.ins-tit { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
+.ins-tit .mem { color: #6d28d9; }
+body.dark .ins-tit .mem { color: var(--purple); }
+.ins-tit .mem i { font-size: 10.5px; margin-right: 4px; }
 .ins-alege { display: flex; flex-wrap: wrap; gap: 6px; }
 .ins-alege button { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .ins-alege button i { color: var(--text-muted); margin-right: 6px; }
@@ -3885,17 +3885,25 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .insp.st-ascuns .insp-st { display: none; }
 .insp-umbra { display: none; }
 .insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); }
-.insp-stea.mare { width: 48px; height: 48px; border-radius: 15px; font-size: 21px; margin: 0 auto; }
 /* stânga */
 .insp-st { background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .insp-st-cap { display: flex; align-items: center; gap: 4px; padding: 12px 10px 6px 14px; }
 .insp-st-tit { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 15px; color: var(--text-primary); margin-right: auto; }
-.insp-nou { margin: 4px 10px 6px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; font: inherit; font-weight: 700; font-size: 13.5px; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); cursor: pointer; text-align: left; }
+.insp-nou { margin: 4px 10px 2px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; font: inherit; font-weight: 700; font-size: 13.5px; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); cursor: pointer; text-align: left; }
 .insp-nou i { color: var(--text-secondary); }
 .insp-nou:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+/* „Caută în conversații": un rând, ca în machetă; caseta se deschide sub el. */
+.insp-cauta-r { margin: 0 10px 4px; display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; text-align: left; }
+.insp-cauta-r:hover { background: var(--bg-dark); color: var(--text-primary); }
 .insp-cauta { margin: 2px 10px 4px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 12.5px; }
-.insp-grp { font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); margin: 12px 16px 4px; }
-#insp-ramuri { padding: 0 8px; }
+#insp-ramuri { padding: 2px 0 6px; max-height: 40vh; overflow-y: auto; }
+/* „Pagini ▸" (macheta „mai simplu"): ramurile, închise; un rând care se deschide. */
+.insp-pag { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 9px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 800; color: var(--text-primary); cursor: pointer; text-align: left; }
+.insp-pag > i:first-child { width: 24px; text-align: center; color: var(--text-secondary); font-size: 12px; }
+.insp-pag:hover { background: var(--bg-dark); }
+.insp-pag .insp-pag-s { margin-left: auto; font-size: 11px; color: var(--text-secondary); transition: transform .15s; }
+.insp-pag .insp-nr + .insp-pag-s { margin-left: 6px; }
+.insp-pag.desc .insp-pag-s { transform: rotate(90deg); }
 .insp-ram { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-secondary); cursor: pointer; border: 0; background: transparent; font-family: inherit; text-align: left; width: 100%; }
 .insp-ram .ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; background: transparent; color: var(--text-secondary); flex: none; }
 .insp-ram:hover { background: var(--bg-dark); color: var(--text-primary); }
@@ -3915,35 +3923,24 @@ body:not(.dark) .insp-nr { color: #9a3412; background: rgba(249,115,22,.12); }
 .insp-conv .a button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 11px; }
 .insp-conv .a button:hover { background: var(--bg-card); color: var(--text-primary); }
 .insp-gol { font-size: 12px; color: var(--text-secondary); padding: 6px 8px; line-height: 1.45; }
-.insp-st-jos { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
-.insp-fond { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
-.insp-fond .bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin: 6px 0 4px; }
-.insp-fond .bar b { display: block; height: 100%; background: var(--accent); }
-.insp-fond-s { font-weight: 600; }
-/* Pachetele RA Insight (14.10, macheta aprobată): caseta din stânga jos, pastila din bara de sus, ramurile încuiate pe Start */
-.insp-fond .bar.p b { background: var(--purple); }
-.insp-fond .bar.w b { background: #f59e0b; }
-.insp-pk-t { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-weight: 800; font-size: 13px; color: var(--text-primary); }
-.insp-pk-pill { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; border: 1px solid #166534; color: #166534; }
-body.dark .insp-pk-pill { border-color: var(--accent); color: var(--accent); }
-.insp-pk-vezi { margin-top: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 800; color: #166534; cursor: pointer; }
-body.dark .insp-pk-vezi { color: var(--accent); }
-.insp-pk-vezi:hover { text-decoration: underline; }
-@media (max-width: 600px) { .insp-pk-top { display: none !important; } }
-.insp.pe-ramura .insp-pk-top { display: none !important; }   /* pe o ramură (și „Pachet și conturi") titlul nu se vede: pastila n-ar avea lângă ce sta */   /* pe telefon titlul are nevoie de loc; pachetul e în sertar */
-.insp-pk-top { margin-left: 8px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); white-space: nowrap; flex: none; }
+.insp-st-jos { border-top: 1px solid var(--border); padding: 6px 8px 10px; }
+/* Pachetul, un rând (macheta „mai simplu", 15.10): „Basic · 188 din 200"; amănuntul la trecerea cu mouse-ul. */
+.insp-fond { display: block; width: 100%; margin-top: 4px; padding: 7px 8px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); text-align: left; cursor: default; overflow-wrap: anywhere; }
+.insp-fond.link { cursor: pointer; }
+.insp-fond.link:hover { color: var(--text-primary); }
+.insp-fond.w { color: #92400e; }
+body.dark .insp-fond.w { color: #fbbf24; }
+/* Pachetele RA Insight (14.10): ramurile încuiate pe Start */
 .insp-ram.lock { color: var(--text-muted); }
 .insp-ram.lock .ic { color: var(--text-muted); }
 .insp-ram-pk { margin-left: 4px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 .insp-incuiat .chat-pas { margin-top: 12px; }
-.insp-pastrare { margin-top: 8px; font-size: 11px; color: var(--text-secondary); line-height: 1.45; }
-.insp-pastrare i { color: var(--text-muted); margin-right: 3px; }
 /* dreapta */
 .insp-dr-col { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
 .insp-top { display: flex; align-items: center; gap: 4px; padding: 8px 14px 6px; min-width: 0; }
 .insp-titlu { font-weight: 800; font-size: 15px; color: var(--text-primary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
 .insp-top-dr { margin-left: auto; display: flex; gap: 2px; flex: none; }
-.insp-top .insp-meniu, .insp-top .insp-nou-tel { display: none; } /* cu .insp-top în față: altfel .chat-ib (mai jos) le-ar arăta pe calculator */
+.insp-top .insp-meniu { display: none; } /* cu .insp-top în față: altfel .chat-ib (mai jos) l-ar arăta pe calculator */
 .insp.st-ascuns .insp-top .insp-meniu { display: inline-grid; }
 .insp.pe-ramura .insp-top .insp-titlu { visibility: hidden; } /* pagina ramurii își are titlul ei */
 .insp-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; min-width: 0; position: relative; }
@@ -3960,22 +3957,17 @@ body.dark .insp-pk-vezi { color: var(--accent); }
 .insp-a .bub .rax-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
 .insp-a .bub .rax-md-li { padding-left: 14px; position: relative; margin: 3px 0; }
 .insp-a .bub .rax-md-li::before { content: ''; position: absolute; left: 2px; top: .72em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.insp-a .ins-extra { margin: 0 0 8px; }
+.insp-a .ins-extra { margin: 0 0 6px; }
 .insp-a .ins-alege { margin-top: 8px; }
 .insp-surse { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .insp-salut { width: 100%; max-width: 780px; margin: 0 auto; text-align: center; color: var(--text-secondary); }
-.insp-salut h2 { font-size: 26px; font-weight: 800; color: var(--text-primary); margin: 14px 0 6px; }
-.insp-salut p { margin: 0 0 20px; line-height: 1.5; font-size: 14.5px; }
+.insp-salut h2 { font-size: 28px; font-weight: 800; color: var(--text-primary); margin: 0 0 18px; }
 .insp-gol-mij { overflow-y: auto; min-height: 0; display: flex; align-items: center; padding: 24px; grid-row: 1 / -1; }
-.insp-carduri { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; text-align: left; }
-.insp-card-q { display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
-.insp-card-q:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
-.insp-card-q > i { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-dark); color: var(--text-secondary); font-size: 13px; flex: none; }
-.insp-card-q b { display: block; font-size: 13.5px; }
-.insp-card-q span span { display: block; font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+/* Trei butoane scurte sub casetă (macheta „mai simplu"), în locul celor patru cartonașe. */
+.insp-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.insp-chip { font: inherit; font-size: 13px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.insp-chip:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
 .insp-scrie { padding: 6px max(24px, calc((100% - 780px) / 2)) 12px; }
-.insp-nota { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; font-size: 11.5px; color: var(--text-secondary); margin-top: 8px; } /* --text-muted ieșea 4,2 pe tema deschisă (măsurat 02.10) */
-.insp-nota i { color: var(--text-muted); margin-right: 4px; }
 .insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .insp-btn i { color: var(--text-muted); }
 .insp-btn:hover { border-color: var(--accent); }
@@ -3989,6 +3981,11 @@ body.dark .insp-pk-vezi { color: var(--accent); }
 .chat-ib.on { color: #06210F; background: var(--accent); }
 .chat-ib.on.jos { color: #fff; background: var(--red); }
 .chat-act { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin-top: 6px; margin-left: -6px; }
+/* Sub un răspuns (macheta „mai simplu", 15.10): Copiază · 👍 · 👎 · „Din raportul…" apar la trecerea cu mouse-ul; pe telefon (fără
+   mouse) rămân la vedere. Un 👍/👎 dat rămâne vizibil. */
+.insp-a .chat-act { opacity: 0; transition: opacity .12s; }
+.insp-a:hover .chat-act, .insp-a:focus-within .chat-act, .insp-a .chat-act:has(.on) { opacity: 1; }
+@media (hover: none) { .insp-a .chat-act { opacity: 1; } }
 .chat-act .chat-ib { width: 30px; height: 30px; font-size: 12.5px; }
 .chat-sursa { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
 .chat-sursa i { color: #16a34a; }
@@ -4007,7 +4004,7 @@ body.dark .chat-sursa i { color: var(--accent); }
 /* Eticheta „analiză aprofundată" (Pro / Business, când răspunde Sonnet) */
 .chat-aprof-r { margin: 0 0 6px; }
 .chat-aprof { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 1px 9px; border-radius: 999px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); }
-body:not(.dark) .chat-aprof, body:not(.dark) .insp-pk-top { color: #6d28d9; }   /* pastilele mici: violet mai închis pe tema deschisă (≥ 4,5) */
+body:not(.dark) .chat-aprof { color: #6d28d9; }   /* pastila mică: violet mai închis pe tema deschisă (≥ 4,5) */
 /* „Vezi pachetele": fereastra cu cele patru pachete */
 .insp-pk-ov { position: fixed; inset: 0; z-index: 3000; background: rgba(2,6,12,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .insp-pk-box { width: min(1060px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px 18px 16px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
@@ -4124,7 +4121,7 @@ body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent); color: #06210F; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; }
 .chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-light); cursor: default; }
 .chat-trimite:disabled { opacity: .6; }
-.chat-jos { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: none; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; z-index: 2; }
+.chat-jos { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: none; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; z-index: 2; }
 .chat-jos.vizibil { display: grid; }
 .chat-pop { position: fixed; z-index: 100001; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 14px; box-shadow: 0 18px 44px rgba(2,6,23,.28); padding: 6px; display: flex; flex-direction: column; overflow: hidden; }
 .chat-pop-t { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); padding: 6px 8px 4px; }
@@ -4136,6 +4133,11 @@ body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .chat-pop-i:hover { background: var(--bg-dark); }
 .chat-pop-i.rosu, .chat-pop-i.rosu i { color: var(--red); }
 .chat-pop-gol { padding: 10px; font-size: 12.5px; color: var(--text-secondary); }
+.chat-pop-i.sep { border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; margin-top: 4px; padding-top: 10px; }
+.chat-pop-nota { font-size: 11.5px; color: var(--text-secondary); line-height: 1.45; padding: 8px 10px 4px; border-top: 1px solid var(--border); margin-top: 4px; }
+/* „+" din casetă: rotund, cât butonul de trimis. */
+.chat-un.chat-plus { width: 34px; height: 34px; padding: 0; justify-content: center; }
+.chat-un.chat-plus i { font-size: 13px; color: var(--text-secondary); }
 .insp-ghid { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 16px 20px; overflow: hidden; min-height: 0; }
 .insp-ghid-lista { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
 .insp-ghid-lista button { font: inherit; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
@@ -4238,13 +4240,12 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
   .insp-st, .insp.st-ascuns .insp-st { display: flex; position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); transform: translateX(-104%); transition: transform .2s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); }
   .insp.st-deschis .insp-st { transform: none; }
   .insp.st-deschis .insp-umbra { display: block; position: absolute; inset: 0; z-index: 29; background: rgba(0,0,0,.45); }
-  .insp-top .insp-meniu, .insp-top .insp-nou-tel { display: inline-grid; }
+  .insp-top .insp-meniu { display: inline-grid; }
   .insp-top { padding: 6px 6px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
   .insp-titlu { flex: 1; text-align: center; }
   .insp.pe-ramura .insp-top .insp-titlu { visibility: visible; }
   .insp-msgs { padding: 14px 12px 8px; gap: 16px; }
   .insp-scrie { padding: 6px 10px 10px; }
-  .insp-nota { display: none; }
   .insp-u { max-width: 90%; }
   .insp-a { grid-template-columns: 26px minmax(0, 1fr); gap: 9px; }
   .insp-a .av { width: 26px; height: 26px; font-size: 11.5px; }
@@ -4254,7 +4255,6 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
   .chat-un .et { display: none; }
   .chat-un { width: 34px; padding: 0; justify-content: center; }
   .insp-salut h2 { font-size: 21px; }
-  .insp-carduri { grid-template-columns: minmax(0, 1fr); }
   .insp-gol-mij { padding: 16px 12px; align-items: flex-start; }
   .chat-jos { bottom: 96px; }
   .insp-ghid { grid-template-columns: 1fr; overflow-y: auto; }
@@ -4523,32 +4523,27 @@ body.dark .ver-noua > i { color: #3FE07D; }
 .azi-tit { font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
 .azi-cand { font-size: 12px; color: var(--text-secondary); }
 .azi-gol { font-size: 13px; color: var(--text-secondary); padding: 6px 0 2px; }
-.azi-r { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--border); }
+/* Un rând = un clic (macheta „mai simplu", 15.10): tot rândul e butonul; „›" sau, la o întrebare pentru RA Insight, „De ce?". */
+.azi-r { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 8px 4px; border: 0; border-top: 1px solid var(--border); background: transparent; font: inherit; color: inherit; text-align: left; }
+button.azi-r { cursor: pointer; border-radius: 0; }
+button.azi-r:hover { background: var(--bg-dark); }
+.azi-sg { color: var(--text-secondary); font-size: 11px; }
+.azi-dece { font-size: 12px; font-weight: 800; color: #6d28d9; white-space: nowrap; }
+body.dark .azi-dece { color: var(--purple); }
 .azi-cap + .azi-r { border-top: none; }
 .azi-st { width: 9px; height: 9px; border-radius: 50%; background: #15803d; }
 .azi-st.r { background: #dc2626; } .azi-st.w { background: #d97706; } .azi-st.b { background: #2563eb; }
 body.dark .azi-st { background: #3FE07D; } body.dark .azi-st.r { background: #ef4444; } body.dark .azi-st.w { background: #fbbf24; } body.dark .azi-st.b { background: #60a5fa; }
-.azi-mij { min-width: 0; }
-.azi-ag { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
 .azi-tx { font-size: 13.5px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
 .azi-tx b { font-weight: 800; }
-.azi-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.azi-acts .chat-pas { margin: 0; }
-.azi-jos { font-size: 12px; color: var(--text-secondary); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 2px; }
-.azi-set { font: inherit; font-size: 12px; font-weight: 800; color: #15803d; background: none; border: none; padding: 0; cursor: pointer; }
-body.dark .azi-set { color: var(--accent); }
-.azi-set:hover { text-decoration: underline; }
-@media (max-width: 760px) {
-  .azi-r { grid-template-columns: 9px minmax(0, 1fr); }
-  .azi-acts { grid-column: 2; justify-content: flex-start; }
-}
 .chat-rap { border: 1px solid var(--border); border-left: 3px solid #2563eb; border-radius: 12px; background: var(--bg-panel); padding: 10px 12px; margin: 8px 0 4px; display: grid; gap: 7px; }
 body.dark .chat-rap { border-left-color: #60a5fa; }
 .chat-rap-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); flex-wrap: wrap; }
 .chat-rap-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--bg-dark); color: var(--text-secondary); flex: none; font-size: 12px; }
 .chat-rap-t { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
-.chat-rap-p { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 99px; border: 1px solid #15803d; color: #166534; }
-body.dark .chat-rap-p { border-color: var(--accent); color: var(--accent); }
+.chat-rap-p { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border-light); color: var(--text-secondary); }   /* „fără rânduri" */
+.chat-rap-n { font-size: 12.5px; color: var(--text-primary); border-left: 3px solid #b45309; padding-left: 8px; }
+body.dark .chat-rap-n { border-left-color: #fbbf24; }
 .chat-rap-k { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--text-primary); }
 .chat-rap-k .l { color: var(--text-secondary); margin-right: 5px; }
 .chat-rap-k b { font-weight: 800; font-variant-numeric: tabular-nums; }

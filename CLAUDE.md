@@ -608,10 +608,10 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   „Capitolul 2, pasul 1"). `ALEGERI_RAPORT` (`/api/reports/ai-raport/intrebari` `subiecte`) rămâne doar pentru telefonul vechi.
 - **Secțiunea:** stânga `.insp-st` (pe telefon sertar: `st-deschis` + `.insp-umbra`; pe calculator se ascunde: `st-ascuns`)
   — `insightComutaStanga(v)`, `inchideSertar()`; dreapta `.insp-dr-col` = bara `.insp-top` (titlul din `setTitlu()`, ⋯ =
-  `insightMeniuConv`) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
-  salutul cu prenumele (`prenume()`, din `currentUser.full_name`) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU mai
-  e în lista ramurilor (`RAMURI.filter(… r.gata && r.k !== 'general')`, de două ori: lista și butonul Ramuri).
-- ⚠ `.insp-top .insp-meniu` / `.insp-nou-tel` au `.insp-top` în față: `.chat-ib` (mai jos în fișier) le-ar arăta pe calculator.
+  `insightMeniu`, din 15.10) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
+  salutul cu prenumele (`prenume()`, din `currentUser.full_name`) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU e
+  printre ramuri (din 15.10 lista e `pagini()`, sub „Pagini ▸" — vezi „RA Insight, mai simplu").
+- ⚠ `.insp-top .insp-meniu` are `.insp-top` în față: `.chat-ib` (mai jos în fișier) l-ar arăta pe calculator.
 - ⚠ **Capcană de unealtă, prinsă pe 08.10:** un script Python cu șir NE-brut transformă `\b` din JavaScript în caracterul
   „backspace" — expresia arată la fel, dar nu mai potrivește nimic. Inserările se scriu cu șiruri brute (`r'''…'''`) și se
   caută după fiecare caracterele de control (`grep -P "[\x00-\x08]"`).
@@ -682,14 +682,14 @@ Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în 
   te duce în secțiune, pe `window._raxConvId`. **Punctul mov** (`#rax-main-fab.are-nou`): `_aziVerifica` (din `updateFabs`, cel
   mult o dată la 5 minute, doar cu `me.aiCont`) cere `/api/insight/azi` și îl aprinde dacă o cheie din `chei` nu e printre cele
   văzute (`localStorage`, cu try/catch — o comoditate); „Azi la tine" desenat le marchează văzute (`window._aziVazut`).
-- **„Azi la tine"**: regulile și textele în **`azi_la_tine.js`** (curat; `randuri(d)` → `{ randuri, chei }`), datele în
+- **„Azi la tine"**: regulile și textele în **`azi_la_tine.js`** (curat; `randuri(d)` → `{ randuri, chei, deVazut }`), datele în
   `_aziLaTine(req)` (server.js, ținut minte 2 min pe om): mașinile tăcute cu **`agents.esteFaraSemnal`** (aceeași regulă ca RA
   Watch, pragul firmei, sub 7 zile; aparatul care n-a transmis niciodată nu e tăcut), ce au scris agenții AZI (`agent_findings`,
   fără „offline", pe mașinile omului), termenele din `_ramMentenanta`, mașinile libere cu **`agents.esteLiber`** (RA Dispatch),
   ieri din curse. Doar agenții porniți la firmă. `GET /api/insight/azi` = `requireAiSeat`; **nu se numără, pe niciun pachet**
   (fără `_numaraRaspunsReguli`, fără model). Noi (super-admin) primim `platforma: true`, gol. Butoanele: `harta`, `intreaba` /
   `raport` (pe reguli, `buton`), `dece` (RA Insight, doar cu AI — `areAi()`), `acte` (ramura, altfel întrebarea). Pagina doar
-  desenează (`deseneazaAzi`, textul prin `mdScurt`, care curăță întâi); „Setările agenților →" = `showView('agenti')`.
+  desenează (`deseneazaAzi`, textul prin `mdScurt`, care curăță întâi). Din 15.10 (macheta „mai simplu"), vezi mai jos.
 - **Rapoartele cerute în cuvinte**: înțelegerea în **`ai_raport.comanda(text, ctx.cmd, fisa, acum)`** — o CERERE = un verb
   (`CERE_RAPORT`: fă-mi, generează, scoate…) + „raport" sau un nume tare (`NUME_RAPOARTE`, `tare`: foaia de parcurs…); o întrebare
   („câți km…", „dă-mi consumul") rămâne întrebare. Fiecare raport din catalog trebuie înțeles după `Fă-mi raportul „<label>”`
@@ -707,12 +707,45 @@ Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în 
 - **Fila „AI Raport" SCOASĂ** (buton, fereastră, codul `rin*` afară de `rinOpenReport`, care deschide raportul de sub răspunsurile
   RA Insight). `POST /api/reports/ai-raport` și `_aiRaportCore` RĂMÂN: telefonul vechi și RA Insight pe reguli (Start, luna oprită).
 - **„Agenți AI" din meniu**: ascuns când `me.aiCont` (`/api/me`: nu super-admin, modulul pornit, `users.ai_seat`). Noi îl
-  păstrăm (pragurile platformei). Pagina se deschide și din „Azi la tine" → „Setările agenților" (Alin, 15.10: „da" — varianta A; NU pune un rând în Setări).
+  păstrăm (pragurile platformei). Pagina se deschide și din RA Insight: întâi linkul de sub „Azi la tine" (Alin, 15.10: „da" — varianta
+  A; NU pune un rând în Setări), mutat apoi, cu macheta „mai simplu" aprobată, în meniul „⋯" → „Setările agenților".
 - **RA Drive**: ce vede omul și ce citește modelul (ramura, unealta `safe_drive`, „Am înțeles", ghidul, pachete.js `DESCRIERE` +
   pagina publică). Numele tehnice rămân (`safedrive`, `safe_drive`, `_sdLuna`). Cine spune „Safe Drive" e înțeles tot de unealtă.
 - Ghidul: capitolul `raport_cerut` (în locul lui `ai_raport`), „Azi la tine" în `ra_insight`, drumul spre agenți.
-- Păzit de **`verify_un_singur_insight.js`** (în `npm test`; 70, pe server pornit, ZERO cereri către model), plus `verify_ai_raport.js`,
+- Păzit de **`verify_un_singur_insight.js`** (în `npm test`; 81, pe server pornit, ZERO cereri către model), plus `verify_ai_raport.js`,
   `verify_insight.js`, `verify_cifre.js`, `verify_insight_ghid.js`, `verify_safe_drive.js`, `verify_site_public.js`.
+
+### RA Insight, mai simplu (15.10; Alin: „ra insight mi se pare greu de utilizat… trebuie să fie ușoară" → macheta, „1. da, 2. da")
+Pe ecranul gol erau ~35 de butoane și casete; acum ~12. **Nicio funcție nu s-a pierdut: s-a mutat într-un singur loc** — „+", „⋯"
+sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc pentru același lucru = ce am scos).
+- **Salutul:** „Salut, {prenume}! Cu ce te pot ajuta?" (`prenume()`, din `currentUser.full_name`), fără iconița mare și paragraful.
+- **Caseta: un singur „+"** (`insightPlus` → `insightAlegeMasina` / `insightAlegePerioada` / `insightAlegeRaport`, Raport doar cu
+  `poateRapoarte()`). Sub ea **trei butoane scurte** (`CARDURI` / `CARDURI_REGULI`: `{ t, q }` — pe ecran `t`, pleacă `q`, cu `buton`).
+  Fără nota „Vede doar mașinile…" sub casetă (stă în ghid).
+- **„Azi la tine": cel mult TREI rânduri** (`azi_la_tine.MAX_RANDURI` = 3, ce cere atenție întâi; ziua de ieri doar dacă mai e loc;
+  `deVazut` = câte cer atenție de tot → „N de văzut"). **Un rând = un clic**: `aziPrimul(rd)` = primul buton pe care omul îl poate
+  folosi; serverul pune „De ce?" (o întrebare care se numără) DUPĂ butoanele gratuite, iar când e singurul, rândul scrie „De ce?"
+  (`.azi-dece`) — omul trebuie să știe că se numără. Numele agentului = doar `title`.
+- **„⋯" (`insightMeniu`, sus în dreapta):** Pachet și conturi (doar `esteAdmin()` cu pachet), Notițele firmei, Setările agenților
+  (cu modulul `agents` și `viewReports`), Ghidul aplicației, Redenumește / Șterge conversația (cu una deschisă); pe telefon și
+  „Conversație nouă". Nota despre păstrarea conversațiilor = al 5-lea argument al `_chatAlege` (`nota`); `sep` pe un rând = linie
+  deasupra. Iconița de notițe, pastila pachetului de sus, butonul de închidere și ✎ de pe telefon au fost SCOASE.
+- **Stânga:** Conversație nouă, „Caută în conversații" (un rând → caseta), conversațiile pe zile, **„Pagini ▸"** (`pagini()` =
+  ramurile livrate, fără `general` și fără `meniu: true` — ghidul stă în „⋯"; închise, cu suma numerelor; deschise când stai pe una —
+  `insightPagini`, `paginiDeschise()`) și **un rând cu pachetul** (`deseneazaPachet`: `nume · scurt`, amănuntul — `text`, `textOm`,
+  `reincarcare` — în `title`; administratorul ajunge din el în „Pachet și conturi"). Regula veche, pe cont, tot pe un rând (textele ei
+  rămân: „oprit până pe …, fără niciun cost în plus"; „Un cont în plus aduce încă N" în `title`).
+- **Contorul fondatorului** (Alin: „nici nu văd contorul… chiar dacă am admin de fondator"): fără pachet și fără limită, `textContor`
+  dă „Fondator · fără limită" (`S.fondator` = `currentUser.isSuper`; un client pe regula veche nelimitată: „Fără limită") — jos și
+  lângă casetă (`S.contor`).
+- **Răspunsul:** „Am înțeles" = **titlu scurt** (`_insightExtra` partea `'inteles'` → `.ins-tit`, ce vine din discuție cu creierașul
+  mov), cel mult **două** butoane spre rapoarte (`surse.slice(0, 2)`), Copiază · 👍 · 👎 · „Din raportul…" la trecerea cu mouse-ul
+  (`.insp-a .chat-act` opacity; la vedere sub `@media (hover: none)` și când 👍/👎 e dat). Sub un raport cerut (`cuRaport`): doar
+  cartonașul, fără titlu și fără text; ce trebuie știut (perioada tăiată, raportul oprit înainte de capăt) vine de la server în
+  `raport.note` și se scrie în cartonaș. Mesajul pachetului (`.chat-lim`): „Alege ce vrei să afli" (= „+") și, la administrator,
+  „Vezi pachetele".
+- Telefonul (aplicația lui Robert) rămâne cum e până la APK-ul următor. Păzit de `verify_un_singur_insight.js` (secțiunea 3),
+  `verify_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js` (ghidul spune „+", „Pagini", „Mai multe").
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
@@ -765,9 +798,10 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   „Abonament & plăți" (`_raxClientPrice(…, setate)`).
 - **Pe ecran** (blocul „secțiunea RA Insight"): `incarcaPachet` / `deseneazaPachet` / `actualizeazaCaseta` (doar textele serverului:
   `pachet.text`, `scurt`, `textOm`, `reincarcare`), ramurile cu `pachet: true` încuiate pe Start (`ramuraIncuiata`,
-  `deseneazaIncuiata`), „Raport" în loc de „Ramuri" pe butoane, `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
+  `deseneazaIncuiata`), „+" în casetă (din 15.10), `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
   `pachetMesaj` de la server) în `.chat-lim`, eticheta `.chat-aprof`, „Vezi pachetele" (`insightPachete`, doar administratorul).
-  Din 15.10 bula din colț duce în secțiune (nu mai are caseta ei), iar fila AI Raport a ieșit din Rapoarte.
+  Din 15.10 bula din colț duce în secțiune (nu mai are caseta ei), fila AI Raport a ieșit din Rapoarte, iar pachetul stă pe UN rând
+  jos în stânga (macheta „mai simplu").
 - **Pasul 3, „Pachet și conturi"** (blocul secțiunii, `S.ramura === 'pachet'` → `deseneazaPachetConturi`; din caseta pachetului
   și din Utilizatori, `insightPachetConturi`): `GET /api/insight/pachet-conturi` (`manageUsers`) → cartonașele
   (`pachete.cartonaseConturi`), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota (`notaConturi`).
