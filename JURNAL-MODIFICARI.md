@@ -345,7 +345,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-15
 
-### AMÂNDOI · RA Insight, Capitolul 2, pasul 1: un singur RA Insight
+### AMÂNDOI · RA Insight, Capitolul 2, pasul 1: un singur RA Insight — `9c7a13d`, `ea0bccd`
 
 Alin (15.10), după macheta „Un singur RA Insight": *„1da 2.da 3. Da"* — macheta e bună, setările agenților se deschid din
 „Azi la tine", un raport cerut din RA Insight stă 7 zile în Istoric, ca toate.
@@ -373,6 +373,8 @@ Ce se schimbă pe ecran, pentru cine are cont RA Insight:
   `_istoricRaport`, `aiCont` în `/api/me`, RA Drive), pagina (bula, „Azi la tine", cartonașul raportului, butonul „Raport", fila
   AI Raport scoasă, meniul, rezumatul din Rapoarte), `app.css`, `insight_ghid.js`, `pachete.js`, pagina publică a pachetelor.
   Probă nouă: `verify_un_singur_insight.js` (70, pe server pornit, zero cereri către model); probele vechi mutate pe regula nouă.
+- La firmele rămase pe regula veche (pe cont), „oprit până pe …, fără niciun cost în plus" și „Un cont în plus aduce încă N" le
+  scrie acum caseta din stânga a secțiunii (până azi le scria bara bulei).
 - **Ce vede fondatorul:** ca super-admin, „Agenți AI" rămâne în meniu (acolo puneți pragurile platformei), iar „Azi la tine" e
   gol — noi n-avem o flotă a noastră. Ca să vedeți ce vede clientul, intrați cu un cont de client care are RA Insight.
 - **Ce vede clientul:** tot ce e mai sus. Colegii fără cont RA Insight văd ca înainte (cu „Agenți AI" în meniu), dar fără fila
