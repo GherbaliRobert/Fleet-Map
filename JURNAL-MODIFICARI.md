@@ -357,7 +357,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-16
 
-### FONDATOR · Control costuri: soldul Anthropic se socotește și cu creditul trecut pe ziua de azi — `…`
+### FONDATOR · Control costuri: soldul Anthropic se socotește și cu creditul trecut pe ziua de azi — `f26ca81`
 
 Robert (16.10, captură): a trecut în cardul Anthropic (📊) soldul din consola Anthropic, „4.08 la 16-Oct", și în locul soldului
 a primit eroarea Anthropic „ending date must be after starting date". Anthropic nu primește o perioadă care începe azi
