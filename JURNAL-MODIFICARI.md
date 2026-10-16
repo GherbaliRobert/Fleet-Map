@@ -355,6 +355,21 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
 
+## 2026-10-16
+
+### FONDATOR · Control costuri: soldul Anthropic se socotește și cu creditul trecut pe ziua de azi — `…`
+
+Robert (16.10, captură): a trecut în cardul Anthropic (📊) soldul din consola Anthropic, „4.08 la 16-Oct", și în locul soldului
+a primit eroarea Anthropic „ending date must be after starting date". Anthropic nu primește o perioadă care începe azi
+(costurile vin pe zile încheiate), iar aplicația îi cerea tocmai asta: „cât s-a cheltuit de azi încoace".
+
+- **Ce am schimbat:** `server.js` (cititorul cheltuielii Anthropic): o perioadă care începe azi = 0 cheltuit, fără întrebare la
+  Anthropic; soldul arătat = creditul trecut. De mâine se scade cheltuiala zilei de 16. Același lucru repară și ziua de 1 a
+  fiecărei luni („Folosit luna" ar fi dat aceeași eroare). Încercat pe funcția decupată, cu Anthropic fals: azi, ieri, luna, viitor.
+- **Ce vede fondatorul:** cardul Anthropic arată soldul (4,08 $), nu eroarea. Cât timp folosiți reîncărcarea automată, soldul
+  se corectează în 📊 după fiecare reîncărcare (aplicația nu află de ele).
+- **Ce vede clientul:** nimic (Control costuri e doar al nostru).
+
 ## 2026-10-15
 
 ### CLIENT · Administratorul fără cont RA Insight al lui ajunge tot în „Pachet și conturi" — `053805d`, `8791d4d`

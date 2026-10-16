@@ -17387,6 +17387,10 @@ async function fetchAnthropicSpend(startingAtISO) {
   const startingAt = startingAtISO || startOfMonth.toISOString().replace(/\.\d{3}Z$/, 'Z');
   const endingAt = endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
   if (Date.parse(startingAt) >= Date.parse(endingAt)) return { configured: true, spentUsd: 0 }; // interval invalid (dată în viitor) → 0 cheltuit, fără apel API
+  // Un interval care începe AZI (creditul trecut pe ziua de azi, sau 1 ale lunii) e refuzat de Anthropic cu 400 „ending date
+  // must be after starting date" — costul vine pe zile încheiate. Nimic raportat încă = 0 cheltuit, fără apel (16.10, Robert:
+  // „Credite 4.08 la 16-Oct" dădea eroare în locul soldului).
+  if (Date.parse(startingAt) >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0)) return { configured: true, spentUsd: 0 };
   const _ck = startingAt; const _cc = _anthSpendCache.get(_ck);
   if (_cc && (Date.now() - _cc.at) < 60000) return _cc.data; // rezultat proaspăt din cache
   const BASE = 'https://api.anthropic.com/v1/organizations/cost_report';
