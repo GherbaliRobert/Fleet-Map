@@ -191,6 +191,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   ale noastre, Scrisoarea de luni, citirea actelor). Dacă acolo scrie „necesită cheie Admin", Robert pune pe server cheia de
   administrare Anthropic (o cheie „Admin", alta decât cea pe care o folosește RA Insight). Apoi, în fereastra cardului (📊),
   treceți creditele cumpărate și ziua în care le-ați cumpărat: soldul scade singur.
+- [ ] **Voi: creditele Anthropic, înainte de primii clienți cu RA Insight. Adăugat pe 16.10.** Soldul e 4,90 $; luna asta s-au
+  dus 0,64 $ în 16 zile (doar noi), deci ține câteva luni așa, dar cu clienți se golește repede. La 0 $, RA Insight nu mai
+  răspunde cu AI nimănui. De pus mai mulți bani sau reîncărcarea automată, din consola Anthropic → Billing, și trecută suma
+  nouă în cardul Anthropic (📊) din Control costuri.
 - [ ] **Alin: reperele anonime — RA Insight „învață" din toate flotele. Adăugat pe 08.10 (Alin: „mi-o ții minte… vedem dacă
   o mai facem").** Comparații de felul „flota ta consumă cu 12% peste flotele asemănătoare", din cifre adunate de la toți
   clienții, fără nume, numere sau locuri. Dacă o facem: o etapă separată, după capitolul AI, și o clauză în contract
