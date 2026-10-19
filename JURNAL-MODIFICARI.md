@@ -364,7 +364,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-19
 
-### CLIENT · RA Insight nu-l mai trimite pe client să verifice echipamentul; fără cuvinte cu litere rusești
+### CLIENT · RA Insight nu-l mai trimite pe client să verifice echipamentul; fără cuvinte cu litere rusești — `69b3f14`, `cf54804`
 
 Alin (19.10), cu poza unui răspuns de pe ratrack.ro: la „Ce să faci" scria *„Dacă vrei consum real și la Logan, verifică dacă are
 senzor de combustibil sau contor de consum care să trimită date"* — *„mesajele de genul ăsta îl trimit pe client la noi… nu trebuie
