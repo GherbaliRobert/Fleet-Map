@@ -102,9 +102,10 @@ T('Traseu de la o problemă: mașina, intervalul, traseul arătat și punctul ma
 T('meniul fondatorului: „RA Insight · control" sus, mereu la vedere (nu într-un grup); grupul se cheamă „Module"', /<button class="nav-item" data-vert="fondator" data-super onclick="navGo\(this, function\(\)\{ goSistem\('agents'\); \}\)"><i class="fas fa-wand-magic-sparkles"><\/i><span>RA Insight · control<\/span><\/button>\s*<div class="nav-group" data-vert="fondator" data-group="gestiune">/.test(PAG) &&
   /<span>Module<\/span>/.test(PAG) && PAG.indexOf('<span>Utilizare RA Insight</span>') < 0 && /agents: 'RA Insight · control'/.test(PAG));
 const LOAD = PAG.slice(PAG.indexOf('window.raxLoadAiUsage = async function'), PAG.indexOf('// ─── sfârșit „Panoul RA Insight pe firme"'));
-T('pagina pe un ecran: patru cifre, ce cere atenție, firmă cu firmă, controalele; restul doar sub „Mai multe cifre" (închis)',
-  /box\.innerHTML = _aiuPachete\(d\.pachete\)\s*\+ _aiuAtentie\(d\.pachete, s, rows\)\s*\+ _aiuTabel\(rows\)\s*\+ _aiuControale\(d\.pachete\)/.test(LOAD) && /<div class="aiu-mai-box" style="display:none;">/.test(LOAD));
-const CTL = PAG.slice(PAG.indexOf('function _aiuControale('), PAG.indexOf('window.raxAiMaiMulte'));
+// Din 19.10 (punctul 5) panoul vechi „Mai multe cifre" a ieșit: pagina e doar asta, plus istoricul pe luni (buton).
+T('pagina pe un ecran: patru cifre, ce cere atenție, firmă cu firmă, controalele, istoricul; panoul vechi „Mai multe cifre" nu mai e',
+  /box\.innerHTML = _aiuPachete\(d\.pachete\)\s*\+ _aiuAtentie\(d\.pachete, s, rows\)\s*\+ _aiuTabel\(rows\)\s*\+ _aiuControale\(d\.pachete\)\s*\+ '<div class="aiu-ist-box">'/.test(LOAD) && LOAD.indexOf('aiu-mai-box') < 0 && PAG.indexOf('raxAiMaiMulte') < 0);
+const CTL = PAG.slice(PAG.indexOf('function _aiuControale('), PAG.indexOf('function _aiuPachetRand('));
 T('controalele, toate într-un loc: proba modelelor, analiza aprofundată, soldul și cheia Anthropic, istoricul', ['raxProbaModele()', 'raxAiAprofundat(', 'raxAiSold()', "goSistem('dashboard')", 'raxAiIstoric()'].every((x) => CTL.indexOf(x) >= 0));
 
 // ─── 6. Pe server pornit: discuția lui Alin, cu modelul simulat ─────────────────────────────────────

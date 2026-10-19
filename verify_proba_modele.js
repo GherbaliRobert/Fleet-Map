@@ -252,8 +252,11 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     const DBS = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
     T('rândurile vechi, fără model scris, se socotesc ca Haiku 4.5 (modelul de atunci), nu ca modelul de azi',
       /const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';/.test(DBS) && /r\.model \|\| MODEL_RANDURI_VECHI/.test(DBS));
-    T('pagina ia costul de pe rând de la server, nu-l mai socotește pe prețul Haiku 4.5',
-      (PAG.match(/_raxCostRand\(c\)/g) || []).length === 1 && (PAG.match(/_raxCostRand\(pf\)/g) || []).length === 1 && !/\$' \+ _raxCost\(c\.ai_input/.test(PAG));
+    // Din 19.10 (Alin, punctul 5) costul AI stă într-un singur loc: „RA Insight · control". Acolo costul unei firme vine gata
+    // de la server (/api/admin/ai-usage, pe modelul fiecărui răspuns); „Dashboard platformă" nu-l mai arată (nici tokenii, nici
+    // limita veche pe firmă) și nu mai are nicio socoteală pe prețul Haiku 4.5.
+    T('pagina ia costul firmei de la server, într-un singur loc („RA Insight · control"); Dashboard platformă nu-l mai socotește',
+      /var cost = x\.pachet \? \(x\.plasa \? x\.plasa\.costLei : 0\) : x\.costEur \* fx;/.test(PAG) && !/_raxCostRand|function _raxCost\(|RAX_TOK_IN_RATE|raxSetAiLimit|Consum AI \(30z\)/.test(PAG));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

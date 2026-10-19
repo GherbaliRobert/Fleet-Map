@@ -15,6 +15,13 @@
 // rotunjire, schimbă cifra de pe ecran (așa s-a prins marja 90% pe telefon vs. 91% pe web, când telefonul folosea
 // costul rotunjit de server). Separat, verificăm că o sumă, un număr de întrebări și o lună se scriu la fel.
 //
+// Din 19.10 (Alin, punctul 5) web-ul nu mai arată panoul vechi „Mai multe cifre" (cele șase cartonașe și o cutie pe firmă):
+// pagina e „RA Insight · control". Telefonul de azi încă le arată. Ca cifrele lui să nu rămână nepăzite până la APK-ul care
+// aduce pagina nouă pe telefon, funcțiile scoase de pe web (_aiuKpiuri, _aiuCard, _aiuTendinta, _aiuSageata, _aiuStare) stau
+// mai jos, în REFERINTA, copiate întocmai din pagină în ziua scoaterii, și rulează lângă blocul web de azi (aceleași
+// unelte: _aiuLei, _aiuKpi, _aiuEstimare…). Proba e aceeași; s-a mutat doar locul formulelor. Când telefonul trece pe pagina
+// nouă, pleacă din insightBani.ts și de aici.
+//
 // Nu pornește serverul și nu are nevoie de rețea. Are nevoie de TypeScript din mobile/node_modules (e acolo
 // oricum pentru `tsc` pe aplicația de telefon).
 const fs = require('fs');
@@ -39,6 +46,119 @@ const A = '// ─── începe „Panoul RA Insight pe firme"', Z = '// ──�
 const ia = HTML.indexOf(A), iz = HTML.indexOf(Z);
 if (ia < 0 || iz < 0 || iz < ia) { console.log('✗ nu găsesc blocul „Panoul RA Insight pe firme" în public/index.html'); process.exit(1); }
 const BLOC = HTML.slice(ia, iz);
+// Formulele panoului vechi (scos de pe web pe 19.10), copiate întocmai din public/index.html — vezi capul fișierului.
+const REFERINTA = `
+    function _aiuStare(r) {
+      if (!r.enabled) return { t: 'fără RA Insight', c: 'var(--text-muted)' };
+      if (r.epuizat) return { t: 'fond terminat', c: 'var(--red)' };
+      if (r.used > 0) return { t: 'folosește', c: 'var(--accent)' };
+      if (r.conturi > 0) return { t: 'conturi date, zero întrebări', c: 'var(--orange)' };
+      return { t: 'niciun cont dat', c: 'var(--orange)' };
+    }
+    function _aiuTendinta(ist) {
+      var l = Array.isArray(ist) ? ist : []; if (l.length < 2) return null;
+      var u = l[l.length - 1], p = l[l.length - 2];
+      var acum = u.facturatLei || _aiuEstimare(u), inainte = p.facturatLei || 0;
+      if (!(inainte > 0)) return null;
+      return { pct: Math.round(((acum - inainte) / inainte) * 100), estimat: !u.facturatLei && _aiuEstimare(u) > 0 };
+    }
+    function _aiuSageata(t) {
+      if (!t) return '';
+      var sus = t.pct >= 0;
+      return '<span style="color:' + (sus ? 'var(--accent)' : 'var(--red)') + ';font-weight:700;">'
+        + (sus ? '▲ +' : '▼ ') + t.pct + '%</span> față de luna trecută'
+        + (t.estimat ? ' <span style="color:var(--orange);">(estimat)</span>' : '');
+    }
+    function _aiuKpiuri(s, rows, ist, fx) {
+      var r = Array.isArray(rows) ? rows : [];
+      var venit = Number(s.totalVenitLei) || 0;
+      var cost = (Number(s.totalCostEur) || 0) * fx;
+      var profit = Math.round((venit - cost) * 100) / 100;
+      var conturi = Number(s.conturi) || 0;
+      var conturiAcum = r.reduce(function (a, x) { return a + (x.conturi || 0); }, 0);
+      var intrebari = Number(s.totalCalls) || 0, fond = Number(s.fond) || 0;
+      var marja = venit > 0 ? Math.round(((venit - cost) / venit) * 100) : null;
+      var peCont = conturi > 0 ? venit / conturi : null;
+      var peIntrebare = intrebari > 0 ? cost / intrebari : null;
+      var t = _aiuTendinta(ist);
+      var pct = fond > 0 ? Math.min(100, Math.round((intrebari / fond) * 100)) : null;
+      var culoareFond = fond && intrebari >= fond ? 'var(--red)' : (pct != null && pct >= 80 ? 'var(--orange)' : 'var(--accent)');
+      var cuPret = r.filter(function (x) { return x.pachet ? x.venitLei > 0 || !x.pachet.ai : x.pretCont > 0; }).length;   // ca la avertismente
+
+      return '<div class="aiu-grup">Banii, luna curentă</div><div class="aiu-kpiuri">'
+        + _aiuKpi({
+            cap: 'Încasăm', icon: 'arrow-down-to-line', val: _aiuLei(venit), ton: venit > 0 ? 'ok' : '',
+            sub: conturi > 0
+              ? conturi + ' ' + (conturi === 1 ? 'cont' : 'conturi') + (peCont ? ' × ' + _aiuNr(peCont) + ' lei în medie' : '')
+              : 'niciun cont de facturat',
+            jos: _aiuSageata(t) })
+        + _aiuKpi({
+            cap: 'Ne costă', icon: 'server', val: _aiuLei(cost),
+            sub: window._raxNrI(intrebari) + (peIntrebare ? ' · ' + _aiuNr(peIntrebare) + ' lei una' : ''),
+            jos: 'plata către model' })
+        + _aiuKpi({
+            cap: 'Profit', icon: 'piggy-bank', val: _aiuLei(profit),
+            ton: venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad',
+            sub: venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui',
+            jos: 'din RA Insight, nu din tot RA Track' })
+        + '</div>'
+        + '<div class="aiu-grup">Clienții</div><div class="aiu-kpiuri">'
+        + _aiuKpi({
+            cap: 'Firme cu RA Insight', icon: 'building', val: (s.withFeature || 0) + ' <span class="mic">din ' + (s.companies || 0) + '</span>',
+            sub: (s.active || 0) + ' îl folosesc efectiv',
+            jos: cuPret < (s.withFeature || 0)
+              ? '<span style="color:var(--orange);">' + ((s.withFeature || 0) - cuPret) + ' fără preț pe cont</span>'
+              : 'toate au preț pe cont' })
+        + _aiuKpi({
+            cap: 'Conturi de facturat', icon: 'id-badge', val: String(conturi),
+            sub: conturiAcum + (conturiAcum === 1 ? ' aprins acum' : ' aprinse acum')
+              + (conturi > conturiAcum ? ' · ' + (conturi - conturiAcum) + (conturi - conturiAcum === 1 ? ' stins' : ' stinse') + ' pe parcurs' : ''),
+            jos: peCont ? 'un cont aduce ' + _aiuLei(peCont) : 'fără preț pe cont' })
+        + _aiuKpi({
+            cap: 'Întrebări', icon: 'comments', val: intrebari + (fond ? ' <span class="mic">din ' + fond + '</span>' : ''),
+            ton: fond && intrebari >= fond ? 'bad' : '',
+            sub: fond
+              ? '<div class="aiu-fond"><div style="width:' + pct + '%;background:' + culoareFond + ';"></div></div>'
+              : 'fără fond stabilit',
+            jos: fond ? (intrebari >= fond ? 'fondul s-a terminat' : (fond - intrebari) + ' rămase din fondul lunii') : 'nimeni nu e limitat' })
+        + '</div>';
+    }
+    function _aiuCard(r, deschis) {
+      var st = _aiuStare(r);
+      var pct = r.pct == null ? null : Math.min(100, r.pct);
+      var culoare = r.epuizat ? 'var(--red)' : (r.pct != null && r.pct >= 80 ? 'var(--orange)' : 'var(--accent)');
+      var bara = pct == null ? '<div style="font-size:12px;color:var(--text-muted);">' + window._raxNrI(r.used) + ' · fără fond stabilit</div>'
+        : '<div style="font-size:12px;margin-bottom:4px;"><b>' + r.used + '</b> din ' + window._raxNrI(r.fond)
+          + ' <span style="color:var(--text-muted);">· ' + r.pct + '%</span></div>'
+          + '<div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + culoare + ';"></div></div>';
+      var bani = (r.venitLei > 0 ? '<span>încasăm <b>' + _aiuLei(r.venitLei) + '</b></span>' : '<span style="color:var(--text-muted);">nu se facturează</span>')
+        + '<span style="color:var(--text-muted);">ne costă ' + _aiuLei(r.costEur * _aiuFx()) + '</span>'
+        + (r.venitLei > 0 ? '<span>profit <b style="color:' + ((r.venitLei - r.costEur * _aiuFx()) >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(r.venitLei - r.costEur * _aiuFx()) + '</b></span>' : '');
+      return '<div class="aiu-card' + (deschis ? ' deschis' : '') + '" data-firma="' + r.id + '">'
+        + '<button class="aiu-cap" onclick="raxAiFirma(' + r.id + ')">'
+        +   '<span class="aiu-nume">' + esc(r.name) + '</span>'
+        +   '<span class="aiu-pastila" style="color:' + st.c + ';border-color:' + st.c + ';">' + st.t + '</span>'
+        +   '<span class="aiu-conturi">' + r.conturi + ' ' + (r.conturi === 1 ? 'cont' : 'conturi')
+        +     (r.deFacturat > r.conturi ? ' <span style="color:var(--orange);">(' + r.deFacturat + ' de facturat)</span>' : '') + '</span>'
+        +   '<i class="fas fa-chevron-down aiu-sageata"></i>'
+        + '</button>'
+        // Firma fără RA Insight n-are ce fond și ce bani să arate — două rânduri goale care fac
+        // lista mai greu de citit tocmai la firmele care nu ne interesează acum.
+        + (r.enabled ? '<div class="aiu-bara">' + bara + '</div><div class="aiu-bani">' + bani + '</div>' + _aiuPachetRand(r) : '')
+        + _aiuSemnale(r)
+        + '<div class="aiu-det" style="display:' + (deschis ? 'block' : 'none') + ';">'
+        +   '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(r)
+        +   (r.enabled ? '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(r) : '')
+        +   (r.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div>'
+              + '<div>În ultimele 12 luni: <b>' + _aiuLei(r.facturatLei) + '</b>'
+              + (r.incasatLei !== r.facturatLei
+                  ? ' — a intrat în cont: <b>' + _aiuLei(r.incasatLei) + '</b>, restul e neplătit'
+                  : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
+        +   '<div style="margin-top:8px;color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(r.lastUsed) + ' · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>'
+        + '</div></div>';
+    }
+`;
+if (/function _aiuKpiuri|function _aiuCard\b/.test(BLOC)) { console.log('✗ panoul vechi a revenit în pagină (_aiuKpiuri / _aiuCard): scoate-l din REFERINTA sau din pagină, nu din amândouă'); process.exit(1); }
 const mNrI = HTML.match(/window\._raxNrI = function \(n\) \{[^\n]*\};/);
 if (!mNrI) { console.log('✗ nu găsesc window._raxNrI în public/index.html'); process.exit(1); }
 
@@ -52,7 +172,7 @@ function webCtx(etichete) {
   };
   ctx.window = { raFx: () => ({ eur: CURS.v }) };
   vm.createContext(ctx);
-  vm.runInContext(mNrI[0] + '\n' + BLOC, ctx, { filename: 'index.html#ra-insight' });
+  vm.runInContext(mNrI[0] + '\n' + BLOC + '\n' + REFERINTA, ctx, { filename: 'index.html#ra-insight' });
   ctx._raxNrI = ctx.window._raxNrI;
   if (etichete) {
     // Suma rămâne în HTML nerotunjită, ca s-o putem compara ca număr.
@@ -333,10 +453,20 @@ sect('4. Web-ul dă blocului cursul din răspuns, ca telefonul');
 // Scenariile de mai sus pun ele `_aiuFxResp`; aici verificăm că și pagina adevărată o face, ÎNAINTE de cartonașe.
 const LOAD = (() => { const i = HTML.indexOf('window.raxLoadAiUsage = async function'); return i < 0 ? '' : HTML.slice(i, HTML.indexOf('\n    };', i)); })();
 T('raxLoadAiUsage există', !!LOAD);
-const iSet = LOAD.indexOf('_aiuFxResp = Number(d.fxEur)'), iCard = LOAD.indexOf('_aiuCard(');
-T('pune cursul din răspuns înainte de cartonașe', iSet > 0 && iCard > iSet, 'set ' + iSet + ' · card ' + iCard);
+const iSet = LOAD.indexOf('_aiuFxResp = Number(d.fxEur)'), iSume = LOAD.indexOf('_aiuPachete(');
+T('pune cursul din răspuns înainte de primele sume (cele patru cifre de sus)', iSet > 0 && iSume > iSet, 'set ' + iSet + ' · sume ' + iSume);
+T('panoul vechi nu mai e în pagină (nici cutia „Mai multe cifre", nici cartonașele pe firme)', LOAD.indexOf('aiu-mai-box') < 0 && LOAD.indexOf('_aiuKpiuri(') < 0 && LOAD.indexOf('_aiuCard(') < 0);
+
+sect('5. Tendința de pe telefon (web-ul n-o mai arată din 19.10; cazurile erau în verify_insight_panou.js)');
+const LT = (inapoi) => { const a = new Date(); return new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - inapoi, 1)).toISOString().slice(0, 7); };
+const ML = (luna, o) => Object.assign({ luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);
+T('crește', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { facturatLei: 150 })]) || {}).pct === 50);
+T('scade', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { facturatLei: 60 })]) || {}).pct === -40);
+T('luna curentă estimată e marcată ca atare', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { estimatLei: 120 })]) || {}).estimat === true);
+T('de la zero nu se calculează procent', P.tendinta([ML(LT(1), {}), ML(LT(0), { facturatLei: 50 })]) === null);
+T('cu o singură lună, nici atât', P.tendinta([ML(LT(0), { facturatLei: 50 })]) === null);
 T('_aiuFx preferă cursul din răspuns', /function _aiuFx\(\) \{ return _aiuFxResp \|\|/.test(BLOC));
 flush();
 
-console.log('\n' + (rele ? '✗ ' + rele + ' diferențe între telefon și web (din ' + (ok + rele) + ')' : '✓ Telefonul arată aceleași sume ca web-ul (' + ok + ' verificări)'));
+console.log('\n' + (rele ? '✗ ' + rele + ' diferențe între telefon și web (din ' + (ok + rele) + ')' : '✓ Telefonul arată aceleași sume ca web-ul și ca formulele panoului vechi (' + ok + ' verificări)'));
 process.exit(rele ? 1 : 0);

@@ -3687,23 +3687,8 @@
   .raco-mrr{ margin-left:0; }
 }
 
-/* ── „RA Insight pe firme" (fondator): o firmă pe cartonaș, desfăcut ─────────────────────────────
-   Tabelul de dinainte spunea povestea veche („apeluri / cotă"), de când RA Insight se vindea pe
-   firmă. Acum se vinde pe cont, iar socoteala are mai multe rânduri decât încap într-o celulă:
-   conturi acum, conturi de facturat, fond, consum, ce încasăm, ce ne costă, cine are cont. */
-.aiu-lista{ display:flex; flex-direction:column; gap:10px; }
-.aiu-card{ background:var(--bg-dark); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
-.aiu-card.deschis{ border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.aiu-cap{ display:flex; align-items:center; gap:10px; width:100%; background:none; border:0; padding:0;
-  cursor:pointer; color:var(--text-primary); font-family:inherit; text-align:left; }
-.aiu-nume{ flex:1; min-width:0; font-size:14px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.aiu-pastila{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; border:1px solid; white-space:nowrap; }
-.aiu-conturi{ font-size:12px; color:var(--text-muted); white-space:nowrap; }
-.aiu-sageata{ font-size:11px; opacity:.5; transition:transform .18s; }
-.aiu-card.deschis .aiu-sageata{ transform:rotate(180deg); opacity:1; color:var(--accent); }
-.aiu-bara{ margin-top:9px; }
-.aiu-bani{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:8px; }
-.aiu-det{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:12.5px; line-height:1.55; }
+/* ── „RA Insight · control" (fondator): titlurile din amănuntul unei firme. Cartonașele pe firme de dinainte (.aiu-card…) au
+   ieșit pe 19.10, odată cu panoul „Mai multe cifre"; rândul firmei e acum în tabel (.aiu-tab, mai jos). */
 .aiu-titlu{ font-size:10.5px; font-weight:800; color:var(--accent); text-transform:uppercase;
   letter-spacing:.4px; margin-bottom:4px; }
 /* Istoricul lună de lună — citit din facturi, nu recalculat. */
@@ -3742,8 +3727,6 @@
 .aiu-kpi-link{ cursor:pointer; }
 .aiu-kpi-link:hover{ border-color:var(--accent); transform:translateY(-2px); }
 .aiu-kpi{ transition:border-color .15s, transform .15s; }
-.aiu-fond{ height:6px; border-radius:4px; background:var(--border); overflow:hidden; margin-top:3px; }
-.aiu-fond > div{ height:100%; }
 /* Ce nu e în regulă se spune tare, o dată, sus — nu se caută prin cartonașe. */
 .aiu-alerta{ display:flex; gap:9px; align-items:flex-start; font-size:12.5px; line-height:1.5;
   border-radius:10px; padding:9px 12px; margin-bottom:8px; }
@@ -3754,10 +3737,6 @@
   border:1px solid color-mix(in srgb, var(--orange) 28%, transparent); }
 .aiu-graf{ height:230px; margin:14px 0; }
 @media (max-width:640px){ .aiu-graf{ height:190px; } }
-@media (max-width:640px){
-  .aiu-cap{ flex-wrap:wrap; }
-  .aiu-nume{ flex:1 1 100%; }
-}
 
 /* ── Sugestiile din Ofertare Live (25.09) — doar pentru noi, nu ajung pe hârtia clientului ── */
 .raof-sfat{ margin:10px 0 6px; padding:10px 12px; border-radius:10px; background:var(--bg-panel); border-left:3px solid var(--accent);
@@ -4123,6 +4102,7 @@ body.dark .aiu-at.warn > i { color: #fbbf24; } body.dark .aiu-at.bad > i { color
 .aiu-tr { cursor: pointer; } .aiu-tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .aiu-ch { width: 14px; margin-right: 6px; font-size: 11px; color: var(--text-muted); }
 .aiu-det-in { padding: 4px 4px 8px 20px; font-size: 12.5px; }
+.aiu-det-in > .aiu-pk-r { margin-bottom: 10px; }   /* rândul pachetului, desprins de „Cum iese cifra" de dedesubt */
 .aiu-bar { display: inline-block; width: 80px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .aiu-bar > i { display: block; height: 100%; }
 .aiu-ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }

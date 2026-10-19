@@ -21981,12 +21981,6 @@ const pozitii = await r.json();</code></pre>
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
     // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
-    var RAX_TOK_IN_RATE = 1.0, RAX_TOK_OUT_RATE = 5.0; // $/1M tokeni (Haiku, estimativ — ajustează după prețul real)
-    function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
-    function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
-    // Costul unui rând din tabel: cel socotit de server pe modelul fiecărui răspuns (Haiku 4.5 / 5.5 / Sonnet, 12.10).
-    // Socoteala de mai sus, pe prețul Haiku 4.5, rămâne doar pentru un server vechi care nu trimite `ai_cost_usd`.
-    function _raxCostRand(r) { return (r && r.ai_cost_usd != null) ? (Number(r.ai_cost_usd) || 0) : _raxCost(r && r.ai_input, r && r.ai_output); }
     function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
     function _raxHealthCell(h) {
       if (!h || !h.live) return '<span style="color:var(--text-muted);">—</span>';
@@ -22082,16 +22076,10 @@ const pozitii = await r.json();</code></pre>
           _raxCard('Sateliți medii', th.avg_sats == null ? '—' : th.avg_sats) +
           _raxCard('GPS fix bun', th.healthy_fix_pct == null ? '—' : (th.healthy_fix_pct + '%')) +
           '</div>';
-        // ─── AI usage cards ───
-        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-robot"></i> Consum AI (30z)</div>';
-        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
-          _raxCard('Tokeni IN', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT', _raxFmt(t.ai_output)) + _raxCard('Cereri API', t.ai_calls) +
-          '</div>';
-        // Costul vine calculat de la server (aceleași prețuri ca la facturare, cu tokenii din cache
-        // taxați corect). Formula locală rămâne doar ca rezervă dacă serverul nu-l trimite.
-        var _cUsd = (t.ai_cost_usd != null) ? Number(t.ai_cost_usd) : _raxCost(t.ai_input, t.ai_output);
-        var _cEur = (t.ai_cost_eur != null) ? Number(t.ai_cost_eur) : null;
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI: <strong style="color:var(--accent);">$' + _cUsd.toFixed(2) + '</strong>' + (_cEur != null ? ' <span style="color:var(--text-muted);">(' + _cEur.toFixed(2) + ' €)</span>' : '') + ' · model ' + esc(d.model || '') + (t.ai_cache_read ? ' · <span title="Tokeni recitiți din cache — costă ~10%">cache: ' + _raxFmt(t.ai_cache_read) + '</span>' : '') + '</div>';
+        // Costul AI, întrebările și soldul Anthropic stau într-un singur loc, „RA Insight · control" (Alin, 19.10, punctul 5).
+        // Aici erau încă o dată (tokeni, cereri, cost, limita veche pe firmă) — două locuri pentru aceiași bani. NU le pune înapoi.
+        html += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin:14px 0 4px;"><span><i class="fas fa-robot"></i> Costul AI, întrebările și soldul Anthropic sunt în <b>RA Insight · control</b>.</span>'
+          + '<button class="rax-btn" style="padding:3px 10px;font-size:12px;" onclick="goSistem(\'agents\')"><i class="fas fa-arrow-right"></i> Deschide</button></div>';
 
         // ─── Cheie AI (gestionată DOAR de super-admin, aici) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-key"></i> Cheie AI (Anthropic)</div>';
@@ -22126,24 +22114,18 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 8px;text-align:right;">' + c.vehicles + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.users + '</td>' +
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);font-weight:600;">' + (c.mrr ? lei(c.mrr) : '—') + '</td>' +
-            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCostRand(c).toFixed(3) + '</td>' + _raxLimitCell(c) + '</tr>';
+            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td></tr>';
         }).join('');
-        // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
+        // Aparatele fără firmă (ale noastre) — altfel ar fi în totaluri dar lipsă din tabel
         var pf = d.platform || {};
-        if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0 || (pf.health && pf.health.live > 0)) {
+        if (pf.health && pf.health.live > 0) {
           rows += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;color:var(--text-muted);"><em>Platformă (super-admin)</em></td>' +
             '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">—</td>' +
-            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCostRand(pf).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
+            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Cereri API</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită (cereri)</th></tr></thead><tbody>' +
-          (rows || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         // ─── Avansat & sistem (pliat implicit ca să rămână dashboard-ul curat) ───
         html += '<details class="rax-dash-adv" style="margin-top:18px;"><summary><i class="fas fa-sliders"></i> Avansat &amp; sistem (debug IO, scurtături, setări, jurnal erori)</summary><div style="padding-top:10px;">';
         // ─── Debug IO — mapare per vehicul (super-admin) ───
@@ -22383,14 +22365,6 @@ const pozitii = await r.json();</code></pre>
       try { var j = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings/' + ioId, { method: 'DELETE', credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (j.error) { alert(j.error); return; } raxIoDebug(imei); } catch (e) { alert('Eroare: ' + e.message); }
     };
 
-    function _raxLimitCell(c) {
-      var used = c.ai_calls || 0;          // prompturi consumate (apeluri AI)
-      var lim = c.ai_limit || 0;           // limită = nr. prompturi/lună
-      var over = lim > 0 && used >= lim;
-      var txt = lim > 0 ? ((over ? '🚫 ' : '') + used + ' / ' + lim) : '∞';
-      var col = over ? 'var(--red)' : 'var(--text-muted)';
-      return '<td style="padding:6px 8px;text-align:right;white-space:nowrap;color:' + col + ';">' + txt + ' <button class="rax-btn" style="padding:2px 7px;font-size:10px;" title="Setează limita de prompturi/lună" onclick="raxSetAiLimit(' + c.id + ',' + lim + ')">✎</button></td>';
-    }
     window.raxDashSaveKey = async function () {
       var inp = $('rax-dash-aikey'), msg = $('rax-dash-aikey-msg'); if (!inp) return;
       var key = (inp.value || '').trim(); if (!key) { msg.style.color = 'var(--red)'; msg.textContent = 'Lipește cheia (sk-ant-...).'; return; }
@@ -22401,16 +22375,6 @@ const pozitii = await r.json();</code></pre>
         aiEnabled = !!j.enabled; raxLoadDashboard(_raxDashUnde);
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
-    window.raxSetAiLimit = async function (id, cur) {
-      var v = prompt('Limită AI lunară pentru companie — număr de PROMPTURI (întrebări AI) / 30 zile.\nÎntrebările rapide nu consumă din limită.\nLasă gol sau 0 = nelimitat:', cur || '');
-      if (v === null) return;
-      try {
-        var j = await fetch('/api/companies/' + id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: (v.trim() === '' ? 0 : parseInt(v)) }) }).then(function (r) { return r.json(); });
-        if (j.error) { alert(j.error); return; }
-        raxLoadDashboard(_raxDashUnde);   // reîmprospătează ecranul unde a fost desenat, nu unul care nu mai există
-      } catch (e) { alert('Eroare: ' + e.message); }
-    };
-
     // ─── Conturi (toate companiile) — super-admin ───
     var _raxAccounts = [];
     window.raxOpenAccounts = function () { $('rax-accounts-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadAccounts(); };
@@ -28464,10 +28428,9 @@ const pozitii = await r.json();</code></pre>
       }, 60000);
     };
     // ─── începe „Panoul RA Insight pe firme" ──────────────────────────────────────────────────────
-    // Un tabel cu „apeluri / cotă" mai spunea povestea de dinainte de 11.09, când RA Insight se vindea
-    // pe firmă. Acum se vinde pe CONT, iar fondul lunii = conturi × întrebări pe cont. Panoul ăsta arată
-    // aceeași socoteală după care se face factura, o firmă pe cartonaș, desfăcut: cine are cont, cine
-    // chiar întreabă, ce încasăm, ce ne costă și ce rămâne. Fără să deschizi nimic și fără să aduni în cap.
+    // Pagina „RA Insight · control" a fondatorilor (din 19.10, singura; panoul de dinainte, pe cartonașe, a ieșit): patru cifre
+    // sus, ce cere atenție, un rând pe firmă (la clic, amănuntul: cum iese cifra, cine are cont, ce am facturat), butoanele și
+    // istoricul pe luni. Aceeași socoteală după care se face factura; cifrele mari vin gata de la server.
     // Cursul e CEL DIN RĂSPUNSUL SERVERULUI (`fxEur`), cu care au fost socotite și totalurile lui. Cartonașele
     // luau cursul paginii, deci cu un curs al nostru pus diferit de BNR panoul amesteca două cursuri — iar
     // telefonul, care folosește doar `fxEur`, arăta alte sume decât web-ul (găsit 24.09).
@@ -28487,14 +28450,6 @@ const pozitii = await r.json();</code></pre>
         + _aiuNr(n / _aiuFx()) + ' €)</span>';
     }
     function _aiuData(t) { return t ? new Date(t).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' }) : '—'; }
-    // Starea firmei, spusă în trei cuvinte. Ordinea contează: „fond terminat" bate „folosește".
-    function _aiuStare(r) {
-      if (!r.enabled) return { t: 'fără RA Insight', c: 'var(--text-muted)' };
-      if (r.epuizat) return { t: 'fond terminat', c: 'var(--red)' };
-      if (r.used > 0) return { t: 'folosește', c: 'var(--accent)' };
-      if (r.conturi > 0) return { t: 'conturi date, zero întrebări', c: 'var(--orange)' };
-      return { t: 'niciun cont dat', c: 'var(--orange)' };
-    }
     // Cum iese cifra — scris ca la carte, ca să se poată verifica pe hârtie.
     function _aiuSocoteala(r) {
       var l = [];
@@ -28601,22 +28556,6 @@ const pozitii = await r.json();</code></pre>
         + (o.jos ? '<div class="jos">' + o.jos + '</div>' : '')
         + '</div>';
     }
-    // Creșterea lunii curente față de cea trecută. Dacă luna trecută a fost zero, nu inventăm o
-    // săgeată: „+∞%" nu e o informație, e un artefact.
-    function _aiuTendinta(ist) {
-      var l = Array.isArray(ist) ? ist : []; if (l.length < 2) return null;
-      var u = l[l.length - 1], p = l[l.length - 2];
-      var acum = u.facturatLei || _aiuEstimare(u), inainte = p.facturatLei || 0;
-      if (!(inainte > 0)) return null;
-      return { pct: Math.round(((acum - inainte) / inainte) * 100), estimat: !u.facturatLei && _aiuEstimare(u) > 0 };
-    }
-    function _aiuSageata(t) {
-      if (!t) return '';
-      var sus = t.pct >= 0;
-      return '<span style="color:' + (sus ? 'var(--accent)' : 'var(--red)') + ';font-weight:700;">'
-        + (sus ? '▲ +' : '▼ ') + t.pct + '%</span> față de luna trecută'
-        + (t.estimat ? ' <span style="color:var(--orange);">(estimat)</span>' : '');
-    }
     // Ce nu e în regulă și trebuie spus tare, nu căutat prin cartonașe.
     function _aiuAvertismente(s, rows) {
       var r = Array.isArray(rows) ? rows : [], out = [];
@@ -28640,61 +28579,6 @@ const pozitii = await r.json();</code></pre>
       return out.map(function (x) {
         return '<div class="aiu-alerta ' + x.ton + '"><i class="fas fa-' + (x.ton === 'bad' ? 'triangle-exclamation' : 'circle-info') + '"></i><span>' + x.t + '</span></div>';
       }).join('');
-    }
-    // Cele șase cartonașe: banii lunii curente (3) și clienții (3).
-    function _aiuKpiuri(s, rows, ist, fx) {
-      var r = Array.isArray(rows) ? rows : [];
-      var venit = Number(s.totalVenitLei) || 0;
-      var cost = (Number(s.totalCostEur) || 0) * fx;
-      var profit = Math.round((venit - cost) * 100) / 100;
-      var conturi = Number(s.conturi) || 0;
-      var conturiAcum = r.reduce(function (a, x) { return a + (x.conturi || 0); }, 0);
-      var intrebari = Number(s.totalCalls) || 0, fond = Number(s.fond) || 0;
-      var marja = venit > 0 ? Math.round(((venit - cost) / venit) * 100) : null;
-      var peCont = conturi > 0 ? venit / conturi : null;
-      var peIntrebare = intrebari > 0 ? cost / intrebari : null;
-      var t = _aiuTendinta(ist);
-      var pct = fond > 0 ? Math.min(100, Math.round((intrebari / fond) * 100)) : null;
-      var culoareFond = fond && intrebari >= fond ? 'var(--red)' : (pct != null && pct >= 80 ? 'var(--orange)' : 'var(--accent)');
-      var cuPret = r.filter(function (x) { return x.pachet ? x.venitLei > 0 || !x.pachet.ai : x.pretCont > 0; }).length;   // ca la avertismente
-
-      return '<div class="aiu-grup">Banii, luna curentă</div><div class="aiu-kpiuri">'
-        + _aiuKpi({
-            cap: 'Încasăm', icon: 'arrow-down-to-line', val: _aiuLei(venit), ton: venit > 0 ? 'ok' : '',
-            sub: conturi > 0
-              ? conturi + ' ' + (conturi === 1 ? 'cont' : 'conturi') + (peCont ? ' × ' + _aiuNr(peCont) + ' lei în medie' : '')
-              : 'niciun cont de facturat',
-            jos: _aiuSageata(t) })
-        + _aiuKpi({
-            cap: 'Ne costă', icon: 'server', val: _aiuLei(cost),
-            sub: window._raxNrI(intrebari) + (peIntrebare ? ' · ' + _aiuNr(peIntrebare) + ' lei una' : ''),
-            jos: 'plata către model' })
-        + _aiuKpi({
-            cap: 'Profit', icon: 'piggy-bank', val: _aiuLei(profit),
-            ton: venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad',
-            sub: venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui',
-            jos: 'din RA Insight, nu din tot RA Track' })
-        + '</div>'
-        + '<div class="aiu-grup">Clienții</div><div class="aiu-kpiuri">'
-        + _aiuKpi({
-            cap: 'Firme cu RA Insight', icon: 'building', val: (s.withFeature || 0) + ' <span class="mic">din ' + (s.companies || 0) + '</span>',
-            sub: (s.active || 0) + ' îl folosesc efectiv',
-            jos: cuPret < (s.withFeature || 0)
-              ? '<span style="color:var(--orange);">' + ((s.withFeature || 0) - cuPret) + ' fără preț pe cont</span>'
-              : 'toate au preț pe cont' })
-        + _aiuKpi({
-            cap: 'Conturi de facturat', icon: 'id-badge', val: String(conturi),
-            sub: conturiAcum + (conturiAcum === 1 ? ' aprins acum' : ' aprinse acum')
-              + (conturi > conturiAcum ? ' · ' + (conturi - conturiAcum) + (conturi - conturiAcum === 1 ? ' stins' : ' stinse') + ' pe parcurs' : ''),
-            jos: peCont ? 'un cont aduce ' + _aiuLei(peCont) : 'fără preț pe cont' })
-        + _aiuKpi({
-            cap: 'Întrebări', icon: 'comments', val: intrebari + (fond ? ' <span class="mic">din ' + fond + '</span>' : ''),
-            ton: fond && intrebari >= fond ? 'bad' : '',
-            sub: fond
-              ? '<div class="aiu-fond"><div style="width:' + pct + '%;background:' + culoareFond + ';"></div></div>'
-              : 'fără fond stabilit',
-            jos: fond ? (intrebari >= fond ? 'fondul s-a terminat' : (fond - intrebari) + ' rămase din fondul lunii') : 'nimeni nu e limitat' })
-        + '</div>';
     }
     function _aiuIstoric(ist, fx) {
       var l = Array.isArray(ist) ? ist : [];
@@ -28873,13 +28757,20 @@ const pozitii = await r.json();</code></pre>
           + '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(x)
           + (x.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div><div>În ultimele 12 luni: <b>' + _aiuLei(x.facturatLei) + '</b>'
               + (x.incasatLei !== x.facturatLei ? ' — a intrat în cont: <b>' + _aiuLei(x.incasatLei) + '</b>, restul e neplătit' : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
-          + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(x.lastUsed) + '</span>'
+          + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(x.lastUsed) + ' · ' + _aiuUndeConturi(x) + '</span>'
           + '<button class="rax-btn" style="padding:3px 10px;font-size:12px;" onclick="event.stopPropagation();raxOpenCompanyDetail(' + x.id + ')">Deschide firma</button></div>'
           + '</div></td></tr>';
       }).join('');
       return '<div class="aiu-grup">Firmă cu firmă</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Firma</th><th>Pachet</th><th class="n">Întrebări folosite</th><th class="n">Instant</th><th class="n">Ne costă</th><th class="n">Ne rămân</th></tr></thead><tbody>'
         + randuri + '</tbody></table></div>'
         + (fara.length ? '<div class="rax-co-meta" style="margin-top:6px;">' + fara.length + (fara.length === 1 ? ' firmă fără RA Insight: ' : ' firme fără RA Insight: ') + fara.slice(0, 8).map(function (x) { return esc(x.name); }).join(', ') + (fara.length > 8 ? '…' : '') + '</div>' : '');
+    }
+    // De unde dă firma conturile (rândul de jos din amănunt): pe un pachet, din „Pachet și conturi" (din 15.10); pe Start întreabă
+    // doar administratorul; pe regula veche, din Utilizatori.
+    function _aiuUndeConturi(x) {
+      if (x.pachet && !x.pachet.ai) return 'pe Start întreabă doar administratorul firmei';
+      if (x.pachet) return 'conturile le dă administratorul firmei, din RA Insight → „Pachet și conturi”';
+      return 'conturile le dă administratorul firmei, din Utilizatori (regula veche, pe cont)';
     }
     window.raxAiRand = function (id) {
       var d = document.getElementById('aiu-det-' + id), ch = document.getElementById('aiu-ch-' + id); if (!d) return;
@@ -28897,17 +28788,10 @@ const pozitii = await r.json();</code></pre>
         + b('raxAiSold()', 'wallet', 'Soldul Anthropic')
         + b("goSistem('dashboard')", 'key', 'Cheia Anthropic', 'Se pune în Dashboard platformă')
         + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
-        + '<button id="aiu-mai-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiMaiMulte()"><i class="fas fa-list"></i> Mai multe cifre</button>'
         + '</div>';
     }
-    // „Mai multe cifre": panoul de dinainte (banii lunii, clienții, cartonașele pe firme), închis implicit. Rămâne cât timp
-    // telefonul (APK-ul de azi) arată aceleași cifre — verify_insight_bani.js le ține legate.
-    window.raxAiMaiMulte = function (on) {
-      var box = document.querySelector('#admin-tab-agents .aiu-mai-box'); if (!box) return;
-      var pornit = (on === undefined || on === null) ? box.style.display === 'none' : !!on;
-      box.style.display = pornit ? '' : 'none';
-      var b = document.getElementById('aiu-mai-btn'); if (b) b.className = 'rax-btn' + (pornit ? ' primary' : '');
-    };
+    // (Aici stătea „Mai multe cifre": panoul de dinainte — cele șase cartonașe și o cutie pe firmă —, scos pe 19.10, cu Alin
+    // (punctul 5). Telefonul de azi încă le arată; formulele lor stau în verify_insight_bani.js până la APK-ul cu pagina nouă.)
     // Rândul pachetului pe cartonașul firmei: plasa (cât din 80% din preț), analiza aprofundată, ce ne rămâne.
     function _aiuPachetRand(r) {
       if (!r.pachet) return '';
@@ -28936,40 +28820,6 @@ const pozitii = await r.json();</code></pre>
         raxLoadAiUsage();
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
-    function _aiuCard(r, deschis) {
-      var st = _aiuStare(r);
-      var pct = r.pct == null ? null : Math.min(100, r.pct);
-      var culoare = r.epuizat ? 'var(--red)' : (r.pct != null && r.pct >= 80 ? 'var(--orange)' : 'var(--accent)');
-      var bara = pct == null ? '<div style="font-size:12px;color:var(--text-muted);">' + window._raxNrI(r.used) + ' · fără fond stabilit</div>'
-        : '<div style="font-size:12px;margin-bottom:4px;"><b>' + r.used + '</b> din ' + window._raxNrI(r.fond)
-          + ' <span style="color:var(--text-muted);">· ' + r.pct + '%</span></div>'
-          + '<div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + culoare + ';"></div></div>';
-      var bani = (r.venitLei > 0 ? '<span>încasăm <b>' + _aiuLei(r.venitLei) + '</b></span>' : '<span style="color:var(--text-muted);">nu se facturează</span>')
-        + '<span style="color:var(--text-muted);">ne costă ' + _aiuLei(r.costEur * _aiuFx()) + '</span>'
-        + (r.venitLei > 0 ? '<span>profit <b style="color:' + ((r.venitLei - r.costEur * _aiuFx()) >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(r.venitLei - r.costEur * _aiuFx()) + '</b></span>' : '');
-      return '<div class="aiu-card' + (deschis ? ' deschis' : '') + '" data-firma="' + r.id + '">'
-        + '<button class="aiu-cap" onclick="raxAiFirma(' + r.id + ')">'
-        +   '<span class="aiu-nume">' + esc(r.name) + '</span>'
-        +   '<span class="aiu-pastila" style="color:' + st.c + ';border-color:' + st.c + ';">' + st.t + '</span>'
-        +   '<span class="aiu-conturi">' + r.conturi + ' ' + (r.conturi === 1 ? 'cont' : 'conturi')
-        +     (r.deFacturat > r.conturi ? ' <span style="color:var(--orange);">(' + r.deFacturat + ' de facturat)</span>' : '') + '</span>'
-        +   '<i class="fas fa-chevron-down aiu-sageata"></i>'
-        + '</button>'
-        // Firma fără RA Insight n-are ce fond și ce bani să arate — două rânduri goale care fac
-        // lista mai greu de citit tocmai la firmele care nu ne interesează acum.
-        + (r.enabled ? '<div class="aiu-bara">' + bara + '</div><div class="aiu-bani">' + bani + '</div>' + _aiuPachetRand(r) : '')
-        + _aiuSemnale(r)
-        + '<div class="aiu-det" style="display:' + (deschis ? 'block' : 'none') + ';">'
-        +   '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(r)
-        +   (r.enabled ? '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(r) : '')
-        +   (r.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div>'
-              + '<div>În ultimele 12 luni: <b>' + _aiuLei(r.facturatLei) + '</b>'
-              + (r.incasatLei !== r.facturatLei
-                  ? ' — a intrat în cont: <b>' + _aiuLei(r.incasatLei) + '</b>, restul e neplătit'
-                  : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
-        +   '<div style="margin-top:8px;color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(r.lastUsed) + ' · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>'
-        + '</div></div>';
-    }
     // ── Butonul de istoric ────────────────────────────────────────────────────────────────────────
     // Dashboard-ul cu grafic și tabel e util, dar nu în fiecare zi. Butonul îl pornește și îl oprește,
     // iar alegerea se ține minte pe calculatorul ăsta — nu trebuie apăsat de fiecare dată.
@@ -28992,23 +28842,6 @@ const pozitii = await r.json();</code></pre>
       // Graficul se desenează abia când e vizibil: pe o pânză ascunsă iese de mărime zero.
       if (pornit) { try { _aiuDeseneaza(_aiuIst, _aiuIstFx); } catch (e) {} }
     };
-    window.raxAiFirma = function (id) {
-      var c = document.querySelector('.aiu-card[data-firma="' + id + '"]'); if (!c) return;
-      var d = c.querySelector('.aiu-det'); if (!d) return;
-      var acum = d.style.display === 'none';
-      d.style.display = acum ? 'block' : 'none';
-      c.classList.toggle('deschis', acum);
-    };
-    window.raxAiToate = function (on) {
-      document.querySelectorAll('#admin-tab-agents .aiu-card').forEach(function (c) {
-        var d = c.querySelector('.aiu-det'); if (!d) return;
-        d.style.display = on ? 'block' : 'none';
-        c.classList.toggle('deschis', !!on);
-      });
-      var b = document.getElementById('aiu-toate');
-      if (b) b.innerHTML = on ? '<i class="fas fa-compress"></i> Strânge toate' : '<i class="fas fa-expand"></i> Desfășoară toate';
-      if (b) b.setAttribute('onclick', 'raxAiToate(' + (on ? 'false' : 'true') + ')');
-    };
     window.raxLoadAiUsage = async function () {
       var box = document.getElementById('admin-tab-agents'); if (!box) return;
       box.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
@@ -29018,16 +28851,11 @@ const pozitii = await r.json();</code></pre>
       var s = d.summary || {}, rows = d.rows || [];
       _aiuFxResp = Number(d.fxEur) || null;
       var fx = _aiuFx();
-      var carduri = rows.map(function (r) { return _aiuCard(r, false); }).join('');
       box.innerHTML = _aiuPachete(d.pachete)
         + _aiuAtentie(d.pachete, s, rows)
         + _aiuTabel(rows)
         + _aiuControale(d.pachete)
         + '<div class="aiu-ist-box">' + _aiuIstoric(d.istoric, fx) + '</div>'
-        + '<div class="aiu-mai-box" style="display:none;">' + _aiuKpiuri(s, rows, d.istoric, fx)
-        +   '<div style="display:flex;align-items:center;margin:8px 0;"><div class="aiu-grup" style="margin:0;">Firmă cu firmă, pe cartonașe</div>'
-        +   '<button id="aiu-toate" class="rax-btn primary" style="margin-left:auto;padding:4px 10px;font-size:12px;" onclick="raxAiToate(true)"><i class="fas fa-expand"></i> Desfășoară toate</button></div>'
-        +   '<div class="aiu-lista">' + carduri + '</div></div>'
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Instant" = răspunsuri date de aplicație din rapoarte, fără model. Conversațiile clienților nu le vedem — aici sunt doar numere. Cei 6 agenți AI merg pe reguli fixe și nu costă nimic.</div>';
       _aiuIst = d.istoric; _aiuIstFx = Number(d.fxEur) || _aiuFx();
       // Pune istoricul în starea aleasă ultima dată (și desenează graficul doar dacă e pornit).

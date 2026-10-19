@@ -659,8 +659,9 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   (12.10, când Robert a trecut RA Insight pe Haiku 5.5 din Railway, `AI_AGENT_MODEL=claude-haiku-5-5`): în db.js,
   `getAiMonthUsageByCompany` / `getAiUsageByCompany` / `getAiUsageByMonth` adună pe (cheie, model) și întorc `cost_usd`
   (`_strangePeModele` → `_costUsdRand` → `ai.costUsd`, singura formulă); rândurile fără model (de dinainte de 08.10) =
-  `MODEL_RANDURI_VECHI` (Haiku 4.5), NU modelul de azi. Dashboard, „Utilizare RA Insight" și istoricul ei citesc `cost_usd`;
-  pagina ia costul rândului de la server (`_raxCostRand`). NU mai înmulți tokeni adunați cu prețul unui singur model.
+  `MODEL_RANDURI_VECHI` (Haiku 4.5), NU modelul de azi. „RA Insight · control" și istoricul lui citesc `cost_usd` / `costEur`
+  de la server; din 19.10 „Dashboard platformă" NU mai arată costul AI (nici tokeni, nici limita veche pe firmă) — doar un rând
+  care duce în „RA Insight · control". NU mai înmulți tokeni adunați cu prețul unui singur model.
   Ofertare: „ce rămâne la noi” dintr-un pachet folosește `pachete.COST_INTREBARE_LEI` (Haiku 5.5, capătul prudent al măsurătorii).
 - **„Proba modelelor"** („RA Insight · control" → Controale, `raxProbaModele`, blocul între sentinele): rutele
   `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
@@ -785,11 +786,16 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   (`_chatInsigna`). Mesajele vechi n-au insignă — NU le-o ghici în pagină.
 - **„RA Insight · control" (fondatorii):** rândul sus în meniu (nu într-un grup; grupul se cheamă „Module"), `_RAX_NUME.agents`. Pagina:
   `_aiuPachete` (4 cifre) → `_aiuAtentie` (plasa, întrebările terminate, 👎 7 zile — `db.aiJosPeFirma`, doar numărul —, partea instant)
-  → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul) → `_aiuControale`. Panoul vechi (`_aiuKpiuri`, `_aiuCard`) stă sub
-  „Mai multe cifre", închis, cât timp telefonul îl arată (`verify_insight_bani.js` le ține legate) — se scoate la punctul 5, cu Alin.
+  → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul; jos, de unde dă firma conturile — `_aiuUndeConturi`: pe pachet din
+  „Pachet și conturi", pe regula veche din Utilizatori) → `_aiuControale` → istoricul (buton). **Panoul vechi „Mai multe cifre" a ieșit
+  pe 19.10** (punctul 5, cu Alin): `_aiuKpiuri`, `_aiuCard`, `_aiuTendinta`, `_aiuSageata`, `_aiuStare`, `raxAiToate`, `raxAiMaiMulte`.
+  Telefonul de azi încă le arată: formulele lor stau ca REFERINTA în `verify_insight_bani.js` (copiate întocmai), până la APK-ul cu
+  pagina nouă. NU pune panoul înapoi în pagină (proba pică).
 - „Proba modelelor" primește `verificare: { perioada, cifre, rescris }` (doar la probă) — câte răspunsuri au avut cifre greșite.
-- **Rămase la Alin, după acestea** (19.10: „5 și 6 lasă-le după"): (5) ce e vechi pe pagina noastră; (6) „atribuirea, mesajul, dă
-  atribui" — de lămurit ce înseamnă. NU le face din proprie inițiativă.
+- **Rămase la Alin, după acestea** (19.10: „5 și 6 lasă-le după"): (5) ce e vechi pe pagina noastră — făcut pe 19.10 (panoul vechi,
+  costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
+  2, „RA Insight face, cu Da-ul tău"** (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat + potrivirea șoferilor),
+  aprobat ca ordine pe 15.10, neînceput. Azi există doar „Am vorbit cu el" în RA Drive. Întâi macheta, NU construcția din proprie inițiativă.
 - Păzit de **`verify_discutia.js`** (în `npm test`; discuția lui Alin pe server pornit, modelul simulat), `verify_cifre.js`,
   `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js`, `verify_acasa.js`.
 

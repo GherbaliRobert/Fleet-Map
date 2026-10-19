@@ -288,7 +288,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   răspuns până atunci); (9) **adăugat pe 19.10 — discuția refăcută:** sub fiecare răspuns
   insigna din răspuns (`insigna`: mov / verde, textul de la server); mai multe cartonașe deodată (`rapoarte`, pe lângă `raport`);
   problemele (`probleme`: titlul, dovada, butoanele `traseu` / `fisa` / `raport`) în locul benzii „De verificat"; rândul „✓ Cifrele
-  le-am luat din rapoarte" (`verificat`) și nota perioadei (`nota`); la noi, „Utilizare RA Insight" se cheamă „RA Insight · control".
+  le-am luat din rapoarte" (`verificat`) și nota perioadei (`nota`); la noi, „Utilizare RA Insight" se cheamă „RA Insight · control";
+  (10) **adăugat pe 19.10 — pagina noastră pe telefon, ca pe web:** cele patru cifre de sus (`pachete` din `/api/admin/ai-usage`), „Ce cere
+  atenție", un rând pe firmă cu amănuntul la clic; cartonașele vechi ies (pe web au ieșit pe 19.10; formulele lor stau până atunci în
+  `verify_insight_bani.js`).
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -359,6 +362,37 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-19
+
+### FONDATOR · Pagina noastră fără lucrurile vechi: „Mai multe cifre" a ieșit, costul AI stă doar în „RA Insight · control" (punctul 5)
+
+Alin (19.10), la „Trecem acum la punctul 5?": *„da"*. Tot atunci, la insigne: *„mai dă-mi variante, că nu e profi deloc"* —
+cinci variante, pozate în aplicație, pe o pagină separată (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi); în aplicație insignele
+rămân cum sunt până alege. La punctul 6 (*„aici era vorba despre safe drive, parcă făcusem ceva"*): e pasul 2 al Capitolului 2,
+„RA Insight face, cu Da-ul tău" (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat, potrivirea șoferilor) —
+aprobat ca ordine pe 15.10, neînceput; azi există doar „Am vorbit cu el" în RA Drive.
+
+- **„Mai multe cifre" a ieșit din „RA Insight · control":** cele șase cartonașe de dinainte (încasăm / ne costă / profit, firme,
+  „conturi de facturat", întrebări) și cutiile pe firme. Tot ce spuneau e acum sus (cele patru cifre) sau în rândul firmei.
+- **În amănuntul firmei, rândul de jos spune de unde dă firma conturile:** pe un pachet, din RA Insight → „Pachet și conturi”; pe
+  Start, doar administratorul întreabă; pe regula veche, din Utilizatori. (Scria „din Utilizatori" la toate.)
+- **„Dashboard platformă" nu mai arată costul AI:** au ieșit cutia „Consum AI (30z)" (tokeni, cereri, cost) și coloanele de AI din
+  tabelul firmelor (tokeni, cereri, cost, „Limită (cereri)"). În locul lor, un rând: „Costul AI, întrebările și soldul Anthropic sunt
+  în RA Insight · control" → Deschide. Cheia Anthropic rămâne acolo. **Limita veche „✎" din tabel ieșise oricum din regulă:** pusă pe o
+  firmă rămasă pe Start, o muta pe regula veche, pe cont.
+
+- **Ce am schimbat:** pagina (`_aiuKpiuri`, `_aiuCard`, `_aiuTendinta`, `_aiuSageata`, `_aiuStare`, `raxAiFirma`, `raxAiToate`,
+  `raxAiMaiMulte`, cutia `aiu-mai-box` scoase; `_aiuUndeConturi` nou; în Dashboard platformă scoase `_raxCost`, `_raxCostRand`,
+  `_raxFmt`, `_raxLimitCell`, `raxSetAiLimit`), `app.css` (stilurile cartonașelor vechi). Serverul n-a fost atins (`/api/admin/overview`
+  trimite încă cifrele de AI — le citește telefonul). Probele mutate pe regula nouă: `verify_insight_panou.js` (rândul firmei și cele
+  patru cifre, în locul cartonașelor), `verify_insight_bani.js` (telefonul arată încă panoul vechi: formulele scoase de pe web stau acum
+  în probă, copiate întocmai, ca cifrele telefonului să rămână păzite), `verify_discutia.js`, `verify_proba_modele.js`.
+- **Ce vede fondatorul:** „RA Insight · control" fără „Mai multe cifre"; în amănuntul firmei, de unde dă firma conturile;
+  „Dashboard platformă" fără cifre de AI, cu un rând spre „RA Insight · control".
+- **Ce vede clientul:** nimic schimbat.
+- **Găsite pe drum, întrebate în raport:** (a) fișa firmei → „Abonament & plăți" arată la orice firmă „RA Insight — conturi și fond de
+  întrebări" (regula veche, pe cont), iar fila „Acces" „Limită AI lunară"; salvate pe o firmă rămasă pe Start, o mută pe regula veche
+  (altă factură); (b) „Dashboard platformă" → Venituri: „Abonamente active" arată mereu 0 și scrie „Niciun venit estimat încă" și când
+  MRR-ul e peste zero (serverul nu mai trimite câmpurile acelea); (c) răspunsul instant „unde e acum…" are emoji (📍 🚚 🟠).
 
 ### AMÂNDOI · RA Insight, discuția refăcută: rapoartele pe mai multe zile, „Am găsit o problemă", insignele; „RA Insight · control" pentru noi — `e04d7ce`, `fa1dbf8`
 

@@ -3,8 +3,9 @@
 // Regula: telefonul NU socotește bani. Tot ce se poate, se ia GATA SOCOTIT de la server (/api/admin/ai-usage):
 // venitul și profitul lunii (summary.totalVenitLei / profitLei), iar per firmă și per lună câmpurile `costLei` /
 // `profitLei` / `baniLei`, plus statisticile istoricului (`istoricStat`) și tendința — cerute serverului în lotul 2b
-// (F2). Până le trimite, rezerva de mai jos e COPIA IDENTICĂ a formulelor de pe web (public/index.html: _aiuKpiuri,
-// _aiuTendinta, _aiuEstimare, _aiuStatistici, _aiuIstoric, _aiuCard), fără nicio regulă nouă: doar scăderi și
+// (F2). Până le trimite, rezerva de mai jos e COPIA IDENTICĂ a formulelor de pe web (public/index.html: _aiuEstimare,
+// _aiuStatistici, _aiuIstoric; iar _aiuKpiuri, _aiuTendinta, _aiuCard — scoase de pe web pe 19.10, odată cu panoul vechi —
+// stau ca referință în verify_insight_bani.js, până trece și telefonul pe pagina nouă), fără nicio regulă nouă: doar scăderi și
 // împărțiri peste cifrele serverului, cu aceleași intrări și în aceeași ordine ca web-ul (altfel, la o graniță de
 // rotunjire, ar ieși altă cifră pe ecran). Când serverul trimite câmpul, câștigă serverul — iar web-ul trebuie să-l
 // citească și el, ca cele două ecrane să rămână la fel.
