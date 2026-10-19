@@ -785,7 +785,9 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   și nu pune o cifră lipsă pe seama lor — spune doar faptul („consumul e socotit din fișă, nu măsurat"); „Ce să faci" = numai ce face omul
   singur (fișa, alertele, un raport, discuția cu șoferul). Regula stă în instrucțiuni (paragraful ECHIPAMENTUL), iar textele aplicației
   (`probleme.js`: `sursaConsum`, `problemaSenzor` — galben, „Consumul la X nu se poate măsura acum", fără „Calibrarea rezervorului") la
-  fel. NU scrie „senzorul e blocat / necalibrat", „mașina nu trimite", „verifică dacă are senzor" în ce vede clientul.
+  fel. NU scrie „senzorul e blocat / necalibrat", „mașina nu trimite", „verifică dacă are senzor" în ce vede clientul. La fel la AGENȚI
+  (`agents.js`: offline → „sună șoferul", tahograful → doar cardul de companie, km fără bord → „pune scadența pe dată"; fără „verifică
+  dispozitivul / SIM-ul / cablajul / interfața CAN") și pe paginile publice (fără „cablu / setare lipsă la montaj"). Păzit de `verify_discutia.js`.
 - **Literele din alt alfabet** („октомбrie"): `insight.areLitereStraine` → rescrierea O DATĂ (aceeași cu cea pentru cifre), apoi
   `insight.litereRomanesti` pe ce a rămas (și pe Scrisoarea de luni). Scrisul (`insight.SCRISUL`) cere numai litere românești.
 - **Insignele, ca ANTET (Alin, 19.10, din cinci variante pozate: „varianta 1 — antetul"): O regulă, `pachete.insigna(fel, { numarat,

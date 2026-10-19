@@ -107,6 +107,12 @@ T('mesajele de dinainte de antet se completează din textul lor (toate cele patr
   egal(nouDinVechi('instant', 'Răspuns instant · din datele de acum'), 'RA Insight', 'Instant', 'din datele de acum', 'RA Insight · Instant · din datele de acum') && K.insignaCompleta(deja) === deja && K.insignaCompleta(null) === null);
 const SRVd = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 const INSd = require('./insight.js');
+// Aceeași regulă la agenți (RA Insight le preia constatările prin fleet_alerts) și pe pagina publică a agenților (Alin, 19.10).
+const AGd = fs.readFileSync(path.join(__dirname, 'agents.js'), 'utf8'), PUBd = fs.readFileSync(path.join(__dirname, 'public', 'agenti-ai.html'), 'utf8');
+const corpuri = (AGd.match(/body: '[^\n]*/g) || []).join('\n');
+T('agenții nu-l trimit pe client să verifice echipamentul (dispozitiv, alimentare, SIM, cablaj, interfața CAN), iar pagina publică nu pune vina pe montaj',
+  corpuri.length > 500 && !/Verifică dispozitivul|alimentarea\/sim|sim-ul|cablaj|K-Line|interfața CAN|Remote Data Download/i.test(corpuri) && !/la montaj|un cablu/.test(PUBd) &&
+  /sună șoferul/.test(corpuri) && /Pune scadența pe dată/.test(corpuri));
 T('instrucțiunile: echipamentul e treaba noastră — RA Insight nu-l trimite pe client să verifice senzori, aparatul sau montajul (Alin, 19.10)',
   /ECHIPAMENTUL: aparatul GPS, senzorii .*sunt treaba ' \+\s*'RA Track, nu a omului\. Nu-i cere să verifice, să repare sau să ceară echipament/.test(SRVd) &&
   /\*\*Ce să faci:\*\* \(cel mult trei puncte scurte, numai ce poate face omul singur/.test(SRVd) && !/consum fără senzor/.test(SRVd));

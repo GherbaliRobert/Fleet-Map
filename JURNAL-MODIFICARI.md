@@ -378,9 +378,15 @@ să ne învinuim pe noi, că ăla o să zică «păi voi nu ați verificat dacă
   „Calibrarea rezervorului") → „Consumul la X nu se poate măsura acum" (galben, doar cu raportul de consum).
 - **Literele din alt alfabet:** un răspuns cu ele se rescrie o dată; ce mai rămâne se trece în litere românești înainte să ajungă la om
   („октомбrie" → „octombrie"). La fel Scrisoarea de luni.
+- **Aceeași regulă la agenți** (RA Insight le preia constatările): RA Watch „offline" scria „Verifică dispozitivul/alimentarea/sim-ul" →
+  „Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal."; „tahograf neconfigurat
+  sau decuplat… Verifică cablajul CAN/K-Line…" → „nu vin date de la tahograf… cardul de companie trebuie să fie introdus în tahograf"; RA
+  Care „Verifică interfața CAN" → „Pune scadența pe dată, ca s-o urmărească aplicația". Pe pagina publică a agenților (ratrack.ro/agenti-ai)
+  a ieșit „— de obicei un cablu sau o setare lipsă la montaj".
 
 - **Ce am schimbat:** `server.js` (regula ECHIPAMENTUL, „Ce să faci" doar ce face omul, rescrierea și pentru litere, curățarea), `insight.js`
-  (`areLitereStraine`, `litereRomanesti`; scrisul nu mai dă „Verifică…" ca exemplu), `probleme.js` (textele), `insight_ghid.js`. Probe:
+  (`areLitereStraine`, `litereRomanesti`; scrisul nu mai dă „Verifică…" ca exemplu), `probleme.js` (textele), `agents.js` (trei texte),
+  `public/agenti-ai.html` (o frază; `modificat` / `amprenta` noi), `insight_ghid.js`. Probe:
   `verify_discutia.js` (textele fără vină pe echipament, scenariul cu litere rusești pe server pornit), `verify_cifre.js`.
 - **Ce vede fondatorul:** nimic nou.
 - **Ce vede clientul:** răspunsuri care nu-l mai trimit la echipament, chenarul galben „Consumul la X nu se poate măsura acum", fără litere

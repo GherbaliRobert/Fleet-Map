@@ -151,7 +151,8 @@ async function raWatch(ctx) {
       if (esteFaraSemnal(ageMin, offlineMin)) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
-        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Verifică dispozitivul/alimentarea/sim-ul.' });
+        // Fapt + ce poate face clientul; NU „verifică dispozitivul / alimentarea / SIM-ul": echipamentul e treaba noastră (Alin, 19.10).
+        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
       }
     }
     // (4) Tahograf neconfigurat — pentru camioane cu contact pornit dar zero semnal tahograf
@@ -172,8 +173,9 @@ async function raWatch(ctx) {
               if (!anySignal) {
                 findings.push({
                   imei, severity: 'warning', agent: 'watch', fkey: 'tacho_missing_' + imei,
-                  title: name + ': tahograf neconfigurat sau decuplat',
-                  body: 'Camion cu contactul pornit de peste ' + Math.round(tachoGraceMin) + ' min, dar nu raportează niciun parametru de tahograf (viteză, distanță, card șofer, VIN). Verifică: 1) cablajul CAN/K-Line la tahograf, 2) cardul de companie introdus în VU, 3) activarea Remote Data Download (D8 pe Stoneridge / Update Card pe VDO).'
+                  // Fără „verifică cablajul": legătura cu tahograful e treaba noastră (Alin, 19.10). Clientului — doar ce ține de el.
+                  title: name + ': nu vin date de la tahograf',
+                  body: 'Camion cu contactul pornit de peste ' + Math.round(tachoGraceMin) + ' min, dar nu vin date de la tahograf (viteză, distanță, card șofer). Dacă descărcați datele tahografului de la distanță, cardul de companie trebuie să fie introdus în tahograf.'
                 });
               }
             }
@@ -322,7 +324,7 @@ async function raCare(ctx) {
       }
     }
     // Scadență pe km dar FĂRĂ odometru → altfel ar fi nesupravegheată în tăcere.
-    if (hasKmDue && odo == null) findings.push({ imei, severity: 'info', agent: 'care', fkey: 'care_km_nosrc_' + imei, title: name + ': scadență pe km nesupravegheată', body: 'Există mentenanță cu scadență pe kilometri, dar vehiculul nu transmite odometru (CAN). Verifică interfața CAN sau folosește scadență pe dată.' });
+    if (hasKmDue && odo == null) findings.push({ imei, severity: 'info', agent: 'care', fkey: 'care_km_nosrc_' + imei, title: name + ': scadență pe km nesupravegheată', body: 'Există mentenanță cu scadență pe kilometri, dar pentru vehiculul ăsta aplicația nu primește kilometrajul de la bord. Pune scadența pe dată, ca s-o urmărească aplicația.' });
 
     // 3) Documente (ITP / RCA / rovinietă…) — același preaviz ca listele și push-ul (docDaysLead, 30 de zile)
     for (const d of (docsByImei.get(imei) || [])) {
