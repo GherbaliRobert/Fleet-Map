@@ -364,6 +364,28 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-19
 
+### CLIENT · RA Insight nu-l mai trimite pe client să verifice echipamentul; fără cuvinte cu litere rusești
+
+Alin (19.10), cu poza unui răspuns de pe ratrack.ro: la „Ce să faci" scria *„Dacă vrei consum real și la Logan, verifică dacă are
+senzor de combustibil sau contor de consum care să trimită date"* — *„mesajele de genul ăsta îl trimit pe client la noi… nu trebuie
+să ne învinuim pe noi, că ăla o să zică «păi voi nu ați verificat dacă are, eu vă plătesc»"*. În același răspuns: „октомбrie 2026".
+
+- **Echipamentul e treaba noastră:** RA Insight are o regulă nouă — nu-i cere omului să verifice, să repare sau să ceară echipament
+  (senzori, aparatul, montajul) și nu pune o cifră lipsă pe seama lor. Spune doar faptul („la B 154 UIP consumul e socotit din fișă, nu
+  măsurat"). La „Ce să faci" pune numai ce poate face omul singur: în aplicație (fișa mașinii, alertele, un raport) sau cu oamenii lui.
+- **Textele aplicației, la fel:** „NU e măsurat: mașina nu trimite consumul" → „NU e măsurat"; „senzorul nu se mișcă" → „nivelul a stat pe
+  25 L, deși mașina a mers". Chenarul „Senzorul de combustibil de la X nu se mișcă… senzorul e blocat sau necalibrat" (roșu, cu butonul
+  „Calibrarea rezervorului") → „Consumul la X nu se poate măsura acum" (galben, doar cu raportul de consum).
+- **Literele din alt alfabet:** un răspuns cu ele se rescrie o dată; ce mai rămâne se trece în litere românești înainte să ajungă la om
+  („октомбrie" → „octombrie"). La fel Scrisoarea de luni.
+
+- **Ce am schimbat:** `server.js` (regula ECHIPAMENTUL, „Ce să faci" doar ce face omul, rescrierea și pentru litere, curățarea), `insight.js`
+  (`areLitereStraine`, `litereRomanesti`; scrisul nu mai dă „Verifică…" ca exemplu), `probleme.js` (textele), `insight_ghid.js`. Probe:
+  `verify_discutia.js` (textele fără vină pe echipament, scenariul cu litere rusești pe server pornit), `verify_cifre.js`.
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** răspunsuri care nu-l mai trimit la echipament, chenarul galben „Consumul la X nu se poate măsura acum", fără litere
+  rusești.
+
 ### AMÂNDOI · Insignele RA Insight, ca antet: „RA Insight [ANALIZĂ] 1 întrebare" / „RA Insight [INSTANT] din rapoarte" (varianta 1) — `e30e455`
 
 Alin (19.10), după varianta A (pastila colorată de sub răspuns): *„mai dă-mi variante, că nu e profi deloc"*. Cinci variante pozate în

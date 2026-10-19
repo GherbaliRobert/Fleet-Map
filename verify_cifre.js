@@ -218,8 +218,8 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   T('unealta combustibil citește exact intervalul cerut („' + etCeruta + '"), nu luna', rez2.perioada === etCeruta, JSON.stringify(rez2).slice(0, 220));
   T('…deci nu mai e nicio notă despre perioadă', !q2.j.nota, q2.j.nota);
   const m2 = rez2.masini || [];
-  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului: „NU e măsurat… socotit din consumul trecut în fișa mașinii (X l/100 km)" (probleme.js)', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
-    m2.every((m) => /^NU e măsurat: mașina nu trimite consumul; socotit din consumul trecut în fișa mașinii \(\d+,\d l\/100 km\)$/.test(m.sursa || '')), JSON.stringify(m2.map((m) => [m.masina, m.pret_litru_lei, m.sursa])));
+  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului: „NU e măsurat; socotit din consumul trecut în fișa mașinii (X l/100 km)" — fără vină pe echipament (probleme.js)', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
+    m2.every((m) => /^NU e măsurat; socotit din consumul trecut în fișa mașinii \(\d+,\d l\/100 km\)$/.test(m.sursa || '')), JSON.stringify(m2.map((m) => [m.masina, m.pret_litru_lei, m.sursa])));
   T('…și cifra greu de crezut a dubei, lângă mașina ei (de_verificat)', m2.some((m) => /B 999 TST/.test(m.masina) && (m.de_verificat || []).some((t) => /neobișnuit de mic/.test(t))) &&
     !m2.some((m) => /B 154 UIP/.test(m.masina) && m.de_verificat), JSON.stringify(m2.map((m) => [m.masina, m.de_verificat])));
   T('instrucțiunile cer perioada exactă, cifrele „de_verificat" spuse lângă cifra lor și nu-i cer omului să verifice', /\(8\) Perioada: citește EXACT perioada cerută/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /de_verificat/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /Nu-i cere omului să verifice cifre/.test(JSON.stringify(cereri().slice(-1)[0].system)));

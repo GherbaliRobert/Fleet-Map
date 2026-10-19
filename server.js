@@ -4404,15 +4404,21 @@ function _insightInstructiuni(cuRapoarte) {
       'spune că nu e completat în fișa mașinii (se completează din Vehicule → fișa mașinii) — nu spune că aplicația nu are câmpul. Anul ' +
       'înmatriculării nu se ține în aplicație (e pe talon); se ține anul fabricației.',
     'PROBLEMELE ȘI SUMELE: aplicația verifică datele înaintea ta. Când o unealtă întoarce probleme_gasite (viteza reală sau eroare de GPS, ' +
-      'senzorul de combustibil care nu se mișcă, consumul greu de crezut), spune-le ca fapte, pe scurt — omul le vede și în chenare cu butoane ' +
+      'consumul care nu se poate măsura, consumul greu de crezut), spune-le ca fapte, pe scurt — omul le vede și în chenare cu butoane ' +
       'spre locul exact, sub răspuns. Sumele pe mașină și pe zi le ai gata în pe_masina / pe_masina_si_zi: folosește-le, nu aduna rândurile. ' +
       'De unde vine o cifră de consum scrie în cum_s_a_socotit. Nu-i cere omului să verifice cifre („merită verificate", „verifică în raport"): ' +
       'dacă ceva e îndoielnic, spune clar ce și de ce.',
+    // Alin, 19.10: „Dacă vrei consum real și la Logan, verifică dacă are senzor…" — clientul ar zice „păi voi nu ați verificat
+    // dacă are, eu vă plătesc". Echipamentul e treaba NOASTRĂ: RA Insight nu-l trimite pe client la el și nu-l pune pe seama lui.
+    'ECHIPAMENTUL: aparatul GPS, senzorii (de combustibil, de temperatură), legătura cu calculatorul mașinii și montajul sunt treaba ' +
+      'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor", „verifică aparatul", ' +
+      '„sună instalatorul") și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat".',
     'CONCLUZIA: când analizezi (compari, explici, cauți cauza), termină cu **Concluzie:** (o propoziție) și, dacă e ceva de făcut, ' +
-      '**Ce să faci:** (cel mult trei puncte scurte). Fără concluzie la o întrebare simplă cu o cifră.',
+      '**Ce să faci:** (cel mult trei puncte scurte, numai ce poate face omul singur: în aplicație — fișa mașinii, alertele, un raport — ' +
+      'sau cu oamenii lui, de pildă discuția cu șoferul). Fără concluzie la o întrebare simplă cu o cifră.',
     'GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo, cu numele butoanelor. Dacă ghidul nu are răspunsul, spune că nu știi sigur și trimite omul la suport (iconița căști din bara de sus) — nu ghici meniuri.',
-    'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă consum fără senzor), spune ' +
-      'sincer că nu e disponibilă. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
+    'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă un consum care nu e măsurat), ' +
+      'spune sincer că nu e disponibilă, fără să-i ceri omului să verifice echipamentul. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
       '„B 154 UIP (Dacia Logan 3)". (5) Concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; alertele critice primele. ' +
       '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite. (8) Perioada: citește EXACT perioada cerută ' +
       '(„1–7 octombrie" = from 2026-10-01, to 2026-10-07). RA Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
@@ -5144,20 +5150,30 @@ async function _raInsight(req, res, opts) {
     // Cifrele, verificate fără să-l punem pe om să verifice (Alin, 15.10: „ce să verific? Am AI… îmi zice clar dacă e greșit
     // ceva"): o cifră care nu se regăsește în date și nici nu se poate socoti din ele → RA Insight își rescrie O DATĂ răspunsul,
     // doar cu cifre din unelte. Rămâne aceeași întrebare (un singur rând de consum).
+    // Tot o dată se rescrie și un răspuns cu litere din alt alfabet (Alin, 19.10: „октомбrie 2026" într-un răspuns); ce rămâne
+    // după rescriere se trece în litere românești (insight.litereRomanesti), ca să nu ajungă niciodată la client.
     let lipsa = [], rescris = false;
     try { lipsa = cifre.negasite(reply, dateCitite); } catch (e) { lipsa = []; }
-    if (lipsa.length && result.text) {
+    const strain = insight.areLitereStraine(reply);
+    if ((lipsa.length || strain) && result.text) {
       rescris = true;
+      const cer = [];
+      if (lipsa.length) cer.push('Verificarea aplicației: cifrele ' + lipsa.join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot socoti din ele. ' +
+        'Scrie din nou tot răspunsul, doar cu cifre din unelte (sumele pe mașină și pe zi sunt în pe_masina / pe_masina_si_zi).');
+      if (strain) cer.push('Ai scris cuvinte cu litere din alt alfabet. Scrie din nou tot răspunsul numai cu litere românești.');
       try {
         const r2 = await ai.runAgent({
           system, messages: istoric.concat([{ role: 'user', content: message }, { role: 'assistant', content: reply },
-            { role: 'user', content: 'Verificarea aplicației: cifrele ' + lipsa.join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot socoti din ele. ' +
-              'Scrie din nou tot răspunsul, doar cu cifre din unelte (sumele pe mașină și pe zi sunt în pe_masina / pe_masina_si_zi). Nu pomeni verificarea.' }]),
+            { role: 'user', content: cer.join(' ') + ' Nu pomeni verificarea.' }]),
           tools, toolHandlers, model: model, maxTokens: 1100, maxIters: 4, onUsage: onUsage
         });
-        if (r2 && r2.text) { const l2 = cifre.negasite(r2.text, dateCitite); if (l2.length < lipsa.length) { reply = r2.text; lipsa = l2; } }
+        if (r2 && r2.text) {
+          const l2 = cifre.negasite(r2.text, dateCitite), s2 = insight.areLitereStraine(r2.text);
+          if (l2.length < lipsa.length || (strain && !s2 && l2.length <= lipsa.length)) { reply = r2.text; lipsa = l2; }
+        }
       } catch (e) { /* rămâne răspunsul dintâi, cu cifrele spuse mai jos */ }
     }
+    if (insight.areLitereStraine(reply)) reply = insight.litereRomanesti(reply);
     // Proba modelelor: fără firmă pe rând (nu intră în consumul și în panourile clientului), cu felul ei.
     if (o.proba) db.recordAiUsage(null, 'proba_modele', _agg, userId, model).catch(() => {});
     else db.recordAiUsage(req.companyId, 'insight', _agg, userId, model).catch(() => {});
@@ -6129,7 +6145,7 @@ async function _scrieScrisoarea(fapte, companyId, opt) {
       onUsage: function (u, m) { db.recordAiUsage(companyId, 'scrisoare', u, null, m).catch(function () {}); },
     });
     const v = ramuri.textulTrece(text, fapte);
-    if (v.ok) return { text: String(text).trim(), scrisDe: 'model' };
+    if (v.ok) return { text: insight.litereRomanesti(String(text).trim()), scrisDe: 'model' };   // fără litere din alt alfabet (19.10)
     console.warn('[SCRISOARE] textul lui RA Insight nu trece (' + v.motiv + ') — rămâne cel pe reguli');
   } catch (e) { console.warn('[SCRISOARE] RA Insight n-a putut scrie: ' + e.message); }
   return rezerva;

@@ -780,6 +780,14 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   făcut raportul…" sunt ale APLICAȚIEI și sunt reale — fără ele, modelul credea că a mințit („o corecție…").
 - **`list_vehicles` poartă fișa mașinii** (marcă, model, an, combustibil, rezervor, consumul din fișă, `necompletat`). Anul înmatriculării
   nu se ține; se ține anul fabricației.
+- **ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „nu trebuie să ne învinuim pe noi… «păi voi nu ați verificat dacă are, eu vă plătesc»"):**
+  RA Insight NU-i cere clientului să verifice / repare / ceară echipament (senzori, aparatul, montajul, legătura cu calculatorul mașinii)
+  și nu pune o cifră lipsă pe seama lor — spune doar faptul („consumul e socotit din fișă, nu măsurat"); „Ce să faci" = numai ce face omul
+  singur (fișa, alertele, un raport, discuția cu șoferul). Regula stă în instrucțiuni (paragraful ECHIPAMENTUL), iar textele aplicației
+  (`probleme.js`: `sursaConsum`, `problemaSenzor` — galben, „Consumul la X nu se poate măsura acum", fără „Calibrarea rezervorului") la
+  fel. NU scrie „senzorul e blocat / necalibrat", „mașina nu trimite", „verifică dacă are senzor" în ce vede clientul.
+- **Literele din alt alfabet** („октомбrie"): `insight.areLitereStraine` → rescrierea O DATĂ (aceeași cu cea pentru cifre), apoi
+  `insight.litereRomanesti` pe ce a rămas (și pe Scrisoarea de luni). Scrisul (`insight.SCRISUL`) cere numai litere românești.
 - **Insignele, ca ANTET (Alin, 19.10, din cinci variante pozate: „varianta 1 — antetul"): O regulă, `pachete.insigna(fel, { numarat,
   live })`** → `{ fel, nume: 'RA Insight', eticheta: 'Analiză' | 'Instant', detaliu, text }`: deasupra răspunsului „RA Insight", eticheta
   cu chenar subțire, fără fundal (ANALIZĂ mov `#6d28d9` / INSTANT verde `#166534` — #15803d ieșea sub 4,5 la literele mici), detaliul gri

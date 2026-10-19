@@ -150,7 +150,7 @@ const SECTIUNI = [
     ],
     detalii: 'Jos în stânga (și lângă casetă) vezi câte întrebări mai are firma luna asta; când se termină, RA Insight se oprește până pe 1, fără niciun cost în plus. ' +
       'Deasupra fiecărui răspuns scrie cine a răspuns: lângă numele RA Insight, o etichetă mov ANALIZĂ (analiza lui RA Insight; s-a numărat o întrebare) sau verde INSTANT (răspuns dat de aplicație din rapoarte sau din datele de acum). Răspunsurile rapide („unde e…", „câți km azi") sunt și ele instant. ' +
-      'Când aplicația găsește o problemă în date (o viteză mare, un senzor de combustibil care nu se mișcă, o eroare de GPS, o fișă necompletată), o arată într-un chenar sub răspuns, cu butonul spre locul exact (harta la minutul acela, fișa mașinii, raportul). ' +
+      'Când aplicația găsește o problemă în date (o viteză mare, un consum care nu se poate măsura, o eroare de GPS, o fișă necompletată), o arată într-un chenar sub răspuns, cu butonul spre locul exact (harta la minutul acela, fișa mașinii, raportul). ' +
       'Când treci cu mouse-ul peste un răspuns: îl copiezi, îl notezi (👍 / 👎) și vezi din ce rapoarte vin cifrele. „Notițele firmei" (din butonul cu trei puncte) = regulile casei, scrise de admin.',
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei', 'instant', 'insigna']
   },

@@ -28,14 +28,17 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
 console.log('\n1. „Am găsit o problemă": regulile (probleme.js)');
 T('sursa consumului: măsurat (contor, senzor) față de socotit — spusă pe față',
   P.sursaConsum({ sursa: 'CAN' }).masurat && P.sursaConsum({ sursa: 'Senzor' }).masurat && !P.sursaConsum({ sursa: 'Estimat', consumFisa: 8 }).masurat &&
-  /^NU e măsurat: mașina nu trimite consumul; socotit din consumul trecut în fișa mașinii \(8,0 l\/100 km\)$/.test(P.sursaConsum({ sursa: 'Estimat', consumFisa: 8 }).text));
-T('…cu senzorul blocat: „nivelul a stat pe 25 L toată perioada (senzorul nu se mișcă)"', /^NU e măsurat: nivelul din rezervor a stat pe 25 L toată perioada \(senzorul nu se mișcă\); socotit din consumul trecut în fișa mașinii/.test(P.sursaConsum({ sursa: 'Estimat (nivel CAN)', nivelBlocat: true, nivelStart: 25, consumFisa: 7.5 }).text));
+  /^NU e măsurat; socotit din consumul trecut în fișa mașinii \(8,0 l\/100 km\)$/.test(P.sursaConsum({ sursa: 'Estimat', consumFisa: 8 }).text));
+T('…cu nivelul care nu se schimbă: „nivelul a stat pe 25 L toată perioada, deși mașina a mers" (fapt, fără „senzorul")', /^NU e măsurat: nivelul din rezervor a stat pe 25 L toată perioada, deși mașina a mers; socotit din consumul trecut în fișa mașinii/.test(P.sursaConsum({ sursa: 'Estimat (nivel CAN)', nivelBlocat: true, nivelStart: 25, consumFisa: 7.5 }).text));
+// Alin, 19.10: „nu trebuie să ne învinuim pe noi… «păi voi nu ați verificat dacă are, eu vă plătesc»": echipamentul e treaba noastră.
+const VINA = /senzor|aparat|instalator|montaj|necalibrat|blocat|nu trimite|verific/i;
+T('…niciun text despre sursa consumului nu pune vina pe echipament și nu-l trimite pe client să verifice', [{ sursa: 'Estimat', consumFisa: 8 }, { sursa: 'Estimat (nivel CAN)', consumFisa: 8 }, { sursa: 'Estimat (nivel CAN)', nivelBlocat: true, nivelStart: 25, consumFisa: 7.5 }, { sursa: 'Estimat', consumImplicit: 9 }, {}].every((v) => !VINA.test(P.sursaConsum(v).text)));
 T('…fără consum în fișă: „un consum obișnuit pentru felul mașinii", nu o cifră prezentată ca a ei', /consum obișnuit pentru felul mașinii \(9,0 l\/100 km\), fiindcă fișa n-are consumul trecut/.test(P.sursaConsum({ sursa: 'Estimat', consumImplicit: 9 }).text));
 T('senzorul blocat: pe 100 km sau mai mult, nivelul a variat sub 1,5 L, fără alimentare', P.nivelBlocat(25, 25, 555, 0) && P.nivelBlocat(24.5, 25.5, 100, 0) && !P.nivelBlocat(25, 25, 99, 0) && !P.nivelBlocat(20, 25, 555, 0) && !P.nivelBlocat(25, 25, 555, 30) && !P.nivelBlocat(null, null, 555, 0));
 const ps = P.problemaSenzor({ vehicul: 'B 154 UIP', imei: '1', km: 555, nivelStart: 25, consumFisa: 7.5 }, { from: 'a', to: 'b', eticheta: '5–11 octombrie' });
-T('problema senzorului: roșie, cu dovada în cifre și butoanele spre raportul de consum și spre calibrarea rezervorului',
-  ps.grav === 'rosu' && /nu se mișcă/.test(ps.titlu) && /Pe 5–11 octombrie nivelul a stat la 25 L, deși mașina a mers 555 km/.test(ps.dovada) &&
-  ps.butoane[0].fel === 'raport' && ps.butoane[0].tip === 'consumption' && ps.butoane[1].fel === 'fisa' && ps.butoane[1].fila === 'calibration', JSON.stringify(ps));
+T('nivelul care nu se schimbă: galben, faptul în cifre („consumul nu se poate măsura acum"), doar butonul spre raportul de consum — fără calibrare, fără vină pe echipament',
+  ps.grav === 'galben' && ps.titlu === 'Consumul la B 154 UIP nu se poate măsura acum' && /^Pe 5–11 octombrie nivelul din rezervor a stat la 25 L, deși mașina a mers 555 km, așa că din el nu se poate măsura consumul\. Consumul de aici e socotit din consumul trecut în fișa mașinii \(7,5 l\/100 km\)\.$/.test(ps.dovada) &&
+  ps.butoane.length === 1 && ps.butoane[0].fel === 'raport' && ps.butoane[0].tip === 'consumption' && !VINA.test(ps.titlu + ' ' + ps.dovada), JSON.stringify(ps));
 const t0 = Date.parse('2026-10-08T11:30:00Z');
 const sir = (viteze, pas) => { let lng = 26; return viteze.map((v, i) => { const p = { t: t0 + i * 30000, lat: 44.45, lng, v }; lng += (pas != null ? pas : v / 3600 * 30) / (111 * Math.cos(44.45 * Math.PI / 180)); return p; }); };
 const vr = P.verdictViteza(sir([90, 95, 140, 150, 159, 148, 141, 95]), 130);
@@ -103,6 +106,16 @@ T('mesajele de dinainte de antet se completează din textul lor (toate cele patr
   egal(nouDinVechi('instant', 'Răspuns instant · din rapoarte'), 'RA Insight', 'Instant', 'din rapoarte', 'RA Insight · Instant · din rapoarte') && egal(nouDinVechi('instant', 'Răspuns instant · 1 răspuns'), 'RA Insight', 'Instant', '1 răspuns', 'RA Insight · Instant · 1 răspuns') &&
   egal(nouDinVechi('instant', 'Răspuns instant · din datele de acum'), 'RA Insight', 'Instant', 'din datele de acum', 'RA Insight · Instant · din datele de acum') && K.insignaCompleta(deja) === deja && K.insignaCompleta(null) === null);
 const SRVd = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+const INSd = require('./insight.js');
+T('instrucțiunile: echipamentul e treaba noastră — RA Insight nu-l trimite pe client să verifice senzori, aparatul sau montajul (Alin, 19.10)',
+  /ECHIPAMENTUL: aparatul GPS, senzorii .*sunt treaba ' \+\s*'RA Track, nu a omului\. Nu-i cere să verifice, să repare sau să ceară echipament/.test(SRVd) &&
+  /\*\*Ce să faci:\*\* \(cel mult trei puncte scurte, numai ce poate face omul singur/.test(SRVd) && !/consum fără senzor/.test(SRVd));
+T('…scrisul nu mai dă „Verifică…" ca exemplu de recomandare și cere numai litere românești', !/„Verifică…"/.test(INSd.SCRISUL) && /„Completează…"/.test(INSd.SCRISUL) && /numai cu litere ' \+\s*'românești/.test(fs.readFileSync(path.join(__dirname, 'insight.js'), 'utf8')));
+T('literele din alt alfabet se recunosc și se trec în litere românești („октомбrie" → „octombrie"); diacriticele românești rămân',
+  INSd.areLitereStraine('Consum (октомбrie 2026)') && !INSd.areLitereStraine('ș ț ă î â Ș Ț') && INSd.litereRomanesti('Consum real acum (октомбrie 2026, până azi)') === 'Consum real acum (octombrie 2026, până azi)' &&
+  INSd.litereRomanesti('Октомбрие') === 'Octombrie' && INSd.litereRomanesti('fără schimbări') === 'fără schimbări');
+T('…pe server: un răspuns cu litere străine se rescrie o dată, iar ce rămâne se curăță; și Scrisoarea de luni se curăță',
+  /const strain = insight\.areLitereStraine\(reply\);/.test(SRVd) && /if \(insight\.areLitereStraine\(reply\)\) reply = insight\.litereRomanesti\(reply\);/.test(SRVd) && /text: insight\.litereRomanesti\(String\(text\)\.trim\(\)\), scrisDe: 'model'/.test(SRVd));
 T('…completarea se face la citirea conversației (pe server), nu în pagină', /m\.extra\.insigna = pachete\.insignaCompleta\(m\.extra\.insigna\)/.test(SRVd));
 const SRC_K = fs.readFileSync(path.join(__dirname, 'pachete.js'), 'utf8');
 const bucInsigna = SRC_K.slice(SRC_K.indexOf('const INSIGNA'), SRC_K.indexOf('module.exports'));
@@ -244,8 +257,18 @@ const LUNI = I.LUNI;
   const qc = await json('POST', '/api/insight/intreaba', ck, { message: 'b 154 uip, ce consum a avut in ultimele 7 zile?', conversatieId: conv });
   const cc = cereri().slice(n2);
   const trC = JSON.stringify(cc[1] ? cc[1].messages.slice(-1) : '');
-  T('c) consumul: senzorul care nu se mișcă e „Am găsit o problemă", roșie, cu calibrarea rezervorului', (qc.j.probleme || []).some((p) => p.fel === 'senzor' && p.grav === 'rosu' && /B 154 UIP/.test(p.titlu) && p.butoane.some((b) => b.fila === 'calibration')), JSON.stringify(qc.j.probleme));
+  T('c) consumul: nivelul care nu se schimbă e „Am găsit o problemă", galbenă, spusă ca fapt, fără butoane tehnice', (qc.j.probleme || []).some((p) => p.fel === 'senzor' && p.grav === 'galben' && /^Consumul la B 154 UIP.* nu se poate măsura acum$/.test(p.titlu) && !p.butoane.some((b) => b.fila === 'calibration') && !/senzor|blocat|necalibrat/i.test(p.titlu + p.dovada)), JSON.stringify(qc.j.probleme));
   T('…modelul primește „NU e măsurat: nivelul din rezervor a stat pe 25 L" și sumele pe mașină', /NU e măsurat: nivelul din rezervor a stat pe 25 L toată perioada/.test(trC) && /cum_s_a_socotit/.test(trC), trC.slice(0, 200));
+
+  // c2) litere rusești în răspuns (Alin, 19.10: „октомбrie 2026"): o rescriere; dacă și ea le are, se curăță
+  const n2b = cereri().length;
+  coada([text('**Consumul pe octombrie** (октомбrie 2026): nimic neobișnuit.'), text('**Consumul pe octombrie 2026:** nimic neobișnuit.')]);
+  const qcr = await json('POST', '/api/insight/intreaba', ck, { message: 'de ce a stat b 154 uip mai mult luna asta?', conversatieId: conv });
+  T('c2) un răspuns cu litere rusești se rescrie O DATĂ, iar omul primește varianta curată', cereri().length - n2b === 2 && qcr.j.reply === '**Consumul pe octombrie 2026:** nimic neobișnuit.', JSON.stringify({ n: cereri().length - n2b, r: qcr.j.reply }));
+  const n2c = cereri().length;
+  coada([text('Pe октомбrie: totul în regulă.'), text('Tot pe октомбrie: totul în regulă.')]);
+  const qcs = await json('POST', '/api/insight/intreaba', ck, { message: 'de ce a stat b 268 roy mai mult luna asta?', conversatieId: conv });
+  T('…iar dacă și rescrierea le are, literele se trec în românește înainte să ajungă la om', cereri().length - n2c === 2 && !/[\u0400-\u04FF]/.test(qcs.j.reply || '') && /octombrie/.test(qcs.j.reply || ''), JSON.stringify({ n: cereri().length - n2c, r: qcs.j.reply }));
 
   // d) anii mașinilor: fișa mașinii, ce lipsește are butonul spre fișă
   coada([unealta('list_vehicles', {}), text('Anul de fabricație: B 154 UIP — 2021; la celelalte două nu e completat în fișă.')]);
@@ -274,8 +297,9 @@ const LUNI = I.LUNI;
   const fb = mid ? await json('POST', '/api/insight/mesaje/' + mid + '/feedback', ck, { valoare: -1 }) : { status: 0 };
   const au = await json('GET', '/api/admin/ai-usage', S);
   const rf = (au.j.rows || []).find((r) => r.id === co.id) || {};
-  // pe Pro: instant = a) și e) (cartonașele pe reguli); b), c), d) = trei întrebări AI. Pe platformă se adaugă f) (Start).
-  T('h) tabloul nostru: răspunsurile instant ale lunii pe firmă și pe platformă, câte întrebări AI', rf.instant === 2 && rf.used === 3 && au.j.pachete && au.j.pachete.instant === 3, JSON.stringify({ instant: rf.instant, used: rf.used, p: au.j.pachete && { i: au.j.pachete.instant, a: au.j.pachete.intrebariAi } }));
+  // pe Pro: instant = a) și e) (cartonașele pe reguli); b), c), c2) ×2, d) = cinci întrebări AI (rescrierea din c2 nu e a doua
+  // întrebare: un singur rând de consum). Pe platformă se adaugă f) (Start).
+  T('h) tabloul nostru: răspunsurile instant ale lunii pe firmă și pe platformă, câte întrebări AI', rf.instant === 2 && rf.used === 5 && au.j.pachete && au.j.pachete.instant === 3, JSON.stringify({ instant: rf.instant, used: rf.used, p: au.j.pachete && { i: au.j.pachete.instant, a: au.j.pachete.intrebariAi } }));
   T('…și 👎 din ultimele 7 zile, pe firmă și pe platformă (doar numărul)', fb.status === 200 && rf.jos7 === 1 && au.j.pachete.jos7 >= 1, JSON.stringify({ fb: fb.status, f: rf.jos7, p: au.j.pachete && au.j.pachete.jos7 }));
   T('…fără niciun text din conversații', ['comparatie', 'Consumul lui', 'anii de inmatriculare'].every((w) => au.text.indexOf(w) < 0));
 

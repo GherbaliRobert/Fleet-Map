@@ -389,8 +389,25 @@ function titluDin(text, masini) {
 // lui?": „nu poți să scrii așa greșit"). Stau în partea fixă a instrucțiunilor (cea din cache).
 const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu experiență care vorbește cu patronul: propoziții scurte, ' +
   'cu diacritice, cuvinte obișnuite. Fără expresii traduse cuvânt cu cuvânt, fără cuvinte inventate, fără întrebări retorice, fără ' +
-  'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…", „Verifică…", ' +
-  '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă.';
+  'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…", „Completează…", ' +
+  '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă. Scrie numai cu litere ' +
+  'românești: niciun cuvânt cu litere din alt alfabet (de pildă rusești).';
+
+// Literele din alt alfabet (Alin, 19.10, în poza unui răspuns: „октомбrie 2026"). Modelul e rugat o dată să rescrie; ce rămâne
+// se trece aici în litere românești, ca să nu ajungă niciodată la client. Doar chirilice și grecești (alte alfabete nu s-au văzut).
+const STRAINE_RE = /[\u0370-\u03FF\u0400-\u04FF]/;
+const CHIRILIC = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'io', ж: 'j', з: 'z', и: 'i', й: 'i', к: 'c', л: 'l', м: 'm', н: 'n', о: 'o',
+  п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ț', ч: 'ci', ш: 'ș', щ: 'șt', ъ: 'ă', ы: 'î', ь: '', э: 'e', ю: 'iu', я: 'ia',
+  α: 'a', β: 'b', γ: 'g', δ: 'd', ε: 'e', ζ: 'z', η: 'i', θ: 'th', ι: 'i', κ: 'c', λ: 'l', μ: 'm', ν: 'n', ξ: 'x', ο: 'o', π: 'p', ρ: 'r',
+  σ: 's', ς: 's', τ: 't', υ: 'i', φ: 'f', χ: 'h', ψ: 'ps', ω: 'o' };
+function areLitereStraine(t) { return STRAINE_RE.test(String(t || '')); }
+function litereRomanesti(t) {
+  return String(t == null ? '' : t).replace(/[\u0370-\u03FF\u0400-\u04FF]/g, function (c) {
+    const l = c.toLowerCase(), r = CHIRILIC[l];
+    if (r == null) return '';
+    return c === l ? r : r.charAt(0).toUpperCase() + r.slice(1);
+  });
+}
 
 // ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat" pe sume bune) ──────────────────────────────
 // RA Insight primește din raport cel mult 25 de rânduri; când adună singur cursele pe mașini, greșește (sau adună doar ce
@@ -433,5 +450,5 @@ module.exports = {
   totaluriPeMasina,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
-  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL,
+  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, areLitereStraine, litereRomanesti,
 };

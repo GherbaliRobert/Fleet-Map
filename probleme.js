@@ -50,14 +50,17 @@ function sursaConsum(v) {
   const dinFisa = v.consumFisa != null
     ? 'socotit din consumul trecut în fișa mașinii (' + nr(v.consumFisa, 1) + ' l/100 km)'
     : (v.consumImplicit != null ? 'socotit dintr-un consum obișnuit pentru felul mașinii (' + nr(v.consumImplicit, 1) + ' l/100 km), fiindcă fișa n-are consumul trecut' : 'socotit, nu măsurat');
-  if (v.nivelBlocat) return { masurat: false, text: 'NU e măsurat: nivelul din rezervor a stat pe ' + nr(v.nivelStart) + ' L toată perioada (senzorul nu se mișcă); ' + dinFisa };
-  if (v.sursa === 'Estimat (nivel CAN)') return { masurat: false, text: 'NU e măsurat: nivelul din rezervor vine prea grosier ca să se poată socoti din el; ' + dinFisa };
-  return { masurat: false, text: 'NU e măsurat: mașina nu trimite consumul; ' + dinFisa };
+  // Fapte, fără vină pe echipament (Alin, 19.10: „nu trebuie să ne învinuim pe noi… «păi voi nu ați verificat dacă are, eu vă
+  // plătesc»"): aparatul, senzorii și montajul sunt treaba noastră, nu a clientului. NU scrie „senzorul e blocat", „mașina nu trimite".
+  if (v.nivelBlocat) return { masurat: false, text: 'NU e măsurat: nivelul din rezervor a stat pe ' + nr(v.nivelStart) + ' L toată perioada, deși mașina a mers; ' + dinFisa };
+  if (v.sursa === 'Estimat (nivel CAN)') return { masurat: false, text: 'NU e măsurat: nivelul din rezervor nu e destul de precis ca să se poată socoti din el; ' + dinFisa };
+  return { masurat: false, text: 'NU e măsurat; ' + dinFisa };
 }
 
-// ─── 2. Senzorul de combustibil care nu se mișcă ────────────────────────────────────────────────────
+// ─── 2. Nivelul din rezervor care nu se schimbă ─────────────────────────────────────────────────────
 // niveluri = citirile de nivel din perioadă (L), km = drumul făcut. true = pe KM_SENZOR km sau mai mult nivelul a variat
-// sub SENZOR_PRAG_L — o mașină care merge consumă, deci senzorul nu măsoară.
+// sub SENZOR_PRAG_L — o mașină care merge consumă, deci din nivel nu se poate socoti consumul. Clientului i se spune DOAR
+// faptul (consumul e socotit, nu măsurat), fără „senzorul e blocat" și fără butoane spre lucruri tehnice (19.10).
 function nivelBlocat(nivMin, nivMax, km, alimentat) {
   if (nivMin == null || nivMax == null || !(km >= KM_SENZOR)) return false;
   return (nivMax - nivMin) < SENZOR_PRAG_L && !(alimentat >= SENZOR_PRAG_L);
@@ -66,13 +69,12 @@ function nivelBlocat(nivMin, nivMax, km, alimentat) {
 function problemaSenzor(v, per) {
   const s = sursaConsum(Object.assign({}, v, { nivelBlocat: true }));
   return {
-    fel: 'senzor', grav: 'rosu',
-    titlu: 'Senzorul de combustibil de la ' + v.vehicul + ' nu se mișcă',
-    dovada: (per && per.eticheta ? 'Pe ' + per.eticheta + ' nivelul' : 'Nivelul') + ' a stat la ' + nr(v.nivelStart) + ' L, deși mașina a mers ' + nr(v.km) +
-      ' km. O mașină care merge consumă: senzorul e blocat sau necalibrat. Consumul de aici e ' + s.text.replace(/^NU e măsurat: [^;]*; /, '') + '.',
+    fel: 'senzor', grav: 'galben',
+    titlu: 'Consumul la ' + v.vehicul + ' nu se poate măsura acum',
+    dovada: (per && per.eticheta ? 'Pe ' + per.eticheta + ' nivelul din rezervor' : 'Nivelul din rezervor') + ' a stat la ' + nr(v.nivelStart) + ' L, deși mașina a mers ' + nr(v.km) +
+      ' km, așa că din el nu se poate măsura consumul. Consumul de aici e ' + s.text.replace(/^NU e măsurat: [^;]*; /, '') + '.',
     butoane: [
-      { fel: 'raport', text: 'Deschide raportul de consum', tip: 'consumption', imei: v.imei, de: per && per.from, pana: per && per.to },
-      { fel: 'fisa', text: 'Calibrarea rezervorului', imei: v.imei, fila: 'calibration' }
+      { fel: 'raport', text: 'Deschide raportul de consum', tip: 'consumption', imei: v.imei, de: per && per.from, pana: per && per.to }
     ]
   };
 }
