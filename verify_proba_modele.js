@@ -88,8 +88,11 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   console.log('\n3. Pagina');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
   const bloc = (PAG.match(/─── Proba modelelor \(Alin, 08\.10[\s\S]*?─── sfârșit „Proba modelelor" ──/) || [''])[0];
-  T('butonul „Proba modelelor" stă în panoul „Utilizare RA Insight" (al nostru)', /onclick="raxProbaModele\(\)"[^>]*><i class="fas fa-flask"><\/i> Proba modelelor/.test(PAG) &&
-    (PAG.match(/raxProbaModele\(\)/g) || []).length === 1 && /window\.raxLoadAiUsage = async function \(\) \{[\s\S]{0,2600}raxProbaModele\(\)/.test(PAG));
+  // Din 19.10 panoul nostru se cheamă „RA Insight · control" și are toate butoanele într-un loc, „Controale" (_aiuControale),
+  // pe care raxLoadAiUsage îl pune în pagină. Butonul e tot unul singur.
+  T('butonul „Proba modelelor" stă în panoul nostru („RA Insight · control" → Controale)', /b\('raxProbaModele\(\)', 'flask', 'Proba modelelor'/.test(PAG) &&
+    (PAG.match(/raxProbaModele\(\)/g) || []).length === 1 && /function _aiuControale\(p\) \{[\s\S]{0,800}raxProbaModele\(\)/.test(PAG) &&
+    /window\.raxLoadAiUsage = async function \(\) \{[\s\S]{0,2600}_aiuControale\(d\.pachete\)/.test(PAG));
   T('textul modelului e scăpat înainte de afișare (e text străin)', /function _pmText\(t\) \{ return esc\(t\)\.replace/.test(bloc) && /_pmText\(x\.text\)/.test(bloc));
   T('costurile vin de la server (pagina doar le adună pe model)', /x\.costLei/.test(bloc) && !/costUsd|cacheRead \*|PRICE/.test(bloc));
   T('pornirea cere confirmarea, cu firma și câte întrebări × modele', /raConfirm\('Pornesc proba: '/.test(bloc));
