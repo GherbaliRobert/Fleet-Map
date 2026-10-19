@@ -360,7 +360,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-19
 
-### AMÂNDOI · RA Insight, discuția refăcută: rapoartele pe mai multe zile, „Am găsit o problemă", insignele; „RA Insight · control" pentru noi
+### AMÂNDOI · RA Insight, discuția refăcută: rapoartele pe mai multe zile, „Am găsit o problemă", insignele; „RA Insight · control" pentru noi — `e04d7ce`, `fa1dbf8`
 
 Alin (15.10), cu șase poze dintr-o discuție: *„complet inutilă și plină de erori… dacă eram client ceream bani înapoi"*; *„De verificat…
 ce să verific? Am AI… îmi zice clar dacă e greșit ceva sau nu… mă duce exact unde e problema"*; *„să pot vedea utilizarea RA Insight de
