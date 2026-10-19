@@ -476,21 +476,31 @@ function publice(o) {
   });
 }
 
-// ─── Insigna de sub un răspuns (Alin, 15.10: „cu mov e analiza RA Insight și consumă întrebare, instant e cu verde — fără
-// bonus… să pară ceva profesionist") ─────────────────────────────────────────────────────────────────────────────────
-// O SINGURĂ regulă pentru ce scrie sub fiecare răspuns: cine a răspuns și dacă s-a numărat. Fără „bonus", „gratuit",
-// „nu se scade": diferența o face culoarea și „· 1 întrebare". Pe Start (unde și răspunsurile instant se numără, din 50)
-// insigna verde spune „· 1 răspuns".
-const INSIGNA = { ai: 'Analiză RA Insight', instant: 'Răspuns instant' };
+// ─── Insigna unui răspuns (Alin, 15.10: „cu mov e analiza RA Insight și consumă întrebare, instant e cu verde — fără
+// bonus… să pară ceva profesionist"; 19.10, din cinci variante pozate: „varianta 1 — antetul") ───────────────────────────
+// O SINGURĂ regulă pentru ce scrie DEASUPRA fiecărui răspuns: numele, eticheta cu chenar (ANALIZĂ mov / INSTANT verde) și,
+// gri, detaliul — dacă s-a numărat și de unde vine. Fără „bonus", „gratuit", „nu se scade". Pe Start (unde și răspunsurile
+// instant se numără, din 50) detaliul e „1 răspuns". `text` = propoziția întreagă, pentru cine citește doar text.
+const INSIGNA = { nume: 'RA Insight', ai: 'Analiză', instant: 'Instant' };
 // fel = 'ai' | 'instant'; o = { numarat, live }
 function insigna(fel, o) {
   o = o || {};
-  if (fel === 'ai') return { fel: 'ai', text: INSIGNA.ai + (o.numarat ? ' · 1 întrebare' : '') };
-  return { fel: 'instant', text: INSIGNA.instant + (o.numarat ? ' · 1 răspuns' : (o.live ? ' · din datele de acum' : ' · din rapoarte')) };
+  const ai = fel === 'ai';
+  const eticheta = ai ? INSIGNA.ai : INSIGNA.instant;
+  const detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte'));
+  return { fel: ai ? 'ai' : 'instant', nume: INSIGNA.nume, eticheta: eticheta, detaliu: detaliu,
+    text: INSIGNA.nume + ' · ' + eticheta + (detaliu ? ' · ' + detaliu : '') };
+}
+// Mesajele salvate pe 19.10 înainte de antet au doar { fel, text } („Analiză RA Insight · 1 întrebare", „Răspuns instant · din
+// rapoarte"). La citirea conversației le completăm din textul lor (scris tot de regula de mai sus), ca pagina să aibă o singură formă.
+function insignaCompleta(x) {
+  if (!x || typeof x !== 'object' || !x.fel || x.eticheta) return x;
+  const det = String(x.text || '').split(' · ').slice(1).join(' · ');
+  return insigna(x.fel, { numarat: det === '1 întrebare' || det === '1 răspuns', live: det === 'din datele de acum' });
 }
 
 module.exports = {
-  INSIGNA, insigna,
+  INSIGNA, insigna, insignaCompleta,
   PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,

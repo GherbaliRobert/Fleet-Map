@@ -4131,14 +4131,17 @@ body.dark .chat-prob.galben .chat-prob-t i { color: #fbbf24; }
 .chat-ok { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: #15803d; }
 body.dark .chat-ok { color: #4ade80; }
 .chat-nota { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
-/* Insigna de sub răspuns (15.10): mov = analiza lui RA Insight (se numără), verde = răspuns instant. */
-.chat-ins-r { margin-top: 8px; }
-.chat-ins { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; padding: 2px 10px; border-radius: 999px; }
-.chat-ins i { font-size: 10.5px; }
-.chat-ins.ai { color: #6d28d9; background: color-mix(in srgb, #7c3aed 12%, transparent); }
-.chat-ins.instant { color: #15803d; background: color-mix(in srgb, #16a34a 12%, transparent); }
-body.dark .chat-ins.ai { color: #c4b5fd; background: color-mix(in srgb, #a78bfa 18%, transparent); }
-body.dark .chat-ins.instant { color: #86efac; background: color-mix(in srgb, #4ade80 16%, transparent); }
+/* Insigna răspunsului, ca antet (Alin, 19.10: „varianta 1 — antetul"): numele, eticheta cu chenar subțire (ANALIZĂ mov /
+   INSTANT verde, fără fundal colorat) și, gri, detaliul. Verdele pe tema deschisă e #166534: #15803d pe fundalul discuției
+   iese sub 4,5 la literele mici ale etichetei. */
+.chat-ins-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 6px; font-size: 13px; line-height: 1.3; }
+.chat-ins-cap .nm { font-weight: 800; color: var(--text-primary); }
+.chat-ins-et { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.25; }
+.chat-ins-et.ai { color: #6d28d9; }
+.chat-ins-et.instant { color: #166534; }
+body.dark .chat-ins-et.ai { color: #c4b5fd; }
+body.dark .chat-ins-et.instant { color: #86efac; }
+.chat-ins-det { font-size: 12px; font-weight: 600; color: var(--text-secondary); }   /* --text-muted pe fundalul discuției = 4,23: sub 4,5 */
 .sdp-verif td { font-size: 12px; color: var(--text-primary); background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b; padding: 5px 10px !important; }
 .sdp-verif td i { color: #b45309; }
 body.dark .sdp-verif td i { color: #fbbf24; }

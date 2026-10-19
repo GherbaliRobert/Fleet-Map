@@ -780,10 +780,13 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   făcut raportul…" sunt ale APLICAȚIEI și sunt reale — fără ele, modelul credea că a mințit („o corecție…").
 - **`list_vehicles` poartă fișa mașinii** (marcă, model, an, combustibil, rezervor, consumul din fișă, `necompletat`). Anul înmatriculării
   nu se ține; se ține anul fabricației.
-- **Insignele: O regulă, `pachete.insigna(fel, { numarat, live })`** — mov „Analiză RA Insight · 1 întrebare" (fără „· 1 întrebare" la
-  noi și la probă), verde „Răspuns instant · din rapoarte" / „· din datele de acum" / pe Start „· 1 răspuns". Fără „bonus", „gratuit",
-  „nu se scade" (Alin, 19.10: „să pară ceva profesionist"). Serverul o pune pe fiecare răspuns (`insigna`); pagina doar o desenează
-  (`_chatInsigna`). Mesajele vechi n-au insignă — NU le-o ghici în pagină.
+- **Insignele, ca ANTET (Alin, 19.10, din cinci variante pozate: „varianta 1 — antetul"): O regulă, `pachete.insigna(fel, { numarat,
+  live })`** → `{ fel, nume: 'RA Insight', eticheta: 'Analiză' | 'Instant', detaliu, text }`: deasupra răspunsului „RA Insight", eticheta
+  cu chenar subțire, fără fundal (ANALIZĂ mov `#6d28d9` / INSTANT verde `#166534` — #15803d ieșea sub 4,5 la literele mici), detaliul gri
+  („1 întrebare" — nu la noi și nu la probă —, „din rapoarte", „din datele de acum", pe Start „1 răspuns"). Fără „bonus", „gratuit", „nu se
+  scade". Serverul o pune pe fiecare răspuns; pagina doar o desenează (`_chatInsigna`, PRIMA în bulă, cu textContent, fără niciun cuvânt
+  al ei). Mesajele salvate pe 19.10 înainte de antet ({ fel, text }) se completează la citirea conversației (`pachete.insignaCompleta`);
+  mesajele de dinainte de 19.10 n-au insignă — NU le-o ghici în pagină.
 - **„RA Insight · control" (fondatorii):** rândul sus în meniu (nu într-un grup; grupul se cheamă „Module"), `_RAX_NUME.agents`. Pagina:
   `_aiuPachete` (4 cifre) → `_aiuAtentie` (plasa, întrebările terminate, 👎 7 zile — `db.aiJosPeFirma`, doar numărul —, partea instant)
   → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul; jos, de unde dă firma conturile — `_aiuUndeConturi`: pe pachet din

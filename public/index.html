@@ -11405,14 +11405,16 @@ const pozitii = await r.json();</code></pre>
         } catch (e) {}
       })();
     };
-    // Insigna de sub răspuns (Alin, 15.10): mov = analiza lui RA Insight (se numără), verde = răspuns instant. Textul îl scrie
-    // serverul (pachete.insigna) — pagina nu știe ce se numără.
+    // Insigna răspunsului (Alin, 19.10: „varianta 1 — antetul"): deasupra răspunsului, numele, eticheta cu chenar (ANALIZĂ mov =
+    // analiza lui RA Insight, se numără; INSTANT verde = din rapoarte / din datele de acum) și, gri, detaliul. Toate cuvintele le
+    // scrie serverul (pachete.insigna) — pagina nu știe ce se numără și nu scrie niciun cuvânt al insignei.
     window._chatInsigna = function (ins) {
-      if (!ins || !ins.text) return null;
-      var e = document.createElement('span'); e.className = 'chat-ins ' + (ins.fel === 'ai' ? 'ai' : 'instant');
-      var i = document.createElement('i'); i.className = 'fas ' + (ins.fel === 'ai' ? 'fa-wand-magic-sparkles' : 'fa-bolt'); e.appendChild(i);
-      e.appendChild(document.createTextNode(String(ins.text)));
-      return e;
+      if (!ins || !(ins.eticheta || ins.text)) return null;
+      var cap = document.createElement('div'); cap.className = 'chat-ins-cap';
+      var parte = function (cls, t) { if (!t) return; var s = document.createElement('span'); s.className = cls; s.textContent = String(t); cap.appendChild(s); };
+      if (ins.eticheta) { parte('nm', ins.nume); parte('chat-ins-et ' + (ins.fel === 'ai' ? 'ai' : 'instant'), ins.eticheta); parte('chat-ins-det', ins.detaliu); }
+      else parte('chat-ins-det', ins.text);
+      return cap;
     };
     // ─── Chatul modern (Alin, 08.10: „da, sunt de acord cu tot") — piesele COMUNE pentru RA Insight (secțiunea și bula din
     // colț) și pentru AI Raport: Copiază, întrebările de continuare, alegătorul de mașină / perioadă / ramură. Scrise o
@@ -12042,6 +12044,7 @@ const pozitii = await r.json();</code></pre>
         // „de ce", cartonașele și dedesubt analiza lui RA Insight.
         var carduri = Array.isArray(x.rapoarte) && x.rapoarte.length ? x.rapoarte : (x.raport && x.raport.label ? [x.raport] : []);
         var cuRaport = carduri.length > 0 && x.source !== 'ai';
+        var insg = window._chatInsigna(x.insigna); if (insg) bub.appendChild(insg);   // antetul: cine a răspuns, înaintea a orice
         if (window._insightExtra && !cuRaport) { var ii = window._insightExtra({ inteles: x.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
         if (x.aprofundat) { var ap = el('div', 'chat-aprof-r'); ap.appendChild(el('span', 'chat-aprof', 'analiză aprofundată')); bub.appendChild(ap); }
         // Mesajul pachetului (Start, luna oprită): în caseta de avertizare, cu „+" (ce se poate alege) și, la administrator, pachetele.
@@ -12072,7 +12075,6 @@ const pozitii = await r.json();</code></pre>
           });
           bub.appendChild(su);
         }
-        var insg = window._chatInsigna(x.insigna); if (insg) { var ir = el('div', 'chat-ins-r'); ir.appendChild(insg); bub.appendChild(ir); }
         var act = window._chatActiuni(m.text);
         if (m.id && x.source !== 'local') {
           [[1, 'fa-thumbs-up', 'Răspuns bun'], [-1, 'fa-thumbs-down', 'Răspuns slab']].forEach(function (d) {

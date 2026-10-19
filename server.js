@@ -5573,6 +5573,8 @@ app.get('/api/insight/conversatii/:id', requireAuth, withScope, requireFeature('
     const c = await db.conversatieUser(req.params.id, userId);
     if (!c) return res.status(404).json({ error: 'Conversația nu există.' });
     const mesaje = await db.mesajeConversatie(c.id, userId, 200);
+    // Insigna mesajelor de dinainte de antet (19.10) se completează aici, din textul ei — pagina are o singură formă.
+    mesaje.forEach(function (m) { if (m.extra && m.extra.insigna) m.extra.insigna = pachete.insignaCompleta(m.extra.insigna); });
     res.json({ conversatie: _convPublic(c), mesaje: mesaje });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

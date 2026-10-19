@@ -199,7 +199,7 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   T('…cifra rămasă negăsită e spusă pe față: „Nu am găsit în rapoarte: 734 km"', pr1.some((p) => p.fel === 'cifra' && /734 km/.test(p.titlu)), JSON.stringify(pr1.map((p) => p.titlu)));
   T('…și consumul greu de crezut al dubei e o problemă, cu motivul și butonul spre raport', pr1.some((p) => p.fel === 'consum' && /B 999 TST/.test(p.titlu) && /neobișnuit de mic/.test(p.dovada) && (p.butoane || []).some((b) => b.fel === 'raport' && b.tip === 'consumption')), JSON.stringify(pr1));
   T('…nicio bandă „De verificat" în răspuns', !q1.j.verificare && !/De verificat/.test(JSON.stringify(pr1)));
-  T('insigna: analiza lui RA Insight, care se numără', (q1.j.insigna || {}).fel === 'ai' && (q1.j.insigna || {}).text === 'Analiză RA Insight · 1 întrebare', JSON.stringify(q1.j.insigna));
+  T('insigna (antetul): ANALIZĂ, analiza lui RA Insight, care se numără', (q1.j.insigna || {}).fel === 'ai' && (q1.j.insigna || {}).eticheta === 'Analiză' && (q1.j.insigna || {}).detaliu === '1 întrebare' && (q1.j.insigna || {}).text === 'RA Insight · Analiză · 1 întrebare', JSON.stringify(q1.j.insigna));
   const conv = await json('GET', '/api/insight/conversatii/' + q1.j.conversatieId, ck);
   const ultimul = ((conv.j.mesaje || []).filter((m) => m.rol === 'ai' || m.rol === 'assistant').slice(-1)[0]) || {};
   T('problemele, nota și insigna rămân în conversație (se văd și la redeschidere)', !!(ultimul.extra && ultimul.extra.nota && (ultimul.extra.probleme || []).length && ultimul.extra.insigna), JSON.stringify(ultimul.extra && { nota: ultimul.extra.nota, p: (ultimul.extra.probleme || []).length }));

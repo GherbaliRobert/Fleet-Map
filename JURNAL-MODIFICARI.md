@@ -285,8 +285,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   două butoane, cartonașul raportului cu `note`; (8) **tot pe 15.10 — conturile dintr-un singur loc** (macheta „Pachet și conturi"): în
   AdminUsers, pe o firmă cu pachet, doar eticheta „RA Insight" în locul butonului (bagheta rămâne pe regula veche), iar în „Pachet și
   conturi" „Fără limită / Cel mult … pe lună" în loc de caseta „la comun" și rândul `rezumat` în locul cartonașelor (cartonașele rămân în
-  răspuns până atunci); (9) **adăugat pe 19.10 — discuția refăcută:** sub fiecare răspuns
-  insigna din răspuns (`insigna`: mov / verde, textul de la server); mai multe cartonașe deodată (`rapoarte`, pe lângă `raport`);
+  răspuns până atunci); (9) **adăugat pe 19.10 — discuția refăcută:** deasupra fiecărui răspuns
+  antetul din `insigna` (seara, varianta 1 aleasă de Alin): `nume` + eticheta `eticheta` cu chenar (mov la `fel: 'ai'`, verde la
+  `'instant'`) + `detaliu` gri, toate de la server; mai multe cartonașe deodată (`rapoarte`, pe lângă `raport`);
   problemele (`probleme`: titlul, dovada, butoanele `traseu` / `fisa` / `raport`) în locul benzii „De verificat"; rândul „✓ Cifrele
   le-am luat din rapoarte" (`verificat`) și nota perioadei (`nota`); la noi, „Utilizare RA Insight" se cheamă „RA Insight · control";
   (10) **adăugat pe 19.10 — pagina noastră pe telefon, ca pe web:** cele patru cifre de sus (`pachete` din `/api/admin/ai-usage`), „Ce cere
@@ -363,11 +364,31 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-19
 
+### AMÂNDOI · Insignele RA Insight, ca antet: „RA Insight [ANALIZĂ] 1 întrebare" / „RA Insight [INSTANT] din rapoarte" (varianta 1)
+
+Alin (19.10), după varianta A (pastila colorată de sub răspuns): *„mai dă-mi variante, că nu e profi deloc"*. Cinci variante pozate în
+aplicație (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi), apoi: *„varianta 1 — antetul"*.
+
+- **Deasupra fiecărui răspuns:** „RA Insight", apoi eticheta cu chenar subțire, fără fundal colorat — mov **ANALIZĂ** (analiza lui RA
+  Insight; se numără o întrebare) sau verde **INSTANT** (din rapoarte sau din datele de acum) — și, gri, detaliul: „1 întrebare", „din
+  rapoarte", „din datele de acum", iar pe Start „1 răspuns". Pastila de sub răspuns a ieșit.
+- **Toate cuvintele le scrie serverul**, într-un singur loc (`pachete.insigna` → `nume`, `eticheta`, `detaliu`, plus `text`, propoziția
+  întreagă). Mesajele salvate azi înainte de antet primesc aceeași formă la deschiderea conversației (`pachete.insignaCompleta`).
+- Contrastul, măsurat pe ecran: etichetele 6,3 (tema deschisă) și peste 10 (tema închisă); detaliul gri 6,7 / 11,7. Verdele de pe tema
+  deschisă e mai închis decât în machetă (#166534), fiindcă #15803d ieșea sub 4,5 la literele mici ale etichetei.
+
+- **Ce am schimbat:** `pachete.js` (`insigna` cu antetul, `insignaCompleta`), `server.js` (completarea la citirea conversației), pagina
+  (`_chatInsigna` desenează antetul, pus primul în bulă), `app.css` (`.chat-ins-cap`, `.chat-ins-et`, `.chat-ins-det`; pastila veche
+  scoasă), `insight_ghid.js` (ghidul spune „deasupra" și numele etichetelor). Probe mutate pe forma nouă: `verify_discutia.js` (și
+  completarea mesajelor vechi, și locul antetului în bulă), `verify_cifre.js`.
+- **Ce vede fondatorul:** la fel ca clientul, în RA Insight (fără „1 întrebare" la noi — nu ni se numără).
+- **Ce vede clientul:** antetul deasupra fiecărui răspuns. Telefonul — la APK-ul următor (în lista lui Robert, punctul 9).
+
 ### FONDATOR · Pagina noastră fără lucrurile vechi: „Mai multe cifre" a ieșit, costul AI stă doar în „RA Insight · control" (punctul 5)
 
 Alin (19.10), la „Trecem acum la punctul 5?": *„da"*. Tot atunci, la insigne: *„mai dă-mi variante, că nu e profi deloc"* —
-cinci variante, pozate în aplicație, pe o pagină separată (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi); în aplicație insignele
-rămân cum sunt până alege. La punctul 6 (*„aici era vorba despre safe drive, parcă făcusem ceva"*): e pasul 2 al Capitolului 2,
+cinci variante, pozate în aplicație, pe o pagină separată (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi); a ales varianta 1,
+„Antetul" (intrarea de mai sus). La punctul 6 (*„aici era vorba despre safe drive, parcă făcusem ceva"*): e pasul 2 al Capitolului 2,
 „RA Insight face, cu Da-ul tău" (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat, potrivirea șoferilor) —
 aprobat ca ordine pe 15.10, neînceput; azi există doar „Am vorbit cu el" în RA Drive.
 

@@ -87,9 +87,23 @@ T('„12.53" dintr-o celulă e 12,53 (nu ziua 12.53), iar „40,137" din JSON nu
 T('sumele pe mașină și pe zi sunt găsite (59,4 km = 12,11 + 47,29); o cifră inventată nu', C.negasite('B 154 UIP: 59,4 km pe 5 octombrie, 155,8 km în total; B 268 ROY 19,4 km.', date).length === 0 && C.negasite('Flota a mers 777,7 km.', date).join() === '777,7 km');
 
 // ─── 4. Insignele (pachete.js) ──────────────────────────────────────────────────────────────────────
-console.log('\n4. Insignele: mov = analiza lui RA Insight (se numără), verde = răspuns instant');
-T('textele stau într-un singur loc: „Analiză RA Insight · 1 întrebare", „Răspuns instant · din rapoarte"', K.insigna('ai', { numarat: true }).text === 'Analiză RA Insight · 1 întrebare' && K.insigna('ai', {}).text === 'Analiză RA Insight' &&
-  K.insigna('instant', {}).text === 'Răspuns instant · din rapoarte' && K.insigna('instant', { numarat: true }).text === 'Răspuns instant · 1 răspuns' && K.insigna('instant', { live: true }).text === 'Răspuns instant · din datele de acum');
+console.log('\n4. Insignele, ca antet (Alin, 19.10: „varianta 1 — antetul"): ANALIZĂ mov (se numără), INSTANT verde');
+// Forma: numele, eticheta și detaliul — toate de la server; `text` = propoziția întreagă.
+const IN = (fel, o) => K.insigna(fel, o);
+const egal = (x, nume, et, det, text) => x.nume === nume && x.eticheta === et && x.detaliu === det && x.text === text;
+T('textele stau într-un singur loc: RA Insight · Analiză · 1 întrebare / RA Insight · Instant · din rapoarte',
+  egal(IN('ai', { numarat: true }), 'RA Insight', 'Analiză', '1 întrebare', 'RA Insight · Analiză · 1 întrebare') && egal(IN('ai', {}), 'RA Insight', 'Analiză', '', 'RA Insight · Analiză') &&
+  egal(IN('instant', {}), 'RA Insight', 'Instant', 'din rapoarte', 'RA Insight · Instant · din rapoarte') && egal(IN('instant', { numarat: true }), 'RA Insight', 'Instant', '1 răspuns', 'RA Insight · Instant · 1 răspuns') &&
+  egal(IN('instant', { live: true }), 'RA Insight', 'Instant', 'din datele de acum', 'RA Insight · Instant · din datele de acum') && IN('ai', {}).fel === 'ai' && IN('instant', {}).fel === 'instant');
+// Mesajele salvate pe 19.10 înainte de antet ({ fel, text } în forma veche) primesc la citire aceeași formă.
+const nouDinVechi = (fel, text) => K.insignaCompleta({ fel, text });
+const deja = IN('ai', { numarat: true });
+T('mesajele de dinainte de antet se completează din textul lor (toate cele patru forme vechi), iar cele noi rămân neatinse',
+  egal(nouDinVechi('ai', 'Analiză RA Insight · 1 întrebare'), 'RA Insight', 'Analiză', '1 întrebare', 'RA Insight · Analiză · 1 întrebare') && egal(nouDinVechi('ai', 'Analiză RA Insight'), 'RA Insight', 'Analiză', '', 'RA Insight · Analiză') &&
+  egal(nouDinVechi('instant', 'Răspuns instant · din rapoarte'), 'RA Insight', 'Instant', 'din rapoarte', 'RA Insight · Instant · din rapoarte') && egal(nouDinVechi('instant', 'Răspuns instant · 1 răspuns'), 'RA Insight', 'Instant', '1 răspuns', 'RA Insight · Instant · 1 răspuns') &&
+  egal(nouDinVechi('instant', 'Răspuns instant · din datele de acum'), 'RA Insight', 'Instant', 'din datele de acum', 'RA Insight · Instant · din datele de acum') && K.insignaCompleta(deja) === deja && K.insignaCompleta(null) === null);
+const SRVd = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+T('…completarea se face la citirea conversației (pe server), nu în pagină', /m\.extra\.insigna = pachete\.insignaCompleta\(m\.extra\.insigna\)/.test(SRVd));
 const SRC_K = fs.readFileSync(path.join(__dirname, 'pachete.js'), 'utf8');
 const bucInsigna = SRC_K.slice(SRC_K.indexOf('const INSIGNA'), SRC_K.indexOf('module.exports'));
 T('…fără „bonus", „gratuit" sau „nu se scade" (Alin, 15.10: „să pară ceva profesionist")', !/bonus|gratuit|nu se scade/i.test(bucInsigna.replace(/^\s*\/\/.*$/gm, '')));
@@ -97,7 +111,13 @@ T('…fără „bonus", „gratuit" sau „nu se scade" (Alin, 15.10: „să par
 // ─── 5. Pagina ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n5. Pagina: chatul și „RA Insight · control"');
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-T('insigna o scrie serverul; pagina doar o desenează (mov / verde), cu textContent', /window\._chatInsigna = function \(ins\)/.test(PAG) && /e\.appendChild\(document\.createTextNode\(String\(ins\.text\)\)\)/.test(PAG) && PAG.indexOf("'Analiză RA Insight") < 0);
+const FINS = PAG.slice(PAG.indexOf('window._chatInsigna = function (ins)'), PAG.indexOf('window._chatTextSimplu'));
+T('insigna o scrie serverul; pagina doar o desenează (antet: nume, etichetă mov / verde, detaliu), cu textContent, fără niciun cuvânt al ei',
+  /var cap = document\.createElement\('div'\); cap\.className = 'chat-ins-cap';/.test(FINS) && /s\.textContent = String\(t\)/.test(FINS) && !/innerHTML/.test(FINS) &&
+  !/'(Analiză|Instant|RA Insight|1 întrebare|din rapoarte)/.test(FINS) && PAG.indexOf("'Analiză RA Insight") < 0);
+const BULA = PAG.slice(PAG.indexOf('function bulaAi(m) {'), PAG.indexOf('window.insightTrimite = async function'));
+T('antetul stă DEASUPRA răspunsului (înaintea titlului, a cartonașelor și a textului), nu dedesubt',
+  BULA.indexOf('window._chatInsigna(x.insigna)') > 0 && BULA.indexOf('window._chatInsigna(x.insigna)') < BULA.indexOf("'inteles')") && BULA.indexOf('window._chatInsigna(x.insigna)') < BULA.indexOf('cartonasRaport(rp)') && BULA.indexOf('chat-ins-r') < 0);
 T('Traseu de la o problemă: mașina, intervalul, traseul arătat și punctul marcat pe hartă', /window\.insightLaTraseu = function \(b\)/.test(PAG) && /L\.circleMarker\(\[Number\(b\.lat\), Number\(b\.lng\)\]/.test(PAG) && /historyMarkers\.push\(mk\)/.test(PAG));
 T('meniul fondatorului: „RA Insight · control" sus, mereu la vedere (nu într-un grup); grupul se cheamă „Module"', /<button class="nav-item" data-vert="fondator" data-super onclick="navGo\(this, function\(\)\{ goSistem\('agents'\); \}\)"><i class="fas fa-wand-magic-sparkles"><\/i><span>RA Insight · control<\/span><\/button>\s*<div class="nav-group" data-vert="fondator" data-group="gestiune">/.test(PAG) &&
   /<span>Module<\/span>/.test(PAG) && PAG.indexOf('<span>Utilizare RA Insight</span>') < 0 && /agents: 'RA Insight · control'/.test(PAG));
@@ -203,7 +223,7 @@ const LUNI = I.LUNI;
   T('a) „foii de parcurs" pe o zi → cartonașul Foii de parcurs, B 154 UIP, doar ziua cerută', qa.j.source === 'reguli' && qa.j.raport && qa.j.raport.tip === 'trips' && qa.j.raport.perioada === etZi(zB) && /B 154 UIP/.test(qa.j.raport.vehicul), JSON.stringify(qa.j.raport));
   const pvA = (qa.j.probleme || []).find((p) => p.fel === 'viteza');
   T('…„Am găsit o problemă": 159 km/h, viteză reală (pozițiile din jur), cu butonul spre Traseu la minutul acela', pvA && /^159 km\/h pe /.test(pvA.titlu) && /^Viteză reală, nu eroare de GPS: 6 poziții la rând peste 130 km\/h/.test(pvA.dovada) && pvA.butoane[0].fel === 'traseu' && pvA.butoane[0].lat != null, JSON.stringify(qa.j.probleme));
-  T('…insigna verde, „Răspuns instant · din rapoarte", și niciun drum la model', (qa.j.insigna || {}).text === 'Răspuns instant · din rapoarte' && cereri().length === n0, JSON.stringify(qa.j.insigna));
+  T('…insigna verde, INSTANT · din rapoarte, și niciun drum la model', (qa.j.insigna || {}).eticheta === 'Instant' && (qa.j.insigna || {}).detaliu === 'din rapoarte' && (qa.j.insigna || {}).fel === 'instant' && cereri().length === n0, JSON.stringify(qa.j.insigna));
   T('…textul răspunsului (îl vede RA Insight în discuția de după) poartă cifrele de sus ale raportului', /Curse: 1 · Distanță totală \(km\): /.test(qa.j.reply || ''), (qa.j.reply || '').slice(0, 160));
 
   // b) două zile + „comparație" → două cartonașe (pe reguli), apoi RA Insight compară: o întrebare, cu rapoartele în mână
@@ -214,7 +234,7 @@ const LUNI = I.LUNI;
   const cb = cereri().slice(n1);
   T('b) două zile + „compară" → DOUĂ cartonașe, pe B 154 UIP (mașina discuției), în ordinea scrisă', (qb.j.rapoarte || []).map((c) => c.perioada).join(' | ') === etZi(zB) + ' | ' + etZi(zA) && (qb.j.rapoarte || []).every((c) => /B 154 UIP/.test(c.vehicul) && c.id), JSON.stringify((qb.j.rapoarte || []).map((c) => [c.vehicul, c.perioada])));
   T('…și comparația lui RA Insight: un singur drum la model, cu rapoartele făcute deja în instrucțiuni (nu le mai rulează)', qb.j.source === 'ai' && cb.length === 1 && /RAPOARTE FĂCUTE ACUM/.test(JSON.stringify(cb[0].system)) && /pe_masina/.test(JSON.stringify(cb[0].system)), cb.length);
-  T('…cifra din comparație se regăsește în rapoarte („✓ Cifrele le-am luat din rapoarte"); insigna mov, care se numără', qb.j.verificat === true && (qb.j.insigna || {}).text === 'Analiză RA Insight · 1 întrebare', JSON.stringify({ v: qb.j.verificat, i: qb.j.insigna }));
+  T('…cifra din comparație se regăsește în rapoarte („✓ Cifrele le-am luat din rapoarte"); insigna mov, care se numără', qb.j.verificat === true && (qb.j.insigna || {}).fel === 'ai' && (qb.j.insigna || {}).eticheta === 'Analiză' && (qb.j.insigna || {}).detaliu === '1 întrebare', JSON.stringify({ v: qb.j.verificat, i: qb.j.insigna }));
   T('…problema de viteză vine și aici', (qb.j.probleme || []).some((p) => p.fel === 'viteza'));
   T('…modelul vede în discuție cifrele raportului făcut de aplicație și instrucțiunea că sunt reale (nu mai „corectează")', /Curse: 1 · Distanță totală/.test(JSON.stringify(cb[0].messages)) && /sunt rapoarte făcute de APLICAȚIE în discuție/.test(JSON.stringify(cb[0].system)));
 
@@ -242,7 +262,7 @@ const LUNI = I.LUNI;
   // f) pe Start (fără AI): cererea cu „compară" face rapoartele și spune de la ce pachet merge comparația; nimic la model
   const n4 = cereri().length;
   const qf = await json('POST', '/api/insight/intreaba', ckS, { message: 'fa-mi foaia de parcurs pe ' + etZi(zB) + ' si pe ' + etZi(zA) + ' si compara-le', nou: true });
-  T('f) pe Start: cele două cartonașe + mesajul pachetului; niciun drum la model; insigna verde „· 1 răspuns" (se numără din 50)', (qf.j.rapoarte || []).length === 2 && !!qf.j.pachetMesaj && cereri().length === n4 && (qf.j.insigna || {}).text === 'Răspuns instant · 1 răspuns', JSON.stringify({ r: (qf.j.rapoarte || []).length, m: qf.j.pachetMesaj, i: qf.j.insigna }));
+  T('f) pe Start: cele două cartonașe + mesajul pachetului; niciun drum la model; insigna verde INSTANT · 1 răspuns (se numără din 50)', (qf.j.rapoarte || []).length === 2 && !!qf.j.pachetMesaj && cereri().length === n4 && (qf.j.insigna || {}).eticheta === 'Instant' && (qf.j.insigna || {}).detaliu === '1 răspuns', JSON.stringify({ r: (qf.j.rapoarte || []).length, m: qf.j.pachetMesaj, i: qf.j.insigna }));
 
   // g) totul rămâne în conversație (se vede la redeschidere)
   const cv = await json('GET', '/api/insight/conversatii/' + conv, ck);
