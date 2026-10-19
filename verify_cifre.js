@@ -91,17 +91,24 @@ T('rapoartele de consum, costuri și emisii pun „De verificat" în legendă (e
   (REP.match(/_legendaCuDeVerificat\(/g) || []).length === 4);
 
 // ─── 5. Pagina ─────────────────────────────────────────────────────────────────────────────────────
-console.log('\n5. Pagina: banda „De verificat" și nota din ramura Combustibil');
+// Din 15.10 (Alin: „de verificat… păi pe bune, ce să verific? Am AI… îmi zice clar dacă e greșit ceva sau nu… mă duce exact unde
+// e problema") banda „De verificat" a plecat din chat. În locul ei: „Am găsit o problemă" (probleme.js, pe server), o notă scurtă
+// când s-a citit altă perioadă, „✓ Cifrele le-am luat din rapoarte" când toate se regăsesc. Ramura Combustibil își păstrează rândul.
+console.log('\n5. Pagina: problemele în locul benzii „De verificat", nota perioadei, confirmarea');
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8');
-T('banda e o singură piesă (_insightExtra, partea „verificare"), cu textul pus ca text', /parte === 'verificare'/.test(PAG) && /li\.textContent = t;/.test(PAG) && /tt\.textContent = 'De verificat';/.test(PAG));
-// Din 15.10 bula din colț nu mai are un chat al ei (duce în secțiune): banda o desenează doar secțiunea, pe fiecare răspuns.
-T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo)', /_insightExtra\(\{ verificare: x\.verificare \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG));
-// Scăparea din 08.10, prinsă de capturi: răspunsul proaspăt din secțiune nu ducea banda mai departe (apărea doar la redeschidere).
-T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /extra: \{ sources: j\.sources, inteles: j\.inteles, alege: j\.alege, source: j\.source, urmari: j\.urmari, verificare: j\.verificare[,\s]/.test(PAG));
+T('chatul nu mai scrie „De verificat" și nu-i mai cere omului să verifice cifrele', PAG.indexOf("tt.textContent = 'De verificat';") < 0 && PAG.indexOf('Verifică-le în raport') < 0);
+T('problemele sunt O piesă (_chatProbleme), cu textul pus ca text, iar butoanele duc la locul exact (Traseu, fișa, raportul)',
+  /window\._chatProbleme = function \(lista\)/.test(PAG) && /h\.appendChild\(document\.createTextNode\(String\(p\.titlu \|\| ''\)\)\)/.test(PAG) && /d\.textContent = String\(p\.dovada\)/.test(PAG) &&
+  /if \(b\.fel === 'traseu'\) return window\.insightLaTraseu\(b\);/.test(PAG) && /switchEditTab\(b\.fila, t\)/.test(PAG) && /rinOpenReport\(b\.tip, b\.imei \|\| '', b\.de, b\.pana\)/.test(PAG));
+T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo); nota perioadei tot prin _insightExtra',
+  (PAG.match(/window\._chatProbleme\(x\.probleme\)/g) || []).length === 1 && /_insightExtra\(\{ verificare: x\.verificare, nota: x\.nota \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG));
+T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /probleme: j\.probleme,\s*verificat: j\.verificat, nota: j\.nota, insigna: j\.insigna \}/.test(PAG));
+T('„✓ Cifrele le-am luat din rapoarte" doar când serverul spune `verificat`', /if \(x\.verificat\) \{ var ok = el\('div', 'chat-ok'\);/.test(PAG) && /Cifrele le-am luat din rapoarte\./.test(PAG));
 T('ramura Combustibil spune „De verificat" sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));
-T('textul benzii are culoarea textului (contrast sigur pe ambele teme); chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată',
-  /\.chat-verif \{[^}]*color: var\(--text-primary\)/.test(CSS) && /\.chat-verif > i \{ color: #b45309;/.test(CSS) && /body\.dark \.chat-verif > i \{ color: #fbbf24; \}/.test(CSS));
+T('textul problemei are culoarea textului (contrast sigur pe ambele teme); roșul și chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată',
+  /\.chat-prob-t \{[^}]*color: var\(--text-primary\)/.test(CSS) && /\.chat-prob-t i \{ margin-top: 2px; color: #b91c1c; \}/.test(CSS) && /body\.dark \.chat-prob-t i \{ color: #f87171; \}/.test(CSS) &&
+  /\.chat-prob\.galben \.chat-prob-t i \{ color: #b45309; \}/.test(CSS) && /body\.dark \.chat-prob\.galben \.chat-prob-t i \{ color: #fbbf24; \}/.test(CSS) && CSS.indexOf('.chat-verif') < 0);
 
 // ─── 4. Pe server pornit ───────────────────────────────────────────────────────────────────────────
 const PORT = 3299, TCP = 5299;
@@ -179,17 +186,27 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   const intreb = 'Ce consum am avut pe intervalul ' + dd(luni) + '-' + dd(luni + 2 * zi) + '?';
   const etCeruta = A.perioadaDin(I.norm(intreb), Date.now()).eticheta;
 
-  // a) RA Insight citește toată luna (greșit) și scrie o cifră inventată → banda spune amândouă. Luna = cea a zilei de luni,
-  //    ca drumurile dubei să fie în ce citește (săptămâna trecută poate începe în luna dinainte).
-  coada([unealta('combustibil', { month: fmt(luni).slice(0, 7) }), text('Consumul pe ' + etCeruta + ': flota a mers 734 km.')]);
+  // a) RA Insight citește toată luna (greșit) și scrie o cifră inventată. Din 15.10: aplicația îi cere O rescriere; dacă și a
+  //    doua oară cifra lipsește, se spune pe față, ca problemă („Nu am găsit în rapoarte: 734 km") — nu „verifică tu".
+  //    Luna = cea a zilei de luni, ca drumurile dubei să fie în ce citește (săptămâna trecută poate începe în luna dinainte).
+  const n0 = cereri().length;
+  coada([unealta('combustibil', { month: fmt(luni).slice(0, 7) }), text('Consumul pe ' + etCeruta + ': flota a mers 734 km.'), text('Consumul pe ' + etCeruta + ': flota a mers 734 km.')]);
   const q1 = await json('POST', '/api/insight/intreaba', ck, { message: intreb, nou: true });
-  const v1 = q1.j.verificare || {};
-  T('banda spune că s-a citit altă perioadă decât cea cerută', /^Ai cerut .+; cifrele sunt pentru .+\.$/.test(v1.perioada || '') && (v1.perioada || '').indexOf(etCeruta) > 0, v1.perioada);
-  T('…și cifra inventată (734 km)', (v1.cifre || []).includes('734 km'), JSON.stringify(v1.cifre));
-  T('…și consumul greu de crezut al dubei, cu motivul', (v1.deVerificat || []).some((t) => /B 999 TST/.test(t) && /neobișnuit de mic/.test(t)), JSON.stringify(v1.deVerificat));
+  const c1 = cereri().slice(n0);
+  T('cifra inventată → aplicația îi cere lui RA Insight O rescriere, cu cifrele care nu se găsesc', c1.length === 3 && /Verificarea aplicației: cifrele 734 km nu se regăsesc/.test(JSON.stringify(c1[2].messages.slice(-1))), c1.length);
+  T('nota spune că s-a citit altă perioadă decât cea cerută', /^Ai cerut .+; cifrele sunt pentru .+\.$/.test(q1.j.nota || '') && (q1.j.nota || '').indexOf(etCeruta) > 0, q1.j.nota);
+  const pr1 = q1.j.probleme || [];
+  T('…cifra rămasă negăsită e spusă pe față: „Nu am găsit în rapoarte: 734 km"', pr1.some((p) => p.fel === 'cifra' && /734 km/.test(p.titlu)), JSON.stringify(pr1.map((p) => p.titlu)));
+  T('…și consumul greu de crezut al dubei e o problemă, cu motivul și butonul spre raport', pr1.some((p) => p.fel === 'consum' && /B 999 TST/.test(p.titlu) && /neobișnuit de mic/.test(p.dovada) && (p.butoane || []).some((b) => b.fel === 'raport' && b.tip === 'consumption')), JSON.stringify(pr1));
+  T('…nicio bandă „De verificat" în răspuns', !q1.j.verificare && !/De verificat/.test(JSON.stringify(pr1)));
+  T('insigna: analiza lui RA Insight, care se numără', (q1.j.insigna || {}).fel === 'ai' && (q1.j.insigna || {}).text === 'Analiză RA Insight · 1 întrebare', JSON.stringify(q1.j.insigna));
   const conv = await json('GET', '/api/insight/conversatii/' + q1.j.conversatieId, ck);
   const ultimul = ((conv.j.mesaje || []).filter((m) => m.rol === 'ai' || m.rol === 'assistant').slice(-1)[0]) || {};
-  T('banda rămâne în conversație (se vede și la redeschidere)', !!(ultimul.extra && ultimul.extra.verificare && ultimul.extra.verificare.perioada), JSON.stringify(ultimul.extra && ultimul.extra.verificare));
+  T('problemele, nota și insigna rămân în conversație (se văd și la redeschidere)', !!(ultimul.extra && ultimul.extra.nota && (ultimul.extra.probleme || []).length && ultimul.extra.insigna), JSON.stringify(ultimul.extra && { nota: ultimul.extra.nota, p: (ultimul.extra.probleme || []).length }));
+  // a2) rescrierea îndreaptă cifra → răspunsul rescris îl înlocuiește pe primul, fără nicio problemă de cifre
+  coada([unealta('combustibil', { month: fmt(luni).slice(0, 7) }), text('Flota a mers 734 km.'), text('Consumul pe ' + etCeruta + ', după rapoarte.')]);
+  const q1b = await json('POST', '/api/insight/intreaba', ck, { message: intreb, nou: true });
+  T('rescrierea fără cifra inventată înlocuiește răspunsul dintâi', /după rapoarte/.test(q1b.j.reply || '') && !(q1b.j.probleme || []).some((p) => p.fel === 'cifra'), (q1b.j.reply || '').slice(0, 80));
 
   // b) RA Insight citește EXACT intervalul cerut → nimic de spus despre perioadă
   coada([unealta('combustibil', { from: fmt(luni), to: fmt(luni + 2 * zi) }), text('Consumul pe ' + etCeruta + '.')]);
@@ -199,13 +216,19 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   const tr2 = (Array.isArray(msg2.content) ? msg2.content : []).filter((c) => c.type === 'tool_result')[0] || {};
   let rez2 = {}; try { rez2 = JSON.parse(typeof tr2.content === 'string' ? tr2.content : JSON.stringify(tr2.content)); } catch (e) {}
   T('unealta combustibil citește exact intervalul cerut („' + etCeruta + '"), nu luna', rez2.perioada === etCeruta, JSON.stringify(rez2).slice(0, 220));
-  T('…deci banda nu mai spune nimic despre perioadă', !(q2.j.verificare && q2.j.verificare.perioada), JSON.stringify(q2.j.verificare));
+  T('…deci nu mai e nicio notă despre perioadă', !q2.j.nota, q2.j.nota);
   const m2 = rez2.masini || [];
-  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
-    m2.every((m) => /^estimat din consumul trecut în fișă/.test(m.sursa || '')), JSON.stringify(m2.map((m) => [m.masina, m.pret_litru_lei, m.sursa])));
+  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului: „NU e măsurat… socotit din consumul trecut în fișa mașinii (X l/100 km)" (probleme.js)', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
+    m2.every((m) => /^NU e măsurat: mașina nu trimite consumul; socotit din consumul trecut în fișa mașinii \(\d+,\d l\/100 km\)$/.test(m.sursa || '')), JSON.stringify(m2.map((m) => [m.masina, m.pret_litru_lei, m.sursa])));
   T('…și cifra greu de crezut a dubei, lângă mașina ei (de_verificat)', m2.some((m) => /B 999 TST/.test(m.masina) && (m.de_verificat || []).some((t) => /neobișnuit de mic/.test(t))) &&
     !m2.some((m) => /B 154 UIP/.test(m.masina) && m.de_verificat), JSON.stringify(m2.map((m) => [m.masina, m.de_verificat])));
-  T('instrucțiunile cer perioada exactă și cifrele „de_verificat" spuse lângă cifra lor', /\(8\) Perioada: citește EXACT perioada cerută/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /de_verificat/.test(JSON.stringify(cereri().slice(-1)[0].system)));
+  T('instrucțiunile cer perioada exactă, cifrele „de_verificat" spuse lângă cifra lor și nu-i cer omului să verifice', /\(8\) Perioada: citește EXACT perioada cerută/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /de_verificat/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /Nu-i cere omului să verifice cifre/.test(JSON.stringify(cereri().slice(-1)[0].system)));
+  // b2) o cifră care chiar e în date → „✓ Cifrele le-am luat din rapoarte" (verificat), fără rescriere
+  const loganKm = (m2.filter((m) => /B 154 UIP/.test(m.masina))[0] || {}).km;
+  const n2 = cereri().length;
+  coada([unealta('combustibil', { from: fmt(luni), to: fmt(luni + 2 * zi) }), text('B 154 UIP a mers ' + Number(loganKm).toLocaleString('ro-RO') + ' km.')]);
+  const q3 = await json('POST', '/api/insight/intreaba', ck, { message: intreb, nou: true });
+  T('o cifră găsită în date → „verificat" și nicio rescriere', q3.j.verificat === true && cereri().length - n2 === 2 && !(q3.j.probleme || []).some((p) => p.fel === 'cifra'), JSON.stringify({ v: q3.j.verificat, n: cereri().length - n2, km: loganKm }));
 
   // c) aceeași dubă, „de verificat" peste tot: ramura, raportul Consum, AI Raport
   const cb = await json('GET', '/api/insight/combustibil?luna=' + fmt(luni).slice(0, 7), ck);

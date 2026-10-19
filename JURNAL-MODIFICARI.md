@@ -285,7 +285,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   două butoane, cartonașul raportului cu `note`; (8) **tot pe 15.10 — conturile dintr-un singur loc** (macheta „Pachet și conturi"): în
   AdminUsers, pe o firmă cu pachet, doar eticheta „RA Insight" în locul butonului (bagheta rămâne pe regula veche), iar în „Pachet și
   conturi" „Fără limită / Cel mult … pe lună" în loc de caseta „la comun" și rândul `rezumat` în locul cartonașelor (cartonașele rămân în
-  răspuns până atunci).
+  răspuns până atunci); (9) **adăugat pe 19.10 — discuția refăcută:** sub fiecare răspuns
+  insigna din răspuns (`insigna`: mov / verde, textul de la server); mai multe cartonașe deodată (`rapoarte`, pe lângă `raport`);
+  problemele (`probleme`: titlul, dovada, butoanele `traseu` / `fisa` / `raport`) în locul benzii „De verificat"; rândul „✓ Cifrele
+  le-am luat din rapoarte" (`verificat`) și nota perioadei (`nota`); la noi, „Utilizare RA Insight" se cheamă „RA Insight · control".
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -354,6 +357,48 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-19
+
+### AMÂNDOI · RA Insight, discuția refăcută: rapoartele pe mai multe zile, „Am găsit o problemă", insignele; „RA Insight · control" pentru noi
+
+Alin (15.10), cu șase poze dintr-o discuție: *„complet inutilă și plină de erori… dacă eram client ceream bani înapoi"*; *„De verificat…
+ce să verific? Am AI… îmi zice clar dacă e greșit ceva sau nu… mă duce exact unde e problema"*; *„să pot vedea utilizarea RA Insight de
+undeva anume"*. Macheta „Discuția ta cu RA Insight, refăcută", apoi (19.10): *„1. da"* (cele 9 cauze), *„4. da"* (pagina noastră),
+insignele fără „bonus" și fără „nu se scade".
+
+- **Cererile se înțeleg:** „raportul **foii** de parcurs" (și „foilor", „situației zilnice"); ziua scrisă rămâne și când RA Insight
+  întreabă ce raport vrei; o cerere nouă fără mașină rămâne pe mașina despre care vorbeai („pentru toată flota" o schimbă).
+- **Mai multe zile într-o cerere** („pe 8 și pe 5 octombrie") = câte un raport pe zi; cu „compară" / „de ce", după rapoarte vine și
+  analiza lui RA Insight (o întrebare). Pe Start: rapoartele, plus de la ce pachet merge comparația.
+- **Cifrele:** sumele pe mașină și pe zi le face aplicația (RA Insight vedea doar 25 de rânduri și aduna singur). RA Insight vede
+  cifrele rapoartelor făcute în discuție, deci nu mai inventează „o corecție". O cifră care nu se găsește în date îl face să-și rescrie
+  răspunsul o dată; dacă tot lipsește, se spune pe față. Când toate se regăsesc: „✓ Cifrele le-am luat din rapoarte".
+- **„Am găsit o problemă" în locul benzii „De verificat":** viteza mare — reală sau eroare de GPS, din pozițiile din jur, cu butonul
+  spre Traseu la minutul acela (punctul marcat pe hartă); senzorul de combustibil care nu se mișcă (consumul de atunci e socotit din
+  fișă, nu măsurat — și se spune așa); consumul greu de crezut; fișa mașinii necompletată (anul), cu butonul spre fișă.
+- **RA Insight citește fișa mașinii:** anul de fabricație, marca, modelul, combustibilul, rezervorul, consumul din fișă.
+- **Insignele sub fiecare răspuns:** mov „Analiză RA Insight · 1 întrebare" (se numără), verde „Răspuns instant · din rapoarte"
+  (pe Start „· 1 răspuns", fiindcă acolo se numără din 50). Textele le scrie serverul, într-un singur loc.
+- **Pentru noi, „RA Insight · control":** rândul stă sus în meniu, mereu la vedere (grupul „AI & Module" a devenit „Module"). Pe un
+  ecran: încasăm / ne costă / ne rămân / soldul Anthropic, „Ce cere atenție" (firmele lângă plasă, 👎 din ultimele 7 zile — doar
+  numărul, cât din răspunsuri au fost instant), firmă cu firmă (un rând; amănuntul la clic) și toate butoanele (proba modelelor,
+  analiza aprofundată, soldul, cheia, istoricul). Cifrele de dinainte stau sub „Mai multe cifre", închis, cât timp telefonul le arată.
+
+- **Ce am schimbat:** `probleme.js` (nou, curat: regulile detectorului), `ai_raport.js` (`zileleDin`, formele numelor, `comanda` cu
+  mașina și ziua păstrate, `analiza`), `cifre.js` (cifrele citite valoare cu valoare, „12.53" = 12,53, sumele pe mașină / zi),
+  `insight.js` (`totaluriPeMasina`), `pachete.js` (`insigna`), `reports.js` (senzorul blocat, consumul din fișă), `ramuri.js`, `db.js`
+  (cel mai rapid punct, 👎 pe firmă), `server.js` (rapoartele cerute pe mai multe zile, `_problemeDinRaport`, `_raportPentruModel`,
+  rescrierea o dată, insignele, instrucțiunile, `list_vehicles` cu fișa, „RA Insight · control"), pagina (chatul, Traseu la minut,
+  pagina noastră, meniul), `app.css`, `insight_ghid.js`. Probă nouă: `verify_discutia.js` (în `npm test`; 55, pe server pornit, cu
+  modelul simulat). `verify_cifre.js`, `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js` mutate pe regula nouă.
+- **Ce vede fondatorul:** rândul „RA Insight · control" sus în meniu și pagina pe un ecran; în „Proba modelelor", câte răspunsuri au
+  avut cifre greșite (rescrise sau rămase negăsite).
+- **Ce vede clientul:** în RA Insight — rapoartele cerute pe una sau mai multe zile, comparația, problemele găsite cu butoanele lor,
+  insigna sub fiecare răspuns. Telefonul — la APK-ul următor (în lista lui Robert).
+- **Rămase, la cererea lui Alin, după acestea** (19.10: „5 și 6 lasă-le după ce faci pe celelalte"): (5) ce rămâne vechi pe pagina
+  noastră (textul „din Utilizatori" din amănuntul firmei, a doua cutie de cost AI din „Dashboard platformă", „Mai multe cifre");
+  (6) „atribuirea, mesajul, dă atribui" — de lămurit cu Alin ce înseamnă.
 
 ## 2026-10-16
 

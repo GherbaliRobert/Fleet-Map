@@ -4498,6 +4498,18 @@ async function istoricInterval(imei, from, to, dupa, limita) {
   `, [imei, from, to, dupa || null, Math.max(1, Math.min(50000, parseInt(limita) || 20000))]);
   return r.rows;
 }
+// Cel mai rapid punct al unei mașini într-o perioadă (vii + arhivă) — „Am găsit o problemă" (probleme.js, 15.10): de aici se
+// citesc pozițiile din jur, ca să se vadă dacă viteza e reală sau un salt de GPS.
+async function punctVitezaMaxima(imei, from, to) {
+  const r = await pool.query(`
+    SELECT timestamp, latitude, longitude, speed FROM (
+      SELECT timestamp, latitude, longitude, speed FROM positions WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+      UNION ALL
+      SELECT timestamp, latitude, longitude, speed FROM positions_archive WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+    ) u WHERE speed IS NOT NULL ORDER BY speed DESC, timestamp ASC LIMIT 1
+  `, [imei, from, to]);
+  return r.rows[0] || null;
+}
 // Ultimele `n` poziții dintr-o perioadă, în ordinea timpului (pentru „Ultima locație": restul perioadei nu contează).
 async function istoricCoada(imei, from, to, n) {
   const r = await pool.query(`
@@ -4645,6 +4657,14 @@ async function costAiLunaToata() {
 // Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
 async function raspunsuriReguliLunaToate() {
   const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
+  const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
+  return out;
+}
+// „RA Insight · control" (fondatorii, 15.10): câte răspunsuri au primit 👎 în ultimele `zile` zile, pe firmă — DOAR numărul,
+// niciodată textul conversațiilor (ele rămân ale omului care le-a scris). { company_id: n }.
+async function aiJosPeFirma(zile) {
+  const r = await pool.query(`SELECT c.company_id, COUNT(*)::int AS n FROM ai_mesaje m JOIN ai_conversatii c ON c.id = m.conversatie_id
+    WHERE m.rol = 'assistant' AND m.feedback = -1 AND m.creat_la > NOW() - make_interval(days => $1::int) GROUP BY c.company_id`, [Math.max(1, parseInt(zile) || 7)]);
   const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
   return out;
 }
@@ -6501,6 +6521,8 @@ module.exports = {
   istoricOre,
   istoricPagina,
   istoricInterval,
+  punctVitezaMaxima,
+  aiJosPeFirma,
   istoricCoada,
   getLastPositions,
   getUserByUsername,

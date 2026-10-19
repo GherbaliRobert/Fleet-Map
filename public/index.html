@@ -106,7 +106,7 @@
             <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici flotă</span></button>
             <!-- „Asistenți AI" scos din meniu: arăta ORICUI (n-avea data-super) numărul de „Tokeni in/out"
                  și „Cereri API" — detalii tehnice care ne privesc doar pe noi. Pentru fondatori, aceleași
-                 date, mai bine puse, sunt în Administrare → Utilizare RA Insight (apeluri, cost, rată de
+                 date, mai bine puse, sunt în „RA Insight · control" (meniul fondatorului, sus — apeluri, cost, rată de
                  folosire, per companie). Agenții au secțiunea lor dedicată, „Agenți AI". -->
             <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
@@ -150,6 +150,9 @@
              era în grupă (grupa = toate firmele, rândul = o firmă). Acum, cu Companii plecat în
              Business, clădirea rămânea o dublură peste două grupe diferite — iar în grupă a rămas
              stocul: aparate, inventar, arhivă. De-aia, depozitul. -->
+        <!-- „RA Insight · control" (Alin, 15.10: „să pot vedea utilizarea RA Insight de undeva anume"): sus, mereu la vedere, nu
+             într-un grup închis. Pagina: patru cifre, ce cere atenție, firmă cu firmă, controalele. -->
+        <button class="nav-item" data-vert="fondator" data-super onclick="navGo(this, function(){ goSistem('agents'); })"><i class="fas fa-wand-magic-sparkles"></i><span>RA Insight · control</span></button>
         <div class="nav-group" data-vert="fondator" data-group="gestiune">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-warehouse"></i><span>Gestiune</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
@@ -162,9 +165,8 @@
           </div>
         </div>
         <div class="nav-group" data-vert="fondator" data-super data-group="module">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-puzzle-piece"></i><span>AI &amp; Module</span><i class="fas fa-chevron-down nav-caret"></i></button>
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-puzzle-piece"></i><span>Module</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('agents'); })"><i class="fas fa-wand-magic-sparkles"></i><span>Utilizare RA Insight</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('tahograf'); })"><i class="fas fa-tachograph-digital"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
           </div>
@@ -1669,8 +1671,8 @@
           <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
           <button class="aside-item users-only" data-atab="inventar" onclick="raxAdminTab('inventar')"><i class="fas fa-clipboard-list"></i> Inventar dispozitive</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
-          <div class="aside-grp" data-super>AI &amp; Module</div>
-          <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-wand-magic-sparkles"></i> Utilizare RA Insight</button>
+          <div class="aside-grp" data-super>Module</div>
+          <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-wand-magic-sparkles"></i> RA Insight · control</button>
           <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-tachograph-digital"></i> Tahograf</button>
           <button class="aside-item" data-super data-atab="etransport" onclick="raxAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
           <div class="aside-grp" data-super>Business</div>
@@ -4058,7 +4060,7 @@ const pozitii = await r.json();</code></pre>
       contracte: 'Contracte', montaj: 'Montaj', companies: 'Companii', devices: 'Dispozitive',
       inventar: 'Inventar dispozitive', stoc: 'Stoc echipamente', accounts: 'Conturi & Abonamente', users: 'Utilizatori',
       archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele',
-      agents: 'Utilizare RA Insight', tahograf: 'Tahograf', etransport: 'e-Transport',
+      agents: 'RA Insight · control', tahograf: 'Tahograf', etransport: 'e-Transport',
       dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live',
       demoreq: 'Cereri demo', mail: 'Mail'
     };
@@ -11323,24 +11325,11 @@ const pozitii = await r.json();</code></pre>
         });
         box.appendChild(r);
       }
-      // „De verificat" (cifre.js, pe server, după fiecare răspuns): perioada citită ≠ cea cerută, cifre care nu se regăsesc
-      // în datele citite, cifre greu de crezut. Doar la cerere (parte === 'verificare'), sub textul răspunsului.
-      var vf = (j && j.verificare && parte === 'verificare') ? j.verificare : null;
-      if (vf) {
-        var linii = [];
-        if (vf.perioada) linii.push(String(vf.perioada));
-        if (Array.isArray(vf.cifre) && vf.cifre.length) linii.push('Cifre care nu se regăsesc în datele citite: ' + vf.cifre.join(', ') + '. Verifică-le în raport.');
-        (Array.isArray(vf.deVerificat) ? vf.deVerificat : []).forEach(function (t) { linii.push(String(t)); });
-        if (linii.length) {
-          var bd = document.createElement('div'); bd.className = 'chat-verif';
-          var ic2 = document.createElement('i'); ic2.className = 'fas fa-triangle-exclamation'; bd.appendChild(ic2);
-          var cp = document.createElement('div');
-          var tt = document.createElement('b'); tt.textContent = 'De verificat'; cp.appendChild(tt);
-          var ul = document.createElement('ul');
-          linii.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
-          cp.appendChild(ul); bd.appendChild(cp); box.appendChild(bd);
-        }
-      }
+      // Perioada citită ≠ cea cerută (cifre.js, pe server): o notă scurtă sub răspuns. Banda „De verificat" a plecat pe 15.10
+      // (Alin: „ce să verific? Am AI… îmi zice clar dacă e greșit ceva"): problemele vin acum ca „Am găsit o problemă", cu
+      // butoanele lor (`_chatProbleme`). Mesajele vechi își păstrează doar nota perioadei.
+      var vf = (j && parte === 'verificare') ? (j.nota ? { perioada: j.nota } : j.verificare) : null;
+      if (vf && vf.perioada) { var nt = document.createElement('div'); nt.className = 'chat-nota'; nt.textContent = String(vf.perioada); box.appendChild(nt); }
       var al = (j && Array.isArray(j.alege) && parte !== 'inteles' && parte !== 'verificare') ? j.alege : [];
       if (al.length && typeof laAlegere === 'function') {
         var w = document.createElement('div'); w.className = 'ins-alege';
@@ -11354,6 +11343,76 @@ const pozitii = await r.json();</code></pre>
         box.appendChild(w);
       }
       return box;
+    };
+    // ─── „Am găsit o problemă" (Alin, 15.10: „îmi zice clar dacă e greșit ceva… mă duce exact unde e problema") ───
+    // Problemele le găsește serverul (probleme.js): titlul, dovada și butoanele spre locul exact. Pagina doar le desenează,
+    // cu textContent. Roșu = problemă reală (viteză, senzor blocat); galben = de știut (eroare de GPS, consum ciudat).
+    window._chatProbleme = function (lista) {
+      var box = document.createElement('div'); box.className = 'chat-probs';
+      (Array.isArray(lista) ? lista : []).forEach(function (p) {
+        var c = document.createElement('div'); c.className = 'chat-prob ' + (p.grav === 'rosu' ? 'rosu' : 'galben');
+        var h = document.createElement('div'); h.className = 'chat-prob-t';
+        var ic = document.createElement('i'); ic.className = 'fas ' + (p.grav === 'rosu' ? 'fa-circle-exclamation' : 'fa-circle-info'); h.appendChild(ic);
+        h.appendChild(document.createTextNode(String(p.titlu || ''))); c.appendChild(h);
+        if (p.dovada) { var d = document.createElement('div'); d.className = 'chat-prob-d'; d.textContent = String(p.dovada); c.appendChild(d); }
+        var bs = (Array.isArray(p.butoane) ? p.butoane : []).filter(function (b) { return b && b.text; });
+        if (bs.length) {
+          var r = document.createElement('div'); r.className = 'chat-prob-b';
+          bs.forEach(function (b, i) {
+            var x = document.createElement('button'); x.type = 'button'; x.className = 'chat-pas' + (i === 0 ? ' chat-rap-dg' : '');
+            x.innerHTML = '<i class="fas ' + (b.fel === 'traseu' ? 'fa-map-location-dot' : (b.fel === 'fisa' ? 'fa-gauge-high' : 'fa-file-lines')) + '"></i>';
+            x.appendChild(document.createTextNode(String(b.text)));
+            x.onclick = function () { window.insightProblemaButon(b); };
+            r.appendChild(x);
+          });
+          c.appendChild(r);
+        }
+        box.appendChild(c);
+      });
+      return box;
+    };
+    // Unde duce un buton dintr-o problemă: Traseu la minutul acela (cu punctul marcat), fișa mașinii (fila cerută), un raport.
+    window.insightProblemaButon = function (b) {
+      if (!b) return;
+      if (b.fel === 'traseu') return window.insightLaTraseu(b);
+      if (b.fel === 'fisa') {
+        Promise.resolve(openEditModal(String(b.imei))).then(function () {
+          if (b.fila) { var t = document.querySelector('.edit-tab[data-tab="' + b.fila + '"]'); if (t) switchEditTab(b.fila, t); }
+        }).catch(function () {});
+        return;
+      }
+      if (b.fel === 'raport') { showView('rapoarte'); setTimeout(function () { try { rinOpenReport(b.tip, b.imei || '', b.de, b.pana); } catch (e) {} }, 80); }
+    };
+    // Traseu, pe mașina și intervalul din problemă, cu traseul arătat și punctul marcat pe hartă (viteza de 159 km/h, la 14:32).
+    window.insightLaTraseu = function (b) {
+      window._hpCerut = String(b.imei);
+      showView('traseu');
+      var n = 0;
+      (function asteapta() {
+        var sel = document.getElementById('history-imei');
+        if (!(sel && sel.value === String(b.imei)) && ++n < 40) { setTimeout(asteapta, 100); return; }
+        try {
+          selectedImei = String(b.imei); hpChecked.clear(); hpChecked.add(String(b.imei)); hpVehRender();
+          if (b.de && b.pana) { dtSet('history-from', formatDateLocal(new Date(b.de))); dtSet('history-to', formatDateLocal(new Date(b.pana))); }
+          Promise.resolve(loadHistory()).then(function () {
+            var st = hpLoaded.get(String(b.imei)); if (st) { st.visible = true; hpApplySelection(); }
+            if (b.lat != null && b.lng != null) {
+              var mk = L.circleMarker([Number(b.lat), Number(b.lng)], { radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0.3 }).addTo(map);
+              if (b.eticheta) mk.bindPopup(String(b.eticheta).replace(/[<>&]/g, '')).openPopup();
+              historyMarkers.push(mk); map.setView([Number(b.lat), Number(b.lng)], 15);
+            }
+          }).catch(function () {});
+        } catch (e) {}
+      })();
+    };
+    // Insigna de sub răspuns (Alin, 15.10): mov = analiza lui RA Insight (se numără), verde = răspuns instant. Textul îl scrie
+    // serverul (pachete.insigna) — pagina nu știe ce se numără.
+    window._chatInsigna = function (ins) {
+      if (!ins || !ins.text) return null;
+      var e = document.createElement('span'); e.className = 'chat-ins ' + (ins.fel === 'ai' ? 'ai' : 'instant');
+      var i = document.createElement('i'); i.className = 'fas ' + (ins.fel === 'ai' ? 'fa-wand-magic-sparkles' : 'fa-bolt'); e.appendChild(i);
+      e.appendChild(document.createTextNode(String(ins.text)));
+      return e;
     };
     // ─── Chatul modern (Alin, 08.10: „da, sunt de acord cu tot") — piesele COMUNE pentru RA Insight (secțiunea și bula din
     // colț) și pentru AI Raport: Copiază, întrebările de continuare, alegătorul de mașină / perioadă / ramură. Scrise o
@@ -11979,7 +12038,10 @@ const pozitii = await r.json();</code></pre>
         var av = el('div', 'av'); av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>'; row.appendChild(av);
         var bub = el('div', 'bub');
         var x = m.extra || {};
-        var cuRaport = !!(x.raport && x.raport.label);
+        // Rapoartele cerute în cuvinte: unul sau mai multe (mai multe zile — 15.10). Pe reguli, doar cartonașele; cu „compară" /
+        // „de ce", cartonașele și dedesubt analiza lui RA Insight.
+        var carduri = Array.isArray(x.rapoarte) && x.rapoarte.length ? x.rapoarte : (x.raport && x.raport.label ? [x.raport] : []);
+        var cuRaport = carduri.length > 0 && x.source !== 'ai';
         if (window._insightExtra && !cuRaport) { var ii = window._insightExtra({ inteles: x.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
         if (x.aprofundat) { var ap = el('div', 'chat-aprof-r'); ap.appendChild(el('span', 'chat-aprof', 'analiză aprofundată')); bub.appendChild(ap); }
         // Mesajul pachetului (Start, luna oprită): în caseta de avertizare, cu „+" (ce se poate alege) și, la administrator, pachetele.
@@ -11992,9 +12054,11 @@ const pozitii = await r.json();</code></pre>
           lim.appendChild(lc); bub.appendChild(lim);
           if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
         }
+        if (carduri.length) { var cw = el('div', 'chat-raps'); carduri.forEach(function (rp) { cw.appendChild(cartonasRaport(rp)); }); bub.appendChild(cw); }
         if (!x.limita && !cuRaport) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
-        if (cuRaport) bub.appendChild(cartonasRaport(x.raport));
-        if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
+        if (Array.isArray(x.probleme) && x.probleme.length) bub.appendChild(window._chatProbleme(x.probleme));
+        if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode('Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
+        if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare, nota: x.nota }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
         if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t, { buton: true }); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
         if (surse.length) {
@@ -12008,6 +12072,7 @@ const pozitii = await r.json();</code></pre>
           });
           bub.appendChild(su);
         }
+        var insg = window._chatInsigna(x.insigna); if (insg) { var ir = el('div', 'chat-ins-r'); ir.appendChild(insg); bub.appendChild(ir); }
         var act = window._chatActiuni(m.text);
         if (m.id && x.source !== 'local') {
           [[1, 'fa-thumbs-up', 'Răspuns bun'], [-1, 'fa-thumbs-down', 'Răspuns slab']].forEach(function (d) {
@@ -12058,7 +12123,8 @@ const pozitii = await r.json();</code></pre>
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
-              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport } };
+              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
+              verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
@@ -28746,30 +28812,102 @@ const pozitii = await r.json();</code></pre>
         }
       });
     }
-    // ── Pachetele RA Insight în tabloul nostru (pasul 4, Alin 14.10: „să știm și noi… costurile, să avem control") ──
-    // Ce încasăm din pachete, cât ne costă cu adevărat (și cât din asta e analiza aprofundată), cine e lângă plasă, soldul de
-    // la Anthropic (scris de noi) și comutatorul analizei aprofundate. Cifrele le socotește serverul; aici doar se arată.
+    // ── „RA Insight · control" (Alin, 15.10: „să pot vedea utilizarea RA Insight de undeva anume… nu să intru în 10 căsuțe")
+    // Un ecran: patru cifre sus (_aiuPachete), „Ce cere atenție", firmă cu firmă (un rând pe firmă; amănuntul la clic) și toate
+    // butoanele într-un loc. Cifrele le socotește serverul (/api/admin/ai-usage); aici doar se arată. Conversațiile nu le vedem:
+    // doar numere (câte 👎, câte răspunsuri instant).
     function _aiuPachete(p) {
       if (!p) return '';
       var nr = p.peCod || {}, venit = Number(p.venitLei) || 0, cost = Number(p.costLei) || 0, ramane = Math.round((venit - cost) * 100) / 100;
       var parti = ['start', 'basic', 'pro', 'business'].filter(function (k) { return nr[k]; }).map(function (k) { return nr[k] + ' ' + ({ start: 'Start', basic: 'Basic', pro: 'Pro', business: 'Business' })[k]; });
       var t = function (titlu, val, sub) { return '<div class="aiu-pk-t"><div class="k">' + titlu + '</div><div class="v">' + val + '</div><div class="s">' + sub + '</div></div>'; };
       var sold = p.sold;
-      var h = '<div class="aiu-grup">Pachetele RA Insight · luna asta</div><div class="aiu-pk">'
-        + t('Încasăm din pachete', _aiuLei(venit), parti.length ? esc(parti.join(' · ')) : 'nicio firmă pe un pachet încă')
-        + t('Ne costă (real)', _aiuLei(cost), 'din care analiza aprofundată: ' + _aiuLei(p.aprofundatLei || 0))
+      return '<div class="aiu-pk">'
+        + t('Încasăm luna asta', _aiuLei(venit), parti.length ? esc(parti.join(' · ')) : 'nicio firmă pe un pachet încă')
+        + t('Ne costă (real)', _aiuLei(cost), 'plata către model' + (Number(p.aprofundatLei) ? ', din care analiza aprofundată ' + _aiuLei(p.aprofundatLei) : ''))
         + t('Ne rămân', '<span style="color:' + (ramane >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramane) + '</span>', venit > 0 ? Math.round((ramane / venit) * 100) + '% din încasări' : '—')
         + t('Sold Anthropic', sold ? '$' + Number(sold.usd).toLocaleString('ro-RO') : '—',
             (sold ? (sold.zile != null ? 'la ritmul de azi, ~' + sold.zile + (sold.zile % 100 >= 20 || (sold.zile % 100 === 0 && sold.zile) ? ' de' : '') + ' zile' : 'fără cheltuieli luna asta') + (sold.la ? ' · scris pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '') : 'nescris')
             + ' · <button class="aiu-pk-l" onclick="raxAiSold()">' + (sold ? 'schimbă' : 'scrie-l') + '</button>')
         + '</div>';
-      var lp = Array.isArray(p.langaPlasa) ? p.langaPlasa : [];
-      if (lp.length) h += '<div class="aiu-pk-al"><i class="fas fa-triangle-exclamation"></i> <b>' + lp.length + (lp.length === 1 ? ' firmă' : ' firme') + ' lângă plasă:</b> '
-        + lp.map(function (x) { return esc(x.name) + ' (' + esc(x.nume) + ', ' + x.procent + '% din ' + _aiuLei(x.plafonLei) + (x.procent >= 100 ? ' — pe butoane până pe 1' : '') + ')'; }).join(' · ') + '</div>';
-      h += '<div class="aiu-pk-ap"><span>Analiza aprofundată (Sonnet, la Pro și Business, cu bugetul pachetului): <b>' + (p.aprofundataPornita ? 'pornită' : 'oprită') + '</b>.</span> '
-        + '<button class="rax-btn" style="padding:4px 10px;font-size:12px;" onclick="raxAiAprofundat(' + (p.aprofundataPornita ? 'false' : 'true') + ')">' + (p.aprofundataPornita ? 'Oprește' : 'Pornește') + '</button></div>';
-      return h;
     }
+    // Ce cere atenție: firmele lângă plasă, firmele care și-au terminat întrebările, 👎 din ultima săptămână, avertismentele
+    // regulii vechi și cât din răspunsurile lunii au fost instant (nu ne-au costat nimic). Fiecare rând, cu butonul lui.
+    function _aiuAtentie(p, s, rows) {
+      p = p || {}; var r = Array.isArray(rows) ? rows : [], l = [];
+      var deschide = function (id) { return '<button class="rax-btn" style="padding:3px 10px;font-size:12px;" onclick="raxOpenCompanyDetail(' + Number(id) + ')">Deschide firma</button>'; };
+      (Array.isArray(p.langaPlasa) ? p.langaPlasa : []).forEach(function (x) {
+        l.push({ ton: x.procent >= 100 ? 'bad' : 'warn', t: '<b>' + esc(x.name) + '</b> e la ' + x.procent + '% din plasă (pachet ' + esc(x.nume) + ', ' + _aiuLei(x.plafonLei) + ')' + (x.procent >= 100 ? ' — pe butoane până pe 1' : ''), b: deschide(x.id) });
+      });
+      r.filter(function (x) { return x.epuizat; }).forEach(function (x) { l.push({ ton: 'bad', t: '<b>' + esc(x.name) + '</b>: întrebările lunii s-au terminat — până pe 1 răspunde doar pe butoane', b: deschide(x.id) }); });
+      if (Number(p.jos7) > 0) {
+        var cine = r.filter(function (x) { return x.jos7 > 0; }).sort(function (a, b) { return b.jos7 - a.jos7; }).slice(0, 4).map(function (x) { return esc(x.name) + ' (' + x.jos7 + ')'; });
+        l.push({ ton: 'warn', t: '<b>' + p.jos7 + (p.jos7 === 1 ? ' răspuns a primit' : ' răspunsuri au primit') + ' 👎</b> în ultimele 7 zile' + (cine.length ? ': ' + cine.join(', ') : '') + '. Textul lor nu-l vedem — e al omului; aflăm doar câte.' });
+      }
+      var av = _aiuAvertismente(s || {}, r);
+      var inst = Number(p.instant) || 0, tot = inst + (Number(p.intrebariAi) || 0);
+      if (tot > 0) l.push({ ton: 'info', t: Math.round(inst / tot * 100) + '% din răspunsurile lunii au fost instant, din rapoarte — nu ne-au costat nimic.' });
+      if (!l.length && !av) return '<div class="aiu-grup">Ce cere atenție</div><div class="aiu-at ok"><i class="fas fa-circle-check"></i><span>Nimic de rezolvat acum.</span></div>';
+      return '<div class="aiu-grup">Ce cere atenție</div>' + av + l.map(function (x) {
+        return '<div class="aiu-at ' + x.ton + '"><i class="fas fa-' + (x.ton === 'bad' ? 'triangle-exclamation' : (x.ton === 'warn' ? 'circle-exclamation' : 'circle-info')) + '"></i><span>' + x.t + '</span>' + (x.b || '') + '</div>';
+      }).join('');
+    }
+    // Firmă cu firmă: un rând pe firmă cu RA Insight (pachetul, întrebările folosite, răspunsurile instant, cât ne costă, cât ne
+    // rămâne); la clic, dedesubt, amănuntul de dinainte: cum iese cifra, cine are cont, ce am facturat.
+    function _aiuTabel(rows) {
+      var r = Array.isArray(rows) ? rows : [], fx = _aiuFx();
+      var cu = r.filter(function (x) { return x.enabled; }), fara = r.filter(function (x) { return !x.enabled; });
+      if (!cu.length) return '<div class="aiu-grup">Firmă cu firmă</div><div class="rax-co-meta" style="padding:10px 0;">Nicio firmă cu RA Insight.</div>';
+      var randuri = cu.map(function (x) {
+        var cost = x.pachet ? (x.plasa ? x.plasa.costLei : 0) : x.costEur * fx;
+        var raman = x.ramanLei != null ? x.ramanLei : (x.venitLei - cost);
+        var pct = x.pct == null ? null : Math.min(100, x.pct);
+        var bara = x.fond ? '<span class="aiu-bar"><i style="width:' + (pct || 0) + '%;background:' + (x.epuizat ? 'var(--red)' : (pct >= 80 ? 'var(--orange)' : 'var(--purple)')) + ';"></i></span>' + x.used + ' din ' + x.fond : (x.used + ' · fără limită');
+        var pk = x.pachet ? esc(x.pachet.nume) : '<span style="color:var(--text-muted);">pe cont (regula veche)</span>';
+        return '<tr class="aiu-tr" onclick="raxAiRand(' + x.id + ')"><td><i class="fas fa-chevron-right aiu-ch" id="aiu-ch-' + x.id + '"></i><b>' + esc(x.name) + '</b></td>'
+          + '<td>' + pk + '</td><td class="n">' + bara + '</td><td class="n">' + (x.instant || 0) + '</td>'
+          + '<td class="n">' + _aiuLei(cost) + '</td><td class="n"><b style="color:' + (raman >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(raman) + '</b></td></tr>'
+          + '<tr class="aiu-det-r" id="aiu-det-' + x.id + '" style="display:none;"><td colspan="6"><div class="aiu-det-in">'
+          + _aiuPachetRand(x) + _aiuSemnale(x)
+          + '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(x)
+          + '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(x)
+          + (x.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div><div>În ultimele 12 luni: <b>' + _aiuLei(x.facturatLei) + '</b>'
+              + (x.incasatLei !== x.facturatLei ? ' — a intrat în cont: <b>' + _aiuLei(x.incasatLei) + '</b>, restul e neplătit' : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
+          + '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(x.lastUsed) + '</span>'
+          + '<button class="rax-btn" style="padding:3px 10px;font-size:12px;" onclick="event.stopPropagation();raxOpenCompanyDetail(' + x.id + ')">Deschide firma</button></div>'
+          + '</div></td></tr>';
+      }).join('');
+      return '<div class="aiu-grup">Firmă cu firmă</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Firma</th><th>Pachet</th><th class="n">Întrebări folosite</th><th class="n">Instant</th><th class="n">Ne costă</th><th class="n">Ne rămân</th></tr></thead><tbody>'
+        + randuri + '</tbody></table></div>'
+        + (fara.length ? '<div class="rax-co-meta" style="margin-top:6px;">' + fara.length + (fara.length === 1 ? ' firmă fără RA Insight: ' : ' firme fără RA Insight: ') + fara.slice(0, 8).map(function (x) { return esc(x.name); }).join(', ') + (fara.length > 8 ? '…' : '') + '</div>' : '');
+    }
+    window.raxAiRand = function (id) {
+      var d = document.getElementById('aiu-det-' + id), ch = document.getElementById('aiu-ch-' + id); if (!d) return;
+      var acum = d.style.display === 'none';
+      d.style.display = acum ? '' : 'none';
+      if (ch) ch.className = 'fas fa-chevron-' + (acum ? 'down' : 'right') + ' aiu-ch';
+    };
+    // Toate butoanele, într-un loc: proba modelelor, analiza aprofundată, soldul și cheia Anthropic, istoricul pe luni.
+    function _aiuControale(p) {
+      p = p || {};
+      var b = function (on, ic, t, tit) { return '<button class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="' + on + '"' + (tit ? ' title="' + esc(tit) + '"' : '') + '><i class="fas fa-' + ic + '"></i> ' + t + '</button>'; };
+      return '<div class="aiu-grup">Controale</div><div class="aiu-ctl">'
+        + b('raxProbaModele()', 'flask', 'Proba modelelor', 'Aceleași întrebări, la mai multe modele — răspunsurile una lângă alta, cu costul')
+        + b('raxAiAprofundat(' + (p.aprofundataPornita ? 'false' : 'true') + ')', 'wand-magic-sparkles', 'Analiza aprofundată: ' + (p.aprofundataPornita ? 'pornită' : 'oprită'), 'Sonnet, la Pro și Business, cu bugetul pachetului')
+        + b('raxAiSold()', 'wallet', 'Soldul Anthropic')
+        + b("goSistem('dashboard')", 'key', 'Cheia Anthropic', 'Se pune în Dashboard platformă')
+        + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
+        + '<button id="aiu-mai-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiMaiMulte()"><i class="fas fa-list"></i> Mai multe cifre</button>'
+        + '</div>';
+    }
+    // „Mai multe cifre": panoul de dinainte (banii lunii, clienții, cartonașele pe firme), închis implicit. Rămâne cât timp
+    // telefonul (APK-ul de azi) arată aceleași cifre — verify_insight_bani.js le ține legate.
+    window.raxAiMaiMulte = function (on) {
+      var box = document.querySelector('#admin-tab-agents .aiu-mai-box'); if (!box) return;
+      var pornit = (on === undefined || on === null) ? box.style.display === 'none' : !!on;
+      box.style.display = pornit ? '' : 'none';
+      var b = document.getElementById('aiu-mai-btn'); if (b) b.className = 'rax-btn' + (pornit ? ' primary' : '');
+    };
     // Rândul pachetului pe cartonașul firmei: plasa (cât din 80% din preț), analiza aprofundată, ce ne rămâne.
     function _aiuPachetRand(r) {
       if (!r.pachet) return '';
@@ -28880,22 +29018,17 @@ const pozitii = await r.json();</code></pre>
       var s = d.summary || {}, rows = d.rows || [];
       _aiuFxResp = Number(d.fxEur) || null;
       var fx = _aiuFx();
-      // Desfăcute din start firmele care CHIAR au RA Insight — pentru ele venim aici. Restul, strânse.
-      var carduri = rows.map(function (r) { return _aiuCard(r, !!(r.enabled || r.used > 0)); }).join('')
-        || '<div class="rax-co-meta" style="padding:14px;">Nicio companie.</div>';
-      box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'
-        + '<span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-wand-magic-sparkles"></i> RA Insight — dashboard</span>'
-        + '<button class="rax-btn" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxProbaModele()" title="Aceleași întrebări, la mai multe modele — răspunsurile una lângă alta, cu costul"><i class="fas fa-flask"></i> Proba modelelor</button>'
-        + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
-        + '<button id="aiu-toate" class="rax-btn primary" style="padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
-        + _aiuAvertismente(s, rows)
-        + _aiuPachete(d.pachete)
-        + _aiuKpiuri(s, rows, d.istoric, fx)
+      var carduri = rows.map(function (r) { return _aiuCard(r, false); }).join('');
+      box.innerHTML = _aiuPachete(d.pachete)
+        + _aiuAtentie(d.pachete, s, rows)
+        + _aiuTabel(rows)
+        + _aiuControale(d.pachete)
         + '<div class="aiu-ist-box">' + _aiuIstoric(d.istoric, fx) + '</div>'
-        + '<div class="aiu-grup">Firmă cu firmă</div>'
-        + '<div class="aiu-lista">' + carduri + '</div>'
-        // marcaj: gata. Graficul se desenează după, pe canvas-ul deja în pagină.
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele fără etichetă de istoric sunt ale lunii curente și se reînnoiesc pe 1. „Conturi de facturat" = câte conturi a avut firma <b>cel mult</b> luna asta — regula din contract. Cei 6 agenți AI merg pe reguli fixe, nu costă tokeni și nu apar aici; se configurează din pagina <b>Agenți AI</b> din meniul lateral.</div>';
+        + '<div class="aiu-mai-box" style="display:none;">' + _aiuKpiuri(s, rows, d.istoric, fx)
+        +   '<div style="display:flex;align-items:center;margin:8px 0;"><div class="aiu-grup" style="margin:0;">Firmă cu firmă, pe cartonașe</div>'
+        +   '<button id="aiu-toate" class="rax-btn" style="margin-left:auto;padding:4px 10px;font-size:12px;" onclick="raxAiToate(true)"><i class="fas fa-expand"></i> Desfășoară toate</button></div>'
+        +   '<div class="aiu-lista">' + carduri + '</div></div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Instant" = răspunsuri date de aplicație din rapoarte, fără model. Conversațiile clienților nu le vedem — aici sunt doar numere. Cei 6 agenți AI merg pe reguli fixe și nu costă nimic.</div>';
       _aiuIst = d.istoric; _aiuIstFx = Number(d.fxEur) || _aiuFx();
       // Pune istoricul în starea aleasă ultima dată (și desenează graficul doar dacă e pornit).
       try { raxAiIstoric(_aiuIstoricPornit()); } catch (e) { /* fără grafic, restul panoului rămâne */ }
@@ -28981,7 +29114,7 @@ const pozitii = await r.json();</code></pre>
       var h = '<div class="pm-stare"><b>' + esc(stare) + '</b> · ' + p.facute + ' din ' + p.total + ' răspunsuri · până acum ' + _pmBani(p.costLei)
         + (estimat != null ? ' · estimat la pornire: cam ' + _pmBani(estimat) : '')
         + (p.gata ? '' : ' <button class="rax-btn" style="margin-left:8px;padding:3px 10px;font-size:12px;" onclick="raxProbaModeleOpreste()"><i class="fas fa-stop"></i> Oprește</button>') + '</div>';
-      // Sumarul pe model: cât a costat, în cât timp, câte răspunsuri au „De verificat".
+      // Sumarul pe model: cât a costat, în cât timp, câte răspunsuri au avut cifre greșite (rescrise sau rămase negăsite).
       var pe = {};
       p.modele.forEach(function (m) { pe[m.id] = { nume: m.nume, n: 0, cost: 0, ms: 0, msN: 0, verif: 0, erori: 0 }; });
       p.rezultate.forEach(function (x) {
@@ -28989,7 +29122,7 @@ const pozitii = await r.json();</code></pre>
         a.n++; a.cost += x.costLei || 0; if (x.ms) { a.ms += x.ms; a.msN++; }
         if (x.verificare) a.verif++; if (x.eroare) a.erori++;
       });
-      h += '<table class="pm-sumar"><thead><tr><th>Model</th><th>Răspunsuri</th><th>Cost total</th><th>Pe întrebare</th><th>100 de întrebări</th><th>Timp mediu</th><th>Cu „De verificat"</th></tr></thead><tbody>'
+      h += '<table class="pm-sumar"><thead><tr><th>Model</th><th>Răspunsuri</th><th>Cost total</th><th>Pe întrebare</th><th>100 de întrebări</th><th>Timp mediu</th><th>Cu cifre greșite</th></tr></thead><tbody>'
         + p.modele.map(function (m) {
             var a = pe[m.id], med = a.n ? a.cost / a.n : 0;
             return '<tr><td><b>' + esc(a.nume) + '</b></td><td>' + a.n + (a.erori ? ' (' + a.erori + ' cu eroare)' : '') + '</td><td>' + _pmBani(a.cost) + '</td><td>' + _pmBaniMici(med)
@@ -29003,10 +29136,10 @@ const pozitii = await r.json();</code></pre>
           + p.modele.map(function (m) {
               var x = rand.filter(function (y) { return y.model === m.id; })[0];
               if (!x) return '<div class="pm-r pm-asteapta"><div class="pm-r-cap">' + esc(m.nume) + '</div>…</div>';
-              var vf = x.verificare ? [].concat(x.verificare.perioada ? [x.verificare.perioada] : [], (x.verificare.cifre || []).length ? ['Cifre negăsite în date: ' + x.verificare.cifre.join(', ')] : [], x.verificare.deVerificat || []) : [];
+              var vf = x.verificare ? [].concat(x.verificare.perioada ? [x.verificare.perioada] : [], x.verificare.rescris ? ['și-a rescris răspunsul o dată (cifre negăsite în date)'] : [], (x.verificare.cifre || []).length ? ['cifre rămase negăsite: ' + x.verificare.cifre.join(', ')] : [], x.verificare.deVerificat || []) : [];
               return '<div class="pm-r"><div class="pm-r-cap"><b>' + esc(m.nume) + '</b><span>' + _pmBaniMici(x.costLei) + (x.ms ? ' · ' + (x.ms / 1000).toLocaleString('ro-RO', { maximumFractionDigits: 1 }) + ' s' : '') + '</span></div>'
                 + (x.eroare ? '<div class="pm-err">' + esc(x.eroare) + '</div>' : '<div class="pm-txt">' + _pmText(x.text) + '</div>')
-                + (vf.length ? '<div class="pm-verif"><b>De verificat:</b> ' + vf.map(esc).join(' · ') + '</div>' : '')
+                + (vf.length ? '<div class="pm-verif"><b>Verificarea aplicației:</b> ' + vf.map(esc).join(' · ') + '</div>' : '')
                 + ((x.unelte || []).length ? '<div class="pm-unelte">A citit: ' + esc(Array.from(new Set(x.unelte)).join(', ')) + '</div>' : '') + '</div>';
             }).join('') + '</div></div>';
       });

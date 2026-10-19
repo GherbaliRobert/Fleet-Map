@@ -225,6 +225,7 @@ const condus = require('./condus');              // Safe Drive: pragurile și sc
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
 const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat"
+const probleme = require('./probleme');          // „Am găsit o problemă" (15.10): viteza reală sau eroare de GPS, senzorul blocat, consumul din fișă
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
@@ -4179,6 +4180,7 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     });
     const pePersoana = {}; peOm.forEach(function (r) { pePersoana[r.user_id] = r; });
     const reguliPeFirma = await db.raspunsuriReguliLunaToate().catch(function () { return {}; });   // pachetul Start: răspunsurile pe butoane
+    const josPeFirma = await db.aiJosPeFirma(7).catch(function () { return {}; });   // „RA Insight · control": 👎 în ultimele 7 zile (doar numărul)
     // Plasa pachetelor: costul real al lunii, cu scrisoarea de luni (ca în _starePachet), în lei, la cursul de azi.
     const kLei = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
     const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_BILLABLE_KINDS.concat(['scrisoare'])).catch(function () { return []; })) || []).forEach(function (x) {
@@ -4193,6 +4195,8 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       const ist = facturatPeFirma[c.id] || null;
       r.facturatLei = ist ? ist.facturatLei : 0;   // ce i-am facturat pe RA Insight în perioada citită
       r.incasatLei = ist ? ist.incasatLei : 0;
+      r.instant = reguliPeFirma[c.id] || 0;        // răspunsurile instant ale lunii (pe reguli, fără model)
+      r.jos7 = josPeFirma[c.id] || 0;              // 👎 în ultimele 7 zile
       return r;
     });
     const cuModul = rows.filter(function (r) { return r.enabled; });
@@ -4213,7 +4217,11 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
         .map(function (r) { return { id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei }; })
         .sort(function (a, b) { return b.procent - a.procent; }),
       aprofundataPornita: await _aprofundataPornita(),
-      sold: await _soldAnthropic()
+      sold: await _soldAnthropic(),
+      // „Ce cere atenție" (15.10): 👎 pe toată platforma în ultimele 7 zile și partea răspunsurilor instant din luna asta.
+      jos7: Object.keys(josPeFirma).reduce(function (s, k) { return s + josPeFirma[k]; }, 0),
+      instant: Object.keys(reguliPeFirma).reduce(function (s, k) { return s + reguliPeFirma[k]; }, 0),
+      intrebariAi: rows.reduce(function (s, r) { return s + (r.used || 0); }, 0)
     };
     // Luna curentă, încă nefacturată, primește estimarea — altfel dashboard-ul ar arăta gol tocmai
     // în luna despre care știm cel mai mult.
@@ -4366,7 +4374,7 @@ function _insightInstructiuni(cuRapoarte) {
       '• mentenanta_acte — ce a trecut de termen și ce urmează: actele mașinilor (ITP, RCA, rovinietă…), reviziile și permisele șoferilor.\n' +
       '• combustibil — litri și lei pe o lună, consumul față de normă, alimentările și scăderile suspecte (aceleași cifre ca rapoartele de consum).\n' +
       '• ore_condus — orele de condus ale fiecărui șofer pe o săptămână și încălcările Reg. 561 (aceleași cifre ca raportul „Condus & repaus").\n' +
-      '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă.\n• list_zones — zonele (hotspot) definite.\n' +
+      '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă și fișa mașinii (marcă, model, an de fabricație, combustibil, rezervor, consumul trecut în fișă).\n• list_zones — zonele (hotspot) definite.\n' +
       '• cauta_in_ghid — ghidul aplicației RA Track: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
       '• safe_drive — RA Drive (condus & costuri; fostul „Safe Drive") pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
       (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare).' : ''),
@@ -4376,7 +4384,9 @@ function _insightInstructiuni(cuRapoarte) {
       'înainte să fi încercat cu ce a scris omul (număr, nume sau șofer).',
     'DISCUȚIA: vezi mesajele de mai înainte. O întrebare scurtă care continuă discuția („și săptămâna dinainte?", „dar celălalt?", ' +
       'sau doar numele unei mașini) se leagă de ce s-a vorbit: aceeași mașină, aceeași perioadă, același subiect, dacă omul nu spune ' +
-      'altceva. Dacă o întrebare de mai înainte a rămas fără răspuns (de pildă lipsea mașina), răspunde acum la ea — nu-l întreba din nou ce vrea.',
+      'altceva. Dacă o întrebare de mai înainte a rămas fără răspuns (de pildă lipsea mașina), răspunde acum la ea — nu-l întreba din nou ce vrea. ' +
+      'Mesajele tale de forma „Am făcut raportul…" sunt rapoarte făcute de APLICAȚIE în discuție, cu cifrele lor de sus: sunt reale. Nu spune ' +
+      'niciodată că nu le-ai generat și nu le „corecta"; dacă îți trebuie amănunte (pe mașină, pe cursă), rulează același raport pe aceeași perioadă.',
     cuRapoarte
       ? 'PERIOADE: pentru run_report (și pentru combustibil) folosește `period` (today, yesterday, this_week, last_week, this_month, last_month, ' +
         'last_7_days, last_30_days), `month` („2026-09") pentru o lună întreagă, sau `from`/`to` ca zile („2026-10-01" și „2026-10-07" — ' +
@@ -4390,6 +4400,16 @@ function _insightInstructiuni(cuRapoarte) {
       '„cât ne-a costat condusul / cine conduce cel mai urât / a mers discuția cu X / RA Drive / Safe Drive" → safe_drive' +
       (cuRapoarte ? '; analize pe perioadă (km, ore, consum, opriri, viteze, ralanti, scor de condus, zone) → run_report' : '') + '. Poți combina.',
     cuRapoarte ? 'Tipuri de raport pentru run_report (cheia din stânga):\n' + lista : '',
+    'FIȘA MAȘINII: anul de fabricație, marca, modelul, combustibilul, rezervorul și consumul din fișă le ai în list_vehicles. Ce nu e completat ' +
+      'spune că nu e completat în fișa mașinii (se completează din Vehicule → fișa mașinii) — nu spune că aplicația nu are câmpul. Anul ' +
+      'înmatriculării nu se ține în aplicație (e pe talon); se ține anul fabricației.',
+    'PROBLEMELE ȘI SUMELE: aplicația verifică datele înaintea ta. Când o unealtă întoarce probleme_gasite (viteza reală sau eroare de GPS, ' +
+      'senzorul de combustibil care nu se mișcă, consumul greu de crezut), spune-le ca fapte, pe scurt — omul le vede și în chenare cu butoane ' +
+      'spre locul exact, sub răspuns. Sumele pe mașină și pe zi le ai gata în pe_masina / pe_masina_si_zi: folosește-le, nu aduna rândurile. ' +
+      'De unde vine o cifră de consum scrie în cum_s_a_socotit. Nu-i cere omului să verifice cifre („merită verificate", „verifică în raport"): ' +
+      'dacă ceva e îndoielnic, spune clar ce și de ce.',
+    'CONCLUZIA: când analizezi (compari, explici, cauți cauza), termină cu **Concluzie:** (o propoziție) și, dacă e ceva de făcut, ' +
+      '**Ce să faci:** (cel mult trei puncte scurte). Fără concluzie la o întrebare simplă cu o cifră.',
     'GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo, cu numele butoanelor. Dacă ghidul nu are răspunsul, spune că nu știi sigur și trimite omul la suport (iconița căști din bara de sus) — nu ghici meniuri.',
     'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă consum fără senzor), spune ' +
       'sincer că nu e disponibilă. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
@@ -4397,7 +4417,7 @@ function _insightInstructiuni(cuRapoarte) {
       '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite. (8) Perioada: citește EXACT perioada cerută ' +
       '(„1–7 octombrie" = from 2026-10-01, to 2026-10-07). RA Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
       'cere altă perioadă, spune ce perioadă ai citit. În titlu scrie perioada CITITĂ. (9) O cifră cu „de_verificat" o spui lângă cifra ' +
-      'ei, cu motivul — nu o prezenta ca sigură. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.',
+      'ei: că e greu de crezut și de ce. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.',
     insight.SCRISUL
   ].filter(Boolean).join('\n\n');
 }
@@ -4426,27 +4446,27 @@ function _insightContext(fisa, gasite, ctx, peImei, notite) {
 }
 // „Am înțeles": ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
 // `mem` = mașina vine din discuție, nu din mesajul de acum („ținut minte").
-// Verificarea răspunsului lui RA Insight, fără tokeni (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"): perioada citită
-// față de cea cerută, cifrele „flotei" care nu se regăsesc în datele citite, cifrele greu de crezut din date. Banda de sub
-// răspuns o arată; null = nimic de spus. O SINGURĂ funcție — o cheamă _raInsight, după fiecare răspuns.
-function _verificaRaspunsul(reply, message, dateCitite, citite) {
+// Verificarea răspunsului lui RA Insight, fără tokeni (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"; 15.10: „ce să
+// verific? Am AI… îmi zice clar dacă e greșit ceva"): perioada citită față de cea cerută (o notă scurtă), cifrele care nu se
+// regăsesc în datele citite (după rescriere — `lipsa`, socotită de _raInsight) și `confirmat` = răspunsul are cifre ale
+// flotei și toate se regăsesc (rândul mic „✓ Cifrele le-am luat din rapoarte"). Cifrele greu de crezut nu mai stau aici: sunt
+// probleme (probleme.js), cu butoanele lor. null = nimic de spus. O SINGURĂ funcție — o cheamă _raInsight.
+function _verificaRaspunsul(reply, message, dateCitite, citite, lipsa) {
   const out = {};
   try {
     const ceruta = aiRaport.perioadaDin(insight.norm(message), Date.now());
     const p = cifre.perioadaDiferita(ceruta, citite, Date.now());
     if (p) out.perioada = p;
   } catch (e) { /* o perioadă neînțeleasă nu oprește răspunsul */ }
-  try {
-    const lipsa = cifre.negasite(reply, dateCitite);
-    if (lipsa.length) out.cifre = lipsa.slice(0, 6);
-  } catch (e) { /* idem */ }
-  const dv = [];
-  (dateCitite || []).forEach(function (d) {
-    if (!d || typeof d !== 'object') return;
-    (d.masini || []).forEach(function (m) { (m.de_verificat || []).forEach(function (t) { dv.push(m.masina + ': ' + t); }); });
-    (d.de_verificat || []).forEach(function (t) { dv.push(t); });
-  });
-  if (dv.length) out.deVerificat = Array.from(new Set(dv)).slice(0, 6);
+  let l = lipsa;
+  if (!Array.isArray(l)) { try { l = cifre.negasite(reply, dateCitite); } catch (e) { l = []; } }
+  if (l.length) out.cifre = l.slice(0, 6);
+  else {
+    try {
+      const deVazut = cifre.cifreleRaspunsului(reply).filter(function (c) { return c.fel !== 'timp' && !(c.zec === 0 && c.v <= cifre.MICI); });
+      if (deVazut.length && (dateCitite || []).length) out.confirmat = true;
+    } catch (e) { /* fără confirmare */ }
+  }
   return Object.keys(out).length ? out : null;
 }
 function _insightInteles(sources, folosite, gasite, areIstoric, inPlus) {
@@ -4478,10 +4498,11 @@ async function _insightPeReguli(req, res, x) {
   // arată în caseta de avertizare; telefonul vechi citește doar `reply`, în care sunt deja.
   async function gata(reply, extra, ctxNou) {
     const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
+    const ins = e.limita ? undefined : pachete.insigna('instant', { numarat: start });
     const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st.cod,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined }, ctxNou || x.ctx);
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins }, ctxNou || x.ctx);
     return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: pachetInfo,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined });
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins });
   }
   if (start && st.blocat) return gata(pachete.textBlocat(st, Date.now()), { limita: true });
   const ctxAr = (x.ctx && x.ctx.ar) || {};
@@ -4514,32 +4535,97 @@ async function _insightPeReguli(req, res, x) {
   return gata(reply, { inteles: out.inteles || [], sources: sursa(out.sursa), urmari: Array.isArray(r.urmari) ? r.urmari : [], pachetMesaj: pachetMesaj }, ctxNou);
 }
 // ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10) ──────────────────────────────────────────────────
-// „Fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută": înțelegerea pe reguli (aiRaport.comanda), raportul întreg —
-// aceleași opțiuni ca pagina Rapoarte (_optiuniRaport), aceleași drepturi (viewReports + poateRaport) — pus în Istoric
-// rapoarte (_istoricRaport, 7 zile), iar în discuție cartonașul lui: cifrele de sus, „Deschide raportul", „Descarcă Excel".
-// Fără model: pe Basic / Pro / Business nu se numără; pe Start, un raport făcut se numără din cele 50 (_numaraRaspunsReguli).
-// Întoarce false când mesajul nu e o cerere de raport (merge mai departe la întrebări).
 function _kpiRaport(report) {
   const s = report && report.summary;
   const perechi = Array.isArray(s) ? s : (s && typeof s === 'object' ? Object.keys(s).map(function (k) { return [k, s[k]]; }) : []);
   return perechi.filter(function (p) { return Array.isArray(p) && p[0] && p[0] !== 'Atenție' && p[1] != null && p[1] !== ''; }).slice(0, 4)
     .map(function (p) { return { et: String(p[0]), val: typeof p[1] === 'number' ? p[1].toLocaleString('ro-RO', { maximumFractionDigits: 1 }) : String(p[1]) }; });
 }
+// „Am găsit o problemă" (Alin, 15.10): ce găsește aplicația, singură, în datele unui raport — viteza mare (reală sau eroare
+// de GPS, din pozițiile din jurul celui mai rapid punct), senzorul de combustibil care nu se mișcă, consumul greu de crezut.
+// Regulile și textele stau în probleme.js; aici doar se citesc datele. O SINGURĂ funcție, chemată de rapoartele cerute în
+// cuvinte (_insightComanda) și de unealta run_report a lui RA Insight. cx = { fisa, peDev } (mașinile omului, cu fișa lor).
+async function _problemeDinRaport(type, report, from, to, cx) {
+  const out = [];
+  if (!report || !cx) return out;
+  const peEt = {}, peImeiF = {};
+  (cx.fisa || []).forEach(function (v) { peEt[v.etRaport] = v; peImeiF[v.imei] = v; });
+  const scurt = function (v) { return v ? (v.nr || v.nume) : ''; };
+  try {
+    const cols = Array.isArray(report.columns) ? report.columns : [], rows = Array.isArray(report.rows) ? report.rows : [];
+    const jv = cols.findIndex(function (c) { return cifre.felCheie(c) === 'kmh' && /max/i.test(String(c)); });
+    if (jv > 0) {
+      const max = {};
+      rows.forEach(function (r) { if (!Array.isArray(r)) return; const v = cifre._numarCelula(r[jv]); if (v == null) return; const k = String(r[0]); if (!(max[k] >= v)) max[k] = v; });
+      const cand = Object.keys(max).map(function (k) {
+        const fv = peEt[k]; if (!fv) return null;
+        const d = (cx.peDev || {})[fv.imei] || {};
+        return { fv: fv, v: max[k], prag: probleme.pragViteza({ limita: Number(d.speed_limit) || null, camion: tacho.vehiculAreTahograf(d.vehicle_type || fv.tip) }) };
+      }).filter(function (x) { return x && x.v >= x.prag.kmh; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 2);
+      const multe = Object.keys(max).length > 1;
+      for (const c of cand) {
+        const top = await db.punctVitezaMaxima(c.fv.imei, from, to);
+        if (!top) continue;
+        const t = new Date(top.timestamp).getTime();
+        const pts = (await db.istoricInterval(c.fv.imei, new Date(t - 10 * 60000).toISOString(), new Date(t + 10 * 60000).toISOString(), null, 400))
+          .map(function (p) { return { t: new Date(p.timestamp).getTime(), lat: Number(p.latitude), lng: Number(p.longitude), v: Number(p.speed) }; });
+        const vd = probleme.verdictViteza(pts, c.prag.kmh);
+        if (!vd) continue;
+        let adresa = null;
+        try { if (geocode) { await geocode.warm([{ lat: vd.lat, lng: vd.lng }], { maxUnique: 1, budgetMs: 2500 }); const a = geocode.peek(vd.lat, vd.lng); if (a && !/^-?\d+\.\d+, ?-?\d+\.\d+$/.test(a)) adresa = a; } } catch (e) { /* fără adresă */ }
+        out.push(probleme.problemaViteza(vd, { vehicul: scurt(c.fv), imei: c.fv.imei, prag: c.prag, adresa: adresa, cuMasina: multe }));
+      }
+    }
+    const per = { from: from, to: to, eticheta: insight.etichetaPerioadei(from, to) };
+    (Array.isArray(report.valori) ? report.valori : []).forEach(function (v) {
+      const fv = peImeiF[v.imei]; const nume = fv ? scurt(fv) : v.vehicul;
+      if (v.nivelBlocat) out.push(probleme.problemaSenzor(Object.assign({}, v, { vehicul: nume }), per));
+      else if (Array.isArray(v.deVerificat) && v.deVerificat.length) out.push(probleme.problemaConsum({ vehicul: nume, imei: v.imei }, v.deVerificat, per));
+    });
+  } catch (e) { console.warn('[probleme]', e.message); }
+  return out;
+}
+// Ce primește RA Insight dintr-un raport: sumarul, rândurile (cel mult 25), sumele pe mașină și pe zi (pe TOATE rândurile)
+// și, la consum, de unde vine fiecare cifră. Aceeași formă pentru unealta run_report și pentru rapoartele făcute deja.
+function _raportPentruModel(type, report, extra) {
+  const rows = Array.isArray(report.rows) ? report.rows : [];
+  const out = Object.assign({ type: type, label: report.label }, extra || {}, {
+    summary: report.summary || {}, columns: report.columns || [], rows: rows.slice(0, 25), rows_total: rows.length, truncated: rows.length > 25
+  });
+  const tot = insight.totaluriPeMasina(report.columns, rows);
+  if (tot) Object.assign(out, tot);
+  if (Array.isArray(report.valori) && report.valori.some(function (v) { return v && v.sursa; })) {
+    out.cum_s_a_socotit = report.valori.slice(0, 25).map(function (v) { const s = probleme.sursaConsum(v); return { vehicul: v.vehicul, masurat: s.masurat, sursa: s.text }; });
+    out.atentie_consum = 'De unde vine fiecare cifră de consum e în cum_s_a_socotit: spune-o cu vorbele de acolo. Unde scrie „NU e măsurat", nu prezenta litrii ca măsurați.';
+  }
+  return out;
+}
+// „Fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută": înțelegerea pe reguli (aiRaport.comanda), raportul întreg —
+// aceleași opțiuni ca pagina Rapoarte (_optiuniRaport), aceleași drepturi (viewReports + poateRaport) — pus în Istoric
+// rapoarte (_istoricRaport, 7 zile), iar în discuție cartonașul lui: cifrele de sus, „Deschide raportul", „Descarcă Excel".
+// Fără model: pe Basic / Pro / Business nu se numără; pe Start, un raport făcut se numără din cele 50 (_numaraRaspunsReguli).
+// Întoarce false când mesajul nu e o cerere de raport (merge mai departe la întrebări), true când a răspuns, sau
+// { dupa } când cererea vrea și o judecată („compară", „de ce" — Alin, 15.10): rapoartele sunt făcute, iar _raInsight le dă
+// lui RA Insight să facă restul (o întrebare). Mai multe zile într-o cerere = câte un raport pe zi.
 async function _insightComanda(req, res, x) {
   const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
-  const u = aiRaport.comanda(x.message, (x.ctx || {}).cmd, x.fisa, Date.now());
+  const u = aiRaport.comanda(x.message, (x.ctx || {}).cmd, x.fisa, Date.now(), { masini: (x.ctx || {}).masini });
   if (!u) return false;
   const peImei = {}; (x.fisa || []).forEach(function (v) { peImei[v.imei] = v; });
   const etRaport = function (k) { return (reports.REPORTS[k] || {}).label || k; };
   let sp = null;
   try { if (req.companyId != null) sp = await _starePachet(req.companyId, userId, { strict: true }); } catch (e) { sp = null; }
   let pachetInfo = sp ? _pachetPeEcran(sp.st) : undefined;
+  const insignaReguli = function () { return pachete.insigna('instant', { numarat: !!(sp && !sp.pachet.ai) }); };
   async function gata(reply, extra, ctxNou) {
     const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
+    const ins = insignaReguli();
     const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, raport: e.raport || undefined,
+      rapoarte: e.rapoarte || undefined, probleme: e.probleme && e.probleme.length ? e.probleme : undefined, insigna: ins,
       pachet: sp ? sp.st.cod : undefined, limita: e.limita || undefined }, ctxNou || x.ctx);
     return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege,
-      urmari: e.urmari, raport: e.raport || undefined, pachet: pachetInfo, limita: e.limita || undefined });
+      urmari: e.urmari, raport: e.raport || undefined, rapoarte: e.rapoarte || undefined, probleme: e.probleme && e.probleme.length ? e.probleme : undefined, insigna: ins,
+      pachet: pachetInfo, limita: e.limita || undefined });
   }
   const cuCmd = function (c) { return Object.assign({}, x.ctx, { cmd: c }); };
   if (!permReq(req, 'viewReports')) { await gata('Nu ai acces la rapoarte, deci nu pot face raportul. Cere-i administratorului firmei acces la „Rapoarte".'); return true; }
@@ -4554,11 +4640,12 @@ async function _insightComanda(req, res, x) {
       await gata('Raportul **„' + etRaport(u.raport) + '”** cere o alegere pe care o faci în Rapoarte (' + (u.raport === 'hotspot' ? 'zona' : 'semnalele') + '). Îl deschizi cu butonul de mai jos.', { sources: src }, cuCmd(null));
       return true;
     }
-    // Cerere fără nume de raport: câteva rapoarte de ales (doar cele pe care omul le poate face), cu mașina din mesaj.
+    // Cerere fără nume de raport: câteva rapoarte de ales (doar cele pe care omul le poate face), cu mașina din mesaj. Mașina și
+    // ziua scrise rămân în discuție (`context`), ca butonul ales să facă raportul pe ele.
     const m = u.context && Array.isArray(u.context.masini) && u.context.masini.length === 1 ? peImei[u.context.masini[0]] : null;
     const alege = aiRaport.RAPOARTE_PROPUSE.filter(function (k) { return poateRaport(req, k); })
       .map(function (k) { return { text: etRaport(k), trimite: 'Fă-mi raportul „' + etRaport(k) + '”' + (m ? ' pentru ' + (m.nr || m.nume) : '') }; });
-    await gata('Ce raport vrei? Alege mai jos sau scrie-i numele (de exemplu „foaia de parcurs"), mașina și perioada.', { alege: alege }, cuCmd(null));
+    await gata('Ce raport vrei? Alege mai jos sau scrie-i numele (de exemplu „foaia de parcurs"), mașina și perioada.', { alege: alege }, cuCmd(u.context && (u.context.masini || u.context.perioada) ? u.context : null));
     return true;
   }
   const label = etRaport(u.raport);
@@ -4570,43 +4657,65 @@ async function _insightComanda(req, res, x) {
   const setAcc = new Set(accesibile);
   const imeis = (u.masini || accesibile).filter(function (i) { return setAcc.has(i); });
   if (!imeis.length) { await gata('Nu ai nicio mașină la care să ai acces, deci nu am pentru ce face raportul.'); return true; }
-  // Perioada: cel mult aiRaport.MAX_ZILE, ca la întrebări (scadențele privesc înainte și nu încarcă istoricul).
-  let from = u.perioada.from, to = u.perioada.to, taiat = !!u.perioada.taiat;
-  if (u.raport !== 'due' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
   const scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
   const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
   const opts = _optiuniRaport({}, cs);
-  const report = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
   const una = u.masini && u.masini.length === 1 ? u.masini[0] : null;
   const vehicul = u.grupa ? 'grupa ' + u.grupa : (u.masini ? u.masini.map(function (i) { return peImei[i] ? insight.eticheta(peImei[i]) : i; }).join(', ') : 'toată flota');
-  const perEt = u.perioada.acum ? 'acum' : insight.etichetaPerioadei(from, to);
-  const saved = await _istoricRaport({ companyId: req.companyId != null ? req.companyId : null, userId: userId, username: req.auth && req.auth.username,
-    type: u.raport, label: label, imei: una, imeis: imeis, from: from, to: to, opts: opts, report: report, status: 'insight' });
-  const pana = saved && saved.expires_at ? new Date(saved.expires_at) : new Date(Date.now() + ZILE_ISTORIC_RAPOARTE * 86400000);
-  const panaTxt = pana.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit' });
-  const rows = Array.isArray(report.rows) ? report.rows : [];
-  const card = { id: saved && saved.id, tip: u.raport, label: label, vehicul: vehicul, perioada: perEt, pana: panaTxt, kpi: _kpiRaport(report),
-    randuri: rows.length, gol: !rows.length };
-  let reply = 'Am făcut raportul **„' + label + '”** pentru **' + vehicul + '**, ' + (perEt === 'acum' ? 'acum' : '**' + perEt + '**') + '. ' +
-    (rows.length ? 'Îl găsești în Istoric rapoarte până pe ' + panaTxt + '.' : 'În perioada asta nu are niciun rând; l-am pus totuși în Istoric rapoarte, până pe ' + panaTxt + '.');
-  // Ce trebuie știut despre raport stă și în cartonaș (`note`): pe ecran, sub un raport cerut, se vede cartonașul, nu textul.
-  const note = [];
-  if (taiat) note.push('Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se face din pagina Rapoarte.');
-  const tr = Array.isArray(report.trunchiat) ? report.trunchiat : [];
-  if (tr.length) note.push('Atenție: perioada are prea multe poziții, așa că raportul s-a oprit înainte de capăt. Cere o perioadă mai scurtă.');
-  note.forEach(function (n) { reply += '\n\n' + n; });
-  if (note.length) card.note = note;
-  const inteles = aiRaport.inteles(Object.assign({}, u, { et: label, perioada: Object.assign({}, u.perioada, { eticheta: perEt, implicita: u.perioada.implicita }) }), x.fisa);
-  const urmari = aiRaport.urmariComanda(Object.assign({}, u, { perioada: { from: from, to: to, acum: u.perioada.acum, inainte: u.perioada.inainte } }));
+  const perioade = (Array.isArray(u.perioade) && u.perioade.length ? u.perioade : [u.perioada]).slice(0, aiRaport.MAX_PERIOADE);
+  const carduri = [], pentruModel = [], probl = [], citite = [];
+  let panaTxt = '';
+  for (const per of perioade) {
+    // Perioada: cel mult aiRaport.MAX_ZILE, ca la întrebări (scadențele privesc înainte și nu încarcă istoricul).
+    let from = per.from, to = per.to, taiat = !!per.taiat;
+    if (u.raport !== 'due' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
+    const report = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
+    const perEt = per.acum ? 'acum' : insight.etichetaPerioadei(from, to);
+    const saved = await _istoricRaport({ companyId: req.companyId != null ? req.companyId : null, userId: userId, username: req.auth && req.auth.username,
+      type: u.raport, label: label, imei: una, imeis: imeis, from: from, to: to, opts: opts, report: report, status: 'insight' });
+    const pana = saved && saved.expires_at ? new Date(saved.expires_at) : new Date(Date.now() + ZILE_ISTORIC_RAPOARTE * 86400000);
+    panaTxt = pana.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit' });
+    const rows = Array.isArray(report.rows) ? report.rows : [];
+    const card = { id: saved && saved.id, tip: u.raport, label: label, vehicul: vehicul, perioada: perEt, pana: panaTxt, kpi: _kpiRaport(report),
+      randuri: rows.length, gol: !rows.length };
+    // Ce trebuie știut despre raport stă în cartonaș (`note`): pe ecran, sub un raport cerut, se vede cartonașul, nu textul.
+    const note = [];
+    if (taiat) note.push('Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se face din pagina Rapoarte.');
+    if (Array.isArray(report.trunchiat) && report.trunchiat.length) note.push('Atenție: perioada are prea multe poziții, așa că raportul s-a oprit înainte de capăt. Cere o perioadă mai scurtă.');
+    if (note.length) card.note = note;
+    carduri.push(card);
+    pentruModel.push(_raportPentruModel(u.raport, report, { vehicul: vehicul, perioada: { from: from, to: to, eticheta: perEt } }));
+    citite.push({ from: from, to: to, eticheta: perEt });
+    (await _problemeDinRaport(u.raport, report, from, to, { fisa: x.fisa, peDev: x.peDev })).forEach(function (p) { probl.push(p); });
+  }
+  // Textul răspunsului (îl citește RA Insight în discuția de după și telefonul vechi): numele, mașina, perioada și CIFRELE de sus
+  // — până pe 15.10 doar „Am făcut raportul…", iar RA Insight, fără cifre, credea că nu le generase („o corecție…").
+  const kpiTxt = function (c) { return (c.kpi || []).map(function (k) { return k.et + ': ' + k.val; }).join(' · ') || (c.gol ? 'fără rânduri' : ''); };
+  let reply;
+  if (carduri.length === 1) {
+    const c = carduri[0];
+    reply = 'Am făcut raportul **„' + label + '”** pentru **' + vehicul + '**, ' + (c.perioada === 'acum' ? 'acum' : '**' + c.perioada + '**') + '. ' +
+      (c.gol ? 'În perioada asta nu are niciun rând; l-am pus totuși în Istoric rapoarte, până pe ' + panaTxt + '.' : kpiTxt(c) + '. Îl găsești în Istoric rapoarte până pe ' + panaTxt + '.');
+    (c.note || []).forEach(function (n) { reply += '\n\n' + n; });
+  } else {
+    reply = 'Am făcut ' + carduri.length + ' rapoarte **„' + label + '”** pentru **' + vehicul + '**: ' +
+      carduri.map(function (c) { return c.perioada + ' (' + kpiTxt(c) + ')'; }).join('; ') + '. Le găsești în Istoric rapoarte până pe ' + panaTxt + '.';
+  }
+  const inteles = aiRaport.inteles(Object.assign({}, u, { et: label, perioada: Object.assign({}, perioade[0], { eticheta: carduri.map(function (c) { return c.perioada; }).join(' · '), implicita: perioade[0].implicita }) }), x.fisa);
+  const p0 = perioade[0];
+  const urmari = carduri.length === 1 ? aiRaport.urmariComanda(Object.assign({}, u, { perioada: { from: p0.from, to: p0.to, acum: p0.acum, inainte: p0.inainte } })) : [];
   // Discuția: cererea (pentru continuările ei), plus mașina, perioada și subiectul pentru întrebările de după („și consumul?").
   const subR = aiRaport.SUBIECTE.find(function (s) { return s.raport === u.raport; });
-  const ctxNou = Object.assign({}, x.ctx, { cmd: aiRaport.contextulComenzii(u, from, to), rapoarte: [u.raport] });
+  const ctxNou = Object.assign({}, x.ctx, { cmd: aiRaport.contextulComenzii(Object.assign({}, u, { perioada: p0 }), p0.from, p0.to), rapoarte: [u.raport] });
   if (u.masini) ctxNou.masini = u.masini.slice(0, 50); else delete ctxNou.masini;
-  if (!u.perioada.acum) ctxNou.perioada = { from: from, to: to };
-  if (subR) ctxNou.ar = aiRaport.contextul(Object.assign({}, u, { subiect: subR.k }), from, to); else delete ctxNou.ar;
+  if (!p0.acum) ctxNou.perioada = { from: p0.from, to: p0.to };
+  if (subR) ctxNou.ar = aiRaport.contextul(Object.assign({}, u, { subiect: subR.k, perioada: p0 }), p0.from, p0.to); else delete ctxNou.ar;
+  auditReq(req, 'ai_raport_cerut', 'report', carduri[0] && carduri[0].id, { tip: u.raport, masini: imeis.length, perioade: carduri.length, analiza: !!u.analiza, via: x.usa || 'insight' });
+  const probl2 = probleme.ordoneaza(probl);
+  // „…și fă-mi o comparație": rapoartele sunt gata; judecata o face RA Insight, în _raInsight (o întrebare).
+  if (u.analiza) return { dupa: { carduri: carduri, pentruModel: pentruModel, probleme: probl2, citite: citite, ctxNou: ctxNou, inteles: inteles, reply: reply, sp: sp, subiect: 'raport_' + u.raport } };
   if (sp) pachetInfo = await _numaraRaspunsReguli(req, sp, 'raport_' + u.raport, x.usa || 'insight');
-  auditReq(req, 'ai_raport_cerut', 'report', saved && saved.id, { tip: u.raport, masini: imeis.length, via: x.usa || 'insight' });
-  await gata(reply, { raport: card, inteles: inteles, urmari: urmari, sources: [] }, ctxNou);
+  await gata(reply, carduri.length === 1 ? { raport: carduri[0], inteles: inteles, urmari: urmari, probleme: probl2 } : { rapoarte: carduri, inteles: inteles, probleme: probl2 }, ctxNou);
   return true;
 }
 // Ce arată ecranul lângă caseta de scris, după un răspuns: pachetul, câte au rămas și dacă s-a oprit. FĂRĂ bani.
@@ -4656,6 +4765,7 @@ async function _raInsight(req, res, opts) {
     try { (await db.getDriversLite(companyScope === -1 ? -1 : companyScope)).forEach(function (s) { soferi[s.id] = s.name; }); } catch (e) { /* fără șoferi: rămân numărul și numele */ }
     const fisa = insight.fisaFlotei(devices, soferi);
     const peImei = {}; fisa.forEach(function (v) { peImei[v.imei] = v; });
+    const peDev = {}; devices.forEach(function (d) { peDev[d.imei] = d; });   // limita de viteză și felul mașinii, pentru „Am găsit o problemă"
     const allImeis = fisa.map(function (v) { return v.imei; });
 
     // Conversația: cea cerută (doar dacă e a omului), ultima de curând, sau una nouă (creată la salvare).
@@ -4685,9 +4795,27 @@ async function _raInsight(req, res, opts) {
 
     // 0) Un raport cerut în cuvinte („fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută"): pe reguli, întreg, în
     //    Istoric rapoarte (Capitolul 2, pasul 1). Proba modelelor pune doar întrebări.
-    if (!o.proba && await _insightComanda(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
+    //    „…și fă-mi o comparație" (Alin, 15.10): rapoartele se fac aici, pe reguli, iar judecata o face RA Insight mai jos
+    //    (`gata` = rapoartele, cifrele lor pentru model, problemele găsite).
+    let gata = null;
+    if (!o.proba) {
+      const rc = await _insightComanda(req, res, { message: message, ctx: ctx, fisa: fisa, peDev: peDev, salveaza: salveaza, usa: o.usa });
+      if (rc === true) return;
+      if (rc && rc.dupa) gata = rc.dupa;
+    }
+    if (gata) ctx = gata.ctxNou;
     // Cererea de dinainte nu mai e „în discuție" după o întrebare: „și săptămâna dinainte?" privește întrebarea.
-    if (ctx.cmd) { ctx = Object.assign({}, ctx); delete ctx.cmd; }
+    else if (ctx.cmd) { ctx = Object.assign({}, ctx); delete ctx.cmd; }
+    // Rapoartele făcute deja, fără RA Insight (Start, luna oprită, cheia lipsă): cartonașele, plus de ce nu vine și judecata.
+    async function doarRapoartele(motiv) {
+      const ins = pachete.insigna('instant', { numarat: !!(gata.sp && !gata.sp.pachet.ai) });
+      let pachetInfo;
+      if (gata.sp) pachetInfo = await _numaraRaspunsReguli(req, gata.sp, gata.subiect, o.usa || 'insight');
+      const reply = gata.reply + '\n\n' + motiv;
+      const sv = await salveaza(reply, { source: 'reguli', inteles: gata.inteles, rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachetMesaj: motiv }, gata.ctxNou);
+      return res.json({ reply: reply, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: gata.inteles, alege: [], urmari: [], sources: [],
+        rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachet: pachetInfo, pachetMesaj: motiv });
+    }
 
     // 1) Răspuns rapid, LOCAL și GRATUIT — doar la întrebări despre ACUM („unde e", „care sunt oprite", „câți km azi").
     //    Înainte se aprindea pe un singur cuvânt: „câți kilometri a făcut B 154 UIP săptămâna trecută" primea km-ii
@@ -4695,7 +4823,7 @@ async function _raInsight(req, res, opts) {
     try {
       const intent = fleetQuick ? fleetQuick.detectIntent(message) : null;
       const peMasini = gasite.masini.length > 0;
-      if (!o.proba && intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
+      if (!o.proba && !gata && intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
         const doar = peMasini ? new Set(gasite.masini.map(function (v) { return v.imei; })) : null;
         let snap = _fleetSnapshot(req, doar ? 100000 : undefined);
         if (doar) { const total = snap.filter(function (v) { return doar.has(v.imei); }); snap = total; Object.defineProperty(snap, 'totalFlota', { value: total.length, enumerable: false }); }
@@ -4709,9 +4837,10 @@ async function _raInsight(req, res, opts) {
         const aq = fleetQuick.answer(intent, { snapshot: snap, today: azi, now: Date.now(), total: snap.totalFlota });
         const inteles = (peMasini ? gasite.masini.map(function (v) { return { tip: 'masina', text: insight.eticheta(v) }; }) : [{ tip: 'masina', text: 'toată flota' }])
           .concat([{ tip: 'perioada', text: intent === 'distance' ? 'azi' : 'acum' }]);
-        const s = await salveaza(aq.reply, { source: 'local', inteles: inteles }, peMasini ? Object.assign({}, ctx, { masini: Array.from(doar) }) : ctx);
+        const insL = pachete.insigna('instant', { live: true });
+        const s = await salveaza(aq.reply, { source: 'local', inteles: inteles, insigna: insL }, peMasini ? Object.assign({}, ctx, { masini: Array.from(doar) }) : ctx);
         auditReq(req, 'ai_local', 'assistant', s.convId, { intent, via: o.usa || 'insight' });
-        return res.json({ reply: aq.reply, sources: [], source: 'local', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: [] });
+        return res.json({ reply: aq.reply, sources: [], source: 'local', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: [], insigna: insL });
       }
     } catch (e) { /* dacă răspunsul rapid pică, merge întrebarea la RA Insight */ }
 
@@ -4719,13 +4848,19 @@ async function _raInsight(req, res, opts) {
     //    omului, plasa), răspunde motorul pe reguli — același ca „AI Raport". Pe Start, din cele 50 de răspunsuri.
     if (!o.proba && req.companyId != null) {
       const sp = await _starePachet(req.companyId, userId, { strict: true });
+      if (gata && sp && !sp.pachet.ai) return await doarRapoartele(pachete.textDoarButoane());
+      if (gata && sp && sp.st.blocat) return await doarRapoartele(pachete.textBlocat(sp.st, Date.now()));
       if (sp && (!sp.pachet.ai || sp.st.blocat)) return await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa });
       // Pe Basic, Pro și Business, butoanele (întrebările gata scrise, continuările, alegerile) răspund pe reguli, fără
       // limită (macheta din 14.10: „Răspunsurile pe butoane, fără limită"); ce nu știu regulile merge la RA Insight.
-      if (sp && b.buton === true && await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa, incearca: true })) return;
+      if (sp && !gata && b.buton === true && await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa, incearca: true })) return;
     }
-    if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
+    if (!ai.aiEnabled()) {
+      if (gata) return await doarRapoartele('Comparația o face RA Insight, care acum nu e activ (cheia Anthropic lipsește).');
+      return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
+    }
     // Fondul firmei: dacă s-a terminat, se oprește cu explicație (aceeași poartă pentru toate ușile).
+    if (gata && !o.proba) { const stop = await _fondEpuizat(req).catch(function () { return null; }); if (stop) return await doarRapoartele(String(stop.reply || stop.message || 'RA Insight s-a oprit pe luna asta.')); }
     if (!o.proba && await _regulileFonduluiAi(req, res)) return;   // proba modelelor e costul nostru, nu al firmei
     if (!allImeis.length) return res.json({ reply: 'Nu ai nicio mașină la care să ai acces, deci nu am ce analiza.', sources: [] });
 
@@ -4733,7 +4868,9 @@ async function _raInsight(req, res, opts) {
     try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
 
     let reportCalls = 0, sdVazut = null, cbVazut = null, hcVazut = null;
-    const citite = [];      // perioadele chiar citite (rapoarte, ramuri) — pentru verificarea perioadei cerute
+    const citite = gata ? gata.citite.slice() : [];      // perioadele chiar citite (rapoarte, ramuri) — pentru verificarea perioadei cerute
+    const gasiteProbleme = gata ? gata.probleme.slice() : [];   // „Am găsit o problemă" — din rapoartele făcute și din unelte
+    let listaVazuta = null;   // fișele întoarse de list_vehicles (pentru „Nu e completat în fișa mașinii")
     const sources = [];
     const folosite = new Set();
     const ambiguitati = [];   // variantele întoarse de unelte când „Logan" se potrivește cu trei mașini
@@ -4771,7 +4908,18 @@ async function _raInsight(req, res, opts) {
     const toolHandlers = {
       list_vehicles: async () => {
         folosite.add('list_vehicles');
-        const out = { total: fisa.length, vehicles: fisa.slice(0, INSIGHT_LISTA_MAX).map(function (v) { return { nr: v.nr || undefined, nume: v.nume, sofer: v.sofer || undefined, grupa: v.grupa || undefined, tip: v.tip || undefined }; }) };
+        // Fișa mașinii (Alin, 15.10: „anii de înmatriculare" → „nu sunt disponibili în RA Track" — anul stă în fișă, dar RA Insight
+        // primea doar numărul, numele și șoferul). Ce nu e completat se spune pe nume, în `necompletat`.
+        const out = { total: fisa.length, vehicles: fisa.slice(0, INSIGHT_LISTA_MAX).map(function (v) {
+          const d = peDev[v.imei] || {}, nec = [];
+          const f = function (val, nume) { if (val == null || val === '' || val === 0) { nec.push(nume); return undefined; } return val; };
+          return { nr: v.nr || undefined, nume: v.nume, sofer: v.sofer || undefined, grupa: v.grupa || undefined, tip: v.tip || undefined,
+            marca: f(d.brand, 'marca'), model: f(d.model, 'modelul'), an_fabricatie: f(d.year != null ? Number(d.year) || null : null, 'anul de fabricație'),
+            combustibil: f(d.fuel_type, 'combustibilul'), rezervor_l: f(d.tank_capacity != null ? Number(d.tank_capacity) || null : null, 'rezervorul'),
+            consum_fisa_l_100km: d.consumption_city != null || d.consumption_road != null ? (Number(d.consumption_road) || Number(d.consumption_city) || undefined) : undefined,
+            necompletat: nec.length ? nec : undefined };
+        }) };
+        listaVazuta = out.vehicles;
         if (fisa.length > INSIGHT_LISTA_MAX) out.atentie = 'Flota are ' + fisa.length + ' mașini; lista arată primele ' + INSIGHT_LISTA_MAX + '. Caută mașina direct în run_report, după număr sau nume.';
         return out;
       },
@@ -4787,11 +4935,13 @@ async function _raInsight(req, res, opts) {
         if (r.pregatire) return { mesaj: 'Cifrele se pregătesc încă. Spune-i omului să deschidă ramura „Combustibil" peste un minut — apar acolo.' };
         cbVazut = r.eticheta;
         if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
-        const sursaPeScurt = function (m) {
-          if (m.sursa === 'Estimat (nivel CAN)') return 'estimat din consumul trecut în fișă (mașina trimite nivelul din rezervor, dar prea grosier ca să se poată socoti din el)';
-          if (m.sursa === 'Estimat') return 'estimat din consumul trecut în fișă (mașina nu trimite consumul)';
-          return m.sursa === 'CAN' ? 'măsurat de calculatorul mașinii (CAN)' : (m.sursa === 'Senzor' ? 'măsurat de senzorul din rezervor' : m.sursa);
-        };
+        // De unde vine cifra (probleme.js — aceeași regulă ca rapoartele de consum) și senzorii care nu se mișcă.
+        const sursaPeScurt = function (m) { return probleme.sursaConsum(m).text; };
+        const perC = { from: r.de, to: r.pana, eticheta: r.eticheta };
+        r.masini.forEach(function (m) {
+          if (m.nivelBlocat) gasiteProbleme.push(probleme.problemaSenzor({ vehicul: (peImei[m.imei] && (peImei[m.imei].nr || peImei[m.imei].nume)) || m.eticheta, imei: m.imei, km: m.km, nivelStart: m.nivelStart, consumFisa: m.consumFisa, consumImplicit: m.consumImplicit }, perC));
+          else if ((m.deVerificat || []).length) gasiteProbleme.push(probleme.problemaConsum({ vehicul: (peImei[m.imei] && (peImei[m.imei].nr || peImei[m.imei].nume)) || m.eticheta, imei: m.imei }, m.deVerificat, perC));
+        });
         return {
           perioada: r.eticheta, flota: r.flota, fata_de_perioada_dinainte: r.fata ? r.fata.cost : null, perioada_dinainte: r.inainte,
           masini: r.masini.slice(0, 15).map(function (m) { return { masina: m.eticheta, km: m.km, litri: m.litri, l_la_100_km: m.l100, sursa: sursaPeScurt(m), norma_din_fisa: m.norma, peste_norma_procent: m.peste, pret_litru_lei: m.pret, cost_lei: m.cost, fata: m.fata ? m.fata.text : null, de_verificat: (m.deVerificat || []).length ? m.deVerificat : undefined }; }),
@@ -4894,12 +5044,11 @@ async function _raInsight(req, res, opts) {
           const report = await reports.runReport(db, type, imeis, from, to, ropts, companyScope);
           sources.push({ type, label: report.label || type, vehicle: eticheta, imei, from, to, perioada: perioadaEt });
           citite.push({ from: from, to: to, eticheta: perioadaEt });
-          const rows = Array.isArray(report.rows) ? report.rows : [];
-          const out = {
-            type, label: report.label, vehicul: eticheta || 'toată flota', perioada: { from, to, eticheta: perioadaEt },
-            summary: report.summary || {}, columns: report.columns || [],
-            rows: rows.slice(0, 25), rows_total: rows.length, truncated: rows.length > 25
-          };
+          // Sumele pe mașină / zi și sursa consumului le face aplicația (_raportPentruModel), nu modelul (Alin, 15.10).
+          const out = _raportPentruModel(type, report, { vehicul: eticheta || 'toată flota', perioada: { from, to, eticheta: perioadaEt } });
+          // Problemele din raport (viteza reală sau eroare de GPS, senzorul blocat): modelul le află și le spune ca fapte.
+          const pr = await _problemeDinRaport(type, report, from, to, { fisa: fisa, peDev: peDev });
+          if (pr.length) { pr.forEach(function (x) { gasiteProbleme.push(x); }); out.probleme_gasite = pr.map(function (x) { return x.titlu + ': ' + x.dovada; }); }
           // Cifre greu de crezut (consum, preț pe litru): marcate de raport, spuse de RA Insight lângă cifra lor.
           if (Array.isArray(report.deVerificat) && report.deVerificat.length) out.de_verificat = report.deVerificat.slice(0, 10).map(function (x) { return x.vehicul + ': ' + x.texte.join('; '); });
           // Raportul s-a oprit la plafonul de poziții (reports.js, „Citirea pozițiilor") → cifrele NU acoperă toată perioada.
@@ -4951,8 +5100,8 @@ async function _raInsight(req, res, opts) {
       }
     };
 
-    // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite).
-    const dateCitite = [];
+    // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite) — și rapoartele făcute deja.
+    const dateCitite = gata ? gata.pentruModel.slice() : [];
     Object.keys(toolHandlers).forEach(function (k) {
       const f = toolHandlers[k];
       toolHandlers[k] = async function (input) { const r = await f(input); dateCitite.push(r); return r; };
@@ -4964,6 +5113,10 @@ async function _raInsight(req, res, opts) {
       { type: 'text', text: _insightInstructiuni(cuRapoarte), cache_control: { type: 'ephemeral' } },
       { type: 'text', text: _insightContext(fisa, gasite, ctx, peImei, notite) }
     ];
+    if (gata) system.push({ type: 'text', text: 'RAPOARTE FĂCUTE ACUM: aplicația a făcut deja, pentru întrebarea asta, rapoartele de mai jos (omul le vede ca ' +
+      'cartonașe deasupra răspunsului tău, cu cifrele de sus). Fă ce a cerut omul cu ele (comparația, explicația); nu rula din nou aceleași rapoarte ' +
+      'și nu repeta cifrele de pe cartonașe una câte una.' + (gata.probleme.length ? ' Problemele găsite de aplicație: ' + gata.probleme.map(function (x) { return x.titlu + ' — ' + x.dovada; }).join(' | ') : '') +
+      '\n' + JSON.stringify(gata.pentruModel).slice(0, 14000) });
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
     let model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
@@ -4977,27 +5130,44 @@ async function _raInsight(req, res, opts) {
       } catch (e) { /* fără stare: modelul obișnuit */ }
     }
     const t0 = Date.now();
+    const onUsage = u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
+      _agg.input_tokens += Number(u.input_tokens) || 0;
+      _agg.output_tokens += Number(u.output_tokens) || 0;
+      _agg.cache_read_input_tokens += Number(u.cache_read_input_tokens) || 0;
+      _agg.cache_creation_input_tokens += Number(u.cache_creation_input_tokens) || 0;
+    };
     const result = await ai.runAgent({
       system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
-      model: model, maxTokens: 1100, maxIters: 8,
-      onUsage: u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
-        _agg.input_tokens += Number(u.input_tokens) || 0;
-        _agg.output_tokens += Number(u.output_tokens) || 0;
-        _agg.cache_read_input_tokens += Number(u.cache_read_input_tokens) || 0;
-        _agg.cache_creation_input_tokens += Number(u.cache_creation_input_tokens) || 0;
-      }
+      model: model, maxTokens: 1100, maxIters: 8, onUsage: onUsage
     });
+    let reply = result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.';
+    // Cifrele, verificate fără să-l punem pe om să verifice (Alin, 15.10: „ce să verific? Am AI… îmi zice clar dacă e greșit
+    // ceva"): o cifră care nu se regăsește în date și nici nu se poate socoti din ele → RA Insight își rescrie O DATĂ răspunsul,
+    // doar cu cifre din unelte. Rămâne aceeași întrebare (un singur rând de consum).
+    let lipsa = [], rescris = false;
+    try { lipsa = cifre.negasite(reply, dateCitite); } catch (e) { lipsa = []; }
+    if (lipsa.length && result.text) {
+      rescris = true;
+      try {
+        const r2 = await ai.runAgent({
+          system, messages: istoric.concat([{ role: 'user', content: message }, { role: 'assistant', content: reply },
+            { role: 'user', content: 'Verificarea aplicației: cifrele ' + lipsa.join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot socoti din ele. ' +
+              'Scrie din nou tot răspunsul, doar cu cifre din unelte (sumele pe mașină și pe zi sunt în pe_masina / pe_masina_si_zi). Nu pomeni verificarea.' }]),
+          tools, toolHandlers, model: model, maxTokens: 1100, maxIters: 4, onUsage: onUsage
+        });
+        if (r2 && r2.text) { const l2 = cifre.negasite(r2.text, dateCitite); if (l2.length < lipsa.length) { reply = r2.text; lipsa = l2; } }
+      } catch (e) { /* rămâne răspunsul dintâi, cu cifrele spuse mai jos */ }
+    }
     // Proba modelelor: fără firmă pe rând (nu intră în consumul și în panourile clientului), cu felul ei.
     if (o.proba) db.recordAiUsage(null, 'proba_modele', _agg, userId, model).catch(() => {});
     else db.recordAiUsage(req.companyId, 'insight', _agg, userId, model).catch(() => {});
-    const reply = result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.';
 
     // Surse unice (tip + mașină + perioadă), pentru „Deschide raportul".
     const seen = new Set(); const uniqSources = [];
     for (const s of sources) { const k = s.type + '|' + (s.imei || s.vehicle || '') + '|' + s.from + '|' + s.to; if (!seen.has(k)) { seen.add(k); uniqSources.push(s); } }
-    const inteles = _insightInteles(uniqSources, folosite, gasite, mesaje.length > 0, [].concat(sdVazut ? [{ tip: 'perioada', text: sdVazut }, { tip: 'subiect', text: 'RA Drive' }] : [],
+    const inteles = (gata ? gata.inteles : []).concat(_insightInteles(uniqSources, folosite, gasite, mesaje.length > 0, [].concat(sdVazut ? [{ tip: 'perioada', text: sdVazut }, { tip: 'subiect', text: 'RA Drive' }] : [],
       cbVazut ? [{ tip: 'perioada', text: cbVazut }, { tip: 'subiect', text: 'Combustibil' }] : [],
-      hcVazut ? [{ tip: 'perioada', text: hcVazut }, { tip: 'subiect', text: 'Ore de condus' }] : []));
+      hcVazut ? [{ tip: 'perioada', text: hcVazut }, { tip: 'subiect', text: 'Ore de condus' }] : [])));
 
     // Butoane de ales, când răspunsul întreabă „care dintre ele?". „Celălalt" scoate mașina despre care tocmai s-a vorbit.
     let variante = ambiguitati.length ? ambiguitati : (!uniqSources.length ? [].concat.apply([], gasite.ambigue.map(a => a.variante)) : []);
@@ -5030,11 +5200,30 @@ async function _raInsight(req, res, opts) {
     // trebuie să știe ce s-a citit ultima oară. Fără raport recunoscut, nicio discuție veche pe reguli.
     if (uR) ctxNou.ar = aiRaport.contextul(uR, ultima.from, ultima.to); else delete ctxNou.ar;
 
-    const verificare = _verificaRaspunsul(reply, message, dateCitite, citite);
-    const s = await salveaza(reply, { source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare || undefined, aprofundat: aprofundat || undefined }, ctxNou);
-    if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined });
-    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, verificare: verificare, aprofundat: aprofundat || undefined },
-      o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz } : {}));
+    // Fișa mașinii: omul a întrebat de un câmp (anul, marca…) și la unele mașini lipsește → butonul spre fișa fiecăreia.
+    if (listaVazuta && !folosite.has('run_report') && !folosite.has('combustibil')) {
+      probleme.campuriCerute(insight.norm(message)).forEach(function (camp) {
+        const pf = probleme.problemaFisa(camp, listaVazuta.map(function (v) { const f = fisa.find(function (x) { return (x.nr || x.nume) === (v.nr || v.nume); }); return { nr: v.nr || v.nume, imei: f && f.imei, necompletat: v.necompletat }; }));
+        if (pf) gasiteProbleme.push(pf);
+      });
+    }
+    // „Am găsit o problemă" în locul benzii „De verificat" (Alin, 15.10): problemele găsite de aplicație în date, iar o cifră
+    // rămasă negăsită după rescriere se spune pe față, ca problemă — nu „verifică tu".
+    const verificare = _verificaRaspunsul(reply, message, dateCitite, citite, lipsa);
+    if (verificare && verificare.cifre) gasiteProbleme.push({ fel: 'cifra', grav: 'galben', titlu: 'Nu am găsit în rapoarte: ' + verificare.cifre.join(', '),
+      dovada: 'Cifra nu apare în datele citite și nu se poate socoti din ele. N-o lua drept sigură.',
+      butoane: uniqSources[0] ? [{ fel: 'raport', text: 'Deschide „' + uniqSources[0].label + '”', tip: uniqSources[0].type, imei: uniqSources[0].imei, de: uniqSources[0].from, pana: uniqSources[0].to }] : [] });
+    const problemeGasite = probleme.ordoneaza(gasiteProbleme);
+    const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null });
+    const extraAi = { probleme: problemeGasite.length ? problemeGasite : undefined, verificat: verificare && verificare.confirmat ? true : undefined,
+      nota: verificare && verificare.perioada ? verificare.perioada : undefined, insigna: insigna, rapoarte: gata ? gata.carduri : undefined };
+    const s = await salveaza(reply, Object.assign({ source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, aprofundat: aprofundat || undefined }, extraAi), ctxNou);
+    if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined,
+      probleme: problemeGasite.length ? problemeGasite.map(function (x) { return x.fel; }) : undefined, rapoarte: gata ? gata.carduri.length : undefined });
+    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, aprofundat: aprofundat || undefined }, extraAi,
+      o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz,
+        // Proba modelelor (noi): cât de des greșește un model cifrele — perioada, cifrele rămase negăsite, rescrierea cerută.
+        verificare: (verificare && (verificare.perioada || verificare.cifre)) || rescris ? { perioada: verificare && verificare.perioada, cifre: verificare && verificare.cifre, rescris: rescris || undefined } : null } : {}));
   } catch (e) {
     console.warn('[RA Insight]', e.message);
     res.status(500).json({ error: 'RA Insight: ' + e.message, reply: 'RA Insight nu a putut răspunde acum. Încearcă din nou peste un minut.' });

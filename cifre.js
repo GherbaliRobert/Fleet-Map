@@ -49,7 +49,7 @@ function _felUnitate(dupa) {
 function _felCheie(k) {
   const t = String(k).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[_]/g, ' ');
   if (/l100|per100|la 100|100 ?km|consum.*100/.test(t)) return 'l100';
-  if (/viteza|speed|km\/h|kmh/.test(t)) return 'kmh';
+  if (/viteza|speed|km\/h|kmh|(^|[^a-z])vit([^a-z]|$)/.test(t)) return 'kmh';   // „Vit. max” din Foaia de parcurs
   if (/procent|pct|%/.test(t)) return 'pct';
   // banii întâi: „pret_litru_lei" e un preț, nu litri (altfel totalul de litri al listei ieșea umflat cu prețurile)
   if (/cost|lei|pret|ron|valoare|suma/.test(t)) return 'lei';
@@ -63,22 +63,92 @@ function _numar(v) {
   if (typeof v === 'string' && /^\s*[+−-]?\d/.test(v)) { const n = numere(v.replace(/^\s*[+−-]/, '')); return n.length ? n[0] : null; }
   return null;
 }
+// O celulă dintr-un raport, citită ca NUMĂR (Alin, 15.10: „De verificat" pe cifre bune): rapoartele scriu distanțele cu
+// toFixed(2) — „12.53" —, iar cititorul de text de mai sus îl socotea o dată (12 și 53). Într-o celulă de raport punctul
+// cu zecimale e virgulă zecimală; „1.234,5" (românește) și „12,5" se citesc tot ca numere. Altceva → cititorul de text.
+function _numarCelula(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (typeof v !== 'string') return null;
+  const s = v.trim().replace(/^[+−-]/, '');
+  if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) return Number(s.replace(/\./g, '').replace(',', '.'));
+  if (/^\d+,\d+$/.test(s)) return Number(s.replace(',', '.'));
+  return _numar(v);
+}
+// Cheia după care se adună rândurile unui raport: mașina, șoferul, ziua („05.10.2026 13:42" → „05.10.2026"). Celulele cu
+// cifre nu sunt chei.
+function _cheieGrup(v) {
+  if (typeof v !== 'string' || !v.trim()) return null;
+  const s = v.trim();
+  const zi = /^(\d{2}\.\d{2}\.\d{4})\b/.exec(s);
+  if (zi) return zi[1];
+  if (_numarCelula(s) != null && /^[+−-]?\d/.test(s)) return null;
+  return s;
+}
 // Ce se poate socoti din date: totalurile unei liste, diferențele și procentele între cifre de același fel venite din
 // locuri DIFERITE (perioada asta față de cea dinainte), partea unei mașini din total, litri la 100 km, lei pe litru.
+// Toate cifrele din date, valoare cu valoare. Până pe 15.10 se citea textul JSON întreg, iar două numere vecine dintr-o
+// listă („40,137" = viteza medie, viteza maximă) ieșeau un singur număr, „40,137" — și 137 km/h nu se mai „găsea".
+function _toateNumerele(x, set, adanc) {
+  if ((adanc || 0) > 12 || x == null) return;
+  if (typeof x === 'number') { if (isFinite(x)) set.add(x); return; }
+  if (typeof x === 'string') { numere(x).forEach(function (n) { set.add(n); }); const c = _numarCelula(x); if (c != null) set.add(c); return; }
+  if (Array.isArray(x)) { x.forEach(function (e) { _toateNumerele(e, set, (adanc || 0) + 1); }); return; }
+  if (typeof x === 'object') Object.keys(x).forEach(function (k) { _toateNumerele(x[k], set, (adanc || 0) + 1); });
+}
 function _socotite(date) {
   const base = new Set(MEREU);
-  numere(JSON.stringify(date || null)).forEach(function (n) { base.add(n); });
+  _toateNumerele(date || null, base, 0);
   const fel = {};   // fel → listă de cifre socotite
   const adauga = function (f, v) { if (f && isFinite(v)) (fel[f] = fel[f] || []).push(v); };
   const grupe = {}; // fel → [{ v, loc }] — loc = de unde vine (aceeași listă = același loc)
   const pune = function (f, v, loc) { if (f && v != null && isFinite(v)) (grupe[f] = grupe[f] || []).push({ v: v, loc: loc }); };
   let id = 0;
   const rapoarte = function (cols, rows, loc) {
+    const felul = cols.map(function (c) { return _felCheie(c); });
     cols.forEach(function (c, j) {
-      const f = _felCheie(c); if (!f) return;
-      const vs = rows.map(function (r) { return Array.isArray(r) ? _numar(r[j]) : null; }).filter(function (x) { return x != null; });
-      vs.forEach(function (v) { pune(f, v, loc); });
+      const f = felul[j]; if (!f) return;
+      const vs = rows.map(function (r) { return Array.isArray(r) ? _numarCelula(r[j]) : null; }).filter(function (x) { return x != null; });
+      vs.forEach(function (v) { pune(f, v, loc); adauga(f, v); });
       if (vs.length >= 2) { const s = vs.reduce(function (a, b) { return a + b; }, 0); adauga(f, s); vs.forEach(function (v) { if (s) adauga('pct', v / s * 100); }); }
+    });
+    // Sumele pe o cheie (mașina, șoferul, ziua): „B 154 UIP: 5 curse, 59,4 km" e suma rândurilor ei, nu o cifră inventată
+    // (15.10: banda „De verificat" le punea pe toate șase la îndoială).
+    cols.forEach(function (c, k) {
+      if (felul[k]) return;
+      const grup = {};
+      rows.forEach(function (r) {
+        if (!Array.isArray(r)) return;
+        const ch = _cheieGrup(r[k]); if (ch == null) return;
+        const g = grup[ch] = grup[ch] || { n: 0, s: {} };
+        g.n++;
+        felul.forEach(function (f, j) {
+          if (!f || f === 'timp' || f === 'pct') return;
+          const v = _numarCelula(r[j]); if (v == null) return;
+          g.s[j] = f === 'kmh' ? Math.max(g.s[j] || 0, v) : (g.s[j] || 0) + v;   // viteza: cea mai mare, nu suma
+        });
+      });
+      const chei = Object.keys(grup);
+      if (chei.length < 1 || chei.length > 200 || chei.length === rows.length) return;   // o cheie pe rând nu adună nimic
+      chei.forEach(function (ch) { const g = grup[ch]; Object.keys(g.s).forEach(function (j) { adauga(felul[j], g.s[j]); }); });
+    });
+    // …și pe mașină ȘI zi (prima coloană = mașina, alta = ziua): „B 154 UIP pe 5 octombrie: 59,4 km".
+    if (!felul[0]) cols.forEach(function (c, k) {
+      if (k === 0 || felul[k]) return;
+      const grup = {};
+      rows.forEach(function (r) {
+        if (!Array.isArray(r)) return;
+        const z = _cheieGrup(r[k]); if (z == null || !/^\d{2}\.\d{2}\.\d{4}$/.test(z)) return;
+        const ch = String(r[0]) + '|' + z, g = grup[ch] = grup[ch] || {};
+        felul.forEach(function (f, j) {
+          if (!f || f === 'timp' || f === 'pct') return;
+          const v = _numarCelula(r[j]); if (v == null) return;
+          g[j] = f === 'kmh' ? Math.max(g[j] || 0, v) : (g[j] || 0) + v;
+        });
+      });
+      const chei = Object.keys(grup);
+      if (!chei.length || chei.length > 400) return;
+      chei.forEach(function (ch) { Object.keys(grup[ch]).forEach(function (j) { adauga(felul[j], grup[ch][j]); }); });
     });
   };
   // inLista = obiectul e un rând dintr-o listă deja numărată (mai sus, ca listă): cifrele lui nu intră a doua oară în grupe.
@@ -100,6 +170,23 @@ function _socotite(date) {
         const sKm = suma('km'), sL = suma('litri'), sLei = suma('lei');
         if (sKm && sL != null) adauga('l100', sL / sKm * 100);
         if (sL && sLei != null) adauga('lei', sLei / sL);
+        // sumele pe o cheie scrisă (mașina, șoferul, ziua), ca la rapoarte
+        Object.keys(chei).forEach(function (kc) {
+          if (_felCheie(kc)) return;
+          const grup = {};
+          ob.forEach(function (o) {
+            const ch = _cheieGrup(o[kc]); if (ch == null) return;
+            const g = grup[ch] = grup[ch] || {};
+            Object.keys(o).forEach(function (k) {
+              const f = _felCheie(k); if (!f || f === 'timp' || f === 'pct') return;
+              const v = _numar(o[k]); if (v == null) return;
+              g[k] = f === 'kmh' ? Math.max(g[k] || 0, v) : (g[k] || 0) + v;
+            });
+          });
+          const cg = Object.keys(grup);
+          if (cg.length < 1 || cg.length > 200 || cg.length === ob.length) return;
+          cg.forEach(function (ch) { Object.keys(grup[ch]).forEach(function (k) { adauga(_felCheie(k), grup[ch][k]); }); });
+        });
       }
       x.forEach(function (e) { umbla(e, lista && e && typeof e === 'object' && !Array.isArray(e)); });
       return;
@@ -216,4 +303,4 @@ function consumDeVerificat(o) {
 }
 
 module.exports = { numere, MEREU, MICI, cifreleRaspunsului, negasite, perioadaDiferita, ABATERE_MS,
-  CONSUM, CONSUM_CAMION, PRET, KM_SIGUR, consumDeVerificat, _socotite };
+  CONSUM, CONSUM_CAMION, PRET, KM_SIGUR, consumDeVerificat, _socotite, _numarCelula, felCheie: _felCheie };

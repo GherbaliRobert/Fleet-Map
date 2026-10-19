@@ -9,6 +9,7 @@ const condus = require('./condus');   // pragurile și scorul EcoDrive — acele
 const tacho = require('./tacho');
 const cifre = require('./cifre');   // cifrele greu de crezut la consum („de verificat") — un singur loc pentru praguri     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
 const insight = require('./insight'); // începutul unei zile pe ora României (inceputZiRO)
+const probleme = require('./probleme'); // senzorul de combustibil care nu se mișcă — aceeași regulă în rapoarte și în RA Insight
 const preaviz = require('./preaviz'); // starea unui act / a unei revizii și preavizul firmei — aceleași ca listele (Scadențe)
 
 function t(p) { return new Date(p.timestamp).getTime(); }
@@ -1275,7 +1276,8 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
   // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
-  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0), deVerificat: m.deVerificat || [] }; });
+  const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0), deVerificat: m.deVerificat || [],
+    nivelStart: m.first != null ? Math.round(m.first) : null, nivelFinal: m.last != null ? Math.round(m.last) : null, nivelBlocat: !!m.nivelBlocat, consumFisa: m.consumFisa, consumImplicit: m.consumImplicit }; });
   const deVerificat = _deVerificatConsum(cm, imeis, devMap);
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
     summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true,
@@ -2099,7 +2101,12 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     // RA Insight (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"). Pe drum zero nu e nimic de spus.
     const deVerificat = (consumed > 0 || dist > 1) ? cifre.consumDeVerificat({ l100: per100, km: dist, pret: price, camion: tacho.vehiculAreTahograf(c.vtype),
       electric: /electr/i.test(String(c.fuelType || '')) }) : [];
+    // Senzorul care nu se mișcă (probleme.js, 15.10): pe sute de km nivelul n-a variat — consumul de aici e socotit, nu măsurat.
+    let nivMin = null, nivMax = null;
+    for (const v of niveluri) { if (nivMin == null || v < nivMin) nivMin = v; if (nivMax == null || v > nivMax) nivMax = v; }
+    const nivelBlocat = !cumulOk && !sensorOk && probleme.nivelBlocat(nivMin, nivMax, dist, refueled);
     out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), source, hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null,
+      nivelBlocat, consumFisa: c.cRoad || null, consumImplicit: c.cRoad ? null : cRoad,
       norma: c.cMax || null,     // cel mai mare consum din fișă (de obicei „Consum oraș”); null = netrecut (atunci nu se spune „peste normă”)
       deVerificat };
   }

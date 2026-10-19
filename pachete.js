@@ -476,7 +476,21 @@ function publice(o) {
   });
 }
 
+// ─── Insigna de sub un răspuns (Alin, 15.10: „cu mov e analiza RA Insight și consumă întrebare, instant e cu verde — fără
+// bonus… să pară ceva profesionist") ─────────────────────────────────────────────────────────────────────────────────
+// O SINGURĂ regulă pentru ce scrie sub fiecare răspuns: cine a răspuns și dacă s-a numărat. Fără „bonus", „gratuit",
+// „nu se scade": diferența o face culoarea și „· 1 întrebare". Pe Start (unde și răspunsurile instant se numără, din 50)
+// insigna verde spune „· 1 răspuns".
+const INSIGNA = { ai: 'Analiză RA Insight', instant: 'Răspuns instant' };
+// fel = 'ai' | 'instant'; o = { numarat, live }
+function insigna(fel, o) {
+  o = o || {};
+  if (fel === 'ai') return { fel: 'ai', text: INSIGNA.ai + (o.numarat ? ' · 1 întrebare' : '') };
+  return { fel: 'instant', text: INSIGNA.instant + (o.numarat ? ' · 1 răspuns' : (o.live ? ' · din datele de acum' : ' · din rapoarte')) };
+}
+
 module.exports = {
+  INSIGNA, insigna,
   PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,

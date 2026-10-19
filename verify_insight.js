@@ -246,10 +246,12 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const folosite = async () => (await json('GET', '/api/ai/quota', ckSef)).j.used;
 
   // a) prima întrebare: numărul ajunge la unealtă
-  coada([unealta('run_report', { type: 'utilization', vehicle: 'B154UIP', period: 'last_week' }), text('**B 154 UIP (Dacia Logan 3)** — 538 km săptămâna trecută.')]);
+  // Răspunsurile simulate poartă cifre-semn FĂRĂ unitate („538 de vizite"): o cifră cu unitate (km, lei…) care nu se găsește în
+  // date face, din 15.10, ca RA Insight să-și rescrie o dată răspunsul — verificat separat, în verify_cifre.js.
+  coada([unealta('run_report', { type: 'utilization', vehicle: 'B154UIP', period: 'last_week' }), text('**B 154 UIP (Dacia Logan 3)** — 538 de vizite săptămâna trecută.')]);
   const q1 = await json('POST', '/api/ai/reports-agent', ckSef, { message: ALIN });
   const c1 = cereri();
-  T('prima întrebare primește răspunsul modelului', q1.status === 200 && /538 km/.test(q1.j.reply || ''), q1.status + ' ' + q1.text.slice(0, 120));
+  T('prima întrebare primește răspunsul modelului', q1.status === 200 && /538 de vizite/.test(q1.j.reply || ''), q1.status + ' ' + q1.text.slice(0, 120));
   T('modelul a fost chemat de două ori (unealta, apoi răspunsul)', c1.length === 2, c1.length);
   T('instrucțiunile vin în două bucăți: partea fixă (în cache) + contextul întrebării', Array.isArray(c1[0].system) && c1[0].system.length === 2 && !!c1[0].system[0].cache_control && !c1[0].system[1].cache_control);
   T('contextul îi spune modelului ce mașină a pomenit omul, cu număr, nume, șofer și grupă', /B 154 UIP = „Dacia Logan 3" \(șofer Ion Popescu, grupa Distribuție\)/.test(contextul(c1[0])), contextul(c1[0]).slice(0, 300));
@@ -265,15 +267,15 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('sub răspuns, întrebările de continuare din raportul citit: „Și săptămâna dinainte?", „Și consumul?", „Și pe toată flota?"', (q1.j.urmari || []).map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și consumul? | Și pe toată flota?', JSON.stringify(q1.j.urmari));
 
   // b) continuarea, cu id: modelul vede discuția
-  coada([text('Față de 14–20 septembrie: +66 km.')]);
+  coada([text('Față de 14–20 septembrie: +66 de vizite.')]);
   const q2 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Și față de săptămâna dinainte?', conversatieId: q1.j.conversatieId });
   const c2 = cereri().slice(-1)[0];
   T('a doua întrebare rămâne în aceeași conversație', q2.status === 200 && q2.j.conversatieId === q1.j.conversatieId);
-  T('modelul vede întrebarea și răspunsul de dinainte (memoria)', (c2.messages || []).length === 3 && textulCererii(c2).indexOf('KILOMETIR') >= 0 && textulCererii(c2).indexOf('538 km') >= 0, (c2.messages || []).map((m) => m.role).join(','));
+  T('modelul vede întrebarea și răspunsul de dinainte (memoria)', (c2.messages || []).length === 3 && textulCererii(c2).indexOf('KILOMETIR') >= 0 && textulCererii(c2).indexOf('538 de vizite') >= 0, (c2.messages || []).map((m) => m.role).join(','));
   T('și știe ce s-a discutat: mașina, perioada, raportul', /Din discuția de până acum — mașina: B 154 UIP · Dacia Logan 3; perioada: \d+[^;]*; rapoarte: Index km \/ ore/.test(contextul(c2)), contextul(c2).split('\n').slice(-1)[0]);
 
   // c) fără id, imediat după: se continuă ultima conversație (telefonul vechi și bula nu trimit id)
-  coada([text('Dacia Logan 3 a consumat 36,6 litri.')]);
+  coada([text('Dacia Logan 3 a avut 36,6 puncte.')]);
   const q3 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Dacia Logan 3' });
   const c3 = cereri().slice(-1)[0];
   T('„Dacia Logan 3" trimis singur continuă discuția (nu mai întreabă „ce vrei să afli")', q3.j.conversatieId === q1.j.conversatieId && (c3.messages || []).length === 5, q3.j.conversatieId + ' / ' + (c3.messages || []).length);
@@ -335,7 +337,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('„Unde e B 154 UIP?" → răspuns rapid, doar despre ea, fără model și fără să se numere', q7.j.source === 'local' && /Dacia Logan 3/.test(q7.j.reply || '') && cereri().length === inainte && (await folosite()) === fondInainte, q7.text.slice(0, 160));
   T('și „Am înțeles" spune mașina și „acum"', (q7.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|acum', JSON.stringify(q7.j.inteles));
   T('…fără continuări (apăsate, ar porni întrebări care se numără) și fără nota „nu s-a numărat din fond" pe ecran (Alin, 08.10)', !(q7.j.urmari || []).length && fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').indexOf('nu s-a numărat din fond') < 0);
-  coada([text('Săptămâna trecută: 538 km.')]);
+  coada([text('Săptămâna trecută: 538 de vizite.')]);
   const q8 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți kilometri a făcut B 154 UIP săptămâna trecută?', nou: true });
   T('cu altă perioadă, aceeași întrebare merge la RA Insight (nu primește km-ii de azi)', q8.j.source === 'ai' && cereri().length === inainte + 1, q8.j.source);
 
@@ -460,7 +462,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // statisticile pentru noi: numere, fără textul conversațiilor
   const stt = await json('GET', '/api/admin/insight/statistici?zile=30', S);
   T('statisticile (doar noi): câte răspunsuri, 👍/👎, conversații, ce rapoarte a rulat', stt.status === 200 && stt.j.raspunsuri >= 5 && stt.j.sus >= 1 && stt.j.conversatii >= 2 && Array.isArray(stt.j.rapoarte) && stt.j.rapoarte.some((x) => x.tip === 'utilization'), stt.text.slice(0, 200));
-  T('…fără niciun text din conversații', ['KILOMETIR', '538 km', 'Ce probleme', 'Motorina', 'șofer nou'].every((w) => stt.text.indexOf(w) < 0), stt.text.slice(0, 300));
+  T('…fără niciun text din conversații', ['KILOMETIR', '538 de vizite', 'Ce probleme', 'Motorina', 'șofer nou'].every((w) => stt.text.indexOf(w) < 0), stt.text.slice(0, 300));
   T('clientul nu are acces la statistici', (await json('GET', '/api/admin/insight/statistici', ckSef)).status === 403);
 
   // ─── 8. Scrisoarea de luni, cu modelul simulat: RA Insight o scrie DOAR din fapte; o cifră inventată → textul pe reguli ───

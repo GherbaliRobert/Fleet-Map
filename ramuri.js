@@ -97,6 +97,8 @@ function alcatuiesteCombustibil(o) {
     return { imei: m.imei, eticheta: m.eticheta, km: Math.round(c.dist), litri: Math.round(c.consumed * 10) / 10, l100: l100, sursa: c.source, estimat: !masurat,
       pret: Math.round(c.price * 100) / 100, cost: Math.round(cost), norma: c.norma || null, peste: peste,
       deVerificat: c.deVerificat || [],   // cifre greu de crezut (cifre.js, din motorul rapoartelor) — pagina și RA Insight le spun
+      // senzorul care nu se mișcă și consumul din fișă (probleme.js) — RA Insight spune de unde vine cifra
+      nivelBlocat: !!c.nivelBlocat, nivelStart: c.first != null ? Math.round(c.first) : null, consumFisa: c.consumFisa || null, consumImplicit: c.consumImplicit || null,
       fata: dif == null ? null : { fel: dif > 0 ? 'atentie' : (dif < 0 ? 'bun' : 'info'), text: dif ? (dif > 0 ? '+' : '−') + lei(Math.abs(dif)) : 'la fel' } };
   }).filter(Boolean).sort(function (a, b) { return b.cost - a.cost || b.km - a.km; });
   const sum = function (lista, f) { return lista.reduce(function (a, x) { return a + f(x); }, 0); };

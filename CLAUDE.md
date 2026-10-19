@@ -638,9 +638,8 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - **„De verificat" la consum: O socoteală, în `_consumptionMap`** (reports.js) → rapoartele Consum / Costuri / Emisii (legenda,
   `_legendaCuDeVerificat` → ecran, Excel, PDF), ramura Combustibil (`deVerificat` pe mașină → rândul `.sdp-verif`), AI Raport
   (sugestia „De verificat — …"), unealta lui RA Insight (`de_verificat`). NU o socoti a doua oară.
-- **Pagina:** banda = partea `'verificare'` din `_insightExtra` (`.chat-verif`, textContent), și pe răspunsul PROASPĂT
-  (`extra.verificare` în `insightTrimite` — lipsea, prins de capturi pe 08.10: banda apărea doar la redeschidere). Textul pe
-  `--text-primary`; chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată.
+- **Pagina:** din 19.10 banda „De verificat" NU mai există în chat (vezi „Discuția refăcută", mai jos): partea `'verificare'` din
+  `_insightExtra` arată doar nota perioadei (`.chat-nota`); problemele vin ca „Am găsit o problemă" (`_chatProbleme`).
 - Păzit de `verify_cifre.js` (în `npm test`; 57, cu server pornit și modelul simulat).
 
 ### Modelele și „Proba modelelor" (08.10, Alin: „Haiku e slab tare… ce-mi recomanzi după?")
@@ -663,7 +662,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   `MODEL_RANDURI_VECHI` (Haiku 4.5), NU modelul de azi. Dashboard, „Utilizare RA Insight" și istoricul ei citesc `cost_usd`;
   pagina ia costul rândului de la server (`_raxCostRand`). NU mai înmulți tokeni adunați cu prețul unui singur model.
   Ofertare: „ce rămâne la noi” dintr-un pachet folosește `pachete.COST_INTREBARE_LEI` (Haiku 5.5, capătul prudent al măsurătorii).
-- **„Proba modelelor"** (Administrare → Utilizare RA Insight, `raxProbaModele`, blocul între sentinele): rutele
+- **„Proba modelelor"** („RA Insight · control" → Controale, `raxProbaModele`, blocul între sentinele): rutele
   `/api/admin/insight/proba-modele` (GET meta, POST pornește, GET `/:id`, POST `/:id/opreste`), toate `requireSuperadmin`.
   Răspunde ACEEAȘI funcție, `_raInsight(await _cerereProba(…), res, { proba: { model } })`: cererea e „ca un administrator al
   firmei alese" — ⚠ `allowedImeis` = LISTA mașinilor firmei, NU null (null = toată platforma, ca la super-admin: starea live
@@ -752,6 +751,47 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
   „Vezi pachetele".
 - Telefonul (aplicația lui Robert) rămâne cum e până la APK-ul următor. Păzit de `verify_un_singur_insight.js` (secțiunea 3),
   `verify_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js` (ghidul spune „+", „Pagini", „Mai multe").
+
+### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
+Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:
+- **„Am găsit o problemă" în locul benzii „De verificat"** (Alin: „ce să verific? Am AI… îmi zice clar dacă e greșit ceva… mă duce
+  exact unde e problema"). Regulile și textele stau în **`probleme.js`** (curat): `sursaConsum` (măsurat / „NU e măsurat… socotit din
+  fișă" — o cifră socotită nu se mai prezintă ca măsurată), `nivelBlocat` (≥ 100 km, nivelul variat sub 1,5 L), `problemaSenzor`,
+  `problemaConsum`, `pragViteza` (fișa → 130 / 90), `verdictViteza` (reală = ≥ 2 poziții la rând peste prag sau drumul se leagă; eroare
+  de GPS = un punct singur, iar din poziția dinainte în cea de după mașina a mers încet), `problemaViteza`, `campuriCerute` /
+  `problemaFisa`, `ordoneaza` (cel mult 4, roșii întâi). Datele le citește O funcție, **`_problemeDinRaport`** (server.js), chemată de
+  rapoartele cerute în cuvinte și de unealta `run_report`; senzorul și consumul vin și din unealta `combustibil`. Butoanele: `traseu`
+  (`insightLaTraseu` — mașina, intervalul, traseul arătat, punctul marcat), `fisa` (`openEditModal` + fila), `raport` (`rinOpenReport`).
+  NU scrie „merită verificat" / „verifică în raport" nicăieri în chat.
+- **Cifrele, verificate fără să-l punem pe om la treabă:** `cifre.negasite` citește datele VALOARE CU VALOARE (textul JSON întreg lipea
+  „40,137" = viteza medie + maximă), o celulă „12.53" = 12,53 (`_numarCelula`), adună pe mașină, pe zi și pe mașină + zi. Sumele le dă
+  aplicația și modelului: **`insight.totaluriPeMasina`** → `pe_masina` / `pe_masina_si_zi` (pe TOATE rândurile; modelul vede doar 25), prin
+  **`_raportPentruModel`** (aceeași formă pentru `run_report` și pentru rapoartele făcute deja). O cifră negăsită → **RA Insight își
+  rescrie O DATĂ răspunsul** (aceeași întrebare, un rând de consum); rămasă negăsită → problema `cifra` „Nu am găsit în rapoarte: …".
+  Toate găsite → `verificat` („✓ Cifrele le-am luat din rapoarte"). Perioada citită ≠ cerută → `nota`.
+- **Rapoartele cerute în cuvinte** (`ai_raport.comanda(text, cmd, fisa, acum, discutie)`): toate formele numelor („foii", „foilor",
+  „situației zilnice"); **`zileleDin`** = mai multe zile într-o cerere (câte un raport pe zi, cel mult `MAX_PERIOADE` = 4; un interval
+  e O perioadă); mașina rămâne din cererea de dinainte sau din discuție (`ctx.masini`) până la „toată flota"; ziua scrisă rămâne în
+  `context` la „Ce raport vrei?" și o ia butonul ales. **„compară" / „de ce" (`PENTRU_INSIGHT`) = `analiza`**: `_insightComanda` face
+  rapoartele și întoarce `{ dupa }`; `_raInsight` le dă modelului în instrucțiuni („RAPOARTE FĂCUTE ACUM") și răspunde cu `rapoarte` +
+  analiza (o întrebare). Fără AI (Start, luna oprită, cheia lipsă, fondul) — `doarRapoartele`: cartonașele + de ce nu vine analiza.
+- **Textul unui raport cerut poartă cifrele de sus** („Curse: 1 · Distanță totală (km): 69"), iar instrucțiunile spun că mesajele „Am
+  făcut raportul…" sunt ale APLICAȚIEI și sunt reale — fără ele, modelul credea că a mințit („o corecție…").
+- **`list_vehicles` poartă fișa mașinii** (marcă, model, an, combustibil, rezervor, consumul din fișă, `necompletat`). Anul înmatriculării
+  nu se ține; se ține anul fabricației.
+- **Insignele: O regulă, `pachete.insigna(fel, { numarat, live })`** — mov „Analiză RA Insight · 1 întrebare" (fără „· 1 întrebare" la
+  noi și la probă), verde „Răspuns instant · din rapoarte" / „· din datele de acum" / pe Start „· 1 răspuns". Fără „bonus", „gratuit",
+  „nu se scade" (Alin, 19.10: „să pară ceva profesionist"). Serverul o pune pe fiecare răspuns (`insigna`); pagina doar o desenează
+  (`_chatInsigna`). Mesajele vechi n-au insignă — NU le-o ghici în pagină.
+- **„RA Insight · control" (fondatorii):** rândul sus în meniu (nu într-un grup; grupul se cheamă „Module"), `_RAX_NUME.agents`. Pagina:
+  `_aiuPachete` (4 cifre) → `_aiuAtentie` (plasa, întrebările terminate, 👎 7 zile — `db.aiJosPeFirma`, doar numărul —, partea instant)
+  → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul) → `_aiuControale`. Panoul vechi (`_aiuKpiuri`, `_aiuCard`) stă sub
+  „Mai multe cifre", închis, cât timp telefonul îl arată (`verify_insight_bani.js` le ține legate) — se scoate la punctul 5, cu Alin.
+- „Proba modelelor" primește `verificare: { perioada, cifre, rescris }` (doar la probă) — câte răspunsuri au avut cifre greșite.
+- **Rămase la Alin, după acestea** (19.10: „5 și 6 lasă-le după"): (5) ce e vechi pe pagina noastră; (6) „atribuirea, mesajul, dă
+  atribui" — de lămurit ce înseamnă. NU le face din proprie inițiativă.
+- Păzit de **`verify_discutia.js`** (în `npm test`; discuția lui Alin pe server pornit, modelul simulat), `verify_cifre.js`,
+  `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js`, `verify_acasa.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni

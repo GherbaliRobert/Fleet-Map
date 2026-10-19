@@ -4104,10 +4104,28 @@ body.dark .pkc-urm { border-color: #f59e0b; background: rgba(245,158,11,.08); }
 .aiu-pk-t .s { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
 .aiu-pk-l { padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .aiu-pk-l { color: var(--accent); }
-.aiu-pk-al { margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(245,158,11,.55); background: rgba(245,158,11,.08); font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
-.aiu-pk-al i { color: #b45309; }
-body.dark .aiu-pk-al i { color: #fbbf24; }
-.aiu-pk-ap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; font-size: 12.5px; color: var(--text-secondary); }
+/* „RA Insight · control" (15.10): ce cere atenție, firmă cu firmă (un rând; amănuntul la clic), controalele. Textul pe
+   --text-primary; culoarea stării doar pe chenar și pe iconiță, cu pereche pe tema întunecată. */
+.aiu-at { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-size: 12.5px; line-height: 1.5; color: var(--text-primary);
+  border: 1px solid var(--border); border-left: 3px solid #2563eb; border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; background: var(--bg-dark); }
+.aiu-at > span { flex: 1 1 260px; min-width: 0; }
+.aiu-at > i { color: #1d4ed8; }
+.aiu-at.ok { border-left-color: #16a34a; } .aiu-at.ok > i { color: #15803d; }
+.aiu-at.warn { border-left-color: #d97706; } .aiu-at.warn > i { color: #b45309; }
+.aiu-at.bad { border-left-color: #dc2626; } .aiu-at.bad > i { color: #b91c1c; }
+body.dark .aiu-at > i { color: #60a5fa; } body.dark .aiu-at.ok > i { color: #4ade80; }
+body.dark .aiu-at.warn > i { color: #fbbf24; } body.dark .aiu-at.bad > i { color: #f87171; }
+.aiu-tab-w { overflow-x: auto; }
+.aiu-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
+.aiu-tab th { text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.aiu-tab td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-primary); vertical-align: middle; }
+.aiu-tab .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aiu-tr { cursor: pointer; } .aiu-tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.aiu-ch { width: 14px; margin-right: 6px; font-size: 11px; color: var(--text-muted); }
+.aiu-det-in { padding: 4px 4px 8px 20px; font-size: 12.5px; }
+.aiu-bar { display: inline-block; width: 80px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.aiu-bar > i { display: block; height: 100%; }
+.aiu-ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .aiu-pk-r { margin-top: 6px; font-size: 12px; color: var(--text-primary); display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .rau-pk { margin-left: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .rau-pk { color: var(--accent); }
@@ -4117,12 +4135,30 @@ body.dark .rau-ra { color: var(--purple); }
 .chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
 /* „De verificat" sub un răspuns RA Insight (cifre.js): textul pe culoarea textului (contrast sigur pe ambele teme), chihlimbarul doar
    pe chenar și pe iconiță. Alin, 08.10: „să aibă grijă cumva să nu dea greșit". */
-.chat-verif { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 2px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(245,158,11,.45); border-left: 3px solid #f59e0b; background: rgba(245,158,11,.08); color: var(--text-primary); font-size: 13px; line-height: 1.5; }
-.chat-verif > i { color: #b45309; margin-top: 3px; }
-body.dark .chat-verif > i { color: #fbbf24; }
-.chat-verif b { display: block; font-weight: 800; margin-bottom: 2px; }
-.chat-verif ul { margin: 0; padding-left: 18px; }
-.chat-verif li { margin: 1px 0; }
+/* „Am găsit o problemă" (15.10, în locul benzii „De verificat"): roșu = problemă reală, galben = de știut. Textul pe
+   --text-primary; culoarea doar pe chenar și pe iconiță, cu pereche pe tema întunecată (contrast ≥ 4,5 măsurat). */
+.chat-probs { display: grid; gap: 8px; margin: 10px 0 4px; }
+.chat-prob { border: 1px solid var(--border); border-left: 4px solid #dc2626; border-radius: 12px; background: var(--bg-panel); padding: 10px 12px; display: grid; gap: 6px; }
+.chat-prob.galben { border-left-color: #d97706; }
+.chat-prob-t { display: flex; gap: 8px; align-items: flex-start; font-weight: 800; color: var(--text-primary); font-size: 14px; line-height: 1.4; }
+.chat-prob-t i { margin-top: 2px; color: #b91c1c; }
+.chat-prob.galben .chat-prob-t i { color: #b45309; }
+body.dark .chat-prob-t i { color: #f87171; }
+body.dark .chat-prob.galben .chat-prob-t i { color: #fbbf24; }
+.chat-prob-d { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.chat-prob-b { display: flex; gap: 6px; flex-wrap: wrap; }
+.chat-raps { display: grid; gap: 6px; }
+.chat-ok { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: #15803d; }
+body.dark .chat-ok { color: #4ade80; }
+.chat-nota { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+/* Insigna de sub răspuns (15.10): mov = analiza lui RA Insight (se numără), verde = răspuns instant. */
+.chat-ins-r { margin-top: 8px; }
+.chat-ins { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; padding: 2px 10px; border-radius: 999px; }
+.chat-ins i { font-size: 10.5px; }
+.chat-ins.ai { color: #6d28d9; background: color-mix(in srgb, #7c3aed 12%, transparent); }
+.chat-ins.instant { color: #15803d; background: color-mix(in srgb, #16a34a 12%, transparent); }
+body.dark .chat-ins.ai { color: #c4b5fd; background: color-mix(in srgb, #a78bfa 18%, transparent); }
+body.dark .chat-ins.instant { color: #86efac; background: color-mix(in srgb, #4ade80 16%, transparent); }
 .sdp-verif td { font-size: 12px; color: var(--text-primary); background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b; padding: 5px 10px !important; }
 .sdp-verif td i { color: #b45309; }
 body.dark .sdp-verif td i { color: #fbbf24; }

@@ -392,7 +392,45 @@ const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu exper
   'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…", „Verifică…", ' +
   '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă.';
 
+// ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat" pe sume bune) ──────────────────────────────
+// RA Insight primește din raport cel mult 25 de rânduri; când adună singur cursele pe mașini, greșește (sau adună doar ce
+// vede). Sumele le face aplicația, pe TOATE rândurile: câte rânduri, kilometrii / litrii / leii adunați, viteza cea mai
+// mare. Pe zile (când rândurile țin mai multe zile): aceleași sume pe mașină și pe zi. null = raportul nu e pe mașini.
+function totaluriPeMasina(columns, rows) {
+  const cifre = require('./cifre.js');
+  if (!Array.isArray(columns) || !Array.isArray(rows) || rows.length < 2 || norm(columns[0]) !== 'vehicul') return null;
+  const fel = columns.map(function (c) { return cifre.felCheie(c); });
+  const coloanaZi = columns.findIndex(function (c, j) { return j > 0 && !fel[j] && rows.some(function (r) { return Array.isArray(r) && /^\d{2}\.\d{2}\.\d{4}\b/.test(String(r[j] || '')); }); });
+  const r1 = function (v) { return Math.round(v * 10) / 10; };
+  const aduna = function (rs) {
+    const o = { randuri: rs.length };
+    fel.forEach(function (f, j) {
+      if (!f || f === 'timp' || f === 'pct' || f === 'l100') return;
+      let s = null;
+      rs.forEach(function (r) { const v = cifre._numarCelula(r[j]); if (v == null) return; s = f === 'kmh' ? Math.max(s || 0, v) : (s || 0) + v; });
+      if (s != null) o[columns[j] + (f === 'kmh' ? ' (cea mai mare)' : ' (adunat)')] = r1(s);
+    });
+    return o;
+  };
+  const peMasina = {}, ordine = [];
+  rows.forEach(function (r) { if (!Array.isArray(r)) return; const k = String(r[0]); if (!peMasina[k]) { peMasina[k] = []; ordine.push(k); } peMasina[k].push(r); });
+  const out = { pe_masina: ordine.slice(0, 50).map(function (k) { return Object.assign({ vehicul: k }, aduna(peMasina[k])); }) };
+  if (coloanaZi >= 0) {
+    const zile = new Set(rows.map(function (r) { return (/^(\d{2}\.\d{2}\.\d{4})/.exec(String((r || [])[coloanaZi] || '')) || [])[1]; }).filter(Boolean));
+    if (zile.size >= 2 && zile.size * ordine.length <= 80) {
+      out.pe_masina_si_zi = [];
+      ordine.forEach(function (k) {
+        const pz = {};
+        peMasina[k].forEach(function (r) { const z = (/^(\d{2}\.\d{2}\.\d{4})/.exec(String(r[coloanaZi] || '')) || [])[1]; if (z) (pz[z] = pz[z] || []).push(r); });
+        Object.keys(pz).forEach(function (z) { out.pe_masina_si_zi.push(Object.assign({ vehicul: k, zi: z }, aduna(pz[z]))); });
+      });
+    }
+  }
+  return out;
+}
+
 module.exports = {
+  totaluriPeMasina,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
   potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL,
