@@ -364,7 +364,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-19
 
-### AMÂNDOI · Insignele RA Insight, ca antet: „RA Insight [ANALIZĂ] 1 întrebare" / „RA Insight [INSTANT] din rapoarte" (varianta 1)
+### AMÂNDOI · Insignele RA Insight, ca antet: „RA Insight [ANALIZĂ] 1 întrebare" / „RA Insight [INSTANT] din rapoarte" (varianta 1) — `e30e455`
 
 Alin (19.10), după varianta A (pastila colorată de sub răspuns): *„mai dă-mi variante, că nu e profi deloc"*. Cinci variante pozate în
 aplicație (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi), apoi: *„varianta 1 — antetul"*.
@@ -384,7 +384,7 @@ aplicație (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi), apoi: *„varian
 - **Ce vede fondatorul:** la fel ca clientul, în RA Insight (fără „1 întrebare" la noi — nu ni se numără).
 - **Ce vede clientul:** antetul deasupra fiecărui răspuns. Telefonul — la APK-ul următor (în lista lui Robert, punctul 9).
 
-### FONDATOR · Pagina noastră fără lucrurile vechi: „Mai multe cifre" a ieșit, costul AI stă doar în „RA Insight · control" (punctul 5)
+### FONDATOR · Pagina noastră fără lucrurile vechi: „Mai multe cifre" a ieșit, costul AI stă doar în „RA Insight · control" (punctul 5) — `8988d53`
 
 Alin (19.10), la „Trecem acum la punctul 5?": *„da"*. Tot atunci, la insigne: *„mai dă-mi variante, că nu e profi deloc"* —
 cinci variante, pozate în aplicație, pe o pagină separată (https://claude.ai/artifact/G6GajBfXfgs33NBgacTKPi); a ales varianta 1,
