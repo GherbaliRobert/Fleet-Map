@@ -364,7 +364,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-20
 
-### FONDATOR · Instalarea pentru server propriu dă aplicației toate setările
+### FONDATOR · Instalarea pentru server propriu dă aplicației toate setările — `e87d764`
 
 Robert (20.10): *„Putem să folosim un server local pentru toată aplicația?"* — da; pe drum am găsit că instalarea pregătită pentru
 server propriu rămăsese în urmă. Apoi: *„Nu avem soluții și pentru punctul 5?"*
