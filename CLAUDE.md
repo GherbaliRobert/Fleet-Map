@@ -300,6 +300,13 @@ Robert: „un mail cât mai complet" — „1, da · 2. a · 3. a, b, c · 4. da
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).
 - Verificarea versiunii LIVE: `ratrack.ro/api/health` → câmpul `version` = prefixul commit-ului deployat.
+- **Server propriu (`docker-compose.prod.yml`, Robert 20.10):** aplicația primește TOT `.env`-ul (`env_file`); `environment:` ține
+  doar ce e al mașinii (baza din container, porturile, `NODE_ENV`, `GIT_SHA` din comanda de pornire, `RAILWAY_GIT_COMMIT_SHA` golită)
+  și bate `.env`-ul — așa se lipesc întocmai variabilele din Railway (Raw Editor). NU pune înapoi o listă `X=${X:-}`: a rămas în urmă,
+  iar aplicația pornea fără AI, Brevo, emailurile primite, ANAF și Firebase. Valorile JSON între APOSTROFURI (cu ghilimele, Docker
+  strică `\n` din cheia Firebase — măsurat). `DOMAIN` = ratrack.ro (telefonul și emailurile merg acolo). Variabilă nouă = un rând în
+  `.env.prod.exemplu`, citit de cod. ⚠ Unealta de mutare a datelor (`migrate_export.js`) NU merge de pe Railway (refuză o bază
+  Postgres, 22 din 66 de tabele) — nehotărât (20.10). Păzit de `verify_server_propriu.js` (în `npm test`).
 - **Banda „A apărut o versiune nouă" (Robert, 14.10: „vreau doar banda").** La o publicare clientul rămâne pe pagina veche
   până o reîncarcă. `amprentaPaginii()` (server.js) = amprenta fișierelor din `public/` pe care le încarcă pagina
   (`index.html`, `css/`, `js/`, `vendor/`) + scripturile făcute din module (`_LICENSE_JS`…); `/app` o scrie în

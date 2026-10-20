@@ -362,6 +362,37 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
 
+## 2026-10-20
+
+### FONDATOR · Instalarea pentru server propriu dă aplicației toate setările
+
+Robert (20.10): *„Putem să folosim un server local pentru toată aplicația?"* — da; pe drum am găsit că instalarea pregătită pentru
+server propriu rămăsese în urmă. Apoi: *„Nu avem soluții și pentru punctul 5?"*
+
+- **Toate setările ajung la aplicație.** Instalarea dădea aplicației o listă scrisă de mână, de dinainte de RA Insight, Brevo și
+  panoul Mail. Pornită așa, aplicația mergea, dar fără AI, fără emailuri trimise sau primite, fără ANAF și fără notificări pe telefon.
+  Acum primește tot fișierul de setări; ce ține de mașină (baza, porturile) e scris separat și câștigă. Așa, setările din Railway se
+  copiază întocmai (Railway → Variables → Raw Editor), fără nimic de ales pe mână.
+- **Exemplul de setări** are cheile serviciilor (RA Insight, Brevo, emailurile primite, Firebase, ANAF), domeniul de azi (ratrack.ro,
+  nu app.ratrack.ro — telefonul și emailurile merg la ratrack.ro) și nu mai pune „180 de zile" de istoric (variabila retrasă pe 24.09,
+  care ar fi aprins rândul portocaliu din „Stare producție").
+- **Cheia Firebase între apostrofuri, nu între ghilimele.** Măsurat: cu ghilimele, Docker strică cheia privată și notificările pe
+  telefon se opresc. Scris în exemplu și în ghid.
+- **Versiunea** (`/api/health`) se dă la pornire, ca pe Railway; fără ea scria „dev". Ghidul are comanda.
+- Găsit pe drum, **nehotărât**: unealta care mută datele de pe Railway nu merge (vezi „De verificat"). Ghidul o spune acum, la pasul ei.
+
+- **Ce am schimbat:** `docker-compose.prod.yml` (`env_file`, lista scoasă, `GIT_SHA`, `RAILWAY_GIT_COMMIT_SHA` golită, nota „180 de
+  zile"), `.env.prod.exemplu`, `DEPLOY-VPS.md` (domeniul, portul trackerelor, copierea din Railway, apostrofurile, versiunea, „Stare
+  producție" după pornire, compresia vs. ștergerea), `CLAUDE.md`. Probă nouă: `verify_server_propriu.js` (în `npm test`; rezolvă
+  instalarea cu `docker compose`, cu un fișier de setări ca cel din Railway). Martor: pe instalarea veche pică 22 din 38.
+- **Ce vede fondatorul:** nimic azi pe ratrack.ro — Railway nu folosește fișierele astea. La o mutare pe server propriu: setările din
+  Railway se copiază și aplicația merge cu tot ce are acum.
+- **Ce vede clientul:** nimic.
+
+Unealta de mutare a datelor (`migrate_export.js`) e trecută la „De verificat înainte de lansare", C.
+
+---
+
 ## 2026-10-19
 
 ### CLIENT · RA Insight nu-l mai trimite pe client să verifice echipamentul; fără cuvinte cu litere rusești — `69b3f14`, `cf54804`
@@ -12176,6 +12207,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) Unealta de mutare a datelor de pe Railway pe un server propriu. Găsită pe 20.10, nehotărâtă.** Ghidul de server
+  propriu spune să exportăm din Railway cu ea, dar e făcută pentru baza veche, într-un fișier: refuză o bază Postgres (cum e cea de
+  pe Railway) și copiază doar 22 din cele 66 de tabele — fără contracte, facturi, oferte, montaj, stoc, mail și fără istoricul
+  pozițiilor. Contează doar dacă ne mutăm de pe Railway. Robert a fost întrebat pe 20.10: o rezolvăm acum sau trecem mai departe.
 
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.
