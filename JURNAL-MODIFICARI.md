@@ -368,7 +368,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
-### CLIENT · Literele din alt alfabet, oprite pe TOATE drumurile pe care un text scris de AI ajunge la client — `HASH_A`
+### CLIENT · Literele din alt alfabet, oprite pe TOATE drumurile pe care un text scris de AI ajunge la client — `bac834d`
 
 Alin (20.10): *„asigură-te că nu se întâmplă să avem greșeli de genul acesta. Sunt fatale pentru noi."* Pe 19.10 curățarea stătea doar
 în RA Insight. Căutând toate drumurile, am mai găsit două pe care textul modelului ajungea la client necurățat: **„Rezumă cu RA Insight"**
@@ -388,7 +388,7 @@ treaba noastră).
 - **Ce vede fondatorul:** nimic nou.
 - **Ce vede clientul:** niciun cuvânt cu litere străine, pe niciun drum.
 
-### FONDATOR · Casetele vechi din fișa firmei nu mai pot muta o firmă pe regula veche — `HASH_A`
+### FONDATOR · Casetele vechi din fișa firmei nu mai pot muta o firmă pe regula veche — `bac834d`
 
 Găsit pe drum pe 19.10 (punctul a), Alin: „rezolvăm acum". „Întrebări / cont / lună" (fila „Abonament & plăți") și „Limită AI lunară" (fila
 „Acces"), salvate pe o firmă de pe Start, o treceau pe regula veche, pe cont, și îi schimbau factura.
@@ -402,7 +402,7 @@ Găsit pe drum pe 19.10 (punctul a), Alin: „rezolvăm acum". „Întrebări / 
 - **Ce vede fondatorul:** în fișa unei firme cu pachet, fără casetele vechi.
 - **Ce vede clientul:** nimic.
 
-### FONDATOR · „Dashboard platformă": venitul și firmele cu ofertă, citite corect — `HASH_A`
+### FONDATOR · „Dashboard platformă": venitul și firmele cu ofertă, citite corect — `bac834d`
 
 Găsit pe drum pe 19.10 (punctul b), Alin: „rezolvăm acum". „Abonamente active" stătea mereu pe 0, iar dedesubt scria „Niciun venit estimat
 încă" chiar cu un venit lunar de 20 de lei. Pagina citea câmpuri de pe vremea planurilor, pe care serverul nu le mai trimite.
@@ -412,7 +412,7 @@ Găsit pe drum pe 19.10 (punctul b), Alin: „rezolvăm acum". „Abonamente act
 - **Ce vede fondatorul:** cifrele adevărate la „Venituri".
 - **Ce vede clientul:** nimic.
 
-### CLIENT · Răspunsurile instant fără emoji; ora pe ora României — `HASH_A`
+### CLIENT · Răspunsurile instant fără emoji; ora pe ora României — `bac834d`
 
 Găsit pe drum pe 19.10 (punctul c), Alin: „rezolvăm acum". Răspunsul instant „unde e acum" era plin de 📍 🚚 🟠 și nu arăta profesionist
 lângă insignele noi. Tot acolo am găsit că ora ieșea pe ora serverului (UTC): o mașină oprită la 14:05 apărea „11:05".
@@ -423,7 +423,7 @@ lângă insignele noi. Tot acolo am găsit că ora ieșea pe ora serverului (UTC
 - **Ce vede fondatorul:** nimic nou.
 - **Ce vede clientul:** răspunsuri curate, cu ora corectă.
 
-### AMÂNDOI · Pagina publică „Agenți AI" și PDF-ul de prezentare, la zi cu RA Insight de azi — `HASH_A`
+### AMÂNDOI · Pagina publică „Agenți AI" și PDF-ul de prezentare, la zi cu RA Insight de azi — `bac834d`
 
 Alin (20.10): „da" la punctele forte noi pe pagina publică; punctul d (PDF-ul de prezentare învechit): „rezolvăm acum".
 
