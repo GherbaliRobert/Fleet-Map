@@ -57,6 +57,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
+  GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
+  `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
+  construit pe GitHub merge, dar fără notificări; cel construit pe calculator le are, ca până acum.
 - [ ] **Juristul / voi: „Distribuie locația" în pagina de Confidențialitate. Adăugat pe 21.10.** Linkul arată oricui îl
   are poziția live a unei mașini (deci și a șoferului ei), cel mult 8 ore. Firma client hotărăște cui îl trimite; de scris în
   Confidențialitate (și, dacă juristul cere, în contract) că există funcția și că firma răspunde față de șoferii ei.
@@ -395,9 +399,18 @@ APK-ul se pune și ca pre-release `apk-test-<versiune>`, cu link direct spre fi�
 (`github.com/GherbaliRobert/Fleet-Map/releases/download/apk-test-1.0.20/RA-Track-1.0.20-test.apk`), care se deschide și de pe
 telefon. Nebifată, totul rămâne ca înainte.
 
-- **Ce am schimbat:** `.github/workflows/apk.yml` (bifa `publica` + pasul „Pune APK-ul ca pre-release").
-- **Ce vede fondatorul:** pe pagina „Releases" a depozitului, pre-release-ul „APK de test 1.0.20". E tot APK-ul de DEBUG (fără
-  notificări push), nu cel pentru clienți.
+- **Primul APK trimis așa era stricat** (Robert, 21.10: *„a dispărut iconița și iese din aplicație"*), din două motive ale
+  construirii pe GitHub, nu ale aplicației:
+  1. **Iconița:** proiectul Android se reface acolo de la zero, iar iconița RA se generează pe calculator din `mobile/assets`
+     (README → „Icoane + splash") — pe GitHub pasul lipsea, deci APK-ul avea iconița standard Capacitor (un X albastru).
+     Acum construirea rulează același generator.
+  2. **Ieșea din aplicație:** din 13.10 aplicația pornește singură notificările push, iar fără cheia Firebase
+     (`google-services.json`, care nu e în git) Android o închide imediat după intrarea în cont. Acum, pe GitHub, notificările
+     se pornesc DOAR dacă există secretul `GOOGLE_SERVICES_JSON`; fără el rămân oprite și aplicația merge.
+- **Ce am schimbat:** `.github/workflows/apk.yml` (bifa `publica`, pasul „Pune APK-ul ca pre-release", generatorul de iconițe,
+  notificările doar cu cheia din secrete).
+- **Ce vede fondatorul:** pe pagina „Releases" a depozitului, pre-release-ul „APK de test 1.0.20", cu iconița RA. E tot APK-ul de
+  DEBUG (fără notificări push, cât lipsește secretul), nu cel pentru clienți.
 - **Ce vede clientul:** nimic.
 
 ### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp — `92f552c`, `31dc907` (PR #1)
