@@ -154,6 +154,9 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
 - **Fișierele generate se compară octet cu octet.** `tools/gen-can-icons.js` scria CRLF, depozitul
   ține LF: `--check` pica pe 167 de rânduri identice. Orice unealtă care generează un fișier din
   depozit scrie **LF**.
+- **O iconiță nouă în `mobile/src/components/Icon.tsx` = `node tools/gen-can-icons.js`** (`can_icons.js` e copia ei pentru
+  web, generată). Pe 21.10 iconița „share” („Distribuie locația”) a intrat fără regenerare: `npm test` trecea, dar pasul Unit
+  de pe GitHub (`gen-can-icons.js --check`) a picat după unire. Înainte de livrare rulează și pasul Unit din `ci.yml`, nu doar `npm test`.
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
   trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**.

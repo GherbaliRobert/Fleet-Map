@@ -14,11 +14,21 @@ on:
         description: 'Ramura din care se construiește'
         required: false
         default: 'main'
+      publica:
+        # 21.10 (Robert: „dă-mi direct APK-ul, nu-l pot descărca din git"): un artifact se descarcă doar logat în GitHub
+        # și vine arhivat. Bifat, APK-ul se pune și ca pre-release „apk-test-<versiune>", cu link direct spre fișierul .apk.
+        description: 'Pune APK-ul și ca pre-release (link direct spre .apk, fără cont GitHub)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   apk:
     name: Construiește APK de test
     runs-on: ubuntu-latest
+    # Scrierea e folosită doar de pasul „pre-release" (bifa `publica`); restul jobului doar citește.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,8 +51,21 @@ jobs:
         working-directory: mobile
         run: npx tsc --noEmit
 
+      # Notificările push cer cheia Firebase (google-services.json), care NU e în git. Din 13.10 build-ul le pornește
+      # implicit (vite.config.ts), iar fără cheie `PushNotifications.register()` închide aplicația imediat după
+      # intrarea în cont (21.10, APK 1.0.20 de aici: „iese din aplicație"). Deci: cu secretul GOOGLE_SERVICES_JSON
+      # (conținutul fișierului) — push pornit și cheia pusă la loc; fără el — push OPRIT, aplicația merge.
+      - name: Notificările push (doar cu cheia Firebase din secrete)
+        id: push
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GSJ" ]; then echo "da=1" >> "$GITHUB_OUTPUT"; else echo "da=0" >> "$GITHUB_OUTPUT"; fi
+
       - name: Construiește partea web (dist/)
         working-directory: mobile
+        env:
+          VITE_ENABLE_PUSH: ${{ steps.push.outputs.da }}
         run: npx vite build
 
       # Proiectul nativ Android NU e în git (vezi mobile/.gitignore) — se regenerează. Excepțiile
@@ -51,16 +74,22 @@ jobs:
       # aplicației, semnătura de release și ecranul complet.
       - name: Regenerează proiectul Android, păstrând fișierele noastre
         working-directory: mobile
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           set -e
           mkdir -p /tmp/alenoastre
           cp -a android/. /tmp/alenoastre/
           rm -rf android
           npx cap add android
+          # Iconița și ecranul de pornire ale casei, din mobile/assets (ca pe calculator, README → „Icoane + splash").
+          # Fără pasul ăsta APK-ul primea iconița standard Capacitor (un X albastru) — 21.10: „a dispărut iconița".
+          npx @capacitor/assets generate --android --iconBackgroundColor '#0B0E11' --splashBackgroundColor '#0B0E11'
           cp -a /tmp/alenoastre/variables.gradle android/variables.gradle
           cp -a /tmp/alenoastre/app/build.gradle android/app/build.gradle
           cp -a /tmp/alenoastre/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp -a /tmp/alenoastre/app/src/main/res/. android/app/src/main/res/
+          if [ "${{ steps.push.outputs.da }}" = "1" ]; then printf '%s' "$GSJ" > android/app/google-services.json; fi
           npx cap sync android
 
       - name: Construiește APK-ul
@@ -79,6 +108,26 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Pune APK-ul ca pre-release (link direct)
+        if: ${{ inputs.publica }}
+        working-directory: mobile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          V=$(grep -oP "appVersionName = '\K[^']+" android/variables.gradle)
+          TAG="apk-test-$V"
+          F="/tmp/RA-Track-$V-test.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$F"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$F" --clobber
+          else
+            gh release create "$TAG" "$F" --prerelease --target "$GITHUB_SHA" --title "APK de test $V" \
+              --notes "APK de DEBUG, pentru încercat pe telefonul propriu — nu se dă clienților. Fără notificări push; semnat altfel decât APK-ul construit pe calculator, deci telefonul cere dezinstalarea celui vechi."
+          fi
+          echo "Link direct: https://github.com/$GH_REPO/releases/download/$TAG/RA-Track-$V-test.apk" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Ce trebuie știut despre APK-ul ăsta
         run: |
           {
@@ -88,7 +137,12 @@ jobs:
             echo ""
             echo "**De reținut:**"
             echo "- E build de **debug**, pentru încercat pe telefonul propriu. Nu se dă clienților."
-            echo "- **Nu are notificări push**: \`google-services.json\` (cheia Firebase) nu e în git."
+            if [ "${{ steps.push.outputs.da }}" = "1" ]; then
+              echo "- Are notificări push (cheia Firebase din secretul \`GOOGLE_SERVICES_JSON\`)."
+            else
+              echo "- **Nu are notificări push** (oprite dinadins, altfel aplicația s-ar închide): \`google-services.json\` nu e în git."
+              echo "  Cu notificări: Settings → Secrets → Actions → secretul \`GOOGLE_SERVICES_JSON\` = conținutul fișierului."
+            fi
             echo "- Are același nume de pachet ca aplicația reală (\`ro.ratracks.app\`), dar altă"
             echo "  semnătură — dacă ai deja RA Track pe telefon, Android cere să o **dezinstalezi**"
             echo "  întâi. Datele din aplicație se pierd (nu și cele de pe server)."

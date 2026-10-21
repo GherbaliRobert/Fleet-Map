@@ -57,6 +57,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
+  GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
+  `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
+  construit pe GitHub merge, dar fără notificări; cel construit pe calculator le are, ca până acum.
 - [ ] **Juristul / voi: „Distribuie locația" în pagina de Confidențialitate. Adăugat pe 21.10.** Linkul arată oricui îl
   are poziția live a unei mașini (deci și a șoferului ei), cel mult 8 ore. Firma client hotărăște cui îl trimite; de scris în
   Confidențialitate (și, dacă juristul cere, în contract) că există funcția și că firma răspunde față de șoferii ei.
@@ -387,6 +391,28 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
+### FONDATOR · APK-ul de test se poate lua și printr-un link direct, fără cont GitHub
+
+Robert (21.10): *„dă-mi direct APK-ul, nu îl pot descărca din git"*. APK-ul construit pe GitHub (Actions → „APK de test
+(Android)") ieșea doar ca „artifact": se descarcă doar logat și vine arhivat. Acum construirea are bifa **„publica"**: bifată,
+APK-ul se pune și ca pre-release `apk-test-<versiune>`, cu link direct spre fișierul `.apk`
+(`github.com/GherbaliRobert/Fleet-Map/releases/download/apk-test-1.0.20/RA-Track-1.0.20-test.apk`), care se deschide și de pe
+telefon. Nebifată, totul rămâne ca înainte.
+
+- **Primul APK trimis așa era stricat** (Robert, 21.10: *„a dispărut iconița și iese din aplicație"*), din două motive ale
+  construirii pe GitHub, nu ale aplicației:
+  1. **Iconița:** proiectul Android se reface acolo de la zero, iar iconița RA se generează pe calculator din `mobile/assets`
+     (README → „Icoane + splash") — pe GitHub pasul lipsea, deci APK-ul avea iconița standard Capacitor (un X albastru).
+     Acum construirea rulează același generator.
+  2. **Ieșea din aplicație:** din 13.10 aplicația pornește singură notificările push, iar fără cheia Firebase
+     (`google-services.json`, care nu e în git) Android o închide imediat după intrarea în cont. Acum, pe GitHub, notificările
+     se pornesc DOAR dacă există secretul `GOOGLE_SERVICES_JSON`; fără el rămân oprite și aplicația merge.
+- **Ce am schimbat:** `.github/workflows/apk.yml` (bifa `publica`, pasul „Pune APK-ul ca pre-release", generatorul de iconițe,
+  notificările doar cu cheia din secrete).
+- **Ce vede fondatorul:** pe pagina „Releases" a depozitului, pre-release-ul „APK de test 1.0.20", cu iconița RA. E tot APK-ul de
+  DEBUG (fără notificări push, cât lipsește secretul), nu cel pentru clienți.
+- **Ce vede clientul:** nimic.
+
 ### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp — `92f552c`, `31dc907` (PR #1)
 
 Robert (21.10): *„când selectezi o mașină să poți da share location pentru oricine, timp de x timp, ca pe WhatsApp… să poată
@@ -420,6 +446,9 @@ să vadă oricine are acel link… după ce expiră, să nu mai existe acel link
   active cu „Oprește" (întreabă întâi). Pe aceleași rute; duratele și mesajul vin tot de la server.
   Fișierele: `mobile/src/components/DistribuieLocatia.tsx` + `distribuieLocatia.css` (noi), `screens/VehicleDetail.tsx`,
   `api/endpoints.ts`, `components/Icon.tsx` (iconița „share"), versiunea în `android/variables.gradle` și `api/client.ts`.
+- **Reparat după unire (21.10, noaptea):** iconița nouă a telefonului („share") n-a fost copiată și în lista de iconițe a paginii
+  (`can_icons.js`, generată din telefon cu `tools/gen-can-icons.js`), așa că proba de pe GitHub a picat după PR #1. Fișierul
+  refăcut; regula e scrisă în `CLAUDE.md`. Aplicația nu era afectată (iconița lipsă nu e folosită pe web).
 - **Hotărât de Robert (21.10: „1 da, 2 da, 3 da, 4 inclus"):** duratele rămân 15 minute / 1 oră / 8 ore; fac linkuri adminul,
   managerul și dispecerul; publicul vede mașina, numărul și firma, fără șofer; funcția e inclusă la toate firmele.
 
