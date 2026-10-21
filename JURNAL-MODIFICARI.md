@@ -368,7 +368,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
-### AMÂNDOI · Șase rapoarte de ~20 de ori mai repede și fără gigaocteți de memorie
+### AMÂNDOI · Șase rapoarte de ~20 de ori mai repede și fără gigaocteți de memorie — `7184d68`
 
 Robert (20.10): *„am facturi de peste 18 $ pe lună la Railway și sunt 3 mașini"* → am căutat ce ține memoria ocupată, pe o
 copie pornită cu o lună de poziții pe 3 mașini. Am găsit: câteva rapoarte făceau, la FIECARE poziție, unealta care socotește
