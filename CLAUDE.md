@@ -300,6 +300,13 @@ Robert: „un mail cât mai complet" — „1, da · 2. a · 3. a, b, c · 4. da
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).
 - Verificarea versiunii LIVE: `ratrack.ro/api/health` → câmpul `version` = prefixul commit-ului deployat.
+- **Server propriu (`docker-compose.prod.yml`, Robert 20.10):** aplicația primește TOT `.env`-ul (`env_file`); `environment:` ține
+  doar ce e al mașinii (baza din container, porturile, `NODE_ENV`, `GIT_SHA` din comanda de pornire, `RAILWAY_GIT_COMMIT_SHA` golită)
+  și bate `.env`-ul — așa se lipesc întocmai variabilele din Railway (Raw Editor). NU pune înapoi o listă `X=${X:-}`: a rămas în urmă,
+  iar aplicația pornea fără AI, Brevo, emailurile primite, ANAF și Firebase. Valorile JSON între APOSTROFURI (cu ghilimele, Docker
+  strică `\n` din cheia Firebase — măsurat). `DOMAIN` = ratrack.ro (telefonul și emailurile merg acolo). Variabilă nouă = un rând în
+  `.env.prod.exemplu`, citit de cod. ⚠ Unealta de mutare a datelor (`migrate_export.js`) NU merge de pe Railway (refuză o bază
+  Postgres, 22 din 66 de tabele) — nehotărât (20.10). Păzit de `verify_server_propriu.js` (în `npm test`).
 - **Banda „A apărut o versiune nouă" (Robert, 14.10: „vreau doar banda").** La o publicare clientul rămâne pe pagina veche
   până o reîncarcă. `amprentaPaginii()` (server.js) = amprenta fișierelor din `public/` pe care le încarcă pagina
   (`index.html`, `css/`, `js/`, `vendor/`) + scripturile făcute din module (`_LICENSE_JS`…); `/app` o scrie în
@@ -493,6 +500,12 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - În probe: `RAPOARTE_PLAFON` / `RAPOARTE_PAGINA` coboară cifrele (nu le seta în producție).
 - Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
   filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
+- **Un formatator de dată ținut minte, NU unul la fiecare poziție** (Robert, 21.10: „rezolvă acum"). `new Intl.DateTimeFormat(…)`
+  ține ~17 KB pe care procesul nu-i mai dă înapoi: făcut la fiecare poziție în `_dayKeyISO`, „Condus & repaus" pe o lună, 3
+  mașini, dura 28 s și lăsa ~6 GB ocupați (acum 1,5 s, ~200 MB, aceleași cifre). `_dayKeyISO` îl ține în `_fmtZiISO`, programul
+  de lucru (`workschedule.js`, la fiecare poziție în mers) unul pe fus (`_formatatoare`). Orice cod care merge poziție cu
+  poziție sau rând cu rând folosește un formatator ținut minte. Locurile care fac formatatoare sunt NUMĂRATE în
+  `verify_formatoare.js` (în `npm test`) — un loc nou pică proba până te uiți de unde e chemat.
 
 ### Pasul 3 (06.10): Safe Drive & costuri — ramura din RA Insight (după macheta din 02.10; din 15.10 se cheamă **RA Drive**)
 - **Regulile stau într-un singur loc: `condus.js`** (curat): pragurile și scorul EcoDrive (`PRAGURI`, `scor`, `scorFlota`
@@ -2608,6 +2621,30 @@ caută forma în tot panoul.
   puse (altfel Leaflet aruncă o eroare și fișa nu se mai deschidea pe calculator); adresa din fișă scrie atunci „—".
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+
+## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
+Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore → linkul `/locatie/<token>`, pe care îl deschide oricine,
+fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, cartonaș jos pe telefon / în stânga pe calculator).
+- **Regulile și textele stau în `locatie_distribuita.js`** (curat): `DURATE`, `MAX_ACTIVE_PE_MASINA` (10), tokenul (`tokenNou`,
+  24 de octeți → 32 de caractere; în bază DOAR `amprenta`, sha256), `ramas`, `vechime`, `mesaj` (textul pentru WhatsApp) și
+  **`pentruPagina` = SINGURUL lucru care pleacă spre public** (numele + numărul mașinii, firma, poziția, starea). NU adăuga acolo
+  IMEI, șofer, istoric sau semnalele mașinii. Ecranele iau duratele și textele de la server.
+- **Cine:** `_poateDistribuiLocatia` = `_incDispecer` (super-admin, `manageFleet`, dispecerul), pe 3 rute, plus `canAccessImei`;
+  `/api/me` dă `poateDistribuiLocatia` (butonul `#detail-share-btn` apare doar atunci). Facerea și oprirea — în audit.
+- **Linkul se vede o singură dată** (la facere): lista din fereastră arată doar până când merge, cine l-a făcut și „Oprește".
+- **Un link care nu mai e bun răspunde la fel, oricare ar fi motivul** (404 `{ activ: false, titlu, text }`): expirat, oprit,
+  inventat, mașina arhivată / ștearsă / mutată pe altă firmă (firma linkului ≠ firma de azi), accesul firmei oprit. Pagina scoate
+  atunci mașina și urma de pe hartă și nu mai cere nimic. Expiratele se șterg la minut (`stergeLocatiiDistribuiteExpirate`).
+  ⚠ `_locMasini` ține fișa mașinii 30 de secunde: o cale NOUĂ care mută o mașină pe altă firmă sau o șterge cheamă
+  `_locMasini.delete(imei)` (ca `_trecePeFirma`, adopția, ștergerea), altfel linkul vechi mai merge până la 30 de secunde.
+- Pagina publică: fără cookie-uri și fără analiză de trafic, `noindex` (meta + `X-Robots-Tag`), serviciul offline nu o ține în
+  cache, textul cu textContent; fără Leaflet (rețea care blochează unpkg) cartonașul merge oricum, cu „Google Maps".
+- **Telefonul (APK 1.0.20):** `mobile/src/components/DistribuieLocatia.tsx` (foaia; clasele `dl-` — `loc-` e al hărții din Flotă),
+  deschisă din fișa mașinii doar cu `me.poateDistribuiLocatia`, pe aceleași rute (`Api.locatieDistribuita` / `faLocatieDistribuita`
+  / `opresteLocatieDistribuita`). Schimbi fereastra web → schimbi și foaia.
+- Hotărât de Robert (21.10): duratele rămân trei, cine poate rămâne cum e, publicul fără șofer, inclusă la toate firmele.
+- Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Păzit de `verify_locatie_distribuita.js` (în `npm test`, pe server
+  pornit, plus foaia telefonului).
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

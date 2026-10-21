@@ -6,19 +6,23 @@
 #
 # ─── De ce imaginea TimescaleDB și nu postgres simplu ────────────────────────────────────────────
 # Aplicația ȘTIE deja să folosească TimescaleDB și o face SINGURĂ, la prima pornire, dacă extensia
-# e disponibilă: transformă tabela de poziții, o comprimă după 7 zile (~85-90% mai puțin spațiu) și
-# șterge automat ce e mai vechi de 180 de zile.
+# e disponibilă: transformă tabela de poziții și o comprimă după 7 zile (de 14–19 ori mai mică,
+# măsurat pe 24.09).
 #
-# Asta rezolvă două probleme dintr-un foc:
-#   • Discul unui VPS e FIX. Disc plin = baza se oprește = nu mai intră poziții. Compresia și
-#     ștergerea automată sunt exact ce ține discul în frâu.
-#   • Pe Postgres-ul obișnuit, ștergerea automată pornea DOAR dacă cineva seta o variabilă de
-#     mediu. Aici pornește singură — nu mai depinde de memoria nimănui.
-# Pe Railway extensia nu e disponibilă, deci nimic din toate astea nu funcționa acolo.
+# De ce contează: discul unui VPS e FIX. Disc plin = baza se oprește = nu mai intră poziții.
+# Ștergerea istoricului NU ține de imagine: aplicația o face singură, pe orice bază, după contractul
+# fiecărei firme (12 luni incluse, 24/36 unde s-au plătit). Compresia e partea care lipsește pe
+# Railway — acolo extensia nu e disponibilă.
+#
+# ─── Setările aplicației: TOATE din .env ─────────────────────────────────────────────────────────
+# Aplicația primește tot fișierul `.env` (`env_file`, mai jos). Până pe 20.10 aici era o listă scrisă
+# de mână, rămasă în urmă: aplicația pornea, dar fără RA Insight cu AI, fără emailuri (Brevo), fără
+# emailurile primite, fără ANAF și fără notificările pe telefon — cheile lor nu ajungeau la ea.
+# NU pune înapoi o listă: o variabilă nouă se scrie doar în `.env`. Păzit de verify_server_propriu.js.
 #
 # ─── Pornire ─────────────────────────────────────────────────────────────────────────────────────
 #   cp .env.prod.exemplu .env && nano .env      (completează, vezi DEPLOY-VPS.md)
-#   docker compose -f docker-compose.prod.yml up -d --build
+#   GIT_SHA=$(git rev-parse --short HEAD) docker compose -f docker-compose.prod.yml up -d --build
 
 services:
   # Numele serviciului e „postgres" INTENȚIONAT: db.js recunoaște gazda asta ca fiind în rețeaua
@@ -48,6 +52,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy   # aplicația nu pornește înaintea bazei
+    # Tot `.env`-ul ajunge la aplicație: cheile RA Insight, Brevo, primirea emailurilor, ANAF,
+    # Firebase și orice variabilă nouă de acum înainte (vezi capul fișierului).
+    env_file:
+      - .env
+    # Ce e scris aici BATE `.env`: e felul în care stă aplicația pe mașina asta (baza din container,
+    # porturile, HTTPS). Așa, variabilele copiate întocmai din Railway — cu DATABASE_URL-ul și PORT-ul
+    # lor — nu strică nimic.
     environment:
       - PORT=3000
       - TCP_PORT=5027
@@ -60,26 +71,14 @@ services:
       - PG_POOL_MAX=${PG_POOL_MAX:-24}
       - SESSION_SECRET=${SESSION_SECRET:?pune SESSION_SECRET in .env}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?pune ADMIN_PASSWORD in .env}
-      # Cât se păstrează istoricul NU se mai pune aici: 12 luni pentru toți, mai mult unde firma a plătit
-      # (Abonament & plăți). Aplicația șterge singură, mașină cu mașină. POSITION_RETENTION_DAYS e retrasă.
-      # Adresa reală a clientului. NU o pune pe „true" decât dacă traficul chiar vine prin Cloudflare,
-      # altfel oricine își poate falsifica adresa IP într-un antet.
-      - TRUST_CF_IP=${TRUST_CF_IP:-false}
-      # Copia de rezervă în afara serverului. Fără ele, copia se face și se aruncă.
-      - BACKUP_PASSPHRASE=${BACKUP_PASSPHRASE:-}
-      - BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT:-}
-      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
-      - BACKUP_S3_KEY_ID=${BACKUP_S3_KEY_ID:-}
-      - BACKUP_S3_SECRET=${BACKUP_S3_SECRET:-}
-      # Email, urmărirea erorilor, adrese — vezi .env.example pentru lista completă.
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_FROM=${SMTP_FROM:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - GEOCODE_URL=${GEOCODE_URL:-}
-      - OSRM_URL=${OSRM_URL:-}
+      # Versiunea din /api/health („version"). Pe Railway o pune Railway; aici o dă comanda de pornire
+      # (GIT_SHA=$(git rev-parse --short HEAD) …). Fără ea, aplicația scrie „dev".
+      - GIT_SHA=${GIT_SHA:-}
+      # Golită dinadins: aplicația o citește ÎNAINTEA lui GIT_SHA, iar copiată din Railway ar ține
+      # versiunea înțepenită pe ultimul commit de acolo.
+      - RAILWAY_GIT_COMMIT_SHA=
+      # Cât se păstrează istoricul NU se pune nicăieri aici: 12 luni pentru toți, mai mult unde firma a
+      # plătit (Abonament & plăți). POSITION_RETENTION_DAYS e retrasă — nu o pune nici în `.env`.
     volumes:
       # Aici NU mai stă baza (e în Postgres), dar stau secretul de sesiune și cheile notificărilor
       # din browser. Fără volumul ăsta, toți utilizatorii sunt delogați la fiecare actualizare, iar

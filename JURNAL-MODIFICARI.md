@@ -57,6 +57,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Juristul / voi: „Distribuie locația" în pagina de Confidențialitate. Adăugat pe 21.10.** Linkul arată oricui îl
+  are poziția live a unei mașini (deci și a șoferului ei), cel mult 8 ore. Firma client hotărăște cui îl trimite; de scris în
+  Confidențialitate (și, dacă juristul cere, în contract) că există funcția și că firma răspunde față de șoferii ei.
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
@@ -139,6 +142,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Se instalează ea, în locul lui 1.0.17.
   **14.10 (după-amiaza):** `RA-Track-1.0.19-debug.apk`, pe Desktop — tot ce e în 1.0.18, plus pozele din emailurile primite
   (cele mari și cele atașate) și pachetele RA Insight ale lui Alin. Se instalează ea, în locul lui 1.0.18.
+  **21.10:** APK 1.0.20 — tot ce e în 1.0.19, plus „Distribuie locația" în fișa mașinii. Construit pe GitHub (Actions → „APK de
+  test (Android)", ramura de lucru; github.com/GherbaliRobert/Fleet-Map/actions/runs/39680586843 → Artifacts →
+  `ratracks-test-1.0.20-31dc907`, ține până pe 20.11): e de DEBUG și **fără notificări push** (cheia Firebase nu e în git), iar fiindcă e semnat
+  altfel decât cel de pe Desktop, telefonul cere dezinstalarea celui vechi. Cel cu notificări se construiește ca până acum, pe
+  calculatorul vostru, din aceeași ramură (sau din main, după unire).
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -239,6 +247,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
   „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
   mașini reale ar umple discul în 2–3 săptămâni.
+- [x] **FĂCUT (21.10): Robert a trimis pozele din Railway → Usage și „Cost by Service".** Din ~15,23 $ (până pe 21.10; ~17,54 $
+  estimat pe toată luna): **baza de date 14,53 $, dintre care memoria ei 13,64 $** (~1,6 GB ținuți în medie); aplicația 0,70 $.
+  Procesorul, traficul, discul (3 GB) și copiile — sub 1 $ la un loc. Întrebat pe 21.10: plafon de memorie pentru bază, în
+  Railway (serviciul Postgres → Settings → Deploy → Replica Limits).
 - [x] **FĂCUT (12.10): Robert a reglat ora laptopului.** **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
@@ -375,6 +387,73 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
+### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp — `92f552c`, `31dc907` (PR #1)
+
+Robert (21.10): *„când selectezi o mașină să poți da share location pentru oricine, timp de x timp, ca pe WhatsApp… să poată
+să vadă oricine are acel link… după ce expiră, să nu mai existe acel link… să poată fi responsive".*
+
+- **Unde:** Localizare → clic pe mașină → în fișa ei, lângă „Info" și „Rute", butonul **„Distribuie"**. Se alege cât ține
+  (**15 minute, 1 oră sau 8 ore**, ca pe WhatsApp), apoi „Creează linkul": se copiază sau pleacă direct pe WhatsApp, cu un
+  mesaj gata scris („Urmărește live Volvo FH · TM 12 RAT pe hartă, până la 17:00: …").
+- **Cine îl deschide** (fără cont, de pe telefon sau calculator) vede harta cu mașina, care se mișcă singură la câteva
+  secunde: numele și numărul mașinii, firma, „În mers · 62 km/h" / „Oprit" / „Fără semnal de 2 ore", de când e poziția și
+  până când merge linkul, plus „Google Maps". **Nu vede** IMEI-ul, șoferul, istoricul sau altă mașină.
+- **După expirare sau „Oprește"**, linkul arată doar „Locația nu mai e distribuită" și mașina dispare de pe hartă. Linkul se
+  oprește pe loc și când mașina e arhivată, mutată pe altă firmă, sau când accesul firmei e oprit.
+- **Cine poate face linkuri:** administratorul firmei, managerul și dispecerul (aceeași regulă ca la planurile de încărcare),
+  doar pe mașinile pe care le văd. Vizualizatorul nu vede butonul. Cel mult 10 linkuri active pe o mașină. Fiecare facere și
+  oprire intră în jurnalul de audit.
+- **Siguranța:** linkul are o parte întâmplătoare de 32 de caractere (nu se poate ghici); în bază stă doar amprenta lui, deci
+  nici cine citește baza nu-l poate deschide — de aceea linkul se vede o singură dată, când e făcut. Pagina nu intră în Google
+  și nu pune cookie-uri.
+
+- **Ce am schimbat:** `locatie_distribuita.js` (regulile și textele, nou), `db.js` (tabela `locatii_distribuite` + funcțiile
+  ei), `server.js` (rutele `/api/devices/:imei/locatie-distribuita`, pagina `/locatie/<token>`, ruta publică
+  `/api/public/locatie/<token>`, curățenia la minut, `poateDistribuiLocatia` în profil), `public/locatie.html` (pagina publică,
+  nouă), `public/index.html` + `public/css/app.css` (butonul și fereastra), `public/sw.js` (pagina nu se ține în cache),
+  `backup.js` (tabela nu intră în copii). Probă nouă: `verify_locatie_distribuita.js` (în `npm test`, 80 de verificări, pe
+  server pornit).
+- **Ce vede fondatorul:** același buton, pe orice mașină a unei firme; linkul arată firma mașinii.
+- **Ce vede clientul:** butonul „Distribuie" în fișa mașinii (admin, manager, dispecer) și pagina publică pe care o trimite.
+- **Telefonul (APK 1.0.20, Robert: „vreau și APK-ul"):** fișa mașinii → „Distribuie locația" → aceeași foaie ca pe web: durata,
+  „Creează linkul", „Copiază", „Trimite" (foaia telefonului: WhatsApp, SMS, email…), „WhatsApp" direct, „Alt link" și linkurile
+  active cu „Oprește" (întreabă întâi). Pe aceleași rute; duratele și mesajul vin tot de la server.
+  Fișierele: `mobile/src/components/DistribuieLocatia.tsx` + `distribuieLocatia.css` (noi), `screens/VehicleDetail.tsx`,
+  `api/endpoints.ts`, `components/Icon.tsx` (iconița „share"), versiunea în `android/variables.gradle` și `api/client.ts`.
+- **Hotărât de Robert (21.10: „1 da, 2 da, 3 da, 4 inclus"):** duratele rămân 15 minute / 1 oră / 8 ore; fac linkuri adminul,
+  managerul și dispecerul; publicul vede mașina, numărul și firma, fără șofer; funcția e inclusă la toate firmele.
+
+### AMÂNDOI · Șase rapoarte de ~20 de ori mai repede și fără gigaocteți de memorie — `7184d68`
+
+Robert (20.10): *„am facturi de peste 18 $ pe lună la Railway și sunt 3 mașini"* → am căutat ce ține memoria ocupată, pe o
+copie pornită cu o lună de poziții pe 3 mașini. Am găsit: câteva rapoarte făceau, la FIECARE poziție, unealta care socotește
+ziua pe ora României, de la zero. Una ține ~17 KB pe care aplicația nu-i mai dă înapoi. Robert: *„rezolvă acum"*.
+
+| Raportul, pe o lună, 3 mașini | Înainte | Acum |
+|---|---|---|
+| Situație zilnică | 22 s | 1,2 s |
+| Condus & repaus (Reg. 561) | 28 s | 1,5 s |
+| Disponibilitate flotă | 6,8 s | 1,0 s |
+| Pontaj șofer | 11,2 s | 1,1 s |
+| Memoria aplicației după ele | ~6 GB | ~200 MB |
+
+- **Cifrele rapoartelor sunt aceleași**, comparate octet cu octet (cele șase rapoarte, aceeași bază, cod vechi și cod nou).
+- **Unde mai era la fel:** verificarea programului de lucru, la fiecare poziție a unei mașini în mers (firmele cu program de
+  lucru pornit). Acum ține minte unealta pe fus orar.
+- **Ce n-a explicat:** graficul de memorie de pe Railway (poza lui Robert) stă la 70–100 MB, deci cei ~18 $ nu vin de aici —
+  pe 3 mașini nu s-au cerut astfel de rapoarte pe luni întregi. Reparația scoate un risc: la ~10 mașini, un singur raport pe o
+  lună ar fi cerut ~8 GB, cât îi dă Railway aplicației pe Hobby — aplicația s-ar fi oprit pentru toți. Ce costă de fapt: la
+  „De amintit" (Railway → Usage).
+
+- **Ce am schimbat:** `reports.js` (`_dayKeyISO` ține minte formatatorul), `workschedule.js` (`_formatatoare`, o pereche pe
+  fus). Probă nouă: `verify_formatoare.js` (în `npm test`; numără formatatoarele făcute, rulează codul decupat, compară cu
+  forma veche). Martor: pe codul vechi pică, cu 2.015 și 18.000 de formatatoare în loc de 1 și 6.
+- **Ce vede fondatorul:** aceleași rapoarte, mai repede; „Ore de condus" din RA Insight și Scrisoarea de luni la fel (folosesc
+  „Condus & repaus").
+- **Ce vede clientul:** Situație zilnică, Condus & repaus, Disponibilitate flotă și Pontaj șofer se fac în câteva secunde în
+  loc de zeci de secunde, cu aceleași cifre. Raport Hotspot și Senzor de braț au aceeași reparație (pe proba mea nu aveau date
+  de lucrat, deci n-au cifre de comparat).
+
 ### CLIENT · Literele din alt alfabet, oprite pe TOATE drumurile pe care un text scris de AI ajunge la client — `bac834d`
 
 Alin (20.10): *„asigură-te că nu se întâmplă să avem greșeli de genul acesta. Sunt fatale pentru noi."* Pe 19.10 curățarea stătea doar
@@ -441,6 +520,39 @@ Alin (20.10): „da" la punctele forte noi pe pagina publică; punctul d (PDF-ul
 - **Ce am schimbat:** `public/agenti-ai.html` (`modificat` / `amprenta` noi), `docs_build/build_ai_docs.js` + PDF-ul refăcut.
 - **Ce vede fondatorul:** PDF-ul nou, de trimis clienților.
 - **Ce vede clientul:** pagina publică nouă.
+
+---
+
+## 2026-10-20
+
+### FONDATOR · Instalarea pentru server propriu dă aplicației toate setările — `e87d764`
+
+Robert (20.10): *„Putem să folosim un server local pentru toată aplicația?"* — da; pe drum am găsit că instalarea pregătită pentru
+server propriu rămăsese în urmă. Apoi: *„Nu avem soluții și pentru punctul 5?"*
+
+- **Toate setările ajung la aplicație.** Instalarea dădea aplicației o listă scrisă de mână, de dinainte de RA Insight, Brevo și
+  panoul Mail. Pornită așa, aplicația mergea, dar fără AI, fără emailuri trimise sau primite, fără ANAF și fără notificări pe telefon.
+  Acum primește tot fișierul de setări; ce ține de mașină (baza, porturile) e scris separat și câștigă. Așa, setările din Railway se
+  copiază întocmai (Railway → Variables → Raw Editor), fără nimic de ales pe mână.
+- **Exemplul de setări** are cheile serviciilor (RA Insight, Brevo, emailurile primite, Firebase, ANAF), domeniul de azi (ratrack.ro,
+  nu app.ratrack.ro — telefonul și emailurile merg la ratrack.ro) și nu mai pune „180 de zile" de istoric (variabila retrasă pe 24.09,
+  care ar fi aprins rândul portocaliu din „Stare producție").
+- **Cheia Firebase între apostrofuri, nu între ghilimele.** Măsurat: cu ghilimele, Docker strică cheia privată și notificările pe
+  telefon se opresc. Scris în exemplu și în ghid.
+- **Versiunea** (`/api/health`) se dă la pornire, ca pe Railway; fără ea scria „dev". Ghidul are comanda.
+- Găsit pe drum, **nehotărât**: unealta care mută datele de pe Railway nu merge (vezi „De verificat"). Ghidul o spune acum, la pasul ei.
+
+- **Ce am schimbat:** `docker-compose.prod.yml` (`env_file`, lista scoasă, `GIT_SHA`, `RAILWAY_GIT_COMMIT_SHA` golită, nota „180 de
+  zile"), `.env.prod.exemplu`, `DEPLOY-VPS.md` (domeniul, portul trackerelor, copierea din Railway, apostrofurile, versiunea, „Stare
+  producție" după pornire, compresia vs. ștergerea), `CLAUDE.md`. Probă nouă: `verify_server_propriu.js` (în `npm test`; rezolvă
+  instalarea cu `docker compose`, cu un fișier de setări ca cel din Railway). Martor: pe instalarea veche pică 22 din 38.
+- **Ce vede fondatorul:** nimic azi pe ratrack.ro — Railway nu folosește fișierele astea. La o mutare pe server propriu: setările din
+  Railway se copiază și aplicația merge cu tot ce are acum.
+- **Ce vede clientul:** nimic.
+
+Unealta de mutare a datelor (`migrate_export.js`) e trecută la „De verificat înainte de lansare", C.
+
+---
 
 ## 2026-10-19
 
@@ -12112,6 +12224,10 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
+- [x] **HOTĂRÂT (21.10): „Distribuie locația".** Robert: *„1 da, 2 da, 3 da, 4 inclus"* — duratele 15 minute / 1 oră /
+  8 ore; adminul, managerul și dispecerul (vizualizatorul nu); publicul vede mașina, numărul și firma, fără șofer; inclusă la
+  toate firmele, nu se vinde separat.
+
 - [ ] **(voi) Cinci întrebări rămase de la lotul 2 pe telefon (29.09).** Până hotărâți, am lăsat varianta prudentă:
   1. **Intervalele de service și „Acte cerute"** se pot doar citi pe telefon; cifrele se schimbă de pe web. Rămâne așa?
   2. **Dispecerul nu vede Tahograf, e-Transport și Taxa de drum**, nici pe web, nici (de acum) pe telefon. Pe telefon
@@ -12256,6 +12372,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) Unealta de mutare a datelor de pe Railway pe un server propriu. Găsită pe 20.10, nehotărâtă.** Ghidul de server
+  propriu spune să exportăm din Railway cu ea, dar e făcută pentru baza veche, într-un fișier: refuză o bază Postgres (cum e cea de
+  pe Railway) și copiază doar 22 din cele 66 de tabele — fără contracte, facturi, oferte, montaj, stoc, mail și fără istoricul
+  pozițiilor. Contează doar dacă ne mutăm de pe Railway. Robert a fost întrebat pe 20.10: o rezolvăm acum sau trecem mai departe.
 
 - [x] **REZOLVAT (29.09, APK 1.0.4): lotul 3 de paritate pe telefon.** Stocul, Montajul, drumul clientului cu
   lipsurile și „Trimite la semnat", păstrarea pe firmă, închirierea și „Mașinile clientului" sunt pe telefon.

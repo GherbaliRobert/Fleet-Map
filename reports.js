@@ -277,7 +277,10 @@ function segmentTrack(pts, stopMinSec) {
 // ─── Helpers grafice (charts pentru rapoarte) ───
 // Contract: un raport poate întoarce `charts: [{ type, title, labels, datasets:[{label,data}] }]`.
 // Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
-function _dayKeyISO(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }).format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
+// ⚠ UN singur formatator pentru tot procesul (21.10): unul nou la fiecare poziție ținea ocupați ~17 KB pe poziție
+// și nu-i mai dădea înapoi — „Condus & repaus" pe o lună, 3 mașini: 28 s și ~6 GB. Păzit de verify_formatoare.js.
+let _fmtZiISO = null;
+function _dayKeyISO(ts) { try { if (!_fmtZiISO) _fmtZiISO = new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }); return _fmtZiISO.format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
 function _ziPlusISO(z, n) { const d = new Date(String(z) + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } // AAAA-LL-ZZ ± n zile
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
 function _dayLabelFull(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : isoKey; } // YYYY-MM-DD → DD.MM.YYYY

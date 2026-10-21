@@ -1246,6 +1246,39 @@
 
     .detail-action-btn i { margin-right: 3px; }
 
+    /* „Distribuie locația" (21.10): fereastra din fișa mașinii. Butonul ales are fundal verde → text închis (regula casei). */
+    .loc-modal { width: 460px; max-width: 96vw; }
+    .loc-modal [hidden] { display: none !important; }   /* „Trimite…" e .btn (inline-flex): fără asta, `hidden` nu l-ar ascunde */
+    .loc-masina { font-weight: 800; font-size: 15px; color: var(--text-primary); overflow-wrap: anywhere; }
+    .loc-intro { margin: 6px 0 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .loc-et { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+    .loc-durate { display: flex; gap: 8px; margin-bottom: 14px; }
+    .loc-dur { flex: 1 1 0; min-height: 40px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-light);
+      background: var(--bg-dark); color: var(--text-primary); font-weight: 700; font-size: 13.5px; cursor: pointer; }
+    .loc-dur:hover { border-color: var(--accent); }
+    .loc-dur.on { background: var(--accent); border-color: var(--accent); color: #06210F; }
+    .loc-modal .btn-primary i { margin-right: 6px; }
+    .loc-link-rand { display: flex; gap: 8px; }
+    .loc-link-rand input { flex: 1 1 auto; min-width: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-light);
+      background: var(--bg-dark); color: var(--text-primary); font-size: 13px; }
+    .loc-btn { background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; padding: 9px 12px; }
+    .loc-btn:hover { border-color: var(--accent); }
+    .loc-btn i { color: inherit; }
+    .loc-trimite { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .loc-trimite .loc-btn { flex: 1 1 0; }
+    .loc-nota { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+    .loc-err { color: var(--red); font-size: 13px; margin-top: 10px; }
+    .loc-err:empty { display: none; }
+    .loc-active-cap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+    .loc-act { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; margin-top: 8px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--bg-dark); }
+    .loc-act-t { min-width: 0; }
+    .loc-act-a { font-weight: 700; font-size: 13px; color: var(--text-primary); }
+    .loc-act-b { font-size: 12px; color: var(--text-muted); }
+    .loc-stop { flex: 0 0 auto; padding: 7px 12px; }
+    .loc-stop:hover { border-color: var(--red); color: var(--red); }
+
     .route-period-btn {
       padding: 5px 12px;
       font-size: 11px;

@@ -21,6 +21,8 @@ self.addEventListener('fetch', function (e) {
   const url = new URL(req.url);
   // Nu intercepta API, WebSocket sau alt origin — datele sunt mereu live
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
+  // Pagina unei locații distribuite (/locatie/<token>) nu se ține în cache: linkul trăiește cel mult 8 ore.
+  if (url.pathname.startsWith('/locatie/')) return;
   // HTML + CSS + JS: network-first (cod proaspăt la fiecare actualizare), cu fallback offline.
   // CSS-ul era cache-first => actualizarile de stil nu apareau pana la schimbarea versiunii cache.
   // JS-ul avea ACEEAȘI problemă, dar mai gravă: index.html (network-first) se actualiza, iar fișierele

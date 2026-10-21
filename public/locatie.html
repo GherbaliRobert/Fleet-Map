@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <!-- „Distribuie locația" (Robert, 21.10): pagina pe care o deschide cine a primit linkul unei mașini, ca locația live
+       de pe WhatsApp. Fără cont, fără cookie-uri, fără analiză de trafic. Tokenul stă în adresă (/locatie/<token>); pagina
+       cere la câteva secunde /api/public/locatie/<token>. Ce scrie aici vine gata scris de server (locatie_distribuita.js):
+       pagina doar arată. Când linkul a expirat sau a fost oprit, serverul răspunde 404 și pagina nu mai arată mașina. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Locație live | RA Track</title>
+  <meta name="description" content="Locația live a unei mașini, distribuită pentru un timp limitat.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0B0E11">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RA Track">
+  <meta property="og:locale" content="ro_RO">
+  <meta property="og:title" content="Locație live — RA Track">
+  <meta property="og:description" content="Urmărește mașina pe hartă cât timp locația e distribuită.">
+  <meta property="og:image" content="https://ratrack.ro/og-cover.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root{--bg:#0B0E11;--card:#11161B;--text:#E6EAF0;--muted:#9AA6B2;--accent:#3FE07D;--warn:#F5A524;--border:#1F2730;
+      --sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
+    *{box-sizing:border-box}
+    [hidden]{display:none !important}
+    html,body{height:100%;margin:0}
+    body{background:var(--bg);color:var(--text);font:15px/1.5 'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      overflow:hidden;-webkit-tap-highlight-color:transparent}
+    button,a{font-family:inherit}
+    #harta{position:fixed;inset:0;background:#1a1f24}
+    .leaflet-container{font-family:inherit;background:#1a1f24}
+    .leaflet-control-attribution{font-size:10px}
+
+    /* sus: sigla și „Locație live" */
+    .sus{position:fixed;left:0;right:0;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;
+      gap:10px;padding:calc(10px + var(--sat)) 14px 10px;pointer-events:none}
+    .sus > *{pointer-events:auto}
+    .ralogo{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:12px;background:rgba(11,14,17,.88);
+      border:1px solid var(--border);color:#fff;text-decoration:none;backdrop-filter:blur(6px)}
+    .ralogo img{display:block;height:20px}
+    .ralogo .raw{font-weight:800;font-size:16px;letter-spacing:-.5px;line-height:1}
+    .live{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(11,14,17,.88);
+      border:1px solid var(--border);font-weight:700;font-size:13px;backdrop-filter:blur(6px)}
+    .live i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(63,224,125,.6);animation:puls 1.8s infinite}
+    .live.oprit i{background:var(--muted);animation:none}
+    @keyframes puls{0%{box-shadow:0 0 0 0 rgba(63,224,125,.55)}70%{box-shadow:0 0 0 9px rgba(63,224,125,0)}100%{box-shadow:0 0 0 0 rgba(63,224,125,0)}}
+
+    /* cartonașul: jos pe telefon, plutind în stânga pe calculator */
+    .fisa{position:fixed;z-index:1000;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);
+      border-radius:18px 18px 0 0;padding:16px 16px calc(16px + var(--sab));box-shadow:0 -8px 30px rgba(0,0,0,.35)}
+    .fisa h1{font-size:19px;line-height:1.25;font-weight:800;margin:0;overflow-wrap:anywhere}
+    .firma{color:var(--muted);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
+    .stare{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:700;font-size:15px}
+    .stare i{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--muted)}
+    .stare.mers i{background:var(--accent)}
+    .stare.tacut{color:var(--warn)}.stare.tacut i{background:var(--warn)}
+    .rand{color:var(--muted);font-size:13.5px;margin-top:4px}
+    .pana{display:flex;align-items:center;gap:8px;margin-top:12px;padding:9px 12px;border-radius:12px;background:#0B0E11;
+      border:1px solid var(--border);font-size:13.5px}
+    .pana svg{flex:0 0 auto;color:var(--accent)}
+    .pana b{font-weight:700}
+    .butoane{display:flex;gap:8px;margin-top:12px}
+    .btn{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 12px;
+      border-radius:12px;border:1px solid var(--border);background:#161C22;color:var(--text);font-weight:700;font-size:14px;
+      text-decoration:none;cursor:pointer}
+    .btn:hover{border-color:#2B3540}
+    .btn.plin{background:var(--accent);border-color:var(--accent);color:#06210F}
+    .btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+    .legatura{display:none;margin-top:10px;font-size:13px;color:var(--warn)}
+    .legatura.da{display:block}
+    .incarca{color:var(--muted);font-size:14px}
+
+    /* încheiat: linkul nu mai e bun */
+    .gata{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;padding:24px;
+      background:rgba(11,14,17,.94)}
+    .gata.da{display:flex}
+    .gata-c{max-width:380px;text-align:center}
+    .gata-c svg{color:var(--muted)}
+    .gata-c h2{font-size:20px;font-weight:800;margin:12px 0 6px}
+    .gata-c p{color:var(--muted);margin:0 0 18px}
+    .gata-c a{color:var(--accent);font-weight:700;text-decoration:none}
+
+    /* mașina pe hartă */
+    .masina{position:relative;width:46px;height:46px}
+    .masina .halou{position:absolute;inset:0;border-radius:50%;background:rgba(63,224,125,.22);animation:halou 2s infinite}
+    .masina .cerc{position:absolute;left:9px;top:9px;width:28px;height:28px;border-radius:50%;background:#0B0E11;
+      border:3px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+    .masina .cerc span{display:block;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+    .masina .sageata{display:none;transition:transform .6s ease}
+    .masina.mers .cerc span{display:none}
+    .masina.mers .sageata{display:block}
+    .masina.tacut .halou{display:none}
+    .masina.tacut .cerc{border-color:var(--warn)}
+    .masina.tacut .cerc span{background:var(--warn)}
+    @keyframes halou{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+
+    /* calculator: cartonașul plutește în stânga jos, harta rămâne liberă */
+    @media (min-width:760px){
+      .fisa{left:16px;right:auto;bottom:16px;width:360px;border:1px solid var(--border);border-radius:18px;padding:18px}
+      .sus{padding:16px}
+    }
+    @media (prefers-reduced-motion:reduce){.live i,.masina .halou{animation:none}.masina .sageata{transition:none}}
+  </style>
+</head>
+<body>
+  <div id="harta" aria-label="Harta cu mașina"></div>
+
+  <div class="sus">
+    <a class="ralogo" href="https://ratrack.ro/" aria-label="RA Track"><img src="/logo-mark.png" alt="RA"><span class="raw">Track</span></a>
+    <span class="live" id="live"><i aria-hidden="true"></i><span>Locație live</span></span>
+  </div>
+
+  <section class="fisa" id="fisa" aria-live="polite">
+    <div class="incarca" id="incarca">Se încarcă locația…</div>
+    <div id="corp" hidden>
+      <h1 id="vehicul"></h1>
+      <div class="firma" id="firma" hidden></div>
+      <div class="stare" id="stare"><i aria-hidden="true"></i><span id="stare-t"></span></div>
+      <div class="rand" id="actualizat"></div>
+      <div class="pana">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Distribuită până la <b id="pana"></b> · <span id="ramas"></span></span>
+      </div>
+      <div class="butoane">
+        <button class="btn" id="centreaza" type="button">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          <span>Centrează</span>
+        </button>
+        <a class="btn plin" id="gmaps" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <span>Google Maps</span>
+        </a>
+      </div>
+      <div class="rand" id="fara-harta" hidden>Harta nu s-a putut încărca. Locul se deschide în Google Maps.</div>
+      <div class="legatura" id="legatura">Nu am legătură cu serverul. Reîncerc…</div>
+    </div>
+  </section>
+
+  <div class="gata" id="gata" role="alert">
+    <div class="gata-c">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M4 4l16 16"/></svg>
+      <h2 id="gata-h">Locația nu mai e distribuită</h2>
+      <p id="gata-t">Linkul a expirat sau a fost oprit.</p>
+      <a href="https://ratrack.ro/">ratrack.ro</a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var token = (location.pathname.split('/locatie/')[1] || '').split(/[/?#]/)[0];
+    var $ = function (id) { return document.getElementById(id); };
+    var harta = null, marker = null, urma = null, puncte = [];
+    var urmareste = true, ultima = null, timer = null, incheiat = false, pasMs = 5000, anim = null;
+    var primaData = true;
+
+    function porneste() {
+      if (window.L) {
+        harta = L.map('harta', { zoomControl: false, attributionControl: true, center: [45.94, 24.97], zoom: 6 });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc', attribution: '&copy; OpenStreetMap' }).addTo(harta);
+        if (window.matchMedia('(min-width: 760px)').matches) L.control.zoom({ position: 'topright' }).addTo(harta);
+        // Omul a mișcat harta: nu-l mai trag înapoi la mașină până nu apasă „Centrează".
+        harta.on('dragstart', function () { urmareste = false; stareCentreaza(); });
+        $('centreaza').addEventListener('click', function () { urmareste = true; stareCentreaza(); centreaza(true); });
+      } else {
+        // Harta n-a venit (rețea care blochează biblioteca): cartonașul merge oricum, iar locul se deschide în Google Maps.
+        $('centreaza').hidden = true; $('fara-harta').hidden = false;
+      }
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { clearTimeout(timer); timer = null; } else if (!incheiat) { cere(); }
+      });
+      stareCentreaza();
+      cere();
+    }
+
+    function stareCentreaza() { $('centreaza').classList.toggle('plin', !urmareste); }
+
+    function centreaza(lin) {
+      if (!harta || !ultima || !ultima.pozitie) return;
+      var p = [ultima.pozitie.lat, ultima.pozitie.lng];
+      if (lin) harta.flyTo(p, Math.max(harta.getZoom(), 15), { duration: 0.6 }); else harta.panTo(p, { animate: true, duration: 0.8 });
+    }
+
+    function urmatoarea(ms) { clearTimeout(timer); if (!incheiat && !document.hidden) timer = setTimeout(cere, ms); }
+
+    function cere() {
+      clearTimeout(timer); timer = null;
+      if (!token) { termina({}); return; }
+      fetch('/api/public/locatie/' + encodeURIComponent(token), { cache: 'no-store', credentials: 'omit' })
+        .then(function (r) {
+          if (r.status === 404) { return r.json().catch(function () { return {}; }).then(function (j) { termina(j || {}); }); }
+          if (r.status === 429) { legatura(true); urmatoarea(30000); return; }
+          return r.json().then(function (j) {
+            if (!r.ok || !j || j.eroare) { legatura(true, j && j.text); urmatoarea(pasMs); return; }
+            legatura(false);
+            if (j.activ === false) { termina(j); return; }
+            arata(j);
+            pasMs = Math.max(3, Number(j.reimprospatare) || 5) * 1000;
+            urmatoarea(pasMs);
+          });
+        })
+        .catch(function () { legatura(true); urmatoarea(pasMs); });
+    }
+
+    function legatura(cazuta, text) {
+      var el = $('legatura');
+      el.textContent = text || 'Nu am legătură cu serverul. Reîncerc…';
+      el.classList.toggle('da', !!cazuta);
+    }
+
+    function arata(j) {
+      ultima = j;
+      $('incarca').hidden = true; $('corp').hidden = false;
+      $('vehicul').textContent = j.vehicul || 'Vehicul';
+      document.title = (j.vehicul || 'Vehicul') + ' · Locație live | RA Track';
+      if (j.firma) { $('firma').textContent = j.firma; $('firma').hidden = false; } else { $('firma').hidden = true; }
+      var tacut = !!(j.pozitie && j.tacut);
+      var st = $('stare');
+      st.classList.toggle('mers', !!j.inMers); st.classList.toggle('tacut', tacut);
+      $('stare-t').textContent = j.stare || '';
+      $('actualizat').textContent = j.actualizat || '';
+      $('actualizat').hidden = !j.actualizat;
+      $('pana').textContent = j.pana || '';
+      $('ramas').textContent = j.ramas || '';
+      $('live').classList.toggle('oprit', !j.pozitie || tacut);
+      var g = $('gmaps');
+      if (j.pozitie) {
+        g.href = 'https://www.google.com/maps/search/?api=1&query=' + j.pozitie.lat + ',' + j.pozitie.lng;
+        g.removeAttribute('aria-disabled');
+        puneMasina(j.pozitie, !!j.inMers, tacut);
+      } else {
+        g.href = '#'; g.setAttribute('aria-disabled', 'true');
+      }
+    }
+
+    function iconMasina(mers, tacut, unghi) {
+      var cls = 'masina' + (mers ? ' mers' : '') + (tacut ? ' tacut' : '');
+      var html = '<div class="' + cls + '"><div class="halou"></div><div class="cerc"><span></span>' +
+        '<svg class="sageata" width="16" height="16" viewBox="0 0 24 24" style="transform:rotate(' + (Number(unghi) || 0) + 'deg)">' +
+        '<path d="M12 2l7 19-7-4-7 4z" fill="#3FE07D"/></svg></div></div>';
+      return L.divIcon({ className: '', html: html, iconSize: [46, 46], iconAnchor: [23, 23] });
+    }
+
+    function puneMasina(p, mers, tacut) {
+      if (!harta) return;
+      var tinta = L.latLng(p.lat, p.lng);
+      if (!marker) {
+        marker = L.marker(tinta, { icon: iconMasina(mers, tacut, p.unghi), keyboard: false, interactive: false }).addTo(harta);
+        urma = L.polyline([], { color: '#3FE07D', weight: 4, opacity: 0.55 }).addTo(harta);
+      } else {
+        // Clasa și unghiul se schimbă pe elementul existent: un icon nou la 5 secunde ar reporni haloul.
+        var el = marker.getElement() && marker.getElement().firstChild;
+        if (el) {
+          el.className = 'masina' + (mers ? ' mers' : '') + (tacut ? ' tacut' : '');
+          var s = el.querySelector('.sageata'); if (s) s.style.transform = 'rotate(' + (Number(p.unghi) || 0) + 'deg)';
+        }
+        muta(marker.getLatLng(), tinta);
+      }
+      // Urma = doar ce s-a văzut de când e deschisă pagina (nu istoricul mașinii).
+      var ult = puncte[puncte.length - 1];
+      if (!ult || ult.distanceTo(tinta) > 8) { puncte.push(tinta); if (puncte.length > 300) puncte.shift(); urma.setLatLngs(puncte); }
+      if (primaData) { primaData = false; harta.setView(tinta, 15); }
+      else if (urmareste) centreaza(false);
+    }
+
+    // Mașina alunecă spre poziția nouă într-o secundă (un salt mai mare de 2 km = mutare pe loc).
+    function muta(de, la) {
+      if (anim) cancelAnimationFrame(anim);
+      if (de.distanceTo(la) > 2000 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { marker.setLatLng(la); return; }
+      var t0 = performance.now(), dur = 1000;
+      (function pas(t) {
+        var k = Math.min(1, (t - t0) / dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        marker.setLatLng([de.lat + (la.lat - de.lat) * e, de.lng + (la.lng - de.lng) * e]);
+        if (k < 1) anim = requestAnimationFrame(pas); else anim = null;
+      })(t0);
+    }
+
+    // Linkul nu mai e bun: mașina dispare de pe hartă și nu se mai cere nimic.
+    function termina(j) {
+      incheiat = true; clearTimeout(timer); timer = null; ultima = null;
+      if (anim) cancelAnimationFrame(anim);
+      if (marker && harta) { harta.removeLayer(marker); marker = null; }
+      if (urma && harta) { harta.removeLayer(urma); urma = null; }
+      puncte = [];
+      $('corp').hidden = true; $('incarca').hidden = true; $('fisa').hidden = true;
+      $('live').classList.add('oprit');
+      if (j && j.titlu) $('gata-h').textContent = j.titlu;
+      if (j && j.text) $('gata-t').textContent = j.text;
+      $('gata').classList.add('da');
+    }
+
+    porneste();
+  })();
+  </script>
+</body>
+</html>

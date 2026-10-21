@@ -44,6 +44,8 @@ Deschide în firewall: **80**, **443** și **portul trackerelor** (vezi pasul 3)
 ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 5027/tcp && ufw enable
 ```
 
+> Veniți de pe Railway? În locul lui 5027 deschideți portul de azi al trackerelor (ex. 21015 — pasul 3).
+
 > Dacă furnizorul are propriul lui firewall, în panoul lui, trebuie deschise în **amândouă** locurile.
 
 ---
@@ -54,7 +56,7 @@ Două înregistrări, amândouă către IP-ul serverului:
 
 | Tip | Nume | Valoare | Observație |
 |-----|------|---------|------------|
-| A | `app` (interfața) | IP-ul VPS-ului | prin Cloudflare, dacă vrei |
+| A | `@` (ratrack.ro: site-ul și aplicația) | IP-ul VPS-ului | prin Cloudflare, dacă vrei |
 | A | `gps` (trackerele) | IP-ul VPS-ului | **DNS only** — nor gri, NU portocaliu |
 
 ⚠ **Numele pentru trackere nu trece prin Cloudflare.** Cloudflare proxează HTTP, nu protocolul
@@ -92,13 +94,28 @@ openssl rand -base64 24    # DB_PASSWORD
 openssl rand -hex 32       # SESSION_SECRET
 ```
 
+`DOMAIN` rămâne **ratrack.ro**: acolo merg aplicația de telefon, linkurile din emailuri și emailurile
+primite prin Cloudflare.
+
+**Cheile serviciilor** (RA Insight, Brevo, emailurile primite, Firebase, ANAF) sunt aceleași ca pe
+Railway: Railway → serviciul aplicației → Variables → **Raw Editor** → copiezi tot și lipești la
+capătul lui `.env`. E sigur: baza, porturile și HTTPS-ul mașinii sunt scrise în
+`docker-compose.prod.yml` și bat ce vine din Railway. Tot `.env`-ul ajunge la aplicație — o
+variabilă nouă se pune doar acolo.
+
+⚠ `FIREBASE_SA_JSON` (și `GOOGLE_SA_JSON`) pe un singur rând, între **apostrofuri** (`'{…}'`), nu
+între ghilimele: cu ghilimele, Docker strică cheia privată și notificările pe telefon se opresc.
+
 ---
 
 ## 5. Pornirea
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+`GIT_SHA` dă versiunea din `/api/health` (câmpul `version` = commit-ul pornit), ca pe Railway. Fără
+el, scrie „dev".
 
 Prima pornire durează câteva minute (se construiește imaginea). Verifică:
 
@@ -117,7 +134,10 @@ Al doilea rând e cel important. Dacă în locul lui apare
 `⚠ TimescaleDB indisponibil → FĂRĂ compresie și FĂRĂ retenție automată`, **oprește-te aici**:
 baza va crește la nesfârșit până umple discul. Înseamnă că nu s-a folosit imaginea corectă.
 
-Caddy obține certificatul singur. Intri pe `https://app.ratrack.ro` cu `admin` și parola din `.env`.
+Caddy obține certificatul singur. Intri pe `https://ratrack.ro/app` cu `admin` și parola din `.env`.
+
+Apoi **Administrare → Stare producție**: rândurile cheii AI, emailului (Brevo), emailurilor primite,
+ANAF și notificărilor trebuie să fie ca pe Railway. Unul portocaliu = o cheie care n-a ajuns în `.env`.
 
 **Primul lucru după login:** fă-ți contul tău de super-admin. Contul „admin" se retrage singur după
 ce există altul, la următoarea repornire.
@@ -138,6 +158,10 @@ Dacă vezi `IMEI neînregistrat/respins ... (mod strict)`, e corect: vehiculul t
 ---
 
 ## Mutarea datelor de pe Railway
+
+> ⚠ **20.10: pasul ăsta NU merge așa cum e scris.** Unealta de export e făcută pentru vechea bază
+> într-un fișier (refuză o bază Postgres, cum e cea de pe Railway) și copiază doar 22 din cele 66 de
+> tabele (fără contracte, facturi, oferte, montaj, stoc, mail). De refăcut înainte de mutare.
 
 ```bash
 # 1. Pe laptop: exportă din Railway (URL-ul public al bazei, din dashboard)
@@ -160,7 +184,7 @@ lasă vechiul server pornit încă o zi — unele trackere țin adresa în cache
 
 ```bash
 cd ra-tracks && git pull
-docker compose -f docker-compose.prod.yml up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 Baza **nu** e atinsă: trăiește într-un volum separat de imagine.
@@ -175,7 +199,8 @@ Baza **nu** e atinsă: trăiește într-un volum separat de imagine.
 | Certificat HTTPS | inclus | Caddy îl ia singur |
 | Actualizări de sistem | ale lor | ale tale (`apt upgrade`) |
 | Disc | crește singur | **fix — de urmărit** |
-| Compresie + ștergere automată | **indisponibile** | pornesc singure |
+| Compresia istoricului | **indisponibilă** | pornește singură |
+| Ștergerea istoricului (după contract) | o face aplicația | o face aplicația |
 | Dacă pică mașina | te mută ei | restaurezi tu |
 
 Ultimele două rânduri sunt și motivul principal pentru care merită, și riscul principal pe care ți-l
