@@ -114,14 +114,16 @@ T('agenții nu-l trimit pe client să verifice echipamentul (dispozitiv, aliment
   corpuri.length > 500 && !/Verifică dispozitivul|alimentarea\/sim|sim-ul|cablaj|K-Line|interfața CAN|Remote Data Download/i.test(corpuri) && !/la montaj|un cablu/.test(PUBd) &&
   /sună șoferul/.test(corpuri) && /Pune scadența pe dată/.test(corpuri));
 T('instrucțiunile: echipamentul e treaba noastră — RA Insight nu-l trimite pe client să verifice senzori, aparatul sau montajul (Alin, 19.10)',
-  /ECHIPAMENTUL: aparatul GPS, senzorii .*sunt treaba ' \+\s*'RA Track, nu a omului\. Nu-i cere să verifice, să repare sau să ceară echipament/.test(SRVd) &&
+  /^ECHIPAMENTUL: aparatul GPS, senzorii .*sunt treaba RA Track, nu a omului\. Nu-i cere să verifice, să repare sau să ceară echipament/.test(INSd.ECHIPAMENTUL || '') &&
+  /\n    insight\.ECHIPAMENTUL,\n/.test(SRVd) &&
   /\*\*Ce să faci:\*\* \(cel mult trei puncte scurte, numai ce poate face omul singur/.test(SRVd) && !/consum fără senzor/.test(SRVd));
 T('…scrisul nu mai dă „Verifică…" ca exemplu de recomandare și cere numai litere românești', !/„Verifică…"/.test(INSd.SCRISUL) && /„Completează…"/.test(INSd.SCRISUL) && /numai cu litere ' \+\s*'românești/.test(fs.readFileSync(path.join(__dirname, 'insight.js'), 'utf8')));
 T('literele din alt alfabet se recunosc și se trec în litere românești („октомбrie" → „octombrie"); diacriticele românești rămân',
   INSd.areLitereStraine('Consum (октомбrie 2026)') && !INSd.areLitereStraine('ș ț ă î â Ș Ț') && INSd.litereRomanesti('Consum real acum (октомбrie 2026, până azi)') === 'Consum real acum (octombrie 2026, până azi)' &&
   INSd.litereRomanesti('Октомбрие') === 'Octombrie' && INSd.litereRomanesti('fără schimbări') === 'fără schimbări');
 T('…pe server: un răspuns cu litere străine se rescrie o dată, iar ce rămâne se curăță; și Scrisoarea de luni se curăță',
-  /const strain = insight\.areLitereStraine\(reply\);/.test(SRVd) && /if \(insight\.areLitereStraine\(reply\)\) reply = insight\.litereRomanesti\(reply\);/.test(SRVd) && /text: insight\.litereRomanesti\(String\(text\)\.trim\(\)\), scrisDe: 'model'/.test(SRVd));
+  /const strain = insight\.areLitereStraine\(reply\);/.test(SRVd) && /\n    reply = insight\.litereRomanesti\(reply\);/.test(SRVd) && /text: insight\.litereRomanesti\(String\(text\)\.trim\(\)\), scrisDe: 'model'/.test(SRVd) &&
+  (SRVd.match(/brut: true/g) || []).length === 2);
 T('…completarea se face la citirea conversației (pe server), nu în pagină', /m\.extra\.insigna = pachete\.insignaCompleta\(m\.extra\.insigna\)/.test(SRVd));
 const SRC_K = fs.readFileSync(path.join(__dirname, 'pachete.js'), 'utf8');
 const bucInsigna = SRC_K.slice(SRC_K.indexOf('const INSIGNA'), SRC_K.indexOf('module.exports'));

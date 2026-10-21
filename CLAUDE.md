@@ -423,6 +423,8 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
   subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
+  **Fără emoji** (Alin, 20.10: „📍 🚚 🟠" nu arăta profesionist lângă insigne): titlu îngroșat, mașina, rânduri cu „•"; ora pe ora
+  ROMÂNIEI (`fmtTime` cu `timeZone: 'Europe/Bucharest'` — serverul e pe UTC, „ultima poziție" ieșea cu 3 ore în urmă). Păzit de `verify_tarife.js`.
 - **Zilele săptămânii și weekendul: O regulă, `insight.ziuaSaptamanii(text, acum)`** (14.10, Alin: „rezolvăm"), folosită de
   `potrivitPentruRapid` (orice zi a săptămânii → nu e rapid) și de `ai_raport.perioadaDin` (ÎNAINTEA lui „azi", ca „de luni
   până azi" să fie săptămâna). „duminică" = cea mai apropiată (azi, dacă azi e duminică), „…trecută" = cea dinainte de azi,
@@ -796,13 +798,21 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
 - **ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „nu trebuie să ne învinuim pe noi… «păi voi nu ați verificat dacă are, eu vă plătesc»"):**
   RA Insight NU-i cere clientului să verifice / repare / ceară echipament (senzori, aparatul, montajul, legătura cu calculatorul mașinii)
   și nu pune o cifră lipsă pe seama lor — spune doar faptul („consumul e socotit din fișă, nu măsurat"); „Ce să faci" = numai ce face omul
-  singur (fișa, alertele, un raport, discuția cu șoferul). Regula stă în instrucțiuni (paragraful ECHIPAMENTUL), iar textele aplicației
+  singur (fișa, alertele, un raport, discuția cu șoferul). Regula stă O DATĂ, în `insight.ECHIPAMENTUL`, pusă în instrucțiunile lui RA
+  Insight, ale lui „Rezumă cu RA Insight", ale rezumatului agenților și ale Scrisorii de luni (20.10 — rezumatele n-o aveau), iar textele aplicației
   (`probleme.js`: `sursaConsum`, `problemaSenzor` — galben, „Consumul la X nu se poate măsura acum", fără „Calibrarea rezervorului") la
   fel. NU scrie „senzorul e blocat / necalibrat", „mașina nu trimite", „verifică dacă are senzor" în ce vede clientul. La fel la AGENȚI
   (`agents.js`: offline → „sună șoferul", tahograful → doar cardul de companie, km fără bord → „pune scadența pe dată"; fără „verifică
   dispozitivul / SIM-ul / cablajul / interfața CAN") și pe paginile publice (fără „cablu / setare lipsă la montaj"). Păzit de `verify_discutia.js`.
-- **Literele din alt alfabet** („октомбrie"): `insight.areLitereStraine` → rescrierea O DATĂ (aceeași cu cea pentru cifre), apoi
-  `insight.litereRomanesti` pe ce a rămas (și pe Scrisoarea de luni). Scrisul (`insight.SCRISUL`) cere numai litere românești.
+- **Literele din alt alfabet** („октомбrie"; Alin, 20.10: „sunt fatale pentru noi"): **O regulă, `litere.js`** (curat) — orice alfabet
+  în afară de cel latin (rus, grec, chinez, arab…), literele „late" și ş/ţ cu sedilă (→ ș/ț); chirilicul se transcrie pe sunete, iar
+  unitățile ca la noi (`UNITATI`: „120 км" → „120 km", NU „120 cm"); ce nu se poate transcrie se scoate. **`ai.js` o pune pe ORICE
+  răspuns al modelului** (`callClaude`, `runAgent`; nu `readImage` — transcrierea actelor clientului rămâne întocmai), deci și pe drumurile
+  noi. **`brut: true` DOAR în `_raInsight`** (răspunsul dintâi și rescrierea), ca literele să ceară întâi o rescriere O DATĂ (aceeași cu cea
+  pentru cifre); la capăt `reply = insight.litereRomanesti(reply)`, mereu. `insight.js` doar o dă mai departe (n-are tabelul lui). Mesajele
+  salvate se curăță la citire (răspunsurile, nu ce a scris omul) și în istoricul pentru model (`istoricPentruModel`); scrisorile la citire.
+  Scrisul (`insight.SCRISUL`) cere numai litere românești. Păzit de **`verify_litere.js`** (în `npm test`; pe server pornit: „Rezumă",
+  rezumatul agenților, RA Insight, conversația redeschisă) — NU pune a doua cale spre model fără ai.js și NU da `brut: true` altundeva.
 - **Insignele, ca ANTET (Alin, 19.10, din cinci variante pozate: „varianta 1 — antetul"): O regulă, `pachete.insigna(fel, { numarat,
   live })`** → `{ fel, nume: 'RA Insight', eticheta: 'Analiză' | 'Instant', detaliu, text }`: deasupra răspunsului „RA Insight", eticheta
   cu chenar subțire, fără fundal (ANALIZĂ mov `#6d28d9` / INSTANT verde `#166534` — #15803d ieșea sub 4,5 la literele mici), detaliul gri
@@ -971,6 +981,11 @@ o întrebare" măsurat pe Haiku 4.5, `aiqPana10…` în „Prețurile noastre") 
   „RA Insight — conturi (N × preț)". Peste fond NU se vinde nimic (comutatoarele vechi `overage*` se aruncă; `acceptExtra` e
   ignorat — păzit de `verify_paritate_telefon.js`). Clientul vede „oprit până pe …" și „fără niciun cost în plus".
 - „Un cont în plus aduce încă N" se scrie DOAR pe regula pe cont, cu cifra firmei — fără `|| 50` de rezervă.
+- **Casetele ei din fișa firmei** („Întrebări / cont / lună" în „Abonament & plăți", „Limită AI lunară" în „Acces") se arată DOAR pe
+  firmele aflate deja pe regula veche (fișa dă `ai_regula_veche`; în „Acces", `!s.pachet`). Pe o firmă cu pachet (și Start e un pachet)
+  serverul le refuză (`_mesajRegulaVeche`, 400) — salvate, ar fi mutat firma pe regula veche și i-ar fi schimbat factura (găsit 19.10,
+  Alin: „rezolvăm acum"). O mutare DELIBERATĂ pe regula veche se cere pe față, cu `regula_veche: true` (ca `confirmaStergere`): nicio
+  pagină și niciun telefon nu o trimit; o trimit probele regulii vechi. Golirea (`ai_quota: null`, limita `null`) merge oricând.
 - O ofertă veche (cu `aiA` / `aiqN` / `aiqSeats`) redeschisă se socotește pe ramura ei din `_ofCalc` (`p.pAiA` — rămas în
   `_OF_PRETURI_DEF` DOAR pentru ele) și se redeschide în formular pe Basic.
 - ⚠ **Telefonul** (`mobile/src/components/ChatScreen.tsx`) mai are interfața veche de plată peste fond; nu se aprinde. Se curăță
@@ -1778,6 +1793,9 @@ are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe of
   „planul de încărcare" din simulator (12.10) — alte noțiuni, rămân; tot fără etichete care încep cu „Plan" singur.
 - Păzit de `verify_fara_planuri.js` (în `npm test`): dacă reapare un tabel de planuri, o valoare
   implicită luată din plan, Stripe, sau eticheta „Plan" pe ecran — proba pică.
+- **„Dashboard platformă" → Venituri** citește ce dă serverul (`revenue`: `mrr`, `arr`, `cu_oferta`, `fara_oferta`): cardul „Firme cu
+  ofertă" și rândul „N firme cu ofertă · M fără ofertă (0 lei)". Până pe 20.10 citea câmpuri de pe vremea planurilor (`active_subs`,
+  `by_plan`) și arăta 0 / „Niciun venit estimat încă" cu venit lunar. Păzit de `verify_proba_modele.js`.
 - ⚠ **Factura citește NUMELE modelelor din `plans.js`** (`oferta` / `trepte` / `fix`). Pe 15.09 au
   fost redenumite (din direct / tiered / flat), factura a rămas pe cele vechi și 8 zile a pus pe
   factură DOAR mașinile fără CAN (221 de lei → 86). Nu s-a emis nicio factură între timp. Registrul

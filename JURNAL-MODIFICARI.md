@@ -233,6 +233,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   mea din 14.10 cheia NU se vede: trebuie pusă în setările mediului de lucru Claude (meniul mediului din bara de sus a
   sesiunii → Edit → „Network secrets" sau variabilă de mediu), cu numele `RA_PROBA_ANTHROPIC_KEY` — nu în Railway — și o
   vede abia sesiunea următoare. Altfel: Robert apasă „Proba modelelor" pe ratrack.ro, pe firma noastră (2 minute).
+  **21.10:** Alin a cerut pașii pentru Robert: sunt, cu poze, în PDF-ul „Ghid: Pachet și conturi, Proba modelelor" (RA Insight · control ›
+  Controale › „Proba modelelor"; numele vechi „Utilizare RA Insight" nu mai există). Costă cam 2–5 lei.
+  **21.10 (după-amiază): proba e făcută** — Robert a rulat-o pe ratrack.ro, pe firma noastră, iar Alin mi-a trimis rezultatul.
+  Haiku 5.5: 0,48 bani pe întrebare, 17 din 20 bune, 3 greșite; Sonnet 5.5: 6,65 bani, 20 din 20 bune. Cele 3 greșeli vin din
+  aplicație (RA Insight vede 25 de rânduri dintr-un raport; raportul „Analitic" se oprește la 5.000 de poziții; alimentările și
+  scăderile care nu se văd nu i se spun). Analiza, întrebare cu întrebare: PDF-ul „Proba modelelor, garanția și machetele"
+  (21.10). **Rămâne alegerea modelului** (recomand Haiku 5.5, întrebarea 1 din PDF); se bifează când răspunde Alin.
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -279,12 +286,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (un rând fix pe lună), iar o firmă cu pachet își poate schimba singură pachetul din aplicație.
 - [ ] **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
   („doar dacă proba arată că Haiku 5.5 e slab"). Se pornește dintr-un comutator al nostru, după probă; cât e oprită, nici
-  „Vezi pachetele" nu o promite.
+  „Vezi pachetele" nu o promite. **21.10:** proba arată Sonnet 5.5 la 6,65 bani pe întrebare: un pachet folosit până la capăt ar
+  costa peste preț (Business: 66,50 lei la un preț de 30 de lei). Recomand s-o lăsăm oprită până la a doua probă, pe „RA Track
+  Demo", după reparațiile din PDF-ul din 21.10.
 - [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
   RA Insight. (2) „Vezi pachetele" cu butoanele „Alege …" și fereastra de confirmare (textul de la server, bifa, „Trec la …"),
-  pe rutele `/api/insight/pachet-trecere`; „Pachet și conturi" cu ce e programat și lista confirmărilor, cu PDF.
+  pe rutele `/api/insight/pachet-trecere`; „Pachet și conturi" cu ce e programat și lista confirmărilor, cu PDF. (3) **21.10:** în fișa
+  firmei, „întrebări pe cont" (CompanyAbonament) și limita AI (`setCompanyAiLimit`) — serverul le refuză acum pe o firmă cu pachet;
+  de arătat doar pe regula veche, ca pe web (fișa firmei dă `ai_regula_veche`).
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -441,6 +452,73 @@ ziua pe ora României, de la zero. Una ține ~17 KB pe care aplicația nu-i mai 
 - **Ce vede clientul:** Situație zilnică, Condus & repaus, Disponibilitate flotă și Pontaj șofer se fac în câteva secunde în
   loc de zeci de secunde, cu aceleași cifre. Raport Hotspot și Senzor de braț au aceeași reparație (pe proba mea nu aveau date
   de lucrat, deci n-au cifre de comparat).
+
+### CLIENT · Literele din alt alfabet, oprite pe TOATE drumurile pe care un text scris de AI ajunge la client — `bac834d`
+
+Alin (20.10): *„asigură-te că nu se întâmplă să avem greșeli de genul acesta. Sunt fatale pentru noi."* Pe 19.10 curățarea stătea doar
+în RA Insight. Căutând toate drumurile, am mai găsit două pe care textul modelului ajungea la client necurățat: **„Rezumă cu RA Insight"**
+(sub un raport) și **rezumatul agenților**. Amândouă nu aveau nici regulile de scris ale lui RA Insight (litere românești, echipamentul e
+treaba noastră).
+
+- **O singură regulă, `litere.js`**, pusă de `ai.js` pe ORICE răspuns al modelului (orice drum de acum și orice drum nou). Doar RA Insight
+  primește textul neatins, ca să ceară întâi o rescriere, și îl curăță la capăt, mereu.
+- Prinde orice alfabet (rus, grec, chinez, arab, ebraic…), literele „late" și ş/ţ cu sedilă (devin ș/ț). Chirilicul se transcrie, iar
+  unitățile se scriu ca la noi: „120 км" devine „120 km", nu „120 cm" (capcană prinsă de probă).
+- „Rezumă cu RA Insight", rezumatul agenților și Scrisoarea de luni primesc aceleași reguli de scris ca RA Insight (`insight.ECHIPAMENTUL`,
+  scrisă acum o singură dată).
+- Mesajele salvate înainte (cum e cel cu „октомбrie" din poza lui Alin) se curăță la citire și nu mai ajung nici în ce citește modelul la
+  întrebarea următoare. Ce a scris omul rămâne cum l-a scris.
+- **Ce am schimbat:** `litere.js` (nou), `ai.js`, `insight.js`, `ramuri.js`, `server.js`. Probe: `verify_litere.js` (nouă, în `npm test`;
+  pe server pornit cu modelul simulat: „Rezumă", rezumatul agenților, RA Insight și conversația redeschisă), `verify_discutia.js`.
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** niciun cuvânt cu litere străine, pe niciun drum.
+
+### FONDATOR · Casetele vechi din fișa firmei nu mai pot muta o firmă pe regula veche — `bac834d`
+
+Găsit pe drum pe 19.10 (punctul a), Alin: „rezolvăm acum". „Întrebări / cont / lună" (fila „Abonament & plăți") și „Limită AI lunară" (fila
+„Acces"), salvate pe o firmă de pe Start, o treceau pe regula veche, pe cont, și îi schimbau factura.
+
+- Pe ecran, casetele se arată DOAR pe firmele aflate deja pe regula veche. Pe celelalte, la „Abonament & plăți" scrie că RA Insight se
+  vinde pe pachete, cu butonul „Deschide „Acces"".
+- Serverul le refuză pe o firmă cu pachet (și Start e un pachet), cu mesajul „RA Insight se vinde pe pachete: firma are pachetul Start…".
+  Așa e apărat și telefonul de azi, care încă le are.
+- **Ce am schimbat:** `server.js`, `public/index.html`. Probe: `verify_pachete.js` (refuzul, golirea limitei, ecranul); probele regulii
+  vechi cer acum dinadins regula veche.
+- **Ce vede fondatorul:** în fișa unei firme cu pachet, fără casetele vechi.
+- **Ce vede clientul:** nimic.
+
+### FONDATOR · „Dashboard platformă": venitul și firmele cu ofertă, citite corect — `bac834d`
+
+Găsit pe drum pe 19.10 (punctul b), Alin: „rezolvăm acum". „Abonamente active" stătea mereu pe 0, iar dedesubt scria „Niciun venit estimat
+încă" chiar cu un venit lunar de 20 de lei. Pagina citea câmpuri de pe vremea planurilor, pe care serverul nu le mai trimite.
+
+- Acum: MRR, ARR, **„Firme cu ofertă"**, iar dedesubt câte firme au ofertă și câte nu (0 lei), „din ofertele scrise pe firme".
+- **Ce am schimbat:** `public/index.html`. Probă: `verify_proba_modele.js`.
+- **Ce vede fondatorul:** cifrele adevărate la „Venituri".
+- **Ce vede clientul:** nimic.
+
+### CLIENT · Răspunsurile instant fără emoji; ora pe ora României — `bac834d`
+
+Găsit pe drum pe 19.10 (punctul c), Alin: „rezolvăm acum". Răspunsul instant „unde e acum" era plin de 📍 🚚 🟠 și nu arăta profesionist
+lângă insignele noi. Tot acolo am găsit că ora ieșea pe ora serverului (UTC): o mașină oprită la 14:05 apărea „11:05".
+
+- Toate răspunsurile instant (unde e, oprite, în mișcare, cel mai rapid, km azi, situația flotei): titlu îngroșat, mașina, rânduri cu „•";
+  „Offline" a devenit „Nu transmite de la …"; „200 de vehicule" (cu „de").
+- **Ce am schimbat:** `fleet_quick.js`. Probă: `verify_tarife.js`.
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** răspunsuri curate, cu ora corectă.
+
+### AMÂNDOI · Pagina publică „Agenți AI" și PDF-ul de prezentare, la zi cu RA Insight de azi — `bac834d`
+
+Alin (20.10): „da" la punctele forte noi pe pagina publică; punctul d (PDF-ul de prezentare învechit): „rezolvăm acum".
+
+- **ratrack.ro/agenti-ai:** secțiunea RA Insight spune acum ce face azi: verifică cifrele, face rapoartele cerute în cuvinte, spune singur ce
+  a găsit (cu butonul spre loc), „Azi la tine", RA Drive de la Basic. A ieșit „RA Insight nu caută singur" (nu mai e adevărat).
+- **PDF-ul „Agenți AI"** (`docs_build/RA-Track_Agenti-AI.pdf`): fără „AI Raport" (scos pe 15.10), fără RA Insight „pe conturi" și fără
+  exemplul „verifică aparatul și SIM-ul"; RA Insight pe pachete, cu punctele forte de azi.
+- **Ce am schimbat:** `public/agenti-ai.html` (`modificat` / `amprenta` noi), `docs_build/build_ai_docs.js` + PDF-ul refăcut.
+- **Ce vede fondatorul:** PDF-ul nou, de trimis clienților.
+- **Ce vede clientul:** pagina publică nouă.
 
 ---
 

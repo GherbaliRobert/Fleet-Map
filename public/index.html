@@ -22220,16 +22220,21 @@ const pozitii = await r.json();</code></pre>
         var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin-bottom:10px;">' +
           _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) + _raxCard('Constatări noi AI', t.findings_new || 0) +
           '</div>';
-        // ─── Venituri / MRR (estimat din pachete) ───
-        var rev = d.revenue || {}; var bp = rev.by_plan || {};
-        var planLabel = { start: 'Start', pro: 'Pro', premium: 'Premium AI', enterprise: 'Enterprise', custom: 'Custom' };
+        // ─── Venituri (din ofertele scrise pe firme, fără TVA) ───
+        // Cifrele le dă serverul (`revenue`: mrr, arr, cu_oferta, fara_oferta). Până pe 20.10 pagina citea câmpuri de pe vremea
+        // planurilor, pe care serverul nu le mai trimite: cardul abonamentelor stătea pe 0, iar rândul de dedesubt spunea că nu
+        // e niciun venit, chiar cu venit lunar.
+        var rev = d.revenue || {};
         var lei = function (n) { return Number(n || 0).toLocaleString('ro-RO'); };
-        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-coins"></i> Venituri (estimat din pachete)</div>';
+        var nrFirme = function (n) { n = Number(n) || 0; return n === 1 ? '1 firmă' : n + _raxDe(n) + 'firme'; };
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-coins"></i> Venituri (estimat din oferte)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
-          _raxCard('MRR (lei/lună)', lei(rev.mrr)) + _raxCard('ARR (lei/an)', lei(rev.arr)) + _raxCard('Abonamente active', rev.active_subs || 0) +
+          _raxCard('MRR (lei/lună)', lei(rev.mrr)) + _raxCard('ARR (lei/an)', lei(rev.arr)) + _raxCard('Firme cu ofertă', rev.cu_oferta || 0) +
           '</div>';
-        var bpHtml = Object.keys(bp).filter(function (k) { return bp[k] > 0; }).map(function (k) { return (planLabel[k] || k) + ': <strong style="color:var(--accent)">' + lei(bp[k]) + ' lei</strong>'; }).join(' &nbsp;·&nbsp; ');
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">' + (bpHtml || 'Niciun venit estimat încă') + ' &nbsp;·&nbsp; <em>fără TVA, după pachetele atribuite</em></div>';
+        var cuO = Number(rev.cu_oferta) || 0, faraO = Number(rev.fara_oferta) || 0;
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">' +
+          (cuO ? nrFirme(cuO) + ' cu ofertă' : 'Nicio firmă cu ofertă încă') + (faraO ? ' &nbsp;·&nbsp; ' + nrFirme(faraO) + ' fără ofertă (0 lei)' : '') +
+          ' &nbsp;·&nbsp; <em>fără TVA, din ofertele scrise pe firme</em></div>';
 
         // ─── Health flotă (GPS + SIM) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
@@ -22736,7 +22741,9 @@ const pozitii = await r.json();</code></pre>
           var on = s.agents.indexOf(a[0]) >= 0;
           return '<div style="' + ROW + 'cursor:default;' + (agOff ? 'opacity:.55;' : '') + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
-      html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (cereri / prompturi)</div>' +
+      // Limita AI lunară e a regulii VECHI, pe cont (20.10): pe o firmă cu pachet (și Start e un pachet) ar muta-o pe regula
+      // veche și i-ar schimba factura — de-aia se arată doar unde firma e deja pe regula veche (`pachet` = null).
+      if (!s.pachet) html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (regula veche, pe cont)</div>' +
         '<div style="display:flex;gap:8px;align-items:center;"><input type="number" id="rax-cfg-ailimit" value="' + (s.aiLimit === '' ? '' : s.aiLimit) + '" placeholder="ex: 500 — gol = nelimitat" min="0" step="10" style="flex:1;' + INP + '">' +
         '<button class="rax-btn primary" onclick="raxCfgSaveAiLimit()"><i class="fas fa-check"></i> Salvează</button></div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Număr maxim de <b>cereri AI (prompturi)</b> la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.</div></div>';
@@ -23665,6 +23672,7 @@ const pozitii = await r.json();</code></pre>
         pachetLei: Number(d.price && d.price.breakdown && d.price.breakdown.aiPachet) || 0,
         pachetEt: (d.price && d.price.breakdown && d.price.breakdown.aiPachetEticheta) || '',
         aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0 }, d.ai_quota || {}),
+        regulaVeche: !!d.ai_regula_veche,
         // Păstrarea istoricului firmei și cifrele regulii (incluse / cel mult) — amândouă de la server.
         pastrare: d.pastrare || null, pastrareRegula: d.pastrare_regula || null,
         // Chiria echipamentelor (25.09): se scrie din contractul făcut pe o ofertă cu închiriere; aici doar se vede.
@@ -23787,9 +23795,13 @@ const pozitii = await r.json();</code></pre>
       html += '<div class="rax-abo-sect"><h4>Module AI (la plată)</h4>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.ai_assistant ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'ai_assistant\',this.checked)"> Asistent AI <span class="hint">chat + RA Insight</span></label>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.agents ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'agents\',this.checked)"> Agenți AI <span class="hint">cei 6 agenți (Watch / Dispatch / …)</span></label>' +
-        '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții individuali + limita AI se setează din „Module &amp; limite" (tab Detalii).</div>' +
-        // Cota de apeluri RA Insight — ce vede clientul în contorul lui.
-        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
+        '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții se pornesc și se opresc din fila „Acces”.</div>' +
+        // Cota pe cont = regula VECHE (20.10): se arată doar pe firmele scrise deja așa. Pe un pachet (și Start e un pachet),
+        // salvarea ar muta firma pe regula veche și i-ar schimba factura — serverul o și refuză.
+        (!s.regulaVeche ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:12px;font-weight:700;margin-bottom:4px;">RA Insight</div>' +
+          '<div class="hint">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>' +
+          '<button class="rax-btn" style="margin-top:8px;" onclick="raxOpenCompanyDetail(' + s.id + ', \'acces\')"><i class="fas fa-layer-group"></i> Deschide „Acces”</button></div></div>' : '') +
+        (s.regulaVeche ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
           '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">RA Insight — conturi și fond de întrebări</div>' +
           '<div class="rax-abo-grid">' +
             '<div class="rax-abo-f"><label>Întrebări / cont / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questionsPerSeat || s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
@@ -23799,7 +23811,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="hint" style="margin-bottom:8px;">Când fondul lunii se termină, RA Insight se oprește până pe 1. Nu există cost suplimentar și nici prețuri pe întrebare — cine vrea mai mult, mai adaugă un cont.</div>' +
           '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează</button>' +
           '<div class="hint" style="margin-top:6px;">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>' +
-        '</div></div>';
+        '</div></div>' : '');
       html += _raxPastrareHtml(s);
       html += _raxChirieHtml(s);
       html += '<div class="rax-abo-sect"><h4>Preț lunar estimat</h4><div id="rax-abo-preview"></div></div>';

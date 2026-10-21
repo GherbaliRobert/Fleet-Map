@@ -20,11 +20,17 @@ function detectIntent(message) {
   return null;
 }
 
-function fmtTime(ts) { try { return new Date(ts).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '' + ts; } }
+// Ora pe ora ROMÂNIEI (20.10): serverul merge pe UTC, iar până atunci „ultima poziție" ieșea cu 2–3 ore în urmă.
+function fmtTime(ts) { try { return new Date(ts).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '' + ts; } }
 function online(v, now) { return v.ultima_actualizare && (now - new Date(v.ultima_actualizare).getTime()) < 65 * 60000; } // 1h + tampon (parcate care trimit o data/ora = online/oprit)
 function moving(v, now) { return online(v, now) && (v.viteza_kmh || 0) > 3; }
-function head(v) { return '🚚 **' + (v.nume || '?') + '**' + (v.nr ? ' (' + v.nr + ')' : ''); }
-function loc(v) { return '• 📍 ' + (v.locatie || 'locație indisponibilă'); }
+// Fără emoji (Alin, 20.10: răspunsul instant „unde e acum" era plin de 📍 🚚 🟠 și nu arăta profesionist lângă insignele
+// RA Insight). Titlu îngroșat, apoi mașina și câte un rând cu „•".
+// „19 vehicule", dar „20 de vehicule": de la 20 în sus româna cere „de" (ultimele două cifre între 1 și 19 = fără „de").
+function de(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function cant(n, unu, multe) { return Number(n) === 1 ? '1 ' + unu : n + de(n) + multe; }
+function cine(v) { return '**' + (v.nume || '?') + '**' + (v.nr ? ' (' + v.nr + ')' : ''); }
+function unde(v) { return '• ' + (v.locatie || 'locul nu e cunoscut'); }
 
 function answer(intent, ctx) {
   const snap = ctx.snapshot || [], today = ctx.today || [], now = ctx.now || Date.now();
@@ -34,53 +40,53 @@ function answer(intent, ctx) {
   const total = Number(ctx.total) > 0 ? Number(ctx.total) : snap.length;
   const taiate = Math.max(0, total - snap.length);
   const notaTaiere = taiate > 0
-    ? '\n\n_Flota are ' + total + ' vehicule; mai sus sunt primele ' + snap.length + '. Pentru toate, deschide harta sau un raport._'
+    ? '\n\n_Flota are ' + cant(total, 'vehicul', 'vehicule') + '; mai sus sunt primele ' + snap.length + '. Pentru toate, deschide harta sau un raport._'
     : '';
   let reply;
 
   if (intent === 'stopped') {
     const l = snap.filter(v => online(v, now) && (v.viteza_kmh || 0) <= 3);
     reply = l.length
-      ? '🚦 **Vehicule oprite (' + l.length + ')**\n\n' + l.map(v => head(v) + '\n' + loc(v) + '\n• 🕒 ' + fmtTime(v.ultima_actualizare)).join('\n\n')
-      : '🚦 **Vehicule oprite**\n\nNiciun vehicul oprit acum — toate sunt în mișcare sau offline.';
+      ? '**Vehicule oprite acum (' + l.length + ')**\n\n' + l.map(v => cine(v) + '\n' + unde(v) + '\n• Ultima poziție: ' + fmtTime(v.ultima_actualizare)).join('\n\n')
+      : '**Vehicule oprite acum**\n\nNiciun vehicul nu e oprit acum: toate sunt în mișcare sau nu transmit.';
   } else if (intent === 'moving') {
     const l = snap.filter(v => moving(v, now)).sort((a, b) => (b.viteza_kmh || 0) - (a.viteza_kmh || 0));
     reply = l.length
-      ? '🟢 **În mișcare acum (' + l.length + ')**\n\n' + l.map(v => head(v) + '\n• 💨 ' + Math.round(v.viteza_kmh) + ' km/h\n' + loc(v)).join('\n\n')
-      : '🟢 **În mișcare**\n\nNiciun vehicul nu se mișcă acum.';
+      ? '**În mișcare acum (' + l.length + ')**\n\n' + l.map(v => cine(v) + '\n• ' + Math.round(v.viteza_kmh) + ' km/h\n' + unde(v)).join('\n\n')
+      : '**În mișcare acum**\n\nNiciun vehicul nu se mișcă acum.';
   } else if (intent === 'fastest') {
     const on = snap.filter(v => online(v, now));
-    if (!on.length) reply = '🏁 **Cel mai rapid**\n\nNiciun vehicul online acum.';
+    if (!on.length) reply = '**Cel mai rapid acum**\n\nNiciun vehicul nu transmite acum.';
     else {
       const t = on.reduce((a, b) => (b.viteza_kmh || 0) > (a.viteza_kmh || 0) ? b : a);
       reply = (t.viteza_kmh || 0) <= 3
-        ? '🏁 **Cel mai rapid**\n\nToate vehiculele sunt oprite momentan (0 km/h).'
-        : '🏁 **Cel mai rapid acum**\n\n' + head(t) + '\n• 💨 ' + Math.round(t.viteza_kmh) + ' km/h\n' + loc(t);
+        ? '**Cel mai rapid acum**\n\nToate vehiculele sunt oprite acum (0 km/h).'
+        : '**Cel mai rapid acum**\n\n' + cine(t) + '\n• ' + Math.round(t.viteza_kmh) + ' km/h\n' + unde(t);
     }
   } else if (intent === 'distance') {
     const byImei = {}; snap.forEach(v => { byImei[v.imei] = v; });
     const rows = today.map(t => ({ v: byImei[t.imei], km: parseFloat(t.km) || 0 })).filter(r => r.km > 0.3).sort((a, b) => b.km - a.km);
     const total = today.reduce((s, t) => s + (parseFloat(t.km) || 0), 0);
     reply = rows.length
-      ? '📏 **Distanță azi** — total flotă **' + Math.round(total) + ' km**\n\n' + rows.map(r => '🚚 **' + ((r.v && r.v.nume) || '?') + '** · ' + Math.round(r.km) + ' km').join('\n')
-      : '📏 **Distanță azi**\n\nNiciun vehicul nu a rulat azi (0 km).';
+      ? '**Distanță azi:** total flotă **' + Math.round(total) + ' km**\n\n' + rows.map(r => '• **' + ((r.v && r.v.nume) || '?') + '** · ' + Math.round(r.km) + ' km').join('\n')
+      : '**Distanță azi**\n\nNiciun vehicul n-a mers azi (0 km).';
   } else if (intent === 'where') {
-    reply = '📍 **Locația flotei — live**\n\n' + snap.map(v => {
-      const st = !online(v, now) ? '• ⚪ Offline (' + fmtTime(v.ultima_actualizare) + ')'
-        : ((v.viteza_kmh || 0) > 3 ? '• 🟢 În mișcare · ' + Math.round(v.viteza_kmh) + ' km/h' : '• 🟠 Oprit');
-      return head(v) + '\n' + loc(v) + '\n' + st;
+    reply = (snap.length === 1 ? '**Unde e acum**' : '**Unde sunt vehiculele acum (' + snap.length + ')**') + '\n\n' + snap.map(v => {
+      const st = !online(v, now) ? '• Nu transmite de la ' + fmtTime(v.ultima_actualizare)
+        : ((v.viteza_kmh || 0) > 3 ? '• În mișcare, ' + Math.round(v.viteza_kmh) + ' km/h' : '• Oprit');
+      return cine(v) + '\n' + unde(v) + '\n' + st;
     }).join('\n\n');
   } else if (intent === 'status') {
     const on = snap.filter(v => online(v, now)), mv = snap.filter(v => moving(v, now));
     const km = today.reduce((s, t) => s + (parseFloat(t.km) || 0), 0);
-    reply = '📊 **Status flotă**\n\n'
+    reply = '**Situația flotei acum**\n\n'
       // Totalul e numărul ADEVĂRAT al flotei, nu lungimea listei tăiate. Defalcarea de dedesubt
       // se face pe cât am văzut, iar nota de la final spune limpede că e o parte.
-      + '• 🚚 Total: **' + total + '** vehicule' + (taiate > 0 ? ' _(defalcarea de mai jos, pe primele ' + snap.length + ')_' : '') + '\n'
-      + '• 🟢 În mișcare: ' + mv.length + '\n'
-      + '• 🟠 Oprite: ' + (on.length - mv.length) + '\n'
-      + '• ⚪ Offline: ' + (snap.length - on.length) + '\n'
-      + '• 📏 Km azi: **' + Math.round(km) + ' km**';
+      + '• Total: **' + total + '**' + de(total) + 'vehicule' + (taiate > 0 ? ' _(defalcarea de mai jos, pe primele ' + snap.length + ')_' : '') + '\n'
+      + '• În mișcare: ' + mv.length + '\n'
+      + '• Oprite: ' + (on.length - mv.length) + '\n'
+      + '• Nu transmit: ' + (snap.length - on.length) + '\n'
+      + '• Km azi: **' + Math.round(km) + ' km**';
   } else {
     reply = 'Reformulează, te rog.';
     return { reply, source: 'local' };

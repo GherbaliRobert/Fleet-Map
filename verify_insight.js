@@ -215,8 +215,8 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const PAROLA = 'Str4da-Verde-2026';
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Insight SRL' })).j;
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma Insight SRL' })).j;
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
-  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
+  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   const cheie = await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   T('pregătire: două firme cu RA Insight, cheie de probă', !!co.id && !!co2.id && cheie.status === 200);
   async function om(username, role, companyId) {

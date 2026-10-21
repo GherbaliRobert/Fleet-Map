@@ -562,7 +562,7 @@ const LUNA = P.reincarcare(Date.now()).luna;
   for (let i = 0; i < 6; i++) { const u = await om('om' + i + '@biz.ro', 'viewer', coBz.id); if ((await loc(u)).status !== 200) toate = false; }
   T('Business: conturi nelimitate (încă 6, toate date)', toate && (await cota(zAdm)).seats === 7);
   const coV = await firma('Firma Veche SRL', '350000000059005', 'B 505 VEC');
-  await json('PUT', '/api/companies/' + coV.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  await json('PUT', '/api/companies/' + coV.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   const vAdm = await om('sef@veche.ro', 'company_admin', coV.id);
   const vFara = await om('fara@veche.ro', 'manager', coV.id);
   await loc(vAdm);
@@ -571,6 +571,23 @@ const LUNA = P.reincarcare(Date.now()).luna;
   T('…„Pachet și conturi" îi spune că e pe regula veche', (await json('GET', '/api/insight/pachet-conturi', vAdm.ck)).j.vechi === true);
   const arV = await json('POST', '/api/reports/ai-raport', vFara.ck, { text: 'Ce acte expiră?' });
   T('…și fila AI Raport rămâne pentru toți, ca înainte', arV.status === 200 && !!arV.j.raspuns && !arV.j.pachet, arV.status);
+  // Casetele vechi din fișa firmei (Alin, 20.10: „rezolvăm acum"): pe o firmă cu pachet — și Start e un pachet — nu mai mută
+  // firma pe regula veche; se arată doar pe regula veche, iar serverul refuză fără cererea pe față (`regula_veche: true`).
+  const coSt = await firma('Firma Start Casete SRL', '350000000059006', 'B 606 CAS');
+  const qSt = await json('PUT', '/api/companies/' + coSt.id + '/settings', S, { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15 } });
+  const dupaSt = await json('GET', '/api/companies/' + coSt.id + '/settings', S);
+  T('casetele vechi: „întrebări pe cont" salvate pe o firmă de pe Start se refuză (400), iar firma rămâne pe Start',
+    qSt.status === 400 && /^RA Insight se vinde pe pachete: firma are pachetul Start\. .*fila „Acces”/.test(qSt.j.error || '') && (dupaSt.j.ai_pachet || {}).cod === 'start', JSON.stringify({ s: qSt.status, e: qSt.j.error, p: dupaSt.j.ai_pachet }));
+  const limSt = await json('PUT', '/api/companies/' + coSt.id + '/ai-limit', S, { limit: 500 });
+  const limGol = await json('PUT', '/api/companies/' + coSt.id + '/ai-limit', S, { limit: null });
+  T('…la fel „Limită AI lunară" (400); golirea ei merge oricând', limSt.status === 400 && /pachetul Start/.test(limSt.j.error || '') && limGol.status === 200 &&
+    ((await json('GET', '/api/companies/' + coSt.id + '/settings', S)).j.ai_pachet || {}).cod === 'start', JSON.stringify({ a: limSt.status, b: limGol.status }));
+  const ovSt = await json('GET', '/api/companies/' + coSt.id + '/overview', S), ovV = await json('GET', '/api/companies/' + coV.id + '/overview', S);
+  T('…fișa firmei spune ecranului dacă e pe regula veche (casetele se arată doar acolo)', ovSt.j.ai_regula_veche === false && ovV.j.ai_regula_veche === true);
+  T('…pe ecran: „Limită AI lunară" doar fără pachet, fondul pe cont doar pe regula veche (altfel butonul spre „Acces”)',
+    /if \(!s\.pachet\) html \+= '<div style="' \+ SEC \+ 'border-bottom:none;"><div style="' \+ H \+ '">Limită AI lunară \(regula veche, pe cont\)/.test(PAG) &&
+    /regulaVeche: !!d\.ai_regula_veche/.test(PAG) && /\(s\.regulaVeche \? '<div style="margin-top:12px;[^']*">' \+\s*'<div style="font-size:12px;font-weight:700;margin-bottom:8px;">RA Insight — conturi și fond de întrebări/.test(PAG) &&
+    /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”/.test(PAG));
   const rau = await json('PUT', '/api/companies/' + coB.id + '/settings', S, { ai_pachet: { cod: 'gold' } });
   T('un pachet necunoscut se refuză (400)', rau.status === 400 && /Start, Basic, Pro, Business/.test(rau.j.error || ''));
   const laV = await json('PUT', '/api/companies/' + coV.id + '/settings', S, { ai_pachet: { cod: 'pro' } });
@@ -684,7 +701,7 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const prea = await json('GET', '/api/insight/pachet-trecere?cod=basic', tAdm.ck);
   T('cu 4 conturi, Basic se refuză: „oprește întâi 2 conturi"', prea.status === 400 && /Oprește întâi 2 conturi/.test(prea.j.error || ''), prea.j.error);
   const coVV = await firma('Firma Pe Cont SRL', '350000000059010', 'B 110 CON');
-  await json('PUT', '/api/companies/' + coVV.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  await json('PUT', '/api/companies/' + coVV.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   const vvAdm = await om('sef@pecont.ro', 'company_admin', coVV.id);
   T('firma pe regula veche nu-și schimbă singură pachetul (poateSchimba: false, 403)', (await json('GET', '/api/insight/pachete', vvAdm.ck)).j.poateSchimba === false
     && (await json('GET', '/api/insight/pachet-trecere?cod=pro', vvAdm.ck)).status === 403);

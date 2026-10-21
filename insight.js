@@ -361,6 +361,7 @@ function istoricPentruModel(mesaje, max, lungime) {
   const out = [];
   for (const m of ultime) {
     let text = String(m.text).trim();
+    if (m.rol === 'assistant') text = litereRomanesti(text);   // un răspuns vechi cu litere străine nu-l mai „învață" pe model
     if (text.length > L) text = text.slice(0, L) + ' […]';
     const prev = out[out.length - 1];
     if (prev && prev.role === m.rol) prev.content += '\n\n' + text;
@@ -393,21 +394,16 @@ const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu exper
   '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă. Scrie numai cu litere ' +
   'românești: niciun cuvânt cu litere din alt alfabet (de pildă rusești).';
 
-// Literele din alt alfabet (Alin, 19.10, în poza unui răspuns: „октомбrie 2026"). Modelul e rugat o dată să rescrie; ce rămâne
-// se trece aici în litere românești, ca să nu ajungă niciodată la client. Doar chirilice și grecești (alte alfabete nu s-au văzut).
-const STRAINE_RE = /[\u0370-\u03FF\u0400-\u04FF]/;
-const CHIRILIC = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'io', ж: 'j', з: 'z', и: 'i', й: 'i', к: 'c', л: 'l', м: 'm', н: 'n', о: 'o',
-  п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ț', ч: 'ci', ш: 'ș', щ: 'șt', ъ: 'ă', ы: 'î', ь: '', э: 'e', ю: 'iu', я: 'ia',
-  α: 'a', β: 'b', γ: 'g', δ: 'd', ε: 'e', ζ: 'z', η: 'i', θ: 'th', ι: 'i', κ: 'c', λ: 'l', μ: 'm', ν: 'n', ξ: 'x', ο: 'o', π: 'p', ρ: 'r',
-  σ: 's', ς: 's', τ: 't', υ: 'i', φ: 'f', χ: 'h', ψ: 'ps', ω: 'o' };
-function areLitereStraine(t) { return STRAINE_RE.test(String(t || '')); }
-function litereRomanesti(t) {
-  return String(t == null ? '' : t).replace(/[\u0370-\u03FF\u0400-\u04FF]/g, function (c) {
-    const l = c.toLowerCase(), r = CHIRILIC[l];
-    if (r == null) return '';
-    return c === l ? r : r.charAt(0).toUpperCase() + r.slice(1);
-  });
-}
+// Literele din alt alfabet (Alin, 19.10: „октомбrie 2026" într-un răspuns) — regula stă în litere.js (o singură dată, pentru
+// orice text scris de model); aici doar o dăm mai departe, ca restul codului să o găsească tot la RA Insight.
+const litere = require('./litere.js');
+const areLitereStraine = litere.areLitereStraine, litereRomanesti = litere.litereRomanesti;
+
+// ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „păi voi nu ați verificat dacă are, eu vă plătesc"). ACEEAȘI regulă în RA Insight,
+// în „Rezumă cu RA Insight", în rezumatul agenților și în Scrisoarea de luni — un singur loc.
+const ECHIPAMENTUL = 'ECHIPAMENTUL: aparatul GPS, senzorii (de combustibil, de temperatură), legătura cu calculatorul mașinii și montajul sunt treaba ' +
+  'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor", „verifică aparatul", ' +
+  '„sună instalatorul") și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat".';
 
 // ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat" pe sume bune) ──────────────────────────────
 // RA Insight primește din raport cel mult 25 de rânduri; când adună singur cursele pe mașini, greșește (sau adună doar ce
@@ -450,5 +446,5 @@ module.exports = {
   totaluriPeMasina,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
-  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, areLitereStraine, litereRomanesti,
+  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, areLitereStraine, litereRomanesti,
 };

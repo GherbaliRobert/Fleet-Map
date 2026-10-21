@@ -160,7 +160,7 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   console.log('\n4. Pe server pornit, cu modelul simulat (nu se cheltuie nimic)');
   const S = await login('admin', 'test1234');
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Cifre SRL' })).j;
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   const u = (await json('POST', '/api/users', S, { username: 'sef@cifre.ro', full_name: 'Sef Cifre', role: 'admin', company_id: co.id })).j;
   await puneParola(u, 'Str4da-Verde-2026', B);
