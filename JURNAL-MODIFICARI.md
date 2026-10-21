@@ -228,6 +228,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   vede abia sesiunea următoare. Altfel: Robert apasă „Proba modelelor" pe ratrack.ro, pe firma noastră (2 minute).
   **21.10:** Alin a cerut pașii pentru Robert: sunt, cu poze, în PDF-ul „Ghid: Pachet și conturi, Proba modelelor" (RA Insight · control ›
   Controale › „Proba modelelor"; numele vechi „Utilizare RA Insight" nu mai există). Costă cam 2–5 lei.
+  **21.10 (după-amiază): proba e făcută** — Robert a rulat-o pe ratrack.ro, pe firma noastră, iar Alin mi-a trimis rezultatul.
+  Haiku 5.5: 0,48 bani pe întrebare, 17 din 20 bune, 3 greșite; Sonnet 5.5: 6,65 bani, 20 din 20 bune. Cele 3 greșeli vin din
+  aplicație (RA Insight vede 25 de rânduri dintr-un raport; raportul „Analitic" se oprește la 5.000 de poziții; alimentările și
+  scăderile care nu se văd nu i se spun). Analiza, întrebare cu întrebare: PDF-ul „Proba modelelor, garanția și machetele"
+  (21.10). **Rămâne alegerea modelului** (recomand Haiku 5.5, întrebarea 1 din PDF); se bifează când răspunde Alin.
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -270,7 +275,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (un rând fix pe lună), iar o firmă cu pachet își poate schimba singură pachetul din aplicație.
 - [ ] **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
   („doar dacă proba arată că Haiku 5.5 e slab"). Se pornește dintr-un comutator al nostru, după probă; cât e oprită, nici
-  „Vezi pachetele" nu o promite.
+  „Vezi pachetele" nu o promite. **21.10:** proba arată Sonnet 5.5 la 6,65 bani pe întrebare: un pachet folosit până la capăt ar
+  costa peste preț (Business: 66,50 lei la un preț de 30 de lei). Recomand s-o lăsăm oprită până la a doua probă, pe „RA Track
+  Demo", după reparațiile din PDF-ul din 21.10.
 - [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
