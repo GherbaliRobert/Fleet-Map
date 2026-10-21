@@ -34,7 +34,7 @@ export type IconName =
   | 'cruiseGauge' | 'washerFluid' | 'adblueDrop' | 'stopHand' | 'warnCircle' | 'steeringEps'
   | 'brakePad' | 'lightBulbOut' | 'personSeat' | 'ptoGear' | 'sleepMoon' | 'startStop'
   | 'gasCanister' | 'plugCharge' | 'trailerHitch' | 'diffLock' | 'lightExtra'
-  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen';
+  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen' | 'share';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
@@ -226,6 +226,8 @@ const P: Record<IconName, string> = {
   // Panoul Mail (13.10): răspunde, redirecționează, steaua (goală / plină), Primite, „Recuperează", citit.
   reply: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5V20"/>',
   forward: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5V20"/>',
+  // „Distribuie locația” (21.10): trei noduri legate.
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
   starFill: '<path fill="currentColor" d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',

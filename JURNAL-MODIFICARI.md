@@ -142,6 +142,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Se instalează ea, în locul lui 1.0.17.
   **14.10 (după-amiaza):** `RA-Track-1.0.19-debug.apk`, pe Desktop — tot ce e în 1.0.18, plus pozele din emailurile primite
   (cele mari și cele atașate) și pachetele RA Insight ale lui Alin. Se instalează ea, în locul lui 1.0.18.
+  **21.10:** APK 1.0.20 — tot ce e în 1.0.19, plus „Distribuie locația" în fișa mașinii. Construit pe GitHub (Actions → „APK de
+  test (Android)", ramura de lucru): e de DEBUG și **fără notificări push** (cheia Firebase nu e în git), iar fiindcă e semnat
+  altfel decât cel de pe Desktop, telefonul cere dezinstalarea celui vechi. Cel cu notificări se construiește ca până acum, pe
+  calculatorul vostru, din aceeași ramură (sau din main, după unire).
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -399,7 +403,13 @@ să vadă oricine are acel link… după ce expiră, să nu mai existe acel link
   server pornit).
 - **Ce vede fondatorul:** același buton, pe orice mașină a unei firme; linkul arată firma mașinii.
 - **Ce vede clientul:** butonul „Distribuie" în fișa mașinii (admin, manager, dispecer) și pagina publică pe care o trimite.
-- Telefonul (aplicația) nu are încă butonul — la APK-ul următor, pe aceleași rute. Pagina publică merge deja pe telefon.
+- **Telefonul (APK 1.0.20, Robert: „vreau și APK-ul"):** fișa mașinii → „Distribuie locația" → aceeași foaie ca pe web: durata,
+  „Creează linkul", „Copiază", „Trimite" (foaia telefonului: WhatsApp, SMS, email…), „WhatsApp" direct, „Alt link" și linkurile
+  active cu „Oprește" (întreabă întâi). Pe aceleași rute; duratele și mesajul vin tot de la server.
+  Fișierele: `mobile/src/components/DistribuieLocatia.tsx` + `distribuieLocatia.css` (noi), `screens/VehicleDetail.tsx`,
+  `api/endpoints.ts`, `components/Icon.tsx` (iconița „share"), versiunea în `android/variables.gradle` și `api/client.ts`.
+- **Hotărât de Robert (21.10: „1 da, 2 da, 3 da, 4 inclus"):** duratele rămân 15 minute / 1 oră / 8 ore; fac linkuri adminul,
+  managerul și dispecerul; publicul vede mașina, numărul și firma, fără șofer; funcția e inclusă la toate firmele.
 
 ### AMÂNDOI · Șase rapoarte de ~20 de ori mai repede și fără gigaocteți de memorie — `7184d68`
 
@@ -12135,11 +12145,9 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **(voi) „Distribuie locația" (21.10) — patru alegeri, lăsate pe varianta prudentă:**
-  1. **Duratele:** 15 minute, 1 oră, 8 ore (ca pe WhatsApp). Vreți și 24 de ore?
-  2. **Cine:** administratorul, managerul, dispecerul — vizualizatorul nu. E bine?
-  3. **Ce vede publicul:** numele și numărul mașinii și firma; fără șofer. Vreți și numele șoferului, sau fără firmă?
-  4. **Modul:** azi e inclus la toate firmele. Rămâne așa sau se vinde ca modul în ofertă?
+- [x] **HOTĂRÂT (21.10): „Distribuie locația".** Robert: *„1 da, 2 da, 3 da, 4 inclus"* — duratele 15 minute / 1 oră /
+  8 ore; adminul, managerul și dispecerul (vizualizatorul nu); publicul vede mașina, numărul și firma, fără șofer; inclusă la
+  toate firmele, nu se vinde separat.
 
 - [ ] **(voi) Cinci întrebări rămase de la lotul 2 pe telefon (29.09).** Până hotărâți, am lăsat varianta prudentă:
   1. **Intervalele de service și „Acte cerute"** se pot doar citi pe telefon; cifrele se schimbă de pe web. Rămâne așa?

@@ -12,7 +12,8 @@
 //   2. pagina publică (public/locatie.html): Nunito, sigla casei, telefon (viewport, cartonaș jos) + calculator, fără
 //      indexare, fără cookie-uri, textul pus cu textContent, mașina dispare când linkul nu mai e bun; serviciul offline
 //      nu o ține în cache;
-//   3. aplicația: butonul din fișa mașinii (doar cui îl poate folosi), fereastra, duratele și textele luate de la server;
+//   3. aplicația (web și telefon): butonul din fișa mașinii (doar cui îl poate folosi), fereastra / foaia, duratele și
+//      textele luate de la server;
 //   4. pe server pornit: cine poate (admin, dispecer) și cine nu (vizualizatorul, altă firmă), linkul văzut FĂRĂ cont,
 //      un link inventat = unul expirat, „Oprește", expirarea (rândul se șterge), plafonul pe mașină, mașina arhivată sau
 //      mutată pe altă firmă oprește linkul pe loc.
@@ -118,6 +119,25 @@ const clase = ['loc-modal', 'loc-masina', 'loc-intro', 'loc-et', 'loc-durate', '
 const faraStil = clase.filter((c) => css.indexOf('.' + c + ' ') < 0 && css.indexOf('.' + c + '.') < 0 && css.indexOf('.' + c + ':') < 0 && css.indexOf('.' + c + ',') < 0);
 T('fiecare piesă a ferestrei are stil în app.css (pe variabilele temei)', !faraStil.length, faraStil.join(', '));
 T('durata aleasă: fundal verde, text închis (regula casei)', /\.loc-dur\.on \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(css));
+
+// ─── 3c. Telefonul ─────────────────────────────────────────────────────────────────────────────────────────────────
+sect('3c. Telefonul (fișa mașinii, APK)');
+const tFoaie = citeste('mobile/src/components/DistribuieLocatia.tsx'), tCss = citeste('mobile/src/components/distribuieLocatia.css');
+const tFisa = citeste('mobile/src/screens/VehicleDetail.tsx'), tApi = citeste('mobile/src/api/endpoints.ts'), tIcon = citeste('mobile/src/components/Icon.tsx');
+T('foaia există și e deschisă din fișa mașinii, doar cui poate (poateDistribuiLocatia de la server)',
+  tFoaie.length > 2000 && /me\.value\?\.poateDistribuiLocatia && <button class="d-act" onClick=\{\(\) => setDistribuie\(true\)\}>/.test(tFisa) && /<DistribuieLocatia imei=\{imei\}/.test(tFisa) && /poateDistribuiLocatia\?: boolean/.test(tApi));
+T('aceleași rute ca pagina web', /'\/api\/devices\/' \+ encodeURIComponent\(imei\) \+ '\/locatie-distribuita'/.test(tApi) && /method: 'POST', body: \{ minute \}/.test(tApi) && /'\/locatie-distribuita\/' \+ encodeURIComponent\(String\(id\)\), \{ method: 'DELETE' \}/.test(tApi));
+T('duratele și mesajul vin de la server (telefonul nu le scrie)', /setDurate\(d\)/.test(tFoaie) && /mesaj: r\.mesaj/.test(tFoaie) && !/'15 minute'|'8 ore'|480/.test(tFoaie));
+T('„Trimite” = foaia de partajare a telefonului; „Oprește” întreabă întâi', /Share\.share\(\{ title: 'Locație live', text: facut\.mesaj \}\)/.test(tFoaie) && /Oprești linkul\?/.test(tFoaie) && /Cine îl are nu mai vede mașina\./.test(tFoaie));
+T('„înapoi” pe Android închide întâi întrebarea, apoi foaia', /useInapoiInchide\(true, \(\) => \{ if \(deOprit\) \{ setDeOprit\(null\); return true; \} onClose\(\); return true; \}\)/.test(tFoaie));
+T('alt vehicul deschis → foaia se închide', /setShowMap\(false\); setDistribuie\(false\);/.test(tFisa));
+T('iconița „share” există', /\| 'share';/.test(tIcon) && /\n  share: '<circle/.test(tIcon));
+const tClase = ['dl-sheet', 'dl-masina', 'dl-intro', 'dl-et', 'dl-durate', 'dl-dur', 'dl-fa', 'dl-link', 'dl-nota', 'dl-err', 'dl-cap', 'dl-act', 'dl-act-t', 'dl-act-a', 'dl-act-b', 'dl-stop'];
+const tFara = tClase.filter((c) => tCss.indexOf('.' + c + ' ') < 0 && tCss.indexOf('.' + c + '.') < 0);
+T('fiecare clasă a foii are stil; durata aleasă: fundal verde, text închis', !tFara.length && /\.dl-dur\.on \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(tCss), tFara.join(', '));
+T('clasele foii nu se bat cu cele ale hărții din Flotă (loc-)', !/\.loc-/.test(tCss) && !/class="loc-|'loc-/.test(tFoaie));
+const vGr = (citeste('mobile/android/variables.gradle').match(/appVersionName = '([^']+)'/) || [])[1], vCl = (citeste('mobile/src/api/client.ts').match(/APP_VERSIUNE = '([^']+)'/) || [])[1];
+T('versiunea aplicației e aceeași în build și în ce trimite serverului (1.0.20+)', vGr && vGr === vCl && vGr.localeCompare('1.0.20', undefined, { numeric: true }) >= 0, vGr + ' / ' + vCl);
 
 // ─── 3b. Baza și copiile ──────────────────────────────────────────────────────────────────────────────────────────
 sect('3b. Baza, copiile, jurnalul');

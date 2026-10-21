@@ -25,6 +25,7 @@ import { VehicleDocs } from '../components/VehicleDocs';
 import { VehicleService } from '../components/VehicleService';
 import { CanFlags } from '../components/CanFlags';
 import { CanTellTales } from '../components/CanTellTales';
+import { DistribuieLocatia } from '../components/DistribuieLocatia';
 import './detail.css';
 import './admin.css';
 
@@ -111,6 +112,7 @@ export function VehicleDetail() {
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [distribuie, setDistribuie] = useState(false); // „Distribuie locația” (21.10)
   // Pe lângă „modifică flota", firma poate tăia unui rol anume editarea vehiculelor (editariTaiate din
   // /api/me). Serverul refuză atunci salvarea fișei — deci creionul nu apare, ca omul să nu completeze un
   // formular întreg și să primească „Acces interzis" la final.
@@ -158,7 +160,7 @@ export function VehicleDetail() {
   useEffect(() => {
     // Alt vehicul → uităm tot ce ținea de cel dinainte, ÎNAINTE de a cere datele noului vehicul.
     setFull(null); setSensors(null); setSensorsOk(false); setDaily(null); setAddr('');
-    setEditOpen(false); setEf({}); setSheet(''); setNavOpen(false); setShowMap(false);
+    setEditOpen(false); setEf({}); setSheet(''); setNavOpen(false); setShowMap(false); setDistribuie(false);
     setCalRowsRaw([]); setCalDirty(false); setSondeEditRaw(null); setSondeDirty(false);
     camInit.current = {};
     docsDeschise.current = false;
@@ -410,6 +412,8 @@ export function VehicleDetail() {
           {/* „Merg după el" — navigatia obisnuita te duce unde ERA masina; asta arata unde e ACUM. */}
           <button class="d-act" disabled={!ll} onClick={() => loc.route('/vehicles/' + imei + '/follow')}><Icon name="compass" size={18} class="ic" /> Merg după el</button>
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
+          {/* „Distribuie locația” (21.10): linkul live pentru oricine, ca pe WhatsApp — doar cui îl poate face (serverul spune). */}
+          {me.value?.poateDistribuiLocatia && <button class="d-act" onClick={() => setDistribuie(true)}><Icon name="share" size={18} class="ic" /> Distribuie locația</button>}
           {navOpen && ll && (
             <div class="d-nav">
               <a onClick={() => openUrl(`https://www.google.com/maps/dir/?api=1&destination=${ll}`)}><Icon name="mapPin" size={16} /> Google Maps</a>
@@ -468,6 +472,10 @@ export function VehicleDetail() {
         </div>
       </div>
 
+      {distribuie && (
+        <DistribuieLocatia imei={imei} onClose={() => setDistribuie(false)}
+          nume={(() => { const n = String(full?.name || v?.name || '').trim(), p = String(full?.plate || v?.plate || '').trim(); return n && p && n.toUpperCase() !== p.toUpperCase() ? n + ' · ' + p : (n || p || 'Vehicul'); })()} />
+      )}
       {showMap && v && v.latitude != null && (
         <MapModal lat={v.latitude!} lng={v.longitude!} angle={v.angle || 0} color={s ? HEX[s.status] : '#3FE07D'} label={v.plate || v.name || 'Locație'} onClose={() => setShowMap(false)} />
       )}

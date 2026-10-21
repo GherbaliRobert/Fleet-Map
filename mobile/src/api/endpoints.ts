@@ -16,7 +16,11 @@ export interface Me {
   // de firmă („Operator depou", roluri proprii) — null când firma n-a redenumit nimic.
   full_name?: string | null; phone?: string | null; roleLabel?: string | null;
   functie?: string | null; // 13.10: funcția omului (apare în semnătura emailurilor din panoul Mail)
+  poateDistribuiLocatia?: boolean; // 21.10: butonul „Distribuie” din fișa mașinii (aceeași regulă ca pe server)
 }
+// „Distribuie locația” (21.10): ce dă serverul — duratele și linkurile active (fără link: se vede doar la facere).
+export interface LocatieDurata { minute: number; text: string; }
+export interface LocatieActiva { id: number; creatDe: string | null; alMeu: boolean; creat: string; pana: string; ramas: string; }
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
   stops: number; fuelConsumed: number | null; fuelEstimated?: boolean; engineHours: number | null; recordCount?: number;
@@ -450,6 +454,13 @@ export const Api = {
   // ── Simulatorul și planurile de încărcare (pasul 4, 12.10) — aceleași rute ca pagina; serverul socotește tot ──
   incarcareFlota: () => api<{ vehicule: any[]; remorci: any[] }>('/api/incarcare/flota'),
   simuleaza: (b: any) => api<any>('/api/incarcare/simuleaza', { method: 'POST', body: b }),
+  // ── „Distribuie locația” (21.10) — aceleași rute ca pagina web; serverul scrie textele ──
+  locatieDistribuita: (imei: string) =>
+    api<{ durate: LocatieDurata[]; max: number; active: LocatieActiva[] }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita'),
+  faLocatieDistribuita: (imei: string, minute: number) =>
+    api<{ ok: boolean; id: number; link: string; durata: string; pana: string; ramas: string; mesaj: string }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita', { method: 'POST', body: { minute } }),
+  opresteLocatieDistribuita: (imei: string, id: number) =>
+    api<{ ok: boolean; text: string }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
   planuriIncarcare: () => api<any[]>('/api/incarcare/planuri'),
   planIncarcare: (id: number) => api<{ plan: any; rezultat: any; eroare: string | null; notaSofer: string; poateEdita: boolean }>('/api/incarcare/planuri/' + encodeURIComponent(String(id))),
   salveazaPlan: (id: number | null, b: any) => api<any>('/api/incarcare/planuri' + (id ? '/' + encodeURIComponent(String(id)) : ''), { method: id ? 'PUT' : 'POST', body: b }),

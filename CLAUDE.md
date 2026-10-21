@@ -2621,8 +2621,12 @@ fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, ca
   `_locMasini.delete(imei)` (ca `_trecePeFirma`, adopția, ștergerea), altfel linkul vechi mai merge până la 30 de secunde.
 - Pagina publică: fără cookie-uri și fără analiză de trafic, `noindex` (meta + `X-Robots-Tag`), serviciul offline nu o ține în
   cache, textul cu textContent; fără Leaflet (rețea care blochează unpkg) cartonașul merge oricum, cu „Google Maps".
-- Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Telefonul (APK) nu are încă butonul. Păzit de
-  `verify_locatie_distribuita.js` (în `npm test`, pe server pornit).
+- **Telefonul (APK 1.0.20):** `mobile/src/components/DistribuieLocatia.tsx` (foaia; clasele `dl-` — `loc-` e al hărții din Flotă),
+  deschisă din fișa mașinii doar cu `me.poateDistribuiLocatia`, pe aceleași rute (`Api.locatieDistribuita` / `faLocatieDistribuita`
+  / `opresteLocatieDistribuita`). Schimbi fereastra web → schimbi și foaia.
+- Hotărât de Robert (21.10): duratele rămân trei, cine poate rămâne cum e, publicul fără șofer, inclusă la toate firmele.
+- Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Păzit de `verify_locatie_distribuita.js` (în `npm test`, pe server
+  pornit, plus foaia telefonului).
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

@@ -1,0 +1,23 @@
+/* „Distribuie locația" (21.10): foaia din fișa mașinii. Clasele au prefixul `dl-` (`loc-` e deja al hărții din Flotă).
+   Durata aleasă: fundal verde, text închis — verdele casei ca text pe fundal deschis nu se citește (1,7). */
+.dl-sheet { max-height: 88vh; }
+.dl-masina { font-weight: 800; font-size: 16px; color: var(--text-primary); overflow-wrap: anywhere; }
+.dl-intro { margin: 4px 0 14px; font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); }
+.dl-et { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+.dl-durate { display: flex; gap: 8px; margin-bottom: 12px; }
+.dl-dur { flex: 1 1 0; min-height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--text-primary); font-family: inherit; font-weight: 700; font-size: 14px; }
+.dl-dur.on { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.dl-fa { width: 100%; }
+.dl-link { width: 100%; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 10px 11px; font-size: 13px; font-family: inherit; line-height: 1.4; word-break: break-all; resize: none;
+  user-select: text; -webkit-user-select: text; margin-bottom: 4px; }
+.dl-nota { margin-top: 10px; font-size: 12.5px; color: var(--text-muted); }
+.dl-err { margin-top: 10px; font-size: 13px; color: var(--red); }
+.dl-cap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.dl-act { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-top: 8px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark); }
+.dl-act-t { min-width: 0; }
+.dl-act-a { font-weight: 700; font-size: 13.5px; color: var(--text-primary); }
+.dl-act-b { font-size: 12px; color: var(--text-muted); }
+.dl-stop { flex: 0 0 auto; padding: 8px 12px; min-height: 40px; }
