@@ -226,6 +226,7 @@ const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite 
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
 const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat"
 const probleme = require('./probleme');          // „Am găsit o problemă" (15.10): viteza reală sau eroare de GPS, senzorul blocat, consumul din fișă
+const locatieDistribuita = require('./locatie_distribuita'); // „Distribuie locația" (21.10): linkul public al unei mașini, ca pe WhatsApp
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
@@ -2928,6 +2929,8 @@ app.get('/api/me', async (req, res) => {
     // Are omul cont RA Insight? (Capitolul 2, pasul 1) Cine are, vede agenții în „Azi la tine" și nu mai are „Agenți AI" în meniu.
     // Noi (super-admin) n-avem o flotă pentru „Azi la tine": păstrăm pagina agenților în meniu (acolo punem pragurile platformei).
     aiCont: !isSuper(a.role) && features.ai_assistant !== false && aiSeat,
+    // „Distribuie locația" (21.10): butonul din fișa mașinii apare doar cui îl poate folosi (aceeași regulă ca pe server).
+    poateDistribuiLocatia: _poateDistribuiLocatia(req),
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
 });
@@ -9085,6 +9088,7 @@ async function _trecePeFirma(req, imei, companyId) {
   // Propunerea din anunțul „aparate noi transmit" și-a făcut treaba (sau a fost ocolită): nu mai rămâne agățată.
   try { await db.pool.query('UPDATE devices SET anuntat_firma = NULL WHERE imei = $1', [imei]); } catch (e) {}
   _devCompanyCache.delete(imei);
+  _locMasini.delete(imei);   // „Distribuie locația": linkul făcut la firma veche se oprește pe loc, nu peste 30 de secunde
   _uitaPornirea(imei);   // abonamentul pornește din nou la prima transmisie pe firma nouă (dacă firma s-a schimbat)
   auditReq(req, 'assign_company', 'device', imei, { companyId });
   // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc).
@@ -10310,6 +10314,115 @@ app.post('/api/incarcare/pdf', requireAuth, withScope, requireFeature('incarcare
 // Cine face și trimite planuri: cine poate modifica flota (adminul, managerul) și dispecerul firmei — rolul „Dispecer"
 // nu modifică flota, dar planul de încărcare e treaba lui (în machetă, „dispecerul"). Șoferul doar primește.
 const _incDispecer = (req) => req.isSuper || permReq(req, 'manageFleet') || getAuth(req).role === 'dispatcher';
+
+// ─── „Distribuie locația" (Robert, 21.10: „ca pe WhatsApp… să poată să vadă oricine are acel link… după ce expiră, să nu
+// mai existe") ───
+// Din fișa mașinii, cine dispecerizează face un link pentru 15 minute, o oră sau 8 ore. Oricine are linkul vede mașina pe
+// hartă (pagina publică /locatie/<token>), actualizată singură. La expirare sau la „Oprește", rândul se șterge și linkul
+// răspunde că locația nu mai e distribuită. Regulile și textele: locatie_distribuita.js. Spre public pleacă DOAR ce pune
+// `locatieDistribuita.pentruPagina` (numele mașinii, numărul, firma, poziția) — fără IMEI, fără șofer, fără istoric.
+// Cine poate: aceeași regulă ca planurile de încărcare (adminul, managerul, dispecerul) — vizualizatorul doar se uită.
+const _poateDistribuiLocatia = (req) => _incDispecer(req);
+const LOC_NU_POATE = 'Doar administratorul, managerul sau dispecerul firmei poate distribui locația unei mașini.';
+const _locMasini = new Map(); // imei → { t, dev, firma } — pagina publică întreabă la 5 secunde; fișa mașinii se citește la 30
+async function _locMasina(imei, proaspat) {
+  const c = _locMasini.get(imei);
+  if (!proaspat && c && Date.now() - c.t < 30000) return c;
+  const dev = await db.getDeviceFull(imei);
+  let firma = null;
+  if (dev && dev.company_id != null) { try { const co = await db.getCompanyById(dev.company_id); firma = co ? co.name : null; } catch (e) { /* fără numele firmei */ } }
+  const v = { t: Date.now(), dev, firma };
+  if (_locMasini.size > 5000) _locMasini.clear();
+  _locMasini.set(imei, v);
+  return v;
+}
+const _locArhivata = (imei, dev) => archivedImeis.has(imei) || (dev && dev.status === 'archived');
+function _locRandPrivat(l, req, acum) {
+  const a = getAuth(req);
+  return { id: l.id, creatDe: l.creat_de_nume || null, alMeu: !!(a && a.userId != null && a.userId === l.creat_de),
+    creat: locatieDistribuita.ora(Number(l.creat_la)), pana: locatieDistribuita.ora(Number(l.expira_la)),
+    ramas: locatieDistribuita.ramas(l.expira_la, acum) };
+}
+app.get('/api/devices/:imei/locatie-distribuita', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    if (!_poateDistribuiLocatia(req)) return res.status(403).json({ error: LOC_NU_POATE });
+    if (!canAccessImei(req, imei)) return res.status(404).json({ error: 'Vehicul negăsit' });
+    const acum = Date.now();
+    const active = await db.locatiiDistribuiteActive(imei, acum);
+    res.json({ durate: locatieDistribuita.DURATE, max: locatieDistribuita.MAX_ACTIVE_PE_MASINA,
+      active: active.map((l) => _locRandPrivat(l, req, acum)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/devices/:imei/locatie-distribuita', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    if (!_poateDistribuiLocatia(req)) return res.status(403).json({ error: LOC_NU_POATE });
+    if (!canAccessImei(req, imei)) return res.status(404).json({ error: 'Vehicul negăsit' });
+    const d = locatieDistribuita.durata((req.body || {}).minute);
+    if (!d) return res.status(400).json({ error: 'Alege cât timp: ' + locatieDistribuita.DURATE.map((x) => x.text).join(', ') + '.' });
+    const { dev } = await _locMasina(imei, true);
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit' });
+    if (_locArhivata(imei, dev)) return res.status(400).json({ error: 'Mașina e arhivată: locația ei nu se mai poate distribui.' });
+    const acum = Date.now(), max = locatieDistribuita.MAX_ACTIVE_PE_MASINA;
+    if ((await db.locatiiDistribuiteActive(imei, acum)).length >= max) {
+      return res.status(409).json({ error: 'Mașina are deja ' + max + ' linkuri active. Oprește unul dintre ele, apoi fă altul.' });
+    }
+    const token = locatieDistribuita.tokenNou(), a = getAuth(req);
+    const l = await db.creeazaLocatieDistribuita({ amprenta: locatieDistribuita.amprenta(token), imei, companyId: dev.company_id,
+      userId: a && a.userId, creatLa: acum, expiraLa: acum + d.minute * 60000 });
+    auditReq(req, 'create', 'locatie_distribuita', imei, { minute: d.minute, expira_la: Number(l.expira_la) });
+    const link = appBaseUrl(req) + '/locatie/' + token;
+    res.json({ ok: true, id: l.id, link, durata: d.text, pana: locatieDistribuita.ora(Number(l.expira_la)),
+      ramas: locatieDistribuita.ramas(l.expira_la, acum),
+      mesaj: locatieDistribuita.mesaj(locatieDistribuita.numeMasina(dev.name, dev.plate), Number(l.expira_la), link) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/devices/:imei/locatie-distribuita/:id', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    if (!_poateDistribuiLocatia(req)) return res.status(403).json({ error: LOC_NU_POATE });
+    if (!canAccessImei(req, imei)) return res.status(404).json({ error: 'Vehicul negăsit' });
+    const l = await db.getLocatieDistribuita(req.params.id);
+    if (!l || l.imei !== imei) return res.status(404).json({ error: 'Linkul nu mai există: a expirat sau a fost oprit.' });
+    await db.opresteLocatieDistribuita(l.id);
+    auditReq(req, 'delete', 'locatie_distribuita', imei, { id: l.id, expira_la: Number(l.expira_la) });
+    res.json({ ok: true, text: 'Linkul s-a oprit. Cine îl deschide acum vede că locația nu mai e distribuită.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Pagina publică: fără sesiune, fără cache, fără indexare. Tokenul stă în adresă; în bază doar amprenta lui.
+app.get('/locatie/:token', (req, res) => {
+  res.set('Cache-Control', NO_CACHE);
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(__dirname, 'public', 'locatie.html'));
+});
+app.get('/api/public/locatie/:token', async (req, res) => {
+  res.set('Cache-Control', NO_CACHE);
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  // Orice „nu" arată la fel (expirat, oprit, inventat, mașina arhivată, firma oprită): nimeni nu află mai mult din el.
+  const incheiat = () => res.status(404).json({ activ: false, titlu: locatieDistribuita.TITLU_INCHEIAT, text: locatieDistribuita.TEXT_INCHEIAT });
+  try {
+    const token = String(req.params.token || '');
+    if (!locatieDistribuita.tokenBun(token)) return incheiat();
+    const acum = Date.now();
+    const l = await db.locatieDistribuitaDupaAmprenta(locatieDistribuita.amprenta(token));
+    if (!locatieDistribuita.activ(l, acum)) {
+      if (l) db.opresteLocatieDistribuita(l.id).catch(() => {}); // a expirat: nu mai așteaptă curățenia de la minut
+      return incheiat();
+    }
+    const m = await _locMasina(l.imei);
+    const firmaAzi = m.dev && m.dev.company_id != null ? Number(m.dev.company_id) : null;
+    const firmaLink = l.company_id != null ? Number(l.company_id) : null;
+    if (!m.dev || _locArhivata(l.imei, m.dev) || firmaAzi !== firmaLink) return incheiat();
+    if (firmaLink != null) { const st = await _accessStatusCached(firmaLink); if (st && st.status === 'expired') return incheiat(); }
+    let poz = livePositions.get(l.imei) || null;
+    if (!poz) { try { poz = await db.ultimaPozitie(l.imei); } catch (e) { poz = null; } }
+    const s = poz && poz.timestamp ? _invSemnalText(poz.timestamp) : null;
+    res.json(locatieDistribuita.pentruPagina({ link: l, poz, nume: m.dev.name, numar: m.dev.plate, firma: m.firma,
+      semnal: s && s !== 'comunică' ? s : null }, acum));
+  } catch (e) { res.status(500).json({ activ: true, eroare: true, text: 'Nu am putut citi locația acum. Reîncerc în câteva secunde.' }); }
+});
+
 async function _incNumeOm(id) { try { const u = await db.getUserById(id); return u ? (u.full_name || u.username || ('#' + id)) : null; } catch (e) { return null; } }
 async function _incAnunta(userId, companyId, tip, gravitate, titlu, corp, date) {
   if (!userId) return;
@@ -11227,7 +11340,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       if (_existing.status === 'archived') await db.setDeviceStatus(imei, 'active');
       registeredImeis.add(imei); deviceAttempts.delete(imei); // adoptat → intră în allow-list (mod strict)
       _uitaPornirea(imei);   // pe firma nouă, abonamentul pornește la prima transmisie (pct. 12)
-      invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); await refreshWsScope();
+      invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); _locMasini.delete(imei); await refreshWsScope();
       const _pa = livePositions.get(imei);
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
       auditReq(req, 'adopt', 'device', imei, { companyId: adoptCompany });
@@ -11425,6 +11538,7 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     const { imei } = req.params;
     const dev = await db.getDeviceFull(imei);
     if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
+    _locMasini.delete(imei);   // „Distribuie locația": linkurile mașinii șterse se opresc pe loc
     if (dev.status !== 'archived') return res.status(400).json({ error: 'Doar vehiculele ARHIVATE pot fi șterse definitiv. Arhivează-l întâi.' });
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
@@ -19331,7 +19445,8 @@ if (process.env.SEED_TEST === '1') {
     try {
       const b = req.body || {}, acum = Number(b.acum) || Date.now();
       res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined,
-        plasa: b.plasa ? await plasaAnuntTick() : undefined });
+        plasa: b.plasa ? await plasaAnuntTick() : undefined,
+        locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   // Raportul instalatorului, până îl face Robert: aceeași funcție pe care o va chema el.
@@ -19346,7 +19461,7 @@ if (process.env.SEED_TEST === '1') {
       const { imei, io, speed, name, ts, lat, lng, angle } = req.body;
       const _cand = ts ? new Date(ts) : new Date();
       const data = { imei, io: io || {}, speed: speed || 0, name: name || imei, timestamp: _cand.toISOString(),
-        latitude: (lat != null ? lat : 45.75), longitude: (lng != null ? lng : 21.23) };
+        latitude: (lat != null ? lat : 45.75), longitude: (lng != null ? lng : 21.23), angle: Number(angle) || 0 };
       // simulare: desfacem starile (usi, lumini, martori) exact ca la ingestul TCP (server.js:773).
       // Fara randul asta, pozitia simulata ajunge cu semnalele BRUTE (can_ssf_*) si fara
       // `_security_flags`, iar ecranele de stare scriu „masina nu trimite semnale" — desi trimite.
@@ -20068,6 +20183,8 @@ async function start() {
   setInterval(() => contractExpiryTick().catch(() => {}), 24 * 60 * 60 * 1000);
   // „Aparate noi transmit" (30.09): la 3 minute — loturile se strâng singure (20 de minute fără un aparat nou).
   setInterval(() => aparateNoiTick().catch(() => {}), 3 * 60 * 1000);
+  // „Distribuie locația" (21.10): linkurile expirate se șterg la minut (pagina publică le refuză oricum din clipa expirării).
+  setInterval(() => db.stergeLocatiiDistribuiteExpirate(Date.now()).catch(() => {}), 60 * 1000);
   // Montajul de facturat (30.09): o dată pe oră, iar anunțul pleacă o singură dată pe firmă și pe perioada încheiată,
   // între 8 și 20 (o săptămână se încheie duminică la miezul nopții — anunțul vine luni dimineață, nu noaptea).
   setTimeout(() => montajDeFacturatTick().catch(() => {}), 4 * 60 * 1000);

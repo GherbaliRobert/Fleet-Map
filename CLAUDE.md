@@ -2604,6 +2604,26 @@ caută forma în tot panoul.
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
 
+## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
+Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore → linkul `/locatie/<token>`, pe care îl deschide oricine,
+fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, cartonaș jos pe telefon / în stânga pe calculator).
+- **Regulile și textele stau în `locatie_distribuita.js`** (curat): `DURATE`, `MAX_ACTIVE_PE_MASINA` (10), tokenul (`tokenNou`,
+  24 de octeți → 32 de caractere; în bază DOAR `amprenta`, sha256), `ramas`, `vechime`, `mesaj` (textul pentru WhatsApp) și
+  **`pentruPagina` = SINGURUL lucru care pleacă spre public** (numele + numărul mașinii, firma, poziția, starea). NU adăuga acolo
+  IMEI, șofer, istoric sau semnalele mașinii. Ecranele iau duratele și textele de la server.
+- **Cine:** `_poateDistribuiLocatia` = `_incDispecer` (super-admin, `manageFleet`, dispecerul), pe 3 rute, plus `canAccessImei`;
+  `/api/me` dă `poateDistribuiLocatia` (butonul `#detail-share-btn` apare doar atunci). Facerea și oprirea — în audit.
+- **Linkul se vede o singură dată** (la facere): lista din fereastră arată doar până când merge, cine l-a făcut și „Oprește".
+- **Un link care nu mai e bun răspunde la fel, oricare ar fi motivul** (404 `{ activ: false, titlu, text }`): expirat, oprit,
+  inventat, mașina arhivată / ștearsă / mutată pe altă firmă (firma linkului ≠ firma de azi), accesul firmei oprit. Pagina scoate
+  atunci mașina și urma de pe hartă și nu mai cere nimic. Expiratele se șterg la minut (`stergeLocatiiDistribuiteExpirate`).
+  ⚠ `_locMasini` ține fișa mașinii 30 de secunde: o cale NOUĂ care mută o mașină pe altă firmă sau o șterge cheamă
+  `_locMasini.delete(imei)` (ca `_trecePeFirma`, adopția, ștergerea), altfel linkul vechi mai merge până la 30 de secunde.
+- Pagina publică: fără cookie-uri și fără analiză de trafic, `noindex` (meta + `X-Robots-Tag`), serviciul offline nu o ține în
+  cache, textul cu textContent; fără Leaflet (rețea care blochează unpkg) cartonașul merge oricum, cu „Google Maps".
+- Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Telefonul (APK) nu are încă butonul. Păzit de
+  `verify_locatie_distribuita.js` (în `npm test`, pe server pornit).
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

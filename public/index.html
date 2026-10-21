@@ -379,6 +379,8 @@
       <div class="detail-actions">
         <button class="detail-action-btn" onclick="showDetailView('info')"><i class="fas fa-info-circle"></i> Info</button>
         <button class="detail-action-btn" onclick="showDetailView('routes')"><i class="fas fa-route"></i> Rute</button>
+        <!-- „Distribuie locația" (21.10): apare doar cui o poate distribui (`poateDistribuiLocatia` de la server). -->
+        <button class="detail-action-btn" id="detail-share-btn" onclick="locDistribuie()" style="display:none"><i class="fas fa-share-nodes"></i> Distribuie</button>
         <!-- „Raport" și „Transport" au fost scoase de aici: rapoartele se fac din secțiunea Rapoarte,
              care e mai bogată (perioadă, mai multe vehicule, export). Aveam două drumuri spre același
              lucru, iar cel de aici era cel sărac. Funcțiile rămân definite, dacă se vor înapoi. -->
@@ -1192,6 +1194,41 @@
           <div style="font-size:11px;margin-top:6px;">Verifica daca tara este setata si sarcinile pe axe sunt disponibile</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- „Distribuie locația" (Robert, 21.10): linkul public al mașinii, ca locația live de pe WhatsApp. Duratele, textul
+       mesajului și orele vin de la server; fereastra doar le arată (textContent). Linkul se vede o singură dată, când e
+       făcut: în bază stă doar amprenta lui, deci nu se poate arăta din nou — se face altul. -->
+  <div id="loc-modal" class="modal-overlay" onclick="if (event.target === this) locInchide()">
+    <div class="modal loc-modal" role="dialog" aria-labelledby="loc-titlu">
+      <h2>
+        <span id="loc-titlu"><i class="fas fa-share-nodes" style="margin-right:8px;color:var(--accent);"></i> Distribuie locația live</span>
+        <button class="close-btn" onclick="locInchide()" style="position:static;font-size:18px;" aria-label="Închide">&#10005;</button>
+      </h2>
+      <div class="loc-masina" id="loc-masina"></div>
+      <p class="loc-intro">Oricine are linkul vede mașina pe hartă, live, până expiră. După aceea linkul nu mai merge.</p>
+      <div id="loc-alege">
+        <div class="loc-et">Cât timp?</div>
+        <div class="loc-durate" id="loc-durate" role="radiogroup" aria-label="Cât timp"></div>
+        <button class="btn btn-primary" id="loc-fa" type="button" onclick="locFa()"><i class="fas fa-link"></i> Creează linkul</button>
+      </div>
+      <div class="loc-rezultat" id="loc-rezultat" hidden>
+        <div class="loc-et" id="loc-rez-t"></div>
+        <div class="loc-link-rand">
+          <input type="text" id="loc-link" readonly aria-label="Linkul" onclick="this.select()">
+          <button class="btn loc-btn" type="button" onclick="locCopiaza()"><i class="fas fa-copy"></i> <span id="loc-copiat">Copiază</span></button>
+        </div>
+        <div class="loc-trimite">
+          <button class="btn loc-btn" type="button" onclick="locWhatsapp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+          <button class="btn loc-btn" type="button" id="loc-share" onclick="locTrimite()" hidden><i class="fas fa-paper-plane"></i> Trimite…</button>
+          <button class="btn loc-btn" type="button" onclick="locAltul()"><i class="fas fa-plus"></i> Alt link</button>
+        </div>
+        <div class="loc-nota">Linkul se vede doar acum. Copiază-l sau trimite-l înainte să închizi fereastra.</div>
+      </div>
+      <div class="loc-err" id="loc-err" role="alert"></div>
+      <div class="loc-active-cap" id="loc-active-cap" hidden>Linkuri active pe mașina asta</div>
+      <div id="loc-active"></div>
     </div>
   </div>
 
@@ -16672,6 +16709,7 @@ const pozitii = await r.json();</code></pre>
         } catch (e) {}
       }
       detailPanelImei = imei;
+      locButon();
       const panel = document.getElementById('detail-panel');
       panel.classList.add('open');
       panel.style.transform = '';
@@ -16708,6 +16746,131 @@ const pozitii = await r.json();</code></pre>
         loadDetailRoutes('today', document.querySelector('.route-period-btn.active'));
       }
     }
+
+    // ── începe „Distribuie locația” (21.10) ──
+    // Regula (cine poate, cât ține, ce vede publicul) stă pe server (locatie_distribuita.js). Aici doar se cere și se arată.
+    var _loc = { imei: null, minute: null, durate: [], link: null, mesaj: null, id: null };
+    function _locEl(id) { return document.getElementById(id); }
+    function locButon() {
+      var b = _locEl('detail-share-btn'); if (!b) return;
+      var u = window.currentUser;
+      if (u && u.poateDistribuiLocatia === undefined) {
+        // Intrat chiar acum cu parola: răspunsul de la intrare n-are câmpul; îl ia o dată din profil.
+        u.poateDistribuiLocatia = null;
+        fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && window.currentUser) { window.currentUser.poateDistribuiLocatia = !!j.poateDistribuiLocatia; locButon(); } })
+          .catch(function () {});
+      }
+      b.style.display = (u && u.poateDistribuiLocatia) ? '' : 'none';
+    }
+    window.locButon = locButon;
+    function _locNume(imei) {
+      var d = (typeof devices !== 'undefined' && devices.get) ? devices.get(imei) : null;
+      var n = d && (d.name || ''), p = d && (d.plate || '');
+      if (n && p && n.toUpperCase() !== p.toUpperCase()) return n + ' · ' + p;
+      return n || p || 'Vehicul';
+    }
+    function _locEroare(t) { _locEl('loc-err').textContent = t || ''; }
+    window.locDistribuie = function () {
+      if (!detailPanelImei) return;
+      _loc.imei = detailPanelImei; _loc.link = null; _loc.mesaj = null; _loc.id = null;
+      _locEl('loc-masina').textContent = _locNume(_loc.imei);
+      _locEl('loc-alege').hidden = false; _locEl('loc-rezultat').hidden = true;
+      _locEl('loc-durate').textContent = ''; _locEl('loc-active').textContent = ''; _locEl('loc-active-cap').hidden = true;
+      _locEl('loc-fa').disabled = true;
+      _locEroare('');
+      _locEl('loc-modal').classList.add('visible');
+      _locIncarca();
+    };
+    window.locInchide = function () { _locEl('loc-modal').classList.remove('visible'); _loc.link = null; _loc.mesaj = null; };
+    function _locIncarca() {
+      var imei = _loc.imei;
+      return fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita', { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          if (_loc.imei !== imei) return;
+          if (!x.ok) { _locEroare((x.j && x.j.error) || 'Nu am putut citi linkurile.'); return; }
+          _loc.durate = x.j.durate || [];
+          if (_loc.minute == null || !_loc.durate.some(function (d) { return d.minute === _loc.minute; })) {
+            var unu = _loc.durate.filter(function (d) { return d.minute === 60; })[0] || _loc.durate[0];
+            _loc.minute = unu ? unu.minute : null;
+          }
+          _locDurate();
+          _locActive(x.j.active || []);
+          _locEl('loc-fa').disabled = _loc.minute == null;
+        })
+        .catch(function () { _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); });
+    }
+    function _locDurate() {
+      var box = _locEl('loc-durate'); box.textContent = '';
+      _loc.durate.forEach(function (d) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'loc-dur' + (d.minute === _loc.minute ? ' on' : '');
+        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', d.minute === _loc.minute ? 'true' : 'false');
+        b.textContent = d.text;
+        b.onclick = function () { _loc.minute = d.minute; _locDurate(); };
+        box.appendChild(b);
+      });
+    }
+    function _locActive(lista) {
+      var box = _locEl('loc-active'); box.textContent = '';
+      _locEl('loc-active-cap').hidden = !lista.length;
+      lista.forEach(function (l) {
+        var r = document.createElement('div'); r.className = 'loc-act';
+        var t = document.createElement('div'); t.className = 'loc-act-t';
+        var a = document.createElement('div'); a.className = 'loc-act-a';
+        a.textContent = 'Până la ' + l.pana + ' · ' + l.ramas;
+        var b = document.createElement('div'); b.className = 'loc-act-b';
+        b.textContent = 'Făcut la ' + l.creat + (l.creatDe ? ' de ' + (l.alMeu ? 'tine' : l.creatDe) : '') + (l.id === _loc.id ? ' · cel de mai sus' : '');
+        t.appendChild(a); t.appendChild(b);
+        var x = document.createElement('button'); x.type = 'button'; x.className = 'btn loc-btn loc-stop';
+        x.textContent = 'Oprește';
+        x.onclick = function () { _locOpreste(l.id); };
+        r.appendChild(t); r.appendChild(x); box.appendChild(r);
+      });
+    }
+    window.locFa = function () {
+      var imei = _loc.imei; if (!imei || _loc.minute == null) return;
+      var btn = _locEl('loc-fa'); btn.disabled = true; _locEroare('');
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minute: _loc.minute })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          btn.disabled = false;
+          if (_loc.imei !== imei) return;
+          if (!x.ok) { _locEroare((x.j && x.j.error) || 'Nu am putut face linkul.'); return; }
+          _loc.link = x.j.link; _loc.mesaj = x.j.mesaj; _loc.id = x.j.id;
+          _locEl('loc-rez-t').textContent = 'Linkul merge ' + x.j.durata + ', până la ' + x.j.pana + '.';
+          _locEl('loc-link').value = x.j.link;
+          _locEl('loc-copiat').textContent = 'Copiază';
+          _locEl('loc-share').hidden = !navigator.share;
+          _locEl('loc-alege').hidden = true; _locEl('loc-rezultat').hidden = false;
+          _locIncarca();
+        })
+        .catch(function () { btn.disabled = false; _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); });
+    };
+    window.locAltul = function () { _loc.link = null; _loc.mesaj = null; _loc.id = null; _locEl('loc-rezultat').hidden = true; _locEl('loc-alege').hidden = false; _locIncarca(); };
+    window.locCopiaza = function () {
+      if (!_loc.link) return;
+      var gata = function () { _locEl('loc-copiat').textContent = 'Copiat'; };
+      var vechi = function () { var i = _locEl('loc-link'); i.select(); try { document.execCommand('copy'); gata(); } catch (e) { /* rămâne selectat */ } };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(_loc.link).then(gata, vechi); else vechi();
+    };
+    window.locWhatsapp = function () { if (_loc.mesaj) window.open('https://wa.me/?text=' + encodeURIComponent(_loc.mesaj), '_blank', 'noopener'); };
+    window.locTrimite = function () { if (_loc.mesaj && navigator.share) navigator.share({ title: 'Locație live', text: _loc.mesaj }).catch(function () {}); };
+    async function _locOpreste(id) {
+      var imei = _loc.imei; if (!imei) return;
+      if (window.raConfirm && !await raConfirm('Oprești linkul? Cine îl are nu mai vede mașina.', { okLabel: 'Oprește' })) return;
+      _locEroare('');
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) _locEroare(j.error || 'Nu am putut opri linkul.');
+        if (id === _loc.id) window.locAltul(); else _locIncarca();
+      } catch (e) { _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); }
+    }
+    // ── sfârșit „Distribuie locația” ──
 
     let detailRoutesData = null;
 

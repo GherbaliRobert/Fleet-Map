@@ -57,6 +57,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Juristul / voi: „Distribuie locația" în pagina de Confidențialitate. Adăugat pe 21.10.** Linkul arată oricui îl
+  are poziția live a unei mașini (deci și a șoferului ei), cel mult 8 ore. Firma client hotărăște cui îl trimite; de scris în
+  Confidențialitate (și, dacă juristul cere, în contract) că există funcția și că firma răspunde față de șoferii ei.
 - [ ] **Robert: contul partenerului de montaj**, în interfața lor. Partenerul vede DOAR lucrările lui:
   nu flota clientului, nu prețul pentru client, nu cât rămâne la noi, nu alți parteneri. **Din 30.09:** raportul
   lui de montaj folosește anunțul „aparate noi transmit", deja gata pe server (scris în nota pentru el).
@@ -367,6 +370,36 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-21
+
+### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp
+
+Robert (21.10): *„când selectezi o mașină să poți da share location pentru oricine, timp de x timp, ca pe WhatsApp… să poată
+să vadă oricine are acel link… după ce expiră, să nu mai existe acel link… să poată fi responsive".*
+
+- **Unde:** Localizare → clic pe mașină → în fișa ei, lângă „Info" și „Rute", butonul **„Distribuie"**. Se alege cât ține
+  (**15 minute, 1 oră sau 8 ore**, ca pe WhatsApp), apoi „Creează linkul": se copiază sau pleacă direct pe WhatsApp, cu un
+  mesaj gata scris („Urmărește live Volvo FH · TM 12 RAT pe hartă, până la 17:00: …").
+- **Cine îl deschide** (fără cont, de pe telefon sau calculator) vede harta cu mașina, care se mișcă singură la câteva
+  secunde: numele și numărul mașinii, firma, „În mers · 62 km/h" / „Oprit" / „Fără semnal de 2 ore", de când e poziția și
+  până când merge linkul, plus „Google Maps". **Nu vede** IMEI-ul, șoferul, istoricul sau altă mașină.
+- **După expirare sau „Oprește"**, linkul arată doar „Locația nu mai e distribuită" și mașina dispare de pe hartă. Linkul se
+  oprește pe loc și când mașina e arhivată, mutată pe altă firmă, sau când accesul firmei e oprit.
+- **Cine poate face linkuri:** administratorul firmei, managerul și dispecerul (aceeași regulă ca la planurile de încărcare),
+  doar pe mașinile pe care le văd. Vizualizatorul nu vede butonul. Cel mult 10 linkuri active pe o mașină. Fiecare facere și
+  oprire intră în jurnalul de audit.
+- **Siguranța:** linkul are o parte întâmplătoare de 32 de caractere (nu se poate ghici); în bază stă doar amprenta lui, deci
+  nici cine citește baza nu-l poate deschide — de aceea linkul se vede o singură dată, când e făcut. Pagina nu intră în Google
+  și nu pune cookie-uri.
+
+- **Ce am schimbat:** `locatie_distribuita.js` (regulile și textele, nou), `db.js` (tabela `locatii_distribuite` + funcțiile
+  ei), `server.js` (rutele `/api/devices/:imei/locatie-distribuita`, pagina `/locatie/<token>`, ruta publică
+  `/api/public/locatie/<token>`, curățenia la minut, `poateDistribuiLocatia` în profil), `public/locatie.html` (pagina publică,
+  nouă), `public/index.html` + `public/css/app.css` (butonul și fereastra), `public/sw.js` (pagina nu se ține în cache),
+  `backup.js` (tabela nu intră în copii). Probă nouă: `verify_locatie_distribuita.js` (în `npm test`, 80 de verificări, pe
+  server pornit).
+- **Ce vede fondatorul:** același buton, pe orice mașină a unei firme; linkul arată firma mașinii.
+- **Ce vede clientul:** butonul „Distribuie" în fișa mașinii (admin, manager, dispecer) și pagina publică pe care o trimite.
+- Telefonul (aplicația) nu are încă butonul — la APK-ul următor, pe aceleași rute. Pagina publică merge deja pe telefon.
 
 ### AMÂNDOI · Șase rapoarte de ~20 de ori mai repede și fără gigaocteți de memorie — `7184d68`
 
@@ -12101,6 +12134,12 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **(voi) „Distribuie locația" (21.10) — patru alegeri, lăsate pe varianta prudentă:**
+  1. **Duratele:** 15 minute, 1 oră, 8 ore (ca pe WhatsApp). Vreți și 24 de ore?
+  2. **Cine:** administratorul, managerul, dispecerul — vizualizatorul nu. E bine?
+  3. **Ce vede publicul:** numele și numărul mașinii și firma; fără șofer. Vreți și numele șoferului, sau fără firmă?
+  4. **Modul:** azi e inclus la toate firmele. Rămâne așa sau se vinde ca modul în ofertă?
 
 - [ ] **(voi) Cinci întrebări rămase de la lotul 2 pe telefon (29.09).** Până hotărâți, am lăsat varianta prudentă:
   1. **Intervalele de service și „Acte cerute"** se pot doar citi pe telefon; cifrele se schimbă de pe web. Rămâne așa?

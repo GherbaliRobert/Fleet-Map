@@ -421,6 +421,19 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_firma ON planuri_incarcare(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_catre ON planuri_incarcare(trimis_catre)`);
+    // „Distribuie locația" (21.10): linkurile publice ale unei mașini, ca locația live de pe WhatsApp. Se ține doar
+    // AMPRENTA tokenului (cine citește baza nu poate deschide linkul). Un rând trăiește cât linkul: la expirare sau la
+    // „Oprește" se șterge (`stergeLocatiiDistribuiteExpirate`, opresteLocatieDistribuita) — urma rămâne în jurnalul de audit.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS locatii_distribuite (
+        id SERIAL PRIMARY KEY,
+        token_hash CHAR(64) NOT NULL UNIQUE,
+        imei VARCHAR(20) NOT NULL, company_id INTEGER,
+        creat_de INTEGER, creat_la BIGINT NOT NULL, expira_la BIGINT NOT NULL
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_locatii_distribuite_imei ON locatii_distribuite(imei)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_locatii_distribuite_expira ON locatii_distribuite(expira_la)`);
     // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
     // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
     // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
@@ -3557,6 +3570,45 @@ async function planProblema(id, text) {
   return _planRand(r.rows[0] || null);
 }
 async function stergePlan(id) { await pool.query('DELETE FROM planuri_incarcare WHERE id = $1', [parseInt(id, 10)]); }
+
+// ─── „Distribuie locația" (21.10): linkurile publice ale unei mașini (regulile: locatie_distribuita.js) ───
+async function creeazaLocatieDistribuita(o) {
+  const r = await pool.query(
+    'INSERT INTO locatii_distribuite (token_hash, imei, company_id, creat_de, creat_la, expira_la) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, imei, company_id, creat_de, creat_la, expira_la',
+    [o.amprenta, String(o.imei), o.companyId == null ? null : o.companyId, o.userId || null, o.creatLa, o.expiraLa]);
+  return r.rows[0];
+}
+async function locatieDistribuitaDupaAmprenta(amprenta) {
+  const r = await pool.query('SELECT id, imei, company_id, creat_de, creat_la, expira_la FROM locatii_distribuite WHERE token_hash = $1', [String(amprenta)]);
+  return r.rows[0] || null;
+}
+// Linkurile încă active ale unei mașini, cu numele celui care le-a făcut (pentru lista „Linkuri active" din fișa mașinii).
+async function locatiiDistribuiteActive(imei, acum) {
+  const r = await pool.query(
+    `SELECT l.id, l.imei, l.company_id, l.creat_de, l.creat_la, l.expira_la, COALESCE(u.full_name, u.username) AS creat_de_nume
+       FROM locatii_distribuite l LEFT JOIN users u ON u.id = l.creat_de
+      WHERE l.imei = $1 AND l.expira_la > $2 ORDER BY l.creat_la DESC`, [String(imei), acum]);
+  return r.rows;
+}
+async function getLocatieDistribuita(id) {
+  const r = await pool.query('SELECT id, imei, company_id, creat_de, creat_la, expira_la FROM locatii_distribuite WHERE id = $1', [parseInt(id, 10)]);
+  return r.rows[0] || null;
+}
+// „Oprește" = linkul dispare pe loc (rândul se șterge).
+async function opresteLocatieDistribuita(id) {
+  const r = await pool.query('DELETE FROM locatii_distribuite WHERE id = $1 RETURNING id', [parseInt(id, 10)]);
+  return r.rows.length > 0;
+}
+// Ultima poziție din bază — doar când mașina nu mai e în harta live (tace de peste o zi): pagina publică arată tot ultimul loc.
+async function ultimaPozitie(imei) {
+  const r = await pool.query('SELECT timestamp, latitude, longitude, angle, speed FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT 1', [String(imei)]);
+  return r.rows[0] || null;
+}
+// Expirate → șterse. Numărătoarea din `RETURNING id` (rowCount lipsește în PGlite).
+async function stergeLocatiiDistribuiteExpirate(acum) {
+  const r = await pool.query('DELETE FROM locatii_distribuite WHERE expira_la <= $1 RETURNING id', [acum]);
+  return r.rows.length;
+}
 // Ca getCompanyImeis, dar EXCLUDE vehiculele arhivate — pentru rapoarte/analitice (nu pentru scoping de acces).
 async function getCompanyActiveImeis(companyId) {
   const r = await pool.query("SELECT imei FROM devices WHERE company_id = $1 AND status IS DISTINCT FROM 'archived'", [companyId]);
@@ -6481,7 +6533,9 @@ module.exports = {
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, atasezaRemorca,
-  creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan,
+  creeazaLocatieDistribuita, locatieDistribuitaDupaAmprenta, locatiiDistribuiteActive, getLocatieDistribuita,
+  opresteLocatieDistribuita, stergeLocatiiDistribuiteExpirate, ultimaPozitie, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,

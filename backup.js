@@ -70,6 +70,7 @@ const BACKUP_EXCLUDED = {
   ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
   scrisori_luni: 'scrisorile de luni ale RA Insight: sunt ale omului care le primește și se șterg la 12 luni, ca discuțiile — nu le ținem și în copii',
   zile_condus: 'rezumatul pe zile din Safe Drive: se reface din poziții (care au arhiva lor) și se șterge odată cu ele',
+  locatii_distribuite: 'linkurile „Distribuie locația": țin cel mult 8 ore și se șterg la expirare — într-o copie ar trăi mai mult decât linkul',
   mail_atasamente: 'atașamentele emailurilor primite: pot ajunge la gigabytes, iar copia se face toată în memorie — ar opri serverul; emailul rămâne în copie, cu numele atașamentelor',
 };
 
