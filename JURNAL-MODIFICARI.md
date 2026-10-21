@@ -446,6 +446,9 @@ să vadă oricine are acel link… după ce expiră, să nu mai existe acel link
   active cu „Oprește" (întreabă întâi). Pe aceleași rute; duratele și mesajul vin tot de la server.
   Fișierele: `mobile/src/components/DistribuieLocatia.tsx` + `distribuieLocatia.css` (noi), `screens/VehicleDetail.tsx`,
   `api/endpoints.ts`, `components/Icon.tsx` (iconița „share"), versiunea în `android/variables.gradle` și `api/client.ts`.
+- **Reparat după unire (21.10, noaptea):** iconița nouă a telefonului („share") n-a fost copiată și în lista de iconițe a paginii
+  (`can_icons.js`, generată din telefon cu `tools/gen-can-icons.js`), așa că proba de pe GitHub a picat după PR #1. Fișierul
+  refăcut; regula e scrisă în `CLAUDE.md`. Aplicația nu era afectată (iconița lipsă nu e folosită pe web).
 - **Hotărât de Robert (21.10: „1 da, 2 da, 3 da, 4 inclus"):** duratele rămân 15 minute / 1 oră / 8 ore; fac linkuri adminul,
   managerul și dispecerul; publicul vede mașina, numărul și firma, fără șofer; funcția e inclusă la toate firmele.
 
