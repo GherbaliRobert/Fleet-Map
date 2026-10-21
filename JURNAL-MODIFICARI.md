@@ -57,6 +57,15 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Robert: cheile din Railway, după incidentul de securitate Railway din 21.10. Adăugat pe 21.10 (noaptea).** Railway a
+  oprit publicările în toate regiunile și le recomandă tuturor să-și schimbe cheile (status.railway.com, incidentul QH8L8B3E;
+  blogul lor, „Security Disclosure: Wednesday October 21st"). Până revin publicările, ratrack.ro rămâne pe versiunea veche —
+  de aceea nu apare încă „Distribuie locația". Ordinea lor: Enterprise, Pro, apoi Hobby (noi). **După ce revin**, în Railway →
+  serviciul aplicației → Variables, cele care contează întâi: `SESSION_SECRET` (oricine îl are poate intra în orice cont; schimbat,
+  toată lumea reintră în cont), `ANTHROPIC_API_KEY` + `ANTHROPIC_ADMIN_KEY` (bani), `BREVO_API_KEY` (emailuri în numele nostru),
+  `MAIL_INBOUND_SECRET` (schimbat ODATĂ și în Worker-ul din Cloudflare), `FIREBASE_SA_JSON`, tokenurile ANAF dacă sunt puse.
+  Cu grijă: `BACKUP_PASSPHRASE` — copiile vechi se deschid doar cu parola veche, deci păstrați-o; `VAPID_*` — schimbate, notificările
+  din browser trebuie repornite de fiecare om. Fiecare schimbare repornește aplicația; le faceți pe toate deodată.
 - [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
   GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
   `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
