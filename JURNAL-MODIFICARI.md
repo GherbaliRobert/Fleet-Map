@@ -143,7 +143,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **14.10 (după-amiaza):** `RA-Track-1.0.19-debug.apk`, pe Desktop — tot ce e în 1.0.18, plus pozele din emailurile primite
   (cele mari și cele atașate) și pachetele RA Insight ale lui Alin. Se instalează ea, în locul lui 1.0.18.
   **21.10:** APK 1.0.20 — tot ce e în 1.0.19, plus „Distribuie locația" în fișa mașinii. Construit pe GitHub (Actions → „APK de
-  test (Android)", ramura de lucru): e de DEBUG și **fără notificări push** (cheia Firebase nu e în git), iar fiindcă e semnat
+  test (Android)", ramura de lucru; github.com/GherbaliRobert/Fleet-Map/actions/runs/39680586843 → Artifacts →
+  `ratracks-test-1.0.20-31dc907`, ține până pe 20.11): e de DEBUG și **fără notificări push** (cheia Firebase nu e în git), iar fiindcă e semnat
   altfel decât cel de pe Desktop, telefonul cere dezinstalarea celui vechi. Cel cu notificări se construiește ca până acum, pe
   calculatorul vostru, din aceeași ramură (sau din main, după unire).
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
@@ -386,7 +387,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
-### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp
+### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp — `92f552c`, `31dc907` (PR #1)
 
 Robert (21.10): *„când selectezi o mașină să poți da share location pentru oricine, timp de x timp, ca pe WhatsApp… să poată
 să vadă oricine are acel link… după ce expiră, să nu mai existe acel link… să poată fi responsive".*
