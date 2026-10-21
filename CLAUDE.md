@@ -498,6 +498,12 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - În probe: `RAPOARTE_PLAFON` / `RAPOARTE_PAGINA` coboară cifrele (nu le seta în producție).
 - Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
   filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
+- **Un formatator de dată ținut minte, NU unul la fiecare poziție** (Robert, 21.10: „rezolvă acum"). `new Intl.DateTimeFormat(…)`
+  ține ~17 KB pe care procesul nu-i mai dă înapoi: făcut la fiecare poziție în `_dayKeyISO`, „Condus & repaus" pe o lună, 3
+  mașini, dura 28 s și lăsa ~6 GB ocupați (acum 1,5 s, ~200 MB, aceleași cifre). `_dayKeyISO` îl ține în `_fmtZiISO`, programul
+  de lucru (`workschedule.js`, la fiecare poziție în mers) unul pe fus (`_formatatoare`). Orice cod care merge poziție cu
+  poziție sau rând cu rând folosește un formatator ținut minte. Locurile care fac formatatoare sunt NUMĂRATE în
+  `verify_formatoare.js` (în `npm test`) — un loc nou pică proba până te uiți de unde e chemat.
 
 ### Pasul 3 (06.10): Safe Drive & costuri — ramura din RA Insight (după macheta din 02.10; din 15.10 se cheamă **RA Drive**)
 - **Regulile stau într-un singur loc: `condus.js`** (curat): pragurile și scorul EcoDrive (`PRAGURI`, `scor`, `scorFlota`

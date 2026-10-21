@@ -22,15 +22,30 @@ function sanitize(input) {
   return out;
 }
 
+// Formatatoarele, o pereche pe fus orar, ținute minte (21.10): _tzParts rulează la FIECARE poziție a unei mașini în mers,
+// iar unul nou la fiecare poziție ținea memorie pe care procesul nu o mai dădea înapoi. Un fus greșit aruncă și nu se ține.
+const _fmtPeFus = new Map();
+function _formatatoare(tz) {
+  let f = _fmtPeFus.get(tz);
+  if (!f) {
+    f = {
+      ora: new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }),
+      zi: new Intl.DateTimeFormat('en-CA', { timeZone: tz }),
+    };
+    _fmtPeFus.set(tz, f);
+  }
+  return f;
+}
+
 // Componentele locale (fus orar) ale unui moment: ziua săptămânii (mon..sun), minutele din zi, data YYYY-MM-DD.
 function _tzParts(nowMs, tz) {
   const d = new Date(nowMs);
-  const f = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
-  const parts = f.formatToParts(d);
+  const f = _formatatoare(tz);
+  const parts = f.ora.formatToParts(d);
   const get = function (t) { const p = parts.find(function (x) { return x.type === t; }); return p ? p.value : ''; };
   const wd = get('weekday').toLowerCase().slice(0, 3);
   const minutes = (parseInt(get('hour')) || 0) * 60 + (parseInt(get('minute')) || 0);
-  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d); // YYYY-MM-DD
+  const ymd = f.zi.format(d); // YYYY-MM-DD
   return { wd: wd, minutes: minutes, ymd: ymd };
 }
 
