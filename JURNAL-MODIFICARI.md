@@ -387,6 +387,19 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-21
 
+### FONDATOR · APK-ul de test se poate lua și printr-un link direct, fără cont GitHub
+
+Robert (21.10): *„dă-mi direct APK-ul, nu îl pot descărca din git"*. APK-ul construit pe GitHub (Actions → „APK de test
+(Android)") ieșea doar ca „artifact": se descarcă doar logat și vine arhivat. Acum construirea are bifa **„publica"**: bifată,
+APK-ul se pune și ca pre-release `apk-test-<versiune>`, cu link direct spre fișierul `.apk`
+(`github.com/GherbaliRobert/Fleet-Map/releases/download/apk-test-1.0.20/RA-Track-1.0.20-test.apk`), care se deschide și de pe
+telefon. Nebifată, totul rămâne ca înainte.
+
+- **Ce am schimbat:** `.github/workflows/apk.yml` (bifa `publica` + pasul „Pune APK-ul ca pre-release").
+- **Ce vede fondatorul:** pe pagina „Releases" a depozitului, pre-release-ul „APK de test 1.0.20". E tot APK-ul de DEBUG (fără
+  notificări push), nu cel pentru clienți.
+- **Ce vede clientul:** nimic.
+
 ### AMÂNDOI · „Distribuie locația": linkul live al unei mașini, ca pe WhatsApp — `92f552c`, `31dc907` (PR #1)
 
 Robert (21.10): *„când selectezi o mașină să poți da share location pentru oricine, timp de x timp, ca pe WhatsApp… să poată

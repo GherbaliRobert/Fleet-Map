@@ -14,11 +14,21 @@ on:
         description: 'Ramura din care se construiește'
         required: false
         default: 'main'
+      publica:
+        # 21.10 (Robert: „dă-mi direct APK-ul, nu-l pot descărca din git"): un artifact se descarcă doar logat în GitHub
+        # și vine arhivat. Bifat, APK-ul se pune și ca pre-release „apk-test-<versiune>", cu link direct spre fișierul .apk.
+        description: 'Pune APK-ul și ca pre-release (link direct spre .apk, fără cont GitHub)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   apk:
     name: Construiește APK de test
     runs-on: ubuntu-latest
+    # Scrierea e folosită doar de pasul „pre-release" (bifa `publica`); restul jobului doar citește.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +88,26 @@ jobs:
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Pune APK-ul ca pre-release (link direct)
+        if: ${{ inputs.publica }}
+        working-directory: mobile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          V=$(grep -oP "appVersionName = '\K[^']+" android/variables.gradle)
+          TAG="apk-test-$V"
+          F="/tmp/RA-Track-$V-test.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$F"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$F" --clobber
+          else
+            gh release create "$TAG" "$F" --prerelease --target "$GITHUB_SHA" --title "APK de test $V" \
+              --notes "APK de DEBUG, pentru încercat pe telefonul propriu — nu se dă clienților. Fără notificări push; semnat altfel decât APK-ul construit pe calculator, deci telefonul cere dezinstalarea celui vechi."
+          fi
+          echo "Link direct: https://github.com/$GH_REPO/releases/download/$TAG/RA-Track-$V-test.apk" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Ce trebuie știut despre APK-ul ăsta
         run: |
