@@ -232,10 +232,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   de consum inclus, și deblochează și emailul serverului. (2) În aplicație, Administrare → Stare producție, rândul
   „TimescaleDB (compresie poziții)”: verde sau portocaliu? Fără compresie, o mașină adaugă ~1,3 GB pe an; pe Hobby, 50 de
   mașini reale ar umple discul în 2–3 săptămâni.
-- [ ] **Robert: Railway → Usage — pe ce se duc cei ~18 $ pe lună. Adăugat pe 21.10.** Graficul de memorie al aplicației (poza
-  lui Robert, 21.10) stă la 70–100 MB, adică ~1 $ pe lună: banii nu se duc pe memoria aplicației. De văzut, pe fiecare serviciu
-  (aplicația, baza de date, altele) și pe fiecare resursă (memorie, procesor, disc, trafic), în Railway → Workspace → Usage; și
-  dacă există mai multe medii (de exemplu, câte un mediu pentru fiecare cerere de modificare din GitHub).
+- [x] **FĂCUT (21.10): Robert a trimis pozele din Railway → Usage și „Cost by Service".** Din ~15,23 $ (până pe 21.10; ~17,54 $
+  estimat pe toată luna): **baza de date 14,53 $, dintre care memoria ei 13,64 $** (~1,6 GB ținuți în medie); aplicația 0,70 $.
+  Procesorul, traficul, discul (3 GB) și copiile — sub 1 $ la un loc. Întrebat pe 21.10: plafon de memorie pentru bază, în
+  Railway (serviciul Postgres → Settings → Deploy → Replica Limits).
 - [x] **FĂCUT (12.10): Robert a reglat ora laptopului.** **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
