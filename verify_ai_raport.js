@@ -367,7 +367,7 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma Raport SRL' })).j;
   // Firma 1 ARE RA Insight pe regula veche (ca să vedem că fondul nu se mișcă); firma 2 n-are nimic scris = pachetul Start
   // (14.10): AI Raport îi răspunde administratorului, din cele 50 de răspunsuri pe butoane.
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   async function om(username, role, companyId, loc) {
     const res = await json('POST', '/api/users', S, { username, full_name: username.split('@')[0], role, company_id: companyId });

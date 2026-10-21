@@ -332,6 +332,7 @@ function instructiuniScrisoare() {
     'Forma: 3–5 paragrafe scurte, în limba română, pe înțelesul oricui (fără jargon). Începe cu ce contează cel mai mult (o încălcare, o scădere de combustibil, un act expirat), apoi restul pe scurt. Ce lipsește din fapte nu pomenești.',
     'La final, un rând „De făcut săptămâna asta:" urmat de 2–4 rânduri care încep cu „• ". Fără titluri cu #, fără tabele, fără liste numerotate. Cel mult 220 de cuvinte. Nu semna.',
     require('./insight').SCRISUL,
+    require('./insight').ECHIPAMENTUL,
   ].join('\n');
 }
 // Cifrele pe care le are voie să le scrie RA Insight: toate cele din fapte (și din textele lor: „06.10, 02:14", „5h 20m").

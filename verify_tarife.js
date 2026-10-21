@@ -701,12 +701,19 @@ const lista80 = Array.from({ length: 80 }, (_, i) => veh(i));
 const rTaiat = fq.answer('status', { snapshot: lista80, today: [], now: acum, total: 200 });
 T('„Status flotă" spune 200, nu 80', /Total: \*\*200\*\*/.test(rTaiat.reply), rTaiat.reply.split('\n')[2]);
 T('și spune limpede că defalcarea e pe o parte', /primele 80/.test(rTaiat.reply));
-T('nota de tăiere apare la final', /Flota are 200 vehicule/.test(rTaiat.reply));
+T('nota de tăiere apare la final, cu „de” („200 de vehicule”)', /Flota are 200 de vehicule;/.test(rTaiat.reply));
 const rIntreg = fq.answer('status', { snapshot: lista80, today: [], now: acum, total: 80 });
 T('la o flotă întreagă nu apare nicio notă', !/primele/.test(rIntreg.reply) && /Total: \*\*80\*\*/.test(rIntreg.reply));
 T('fără „total" dat, se poartă ca înainte', !/primele/.test(fq.answer('status', { snapshot: lista80, today: [], now: acum }).reply));
 const rOprite = fq.answer('stopped', { snapshot: lista80, today: [], now: acum, total: 200 });
-T('și listele (oprite) spun că sunt doar o parte', /Flota are 200 vehicule/.test(rOprite.reply));
+T('și listele (oprite) spun că sunt doar o parte', /Flota are 200 de vehicule;/.test(rOprite.reply));
+// Fără emoji și cu ora României (Alin, 20.10: răspunsul instant „unde e acum" era plin de 📍 🚚 🟠; ora ieșea pe UTC).
+const un = [{ imei: 'u1', nume: 'VW Caddy', nr: 'B 268 ROY', viteza_kmh: 0, ultima_actualizare: '2026-10-08T11:05:00Z', locatie: 'Strada Fabricii 12, București' }];
+const toate = ['where', 'stopped', 'moving', 'fastest', 'distance', 'status'].map((i) => fq.answer(i, { snapshot: lista80, today: [{ imei: 'i1', km: 12 }], now: acum, total: 200 }).reply)
+  .concat(['where', 'stopped'].map((i) => fq.answer(i, { snapshot: un, today: [], now: Date.parse('2026-10-08T11:10:00Z') }).reply));
+T('răspunsurile instant n-au niciun emoji', toate.every((r) => !/\p{Extended_Pictographic}/u.test(r)), toate.filter((r) => /\p{Extended_Pictographic}/u.test(r)).map((r) => r.slice(0, 40)).join(' | '));
+T('„unde e acum" pe o mașină: titlul, mașina, locul, starea', fq.answer('where', { snapshot: un, today: [], now: Date.parse('2026-10-08T11:10:00Z') }).reply === '**Unde e acum**\n\n**VW Caddy** (B 268 ROY)\n• Strada Fabricii 12, București\n• Oprit');
+T('ora e a României, nu a serverului (11:05 UTC = 14:05 vara)', /Ultima poziție: 8 oct\.?, 14:05/.test(fq.answer('stopped', { snapshot: un, today: [], now: Date.parse('2026-10-08T11:10:00Z') }).reply), fq.answer('stopped', { snapshot: un, today: [], now: Date.parse('2026-10-08T11:10:00Z') }).reply);
 T('răspunsul „reformulează" rămâne curat', fq.answer('habarnam', { snapshot: lista80, now: acum, total: 200 }).reply === 'Reformulează, te rog.');
 
 console.log('\n──────────────────────────────');

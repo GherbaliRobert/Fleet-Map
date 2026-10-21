@@ -201,7 +201,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Paritate SRL' })).j;
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma SRL' })).j;
   T('companiile de probă se creează', !!co.id && !!co2.id);
-  const cfg = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 2, overage: false } });
+  const cfg = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 2, overage: false }, regula_veche: true });
   T('firma are RA Insight, 2 întrebări pe cont, fără depășire', cfg.status === 200, cfg.status + ' ' + cfg.text.slice(0, 80));
   const cheie = await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   T('asistentul AI e „configurat" (cheie de probă)', cheie.status === 200 && cheie.j.enabled === true, cheie.text.slice(0, 80));
@@ -475,7 +475,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const SRV = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
   T('serverul aruncă comutatoarele vechi din cota firmei',
     /\['overage', 'overagePriceEur', 'extraAcceptedMonth'\]\.forEach\(function \(k\) \{ delete q\[k\]; \}\);/.test(SRV));
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { overage: true, overagePriceEur: 0.5 } });
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { overage: true, overagePriceEur: 0.5 }, regula_veche: true });
   const dupaComutator = await json('POST', '/api/ai/chat', telIon, { message: Q });
   T('și, oricum ar fi trimis, ușa rămâne închisă',
     dupaComutator.j.limited === true && !!dupaComutator.j.fondEpuizat, dupaComutator.text.slice(0, 140));
@@ -575,7 +575,7 @@ function formularWeb(cookie, eSuper, proprii) {
   // ⚠ Firma și-a consumat fondul în probele de mai sus, iar de când peste fond NU se mai vinde
   // nimic, rezumatul agenților n-ar avea din ce să se facă — și proba ar pica pe regula cea nouă,
   // nu pe un defect. Deci i se dă fond înapoi înainte de bucata asta (23.09).
-  const agSet = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { agents: true, ai_assistant: true }, enabled_agents: ['care'], ai_quota: { questionsPerSeat: 50 } });
+  const agSet = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { agents: true, ai_assistant: true }, enabled_agents: ['care'], ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   T('firma are RA Care pornit', agSet.status === 200, agSet.status + ' ' + agSet.text.slice(0, 80));
   const inainteAg = apeluriAi();
   const unu = await json('POST', '/api/agents/run', ckSef, { agent: 'care' });
@@ -659,7 +659,7 @@ function formularWeb(cookie, eSuper, proprii) {
 
   // Un `acceptExtra` rătăcit nu strică nimic nici când fondul E disponibil: întrebarea merge ca
   // inclusă, se numără normal, și NU pre-aprobă nimic pentru când se va termina fondul.
-  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 1 } });
+  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 1 }, regula_veche: true });
   const sefAlt = lista((await json('GET', '/api/users', ckAlt)).j).find((x) => x.username === 'sef@alta.ro') || {};
   const locAlt = await json('PUT', '/api/users/' + sefAlt.id + '/ai-seat', ckAlt, { on: true });
   // Din 02.10, „Asistent AI" de pe telefonul vechi trece prin RA Insight, care avea deja regula: fără nicio
@@ -685,7 +685,7 @@ function formularWeb(cookie, eSuper, proprii) {
   //
   // ⚠ Fondul a fost dat înapoi mai sus, pentru rezumatul agenților. Îl strângem la loc, ca bucata
   // asta să probeze chiar ce spune în titlu: PESTE fond. Altfel trecea liniștită, pe fond plin.
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { questionsPerSeat: 1 } });
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { questionsPerSeat: 1 }, regula_veche: true });
   T('fondul firmei e iar epuizat (1 pe cont, dar deja folosite mai multe)',
     (await folosite()) > 1, 'folosite: ' + (await folosite()));
   const RAP = { type: 'tabel', report: { columns: ['Vehicul', 'Km'], rows: [['AR-01-PAR', '120']] } };

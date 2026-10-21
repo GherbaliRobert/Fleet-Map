@@ -148,7 +148,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     const S = await login('admin', 'test1234');
     const co = (await json('POST', '/api/companies', S, { name: 'Firma Proba SRL' })).j;
     const gol = (await json('POST', '/api/companies', S, { name: 'Firma Fara Masini SRL' })).j;
-    await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+    await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
     await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
     const u = (await json('POST', '/api/users', S, { username: 'sef@proba.ro', full_name: 'Sef Proba', role: 'admin', company_id: co.id })).j;
     await puneParola(u, 'Str4da-Verde-2026', B);
@@ -230,7 +230,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     // panourile până pe 12.10, ar fi ieșit 1,20 $ — de trei ori mai mult.
     console.log('\n4. Panourile de cost, pe modelul fiecărui răspuns');
     const cf = (await json('POST', '/api/companies', S, { name: 'Firma Cost Model SRL' })).j;
-    await json('PUT', '/api/companies/' + cf.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+    await json('PUT', '/api/companies/' + cf.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 } });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 1000000 }, model: 'claude-haiku-5-5' });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 }, model: 'claude-sonnet-5-5' });
@@ -257,6 +257,12 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     // limita veche pe firmă) și nu mai are nicio socoteală pe prețul Haiku 4.5.
     T('pagina ia costul firmei de la server, într-un singur loc („RA Insight · control"); Dashboard platformă nu-l mai socotește',
       /var cost = x\.pachet \? \(x\.plasa \? x\.plasa\.costLei : 0\) : x\.costEur \* fx;/.test(PAG) && !/_raxCostRand|function _raxCost\(|RAX_TOK_IN_RATE|raxSetAiLimit|Consum AI \(30z\)/.test(PAG));
+    // Venituri (Alin, 20.10: „rezolvăm acum"): pagina citea câmpuri de pe vremea planurilor (`active_subs`, `by_plan`), pe care
+    // serverul nu le trimite — „Abonamente active" stătea pe 0 și scria „Niciun venit estimat încă" cu venit lunar de 20 de lei.
+    const rv = ov.j.revenue || {};
+    T('Dashboard, venituri: serverul dă venitul lunar și câte firme au ofertă; pagina le citește pe ele (nu câmpurile de pe vremea planurilor)',
+      typeof rv.mrr === 'number' && typeof rv.cu_oferta === 'number' && typeof rv.fara_oferta === 'number' &&
+      /_raxCard\('Firme cu ofertă', rev\.cu_oferta \|\| 0\)/.test(PAG) && !/active_subs|rev\.by_plan|Niciun venit estimat încă|după pachetele atribuite|Venituri \(estimat din pachete\)/.test(PAG), JSON.stringify(rv));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

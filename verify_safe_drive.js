@@ -307,7 +307,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   const PAROLA = 'Str4da-Verde-2026';
   const coA = (await json('POST', '/api/companies', S, { name: 'Firma Safe Drive SRL' })).j;
   const coB = (await json('POST', '/api/companies', S, { name: 'Alta Firma Drive SRL' })).j;
-  for (const co of [coA, coB]) await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 } });
+  for (const co of [coA, coB]) await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
   async function om(username, role, companyId, loc) {
     const r = await json('POST', '/api/users', S, { username, full_name: username.split('@')[0], role, company_id: companyId });
     if (r.j && r.j.link) await puneParola(r.j, PAROLA, BU);

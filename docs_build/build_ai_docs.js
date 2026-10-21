@@ -77,7 +77,7 @@ function mockWatch(doc, x, y, w, h) {
   appPanel(doc, x, y, w, h, 'RA Watch · verificat acum 12 min', false); // rulează din oră în oră, nu „live”
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   statusPill(doc, ix, iy, RED, '2 semnalări'); iy += 24;
-  findRow(doc, ix, iy, iw, RED, 'Ford Transit — B 77 VWC', 'Offline de 3h 12m · verifică aparatul și SIM-ul'); iy += 34;
+  findRow(doc, ix, iy, iw, RED, 'Ford Transit — B 77 VWC', 'Nu mai trimite poziții de 3h 12m · sună șoferul'); iy += 34;
   findRow(doc, ix, iy, iw, AMBER, 'MAN TGS 26.480 — B 99 MAN', 'Scădere de ~18 L · posibil furt sau scurgere');
 }
 function mockDispatch(doc, x, y, w, h) {
@@ -149,9 +149,9 @@ function mockInsight(doc, x, y, w, h) {
   const ix = x + 12, iw = w - 24; let iy = y + 30;
   // contorul de apeluri (ca la Claude)
   doc.roundedRect(ix, iy, iw, 30, 6).fillColor(DARK2).fill();
-  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Întrebări luna asta: 86 din 100 rămase', ix + 10, iy + 5, { lineBreak: false });
+  doc.font('NB').fontSize(8).fillColor('#e6f3ec').text('Pachet Basic · 186 din 200 de întrebări rămase', ix + 10, iy + 5, { lineBreak: false });
   aFill(doc, ix + 10, iy + 20, iw - 20, 5, 2.5, '#ffffff', 0.1);
-  doc.roundedRect(ix + 10, iy + 20, (iw - 20) * 0.86, 5, 2.5).fillColor(GREEN).fill();
+  doc.roundedRect(ix + 10, iy + 20, (iw - 20) * 0.93, 5, 2.5).fillColor(GREEN).fill();
   iy += 40;
   // întrebare user
   aFill(doc, ix + iw * 0.28, iy, iw * 0.72, 22, 6, GREEN, 0.16);
@@ -222,7 +222,7 @@ function build() {
   aFill(doc, M + 22, iy + 24, 40, 40, 10, GREEN, 0.18);
   icon(doc, FA.wand, M + 33, iy + 33, 20, GREEN);
   doc.font('NX').fontSize(15).fillColor('#fff').text('RA Insight — asistentul AI al flotei', M + 78, iy + 22, { lineBreak: false });
-  doc.font('N').fontSize(9.5).fillColor('#c9ddd3').text('Asistentul care leagă tot. Îl întrebi orice despre flotă, în limbaj natural, și îți răspunde pe loc — plus rezumate de rapoarte, la cerere.', M + 78, iy + 42, { width: CW - 100 });
+  doc.font('N').fontSize(9.5).fillColor('#c9ddd3').text('Asistentul care leagă tot. Îl întrebi în cuvinte orice despre flotă și îi ceri rapoarte, iar el găsește singur problemele și te duce la ele.', M + 78, iy + 42, { width: CW - 100 });
 
   doc.font('N').fontSize(9).fillColor('#7e948a').text('Monitorizare GPS & management de flotă · ratrack.ro', M, H - 46, { lineBreak: false });
 
@@ -302,9 +302,11 @@ function build() {
   mockInsight(doc, M, y, CW, 158); y += 172;
 
   // ce obții cu RA Insight (valoare, fără mecanica de vânzare)
-  [[FA.wand, 'Întrebi în limba română', 'nu înveți rapoarte — scrii întrebarea ca unui coleg și primești răspunsul'],
-   [FA.file, 'Rezumate de rapoarte', 'pe calculator, un raport lung devine câteva puncte clare'],
-   [FA.gauge, 'Fără surprize', 'vezi câte întrebări mai are firma; la final se oprește, fără cost în plus']
+  // Punctele forte de azi (20.10): rapoartele cerute în cuvinte și „Am găsit o problemă" (15–19.10), pachetele (14.10).
+  [[FA.wand, 'Întrebi în cuvintele tale', 'scrii întrebarea ca unui coleg și primești răspunsul, cu cifrele din rapoarte'],
+   [FA.file, 'Rapoarte cerute în cuvinte', '„fă-mi foaia de parcurs pe 17 octombrie” — raportul vine gata, cu Excel'],
+   [FA.warn, 'Găsește singur problemele', 'viteză reală sau eroare de GPS, un consum greu de crezut — și te duce acolo'],
+   [FA.gauge, 'Fără surprize', 'pachet fix pe firmă; la final răspunde pe butoane, fără niciun cost în plus']
   ].forEach(function (d, i) {
     const cy2 = y + i * 44;
     doc.roundedRect(M + 14, cy2 + 2, 28, 28, 7).fillColor('#f0fdf4').fill();
@@ -312,7 +314,7 @@ function build() {
     doc.font('NB').fontSize(11).fillColor('#111').text(d[1], M + 52, cy2 + 2, { lineBreak: false });
     doc.font('N').fontSize(9.5).fillColor(MUTED).text(d[2], M + 52, cy2 + 17, { width: CW - 66, lineBreak: false });
   });
-  y += 3 * 44 + 10;
+  y += 4 * 44 + 10;
 
   // ofertă personalizată + contact (fără prețuri/mecanica de vânzare)
   doc.roundedRect(M, y, CW, 92, 12).fillColor(DARK).fill();
@@ -334,8 +336,9 @@ function build() {
   doc.font('N').fontSize(10.5).fillColor(MUTED).text('Cei șase agenți stau în pagina „Agenți AI”: fiecare card arată pe scurt starea, iar când îl deschizi vezi detaliile. RA Insight are rândul lui în meniu.', M, y, { width: CW }); y += 34;
 
   // recap rânduri
-  // [iconiță, nume, ce face, eticheta din dreapta, evidențiat]. „AI Raport" (Rapoarte, pe calculator) e gratuit, pe reguli.
-  const recap = [[FA.shield, 'RA Watch', 'din oră în oră: offline, combustibil, ralanti, tahograf', 'inclus'], [FA.compass, 'RA Dispatch', 'mașini libere acum + cele mai apropiate de locul ales', 'inclus'], [FA.wrench, 'RA Care', 'ITP, RCA, revizii — pe dată sau pe km', 'inclus'], [FA.leaf, 'RA Optimize', 'scor eco pe mașină + sfaturi pentru șofer', 'inclus'], [FA.clipboard, 'RA Compliance', 'condusul de azi, estimat din GPS — camioane, autobuze', 'inclus'], [FA.file, 'RA Client', 'sinteza zilei + concluziile celorlalți', 'inclus'], [FA.wand, 'RA Insight', 'asistent AI — întrebi orice despre flotă', 'cu plată', true], [FA.file, 'AI Raport', 'în Rapoarte: întrebări despre rapoarte, pe calculator', 'gratuit']];
+  // [iconiță, nume, ce face, eticheta din dreapta, evidențiat]. „AI Raport" a ieșit pe 15.10 (rapoartele se cer din RA Insight),
+  // iar RA Insight se vinde pe pachete pe firmă (14.10) — Start e inclus în orice contract.
+  const recap = [[FA.shield, 'RA Watch', 'din oră în oră: offline, combustibil, ralanti, tahograf', 'inclus'], [FA.compass, 'RA Dispatch', 'mașini libere acum + cele mai apropiate de locul ales', 'inclus'], [FA.wrench, 'RA Care', 'ITP, RCA, revizii — pe dată sau pe km', 'inclus'], [FA.leaf, 'RA Optimize', 'scor eco pe mașină + sfaturi pentru șofer', 'inclus'], [FA.clipboard, 'RA Compliance', 'condusul de azi, estimat din GPS — camioane, autobuze', 'inclus'], [FA.file, 'RA Client', 'sinteza zilei + concluziile celorlalți', 'inclus'], [FA.wand, 'RA Insight', 'asistent AI — întrebi orice, ceri rapoarte în cuvinte', 'pe pachete', true]];
   recap.forEach(function (r, i) {
     const ry = y + i * 34;
     const ev = !!r[4];
@@ -362,7 +365,7 @@ function build() {
   // CTA
   doc.roundedRect(M, y, CW, 90, 12).fillColor(DARK).fill(); doc.rect(M, y, 5, 90).fillColor(GREEN).fill();
   doc.font('NX').fontSize(18).fillColor('#fff').text('Agenții verifică. Tu întrebi.', M + 26, y + 20);
-  doc.font('N').fontSize(10.5).fillColor('#c9ddd3').text('Agenții sunt incluși în abonament. RA Insight îl ceri în ofertă, pe conturile alese de firmă.', M + 26, y + 48, { width: CW - 210 });
+  doc.font('N').fontSize(10.5).fillColor('#c9ddd3').text('Agenții sunt incluși în abonament. RA Insight vine în pachete pe firmă, iar Start e inclus în orice contract.', M + 26, y + 48, { width: CW - 210 });
   doc.roundedRect(W - M - 160, y + 30, 134, 34, 8).fillColor(GREEN).fill();
   doc.font('NX').fontSize(13).fillColor(INK).text('ratrack.ro', W - M - 160, y + 40, { width: 134, align: 'center', lineBreak: false });
   pageFooter(doc, M, 7);

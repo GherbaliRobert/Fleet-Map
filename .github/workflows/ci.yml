@@ -38,6 +38,7 @@ jobs:
           node --check channels.js
           node --check ai.js
           node --check insight.js
+          node --check litere.js
           node --check ai_raport.js
           node --check insight_ghid.js
           node --check condus.js

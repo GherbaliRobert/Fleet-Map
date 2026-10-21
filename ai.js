@@ -4,6 +4,11 @@ const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 // Modelul agentului RA Insight — separat, ca să poată fi urcat pe Sonnet fără a atinge chat-ul rapid. Default = modelul de bază (Haiku).
 const AI_AGENT_MODEL = process.env.AI_AGENT_MODEL || AI_MODEL;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+// Orice text scris de model ajunge la om DOAR cu litere românești (Alin, 20.10: „sunt fatale pentru noi"): callClaude și
+// runAgent îl curăță aici, o dată pentru toate drumurile (litere.js). `brut: true` îl lasă cum e — doar RA Insight îl cere,
+// ca să ceară întâi o rescriere, și îl curăță el la capăt.
+const litere = require('./litere.js');
+function _curat(t, brut) { return brut ? t : litere.litereRomanesti(t); }
 
 // ─── Modelele pe care le știm, cu prețurile OFICIALE (USD / milion de tokeni), citite de pe
 // platform.claude.com/docs/en/about-claude/pricing pe 08.10.2026. Haiku 5.5: prețul cererilor sub 100.000 de tokeni
@@ -88,12 +93,12 @@ async function _rawCall(body) {
   return res.json();
 }
 
-async function callClaude({ system, messages, maxTokens = 800, model, onUsage }) {
+async function callClaude({ system, messages, maxTokens = 800, model, onUsage, brut }) {
   const m = model || AI_MODEL;
   const j = await _rawCall({ model: m, max_tokens: maxTokens, system: _cachedSystem(system), messages });
   if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) { /* logarea consumului nu trebuie să rupă răspunsul */ } }
   if (j.stop_reason === 'refusal') return '';
-  return _text(j);
+  return _curat(_text(j), brut);
 }
 
 // Citirea unei IMAGINI (poză de talon, CIV, RCA…). Până aici tot fișierul vorbea doar text; blocul
@@ -130,7 +135,7 @@ async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUs
 // nu schimbăm instrucțiunile — nota „gata" se adaugă după ultimele rezultate și se cere răspunsul fără unelte
 // (`tool_choice: none`, uneltele rămân aceleași). Haiku 4.5 merge pe drumul de până acum, neschimbat.
 const NOTA_GATA = 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.';
-async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage }) {
+async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage, brut }) {
   const m = model || AI_AGENT_MODEL;
   const cuGandire = pret(m).gandire;
   const convo = (messages || []).slice();
@@ -145,7 +150,7 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
     const blocks = j.content || [];
     convo.push({ role: 'assistant', content: blocks });   // tot, cu blocurile de gândire, neschimbat
     const toolUses = blocks.filter(b => b.type === 'tool_use');
-    if (j.stop_reason !== 'tool_use' || !toolUses.length) return { text: _text(j), toolCalls: used };
+    if (j.stop_reason !== 'tool_use' || !toolUses.length) return { text: _curat(_text(j), brut), toolCalls: used };
     const results = [];
     for (const tu of toolUses) {
       used.push({ name: tu.name, input: tu.input || {} });
@@ -172,7 +177,7 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
     : await _rawCall({ model: m, max_tokens: maxTokens, system: _cuNota(system, NOTA_GATA), messages: convo });
   if (onUsage && jf.usage) { try { onUsage(jf.usage, m); } catch (e) {} }
   if (jf.stop_reason === 'refusal') return { text: TEXT_REFUZ, toolCalls: used, refuz: true };
-  return { text: _text(jf), toolCalls: used };
+  return { text: _curat(_text(jf), brut), toolCalls: used };
 }
 
 module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT,
