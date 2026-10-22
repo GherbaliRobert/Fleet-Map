@@ -221,7 +221,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   clienți dacă folosesc Claude sau ChatGPT; (2) pilotul doar pe calculator sau cu autentificarea cu acordul omului de la
   început; (3) cum îl vindem (recomandat: inclus în contul RA Insight); (4) plafonul de cereri; (5) cât de departe în
   trecut; (6) fără nume de șoferi și clasamente (și ce facem la RA Insight). Nimic construit până nu răspundeți.
-- [ ] **Voi: rulați „Proba modelelor" și alegeți modelul lui RA Insight. Adăugat pe 08.10.** **15.10:** cheia e pe ratrack.ro și
+- [x] **BIFAT pe 22.10 (Alin: „DA” — rămânem pe Haiku 5.5, pentru toate întrebările). Voi: rulați „Proba modelelor" și alegeți modelul lui RA Insight. Adăugat pe 08.10.** **15.10:** cheia e pe ratrack.ro și
   RA Insight merge pe Haiku 5.5; proba se apasă de acolo (Robert): Administrare → „Utilizare RA Insight" → „Proba modelelor" →
   Firma „RA Track Demo" → bifate Haiku 5.5 și Sonnet 5.5 → „Pornește proba" → capturi cu rezultatul, trimise mie. Eu judec româna și
   socotesc costul în lei. Mai jos, nota din 08.10: Administrare → Utilizare
@@ -245,6 +245,14 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   aplicație (RA Insight vede 25 de rânduri dintr-un raport; raportul „Analitic" se oprește la 5.000 de poziții; alimentările și
   scăderile care nu se văd nu i se spun). Analiza, întrebare cu întrebare: PDF-ul „Proba modelelor, garanția și machetele"
   (21.10). **Rămâne alegerea modelului** (recomand Haiku 5.5, întrebarea 1 din PDF); se bifează când răspunde Alin.
+- [x] **HOTĂRÂT (22.10): garanția = doar contorul corecturilor (B).** Alin: „hai să mergem pe B, A ne costă". Proba de noapte
+  (A) nu se face. Tot pe 22.10: pasul 2 merge după macheta din 21.10 („da"), iar la „Anunță echipa RA Track" termenul promis e
+  „te sunăm în cel mult o zi lucrătoare" („da"). Fără răspuns încă: „Da"-ul nenumărat și pasul 2 de la Basic; fluxul „Anunță
+  echipa"; cine preia cererile.
+- [ ] **Robert: Brevo — opriți blocarea adreselor necunoscute. Adăugat pe 22.10 (emailul care nu mai pleca).** Brevo refuză
+  serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
+  IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
+  Verificare: „Stare producție" → „Email" verde, cu „ultimul email plecat"; sau Business › Mail › Scrie, un email de probă către voi.
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -294,6 +302,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „Vezi pachetele" nu o promite. **21.10:** proba arată Sonnet 5.5 la 6,65 bani pe întrebare: un pachet folosit până la capăt ar
   costa peste preț (Business: 66,50 lei la un preț de 30 de lei). Recomand s-o lăsăm oprită până la a doua probă, pe „RA Track
   Demo", după reparațiile din PDF-ul din 21.10.
+  **22.10:** Alin a ales Haiku 5.5 pentru tot și a aprobat reparațiile; analiza aprofundată rămâne oprită până la a doua probă.
 - [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
@@ -386,6 +395,34 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+
+---
+
+## 2026-10-22
+
+### AMÂNDOI · Emailul care n-a plecat nu mai tace (raportul programat, „Stare producție", anunțul nostru)
+
+Alin (22.10): *„verifică de ce mailul nu mai funcționează… programasem un raport foaie de parcurs să-mi vină pe mail în fiecare
+dimineață. Am primit după zile, a funcționat, apoi nu a mai mers."*
+
+- **Cauza cea mai probabilă (de confirmat de Robert, în Brevo):** Brevo blochează din oficiu cererile venite de la o adresă de
+  server pe care n-o știe (funcția „Authorised IPs", pornită singură la conturile făcute după mai 2024), iar Railway, pe planul
+  Hobby, dă serverului altă adresă la fiecare publicare. Primul email a plecat; după o publicare, Brevo a început să refuze (401,
+  „unrecognised IP address"). Aplicația nu spunea nimănui: raportul programat înghițea eroarea, iar rândul „Email" din „Stare
+  producție" era verde cât timp exista cheia. Aceeași cauză oprește ORICE email: facturi, contracte, invitații, linkuri de parolă.
+- **Ce am schimbat:**
+  1. Fiecare email lasă urmă: ultimul plecat și ultimul refuzat, cu eroarea, se țin minte și în bază (`mailer.js` → `_dupaEmail`).
+  2. „Stare producție" → „Email": roșu când ultimul email n-a plecat, cu motivul pe înțeles și ce e de făcut.
+  3. Anunț la noi, fondatorii („Emailurile nu pleacă"), în aplicație și pe telefon — niciodată pe email —, cel mult o dată la 6 ore.
+  4. Raportul programat: emailul care n-a plecat se reîncearcă de 3 ori (după 30, 60 și 120 de minute), cu raportul deja pus în
+     Istoric (nu se mai face o dată); după a patra încercare, omul primește „Emailul cu raportul n-a putut pleca". În lista
+     „Programări", rândul „Ultima trimitere" spune ce s-a întâmplat, iar „Trimite acum" spune pe față de ce n-a plecat (până acum
+     scria, greșit, „serverul n-are email configurat").
+  5. Probă nouă: `verify_email_stare.js` (în `npm test`, 36 de verificări, cu un Brevo fals care refuză ca cel adevărat).
+- **Ce vede fondatorul:** „Stare producție" roșu, cu motivul și pașii; anunțul „Emailurile nu pleacă"; în „Programări", eroarea
+  exactă. După ce Robert oprește blocarea în Brevo, rândul redevine verde, cu „ultimul email plecat".
+- **Ce vede clientul:** în „Programări": „Ultima trimitere: … — a plecat pe email", „— emailul n-a plecat; încercăm din nou la
+  06:30" sau „— emailul n-a putut pleca; raportul e în Istoric rapoarte. Echipa RA Track a fost anunțată." Fără amănunte tehnice.
 
 ---
 

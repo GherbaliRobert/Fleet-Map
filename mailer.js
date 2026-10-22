@@ -214,6 +214,26 @@ async function _noteaza(m, r) {
   } catch (e) { return null; /* jurnalul nu are voie să strice trimiterea */ }
 }
 
+// ─── Starea trimiterii (22.10, Alin: „mailul nu mai funcționează… a funcționat, apoi nu a mai mers") ───
+// Brevo refuza serverul după o publicare (adresa lui nouă nu era autorizată), iar aplicația nu spunea nimănui: rândul „Email" din
+// „Stare producție" era verde fiindcă cheia era pusă. Acum ultimul email plecat și ultimul refuzat se țin minte aici; serverul
+// le scrie în bază, le arată și ne anunță (setLaRezultat). `motiv` spune pe înțeles ce s-a întâmplat și ce e de făcut.
+let _stare = { reusitLa: null, esuatLa: null, eroare: null };
+let _laRezultat = null;
+function setLaRezultat(fn) { _laRezultat = typeof fn === 'function' ? fn : null; }
+function stare() { return Object.assign({}, _stare); }
+function motiv(eroare) {
+  const e = String(eroare || '');
+  if (/unrecogni[sz]ed ip|ip address|authori[sz]ed ip|not verified/i.test(e)) return {
+    fel: 'ip', scurt: 'Brevo refuză adresa serverului nostru: Railway o schimbă la fiecare publicare, iar Brevo blochează din oficiu adresele necunoscute.',
+    ceFaceti: 'În Brevo: Settings › Security › Authorised IPs — opriți blocarea adreselor necunoscute (o adresă adăugată de mână nu ține: după următoarea publicare vine alta).'
+  };
+  if (/brevo 40[13]\b/i.test(e)) return { fel: 'cheie', scurt: 'Brevo nu primește cheia serverului (cheie schimbată sau ștearsă, ori cont suspendat).', ceFaceti: 'Verificați în Brevo contul și cheia API, apoi BREVO_API_KEY din Railway.' };
+  if (/brevo 402\b|credit|quota|limit/i.test(e)) return { fel: 'limita', scurt: 'Brevo: s-a terminat numărul de emailuri al contului (planul gratuit: 300 pe zi).', ceFaceti: 'Verificați planul în Brevo.' };
+  if (/timeout|abort|fetch failed|enotfound|econnreset|eai_again/i.test(e)) return { fel: 'retea', scurt: 'Serverul de email n-a răspuns la timp.', ceFaceti: 'De obicei trece singur; dacă ține, verificați starea Brevo.' };
+  return { fel: 'alta', scurt: 'Emailul a fost refuzat.', ceFaceti: 'Mesajul exact e mai jos.' };
+}
+
 // send({to, cc?, subject, html, text, attachments, replyTo, from?, inReplyTo?, references?, jurnal?, cadru?}) → { ok, id?, error?, jurnalId? }. Nu aruncă (best-effort).
 // Chenarul casei se pune aici (_cuCadru), o dată pentru toate căile; „Trimise" ține emailul fără el (conținutul scris).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
@@ -235,6 +255,9 @@ async function send(m) {
       } catch (e) { r = { ok: false, error: e.message }; }
     }
   }
+  if (r.ok) _stare.reusitLa = Date.now();
+  else { _stare.esuatLa = Date.now(); _stare.eroare = String(r.error || 'eroare').slice(0, 500); }
+  if (_laRezultat) { try { _laRezultat(r); } catch (e) { /* starea nu are voie să strice trimiterea */ } }
   const jid = await _noteaza(scris, r);
   if (jid != null) r.jurnalId = jid;   // rândul din „Trimise" (răspunsul se leagă de emailul primit)
   return r;
@@ -252,4 +275,5 @@ async function verify() {
   try { await tx.verify(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
 }
 
-module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo, cadru, semnatura, cuSemnatura, LOGO_CID, _cuCadru };
+module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo, cadru, semnatura, cuSemnatura, LOGO_CID, _cuCadru,
+  stare, setLaRezultat, motiv };

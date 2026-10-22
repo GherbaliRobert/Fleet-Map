@@ -1304,6 +1304,11 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sched_company ON report_schedules(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sched_due ON report_schedules(enabled, next_run)`);
+    // Starea ultimei trimiteri (22.10): emailul care n-a plecat se vede pe programare și se reîncearcă (report_schedules.js).
+    await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS ultima_stare VARCHAR(20)`);
+    await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS ultima_eroare TEXT`);
+    await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS email_reincercari INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS email_raport_id INTEGER`);
 
     // Tahograf: fișiere .DDD încărcate + analiza lor
     await client.query(`
@@ -6233,8 +6238,16 @@ async function getDueReportSchedules(nowIso) {
   const r = await pool.query('SELECT * FROM report_schedules WHERE enabled = true AND next_run IS NOT NULL AND next_run <= $1', [nowIso]);
   return r.rows;
 }
-async function setScheduleRun(id, lastRunIso, nextRunIso) {
-  await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]);
+async function setScheduleRun(id, lastRunIso, nextRunIso, st) {
+  if (!st) { await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]); return; }
+  await pool.query(
+    'UPDATE report_schedules SET last_run = $2, next_run = $3, ultima_stare = $4, ultima_eroare = $5, email_reincercari = $6, email_raport_id = $7 WHERE id = $1',
+    [parseInt(id), lastRunIso, nextRunIso, st.stare || null, st.eroare ? String(st.eroare).slice(0, 500) : null, Number(st.reincercari) || 0, st.raportId != null ? parseInt(st.raportId) : null]);
+}
+// „Trimite acum" scrie doar starea (nu mută rularea de mâine și nu pornește reîncercări).
+async function setScheduleStare(id, lastRunIso, stare, eroare) {
+  await pool.query('UPDATE report_schedules SET last_run = $2, ultima_stare = $3, ultima_eroare = $4 WHERE id = $1',
+    [parseInt(id), lastRunIso, stare || null, eroare ? String(eroare).slice(0, 500) : null]);
 }
 
 // ─── Istoric rapoarte (per user, retenție 7 zile) ───
@@ -6496,7 +6509,7 @@ module.exports = {
   conversatieNoua, conversatieUser, ultimaConversatieRecenta, mesajeConversatie, adaugaMesajAi, actualizeazaConversatie,
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
   scrieScrisoare, auScrisoarea, scrisorileOmului, scrisoareaOmului, citesteScrisoarea, scrisoriNecitite, stergeScrisoriMaiVechiDe,
-  createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
+  createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun, setScheduleStare,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,

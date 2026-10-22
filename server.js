@@ -201,6 +201,8 @@ let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* op
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 // Panoul Mail, fila „Trimise" (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
 if (mailer && mailer.setJurnal) mailer.setJurnal(function (r) { return db.noteazaMailTrimis(r); });
+// Emailul care n-a plecat nu mai tace (22.10): vezi _dupaEmail, lângă „Stare producție".
+if (mailer && mailer.setLaRezultat) mailer.setLaRezultat(function (r) { _dupaEmail(r); });
 const mailPrimit = require('./mail_primit');   // fila „Primite" (etapa 2): emailul venit de la Cloudflare, citit (reguli curate)
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
@@ -2271,6 +2273,42 @@ async function _anuntaSuperadmini(supers, tip, gravitate, titlu, corp, date) {
     try { await sendPushToUser(u.id, { title: n.title, body: n.body, data: { type: n.type, notifId: n.id } }); } catch (e) {}
   }
   return n;
+}
+
+// ─── Emailul care n-a plecat nu mai tace (22.10, Alin: „raportul… am primit după zile, a funcționat, apoi nu a mai mers") ───
+// Brevo refuza serverul după o publicare (Railway îi schimbă adresa; Brevo blochează din oficiu adresele necunoscute) și nimeni
+// nu afla: rapoartele programate înghițeau eroarea, iar „Stare producție" era verde. Acum fiecare trimitere (mailer.js) ajunge
+// aici: ultima reușită și ultima eroare se scriu în bază (le citește „Stare producție" și după o repornire), iar o eroare ne
+// anunță pe noi, fondatorii — în aplicație și pe telefon, NICIODATĂ pe email (ar pica la fel) —, cel mult o dată la 6 ore.
+// Clientul nu vede amănuntele: află doar că emailul n-a plecat și că am fost anunțați (report_schedules.textStare).
+const EMAIL_ALARMA_PAUZA = 6 * 3600 * 1000;
+let _emailScrisLa = 0, _emailUltimOk = null, _emailAlarmaLa = 0;
+async function _emailStareSalvata() {
+  try { const v = await db.getSetting('email_stare'); return v ? (typeof v === 'string' ? JSON.parse(v) : v) : {}; } catch (e) { return {}; }
+}
+// Starea de acum: din memorie (de la ultima pornire) și din bază, oricare e mai nouă.
+async function _emailStareAcum() {
+  const sm = mailer ? mailer.stare() : {}, ss = await _emailStareSalvata();
+  const nou = function (k) { return (Number(sm[k]) || 0) >= (Number(ss[k]) || 0) ? sm : ss; };
+  const e = nou('esuatLa');
+  return { reusitLa: Number(nou('reusitLa').reusitLa) || 0, esuatLa: Number(e.esuatLa) || 0, eroare: e.eroare || null };
+}
+async function _dupaEmail(r) {
+  try {
+    if (_emailUltimOk !== !!r.ok || Date.now() - _emailScrisLa > 60000) {
+      _emailScrisLa = Date.now(); _emailUltimOk = !!r.ok;
+      const st = mailer.stare(), vechi = await _emailStareSalvata();
+      await db.setSetting('email_stare', JSON.stringify(Object.assign({}, vechi, r.ok ? { reusitLa: st.reusitLa } : { esuatLa: st.esuatLa, eroare: st.eroare })));
+    }
+    if (r.ok || !mailer.enabled() || Date.now() - _emailAlarmaLa < EMAIL_ALARMA_PAUZA) return;
+    _emailAlarmaLa = Date.now();
+    let la = 0; try { la = Number(await db.getSetting('email_alarma_la')) || 0; } catch (e) {}
+    if (Date.now() - la < EMAIL_ALARMA_PAUZA) { _emailAlarmaLa = la; return; }
+    await db.setSetting('email_alarma_la', String(_emailAlarmaLa));
+    const m = mailer.motiv(r.error);
+    let supers = []; try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+    await _anuntaSuperadmini(supers, 'email_esuat', 'critical', 'Emailurile nu pleacă', m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(r.error || '').slice(0, 200), { email: true, fel: m.fel });
+  } catch (e) { /* starea emailului nu are voie să strice trimiterea */ }
 }
 
 // ─── Ceasul contractelor: anunță din timp ce se termină ──────────────────────────────────────
@@ -15693,8 +15731,15 @@ app.post('/api/admin/fuel-prices/refresh', requireAuth, requireSuperadmin, async
 
 // ─── Rapoarte programate (trimise automat pe email) ───
 app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
-  try { res.json(await db.getReportSchedules(req.isSuper ? null : req.companyId)); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    // `stare_text` = ultima trimitere, scrisă de server (22.10); eroarea exactă doar la noi.
+    const l = await db.getReportSchedules(req.isSuper ? null : req.companyId);
+    res.json(l.map(function (s) {
+      const o = Object.assign({}, s, { stare_text: reportSchedules ? reportSchedules.textStare(s, !!req.isSuper) : null });
+      if (!req.isSuper) delete o.ultima_eroare;
+      return o;
+    }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Conturile demo nu pot programa rapoarte: câmpul „destinatari" e liber, iar trimiterea pleacă de pe SMTP-ul
 // nostru — ar transforma demo-ul în releu de spam, cu reputația domeniului ratrack.ro drept garanție.
@@ -15751,7 +15796,16 @@ app.post('/api/report-schedules/:id/run', requireAuth, requirePerm('viewReports'
     if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const s = await db.getReportScheduleById(req.params.id);
     if (!s) return res.status(404).json({ error: 'Programare inexistentă' });
-    const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels, notify }, new Date());
+    const acum = new Date();
+    const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels, notify }, acum);
+    // „Trimite acum" scrie starea pe programare (fără reîncercări: omul e de față și vede ce s-a întâmplat).
+    const st = reportSchedules.stareDupa(result, reportSchedules.REINCERCARI_MIN.length, acum, s);
+    try { await db.setScheduleStare(s.id, acum.toISOString(), st.stare, st.eroare); } catch (e) {}
+    const cuDest = !!(result.recipients && result.recipients.length);
+    result.emailText = result.emailSent ? 'trimis pe email'
+      : !cuDest ? 'fără adresă de email (doar în Istoric)'
+        : (req.isSuper ? 'emailul n-a plecat: ' + (result.emailError || 'eroare') : 'emailul n-a plecat; echipa RA Track a fost anunțată');
+    if (!req.isSuper) delete result.emailError;
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -17342,10 +17396,20 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
     isSet(process.env.SESSION_SECRET) ? 'setat din mediu' : 'negenerat din mediu → se folosește fișierul local; la reconstruirea containerului toate sesiunile pică');
   // Calea emailului (12.10): Brevo pe HTTPS (BREVO_API_KEY — merge și pe Railway Hobby) sau SMTP. Cheia rămâne 'smtp'.
-  add('smtp', 'Email', (mailer && mailer.enabled()) ? 'ok' : 'crit',
-    (mailer && mailer.enabled())
-      ? ('activ — ' + (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') + ', de la ' + mailer.fromAddr())
-      : 'neconfigurat (BREVO_API_KEY sau SMTP) → facturile, contractele, invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă');
+  // Din 22.10, roșu și când emailul e pus, dar ultimul n-a plecat (până atunci rândul era verde cât timp exista o cheie, iar
+  // Brevo refuza serverul de câteva zile) — cu ce s-a întâmplat, pe înțeles, și ce e de făcut.
+  {
+    const pus = !!(mailer && mailer.enabled());
+    const es = await _emailStareAcum();
+    const picat = pus && es.esuatLa > es.reusitLa;
+    const cand = function (t) { return new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
+    const cale = pus ? (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') : '';
+    const m = picat ? mailer.motiv(es.eroare) : null;
+    add('smtp', 'Email', !pus || picat ? 'crit' : 'ok',
+      !pus ? 'neconfigurat (BREVO_API_KEY sau SMTP) → facturile, contractele, invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă'
+        : picat ? ('activ — ' + cale + ', DAR ultimul email n-a plecat (' + cand(es.esuatLa) + '). ' + m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(es.eroare || '').slice(0, 300))
+          : ('activ — ' + cale + ', de la ' + mailer.fromAddr() + (es.reusitLa ? ' · ultimul email plecat: ' + cand(es.reusitLa) : '')));
+  }
   // Panoul Mail, etapa 2: emailurile PRIMITE (Cloudflare Email Routing → Worker → /api/mail/primeste, cu parola comună).
   {
     let ultim = null; try { const r = await db.pool.query('SELECT MAX(primit_la) AS t FROM mail_primite'); ultim = r.rows[0] && r.rows[0].t; } catch (e) {}
@@ -19473,7 +19537,8 @@ if (process.env.SEED_TEST === '1') {
       const b = req.body || {}, acum = Number(b.acum) || Date.now();
       res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined,
         plasa: b.plasa ? await plasaAnuntTick() : undefined,
-        locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined });
+        locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined,
+        rapoarte: b.rapoarte && reportSchedules ? await reportSchedules.tickDue({ db, reports, reportExport, channels, notify }, new Date(acum)) : undefined });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   // Raportul instalatorului, până îl face Robert: aceeași funcție pe care o va chema el.

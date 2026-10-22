@@ -121,6 +121,22 @@ async function runSchedule(s, deps, now) {
     historyId = saved && saved.id;
   } catch (e) { historyError = (e && e.message) || String(e); try { console.warn('[PROGRAMĂRI] salvare în Istoric eșuată (schedule ' + s.id + '):', historyError); } catch (_) {} }
 
+  const recips = await destinatari(s, db);
+  const rowsN = (report.rows && report.rows.length) || 0;
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels);
+  // Notificare „raport gata" (clopoțel + push) → duce direct la Istoric. Emailul care n-a plecat se spune tot aici.
+  if (deps.notify && historyId) {
+    try {
+      await deps.notify({ type: 'report_ready', severity: 'info', title: 'Raport programat gata',
+        body: '„' + (report.label || s.report_type) + '" e disponibil în Istoric rapoarte.' + (recips.length && !em.emailSent ? ' Emailul n-a plecat; încercăm din nou.' : ''),
+        data: { historyId, reportType: s.report_type, key: 'report_' + historyId }, userId: s.user_id, companyId: s.company_id });
+    } catch (e) {}
+  }
+  return { ok: true, rows: rowsN, recipients: recips, emailSent: em.emailSent, emailError: em.emailError, bytes: buf.length, format: fmt, historyId, historyError };
+}
+
+// Cui pleacă raportul: lista scrisă în programare, altfel emailul celui care a făcut-o, plus agenda firmei.
+async function destinatari(s, db) {
   let recips = (s.recipients || '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
   if (!recips.length && s.user_id) {
     try { const u = await db.getUserById(s.user_id); if (u && u.email) recips = [u.email]; } catch (e) {}
@@ -135,27 +151,77 @@ async function runSchedule(s, deps, now) {
       for (const a of agenda) if (!vazute.has(String(a).toLowerCase())) { recips.push(a); vazute.add(String(a).toLowerCase()); }
     } catch (e) { /* dacă agenda nu se poate citi, raportul pleacă oricum către lista scrisă de mână */ }
   }
+  return recips;
+}
+// Emailul cu raportul. Eroarea NU se mai înghite (22.10): prima e întoarsă, ca programarea să știe de ce n-a plecat.
+async function trimite(s, report, buf, filename, from, to, recips, channels) {
   const rowsN = (report.rows && report.rows.length) || 0;
   const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + from.slice(0, 10) + ' … ' + to.slice(0, 10);
   const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + from.slice(0, 10) + ' — ' + to.slice(0, 10) +
     '.\nRânduri: ' + rowsN + '.\n\n— RA Track (raport automat)';
-
-  let emailSent = false;
+  let emailSent = false, emailError = null;
   if (recips.length) {
     const attachments = [{ filename, content: buf }];
     for (const rcp of recips) {
-      try { const ok = await channels.sendEmailTo(rcp, subject, text, attachments); emailSent = emailSent || ok; } catch (e) {}
+      try {
+        const ok = await channels.sendEmailTo(rcp, subject, text, attachments);
+        if (ok) emailSent = true; else if (!emailError) emailError = 'Serverul nu are email configurat';
+      } catch (e) { if (!emailError) emailError = (e && e.message) || String(e); }
     }
   }
-  // Notificare „raport gata" (clopoțel + push) → duce direct la Istoric.
-  if (deps.notify && historyId) {
-    try {
-      await deps.notify({ type: 'report_ready', severity: 'info', title: 'Raport programat gata',
-        body: '„' + (report.label || s.report_type) + '" e disponibil în Istoric rapoarte.',
-        data: { historyId, reportType: s.report_type, key: 'report_' + historyId }, userId: s.user_id, companyId: s.company_id });
-    } catch (e) {}
+  return { emailSent, emailError };
+}
+// O reîncercare trimite DOAR emailul, cu raportul păstrat deja în Istoric (nu-l mai face o dată: ar apărea de două ori acolo).
+// Raportul șters între timp din Istoric → se face din nou.
+async function retrimite(s, deps, now) {
+  const { db, reportExport, channels } = deps;
+  let h = null;
+  try { if (s.email_raport_id && s.user_id != null) h = await db.getReportHistoryById(s.email_raport_id, s.user_id); } catch (e) { h = null; }
+  let report = h && h.data;
+  if (typeof report === 'string') { try { report = JSON.parse(report); } catch (e) { report = null; } }
+  if (!report || !Array.isArray(report.columns)) return runSchedule(s, deps, now);
+  const fmt = (s.format === 'xlsx') ? 'xlsx' : 'pdf';
+  const buf = fmt === 'xlsx' ? await reportExport.toXlsx(report) : await reportExport.toPdf(report);
+  const filename = reportExport.numeRaport(report) + '.' + fmt;
+  const from = new Date(h.period_from).toISOString(), to = new Date(h.period_to).toISOString();
+  const recips = await destinatari(s, db);
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels);
+  return { ok: true, rows: (report.rows || []).length, recipients: recips, emailSent: em.emailSent, emailError: em.emailError, format: fmt, historyId: h.id, reincercare: true };
+}
+
+// ─── Starea ultimei trimiteri (22.10) ───
+// Un email care n-a plecat se reîncearcă de 3 ori, după 30, 60 și 120 de minute (raportul de dimineață tot ajunge dimineața);
+// apoi se renunță până la rularea următoare. Starea se scrie pe programare, iar textul pentru ecran îl face `textStare`.
+const REINCERCARI_MIN = [30, 60, 120];
+function stareDupa(res, reincercare, now, s) {
+  const cuDest = !!(res.recipients && res.recipients.length);
+  if (res.ok && cuDest && !res.emailSent) {
+    if (reincercare < REINCERCARI_MIN.length) {
+      return { stare: 'reincercare', eroare: res.emailError || null, reincercari: reincercare + 1, raportId: res.historyId || s.email_raport_id || null,
+        next: new Date(now.getTime() + REINCERCARI_MIN[reincercare] * 60000) };
+    }
+    return { stare: 'esuat', eroare: res.emailError || null, reincercari: 0, raportId: null, next: computeNextRun(s.frequency, s.hour, now), renunta: true };
   }
-  return { ok: true, rows: rowsN, recipients: recips, emailSent, bytes: buf.length, format: fmt, historyId, historyError };
+  const stare = !res.ok ? (res.reason ? 'fara_vehicule' : 'eroare') : (cuDest ? 'trimis' : 'fara_destinatar');
+  return { stare, eroare: !res.ok ? (res.error || res.reason || null) : null, reincercari: 0, raportId: null, next: computeNextRun(s.frequency, s.hour, now) };
+}
+function _cand(t) {
+  return t ? new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+}
+function _ora(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }) : ''; }
+// Textul de pe ecran pentru ultima trimitere. Amănuntul erorii doar la noi (`cuEroare`); clientul află că noi am fost anunțați.
+function textStare(s, cuEroare) {
+  if (!s || !s.ultima_stare) return null;
+  const cand = _cand(s.last_run) ? _cand(s.last_run) + ' — ' : '';
+  const am = cuEroare && s.ultima_eroare ? ' (' + String(s.ultima_eroare).slice(0, 220) + ')' : '';
+  switch (s.ultima_stare) {
+    case 'trimis': return cand + 'a plecat pe email.';
+    case 'reincercare': return cand + 'emailul n-a plecat; încercăm din nou la ' + _ora(s.next_run) + '. Raportul e deja în Istoric rapoarte.' + am;
+    case 'esuat': return cand + 'emailul n-a putut pleca; raportul e în Istoric rapoarte. Echipa RA Track a fost anunțată.' + am;
+    case 'fara_destinatar': return cand + 'nicio adresă de email: raportul e doar în Istoric rapoarte.';
+    case 'fara_vehicule': return cand + 'nu s-a făcut: nicio mașină la care programarea să aibă acces.';
+    default: return cand + 'raportul nu s-a putut face.' + am;
+  }
 }
 
 // Rulează toate programările scadente și reprogramează-le.
@@ -164,13 +230,21 @@ async function tickDue(deps, now) {
   const due = await deps.db.getDueReportSchedules(now.toISOString());
   const results = [];
   for (const s of due) {
+    const reincercare = Number(s.email_reincercari) || 0;
     let res;
-    try { res = await runSchedule(s, deps, now); } catch (e) { res = { ok: false, error: e.message }; }
-    const next = computeNextRun(s.frequency, s.hour, now);
-    try { await deps.db.setScheduleRun(s.id, now.toISOString(), next.toISOString()); } catch (e) {}
-    results.push(Object.assign({ id: s.id, next_run: next.toISOString() }, res));
+    try { res = reincercare > 0 ? await retrimite(s, deps, now) : await runSchedule(s, deps, now); } catch (e) { res = { ok: false, error: e.message }; }
+    const st = stareDupa(res, reincercare, now, s);
+    try { await deps.db.setScheduleRun(s.id, now.toISOString(), st.next.toISOString(), st); } catch (e) {}
+    if (st.renunta && deps.notify) {
+      try {
+        await deps.notify({ type: 'report_email_esuat', severity: 'warning', title: 'Emailul cu raportul n-a putut pleca',
+          body: '„' + (s.name || s.report_type) + '" e în Istoric rapoarte. Am încercat de ' + (REINCERCARI_MIN.length + 1) + ' ori; echipa RA Track a fost anunțată.',
+          data: { reportType: s.report_type, key: 'report_email_' + s.id + '_' + now.toISOString().slice(0, 10) }, userId: s.user_id, companyId: s.company_id });
+      } catch (e) {}
+    }
+    results.push(Object.assign({ id: s.id, next_run: st.next.toISOString(), stare: st.stare }, res));
   }
   return results;
 }
 
-module.exports = { resolvePeriod, computeNextRun, runSchedule, tickDue };
+module.exports = { resolvePeriod, computeNextRun, runSchedule, tickDue, stareDupa, textStare, REINCERCARI_MIN };

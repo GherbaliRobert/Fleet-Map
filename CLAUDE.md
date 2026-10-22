@@ -180,6 +180,14 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
   Textul simplu devine HTML cu linkurile apăsabile (`_htmlDinText`).
 - „Stare producție", rândul `smtp`: „activ — Brevo/SMTP, de la …". Probele pot muta Brevo pe un server fals (`BREVO_API_URL`).
 - Păzit de `verify_email_brevo.js` (în `npm test`), inclusiv pe server pornit.
+- **Emailul care n-a plecat NU tace (22.10; Alin: „raportul… a funcționat, apoi nu a mai mers").** Cauza de atunci: Brevo
+  „Authorised IPs" (pornit din oficiu) + Railway Hobby, care dă serverului altă adresă la fiecare publicare → Brevo 401
+  „unrecognised IP address" pe ORICE email. `mailer.stare()` + `setLaRezultat` → `_dupaEmail` (server): ultima reușită / eroare
+  în setarea `email_stare`, anunț `email_esuat` la super-admini (în aplicație + push, NICIODATĂ pe email, ≤ 1 la 6 h); „Stare
+  producție" roșu cu `mailer.motiv` (ip / cheie / limită / rețea + ce e de făcut). Rapoartele programate: `report_schedules.stareDupa`
+  (reîncercări după 30 / 60 / 120 de minute, prin `retrimite` — raportul păstrat în Istoric, NU refăcut), `textStare` (eroarea exactă
+  doar la super-admin; clientul află că „echipa RA Track a fost anunțată"), coloanele `ultima_stare`, `ultima_eroare`,
+  `email_reincercari`, `email_raport_id`. NU înghiți erorile de email într-un `catch (e) {}`. Păzit de `verify_email_stare.js`.
 
 ### Panoul Mail al fondatorilor (Robert, 12.10) — etapa 1: „Trimise" + „Scrie"
 Business → **Mail** (după „Cereri demo"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";

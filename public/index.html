@@ -13219,7 +13219,10 @@ const pozitii = await r.json();</code></pre>
               '<span class="sch-chip">' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +   // fără iconiță de vehicul
             '</div>' +
             '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
-            '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>' +
+            // Ultima trimitere (22.10): textul îl scrie serverul — a plecat, se reîncearcă, n-a putut pleca (cu raportul în Istoric).
+            (s.stare_text
+              ? '<div class="sch-next sch-st-' + E(s.ultima_stare) + '"><i class="far ' + (s.ultima_stare === 'trimis' ? 'fa-circle-check' : 'fa-envelope') + '"></i> Ultima trimitere: ' + E(s.stare_text) + '</div>'
+              : '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>') +
           '</div>' +
           '<div class="sch-acts">' +
             '<button class="sch-iconbtn" onclick="schedEdit(' + s.id + ')" title="Editează"><i class="fas fa-pen"></i></button>' +
@@ -13321,9 +13324,8 @@ const pozitii = await r.json();</code></pre>
         try { schedLoad(); } catch (e) {}                                                      // actualizează „Ultima rulare"
         const parts = ['Generat ' + (saved ? '✓ ' : '') + '(' + (d.rows || 0) + ' rânduri)'];
         parts.push(saved ? 'salvat în Istoric' : ('NU s-a salvat' + (d.historyError ? ': ' + d.historyError : (d.reason ? ' (' + d.reason + ')' : ''))));
-        if (d.emailSent) parts.push('trimis pe email');
-        else if (d.recipients && d.recipients.length) parts.push('email indisponibil (serverul n-are email configurat)');
-        msg.style.color = saved ? 'var(--accent)' : 'var(--orange)';
+        if (d.emailText) parts.push(d.emailText);   // scris de server (22.10): „trimis pe email" / „emailul n-a plecat…"
+        msg.style.color = saved && (d.emailSent || !(d.recipients && d.recipients.length)) ? 'var(--accent)' : 'var(--orange)';
         msg.textContent = parts.join(' · ');
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
     }

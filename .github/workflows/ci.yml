@@ -36,6 +36,7 @@ jobs:
           node --check report_export.js
           node --check report_schedules.js
           node --check channels.js
+          node --check mailer.js
           node --check ai.js
           node --check insight.js
           node --check litere.js
