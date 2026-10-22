@@ -843,6 +843,15 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
   2, „RA Insight face, cu Da-ul tău"** (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat + potrivirea șoferilor),
   aprobat ca ordine pe 15.10, neînceput. Azi există doar „Am vorbit cu el" în RA Drive. Întâi macheta, NU construcția din proprie inițiativă.
+- **Proba modelelor din 21.10 (Robert, pe ratrack.ro) → Haiku 5.5 rămâne (Alin, 22.10: „DA"; 0,48 bani pe întrebare, Sonnet 5.5 6,65).**
+  Reparațiile ei (cele 3 greșeli ale lui Haiku veneau din aplicație) — NU le strica la loc: `insight.celeMaiMari` (cele mai mari 5
+  valori pe coloană, din TOATE rândurile, în `_raportPentruModel` → `cele_mai_mari`); `RAPOARTE_FARA_MODEL = ['analytic']` (lista de
+  5.000 de poziții nu e pentru totaluri); unealta `combustibil`: unde consumul nu e măsurat → `alimentari_si_scaderi` „nu se pot vedea" și
+  fără `norma_din_fisa`; vitezele: `run_report` speeding cu pragul din fișă (`probleme.pragViteza`) + `prag_raport` („nu e limita legală");
+  `cifre.negasite(text, date, intrebare)` acceptă procentele din întrebare; `insight.vorbeDespreEchipament` cere o rescriere în `_raInsight`
+  (ca literele); `_ramInterval`: de pe 1 până azi se compară cu aceleași zile din luna dinainte. **Contorul corecturilor (garanția B):**
+  `db.noteazaCorectura` (tabela `ai_corecturi`, doar numere) → `pachete.corecturi` în `/api/admin/ai-usage` → rândul din „Ce cere atenție".
+  Proba de noapte (A) NU se face (Alin: „ne costă"). Păzit de `verify_proba_reparatii.js`.
 - Păzit de **`verify_discutia.js`** (în `npm test`; discuția lui Alin pe server pornit, modelul simulat), `verify_cifre.js`,
   `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js`, `verify_acasa.js`.
 

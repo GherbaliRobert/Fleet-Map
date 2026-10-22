@@ -219,7 +219,7 @@
       '<div class="msb-card-body">' +
         '<div class="msb-contact">' +
           '<a href="tel:+40312295000"><i class="fas fa-phone"></i> 0312 295 000</a>' +
-          '<a href="mailto:suport@ratrack.ro"><i class="fas fa-envelope"></i> suport@ratrack.ro</a>' +
+          '<a href="mailto:contact@ratrack.ro"><i class="fas fa-envelope"></i> contact@ratrack.ro</a>' +
           '<a href="https://wa.me/40700000000" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>' +
         '</div>' +
         '<div class="msb-muted">Program: Luni–Vineri, 09:00–18:00. Sau trimite-ne un mesaj direct:</div>' +

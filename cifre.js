@@ -248,13 +248,28 @@ function cifreleRaspunsului(text) {
 // Cifrele „flotei" din răspuns care nu se găsesc în date, nici socotite din ele. [] = toate se regăsesc.
 // Duratele NU se verifică: aceeași durată se scrie în prea multe feluri („1h 23m", „83 de minute", „1,4 ore", „01:23"),
 // iar o bandă „de verificat" pusă pe o cifră bună ar strica încrederea mai mult decât ajută.
-function negasite(text, date) {
+// Procentele din întrebarea omului („reduc costurile cu 10%", „cu 15 la sută"), ca numere.
+function _procenteIntrebare(t) {
+  const out = [], re = /(\d+(?:[.,]\d+)?)\s*(?:%|la sut[ăa]|procente)/gi;
+  let m; while ((m = re.exec(String(t || ''))) !== null) { const p = parseFloat(m[1].replace(',', '.')); if (p > 0 && p < 100 && out.indexOf(p) < 0) out.push(p); }
+  return out;
+}
+// `intrebare` (22.10, proba modelelor): o cifră socotită dintr-un procent cerut de om — „cam 65 de lei" = 10% din 651 — e bună.
+// Se acceptă partea (v × p%), restul (v − p%) și v + p%, pentru orice cifră din date.
+function negasite(text, date, intrebare) {
   const s = _socotite(date), lipsa = [], vazut = new Set();
+  const procente = _procenteIntrebare(intrebare);
+  const dinProcent = function (lista, v, tol) {
+    return procente.some(function (p) {
+      return [p / 100, 1 - p / 100, 1 + p / 100].some(function (k) { return _aproape(lista, v / k, tol / k); });
+    });
+  };
   cifreleRaspunsului(text).forEach(function (c) {
     if (c.fel === 'timp') return;
     if (c.zec === 0 && c.v <= MICI) return;
     const tol = 0.5 * Math.pow(10, -c.zec) + 1e-9;
     if (_aproape(s.base, c.v, tol) || (s.fel[c.fel] && _aproape(s.fel[c.fel], c.v, tol))) return;
+    if (procente.length && (dinProcent(s.base, c.v, tol) || (s.fel[c.fel] && dinProcent(s.fel[c.fel], c.v, tol)))) return;
     if (!vazut.has(c.text)) { vazut.add(c.text); lipsa.push(c.text); }
   });
   return lipsa;
@@ -294,7 +309,7 @@ function consumDeVerificat(o) {
   const p = o.camion ? CONSUM_CAMION : CONSUM;
   if (o.l100 != null && isFinite(o.l100) && (o.l100 < p.min || o.l100 > p.max)) {
     if (o.km != null && o.km < KM_SIGUR) out.push(_nr(o.l100, 1) + ' l/100 km pe doar ' + _nr(o.km) + ' km — prea puțin drum ca cifra să fie sigură');
-    else out.push(_nr(o.l100, 1) + ' l/100 km — neobișnuit de ' + (o.l100 < p.min ? 'mic' : 'mare') + '; verifică senzorul, contorul sau consumul din fișă');
+    else out.push(_nr(o.l100, 1) + ' l/100 km — neobișnuit de ' + (o.l100 < p.min ? 'mic' : 'mare') + '; verifică consumul trecut în fișa mașinii');
   }
   if (o.pret != null && isFinite(o.pret) && o.pret > 0 && (o.pret < PRET.min || o.pret > PRET.max)) {
     out.push('prețul pe litru, ' + _nr(o.pret, 2) + ' lei, pare greșit — verifică prețul carburantului din setări');

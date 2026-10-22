@@ -164,8 +164,10 @@ T('firma care n-a dat niciun cont e spusă pe nume, nu cu zerouri',
   /nu a dat niciun cont/.test(gata.socoteala(zeroConturi)) && !/0<\/b> conturi ×/.test(gata.socoteala(zeroConturi)),
   gata.socoteala(zeroConturi).slice(0, 120));
 T('suma se scrie în amândouă monedele', /^45 lei <span[^>]*>\(9 €\)<\/span>$/.test(gata.lei(45)), gata.lei(45));
-T('sumele mici păstrează banii', /^3\.5 lei /.test(gata.lei(3.5)) && /\(0\.7 €\)/.test(gata.lei(3.5)), gata.lei(3.5));
-T('fără zerouri de umplutură', !/\.00/.test(gata.lei(100)), gata.lei(100));
+// Românește (22.10, Alin: „DA" la reparațiile din proba modelelor): virgula zecimală, punctul miilor.
+T('sumele mici păstrează banii, scrise românește', /^3,5 lei /.test(gata.lei(3.5)) && /\(0,7 €\)/.test(gata.lei(3.5)), gata.lei(3.5));
+T('…iar cele mari au punctul miilor', /^1\.234 lei /.test(gata.lei(1234)), gata.lei(1234));
+T('fără zerouri de umplutură', !/[.,]00\b/.test(gata.lei(100)), gata.lei(100));
 
 sect('8. Tabelul are stil, iar panoul vechi pe cartonașe nu mai e');
 ['.aiu-tab', '.aiu-tr', '.aiu-ch', '.aiu-det-in', '.aiu-bar', '.aiu-pk', '.aiu-at', '.aiu-ctl']
@@ -319,7 +321,7 @@ let K = gata.pachete({ peCod: { start: 5, basic: 1, pro: 2 }, venitLei: 50, cost
 T('sunt exact patru cifre', (K.match(/class="aiu-pk-t"/g) || []).length === 4, String((K.match(/class="aiu-pk-t"/g) || []).length));
 T('„Încasăm luna asta”, în două monede', /Încasăm luna asta[\s\S]{0,200}50 lei[\s\S]{0,80}\(10 €\)/.test(K), K.slice(0, 300));
 T('și din ce pachete vin banii', /5 Start · 1 Basic · 2 Pro/.test(K));
-T('„Ne costă (real)” spune și partea analizei aprofundate', /Ne costă \(real\)/.test(K) && /din care analiza aprofundată 1\.1 lei/.test(K));
+T('„Ne costă (real)” spune și partea analizei aprofundate', /Ne costă \(real\)/.test(K) && /din care analiza aprofundată 1,1 lei/.test(K));
 T('„Ne rămân” e verde când rămân bani și spune cât din încasări', /Ne rămân[\s\S]{0,140}color:var\(--accent\);">46 lei/.test(K) && /92% din încasări/.test(K));
 T('„Sold Anthropic”: dolarii, zilele la ritmul de azi și butonul', /\$12,5/.test(K) && /~40 de zile/.test(K) && />schimbă</.test(K));
 K = gata.pachete({ peCod: {}, venitLei: 0, costLei: 0.4 });
@@ -331,7 +333,7 @@ T('fără date de la server, nimic (nu cifre inventate)', gata.pachete(null) ===
 sect('13. Ce nu e în regulă se spune tare, sus');
 let A = gata.alerte(SUM({ totalCalls: 47, totalCostEur: 0.16 }), [F({ pretCont: 0 }), F({ id: 2, pretCont: 0 })]);
 T('nimeni nu plătește → se scrie răspicat', /Nicio firmă nu plătește RA Insight/.test(A));
-T('și se spune cât ne costă degeaba', /47 de întrebări/.test(A) && /0\.8 lei/.test(A), A.slice(0, 220));
+T('și se spune cât ne costă degeaba', /47 de întrebări/.test(A) && /0,8 lei/.test(A), A.slice(0, 220));
 T('și unde se pune prețul', /Conturi &amp; Abonamente/.test(A));
 A = gata.alerte(SUM(), [F({ pretCont: 15 }), F({ id: 2, pretCont: 0 })]);
 T('doar unele fără preț → altă alertă, mai blândă', /1 firmă are RA Insight fără preț pe cont/.test(A) && !/Nicio firmă nu plătește/.test(A));

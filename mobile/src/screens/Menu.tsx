@@ -196,7 +196,7 @@ export function Menu() {
             <div class="sheet-body">
               <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
                 <a href="tel:+40312295000" class="mn-item" style="border-radius:9px;border:1px solid var(--border)"><Icon name="headset" size={18} class="ic" /><span class="lbl">0312 295 000</span></a>
-                <a href="mailto:suport@ratrack.ro" class="mn-item" style="border-radius:9px;border:1px solid var(--border)"><Icon name="report" size={18} class="ic" /><span class="lbl">suport@ratrack.ro</span></a>
+                <a href="mailto:contact@ratrack.ro" class="mn-item" style="border-radius:9px;border:1px solid var(--border)"><Icon name="report" size={18} class="ic" /><span class="lbl">contact@ratrack.ro</span></a>
               </div>
               <div class="muted" style="font-size:12.5px;margin-bottom:8px">Sau trimite-ne un mesaj direct:</div>
               <textarea value={msg} onInput={(e) => setMsg((e.target as HTMLTextAreaElement).value)} rows={4} placeholder="Descrie problema sau întrebarea ta…"

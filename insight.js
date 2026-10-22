@@ -442,8 +442,52 @@ function totaluriPeMasina(columns, rows) {
   return out;
 }
 
+// Cele mai mari valori, socotite din TOATE rândurile unui raport (22.10, proba modelelor: „cea mai lungă cursă de luna trecută" —
+// modelul vedea doar primele 25 din 119 curse; Haiku a renunțat după 69 de secunde, Sonnet a citit zi cu zi și tot n-a fost
+// sigur). Pe fiecare coloană cu cifre (km, km/h, lei, litri, consum), primele `n` rânduri, de la cea mai mare. Doar când
+// raportul are mai multe rânduri decât vede modelul (25).
+function celeMaiMari(columns, rows, n) {
+  const cifre = require('./cifre.js');
+  if (!Array.isArray(columns) || !Array.isArray(rows) || rows.length <= 25) return null;
+  n = n || 5;
+  const out = {};
+  let coloane = 0;
+  columns.forEach(function (c, j) {
+    const f = cifre.felCheie(c);
+    if (!f || f === 'timp' || f === 'pct' || coloane >= 6) return;
+    const cu = [];
+    rows.forEach(function (r) { if (!Array.isArray(r)) return; const v = cifre._numarCelula(r[j]); if (v != null) cu.push({ v: v, r: r }); });
+    if (cu.length < 2) return;
+    cu.sort(function (a, b) { return b.v - a.v; });
+    out[String(c)] = cu.slice(0, n).map(function (x) {
+      const rand = {};
+      columns.forEach(function (cc, k) { const val = x.r[k]; if (val != null && val !== '') rand[String(cc)] = typeof val === 'string' ? val.slice(0, 80) : val; });
+      return rand;
+    });
+    coloane++;
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+// Vorbele despre echipament, prinse în răspunsul modelului (22.10, proba modelelor: „Mașina nu trimite date despre nivelul din
+// rezervor", „întreabă RA Track cum se trece consumul măsurat"). Regula e în ECHIPAMENTUL, dar modelul o mai calcă: aplicația
+// verifică, ca la literele străine, iar o asemenea frază cere o rescriere (_raInsight). Întoarce frazele găsite.
+// „B 268 ROY nu transmite de 3 zile" e un fapt (RA Watch) și NU se prinde: doar „nu trimite date despre / nivelul".
+const ECHIP_RE = [
+  /\bnu\s+(?:mai\s+)?(?:trimite|transmite)\s+(?:date(?:le)?\s+despre|nivelul)/i,
+  /\bsenzorul\b[^.!?\n]{0,40}\b(?:blocat|defect|stricat|necalibrat)/i,
+  /\bverific[ăa](?:ți)?\s+(?:dac[ăa]\s+(?:are|exist[ăa])\s+(?:un\s+)?(?:senzor|sond)|aparatul|dispozitivul|senzorul|sonda|cablul|cablajul|montajul|cartela|interfa[țt]a)/i,
+  /(?:^|[^a-zăâîșț])(?:întreab[ăa](?:ți)?|intreaba|contacteaz[ăa]|contacta[țt]i|sun[ăa](?:ți)?)\s+(?:la\s+)?RA Track/i,
+  /(?:^|[^a-zăâîșț])(?:monteaz[ăa]|monta[țt]i|instaleaz[ăa]|instala[țt]i|cere(?:[țt]i)?)\s+(?:un\s+)?(?:senzor|sond[ăa])/i,
+];
+function vorbeDespreEchipament(text) {
+  const t = String(text || ''), gasite = [];
+  ECHIP_RE.forEach(function (re) { const m = re.exec(t); if (m) gasite.push(m[0].replace(/^[^A-Za-zĂÂÎȘȚăâîșț]+/, '').trim()); });
+  return gasite;
+}
+
 module.exports = {
-  totaluriPeMasina,
+  totaluriPeMasina, celeMaiMari, vorbeDespreEchipament,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
   potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, areLitereStraine, litereRomanesti,

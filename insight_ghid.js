@@ -69,7 +69,7 @@ const SECTIUNI = [
     pasi: [
       'Management → Șoferi → „Adaugă șofer": nume, telefon, email, permisul (număr, expirare, categorii) → „Adaugă".',
       'Ca să-i dai o mașină: Management → Vehicule → creionul de pe rândul mașinii → „Editare vehicul".',
-      'În fila „Detalii vehicul", la „Șofer", alege-l și apasă „Salveaza".'
+      'În fila „Detalii vehicul", la „Șofer", alege-l și apasă „Salvează".'
     ],
     detalii: 'Când permisul expiră în cel mult 30 de zile, lângă șofer apare „mai are N zile".',
     cuvinte: ['sofer', 'soferi', 'adauga sofer', 'permis', 'aloca', 'atribuie', 'masina soferului']

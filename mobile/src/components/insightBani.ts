@@ -21,7 +21,9 @@ export function nr(v: any): string {
   const x = n(v);
   let s = Math.abs(x) < 10 ? x.toFixed(2) : x.toFixed(0);
   if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
-  return s;
+  // Românește (22.10), ca _aiuNr de pe web: virgula zecimală și punctul miilor.
+  const p = s.split('.'), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return p.length > 1 ? i + ',' + p[1] : i;
 }
 // „12 întrebări", „20 de întrebări", „1 întrebare" (ca window._raxNrI).
 export function intrebari(v: any): string {

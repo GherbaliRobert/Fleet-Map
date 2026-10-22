@@ -329,6 +329,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (10) **adăugat pe 19.10 — pagina noastră pe telefon, ca pe web:** cele patru cifre de sus (`pachete` din `/api/admin/ai-usage`), „Ce cere
   atenție", un rând pe firmă cu amănuntul la clic; cartonașele vechi ies (pe web au ieșit pe 19.10; formulele lor stau până atunci în
   `verify_insight_bani.js`).
+  (11) **adăugat pe 22.10:** sumele din pagina noastră se scriu românește („0,01 lei”, „1.234 lei” — `insightBani.ts` › `nr`, legat de
+  web prin `verify_insight_bani.js`), iar adresa de suport din meniu e contact@ratrack.ro (`Menu.tsx`); intră cu APK-ul următor.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -423,6 +425,40 @@ dimineață. Am primit după zile, a funcționat, apoi nu a mai mers."*
   exactă. După ce Robert oprește blocarea în Brevo, rândul redevine verde, cu „ultimul email plecat".
 - **Ce vede clientul:** în „Programări": „Ultima trimitere: … — a plecat pe email", „— emailul n-a plecat; încercăm din nou la
   06:30" sau „— emailul n-a putut pleca; raportul e în Istoric rapoarte. Echipa RA Track a fost anunțată." Fără amănunte tehnice.
+
+### AMÂNDOI · Cele 10 reparații din proba modelelor + contorul corecturilor (garanția B)
+
+Robert a rulat proba pe ratrack.ro (21.10); Alin (22.10): „rămânem pe Haiku 5.5 — DA", „repar acum cele 10 — DA", „hai să mergem
+pe B, A ne costă". Cele 3 răspunsuri greșite ale lui Haiku veneau din aplicație, nu din model.
+
+1. **Cele mai mari valori, din TOATE rândurile.** RA Insight vedea doar primele 25 de rânduri ale unui raport: la „cea mai lungă cursă
+   de luna trecută" (119 curse) Haiku a renunțat după 69 de secunde. Acum primește și cele mai mari 5 valori pe fiecare coloană cu
+   cifre (cele mai lungi curse, cele mai mari viteze), socotite din tot raportul.
+2. **Fără raportul „Analitic"** (lista poziție cu poziție, oprită la 5.000 de poziții): din el, viteza maximă a lunii ieșea 153 km/h
+   în loc de 170. Cerut în cuvinte de om, se face mai departe.
+3. **Combustibilul:** unde consumul nu e măsurat, RA Insight află că „alimentările și scăderile nu se pot vedea" (Haiku scria „Nu au
+   fost scăderi suspecte") și nu mai primește norma din fișă ca reper (consumul e socotit chiar din ea).
+4. **Vitezele:** pragul vine din fișa mașinii (limita trecută acolo; altfel 130 km/h la autoturisme, 90 la camioane) și e spus pe
+   față: „a trecut de 130 km/h", nu „a depășit limita legală".
+5. **Verificarea cifrelor** acceptă procentul din întrebare: „cam 65 de lei" = 10% din 651 de lei nu mai e „Nu am găsit în rapoarte".
+6. **Vorbele despre echipament** („Mașina nu trimite date despre nivelul din rezervor", „întreabă RA Track…") cer o rescriere, ca
+   literele străine. Tot de aici: textul „De verificat" de la un consum ciudat nu mai trimite clientul la senzor — doar la fișa mașinii.
+7. **„Salvează"** în „Editare vehicul" (era „Salveaza"), și în ghid.
+8. **Luna de acum se compară cu aceleași zile din luna dinainte** și când modelul cere perioada pe zile (o dată ieșea 1–21 septembrie,
+   altă dată 10–30).
+9. **Sumele din „RA Insight · control" se scriu românește:** „0,01 lei", „1.234 lei" (și copia de pe telefon, pentru APK-ul următor).
+10. **Suportul:** fereastra „Suport clienți" dă contact@ratrack.ro (suport@ nu ne vine), la fel documentația și telefonul; mesajele scrise
+    în fereastră ajung acum pe email la contact@, cu „Răspuns la" = omul care a scris (până acum rămâneau în jurnalul de erori).
+- **Contorul corecturilor (B):** „RA Insight · control" › „Ce cere atenție": „Corectate singure luna asta: N din M răspunsuri (cu o cifră
+  negăsită / cu litere străine / cu vorbe despre aparat). Au ajuns la client cu «Nu am găsit în rapoarte»: K." Doar numere, pe firme
+  (tabela `ai_corecturi`); textul răspunsurilor nu-l vedem. Proba de noapte (A) nu se face.
+- **Ce am schimbat:** `server.js` (`_raportPentruModel`, `RAPOARTE_FARA_MODEL`, `run_report`, `combustibil`, `_ramInterval`, `_raInsight`,
+  `/api/support`, `/api/admin/ai-usage`), `insight.js` (`celeMaiMari`, `vorbeDespreEchipament`), `cifre.js`, `db.js` (`ai_corecturi`),
+  `backup.js`, pagina, `insight_ghid.js`, `map-tools.js`, `api-docs.html`, telefonul (`insightBani.ts`, `Menu.tsx`). Probă nouă:
+  `verify_proba_reparatii.js` (27, în `npm test`); `verify_cifre.js` și `verify_insight_panou.js` rescrise pe regula nouă.
+- **Ce vede fondatorul:** rândul nou din „Ce cere atenție"; sumele cu virgulă; mesajele de suport în Mail › Primite.
+- **Ce vede clientul:** răspunsuri RA Insight mai corecte (cea mai lungă cursă, viteza maximă, combustibilul care nu se vede, vitezele
+  spuse corect), „Salvează", adresa de suport bună. Fără niciun cuvânt despre aparat.
 
 ---
 

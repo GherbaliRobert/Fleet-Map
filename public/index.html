@@ -963,7 +963,7 @@
       </div>
 
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
-        <i class="fas fa-save"></i> Salveaza
+        <i class="fas fa-save"></i> Salvează
       </button>
     </div>
   </div>
@@ -28620,7 +28620,9 @@ const pozitii = await r.json();</code></pre>
     function _aiuNr(v) {
       var n = Number(v) || 0, s = Math.abs(n) < 10 ? n.toFixed(2) : n.toFixed(0);
       if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
-      return s;
+      // Românește (22.10): virgula zecimală și punctul miilor — „0,01 lei", „1.234 lei" (era „0.01", „1234").
+      var p = s.split('.'), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return p.length > 1 ? i + ',' + p[1] : i;
     }
     // „45 lei (9 €)" — regula casei: orice sumă, în amândouă monedele, a doua discret.
     function _aiuLei(v) {
@@ -28908,6 +28910,16 @@ const pozitii = await r.json();</code></pre>
         l.push({ ton: 'warn', t: '<b>' + p.jos7 + (p.jos7 === 1 ? ' răspuns a primit' : ' răspunsuri au primit') + ' 👎</b> în ultimele 7 zile' + (cine.length ? ': ' + cine.join(', ') : '') + '. Textul lor nu-l vedem — e al omului; aflăm doar câte.' });
       }
       var av = _aiuAvertismente(s || {}, r);
+      // Contorul corecturilor (garanția B, 22.10): câte răspunsuri a rescris singură aplicația luna asta și de ce — doar câte.
+      var cor = p.corecturi;
+      if (cor && Number(p.intrebariAi) > 0) {
+        var nrRo = function (v) { return (Number(v) || 0).toLocaleString('ro-RO'); };
+        var deRo = function (v) { var r = Math.abs(Number(v) || 0) % 100; return (!Number(v) || (r >= 1 && r <= 19)) ? ' ' : ' de '; };
+        var dece = [[cor.cifre, ' cu o cifră negăsită'], [cor.litere, ' cu litere străine'], [cor.echipament, ' cu vorbe despre aparat']]
+          .filter(function (x) { return Number(x[0]) > 0; }).map(function (x) { return nrRo(x[0]) + x[1]; });
+        l.push({ ton: Number(cor.ramase) > 0 ? 'warn' : 'info', t: '<b>Corectate singure luna asta: ' + nrRo(cor.rescrise) + ' din ' + nrRo(p.intrebariAi) + deRo(p.intrebariAi) + 'răspunsuri</b>' +
+          (dece.length ? ' (' + dece.join(', ') + ')' : '') + '. Au ajuns la client cu „Nu am găsit în rapoarte”: ' + nrRo(cor.ramase) + '. Textul lor nu-l vedem — doar câte.' });
+      }
       var inst = Number(p.instant) || 0, tot = inst + (Number(p.intrebariAi) || 0);
       if (tot > 0) l.push({ ton: 'info', t: Math.round(inst / tot * 100) + '% din răspunsurile lunii au fost instant, din rapoarte — nu ne-au costat nimic.' });
       if (!l.length && !av) return '<div class="aiu-grup">Ce cere atenție</div><div class="aiu-at ok"><i class="fas fa-circle-check"></i><span>Nimic de rezolvat acum.</span></div>';

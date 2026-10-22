@@ -78,7 +78,8 @@ T('fără perioadă în întrebare → nimic de spus', C.perioadaDiferita(null, 
 console.log('\n3. Cifrele greu de crezut — „de verificat"');
 const dv = (o) => C.consumDeVerificat(o);
 T('1,2 l/100 km pe 13 km → „prea puțin drum"', /1,2 l\/100 km pe doar 13 km — prea puțin drum/.test(dv({ l100: 1.2, km: 13 }).join()), dv({ l100: 1.2, km: 13 }).join());
-T('1,2 l/100 km pe 200 km → „neobișnuit de mic", cu ce e de verificat', /^1,2 l\/100 km — neobișnuit de mic; verifică senzorul, contorul sau consumul din fișă$/.test(dv({ l100: 1.2, km: 200 }).join()), dv({ l100: 1.2, km: 200 }).join());
+// Fără „senzorul, contorul" (22.10): aparatul e treaba noastră; clientul poate verifica doar fișa.
+T('1,2 l/100 km pe 200 km → „neobișnuit de mic", cu ce poate verifica omul singur (fișa)', /^1,2 l\/100 km — neobișnuit de mic; verifică consumul trecut în fișa mașinii$/.test(dv({ l100: 1.2, km: 200 }).join()), dv({ l100: 1.2, km: 200 }).join());
 T('45 l/100 km la un autoturism → „neobișnuit de mare"; la un camion e în regulă', /neobișnuit de mare/.test(dv({ l100: 45, km: 300 }).join()) && dv({ l100: 45, km: 300, camion: true }).length === 0);
 T('75 l/100 km la un camion → „de verificat"', dv({ l100: 75, km: 300, camion: true }).length === 1);
 T('8,5 l/100 km → nimic', dv({ l100: 8.5, km: 496, pret: 7.3 }).length === 0);

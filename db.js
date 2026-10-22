@@ -1415,6 +1415,16 @@ async function initDb() {
       )
     `);
     await client.query('CREATE INDEX IF NOT EXISTS idx_ai_reguli_firma_luna ON ai_reguli (company_id, created_at)');
+    // Contorul corecturilor (garanția B, 22.10): câte răspunsuri RA Insight a rescris aplicația, pe lună și firmă, și de ce.
+    // Doar numere — textul răspunsurilor e al clientului.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_corecturi (
+        luna VARCHAR(7) NOT NULL,
+        company_id INTEGER NOT NULL,
+        rescrise INTEGER DEFAULT 0, cifre INTEGER DEFAULT 0, litere INTEGER DEFAULT 0, echipament INTEGER DEFAULT 0, ramase INTEGER DEFAULT 0,
+        PRIMARY KEY (luna, company_id)
+      )
+    `);
     // Trecerile la alt pachet RA Insight, confirmate din aplicație (pasul 6): cine, când, de pe ce adresă și TEXTUL exact pe care
     // l-a confirmat — confirmarea ține loc de act adițional, deci e dovadă și rămâne și după ștergerea firmei (ca un contract).
     await client.query(`
@@ -6238,6 +6248,20 @@ async function getDueReportSchedules(nowIso) {
   const r = await pool.query('SELECT * FROM report_schedules WHERE enabled = true AND next_run IS NOT NULL AND next_run <= $1', [nowIso]);
   return r.rows;
 }
+// Contorul corecturilor (garanția B, 22.10). Luna ca _lunaAcum din server (AAAA-LL după UTC), ca citirea să găsească scrierea.
+async function noteazaCorectura(companyId, c) {
+  const luna = new Date().toISOString().slice(0, 7);
+  await pool.query(
+    `INSERT INTO ai_corecturi (luna, company_id, rescrise, cifre, litere, echipament, ramase) VALUES ($1, $2, 1, $3, $4, $5, $6)
+     ON CONFLICT (luna, company_id) DO UPDATE SET rescrise = ai_corecturi.rescrise + 1, cifre = ai_corecturi.cifre + EXCLUDED.cifre,
+       litere = ai_corecturi.litere + EXCLUDED.litere, echipament = ai_corecturi.echipament + EXCLUDED.echipament, ramase = ai_corecturi.ramase + EXCLUDED.ramase`,
+    [luna, parseInt(companyId), c && c.cifre ? 1 : 0, c && c.litere ? 1 : 0, c && c.echipament ? 1 : 0, c && c.ramas ? 1 : 0]);
+}
+async function corecturiLuna(luna) {
+  const r = await pool.query(`SELECT COALESCE(SUM(rescrise), 0)::int AS rescrise, COALESCE(SUM(cifre), 0)::int AS cifre, COALESCE(SUM(litere), 0)::int AS litere,
+    COALESCE(SUM(echipament), 0)::int AS echipament, COALESCE(SUM(ramase), 0)::int AS ramase FROM ai_corecturi WHERE luna = $1`, [String(luna)]);
+  return r.rows[0] || { rescrise: 0, cifre: 0, litere: 0, echipament: 0, ramase: 0 };
+}
 async function setScheduleRun(id, lastRunIso, nextRunIso, st) {
   if (!st) { await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]); return; }
   await pool.query(
@@ -6518,7 +6542,7 @@ module.exports = {
   stocImeiuri, stocDupaSerii, aparateNoiDeAnuntat, aparateInNeasignate, marcheazaAparateAnuntate, migreazaAparateNoiAnuntate,
   puneModelGpsDacaLipseste, lucrariMontateNefacturate,
   listeCompat, puneListaCompat,
-  recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
+  recordAiUsage, noteazaCorectura, corecturiLuna, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
