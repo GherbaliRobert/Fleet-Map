@@ -368,8 +368,10 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // `meniu: true` (15.10, macheta „mai simplu") = stă în „⋯" (ghidul), nu sub „Pagini".
   const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)?(?:, meniu: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
   // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
-  T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte); cele nelivrate nu; discuția nu e printre ele', RAM.length === 7 &&
-    ['safedrive', 'combustibil', 'mentenanta'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
+  // Pasul 2, partea 1 (22.10): „Șoferi pe mașini" e o pagină livrată, de la pachetul Basic (`pachet: true`), cu pagina ei.
+  T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte, Șoferi pe mașini); cele nelivrate nu; discuția nu e printre ele', RAM.length === 8 &&
+    ['safedrive', 'combustibil', 'mentenanta', 'soferi'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
+    /\{ k: 'soferi', et: 'Șoferi pe mașini', ic: 'fa-people-arrows', gata: true, pachet: true \}/.test(PAG) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
     (PAG.match(/function pagini\(\) \{ return RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general' && !r\.meniu; \}\); \}/g) || []).length === 1 && (PAG.match(/pagini\(\)\.forEach\(/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
   // Macheta „mai simplu" (15.10): Mașina / Perioada / Raport stau sub „+"; ramurile sub „Pagini ▸"; conversație nouă din stânga

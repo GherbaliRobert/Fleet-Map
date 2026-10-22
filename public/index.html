@@ -12171,8 +12171,9 @@ const pozitii = await r.json();</code></pre>
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
+              propunere: j.propunere, pagina: j.pagina,
               aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, nota: j.nota, insigna: j.insigna, propunere: j.propunere, pagina: j.pagina } };
+              verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
@@ -13050,6 +13051,11 @@ const pozitii = await r.json();</code></pre>
       // Pagina desenează și trimite apăsările: Da / Schimbă / Nu pe cartonaș, „Aplică cele bifate", „Anulează". Nimic nu se
       // schimbă fără un buton apăsat; nimic de aici nu se numără. Ceasul lui „Anulează" pornește de la ce spune serverul
       // (`ramasMs`), nu de la ceasul calculatorului.
+      // „**Mihai Ionescu** e pe **B 77 TIR**": îngroșatul din textul serverului, pus ca text (nu ca HTML).
+      function textGros(nod, t) {
+        String(t || '').split('**').forEach(function (bucata, i) { if (bucata) nod.appendChild(i % 2 ? el('b', null, bucata) : document.createTextNode(bucata)); });
+        return nod;
+      }
       function butonProp(text, ic, prim) {
         var b = el('button', 'chat-pas' + (prim ? ' chat-prop-da' : '')); b.type = 'button';
         b.innerHTML = '<i class="fas ' + ic + '"></i>'; b.appendChild(document.createTextNode(text)); return b;
@@ -13143,7 +13149,7 @@ const pozitii = await r.json();</code></pre>
         // După „Da": gata, cu „Anulează" (cât mai ține) și fișa mașinii; rândul jurnalului dedesubt.
         if (p.stare === 'aplicata' && p.gata) {
           var gt = el('div', 'chat-gata');
-          var tt = el('div', 'chat-gata-t'); tt.innerHTML = '<i class="fas fa-circle-check"></i>'; var sp = el('span'); sp.innerHTML = mdScurt(p.gata.text); tt.appendChild(sp); gt.appendChild(tt);
+          var tt = el('div', 'chat-gata-t'); tt.innerHTML = '<i class="fas fa-circle-check"></i>'; tt.appendChild(textGros(el('span'), p.gata.text)); gt.appendChild(tt);
           var bg = el('div', 'chat-prop-b');
           if (p.ramasMs > 0) {
             var bAn = butonProp('Anulează', 'fa-rotate-left'); ceasAnulare(bAn, p.ramasMs);

@@ -900,10 +900,12 @@ PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecra
   termenele lui RA Care (stă o dată). Numărul de lângă pagină (`/api/insight/ramuri` → `soferi`).
 - **Pagina:** ramura `soferi` (`pachet: true`), `deseneazaSoferi`; cartonașul `cartonasPropunere` (Da / Schimbă / Nu, „Gata" cu
   „Anulează", `adaugaUrmator`); stilurile `.chat-prop*`, `.chat-gata*`, `.ssm*`, `.azi-prop`, cu pereche pe tema închisă. Textele vin de la
-  server; pagina nu socotește nimic. Ghidul: capitolul `soferi_masini`. Telefonul — la APK-ul următor (Robert).
+  server și se pun ca TEXT — îngroșatul din „Gata" prin `textGros` (noduri `<b>`), NU `innerHTML` (nici cu `mdScurt`): blocul stă între
+  ramuri, pe care `verify_safe_drive.js` le păzește. Pagina nu socotește nimic. Ghidul: capitolul `soferi_masini`. Telefonul — la APK-ul
+  următor (Robert).
 - ⚠ **Găsit pe 22.10, întrebat (nehotărât):** ruta veche `PUT /api/devices/:imei/assign` (ecranul) nu verifică dacă șoferul și grupa sunt
   ale firmei (rapoartele iau numele șoferului fără filtru de firmă). Drumul lui RA Insight verifică. NU o repara fără răspunsul lui Alin.
-- Păzit de **`verify_soferi_masini.js`** (în `npm test`; 77, pe server pornit, ZERO cereri către model), `verify_insight_ghid.js`.
+- Păzit de **`verify_soferi_masini.js`** (în `npm test`; 81, pe server pornit, ZERO cereri către model), `verify_insight_ghid.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
