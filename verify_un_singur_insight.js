@@ -3,6 +3,7 @@
 // Ce păzește:
 //   1. „Azi la tine" (azi_la_tine.js): rândurile din ce au găsit agenții, cu regulile agenților (agents.esteFaraSemnal /
 //      esteLiber), butoanele lor, ordinea, cheile pentru punctul mov de pe bulă — pe reguli, fără model, nenumărat;
+//      1b. ziua agenților pe ora României, la orice oră din noapte (22.10: proba pica între 00 și 03 — agenții porneau ziua la 03);
 //   2. rapoartele cerute în cuvinte (ai_raport.comanda): fiecare raport din catalog e înțeles după numele lui, o întrebare
 //      („câți km…") rămâne întrebare, continuările („Și pentru toată flota?", „Și ziua dinainte?", mașina aleasă) se înțeleg;
 //   3. pagina: bula duce în secțiune (fără chatul ei), „Agenți AI" iese din meniu pentru cine are cont RA Insight, „Azi la
@@ -105,7 +106,7 @@ T('„Azi la tine" stă sub salut, la o conversație nouă, și cere serverul (n
 T('…textul (cu numele mașinilor, scrise de oameni) trece prin mdScurt, care curăță întâi; numele agentului doar ca text la trecerea cu mouse-ul', /function mdScurt\(t\) \{ return String\(t \|\| ''\)\.replace\(\/&\/g, '&amp;'\)\.replace\(\/<\/g, '&lt;'\)/.test(SECT) && /tx\.innerHTML = mdScurt\(rd\.text\)/.test(SECT) && /row\.title = String\(rd\.nume \|\| ''\)/.test(SECT));
 T('…un rând = un clic: primul buton pe care omul îl poate folosi („De ce?" doar cu AI, harta doar cu mașini, raportul doar cu dreptul); „De ce?" se vede pe rând', /if \(b\.fel === 'dece' && !areAi\(\)\) return false;/.test(SECT) && /var b = aziPrimul\(rd\);/.test(SECT) && /if \(b && b\.fel === 'dece'\) row\.appendChild\(el\('span', 'azi-dece', b\.text\)\);/.test(SECT) && /if \(window\._aziVazut\) window\._aziVazut\(j\.chei \|\| \[\]\);/.test(SECT));
 T('…cel mult trei rânduri (le taie serverul), cu „N de văzut" sus; „Setările agenților" s-a mutat în „⋯"', /dv > 0 \? dv \+ ' de văzut'/.test(SECT) && /else if \(x\.k === 'agenti'\) showView\('agenti'\);/.test(SECT) && SECT.indexOf('Setările agenților →') < 0);
-T('cartonașele rapoartelor: din `raport` / `rapoarte` (de la server; mai multe zile = mai multe cartonașe, 15.10), „Deschide raportul" → Istoric, „Descarcă Excel" → fișierul din Istoric; pe reguli, doar cartonașele (cu `note`), iar cu „compară" și analiza lui RA Insight dedesubt', /var carduri = Array\.isArray\(x\.rapoarte\) && x\.rapoarte\.length \? x\.rapoarte : \(x\.raport && x\.raport\.label \? \[x\.raport\] : \[\]\);/.test(SECT) && /var cuRaport = carduri\.length > 0 && x\.source !== 'ai';/.test(SECT) && /carduri\.forEach\(function \(rp\) \{ cw\.appendChild\(cartonasRaport\(rp\)\); \}\);/.test(SECT) && /if \(!x\.limita && !cuRaport\)/.test(SECT) && /repViewHistory\(id\)/.test(SECT) && /repExportHistory\(rp\.id, 'xlsx'\)/.test(SECT) && /raport: j\.raport, rapoarte: j\.rapoarte, probleme: j\.probleme,/.test(SECT) && /\(Array\.isArray\(rp\.note\) \? rp\.note : \[\]\)\.forEach/.test(SECT) && /if \(note\.length\) card\.note = note;/.test(SRV));
+T('cartonașele rapoartelor: din `raport` / `rapoarte` (de la server; mai multe zile = mai multe cartonașe, 15.10), „Deschide raportul" → Istoric, „Descarcă Excel" → fișierul din Istoric; pe reguli, doar cartonașele (cu `note`), iar cu „compară" și analiza lui RA Insight dedesubt', /var carduri = Array\.isArray\(x\.rapoarte\) && x\.rapoarte\.length \? x\.rapoarte : \(x\.raport && x\.raport\.label \? \[x\.raport\] : \[\]\);/.test(SECT) && /var cuRaport = carduri\.length > 0 && x\.source !== 'ai';/.test(SECT) && /carduri\.forEach\(function \(rp\) \{ cw\.appendChild\(cartonasRaport\(rp\)\); \}\);/.test(SECT) && /if \(!x\.limita && !cuRaport && !propInchisa && textAi\)/.test(SECT) && /repViewHistory\(id\)/.test(SECT) && /repExportHistory\(rp\.id, 'xlsx'\)/.test(SECT) && /raport: j\.raport, rapoarte: j\.rapoarte, probleme: j\.probleme,/.test(SECT) && /\(Array\.isArray\(rp\.note\) \? rp\.note : \[\]\)\.forEach/.test(SECT) && /if \(note\.length\) card\.note = note;/.test(SRV));
 T('„Raport" din „+": lista o dă serverul (drepturile omului), alesul se pune în text; doar cu dreptul la rapoarte', /cere\('GET', '\/api\/insight\/rapoarte'\)/.test(SECT) && /if \(poateRapoarte\(\)\) l\.push\(\{ text: 'Raport'/.test(SECT));
 T('Istoric rapoarte: eticheta „din RA Insight" pe rapoartele cerute în cuvinte', /h\.status === 'insight' \? '<span class="rh-ins"/.test(PAG) && /\.rh-ins \{/.test(CSS) && /body\.dark \.rh-ins/.test(CSS));
 T('„Rezumă cu RA Insight": rezumatul apare deasupra raportului (fără fereastra bulei), curățat; raportul nou îl golește', /<div id="rep-rezumat" class="rep-rezumat" style="display:none;"><\/div>/.test(PAG) && /c\.innerHTML = esc\(text\)\.replace/.test(PAG) && /var _rz = document\.getElementById\('rep-rezumat'\)/.test(PAG) && PAG.indexOf('raxSummarizeVisibleReport') < 0);
@@ -124,7 +125,9 @@ T('un răspuns: titlu scurt („Am înțeles" fără bule), cel mult două butoa
 // ─── 4. Serverul ────────────────────────────────────────────────────────────────────────────────────
 console.log('\n4. Serverul');
 T('Istoric rapoarte are O SINGURĂ scriere în server (_istoricRaport): pagina pe loc, în fundal, și RA Insight', (SRV.match(/db\.saveReportHistory\(/g) || []).length === 1 && (SRV.match(/await _istoricRaport\(/g) || []).length === 3 && /status: 'insight' \}\);/.test(SRV));
-T('cererea de raport e întâia în RA Insight (înaintea răspunsului rapid), o singură dată; proba modelelor o sare; cu „compară" dă rapoartele mai departe lui RA Insight (`dupa`)', (SRV.match(/await _insightComanda\(req, res, /g) || []).length === 1 && SRV.indexOf('await _insightComanda(req, res, ') < SRV.indexOf('// 1) Răspuns rapid, LOCAL și GRATUIT') && /if \(!o\.proba\) \{\n      const rc = await _insightComanda\(req, res, /.test(SRV) && /if \(rc && rc\.dupa\) gata = rc\.dupa;/.test(SRV));
+// Din 22.10 (pasul 2): înaintea ei stă doar cererea de șoferi („Pune-l pe Mihai pe B 77 TIR"), tot pe reguli, care lasă
+// mai departe orice nu e despre șoferi („Pune-mi raportul…") — păzită în verify_soferi_masini.js.
+T('cererea de raport e întâia în RA Insight (înaintea răspunsului rapid; doar cererea de șoferi înaintea ei), o singură dată; proba modelelor o sare; cu „compară" dă rapoartele mai departe lui RA Insight (`dupa`)', (SRV.match(/await _insightComanda\(req, res, /g) || []).length === 1 && SRV.indexOf('await _insightComanda(req, res, ') < SRV.indexOf('// 1) Răspuns rapid, LOCAL și GRATUIT') && /if \(!o\.proba\) \{\n(?: {6}\/\/[^\n]*\n)? {6}if \(await _insightSoferi\(req, res, [^\n]*\)\) return;\n(?: {6}[^\n]*\n){0,3} {6}const rc = await _insightComanda\(req, res, /.test(SRV) && /if \(rc && rc\.dupa\) gata = rc\.dupa;/.test(SRV));
 T('cererea: aceleași drepturi ca Rapoarte (viewReports + poateRaport) și aceleași opțiuni (_optiuniRaport)', /if \(!permReq\(req, 'viewReports'\)\)/.test(SRV) && /if \(!poateRaport\(req, u\.raport\)\)/.test(SRV) && /const opts = _optiuniRaport\(\{\}, cs\);/.test(SRV) && /const report = await reports\.runReport\(db, u\.raport, imeis, from, to, opts, scope\);/.test(SRV));
 T('…se numără prin ACEEAȘI numărătoare a răspunsurilor pe reguli (pe Start din 50; altfel doar statistică)', /pachetInfo = await _numaraRaspunsReguli\(req, sp, 'raport_' \+ u\.raport/.test(SRV));
 T('/api/me spune dacă omul are cont RA Insight (nu și noi: păstrăm pagina agenților în meniu)', /aiCont: !isSuper\(a\.role\) && features\.ai_assistant !== false && aiSeat,/.test(SRV));
@@ -176,6 +179,31 @@ async function json(m, u, cine, body) {
 const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean).length;
 
 (async () => {
+  // 1b. Ziua agenților pe ceasul României. Pe 22.10 proba asta pica noaptea (00–03, ora României): RA Watch nu mai vedea
+  //     scăderea de combustibil de la 02:30, pentru că ziua lui începea la 03:00 (setHours pe ceasul serverului, care e pe UTC).
+  console.log('\n1b. Ziua agenților, pe ora României (nu pe ceasul serverului, care e pe UTC)');
+  const _acumAdevarat = Date.now;
+  async function ziuaAgentilor(laIso, agent, live) {
+    const cerute = [];
+    const fals = { getDeviceHistory: async (imei, de) => { cerute.push(de); return []; } };
+    Date.now = () => Date.parse(laIso);
+    try {
+      const r = await agents.runAgent(agent, { db: fals, imeis: ['X'], livePositions: new Map(live ? [['X', live]] : []), alertThresholds: {} });
+      return { de: cerute[0], fk: ((r && r.findings) || []).map((f) => f.fkey) };
+    } finally { Date.now = _acumAdevarat; }
+  }
+  const n1 = await ziuaAgentilor('2026-10-22T00:05:00Z', 'watch');   // 03:05, ora României (vara)
+  T('RA Watch la 03:05 (ora României, vara): ziua începe la miezul nopții României (21:00 UTC), nu la 3 dimineața', n1.de === '2026-10-21T21:00:00.000Z', n1.de);
+  const n2 = await ziuaAgentilor('2026-12-10T00:30:00Z', 'watch');   // 02:30, iarna
+  T('…și iarna, la 02:30: de la 22:00 UTC', n2.de === '2026-12-09T22:00:00.000Z', n2.de);
+  const n3 = await ziuaAgentilor('2026-10-21T22:00:00Z', 'watch');   // 01:00 pe 22.10
+  T('…la 01:00 pe 22.10, „azi" e 22.10 (nu 21.10 de la 3 dimineața)', n3.de === '2026-10-21T21:00:00.000Z', n3.de);
+  const liberLa = (iso) => ({ timestamp: new Date(Date.parse(iso) - 60000).toISOString(), speed: 0 });
+  const d1 = await ziuaAgentilor('2026-10-22T09:30:00Z', 'dispatch', liberLa('2026-10-22T09:30:00Z'));   // 12:30, ora României
+  const d2 = await ziuaAgentilor('2026-10-22T08:30:00Z', 'dispatch', liberLa('2026-10-22T08:30:00Z'));   // 11:30
+  T('RA Dispatch: „nefolosit azi" după ora 12 a ROMÂNIEI (la 12:30 da, la 11:30 nu)', d1.fk.includes('disp_idle_X') && !d2.fk.includes('disp_idle_X'), JSON.stringify([d1.fk, d2.fk]));
+  T('agents.js nu mai socotește ziua sau ora pe ceasul serverului (fără setHours, fără new Date().getHours())', !/setHours\(0,\s*0,\s*0,\s*0\)/.test(AG) && !/new Date\(\)\.getHours\(\)/.test(AG));
+
   let pornit = false;
   for (let i = 0; i < 360 && !pornit; i++) { try { const r = await fetch(B + '/api'); if (r.ok) pornit = true; } catch (e) {} if (!pornit) await sleep(500); }
   if (!pornit) { console.log('serverul nu a pornit'); return gata(1); }
@@ -198,11 +226,16 @@ const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean)
   const adm = await om('sef@basic.ro', 'company_admin', coB.id);
   const man = await om('dispecer@basic.ro', 'manager', coB.id);
   await json('PUT', '/api/users/' + adm.id + '/ai-seat', S, { on: true });
+  // Datele „de azi" trebuie să încapă în ziua ROMÂNIEI: în primele 7 minute după miezul nopții (ora României) proba așteaptă
+  // să treacă, altfel drumul de acum 6 minute ar fi „ieri" — corect pentru aplicație, greșit pentru datele probei.
+  const dupaMiezulNoptii = (Date.now() - Date.parse(I.perioada({ period: 'today' }, Date.now()).from)) / 60000;
+  if (dupaMiezulNoptii < 7) { console.log('  (aștept ' + Math.ceil(7 - dupaMiezulNoptii) + ' min: e imediat după miezul nopții, ora României)'); await sleep((7 - dupaMiezulNoptii) * 60000 + 2000); }
   const t = Date.now();
-  // B 101: drum azi, apoi oprit acum (liberă). B 202: tăcută de 2 ore. B 303: scădere de combustibil azi (80 → 40 l). B 404: n-a transmis niciodată.
+  // B 101: drum azi, apoi oprit acum (liberă). B 202: tăcută de 2 ore. B 303: scădere de combustibil azi (80 → 40 l), în ultimele
+  // 3 minute. B 404: n-a transmis niciodată.
   for (let k = 0; k < 6; k++) await json('POST', '/api/test/simulate', S, { imei: MAS[0][0], name: MAS[0][1], speed: k < 5 ? 50 : 0, io: { ignition: k < 5 ? 1 : 0 }, ts: new Date(t - (6 - k) * 60000).toISOString(), lat: 44.43 + k * 0.01, lng: 26.1 });
   await json('POST', '/api/test/simulate', S, { imei: MAS[1][0], name: MAS[1][1], speed: 0, io: { ignition: 0 }, ts: new Date(t - 120 * 60000).toISOString() });
-  for (const [i, l] of [[0, 80], [1, 79.5], [2, 40]]) await json('POST', '/api/test/simulate', S, { imei: MAS[2][0], name: MAS[2][1], speed: 0, io: { ignition: 0, fuel_level_liters: l }, ts: new Date(t - (40 - i * 10) * 60000).toISOString() });
+  for (const [i, l] of [[0, 80], [1, 79.5], [2, 40]]) await json('POST', '/api/test/simulate', S, { imei: MAS[2][0], name: MAS[2][1], speed: 0, io: { ignition: 0, fuel_level_liters: l }, ts: new Date(t - (3 - i) * 60000).toISOString() });
   T('pregătire: firma pe Basic, patru mașini, administratorul cu cont, managerul fără', !!(coB.id && adm.ck && man.ck));
   const me1 = await json('GET', '/api/me', adm.ck), me2 = await json('GET', '/api/me', man.ck), me0 = await json('GET', '/api/me', S);
   T('/api/me: `aiCont` la administratorul cu cont (meniul fără „Agenți AI"), nu la manager și nu la noi', me1.j.aiCont === true && me2.j.aiCont === false && me0.j.aiCont === false, [me1.j.aiCont, me2.j.aiCont, me0.j.aiCont].join(','));

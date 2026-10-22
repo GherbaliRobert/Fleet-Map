@@ -4871,6 +4871,10 @@ async function _raInsight(req, res, opts) {
     //    (`gata` = rapoartele, cifrele lor pentru model, problemele găsite).
     let gata = null;
     if (!o.proba) {
+      // Pasul 2 (22.10): „Pune-l pe Mihai Ionescu pe B 77 TIR", „Propune un șofer pentru …" — cartonașul cu „Da", pe reguli.
+      if (await _insightSoferi(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
+      // Propunerea neapăsată și „Îți pregătesc și schimbarea asta?" nu mai sunt „în discuție" după o altă întrebare.
+      if (ctx.propunere || ctx.urmatoare) { ctx = Object.assign({}, ctx); delete ctx.propunere; delete ctx.urmatoare; }
       const rc = await _insightComanda(req, res, { message: message, ctx: ctx, fisa: fisa, peDev: peDev, salveaza: salveaza, usa: o.usa });
       if (rc === true) return;
       if (rc && rc.dupa) gata = rc.dupa;
@@ -5695,6 +5699,12 @@ app.get('/api/insight/conversatii/:id', requireAuth, withScope, requireFeature('
       if (m.extra && m.extra.insigna) m.extra.insigna = pachete.insignaCompleta(m.extra.insigna);
       if (m.rol !== 'user') m.text = insight.litereRomanesti(m.text);
     });
+    // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează"), din rândul propunerii.
+    const ids = mesaje.filter(function (m) { return m.extra && m.extra.propunere && m.extra.propunere.id; }).map(function (m) { return m.extra.propunere.id; });
+    if (ids.length) {
+      const pe = {}; (await db.actiuniInsight(ids, userId)).forEach(function (a) { pe[a.id] = a; });
+      mesaje.forEach(function (m) { const p = m.extra && m.extra.propunere; if (p && p.id && pe[p.id]) m.extra.propunere = _cardPublic(pe[p.id]); });
+    }
     res.json({ conversatie: _convPublic(c), mesaje: mesaje });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5776,6 +5786,7 @@ async function stergeConversatiiVechi() {
   const luni = contracte.LUNI_CONVERSATII_AI;
   const n = await db.stergeConversatiiMaiVechiDe(luni);
   const ns = await db.stergeScrisoriMaiVechiDe(luni);   // și scrisorile de luni: tot ale omului, tot 12 luni
+  try { await db.stergeActiuniInsightMaiVechiDe(luni); } catch (e) { /* propunerile vechi rămân până data viitoare */ }
   if (n || ns) {
     console.log('[RA Insight] Șterse ' + n + ' conversații fără mesaje noi și ' + ns + ' scrisori de luni, mai vechi de ' + luni + ' luni');
     try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conversatii_ai', entityId: null, details: { conversatii: n, scrisori: ns, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
@@ -5788,6 +5799,14 @@ app.post('/api/admin/insight/sterge-vechi', requireAuth, requireSuperadmin, asyn
 // Doar pentru probe (SEED_TEST=1): mută ultima scriere a unei conversații cu N luni în urmă, ca proba să
 // verifice ștergerea fără să aștepte un an.
 if (process.env.SEED_TEST === '1') {
+  // …și o propunere a pasului 2 cu N minute în urmă (capătul lui „Anulează", propunerea veche), fără să aștepte.
+  app.post('/api/test/actiune-veche', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {}, ms = Math.max(0, Number(b.minute) || 0) * 60000;
+      await db.pool.query('UPDATE insight_actiuni SET creat_la = creat_la - $2, aplicat_la = CASE WHEN aplicat_la IS NULL THEN NULL ELSE aplicat_la - $2 END WHERE id = $1', [parseInt(b.id) || 0, ms]);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.post('/api/test/insight-imbatraneste', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {};
@@ -6337,6 +6356,295 @@ app.get('/api/insight/scrisori/:id', requireAuth, withScope, requireFeature('ai_
 });
 
 // ─── „Azi la tine" (Capitolul 2, pasul 1 — Alin, 15.10): prima privire în RA Insight ────────────────────────────────────
+// ─── Pasul 2 al Capitolului 2: „RA Insight face, cu Da-ul tău" — partea 1, ȘOFERII PE MAȘINI (Alin, 22.10: „da") ──────────
+// Regulile și textele stau în soferi_masini.js; aici se adună fișele (mașinile omului, șoferii firmei, istoricul șoferilor) și
+// se aplică schimbările pe CALEA ECRANULUI (Vehicule › fișa mașinii › Șofer = db.assignDevice, cu grupa de acum a mașinii), cu
+// aceleași drepturi (requireEdit('vehicule')). De la pachetul Basic (requireRamuri). Nici propunerea, nici „Da"-ul nu se
+// numără. Nimic fără „Da": doar butonul aplică; un „da" scris aduce din nou cartonașul. „Anulează" ține ANULARE_MIN minute.
+const soferiMasini = require('./soferi_masini');
+async function _soferiDate(req) {
+  const f = await _ramFlota(req);
+  const soferi = req.companyId != null ? await db.soferiPentruPotrivire(req.companyId) : [];
+  let istoric = [];
+  try { istoric = await db.istoricSoferi(f.devices.map(function (d) { return d.imei; })); } catch (e) { istoric = []; }
+  const masini = f.devices.map(function (d) {
+    return { imei: d.imei, nr: d.plate || '', nume: d.name || '', tip: d.vehicle_type, masaMax: d.max_weight_legal, locuri: d.passenger_seats,
+      soferId: d.driver_id != null ? Number(d.driver_id) : null, grupa: d.group_name || null };
+  });
+  return { soferi: soferi, an: soferiMasini.analiza({ masini: masini, soferi: soferi, istoric: istoric, acum: Date.now() }) };
+}
+// „Cine poate apăsa Da" = cine poate schimba vehiculele din ecran (aceeași poartă ca ruta /assign).
+function _poateSchimbaSoferi(req) { return !!(permReq(req, 'manageFleet') && poateEditare(req, 'vehicule')); }
+async function _cineNume(req) {
+  const a = getAuth(req) || {};
+  try { const u = a.userId != null ? await db.getUserById(a.userId) : null; if (u && u.full_name && String(u.full_name).trim()) return String(u.full_name).trim(); } catch (e) { /* rămâne numele contului */ }
+  return a.username || 'tu';
+}
+// Omul care nu poate apăsa „Da" află cine poate: administratorii firmei (au mereu dreptul).
+async function _cineAproba(companyId) {
+  try {
+    const l = (await db.getUsers(companyId)).filter(function (u) { return u.active !== false && (u.role === 'company_admin' || u.role === 'admin'); });
+    if (!l.length) return 'administratorul firmei';
+    return (l.length === 1 ? 'administratorul firmei, ' : 'administratorii firmei, ') + l.slice(0, 3).map(function (u) { return u.full_name || u.username; }).join(', ');
+  } catch (e) { return 'administratorul firmei'; }
+}
+async function _optiuniCard(req) {
+  const poate = _poateSchimbaSoferi(req);
+  return { cine: await _cineNume(req), poate: poate, aproba: poate ? null : await _cineAproba(req.companyId) };
+}
+// Aplică schimbări în ordine, fiecare verificată pe starea de ACUM (nu pe fișa citită la propunere): mașina e la îndemâna
+// omului, șoferul de acum e cel de la propunere, șoferul nou e din firma mașinii și nu e trecut (încă) pe altă mașină. Ce nu
+// trece se sare, cu motivul. În jurnal: „prin RA Insight", cu textul schimbării.
+async function _aplicaSoferi(req, schimbari, o) {
+  const x = o || {};
+  const nume = x.nume || {};
+  const aplicate = [], sarite = [];
+  const nrDe = function (d) { return d ? (d.plate || d.name || d.imei) : ''; };
+  for (const s of (schimbari || [])) {
+    const d = await db.masinaPentruSofer(s.imei);
+    if (!d || d.status === 'archived' || !canAccessImei(req, s.imei) || (req.companyId != null && Number(d.company_id) !== Number(req.companyId))) { sarite.push({ imei: s.imei, motiv: 'mașina nu mai e la îndemână' }); continue; }
+    const acum = d.driver_id != null ? Number(d.driver_id) : null, deLa = s.deLa != null ? Number(s.deLa) : null, la = s.la != null ? Number(s.la) : null;
+    if (acum !== deLa) { sarite.push({ imei: s.imei, nr: nrDe(d), motiv: 'între timp s-a schimbat șoferul de pe ' + nrDe(d) }); continue; }
+    if (la != null) {
+      if (!(await db.soferAlFirmei(la, d.company_id))) { sarite.push({ imei: s.imei, nr: nrDe(d), motiv: 'șoferul nu mai e în fișele firmei' }); continue; }
+      if ((await db.masiniSofer(la, d.company_id)).some(function (i) { return i !== s.imei; })) { sarite.push({ imei: s.imei, nr: nrDe(d), motiv: (nume[la] || 'șoferul') + ' e încă trecut pe altă mașină' }); continue; }
+    }
+    await db.assignDevice(s.imei, la, d.group_id);   // ca din fișa mașinii: șoferul nou, grupa rămâne cum e
+    aplicate.push({ imei: s.imei, deLa: deLa, la: la, nr: nrDe(d) });
+    auditReq(req, 'assign', 'device', s.imei, { driver_id: la, de_la: deLa, prin: 'RA Insight', actiune: x.actiuneId || null, anulare: x.anulare ? true : undefined,
+      text: soferiMasini.jurnalText(nrDe(d), la != null ? (nume[la] || ('#' + la)) : null) });
+  }
+  if (aplicate.length) { invalidateAccessCache(); try { _aziTinut.clear(); } catch (e) { /* „Azi la tine" se reface la 2 minute */ } }
+  return { aplicate: aplicate, sarite: sarite };
+}
+function _numeSoferi(soferi) { const m = {}; (soferi || []).forEach(function (s) { m[s.id] = s.nume; }); return m; }
+// Cartonașul cum îl vede pagina: din rândul acțiunii (sursa adevărului), cu starea de acum și cât mai e până la capătul lui „Anulează".
+function _cardPublic(a) {
+  const c = Object.assign({}, (a.date && a.date.card) || {});
+  delete c.schimbari;
+  const acum = Date.now();
+  c.id = a.id;
+  c.stare = a.stare === 'propusa' && acum - a.creat_la > soferiMasini.PROPUNERE_ORE * 3600000 ? 'expirata' : a.stare;
+  const ora = function (ms) { return new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }); };
+  if (c.stare === 'aplicata' && a.aplicat_la) { c.apasat = 'Ai apăsat Da · ' + ora(a.aplicat_la); c.ramasMs = Math.max(0, a.aplicat_la + soferiMasini.ANULARE_MIN * 60000 - acum); }
+  else if (c.stare === 'refuzata') c.apasat = 'Ai apăsat Nu' + (a.date && a.date.la ? ' · ' + ora(a.date.la) : '');
+  else if (c.stare === 'anulata') c.apasat = 'Anulată' + (a.anulat_la ? ' · ' + ora(a.anulat_la) : '');
+  else if (c.stare === 'expirata') c.apasat = 'Propunerea e veche: cere-o din nou, ca să pornesc de la fișele de azi.';
+  else if (c.stare === 'esuata') c.apasat = 'Nu s-a schimbat nimic: ' + ((a.date && a.date.sarite) || []).map(function (s) { return s.motiv; }).join('; ');
+  if (a.date && a.date.gata) c.gata = a.date.gata;
+  if (a.date && a.date.anulareText) c.anulareText = a.date.anulareText;
+  return c;
+}
+// Ce arată pagina „Șoferi pe mașini": aceleași fișe și aceeași regulă ca discuția.
+function _paginaSoferi(d, oc) {
+  const an = d.an;
+  const peImei = {}; an.masini.forEach(function (m) { peImei[m.imei] = m; });
+  const acumM = function (m) { return { nume: m.sofer ? m.sofer.nume : null, text: m.text, nivel: m.nivel }; };
+  return {
+    rezumat: an.rezumat,
+    propuneri: an.propuneri.map(function (p) {
+      const m = peImei[p.imei] || {};
+      return { imei: p.imei, nr: m.nr, descriere: m.descriere, acum: acumM(m), deLa: p.deLa, la: p.la, dupa: p.dupa || null, deCe: p.deCe,
+        propun: p.scoate ? { scoate: true, nume: 'Îl scot de pe mașină', sub: 'până trece permisul nou în fișă' } : { nume: p.laNume, sub: p.dupa ? 'după ce iese de pe ' + p.dupaNr : '' } };
+    }),
+    faraPropunere: an.faraPropunere.map(function (f) { const m = peImei[f.imei] || {}; return { imei: f.imei, nr: m.nr, descriere: m.descriere, acum: acumM(m), motiv: f.motiv }; }),
+    inRegula: an.inRegula.map(function (m) { return { imei: m.imei, nr: m.nr, nume: m.nume, sofer: m.sofer ? m.sofer.nume : '', text: m.text, nivel: m.nivel }; }),
+    deCompletat: an.deCompletat.map(function (m) { return { imei: m.imei, nr: m.nr, sofer: m.sofer ? m.sofer.nume : '', text: m.text }; }),
+    liberi: an.liberi, faraSoferi: an.faraSoferi, poate: oc.poate, aproba: oc.aproba,
+    texte: { intro: soferiMasini.TEXTE.intro, jos: soferiMasini.TEXTE.sofeiNuPrimesc, nuStie: soferiMasini.TEXTE.nuStie }
+  };
+}
+// Cererea din discuție („Pune-l pe Mihai Ionescu pe B 77 TIR", „Propune un șofer pentru B 268 ROY", „Arată-mi potrivirea
+// șoferilor"): pe reguli, fără model, nenumărată. Întoarce false când mesajul nu e de-al ei (merge mai departe la întrebări).
+async function _insightSoferi(req, res, x) {
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  let msg = x.message;
+  const daScris = !!(x.ctx && (x.ctx.propunere || x.ctx.urmatoare) && soferiMasini.eDaScris(msg));
+  if (!daScris && !soferiMasini.pareCerere(msg)) return false;
+  const ins = pachete.insigna('instant', { propunere: true });
+  const ctxFara = Object.assign({}, x.ctx); delete ctxFara.propunere; delete ctxFara.urmatoare;
+  async function spune(reply, extra, ctxNou) {
+    const e = Object.assign({ source: 'reguli', insigna: ins }, extra || {});
+    const sv = await x.salveaza(reply, e, ctxNou || ctxFara);
+    res.json(Object.assign({ reply: reply, sources: [], alege: [], urmari: [] }, e, { conversatieId: sv.convId, mesajId: sv.mesajId }));
+    return sv;
+  }
+  // „da" scris: cartonașul încă neapăsat, din nou, cu butonul — nimic fără „Da". După „Gata", la „Îți pregătesc și schimbarea
+  // asta?", „da" = prima continuare („Pune-l pe Ion Popescu pe B 268 ROY"): vine cartonașul ei, tot cu butonul.
+  if (daScris) {
+    const a = x.ctx.propunere ? await db.actiuneInsight(x.ctx.propunere, userId) : null;
+    if (a && a.stare === 'propusa' && Date.now() - a.creat_la < soferiMasini.PROPUNERE_ORE * 3600000) {
+      const card = _cardPublic(a);
+      await spune('Apasă **' + (card.butonDa || 'Da') + '** pe cartonaș și o fac. ' + soferiMasini.TEXTE.faraDa, { propunere: card }, x.ctx);
+      return true;
+    }
+    if (x.ctx.urmatoare) msg = String(x.ctx.urmatoare);
+    else if (!soferiMasini.pareCerere(msg)) return false;
+  }
+  // Întâi: e chiar o cerere despre șoferi? („Pune-mi raportul…" nu e: merge mai departe, la rapoarte.) Abia apoi pachetul.
+  const soferi0 = req.companyId != null ? await db.soferiPentruPotrivire(req.companyId) : [];
+  const u = soferiMasini.cerere(msg, soferi0, x.fisa);
+  if (!u) return false;
+  if (req.isSuper || req.companyId == null) { await spune('Propunerile de șoferi se fac pe flota unei firme, iar contul de fondator n-are una. Intră cu contul administratorului firmei ca să le vezi.'); return true; }
+  const co = await db.getCompanyById(req.companyId);
+  if (!_firmaAreRamuri(co)) { const t = 'Propunerile (trece șoferul pe mașină, pagina „Șoferi pe mașini") sunt de la pachetul Basic în sus.'; await spune(t, { pachetMesaj: t }); return true; }
+  const d = await _soferiDate(req);
+  const acum = Date.now();
+  const nrDe = function (imei) { const m = d.an.masini.filter(function (q) { return q.imei === imei; })[0]; return m ? m.nr : ''; };
+  const sofer = u.soferId != null ? d.soferi.filter(function (s) { return Number(s.id) === Number(u.soferId); })[0] : null;
+  if (u.fel === 'pagina') { await spune('Deschid **„Șoferi pe mașini”**: toată flota, cu ce e de rezolvat și ce propun.', { pagina: 'soferi' }); return true; }
+  const verb = function (nr) { return u.fel === 'pentru' ? 'Propune un șofer pentru ' + nr : (u.fel === 'scoate' ? 'Scoate șoferul de pe ' + nr : 'Pune-l pe ' + (sofer ? sofer.nume : '') + ' pe ' + nr); };
+  if (u.fel === 'pereche' && !sofer && u.ambigui && u.ambigui.length) {
+    await spune('Se potrivesc mai mulți șoferi. Pe care îl trec' + (u.imei ? ' pe **' + nrDe(u.imei) + '**' : '') + '?', { alege: u.ambigui.slice(0, 8).map(function (s) { return { text: s.nume, trimite: 'Pune-l pe ' + s.nume + (u.imei ? ' pe ' + nrDe(u.imei) : '') }; }) });
+    return true;
+  }
+  if (u.ambigue) { await spune('Se potrivesc mai multe mașini. Pe care?', { alege: u.ambigue.map(function (v) { return { text: insight.eticheta(v), trimite: verb(v.nr || v.nume) }; }) }); return true; }
+  if (u.lipsa) {
+    // Mașinile de rezolvat întâi (pentru un șofer anume — doar cele pe care le poate conduce).
+    const l = d.an.deRezolvat.filter(function (m) { return !sofer || (m.ceruta && m.ceruta.cod && soferiMasini.acopera(sofer.categorii, m.ceruta.cod)); }).slice(0, 6);
+    await spune((u.fel === 'pereche' && sofer ? 'Pe ce mașină îl trec pe **' + sofer.nume + '**?' : 'Pentru ce mașină?') + ' Scrie-i numărul' + (l.length ? ' sau alege una de mai jos.' : '.'),
+      { alege: l.map(function (m) { return { text: m.nr + ' · ' + m.text, trimite: verb(m.nr) }; }) });
+    return true;
+  }
+  const oc = await _optiuniCard(req);
+  const o = Object.assign({ imei: u.imei, soferId: u.soferId, soferi: d.soferi, acum: acum }, oc);
+  const r = u.fel === 'pentru' ? soferiMasini.propunerePentru(d.an, o) : (u.fel === 'scoate' ? soferiMasini.propunereScoate(d.an, o) : soferiMasini.propunerePereche(d.an, o));
+  if (!r.ok) { await spune(r.text, { alege: r.alege || [] }); return true; }
+  const id = await db.adaugaActiuneInsight({ companyId: req.companyId, userId: userId, fel: 'sofer', stare: 'propusa', date: { card: r.card, schimbari: r.card.schimbari } });
+  const card = _cardPublic({ id: id, stare: 'propusa', creat_la: acum, date: { card: r.card } });
+  const sv = await spune(r.card.sofer.la ? 'Pot face asta. Uite ce se schimbă — apeși **Da** și o fac.' : 'Uite ce se schimbă — apeși **Da** și o fac.', { propunere: card }, Object.assign({}, ctxFara, { propunere: id }));
+  if (sv.convId) { try { await db.legaActiuneInsight(id, userId, sv.convId); } catch (e) { /* fără pasul următor în discuție */ } }
+  auditReq(req, 'ai_propunere', 'assistant', id, { fel: 'sofer', imei: r.card.imei, via: x.usa || 'insight' });
+  return true;
+}
+app.get('/api/insight/soferi-masini', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+  try {
+    if (req.isSuper || req.companyId == null) return res.json({ platforma: true });
+    const d = await _soferiDate(req);
+    res.json(_paginaSoferi(d, await _optiuniCard(req)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Aplică cele bifate" din pagină: doar propunerile de ACUM pe care omul le-a bifat, în ordinea lor (cel scos de pe o mașină
+// merge pe alta după ce iese). O acțiune pentru toate, cu „Anulează" de 10 minute.
+app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+  try {
+    if (req.isSuper || req.companyId == null) return res.status(400).json({ error: 'Propunerile se aplică pe flota unei firme.' });
+    const userId = req.auth.userId;
+    const cerute = (Array.isArray(req.body && req.body.schimbari) ? req.body.schimbari : []).slice(0, 300)
+      .map(function (c) { return { imei: String(c && c.imei || ''), la: c && c.la != null && c.la !== '' ? Number(c.la) : null }; }).filter(function (c) { return c.imei; });
+    if (!cerute.length) return res.status(400).json({ error: 'Bifează măcar o schimbare.' });
+    const d = await _soferiDate(req);
+    const cheie = function (imei, la) { return imei + '|' + (la == null ? '' : Number(la)); };
+    const vrea = new Set(cerute.map(function (c) { return cheie(c.imei, c.la); }));
+    const alese = d.an.propuneri.filter(function (p) { return vrea.has(cheie(p.imei, p.la)); });
+    const sarite = cerute.filter(function (c) { return !alese.some(function (p) { return cheie(p.imei, p.la) === cheie(c.imei, c.la); }); })
+      .map(function (c) { return { imei: c.imei, motiv: 'propunerea pentru ' + (d.an.masini.filter(function (m) { return m.imei === c.imei; })[0] || {}).nr + ' s-a schimbat între timp' }; });
+    const schimbari = alese.map(function (p) { return { imei: p.imei, deLa: p.deLa, la: p.la }; });
+    const id = await db.adaugaActiuneInsight({ companyId: req.companyId, userId: userId, fel: 'sofer', stare: 'propusa', date: { sursa: 'pagina', schimbari: schimbari } });
+    const prins = await db.treceActiuneInsight(id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+    const nume = _numeSoferi(d.soferi);
+    const rez = schimbari.length ? await _aplicaSoferi(req, schimbari, { actiuneId: id, nume: nume }) : { aplicate: [], sarite: [] };
+    const toateSarite = sarite.concat(rez.sarite);
+    if (!rez.aplicate.length) {
+      await db.treceActiuneInsight(id, userId, 'aplicata', { stare: 'esuata', date: { sursa: 'pagina', schimbari: schimbari, sarite: toateSarite } });
+      return res.status(409).json({ error: 'N-am schimbat nimic: ' + toateSarite.map(function (s) { return s.motiv; }).join('; ') + '. Reîncarcă pagina.', sarite: toateSarite });
+    }
+    const gata = rez.aplicate.map(function (s) { return { imei: s.imei, nr: s.nr, text: s.la != null ? (nume[s.la] || 'Șoferul') + ' e pe ' + s.nr + '.' : s.nr + ' nu mai are șofer trecut.' }; });
+    await db.treceActiuneInsight(id, userId, 'aplicata', { stare: 'aplicata', date: { sursa: 'pagina', schimbari: schimbari, aplicate: rez.aplicate, sarite: toateSarite, gataPagina: gata } });
+    res.json({ ok: true, actiuneId: id, gata: gata, sarite: toateSarite, ramasMs: Math.max(0, prins.aplicat_la + soferiMasini.ANULARE_MIN * 60000 - Date.now()),
+      text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula ' + soferiMasini.ANULARE_MIN + ' minute.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Da" pe cartonașul din discuție. Cu `la` = alt șofer ales din „Schimbă" (doar dintre cei propuși pe cartonaș).
+app.post('/api/insight/actiuni/:id/aplica', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const a = await db.actiuneInsight(req.params.id, userId);
+    if (!a) return res.status(404).json({ error: 'Propunerea nu există.' });
+    if (a.stare !== 'propusa') return res.status(409).json({ error: 'Propunerea a fost deja apăsată.', propunere: _cardPublic(a) });
+    if (Date.now() - a.creat_la > soferiMasini.PROPUNERE_ORE * 3600000) {
+      const e = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'expirata' });
+      return res.status(409).json({ error: 'Propunerea e veche: cere-o din nou, ca să pornesc de la fișele de azi.', propunere: _cardPublic(e || a) });
+    }
+    let card = (a.date && a.date.card) || {}, schimbari = (a.date && a.date.schimbari) || [];
+    const laCerut = req.body && req.body.la != null && req.body.la !== '' ? Number(req.body.la) : null;
+    if (laCerut != null && laCerut !== Number(card.la)) {
+      if (!(card.alternative || []).some(function (z) { return Number(z.id) === laCerut; })) return res.status(400).json({ error: 'Șoferul ăsta nu e printre cei propuși pe cartonaș.' });
+      const d0 = await _soferiDate(req);
+      const r = soferiMasini.propunerePereche(d0.an, Object.assign({ imei: card.imei, soferId: laCerut, soferi: d0.soferi, acum: Date.now() }, await _optiuniCard(req)));
+      if (!r.ok) return res.status(409).json({ error: String(r.text || '').replace(/\*\*/g, '') });
+      card = r.card; schimbari = r.card.schimbari;
+    }
+    // „Da", o singură dată: două apăsări deodată — doar prima trece propunerea mai departe.
+    const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+    if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+    const d = await _soferiDate(req);
+    const rez = await _aplicaSoferi(req, schimbari, { actiuneId: a.id, nume: _numeSoferi(d.soferi) });
+    if (!rez.aplicate.length) {
+      const e = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'esuata', date: Object.assign({}, a.date, { card: card, sarite: rez.sarite }) });
+      return res.status(409).json({ error: 'N-am schimbat nimic: ' + rez.sarite.map(function (s) { return s.motiv; }).join('; ') + '. Cere din nou propunerea.', propunere: e ? _cardPublic(e) : undefined });
+    }
+    const g = soferiMasini.gata(card, await _cineNume(req), prins.aplicat_la);
+    const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: card, schimbari: schimbari, aplicate: rez.aplicate, sarite: rez.sarite, gata: g }) });
+    // Pasul următor (macheta M2): cel rămas fără mașină și o mașină pentru el — în discuție, ca mesaj, pe reguli, nenumărat.
+    let urmator = null;
+    try {
+      const d2 = await _soferiDate(req);
+      const prima = rez.aplicate.filter(function (s) { return s.imei === card.imei; })[0];
+      const u = soferiMasini.pasulUrmator(d2.an, prima ? prima.deLa : null);
+      if (u) {
+        const ins = pachete.insigna('instant', { propunere: true });
+        let mesajId = null;
+        if (a.conversatie_id) {
+          mesajId = await db.adaugaMesajAi(a.conversatie_id, 'assistant', u.text, { source: 'reguli', urmari: u.urmari, insigna: ins });
+          // „da" scris acum = prima continuare (vezi _insightSoferi); propunerea apăsată nu mai e „în discuție".
+          const cv = await db.conversatieUser(a.conversatie_id, userId);
+          const cx = Object.assign({}, (cv && cv.context) || {}); delete cx.propunere;
+          if (u.urmari && u.urmari[0] && /^Pune-l pe /.test(u.urmari[0].trimite)) cx.urmatoare = u.urmari[0].trimite; else delete cx.urmatoare;
+          await db.actualizeazaConversatie(a.conversatie_id, userId, { context: cx });
+        }
+        urmator = { text: u.text, urmari: u.urmari, insigna: ins, mesajId: mesajId };
+      }
+    } catch (e) { urmator = null; }
+    res.json({ ok: true, propunere: _cardPublic(fin || prins), sarite: rez.sarite, urmator: urmator });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Nu": propunerea rămâne în discuție, fără să schimbe nimic. Nu cere drepturi de editare (nu face nimic).
+app.post('/api/insight/actiuni/:id/refuza', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const a = await db.actiuneInsight(req.params.id, userId);
+    if (!a) return res.status(404).json({ error: 'Propunerea nu există.' });
+    const e = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'refuzata', date: Object.assign({}, a.date, { la: Date.now() }) });
+    if (!e) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.', propunere: _cardPublic(a) });
+    res.json({ ok: true, propunere: _cardPublic(e) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Anulează" (10 minute): schimbările se întorc în ordine inversă, fiecare doar dacă mașina are încă șoferul pus prin „Da".
+app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const a = await db.actiuneInsight(req.params.id, userId);
+    if (!a) return res.status(404).json({ error: 'Schimbarea nu există.' });
+    if (a.stare !== 'aplicata') return res.status(409).json({ error: a.stare === 'anulata' ? 'E deja anulată.' : 'N-a fost aplicată, deci n-am ce anula.', propunere: _cardPublic(a) });
+    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: schimbi din fișa mașinii, ca de obicei.', propunere: _cardPublic(a) });
+    const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
+    if (!prins) return res.status(409).json({ error: 'Se anulează deja.' });
+    const d = await _soferiDate(req);
+    const nume = _numeSoferi(d.soferi);
+    const inverse = ((a.date && a.date.aplicate) || []).slice().reverse().map(function (s) { return { imei: s.imei, deLa: s.la, la: s.deLa }; });
+    const rez = await _aplicaSoferi(req, inverse, { actiuneId: a.id, nume: nume, anulare: true });
+    if (!rez.aplicate.length) {
+      await db.treceActiuneInsight(a.id, userId, 'anulata', { stare: 'aplicata', anulatLa: 0 });   // 0 = încă neanulată
+      return res.status(409).json({ error: 'N-am putut anula: ' + rez.sarite.map(function (s) { return s.motiv; }).join('; ') + '. Schimbi din fișa mașinii.' });
+    }
+    const txt = 'Am anulat: ' + rez.aplicate.map(function (s) { return s.nr + (s.la != null ? ' are din nou șoferul ' + (nume[s.la] || '') : ' nu mai are șofer trecut'); }).join('; ') + '.' +
+      (rez.sarite.length ? ' N-am putut întoarce: ' + rez.sarite.map(function (s) { return s.motiv; }).join('; ') + '.' : '');
+    const fin = await db.treceActiuneInsight(a.id, userId, 'anulata', { stare: 'anulata', date: Object.assign({}, a.date, { anulate: rez.aplicate, anulareText: txt }) });
+    res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins), sarite: rez.sarite });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Ce au găsit agenții, pe mașinile omului: rândurile le scrie azi_la_tine.js; aici se adună datele, cu REGULILE agenților
 // (agents.esteFaraSemnal / esteLiber, pragurile firmei) și lista de termene a ramurii (_ramMentenanta, preaviz.js). Fără
 // model; nu se numără pe niciun pachet. Ținut minte 2 minute pe om (o deschidere a secțiunii nu reface tot). Noi (super-admin)
@@ -6377,7 +6685,7 @@ async function _aziLaTine(req) {
     const vaz = new Set(); constatari = constatari.filter(function (x) { const c = x.fkey || x.title; return vaz.has(c) ? false : vaz.add(c); });
   } catch (e) { constatari = []; }
   let termene = [];
-  try { termene = (await _ramMentenanta(req)).randuri.map(function (r) { return { stare: r.stare, cine: r.cine, ce: r.ce, cand: r.cand }; }); } catch (e) { termene = []; }
+  try { termene = (await _ramMentenanta(req)).randuri.map(function (r) { return { stare: r.stare, cine: r.cine, ce: r.ce, cand: r.cand, fel: r.fel, driverId: r.driverId }; }); } catch (e) { termene = []; }
   let libere = 0;
   if (agents) imeis.forEach(function (imei) { if (agents.esteLiber(livePositions.get(imei), acum, th.dispOnlineMin)) libere++; });
   // RA Client: ziua de ieri, din curse (aceeași sumă ca raportul zilei).
@@ -6389,7 +6697,19 @@ async function _aziLaTine(req) {
     (rows || []).forEach(function (s) { const k2 = parseFloat(s.km) || 0; km += k2; if (k2 > 0.5) active++; if (!top || k2 > top.km) top = { imei: s.imei, km: k2 }; });
     ieri = { km: km, active: active, total: imeis.length, top: top ? { eticheta: f.etPe[top.imei] || nrDe(top.imei), km: top.km } : null };
   } catch (e) { ieri = null; }
-  const r = aziLaTine.randuri({ agenti: agenti, offlineMin: th.offlineMin, faraSemnal: faraSemnal, constatari: constatari, termene: termene, libere: libere, ieri: ieri });
+  // Șoferii pe mașini (pasul 2, 22.10; de la Basic, ca pagina): permisul expirat, cel care nu acoperă mașina, mașina rămasă de
+  // curând fără șofer (cea fără șofer dintotdeauna stă doar în pagină).
+  let soferiR = [];
+  try {
+    if (_firmaAreRamuri(await db.getCompanyById(req.companyId))) {
+      soferiR = (await _soferiDate(req)).an.deRezolvat.filter(function (m) { return m.stare !== 'fara' || m.recent; })
+        .map(function (m) { return { imei: m.imei, nr: m.nr, stare: m.stare, text: m.text, sofer: m.sofer ? m.sofer.nume : null, soferId: m.sofer ? m.sofer.id : null, ceruta: m.ceruta && m.ceruta.cod, zileFara: m.zileFara }; });
+    }
+  } catch (e) { soferiR = []; }
+  // Permisul expirat al unui șofer trecut pe mașină stă O DATĂ: rândul cu „Propunere" (macheta M5) îl ia din termenele lui RA Care.
+  const expiratiPeMasini = new Set(soferiR.filter(function (s) { return s.stare === 'expirat' && s.soferId != null; }).map(function (s) { return Number(s.soferId); }));
+  termene = termene.filter(function (t) { return !(t.fel === 'permis' && t.stare === 'depasit' && expiratiPeMasini.has(Number(t.driverId))); });
+  const r = aziLaTine.randuri({ agenti: agenti, offlineMin: th.offlineMin, faraSemnal: faraSemnal, constatari: constatari, termene: termene, libere: libere, ieri: ieri, soferi: soferiR });
   r.la = new Date(acum).toISOString();
   _aziTinut.set(k, { la: Date.now(), r: r });
   if (_aziTinut.size > 5000) for (const [kk, v] of _aziTinut) if (Date.now() - v.la > AZI_TINUT_MS) _aziTinut.delete(kk);
@@ -6416,6 +6736,7 @@ app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assist
   try { const c = await _ramCombustibil(req, { doarGata: true }); if (!c.gol && !c.pregatire) out.combustibil = (c.scaderi || []).length + (c.pesteNorma || []).length; } catch (e) { /* fără număr */ }
   try { const h = await _ramOreCondus(req, { doarGata: true }); if (!h.gol && !h.pregatire) out.orecondus = (h.incalcari || []).length; } catch (e) { /* fără număr */ }
   try { if (req.auth && req.auth.userId) { const n = await db.scrisoriNecitite(req.auth.userId); if (n) out.scrisoare = n; } } catch (e) { /* fără număr */ }
+  try { if (!req.isSuper && req.companyId != null) { const s = await _soferiDate(req); if (s.an.deRezolvat.length) out.soferi = s.an.deRezolvat.length; } } catch (e) { /* fără număr */ }
   res.json(out);
 });
 

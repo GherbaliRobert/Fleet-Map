@@ -8,7 +8,8 @@
 // termene: preaviz.js prin _ramMentenanta), aici se scriu rândurile. Păzit de verify_un_singur_insight.js.
 'use strict';
 
-const NUME = { watch: 'RA Watch', care: 'RA Care', dispatch: 'RA Dispatch', client: 'RA Client', optimize: 'RA Optimize', compliance: 'RA Compliance' };
+const NUME = { watch: 'RA Watch', care: 'RA Care', dispatch: 'RA Dispatch', client: 'RA Client', optimize: 'RA Optimize', compliance: 'RA Compliance',
+  insight: 'RA Insight' };   // „insight" = șoferii pe mașini (pasul 2, 22.10): nu e un agent, deci nu se oprește odată cu agenții
 const MAX_RANDURI = 3;      // „Azi la tine" e o privire, nu o listă: restul stă în paginile lor (Alin, 15.10: macheta „mai simplu")
 const MAX_NUME = 3;         // câte mașini se scriu pe nume într-un rând
 const ORDINE = { r: 0, w: 1, b: 2, g: 3 };
@@ -41,7 +42,9 @@ function lista(nume, n) { return nume.slice(0, MAX_NUME).join(', ') + (n > MAX_N
 //   constatari: [{ agent, severity, fkey, title, imei, eticheta, nr }] — ce au scris agenții azi (fără „offline", socotit acum);
 //   termene: [{ stare: 'depasit'|'curand', cine, ce, cand }] — actele, reviziile, permisele (aceeași listă ca Mentenanță & acte);
 //   libere: număr — mașinile libere acum (agents.esteLiber);
-//   ieri: { km, active, total, top: { eticheta, nr, km } } | null — ziua de ieri (cursele).
+//   ieri: { km, active, total, top: { eticheta, nr, km } } | null — ziua de ieri (cursele);
+//   soferi: [{ imei, nr, stare: 'expirat'|'nepotrivit'|'fara', text, sofer, ceruta, zileFara }] — din soferi_masini.analiza (de la
+//           Basic): permisul expirat, permisul care nu acoperă mașina, mașina rămasă de curând fără șofer.
 // }
 // Întoarce { randuri: [{ agent, nume, nivel: 'r'|'w'|'b'|'g', cheie, text (cu **bold**), butoane: [...] }], chei: [...], deVazut }.
 // Pe ecran un rând se apasă O DATĂ (macheta din 15.10): pagina ia primul buton pe care omul îl poate folosi; „De ce?” (o întrebare
@@ -53,6 +56,7 @@ function lista(nume, n) { return nume.slice(0, MAX_NUME).join(', ') + (n > MAX_N
 function randuri(d) {
   const x = d || {};
   const porniti = new Set(Array.isArray(x.agenti) ? x.agenti : Object.keys(NUME));
+  porniti.add('insight');
   const out = [];
   const pune = function (agent, nivel, cheie, text, butoane) { if (porniti.has(agent)) out.push({ agent: agent, nume: NUME[agent], nivel: nivel, cheie: cheie, text: text, butoane: butoane || [] }); };
 
@@ -97,6 +101,20 @@ function randuri(d) {
   const acte = { fel: 'acte', text: 'Actele', ramura: 'mentenanta', trimite: 'Ce expiră în următoarele 30 de zile?' };
   if (dep.length) pune('care', 'r', 'care:depasit:' + dep.length, (dep.length === 1 ? 'Trecut de termen: ' + termen(dep[0]) : dep.length + ' termene trecute: ' + lista(dep.map(termen), dep.length)) + '.', [acte]);
   if (cur.length) pune('care', 'w', 'care:curand:' + cur.length, (cur.length === 1 ? 'Urmează: ' + termen(cur[0]) : cur.length + ' termene urmează: ' + lista(cur.map(termen), cur.length)) + '.', [acte]);
+
+  // RA Insight — șoferii pe mașini (pasul 2, 22.10; macheta M5): o mașină de un fel = un rând cu „Propunere" (cartonașul cu „Da",
+  // pe reguli, nenumărat); mai multe de același fel = un rând strâns, spre pagina „Șoferi pe mașini".
+  const sf = Array.isArray(x.soferi) ? x.soferi : [];
+  const prop = function (s) { return [{ fel: 'propunere', text: 'Propunere', trimite: 'Propune un șofer pentru ' + s.nr }]; };
+  const pag = [{ fel: 'pagina', text: 'Șoferi pe mașini', ramura: 'soferi', trimite: 'Arată-mi potrivirea șoferilor pe toate mașinile' }];
+  const nrB = function (s) { return '**' + s.nr + '**'; };
+  const sExp = sf.filter(function (s) { return s.stare === 'expirat'; }), sNep = sf.filter(function (s) { return s.stare === 'nepotrivit'; }), sFara = sf.filter(function (s) { return s.stare === 'fara'; });
+  if (sExp.length === 1) pune('insight', 'r', 'sofer:expirat:' + sExp[0].imei, nrB(sExp[0]) + ': permisul lui ' + sExp[0].sofer + ' a expirat' + String(sExp[0].text || '').replace(/^permis expirat/, '') + '.', prop(sExp[0]));
+  else if (sExp.length > 1) pune('insight', 'r', 'sofer:expirat:' + sExp.map(function (s) { return s.imei; }).sort().join(','), sExp.length + de(sExp.length) + 'permise expirate la șoferii trecuți pe ' + lista(sExp.map(nrB), sExp.length) + '.', pag);
+  if (sNep.length === 1) pune('insight', 'w', 'sofer:nepotrivit:' + sNep[0].imei, nrB(sNep[0]) + ' e trecut pe ' + sNep[0].sofer + ', care n-are permis ' + sNep[0].ceruta + '.', prop(sNep[0]));
+  else if (sNep.length > 1) pune('insight', 'w', 'sofer:nepotrivit:' + sNep.map(function (s) { return s.imei; }).sort().join(','), masini(sNep.length).replace(/^./, function (c) { return c.toUpperCase(); }) + ' au șoferi fără permisul cerut: ' + lista(sNep.map(nrB), sNep.length) + '.', pag);
+  if (sFara.length === 1) pune('insight', 'w', 'sofer:fara:' + sFara[0].imei, nrB(sFara[0]) + ' n-are șofer' + (sFara[0].zileFara ? ' de ' + durata(sFara[0].zileFara * 1440) : ' de azi') + '.', prop(sFara[0]));
+  else if (sFara.length > 1) pune('insight', 'w', 'sofer:fara:' + sFara.map(function (s) { return s.imei; }).sort().join(','), masini(sFara.length).replace(/^./, function (c) { return c.toUpperCase(); }) + ' au rămas fără șofer: ' + lista(sFara.map(nrB), sFara.length) + '.', pag);
 
   // RA Dispatch — mașinile libere acum.
   const lib = Math.max(0, Math.round(Number(x.libere) || 0));

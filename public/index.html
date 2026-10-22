@@ -11572,6 +11572,8 @@ const pozitii = await r.json();</code></pre>
       // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
+        // „Șoferi pe mașini" (pasul 2, 22.10; macheta M4): toată flota deodată, cu ce propune RA Insight și „Aplică".
+        { k: 'soferi', et: 'Șoferi pe mașini', ic: 'fa-people-arrows', gata: true, pachet: true },
         // `pachet: true` = ramură de la Basic în sus (pachetele RA Insight, 14.10); pe Start apare încuiată, cu „· Basic".
         // RA Drive = fosta „Safe Drive & costuri" (Alin, 15.10: „2.da"), cu subtitlul ei.
         { k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'fa-shield-halved', gata: true, pachet: true },
@@ -11813,6 +11815,7 @@ const pozitii = await r.json();</code></pre>
         }
         if (ramuraIncuiata(RAMURI.filter(function (x) { return x.k === S.ramura; })[0])) return deseneazaIncuiata(main);
         if (S.ramura === 'ghid') return deseneazaGhid(main);
+        if (S.ramura === 'soferi') return deseneazaSoferi(main);
         if (S.ramura === 'safedrive') return deseneazaSafeDrive(main, S.sdLuna);
         if (S.ramura === 'combustibil') return deseneazaCombustibil(main, S.cbLuna);
         if (S.ramura === 'mentenanta') return deseneazaMentenanta(main);
@@ -11989,6 +11992,7 @@ const pozitii = await r.json();</code></pre>
           row.appendChild(el('span', 'azi-st ' + (/^[rwbg]$/.test(rd.nivel) ? rd.nivel : 'g')));
           var tx = el('span', 'azi-tx'); tx.innerHTML = mdScurt(rd.text); row.appendChild(tx);
           if (b && b.fel === 'dece') row.appendChild(el('span', 'azi-dece', b.text));
+          else if (b && b.fel === 'propunere') { var pp = el('span', 'azi-prop', b.text); var ip = el('i', 'fas fa-chevron-right'); pp.appendChild(ip); row.appendChild(pp); }   // macheta M5: „Propunere ›"
           else if (b) { var sg = el('span', 'azi-sg'); sg.innerHTML = '<i class="fas fa-chevron-right"></i>'; row.appendChild(sg); }
           box.appendChild(row);
         });
@@ -11997,7 +12001,7 @@ const pozitii = await r.json();</code></pre>
       }
       function aziButon(b) {
         if (b.fel === 'harta') { showView('localizare'); setTimeout(function () { try { selectDevice(b.imeis[0]); } catch (e) {} }, 150); return; }
-        if (b.fel === 'acte') { var rm = RAMURI.filter(function (x) { return x.k === b.ramura; })[0]; if (rm && rm.gata && !ramuraIncuiata(rm)) { window.insightRamura(b.ramura); return; } }
+        if (b.fel === 'acte' || b.fel === 'pagina') { var rm = RAMURI.filter(function (x) { return x.k === b.ramura; })[0]; if (rm && rm.gata && !ramuraIncuiata(rm)) { window.insightRamura(b.ramura); return; } }
         if (b.fel === 'dece') { window.insightTrimite(b.trimite); return; }
         if (b.trimite) window.insightTrimite(b.trimite, { buton: true });
       }
@@ -12095,7 +12099,12 @@ const pozitii = await r.json();</code></pre>
           if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
         }
         if (carduri.length) { var cw = el('div', 'chat-raps'); carduri.forEach(function (rp) { cw.appendChild(cartonasRaport(rp)); }); bub.appendChild(cw); }
-        if (!x.limita && !cuRaport) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
+        // Propunerea apăsată (Da / Nu / anulată) nu-și mai arată fraza de deasupra („apeși Da și o fac"): cartonașul spune tot.
+        var propInchisa = !!(x.propunere && x.propunere.id && x.propunere.stare !== 'propusa');
+        if (!x.limita && !cuRaport && !propInchisa && textAi) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
+        if (x.propunere && x.propunere.id) bub.appendChild(cartonasPropunere(x.propunere, function (nou, urm) {
+          x.propunere = nou; var nr = bulaAi(m); row.replaceWith(nr); adaugaUrmator(urm);
+        }));
         if (Array.isArray(x.probleme) && x.probleme.length) bub.appendChild(window._chatProbleme(x.probleme));
         if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode('Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare, nota: x.nota }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
@@ -12163,13 +12172,15 @@ const pozitii = await r.json();</code></pre>
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
+              verificat: j.verificat, nota: j.nota, insigna: j.insigna, propunere: j.propunere, pagina: j.pagina } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
             if (Array.isArray(j.urmari) && j.urmari.length) box.appendChild(window._chatUrmari(j.urmari, function (t) { window.insightTrimite(t, { buton: true }); }));
             box.scrollTop = box.scrollHeight; arataJos();
           }
+          // „Arată-mi potrivirea șoferilor": răspunsul rămâne în discuție, iar pagina se deschide singură.
+          if (j.pagina === 'soferi') setTimeout(function () { if (S.ramura === 'general') window.insightRamura('soferi'); }, 450);
           incarcaPachet();
           incarcaLista().then(setTitlu);
         } catch (e) {
@@ -13033,6 +13044,245 @@ const pozitii = await r.json();</code></pre>
         (window.raxToast || function () {})(laPornire ? 'Prețurile de pornire s-au pus la loc ✓' : 'Prețurile s-au salvat ✓', 'success');
         var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
       };
+
+      // ── Pasul 2 (22.10; macheta M1, M2, M4, M5, aprobată): „RA Insight face, cu Da-ul tău" — partea 1, șoferii pe mașini ──
+      // Tot ce scrie vine de la server (soferi_masini.js): ce se schimbă, de ce, ce nu se schimbă, ce e de rezolvat, textele.
+      // Pagina desenează și trimite apăsările: Da / Schimbă / Nu pe cartonaș, „Aplică cele bifate", „Anulează". Nimic nu se
+      // schimbă fără un buton apăsat; nimic de aici nu se numără. Ceasul lui „Anulează" pornește de la ce spune serverul
+      // (`ramasMs`), nu de la ceasul calculatorului.
+      function butonProp(text, ic, prim) {
+        var b = el('button', 'chat-pas' + (prim ? ' chat-prop-da' : '')); b.type = 'button';
+        b.innerHTML = '<i class="fas ' + ic + '"></i>'; b.appendChild(document.createTextNode(text)); return b;
+      }
+      // „Anulează · mai ai 9:58", numărat pe ecran; la capăt butonul pleacă (serverul refuză oricum după cele 10 minute).
+      function ceasAnulare(btn, ramasMs) {
+        var capat = Date.now() + Math.max(0, Number(ramasMs) || 0);
+        var t = btn.lastChild;
+        function scrie() {
+          var r = Math.max(0, capat - Date.now());
+          if (!document.body.contains(btn) && btn._pornit) { clearInterval(btn._ceas); return; }
+          if (r <= 0) { clearInterval(btn._ceas); btn.remove(); return; }
+          var s = Math.ceil(r / 1000);
+          t.textContent = 'Anulează · mai ai ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        }
+        btn._pornit = false; scrie(); btn._pornit = true;
+        btn._ceas = setInterval(scrie, 1000);
+      }
+      async function anuleazaActiune(id) {
+        var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(id) + '/anuleaza');
+        if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut anula.', 'error'); return r; }
+        (window.raxToast || function () {})(r.j.text || 'Am anulat.', 'success');
+        return r;
+      }
+      // Cartonașul din discuție. `gata(nou, urmator)` = serverul a răspuns la o apăsare: bula se desenează din nou, iar pasul
+      // următor (dacă e unul) vine ca mesaj nou.
+      function cartonasPropunere(p, gata) {
+        var w = el('div', 'chat-prop-w');
+        var deschis = p.stare === 'propusa';
+        var c = el('div', 'chat-prop' + (deschis ? '' : ' inchis'));
+        var h = el('div', 'chat-prop-h');
+        h.innerHTML = '<span class="ic"><i class="fas ' + (p.sofer && p.sofer.la ? 'fa-id-card' : 'fa-user-minus') + '"></i></span>';
+        h.appendChild(el('span', 'chat-prop-tit', p.titlu || ''));
+        if (p.apasat) {
+          var st = el('span', 'chat-prop-st ' + (p.stare || ''));
+          st.innerHTML = '<i class="fas ' + (p.stare === 'aplicata' ? 'fa-check' : (p.stare === 'anulata' ? 'fa-rotate-left' : 'fa-circle-info')) + '"></i>';
+          st.appendChild(document.createTextNode(p.apasat)); h.appendChild(st);
+        }
+        c.appendChild(h);
+        var g = el('div', 'chat-prop-sch');
+        var rand = function (l, nod) { g.appendChild(el('span', 'l', l)); var s = el('span'); s.appendChild(nod); g.appendChild(s); };
+        if (deschis && p.masina) { var mn = document.createDocumentFragment(); mn.appendChild(el('b', null, p.masina.nr || '')); if (p.masina.rest) mn.appendChild(document.createTextNode(' · ' + p.masina.rest)); rand('Mașina', mn); }
+        var sf = document.createDocumentFragment(), so = p.sofer || {};
+        if (so.de) { sf.appendChild(el('span', 'de', so.de)); sf.appendChild(el('span', 'sag', '→')); }
+        sf.appendChild(el('span', 'la' + (so.la ? '' : ' gol'), so.la || 'fără șofer'));
+        rand('Șoferul', sf);
+        if (deschis) rand('De când', document.createTextNode(p.deCand || ''));
+        c.appendChild(g);
+        if (deschis) {
+          if ((p.dovezi || []).length) {
+            var dv = el('div', 'chat-prop-dov'); dv.appendChild(el('div', 't', p.dovT || 'De ce'));
+            var IC = { ok: 'fa-circle-check', w: 'fa-circle-exclamation', r: 'fa-circle-xmark', i: 'fa-circle-info' };
+            p.dovezi.forEach(function (d) { var rr = el('div', /^(ok|w|r|i)$/.test(d.nivel) ? d.nivel : 'i'); rr.innerHTML = '<i class="fas ' + (IC[d.nivel] || IC.i) + '"></i>'; rr.appendChild(el('span', null, d.text)); dv.appendChild(rr); });
+            c.appendChild(dv);
+          }
+          if (p.nuSeSchimba) c.appendChild(el('div', 'chat-prop-nu', p.nuSeSchimba));
+          var bs = el('div', 'chat-prop-b');
+          var ales = { id: p.la, nume: so.la };
+          var bDa = butonProp(p.butonDa || 'Da', 'fa-check', true);
+          if (!p.poate) { bDa.disabled = true; bDa.title = p.sub || ''; }
+          bDa.onclick = async function () {
+            bDa.disabled = true;
+            var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(p.id) + '/aplica', ales.id != null && String(ales.id) !== String(p.la) ? { la: ales.id } : {});
+            if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut face.', 'error'); if (r.j.propunere) gata(r.j.propunere, null); else bDa.disabled = false; return; }
+            gata(r.j.propunere, r.j.urmator);
+          };
+          bs.appendChild(bDa);
+          // „Schimbă": alt șofer liber care poate conduce mașina (lista o dă serverul, pe cartonaș).
+          if (p.poate && (p.alternative || []).length) {
+            var bSc = butonProp('Schimbă', 'fa-pen');
+            bSc.onclick = function () {
+              var sel = el('select', 'chat-prop-sel'); sel.setAttribute('aria-label', 'Alt șofer');
+              var o0 = el('option', null, so.la + ' — propunerea mea'); o0.value = String(p.la); sel.appendChild(o0);
+              p.alternative.forEach(function (a) { var o = el('option', null, a.text); o.value = String(a.id); sel.appendChild(o); });
+              sel.onchange = function () { var a = p.alternative.filter(function (z) { return String(z.id) === sel.value; })[0]; ales = a ? { id: a.id, nume: a.nume } : { id: p.la, nume: so.la }; bDa.lastChild.textContent = a ? 'Da, trece-l pe ' + a.nume : (p.butonDa || 'Da'); };
+              bSc.replaceWith(sel); sel.focus();
+            };
+            bs.appendChild(bSc);
+          }
+          var bNu = butonProp('Nu', 'fa-xmark');
+          bNu.onclick = async function () {
+            var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(p.id) + '/refuza');
+            if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut.', 'error'); if (r.j.propunere) gata(r.j.propunere, null); return; }
+            gata(r.j.propunere, null);
+          };
+          bs.appendChild(bNu);
+          c.appendChild(bs);
+          if (p.sub) c.appendChild(el('div', 'chat-prop-sub', p.sub));
+        }
+        w.appendChild(c);
+        // După „Da": gata, cu „Anulează" (cât mai ține) și fișa mașinii; rândul jurnalului dedesubt.
+        if (p.stare === 'aplicata' && p.gata) {
+          var gt = el('div', 'chat-gata');
+          var tt = el('div', 'chat-gata-t'); tt.innerHTML = '<i class="fas fa-circle-check"></i>'; var sp = el('span'); sp.innerHTML = mdScurt(p.gata.text); tt.appendChild(sp); gt.appendChild(tt);
+          var bg = el('div', 'chat-prop-b');
+          if (p.ramasMs > 0) {
+            var bAn = butonProp('Anulează', 'fa-rotate-left'); ceasAnulare(bAn, p.ramasMs);
+            bAn.onclick = async function () { bAn.disabled = true; var r = await anuleazaActiune(p.id); if (r.s === 200) gata(r.j.propunere, null); else bAn.disabled = false; };
+            bg.appendChild(bAn);
+          }
+          var bF = butonProp('Vezi fișa mașinii', 'fa-truck'); bF.onclick = function () { window.insightProblemaButon({ fel: 'fisa', imei: p.imei }); };
+          bg.appendChild(bF); gt.appendChild(bg);
+          if (p.gata.jurnal) gt.appendChild(el('div', 'chat-prop-sub', p.gata.jurnal));
+          w.appendChild(gt);
+        }
+        if (p.stare === 'anulata' && p.anulareText) { var an = el('div', 'chat-gata anul'); var at = el('div', 'chat-gata-t'); at.innerHTML = '<i class="fas fa-rotate-left"></i>'; at.appendChild(el('span', null, p.anulareText)); an.appendChild(at); w.appendChild(an); }
+        return w;
+      }
+      // Pasul următor după „Da" (macheta M2): mesajul nou de la server, cu întrebările de continuare dedesubt.
+      function adaugaUrmator(u) {
+        if (!u || !u.text) return;
+        var m = { rol: 'assistant', id: u.mesajId || null, text: u.text, feedback: null, extra: { source: 'reguli', urmari: u.urmari, insigna: u.insigna } };
+        S.mesaje.push(m);
+        var box = $i('insp-msgs'); if (!box) return;
+        Array.prototype.forEach.call(box.querySelectorAll('.chat-urm'), function (n) { n.remove(); });
+        box.appendChild(bulaAi(m));
+        if ((u.urmari || []).length) box.appendChild(window._chatUrmari(u.urmari, function (t) { window.insightTrimite(t, { buton: true }); }));
+        box.scrollTop = box.scrollHeight; arataJos();
+      }
+      // Pagina „Șoferi pe mașini" (în „Pagini", de la Basic): toată flota deodată, bifezi ce vrei și apeși „Aplică".
+      async function deseneazaSoferi(main, dupa) {
+        var tok = S.smTok = (S.smTok || 0) + 1;
+        if (!main.querySelector('.ssm')) main.innerHTML = '<div class="sdp ssm"><div class="insp-gol">Se încarcă…</div></div>';
+        var r = await cere('GET', '/api/insight/soferi-masini');
+        if (tok !== S.smTok || S.ramura !== 'soferi') return;
+        var pag = el('div', 'sdp ssm'), j = r.j || {};
+        main.innerHTML = ''; main.appendChild(pag);
+        var cap = el('div', 'sdp-cap');
+        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-people-arrows"></i> '; h2.appendChild(document.createTextNode('Șoferi pe mașini')); cap.appendChild(h2);
+        var dr = el('div', 'sdp-dr');
+        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
+        bQ.title = 'Întreabă RA Insight despre șoferii și mașinile tale (o întrebare scrisă se numără)';
+        bQ.onclick = function () { window.insightIntreabaDespre('Despre șoferii pe mașini: '); };
+        dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
+        if (r.s !== 200 || j.platforma) {
+          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, j.platforma ? 'Contul de fondator n-are o flotă' : 'Pagina nu s-a putut deschide'));
+          c0.appendChild(el('div', null, j.platforma ? 'Potrivirea șoferilor se face pe flota unei firme: intră cu contul administratorului firmei.' : (j.message || j.error || 'Încearcă din nou peste un minut.')));
+          pag.appendChild(c0); return;
+        }
+        var tx = j.texte || {};
+        pag.appendChild(el('div', 'ssm-intro', tx.intro || ''));
+        // După „Aplică": ce s-a schimbat, cu „Anulează" cât mai ține.
+        if (dupa && (dupa.gata || []).length) {
+          var gt = el('div', 'chat-gata ssm-gata');
+          var tt = el('div', 'chat-gata-t'); tt.innerHTML = '<i class="fas fa-circle-check"></i>'; tt.appendChild(el('span', null, dupa.text || 'Gata.')); gt.appendChild(tt);
+          var ul = el('ul', 'ssm-gata-l'); dupa.gata.forEach(function (x) { ul.appendChild(el('li', null, x.text)); }); gt.appendChild(ul);
+          (dupa.sarite || []).forEach(function (s) { gt.appendChild(el('div', 'chat-prop-sub', 'N-am schimbat: ' + s.motiv + '.')); });
+          if (dupa.ramasMs > 0 && dupa.actiuneId) {
+            var bAn = butonProp('Anulează', 'fa-rotate-left'); ceasAnulare(bAn, dupa.ramasMs);
+            bAn.onclick = async function () { bAn.disabled = true; var ra = await anuleazaActiune(dupa.actiuneId); if (ra.s === 200) deseneazaSoferi(main); else bAn.disabled = false; };
+            var bg = el('div', 'chat-prop-b'); bg.appendChild(bAn); gt.appendChild(bg);
+          }
+          pag.appendChild(gt);
+        }
+        if (j.faraSoferi) {
+          var cf = el('div', 'insp-card'); cf.appendChild(el('h3', null, 'Nu ai niciun șofer trecut în aplicație'));
+          cf.appendChild(el('div', null, 'Adaugă-i din Management › Șoferi, cu categoriile și valabilitatea permisului, și potrivirea apare aici.'));
+          pag.appendChild(cf); return;
+        }
+        var rz = j.rezumat || {};
+        var tl = el('div', 'sdp-tiles trei');
+        [['fa-circle-exclamation', 'De rezolvat', rz.deRezolvat, rz.deRezolvatText, rz.deRezolvat ? 'st-rosu' : ''],
+         ['fa-circle-check', 'În regulă', rz.inRegula, rz.inRegulaText, ''],
+         ['fa-user-clock', 'Șoferi liberi', rz.liberi, rz.liberiText, '']].forEach(function (x) {
+          var t = el('div', 'sdp-tile' + (x[4] ? ' ' + x[4] : '')), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
+          t.appendChild(et); t.appendChild(el('div', 'val', String(x[2] || 0))); t.appendChild(el('div', 'sub', x[3] || '')); tl.appendChild(t);
+        });
+        pag.appendChild(tl);
+        var bife = [];
+        var props = j.propuneri || [];
+        if (props.length) {
+          var sc = sdSect(pag, 'Ce propun · ' + props.length, 'fa-list-check');
+          var tb = sdTabel([[''], ['Mașina'], ['Acum'], ['Propun'], ['De ce']]);
+          props.forEach(function (p) {
+            var tr = el('tr');
+            var td0 = el('td', 'ssm-ck'); var ck = document.createElement('input'); ck.type = 'checkbox'; ck.checked = true; ck.setAttribute('aria-label', 'Schimbarea de pe ' + p.nr); td0.appendChild(ck); tr.appendChild(td0);
+            var td1 = el('td'); td1.appendChild(el('b', null, p.nr)); if (p.descriere) td1.appendChild(el('div', 'ssm-s', p.descriere)); tr.appendChild(td1);
+            var td2 = el('td'), a = p.acum || {};
+            if (a.nume) td2.appendChild(document.createTextNode(a.nume)); else td2.appendChild(el('span', 'ssm-gri', 'fără șofer'));
+            var la2 = el('div', 'ssm-s ' + (a.nivel === 'r' ? 'r' : 'w')); la2.innerHTML = '<i class="fas ' + (a.nivel === 'r' ? 'fa-circle-xmark' : 'fa-circle-exclamation') + '"></i> ';
+            la2.appendChild(document.createTextNode(a.nume ? a.text : String(a.text || '').replace(/^fără șofer\s*/, '') || 'fără șofer')); td2.appendChild(la2); tr.appendChild(td2);
+            var td3 = el('td'); td3.appendChild(el('b', null, p.propun.nume)); if (p.propun.sub) td3.appendChild(el('div', 'ssm-s', p.propun.sub)); tr.appendChild(td3);
+            tr.appendChild(el('td', 'ssm-dece', p.deCe || ''));
+            tb.b.appendChild(tr);
+            bife.push({ p: p, ck: ck });
+          });
+          sc.appendChild(tb.w);
+        }
+        (j.faraPropunere || []).length && (function () {
+          var sf = sdSect(pag, 'Fără propunere · ' + j.faraPropunere.length, 'fa-circle-info');
+          j.faraPropunere.forEach(function (f) { var d = el('div', 'ssm-rand'); d.appendChild(el('b', null, f.nr)); d.appendChild(document.createTextNode(' · ' + ((f.acum || {}).nume ? f.acum.nume + ', ' : '') + ((f.acum || {}).text || '') + ' — ' + f.motiv)); sf.appendChild(d); });
+        })();
+        var ok = j.inRegula || [];
+        var so = sdSect(pag, 'În regulă · ' + ok.length, 'fa-circle-check');
+        if (!ok.length) so.appendChild(el('div', 'ssm-rand ssm-gri', 'Nicio mașină cu șofer potrivit, încă.'));
+        ok.forEach(function (m) { var d = el('div', 'ssm-rand'); d.appendChild(el('b', null, m.nr)); d.appendChild(document.createTextNode((m.nume ? ' · ' + m.nume : '') + ' — ' + m.sofer + ' · ' + m.text)); if (m.nivel === 'w') d.classList.add('w'); so.appendChild(d); });
+        if ((j.deCompletat || []).length) {
+          var sdc = sdSect(pag, 'De completat în fișa șoferului · ' + j.deCompletat.length, 'fa-pen-to-square');
+          j.deCompletat.forEach(function (m) { var d = el('div', 'ssm-rand'); d.appendChild(el('b', null, m.nr)); d.appendChild(document.createTextNode(' — ' + m.sofer + ': ' + m.text)); sdc.appendChild(d); });
+        }
+        pag.appendChild(el('div', 'ssm-nustie', tx.nuStie || ''));
+        if (!bife.length) return;
+        // Bifele: o schimbare care folosește un șofer scos de pe altă mașină („după ce iese de pe…") merge doar împreună cu aceea.
+        var jos = el('div', 'ssm-jos');
+        var bAp = butonProp('Aplică cele bifate', 'fa-check', true);
+        var leaga = function () {
+          var bifate = {}; bife.forEach(function (b) { if (b.ck.checked && !b.ck.disabled) bifate[b.p.imei] = true; });
+          bife.forEach(function (b) {
+            if (!b.p.dupa) return;
+            var poate = !!bifate[b.p.dupa];
+            if (!poate) { b.ck.checked = false; b.ck.disabled = true; b.ck.title = 'Merge doar după schimbarea de pe mașina de unde iese șoferul.'; }
+            else if (b.ck.disabled) { b.ck.disabled = false; b.ck.checked = true; b.ck.title = ''; }
+          });
+          var n = bife.filter(function (b) { return b.ck.checked && !b.ck.disabled; }).length;
+          bAp.lastChild.textContent = 'Aplică cele bifate (' + n + ')'; bAp.disabled = !n || !j.poate;
+        };
+        bife.forEach(function (b) { b.ck.onchange = leaga; });
+        bAp.onclick = async function () {
+          var sch = bife.filter(function (b) { return b.ck.checked && !b.ck.disabled; }).map(function (b) { return { imei: b.p.imei, la: b.p.la }; });
+          if (!sch.length) return;
+          bAp.disabled = true;
+          var ra = await cere('POST', '/api/insight/soferi-masini/aplica', { schimbari: sch });
+          if (ra.s !== 200) { (window.raxToast || alert)(ra.j.error || 'Nu s-a putut aplica.', 'error'); deseneazaSoferi(main); return; }
+          incarcaNumere();
+          deseneazaSoferi(main, ra.j);
+        };
+        var bRe = butonProp('Renunță', 'fa-xmark');
+        bRe.onclick = function () { bife.forEach(function (b) { b.ck.checked = false; }); leaga(); };
+        jos.appendChild(bAp); jos.appendChild(bRe);
+        jos.appendChild(el('span', 'ssm-jos-n', j.poate ? (tx.jos || '') : 'Doar cine poate schimba vehiculele aplică: ' + (j.aproba || 'administratorul firmei') + '.'));
+        pag.appendChild(jos);
+        leaga();
+      }
     })();
     // ── sfârșit „secțiunea RA Insight" ──
     // „Deschide raportul": cardul raportului, cu mașina și perioada din răspuns (scadențele au selectorul lor de lună).

@@ -7,6 +7,7 @@ let segmentTrack = null;
 try { segmentTrack = require('./reports').segmentTrack; } catch (e) { segmentTrack = null; }
 const preaviz = require('./preaviz');   // preavizul termenelor: același ca listele și anunțurile
 const tacho = require('./tacho');       // „e camion / autobuz?" — o singură listă de tipuri (tacho.vehiculAreTahograf)
+const insight = require('./insight');   // „azi" și ora pe ceasul ROMÂNIEI (serverul e pe UTC)
 
 const SPEED_LIMIT = 90;        // km/h
 const IDLE_MIN_MINUTES = 120;  // ralanti prelungit (RA Watch)
@@ -524,8 +525,8 @@ async function raDispatch(ctx) {
     const noun = n === 1 ? 'vehicul disponibil' : 'vehicule disponibile'; // acord gramatical corect (1 vehicul / N vehicule)
     findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: n + ' ' + noun + ' acum pentru curse', body: 'Online și staționate: ' + names + '.' });
   }
-  // Subutilizate (după-amiaza): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
-  if (new Date().getHours() >= IDLE_HOUR) {
+  // Subutilizate (după-amiaza, pe ora României): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
+  if ((ctx.oraRO != null ? ctx.oraRO : insight.oraRO(now)) >= IDLE_HOUR) {
     for (const a of available) {
       const pts = await ctx.hist(a.imei);
       let km = 0;
@@ -548,16 +549,20 @@ const AGENTS = {
 };
 
 // Context comun cu cache de istoric (azi) partajat între agenți, ca să nu reinterogăm DB.
+// „Azi" = ziua pe ceasul ROMÂNIEI (insight.perioada), nu pe al serverului: cu setHours(0) pe UTC, ziua agenților începea
+// la 3 dimineața vara (2 iarna) — o scădere de combustibil de la 2 noaptea nu mai era „azi" pentru RA Watch, iar RA Client
+// număra km-ii zilei de la 3. Prins de proba de noapte (22.10).
 function buildCtx(base) {
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-  const fromIso = todayStart.toISOString(), toIso = new Date().toISOString();
+  const acum = Date.now();
+  const todayStart = new Date(insight.perioada({ period: 'today' }, acum).from);
+  const fromIso = todayStart.toISOString(), toIso = new Date(acum).toISOString();
   const cache = {};
   const hist = async (imei) => {
     if (cache[imei]) return cache[imei];
     let r = []; try { r = await base.db.getDeviceHistory(imei, fromIso, toIso); } catch (e) { r = []; }
     cache[imei] = r; return r;
   };
-  return Object.assign({}, base, { hist, todayStart, fromIso, toIso });
+  return Object.assign({}, base, { hist, todayStart, fromIso, toIso, oraRO: insight.oraRO(acum) });
 }
 
 async function runAgent(key, base) {

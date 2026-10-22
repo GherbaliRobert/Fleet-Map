@@ -487,7 +487,8 @@ function insigna(fel, o) {
   o = o || {};
   const ai = fel === 'ai';
   const eticheta = ai ? INSIGNA.ai : INSIGNA.instant;
-  const detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte'));
+  // „propunere" (pasul 2, 22.10): un cartonaș care pregătește o schimbare — pe reguli, nu se numără (Alin: „da").
+  const detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.propunere ? 'propunere' : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte')));
   return { fel: ai ? 'ai' : 'instant', nume: INSIGNA.nume, eticheta: eticheta, detaliu: detaliu,
     text: INSIGNA.nume + ' · ' + eticheta + (detaliu ? ' · ' + detaliu : '') };
 }
@@ -496,7 +497,7 @@ function insigna(fel, o) {
 function insignaCompleta(x) {
   if (!x || typeof x !== 'object' || !x.fel || x.eticheta) return x;
   const det = String(x.text || '').split(' · ').slice(1).join(' · ');
-  return insigna(x.fel, { numarat: det === '1 întrebare' || det === '1 răspuns', live: det === 'din datele de acum' });
+  return insigna(x.fel, { numarat: det === '1 întrebare' || det === '1 răspuns', live: det === 'din datele de acum', propunere: det === 'propunere' });
 }
 
 module.exports = {

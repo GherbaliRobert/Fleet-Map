@@ -247,8 +247,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (21.10). **Rămâne alegerea modelului** (recomand Haiku 5.5, întrebarea 1 din PDF); se bifează când răspunde Alin.
 - [x] **HOTĂRÂT (22.10): garanția = doar contorul corecturilor (B).** Alin: „hai să mergem pe B, A ne costă". Proba de noapte
   (A) nu se face. Tot pe 22.10: pasul 2 merge după macheta din 21.10 („da"), iar la „Anunță echipa RA Track" termenul promis e
-  „te sunăm în cel mult o zi lucrătoare" („da"). Fără răspuns încă: „Da"-ul nenumărat și pasul 2 de la Basic; fluxul „Anunță
-  echipa"; cine preia cererile.
+  „te sunăm în cel mult o zi lucrătoare" („da"). Tot pe 22.10, mai târziu (Alin: „da la toate"): „Da"-ul de la pasul 2 NU se
+  numără ca întrebare, iar pasul 2 merge de la pachetul Basic; fluxul „Anunță echipa RA Track" (capitolul 4) e aprobat; cererile
+  le preiau amândoi (Alin și Robert), cu „Preiau"; proba care pică noaptea (00–03, ora României) se repară.
 - [ ] **Robert: Brevo — opriți blocarea adreselor necunoscute. Adăugat pe 22.10 (emailul care nu mai pleca).** Brevo refuză
   serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
   IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
@@ -331,6 +332,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `verify_insight_bani.js`).
   (11) **adăugat pe 22.10:** sumele din pagina noastră se scriu românește („0,01 lei”, „1.234 lei” — `insightBani.ts` › `nr`, legat de
   web prin `verify_insight_bani.js`), iar adresa de suport din meniu e contact@ratrack.ro (`Menu.tsx`); intră cu APK-ul următor.
+  (12) **adăugat pe 22.10 (seara) — pasul 2, partea 1 (șoferii pe mașini):** cartonașul `propunere` din răspuns (Da / Schimbă / Nu →
+  `POST /api/insight/actiuni/:id/aplica|refuza|anuleaza`, „Gata" cu „Anulează" numărat din `ramasMs`, pasul următor din `urmator`),
+  rândurile „Propunere ›" din „Azi la tine" (butonul `propunere` = o cerere pe reguli), pagina „Șoferi pe mașini" din
+  `GET /api/insight/soferi-masini` cu „Aplică cele bifate" (`POST /api/insight/soferi-masini/aplica`). Textele le dă serverul.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -459,6 +464,55 @@ pe B, A ne costă". Cele 3 răspunsuri greșite ale lui Haiku veneau din aplica�
 - **Ce vede fondatorul:** rândul nou din „Ce cere atenție"; sumele cu virgulă; mesajele de suport în Mail › Primite.
 - **Ce vede clientul:** răspunsuri RA Insight mai corecte (cea mai lungă cursă, viteza maximă, combustibilul care nu se vede, vitezele
   spuse corect), „Salvează", adresa de suport bună. Fără niciun cuvânt despre aparat.
+
+### CLIENT · Agenții socotesc „azi" pe ora României (proba care pica noaptea)
+
+Alin (22.10): „repar acum proba care pică noaptea? — da". Cauza NU era proba: agenții (RA Watch, RA Dispatch, RA Optimize, RA
+Compliance, RA Client) socoteau „azi" pe ceasul serverului, care e pe UTC — ziua lor începea la 3 dimineața, vara (2, iarna). Proba a
+prins asta: la 03:05, ora României, RA Watch nu mai vedea scăderea de combustibil de la 02:30. La fel, RA Client număra km-ii zilei
+de la 3, iar „nefolosit azi" al lui RA Dispatch pornea la 15:00, ora noastră, în loc de 12.
+- **Ce am schimbat:** `agents.js` (ziua = `insight.perioada('today')`, ora = `insight.oraRO`); proba `verify_un_singur_insight.js`
+  verifică acum ziua agenților la 03:05 (vara), 02:30 (iarna) și 01:00, iar datele ei „de azi" nu mai cad în ziua de ieri imediat
+  după miezul nopții.
+- **Ce vede fondatorul:** poarta de pe GitHub nu mai pică noaptea.
+- **Ce vede clientul:** constatările agenților și „ziua într-un rând" a lui RA Client pornesc de la miezul nopții, ora României.
+- **Găsit pe drum, întrebat (nu reparat):** aceeași greșeală (ziua de la 3 dimineața) stă și în „Dashboard" (cifrele zilei), în fișa
+  mașinii de pe hartă („Statistici zilnice", „Ore funcționare azi") și în întrebările vechi ale telefonului.
+
+### AMÂNDOI · Pasul 2, partea 1: „Pune-l pe Mihai pe B 77 TIR" → propunerea, „Da", „Anulează"; pagina „Șoferi pe mașini"
+
+Alin (21–22.10): „da" la fluxul și regulile din capitolul 3 al PDF-ului, „da" la „Da"-ul nenumărat și de la Basic; „aș începe cu
+trecerea șoferului și pagina «Șoferi pe mașini» — da". Construit după macheta aprobată (M1, M2, M4, M5).
+- **În discuție:** „Pune-l pe Mihai Ionescu pe B 77 TIR" (sau „Propune un șofer pentru …", „Scoate-l pe … de pe …") → cartonașul:
+  ce se schimbă (Ion Popescu → Mihai Ionescu), de ce se potrivește (categoriile și valabilitatea permisului, dacă șoferul e liber),
+  ce NU se schimbă (grupa, alertele, rapoartele programate) și pe ce cale se face. Butoanele: „Da, trece-l", „Schimbă" (alt șofer liber
+  potrivit, dacă există), „Nu". După „Da": „Gata. Mihai Ionescu e pe B 77 TIR de azi, 10:42.", „Anulează · mai ai 9:58" (10 minute),
+  „Vezi fișa mașinii" și rândul jurnalului; dedesubt, pasul următor („Ion Popescu a rămas fără mașină, iar B 268 ROY n-are șofer…").
+  Un „da" scris aduce din nou cartonașul — doar butonul schimbă ceva. Un permis care nu acoperă mașina sau unul expirat nu primește
+  cartonaș: RA Insight spune de ce și propune, ca butoane, șoferii liberi potriviți.
+- **„Azi la tine":** permisul expirat al unui șofer trecut pe mașină (roșu), șoferul fără permisul cerut, mașina rămasă de curând fără
+  șofer — fiecare cu „Propunere ›". Permisul expirat stă o singură dată (nu și ca „Trecut de termen").
+- **Pagina „Șoferi pe mașini"** (RA Insight › Pagini, de la Basic, cu numărul lucrurilor de rezolvat): cartonașele „De rezolvat",
+  „În regulă", „Șoferi liberi"; „Ce propun" cu bife (cel scos de pe o mașină merge pe alta „după ce iese de pe…" și se bifează doar
+  împreună cu aceea); „Fără propunere", „În regulă", „De completat în fișa șoferului"; „Aplică cele bifate" + „Anulează" 10 minute.
+- **Regulile (`soferi_masini.js`):** ce permis cere mașina din „Categorie" (Auto / Dubă → B, Camion → C, TIR / Autotractor → CE, Autobuz
+  → D, Motocicletă → A1), din masa maximă (peste 3.500 kg → C1, peste 7.500 kg → C) și din locuri (autobuz cu cel mult 16 → D1);
+  remorcile n-au șofer, utilajele nu se potrivesc pe permis. Ce acoperă un permis (CE cuprinde B și C…). Alegerea: întâi mașina cu cei
+  mai puțini șoferi potriviți (CE înaintea lui B), cine a mai fost trecut pe ea (cel puțin o oră), cel mai puțin „prea calificat".
+- **Cum se face:** exact ca din Vehicule › fișa mașinii › Șofer (aceeași schimbare, grupa rămâne), cu aceleași drepturi: cine nu poate
+  schimba vehiculele (de pildă dispecerul) vede propunerea, dar „Da" e oprit și află cine aprobă. Fiecare schimbare e verificată pe
+  starea de ACUM (șoferul de acum, șoferul nou din firmă, netrecut pe altă mașină); „Da" merge o singură dată; după 10 minute
+  „Anulează" se refuză; o propunere neapăsată de o zi se cere din nou. În jurnal: „assign … prin RA Insight". Nimic nu se numără.
+- **Ce am schimbat:** `soferi_masini.js` (nou), `server.js` (`_insightSoferi`, `_aplicaSoferi`, rutele `/api/insight/soferi-masini`,
+  `/api/insight/actiuni/:id/aplica|refuza|anuleaza`, „Azi la tine", numărul paginii), `db.js` (tabela `insight_actiuni`), `azi_la_tine.js`,
+  `pachete.js` (insigna „propunere"), `backup.js`, pagina (cartonașul, „Gata", pagina), `app.css`, `insight_ghid.js` (capitolul
+  „Șoferii pe mașini"). Probă nouă: `verify_soferi_masini.js` (77, în `npm test`, pe server pornit); `verify_insight_ghid.js` și
+  `verify_un_singur_insight.js` mutate pe regula nouă.
+- **Ce vede fondatorul:** nimic nou (contul de fondator n-are flotă); cu contul administratorului unei firme pe Basic: tot ce e mai sus.
+- **Ce vede clientul:** administratorul și managerul — propunerile cu „Da"; dispecerul și vizualizatorul — propunerile, fără „Da"; pe
+  Start: „de la pachetul Basic". Telefonul rămâne cum e până la APK-ul următor.
+- **Găsit pe drum, întrebat (nu reparat):** ruta veche prin care ecranul trece șoferul pe mașină (`/api/devices/:imei/assign`) nu
+  verifică dacă șoferul și grupa sunt ale firmei; drumul nou al lui RA Insight verifică.
 
 ---
 

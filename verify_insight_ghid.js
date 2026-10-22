@@ -22,7 +22,8 @@ const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8'
 const JS = fs.readdirSync(path.join(__dirname, 'public', 'js')).filter((f) => f.endsWith('.js')).map((f) => fs.readFileSync(path.join(__dirname, 'public', 'js', f), 'utf8')).join('\n');
 // Ce vede omul pe ecran: pagina, scripturile ei, plus textele pe care serverul le trimite gata scrise ecranului
 // (întrebările gata făcute din AI Raport, numele rapoartelor din catalog).
-const ECRAN = (PAG + '\n' + JS + '\n' + fs.readFileSync(path.join(__dirname, 'ai_raport.js'), 'utf8') + '\n' + fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8'))
+// Din 22.10 (pasul 2) și textele cartonașului de șofer („Da, trece-l") și rândurile din „Azi la tine" („Propunere"), scrise de server.
+const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
   .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 const pe = (t) => ECRAN.indexOf(t) >= 0;
 const SECT = G.publice();
@@ -37,6 +38,7 @@ const EXEMPLE = {
   'și săptămâna dinainte?': 'exemplu de continuare scrisă de om',
   'câți km azi': 'exemplu de întrebare scrisă de om (răspunsul rapid)',
   'mai are N zile': 'textul are cifra pusă de aplicație (\'mai are \' + zile)',
+  'Pune-l pe Mihai Ionescu pe B 77 TIR': 'exemplu de cerere scrisă de om (pasul 2, șoferii pe mașini)',
 };
 const citate = [];
 SECT.forEach((s) => {
@@ -86,6 +88,8 @@ const CAZURI = [
   ['cum pun prețul motorinei?', 'combustibil'],
   ['unde găsesc facturile?', 'facturi'],
   ['am o problemă, cu cine vorbesc?', 'suport'],
+  ['ce înseamnă potrivirea șoferilor pe mașini?', 'soferi_masini'],
+  ['unde văd ce mașini au permis nepotrivit?', 'soferi_masini'],
 ];
 CAZURI.forEach(([q, k]) => {
   const g = G.cauta(q, 3);

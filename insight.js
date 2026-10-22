@@ -222,6 +222,8 @@ function _parti(ms) {
   return { y: +p.year, m0: +p.month - 1, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second,
     dow: { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[p.weekday] || 1 };
 }
+// Ora României (0–23) în clipa `ms`: pentru pragurile pe oră ale agenților („după-amiaza" lui RA Dispatch).
+function oraRO(ms) { return _parti(ms == null ? Date.now() : Number(ms)).h; }
 // Momentul (UTC) în care e miezul nopții în România, în ziua y-m0-d (zilele în plus/minus se întorc singure).
 function inceputZiRO(y, m0, d) {
   const naiv = Date.UTC(y, m0, d, 0, 0, 0);
@@ -489,6 +491,6 @@ function vorbeDespreEchipament(text) {
 module.exports = {
   totaluriPeMasina, celeMaiMari, vorbeDespreEchipament,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
-  inceputZiRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
+  inceputZiRO, oraRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
   potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, areLitereStraine, litereRomanesti,
 };

@@ -69,7 +69,8 @@ const SECTIUNI = [
     pasi: [
       'Management → Șoferi → „Adaugă șofer": nume, telefon, email, permisul (număr, expirare, categorii) → „Adaugă".',
       'Ca să-i dai o mașină: Management → Vehicule → creionul de pe rândul mașinii → „Editare vehicul".',
-      'În fila „Detalii vehicul", la „Șofer", alege-l și apasă „Salvează".'
+      'În fila „Detalii vehicul", la „Șofer", alege-l și apasă „Salvează".',
+      'Sau din RA Insight: scrie cui dai mașina (de pildă: pune-l pe Mihai pe B 77 TIR), verifici propunerea și apeși „Da".'
     ],
     detalii: 'Când permisul expiră în cel mult 30 de zile, lângă șofer apare „mai are N zile".',
     cuvinte: ['sofer', 'soferi', 'adauga sofer', 'permis', 'aloca', 'atribuie', 'masina soferului']
@@ -155,15 +156,29 @@ const SECTIUNI = [
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei', 'instant', 'insigna']
   },
   {
-    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: RA Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Pagini',
+    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Șoferi pe mașini, RA Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Pagini',
     pasi: [
-      'Jos în stânga apasă „Pagini" și alege: „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
+      'Jos în stânga apasă „Pagini" și alege: „Șoferi pe mașini", „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
       'Sus alegi luna (la „Ore de condus", săptămâna) și mașinile: toată flota sau o grupă.',
       'Numărul de lângă „Pagini" (și de lângă fiecare pagină) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen sau o scrisoare necitită).',
       '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
     ],
     detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Scrisoarea de luni vine lunea la 8, cu un anunț, și nu se scade nici ea din fond.',
     cuvinte: ['ramura', 'ramuri', 'pagini', 'ra drive', 'safe drive', 'scrisoarea de luni', 'scrisoare', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+  },
+  {
+    // Pasul 2 (22.10): „RA Insight face, cu Da-ul tău" — partea 1, șoferii pe mașini.
+    cheie: 'soferi_masini', titlu: 'Șoferii pe mașini, cu RA Insight: propunerea și „Da"', unde: 'Meniu → RA Insight → Pagini → „Șoferi pe mașini"',
+    pasi: [
+      'În discuție scrie, de pildă, „Pune-l pe Mihai Ionescu pe B 77 TIR", sau apasă „Propunere" pe un rând din „Azi la tine".',
+      'RA Insight arată propunerea: ce se schimbă, de ce se potrivește (categoriile și valabilitatea permisului, dacă șoferul e liber) și ce nu se schimbă.',
+      'Apasă „Da, trece-l" ca s-o faci, „Schimbă" ca să alegi alt șofer liber, sau „Nu". Fără „Da" nu se schimbă nimic.',
+      'După „Da", „Anulează" ține 10 minute; apoi schimbi din fișa mașinii, ca de obicei.',
+      'Toată flota deodată: Pagini → „Șoferi pe mașini"; bifezi ce vrei și apeși „Aplică cele bifate".'
+    ],
+    detalii: 'Se face exact ca din Management → Vehicule → fișa mașinii → Șofer, cu aceleași drepturi: cine nu poate schimba vehiculele vede propunerea, dar butonul „Da" e oprit. În jurnal scrie „prin RA Insight". ' +
+      'Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic. Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișele șoferilor.',
+    cuvinte: ['soferi pe masini', 'potrivirea soferilor', 'potrivire', 'trece soferul', 'pune-l pe', 'pune soferul', 'alt sofer', 'permis nepotrivit', 'permis expirat', 'fara sofer', 'propunere', 'anuleaza', 'da-ul']
   },
   {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',

@@ -1425,6 +1425,25 @@ async function initDb() {
         PRIMARY KEY (luna, company_id)
       )
     `);
+    // Pasul 2 al Capitolului 2 („RA Insight face, cu Da-ul tău", 22.10): propunerile din discuție și din pagina „Șoferi pe
+    // mașini" — ce s-ar schimba (`date.schimbari`: [{ imei, deLa, la }]), cartonașul și starea lui. Ale OMULUI care le-a primit
+    // (user_id în fiecare cerere). „Anulează" ține ANULARE_MIN minute de la `aplicat_la`. Schimbările însele stau în fișele
+    // mașinilor, în istoricul șoferilor și în jurnal; rândurile se șterg la 12 luni, ca discuțiile.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS insight_actiuni (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER NOT NULL,
+        fel VARCHAR(30) NOT NULL,
+        stare VARCHAR(20) NOT NULL,
+        date JSONB NOT NULL,
+        conversatie_id INTEGER,
+        creat_la BIGINT NOT NULL,
+        aplicat_la BIGINT,
+        anulat_la BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_insight_actiuni_user ON insight_actiuni(user_id, id)`);
     // Trecerile la alt pachet RA Insight, confirmate din aplicație (pasul 6): cine, când, de pe ce adresă și TEXTUL exact pe care
     // l-a confirmat — confirmarea ține loc de act adițional, deci e dovadă și rămâne și după ștergerea firmei (ca un contract).
     await client.query(`
@@ -6257,6 +6276,80 @@ async function noteazaCorectura(companyId, c) {
        litere = ai_corecturi.litere + EXCLUDED.litere, echipament = ai_corecturi.echipament + EXCLUDED.echipament, ramase = ai_corecturi.ramase + EXCLUDED.ramase`,
     [luna, parseInt(companyId), c && c.cifre ? 1 : 0, c && c.litere ? 1 : 0, c && c.echipament ? 1 : 0, c && c.ramas ? 1 : 0]);
 }
+// ─── Pasul 2: propunerile lui RA Insight (insight_actiuni) ───
+// Ale omului: fiecare cerere are user_id în WHERE (al altuia = ca unul care nu există).
+function _actiuneRand(x) {
+  if (!x) return null;
+  let d = x.date; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = {}; } }
+  return { id: Number(x.id), company_id: x.company_id, user_id: x.user_id, fel: x.fel, stare: x.stare, date: d || {}, conversatie_id: x.conversatie_id,
+    creat_la: Number(x.creat_la), aplicat_la: x.aplicat_la == null ? null : Number(x.aplicat_la), anulat_la: x.anulat_la == null ? null : Number(x.anulat_la) };
+}
+async function adaugaActiuneInsight(o) {
+  const r = await pool.query(
+    `INSERT INTO insight_actiuni (company_id, user_id, fel, stare, date, conversatie_id, creat_la, aplicat_la) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [o.companyId == null ? null : o.companyId, o.userId, String(o.fel), String(o.stare), JSON.stringify(o.date || {}), o.conversatieId == null ? null : Number(o.conversatieId),
+      o.creatLa || Date.now(), o.aplicatLa == null ? null : o.aplicatLa]);
+  return Number(r.rows[0].id);
+}
+async function actiuneInsight(id, userId) {
+  const r = await pool.query('SELECT * FROM insight_actiuni WHERE id = $1 AND user_id = $2', [parseInt(id) || 0, userId]);
+  return _actiuneRand(r.rows[0]);
+}
+async function actiuniInsight(ids, userId) {
+  const l = (ids || []).map(function (x) { return parseInt(x); }).filter(function (x) { return x > 0; });
+  if (!l.length || userId == null) return [];
+  const r = await pool.query('SELECT * FROM insight_actiuni WHERE id = ANY($1::int[]) AND user_id = $2', [l, userId]);
+  return r.rows.map(_actiuneRand);
+}
+// Trecerea dintr-o stare în alta, O DATĂ: două apăsări deodată (două ferestre) — doar prima găsește starea veche.
+// Întoarce rândul nou sau null (altă stare între timp / al altuia).
+async function treceActiuneInsight(id, userId, dinStare, campuri) {
+  const c = campuri || {};
+  const r = await pool.query(
+    `UPDATE insight_actiuni SET stare = $4, date = COALESCE($5::jsonb, date), aplicat_la = COALESCE($6, aplicat_la), anulat_la = COALESCE($7, anulat_la)
+      WHERE id = $1 AND user_id = $2 AND stare = $3 RETURNING *`,
+    [parseInt(id) || 0, userId, String(dinStare), String(c.stare), c.date ? JSON.stringify(c.date) : null, c.aplicatLa == null ? null : c.aplicatLa, c.anulatLa == null ? null : c.anulatLa]);
+  return _actiuneRand(r.rows[0]);
+}
+// Propunerea făcută în discuție ține minte conversația (acolo vine „pasul următor" după „Da").
+async function legaActiuneInsight(id, userId, convId) {
+  await pool.query('UPDATE insight_actiuni SET conversatie_id = $3 WHERE id = $1 AND user_id = $2', [parseInt(id) || 0, userId, convId == null ? null : Number(convId)]);
+}
+async function stergeActiuniInsightMaiVechiDe(luni) {
+  const r = await pool.query('DELETE FROM insight_actiuni WHERE creat_la < $1 RETURNING id', [Date.now() - Math.max(1, Number(luni) || 12) * 30.44 * 86400000]);
+  return r.rows.length;
+}
+// Șoferii unei firme pentru „Șoferi pe mașini": categoriile și valabilitatea permisului și mașinile pe care e trecut fiecare,
+// din TOATĂ firma (nearhivate) — un șofer trecut pe o mașină pe care omul n-o vede nu e „liber".
+async function soferiPentruPotrivire(companyId) {
+  const r = await pool.query(
+    `SELECT d.id, d.name, d.license_categories, d.license_expiry, v.imei
+       FROM drivers d
+       LEFT JOIN devices v ON v.driver_id = d.id AND v.company_id = d.company_id AND COALESCE(v.status, '') <> 'archived'
+      WHERE d.company_id = $1 ORDER BY d.name, d.id`, [companyId]);
+  const pe = new Map();
+  r.rows.forEach(function (x) {
+    let s = pe.get(x.id);
+    if (!s) { s = { id: Number(x.id), nume: x.name || ('Șofer ' + x.id), categorii: x.license_categories || null, expira: x.license_expiry || null, masini: [] }; pe.set(x.id, s); }
+    if (x.imei) s.masini.push(String(x.imei));
+  });
+  return Array.from(pe.values());
+}
+// Starea de ACUM a unei mașini, chiar înainte de schimbare (nu din fișa citită la propunere).
+async function masinaPentruSofer(imei) {
+  const r = await pool.query('SELECT imei, driver_id, group_id, company_id, status, plate, name FROM devices WHERE imei = $1', [String(imei)]);
+  return r.rows[0] || null;
+}
+// Pe ce mașini (nearhivate) e trecut acum un șofer, în firma lui.
+async function masiniSofer(driverId, companyId) {
+  const r = await pool.query("SELECT imei FROM devices WHERE driver_id = $1 AND company_id = $2 AND COALESCE(status, '') <> 'archived'", [parseInt(driverId) || 0, companyId]);
+  return r.rows.map(function (x) { return String(x.imei); });
+}
+// Driverul e al firmei mașinii? (Ruta veche /assign nu verifică; drumul lui RA Insight, da.)
+async function soferAlFirmei(driverId, companyId) {
+  const r = await pool.query('SELECT id FROM drivers WHERE id = $1 AND company_id = $2', [parseInt(driverId) || 0, companyId]);
+  return r.rows.length > 0;
+}
 async function corecturiLuna(luna) {
   const r = await pool.query(`SELECT COALESCE(SUM(rescrise), 0)::int AS rescrise, COALESCE(SUM(cifre), 0)::int AS cifre, COALESCE(SUM(litere), 0)::int AS litere,
     COALESCE(SUM(echipament), 0)::int AS echipament, COALESCE(SUM(ramase), 0)::int AS ramase FROM ai_corecturi WHERE luna = $1`, [String(luna)]);
@@ -6542,7 +6635,9 @@ module.exports = {
   stocImeiuri, stocDupaSerii, aparateNoiDeAnuntat, aparateInNeasignate, marcheazaAparateAnuntate, migreazaAparateNoiAnuntate,
   puneModelGpsDacaLipseste, lucrariMontateNefacturate,
   listeCompat, puneListaCompat,
-  recordAiUsage, noteazaCorectura, corecturiLuna, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
+  recordAiUsage, noteazaCorectura, corecturiLuna,
+  adaugaActiuneInsight, actiuneInsight, actiuniInsight, treceActiuneInsight, legaActiuneInsight, stergeActiuniInsightMaiVechiDe, soferiPentruPotrivire, soferAlFirmei, masinaPentruSofer, masiniSofer,
+  getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,

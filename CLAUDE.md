@@ -430,7 +430,11 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   (`LUNI_CONVERSATII_AI` în contracts.js, legată de pagina de confidențialitate), apoi `stergeConversatiiVechi` (zilnic;
   de mână `POST /api/admin/insight/sterge-vechi`). Tabelele stau în `BACKUP_EXCLUDED`: în copii ar trăi mai mult decât promitem.
 - **Perioadele pe ora României:** `insight.perioada` / `etichetaPerioadei` („21–27 septembrie", „septembrie 2026", „azi").
-  NU socoti zile cu `setHours` pe server — serverul e pe UTC („azi" începea la 3 dimineața, vara).
+  NU socoti zile cu `setHours` pe server — serverul e pe UTC („azi" începea la 3 dimineața, vara). **Agenții la fel (22.10):**
+  `agents.js` → `buildCtx` ia ziua din `insight.perioada('today')` și ora din `insight.oraRO` (pragul „după-amiaza" al lui RA
+  Dispatch); până atunci RA Watch nu vedea noaptea scăderile de combustibil dinainte de 03:00 — prins de `verify_un_singur_insight.js`
+  (1b), care pica pe GitHub între 00 și 03. ⚠ Tot cu `setHours` pe UTC au rămas (întrebat pe 22.10, nehotărât): `/api/dashboard`,
+  `/api/stats/:imei` (fișa mașinii de pe hartă), `_insightPeriod` (întrebările vechi ale telefonului), `/api/report/:imei`.
 - **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
   subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
@@ -842,7 +846,8 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
 - **Rămase la Alin, după acestea** (19.10: „5 și 6 lasă-le după"): (5) ce e vechi pe pagina noastră — făcut pe 19.10 (panoul vechi,
   costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
   2, „RA Insight face, cu Da-ul tău"** (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat + potrivirea șoferilor),
-  aprobat ca ordine pe 15.10, neînceput. Azi există doar „Am vorbit cu el" în RA Drive. Întâi macheta, NU construcția din proprie inițiativă.
+  aprobat ca ordine pe 15.10; macheta aprobată pe 21–22.10; **partea 1 (șoferii pe mașini) construită pe 22.10** — vezi „Pasul 2,
+  partea 1", mai jos. Părțile 2 și 3 (alerta, „Am vorbit cu el"; revizia, actul, raportul programat) — neîncepute, una câte una.
 - **Proba modelelor din 21.10 (Robert, pe ratrack.ro) → Haiku 5.5 rămâne (Alin, 22.10: „DA"; 0,48 bani pe întrebare, Sonnet 5.5 6,65).**
   Reparațiile ei (cele 3 greșeli ale lui Haiku veneau din aplicație) — NU le strica la loc: `insight.celeMaiMari` (cele mai mari 5
   valori pe coloană, din TOATE rândurile, în `_raportPentruModel` → `cele_mai_mari`); `RAPOARTE_FARA_MODEL = ['analytic']` (lista de
@@ -854,6 +859,51 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   Proba de noapte (A) NU se face (Alin: „ne costă"). Păzit de `verify_proba_reparatii.js`.
 - Păzit de **`verify_discutia.js`** (în `npm test`; discuția lui Alin pe server pornit, modelul simulat), `verify_cifre.js`,
   `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js`, `verify_acasa.js`.
+
+### Pasul 2, partea 1 (22.10): ȘOFERII PE MAȘINI — „RA Insight face, cu Da-ul tău" (Alin: „da" la flux; „Da"-ul nenumărat; de la Basic)
+Construit după macheta din 21.10 (PDF-ul „Proba modelelor, garanția și machetele", capitolul 3: M1, M2, M4, M5). RA Insight
+PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecranului. Următoarele părți (aprobate ca ordine): (2) alerta și
+„Am vorbit cu el"; (3) revizia, actul, raportul programat. Fiecare cu probele ei, livrată separat — NU le construi fără să o cerem.
+- **Regulile și textele stau în `soferi_masini.js`** (curat): `categoriaCeruta` (din „Categorie": Auto / Dubă → B, Camion → C, TIR /
+  Autotractor → CE, Autobuz → D, Motocicletă → A1; masa maximă din „Config Camion" peste 3.500 kg → C1, peste 7.500 → C; autobuzul cu
+  cel mult 16 locuri → D1; remorcile / grupul electrogen n-au șofer; utilajele și tractorul n-au o categorie anume), `ACOPERA` / `acopera`
+  (CE cuprinde B și C; categoriile vin din `license_cats.js`, sursa lor unică), `verdict` (expirat / nepotrivit / bun / „expiră curând" /
+  categoriile lipsă — zilele și datele cu `ramuri.zilePana` / `zz`, ca „Mentenanță & acte"), `analiza` (ce e de rezolvat, în regulă, de
+  completat, liberii, propunerile), `propunerePereche` / `propunerePentru` / `propunereScoate` (cartonașul), `gata`, `pasulUrmator`,
+  `cerere` (în cuvinte). NU scrie a doua regulă de permise sau de categorii.
+- **Propunerile:** întâi mașina cu cei mai puțini șoferi liberi potriviți (CE înaintea lui B), apoi cea pe care șoferul ales a mai fost
+  trecut (`aMaiFost`: cel puțin o oră — o greșeală îndreptată sau un „Anulează" nu contează; rândul „de dinainte" `de_la = 0` da), apoi
+  cel mai puțin „prea calificat". Cel scos de pe o mașină cu permisul nepotrivit devine liber („după ce iese de pe…"); permisul expirat
+  fără altul liber → „Îl scot de pe mașină". Cerut pentru o singură mașină, un șofer de pe altă mașină se MUTĂ pe față (cartonașul o
+  spune) — niciodată pe două mașini. „Șoferi liberi" = netrecuți pe NICIO mașină din TOATĂ firma (`db.soferiPentruPotrivire`).
+- **Cererea în cuvinte** (`cerere`, pe reguli): verbul de schimbare + un șofer + o mașină („Pune-l pe Mihai pe B 77 TIR"), „Propune un
+  șofer pentru …", „Scoate-l pe … de pe …", „potrivirea șoferilor". Șoferul se scoate din text ÎNAINTEA căutării mașinii (altfel numele lui
+  găsea mașina lui). „Pune-mi raportul…", întrebările și trecutul („cine l-a trecut…") NU sunt ale ei: `_insightSoferi` (O DATĂ, întâia în
+  `_raInsight`, înaintea lui `_insightComanda`) întoarce `false` și ele merg mai departe — pachetul se verifică DUPĂ ce cererea e chiar
+  despre șoferi (altfel, pe Start, „Pune-mi raportul…" primea refuzul pasului 2). Un „da" scris (`eDaScris`) aduce din nou cartonașul
+  (`ctx.propunere`); doar butonul aplică.
+- **Starea: tabela `insight_actiuni`** (a omului, `user_id` în WHERE; `date.card`, `date.schimbari`, după aplicare `aplicate` / `gata`),
+  stări `propusa → aplicata | refuzata | expirata | esuata`, `aplicata → anulata`. Trecerea O DATĂ: `db.treceActiuneInsight(id, user,
+  dinStare, …)` (UPDATE … WHERE stare = dinStare) — două apăsări deodată = una. `ANULARE_MIN` = 10, `PROPUNERE_ORE` = 24. Conversația
+  redeschisă primește starea de acum din rând (`_cardPublic`: `apasat`, `ramasMs` — ceasul paginii pornește de la server, nu de la
+  calculator). În `BACKUP_EXCLUDED`; se șterg la 12 luni, cu discuțiile.
+- **Aplicarea: O funcție, `_aplicaSoferi(req, schimbari, o)`** — fiecare schimbare verificată pe starea de ACUM (mașina accesibilă și a
+  firmei, șoferul de acum = `deLa`, șoferul nou din firma mașinii — `db.soferAlFirmei` — și netrecut pe altă mașină), apoi
+  `db.assignDevice(imei, la, d.group_id)` (grupa de ACUM, altfel s-ar șterge), audit `assign` cu `prin: 'RA Insight'` și textul.
+  „Anulează" = aceeași funcție pe schimbările inverse, în ordine inversă. Rutele: `GET /api/insight/soferi-masini` (pagina),
+  `POST /api/insight/soferi-masini/aplica` (doar propunerile de ACUM bifate, în ordinea lor), `POST /api/insight/actiuni/:id/aplica`
+  (cu `la` = alt șofer DOAR din `alternative`), `/refuza` (nu schimbă nimic, fără drept de editare), `/anuleaza`. „Da" / „Aplică" /
+  „Anulează" = `requireEdit('vehicule')` (ca butonul din fișa mașinii); toate de la Basic (`requireRamuri`). NIMIC nu se numără.
+- **„Azi la tine":** rândurile `insight` (nu un agent — nu se opresc cu agenții): permisul expirat (roșu), cel nepotrivit, mașina rămasă
+  fără șofer în ultimele 30 de zile (`RECENT_ZILE`; cea fără șofer dintotdeauna stă doar în pagină), cu „Propunere ›" (o cerere pe
+  reguli); mai multe de un fel = un rând strâns, spre pagină (`fel: 'pagina'`). Permisul expirat al unui șofer trecut pe mașină iese din
+  termenele lui RA Care (stă o dată). Numărul de lângă pagină (`/api/insight/ramuri` → `soferi`).
+- **Pagina:** ramura `soferi` (`pachet: true`), `deseneazaSoferi`; cartonașul `cartonasPropunere` (Da / Schimbă / Nu, „Gata" cu
+  „Anulează", `adaugaUrmator`); stilurile `.chat-prop*`, `.chat-gata*`, `.ssm*`, `.azi-prop`, cu pereche pe tema închisă. Textele vin de la
+  server; pagina nu socotește nimic. Ghidul: capitolul `soferi_masini`. Telefonul — la APK-ul următor (Robert).
+- ⚠ **Găsit pe 22.10, întrebat (nehotărât):** ruta veche `PUT /api/devices/:imei/assign` (ecranul) nu verifică dacă șoferul și grupa sunt
+  ale firmei (rapoartele iau numele șoferului fără filtru de firmă). Drumul lui RA Insight verifică. NU o repara fără răspunsul lui Alin.
+- Păzit de **`verify_soferi_masini.js`** (în `npm test`; 77, pe server pornit, ZERO cereri către model), `verify_insight_ghid.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni

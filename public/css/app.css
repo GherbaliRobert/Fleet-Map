@@ -4640,6 +4640,72 @@ body.dark .rh-ins { color: #c4b5fd; background: rgba(167,139,250,.14); border-co
 body.dark .rep-rezumat { border-left-color: #a78bfa; }
 .rep-rezumat-t { font-weight: 800; margin-bottom: 4px; color: var(--text-primary); }
 .rep-rezumat-t i { color: #6d28d9; margin-right: 4px; }
+
+/* ── Pasul 2 (22.10; macheta M1, M2, M4, M5): cartonașul „Trec șoferul pe…", „Gata" cu „Anulează", „Propunere ›" din „Azi la
+   tine" și pagina „Șoferi pe mașini". Textul pe --text-primary / --text-secondary; culorile pe dungi, iconițe și chenare, cu
+   pereche pe tema închisă. ── */
+.azi-prop { font-size: 12px; font-weight: 800; color: #166534; white-space: nowrap; }
+.azi-prop i { font-size: 10px; margin-left: 4px; }
+body.dark .azi-prop { color: #4ade80; }
+.chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; max-width: 680px; }
+.chat-prop { border: 1px solid var(--border); border-left: 3px solid #6d28d9; border-radius: 12px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 10px; }
+body.dark .chat-prop { border-left-color: #a78bfa; }
+.chat-prop.inchis { background: var(--bg-dark); }
+.chat-prop-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); font-size: 14.5px; flex-wrap: wrap; }
+.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, #6d28d9 13%, transparent); color: #6d28d9; font-size: 12px; flex: none; }
+body.dark .chat-prop-h .ic { color: #c4b5fd; background: rgba(167,139,250,.16); }
+.chat-prop-tit { min-width: 0; overflow-wrap: anywhere; }
+.chat-prop-st { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.chat-prop-st i { margin-right: 4px; color: var(--text-secondary); }
+.chat-prop-st.aplicata i { color: #166534; }
+body.dark .chat-prop-st.aplicata i { color: #4ade80; }
+.chat-prop-sch { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 7px 12px; font-size: 13.5px; line-height: 1.45; align-items: baseline; color: var(--text-primary); }
+.chat-prop-sch .l { color: var(--text-secondary); font-weight: 700; font-size: 12.5px; }
+.chat-prop-sch .de { color: var(--text-secondary); text-decoration: line-through; }
+.chat-prop-sch .sag { color: var(--text-muted); margin: 0 8px; }
+.chat-prop-sch .la { font-weight: 800; }
+.chat-prop-sch .la.gol { font-weight: 700; color: var(--text-secondary); }
+.chat-prop-dov { display: grid; gap: 5px; font-size: 13px; line-height: 1.45; color: var(--text-primary); padding: 9px 11px; border-radius: 10px; background: var(--bg-dark); }
+.chat-prop-dov .t { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
+.chat-prop-dov > div:not(.t) { display: flex; gap: 8px; align-items: baseline; }
+.chat-prop-dov i { flex: none; }
+.chat-prop-dov .ok i { color: #15803d; } .chat-prop-dov .w i { color: #b45309; } .chat-prop-dov .r i { color: #b91c1c; } .chat-prop-dov .i i { color: var(--text-secondary); }
+body.dark .chat-prop-dov .ok i { color: #4ade80; } body.dark .chat-prop-dov .w i { color: #fbbf24; } body.dark .chat-prop-dov .r i { color: #f87171; }
+.chat-prop-nu { font-size: 12.5px; color: var(--text-secondary); }
+.chat-prop-b { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chat-prop-b .chat-pas { margin: 0; }
+.chat-pas.chat-prop-da { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.chat-pas.chat-prop-da i { color: #06210F; }
+.chat-pas.chat-prop-da:disabled { opacity: .55; cursor: not-allowed; }
+.chat-prop-sel { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13px; max-width: 100%; }
+.chat-prop-sub { font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 8px; }
+.chat-gata { border: 1px solid var(--border); border-left: 3px solid #15803d; border-radius: 12px; background: var(--bg-panel); padding: 11px 13px; display: grid; gap: 9px; }
+body.dark .chat-gata { border-left-color: #4ade80; }
+.chat-gata.anul { border-left-color: var(--text-muted); }
+.chat-gata-t { display: flex; gap: 8px; align-items: baseline; font-weight: 700; color: var(--text-primary); font-size: 14px; line-height: 1.45; }
+.chat-gata-t > i { color: #15803d; flex: none; }
+body.dark .chat-gata-t > i { color: #4ade80; }
+.chat-gata.anul .chat-gata-t > i { color: var(--text-secondary); }
+.chat-gata-t b { font-weight: 800; }
+.ssm-intro { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: -2px 0 12px; }
+.ssm-gata { margin-bottom: 12px; }
+.ssm-gata-l { margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+.ssm .sdp-tab td { vertical-align: top; font-size: 13px; line-height: 1.45; }
+.ssm .sdp-tab td b { font-weight: 800; }
+.ssm-ck { width: 26px; }
+.ssm-ck input { margin-top: 3px; }
+.ssm-s { font-size: 12px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
+.ssm-s.w { color: #b45309; font-weight: 700; } .ssm-s.r { color: #b91c1c; font-weight: 700; }
+body.dark .ssm-s.w { color: #fbbf24; } body.dark .ssm-s.r { color: #f87171; }
+.ssm-gri { color: var(--text-secondary); }
+.ssm-dece { color: var(--text-primary); }
+.ssm-rand { font-size: 13px; color: var(--text-primary); line-height: 1.5; padding: 3px 0; }
+.ssm-rand.w { color: #b45309; } body.dark .ssm-rand.w { color: #fbbf24; }
+.ssm-nustie { font-size: 12px; color: var(--text-secondary); margin: 10px 2px 12px; }
+.ssm-jos { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid var(--border); border-radius: 13px; background: var(--bg-panel); margin-bottom: 18px; }
+.ssm-jos .chat-pas { margin: 0; }
+.ssm-jos-n { font-size: 12px; color: var(--text-secondary); flex: 1 1 260px; line-height: 1.45; }
+@media (max-width: 640px) { .chat-prop-sch { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .chat-prop-sch .l { margin-top: 6px; } }
 body.dark .rep-rezumat-t i { color: #a78bfa; }
 /* RA Drive (fosta „Safe Drive & costuri", 15.10): numele scurt și subtitlul lui, în stânga și în capul paginii. */
 .insp-ram-sub { margin-left: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
