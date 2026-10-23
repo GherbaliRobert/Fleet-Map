@@ -416,6 +416,46 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ## 2026-10-23
 
+### AMÂNDOI · e-Transport: codul UIT „valabil până pe 23.10" expiră la miezul nopții României, nu cu trei ore mai târziu
+
+Alin (23.10): „rezolvă-le" (găsit pe drum, la „azi" pe ora României). Serverul merge pe ora Londrei (UTC), iar termenul codului se
+salva fără fus: un cod „valabil până pe 23.10" apărea valabil până pe 24.10 la 02:59 vara (01:59 iarna). Trei ore în care ecranul
+spunea „valabil", iar la ANAF codul expirase — tocmai orele în care se poate lua amenda (20.000–100.000 lei).
+- **Acum:** ziua aleasă în formular (pe pagină și pe telefon) se încheie la miezul nopții de la noi, inclusiv în zilele în care se
+  schimbă ora (25 octombrie, ultima duminică din martie). Termenul propus singur (start + 5 zile; 15 la achiziții intracomunitare) la
+  fel, iar ziua de start e ziua României (o pornire la 01:30 nu mai e socotită din ziua de dinainte). Un termen care nu e o dată se
+  refuză pe față („Termenul codului UIT nu e o dată. Alege ziua din calendar.").
+- **Termenele deja salvate** s-au mutat singure, o singură dată, la prima pornire: fiecare „până la 23:59" devine 23:59 la noi. O oră
+  scrisă anume (de exemplu 14:00, dintr-o integrare) nu se atinge.
+- **Ce am schimbat:** `etransport.js` (termenul pe ora României: `valabilPana`, `termenDinFormular`), `server.js` (crearea și corectura
+  transportului trec prin aceeași regulă; mutarea de la pornire), `db.js` (`migreazaTermeneEtransport`, cu semnul
+  `etransport_termen_ro_migrat`). Pagina și telefonul rămân cum sunt. Probă: `verify_etransport.js` (67; secțiunile noi 1b, 9 și 10, cu
+  termene vechi puse în bază înainte de pornirea serverului).
+- **Ce vede fondatorul:** în „e-Transport" pe firme, orele rămase până la miezul nopții de la noi.
+- **Ce vede clientul:** „ore rămase" corecte; un cod care expiră azi intră în „expiră curând" și apoi în „expirat" exact la miezul nopții.
+
+### FONDATOR · Panoul tehnic al nostru socotește „azi" tot de la miezul nopții României
+
+Alin (23.10): „rezolvă-le". Ruta tehnică din panoul de depanare (cea cu odometrul, contactul și consumul unei mașini) număra „azi" de
+la 03:00, vara. Era ultimul loc din server rămas cu ziua pe ora Londrei.
+- **Ce am schimbat:** `server.js` (aceeași regulă ca restul aplicației). Probă: `verify_un_singur_insight.js`, 5d (92) — în server.js
+  nu mai e niciun „azi" socotit pe ceasul serverului.
+- **Ce vede fondatorul:** în panoul de depanare, „azi" e azi și după miezul nopții.
+- **Ce vede clientul:** nimic (panoul e doar al nostru).
+
+### AMÂNDOI · Bula RA Insight nu mai acoperă fișa mașinii pe calculator
+
+Alin (23.10): „rezolvă-le". Pe un laptop, bula verde din colțul de jos stătea peste colțul fișei mașinii — peste rândul nou „Ceva nu
+merge la aparat? Anunță echipa RA Track".
+- **Acum:** cât fișa e deschisă pe hartă, bula trece în stânga ei, la 16 px; când închizi fișa sau mergi pe alt ecran, revine în colț.
+  Pe telefon rămâne cum era (cu fișa deschisă, bula se ascunde). Măsurat în browser la 1280, 1366, 1536 și 1920 px lățime și pe
+  860 px: bula nu mai atinge fișa și nu acoperă niciun buton.
+- **Ce am schimbat:** pagina (o regulă de așezare). Probă: `verify_cereri_echipa.js` (80).
+- **Ce vede fondatorul și clientul:** fișa întreagă, cu bula alături.
+- **Găsit pe drum, întrebat (nu reparat):** pe ecrane de 769–871 px (o tabletă ținută vertical, de exemplu un iPad Air sau un iPad
+  Pro 11") fișa mașinii iese din ecran pe dreapta cu 12–52 px: nu se vede butonul de închidere, iar „Distribuie" și „Street View" sunt
+  tăiate. Era așa și înainte (vezi întrebările din raport).
+
 ### AMÂNDOI · „Anunță echipa RA Track": clientul ne anunță dintr-un clic, noi preluăm, programăm, rezolvăm
 
 Alin (22.10): „da" la fluxul din capitolul 4 al machetei din 21.10, „te sunăm în cel mult o zi lucrătoare", cererile le preiau
@@ -478,8 +518,8 @@ raportul vechi pe o mașină. Între miezul nopții și ora 3, „azi" arăta de
   `verify_un_singur_insight.js`, secțiunea 5d (91 în total).
 - **Ce vede fondatorul:** nimic nou.
 - **Ce vede clientul:** după miezul nopții, „azi" e azi.
-- **Găsit pe drum, întrebat (nu reparat):** aceeași greșeală într-o rută tehnică a panoului nostru de depanare și la termenul codurilor
-  e-Transport (vezi întrebările din raport).
+- **Găsit pe drum, întrebat:** aceeași greșeală într-o rută tehnică a panoului nostru de depanare și la termenul codurilor
+  e-Transport — Alin: „rezolvă-le"; reparate în aceeași zi (mai sus).
 
 ---
 

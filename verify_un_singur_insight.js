@@ -317,7 +317,10 @@ const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean)
   T('raportul vechi pe o mașină, fără perioadă: de la miezul nopții României', rv.status === 200 && rv.j.from === new Date(z0).toISOString() && kmAzi(rv.j.totalKm), rv.status + ' ' + JSON.stringify({ from: rv.j.from, km: rv.j.totalKm }));
   const pk = await json('POST', '/api/insight/run', S, { key: 'km' }), pc = await json('POST', '/api/insight/run', S, { key: 'costuri' });
   T('întrebările vechi ale telefonului: „săptămâna asta" și „luna asta" pe ora României (aceeași regulă ca RA Insight)', pk.status === 200 && pc.status === 200 && (pk.j.period || {}).from === I.perioada({ period: 'this_week' }, Date.now()).from && (pc.j.period || {}).from === I.perioada({ period: 'this_month' }, Date.now()).from, JSON.stringify([pk.j.period, pc.j.period]));
-  T('…și în server.js nu mai e niciun „azi" socotit cu setHours, afară de panoul tehnic al nostru (io-peek, întrebat pe 23.10)', (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length === 1 && /const dayStart = new Date\(\); dayStart\.setHours\(0, 0, 0, 0\);/.test(SRV.split("app.get('/api/admin/io-peek'")[1] || '') && /function _insightPeriod\(p\) \{ return insight\.perioada\(\{ period: p \}, Date\.now\(\)\); \}/.test(SRV), (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length);
+  // Panoul tehnic al nostru (io-peek) era singurul rămas cu setHours — întrebat pe 23.10, Alin: „rezolvă-le".
+  const pk2 = await json('GET', '/api/admin/io-peek?q=' + IO, S);
+  T('panoul tehnic al nostru (io-peek): „azi" tot de la miezul nopții României — doar cele două poziții de după 00:00', pk2.status === 200 && pk2.j.today_debug && pk2.j.today_debug.points === 2, pk2.status + ' ' + JSON.stringify(pk2.j && pk2.j.today_debug));
+  T('…și în server.js nu mai e niciun „azi" socotit cu setHours', (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length === 0 && /const dayStart = new Date\(insight\.perioada\(\{ period: 'today' \}, Date\.now\(\)\)\.from\);/.test(SRV.split("app.get('/api/admin/io-peek'")[1] || '') && /function _insightPeriod\(p\) \{ return insight\.perioada\(\{ period: p \}, Date\.now\(\)\); \}/.test(SRV), (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length);
   T('ZERO cereri către model în toată proba', nModel() === 0, nModel());
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');

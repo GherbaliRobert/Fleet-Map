@@ -3966,6 +3966,26 @@ async function getEtransportScadentar(companyId) {
   return r.rows;
 }
 async function deleteEtransport(id) { await pool.query('DELETE FROM etransport WHERE id = $1', [id]); }
+// O singură dată (23.10): termenele scrise „până la 23:59:59" fără fus (pagina, telefonul, propunerea veche a
+// serverului) se citeau pe ceasul serverului, UTC — cu 2–3 ore după miezul nopții României. Fiecare devine
+// ultima secundă a zilei lui, la noi (`capatZi` = etransport.termenDinFormular). Alte ore nu se ating.
+async function migreazaTermeneEtransport(capatZi) {
+  try {
+    if (await getSetting('etransport_termen_ro_migrat')) return 0;
+    const r = await pool.query(`SELECT id, to_char(valabil_pana, 'YYYY-MM-DD') AS zi FROM etransport
+      WHERE valabil_pana IS NOT NULL AND valabil_pana::time = '23:59:59'`);
+    let n = 0;
+    for (const x of r.rows || []) {
+      const nou = capatZi(x.zi);
+      if (!nou) continue;
+      await pool.query('UPDATE etransport SET valabil_pana = $2 WHERE id = $1', [x.id, nou]);
+      n++;
+    }
+    await setSetting('etransport_termen_ro_migrat', String(Date.now()));
+    if (n) console.log('[DB] e-Transport: ' + n + ' termene UIT mutate pe miezul nopții României');
+    return n;
+  } catch (e) { console.warn('[DB] migrarea termenelor e-Transport:', e.message); return 0; }
+}
 async function getActiveEtransports() {
   const r = await pool.query("SELECT * FROM etransport WHERE status = 'activ' AND (end_at IS NULL OR end_at > NOW())");
   return r.rows;
@@ -6793,7 +6813,7 @@ module.exports = {
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
-  getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports, getEtransportScadentar,
+  getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports, getEtransportScadentar, migreazaTermeneEtransport,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,
   getSetting, setSetting,
   altiSuperadminiActivi, dezactiveazaContulDeInstalare, reactiveazaContulDeInstalare,

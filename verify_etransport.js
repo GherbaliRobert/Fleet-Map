@@ -10,9 +10,35 @@
 //     citi „sunt în regulă la ANAF" fiind, de fapt, neraportat. Amenda e 20.000–100.000 lei.
 //  3. Că un transport se leagă de un vehicul REAL din flotă, nu de un IMEI tastat greșit.
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const etr = require('./etransport.js');
+
+// ── Faza „seed" (23.10): termene VECHI, scrise „până la 23:59:59" fără fus — cum le scriau pagina, telefonul și
+// propunerea veche a serverului, citite pe ceasul serverului (UTC), deci cu trei ore după miezul nopții României.
+// Puse direct în baza probei, de un proces separat, ÎNAINTE de pornirea serverului: pe ușa de azi nu se mai poate
+// scrie unul. Mutarea se probează aici o dată (și a doua oară nu mai face nimic), apoi rămâne un termen vechi pe
+// care îl mută serverul la pornire.
+if (process.argv.indexOf('--faza=seed') >= 0) {
+  process.env.TZ = 'UTC';   // ca serverul (server.js își pune singur fusul pe UTC)
+  (async () => {
+    const db = require('./db');
+    await db.initDb();
+    const pune = async (uit, pana) => (await db.pool.query(
+      "INSERT INTO etransport (uit, status, tip_operatiune, valabil_pana) VALUES ($1, 'activ', 'national', $2) RETURNING id", [uit, pana])).rows[0].id;
+    const a = await pune('3019000001', '2026-11-20 23:59:59');   // vechi: „până pe 20.11" pe ceasul serverului
+    const b = await pune('3019000002', '2026-11-20 14:00:00');   // altă oră, scrisă de cineva anume: nu se atinge
+    const n1 = await db.migreazaTermeneEtransport(etr.termenDinFormular);
+    const n2 = await db.migreazaTermeneEtransport(etr.termenDinFormular);
+    const c = await pune('3019000003', '2026-10-25 23:59:59');   // ziua în care se schimbă ora: îl mută serverul, la pornire
+    await db.setSetting('etransport_termen_ro_migrat', '');
+    const citeste = async (id) => { const r = (await db.pool.query('SELECT valabil_pana FROM etransport WHERE id = $1', [id])).rows[0]; return r && r.valabil_pana ? new Date(r.valabil_pana).toISOString() : null; };
+    console.log('SEED ' + JSON.stringify({ n1, n2, a: await citeste(a), b: await citeste(b), c: await citeste(c) }));
+    await db.closeDb();
+    process.exit(0);
+  })().catch((e) => { console.log('SEED-EROARE ' + ((e && e.stack) || e)); process.exit(1); });
+  return;
+}
 
 const PORT = 3194, DIR = '.et-db';
 const env = {
@@ -20,7 +46,13 @@ const env = {
   NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_et',
   PORT: String(PORT), TCP_PORT: '5194', PGLITE_DIR: DIR + '/pgdata',
 };
+delete env.DATABASE_URL;
 try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
+const seed = spawnSync(process.execPath, [__filename, '--faza=seed'], { cwd: __dirname, env, encoding: 'utf8', timeout: 240000 });
+const SEED = (function () {
+  const l = String(seed.stdout || '').split('\n').filter((x) => x.indexOf('SEED ') === 0)[0];
+  try { return l ? JSON.parse(l.slice(5)) : null; } catch (e) { return null; }
+})();
 const srv = spawn(process.execPath, ['server.js'], { env, stdio: ['ignore', 'ignore', 'inherit'] });
 
 let ok = 0, rele = 0;
@@ -49,6 +81,31 @@ function gata(code) {
   const fara = etr.scadenta(null, ACUM);
   T('fără termen → „necunoscut", nu o dată inventată', fara.stare === 'necunoscut' && fara.oreRamase === null, JSON.stringify(fara));
   T('o dată de start stricată nu produce un termen', etr.valabilPana('nu-e-o-data', 'national') === null);
+
+  // 23.10 (Alin: „rezolvă-le"): ziua se încheia la miezul nopții de la Londra — „valabil până pe 23.10" ținea, pe ecran,
+  // până pe 24.10 la 02:59. Termenul e acum CLIPA ultimei secunde a zilei României (vara UTC+3, iarna UTC+2).
+  sect('1b. Ziua codului se încheie la miezul nopții României, nu al serverului');
+  const egal = (n, a, b) => T(n, a === b, a + ' în loc de ' + b);
+  egal('„până pe 23.10" (vara) = 23.10, 23:59:59 la noi', etr.termenDinFormular('2026-10-23T23:59:59'), '2026-10-23T20:59:59.000Z');
+  egal('doar ziua, fără oră = toată ziua aceea', etr.termenDinFormular('2026-10-23'), '2026-10-23T20:59:59.000Z');
+  egal('iarna, la fel (UTC+2)', etr.termenDinFormular('2026-11-20T23:59:59'), '2026-11-20T21:59:59.000Z');
+  egal('25.10, ziua în care ora se dă înapoi (25 de ore): capătul e pe ora de iarnă', etr.termenDinFormular('2026-10-25T23:59:59'), '2026-10-25T21:59:59.000Z');
+  egal('29.03, ziua în care ora se dă înainte (23 de ore): capătul e pe ora de vară', etr.termenDinFormular('2026-03-29T23:59:59'), '2026-03-29T20:59:59.000Z');
+  egal('o oră din ziua schimbării, după salt (05:00 la noi)', etr.termenDinFormular('2026-10-25T05:00:00'), '2026-10-25T03:00:00.000Z');
+  egal('o clipă cu fus rămâne clipa ei', etr.termenDinFormular('2026-10-23T18:00:00Z'), '2026-10-23T18:00:00.000Z');
+  T('ce nu e o dată → null (ruta îl refuză), nu un termen ghicit',
+    etr.termenDinFormular('mâine') === null && etr.termenDinFormular('2026-02-30') === null && etr.termenDinFormular('2026-10-23T25:00') === null);
+  egal('propunerea: start 18.10 + 5 zile = toată ziua de 23.10, la noi', etr.valabilPana('2026-10-18', 'national'), '2026-10-23T20:59:59.000Z');
+  egal('propunerea trece peste schimbarea orei: 20.10 + 5 = 25.10, pe ora de iarnă', etr.valabilPana('2026-10-20', 'national'), '2026-10-25T21:59:59.000Z');
+  egal('o pornire la 01:30 (ora noastră) e din ziua ei, nu din ziua de dinainte a serverului', etr.valabilPana('2026-10-22T22:30:00Z', 'national'), '2026-10-28T21:59:59.000Z');
+  egal('15 zile la achiziții intracomunitare, tot la miezul nopții de la noi', etr.valabilPana('2026-10-01', 'intracomunitar'), '2026-10-16T20:59:59.000Z');
+  T('la 01:00 pe 24.10 (ora noastră), codul „până pe 23.10" e EXPIRAT — înainte ecranul îl arăta valabil încă două ore',
+    etr.scadenta(etr.termenDinFormular('2026-10-23T23:59:59'), '2026-10-23T22:00:00Z').stare === 'expirat');
+  T('la 23:30 pe 23.10, „expiră curând", cu 0 ore rămase',
+    (function (s) { return s.stare === 'curand' && s.oreRamase === 0; })(etr.scadenta(etr.termenDinFormular('2026-10-23T23:59:59'), '2026-10-23T20:30:00Z')));
+  T('regula nu depinde de fusul calculatorului care o rulează',
+    spawnSync(process.execPath, ['-e', "const e=require('./etransport');process.stdout.write(e.termenDinFormular('2026-10-25T23:59:59')+' '+e.valabilPana('2026-10-22T22:30:00Z','national'))"],
+      { cwd: __dirname, env: Object.assign({}, process.env, { TZ: 'America/New_York' }), encoding: 'utf8' }).stdout === '2026-10-25T21:59:59.000Z 2026-10-28T21:59:59.000Z');
 
   sect('2. „Transmite" nu înseamnă „raportat la ANAF"');
   const mut = { valabil_pana: '2026-08-30T23:59:59Z', ultima_pozitie: '2026-08-26T11:10:00Z', last_sent_at: null };
@@ -128,8 +185,8 @@ function gata(code) {
   T('numărul de înmatriculare se ia din fișa vehiculului, nu se retastează', tr.plate === veh.plate, tr.plate);
   T('termenul se propune singur când nu e dat', !!tr.valabil_pana, tr.valabil_pana);
   const propus = etr.valabilPana(azi, 'national');
-  T('și e cel din reguli, nu altul',
-    String(tr.valabil_pana).slice(0, 10) === String(propus).slice(0, 10),
+  T('și e cel din reguli, nu altul — până la secundă (miezul nopții României)',
+    tr.valabil_pana && new Date(tr.valabil_pana).toISOString() === propus,
     tr.valabil_pana + ' vs ' + propus);
 
   sect('5. Un vehicul care nu transmite urcă în „de rezolvat acum"');
@@ -189,6 +246,43 @@ function gata(code) {
 
   const fara2 = await fetch(B + '/api/etransport/scadentar');
   T('fără autentificare → refuzat', fara2.status === 401 || fara2.status === 403, fara2.status);
+
+  sect('9. Termenul de pe ecran („ziua aleasă T23:59:59", fără fus) e miezul nopții României — și pe server');
+  const PUT = (u, b) => fetch(B + u, { method: 'PUT', headers: H, body: JSON.stringify(b) });
+  const ziRO = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' });
+  const capatAzi = etr.termenDinFormular(ziRO + 'T23:59:59');
+  const ca = await POST('/api/etransport', { uit: '3010000030', imei: veh.imei, valabil_pana: ziRO + 'T23:59:59' });
+  const ta = await ca.json();
+  T('ca de pe pagină și de pe telefon: „azi, 23:59:59" se salvează ca ultima secundă a zilei de la noi',
+    ca.status === 200 && ta.valabil_pana && new Date(ta.valabil_pana).toISOString() === capatAzi, ca.status + ' ' + ta.valabil_pana + ' vs ' + capatAzi);
+  const s9 = await (await GET('/api/etransport/scadentar')).json();
+  const g9 = (s9.active || []).find(x => x.id === ta.id);
+  const oreAzi = Math.floor((Date.parse(capatAzi) - Date.now()) / 3600000);
+  T('orele rămase se socotesc până la miezul nopții de la noi (înainte: cu 2–3 ore în plus)',
+    g9 && (g9.oreRamase === oreAzi || g9.oreRamase === oreAzi - 1) && g9.oreRamase < 24, g9 && g9.oreRamase + ' vs ' + oreAzi);
+  const rau9 = await POST('/api/etransport', { uit: '3010000031', imei: veh.imei, valabil_pana: 'mâine' });
+  const jr9 = await rau9.json().catch(() => ({}));
+  T('un termen care nu e o dată se refuză pe față, nu se salvează ghicit', rau9.status === 400 && /nu e o dată/.test(jr9.error || ''), rau9.status + ' ' + JSON.stringify(jr9));
+  const up = await PUT('/api/etransport/' + ta.id, { valabil_pana: '2026-11-20T23:59:59' });
+  const s9b = await (await GET('/api/etransport/scadentar')).json();
+  const g9b = (s9b.active || []).concat(s9b.incheiate || []).find(x => x.id === ta.id);
+  T('și la corectură (PUT), ziua aleasă = miezul nopții României (iarna: 21:59:59 UTC)',
+    up.status === 200 && g9b && new Date(g9b.valabilPana).toISOString() === '2026-11-20T21:59:59.000Z', up.status + ' ' + (g9b && g9b.valabilPana));
+  const upRau = await PUT('/api/etransport/' + ta.id, { valabil_pana: '2026-02-30' });
+  T('la corectură, o zi care nu există se refuză', upRau.status === 400, upRau.status);
+
+  sect('10. Termenele vechi (scrise pe ceasul serverului) trec pe miezul nopții României, o singură dată');
+  T('pregătirea bazei probei: termene vechi puse înainte de pornirea serverului', !!SEED, String(seed.stdout || '').slice(-300) + String(seed.stderr || '').slice(-300));
+  if (SEED) {
+    T('mutarea ia termenul vechi „20.11, 23:59:59 (UTC)" și îl face 20.11, 23:59:59 la noi', SEED.n1 === 1 && SEED.a === '2026-11-20T21:59:59.000Z', JSON.stringify(SEED));
+    T('o oră anume (14:00), scrisă de cineva, nu se atinge', SEED.b === '2026-11-20T14:00:00.000Z', SEED.b);
+    T('a doua oară nu mai mută nimic (ține minte că s-a făcut)', SEED.n2 === 0, SEED.n2);
+    const toate10 = (s9b.active || []).concat(s9b.incheiate || []);
+    const c10 = toate10.find(x => x.uit === '3019000003'), a10 = toate10.find(x => x.uit === '3019000001');
+    T('serverul o face singur, la pornire — și pe ziua schimbării orei (25.10 → 21:59:59 UTC)',
+      c10 && new Date(c10.valabilPana).toISOString() === '2026-10-25T21:59:59.000Z', c10 && c10.valabilPana);
+    T('…iar ce mutase deja nu mai mută a doua oară', a10 && new Date(a10.valabilPana).toISOString() === '2026-11-20T21:59:59.000Z', a10 && a10.valabilPana);
+  }
 
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');

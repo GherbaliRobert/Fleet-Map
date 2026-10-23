@@ -143,6 +143,12 @@ T('…textele (termenul, ce se trimite, pașii, „Cererile tale") vin de la ser
 T('trei uși, aceeași fereastră: caseta din RA Insight (`insightProblemaButon` → echipa), fișa mașinii (`echipaDinFisa`), iconița cu căști (`openSupport`)',
   /if \(b\.fel === 'echipa'\) \{[\s\S]{0,200}window\.echipaDeschide\(\{ imei: b\.imei, problema: b\.problema/.test(PAG) && /window\.echipaDinFisa = function \(\) \{[^\n]*deschide\(\{ imei: detailPanelImei, problema: 'aparat', sursa: 'fisa' \}\)/.test(PB) &&
   /window\.openSupport = function \(\) \{ deschide\(\{ sursa: 'suport' \}\); \};/.test(PB) && /id="detail-echipa" onclick="echipaDinFisa\(\)" hidden/.test(PAG) && /onclick="openSupport\(\)" title="Anunță echipa RA Track"/.test(PAG));
+// 23.10 (Alin: „rezolvă-le"): pe un laptop, bula RA Insight stătea peste colțul de jos al fișei — peste rândul de mai sus.
+// Măsurat în browser la 1280–1920 px: cu fișa deschisă pe hartă, bula stă la 16 px în stânga ei; pe alt ecran, în colț.
+T('bula RA Insight nu stă peste fișa mașinii: cât fișa e deschisă pe hartă, pe calculator trece în stânga ei (pe telefon se ascunde)',
+  /@media \(min-width: 821px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ right: calc\(var\(--detail-width\) \+ 16px \+ env\(safe-area-inset-right\)\); \} \}/.test(PAG) &&
+  /@media \(min-width: 821px\) and \(max-width: 900px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ right: calc\(320px \+ 16px/.test(PAG) &&
+  /@media \(max-width: 820px\) \{ body\.detail-open #rax-fabs \{ display: none !important; \} \}/.test(PAG) && /--detail-width: 380px;/.test(CSS) && /@media \(max-width: 900px\) \{\s*#detail-panel\.open \{ width: 320px; min-width: 320px; \}/.test(CSS));
 T('fereastra veche „Suport clienți" a plecat: fără telefonul 0312 295 000 și fără WhatsApp-ul 40700000000 (nu erau ai noștri), fără a doua `openSupport`',
   MT.indexOf('support-overlay') < 0 && !/window\.(openSupport|closeSupport|sendSupport)\s*=/.test(MT) && !/0312 295 000|wa\.me\/40700000000/.test(PAG + MT) && (PAG.match(/window\.openSupport = /g) || []).length === 1 &&
   !/\.msb-overlay/.test(fs.readFileSync(path.join(__dirname, 'public', 'css', 'map-tools.css'), 'utf8')) && /\/js\/map-tools\.js\?v=8/.test(PAG));

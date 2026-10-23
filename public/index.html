@@ -364,6 +364,11 @@
       details.io-advanced > summary::-webkit-details-marker { display: none; }
       details.io-advanced[open] > summary { color: var(--accent); }
       @media (max-width: 820px) { body.detail-open #rax-fabs { display: none !important; } }
+      /* Pe calculator fișa e coloana din dreapta, iar bula RA Insight stătea peste colțul ei de jos — peste „Anunță
+         echipa RA Track" (23.10). Cât fișa e deschisă pe hartă, bula trece în stânga ei; pe telefon se ascunde (mai sus). */
+      #rax-fabs { transition: right .3s ease; }
+      @media (min-width: 821px) { body.detail-open:has(#view-localizare.active) #rax-fabs { right: calc(var(--detail-width) + 16px + env(safe-area-inset-right)); } }
+      @media (min-width: 821px) and (max-width: 900px) { body.detail-open:has(#view-localizare.active) #rax-fabs { right: calc(320px + 16px + env(safe-area-inset-right)); } }
     </style>
     <div id="detail-panel">
       <div class="detail-header">

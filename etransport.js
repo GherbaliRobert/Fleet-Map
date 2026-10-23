@@ -14,6 +14,8 @@
 // PROPUNERE — se salvează ca dată explicită pe transport și omul o poate corecta. Aplicația nu
 // trebuie să ghicească tăcut o convenție legală.
 
+const insight = require('./insight');   // ziua României: miezul nopții de la noi, nu cel al serverului (UTC)
+
 const ZILE_NATIONAL = 5;
 const ZILE_INTRACOMUNITAR = 15;
 
@@ -34,16 +36,66 @@ function zileValabile(tip) {
   return t ? t.zile : ZILE_NATIONAL;
 }
 
+// ── Ziua și ora României (23.10) ─────────────────────────────────────────────────────────────────
+// Serverul e pe UTC, iar coloana termenului ține ora fără fus. Termenul se încheia la miezul nopții de
+// la Londra: „valabil până pe 23.10" ținea, la noi, până pe 24.10 la 02:59 (vara; iarna la 01:59) —
+// trei ore în care ecranul spunea „valabil", iar la ANAF codul expirase. Acum orice termen se scrie ca
+// CLIPA ultimei secunde a zilei României, iar o dată fără fus (cum o trimit pagina și telefonul) se
+// citește ca oră a României.
+const _FARA_FUS = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/;
+const _CU_FUS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+function _ziBuna(y, m0, d) {
+  const t = new Date(Date.UTC(y, m0, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m0 && t.getUTCDate() === d;
+}
+// Clipa (ms) în care ceasul României arată y-m0-d h:mi:s. Ora se schimbă la 01:00 UTC (regula UE), deci
+// o zi are cel mult un salt: după el se folosește decalajul de la miezul nopții URMĂTOARE.
+function _clipaRO(y, m0, d, h, mi, s) {
+  const naiv = Date.UTC(y, m0, d, h, mi, s);
+  const deLaMiezulZilei = Date.UTC(y, m0, d) - insight.inceputZiRO(y, m0, d);          // 2 sau 3 ore
+  const deLaMiezulDeMaine = Date.UTC(y, m0, d + 1) - insight.inceputZiRO(y, m0, d + 1);
+  const ms = naiv - deLaMiezulZilei;
+  return (deLaMiezulZilei !== deLaMiezulDeMaine && ms >= Date.UTC(y, m0, d, 1)) ? naiv - deLaMiezulDeMaine : ms;
+}
+// Ziua României [an, lună0, zi] a unei date: cea scrisă, dacă e fără fus; altfel ziua clipei, la noi.
+function _ziRO(v) {
+  const s = String(v == null ? '' : v).trim();
+  const m = _FARA_FUS.exec(s);
+  if (m) return _ziBuna(+m[1], +m[2] - 1, +m[3]) ? [+m[1], +m[2] - 1, +m[3]] : null;
+  if (!_CU_FUS.test(s)) return null;
+  const ms = Date.parse(s);
+  if (!Number.isFinite(ms)) return null;
+  const z = new Date(Date.parse(insight.perioada({ period: 'today' }, ms).from) + 12 * 3600000);   // miezul nopții de la noi + 12 h
+  return [z.getUTCFullYear(), z.getUTCMonth(), z.getUTCDate()];
+}
+
 // Data la care expiră codul, propusă din data de start. Întoarce null dacă data de start nu e bună —
 // NU o zi inventată: mai bine „termen necunoscut" decât un termen fals liniștitor.
+// Ziua se încheie la miezul nopții României: un cod valabil „până pe 30" e valabil toată ziua de 30, și nu mai mult.
 function valabilPana(dataStart, tip) {
-  const d = dataStart ? new Date(dataStart) : null;
-  if (!d || isNaN(d.getTime())) return null;
-  const out = new Date(d.getTime());
-  out.setDate(out.getDate() + zileValabile(tip));
-  // Ziua se încheie la miezul nopții: un cod valabil „până pe 30" e valabil toată ziua de 30.
-  out.setHours(23, 59, 59, 0);
-  return out.toISOString();
+  const z = dataStart ? _ziRO(dataStart) : null;
+  if (!z) return null;
+  return new Date(_clipaRO(z[0], z[1], z[2] + zileValabile(tip), 23, 59, 59)).toISOString();
+}
+
+// Termenul venit de la un formular (pagina, telefonul, o cheie API): „AAAA-LL-ZZ" = toată ziua aceea a
+// României; „AAAA-LL-ZZT23:59:59" fără fus = ora României; cu fus (…Z, +03:00) = clipa ca atare.
+// Ce nu e o dată → null (ruta o refuză pe față), nu un termen ghicit.
+function termenDinFormular(v) {
+  if (v == null || String(v).trim() === '') return null;
+  const s = String(v).trim();
+  const m = _FARA_FUS.exec(s);
+  if (m) {
+    const y = +m[1], m0 = +m[2] - 1, d = +m[3];
+    const cuOra = m[4] != null;
+    const h = cuOra ? +m[4] : 23, mi = cuOra ? +m[5] : 59, sec = cuOra ? (m[6] != null ? +m[6] : 0) : 59;
+    if (!_ziBuna(y, m0, d) || h > 23 || mi > 59 || sec > 59) return null;
+    return new Date(_clipaRO(y, m0, d, h, mi, sec)).toISOString();
+  }
+  if (!_CU_FUS.test(s)) return null;
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 // Câte ore mai are codul. `stare` e cuvântul pe care îl folosește tot restul aplicației.
@@ -119,5 +171,5 @@ function consumatPct(t, acum) {
 
 module.exports = {
   ZILE_NATIONAL, ZILE_INTRACOMUNITAR, TACERE_MINUTE, CURAND_ORE, TIPURI,
-  zileValabile, valabilPana, scadenta, tacere, stareTransport, consumatPct,
+  zileValabile, valabilPana, termenDinFormular, scadenta, tacere, stareTransport, consumatPct,
 };

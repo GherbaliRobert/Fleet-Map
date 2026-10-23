@@ -10550,6 +10550,7 @@ app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeatu
     // Termenul se PROPUNE din data de start, dar se salvează explicit: convenția exactă de numărare
     // a celor 5 zile rămâne de confirmat cu ANAF (vezi etransport.js), iar dacă omul o corectează,
     // valoarea lui câștigă. O aplicație n-are voie să ghicească tăcut un termen care aduce amendă.
+    if (!_termenUitDinCerere(b)) return res.status(400).json({ error: TERMEN_UIT_GRESIT });
     if (!b.valabil_pana) b.valabil_pana = etr.valabilPana(b.start_at || new Date().toISOString(), b.tip_operatiune);
     // Un transport TREBUIE să fie al unei firme. Super-adminul n-are companie proprie, deci o cerere
     // venită de la el scria rândul cu `company_id = NULL`: nu apărea nici la client (lista lui se
@@ -10570,8 +10571,22 @@ app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeatu
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
-  try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.updateEtransport(parseInt(req.params.id), req.body); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const b = Object.assign({}, req.body || {});
+    if (!_termenUitDinCerere(b)) return res.status(400).json({ error: TERMEN_UIT_GRESIT });
+    await db.updateEtransport(parseInt(req.params.id), b); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Termenul trimis de ecran („2026-10-23T23:59:59", fără fus = o oră a României) → clipa adevărată (etransport.js,
+// 23.10): până atunci se citea pe ceasul serverului, UTC, și codul ieșea valabil cu trei ore după miezul nopții de la
+// noi. Gol = nimic trimis (la POST se propune din start). Ce nu e o dată se refuză pe față, nu se ghicește.
+const TERMEN_UIT_GRESIT = 'Termenul codului UIT nu e o dată. Alege ziua din calendar.';
+function _termenUitDinCerere(b) {
+  if (b.valabil_pana == null || String(b.valabil_pana).trim() === '') { b.valabil_pana = null; return true; }
+  b.valabil_pana = etr.termenDinFormular(b.valabil_pana);
+  return !!b.valabil_pana;
+}
 app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -20080,7 +20095,8 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
     const odometer_fields = {};
     for (const k of Object.keys(io)) if (/mileage|odometer|odo|distance/i.test(k)) odometer_fields[k] = io[k];
     // Debug „Ore funcționare azi": de ce engineOnTime = 0? Arată valorile reale de ignition + calculul.
-    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    // „Azi" = de la miezul nopții României (23.10): cu `setHours` pe serverul pe UTC, ziua pornea vara la 03:00.
+    const dayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const todayH = await db.getDeviceHistory(dev.imei, dayStart.toISOString(), to.toISOString(), 10000);
     let ignOn = 0, engineOnSec = 0, kmToday = 0; const ignitionValues = {};
     for (let i = 0; i < todayH.length; i++) {
@@ -20553,6 +20569,7 @@ async function start() {
   await loadRegisteredImeis(); // allow-list mod strict — ÎNAINTE de a porni serverul TCP (altfel s-ar bloca la boot)
   await db.migreazaPornireaAbonamentelor();   // o singură dată: aparatele care transmiteau deja rămân pe luna întreagă
   await db.migreazaAparateNoiAnuntate();      // o singură dată: ce era deja în „Neasignate" nu se anunță ca „nou" (30.09)
+  await db.migreazaTermeneEtransport(etr.termenDinFormular);   // o singură dată: termenele UIT pe miezul nopții României (23.10)
   try { const n = await db.semanaIstoricSoferi(); if (n) console.log('[SAFE DRIVE] Istoricul șoferilor pornit pentru ' + n + ' mașini'); } catch (e) { console.warn('[SAFE DRIVE] istoricul șoferilor:', e.message); }
   await _incarcaAbonamente();  // ce aparate au deja ziua de pornire a abonamentului (factura pe zile, 28.09)
   initVapid();

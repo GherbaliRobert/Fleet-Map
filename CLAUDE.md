@@ -435,8 +435,8 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   Dispatch); până atunci RA Watch nu vedea noaptea scăderile de combustibil dinainte de 03:00 — prins de `verify_un_singur_insight.js`
   (1b), care pica pe GitHub între 00 și 03. **Și restul (23.10, Alin: „da"):** `/api/dashboard`, `/api/stats/:imei` (fișa mașinii de
   pe hartă; `date` = `_ziRo`), `_insightPeriod` (întrebările vechi ale telefonului) și `/api/report/:imei` iau ziua tot din
-  `insight.perioada({ period: 'today' }, Date.now())` — păzit de `verify_un_singur_insight.js` (5d). ⚠ Rămas cu `setHours` pe UTC
-  (găsit pe 23.10, întrebat): ruta tehnică „io-peek" din panoul nostru de depanare.
+  `insight.perioada({ period: 'today' }, Date.now())` — păzit de `verify_un_singur_insight.js` (5d). Ultimul rămas, ruta tehnică
+  „io-peek" din panoul nostru de depanare, la fel (23.10, Alin: „rezolvă-le"): în server.js nu mai e niciun `setHours(0, 0, 0, 0)`.
 - **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
   subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
@@ -951,7 +951,10 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
   Deschide firma / Redeschide (butoanele de la server; formularele sub cerere). Bulina `#nav-cereri-nr` = cererile nepreluate. Anunțurile:
   `notifCerere` (noi → listă, client → „Cererile tale").
 - Ghidul: capitolul `suport`. Telefonul — la APK-ul următor (Robert). Tabela `cereri_echipa` e în `BUSINESS_TABLES`.
-- Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 79, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
+- **Bula RA Insight nu stă peste fișa mașinii (23.10):** pe calculator, cât fișa e deschisă pe hartă
+  (`body.detail-open:has(#view-localizare.active)`), `#rax-fabs` trece în stânga ei (`--detail-width` + 16 px; 320 px între 821 și
+  900); pe ≤ 820 px se ascunde. Schimbi lățimea fișei → schimbi și regula. Măsurat în browser la 1280–1920 px.
+- Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 80, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
   `verify_insight_ghid.js`, `verify_mail.js` (rândul din meniu, felul `suport`), `verify_discutia.js` (butoanele casetei).
 
 ## Ofertare Live — DE CONTINUAT (customizare)
@@ -2654,6 +2657,13 @@ fiecare rând avea buton „Șterge", iar `ownsRow` întoarce `true` pentru supe
   ⚠ **De confirmat înainte de lansare:** declarația se depune pe CUI-ul CLIENTULUI, cu tokenul
   NOSTRU. Trebuie verificat dacă ANAF cere împuternicire în SPV per client. Fără ea, modulul e doar
   un registru intern. E în lista de dinainte de lansare.
+- **Termenul codului UIT e o CLIPĂ pe ora României (23.10; Alin: „rezolvă-le").** Coloana `valabil_pana` ține ora fără fus,
+  serverul e pe UTC: „valabil până pe 23.10" ținea până pe 24.10 la 02:59. Acum: `etr.valabilPana` (propunerea, ziua de start a
+  României) și `etr.termenDinFormular` (ce trimite ecranul: „AAAA-LL-ZZ[T23:59:59]" fără fus = ora României; cu fus = clipa) scriu
+  ultima secundă a zilei de la noi, și în zilele cu ora schimbată. Crearea și corectura trec prin `_termenUitDinCerere` (400 pe o
+  dată stricată). Termenele vechi „23:59:59" s-au mutat O DATĂ la pornire (`db.migreazaTermeneEtransport`, semnul
+  `etransport_termen_ro_migrat`). O cale nouă care scrie `valabil_pana` trece prin `termenDinFormular` — NU scrie ora cu `setHours`.
+  Păzit de `verify_etransport.js` (1b, 9, 10).
 - Păzit de `verify_etransport_fondator.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Cuvintele care se acordă cu cifra: `_raxDe(n)`
