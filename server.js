@@ -11537,7 +11537,9 @@ async function _cerereLaNoi(req, c) {
   const to = await _adresaSuport();
   if (to && mailer && mailer.enabled()) {
     const em = cereriEchipa.emailNoi(c, { acum: Date.now(), link: appBaseUrl(req) + '/app' });
-    await mailer.send({ to: to, replyTo: (c.contact || {}).email || undefined, subject: em.subject, text: em.text, html: em.html });
+    // În „Trimise" ca „Suport" (ca emailul rutei vechi, 22.10): toate emailurile noastre poartă felul lor.
+    await mailer.send({ to: to, replyTo: (c.contact || {}).email || undefined, subject: em.subject, text: em.text, html: em.html,
+      jurnal: { fel: 'suport', companyId: c.company_id != null ? c.company_id : null } });
   }
 }
 // La client, la fiecare pas (preluată / programată / rezolvată): anunț în aplicație + pe telefon, și email.
@@ -18538,7 +18540,7 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
 // domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
 const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', pachet: 'Pachet RA Insight', neplata: 'Neplată',
   invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj', raspuns: 'Răspuns',
-  redirectionat: 'Redirecționat', cerere: 'Cerere de la client' };
+  redirectionat: 'Redirecționat', cerere: 'Cererea clientului' };
 // „Șterge" în „Trimise" (Robert, 13.10: „3. da"): DOAR emailurile scrise de mână. Facturile, contractele, avertismentele și
 // invitațiile rămân — sunt dovada că le-am trimis.
 const MAIL_TRIMISE_STERGIBILE = ['mesaj', 'raspuns', 'redirectionat'];

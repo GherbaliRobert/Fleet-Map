@@ -190,7 +190,7 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
   `email_reincercari`, `email_raport_id`. NU înghiți erorile de email într-un `catch (e) {}`. Păzit de `verify_email_stare.js`.
 
 ### Panoul Mail al fondatorilor (Robert, 12.10) — etapa 1: „Trimise" + „Scrie"
-Business → **Mail** (după „Cereri demo"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";
+Business → **Mail** (după „Cereri demo" și, din 23.10, „Cereri de la clienți"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";
 telefon `screens/Mail.tsx`, `/admin/mail`). Doar super-admin (`requireSuperadmin` pe `/api/mail/*`).
 - **Adresele nu se scriu de mână:** `_mailAdrese(req)` = adresa COMUNĂ (expeditorul aplicației, `EMAIL_FROM` —
   contact@ratrack.ro) + adresa fiecărui super-admin activ cu email pe același domeniu (robert.gherbali@, alin.tilvar@).
@@ -931,7 +931,7 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
   caseta din RA Insight (`agents.esteFaraSemnal`, pragul firmei), ca să nu fie două cereri pe același lucru.
 - **La noi, pe loc:** anunț `cerere_echipa` (`_anuntaSuperadmini`, `data: { cerere, cerereId, pentru: 'noi' }`, fără date tehnice) +
   emailul la contact@ (`_adresaSuport`: `SUPPORT_EMAIL` → setarea `support_email` → expeditorul, noreply@ → contact@), cu „Răspuns la"
-  = omul, subiectul „Cerere N · firma · mașina · problema" și „Datele aparatului". **La client, la fiecare pas** (preluată / programată /
+  = omul, subiectul „Cerere N · firma · mașina · problema" și „Datele aparatului" (în „Trimise" cu felul `suport`, ca ruta veche). **La client, la fiecare pas** (preluată / programată /
   rezolvată): `_cerereLaClient` → anunț `cerere_<pas>` (`pentru: 'client'`) + email (felul `cerere` în „Trimise").
 - **Trecerile, o singură dată** (`db.treceCerereEchipa(id, dinStari, patch)`, UPDATE … WHERE stare = ANY): `POST
   /api/admin/cereri-echipa/:id/preiau | programeaza | rezolvat | redeschide` (super-admin; a doua apăsare → 409 „Cererea a fost deja
@@ -952,7 +952,7 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
   `notifCerere` (noi → listă, client → „Cererile tale").
 - Ghidul: capitolul `suport`. Telefonul — la APK-ul următor (Robert). Tabela `cereri_echipa` e în `BUSINESS_TABLES`.
 - Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 79, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
-  `verify_insight_ghid.js`.
+  `verify_insight_ghid.js`, `verify_mail.js` (rândul din meniu, felul `suport`), `verify_discutia.js` (butoanele casetei).
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni

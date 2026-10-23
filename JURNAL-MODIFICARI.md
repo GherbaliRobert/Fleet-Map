@@ -449,7 +449,8 @@ să verifice nimic, are un singur lucru de făcut: să ne anunțe.
   `/api/admin/cereri-echipa/*`, calendarul), `db.js` (tabela `cereri_echipa`), `probleme.js` (caseta „nu transmite", butonul și nota),
   `backup.js`, pagina (fereastra, casetele, fișa, „Cereri de la clienți", anunțurile, calendarul), `app.css`, `map-tools.js`/`.css`
   (fereastra veche scoasă), `insight_ghid.js` (capitolul „Anunță echipa RA Track"). Probă nouă: `verify_cereri_echipa.js` (79, în
-  `npm test`, pe server pornit, cu un server de email fals); `verify_proba_reparatii.js`, `verify_insight_ghid.js`, `verify_formatoare.js`
+  `npm test`, pe server pornit, cu un server de email fals); `verify_proba_reparatii.js`, `verify_insight_ghid.js`, `verify_formatoare.js`,
+  `verify_mail.js` (rândul „Mail” vine acum după „Cereri de la clienți”) și `verify_discutia.js` (caseta are întâi „Anunță echipa RA Track”)
   mutate pe regula nouă. Contrastul culorilor noi, măsurat pe ambele teme: peste 4,5 peste tot.
 - **Ce vede fondatorul:** rândul „Cereri de la clienți" cu bulina, lista cu datele aparatului, anunțul și emailul la fiecare cerere nouă,
   intervențiile în calendar.

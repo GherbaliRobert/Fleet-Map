@@ -37,8 +37,9 @@ const fals = http.createServer((req, res) => {
   // ─── 5. Pagina și telefonul (fără server) ─────────────────────────────────────────────────────────
   console.log('5. Pagina și telefonul');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-  T('rândul „Mail" stă în Business, imediat după „Cereri demo", și cheamă goSistem(\'mail\')',
-    /goSistem\('demoreq'\);[^\n]*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('mail'\); \}\)"><i class="fas fa-envelope"><\/i><span>Mail<\/span>/.test(PAG));
+  // Din 23.10, între ele stă „Cereri de la clienți" (macheta „Anunță echipa RA Track", aprobată pe 22.10).
+  T('rândul „Mail" stă în Business, după „Cereri demo" și „Cereri de la clienți", și cheamă goSistem(\'mail\')',
+    /goSistem\('demoreq'\);[^\n]*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('cereri'\); \}\)"><i class="fas fa-headset"><\/i><span>Cereri de la clienți<\/span>[^\n]*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('mail'\); \}\)"><i class="fas fa-envelope"><\/i><span>Mail<\/span>/.test(PAG));
   T('secțiunea e în listele unice (_RAX_TABURI / _RAX_NUME) și se deschide cu raxLoadMail',
     /mail: 'admin-tab-mail'/.test(PAG) && /mail: 'Mail'/.test(PAG) && /name === 'mail'\) \{\s*if \(window\.raxLoadMail\) window\.raxLoadMail\(\);/.test(PAG) && /<div id="admin-tab-mail"/.test(PAG));
   const BLOC = (PAG.match(/── începe „Panoul Mail"[\s\S]*?── sfârșit „Panoul Mail" ──/) || [''])[0];
@@ -62,8 +63,8 @@ const fals = http.createServer((req, res) => {
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
   T('rapoartele programate ale unei firme NU intră în „Trimise" (fără jurnal)', /channels\.sendEmailTo\(rcp, subject, text, attachments\)/.test(RS) && !/jurnal/.test(RS));
-  T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj; din 13.10 și redirecționat)',
-    ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /const fel = primit \? 'raspuns' : \(redirPrimit \|\| redirTrimis\) \? 'redirectionat' : 'mesaj';/.test(SRV) && /jurnal: \{ fel: fel, userId: uid/.test(SRV))));
+  T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj; din 13.10 și redirecționat; din 23.10 și cererea clientului)',
+    ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj', 'cerere'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /const fel = primit \? 'raspuns' : \(redirPrimit \|\| redirTrimis\) \? 'redirectionat' : 'mesaj';/.test(SRV) && /jurnal: \{ fel: fel, userId: uid/.test(SRV))));
 
   // ─── Server pornit ─────────────────────────────────────────────────────────────────────────────────
   await new Promise((r) => fals.listen(0, '127.0.0.1', r));

@@ -36,9 +36,13 @@ T('…niciun text despre sursa consumului nu pune vina pe echipament și nu-l tr
 T('…fără consum în fișă: „un consum obișnuit pentru felul mașinii", nu o cifră prezentată ca a ei', /consum obișnuit pentru felul mașinii \(9,0 l\/100 km\), fiindcă fișa n-are consumul trecut/.test(P.sursaConsum({ sursa: 'Estimat', consumImplicit: 9 }).text));
 T('senzorul blocat: pe 100 km sau mai mult, nivelul a variat sub 1,5 L, fără alimentare', P.nivelBlocat(25, 25, 555, 0) && P.nivelBlocat(24.5, 25.5, 100, 0) && !P.nivelBlocat(25, 25, 99, 0) && !P.nivelBlocat(20, 25, 555, 0) && !P.nivelBlocat(25, 25, 555, 30) && !P.nivelBlocat(null, null, 555, 0));
 const ps = P.problemaSenzor({ vehicul: 'B 154 UIP', imei: '1', km: 555, nivelStart: 25, consumFisa: 7.5 }, { from: 'a', to: 'b', eticheta: '5–11 octombrie' });
-T('nivelul care nu se schimbă: galben, faptul în cifre („consumul nu se poate măsura acum"), doar butonul spre raportul de consum — fără calibrare, fără vină pe echipament',
+// Din 23.10 (macheta „Anunță echipa RA Track", aprobată pe 22.10): întâi „Anunță echipa RA Track" — singurul lucru de făcut pentru
+// client e să ne anunțe, aparatul e treaba noastră —, apoi raportul de consum, cu nota de sub butoane. Tot fără calibrare și fără vină.
+T('nivelul care nu se schimbă: galben, faptul în cifre („consumul nu se poate măsura acum"), „Anunță echipa RA Track" + raportul de consum — fără calibrare, fără vină pe echipament',
   ps.grav === 'galben' && ps.titlu === 'Consumul la B 154 UIP nu se poate măsura acum' && /^Pe 5–11 octombrie nivelul din rezervor a stat la 25 L, deși mașina a mers 555 km, așa că din el nu se poate măsura consumul\. Consumul de aici e socotit din consumul trecut în fișa mașinii \(7,5 l\/100 km\)\.$/.test(ps.dovada) &&
-  ps.butoane.length === 1 && ps.butoane[0].fel === 'raport' && ps.butoane[0].tip === 'consumption' && !VINA.test(ps.titlu + ' ' + ps.dovada), JSON.stringify(ps));
+  ps.butoane.length === 2 && ps.butoane[0].fel === 'echipa' && ps.butoane[0].text === 'Anunță echipa RA Track' && ps.butoane[0].problema === 'consum' &&
+  ps.butoane[1].fel === 'raport' && ps.butoane[1].tip === 'consumption' && /^Aparatul e treaba noastră/.test(ps.nota || '') &&
+  !VINA.test(ps.titlu + ' ' + ps.dovada) && !/calibr|senzor|blocat|nu trimite|verific|instalator|montaj/i.test(JSON.stringify(ps.butoane) + ' ' + (ps.nota || '')), JSON.stringify(ps));
 const t0 = Date.parse('2026-10-08T11:30:00Z');
 const sir = (viteze, pas) => { let lng = 26; return viteze.map((v, i) => { const p = { t: t0 + i * 30000, lat: 44.45, lng, v }; lng += (pas != null ? pas : v / 3600 * 30) / (111 * Math.cos(44.45 * Math.PI / 180)); return p; }); };
 const vr = P.verdictViteza(sir([90, 95, 140, 150, 159, 148, 141, 95]), 130);
