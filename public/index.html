@@ -20411,6 +20411,9 @@ const pozitii = await r.json();</code></pre>
       let out = '<div class="cfb">';
       out += '<div class="cfb-h"><i class="fas fa-gauge-high"></i> Starea mașinii' +
         '<span class="cfb-hint">se arată doar ce e activ acum</span></div>';
+      // Adaptorul doarme (mașina oprită): frâna de mână și pedalele de mai sus ar fi fost cele de dinainte de oprire,
+      // deci nu le arătăm — și spunem de ce lipsesc (regula și textul: can_flags.js, `inRepaus`).
+      if (b.repaus && cat.repaus && cat.repaus.text) out += '<div class="cfb-note"><i class="fas fa-moon"></i> ' + _usEsc(cat.repaus.text) + '</div>';
       out += gol ? '<div class="cfb-ok"><i class="fas fa-circle-check"></i> Totul închis, niciun martor aprins</div>' : corp;
       if (nedecodateVazute) {
         out += '<div class="cfb-note"><i class="fas fa-circle-info"></i> ' +

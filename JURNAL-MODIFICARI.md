@@ -163,6 +163,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **23.10:** APK 1.0.21 — tot ce e în 1.0.20 și lucrările lui Alin din 22.10, plus „Prelungește" la „Distribuie locația".
   Tot de pe GitHub, cu link direct (github.com/GherbaliRobert/Fleet-Map/releases → „APK de test 1.0.21"); la fel: de DEBUG,
   fără notificări push, iar telefonul cere dezinstalarea celui vechi.
+  **23.10 (după-amiaza):** APK 1.0.22 — tot ce e în 1.0.21, plus „Starea mașinii" cu adaptorul în repaus (nota, fără stări
+  vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -418,6 +420,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 ---
 
 ## 2026-10-23
+
+### AMÂNDOI · „Starea mașinii": adaptorul în repaus nu mai arată stări vechi, iar în mers nu mai apare „în repaus"
+
+Robert (23.10): *„de ce am adaptor în mod sleep și ambreiaj apăsat"* (VW Caddy B 268 ROY, parcat) → „2" (cât timp adaptorul
+doarme, stările vechi nu se arată); apoi *„la B 154 UIP Dacia Logan, mașina e pornită și apare în repaus"*.
+
+- **De ce:** cu mașina oprită, calculatorul ei tace și adaptorul CAN intră în repaus; în mesaj rămâne ce a citit înainte de
+  luarea contactului (ambreiajul apăsat, frâna de mână încă netrasă). Aplicația le arăta ca fiind „de acum".
+- **Acum:** când adaptorul doarme și mașina chiar e oprită (contactul aparatului GPS luat), panoul scrie sus „Adaptorul CAN e în
+  repaus: mașina e oprită. Frâna de mână și pedalele se citesc din nou la pornire." și nu mai arată frâna de mână, frâna de picior
+  și ambreiajul. Când adaptorul spune „în repaus", dar mașina merge (contact, turație sau viteză), semnalul e greșit: plăcuța
+  „Adaptor CAN în repaus" nu mai apare, iar restul se arată normal.
+- **Ce am schimbat:** `can_flags.js` (`mergeMasina`, `inRepaus`, `REPAUS_ASCUNSE`, `REPAUS_TEXT`, `benzi`), `server.js` (regula
+  trimisă paginii și telefonului), `public/index.html` (nota), telefonul (`lib/canflags.ts`, `CanFlags.tsx`, `CanTellTales.tsx`,
+  versiunea 1.0.22). Proba `verify_can_flags.js`: secțiunea 16 (Caddy parcat, Logan în mers și alte 6 cazuri, pe server, în
+  pagină și pe telefon).
+- **Ce vede fondatorul:** la fel ca clientul, în fișa mașinii („Starea mașinii").
+- **Ce vede clientul:** la o mașină parcată, nota de repaus în locul ambreiajului și al frânei de mână; la o mașină în mers, fără
+  „Adaptor CAN în repaus".
 
 ### AMÂNDOI · „Distribuie locația": un link activ se poate prelungi
 

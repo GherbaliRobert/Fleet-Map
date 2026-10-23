@@ -31,8 +31,9 @@ const win = {
   // Pagina primește de la server și funcțiile de decizie (ce se vede, în ce bandă), serializate
   // din can_flags.js. Le atașăm la fel aici — sunt EXACT aceleași funcții, nu copii.
   RA_CANFLAGS: Object.assign(
-    { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE, stateBand: cat.BANDA_STARE },
-    { benzi: cat.benzi, seVede: cat.seVede, stateText: cat.stateText }
+    { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE, stateBand: cat.BANDA_STARE,
+      repaus: { ascunse: cat.REPAUS_ASCUNSE, text: cat.REPAUS_TEXT } },
+    { benzi: cat.benzi, seVede: cat.seVede, stateText: cat.stateText, inRepaus: cat.inRepaus }
   ),
   RA_CANICONS: require('./can_icons.js').ICOANE,
 };
@@ -213,8 +214,15 @@ sect('7. Acoperire față de codec8e.js');
   // (Cu toți biții pe 1, câteva stări ies logic STINSE — de pildă „Regim personal", care e inversat
   // în protocol: bitul 1 înseamnă „serviciu". Testul vechi presupunea că 1 = aprins pentru toate.)
   const meta = [...sf, ...cf].map(k => cat.flagMeta(k)).filter(Boolean);
-  const lipsa = meta.filter(f => cat.seVede(f.key, fTot[f.key]) && !h.includes('>' + f.label + '<'));
+  // Cu toți biții pe 1 și fără contactul aparatului, adaptorul spune că doarme și nimic nu-l contrazice
+  // (secțiunea 16, 23.10): frâna de mână și pedalele sunt atunci cele de dinainte de oprire și NU se arată.
+  const repausTot = cat.inRepaus(fTot);
+  const deRepaus = (k) => (k === '_sf_can_sleep_mode' ? !repausTot : repausTot && cat.REPAUS_ASCUNSE.includes(k));
+  const lipsa = meta.filter(f => cat.seVede(f.key, fTot[f.key]) && !deRepaus(f.key) && !h.includes('>' + f.label + '<'));
   T('tot ce trebuie să se vadă, se vede', lipsa.length === 0, lipsa.map(f => f.key).join(', '));
+  const ascunseVazute = meta.filter(f => deRepaus(f.key) && h.includes('>' + f.label + '<'));
+  T('adaptorul în repaus: frâna de mână și pedalele nu se văd, nota da', repausTot && ascunseVazute.length === 0 && h.includes(cat.REPAUS_TEXT),
+    ascunseVazute.map(f => f.key).join(', '));
   const strecurate = meta.filter(f => !cat.seVede(f.key, fTot[f.key]) && h.includes('>' + f.label + '<'));
   T('nu se strecoară nicio stare inactivă', strecurate.length === 0, strecurate.map(f => f.key).join(', '));
   T('treptele P/R/N/D nu apar una câte una',
@@ -349,7 +357,10 @@ sect('13. Banda de martori de sub hartă (telefon) + paritatea regulii de așeza
   // Ordinea se CITEȘTE de la server. Singura listă scrisă în telefon e rezerva declarată, folosită
   // doar cand serverul nu a trimis-o — iar sectiunea 14 verifica separat ca e identica cu cea de pe server.
   T('telefonul citeste ordinea de la server', lib.includes('cat.stateBand'));
-  T('singura lista scrisa in telefon e rezerva declarata', (lib.match(/_sf_handbrake/g) || []).length === 1 && lib.includes('STARE_IMPLICITA'));
+  // Două rezerve declarate, fiecare verificată în CI ca identică cu lista de pe server: ordinea benzii de stare
+  // (secțiunea 14) și ce se ascunde cât adaptorul e în repaus (secțiunea 16).
+  T('singurele liste scrise in telefon sunt rezervele declarate', (lib.match(/_sf_handbrake/g) || []).length === 2
+    && /const STARE_IMPLICITA = \['_sf_handbrake'/.test(lib) && /const REPAUS_IMPLICIT = \['_sf_handbrake'/.test(lib));
   T('clasificarea e aceeași ca pe server', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(lib));
   const srvReg = fs.readFileSync(require('path').join(__dirname, 'can_flags.js'), 'utf8');
   T('și pe server clasificarea e scrisă la fel', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(srvReg));
@@ -373,8 +384,8 @@ sect('14. Catalogul salvat pe telefon (cauza pictogramelor lipsă)');
   // orice câmp NOU din catalog lipsește la prima deschidere de după actualizare — iar ecranul
   // construit pe el iese gol. De asta cheia de salvare trebuie urcată la fiecare câmp nou.
   T('catalogul salvat se citeste inainte de cel proaspat (asta e capcana)', /if \(_valid\(parsed\)\) \{ _cache = parsed;/.test(lib));
-  T('cheia de salvare a fost urcata pentru campul `stateBand`', /const KEY = 'can_flags_v3'/.test(lib), (lib.match(/const KEY = '[^']+'/) || [])[0]);
-  T('cheia isi spune de ce a fost urcata', /v3: `stateBand`/.test(lib));
+  T('cheia de salvare a fost urcata pentru campul `repaus` (23.10)', /const KEY = 'can_flags_v4'/.test(lib), (lib.match(/const KEY = '[^']+'/) || [])[0]);
+  T('cheia isi spune de ce a fost urcata', /v3: `stateBand`/.test(lib) && /v4: `repaus`/.test(lib));
 
   // Apărarea durabilă: un catalog VECHI (fără `stateBand`) nu mai are voie să golească banda.
   T('exista o ordine de rezerva pentru banda de stare', /const STARE_IMPLICITA = \[/.test(lib));
@@ -434,6 +445,75 @@ sect('15. Fiecare pictograma ceruta in aplicatie chiar are un desen');
 
   // Casetele treptei: se aleg din valoare, nu din catalog — deci nu le prinde verificarea de sus.
   T('casetele treptei P/R/N/D sunt desenate', ['gearP', 'gearR', 'gearN', 'gearD'].every((n) => desenate.has(n)));
+}
+
+sect('16. Adaptorul în repaus (Robert, 23.10): Caddy parcat vs. Logan în mers — server, pagină, telefon');
+{
+  const pathMod = require('path'), vm = require('vm');
+  const srvTxt = fs.readFileSync(pathMod.join(__dirname, 'server.js'), 'utf8');
+  const libTxt = fs.readFileSync(pathMod.join(__dirname, 'mobile', 'src', 'lib', 'canflags.ts'), 'utf8');
+  const compTxt = fs.readFileSync(pathMod.join(__dirname, 'mobile', 'src', 'components', 'CanFlags.tsx'), 'utf8');
+  const ttTxt = fs.readFileSync(pathMod.join(__dirname, 'mobile', 'src', 'components', 'CanTellTales.tsx'), 'utf8');
+
+  T('ce se ascunde în repaus: frâna de mână, frâna de picior, ambreiajul', JSON.stringify(cat.REPAUS_ASCUNSE) === JSON.stringify(['_sf_handbrake', '_sf_footbrake', '_sf_clutch']));
+  const dinLib = (libTxt.match(/const REPAUS_IMPLICIT = \[([^\]]+)\]/) || [])[1] || '';
+  T('rezerva telefonului e aceeași listă ca pe server', (dinLib.match(/'[^']+'/g) || []).join(',') === cat.REPAUS_ASCUNSE.map((k) => "'" + k + "'").join(','), dinLib);
+  T('nota o scrie serverul și pleacă la amândouă ecranele', /repaus: \{ ascunse: canFlags\.REPAUS_ASCUNSE, text: canFlags\.REPAUS_TEXT \}/.test(srvTxt) && cat.REPAUS_TEXT.length > 30);
+
+  // Scriptul paginii, făcut EXACT ca pe server (bucata din server.js, rulată cu modulul adevărat).
+  const iA = srvTxt.indexOf('const _CANFLAGS = '), iB = srvTxt.indexOf("app.get('/js/can-flags.js'");
+  let webScript = '';
+  try { webScript = new Function('canFlags', srvTxt.slice(iA, iB) + '\nreturn _CANFLAGS_JS;')(cat); } catch (e) { webScript = ''; }
+  const fereastra = {};
+  try { vm.runInNewContext(webScript, { window: fereastra }); } catch (e) { /* prins mai jos */ }
+  const WEB = fereastra.RA_CANFLAGS;
+  T('scriptul paginii se încarcă și are regula de repaus', !!WEB && typeof WEB.benzi === 'function' && typeof WEB.inRepaus === 'function');
+
+  // Telefonul: lib/canflags.ts transpilat, cu dependențele lui înlocuite (nu le folosim aici).
+  let TEL = null;
+  try {
+    let ts = null;
+    try { ts = require(pathMod.join(__dirname, 'mobile/node_modules/typescript')); } catch (e) { ts = require('typescript'); }
+    const m = { exports: {} };
+    const js = ts.transpileModule(libTxt, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS }, fileName: 'canflags.ts' }).outputText;
+    vm.runInNewContext(js, { module: m, exports: m.exports, console, require: () => ({ Preferences: {}, Api: {} }) });
+    TEL = m.exports;
+  } catch (e) { TEL = null; }
+  T('regula telefonului se poate rula (lib/canflags.ts)', !!TEL && typeof TEL.canBenzi === 'function');
+  const catTel = JSON.parse(JSON.stringify({ groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE,
+    stateBand: cat.BANDA_STARE, repaus: { ascunse: cat.REPAUS_ASCUNSE, text: cat.REPAUS_TEXT } }));
+
+  const stari = { _sf_can_sleep_mode: true, _sf_clutch: true, _sf_footbrake: true, _sf_handbrake: false, _sf_car_closed: false, _sf_door_front_left: false };
+  const CAZURI = [
+    // [numele, valorile aparatului, steagurile, în repaus?, ce trebuie să se vadă, ce NU]
+    ['Caddy parcat (contact luat)', { ignition: 0 }, stari, true, ['_sf_can_sleep_mode', '_sf_car_closed'], ['_sf_clutch', '_sf_handbrake', '_sf_footbrake']],
+    ['Logan în mers (contact, turație)', { ignition: 1, can_engine_rpm: 1500, speed_io: 14 }, stari, false, ['_sf_clutch', '_sf_handbrake', '_sf_footbrake'], ['_sf_can_sleep_mode']],
+    ['contact pus ca text', { ignition: '1' }, stari, false, ['_sf_clutch'], ['_sf_can_sleep_mode']],
+    ['fără contact, dar cu viteză', { speed_io: 40 }, stari, false, ['_sf_clutch'], ['_sf_can_sleep_mode']],
+    ['fără contact, dar cu turație', { can_engine_rpm: 800 }, stari, false, ['_sf_handbrake'], ['_sf_can_sleep_mode']],
+    ['fără contact și fără nimic: credem adaptorul', {}, stari, true, ['_sf_can_sleep_mode'], ['_sf_clutch', '_sf_handbrake']],
+    ['contactul luat bate o turație rămasă', { ignition: 0, can_engine_rpm: 900 }, stari, true, ['_sf_can_sleep_mode'], ['_sf_clutch']],
+    ['adaptorul treaz: nu se ascunde nimic', { ignition: 0 }, Object.assign({}, stari, { _sf_can_sleep_mode: false }), false, ['_sf_clutch', '_sf_handbrake', '_sf_footbrake'], ['_sf_can_sleep_mode']],
+  ];
+  const chei = (b) => [].concat(b.stare, b.martori, b.deschis, b.active).map((x) => x.f.key);
+  const rau = [];
+  CAZURI.forEach(([nume, aparat, steaguri, repaus, da, nu]) => {
+    const tot = Object.assign({}, aparat, steaguri);
+    const rez = { server: cat.benzi(tot), pagina: WEB ? WEB.benzi(tot) : null, telefon: TEL ? TEL.canBenzi(catTel, steaguri, aparat) : null };
+    Object.entries(rez).forEach(([unde, b]) => {
+      if (!b) { rau.push(nume + ' / ' + unde + ': nu rulează'); return; }
+      const k = chei(b);
+      if (b.repaus !== repaus) rau.push(nume + ' / ' + unde + ': repaus ' + b.repaus);
+      da.forEach((x) => { if (k.indexOf(x) < 0) rau.push(nume + ' / ' + unde + ': lipsește ' + x); });
+      nu.forEach((x) => { if (k.indexOf(x) >= 0) rau.push(nume + ' / ' + unde + ': apare ' + x); });
+    });
+    if (rez.pagina && rez.telefon && JSON.stringify(chei(rez.pagina)) !== JSON.stringify(chei(rez.telefon))) rau.push(nume + ': pagina și telefonul așază altfel');
+  });
+  T('cele ' + CAZURI.length + ' cazuri dau același lucru pe server, în pagină și pe telefon', !rau.length, rau.join(' | '));
+
+  T('pagina scrie nota de repaus (textul serverului, scăpat)', /if \(b\.repaus && cat\.repaus && cat\.repaus\.text\) out \+= '<div class="cfb-note"><i class="fas fa-moon"><\/i> ' \+ _usEsc\(cat\.repaus\.text\)/.test(src));
+  T('telefonul scrie aceeași notă și dă regulii valorile aparatului', /b\.repaus && cat\.repaus && cat\.repaus\.text && <div class="cfm-note">/.test(compTxt)
+    && /canBenzi\(cat, flat, io\)/.test(compTxt) && /canBenzi\(cat, flat, io\)/.test(ttTxt));
 }
 
 console.log('\n──────────────────────────────');

@@ -25,7 +25,7 @@ export function CanTellTales({ io }: { io: any }) {
   const areStari = cat.flags.some((f) => flat[f.key] !== undefined && flat[f.key] !== null);
   if (!areStari) return null;              // mașina nu trimite stări → nu desenăm o bandă goală
 
-  const b = canBenzi(cat, flat);
+  const b = canBenzi(cat, flat, io);
   // Ordinea contează: întâi ce e în neregulă, apoi ce e deschis, apoi starea. Așa cade ochiul.
   const lista: Banda[] = [...b.martori, ...b.deschis, ...b.stare];
   if (!lista.length) return null;
