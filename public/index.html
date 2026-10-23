@@ -17281,15 +17281,15 @@ const pozitii = await r.json();</code></pre>
         camp(b, 'Te sunăm sau îți scriem la', null, rc);
         var det = el('div', 'ce-det'); det.appendChild(ic('fa-paperclip')); var dt = el('span'); det.appendChild(dt); b.appendChild(det);
         var err = el('div', 'ce-err'); err.hidden = !S.eroare; err.textContent = S.eroare || ''; b.appendChild(err);
-        function potriveste() {
+        function dupaMasina() {
           var fm = faraMasina();
           campMesaj.firstChild.firstChild.textContent = fm ? 'Ce s-a întâmplat sau ce vrei să ne întrebi' : 'Mesaj pentru echipă';
           campMesaj.firstChild.lastChild.textContent = fm ? '' : ' · dacă vrei';
           campCand.hidden = fm;
           dt.textContent = fm ? (m.dateTrimiseFaraMasina || '') : (m.dateTrimise || '');
         }
-        if (sel) sel.onchange = potriveste;
-        potriveste();
+        if (sel) sel.onchange = dupaMasina;
+        dupaMasina();
         f.appendChild(el('span', 'n', [m.termen, m.laFiecarePas].filter(Boolean).join(' ')));
         var ren = buton('Renunță', 'fa-xmark'); ren.onclick = inchide; f.appendChild(ren);
         var tr = buton('Trimite echipei', 'fa-paper-plane', true);
