@@ -29,7 +29,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/css/app.css?v=6">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
-  <link rel="stylesheet" href="/css/map-tools.css?v=2">
+  <link rel="stylesheet" href="/css/map-tools.css?v=3">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.185.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/" } }
@@ -76,7 +76,7 @@
              Stă în bară, nu în Setări: în verticala noastră, Setările nici nu se văd, deci de acolo
              n-ai avea cum să te întorci. Se desenează doar în conturile noastre. -->
         <div id="vert-comutator" class="vert-com" style="display:none;"></div>
-        <button class="topbar-icon" onclick="openSupport()" title="Suport clienți"><i class="fas fa-headset"></i></button>
+        <button class="topbar-icon" onclick="openSupport()" title="Anunță echipa RA Track"><i class="fas fa-headset"></i></button>
         <button class="topbar-icon" id="theme-toggle" onclick="toggleTheme()" title="Comută tema"><i class="fas fa-moon"></i></button>
         <button class="topbar-icon" onclick="toggleNotifications()" title="Notificări" style="position:relative;">
           <i class="fas fa-bell"></i>
@@ -183,6 +183,7 @@
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('dashboard'); })"><i class="fas fa-chart-line"></i><span>Dashboard platformă</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('costs'); })"><i class="fas fa-wallet"></i><span>Control costuri</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('demoreq'); })"><i class="fas fa-envelope-open-text"></i><span>Cereri demo</span><span id="nav-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('cereri'); })"><i class="fas fa-headset"></i><span>Cereri de la clienți</span><span id="nav-cereri-nr" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;" title="Cereri încă nepreluate"></span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('mail'); })"><i class="fas fa-envelope"></i><span>Mail</span><span class="nav-mail-nr" id="nav-mail-nr" style="display:none;" title="Emailuri necitite"></span></button>
           </div>
         </div>
@@ -390,6 +391,9 @@
         <!-- Info + IO Combined View -->
         <div id="detail-view-info">
           <div class="info-grid" id="detail-info-grid"></div>
+          <!-- „Anunță echipa RA Track" (22.10): ceva nu merge la aparat → cererea către noi, cu datele aparatului puse de server.
+               Doar la clienți (noi n-avem firmă); o mașină care nu transmite devine pe server „Nu transmite". -->
+          <button type="button" class="detail-echipa" id="detail-echipa" onclick="echipaDinFisa()" hidden><i class="fas fa-headset"></i><span>Ceva nu merge la aparat? <b>Anunță echipa RA Track</b></span><i class="fas fa-chevron-right"></i></button>
           <div style="margin-top:16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">
               <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-microchip" style="margin-right:6px;"></i>IO Live</span>
@@ -1720,6 +1724,7 @@
           <button class="aside-item" data-super data-atab="ofertare" onclick="raxAdminTab('ofertare')"><i class="fas fa-tag"></i> Ofertare Live</button>
           <button class="aside-item" data-super data-atab="contracte" onclick="raxAdminTab('contracte')"><i class="fas fa-file-signature"></i> Contracte</button>
           <button class="aside-item" data-super data-atab="demoreq" onclick="raxAdminTab('demoreq')"><i class="fas fa-envelope-open-text"></i> Cereri demo <span id="rax-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>
+          <button class="aside-item" data-super data-atab="cereri" onclick="raxAdminTab('cereri')"><i class="fas fa-headset"></i> Cereri de la clienți</button>
           <button class="aside-item" data-super data-atab="mail" onclick="raxAdminTab('mail')"><i class="fas fa-envelope"></i> Mail</button>
           <div class="aside-grp">Sistem</div>
           <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
@@ -1763,6 +1768,8 @@
           <div id="admin-tab-contracte" style="display:none;"></div>
           <div id="admin-tab-montaj" style="display:none;"></div>
           <div id="admin-tab-demoreq" style="display:none;"></div>
+          <!-- „Cereri de la clienți" (22.10): ce ne trimit clienții din „Anunță echipa RA Track"; doar noi (super-admin). -->
+          <div id="admin-tab-cereri" class="ra-camp" style="display:none;"></div>
           <div id="admin-tab-mail" class="ra-camp" style="display:none;"></div>
       <div id="admin-tab-users" class="ra-camp" style="display:none;">
       <!-- Bara de deasupra listei: căutarea și ordinea stau în HTML (nu se redesenează), ca scrisul din
@@ -3729,7 +3736,7 @@ const pozitii = await r.json();</code></pre>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
   <script src="/js/demo-modules-ui.js?v=2"></script>
-  <script src="/js/map-tools.js?v=7"></script>
+  <script src="/js/map-tools.js?v=8"></script>
   <script src="/js/vehicle-popup.js?v=7"></script>
   <!-- Categoriile de permis + care sunt „profesioniste" — generate de server din license_cats.js.
        Interfața NU ține o listă proprie: adaugi o categorie acolo, apare aici fără altă modificare. -->
@@ -4017,6 +4024,8 @@ const pozitii = await r.json();</code></pre>
       setInterval(refreshNotifBadge, 60000);
       // Panoul Mail (etapa 2): bulina cu emailurile necitite, pe rândul „Mail" — doar la fondatori.
       if (currentUser.role === 'superadmin' && window._mailNumara) { window._mailNumara(); setInterval(window._mailNumara, 120000); }
+      // „Cereri de la clienți" (22.10): bulina cu cererile încă nepreluate — doar la fondatori.
+      if (currentUser.role === 'superadmin' && window._cereriNumara) { window._cereriNumara(); setInterval(window._cereriNumara, 120000); }
       if ('serviceWorker' in navigator) {
         // auto-update: dacă pagina e deja controlată de un SW vechi și apare o versiune nouă, reîncarcă o singură dată
         var __wasControlled = !!navigator.serviceWorker.controller;
@@ -4085,7 +4094,7 @@ const pozitii = await r.json();</code></pre>
       archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices',
       agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport',
       dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare',
-      demoreq: 'admin-tab-demoreq', mail: 'admin-tab-mail'
+      demoreq: 'admin-tab-demoreq', cereri: 'admin-tab-cereri', mail: 'admin-tab-mail'
     };
     // NUMELE secțiunilor — tot o singură listă, și ea. Numele de aici trebuie să fie IDENTIC cu cel
     // scris pe rândul din meniul din stânga: e același loc, deci același nume. Erau scrise separat și
@@ -4099,7 +4108,7 @@ const pozitii = await r.json();</code></pre>
       archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele',
       agents: 'RA Insight · control', tahograf: 'Tahograf', etransport: 'e-Transport',
       dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live',
-      demoreq: 'Cereri demo', mail: 'Mail'
+      demoreq: 'Cereri demo', cereri: 'Cereri de la clienți', mail: 'Mail'
     };
     // Ascunde TOATE secțiunile, lăsând-o deschisă doar pe cea cerută (sau niciuna, cu `null`).
     function _raxAscundeTaburile(deschisId) {
@@ -4183,6 +4192,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadOfertare) window.raxLoadOfertare();
       } else if (name === 'demoreq') {
         if (window.raxLoadDemoReq) window.raxLoadDemoReq();
+      } else if (name === 'cereri') {
+        if (window.raxLoadCereri) window.raxLoadCereri();
       } else if (name === 'mail') {
         if (window.raxLoadMail) window.raxLoadMail();
       }
@@ -11385,7 +11396,7 @@ const pozitii = await r.json();</code></pre>
     // Problemele le găsește serverul (probleme.js): titlul, dovada și butoanele spre locul exact. Pagina doar le desenează,
     // cu textContent. Roșu = problemă reală (viteză, senzor blocat); galben = de știut (eroare de GPS, consum ciudat).
     window._chatProbleme = function (lista) {
-      var box = document.createElement('div'); box.className = 'chat-probs';
+      var box = document.createElement('div'); box.className = 'chat-probs', echipa = [];
       (Array.isArray(lista) ? lista : []).forEach(function (p) {
         var c = document.createElement('div'); c.className = 'chat-prob ' + (p.grav === 'rosu' ? 'rosu' : 'galben');
         var h = document.createElement('div'); h.className = 'chat-prob-t';
@@ -11397,20 +11408,37 @@ const pozitii = await r.json();</code></pre>
           var r = document.createElement('div'); r.className = 'chat-prob-b';
           bs.forEach(function (b, i) {
             var x = document.createElement('button'); x.type = 'button'; x.className = 'chat-pas' + (i === 0 ? ' chat-rap-dg' : '');
-            x.innerHTML = '<i class="fas ' + (b.fel === 'traseu' ? 'fa-map-location-dot' : (b.fel === 'fisa' ? 'fa-gauge-high' : 'fa-file-lines')) + '"></i>';
+            x.innerHTML = '<i class="fas ' + ({ traseu: 'fa-map-location-dot', harta: 'fa-map-location-dot', fisa: 'fa-gauge-high', echipa: 'fa-headset' }[b.fel] || 'fa-file-lines') + '"></i>';
             x.appendChild(document.createTextNode(String(b.text)));
-            x.onclick = function () { window.insightProblemaButon(b); };
+            x.onclick = function () { window.insightProblemaButon(b, p, { b: b, x: x, c: c }); };
             r.appendChild(x);
+            if (b.fel === 'echipa' && b.imei) echipa.push({ b: b, x: x, c: c });
           });
           c.appendChild(r);
         }
+        // Nota de sub butoane (serverul o scrie: „Aparatul e treaba noastră…"; după trimitere, „Primești un mesaj la fiecare pas").
+        if (p.nota) { var n = document.createElement('div'); n.className = 'chat-prob-n'; n.textContent = String(p.nota); c.appendChild(n); }
         box.appendChild(c);
       });
+      // O mașină cu o cerere deschisă pe aceeași problemă: în locul butonului, „Echipa RA Track se ocupă · cererea nr. …".
+      if (echipa.length && typeof window._echipaSeOcupa === 'function') window._echipaSeOcupa(echipa);
       return box;
     };
-    // Unde duce un buton dintr-o problemă: Traseu la minutul acela (cu punctul marcat), fișa mașinii (fila cerută), un raport.
-    window.insightProblemaButon = function (b) {
+    // Unde duce un buton dintr-o problemă: Traseu la minutul acela (cu punctul marcat), fișa mașinii (fila cerută), un raport,
+    // harta pe mașină, fereastra „Anunță echipa RA Track" (cu ce a scris aplicația în casetă; după trimitere, caseta spune
+    // „Echipa RA Track se ocupă").
+    window.insightProblemaButon = function (b, p, it) {
       if (!b) return;
+      if (b.fel === 'echipa') {
+        if (typeof window.echipaDeschide !== 'function') return;
+        return window.echipaDeschide({ imei: b.imei, problema: b.problema, ce: b.problema === 'consum' && p && p.dovada ? String(p.dovada) : '', sursa: 'insight',
+          dupa: function (j) { if (it && j && j.seOcupa) window._echipaInlocuieste(it, j.seOcupa, j.notaDupa); } });
+      }
+      if (b.fel === 'harta') {
+        showView('localizare');
+        setTimeout(function () { try { selectDevice(String(b.imei)); } catch (e) {} }, 150);
+        return;
+      }
       if (b.fel === 'traseu') return window.insightLaTraseu(b);
       if (b.fel === 'fisa') {
         Promise.resolve(openEditModal(String(b.imei))).then(function () {
@@ -14074,7 +14102,11 @@ const pozitii = await r.json();</code></pre>
         const isAparateNoi = (n.type === 'aparate_noi'), isMontajFact = (n.type === 'montaj_de_facturat');
         // Planurile de încărcare (12.10): șoferul deschide planul primit; dispecerul, planul în simulator.
         const isPlan = /^plan_(incarcare|incarcat|problema)$/.test(n.type);
-        const clickAttr = isPlan
+        // „Anunță echipa RA Track" (22.10): noi → „Cereri de la clienți"; clientul → „Cererile tale".
+        const isCerere = /^cerere_(echipa|preluata|programata|rezolvata)$/.test(n.type);
+        const clickAttr = isCerere
+          ? `onclick="notifCerere(${Number(n.id)})" title="Deschide cererea"`
+          : isPlan
           ? `onclick="notifPlan(${Number(n.id)}, '${n.type}')" title="Deschide planul de încărcare"`
           : isAparateNoi
           ? `onclick="notifAparateNoi(${Number(n.id)})" title="Deschide Dispozitive → Neasignate, cu aparatele bifate"`
@@ -14118,6 +14150,12 @@ const pozitii = await r.json();</code></pre>
       closeNotifications();
       if (typeof showView === 'function') showView('administrare');
       setTimeout(function () { if (window.raxDevDeschideNeasignate) raxDevDeschideNeasignate({ imeis: d.imeis || [], firma: d.company_id != null ? d.company_id : null }); }, 180);
+    }
+    function notifCerere(id) {
+      const d = _notifDate[id] || {};
+      closeNotifications();
+      if (d.pentru === 'noi') { goSistem('cereri'); return; }
+      if (window.echipaDeschide) window.echipaDeschide({ fila: 'lista' });
     }
     function notifPlan(id, tip) {
       const d = _notifDate[id] || {};
@@ -14234,6 +14272,7 @@ const pozitii = await r.json();</code></pre>
     async function openNotifDetail(id) {
       // „Email nou" (panoul Mail, etapa 2) n-are hartă: duce în Mail → Primite.
       if (_notifDate[id] && _notifDate[id].mail) { closeNotifications(); if (window.raxMailFila) window.raxMailFila('primite', true); goSistem('mail'); return; }
+      if (_notifDate[id] && _notifDate[id].cerere) { notifCerere(id); return; }
       var myReq = ++_notifDetailSeq; // captează deschiderea curentă — răspunsurile OSM întârziate de la o deschidere anterioară se ignoră
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
@@ -14538,6 +14577,10 @@ const pozitii = await r.json();</code></pre>
       if (notif && notif.type === 'report_ready') _repBadgeDone(notif);
       else if (notif && notif.type === 'report_error') _repBadgeError(notif);
       else if (notif && notif.type === 'mail_nou' && window._mailNumara) window._mailNumara();
+      else if (notif && notif.type === 'cerere_echipa' && window._cereriNumara) {
+        window._cereriNumara();
+        var tc = document.getElementById('admin-tab-cereri'); if (tc && tc.style.display !== 'none' && window.raxLoadCereri) window.raxLoadCereri();
+      }
     }
 
     // ═══ Preferințe notificări per utilizator + Web Push ═══
@@ -16968,6 +17011,7 @@ const pozitii = await r.json();</code></pre>
       }
       detailPanelImei = imei;
       locButon();
+      if (typeof window.echipaFisaButon === 'function') window.echipaFisaButon();
       const panel = document.getElementById('detail-panel');
       panel.classList.add('open');
       panel.style.transform = '';
@@ -17129,6 +17173,202 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); }
     }
     // ── sfârșit „Distribuie locația” ──
+    // ── începe „Anunță echipa RA Track" (capitolul 4 al machetei din 21.10; Alin, 22.10: „da") ──
+    // Fereastra prin care un client ne anunță (macheta E2 / E3 / E3b): din caseta din RA Insight („Anunță echipa RA Track"), din
+    // fișa mașinii („Ceva nu merge la aparat?") și din iconița cu căști din bara de sus (`openSupport`). O SINGURĂ fereastră și o
+    // singură cerere (POST /api/cereri-echipa); termenul, ce se trimite, pașii și „Cererile tale" vin de la server
+    // (cereri_echipa.js) și se pun ca TEXT. Datele aparatului le pune serverul; aici nu se scrie nicio cifră tehnică.
+    (function () {
+      var S = { meta: null, o: {}, fila: 'noua', cand: [], trimisa: null, eroare: '' };
+      function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+      function ic(fa) { var i = document.createElement('i'); i.className = 'fas ' + fa; i.setAttribute('aria-hidden', 'true'); return i; }
+      function buton(text, fa, prim) { var b = el('button', 'chat-pas' + (prim ? ' chat-rap-dg' : '')); b.type = 'button'; b.appendChild(ic(fa)); b.appendChild(document.createTextNode(text)); return b; }
+      async function cere(m, u, b) {
+        var r = await fetch(u, { method: m, credentials: 'same-origin', headers: b ? { 'Content-Type': 'application/json' } : {}, body: b ? JSON.stringify(b) : undefined });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        return { s: r.status, j: j };
+      }
+      function masina(imei) {
+        var d = (typeof devices !== 'undefined' && devices.get) ? devices.get(String(imei)) : null;
+        return { nr: (d && (d.plate || d.name)) || 'Mașina', nume: d && d.plate && d.name && String(d.name).toUpperCase() !== String(d.plate).toUpperCase() ? d.name : '' };
+      }
+      function fereastra() {
+        var o = document.getElementById('ce-ov');
+        if (o) return o;
+        o = el('div', 'ce-ov'); o.id = 'ce-ov'; o.hidden = true;
+        var w = el('div', 'ce-win'); w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-labelledby', 'ce-tit');
+        var h = el('div', 'ce-h'); var s = el('span', 'ic'); s.appendChild(ic('fa-headset')); h.appendChild(s);
+        var t = el('b', null, 'Anunță echipa RA Track'); t.id = 'ce-tit'; h.appendChild(t);
+        var x = el('button', 'ce-x'); x.type = 'button'; x.setAttribute('aria-label', 'Închide'); x.appendChild(ic('fa-xmark')); x.onclick = inchide; h.appendChild(x);
+        w.appendChild(h);
+        var tb = el('div', 'ce-tabs'); tb.id = 'ce-tabs'; w.appendChild(tb);
+        var b = el('div', 'ce-b'); b.id = 'ce-b'; w.appendChild(b);
+        var f = el('div', 'ce-f'); f.id = 'ce-f'; w.appendChild(f);
+        o.appendChild(w);
+        o.addEventListener('click', function (e) { if (e.target === o) inchide(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !o.hidden) inchide(); });
+        document.body.appendChild(o);
+        return o;
+      }
+      function inchide() { var o = document.getElementById('ce-ov'); if (o) o.hidden = true; }
+      async function deschide(o) {
+        S.o = o || {}; S.trimisa = null; S.cand = []; S.eroare = ''; S.fila = S.o.fila || 'noua';
+        var w = fereastra(); w.hidden = false;
+        var b = document.getElementById('ce-b'); b.textContent = ''; b.appendChild(el('div', 'ce-gri', 'Se încarcă…'));
+        document.getElementById('ce-f').textContent = ''; document.getElementById('ce-tabs').textContent = '';
+        var r = await cere('GET', '/api/cereri-echipa');
+        S.meta = r.s === 200 ? r.j : { eroare: (r.j && r.j.error) || 'Fereastra nu s-a putut deschide. Încearcă din nou peste un minut.' };
+        deseneaza();
+      }
+      function deseneaza() {
+        var m = S.meta || {}, tb = document.getElementById('ce-tabs'), b = document.getElementById('ce-b'), f = document.getElementById('ce-f');
+        tb.textContent = ''; b.textContent = ''; f.textContent = '';
+        if (m.eroare) { b.appendChild(el('div', 'ce-err', m.eroare)); var z = buton('Închide', 'fa-xmark'); z.onclick = inchide; f.appendChild(z); return; }
+        if (m.platforma) {
+          b.appendChild(el('div', 'ce-det', 'Cererile le trimit clienții. Pe ale lor le vezi în Business › „Cereri de la clienți”.'));
+          var d0 = buton('Deschide „Cereri de la clienți”', 'fa-headset', true); d0.onclick = function () { inchide(); if (typeof goSistem === 'function') goSistem('cereri'); }; f.appendChild(d0);
+          return;
+        }
+        [['noua', 'Cerere nouă'], ['lista', 'Cererile tale · ' + ((m.cereri || []).length)]].forEach(function (x) {
+          var t = el('button', 'ce-tab' + (S.fila === x[0] ? ' on' : ''), x[1]); t.type = 'button';
+          t.onclick = function () { S.fila = x[0]; if (x[0] === 'noua') S.trimisa = null; deseneaza(); };
+          tb.appendChild(t);
+        });
+        if (S.fila === 'lista') return lista(b, f);
+        if (S.trimisa) return trimisa(b, f);
+        formular(b, f);
+      }
+      function camp(b, eticheta, sub, nod) {
+        var w = el('div', 'ce-camp'); var l = el('div', 'ce-l', eticheta);
+        if (sub) l.appendChild(el('span', 'ce-l2', ' · ' + sub));
+        w.appendChild(l); w.appendChild(nod); b.appendChild(w); return w;
+      }
+      function formular(b, f) {
+        var m = S.meta || {}, o = S.o;
+        var imeiAles = o.imei ? String(o.imei) : '';
+        var sel = null;
+        if (imeiAles) {
+          var ms = masina(imeiAles), ro = el('div', 'ce-ro'); ro.appendChild(el('b', null, ms.nr)); if (ms.nume) ro.appendChild(document.createTextNode(' · ' + ms.nume));
+          camp(b, 'Mașina', null, ro);
+        } else {
+          sel = el('select', 'ce-in ce-lung'); sel.setAttribute('aria-label', 'Mașina');
+          var o0 = el('option', null, 'Fără mașină — o întrebare pentru echipă'); o0.value = ''; sel.appendChild(o0);
+          var lista = (typeof devices !== 'undefined' && devices.forEach) ? Array.from(devices.values ? devices.values() : []) : [];
+          lista.filter(function (d) { return d && d.imei; }).sort(function (a, c) { return String(a.plate || a.name || '').localeCompare(String(c.plate || c.name || ''), 'ro'); }).forEach(function (d) {
+            var op = el('option', null, (d.plate || d.name || d.imei) + (d.plate && d.name && String(d.name).toUpperCase() !== String(d.plate).toUpperCase() ? ' · ' + d.name : '')); op.value = String(d.imei); sel.appendChild(op);
+          });
+          camp(b, 'Mașina', 'dacă e despre o mașină', sel);
+        }
+        if (o.ce) camp(b, 'Ce s-a întâmplat', 'scris de aplicație', el('div', 'ce-ro', String(o.ce)));
+        var ta = el('textarea', 'ce-ta'); ta.rows = 3; ta.maxLength = 2000; ta.id = 'ce-mesaj';
+        var faraMasina = function () { return !imeiAles && !(sel && sel.value); };
+        var campMesaj = camp(b, 'Mesaj pentru echipă', 'dacă vrei', ta);
+        // Mașina și „când poate veni cineva" — doar cu o mașină aleasă.
+        var chips = el('div', 'ce-chips');
+        (m.cand || []).forEach(function (c) {
+          var ch = el('button', 'ce-chip' + (S.cand.indexOf(c.k) >= 0 ? ' on' : ''), c.t); ch.type = 'button';
+          ch.onclick = function () { var i = S.cand.indexOf(c.k); if (i >= 0) S.cand.splice(i, 1); else S.cand.push(c.k); ch.classList.toggle('on', i < 0); };
+          chips.appendChild(ch);
+        });
+        var cw = el('div'); cw.appendChild(chips);
+        var r2 = el('div', 'ce-r2'); r2.appendChild(el('span', 'ce-l3', 'Unde stă de obicei'));
+        var unde = el('input', 'ce-in ce-lung'); unde.maxLength = 200; unde.id = 'ce-unde'; r2.appendChild(unde); cw.appendChild(r2);
+        var campCand = camp(b, 'Când poate veni cineva la mașină', 'dacă e nevoie', cw);
+        var k = m.contact || {}, rc = el('div', 'ce-r2 ce-r0');
+        rc.appendChild(el('b', null, k.nume || ''));
+        var tel = el('input', 'ce-in ce-tel'); tel.type = 'tel'; tel.maxLength = 40; tel.value = k.telefon || ''; tel.placeholder = 'telefon'; tel.id = 'ce-tel'; rc.appendChild(tel);
+        if (k.email) rc.appendChild(el('span', 'ce-gri', k.email));
+        camp(b, 'Te sunăm sau îți scriem la', null, rc);
+        var det = el('div', 'ce-det'); det.appendChild(ic('fa-paperclip')); var dt = el('span'); det.appendChild(dt); b.appendChild(det);
+        var err = el('div', 'ce-err'); err.hidden = !S.eroare; err.textContent = S.eroare || ''; b.appendChild(err);
+        function potriveste() {
+          var fm = faraMasina();
+          campMesaj.firstChild.firstChild.textContent = fm ? 'Ce s-a întâmplat sau ce vrei să ne întrebi' : 'Mesaj pentru echipă';
+          campMesaj.firstChild.lastChild.textContent = fm ? '' : ' · dacă vrei';
+          campCand.hidden = fm;
+          dt.textContent = fm ? (m.dateTrimiseFaraMasina || '') : (m.dateTrimise || '');
+        }
+        if (sel) sel.onchange = potriveste;
+        potriveste();
+        f.appendChild(el('span', 'n', [m.termen, m.laFiecarePas].filter(Boolean).join(' ')));
+        var ren = buton('Renunță', 'fa-xmark'); ren.onclick = inchide; f.appendChild(ren);
+        var tr = buton('Trimite echipei', 'fa-paper-plane', true);
+        tr.onclick = async function () {
+          var imei = imeiAles || (sel && sel.value) || '';
+          tr.disabled = true;
+          var r = await cere('POST', '/api/cereri-echipa', { problema: o.problema || (imei ? 'aparat' : 'alta'), imei: imei || null, ce: o.ce || '', mesaj: ta.value,
+            cand: faraMasina() ? [] : S.cand, unde: faraMasina() ? '' : unde.value, telefon: tel.value, sursa: o.sursa || 'suport' });
+          tr.disabled = false;
+          if (r.s === 200 || (r.s === 409 && r.j && r.j.deja)) {
+            S.trimisa = r.j; S.eroare = '';
+            if (r.s === 200 && r.j.cerere) (S.meta.cereri = S.meta.cereri || []).unshift(r.j.cerere);
+            if (typeof o.dupa === 'function') { try { o.dupa(r.j); } catch (e) {} }
+            deseneaza();
+            return;
+          }
+          err.hidden = false; err.textContent = (r.j && r.j.error) || 'Cererea nu s-a putut trimite. Încearcă din nou.';
+        };
+        f.appendChild(tr);
+      }
+      function pasi(lista) {
+        var tl = el('div', 'ce-tl');
+        (lista || []).forEach(function (p) {
+          var r = el('div', 'ce-tl-r' + (p.gata ? ' gata' : '') + (p.sarit ? ' sarit' : ''));
+          var d = el('span', 'ce-tl-d'); if (p.gata) d.appendChild(ic('fa-check')); r.appendChild(d);
+          var t = el('div'); t.appendChild(el('div', 'ce-tl-t', p.eticheta)); t.appendChild(el('div', 'ce-tl-s', p.detaliu || '')); r.appendChild(t);
+          tl.appendChild(r);
+        });
+        return tl;
+      }
+      function trimisa(b, f) {
+        var j = S.trimisa || {}, c = j.cerere || {};
+        var ok = el('div', 'ce-trimis'); ok.appendChild(ic(j.deja ? 'fa-headset' : 'fa-circle-check'));
+        var t = el('div'); t.appendChild(el('b', null, j.deja ? (j.error || '') : ((j.confirmare || {}).titlu || '')));
+        t.appendChild(el('div', 'ce-gri', j.deja ? (j.seOcupa || '') : ((j.confirmare || {}).sub || ''))); ok.appendChild(t);
+        b.appendChild(ok);
+        b.appendChild(pasi(c.pasi));
+        b.appendChild(el('div', 'ce-det', j.nota || (S.meta || {}).notaTrimisa || ''));
+        f.appendChild(el('span', 'n'));
+        var z = buton('Închide', 'fa-check', true); z.onclick = inchide; f.appendChild(z);
+      }
+      function lista(b, f) {
+        var m = S.meta || {}, l = m.cereri || [];
+        if (!l.length) b.appendChild(el('div', 'ce-gri', 'Nicio cerere încă.'));
+        l.forEach(function (c) {
+          var w = el('div', 'ce-cr');
+          var h = el('div', 'ce-cr-h'); h.appendChild(el('b', null, c.cap)); h.appendChild(el('span', 'ce-st ' + (c.stare || 'trimisa'), c.eticheta)); w.appendChild(h);
+          w.appendChild(el('div', null, c.titlu));
+          w.appendChild(el('div', 'ce-gri', c.detaliu));
+          if (c.deAltcineva) w.appendChild(el('div', 'ce-gri', c.deAltcineva));
+          b.appendChild(w);
+        });
+        f.appendChild(el('span', 'n', m.admin ? (m.notaLista || '') : ''));
+        var n = buton('Cerere nouă', 'fa-plus', true); n.onclick = function () { S.fila = 'noua'; S.trimisa = null; S.o = { sursa: 'suport' }; deseneaza(); }; f.appendChild(n);
+      }
+      // În caseta din discuție, după trimitere (macheta E3c): în locul butonului, „Echipa RA Track se ocupă · cererea nr. …".
+      window._echipaInlocuieste = function (it, seOcupa, notaDupa) {
+        if (!it || !it.x || !it.x.parentNode) return;
+        var s = el('span', 'chat-seocupa'); s.appendChild(ic('fa-headset')); s.appendChild(document.createTextNode(String(seOcupa || '')));
+        it.x.parentNode.replaceChild(s, it.x);
+        var n = it.c && it.c.querySelector('.chat-prob-n'); if (n && notaDupa) n.textContent = String(notaDupa);
+      };
+      // Casetele desenate cu butonul: dacă mașina are deja o cerere deschisă pe aceeași problemă, butonul pleacă (o singură cerere).
+      window._echipaSeOcupa = async function (lista) {
+        var imeis = []; (lista || []).forEach(function (x) { if (imeis.indexOf(String(x.b.imei)) < 0) imeis.push(String(x.b.imei)); });
+        if (!imeis.length) return;
+        var r = null; try { r = await cere('GET', '/api/cereri-echipa/deschise?imeis=' + encodeURIComponent(imeis.join(','))); } catch (e) {}
+        if (!r || r.s !== 200) return;
+        (r.j.deschise || []).forEach(function (d) {
+          lista.filter(function (x) { return String(x.b.imei) === String(d.imei) && x.b.problema === d.problema; }).forEach(function (x) { window._echipaInlocuieste(x, d.seOcupa, r.j.notaDupa); });
+        });
+      };
+      window.echipaDeschide = deschide;
+      window.openSupport = function () { deschide({ sursa: 'suport' }); };
+      // Fișa mașinii: „Ceva nu merge la aparat? Anunță echipa RA Track" (o mașină care nu transmite o face serverul „nu transmite").
+      window.echipaDinFisa = function () { if (typeof detailPanelImei !== 'undefined' && detailPanelImei) deschide({ imei: detailPanelImei, problema: 'aparat', sursa: 'fisa' }); };
+      window.echipaFisaButon = function () { var b = document.getElementById('detail-echipa'); if (b) b.hidden = !(window.currentUser && !window.currentUser.isSuper); };
+    })();
+    // ── sfârșit „Anunță echipa RA Track" ──
 
     let detailRoutesData = null;
 
@@ -25161,6 +25401,12 @@ const pozitii = await r.json();</code></pre>
         if (part && String(l.partener_id || '') !== part) return;
         (peZi[l.zi] = peZi[l.zi] || []).push(l);
       });
+      // Intervențiile din „Cereri de la clienți" (22.10): o iconiță cu căști, mașina clientului; un clic duce la cerere.
+      var intZi = {};
+      (d.interventii || []).forEach(function (x) {
+        if (part && String(x.partener_id || '') !== part) return;
+        (intZi[x.zi] = intZi[x.zi] || []).push(x);
+      });
       var gol = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7, zile = new Date(Date.UTC(y, m, 0)).getUTCDate();
       var grila = MJC_ZILE.map(function (z) { return '<div class="mjc-zs">' + z + '</div>'; }).join('');
       for (var i = 0; i < gol; i++) grila += '<div class="mjc-zi gol" aria-hidden="true"></div>';
@@ -25170,6 +25416,9 @@ const pozitii = await r.json();</code></pre>
           var titlu = (l.company_name || '') + ' · ' + _mjcMasini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + ((d.stari || {})[l.status] || l.status);
           return '<button type="button" class="mjc-l ' + _mjcClasa(l) + '" title="' + esc(titlu) + '" onclick="event.stopPropagation();raxMjCalLucrare(' + l.id + ')">' +
             '<b>' + l.masini + '</b> <span class="mjc-cl">' + esc(l.company_name || '') + '</span></button>';
+        }).join('') + (intZi[zi] || []).map(function (x) {
+          return '<button type="button" class="mjc-l mjc-int' + (x.status === 'executat' ? ' gata' : '') + '" title="' + esc(x.text + (x.interval ? ' · ' + x.interval : '') + ' · ' + (x.partener_nume || 'instalator neales')) + '"' +
+            ' onclick="event.stopPropagation();raxMjCalInterventie(' + Number(x.cerere_id) + ',' + (x.status === 'executat') + ')"><i class="fas fa-headset" aria-hidden="true"></i> <span class="mjc-cl">' + esc(x.vehicul || x.company_name || '') + '</span></button>';
         }).join('');
         grila += '<div class="mjc-zi' + (wk ? ' wk' : '') + (zi === d.azi ? ' azi' : '') + '" role="button" tabindex="0" aria-label="Programează pe ' + _mjcZiRo(zi) + '"' +
           ' onclick="raxMjCalZi(\'' + zi + '\')" onkeydown="if(event.key===\'Enter\')raxMjCalZi(\'' + zi + '\')"><span class="mjc-nr">' + zz + '</span>' + ch + '</div>';
@@ -25184,7 +25433,7 @@ const pozitii = await r.json();</code></pre>
           '<button class="rax-btn mjc-sag" onclick="raxMjCalLuna(1)" aria-label="Luna viitoare" title="Luna viitoare">›</button>' +
           '<button class="rax-btn" onclick="raxMjCalLuna(0)">Azi</button>' +
           '<label class="mjc-f"><span>Instalator</span><select class="rax-field" onchange="raxMjCalPart(this.value)">' + optPart + '</select></label></div>' +
-        '<div class="mjc-leg"><span class="mjc-l mjc-ok"><b>10</b> confirmat</span><span class="mjc-l mjc-conf"><b>10</b> de confirmat</span><span class="mjc-l mjc-mont"><b>10</b> montat</span><span>cifra = câte mașini</span></div>' +
+        '<div class="mjc-leg"><span class="mjc-l mjc-ok"><b>10</b> confirmat</span><span class="mjc-l mjc-conf"><b>10</b> de confirmat</span><span class="mjc-l mjc-mont"><b>10</b> montat</span><span class="mjc-l mjc-int"><i class="fas fa-headset" aria-hidden="true"></i> intervenție</span><span>cifra = câte mașini</span></div>' +
         '<div class="mjc-grila">' + grila + '</div></section>';
       return '<div class="mjc-rand2">' + cal + _mjcDeProgramatHtml() + '</div>' + _mjcLucrariCalHtml() + _mjcFereastraHtml();
     }
@@ -25263,7 +25512,14 @@ const pozitii = await r.json();</code></pre>
     function _mjcZiHtml() {
       var d = _mjcDate(), f = _raxMj.cal.form || {};
       var aici = f.zi ? (d.lucrari || []).filter(function (l) { return l.zi === f.zi; }) : [];
+      var interv = f.zi ? (d.interventii || []).filter(function (x) { return x.zi === f.zi; }) : [];
       var h = '';
+      if (interv.length) {
+        h += '<div class="mjc-sect">Intervenții în ziua asta</div>' + interv.map(function (x) {
+          return '<button type="button" class="mjc-zi-rand" onclick="raxMjCalInterventie(' + Number(x.cerere_id) + ',' + (x.status === 'executat') + ')"><span class="mjc-l mjc-int"><i class="fas fa-headset" aria-hidden="true"></i></span>' +
+            '<span class="mjc-zi-rand-t"><b>' + esc(x.company_name || '—') + '</b><span class="mjc-zi-rand-s">' + esc([x.text, x.interval, x.partener_nume || 'instalator neales'].filter(Boolean).join(' · ')) + '</span></span><i class="fas fa-chevron-right" aria-hidden="true"></i></button>';
+        }).join('');
+      }
       if (aici.length) {
         h += '<div class="mjc-sect">Deja în ziua asta</div>' + aici.map(function (l) {
           return '<button type="button" class="mjc-zi-rand" onclick="raxMjCalLucrare(' + l.id + ')"><span class="mjc-l ' + _mjcClasa(l) + '"><b>' + l.masini + '</b></span>' +
@@ -25407,6 +25663,12 @@ const pozitii = await r.json();</code></pre>
       await _mjcDupa(luna);
     };
     window.raxMjCalPart = function (v) { _raxMj.cal.part = v || ''; _mjDeseneaza(); };
+    // O intervenție din calendar → cererea ei, în „Cereri de la clienți" (rezolvată = în „Toate").
+    window.raxMjCalInterventie = function (id, gata) {
+      _raxMj.cal.form = null; _raxMj.cal.sel = null; _raxMj.cal.anul = null; _raxMj.cal.reprog = null; _raxMj.cal.dinZi = null;
+      _cer.fel = gata ? 'toate' : 'deschise'; _cer.spre = Number(id) || null; _cer.form = {};
+      goSistem('cereri');
+    };
     window.raxMjCalZi = function (zi) {
       var f = _raxMj.cal.form;
       _raxMj.cal.sel = null; _raxMj.cal.anul = null; _raxMj.cal.reprog = null; _raxMj.cal.dinZi = null;
@@ -29534,6 +29796,123 @@ const pozitii = await r.json();</code></pre>
       try { await fetch('/api/admin/demo-requests/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxToast('Ștearsă', 'success'); } catch (e) {}
       raxLoadDemoReq();
     };
+    // ── începe „Cereri de la clienți" (macheta E4 din 21.10; Alin, 22.10: cererile le preiau amândoi, cu „Preiau") ──────────
+    // Lista NOASTRĂ: ce a trimis clientul, cine și cum îl găsim, ce s-a întâmplat (scris de aplicație), datele aparatului (doar
+    // pentru noi), „Pare rezolvată singură", programarea și ce i-am scris. Toate textele le scrie serverul (cereri_echipa.pentruNoi),
+    // iar butoanele vin tot de la el, după stare; pagina doar le pune, prin esc(). Fiecare trecere se face o dată: a doua apăsare
+    // (a celuilalt fondator) primește „Cererea a fost deja preluată (…)".
+    var _cer = { fel: 'deschise', d: null, form: {} };
+    window.raxCereriFel = function (f) { _cer.fel = f || 'deschise'; _cer.form = {}; raxLoadCereri(); };
+    // Bulina din meniu = cererile încă nepreluate (cele „noi").
+    window._cereriNumara = async function () {
+      var j = null;
+      try { j = await fetch('/api/admin/cereri-echipa/numar', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (j) _cereriBulina(j.noi);
+    };
+    function _cereriBulina(n) {
+      var b = $('nav-cereri-nr'); if (!b) return;
+      b.style.display = n ? 'inline-block' : 'none'; b.textContent = String(n || '');
+    }
+    window.raxLoadCereri = async function () {
+      var box = $('admin-tab-cereri'); if (!box) return;
+      if (!_cer.d) box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var d = null;
+      try { d = await fetch('/api/admin/cereri-echipa?fel=' + encodeURIComponent(_cer.fel), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!d) { box.innerHTML = '<div class="rax-co-meta" style="padding:16px;">Lista nu s-a putut încărca. Încearcă din nou peste un minut.</div>'; return; }
+      _cer.d = d; _cereriBulina(d.noi);
+      _cereriDeseneaza();
+    };
+    function _cereriDeseneaza() {
+      var box = $('admin-tab-cereri'), d = _cer.d; if (!box || !d) return;
+      var tabs = [['deschise', 'Deschise' + (d.deschise ? ' · ' + d.deschise : '')], ['rezolvate', 'Rezolvate'], ['toate', 'Toate']].map(function (t) {
+        return '<button class="btn-sm' + (_cer.fel === t[0] ? ' btn-primary' : '') + '" onclick="raxCereriFel(\'' + t[0] + '\')">' + esc(t[1]) + '</button>';
+      }).join(' ');
+      var n = (d.cereri || []).length;
+      var head = '<div class="cer-head">' + tabs + '<span class="cer-cate">' + n + (n === 1 ? ' cerere' : _raxDe(n) + 'cereri')
+        + (d.primaDeschisa ? ' · prima deschisă: ' + esc(d.primaDeschisa) : '') + '</span></div>';
+      if (!n) { box.innerHTML = head + '<div class="rax-co-meta" style="padding:16px;">' + (_cer.fel === 'deschise' ? 'Nicio cerere deschisă.' : 'Nicio cerere.') + '</div>'; return; }
+      box.innerHTML = head + d.cereri.map(_cereriRand).join('');
+      // Venit din calendar: cererea intervenției, la vedere.
+      if (_cer.spre) { var el = $('cer-' + _cer.spre); _cer.spre = null; if (el) { el.classList.add('cer-arat'); el.scrollIntoView({ block: 'center' }); } }
+    }
+    function _cereriRand(c) {
+      var t = c.tag || {};
+      var meta = [c.cine ? esc(c.cine) : '', c.telefon ? '<a href="tel:' + esc(c.telefon.replace(/[^\d+]/g, '')) + '">' + esc(c.telefon) + '</a>' : '',
+        c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '', esc(c.cand || ''), esc(c.sursa || '')].filter(Boolean).join(' · ');
+      var msg = [];
+      if (c.ce || c.titlu) msg.push('<b>Ce s-a întâmplat:</b> ' + esc(c.ce || c.titlu));
+      if (c.mesaj) msg.push('<b>Mesajul clientului:</b> „' + esc(c.mesaj) + '”');
+      if (c.candText) msg.push('<b>Când se poate:</b> ' + esc(c.candText));
+      var h = '<div class="dq-item cer-item ' + esc(t.cls || 'noua') + '" id="cer-' + c.id + '"><div class="cer-corp">'
+        + '<div class="dq-nm">' + esc(c.cap) + (c.vehicul ? ' · <span class="cer-veh">' + esc(c.vehicul) + '</span>' : '') + ' <span class="cer-tag ' + esc(t.cls || 'noua') + '">' + esc(t.text || '') + '</span></div>'
+        + (meta ? '<div class="dq-meta">' + meta + '</div>' : '')
+        + '<div class="cer-tit">' + esc(c.titlu || '') + '</div>'
+        + (msg.length ? '<div class="dq-msg cer-msg">' + msg.join('<br>') + '</div>' : '')
+        + (c.pareRezolvata ? '<div class="cer-auto"><i class="fas fa-circle-check"></i> ' + esc(c.pareRezolvata) + '</div>' : '')
+        + ((c.aparat || []).length ? '<div class="cer-tech"><span class="t">Datele aparatului — doar pentru noi</span>' + c.aparat.map(function (a) { return '<span>' + esc(a.l) + ' <b>' + esc(a.v) + '</b></span>'; }).join('') + '</div>' : '')
+        + (c.programare ? '<div class="cer-prog-txt"><i class="fas fa-calendar-check"></i> <b>Programată:</b> ' + esc(c.programare) + (c.programareMesaj ? '<br><span>Mesajul trimis clientului: „' + esc(c.programareMesaj) + '”</span>' : '') + '</div>' : '')
+        + (c.raspuns ? '<div class="dq-msg cer-msg"><b>Ce i-am scris:</b> „' + esc(c.raspuns) + '”</div>' : '')
+        + _cereriForm(c)
+        + '</div><div class="dq-acts cer-acts">' + _cereriButoane(c) + '</div></div>';
+      return h;
+    }
+    function _cereriButoane(c) {
+      var b = c.butoane || [], prim = c.pareRezolvata ? 'rezolvat' : b[0], out = [];
+      var buton = function (k, ic, text) { return '<button class="rax-btn' + (k === prim ? ' primary' : '') + '" onclick="raxCerere(\'' + k + '\',' + c.id + ')"><i class="fas ' + ic + '"></i> ' + text + '</button>'; };
+      if (b.indexOf('preiau') >= 0) out.push(buton('preiau', 'fa-hand', 'Preiau'));
+      if (b.indexOf('programez') >= 0) out.push(buton('programez', 'fa-calendar-plus', 'Programez'));
+      if (b.indexOf('rezolvat') >= 0) out.push(buton('rezolvat', 'fa-check', 'Rezolvat'));
+      if (b.indexOf('redeschide') >= 0) out.push(buton('redeschide', 'fa-rotate-left', 'Redeschide'));
+      if (c.telefon) out.push('<a class="rax-btn" href="tel:' + esc(c.telefon.replace(/[^\d+]/g, '')) + '"><i class="fas fa-phone"></i> Sună</a>');
+      if (c.company_id != null) out.push('<button class="rax-btn" onclick="raxOpenCompanyDetail(' + Number(c.company_id) + ')"><i class="fas fa-building"></i> Deschide firma</button>');
+      return out.join('');
+    }
+    // „Programez" și „Rezolvat" se deschid sub cerere (macheta E4). Mesajul către client, lăsat gol, îl scrie serverul din zi, oră și adresă.
+    function _cereriForm(c) {
+      var f = _cer.form[c.id], d = _cer.d || {};
+      if (f === 'programez') {
+        return '<div class="cer-form">'
+          + '<div class="rr"><span class="l">Programez</span><input type="date" class="cer-in" id="cer-zi-' + c.id + '" min="' + esc(d.azi || '') + '" value="' + esc(d.maine || '') + '" aria-label="Ziua">'
+          + '<select class="cer-in" id="cer-iv-' + c.id + '" aria-label="Intervalul orar">' + (d.intervale || []).map(function (x) { return '<option value="' + esc(x.k) + '">' + esc(x.t) + '</option>'; }).join('') + '</select>'
+          + '<select class="cer-in" id="cer-pt-' + c.id + '" aria-label="Instalatorul"><option value="">fără instalator ales</option>' + (d.parteneri || []).map(function (p) { return '<option value="' + Number(p.id) + '">' + esc(p.name) + ' · instalator</option>'; }).join('') + '</select></div>'
+          + '<div class="rr"><span class="l">Mesaj clientului</span><input class="cer-in cer-lung" id="cer-ms-' + c.id + '" maxlength="300" placeholder="Gol = îl scriem noi: ziua, ora și adresa (dacă a dat-o clientul)"></div>'
+          + '<div class="rr"><span class="l"></span><label class="cer-ck"><input type="checkbox" id="cer-cal-' + c.id + '" checked> Pune și în Calendarul de montaj, ca intervenție</label>'
+          + '<span class="cer-sp"></span><button class="rax-btn" onclick="raxCerere(\'inchide\',' + c.id + ')">Renunță</button><button class="rax-btn primary" onclick="raxCerere(\'programeaza\',' + c.id + ')"><i class="fas fa-paper-plane"></i> Programează și anunță clientul</button></div></div>';
+      }
+      if (f === 'rezolvat') {
+        return '<div class="cer-form">'
+          + '<div class="rr"><span class="l">Ce i-am făcut</span><textarea class="cer-in cer-lung" id="cer-rs-' + c.id + '" rows="2" maxlength="1000" placeholder="Îi trimitem textul clientului. De exemplu: Am schimbat cartela SIM a aparatului. Transmite din nou de la 11:05."></textarea></div>'
+          + '<div class="rr"><span class="l"></span><span class="cer-sp"></span><button class="rax-btn" onclick="raxCerere(\'inchide\',' + c.id + ')">Renunță</button><button class="rax-btn primary" onclick="raxCerere(\'rezolva\',' + c.id + ')"><i class="fas fa-check"></i> Rezolvată — trimite clientului</button></div></div>';
+      }
+      return '';
+    }
+    window.raxCerere = async function (ce, id) {
+      if (ce === 'programez' || ce === 'rezolvat') { _cer.form[id] = _cer.form[id] === ce ? null : ce; _cereriDeseneaza(); return; }
+      if (ce === 'inchide') { _cer.form[id] = null; _cereriDeseneaza(); return; }
+      var url = '/api/admin/cereri-echipa/' + Number(id) + '/', corp = {};
+      if (ce === 'preiau') url += 'preiau';
+      else if (ce === 'redeschide') {
+        if (!await raConfirm('Redeschizi cererea nr. ' + id + '? Clientul nu primește niciun mesaj; o vede iar deschisă la „Cererile tale”.', { okLabel: 'Redeschide', danger: false })) return;
+        url += 'redeschide';
+      } else if (ce === 'programeaza') {
+        url += 'programeaza';
+        corp = { zi: ($('cer-zi-' + id) || {}).value || '', interval: ($('cer-iv-' + id) || {}).value || '', partener_id: ($('cer-pt-' + id) || {}).value || null,
+          mesaj: ($('cer-ms-' + id) || {}).value || '', in_calendar: !!($('cer-cal-' + id) || {}).checked };
+      } else if (ce === 'rezolva') {
+        url += 'rezolvat';
+        corp = { raspuns: ($('cer-rs-' + id) || {}).value || '' };
+      } else return;
+      var r = null, j = {};
+      try {
+        r = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corp) });
+        j = await r.json().catch(function () { return {}; });
+      } catch (e) { raxToast('Eroare de rețea', 'error'); return; }
+      if (!r.ok) { raxToast(j.error || 'Nu s-a putut.', 'error', 6000); if (r.status === 409) { _cer.form[id] = null; raxLoadCereri(); } return; }
+      raxToast({ preiau: 'Preluată — clientul primește un mesaj că ne ocupăm.', programeaza: 'Programată — clientul primește ziua și ora.', rezolva: 'Rezolvată — clientul primește ce i-am scris.', redeschide: 'Cererea e iar deschisă.' }[ce], 'success', 4000);
+      _cer.form[id] = null;
+      raxLoadCereri();
+    };
+    // ── sfârșit „Cereri de la clienți" ──
     // ── începe „Panoul Mail" (Robert, 12.10: „noi adminii să avem un panou de mail") ──────────────
     // Etapa 1: „Trimise" + „Scrie"; etapa 2: „Primite" + „Răspunde". Ecranul NU hotărăște nimic: ce adrese vezi (comuna +
     // a ta), câte sunt necitite, starea emailului, spațiul ocupat, felul fiecărui email, avertismentele și ce se pune în

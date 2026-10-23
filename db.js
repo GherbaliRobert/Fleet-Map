@@ -1444,6 +1444,33 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_insight_actiuni_user ON insight_actiuni(user_id, id)`);
+    // „Anunță echipa RA Track" (capitolul 4, 22.10): cererile clienților către noi — mașina, problema, ce s-a întâmplat (scris de
+    // aplicație), mesajul și cum îi găsim, plus datele aparatului din clipa trimiterii (`aparat`, doar pentru noi). Stările:
+    // trimisa → preluata → programata → rezolvata (cine și când, la fiecare). O singură cerere DESCHISĂ pe mașină și problemă
+    // (indexul parțial). Rămân și după ce clientul pleacă: sunt istoricul relației noastre cu el (BUSINESS_TABLES).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cereri_echipa (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER,
+        imei VARCHAR(32),
+        problema VARCHAR(20) NOT NULL,
+        titlu VARCHAR(200),
+        ce TEXT,
+        sursa VARCHAR(20),
+        mesaj TEXT,
+        cand JSONB DEFAULT '{}',
+        contact JSONB DEFAULT '{}',
+        aparat JSONB DEFAULT '{}',
+        stare VARCHAR(20) NOT NULL DEFAULT 'trimisa',
+        preluata_de INTEGER, preluata_la BIGINT,
+        programare JSONB, programata_de INTEGER, programata_la BIGINT,
+        raspuns TEXT, rezolvata_de INTEGER, rezolvata_la BIGINT,
+        creat_la BIGINT NOT NULL
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cereri_echipa_firma ON cereri_echipa(company_id, creat_la DESC)`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_cereri_echipa_deschisa ON cereri_echipa(imei, problema) WHERE stare <> 'rezolvata' AND imei IS NOT NULL`);
     // Trecerile la alt pachet RA Insight, confirmate din aplicație (pasul 6): cine, când, de pe ce adresă și TEXTUL exact pe care
     // l-a confirmat — confirmarea ține loc de act adițional, deci e dovadă și rămâne și după ștergerea firmei (ca un contract).
     await client.query(`
@@ -4366,8 +4393,9 @@ async function setIoMapping(imei, ioId, mapping) {
 async function deleteIoMapping(imei, ioId) { return setIoMapping(imei, ioId, null); }
 
 async function getDeviceFull(imei) {
+  // Numele șoferului doar din firma mașinii (23.10), ca în rapoarte.
   const result = await pool.query(
-    'SELECT d.*, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id WHERE d.imei = $1',
+    'SELECT d.*, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id AND dr.company_id IS NOT DISTINCT FROM d.company_id WHERE d.imei = $1',
     [imei]
   );
   return result.rows[0] || null;
@@ -6345,10 +6373,102 @@ async function masiniSofer(driverId, companyId) {
   const r = await pool.query("SELECT imei FROM devices WHERE driver_id = $1 AND company_id = $2 AND COALESCE(status, '') <> 'archived'", [parseInt(driverId) || 0, companyId]);
   return r.rows.map(function (x) { return String(x.imei); });
 }
-// Driverul e al firmei mașinii? (Ruta veche /assign nu verifică; drumul lui RA Insight, da.)
+// Driverul e al firmei mașinii? (Drumul lui RA Insight; ruta din ecran /assign verifică și ea, din 23.10 — _soferGrupaAleFirmei.)
 async function soferAlFirmei(driverId, companyId) {
   const r = await pool.query('SELECT id FROM drivers WHERE id = $1 AND company_id = $2', [parseInt(driverId) || 0, companyId]);
   return r.rows.length > 0;
+}
+
+// ─── „Anunță echipa RA Track" (capitolul 4, 22.10): cererile clienților către noi ──────────────────────────────────────────
+// Rândul vine cu numele firmei, al mașinii și al oamenilor (cine a trimis, cine a preluat / programat / rezolvat). Regulile și
+// textele stau în cereri_echipa.js.
+const _CERERE_SELECT = `SELECT c.*, co.name AS company_name, dv.plate, dv.name AS masina,
+    u.full_name AS trimisa_de_nume, pu.full_name AS preluata_de_nume, gu.full_name AS programata_de_nume,
+    ru.full_name AS rezolvata_de_nume
+  FROM cereri_echipa c
+  LEFT JOIN companies co ON co.id = c.company_id
+  LEFT JOIN devices dv ON dv.imei = c.imei
+  LEFT JOIN users u ON u.id = c.user_id
+  LEFT JOIN users pu ON pu.id = c.preluata_de
+  LEFT JOIN users gu ON gu.id = c.programata_de
+  LEFT JOIN users ru ON ru.id = c.rezolvata_de`;
+function _cerereRand(x) {
+  if (!x) return null;
+  const j = (v) => { if (v == null || typeof v !== 'string') return v; try { return JSON.parse(v); } catch (e) { return null; } };
+  const n = (v) => (v == null ? null : Number(v));
+  return Object.assign({}, x, { id: Number(x.id), company_id: n(x.company_id), user_id: n(x.user_id), cand: j(x.cand) || {}, contact: j(x.contact) || {},
+    aparat: j(x.aparat) || {}, programare: j(x.programare) || null, creat_la: Number(x.creat_la), preluata_de: n(x.preluata_de), preluata_la: n(x.preluata_la),
+    programata_de: n(x.programata_de), programata_la: n(x.programata_la), rezolvata_de: n(x.rezolvata_de), rezolvata_la: n(x.rezolvata_la) });
+}
+async function cerereDeschisa(imei, problema) {
+  if (!imei) return null;
+  const r = await pool.query(_CERERE_SELECT + ` WHERE c.imei = $1 AND c.problema = $2 AND c.stare <> 'rezolvata' ORDER BY c.id DESC LIMIT 1`, [String(imei), String(problema)]);
+  return _cerereRand(r.rows[0]);
+}
+// O cerere nouă. A doua cerere deschisă pe aceeași mașină și problemă (indexul parțial) întoarce `{ deja }` — cea deschisă.
+async function adaugaCerereEchipa(d) {
+  try {
+    const r = await pool.query(
+      `INSERT INTO cereri_echipa (company_id, user_id, imei, problema, titlu, ce, sursa, mesaj, cand, contact, aparat, stare, creat_la)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'trimisa', $12) RETURNING id`,
+      [d.company_id == null ? null : Number(d.company_id), d.user_id == null ? null : Number(d.user_id), d.imei || null, d.problema, d.titlu || null,
+        d.ce || null, d.sursa || null, d.mesaj || null, JSON.stringify(d.cand || {}), JSON.stringify(d.contact || {}), JSON.stringify(d.aparat || {}), Number(d.creat_la) || Date.now()]);
+    return { id: Number(r.rows[0].id) };
+  } catch (e) {
+    if (String(e.code) === '23505' || /duplicate key|unique/i.test(String(e.message || ''))) { const deja = await cerereDeschisa(d.imei, d.problema); if (deja) return { deja: deja }; }
+    throw e;
+  }
+}
+async function cerereEchipa(id) {
+  const r = await pool.query(_CERERE_SELECT + ' WHERE c.id = $1', [parseInt(id) || 0]);
+  return _cerereRand(r.rows[0]);
+}
+// Cererile deschise pe niște mașini (caseta din discuție arată „Echipa se ocupă" în locul butonului).
+async function cereriDeschisePeMasini(imeis) {
+  const l = (imeis || []).filter(Boolean).map(String);
+  if (!l.length) return [];
+  const r = await pool.query(_CERERE_SELECT + ` WHERE c.imei = ANY($1::text[]) AND c.stare <> 'rezolvata'`, [l]);
+  return r.rows.map(_cerereRand);
+}
+// „Cererile tale": ale omului; administratorul firmei (userId = null) le vede pe toate ale firmei.
+async function cereriEchipaFirma(companyId, userId) {
+  const p = [Number(companyId)];
+  let w = 'c.company_id = $1';
+  if (userId != null) { p.push(Number(userId)); w += ' AND c.user_id = $2'; }
+  const r = await pool.query(_CERERE_SELECT + ' WHERE ' + w + ' ORDER BY c.id DESC LIMIT 100', p);
+  return r.rows.map(_cerereRand);
+}
+// La noi: deschise (implicit), rezolvate sau toate; cele noi primele.
+async function cereriEchipaToate(fel) {
+  const w = fel === 'rezolvate' ? "WHERE c.stare = 'rezolvata'" : (fel === 'toate' ? '' : "WHERE c.stare <> 'rezolvata'");
+  const r = await pool.query(_CERERE_SELECT + ' ' + w + " ORDER BY (c.stare = 'trimisa') DESC, c.id DESC LIMIT 300");
+  return r.rows.map(_cerereRand);
+}
+async function cereriEchipaNumar() {
+  const r = await pool.query(`SELECT COUNT(*) FILTER (WHERE stare = 'trimisa')::int AS noi, COUNT(*) FILTER (WHERE stare <> 'rezolvata')::int AS deschise FROM cereri_echipa`);
+  return { noi: Number((r.rows[0] || {}).noi) || 0, deschise: Number((r.rows[0] || {}).deschise) || 0 };
+}
+async function cereriEchipaOra(userId, deLa) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM cereri_echipa WHERE user_id = $1 AND creat_la >= $2', [Number(userId) || 0, Number(deLa) || 0]);
+  return Number((r.rows[0] || {}).n) || 0;
+}
+// Trecerea o singură dată: doar din stările date (două apăsări deodată = una). `patch` = coloanele de scris.
+async function treceCerereEchipa(id, dinStari, patch) {
+  const COL = ['stare', 'preluata_de', 'preluata_la', 'programare', 'programata_de', 'programata_la', 'raspuns', 'rezolvata_de', 'rezolvata_la'];
+  const sets = [], vals = [parseInt(id) || 0, dinStari];
+  Object.keys(patch || {}).forEach(function (k) {
+    if (COL.indexOf(k) < 0) return;
+    vals.push(k === 'programare' && patch[k] != null ? JSON.stringify(patch[k]) : patch[k]);
+    sets.push(k + ' = $' + vals.length);
+  });
+  if (!sets.length) return false;
+  const r = await pool.query('UPDATE cereri_echipa SET ' + sets.join(', ') + ' WHERE id = $1 AND stare = ANY($2::text[]) RETURNING id', vals);
+  return r.rows.length > 0;
+}
+// Intervențiile puse în Calendarul de montaj (programate sau rezolvate după programare).
+async function interventiiCalendar() {
+  const r = await pool.query(_CERERE_SELECT + " WHERE c.programare IS NOT NULL AND c.stare IN ('programata', 'rezolvata') ORDER BY c.id DESC LIMIT 500");
+  return r.rows.map(_cerereRand).filter(function (c) { return c.programare && c.programare.in_calendar && c.programare.zi; });
 }
 async function corecturiLuna(luna) {
   const r = await pool.query(`SELECT COALESCE(SUM(rescrise), 0)::int AS rescrise, COALESCE(SUM(cifre), 0)::int AS cifre, COALESCE(SUM(litere), 0)::int AS litere,
@@ -6637,6 +6757,8 @@ module.exports = {
   listeCompat, puneListaCompat,
   recordAiUsage, noteazaCorectura, corecturiLuna,
   adaugaActiuneInsight, actiuneInsight, actiuniInsight, treceActiuneInsight, legaActiuneInsight, stergeActiuniInsightMaiVechiDe, soferiPentruPotrivire, soferAlFirmei, masinaPentruSofer, masiniSofer,
+  adaugaCerereEchipa, cerereEchipa, cerereDeschisa, cereriDeschisePeMasini, cereriEchipaFirma, cereriEchipaToate, cereriEchipaNumar, cereriEchipaOra,
+  treceCerereEchipa, interventiiCalendar,
   getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,

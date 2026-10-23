@@ -433,8 +433,10 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   NU socoti zile cu `setHours` pe server — serverul e pe UTC („azi" începea la 3 dimineața, vara). **Agenții la fel (22.10):**
   `agents.js` → `buildCtx` ia ziua din `insight.perioada('today')` și ora din `insight.oraRO` (pragul „după-amiaza" al lui RA
   Dispatch); până atunci RA Watch nu vedea noaptea scăderile de combustibil dinainte de 03:00 — prins de `verify_un_singur_insight.js`
-  (1b), care pica pe GitHub între 00 și 03. ⚠ Tot cu `setHours` pe UTC au rămas (întrebat pe 22.10, nehotărât): `/api/dashboard`,
-  `/api/stats/:imei` (fișa mașinii de pe hartă), `_insightPeriod` (întrebările vechi ale telefonului), `/api/report/:imei`.
+  (1b), care pica pe GitHub între 00 și 03. **Și restul (23.10, Alin: „da"):** `/api/dashboard`, `/api/stats/:imei` (fișa mașinii de
+  pe hartă; `date` = `_ziRo`), `_insightPeriod` (întrebările vechi ale telefonului) și `/api/report/:imei` iau ziua tot din
+  `insight.perioada({ period: 'today' }, Date.now())` — păzit de `verify_un_singur_insight.js` (5d). ⚠ Rămas cu `setHours` pe UTC
+  (găsit pe 23.10, întrebat): ruta tehnică „io-peek" din panoul nostru de depanare.
 - **Răspunsul rapid gratuit (`fleet_quick.js`) doar despre ACUM:** `insight.potrivitPentruRapid`. Altă perioadă, alt
   subiect, o continuare („și ieri?") sau o mașină ambiguă → RA Insight. Înainte, „kilometri" scris corect într-o întrebare
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
@@ -903,9 +905,54 @@ PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecra
   server și se pun ca TEXT — îngroșatul din „Gata" prin `textGros` (noduri `<b>`), NU `innerHTML` (nici cu `mdScurt`): blocul stă între
   ramuri, pe care `verify_safe_drive.js` le păzește. Pagina nu socotește nimic. Ghidul: capitolul `soferi_masini`. Telefonul — la APK-ul
   următor (Robert).
-- ⚠ **Găsit pe 22.10, întrebat (nehotărât):** ruta veche `PUT /api/devices/:imei/assign` (ecranul) nu verifică dacă șoferul și grupa sunt
-  ale firmei (rapoartele iau numele șoferului fără filtru de firmă). Drumul lui RA Insight verifică. NU o repara fără răspunsul lui Alin.
-- Păzit de **`verify_soferi_masini.js`** (în `npm test`; 81, pe server pornit, ZERO cereri către model), `verify_insight_ghid.js`.
+- **Și ruta veche a ecranului verifică firma (23.10, Alin: „da"):** `PUT /api/devices/:imei/assign` și `/group` trec prin
+  `_soferGrupaAleFirmei(imei, sofer, grupa, req)` — șoferul și grupa trebuie să fie ale firmei mașinii (altfel 404, „Șoferul ales nu e în
+  firma acestei mașini." / „Grupa aleasă nu e a firmei acestei mașini."); grupele platformei (`company_id` NULL) doar la super-admin. Iar
+  numele șoferului din rapoarte (`reports.deviceNames`) și din fișa mașinii (`db.getDeviceFull`) vine doar dintr-un șofer al aceleiași firme
+  (`dr.company_id IS NOT DISTINCT FROM d.company_id`). O cale nouă care trece un șofer sau o grupă pe o mașină verifică la fel.
+- Păzit de **`verify_soferi_masini.js`** (în `npm test`; 91, pe server pornit, ZERO cereri către model; secțiunea 5 = ruta veche), `verify_insight_ghid.js`.
+
+### „Anunță echipa RA Track" (23.10; Alin, 22.10: „da" la flux, „te sunăm în cel mult o zi lucrătoare", cererile le preiau amândoi, cu „Preiau")
+Capitolul 4 al machetei din 21.10 (E1–E5). **Aparatul e treaba NOASTRĂ** (19.10): clientul nu e trimis să verifice nimic — are un
+singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere mașina, problema și datele aparatului.
+- **Regulile și TEXTELE stau în `cereri_echipa.js`** (curat; un formatator ținut minte): `curata` (ce primește serverul; `ce` doar la
+  consum), `lipsa`, `titlu` („Nu transmite de 3 ore"), `durata`, `ceSemnal`, `confirmare`, `seOcupa`, `pasi` (trimisă → preluată →
+  programată → rezolvată; „Programată" sărită = „n-a fost nevoie să venim la mașină"), `pentruClient` (FĂRĂ datele aparatului),
+  `pentruNoi` (cu `dateAparat`, `pareRezolvata`, butoanele după stare), `mesajProgramare`, `ziLucratoareDupa`, `anuntNoi` / `emailNoi`,
+  `anuntClient` / `emailClient`, `TERMEN`, `DATE_TRIMISE` (o promisiune: doar ce chiar trimitem). NU scrie texte de-ale cererilor în
+  pagină sau pe telefon.
+- **O SINGURĂ cale pentru o cerere nouă: `_cerereNoua(req, body)`** (server.js), chemată de `POST /api/cereri-echipa` și de ruta veche
+  `/api/support` (telefoanele de dinainte; acum o cerere „de pe telefon", fără mașină). Datele aparatului le adună SERVERUL
+  (`_cerereAparat`: model, IMEI, cartelă, ultima poziție, semnal, alimentare, rezervor, de când transmite, instalatorul din stoc); cine
+  trimite (`_cerereContact`: numele, emailul și rolul din fișă, telefonul din fereastră). Mașina: `canAccessImei`, a firmei omului,
+  nearhivată, fără demo; noi (super-admin) nu trimitem cereri; cel mult `LIMITA_ORA` (10) pe oră de om; demo-ul e blocat (`_demoBlocked`).
+- **O cerere deschisă pe mașină și problemă** (indexul parțial `uq_cereri_echipa_deschisa`): a doua → 409 „Echipa RA Track se ocupă
+  deja de asta: cererea nr. N." „Ceva nu merge la aparat" pe o mașină care nu transmite devine „Nu transmite" — aceeași regulă ca în
+  caseta din RA Insight (`agents.esteFaraSemnal`, pragul firmei), ca să nu fie două cereri pe același lucru.
+- **La noi, pe loc:** anunț `cerere_echipa` (`_anuntaSuperadmini`, `data: { cerere, cerereId, pentru: 'noi' }`, fără date tehnice) +
+  emailul la contact@ (`_adresaSuport`: `SUPPORT_EMAIL` → setarea `support_email` → expeditorul, noreply@ → contact@), cu „Răspuns la"
+  = omul, subiectul „Cerere N · firma · mașina · problema" și „Datele aparatului". **La client, la fiecare pas** (preluată / programată /
+  rezolvată): `_cerereLaClient` → anunț `cerere_<pas>` (`pentru: 'client'`) + email (felul `cerere` în „Trimise").
+- **Trecerile, o singură dată** (`db.treceCerereEchipa(id, dinStari, patch)`, UPDATE … WHERE stare = ANY): `POST
+  /api/admin/cereri-echipa/:id/preiau | programeaza | rezolvat | redeschide` (super-admin; a doua apăsare → 409 „Cererea a fost deja
+  preluată (…)."). „Programez": ziua (de azi încolo, propusă = următoarea zi lucrătoare), intervalul (`INTERVALE`), instalatorul,
+  mesajul (gol = `mesajProgramare`), „în calendar". „Rezolvat" cere textul pentru client. Redeschiderea nu anunță clientul.
+- **Intervențiile în Calendarul de montaj** (`db.interventiiCalendar` → `_mjcInterventie` → `interventii` în `/api/montaj/calendar`):
+  îl țin ocupat pe instalator (`montaj.incarcarePeZile`), dar NU sunt lucrări de montaj — nu intră în contract, în „de programat", în facturi.
+- **Pagina (client):** blocul „Anunță echipa RA Track" (după „Distribuie locația") — O fereastră (`#ce-ov`: „Cerere nouă" / „Cererile
+  tale · N", confirmarea cu pașii), O cerere de trimitere, textele de la server ca TEXT (fără innerHTML). Trei uși: butonul `echipa` din
+  casetele RA Insight (`insightProblemaButon` → `echipaDeschide`, cu `ce` = ce a scris aplicația), rândul `#detail-echipa` din fișa
+  mașinii (`echipaDinFisa`), iconița cu căști (`openSupport`). După trimitere, caseta spune „Echipa RA Track se ocupă · …"
+  (`_echipaInlocuieste`); la desenare, `_echipaSeOcupa` cere `/api/cereri-echipa/deschise` (doar firma omului). Butonul `harta` duce pe
+  hartă, pe mașină. Fereastra veche „Suport clienți" (cu un telefon și un WhatsApp care nu erau ai noștri) a fost SCOASĂ din
+  `map-tools.js` — NU o pune la loc.
+- **Pagina (noi):** Business › „Cereri de la clienți" (`admin-tab-cereri`, `raxLoadCereri`, blocul între reperele „Cereri de la clienți"):
+  Deschise / Rezolvate / Toate, datele aparatului „doar pentru noi", „Pare rezolvată singură", Preiau / Programez / Rezolvat / Sună /
+  Deschide firma / Redeschide (butoanele de la server; formularele sub cerere). Bulina `#nav-cereri-nr` = cererile nepreluate. Anunțurile:
+  `notifCerere` (noi → listă, client → „Cererile tale").
+- Ghidul: capitolul `suport`. Telefonul — la APK-ul următor (Robert). Tabela `cereri_echipa` e în `BUSINESS_TABLES`.
+- Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 79, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
+  `verify_insight_ghid.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni

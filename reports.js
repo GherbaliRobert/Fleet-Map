@@ -217,7 +217,8 @@ async function coadaIstoric(db, imei, from, to, n) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.payload, d.temp_min, d.temp_max, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    // Numele șoferului doar din firma mașinii (23.10): un șofer al altei firme nu apare niciodată în rapoartele cuiva.
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.payload, d.temp_min, d.temp_max, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id AND dr.company_id IS NOT DISTINCT FROM d.company_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;

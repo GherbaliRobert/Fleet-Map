@@ -228,6 +228,7 @@ const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite 
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
 const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat"
 const probleme = require('./probleme');          // „Am găsit o problemă" (15.10): viteza reală sau eroare de GPS, senzorul blocat, consumul din fișă
+const cereriEchipa = require('./cereri_echipa');   // „Anunță echipa RA Track" (capitolul 4, 22.10): regulile și textele cererilor către noi
 const locatieDistribuita = require('./locatie_distribuita'); // „Distribuie locația" (21.10): linkul public al unei mașini, ca pe WhatsApp
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
@@ -5174,6 +5175,22 @@ async function _raInsight(req, res, opts) {
           if (v.combustibil_l != null) r.combustibil_l = v.combustibil_l;
           return r;
         });
+        // Mașinile care nu transmit (22.10, macheta E1): caseta lor, cu „Pe hartă" și „Anunță echipa RA Track" — aceeași regulă ca
+        // RA Watch și „Azi la tine" (agents.esteFaraSemnal, pragul firmei, sub 7 zile), fără vină pe aparat. Doar la clienți (noi
+        // n-avem o flotă și nu trimitem cereri).
+        if (!req.isSuper && req.companyId != null) {
+          try {
+            const th = await _getAlertThresholds(req.companyId);
+            snap.forEach(function (v) {
+              const ts = v.ultima_actualizare ? new Date(v.ultima_actualizare).getTime() : NaN;
+              if (!Number.isFinite(ts) || !(agents && agents.esteFaraSemnal((now - ts) / 60000, th.offlineMin))) return;
+              let adr = null;
+              try { adr = (geocode && v.lat && v.lng) ? geocode.peek(Number(v.lat), Number(v.lng)) : null; } catch (e) {}
+              gasiteProbleme.push(probleme.problemaSemnal({ vehicul: (peImei[v.imei] && (peImei[v.imei].nr || peImei[v.imei].nume)) || v.nr || v.nume, imei: v.imei,
+                tacutMin: (now - ts) / 60000, ultima: ts, adresa: adr }, now));
+            });
+          } catch (e) { /* fără casete, răspunsul merge mai departe */ }
+        }
         // Dacă flota e mai mare decât plafonul, MODELUL trebuie să afle — altfel ar număra 200 de mașini pe o
         // listă tăiată și ar da cifra ca și cum ar fi toată flota.
         const taiate = (snap.totalFlota || vehicles.length) - vehicles.length;
@@ -6750,16 +6767,9 @@ const INSIGHT_PRESETS = {
   ralanti:  { title: 'Ralanti (idle) — 7 zile',        type: 'idling',           period: 'last_7_days' },
   ecodrive: { title: 'EcoDrive — clasament șoferi (30 zile)', type: 'ecodrive_drivers', period: 'last_30_days', top: 3 },
 };
-function _insightPeriod(p) {
-  const now = new Date(), sod = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
-  let from, to = new Date(now);
-  if (p === 'today') from = sod(now);
-  else if (p === 'this_week') { const dow = (sod(now).getDay() + 6) % 7; from = sod(now); from.setDate(from.getDate() - dow); }
-  else if (p === 'this_month') from = new Date(now.getFullYear(), now.getMonth(), 1);
-  else if (p === 'last_30_days') { from = new Date(now); from.setDate(from.getDate() - 30); }
-  else { from = new Date(now); from.setDate(from.getDate() - 7); } // last_7_days
-  return { from: from.toISOString(), to: to.toISOString() };
-}
+// Perioadele pe ora României, ca peste tot în RA Insight (23.10): cu setHours pe serverul pe UTC, „săptămâna asta" și „luna
+// asta" începeau la 3 dimineața (vara), iar între miezul nopții și 3 cuprindeau încă ziua / luna de dinainte.
+function _insightPeriod(p) { return insight.perioada({ period: p }, Date.now()); }
 app.get('/api/insight/presets', requireAuth, requirePerm('viewReports'), (req, res) => {
   res.json(Object.entries(INSIGHT_PRESETS).map(([key, p]) => ({ key, title: p.title })));
 });
@@ -8439,9 +8449,13 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
     // programate (oricare lună) și istoricul (montate + anulate). Ecranele doar arată ce primesc.
     const [progBrut, istBrut] = await Promise.all([db.montajeProgramate(300), db.montajeIstoric(100)]);
     const programate = progBrut.map(_mjcLucrareCal);
+    // Intervențiile din „Cereri de la clienți" (22.10, „Pune și în Calendarul de montaj, ca intervenție"): stau în calendar și îl
+    // țin ocupat pe instalator (ca o mașină), dar NU sunt lucrări de montaj — nu intră în contract, în „de programat", în facturi.
+    const interventii = (await db.interventiiCalendar().catch(function () { return []; })).map(_mjcInterventie);
     // Lucrările lunii + toate cele programate (alte luni), fiecare O dată (o zi programată din luna asta e în amândouă).
     const vazute = {};
-    const incarcare = montaj.incarcarePeZile(lucrari.concat(programate).filter(function (l) { if (vazute[l.id]) return false; vazute[l.id] = true; return true; }));
+    const incarcare = montaj.incarcarePeZile(lucrari.concat(programate).concat(interventii.filter(function (x) { return x.status === 'programat'; }))
+      .filter(function (l) { if (vazute[l.id]) return false; vazute[l.id] = true; return true; }));
     Object.keys(incarcare).forEach(function (z) { Object.keys(incarcare[z]).forEach(function (p) { incarcare[z][p].text = montaj.textIncarcare(incarcare[z][p]); }); });
     const istoric = istBrut.map(function (l) {
       const x = _mjcLucrareCal(l);
@@ -8456,9 +8470,18 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
         const x = sumar[e.k] || {};
         return { tip: e.k, eticheta: e.et, depozit: x.depozit || 0, instalator: x.instalator || 0 };
       }).filter(function (x) { return x.depozit || x.instalator; }),
-      programate: programate, istoric: istoric, incarcare: incarcare, textLiber: montaj.textIncarcare(null), motive: montaj.MOTIVE_ANULARE });
+      programate: programate, istoric: istoric, incarcare: incarcare, textLiber: montaj.textIncarcare(null), motive: montaj.MOTIVE_ANULARE,
+      interventii: interventii.filter(function (x) { return x.zi.slice(0, 7) === luna; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// O intervenție din „Cereri de la clienți", cum o arată calendarul (o „mașină" a instalatorului în ziua ei).
+function _mjcInterventie(c) {
+  const p = c.programare || {};
+  return { id: 'c' + c.id, cerere_id: c.id, interventie: true, zi: p.zi, partener_id: p.partener_id || null, partener_nume: p.partener_nume || null,
+    company_id: c.company_id, company_name: c.company_name, status: c.stare === 'rezolvata' ? 'executat' : 'programat', masini: 1,
+    vehicul: cereriEchipa.vehicul(c), titlu: c.titlu || '', interval: p.intervalText || '',
+    text: 'Intervenție · cererea nr. ' + c.id + ' · ' + [cereriEchipa.vehicul(c), c.titlu].filter(Boolean).join(' · ') };
+}
 // O lucrare, cum o arată calendarul: ziua pe ora României, câte mașini, și starea confirmărilor (01.10).
 function _mjcLucrareCal(l) {
   const items = Array.isArray(l.items) ? l.items : (_jsonSigur(l.items) || []);
@@ -11418,25 +11441,250 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Suport clienți — mesaje din butonul headset (UI). Persistate (vizibile super-admin) + email best-effort. ───
-app.post('/api/support', requireAuth, withCompany, async (req, res) => {
+// ─── „Anunță echipa RA Track" (capitolul 4 al machetei din 21.10; Alin, 22.10: „da" la flux, „te sunăm în cel mult o zi
+// lucrătoare", cererile le preiau amândoi, cu „Preiau") ────────────────────────────────────────────────────────────────
+// O SINGURĂ cale pentru o cerere nouă: `_cerereNoua`. O cheamă butonul din casetele RA Insight, rândul din fișa mașinii și
+// iconița cu căști (toate prin POST /api/cereri-echipa), plus ruta veche /api/support (telefoanele de dinainte) — iar mesajele
+// nu mai ajung în jurnalul de erori. Regulile și textele: cereri_echipa.js. Datele aparatului le pune SERVERUL, din clipa
+// trimiterii; clientul nu le vede (doar ce se trimite, fără cifre). Aparatul e treaba noastră (19.10): clientul doar ne anunță.
+// Adresa la care primim (contact@): scrisă dinadins, altfel expeditorul aplicației (noreply@ nu primește nimic).
+async function _adresaSuport() {
+  let to = process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null)) || (mailer ? mailer.adresa(mailer.fromAddr()).email : null);
+  if (to && /^noreply@/i.test(to)) to = to.replace(/^noreply@/i, 'contact@');
+  return to || null;
+}
+// Datele aparatului (doar pentru noi): modelul, IMEI-ul, cartela, ultima poziție, semnalul, alimentarea, nivelul, de când transmite,
+// instalatorul (din stoc). Ce nu se știe lipsește — nu se ghicește.
+async function _cerereAparat(imei) {
+  const out = { imei: String(imei) };
+  let d = null;
+  try { d = await db.getDeviceFull(imei); } catch (e) {}
+  if (d) {
+    if (d.gps_model) out.model = String(d.gps_model);
+    if (d.sim_number) out.sim = String(d.sim_number);
+    if (d.abonament_de_la) out.pornit = Number(d.abonament_de_la);
+  }
+  const live = livePositions.get(String(imei));
+  const io = (live && (live.io || live.io_data)) || {};
+  const ts = live && live.timestamp ? new Date(live.timestamp).getTime() : (d && d.last_seen ? new Date(d.last_seen).getTime() : NaN);
+  if (Number.isFinite(ts)) out.ultima = ts;
+  if (Number.isFinite(Number(io.gsm_signal))) out.gsm = Number(io.gsm_signal);
+  if (live && Number.isFinite(Number(live.satellites))) out.sateliti = Number(live.satellites);
+  if (typeof io.external_voltage === 'number' && io.external_voltage > 0) out.tensiune = Math.round(io.external_voltage / 100) / 10;
+  const fl = typeof io.fuel_level_liters === 'number' ? io.fuel_level_liters : io.can_fuel_level_liters;
+  if (typeof fl === 'number' && fl >= 0) out.rezervor = fl;
+  try {
+    const s = await db.stocDupaSerie(String(imei));
+    if (s && s.partener_id) { const p = (await db.listParteneriMontaj()).find(function (x) { return Number(x.id) === Number(s.partener_id); }); if (p) out.instalator = p.name; }
+  } catch (e) {}
+  return out;
+}
+// Cine trimite și cum îl găsim: numele și emailul din fișa omului, telefonul scris în fereastră (altfel cel din fișă), rolul.
+async function _cerereContact(req, telefon) {
+  const a = req.auth || getAuth(req) || {};
+  let u = null; try { u = a.userId ? await db.getUserById(a.userId) : null; } catch (e) {}
+  let rol = '';
+  try { if (u && u.company_id != null) rol = String(_incRolEt(u, await roluriCompaniei(u.company_id)) || '').toLowerCase(); } catch (e) {}
+  return { nume: (u && (u.full_name || u.username)) || a.username || '', telefon: telefon || (u && u.phone) || '',
+    email: (u && (u.email || (/@/.test(u.username || '') ? u.username : ''))) || '', rol: rol };
+}
+function _cerereAdresa(imei) {
+  const live = livePositions.get(String(imei));
+  try { return (live && geocode && live.latitude && live.longitude) ? geocode.peek(Number(live.latitude), Number(live.longitude)) : null; } catch (e) { return null; }
+}
+async function _cerereNoua(req, body) {
+  const a = req.auth || getAuth(req) || {};
+  const c = cereriEchipa.curata(body);
+  const lip = cereriEchipa.lipsa(c);
+  if (lip) return { status: 400, error: lip };
+  if (req.isSuper || req.companyId == null) return { status: 400, error: 'Cererile le trimit clienții; pe ale lor le vezi în Business › „Cereri de la clienți”.' };
+  if ((await db.cereriEchipaOra(a.userId, Date.now() - 3600000)) >= cereriEchipa.LIMITA_ORA) {
+    return { status: 429, error: 'Ai trimis deja ' + cereriEchipa.LIMITA_ORA + ' cereri în ultima oră. Încearcă mai târziu.' };
+  }
+  let dev = null, aparat = {};
+  const acum = Date.now();
+  if (c.imei) {
+    dev = canAccessImei(req, c.imei) && !DEMO_SET.has(c.imei) ? await db.getDeviceByImei(c.imei) : null;
+    if (!dev || dev.status === 'archived' || Number(dev.company_id) !== Number(req.companyId)) return { status: 404, error: 'Mașina nu există.' };
+    aparat = await _cerereAparat(c.imei);
+    // „Ceva nu merge la aparat" (fișa mașinii) pe o mașină care nu transmite = „Nu transmite": aceeași regulă ca în caseta din
+    // RA Insight (agents.esteFaraSemnal, pragul firmei), ca mașina să aibă O cerere deschisă, nu două pe același lucru.
+    if (c.problema === 'aparat' && aparat.ultima && agents) {
+      let th = {}; try { th = await _getAlertThresholds(req.companyId); } catch (e) {}
+      if (agents.esteFaraSemnal((acum - aparat.ultima) / 60000, th.offlineMin)) c.problema = 'semnal';
+    }
+    const deja = await db.cerereDeschisa(c.imei, c.problema);
+    if (deja) return { status: 409, cerere: deja };
+  }
+  let titlu = cereriEchipa.titlu(c.problema), ce = c.ce;
+  if (c.problema === 'semnal') {
+    titlu = cereriEchipa.titlu('semnal', { tacutMin: aparat.ultima ? (acum - aparat.ultima) / 60000 : null });
+    ce = cereriEchipa.ceSemnal({ ultima: aparat.ultima, adresa: _cerereAdresa(c.imei), acum: acum });
+  }
+  const r = await db.adaugaCerereEchipa({ company_id: req.companyId, user_id: a.userId, imei: c.imei, problema: c.problema, titlu: titlu, ce: ce,
+    sursa: c.sursa, mesaj: c.mesaj, cand: { cand: c.cand, unde: c.unde }, contact: await _cerereContact(req, c.telefon), aparat: aparat, creat_la: acum });
+  if (r.deja) return { status: 409, cerere: r.deja };
+  const cerere = await db.cerereEchipa(r.id);
+  auditReq(req, 'create', 'cerere_echipa', r.id, { problema: c.problema, imei: c.imei || null, sursa: c.sursa });
+  _cerereLaNoi(req, cerere).catch(function (e) { console.warn('[cereri] anunț:', e.message); });
+  return { status: 200, cerere: cerere };
+}
+// La noi, pe loc: anunț în aplicație + pe telefon la fiecare fondator, și emailul la contact@ cu tot (răspuns la = clientul).
+async function _cerereLaNoi(req, c) {
+  const supers = (await db.getAllActiveUsers()).filter(function (x) { return x.role === 'superadmin'; });
+  const an = cereriEchipa.anuntNoi(c);
+  try { await _anuntaSuperadmini(supers, 'cerere_echipa', 'warning', an.titlu, an.corp, { cerere: true, cerereId: c.id, pentru: 'noi' }); } catch (e) {}
+  const to = await _adresaSuport();
+  if (to && mailer && mailer.enabled()) {
+    const em = cereriEchipa.emailNoi(c, { acum: Date.now(), link: appBaseUrl(req) + '/app' });
+    await mailer.send({ to: to, replyTo: (c.contact || {}).email || undefined, subject: em.subject, text: em.text, html: em.html });
+  }
+}
+// La client, la fiecare pas (preluată / programată / rezolvată): anunț în aplicație + pe telefon, și email.
+async function _cerereLaClient(c, pas) {
+  const an = cereriEchipa.anuntClient(c, pas);
+  if (!an) return;
+  try { await _incAnunta(c.user_id, c.company_id, 'cerere_' + pas, 'info', an.titlu, an.corp, { cerere: true, cerereId: c.id, pentru: 'client' }); } catch (e) {}
+  const em = cereriEchipa.emailClient(c, pas), to = (c.contact || {}).email;
+  if (em && to && mailer && mailer.enabled()) {
+    try { await mailer.send({ to: to, subject: em.subject, text: em.text, jurnal: { fel: 'cerere', companyId: c.company_id, userId: null } }); } catch (e) { console.warn('[cereri] email client:', e.message); }
+  }
+}
+const _cerereAdminFirma = (req) => !!(req.auth && (req.auth.role === 'company_admin' || req.auth.role === 'admin'));
+function _cereriMeta() {
+  return { termen: cereriEchipa.TERMEN, laFiecarePas: cereriEchipa.LA_FIECARE_PAS, cand: cereriEchipa.CAND.map(function (x) { return { k: x[0], t: x[1] }; }),
+    dateTrimise: cereriEchipa.DATE_TRIMISE, dateTrimiseFaraMasina: cereriEchipa.DATE_TRIMISE_FARA_MASINA, notaTrimisa: cereriEchipa.NOTA_TRIMISA,
+    notaLista: cereriEchipa.NOTA_LISTA, notaDupa: cereriEchipa.NOTA_DUPA, probleme: cereriEchipa.PROBLEME, buton: cereriEchipa.BUTON };
+}
+// „Cererile tale" + ce trebuie ferestrei (cum te găsim, textele). Administratorul firmei le vede pe toate ale firmei.
+app.get('/api/cereri-echipa', requireAuth, withScope, async (req, res) => {
+  try {
+    const a = req.auth || getAuth(req) || {}, acum = Date.now();
+    if (req.isSuper || req.companyId == null) return res.json(Object.assign({ platforma: true, cereri: [] }, _cereriMeta()));
+    const admin = _cerereAdminFirma(req);
+    const rows = await db.cereriEchipaFirma(req.companyId, admin ? null : a.userId);
+    const k = await _cerereContact(req, '');
+    res.json(Object.assign({ cereri: rows.map(function (c) { return cereriEchipa.pentruClient(c, acum, { eu: a.userId }); }), admin: admin,
+      demo: demoCompanyId != null && req.companyId === demoCompanyId, contact: { nume: k.nume, telefon: k.telefon, email: k.email } }, _cereriMeta()));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Cererile deschise pe mașinile din casete (în locul butonului: „Echipa RA Track se ocupă · cererea nr. 142 · …").
+app.get('/api/cereri-echipa/deschise', requireAuth, withScope, async (req, res) => {
+  try {
+    const imeis = String(req.query.imeis || '').split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x && canAccessImei(req, x); }).slice(0, 50);
+    const acum = Date.now();
+    // Doar cererile firmei omului (o mașină mutată pe altă firmă nu-i arată noii firme cererea celei vechi).
+    const ale = (await db.cereriDeschisePeMasini(imeis)).filter(function (c) { return req.companyId != null && Number(c.company_id) === Number(req.companyId); });
+    res.json({ deschise: ale.map(function (c) { return { id: c.id, imei: c.imei, problema: c.problema, seOcupa: cereriEchipa.seOcupa(c, acum) }; }), notaDupa: cereriEchipa.NOTA_DUPA });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/cereri-echipa', requireAuth, withScope, async (req, res) => {
   if (_demoBlocked(req, res)) return;
   try {
-    const msg = String((req.body && req.body.message) || '').slice(0, 4000).trim();
+    const a = req.auth || getAuth(req) || {}, acum = Date.now();
+    const r = await _cerereNoua(req, req.body || {});
+    if (r.status === 409 && r.cerere) {
+      return res.status(409).json({ error: 'Echipa RA Track se ocupă deja de asta: cererea nr. ' + r.cerere.id + '.', deja: true,
+        cerere: cereriEchipa.pentruClient(r.cerere, acum, { eu: a.userId }), seOcupa: cereriEchipa.seOcupa(r.cerere, acum) });
+    }
+    if (r.status !== 200) return res.status(r.status).json({ error: r.error });
+    res.json({ ok: true, cerere: cereriEchipa.pentruClient(r.cerere, acum, { eu: a.userId }), confirmare: cereriEchipa.confirmare(r.cerere, acum),
+      seOcupa: cereriEchipa.seOcupa(r.cerere, acum), nota: cereriEchipa.NOTA_TRIMISA, notaDupa: cereriEchipa.NOTA_DUPA });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Ruta veche a ferestrei „Suport clienți" (telefoanele de dinainte de APK-ul nou): o cerere ca oricare alta, fără mașină.
+app.post('/api/support', requireAuth, withScope, async (req, res) => {
+  if (_demoBlocked(req, res)) return;
+  try {
+    const msg = String((req.body && req.body.message) || '').slice(0, 2000).trim();
     if (!msg) return res.status(400).json({ error: 'Mesaj gol' });
-    const a = req.auth || getAuth(req) || {};
-    const who = a.username || ('utilizator#' + (a.userId || '?'));
-    try { await db.logError({ level: 'info', message: 'SUPORT — ' + who + ': ' + msg, route: '/api/support', userId: a.userId || null, companyId: a.companyId || null, context: { kind: 'support' } }); } catch (e) {}
-    try {
-      // Fără o adresă scrisă dinadins, la adresa comună (contact@ — cea pe care chiar o primim, 22.10; până atunci mesajele rămâneau
-      // doar în jurnalul de erori). Răspunsul merge direct la om.
-      let to = process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null)) || (mailer ? mailer.adresa(mailer.fromAddr()).email : null);
-      if (to && /^noreply@/i.test(to)) to = to.replace(/^noreply@/i, 'contact@');   // expeditorul implicit nu primește nimic
-      let replyTo = null; try { const u = a.userId ? await db.getUserById(a.userId) : null; replyTo = (u && (u.email || (/@/.test(u.username || '') ? u.username : null))) || null; } catch (e) {}
-      if (to && mailer && mailer.enabled()) mailer.send({ to: to, replyTo: replyTo || undefined, subject: 'Mesaj suport — ' + who, text: msg, jurnal: { fel: 'suport', companyId: a.companyId != null ? a.companyId : null } }).catch(() => {});
-    } catch (e) {}
-    auditReq(req, 'create', 'support', null, { len: msg.length });
-    res.json({ ok: true });
+    const r = await _cerereNoua(req, { problema: 'alta', mesaj: msg, sursa: 'telefon' });
+    if (r.status !== 200) return res.status(r.status === 409 ? 400 : r.status).json({ error: r.error || 'Nu s-a putut trimite.' });
+    res.json({ ok: true, id: r.cerere.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── La noi: Business › „Cereri de la clienți" ──────────────────────────────────────────────────────────────────────────
+app.get('/api/admin/cereri-echipa/numar', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.cereriEchipaNumar()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/admin/cereri-echipa', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const fel = ['deschise', 'rezolvate', 'toate'].indexOf(req.query.fel) >= 0 ? req.query.fel : 'deschise';
+    const acum = Date.now(), azi = _ziRo(acum);
+    const rows = await db.cereriEchipaToate(fel);
+    const ultima = function (imei) { const l = imei ? livePositions.get(String(imei)) : null; return l && l.timestamp ? new Date(l.timestamp).getTime() : null; };
+    const deschise = rows.filter(function (c) { return c.stare !== 'rezolvata'; });
+    const prima = deschise.reduce(function (m, c) { return m == null || c.creat_la < m ? c.creat_la : m; }, null);
+    res.json(Object.assign({ fel: fel, cereri: rows.map(function (c) { return cereriEchipa.pentruNoi(c, acum, { ultima: ultima(c.imei) }); }),
+      primaDeschisa: prima ? cereriEchipa.cand(prima, acum) : null, azi: azi, maine: cereriEchipa.ziLucratoareDupa(azi),
+      intervale: cereriEchipa.INTERVALE.map(function (x) { return { k: x[0], t: x[1] }; }),
+      parteneri: (await db.listParteneriMontaj()).filter(function (p) { return p.active !== false; }).map(function (p) { return { id: p.id, name: p.name }; }) },
+    await db.cereriEchipaNumar()));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Preiau / Programez / Rezolvat / Redeschide: fiecare o dată (din stările lui), cu anunțul la client la fiecare pas.
+async function _cerereTrecere(req, res, dinStari, patch, pas, refuz) {
+  const id = parseInt(req.params.id, 10) || 0;
+  const c0 = await db.cerereEchipa(id);
+  if (!c0) return res.status(404).json({ error: 'Cererea nu există.' });
+  let ok = false;
+  try { ok = await db.treceCerereEchipa(id, dinStari, patch(c0)); }
+  catch (e) {
+    if (String(e.code) === '23505' || /duplicate key|unique/i.test(String(e.message || ''))) return res.status(409).json({ error: 'Mașina are deja o altă cerere deschisă pentru aceeași problemă.' });
+    throw e;
+  }
+  if (!ok) return res.status(409).json({ error: refuz(c0) });
+  const c = await db.cerereEchipa(id);
+  auditReq(req, 'cerere_' + pas, 'cerere_echipa', id, { stare: c.stare });
+  if (pas !== 'redeschisa') _cerereLaClient(c, pas).catch(function (e) { console.warn('[cereri] client:', e.message); });
+  const l = c.imei ? livePositions.get(String(c.imei)) : null;
+  res.json({ ok: true, cerere: cereriEchipa.pentruNoi(c, Date.now(), { ultima: l && l.timestamp ? new Date(l.timestamp).getTime() : null }) });
+}
+const _deCine = (c, cheie) => (c && c[cheie + '_nume']) ? ' (' + c[cheie + '_nume'] + ')' : '';
+app.post('/api/admin/cereri-echipa/:id/preiau', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const eu = getAuth(req).userId, acum = Date.now();
+    await _cerereTrecere(req, res, ['trimisa'], function () { return { stare: 'preluata', preluata_de: eu, preluata_la: acum }; }, 'preluata',
+      function (c) { return c.stare === 'rezolvata' ? 'Cererea e deja rezolvată.' : 'Cererea a fost deja preluată' + _deCine(c, 'preluata_de') + '.'; });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/admin/cereri-echipa/:id/programeaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {}, eu = getAuth(req).userId, acum = Date.now();
+    const zi = String(b.zi || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(zi) || zi < _ziRo(acum)) return res.status(400).json({ error: 'Alege ziua (de azi încolo).' });
+    const iv = cereriEchipa.INTERVALE.find(function (x) { return x[0] === b.interval; });
+    if (!iv) return res.status(400).json({ error: 'Alege intervalul orar.' });
+    let partener = null;
+    if (b.partener_id != null && b.partener_id !== '') {
+      partener = (await db.listParteneriMontaj()).find(function (p) { return Number(p.id) === Number(b.partener_id); });
+      if (!partener) return res.status(400).json({ error: 'Instalatorul ales nu există.' });
+    }
+    await _cerereTrecere(req, res, ['trimisa', 'preluata', 'programata'], function (c) {
+      const mesaj = String(b.mesaj || '').replace(/\s+/g, ' ').trim().slice(0, 300) || cereriEchipa.mesajProgramare({ zi: zi, interval: iv[0], unde: (c.cand || {}).unde });
+      const p = { stare: 'programata', programata_de: eu, programata_la: acum,
+        programare: { zi: zi, interval: iv[0], intervalText: iv[1], partener_id: partener ? partener.id : null, partener_nume: partener ? partener.name : null, mesaj: mesaj, in_calendar: b.in_calendar !== false } };
+      if (!c.preluata_la) { p.preluata_de = eu; p.preluata_la = acum; }
+      return p;
+    }, 'programata', function (c) { return c.stare === 'rezolvata' ? 'Cererea e deja rezolvată.' : 'Cererea nu se mai poate programa.'; });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/admin/cereri-echipa/:id/rezolvat', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const raspuns = String((req.body || {}).raspuns || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+    if (!raspuns) return res.status(400).json({ error: 'Scrie ce i-am făcut clientului (îi trimitem textul).' });
+    const eu = getAuth(req).userId, acum = Date.now();
+    await _cerereTrecere(req, res, ['trimisa', 'preluata', 'programata'], function (c) {
+      const p = { stare: 'rezolvata', raspuns: raspuns, rezolvata_de: eu, rezolvata_la: acum };
+      if (!c.preluata_la) { p.preluata_de = eu; p.preluata_la = acum; }
+      return p;
+    }, 'rezolvata', function () { return 'Cererea e deja rezolvată.'; });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/admin/cereri-echipa/:id/redeschide', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    await _cerereTrecere(req, res, ['rezolvata'], function (c) { return { stare: c.preluata_la ? 'preluata' : 'trimisa', rezolvata_de: null, rezolvata_la: null }; }, 'redeschisa',
+      function () { return 'Cererea e deja deschisă.'; });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -12458,18 +12706,41 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireEdit('vehicule'),
   }
 });
 
+// Șoferul și grupa unei mașini sunt ale FIRMEI MAȘINII (B, 23.10; Alin: „da, le rezolvăm"). Fără verificare, o cerere făcută
+// de mână putea pune pe o mașină șoferul sau grupa altei firme, iar fișa mașinii și rapoartele arătau apoi numele omului de la
+// cealaltă firmă. Ce nu e al firmei mașinii răspunde ca un lucru care nu există (404), la oricine — și la noi. Gol = scos.
+// Singura excepție: grupele NOASTRE (făcute din contul de fondator, fără firmă) le folosim tot doar noi. O singură regulă
+// pentru ambele rute (/assign și /group).
+async function _soferGrupaAleFirmei(imei, driverRaw, groupRaw, req) {
+  const dev = await db.getDeviceByImei(imei);
+  if (!dev) return { status: 404, eroare: 'Vehiculul nu există.' };
+  const gol = (x) => x === null || x === undefined || x === '' || x === 0 || x === '0';
+  const alFirmei = async (tabel, raw, invalid, strain, aNoastra) => {
+    if (gol(raw)) return { id: null };
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id <= 0) return { status: 400, eroare: invalid };
+    const firma = await db.getRowCompany(tabel, id);
+    if (firma === undefined) return { status: 404, eroare: strain };
+    if (firma === null && aNoastra) return { id: id };
+    if (firma === null || dev.company_id == null || Number(firma) !== Number(dev.company_id)) return { status: 404, eroare: strain };
+    return { id: id };
+  };
+  const s = await alFirmei('drivers', driverRaw, 'Șofer invalid.', 'Șoferul ales nu e în firma acestei mașini.', false);
+  if (s.eroare) return s;
+  const g = await alFirmei('device_groups', groupRaw, 'Grupă invalidă.', 'Grupa aleasă nu e a firmei acestei mașini.', !!(req && req.isSuper));
+  if (g.eroare) return g;
+  return { driverId: s.id, groupId: g.id };
+}
+
 // Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe".
 // Separat de /assign fiindcă acela scrie ȘI driver_id: mutarea între grupe ar rămâne fără șofer.
 app.put('/api/devices/:imei/group', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
-    const gid = (req.body.group_id === null || req.body.group_id === '' || req.body.group_id === undefined)
-      ? null : parseInt(req.body.group_id);
-    if (gid !== null) {
-      if (!Number.isFinite(gid)) return res.status(400).json({ error: 'Grupă invalidă' });
-      // Grupa trebuie să fie a companiei celui care cere — altfel s-ar putea muta vehicule în grupa altcuiva.
-      if (!(await ownsRow(req, 'device_groups', gid))) return res.status(403).json({ error: 'Acces interzis' });
-    }
+    // Grupa trebuie să fie a firmei MAȘINII (nu doar a celui care cere: la noi, super-admin, orice grupă trecea).
+    const v = await _soferGrupaAleFirmei(req.params.imei, null, req.body.group_id, req);
+    if (v.eroare) return res.status(v.status).json({ error: v.eroare });
+    const gid = v.groupId;
     await db.setDeviceGroup(req.params.imei, gid);
     invalidateAccessCache(); // grupa dă acces → cine vede ce se schimbă pe loc
     auditReq(req, 'assign', 'device', req.params.imei, { group_id: gid });
@@ -12481,9 +12752,11 @@ app.put('/api/devices/:imei/group', requireAuth, requireEdit('vehicule'), withSc
 app.put('/api/devices/:imei/assign', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
-    await db.assignDevice(req.params.imei, req.body.driver_id, req.body.group_id);
+    const v = await _soferGrupaAleFirmei(req.params.imei, req.body.driver_id, req.body.group_id, req);
+    if (v.eroare) return res.status(v.status).json({ error: v.eroare });
+    await db.assignDevice(req.params.imei, v.driverId, v.groupId);
     invalidateAccessCache(); // grupul s-a schimbat → invalidează tot cache-ul de acces
-    auditReq(req, 'assign', 'device', req.params.imei, { driver_id: req.body.driver_id, group_id: req.body.group_id });
+    auditReq(req, 'assign', 'device', req.params.imei, { driver_id: v.driverId, group_id: v.groupId });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -12892,8 +13165,8 @@ app.get('/api/stats', requireAuth, withScope, async (req, res) => {
 app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
   try {
     await applyCompanyFilter(req);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // „Azi" = de la miezul nopții în ROMÂNIA (23.10): serverul e pe UTC, iar cu setHours(0) „azi" începea la 3 dimineața.
+    const todayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const now = new Date();
     // Total vehicule = flota ÎNREGISTRATĂ (non-arhivată) din scope, NU doar cele care transmit live.
     // Altfel un vehicul offline (ex. nu a transmis azi) dispărea din dashboard → totul pe 0. Acum apare ca „oprit".
@@ -13085,16 +13358,18 @@ app.get('/api/stats/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Fișa mașinii de pe hartă: „azi" de la miezul nopții în ROMÂNIA (23.10; cu setHours pe UTC începea la 3 dimineața),
+    // iar ziua scrisă e tot a României (miezul nopții românesc e încă „ieri" pe UTC).
+    const todayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const now = new Date();
+    const ziua = _ziRo(now.getTime());
 
     const history = await db.getDeviceHistory(imei, todayStart.toISOString(), now.toISOString());
 
     if (history.length === 0) {
       return res.json({
         imei,
-        date: todayStart.toISOString().slice(0, 10),
+        date: ziua,
         totalKm: 0,
         avgSpeed: 0,
         maxSpeed: 0,
@@ -13174,7 +13449,7 @@ app.get('/api/stats/:imei', requireAuth, withScope, async (req, res) => {
 
     res.json({
       imei,
-      date: todayStart.toISOString().slice(0, 10),
+      date: ziua,
       totalKm: Math.round(totalDistance * 100) / 100,
       avgSpeed: speedCount > 0 ? Math.round(speedSum / speedCount) : 0,
       maxSpeed,
@@ -13197,7 +13472,8 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
-    const from = req.query.from || new Date(new Date().setHours(0,0,0,0)).toISOString();
+    // Fără perioadă: „azi" de la miezul nopții în România (23.10; cu setHours pe UTC începea la 3 dimineața).
+    const from = req.query.from || insight.perioada({ period: 'today' }, Date.now()).from;
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
 
@@ -18262,7 +18538,7 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
 // domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
 const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', pachet: 'Pachet RA Insight', neplata: 'Neplată',
   invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj', raspuns: 'Răspuns',
-  redirectionat: 'Redirecționat' };
+  redirectionat: 'Redirecționat', cerere: 'Cerere de la client' };
 // „Șterge" în „Trimise" (Robert, 13.10: „3. da"): DOAR emailurile scrise de mână. Facturile, contractele, avertismentele și
 // invitațiile rămân — sunt dovada că le-am trimis.
 const MAIL_TRIMISE_STERGIBILE = ['mesaj', 'raspuns', 'redirectionat'];

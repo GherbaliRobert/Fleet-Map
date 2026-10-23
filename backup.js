@@ -27,6 +27,8 @@ const BUSINESS_TABLES = [
   'payments', 'platform_costs', 'costs_payments', 'offers', 'agent_findings',
   'weekly_reports', 'report_schedules', 'report_history', 'api_keys', 'webhooks',
   'tacho_files', 'etransport', 'settings', 'ai_usage', 'ai_reguli', 'ai_corecturi', 'pachet_treceri', 'ui_prefs', 'trips', 'audit_log',
+  // „Anunță echipa RA Track" (22.10): cererile clienților către noi — istoricul relației, nu se pot reface.
+  'cereri_echipa',
   // Lipseau, deși sunt exact genul de date care nu se pot reconstrui:
   //  · `invoices` + `invoice_counters` — facturile emise și CONTORUL de numerotare fiscală. O restaurare
   //    fără contor repornește seria de facturi de la 1, ceea ce e o problemă fiscală, nu una tehnică.

@@ -4710,3 +4710,111 @@ body.dark .rep-rezumat-t i { color: #a78bfa; }
 /* RA Drive (fosta „Safe Drive & costuri", 15.10): numele scurt și subtitlul lui, în stânga și în capul paginii. */
 .insp-ram-sub { margin-left: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
 .sdp-cap h2 .sdp-sub { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+/* „Anunță echipa RA Track" (22.10, macheta E2 / E3 / E3b): fereastra clientului. Verdele pe tema deschisă e #166534 (≥ 4,5
+   pe alb), pe cea închisă #4ade80; textele pe --text-primary / --text-secondary, culoarea doar pe chenare și iconițe. */
+.ce-ov { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: grid; place-items: center; z-index: 5000; padding: 16px; }
+.ce-ov[hidden] { display: none; }
+.ce-win { width: 640px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 22px 60px rgba(0,0,0,.28); color: var(--text-primary); font-size: 13.5px; }
+.ce-h { display: flex; align-items: center; gap: 10px; padding: 15px 18px 10px; flex: none; }
+.ce-h .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, #166534 12%, transparent); color: #166534; flex: none; }
+.ce-h b { font-size: 16px; font-weight: 800; }
+.ce-x { margin-left: auto; border: 0; background: transparent; color: var(--text-secondary); font-size: 17px; cursor: pointer; padding: 4px 7px; border-radius: 8px; }
+.ce-x:hover { color: var(--text-primary); background: var(--bg-dark); }
+.ce-tabs { display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--border); flex: none; }
+.ce-tab { padding: 8px 12px; font: inherit; font-weight: 800; font-size: 13px; color: var(--text-secondary); border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; cursor: pointer; }
+.ce-tab.on { color: var(--text-primary); border-bottom-color: #166534; }
+.ce-b { padding: 14px 18px; display: grid; gap: 12px; overflow: auto; min-height: 0; }
+.ce-camp[hidden] { display: none; }
+.ce-l { font-size: 12px; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; }
+.ce-l2 { font-weight: 600; }
+.ce-l3 { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.ce-ro { padding: 9px 11px; border-radius: 10px; background: var(--bg-dark); border: 1px solid var(--border); line-height: 1.5; }
+.ce-ta { display: block; width: 100%; box-sizing: border-box; min-height: 56px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13.5px; resize: vertical; }
+.ce-in { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13.5px; max-width: 100%; box-sizing: border-box; }
+.ce-lung { width: 310px; }
+.ce-tel { width: 140px; }
+.ce-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ce-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
+.ce-chip.on { border-color: #166534; color: #166534; background: color-mix(in srgb, #166534 9%, transparent); }
+.ce-r2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.ce-r0 { margin-top: 0; }
+.ce-gri { color: var(--text-secondary); }
+.ce-det { border: 1px dashed var(--border-light); border-radius: 10px; padding: 9px 11px; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); display: flex; gap: 8px; align-items: flex-start; }
+.ce-det i { margin-top: 3px; }
+.ce-err { color: #b91c1c; font-weight: 700; font-size: 13px; }
+.ce-err[hidden] { display: none; }
+.ce-f { display: flex; align-items: center; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--border); flex-wrap: wrap; flex: none; }
+.ce-f .n { font-size: 12px; color: var(--text-secondary); margin-right: auto; max-width: 330px; line-height: 1.45; }
+.ce-f .chat-pas { margin: 0; }
+.ce-trimis { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.ce-trimis > i { color: #15803d; font-size: 20px; margin-top: 1px; }
+.ce-tl { display: grid; }
+.ce-tl-r { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; position: relative; padding-bottom: 13px; }
+.ce-tl-r:not(:last-child)::before { content: ''; position: absolute; left: 10px; top: 21px; bottom: 1px; width: 2px; background: var(--border); }
+.ce-tl-d { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-light); background: var(--bg-panel); display: grid; place-items: center; font-size: 9px; box-sizing: border-box; }
+.ce-tl-r.gata .ce-tl-d { background: #166534; border-color: #166534; color: #fff; }
+.ce-tl-r.sarit .ce-tl-t { color: var(--text-secondary); }
+.ce-tl-t { font-weight: 800; }
+.ce-tl-s { font-size: 12.5px; color: var(--text-secondary); }
+.ce-cr { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; line-height: 1.45; }
+.ce-cr-h { display: flex; align-items: center; gap: 8px; }
+.ce-st { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; margin-left: auto; }
+.ce-st.trimisa { color: #b45309; } .ce-st.preluata { color: #6d28d9; } .ce-st.programata { color: #1d4ed8; } .ce-st.rezolvata { color: #166534; }
+body.dark .ce-h .ic { color: #4ade80; background: rgba(74,222,128,.12); }
+body.dark .ce-tab.on { border-bottom-color: #4ade80; }
+body.dark .ce-chip.on { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,.10); }
+body.dark .ce-err { color: #f87171; }
+body.dark .ce-trimis > i { color: #4ade80; }
+body.dark .ce-tl-r.gata .ce-tl-d { background: #4ade80; border-color: #4ade80; color: #06210F; }
+body.dark .ce-st.trimisa { color: #fbbf24; } body.dark .ce-st.preluata { color: #c4b5fd; } body.dark .ce-st.programata { color: #93c5fd; } body.dark .ce-st.rezolvata { color: #86efac; }
+@media (max-width: 640px) { .ce-lung { width: 100%; } .ce-f .n { max-width: none; width: 100%; } }
+/* În caseta din discuție: nota de sub butoane și, după trimitere, „Echipa RA Track se ocupă · …" (macheta E3c). */
+.chat-prob-n { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; }
+.chat-seocupa { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: #166534; padding: 5px 11px; border-radius: 99px; background: color-mix(in srgb, #166534 10%, transparent); }
+body.dark .chat-seocupa { color: #4ade80; background: rgba(74,222,128,.12); }
+/* Fișa mașinii de pe hartă: „Ceva nu merge la aparat? Anunță echipa RA Track". */
+.detail-echipa { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 12px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark); color: var(--text-secondary); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.detail-echipa[hidden] { display: none; }
+.detail-echipa b { color: var(--text-primary); font-weight: 800; }
+.detail-echipa > i:first-child { color: #166534; }
+.detail-echipa > i:last-child { margin-left: auto; font-size: 11px; }
+.detail-echipa:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+body.dark .detail-echipa > i:first-child { color: #4ade80; }
+/* „Cereri de la clienți" (la noi, macheta E4): chenarul din stânga și eticheta, după stare. */
+.cer-head { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.cer-cate { margin-left: auto; font-size: 11.5px; color: var(--text-muted); }
+/* Două clase: `.dq-item` / `.dq-acts` (stilul cererilor demo) stau în pagină, DUPĂ fișierul ăsta, și le-ar bate pe cele de aici. */
+.dq-item.cer-item { border-left: 3px solid #d97706; align-items: flex-start; }
+.cer-item.prel { border-left-color: #6d28d9; } .cer-item.prog { border-left-color: #1d4ed8; } .cer-item.rez { border-left-color: var(--text-muted); }
+.cer-item.cer-arat { box-shadow: 0 0 0 2px var(--accent); }
+.cer-corp { min-width: 0; flex: 1; }
+.cer-veh { color: var(--text-secondary); font-weight: 600; }
+.cer-tit { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 6px; }
+.cer-tag { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 1px 7px; border-radius: 5px; border: 1px solid currentColor; color: #b45309; vertical-align: 1px; }
+.cer-tag.prel { color: #6d28d9; } .cer-tag.prog { color: #1d4ed8; } .cer-tag.rez { color: #166534; }
+.cer-auto { margin-top: 7px; font-size: 12.5px; color: #166534; font-weight: 800; }
+.cer-tech { margin-top: 7px; padding: 7px 10px; border-radius: 9px; background: var(--bg-dark); font-size: 12px; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.cer-tech b { color: var(--text-primary); }
+.cer-tech .t { width: 100%; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.cer-prog-txt { margin-top: 7px; font-size: 12.5px; line-height: 1.5; color: var(--text-primary); }
+.cer-prog-txt span { color: var(--text-secondary); }
+.cer-prog-txt > i { color: #1d4ed8; }
+.cer-form { margin-top: 9px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-dark); display: grid; gap: 8px; font-size: 13px; }
+.cer-form .rr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cer-form .l { font-size: 12px; font-weight: 800; color: var(--text-secondary); min-width: 108px; }
+.cer-in { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13px; max-width: 100%; box-sizing: border-box; }
+.cer-lung { flex: 1; min-width: 260px; }
+.cer-ck { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.cer-sp { margin-left: auto; }
+.dq-acts.cer-acts { flex-direction: column; align-items: stretch; flex-wrap: nowrap; min-width: 150px; }
+.cer-acts .rax-btn { justify-content: flex-start; text-decoration: none; }
+body.dark .cer-item.prel { border-left-color: #a78bfa; } body.dark .cer-item.prog { border-left-color: #60a5fa; }
+body.dark .cer-tag { color: #fbbf24; } body.dark .cer-tag.prel { color: #c4b5fd; } body.dark .cer-tag.prog { color: #93c5fd; } body.dark .cer-tag.rez { color: #86efac; }
+body.dark .cer-auto { color: #4ade80; }
+body.dark .cer-prog-txt > i { color: #93c5fd; }
+@media (max-width: 640px) { .dq-acts.cer-acts { flex-direction: row; flex-wrap: wrap; min-width: 0; } .cer-lung { min-width: 0; width: 100%; } }
+/* Intervențiile din Calendarul de montaj (22.10): albastru, ca „programată" din „Cereri de la clienți"; gri după rezolvare. */
+.raco .mjc-l.mjc-int { color: #93c5fd; background: rgba(96,165,250,.13); border-color: rgba(96,165,250,.36); }
+.raco .mjc-l.mjc-int.gata { color: #cbd5e1; background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.32); }
+body:not(.dark) .raco .mjc-l.mjc-int { color: #1d4ed8; background: #e8f0fe; border-color: #93c5fd; }
+body:not(.dark) .raco .mjc-l.mjc-int.gata { color: #334155; background: #eef2f6; border-color: #cbd5e1; }

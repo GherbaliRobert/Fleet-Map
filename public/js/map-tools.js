@@ -211,38 +211,8 @@
     });
   }
 
-  // ── Suport clienți ──
-  function injectSupport() {
-    if (el('support-overlay')) return;
-    var o = document.createElement('div'); o.id = 'support-overlay'; o.className = 'msb-overlay';
-    o.innerHTML = '<div class="msb-card"><div class="msb-card-head"><b><i class="fas fa-headset"></i> Suport clienți</b><button onclick="closeSupport()" class="msb-x">&times;</button></div>' +
-      '<div class="msb-card-body">' +
-        '<div class="msb-contact">' +
-          '<a href="tel:+40312295000"><i class="fas fa-phone"></i> 0312 295 000</a>' +
-          '<a href="mailto:contact@ratrack.ro"><i class="fas fa-envelope"></i> contact@ratrack.ro</a>' +
-          '<a href="https://wa.me/40700000000" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>' +
-        '</div>' +
-        '<div class="msb-muted">Program: Luni–Vineri, 09:00–18:00. Sau trimite-ne un mesaj direct:</div>' +
-        '<textarea id="support-msg" rows="4" placeholder="Descrie problema sau întrebarea ta…"></textarea>' +
-        '<button class="msb-send" onclick="sendSupport()"><i class="fas fa-paper-plane"></i> Trimite mesajul</button>' +
-        '<div id="support-status" class="msb-muted" style="margin-top:8px;"></div>' +
-      '</div></div>';
-    o.addEventListener('click', function (e) { if (e.target === o) window.closeSupport(); });
-    document.body.appendChild(o);
-  }
-  window.openSupport = function () { injectSupport(); el('support-overlay').classList.add('open'); setTimeout(function () { var t = el('support-msg'); if (t) t.focus(); }, 60); };
-  window.closeSupport = function () { var o = el('support-overlay'); if (o) o.classList.remove('open'); };
-  window.sendSupport = function () {
-    var t = el('support-msg'), st = el('support-status'); var msg = (t.value || '').trim();
-    if (!msg) { st.textContent = 'Scrie un mesaj înainte de a trimite.'; return; }
-    st.textContent = 'Se trimite…';
-    fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (j && j.ok) { st.innerHTML = '<span style="color:var(--accent)">✓ Mesaj trimis. Te contactăm în curând.</span>'; t.value = ''; }
-        else st.textContent = 'Eroare: ' + ((j && j.error) || 'necunoscută');
-      }).catch(function () { st.textContent = 'Eroare de rețea.'; });
-  };
+  // „Suport clienți" (fereastra veche, cu un telefon și un WhatsApp care nu erau ai noștri) a plecat pe 23.10: iconița cu căști
+  // deschide acum „Anunță echipa RA Track" (public/index.html, `openSupport`), cu cererea, pașii și „Cererile tale".
 
   // ── Vizibilitate bară: doar pe harta „Localizare", după autentificare ──
   // Citește starea din DOM (#view-localizare.active) → robust indiferent cum se apelează showView.

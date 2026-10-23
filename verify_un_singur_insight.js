@@ -293,6 +293,31 @@ const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean)
   const s1 = await json('POST', '/api/insight/intreaba', admS.ck, { message: 'Fă-mi raportul „Staționări” pentru toată flota, ieri', nou: true });
   const qs1 = (await json('GET', '/api/ai/quota', admS.ck)).j;
   T('pe Start, cererea de raport se face pe reguli și se numără din cele 50', s1.status === 200 && (s1.j.raport || {}).label === 'Staționări' && qs0.pachet && qs0.pachet.cod === 'start' && qs1.used === qs0.used + 1 && s1.j.pachet && s1.j.pachet.ramase === 49, s1.status + ' ' + JSON.stringify([qs0.used, qs1.used, s1.j.pachet]));
+
+  // d) „Azi" pe ora României și în restul aplicației (A, 23.10; Alin: „da, le rezolvăm"): Tabloul de bord, fișa mașinii de pe hartă,
+  //    raportul vechi pe o mașină și întrebările gata făcute ale telefonului vechi socoteau „azi" cu setHours pe serverul pe UTC
+  //    (de la 3 dimineața, vara). O mașină merge de la 23:40 la 23:45 (ieri) și de la 00:01 la 00:02 (azi, ora României): „azi"
+  //    trebuie să numere DOAR al doilea drum, oricând rulează proba (după 03:00 regula veche nu-l vedea; înainte de 03:00 le număra
+  //    pe amândouă, plus drumul dintre ele).
+  console.log('\n5d. „Azi" pe ora României: Tabloul de bord, fișa mașinii, raportul vechi, întrebările vechi ale telefonului');
+  const coO = (await json('POST', '/api/companies', S, { name: 'Firma Ora SRL' })).j;
+  const IO = '350000000071201';
+  await json('POST', '/api/devices/import', S, { rows: [{ imei: IO, nume: 'Dacia Duster', nr_inmatriculare: 'B 201 ORA' }] });
+  await json('PUT', '/api/devices/' + IO + '/company', S, { company_id: coO.id });
+  const z0 = Date.parse(I.perioada({ period: 'today' }, Date.now()).from);
+  for (const [min, lat] of [[-20, 44.40], [-15, 44.41], [1, 44.42], [2, 44.43]]) await json('POST', '/api/test/simulate', S, { imei: IO, name: 'Dacia Duster', speed: 50, io: { ignition: 1 }, ts: new Date(z0 + min * 60000).toISOString(), lat: lat, lng: 26.1 });
+  const kmAzi = (x) => Number(x) > 1.0 && Number(x) < 1.25;   // 0,01° de latitudine ≈ 1,11 km: doar drumul de după miezul nopții
+  const ziRO = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' });
+  const st = await json('GET', '/api/stats/' + IO, S);
+  T('fișa mașinii de pe hartă: „azi" = de la miezul nopții României (doar drumul de la 00:01), cu ziua României', st.status === 200 && kmAzi(st.j.totalKm) && st.j.date === ziRO, st.status + ' ' + JSON.stringify({ km: st.j.totalKm, date: st.j.date, ziRO }));
+  const db0 = await json('GET', '/api/dashboard?companyId=' + coO.id, S);
+  const dv = ((db0.j && db0.j.devices) || []).find((d) => d.imei === IO) || {};
+  T('Tabloul de bord: km de azi ai mașinii, la fel', db0.status === 200 && kmAzi(dv.km), db0.status + ' ' + JSON.stringify(dv).slice(0, 160));
+  const rv = await json('GET', '/api/report/' + IO, S);
+  T('raportul vechi pe o mașină, fără perioadă: de la miezul nopții României', rv.status === 200 && rv.j.from === new Date(z0).toISOString() && kmAzi(rv.j.totalKm), rv.status + ' ' + JSON.stringify({ from: rv.j.from, km: rv.j.totalKm }));
+  const pk = await json('POST', '/api/insight/run', S, { key: 'km' }), pc = await json('POST', '/api/insight/run', S, { key: 'costuri' });
+  T('întrebările vechi ale telefonului: „săptămâna asta" și „luna asta" pe ora României (aceeași regulă ca RA Insight)', pk.status === 200 && pc.status === 200 && (pk.j.period || {}).from === I.perioada({ period: 'this_week' }, Date.now()).from && (pc.j.period || {}).from === I.perioada({ period: 'this_month' }, Date.now()).from, JSON.stringify([pk.j.period, pc.j.period]));
+  T('…și în server.js nu mai e niciun „azi" socotit cu setHours, afară de panoul tehnic al nostru (io-peek, întrebat pe 23.10)', (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length === 1 && /const dayStart = new Date\(\); dayStart\.setHours\(0, 0, 0, 0\);/.test(SRV.split("app.get('/api/admin/io-peek'")[1] || '') && /function _insightPeriod\(p\) \{ return insight\.perioada\(\{ period: p \}, Date\.now\(\)\); \}/.test(SRV), (SRV.match(/setHours\(0,\s*0,\s*0,\s*0\)/g) || []).length);
   T('ZERO cereri către model în toată proba', nModel() === 0, nModel());
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');

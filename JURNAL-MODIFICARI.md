@@ -188,6 +188,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
   fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
   clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
+  **23.10:** fereastra veche a plecat cu tot cu butonul (în locul ei, „Anunță echipa RA Track"). Dacă vreți un telefon sau un WhatsApp
+  în fereastra nouă, dați-mi numărul real.
 - [ ] **Voi: hotărârile din analiza concurenței. Adăugat pe 05.10.** Raportul întreg (13 firme, cu surse):
   https://claude.ai/artifact/52xCU4BFu1pfpqfZrPG7Pq. De hotărât: (1) e-Transport se vinde în ofertă (4 lei pe mașină pe
   lună), dar azi nu trimite nimic la ANAF — îl trecem „în pregătire", fără preț?; (2) numărul-șablon „+40 7XX" de pe
@@ -336,6 +338,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `POST /api/insight/actiuni/:id/aplica|refuza|anuleaza`, „Gata" cu „Anulează" numărat din `ramasMs`, pasul următor din `urmator`),
   rândurile „Propunere ›" din „Azi la tine" (butonul `propunere` = o cerere pe reguli), pagina „Șoferi pe mașini" din
   `GET /api/insight/soferi-masini` cu „Aplică cele bifate" (`POST /api/insight/soferi-masini/aplica`). Textele le dă serverul.
+- [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
+  clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
+  `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
+  se ocupă" după trimitere), din fișa mașinii și din meniu (în locul trimiterii vechi din `Menu.tsx`); butonul `harta` duce pe hartă;
+  (2) la noi, „Cereri de la clienți" (`/api/admin/cereri-echipa`, `…/numar`, `…/:id/preiau|programeaza|rezolvat|redeschide`);
+  (3) anunțurile: `cerere_echipa` → „Cereri de la clienți", `cerere_preluata|programata|rezolvata` → „Cererile tale"; (4) intervențiile
+  din Calendarul de montaj (`interventii` în răspunsul calendarului). Textele le dă serverul.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -402,6 +411,74 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+
+---
+
+## 2026-10-23
+
+### AMÂNDOI · „Anunță echipa RA Track": clientul ne anunță dintr-un clic, noi preluăm, programăm, rezolvăm
+
+Alin (22.10): „da" la fluxul din capitolul 4 al machetei din 21.10, „te sunăm în cel mult o zi lucrătoare", cererile le preiau
+amândoi fondatorii, cu „Preiau"; 23.10: „la 3, da". Regula din 19.10 rămâne: **aparatul e treaba noastră** — clientul nu e trimis
+să verifice nimic, are un singur lucru de făcut: să ne anunțe.
+- **De unde ne anunță clientul (aceeași fereastră, trei uși):** (1) butonul „Anunță echipa RA Track" din casetele RA Insight
+  („Consumul la B 154 UIP nu se poate măsura acum", „B 268 ROY nu transmite de 3 zile" — caseta nouă, cu „Pe hartă"); (2) rândul
+  „Ceva nu merge la aparat? Anunță echipa RA Track" din fișa mașinii de pe hartă; (3) iconița cu căști din bara de sus.
+- **Fereastra:** mașina și „ce s-a întâmplat" le scrie aplicația; omul adaugă, dacă vrea, un mesaj, când poate veni cineva
+  (Oricând / Dimineața / După-amiaza / În weekend / Sunați-mă întâi) și unde stă mașina; telefonul îl verifică. Jos: „Te sunăm în cel
+  mult o zi lucrătoare." După „Trimite echipei": „Am trimis cererea nr. N." și pașii (Trimisă → Preluată → Programată → Rezolvată).
+  În casetă, butonul se face „Echipa RA Track se ocupă · cererea nr. N · trimisă azi, 10:42" — pe aceeași mașină și problemă rămâne
+  O singură cerere deschisă (a doua încercare spune „Echipa RA Track se ocupă deja de asta"). „Cererile tale" arată toate cererile:
+  administratorul firmei le vede pe ale tuturor, ceilalți pe ale lor. O mașină care nu transmite devine singură „Nu transmite de 3 ore",
+  oricare ar fi ușa.
+- **Ce ne vine nouă:** anunț în aplicație și pe telefon („Cerere nouă nr. N · firma") și email la contact@ cu tot ce trebuie, inclusiv
+  **datele aparatului** (modelul, IMEI-ul, cartela, ultima poziție, semnalul, alimentarea, rezervorul, de când transmite, instalatorul);
+  „Răspunde" în email = îi scrii direct clientului. Clientul NU vede datele aparatului.
+- **Business › „Cereri de la clienți"** (rândul nou, după „Cereri demo", cu bulina cererilor încă nepreluate): Deschise / Rezolvate /
+  Toate; pe fiecare cerere „Preiau", „Programez" (ziua — propusă următoarea zi lucrătoare —, intervalul orar, instalatorul, mesajul
+  pentru client — gol, îl scrie aplicația —, „Pune și în Calendarul de montaj, ca intervenție"), „Rezolvat" (cu ce i-am făcut, trimis
+  clientului), „Sună", „Deschide firma", „Redeschide". Fiecare pas merge o singură dată: dacă Robert a preluat deja, Alin află „Cererea
+  a fost deja preluată (Robert …)". La o mașină care nu transmitea și a transmis din nou: „Pare rezolvată singură".
+- **La client, la fiecare pas:** anunț în aplicație și pe telefon + email („Am preluat cererea nr. N… Te sună …", ziua și ora,
+  ce am făcut).
+- **Calendarul de montaj:** intervenția programată stă în ziua ei (iconița cu căști, albastră; gri după rezolvare) și îl ține ocupat pe
+  instalator, dar nu e o lucrare de montaj (nu intră în contract, în „Ce ai de montat", în facturi). Un clic duce la cerere.
+- **Fereastra veche „Suport clienți" a plecat** — avea un telefon (0312 295 000) și un WhatsApp (+40 700 000 000) care nu erau ai
+  noștri. Telefonul vechi (până la APK-ul nou) mai trimite pe ruta veche: mesajul lui devine o cerere ca oricare alta.
+- **Ce am schimbat:** `cereri_echipa.js` (nou: regulile și textele), `server.js` (`_cerereNoua`, rutele `/api/cereri-echipa`,
+  `/api/admin/cereri-echipa/*`, calendarul), `db.js` (tabela `cereri_echipa`), `probleme.js` (caseta „nu transmite", butonul și nota),
+  `backup.js`, pagina (fereastra, casetele, fișa, „Cereri de la clienți", anunțurile, calendarul), `app.css`, `map-tools.js`/`.css`
+  (fereastra veche scoasă), `insight_ghid.js` (capitolul „Anunță echipa RA Track"). Probă nouă: `verify_cereri_echipa.js` (79, în
+  `npm test`, pe server pornit, cu un server de email fals); `verify_proba_reparatii.js`, `verify_insight_ghid.js`, `verify_formatoare.js`
+  mutate pe regula nouă. Contrastul culorilor noi, măsurat pe ambele teme: peste 4,5 peste tot.
+- **Ce vede fondatorul:** rândul „Cereri de la clienți" cu bulina, lista cu datele aparatului, anunțul și emailul la fiecare cerere nouă,
+  intervențiile în calendar.
+- **Ce vede clientul:** butonul din casete, rândul din fișa mașinii, fereastra nouă din iconița cu căști, „Cererile tale", mesajele la
+  fiecare pas. Fără nicio cifră tehnică. Telefonul — la APK-ul următor (Robert).
+
+### AMÂNDOI · Atribuirea veche verifică dacă șoferul și grupa sunt ale firmei mașinii
+
+Alin (23.10): „da" (găsit pe 22.10, la pasul 2). Ecranul vechi prin care treci un șofer sau o grupă pe o mașină nu verifica dacă
+șoferul și grupa sunt ale firmei mașinii: cu o cerere scrisă de mână, o firmă putea lipi pe mașina ei șoferul altei firme, iar
+rapoartele luau numele șoferului fără să se uite a cui e.
+- **Ce am schimbat:** `server.js` (`_soferGrupaAleFirmei`, pe rutele de atribuire și de grupă: altfel „Șoferul ales nu e în firma
+  acestei mașini." / „Grupa aleasă nu e a firmei acestei mașini."), `reports.js` și `db.js` (numele șoferului doar dintr-un șofer al
+  aceleiași firme). Grupele platformei (fără firmă) le poate pune doar fondatorul. Probă: `verify_soferi_masini.js`, secțiunea 5 (91 în
+  total).
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** nimic nou pe drumul obișnuit (ecranul arată oricum doar șoferii și grupele firmei); o cerere strâmbă e refuzată.
+
+### CLIENT · „Azi" pe ora României și în Tablou de bord, fișa mașinii, întrebările vechi ale telefonului, raportul vechi
+
+Alin (23.10): „da". Pe 22.10 reparasem agenții; aceeași greșeală (ziua începea la 3 dimineața, vara — serverul e pe ora UTC) stătea și
+în cifrele zilei din Tablou de bord, în „Statistici azi" din fișa mașinii de pe hartă, în întrebările vechi ale telefonului și în
+raportul vechi pe o mașină. Între miezul nopții și ora 3, „azi" arăta de fapt ziua de ieri.
+- **Ce am schimbat:** `server.js` — toate patru iau ziua din aceeași regulă ca restul aplicației (ora României). Probă:
+  `verify_un_singur_insight.js`, secțiunea 5d (91 în total).
+- **Ce vede fondatorul:** nimic nou.
+- **Ce vede clientul:** după miezul nopții, „azi" e azi.
+- **Găsit pe drum, întrebat (nu reparat):** aceeași greșeală într-o rută tehnică a panoului nostru de depanare și la termenul codurilor
+  e-Transport (vezi întrebările din raport).
 
 ---
 

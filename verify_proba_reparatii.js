@@ -11,7 +11,7 @@
 //   5. verificarea cifrelor acceptă procentul din întrebare („cam 65 de lei" = 10% din 651);
 //   6. vorbele despre echipament cer o rescriere (și „De verificat" nu mai trimite clientul la senzor);
 //   7. „Salvează"; 8. luna de acum se compară cu aceleași zile din luna dinainte; 9. sumele românești în „RA Insight · control";
-//   10. adresa de suport e una pe care o primim (contact@), iar mesajele din fereastra de suport chiar ne ajung;
+//   10. adresa de suport e una pe care o primim (contact@), iar mesajele către echipă chiar ne ajung (din 23.10, ca cereri);
 //   B. contorul corecturilor: câte răspunsuri a rescris aplicația, doar numere, pe pagina noastră.
 // Serverul pornește cu modelul SIMULAT (nu se cheltuie nimic) și cu un Brevo fals (nu pleacă niciun email adevărat).
 'use strict';
@@ -60,8 +60,10 @@ console.log('\n2. Pagina, ghidul și adresele');
 T('„Editare vehicul": butonul scrie „Salvează" (era „Salveaza")', /<i class="fas fa-save"><\/i> Salvează\n/.test(html) && !/<i class="fas fa-save"><\/i> Salveaza\b/.test(html));
 T('…și ghidul lui RA Insight îl citează la fel', /apasă „Salvează"/.test(fs.readFileSync(path.join(__dirname, 'insight_ghid.js'), 'utf8')));
 const mt = fs.readFileSync(path.join(__dirname, 'public', 'js', 'map-tools.js'), 'utf8');
-T('fereastra „Suport clienți": contact@ratrack.ro (suport@ nu ne vine), și la integratori, și pe telefon',
-  /mailto:contact@ratrack\.ro/.test(mt) && !/suport@ratrack\.ro/.test(mt) && !/suport@ratrack\.ro/.test(fs.readFileSync(path.join(__dirname, 'public', 'api-docs.html'), 'utf8')) &&
+// Din 23.10 fereastra „Suport clienți" a plecat: iconița cu căști deschide „Anunță echipa RA Track" (cererea ne vine la contact@,
+// probată pe server mai jos și în verify_cereri_echipa.js). Regula rămâne: nicio adresă suport@ (nu ne vine) nicăieri.
+T('„Anunță echipa RA Track" în locul ferestrei „Suport clienți": nicio adresă suport@ (nu ne vine) — în pagină, la integratori, pe telefon',
+  !/window\.openSupport\s*=/.test(mt) && !/suport@ratrack\.ro/.test(mt + html) && !/suport@ratrack\.ro/.test(fs.readFileSync(path.join(__dirname, 'public', 'api-docs.html'), 'utf8')) &&
   !/suport@ratrack\.ro/.test(fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'screens', 'Menu.tsx'), 'utf8')));
 const blocNr = (html.match(/function _aiuNr\(v\) \{[\s\S]*?\n    \}/) || [''])[0];
 const ctxNr = {}; vm.createContext(ctxNr); vm.runInContext(blocNr, ctxNr);
@@ -207,14 +209,15 @@ function rezultatUnealta(c) {
     const cor = (au.j.pachete || {}).corecturi || {};
     T('contorul corecturilor (doar numere): 1 rescris, din cauza aparatului, 0 ajunse la client cu o cifră negăsită', cor.rescrise === 1 && cor.echipament === 1 && cor.ramase === 0 && cor.cifre === 0, JSON.stringify(cor));
 
-    // 10: fereastra de suport chiar ne trimite mesajul, la contact@, cu răspunsul spre om
+    // 10: mesajul de pe telefonul vechi (/api/support) chiar ne ajunge, la contact@, cu răspunsul spre om — din 23.10 ca o cerere
+    // „Anunță echipa RA Track" ca oricare alta („Cerere N · firma · O întrebare pentru echipă").
     brevoPrimeste = true;
     const ne = emailuri.length;
     const sp = await json('POST', '/api/support', ck, { message: 'Nu-mi vine raportul pe email.' });
     for (let i = 0; i < 20 && emailuri.length === ne; i++) await sleep(150);
-    const em = emailuri.slice(ne).find((x) => /Mesaj suport/.test(x.subject || '')) || {};
-    T('„Suport clienți": mesajul pleacă la contact@ratrack.ro, cu „Răspuns la" = omul care a scris', sp.status === 200 && (em.to || [])[0] && em.to[0].email === 'contact@ratrack.ro' &&
-      em.replyTo && em.replyTo.email === 'sef@reparatii.ro' && /Nu-mi vine raportul/.test(em.textContent || ''), JSON.stringify(em).slice(0, 300));
+    const em = emailuri.slice(ne).find((x) => /^Cerere \d+ · /.test(x.subject || '')) || {};
+    T('mesajul către echipă pleacă la contact@ratrack.ro, cu „Răspuns la" = omul care a scris', sp.status === 200 && (em.to || [])[0] && em.to[0].email === 'contact@ratrack.ro' &&
+      em.replyTo && em.replyTo.email === 'sef@reparatii.ro' && /Nu-mi vine raportul/.test(em.textContent || '') && / · O întrebare pentru echipă$/.test(em.subject || ''), JSON.stringify(em).slice(0, 300));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

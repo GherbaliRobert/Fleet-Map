@@ -255,13 +255,17 @@ const SECTIUNI = [
     cuvinte: ['tema', 'intunecat', 'deschis', 'preferinte', 'sunet', 'parola mea', 'harta implicita']
   },
   {
-    cheie: 'suport', titlu: 'Ajutor de la noi', unde: 'Iconița căști din bara de sus („Suport clienți")',
+    // „Anunță echipa RA Track" (22.10): o singură fereastră, din trei locuri. Aparatul e treaba noastră — clientul doar ne anunță.
+    cheie: 'suport', titlu: 'Anunță echipa RA Track: ceva nu merge sau ai o întrebare', unde: 'Iconița căști din bara de sus; Meniu → RA Insight (casetele cu o problemă găsită); Meniu → Localizare (fișa mașinii)',
     pasi: [
-      'Apasă iconița căști.',
-      'Scrie problema în casetă și apasă „Trimite mesajul".'
+      'Apasă iconița căști din bara de sus, butonul „Anunță echipa RA Track" dintr-o casetă din RA Insight sau, în fișa mașinii de pe hartă, rândul „Ceva nu merge la aparat?".',
+      'Alege mașina (dacă e despre o mașină) și scrie pe scurt ce s-a întâmplat; dacă e nevoie, alege când poate veni cineva la mașină și unde stă de obicei.',
+      'Verifică telefonul la care te sunăm și apasă „Trimite echipei".',
+      'Cererea o urmărești la „Cererile tale": preluată, programată, rezolvată. La fiecare pas primești un mesaj în aplicație și pe email.'
     ],
-    detalii: 'În aceeași fereastră sunt telefonul și emailul de suport, cu programul.',
-    cuvinte: ['suport', 'ajutor', 'contact', 'problema', 'nu merge']
+    detalii: 'Datele aparatului (modelul, ultima poziție, semnalul, alimentarea) le trimite aplicația singură, ca să nu te mai întrebăm nimic; discuția ta cu RA Insight nu se trimite. Te sunăm în cel mult o zi lucrătoare. ' +
+      'Pe aceeași mașină și aceeași problemă rămâne o singură cerere deschisă: în caseta din RA Insight scrie atunci „Echipa RA Track se ocupă". Administratorul firmei vede toate cererile firmei; ceilalți, pe ale lor.',
+    cuvinte: ['suport', 'ajutor', 'contact', 'problema', 'nu merge', 'anunta echipa', 'echipa ra track', 'cererile tale', 'cererile mele', 'nu transmite', 'instalator']
   },
 ];
 

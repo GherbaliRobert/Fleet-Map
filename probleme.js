@@ -13,6 +13,7 @@
 // Curat: fără bază, fără rețea, fără model. Pragurile stau AICI și nicăieri altundeva.
 'use strict';
 const I = require('./insight.js');
+const CE = require('./cereri_echipa.js');   // „Anunță echipa RA Track" (22.10): butonul și nota casetei, un singur loc
 
 const KM_SENZOR = 100;          // pe atâția km un rezervor TREBUIE să scadă vizibil
 const SENZOR_PRAG_L = 1.5;      // nivelul a variat sub atât pe toată perioada = nu se mișcă
@@ -73,9 +74,27 @@ function problemaSenzor(v, per) {
     titlu: 'Consumul la ' + v.vehicul + ' nu se poate măsura acum',
     dovada: (per && per.eticheta ? 'Pe ' + per.eticheta + ' nivelul din rezervor' : 'Nivelul din rezervor') + ' a stat la ' + nr(v.nivelStart) + ' L, deși mașina a mers ' + nr(v.km) +
       ' km, așa că din el nu se poate măsura consumul. Consumul de aici e ' + s.text.replace(/^NU e măsurat: [^;]*; /, '') + '.',
+    // „Anunță echipa RA Track" e PRIMUL (macheta din 21.10, aprobată 22.10): aparatul e treaba noastră, deci singurul lucru pe care
+    // îl are omul de făcut e să ne anunțe. Sub butoane, nota (`nota`); după trimitere serverul pune în loc „Echipa se ocupă".
     butoane: [
+      { fel: 'echipa', text: CE.BUTON, problema: 'consum', imei: v.imei },
       { fel: 'raport', text: 'Deschide raportul de consum', tip: 'consumption', imei: v.imei, de: per && per.from, pana: per && per.to }
-    ]
+    ],
+    nota: CE.NOTA_CASETA
+  };
+}
+// O mașină care nu transmite (22.10, macheta E1): faptul, ce poate face omul singur (să sune șoferul; în service, într-o hală
+// sau la subsol e normal) și „Anunță echipa RA Track" — fără vină pe aparat. v = { vehicul, imei, tacutMin, ultima, adresa }
+function problemaSemnal(v, acum) {
+  return {
+    fel: 'semnal', grav: 'galben',
+    titlu: v.vehicul + ' nu transmite de ' + CE.durata(v.tacutMin),
+    dovada: CE.ceSemnal({ ultima: v.ultima, adresa: v.adresa, acum: acum }) + ' Dacă ar trebui să fie pe drum, sună șoferul. Dacă e în service, într-o hală sau la subsol, e normal: transmite din nou când iese.',
+    butoane: [
+      { fel: 'harta', text: 'Pe hartă', imei: v.imei },
+      { fel: 'echipa', text: CE.BUTON, problema: 'semnal', imei: v.imei }
+    ],
+    nota: CE.NOTA_CASETA
   };
 }
 // Consumul greu de crezut (cifre.consumDeVerificat): spus pe față, cu raportul lui.
@@ -182,6 +201,6 @@ function ordoneaza(lista) {
 
 module.exports = {
   KM_SENZOR, SENZOR_PRAG_L, VITEZA_AUTO, VITEZA_CAMION, PUNCTE_REALE, SALT_GPS_KMH, MAX_PROBLEME, ZI,
-  sursaConsum, nivelBlocat, problemaSenzor, problemaConsum, pragViteza, verdictViteza, problemaViteza, ordoneaza, ziua, ora,
+  sursaConsum, nivelBlocat, problemaSenzor, problemaSemnal, problemaConsum, pragViteza, verdictViteza, problemaViteza, ordoneaza, ziua, ora,
   CAMPURI_FISA, campuriCerute, problemaFisa,
 };

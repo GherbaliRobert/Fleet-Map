@@ -373,6 +373,39 @@ const ziIso = (zile) => new Date(Date.now() + zile * 86400000).toISOString().sli
   T('…pagina „Șoferi pe mașini", pe Start: 403 (de la Basic)', (await json('GET', '/api/insight/soferi-masini', admS.ck)).status === 403);
   T('pe Basic, nimic din pasul 2 nu s-a numărat', (await json('GET', '/api/ai/quota', ana.ck)).j.used === q0.used);
   T('noi (super-admin) n-avem o flotă pentru pagină', (await json('GET', '/api/insight/soferi-masini', S)).j.platforma === true);
+
+  // ─── 5. B (23.10; Alin: „da, le rezolvăm"): atribuirea din ecran nu mai pune pe o mașină șoferul sau grupa ALTEI firme ───
+  // Până atunci, o cerere făcută de mână putea trece pe mașina firmei Start șoferul firmei Ionescu, iar fișa mașinii și
+  // rapoartele firmei Start arătau apoi numele omului de la Ionescu. Acum: 404 (ca un lucru care nu există), la oricine.
+  console.log('\n5. Atribuirea veche: șoferul și grupa doar din firma mașinii');
+  const IS = '350000000081101';
+  const vasile = (await json('POST', '/api/drivers', S, { name: 'Vasile Start', license_categories: 'B', license_expiry: '2030-01-01', company_id: coS.id })).j;
+  // Grupele firmelor le fac administratorii lor (o grupă făcută din contul de fondator n-are firmă: e a noastră).
+  const grS = (await json('POST', '/api/groups', admS.ck, { name: 'Flota Start' })).j;
+  const grI = (await json('POST', '/api/groups', ana.ck, { name: 'Duba de oraș' })).j;
+  const pusa = async () => { const l = (await json('GET', '/api/devices', admS.ck)).j; const d = (Array.isArray(l) ? l : []).filter((x) => x.imei === IS)[0] || {}; return { sofer: d.driver_id == null ? null : Number(d.driver_id), grupa: d.group_id == null ? null : Number(d.group_id) }; };
+  const x1 = await json('PUT', '/api/devices/' + IS + '/assign', admS.ck, { driver_id: elena.id, group_id: null });
+  T('administratorul firmei Start NU poate pune pe mașina lui șoferul firmei Ionescu (404), iar mașina rămâne fără șofer', x1.status === 404 && /nu e în firma acestei mașini/.test(x1.j.error || '') && (await pusa()).sofer === null, x1.status + ' ' + x1.text.slice(0, 120));
+  const x2 = await json('PUT', '/api/devices/' + IS + '/assign', admS.ck, { driver_id: null, group_id: grI.id });
+  const x2b = await json('PUT', '/api/devices/' + IS + '/assign', admS.ck, { driver_id: null, group_id: grupa.id });
+  T('…nici grupa firmei Ionescu, nici o grupă a noastră, fără firmă (404)', x2.status === 404 && x2b.status === 404 && /nu e a firmei acestei mașini/.test(x2.j.error || '') && (await pusa()).grupa === null, x2.status + ' / ' + x2b.status + ' ' + x2.text.slice(0, 120));
+  const x3 = await json('PUT', '/api/devices/' + IS + '/assign', admS.ck, { driver_id: String(vasile.id), group_id: String(grS.id) });
+  T('…șoferul și grupa LUI merg (și scrise ca text, cum le trimite ecranul)', x3.status === 200 && JSON.stringify(await pusa()) === JSON.stringify({ sofer: vasile.id, grupa: grS.id }), x3.status + ' ' + JSON.stringify(await pusa()));
+  const x4 = await json('PUT', '/api/devices/' + IS + '/assign', S, { driver_id: mihai.id, group_id: grS.id });
+  T('…regula ține și pentru noi (super-admin): șoferul altei firme pe mașina Start = 404, nimic schimbat', x4.status === 404 && (await pusa()).sofer === vasile.id, x4.status);
+  const x5 = await json('PUT', '/api/devices/' + MAS[0][0] + '/assign', ana.ck, { driver_id: vasile.id, group_id: null });
+  T('…și invers: Ana (Ionescu) nu poate pune șoferul firmei Start pe B 154 UIP (404); Elena rămâne', x5.status === 404 && (await masina(0)).sofer === elena.id, x5.status);
+  const x6 = await json('PUT', '/api/devices/' + IS + '/group', S, { group_id: grI.id });
+  const x7 = await json('PUT', '/api/devices/' + IS + '/group', admS.ck, { group_id: grI.id });
+  T('mutarea în grupă (ecranul „Grupe"): grupa altei firme = 404, și pentru noi (până acum, la noi trecea orice grupă)', x6.status === 404 && x7.status === 404 && (await pusa()).grupa === grS.id, x6.status + ' / ' + x7.status);
+  const x6b = await json('PUT', '/api/devices/' + IS + '/group', S, { group_id: grupa.id });
+  T('…o grupă a noastră (fără firmă) o folosim tot doar noi', x6b.status === 200 && (await pusa()).grupa === grupa.id, x6b.status);
+  const x8 = await json('PUT', '/api/devices/' + IS + '/assign', admS.ck, { driver_id: '', group_id: '' });
+  T('…golirea (fără șofer, fără grupă) merge', x8.status === 200 && JSON.stringify(await pusa()) === JSON.stringify({ sofer: null, grupa: null }), x8.status);
+  const REP = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8'), DBS = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
+  T('rapoartele și fișa mașinii iau numele șoferului doar din firma mașinii (plasa de la citire)', /LEFT JOIN drivers dr ON dr\.id = d\.driver_id AND dr\.company_id IS NOT DISTINCT FROM d\.company_id'\);/.test(REP) &&
+    /FROM devices d LEFT JOIN drivers dr ON dr\.id = d\.driver_id AND dr\.company_id IS NOT DISTINCT FROM d\.company_id WHERE d\.imei = \$1/.test(DBS));
+  T('o singură regulă pentru ambele rute (/assign și /group): _soferGrupaAleFirmei', (SRV.match(/await _soferGrupaAleFirmei\(req\.params\.imei, /g) || []).length === 2);
   T('ZERO cereri către model în toată proba', nModel() === 0, nModel());
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');

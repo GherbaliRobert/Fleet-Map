@@ -22,8 +22,9 @@ const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8'
 const JS = fs.readdirSync(path.join(__dirname, 'public', 'js')).filter((f) => f.endsWith('.js')).map((f) => fs.readFileSync(path.join(__dirname, 'public', 'js', f), 'utf8')).join('\n');
 // Ce vede omul pe ecran: pagina, scripturile ei, plus textele pe care serverul le trimite gata scrise ecranului
 // (întrebările gata făcute din AI Raport, numele rapoartelor din catalog).
-// Din 22.10 (pasul 2) și textele cartonașului de șofer („Da, trece-l") și rândurile din „Azi la tine" („Propunere"), scrise de server.
-const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
+// Din 22.10 (pasul 2) și textele cartonașului de șofer („Da, trece-l") și rândurile din „Azi la tine" („Propunere"), scrise de server;
+// tot din 22.10, textele cererilor către noi („Echipa RA Track se ocupă · cererea nr. …"), din cereri_echipa.js.
+const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
   .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 const pe = (t) => ECRAN.indexOf(t) >= 0;
 const SECT = G.publice();
@@ -88,6 +89,8 @@ const CAZURI = [
   ['cum pun prețul motorinei?', 'combustibil'],
   ['unde găsesc facturile?', 'facturi'],
   ['am o problemă, cu cine vorbesc?', 'suport'],
+  ['o mașină nu transmite, pe cine anunț?', 'suport'],
+  ['unde văd cererile mele către echipa RA Track?', 'suport'],
   ['ce înseamnă potrivirea șoferilor pe mașini?', 'soferi_masini'],
   ['unde văd ce mașini au permis nepotrivit?', 'soferi_masini'],
 ];
