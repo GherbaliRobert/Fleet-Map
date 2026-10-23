@@ -21,6 +21,13 @@ const VITEZA_MERS = 3;
 
 function durata(minute) { return DURATE.find((d) => d.minute === Number(minute)) || null; }
 
+// Prelungirea (Robert, 23.10: „să pot prelungi timpul pentru o distribuire" → „da" la varianta c): aceleași trei durate,
+// ADĂUGATE la ora de final (14:30 + 1 oră = 15:30); linkul rămâne același, deci cine îl are nu primește altul. De câte ori
+// vrei, dar cel mult `MAX_INAINTE_MINUTE` înainte, socotit din clipa prelungirii: un link uitat se stinge tot în cel mult
+// 8 ore, iar un drum lung se urmărește prelungind pe parcurs. Sub un minut câștigat nu e o prelungire.
+const MAX_INAINTE_MINUTE = 480;
+const _CASTIG_MIN_MS = 60000;
+
 // Tokenul: 24 de octeți întâmplători (192 de biți) → 32 de caractere care merg într-o adresă. În bază stă doar
 // amprenta lui: cine citește baza nu poate deschide linkurile.
 function tokenNou() { return crypto.randomBytes(24).toString('base64url'); }
@@ -64,6 +71,31 @@ function numeMasina(nume, numar) {
   return n || p || 'Vehicul';
 }
 
+// Se mai poate prelungi? (butonul „Prelungește" apare doar atunci)
+function poatePrelungi(expiraLa, acum) {
+  const e = Number(expiraLa);
+  return e > acum && (acum + MAX_INAINTE_MINUTE * 60000) - e >= _CASTIG_MIN_MS;
+}
+const _maxInainte = () => _cate(MAX_INAINTE_MINUTE / 60, 'oră', 'ore');
+const TEXT_PRELUNGIRE = 'Poți prelungi un link de câte ori vrei, cel mult ' + _maxInainte() + ' înainte.';
+const TEXT_PRELUNGIRE_EXPIRAT = 'Linkul nu mai există: a expirat sau a fost oprit. Fă altul.';
+// Noua oră de final și textul de după. `{ gata: false, text }` = nu se prelungește (expirat sau deja la plafon).
+function prelungire(expiraLa, minute, acum) {
+  const d = durata(minute);
+  if (!d) return { gata: false, text: 'Alege cu cât: ' + DURATE.map((x) => x.text).join(', ') + '.' };
+  const vechi = Number(expiraLa);
+  if (!(vechi > acum)) return { gata: false, text: TEXT_PRELUNGIRE_EXPIRAT };
+  const dorit = vechi + d.minute * 60000, plafon = acum + MAX_INAINTE_MINUTE * 60000;
+  const nou = Math.min(dorit, plafon);
+  if (nou - vechi < _CASTIG_MIN_MS) {
+    return { gata: false, text: 'Linkul merge deja până la ' + ora(vechi) + ': mai mult de ' + _maxInainte() + ' înainte nu se poate.' };
+  }
+  const taiat = nou < dorit;
+  return { gata: true, expiraLa: nou, taiat,
+    text: 'Linkul merge acum până la ' + ora(nou) + (taiat ? ' (cel mult ' + _maxInainte() + ' de acum)' : '') +
+      '. Cine îl are vede singur noua oră.' };
+}
+
 // Ce vede cine deschide un link care nu mai e bun (expirat, oprit, inventat — toate la fel).
 const TITLU_INCHEIAT = 'Locația nu mai e distribuită';
 const TEXT_INCHEIAT = 'Linkul a expirat sau a fost oprit.';
@@ -101,6 +133,7 @@ function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
 }
 
 module.exports = {
-  DURATE, MAX_ACTIVE_PE_MASINA, SECUNDE_REIMPROSPATARE, VITEZA_MERS, TITLU_INCHEIAT, TEXT_INCHEIAT,
-  durata, tokenNou, amprenta, tokenBun, activ, ramas, vechime, ora, numeMasina, mesaj, pentruPagina,
+  DURATE, MAX_ACTIVE_PE_MASINA, MAX_INAINTE_MINUTE, SECUNDE_REIMPROSPATARE, VITEZA_MERS, TITLU_INCHEIAT, TEXT_INCHEIAT,
+  TEXT_PRELUNGIRE, TEXT_PRELUNGIRE_EXPIRAT,
+  durata, tokenNou, amprenta, tokenBun, activ, ramas, vechime, ora, numeMasina, mesaj, pentruPagina, poatePrelungi, prelungire,
 };

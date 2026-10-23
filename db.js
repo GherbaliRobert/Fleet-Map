@@ -3633,6 +3633,14 @@ async function opresteLocatieDistribuita(id) {
   const r = await pool.query('DELETE FROM locatii_distribuite WHERE id = $1 RETURNING id', [parseInt(id, 10)]);
   return r.rows.length > 0;
 }
+// „Prelungește" (23.10): noua oră de final, doar dacă linkul e încă cel citit (aceeași oră veche) — două prelungiri
+// apăsate deodată nu se adună pe tăcute peste plafon; a doua primește null și ecranul recitește lista.
+async function prelungesteLocatieDistribuita(id, imei, expiraVeche, expiraNoua) {
+  const r = await pool.query(
+    'UPDATE locatii_distribuite SET expira_la = $4 WHERE id = $1 AND imei = $2 AND expira_la = $3 RETURNING id, imei, company_id, creat_de, creat_la, expira_la',
+    [parseInt(id, 10), String(imei), expiraVeche, expiraNoua]);
+  return r.rows[0] || null;
+}
 // Ultima poziție din bază — doar când mașina nu mai e în harta live (tace de peste o zi): pagina publică arată tot ultimul loc.
 async function ultimaPozitie(imei) {
   const r = await pool.query('SELECT timestamp, latitude, longitude, angle, speed FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT 1', [String(imei)]);
@@ -6667,7 +6675,7 @@ module.exports = {
   getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, atasezaRemorca,
   creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan,
   creeazaLocatieDistribuita, locatieDistribuitaDupaAmprenta, locatiiDistribuiteActive, getLocatieDistribuita,
-  opresteLocatieDistribuita, stergeLocatiiDistribuiteExpirate, ultimaPozitie, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  opresteLocatieDistribuita, prelungesteLocatieDistribuita, stergeLocatiiDistribuiteExpirate, ultimaPozitie, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
