@@ -395,13 +395,37 @@ function isAlarming(key, on) {
 //
 // O bandă goală nu se desenează deloc.
 const BANDA_STARE = ['_sf_handbrake', '_sf_gear', '_sf_car_closed', '_sf_ignition_on', '_sf_engine_working'];
+
+// ── Adaptorul în repaus (Robert, 23.10: „de ce am adaptor în mod sleep și ambreiaj apăsat") ──────
+// Cu mașina oprită, calculatorul ei tace și adaptorul CAN intră în repaus (`_sf_can_sleep_mode`).
+// Ce a citit ultima oară rămâne în mesaj: VW Caddy, parcat, arăta „Ambreiaj: Apăsat" și „Frână de
+// mână: Eliberată" — starea de dinainte de luarea contactului, nu cea de acum. Robert: „2" = cât timp
+// adaptorul doarme, plăcuțele astea NU se arată (frâna de mână, frâna de picior, ambreiajul).
+// Dar unele adaptoare trimit „în repaus" și cu mașina în MERS (Dacia Logan B 154 UIP, 23.10): atunci
+// semnalul e greșit și nu-l credem — nici plăcuța „în repaus", nici ascunderea. „Merge" = contactul
+// aparatului GPS (care nu depinde de adaptor); fără el, turația sau viteza.
+const REPAUS_ASCUNSE = ['_sf_handbrake', '_sf_footbrake', '_sf_clutch'];
+const REPAUS_TEXT = 'Adaptorul CAN e în repaus: mașina e oprită. Frâna de mână și pedalele se citesc din nou la pornire.';
+function mergeMasina(flat) {
+  const c = flat.ignition;
+  if (c !== undefined && c !== null && c !== '') return Number(c) === 1 || c === true;
+  return Number(flat.can_engine_rpm) > 0 || Number(flat.can_vehicle_speed) > 0 || Number(flat.speed_io) > 3;
+}
+function inRepaus(flat) { return !!flat._sf_can_sleep_mode && !mergeMasina(flat); }
+
+// `flat` = valorile aparatului (contactul, turația, viteza) + steagurile aplatizate (`_sf_…`, `_cf_…`).
 function benzi(flat) {
-  const s = { stare: [], martori: [], deschis: [], active: [] };
+  const s = { stare: [], martori: [], deschis: [], active: [], repaus: inRepaus(flat) };
   const puse = new Set();
+  // În repaus se ascund stările vechi; în mers, „în repaus" e un semnal greșit și nu se arată.
+  function ascuns(k) {
+    if (k === '_sf_can_sleep_mode') return !s.repaus;
+    return s.repaus && REPAUS_ASCUNSE.indexOf(k) >= 0;
+  }
   // 1. starea — în ordinea scrisă, nu în ordinea catalogului: omul se uită întâi la frână și treaptă
   BANDA_STARE.forEach(function (k) {
     const f = _byKey[k];
-    if (!f) return;
+    if (!f || ascuns(k)) return;
     const v = flat[k];
     if (!seVede(k, v)) return;
     s.stare.push({ f: f, val: v });
@@ -409,7 +433,7 @@ function benzi(flat) {
   });
   // 2-4. restul, în ordinea catalogului
   FLAGS.forEach(function (f) {
-    if (puse.has(f.key)) return;
+    if (puse.has(f.key) || ascuns(f.key)) return;
     const v = flat[f.key];
     if (!seVede(f.key, v)) return;
     const unde = f.kind === 'warn' ? 'martori' : f.kind === 'open' ? 'deschis' : 'active';
@@ -422,4 +446,5 @@ function grouped() {
   return GROUPS.map(g => ({ ...g, flags: FLAGS.filter(f => f.group === g.key) })).filter(g => g.flags.length);
 }
 
-module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, BANDA_STARE, flagMeta, isFlagKey, stateText, seVede, benzi, isAlarming, grouped, _nedecodate };
+module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, BANDA_STARE, REPAUS_ASCUNSE, REPAUS_TEXT, flagMeta, isFlagKey, stateText, seVede,
+  mergeMasina, inRepaus, benzi, isAlarming, grouped, _nedecodate };

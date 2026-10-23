@@ -1227,8 +1227,10 @@
         <div class="loc-nota">Linkul se vede doar acum. Copiază-l sau trimite-l înainte să închizi fereastra.</div>
       </div>
       <div class="loc-err" id="loc-err" role="alert"></div>
+      <div class="loc-ok" id="loc-ok" role="status"></div>
       <div class="loc-active-cap" id="loc-active-cap" hidden>Linkuri active pe mașina asta</div>
       <div id="loc-active"></div>
+      <div class="loc-nota" id="loc-prel-nota" hidden></div>
     </div>
   </div>
 
@@ -17007,7 +17009,7 @@ const pozitii = await r.json();</code></pre>
 
     // ── începe „Distribuie locația” (21.10) ──
     // Regula (cine poate, cât ține, ce vede publicul) stă pe server (locatie_distribuita.js). Aici doar se cere și se arată.
-    var _loc = { imei: null, minute: null, durate: [], link: null, mesaj: null, id: null };
+    var _loc = { imei: null, minute: null, durate: [], link: null, mesaj: null, id: null, prel: null };
     function _locEl(id) { return document.getElementById(id); }
     function locButon() {
       var b = _locEl('detail-share-btn'); if (!b) return;
@@ -17028,15 +17030,16 @@ const pozitii = await r.json();</code></pre>
       if (n && p && n.toUpperCase() !== p.toUpperCase()) return n + ' · ' + p;
       return n || p || 'Vehicul';
     }
-    function _locEroare(t) { _locEl('loc-err').textContent = t || ''; }
+    function _locEroare(t) { _locEl('loc-err').textContent = t || ''; if (t) _locEl('loc-ok').textContent = ''; }
+    function _locBine(t) { _locEl('loc-ok').textContent = t || ''; if (t) _locEl('loc-err').textContent = ''; }
     window.locDistribuie = function () {
       if (!detailPanelImei) return;
-      _loc.imei = detailPanelImei; _loc.link = null; _loc.mesaj = null; _loc.id = null;
+      _loc.imei = detailPanelImei; _loc.link = null; _loc.mesaj = null; _loc.id = null; _loc.prel = null;
       _locEl('loc-masina').textContent = _locNume(_loc.imei);
       _locEl('loc-alege').hidden = false; _locEl('loc-rezultat').hidden = true;
       _locEl('loc-durate').textContent = ''; _locEl('loc-active').textContent = ''; _locEl('loc-active-cap').hidden = true;
       _locEl('loc-fa').disabled = true;
-      _locEroare('');
+      _locEroare(''); _locBine(''); _locEl('loc-prel-nota').hidden = true;
       _locEl('loc-modal').classList.add('visible');
       _locIncarca();
     };
@@ -17055,6 +17058,9 @@ const pozitii = await r.json();</code></pre>
           }
           _locDurate();
           _locActive(x.j.active || []);
+          var nota = _locEl('loc-prel-nota');
+          nota.textContent = x.j.prelungire || '';
+          nota.hidden = !(x.j.active || []).length || !x.j.prelungire;
           _locEl('loc-fa').disabled = _loc.minute == null;
         })
         .catch(function () { _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); });
@@ -17081,15 +17087,55 @@ const pozitii = await r.json();</code></pre>
         var b = document.createElement('div'); b.className = 'loc-act-b';
         b.textContent = 'Făcut la ' + l.creat + (l.creatDe ? ' de ' + (l.alMeu ? 'tine' : l.creatDe) : '') + (l.id === _loc.id ? ' · cel de mai sus' : '');
         t.appendChild(a); t.appendChild(b);
+        var bt = document.createElement('div'); bt.className = 'loc-act-bt';
+        if (l.poatePrelungi) {
+          var pr = document.createElement('button'); pr.type = 'button'; pr.className = 'btn loc-btn loc-prel';
+          pr.textContent = 'Prelungește';
+          pr.setAttribute('aria-expanded', _loc.prel === l.id ? 'true' : 'false');
+          pr.onclick = function () { _loc.prel = (_loc.prel === l.id) ? null : l.id; _locActive(lista); };
+          bt.appendChild(pr);
+        }
         var x = document.createElement('button'); x.type = 'button'; x.className = 'btn loc-btn loc-stop';
         x.textContent = 'Oprește';
         x.onclick = function () { _locOpreste(l.id); };
-        r.appendChild(t); r.appendChild(x); box.appendChild(r);
+        bt.appendChild(x);
+        r.appendChild(t); r.appendChild(bt);
+        // „Prelungește" (23.10): cu cât — aceleași durate ca la facere, de la server; cât se poate o spune serverul.
+        if (l.poatePrelungi && _loc.prel === l.id) {
+          var ch = document.createElement('div'); ch.className = 'loc-prel-alege';
+          var et = document.createElement('span'); et.className = 'loc-prel-et'; et.textContent = 'Cu cât?';
+          ch.appendChild(et);
+          _loc.durate.forEach(function (d) {
+            var o = document.createElement('button'); o.type = 'button'; o.className = 'btn loc-btn loc-prel-d';
+            o.textContent = '+' + d.text;
+            o.onclick = function () { _locPrelungeste(l.id, d.minute, o); };
+            ch.appendChild(o);
+          });
+          r.appendChild(ch);
+        }
+        box.appendChild(r);
       });
+    }
+    async function _locPrelungeste(id, minute, btn) {
+      var imei = _loc.imei; if (!imei) return;
+      if (btn) btn.disabled = true;
+      _locEroare('');
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(id) + '/prelungire', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minute: minute })
+        });
+        var j = await r.json().catch(function () { return {}; });
+        if (_loc.imei !== imei) return;
+        if (!r.ok) _locEroare(j.error || 'Nu am putut prelungi linkul.');
+        else { _locBine(j.text || ''); _loc.prel = null; }
+        if (r.ok && id === _loc.id && j.pana) _locEl('loc-rez-t').textContent = 'Linkul merge până la ' + j.pana + '.';
+        _locIncarca();
+      } catch (e) { if (btn) btn.disabled = false; _locEroare('Nu am legătură cu serverul. Încearcă din nou.'); }
     }
     window.locFa = function () {
       var imei = _loc.imei; if (!imei || _loc.minute == null) return;
-      var btn = _locEl('loc-fa'); btn.disabled = true; _locEroare('');
+      var btn = _locEl('loc-fa'); btn.disabled = true; _locEroare(''); _locBine('');
       fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita', {
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ minute: _loc.minute })
@@ -17120,7 +17166,8 @@ const pozitii = await r.json();</code></pre>
     async function _locOpreste(id) {
       var imei = _loc.imei; if (!imei) return;
       if (window.raConfirm && !await raConfirm('Oprești linkul? Cine îl are nu mai vede mașina.', { okLabel: 'Oprește' })) return;
-      _locEroare('');
+      _locEroare(''); _locBine('');
+      if (_loc.prel === id) _loc.prel = null;
       try {
         var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' });
         var j = await r.json().catch(function () { return {}; });
@@ -20364,6 +20411,9 @@ const pozitii = await r.json();</code></pre>
       let out = '<div class="cfb">';
       out += '<div class="cfb-h"><i class="fas fa-gauge-high"></i> Starea mașinii' +
         '<span class="cfb-hint">se arată doar ce e activ acum</span></div>';
+      // Adaptorul doarme (mașina oprită): frâna de mână și pedalele de mai sus ar fi fost cele de dinainte de oprire,
+      // deci nu le arătăm — și spunem de ce lipsesc (regula și textul: can_flags.js, `inRepaus`).
+      if (b.repaus && cat.repaus && cat.repaus.text) out += '<div class="cfb-note"><i class="fas fa-moon"></i> ' + _usEsc(cat.repaus.text) + '</div>';
       out += gol ? '<div class="cfb-ok"><i class="fas fa-circle-check"></i> Totul închis, niciun martor aprins</div>' : corp;
       if (nedecodateVazute) {
         out += '<div class="cfb-note"><i class="fas fa-circle-info"></i> ' +

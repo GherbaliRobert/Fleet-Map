@@ -57,6 +57,15 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Robert: cheile din Railway, după incidentul de securitate Railway din 21.10. Adăugat pe 21.10 (noaptea).** Railway a
+  oprit publicările în toate regiunile și le recomandă tuturor să-și schimbe cheile (status.railway.com, incidentul QH8L8B3E;
+  blogul lor, „Security Disclosure: Wednesday October 21st"). Până revin publicările, ratrack.ro rămâne pe versiunea veche —
+  de aceea nu apare încă „Distribuie locația". Ordinea lor: Enterprise, Pro, apoi Hobby (noi). **După ce revin**, în Railway →
+  serviciul aplicației → Variables, cele care contează întâi: `SESSION_SECRET` (oricine îl are poate intra în orice cont; schimbat,
+  toată lumea reintră în cont), `ANTHROPIC_API_KEY` + `ANTHROPIC_ADMIN_KEY` (bani), `BREVO_API_KEY` (emailuri în numele nostru),
+  `MAIL_INBOUND_SECRET` (schimbat ODATĂ și în Worker-ul din Cloudflare), `FIREBASE_SA_JSON`, tokenurile ANAF dacă sunt puse.
+  Cu grijă: `BACKUP_PASSPHRASE` — copiile vechi se deschid doar cu parola veche, deci păstrați-o; `VAPID_*` — schimbate, notificările
+  din browser trebuie repornite de fiecare om. Fiecare schimbare repornește aplicația; le faceți pe toate deodată.
 - [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
   GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
   `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
@@ -151,6 +160,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `ratracks-test-1.0.20-31dc907`, ține până pe 20.11): e de DEBUG și **fără notificări push** (cheia Firebase nu e în git), iar fiindcă e semnat
   altfel decât cel de pe Desktop, telefonul cere dezinstalarea celui vechi. Cel cu notificări se construiește ca până acum, pe
   calculatorul vostru, din aceeași ramură (sau din main, după unire).
+  **23.10:** APK 1.0.21 — tot ce e în 1.0.20 și lucrările lui Alin din 22.10, plus „Prelungește" la „Distribuie locația".
+  Tot de pe GitHub, cu link direct (github.com/GherbaliRobert/Fleet-Map/releases → „APK de test 1.0.21"); la fel: de DEBUG,
+  fără notificări push, iar telefonul cere dezinstalarea celui vechi.
+  **23.10 (după-amiaza):** APK 1.0.22 — tot ce e în 1.0.21, plus „Starea mașinii" cu adaptorul în repaus (nota, fără stări
+  vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -404,6 +418,49 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-23
+
+### AMÂNDOI · „Starea mașinii": adaptorul în repaus nu mai arată stări vechi, iar în mers nu mai apare „în repaus"
+
+Robert (23.10): *„de ce am adaptor în mod sleep și ambreiaj apăsat"* (VW Caddy B 268 ROY, parcat) → „2" (cât timp adaptorul
+doarme, stările vechi nu se arată); apoi *„la B 154 UIP Dacia Logan, mașina e pornită și apare în repaus"*.
+
+- **De ce:** cu mașina oprită, calculatorul ei tace și adaptorul CAN intră în repaus; în mesaj rămâne ce a citit înainte de
+  luarea contactului (ambreiajul apăsat, frâna de mână încă netrasă). Aplicația le arăta ca fiind „de acum".
+- **Acum:** când adaptorul doarme și mașina chiar e oprită (contactul aparatului GPS luat), panoul scrie sus „Adaptorul CAN e în
+  repaus: mașina e oprită. Frâna de mână și pedalele se citesc din nou la pornire." și nu mai arată frâna de mână, frâna de picior
+  și ambreiajul. Când adaptorul spune „în repaus", dar mașina merge (contact, turație sau viteză), semnalul e greșit: plăcuța
+  „Adaptor CAN în repaus" nu mai apare, iar restul se arată normal.
+- **Ce am schimbat:** `can_flags.js` (`mergeMasina`, `inRepaus`, `REPAUS_ASCUNSE`, `REPAUS_TEXT`, `benzi`), `server.js` (regula
+  trimisă paginii și telefonului), `public/index.html` (nota), telefonul (`lib/canflags.ts`, `CanFlags.tsx`, `CanTellTales.tsx`,
+  versiunea 1.0.22). Proba `verify_can_flags.js`: secțiunea 16 (Caddy parcat, Logan în mers și alte 6 cazuri, pe server, în
+  pagină și pe telefon).
+- **Ce vede fondatorul:** la fel ca clientul, în fișa mașinii („Starea mașinii").
+- **Ce vede clientul:** la o mașină parcată, nota de repaus în locul ambreiajului și al frânei de mână; la o mașină în mers, fără
+  „Adaptor CAN în repaus".
+
+### AMÂNDOI · „Distribuie locația": un link activ se poate prelungi
+
+Robert (23.10): *„vreau să am posibilitatea să pot prelungi timpul pentru o distribuire"* → „da" la propunere: timpul se
+adaugă la ora de final, de câte ori vrei, dar cel mult 8 ore înainte (varianta c), și pe telefon.
+
+- **Unde:** în fereastra „Distribuie locația", pe fiecare link activ, lângă „Oprește", butonul **„Prelungește"** → „Cu cât?"
+  → **+15 minute / +1 oră / +8 ore**. Exemplu: linkul mergea până la 14:30, +1 oră → merge până la 15:30.
+- **Linkul rămâne același:** cine l-a primit nu trebuie să primească altul — pagina lui arată singură noua oră de final.
+- **Limita:** de câte ori vrei, dar niciodată mai mult de 8 ore înainte din clipa prelungirii (un link uitat se stinge tot
+  în cel mult 8 ore). Când cererea trece de 8 ore, se oprește la 8 ore și o spune; la plafon butonul nu mai apare.
+- Un link expirat sau oprit nu se prelungește (se face altul); nici linkul unei mașini arhivate sau mutate pe altă firmă.
+- **Cine:** aceiași oameni care fac linkuri (administratorul, managerul, dispecerul, noi), pe orice link activ al mașinii, ca la
+  „Oprește". Fiecare prelungire intră în jurnalul de audit (de la ce oră la ce oră).
+
+- **Ce am schimbat:** `locatie_distribuita.js` (`prelungire`, `poatePrelungi`, `MAX_INAINTE_MINUTE`, textele), `db.js`
+  (`prelungesteLocatieDistribuita`), `server.js` (ruta `POST /api/devices/:imei/locatie-distribuita/:id/prelungire`, lista
+  spune la fiecare link dacă se poate prelungi), `public/index.html` + `public/css/app.css` (butonul și alegerea), telefonul
+  (`DistribuieLocatia.tsx`, `distribuieLocatia.css`, `endpoints.ts`, versiunea 1.0.21). Proba `verify_locatie_distribuita.js`:
+  111 verificări (era 90), pe server pornit.
+- **Ce vede fondatorul:** același buton, pe linkurile oricărei mașini.
+- **Ce vede clientul:** „Prelungește" pe linkurile active din fișa mașinii (web și telefon, de la APK 1.0.21).
 
 ## 2026-10-22
 

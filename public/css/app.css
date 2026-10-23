@@ -1271,12 +1271,20 @@
     .loc-err { color: var(--red); font-size: 13px; margin-top: 10px; }
     .loc-err:empty { display: none; }
     .loc-active-cap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text-secondary); }
-    .loc-act { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; margin-top: 8px;
+    .loc-act { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; margin-top: 8px;
       border: 1px solid var(--border); border-radius: 8px; background: var(--bg-dark); }
     .loc-act-t { min-width: 0; }
     .loc-act-a { font-weight: 700; font-size: 13px; color: var(--text-primary); }
     .loc-act-b { font-size: 12px; color: var(--text-muted); }
     .loc-stop { flex: 0 0 auto; padding: 7px 12px; }
+    .loc-act-bt { display: flex; gap: 6px; flex: 0 0 auto; }
+    .loc-prel { flex: 0 0 auto; padding: 7px 12px; }
+    .loc-prel[aria-expanded="true"] { border-color: var(--accent); }
+    .loc-prel-alege { flex: 1 1 100%; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 8px; margin-top: 2px; border-top: 1px dashed var(--border); }
+    .loc-prel-et { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-right: 2px; }
+    .loc-prel-d { flex: 1 1 0; padding: 7px 10px; }
+    .loc-ok { color: var(--text-secondary); font-size: 13px; margin-top: 10px; }
+    .loc-ok:empty { display: none; }
     .loc-stop:hover { border-color: var(--red); color: var(--red); }
 
     .route-period-btn {

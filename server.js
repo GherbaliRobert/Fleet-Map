@@ -1420,14 +1420,16 @@ app.get('/js/maint-types.js', (req, res) => { res.set('Cache-Control', NO_CACHE)
 // Steagurile CAN (uși, lumini, martori de bord) — nume + iconiță, dintr-o sursă (can_flags.js).
 // Web-ul le ia ca script (window.RA_CANFLAGS), telefonul prin /api/can-flags. Aceleași date, două
 // transporturi: dacă schimbi o etichetă aici, se schimbă în amândouă ecranele deodată.
-const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: canFlags.KIND_TEXT, undecoded: canFlags.NEDECODATE, stateBand: canFlags.BANDA_STARE };
+const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: canFlags.KIND_TEXT, undecoded: canFlags.NEDECODATE, stateBand: canFlags.BANDA_STARE,
+  repaus: { ascunse: canFlags.REPAUS_ASCUNSE, text: canFlags.REPAUS_TEXT } };
 // Pagina primește și funcțiile care hotărăsc CE se vede și ÎN CE BANDĂ, serializate din modul —
 // același tipar ca la formatarea IO de mai jos. Fără asta ar fi trebuit rescrise în pagină, iar
 // două copii ale aceleiași reguli o iau razna una față de cealaltă (vezi antetul can_flags.js).
 const _CANFLAGS_JS = 'window.RA_CANFLAGS=(function(){var d=' + JSON.stringify(_CANFLAGS) + ';' +
-  'var FLAGS=d.flags,KIND_TEXT=d.kindText,BANDA_STARE=d.stateBand,_byKey={};FLAGS.forEach(function(f){_byKey[f.key]=f;});' +
-  canFlags.stateText.toString() + '\n' + canFlags.seVede.toString() + '\n' + canFlags.benzi.toString() + '\n' +
-  'd.stateText=stateText;d.seVede=seVede;d.benzi=benzi;return d;})();';
+  'var FLAGS=d.flags,KIND_TEXT=d.kindText,BANDA_STARE=d.stateBand,REPAUS_ASCUNSE=d.repaus.ascunse,_byKey={};FLAGS.forEach(function(f){_byKey[f.key]=f;});' +
+  canFlags.stateText.toString() + '\n' + canFlags.seVede.toString() + '\n' + canFlags.mergeMasina.toString() + '\n' +
+  canFlags.inRepaus.toString() + '\n' + canFlags.benzi.toString() + '\n' +
+  'd.stateText=stateText;d.seVede=seVede;d.inRepaus=inRepaus;d.benzi=benzi;return d;})();';
 app.get('/js/can-flags.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANFLAGS_JS); });
 app.get('/api/can-flags', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_CANFLAGS); });
 
@@ -10776,7 +10778,7 @@ function _locRandPrivat(l, req, acum) {
   const a = getAuth(req);
   return { id: l.id, creatDe: l.creat_de_nume || null, alMeu: !!(a && a.userId != null && a.userId === l.creat_de),
     creat: locatieDistribuita.ora(Number(l.creat_la)), pana: locatieDistribuita.ora(Number(l.expira_la)),
-    ramas: locatieDistribuita.ramas(l.expira_la, acum) };
+    ramas: locatieDistribuita.ramas(l.expira_la, acum), poatePrelungi: locatieDistribuita.poatePrelungi(l.expira_la, acum) };
 }
 app.get('/api/devices/:imei/locatie-distribuita', requireAuth, withScope, async (req, res) => {
   try {
@@ -10786,7 +10788,7 @@ app.get('/api/devices/:imei/locatie-distribuita', requireAuth, withScope, async 
     const acum = Date.now();
     const active = await db.locatiiDistribuiteActive(imei, acum);
     res.json({ durate: locatieDistribuita.DURATE, max: locatieDistribuita.MAX_ACTIVE_PE_MASINA,
-      active: active.map((l) => _locRandPrivat(l, req, acum)) });
+      prelungire: locatieDistribuita.TEXT_PRELUNGIRE, active: active.map((l) => _locRandPrivat(l, req, acum)) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/devices/:imei/locatie-distribuita', requireAuth, withScope, async (req, res) => {
@@ -10823,6 +10825,34 @@ app.delete('/api/devices/:imei/locatie-distribuita/:id', requireAuth, withScope,
     await db.opresteLocatieDistribuita(l.id);
     auditReq(req, 'delete', 'locatie_distribuita', imei, { id: l.id, expira_la: Number(l.expira_la) });
     res.json({ ok: true, text: 'Linkul s-a oprit. Cine îl deschide acum vede că locația nu mai e distribuită.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Prelungește" (Robert, 23.10, varianta c): aceleași durate, adăugate la ora de final, cel mult 8 ore înainte de acum
+// (locatieDistribuita.prelungire). Același link — pagina publică citește rândul la fiecare cerere, deci vede ora nouă singură.
+// Cine poate: ca la facere și la „Oprește". Un link care nu mai merge (expirat, mașina arhivată sau mutată pe altă firmă)
+// nu se prelungește: se face altul.
+app.post('/api/devices/:imei/locatie-distribuita/:id/prelungire', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    if (!_poateDistribuiLocatia(req)) return res.status(403).json({ error: LOC_NU_POATE });
+    if (!canAccessImei(req, imei)) return res.status(404).json({ error: 'Vehicul negăsit' });
+    const minute = (req.body || {}).minute;
+    if (!locatieDistribuita.durata(minute)) return res.status(400).json({ error: locatieDistribuita.prelungire(0, minute, 0).text });
+    const acum = Date.now();
+    const l = await db.getLocatieDistribuita(req.params.id);
+    if (!l || l.imei !== imei || !locatieDistribuita.activ(l, acum)) return res.status(404).json({ error: locatieDistribuita.TEXT_PRELUNGIRE_EXPIRAT });
+    const { dev } = await _locMasina(imei, true);
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit' });
+    if (_locArhivata(imei, dev)) return res.status(400).json({ error: 'Mașina e arhivată: locația ei nu se mai poate distribui.' });
+    const firmaAzi = dev.company_id != null ? Number(dev.company_id) : null, firmaLink = l.company_id != null ? Number(l.company_id) : null;
+    if (firmaAzi !== firmaLink) return res.status(404).json({ error: locatieDistribuita.TEXT_PRELUNGIRE_EXPIRAT });
+    const p = locatieDistribuita.prelungire(l.expira_la, minute, acum);
+    if (!p.gata) return res.status(409).json({ error: p.text });
+    const nou = await db.prelungesteLocatieDistribuita(l.id, imei, Number(l.expira_la), p.expiraLa);
+    if (!nou) return res.status(409).json({ error: 'Linkul tocmai s-a schimbat (prelungit sau oprit de altcineva). Uită-te din nou la listă.' });
+    auditReq(req, 'update', 'locatie_distribuita', imei, { id: l.id, minute: Number(minute), de_la: Number(l.expira_la), pana_la: Number(nou.expira_la) });
+    res.json({ ok: true, id: nou.id, text: p.text, taiat: p.taiat, pana: locatieDistribuita.ora(Number(nou.expira_la)),
+      ramas: locatieDistribuita.ramas(nou.expira_la, acum), poatePrelungi: locatieDistribuita.poatePrelungi(nou.expira_la, acum) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Pagina publică: fără sesiune, fără cache, fără indexare. Tokenul stă în adresă; în bază doar amprenta lui.

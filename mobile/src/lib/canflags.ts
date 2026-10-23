@@ -23,6 +23,8 @@ export interface CanCatalog {
   groups: CanGroup[]; flags: CanFlag[]; kindText: Record<string, [string, string]>; undecoded: string[];
   /** ordinea plăcuțelor din banda „Starea mașinii" — vine de la server, ca să nu fie două ordini */
   stateBand?: string[];
+  /** adaptorul în repaus: ce plăcuțe nu se arată atunci și nota de deasupra (can_flags.js) */
+  repaus?: { ascunse: string[]; text: string };
 }
 
 // ⚠ CHEIA SE URCĂ LA FIECARE CÂMP NOU DIN CATALOG. Catalogul salvat se folosește ÎNAINTEA celui
@@ -31,7 +33,8 @@ export interface CanCatalog {
 //   v2: `mereu`, `ascuns`, treapta ca o singură plăcuță
 //   v3: `stateBand` (ordinea benzii „Starea mașinii") — fără el, banda de martori de sub hartă
 //       rămânea goală pe o mașină fără martori aprinși.
-const KEY = 'can_flags_v3';
+//   v4: `repaus` (adaptorul CAN în repaus: frâna de mână și pedalele nu se arată, cu nota lor)
+const KEY = 'can_flags_v4';
 let _cache: CanCatalog | null = null;
 let _refresh: Promise<CanCatalog | null> | null = null;
 
@@ -100,7 +103,7 @@ export function canText(cat: CanCatalog, f: CanFlag, val: any): string {
 }
 
 export type Banda = { f: CanFlag; val: any };
-export type Benzi = { stare: Banda[]; martori: Banda[]; deschis: Banda[]; active: Banda[] };
+export type Benzi = { stare: Banda[]; martori: Banda[]; deschis: Banda[]; active: Banda[]; repaus: boolean };
 
 /** Cum se așază plăcuțele pe ecran — după cât de mult cer atenție, ca la bordul mașinii:
  *  starea (frână, treaptă, încuietoare, contact, motor) · martori roșii · ce e deschis · ce e pornit.
@@ -109,23 +112,41 @@ export type Benzi = { stare: Banda[]; martori: Banda[]; deschis: Banda[]; active
 /** Ordinea de rezervă a benzii de stare, folosită doar dacă serverul nu a trimis-o. Ține pasul cu
  *  BANDA_STARE din can_flags.js — verificat în CI (`verify_can_flags.js`). */
 const STARE_IMPLICITA = ['_sf_handbrake', '_sf_gear', '_sf_car_closed', '_sf_ignition_on', '_sf_engine_working'];
+/** Ce nu se arată cât adaptorul doarme, de rezervă (catalog salvat mai vechi). Ține pasul cu
+ *  REPAUS_ASCUNSE din can_flags.js — verificat în CI. */
+const REPAUS_IMPLICIT = ['_sf_handbrake', '_sf_footbrake', '_sf_clutch'];
 
-export function canBenzi(cat: CanCatalog, flat: Record<string, any>): Benzi {
-  const out: Benzi = { stare: [], martori: [], deschis: [], active: [] };
+/** Mașina merge? Contactul aparatului GPS (nu depinde de adaptor); fără el, turația sau viteza.
+ *  Aceeași regulă ca `mergeMasina` din can_flags.js — proba le rulează pe aceleași cazuri. */
+export function canMerge(tot: Record<string, any>): boolean {
+  const c = tot.ignition;
+  if (c !== undefined && c !== null && c !== '') return Number(c) === 1 || c === true;
+  return Number(tot.can_engine_rpm) > 0 || Number(tot.can_vehicle_speed) > 0 || Number(tot.speed_io) > 3;
+}
+/** Adaptorul CAN chiar doarme: el o spune ȘI mașina nu merge. În mers, „în repaus" e un semnal greșit. */
+export function canInRepaus(tot: Record<string, any>): boolean { return !!tot._sf_can_sleep_mode && !canMerge(tot); }
+
+/** `io` = valorile aparatului (contactul, turația, viteza), ca regula de repaus să știe dacă mașina merge. */
+export function canBenzi(cat: CanCatalog, flat: Record<string, any>, io?: any): Benzi {
+  const repaus = canInRepaus(Object.assign({}, io || {}, flat));
+  const out: Benzi = { stare: [], martori: [], deschis: [], active: [], repaus };
   const peCheie: Record<string, CanFlag> = {};
   cat.flags.forEach((f) => { peCheie[f.key] = f; });
   const puse = new Set<string>();
+  // În repaus se ascund stările vechi; în mers, „în repaus" e un semnal greșit și nu se arată.
+  const ascunseRepaus = (cat.repaus && cat.repaus.ascunse) || REPAUS_IMPLICIT;
+  const ascuns = (k: string) => (k === '_sf_can_sleep_mode' ? !repaus : repaus && ascunseRepaus.indexOf(k) >= 0);
   // Ordinea vine de la server. Dacă lipsește (catalog salvat mai vechi, server mai bătrân), NU
   // lăsăm banda goală — ar dispărea tocmai plăcuțele care trebuie văzute tot timpul.
   const ordine = (cat.stateBand && cat.stateBand.length) ? cat.stateBand : STARE_IMPLICITA;
   ordine.forEach((k) => {
-    const f = peCheie[k]; if (!f) return;
+    const f = peCheie[k]; if (!f || ascuns(k)) return;
     const v = flat[k];
     if (!canSeVede(f, v)) return;
     out.stare.push({ f, val: v }); puse.add(k);
   });
   cat.flags.forEach((f) => {
-    if (puse.has(f.key)) return;
+    if (puse.has(f.key) || ascuns(f.key)) return;
     const v = flat[f.key];
     if (!canSeVede(f, v)) return;
     const unde = f.kind === 'warn' ? 'martori' : f.kind === 'open' ? 'deschis' : 'active';

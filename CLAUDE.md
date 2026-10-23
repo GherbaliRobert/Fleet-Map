@@ -2694,6 +2694,17 @@ caută forma în tot panoul.
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
 
+## „Starea mașinii" (plăcuțele CAN): adaptorul în repaus (Robert, 23.10: „2")
+VW Caddy parcat arăta „Ambreiaj: Apăsat" și „Frână de mână: Eliberată" lângă „Adaptor CAN în repaus: Da": cu mașina
+oprită, adaptorul doarme, iar în mesaj rămâne ce a citit înainte de luarea contactului. Dacia Logan arăta „în repaus" în MERS.
+- **O regulă, în `can_flags.js`:** `mergeMasina(flat)` (contactul aparatului GPS — `ignition`, care nu depinde de adaptor; fără
+  el, turația sau viteza) și `inRepaus(flat)` = adaptorul o spune ȘI mașina nu merge. `benzi` întoarce `repaus`: în repaus
+  ascunde `REPAUS_ASCUNSE` (frâna de mână, frâna de picior, ambreiajul) și pagina / telefonul scriu `REPAUS_TEXT`; în mers,
+  plăcuța „Adaptor CAN în repaus" NU se arată (semnalul e greșit). `flat` = valorile aparatului + steagurile aplatizate.
+- Pagina primește regula serializată (`_CANFLAGS_JS`: `mergeMasina`, `inRepaus`, `benzi`); telefonul are copia ei în
+  `mobile/src/lib/canflags.ts` (`canMerge`, `canInRepaus`, `canBenzi(cat, flat, io)`, rezerva `REPAUS_IMPLICIT`; catalogul salvat
+  `can_flags_v4`). NU scrie a treia copie. Păzit de `verify_can_flags.js` (16: aceleași cazuri pe server, în pagină și pe telefon).
+
 ## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
 Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore → linkul `/locatie/<token>`, pe care îl deschide oricine,
 fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, cartonaș jos pe telefon / în stânga pe calculator).
@@ -2701,9 +2712,15 @@ fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, ca
   24 de octeți → 32 de caractere; în bază DOAR `amprenta`, sha256), `ramas`, `vechime`, `mesaj` (textul pentru WhatsApp) și
   **`pentruPagina` = SINGURUL lucru care pleacă spre public** (numele + numărul mașinii, firma, poziția, starea). NU adăuga acolo
   IMEI, șofer, istoric sau semnalele mașinii. Ecranele iau duratele și textele de la server.
-- **Cine:** `_poateDistribuiLocatia` = `_incDispecer` (super-admin, `manageFleet`, dispecerul), pe 3 rute, plus `canAccessImei`;
-  `/api/me` dă `poateDistribuiLocatia` (butonul `#detail-share-btn` apare doar atunci). Facerea și oprirea — în audit.
-- **Linkul se vede o singură dată** (la facere): lista din fereastră arată doar până când merge, cine l-a făcut și „Oprește".
+- **Cine:** `_poateDistribuiLocatia` = `_incDispecer` (super-admin, `manageFleet`, dispecerul), pe 4 rute, plus `canAccessImei`;
+  `/api/me` dă `poateDistribuiLocatia` (butonul `#detail-share-btn` apare doar atunci). Facerea, prelungirea și oprirea — în audit.
+- **Linkul se vede o singură dată** (la facere): lista din fereastră arată doar până când merge, cine l-a făcut, „Prelungește" și „Oprește".
+- **„Prelungește" (Robert, 23.10: varianta c)** = `POST /api/devices/:imei/locatie-distribuita/:id/prelungire { minute }`: aceleași
+  durate, ADĂUGATE la ora de final, pe ACELAȘI link (pagina publică citește rândul la fiecare cerere, deci vede ora nouă singură).
+  De câte ori vrei, dar cel mult `MAX_INAINTE_MINUTE` (8 ore) înainte de clipa prelungirii — `prelungire` / `poatePrelungi` /
+  `TEXT_PRELUNGIRE`, tot în locatie_distribuita.js; serverul scrie textele, ecranele doar le arată. Nu se prelungește un link
+  expirat, al unei mașini arhivate sau mutate pe altă firmă. Scrierea (`db.prelungesteLocatieDistribuita`) trece doar dacă linkul
+  are încă ora citită: două apăsări deodată nu trec de plafon. NU face un plafon „pe link" (24 h de la facere) fără Robert.
 - **Un link care nu mai e bun răspunde la fel, oricare ar fi motivul** (404 `{ activ: false, titlu, text }`): expirat, oprit,
   inventat, mașina arhivată / ștearsă / mutată pe altă firmă (firma linkului ≠ firma de azi), accesul firmei oprit. Pagina scoate
   atunci mașina și urma de pe hartă și nu mai cere nimic. Expiratele se șterg la minut (`stergeLocatiiDistribuiteExpirate`).
@@ -2711,9 +2728,9 @@ fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, ca
   `_locMasini.delete(imei)` (ca `_trecePeFirma`, adopția, ștergerea), altfel linkul vechi mai merge până la 30 de secunde.
 - Pagina publică: fără cookie-uri și fără analiză de trafic, `noindex` (meta + `X-Robots-Tag`), serviciul offline nu o ține în
   cache, textul cu textContent; fără Leaflet (rețea care blochează unpkg) cartonașul merge oricum, cu „Google Maps".
-- **Telefonul (APK 1.0.20):** `mobile/src/components/DistribuieLocatia.tsx` (foaia; clasele `dl-` — `loc-` e al hărții din Flotă),
-  deschisă din fișa mașinii doar cu `me.poateDistribuiLocatia`, pe aceleași rute (`Api.locatieDistribuita` / `faLocatieDistribuita`
-  / `opresteLocatieDistribuita`). Schimbi fereastra web → schimbi și foaia.
+- **Telefonul (APK 1.0.20; „Prelungește" din 1.0.21):** `mobile/src/components/DistribuieLocatia.tsx` (foaia; clasele `dl-` — `loc-`
+  e al hărții din Flotă), deschisă din fișa mașinii doar cu `me.poateDistribuiLocatia`, pe aceleași rute (`Api.locatieDistribuita` /
+  `faLocatieDistribuita` / `prelungesteLocatieDistribuita` / `opresteLocatieDistribuita`). Schimbi fereastra web → schimbi și foaia.
 - Hotărât de Robert (21.10): duratele rămân trei, cine poate rămâne cum e, publicul fără șofer, inclusă la toate firmele.
 - Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Păzit de `verify_locatie_distribuita.js` (în `npm test`, pe server
   pornit, plus foaia telefonului).

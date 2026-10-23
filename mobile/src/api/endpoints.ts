@@ -20,7 +20,7 @@ export interface Me {
 }
 // „Distribuie locația” (21.10): ce dă serverul — duratele și linkurile active (fără link: se vede doar la facere).
 export interface LocatieDurata { minute: number; text: string; }
-export interface LocatieActiva { id: number; creatDe: string | null; alMeu: boolean; creat: string; pana: string; ramas: string; }
+export interface LocatieActiva { id: number; creatDe: string | null; alMeu: boolean; creat: string; pana: string; ramas: string; poatePrelungi?: boolean; }
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
   stops: number; fuelConsumed: number | null; fuelEstimated?: boolean; engineHours: number | null; recordCount?: number;
@@ -456,11 +456,14 @@ export const Api = {
   simuleaza: (b: any) => api<any>('/api/incarcare/simuleaza', { method: 'POST', body: b }),
   // ── „Distribuie locația” (21.10) — aceleași rute ca pagina web; serverul scrie textele ──
   locatieDistribuita: (imei: string) =>
-    api<{ durate: LocatieDurata[]; max: number; active: LocatieActiva[] }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita'),
+    api<{ durate: LocatieDurata[]; max: number; prelungire?: string; active: LocatieActiva[] }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita'),
   faLocatieDistribuita: (imei: string, minute: number) =>
     api<{ ok: boolean; id: number; link: string; durata: string; pana: string; ramas: string; mesaj: string }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita', { method: 'POST', body: { minute } }),
   opresteLocatieDistribuita: (imei: string, id: number) =>
     api<{ ok: boolean; text: string }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
+  // „Prelungește” (23.10): același link, ora de final mutată; cât se poate (cel mult 8 ore înainte) o spune serverul.
+  prelungesteLocatieDistribuita: (imei: string, id: number, minute: number) =>
+    api<{ ok: boolean; id: number; text: string; pana: string; ramas: string; poatePrelungi: boolean }>('/api/devices/' + encodeURIComponent(imei) + '/locatie-distribuita/' + encodeURIComponent(String(id)) + '/prelungire', { method: 'POST', body: { minute } }),
   planuriIncarcare: () => api<any[]>('/api/incarcare/planuri'),
   planIncarcare: (id: number) => api<{ plan: any; rezultat: any; eroare: string | null; notaSofer: string; poateEdita: boolean }>('/api/incarcare/planuri/' + encodeURIComponent(String(id))),
   salveazaPlan: (id: number | null, b: any) => api<any>('/api/incarcare/planuri' + (id ? '/' + encodeURIComponent(String(id)) : ''), { method: id ? 'PUT' : 'POST', body: b }),
