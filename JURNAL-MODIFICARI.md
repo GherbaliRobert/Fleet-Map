@@ -267,8 +267,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Procesorul, traficul, discul (3 GB) și copiile — sub 1 $ la un loc. Întrebat pe 21.10: plafon de memorie pentru bază, în
   Railway (serviciul Postgres → Settings → Deploy → Replica Limits).
 - [ ] **Robert: plafon de 1 GB pe memoria bazei de date, în Railway. Adăugat pe 25.10.** **Plafonul PUS de Robert pe 25.10**
-  (după repornire: aplicația merge, baza răspunde). Rămân: poza cu graficul de memorie al bazei a doua zi și poza cu lista
-  tabelelor. Factura vine aproape toată din memoria
+  (după repornire: aplicația merge, baza răspunde). **Lista tabelelor trimisă (25.10): baza are 1,07 GB din 5 GB (21%), din
+  care pozițiile 1,04 GB (630 MB date + 392 MB indexuri); restul tabelelor, sub 20 MB la un loc.** Cei 3 GB din Railway țin și
+  fișierele de lucru ale bazei. Rămâne: poza cu graficul de memorie al bazei, a doua zi. Factura vine aproape toată din memoria
   bazei (~1,6 GB ținuți, mare parte cache — pentru 3 mașini nu e nevoie de el). Serviciul Postgres → Settings → Deploy → „Resource
   Limits" (sau „Replica Limits") → Memory = 1 GB → „Apply changes" → Deploy. Factura scade de la ~17,5 $ (≈ 80 lei) la cel mult
   ~12 $ (≈ 55 lei) pe lună; după o săptămână liniștită se poate coborî la 768 MB (~9,5 $). Baza repornește o dată, câteva
