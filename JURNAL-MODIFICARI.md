@@ -357,6 +357,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (2) la noi, „Cereri de la clienți" (`/api/admin/cereri-echipa`, `…/numar`, `…/:id/preiau|programeaza|rezolvat|redeschide`);
   (3) anunțurile: `cerere_echipa` → „Cereri de la clienți", `cerere_preluata|programata|rezolvata` → „Cererile tale"; (4) intervențiile
   din Calendarul de montaj (`interventii` în răspunsul calendarului). Textele le dă serverul.
+- [ ] **De făcut după sesiunea cu contul de contabil: TVA-ul pus unei firme neplătitoare. Adăugat pe 25.10** (Robert: „Nu acum…
+  îl facem după ce termină sesiunea cu contul de contabil", care lucrează în același loc din aplicație). Azi, dacă în „Date emitent"
+  e bifat „neplătitor de TVA", dar la „Cotă TVA" rămâne 21, aplicația tot pune 21%: o factură de 100 de lei iese de 121 de lei pe
+  hârtie, iar e-Factura o refuză. Reparația: la emitent neplătitor, cota 0 pe rânduri, oricât ar fi scris la „Cotă TVA".
+  Tot de atunci, **de hotărât:** (a) mențiunea „regim special de scutire, art. 310" și pe hârtia facturii (e-Factura o are);
+  (b) un client persoană fizică fără CNP e refuzat la e-Factura (fișa firmei n-are „persoană fizică") — rămâne așa?
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
