@@ -76,6 +76,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
   **12.10:** Robert — „mai așteaptă".
+  **25.10:** fișierul e-Factura pentru o firmă neplătitoare de TVA (DUO) e reparat și trece validatorul ANAF. Înainte de prima
+  trimitere, în „Date emitent": bifa „neplătitor de TVA", cota 0, orașul și codul județului (pentru Pantelimon: RO-IF).
 - [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
   FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
 - [x] **HOTĂRÂT (28.09): accesoriile rămân doar ca sfat, fără rând de preț.** Alin a ales varianta 2.
@@ -423,6 +425,29 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-25
+
+### AMÂNDOI · e-Factura pentru o firmă neplătitoare de TVA: fișierul trece acum validatorul ANAF
+
+DUO BUSINESS CONCEPT S.R.L., firma care emite facturile din ratrack.ro, nu e înregistrată în scopuri de TVA. Fișierul e-Factura
+pe care îl făcea aplicația pentru ea era respins de ANAF (verificat pe 25.10, la validatorul lor public): scria „cota 0%" pe
+rânduri unde regula cere să nu existe nicio cotă, nu spunea motivul scutirii și trecea codurile de TVA ale firmelor („RO…").
+- **Acum:** la o firmă neplătitoare, factura spune „în afara TVA" pe fiecare rând, fără cotă, cu motivul scutirii, TVA 0 și
+  mențiunea „regim special de scutire conform art. 310 din Codul fiscal". Firmele (noi și clientul) apar cu CUI-ul fără „RO".
+  Persoana fizică apare cu CNP-ul (sau cu 13 zerouri). Pentru o firmă plătitoare de TVA rămâne ca înainte: 21% și 11% pe
+  aceeași factură, 0% unde e cazul. Mențiunile facturii merg și ele în fișier, iar ziua facturii e ziua din România (o
+  factură emisă la 01:30 ieșea cu ziua de ieri).
+- **Județul și sectorul:** ANAF cere județul ca cod (RO-CJ) și, la București, sectorul. Clientul are adresa într-un singur
+  rând, așa că aplicația le citește din ea („…, Cluj-Napoca, jud. Cluj", „MUNICIPIUL BUCUREȘTI, SECTOR 3, …"). Până azi,
+  orice client fără județ pleca drept „București, Sector 1".
+- **Ce nu mai pleacă:** o adresă fără județ (sau București fără sector), o firmă fără CUI, o factură cu TVA la o firmă
+  neplătitoare, o factură al cărei total nu se potrivește cu rândurile. Mesajul spune ce lipsește și unde se completează.
+- **Ce am schimbat:** `efactura.js` (doar partea care scrie fișierul; trimiterea la ANAF a rămas neatinsă). Probă nouă:
+  `verify_efactura_anaf.js` (95 de verificări + 7 facturi trimise la validatorul ANAF, toate „ok"; plus un martor cu greșeala
+  veche, pe care ANAF îl respinge). Cere internet, deci nu e în `npm test`; fără răspuns de la ANAF o spune și nu trece.
+- **Ce vede fondatorul:** azi nimic (e-Factura e oprită până se pune cheia ANAF). La pornire, facturile trec de ANAF.
+- **Ce vede clientul:** factura corectă în SPV-ul lui, cu adresa lui reală.
 
 ## 2026-10-23
 
