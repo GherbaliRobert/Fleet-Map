@@ -266,6 +266,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   estimat pe toată luna): **baza de date 14,53 $, dintre care memoria ei 13,64 $** (~1,6 GB ținuți în medie); aplicația 0,70 $.
   Procesorul, traficul, discul (3 GB) și copiile — sub 1 $ la un loc. Întrebat pe 21.10: plafon de memorie pentru bază, în
   Railway (serviciul Postgres → Settings → Deploy → Replica Limits).
+- [ ] **Robert: plafon de 1 GB pe memoria bazei de date, în Railway. Adăugat pe 25.10.** Factura vine aproape toată din memoria
+  bazei (~1,6 GB ținuți, mare parte cache — pentru 3 mașini nu e nevoie de el). Serviciul Postgres → Settings → Deploy → „Resource
+  Limits" (sau „Replica Limits") → Memory = 1 GB → „Apply changes" → Deploy. Factura scade de la ~17,5 $ (≈ 80 lei) la cel mult
+  ~12 $ (≈ 55 lei) pe lună; după o săptămână liniștită se poate coborî la 768 MB (~9,5 $). Baza repornește o dată, câteva
+  secunde: aparatele păstrează pozițiile și le retrimit (confirmarea se dă abia după scriere). Dacă repornește singură de mai
+  multe ori, plafonul se urcă la 1,5 GB sau se scoate — un minut. Plus: poza cu lista tabelelor din Control costuri → Railway →
+  📊 Detalii (ce ține 3 GB de disc la 3 mașini, din 5 GB pe Hobby).
 - [x] **FĂCUT (12.10): Robert a reglat ora laptopului.** **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
