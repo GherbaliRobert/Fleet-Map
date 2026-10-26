@@ -350,6 +350,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `POST /api/insight/actiuni/:id/aplica|refuza|anuleaza`, „Gata" cu „Anulează" numărat din `ramasMs`, pasul următor din `urmator`),
   rândurile „Propunere ›" din „Azi la tine" (butonul `propunere` = o cerere pe reguli), pagina „Șoferi pe mașini" din
   `GET /api/insight/soferi-masini` cu „Aplică cele bifate" (`POST /api/insight/soferi-masini/aplica`). Textele le dă serverul.
+  (13) **adăugat pe 26.10 — pasul 2, partea 2 (alerta de viteză și „Am vorbit cu el"):** același cartonaș `propunere`, cu `fel`
+  `alerta` / `discutie`: rândurile din `randuri` (în locul celor de șofer), iconița din `ic`, „Schimbă" din `campuri` (alerta: pragul,
+  mașina din `optiuni`, numele; discuția: `nota`) trimise ca `{ campuri }` la „Da"; la alertă, cât se schimbă pragul sau mașina,
+  `POST /api/insight/actiuni/:id/dovezi` dă din nou „Din ultimele 30 de zile"; după „Da", butonul din `gata.buton` (`ecran: 'alerts'`
+  = Alerte, `ramura: 'safedrive'` = RA Drive); sub un răspuns, butoanele din `actiuni` (de pildă „Deschide Alerte"). Textele le dă serverul.
 - [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
   clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
   `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
@@ -431,6 +436,36 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-26
+
+### AMÂNDOI · Pasul 2, partea 2: o alertă de viteză și „Am vorbit cu el", cu „Da"-ul tău
+
+Alin (23.10): „da" la partea 2 a pasului 2 („RA Insight face, cu Da-ul tău"), după macheta din 21.10 (M3, alerta cu „Schimbă"
+deschis). Ca la șoferi: RA Insight pregătește cartonașul, omul apasă „Da", aplicația face ce ar face butonul din ecranul ei.
+- **Alerta:** scrii „Anunță-mă când Loganul trece de 130 km/h" (pe o mașină sau pe toată flota). Cartonașul arată ce urmărește,
+  pragul, mașina, numele alertei și „Din ultimele 30 de zile": de câte ori ar fi sunat (socotit cu regula adevărată a alertelor:
+  pragul + 10 km/h, cel mult o dată la 5 minute pe mașină), cea mai mare viteză, cu ziua, ora și locul. Dacă ar suna des („cam 14
+  anunțuri pe zi"), o spune. „Da, pune alerta" o pune ca din Management → Alerte → „Adaugă regulă"; „Schimbă" potrivește pragul,
+  mașina și numele, iar „din ultimele 30 de zile" se socotește din nou pe loc; „Anulează" o scoate, 10 minute. Pe toată flota o
+  pune doar cine vede toată flota. Alte feluri (zone, combustibil, ralanti) se pun din Alerte — RA Insight o spune și dă butonul
+  „Deschide Alerte".
+- **„Am vorbit cu el":** scrii „Notează că am vorbit cu Ion Popescu despre viteză". Cartonașul arată șoferul, ziua, despre ce, cifrele
+  lui din RA Drive (km, manevre bruște, cât a costat în plus, ultima discuție); „Da, notează" o trece în RA Drive, ca butonul „Am
+  vorbit cu el"; de acolo RA Drive compară cum a condus înainte și după. Doi șoferi cu același prenume → alegi dintre ei.
+- **Drepturile:** alerta — doar cine poate schimba alertele (ceilalți văd propunerea, cu „Da" oprit și cine o poate aproba);
+  discuția — cine conduce flota. De la pachetul Basic; propunerile și „Da"-ul nu se numără și nu ajung la model.
+- **Ce am schimbat:** `propuneri.js` (nou: regulile și textele), `server.js` (`_insightPropuneri`, întâia în RA Insight; „Da" și
+  „Anulează" comune, cu drepturile pe felul propunerii — `_poateActiunea`; ruta `/dovezi`), `db.js` (pozițiile peste prag și cea mai
+  mare viteză din perioadă), pagina (cartonașul cu „Schimbă" / „Lasă cum era", butoanele spre Alerte și RA Drive), `app.css`,
+  `insight_ghid.js` (capitolul „O alertă de viteză și «Am vorbit cu el»"). Probă nouă: `verify_propuneri.js` (73, în `npm test`, pe
+  server pornit, zero cereri către model). Patru probe vechi mutate pe regula nouă. Contrastul măsurat pe ambele teme: peste 6,9.
+- **Ce vede fondatorul:** nimic nou (propunerile se fac pe flota unei firme; contul de fondator primește explicația).
+- **Ce vede clientul:** cartonașele noi în RA Insight; alerta apare în Management → Alerte, discuția în RA Drive. Telefonul — la
+  APK-ul următor (Robert).
+- **Găsite pe drum, întrebate (nu reparate):** alertele de viteză sună cu 10 km/h peste prag, iar ecranul Alerte nu o spune (cartonașul
+  nou o spune); „Oprire motor" nu sună niciodată, iar „Pornire motor" sună la fiecare 5 minute cât merge mașina; pe tabletă ținută
+  vertical, fișa mașinii iese din ecran (vezi întrebările din raport).
 
 ## 2026-10-25
 

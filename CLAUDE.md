@@ -849,7 +849,8 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
   2, „RA Insight face, cu Da-ul tău"** (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat + potrivirea șoferilor),
   aprobat ca ordine pe 15.10; macheta aprobată pe 21–22.10; **partea 1 (șoferii pe mașini) construită pe 22.10** — vezi „Pasul 2,
-  partea 1", mai jos. Părțile 2 și 3 (alerta, „Am vorbit cu el"; revizia, actul, raportul programat) — neîncepute, una câte una.
+  partea 1", mai jos; **partea 2 (alerta de viteză, „Am vorbit cu el") construită pe 26.10** — vezi „Pasul 2, partea 2". Partea 3
+  (revizia, actul, raportul programat) — neîncepută.
 - **Proba modelelor din 21.10 (Robert, pe ratrack.ro) → Haiku 5.5 rămâne (Alin, 22.10: „DA"; 0,48 bani pe întrebare, Sonnet 5.5 6,65).**
   Reparațiile ei (cele 3 greșeli ale lui Haiku veneau din aplicație) — NU le strica la loc: `insight.celeMaiMari` (cele mai mari 5
   valori pe coloană, din TOATE rândurile, în `_raportPentruModel` → `cele_mai_mari`); `RAPOARTE_FARA_MODEL = ['analytic']` (lista de
@@ -894,8 +895,10 @@ PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecra
   `db.assignDevice(imei, la, d.group_id)` (grupa de ACUM, altfel s-ar șterge), audit `assign` cu `prin: 'RA Insight'` și textul.
   „Anulează" = aceeași funcție pe schimbările inverse, în ordine inversă. Rutele: `GET /api/insight/soferi-masini` (pagina),
   `POST /api/insight/soferi-masini/aplica` (doar propunerile de ACUM bifate, în ordinea lor), `POST /api/insight/actiuni/:id/aplica`
-  (cu `la` = alt șofer DOAR din `alternative`), `/refuza` (nu schimbă nimic, fără drept de editare), `/anuleaza`. „Da" / „Aplică" /
-  „Anulează" = `requireEdit('vehicule')` (ca butonul din fișa mașinii); toate de la Basic (`requireRamuri`). NIMIC nu se numără.
+  (cu `la` = alt șofer DOAR din `alternative`), `/refuza` (nu schimbă nimic, fără drept de editare), `/anuleaza`. „Aplică" =
+  `requireEdit('vehicule')`; „Da" și „Anulează" (comune cu partea 2) cer drepturile FELULUI propunerii — `_poateActiunea(req, a.fel)`,
+  la șofer `_poateSchimbaSoferi` = manageFleet + editarea vehiculelor, ca butonul din fișa mașinii; toate de la Basic
+  (`requireRamuri`). NIMIC nu se numără.
 - **„Azi la tine":** rândurile `insight` (nu un agent — nu se opresc cu agenții): permisul expirat (roșu), cel nepotrivit, mașina rămasă
   fără șofer în ultimele 30 de zile (`RECENT_ZILE`; cea fără șofer dintotdeauna stă doar în pagină), cu „Propunere ›" (o cerere pe
   reguli); mai multe de un fel = un rând strâns, spre pagină (`fel: 'pagina'`). Permisul expirat al unui șofer trecut pe mașină iese din
@@ -911,6 +914,39 @@ PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecra
   numele șoferului din rapoarte (`reports.deviceNames`) și din fișa mașinii (`db.getDeviceFull`) vine doar dintr-un șofer al aceleiași firme
   (`dr.company_id IS NOT DISTINCT FROM d.company_id`). O cale nouă care trece un șofer sau o grupă pe o mașină verifică la fel.
 - Păzit de **`verify_soferi_masini.js`** (în `npm test`; 91, pe server pornit, ZERO cereri către model; secțiunea 5 = ruta veche), `verify_insight_ghid.js`.
+
+### Pasul 2, partea 2 (26.10): ALERTA DE VITEZĂ și „AM VORBIT CU EL" (Alin, 23.10: „da"; macheta M3 din 21.10)
+Aceeași mecanică ca la șoferi (tabela `insight_actiuni`, „Da" o singură dată, „Anulează" 10 minute, `_cardPublic`), cu fel nou:
+`alerta` / `discutie`.
+- **Regulile și textele stau în `propuneri.js`** (curat): `cerereAlerta` (o CERERE = „anunță-mă / avertizează-mă / alertează-mă…",
+  „vreau să știu când…" sau „pune / fă / adaugă (o) alertă"; NU: o întrebare, timpul trecut, un raport), `pragDin` (numărul și numele
+  mașinilor ies din text ÎNAINTE de căutarea pragului — altfel „B 154 UIP" dădea 154, „Iveco Daily 35" dădea 35), `simuleazaViteza`
+  (regula MOTORULUI: `pragEfectiv` = max(`SPEED_ALERT_BASE`, prag) + `SPEED_ALERT_MARGIN`, o dată la 5 minute pe mașină — cifrele
+  motorului le dă serverul), `cardAlerta` / `campuriAlerta` (ce vine din „Schimbă", verificat pe cartonaș: prag întreg 30–250, mașina
+  doar din `optiuni`; numele pus de aplicație se reface, cel scris de om rămâne) / `gataAlerta`, `cerereDiscutie` (șoferul cu
+  `soferiMasini.gasesteSoferi`, „despre…" = nota) / `cardDiscutie` / `gataDiscutie`, `TEXTE`, `dupaAnulare`. NU scrie texte în pagină.
+- **Doar alertele de VITEZĂ se pun din discuție** (macheta); celelalte feluri → `textAltTip` + butonul `actiuni: [{ fel: 'ecran',
+  ecran: 'alerts' }]` („Deschide Alerte"). „Din ultimele 30 de zile" citește DOAR pozițiile peste pragul efectiv (`db.pozitiiPesteViteza`)
+  + cea mai mare viteză (`db.vitezaMaximaPerioada`, fără saltul de GPS peste 250) — scurt și pe o flotă întreagă.
+- **Pe server:** `_insightPropuneri` — O DATĂ, ÎNTÂIA în `_raInsight` (înaintea lui `_insightSoferi`: „treci că am discutat cu Mihai" sau
+  „pune o alertă pe mașina lui Ion" ar fi părut altfel cereri de șofer). `_aplicaPropunere2` / `_anuleazaPropunere2` (din rutele comune
+  `/api/insight/actiuni/:id/aplica|anuleaza`): alerta = `db.createAlert(spec, req.companyId)` + `invalidateReguliCache()` + audit `create`
+  `alert` „prin RA Insight" (ca Management › Alerte › „Adaugă regulă"), anularea = `db.deleteAlert`; discuția =
+  `db.adaugaDiscutieSafeDrive` (ca butonul din RA Drive), anularea = `db.stergeDiscutieSafeDrive`. Totul pe starea de ACUM (mașina la
+  îndemâna omului și a firmei, șoferul tot al firmei). `POST /api/insight/actiuni/:id/dovezi` = „din ultimele 30 de zile" pentru pragul
+  și mașina din „Schimbă" (doar cifre). Rândul șoferului din RA Drive vine tot din `_sdLuna` (al patrulea apelant, `asteptaMs` scurt).
+- **Drepturile pe fel: `_poateActiunea`** — alerta = manageFleet + `poateEditare('alerte')` + `poateEcran('alerte')`; discuția = manageFleet;
+  șoferul = `_poateSchimbaSoferi`. **Pe toată flota pune alerta doar cine vede toată flota** (`_veziToataFlota` = viewAll netăiat) — mai
+  strâmt decât ecranul, dinadins: altfel ar suna pe mașini pe care omul nu le vede. De la Basic; nimic nu se numără, nimic la model.
+- **Pagina:** același `cartonasPropunere` — rândurile din `p.randuri`, iconița din `p.ic` (doar „fa-…"), „Schimbă" → casete (`ed`), „Lasă
+  cum era", „Da" trimite `{ campuri }` pe ACEEAȘI cerere; „din ultimele 30 de zile" se reface (palid până vine, `.chat-prop-dov.vechi`);
+  după „Da", butonul din `gata.buton` prin `insightProblemaButon` (`ecran` → `goManage`, `ramura` → `insightRamura`). Casetele `.chat-prop-in`
+  iau culorile din temă. Ghidul: capitolul `alerta_discutie`. Telefonul — la APK-ul următor (Robert).
+- ⚠ **Găsite pe 23.10, întrebate (nu reparate):** alertele de viteză sună cu `SPEED_ALERT_MARGIN` (10) peste prag, iar ecranul Alerte nu o
+  spune (cartonașul o spune); `ignition_off` citește `livePositions` DUPĂ ce poziția nouă a fost pusă acolo, deci nu sună niciodată, iar
+  `ignition_on` sună la fiecare 5 minute cât contactul e pornit.
+- Păzit de **`verify_propuneri.js`** (în `npm test`; 73, pe server pornit, ZERO cereri către model), `verify_soferi_masini.js` (drepturile pe
+  fel), `verify_un_singur_insight.js` (ordinea), `verify_insight.js` (`_sdLuna`), `verify_insight_ghid.js`.
 
 ### „Anunță echipa RA Track" (23.10; Alin, 22.10: „da" la flux, „te sunăm în cel mult o zi lucrătoare", cererile le preiau amândoi, cu „Preiau")
 Capitolul 4 al machetei din 21.10 (E1–E5). **Aparatul e treaba NOASTRĂ** (19.10): clientul nu e trimis să verifice nimic — are un
