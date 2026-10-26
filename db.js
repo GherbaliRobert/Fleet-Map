@@ -6282,6 +6282,15 @@ async function updateVehicleDocument(id, data) {
 async function deleteVehicleDocument(id) {
   await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
 }
+// „Anulează" pe un act trecut prin RA Insight (26.10): actele pe care „Da" le-a scos din uz (au trecut în istoric) se întorc valabile —
+// doar ale mașinii și firmei lor. Numărătoarea din RETURNING (PGlite n-are rowCount).
+async function restaureazaActe(ids, imei, companyId) {
+  const l = (Array.isArray(ids) ? ids : []).map(Number).filter(function (x) { return Number.isFinite(x); });
+  if (!l.length) return 0;
+  const r = await pool.query('UPDATE vehicle_documents SET replaced_at = NULL WHERE id = ANY($1) AND imei = $2 AND company_id IS NOT DISTINCT FROM $3 AND replaced_at IS NOT NULL RETURNING id',
+    [l, imei, companyId != null ? companyId : null]);
+  return r.rows.length;
+}
 // ȘTERGERE DEFINITIVĂ a tuturor actelor de un tip, ISTORIC CU TOT. NU se mai folosește la reînnoire —
 // acolo e archiveVehicleDocumentsByType. Rămâne doar pentru curățenii deliberate (ex. un tip de act
 // introdus din greșeală pe toată flota). Dacă o chemi, pierzi și istoricul.
@@ -6900,7 +6909,7 @@ module.exports = {
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
   schimbaSoferIstoric, inchideSoferiIstoric, semanaIstoricSoferi, istoricSoferi,
-  scrieZileCondus, citesteZileCondus, zileCondusStare, adaugaDiscutieSafeDrive, discutiiSafeDrive, stergeDiscutieSafeDrive,
+  scrieZileCondus, citesteZileCondus, zileCondusStare, adaugaDiscutieSafeDrive, discutiiSafeDrive, stergeDiscutieSafeDrive, restaureazaActe,
   aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
   stergeAuditMaiVechiDe,
   getArchivedImeis,

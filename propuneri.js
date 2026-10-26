@@ -164,7 +164,6 @@ function simuleazaViteza(puncte, prag, marja) {
 //       marja: { baza, marja }, poate, aproba, cine, acum }
 function doveziViteza(o) {
   const d = [], sim = o.sim, mx = o.max;
-  const ef = pragEfectiv(o.prag, o.marja);
   const cand = function (m) { return _zi(m.t, o.acum) + ', la ' + _ora(m.t); };
   if (!sim) d.push({ nivel: 'i', text: 'Nu am putut citi drumurile din ultimele ' + ZILE_ISTORIC + _de(ZILE_ISTORIC) + 'zile.' });
   else if (sim.ori > 0) {
@@ -175,9 +174,23 @@ function doveziViteza(o) {
   } else {
     d.push({ nivel: 'ok', text: 'N-ar fi sunat niciodată.' + (mx && mx.v ? ' Cea mai mare viteză: ' + mx.v + ' km/h' + (mx.eticheta && !o.imei ? ' (' + mx.eticheta + ')' : '') + ', pe ' + cand(mx) + '.' : ' Nu are drumuri în perioada asta.') });
   }
-  if (o.marja && o.marja.marja > 0) d.push({ nivel: 'i', text: 'Ca toate alertele de viteză din aplicație, sună cu ' + o.marja.marja + ' km/h peste prag: când trece de ' + ef + ' km/h.' });
+  const tm = textMarjaViteza(o.prag, o.marja);
+  if (tm) d.push({ nivel: 'i', text: tm });
   d.push({ nivel: 'i', text: 'Ajunge la cei care primesc azi alertele firmei, ca orice altă alertă.' });
   return d;
+}
+// Când sună de fapt o alertă de viteză — O frază, pentru cartonașul din RA Insight și pentru ecranul Alerte (26.10, Alin: „da"
+// la „spune-o și acolo"). Sub baza motorului pragul efectiv e baza + marja (un prag de 30 sună tot peste 60), iar fraza o spune.
+function textMarjaViteza(prag, marja) {
+  const baza = Number(marja && marja.baza) || 0, m = Number(marja && marja.marja) || 0, p = Number(prag) || 0;
+  const ef = pragEfectiv(prag, marja);
+  if (p < baza) return 'Sună când trece de ' + ef + ' km/h: pragul cel mai mic al alertelor de viteză e ' + baza + ' km/h' + (m > 0 ? ', iar toate sună cu ' + m + ' km/h peste prag.' : '.');
+  if (m > 0) return 'Ca toate alertele de viteză din aplicație, sună cu ' + m + ' km/h peste prag: când trece de ' + ef + ' km/h.';
+  return '';
+}
+function textRacireViteza(racireMs) {
+  const min = Math.round((Number(racireMs) || RACIRE_MS) / 60000);
+  return 'Cât timp mașina merge peste, sună cel mult o dată la ' + (min === 1 ? 'un minut' : min + _de(min) + 'minute') + '.';
 }
 // Ora României („10:42"), ca la șoferi (o dată pe cartonaș, nu pe poziție).
 function _ora(ms) { return new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }); }
@@ -296,6 +309,7 @@ function gataDiscutie(card, nota, cine, la) {
 module.exports = {
   ZILE_ISTORIC, PRAG_MIN, PRAG_MAX, RACIRE_MS, PE_ZI_DES, NUME_MAX, NOTA_MAX, PRAGURI_PROPUSE, MASINI_IN_LISTA, TEXTE,
   pareCerereAlerta, cerereAlerta, pragDin, cerereText, textPragLipsa, textAltTip, numeAlerta, pragEfectiv, simuleazaViteza, doveziViteza,
+  textMarjaViteza, textRacireViteza,
   cardAlerta, campuriAlerta, cardAlertaDupa, jurnalAlerta, gataAlerta, anulareAlerta,
   pareCerereDiscutie, discutieText, cerereDiscutie, cardDiscutie, notaDiscutie, cardDiscutieDupa, gataDiscutie, anulareDiscutie, dupaAnulare
 };

@@ -36,6 +36,28 @@ const _CLS = {
   van: 'van',
 };
 function classOf(cat) { return _CLS[String(cat || '').trim()] || (cat ? 'truck' : 'car'); }
+// Categoria unei mașini, pe server — ACEEAȘI regulă ca markerCategory din pagină (care alege și pictograma de pe hartă): întâi
+// iconița aleasă, apoi „Categorie" din fișă, altfel autoturism. O folosesc propunerile din RA Insight („Programează revizia", 26.10),
+// ca termenul propus în discuție să fie cel pe care l-ar propune și fereastra din Mentenanță. Legată de pagină prin probă
+// (verify_programari.js): schimbi o listă într-o parte → o schimbi și în cealaltă.
+const _CAT_DIN_ICON = { car: 'car', van: 'van', truck: 'truck', tir: 'tir', bus: 'bus', motorcycle: 'motorcycle', utilaj: 'utilaj', tractor: 'tractor', trailer: 'trailer', autotractor: 'autotractor', trailer_tech: 'trailer_tech', excavator: 'excavator', forklift: 'forklift', combine: 'combine', mixer: 'mixer', generator: 'generator', boat: 'boat', ambulance: 'ambulance', electric: 'electric', phev: 'phev', hybrid: 'hybrid', cng: 'cng' };
+const _CAT_DIN_TIP = {
+  'Auto': 'car', 'Camion': 'truck', 'TIR': 'tir', 'Duba': 'van', 'Dubă': 'van',
+  'Motocicleta': 'motorcycle', 'Motocicletă': 'motorcycle', 'Autobuz': 'bus',
+  'Utilaj': 'utilaj', 'Remorca': 'trailer', 'Remorcă': 'trailer',
+  'Autotractor': 'autotractor', 'Tractor': 'tractor', 'Remorcă tehnologică': 'trailer_tech', 'Remorca tehnologica': 'trailer_tech',
+  'Buldoexcavator': 'excavator', 'Motostivuitor': 'forklift', 'Combină agricolă': 'combine', 'Combina agricola': 'combine',
+  'Automixt': 'mixer', 'Grup electrogen': 'generator', 'Barcă': 'boat', 'Barca': 'boat', 'Ambulanță': 'ambulance', 'Ambulanta': 'ambulance',
+  'Electric': 'electric', 'Plug-in hibrid': 'phev', 'Hibrid': 'hybrid', 'CNG/GPL': 'cng'
+};
+function categorieVehicul(dev) {
+  if (dev) {
+    if (dev.icon && _CAT_DIN_ICON[dev.icon]) return _CAT_DIN_ICON[dev.icon];
+    if (dev.vehicle_type && _CAT_DIN_TIP[dev.vehicle_type]) return _CAT_DIN_TIP[dev.vehicle_type];
+  }
+  return 'car';
+}
+function clasaVehicul(dev) { return classOf(categorieVehicul(dev)); }
 // Expus si in pagina (window.RA_MAINT.classMap): acolo categoria vine din markerCategory(),
 // care intoarce mereu ceva, deci regula e simplu `classMap[cat] || 'truck'`.
 
@@ -246,7 +268,7 @@ function meta(t) {
 
 module.exports = {
   WORK, DOCS, CLASSES, CLASS_MAP: _CLS, DOC_META, DOC_NEED,
-  isDocType, canonDocType, meta, docMeta, norm, classOf,
+  isDocType, canonDocType, meta, docMeta, norm, classOf, categorieVehicul, clasaVehicul,
   intervalFor, sanitizeOverrides, docNeedFor, sanitizeDocNeeds,
   DEFAULT_ICON, DEFAULT_FAM, DOC_DEFAULT_ICON
 };

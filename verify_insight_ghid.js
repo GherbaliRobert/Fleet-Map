@@ -24,8 +24,9 @@ const JS = fs.readdirSync(path.join(__dirname, 'public', 'js')).filter((f) => f.
 // (întrebările gata făcute din AI Raport, numele rapoartelor din catalog).
 // Din 22.10 (pasul 2) și textele cartonașului de șofer („Da, trece-l") și rândurile din „Azi la tine" („Propunere"), scrise de server;
 // tot din 22.10, textele cererilor către noi („Echipa RA Track se ocupă · cererea nr. …"), din cereri_echipa.js.
-// Din 23.10 (pasul 2, partea 2) și textele cartonașelor de alertă și de discuție („Da, pune alerta", „Da, notează"), din propuneri.js.
-const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js', 'propuneri.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
+// Din 23.10 (pasul 2, partea 2) și textele cartonașelor de alertă și de discuție („Da, pune alerta", „Da, notează"), din propuneri.js;
+// din 26.10 (partea 3) și ale reviziei, actului și raportului programat („Da, programează", „Da, trec actul"), din programari.js.
+const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js', 'propuneri.js', 'programari.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
   .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 const pe = (t) => ECRAN.indexOf(t) >= 0;
 const SECT = G.publice();
@@ -36,6 +37,9 @@ console.log('1. Fiecare nume citat în ghid există pe ecran');
 const EXEMPLE = {
   // Din 15.10 fila „AI Raport" a ieșit din Rapoarte (exemplele ei au plecat cu ea); rapoartele se cer în cuvinte din RA Insight.
   'fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută': 'exemplu de cerere de raport scrisă de om',
+  // Partea 3 (26.10): exemple de ce scrie omul ca să programeze revizia, actul, raportul.
+  'Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum': 'exemplu de cerere scrisă de om (macheta M6)',
+  'Am făcut ITP la Caddy, expiră pe 26.10.2027': 'exemplu de cerere scrisă de om',
   // Până pe 15.10 le scria și salutul bulei din colț (care nu mai are un chat al ei); în ghid sunt exemple de ce scrie omul.
   'și săptămâna dinainte?': 'exemplu de continuare scrisă de om',
   'câți km azi': 'exemplu de întrebare scrisă de om (răspunsul rapid)',

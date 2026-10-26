@@ -182,7 +182,7 @@ T('…în jurnal „prin RA Insight"', /prin: 'RA Insight', actiune: x\.actiuneI
 T('drepturile ecranului: „Da" și „Anulează" cer drepturile felului (la șofer, Vehicule: manageFleet + editarea vehiculelor); „Aplică" cere requireEdit(\'vehicule\'); toate, de la Basic (requireRamuri); „Nu" nu schimbă nimic',
   /app\.post\('\/api\/insight\/actiuni\/:id\/aplica', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri, async \(req, res\) => \{[\s\S]{0,400}?if \(!_poateActiunea\(req, a\.fel\)\) return res\.status\(403\)/.test(SRV) &&
   /app\.post\('\/api\/insight\/actiuni\/:id\/anuleaza', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri, async \(req, res\) => \{[\s\S]{0,400}?if \(!_poateActiunea\(req, a\.fel\)\) return res\.status\(403\)/.test(SRV) &&
-  /function _poateActiunea\(req, fel\) \{[\s\S]{0,300}?return _poateSchimbaSoferi\(req\);\n\}/.test(SRV) &&
+  /function _poateActiunea\(req, fel\) \{[\s\S]{0,1200}?return _poateSchimbaSoferi\(req\);\n\}/.test(SRV) &&
   /function _poateSchimbaSoferi\(req\) \{ return !!\(permReq\(req, 'manageFleet'\) && poateEditare\(req, 'vehicule'\)\); \}/.test(SRV) &&
   /app\.post\('\/api\/insight\/soferi-masini\/aplica', requireAuth, requireEdit\('vehicule'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV) &&
   /app\.get\('\/api\/insight\/soferi-masini', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV));

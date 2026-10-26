@@ -76,7 +76,7 @@
              Stă în bară, nu în Setări: în verticala noastră, Setările nici nu se văd, deci de acolo
              n-ai avea cum să te întorci. Se desenează doar în conturile noastre. -->
         <div id="vert-comutator" class="vert-com" style="display:none;"></div>
-        <button class="topbar-icon" onclick="openSupport()" title="Anunță echipa RA Track"><i class="fas fa-headset"></i></button>
+        <button class="topbar-icon topbar-echipa" onclick="openSupport()" title="Anunță echipa RA Track"><i class="fas fa-headset"></i></button>
         <button class="topbar-icon" id="theme-toggle" onclick="toggleTheme()" title="Comută tema"><i class="fas fa-moon"></i></button>
         <button class="topbar-icon" onclick="toggleNotifications()" title="Notificări" style="position:relative;">
           <i class="fas fa-bell"></i>
@@ -365,10 +365,12 @@
       details.io-advanced[open] > summary { color: var(--accent); }
       @media (max-width: 820px) { body.detail-open #rax-fabs { display: none !important; } }
       /* Pe calculator fișa e coloana din dreapta, iar bula RA Insight stătea peste colțul ei de jos — peste „Anunță
-         echipa RA Track" (23.10). Cât fișa e deschisă pe hartă, bula trece în stânga ei; pe telefon se ascunde (mai sus). */
+         echipa RA Track" (23.10). Cât fișa e deschisă pe hartă, bula trece în stânga ei; pe telefon se ascunde (mai sus).
+         Pe tabletă (până la 1100 px) harta rămâne îngustă lângă listă și fișă: bula se ascunde și acolo, cât stă fișa deschisă
+         (acoperea colțul hărții; 26.10). RA Insight rămâne în meniu (☰). */
       #rax-fabs { transition: right .3s ease; }
-      @media (min-width: 821px) { body.detail-open:has(#view-localizare.active) #rax-fabs { right: calc(var(--detail-width) + 16px + env(safe-area-inset-right)); } }
-      @media (min-width: 821px) and (max-width: 900px) { body.detail-open:has(#view-localizare.active) #rax-fabs { right: calc(320px + 16px + env(safe-area-inset-right)); } }
+      @media (max-width: 1100px) { body.detail-open:has(#view-localizare.active) #rax-fabs { display: none !important; } }
+      @media (min-width: 1101px) { body.detail-open:has(#view-localizare.active) #rax-fabs { right: calc(var(--detail-width) + 16px + env(safe-area-inset-right)); } }
     </style>
     <div id="detail-panel">
       <div class="detail-header">
@@ -470,33 +472,8 @@
         .detail-action-btn { min-height: 36px; padding: 7px 8px; }
         .detail-close { min-width: 36px; min-height: 36px; }
 
-        /* Vehicule pe mobil: cardul se pliază pe două rânduri (pictogramă+vehicul+acțiuni / șofer+transmisie).
-           Grupul și compania pică — le vezi în „Editare"; pe 360px lățime n-au unde încăpea lizibil. */
-        .veh-colh { display: none; }
-        .veh-row {
-          grid-template-columns: 46px 1fr auto;
-          grid-template-areas: "pic veh act" "drv drv last";
-          gap: 8px 10px; padding: 11px 12px;
-        }
-        .veh-c-pic { grid-area: pic; } .veh-c-veh { grid-area: veh; } .veh-c-act { grid-area: act; }
-        .veh-c-drv { grid-area: drv; } .veh-c-last { grid-area: last; text-align: right; }
-        .veh-c-grp, .veh-c-co { display: none; }
-        /* Pe telefon rămâne doar „acum 4 min"; data completă lungește rândul cât ecranul și
-           oricum o vezi în „Editare". */
-        .veh-c-last .veh-sub { display: none; }
-        .veh-pic { width: 44px; height: 36px; }
-
-        /* Șoferi pe mobil: rândul se pliază pe trei — cine e / contactul / permisul + vehiculul. */
-        .drv-colh { display: none; }
-        .drv-row {
-          grid-template-columns: 44px 1fr auto;
-          grid-template-areas: "av who act" "con con con" "lic lic veh";
-          gap: 8px 10px; padding: 12px;
-        }
-        .drv-c-av { grid-area: av; } .drv-c-who { grid-area: who; } .drv-c-act { grid-area: act; }
-        .drv-c-contact { grid-area: con; } .drv-c-lic { grid-area: lic; }
-        .drv-c-veh { grid-area: veh; justify-self: end; }
-        .drv-av { width: 42px; height: 42px; font-size: 15px; }
+        /* Vehiculele și șoferii pe telefon (cardul pliat) stau în blocurile lor, #veh-cards-css și #drv-cards-css, DUPĂ
+           regulile de calculator: scrise aici, mai sus în pagină, erau călcate de grila cu 6–7 coloane de acolo (26.10). */
 
         /* Toolbar Vehicule: search ia tot rândul, butoanele compact pe rândul 2 */
         #atab-vehicles .toolbar-row .toolbar-spacer { min-width: 100% !important; order: -1; }
@@ -1651,6 +1628,12 @@
     .rax-devgr-h > strong { font-size: 13.5px; }
     .rax-devgr-n { margin-left: auto; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
     .rax-devgr-h .rax-btn { font-size: 11px; padding: 4px 9px; flex: 0 0 auto; }
+    /* Când nu încape pe un rând, rândul firmei trece pe al doilea (sumarul și butoanele dedesubt). Cutia taie ce iese
+       (overflow: hidden): la Tahograf și e-Transport, unde sumarul e lung, „Deschide firma" și „Afișează mai mult" ieșeau
+       tăiate cu 16–104 px pe tabletă și pe telefon (măsurat 26.10). */
+    .rax-devgr-h { flex-wrap: wrap; row-gap: 6px; }
+    .rax-devgr-h > strong { min-width: 0; overflow-wrap: anywhere; }
+    .rax-devgr-n { white-space: normal; text-align: right; min-width: 0; }
     .rax-devgr-b { padding: 4px 10px 8px; }
     /* Semnalul: bulina colorată + textul lui („comunică" / „tăcut de 3 ore" / „fără semnal de 2 zile").
        Culoarea și textul vin din `agpsStare`, aceeași funcție ca la „Aparate GPS" — nu se scriu aici. */
@@ -2170,8 +2153,9 @@ const pozitii = await r.json();</code></pre>
           .veh-colh > :last-child { text-align: right; }
           /* Fără coloana „Companie" (o vede doar super-adminul) rămân 6 coloane, nu 7 — altfel
              rândul păstra o coloană goală și tot ce urma îi ieșea din dreptul capului de tabel.
-             Regula stă sub min-width, ca varianta de mobil (mai jos) să nu fie călcată de ea. */
-          @media (min-width: 769px) {
+             Regula stă sub min-width, ca varianta de mobil (capătul blocului, ≤ 900 px) să nu fie călcată de ea: selectorul ei e
+             mai tare. Pragul ține pasul cu cel al cardului pliat (901 = 900 + 1). */
+          @media (min-width: 901px) {
             body:not(.is-super) .veh-colh, body:not(.is-super) .veh-row { grid-template-columns: 56px minmax(150px, 1.5fr) 1fr 1fr 1.1fr 92px; }
           }
           .veh-rows { display: flex; flex-direction: column; gap: 9px; }
@@ -2195,6 +2179,24 @@ const pozitii = await r.json();</code></pre>
           .veh-act { display: flex; gap: 6px; justify-content: flex-end; }
           .veh-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
           .veh-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+          /* Pe telefon și pe tableta ținută vertical cardul se pliază pe două rânduri (pictogramă + vehicul + acțiuni / șofer +
+             transmisie). Grupul și compania pică — le vezi în „Editare"; pe 360 px n-au unde încăpea, iar la 834 px „acum 2 min" se
+             tăia în „acum…". Stă AICI, după grila de calculator: scrisă mai sus în pagină era călcată de ea (capul de tabel se vedea,
+             iar creionul stătea în mijlocul cardului — măsurat 26.10). */
+          @media (max-width: 900px) {
+            .veh-colh { display: none; }
+            .veh-row {
+              grid-template-columns: 46px 1fr auto;
+              grid-template-areas: "pic veh act" "drv drv last";
+              gap: 8px 10px; padding: 11px 12px;
+            }
+            .veh-c-pic { grid-area: pic; } .veh-c-veh { grid-area: veh; } .veh-c-act { grid-area: act; }
+            .veh-c-drv { grid-area: drv; } .veh-c-last { grid-area: last; text-align: right; }
+            .veh-c-grp, .veh-c-co { display: none; }
+            /* Pe telefon rămâne doar „acum 4 min"; data completă lungește rândul cât ecranul și oricum o vezi în „Editare". */
+            .veh-c-last .veh-sub { display: none; }
+            .veh-pic { width: 44px; height: 36px; }
+          }
         </style>
         <div id="atab-vehicles" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
@@ -2275,7 +2277,7 @@ const pozitii = await r.json();</code></pre>
           body.dark .drv-av.c4 { background: rgba(251, 146, 60, .16); color: #FB923C; }
           body.dark .drv-av.c5 { background: rgba(244, 114, 182, .16); color: #F472B6; }
 
-          /* Numele se scurtează cu „…", dar eticheta de încadrare rămâne mereu întreagă. */
+          /* Eticheta de încadrare rămâne mereu întreagă; numele trece pe două rânduri (regula de la capătul blocului). */
           .drv-nm { font-weight: 800; font-size: 14px; color: var(--text-primary); display: flex; align-items: center; min-width: 0; }
           .drv-nm-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .drv-tag { flex: 0 0 auto; }
@@ -2329,6 +2331,27 @@ const pozitii = await r.json();</code></pre>
           .exp-grp .btn-sm:first-child { border-radius: 9px 0 0 9px; margin-left: 0; }
           .exp-grp .btn-sm:last-child { border-radius: 0 9px 9px 0; }
           .exp-grp .btn-sm:hover { border-color: var(--accent); color: var(--text-primary); position: relative; z-index: 1; }
+          /* Numele nu se mai taie: trece pe două rânduri, iar eticheta coboară sub el când nu încape. Pe tabletă se tăia la trei
+             litere („Ana-…", „Ion Po…"): coloana lui avea 140 px, din care „Profesionist" lua jumătate (măsurat 26.10). */
+          .drv-nm { flex-wrap: wrap; gap: 3px 7px; }
+          .drv-nm-t { white-space: normal; overflow-wrap: anywhere; }
+          .drv-nm .drv-tag { margin-left: 0; }
+          /* Pe telefon și pe tabletă rândul se pliază pe trei — cine e / contactul / permisul + vehiculul: fereastra are 530–760 px,
+             iar șase coloane nu încap lizibil. Stă AICI, după grila de calculator: scrisă mai sus în pagină era călcată de ea
+             (capul de tabel se vedea, iar creionul și coșul stăteau peste „Profesionist" — măsurat 26.10). */
+          @media (max-width: 1024px) {
+            .drv-colh { display: none; }
+            .drv-list { border-top: 1px solid var(--border); border-radius: 10px; }   /* fără capul de tabel, lista își pune marginea de sus */
+            .drv-row {
+              grid-template-columns: 44px 1fr auto;
+              grid-template-areas: "av who act" "con con con" "lic lic veh";
+              gap: 8px 10px; padding: 12px;
+            }
+            .drv-c-av { grid-area: av; } .drv-c-who { grid-area: who; } .drv-c-act { grid-area: act; }
+            .drv-c-contact { grid-area: con; } .drv-c-lic { grid-area: lic; }
+            .drv-c-veh { grid-area: veh; justify-self: end; }
+            .drv-av { width: 42px; height: 42px; font-size: 15px; }
+          }
         </style>
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
@@ -2481,6 +2504,11 @@ const pozitii = await r.json();</code></pre>
           .alr-chip.warn { color: var(--orange); background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .35); }
           .alr-chip + .alr-chip { margin-top: 4px; }
           .alr-prag { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+          /* Sub pastila regulii de viteză: când sună de fapt (pragul + marja motorului), cu cifra de la server (26.10). */
+          .alr-c-pr { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+          .alr-suna { font-size: 11px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; padding-left: 2px; }
+          .alr-cf-nota { grid-column: 1 / -1; font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--text-secondary); margin-top: -4px; }
+          .alr-cf-nota:empty { display: none; }
           .alr-act { display: flex; gap: 6px; justify-content: flex-end; }
           .alr-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
           .alr-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -8486,7 +8514,7 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Alerte ───
     const ALERT_TYPES = [
-      { v:'overspeed', label:'Depășire viteză', fields:[{k:'maxSpeed',label:'Viteză max (km/h)',def:90}] },
+      { v:'overspeed', label:'Depășire viteză', fields:[{k:'maxSpeed',label:'Viteză max (km/h)',def:90,nota:true}] },
       { v:'fuel_drop', label:'Scădere combustibil (furt)', fields:[{k:'dropLiters',label:'Scădere minimă (L)',def:10,empty:'gol = dezactivat'}] },
       { v:'ignition_on', label:'Pornire motor', fields:[] },
       { v:'ignition_off', label:'Oprire motor', fields:[] },
@@ -8555,7 +8583,9 @@ const pozitii = await r.json();</code></pre>
           </div>`;
         } else {
           html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
-            <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"${f.empty ? ` placeholder="${f.empty}"` : ''}></label>`;
+            <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"${f.empty ? ` placeholder="${f.empty}"` : ''}${f.nota ? ' oninput="alertCfNota()"' : ''}></label>`;
+          // Sub „Viteză max": când sună de fapt regula (pragul + marja motorului) — fraza vine de la server.
+          if (f.nota) html += `<div id="alert-cf-nota" class="alr-cf-nota"></div>`;
         }
       }
       if (def.axles) {
@@ -8563,6 +8593,25 @@ const pozitii = await r.json();</code></pre>
       }
       box.innerHTML = html;
       alertZonesCount();
+      alertCfNota();
+    }
+    // Nota de sub pragul de viteză (26.10, Alin: „da" — marja de 10 km/h spusă și pe ecranul Alerte): textul îl scrie serverul
+    // (aceeași frază ca în cartonașul din RA Insight), pagina doar îl pune, la 200 ms după ultima cifră.
+    var _alertNotaT = null;
+    function alertCfNota() {
+      clearTimeout(_alertNotaT);
+      if (!document.getElementById('alert-cf-nota')) return;
+      _alertNotaT = setTimeout(async function () {
+        const el = document.getElementById('alert-cf-nota'), inp = document.getElementById('alert-cf-maxSpeed');
+        if (!el || !inp) return;
+        const val = inp.value;
+        try {
+          const r = await fetch('/api/alerts/viteza?prag=' + encodeURIComponent(val || ''));
+          const j = await r.json().catch(() => ({}));
+          if (document.getElementById('alert-cf-maxSpeed') !== inp || inp.value !== val) return;   // între timp s-a scris altceva
+          el.textContent = r.ok ? (j.text || '') : '';
+        } catch (e) { el.textContent = ''; }
+      }, 200);
     }
     // Bifarea zonelor: contor live + „bifează tot / golește" (o regulă poate urmări zeci de zone).
     function alertZonesCount() {
@@ -8663,7 +8712,8 @@ const pozitii = await r.json();</code></pre>
           return '<div class="alr-r' + (a.enabled ? '' : ' off') + '">'
             + '<div class="alr-c-sc">' + scope + '</div>'
             + '<div class="alr-c-nm"><div class="alr-nm">' + esc(a.name) + '</div>' + (zChip ? '<div style="margin-top:3px">' + zChip + '</div>' : '') + '</div>'
-            + '<div class="alr-c-pr">' + (prag ? '<span class="alr-prag">' + esc(prag) + '</span>' : '') + '</div>'
+            + '<div class="alr-c-pr">' + (prag ? '<span class="alr-prag">' + esc(prag) + '</span>' : '')
+            + (typeof a.suna_peste === 'number' ? '<span class="alr-suna">sună peste ' + a.suna_peste + ' km/h</span>' : '') + '</div>'
             + '<div class="alr-c-sw"><button class="alr-sw' + (a.enabled ? '' : ' off') + '" title="' + (a.enabled ? 'Activă — apasă ca s-o oprești' : 'Oprită — apasă ca s-o pornești') + '" onclick="alertToggle(' + a.id + ', ' + (a.enabled ? 'false' : 'true') + ')"></button></div>'
             + '<div class="alr-c-act alr-act">'
             + '<button class="btn-sm" title="Modifică" onclick=\'editAlert(' + JSON.stringify(a).replace(/'/g, '&#39;') + ')\'><i class="fas fa-pen"></i></button>'
@@ -8764,6 +8814,7 @@ const pozitii = await r.json();</code></pre>
       window._alertZoneSalvate = zIds.map(Number); // zonele pe care lista nu le arată (ex. ale platformei) rămân la salvare
       if (zIds.length) document.querySelectorAll('.alert-zone').forEach(ch => { ch.checked = zIds.indexOf(Number(ch.value)) >= 0; });
       if (c.axleLimits) [1, 2, 3, 4, 5].forEach(n => { const el = g('alert-cf-axle' + n); if (el) el.value = c.axleLimits['axle' + n] || ''; });
+      alertCfNota();                    // nota de sub prag, pe pragul regulii (nu pe cel implicit al formularului)
       g('alert-btn').textContent = 'Salvează';
       if (g('alert-modal-title')) g('alert-modal-title').textContent = 'Modifici: ' + (a.name || 'regula');
       alertModalOpen(true);
@@ -11448,6 +11499,8 @@ const pozitii = await r.json();</code></pre>
       // Partea 2 (23.10): „Vezi alertele" / „Deschide Alerte" (Management › Alerte) și „Vezi RA Drive" (ramura din RA Insight).
       if (b.fel === 'ecran') { if (typeof goManage === 'function') goManage(String(b.ecran || '')); return; }
       if (b.fel === 'ramura') { if (typeof window.insightRamura === 'function') window.insightRamura(String(b.ramura || '')); return; }
+      // Partea 3 (26.10): „Vezi în Programări" — Rapoarte, cu fereastra „Rapoarte programate" deschisă.
+      if (b.fel === 'programate') { showView('rapoarte'); setTimeout(function () { try { openSchedules(); } catch (e) {} }, 150); return; }
       if (b.fel === 'fisa') {
         Promise.resolve(openEditModal(String(b.imei))).then(function () {
           if (b.fila) { var t = document.querySelector('.edit-tab[data-tab="' + b.fila + '"]'); if (t) switchEditTab(b.fila, t); }
@@ -12136,11 +12189,19 @@ const pozitii = await r.json();</code></pre>
         }
         if (carduri.length) { var cw = el('div', 'chat-raps'); carduri.forEach(function (rp) { cw.appendChild(cartonasRaport(rp)); }); bub.appendChild(cw); }
         // Propunerea apăsată (Da / Nu / anulată) nu-și mai arată fraza de deasupra („apeși Da și o fac"): cartonașul spune tot.
-        var propInchisa = !!(x.propunere && x.propunere.id && x.propunere.stare !== 'propusa');
+        // Mai multe cartonașe într-un mesaj (partea 3, macheta M6: „două lucruri deodată, aprobate pe rând"): fraza stă cât unul
+        // e încă deschis; fiecare se apasă singur.
+        var mai = Array.isArray(x.propuneri) ? x.propuneri.filter(function (q) { return q && q.id; }) : [];
+        var propInchisa = mai.length ? mai.every(function (q) { return q.stare !== 'propusa'; }) : !!(x.propunere && x.propunere.id && x.propunere.stare !== 'propusa');
         if (!x.limita && !cuRaport && !propInchisa && textAi) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
         if (x.propunere && x.propunere.id) bub.appendChild(cartonasPropunere(x.propunere, function (nou, urm) {
           x.propunere = nou; var nr = bulaAi(m); row.replaceWith(nr); adaugaUrmator(urm);
         }));
+        mai.forEach(function (q, i) {
+          bub.appendChild(cartonasPropunere(q, function (nou, urm) {
+            x.propuneri = x.propuneri.map(function (z) { return z && z.id === q.id ? nou : z; }); var nr = bulaAi(m); row.replaceWith(nr); adaugaUrmator(urm);
+          }));
+        });
         // Un buton spre un ecran (de ex. „Deschide Alerte", când alerta cerută nu se pune din discuție) — textul de la server.
         if (Array.isArray(x.actiuni) && x.actiuni.length) {
           var acts = el('div', 'chat-prop-b chat-actiuni');
@@ -12213,7 +12274,7 @@ const pozitii = await r.json();</code></pre>
           if (j.conversatieId) { if (!S.conv || S.conv.id !== j.conversatieId) S.conv = { id: j.conversatieId }; window._raxConvId = j.conversatieId; }
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
-              propunere: j.propunere, pagina: j.pagina,
+              propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
               aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
               verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
           S.mesaje.push(m);
@@ -13203,6 +13264,34 @@ const pozitii = await r.json();</code></pre>
                   }, 450);
                 };
                 f.prag.oninput = reface; f.imei.onchange = reface;
+              } else if (p.fel === 'revizie' || p.fel === 'act' || p.fel === 'raport') {
+                // Partea 3 (26.10): listele și limitele le dă serverul, pe cartonaș (`campuri`); ce se alege pleacă pe aceeași cerere „Da".
+                var lista = function (opt, val, eticheta) {
+                  var s = el('select', 'chat-prop-sel'); s.setAttribute('aria-label', eticheta);
+                  (opt || []).forEach(function (o) { var v = typeof o === 'string' ? o : o.v, t = typeof o === 'string' ? o : o.t; var op = el('option', null, t); op.value = String(v); s.appendChild(op); });
+                  s.value = String(val == null ? '' : val); return s;
+                };
+                var randAcum = function () { (p.randuri || []).forEach(function (r) { if (r.l === 'Acum') rand(r.l, document.createTextNode(r.v || '')); }); };
+                if (p.fel === 'revizie') {
+                  f.tip = lista(k.tipuri, k.tip, 'Lucrarea'); rand('Lucrarea', f.tip);
+                  var tw = el('span', 'chat-prop-cu');
+                  f.km = caseta('mic', 'number', k.km, 'Kilometrii termenului'); f.km.min = k.kmMin; f.km.max = k.kmMax; f.km.step = '1'; f.km.placeholder = 'km';
+                  f.data = caseta('data', 'date', k.data, 'Data termenului');
+                  tw.appendChild(document.createTextNode('la ')); tw.appendChild(f.km); tw.appendChild(document.createTextNode(' km sau pe ')); tw.appendChild(f.data);
+                  rand('Termen', tw); randAcum();
+                } else if (p.fel === 'act') {
+                  f.tip = lista(k.tipuri, k.tip, 'Actul'); rand('Actul', f.tip);
+                  f.data = caseta('data', 'date', k.data, 'Valabil până pe'); rand('Valabil până pe', f.data); randAcum();
+                } else {
+                  rand('Raportul', el('b', null, k.label || ''));
+                  f.imei = lista(k.optiuni, k.imei, 'Mașina'); rand('Pe', f.imei);
+                  f.perioada = lista(k.perioade, k.perioada, 'Perioada raportului'); rand('Perioada', f.perioada);
+                  f.frecventa = lista(k.frecvente, k.frecventa, 'Cât de des'); rand('Cât de des', f.frecventa);
+                  var ow = el('span', 'chat-prop-cu'); f.ora = caseta('mic', 'number', k.ora, 'Ora trimiterii'); f.ora.min = '0'; f.ora.max = '23'; f.ora.step = '1';
+                  ow.appendChild(f.ora); ow.appendChild(document.createTextNode(':00')); rand('La ora', ow);
+                  f.dest = caseta('lung', 'text', k.dest, 'Adresele de email, despărțite prin virgulă'); f.dest.placeholder = k.email ? 'gol = ' + k.email : 'adresa de email'; rand('Cui', f.dest);
+                  f.format = lista(k.formate, k.format, 'Formatul'); rand('Format', f.format);
+                }
               } else {
                 (p.randuri || []).forEach(function (r) {
                   if (r.l !== 'Despre') { rand(r.l, r.b ? el('b', null, r.v || '') : document.createTextNode(r.v || '')); return; }
@@ -13210,7 +13299,7 @@ const pozitii = await r.json();</code></pre>
                 });
               }
               ed = function () { var o = {}; Object.keys(f).forEach(function (x) { o[x] = f[x].value; }); return o; };
-              bEd.replaceWith(bLasa); (f.prag || f.nota || bLasa).focus();
+              bEd.replaceWith(bLasa); (f.prag || f.nota || f.km || f.data || f.frecventa || bLasa).focus();
             };
             bLasa.onclick = function () { ed = null; desenRanduri(); if (dv) { desenDovezi(p.dovezi); dv.classList.remove('vechi'); } bLasa.replaceWith(bEd); };
             bs.appendChild(bEd);
@@ -13249,7 +13338,7 @@ const pozitii = await r.json();</code></pre>
             bg.appendChild(bAn);
           }
           // La șofer, fișa mașinii; la alertă, lista de alerte; la discuție, RA Drive (butonul îl dă serverul, în `gata`).
-          var bF = p.gata.buton ? butonProp(p.gata.buton.text || '', p.gata.buton.fel === 'ramura' ? 'fa-shield-halved' : 'fa-bell') : butonProp('Vezi fișa mașinii', 'fa-truck');
+          var bF = p.gata.buton ? butonProp(p.gata.buton.text || '', /^fa-[a-z-]+$/.test(p.gata.buton.ic || '') ? p.gata.buton.ic : (p.gata.buton.fel === 'ramura' ? 'fa-shield-halved' : 'fa-bell')) : butonProp('Vezi fișa mașinii', 'fa-truck');
           bF.onclick = function () { window.insightProblemaButon(p.gata.buton || { fel: 'fisa', imei: p.imei }); };
           bg.appendChild(bF); gt.appendChild(bg);
           if (p.gata.jurnal) gt.appendChild(el('div', 'chat-prop-sub', p.gata.jurnal));
@@ -14741,8 +14830,15 @@ const pozitii = await r.json();</code></pre>
       applyTheme(dark ? 'dark' : 'light');
       if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
     }
+    // Meniul ca sertar (peste conținut): pe telefon mereu; pe tabletă (până la 1100 px) cât stă fișa mașinii deschisă pe hartă —
+    // atunci meniul e strâns, ca harta să încapă lângă listă și fișă (26.10; regula de lățime stă în app.css, lângă fișă).
+    function _navCaSertar() {
+      if (window.innerWidth <= 768) return true;
+      var loc = document.getElementById('view-localizare');
+      return window.innerWidth <= 1100 && document.body.classList.contains('detail-open') && !!(loc && loc.classList.contains('active'));
+    }
     function toggleNavrail() {
-      if (window.innerWidth <= 768) {
+      if (_navCaSertar()) {
         const nav = document.getElementById('navrail');
         const open = nav.classList.toggle('open'); // mobil: slide-in meniul principal
         const bd = document.getElementById('navrail-backdrop');
@@ -15070,7 +15166,7 @@ const pozitii = await r.json();</code></pre>
       // secțiuni), `_navAprinde` nu stinge nimic — aprinde apoi `_raxSideActive`, pe secțiune.
       if (window._navAprinde) window._navAprinde(document.querySelector('#navrail .nav-item[data-view="' + name + '"]'));
       if (name !== 'insight' && window._raxUpdateFabs) { try { window._raxUpdateFabs(); } catch (e) {} }   // bula RA Insight revine când ieși din secțiune
-      if (window.innerWidth <= 768) closeNavrail();
+      if (window.innerWidth <= 1100) closeNavrail();   // sertarul de pe telefon și cel de pe tabletă (cu fișa deschisă) se închid la alegere
     }
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
     // Un mic „nudge" de transform o forțează să se redeseneze instant, fără flicker.
@@ -17527,6 +17623,7 @@ const pozitii = await r.json();</code></pre>
       _p.classList.remove('open');
       _p.style.transform = '';
       document.body.classList.remove('detail-open');
+      if (window.innerWidth > 768) closeNavrail();   // tabletă: meniul strâns cât a stat fișa deschisă revine la locul lui, fără sertar
       // Curăță ruta desenată din tabul „Rute" (dacă a fost afișată) ca să nu rămână pe hartă după închiderea fișei.
       try {
         if (historyLine) { map.removeLayer(historyLine); historyLine = null; }

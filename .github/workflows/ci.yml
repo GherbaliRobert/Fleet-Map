@@ -53,6 +53,7 @@ jobs:
           node --check soferi_masini.js
           node --check cereri_echipa.js
           node --check propuneri.js
+          node --check programari.js
           node --check license_cats.js
           node --check tacho.js
           node --check geocode.js

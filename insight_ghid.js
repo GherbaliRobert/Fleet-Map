@@ -195,6 +195,19 @@ const SECTIUNI = [
     cuvinte: ['anunta-ma', 'alerta din discutie', 'alerta de viteza cu ra insight', 'pune alerta', 'am vorbit cu', 'noteaza discutia', 'am discutat cu', 'noteaza ca am vorbit']
   },
   {
+    cheie: 'programari', titlu: 'Revizia, un act sau un raport programat, cu RA Insight', unde: 'Meniu → RA Insight',
+    pasi: [
+      'Scrie în discuție, de pildă, „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum": vin două cartonașe, pe care le aprobi pe rând.',
+      'La revizie: lucrarea, termenul (la câți km sau pe ce dată, ce vine întâi) și unde e mașina acum. Termenul se propune după intervalul lucrării pe felul mașinii, ca în Mentenanță.',
+      'La un act: scrie „Am făcut ITP la Caddy, expiră pe 26.10.2027" — actul de acum trece în istoricul mașinii, ca la orice reînnoire.',
+      'La un raport: ce raport, pe ce mașini, cât de des, la ce oră, cui pleacă și în ce format; „Primul" spune când vine primul email.',
+      'Apasă „Da, programează" (la act, „Da, trec actul"), „Schimbă" ca să potrivești ce e pe cartonaș, sau „Nu". După „Da", „Anulează" ține 10 minute.'
+    ],
+    detalii: 'Se fac exact ca din Management → Mentenanță, Management → Documente și Rapoarte → Programări, cu drepturile acelor ecrane: cine nu le poate schimba vede propunerea, dar „Da" e oprit. ' +
+      'Rapoartele săptămânale pleacă lunea, cele lunare pe 1 ale lunii. Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic.',
+    cuvinte: ['programeaza revizia', 'revizie din discutie', 'programeaza un act', 'trece itp', 'trece rca', 'raport programat', 'trimite-mi in fiecare', 'programeaza raportul', 'schimb de ulei']
+  },
+  {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',
     pasi: [
       'Alege rolul din stânga și dă-i numele de la voi din firmă.',

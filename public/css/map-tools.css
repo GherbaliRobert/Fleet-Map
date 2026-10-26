@@ -44,6 +44,15 @@
 .msb-item-name { cursor: pointer; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msb-plate { color: var(--accent); font-weight: 700; font-size: 11px; }
 .msb-empty { padding: 12px; color: var(--text-muted); font-size: 12px; text-align: center; }
+/* Tabletă (769–1100 px): bara stă în rândul barei de sus (nu deasupra ei) și se strânge cât e loc. Centrată peste bară, acoperea
+   butoanele „Anunță echipa RA Track" și „Temă" (26.10, măsurat la 820–834 px: căsuța de 240 px + pastila nu încăpeau între logo și
+   butoane). Pe calculator rămâne centrată, ca înainte. */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .topbar-center { position: static; transform: none; flex: 1 1 auto; min-width: 0; max-width: none; justify-content: center; padding: 0 10px; }
+  .msb { min-width: 0; }
+  .msb-search { min-width: 0; flex: 1 1 auto; max-width: 300px; }
+}
+@media (min-width: 769px) and (max-width: 900px) { .topbar-user-info { display: none; } }
 @media (max-width: 768px) {
   /* Pe mobil topbar-ul nu are loc → bara plutește sub el, full-width (ca înainte). */
   .topbar-center { position: static; transform: none; max-width: none; }

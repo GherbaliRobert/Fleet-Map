@@ -145,9 +145,11 @@ T('trei uși, aceeași fereastră: caseta din RA Insight (`insightProblemaButon`
   /window\.openSupport = function \(\) \{ deschide\(\{ sursa: 'suport' \}\); \};/.test(PB) && /id="detail-echipa" onclick="echipaDinFisa\(\)" hidden/.test(PAG) && /onclick="openSupport\(\)" title="Anunță echipa RA Track"/.test(PAG));
 // 23.10 (Alin: „rezolvă-le"): pe un laptop, bula RA Insight stătea peste colțul de jos al fișei — peste rândul de mai sus.
 // Măsurat în browser la 1280–1920 px: cu fișa deschisă pe hartă, bula stă la 16 px în stânga ei; pe alt ecran, în colț.
-T('bula RA Insight nu stă peste fișa mașinii: cât fișa e deschisă pe hartă, pe calculator trece în stânga ei (pe telefon se ascunde)',
-  /@media \(min-width: 821px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ right: calc\(var\(--detail-width\) \+ 16px \+ env\(safe-area-inset-right\)\); \} \}/.test(PAG) &&
-  /@media \(min-width: 821px\) and \(max-width: 900px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ right: calc\(320px \+ 16px/.test(PAG) &&
+// 26.10 (Alin: „aplicația trebuie să fie ok pe toate ecranele"): pe tabletă (până la 1100 px) harta rămâne îngustă lângă listă și
+// fișă — bula se ascunde acolo cât stă fișa deschisă (acoperea colțul hărții), iar meniul se strânge (vezi verify_ecrane.js).
+T('bula RA Insight nu stă peste fișa mașinii: cât fișa e deschisă pe hartă, pe calculator trece în stânga ei (pe telefon și pe tabletă se ascunde)',
+  /@media \(min-width: 1101px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ right: calc\(var\(--detail-width\) \+ 16px \+ env\(safe-area-inset-right\)\); \} \}/.test(PAG) &&
+  /@media \(max-width: 1100px\) \{ body\.detail-open:has\(#view-localizare\.active\) #rax-fabs \{ display: none !important; \} \}/.test(PAG) &&
   /@media \(max-width: 820px\) \{ body\.detail-open #rax-fabs \{ display: none !important; \} \}/.test(PAG) && /--detail-width: 380px;/.test(CSS) && /@media \(max-width: 900px\) \{\s*#detail-panel\.open \{ width: 320px; min-width: 320px; \}/.test(CSS));
 T('fereastra veche „Suport clienți" a plecat: fără telefonul 0312 295 000 și fără WhatsApp-ul 40700000000 (nu erau ai noștri), fără a doua `openSupport`',
   MT.indexOf('support-overlay') < 0 && !/window\.(openSupport|closeSupport|sendSupport)\s*=/.test(MT) && !/0312 295 000|wa\.me\/40700000000/.test(PAG + MT) && (PAG.match(/window\.openSupport = /g) || []).length === 1 &&

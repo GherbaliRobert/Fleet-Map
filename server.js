@@ -1088,6 +1088,10 @@ const tcpServer = net.createServer((socket) => {
         // Trimite update live prin WebSocket (coalescing opțional via WS_BATCH_MS, vezi broadcastPosition)
         broadcastPosition(liveData);
 
+        // Pornirea / oprirea motorului: schimbarea contactului față de poziția de DINAINTE (`existing`, citită înainte de
+        // livePositions.set de mai sus), record cu record în pachet — nu poziția nouă comparată cu ea însăși.
+        const _contact = _schimbariContact(existing, parsed.records);
+
         // Detectorul de scădere de carburant decide PRIMUL: verdictul lui (`liveData._fuelDrop`) e
         // folosit și de regulile de alertă, și de evenimentele per-utilizator. Înainte rula ultimul,
         // iar ceilalți doi își scădeau singuri două numere — de acolo alarma falsă la fiecare pornire.
@@ -1095,7 +1099,7 @@ const tcpServer = net.createServer((socket) => {
           .catch(() => {})
           .then(() => {
             // Evaluare alerte automate
-            evaluateAlerts(imei, liveData).catch(err => {
+            evaluateAlerts(imei, liveData, _contact).catch(err => {
               console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
             });
             // Evenimente per-utilizator (abonamente + praguri proprii) — 'existing' = poziția anterioară
@@ -4872,7 +4876,9 @@ async function _raInsight(req, res, opts) {
     //    (`gata` = rapoartele, cifrele lor pentru model, problemele găsite).
     let gata = null;
     if (!o.proba) {
-      // Pasul 2: cartonașul cu „Da", pe reguli — întâi alerta și „Am vorbit cu el" (23.10), apoi șoferii (22.10).
+      // Pasul 2: cartonașul cu „Da", pe reguli — întâi revizia, actul și raportul programat (26.10; „trimite-mi în fiecare luni
+      // raportul…" nu e un raport pe loc), apoi alerta și „Am vorbit cu el" (23.10), apoi șoferii (22.10).
+      if (await _insightProgramari(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       if (await _insightPropuneri(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       if (await _insightSoferi(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       // Propunerea neapăsată și „Îți pregătesc și schimbarea asta?" nu mai sunt „în discuție" după o altă întrebare.
@@ -5717,11 +5723,21 @@ app.get('/api/insight/conversatii/:id', requireAuth, withScope, requireFeature('
       if (m.extra && m.extra.insigna) m.extra.insigna = pachete.insignaCompleta(m.extra.insigna);
       if (m.rol !== 'user') m.text = insight.litereRomanesti(m.text);
     });
-    // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează"), din rândul propunerii.
-    const ids = mesaje.filter(function (m) { return m.extra && m.extra.propunere && m.extra.propunere.id; }).map(function (m) { return m.extra.propunere.id; });
+    // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează"), din rândul propunerii. Un mesaj
+    // poate avea și mai multe cartonașe (`propuneri`, partea 3: „două lucruri deodată, aprobate pe rând").
+    const ids = [];
+    mesaje.forEach(function (m) {
+      const x = m.extra || {};
+      if (x.propunere && x.propunere.id) ids.push(x.propunere.id);
+      (Array.isArray(x.propuneri) ? x.propuneri : []).forEach(function (p) { if (p && p.id) ids.push(p.id); });
+    });
     if (ids.length) {
       const pe = {}; (await db.actiuniInsight(ids, userId)).forEach(function (a) { pe[a.id] = a; });
-      mesaje.forEach(function (m) { const p = m.extra && m.extra.propunere; if (p && p.id && pe[p.id]) m.extra.propunere = _cardPublic(pe[p.id]); });
+      mesaje.forEach(function (m) {
+        const x = m.extra || {};
+        if (x.propunere && x.propunere.id && pe[x.propunere.id]) x.propunere = _cardPublic(pe[x.propunere.id]);
+        if (Array.isArray(x.propuneri)) x.propuneri = x.propuneri.map(function (p) { return p && p.id && pe[p.id] ? _cardPublic(pe[p.id]) : p; });
+      });
     }
     res.json({ conversatie: _convPublic(c), mesaje: mesaje });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -6588,6 +6604,7 @@ app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeatu
       return res.status(409).json({ error: 'Propunerea e veche: cere-o din nou, ca să pornesc de la fișele de azi.', propunere: _cardPublic(e || a) });
     }
     if (a.fel === 'alerta' || a.fel === 'discutie') return await _aplicaPropunere2(req, res, a);
+    if (a.fel === 'revizie' || a.fel === 'act' || a.fel === 'raport') return await _aplicaPropunere3(req, res, a);
     let card = (a.date && a.date.card) || {}, schimbari = (a.date && a.date.schimbari) || [];
     const laCerut = req.body && req.body.la != null && req.body.la !== '' ? Number(req.body.la) : null;
     if (laCerut != null && laCerut !== Number(card.la)) {
@@ -6651,8 +6668,9 @@ app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, withScope, requireFea
     if (!a) return res.status(404).json({ error: 'Schimbarea nu există.' });
     if (!_poateActiunea(req, a.fel)) return res.status(403).json({ error: 'Acces interzis' });
     if (a.stare !== 'aplicata') return res.status(409).json({ error: a.stare === 'anulata' ? 'E deja anulată.' : 'N-a fost aplicată, deci n-am ce anula.', propunere: _cardPublic(a) });
-    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: ' + propuneri.dupaAnulare(a.fel), propunere: _cardPublic(a) });
+    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: ' + (programari.dupaAnulare(a.fel) || propuneri.dupaAnulare(a.fel)), propunere: _cardPublic(a) });
     if (a.fel === 'alerta' || a.fel === 'discutie') return await _anuleazaPropunere2(req, res, a);
+    if (a.fel === 'revizie' || a.fel === 'act' || a.fel === 'raport') return await _anuleazaPropunere3(req, res, a);
     const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
     if (!prins) return res.status(409).json({ error: 'Se anulează deja.' });
     const d = await _soferiDate(req);
@@ -6680,6 +6698,10 @@ const propuneri = require('./propuneri');
 function _poateActiunea(req, fel) {
   if (fel === 'alerta') return !!(permReq(req, 'manageFleet') && poateEditare(req, 'alerte') && poateEcran(req, 'alerte'));
   if (fel === 'discutie') return !!permReq(req, 'manageFleet');
+  // Partea 3 (26.10): Mentenanță › Adaugă, Documente › Adaugă (requireEdit + ecranul lor), Rapoarte › Programate (viewReports + ecranul).
+  if (fel === 'revizie') return !!(permReq(req, 'manageFleet') && poateEditare(req, 'mentenanta') && poateEcran(req, 'mentenanta'));
+  if (fel === 'act') return !!(permReq(req, 'manageFleet') && poateEditare(req, 'documente') && poateEcran(req, 'documente'));
+  if (fel === 'raport') return !!(permReq(req, 'viewReports') && poateEcran(req, 'programari'));
   return _poateSchimbaSoferi(req);
 }
 // „Vede toată flota" (dreptul viewAll, netăiat din rol) — doar el pune o alertă pe toată flota din discuție.
@@ -6865,6 +6887,218 @@ async function _anuleazaPropunere2(req, res, a) {
     const era = id ? await db.stergeDiscutieSafeDrive(id, req.companyId) : false;
     if (era) auditReq(req, 'delete', 'safe_drive_discutie', id, { prin: 'RA Insight', actiune: a.id, anulare: true });
     txt = propuneri.anulareDiscutie((a.date && a.date.card) || {}, era);
+  }
+  const fin = await db.treceActiuneInsight(a.id, userId, 'anulata', { stare: 'anulata', date: Object.assign({}, a.date, { anulareText: txt }) });
+  res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins) });
+}
+
+// ─── Pasul 2, partea 3 (26.10; Alin: „6. după ce rezolvi punctele de la 1 la 5"): REVIZIA, ACTUL, RAPORTUL PROGRAMAT ──────────
+// Macheta M6 din 21.10: „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum" → câte un cartonaș pe lucru,
+// aprobate pe rând. Regulile și textele stau în programari.js; aici se adună datele (kilometrajul, km-ii pe lună, intervalele firmei,
+// preavizul, actul de acum, adresa omului, agenda firmei, prima trimitere) și se aplică pe CALEA ECRANULUI: revizia ca din Mentenanță
+// › Adaugă (db.createMaintenance), actul ca din Documente › Adaugă (cel vechi de același tip trece în istoric, db.createVehicleDocument),
+// raportul ca din Rapoarte › Programate (db.createReportSchedule, computeNextRun). Aceeași tabelă și aceleași „Da" / „Nu" / „Anulează".
+const programari = require('./programari');
+async function _optiuniCardP3(req, fel) {
+  const poate = _poateActiunea(req, fel);
+  return { cine: await _cineNume(req), poate: poate, aproba: poate ? null : await _cineAproba(req.companyId) };
+}
+// Kilometrii pe lună ai unei mașini: din cursele ultimelor 30 de zile. Fără curse → null (cartonașul nu ghicește).
+async function _kmPeLuna(imei) {
+  try {
+    const acum = Date.now();
+    const r = await db.getTripsSummaryForImeis([imei], new Date(acum - 30 * 86400000).toISOString(), new Date(acum).toISOString());
+    const km = r && r[0] ? Number(r[0].km) : 0;
+    return km > 0 ? Math.round(km * 30.4 / 30) : null;
+  } catch (e) { return null; }
+}
+async function _insightProgramari(req, res, x) {
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  const lista = programari.cereri(x.message, x.fisa, Date.now());
+  if (!lista.length) return false;
+  const ins = pachete.insigna('instant', { propunere: true });
+  const ctxFara = Object.assign({}, x.ctx); delete ctxFara.propunere; delete ctxFara.urmatoare;
+  async function spune(reply, extra, ctxNou) {
+    const e = Object.assign({ source: 'reguli', insigna: ins }, extra || {});
+    const sv = await x.salveaza(reply, e, ctxNou || ctxFara);
+    res.json(Object.assign({ reply: reply, sources: [], alege: [], urmari: [] }, e, { conversatieId: sv.convId, mesajId: sv.mesajId }));
+    return sv;
+  }
+  if (req.isSuper || req.companyId == null) { await spune(programari.TEXTE.fondator); return true; }
+  const co = await db.getCompanyById(req.companyId);
+  if (!_firmaAreRamuri(co)) { await spune(programari.TEXTE.pachet, { pachetMesaj: programari.TEXTE.pachet }); return true; }
+  const f = await _ramFlota(req);
+  const peImei = {}; f.devices.forEach(function (d) { peImei[d.imei] = d; });
+  const scurt = function (d) { return d.plate || d.name || d.imei; };
+  const eti = function (d) { return insight.eticheta({ nr: d.plate || '', nume: d.name || '', imei: d.imei }); };
+  const acum = Date.now();
+  const carduri = [];
+  let intrebare = null, alege = [];
+  for (const u of lista) {
+    if (intrebare) break;
+    const pentru = lista.length > 1 ? (u.fel === 'raport' ? 'Pentru raport: ' : (u.fel === 'act' ? 'Pentru act: ' : 'Pentru revizie: ')) : '';
+    const intreaba = function (t, butoane) { intrebare = pentru + t; alege = butoane || []; };
+    const alegeMasini = function (l) { return l.filter(function (d) { return peImei[d.imei]; }).slice(0, 8).map(function (d) { return { text: eti(peImei[d.imei]), trimite: programari.cerereText(u, scurt(peImei[d.imei])) }; }); };
+    if (u.fel === 'revizie' || u.fel === 'act') {
+      if (!f.devices.length) { intreaba(programari.TEXTE.faraMasini); break; }
+      if (u.flota) { intreaba(programari.TEXTE.oMasina, alegeMasini(f.devices)); break; }
+      if (u.variante) { intreaba(programari.TEXTE.careMasina, alegeMasini(u.variante)); break; }
+      if (u.lipsa) { intreaba(programari.TEXTE.peCe, alegeMasini(f.devices)); break; }
+      if (!peImei[u.imei]) { intreaba(programari.TEXTE.nuVad); break; }
+      if (u.dataTrecuta) { intreaba(programari.TEXTE.dataTrecuta); break; }
+    }
+    const L = (await _leadsByCompany()).of(req.companyId);
+    if (u.fel === 'revizie') {
+      const d = peImei[u.imei];
+      const cls = maintTypes.clasaVehicul(d);
+      const interval = maintTypes.intervalFor(u.tip, cls, await _maintOverrides(req.companyId));
+      const odo = _odoFromIo(d.io_data);
+      const tp = programari.termenPropus({ km: u.km, data: u.data, interval: interval, odo: odo, acum: acum });
+      if (!tp.km && !tp.data) { intreaba(programari.TEXTE.termenLipsa); break; }
+      let existente = [];
+      try { existente = (await db.getMaintenance(u.imei, req.companyId)).filter(function (m) { return m.type === u.tip && !_maintClosed(m); }); } catch (e) { existente = []; }
+      const clasa = maintTypes.CLASSES.filter(function (c) { return c.key === cls; })[0];
+      const card = programari.cardRevizie(Object.assign({ tip: u.tip, imei: u.imei, nr: scurt(d), eticheta: eti(d), km: u.km, data: u.data, interval: interval, clasa: clasa,
+        odo: odo, kmLuna: odo ? await _kmPeLuna(u.imei) : null, lead: { days: L.days, km: L.km }, existente: existente, acum: acum }, await _optiuniCardP3(req, 'revizie')));
+      carduri.push({ fel: 'revizie', card: card, imei: u.imei });
+    } else if (u.fel === 'act') {
+      if (u.lipsaData) { intreaba(programari.TEXTE.dataLipsa); break; }
+      const d = peImei[u.imei];
+      let actual = null;
+      try { actual = (await db.getVehicleDocuments(u.imei, d.company_id) || []).filter(function (z) { return z.doc_type === u.tip; })[0] || null; } catch (e) { actual = null; }
+      const card = programari.cardAct(Object.assign({ tip: u.tip, imei: u.imei, nr: scurt(d), data: u.data, actual: actual, leadZile: L.docDays, acum: acum }, await _optiuniCardP3(req, 'act')));
+      carduri.push({ fel: 'act', card: card, imei: u.imei });
+    } else {
+      if (demoCompanyId != null && req.companyId === demoCompanyId) { intreaba('Rapoartele programate nu se pot pune din contul demo.'); break; }
+      if (!u.tip) { intreaba(programari.TEXTE.ceRaport, aiRaport.RAPOARTE_PROPUSE.map(function (k) { const R = reports.REPORTS[k]; return { text: R ? R.label : k, trimite: String(u.text || '') + ' — raportul ' + (R ? R.label : k) }; })); break; }
+      const R = reports.REPORTS[u.tip];
+      if (!R) { intreaba(programari.TEXTE.ceRaport); break; }
+      if (!poateRaport(req, u.tip)) { intreaba('Raportul „' + R.label + '" nu e printre cele pe care le vezi.'); break; }
+      if (aiRaport.RAPOARTE_CU_ALEGERI.indexOf(u.tip) >= 0) { intrebare = pentru + 'Raportul „' + R.label + '" cere alegeri pe care le faci din Rapoarte › Programate.'; break; }
+      if (u.variante) { intreaba(programari.TEXTE.careMasina, alegeMasini(u.variante).concat([{ text: 'Toată flota', trimite: String(u.text || '') + ' pentru toată flota' }])); break; }
+      if (u.imei && !peImei[u.imei]) { intreaba(programari.TEXTE.nuVad); break; }
+      let email = null, agendaN = 0;
+      try { const om = userId != null ? await db.getUserById(userId) : null; email = om && om.email ? String(om.email) : null; } catch (e) { email = null; }
+      try { agendaN = (await db.getConfirmedCompanyEmails(req.companyId, 'rapoarte')).length; } catch (e) { agendaN = 0; }
+      const ora = u.ora != null ? u.ora : programari.ORA_IMPLICITA;
+      const optiuni = (u.imei ? [peImei[u.imei]] : []).concat(f.devices.filter(function (d) { return d.imei !== u.imei; })).slice(0, propuneri.MASINI_IN_LISTA)
+        .map(function (d) { return { v: d.imei, t: eti(d), scurt: scurt(d) }; });
+      optiuni.unshift({ v: '', t: 'Toată flota', scurt: 'toată flota' });
+      const card = programari.cardRaport(Object.assign({ tip: u.tip, label: R.label, imei: u.imei || null, eticheta: u.imei ? scurt(peImei[u.imei]) : null, frecventa: u.frecventa, ora: ora,
+        perioada: u.perioada, format: u.format, dest: u.dest, email: email, agendaN: agendaN, primul: reportSchedules.computeNextRun(u.frecventa, ora, new Date(acum)).getTime(),
+        ziAlta: u.ziAlta || null, optiuni: optiuni }, await _optiuniCardP3(req, 'raport')));
+      card.campuri.agendaN = agendaN;
+      carduri.push({ fel: 'raport', card: card, imei: u.imei || null });
+    }
+  }
+  const pub = [];
+  for (const k of carduri) {
+    const id = await db.adaugaActiuneInsight({ companyId: req.companyId, userId: userId, fel: k.fel, stare: 'propusa', date: { card: k.card } });
+    pub.push(_cardPublic({ id: id, stare: 'propusa', creat_la: acum, date: { card: k.card } }));
+    auditReq(req, 'ai_propunere', 'assistant', id, { fel: k.fel, imei: k.imei, via: x.usa || 'insight' });
+  }
+  const unul = carduri.length === 1 ? (programari.TEXTE.unul[carduri[0].fel] || programari.TEXTE.amPregatit) : '';
+  const text = (pub.length > 2 ? programari.TEXTE.trei : (pub.length === 2 ? programari.TEXTE.doua : unul)) + (intrebare ? (pub.length ? '\n\n' : '') + intrebare : '');
+  const extra = { alege: alege };
+  if (pub.length === 1) extra.propunere = pub[0]; else if (pub.length > 1) extra.propuneri = pub;
+  const sv = await spune(text, extra, pub.length ? Object.assign({}, ctxFara, { propunere: pub[0].id }) : ctxFara);
+  if (sv.convId) { for (const p of pub) { try { await db.legaActiuneInsight(p.id, userId, sv.convId); } catch (e) { /* cartonașul rămâne în mesaj */ } } }
+  return true;
+}
+// „Da" pe o revizie / un act / un raport programat (din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
+async function _aplicaPropunere3(req, res, a) {
+  const userId = req.auth.userId, card = (a.date && a.date.card) || {};
+  const esuat = async function (motiv, cod) {
+    const e = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'esuata', date: Object.assign({}, a.date, { sarite: [{ motiv: motiv }] }) });
+    return res.status(cod || 409).json({ error: motiv.charAt(0).toUpperCase() + motiv.slice(1) + '.', propunere: e ? _cardPublic(e) : undefined });
+  };
+  const masinaFirmei = async function (imei) {
+    if (!imei || !canAccessImei(req, imei)) return null;
+    const devCo = await getDeviceCompanyCached(imei);
+    if (devCo == null || Number(devCo) !== Number(req.companyId)) return null;
+    const d = await db.getDeviceFull(imei);
+    return d && d.status !== 'archived' ? d : null;
+  };
+  const cine = await _cineNume(req);
+  if (a.fel === 'revizie') {
+    const c = programari.campuriRevizie(req.body && req.body.campuri, card, Date.now());
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    const s = c.spec, d = await masinaFirmei(s.imei);
+    if (!d) return res.status(409).json({ error: programari.TEXTE.masinaPlecata });
+    const nr = d.plate || d.name || s.imei;
+    const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+    if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+    let m;
+    try { m = await db.createMaintenance(s, req.companyId); } catch (e) { return esuat('lucrarea nu s-a putut salva', 500); }
+    auditReq(req, 'create', 'maintenance', m.id, { imei: s.imei, type: s.type, prin: 'RA Insight', actiune: a.id, text: programari.jurnalRevizie(s, nr) });
+    const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: programari.cardRevizieDupa(card, s), revizieId: m.id, spec: s, nr: nr, gata: programari.gataRevizie(s, nr, cine, prins.aplicat_la) }) });
+    return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
+  }
+  if (a.fel === 'act') {
+    const c = programari.campuriAct(req.body && req.body.campuri, card, Date.now());
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    const s = c.spec, d = await masinaFirmei(s.imei);
+    if (!d) return res.status(409).json({ error: programari.TEXTE.masinaPlecata });
+    const nr = d.plate || d.name || s.imei, companyId = d.company_id != null ? d.company_id : req.companyId;
+    const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+    if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+    // Ca POST /api/documents: actul de acum de același tip trece în istoricul mașinii (nu se șterge); „Anulează" îl face iar valabil.
+    let inlocuite = [], doc;
+    try {
+      inlocuite = (await db.getVehicleDocuments(s.imei, companyId) || []).filter(function (z) { return z.doc_type === s.doc_type; }).map(function (z) { return z.id; });
+      if (s.doc_type !== 'Altul') await db.archiveVehicleDocumentsByType(s.imei, s.doc_type, companyId);
+      doc = await db.createVehicleDocument(s, companyId);
+    } catch (e) { return esuat('actul nu s-a putut salva', 500); }
+    auditReq(req, 'create', 'document', doc.id, { imei: s.imei, type: s.doc_type, prin: 'RA Insight', actiune: a.id, text: programari.jurnalAct(s, nr) });
+    const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: programari.cardActDupa(card, s), actId: doc.id, inlocuite: inlocuite, companyId: companyId, spec: s, nr: nr, gata: programari.gataAct(s, nr, cine, prins.aplicat_la) }) });
+    return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
+  }
+  // Raportul programat, ca din Rapoarte › Programate (aceleași porți: raportul nu e tăiat din rol, mașina la îndemână, nu din demo).
+  if (demoCompanyId != null && req.companyId === demoCompanyId) return res.status(403).json({ error: 'Indisponibil în contul demo. Scrie-ne dacă vrei o demonstrație completă.' });
+  const c = programari.campuriRaport(req.body && req.body.campuri, card);
+  if (c.eroare) return res.status(400).json({ error: c.eroare });
+  const s = c.spec;
+  if (!poateRaport(req, s.report_type)) return res.status(403).json({ error: 'Nu ai acces la raportul ăsta' });
+  if (s.imei && !(await masinaFirmei(s.imei))) return res.status(409).json({ error: programari.TEXTE.masinaPlecata });
+  const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+  if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+  const next = reportSchedules.computeNextRun(s.frequency, s.hour, new Date());
+  let sc;
+  try {
+    sc = await db.createReportSchedule({ company_id: req.companyId, user_id: userId, name: s.name, report_type: s.report_type, imei: s.imei, period: s.period, frequency: s.frequency,
+      hour: s.hour, format: s.format, recipients: s.recipients, opts: {}, enabled: true, next_run: next.toISOString() });
+  } catch (e) { return esuat('programarea nu s-a putut salva', 500); }
+  const label = (card.campuri && card.campuri.label) || s.report_type;
+  auditReq(req, 'create', 'report_schedule', sc.id, { report_type: s.report_type, prin: 'RA Insight', actiune: a.id, text: programari.jurnalRaport(s, label) });
+  const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: programari.cardRaportDupa(card, c, next.getTime()), programareId: sc.id, spec: s, gata: programari.gataRaport(s, label, next.getTime(), cine, prins.aplicat_la) }) });
+  return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
+}
+// „Anulează" pe o revizie / un act / un raport programat (10 minute, din ruta comună): ce a pus „Da" se scoate, pe calea ecranului.
+async function _anuleazaPropunere3(req, res, a) {
+  const userId = req.auth.userId, D = a.date || {}, s = D.spec || {};
+  const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
+  if (!prins) return res.status(409).json({ error: 'Se anulează deja.' });
+  let txt;
+  if (a.fel === 'revizie') {
+    const r = D.revizieId ? (await db.pool.query('SELECT id, company_id, status, done_date FROM maintenance WHERE id = $1', [D.revizieId])).rows[0] : null;
+    const era = !!(r && Number(r.company_id) === Number(req.companyId) && !_maintClosed(r));
+    if (era) { await db.deleteMaintenance(r.id); auditReq(req, 'delete', 'maintenance', r.id, { prin: 'RA Insight', actiune: a.id, anulare: true }); }
+    txt = programari.anulareRevizie(s, D.nr || '', era);
+  } else if (a.fel === 'act') {
+    const r = D.actId ? (await db.pool.query('SELECT id, imei, company_id, replaced_at FROM vehicle_documents WHERE id = $1', [D.actId])).rows[0] : null;
+    const era = !!(r && Number(r.company_id) === Number(D.companyId != null ? D.companyId : req.companyId) && !r.replaced_at);
+    let repus = 0;
+    if (era) {
+      await db.deleteVehicleDocument(r.id);
+      repus = await db.restaureazaActe(D.inlocuite || [], r.imei, r.company_id);
+      auditReq(req, 'delete', 'document', r.id, { prin: 'RA Insight', actiune: a.id, anulare: true, repuse: repus });
+    }
+    txt = programari.anulareAct(s, D.nr || '', era, repus > 0);
+  } else {
+    const r = D.programareId ? (await db.pool.query('SELECT id, company_id FROM report_schedules WHERE id = $1', [D.programareId])).rows[0] : null;
+    const era = !!(r && Number(r.company_id) === Number(req.companyId));
+    if (era) { await db.deleteReportSchedule(r.id); auditReq(req, 'delete', 'report_schedule', r.id, { prin: 'RA Insight', actiune: a.id, anulare: true }); }
+    txt = programari.anulareRaport((D.card && D.card.campuri && D.card.campuri.label) || s.report_type || '', era);
   }
   const fin = await db.treceActiuneInsight(a.id, userId, 'anulata', { stare: 'anulata', date: Object.assign({}, a.date, { anulareText: txt }) });
   res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins) });
@@ -14384,12 +14618,33 @@ app.delete('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCom
 
 // ─── Alerte CRUD ───
 
+// Când sună de fapt o alertă de viteză (26.10, Alin: „da" — spune-o și pe ecranul Alerte): pragul + marja motorului, cel puțin
+// baza + marja. O singură socoteală (propuneri.pragEfectiv) și o singură frază (propuneri.textMarjaViteza), ca în cartonașul din
+// RA Insight; ecranele doar le arată.
+const _MARJA_VITEZA = { baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN };
+function _sunaPeste(a) {
+  if (!a || a.type !== 'overspeed') return a;
+  const c = a.condition || {};
+  return Object.assign({}, a, { suna_peste: propuneri.pragEfectiv(c.maxSpeed, _MARJA_VITEZA) });
+}
+
 app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
   try {
     let alerts = await db.getAlerts(req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) alerts = alerts.filter(a => !a.imei || req.allowedImeis.has(a.imei));
-    res.json(alerts);
+    res.json(alerts.map(_sunaPeste));
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Nota de sub „Viteză max" din formularul regulii: cât scrie omul, aflăm de la server când sună (fără prag = baza motorului).
+app.get('/api/alerts/viteza', requireAuth, withScope, (req, res) => {
+  const p = String(req.query.prag == null ? '' : req.query.prag).trim();
+  const prag = p === '' ? null : Number(p);
+  if (prag != null && !(Number.isFinite(prag) && prag >= 0 && prag <= 400)) return res.status(400).json({ error: 'Prag invalid.' });
+  res.json({
+    prag: prag, sunaPeste: propuneri.pragEfectiv(prag, _MARJA_VITEZA), baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN,
+    text: [propuneri.textMarjaViteza(prag, _MARJA_VITEZA), propuneri.textRacireViteza()].filter(Boolean).join(' ')
+  });
 });
 
 app.post('/api/alerts', requireAuth, requireEdit('alerte'), withScope, async (req, res) => {
@@ -15055,7 +15310,40 @@ async function getGeofencesForScopeCached(companyId) {
 }
 function invalidateReguliCache() { _alertsCache = null; _geoScopeCache.clear(); }
 
-async function evaluateAlerts(imei, data) {
+// Răcirea unei reguli pe aceeași mașină: cel mult o dată la 5 minute (propuneri.RACIRE_MS — aceeași cifră cu care cartonașul din
+// RA Insight socotește „din ultimele 30 de zile"). `ALERTE_RACIRE_MS` doar în probe (o coboară ca să vadă ce sună după răcire);
+// NU o seta în producție.
+const ALERTE_RACIRE_MS = Number(process.env.ALERTE_RACIRE_MS) > 0 ? Number(process.env.ALERTE_RACIRE_MS) : propuneri.RACIRE_MS;
+
+// Contactul dintr-un record: 1 / 0 / null (necunoscut). Teltonika trimite 1/0; pe alte drumuri poate veni true/false.
+function _contactDin(io) {
+  const v = io ? io.ignition : undefined;
+  if (v === 1 || v === true || v === '1') return 1;
+  if (v === 0 || v === false || v === '0') return 0;
+  return null;
+}
+// Pornirea și oprirea motorului = SCHIMBAREA contactului, de la poziția de dinainte (`anterior`, luată din harta live ÎNAINTE de
+// poziția nouă) până la capătul pachetului, record cu record, în ordinea timpului (un pachet poate ține și pornirea, și oprirea).
+// Până pe 26.10 regula „Oprire motor" citea poziția de dinainte din harta live DUPĂ ce poziția nouă fusese pusă acolo — o compara
+// cu ea însăși și nu suna niciodată —, iar „Pornire motor" suna la fiecare 5 minute cât contactul era pornit. Fără o stare știută
+// de dinainte (prima poziție după o repornire), primul record doar o stabilește: nu sună nimic.
+function _schimbariContact(anterior, records) {
+  const ms = function (t) { return t == null ? 0 : (typeof t === 'number' ? t : new Date(t).getTime()) || 0; };
+  const de = ms(anterior && anterior.timestamp);
+  let st = _contactDin(anterior && anterior.io), pornit = false, oprit = false;
+  (records || [])
+    .filter(function (r) { return r && r.io && _contactDin(r.io) !== null && ms(r.timestamp) >= de; })
+    .sort(function (a, b) { return ms(a.timestamp) - ms(b.timestamp); })
+    .forEach(function (r) {
+      const c = _contactDin(r.io);
+      if (st === 0 && c === 1) pornit = true;
+      else if (st === 1 && c === 0) oprit = true;
+      st = c;
+    });
+  return { pornit: pornit, oprit: oprit };
+}
+
+async function evaluateAlerts(imei, data, contact) {
   try {
     const alerts = await getAlertsCached();
     if (!alerts || alerts.length === 0) return;
@@ -15101,7 +15389,7 @@ async function evaluateAlerts(imei, data) {
       const _isGeo = alert.type === 'geofence_enter' || alert.type === 'geofence_exit';
       if (!_isGeo) {
         const lastTriggered = alertCooldowns.get(cooldownKey);
-        if (lastTriggered && (Date.now() - lastTriggered) < 300000) continue; // 5 min cooldown
+        if (lastTriggered && (Date.now() - lastTriggered) < ALERTE_RACIRE_MS) continue; // 5 min cooldown
       }
 
       let triggered = false;
@@ -15133,20 +15421,18 @@ async function evaluateAlerts(imei, data) {
           break;
         }
 
+        // O dată pe pornire / pe oprire: la SCHIMBAREA contactului (vezi _schimbariContact), nu cât timp stă pornit.
         case 'ignition_on':
-          if (io.ignition === 1) {
+          if (contact && contact.pornit) {
             triggered = true;
             alertData = { event: 'Motor pornit' };
           }
           break;
 
         case 'ignition_off':
-          if (io.ignition === 0) {
-            const prev = livePositions.get(imei);
-            if (prev && prev.io && prev.io.ignition === 1) {
-              triggered = true;
-              alertData = { event: 'Motor oprit' };
-            }
+          if (contact && contact.oprit) {
+            triggered = true;
+            alertData = { event: 'Motor oprit' };
           }
           break;
 
@@ -15283,7 +15569,7 @@ async function evaluateAlerts(imei, data) {
         // Răcire proprie pentru fiecare zonă → două zone traversate în aceeași oră dau două anunțuri.
         const ck = ev.zone != null ? cooldownKey + '_z' + ev.zone : cooldownKey;
         const last = alertCooldowns.get(ck);
-        if (last && (Date.now() - last) < 300000) continue;
+        if (last && (Date.now() - last) < ALERTE_RACIRE_MS) continue;
         alertCooldowns.set(ck, Date.now());
 
         const d = ev.data;

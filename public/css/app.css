@@ -278,12 +278,33 @@
       .navrail-backdrop { display: none; position: fixed; top: calc(var(--topbar-h) + var(--sat)); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 1290; }
       .navrail-backdrop.visible { display: block; }
       .modal-overlay.as-view { left: 0; }
+      /* Loc sub ultimul rând, cât bula RA Insight din colț: altfel creionul ultimului vehicul stătea sub ea și nu se putea apăsa
+         (măsurat 26.10, Vehicule pe 390 px). */
+      .modal-overlay.as-view { padding-bottom: 96px; }
       /* Colapsează grilele multi-coloană pe mobil */
       [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
       .modal { width: 96vw !important; max-width: 96vw !important; }
       .topbar-user-info { display: none; }
       .topbar-left .brand-title h1 { font-size: 16px; }
       #detail-panel { width: 100% !important; min-width: 0 !important; }
+      /* Fondatorul nu trimite cereri echipei (noi suntem echipa): pe telefon iconița cu căști lasă loc comutatorului mov. */
+      body.is-super .topbar-echipa { display: none; }
+    }
+    /* Pe telefonul îngust bara de sus se strânge ca să încapă. La 360 px grupul din dreapta trecea de ecran cu 26 px, iar la
+       fondator (cu comutatorul mov) cu 82–112 px, și la 390 px — iar browserul telefonului micșora atunci TOATĂ pagina, ca s-o
+       încapă: textul ieșea mai mic pe orice ecran (măsurat 26.10). Iconițele rămân de 36 px (ținta de atingere a casei). */
+    @media (max-width: 420px) {
+      #topbar { padding-left: 10px; padding-right: 10px; }
+      .topbar-left, .topbar-right { gap: 4px; }
+      .topbar-icon { width: 36px; height: 36px; }
+      .topbar-user { gap: 4px; padding-left: 6px; margin-left: 0; }
+      #topbar .vert-com { margin-right: 0; gap: 2px; padding: 2px; }   /* #topbar: regulile comutatorului stau mai jos în fișier */
+      #topbar .vert-b { padding: 6px 5px; }
+    }
+    /* Sub 380 px (telefoanele mici, 360) și „Track" din siglă scade puțin (20 → 18 px; mărimea e scrisă pe element, de aici
+       `!important`): la fondator bara trecea încă cu 3 px (măsurat 26.10). Sigla rămâne aceeași, doar mai mică. */
+    @media (max-width: 380px) {
+      #topbar .ralogo .raw { font-size: 18px !important; }
     }
     @media (max-width: 768px) {
       /* tabelele largi devin derulabile orizontal */
@@ -1906,6 +1927,15 @@
     @media (max-width: 900px) {
       #detail-panel.open { width: 320px; min-width: 320px; }
     }
+    /* Tabletă (769–1100 px), cu fișa mașinii deschisă pe hartă: meniul, lista, fișa și harta nu încap una lângă alta (26.10,
+       măsurat: la 820–834 px fișa ieșea 38–52 px din ecran și harta dispărea; la 1024 px harta rămânea de 92 px). Cât stă fișa
+       deschisă, meniul din stânga se strânge singur; butonul ☰ îl deschide atunci PESTE hartă, ca pe telefon (toggleNavrail /
+       _navCaSertar). Lista și fișa rămân: alegi altă mașină fără să închizi nimic. Alin: „aplicația trebuie să fie ok pe toate ecranele". */
+    @media (min-width: 769px) and (max-width: 1100px) {
+      body.detail-open:has(#view-localizare.active) #navrail:not(.open) { width: 0 !important; min-width: 0 !important; padding-left: 0; padding-right: 0; overflow: hidden; border-right: none; }
+      body.detail-open:has(#view-localizare.active) #navrail.open { position: fixed; top: calc(var(--topbar-h) + var(--sat)); bottom: 0; left: 0; z-index: 1300; box-shadow: 4px 0 20px rgba(0,0,0,.35); }
+      body.detail-open:has(#view-localizare.active) .navrail-backdrop.visible { display: block; position: fixed; top: calc(var(--topbar-h) + var(--sat)); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 1290; }
+    }
 
     @media (max-width: 768px) {
       #app.visible { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
@@ -3028,13 +3058,17 @@ body.dark .sch-next.sch-st-esuat, body.dark .sch-next.sch-st-eroare { color: #f8
     .pref-gr { margin-bottom: 22px; }
     .pref-gr:last-child { margin-bottom: 0; }
     .pref-load { color: var(--text-muted); font-size: 12px; padding: 8px 0; }
-    .pref-r { display: flex; align-items: center; gap: 14px; padding: 11px 13px; margin-bottom: 6px;
+    /* Textul păstrează cel puțin 200 px; când nu mai e loc pe rând, butoanele trec DEDESUBT, la orice lățime a ecranului.
+       Pe tabletă, cu meniul aplicației și cel al Setărilor alături, coloana are ~310 px: înainte textul rămânea de 40 px, câte
+       un cuvânt pe rând, iar „Închisă" stătea peste „Tema aplicației" (măsurat 26.10). */
+    .pref-r { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 11px 13px; margin-bottom: 6px;
       background: var(--bg-dark); border: 1px solid var(--border); border-radius: 11px; }
     .pref-r-l { align-items: flex-start; }
     /* Multe variante (harta, cât stă alerta): comanda trece sub text, ca explicația să aibă loc. */
     .pref-r-w { flex-direction: column; align-items: stretch; gap: 0; }
     .pref-r-w .pref-seg { justify-content: flex-start; margin-top: 10px; }
-    .pref-txt { flex: 1; min-width: 0; }
+    .pref-r-w .pref-txt { flex: 0 0 auto; }   /* pe coloană, cei 200 px de mai jos ar fi înălțime */
+    .pref-txt { flex: 1 1 200px; min-width: 0; }
     .pref-t { font-size: 13px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center;
       gap: 7px; flex-wrap: wrap; }
     .pref-src { font-size: 10px; font-weight: 800; letter-spacing: .02em; }
@@ -3071,6 +3105,7 @@ body.dark .sch-next.sch-st-esuat, body.dark .sch-next.sch-st-eroare { color: #f8
     .pref-parola .pref-t { margin-bottom: 9px; }
     @media (max-width: 620px) {
       .pref-r, .pref-r-l { flex-direction: column; align-items: stretch; }
+      .pref-r .pref-txt { flex: 0 0 auto; }
       .pref-c { align-self: flex-start; }
       .pref-seg { justify-content: flex-start; }
     }
@@ -4682,8 +4717,9 @@ body.dark .chat-prop-dov .ok i { color: #4ade80; } body.dark .chat-prop-dov .w i
 .chat-prop-in { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13px; max-width: 100%; box-sizing: border-box; }
 .chat-prop-in.mic { width: 86px; }
 .chat-prop-in.lung { width: 100%; max-width: 360px; }
+.chat-prop-in.data { width: 158px; }
 .chat-prop-in::placeholder { color: var(--text-secondary); }
-.chat-prop-cu { display: inline-flex; align-items: center; gap: 4px; color: var(--text-primary); }
+.chat-prop-cu { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--text-primary); }
 .chat-actiuni { margin-top: 8px; }
 .chat-prop-dov.vechi { opacity: .55; }   /* cât se socotește din nou „din ultimele 30 de zile" pentru pragul ales */
 .chat-prop-sub { font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 8px; }
@@ -4722,7 +4758,9 @@ body.dark .rep-rezumat-t i { color: #a78bfa; }
    pe alb), pe cea închisă #4ade80; textele pe --text-primary / --text-secondary, culoarea doar pe chenare și iconițe. */
 .ce-ov { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: grid; place-items: center; z-index: 5000; padding: 16px; }
 .ce-ov[hidden] { display: none; }
-.ce-win { width: 640px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 22px 60px rgba(0,0,0,.28); color: var(--text-primary); font-size: 13.5px; }
+/* Lățimea: cel mult 640 px, dar niciodată mai lată decât ecranul (pe telefon ieșea 640 px într-un ecran de 360 — 26.10, măsurat:
+   grila cu o singură coloană crește după conținut, deci `max-width: 100%` nu ajungea). */
+.ce-win { width: min(640px, calc(100vw - 32px)); max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 22px 60px rgba(0,0,0,.28); color: var(--text-primary); font-size: 13.5px; }
 .ce-h { display: flex; align-items: center; gap: 10px; padding: 15px 18px 10px; flex: none; }
 .ce-h .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, #166534 12%, transparent); color: #166534; flex: none; }
 .ce-h b { font-size: 16px; font-weight: 800; }
