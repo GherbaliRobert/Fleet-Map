@@ -76,6 +76,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pornește pe probă dinadins. Trebuie puse pe Railway `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` și
   `ANAF_EFACTURA_TEST=false`, apoi o primă factură verificată în SPV.
   **12.10:** Robert — „mai așteaptă".
+  **25.10:** fișierul e-Factura pentru o firmă neplătitoare de TVA (DUO) e reparat și trece validatorul ANAF. Înainte de prima
+  trimitere, în „Date emitent": bifa „neplătitor de TVA", cota 0, orașul și codul județului (pentru Pantelimon: RO-IF).
 - [x] **HOTĂRÂT (28.09): completarea automată urmează recomandarea.** Alin: „DA". Oferta pune singură
   FMC130 la mașini (cu LV-CAN200 la cele cu CAN) și FMC650 doar la camioane. Făcut pe 28.09.
 - [x] **HOTĂRÂT (28.09): accesoriile rămân doar ca sfat, fără rând de preț.** Alin a ales varianta 2.
@@ -266,6 +268,16 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   estimat pe toată luna): **baza de date 14,53 $, dintre care memoria ei 13,64 $** (~1,6 GB ținuți în medie); aplicația 0,70 $.
   Procesorul, traficul, discul (3 GB) și copiile — sub 1 $ la un loc. Întrebat pe 21.10: plafon de memorie pentru bază, în
   Railway (serviciul Postgres → Settings → Deploy → Replica Limits).
+- [ ] **Robert: plafon de 1 GB pe memoria bazei de date, în Railway. Adăugat pe 25.10.** **Plafonul PUS de Robert pe 25.10**
+  (după repornire: aplicația merge, baza răspunde). **Lista tabelelor trimisă (25.10): baza are 1,07 GB din 5 GB (21%), din
+  care pozițiile 1,04 GB (630 MB date + 392 MB indexuri); restul tabelelor, sub 20 MB la un loc.** Cei 3 GB din Railway țin și
+  fișierele de lucru ale bazei. Rămâne: poza cu graficul de memorie al bazei, a doua zi. Factura vine aproape toată din memoria
+  bazei (~1,6 GB ținuți, mare parte cache — pentru 3 mașini nu e nevoie de el). Serviciul Postgres → Settings → Deploy → „Resource
+  Limits" (sau „Replica Limits") → Memory = 1 GB → „Apply changes" → Deploy. Factura scade de la ~17,5 $ (≈ 80 lei) la cel mult
+  ~12 $ (≈ 55 lei) pe lună; după o săptămână liniștită se poate coborî la 768 MB (~9,5 $). Baza repornește o dată, câteva
+  secunde: aparatele păstrează pozițiile și le retrimit (confirmarea se dă abia după scriere). Dacă repornește singură de mai
+  multe ori, plafonul se urcă la 1,5 GB sau se scoate — un minut. Plus: poza cu lista tabelelor din Control costuri → Railway →
+  📊 Detalii (ce ține 3 GB de disc la 3 mașini, din 5 GB pe Hobby).
 - [x] **FĂCUT (12.10): Robert a reglat ora laptopului.** **Robert: ceasul calculatorului de pe care lucrăm e cu 3 min 45 s înainte. Adăugat pe 09.10.** Măsurat: serverul
   spunea 11:10:09, calculatorul 11:13:54; Windows nu și-a sincronizat ora niciodată. Din cauza asta, pe web orice mașină
   în mers apare galbenă, „Fără semnal recent — acum 3 min”, deși trimite normal (pe telefon, cu ceasul corect, e verde).
@@ -345,6 +357,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (2) la noi, „Cereri de la clienți" (`/api/admin/cereri-echipa`, `…/numar`, `…/:id/preiau|programeaza|rezolvat|redeschide`);
   (3) anunțurile: `cerere_echipa` → „Cereri de la clienți", `cerere_preluata|programata|rezolvata` → „Cererile tale"; (4) intervențiile
   din Calendarul de montaj (`interventii` în răspunsul calendarului). Textele le dă serverul.
+- [ ] **De făcut după sesiunea cu contul de contabil: TVA-ul pus unei firme neplătitoare. Adăugat pe 25.10** (Robert: „Nu acum…
+  îl facem după ce termină sesiunea cu contul de contabil", care lucrează în același loc din aplicație). Azi, dacă în „Date emitent"
+  e bifat „neplătitor de TVA", dar la „Cotă TVA" rămâne 21, aplicația tot pune 21%: o factură de 100 de lei iese de 121 de lei pe
+  hârtie, iar e-Factura o refuză. Reparația: la emitent neplătitor, cota 0 pe rânduri, oricât ar fi scris la „Cotă TVA".
+  Tot de atunci, **de hotărât:** (a) mențiunea „regim special de scutire, art. 310" și pe hârtia facturii (e-Factura o are);
+  (b) un client persoană fizică fără CNP e refuzat la e-Factura (fișa firmei n-are „persoană fizică") — rămâne așa?
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -413,6 +431,29 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
 
 ---
+
+## 2026-10-25
+
+### AMÂNDOI · e-Factura pentru o firmă neplătitoare de TVA: fișierul trece acum validatorul ANAF
+
+DUO BUSINESS CONCEPT S.R.L., firma care emite facturile din ratrack.ro, nu e înregistrată în scopuri de TVA. Fișierul e-Factura
+pe care îl făcea aplicația pentru ea era respins de ANAF (verificat pe 25.10, la validatorul lor public): scria „cota 0%" pe
+rânduri unde regula cere să nu existe nicio cotă, nu spunea motivul scutirii și trecea codurile de TVA ale firmelor („RO…").
+- **Acum:** la o firmă neplătitoare, factura spune „în afara TVA" pe fiecare rând, fără cotă, cu motivul scutirii, TVA 0 și
+  mențiunea „regim special de scutire conform art. 310 din Codul fiscal". Firmele (noi și clientul) apar cu CUI-ul fără „RO".
+  Persoana fizică apare cu CNP-ul (sau cu 13 zerouri). Pentru o firmă plătitoare de TVA rămâne ca înainte: 21% și 11% pe
+  aceeași factură, 0% unde e cazul. Mențiunile facturii merg și ele în fișier, iar ziua facturii e ziua din România (o
+  factură emisă la 01:30 ieșea cu ziua de ieri).
+- **Județul și sectorul:** ANAF cere județul ca cod (RO-CJ) și, la București, sectorul. Clientul are adresa într-un singur
+  rând, așa că aplicația le citește din ea („…, Cluj-Napoca, jud. Cluj", „MUNICIPIUL BUCUREȘTI, SECTOR 3, …"). Până azi,
+  orice client fără județ pleca drept „București, Sector 1".
+- **Ce nu mai pleacă:** o adresă fără județ (sau București fără sector), o firmă fără CUI, o factură cu TVA la o firmă
+  neplătitoare, o factură al cărei total nu se potrivește cu rândurile. Mesajul spune ce lipsește și unde se completează.
+- **Ce am schimbat:** `efactura.js` (doar partea care scrie fișierul; trimiterea la ANAF a rămas neatinsă). Probă nouă:
+  `verify_efactura_anaf.js` (95 de verificări + 7 facturi trimise la validatorul ANAF, toate „ok"; plus un martor cu greșeala
+  veche, pe care ANAF îl respinge). Cere internet, deci nu e în `npm test`; fără răspuns de la ANAF o spune și nu trece.
+- **Ce vede fondatorul:** azi nimic (e-Factura e oprită până se pune cheia ANAF). La pornire, facturile trec de ANAF.
+- **Ce vede clientul:** factura corectă în SPV-ul lui, cu adresa lui reală.
 
 ## 2026-10-23
 

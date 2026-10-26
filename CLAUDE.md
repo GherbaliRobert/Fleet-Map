@@ -2077,6 +2077,22 @@ amândouă" (trecerea în bloc + factura unică din contract). Toate trei probat
   față de ce cerem clientului: dă datele oficiale (nume, Reg. Com., sediu) fără greșeli de tastare și
   statutul de TVA. Reprezentantul și emailul tot de la client le luăm.
 
+### e-Factura (XML) pentru emitentul NEPLĂTITOR de TVA — `efactura.js` (25.10)
+DUO (emitentul) nu e înregistrată în scopuri de TVA. XML-ul vechi era respins de ANAF (BR-O-02, BR-O-05, BR-O-10). Regulile,
+luate din programul de facturare al DUO (al cărui XML trece) — NU le strica la loc:
+- **Neplătitor (`issuer.vat_payer === false`):** categoria `O` pe toate rândurile și în total, FĂRĂ `Percent`; totalul are
+  `TaxExemptionReasonCode` = `VATEX-EU-O`; TVA 0; NICIUN `PartyTaxScheme` (nici al nostru, nici al clientului) — părțile se
+  recunosc după CUI fără „RO" în `PartyLegalEntity/CompanyID`; persoana fizică = CNP sau `0000000000000`; nota cu art. 310.
+  **Plătitor:** `S` + cotă (21 / 11), `Z` + 0 la 0%; codul de TVA doar dacă AMÂNDOI sunt plătitori. NU pune `O` lângă `S`.
+- **Locul:** `CountrySubentity` = `RO-<cod>`, la București `CityName` = `SECTOR1`…`SECTOR6`. Emitentul din câmpurile „Date emitent";
+  clientul are doar adresa într-un text → `_dinAdresa` (formatele ANAF și cele scrise de mână). Ce nu se poate afla NU se ghicește:
+  `buildUBL` ARUNCĂ o eroare pe înțeles (județ / sector / localitate lipsă, firmă fără CUI, TVA la neplătitor, total care nu bate cu
+  rândurile); `uploadInvoice` o întoarce ca `error`. Până pe 25.10 orice client fără județ pleca „RO-B, SECTOR1".
+- Totalurile se socotesc din rânduri (TVA-ul categoriei = suma TVA-ului de pe rânduri, ca pe hârtie); ziua pe ora României (`_FMT_ZI`).
+- Păzit de **`verify_efactura_anaf.js`**: offline + 7 facturi trimise la validatorul public ANAF (`/prod/FCTEL/rest/validare/FACT1`,
+  nu depune nimic), cu un martor care trebuie respins. Cere internet → NU e în `npm test`; fără ANAF iese cu codul 2 și o spune.
+  Schimbi `buildUBL` → rulezi proba (cu internet).
+
 ### Aparatele VÂNDUTE: avans pe proformă, montajul în 30 de zile de la încasare (Alin, 29.09)
 „1.A, 2.DA, 3.DA". A înlocuit regula din 21.09 („echipamentele se facturează la livrare").
 - Aparatele se plătesc **integral în avans, pe proformă**, la semnare (termenul de plată al firmei); montajul
