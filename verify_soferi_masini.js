@@ -177,9 +177,13 @@ console.log('\n3. Serverul: calea ecranului, drepturile, de la Basic, nenumărat
 T('schimbarea merge pe calea ecranului: db.assignDevice cu grupa de ACUM a mașinii (altfel i-ar șterge grupa)', /await db\.assignDevice\(s\.imei, la, d\.group_id\);/.test(SRV) && (SRV.match(/db\.assignDevice\(/g) || []).length === 2);
 T('…verificată pe starea de acum: șoferul de acum = cel din propunere, șoferul nou din firma mașinii, nepus pe altă mașină', /if \(acum !== deLa\)/.test(SRV) && /await db\.soferAlFirmei\(la, d\.company_id\)/.test(SRV) && /await db\.masiniSofer\(la, d\.company_id\)/.test(SRV));
 T('…în jurnal „prin RA Insight"', /prin: 'RA Insight', actiune: x\.actiuneId \|\| null/.test(SRV));
-T('drepturile ecranului: „Da", „Aplică" și „Anulează" cer requireEdit(\'vehicule\'); toate, de la Basic (requireRamuri); „Nu" nu schimbă nimic',
-  /app\.post\('\/api\/insight\/actiuni\/:id\/aplica', requireAuth, requireEdit\('vehicule'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV) &&
-  /app\.post\('\/api\/insight\/actiuni\/:id\/anuleaza', requireAuth, requireEdit\('vehicule'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV) &&
+// 23.10 (partea 2): „Da" și „Anulează" sunt comune șoferului, alertei și discuției — drepturile le cere felul propunerii
+// (`_poateActiunea`), iar la șofer rămân ale ecranului Vehicule: manageFleet + editarea vehiculelor, ca requireEdit('vehicule').
+T('drepturile ecranului: „Da" și „Anulează" cer drepturile felului (la șofer, Vehicule: manageFleet + editarea vehiculelor); „Aplică" cere requireEdit(\'vehicule\'); toate, de la Basic (requireRamuri); „Nu" nu schimbă nimic',
+  /app\.post\('\/api\/insight\/actiuni\/:id\/aplica', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri, async \(req, res\) => \{[\s\S]{0,400}?if \(!_poateActiunea\(req, a\.fel\)\) return res\.status\(403\)/.test(SRV) &&
+  /app\.post\('\/api\/insight\/actiuni\/:id\/anuleaza', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri, async \(req, res\) => \{[\s\S]{0,400}?if \(!_poateActiunea\(req, a\.fel\)\) return res\.status\(403\)/.test(SRV) &&
+  /function _poateActiunea\(req, fel\) \{[\s\S]{0,300}?return _poateSchimbaSoferi\(req\);\n\}/.test(SRV) &&
+  /function _poateSchimbaSoferi\(req\) \{ return !!\(permReq\(req, 'manageFleet'\) && poateEditare\(req, 'vehicule'\)\); \}/.test(SRV) &&
   /app\.post\('\/api\/insight\/soferi-masini\/aplica', requireAuth, requireEdit\('vehicule'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV) &&
   /app\.get\('\/api\/insight\/soferi-masini', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat, requireRamuri,/.test(SRV));
 T('„Da" o singură dată: propunerea trece mai departe doar dacă e încă „propusă" (două apăsări deodată = una)', /const prins = await db\.treceActiuneInsight\(a\.id, userId, 'propusa', \{ stare: 'aplicata', aplicatLa: Date\.now\(\) \}\);/.test(SRV) && /WHERE id = \$1 AND user_id = \$2 AND stare = \$3 RETURNING \*/.test(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8')));

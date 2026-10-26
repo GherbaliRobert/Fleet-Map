@@ -4632,6 +4632,23 @@ async function istoricInterval(imei, from, to, dupa, limita) {
   `, [imei, from, to, dupa || null, Math.max(1, Math.min(50000, parseInt(limita) || 20000))]);
   return r.rows;
 }
+// „Din ultimele 30 de zile" (alerta propusă de RA Insight, 23.10): doar pozițiile care trec de pragul efectiv al alertei — puține,
+// deci citirea e scurtă și pe o flotă întreagă. Pe mașină și timp, ca regula de răcire a motorului de alerte să se poată aplica.
+async function pozitiiPesteViteza(imeis, from, to, prag, limita) {
+  if (!Array.isArray(imeis) || !imeis.length) return [];
+  const r = await pool.query(`SELECT imei, timestamp, speed FROM positions
+     WHERE imei = ANY($1) AND timestamp BETWEEN $2 AND $3 AND speed > $4 ORDER BY imei, timestamp LIMIT $5`,
+    [imeis, from, to, Number(prag) || 0, Math.max(1, Math.min(100000, parseInt(limita) || 50000))]);
+  return r.rows;
+}
+// Cea mai mare viteză din perioadă pe mașinile date (peste `plafon` = un salt de GPS, nu se socotește).
+async function vitezaMaximaPerioada(imeis, from, to, plafon) {
+  if (!Array.isArray(imeis) || !imeis.length) return null;
+  const r = await pool.query(`SELECT imei, timestamp, speed, latitude, longitude FROM positions
+     WHERE imei = ANY($1) AND timestamp BETWEEN $2 AND $3 AND speed IS NOT NULL AND speed <= $4 ORDER BY speed DESC, timestamp DESC LIMIT 1`,
+    [imeis, from, to, Number(plafon) || 250]);
+  return r.rows[0] || null;
+}
 // Cel mai rapid punct al unei mașini într-o perioadă (vii + arhivă) — „Am găsit o problemă" (probleme.js, 15.10): de aici se
 // citesc pozițiile din jur, ca să se vadă dacă viteza e reală sau un salt de GPS.
 async function punctVitezaMaxima(imei, from, to) {
@@ -6848,7 +6865,7 @@ module.exports = {
   getDeviceHistory,
   istoricOre,
   istoricPagina,
-  istoricInterval,
+  istoricInterval, pozitiiPesteViteza, vitezaMaximaPerioada,
   punctVitezaMaxima,
   aiJosPeFirma,
   istoricCoada,

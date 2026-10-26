@@ -11445,6 +11445,9 @@ const pozitii = await r.json();</code></pre>
         return;
       }
       if (b.fel === 'traseu') return window.insightLaTraseu(b);
+      // Partea 2 (23.10): „Vezi alertele" / „Deschide Alerte" (Management › Alerte) și „Vezi RA Drive" (ramura din RA Insight).
+      if (b.fel === 'ecran') { if (typeof goManage === 'function') goManage(String(b.ecran || '')); return; }
+      if (b.fel === 'ramura') { if (typeof window.insightRamura === 'function') window.insightRamura(String(b.ramura || '')); return; }
       if (b.fel === 'fisa') {
         Promise.resolve(openEditModal(String(b.imei))).then(function () {
           if (b.fila) { var t = document.querySelector('.edit-tab[data-tab="' + b.fila + '"]'); if (t) switchEditTab(b.fila, t); }
@@ -12138,6 +12141,12 @@ const pozitii = await r.json();</code></pre>
         if (x.propunere && x.propunere.id) bub.appendChild(cartonasPropunere(x.propunere, function (nou, urm) {
           x.propunere = nou; var nr = bulaAi(m); row.replaceWith(nr); adaugaUrmator(urm);
         }));
+        // Un buton spre un ecran (de ex. „Deschide Alerte", când alerta cerută nu se pune din discuție) — textul de la server.
+        if (Array.isArray(x.actiuni) && x.actiuni.length) {
+          var acts = el('div', 'chat-prop-b chat-actiuni');
+          x.actiuni.forEach(function (b) { var bb = butonProp(b.text || '', /^fa-[a-z-]+$/.test(b.ic || '') ? b.ic : 'fa-arrow-right'); bb.onclick = function () { window.insightProblemaButon(b); }; acts.appendChild(bb); });
+          bub.appendChild(acts);
+        }
         if (Array.isArray(x.probleme) && x.probleme.length) bub.appendChild(window._chatProbleme(x.probleme));
         if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode('Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare, nota: x.nota }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
@@ -13120,7 +13129,8 @@ const pozitii = await r.json();</code></pre>
         var deschis = p.stare === 'propusa';
         var c = el('div', 'chat-prop' + (deschis ? '' : ' inchis'));
         var h = el('div', 'chat-prop-h');
-        h.innerHTML = '<span class="ic"><i class="fas ' + (p.sofer && p.sofer.la ? 'fa-id-card' : 'fa-user-minus') + '"></i></span>';
+        var ic = /^fa-[a-z-]+$/.test(p.ic || '') ? p.ic : (p.sofer && p.sofer.la ? 'fa-id-card' : 'fa-user-minus');
+        h.innerHTML = '<span class="ic"><i class="fas ' + ic + '"></i></span>';
         h.appendChild(el('span', 'chat-prop-tit', p.titlu || ''));
         if (p.apasat) {
           var st = el('span', 'chat-prop-st ' + (p.stare || ''));
@@ -13130,20 +13140,27 @@ const pozitii = await r.json();</code></pre>
         c.appendChild(h);
         var g = el('div', 'chat-prop-sch');
         var rand = function (l, nod) { g.appendChild(el('span', 'l', l)); var s = el('span'); s.appendChild(nod); g.appendChild(s); };
-        if (deschis && p.masina) { var mn = document.createDocumentFragment(); mn.appendChild(el('b', null, p.masina.nr || '')); if (p.masina.rest) mn.appendChild(document.createTextNode(' · ' + p.masina.rest)); rand('Mașina', mn); }
-        var sf = document.createDocumentFragment(), so = p.sofer || {};
-        if (so.de) { sf.appendChild(el('span', 'de', so.de)); sf.appendChild(el('span', 'sag', '→')); }
-        sf.appendChild(el('span', 'la' + (so.la ? '' : ' gol'), so.la || 'fără șofer'));
-        rand('Șoferul', sf);
-        if (deschis) rand('De când', document.createTextNode(p.deCand || ''));
+        var so = p.sofer || {};
+        // Alerta și „Am vorbit cu el" (partea 2, 23.10): rândurile le scrie serverul; „Schimbă" le face casete (`ed` le citește).
+        var ed = null;
+        var desenRanduri = function () { g.innerHTML = ''; (p.randuri || []).forEach(function (r) { rand(r.l, r.b ? el('b', null, r.v || '') : document.createTextNode(r.v || '')); }); };
+        if (p.randuri) desenRanduri();
+        else {
+          if (deschis && p.masina) { var mn = document.createDocumentFragment(); mn.appendChild(el('b', null, p.masina.nr || '')); if (p.masina.rest) mn.appendChild(document.createTextNode(' · ' + p.masina.rest)); rand('Mașina', mn); }
+          var sf = document.createDocumentFragment();
+          if (so.de) { sf.appendChild(el('span', 'de', so.de)); sf.appendChild(el('span', 'sag', '→')); }
+          sf.appendChild(el('span', 'la' + (so.la ? '' : ' gol'), so.la || 'fără șofer'));
+          rand('Șoferul', sf);
+          if (deschis) rand('De când', document.createTextNode(p.deCand || ''));
+        }
         c.appendChild(g);
         if (deschis) {
-          if ((p.dovezi || []).length) {
-            var dv = el('div', 'chat-prop-dov'); dv.appendChild(el('div', 't', p.dovT || 'De ce'));
-            var IC = { ok: 'fa-circle-check', w: 'fa-circle-exclamation', r: 'fa-circle-xmark', i: 'fa-circle-info' };
-            p.dovezi.forEach(function (d) { var rr = el('div', /^(ok|w|r|i)$/.test(d.nivel) ? d.nivel : 'i'); rr.innerHTML = '<i class="fas ' + (IC[d.nivel] || IC.i) + '"></i>'; rr.appendChild(el('span', null, d.text)); dv.appendChild(rr); });
-            c.appendChild(dv);
-          }
+          var dv = null, IC = { ok: 'fa-circle-check', w: 'fa-circle-exclamation', r: 'fa-circle-xmark', i: 'fa-circle-info' };
+          var desenDovezi = function (lista) {
+            dv.innerHTML = ''; dv.appendChild(el('div', 't', p.dovT || 'De ce'));
+            (lista || []).forEach(function (d) { var rr = el('div', /^(ok|w|r|i)$/.test(d.nivel) ? d.nivel : 'i'); rr.innerHTML = '<i class="fas ' + (IC[d.nivel] || IC.i) + '"></i>'; rr.appendChild(el('span', null, d.text)); dv.appendChild(rr); });
+          };
+          if ((p.dovezi || []).length) { dv = el('div', 'chat-prop-dov'); desenDovezi(p.dovezi); c.appendChild(dv); }
           if (p.nuSeSchimba) c.appendChild(el('div', 'chat-prop-nu', p.nuSeSchimba));
           var bs = el('div', 'chat-prop-b');
           var ales = { id: p.la, nume: so.la };
@@ -13151,11 +13168,53 @@ const pozitii = await r.json();</code></pre>
           if (!p.poate) { bDa.disabled = true; bDa.title = p.sub || ''; }
           bDa.onclick = async function () {
             bDa.disabled = true;
-            var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(p.id) + '/aplica', ales.id != null && String(ales.id) !== String(p.la) ? { la: ales.id } : {});
+            var corp = p.randuri ? (ed ? { campuri: ed() } : {}) : (ales.id != null && String(ales.id) !== String(p.la) ? { la: ales.id } : {});
+            var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(p.id) + '/aplica', corp);
             if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut face.', 'error'); if (r.j.propunere) gata(r.j.propunere, null); else bDa.disabled = false; return; }
             gata(r.j.propunere, r.j.urmator);
           };
           bs.appendChild(bDa);
+          // „Schimbă" pe alertă (pragul, mașina, numele) și pe discuție (despre ce): casete în locul rândurilor; „Lasă cum era" le pune la loc.
+          if (p.randuri && p.poate && p.campuri) {
+            var bEd = butonProp('Schimbă', 'fa-pen'), bLasa = butonProp('Lasă cum era', 'fa-rotate-left');
+            bEd.onclick = function () {
+              var k = p.campuri, f = {}, numeAtins = false;
+              var caseta = function (cls, tip, val, eticheta) { var i = el('input', 'chat-prop-in ' + cls); i.type = tip; i.value = val == null ? '' : String(val); i.setAttribute('aria-label', eticheta); return i; };
+              g.innerHTML = '';
+              if (p.fel === 'alerta') {
+                rand(p.randuri[0].l, el('b', null, p.randuri[0].v || ''));
+                f.prag = caseta('mic', 'number', k.prag, 'Pragul, în km/h'); f.prag.min = k.min; f.prag.max = k.max; f.prag.step = '1';
+                var cu = el('span', 'chat-prop-cu'); cu.appendChild(f.prag); cu.appendChild(document.createTextNode(' km/h')); rand('Peste', cu);
+                f.imei = el('select', 'chat-prop-sel'); f.imei.setAttribute('aria-label', 'Mașina');
+                (k.optiuni || []).forEach(function (o) { var op = el('option', null, o.t); op.value = String(o.v); f.imei.appendChild(op); });
+                f.imei.value = String(k.imei || ''); rand('Pe', f.imei);
+                f.nume = caseta('lung', 'text', k.nume, 'Numele alertei'); f.nume.maxLength = 120; rand('Numele alertei', f.nume);
+                f.nume.oninput = function () { numeAtins = true; };
+                // Numele pus de aplicație îl scrie serverul din nou, după pragul și mașina alese — cât omul nu l-a scris el.
+                // „Din ultimele 30 de zile" se socotește din nou (pe server, cu regula motorului) pentru pragul și mașina alese.
+                var tDov = null;
+                var reface = function () {
+                  if (!numeAtins) { f.nume.value = ''; f.nume.placeholder = 'Îl scriu eu, după prag și mașină'; }
+                  if (!dv) return;
+                  dv.classList.add('vechi'); clearTimeout(tDov);
+                  tDov = setTimeout(async function () {
+                    var r = await cere('POST', '/api/insight/actiuni/' + encodeURIComponent(p.id) + '/dovezi', { prag: f.prag.value, imei: f.imei.value });
+                    if (r.s === 200 && Array.isArray(r.j.dovezi)) { desenDovezi(r.j.dovezi); dv.classList.remove('vechi'); }
+                  }, 450);
+                };
+                f.prag.oninput = reface; f.imei.onchange = reface;
+              } else {
+                (p.randuri || []).forEach(function (r) {
+                  if (r.l !== 'Despre') { rand(r.l, r.b ? el('b', null, r.v || '') : document.createTextNode(r.v || '')); return; }
+                  f.nota = caseta('lung', 'text', k.nota, 'Despre ce ați vorbit'); f.nota.maxLength = k.max || 300; f.nota.placeholder = 'nu e obligatoriu'; rand('Despre', f.nota);
+                });
+              }
+              ed = function () { var o = {}; Object.keys(f).forEach(function (x) { o[x] = f[x].value; }); return o; };
+              bEd.replaceWith(bLasa); (f.prag || f.nota || bLasa).focus();
+            };
+            bLasa.onclick = function () { ed = null; desenRanduri(); if (dv) { desenDovezi(p.dovezi); dv.classList.remove('vechi'); } bLasa.replaceWith(bEd); };
+            bs.appendChild(bEd);
+          }
           // „Schimbă": alt șofer liber care poate conduce mașina (lista o dă serverul, pe cartonaș).
           if (p.poate && (p.alternative || []).length) {
             var bSc = butonProp('Schimbă', 'fa-pen');
@@ -13189,7 +13248,9 @@ const pozitii = await r.json();</code></pre>
             bAn.onclick = async function () { bAn.disabled = true; var r = await anuleazaActiune(p.id); if (r.s === 200) gata(r.j.propunere, null); else bAn.disabled = false; };
             bg.appendChild(bAn);
           }
-          var bF = butonProp('Vezi fișa mașinii', 'fa-truck'); bF.onclick = function () { window.insightProblemaButon({ fel: 'fisa', imei: p.imei }); };
+          // La șofer, fișa mașinii; la alertă, lista de alerte; la discuție, RA Drive (butonul îl dă serverul, în `gata`).
+          var bF = p.gata.buton ? butonProp(p.gata.buton.text || '', p.gata.buton.fel === 'ramura' ? 'fa-shield-halved' : 'fa-bell') : butonProp('Vezi fișa mașinii', 'fa-truck');
+          bF.onclick = function () { window.insightProblemaButon(p.gata.buton || { fel: 'fisa', imei: p.imei }); };
           bg.appendChild(bF); gt.appendChild(bg);
           if (p.gata.jurnal) gt.appendChild(el('div', 'chat-prop-sub', p.gata.jurnal));
           w.appendChild(gt);

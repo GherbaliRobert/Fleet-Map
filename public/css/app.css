@@ -4678,6 +4678,14 @@ body.dark .chat-prop-dov .ok i { color: #4ade80; } body.dark .chat-prop-dov .w i
 .chat-pas.chat-prop-da i { color: #06210F; }
 .chat-pas.chat-prop-da:disabled { opacity: .55; cursor: not-allowed; }
 .chat-prop-sel { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13px; max-width: 100%; }
+/* „Schimbă" pe alertă / discuție (partea 2, 23.10): casetele stau în rândurile cartonașului; culorile din temă, pe ambele teme. */
+.chat-prop-in { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13px; max-width: 100%; box-sizing: border-box; }
+.chat-prop-in.mic { width: 86px; }
+.chat-prop-in.lung { width: 100%; max-width: 360px; }
+.chat-prop-in::placeholder { color: var(--text-secondary); }
+.chat-prop-cu { display: inline-flex; align-items: center; gap: 4px; color: var(--text-primary); }
+.chat-actiuni { margin-top: 8px; }
+.chat-prop-dov.vechi { opacity: .55; }   /* cât se socotește din nou „din ultimele 30 de zile" pentru pragul ales */
 .chat-prop-sub { font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 8px; }
 .chat-gata { border: 1px solid var(--border); border-left: 3px solid #15803d; border-radius: 12px; background: var(--bg-panel); padding: 11px 13px; display: grid; gap: 9px; }
 body.dark .chat-gata { border-left-color: #4ade80; }

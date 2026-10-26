@@ -4872,7 +4872,8 @@ async function _raInsight(req, res, opts) {
     //    (`gata` = rapoartele, cifrele lor pentru model, problemele găsite).
     let gata = null;
     if (!o.proba) {
-      // Pasul 2 (22.10): „Pune-l pe Mihai Ionescu pe B 77 TIR", „Propune un șofer pentru …" — cartonașul cu „Da", pe reguli.
+      // Pasul 2: cartonașul cu „Da", pe reguli — întâi alerta și „Am vorbit cu el" (23.10), apoi șoferii (22.10).
+      if (await _insightPropuneri(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       if (await _insightSoferi(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       // Propunerea neapăsată și „Îți pregătesc și schimbarea asta?" nu mai sunt „în discuție" după o altă întrebare.
       if (ctx.propunere || ctx.urmatoare) { ctx = Object.assign({}, ctx); delete ctx.propunere; delete ctx.urmatoare; }
@@ -6572,17 +6573,21 @@ app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule
       text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula ' + soferiMasini.ANULARE_MIN + ' minute.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Da" pe cartonașul din discuție. Cu `la` = alt șofer ales din „Schimbă" (doar dintre cei propuși pe cartonaș).
-app.post('/api/insight/actiuni/:id/aplica', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+// „Da" pe cartonașul din discuție. Drepturile = ale ecranului de care ține propunerea (`_poateActiunea`): șoferul — Vehicule › fișa
+// mașinii; alerta — Alerte (23.10); discuția — RA Drive (23.10). Cu `la` = alt șofer ales din „Schimbă" (doar dintre cei propuși pe
+// cartonaș); la alertă și discuție, `campuri` (pragul, mașina, numele / nota), verificate pe cartonaș.
+app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const userId = req.auth.userId;
     const a = await db.actiuneInsight(req.params.id, userId);
     if (!a) return res.status(404).json({ error: 'Propunerea nu există.' });
+    if (!_poateActiunea(req, a.fel)) return res.status(403).json({ error: 'Acces interzis' });
     if (a.stare !== 'propusa') return res.status(409).json({ error: 'Propunerea a fost deja apăsată.', propunere: _cardPublic(a) });
     if (Date.now() - a.creat_la > soferiMasini.PROPUNERE_ORE * 3600000) {
       const e = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'expirata' });
       return res.status(409).json({ error: 'Propunerea e veche: cere-o din nou, ca să pornesc de la fișele de azi.', propunere: _cardPublic(e || a) });
     }
+    if (a.fel === 'alerta' || a.fel === 'discutie') return await _aplicaPropunere2(req, res, a);
     let card = (a.date && a.date.card) || {}, schimbari = (a.date && a.date.schimbari) || [];
     const laCerut = req.body && req.body.la != null && req.body.la !== '' ? Number(req.body.la) : null;
     if (laCerut != null && laCerut !== Number(card.la)) {
@@ -6637,14 +6642,17 @@ app.post('/api/insight/actiuni/:id/refuza', requireAuth, withScope, requireFeatu
     res.json({ ok: true, propunere: _cardPublic(e) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Anulează" (10 minute): schimbările se întorc în ordine inversă, fiecare doar dacă mașina are încă șoferul pus prin „Da".
-app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+// „Anulează" (10 minute): schimbările se întorc în ordine inversă, fiecare doar dacă mașina are încă șoferul pus prin „Da"; alerta
+// se scoate din Alerte, discuția din RA Drive. Drepturile, ca la „Da".
+app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const userId = req.auth.userId;
     const a = await db.actiuneInsight(req.params.id, userId);
     if (!a) return res.status(404).json({ error: 'Schimbarea nu există.' });
+    if (!_poateActiunea(req, a.fel)) return res.status(403).json({ error: 'Acces interzis' });
     if (a.stare !== 'aplicata') return res.status(409).json({ error: a.stare === 'anulata' ? 'E deja anulată.' : 'N-a fost aplicată, deci n-am ce anula.', propunere: _cardPublic(a) });
-    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: schimbi din fișa mașinii, ca de obicei.', propunere: _cardPublic(a) });
+    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: ' + propuneri.dupaAnulare(a.fel), propunere: _cardPublic(a) });
+    if (a.fel === 'alerta' || a.fel === 'discutie') return await _anuleazaPropunere2(req, res, a);
     const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
     if (!prins) return res.status(409).json({ error: 'Se anulează deja.' });
     const d = await _soferiDate(req);
@@ -6661,6 +6669,206 @@ app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, requireEdit('vehicule
     res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins), sarite: rez.sarite });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ─── Pasul 2, partea 2 (23.10; Alin: „da"): ALERTA DE VITEZĂ și „AM VORBIT CU EL" — „RA Insight face, cu Da-ul tău" ─────────
+// Regulile și textele stau în propuneri.js; aici se adună datele (mașinile omului, pozițiile ultimelor 30 de zile, rândul șoferului
+// din RA Drive) și se aplică pe CALEA ECRANULUI: alerta ca din Alerte › Adaugă regulă (db.createAlert, pe firma omului), discuția ca
+// din RA Drive › „Am vorbit cu el" (db.adaugaDiscutieSafeDrive). Aceeași tabelă (insight_actiuni) și aceleași „Da" / „Nu" /
+// „Anulează" (10 minute) ca la șoferi. De la Basic; nimic nu se numără (fără model).
+const propuneri = require('./propuneri');
+// Cine poate apăsa „Da" pe fiecare fel = cine poate face același lucru din ecranul lui (Vehicule, Alerte, RA Drive).
+function _poateActiunea(req, fel) {
+  if (fel === 'alerta') return !!(permReq(req, 'manageFleet') && poateEditare(req, 'alerte') && poateEcran(req, 'alerte'));
+  if (fel === 'discutie') return !!permReq(req, 'manageFleet');
+  return _poateSchimbaSoferi(req);
+}
+// „Vede toată flota" (dreptul viewAll, netăiat din rol) — doar el pune o alertă pe toată flota din discuție.
+function _veziToataFlota(req) { return req.allowedImeis == null || !!permReq(req, 'viewAll'); }
+async function _optiuniCardFel(req, fel) {
+  const poate = _poateActiunea(req, fel);
+  return { cine: await _cineNume(req), poate: poate, aproba: poate ? null : await _cineAproba(req.companyId) };
+}
+// „Din ultimele 30 de zile": doar pozițiile care trec de pragul EFECTIV al motorului (pragul + marja), apoi regula de răcire a
+// motorului (propuneri.simuleazaViteza). Cea mai mare viteză, cu locul ei dacă îl găsim repede. Fără citire → null, nu o cifră.
+async function _vitezaUltimeleZile(imeis, prag) {
+  const marja = { baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN };
+  const acum = Date.now(), de = new Date(acum - propuneri.ZILE_ISTORIC * 86400000).toISOString(), pana = new Date(acum).toISOString();
+  try {
+    const rows = await db.pozitiiPesteViteza(imeis, de, pana, propuneri.pragEfectiv(prag, marja), 50000);
+    const sim = propuneri.simuleazaViteza(rows.map(function (r) { return { imei: r.imei, t: new Date(r.timestamp).getTime(), v: Number(r.speed) }; }), prag, marja);
+    const mx = await db.vitezaMaximaPerioada(imeis, de, pana, propuneri.PRAG_MAX);
+    let max = null;
+    if (mx && Number(mx.speed) > 0) {
+      max = { v: Number(mx.speed), t: new Date(mx.timestamp).getTime(), imei: mx.imei };
+      try {
+        if (geocode && geocode.warm) await geocode.warm([{ lat: mx.latitude, lng: mx.longitude }], { maxUnique: 1, budgetMs: 1500 });
+        const ad = geocode && geocode.peek ? geocode.peek(mx.latitude, mx.longitude) : null;
+        if (ad) max.unde = String(ad).slice(0, 70);
+      } catch (e) { /* fără loc */ }
+    }
+    return { sim: sim, max: max, marja: marja };
+  } catch (e) { return { sim: null, max: null, marja: marja }; }
+}
+// Cererea din discuție: „Anunță-mă când Loganul trece de 130 km/h", „Notează că am vorbit cu Ion despre viteză". Pe reguli, fără
+// model, nenumărată. Întoarce false când mesajul nu e de-al ei (merge mai departe: șoferii, rapoartele, întrebările).
+async function _insightPropuneri(req, res, x) {
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  const ua = propuneri.cerereAlerta(x.message, x.fisa);
+  let ud = null, soferi = null;
+  if (!ua) {
+    if (!propuneri.pareCerereDiscutie(x.message)) return false;
+    soferi = req.companyId != null ? await db.soferiPentruPotrivire(req.companyId) : [];
+    ud = propuneri.cerereDiscutie(x.message, soferi);
+    if (!ud) return false;
+  }
+  const ins = pachete.insigna('instant', { propunere: true });
+  const ctxFara = Object.assign({}, x.ctx); delete ctxFara.propunere; delete ctxFara.urmatoare;
+  async function spune(reply, extra, ctxNou) {
+    const e = Object.assign({ source: 'reguli', insigna: ins }, extra || {});
+    const sv = await x.salveaza(reply, e, ctxNou || ctxFara);
+    res.json(Object.assign({ reply: reply, sources: [], alege: [], urmari: [] }, e, { conversatieId: sv.convId, mesajId: sv.mesajId }));
+    return sv;
+  }
+  // Alt fel de alertă (zonă, combustibil, ralanti…): se pune din ecranul Alerte, unde sunt toate felurile.
+  if (ua && !ua.tip) { await spune(propuneri.textAltTip(ua.altTip), { actiuni: [{ fel: 'ecran', ecran: 'alerts', text: 'Deschide Alerte', ic: 'fa-bell' }] }); return true; }
+  if (req.isSuper || req.companyId == null) { await spune(propuneri.TEXTE.fondator); return true; }
+  const co = await db.getCompanyById(req.companyId);
+  if (!_firmaAreRamuri(co)) { await spune(propuneri.TEXTE.pachet, { pachetMesaj: propuneri.TEXTE.pachet }); return true; }
+  return ua ? _propunereAlerta(req, x, ua, spune, ctxFara, userId) : _propunereDiscutie(req, x, ud, soferi, spune, ctxFara, userId);
+}
+async function _propunereAlerta(req, x, u, spune, ctxFara, userId) {
+  const f = await _ramFlota(req);
+  if (!f.devices.length) { await spune(propuneri.TEXTE.faraMasini); return true; }
+  const peImei = {}; f.devices.forEach(function (d) { peImei[d.imei] = d; });
+  const scurt = function (d) { return d.plate || d.name || d.imei; };
+  const eti = function (d) { return insight.eticheta({ nr: d.plate || '', nume: d.name || '', imei: d.imei }); };
+  // Pe toată flota pune alerta doar cine vede toată flota (ecranul i-ar lăsa și pe ceilalți; aici, nu — ar suna pe mașini pe care nu le vede).
+  const flotaOk = _veziToataFlota(req);
+  const alegeMasini = function (lista, prag) {
+    return lista.filter(function (d) { return peImei[d.imei]; }).slice(0, 8).map(function (d) { return { text: eti(peImei[d.imei]), trimite: propuneri.cerereText(scurt(peImei[d.imei]), prag) }; })
+      .concat(flotaOk ? [{ text: 'Toată flota', trimite: propuneri.cerereText(null, prag) }] : []);
+  };
+  if (u.variante) { await spune(propuneri.TEXTE.careMasina + (flotaOk ? ' ' + propuneri.TEXTE.sauFlota : ''), { alege: alegeMasini(u.variante, u.prag) }); return true; }
+  if (u.lipsa) { await spune(propuneri.TEXTE.peCe, { alege: alegeMasini(f.devices, u.prag) }); return true; }
+  if (u.toataFlota && !flotaOk) { await spune(propuneri.TEXTE.flotaDoarCuToata, { alege: alegeMasini(f.devices, u.prag) }); return true; }
+  if (u.imei && !peImei[u.imei]) { await spune(propuneri.TEXTE.nuVad); return true; }
+  if (u.prag == null) {
+    const ce = u.imei ? scurt(peImei[u.imei]) : null;
+    await spune(propuneri.textPragLipsa(u.pragGresit), { alege: propuneri.PRAGURI_PROPUSE.map(function (p) { return { text: 'Peste ' + p + ' km/h', trimite: propuneri.cerereText(ce, p) }; }) });
+    return true;
+  }
+  const v = await _vitezaUltimeleZile(u.imei ? [u.imei] : f.devices.map(function (d) { return d.imei; }), u.prag);
+  if (v.max && peImei[v.max.imei]) v.max.eticheta = scurt(peImei[v.max.imei]);
+  // „Pe" (din „Schimbă"): mașinile omului, cea aleasă întâi, plus toată flota, dacă o vede.
+  const lista = (u.imei ? [peImei[u.imei]] : []).concat(f.devices.filter(function (d) { return d.imei !== u.imei; })).slice(0, propuneri.MASINI_IN_LISTA);
+  const optiuni = lista.map(function (d) { return { v: d.imei, t: eti(d), scurt: scurt(d) }; });
+  if (flotaOk) optiuni.push({ v: '', t: 'Toată flota', scurt: 'toată flota' });
+  const oc = await _optiuniCardFel(req, 'alerta');
+  const acum = Date.now();
+  const card = propuneri.cardAlerta(Object.assign({ prag: u.prag, imei: u.imei || null, optiuni: optiuni, sim: v.sim, max: v.max, marja: v.marja, acum: acum }, oc));
+  const id = await db.adaugaActiuneInsight({ companyId: req.companyId, userId: userId, fel: 'alerta', stare: 'propusa', date: { card: card } });
+  const pub = _cardPublic({ id: id, stare: 'propusa', creat_la: acum, date: { card: card } });
+  const sv = await spune(propuneri.TEXTE.amPregatitAlerta, { propunere: pub }, Object.assign({}, ctxFara, { propunere: id }));
+  if (sv.convId) { try { await db.legaActiuneInsight(id, userId, sv.convId); } catch (e) { /* cartonașul rămâne în mesaj */ } }
+  auditReq(req, 'ai_propunere', 'assistant', id, { fel: 'alerta', imei: u.imei || null, prag: u.prag, via: x.usa || 'insight' });
+  return true;
+}
+async function _propunereDiscutie(req, x, u, soferi, spune, ctxFara, userId) {
+  const cuDespre = function (nume) { return propuneri.discutieText(nume, u.despre); };
+  if (u.ambigui) { await spune(propuneri.TEXTE.careSofer, { alege: u.ambigui.map(function (s) { return { text: s.nume, trimite: cuDespre(s.nume) }; }) }); return true; }
+  if (u.lipsa) { await spune(propuneri.TEXTE.careSoferScrie + (soferi.length ? ' ' + propuneri.TEXTE.sauAlege : ''), { alege: soferi.slice(0, 8).map(function (s) { return { text: s.nume, trimite: cuDespre(s.nume) }; }) }); return true; }
+  const s = soferi.filter(function (z) { return Number(z.id) === Number(u.soferId); })[0];
+  if (!s) { await spune(propuneri.TEXTE.nuGasescSofer); return true; }
+  // Rândul lui din RA Drive, luna asta — aceeași funcție ca pagina; dacă luna nu e gata repede, cartonașul o spune.
+  let rd = null, pregatire = false;
+  try { const L = await _sdLuna(req, { asteptaMs: 2500 }); if (L && L.pregatire) pregatire = true; rd = ((L && L.soferi) || []).filter(function (z) { return Number(z.id) === Number(s.id); })[0] || null; } catch (e) { rd = null; }
+  const oc = await _optiuniCardFel(req, 'discutie');
+  const acum = Date.now();
+  const card = propuneri.cardDiscutie(Object.assign({ sofer: { id: s.id, nume: s.nume }, despre: u.despre, rd: rd, pregatire: pregatire, acum: acum }, oc));
+  const id = await db.adaugaActiuneInsight({ companyId: req.companyId, userId: userId, fel: 'discutie', stare: 'propusa', date: { card: card } });
+  const pub = _cardPublic({ id: id, stare: 'propusa', creat_la: acum, date: { card: card } });
+  const sv = await spune(propuneri.TEXTE.amPregatitDiscutia, { propunere: pub }, Object.assign({}, ctxFara, { propunere: id }));
+  if (sv.convId) { try { await db.legaActiuneInsight(id, userId, sv.convId); } catch (e) { /* cartonașul rămâne în mesaj */ } }
+  auditReq(req, 'ai_propunere', 'assistant', id, { fel: 'discutie', sofer: s.id, via: x.usa || 'insight' });
+  return true;
+}
+// „Schimbă" pe alertă: „din ultimele 30 de zile" socotit din nou pentru pragul și mașina alese (doar cifre, nu schimbă nimic).
+// Propunerea e a omului (404 pentru altul); pragul și mașina — doar ce e pe cartonaș.
+app.post('/api/insight/actiuni/:id/dovezi', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
+  try {
+    const a = await db.actiuneInsight(req.params.id, req.auth.userId);
+    if (!a || a.fel !== 'alerta') return res.status(404).json({ error: 'Propunerea nu există.' });
+    const c = propuneri.campuriAlerta(req.body || {}, (a.date && a.date.card) || {});
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    const f = await _ramFlota(req);
+    const peImei = {}; f.devices.forEach(function (d) { peImei[d.imei] = d; });
+    if (c.spec.imei && !peImei[c.spec.imei]) return res.status(403).json({ error: 'Acces interzis' });
+    const v = await _vitezaUltimeleZile(c.spec.imei ? [c.spec.imei] : f.devices.map(function (d) { return d.imei; }), c.prag);
+    if (v.max && peImei[v.max.imei]) v.max.eticheta = peImei[v.max.imei].plate || peImei[v.max.imei].name || v.max.imei;
+    res.json({ dovezi: propuneri.doveziViteza({ prag: c.prag, imei: c.spec.imei, sim: v.sim, max: v.max, marja: v.marja, acum: Date.now() }) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Da" pe o alertă / o discuție (chemată din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
+async function _aplicaPropunere2(req, res, a) {
+  const userId = req.auth.userId, card = (a.date && a.date.card) || {};
+  const esuat = async function (motiv, cod) {
+    const e = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'esuata', date: Object.assign({}, a.date, { sarite: [{ motiv: motiv }] }) });
+    return res.status(cod || 409).json({ error: motiv.charAt(0).toUpperCase() + motiv.slice(1) + '.', propunere: e ? _cardPublic(e) : undefined });
+  };
+  if (a.fel === 'alerta') {
+    const c = propuneri.campuriAlerta(req.body && req.body.campuri, card);
+    if (c.eroare) return res.status(400).json({ error: c.eroare });
+    const spec = c.spec;
+    if (spec.imei) {
+      if (!canAccessImei(req, spec.imei)) return res.status(403).json({ error: 'Acces interzis' });
+      const devCo = await getDeviceCompanyCached(spec.imei);
+      if (devCo == null || Number(devCo) !== Number(req.companyId)) return res.status(409).json({ error: propuneri.TEXTE.masinaPlecata });
+    } else if (!_veziToataFlota(req)) return res.status(403).json({ error: propuneri.TEXTE.flotaDoarCuToata });
+    const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+    if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+    let al;
+    try { al = await db.createAlert(spec, req.companyId); invalidateReguliCache(); }
+    catch (e) { return esuat('alerta nu s-a putut salva', 500); }
+    auditReq(req, 'create', 'alert', al.id, { type: spec.type, company_id: req.companyId, prin: 'RA Insight', actiune: a.id, text: propuneri.jurnalAlerta(spec) });
+    const g = propuneri.gataAlerta(spec, await _cineNume(req), prins.aplicat_la);
+    const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: propuneri.cardAlertaDupa(card, c), alertaId: al.id, spec: spec, gata: g }) });
+    return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
+  }
+  // „Am vorbit cu el": șoferul tot al firmei, ziua o scrie serverul (ca ruta din RA Drive).
+  const nota = propuneri.notaDiscutie(req.body && req.body.campuri, card);
+  const sofer = await db.getDriverById(parseInt(card.soferId, 10) || 0);
+  if (!sofer || Number(sofer.company_id) !== Number(req.companyId)) return res.status(409).json({ error: propuneri.TEXTE.soferPlecat });
+  const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
+  if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
+  let d;
+  try { d = await db.adaugaDiscutieSafeDrive({ companyId: sofer.company_id, driverId: sofer.id, imei: null, la: prins.aplicat_la, nota: nota, userId: userId }); }
+  catch (e) { return esuat('discuția nu s-a putut salva', 500); }
+  auditReq(req, 'create', 'safe_drive_discutie', d.id, { sofer: sofer.id, prin: 'RA Insight', actiune: a.id });
+  const g = propuneri.gataDiscutie(card, nota, await _cineNume(req), prins.aplicat_la);
+  const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: propuneri.cardDiscutieDupa(card, nota), discutieId: d.id, nota: nota, gata: g }) });
+  return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
+}
+// „Anulează" pe o alertă / o discuție (10 minute, din ruta comună): ce a pus „Da" se scoate, pe calea ecranului.
+async function _anuleazaPropunere2(req, res, a) {
+  const userId = req.auth.userId;
+  const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
+  if (!prins) return res.status(409).json({ error: 'Se anulează deja.' });
+  let txt;
+  if (a.fel === 'alerta') {
+    const id = a.date && a.date.alertaId;
+    const r = id ? (await db.pool.query('SELECT id, company_id FROM alerts WHERE id = $1', [id])).rows[0] : null;
+    const era = !!(r && Number(r.company_id) === Number(req.companyId));
+    if (era) { await db.deleteAlert(id); invalidateReguliCache(); auditReq(req, 'delete', 'alert', id, { prin: 'RA Insight', actiune: a.id, anulare: true }); }
+    txt = propuneri.anulareAlerta(a.date && a.date.spec, era);
+  } else {
+    const id = a.date && a.date.discutieId;
+    const era = id ? await db.stergeDiscutieSafeDrive(id, req.companyId) : false;
+    if (era) auditReq(req, 'delete', 'safe_drive_discutie', id, { prin: 'RA Insight', actiune: a.id, anulare: true });
+    txt = propuneri.anulareDiscutie((a.date && a.date.card) || {}, era);
+  }
+  const fin = await db.treceActiuneInsight(a.id, userId, 'anulata', { stare: 'anulata', date: Object.assign({}, a.date, { anulareText: txt }) });
+  res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins) });
+}
 
 // Ce au găsit agenții, pe mașinile omului: rândurile le scrie azi_la_tine.js; aici se adună datele, cu REGULILE agenților
 // (agents.esteFaraSemnal / esteLiber, pragurile firmei) și lista de termene a ramurii (_ramMentenanta, preaviz.js). Fără

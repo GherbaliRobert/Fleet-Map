@@ -420,7 +420,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('„cât ne-a costat condusul" → unealta safe_drive; modelul primește costul pe feluri, mașinile și spusa „estimate"', qs.status === 200 && /cost_lei/.test(rezS) && /combustibil_accelerari/.test(rezS) && /ESTIMATE/.test(rezS) && !/latitude|"lat"|"lng"/.test(rezS), rezS.slice(0, 240));
   T('…cu aceeași lună și aceleași mașini ca pagina RA Drive', pagS.status === 200 && rezS.indexOf(pagS.j.eticheta) >= 0 && (pagS.j.masini || []).every((m) => rezS.indexOf(m.eticheta) >= 0), pagS.status + ' ' + (pagS.j.eticheta || pagS.text.slice(0, 120)));
   T('…iar „Am înțeles" spune RA Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'RA Drive') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
-  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*safe_drive — RA Drive \(condus & costuri/.test(String(cs.system[0].text)));
+  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii, cartonașul „Am vorbit cu el" — 23.10)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 4 && /UNELTE:[\s\S]*safe_drive — RA Drive \(condus & costuri/.test(String(cs.system[0].text)));
   // Combustibil (pasul 4): ACEEAȘI funcție ca pagina (_ramCombustibil), fără coordonate. Întâi un drum scurt pentru
   // B 154 UIP (8 km, în ultimele minute); luna se ia din ceasul ADEVĂRAT, pe ora României — luna drumului.
   const t0 = Date.now() - 9 * 60000;

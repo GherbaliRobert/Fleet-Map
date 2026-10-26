@@ -24,7 +24,8 @@ const JS = fs.readdirSync(path.join(__dirname, 'public', 'js')).filter((f) => f.
 // (întrebările gata făcute din AI Raport, numele rapoartelor din catalog).
 // Din 22.10 (pasul 2) și textele cartonașului de șofer („Da, trece-l") și rândurile din „Azi la tine" („Propunere"), scrise de server;
 // tot din 22.10, textele cererilor către noi („Echipa RA Track se ocupă · cererea nr. …"), din cereri_echipa.js.
-const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
+// Din 23.10 (pasul 2, partea 2) și textele cartonașelor de alertă și de discuție („Da, pune alerta", „Da, notează"), din propuneri.js.
+const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js', 'propuneri.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
   .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 const pe = (t) => ECRAN.indexOf(t) >= 0;
 const SECT = G.publice();
@@ -40,6 +41,8 @@ const EXEMPLE = {
   'câți km azi': 'exemplu de întrebare scrisă de om (răspunsul rapid)',
   'mai are N zile': 'textul are cifra pusă de aplicație (\'mai are \' + zile)',
   'Pune-l pe Mihai Ionescu pe B 77 TIR': 'exemplu de cerere scrisă de om (pasul 2, șoferii pe mașini)',
+  'Anunță-mă când Loganul trece de 130 km/h': 'exemplu de cerere scrisă de om (pasul 2, partea 2: alerta)',
+  'Notează că am vorbit cu Ion Popescu despre viteză': 'exemplu de cerere scrisă de om (pasul 2, partea 2: „Am vorbit cu el")',
 };
 const citate = [];
 SECT.forEach((s) => {
@@ -93,6 +96,8 @@ const CAZURI = [
   ['unde văd cererile mele către echipa RA Track?', 'suport'],
   ['ce înseamnă potrivirea șoferilor pe mașini?', 'soferi_masini'],
   ['unde văd ce mașini au permis nepotrivit?', 'soferi_masini'],
+  ['cum notez că am vorbit cu un șofer?', 'alerta_discutie'],
+  ['cum pun o alertă din discuție?', 'alerta_discutie'],
 ];
 CAZURI.forEach(([q, k]) => {
   const g = G.cauta(q, 3);

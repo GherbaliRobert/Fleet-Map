@@ -181,6 +181,20 @@ const SECTIUNI = [
     cuvinte: ['soferi pe masini', 'potrivirea soferilor', 'potrivire', 'trece soferul', 'pune-l pe', 'pune soferul', 'alt sofer', 'permis nepotrivit', 'permis expirat', 'fara sofer', 'propunere', 'anuleaza', 'da-ul']
   },
   {
+    // Pasul 2, partea 2 (23.10): o alertă de viteză și „Am vorbit cu el", tot cu propunere și „Da".
+    cheie: 'alerta_discutie', titlu: 'O alertă de viteză și „Am vorbit cu el", cu RA Insight', unde: 'Meniu → RA Insight',
+    pasi: [
+      'Scrie în discuție, de pildă, „Anunță-mă când Loganul trece de 130 km/h" (pe o mașină sau pe toată flota).',
+      'RA Insight arată alerta: ce urmărește, pragul, mașina, numele și de câte ori ar fi sunat în ultimele 30 de zile.',
+      'Apasă „Da, pune alerta", „Schimbă" ca să potrivești pragul, mașina sau numele (și „Lasă cum era"), sau „Nu".',
+      'După ce vorbești cu un șofer, scrie „Notează că am vorbit cu Ion Popescu despre viteză" și apasă „Da, notează": discuția intră în RA Drive.',
+      'După „Da", „Anulează" ține 10 minute; apoi alerta se oprește din Management → Alerte, iar discuția se scoate din RA Drive.'
+    ],
+    detalii: 'Alerta se pune ca din Management → Alerte → „Adaugă regulă" și ajunge la cei care primesc azi alertele firmei; ca toate alertele de viteză, sună cu 10 km/h peste prag. Din discuție se pun doar alerte de viteză; celelalte feluri (zone, combustibil, ralanti) se pun din Alerte. ' +
+      'Cine nu poate schimba alertele vede propunerea, dar „Da" e oprit; la discuție, la fel, pentru cine nu poate modifica flota. Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic.',
+    cuvinte: ['anunta-ma', 'alerta din discutie', 'alerta de viteza cu ra insight', 'pune alerta', 'am vorbit cu', 'noteaza discutia', 'am discutat cu', 'noteaza ca am vorbit']
+  },
+  {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',
     pasi: [
       'Alege rolul din stânga și dă-i numele de la voi din firmă.',
