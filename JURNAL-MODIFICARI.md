@@ -355,6 +355,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   mașina din `optiuni`, numele; discuția: `nota`) trimise ca `{ campuri }` la „Da"; la alertă, cât se schimbă pragul sau mașina,
   `POST /api/insight/actiuni/:id/dovezi` dă din nou „Din ultimele 30 de zile"; după „Da", butonul din `gata.buton` (`ecran: 'alerts'`
   = Alerte, `ramura: 'safedrive'` = RA Drive); sub un răspuns, butoanele din `actiuni` (de pildă „Deschide Alerte"). Textele le dă serverul.
+  (14) **adăugat pe 26.10 — pasul 2, partea 3 (revizia, actul, raportul programat):** același cartonaș, cu `fel` `revizie` / `act` /
+  `raport`; mai multe într-un mesaj vin ca `propuneri` (o listă, aprobate pe rând); „Schimbă" din `campuri` (revizia: lucrarea, km, data;
+  actul: felul, data; raportul: mașina, perioada, cât de des, ora, cui, formatul); după „Da", `gata.buton` (`ecran: 'maintenance'` =
+  Mentenanță, `ecran: 'documente'` = Documente, `fel: 'programate'` = Rapoarte › Programări), cu iconița din `gata.buton.ic`. Tot de atunci,
+  ecranul Alerte: `suna_peste` pe fiecare regulă de viteză („sună peste 140 km/h") și fraza de sub prag din `GET /api/alerts/viteza?prag=`.
 - [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
   clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
   `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
@@ -368,6 +373,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   hârtie, iar e-Factura o refuză. Reparația: la emitent neplătitor, cota 0 pe rânduri, oricât ar fi scris la „Cotă TVA".
   Tot de atunci, **de hotărât:** (a) mențiunea „regim special de scutire, art. 310" și pe hârtia facturii (e-Factura o are);
   (b) un client persoană fizică fără CNP e refuzat la e-Factura (fișa firmei n-are „persoană fizică") — rămâne așa?
+- [x] **HOTĂRÂT (26.10): din discuție se pun doar alertele de VITEZĂ** (Alin: „4. da"). Celelalte feluri (zone, combustibil, ralanti…)
+  se pun din Management › Alerte; RA Insight o spune și dă butonul „Deschide Alerte".
+- [x] **HOTĂRÂT (26.10): internetul în RA Insight rămâne în capitolul AI** (Alin: „5. da"), ca etapă a lui; nimic construit încă.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -423,21 +431,103 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **A** | Cele 5 găsite pe drum la pasul 4 + AI Raport înțelege întrebările (fără „Gratuit / fond") | ✅ 07.10 |
 | **B** | RA Insight arată ca un chat modern, cu butoane de chat modern (și AI Raport, și bula) | ✅ 08.10 |
 | **B+** | Verificarea cifrelor din răspunsuri, perioada exactă cerută (1–7 = 1–7), cifrele greu de crezut „de verificat" (Alin, 08.10: „da", înainte de C) | ✅ 08.10 |
-| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | 🔶 în construcție (14.10, „spor"): ✅ 1 regula pe server · ✅ 2 chatul · ✅ 3 „Pachet și conturi" · ✅ 4 tabloul nostru · ⬜ 5 oferta, contractul, factura · ⬜ 6 trecerea din aplicație · ⬜ 7 pagina pachetelor · ⬜ 8 telefonul |
-| **Cap. 2** | Traiectoria RA Insight, recroită după pachete (bula → secțiunea; AI Raport → comenzi care fac rapoarte în Istoric; acțiuni după „Da"; nume nou pentru Safe Drive) | ⬜ după capitolul 1 |
-| **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ⬜ propunere + machetă |
-| **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ⬜ |
-| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da") | ⬜ |
-| **E** | Telefonul: RA Insight (meniu, conversații, ramuri) + AI Raport, pentru APK-ul lui Robert | ⬜ |
+| **Cap. 1** | **Pachetele RA Insight** (Alin, 09.10: „nu mai facem nimic până nu terminăm asta"). Hotărât 14.10: Start 0 lei (pe reguli, 50 de întrebări, 1 cont) · Basic 10 lei (2 conturi, 200) · Pro 20 lei (3–5 conturi, 600) · Business 30 lei (conturi nelimitate, 1.000); se reîncarcă pe 1; „Pachet", nu „Plan"; trecerea în sus din aplicație, de admin; clienții semnați își păstrează contractul. Simulările și plasa de siguranță: pagina „Calculul pachetelor RA Insight" | ✅ pașii 1–7 (14–15.10: regula, chatul, „Pachet și conturi", tabloul nostru, oferta–contractul–factura, trecerea din aplicație, pagina pachetelor) · ⬜ 8 telefonul (Robert, APK) |
+| **Cap. 2** | Traiectoria RA Insight, recroită după pachete | ✅ pasul 0, proba modelelor (21–22.10: rămâne Haiku 5.5) · ✅ pasul 1, un singur RA Insight (15.10; „mai simplu" 15.10; discuția refăcută 19.10; reparațiile probei 22.10) · ✅ pasul 2, „RA Insight face, cu Da-ul tău": partea 1 șoferii pe mașini (22.10), partea 2 alerta de viteză și „Am vorbit cu el" (26.10), partea 3 revizia, actul, raportul programat (26.10) · ✅ „Anunță echipa RA Track" (23.10) · ✅ garanția B, contorul corecturilor (22.10) |
+| **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ✅ = pasul 2, partea 1 (22.10) |
+| **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ✅ „Rezumă" cere cont (14.10) · „RA Insight · control" (19.10) |
+| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ⬜ machetă întâi |
+| **D++** | Asistentul AI al fondatorilor (restanți, facturi, cel mai profitabil client) — macheta din 15.10 | ⬜ după RA Insight (Alin, 15.10) |
+| **E** | Telefonul: RA Insight (meniu, conversații, ramuri, cartonașele cu „Da"), pentru APK-ul lui Robert | ⬜ Robert (lista lui la „De amintit") |
 | — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
-cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol.
+cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
 
 ## 2026-10-26
+
+### AMÂNDOI · Pasul 2, partea 3: revizia, actul și raportul programat, cu „Da"-ul tău — `b8171bd`
+
+Alin (26.10): „6. după ce rezolvi punctele de la 1 la 5". După macheta M6 din 21.10: RA Insight pregătește cartonașul, omul apasă
+„Da", aplicația face exact ce ar face butonul din ecranul ei.
+- **Revizia:** scrii „Programează revizia la Caddy". Cartonașul arată lucrarea, termenul („la 181.230 km sau pe 26.10.2028, ce vine
+  întâi" — din intervalul lucrării pentru felul mașinii și kilometrajul de acum), cât are acum, cam când ajunge acolo (din kilometrii
+  pe lună) și „Îți amintește cu 14 zile sau 500 km înainte, ca la toate reviziile". „Da, programează" o pune în Mentenanță, ca din
+  „Adaugă"; „Schimbă" potrivește lucrarea, kilometrii și data. O dată din trecut o spune, nu o ia.
+- **Actul:** scrii „Am făcut ITP la Caddy, expiră pe 26.10.2027". Cartonașul: „Trec ITP-ul la B 268 ROY", iar cel de acum trece în
+  istoricul mașinii, ca la Documente › Adaugă. „Anulează" (10 minute) îl face iar valabil pe cel vechi.
+- **Raportul programat:** scrii „Trimite-mi în fiecare luni raportul de consum". Cartonașul: raportul, pe ce mașini, cât de des, la ce
+  oră, cui (adresa ta, dacă nu scrii alta), primul („luni, 2.11.2026"). „Da" îl pune în Rapoarte › Programări, ca din ecran.
+- **Mai multe deodată:** „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum" → două cartonașe, aprobate pe rând.
+- **Drepturile:** ca pe ecranele lor — revizia o pune cine poate schimba Mentenanța, actul cine poate schimba Documentele, raportul cine
+  are rapoartele programate; ceilalți văd propunerea cu „Da" oprit și cine o poate aproba. De la pachetul Basic; nu se numără și nu
+  ajunge la model.
+- **Ce am schimbat:** `programari.js` (nou: înțelegerea cererii, cartonașele, textele), `server.js` (`_insightProgramari`, primul în RA
+  Insight; „Da" și „Anulează" pe calea ecranelor), `db.js` (actele înlocuite se pun înapoi la „Anulează"), `maint_types.js` (felul
+  mașinii, după aceeași regulă ca pe hartă), pagina (mai multe cartonașe deodată, „Schimbă" pe fiecare fel, butonul de după „Da"),
+  `insight_ghid.js` (capitolul nou). Probă nouă: `verify_programari.js` (56, în `npm test`, pe server pornit, zero cereri către model).
+- **Ce vede fondatorul:** nimic nou (contul de fondator n-are o flotă; primește explicația).
+- **Ce vede clientul:** cartonașele noi în RA Insight; lucrarea apare în Mentenanță, actul în Documente, raportul în Rapoarte ›
+  Programări. Telefonul — la APK-ul următor (Robert).
+
+### AMÂNDOI · Alerte: ecranul spune că alertele de viteză sună cu 10 km/h peste prag — `b8171bd`
+
+Alin (26.10): „1. da". Pe rândul fiecărei alerte de viteză scrie acum „sună peste 140 km/h", iar în fereastra regulii, sub prag: „Ca
+toate alertele de viteză din aplicație, sună cu 10 km/h peste prag: când trece de 140 km/h. Cât timp mașina merge peste, sună cel
+mult o dată la 5 minute." Fraza se schimbă pe loc când schimbi pragul; sub 50 km/h spune că pragul cel mai mic e 50.
+- **Ce am schimbat:** `server.js` (`GET /api/alerts/viteza`, `suna_peste` pe fiecare regulă de viteză — cifrele le dă motorul alertelor),
+  `propuneri.js` (aceeași frază ca pe cartonașul din RA Insight), pagina.
+- **Ce vede fondatorul / clientul:** același lucru, în Management › Alerte.
+
+### CLIENT · „Oprire motor" sună; „Pornire motor" o dată pe pornire, nu la 5 minute — `b8171bd`
+
+Alin (26.10): „2. da". Până azi „Oprire motor" nu suna niciodată (aplicația compara poziția nouă cu ea însăși), iar „Pornire motor"
+suna la fiecare 5 minute cât mergea mașina — cam 96 de anunțuri într-o zi de 8 ore de mers.
+- **Acum:** sună o singură dată, când contactul chiar se schimbă (oprit → pornit, pornit → oprit), citind și pozițiile trimise în
+  același pachet, în ordinea lor.
+- **Ce am schimbat:** `server.js` (`_schimbariContact`). Probă nouă: `verify_alerte_motor.js` (30, pe server pornit, cu un aparat
+  simulat care trimite pachete adevărate).
+- **Ce vede clientul:** anunțurile de pornire și oprire a motorului, corecte.
+
+### AMÂNDOI · Aplicația pe toate mărimile de ecran: telefon, tabletă, calculator — `b8171bd`
+
+Alin (26.10): „3. da (aplicația trebuie să fie ok pe toate tipurile de ecrane)". Am măsurat în browser 42 de ecrane — ale
+administratorului firmei și ale fondatorului — pe 12 mărimi, de la 360 la 1920 px: ce iese din ecran, ce buton e acoperit de altceva,
+ce e tăiat la marginea unei cutii. Plus pozele, ecran cu ecran.
+- **Fișa mașinii pe tabletă** (820–834 px) ieșea 38–52 px din ecran și harta dispărea: cât stă fișa deschisă, meniul din stânga se
+  strânge singur (☰ îl deschide peste hartă, ca pe telefon), iar bula RA Insight se ascunde.
+- **Bara de sus pe tabletă:** căutarea acoperea „Anunță echipa RA Track" și butonul de temă — acum stă în rândul ei.
+- **Bara de sus pe telefon:** pe un telefon de 360 px iconițele din dreapta nu încăpeau, iar telefonul micșora TOATĂ aplicația ca s-o
+  încapă (textul ieșea mai mic pe orice ecran); la fondator, cu comutatorul mov, se întâmpla și la 390 px, iar clopoțelul și „Ieșire"
+  erau tăiate. Acum iconițele stau mai strâns (tot de 36 px, cât să le atingi ușor), iar la fondator, pe telefon, iconița cu căști
+  pleacă — fondatorul nu trimite cereri echipei.
+- **Bula RA Insight pe telefon:** stătea peste creionul ultimului rând din liste; acum e loc sub ultimul rând, cât să urce deasupra ei.
+- **„Anunță echipa RA Track" pe telefon:** fereastra avea 640 px și pe un ecran de 360 — acum încape.
+- **Setări → Afișaj pe tabletă:** la „Tema aplicației" textul stătea câte un cuvânt pe rând, iar butonul „Închisă" peste titlu — acum
+  butoanele trec dedesubt când nu e loc.
+- **Vehicule și Șoferi pe telefon:** așezarea pentru telefon era călcată de cea de calculator (capul de tabel se vedea, creionul și
+  coșul stăteau peste eticheta „Profesionist") — acum cardul pliat merge. Pe tabletă numele șoferilor se tăiau la trei litere („Ana-…")
+  — acum trec pe două rânduri, iar lista e pe carduri până la 1024 px (vehiculele până la 900 px).
+- **Pagina fondatorilor, Tahograf și e-Transport:** pe tabletă și pe telefon „Deschide firma" și „Afișează mai mult" erau tăiate — acum
+  trec pe rândul al doilea.
+- **Ce am schimbat:** `app.css`, `map-tools.css`, pagina. Probă nouă: `verify_ecrane.js` (păzește regulile care au reparat ce s-a
+  măsurat; poarta de pe GitHub n-are browser).
+- **Ce vede fondatorul:** pe telefon, bara de sus întreagă (fără căști) și paginile la mărimea lor; Tahograf și e-Transport întregi.
+- **Ce vede clientul:** pe un telefon de 360 px aplicația la mărimea ei, nu micșorată; fișa mașinii, bara de sus, Setări, Vehicule,
+  Șoferi și fereastra „Anunță echipa" întregi pe orice ecran.
+- **Lăsat dinadins:** pe Traseu, pe telefon, foaia de jos stă peste butoanele hărții cât e deschisă — e felul ei, iar harta rămâne cum e.
+
+### Găsite pe drum azi, întrebate (nu reparate)
+1. Alertele „de stare" (cod de eroare, temperatura motorului, suprasarcină, priza de putere, plăcuțele de frână, revizia) sună la
+   fiecare 5 minute cât ține starea: plăcuțele sub 20% dau cam 96 de anunțuri într-o zi de 8 ore de mers.
+2. Rapoartele programate socotesc „ziua de ieri" și „luna trecută" pe ziua serverului, nu pe a României: acum, iarna, „ieri" merge de
+   la 02:00 la 02:00 (vara de la 03:00), iar un raport programat după miezul nopții, înainte de 02:00 (vara 03:00), ar lua ziua de
+   alaltăieri; „luna trecută" începe cu 2–3 ore după miezul nopții.
+3. Pastila pragului din Alerte („130 km/h") are pe tema deschisă contrastul 3,73 (regula casei cere cel puțin 4,5).
+4. La „Modifică" pe o alertă pusă pe o singură mașină, câmpul „Vehicul" arată „Toate vehiculele"; regula rămâne totuși pe mașina ei
+   la salvare (verificat în browser) — doar ecranul spune altceva.
 
 ### AMÂNDOI · Pasul 2, partea 2: o alertă de viteză și „Am vorbit cu el", cu „Da"-ul tău
 

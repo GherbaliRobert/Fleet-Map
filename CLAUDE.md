@@ -849,8 +849,8 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
   2, „RA Insight face, cu Da-ul tău"** (atribuie șoferul, „Am vorbit cu el", alertă, revizie, raport programat + potrivirea șoferilor),
   aprobat ca ordine pe 15.10; macheta aprobată pe 21–22.10; **partea 1 (șoferii pe mașini) construită pe 22.10** — vezi „Pasul 2,
-  partea 1", mai jos; **partea 2 (alerta de viteză, „Am vorbit cu el") construită pe 26.10** — vezi „Pasul 2, partea 2". Partea 3
-  (revizia, actul, raportul programat) — neîncepută.
+  partea 1", mai jos; **partea 2 (alerta de viteză, „Am vorbit cu el") și partea 3 (revizia, actul, raportul programat) construite pe
+  26.10** — vezi „Pasul 2, partea 2" și „Pasul 2, partea 3".
 - **Proba modelelor din 21.10 (Robert, pe ratrack.ro) → Haiku 5.5 rămâne (Alin, 22.10: „DA"; 0,48 bani pe întrebare, Sonnet 5.5 6,65).**
   Reparațiile ei (cele 3 greșeli ale lui Haiku veneau din aplicație) — NU le strica la loc: `insight.celeMaiMari` (cele mai mari 5
   valori pe coloană, din TOATE rândurile, în `_raportPentruModel` → `cele_mai_mari`); `RAPOARTE_FARA_MODEL = ['analytic']` (lista de
@@ -866,7 +866,8 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
 ### Pasul 2, partea 1 (22.10): ȘOFERII PE MAȘINI — „RA Insight face, cu Da-ul tău" (Alin: „da" la flux; „Da"-ul nenumărat; de la Basic)
 Construit după macheta din 21.10 (PDF-ul „Proba modelelor, garanția și machetele", capitolul 3: M1, M2, M4, M5). RA Insight
 PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecranului. Următoarele părți (aprobate ca ordine): (2) alerta și
-„Am vorbit cu el"; (3) revizia, actul, raportul programat. Fiecare cu probele ei, livrată separat — NU le construi fără să o cerem.
+„Am vorbit cu el"; (3) revizia, actul, raportul programat — amândouă construite pe 26.10 (vezi mai jos). Altă propunere nouă — doar cerută.
+**Ordinea în `_raInsight`** (fiecare O DATĂ): `_insightProgramari` → `_insightPropuneri` → `_insightSoferi` → `_insightComanda` → rest.
 - **Regulile și textele stau în `soferi_masini.js`** (curat): `categoriaCeruta` (din „Categorie": Auto / Dubă → B, Camion → C, TIR /
   Autotractor → CE, Autobuz → D, Motocicletă → A1; masa maximă din „Config Camion" peste 3.500 kg → C1, peste 7.500 → C; autobuzul cu
   cel mult 16 locuri → D1; remorcile / grupul electrogen n-au șofer; utilajele și tractorul n-au o categorie anume), `ACOPERA` / `acopera`
@@ -881,7 +882,7 @@ PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecra
   spune) — niciodată pe două mașini. „Șoferi liberi" = netrecuți pe NICIO mașină din TOATĂ firma (`db.soferiPentruPotrivire`).
 - **Cererea în cuvinte** (`cerere`, pe reguli): verbul de schimbare + un șofer + o mașină („Pune-l pe Mihai pe B 77 TIR"), „Propune un
   șofer pentru …", „Scoate-l pe … de pe …", „potrivirea șoferilor". Șoferul se scoate din text ÎNAINTEA căutării mașinii (altfel numele lui
-  găsea mașina lui). „Pune-mi raportul…", întrebările și trecutul („cine l-a trecut…") NU sunt ale ei: `_insightSoferi` (O DATĂ, întâia în
+  găsea mașina lui). „Pune-mi raportul…", întrebările și trecutul („cine l-a trecut…") NU sunt ale ei: `_insightSoferi` (O DATĂ, în
   `_raInsight`, înaintea lui `_insightComanda`) întoarce `false` și ele merg mai departe — pachetul se verifică DUPĂ ce cererea e chiar
   despre șoferi (altfel, pe Start, „Pune-mi raportul…" primea refuzul pasului 2). Un „da" scris (`eDaScris`) aduce din nou cartonașul
   (`ctx.propunere`); doar butonul aplică.
@@ -928,7 +929,7 @@ Aceeași mecanică ca la șoferi (tabela `insight_actiuni`, „Da" o singură da
 - **Doar alertele de VITEZĂ se pun din discuție** (macheta); celelalte feluri → `textAltTip` + butonul `actiuni: [{ fel: 'ecran',
   ecran: 'alerts' }]` („Deschide Alerte"). „Din ultimele 30 de zile" citește DOAR pozițiile peste pragul efectiv (`db.pozitiiPesteViteza`)
   + cea mai mare viteză (`db.vitezaMaximaPerioada`, fără saltul de GPS peste 250) — scurt și pe o flotă întreagă.
-- **Pe server:** `_insightPropuneri` — O DATĂ, ÎNTÂIA în `_raInsight` (înaintea lui `_insightSoferi`: „treci că am discutat cu Mihai" sau
+- **Pe server:** `_insightPropuneri` — O DATĂ, în `_raInsight`, după `_insightProgramari` și înaintea lui `_insightSoferi` („treci că am discutat cu Mihai" sau
   „pune o alertă pe mașina lui Ion" ar fi părut altfel cereri de șofer). `_aplicaPropunere2` / `_anuleazaPropunere2` (din rutele comune
   `/api/insight/actiuni/:id/aplica|anuleaza`): alerta = `db.createAlert(spec, req.companyId)` + `invalidateReguliCache()` + audit `create`
   `alert` „prin RA Insight" (ca Management › Alerte › „Adaugă regulă"), anularea = `db.deleteAlert`; discuția =
@@ -942,11 +943,47 @@ Aceeași mecanică ca la șoferi (tabela `insight_actiuni`, „Da" o singură da
   cum era", „Da" trimite `{ campuri }` pe ACEEAȘI cerere; „din ultimele 30 de zile" se reface (palid până vine, `.chat-prop-dov.vechi`);
   după „Da", butonul din `gata.buton` prin `insightProblemaButon` (`ecran` → `goManage`, `ramura` → `insightRamura`). Casetele `.chat-prop-in`
   iau culorile din temă. Ghidul: capitolul `alerta_discutie`. Telefonul — la APK-ul următor (Robert).
-- ⚠ **Găsite pe 23.10, întrebate (nu reparate):** alertele de viteză sună cu `SPEED_ALERT_MARGIN` (10) peste prag, iar ecranul Alerte nu o
-  spune (cartonașul o spune); `ignition_off` citește `livePositions` DUPĂ ce poziția nouă a fost pusă acolo, deci nu sună niciodată, iar
-  `ignition_on` sună la fiecare 5 minute cât contactul e pornit.
+- Găsite pe 23.10 și reparate pe 26.10 (Alin: „1. da, 2. da"): marja de 10 km/h se spune acum și pe ecranul Alerte, „Oprire motor" sună,
+  „Pornire motor" o dată pe pornire — vezi „Alertele: contactul și marja de viteză", mai jos.
+- Butoanele de sub un răspuns (`actiuni`, „Deschide Alerte") vin și în răspunsul pe loc (`insightTrimite` le pune în `extra`); până pe 26.10
+  apăreau doar la conversația redeschisă.
 - Păzit de **`verify_propuneri.js`** (în `npm test`; 73, pe server pornit, ZERO cereri către model), `verify_soferi_masini.js` (drepturile pe
   fel), `verify_un_singur_insight.js` (ordinea), `verify_insight.js` (`_sdLuna`), `verify_insight_ghid.js`.
+
+### Pasul 2, partea 3 (26.10): REVIZIA, ACTUL, RAPORTUL PROGRAMAT (Alin: „6. după ce rezolvi punctele de la 1 la 5"; macheta M6 din 21.10)
+Aceeași mecanică (tabela `insight_actiuni`, „Da" o singură dată, „Anulează" 10 minute, `_cardPublic`), cu fel nou: `revizie` / `act` /
+`raport`. „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum" → DOUĂ cartonașe, aprobate pe rând.
+- **Regulile și textele stau în `programari.js`** (curat): `cereri(text, fisa, acum)` (cel mult `MAX_CERERI` = 3 bucăți — `bucati` taie la
+  „, " / „și" / „apoi" urmate de un verb; granițele sunt scrise cu spații, NU cu `\b`, care nu vede literele românești), `cerereRevizie`
+  (verbul de programare + o lucrare din `LUCRARI`, numele din `maint_types.js`), `cerereAct` (`ACTE`: ITP, RCA, CASCO, Rovinietă… + „am
+  făcut / e valabil / expiră pe"), `cerereRaport` („în fiecare luni / zilnic / lunar" sau „programează … raport"; un raport fără frecvență
+  rămâne raportul pe loc al lui `_insightComanda`), `dataDin` / `kmDin` (fără an = anul de acum dacă n-a trecut; „peste 3 luni"; o dată din
+  trecut se SPUNE, nu se ia), `termenPropus` (din intervalul lucrării și kilometrajul de acum), `cardRevizie` / `cardAct` / `cardRaport`,
+  `campuri…` (ce vine din „Schimbă", verificat pe cartonaș), `gata…`, `jurnal…`, `anulare…`, `TEXTE` (și `TEXTE.unul`: începutul unui
+  singur cartonaș pe fel — un act NU se „programează"). O discuție („am vorbit cu Ion despre frâne", `RE_DISCUTIE`) NU e o revizie.
+  NU scrie texte în pagină.
+- **Pe server: `_insightProgramari`** — O DATĂ, ÎNTÂIA în `_raInsight` (înaintea lui `_insightPropuneri`: „pune-mi raportul de consum în
+  fiecare luni" sau „pune ITP-ul la Logan" ar fi părut altfel alte cereri). Datele: kilometrajul (`_odoFromIo`), km pe lună (`_kmPeLuna`,
+  din cursele ultimelor 30 de zile; fără curse — nimic ghicit), intervalul lucrării pe felul mașinii (`maintTypes.clasaVehicul` +
+  `intervalFor` + `_maintOverrides` ale firmei), preavizul firmei (`_leadsByCompany`), lucrarea deschisă de același fel, actul de acum,
+  adresa omului, agenda firmei, prima trimitere (`reportSchedules.computeNextRun`).
+- **Felul mașinii pentru intervale: `maintTypes.categorieVehicul` / `clasaVehicul`** — aceleași liste ca `markerCategory` din pagină
+  (iconița întâi, apoi felul). ⚠ Coloana `icon` are implicit „car": o dubă fără iconiță aleasă e „Auto" (proba îi pune iconița).
+- **„Da" pe CALEA ECRANULUI: `_aplicaPropunere3` / `_anuleazaPropunere3`** (din rutele comune `/aplica|anuleaza`): revizia =
+  `db.createMaintenance` (ca Mentenanță › Adaugă), anularea o șterge doar cât e încă deschisă (`_maintClosed`); actul = ca
+  `POST /api/documents` (cel de acum de același fel trece în istoric, `archiveVehicleDocumentsByType` + `createVehicleDocument`), anularea îl
+  șterge și pune înapoi pe cele înlocuite (`db.restaureazaActe`); raportul = `db.createReportSchedule` (ca Rapoarte › Programări, aceleași
+  porți: `poateRaport`, mașina a firmei, nu demo), anularea = `deleteReportSchedule`. Audit `create` „prin RA Insight". Totul pe starea de
+  ACUM (mașina tot a firmei și nearhivată — altfel `masinaPlecata`).
+- **Drepturile pe fel (`_poateActiunea`):** revizia = manageFleet + editarea și ecranul `mentenanta`; actul = manageFleet + editarea și ecranul
+  `documente`; raportul = `viewReports` + ecranul `programari`. De la Basic (`_firmaAreRamuri`); fondatorul primește `TEXTE.fondator`. Nimic
+  nu se numără, nimic la model.
+- **Pagina:** același `cartonasPropunere`; mai multe deodată vin ca `propuneri` (o listă — `bulaAi` le desenează pe toate; conversația
+  redeschisă le reîmprospătează pe toate prin `_cardPublic`). „Schimbă": revizia — lucrarea, km, data; actul — felul, data; raportul — mașina,
+  perioada, cât de des, ora, cui, formatul. După „Da", `gata.buton`: `ecran: 'maintenance'` / `'documente'` → `goManage`, `fel: 'programate'`
+  → Rapoarte › Programări (`openSchedules`); iconița din `gata.buton.ic`. Ghidul: capitolul `programari`. Telefonul — la APK-ul următor.
+- Păzit de **`verify_programari.js`** (în `npm test`; 56, pe server pornit, ZERO cereri către model), `verify_insight_ghid.js`,
+  `verify_un_singur_insight.js` (ordinea), `verify_soferi_masini.js`, `verify_propuneri.js`.
 
 ### „Anunță echipa RA Track" (23.10; Alin, 22.10: „da" la flux, „te sunăm în cel mult o zi lucrătoare", cererile le preiau amândoi, cu „Preiau")
 Capitolul 4 al machetei din 21.10 (E1–E5). **Aparatul e treaba NOASTRĂ** (19.10): clientul nu e trimis să verifice nimic — are un
@@ -987,9 +1024,9 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
   Deschide firma / Redeschide (butoanele de la server; formularele sub cerere). Bulina `#nav-cereri-nr` = cererile nepreluate. Anunțurile:
   `notifCerere` (noi → listă, client → „Cererile tale").
 - Ghidul: capitolul `suport`. Telefonul — la APK-ul următor (Robert). Tabela `cereri_echipa` e în `BUSINESS_TABLES`.
-- **Bula RA Insight nu stă peste fișa mașinii (23.10):** pe calculator, cât fișa e deschisă pe hartă
-  (`body.detail-open:has(#view-localizare.active)`), `#rax-fabs` trece în stânga ei (`--detail-width` + 16 px; 320 px între 821 și
-  900); pe ≤ 820 px se ascunde. Schimbi lățimea fișei → schimbi și regula. Măsurat în browser la 1280–1920 px.
+- **Bula RA Insight nu stă peste fișa mașinii (23.10; tableta 26.10):** cât fișa e deschisă pe hartă
+  (`body.detail-open:has(#view-localizare.active)`), peste 1100 px `#rax-fabs` trece în stânga ei (`--detail-width` + 16 px); pe ≤ 1100 px
+  se ascunde (pe tabletă harta rămâne îngustă). Schimbi lățimea fișei → schimbi și regula. Vezi „Aplicația pe toate mărimile de ecran".
 - Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 80, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
   `verify_insight_ghid.js`, `verify_mail.js` (rândul din meniu, felul `suport`), `verify_discutia.js` (butoanele casetei).
 
@@ -2802,6 +2839,49 @@ caută forma în tot panoul.
   puse (altfel Leaflet aruncă o eroare și fișa nu se mai deschidea pe calculator); adresa din fișă scrie atunci „—".
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+
+## Alertele: contactul și marja de viteză (Alin, 26.10: „1. da, 2. da")
+- **Pornire / oprire motor = la SCHIMBAREA contactului, o dată:** `_schimbariContact(anterior, records)` (server.js) citește poziția vie
+  de DINAINTE de pachet (luată înainte de `livePositions.set`) și pozițiile pachetului în ordinea timpului (doar cele de după ea; `ignition`
+  0/1 prin `_contactDin`) → `{ pornit, oprit }`, date lui `evaluateAlerts(imei, data, contact)`. Până pe 26.10 `ignition_off` compara poziția
+  nouă cu ea însăși (nu suna niciodată), iar `ignition_on` suna la 5 minute cât contactul stătea pornit. Răcirea (`ALERTE_RACIRE_MS` =
+  `propuneri.RACIRE_MS`, 5 minute; variabila de mediu doar în probe) rămâne. Păzit de `verify_alerte_motor.js` (în `npm test`; 30, pe server
+  pornit, un aparat simulat cu pachete Codec 8).
+- **Marja de viteză se spune pe ecranul Alerte:** `GET /api/alerts` pune `suna_peste` pe fiecare regulă de viteză (`_sunaPeste` →
+  `propuneri.pragEfectiv`), rândul scrie „sună peste 140 km/h" (`.alr-suna`); în fereastra regulii, sub prag, fraza din
+  `GET /api/alerts/viteza?prag=` (`propuneri.textMarjaViteza` + `textRacireViteza` — ACEEAȘI frază ca pe cartonașul din RA Insight), refăcută
+  la fiecare literă (`alertCfNota`). Cifrele (50 + 10) le dă serverul; pagina nu le scrie.
+- ⚠ **Găsite pe 26.10, întrebate (nu reparate):** alertele „de stare" (cod de eroare, temperatură, suprasarcină, PTO, plăcuțe, revizie) sună la
+  5 minute cât ține starea; rapoartele programate socotesc „ieri" / „luna trecută" pe ziua UTC (`report_schedules.resolvePeriod`); la
+  „Modifică" pe o alertă, câmpul Vehicul arată „Toate vehiculele" (`editAlert` nu cheamă `_ssSync`; regula rămâne pe mașina ei).
+
+## Aplicația pe toate mărimile de ecran (Alin, 26.10: „aplicația trebuie să fie ok pe toate tipurile de ecrane")
+Măsurat în Chromium pe 42 de ecrane (administratorul firmei + fondatorul), 12 lățimi (360–1920): ce iese din ecran, ce buton e acoperit
+(`elementFromPoint` în mijlocul lui), ce e tăiat de o cutie `overflow: hidden`, ce text are „…". Unealta de măsurat nu e în depozit; se
+reface când se schimbă așezarea. Regulile care au reparat ce s-a măsurat — NU le strica la loc:
+- **Tableta (769–1100 px), fișa mașinii pe hartă:** meniul din stânga se strânge (`#navrail` lățime 0) cât stă fișa deschisă, iar ☰ îl
+  deschide PESTE hartă, cu fundal (`body.detail-open:has(#view-localizare.active)` în app.css). O singură regulă decide „meniul e sertar":
+  `_navCaSertar()` (telefon mereu; tabletă doar cu fișa deschisă pe hartă; calculator niciodată) — `toggleNavrail` o folosește, `showView`
+  închide sertarul pe ≤ 1100, `closeDetailPanel` pe > 768. Fișa: 380 px (320 px ≤ 900). Bula RA Insight: ascunsă pe ≤ 1100 cu fișa deschisă.
+- **Bara de sus pe tabletă** (map-tools.css): căutarea stă în rândul barei (`.topbar-center` static, `.msb-search` cel mult 300 px), numele
+  și rolul omului pleacă pe 769–900. Pe calculator rămâne centrată, pe telefon plutește sub bară.
+- **Bara de sus pe telefon (≤ 420 px):** iconițele de 36 px, golurile de 4 px, marginile de 10 px; comutatorul mov (`#topbar .vert-com` /
+  `.vert-b` — cu `#topbar`, fiindcă regulile lui stau mai jos în fișier) mai strâns; sub 380 px „Track" din siglă are 18 px. La fondator, pe
+  telefon, iconița cu căști (`.topbar-echipa`) pleacă: noi nu trimitem cereri. ⚠ **Pe telefon, un singur element mai lat decât ecranul face
+  browserul să micșoreze TOATĂ pagina** (meta viewport): până pe 26.10, la 360 px, conținutul avea 386 px (client) și 472 px (fondator), iar
+  textul ieșea mai mic peste tot. Se măsoară cu `document.documentElement.clientWidth` — `innerWidth` devine atunci lățimea micșorată și
+  ascunde problema. O iconiță nouă în bară = socoteala refăcută la 360 px, pe ambele conturi.
+- **Bula RA Insight pe telefon:** `.modal-overlay.as-view` are 96 px dedesubt, ca ultimul rând să poată urca deasupra bulei.
+- **Ferestrele nu trec de ecran:** `.ce-win` = `min(640px, calc(100vw - 32px))`. O fereastră nouă cu lățime fixă — la fel.
+- **Regula de telefon stă DUPĂ cea de calculator.** Vehiculele și șoferii aveau așezarea de telefon în blocul `@media (max-width: 768px)`
+  de sus, iar grila de calculator din `#veh-cards-css` / `#drv-cards-css`, scrisă mai jos, o călca (capul de tabel vizibil, butoanele peste
+  „Profesionist"). Acum stă la capătul blocului ei: vehiculele pe carduri ≤ 900 px, șoferii ≤ 1024 px; numele șoferului trece pe două
+  rânduri, nu se taie cu „…". Același selector, aceeași putere: câștigă cel scris ULTIMUL — un bloc nou de telefon se pune după.
+- **Rânduri flexibile care se strâng:** `.pref-r` (Setări → Afișaj) are `flex-wrap` și textul cel puțin 200 px (butoanele trec dedesubt);
+  pe coloană `.pref-txt` e `flex: 0 0 auto` (altfel cei 200 px devin înălțime). `.rax-devgr-h` (cartonașele pe firme ale fondatorilor) se
+  rupe pe două rânduri — cutia e `overflow: hidden` și tăia „Deschide firma".
+- **Lăsate dinadins:** pe Traseu, foaia de jos stă peste butoanele hărții (harta rămâne cum e); textele lungi din jurnalul de audit au „…".
+- Păzit de **`verify_ecrane.js`** (în `npm test`; fără browser: regulile de mai sus + `_navCaSertar` rulat în vm), `verify_cereri_echipa.js`.
 
 ## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
 Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore → linkul `/locatie/<token>`, pe care îl deschide oricine,
