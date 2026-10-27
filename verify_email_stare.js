@@ -79,6 +79,33 @@ const fals = http.createServer((req, res) => {
   T('„n-a putut pleca": raportul e în Istoric, echipa RA Track a fost anunțată', /n-a putut pleca/.test(tEs) && /Echipa RA Track a fost anunțată/.test(tEs) && !/Brevo/.test(tEs), tEs);
   T('o programare fără stare (de dinainte de 22.10) → fără text', rs.textStare({ last_run: acum.toISOString() }, true) === null);
 
+  // Perioada pe zilele ROMÂNIEI (27.10, Alin: „da"): până atunci „ieri" mergea de la 02:00 la 02:00 (vara 03:00), un raport programat
+  // la 01:00 lua ziua de alaltăieri, iar subiectul emailului tăia data din ora UTC.
+  const per = (p, t) => rs.resolvePeriod(p, new Date(t)), et = (x) => rs.perioadaEmail(x.from, x.to);
+  const ieriV = per('yesterday', '2026-10-22T03:01:00Z');   // 06:01 în România, vara
+  T('„ieri" = de la miezul nopții la miezul nopții României (vara: 21:00 → 21:00 UTC), în email „21.10.2026"',
+    ieriV.from === '2026-10-20T21:00:00.000Z' && ieriV.to === '2026-10-21T21:00:00.000Z' && et(ieriV) === '21.10.2026', JSON.stringify(ieriV) + ' ' + et(ieriV));
+  const ora1 = per('yesterday', '2026-10-22T22:00:30Z');    // 01:00 pe 23.10 în România
+  T('programat la 01:00 noaptea → ziua de ieri (22.10), nu cea de alaltăieri', ora1.from === '2026-10-21T21:00:00.000Z' && ora1.to === '2026-10-22T21:00:00.000Z' && et(ora1) === '22.10.2026', JSON.stringify(ora1));
+  const dst = per('yesterday', '2026-10-26T04:00:00Z');     // 06:00 pe 26.10; pe 25.10 ora s-a dat înapoi
+  T('ziua în care se schimbă ora are 25 de ore (25.10.2026)', dst.from === '2026-10-24T21:00:00.000Z' && dst.to === '2026-10-25T22:00:00.000Z' && et(dst) === '25.10.2026', JSON.stringify(dst));
+  const iarna = per('yesterday', '2026-12-10T04:00:00Z');
+  T('iarna: 22:00 → 22:00 UTC (09.12.2026)', iarna.from === '2026-12-08T22:00:00.000Z' && iarna.to === '2026-12-09T22:00:00.000Z' && et(iarna) === '09.12.2026', JSON.stringify(iarna));
+  const anNou = per('yesterday', '2027-01-01T04:00:00Z');
+  T('pe 1 ianuarie, „ieri" = 31.12.2026', anNou.from === '2026-12-30T22:00:00.000Z' && anNou.to === '2026-12-31T22:00:00.000Z' && et(anNou) === '31.12.2026', JSON.stringify(anNou));
+  const lunaT = per('lastmonth', '2026-11-01T04:00:00Z');
+  T('„luna trecută" pe 1 noiembrie = 1–31 octombrie pe ora României (începe vara, se termină iarna)', lunaT.from === '2026-09-30T21:00:00.000Z' && lunaT.to === '2026-10-31T22:00:00.000Z' &&
+    et(lunaT) === '01.10.2026 – 31.10.2026', JSON.stringify(lunaT) + ' ' + et(lunaT));
+  const dec = per('lastmonth', '2027-01-01T05:00:00Z');
+  T('„luna trecută" pe 1 ianuarie = decembrie 2026', dec.from === '2026-11-30T22:00:00.000Z' && dec.to === '2026-12-31T22:00:00.000Z' && et(dec) === '01.12.2026 – 31.12.2026', JSON.stringify(dec));
+  const lunaA = per('thismonth', '2026-10-22T03:01:00Z'), sapt = per('last7', '2026-10-22T03:01:00Z');
+  T('„luna asta" de la 1 a lunii României până acum; „ultimele 7 zile" rămân o fereastră care se termină acum',
+    lunaA.from === '2026-09-30T21:00:00.000Z' && lunaA.to === '2026-10-22T03:01:00.000Z' && et(lunaA) === '01.10.2026 – 22.10.2026' &&
+    sapt.from === '2026-10-15T03:01:00.000Z' && sapt.to === '2026-10-22T03:01:00.000Z' && et(sapt) === '15.10.2026 – 22.10.2026', JSON.stringify([lunaA, sapt]));
+  const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
+  T('subiectul și textul emailului poartă perioada pe zilele României (aceeași funcție)', /const perioada = perioadaEmail\(from, to\);\s+const subject = '\[RA Track\] ' \+ \(report\.label \|\| s\.report_type\) \+ ' — ' \+ perioada;/.test(RS) &&
+    /pentru perioada ' \+ perioada/.test(RS) && !/toISOString\(\)\.slice\(0, ?10\)/.test(RS));
+
   // ─── 2. mailer.js ține minte ─────────────────────────────────────────────────────────────────────────
   console.log('\n2. mailer.js ține minte ultimul email plecat și ultimul refuzat');
   let vazut = null; mailer.setLaRezultat(function (r) { vazut = r; });
@@ -173,6 +200,9 @@ const fals = http.createServer((req, res) => {
     const em = primite.slice(n1)[0] || {};
     T('a doua zi: emailul pleacă, cu Foaia de parcurs atașată', p.ultima_stare === 'trimis' && em.to && em.to[0].email === 'alin@firma-raport.ro' &&
       /^RA-Track - Raport Foaie de parcurs/.test(((em.attachment || [])[0] || {}).name || ''), JSON.stringify({ p, em: em.subject }).slice(0, 300));
+    const ziRo = (ms) => new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
+    T('subiectul spune ziua de ieri pe ora României („Foaie de parcurs — ' + ziRo(t1 - 864e5) + '")', em.subject === '[RA Track] Foaie de parcurs — ' + ziRo(t1 - 864e5) &&
+      /pentru perioada \d{2}\.\d{2}\.\d{4}\./.test(em.textContent || em.htmlContent || ''), JSON.stringify({ s: em.subject, t: String(em.textContent || '').slice(0, 120) }));
     T('…lista spune „a plecat pe email"', /a plecat pe email/.test(p.stare_text || ''), p.stare_text);
     const h2 = await json('GET', '/api/admin/health', S);
     T('„Stare producție" redevine verde, cu ultimul email plecat', /activ — Brevo, de la RA Track <noreply@ratrack\.ro> · ultimul email plecat:/.test(h2.t) && !/DAR ultimul email/.test(h2.t), h2.t.slice(0, 300));

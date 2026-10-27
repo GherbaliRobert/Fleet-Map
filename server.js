@@ -14622,8 +14622,12 @@ app.delete('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCom
 // baza + marja. O singură socoteală (propuneri.pragEfectiv) și o singură frază (propuneri.textMarjaViteza), ca în cartonașul din
 // RA Insight; ecranele doar le arată.
 const _MARJA_VITEZA = { baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN };
+// Cum sună o regulă, scris pe rândul ei din Alerte: viteza — de la ce viteză (pragul + marja); alertele „de stare" (27.10) — „la
+// apariție, apoi o dată pe zi" (alerte_stare.js). Textele le dă serverul; pagina doar le arată.
 function _sunaPeste(a) {
-  if (!a || a.type !== 'overspeed') return a;
+  if (!a) return a;
+  if (alerteStare.eDeStare(a.type)) return Object.assign({}, a, { cum_suna: alerteStare.RAND });
+  if (a.type !== 'overspeed') return a;
   const c = a.condition || {};
   return Object.assign({}, a, { suna_peste: propuneri.pragEfectiv(c.maxSpeed, _MARJA_VITEZA) });
 }
@@ -14645,6 +14649,10 @@ app.get('/api/alerts/viteza', requireAuth, withScope, (req, res) => {
     prag: prag, sunaPeste: propuneri.pragEfectiv(prag, _MARJA_VITEZA), baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN,
     text: [propuneri.textMarjaViteza(prag, _MARJA_VITEZA), propuneri.textRacireViteza()].filter(Boolean).join(' ')
   });
+});
+// Fereastra regulii: care tipuri sunt „de stare" și fraza de sub câmpuri („Sună când apare…"), ca pagina să n-o scrie ea (27.10).
+app.get('/api/alerts/cum-suna', requireAuth, (req, res) => {
+  res.json({ deStare: alerteStare.DE_STARE, text: alerteStare.TEXT });
 });
 
 app.post('/api/alerts', requireAuth, requireEdit('alerte'), withScope, async (req, res) => {
@@ -15315,6 +15323,23 @@ function invalidateReguliCache() { _alertsCache = null; _geoScopeCache.clear(); 
 // NU o seta în producție.
 const ALERTE_RACIRE_MS = Number(process.env.ALERTE_RACIRE_MS) > 0 ? Number(process.env.ALERTE_RACIRE_MS) : propuneri.RACIRE_MS;
 
+// Alertele „de stare" (cod de eroare, temperatura motorului, suprasarcina, priza de putere, plăcuțele, revizia — Alin, 27.10: „da"):
+// sună când starea începe, cât ține o amintire pe zi, revenită după 30 de minute de normal = sună din nou (regula: alerte_stare.js).
+// Starea fiecărei reguli pe fiecare mașină stă aici, în memorie; după o repornire, „când a sunat ultima oară" se citește O DATĂ din
+// istoricul alertelor (db.ultimaAlertaSunata) — altfel fiecare publicare ar suna din nou pe toate mașinile cu plăcuțele uzate.
+const alerteStare = require('./alerte_stare');
+const _stariAlerte = new Map();   // `${alertId}_${imei}` → starea (alerteStare.stareNoua)
+async function _stareSuna(cheie, alertId, imei, stare) {
+  let s = _stariAlerte.get(cheie);
+  if (!s) {
+    let sunatLa = null;
+    if (stare === true) { try { sunatLa = await db.ultimaAlertaSunata(alertId, imei); } catch (e) { sunatLa = null; } }
+    s = alerteStare.stareNoua(sunatLa);
+    _stariAlerte.set(cheie, s);
+  }
+  return alerteStare.suna(s, stare, Date.now());
+}
+
 // Contactul dintr-un record: 1 / 0 / null (necunoscut). Teltonika trimite 1/0; pe alte drumuri poate veni true/false.
 function _contactDin(io) {
   const v = io ? io.ignition : undefined;
@@ -15387,7 +15412,8 @@ async function evaluateAlerts(imei, data, contact) {
       // Alertele de zonă își au răcirea PER ZONĂ (mai jos, la emitere): o regulă poate urmări mai multe
       // zone, iar o răcire comună ar fi înghițit a doua trecere dintr-o oră. Restul tipurilor: ca înainte.
       const _isGeo = alert.type === 'geofence_enter' || alert.type === 'geofence_exit';
-      if (!_isGeo) {
+      // Alertele „de stare" se citesc la FIECARE poziție (trebuie văzut și când starea se termină); sunetul îl hotărăște _stareSuna.
+      if (!_isGeo && !alerteStare.eDeStare(alert.type)) {
         const lastTriggered = alertCooldowns.get(cooldownKey);
         if (lastTriggered && (Date.now() - lastTriggered) < ALERTE_RACIRE_MS) continue; // 5 min cooldown
       }
@@ -15436,12 +15462,22 @@ async function evaluateAlerts(imei, data, contact) {
           }
           break;
 
+        // Alertele „de stare": la apariție, apoi o dată pe zi cât ține (alerte_stare.js; vezi _stareSuna).
         case 'dtc_error':
-          if (io.can_dtc_errors && io.can_dtc_errors > 0) {
+        case 'engine_temp':
+        case 'overload_legal':
+        case 'overload_construct':
+        case 'axle_overload':
+        case 'pto_active':
+        case 'brake_pad_wear':
+        case 'service_due': {
+          const r = alerteStare.stareDin(alert.type, io, cond);
+          if (await _stareSuna(cooldownKey, alert.id, imei, r.stare)) {
             triggered = true;
-            alertData = { dtcCount: io.can_dtc_errors };
+            alertData = r.date || {};
           }
           break;
+        }
 
         case 'geofence_exit':
         case 'geofence_enter':
@@ -15482,71 +15518,6 @@ async function evaluateAlerts(imei, data, contact) {
                 _gfPending.set(stateKey, isInside); // NU direct în geofenceStates: vezi nota de la _gfPending
               }
             } catch (e) { /* geofence check failed */ }
-          }
-          break;
-
-        case 'engine_temp':
-          if (cond.maxTemp && io.can_engine_temp && io.can_engine_temp > cond.maxTemp) {
-            triggered = true;
-            alertData = { temp: io.can_engine_temp, limit: cond.maxTemp };
-          }
-          break;
-
-        case 'overload_legal':
-        case 'overload_construct': {
-          // Calculate total weight from axles
-          const a1 = io.can_axle1_load || 0;
-          const a2 = io.can_axle2_load || 0;
-          const a3 = io.can_axle3_load || 0;
-          const a4 = io.can_axle4_load || 0;
-          const a5 = io.can_axle5_load || 0;
-          const totalKg = a1 + a2 + a3 + a4 + a5 || io.can_load_weight || 0;
-          if (totalKg > 0 && cond.maxKg && totalKg > cond.maxKg) {
-            triggered = true;
-            alertData = { totalKg, limit: cond.maxKg, axles: [a1, a2, a3, a4, a5] };
-          }
-          break;
-        }
-
-        case 'axle_overload': {
-          // Per-axle limit check
-          const axleLimits = cond.axleLimits || {};
-          for (const axleNum of [1, 2, 3, 4, 5]) {
-            const load = io['can_axle' + axleNum + '_load'];
-            const limit = axleLimits['axle' + axleNum];
-            if (load && limit && load > limit) {
-              triggered = true;
-              alertData = { axle: axleNum, load, limit };
-              break;
-            }
-          }
-          break;
-        }
-
-        case 'pto_active':
-          if (io.can_pto_active === 1 || io.can_pto_active === true) {
-            triggered = true;
-            alertData = { event: 'PTO activat' };
-          }
-          break;
-
-        case 'brake_pad_wear': {
-          const minWear = cond.minPercent || 20;
-          for (const axleNum of [1, 2, 3, 4]) {
-            const wear = io['can_brake_pad_axle' + axleNum];
-            if (wear !== undefined && wear < minWear) {
-              triggered = true;
-              alertData = { axle: axleNum, wear, threshold: minWear };
-              break;
-            }
-          }
-          break;
-        }
-
-        case 'service_due':
-          if (io.can_distance_to_service !== undefined && io.can_distance_to_service < (cond.warnKm || 1000)) {
-            triggered = true;
-            alertData = { distanceToService: io.can_distance_to_service, threshold: cond.warnKm || 1000 };
           }
           break;
 
@@ -21328,6 +21299,8 @@ async function start() {
     try { for (const [k, v] of _clientErrHits) if (now - v.ts > 5 * 60000) _clientErrHits.delete(k); } catch (e) {}
     try { for (const [k, v] of _demoReqHits) if (now - v.ts > DEMO_REQ_WINDOW_MS) _demoReqHits.delete(k); } catch (e) {}
     try { for (const [k, v] of alertCooldowns) if (now - v > 24 * 3600000) alertCooldowns.delete(k); } catch (e) {}
+    // Starea alertelor „de stare" neatinsă de o săptămână (mașina nu mai transmite, regula ștearsă) iese din memorie.
+    try { for (const [k, s] of _stariAlerte) if (now - (s.atins || 0) > 7 * 24 * 3600000) _stariAlerte.delete(k); } catch (e) {}
     try { for (const [k, v] of _userEvtCooldown) if (now - v > 24 * 3600000) _userEvtCooldown.delete(k); } catch (e) {}
     try { for (const [k, v] of _wsCooldown) if (now - v > 24 * 3600000) _wsCooldown.delete(k); } catch (e) {}
     db.pruneAgentFindings(parseInt(process.env.FINDINGS_RETENTION_DAYS) || 90)

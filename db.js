@@ -6097,6 +6097,14 @@ async function insertAlertEvent(alertId, imei, data) {
     [alertId, imei, JSON.stringify(data)]
   );
 }
+// Când a sunat ultima oară o regulă pe o mașină (ms), sau null. Pentru alertele „de stare", după o repornire a serverului:
+// altfel fiecare publicare ar suna din nou pe toate mașinile la care starea ține (alerte_stare.js).
+async function ultimaAlertaSunata(alertId, imei) {
+  const r = await pool.query('SELECT triggered_at FROM alert_history WHERE imei = $1 AND alert_id = $2 ORDER BY triggered_at DESC LIMIT 1', [imei, alertId]);
+  const t = r.rows[0] && r.rows[0].triggered_at;
+  const ms = t ? new Date(t).getTime() : NaN;
+  return isFinite(ms) ? ms : null;
+}
 
 // ─── Funcții trips ───
 
@@ -6939,7 +6947,7 @@ module.exports = {
   getDrivers, createDriver, updateDriver, deleteDriver,
   getGroups, createGroup, updateGroup, deleteGroup,
   getGeofences, getGeofencesForScope, getGeofenceById, createGeofence, updateGeofence, deleteGeofence,
-  getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
+  getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent, ultimaAlertaSunata,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   getDeviceImeiByPlate,

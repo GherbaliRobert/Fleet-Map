@@ -2558,6 +2558,11 @@ const pozitii = await r.json();</code></pre>
           body.dark .f-service { --fc: #FBBF24; } body.dark .f-neutral { --fc: #94A3B8; }
           .alr-ic, .alr-prag { background: var(--fb); color: var(--fc); }
           .alr-ty { color: var(--fc); }
+          /* Textul pastilei pragului („130 km/h") pe tema deschisă: nuanțe mai închise. Pe fundalul rândului (--bg-dark) roșul ieșea
+             3,73, portocaliul 4,17, griul 3,78 — sub 4,5 (măsurat 27.10); acum 5,0–6,7. Iconițele rămân pe --fc. */
+          .f-zone { --ft: #166534; } .f-danger { --ft: #B91C1C; } .f-fuel { --ft: #075985; }
+          .f-load { --ft: #5B21B6; } .f-service { --ft: #92400E; } .f-neutral { --ft: #475569; }
+          body:not(.dark) .alr-prag { color: var(--ft); }
 
           @media (max-width: 768px) {
             .alr-ghead { grid-template-columns: 14px 34px 1fr; gap: 10px; padding: 11px 12px; }
@@ -8594,6 +8599,21 @@ const pozitii = await r.json();</code></pre>
       box.innerHTML = html;
       alertZonesCount();
       alertCfNota();
+      // Alertele „de stare" (27.10): sub câmpuri, fraza despre cum sună. Tipurile și fraza vin de la server (alerte_stare.js), o dată.
+      const cs = await _alertCumSunaIa();
+      if (cs && Array.isArray(cs.deStare) && cs.deStare.indexOf(type) >= 0 && document.getElementById('alert-type').value === type && !document.getElementById('alert-cf-stare')) {
+        const n = document.createElement('div');
+        n.id = 'alert-cf-stare'; n.className = 'alr-cf-nota'; n.textContent = cs.text || '';
+        box.appendChild(n);
+      }
+    }
+    var _alertCumSuna = null;
+    function _alertCumSunaIa() {
+      if (!_alertCumSuna) {
+        _alertCumSuna = fetch('/api/alerts/cum-suna').then(r => r.ok ? r.json() : null).catch(() => null)
+          .then(function (j) { if (!j) _alertCumSuna = null; return j; });   // o eroare nu rămâne ținută minte: data viitoare încearcă iar
+      }
+      return _alertCumSuna;
     }
     // Nota de sub pragul de viteză (26.10, Alin: „da" — marja de 10 km/h spusă și pe ecranul Alerte): textul îl scrie serverul
     // (aceeași frază ca în cartonașul din RA Insight), pagina doar îl pune, la 200 ms după ultima cifră.
@@ -8713,7 +8733,8 @@ const pozitii = await r.json();</code></pre>
             + '<div class="alr-c-sc">' + scope + '</div>'
             + '<div class="alr-c-nm"><div class="alr-nm">' + esc(a.name) + '</div>' + (zChip ? '<div style="margin-top:3px">' + zChip + '</div>' : '') + '</div>'
             + '<div class="alr-c-pr">' + (prag ? '<span class="alr-prag">' + esc(prag) + '</span>' : '')
-            + (typeof a.suna_peste === 'number' ? '<span class="alr-suna">sună peste ' + a.suna_peste + ' km/h</span>' : '') + '</div>'
+            + (typeof a.suna_peste === 'number' ? '<span class="alr-suna">sună peste ' + a.suna_peste + ' km/h</span>' : '')
+            + (a.cum_suna ? '<span class="alr-suna">' + esc(a.cum_suna) + '</span>' : '') + '</div>'
             + '<div class="alr-c-sw"><button class="alr-sw' + (a.enabled ? '' : ' off') + '" title="' + (a.enabled ? 'Activă — apasă ca s-o oprești' : 'Oprită — apasă ca s-o pornești') + '" onclick="alertToggle(' + a.id + ', ' + (a.enabled ? 'false' : 'true') + ')"></button></div>'
             + '<div class="alr-c-act alr-act">'
             + '<button class="btn-sm" title="Modifică" onclick=\'editAlert(' + JSON.stringify(a).replace(/'/g, '&#39;') + ')\'><i class="fas fa-pen"></i></button>'
@@ -8782,7 +8803,7 @@ const pozitii = await r.json();</code></pre>
       window._alertZoneSalvate = [];
       if (g('alert-name')) g('alert-name').value = '';
       if (g('alert-enabled')) g('alert-enabled').value = 'true';
-      if (g('alert-imei')) g('alert-imei').value = '';
+      if (g('alert-imei')) { g('alert-imei').value = ''; if (g('alert-imei')._ssSync) g('alert-imei')._ssSync(); }
       if (g('alert-company')) g('alert-company').value = '';
       if (g('alert-btn')) g('alert-btn').textContent = 'Adaugă regula';
       if (g('alert-modal-title')) g('alert-modal-title').textContent = 'Regulă nouă';
@@ -8799,6 +8820,9 @@ const pozitii = await r.json();</code></pre>
       if (typeof onAlertCompanyChange === 'function') { try { onAlertCompanyChange(); } catch (e) { } }
       await renderAlertCond();          // câmpurile de condiție depind de tip → întâi le desenăm
       g('alert-imei').value = a.imei || '';
+      // Selectorul cu căutare își arată textul dintr-o casetă a lui: fără sincronizare, o regulă pusă pe o mașină arăta „Toate
+      // vehiculele" (regula rămânea totuși pe mașina ei — doar ecranul spunea altceva; găsit 26.10).
+      if (g('alert-imei')._ssSync) g('alert-imei')._ssSync();
       g('alert-enabled').value = a.enabled ? 'true' : 'false';
       const c = a.condition || {};
       for (const k in c) {

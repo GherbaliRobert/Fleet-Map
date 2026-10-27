@@ -254,7 +254,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „te sunăm în cel mult o zi lucrătoare" („da"). Tot pe 22.10, mai târziu (Alin: „da la toate"): „Da"-ul de la pasul 2 NU se
   numără ca întrebare, iar pasul 2 merge de la pachetul Basic; fluxul „Anunță echipa RA Track" (capitolul 4) e aprobat; cererile
   le preiau amândoi (Alin și Robert), cu „Preiau"; proba care pică noaptea (00–03, ora României) se repară.
-- [ ] **Robert: Brevo — opriți blocarea adreselor necunoscute. Adăugat pe 22.10 (emailul care nu mai pleca).** Brevo refuză
+- [x] **FĂCUT (27.10): rapoartele programate vin pe email** (Alin: „da e ok acum”). **Robert: Brevo — opriți blocarea adreselor necunoscute. Adăugat pe 22.10 (emailul care nu mai pleca).** Brevo refuză
   serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
   IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
   Verificare: „Stare producție" → „Email" verde, cu „ultimul email plecat"; sau Business › Mail › Scrie, un email de probă către voi.
@@ -318,6 +318,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   costa peste preț (Business: 66,50 lei la un preț de 30 de lei). Recomand s-o lăsăm oprită până la a doua probă, pe „RA Track
   Demo", după reparațiile din PDF-ul din 21.10.
   **22.10:** Alin a ales Haiku 5.5 pentru tot și a aprobat reparațiile; analiza aprofundată rămâne oprită până la a doua probă.
+  **27.10:** Alin: „nu prea înțeleg la ce te referi, hai să văd ce propui, ce rol are" — explicația și variantele, în raportul din 27.10.
 - [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
@@ -360,6 +361,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   actul: felul, data; raportul: mașina, perioada, cât de des, ora, cui, formatul); după „Da", `gata.buton` (`ecran: 'maintenance'` =
   Mentenanță, `ecran: 'documente'` = Documente, `fel: 'programate'` = Rapoarte › Programări), cu iconița din `gata.buton.ic`. Tot de atunci,
   ecranul Alerte: `suna_peste` pe fiecare regulă de viteză („sună peste 140 km/h") și fraza de sub prag din `GET /api/alerts/viteza?prag=`.
+  (15) **adăugat pe 27.10 — alertele „de stare":** pe ecranul Alerte, `cum_suna` pe fiecare regulă de felul ăsta („sună la apariție, apoi o
+  dată pe zi") și, în fereastra regulii, fraza din `GET /api/alerts/cum-suna` (`text`, doar la tipurile din `deStare`). Regula însăși stă pe
+  server — telefonul primește oricum un singur anunț pe problemă.
 - [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
   clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
   `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
@@ -376,6 +380,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [x] **HOTĂRÂT (26.10): din discuție se pun doar alertele de VITEZĂ** (Alin: „4. da"). Celelalte feluri (zone, combustibil, ralanti…)
   se pun din Management › Alerte; RA Insight o spune și dă butonul „Deschide Alerte".
 - [x] **HOTĂRÂT (26.10): internetul în RA Insight rămâne în capitolul AI** (Alin: „5. da"), ca etapă a lui; nimic construit încă.
+  **27.10:** Alin — „întâi o machetă și să văd ce propui"; nu se construiește înainte.
+- [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
+  rămân pe listă, cu ce are de pus din web.
+- [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
+  să fie un ajutor unde cuprinde tot ce înseamnă fondator: lucruri importante, clienți, contracte, chestii financiare, profit etc.").
+  Macheta din 15.10 (restanți, facturi, cel mai profitabil client) e punctul de plecare; nu se construiește înainte.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -443,6 +453,50 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
+
+---
+
+## 2026-10-27
+
+### CLIENT · Alertele „de stare" sună o dată, când apare problema — nu la fiecare 5 minute
+
+Alin (27.10): „1. da". Plăcuțele de frână sub prag, temperatura motorului, erorile de motor, suprasarcina (legală, constructivă, pe o
+axă), priza de putere și revizia sunau la fiecare 5 minute cât ținea starea: plăcuțele sub 20% dădeau cam 96 de anunțuri într-o zi de
+8 ore de mers, pe fiecare mașină.
+- **Acum:** sună o dată, când problema apare. Cât ține, amintește o dată pe zi. Dacă trece și revine după cel puțin 30 de minute, e o
+  problemă nouă și sună din nou; dacă „pâlpâie" (vine și pleacă în câteva minute), nu. O poziție fără datele motorului (motorul oprit)
+  nu „termină" problema. După o repornire a serverului nu sună iar: aplicația citește din istoricul alertelor când a sunat ultima oară.
+- **Pe ecranul Alerte:** pe rândul acestor reguli scrie „sună la apariție, apoi o dată pe zi", iar în fereastra regulii, sub câmpuri,
+  fraza întreagă.
+- **Ce am schimbat:** `alerte_stare.js` (nou: regula și textele), `server.js` (cele 8 tipuri trec prin ea; „cum sună" pentru ecran),
+  `db.js` (ultima sonerie din istoric), pagina. Probă nouă: `verify_alerte_stare.js` (35, în `npm test`; pe server pornit, cu un aparat
+  care trimite date de motor, inclusiv după o repornire). Pe codul de dinainte proba pică: 6–7 anunțuri în loc de unul.
+- **Ce vede fondatorul:** nimic nou (alertele sunt ale firmelor).
+- **Ce vede clientul:** un anunț pe problemă, nu zeci; rândul și fraza noi în Management › Alerte. Telefonul — la APK-ul următor (Robert).
+
+### CLIENT · Rapoartele programate: „ieri" înseamnă ziua de ieri, de la miezul nopții României
+
+Alin (27.10): „2. da". „Ieri" mergea de la 02:00 la 02:00 (vara de la 03:00), un raport programat la 01:00 lua ziua de alaltăieri, iar
+„luna trecută" începea cu 2–3 ore după miezul nopții. Subiectul emailului tăia și el data din ora serverului.
+- **Acum:** „ieri", „luna trecută" și „luna asta" se socotesc pe zilele României, și în zilele în care se schimbă ora (25 octombrie are
+  25 de ore). „Ultimele 7 / 30 de zile" rămân ca înainte: se termină în clipa trimiterii. Subiectul și textul emailului spun perioada pe
+  zile: „[RA Track] Foaie de parcurs — 26.10.2026"; pentru o lună, „01.10.2026 – 31.10.2026".
+- **Ce am schimbat:** `report_schedules.js` (perioadele, `perioadaEmail`; tot pe ziua României și anunțul „emailul n-a plecat", unul pe
+  zi). Proba `verify_email_stare.js` are acum și perioadele (vara, iarna, schimbarea orei, ora 1 noaptea, 1 ianuarie) și subiectul
+  emailului, pe server pornit.
+- **Ce vede fondatorul:** la fel, la rapoartele lui programate.
+- **Ce vede clientul:** raportul de dimineață are exact ziua de ieri; data din subiect e cea bună.
+
+### CLIENT · Alerte: pastila pragului se citește pe tema deschisă; „Modifică" arată mașina regulii
+
+Alin (27.10): „3. da", „4. da".
+- **Pastila** („130 km/h", „20%"…) avea pe tema deschisă contrastul 3,7–4,2 la roșu, portocaliu și gri. Acum fiecare culoare are pe
+  tema deschisă un ton mai închis: 5,0–6,7 (regula casei: cel puțin 4,5). Pe tema închisă rămâne cum era.
+- **„Modifică"** pe o alertă pusă pe o singură mașină arăta „Toate vehiculele" (regula rămânea totuși pe mașina ei). Acum arată
+  mașina; la „Regulă nouă", câmpul revine la „Toate vehiculele".
+- **Ce am schimbat:** pagina. Păzit de `verify_alerte_stare.js` (contrastul socotit din culorile scrise în pagină).
+- **Ce vede fondatorul:** la fel, cu comutatorul pe Partener.
+- **Ce vede clientul:** pastila lizibilă; mașina corectă în fereastra regulii.
 
 ---
 
@@ -519,7 +573,7 @@ ce e tăiat la marginea unei cutii. Plus pozele, ecran cu ecran.
   Șoferi și fereastra „Anunță echipa" întregi pe orice ecran.
 - **Lăsat dinadins:** pe Traseu, pe telefon, foaia de jos stă peste butoanele hărții cât e deschisă — e felul ei, iar harta rămâne cum e.
 
-### Găsite pe drum azi, întrebate (nu reparate)
+### Găsite pe drum azi, întrebate (nu reparate) — rezolvate toate patru pe 27.10 (Alin: „da"), vezi mai sus
 1. Alertele „de stare" (cod de eroare, temperatura motorului, suprasarcină, priza de putere, plăcuțele de frână, revizia) sună la
    fiecare 5 minute cât ține starea: plăcuțele sub 20% dau cam 96 de anunțuri într-o zi de 8 ore de mers.
 2. Rapoartele programate socotesc „ziua de ieri" și „luna trecută" pe ziua serverului, nu pe a României: acum, iarna, „ieri" merge de

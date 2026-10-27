@@ -2851,9 +2851,27 @@ caută forma în tot panoul.
   `propuneri.pragEfectiv`), rândul scrie „sună peste 140 km/h" (`.alr-suna`); în fereastra regulii, sub prag, fraza din
   `GET /api/alerts/viteza?prag=` (`propuneri.textMarjaViteza` + `textRacireViteza` — ACEEAȘI frază ca pe cartonașul din RA Insight), refăcută
   la fiecare literă (`alertCfNota`). Cifrele (50 + 10) le dă serverul; pagina nu le scrie.
-- ⚠ **Găsite pe 26.10, întrebate (nu reparate):** alertele „de stare" (cod de eroare, temperatură, suprasarcină, PTO, plăcuțe, revizie) sună la
-  5 minute cât ține starea; rapoartele programate socotesc „ieri" / „luna trecută" pe ziua UTC (`report_schedules.resolvePeriod`); la
-  „Modifică" pe o alertă, câmpul Vehicul arată „Toate vehiculele" (`editAlert` nu cheamă `_ssSync`; regula rămâne pe mașina ei).
+- **Alertele „de stare" sună la APARIȚIE, nu la 5 minute (27.10, Alin: „da"):** cod de eroare, temperatura motorului, suprasarcina (legală,
+  constructivă, pe axă), priza de putere, plăcuțele, revizia. Regula și textele stau în **`alerte_stare.js`** (curat): `DE_STARE`, `stareDin(tip,
+  io, cond)` → `{ stare: true | false | null, date }` (null = poziția n-are datele: NU termină starea; `date` = aceleași câmpuri în anunț ca
+  înainte), `suna(s, stare, acum)` — sună la început, cât ține o amintire la `AMINTIRE_MS` (24 h), din nou doar după `REARMARE_MS` (30 de
+  minute) de normal. În server: un singur `case` pentru cele 8 tipuri → `_stareSuna(cooldownKey, …)` (starea în `_stariAlerte`, curățată după 7
+  zile); tipurile astea NU trec prin răcirea de 5 minute de la intrarea în buclă (s-ar pierde sfârșitul stării). După o repornire, ultima
+  sonerie se citește O DATĂ din `alert_history` (`db.ultimaAlertaSunata`). Ecranul: `cum_suna` pe regulă (`_sunaPeste`) și fraza din
+  `GET /api/alerts/cum-suna` (pagina nu scrie textul). Un tip NOU de felul ăsta (ceva care ține, nu o clipă) intră în `DE_STARE` + `stareDin`.
+  Păzit de **`verify_alerte_stare.js`** (în `npm test`; regula pe zile de poziții, pe server pornit cu codec 8 — IO 160 / 195 din harta CAN
+  implicită —, inclusiv după o repornire).
+- **Pastila pragului (`.alr-prag`) pe tema deschisă ia `--ft`** (tonul închis al familiei de culoare, pe `.f-*`): `--fc` pe fundalul rândului
+  ieșea 3,7–4,2. O familie nouă de culoare primește și `--ft` (≥ 4,5 pe `--bg-dark` al temei deschise; proba socotește).
+- **Câmpul „Vehicul" din fereastra regulii e o listă cu căutare** (`enhanceSelectSearch`): după ce scrii `.value` din cod, cheamă
+  `_ssSync()` — altfel caseta vizibilă arată valoarea veche („Toate vehiculele" la „Modifică", până pe 27.10). La fel pe orice listă cu căutare.
+
+## Rapoartele programate pe ziua României (27.10, Alin: „da")
+- `report_schedules.resolvePeriod(period, now)`: „ieri", „luna trecută", „luna asta" = zilele ROMÂNIEI (`_roYMD` + `_roWallToUtc`, și în zilele
+  cu ora schimbată); „ultimele 7 / 30 de zile" = ferestre care se termină acum. Până pe 27.10, ziua UTC: „ieri" de la 02:00 / 03:00, un raport
+  programat la 01:00 lua alaltăieri. Subiectul și textul emailului: `perioadaEmail(from, to)` („26.10.2026", „01.10.2026 – 31.10.2026"; un
+  capăt fix la miezul nopții nu-și numără ziua) — NU `toISOString().slice(0, 10)` (păzit). Numele `perioadaEmail` e dinadins altul decât
+  `insight.etichetaPerioadei` („ieri", „21–27 septembrie" — vorbirea din chat, relativă la azi). Păzit de `verify_email_stare.js`.
 
 ## Aplicația pe toate mărimile de ecran (Alin, 26.10: „aplicația trebuie să fie ok pe toate tipurile de ecrane")
 Măsurat în Chromium pe 42 de ecrane (administratorul firmei + fondatorul), 12 lățimi (360–1920): ce iese din ecran, ce buton e acoperit

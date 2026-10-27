@@ -1,23 +1,21 @@
 // report_schedules.js — rapoarte programate: perioadă relativă, calcul next_run, rulare + trimitere pe email.
 // Logica e izolată aici; server.js doar înregistrează tick-ul și expune endpoint-urile.
 
-// Fereastra relativă raportată la 'now' (Date, UTC). Întoarce { from, to } ISO.
+// Fereastra relativă raportată la 'now' (Date). Întoarce { from, to } ISO. ZILELE și LUNILE sunt ale ROMÂNIEI (27.10, Alin: „da"):
+// până atunci se socoteau pe ziua serverului (UTC) — „ieri" mergea de la 02:00 la 02:00 (vara 03:00), un raport programat la 01:00
+// lua ziua de alaltăieri, iar „luna trecută" începea cu 2–3 ore după miezul nopții. „Ultimele 7 / 30 de zile" rămân ferestre care
+// se termină în clipa trimiterii.
 function resolvePeriod(period, now) {
-  const d = new Date(now.getTime());
-  const startOfDay = (x) => new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate()));
+  const azi = _roYMD(now);
+  const zi = (y, m0, d) => _roWallToUtc(y, m0, d, 0);   // miezul nopții României (Date.UTC duce luna / ziua 0 la cea dinainte)
   let from, to;
   switch (period) {
     case 'last7':  to = new Date(now); from = new Date(now.getTime() - 7 * 864e5); break;
     case 'last30': to = new Date(now); from = new Date(now.getTime() - 30 * 864e5); break;
-    case 'thismonth': from = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); to = new Date(now); break;
-    case 'lastmonth':
-      from = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
-      to = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); break;
+    case 'thismonth': from = zi(azi.y, azi.m0, 1); to = new Date(now); break;
+    case 'lastmonth': from = zi(azi.y, azi.m0 - 1, 1); to = zi(azi.y, azi.m0, 1); break;
     case 'yesterday':
-    default: {
-      const today = startOfDay(d);
-      to = today; from = new Date(today.getTime() - 864e5); break;
-    }
+    default: from = zi(azi.y, azi.m0, azi.d - 1); to = zi(azi.y, azi.m0, azi.d); break;
   }
   return { from: from.toISOString(), to: to.toISOString() };
 }
@@ -42,6 +40,16 @@ function _roYMD(date) {
   new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(date).forEach(x => { if (x.type !== 'literal') p[x.type] = +x.value; });
   return { y: p.year, m0: p.month - 1, d: p.day };
+}
+// Perioada pe zilele României, pentru subiectul și textul emailului: o zi = „26.10.2026"; altfel „01.10.2026 – 31.10.2026". Un capăt
+// căzut fix la miezul nopții nu-și numără ziua („ieri" se termină la 00:00 de azi). Până pe 27.10 subiectul tăia data din ora UTC.
+function perioadaEmail(from, to) {
+  const f = new Date(from), t = new Date(to);
+  const zz = (date) => { const p = _roYMD(date); return String(p.d).padStart(2, '0') + '.' + String(p.m0 + 1).padStart(2, '0') + '.' + p.y; };
+  const p = _roYMD(t);
+  const ultima = _roWallToUtc(p.y, p.m0, p.d, 0).getTime() === t.getTime() ? new Date(t.getTime() - 1) : t;
+  const a = zz(f), b = zz(ultima);
+  return a === b ? a : a + ' – ' + b;
 }
 // Ziua săptămânii România (1=Luni..7=Duminică) pentru un instant UTC.
 function _roDow(date) {
@@ -156,8 +164,9 @@ async function destinatari(s, db) {
 // Emailul cu raportul. Eroarea NU se mai înghite (22.10): prima e întoarsă, ca programarea să știe de ce n-a plecat.
 async function trimite(s, report, buf, filename, from, to, recips, channels) {
   const rowsN = (report.rows && report.rows.length) || 0;
-  const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + from.slice(0, 10) + ' … ' + to.slice(0, 10);
-  const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + from.slice(0, 10) + ' — ' + to.slice(0, 10) +
+  const perioada = perioadaEmail(from, to);
+  const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + perioada;
+  const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + perioada +
     '.\nRânduri: ' + rowsN + '.\n\n— RA Track (raport automat)';
   let emailSent = false, emailError = null;
   if (recips.length) {
@@ -237,9 +246,10 @@ async function tickDue(deps, now) {
     try { await deps.db.setScheduleRun(s.id, now.toISOString(), st.next.toISOString(), st); } catch (e) {}
     if (st.renunta && deps.notify) {
       try {
+        const z = _roYMD(now), zi = z.y + '-' + String(z.m0 + 1).padStart(2, '0') + '-' + String(z.d).padStart(2, '0');   // ziua României, ca perioadele
         await deps.notify({ type: 'report_email_esuat', severity: 'warning', title: 'Emailul cu raportul n-a putut pleca',
           body: '„' + (s.name || s.report_type) + '" e în Istoric rapoarte. Am încercat de ' + (REINCERCARI_MIN.length + 1) + ' ori; echipa RA Track a fost anunțată.',
-          data: { reportType: s.report_type, key: 'report_email_' + s.id + '_' + now.toISOString().slice(0, 10) }, userId: s.user_id, companyId: s.company_id });
+          data: { reportType: s.report_type, key: 'report_email_' + s.id + '_' + zi }, userId: s.user_id, companyId: s.company_id });
       } catch (e) {}
     }
     results.push(Object.assign({ id: s.id, next_run: st.next.toISOString(), stare: st.stare }, res));
@@ -247,4 +257,4 @@ async function tickDue(deps, now) {
   return results;
 }
 
-module.exports = { resolvePeriod, computeNextRun, runSchedule, tickDue, stareDupa, textStare, REINCERCARI_MIN };
+module.exports = { resolvePeriod, perioadaEmail, computeNextRun, runSchedule, tickDue, stareDupa, textStare, REINCERCARI_MIN };
