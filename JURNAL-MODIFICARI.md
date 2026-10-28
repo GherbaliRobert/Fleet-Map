@@ -258,9 +258,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
   IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
   Verificare: „Stare producție" → „Email" verde, cu „ultimul email plecat"; sau Business › Mail › Scrie, un email de probă către voi.
-- [ ] **Robert: Brevo — emailul programat de pe 28.10 n-a venit. Adăugat pe 28.10.** Pe 27.10 seara am publicat o versiune nouă,
-  deci Railway a dat serverului altă adresă. Dacă în Brevo blocarea adreselor necunoscute e încă pornită (o adresă adăugată de mână
-  ține doar până la publicarea următoare), Brevo refuză orice email până o oprește cineva. De văzut întâi, cu contul de fondator:
+- [ ] **Robert: Brevo — emailul programat de pe 28.10 n-a venit. Adăugat pe 28.10.** Pe 27.10, pe la 9 dimineața, am publicat o
+  versiune nouă (și încă una pe 28.10, la 7:27), deci Railway a dat serverului altă adresă. Dacă în Brevo blocarea adreselor
+  necunoscute e încă pornită (o adresă adăugată de mână ține doar până la publicarea următoare), Brevo refuză orice email până o
+  oprește cineva. De văzut întâi, cu contul de fondator:
   Dashboard platformă › Stare producție › rândul „Email" (sau clopoțelul: „Emailurile nu pleacă") — scrie motivul exact. Dacă e adresa:
   Brevo › Settings › Security › Authorised IPs → „Deactivate" (blocarea oprită de tot, nu o adresă adăugată). Altă cale: Railway Pro,
   cu adresă fixă (~20 $ pe lună). Raportul de azi e oricum în Istoric rapoarte.
