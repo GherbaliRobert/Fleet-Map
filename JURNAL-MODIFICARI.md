@@ -34,6 +34,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   („[lunar/anual]", „[30] de zile", „[12] luni", „[Railway / furnizor cloud]", „[furnizor SMTP]").
   **Din 14.10, și pachetele RA Insight:** clauza de trecere („confirmarea din aplicație ține loc de act adițional") din contract
   și ofertă, plus hârtia confirmării (bifă + contul omului + ora + adresa IP + email cu PDF, fără semnătură) — e de ajuns așa?
+  **Din 28.10, și „Sursă externă":** fraza nouă din Confidențialitate (RA Insight caută pe internet prin Anthropic, la cererea omului,
+  fără datele firmei) și felul în care arătăm sursele sub răspuns — Anthropic cere ca sursele să fie arătate, iar când textul e scris
+  de RA Insight din ele, „cum sfătuiește juristul".
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -265,6 +268,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Dashboard platformă › Stare producție › rândul „Email" (sau clopoțelul: „Emailurile nu pleacă") — scrie motivul exact. Dacă e adresa:
   Brevo › Settings › Security › Authorised IPs → „Deactivate" (blocarea oprită de tot, nu o adresă adăugată). Altă cale: Railway Pro,
   cu adresă fixă (~20 $ pe lună). Raportul de azi e oricum în Istoric rapoarte.
+  **28.10 (după-amiaza, după captura lui Alin):** pe captură scria „a plecat pe email" la 7:02 — deci Brevo l-a primit; s-a oprit DUPĂ
+  Brevo. De acum aplicația spune singură unde: pe rândul programării (Rapoarte › Programări) „livrat la …", „adresa e pe lista de
+  adrese blocate la Brevo" (cu butonul „Deblochează la Brevo"), „refuzat de serverul destinatarului (motivul)" sau „marcat spam"; tot
+  acolo, în „Stare producție" și într-un anunț. Pentru emailul de azi: Alin, uită-te întâi în Spam la Yahoo („Nu e spam" îl mută
+  înapoi); Robert, în Brevo › Transactional › Logs, caută adresa: scrie „Delivered", „Blocked", „Hard bounce" sau „Deferred".
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -328,7 +336,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Demo", după reparațiile din PDF-ul din 21.10.
   **22.10:** Alin a ales Haiku 5.5 pentru tot și a aprobat reparațiile; analiza aprofundată rămâne oprită până la a doua probă.
   **27.10:** Alin: „nu prea înțeleg la ce te referi, hai să văd ce propui, ce rol are" — explicația și variantele, în raportul din 27.10.
-- [ ] **Alin: analiza aprofundată făcută de Haiku — varianta 1, 2 sau 3. Adăugat pe 28.10.** Propunerea, cu cele trei variante, e la
+- [x] **HOTĂRÂT (28.10): analiza atentă pe Haiku, varianta 1** (Alin: „1 da") — la toate pachetele cu AI, numărată ca o întrebare
+  oarecare; făcută pe 28.10 (vezi jurnalul). **Alin: analiza aprofundată făcută de Haiku — varianta 1, 2 sau 3. Adăugat pe 28.10.** Propunerea, cu cele trei variante, e la
   capătul paginii „Internet și analiza aprofundată" (https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw): la „de ce?", „compară" și „ce să
   fac", Haiku gândește mai mult, își face singur comparația și răspunde mereu în forma „Ce s-a întâmplat → De ce → Ce poți face". Recomand
   varianta 1 (la toate pachetele cu AI). Oricare ar fi, pleacă butonul „Analiza aprofundată" din RA Insight · control și bugetele de
@@ -401,10 +410,20 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **27.10 (seara):** Alin — macheta „e ok", cifrele 10 / 30 / 50 de întrebări cu internet pe lună „da"; a cerut cum arată în RA
   Insight, comutatorul, cum se pornește („nu editezi nimic"). Propunerea, cu pozele: https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw
   (28.10). Nimic construit.
-- [ ] **Alin: internetul în RA Insight — „da" pe propunerea din 28.10, ca să-l construim. Adăugat pe 28.10.** Butonul „Internet" lângă
+- [x] **HOTĂRÂT (28.10): internetul în RA Insight — „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe
+  internet"** (Alin). Construit pe 28.10 (vezi jurnalul), OPRIT până la pașii de mai jos. **Alin: internetul în RA Insight — „da" pe propunerea din 28.10, ca să-l construim. Adăugat pe 28.10.** Butonul „Internet" lângă
   „+" (oprit la fiecare discuție nouă), răspunsul în două părți („Din flota ta" / „De pe internet", cu sursele), comutatorul firmei în
   „Pachet și conturi" și al nostru în RA Insight · control; căutarea pleacă separat, fără datele firmei. **Robert, înainte de construcție:**
   în consola Anthropic › Settings › Capabilities, căutarea pe internet să nu fie oprită (e pornită din oficiu).
+- [ ] **Robert și voi: „Sursă externă" — trei pași până la clienți. Adăugat pe 28.10.** (1) **Robert:** consola Anthropic › Settings ›
+  Capabilities — căutarea pe internet să nu fie oprită (din oficiu e pornită). (2) **Noi, cu contul de fondator:** RA Insight · control ›
+  Controale › „Sursă externă" › „Doar pentru noi"; rândul de dedesubt trebuie să spună „Haiku 5.5 primește căutarea pe internet". Apoi
+  zece întrebări adevărate pe „RA Track Demo", ca să vedem costul real (sub 2 lei). (3) „Pornită pentru firme". Până atunci butonul nu
+  apare nimănui.
+- [ ] **Robert: telefonul și „Sursă externă" (APK-ul următor). Adăugat pe 28.10.** Pe web e gata; pe telefon: butonul „Sursă externă"
+  lângă „+" (din `/api/ai/quota` → `sursa`: `nume`, `contor`, `nota`, `poate`; fără `sursa`, nu apare), `sursa: true` trimis cu
+  întrebarea cât e pornit (o discuție nouă pornește cu el oprit) și, sub răspuns, blocul „Surse de pe internet" (`sursa` din răspuns:
+  titlul, sursele cu linkul, „Ce am căutat"). Până atunci telefonul nu caută pe internet.
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -481,6 +500,60 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-10-28
+
+### AMÂNDOI · „Sursă externă": RA Insight caută și pe internet, când omul pornește butonul (oprită până o pornim noi)
+
+**Ce am schimbat:** Alin, la propunerea din 28.10: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe
+internet". Lângă „+", în caseta lui RA Insight, un buton nou: „Sursă externă". Pornit, RA Insight se uită întâi în aplicație și caută pe
+internet doar ce nu e acolo (prețuri, reguli, legi, informații generale). Căutarea pleacă separat și primește doar textul căutării:
+aplicația oprește orice căutare cu un număr de înmatriculare, numele unui om al firmei, o adresă, un telefon, un email, un IMEI, o serie de
+șasiu sau care caută o persoană. Răspunsul vine în două părți („Din flota ta" / „Din sursă externă", cu site-ul lângă fiecare cifră), iar
+dedesubt stă blocul „Surse de pe internet": titlurile cu linkul, ora și ce s-a căutat. Pe pachete: Basic 10, Pro 30, Business 50 de
+întrebări cu sursă externă pe lună (se numără doar când s-a căutat chiar; Start nu are). Trei comutatoare, fiecare îl oprește pe cel de
+sub el: noi (pe toată platforma), administratorul firmei, omul (pentru discuția lui; o discuție nouă pornește cu el oprit). La pornire,
+aplicația întreabă Anthropic (gratuit, fără nimic din aplicație) dacă modelul primește căutarea; dacă nu, butonul nu apare nimănui.
+O căutare costă 1 cent plus paginile citite; intră în „Ne costă" și în plasa de 80% a pachetului. Pagina de Confidențialitate are o
+frază nouă, iar ghidul aplicației un capitol.
+
+**Ce vede fondatorul:** RA Insight · control → Controale → „Sursă externă": Oprită / Doar pentru noi / Pornită pentru firme (azi:
+Oprită), dedesubt ce a spus Anthropic despre model și câte întrebări și căutări s-au făcut luna asta, cu costul; în tabel, coloana
+„Sursă externă" pe fiecare firmă. Stare producție: rândul „RA Insight · Sursă externă" (portocaliu dacă modelul n-o primește sau dacă o
+căutare a dat eroare — de pildă căutarea oprită în contul Anthropic, cu drumul spre setare).
+
+**Ce vede clientul:** după ce o pornim pentru firme, pe Basic, Pro și Business: butonul „Sursă externă" lângă „+"; apăsat, se face
+albastru și arată „Sursă externă · 7 din 10", cu o frază sub casetă (ce face și că datele firmei nu pleacă). Pe telefon, în browser,
+butonul se strânge la „🌐 7 din 10". Administratorul o poate opri pentru toată firma din RA Insight → „Pachet și conturi". Pe aplicația
+de telefon vine cu APK-ul următor (Robert).
+
+### AMÂNDOI · Analiza atentă: la „de ce", „compară", „ce să fac", Haiku gândește mai mult și răspunde mereu la fel
+
+**Ce am schimbat:** Alin: „1 da" (varianta 1 din propunerea din 28.10). La întrebările „de ce?", „din ce cauză", „compară", „ce să fac",
+„ce pot face", RA Insight (același Haiku 5.5) primește mai mult timp de gândire, își citește singur perioada de acum și pe cea dinainte și
+răspunde mereu în forma „Ce s-a întâmplat → De ce → Ce poți face", cu cifrele verificate ca până acum. Se numără ca o întrebare
+oarecare, la toate pachetele cu AI. Analiza pe Sonnet a ieșit de tot: butonul „Analiza aprofundată" din RA Insight · control,
+bugetele de 5 și 8 lei din pachete și eticheta din discuție. „Proba modelelor" folosește și ea analiza atentă, ca s-o putem măsura.
+
+**Ce vede fondatorul:** RA Insight · control fără butonul „Analiza aprofundată". În ofertă, sub pachete: „Ne rămân ~17 lei" la Pro
+(era ~12), ~9 la Basic, ~25 la Business — fără bugetul de Sonnet.
+
+**Ce vede clientul:** la „de ce a crescut consumul?" sau „compară săptămâna asta cu cea trecută", răspunsul vine în cele trei părți, cu
+pași pe care îi face în aplicație. Insigna rămâne „Analiză · 1 întrebare".
+
+### AMÂNDOI · Emailul: aplicația verifică Brevo la pornire și spune dacă emailul a ajuns (livrat, refuzat, blocat, spam)
+
+**Ce am schimbat:** Alin, cu o captură: „programarea… e încă activă, eu nu primesc nimic. Și nici nu văd motivul și nici nu știu unde să
+mă uit". Pe captură, „a plecat pe email" la 7:02 însemna doar că Brevo l-a primit; de acolo încolo aplicația nu mai știa nimic. Acum:
+(1) la pornire și din oră în oră, aplicația întreabă Brevo dacă primește serverul, fără să trimită nimic — dacă nu, ne anunță pe loc;
+(2) după fiecare raport programat și fiecare email al nostru, întreabă Brevo ce s-a întâmplat cu el: livrat, amânat, refuzat de serverul
+destinatarului (cu motivul), adresa pe lista de adrese blocate la Brevo, marcat spam; (3) la o adresă blocată, butonul „Deblochează la
+Brevo". Urma ține 30 de zile, fără conținutul emailurilor; emailurile firmelor (alerte, confirmări) nu se urmăresc.
+
+**Ce vede fondatorul:** Rapoarte › Programări: pe rândul fiecărei programări, ce s-a întâmplat cu ultimul email (adresa și motivul) și,
+la o adresă blocată, „Deblochează la Brevo"; Stare producție → „Email": și verificarea de la pornire, și ultimul email care n-a ajuns;
+anunțul „Un email n-a ajuns la destinatar" (în aplicație și pe telefon, nu pe email).
+
+**Ce vede clientul:** pe rândul programării lui: „a plecat pe email · a ajuns la destinatar" sau „a plecat pe email, dar nu a ajuns la
+destinatar; echipa RA Track a fost anunțată" — fără adresa altcuiva și fără motivul tehnic; plus un anunț când nu a ajuns.
 
 ### AMÂNDOI · Pachetele RA Insight: ce primește fiecare, la zi — în aplicație cu prețuri, pe site și pe prima pagină fără
 

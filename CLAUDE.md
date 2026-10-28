@@ -188,6 +188,20 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
   (reîncercări după 30 / 60 / 120 de minute, prin `retrimite` — raportul păstrat în Istoric, NU refăcut), `textStare` (eroarea exactă
   doar la super-admin; clientul află că „echipa RA Track a fost anunțată"), coloanele `ultima_stare`, `ultima_eroare`,
   `email_reincercari`, `email_raport_id`. NU înghiți erorile de email într-un `catch (e) {}`. Păzit de `verify_email_stare.js`.
+- **Ce se întâmplă DUPĂ Brevo (28.10; Alin, cu o captură: „a plecat pe email", dar „eu nu primesc nimic… nici nu știu unde să mă uit").**
+  „A plecat" = Brevo l-a primit; de acolo încolo aplicația nu știa nimic. Regulile și TEXTELE stau în **`livrare.js`** (curat): evenimentele
+  Brevo aduse la o formă (`stareEveniment`: livrat / deschis / amânat / respins / blocat / spam / invalid / eroare), `stareDinEvenimente`,
+  `deVerificat` (72 de ore, cel mult o dată la 10 minute), `textPentruNoi` (adresa + motivul), `ceFacem`, `textPentruClient` (fără adresă și
+  fără motiv: „a ajuns" / „nu a ajuns; echipa RA Track a fost anunțată"), `rezumat`, `anunt`. `mailer.send` pune `r.cale`; serverul
+  (`_noteazaLivrarea`, din `setLaRezultat`) ține DOAR emailurile cu `livrare` (rapoartele programate, `ref: 'sched:<id>'`) sau `jurnal` (ale
+  noastre) în tabela `email_livrari` (fără subiect și conținut; 30 de zile; în `BACKUP_EXCLUDED`) — alertele și confirmările firmelor NU.
+  `livrareEmailTick` (la 5 minute) cere `mailer.evenimente` (GET /v3/smtp/statistics/events) și anunță o dată: `email_nelivrat` la noi,
+  `report_email_nelivrat` la proprietarul programării. **Verificarea la pornire:** `mailer.verify()` (GET /v3/account, fără să trimită nimic) la
+  20 s după pornire (`EMAIL_VERIFICARE_LA_MS` în probe) și din oră în oră → `email_stare.verificare`, alarmă cu aceeași pauză de 6 h; rețeaua
+  picată nu alarmează. „Stare producție" → „Email" spune și verificarea, și ultimul email care n-a ajuns. Pe rândul programării (`livrare`,
+  `livrare_fel`; la noi și `livrare_blocate`) și butonul „Deblochează la Brevo" (`POST /api/admin/email/deblocheaza`, super-admin →
+  `mailer.deblocheaza`, DELETE /v3/smtp/blockedContacts/{email}; 404 = nu era blocată). Documentația Brevo nu se poate citi din cutia de
+  probe: codul primește și forme altfel scrise ale evenimentelor. Păzit de `verify_email_livrare.js` (în `npm test`; Brevo fals).
 
 ### Panoul Mail al fondatorilor (Robert, 12.10) — etapa 1: „Trimise" + „Scrie"
 Business → **Mail** (după „Cereri demo" și, din 23.10, „Cereri de la clienți"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";
@@ -681,7 +695,8 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   Un model necunoscut ia prețurile din env (`AI_PRICE_*`). Schimbi prețurile doar după pagina oficială.
 - **Modelele 5.x (`gandire: true`) au alt fel de cerere** (`ai._corp`): `thinking: { type: 'adaptive' }`,
   `output_config.effort` = `AI_EFFORT` (implicit „low"), `max_tokens` + `GANDIRE_LOC`. Haiku 4.5 primește cererea veche,
-  neschimbată. Textul se citește pe TIP de bloc (`ai._text`): un răspuns 5.x poate începe cu „thinking". NU citi `content[0]`.
+  neschimbată. `_efort` (28.10): o cerere poate cere alt efort — analiza atentă dă „medium", cu loc dublu de gândire; câmpul nu pleacă
+  spre API, iar `runAgent({ efort })` îl ține ACELAȘI pe toată bucla unei întrebări (istoricul buclei nu se atinge). Textul se citește pe TIP de bloc (`ai._text`): un răspuns 5.x poate începe cu „thinking". NU citi `content[0]`.
 - ⚠ **În bucla cu unelte, la 5.x istoricul NU se atinge** (blocurile de gândire sunt legate de tot ce e înaintea lor; o
   schimbare în urmă = 400 pe conturile noi): aceleași instrucțiuni și unelte în toate cererile, cache-ul cozii pus de API
   (`cache_control` pe cerere), blocurile „thinking" trimise înapoi neschimbate, nota „Gata cu interogările" adăugată după
@@ -1030,6 +1045,53 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
 - Păzit de **`verify_cereri_echipa.js`** (în `npm test`; 80, pe server pornit, cu Brevo fals), `verify_proba_reparatii.js` (ruta veche),
   `verify_insight_ghid.js`, `verify_mail.js` (rândul din meniu, felul `suport`), `verify_discutia.js` (butoanele casetei).
 
+### Analiza atentă (28.10; Alin: „1 da" — varianta 1 din propunerea „Analiza aprofundată, făcută de Haiku")
+- **O regulă: `insight.esteAnaliza(text)`** („de ce", „din ce cauză", „motivul", „compar…", „ce să fac", „ce ar trebui să fac", „ce pot / putem
+  face") — mai strâmtă decât `aiRaport.PENTRU_INSIGHT` (care prinde și „scrie-i", „explică"). În `_raInsight`: `insight.ANALIZA_ATENTA` intră
+  în CONTEXTUL întrebării (nu în partea fixă din cache) și `runAgent({ efort: 'medium' })` — același model, loc dublu de gândire, forma fixă
+  „**Ce s-a întâmplat** → **De ce** → **Ce poți face**", cifrele doar din unelte, perioada de acum și cea dinainte. Se numără ca o întrebare
+  oarecare, la toate pachetele cu AI; insigna rămâne „Analiză · 1 întrebare". „Proba modelelor" o folosește și ea (ca s-o putem măsura).
+- Păzit de `verify_pachete.js` (esteAnaliza, instrucțiunea pe Basic, ruta veche 404) și `verify_proba_modele.js` (`_corp` „medium" = 4.700 de
+  tokeni pe Haiku 5.5 cu 1.100 ceruți; pe server: întrebarea obișnuită „low", „Compară…" „medium").
+
+### „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe internet")
+Propunerea cu pozele: https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw. RA Insight răspunde din aplicație; cu butonul „Sursă externă" pornit
+caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă externă", NICIODATĂ „Internet"**; explicația spune că „caută pe internet".
+- **Regulile și TEXTELE stau în `sursa_externa.js`** (curat): `stare` (trei comutatoare, fiecare îl oprește pe cel de sub el: noi pe platformă —
+  `oprita` / `noi` / `firme`, setarea `sursa_externa`; administratorul pentru firmă — `settings.sursa_externa_oprita`; omul pentru discuția lui —
+  pagina; plus modelul: `model.ok === false` = nu apare nimănui), `PE_PACHET` (Basic 10 / Pro 30 / Business 50 de întrebări pe lună, pe firmă;
+  Start și regula veche 0), `verifica` (ce n-are voie să plece: numere de înmatriculare — regula și numerele flotei —, numele șoferilor și ale
+  oamenilor firmei, adrese cu număr, telefoane, emailuri, IMEI / CNP / cont, VIN, căutări de persoane; numele firmei NU se oprește),
+  `UNEALTA`, `INSTRUCTIUNI` (două părți: „**Din flota ta**" / „**Din sursă externă**", site-ul lângă fiecare cifră), `instructiuniCautare`,
+  `citesteRaspuns` (blocurile API: `server_tool_use`, `web_search_tool_result`, citările; sursele citate întâi, fără dubluri, doar http/https,
+  textul doar de după ultimele rezultate), `pentruModel`, `pentruEcran` („Surse de pe internet", „Căutat pe internet la …", „Ce am căutat: …"),
+  `pentruPagina` (`nume`, `contor` „7 din 10", `nota`; fără bani), `textModel`, `textFirma`. NU scrie texte de-ale ei în pagină.
+- **Căutarea = un apel SEPARAT: `ai.cautaExtern`** — doar textul căutării (nimic din flotă sau din discuție), `web_search_20250305` (cea cu
+  „filtrare dinamică" cere execuție de cod), `max_uses` 3, `user_location` RO / Europe/Bucharest, „pause_turn" (ce a scris modelul trimis înapoi
+  neschimbat). Modelul: `AI_MODEL_SURSA`, altfel `AI_AGENT_MODEL`. Prețul: `ai.PRET_CAUTARE_USD` = 0,01 (10 $ la 1.000, din documentația oficială,
+  citită pe 28.10), adunat în `ai.costUsd` din `usage.server_tool_use.web_search_requests`. **Primește modelul căutarea?** `ai.modelPrimesteCautarea`
+  (Models API: `capabilities.server_tools.web_search.supported`, gratuit) — la pornire (25 s; în probe doar cu `SURSA_VERIFICARE_LA_MS`, fiindcă
+  modelul simulat al celorlalte probe răspunde la orice cerere către Anthropic), la 6 ore și la orice schimbare a comutatorului nostru; setarea
+  `sursa_model` (un model schimbat = neverificat).
+- **În `_raInsight`:** unealta `sursa_externa` intră DOAR cu `sursa: true` în cerere (butonul pornit), fără probă, și cu `_stareSursa(…).poate`;
+  ULTIMA în listă; `INSTRUCTIUNI` în contextul întrebării. O singură căutare pe întrebare (a doua → „Ai căutat deja"), cel mult 2 refuzate; cota
+  verificată din nou înainte de apel. Consumul: un rând **'sursa_externa'** în `ai_usage`, cu coloana `cautari`, scris ÎNAINTE de răspuns
+  (`await`) — nu e în `AI_BILLABLE_KINDS` (nu e o întrebare în plus), e în `AI_KINDS_COST_FIRMA` (plasa, „Ne costă"). Cota =
+  `db.sursaExternaLuna` (rândurile cu `cautari > 0` ale lunii). Rezultatul intră în `dateCitite` (cifrele de pe internet se regăsesc);
+  `extra.sursa` = `pentruEcran` (păstrat în conversație); insigna: `pachete.insigna('ai', { sursa: n })` → „… · sursă externă, 2 căutări".
+- **Rutele:** `/api/ai/quota` → `sursa` (null când nu apare); `PUT /api/insight/sursa-externa { pornita }` (`manageUsers`, firma cu pachet
+  care o are); „Pachet și conturi" → `sursa` (`_sursaPentruFirma`); `PUT /api/admin/insight/sursa-externa { stare }` (super-admin, audit,
+  verifică modelul pe loc); `/api/admin/ai-usage` → `sursa` (stare, model, eroare, cifrele lunii, `peLuna`) și `sursa` pe fiecare rând de firmă
+  (`db.sursaExternaLunaToate`); „Stare producție" → rândul `sursa_externa` (cu drumul spre Console › Settings › Capabilities la eroarea „web
+  search is not enabled").
+- **Pagina:** butonul `#insp-sursa` lângă „+" (`insightSursa`; `S.sursa` se stinge la `insightNou` / `insightDeschide`), `#insp-sursa-nota`,
+  `blocSursa` (textContent, linkuri doar http/https, `rel="noopener noreferrer nofollow"`, altă filă), „Cifrele le-am luat din aplicație și din
+  sursele de mai sus", rândul firmei în „Pachet și conturi" (`insightSursaFirma`), `_aiuSursa` + `raxAiSursa` + coloana „Sursă externă" în
+  RA Insight · control. Culorile (albastru pornit, linkuri, roșul nostru) au pereche pe ambele teme, MĂSURATE în probă. Pe ≤ 860 px butonul se
+  strânge la glob + „7 din 10". Pe paginile publice ale pachetelor NU apare cât n-o pornim pentru firme. Ghidul: capitolul `sursa_externa`;
+  Confidențialitate: fraza „Sursă externă (căutare pe internet)". Telefonul — la APK-ul următor (Robert).
+- Păzit de **`verify_sursa_externa.js`** (în `npm test`; 132, pe server pornit, cu modelul, căutarea și Models API simulate), `verify_insight_ghid.js`.
+
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
 pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
@@ -1046,8 +1108,8 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
 fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
 împărțirea pe oameni) · **Business** 30 lei (conturi nelimitate, 1.000). Analiza aprofundată pe Sonnet a ieșit din pachete pe 27.10
-(Alin: „nu o mai vreau… avem Haiku") — nu se mai promite nicăieri; codul ei rămâne, OPRIT, până la hotărârea pe Haiku (propunerea
-din 28.10). Se reîncarcă pe 1; FĂRĂ pachete de
+(Alin: „nu o mai vreau… avem Haiku") și din cod pe 28.10 (Alin: „1 da" la analiza atentă pe Haiku — vezi „Analiza atentă"). Se
+reîncarcă pe 1; FĂRĂ pachete de
 întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
 mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" ✅ · 4 tabloul nostru ✅ · 5 oferta,
 contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) ✅ · 6 trecerea din aplicație (confirmare cu
@@ -1075,10 +1137,10 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   veche, AI Raport rămâne al tuturor.
 - **Ramurile: `requireRamuri`** pe cele 8 rute (de la Basic). Tura de noapte Safe Drive doar la firmele cu ramuri; scrisoarea de luni
   pe Start = pe reguli, fără Safe Drive; rezumatul agenților nu cheamă modelul pe Start (`_firmaAreAi`).
-- **Plasa = 80% din prețul pachetului** (`PLASA`), din costul real; analiza aprofundată (`MODEL_APROFUNDAT`, implicit Sonnet 5.5)
-  doar la Pro / Business, doar pornită (`ai_analiza_aprofundata`, `GET/PUT /api/admin/insight/aprofundat`, OPRITĂ până după
-  probă), doar la `aiRaport.PENTRU_INSIGHT`, cât ține bugetul (cu `REZERVA_APROFUNDAT_LEI`). Din 27.10 nepromisă nicăieri (nici
-  în „Vezi pachetele", nici pe site); NU o porni și NU o pune înapoi în texte fără Alin.
+- **Plasa = 80% din prețul pachetului** (`PLASA`), din costul real: întrebările, scrisoarea de luni și căutările „Sursei externe"
+  (`db.AI_KINDS_COST_FIRMA`, folosit de `costAiLunaFirma` și de tabloul nostru). Analiza pe Sonnet (`MODEL_APROFUNDAT`, bugetele de
+  5 / 8 lei, `REZERVA_APROFUNDAT_LEI`, ruta `/api/admin/insight/aprofundat`) a ieșit pe 28.10; marja pachetelor (`pachete.marja`) =
+  preț − întrebări × `COST_INTREBARE_LEI` (9,02 / 17,06 / 25,10 lei). NU o pune înapoi fără Alin.
 - **Pachetul îl punem NOI:** fila „Acces" a firmei (`raxCfgPachet` → `PUT /api/companies/:id/settings { ai_pachet: { cod } }`,
   doar super-admin, `curataPachet`, 400 pe cod necunoscut, scoate `ai_quota`, rând în audit de la cât la cât). Limita pe om:
   `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
@@ -1096,9 +1158,9 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   15.10) + `cartonase` (doar pentru telefonul de azi), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota
   (`notaConturi`). Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale. Vezi și „Pachetul în
   ofertă și conturile la client", mai jos.
-- **Pasul 4, tabloul nostru** (`/api/admin/ai-usage` → `pachete` + `plasa` / `aprofundat` / `ramanLei` pe rând; în pagină
-  `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany` cu scrisoarea de luni, pe model
-  (`cost_aprofundat_usd` = partea Sonnet), la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
+- **Pasul 4, tabloul nostru** (`/api/admin/ai-usage` → `pachete` + `plasa` / `ramanLei` pe rând; în pagină
+  `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany(db.AI_KINDS_COST_FIRMA)` (cu scrisoarea de luni și
+  căutările „Sursei externe"), pe model, la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
   `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
   `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic = setarea `anthropic_sold` (`PUT /api/admin/insight/sold`),
   zilele = sold ÷ (costul lunii pe toată platforma ÷ ziua lunii). Avertismentele vechi („fără preț pe cont") — doar pe regula veche.

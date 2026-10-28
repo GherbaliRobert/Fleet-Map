@@ -84,7 +84,7 @@ const pm = SE.pentruModel(rc);
 T('pentru RA Insight: ce s-a căutat, ce s-a găsit, sursele (site + titlu), fragmentele citate și cum să le scrie', pm.gasit === rc.text && pm.surse.length === 2 && pm.fragmente.length === 2 && /„Din sursă externă”, cu site-ul lângă fiecare cifră/.test(pm.atentie) && !JSON.stringify(pm).includes('encrypted'));
 T('căutarea care n-a mers → RA Insight răspunde din aplicație și spune într-o propoziție', /^Căutarea pe internet n-a mers acum\./.test(SE.pentruModel({ eroare: true, cautari: [], surse: [], citate: [], text: '' }).mesaj));
 const pe = SE.pentruEcran(rc, Date.UTC(2026, 9, 28, 8, 42));   // 28.10, după schimbarea orei: 08:42 UTC = 10:42 la noi
-T('pentru ecran: „Din sursă externă", „Căutat pe internet la 10:42 · 2 căutări" (ora României), sursele, „Ce am căutat: …"', pe.titlu === 'Din sursă externă' && pe.text === 'Căutat pe internet la 10:42 · 2 căutări' &&
+T('pentru ecran: „Surse de pe internet", „Căutat pe internet la 10:42 · 2 căutări" (ora României), sursele, „Ce am căutat: …"', pe.titlu === 'Surse de pe internet' && pe.text === 'Căutat pe internet la 10:42 · 2 căutări' &&
   pe.ceAmCautat === 'Ce am căutat: „consum normal Dacia Logan 1.5 dCi”, „Dacia Logan dCi consum mixt”' && pe.surse.length === 2, JSON.stringify(pe));
 T('fără nicio căutare făcută → nimic sub răspuns', SE.pentruEcran({ cautari: [], surse: [] }) === null);
 T('insigna: „1 întrebare · sursă externă, 2 căutări" (la noi, fără „1 întrebare")', K.insigna('ai', { numarat: true, sursa: 2 }).detaliu === '1 întrebare · sursă externă, 2 căutări' &&
@@ -159,7 +159,7 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
   const nod = (tag) => ({ tag, className: '', textContent: '', children: [], href: '', target: '', rel: '', innerHTML: '', appendChild(c) { this.children.push(c); return c; }, get childNodes() { return this.children; } });
   const el = (tag, cls, text) => { const e = nod(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
   const blocSursa = new Function('el', bs + '\n; return blocSursa;')(el);
-  const w = blocSursa({ titlu: 'Din sursă externă', text: 'Căutat pe internet la 11:42 · 2 căutări', ceAmCautat: 'Ce am căutat: „a”',
+  const w = blocSursa({ titlu: 'Surse de pe internet', text: 'Căutat pe internet la 11:42 · 2 căutări', ceAmCautat: 'Ce am căutat: „a”',
     surse: [{ url: 'https://exemplu.com/logan', titlu: '<b>Logan</b>', site: 'exemplu.com' }, { url: 'javascript:alert(1)', titlu: 'rău' }] });
   const lista = w.children.find((c) => c.tag === 'ol');
   T('…rulat: o sursă bună (titlul ca text, nu ca HTML), cea cu „javascript:" sărită, „Ce am căutat" dedesubt', lista && lista.children.length === 1 && lista.children[0].children[0].href === 'https://exemplu.com/logan' &&
@@ -168,6 +168,17 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
   T('„Pachet și conturi": rândul firmei, cu comutatorul (PUT /api/insight/sursa-externa) și textele serverului', /if \(j\.sursa\) \{/.test(bloc) && /cere\('PUT', '\/api\/insight\/sursa-externa', \{ pornita: !!on \}\)/.test(bloc) && /el\('div', 'pkc-se-t', j\.sursa\.text\)/.test(bloc));
   T('„RA Insight · control": comutatorul în trei stări, modelul, coloana „Sursă externă" pe fiecare firmă', /function _aiuSursa\(se\)/.test(PAG) && /fetch\('\/api\/admin\/insight\/sursa-externa', \{ method: 'PUT'/.test(PAG) &&
     /<th class="n" title="[^"]*">Sursă externă<\/th>/.test(PAG) && /_aiuControale\(d\.pachete, d\.sursa\)/.test(PAG) && /colspan="7"/.test(PAG));
+  // Comutatorul din „RA Insight · control", rulat din bucata paginii (ca în verify_insight_panou.js): costul vine ca HTML (lei + euro),
+  // nu scăpat a doua oară (pe 28.10 apărea „<span style=…>" în text).
+  const panou = PAG.slice(PAG.indexOf('// ─── începe „Panoul RA Insight pe firme"'), PAG.indexOf('// ─── sfârșit „Panoul RA Insight pe firme" ──'));
+  const escP = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const fnP = new Function('window', 'document', 'esc', panou + '\n; return { sursa: _aiuSursa, controale: _aiuControale };')(
+    { raFx: () => ({ eur: 5 }), _raxNrI: (n) => n + ' întrebări' }, { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] }, escP);
+  const hS = fnP.sursa({ stare: 'firme', stari: SE.STARI.map((k) => ({ k, t: SE.TEXT_STARI[k], d: SE.DESCRIERE_STARI[k] })), model: SE.textModel({ nume: 'Haiku 5.5', ok: true, la: Date.now() }), modelOk: true,
+    intrebari: 1, cautari: 2, costLei: 0.09, peLuna: SE.PE_PACHET });
+  T('„RA Insight · control", rulat: trei butoane (cel ales plin), modelul, „1 întrebare … · 2 căutări · 0,09 lei", fără HTML scăpat', (hS.match(/raxAiSursa\(/g) || []).length === 3 &&
+    /class="rax-btn primary"[^>]*>Pornită pentru firme</.test(hS) && /1 întrebare cu sursă externă luna asta · 2 căutări · 0,09 lei/.test(hS) && hS.indexOf('&lt;span') < 0 && /Basic 10, Pro 30, Business 50/.test(hS), hS.slice(0, 300));
+  T('…și stă în controale, după butoane', /<\/div><div class="aiu-se">/.test(fnP.controale({}, { stare: 'oprita', stari: [], model: '', intrebari: 0, cautari: 0, peLuna: {} })) && fnP.controale({}, null).indexOf('aiu-se') < 0);
   // Contrastul culorilor noi (WCAG ≥ 4,5), pe ambele teme.
   const hex = (h) => { h = h.replace('#', ''); return [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16)); };
   const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
@@ -323,7 +334,7 @@ async function peServer() {
     T('…căutarea pleacă SEPARAT: un singur mesaj = textul căutării; nimic din flotă (număr, șofer, firmă)', cS && cS.messages.length === 1 && cS.messages[0].content === 'consum normal Dacia Logan 1.5 dCi' &&
       !/B 154 UIP|Mihai|Ionescu|Firma Sursa|Dacia Logan 3/.test(JSON.stringify(cS)) && cS.tools[0].max_uses === 3 && cS.tools[0].user_location.country === 'RO');
     T('…RA Insight primește înapoi ce s-a găsit și fragmentele citate', c3 && /4,9 l\/100 km/.test(JSON.stringify(c3.messages)) && /fragmente/.test(JSON.stringify(c3.messages)));
-    T('…răspunsul: sursele sub el (întâi cele citate, fără „javascript:"), ce s-a căutat, când', r.j.sursa && r.j.sursa.titlu === 'Din sursă externă' && r.j.sursa.surse.map((s) => s.site).join(',') === 'exemplu.com,auto-test.ro' &&
+    T('…răspunsul: sursele sub el (întâi cele citate, fără „javascript:"), ce s-a căutat, când', r.j.sursa && r.j.sursa.titlu === 'Surse de pe internet' && r.j.sursa.surse.map((s) => s.site).join(',') === 'exemplu.com,auto-test.ro' &&
       /^Căutat pe internet la \d\d:\d\d · 2 căutări$/.test(r.j.sursa.text) && /^Ce am căutat: „consum normal Dacia Logan 1\.5 dCi”, „Dacia Logan dCi consum mixt”$/.test(r.j.sursa.ceAmCautat), JSON.stringify(r.j.sursa));
     T('…insigna: „1 întrebare · sursă externă, 2 căutări"', r.j.insigna && r.j.insigna.detaliu === '1 întrebare · sursă externă, 2 căutări', JSON.stringify(r.j.insigna));
     T('…cifrele de pe internet se regăsesc (nu „Nu am găsit în rapoarte")', r.j.verificat === true && !(r.j.probleme || []).some((p) => p.fel === 'cifra'), JSON.stringify({ v: r.j.verificat, p: r.j.probleme }));

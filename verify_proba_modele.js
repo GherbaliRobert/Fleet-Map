@@ -95,8 +95,9 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   // Din 19.10 panoul nostru se cheamă „RA Insight · control" și are toate butoanele într-un loc, „Controale" (_aiuControale),
   // pe care raxLoadAiUsage îl pune în pagină. Butonul e tot unul singur.
   T('butonul „Proba modelelor" stă în panoul nostru („RA Insight · control" → Controale)', /b\('raxProbaModele\(\)', 'flask', 'Proba modelelor'/.test(PAG) &&
-    (PAG.match(/raxProbaModele\(\)/g) || []).length === 1 && /function _aiuControale\(p\) \{[\s\S]{0,800}raxProbaModele\(\)/.test(PAG) &&
-    /window\.raxLoadAiUsage = async function \(\) \{[\s\S]{0,2600}_aiuControale\(d\.pachete\)/.test(PAG));
+    // Din 28.10 controalele primesc și „Sursă externă" (al doilea argument, `d.sursa`).
+    (PAG.match(/raxProbaModele\(\)/g) || []).length === 1 && /function _aiuControale\(p, se\) \{[\s\S]{0,800}raxProbaModele\(\)/.test(PAG) &&
+    /window\.raxLoadAiUsage = async function \(\) \{[\s\S]{0,2600}_aiuControale\(d\.pachete, d\.sursa\)/.test(PAG));
   T('textul modelului e scăpat înainte de afișare (e text străin)', /function _pmText\(t\) \{ return esc\(t\)\.replace/.test(bloc) && /_pmText\(x\.text\)/.test(bloc));
   T('costurile vin de la server (pagina doar le adună pe model)', /x\.costLei/.test(bloc) && !/costUsd|cacheRead \*|PRICE/.test(bloc));
   T('pornirea cere confirmarea, cu firma și câte întrebări × modele', /raConfirm\('Pornesc proba: '/.test(bloc));

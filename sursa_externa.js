@@ -217,11 +217,12 @@ function pentruModel(r) {
       'amesteca cu cifrele flotei. Dacă nu s-a găsit nimic util, spune asta pe scurt.',
   };
 }
-// Ce arată pagina sub răspuns (și se păstrează în conversație): ce s-a căutat, sursele, când.
+// Ce arată pagina sub răspuns (și se păstrează în conversație): „Surse de pe internet" (titlul altul decât partea „Din sursă
+// externă" din text), sursele, când și ce s-a căutat.
 function pentruEcran(r, la) {
   if (!r || !r.cautari || !r.cautari.length) return null;
   const q = r.cautari.slice(0, CAUTARI_MAX);
-  return { titlu: 'Din sursă externă', cautari: q, surse: r.surse.slice(0, SURSE_MAX),
+  return { titlu: 'Surse de pe internet', cautari: q, surse: r.surse.slice(0, SURSE_MAX),
     text: 'Căutat pe internet la ' + _fmtOra.format(new Date(la || Date.now())) + ' · ' + cant(q.length, 'căutare', 'căutări'),
     ceAmCautat: 'Ce am căutat: ' + q.map(function (x) { return '„' + x + '”'; }).join(', ') };
 }

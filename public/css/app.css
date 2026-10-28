@@ -4316,7 +4316,7 @@ body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .chat-un.chat-plus { width: 34px; height: 34px; padding: 0; justify-content: center; }
 .chat-un.chat-plus i { font-size: 13px; color: var(--text-secondary); }
 /* „Sursă externă" (28.10): oprit = ca „+"; pornit = albastru, cu câte au rămas; terminate = linie întreruptă. Sub casetă, fraza ei. */
-.chat-un.chat-sursa .nr:not(:empty)::before { content: ' · '; }
+.chat-un.chat-sursa .nr:not(:empty)::before { content: '· '; }
 .chat-un.chat-sursa.on { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
 .chat-un.chat-sursa.on i { color: #1d4ed8; }
 body.dark .chat-un.chat-sursa.on { background: rgba(59,130,246,.16); border-color: rgba(147,197,253,.55); color: #bfdbfe; }

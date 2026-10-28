@@ -37,7 +37,7 @@ sect('1. Unde se fac formatatoare de dată (numărate)');
 // funcția nu rulează pe fiecare poziție sau rând. Schimbi un număr de aici → te uiți întâi de unde e chemat locul.
 const CUNOSCUTE = {
   'ai_raport.js': 1, 'backup.js': 1, 'cereri_echipa.js': 1, 'condus.js': 1, 'efactura.js': 1, 'insight.js': 1, 'locatie_distribuita.js': 1, 'mail_primit.js': 1, 'pachete.js': 2,
-  'probleme.js': 1, 'programari.js': 3, 'ramuri.js': 1, 'report_export.js': 4, 'report_schedules.js': 3, 'reports.js': 2, 'workschedule.js': 2,
+  'probleme.js': 1, 'programari.js': 3, 'ramuri.js': 1, 'report_export.js': 4, 'report_schedules.js': 3, 'reports.js': 2, 'sursa_externa.js': 2, 'workschedule.js': 2,
 };
 const gasite = {};
 fs.readdirSync(__dirname).filter((f) => f.endsWith('.js') && !/^(verify_|test_|ci-smoke)|_smoke\.js$/.test(f)).forEach((f) => {

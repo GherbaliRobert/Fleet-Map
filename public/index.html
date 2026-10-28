@@ -29823,12 +29823,13 @@ const pozitii = await r.json();</code></pre>
         return '<button class="rax-btn' + (x.k === se.stare ? ' primary' : '') + '" style="padding:4px 11px;font-size:12px;" title="' + esc(x.d) + '" onclick="raxAiSursa(\'' + esc(x.k) + '\')">' + esc(x.t) + '</button>';
       }).join('');
       var pl = se.peLuna || {};
-      var luna = se.cautari ? cat(se.intrebari, 'întrebare', 'întrebări') + ' cu sursă externă luna asta · ' + cat(se.cautari, 'căutare', 'căutări') + ' · ' + _aiuLei(se.costLei) : 'Nicio căutare pe internet luna asta.';
+      // _aiuLei întoarce HTML (lei + euro): nu se mai trece prin esc.
+      var luna = se.cautari ? esc(cat(se.intrebari, 'întrebare', 'întrebări') + ' cu sursă externă luna asta · ' + cat(se.cautari, 'căutare', 'căutări')) + ' · ' + _aiuLei(se.costLei) : esc('Nicio căutare pe internet luna asta.');
       return '<div class="aiu-se"><div class="aiu-se-h"><i class="fas fa-globe"></i><b>Sursă externă</b><span>RA Insight caută pe internet, când omul pornește butonul</span></div>'
         + '<div class="aiu-se-b">' + stari + '</div>'
         + '<div class="aiu-se-m' + (se.modelOk === false ? ' rau' : '') + '">' + esc(se.model || '') + '</div>'
         + (se.eroare ? '<div class="aiu-se-m rau">Ultima căutare a dat eroare: ' + esc(se.eroare) + '</div>' : '')
-        + '<div class="aiu-se-m">' + esc(luna) + ' · pe lună, pe firmă: Basic ' + (pl.basic || 0) + ', Pro ' + (pl.pro || 0) + ', Business ' + (pl.business || 0) + '</div></div>';
+        + '<div class="aiu-se-m">' + luna + ' · pe lună, pe firmă: Basic ' + (Number(pl.basic) || 0) + ', Pro ' + (Number(pl.pro) || 0) + ', Business ' + (Number(pl.business) || 0) + '</div></div>';
     }
     window.raxAiSursa = async function (stare) {
       var se = _aiuSursaDate || {}, x = (se.stari || []).filter(function (z) { return z.k === stare; })[0];
