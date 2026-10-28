@@ -2362,6 +2362,16 @@
 body.dark .sch-next.sch-st-trimis { color: #4ade80; }
 body.dark .sch-next.sch-st-reincercare { color: #fbbf24; }
 body.dark .sch-next.sch-st-esuat, body.dark .sch-next.sch-st-eroare { color: #f87171; }
+/* Livrarea (28.10): a plecat, dar n-a ajuns = ca „n-a putut pleca"; încă fără răspuns de la Brevo = gri. */
+.sch-next.sch-st-nelivrat { color: #b91c1c; font-weight: 700; }
+.sch-next.sch-st-nelivrat i { color: inherit; }
+.sch-next.sch-st-asteapta { color: var(--text-secondary); }
+body.dark .sch-next.sch-st-nelivrat { color: #f87171; }
+.sch-debloc-r { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sch-debloc { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; border: 1px solid #b91c1c; background: transparent; color: #b91c1c; font-size: 12px; font-weight: 700; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+.sch-debloc i { color: inherit; }
+.sch-debloc:disabled { opacity: .6; cursor: default; }
+body.dark .sch-debloc { border-color: #f87171; color: #f87171; }
 .sch-acts { display: flex; gap: 7px; flex-shrink: 0; }
 .sch-iconbtn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); cursor: pointer; display: grid; place-items: center; font-size: 13.5px; transition: all .12s; }
 .sch-iconbtn:hover { border-color: var(--accent); color: var(--accent); }

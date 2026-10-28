@@ -13723,8 +13723,18 @@ const pozitii = await r.json();</code></pre>
             '</div>' +
             '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
             // Ultima trimitere (22.10): textul îl scrie serverul — a plecat, se reîncearcă, n-a putut pleca (cu raportul în Istoric).
+            // Din 28.10 textul spune și ce a răspuns Brevo după trimitere (`livrare_fel`: ok / asteapta / rau); la noi, adresele blocate la
+            // Brevo au butonul lor („Deblochează la Brevo"). Culoarea și iconița urmează livrarea, nu doar plecarea.
             (s.stare_text
-              ? '<div class="sch-next sch-st-' + E(s.ultima_stare) + '"><i class="far ' + (s.ultima_stare === 'trimis' ? 'fa-circle-check' : 'fa-envelope') + '"></i> Ultima trimitere: ' + E(s.stare_text) + '</div>'
+              ? (function () {
+                  const tr = s.ultima_stare === 'trimis', lf = s.livrare_fel;
+                  const cls = tr && lf === 'rau' ? 'nelivrat' : (tr && lf === 'asteapta' ? 'asteapta' : s.ultima_stare);
+                  const ic = tr ? (lf === 'rau' ? 'fas fa-triangle-exclamation' : (lf === 'asteapta' ? 'far fa-clock' : 'far fa-circle-check')) : 'far fa-envelope';
+                  return '<div class="sch-next sch-st-' + E(cls) + '"><i class="' + ic + '"></i> Ultima trimitere: ' + E(s.stare_text) + '</div>' +
+                    (Array.isArray(s.livrare_blocate) && s.livrare_blocate.length ? '<div class="sch-debloc-r">' + s.livrare_blocate.map(function (em) {
+                      return '<button type="button" class="sch-debloc" data-email="' + E(em) + '" onclick="schedDeblocheaza(this.dataset.email, this)"><i class="fas fa-unlock"></i> Deblochează la Brevo · ' + E(em) + '</button>';
+                    }).join('') + '</div>' : '');
+                })()
               : '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>') +
           '</div>' +
           '<div class="sch-acts">' +
@@ -13816,6 +13826,17 @@ const pozitii = await r.json();</code></pre>
       if (!await raConfirm('Ștergi programarea?', { okLabel: 'Șterge' })) return;
       await fetch('/api/report-schedules/' + id, { method: 'DELETE', credentials: 'same-origin' });
       schedLoad();
+    }
+    // „Deblochează la Brevo" (28.10, doar la noi): scoate adresa de pe lista Brevo de adrese blocate; textul de după îl scrie serverul.
+    async function schedDeblocheaza(email, btn) {
+      const msg = document.getElementById('sch-msg');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/api/admin/email/deblocheaza', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) });
+        const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = d.text || 'Gata.'; }
+        try { schedLoad(); } catch (e) {}
+      } catch (e) { if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; } if (btn) btn.disabled = false; }
     }
     async function schedRunNow(id) {
       const msg = document.getElementById('sch-msg'); msg.style.color = ''; msg.textContent = 'Se generează...';

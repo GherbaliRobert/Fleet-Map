@@ -257,23 +257,58 @@ async function send(m) {
   }
   if (r.ok) _stare.reusitLa = Date.now();
   else { _stare.esuatLa = Date.now(); _stare.eroare = String(r.error || 'eroare').slice(0, 500); }
-  if (_laRezultat) { try { _laRezultat(r); } catch (e) { /* starea nu are voie să strice trimiterea */ } }
+  r.cale = fel();
+  // Serverul primește și emailul (destinatarii, `livrare` / `jurnal`), ca să poată întreba Brevo, mai târziu, dacă a ajuns (28.10).
+  if (_laRezultat) { try { _laRezultat(r, scris); } catch (e) { /* starea nu are voie să strice trimiterea */ } }
   const jid = await _noteaza(scris, r);
   if (jid != null) r.jurnalId = jid;   // rândul din „Trimise" (răspunsul se leagă de emailul primit)
   return r;
 }
-// Verifică legătura (pentru panoul de config): la Brevo, cheia (contul); la SMTP, conexiunea.
+// Adresa de bază a API-ului Brevo (din adresa de trimitere, ca probele să-l poată muta pe un server fals cu BREVO_API_URL).
+function _brevoBaza() { return String(process.env.BREVO_API_URL || BREVO_URL_IMPLICIT).replace(/\/smtp\/email\/?$/, ''); }
+async function _getBrevo(cale, metoda) {
+  const r = await fetch(_brevoBaza() + cale, { method: metoda || 'GET', headers: { 'api-key': _brevoKey(), Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+  const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch (e) {}
+  return { r: r, t: t, j: j };
+}
+// Verifică legătura, FĂRĂ să trimită vreun email: la Brevo, contul (aceeași cheie și aceeași adresă a serverului ca la trimitere —
+// deci un refuz al adresei serverului se vede aici, la pornire, nu abia la primul email); la SMTP, conexiunea. Eroarea poartă
+// mesajul lui Brevo, ca `motiv` să poată spune ce e de făcut.
 async function verify() {
   if (fel() === 'brevo') {
     try {
-      const u = String(process.env.BREVO_API_URL || BREVO_URL_IMPLICIT).replace(/\/smtp\/email\/?$/, '/account');
-      const r = await fetch(u, { headers: { 'api-key': _brevoKey(), Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
-      return r.ok ? { ok: true } : { ok: false, error: 'Brevo ' + r.status };
+      const x = await _getBrevo('/account');
+      return x.r.ok ? { ok: true } : { ok: false, error: 'Brevo ' + x.r.status + ': ' + String(x.j.message || x.t || 'eroare').slice(0, 300) };
     } catch (e) { return { ok: false, error: 'Brevo: ' + e.message }; }
   }
   const tx = _transport(); if (!tx) return { ok: false, error: 'Email neconfigurat' };
   try { await tx.verify(); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
 }
+// Evenimentele unui email trimis prin Brevo (livrat, amânat, refuzat, blocat, spam…), după id-ul pe care l-a dat Brevo la trimitere.
+// Doar citește. Un răspuns neașteptat = { ok: false } — serverul încearcă din nou mai târziu și nu spune nimic ce nu știe.
+async function evenimente(mesajId, catre) {
+  if (fel() !== 'brevo' || !mesajId) return { ok: false, error: 'fără Brevo' };
+  const q = function (extra) {
+    return '/smtp/statistics/events?limit=100&sort=desc&messageId=' + encodeURIComponent(mesajId) + (catre ? '&email=' + encodeURIComponent(catre) : '') + (extra || '');
+  };
+  try {
+    let x = await _getBrevo(q());
+    if (x.r.status === 400) x = await _getBrevo(q('&days=7'));   // dacă cere o perioadă, i-o dăm pe cea mai scurtă care ne ajunge
+    if (!x.r.ok) return { ok: false, error: 'Brevo ' + x.r.status + ': ' + String(x.j.message || x.t || 'eroare').slice(0, 300) };
+    return { ok: true, evenimente: Array.isArray(x.j.events) ? x.j.events : [] };
+  } catch (e) { return { ok: false, error: 'Brevo: ' + e.message }; }
+}
+// Scoate o adresă de pe lista Brevo de adrese blocate (după un refuz definitiv sau o reclamație de spam Brevo nu mai trimite acolo).
+async function deblocheaza(email) {
+  if (fel() !== 'brevo') return { ok: false, error: 'Emailul nu merge prin Brevo' };
+  const e = _adresa(email).email;
+  if (!e || e.indexOf('@') < 1) return { ok: false, error: 'Adresă de email greșită' };
+  try {
+    const x = await _getBrevo('/smtp/blockedContacts/' + encodeURIComponent(e), 'DELETE');
+    if (x.r.ok || x.r.status === 404) return { ok: true, eraBlocata: x.r.status !== 404 };
+    return { ok: false, error: 'Brevo ' + x.r.status + ': ' + String(x.j.message || x.t || 'eroare').slice(0, 300) };
+  } catch (err) { return { ok: false, error: 'Brevo: ' + err.message }; }
+}
 
 module.exports = { enabled, send, verify, fromAddr, fel, setJurnal, adresa: _adresa, _pentruBrevo, cadru, semnatura, cuSemnatura, LOGO_CID, _cuCadru,
-  stare, setLaRezultat, motiv };
+  stare, setLaRezultat, motiv, evenimente, deblocheaza };

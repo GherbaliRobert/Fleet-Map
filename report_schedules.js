@@ -131,7 +131,7 @@ async function runSchedule(s, deps, now) {
 
   const recips = await destinatari(s, db);
   const rowsN = (report.rows && report.rows.length) || 0;
-  const em = await trimite(s, report, buf, filename, from, to, recips, channels);
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now);
   // Notificare „raport gata" (clopoțel + push) → duce direct la Istoric. Emailul care n-a plecat se spune tot aici.
   if (deps.notify && historyId) {
     try {
@@ -162,7 +162,7 @@ async function destinatari(s, db) {
   return recips;
 }
 // Emailul cu raportul. Eroarea NU se mai înghite (22.10): prima e întoarsă, ca programarea să știe de ce n-a plecat.
-async function trimite(s, report, buf, filename, from, to, recips, channels) {
+async function trimite(s, report, buf, filename, from, to, recips, channels, now) {
   const rowsN = (report.rows && report.rows.length) || 0;
   const perioada = perioadaEmail(from, to);
   const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + perioada;
@@ -173,7 +173,10 @@ async function trimite(s, report, buf, filename, from, to, recips, channels) {
     const attachments = [{ filename, content: buf }];
     for (const rcp of recips) {
       try {
-        const ok = await channels.sendEmailTo(rcp, subject, text, attachments);
+        // `livrare`: după ce pleacă, serverul întreabă Brevo dacă a ajuns și scrie răspunsul pe rândul programării (28.10).
+        const ok = await channels.sendEmailTo(rcp, subject, text, attachments, null,
+          { livrare: { ref: 'sched:' + s.id, fel: 'raport', companyId: s.company_id != null ? s.company_id : null, unde: '„' + (s.name || report.label || s.report_type) + '"',
+            la: now ? new Date(now).getTime() : Date.now() } });   // clipa trimiterii = cea scrisă pe programare (last_run)
         if (ok) emailSent = true; else if (!emailError) emailError = 'Serverul nu are email configurat';
       } catch (e) { if (!emailError) emailError = (e && e.message) || String(e); }
     }
@@ -194,7 +197,7 @@ async function retrimite(s, deps, now) {
   const filename = reportExport.numeRaport(report) + '.' + fmt;
   const from = new Date(h.period_from).toISOString(), to = new Date(h.period_to).toISOString();
   const recips = await destinatari(s, db);
-  const em = await trimite(s, report, buf, filename, from, to, recips, channels);
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now);
   return { ok: true, rows: (report.rows || []).length, recipients: recips, emailSent: em.emailSent, emailError: em.emailError, format: fmt, historyId: h.id, reincercare: true };
 }
 
@@ -219,12 +222,18 @@ function _cand(t) {
 }
 function _ora(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }) : ''; }
 // Textul de pe ecran pentru ultima trimitere. Amănuntul erorii doar la noi (`cuEroare`); clientul află că noi am fost anunțați.
-function textStare(s, cuEroare) {
+// `livrare` (28.10) = ce a spus Brevo despre emailurile trimiterii (livrare.rezumat): „a plecat" nu mai înseamnă „a ajuns".
+function textStare(s, cuEroare, livrare) {
   if (!s || !s.ultima_stare) return null;
   const cand = _cand(s.last_run) ? _cand(s.last_run) + ' — ' : '';
   const am = cuEroare && s.ultima_eroare ? ' (' + String(s.ultima_eroare).slice(0, 220) + ')' : '';
   switch (s.ultima_stare) {
-    case 'trimis': return cand + 'a plecat pe email.';
+    case 'trimis': {
+      const lt = livrare && livrare.text ? String(livrare.text).replace(/[.\s]+$/, '') : '';
+      if (lt && livrare.fel === 'rau') return cand + 'a plecat pe email, dar ' + lt + '.';
+      if (lt) return cand + 'a plecat pe email · ' + lt + '.';
+      return cand + 'a plecat pe email.';
+    }
     case 'reincercare': return cand + 'emailul n-a plecat; încercăm din nou la ' + _ora(s.next_run) + '. Raportul e deja în Istoric rapoarte.' + am;
     case 'esuat': return cand + 'emailul n-a putut pleca; raportul e în Istoric rapoarte. Echipa RA Track a fost anunțată.' + am;
     case 'fara_destinatar': return cand + 'nicio adresă de email: raportul e doar în Istoric rapoarte.';

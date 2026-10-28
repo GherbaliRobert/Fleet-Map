@@ -26,6 +26,7 @@ async function sendEmailTo(to, subject, text, attachments, html, opts) {
   if (html) msg.html = html;
   if (attachments && attachments.length) msg.attachments = attachments;
   if (opts && opts.jurnal) msg.jurnal = opts.jurnal;
+  if (opts && opts.livrare) msg.livrare = opts.livrare;   // serverul întreabă apoi Brevo dacă emailul a ajuns (28.10)
   const r = await mailer.send(msg);
   if (!r.ok) throw new Error(r.error || 'emailul n-a plecat');
   return true;

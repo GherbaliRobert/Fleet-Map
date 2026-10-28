@@ -201,8 +201,10 @@ let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* op
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 // Panoul Mail, fila „Trimise" (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
 if (mailer && mailer.setJurnal) mailer.setJurnal(function (r) { return db.noteazaMailTrimis(r); });
-// Emailul care n-a plecat nu mai tace (22.10): vezi _dupaEmail, lângă „Stare producție".
-if (mailer && mailer.setLaRezultat) mailer.setLaRezultat(function (r) { _dupaEmail(r); });
+// Emailul care n-a plecat nu mai tace (22.10): vezi _dupaEmail, lângă „Stare producție". Din 28.10 și cel care a plecat, dar n-a
+// ajuns: Brevo e întrebat mai târziu ce s-a întâmplat cu el (_noteazaLivrarea → livrareEmailTick).
+const livrare = require('./livrare');   // ce s-a întâmplat cu un email după ce l-a primit Brevo (reguli și texte curate, 28.10)
+if (mailer && mailer.setLaRezultat) mailer.setLaRezultat(function (r, m) { _dupaEmail(r); _noteazaLivrarea(r, m); });
 const mailPrimit = require('./mail_primit');   // fila „Primite" (etapa 2): emailul venit de la Cloudflare, citit (reguli curate)
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
@@ -2314,6 +2316,98 @@ async function _dupaEmail(r) {
     let supers = []; try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
     await _anuntaSuperadmini(supers, 'email_esuat', 'critical', 'Emailurile nu pleacă', m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(r.error || '').slice(0, 200), { email: true, fel: m.fel });
   } catch (e) { /* starea emailului nu are voie să strice trimiterea */ }
+}
+
+// ─── Emailul care a plecat, dar n-a ajuns (28.10; Alin, cu o captură: „programarea e încă activă, eu nu primesc nimic. Și nici nu
+// văd motivul și nici nu știu unde să mă uit") ───
+// Aplicația îl preda lui Brevo și scria „a plecat pe email"; ce urma (livrat la Yahoo, refuzat, adresa blocată la Brevo, spam) nu știa
+// nimeni. Acum, pentru emailurile pe care le urmărim — rapoartele programate (`livrare`) și emailurile NOASTRE (`jurnal`: facturi,
+// contracte, invitații, linkuri de parolă, panoul Mail) —, id-ul dat de Brevo se scrie în `email_livrari` (fără subiect, fără conținut),
+// iar livrareEmailTick întreabă Brevo ce s-a întâmplat (doar citește). Alertele și notificările unei firme NU se urmăresc: nu ne uităm la
+// ce face o companie. Textele stau în livrare.js.
+async function _noteazaLivrarea(r, m) {
+  try {
+    if (!r || !r.ok || !r.id || r.cale !== 'brevo' || !m || !(m.livrare || m.jurnal)) return;
+    const o = m.livrare || {}, j = m.jurnal || {};
+    const fel = o.fel || j.fel || null;
+    const unde = o.unde || (fel && typeof MAIL_FEL !== 'undefined' && MAIL_FEL[fel]) || null;
+    const catre = String(m.to || '').split(/[,;]+/).map(function (x) { return mailer.adresa(x).email; })
+      .concat(m.cc ? String(m.cc).split(/[,;]+/).map(function (x) { return mailer.adresa(x).email; }) : [])
+      .filter(function (x) { return x && x.indexOf('@') > 0; });
+    for (const c of Array.from(new Set(catre))) {
+      await db.noteazaLivrare({ mesajId: r.id, catre: c, fel: fel, ref: o.ref || (j.fel ? 'mail:' + j.fel : null), unde: unde,
+        companyId: o.companyId != null ? o.companyId : (j.companyId != null ? j.companyId : null), trimisLa: Number(o.la) || Date.now() });
+    }
+  } catch (e) { /* urma livrării nu are voie să strice trimiterea */ }
+}
+// La 5 minute: emailurile încă nelămurite (cel mult 30 deodată) → evenimentele lor de la Brevo → starea (livrare.stareDinEvenimente).
+// Cele care n-au ajuns ne anunță pe noi (o dată pe email), iar la un raport programat și pe omul programării, fără amănunte.
+let _livrareInLucru = false;
+async function livrareEmailTick(acum) {
+  acum = Number(acum) || Date.now();
+  if (_livrareInLucru || !mailer || mailer.fel() !== 'brevo') return { verificate: 0 };
+  _livrareInLucru = true;
+  const rezultat = { verificate: 0, lamurite: 0, rele: 0 };
+  try {
+    const randuri = await db.livrariDeVerificat(acum, livrare.ORE_URMARIRE, livrare.PAUZA_VERIFICARE_MIN * 60000, 30);
+    const rele = [];
+    for (const rd of randuri) {
+      rezultat.verificate++;
+      const ev = await mailer.evenimente(rd.mesaj_id, rd.catre);
+      if (!ev.ok) { await db.actualizeazaLivrare(rd.id, { stare: rd.stare, motiv: rd.motiv, stareLa: rd.stare_la, verificatLa: acum }); continue; }
+      const st = livrare.stareDinEvenimente(ev.evenimente);
+      const stare = st.stare === 'necunoscut' ? rd.stare : st.stare;
+      await db.actualizeazaLivrare(rd.id, { stare: stare, motiv: st.motiv, stareLa: st.la, verificatLa: acum });
+      if (livrare.finala(stare)) rezultat.lamurite++;
+      if (livrare.rea(stare) && !rd.anuntat) rele.push(Object.assign({}, rd, { stare: stare, motiv: st.motiv, la: st.la }));
+    }
+    if (rele.length) {
+      rezultat.rele = rele.length;
+      await db.marcheazaLivrariAnuntate(rele.map(function (x) { return x.id; }));
+      const a = livrare.anunt(rele);
+      let supers = []; try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+      if (a) await _anuntaSuperadmini(supers, 'email_nelivrat', 'warning', a.titlu, a.body, { email: true, livrare: true });
+      // Omul programării află că raportul n-a ajuns (fără adresă și fără motiv) și unde îl găsește.
+      for (const x of rele) {
+        const m = String(x.ref || '').match(/^sched:(\d+)$/); if (!m) continue;
+        try {
+          const sc = await db.getReportScheduleById(m[1]); if (!sc || !sc.user_id) continue;
+          await notify({ type: 'report_email_nelivrat', severity: 'warning', title: 'Emailul cu raportul n-a ajuns',
+            body: '„' + (sc.name || sc.report_type) + '": ' + livrare.textPentruClient(x) + '. Raportul e în Istoric rapoarte.',
+            data: { reportType: sc.report_type, key: 'report_nelivrat_' + x.id }, userId: sc.user_id, companyId: sc.company_id });
+        } catch (e) {}
+      }
+    }
+  } catch (e) { rezultat.eroare = e.message; }
+  finally { _livrareInLucru = false; }
+  return rezultat;
+}
+
+// ─── Brevo primește serverul? Întrebat la pornire și apoi din oră în oră, FĂRĂ să trimită vreun email (28.10, Alin: „rezolvă") ───
+// Până acum aflam că Brevo refuză adresa nouă a serverului (după o publicare) abia la primul email — de obicei a doua zi dimineață, la
+// raportul programat. Răspunsul se scrie în `email_stare.verificare` (îl arată „Stare producție"); un refuz al adresei sau al cheii ne
+// anunță pe loc, pe aceeași pauză de 6 ore ca emailul căzut. O rețea care nu răspunde nu anunță (trece singură).
+async function _verificaEmailServer() {
+  if (!mailer || !mailer.enabled()) return { sarit: true };
+  let v; try { v = await mailer.verify(); } catch (e) { v = { ok: false, error: e.message }; }
+  const acum = Date.now();
+  try {
+    const vechi = await _emailStareSalvata();
+    await db.setSetting('email_stare', JSON.stringify(Object.assign({}, vechi, { verificare: { la: acum, ok: !!v.ok, eroare: v.ok ? null : String(v.error || '').slice(0, 400) } })));
+  } catch (e) {}
+  if (v.ok) return { ok: true };
+  const m = mailer.motiv(v.error);
+  if (m.fel === 'retea') return { ok: false, motiv: m.fel };
+  try {
+    let la = 0; try { la = Number(await db.getSetting('email_alarma_la')) || 0; } catch (e) {}
+    if (acum - la >= EMAIL_ALARMA_PAUZA && acum - _emailAlarmaLa >= EMAIL_ALARMA_PAUZA) {
+      _emailAlarmaLa = acum; await db.setSetting('email_alarma_la', String(acum));
+      let supers = []; try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+      await _anuntaSuperadmini(supers, 'email_esuat', 'critical', 'Emailurile nu vor putea pleca',
+        'Verificat acum, fără niciun email trimis: ' + m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(v.error || '').slice(0, 200), { email: true, fel: m.fel, verificare: true });
+    }
+  } catch (e) {}
+  return { ok: false, motiv: m.fel };
 }
 
 // ─── Ceasul contractelor: anunță din timp ce se termină ──────────────────────────────────────
@@ -16871,12 +16965,32 @@ app.post('/api/admin/fuel-prices/refresh', requireAuth, requireSuperadmin, async
 app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     // `stare_text` = ultima trimitere, scrisă de server (22.10); eroarea exactă doar la noi.
+    // Din 28.10 și ce a spus Brevo despre emailurile ultimei trimiteri (livrat / n-a ajuns, de ce); adresa și motivul doar la noi.
     const l = await db.getReportSchedules(req.isSuper ? null : req.companyId);
+    let liv = []; try { liv = await db.livrariPentruRef(l.map(function (s) { return 'sched:' + s.id; }), Date.now() - 8 * 864e5); } catch (e) {}
     res.json(l.map(function (s) {
-      const o = Object.assign({}, s, { stare_text: reportSchedules ? reportSchedules.textStare(s, !!req.isSuper) : null });
+      const ale = liv.filter(function (x) { return x.ref === 'sched:' + s.id && s.last_run && Number(x.trimis_la) >= new Date(s.last_run).getTime() - 2 * 60000; });
+      const pe = {}; ale.forEach(function (x) { if (!pe[x.catre]) pe[x.catre] = x; });   // cel mai nou email pe fiecare adresă
+      const rz = livrare.rezumat(Object.keys(pe).map(function (k) { const x = pe[k]; return { catre: x.catre, stare: x.stare, la: Number(x.stare_la) || null, motiv: x.motiv, ref: x.ref }; }), !!req.isSuper);
+      const o = Object.assign({}, s, { stare_text: reportSchedules ? reportSchedules.textStare(s, !!req.isSuper, rz) : null, livrare_fel: rz.fel || null });
+      if (req.isSuper && rz.blocate.length) o.livrare_blocate = rz.blocate;
       if (!req.isSuper) delete o.ultima_eroare;
       return o;
     }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// „Deblochează la Brevo" (28.10): scoate o adresă de pe lista Brevo de adrese blocate (după un refuz definitiv sau o reclamație de spam
+// Brevo nu mai trimite acolo, iar aplicația scria totuși „a plecat"). Doar noi; rând în audit.
+app.post('/api/admin/email/deblocheaza', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const email = String((req.body || {}).email || '').trim().toLowerCase();
+    if (!mailer || mailer.fel() !== 'brevo') return res.status(400).json({ error: 'Emailul nu merge prin Brevo.' });
+    const r = await mailer.deblocheaza(email);
+    if (!r.ok) return res.status(400).json({ error: r.error || 'Brevo n-a deblocat adresa.' });
+    const n = await db.marcheazaDeblocata(email, Date.now());
+    auditReq(req, 'update', 'email_deblocat', null, { email: email, eraBlocata: !!r.eraBlocata });
+    res.json({ ok: true, text: r.eraBlocata ? email + ' a fost scoasă de pe lista de adrese blocate la Brevo. Următorul email pleacă normal.'
+      : email + ' nu era pe lista de adrese blocate la Brevo.', randuri: n });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Conturile demo nu pot programa rapoarte: câmpul „destinatari" e liber, iar trimiterea pleacă de pe SMTP-ul
@@ -18536,17 +18650,30 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // Calea emailului (12.10): Brevo pe HTTPS (BREVO_API_KEY — merge și pe Railway Hobby) sau SMTP. Cheia rămâne 'smtp'.
   // Din 22.10, roșu și când emailul e pus, dar ultimul n-a plecat (până atunci rândul era verde cât timp exista o cheie, iar
   // Brevo refuza serverul de câteva zile) — cu ce s-a întâmplat, pe înțeles, și ce e de făcut.
+  // Din 28.10 rândul spune și ce a răspuns Brevo la verificarea de la pornire (fără email trimis) și ultimul email care a plecat, dar
+  // n-a ajuns (livrare.js) — „verde" nu mai înseamnă doar „a plecat".
   {
     const pus = !!(mailer && mailer.enabled());
     const es = await _emailStareAcum();
+    const ss = await _emailStareSalvata();
+    const vf = ss && ss.verificare ? ss.verificare : null;
     const picat = pus && es.esuatLa > es.reusitLa;
+    const vfPicat = pus && !picat && vf && vf.ok === false && Number(vf.la) > es.reusitLa && mailer.motiv(vf.eroare).fel !== 'retea';
     const cand = function (t) { return new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
     const cale = pus ? (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') : '';
-    const m = picat ? mailer.motiv(es.eroare) : null;
-    add('smtp', 'Email', !pus || picat ? 'crit' : 'ok',
+    const m = picat ? mailer.motiv(es.eroare) : (vfPicat ? mailer.motiv(vf.eroare) : null);
+    let liv = { rau: null, bun: null }; try { if (pus) liv = await db.ultimeleLivrari(); } catch (e) {}
+    const tRau = liv.rau ? Number(liv.rau.stare_la || liv.rau.trimis_la) : 0, tBun = liv.bun ? Number(liv.bun.stare_la || liv.bun.trimis_la) : 0;
+    const nelivrat = pus && !picat && !vfPicat && liv.rau && tRau > tBun;
+    const vfText = vf && vf.ok ? ' · Brevo primește serverul (verificat ' + cand(vf.la) + ', fără email trimis)' : '';
+    const livText = liv.bun ? ' · ultimul email livrat: ' + cand(tBun) : '';
+    add('smtp', 'Email', !pus || picat || vfPicat ? 'crit' : (nelivrat ? 'warn' : 'ok'),
       !pus ? 'neconfigurat (BREVO_API_KEY sau SMTP) → facturile, contractele, invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă'
         : picat ? ('activ — ' + cale + ', DAR ultimul email n-a plecat (' + cand(es.esuatLa) + '). ' + m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(es.eroare || '').slice(0, 300))
-          : ('activ — ' + cale + ', de la ' + mailer.fromAddr() + (es.reusitLa ? ' · ultimul email plecat: ' + cand(es.reusitLa) : '')));
+          : vfPicat ? ('activ — ' + cale + ', DAR la verificarea de ' + cand(vf.la) + ' (fără niciun email trimis) Brevo a refuzat serverul: emailurile nu vor putea pleca. ' + m.scurt + ' ' + m.ceFaceti + ' Eroarea: ' + String(vf.eroare || '').slice(0, 300))
+            : nelivrat ? ('activ — ' + cale + ', DAR ultimul email lămurit n-a ajuns (' + cand(tRau) + (liv.rau.unde ? ', ' + liv.rau.unde : '') + '): ' +
+                livrare.textPentruNoi({ catre: liv.rau.catre, stare: liv.rau.stare, la: tRau, motiv: liv.rau.motiv }) + '. ' + livrare.ceFacem(Object.assign({}, liv.rau), true) + vfText)
+              : ('activ — ' + cale + ', de la ' + mailer.fromAddr() + (es.reusitLa ? ' · ultimul email plecat: ' + cand(es.reusitLa) : '') + livText + vfText));
   }
   // Panoul Mail, etapa 2: emailurile PRIMITE (Cloudflare Email Routing → Worker → /api/mail/primeste, cu parola comună).
   {
@@ -20677,6 +20804,8 @@ if (process.env.SEED_TEST === '1') {
       res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined,
         plasa: b.plasa ? await plasaAnuntTick() : undefined,
         locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined,
+        livrare: b.livrare ? await livrareEmailTick(acum) : undefined,
+        verificareEmail: b.verificareEmail ? await _verificaEmailServer() : undefined,
         rapoarte: b.rapoarte && reportSchedules ? await reportSchedules.tickDue({ db, reports, reportExport, channels, notify }, new Date(acum)) : undefined });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
@@ -21425,6 +21554,12 @@ async function start() {
   setInterval(() => montajDeFacturatTick().catch(() => {}), 60 * 60 * 1000);
   // Pachetele RA Insight (pasul 4): anunțul pentru noi la 60% din plasă și la plasă — la 15 minute.
   setInterval(() => plasaAnuntTick().catch(() => {}), 15 * 60 * 1000);
+  // Emailul (28.10): Brevo primește serverul? — la pornire (fără să trimită nimic), apoi din oră în oră. Emailurile care au plecat:
+  // la 5 minute Brevo e întrebat dacă au ajuns; urma lor (30 de zile, fără conținut) se curăță o dată pe zi.
+  setTimeout(() => _verificaEmailServer().catch(() => {}), Number(process.env.EMAIL_VERIFICARE_LA_MS) || 20 * 1000);
+  setInterval(() => _verificaEmailServer().catch(() => {}), 60 * 60 * 1000);
+  setInterval(() => livrareEmailTick().catch(() => {}), 5 * 60 * 1000);
+  setInterval(() => db.stergeLivrariVechi(Date.now(), 30).catch(() => {}), 24 * 60 * 60 * 1000);
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);

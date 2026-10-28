@@ -1309,6 +1309,26 @@ async function initDb() {
     await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS ultima_eroare TEXT`);
     await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS email_reincercari INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS email_raport_id INTEGER`);
+    // Ce s-a întâmplat cu un email DUPĂ ce l-a primit Brevo (28.10): id-ul dat de Brevo, destinatarul, felul, de unde a plecat
+    // (`ref`, ex. 'sched:12'), starea citită de la Brevo (livrare.js). Fără subiect și fără conținut. Se șterg după 30 de zile.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS email_livrari (
+        id SERIAL PRIMARY KEY,
+        mesaj_id TEXT NOT NULL,
+        catre VARCHAR(255) NOT NULL,
+        fel VARCHAR(30),
+        ref VARCHAR(60),
+        unde VARCHAR(160),
+        company_id INTEGER,
+        trimis_la BIGINT NOT NULL,
+        stare VARCHAR(20) DEFAULT 'trimis',
+        motiv TEXT,
+        stare_la BIGINT,
+        verificat_la BIGINT,
+        anuntat BOOLEAN DEFAULT false
+      )`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_email_livrari_ref ON email_livrari(ref, trimis_la)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_email_livrari_trimis ON email_livrari(trimis_la)`);
 
     // Tahograf: fișiere .DDD încărcate + analiza lor
     await client.query(`
@@ -6529,6 +6549,56 @@ async function corecturiLuna(luna) {
     COALESCE(SUM(echipament), 0)::int AS echipament, COALESCE(SUM(ramase), 0)::int AS ramase FROM ai_corecturi WHERE luna = $1`, [String(luna)]);
   return r.rows[0] || { rescrise: 0, cifre: 0, litere: 0, echipament: 0, ramase: 0 };
 }
+// ─── Livrarea emailurilor (28.10): ce a spus Brevo după ce a primit emailul (livrare.js) ───
+async function noteazaLivrare(o) {
+  const r = await pool.query(
+    `INSERT INTO email_livrari (mesaj_id, catre, fel, ref, unde, company_id, trimis_la) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    [String(o.mesajId).slice(0, 500), String(o.catre).toLowerCase().slice(0, 255), o.fel ? String(o.fel).slice(0, 30) : null,
+      o.ref ? String(o.ref).slice(0, 60) : null, o.unde ? String(o.unde).slice(0, 160) : null,
+      o.companyId != null ? parseInt(o.companyId) : null, Number(o.trimisLa) || Date.now()]);
+  return r.rows[0] ? r.rows[0].id : null;
+}
+// Emailurile încă nelămurite, proaspete, neîntrebate în ultimele `pauzaMs` (regula: livrare.deVerificat).
+async function livrariDeVerificat(acum, oreMax, pauzaMs, limita) {
+  const r = await pool.query(
+    `SELECT * FROM email_livrari WHERE stare IN ('trimis', 'amanat', 'necunoscut') AND trimis_la > $1
+       AND (verificat_la IS NULL OR verificat_la < $2) ORDER BY trimis_la ASC LIMIT $3`,
+    [acum - oreMax * 3600 * 1000, acum - pauzaMs, Math.max(1, Math.min(200, parseInt(limita) || 30))]);
+  return r.rows;
+}
+async function actualizeazaLivrare(id, st) {
+  await pool.query('UPDATE email_livrari SET stare = $2, motiv = $3, stare_la = $4, verificat_la = $5 WHERE id = $1',
+    [parseInt(id), String(st.stare || 'trimis').slice(0, 20), st.motiv != null ? String(st.motiv).slice(0, 300) : null,
+      st.stareLa != null ? Number(st.stareLa) : null, Number(st.verificatLa) || Date.now()]);
+}
+async function marcheazaLivrariAnuntate(ids) {
+  const l = (ids || []).map(function (x) { return parseInt(x); }).filter(function (x) { return x > 0; });
+  if (l.length) await pool.query('UPDATE email_livrari SET anuntat = true WHERE id = ANY($1::int[])', [l]);
+}
+// Emailurile unor trimiteri (ex. ['sched:3', 'sched:9']) din ultimele `zile` zile, cele mai noi întâi.
+async function livrariPentruRef(refs, deLa) {
+  const l = (refs || []).filter(Boolean).map(String);
+  if (!l.length) return [];
+  const r = await pool.query('SELECT * FROM email_livrari WHERE ref = ANY($1::text[]) AND trimis_la >= $2 ORDER BY trimis_la DESC LIMIT 2000', [l, Number(deLa) || 0]);
+  return r.rows;
+}
+// Scoasă de pe lista blocată: emailurile vechi către ea nu mai sunt „blocate" (următorul se întreabă din nou, de la zero).
+async function marcheazaDeblocata(email, acum) {
+  const r = await pool.query(`UPDATE email_livrari SET stare = 'deblocat', stare_la = $2 WHERE catre = $1 AND stare = 'blocat' RETURNING id`,
+    [String(email || '').toLowerCase(), Number(acum) || Date.now()]);
+  return r.rows.length;
+}
+// Ultimul email lămurit, bun și rău — pentru „Stare producție".
+async function ultimeleLivrari() {
+  const rau = await pool.query(`SELECT * FROM email_livrari WHERE stare IN ('respins', 'blocat', 'spam', 'invalid', 'eroare') ORDER BY COALESCE(stare_la, trimis_la) DESC LIMIT 1`);
+  const bun = await pool.query(`SELECT * FROM email_livrari WHERE stare IN ('livrat', 'deschis') ORDER BY COALESCE(stare_la, trimis_la) DESC LIMIT 1`);
+  return { rau: rau.rows[0] || null, bun: bun.rows[0] || null };
+}
+async function stergeLivrariVechi(acum, zile) {
+  const r = await pool.query('DELETE FROM email_livrari WHERE trimis_la < $1 RETURNING id', [(Number(acum) || Date.now()) - (zile || 30) * 864e5]);
+  return r.rows.length;
+}
+
 async function setScheduleRun(id, lastRunIso, nextRunIso, st) {
   if (!st) { await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]); return; }
   await pool.query(
@@ -6801,6 +6871,7 @@ module.exports = {
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
   scrieScrisoare, auScrisoarea, scrisorileOmului, scrisoareaOmului, citesteScrisoarea, scrisoriNecitite, stergeScrisoriMaiVechiDe,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun, setScheduleStare,
+  noteazaLivrare, livrariDeVerificat, actualizeazaLivrare, marcheazaLivrariAnuntate, livrariPentruRef, marcheazaDeblocata, ultimeleLivrari, stergeLivrariVechi,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, completeazaDosarFirma, deleteCompany,
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
