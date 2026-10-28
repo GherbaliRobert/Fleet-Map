@@ -12200,7 +12200,6 @@ const pozitii = await r.json();</code></pre>
         var cuRaport = carduri.length > 0 && x.source !== 'ai';
         var insg = window._chatInsigna(x.insigna); if (insg) bub.appendChild(insg);   // antetul: cine a răspuns, înaintea a orice
         if (window._insightExtra && !cuRaport) { var ii = window._insightExtra({ inteles: x.inteles }, null, 'inteles'); if (ii.childNodes.length) bub.appendChild(ii); }
-        if (x.aprofundat) { var ap = el('div', 'chat-aprof-r'); ap.appendChild(el('span', 'chat-aprof', 'analiză aprofundată')); bub.appendChild(ap); }
         // Mesajul pachetului (Start, luna oprită): în caseta de avertizare, cu „+" (ce se poate alege) și, la administrator, pachetele.
         var textAi = String(m.text || '');
         if (x.limita || x.pachetMesaj) {
@@ -12299,7 +12298,7 @@ const pozitii = await r.json();</code></pre>
           var m = { rol: 'assistant', id: j.mesajId || null, text: j.reply || j.message || j.error || 'RA Insight nu a putut răspunde acum.', feedback: null,
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
-              aprofundat: j.aprofundat, limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
+              limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
               verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
           S.mesaje.push(m);
           if (box) {
@@ -28714,12 +28713,12 @@ const pozitii = await r.json();</code></pre>
     var _OF_PK_CHEI = { basic: 'pkBasic', pro: 'pkPro', business: 'pkBusiness' };
     function _ofPachetMeta(cod) { var l = (_ofMeta && _ofMeta.pachete) || []; for (var i = 0; i < l.length; i++) if (l[i].cod === cod) return l[i]; return null; }
     // Ce rămâne la noi dintr-un pachet, pe lună — aceeași socoteală ca pachete.marja (legate prin probă): „obișnuit" = toate
-    // întrebările la costul obișnuit + tot bugetul de analiză aprofundată; „minim" = plasa (cel mult 80% din preț ne poate costa).
+    // întrebările la costul obișnuit; „minim" = plasa (cel mult 80% din preț ne poate costa).
     function _ofPachetMarja(cod, pret) {
       var m = _ofPachetMeta(cod), c = (_ofMeta && _ofMeta.pachetCost) || null;
       if (!m || !m.ai || !c) return null;
       var r2 = function (x) { return Math.round(x * 100) / 100; };
-      return { obisnuit: r2(pret - m.intrebari * c.intrebareLei - (m.sonnetLei || 0)), minim: r2(pret * (1 - c.plasa)) };
+      return { obisnuit: r2(pret - m.intrebari * c.intrebareLei), minim: r2(pret * (1 - c.plasa)) };
     }
     // Alegi alt pachet: prețul se propune din lista casei (rămâne editabil).
     window.raxOfPachet = function () {
@@ -29655,7 +29654,7 @@ const pozitii = await r.json();</code></pre>
       var sold = p.sold;
       return '<div class="aiu-pk">'
         + t('Încasăm luna asta', _aiuLei(venit), parti.length ? esc(parti.join(' · ')) : 'nicio firmă pe un pachet încă')
-        + t('Ne costă (real)', _aiuLei(cost), 'plata către model' + (Number(p.aprofundatLei) ? ', din care analiza aprofundată ' + _aiuLei(p.aprofundatLei) : ''))
+        + t('Ne costă (real)', _aiuLei(cost), 'plata către model')
         + t('Ne rămân', '<span style="color:' + (ramane >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramane) + '</span>', venit > 0 ? Math.round((ramane / venit) * 100) + '% din încasări' : '—')
         + t('Sold Anthropic', sold ? '$' + Number(sold.usd).toLocaleString('ro-RO') : '—',
             (sold ? (sold.zile != null ? 'la ritmul de azi, ~' + sold.zile + (sold.zile % 100 >= 20 || (sold.zile % 100 === 0 && sold.zile) ? ' de' : '') + ' zile' : 'fără cheltuieli luna asta') + (sold.la ? ' · scris pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '') : 'nescris')
@@ -29735,13 +29734,12 @@ const pozitii = await r.json();</code></pre>
       d.style.display = acum ? '' : 'none';
       if (ch) ch.className = 'fas fa-chevron-' + (acum ? 'down' : 'right') + ' aiu-ch';
     };
-    // Toate butoanele, într-un loc: proba modelelor, analiza aprofundată, soldul și cheia Anthropic, istoricul pe luni.
+    // Toate butoanele, într-un loc: proba modelelor, soldul și cheia Anthropic, istoricul pe luni.
     function _aiuControale(p) {
       p = p || {};
       var b = function (on, ic, t, tit) { return '<button class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="' + on + '"' + (tit ? ' title="' + esc(tit) + '"' : '') + '><i class="fas fa-' + ic + '"></i> ' + t + '</button>'; };
       return '<div class="aiu-grup">Controale</div><div class="aiu-ctl">'
         + b('raxProbaModele()', 'flask', 'Proba modelelor', 'Aceleași întrebări, la mai multe modele — răspunsurile una lângă alta, cu costul')
-        + b('raxAiAprofundat(' + (p.aprofundataPornita ? 'false' : 'true') + ')', 'wand-magic-sparkles', 'Analiza aprofundată: ' + (p.aprofundataPornita ? 'pornită' : 'oprită'), 'Sonnet, la Pro și Business, cu bugetul pachetului')
         + b('raxAiSold()', 'wallet', 'Soldul Anthropic')
         + b("goSistem('dashboard')", 'key', 'Cheia Anthropic', 'Se pune în Dashboard platformă')
         + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
@@ -29749,25 +29747,15 @@ const pozitii = await r.json();</code></pre>
     }
     // (Aici stătea „Mai multe cifre": panoul de dinainte — cele șase cartonașe și o cutie pe firmă —, scos pe 19.10, cu Alin
     // (punctul 5). Telefonul de azi încă le arată; formulele lor stau în verify_insight_bani.js până la APK-ul cu pagina nouă.)
-    // Rândul pachetului pe cartonașul firmei: plasa (cât din 80% din preț), analiza aprofundată, ce ne rămâne.
+    // Rândul pachetului pe cartonașul firmei: plasa (cât din 80% din preț), ce ne rămâne.
     function _aiuPachetRand(r) {
       if (!r.pachet) return '';
       var parti = ['<b>Pachet ' + esc(r.pachet.nume) + '</b>'];
       if (r.plasa) parti.push('<span style="color:' + (r.plasa.procent >= 100 ? 'var(--red)' : (r.plasa.procent >= 60 ? 'var(--orange)' : 'var(--text-secondary)')) + ';">plasa ' + r.plasa.procent + '% din ' + _aiuLei(r.plasa.plafonLei) + '</span>');
       else parti.push('<span style="color:var(--text-muted);">pe butoane, fără AI</span>');
-      if (r.aprofundat) parti.push('<span style="color:var(--text-secondary);">analiză aprofundată ' + _aiuLei(r.aprofundat.cheltuitLei) + ' din ' + _aiuLei(r.aprofundat.bugetLei) + '</span>');
       if (r.ramanLei != null && r.pachet.ai) parti.push('ne rămân <b>' + _aiuLei(r.ramanLei) + '</b>');
       return '<div class="aiu-pk-r">' + parti.join(' · ') + '</div>';
     }
-    window.raxAiAprofundat = async function (on) {
-      if (on && !await raConfirm('Pe Pro și Business, la întrebările „de ce", „compară", „ce să fac", va răspunde Sonnet, cât ține bugetul pachetului (5 / 8 lei pe lună). Costă mai mult decât Haiku; plasa de 80% rămâne.', { title: 'Pornești analiza aprofundată?', danger: false, okLabel: 'Pornește', icon: 'fa-wand-magic-sparkles' })) return;
-      try {
-        var j = await fetch('/api/admin/insight/aprofundat', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ pornita: !!on }) }).then(function (r) { return r.json(); });
-        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
-        (window.raxToast || function () {})(on ? 'Analiza aprofundată e pornită' : 'Analiza aprofundată e oprită', 'success');
-        raxLoadAiUsage();
-      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
-    };
     window.raxAiSold = async function () {
       var v = await raConfirm('Soldul îl găsiți în contul Anthropic (Billing). Aplicația socotește, după ce s-a cheltuit luna asta, pentru câte zile mai ajunge.', { title: 'Soldul de la Anthropic', danger: false, okLabel: 'Salvează', icon: 'fa-wallet', field: { label: 'Soldul, în dolari', value: '' } });
       if (v === false) return;

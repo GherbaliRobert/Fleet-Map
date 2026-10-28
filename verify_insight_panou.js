@@ -317,11 +317,11 @@ const F = (o) => Object.assign({ id: 1, name: 'F', enabled: true, conturi: 3, de
   pretCont: 15, fond: 150, used: 60, venitLei: 45, costEur: 0.2, oameni: [] }, o);
 const SUM = (o) => Object.assign({ companies: 4, withFeature: 3, active: 2, conturi: 5, fond: 200,
   totalCalls: 112, epuizate: 0, totalCostEur: 0.27, totalVenitLei: 79 }, o);
-let K = gata.pachete({ peCod: { start: 5, basic: 1, pro: 2 }, venitLei: 50, costLei: 4.2, aprofundatLei: 1.1, sold: { usd: 12.5, zile: 40, la: Date.UTC(2026, 9, 17) } });
+let K = gata.pachete({ peCod: { start: 5, basic: 1, pro: 2 }, venitLei: 50, costLei: 4.2, sold: { usd: 12.5, zile: 40, la: Date.UTC(2026, 9, 17) } });
 T('sunt exact patru cifre', (K.match(/class="aiu-pk-t"/g) || []).length === 4, String((K.match(/class="aiu-pk-t"/g) || []).length));
 T('„Încasăm luna asta”, în două monede', /Încasăm luna asta[\s\S]{0,200}50 lei[\s\S]{0,80}\(10 €\)/.test(K), K.slice(0, 300));
 T('și din ce pachete vin banii', /5 Start · 1 Basic · 2 Pro/.test(K));
-T('„Ne costă (real)” spune și partea analizei aprofundate', /Ne costă \(real\)/.test(K) && /din care analiza aprofundată 1,1 lei/.test(K));
+T('„Ne costă (real)”: plata către model (fără partea „analiză aprofundată” — Sonnet scos pe 28.10)', /Ne costă \(real\)[\s\S]{0,200}plata către model/.test(K) && !/aprofundat/.test(K));
 T('„Ne rămân” e verde când rămân bani și spune cât din încasări', /Ne rămân[\s\S]{0,140}color:var\(--accent\);">46 lei/.test(K) && /92% din încasări/.test(K));
 T('„Sold Anthropic”: dolarii, zilele la ritmul de azi și butonul', /\$12,5/.test(K) && /~40 de zile/.test(K) && />schimbă</.test(K));
 K = gata.pachete({ peCod: {}, venitLei: 0, costLei: 0.4 });

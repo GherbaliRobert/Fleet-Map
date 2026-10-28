@@ -407,6 +407,26 @@ const ECHIPAMENTUL = 'ECHIPAMENTUL: aparatul GPS, senzorii (de combustibil, de t
   'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor", „verifică aparatul", ' +
   '„sună instalatorul") și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat".';
 
+// ─── Analiza atentă (28.10; Alin, la propunerea „Analiza aprofundată, făcută de Haiku": „1 da") ───────────────────────
+// La întrebările grele — „de ce?", „compară", „ce să fac" (aiRaport.PENTRU_INSIGHT) — același Haiku lucrează mai atent, la toate
+// pachetele cu AI: gândește mai mult (efortul „medium", în ai.js), își face singur comparația cu perioada dinainte și răspunde
+// mereu în aceeași formă. Fără model nou, fără etichetă nouă pe ecran (insigna rămâne „Analiză · 1 întrebare"). Textul stă aici,
+// o dată; serverul îl pune în contextul întrebării (nu în partea fixă din cache).
+const ANALIZA_ATENTA = 'ÎNTREBARE DE ANALIZĂ („de ce", „compară", „ce să fac"). Lucrează atent:\n' +
+  '1. Înainte să răspunzi, citește cu uneltele raportul potrivit pentru perioada întrebării ȘI pentru perioada dinainte, de aceeași lungime ' +
+  '(de pildă săptămâna asta și săptămâna trecută), pe mașini; dacă e vorba de condus, și pe șoferi; pe zile, dacă ajută. Ce e deja în ' +
+  '„RAPOARTE FĂCUTE ACUM" nu mai cere o dată.\n' +
+  '2. Răspunde scurt, în forma asta:\n' +
+  '**Ce s-a întâmplat** — o frază, cu cifra principală și comparația cu perioada dinainte.\n' +
+  '**De ce** — două-trei cauze, fiecare cu cifra ei din rapoarte (mașina, șoferul, ziua).\n' +
+  '**Ce poți face** — doi-trei pași pe care omul îi face singur în aplicație (o alertă, fișa mașinii, discuția cu șoferul, un raport).\n' +
+  'Cifrele, numai din ce au întors uneltele. Dacă datele nu ajung pentru o cauză, spune asta pe scurt; nu ghici.';
+// Ce întrebare primește analiza atentă: DOAR „de ce" (și „din ce cauză", „motivul"), „compară" și „ce să fac" („ce ar trebui să
+// fac", „ce pot face") — cum s-a propus. Mai strâmt decât aiRaport.PENTRU_INSIGHT, care prinde și „scrie-i", „cum pot", „explică":
+// acolo forma „Ce s-a întâmplat → De ce → Ce poți face" n-ar avea sens.
+const ANALIZA_RE = /(^|[^a-z])(de ce|din ce cauza|motivul|compar[a-z]*|ce sa fac|ce ar trebui sa fac|ce pot face|ce putem face)([^a-z]|$)/;
+function esteAnaliza(text) { return ANALIZA_RE.test(norm(text || '')); }
+
 // ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat" pe sume bune) ──────────────────────────────
 // RA Insight primește din raport cel mult 25 de rânduri; când adună singur cursele pe mașini, greșește (sau adună doar ce
 // vede). Sumele le face aplicația, pe TOATE rândurile: câte rânduri, kilometrii / litrii / leii adunați, viteza cea mai
@@ -492,5 +512,5 @@ module.exports = {
   totaluriPeMasina, celeMaiMari, vorbeDespreEchipament,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, oraRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
-  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, areLitereStraine, litereRomanesti,
+  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, ANALIZA_ATENTA, esteAnaliza, areLitereStraine, litereRomanesti,
 };

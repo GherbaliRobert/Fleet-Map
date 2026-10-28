@@ -43,11 +43,14 @@ function costUsd(u, model) {
 }
 function costEur(u, model) { return costUsd(u, model) * USD_EUR; }
 // Cererea către API, pe felul modelului: la 5.x, gândire adaptivă cu efortul nostru și loc pentru ea în max_tokens.
-// Haiku 4.5 primește cererea de până acum, neschimbată.
+// Haiku 4.5 primește cererea de până acum, neschimbată. `_efort` (28.10, analiza atentă a lui RA Insight): o întrebare grea
+// („de ce", „compară", „ce să fac") gândește mai mult — „medium" — cu loc dublu pentru gândire; câmpul nu pleacă spre API.
 function _corp(b) {
   const p = pret(b.model);
-  if (!p.gandire) return b;
-  return Object.assign({}, b, { max_tokens: (Number(b.max_tokens) || 1024) + GANDIRE_LOC, thinking: { type: 'adaptive' }, output_config: { effort: EFORT } });
+  const ef = b._efort || EFORT;
+  const c = Object.assign({}, b); delete c._efort;
+  if (!p.gandire) return c;
+  return Object.assign(c, { max_tokens: (Number(b.max_tokens) || 1024) + (ef === 'low' ? GANDIRE_LOC : GANDIRE_LOC * 2), thinking: { type: 'adaptive' }, output_config: { effort: ef } });
 }
 // Textul răspunsului: blocurile `text`, în ordine. La modelele 5.x răspunsul poate începe cu un bloc `thinking`, deci
 // NU se citește „primul bloc".
@@ -135,14 +138,15 @@ async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUs
 // nu schimbăm instrucțiunile — nota „gata" se adaugă după ultimele rezultate și se cere răspunsul fără unelte
 // (`tool_choice: none`, uneltele rămân aceleași). Haiku 4.5 merge pe drumul de până acum, neschimbat.
 const NOTA_GATA = 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.';
-async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage, brut }) {
+async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage, brut, efort }) {
   const m = model || AI_AGENT_MODEL;
+  const ef = efort || undefined;   // același efort pe toată bucla unei întrebări (istoricul buclei nu se atinge)
   const cuGandire = pret(m).gandire;
   const convo = (messages || []).slice();
   const sysCached = _cachedSystem(system); // system + unelte se trimit la FIECARE rundă → merită cache-uite
   const used = [];
   for (let i = 0; i < maxIters; i++) {
-    const corp = { model: m, max_tokens: maxTokens, system: sysCached, tools, messages: convo };
+    const corp = { model: m, max_tokens: maxTokens, system: sysCached, tools, messages: convo, _efort: ef };
     if (cuGandire) corp.cache_control = { type: 'ephemeral' };
     const j = await _rawCall(corp);
     if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) {} }
@@ -173,7 +177,7 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
   }
   // Limită de iterații atinsă → cere un răspuns final fără unelte, pe baza a ce s-a adunat.
   const jf = cuGandire
-    ? await _rawCall({ model: m, max_tokens: maxTokens, system: sysCached, tools, tool_choice: { type: 'none' }, messages: convo, cache_control: { type: 'ephemeral' } })
+    ? await _rawCall({ model: m, max_tokens: maxTokens, system: sysCached, tools, tool_choice: { type: 'none' }, messages: convo, cache_control: { type: 'ephemeral' }, _efort: ef })
     : await _rawCall({ model: m, max_tokens: maxTokens, system: _cuNota(system, NOTA_GATA), messages: convo });
   if (onUsage && jf.usage) { try { onUsage(jf.usage, m); } catch (e) {} }
   if (jf.stop_reason === 'refusal') return { text: TEXT_REFUZ, toolCalls: used, refuz: true };

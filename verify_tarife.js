@@ -111,10 +111,10 @@ PLATITE.forEach((p) => {
   });
 });
 T('Start nu are socoteală de marjă (n-are AI, nu ne costă nimic)', PK._ofPachetMarja('start', 0) === null);
-// Cifrele pe care le-a văzut Alin în macheta din 14.10 (Haiku 5.5, întrebarea obișnuită la capătul prudent, tot bugetul de
-// analiză aprofundată cheltuit): dacă se mută prețul sau costul, proba o spune.
-T('la prețul de listă rămân ~9,02 / 12,06 / 17,10 lei pe lună (Basic / Pro / Business)',
-  ['basic', 'pro', 'business'].map((c) => pachete.marja(c).obisnuit).join(' / ') === '9.02 / 12.06 / 17.1',
+// Cifrele din macheta din 14.10 (Haiku 5.5, întrebarea obișnuită la capătul prudent). Din 28.10 fără bugetul de analiză aprofundată
+// pe Sonnet (scos: 5 lei la Pro, 8 la Business): dacă se mută prețul sau costul, proba o spune.
+T('la prețul de listă rămân ~9,02 / 17,06 / 25,10 lei pe lună (Basic / Pro / Business)',
+  ['basic', 'pro', 'business'].map((c) => pachete.marja(c).obisnuit).join(' / ') === '9.02 / 17.06 / 25.1',
   ['basic', 'pro', 'business'].map((c) => pachete.marja(c).obisnuit).join(' / '));
 T('iar în cel mai rău caz (plasa de 80%) rămân 20% din preț',
   PLATITE.every((p) => pachete.marja(p.cod, 40).minim === 8), PLATITE.map((p) => pachete.marja(p.cod, 40).minim).join(', '));
@@ -133,9 +133,10 @@ _winPk.raxOfPachet();
 T('alt pachet ales → prețul scris de mână se uită și se propune cel al pachetului nou',
   _atinsePk['of-pPachet'] === false && JSON.stringify(_propusePk[_propusePk.length - 1]) === JSON.stringify(['of-pPachet', 33]), JSON.stringify(_propusePk));
 PK._ofHintPachet({ cfg: { aiPachet: 'pro', aiPachetPret: 20 } });
-// Macheta din 15.10 (Alin: „2. da"): sub cartonașe, un singur rând cu banii noștri.
-T('sub cartonașe, doar pentru noi, un rând: „Ne rămân ~12 lei pe lună din pachet (cel puțin 4 lei, oricât ar întreba)"',
-  /Ne rămân <b class="of-pk-bun">~12 lei pe lună<\/b> din pachet \(cel puțin <b>4 lei<\/b>, oricât ar întreba\)\./.test(_elPk['of-mod-hint-aiA'].innerHTML), _elPk['of-mod-hint-aiA'].innerHTML);
+// Macheta din 15.10 (Alin: „2. da"): sub cartonașe, un singur rând cu banii noștri. Din 28.10 Pro lasă ~17 lei (fără bugetul de
+// 5 lei al analizei pe Sonnet, scoasă din pachete); cel mai rău caz rămâne plasa, 20% din preț.
+T('sub cartonașe, doar pentru noi, un rând: „Ne rămân ~17 lei pe lună din pachet (cel puțin 4 lei, oricât ar întreba)"',
+  /Ne rămân <b class="of-pk-bun">~17 lei pe lună<\/b> din pachet \(cel puțin <b>4 lei<\/b>, oricât ar întreba\)\./.test(_elPk['of-mod-hint-aiA'].innerHTML), _elPk['of-mod-hint-aiA'].innerHTML);
 // Macheta din 15.10 (Alin: „1. da"): cele patru pachete unul lângă altul, din meta-ul serverului (pachete.js), cu prețul listei casei.
 T('cartonașele: Pro ales (chenarul verde, ✓), ceilalți nu', _elPk['of-pkc-pro'].className === 'of-pkc al' && _elPk['of-pkn-pro'].textContent === 'Pro ✓' && ['start', 'basic', 'business'].every((c) => _elPk['of-pkc-' + c].className === 'of-pkc'),
   ['start', 'basic', 'pro', 'business'].map((c) => _elPk['of-pkc-' + c].className).join(','));

@@ -151,7 +151,9 @@ const LOAD = PAG.slice(PAG.indexOf('window.raxLoadAiUsage = async function'), PA
 T('pagina pe un ecran: patru cifre, ce cere atenție, firmă cu firmă, controalele, istoricul; panoul vechi „Mai multe cifre" nu mai e',
   /box\.innerHTML = _aiuPachete\(d\.pachete\)\s*\+ _aiuAtentie\(d\.pachete, s, rows\)\s*\+ _aiuTabel\(rows\)\s*\+ _aiuControale\(d\.pachete\)\s*\+ '<div class="aiu-ist-box">'/.test(LOAD) && LOAD.indexOf('aiu-mai-box') < 0 && PAG.indexOf('raxAiMaiMulte') < 0);
 const CTL = PAG.slice(PAG.indexOf('function _aiuControale('), PAG.indexOf('function _aiuPachetRand('));
-T('controalele, toate într-un loc: proba modelelor, analiza aprofundată, soldul și cheia Anthropic, istoricul', ['raxProbaModele()', 'raxAiAprofundat(', 'raxAiSold()', "goSistem('dashboard')", 'raxAiIstoric()'].every((x) => CTL.indexOf(x) >= 0));
+// Din 28.10 fără „Analiza aprofundată" (Sonnet scos; analiza atentă pe Haiku merge singură, fără buton).
+T('controalele, toate într-un loc: proba modelelor, soldul și cheia Anthropic, istoricul — fără „Analiza aprofundată"', ['raxProbaModele()', 'raxAiSold()', "goSistem('dashboard')", 'raxAiIstoric()'].every((x) => CTL.indexOf(x) >= 0) &&
+  CTL.indexOf('raxAiAprofundat') < 0 && PAG.indexOf('raxAiAprofundat') < 0);
 
 // ─── 6. Pe server pornit: discuția lui Alin, cu modelul simulat ─────────────────────────────────────
 const PORT = 3297, TCP = 5297;

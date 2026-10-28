@@ -47,6 +47,10 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   const c4 = ai._corp({ model: 'claude-haiku-4-5', max_tokens: 700 }), c55 = ai._corp({ model: 'claude-sonnet-5-5', max_tokens: 700 }), h55 = ai._corp({ model: 'claude-haiku-5-5', max_tokens: 700 });
   T('Haiku 4.5 primește cererea de până acum (fără gândire, fără efort)', !c4.thinking && !c4.output_config && c4.max_tokens === 700);
   T('Sonnet 5.5 și Haiku 5.5: gândire adaptivă, efort „low", loc în plus pentru gândire', [c55, h55].every((c) => c.thinking && c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low' && c.max_tokens === 2700), JSON.stringify(c55));
+  // Analiza atentă (28.10): o întrebare grea cere efortul „medium", cu loc dublu pentru gândire; câmpul nostru nu pleacă spre API.
+  const hMed = ai._corp({ model: 'claude-haiku-5-5', max_tokens: 700, _efort: 'medium' }), h4Med = ai._corp({ model: 'claude-haiku-4-5', max_tokens: 700, _efort: 'medium' });
+  T('analiza atentă: efort „medium" și loc dublu pentru gândire la 5.x; Haiku 4.5 neschimbat; `_efort` nu ajunge la API',
+    hMed.output_config.effort === 'medium' && hMed.max_tokens === 4700 && !('_efort' in hMed) && !h4Med.output_config && h4Med.max_tokens === 700 && !('_efort' in h4Med), JSON.stringify([hMed, h4Med]));
   raspunsuri = [{ content: [{ type: 'thinking', thinking: '', signature: 'x' }, { type: 'text', text: 'Răspunsul.' }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }];
   T('textul se citește pe tip de bloc (răspunsul 5.x poate începe cu „thinking")', (await ai.callClaude({ system: 's', messages: [{ role: 'user', content: 'q' }], model: 'claude-sonnet-5-5' })) === 'Răspunsul.');
   raspunsuri = [{ content: [], stop_reason: 'refusal', usage: { input_tokens: 1, output_tokens: 0 } }];
@@ -192,8 +196,14 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     T('starea live trimisă modelului are DOAR mașinile firmei alese (nu și pe a altei firme)', /B 154 UIP/.test(live) && !/B 999 ALT/.test(live) && /total_flota\\":1/.test(live), live.slice(0, 200));
     const log = toate.filter((c, k) => k !== 1);
     T('modelele cerute chiar sunt chemate, întrebare cu întrebare, în ordine', log.map((c) => c.model).join(',') === MODELE.concat(MODELE).join(','), toate.map((c) => c.model).join(','));
-    T('5.x primesc gândirea adaptivă cu efort „low"; Haiku 4.5 cererea de până acum', log.every((c) => (c.model === 'claude-haiku-4-5') === !c.thinking) &&
-      log.filter((c) => c.thinking).every((c) => c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low'));
+    // Din 28.10, analiza atentă: la „Compară…" (a doua întrebare) 5.x gândesc mai mult — efortul „medium" — și primesc forma fixă în
+    // contextul întrebării; la întrebarea obișnuită (prima), efortul „low", fără ea. Haiku 4.5 primește cererea de până acum.
+    const sysT = (c) => JSON.stringify(c.system || '');
+    T('5.x: gândire adaptivă, efort „low" la întrebarea obișnuită și „medium" la „Compară…" (cu analiza atentă); Haiku 4.5 cererea de până acum',
+      log.every((c) => (c.model === 'claude-haiku-4-5') === !c.thinking) &&
+      log.slice(0, 3).filter((c) => c.thinking).every((c) => c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low' && !/ÎNTREBARE DE ANALIZĂ/.test(sysT(c))) &&
+      log.slice(3).filter((c) => c.thinking).every((c) => c.output_config && c.output_config.effort === 'medium' && /ÎNTREBARE DE ANALIZĂ/.test(sysT(c))) &&
+      /ÎNTREBARE DE ANALIZĂ/.test(sysT(log[3])), JSON.stringify(log.map((c) => [c.model, c.output_config && c.output_config.effort, /ÎNTREBARE DE ANALIZĂ/.test(sysT(c))])));
     T('„{masina}" și „{masina2}" se înlocuiesc cu mașinile firmei', /Câți km a făcut B 154 UIP ieri\?/.test(JSON.stringify(log[0].messages)) && /Compară B 154 UIP cu B 268 ROY\./.test(JSON.stringify(log[3].messages)));
     const sys0 = (Array.isArray(log[0].system) ? log[0].system : [{ text: String(log[0].system) }]).map((b) => b.text).join('\n');
     T('răspunde ACEEAȘI funcție ca pentru client: instrucțiunile lui RA Insight, cu regulile de scris', /Ești „RA Insight"/.test(sys0) && /SCRISUL: română corectă și simplă/.test(sys0), sys0.slice(0, 80));

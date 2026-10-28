@@ -4,13 +4,13 @@
 //
 // Ce păzește:
 //   1. regula (pachete.js): ce primește fiecare pachet, conturile, împărțirea întrebărilor, starea (cota, limita omului,
-//      partea la comun, plasa de 80%), analiza aprofundată, textele (fără bani pentru client);
+//      partea la comun, plasa de 80%), analiza atentă (din 28.10: ce întrebări o primesc; Sonnet scos), textele (fără bani pentru client);
 //   2. sursa: o singură numărătoare a răspunsurilor pe butoane, ramurile de la Basic în sus, costul nu pleacă la client;
 //   3. pe server pornit, cu modelul SIMULAT (nu se cheltuie nimic):
 //      Start — doar administratorul, singur primește locul, 50 de răspunsuri pe butoane, întrebarea liberă NU pleacă spre
 //      model, „Rezumă raportul" pe reguli, fila AI Raport cu cont, ramurile închise; la capăt, mesajul până pe 1;
 //      Basic — 2 conturi, întrebările libere la model (se numără), butoanele pe reguli (nu se numără), plasa;
-//      Pro — limitele pe om, partea la comun, analiza aprofundată (Sonnet) doar pornită, doar la „de ce", cât ține bugetul;
+//      Pro — limitele pe om, partea la comun, analiza atentă la „de ce" (același model, forma fixă; comutatorul vechi = 404);
 //      regula veche, pe cont, rămâne cum era; super-adminul pune / scoate pachetul;
 //   4. pasul 5 — oferta, contractul, factura: prețul pachetului intră în motorul de preț (rândul „RA Insight Pro" pe factură
 //      și în registru), anexa îl îngheață cu prețurile celorlalte, contractul și oferta scriu clauza de trecere; pe server,
@@ -36,8 +36,10 @@ const p = (c) => P.dupaCod(c);
 T('patru pachete, în ordine: Start, Basic, Pro, Business', P.PACHETE.map((x) => x.nume).join() === 'Start,Basic,Pro,Business');
 T('Start: 0 lei, 1 cont (administratorul), 50 de răspunsuri, fără AI, fără ramuri', p('start').pret === 0 && p('start').conturi === 1 && p('start').intrebari === 50 && !p('start').ai && !p('start').ramuri && p('start').doarAdmin);
 T('Basic: 10 lei, 2 conturi, 200 de întrebări la comun, cu AI și ramuri, fără împărțire', p('basic').pret === 10 && p('basic').conturi === 2 && p('basic').intrebari === 200 && p('basic').ai && p('basic').ramuri && !p('basic').imparte);
-T('Pro: 20 de lei, până la 5 conturi, 600 de întrebări, împărțire, 5 lei de analiză aprofundată', p('pro').pret === 20 && p('pro').conturi === 5 && p('pro').intrebari === 600 && p('pro').imparte && p('pro').sonnetLei === 5);
-T('Business: 30 de lei, conturi nelimitate, 1.000 de întrebări, împărțire, 8 lei de analiză aprofundată', p('business').pret === 30 && p('business').conturi === null && p('business').intrebari === 1000 && p('business').imparte && p('business').sonnetLei === 8);
+T('Pro: 20 de lei, până la 5 conturi, 600 de întrebări, împărțire', p('pro').pret === 20 && p('pro').conturi === 5 && p('pro').intrebari === 600 && p('pro').imparte);
+T('Business: 30 de lei, conturi nelimitate, 1.000 de întrebări, împărțire', p('business').pret === 30 && p('business').conturi === null && p('business').intrebari === 1000 && p('business').imparte);
+// Din 28.10 fără bugetul de analiză aprofundată pe Sonnet (Alin: „nu o mai vreau… avem Haiku"; „1 da" la analiza atentă pe Haiku).
+T('niciun pachet nu mai are buget de Sonnet, iar alegerea modelului a ieșit din regulă', P.PACHETE.every((x) => !('sonnetLei' in x)) && P.alegeModel === undefined && P.REZERVA_APROFUNDAT_LEI === undefined);
 T('plasa: 80% din preț (8 / 16 / 24 de lei); la Start, 0', P.PLASA === 0.8 && P.plafonLei(p('basic')) === 8 && P.plafonLei(p('pro')) === 16 && P.plafonLei(p('business')) === 24 && P.plafonLei(p('start')) === 0);
 const fs1 = (s) => P.pachetFirma(s);
 T('firma fără nimic scris → Start (orice firmă începe cu Start)', fs1({}).cod === 'start' && fs1(null).cod === 'start' && fs1('{}').cod === 'start');
@@ -68,10 +70,14 @@ T('Pro: ce rămâne celor fără limită (600 − 500 date cu limită) se termin
 T('starea FIRMEI (fără om) se oprește doar la plasă și cotă, nu la limita sau partea unui om', !P.stare({ pachet: p('pro'), folositeFirma: 160, sumaLimite: 500, folositeCuLimita: 60 }).blocat);
 T('procentul din plasă nu trece de 100%', st('pro', { costLei: 40 }).plasaProcent === 1 && st('pro', { costLei: 8 }).plasaProcent === 0.5);
 
-console.log('   analiza aprofundată');
-const am = (cod, o) => P.alegeModel(Object.assign({ pachet: p(cod), pornita: true, analiza: true, cheltuitLei: 0 }, o));
-T('Pro / Business, pornită, la „de ce", cu buget → aprofundat', am('pro') === 'aprofundat' && am('business') === 'aprofundat');
-T('Start, Basic, oprită, întrebare obișnuită, buget dus → modelul obișnuit', am('start') === 'obisnuit' && am('basic') === 'obisnuit' && am('pro', { pornita: false }) === 'obisnuit' && am('pro', { analiza: false }) === 'obisnuit' && am('pro', { cheltuitLei: 4.8 }) === 'obisnuit' && am('business', { cheltuitLei: 7.7 }) === 'aprofundat');
+console.log('   analiza atentă (28.10): ce întrebări o primesc');
+const INS = require('./insight');
+T('„de ce", „din ce cauză", „compară", „ce să fac", „ce pot face", „motivul" → analiza atentă',
+  ['De ce a crescut consumul?', 'Din ce cauză a scăzut nivelul?', 'Compară B 154 UIP cu B 268 ROY.', 'Ce să fac cu ralantiul?', 'Ce pot face ca să scadă consumul?', 'Care e motivul opririi?'].every((q) => INS.esteAnaliza(q)));
+T('…dar nu „scrie-i", „cum pot", „explică raportul" sau o întrebare obișnuită (acolo forma fixă n-ar avea sens)',
+  ['Scrie-i lui Ion un mesaj', 'Cum pot pune o alertă?', 'Explică raportul', 'Câți km a făcut flota luna asta?'].every((q) => !INS.esteAnaliza(q)));
+T('textul analizei atente: comparația cu perioada dinainte și forma Ce s-a întâmplat → De ce → Ce poți face', /perioada dinainte/.test(INS.ANALIZA_ATENTA) &&
+  /\*\*Ce s-a întâmplat\*\*/.test(INS.ANALIZA_ATENTA) && /\*\*De ce\*\*/.test(INS.ANALIZA_ATENTA) && /\*\*Ce poți face\*\*/.test(INS.ANALIZA_ATENTA));
 
 console.log('   textele');
 const OCT = Date.parse('2026-10-14T09:00:00Z'), DEC = Date.parse('2026-12-20T09:00:00Z');
@@ -155,7 +161,7 @@ T('pagina: ramurile de la Basic apar încuiate pe Start („· Basic"), cu pagin
 // Continuările stau în trei locuri (conversația redeschisă, răspunsul proaspăt, pasul următor de după „Da" — pasul 2, 22.10),
 // plus butoanele de ales: patru, toate cu `buton`.
 T('pagina: butoanele (cartonașe, continuări, alegeri, casetă făcută din butoane) trimit `buton`, scrisul de mână nu', (blocIns.match(/insightTrimite\(t, \{ buton: true \}\)/g) || []).length === 4 && /insightTrimite\(c\.q, \{ buton: true \}\)/.test(blocIns) && /if \(buton\) corp\.buton = true;/.test(blocIns) && /if \(ev && ev\.inputType\) delete t\.dataset\.buton;/.test(blocIns) && /ta\.dataset\.buton = '1'/.test(PAG));
-T('pagina: mesajul pachetului în caseta de avertizare; eticheta „analiză aprofundată"', /x\.limita \|\| x\.pachetMesaj/.test(blocIns) && /'chat-aprof', 'analiză aprofundată'/.test(blocIns) && /aprofundat: j\.aprofundat, limita: j\.limita, pachetMesaj: j\.pachetMesaj/.test(blocIns));
+T('pagina: mesajul pachetului în caseta de avertizare; fără eticheta „analiză aprofundată" (Sonnet scos pe 28.10; insigna rămâne „Analiză · 1 întrebare")', /x\.limita \|\| x\.pachetMesaj/.test(blocIns) && blocIns.indexOf('chat-aprof') < 0 && /limita: j\.limita, pachetMesaj: j\.pachetMesaj/.test(blocIns) && !/aprofundat/.test(blocIns));
 T('„Pachet și conturi": pagina în secțiune (doar textele serverului), deschisă din rândul pachetului (administratorul), din „⋯" și din Utilizatori', /async function deseneazaPachetConturi\(main\)/.test(blocIns) && /cere\('GET', '\/api\/insight\/pachet-conturi'\)/.test(blocIns) && /box\.onclick = esteAdmin\(\) \? function \(\) \{ window\.insightRamura\('pachet'\); \} : null;/.test(blocIns) && /else if \(x\.k === 'pachet' \|\| x\.k === 'ghid'\) window\.insightRamura\(x\.k\);/.test(blocIns) && /onclick="insightPachetConturi\(\)"/.test(PAG));
 // Macheta din 15.10 (Alin: „3. da, 4. da, 5. da"): un singur loc pentru conturi, „Fără limită" / „Cel mult … pe lună", rezumatul.
 T('„Pachet și conturi": sus, rezumatul serverului pe rânduri (cu bara), fără cartonașe', /\(j\.rezumat \|\| \[\]\)\.forEach\(function \(t, i\) \{ rz\.appendChild\(el\('div', i \? 'pkc-rez-2' : null, t\)\); \}\);/.test(blocIns) && blocIns.indexOf('pkc-tiles') < 0 && blocIns.indexOf('pkc-tile') < 0);
@@ -165,7 +171,8 @@ T('omul fără cont, pe o firmă cu pachet: mesajul îl trimite la „Pachet și
 T('administratorul fără cont RA Insight al lui tot ajunge în „Pachet și conturi" (singurul loc din care se dau conturile): din „⋯" și din cartonașul „nu e pornit"', /if \(S\.ramura === 'pachet' && esteAdmin\(\)\) return deseneazaPachetConturi\(main\);/.test(blocIns) && blocIns.indexOf("if (S.ramura === 'pachet' && esteAdmin()) return deseneazaPachetConturi(main);") < blocIns.indexOf('if (S.faraLoc) {\n          main.innerHTML') && /if \(esteAdmin\(\) && \(S\.pachet \|\| S\.faraLoc\)\) l\.push\(\{ text: 'Pachet și conturi'/.test(blocIns) && /'Deschide Pachet și conturi'/.test(blocIns));
 T('ghidul spune drumul nou și nu mai pomenește factura unui cont', /„Pachet și conturi"/.test(G.SECTIUNI.find((x) => x.cheie === 'ra_insight').pasi.join(' ')) && !/se facturează un cont în plus/.test(JSON.stringify(G.SECTIUNI)));
 T('…conturile și limitele pleacă pe rutele lor (ai-seat, ai-limita), nu pe o cale nouă', /cere\('PUT', '\/api\/users\/' \+ id \+ '\/ai-seat'/.test(blocIns) && /cere\('PUT', '\/api\/users\/' \+ id \+ '\/ai-limita'/.test(blocIns));
-T('tabloul nostru: blocul pachetelor și rândul pachetului în amănuntul firmei, din cifrele serverului', /function _aiuPachete\(p\)/.test(PAG) && /function _aiuPachetRand\(r\)/.test(PAG) && /_aiuPachete\(d\.pachete\)/.test(PAG) && /fetch\('\/api\/admin\/insight\/aprofundat', \{ method: 'PUT'/.test(PAG) && /fetch\('\/api\/admin\/insight\/sold', \{ method: 'PUT'/.test(PAG));
+// Din 28.10 (Alin: „1 da") analiza aprofundată pe Sonnet a ieșit: comutatorul ei nu mai e în tablou, ruta nu mai există.
+T('tabloul nostru: blocul pachetelor și rândul pachetului în amănuntul firmei, din cifrele serverului (fără comutatorul analizei pe Sonnet)', /function _aiuPachete\(p\)/.test(PAG) && /function _aiuPachetRand\(r\)/.test(PAG) && /_aiuPachete\(d\.pachete\)/.test(PAG) && PAG.indexOf('/api/admin/insight/aprofundat') < 0 && SRV.indexOf("'/api/admin/insight/aprofundat'") < 0 && /fetch\('\/api\/admin\/insight\/sold', \{ method: 'PUT'/.test(PAG));
 T('anunțul pentru noi la 60% din plasă și la plasă: o dată pe firmă, lună și prag, ținut minte în setări', /const PLASA_ANUNT_PROCENT = 60;/.test(SRV) && /_anuntaSuperadmini\(supers, 'ai_plasa'/.test(SRV) && /db\.setSetting\('ai_plasa_anuntat'/.test(SRV) && /setInterval\(\(\) => plasaAnuntTick\(\)/.test(SRV));
 T('fila „Acces" a firmei: pachetul se pune de aici (super-admin), cu întrebare', /window\.raxCfgPachet = async function \(cod\)/.test(PAG) && /body: JSON\.stringify\(\{ ai_pachet: \{ cod: cod \} \}\)/.test(PAG));
 T('„Dai RA Insight acestui cont?" pe un pachet nu mai spune că se facturează un cont în plus', /Prețul pachetului rămâne același, oricâte conturi dai\./.test(PAG));
@@ -439,7 +446,7 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const farLoc = await json('GET', '/api/insight/conversatii', man.ck);
   T('…iar managerul fără cont, pe o firmă cu pachet, află că i-l poate da administratorul din „Pachet și conturi"', farLoc.status === 403 && /RA Insight → „Pachet și conturi”/.test(farLoc.j.message || ''), farLoc.status + ' ' + (farLoc.j.message || ''));
   const pk0 = await json('GET', '/api/insight/pachete', adm.ck);
-  T('„Vezi pachetele": cele patru, cu ce primește fiecare, pachetul firmei = Start; fără analiza aprofundată cât e oprită', pk0.status === 200 && (pk0.j.pachete || []).length === 4 && pk0.j.actual === 'start' && !JSON.stringify(pk0.j.pachete).match(/aprofundat/i) && /Se reîncarcă pe 1/.test(pk0.j.reincarcare || ''), pk0.text.slice(0, 160));
+  T('„Vezi pachetele": cele patru, cu ce primește fiecare, pachetul firmei = Start; fără analiza aprofundată', pk0.status === 200 && (pk0.j.pachete || []).length === 4 && pk0.j.actual === 'start' && !JSON.stringify(pk0.j.pachete).match(/aprofundat/i) && /Se reîncarcă pe 1/.test(pk0.j.reincarcare || ''), pk0.text.slice(0, 160));
   T('caseta: contorul „50 din 50" și reîncărcarea, scrise de server', q0.pachet.scurt === '50 din 50' && /Se reîncarcă pe 1 /.test(q0.pachet.reincarcare || ''));
   const but = await intreaba(adm, 'Ce acte expiră?');
   T('o întrebare de pe butoane pe Start: răspuns pe reguli, cu „Am înțeles", fără model', but.status === 200 && but.j.source === 'reguli' && (but.j.inteles || []).length >= 2 && nCereri() === n0, but.status + ' ' + (but.j.reply || '').slice(0, 100));
@@ -475,7 +482,9 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const n1 = nCereri();
   const bLib = await intreaba(bAdm, 'De ce a crescut consumul?');
   T('întrebarea liberă pe Basic: la model, numărată (1 din 200)', bLib.j.source === 'ai' && nCereri() === n1 + 1 && (await cota(bAdm)).used === 1, bLib.j.source + ' ' + (bLib.j.reply || '').slice(0, 60));
-  T('…pe modelul obișnuit, fără eticheta de analiză aprofundată', !/sonnet/.test(cereri().slice(-1)[0].model || '') && !bLib.j.aprofundat);
+  const sysBLib = JSON.stringify(cereri().slice(-1)[0].system || '');
+  T('…pe modelul obișnuit, cu analiza atentă („de ce" pe Basic: comparația și forma fixă în contextul întrebării), fără etichetă nouă',
+    !/sonnet/.test(cereri().slice(-1)[0].model || '') && /ÎNTREBARE DE ANALIZĂ/.test(sysBLib) && !('aprofundat' in bLib.j), sysBLib.slice(-200));
   const bBut = await intreaba(bAdm, 'Ce acte expiră?', { buton: true });
   T('un buton pe Basic: răspuns pe reguli, fără model, NU se numără', bBut.j.source === 'reguli' && nCereri() === n1 + 1 && (await cota(bAdm)).used === 1, bBut.j.source);
   coada([text('Analiza.')]);
@@ -558,29 +567,19 @@ const LUNA = P.reincarcare(Date.now()).luna;
   T('Bogdan: partea la comun s-a terminat (comun), Ana are încă din ale ei', qB.blocked === true && qB.motiv === 'comun' && (await cota(pA)).blocked === false, JSON.stringify({ b: qB.blocked, m: qB.motiv, c: qB.pachet && qB.pachet.comun }));
   const bogCom = await intreaba(pB, 'De ce a crescut consumul?');
   T('…mesajul lui spune că s-au terminat cele pentru cei fără limită', /întrebările pentru cei fără limită/.test(bogCom.j.reply || ''), (bogCom.j.reply || '').slice(0, 100));
-  // analiza aprofundată
-  const apr0 = await json('GET', '/api/admin/insight/aprofundat', S);
-  T('analiza aprofundată pornește OPRITĂ (Alin: doar dacă proba arată că Haiku e slab)', apr0.status === 200 && apr0.j.pornita === false && (apr0.j.bugete || []).map((x) => x.cod + ':' + x.lei).join() === 'pro:5,business:8', apr0.text.slice(0, 160));
-  T('comutatorul e doar al nostru (403 pentru administratorul firmei)', (await json('PUT', '/api/admin/insight/aprofundat', pAdm.ck, { pornita: true })).status === 403);
-  coada([text('Cauza: ralanti.')]);
-  await intreaba(pA, 'De ce a crescut consumul?');
-  T('oprită: și la „de ce" răspunde modelul obișnuit', !/sonnet/.test(cereri().slice(-1)[0].model || ''));
-  await json('PUT', '/api/admin/insight/aprofundat', S, { pornita: true });
+  // Analiza atentă (28.10; Alin: „1 da"): Sonnet și comutatorul lui au ieșit; la „de ce" răspunde același model, mai atent.
+  T('comutatorul vechi „Analiza aprofundată" nu mai există (404)', (await json('GET', '/api/admin/insight/aprofundat', S)).status === 404 &&
+    (await json('PUT', '/api/admin/insight/aprofundat', S, { pornita: true })).status === 404);
   coada([text('Cauza: ralanti, cu cifre.')]);
   const aApr = await intreaba(pA, 'De ce a crescut consumul?');
-  T('pornită, pe Pro, la „de ce": răspunde Sonnet, cu eticheta „analiză aprofundată"', cereri().slice(-1)[0].model === 'claude-sonnet-5-5' && aApr.j.aprofundat === true, cereri().slice(-1)[0].model);
-  // Din 27.10 analiza aprofundată pe Sonnet a ieșit din pachete (Alin: „nu o mai vreau"): „Vezi pachetele" n-o mai promite nici cu
-  // comutatorul nostru pornit (comutatorul rămâne până se hotărăște propunerea pe Haiku).
-  T('…iar „Vezi pachetele" NU o mai scrie, nici cu comutatorul pornit (Alin, 27.10: „nu o mai vreau")', !/aprofundat/i.test(JSON.stringify((await json('GET', '/api/insight/pachete', pAdm.ck)).j || {})));
+  const sysApr = JSON.stringify(cereri().slice(-1)[0].system || '');
+  T('pe Pro, la „de ce": același model (nu Sonnet), cu analiza atentă în contextul întrebării; se numără ca orice întrebare',
+    aApr.j.source === 'ai' && !/sonnet/.test(cereri().slice(-1)[0].model || '') && /ÎNTREBARE DE ANALIZĂ/.test(sysApr) && /\*\*Ce s-a întâmplat\*\*/.test(sysApr) && !('aprofundat' in aApr.j),
+    cereri().slice(-1)[0].model + ' ' + sysApr.slice(-160));
+  T('…iar „Vezi pachetele" n-o promite (Alin, 27.10: „nu o mai vreau")', !/aprofundat/i.test(JSON.stringify((await json('GET', '/api/insight/pachete', pAdm.ck)).j || {})));
   coada([text('Răspuns simplu.')]);
-  const aSimplu = await intreaba(pA, 'Câți km a făcut flota luna asta în total pe toate mașinile, cu tot cu cele oprite?');
-  T('…la o întrebare obișnuită, modelul obișnuit', !/sonnet/.test(cereri().slice(-1)[0].model || '') && !aSimplu.j.aprofundat, cereri().slice(-1)[0].model);
-  // bugetul de 5 lei: 600.000 de tokeni pe Sonnet = 1,2 $ ≈ 5,5 lei
-  await json('POST', '/api/test/ai-usage', S, { companyId: coP.id, userId: pAdm.id, kind: 'insight', usage: { input_tokens: 600000, output_tokens: 0 }, model: 'claude-sonnet-5-5' });
-  coada([text('Fără buget.')]);
-  const aFara = await intreaba(pA, 'De ce a crescut consumul?');
-  T('bugetul de analiză aprofundată dus: înapoi pe modelul obișnuit (RA Insight merge mai departe)', aFara.j.source === 'ai' && !/sonnet/.test(cereri().slice(-1)[0].model || '') && !aFara.j.aprofundat, cereri().slice(-1)[0].model);
-  await json('PUT', '/api/admin/insight/aprofundat', S, { pornita: false });
+  await intreaba(pA, 'Câți km a făcut flota luna asta în total pe toate mașinile, cu tot cu cele oprite?');
+  T('…la o întrebare obișnuită, fără analiza atentă', !/ÎNTREBARE DE ANALIZĂ/.test(JSON.stringify(cereri().slice(-1)[0].system || '')) && !/sonnet/.test(cereri().slice(-1)[0].model || ''));
   const scoate = await json('PUT', '/api/users/' + pA.id + '/ai-seat', S, { on: false });
   const listaU = (await json('GET', '/api/users', pAdm.ck)).j;
   const ana = (Array.isArray(listaU) ? listaU : (listaU.users || [])).find((u) => u.id === pA.id) || {};

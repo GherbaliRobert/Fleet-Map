@@ -1978,7 +1978,7 @@ function _strangePeModele(rows, cheie) {
     const k = cheie(r);
     let o = out.get(k);
     if (!o) {
-      o = Object.assign({}, r, { cost_usd: 0, cost_aprofundat_usd: 0 });
+      o = Object.assign({}, r, { cost_usd: 0 });
       delete o.model;
       _AI_SUME.forEach(function (f) { if (f in r) o[f] = 0; });
       out.set(k, o);
@@ -1986,7 +1986,6 @@ function _strangePeModele(rows, cheie) {
     _AI_SUME.forEach(function (f) { if (f in r) o[f] += Number(r[f]) || 0; });
     const c = _costUsdRand(r);
     o.cost_usd += c;
-    if (/sonnet/i.test(String(r.model || ''))) o.cost_aprofundat_usd += c;   // analiza aprofundată (pachetele RA Insight, 14.10)
     if (r.last_used && (!o.last_used || new Date(r.last_used) > new Date(o.last_used))) o.last_used = r.last_used;
   });
   return Array.from(out.values());
@@ -4845,8 +4844,7 @@ async function raspunsuriReguliPeOm(companyId) {
   const out = {}; r.rows.forEach(function (x) { if (x.user_id != null) out[x.user_id] = Number(x.n) || 0; });
   return out;
 }
-// Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni. `aprofundat` =
-// partea răspunsurilor date de Sonnet (analiza aprofundată), cu bugetul ei.
+// Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni.
 async function costAiLunaFirma(companyId) {
   const r = await pool.query(
     `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
@@ -4854,13 +4852,9 @@ async function costAiLunaFirma(companyId) {
        FROM ai_usage
       WHERE company_id = $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())
       GROUP BY model`, [companyId, AI_BILLABLE_KINDS.concat(['scrisoare'])]);
-  let usd = 0, aprofundatUsd = 0;
-  r.rows.forEach(function (x) {
-    const c = _costUsdRand(x);
-    usd += c;
-    if (/sonnet/i.test(String(x.model || ''))) aprofundatUsd += c;
-  });
-  return { usd: usd, aprofundatUsd: aprofundatUsd };
+  let usd = 0;
+  r.rows.forEach(function (x) { usd += _costUsdRand(x); });
+  return { usd: usd };
 }
 // Cine a consumat luna asta, pe om — pentru ca adminul firmei să vadă unde se duc întrebările.
 async function getAiMonthUsageByUser(companyId, kinds) {

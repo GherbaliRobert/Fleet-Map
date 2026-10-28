@@ -7,18 +7,19 @@
 //
 //   Start    — inclus în orice contract: DOAR administratorul, 50 de răspunsuri pe butoane pe lună, fără AI.
 //   Basic    — 10 lei: 2 conturi, 200 de întrebări pe lună la comun, ramurile.
-//   Pro      — 20 de lei: până la 5 conturi, 600 de întrebări, împărțirea pe oameni, analiza aprofundată.
-//   Business — 30 de lei: conturi nelimitate, 1.000 de întrebări, împărțirea pe oameni, analiza aprofundată.
+//   Pro      — 20 de lei: până la 5 conturi, 600 de întrebări, împărțirea pe oameni.
+//   Business — 30 de lei: conturi nelimitate, 1.000 de întrebări, împărțirea pe oameni.
 //
-// Hotărât cu Alin pe 14.10: plasa (o firmă costă cel mult 80% din prețul pachetului, din costul REAL pe răspuns), bugetul
-// de analiză aprofundată (Sonnet: 5 lei la Pro, 8 la Business, pornită doar dacă proba o cere), FĂRĂ pachete de întrebări
-// în plus, se reîncarcă pe 1. Prețurile de aici sunt pornirea; cel semnat stă pe firmă (`settings.ai_pachet.pretRON`).
+// Hotărât cu Alin pe 14.10: plasa (o firmă costă cel mult 80% din prețul pachetului, din costul REAL pe răspuns), FĂRĂ pachete de
+// întrebări în plus, se reîncarcă pe 1. Prețurile de aici sunt pornirea; cel semnat stă pe firmă (`settings.ai_pachet.pretRON`).
+// Analiza aprofundată pe Sonnet (bugetele de 5 / 8 lei) a ieșit pe 28.10 (Alin: „nu o mai vreau… avem Haiku", apoi „1 da" la
+// analiza atentă pe Haiku, la toate pachetele cu AI — insight.ANALIZA_ATENTA).
 
 const PACHETE = [
-  { cod: 'start', nume: 'Start', pret: 0, conturi: 1, intrebari: 50, ai: false, ramuri: false, imparte: false, sonnetLei: 0, doarAdmin: true },
-  { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200, ai: true, ramuri: true, imparte: false, sonnetLei: 0, doarAdmin: false },
-  { cod: 'pro', nume: 'Pro', pret: 20, conturi: 5, intrebari: 600, ai: true, ramuri: true, imparte: true, sonnetLei: 5, doarAdmin: false },
-  { cod: 'business', nume: 'Business', pret: 30, conturi: null, intrebari: 1000, ai: true, ramuri: true, imparte: true, sonnetLei: 8, doarAdmin: false },
+  { cod: 'start', nume: 'Start', pret: 0, conturi: 1, intrebari: 50, ai: false, ramuri: false, imparte: false, doarAdmin: true },
+  { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200, ai: true, ramuri: true, imparte: false, doarAdmin: false },
+  { cod: 'pro', nume: 'Pro', pret: 20, conturi: 5, intrebari: 600, ai: true, ramuri: true, imparte: true, doarAdmin: false },
+  { cod: 'business', nume: 'Business', pret: 30, conturi: null, intrebari: 1000, ai: true, ramuri: true, imparte: true, doarAdmin: false },
 ];
 const CODURI = PACHETE.map(function (p) { return p.cod; });
 const PLASA = 0.80;                                   // cât din preț poate costa o firmă într-o lună
@@ -119,7 +120,7 @@ function refuzLimita(p, limita, sumaAltor) {
 
 // ─── Starea: ce mai poate face omul ACUM ─────────────────────────────────────────────────────────────────────────────
 // o = { pachet, peOm (starea unui OM anume; fără = a firmei), folositeFirma, folositeOm, limitaOm (null = la comun),
-//       sumaLimite, folositeCuLimita (întrebările puse de oamenii CU limită), costLei, costAprofundatLei }
+//       sumaLimite, folositeCuLimita (întrebările puse de oamenii CU limită), costLei }
 // La Start, „folosite" = răspunsurile pe butoane (nu are AI). La celelalte, întrebările către RA Insight (cele pe
 // butoane nu se numără). Ordinea motivelor: plasa → cota firmei → limita omului → partea la comun. Limita și partea la
 // comun privesc un om: starea FIRMEI (rezumatul agenților, fără om) se oprește doar la plasă și la cotă.
@@ -133,7 +134,6 @@ function stare(o) {
   const folositeComun = Math.max(0, folosite - (p.imparte ? (Number(o.folositeCuLimita) || 0) : 0));
   const plafon = plafonLei(p);
   const cost = Math.max(0, Number(o.costLei) || 0);
-  const aprof = Math.max(0, Number(o.costAprofundatLei) || 0);
   let motiv = null;
   if (p.ai && plafon > 0 && cost >= plafon) motiv = 'plasa';
   else if (folosite >= p.intrebari) motiv = 'cota';
@@ -146,20 +146,8 @@ function stare(o) {
     ramaseOm: p.imparte && lim != null ? Math.max(0, lim - folositeOm) : null,
     sumaLimite: sumaLimite, comun: comun, ramaseComun: Math.max(0, comun - folositeComun),
     plafonLei: plafon, costLei: r2(cost), plasaProcent: plafon > 0 ? Math.min(1, cost / plafon) : 0,
-    aprofundatLei: p.sonnetLei, aprofundatCheltuitLei: r2(aprof), aprofundatRamasLei: r2(Math.max(0, p.sonnetLei - aprof)),
     blocat: motiv != null, motiv: motiv
   };
-}
-
-// ─── Analiza aprofundată: ce model răspunde ───────────────────────────────────────────────────────────────────────────
-// Doar la Pro / Business, doar dacă e pornită (Alin, 14.10: „doar dacă proba arată că Haiku 5.5 e slab"), doar la o
-// întrebare de analiză („de ce", „compară", „ce să fac") și doar cât ține bugetul lunii. Altfel, modelul obișnuit.
-// `rezervaLei` = cât lăsăm deoparte pentru răspunsul ăsta (o analiză grea pe Sonnet ≈ 25 de bani, măsurat pe 09.10).
-const REZERVA_APROFUNDAT_LEI = 0.25;
-function alegeModel(o) {
-  const p = o.pachet;
-  if (!p || !p.ai || !(p.sonnetLei > 0) || !o.pornita || !o.analiza) return 'obisnuit';
-  return (Number(o.cheltuitLei) || 0) + REZERVA_APROFUNDAT_LEI <= p.sonnetLei ? 'aprofundat' : 'obisnuit';
 }
 
 // ─── Ce i se spune omului ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -258,8 +246,8 @@ function notaConturi(p) {
 }
 
 // ─── Oferta, contractul, factura (pasul 5) ─────────────────────────────────────────────────────────────────────────────
-// Cât ne costă o întrebare obișnuită pe Haiku 5.5 (măsurat 09–14.10: 0,43–0,49 bani) — capătul prudent. Cu el și cu bugetul
-// de analiză aprofundată (cheltuit tot, ca să fim prudenți) se scrie „ce rămâne la noi" în ofertă; cel mai rău caz e plasa.
+// Cât ne costă o întrebare obișnuită pe Haiku 5.5 (măsurat 09–14.10: 0,43–0,49 bani) — capătul prudent. Cu el se scrie „ce
+// rămâne la noi" în ofertă; cel mai rău caz e plasa.
 const COST_INTREBARE_LEI = 0.0049;
 function eticheta(p) { return 'RA Insight ' + p.nume; }
 // „2 conturi · 200 de întrebări pe lună" — pentru ofertă, contract și factură.
@@ -269,12 +257,12 @@ function descriere(p) {
   return (p.conturi == null ? 'conturi nelimitate' : (p.conturi === 2 ? '2 conturi' : 'până la ' + cant(p.conturi, 'cont', 'conturi'))) + ' · ' +
     nr(p.intrebari) + 'întrebări pe lună';
 }
-// Ce rămâne la noi dintr-un pachet, pe lună: „obișnuit" = toate întrebările la costul obișnuit + tot bugetul de Sonnet;
+// Ce rămâne la noi dintr-un pachet, pe lună: „obișnuit" = toate întrebările la costul obișnuit;
 // „minim" = plasa (o firmă nu ne poate costa mai mult de 80% din preț). Doar pentru noi — nu ajunge pe hârtia clientului.
 function marja(cod, pretRON) {
   const p = dupaCod(cod); if (!p || !p.ai) return { obisnuit: 0, minim: 0 };
   const pret = Number(pretRON != null ? pretRON : p.pret) || 0;
-  return { obisnuit: r2(pret - p.intrebari * COST_INTREBARE_LEI - p.sonnetLei), minim: r2(pret * (1 - PLASA)) };
+  return { obisnuit: r2(pret - p.intrebari * COST_INTREBARE_LEI), minim: r2(pret * (1 - PLASA)) };
 }
 // Clauza trecerii la alt pachet (macheta din 14.10, varianta B): scrisă în contract și în condițiile ofertei. O citește
 // juristul odată cu restul contractului (la „De amintit").
@@ -567,8 +555,8 @@ function insignaCompleta(x) {
 
 module.exports = {
   INSIGNA, insigna, insignaCompleta,
-  PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE, cifre, comparatie,
-  dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
+  PACHETE, CODURI, PLASA, ROLURI_ADMIN, DESCRIERE, IN_TOATE, cifre, comparatie,
+  dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
   cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi,
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,

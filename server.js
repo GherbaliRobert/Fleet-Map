@@ -3957,7 +3957,7 @@ async function aiQuotaState(companyId, userId, opts) {
 }
 // ─── Pachetele RA Insight (14.10) — starea pe server ──────────────────────────────────────────────────────────────────
 // Regulile stau în pachete.js; aici se adună cifrele: câte întrebări a pus firma și omul, limitele, costul REAL al lunii
-// (pe modelul fiecărui răspuns, `db.costAiLunaFirma`) și cât din el a fost analiză aprofundată. null = firma e pe regula
+// (pe modelul fiecărui răspuns, `db.costAiLunaFirma`). null = firma e pe regula
 // veche, pe cont (o citește aiQuotaState mai jos). `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
 function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // regula stă în plans.js (pachetAi + aiVechi)
 // Regula VECHE, pe cont (întrebări pe cont, limita AI lunară), se ține DOAR pentru firmele scrise deja așa (Alin, 20.10:
@@ -3983,7 +3983,7 @@ async function _starePachet(companyId, userId, opts) {
   try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; return null; }
   const p = _pachetCo(co);
   if (!p) return null;
-  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, aprofLei = 0, conturi = 0;
+  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, conturi = 0;
   try {
     const oameni = await db.getAiSeatHolders(companyId);
     conturi = oameni.length;
@@ -3998,14 +3998,14 @@ async function _starePachet(companyId, userId, opts) {
       if (userId != null) folositeOm = peOm[userId] || 0;
       const c = await db.costAiLunaFirma(companyId);
       const k = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
-      costLei = c.usd * k; aprofLei = c.aprofundatUsd * k;
+      costLei = c.usd * k;
     } else {
       const rr = await db.raspunsuriReguliLuna(companyId, userId);
       folositeFirma = rr.firma; folositeOm = rr.om;
     }
   } catch (e) { if (strict) throw e; }
   const st = pachete.stare({ pachet: p, peOm: userId != null, folositeFirma: folositeFirma, folositeOm: folositeOm, limitaOm: limitaOm, sumaLimite: sumaLimite,
-    folositeCuLimita: folositeCuLimita, costLei: costLei, costAprofundatLei: aprofLei });
+    folositeCuLimita: folositeCuLimita, costLei: costLei });
   st.conturiDate = conturi;
   return { co: co, pachet: p, st: st };
 }
@@ -4080,15 +4080,8 @@ async function plasaAnuntTick() {
 }
 // Prețurile de listă ale pachetelor, azi: cele din cod, peste care se pun cele din „Prețurile noastre".
 async function _preturiPachete() { let t = {}; try { t = (await getSystemSettings()).tarife_lista || {}; } catch (e) {} return pachete.preturiLista(t); }
-// Analiza aprofundată (Sonnet) pornește doar dacă o pornim noi (Alin, 14.10: „doar dacă proba arată că Haiku 5.5 e slab").
-const MODEL_APROFUNDAT = process.env.AI_MODEL_APROFUNDAT || 'claude-sonnet-5-5';
-let _aprofCache = null, _aprofTs = 0;
-async function _aprofundataPornita() {
-  if (_aprofCache != null && Date.now() - _aprofTs < 30000) return _aprofCache;
-  let v = false; try { v = (await db.getSetting('ai_analiza_aprofundata')) === 'on'; } catch (e) {}
-  _aprofCache = v; _aprofTs = Date.now();
-  return v;
-}
+// (Analiza aprofundată pe Sonnet a ieșit pe 28.10 — Alin: „nu o mai vreau… avem Haiku", apoi „1 da" la analiza atentă pe Haiku:
+// vezi `analiza` în _raInsight și insight.ANALIZA_ATENTA.)
 // Ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte) sunt de la Basic în sus.
 async function requireRamuri(req, res, next) {
   if (req.isSuper || req.companyId == null) return next();
@@ -4178,11 +4171,10 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
   const used = pk && !pk.ai ? (Number(o.reguli) || 0) : (Number(u.questions) || 0);
   const costEur = Math.round((Number(o.costEur) || 0) * 100) / 100;
   const venitLei = pk ? Math.round((Number(pk.pretRON) || 0) * 100) / 100 : (q.seatPriceRON > 0 ? Math.round(deFacturat * q.seatPriceRON * 100) / 100 : 0);
-  // Tabloul nostru (pasul 4): cât din plasă a folosit firma (costul real, cu scrisoarea de luni) și cât din bugetul de analiză
-  // aprofundată. Doar pentru noi — clientul nu vede niciodată costurile.
+  // Tabloul nostru (pasul 4): cât din plasă a folosit firma (costul real, cu scrisoarea de luni). Doar pentru noi — clientul nu
+  // vede niciodată costurile.
   const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
   const plasa = pk && pk.ai ? { plafonLei: pachete.plafonLei(pk), costLei: r2(o.costPlasaLei), procent: pachete.plafonLei(pk) > 0 ? Math.round(Math.min(9.99, (Number(o.costPlasaLei) || 0) / pachete.plafonLei(pk)) * 100) : 0 } : null;
-  const aprofundat = pk && pk.sonnetLei > 0 ? { bugetLei: pk.sonnetLei, cheltuitLei: r2(o.aprofundatLei) } : null;
   // Cine are cont, plus oricine a întrebat luna asta (dacă apare aici cineva FĂRĂ cont, e o gaură
   // pe care vrem s-o vedem, nu s-o ascundem).
   const oameniRow = lista
@@ -4209,7 +4201,7 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
     fond: fond,                                   // 0 = fără fond (nelimitat, doar pe regula veche)
     vechi: !pk && !peCont && !!q.questions,       // cotă fixă, din contractele vechi
     pachet: pk ? { cod: pk.cod, nume: pk.nume, pretRON: pk.pretRON, ai: pk.ai } : null,
-    plasa: plasa, aprofundat: aprofundat,
+    plasa: plasa,
     ramanLei: pk ? r2((Number(pk.pretRON) || 0) - (Number(o.costPlasaLei) || 0)) : null,
     used: used,
     ramase: fond ? Math.max(0, fond - used) : null,
@@ -4336,14 +4328,14 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     // Plasa pachetelor: costul real al lunii, cu scrisoarea de luni (ca în _starePachet), în lei, la cursul de azi.
     const kLei = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
     const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_BILLABLE_KINDS.concat(['scrisoare'])).catch(function () { return []; })) || []).forEach(function (x) {
-      if (x.company_id != null) plasaPeFirma[x.company_id] = { lei: (Number(x.cost_usd) || 0) * kLei, aprofLei: (Number(x.cost_aprofundat_usd) || 0) * kLei };
+      if (x.company_id != null) plasaPeFirma[x.company_id] = { lei: (Number(x.cost_usd) || 0) * kLei };
     });
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
       const cost = ai ? (Number(u.cost_usd) || 0) * ai.USD_EUR : 0;   // pe modelul fiecărui răspuns (db.js)
-      const pl = plasaPeFirma[c.id] || { lei: 0, aprofLei: 0 };
-      const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost, reguli: reguliPeFirma[c.id] || 0, costPlasaLei: pl.lei, aprofundatLei: pl.aprofLei });
+      const pl = plasaPeFirma[c.id] || { lei: 0 };
+      const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost, reguli: reguliPeFirma[c.id] || 0, costPlasaLei: pl.lei });
       const ist = facturatPeFirma[c.id] || null;
       r.facturatLei = ist ? ist.facturatLei : 0;   // ce i-am facturat pe RA Insight în perioada citită
       r.incasatLei = ist ? ist.incasatLei : 0;
@@ -4364,11 +4356,9 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       peCod: peCod,
       venitLei: Math.round(cuPachet.reduce(function (s, r) { return s + r.venitLei; }, 0) * 100) / 100,
       costLei: Math.round(cuPachet.reduce(function (s, r) { return s + (r.plasa ? r.plasa.costLei : 0); }, 0) * 100) / 100,
-      aprofundatLei: Math.round(cuPachet.reduce(function (s, r) { return s + (r.aprofundat ? r.aprofundat.cheltuitLei : 0); }, 0) * 100) / 100,
       langaPlasa: cuPachet.filter(function (r) { return r.plasa && r.plasa.procent >= PLASA_ANUNT_PROCENT; })
         .map(function (r) { return { id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei }; })
         .sort(function (a, b) { return b.procent - a.procent; }),
-      aprofundataPornita: await _aprofundataPornita(),
       sold: await _soldAnthropic(),
       // „Ce cere atenție" (15.10): 👎 pe toată platforma în ultimele 7 zile și partea răspunsurilor instant din luna asta.
       jos7: Object.keys(josPeFirma).reduce(function (s, k) { return s + josPeFirma[k]; }, 0),
@@ -5335,16 +5325,13 @@ async function _raInsight(req, res, opts) {
       '\n' + JSON.stringify(gata.pentruModel).slice(0, 14000) });
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
-    let model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
-    // Analiza aprofundată (Pro / Business, 14.10): la „de ce", „compară", „ce să fac", cât ține bugetul lunii, dacă e pornită.
-    let aprofundat = false;
-    if (!o.proba && req.companyId != null) {
-      try {
-        const sp = await _starePachet(req.companyId, userId);
-        if (sp && pachete.alegeModel({ pachet: sp.pachet, pornita: await _aprofundataPornita(), analiza: aiRaport.PENTRU_INSIGHT.test(insight.norm(message)),
-          cheltuitLei: sp.st.aprofundatCheltuitLei }) === 'aprofundat') { model = MODEL_APROFUNDAT; aprofundat = true; }
-      } catch (e) { /* fără stare: modelul obișnuit */ }
-    }
+    const model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
+    // Analiza atentă (28.10; Alin: „1 da"): la „de ce", „compară", „ce să fac", la toate pachetele cu AI (și la „Proba modelelor",
+    // ca s-o putem măsura) — același model, mai mult timp de gândire (efortul „medium") și forma fixă: Ce s-a întâmplat → De ce →
+    // Ce poți face (insight.ANALIZA_ATENTA, în contextul întrebării, nu în partea fixă din cache). Se numără ca orice întrebare.
+    const analiza = insight.esteAnaliza(message);
+    if (analiza) system.push({ type: 'text', text: insight.ANALIZA_ATENTA });
+    const efort = analiza ? 'medium' : undefined;
     const t0 = Date.now();
     const onUsage = u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
       _agg.input_tokens += Number(u.input_tokens) || 0;
@@ -5356,7 +5343,7 @@ async function _raInsight(req, res, opts) {
     // primește textul deja curățat de ai.js (litere.js).
     const result = await ai.runAgent({
       system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
-      model: model, maxTokens: 1100, maxIters: 8, onUsage: onUsage, brut: true
+      model: model, maxTokens: 1100, maxIters: 8, onUsage: onUsage, brut: true, efort: efort
     });
     let reply = result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.';
     // Cifrele, verificate fără să-l punem pe om să verifice (Alin, 15.10: „ce să verific? Am AI… îmi zice clar dacă e greșit
@@ -5384,7 +5371,7 @@ async function _raInsight(req, res, opts) {
         const r2 = await ai.runAgent({
           system, messages: istoric.concat([{ role: 'user', content: message }, { role: 'assistant', content: reply },
             { role: 'user', content: cer.join(' ') + ' Nu pomeni verificarea.' }]),
-          tools, toolHandlers, model: model, maxTokens: 1100, maxIters: 4, onUsage: onUsage, brut: true
+          tools, toolHandlers, model: model, maxTokens: 1100, maxIters: 4, onUsage: onUsage, brut: true, efort: efort
         });
         if (r2 && r2.text) {
           const l2 = cifre.negasite(r2.text, dateCitite, message), s2 = insight.areLitereStraine(r2.text), e2 = insight.vorbeDespreEchipament(r2.text);
@@ -5454,10 +5441,10 @@ async function _raInsight(req, res, opts) {
     const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null });
     const extraAi = { probleme: problemeGasite.length ? problemeGasite : undefined, verificat: verificare && verificare.confirmat ? true : undefined,
       nota: verificare && verificare.perioada ? verificare.perioada : undefined, insigna: insigna, rapoarte: gata ? gata.carduri : undefined };
-    const s = await salveaza(reply, Object.assign({ source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari, aprofundat: aprofundat || undefined }, extraAi), ctxNou);
+    const s = await salveaza(reply, Object.assign({ source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari }, extraAi), ctxNou);
     if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined,
       probleme: problemeGasite.length ? problemeGasite.map(function (x) { return x.fel; }) : undefined, rapoarte: gata ? gata.carduri.length : undefined });
-    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari, aprofundat: aprofundat || undefined }, extraAi,
+    res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari }, extraAi,
       o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz,
         // Proba modelelor (noi): cât de des greșește un model cifrele — perioada, cifrele rămase negăsite, rescrierea cerută.
         verificare: (verificare && (verificare.perioada || verificare.cifre)) || rescris ? { perioada: verificare && verificare.perioada, cifre: verificare && verificare.cifre, rescris: rescris || undefined } : null } : {}));
@@ -5647,19 +5634,6 @@ app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, r
     await db.setSetting('anthropic_sold', JSON.stringify({ usd: Math.round(usd * 100) / 100, la: Date.now() }));
     auditReq(req, 'update', 'anthropic_sold', null, { usd: usd });
     res.json({ ok: true, sold: await _soldAnthropic() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-// Comutatorul analizei aprofundate (Sonnet la Pro / Business, cu bugetul pachetului). Oprit până hotărâm după probă.
-app.get('/api/admin/insight/aprofundat', requireAuth, requireSuperadmin, async (req, res) => {
-  res.json({ pornita: await _aprofundataPornita(), model: MODEL_APROFUNDAT, bugete: pachete.PACHETE.filter(function (x) { return x.sonnetLei > 0; }).map(function (x) { return { cod: x.cod, nume: x.nume, lei: x.sonnetLei }; }) });
-});
-app.put('/api/admin/insight/aprofundat', requireAuth, requireSuperadmin, async (req, res) => {
-  try {
-    const on = !!(req.body && req.body.pornita);
-    await db.setSetting('ai_analiza_aprofundata', on ? 'on' : 'off');
-    _aprofCache = null;
-    auditReq(req, 'update', 'ai_analiza_aprofundata', null, { pornita: on });
-    res.json({ ok: true, pornita: on });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 const PROBA_MAX_INTREBARI = 20;
@@ -19788,7 +19762,7 @@ app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => 
 });
 // O SINGURĂ dată, pentru ruta de mai sus și pentru socoteala ofertei de pe telefon (`_ofSocoteste`).
 function _ofMetaPachete() {
-  return { pachete: pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, ai: p.ai, conturi: p.conturi, intrebari: p.intrebari, sonnetLei: p.sonnetLei, descriere: pachete.descriere(p) }; }),
+  return { pachete: pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, ai: p.ai, conturi: p.conturi, intrebari: p.intrebari, descriere: pachete.descriere(p) }; }),
     pachetCost: { intrebareLei: pachete.COST_INTREBARE_LEI, plasa: pachete.PLASA } };
 }
 // Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
