@@ -458,6 +458,22 @@
       .ra-insight{grid-template-columns:1fr;padding:24px 20px;gap:16px}
       .ri-head h3{font-size:19px}
     }
+    /* Pachetele RA Insight în bandă (27.10): patru cartonașe scurte, fără prețuri; mov = de aici începe AI-ul. */
+    .ri-pachete{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 12px;margin-top:26px;position:relative;z-index:1}
+    @media (max-width:1000px){.ri-pachete{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.ri-pachete{grid-template-columns:minmax(0,1fr)}}
+    .ri-pk{position:relative;background:rgba(11,14,17,.55);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 14px 8px;display:flex;flex-direction:column;min-width:0}
+    .ri-pk.ai{border-color:rgba(167,139,250,.45)}
+    .ri-pk-eti{position:absolute;top:-10px;left:12px;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:#A78BFA;color:#160B2E;white-space:nowrap}
+    .ri-pk-n{font-size:17px;font-weight:800;color:var(--text)}
+    .ri-pk-pr{font-size:13px;color:var(--muted);margin:2px 0 4px}
+    .ri-pk-pe{font-size:13px;color:var(--muted);margin:0 0 8px}
+    .ri-pk dl{margin:auto 0 0;border-top:1px solid var(--border)}
+    .ri-pk dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;line-height:1.4}
+    .ri-pk dl div:last-child{border-bottom:0}
+    .ri-pk dt{color:var(--muted)}
+    .ri-pk dd{margin:0;font-weight:700;color:var(--text);text-align:right}
+    .ri-pk dd.nu{color:var(--muted);font-weight:600}
     .agents-foot{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 32px;margin-top:34px}
     .agents-foot a{display:inline-flex;align-items:center;justify-content:center;text-align:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
     .agents-foot a:hover{gap:14px}
@@ -877,12 +893,57 @@
             <span>Câte curse a făcut Logan-ul luna trecută?</span>
             <span>Ce mașini au ITP-ul aproape de expirare?</span>
           </div>
+          <!-- Pachetele RA Insight (27.10, Alin: „fără preț în pagina publică, pe home page"): copia lui pachete.publice({ cuPret: false }),
+               comparată de verify_site_public.js (3d). Comparația întreagă stă pe /pachete-ra-insight. -->
+          <div class="ri-pachete" aria-label="Pachetele RA Insight">
+            <div class="ri-pk">
+              <div class="ri-pk-n">Start</div>
+              <div class="ri-pk-pr">Inclus în orice contract</div>
+              <div class="ri-pk-pe">Pentru orice firmă, din prima zi.</div>
+              <dl>
+                <div><dt>Conturi</dt><dd>1 · administratorul</dd></div>
+                <div><dt>Întrebări libere, cu AI</dt><dd class="nu">—</dd></div>
+                <div><dt>Răspunsuri pe loc</dt><dd>50 pe lună</dd></div>
+              </dl>
+            </div>
+            <div class="ri-pk ai">
+              <span class="ri-pk-eti">De aici: întrebări libere cu AI</span>
+              <div class="ri-pk-n">Basic</div>
+              <div class="ri-pk-pr">Cere ofertă</div>
+              <div class="ri-pk-pe">Pentru patron și încă un om.</div>
+              <dl>
+                <div><dt>Conturi</dt><dd>2</dd></div>
+                <div><dt>Întrebări libere, cu AI</dt><dd>200 pe lună</dd></div>
+                <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+              </dl>
+            </div>
+            <div class="ri-pk">
+              <div class="ri-pk-n">Pro</div>
+              <div class="ri-pk-pr">Cere ofertă</div>
+              <div class="ri-pk-pe">Pentru firme cu dispecerat.</div>
+              <dl>
+                <div><dt>Conturi</dt><dd>până la 5</dd></div>
+                <div><dt>Întrebări libere, cu AI</dt><dd>600 pe lună</dd></div>
+                <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+              </dl>
+            </div>
+            <div class="ri-pk">
+              <div class="ri-pk-n">Business</div>
+              <div class="ri-pk-pr">Cere ofertă</div>
+              <div class="ri-pk-pe">Pentru flote mari, cu mai multe echipe.</div>
+              <dl>
+                <div><dt>Conturi</dt><dd>nelimitate</dd></div>
+                <div><dt>Întrebări libere, cu AI</dt><dd>1.000 pe lună</dd></div>
+                <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+              </dl>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="agents-foot reveal">
         <a href="/agenti-ai">Ce face fiecare agent, pe larg <i class="fa-solid fa-arrow-right"></i></a>
-        <a href="/pachete-ra-insight">Pachetele RA Insight <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="/pachete-ra-insight">Compară pachetele RA Insight <i class="fa-solid fa-arrow-right"></i></a>
         <a href="#contact">Vrei agenții AI și RA Insight pe flota ta? Cere o ofertă personalizată <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>

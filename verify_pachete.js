@@ -89,9 +89,39 @@ T('rândul omului cu limită: „Tu: 38 din 100 (limita dată de administrator)"
 T('la plasă ecranul arată 0 rămase (oprit pe lună), fără să spună de ce în bani', P.textRamase(st('basic', { folositeFirma: 1, costLei: 9 }), OCT) === '0 din 200 rămase în octombrie' && P.textScurt(st('basic', { folositeFirma: 1, costLei: 9 })) === '0 din 200' && P.ramaseAfisate(st('basic', { folositeFirma: 1 })) === 199);
 T('cele pentru cei fără limită s-au terminat: „îți rămân 0" + „Tu: s-au terminat întrebările pentru cei fără limită" (macheta din 15.10, fără „la comun")', P.textScurt(st('pro', { folositeFirma: 160, sumaLimite: 500, folositeCuLimita: 60 })) === 'îți rămân 0' && P.textOm(st('pro', { folositeFirma: 160, sumaLimite: 500, folositeCuLimita: 60 })) === 'Tu: s-au terminat întrebările pentru cei fără limită' && !/la comun/.test(P.textBlocat(st('pro', { folositeFirma: 160, sumaLimite: 500, folositeCuLimita: 60 }), OCT)));
 T('limita cea mai veche de pe firmă (ai_monthly_limit) = regula veche, nu Start', P.pachetFirma({}, 80) === null && P.pachetFirma({}, 0).cod === 'start' && P.pachetFirma({ ai_pachet: { cod: 'basic' } }, 80).cod === 'basic');
-const pub = P.publice({ aprofundat: false }), pubSite = P.publice({ cuPret: false, aprofundat: true });
-T('descrierile pachetelor: un singur loc, cu ce primește fiecare (Start: ce NU are)', pub.length === 4 && pub[0].fara.length === 2 && pub[1].include.some((x) => /Ramurile/.test(x)) && pub[0].pret === 'Inclus' && pub[2].pret === '20 de lei');
-T('analiza aprofundată se scrie doar cât e pornită (doar ce face aplicația azi)', !pub[2].include.some((x) => /aprofundat/i.test(x)) && pubSite[2].include.some((x) => /aprofundat/i.test(x)));
+const pub = P.publice({}), pubSite = P.publice({ cuPret: false });
+// Pachetele refăcute pe 27.10 (Alin: „da" la lista rămasă în urmă; „fără preț pe site, cu prețuri în aplicație"): cartonașul spune ce
+// primești (Start) sau ce adaugă față de pachetul dinainte; cifrele de sus vin din PACHETE, nu din text.
+T('descrierile pachetelor: un singur loc — ce primești la Start, ce adaugă fiecare față de cel dinainte, prețul doar în aplicație',
+  pub.length === 4 && pub.map((p) => p.plus).join('|') === 'Ce primești|În plus față de Start|În plus față de Basic|În plus față de Pro' &&
+  pub[0].pret === 'Inclus' && pub[2].pret === '20 de lei' && pubSite.every((p) => p.pret === undefined) && pubSite[1].subPret === 'Cere ofertă' &&
+  pub.filter((p) => p.eticheta).map((p) => p.cod).join() === 'basic', JSON.stringify(pub.map((p) => [p.plus, p.pret, p.eticheta])));
+T('lista spune ce face aplicația azi: „Azi la tine”, rapoartele cerute în cuvinte, „RA Insight face, cu Da-ul tău”, „Șoferi pe mașini”',
+  pub[0].include.some((x) => /Azi la tine/.test(x)) && pub[0].include.some((x) => /Rapoarte cerute în cuvinte/.test(x)) &&
+  pub[1].include.some((x) => /„Da”-ul tău/.test(x)) && pub[1].include.some((x) => /Șoferi pe mașini/.test(x)));
+T('cifrele cartonașelor vin din PACHETE (conturi, întrebări libere, răspunsuri pe loc), iar textele cu cifre se potrivesc cu ele',
+  JSON.stringify(pub.map((p) => p.cifre.map((c) => c.val))) === JSON.stringify([['1 · administratorul', null, '50 pe lună'], ['2', '200 pe lună', 'fără limită'], ['până la 5', '600 pe lună', 'fără limită'], ['nelimitate', '1.000 pe lună', 'fără limită']]) &&
+  pub[2].include.some((x) => x.indexOf('Până la ' + P.dupaCod('pro').conturi + ' oameni') === 0) && pub[2].include.some((x) => x.indexOf(': ' + P.dupaCod('pro').intrebari + ' pe lună') > 0) &&
+  P.dupaCod('pro').intrebari === 3 * P.dupaCod('basic').intrebari && pub[3].include.some((x) => x === P.dupaCod('business').intrebari.toLocaleString('ro-RO') + ' de întrebări pe lună'),
+  JSON.stringify(pub.map((p) => p.cifre.map((c) => c.val))));
+T('analiza aprofundată (Sonnet) nu mai e în pachete — Alin, 27.10: „nu o mai vreau"', ![].concat(...pub.map((p) => p.include)).some((x) => /aprofundat/i.test(x)));
+// Comparația rând cu rând: aceleași rânduri în aplicație și pe site; rândul cu prețul pe întrebare doar în aplicație, socotit din prețuri.
+const cmpA = P.comparatie({ cuPret: true, preturi: { start: 0, basic: 10, pro: 20, business: 30 } }), cmpS = P.comparatie({ cuPret: false });
+const rand = (c, t) => [].concat(...c.map((g) => g.randuri)).find((r) => r.t === t);
+const cel = (r) => r.v.map((x) => x.da === true ? '✓' : x.da === false ? '—' : x.text).join(' | ');
+T('comparația: conturi, întrebări libere (Basic „la comun”), răspunsuri pe loc, pagini și „Da"-ul de la Basic, „Azi la tine" peste tot',
+  cel(rand(cmpS, 'Conturi RA Insight')) === '1 | 2 | până la 5 | nelimitate' && cel(rand(cmpS, 'Întrebări libere, cu AI')) === '— | 200 pe lună | 600 pe lună | 1.000 pe lună' &&
+  rand(cmpS, 'Întrebări libere, cu AI').v[1].mic === 'la comun' && cel(rand(cmpS, 'Răspunsuri pe loc, din rapoarte')) === '50 pe lună | fără limită | fără limită | fără limită' &&
+  cel(rand(cmpS, 'Paginile RA Insight')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, 'RA Insight face, cu „Da”-ul tău')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, '„Azi la tine”')) === '✓ | ✓ | ✓ | ✓',
+  JSON.stringify(cmpS.map((g) => g.randuri.map((r) => r.t + ': ' + cel(r)))));
+T('…prețul pe o întrebare liberă doar în aplicație: 5 bani / 3,3 bani / 3 bani la prețurile de listă (Start: —); pe site lipsește',
+  cel(rand(cmpA, 'Preț pe o întrebare liberă')) === '— | 5 bani | 3,3 bani | 3 bani' && !rand(cmpS, 'Preț pe o întrebare liberă') &&
+  cel(rand(P.comparatie({ cuPret: true, preturi: { basic: 12 } }), 'Preț pe o întrebare liberă')).split(' | ')[1] === '6 bani', cel(rand(cmpA, 'Preț pe o întrebare liberă') || { v: [] }));
+T('„În toate pachetele": cinci rânduri; insignele numite ca în aplicație; conversațiile păstrate cât spune contracts.js',
+  P.IN_TOATE.length === 5 && P.IN_TOATE[3].d.indexOf('„' + P.insigna('ai', { numarat: true }).eticheta + ' · ' + P.insigna('ai', { numarat: true }).detaliu + '”') === 0 &&
+  P.IN_TOATE[3].d.indexOf('„' + P.insigna('instant', {}).eticheta + ' · ' + P.insigna('instant', {}).detaliu + '”') > 0 &&
+  P.IN_TOATE[2].d.indexOf('Se păstrează ' + require('./contracts').LUNI_CONVERSATII_AI + ' luni') >= 0 &&
+  rand(cmpS, 'RA Insight face, cu „Da”-ul tău').d.indexOf('timp de ' + require('./soferi_masini').ANULARE_MIN + ' minute') > 0, JSON.stringify(P.IN_TOATE[3]));
 const stPro = st('pro', { folositeFirma: 188, sumaLimite: 300 });
 const cc = P.cartonaseConturi(stPro, 4, OCT);
 T('„Pachet și conturi" (cartonașele, pentru telefon): Pro · 20 de lei pe lună · 412 din 600 · 4 din 5 (mai poți da unul) · 300 date cu limită', cc.map((x) => x.val + '|' + x.sub).join(' / ') === 'Pro|20 de lei pe lună / 412|din 600 · se reîncarcă pe 1 noiembrie / 4|din 5 · mai poți da unul / 300|ceilalți folosesc restul de 300', cc.map((x) => x.val + '|' + x.sub).join(' / '));
@@ -539,7 +569,9 @@ const LUNA = P.reincarcare(Date.now()).luna;
   coada([text('Cauza: ralanti, cu cifre.')]);
   const aApr = await intreaba(pA, 'De ce a crescut consumul?');
   T('pornită, pe Pro, la „de ce": răspunde Sonnet, cu eticheta „analiză aprofundată"', cereri().slice(-1)[0].model === 'claude-sonnet-5-5' && aApr.j.aprofundat === true, cereri().slice(-1)[0].model);
-  T('…iar „Vezi pachetele" o scrie acum la Pro și Business', /aprofundat/i.test(JSON.stringify(((await json('GET', '/api/insight/pachete', pAdm.ck)).j.pachete || []).slice(2))));
+  // Din 27.10 analiza aprofundată pe Sonnet a ieșit din pachete (Alin: „nu o mai vreau"): „Vezi pachetele" n-o mai promite nici cu
+  // comutatorul nostru pornit (comutatorul rămâne până se hotărăște propunerea pe Haiku).
+  T('…iar „Vezi pachetele" NU o mai scrie, nici cu comutatorul pornit (Alin, 27.10: „nu o mai vreau")', !/aprofundat/i.test(JSON.stringify((await json('GET', '/api/insight/pachete', pAdm.ck)).j || {})));
   coada([text('Răspuns simplu.')]);
   const aSimplu = await intreaba(pA, 'Câți km a făcut flota luna asta în total pe toate mașinile, cu tot cu cele oprite?');
   T('…la o întrebare obișnuită, modelul obișnuit', !/sonnet/.test(cereri().slice(-1)[0].model || '') && !aSimplu.j.aprofundat, cereri().slice(-1)[0].model);

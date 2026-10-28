@@ -258,6 +258,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
   IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
   Verificare: „Stare producție" → „Email" verde, cu „ultimul email plecat"; sau Business › Mail › Scrie, un email de probă către voi.
+- [ ] **Robert: Brevo — emailul programat de pe 28.10 n-a venit. Adăugat pe 28.10.** Pe 27.10 seara am publicat o versiune nouă,
+  deci Railway a dat serverului altă adresă. Dacă în Brevo blocarea adreselor necunoscute e încă pornită (o adresă adăugată de mână
+  ține doar până la publicarea următoare), Brevo refuză orice email până o oprește cineva. De văzut întâi, cu contul de fondator:
+  Dashboard platformă › Stare producție › rândul „Email" (sau clopoțelul: „Emailurile nu pleacă") — scrie motivul exact. Dacă e adresa:
+  Brevo › Settings › Security › Authorised IPs → „Deactivate" (blocarea oprită de tot, nu o adresă adăugată). Altă cale: Railway Pro,
+  cu adresă fixă (~20 $ pe lună). Raportul de azi e oricum în Istoric rapoarte.
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -312,20 +318,30 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Companii → firma → fila **„Acces"** → „Pachet RA Insight". Firmele rămase pe regula veche, pe cont (întrebări pe cont
   scrise în „Abonament & plăți"), merg ca până acum până le mutați. **Din pașii 5–6 (14.10)** pachetul ajunge și pe factură
   (un rând fix pe lună), iar o firmă cu pachet își poate schimba singură pachetul din aplicație.
-- [ ] **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
+- [x] **HOTĂRÂT (27.10): fără analiza aprofundată pe Sonnet** (Alin: „nu o mai vreau. avem haiku care face deja treaba foarte bine
+  și poate face și el analiza aprofundată. propune cum"). Scoasă din ce promit pachetele pe 28.10; varianta pe Haiku e rândul de mai jos.
+  **Voi: analiza aprofundată (Sonnet la Pro și Business). Adăugat pe 14.10.** E construită, dar OPRITĂ, cum ați hotărât
   („doar dacă proba arată că Haiku 5.5 e slab"). Se pornește dintr-un comutator al nostru, după probă; cât e oprită, nici
   „Vezi pachetele" nu o promite. **21.10:** proba arată Sonnet 5.5 la 6,65 bani pe întrebare: un pachet folosit până la capăt ar
   costa peste preț (Business: 66,50 lei la un preț de 30 de lei). Recomand s-o lăsăm oprită până la a doua probă, pe „RA Track
   Demo", după reparațiile din PDF-ul din 21.10.
   **22.10:** Alin a ales Haiku 5.5 pentru tot și a aprobat reparațiile; analiza aprofundată rămâne oprită până la a doua probă.
   **27.10:** Alin: „nu prea înțeleg la ce te referi, hai să văd ce propui, ce rol are" — explicația și variantele, în raportul din 27.10.
+- [ ] **Alin: analiza aprofundată făcută de Haiku — varianta 1, 2 sau 3. Adăugat pe 28.10.** Propunerea, cu cele trei variante, e la
+  capătul paginii „Internet și analiza aprofundată" (https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw): la „de ce?", „compară" și „ce să
+  fac", Haiku gândește mai mult, își face singur comparația și răspunde mereu în forma „Ce s-a întâmplat → De ce → Ce poți face". Recomand
+  varianta 1 (la toate pachetele cu AI). Oricare ar fi, pleacă butonul „Analiza aprofundată" din RA Insight · control și bugetele de
+  Sonnet din pachete.
 - [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
   RA Insight. (2) „Vezi pachetele" cu butoanele „Alege …" și fereastra de confirmare (textul de la server, bifa, „Trec la …"),
   pe rutele `/api/insight/pachet-trecere`; „Pachet și conturi" cu ce e programat și lista confirmărilor, cu PDF. (3) **21.10:** în fișa
   firmei, „întrebări pe cont" (CompanyAbonament) și limita AI (`setCompanyAiLimit`) — serverul le refuză acum pe o firmă cu pachet;
-  de arătat doar pe regula veche, ca pe web (fișa firmei dă `ai_regula_veche`).
+  de arătat doar pe regula veche, ca pe web (fișa firmei dă `ai_regula_veche`). (4) **28.10:** pentru „Vezi pachetele",
+  `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
+  (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
+  grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -381,6 +397,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   se pun din Management › Alerte; RA Insight o spune și dă butonul „Deschide Alerte".
 - [x] **HOTĂRÂT (26.10): internetul în RA Insight rămâne în capitolul AI** (Alin: „5. da"), ca etapă a lui; nimic construit încă.
   **27.10:** Alin — „întâi o machetă și să văd ce propui"; nu se construiește înainte.
+  **27.10 (seara):** Alin — macheta „e ok", cifrele 10 / 30 / 50 de întrebări cu internet pe lună „da"; a cerut cum arată în RA
+  Insight, comutatorul, cum se pornește („nu editezi nimic"). Propunerea, cu pozele: https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw
+  (28.10). Nimic construit.
+- [ ] **Alin: internetul în RA Insight — „da" pe propunerea din 28.10, ca să-l construim. Adăugat pe 28.10.** Butonul „Internet" lângă
+  „+" (oprit la fiecare discuție nouă), răspunsul în două părți („Din flota ta" / „De pe internet", cu sursele), comutatorul firmei în
+  „Pachet și conturi" și al nostru în RA Insight · control; căutarea pleacă separat, fără datele firmei. **Robert, înainte de construcție:**
+  în consola Anthropic › Settings › Capabilities, căutarea pe internet să nu fie oprită (e pornită din oficiu).
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -455,6 +478,28 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-10-28
+
+### AMÂNDOI · Pachetele RA Insight: ce primește fiecare, la zi — în aplicație cu prețuri, pe site și pe prima pagină fără
+
+**Ce am schimbat:** lista „ce primește fiecare pachet" rămăsese de pe 14.10: nu spunea de „Azi la tine", de rapoartele cerute în
+cuvinte, de „Face, cu Da-ul tău" (șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat) și de pagina „Șoferi pe
+mașini", iar la Pro și Business promitea analiza aprofundată pe Sonnet (Alin, 27.10: „nu o mai vreau"). Am refăcut-o într-un singur
+loc, din care citesc și aplicația, și site-ul: pe fiecare pachet, ce primești (la Start) sau ce ADAUGĂ față de pachetul dinainte, cele
+trei cifre de sus (conturi, întrebări libere cu AI, răspunsuri pe loc), un tabel de comparație pe rânduri și „În toate pachetele"
+(cifrele vin din rapoarte, „Am găsit o problemă", fiecare om își vede doar conversațiile lui, insigna pe fiecare răspuns, nimic peste
+prețul pachetului). Pe prima pagină a site-ului, în banda RA Insight, au apărut cele patru pachete, scurt, cu legătura spre
+comparația întreagă — fără prețuri (Alin, 27.10: „fără preț în pagina publică, pe home page, și cu prețuri când clientul are cont și
+face upgrade").
+
+**Ce vede fondatorul:** nimic schimbat în ecranele noastre; oferta folosește aceleași pachete. Butonul nostru „Analiza aprofundată"
+din RA Insight · control a rămas, oprit, până hotărăști varianta pe Haiku (propunerea din 28.10).
+
+**Ce vede clientul:** administratorul firmei, în RA Insight → „Vezi pachetele": cele patru pachete cu prețul lor și ce adaugă
+fiecare, tabelul de comparație (cu prețul pe o întrebare liberă: 5 bani la Basic, 3,3 la Pro, 3 la Business) și „În toate
+pachetele". Oricine, pe ratrack.ro: pagina „Pachetele RA Insight" refăcută la fel, fără prețuri, și cele patru pachete pe prima
+pagină.
 
 ## 2026-10-27
 

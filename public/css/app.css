@@ -4086,8 +4086,46 @@ body.dark .insp-pk-tau { background: var(--accent); color: #06210F; }
 body.dark .insp-pk-c li i { color: var(--accent); }
 .insp-pk-c li.nu { color: var(--text-muted); }
 .insp-pk-c li.nu i { color: var(--text-muted); }
-.insp-pk-toate { margin-top: 14px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
-.insp-pk-schimb { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+/* Pachetele, refăcute pe 27.10: eticheta „De aici: întrebări libere cu AI" (mov), cifrele de sus, ce adaugă față de pachetul
+   dinainte, tabelul cu tot ce include fiecare și „În toate pachetele". Mov = de aici începe AI-ul (coloana Basic, ușor nuanțată). */
+.insp-pk-c.ai { border-color: color-mix(in srgb, var(--purple) 45%, var(--border)); }
+.insp-pk-eti { display: inline-block; margin: 0 0 6px; font-size: 11px; font-weight: 800; padding: 1px 9px; border-radius: 999px; background: #6d28d9; color: #fff; }
+body.dark .insp-pk-eti { background: var(--purple); color: #160B2E; }
+.insp-pk-cifre { margin: 0 0 10px; border-top: 1px solid var(--border); }
+.insp-pk-cifre > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.insp-pk-cifre dt { color: var(--text-secondary); }
+.insp-pk-cifre dd { margin: 0; font-weight: 700; color: var(--text-primary); text-align: right; }
+.insp-pk-cifre dd.nu { color: var(--text-muted); font-weight: 600; }
+.insp-pk-plus { margin: 2px 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #166534; }
+body.dark .insp-pk-plus { color: var(--accent); }
+.insp-pk-c.ai .insp-pk-plus { color: #6d28d9; }
+body.dark .insp-pk-c.ai .insp-pk-plus { color: var(--purple); }
+.insp-pk-h { margin: 18px 0 8px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.insp-pk-tab { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); }
+.insp-pk-tab table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.insp-pk-tab th, .insp-pk-tab td { padding: 9px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.insp-pk-tab thead th { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
+.insp-pk-tab thead th.p { text-align: center; color: var(--text-primary); }
+.insp-pk-tab thead th small { display: block; margin-top: 2px; font-size: 11.5px; letter-spacing: 0; text-transform: none; font-weight: 600; color: var(--text-secondary); }
+.insp-pk-tab thead th.al { box-shadow: inset 0 -2px 0 #166534; }
+body.dark .insp-pk-tab thead th.al { box-shadow: inset 0 -2px 0 var(--accent); }
+.insp-pk-tab tbody th { font-weight: 700; }
+.insp-pk-tab tbody th small, .insp-pk-tab td small { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 500; color: var(--text-secondary); line-height: 1.4; }
+.insp-pk-tab tr.g th { background: var(--bg-panel); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); padding-block: 7px; }
+.insp-pk-tab td.v { text-align: center; font-weight: 700; width: 15%; }
+.insp-pk-tab td.v.ai, .insp-pk-tab th.p.ai { background: color-mix(in srgb, var(--purple) 8%, transparent); }
+.insp-pk-tab td.v i { color: #166534; }
+body.dark .insp-pk-tab td.v i { color: var(--accent); }
+.insp-pk-tab td.v .nu { color: var(--text-muted); font-weight: 600; }
+.insp-pk-tab tbody tr:last-child th, .insp-pk-tab tbody tr:last-child td { border-bottom: 0; }
+.insp-pk-toate { margin-top: 4px; }
+.insp-pk-toate ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 16px; }
+.insp-pk-toate li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 7px; font-size: 12.5px; line-height: 1.45; }
+.insp-pk-toate li i { color: #166534; margin-top: 3px; font-size: 11px; }
+body.dark .insp-pk-toate li i { color: var(--accent); }
+.insp-pk-toate li b { display: block; color: var(--text-primary); }
+.insp-pk-toate li span { color: var(--text-secondary); }
+.insp-pk-schimb { margin-top: 14px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
 /* Trecerea la alt pachet (pasul 6): butonul de pe cartonaș, ce e programat, fereastra de confirmare */
 .insp-pk-alege { margin-top: 12px; width: 100%; justify-content: center; }
 /* Ofertare Live, sub alegerea pachetului: „ce rămâne la noi" — verdele casei pe alb e 1,7, deci verde închis pe tema deschisă */

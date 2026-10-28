@@ -12374,14 +12374,19 @@ const pozitii = await r.json();</code></pre>
         var gr = el('div', 'insp-pk-gr');
         (j.pachete || []).forEach(function (p) {
           var al = p.cod === j.actual;
-          var c = el('div', 'insp-pk-c' + (al ? ' al' : ''));
+          var c = el('div', 'insp-pk-c' + (al ? ' al' : '') + (p.eticheta ? ' ai' : ''));
+          if (p.eticheta) c.appendChild(el('div', 'insp-pk-eti', p.eticheta));
           if (al) c.appendChild(el('div', 'insp-pk-tau', 'Pachetul tău'));
           c.appendChild(el('div', 'insp-pk-n', p.nume));
           var pr = el('div', 'insp-pk-pr'); pr.appendChild(el('b', null, p.pret || '')); pr.appendChild(el('span', null, ' ' + (p.subPret || ''))); c.appendChild(pr);
           c.appendChild(el('div', 'insp-pk-ti', p.titlu)); c.appendChild(el('div', 'insp-pk-pe', p.pentru));
+          // Cifrele de sus (conturi, întrebări libere, răspunsuri pe loc) și ce primești / ce adaugă față de pachetul dinainte — de la server.
+          var dl = el('dl', 'insp-pk-cifre');
+          (p.cifre || []).forEach(function (x) { var rd = el('div'); rd.appendChild(el('dt', null, x.et)); rd.appendChild(el('dd', x.val == null ? 'nu' : null, x.val == null ? '—' : x.val)); dl.appendChild(rd); });
+          c.appendChild(dl);
+          if (p.plus) c.appendChild(el('div', 'insp-pk-plus', p.plus));
           var ul = el('ul');
           (p.include || []).forEach(function (t) { var li = el('li'); li.innerHTML = '<i class="fas fa-check"></i>'; li.appendChild(document.createTextNode(t)); ul.appendChild(li); });
-          (p.fara || []).forEach(function (t) { var li = el('li', 'nu'); li.innerHTML = '<i class="fas fa-minus"></i>'; li.appendChild(document.createTextNode(t)); ul.appendChild(li); });
           c.appendChild(ul);
           // Trecerea din aplicație (pasul 6): doar administratorul firmei (`poateSchimba`, de la server). Textul și regula — la server.
           var prog = j.urmator && j.urmator.cod === p.cod;
@@ -12395,7 +12400,42 @@ const pozitii = await r.json();</code></pre>
           gr.appendChild(c);
         });
         bx.appendChild(gr);
-        bx.appendChild(el('div', 'insp-pk-toate', j.inToate || ''));
+        // Tot ce include fiecare pachet, rând cu rând (pachete.comparatie; aici cu prețul pe o întrebare). Celula: da / nu / text + rând mic.
+        if (Array.isArray(j.comparatie) && j.comparatie.length) {
+          bx.appendChild(el('div', 'insp-pk-h', 'Tot ce include fiecare pachet'));
+          var tw2 = el('div', 'insp-pk-tab'), tb = document.createElement('table');
+          var thd = document.createElement('thead'), trh = document.createElement('tr');
+          trh.appendChild(el('th', null, 'Ce primești'));
+          (j.pachete || []).forEach(function (p) {
+            var c = el('th', 'p' + (p.eticheta ? ' ai' : '') + (p.cod === j.actual ? ' al' : '')); c.appendChild(document.createTextNode(p.nume));
+            c.appendChild(el('small', null, ((p.pret || '') + ' ' + (p.subPret || '')).trim())); trh.appendChild(c);
+          });
+          thd.appendChild(trh); tb.appendChild(thd);
+          var tbd = document.createElement('tbody');
+          j.comparatie.forEach(function (g) {
+            var trg = el('tr', 'g'), thg = el('th', null, g.grup); thg.colSpan = 1 + (j.pachete || []).length; trg.appendChild(thg); tbd.appendChild(trg);
+            (g.randuri || []).forEach(function (r) {
+              var tr = document.createElement('tr'), th = el('th');
+              th.appendChild(document.createTextNode(r.t)); if (r.d) th.appendChild(el('small', null, r.d)); tr.appendChild(th);
+              (r.v || []).forEach(function (x, i) {
+                var p = (j.pachete || [])[i] || {}, td = el('td', 'v' + (p.eticheta ? ' ai' : ''));
+                if (x.da === true) { td.innerHTML = '<i class="fas fa-check" aria-label="inclus"></i>'; }
+                else if (x.da === false) td.appendChild(el('span', 'nu', '—'));
+                else td.appendChild(document.createTextNode(x.text || ''));
+                if (x.mic) td.appendChild(el('small', null, x.mic));
+                tr.appendChild(td);
+              });
+              tbd.appendChild(tr);
+            });
+          });
+          tb.appendChild(tbd); tw2.appendChild(tb); bx.appendChild(tw2);
+        }
+        if (Array.isArray(j.inToate) && j.inToate.length) {
+          var tot = el('div', 'insp-pk-toate'); tot.appendChild(el('div', 'insp-pk-h', 'În toate pachetele'));
+          var ult = el('ul');
+          j.inToate.forEach(function (x) { var li = el('li'); li.innerHTML = '<i class="fas fa-check"></i>'; var dv = el('div'); dv.appendChild(el('b', null, x.t)); dv.appendChild(el('span', null, x.d)); li.appendChild(dv); ult.appendChild(li); });
+          tot.appendChild(ult); bx.appendChild(tot);
+        }
         bx.appendChild(el('div', 'insp-pk-schimb', j.schimbText || ''));
         ov.appendChild(bx);
         ov.onclick = function (e) { if (e.target === ov) ov.remove(); };

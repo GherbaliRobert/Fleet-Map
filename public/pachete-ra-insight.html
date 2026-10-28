@@ -104,7 +104,7 @@
     p{margin:10px 0;color:#CBD3DC}
     ul{padding-left:20px;margin:10px 0}li{margin:7px 0;color:#CBD3DC}
     p b,li b{color:#fff}
-    .pachete{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 6px}
+    .pachete{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 12px;margin:24px 0 6px}
     @media (max-width:900px){.pachete{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.pachete{grid-template-columns:minmax(0,1fr)}}
     .pachet{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
@@ -120,7 +120,34 @@
     .pachet li.nu::before{content:"–";color:var(--muted)}
     .pachet .cere{margin-top:auto;display:block;text-align:center;font-weight:700;border:1px solid var(--accent);border-radius:999px;padding:7px 10px;font-size:13.5px}
     .pachet .cere:hover{text-decoration:none;background:rgba(63,224,125,.08)}
-    .toate{font-size:14px;color:var(--muted);margin:12px 0 0}
+    .pachet.ai{border-color:rgba(167,139,250,.45)}
+    .pachet{position:relative}
+    .pachet .eti{position:absolute;top:-11px;left:14px;font-size:11.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:#A78BFA;color:#160B2E;white-space:nowrap}
+    .pachet dl.cifre{margin:0 0 12px;border-top:1px solid var(--border)}
+    .pachet dl.cifre div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.4}
+    .pachet dl.cifre dt{color:var(--muted)}
+    .pachet dl.cifre dd{margin:0;font-weight:700;color:#fff;text-align:right}
+    .pachet dl.cifre dd.nu{color:var(--muted);font-weight:600}
+    .pachet .plus{margin:0 0 8px;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+    .pachet.ai .plus{color:#C4B5FD}
+    .comparatie{overflow-x:auto;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin:14px 0 6px}
+    .comparatie table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;font-size:14px;line-height:1.5}
+    .comparatie th,.comparatie td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border);color:#CBD3DC}
+    .comparatie thead th{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+    .comparatie thead th.p{text-align:center;color:#fff}
+    .comparatie thead th small{display:block;font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--muted)}
+    .comparatie tbody th{font-weight:700;color:#fff}
+    .comparatie small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:var(--muted);line-height:1.4}
+    .comparatie tr.g th{background:#0E1318;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-top:8px;padding-bottom:8px}
+    .comparatie td.v{text-align:center;font-weight:700;color:#fff;width:15%}
+    .comparatie td.v.ai,.comparatie th.p.ai{background:rgba(167,139,250,.08)}
+    .comparatie .da{color:var(--accent);font-weight:800}
+    .comparatie .nu{color:var(--muted);font-weight:600}
+    .comparatie tbody tr:last-child th,.comparatie tbody tr:last-child td{border-bottom:0}
+    .toate-lista{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 18px}
+    .toate-lista li{margin:0;padding-left:22px;position:relative;font-size:14px;line-height:1.55}
+    .toate-lista li::before{content:"✓";position:absolute;left:0;color:var(--accent);font-weight:800}
+    .toate-lista li b{display:block}
     details{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:10px 0}
     details[open]{border-color:#2A3540}
     summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:flex-start}
@@ -148,27 +175,38 @@
       <div class="pachet">
         <h3>Start</h3>
         <div class="pret"><b>Inclus</b> în orice contract</div>
-        <p class="titlu">Răspunsuri pe loc, pe butoane.</p>
+        <p class="titlu">Răspunsuri pe loc, din rapoarte.</p>
         <p class="pentru">Pentru orice firmă, din prima zi.</p>
+        <dl class="cifre">
+          <div><dt>Conturi</dt><dd>1 · administratorul</dd></div>
+          <div><dt>Întrebări libere, cu AI</dt><dd class="nu">—</dd></div>
+          <div><dt>Răspunsuri pe loc</dt><dd>50 pe lună</dd></div>
+        </dl>
+        <p class="plus">Ce primești</p>
         <ul>
-          <li>1 cont: administratorul</li>
-          <li>50 de răspunsuri pe lună: unde e o mașină, câți km, unde a stat, ce acte expiră</li>
+          <li>Răspunsuri pe loc, din rapoarte: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră</li>
+          <li>Rapoarte cerute în cuvinte, puse în Istoric rapoarte</li>
+          <li>„Azi la tine”: ce cere atenție azi, fără să întrebi</li>
           <li>Scrisoarea de luni</li>
-          <li class="nu">Întrebări libere („de ce?”, „ce să fac?”)</li>
-          <li class="nu">Ramurile</li>
         </ul>
       </div>
-      <div class="pachet">
+      <div class="pachet ai">
+        <span class="eti">De aici: întrebări libere cu AI</span>
         <h3>Basic</h3>
         <div class="pret">Cere ofertă</div>
         <p class="titlu">Întreabă orice despre flota ta.</p>
         <p class="pentru">Pentru patron și încă un om.</p>
+        <dl class="cifre">
+          <div><dt>Conturi</dt><dd>2</dd></div>
+          <div><dt>Întrebări libere, cu AI</dt><dd>200 pe lună</dd></div>
+          <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+        </dl>
+        <p class="plus">În plus față de Start</p>
         <ul>
-          <li>2 conturi</li>
-          <li>200 de întrebări pe lună, la comun</li>
-          <li>Întrebări în cuvintele tale: „De ce a crescut consumul la Caddy?”</li>
-          <li>Ramurile: RA Drive (condus &amp; costuri), Combustibil, Ore de condus, Mentenanță &amp; acte</li>
-          <li>Răspunsurile pe butoane, fără limită</li>
+          <li>Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”</li>
+          <li>„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică</li>
+          <li>Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat</li>
+          <li>Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță &amp; acte, Șoferi pe mașini</li>
           <li>Scrisoarea de luni scrisă de RA Insight</li>
         </ul>
         <a class="cere" href="/#contact">Cere ofertă</a>
@@ -178,11 +216,16 @@
         <div class="pret">Cere ofertă</div>
         <p class="titlu">Toată echipa întreabă, tu împarți întrebările.</p>
         <p class="pentru">Pentru firme cu dispecerat.</p>
+        <dl class="cifre">
+          <div><dt>Conturi</dt><dd>până la 5</dd></div>
+          <div><dt>Întrebări libere, cu AI</dt><dd>600 pe lună</dd></div>
+          <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+        </dl>
+        <p class="plus">În plus față de Basic</p>
         <ul>
-          <li>Până la 5 conturi</li>
-          <li>600 de întrebări pe lună</li>
-          <li>Împarți întrebările pe oameni</li>
-          <li>Tot ce are Basic</li>
+          <li>Până la 5 oameni cu RA Insight</li>
+          <li>De trei ori mai multe întrebări: 600 pe lună</li>
+          <li>Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”</li>
         </ul>
         <a class="cere" href="/#contact">Cere ofertă</a>
       </div>
@@ -191,16 +234,133 @@
         <div class="pret">Cere ofertă</div>
         <p class="titlu">Oricâți oameni, 1.000 de întrebări.</p>
         <p class="pentru">Pentru flote mari, cu mai multe echipe.</p>
+        <dl class="cifre">
+          <div><dt>Conturi</dt><dd>nelimitate</dd></div>
+          <div><dt>Întrebări libere, cu AI</dt><dd>1.000 pe lună</dd></div>
+          <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
+        </dl>
+        <p class="plus">În plus față de Pro</p>
         <ul>
-          <li>Conturi nelimitate</li>
+          <li>Oricâți oameni cu RA Insight</li>
           <li>1.000 de întrebări pe lună</li>
-          <li>Împarți întrebările pe oameni</li>
-          <li>Tot ce are Pro</li>
         </ul>
         <a class="cere" href="/#contact">Cere ofertă</a>
       </div>
     </div>
-    <p class="toate">În toate: fiecare om își vede doar conversațiile lui · cifrele vin din rapoartele aplicației și se verifică singure · nu se plătește nimic peste preț · se reîncarcă pe 1.</p>
+
+    <h2>Tot ce include fiecare pachet</h2>
+    <p>Răspunsurile pe loc vin direct din rapoartele aplicației. Întrebările libere le citește RA Insight și răspunde cu cifrele din aceleași rapoarte.</p>
+    <div class="comparatie">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Ce primiți</th>
+            <th scope="col" class="p">Start<small>inclus</small></th>
+            <th scope="col" class="p ai">Basic<small>cere ofertă</small></th>
+            <th scope="col" class="p">Pro<small>cere ofertă</small></th>
+            <th scope="col" class="p">Business<small>cere ofertă</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="g"><th scope="rowgroup" colspan="5">Cine îl folosește</th></tr>
+          <tr>
+            <th scope="row">Conturi RA Insight</th>
+            <td class="v">1<small>administratorul</small></td>
+            <td class="v ai">2</td>
+            <td class="v">până la 5</td>
+            <td class="v">nelimitate</td>
+          </tr>
+          <tr>
+            <th scope="row">Împarți întrebările pe oameni<small>Pe fiecare om: „Fără limită” sau „Cel mult … pe lună”</small></th>
+            <td class="v"><span class="nu" aria-label="nu">—</span></td>
+            <td class="v ai"><span class="nu" aria-label="nu">—</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+          </tr>
+          <tr class="g"><th scope="rowgroup" colspan="5">Întrebări și răspunsuri</th></tr>
+          <tr>
+            <th scope="row">Întrebări libere, cu AI<small>„De ce a crescut consumul la Caddy?”</small></th>
+            <td class="v"><span class="nu" aria-label="nu">—</span></td>
+            <td class="v ai">200 pe lună<small>la comun</small></td>
+            <td class="v">600 pe lună</td>
+            <td class="v">1.000 pe lună</td>
+          </tr>
+          <tr>
+            <th scope="row">Răspunsuri pe loc, din rapoarte<small>Unde e o mașină, câți km a făcut, unde a stat, ce acte expiră</small></th>
+            <td class="v">50 pe lună</td>
+            <td class="v ai">fără limită</td>
+            <td class="v">fără limită</td>
+            <td class="v">fără limită</td>
+          </tr>
+          <tr>
+            <th scope="row">Rapoarte cerute în cuvinte<small>„Fă-mi foaia de parcurs pentru B 154 UIP, ieri” — raportul intră în Istoric rapoarte</small></th>
+            <td class="v">din cele 50</td>
+            <td class="v ai">fără limită</td>
+            <td class="v">fără limită</td>
+            <td class="v">fără limită</td>
+          </tr>
+          <tr>
+            <th scope="row">„De ce?”, „compară”, „ce să fac”<small>Face rapoartele de care e nevoie și ți le explică</small></th>
+            <td class="v">doar rapoartele<small>fără explicație</small></td>
+            <td class="v ai"><span class="da" aria-label="inclus">✓</span><small>1 întrebare</small></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span><small>1 întrebare</small></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span><small>1 întrebare</small></td>
+          </tr>
+          <tr>
+            <th scope="row">„Rezumă cu RA Insight”, pe orice raport</th>
+            <td class="v">pe scurt, din cifre<small>din cele 50</small></td>
+            <td class="v ai">scris de RA Insight<small>1 întrebare</small></td>
+            <td class="v">scris de RA Insight<small>1 întrebare</small></td>
+            <td class="v">scris de RA Insight<small>1 întrebare</small></td>
+          </tr>
+          <tr>
+            <th scope="row">Când se termină întrebările lunii</th>
+            <td class="v">se reîncarcă pe 1</td>
+            <td class="v ai">răspunsurile pe loc merg mai departe</td>
+            <td class="v">răspunsurile pe loc merg mai departe</td>
+            <td class="v">răspunsurile pe loc merg mai departe</td>
+          </tr>
+          <tr class="g"><th scope="rowgroup" colspan="5">Lucrează pentru tine</th></tr>
+          <tr>
+            <th scope="row">„Azi la tine”<small>Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără</small></th>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Scrisoarea de luni<small>Săptămâna trecută și ce e de rezolvat, în fiecare luni dimineața</small></th>
+            <td class="v">din cifre</td>
+            <td class="v ai">scrisă de RA Insight</td>
+            <td class="v">scrisă de RA Insight</td>
+            <td class="v">scrisă de RA Insight</td>
+          </tr>
+          <tr>
+            <th scope="row">RA Insight face, cu „Da”-ul tău<small>Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.</small></th>
+            <td class="v"><span class="nu" aria-label="nu">—</span></td>
+            <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Paginile RA Insight<small>RA Drive (condus &amp; costuri) · Combustibil · Ore de condus · Mentenanță &amp; acte · Șoferi pe mașini</small></th>
+            <td class="v"><span class="nu" aria-label="nu">—</span></td>
+            <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+            <td class="v"><span class="da" aria-label="inclus">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>În toate pachetele</h2>
+    <ul class="toate-lista">
+      <li><b>Cifrele vin din rapoartele aplicației</b> Sub răspuns scrie „Cifrele le-am luat din rapoarte”. O cifră care nu se regăsește e spusă pe față.</li>
+      <li><b>„Am găsit o problemă”, cu butonul spre locul exact</b> Viteză reală sau eroare de GPS, consum socotit din fișă, fișa mașinii necompletată.</li>
+      <li><b>Fiecare om își vede doar conversațiile lui</b> Nici administratorul firmei, nici echipa RA Track nu le citesc. Se păstrează 12 luni.</li>
+      <li><b>La fiecare răspuns scrie dacă s-a numărat</b> „Analiză · 1 întrebare” sau „Instant · din rapoarte”.</li>
+      <li><b>Nimic peste prețul pachetului</b> Nu se vând întrebări în plus. Pachetul se reîncarcă pe 1 a fiecărei luni.</li>
+    </ul>
 
     <h2>Cum se schimbă pachetul</h2>
     <ul>

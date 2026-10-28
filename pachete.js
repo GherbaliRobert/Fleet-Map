@@ -434,21 +434,88 @@ function rezumatTrecere(r) {
   return r.sens === 'anulare' ? 'Rămâne ' + n(r.de_la) + ' (trecerea programată, anulată)' : n(r.de_la) + ' → ' + n(r.la) + ', din ' + dataScurta(r.aplicat_de_la);
 }
 
-// ─── Ce primește fiecare pachet, pe înțeles (macheta din 14.10, aprobată) — UN singur loc, pentru aplicație și site ───
-// Doar ce face aplicația AZI. Analiza aprofundată se scrie doar cât e pornită (o pornim noi, după probă).
+// ─── Ce primește fiecare pachet, pe înțeles — UN singur loc, pentru aplicație („Vezi pachetele", cu prețuri) și site (fără) ───
+// Macheta din 14.10; refăcut pe 27.10 după pagina comparației (Alin: „da" la lista rămasă în urmă; „fără preț în pagina publică,
+// pe home page, și cu prețuri când clientul are cont și face upgrade"). Doar ce face aplicația AZI. Pe cartonaș: ce primești (Start)
+// sau ce ADAUGĂ față de pachetul dinainte (`plus`); cifrele de sus (conturi, întrebări, răspunsuri pe loc) le socotește `cifre`, din
+// PACHETE. Analiza aprofundată pe Sonnet a ieșit din pachete (Alin, 27.10: „nu o mai vreau").
 const DESCRIERE = {
-  start: { titlu: 'Răspunsuri pe loc, pe butoane.', pentru: 'Pentru orice firmă, din prima zi.',
-    include: ['1 cont: administratorul', '50 de răspunsuri pe lună: unde e o mașină, câți km, unde a stat, ce acte expiră', 'Scrisoarea de luni'],
-    fara: ['Întrebări libere („de ce?”, „ce să fac?”)', 'Ramurile'] },
-  basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.',
-    include: ['2 conturi', '200 de întrebări pe lună, la comun', 'Întrebări în cuvintele tale: „De ce a crescut consumul la Caddy?”',
-      'Ramurile: RA Drive (condus & costuri), Combustibil, Ore de condus, Mentenanță & acte', 'Răspunsurile pe butoane, fără limită', 'Scrisoarea de luni scrisă de RA Insight'] },
-  pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.',
-    include: ['Până la 5 conturi', '600 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată la „de ce” și „ce să fac”' }, 'Tot ce are Basic'] },
-  business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.',
-    include: ['Conturi nelimitate', '1.000 de întrebări pe lună', 'Împarți întrebările pe oameni', { aprofundat: 'Analiza aprofundată, cu buget mai mare' }, 'Tot ce are Pro'] },
+  start: { titlu: 'Răspunsuri pe loc, din rapoarte.', pentru: 'Pentru orice firmă, din prima zi.', plus: 'Ce primești',
+    include: ['Răspunsuri pe loc, din rapoarte: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră',
+      'Rapoarte cerute în cuvinte, puse în Istoric rapoarte', '„Azi la tine”: ce cere atenție azi, fără să întrebi', 'Scrisoarea de luni'] },
+  basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.', eticheta: 'De aici: întrebări libere cu AI',
+    plus: 'În plus față de Start',
+    include: ['Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”', '„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică',
+      'Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat',
+      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini', 'Scrisoarea de luni scrisă de RA Insight'] },
+  pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',
+    include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”'] },
+  business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.', plus: 'În plus față de Pro',
+    include: ['Oricâți oameni cu RA Insight', '1.000 de întrebări pe lună'] },
 };
-const IN_TOATE = 'În toate: fiecare om își vede doar conversațiile lui · cifrele vin din rapoartele aplicației și se verifică singure · nu se plătește nimic peste preț · se reîncarcă pe 1.';
+// Ce au toate pachetele (sub comparație, în aplicație și pe site). Textele insignelor = cele din `insigna` (legate în probă).
+const IN_TOATE = [
+  { t: 'Cifrele vin din rapoartele aplicației', d: 'Sub răspuns scrie „Cifrele le-am luat din rapoarte”. O cifră care nu se regăsește e spusă pe față.' },
+  { t: '„Am găsit o problemă”, cu butonul spre locul exact', d: 'Viteză reală sau eroare de GPS, consum socotit din fișă, fișa mașinii necompletată.' },
+  { t: 'Fiecare om își vede doar conversațiile lui', d: 'Nici administratorul firmei, nici echipa RA Track nu le citesc. Se păstrează 12 luni.' },
+  { t: 'La fiecare răspuns scrie dacă s-a numărat', d: '„Analiză · 1 întrebare” sau „Instant · din rapoarte”.' },
+  { t: 'Nimic peste prețul pachetului', d: 'Nu se vând întrebări în plus. Pachetul se reîncarcă pe 1 a fiecărei luni.' },
+];
+function _nrRo(n) { return Number(n).toLocaleString('ro-RO'); }
+// Cifrele de pe cartonaș, din PACHETE (nu scrise de mână): câte conturi, câte întrebări libere, câte răspunsuri pe loc.
+function cifre(p) {
+  return [
+    { et: 'Conturi', val: p.doarAdmin ? '1 · administratorul' : (p.conturi == null ? 'nelimitate' : (p.conturi === 2 ? '2' : 'până la ' + p.conturi)) },
+    { et: 'Întrebări libere, cu AI', val: p.ai ? _nrRo(p.intrebari) + ' pe lună' : null },
+    { et: 'Răspunsuri pe loc', val: p.ai ? 'fără limită' : _nrRo(p.intrebari) + ' pe lună' },
+  ];
+}
+// Comparația, rând cu rând — aceleași rânduri în aplicație și pe site. O celulă: { da: true } = inclus, { da: false } = nu, sau
+// { text } — ce primește pachetul; `mic` = un rând mic dedesubt. Cifrele vin din PACHETE. `cuPret` + `preturi` adaugă rândul
+// „Preț pe o întrebare liberă" (doar în aplicație, unde clientul alege un pachet mai mare).
+function comparatie(o) {
+  o = o || {};
+  const pr = o.preturi || {};
+  const da = function (v) { return { da: !!v }; };
+  const tx = function (text, mic) { return mic ? { text: text, mic: mic } : { text: text }; };
+  const pe = function (f) { return PACHETE.map(f); };
+  const intrebari = [
+    { t: 'Întrebări libere, cu AI', d: '„De ce a crescut consumul la Caddy?”',
+      v: pe(function (p) { return p.ai ? tx(_nrRo(p.intrebari) + ' pe lună', p.imparte ? null : 'la comun') : da(false); }) },
+    { t: 'Răspunsuri pe loc, din rapoarte', d: 'Unde e o mașină, câți km a făcut, unde a stat, ce acte expiră',
+      v: pe(function (p) { return tx(p.ai ? 'fără limită' : _nrRo(p.intrebari) + ' pe lună'); }) },
+    { t: 'Rapoarte cerute în cuvinte', d: '„Fă-mi foaia de parcurs pentru B 154 UIP, ieri” — raportul intră în Istoric rapoarte',
+      v: pe(function (p) { return tx(p.ai ? 'fără limită' : 'din cele ' + p.intrebari); }) },
+    { t: '„De ce?”, „compară”, „ce să fac”', d: 'Face rapoartele de care e nevoie și ți le explică',
+      v: pe(function (p) { return p.ai ? { da: true, mic: '1 întrebare' } : tx('doar rapoartele', 'fără explicație'); }) },
+    { t: '„Rezumă cu RA Insight”, pe orice raport',
+      v: pe(function (p) { return p.ai ? tx('scris de RA Insight', '1 întrebare') : tx('pe scurt, din cifre', 'din cele ' + p.intrebari); }) },
+    { t: 'Când se termină întrebările lunii',
+      v: pe(function (p) { return tx(p.ai ? 'răspunsurile pe loc merg mai departe' : 'se reîncarcă pe 1'); }) },
+  ];
+  if (o.cuPret) {
+    intrebari.push({ t: 'Preț pe o întrebare liberă', v: pe(function (p) {
+      const lei = pr[p.cod] != null ? Number(pr[p.cod]) : p.pret;
+      if (!p.ai || !(lei > 0)) return da(false);
+      const bani = Math.round(lei / p.intrebari * 1000) / 10;   // în bani, cu o zecimală
+      return tx(bani.toLocaleString('ro-RO') + (bani === 1 ? ' ban' : ' bani'));
+    }) });
+  }
+  return [
+    { grup: 'Cine îl folosește', randuri: [
+      { t: 'Conturi RA Insight', v: pe(function (p) { return p.doarAdmin ? tx('1', 'administratorul') : tx(cifre(p)[0].val); }) },
+      { t: 'Împarți întrebările pe oameni', d: 'Pe fiecare om: „Fără limită” sau „Cel mult … pe lună”', v: pe(function (p) { return da(p.imparte); }) },
+    ] },
+    { grup: 'Întrebări și răspunsuri', randuri: intrebari },
+    { grup: 'Lucrează pentru tine', randuri: [
+      { t: '„Azi la tine”', d: 'Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără', v: pe(function () { return da(true); }) },
+      { t: 'Scrisoarea de luni', d: 'Săptămâna trecută și ce e de rezolvat, în fiecare luni dimineața', v: pe(function (p) { return tx(p.ai ? 'scrisă de RA Insight' : 'din cifre'); }) },
+      { t: 'RA Insight face, cu „Da”-ul tău', d: 'Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.',
+        v: pe(function (p) { return da(p.ramuri); }) },
+      { t: 'Paginile RA Insight', d: 'RA Drive (condus & costuri) · Combustibil · Ore de condus · Mentenanță & acte · Șoferi pe mașini', v: pe(function (p) { return da(p.ramuri); }) },
+    ] },
+  ];
+}
 // Prețurile de listă: cele din cod, peste care se pun cele din „Prețurile noastre" (`tarife_lista`: pkBasic / pkPro /
 // pkBusiness). O cifră lipsă sau stricată → prețul din cod, niciodată 0 (un pachet nu se dă pe gratis din greșeală).
 const CHEI_PRET = { basic: 'pkBasic', pro: 'pkPro', business: 'pkBusiness' };
@@ -460,15 +527,13 @@ function preturiLista(tarife) {
   });
   return out;
 }
-// Lista pentru ecrane: o = { aprofundat: pornită?, cuPret: false pe site (Alin, 14.10: „nu afișăm prețurile, «cere ofertă»"),
-// preturi: preturiLista(...) }.
+// Lista pentru ecrane: o = { cuPret: false pe site (Alin, 14.10: „nu afișăm prețurile, «cere ofertă»"), preturi: preturiLista(...) }.
 function publice(o) {
   o = o || {};
   const pr = o.preturi || {};
   return PACHETE.map(function (p) {
     const d = DESCRIERE[p.cod];
-    const include = d.include.map(function (x) { return typeof x === 'string' ? x : (o.aprofundat ? x.aprofundat : null); }).filter(Boolean);
-    const out = { cod: p.cod, nume: p.nume, titlu: d.titlu, pentru: d.pentru, include: include, fara: d.fara || [] };
+    const out = { cod: p.cod, nume: p.nume, titlu: d.titlu, pentru: d.pentru, eticheta: d.eticheta || null, plus: d.plus, include: d.include.slice(), cifre: cifre(p) };
     const lei = pr[p.cod] != null ? pr[p.cod] : p.pret;
     if (o.cuPret !== false) out.pret = lei === 0 ? 'Inclus' : _lei(lei);
     out.subPret = p.pret === 0 ? 'în orice contract' : (o.cuPret !== false ? '/ lună' : 'Cere ofertă');
@@ -502,7 +567,7 @@ function insignaCompleta(x) {
 
 module.exports = {
   INSIGNA, insigna, insignaCompleta,
-  PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE,
+  PACHETE, CODURI, PLASA, ROLURI_ADMIN, REZERVA_APROFUNDAT_LEI, DESCRIERE, IN_TOATE, cifre, comparatie,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare, alegeModel,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
   cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi,

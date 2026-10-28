@@ -285,12 +285,30 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
 {
   const html = HTML['/pachete-ra-insight'] || '';
   const vazut = faraMarcaj(corpul(html));
-  const pub = PK.publice({ cuPret: false, aprofundat: false });
+  const pub = PK.publice({ cuPret: false });
   for (const p of pub) {
-    const bucati = [p.nume, p.titlu, p.pentru, p.subPret].concat(p.include, p.fara);
+    const bucati = [p.nume, p.titlu, p.pentru, p.subPret, p.plus].concat(p.include, p.eticheta ? [p.eticheta] : [], p.cifre.map((c) => c.et), p.cifre.filter((c) => c.val != null).map((c) => c.val));
     for (const b of bucati) check(vazut.includes(b), '/pachete-ra-insight: pachetul ' + p.nume + ' — lipsește pe pagină „' + b + '" (din pachete.js)');
   }
-  check(vazut.includes(PK.IN_TOATE), '/pachete-ra-insight: lipsește rândul „În toate: …" din pachete.js');
+  // Comparația rând cu rând (27.10): fiecare rând, explicația lui și fiecare celulă, din pachete.comparatie({ cuPret: false }),
+  // în ordinea din cod; fără rândul cu prețul pe întrebare (acela stă doar în aplicație).
+  const comp = PK.comparatie({ cuPret: false });
+  let dupa = 0;
+  for (const g of comp) {
+    check(vazut.includes(g.grup), '/pachete-ra-insight: comparația — lipsește grupul „' + g.grup + '" (din pachete.js)');
+    for (const r of g.randuri) {
+      const la = vazut.indexOf(r.t, dupa);
+      check(la >= 0, '/pachete-ra-insight: comparația — lipsește rândul „' + r.t + '" (sau nu e în ordinea din pachete.js)');
+      if (la >= 0) dupa = la;
+      if (r.d) check(vazut.includes(r.d), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește explicația „' + r.d + '"');
+      for (const x of r.v) {
+        if (x.text) check(vazut.includes(x.text), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește „' + x.text + '"');
+        if (x.mic) check(vazut.includes(x.mic), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește „' + x.mic + '"');
+      }
+    }
+  }
+  check(!/Preț pe o întrebare/.test(vazut), '/pachete-ra-insight: rândul cu prețul pe întrebare e doar pentru aplicație');
+  for (const x of PK.IN_TOATE) check(vazut.includes(x.t) && vazut.includes(x.d), '/pachete-ra-insight: lipsește din „În toate pachetele" „' + x.t + '" (din pachete.js)');
   check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/pachete-ra-insight: pe pagină apare un preț — pe site nu se afișează prețuri, doar „Cere ofertă"');
   check((html.match(/>Cere ofertă</g) || []).length >= 3, '/pachete-ra-insight: sub fiecare pachet plătit trebuie „Cere ofertă"');
   // Nicio pagină nu mai spune că RA Insight se plătește „pe cont" (regula veche, până pe 14.10).
@@ -298,6 +316,23 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
     const v = faraMarcaj(corpul(HTML[p.cale] || ''));
     check(!/pentru fiecare cont care îl folosește|Se activează pe cont|fiecare loc aduce/.test(v), p.cale + ': pagina spune încă regula veche, „RA Insight pe cont" — din 14.10 se vinde în pachete pe firmă');
   }
+}
+
+// ── 3d. Pachetele pe prima pagină (27.10, Alin: „fără preț în pagina publică, pe home page") ──────────────
+// Cele patru cartonașe scurte din banda RA Insight: numele, eticheta, „Inclus în orice contract" / „Cere ofertă", pentru cine și
+// cifrele — copia lui pachete.publice({ cuPret: false }). Fără prețuri. Comparația întreagă stă pe /pachete-ra-insight.
+{
+  const html = HTML['/'] || '';
+  const i = html.indexOf('class="ri-pachete"');
+  check(i > 0, '/: lipsesc cartonașele pachetelor RA Insight din banda RA Insight');
+  const bloc = i > 0 ? html.slice(i, html.indexOf('class="agents-foot', i)) : '';
+  const vazut = faraMarcaj(bloc);
+  for (const p of PK.publice({ cuPret: false })) {
+    const bucati = [p.nume, p.pentru, p.subPret].concat(p.eticheta ? [p.eticheta] : [], p.cifre.map((c) => c.et), p.cifre.filter((c) => c.val != null).map((c) => c.val));
+    for (const b of bucati) check(vazut.includes(b), '/: pachetul ' + p.nume + ' — lipsește în cartonaș „' + b + '" (din pachete.js)');
+  }
+  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/: în cartonașele pachetelor apare un preț — pe site nu se afișează prețuri');
+  check(/href="\/pachete-ra-insight"/.test(html), '/: lipsește legătura spre comparația pachetelor (/pachete-ra-insight)');
 }
 
 // ── 4. Pe serverul pornit ───────────────────────────────────────────────────────────────────────────

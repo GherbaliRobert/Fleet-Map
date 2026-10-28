@@ -1340,11 +1340,11 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-10-14', amprenta: '428798e468f7', prio: '1.0', freq: 'weekly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-10-28', amprenta: '257b55ffde86', prio: '1.0', freq: 'weekly' },
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-21', amprenta: '0fcf3771ed21', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-10-15', amprenta: 'ef211ef6dc28', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-10-28', amprenta: '166629cfb931', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-09', amprenta: '5e6a9d629dc9', prio: '0.3', freq: 'yearly' },
@@ -5451,7 +5451,9 @@ app.get('/api/insight/pachete', requireAuth, withScope, async (req, res) => {
     }
     let contact = null; try { contact = ((await getSystemSettings()).invoice_issuer || {}).email || null; } catch (e) {}
     const poate = _poateSchimbaPachet(req, co);
-    res.json({ pachete: pachete.publice({ aprofundat: await _aprofundataPornita(), preturi: preturi }), actual: actual, pretRON: pretRON, urmator: urmator, inToate: pachete.IN_TOATE,
+    // Cartonașele, comparația rând cu rând (cu prețul pe o întrebare — doar aici; pe site, fără prețuri) și ce au toate (27.10).
+    res.json({ pachete: pachete.publice({ preturi: preturi }), comparatie: pachete.comparatie({ cuPret: true, preturi: preturi }),
+      actual: actual, pretRON: pretRON, urmator: urmator, inToate: pachete.IN_TOATE,
       reincarcare: pachete.textReincarcare(Date.now()), contact: contact, poateSchimba: poate,
       schimbText: poate ? 'Alegi alt pachet chiar de aici: mai mare — de azi, cu luna socotită pe zile; mai mic — de la 1 a lunii următoare. Confirmarea îți vine pe email, în PDF.'
         : 'Pentru alt pachet, scrie-ne' + (contact ? ' pe ' + contact : '') + ' — îl schimbăm noi.' });

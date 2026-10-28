@@ -1045,7 +1045,9 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 ### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–7 GATA (regula, chatul, conturile, tabloul, oferta, trecerea, site-ul)
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
 fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
-împărțirea pe oameni, analiza aprofundată) · **Business** 30 lei (conturi nelimitate, 1.000). Se reîncarcă pe 1; FĂRĂ pachete de
+împărțirea pe oameni) · **Business** 30 lei (conturi nelimitate, 1.000). Analiza aprofundată pe Sonnet a ieșit din pachete pe 27.10
+(Alin: „nu o mai vreau… avem Haiku") — nu se mai promite nicăieri; codul ei rămâne, OPRIT, până la hotărârea pe Haiku (propunerea
+din 28.10). Se reîncarcă pe 1; FĂRĂ pachete de
 întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
 mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" ✅ · 4 tabloul nostru ✅ · 5 oferta,
 contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) ✅ · 6 trecerea din aplicație (confirmare cu
@@ -1055,8 +1057,11 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
   ordine: plasa → cota firmei → limita omului → partea la comun; limita și partea la comun doar cu `peOm`), `alegeModel`, textele
   (`textBlocat`, `textDoarButoane`, `textRamase`, `textScurt`, `textOm`, `ramaseAfisate` — la plasă ecranul arată 0),
-  `DESCRIERE` / `publice` (ce primește fiecare pachet — pentru aplicație ȘI site; analiza aprofundată doar cât e pornită; pe site
-  fără prețuri). NU scrie a doua cifră de pachet sau al doilea text în pagină ori pe telefon.
+  ce primește fiecare pachet — pentru aplicație ȘI site, pe site fără prețuri (refăcut pe 27–28.10): `DESCRIERE` (pe pachet
+  `titlu`, `pentru`, `eticheta`, `plus` și `include` = ce primești la Start / ce ADAUGĂ față de pachetul dinainte), `IN_TOATE`
+  (`{ t, d }`, ce au toate), `cifre(p)` (conturi, întrebări libere, răspunsuri pe loc — din `PACHETE`), `comparatie({ cuPret,
+  preturi })` (tabelul pe grupe; rândul „Preț pe o întrebare liberă" doar cu `cuPret`) și `publice`. NU scrie a doua cifră de
+  pachet sau al doilea text în pagină ori pe telefon.
 - **Pe server:** `_starePachet(companyId, userId, { strict })` adună cifrele (întrebările AI din `ai_usage`, pe Start răspunsurile
   din `ai_reguli`, limitele, costul REAL al lunii `db.costAiLunaFirma` × `ai.USD_EUR` × cursul) → `pachete.stare`.
   `aiQuotaState` → `_cotaDinPachet` (FĂRĂ bani: costul și plasa nu pleacă la client). Pe Start și când luna s-a oprit, RA Insight
@@ -1072,7 +1077,8 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   pe Start = pe reguli, fără Safe Drive; rezumatul agenților nu cheamă modelul pe Start (`_firmaAreAi`).
 - **Plasa = 80% din prețul pachetului** (`PLASA`), din costul real; analiza aprofundată (`MODEL_APROFUNDAT`, implicit Sonnet 5.5)
   doar la Pro / Business, doar pornită (`ai_analiza_aprofundata`, `GET/PUT /api/admin/insight/aprofundat`, OPRITĂ până după
-  probă), doar la `aiRaport.PENTRU_INSIGHT`, cât ține bugetul (cu `REZERVA_APROFUNDAT_LEI`).
+  probă), doar la `aiRaport.PENTRU_INSIGHT`, cât ține bugetul (cu `REZERVA_APROFUNDAT_LEI`). Din 27.10 nepromisă nicăieri (nici
+  în „Vezi pachetele", nici pe site); NU o porni și NU o pune înapoi în texte fără Alin.
 - **Pachetul îl punem NOI:** fila „Acces" a firmei (`raxCfgPachet` → `PUT /api/companies/:id/settings { ai_pachet: { cod } }`,
   doar super-admin, `curataPachet`, 400 pe cod necunoscut, scoate `ai_quota`, rând în audit de la cât la cât). Limita pe om:
   `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
@@ -1126,13 +1132,17 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `liniiFirma`): luna întreagă la pachetul de pe 1 a lunii (în avans), iar pentru luna trecută — zilele pe bucăți (firma cu
   primul aparat pornit atunci) sau diferența pe zile pentru fiecare trecere la un pachet mai mare („RA Insight — trecerea la
   pachetul Pro, 14–31.10.2026 (18 zile)"). O trecere la un pachet mai mic nu dă bani înapoi. Aceeași regulă ca abonamentul.
-- **Pasul 7, pagina pachetelor:** în aplicație = „Vezi pachetele" (`/api/insight/pachete`, prețurile pentru firmă); pe site =
-  **`/pachete-ra-insight`** (în `PAGINI_PUBLICE`, legată din subsolul și din banda RA Insight a primei pagini), FĂRĂ prețuri:
-  „Inclus în orice contract" la Start, „Cere ofertă" la celelalte. Textele pachetelor sunt COPIA lui `pachete.publice({ cuPret:
-  false })` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină. Schimbi `DESCRIERE` în
-  pachete.js → schimbi și pagina (și `amprenta` / `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
-- Păzit de `verify_pachete.js` (în `npm test`; 220, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
-  `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`.
+- **Pasul 7, pagina pachetelor:** în aplicație = „Vezi pachetele" (`/api/insight/pachete` → `pachete` cu prețurile pentru firmă,
+  `comparatie` cu prețuri, `inToate`; desenate de `insightPachete`, `.insp-pk-*`); pe site = **`/pachete-ra-insight`** (în
+  `PAGINI_PUBLICE`, legată din subsolul și din banda RA Insight a primei pagini), FĂRĂ prețuri: „Inclus în orice contract" la
+  Start, „Cere ofertă" la celelalte. Textele sunt COPIA lui `pachete.publice({ cuPret: false })`, `comparatie({ cuPret: false })`
+  (în ordinea din cod) și `IN_TOATE` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină.
+  **Pe prima pagină** (28.10, Alin: „fără preț în pagina publică, pe home page, și cu prețuri când clientul are cont și face
+  upgrade"): în banda RA Insight, cele patru cartonașe scurte `.ri-pachete` (numele, eticheta, pentru cine, cifrele, „Inclus" /
+  „Cere ofertă") și legătura „Compară pachetele RA Insight" — păzit de 3d, tot fără prețuri. Schimbi `DESCRIERE` în pachete.js →
+  schimbi și cele două pagini (și `amprenta` / `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
+- Păzit de `verify_pachete.js` (în `npm test`; 231, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
+  `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`, `verify_site_public.js` (3c, 3d).
 
 ### Pachetul în ofertă și conturile la client (15.10; macheta „Pachet și conturi", Alin: „da la toate cele 5")
 - **Oferta, cartea 3: cele patru pachete unul lângă altul** (`.of-pk4`, cartonașele `of-pkc-<cod>`; `raxOfPachetAlege(cod)`). Lista
