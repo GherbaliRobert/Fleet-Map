@@ -4,6 +4,7 @@ const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 // Modelul agentului RA Insight — separat, ca să poată fi urcat pe Sonnet fără a atinge chat-ul rapid. Default = modelul de bază (Haiku).
 const AI_AGENT_MODEL = process.env.AI_AGENT_MODEL || AI_MODEL;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_MODELE_URL = 'https://api.anthropic.com/v1/models/';
 // Orice text scris de model ajunge la om DOAR cu litere românești (Alin, 20.10: „sunt fatale pentru noi"): callClaude și
 // runAgent îl curăță aici, o dată pentru toate drumurile (litere.js). `brut: true` îl lasă cum e — doar RA Insight îl cere,
 // ca să ceară întâi o rescriere, și îl curăță el la capăt.
@@ -29,6 +30,10 @@ const PRICE_OUT = Number(process.env.AI_PRICE_OUT_USD_PER_MTOK) || 5.00;
 const PRICE_CACHE_READ = Number(process.env.AI_PRICE_CACHE_READ_USD_PER_MTOK) || 0.10;  // ~10% din input
 const PRICE_CACHE_WRITE = Number(process.env.AI_PRICE_CACHE_WRITE_USD_PER_MTOK) || 1.25; // ~125% din input
 const USD_EUR = Number(process.env.USD_EUR_RATE) || 0.92;
+// „Sursă externă" (28.10): căutarea pe internet se plătește separat de tokeni — 10 $ la 1.000 de căutări, plus paginile găsite,
+// socotite ca text citit (platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool, citit pe 28.10). O căutare cu
+// eroare nu se plătește. Schimbi prețul doar după pagina oficială.
+const PRET_CAUTARE_USD = 0.01;
 function pret(model) {
   return MODELE[model || AI_MODEL] || { nume: String(model || AI_MODEL), in: PRICE_IN, out: PRICE_OUT, cacheRead: PRICE_CACHE_READ, cacheWrite: PRICE_CACHE_WRITE, gandire: false };
 }
@@ -39,7 +44,8 @@ function costUsd(u, model) {
   const p = pret(model);
   const inp = Number(u.input_tokens) || 0, out = Number(u.output_tokens) || 0;
   const cr = Number(u.cache_read_input_tokens) || 0, cw = Number(u.cache_creation_input_tokens) || 0;
-  return (inp * p.in + out * p.out + cr * p.cacheRead + cw * p.cacheWrite) / 1e6;
+  const cautari = Number(u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+  return (inp * p.in + out * p.out + cr * p.cacheRead + cw * p.cacheWrite) / 1e6 + cautari * PRET_CAUTARE_USD;
 }
 function costEur(u, model) { return costUsd(u, model) * USD_EUR; }
 // Cererea către API, pe felul modelului: la 5.x, gândire adaptivă cu efortul nostru și loc pentru ea în max_tokens.
@@ -184,5 +190,46 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
   return { text: _curat(_text(jf), brut), toolCalls: used };
 }
 
+// ─── „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă") ───────────────────────────────
+// Căutarea pe internet, într-un apel SEPARAT de RA Insight: primește doar textul căutării (verificat înainte cu
+// sursa_externa.verifica) și instrucțiunile ei — nimic din flotă, nimic din discuție. Unealta de bază, `web_search_20250305`
+// (cea cu „filtrare dinamică" cere execuție de cod, pe care modelele mici n-o au), cel mult `maxCautari` căutări, rezultatele pe
+// România. La `pause_turn` (API-ul oprește o căutare lungă) se trimite înapoi, neschimbat, ce a scris modelul până acolo.
+// Întoarce blocurile răspunsului (le citește sursa_externa.citesteRaspuns); consumul, cu numărul de căutări, prin onUsage.
+// Modelul: AI_MODEL_SURSA, altfel modelul lui RA Insight.
+const AI_SURSA_MODEL = process.env.AI_MODEL_SURSA || AI_AGENT_MODEL;
+const CAUTARE_UNEALTA = 'web_search_20250305';
+async function cautaExtern({ cautare, instructiuni, model, maxCautari, onUsage }) {
+  const m = model || AI_SURSA_MODEL;
+  const tools = [{ type: CAUTARE_UNEALTA, name: 'web_search', max_uses: Math.max(1, Math.min(5, Number(maxCautari) || 3)),
+    user_location: { type: 'approximate', country: 'RO', timezone: 'Europe/Bucharest' } }];
+  const intrebare = { role: 'user', content: String(cautare || '') };
+  let blocuri = [];
+  for (let i = 0; i < 3; i++) {
+    const messages = blocuri.length ? [intrebare, { role: 'assistant', content: blocuri }] : [intrebare];
+    const j = await _rawCall({ model: m, max_tokens: 900, system: instructiuni ? [{ type: 'text', text: String(instructiuni) }] : undefined, tools, messages });
+    if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) {} }
+    if (j.stop_reason === 'refusal') return { blocuri: [], refuz: true, model: m };
+    blocuri = blocuri.concat(j.content || []);
+    if (j.stop_reason !== 'pause_turn') break;
+  }
+  return { blocuri: blocuri, model: m };
+}
+// Primește modelul căutarea pe internet? Anthropic o spune în Models API: capabilities.server_tools.web_search.supported
+// (citit pe 28.10 de pe platform.claude.com/docs/en/models/overview). Cererea nu costă nimic și nu trimite nimic din aplicație.
+// { model, ok: true | false | null, eroare } — null = nu s-a putut afla (fără cheie, rețea, răspuns fără câmp).
+async function modelPrimesteCautarea(model) {
+  const m = model || AI_SURSA_MODEL;
+  if (!runtimeKey) return { model: m, ok: null, eroare: 'cheia Anthropic lipsește' };
+  try {
+    const res = await fetch(ANTHROPIC_MODELE_URL + encodeURIComponent(m), { method: 'GET', headers: { 'x-api-key': runtimeKey, 'anthropic-version': '2023-06-01' } });
+    if (!res.ok) { const t = await res.text().catch(() => ''); return { model: m, ok: null, eroare: 'Anthropic ' + res.status + ': ' + t.slice(0, 200) }; }
+    const j = await res.json();
+    const ws = j && j.capabilities && j.capabilities.server_tools && j.capabilities.server_tools.web_search;
+    if (!ws || typeof ws.supported !== 'boolean') return { model: m, ok: null, eroare: 'răspunsul Anthropic nu spune' };
+    return { model: m, ok: ws.supported };
+  } catch (e) { return { model: m, ok: null, eroare: String((e && e.message) || e).slice(0, 200) }; }
+}
+
 module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT,
-  MODELE, pret, EFORT, _corp, _text };
+  MODELE, pret, EFORT, _corp, _text, PRET_CAUTARE_USD, AI_SURSA_MODEL, CAUTARE_UNEALTA, cautaExtern, modelPrimesteCautarea };

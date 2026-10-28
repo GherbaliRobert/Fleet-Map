@@ -535,13 +535,16 @@ function publice(o) {
 // gri, detaliul — dacă s-a numărat și de unde vine. Fără „bonus", „gratuit", „nu se scade". Pe Start (unde și răspunsurile
 // instant se numără, din 50) detaliul e „1 răspuns". `text` = propoziția întreagă, pentru cine citește doar text.
 const INSIGNA = { nume: 'RA Insight', ai: 'Analiză', instant: 'Instant' };
-// fel = 'ai' | 'instant'; o = { numarat, live }
+// fel = 'ai' | 'instant'; o = { numarat, live, sursa }
 function insigna(fel, o) {
   o = o || {};
   const ai = fel === 'ai';
   const eticheta = ai ? INSIGNA.ai : INSIGNA.instant;
   // „propunere" (pasul 2, 22.10): un cartonaș care pregătește o schimbare — pe reguli, nu se numără (Alin: „da").
-  const detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.propunere ? 'propunere' : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte')));
+  let detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.propunere ? 'propunere' : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte')));
+  // „Sursă externă" (28.10): câte căutări pe internet a făcut răspunsul (`sursa` = numărul lor; 0 / lipsă = niciuna).
+  const n = Math.round(Number(o.sursa) || 0);
+  if (ai && n > 0) detaliu = (detaliu ? detaliu + ' · ' : '') + 'sursă externă, ' + cant(n, 'căutare', 'căutări');
   return { fel: ai ? 'ai' : 'instant', nume: INSIGNA.nume, eticheta: eticheta, detaliu: detaliu,
     text: INSIGNA.nume + ' · ' + eticheta + (detaliu ? ' · ' + detaliu : '') };
 }

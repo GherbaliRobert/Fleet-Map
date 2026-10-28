@@ -1424,6 +1424,8 @@ async function initDb() {
     // Modelul care a răspuns (08.10): prețurile diferă de la model la model (ai.MODELE). Gol = rândurile vechi, scrise
     // toate cu modelul de bază de atunci (Haiku 4.5).
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS model VARCHAR(40)`);
+    // „Sursă externă" (28.10): câte căutări pe internet a făcut apelul (se plătesc separat de tokeni — ai.PRET_CAUTARE_USD).
+    await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cautari INTEGER DEFAULT 0`);
     // Pachetele RA Insight (14.10): răspunsurile pe butoane (fără AI). Pe Start se numără (50 pe lună); la celelalte pachete
     // nu se numără, dar le vedem în tabloul nostru. Tabelă separată de ai_usage, ca să nu umfle cifrele de consum AI.
     await client.query(`
@@ -1946,17 +1948,22 @@ async function recordAiUsage(companyId, kind, usage, userId, model) {
   const out = parseInt(usage.output_tokens) || 0;
   const cr = parseInt(usage.cache_read_input_tokens) || 0;
   const cw = parseInt(usage.cache_creation_input_tokens) || 0;
+  // Căutările pe internet („Sursă externă"): adunate de server (`cautari`) sau cum le dă API-ul.
+  const cautari = parseInt(usage.cautari != null ? usage.cautari : (usage.server_tool_use && usage.server_tool_use.web_search_requests)) || 0;
   if (!inp && !out && !cr && !cw) return;
   // UN rând = O întrebare a userului (agentul RA Insight face mai multe apeluri pe întrebare, dar
   // consumul lor e însumat înainte de a ajunge aici) → COUNT(*) e chiar numărul de întrebări.
   await pool.query(
-    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, user_id, model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out, cr, cw, userId != null ? userId : null, model ? String(model).slice(0, 40) : null]
+    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, user_id, model, cautari) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out, cr, cw, userId != null ? userId : null, model ? String(model).slice(0, 40) : null, cautari]
   );
 }
 // Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.
 // `kinds` = tipurile care se numără drept „întrebare" a clientului (restul sunt automatisme interne).
 const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
+// Ce intră în costul unei firme (plasa pachetului, „Ne costă"): întrebările ei, scrisoarea de luni și căutările pe internet ale
+// „Sursei externe" (un rând aparte pe întrebare, felul 'sursa_externa' — nu e o întrebare în plus, dar se plătește).
+const AI_KINDS_COST_FIRMA = AI_BILLABLE_KINDS.concat(['scrisoare', 'sursa_externa']);
 // ─── Costul consumului AI se socotește pe MODELUL care a răspuns (Robert, 12.10) ───
 // RA Insight a trecut pe Haiku 5.5, de 10 ori mai ieftin decât Haiku 4.5. Tokenii adunați la un loc și socotiți cu
 // prețul unui singur model ar fi dat panouri greșite de zece ori. Aici se adună pe (cheie, model), costul fiecărui
@@ -1966,12 +1973,13 @@ const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';
 function _costUsdRand(r) {
   return require('./ai.js').costUsd({
     input_tokens: Number(r.input_tokens) || 0, output_tokens: Number(r.output_tokens) || 0,
-    cache_read_input_tokens: Number(r.cache_read_tokens) || 0, cache_creation_input_tokens: Number(r.cache_write_tokens) || 0
+    cache_read_input_tokens: Number(r.cache_read_tokens) || 0, cache_creation_input_tokens: Number(r.cache_write_tokens) || 0,
+    server_tool_use: { web_search_requests: Number(r.cautari) || 0 }
   }, r.model || MODEL_RANDURI_VECHI);
 }
 // Rânduri (cheie, model) → un rând pe cheie, în ordinea în care au venit: numerele se adună, `cost_usd` = suma
 // costurilor pe model, `last_used` = cel mai nou. Câmpurile care nu se adună (company_id, luna) rămân de pe primul rând.
-const _AI_SUME = ['questions', 'calls', 'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens'];
+const _AI_SUME = ['questions', 'calls', 'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens', 'cautari'];
 function _strangePeModele(rows, cheie) {
   const out = new Map();
   rows.forEach(function (r) {
@@ -2001,6 +2009,7 @@ async function getAiMonthUsageByCompany(kinds) {
             COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
             COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
             COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari,
             MAX(created_at) AS last_used
        FROM ai_usage
       WHERE kind = ANY($1) AND created_at >= date_trunc('month', NOW())
@@ -2040,6 +2049,7 @@ async function getAiUsageByCompany(sinceDays) {
        COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
        COALESCE(SUM(cache_read_tokens), 0)::bigint AS cache_read_tokens,
        COALESCE(SUM(cache_write_tokens), 0)::bigint AS cache_write_tokens,
+       COALESCE(SUM(cautari), 0)::int AS cautari,
        COUNT(*)::int AS calls
      FROM ai_usage ${where} GROUP BY company_id, model`, params);
   return _strangePeModele(r.rows, function (x) { return x.company_id == null ? 'null' : String(x.company_id); });
@@ -4820,7 +4830,8 @@ async function raspunsuriReguliLuna(companyId, userId) {
 async function costAiLunaToata() {
   const r = await pool.query(
     `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
-            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
        FROM ai_usage WHERE created_at >= date_trunc('month', NOW()) GROUP BY model`);
   return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
 }
@@ -4844,14 +4855,15 @@ async function raspunsuriReguliPeOm(companyId) {
   const out = {}; r.rows.forEach(function (x) { if (x.user_id != null) out[x.user_id] = Number(x.n) || 0; });
   return out;
 }
-// Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei + scrisoarea de luni.
+// Costul REAL al lunii pentru o firmă (pe modelul fiecărui răspuns): întrebările ei, scrisoarea de luni, căutările pe internet.
 async function costAiLunaFirma(companyId) {
   const r = await pool.query(
     `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
-            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
        FROM ai_usage
       WHERE company_id = $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())
-      GROUP BY model`, [companyId, AI_BILLABLE_KINDS.concat(['scrisoare'])]);
+      GROUP BY model`, [companyId, AI_KINDS_COST_FIRMA]);
   let usd = 0;
   r.rows.forEach(function (x) { usd += _costUsdRand(x); });
   return { usd: usd };
@@ -4865,6 +4877,30 @@ async function getAiMonthUsageByUser(companyId, kinds) {
       WHERE company_id IS NOT DISTINCT FROM $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())
       GROUP BY user_id`, [companyId != null ? companyId : null, k]);
   return r.rows;
+}
+// „Sursă externă" (28.10): câte întrebări cu căutare pe internet a pus firma luna asta — un rând 'sursa_externa' pe întrebare,
+// numărat doar dacă s-a căutat chiar (cautari > 0). Cota e a firmei (sursa_externa.PE_PACHET).
+async function sursaExternaLuna(companyId) {
+  if (companyId == null) return 0;
+  const r = await pool.query(`SELECT COUNT(*)::int AS n FROM ai_usage WHERE company_id = $1 AND kind = 'sursa_externa' AND cautari > 0
+    AND created_at >= date_trunc('month', NOW())`, [companyId]);
+  return Number(r.rows[0] && r.rows[0].n) || 0;
+}
+// Pentru „RA Insight · control": pe firmă, întrebările cu sursă externă ale lunii, căutările și costul lor (pe modelul fiecăruia).
+// { company_id: { intrebari, cautari, cost_usd } } — fără textul căutărilor (nu-l ținem nicăieri).
+async function sursaExternaLunaToate() {
+  const r = await pool.query(
+    `SELECT company_id, model, COUNT(*) FILTER (WHERE cautari > 0)::int AS questions,
+            COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
+       FROM ai_usage WHERE kind = 'sursa_externa' AND created_at >= date_trunc('month', NOW())
+      GROUP BY company_id, model`);
+  const out = {};
+  _strangePeModele(r.rows, function (x) { return x.company_id == null ? 'null' : String(x.company_id); }).forEach(function (x) {
+    out[x.company_id == null ? 'null' : x.company_id] = { intrebari: Number(x.questions) || 0, cautari: Number(x.cautari) || 0, cost_usd: Number(x.cost_usd) || 0 };
+  });
+  return out;
 }
 // ─── Lista de companii: două cifre pe care fondatorul le caută cu ochii ─────────────────────────
 // Când a mai transmis ceva firma asta (orice vehicul al ei) și cine e omul de contact. Amândouă
@@ -4937,7 +4973,8 @@ async function getAiUsageByMonth(dela, kinds) {
             COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
             COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
             COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
-            COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+            COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
        FROM ai_usage
       WHERE kind = ANY($1) AND created_at >= $2
       GROUP BY 1, 2, 3 ORDER BY 1`, [k, d]);
@@ -6879,7 +6916,7 @@ module.exports = {
   adaugaCerereEchipa, cerereEchipa, cerereDeschisa, cereriDeschisePeMasini, cereriEchipaFirma, cereriEchipaToate, cereriEchipaNumar, cereriEchipaOra,
   treceCerereEchipa, interventiiCalendar,
   getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
-  getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
+  getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,

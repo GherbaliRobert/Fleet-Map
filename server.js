@@ -225,6 +225,7 @@ const insight = require('./insight');   // RA Insight: fișa flotei (număr, num
 const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": pașii adevărați, citiți gratuit sau prin RA Insight
 const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
 const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
+const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
@@ -1349,7 +1350,7 @@ const PAGINI_PUBLICE = [
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-10-28', amprenta: '166629cfb931', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-09', amprenta: '5e6a9d629dc9', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-28', amprenta: '520b27e09dd4', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -4327,13 +4328,16 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     const josPeFirma = await db.aiJosPeFirma(7).catch(function () { return {}; });   // „RA Insight · control": 👎 în ultimele 7 zile (doar numărul)
     // Plasa pachetelor: costul real al lunii, cu scrisoarea de luni (ca în _starePachet), în lei, la cursul de azi.
     const kLei = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
-    const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_BILLABLE_KINDS.concat(['scrisoare'])).catch(function () { return []; })) || []).forEach(function (x) {
+    const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_KINDS_COST_FIRMA).catch(function () { return []; })) || []).forEach(function (x) {
       if (x.company_id != null) plasaPeFirma[x.company_id] = { lei: (Number(x.cost_usd) || 0) * kLei };
     });
+    // „Sursă externă" (28.10): pe firmă, întrebările cu căutare pe internet, căutările și costul lor (intră în „Ne costă" și în plasă).
+    const sursaPeFirma = await db.sursaExternaLunaToate().catch(function () { return {}; });
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
-      const cost = ai ? (Number(u.cost_usd) || 0) * ai.USD_EUR : 0;   // pe modelul fiecărui răspuns (db.js)
+      const se = sursaPeFirma[c.id] || null;
+      const cost = ai ? ((Number(u.cost_usd) || 0) + (se ? se.cost_usd : 0)) * ai.USD_EUR : 0;   // pe modelul fiecărui răspuns (db.js)
       const pl = plasaPeFirma[c.id] || { lei: 0 };
       const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost, reguli: reguliPeFirma[c.id] || 0, costPlasaLei: pl.lei });
       const ist = facturatPeFirma[c.id] || null;
@@ -4341,6 +4345,7 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       r.incasatLei = ist ? ist.incasatLei : 0;
       r.instant = reguliPeFirma[c.id] || 0;        // răspunsurile instant ale lunii (pe reguli, fără model)
       r.jos7 = josPeFirma[c.id] || 0;              // 👎 în ultimele 7 zile
+      r.sursa = se ? { intrebari: se.intrebari, cautari: se.cautari, costLei: Math.round(se.cost_usd * kLei * 100) / 100 } : null;
       return r;
     });
     const cuModul = rows.filter(function (r) { return r.enabled; });
@@ -4367,6 +4372,12 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       // Contorul corecturilor (garanția B, 22.10): câte răspunsuri a rescris aplicația luna asta și de ce — doar numere.
       corecturi: await db.corecturiLuna(_lunaAcum()).catch(function () { return null; })
     };
+    // „Sursă externă" (28.10): comutatorul nostru, ce a spus Anthropic despre model, ultima eroare, cifrele lunii (cu noi).
+    const plat = await _sursaPlatforma(), modS = await _sursaModelCitit();
+    const seTot = Object.keys(sursaPeFirma).reduce(function (a, k) { const x = sursaPeFirma[k]; a.intrebari += x.intrebari; a.cautari += x.cautari; a.usd += x.cost_usd; return a; }, { intrebari: 0, cautari: 0, usd: 0 });
+    const sursaSum = { stare: plat.stare, la: plat.la, stari: sursaExterna.STARI.map(function (k) { return { k: k, t: sursaExterna.TEXT_STARI[k], d: sursaExterna.DESCRIERE_STARI[k] }; }),
+      model: sursaExterna.textModel(modS), modelOk: modS ? modS.ok : null, eroare: _sursaEroare && Date.now() - _sursaEroare.la < 86400000 ? _sursaEroare.eroare : null,
+      intrebari: seTot.intrebari, cautari: seTot.cautari, costLei: Math.round(seTot.usd * kLei * 100) / 100, peLuna: sursaExterna.PE_PACHET };
     // Luna curentă, încă nefacturată, primește estimarea — altfel dashboard-ul ar arăta gol tocmai
     // în luna despre care știm cel mai mult.
     const lunaAsta = _lunaAcum();
@@ -4394,8 +4405,25 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       },
       istoric: istoric,
       pachete: pacheteSum,
+      sursa: sursaSum,
       fxEur: fx.eur || EUR_RON_FALLBACK
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Sursă externă" pe toată platforma (28.10): oprită / doar pentru noi / pornită pentru firme. La pornire, aplicația întreabă pe loc
+// Anthropic dacă modelul primește căutarea (gratuit) și o spune în răspuns.
+app.put('/api/admin/insight/sursa-externa', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const cerut = String((req.body && req.body.stare) || '');
+    if (sursaExterna.STARI.indexOf(cerut) < 0) return res.status(400).json({ error: 'Starea poate fi: ' + sursaExterna.STARI.join(', ') + '.' });
+    const vechi = (await _sursaPlatforma()).stare;
+    const v = { stare: cerut, la: Date.now(), de: req.auth && req.auth.userId != null ? req.auth.userId : null };
+    await db.setSetting('sursa_externa', JSON.stringify(v));
+    _sursaPlat = v;
+    let model = await _sursaModelCitit();
+    if (cerut !== 'oprita') model = await _verificaModelSursa().catch(function () { return model; });
+    auditReq(req, 'update', 'sursa_externa', null, { de_la: vechi, la: cerut });
+    res.json({ ok: true, stare: cerut, model: sursaExterna.textModel(model), modelOk: model ? model.ok : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Contorul pe care-l vede clientul (ca la Claude): cât a consumat luna asta și ce-l costă peste cotă.
@@ -4407,7 +4435,11 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
     let loc = true;
     try { if (a.companyId != null && a.userId != null && !isSuper(a.role)) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat) || await _asiguraLocAdmin(u); } } catch (e) {}
     const st2 = loc && st.pachet ? await aiQuotaState(a.companyId, a.userId) : st;   // locul tocmai dat → seats corect
-    res.json(Object.assign({ ok: true, seat: loc }, st2));
+    // „Sursă externă" (28.10): butonul din casetă — ce scrie pe el, fraza de sub casetă. Fără voie (noi, firma, pachetul, modelul),
+    // nimic (null): butonul nu apare. Fără bani.
+    let sursa = null;
+    try { const stS = await _stareSursa({ isSuper: isSuper(a.role), companyId: a.companyId }); sursa = stS.vede ? sursaExterna.pentruPagina(stS, Date.now()) : null; } catch (e) { sursa = null; }
+    res.json(Object.assign({ ok: true, seat: loc, sursa: sursa }, st2));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -4910,6 +4942,76 @@ async function _poartaReguliPachet(req) {
   if (!sp.pachet.ai && sp.st.blocat) return { gata: { neinteles: true, motiv: 'pachet_epuizat', text: pachete.textBlocat(sp.st, Date.now()), pachet: _pachetPeEcran(sp.st) } };
   return { sp: sp };
 }
+// ─── „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe internet") ───
+// Regulile și textele stau în sursa_externa.js. Aici: comutatorul nostru pe toată platforma (setarea `sursa_externa`), ce a spus
+// Anthropic despre model (`sursa_model`, din Models API — gratuit, fără nimic din aplicație), starea pentru omul care întreabă,
+// apelul de căutare SEPARAT (primește doar căutarea) și consumul lui: un rând 'sursa_externa' pe întrebare — nu e o întrebare
+// în plus, dar intră în costul firmei (plasa) și se numără la cota lunii doar dacă s-a căutat chiar.
+let _sursaPlat = null;     // { stare, la, de } — se schimbă doar din „RA Insight · control"
+let _sursaModel = null;    // { model, nume, ok, la, eroare } — al modelului de căutare de acum (AI_MODEL_SURSA)
+let _sursaEroare = null;   // ultima căutare cu eroare: { la, eroare } (în „Stare producție" și în control)
+async function _sursaPlatforma() {
+  if (_sursaPlat) return _sursaPlat;
+  let v = null; try { v = JSON.parse((await db.getSetting('sursa_externa')) || 'null'); } catch (e) { v = null; }
+  _sursaPlat = { stare: sursaExterna.starePlatforma(v && v.stare), la: (v && v.la) || null, de: (v && v.de) || null };
+  return _sursaPlat;
+}
+async function _sursaModelCitit() {
+  if (_sursaModel && _sursaModel.model === ai.AI_SURSA_MODEL) return _sursaModel;
+  let m = null; try { m = JSON.parse((await db.getSetting('sursa_model')) || 'null'); } catch (e) { m = null; }
+  _sursaModel = m && m.model === ai.AI_SURSA_MODEL ? m : null;   // alt model pus între timp = neverificat
+  return _sursaModel;
+}
+async function _verificaModelSursa() {
+  if (!ai.aiEnabled()) return _sursaModelCitit();
+  const r = await ai.modelPrimesteCautarea(ai.AI_SURSA_MODEL);
+  const m = { model: r.model, nume: ai.pret(r.model).nume, ok: r.ok, la: Date.now(), eroare: r.eroare || null };
+  // O verificare care n-a aflat nimic (rețea, cheie) nu strică un răspuns limpede de dinainte, pentru același model.
+  const vechi = await _sursaModelCitit();
+  if (m.ok === null && vechi && vechi.ok != null) return vechi;
+  _sursaModel = m;
+  try { await db.setSetting('sursa_model', JSON.stringify(m)); } catch (e) {}
+  return m;
+}
+function _setariObj(s) { if (!s) return {}; if (typeof s === 'string') { try { return JSON.parse(s) || {}; } catch (e) { return {}; } } return s; }
+// Starea „Sursei externe" pentru un om: cine = { isSuper, companyId }; `faraFirma` = fără comutatorul firmei (rândul din „Pachet
+// și conturi" îl arată și când e oprit). Întoarce sursaExterna.stare(...).
+async function _stareSursa(cine, faraFirma) {
+  const plat = await _sursaPlatforma();
+  if (plat.stare === 'oprita') return sursaExterna.stare({ platforma: 'oprita' });
+  const model = await _sursaModelCitit();
+  if (cine.isSuper) return sursaExterna.stare({ platforma: plat.stare, isSuper: true, model: model });
+  if (cine.companyId == null) return sursaExterna.stare({ platforma: 'oprita' });
+  const co = await db.getCompanyById(cine.companyId);
+  if (!(co && plans && plans.featuresFor(co).ai_assistant)) return sursaExterna.stare({ platforma: 'oprita' });
+  const s = _setariObj(co.settings);
+  return sursaExterna.stare({ platforma: plat.stare, pachet: _pachetCo(co), model: model, firmaOprita: !faraFirma && s.sursa_externa_oprita === true,
+    folosite: await db.sursaExternaLuna(cine.companyId) });
+}
+// Căutarea pe internet, într-un apel separat (ai.cautaExtern): doar textul căutării, deja verificat. Consumul (cu căutările) se
+// scrie ÎNAINTE de răspuns, ca butonul să arate pe loc câte au rămas.
+async function _cautaSursaExterna(req, cautare) {
+  const agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, cautari: 0 };
+  let r, model = ai.AI_SURSA_MODEL;
+  try {
+    const out = await ai.cautaExtern({ cautare: cautare, instructiuni: sursaExterna.instructiuniCautare(Date.now()), model: model, maxCautari: sursaExterna.CAUTARI_MAX,
+      onUsage: function (u) {
+        agg.input_tokens += Number(u.input_tokens) || 0; agg.output_tokens += Number(u.output_tokens) || 0;
+        agg.cache_read_input_tokens += Number(u.cache_read_input_tokens) || 0; agg.cache_creation_input_tokens += Number(u.cache_creation_input_tokens) || 0;
+        agg.cautari += Number(u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+      } });
+    model = out.model || model;
+    r = out.refuz ? sursaExterna.citesteRaspuns([]) : sursaExterna.citesteRaspuns(out.blocuri);
+    if (r.erori.length && !r.surse.length) _sursaEroare = { la: Date.now(), eroare: 'căutarea a întors: ' + r.erori.join(', ') };
+  } catch (e) {
+    _sursaEroare = { la: Date.now(), eroare: String((e && e.message) || e).slice(0, 300) };
+    r = { eroare: true, text: '', cautari: [], surse: [], citate: [], erori: [] };
+  }
+  const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
+  await db.recordAiUsage(req.isSuper ? null : req.companyId, 'sursa_externa', agg, userId, model).catch(function () {});
+  return r;
+}
+
 async function _raInsight(req, res, opts) {
   const o = opts || {};
   try {
@@ -5034,6 +5136,13 @@ async function _raInsight(req, res, opts) {
 
     let zones = [];
     try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
+    // „Sursă externă" (28.10): unealta de căutare pe internet intră doar cu butonul pornit în discuția omului (`sursa: true`) și cu
+    // voie de la noi, de la firmă, de la pachet și de la model, cât mai sunt întrebări cu sursă externă luna asta. Proba modelelor
+    // nu caută.
+    let stSursa = null;
+    if (b.sursa === true && !o.proba) { try { stSursa = await _stareSursa({ isSuper: !!req.isSuper, companyId: req.companyId }); } catch (e) { stSursa = null; } }
+    const cuSursa = !!(stSursa && stSursa.poate);
+    let sursaGasit = null, sursaRefuzate = 0, interziseSursa = null;
 
     let reportCalls = 0, sdVazut = null, cbVazut = null, hcVazut = null;
     const citite = gata ? gata.citite.slice() : [];      // perioadele chiar citite (rapoarte, ramuri) — pentru verificarea perioadei cerute
@@ -5072,6 +5181,7 @@ async function _raInsight(req, res, opts) {
         required: ['type']
       }
     });
+    if (cuSursa) tools.push(sursaExterna.UNEALTA);   // ultima, ca uneltele de dinainte să rămână la fel
 
     const toolHandlers = {
       list_vehicles: async () => {
@@ -5306,6 +5416,27 @@ async function _raInsight(req, res, opts) {
       }
     };
 
+    // „Sursă externă": o singură căutare pe întrebare; ce n-are voie să plece (numere de înmatriculare, numele oamenilor firmei,
+    // adrese, telefoane…) o oprește sursaExterna.verifica, iar modelul află de ce. Rezultatul intră și în verificarea cifrelor.
+    if (cuSursa) toolHandlers.sursa_externa = async (input) => {
+      folosite.add('sursa_externa');
+      if (sursaGasit) return { mesaj: 'Ai căutat deja pe internet la întrebarea asta: folosește ce ai găsit.' };
+      if (sursaRefuzate >= sursaExterna.REFUZATE_MAX) return { mesaj: 'Nu mai căuta pe internet la întrebarea asta: răspunde din aplicație.' };
+      if (!interziseSursa) {
+        let oameni = []; try { oameni = (await db.getUsers(req.isSuper ? null : req.companyId)).map(function (u) { return u.full_name; }); } catch (e) {}
+        interziseSursa = { nume: Object.keys(soferi).map(function (k) { return soferi[k]; }).concat(oameni).filter(Boolean), numere: fisa.map(function (v) { return v.nr; }).filter(Boolean) };
+      }
+      const v = sursaExterna.verifica(input && input.cautare, interziseSursa);
+      if (!v.ok) { sursaRefuzate++; return { refuzat: true, mesaj: v.text }; }
+      // Între timp, alt om al firmei poate fi folosit ultima întrebare cu sursă externă a lunii.
+      if (!req.isSuper) {
+        const st2 = await _stareSursa({ isSuper: false, companyId: req.companyId }).catch(function () { return null; });
+        if (!st2 || !st2.poate) return { mesaj: sursaExterna.textTerminate(Date.now()) + ' Spune-i asta omului, pe scurt.' };
+      }
+      sursaGasit = await _cautaSursaExterna(req, v.cautare);
+      return sursaExterna.pentruModel(sursaGasit);
+    };
+
     // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite) — și rapoartele făcute deja.
     const dateCitite = gata ? gata.pentruModel.slice() : [];
     Object.keys(toolHandlers).forEach(function (k) {
@@ -5331,6 +5462,7 @@ async function _raInsight(req, res, opts) {
     // Ce poți face (insight.ANALIZA_ATENTA, în contextul întrebării, nu în partea fixă din cache). Se numără ca orice întrebare.
     const analiza = insight.esteAnaliza(message);
     if (analiza) system.push({ type: 'text', text: insight.ANALIZA_ATENTA });
+    if (cuSursa) system.push({ type: 'text', text: sursaExterna.INSTRUCTIUNI });
     const efort = analiza ? 'medium' : undefined;
     const t0 = Date.now();
     const onUsage = u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
@@ -5438,12 +5570,16 @@ async function _raInsight(req, res, opts) {
       dovada: 'Cifra nu apare în datele citite și nu se poate socoti din ele. N-o lua drept sigură.',
       butoane: uniqSources[0] ? [{ fel: 'raport', text: 'Deschide „' + uniqSources[0].label + '”', tip: uniqSources[0].type, imei: uniqSources[0].imei, de: uniqSources[0].from, pana: uniqSources[0].to }] : [] });
     const problemeGasite = probleme.ordoneaza(gasiteProbleme);
-    const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null });
+    // „Sursă externă": ce s-a căutat și sursele (sub răspuns, păstrate în conversație); insigna spune câte căutări.
+    const sursaEcran = sursaGasit ? sursaExterna.pentruEcran(sursaGasit, Date.now()) : null;
+    const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null, sursa: sursaEcran ? sursaEcran.cautari.length : 0 });
     const extraAi = { probleme: problemeGasite.length ? problemeGasite : undefined, verificat: verificare && verificare.confirmat ? true : undefined,
-      nota: verificare && verificare.perioada ? verificare.perioada : undefined, insigna: insigna, rapoarte: gata ? gata.carduri : undefined };
+      nota: verificare && verificare.perioada ? verificare.perioada : undefined, insigna: insigna, rapoarte: gata ? gata.carduri : undefined,
+      sursa: sursaEcran || undefined };
     const s = await salveaza(reply, Object.assign({ source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari }, extraAi), ctxNou);
     if (!o.proba) auditReq(req, 'ai_insight', 'assistant', s.convId, { len: message.length, reports: reportCalls, via: o.usa || 'insight', verificare: verificare ? Object.keys(verificare) : undefined,
-      probleme: problemeGasite.length ? problemeGasite.map(function (x) { return x.fel; }) : undefined, rapoarte: gata ? gata.carduri.length : undefined });
+      probleme: problemeGasite.length ? problemeGasite.map(function (x) { return x.fel; }) : undefined, rapoarte: gata ? gata.carduri.length : undefined,
+      sursa: sursaEcran ? sursaEcran.cautari.length : undefined });
     res.json(Object.assign({ reply: reply, sources: uniqSources, source: 'ai', conversatieId: s.convId, mesajId: s.mesajId, inteles: inteles, alege: alege, urmari: urmari }, extraAi,
       o.proba ? { model: model, usage: _agg, ms: Date.now() - t0, unelte: result.toolCalls.map(function (t) { return t.name; }), refuz: !!result.refuz,
         // Proba modelelor (noi): cât de des greșește un model cifrele — perioada, cifrele rămase negăsite, rescrierea cerută.
@@ -5494,7 +5630,29 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       treceri: treceri,
       // `rezumat` = ecranul web (un rând, macheta din 15.10); `cartonase` rămân pentru telefonul de azi.
       rezumat: pachete.rezumatConturi(st, conturi, acum), cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni,
-      nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna });
+      nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna, sursa: await _sursaPentruFirma(req.companyId, acum) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Sursă externă" în „Pachet și conturi" (28.10): rândul firmei — pornită / oprită pentru toată firma, câte s-au folosit. Doar
+// cât o avem pornită pentru firme și pachetul o are (de la Basic); altfel rândul nu apare (null).
+async function _sursaPentruFirma(companyId, acum) {
+  try {
+    const st = await _stareSursa({ isSuper: false, companyId: companyId }, true);
+    if (!st.vede) return null;
+    const oprita = _setariObj((await db.getCompanyById(companyId) || {}).settings).sursa_externa_oprita === true;
+    return { nume: sursaExterna.NUME, explicatie: sursaExterna.EXPLICATIE, oprita: oprita, text: sursaExterna.textFirma(st, oprita, acum) };
+  } catch (e) { return null; }
+}
+// Administratorul firmei pornește / oprește „Sursa externă" pentru toată firma (pornită din oficiu de la Basic).
+app.put('/api/insight/sursa-externa', requireAuth, requirePerm('manageUsers'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Comutatorul e al unei firme: alege întâi firma.' });
+    const st = await _stareSursa({ isSuper: false, companyId: req.companyId }, true);
+    if (!st.vede) return res.status(400).json({ error: 'Sursa externă nu e pornită pentru firma ta (pachetul sau noi).' });
+    const pornita = !!(req.body && req.body.pornita === true);
+    await db.setCompanySettings(req.companyId, { sursa_externa_oprita: !pornita });
+    auditReq(req, 'update', 'sursa_externa', req.companyId, { pornita: pornita });
+    res.json({ ok: true, sursa: await _sursaPentruFirma(req.companyId, Date.now()) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Prețurile pachetelor PENTRU O FIRMĂ: lista de azi, peste care stau cele din contractul ei (Anexa nr. 1: pachetul ales și
@@ -18700,6 +18858,15 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     _anafTok ? (_anafTest ? 'token setat, dar rulează în mediul de TEST (implicit) → pune ANAF_EFACTURA_TEST=false / ANAF_ETRANSPORT_TEST=false pentru trimiteri reale' : 'mediu de PRODUCȚIE')
       : 'fără token SPV → modulele ANAF rămân demonstrative');
   add('ai', 'Cheie AI (Anthropic)', isSet(process.env.ANTHROPIC_API_KEY) ? 'ok' : 'info', isSet(process.env.ANTHROPIC_API_KEY) ? 'setată' : 'nesetată → asistentul liber și rezumatele AI sunt oprite');
+  // „Sursă externă" în RA Insight (28.10): comutatorul nostru, dacă modelul primește căutarea pe internet, ultima căutare cu eroare.
+  try {
+    const plat = await _sursaPlatforma(), modS = await _sursaModelCitit();
+    const err = _sursaEroare && Date.now() - _sursaEroare.la < 86400000 ? _sursaEroare : null;
+    const nivel = plat.stare === 'oprita' ? 'info' : (modS && modS.ok === false ? 'warn' : (err ? 'warn' : 'ok'));
+    add('sursa_externa', 'RA Insight · Sursă externă (căutare pe internet)', nivel, sursaExterna.TEXT_STARI[plat.stare] + ' (din RA Insight · control) · ' + sursaExterna.textModel(modS) +
+      (err ? ' · ultima căutare a dat eroare (' + new Date(err.la).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) + '): ' + String(err.eroare).slice(0, 200) +
+        (/not enabled|web search/i.test(String(err.eroare)) ? ' → căutarea pe internet e oprită în contul Anthropic: Console › Settings › Capabilities' : '') : ''));
+  } catch (e) {}
 
   // Nivelul „info" e context, nu problemă: nu împiedică ecranul să ajungă pe verde.
   const worst = checks.some(c => c.level === 'crit') ? 'crit' : (checks.some(c => c.level === 'warn') ? 'warn' : 'ok');
@@ -21534,6 +21701,13 @@ async function start() {
   setInterval(() => _verificaEmailServer().catch(() => {}), 60 * 60 * 1000);
   setInterval(() => livrareEmailTick().catch(() => {}), 5 * 60 * 1000);
   setInterval(() => db.stergeLivrariVechi(Date.now(), 30).catch(() => {}), 24 * 60 * 60 * 1000);
+  // „Sursă externă" (28.10): primește modelul căutarea pe internet? Anthropic o spune în Models API (gratuit, fără nimic din
+  // aplicație) — la pornire, apoi la 6 ore; răspunsul stă în „Stare producție" și în „RA Insight · control". În probe doar cu
+  // SURSA_VERIFICARE_LA_MS pus (modelul simulat al celorlalte probe răspunde la orice cerere către Anthropic).
+  if (process.env.NODE_ENV !== 'test' || process.env.SURSA_VERIFICARE_LA_MS) {
+    setTimeout(() => _verificaModelSursa().catch(() => {}), Number(process.env.SURSA_VERIFICARE_LA_MS) || 25 * 1000);
+    setInterval(() => _verificaModelSursa().catch(() => {}), 6 * 60 * 60 * 1000);
+  }
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);

@@ -11681,7 +11681,7 @@ const pozitii = await r.json();</code></pre>
     // ── începe „secțiunea RA Insight" ──
     (function () {
       var S = { lista: [], conv: null, mesaje: [], ramura: 'general', trimite: false, faraLoc: null, cautaT: null, ghid: null, ghidAles: null,
-        pachet: null, peReguli: false, rapoarte: null };
+        pachet: null, peReguli: false, rapoarte: null, sursa: false, sursaInfo: null };
       // Ramurile. `gata: false` = vine într-un pas următor (nu se arată până nu e livrată).
       var RAMURI = [
         { k: 'general', et: 'Întreabă orice', ic: 'fa-wand-magic-sparkles', gata: true },
@@ -11797,6 +11797,9 @@ const pozitii = await r.json();</code></pre>
         var box = $i('insp-fond'); if (!box) return;
         var q = null; try { q = (await cere('GET', '/api/ai/quota')).j; } catch (e) {}
         S.pachet = (q && !q.error && q.pachet) || null;
+        // „Sursă externă" (28.10): butonul din casetă, cu textele serverului; fără voie (noi, firma, pachetul), nu apare.
+        S.sursaInfo = (q && !q.error && q.sursa && q.sursa.vede) ? q.sursa : null;
+        if (!S.sursaInfo || !S.sursaInfo.poate) S.sursa = false;
         var eraPeReguli = S.peReguli;
         S.peReguli = !!(S.pachet && (!S.pachet.ai || q.blocked));
         // Conversația nouă, deja desenată: cartonașele depind de pachet (pe butoane, altul primul).
@@ -11840,7 +11843,29 @@ const pozitii = await r.json();</code></pre>
       function actualizeazaCaseta() {
         var c = $i('insp-cnt'); if (c) { c.textContent = S.contor || ''; c.style.display = S.contor ? '' : 'none'; c.classList.toggle('gata', !!(S.pachet && S.peReguli && S.pachet.ai)); }
         var i = $i('insp-input'); if (i) i.placeholder = !S.peReguli ? (poateRapoarte() ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (S.pachet && !S.pachet.ai ? 'Apasă „+" sau scrie o întrebare…' : 'Apasă „+" ca să alegi…');
+        // „Sursă externă": oprit = doar numele; pornit (albastru) = și câte au rămas, plus fraza de sub casetă. Pe Start și când
+        // butoanele răspund (fără AI) nu apare. Când s-au terminat, rămâne cu „0 din 10".
+        var sb = $i('insp-sursa'), sn = $i('insp-sursa-nota'), si = S.peReguli ? null : S.sursaInfo;
+        if (sb) {
+          sb.style.display = si ? '' : 'none';
+          if (si) {
+            sb.classList.toggle('on', !!S.sursa); sb.classList.toggle('gol', !si.poate);
+            sb.setAttribute('aria-pressed', S.sursa ? 'true' : 'false'); sb.title = String(si.explicatie || '');
+            sb.setAttribute('aria-label', String(si.nume || '') + (si.contor ? ', ' + si.contor : ''));
+            var snm = sb.querySelector('.nm'), snr = sb.querySelector('.nr');
+            if (snm) snm.textContent = String(si.nume || '');
+            if (snr) snr.textContent = (S.sursa || !si.poate) && si.contor ? String(si.contor) : '';
+          }
+        }
+        if (sn) { var arN = !!(si && S.sursa && si.nota); sn.textContent = arN ? String(si.nota) : ''; sn.style.display = arN ? '' : 'none'; }
       }
+      // „Sursă externă" (28.10): pornit doar pentru discuția de acum — o discuție nouă (sau una redeschisă) pornește cu el oprit.
+      window.insightSursa = function () {
+        var si = S.sursaInfo; if (!si) return;
+        if (!si.poate && !S.sursa) { (window.raxToast || alert)(String(si.nota || ''), 'warning'); return; }
+        S.sursa = !S.sursa; actualizeazaCaseta();
+        var i = $i('insp-input'); if (i) i.focus();
+      };
       function ramuraIncuiata(r) { return !!(r && r.pachet && S.pachet && !S.pachet.ramuri); }
       function poateRapoarte() { var u = window.currentUser || {}; return !!(u.isSuper || (u.permissions && u.permissions.viewReports)); }
       // Are RA Insight AI acum (nu e pe butoane)? Butoanele „De ce?" din „Azi la tine" sunt întrebări pentru el.
@@ -12031,6 +12056,17 @@ const pozitii = await r.json();</code></pre>
         });
         tb.appendChild(tbd); tw.appendChild(tb); w.appendChild(tw);
         w.appendChild(el('div', 'pkc-nota', j.nota || ''));
+        // „Sursă externă" (28.10): pornită sau oprită pentru toată firma (pornită din oficiu de la Basic), câte s-au folosit.
+        if (j.sursa) {
+          var sr = el('div', 'pkc-se'), sh = el('div', 'pkc-se-h');
+          sh.innerHTML = '<i class="fas fa-globe"></i>'; sh.appendChild(el('b', null, j.sursa.nume));
+          var lab2 = el('label', 'rax-sw'), ck2 = document.createElement('input'); ck2.type = 'checkbox'; ck2.checked = !j.sursa.oprita;
+          ck2.setAttribute('aria-label', String(j.sursa.nume) + ' pentru toată firma');
+          ck2.onchange = function () { window.insightSursaFirma(ck2.checked); };
+          lab2.appendChild(ck2); lab2.appendChild(el('span', 'sl')); sh.appendChild(lab2);
+          sr.appendChild(sh); sr.appendChild(el('div', 'pkc-se-t', j.sursa.text)); sr.appendChild(el('div', 'pkc-se-d', j.sursa.explicatie));
+          w.appendChild(sr);
+        }
         // Confirmările firmei (pasul 6): fiecare schimbare de pachet, cu PDF-ul ei (aceeași hârtie ca în email).
         if ((j.treceri || []).length) {
           var tc = el('div', 'pkc-tr'); tc.appendChild(el('h3', null, 'Schimbările de pachet'));
@@ -12046,6 +12082,13 @@ const pozitii = await r.json();</code></pre>
         }
         main.appendChild(w);
       }
+      // „Sursă externă" pentru toată firma (administratorul): oprită aici, butonul dispare la toți oamenii firmei.
+      window.insightSursaFirma = async function (on) {
+        var r = await cere('PUT', '/api/insight/sursa-externa', { pornita: !!on });
+        if (r.s !== 200) (window.raxToast || alert)(r.j.error || 'Nu s-a putut schimba.', 'error');
+        else (window.raxToast || function () {})(on ? 'Sursa externă e pornită pentru toată firma.' : 'Sursa externă e oprită pentru toată firma.', 'success');
+        incarcaPachet(); deseneazaMain();
+      };
       // Contul de RA Insight al unui om, din „Pachet și conturi" (aceeași rută ca în Utilizatori). Pe un pachet, prețul nu se schimbă.
       window.insightLoc = async function (id, on, nume) {
         if (on && !await raConfirm('„' + nume + '" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.', { title: 'Dai RA Insight?', danger: false, okLabel: 'Dă-i acces', icon: 'fa-wand-magic-sparkles' })) { deseneazaMain(); return; }
@@ -12154,15 +12197,34 @@ const pozitii = await r.json();</code></pre>
           if (++n < 50) setTimeout(asteapta, 100);
         })();
       };
+      // „Din sursă externă" (28.10): sub răspuns, sursele căutării pe internet (titlul cu linkul, site-ul), când și ce s-a căutat —
+      // scrise de server, desenate cu textContent. Linkurile (doar http/https) se deschid în altă filă.
+      function blocSursa(se) {
+        var w = el('div', 'chat-se'), h = el('div', 'chat-se-h');
+        h.innerHTML = '<i class="fas fa-globe"></i>'; h.appendChild(el('span', 'chat-se-t', se.titlu || ''));
+        if (se.text) h.appendChild(el('span', 'chat-se-c', se.text));
+        w.appendChild(h);
+        var ol = el('ol', 'chat-se-l');
+        (se.surse || []).forEach(function (s) {
+          if (!/^https?:\/\//i.test(String(s.url || ''))) return;
+          var li = el('li'), a = el('a', null, s.titlu || s.site || s.url);
+          a.href = String(s.url); a.target = '_blank'; a.rel = 'noopener noreferrer nofollow';
+          li.appendChild(a); if (s.site) li.appendChild(el('span', 'chat-se-s', s.site)); ol.appendChild(li);
+        });
+        if (ol.childNodes.length) w.appendChild(ol);
+        if (se.ceAmCautat) w.appendChild(el('div', 'chat-se-q', se.ceAmCautat));
+        return w;
+      }
       // Caseta de scris (macheta „mai simplu", 15.10): rotundă, cu „+" (Mașina, Perioada, Raport), contorul și butonul ↑.
       function caseta() {
         return '<div class="chat-caseta">' +
           '<textarea id="insp-input" rows="1" placeholder="Scrie o întrebare…" onkeydown="insightTasta(event)" oninput="insightCreste(this, event)"></textarea>' +
           '<div class="chat-unelte">' +
           '<button type="button" class="chat-un chat-plus" onclick="insightPlus(this)" title="Adaugă mașina, perioada sau un raport" aria-label="Adaugă mașina, perioada sau un raport"><i class="fas fa-plus"></i></button>' +
+          '<button type="button" class="chat-un chat-sursa" id="insp-sursa" onclick="insightSursa()" style="display:none;" aria-pressed="false"><i class="fas fa-globe"></i><span class="nm"></span><span class="nr"></span></button>' +
           '<span class="chat-cnt" id="insp-cnt" style="display:none;" title="Cât a mai rămas luna asta"></span>' +
           '<button type="button" id="insp-trimite" class="chat-trimite gol" onclick="insightTrimite()" title="Trimite" aria-label="Trimite"><i class="fas fa-arrow-up"></i></button>' +
-          '</div></div>';
+          '</div><div class="chat-sursa-nota" id="insp-sursa-nota" style="display:none;"></div></div>';
       }
       // „+": Mașina, Perioada și (cu dreptul la rapoarte) Raport — fiecare deschide lista lui, din același loc.
       window.insightPlus = function (btn) {
@@ -12217,6 +12279,7 @@ const pozitii = await r.json();</code></pre>
         var mai = Array.isArray(x.propuneri) ? x.propuneri.filter(function (q) { return q && q.id; }) : [];
         var propInchisa = mai.length ? mai.every(function (q) { return q.stare !== 'propusa'; }) : !!(x.propunere && x.propunere.id && x.propunere.stare !== 'propusa');
         if (!x.limita && !cuRaport && !propInchisa && textAi) { var txt = el('div', 'insp-txt'); txt.innerHTML = md(textAi); bub.appendChild(txt); }
+        if (x.sursa && Array.isArray(x.sursa.surse)) bub.appendChild(blocSursa(x.sursa));
         if (x.propunere && x.propunere.id) bub.appendChild(cartonasPropunere(x.propunere, function (nou, urm) {
           x.propunere = nou; var nr = bulaAi(m); row.replaceWith(nr); adaugaUrmator(urm);
         }));
@@ -12232,7 +12295,7 @@ const pozitii = await r.json();</code></pre>
           bub.appendChild(acts);
         }
         if (Array.isArray(x.probleme) && x.probleme.length) bub.appendChild(window._chatProbleme(x.probleme));
-        if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode('Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
+        if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode(x.sursa ? 'Cifrele le-am luat din aplicație și din sursele de mai sus.' : 'Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare, nota: x.nota }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
         if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t, { buton: true }); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
@@ -12289,6 +12352,7 @@ const pozitii = await r.json();</code></pre>
         try {
           var corp = { message: msg };
           if (buton) corp.buton = true;
+          if (S.sursa) corp.sursa = true;   // „Sursă externă" pornită în discuția asta
           if (S.conv && S.conv.id) corp.conversatieId = S.conv.id; else corp.nou = true;
           var r = await cere('POST', '/api/insight/intreaba', corp);
           gand.remove();
@@ -12299,7 +12363,7 @@ const pozitii = await r.json();</code></pre>
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
               limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, nota: j.nota, insigna: j.insigna } };
+              verificat: j.verificat, nota: j.nota, insigna: j.insigna, sursa: j.sursa } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));
@@ -12492,7 +12556,7 @@ const pozitii = await r.json();</code></pre>
         t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; window._chatStareTrimite(t, $i('insp-trimite'));
       };
       window.insightNou = function () {
-        S.conv = null; S.mesaje = []; S.ramura = 'general'; window._raxConvId = null;
+        S.conv = null; S.mesaje = []; S.ramura = 'general'; window._raxConvId = null; S.sursa = false;
         deseneazaRamuri(); deseneazaLista(); deseneazaMain();
         var i = $i('insp-input'); if (i) i.focus();
         inchideSertar();
@@ -12500,7 +12564,7 @@ const pozitii = await r.json();</code></pre>
       window.insightDeschide = async function (id) {
         var r = await cere('GET', '/api/insight/conversatii/' + encodeURIComponent(id));
         if (r.s !== 200) { if (window._raxConvId === id) window._raxConvId = null; S.conv = null; S.mesaje = []; deseneazaMain(); return; }
-        S.conv = r.j.conversatie; S.mesaje = r.j.mesaje || []; S.ramura = 'general'; window._raxConvId = S.conv.id;
+        S.conv = r.j.conversatie; S.mesaje = r.j.mesaje || []; S.ramura = 'general'; window._raxConvId = S.conv.id; S.sursa = false;
         deseneazaRamuri(); deseneazaLista(); deseneazaMain();
         inchideSertar();
       };
@@ -29706,8 +29770,10 @@ const pozitii = await r.json();</code></pre>
         var pk = x.pachet ? esc(x.pachet.nume) : '<span style="color:var(--text-muted);">pe cont (regula veche)</span>';
         return '<tr class="aiu-tr" onclick="raxAiRand(' + x.id + ')"><td><i class="fas fa-chevron-right aiu-ch" id="aiu-ch-' + x.id + '"></i><b>' + esc(x.name) + '</b></td>'
           + '<td>' + pk + '</td><td class="n">' + bara + '</td><td class="n">' + (x.instant || 0) + '</td>'
+          // „Sursă externă" (28.10): întrebările cu căutare pe internet ale lunii și cât au costat (intră și în „Ne costă").
+          + '<td class="n">' + (x.sursa && x.sursa.intrebari ? x.sursa.intrebari + ' · ' + _aiuLei(x.sursa.costLei) : '—') + '</td>'
           + '<td class="n">' + _aiuLei(cost) + '</td><td class="n"><b style="color:' + (raman >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(raman) + '</b></td></tr>'
-          + '<tr class="aiu-det-r" id="aiu-det-' + x.id + '" style="display:none;"><td colspan="6"><div class="aiu-det-in">'
+          + '<tr class="aiu-det-r" id="aiu-det-' + x.id + '" style="display:none;"><td colspan="7"><div class="aiu-det-in">'
           + _aiuPachetRand(x) + _aiuSemnale(x)
           + '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(x)
           + '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(x)
@@ -29717,7 +29783,7 @@ const pozitii = await r.json();</code></pre>
           + '<button class="rax-btn" style="padding:3px 10px;font-size:12px;" onclick="event.stopPropagation();raxOpenCompanyDetail(' + x.id + ')">Deschide firma</button></div>'
           + '</div></td></tr>';
       }).join('');
-      return '<div class="aiu-grup">Firmă cu firmă</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Firma</th><th>Pachet</th><th class="n">Întrebări folosite</th><th class="n">Instant</th><th class="n">Ne costă</th><th class="n">Ne rămân</th></tr></thead><tbody>'
+      return '<div class="aiu-grup">Firmă cu firmă</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Firma</th><th>Pachet</th><th class="n">Întrebări folosite</th><th class="n">Instant</th><th class="n" title="Întrebări cu căutare pe internet, luna asta · costul lor">Sursă externă</th><th class="n">Ne costă</th><th class="n">Ne rămân</th></tr></thead><tbody>'
         + randuri + '</tbody></table></div>'
         + (fara.length ? '<div class="rax-co-meta" style="margin-top:6px;">' + fara.length + (fara.length === 1 ? ' firmă fără RA Insight: ' : ' firme fără RA Insight: ') + fara.slice(0, 8).map(function (x) { return esc(x.name); }).join(', ') + (fara.length > 8 ? '…' : '') + '</div>' : '');
     }
@@ -29734,8 +29800,8 @@ const pozitii = await r.json();</code></pre>
       d.style.display = acum ? '' : 'none';
       if (ch) ch.className = 'fas fa-chevron-' + (acum ? 'down' : 'right') + ' aiu-ch';
     };
-    // Toate butoanele, într-un loc: proba modelelor, soldul și cheia Anthropic, istoricul pe luni.
-    function _aiuControale(p) {
+    // Toate butoanele, într-un loc: proba modelelor, soldul și cheia Anthropic, istoricul pe luni — și „Sursă externă".
+    function _aiuControale(p, se) {
       p = p || {};
       var b = function (on, ic, t, tit) { return '<button class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="' + on + '"' + (tit ? ' title="' + esc(tit) + '"' : '') + '><i class="fas fa-' + ic + '"></i> ' + t + '</button>'; };
       return '<div class="aiu-grup">Controale</div><div class="aiu-ctl">'
@@ -29743,8 +29809,38 @@ const pozitii = await r.json();</code></pre>
         + b('raxAiSold()', 'wallet', 'Soldul Anthropic')
         + b("goSistem('dashboard')", 'key', 'Cheia Anthropic', 'Se pune în Dashboard platformă')
         + '<button id="aiu-istoric-btn" class="rax-btn" style="padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
-        + '</div>';
+        + '</div>' + _aiuSursa(se);
     }
+    // „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet"): comutatorul nostru pe toată platforma (oprită / doar pentru noi
+    // / pornită pentru firme), ce a spus Anthropic despre model, ultima căutare cu eroare și cifrele lunii. Textele le dă serverul.
+    var _aiuSursaDate = null;
+    function _aiuSursa(se) {
+      _aiuSursaDate = se || null;
+      if (!se) return '';
+      var de = function (n) { var r = Math.abs(Number(n) || 0) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; };
+      var cat = function (n, unu, multe) { return Number(n) === 1 ? '1 ' + unu : (Number(n) || 0) + de(n) + multe; };
+      var stari = (se.stari || []).map(function (x) {
+        return '<button class="rax-btn' + (x.k === se.stare ? ' primary' : '') + '" style="padding:4px 11px;font-size:12px;" title="' + esc(x.d) + '" onclick="raxAiSursa(\'' + esc(x.k) + '\')">' + esc(x.t) + '</button>';
+      }).join('');
+      var pl = se.peLuna || {};
+      var luna = se.cautari ? cat(se.intrebari, 'întrebare', 'întrebări') + ' cu sursă externă luna asta · ' + cat(se.cautari, 'căutare', 'căutări') + ' · ' + _aiuLei(se.costLei) : 'Nicio căutare pe internet luna asta.';
+      return '<div class="aiu-se"><div class="aiu-se-h"><i class="fas fa-globe"></i><b>Sursă externă</b><span>RA Insight caută pe internet, când omul pornește butonul</span></div>'
+        + '<div class="aiu-se-b">' + stari + '</div>'
+        + '<div class="aiu-se-m' + (se.modelOk === false ? ' rau' : '') + '">' + esc(se.model || '') + '</div>'
+        + (se.eroare ? '<div class="aiu-se-m rau">Ultima căutare a dat eroare: ' + esc(se.eroare) + '</div>' : '')
+        + '<div class="aiu-se-m">' + esc(luna) + ' · pe lună, pe firmă: Basic ' + (pl.basic || 0) + ', Pro ' + (pl.pro || 0) + ', Business ' + (pl.business || 0) + '</div></div>';
+    }
+    window.raxAiSursa = async function (stare) {
+      var se = _aiuSursaDate || {}, x = (se.stari || []).filter(function (z) { return z.k === stare; })[0];
+      if (!x || se.stare === stare) return;
+      if (!await raConfirm(x.d, { title: 'Sursă externă: ' + x.t + '?', danger: false, okLabel: 'Da', icon: 'fa-globe' })) return;
+      try {
+        var j = await fetch('/api/admin/insight/sursa-externa', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ stare: stare }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        (window.raxToast || function () {})('Sursă externă: ' + x.t + '. ' + (j.model || ''), j.modelOk === false ? 'warning' : 'success');
+        raxLoadAiUsage();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
     // (Aici stătea „Mai multe cifre": panoul de dinainte — cele șase cartonașe și o cutie pe firmă —, scos pe 19.10, cu Alin
     // (punctul 5). Telefonul de azi încă le arată; formulele lor stau în verify_insight_bani.js până la APK-ul cu pagina nouă.)
     // Rândul pachetului pe cartonașul firmei: plasa (cât din 80% din preț), ce ne rămâne.
@@ -29799,7 +29895,7 @@ const pozitii = await r.json();</code></pre>
       box.innerHTML = _aiuPachete(d.pachete)
         + _aiuAtentie(d.pachete, s, rows)
         + _aiuTabel(rows)
-        + _aiuControale(d.pachete)
+        + _aiuControale(d.pachete, d.sursa)
         + '<div class="aiu-ist-box">' + _aiuIstoric(d.istoric, fx) + '</div>'
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Instant" = răspunsuri date de aplicație din rapoarte, fără model. Conversațiile clienților nu le vedem — aici sunt doar numere. Cei 6 agenți AI merg pe reguli fixe și nu costă nimic.</div>';
       _aiuIst = d.istoric; _aiuIstFx = Number(d.fxEur) || _aiuFx();

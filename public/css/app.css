@@ -4186,6 +4186,14 @@ body.dark .pkc-pill { color: var(--purple); }
 .pkc-lim { width: 84px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
 .pkc-gol { color: var(--text-muted); }
 .pkc-nota { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+/* „Sursă externă" pentru toată firma (28.10). */
+.pkc-se { margin: 14px 0 4px; padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 12px; }
+.pkc-se-h { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.pkc-se-h i { color: #1d4ed8; }
+body.dark .pkc-se-h i { color: #93c5fd; }
+.pkc-se-h .rax-sw { margin-left: auto; }
+.pkc-se-t { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+.pkc-se-d { margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
 .pkc-urm { border: 1px solid #b45309; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--text-primary); background: rgba(180,83,9,.07); }
 body.dark .pkc-urm { border-color: #f59e0b; background: rgba(245,158,11,.08); }
 .pkc-tr { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 8px; }
@@ -4226,6 +4234,16 @@ body.dark .aiu-at.warn > i { color: #fbbf24; } body.dark .aiu-at.bad > i { color
 .aiu-bar { display: inline-block; width: 80px; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .aiu-bar > i { display: block; height: 100%; }
 .aiu-ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+/* „Sursă externă" în „RA Insight · control" (28.10): comutatorul pe toată platforma, modelul, cifrele lunii. */
+.aiu-se { margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--border-light); border-radius: 12px; }
+.aiu-se-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; }
+.aiu-se-h i { color: #1d4ed8; }
+body.dark .aiu-se-h i { color: #93c5fd; }
+.aiu-se-h span { font-size: 12px; color: var(--text-secondary); }
+.aiu-se-b { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.aiu-se-m { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.aiu-se-m.rau { color: #b91c1c; }
+body.dark .aiu-se-m.rau { color: #f87171; }
 .aiu-pk-r { margin-top: 6px; font-size: 12px; color: var(--text-primary); display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .rau-pk { margin-left: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .rau-pk { color: var(--accent); }
@@ -4297,6 +4315,24 @@ body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 /* „+" din casetă: rotund, cât butonul de trimis. */
 .chat-un.chat-plus { width: 34px; height: 34px; padding: 0; justify-content: center; }
 .chat-un.chat-plus i { font-size: 13px; color: var(--text-secondary); }
+/* „Sursă externă" (28.10): oprit = ca „+"; pornit = albastru, cu câte au rămas; terminate = linie întreruptă. Sub casetă, fraza ei. */
+.chat-un.chat-sursa .nr:not(:empty)::before { content: ' · '; }
+.chat-un.chat-sursa.on { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.chat-un.chat-sursa.on i { color: #1d4ed8; }
+body.dark .chat-un.chat-sursa.on { background: rgba(59,130,246,.16); border-color: rgba(147,197,253,.55); color: #bfdbfe; }
+body.dark .chat-un.chat-sursa.on i { color: #bfdbfe; }
+.chat-un.chat-sursa.gol { border-style: dashed; }
+.chat-sursa-nota { margin-top: 6px; padding: 0 4px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+/* Sub răspuns: sursele căutării pe internet (titlul cu linkul, site-ul), când și ce s-a căutat. */
+.chat-se { margin-top: 10px; padding: 9px 12px; border-left: 3px solid #93c5fd; border-radius: 10px; background: color-mix(in srgb, #3b82f6 6%, transparent); }
+.chat-se-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12.5px; font-weight: 800; color: #1d4ed8; }
+.chat-se-c { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.chat-se-l { margin: 6px 0 0 18px; padding: 0; font-size: 13px; line-height: 1.5; }
+.chat-se-l a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.chat-se-s { margin-left: 6px; font-size: 11.5px; color: var(--text-secondary); }
+.chat-se-q { margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+body.dark .chat-se { border-left-color: rgba(147,197,253,.6); }
+body.dark .chat-se-h, body.dark .chat-se-l a { color: #93c5fd; }
 .insp-ghid { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 16px 20px; overflow: hidden; min-height: 0; }
 .insp-ghid-lista { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
 .insp-ghid-lista button { font: inherit; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-secondary); background: transparent; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
@@ -4413,6 +4449,10 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
   .chat-urm button { white-space: nowrap; }
   .chat-un .et { display: none; }
   .chat-un { width: 34px; padding: 0; justify-content: center; }
+  /* „Sursă externă" pe ecranul îngust: globul și „6 din 10" (numele pleacă). */
+  .chat-un.chat-sursa { width: auto; min-width: 34px; padding: 0 10px; gap: 6px; }
+  .chat-un.chat-sursa .nm { display: none; }
+  .chat-un.chat-sursa .nr:not(:empty)::before { content: none; }
   .insp-salut h2 { font-size: 21px; }
   .insp-gol-mij { padding: 16px 12px; align-items: flex-start; }
   .chat-jos { bottom: 96px; }
