@@ -96,5 +96,30 @@ T('fondatorul nu trimite cereri echipei: pe telefon iconița cu căști pleacă 
   /<button class="topbar-icon topbar-echipa" onclick="openSupport\(\)"/.test(PAG) && /body\.is-super \.topbar-echipa \{ display: none; \}/.test(CSS.slice(CSS.indexOf('@media (max-width: 768px) {'), CSS.indexOf('@media (max-width: 420px) {'))));
 T('pe telefon, sub ultimul rând e loc cât bula RA Insight (creionul ultimului vehicul se poate apăsa)', /\.modal-overlay\.as-view \{ padding-bottom: 96px; \}/.test(CSS));
 
+// 29.10 (Alin, cu o poză: „fâșia gri de pe telefon — rezolvă acum"). Un sertar închis stă împins în stânga, în afara ecranului,
+// dar umbra lui trece de marginea lui: 25 px de gri pe marginea din stânga în RA Insight, ~15 px pe ORICE ecran (meniul
+// principal), pe tema deschisă. MĂSURAT pe pixeli (390 și 360 px, ambele teme): după reparație, 0. Umbra = doar sertarul deschis.
+console.log('\n7. Sertarele închise nu-și lasă umbra în ecran');
+const _stiluri = (t) => (t.match(/<style[^>]*>[\s\S]*?<\/style>/g) || []).join('\n');
+// Orice regulă care împinge un element în stânga cu translateX(-100% sau mai mult) nu poartă umbră (în afară de „none").
+const umbreScapate = (text) => {
+  const rele = [];
+  (text.match(/[^{}]+\{[^{}]*\}/g) || []).forEach((r) => {
+    if (!/transform:\s*translateX\(-1\d\d%\)/.test(r)) return;
+    const u = r.match(/box-shadow:\s*([^;}]+)/);
+    if (u && u[1].trim() !== 'none') rele.push(r.slice(0, r.indexOf('{')).trim());
+  });
+  return rele;
+};
+T('regula prinde forma veche (martor: meniul de pe telefon de până pe 29.10)',
+  umbreScapate('#navrail { position: fixed; left: 0; transform: translateX(-100%); transition: transform .2s; box-shadow: 4px 0 20px rgba(0,0,0,.35); }').length === 1);
+T('niciun sertar închis cu umbră, în foile de stil și în pagină', umbreScapate(CSS + '\n' + MT + '\n' + _stiluri(PAG)).length === 0, umbreScapate(CSS + '\n' + MT + '\n' + _stiluri(PAG)).join(' | '));
+const tel = CSS.slice(CSS.indexOf('@media (max-width: 768px) {'));
+T('meniul principal pe telefon: umbra doar deschis (#navrail.open)',
+  /#navrail \{[^}]*transform: translateX\(-100%\);[^}]*box-shadow: none;[^}]*\}/.test(tel) && /#navrail\.open \{ transform: translateX\(0\); box-shadow: 4px 0 20px rgba\(0,0,0,\.35\); \}/.test(tel));
+T('panoul cu conversații din RA Insight pe telefon: umbra doar deschis (.insp.st-deschis)',
+  /\.insp-st, \.insp\.st-ascuns \.insp-st \{[^}]*transform: translateX\(-104%\);[^}]*box-shadow: none; \}/.test(CSS) &&
+  /\.insp\.st-deschis \.insp-st \{ transform: none; box-shadow: 0 0 40px rgba\(0,0,0,\.35\); \}/.test(CSS));
+
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

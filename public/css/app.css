@@ -268,8 +268,10 @@
       height: auto !important; box-shadow: none !important;
     }
     @media (max-width: 768px) {
-      #navrail { position: fixed; top: calc(var(--topbar-h) + var(--sat)); bottom: 0; left: 0; transform: translateX(-100%); transition: transform .2s; box-shadow: 4px 0 20px rgba(0,0,0,.35); z-index: 1300; }
-      #navrail.open { transform: translateX(0); }
+      /* Umbra doar cu meniul DESCHIS: pe meniul închis (împins în stânga) ieșea în ecran ca o fâșie gri pe marginea din stânga
+         a oricărui ecran, pe tema deschisă (Alin, 29.10). La fel la panoul din RA Insight, mai jos. */
+      #navrail { position: fixed; top: calc(var(--topbar-h) + var(--sat)); bottom: 0; left: 0; transform: translateX(-100%); transition: transform .2s, box-shadow .2s; box-shadow: none; z-index: 1300; }
+      #navrail.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.35); }
       #navrail { width: min(78vw, 300px); min-width: min(78vw, 300px); padding: 12px 10px; gap: 6px; }
       /* Butoane de meniu mai mari/clare pe mobil (touch targets confortabile, inclusiv ecrane mici) */
       .nav-item { padding: 15px 16px; font-size: 16px; gap: 16px; border-radius: 10px; }
@@ -4432,8 +4434,8 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
 @media (max-width: 860px) {
   /* Telefonul: stânga e un sertar peste discuție (☰ îl deschide, alegerea îl închide), bara de sus are ☰ și ✎. */
   .insp, .insp.st-ascuns { grid-template-columns: minmax(0, 1fr); }
-  .insp-st, .insp.st-ascuns .insp-st { display: flex; position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); transform: translateX(-104%); transition: transform .2s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); }
-  .insp.st-deschis .insp-st { transform: none; }
+  .insp-st, .insp.st-ascuns .insp-st { display: flex; position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); transform: translateX(-104%); transition: transform .2s ease, box-shadow .2s ease; box-shadow: none; }
+  .insp.st-deschis .insp-st { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.35); }
   .insp.st-deschis .insp-umbra { display: block; position: absolute; inset: 0; z-index: 29; background: rgba(0,0,0,.45); }
   .insp-top .insp-meniu { display: inline-grid; }
   .insp-top { padding: 6px 6px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }

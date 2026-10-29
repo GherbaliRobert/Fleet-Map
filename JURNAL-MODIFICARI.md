@@ -273,6 +273,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   adrese blocate la Brevo" (cu butonul „Deblochează la Brevo"), „refuzat de serverul destinatarului (motivul)" sau „marcat spam"; tot
   acolo, în „Stare producție" și într-un anunț. Pentru emailul de azi: Alin, uită-te întâi în Spam la Yahoo („Nu e spam" îl mută
   înapoi); Robert, în Brevo › Transactional › Logs, caută adresa: scrie „Delivered", „Blocked", „Hard bounce" sau „Deferred".
+  **29.10: Alin le-a găsit în Spam la Yahoo** (deci au ajuns; Brevo merge). Ca să nu mai ajungă acolo: **Alin** — „Nu este spam" la
+  fiecare raport din Spam, câteva zile la rând, și expeditorul (contact@ratrack.ro) în Contacte. **Robert** — Brevo › Settings › Senders,
+  Domains, IPs › Domains › ratrack.ro: bife verzi la „Brevo code", „DKIM record" și „DMARC record" (în Cloudflare, înregistrările lui
+  Brevo cu norul gri, „DNS only"). Un domeniu neautentificat se vede și la Alin: expeditorul ar apărea cu „@brevosend.com".
 - [ ] **Robert: Railway — planul (Hobby sau Pro) și compresia pozițiilor. Adăugat pe 08.10.** (1) **Răspuns: Hobby** (Robert,
   08.10) — rămâne de aflat doar (2). Planul se vede în Railway
   → Workspace → Billing. Hobby are discul bazei de date limitat la 5 GB; Pro costă minimum 20 $ (≈ 96 lei) pe lună, cu 20 $
@@ -496,6 +500,27 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
 diacritice, „creează una în Zone", „Vine în runda următoare", prețul mediu „zilnic" / „de 2 ori pe zi"); bara de sus iese
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
+
+---
+
+## 2026-10-29
+
+### AMÂNDOI · Telefon: fâșia gri de pe marginea din stânga a dispărut (RA Insight și meniul principal)
+
+**Ce am schimbat:** Alin, cu o poză: „fâșia gri de pe telefon — rezolvă acum". Panoul cu conversații din RA Insight și meniul
+principal stau, cât sunt închise, împinși în afara ecranului, în stânga; umbra lor trecea de margine și se vedea ca o fâșie gri:
+~25 de pixeli în RA Insight și ~15 pe orice ecran (umbra meniului), pe tema deschisă. Acum umbra apare doar cu panoul sau meniul
+DESCHIS. Măsurat pe pixeli, la 390 și 360 px, pe ambele teme: după reparație marginea e curată; deschise, își păstrează umbra.
+Păzit de verify_ecrane.js (7): un sertar împins în stânga nu mai poate purta umbră (proba prinde forma veche).
+
+**Ce vede fondatorul:** pe telefon (și într-o fereastră îngustă), marginea din stânga curată pe toate ecranele.
+
+**Ce vede clientul:** la fel.
+
+### Găsit pe drum azi, întrebat (nu reparat)
+- **Banda goală de jos (~0,5 cm):** rândul de jos al aplicației (versiunea, API) a fost scos cândva, dar locul lui (32 px) a rămas gol,
+  jos, pe ecranele deschise ca pagină (RA Insight, Rapoarte…), pe calculator și pe telefon. Se vede mai ales pe telefon, cu panoul din RA
+  Insight deschis: sub umbra întunecată rămâne o bandă deschisă. Întrebat pe 29.10.
 
 ---
 

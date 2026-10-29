@@ -2971,6 +2971,10 @@ reface când se schimbă așezarea. Regulile care au reparat ce s-a măsurat —
   pe coloană `.pref-txt` e `flex: 0 0 auto` (altfel cei 200 px devin înălțime). `.rax-devgr-h` (cartonașele pe firme ale fondatorilor) se
   rupe pe două rânduri — cutia e `overflow: hidden` și tăia „Deschide firma".
 - **Lăsate dinadins:** pe Traseu, foaia de jos stă peste butoanele hărții (harta rămâne cum e); textele lungi din jurnalul de audit au „…".
+- **Un sertar ÎNCHIS nu poartă umbră (29.10; Alin: „fâșia gri de pe telefon — rezolvă acum").** Meniul principal (`#navrail`, ≤ 768 px) și
+  panoul cu conversații din RA Insight (`.insp-st`, ≤ 860 px) stau închise împinse în stânga (`translateX(-100%…)`); umbra lor trecea de
+  margine și se vedea ca o fâșie gri (~15 / ~25 px, tema deschisă). Umbra stă doar pe deschis (`#navrail.open`, `.insp.st-deschis .insp-st`).
+  Un sertar nou: la fel — `verify_ecrane.js` (7) caută orice regulă cu `translateX(-1xx%)` și umbră.
 - Păzit de **`verify_ecrane.js`** (în `npm test`; fără browser: regulile de mai sus + `_navCaSertar` rulat în vm), `verify_cereri_echipa.js`.
 
 ## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
