@@ -15,6 +15,9 @@
 // Analiza aprofundată pe Sonnet (bugetele de 5 / 8 lei) a ieșit pe 28.10 (Alin: „nu o mai vreau… avem Haiku", apoi „1 da" la
 // analiza atentă pe Haiku, la toate pachetele cu AI — insight.ANALIZA_ATENTA).
 
+// Câte întrebări cu „Sursă externă" (căutare pe internet) are fiecare pachet stă O DATĂ, în sursa_externa.PE_PACHET (tot curat).
+const sursaExterna = require('./sursa_externa');
+
 const PACHETE = [
   { cod: 'start', nume: 'Start', pret: 0, conturi: 1, intrebari: 50, ai: false, ramuri: false, imparte: false, doarAdmin: true },
   { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200, ai: true, ramuri: true, imparte: false, doarAdmin: false },
@@ -427,6 +430,10 @@ function rezumatTrecere(r) {
 // pe home page, și cu prețuri când clientul are cont și face upgrade"). Doar ce face aplicația AZI. Pe cartonaș: ce primești (Start)
 // sau ce ADAUGĂ față de pachetul dinainte (`plus`); cifrele de sus (conturi, întrebări, răspunsuri pe loc) le socotește `cifre`, din
 // PACHETE. Analiza aprofundată pe Sonnet a ieșit din pachete (Alin, 27.10: „nu o mai vreau").
+// „Sursă externă" (29.10; Alin: „da, dar nu le punem preț extra"): câte întrebări pe lună, din sursa_externa.PE_PACHET, spuse ca parte
+// din întrebările pachetului („din cele 200") — nu se plătesc separat și nu au rând de preț.
+function _sursaPeLuna(cod) { return sursaExterna.PE_PACHET[cod] || 0; }
+function _sursaRand(cod) { return cant(_sursaPeLuna(cod), 'întrebare', 'întrebări') + ' pe lună, din cele ' + _nrRo(dupaCod(cod).intrebari); }
 const DESCRIERE = {
   start: { titlu: 'Răspunsuri pe loc, din rapoarte.', pentru: 'Pentru orice firmă, din prima zi.', plus: 'Ce primești',
     include: ['Răspunsuri pe loc, din rapoarte: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră',
@@ -434,12 +441,14 @@ const DESCRIERE = {
   basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.', eticheta: 'De aici: întrebări libere cu AI',
     plus: 'În plus față de Start',
     include: ['Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”', '„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică',
+      'Sursă externă: caută și pe internet ce nu e în aplicație, cu site-ul lângă fiecare cifră (' + _sursaRand('basic') + ')',
       'Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat',
       'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini', 'Scrisoarea de luni scrisă de RA Insight'] },
   pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',
-    include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”'] },
+    include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Sursă externă: ' + _sursaRand('pro'),
+      'Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”'] },
   business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.', plus: 'În plus față de Pro',
-    include: ['Oricâți oameni cu RA Insight', '1.000 de întrebări pe lună'] },
+    include: ['Oricâți oameni cu RA Insight', '1.000 de întrebări pe lună', 'Sursă externă: ' + _sursaRand('business')] },
 };
 // Ce au toate pachetele (sub comparație, în aplicație și pe site). Textele insignelor = cele din `insigna` (legate în probă).
 const IN_TOATE = [
@@ -476,6 +485,9 @@ function comparatie(o) {
       v: pe(function (p) { return tx(p.ai ? 'fără limită' : 'din cele ' + p.intrebari); }) },
     { t: '„De ce?”, „compară”, „ce să fac”', d: 'Face rapoartele de care e nevoie și ți le explică',
       v: pe(function (p) { return p.ai ? { da: true, mic: '1 întrebare' } : tx('doar rapoartele', 'fără explicație'); }) },
+    // „Sursă externă" (29.10): din întrebările pachetului, fără preț în plus — nici în aplicație nu primește rând de preț.
+    { t: 'Întrebări cu „Sursă externă”', d: sursaExterna.EXPLICATIE,
+      v: pe(function (p) { const n = p.ai ? _sursaPeLuna(p.cod) : 0; return n ? tx(_nrRo(n) + ' pe lună', 'din cele ' + _nrRo(p.intrebari)) : da(false); }) },
     { t: '„Rezumă cu RA Insight”, pe orice raport',
       v: pe(function (p) { return p.ai ? tx('scris de RA Insight', '1 întrebare') : tx('pe scurt, din cifre', 'din cele ' + p.intrebari); }) },
     { t: 'Când se termină întrebările lunii',

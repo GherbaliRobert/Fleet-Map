@@ -128,6 +128,22 @@ T('„În toate pachetele": cinci rânduri; insignele numite ca în aplicație; 
   P.IN_TOATE[3].d.indexOf('„' + P.insigna('instant', {}).eticheta + ' · ' + P.insigna('instant', {}).detaliu + '”') > 0 &&
   P.IN_TOATE[2].d.indexOf('Se păstrează ' + require('./contracts').LUNI_CONVERSATII_AI + ' luni') >= 0 &&
   rand(cmpS, 'RA Insight face, cu „Da”-ul tău').d.indexOf('timp de ' + require('./soferi_masini').ANULARE_MIN + ' minute') > 0, JSON.stringify(P.IN_TOATE[3]));
+// „Sursă externă" în ce primește fiecare pachet (29.10; Alin: „da, dar nu le punem preț extra"): cifrele din sursa_externa.PE_PACHET,
+// spuse ca parte din întrebările pachetului; Start fără; niciun preț — nici în aplicație, unde comparația are prețuri.
+{
+  const SE = require('./sursa_externa');
+  const rS = rand(cmpS, 'Întrebări cu „Sursă externă”'), rA = rand(cmpA, 'Întrebări cu „Sursă externă”');
+  const asteptat = P.PACHETE.map((p) => SE.PE_PACHET[p.cod] ? SE.PE_PACHET[p.cod] + ' pe lună' : '—').join(' | ');
+  const cuSursa = (i) => pub[i].include.filter((x) => /Sursă externă/.test(x));
+  T('„Sursă externă" în pachete: cifrele din sursa_externa.PE_PACHET, „din cele 200 / 600 / 1.000", Start fără, niciun preț (Alin, 29.10: „nu le punem preț extra")',
+    !!rS && !!rA && cel(rS) === asteptat && cel(rA) === asteptat && rS.d === SE.EXPLICATIE &&
+    rS.v.slice(1).map((x) => x.mic).join() === P.PACHETE.slice(1).map((p) => 'din cele ' + p.intrebari.toLocaleString('ro-RO')).join() &&
+    !/lei|bani|€/.test(JSON.stringify(rA)) && cuSursa(0).length === 0 &&
+    cuSursa(1).length === 1 && cuSursa(1)[0].indexOf('(' + SE.PE_PACHET.basic + ' întrebări pe lună, din cele ' + P.dupaCod('basic').intrebari + ')') > 0 &&
+    cuSursa(2).length === 1 && cuSursa(2)[0] === 'Sursă externă: ' + SE.PE_PACHET.pro + ' de întrebări pe lună, din cele ' + P.dupaCod('pro').intrebari &&
+    cuSursa(3).length === 1 && cuSursa(3)[0] === 'Sursă externă: ' + SE.PE_PACHET.business + ' de întrebări pe lună, din cele ' + P.dupaCod('business').intrebari.toLocaleString('ro-RO'),
+    cel(rS || { v: [] }) + ' · ' + JSON.stringify([cuSursa(1), cuSursa(2), cuSursa(3)]));
+}
 const stPro = st('pro', { folositeFirma: 188, sumaLimite: 300 });
 const cc = P.cartonaseConturi(stPro, 4, OCT);
 T('„Pachet și conturi" (cartonașele, pentru telefon): Pro · 20 de lei pe lună · 412 din 600 · 4 din 5 (mai poți da unul) · 300 date cu limită', cc.map((x) => x.val + '|' + x.sub).join(' / ') === 'Pro|20 de lei pe lună / 412|din 600 · se reîncarcă pe 1 noiembrie / 4|din 5 · mai poți da unul / 300|ceilalți folosesc restul de 300', cc.map((x) => x.val + '|' + x.sub).join(' / '));

@@ -1101,8 +1101,13 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   `blocSursa` (textContent, linkuri doar http/https, `rel="noopener noreferrer nofollow"`, altă filă), „Cifrele le-am luat din aplicație și din
   sursele de mai sus", rândul firmei în „Pachet și conturi" (`insightSursaFirma`), `_aiuSursa` + `raxAiSursa` + coloana „Sursă externă" în
   RA Insight · control. Culorile (albastru pornit, linkuri, roșul nostru) au pereche pe ambele teme, MĂSURATE în probă. Pe ≤ 860 px butonul se
-  strânge la glob + „7 din 10". Pe paginile publice ale pachetelor NU apare cât n-o pornim pentru firme. Ghidul: capitolul `sursa_externa`;
-  Confidențialitate: fraza „Sursă externă (căutare pe internet)". Telefonul — la APK-ul următor (Robert).
+  strânge la glob + „7 din 10". Ghidul: capitolul `sursa_externa`; Confidențialitate: fraza „Sursă externă (căutare pe internet)". Telefonul —
+  la APK-ul următor (Robert).
+- **În ce primește fiecare pachet (29.10; Alin a pornit-o pentru firme: „da, dar nu le punem preț extra"):** `pachete.js` citește cifrele din
+  `sursa_externa.PE_PACHET` (`_sursaPeLuna` / `_sursaRand`) — câte un rând pe cartonașele Basic / Pro / Business („10 întrebări pe lună, din
+  cele 200") și rândul „Întrebări cu „Sursă externă”" din comparație (explicația = `EXPLICATIE`). Spuse ca parte din întrebările pachetului
+  (o întrebare cu sursă externă se numără și ca o întrebare liberă), FĂRĂ rând de preț, nici în aplicație. Pagina publică le copiază (3c).
+  Oferta, contractul și factura NU o pomenesc (promisiune semnată; doar dacă hotărăsc ei). Dacă o oprim pentru firme, rândurile ies și de aici.
 - Păzit de **`verify_sursa_externa.js`** (în `npm test`; 132, pe server pornit, cu modelul, căutarea și Models API simulate), `verify_insight_ghid.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)

@@ -173,7 +173,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Termeni și Confidențialitate arată ziua de azi, întrebările frecvente au datele pentru Google incomplete și păstrarea
   datelor scrisă vag, documentația API pomenește „TrackGPS". Corecturile sunt gata (ramura „seo-corecturi"); lista
   întreagă e în jurnal, la 02.10. Un „da" (sau „da, fără …") și le urc.
-- [ ] **Alin: aparatul schimbat pe aceeași mașină (punctul 8 din lista lui Robert). Trecut pe rândul lui pe 03.10.**
+- [x] **BIFAT pe 29.10 (Alin: „da" — regula e cea din „Schimbă aparatul": aparatul nou preia mașina, cu ziua ei de pornire).**
+  **Alin: aparatul schimbat pe aceeași mașină (punctul 8 din lista lui Robert). Trecut pe rândul lui pe 03.10.**
   Când se schimbă aparatul unei mașini în timpul lunii, zilele din luna aceea se plătesc de două ori: aparatul vechi a
   plătit luna întreagă în avans, iar cel nou pornește cu zilele lui (de ex. la 45 de lei pe lună, schimbat pe 15 ale
   unei luni de 30 de zile: încă 24 de lei pentru 16 zile pe care aparatul vechi le plătise deja). De hotărât regula —
@@ -442,6 +443,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
   să fie un ajutor unde cuprinde tot ce înseamnă fondator: lucruri importante, clienți, contracte, chestii financiare, profit etc.").
   Macheta din 15.10 (restanți, facturi, cel mai profitabil client) e punctul de plecare; nu se construiește înainte.
+- [x] **HOTĂRÂT (29.10): din macheta asistentului fondatorilor** (https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt) — „Azi la noi” cel mult
+  5 rânduri, în ordinea din machetă (Alin: „da”); fără „Luni la noi” („nu vreau asta”); întâi etapa 1 (vede și răspunde), apoi etapa 2 (pașii
+  cu „Da”) („da”). Nimic construit.
+- [ ] **Alin: macheta asistentului fondatorilor — întrebările 1 și 5. Adăugat pe 29.10.** (1) Stă pe „Acasă” (caseta și „Azi la noi”,
+  deasupra cartonașelor), iar discuția se deschide pe pagina ei? (5) Fiecare fondator își vede doar conversațiile lui? Recomand da la
+  amândouă.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -514,6 +521,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-10-29
+
+### AMÂNDOI · „Sursă externă" în ce primește fiecare pachet, fără preț în plus
+
+**Ce am schimbat:** Alin (29.10), la „«Sursă externă» nu apare în ce primește fiecare pachet": „da, dar nu le punem preț extra". Acum apare
+în „Vezi pachetele" din aplicație (cu prețuri) și pe pagina pachetelor de pe ratrack.ro (fără prețuri): un rând pe cartonașele Basic, Pro și
+Business („Sursă externă: 30 de întrebări pe lună, din cele 600") și rândul „Întrebări cu «Sursă externă»" în tabelul comparației (Start: —;
+10 / 30 / 50 pe lună, „din cele 200 / 600 / 1.000"), cu explicația „Caută pe internet ce nu e în aplicație… Datele firmei nu pleacă în
+căutare." Cifrele vin din același loc cu numărătoarea din RA Insight. N-are preț separat și nici rând de preț; o întrebare cu sursă externă
+se numără și ca o întrebare liberă, ca până acum. Oferta, contractul și factura nu o pomenesc (sunt promisiune semnată — doar dacă hotărâți).
+Păzit de verify_pachete.js și verify_site_public.js.
+
+**Ce vede fondatorul:** pagina publică a pachetelor, cu rândurile noi.
+
+**Ce vede clientul:** administratorul firmei, în RA Insight › „Vezi pachetele", și oricine pe ratrack.ro/pachete-ra-insight: câte întrebări cu
+„Sursă externă" are fiecare pachet.
+
+### FONDATOR · Macheta asistentului fondatorilor: răspunsurile lui Alin, fără „Luni la noi"
+
+**Ce am schimbat:** Alin (29.10): la 2 „da" („Azi la noi" cel mult 5 rânduri, în ordinea din machetă), la 3 „nu vreau asta" („Luni la noi"
+iese din machetă), la 4 „da" (întâi etapa 1 — vede și răspunde —, apoi etapa 2 — pașii cu „Da"). Rămân 1 (stă pe „Acasă"?) și 5 (fiecare
+fondator își vede doar conversațiile lui?). Macheta, la același link, fără „Luni la noi" și cu răspunsurile trecute:
+https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt. Nimic construit.
+
+**Ce vede fondatorul:** nimic nou în aplicație.
+
+**Ce vede clientul:** nimic.
 
 ### AMÂNDOI · „Sursă externă": fără titlul „Din sursă externă" în răspuns
 
@@ -616,6 +649,11 @@ Păzit de verify_ecrane.js (7): un sertar împins în stânga nu mai poate purta
 - **Banda goală de jos (~0,5 cm):** rândul de jos al aplicației (versiunea, API) a fost scos cândva, dar locul lui (32 px) a rămas gol,
   jos, pe ecranele deschise ca pagină (RA Insight, Rapoarte…), pe calculator și pe telefon. Se vede mai ales pe telefon, cu panoul din RA
   Insight deschis: sub umbra întunecată rămâne o bandă deschisă. Întrebat pe 29.10.
+- **„Sursă externă" lipsea din ce primește fiecare pachet** (aplicație și site). Întrebat; Alin: „da, dar nu le punem preț extra" — făcut azi
+  (mai sus).
+- **Rândul de sub răspuns la întrebările doar de pe internet:** sub „Surse de pe internet" scrie „Cifrele le-am luat din aplicație și din
+  sursele de mai sus", deși nicio cifră nu vine din aplicație (vinieta din Ungaria). Propus: „Cifrele le-am luat din sursele de mai sus" când
+  toate cifrele sunt de pe internet. Alin a cerut întâi explicația — trimisă cu poză; de hotărât.
 
 ---
 
