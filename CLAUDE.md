@@ -159,7 +159,9 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
   de pe GitHub (`gen-can-icons.js --check`) a picat după unire. Înainte de livrare rulează și pasul Unit din `ci.yml`, nu doar `npm test`.
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
-  trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**.
+  trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**. La `npm test`, cifra din rândul
+  final „[ci] N suită(e) au picat" trebuie să bată cu suitele pe care le-ai găsit: una care crapă nu scrie niciun ✗ (29.10:
+  `verify_setari.js` murea pe `location` lipsă din cutia ei, iar eu am văzut doar `verify_mail.js` — GitHub a ieșit roșu).
 - **Commit cu altă sesiune în același folder: doar bucățile tale, dar CU context.** Pe 12.10 `git apply --cached
   --unidiff-zero` (patch din `git diff -U0`) a lipit trei inserări pe linii greșite (rute în interiorul altei rute) —
   sintaxa trecea, probele treceau (rulau pe folder, nu pe commit), iar pe ratrack.ro rutele nu existau. Patch-ul se face

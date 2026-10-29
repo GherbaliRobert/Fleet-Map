@@ -164,8 +164,10 @@ if (k1 > 0 && k2 > k1) {
     ' tab: function(){ return _ultimulTab; },' +
     ' cine: function(u){ currentUser = u; window.currentUser = u; },' +
     ' unde: function(){ return _undeAmAterizat; } };';
-  const fac = (win) => new Function('document', 'window', '_usEsc',
-    html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s));
+  // Adresa paginii: aterizarea citește întâi linkul spre un raport (din emailul raportului programat, 29.10); aici, fără link.
+  const adresa = { search: '', pathname: '/app', hash: '' };
+  const fac = (win) => new Function('document', 'window', '_usEsc', 'location',
+    html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s), adresa);
 
   let W = facWin(null);
   let C = fac(W);

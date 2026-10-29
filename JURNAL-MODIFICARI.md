@@ -530,6 +530,9 @@ Logan 3 · B 154 UIP"), cifrele de sus ale raportului (aceleași ca pe cartonaș
 reports.js), are butonul „Deschide raportul în aplicație" (deschide raportul din Istoric, după autentificare; pe fondator îl trece pe
 verticala Partener) și un rând „Primești emailul pentru că… Îl poți schimba sau opri de acolo". Fișierul rămâne atașat, subiectul
 rămâne același. Textele stau în email_raport.js. Păzit de verify_email_raport.js (28) și verify_email_stare.js (mutat pe forma nouă).
+La prima publicare poarta de pe GitHub a ieșit roșie: o probă veche, a Setărilor (verify_setari.js), rula aterizarea fără adresa
+paginii, iar linkul nou se citește tocmai la aterizare — proba s-a oprit înainte de capăt. Aplicația n-a avut nimic; proba primește
+acum adresa și trece (125).
 
 **Ce vede fondatorul:** la rapoartele programate de el, același email nou.
 
