@@ -10260,8 +10260,7 @@ async function _trecePeFirma(req, imei, companyId) {
   _locMasini.delete(imei);   // „Distribuie locația": linkul făcut la firma veche se oprește pe loc, nu peste 30 de secunde
   _uitaPornirea(imei);   // abonamentul pornește din nou la prima transmisie pe firma nouă (dacă firma s-a schimbat)
   auditReq(req, 'assign_company', 'device', imei, { companyId });
-  // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc). Bucata din
-  // stoc are seria APARATULUI montat acum — după „Schimbă aparatul" nu mai e cheia mașinii.
+  // Aparatul din stoc (seria = aparatul montat ACUM), legat de firmă → „montat la client" (stoc.js).
   if (companyId != null) await _stocLaFirma(aparatSchimbat.aparatPeMasina(imei, _aparate), companyId, _cine(req));
   await _flotaGreaReincarca();   // un camion mutat pe o firmă îi pornește singur simulatorul de încărcare (dacă nu l-am ales noi)
 }
