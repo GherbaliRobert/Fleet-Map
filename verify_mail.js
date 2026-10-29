@@ -64,7 +64,8 @@ const fals = http.createServer((req, res) => {
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
   // Din 28.10 raportul programat cere doar urmărirea livrării (`livrare`: Brevo e întrebat dacă a ajuns) — tot fără jurnal, deci tot nu
   // intră în „Trimise".
-  T('rapoartele programate ale unei firme NU intră în „Trimise" (fără jurnal; doar urmărirea livrării)', /channels\.sendEmailTo\(rcp, subject, text, attachments, null,\s*\{ livrare: \{ ref: 'sched:'/.test(RS) && !/jurnal/.test(RS));
+  // Din 29.10 emailul raportului are HTML-ul lui (email_raport.js: cifrele de sus, butonul spre Istoric) — tot fără jurnal.
+  T('rapoartele programate ale unei firme NU intră în „Trimise" (fără jurnal; doar urmărirea livrării)', /channels\.sendEmailTo\(rcp, subject, text, attachments, em\.html,\s*\{ livrare: \{ ref: 'sched:'/.test(RS) && !/jurnal/.test(RS));
   T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj; din 13.10 și redirecționat; din 23.10 și cererea clientului)',
     ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj', 'cerere'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /const fel = primit \? 'raspuns' : \(redirPrimit \|\| redirTrimis\) \? 'redirectionat' : 'mesaj';/.test(SRV) && /jurnal: \{ fel: fel, userId: uid/.test(SRV))));
 
