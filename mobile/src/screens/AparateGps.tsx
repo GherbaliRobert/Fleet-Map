@@ -36,7 +36,7 @@ function ultimaTransmisie(d: any): number | null {
   return t > 0 ? t : null;
 }
 const randAparat = (d: any) => ({
-  imei: String(d.imei), plate: d.plate || null, name: d.name || null,
+  imei: String(d.imei), aparat_imei: d.aparat_imei || null, plate: d.plate || null, name: d.name || null,
   gps_model: d.gps_model || null, sim_number: d.sim_number || null, status: d.status, last_tx: ultimaTransmisie(d),
 });
 
@@ -44,7 +44,7 @@ const randAparat = (d: any) => ({
 function potrivit(r: any, q: string) {
   if (!q) return true;
   const s = q.toLowerCase().trim();
-  return [r.plate, r.name, r.imei, r.gps_model, r.sim_number].filter(Boolean).some((x) => String(x).toLowerCase().indexOf(s) >= 0);
+  return [r.plate, r.name, r.aparat_imei || r.imei, r.gps_model, r.sim_number].filter(Boolean).some((x) => String(x).toLowerCase().indexOf(s) >= 0);
 }
 
 function AparateGpsEcran() {
@@ -138,7 +138,7 @@ function AparateGpsEcran() {
             <div class="fm-list">
               {lista.map((r) => {
                 const st = stareAparat(r.last_tx, acum);
-                const sub = [r.gps_model || 'model necunoscut', 'IMEI ' + r.imei];
+                const sub = [r.gps_model || 'model necunoscut', 'IMEI ' + (r.aparat_imei || r.imei)];   // aparatul montat acum (29.10)
                 if (r.sim_number) sub.push('SIM ' + r.sim_number);
                 return (
                   <button class="fm-row" onClick={() => loc.route('/vehicles/' + encodeURIComponent(String(r.imei)))} aria-label={'Fișa mașinii ' + (r.plate || r.name || r.imei)}>

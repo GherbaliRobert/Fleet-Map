@@ -1493,6 +1493,30 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_cereri_echipa_firma ON cereri_echipa(company_id, creat_la DESC)`);
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_cereri_echipa_deschisa ON cereri_echipa(imei, problema) WHERE stare <> 'rezolvata' AND imei IS NOT NULL`);
+    // „Schimbă aparatul" (Robert, 29.10): aparatul GPS montat ACUM pe mașină (NULL = cel de la montaj, adică `imei`) și
+    // continuarea contorului de km al aparatului (aparat_schimbat.js). Un aparat poate fi pe O SINGURĂ mașină (indexul).
+    // `schimbari_aparat` = cine, când, ce aparat cu ce, și ce s-a întâmplat cu cel vechi — evidența noastră (BUSINESS_TABLES).
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS aparat_imei VARCHAR(20)`);
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_ajustare_m NUMERIC(14,1)`);
+    await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_vechi_m NUMERIC(14,1)`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_devices_aparat ON devices(aparat_imei) WHERE aparat_imei IS NOT NULL`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schimbari_aparat (
+        id SERIAL PRIMARY KEY,
+        vehicul_imei VARCHAR(20) NOT NULL,
+        company_id INTEGER,
+        imei_vechi VARCHAR(20) NOT NULL,
+        imei_nou VARCHAR(20) NOT NULL,
+        sursa VARCHAR(12),
+        vechiul VARCHAR(10),
+        motiv TEXT,
+        pozitii_mutate INTEGER DEFAULT 0,
+        user_id INTEGER,
+        cine VARCHAR(160),
+        la BIGINT NOT NULL
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_schimbari_aparat_veh ON schimbari_aparat(vehicul_imei, la DESC)`);
     // Trecerile la alt pachet RA Insight, confirmate din aplicație (pasul 6): cine, când, de pe ce adresă și TEXTUL exact pe care
     // l-a confirmat — confirmarea ține loc de act adițional, deci e dovadă și rămâne și după ștergerea firmei (ca un contract).
     await client.query(`
@@ -4165,7 +4189,7 @@ async function getDeviceInventory(companyId, opts) {
   // „Ultima transmisie" = cea mai recentă poziție (LATERAL, ca în getDevices), cu `last_seen` ca rezervă
   // pentru dispozitivele care s-au conectat dar n-au trimis încă nicio poziție.
   const r = await pool.query(
-    `SELECT d.imei, d.name, d.plate, d.gps_model, d.sim_number, d.status, d.vehicle_type,
+    `SELECT d.imei, d.aparat_imei, d.name, d.plate, d.gps_model, d.sim_number, d.status, d.vehicle_type,
             d.company_id, c.name AS company_name,
             GREATEST(COALESCE(p.timestamp, to_timestamp(0)), COALESCE(d.last_seen, to_timestamp(0))) AS last_tx
        FROM devices d
@@ -4177,7 +4201,8 @@ async function getDeviceInventory(companyId, opts) {
       ORDER BY c.name NULLS LAST, d.plate NULLS LAST, d.imei`, params);
   return r.rows.map(function (x) {
     const t = x.last_tx && new Date(x.last_tx).getTime() > 0 ? x.last_tx : null;
-    return { imei: x.imei, name: x.name || null, plate: x.plate || null, gps_model: x.gps_model || null,
+    // `aparat_imei` = aparatul montat acum, când s-a schimbat („Schimbă aparatul", 29.10); `imei` rămâne cheia mașinii.
+    return { imei: x.imei, aparat_imei: x.aparat_imei || null, name: x.name || null, plate: x.plate || null, gps_model: x.gps_model || null,
       sim_number: x.sim_number || null, company_id: x.company_id, company_name: x.company_name || null, last_tx: t,
       status: x.status || 'active', vehicle_type: x.vehicle_type || null };
   });
@@ -4219,6 +4244,132 @@ async function deleteDeviceCompletely(imei) {
   }
   const r = await pool.query('DELETE FROM devices WHERE imei = $1', [imei]);
   return r.rowCount || 0;
+}
+
+// ─── „Schimbă aparatul" (Robert, 29.10) — regulile în aparat_schimbat.js ───
+// Mașinile al căror aparat s-a schimbat (harta de la conectare a serverului).
+async function hartaAparate() {
+  const r = await pool.query('SELECT imei, aparat_imei FROM devices WHERE aparat_imei IS NOT NULL');
+  return r.rows;
+}
+// Mașinile la care contorul de km al aparatului nou continuă pe cel vechi.
+async function contoareDeContinuat() {
+  const r = await pool.query('SELECT imei, odo_ajustare_m, odo_vechi_m FROM devices WHERE odo_ajustare_m IS NOT NULL OR odo_vechi_m IS NOT NULL');
+  return r.rows.map(function (x) {
+    return { imei: x.imei, ajustare: x.odo_ajustare_m == null ? null : Number(x.odo_ajustare_m), vechi: x.odo_vechi_m == null ? null : Number(x.odo_vechi_m) };
+  });
+}
+// Diferența aflată la prima poziție a aparatului nou — se scrie o singură dată.
+async function salveazaAjustareContor(imei, ajustare) {
+  await pool.query('UPDATE devices SET odo_ajustare_m = $2, odo_vechi_m = NULL WHERE imei = $1', [imei, ajustare]);
+}
+async function istoricAparate(vehicul) {
+  const r = await pool.query('SELECT * FROM schimbari_aparat WHERE vehicul_imei = $1 ORDER BY la DESC, id DESC LIMIT 50', [vehicul]);
+  return r.rows.map(function (x) { return Object.assign({}, x, { la: Number(x.la) }); });
+}
+// Ce aparate pot fi montate în locul altuia: trackerele din stoc încă nemontate, aparatele din „Neasignate" și — ca să
+// fie scoase din listă — aparatele montate acum pe o mașină (a unei firme, arhivată sau cu aparatul schimbat).
+async function aparateDeMontat(tipuri, stari) {
+  const s = await pool.query(
+    `SELECT s.serie, s.tip, s.stare, p.name AS partener_nume FROM stoc_echipamente s LEFT JOIN montaj_parteneri p ON p.id = s.partener_id
+      WHERE s.tip = ANY($1::text[]) AND s.stare = ANY($2::text[]) AND s.serie IS NOT NULL`, [tipuri || [], stari || []]);
+  const n = await pool.query(
+    `SELECT d.imei, d.gps_model,
+            GREATEST(COALESCE(d.last_seen, to_timestamp(0)), COALESCE((SELECT MAX(p.timestamp) FROM positions p WHERE p.imei = d.imei), to_timestamp(0))) AS last_tx
+       FROM devices d
+      WHERE d.company_id IS NULL AND d.status IS DISTINCT FROM 'archived' AND d.aparat_imei IS NULL`);
+  const o = await pool.query(
+    `SELECT COALESCE(aparat_imei, imei) AS aparat FROM devices
+      WHERE company_id IS NOT NULL OR status = 'archived' OR aparat_imei IS NOT NULL`);
+  return {
+    stoc: s.rows,
+    neasignate: n.rows.map(function (x) { const t = x.last_tx && new Date(x.last_tx).getTime() > 0 ? x.last_tx : null; return { imei: x.imei, gps_model: x.gps_model || null, last_tx: t }; }),
+    ocupate: o.rows.map(function (x) { return String(x.aparat); }),
+  };
+}
+// O instrucțiune care poate lipsi (un tabel sau o coloană pe o bază veche) fără să strice tranzacția.
+async function _poateLipsi(client, sql, args) {
+  await client.query('SAVEPOINT sp_poate');
+  try { const r = await client.query(sql, args); await client.query('RELEASE SAVEPOINT sp_poate'); return r; }
+  catch (e) { await client.query('ROLLBACK TO SAVEPOINT sp_poate'); return null; }
+}
+// Schimbarea, dintr-o bucată: verificările pe starea de ACUM (rândurile încuiate), mutarea a ce a trimis aparatul nou din
+// „Neasignate", aparatul nou pe mașină, contorul și rândul din istoric. Aruncă o eroare cu `cod` (400 / 404 / 409) când nu
+// se poate. `o` = { vehicul, nou, dinStoc, model, sim (undefined = rămâne), vechiul, motiv, userId, cine, acum }.
+async function schimbaAparat(o) {
+  const greseala = function (cod, mesaj) { const e = new Error(mesaj); e.cod = cod; return e; };
+  const acum = o.acum || Date.now();
+  const nou = String(o.nou);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const vr = await client.query('SELECT imei, name, plate, company_id, status, aparat_imei FROM devices WHERE imei = $1 FOR UPDATE', [o.vehicul]);
+    const v = vr.rows[0];
+    if (!v) throw greseala(404, 'Mașina nu există.');
+    if (v.status === 'archived') throw greseala(400, 'Mașina e arhivată. Restaureaz-o întâi, apoi schimbă aparatul.');
+    if (v.company_id == null) throw greseala(400, 'Mașina nu e încă pe nicio firmă. Aparatul se schimbă la mașinile clienților; una din „Neasignate” se trece întâi pe firmă.');
+    const vechi = String(v.aparat_imei || v.imei);
+    if (nou === vechi) throw greseala(400, 'Aparatul ales e chiar cel montat acum pe mașină.');
+    const alta = await client.query('SELECT imei, name, plate FROM devices WHERE aparat_imei = $1 AND imei <> $2', [nou, v.imei]);
+    if (alta.rows[0]) throw greseala(409, 'Aparatul ' + nou + ' e montat pe altă mașină (' + (alta.rows[0].plate || alta.rows[0].name || alta.rows[0].imei) + ').');
+    let sursa = 'stoc', modelNou = o.model || null;
+    if (nou !== String(v.imei)) {
+      const rr = await client.query('SELECT imei, name, plate, company_id, status, aparat_imei, gps_model FROM devices WHERE imei = $1 FOR UPDATE', [nou]);
+      const r0 = rr.rows[0];
+      // Un rând cu cheia asta, dar cu ALT aparat montat = mașina de pe care a fost scos aparatul ăsta: aparatul e liber.
+      if (r0 && !(r0.aparat_imei && String(r0.aparat_imei) !== String(r0.imei))) {
+        if (r0.company_id == null && r0.status !== 'archived') { sursa = 'neasignat'; if (!modelNou) modelNou = r0.gps_model || null; }
+        else throw greseala(409, 'Aparatul ' + nou + ' e pe ' + (r0.status === 'archived' ? 'o mașină arhivată' : 'mașina unei firme') + ' (' + (r0.plate || r0.name || nou) + ').');
+      }
+    }
+    if (sursa === 'stoc' && !o.dinStoc) throw greseala(400, 'Aparatul ' + nou + ' nu e în stocul nostru, nemontat (în depozit sau la instalator). Trece-l întâi în Gestiune → Stoc echipamente.');
+
+    // Contorul de km: ultima cifră a aparatului vechi (pozițiile mașinii au deja ajustările de dinainte).
+    const ult = await client.query("SELECT io_data->'total_odometer' AS o FROM positions WHERE imei = $1 AND io_data->>'total_odometer' IS NOT NULL ORDER BY timestamp DESC LIMIT 1", [v.imei]);
+    const vechiM = ult.rows[0] && ult.rows[0].o != null && isFinite(Number(ult.rows[0].o)) ? Number(ult.rows[0].o) : null;
+    let odoAjustare = null, odoVechi = null, pozitiiMutate = 0;
+    if (sursa === 'neasignat') {
+      const pr = await client.query("SELECT io_data->'total_odometer' AS o FROM positions WHERE imei = $1 AND io_data->>'total_odometer' IS NOT NULL ORDER BY timestamp ASC LIMIT 1", [nou]);
+      const primNou = pr.rows[0] && pr.rows[0].o != null && isFinite(Number(pr.rows[0].o)) ? Number(pr.rows[0].o) : null;
+      if (vechiM != null) { if (primNou != null) odoAjustare = vechiM - primNou; else odoVechi = vechiM; }
+      // Ce a trimis aparatul cât a stat în „Neasignate" trece pe mașină, cu contorul deja continuat. Aceeași oră deja
+      // scrisă pe mașină câștigă (ON CONFLICT DO NOTHING) — aparatul vechi, dacă a mai trimis ceva atunci.
+      const cols = 'timestamp, latitude, longitude, altitude, angle, speed, satellites, priority';
+      const ins = (odoAjustare != null && odoAjustare !== 0)
+        ? await client.query(`INSERT INTO positions (imei, ${cols}, io_data, created_at, company_id)
+            SELECT $1, ${cols},
+                   CASE WHEN io_data->>'total_odometer' IS NULL THEN io_data
+                        ELSE jsonb_set(io_data, '{total_odometer}', to_jsonb((io_data->>'total_odometer')::float8 + $4::float8)) END,
+                   created_at, $3
+              FROM positions WHERE imei = $2
+            ON CONFLICT DO NOTHING RETURNING id`, [v.imei, nou, v.company_id, odoAjustare])
+        : await client.query(`INSERT INTO positions (imei, ${cols}, io_data, created_at, company_id)
+            SELECT $1, ${cols}, io_data, created_at, $3 FROM positions WHERE imei = $2
+            ON CONFLICT DO NOTHING RETURNING id`, [v.imei, nou, v.company_id]);
+      pozitiiMutate = ins.rows.length;
+      await client.query('DELETE FROM positions WHERE imei = $1', [nou]);
+      await _poateLipsi(client, 'UPDATE trips SET imei = $1 WHERE imei = $2', [v.imei, nou]);
+      // Restul rândurilor aparatului din „Neasignate" n-au ce căuta pe mașina unei firme (aceeași listă ca la ștergere).
+      for (const t of ['positions_archive', 'notifications', 'agent_findings', 'vehicle_documents', 'alerts', 'alert_history', 'maintenance',
+        'user_device_access', 'tacho_files', 'etransport', 'report_schedules', 'zile_condus', 'istoric_soferi']) {
+        await _poateLipsi(client, `DELETE FROM ${t} WHERE imei = $1`, [nou]);
+      }
+      await client.query('DELETE FROM devices WHERE imei = $1', [nou]);
+    } else if (vechiM != null) odoVechi = vechiM;   // din stoc: diferența se află la prima poziție a aparatului nou
+
+    const aparatNou = nou === String(v.imei) ? null : nou;   // aparatul de la montaj, întors pe mașină = fără schimbare
+    await client.query(
+      `UPDATE devices SET aparat_imei = $2, odo_ajustare_m = $3, odo_vechi_m = $4, gps_model = COALESCE($5, gps_model),
+              sim_number = CASE WHEN $6::boolean THEN $7 ELSE sim_number END WHERE imei = $1`,
+      [v.imei, aparatNou, odoAjustare, odoVechi, modelNou, o.sim !== undefined, o.sim == null ? null : String(o.sim)]);
+    await client.query(
+      `INSERT INTO schimbari_aparat (vehicul_imei, company_id, imei_vechi, imei_nou, sursa, vechiul, motiv, pozitii_mutate, user_id, cine, la)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [v.imei, v.company_id, vechi, nou, sursa, o.vechiul || null, o.motiv || null, pozitiiMutate, o.userId || null, o.cine || null, acum]);
+    await client.query('COMMIT');
+    return { vehicul: v, vechi: vechi, nou: nou, sursa: sursa, pozitiiMutate: pozitiiMutate, ajustare: odoAjustare, vechiM: odoVechi };
+  } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
+  finally { client.release(); }
 }
 
 // Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
@@ -6961,6 +7112,7 @@ module.exports = {
   listCompanyEmails, addCompanyEmail, countCompanyEmails, setCompanyEmailUses, deleteCompanyEmail,
   refreshCompanyEmailToken, confirmCompanyEmail, getConfirmedCompanyEmails,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
+  hartaAparate, contoareDeContinuat, salveazaAjustareContor, istoricAparate, aparateDeMontat, schimbaAparat,
   updateVehicleDetails,
   deviceExists,
   createDevice,

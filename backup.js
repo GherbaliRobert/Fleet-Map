@@ -44,6 +44,8 @@ const BUSINESS_TABLES = [
   // Stocul nostru de echipamente (25.09): ce aparate avem, unde e fiecare și al cui e. Fără el, după o
   // restaurare n-am mai ști ce aparate închiriate stau la clienți — adică marfa noastră.
   'stoc_echipamente',
+  // „Schimbă aparatul" (29.10): ce aparat a fost scos de pe ce mașină, când și de cine — evidența mărfii noastre.
+  'schimbari_aparat',
   // Safe Drive (06.10): cine a condus ce mașină și când (nu se poate reface din poziții) și discuțiile șefului cu șoferii.
   'istoric_soferi', 'safe_drive_discutii',
   // Semiremorcile și remorcile firmelor (12.10): flota fără aparat GPS, scrisă de client — nu se reface din nimic.
