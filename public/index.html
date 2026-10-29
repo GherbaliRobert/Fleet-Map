@@ -5799,7 +5799,24 @@ const pozitii = await r.json();</code></pre>
     //   • la partener → harta. Dar dacă și-a ales singur alt ecran din Preferințe → Afișaj
     //     (Traseu, Statistici, Rapoarte), ALEGEREA LUI rămâne: harta e doar ce primești dacă n-ai
     //     atins nimic. De asta există preferința aia.
+    // Linkul „Deschide raportul în aplicație" din emailul raportului programat (29.10): /app?raport=<id din Istoric>. Autentificarea
+    // stă în pagină, deci adresa rămâne până intră omul; se citește O DATĂ, aici (după preferințe — altfel ecranul de pornire ar
+    // trece peste raport), și se scoate din adresă. Fondatorul trece pe verticala Partener, unde stau Rapoartele. Raportul altcuiva
+    // (Istoricul e al omului care a programat) → mesajul serverului, ca la orice raport din Istoric.
+    function _raportDinAdresa() {
+      var m = /[?&]raport=(\d{1,12})(?:&|$)/.exec(location.search || '');
+      if (!m) return false;
+      try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+      if (!can('viewReports') || !window.insightDeschideRaport) return false;
+      if (window.currentUser && currentUser.isSuper && vertCurenta(true, setOchiCitit(window.localStorage)) === 'fondator') {
+        try { window.localStorage.setItem(SET_OCHI_CHEIE, 'firma'); } catch (e) {}
+        vertAplica();
+      }
+      window.insightDeschideRaport(Number(m[1]));
+      return true;
+    }
     function vertAterizeaza(ecranAles) {
+      if (_raportDinAdresa()) return;
       var suntemNoi = !!(window.currentUser && currentUser.isSuper);
       if (vertCurenta(suntemNoi, setOchiCitit(window.localStorage)) === 'fondator') {
         try { showView('administrare'); } catch (e) {}   // deschide „Acasă" (openUsersModal → raxAdminHome)

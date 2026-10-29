@@ -4721,12 +4721,8 @@ async function _insightPeReguli(req, res, x) {
   return gata(reply, { inteles: out.inteles || [], sources: sursa(out.sursa), urmari: Array.isArray(r.urmari) ? r.urmari : [], pachetMesaj: pachetMesaj }, ctxNou);
 }
 // ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10) ──────────────────────────────────────────────────
-function _kpiRaport(report) {
-  const s = report && report.summary;
-  const perechi = Array.isArray(s) ? s : (s && typeof s === 'object' ? Object.keys(s).map(function (k) { return [k, s[k]]; }) : []);
-  return perechi.filter(function (p) { return Array.isArray(p) && p[0] && p[0] !== 'Atenție' && p[1] != null && p[1] !== ''; }).slice(0, 4)
-    .map(function (p) { return { et: String(p[0]), val: typeof p[1] === 'number' ? p[1].toLocaleString('ro-RO', { maximumFractionDigits: 1 }) : String(p[1]) }; });
-}
+// Cifrele de sus: aceeași socoteală ca emailul raportului programat (reports.kpiRaport).
+function _kpiRaport(report) { return reports.kpiRaport(report); }
 // „Am găsit o problemă" (Alin, 15.10): ce găsește aplicația, singură, în datele unui raport — viteza mare (reală sau eroare
 // de GPS, din pozițiile din jurul celui mai rapid punct), senzorul de combustibil care nu se mișcă, consumul greu de crezut.
 // Regulile și textele stau în probleme.js; aici doar se citesc datele. O SINGURĂ funcție, chemată de rapoartele cerute în

@@ -103,9 +103,13 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
     Math.abs(ai.costUsd({ input_tokens: 1e6, output_tokens: 0 }, 'claude-haiku-5-5') - 0.10) < 1e-9);
   const orig = globalThis.fetch, cereri = [];
   let raspunsuri = [];
+  // Ca Anthropic (29.10, prima probă adevărată a lui Alin): o țară pe care motorul lor de căutare n-o știe = 400, înainte de orice.
+  const REFUZ_TARA = (tara) => ({ status: 400, json: { type: 'error', error: { type: 'invalid_request_error', message: 'tools.0.web_search_20250305: Country code ' + tara + ' is not supported.' } } });
   globalThis.fetch = async function (url, opts) {
-    cereri.push({ url: String(url), metoda: (opts && opts.method) || 'GET', corp: opts && opts.body ? JSON.parse(opts.body) : null, antet: (opts && opts.headers) || {} });
-    const r = raspunsuri.shift();
+    const corp = opts && opts.body ? JSON.parse(opts.body) : null;
+    cereri.push({ url: String(url), metoda: (opts && opts.method) || 'GET', corp, antet: (opts && opts.headers) || {} });
+    const loc = corp && Array.isArray(corp.tools) && corp.tools[0] && corp.tools[0].user_location;
+    const r = (loc && loc.country) ? REFUZ_TARA(loc.country) : raspunsuri.shift();
     return new Response(JSON.stringify(r.json), { status: r.status || 200, headers: { 'content-type': 'application/json' } });
   };
   try {
@@ -114,7 +118,8 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
     const out = await ai.cautaExtern({ cautare: 'consum normal Dacia Logan 1.5 dCi', instructiuni: SE.instructiuniCautare(Date.now()), model: 'claude-haiku-5-5', maxCautari: 3 });
     const c0 = cereri[0].corp;
     T('o singură cerere, la /v1/messages, cu unealta de bază web_search_20250305 (fără „filtrarea dinamică")', cereri.length === 1 && /\/v1\/messages$/.test(cereri[0].url) && c0.tools.length === 1 && c0.tools[0].type === 'web_search_20250305' && c0.tools[0].name === 'web_search');
-    T('…cel mult 3 căutări, rezultatele pe România', c0.tools[0].max_uses === 3 && c0.tools[0].user_location.type === 'approximate' && c0.tools[0].user_location.country === 'RO' && c0.tools[0].user_location.timezone === 'Europe/Bucharest');
+    T('…cel mult 3 căutări, cu ora României și FĂRĂ țară (Anthropic refuză „RO": 400 „Country code RO is not supported", 29.10)',
+      c0.tools[0].max_uses === 3 && c0.tools[0].user_location.type === 'approximate' && !('country' in c0.tools[0].user_location) && c0.tools[0].user_location.timezone === 'Europe/Bucharest');
     T('…modelul primește DOAR textul căutării (un singur mesaj) și instrucțiunile ei', c0.messages.length === 1 && c0.messages[0].content === 'consum normal Dacia Logan 1.5 dCi' && /unealta de căutare a lui RA Insight/.test(JSON.stringify(c0.system)));
     T('…la Haiku 5.5: gândire adaptivă, efort mic (ca restul lui RA Insight)', c0.thinking && c0.thinking.type === 'adaptive' && c0.output_config && c0.output_config.effort === 'low');
     T('…întoarce blocurile răspunsului (le citește sursa_externa.citesteRaspuns)', out.blocuri.length === CAUTARE.content.length && out.model === 'claude-haiku-5-5');
@@ -128,6 +133,17 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
     T('„pause_turn": a doua cerere trimite înapoi, neschimbat, ce a scris modelul până acolo', cereri.length === 2 && cereri[1].corp.messages.length === 2 && cereri[1].corp.messages[1].role === 'assistant' &&
       JSON.stringify(cereri[1].corp.messages[1].content) === JSON.stringify(PAUZA.content) && cereri[1].corp.messages[0].content === 'norma euro 6');
     T('…și răspunsul se citește din toate bucățile; consumul vine pe fiecare cerere', SE.citesteRaspuns(out2.blocuri).surse[0].site === 'norme.ro' && SE.citesteRaspuns(out2.blocuri).text === 'Euro 6 se aplică din 2014.' && usg.length === 2);
+    // Locul refuzat (oricare: țara, fusul, orașul) → aceeași căutare, O DATĂ, fără loc. Alt refuz → eroarea merge mai departe, fără a doua cerere.
+    cereri.length = 0;
+    raspunsuri = [{ status: 400, json: { type: 'error', error: { type: 'invalid_request_error', message: 'tools.0.web_search_20250305.user_location.timezone: invalid IANA timezone' } } }, { json: CAUTARE }];
+    const out3 = await ai.cautaExtern({ cautare: 'taxe de drum Ungaria autoturism', instructiuni: 'x', model: 'claude-haiku-5-5' });
+    T('locul refuzat → a doua cerere, aceeași căutare, fără loc; răspunsul vine', cereri.length === 2 && cereri[0].corp.tools[0].user_location &&
+      !('user_location' in cereri[1].corp.tools[0]) && cereri[1].corp.messages[0].content === 'taxe de drum Ungaria autoturism' && out3.blocuri.length === CAUTARE.content.length);
+    cereri.length = 0;
+    raspunsuri = [{ status: 400, json: { type: 'error', error: { type: 'invalid_request_error', message: 'web search is not enabled for this organization' } } }];
+    let eroare3 = null; try { await ai.cautaExtern({ cautare: 'norma euro 6', instructiuni: 'x', model: 'claude-haiku-5-5' }); } catch (e) { eroare3 = e; }
+    T('…alt refuz (căutarea oprită în contul Anthropic) → eroarea, dintr-o singură cerere', cereri.length === 1 && eroare3 && eroare3.status === 400 && /not enabled/.test(eroare3.message));
+    T('când căutarea n-a mers, RA Insight nu scrie din memorie instituții, site-uri sau tarife', /Nu scrie din memorie nume de instituții, site-uri, tarife sau reguli/.test(SE.pentruModel({ eroare: true, cautari: [], surse: [], citate: [], text: '' }).mesaj));
     // Models API
     cereri.length = 0;
     raspunsuri = [{ json: { id: 'claude-haiku-5-5', capabilities: { server_tools: { supported: true, web_search: { supported: true } } } } }];
@@ -232,6 +248,9 @@ async function peServer() {
     "  if (u.indexOf('https://api.anthropic.com/') === 0) {",
     "    let corp = {}; try { corp = JSON.parse((opts && opts.body) || '{}'); } catch (e) {}",
     "    try { fs.appendFileSync(process.env.PROBA_AI_LOG, JSON.stringify(corp) + '\\n'); } catch (e) {}",
+    // Ca Anthropic: o țară pe care motorul de căutare n-o știe = 400 (29.10, „Country code RO is not supported"), fără să ia din coadă.
+    "    const loc = Array.isArray(corp.tools) && corp.tools[0] && corp.tools[0].user_location;",
+    "    if (loc && loc.country) return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'tools.0.web_search_20250305: Country code ' + loc.country + ' is not supported.' } }), { status: 400, headers: { 'content-type': 'application/json' } });",
     "    let coada = []; try { coada = JSON.parse(fs.readFileSync(process.env.PROBA_AI_COADA, 'utf8') || '[]'); } catch (e) {}",
     "    const r = coada.shift() || { content: [{ type: 'text', text: 'RASPUNS_DE_PROBA' }], stop_reason: 'end_turn' };",
     "    fs.writeFileSync(process.env.PROBA_AI_COADA, JSON.stringify(coada));",
@@ -332,7 +351,7 @@ async function peServer() {
     const c1 = noi[0], cS = noi.find(eCautare), c3 = noi[2];
     T('d) RA Insight primește unealta (ultima) și instrucțiunea „SURSĂ EXTERNĂ PORNITĂ"', noi.length === 3 && areUnealta(c1) && c1.tools[c1.tools.length - 1].name === 'sursa_externa' && /SURSĂ EXTERNĂ PORNITĂ/.test(JSON.stringify(c1.system)));
     T('…căutarea pleacă SEPARAT: un singur mesaj = textul căutării; nimic din flotă (număr, șofer, firmă)', cS && cS.messages.length === 1 && cS.messages[0].content === 'consum normal Dacia Logan 1.5 dCi' &&
-      !/B 154 UIP|Mihai|Ionescu|Firma Sursa|Dacia Logan 3/.test(JSON.stringify(cS)) && cS.tools[0].max_uses === 3 && cS.tools[0].user_location.country === 'RO');
+      !/B 154 UIP|Mihai|Ionescu|Firma Sursa|Dacia Logan 3/.test(JSON.stringify(cS)) && cS.tools[0].max_uses === 3 && !('country' in cS.tools[0].user_location) && cS.tools[0].user_location.timezone === 'Europe/Bucharest');
     T('…RA Insight primește înapoi ce s-a găsit și fragmentele citate', c3 && /4,9 l\/100 km/.test(JSON.stringify(c3.messages)) && /fragmente/.test(JSON.stringify(c3.messages)));
     T('…răspunsul: sursele sub el (întâi cele citate, fără „javascript:"), ce s-a căutat, când', r.j.sursa && r.j.sursa.titlu === 'Surse de pe internet' && r.j.sursa.surse.map((s) => s.site).join(',') === 'exemplu.com,auto-test.ro' &&
       /^Căutat pe internet la \d\d:\d\d · 2 căutări$/.test(r.j.sursa.text) && /^Ce am căutat: „consum normal Dacia Logan 1\.5 dCi”, „Dacia Logan dCi consum mixt”$/.test(r.j.sursa.ceAmCautat), JSON.stringify(r.j.sursa));

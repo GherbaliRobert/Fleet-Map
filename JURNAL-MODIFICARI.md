@@ -424,6 +424,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Controale › „Sursă externă" › „Doar pentru noi"; rândul de dedesubt trebuie să spună „Haiku 5.5 primește căutarea pe internet". Apoi
   zece întrebări adevărate pe „RA Track Demo", ca să vedem costul real (sub 2 lei). (3) „Pornită pentru firme". Până atunci butonul nu
   apare nimănui.
+  **29.10:** Alin a pus „Doar pentru noi" și a încercat: căutarea a picat (Anthropic nu primea țara „RO"), reparat azi. **De reîncercat după
+  publicare**, cu aceeași întrebare; dacă merge, pasul lui Robert nu mai e nevoie. Dacă dă altă eroare, rândul din RA Insight · control o spune.
 - [ ] **Robert: telefonul și „Sursă externă" (APK-ul următor). Adăugat pe 28.10.** Pe web e gata; pe telefon: butonul „Sursă externă"
   lângă „+" (din `/api/ai/quota` → `sursa`: `nume`, `contor`, `nota`, `poate`; fără `sursa`, nu apare), `sursa: true` trimis cu
   întrebarea cât e pornit (o discuție nouă pornește cu el oprit) și, sub răspuns, blocul „Surse de pe internet" (`sursa` din răspuns:
@@ -492,7 +494,8 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **Cap. 2** | Traiectoria RA Insight, recroită după pachete | ✅ pasul 0, proba modelelor (21–22.10: rămâne Haiku 5.5) · ✅ pasul 1, un singur RA Insight (15.10; „mai simplu" 15.10; discuția refăcută 19.10; reparațiile probei 22.10) · ✅ pasul 2, „RA Insight face, cu Da-ul tău": partea 1 șoferii pe mașini (22.10), partea 2 alerta de viteză și „Am vorbit cu el" (26.10), partea 3 revizia, actul, raportul programat (26.10) · ✅ „Anunță echipa RA Track" (23.10) · ✅ garanția B, contorul corecturilor (22.10) |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ✅ = pasul 2, partea 1 (22.10) |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ✅ „Rezumă" cere cont (14.10) · „RA Insight · control" (19.10) |
-| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ⬜ machetă întâi |
+| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ✅ „Sursă externă" construită (28.10), căutarea reparată (29.10: Anthropic nu primea țara „RO") · ⬜ pornirea: încercarea noastră pe „Doar pentru noi", apoi „Pornită pentru firme" |
+| **D+½** | Analiza atentă: la „de ce / compară / ce să fac", Haiku gândește mai mult și răspunde în trei părți (Alin, 28.10: „1 da"; Sonnet scos) | ✅ 28.10 |
 | **D++** | Asistentul AI al fondatorilor (restanți, facturi, cel mai profitabil client) — macheta din 15.10 | ⬜ după RA Insight (Alin, 15.10) |
 | **E** | Telefonul: RA Insight (meniu, conversații, ramuri, cartonașele cu „Da"), pentru APK-ul lui Robert | ⬜ Robert (lista lui la „De amintit") |
 | — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
@@ -504,6 +507,33 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-10-29
+
+### AMÂNDOI · „Sursă externă": căutarea pe internet mergea doar în probe — reparată
+
+**Ce am schimbat:** Alin a pus „Doar pentru noi" și a întrebat „ce taxe de drum sunt în Ungaria pentru un autoturism sub 3,5 tone?".
+Căutarea n-a pornit: Anthropic a refuzat cererea (400, „Country code RO is not supported") — motorul lor de căutare nu primește
+România ca țară. Acum căutarea pleacă fără țară, doar cu ora României (textul ei rămâne în română), iar dacă Anthropic refuză
+vreodată locul, se trimite o dată din nou, fără el. Când căutarea nu merge, RA Insight nu mai scrie din memorie nume de instituții,
+site-uri sau tarife (în răspunsul lui Alin apăruse un nume inventat). Proba răspunde acum ca Anthropic (refuză țara) — până azi
+primea orice, de-aia n-a prins. Păzit de verify_sursa_externa.js (135).
+
+**Ce vede fondatorul:** după publicare, pe „Doar pentru noi", butonul „Sursă externă" caută chiar pe internet; sub răspuns, „Surse de
+pe internet". Rândul de eroare din RA Insight · control dispare la publicare.
+
+**Ce vede clientul:** nimic încă — butonul apare la firme abia după „Pornită pentru firme".
+
+### AMÂNDOI · Emailul raportului programat: cifrele de sus, „Deschide raportul în aplicație", de ce îl primești
+
+**Ce am schimbat:** Alin, la propunere: „da, e o idee bună". Emailul avea două rânduri și Excelul atașat — forma pe care filtrele de
+spam o bănuiesc la un expeditor nou. Acum spune ce raport e, pe ce perioadă și pe ce mașini („Toată flota · 5 mașini" sau „Dacia
+Logan 3 · B 154 UIP"), cifrele de sus ale raportului (aceleași ca pe cartonașul din RA Insight — o singură socoteală, mutată în
+reports.js), are butonul „Deschide raportul în aplicație" (deschide raportul din Istoric, după autentificare; pe fondator îl trece pe
+verticala Partener) și un rând „Primești emailul pentru că… Îl poți schimba sau opri de acolo". Fișierul rămâne atașat, subiectul
+rămâne același. Textele stau în email_raport.js. Păzit de verify_email_raport.js (28) și verify_email_stare.js (mutat pe forma nouă).
+
+**Ce vede fondatorul:** la rapoartele programate de el, același email nou.
+
+**Ce vede clientul:** emailul nou, cu cifrele și butonul; un clic deschide raportul în aplicație.
 
 ### AMÂNDOI · Telefon: fâșia gri de pe marginea din stânga a dispărut (RA Insight și meniul principal)
 

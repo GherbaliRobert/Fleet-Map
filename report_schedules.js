@@ -1,5 +1,6 @@
 // report_schedules.js — rapoarte programate: perioadă relativă, calcul next_run, rulare + trimitere pe email.
 // Logica e izolată aici; server.js doar înregistrează tick-ul și expune endpoint-urile.
+const emailRaport = require('./email_raport');   // textul și HTML-ul emailului (29.10)
 
 // Fereastra relativă raportată la 'now' (Date). Întoarce { from, to } ISO. ZILELE și LUNILE sunt ale ROMÂNIEI (27.10, Alin: „da"):
 // până atunci se socoteau pe ziua serverului (UTC) — „ieri" mergea de la 02:00 la 02:00 (vara 03:00), un raport programat la 01:00
@@ -131,7 +132,7 @@ async function runSchedule(s, deps, now) {
 
   const recips = await destinatari(s, db);
   const rowsN = (report.rows && report.rows.length) || 0;
-  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now);
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now, await _pentruEmail(s, report, imeis.length, historyId, deps));
   // Notificare „raport gata" (clopoțel + push) → duce direct la Istoric. Emailul care n-a plecat se spune tot aici.
   if (deps.notify && historyId) {
     try {
@@ -161,20 +162,33 @@ async function destinatari(s, db) {
   }
   return recips;
 }
+// Ce mai trebuie emailului (29.10): cifrele de sus (aceeași socoteală ca RA Insight), mașina sau câte mașini, unde e raportul în
+// Istoric. O mașină anume se scrie cu numele și numărul ei; fără fișă citibilă — „Toată flota", ca înainte.
+async function _pentruEmail(s, report, nrMasini, historyId, deps) {
+  const o = { kpi: deps && deps.reports && deps.reports.kpiRaport ? deps.reports.kpiRaport(report) : [], nrMasini: nrMasini, historyId: historyId };
+  if (s.imei && deps && deps.db && deps.db.getDeviceFull) {
+    try { const d = await deps.db.getDeviceFull(s.imei); if (d) o.vehicul = [d.name, d.plate].filter(Boolean).join(' · ') || null; } catch (e) { /* fără nume: rămâne „Toată flota" */ }
+  }
+  return o;
+}
 // Emailul cu raportul. Eroarea NU se mai înghite (22.10): prima e întoarsă, ca programarea să știe de ce n-a plecat.
-async function trimite(s, report, buf, filename, from, to, recips, channels, now) {
+// Textul și HTML-ul le face email_raport.js (29.10): ce raport, perioada, mașinile, cifrele de sus, linkul spre Istoric, de ce
+// îl primește omul; fișierul rămâne atașat.
+async function trimite(s, report, buf, filename, from, to, recips, channels, now, extra) {
+  extra = extra || {};
   const rowsN = (report.rows && report.rows.length) || 0;
   const perioada = perioadaEmail(from, to);
-  const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + perioada;
-  const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + perioada +
-    '.\nRânduri: ' + rowsN + '.\n\n— RA Track (raport automat)';
+  const em = emailRaport.continut({ label: report.label || s.report_type, perioada, vehicul: extra.vehicul, nrMasini: extra.nrMasini, kpi: extra.kpi,
+    randuri: rowsN, link: emailRaport.linkRaport(process.env.BASE_URL, extra.historyId), format: s.format === 'xlsx' ? 'xlsx' : 'pdf',
+    numeProgramare: s.name, frecventa: s.frequency, ora: s.hour });
+  const subject = em.subiect, text = em.text;
   let emailSent = false, emailError = null;
   if (recips.length) {
     const attachments = [{ filename, content: buf }];
     for (const rcp of recips) {
       try {
         // `livrare`: după ce pleacă, serverul întreabă Brevo dacă a ajuns și scrie răspunsul pe rândul programării (28.10).
-        const ok = await channels.sendEmailTo(rcp, subject, text, attachments, null,
+        const ok = await channels.sendEmailTo(rcp, subject, text, attachments, em.html,
           { livrare: { ref: 'sched:' + s.id, fel: 'raport', companyId: s.company_id != null ? s.company_id : null, unde: '„' + (s.name || report.label || s.report_type) + '"',
             la: now ? new Date(now).getTime() : Date.now() } });   // clipa trimiterii = cea scrisă pe programare (last_run)
         if (ok) emailSent = true; else if (!emailError) emailError = 'Serverul nu are email configurat';
@@ -197,7 +211,7 @@ async function retrimite(s, deps, now) {
   const filename = reportExport.numeRaport(report) + '.' + fmt;
   const from = new Date(h.period_from).toISOString(), to = new Date(h.period_to).toISOString();
   const recips = await destinatari(s, db);
-  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now);
+  const em = await trimite(s, report, buf, filename, from, to, recips, channels, now, await _pentruEmail(s, report, h.vehicle_count, h.id, deps));
   return { ok: true, rows: (report.rows || []).length, recipients: recips, emailSent: em.emailSent, emailError: em.emailError, format: fmt, historyId: h.id, reincercare: true };
 }
 

@@ -2821,7 +2821,16 @@ async function analyzeZone(db, imeis, from, to, zone) {
 // `_nivelConsum` / `_capat` / `_cumulTracker` sunt exportate ca să le folosească ȘI serverul, pentru
 // „Consum azi" din fișa vehiculului. Acolo era A DOUA copie a aceleiași greșeli — aduna toate scăderile
 // de nivel. O reparasem doar în rapoarte, iar cifra din fișă ar fi rămas umflată.
-module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices,
+// Cifrele de sus ale unui raport (cel mult 4, din sumarul lui, fără rândul „Atenție"): O socoteală, folosită de cartonașul din
+// RA Insight (rapoartele cerute în cuvinte) și de emailul raportului programat (29.10) — ca omul să vadă aceleași cifre în ambele.
+function kpiRaport(report) {
+  const s = report && report.summary;
+  const perechi = Array.isArray(s) ? s : (s && typeof s === 'object' ? Object.keys(s).map(function (k) { return [k, s[k]]; }) : []);
+  return perechi.filter(function (p) { return Array.isArray(p) && p[0] && p[0] !== 'Atenție' && p[1] != null && p[1] !== ''; }).slice(0, 4)
+    .map(function (p) { return { et: String(p[0]), val: typeof p[1] === 'number' ? p[1].toLocaleString('ro-RO', { maximumFractionDigits: 1 }) : String(p[1]) }; });
+}
+
+module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices, kpiRaport,
   _nivelConsum, _capat, _cumulTracker,
   // Safe Drive (safe_drive.js) citește pozițiile și mașina cu ACELEAȘI funcții ca rapoartele: contactul, motorul, contorul
   // de combustibil, distanța, consumul și prețul — ca pagina și raportul EcoDrive / Ralanti să nu se contrazică.

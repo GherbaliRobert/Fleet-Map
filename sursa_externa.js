@@ -207,7 +207,9 @@ function citesteRaspuns(blocks) {
 // Ce primește RA Insight înapoi (rezultatul uneltei).
 function pentruModel(r) {
   if (!r || r.eroare || (!r.cautari.length && !r.text)) {
-    return { mesaj: 'Căutarea pe internet n-a mers acum. Răspunde din aplicație și spune-i omului, într-o propoziție, că sursa externă n-a răspuns.' };
+    // Fără ce s-a găsit, modelul nu are voie să umple golul din memorie (29.10: a scris un nume de instituție inventat).
+    return { mesaj: 'Căutarea pe internet n-a mers acum. Răspunde din aplicație și spune-i omului, într-o propoziție, că sursa externă n-a răspuns. ' +
+      'Nu scrie din memorie nume de instituții, site-uri, tarife sau reguli: nu le-ai găsit acum.' };
   }
   return {
     cautat: r.cautari, gasit: r.text || null,

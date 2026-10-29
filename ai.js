@@ -199,15 +199,24 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
 // Modelul: AI_MODEL_SURSA, altfel modelul lui RA Insight.
 const AI_SURSA_MODEL = process.env.AI_MODEL_SURSA || AI_AGENT_MODEL;
 const CAUTARE_UNEALTA = 'web_search_20250305';
+// Locul căutării: doar fusul orar. Țara „RO" NU e primită de motorul de căutare al Anthropic (29.10, la prima probă adevărată a lui
+// Alin: 400 „Country code RO is not supported"; documentația: `user_location.country` = doar țările motorului lor). Fără țară, căutarea
+// pleacă tot în română (textul ei) și cu ora României.
+const LOC_CAUTARE = { type: 'approximate', timezone: 'Europe/Bucharest' };
+// O cerere refuzată pentru loc (țara, fusul, orașul) se trimite O DATĂ din nou, fără loc — căutarea merge și așa.
+function _refuzLoc(e) { return !!(e && e.status === 400 && /user_location|country|timezone|city|region/i.test(String((e && e.message) || ''))); }
 async function cautaExtern({ cautare, instructiuni, model, maxCautari, onUsage }) {
   const m = model || AI_SURSA_MODEL;
-  const tools = [{ type: CAUTARE_UNEALTA, name: 'web_search', max_uses: Math.max(1, Math.min(5, Number(maxCautari) || 3)),
-    user_location: { type: 'approximate', country: 'RO', timezone: 'Europe/Bucharest' } }];
+  let cuLoc = true;
+  const unealta = () => [Object.assign({ type: CAUTARE_UNEALTA, name: 'web_search', max_uses: Math.max(1, Math.min(5, Number(maxCautari) || 3)) },
+    cuLoc ? { user_location: LOC_CAUTARE } : {})];
   const intrebare = { role: 'user', content: String(cautare || '') };
   let blocuri = [];
   for (let i = 0; i < 3; i++) {
     const messages = blocuri.length ? [intrebare, { role: 'assistant', content: blocuri }] : [intrebare];
-    const j = await _rawCall({ model: m, max_tokens: 900, system: instructiuni ? [{ type: 'text', text: String(instructiuni) }] : undefined, tools, messages });
+    const cerere = () => _rawCall({ model: m, max_tokens: 900, system: instructiuni ? [{ type: 'text', text: String(instructiuni) }] : undefined, tools: unealta(), messages });
+    let j;
+    try { j = await cerere(); } catch (e) { if (!(cuLoc && _refuzLoc(e))) throw e; cuLoc = false; j = await cerere(); }
     if (onUsage && j.usage) { try { onUsage(j.usage, m); } catch (e) {} }
     if (j.stop_reason === 'refusal') return { blocuri: [], refuz: true, model: m };
     blocuri = blocuri.concat(j.content || []);
@@ -232,4 +241,4 @@ async function modelPrimesteCautarea(model) {
 }
 
 module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT,
-  MODELE, pret, EFORT, _corp, _text, PRET_CAUTARE_USD, AI_SURSA_MODEL, CAUTARE_UNEALTA, cautaExtern, modelPrimesteCautarea };
+  MODELE, pret, EFORT, _corp, _text, PRET_CAUTARE_USD, AI_SURSA_MODEL, CAUTARE_UNEALTA, LOC_CAUTARE, cautaExtern, modelPrimesteCautarea };

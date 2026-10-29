@@ -57,6 +57,7 @@ jobs:
           node --check alerte_stare.js
           node --check livrare.js
           node --check sursa_externa.js
+          node --check email_raport.js
           node --check license_cats.js
           node --check tacho.js
           node --check geocode.js

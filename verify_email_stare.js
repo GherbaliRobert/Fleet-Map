@@ -103,8 +103,10 @@ const fals = http.createServer((req, res) => {
     lunaA.from === '2026-09-30T21:00:00.000Z' && lunaA.to === '2026-10-22T03:01:00.000Z' && et(lunaA) === '01.10.2026 – 22.10.2026' &&
     sapt.from === '2026-10-15T03:01:00.000Z' && sapt.to === '2026-10-22T03:01:00.000Z' && et(sapt) === '15.10.2026 – 22.10.2026', JSON.stringify([lunaA, sapt]));
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
-  T('subiectul și textul emailului poartă perioada pe zilele României (aceeași funcție)', /const perioada = perioadaEmail\(from, to\);\s+const subject = '\[RA Track\] ' \+ \(report\.label \|\| s\.report_type\) \+ ' — ' \+ perioada;/.test(RS) &&
-    /pentru perioada ' \+ perioada/.test(RS) && !/toISOString\(\)\.slice\(0, ?10\)/.test(RS));
+  // Din 29.10 subiectul și textul le face email_raport.js (cifrele de sus, linkul spre Istoric) — din ACEEAȘI perioadă.
+  const ER = fs.readFileSync(path.join(__dirname, 'email_raport.js'), 'utf8');
+  T('subiectul și textul emailului poartă perioada pe zilele României (aceeași funcție)', /const perioada = perioadaEmail\(from, to\);\s+const em = emailRaport\.continut\(\{ label: report\.label \|\| s\.report_type, perioada,/.test(RS) &&
+    /subiect: '\[RA Track\] ' \+ label \+ ' — ' \+ perioada/.test(ER) && /'Raport „' \+ label \+ '” · ' \+ perioada/.test(ER) && !/toISOString\(\)\.slice\(0, ?10\)/.test(RS));
 
   // ─── 2. mailer.js ține minte ─────────────────────────────────────────────────────────────────────────
   console.log('\n2. mailer.js ține minte ultimul email plecat și ultimul refuzat');
@@ -202,7 +204,7 @@ const fals = http.createServer((req, res) => {
       /^RA-Track - Raport Foaie de parcurs/.test(((em.attachment || [])[0] || {}).name || ''), JSON.stringify({ p, em: em.subject }).slice(0, 300));
     const ziRo = (ms) => new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
     T('subiectul spune ziua de ieri pe ora României („Foaie de parcurs — ' + ziRo(t1 - 864e5) + '")', em.subject === '[RA Track] Foaie de parcurs — ' + ziRo(t1 - 864e5) &&
-      /pentru perioada \d{2}\.\d{2}\.\d{4}\./.test(em.textContent || em.htmlContent || ''), JSON.stringify({ s: em.subject, t: String(em.textContent || '').slice(0, 120) }));
+      /^Raport „Foaie de parcurs” · \d{2}\.\d{2}\.\d{4}\n/.test(em.textContent || ''), JSON.stringify({ s: em.subject, t: String(em.textContent || '').slice(0, 120) }));
     T('…lista spune „a plecat pe email"', /a plecat pe email/.test(p.stare_text || ''), p.stare_text);
     const h2 = await json('GET', '/api/admin/health', S);
     T('„Stare producție" redevine verde, cu ultimul email plecat', /activ — Brevo, de la RA Track <noreply@ratrack\.ro> · ultimul email plecat:/.test(h2.t) && !/DAR ultimul email/.test(h2.t), h2.t.slice(0, 300));

@@ -202,6 +202,14 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
   `livrare_fel`; la noi și `livrare_blocate`) și butonul „Deblochează la Brevo" (`POST /api/admin/email/deblocheaza`, super-admin →
   `mailer.deblocheaza`, DELETE /v3/smtp/blockedContacts/{email}; 404 = nu era blocată). Documentația Brevo nu se poate citi din cutia de
   probe: codul primește și forme altfel scrise ale evenimentelor. Păzit de `verify_email_livrare.js` (în `npm test`; Brevo fals).
+- **Emailul raportului programat (29.10; Alin: „da, e o idee bună" — două rânduri + Excelul = forma bănuită de filtrele de spam).** Textele
+  stau în **`email_raport.js`** (curat): `continut` (subiectul de dinainte; raportul, perioada, mașinile — `textMasini`; „Pe scurt" = cifrele de sus;
+  butonul „Deschide raportul în aplicație"; `textDeCe` — programarea, cât de des, ora, de unde se oprește; HTML-ul cu tot ce vine din date trecut prin
+  `_esc`), `linkRaport` (`/app?raport=<id din Istoric>`, altfel `/app`). Cifrele de sus = **`reports.kpiRaport`**, O socoteală cu cartonașul din RA
+  Insight (`_kpiRaport` din server.js doar o cheamă). `report_schedules.trimite(…, extra)` primește `_pentruEmail` (cifrele, mașina, id-ul din Istoric) pe
+  AMBELE drumuri (rularea și reîncercarea); fișierul rămâne atașat. Linkul îl deschide pagina: `_raportDinAdresa()`, ÎNTÂI în `vertAterizeaza` (după
+  preferințe, altfel ecranul de pornire ar trece peste raport) → `insightDeschideRaport(id)`; scoate numărul din adresă; fondatorul trece pe verticala
+  Partener. Raportul altcuiva (Istoricul e al celui care a programat) = mesajul obișnuit al Istoricului. Păzit de `verify_email_raport.js` (în `npm test`).
 
 ### Panoul Mail al fondatorilor (Robert, 12.10) — etapa 1: „Trimise" + „Scrie"
 Business → **Mail** (după „Cereri demo" și, din 23.10, „Cereri de la clienți"; web `admin-tab-mail`, `raxLoadMail`, blocul între reperele „Panoul Mail";
@@ -1067,8 +1075,9 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   textul doar de după ultimele rezultate), `pentruModel`, `pentruEcran` („Surse de pe internet", „Căutat pe internet la …", „Ce am căutat: …"),
   `pentruPagina` (`nume`, `contor` „7 din 10", `nota`; fără bani), `textModel`, `textFirma`. NU scrie texte de-ale ei în pagină.
 - **Căutarea = un apel SEPARAT: `ai.cautaExtern`** — doar textul căutării (nimic din flotă sau din discuție), `web_search_20250305` (cea cu
-  „filtrare dinamică" cere execuție de cod), `max_uses` 3, `user_location` RO / Europe/Bucharest, „pause_turn" (ce a scris modelul trimis înapoi
-  neschimbat). Modelul: `AI_MODEL_SURSA`, altfel `AI_AGENT_MODEL`. Prețul: `ai.PRET_CAUTARE_USD` = 0,01 (10 $ la 1.000, din documentația oficială,
+  „filtrare dinamică" cere execuție de cod), `max_uses` 3, `user_location` DOAR fusul orar (`ai.LOC_CAUTARE`: Europe/Bucharest — Anthropic refuză țara „RO": 400 „Country code RO
+  is not supported", prinsă de Alin pe 29.10 la prima probă adevărată; la orice 400 de loc, `_refuzLoc` trimite o dată fără loc), „pause_turn" (ce a
+  scris modelul trimis înapoi neschimbat). Proba răspunde ca Anthropic (refuză țara) — NU pune țara înapoi. Modelul: `AI_MODEL_SURSA`, altfel `AI_AGENT_MODEL`. Prețul: `ai.PRET_CAUTARE_USD` = 0,01 (10 $ la 1.000, din documentația oficială,
   citită pe 28.10), adunat în `ai.costUsd` din `usage.server_tool_use.web_search_requests`. **Primește modelul căutarea?** `ai.modelPrimesteCautarea`
   (Models API: `capabilities.server_tools.web_search.supported`, gratuit) — la pornire (25 s; în probe doar cu `SURSA_VERIFICARE_LA_MS`, fiindcă
   modelul simulat al celorlalte probe răspunde la orice cerere către Anthropic), la 6 ore și la orice schimbare a comutatorului nostru; setarea
