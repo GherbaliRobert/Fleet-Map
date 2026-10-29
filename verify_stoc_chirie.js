@@ -213,7 +213,8 @@ T('„/api/stoc/praguri" stă înaintea „/api/stoc/:id" (altfel „praguri" ar
 const cauta = html.slice(html.indexOf('window.raxStocCauta = function'), html.indexOf('window.raxStocAlege = function'));
 T('căutarea redesenează DOAR tabelul (caseta nu-și pierde cursorul)', /stoc-tabel/.test(cauta) && !/_stocDeseneaza\(\)/.test(cauta));
 T('stocul intră în copia de siguranță', require('./backup.js').BUSINESS_TABLES.indexOf('stoc_echipamente') >= 0);
-T('aparatul legat de o firmă în „Dispozitive" mută stocul singur (adopție + înregistrare)', (server.match(/await _stocLaFirma\(/g) || []).length === 3);
+// Al patrulea loc (29.10): „Schimbă aparatul" — aparatul nou ia locul celui vechi pe mașina firmei.
+T('aparatul legat de o firmă în „Dispozitive" mută stocul singur (adopție + înregistrare + „Schimbă aparatul")', (server.match(/await _stocLaFirma\(/g) || []).length === 4);
 T('fișa firmei arată chiria (doar de citit)', /html \+= _raxChirieHtml\(s\);/.test(html) && /chirie: contracte\.chirieFirma\(company\.settings\)/.test(server));
 
 // ─── 7. Pe server pornit ───────────────────────────────────────────────────────────────────────

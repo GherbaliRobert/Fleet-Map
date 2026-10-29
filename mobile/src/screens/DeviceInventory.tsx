@@ -32,6 +32,7 @@ const culoare = (s: StareAparat) => (s.k === 'ok' ? 'var(--fd-ok)' : s.k === 'ta
 const data = (t: any) => { const ms = momentMs(t); return isFinite(ms) ? new Date(ms).toLocaleString('ro-RO') : '—'; };
 function val(r: any, k: string): string {
   if (k === 'plate') return r.plate || r.name || '';
+  if (k === 'imei') return r.aparat_imei || r.imei || '';   // aparatul montat acum („Schimbă aparatul", 29.10), ca pe web
   if (k === 'semnal') return semnal(r).t;
   if (k === 'last_tx') return data(r.last_tx);
   return r[k] == null ? '' : String(r[k]);
@@ -157,7 +158,7 @@ export function DeviceInventory() {
                 <div class="fd-rand">
                   <span class="mid">
                     <div class="nm">{r.plate || r.name || '—'}</div>
-                    <div class="sub">{r.company_name || '—'} · IMEI {r.imei}</div>
+                    <div class="sub">{r.company_name || '—'} · IMEI {r.aparat_imei || r.imei}</div>
                     <div class="sub">Model: <span style={r.gps_model ? 'color:var(--text-secondary)' : miss}>{r.gps_model || 'necompletat'}</span></div>
                     <div class="sub">Cartelă SIM: <span style={r.sim_number ? 'color:var(--text-secondary)' : miss}>{r.sim_number || 'necompletat'}</span></div>
                     <div class="sub"><b style={'color:' + culoare(sg)}>{sg.t}</b> · {data(r.last_tx)}</div>
@@ -187,7 +188,7 @@ export function DeviceInventory() {
             <div class="sheet-h"><b><Icon name="cpu" size={18} color="var(--accent)" /> {ed.plate || ed.name || ed.imei}</b><button class="h-btn" onClick={() => setEd(null)} aria-label="Închide"><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
-                <div style="font-size:12.5px;color:var(--text-muted)">{ed.company_name || 'Fără firmă'} · IMEI {ed.imei}</div>
+                <div style="font-size:12.5px;color:var(--text-muted)">{ed.company_name || 'Fără firmă'} · IMEI {ed.aparat_imei || ed.imei}</div>
                 <div class="fld"><label>Model dispozitiv</label><input value={fm.gps_model} placeholder="ex. Teltonika FMC130" onInput={(e: any) => setFm({ ...fm, gps_model: e.target.value })} /></div>
                 <div class="fld"><label>Cartelă SIM</label><input value={fm.sim_number} inputMode="tel" placeholder="ex. 0740111222" onInput={(e: any) => setFm({ ...fm, sim_number: e.target.value })} /></div>
                 <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45">Se schimbă doar modelul și cartela; numele și numărul mașinii rămân cum sunt.</div>

@@ -2688,6 +2688,36 @@ noastră. Clientul își vede aparatele și seriile, dar nu le adaugă și nu um
 - „Adaugă dispozitiv" rămâne (aparate care nu trec prin stocul nostru). Adopția rămâne în Neasignate.
 - Păzit de `verify_aparate_noi.js` (în `npm test`), cu trackere adevărate pe TCP, în mod strict.
 
+### „Schimbă aparatul": aparatul nou PREIA mașina (Robert, 29.10: „1 da, 2 acum")
+Mașina ERA aparatul (cheia ei, `devices.imei`, e IMEI-ul de la montaj): un aparat stricat însemna o mașină nouă, goală, iar cea
+veche ori se plătea mai departe, ori se arhiva și își pierdea istoricul. Acum cheia mașinii rămâne, iar aparatul montat ACUM stă în
+`devices.aparat_imei` (NULL = cel de la montaj). Istoricul, fișa, actele, reviziile, șoferul și abonamentul rămân pe cheie.
+- **Regulile și textele: `aparat_schimbat.js`** (curat): `harta` / `vehiculPentru` (aparat → mașina pe care scrie; aparatul scos →
+  `null` = refuzat; un aparat mutat pe ALTĂ mașină câștigă harta, chiar dacă IMEI-ul lui e cheia celei dintâi), `aparatPeMasina`,
+  `continuaContorul`, `candidati`, `VECHIUL` (defect / retur — doar ce lasă `stoc.TRECERI` din „montat"), textele (`textConfirmare`,
+  `textDupa`, `notaFisa`, `randIstoric`). Pagina și telefonul NU socotesc: iau listele și textele de la server.
+- **La conectare, `imei` devine cheia MAȘINII**, înaintea verificării stricte (`_aparate`, încărcată în `loadRegisteredImeis`, ÎNAINTE
+  ca serverul TCP să primească pe cineva). Aparatul scos e refuzat în ORICE mod (nu doar strict) și nu intră la „încercări". După
+  traducere, tot ingestul (live, alerte, abonament, CAN sticky) merge pe cheie — NU folosi IMEI-ul aparatului mai jos de handshake
+  (`activeConnections` ține `aparat` doar pentru depanare).
+- **Contorul de km (IO 16, `total_odometer`) e al APARATULUI**: `_contoare` + `continuaContorul` adună, ÎNAINTE de scriere, diferența
+  față de ultima cifră a aparatului vechi (aflată la prima poziție a celui nou; scrisă o dată, `odo_ajustare_m`; în așteptare,
+  `odo_vechi_m`). Reîncărcarea de la 2 minute NU suprascrie o ajustare aflată și încă nescrisă.
+- **O SINGURĂ cale: `db.schimbaAparat`** (tranzacție, rândurile încuiate), chemată doar de `POST /api/devices/:imei/schimba-aparat`
+  (`requireSuperadmin`; GET-ul dă fereastra). Candidați: tracker din stoc în depozit / la instalator (`dinStoc`, verificat de ruta)
+  sau rând din „Neasignate" — al cărui istoric se COPIAZĂ pe mașină (cu contorul continuat, `ON CONFLICT DO NOTHING RETURNING id`),
+  apoi rândul lui se șterge. Niciodată aparatul altei mașini (index unic `uq_devices_aparat` + verificări → 409). Mașina fără firmă /
+  arhivată → 400. După: harta reîncărcată, conexiunile tăiate (sună din nou), stocul (nou „montat" prin `_stocLaFirma`, vechi
+  „defect" / „retur"), audit, rândul din `schimbari_aparat` (în `BUSINESS_TABLES`).
+- **Stocul are seria APARATULUI**, nu cheia mașinii: `_trecePeFirma` leagă `aparatPeMasina(imei)`, ștergerea definitivă se uită la
+  `aparatAl(dev)`, „Anunță echipa" (`_cerereAparat`) trimite IMEI-ul aparatului montat acum. O cale NOUĂ care atinge stocul pentru o
+  mașină face la fel. Listele (Inventar, Dispozitive, Aparate GPS, exportul inventarului) arată `aparat_imei || imei` și caută după
+  amândouă; `edit-imei` (ascuns) rămâne CHEIA — o citesc salvarea, actele, reviziile.
+- **Limită știută:** un aparat scos nu poate porni o mașină NOUĂ prin „Neasignate" (IMEI-ul lui e cheia mașinii vechi) — se pune doar
+  prin „Schimbă aparatul", pe o mașină existentă (și pe cea de la care a plecat, după ce e pus înapoi în depozit).
+- Telefonul: `components/SchimbaAparat.tsx`, din Dispozitive (fișa aparatului), aceleași rute. Păzit de **`verify_schimba_aparat.js`**
+  (în `npm test`; pe server pornit, mod strict, trackere pe TCP), `verify_aparate_noi.js`, `verify_stoc_chirie.js`.
+
 ### Anunțul „aparate noi transmit" (Alin, 30.09: „pregătește-l ca notificare, să fie funcțional când face Robert")
 - **O singură funcție anunță: `anuntaAparateNoi({ imeis, companyId, partenerId, lucrareId, sursa, acum })`** (server.js).
   Azi o cheamă semnalul (`aparateNoiTick`, la 3 min); raportul instalatorului (Robert) o va chema cu

@@ -190,6 +190,7 @@ const neplata = require('./neplata');               // ce se întâmplă când n
 const abonament = require('./abonament');           // de la ce zi plătește clientul o mașină: pe zile, din prima transmisie (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
 const stocMod = require('./stoc');                  // stocul nostru de echipamente: unde e fiecare, al cui e (reguli curate)
+const aparatSchimbat = require('./aparat_schimbat'); // „Schimbă aparatul": aparatul nou preia mașina (29.10, reguli curate)
 const compat = require('./compatibilitate');        // ce aparat merge pe ce mașină, după listele Teltonika (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
@@ -480,6 +481,7 @@ async function loadRegisteredImeis() {
     const s = await db.stocImeiuri(montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).map(function (e) { return e.k; }), stocMod.PRIMITE_LA_CONECTARE);
     registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei));
     stocImeis.clear(); s.filter(montaj.esteImei).forEach(function (x) { stocImeis.add(x); });
+    await _aparateReincarca();   // „Schimbă aparatul": ce aparat scrie pe ce mașină — ÎNAINTE ca serverul TCP să primească pe cineva
     registeredLoaded = true;
     console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate + ${stocImeis.size} în stoc (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
   } catch (e) { console.error('[STRICT] loadRegisteredImeis:', e.message); }
@@ -492,6 +494,26 @@ async function _flotaGreaReincarca() {
   catch (e) { console.error('[FLOTA] firmele cu marfă:', e.message); }
 }
 function _imeiPrimit(imei) { return registeredImeis.has(imei) || stocImeis.has(imei); }
+// ─── „Schimbă aparatul" (Robert, 29.10) — regulile în aparat_schimbat.js ───
+// Harta de la conectare: aparatul nou → mașina pe care scrie (cheia ei rămâne IMEI-ul de la montaj); aparatul scos nu mai
+// e primit. Plus contoarele de km care continuă pe aparatul nou. Se reîncarcă odată cu lista de aparate (la pornire, la 2
+// minute) și pe loc, la orice schimbare de aparat, arhivare, restaurare sau ștergere.
+let _aparate = aparatSchimbat.harta([]);
+const _contoare = new Map();   // cheia mașinii → { ajustare, vechi } (aparat_schimbat.continuaContorul)
+async function _aparateReincarca() {
+  try {
+    _aparate = aparatSchimbat.harta(await db.hartaAparate());
+    const lista = await db.contoareDeContinuat();
+    const dinBaza = new Set(lista.map(function (x) { return x.imei; }));
+    lista.forEach(function (x) {
+      const m = _contoare.get(x.imei);
+      // Ajustarea tocmai aflată la ingest și încă nescrisă în bază câștigă: altfel s-ar socoti a doua oară, de la altă poziție.
+      if (m && m.ajustare != null && x.ajustare == null) return;
+      _contoare.set(x.imei, { ajustare: x.ajustare, vechi: x.vechi });
+    });
+    Array.from(_contoare.keys()).forEach(function (k) { if (!dinBaza.has(k)) _contoare.delete(k); });
+  } catch (e) { console.error('[APARAT] harta aparatelor schimbate:', e.message); }
+}
 // ─── Ziua în care pornește abonamentul unei mașini (decizie Alin, 28.09: „pe zile, din ziua în care aparatul
 //     transmite prima dată") ───
 // `devices.abonament_de_la` se scrie la PRIMUL pachet primit după ce aparatul a ajuns pe o firmă client (nu
@@ -813,6 +835,21 @@ const tcpServer = net.createServer((socket) => {
           return;
         }
 
+        // „Schimbă aparatul" (29.10): de aici înainte `imei` e cheia MAȘINII. Un aparat montat în locul altuia scrie pe mașina
+        // lui (aparat_schimbat.vehiculPentru); aparatul scos nu mai e primit — în orice mod, nu doar în cel strict: altfel ar
+        // scrie pe mașină în același timp cu cel nou. Nu intră în „încercări": nu e un aparat necunoscut de aprobat.
+        const imeiAparat = imei;
+        const vehicul = aparatSchimbat.vehiculPentru(imeiAparat, _aparate);
+        if (vehicul == null) {
+          console.warn(`[TCP] Aparat înlocuit ${imeiAparat} de la ${clientAddr} — respins (pe mașină e acum alt aparat)`);
+          ingestStats.rejects++;
+          addDebugEntry({ event: 'reject', imei: imeiAparat, address: clientAddr, reason: 'aparat_inlocuit' });
+          socket.destroy();
+          imei = null;
+          return;
+        }
+        imei = vehicul;
+
         // MOD STRICT: doar IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neRESPINSE. Necunoscut/respins → drop + jurnal,
         // fără creare de rând sau stocare de poziții. Guard: dacă lista încă nu s-a încărcat (fereastra de la boot),
         // NU bloca — evită să pici toate device-urile la pornire.
@@ -826,8 +863,8 @@ const tcpServer = net.createServer((socket) => {
           return;
         }
 
-        console.log(`[TCP] Dispozitiv identificat: IMEI ${imei} de la ${clientAddr}`);
-        addDebugEntry({ event: 'imei', imei, address: clientAddr });
+        console.log(`[TCP] Dispozitiv identificat: IMEI ${imei}${imeiAparat !== imei ? ' (aparatul ' + imeiAparat + ')' : ''} de la ${clientAddr}`);
+        addDebugEntry(imeiAparat !== imei ? { event: 'imei', imei, aparat: imeiAparat, address: clientAddr } : { event: 'imei', imei, address: clientAddr });
 
         // Salvează conexiunea activă (cu referință la socket pentru destroy() forțat la cleanup zombie).
         // ATENȚIE: când se serializează activeConnections în /api/debug/connections, EXCLUDE câmpul `socket`
@@ -838,6 +875,7 @@ const tcpServer = net.createServer((socket) => {
         activeConnections.set(imei, {
           address: clientAddr,
           connectedAt: new Date(),
+          aparat: imeiAparat,   // aparatul care a sunat (altul decât cheia mașinii, după „Schimbă aparatul")
           socket
         });
 
@@ -982,6 +1020,13 @@ const tcpServer = net.createServer((socket) => {
           }
         }
       }
+
+      // „Schimbă aparatul": contorul de km al aparatului nou continuă de unde a rămas cel vechi (aparat_schimbat.js) —
+      // ÎNAINTE de stocare și live, ca reviziile la km, „km la bord" și rapoartele să vadă aceeași mașină, fără salt.
+      { const _st = _contoare.get(imei);
+        if (_st && aparatSchimbat.continuaContorul(parsed.records, _st).nou) {
+          db.salveazaAjustareContor(imei, _st.ajustare).catch(function (e) { console.warn('[APARAT] contorul ' + imei + ':', e.message); });
+        } }
 
       // Override „contact din DIN1" (dacă e configurat pe vehicul) — ÎNAINTE de stocare + live, ca toate
       // consumatoarele (status, alerte, „motor pornit/oprit de", rapoarte) să vadă contactul corect.
@@ -10215,8 +10260,9 @@ async function _trecePeFirma(req, imei, companyId) {
   _locMasini.delete(imei);   // „Distribuie locația": linkul făcut la firma veche se oprește pe loc, nu peste 30 de secunde
   _uitaPornirea(imei);   // abonamentul pornește din nou la prima transmisie pe firma nouă (dacă firma s-a schimbat)
   auditReq(req, 'assign_company', 'device', imei, { companyId });
-  // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc).
-  if (companyId != null) await _stocLaFirma(imei, companyId, _cine(req));
+  // Aparatul din stocul nostru, legat de firmă → „montat la client" (stoc.js; nu oprește nimic dacă nu e în stoc). Bucata din
+  // stoc are seria APARATULUI montat acum — după „Schimbă aparatul" nu mai e cheia mașinii.
+  if (companyId != null) await _stocLaFirma(aparatSchimbat.aparatPeMasina(imei, _aparate), companyId, _cine(req));
   await _flotaGreaReincarca();   // un camion mutat pe o firmă îi pornește singur simulatorul de încărcare (dacă nu l-am ales noi)
 }
 app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req, res) => {
@@ -10385,7 +10431,7 @@ async function _inventarExport(req, res) {
         + (doarCeVezi ? ' (selecția de pe ecran)' : ''),
       columns: ['Firmă', 'Nr. înmatriculare', 'IMEI', 'Model dispozitiv', 'Cartelă SIM', 'Semnal', 'Ultima transmisie'],
       rows: rows.map(function (r) {
-        return [r.company_name || '—', r.plate || r.name || '—', r.imei, r.gps_model || '—', r.sim_number || '—',
+        return [r.company_name || '—', r.plate || r.name || '—', r.aparat_imei || r.imei, r.gps_model || '—', r.sim_number || '—',
                 _invSemnalText(r.last_tx), fmtTs(r.last_tx)];
       })
     };
@@ -12141,6 +12187,7 @@ async function _cerereAparat(imei) {
   let d = null;
   try { d = await db.getDeviceFull(imei); } catch (e) {}
   if (d) {
+    out.imei = aparatSchimbat.aparatAl(d) || out.imei;   // aparatul montat ACUM („Schimbă aparatul", 29.10), nu cheia mașinii
     if (d.gps_model) out.model = String(d.gps_model);
     if (d.sim_number) out.sim = String(d.sim_number);
     if (d.abonament_de_la) out.pornit = Number(d.abonament_de_la);
@@ -12155,7 +12202,7 @@ async function _cerereAparat(imei) {
   const fl = typeof io.fuel_level_liters === 'number' ? io.fuel_level_liters : io.can_fuel_level_liters;
   if (typeof fl === 'number' && fl >= 0) out.rezervor = fl;
   try {
-    const s = await db.stocDupaSerie(String(imei));
+    const s = await db.stocDupaSerie(String(out.imei));
     if (s && s.partener_id) { const p = (await db.listParteneriMontaj()).find(function (x) { return Number(x.id) === Number(s.partener_id); }); if (p) out.instalator = p.name; }
   } catch (e) {}
   return out;
@@ -12887,6 +12934,7 @@ app.put('/api/devices/:imei/status', requireAuth, requireSuperadmin, withScope, 
       broadcastWs({ type: 'removed', data: { imei } }); // scoate marker-ul din sesiunile web/mobil deschise
       auditReq(req, 'update', 'device', imei, { status, archived_positions: archived });
       await _flotaGreaReincarca();   // arhivatul nu mai numără la flota care cară marfă
+      await _aparateReincarca();     // un aparat schimbat al mașinii arhivate ajunge tot la ea — și e refuzat acolo
       return res.json({ ok: true, status, archived_positions: archived });
     }
     // Restaurare: reia ingestul. Istoricul rămâne în positions_archive (getDeviceHistory face UNION → fără pierderi).
@@ -12894,6 +12942,7 @@ app.put('/api/devices/:imei/status', requireAuth, requireSuperadmin, withScope, 
     archivedImeis.delete(imei);
     registeredImeis.add(imei); // reintră în allow-list (mod strict)
     await _flotaGreaReincarca();
+    await _aparateReincarca();
     auditReq(req, 'update', 'device', imei, { status });
     res.json({ ok: true, status });
   } catch (err) {
@@ -12913,14 +12962,17 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
     registeredImeis.delete(imei);
+    await _aparateReincarca();   // mașina ștearsă nu mai are aparat schimbat de ținut minte
     // Rândul s-a dus, deci și ziua lui de pornire: înregistrat din nou, aparatul pornește abonamentul la prima transmisie.
     // Până pe 01.10 memoria îl ținea „pornit" până la repornirea serverului (lista lui Robert, pct. 12).
     _uitaPornirea(imei);
     // Șters definitiv = nu mai e primit nici ca aparat din stoc (găsit de Robert, 30.09: revenea singur, cu poziții noi).
     // Bucata încă „în depozit" / „la instalator" trece pe „defect", cu notă: de verificat înainte să se mai monteze.
-    stocImeis.delete(imei);
+    // Bucata din stoc e a APARATULUI montat acum pe mașină (după „Schimbă aparatul" nu mai e cheia ei).
+    const _aparatSters = aparatSchimbat.aparatAl(dev) || imei;
+    stocImeis.delete(_aparatSters);
     try {
-      const sb = await db.stocDupaSerie(imei);
+      const sb = await db.stocDupaSerie(_aparatSters);
       if (sb && stocMod.primitLaConectare(sb.stare) && stocMod.poateTrece(sb.stare, 'defect')) {
         await db.mutaStoc(sb.id, { stare: 'defect', company_id: sb.company_id, partener_id: null, proprietar: sb.proprietar,
           cine: _cine(req), nota: 'automat: aparatul a fost șters definitiv din Dispozitive — de verificat înainte să se mai monteze' });
@@ -12932,6 +12984,91 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     console.log(`[ȘTERGERE] Vehicul ${imei} (${dev.plate || dev.name || '-'}) șters definitiv de ${(getAuth(req) || {}).username || '?'}`);
     res.json({ ok: true, deleted });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── „Schimbă aparatul" (Robert, 29.10: „1 da, 2 acum") ───
+// Aparatul nou PREIA mașina: istoricul, fișa, actele, reviziile, șoferul și abonamentul rămân pe ea (aparat_schimbat.js).
+// Doar noi (aparatele sunt marfa noastră — decizia din 16.09). O SINGURĂ cale de schimbare: `db.schimbaAparat`, chemată de
+// POST-ul de mai jos; pagina (fișa mașinii) doar arată ce primește de la GET.
+const _MODELE_TRACKER = {};
+montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).forEach(function (e) { _MODELE_TRACKER[e.k] = e.et; });
+app.get('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const v = await db.getDeviceFull(req.params.imei);
+    if (!v || DEMO_SET.has(v.imei)) return res.status(404).json({ error: 'Mașina nu există.' });
+    const aparatAcum = aparatSchimbat.aparatAl(v);
+    const d = await db.aparateDeMontat(Object.keys(_MODELE_TRACKER), stocMod.PRIMITE_LA_CONECTARE);
+    const sv = await db.stocDupaSerie(aparatAcum);
+    const vechiInStoc = !!(sv && sv.stare === 'montat');   // doar așa se poate trece pe „defect" / „retur" (stoc.TRECERI)
+    const lista = aparatSchimbat.candidati({ stoc: d.stoc, neasignate: d.neasignate, ocupate: new Set(d.ocupate), aparatAcum,
+      modele: _MODELE_TRACKER, acum: Date.now() });
+    const istoric = await db.istoricAparate(v.imei);
+    const nuSePoate = v.status === 'archived' ? 'Mașina e arhivată. Restaureaz-o întâi, apoi schimbă aparatul.'
+      : v.company_id == null ? 'Mașina nu e încă pe nicio firmă. Aparatul se schimbă la mașinile clienților; una din „Neasignate” se trece întâi pe firmă.'
+      : null;
+    res.json({
+      vehicul: { imei: v.imei, nume: aparatSchimbat.numeMasina(v) },
+      aparatAcum, model: v.gps_model || null, sim: v.sim_number || null, vechiInStoc, nuSePoate,
+      vechiul: aparatSchimbat.VECHIUL,
+      candidati: lista.map(function (c) {
+        const conf = {};
+        aparatSchimbat.VECHIUL.forEach(function (x) { conf[x.k] = aparatSchimbat.textConfirmare({ vehicul: v, candidat: c, aparatAcum, vechiul: x.k, vechiInStoc }); });
+        return Object.assign({}, c, { confirmare: conf });
+      }),
+      istoric: istoric.map(aparatSchimbat.randIstoric),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const nou = String(b.nou == null ? '' : b.nou).trim();
+    if (!aparatSchimbat.esteImei(nou)) return res.status(400).json({ error: 'Alege aparatul nou din listă.' });
+    const v0 = await db.getDeviceFull(req.params.imei);
+    if (!v0 || DEMO_SET.has(v0.imei)) return res.status(404).json({ error: 'Mașina nu există.' });
+    const vechiul = aparatSchimbat.vechiulValid(b.vechiul) ? b.vechiul : 'defect';
+    const motiv = b.motiv ? String(b.motiv).trim().slice(0, 300) || null : null;
+    const sim = b.sim === undefined ? undefined : (String(b.sim == null ? '' : b.sim).trim().slice(0, 40) || null);
+    // Din stoc se ia doar un tracker încă nemontat (în depozit sau la instalator) — cel din „Neasignate" îl verifică baza.
+    const stocNou = await db.stocDupaSerie(nou);
+    const echip = stocNou ? montaj.echipament(stocNou.tip) : null;
+    const dinStoc = !!(echip && echip.transmite && stocMod.primitLaConectare(stocNou.stare));
+    const auth = getAuth(req) || {};
+    let r;
+    try {
+      r = await db.schimbaAparat({ vehicul: v0.imei, nou, dinStoc, model: echip && echip.transmite ? echip.et : null, sim, vechiul, motiv,
+        userId: auth.userId || null, cine: _cine(req), acum: Date.now() });
+    } catch (e) { if (e.cod) return res.status(e.cod).json({ error: e.message }); throw e; }
+
+    // Memoria serverului, pe loc: harta de la conectare și contorul mașinii.
+    await _aparateReincarca();
+    if (r.ajustare != null || r.vechiM != null) _contoare.set(v0.imei, { ajustare: r.ajustare, vechi: r.vechiM });
+    else _contoare.delete(v0.imei);
+    if (r.sursa === 'neasignat') {   // rândul lui din „Neasignate" s-a dus: nici în listă, nici pe hartă
+      registeredImeis.delete(nou); deviceAttempts.delete(nou); _uitaPornirea(nou); _devCompanyCache.delete(nou);
+      livePositions.delete(nou); lastCanIo.delete(nou); _locMasini.delete(nou);
+      broadcastWs({ type: 'removed', data: { imei: nou } });
+    }
+    stocImeis.delete(nou);
+    invalidateLiveEnrichCache();
+    // Conexiunile se refac: aparatul nou sună din nou și ajunge pe mașină; cel vechi e refuzat.
+    [v0.imei, nou, r.vechi].forEach(function (k) { const c = activeConnections.get(k); if (c && c.socket) { try { c.socket.destroy(); } catch (_) {} } });
+
+    // Stocul: aparatul nou → montat la firma mașinii; cel vechi → „defect" sau „retur".
+    await _stocLaFirma(nou, v0.company_id, _cine(req));
+    let stocVechi = null;
+    try {
+      const sv = await db.stocDupaSerie(r.vechi);
+      if (sv && sv.stare === 'montat' && stocMod.poateTrece(sv.stare, vechiul)) {
+        await db.mutaStoc(sv.id, { stare: vechiul, company_id: sv.company_id, partener_id: null, proprietar: sv.proprietar, cine: _cine(req),
+          nota: 'automat: înlocuit pe ' + aparatSchimbat.numeMasina(v0) + ' cu aparatul ' + nou + (motiv ? ' — ' + motiv : '') });
+        stocVechi = 'Aparatul vechi a trecut în stoc pe „' + vechiul + '”.';
+      }
+    } catch (e) { console.warn('[STOC] aparatul vechi, la schimbare:', e.message); }
+
+    auditReq(req, 'update', 'device', v0.imei, { schimba_aparat: { vechi: r.vechi, nou, sursa: r.sursa, vechiul, pozitii_mutate: r.pozitiiMutate } });
+    res.json({ ok: true, aparat: nou, text: aparatSchimbat.textDupa({ vehicul: v0, nou, pozitiiMutate: r.pozitiiMutate, stocVechi }) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Mod strict: încercări de conectare de la IMEI-uri NEÎNREGISTRATE (super-admin) — descoperire + aprobare ──
@@ -13370,6 +13507,9 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
       );
       if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; device.ignition_off_at = sd.rows[0].ignition_off_at; }
     } catch (e) { /* fără durate dacă interogarea eșuează */ }
+    // „Schimbă aparatul" (29.10): IMEI-ul aparatului montat acum (cheia mașinii rămâne `imei`) și rândul de sub el din fișă.
+    device.aparat_acum = aparatSchimbat.aparatAl(device);
+    try { device.aparat_nota = aparatSchimbat.notaFisa(await db.istoricAparate(device.imei), device); } catch (e) { device.aparat_nota = null; }
     res.json(device);
   } catch (err) {
     res.status(500).json({ error: err.message });

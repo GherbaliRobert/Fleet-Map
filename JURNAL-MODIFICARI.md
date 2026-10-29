@@ -178,6 +178,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   plătit luna întreagă în avans, iar cel nou pornește cu zilele lui (de ex. la 45 de lei pe lună, schimbat pe 15 ale
   unei luni de 30 de zile: încă 24 de lei pentru 16 zile pe care aparatul vechi le plătise deja). De hotărât regula —
   de pildă, aparatul nou preia ziua de pornire a celui vechi. Pe 03.10 nu era hotărâtă nici în jurnal, nici în cod.
+  **29.10: „Schimbă aparatul" face exact asta** (Robert: „1 da, 2 acum") — aparatul nou preia mașina, cu ziua ei de pornire;
+  nicio zi nu se mai plătește de două ori. De bifat, dacă sunteți de acord că asta e regula.
 - [ ] **Voi: datele firmei, pe site. Adăugat pe 02.10.** Pe Termeni și Confidențialitate scrie încă „[NUME FIRMĂ SRL]",
   „[CUI]", „[adresă]", „[contact@ratrack.ro]" — le vede oricine, și Google. Pe prima pagină telefonul e „+40 7XX XXX XXX",
   iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
@@ -394,6 +396,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (15) **adăugat pe 27.10 — alertele „de stare":** pe ecranul Alerte, `cum_suna` pe fiecare regulă de felul ăsta („sună la apariție, apoi o
   dată pe zi") și, în fereastra regulii, fraza din `GET /api/alerts/cum-suna` (`text`, doar la tipurile din `deStare`). Regula însăși stă pe
   server — telefonul primește oricum un singur anunț pe problemă.
+- [ ] **Robert: telefonul și „Schimbă aparatul" (APK-ul următor). Adăugat pe 29.10.** Codul e gata (foaia
+  `SchimbaAparat.tsx`, butonul pe fișa aparatului din Dispozitive, IMEI-ul aparatului montat acum în Dispozitive, Inventar și Aparate
+  GPS) și trece verificarea de tipuri; rămâne APK-ul. Pe web merge de la publicare.
 - [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
   clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
   `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
@@ -507,6 +512,36 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-10-29
+
+### AMÂNDOI · „Schimbă aparatul": aparatul nou preia mașina, istoricul rămâne
+
+Robert (29.10): *„avem o logică în spate în cazul în care un dispozitiv se defectează, încât să rămânem și cu istoricul acelei
+mașini?"* Nu aveam: în aplicație mașina ERA aparatul (cheia ei e IMEI-ul). Un aparat nou însemna o mașină nouă, goală, iar cea
+veche ori se plătea mai departe (2 × 45 lei pe lună pentru o singură mașină), ori se arhiva și își pierdea istoricul în 30 de zile.
+Robert: *„1 da, 2 acum"*.
+
+- **Ce am schimbat:** în fișa mașinii, lângă IMEI, butonul **„Schimbă aparatul"** (doar noi). Alegi aparatul nou dintr-o listă —
+  un tracker din stoc încă nemontat (în depozit sau la instalator) sau unul care transmite deja din „Neasignate" (montat înainte să
+  apeși) —, spui ce s-a întâmplat cu cel vechi („s-a stricat" → stoc „defect"; „merge, l-am luat înapoi" → stoc „retur"), cartela și
+  motivul, apoi confirmi textul aplicației. De acolo:
+  - pozițiile aparatului nou intră pe **aceeași mașină**; istoricul, fișa, actele, reviziile, șoferul și abonamentul merg mai departe
+    (fără zile plătite de două ori);
+  - aparatul vechi **nu mai e primit** (altfel ar scrie pe mașină în același timp cu cel nou);
+  - **contorul de km** al aparatului nou continuă de unde a rămas cel vechi (reviziile la km, „km la bord" și rapoartele nu sar);
+  - ce a trimis aparatul cât a stat în „Neasignate" trece pe mașină, iar rândul lui de acolo dispare;
+  - stocul se mută singur (aparatul nou „montat", cel vechi „defect" / „retur"), iar schimbarea rămâne în istoric (cine, când, ce).
+  - Aparatul de la montaj, reparat și pus înapoi în depozit, se poate monta iar pe aceeași mașină tot din „Schimbă aparatul".
+- **Ce vede fondatorul:** butonul în fișă (web) și în Dispozitive, pe fișa aparatului (telefon, la APK-ul următor); în Inventar,
+  Dispozitive și Aparate GPS, IMEI-ul aparatului montat acum.
+- **Ce vede clientul:** sub IMEI, în fișa mașinii, rândul „Aparatul GPS a fost schimbat pe 29.10.2026. Istoricul de dinainte rămâne
+  pe mașină." Mașina, istoricul și rapoartele — neschimbate.
+- **Ce nu face (de știut):** un aparat scos de pe o mașină nu mai poate porni o mașină NOUĂ prin „Neasignate" (IMEI-ul lui e cheia
+  mașinii vechi); se pune doar prin „Schimbă aparatul", pe o mașină care există.
+- Reperele: `aparat_schimbat.js` (regulile și textele), `db.schimbaAparat` (o singură cale, într-o tranzacție), `devices.aparat_imei`,
+  tabela `schimbari_aparat`, traducerea la conectare din server.js, `mobile/src/components/SchimbaAparat.tsx`. Probă nouă:
+  `verify_schimba_aparat.js` (în `npm test`; 74, pe server pornit, în mod strict, cu trackere adevărate pe TCP). Două probe vechi
+  rescrise pe regula nouă: `verify_aparate_noi.js` (ștergerea definitivă se uită la aparatul montat acum) și `verify_stoc_chirie.js`
+  (al patrulea loc care leagă stocul de firmă).
 
 ### AMÂNDOI · „Sursă externă": căutarea pe internet mergea doar în probe — reparată
 

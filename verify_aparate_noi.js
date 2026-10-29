@@ -96,7 +96,8 @@ T('lista din stoc se ține în pas: intrare, orice mutare (primit doar în depoz
   /db\.stocImeiuri\([^\n]*stocMod\.PRIMITE_LA_CONECTARE\)/.test(server) && /setInterval\(loadRegisteredImeis, 2 \* 60 \* 1000\)/.test(server));
 const rutaSterge = server.slice(server.indexOf("app.delete('/api/devices/:imei'"), server.indexOf("app.delete('/api/devices/:imei'") + 2200);
 T('ștergerea definitivă: IMEI-ul iese și din lista stocului, iar bucata încă „în depozit / la instalator" trece pe „defect", cu notă (găsit de Robert, 30.09)',
-  /stocImeis\.delete\(imei\);/.test(rutaSterge) && /stocMod\.primitLaConectare\(sb\.stare\) && stocMod\.poateTrece\(sb\.stare, 'defect'\)/.test(rutaSterge) && /șters definitiv din Dispozitive — de verificat/.test(rutaSterge));
+  // Din 29.10 („Schimbă aparatul") bucata e a APARATULUI montat acum pe mașină, nu neapărat cheia ei.
+  /const _aparatSters = aparatSchimbat\.aparatAl\(dev\) \|\| imei;\s*stocImeis\.delete\(_aparatSters\);/.test(rutaSterge) && /db\.stocDupaSerie\(_aparatSters\)/.test(rutaSterge) && /stocMod\.primitLaConectare\(sb\.stare\) && stocMod\.poateTrece\(sb\.stare, 'defect'\)/.test(rutaSterge) && /șters definitiv din Dispozitive — de verificat/.test(rutaSterge));
 T('ce era deja în „Neasignate" nu se anunță ca nou la prima pornire (o singură dată)', /await db\.migreazaAparateNoiAnuntate\(\);/.test(server));
 T('rutele de probă (ceasul mutat) există doar sub SEED_TEST și doar pentru noi', /if \(process\.env\.SEED_TEST === '1'\) \{\s*\n\s*\/\/[^\n]*\n\s*app\.post\('\/api\/test\/ceasuri', requireAuth, requireSuperadmin/.test(server));
 

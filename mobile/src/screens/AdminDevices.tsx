@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
+import { SchimbaAparat } from '../components/SchimbaAparat';   // „Schimbă aparatul" (29.10), ca în fișa mașinii de pe web
 import { raCauta } from '../lib/format';
 import { nrDe } from '../lib/numar';
 import { anuntDinAdresa, adresaFaraAnunt } from '../lib/push';   // anunțul „aparate noi transmit", din adresă
@@ -179,6 +180,7 @@ export function AdminDevices() {
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [cate, setCate] = useState<Record<string, number>>({});
   const [sel, setSel] = useState<any | null>(null);
+  const [schimb, setSchimb] = useState<string | null>(null);   // mașina căreia îi schimbăm aparatul
   const [companyId, setCompanyId] = useState('');
   const [canIface, setCanIface] = useState('');
   const [saving, setSaving] = useState(false);
@@ -242,7 +244,7 @@ export function AdminDevices() {
   const rows = useMemo(() => toate.filter((d) => {
     if (filtru === 'nosignal') { if (arhivat(d) || semnal(d).k !== 'mut') return false; }
     else if (filtru !== 'all' && galeata(d) !== filtru) return false;
-    return raCauta(q, d.name, d.plate, d.imei, d.company_name);
+    return raCauta(q, d.name, d.plate, d.imei, d.aparat_imei, d.company_name);
   }).sort((a, b) => (momentMs(b.last_position_time || b.last_seen) || 0) - (momentMs(a.last_position_time || a.last_seen) || 0)), [items, filtru, q]);
   const grup = useMemo(() => grupuri(rows), [rows]);
 
@@ -394,7 +396,7 @@ export function AdminDevices() {
       <button type="button" class="fd-rand" onClick={() => open(d)}>
         <span class="mid">
           <div class="nm">{d.name || d.plate || d.imei}{d.name && d.plate ? ' · ' + d.plate : ''}</div>
-          <div class="sub">IMEI {d.imei} · {d.can_interface ? String(d.can_interface).toUpperCase() : 'CAN auto'}</div>
+          <div class="sub">IMEI {d.aparat_imei || d.imei} · {d.can_interface ? String(d.can_interface).toUpperCase() : 'CAN auto'}</div>
           {/* Semnalul nu se arată la arhivate: pe alea le-am oprit noi, tăcerea lor e normală. */}
           {b !== 'archived' && <div class="sub" style={'font-weight:700;color:' + culoare(sg)}>● {sg.t}</div>}
           {b !== 'archived' && <div class="sub">ultima poziție {dataOra(d.last_position_time || d.last_seen)}</div>}
@@ -570,7 +572,7 @@ export function AdminDevices() {
             <div class="sheet-h"><b><Icon name="cpu" size={18} color="var(--accent)" /> {sel.name || sel.plate || sel.imei}</b><button class="h-btn" onClick={() => setSel(null)} aria-label="Închide"><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
-                <div style="font-size:12.5px;color:var(--text-muted)">IMEI {sel.imei}{sel.plate ? ' · ' + sel.plate : ''}</div>
+                <div style="font-size:12.5px;color:var(--text-muted)">IMEI {sel.aparat_imei || sel.imei}{sel.plate ? ' · ' + sel.plate : ''}</div>
                 {!arhivat(sel) && (() => {
                   const sg = semnal(sel);
                   return <div style="font-size:13px"><b style={'color:' + culoare(sg)}>● {sg.t}</b><span style="color:var(--text-muted)"> · ultima poziție {dataOra(sel.last_position_time || sel.last_seen)}</span></div>;
@@ -609,6 +611,14 @@ export function AdminDevices() {
                   )}
                 </div>
                 <div class="frm-actions"><button class="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Se salvează…' : 'Salvează'}</button></div>
+                {!arhivat(sel) && sel.company_id != null && (
+                  <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px">
+                    <button class="fd-btn" style="min-height:44px" disabled={saving} onClick={() => setSchimb(String(sel.imei))}>
+                      <Icon name="swap" size={15} /> Schimbă aparatul
+                    </button>
+                    <span style="font-size:11.5px;color:var(--text-muted);line-height:1.45">Aparatul s-a stricat? Cel nou preia mașina: istoricul, fișa și abonamentul rămân pe ea.</span>
+                  </div>
+                )}
                 {!arhivat(sel) && (
                   <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px">
                     <button class="fd-btn danger" style="min-height:44px" disabled={saving} onClick={arhiveaza}>
@@ -625,6 +635,11 @@ export function AdminDevices() {
             </div>
           </div>
         </div>
+      )}
+
+      {schimb && (
+        <SchimbaAparat imei={schimb} onClose={() => setSchimb(null)}
+          onGata={(text) => { setSchimb(null); setSel(null); showToast(text); reload(); }} />
       )}
 
       {intreb && (
