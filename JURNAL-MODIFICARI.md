@@ -419,7 +419,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „+" (oprit la fiecare discuție nouă), răspunsul în două părți („Din flota ta" / „De pe internet", cu sursele), comutatorul firmei în
   „Pachet și conturi" și al nostru în RA Insight · control; căutarea pleacă separat, fără datele firmei. **Robert, înainte de construcție:**
   în consola Anthropic › Settings › Capabilities, căutarea pe internet să nu fie oprită (e pornită din oficiu).
-- [ ] **Robert și voi: „Sursă externă" — trei pași până la clienți. Adăugat pe 28.10.** (1) **Robert:** consola Anthropic › Settings ›
+- [x] **FĂCUT (29.10): Alin a încercat-o pe „Doar pentru noi" (răspuns bun, cu „Surse de pe internet") și a pus „Pornită pentru firme"**
+  (Alin: „gata, le-am făcut… am activat pentru toate firmele"). Pasul lui Robert din consola Anthropic n-a mai fost nevoie.
+  **Robert și voi: „Sursă externă" — trei pași până la clienți. Adăugat pe 28.10.** (1) **Robert:** consola Anthropic › Settings ›
   Capabilities — căutarea pe internet să nu fie oprită (din oficiu e pornită). (2) **Noi, cu contul de fondator:** RA Insight · control ›
   Controale › „Sursă externă" › „Doar pentru noi"; rândul de dedesubt trebuie să spună „Haiku 5.5 primește căutarea pe internet". Apoi
   zece întrebări adevărate pe „RA Track Demo", ca să vedem costul real (sub 2 lei). (3) „Pornită pentru firme". Până atunci butonul nu
@@ -507,6 +509,31 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-10-29
+
+### AMÂNDOI · „Sursă externă": fără titlul „Din sursă externă" în răspuns
+
+**Ce am schimbat:** Alin, după prima probă adevărată (răspuns bun despre vinieta din Ungaria): „scoate din text: Din sursă externă".
+RA Insight nu mai pune titluri deasupra părților: spune întâi ce arată aplicația, apoi ce a găsit pe internet, cu site-ul în
+paranteză lângă fiecare cifră. Antetul („Analiză · sursă externă, 1 căutare") și „Surse de pe internet" de sub răspuns spun oricum că
+s-a căutat. Dacă modelul mai scrie titlul din obișnuință (de pildă într-o conversație începută ieri), aplicația îl scoate; la fel din
+conversațiile redeschise. A plecat și perechea lui, „Din flota ta", care fără el nu mai avea rost. Ghidul spune drumul nou. Păzit de
+verify_sursa_externa.js (138).
+
+**Ce vede fondatorul:** răspunsurile cu sursă externă încep direct cu răspunsul.
+
+**Ce vede clientul:** la fel (de azi butonul „Sursă externă" apare și la firmele cu Basic, Pro sau Business — Alin l-a pornit).
+
+### FONDATOR · Macheta asistentului AI al fondatorilor (nimic construit)
+
+**Ce am schimbat:** Alin: „schițează o machetă, propune ceva bun: ce rol, ce face". Macheta din 15.10 refăcută, la același link:
+https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt — rolul, ce știe (bani, profit, clienți, contracte și oferte, montaj, echipamente,
+clienții care așteaptă, firma noastră), „Azi la noi" pe „Acasă" (cel mult 5 rânduri, pe reguli, gratuit), răspunsuri cu cifre (inclusiv
+„ce ne lipsește ca să emitem prima factură"), „Luni la noi", pașii cu „Da" (etapa 2: contractul la semnat, cererea preluată, aparatele pe
+firmă, ciorna de email; niciodată factura emisă, suspendarea, prețurile), ce nu vede, costul (3–5 lei pe lună), etapele și 5 întrebări.
+
+**Ce vede fondatorul:** nimic în aplicație încă — macheta, de aprobat.
+
+**Ce vede clientul:** nimic.
 
 ### AMÂNDOI · „Sursă externă": căutarea pe internet mergea doar în probe — reparată
 

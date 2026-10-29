@@ -26,7 +26,7 @@ const JS = fs.readdirSync(path.join(__dirname, 'public', 'js')).filter((f) => f.
 // tot din 22.10, textele cererilor către noi („Echipa RA Track se ocupă · cererea nr. …"), din cereri_echipa.js.
 // Din 23.10 (pasul 2, partea 2) și textele cartonașelor de alertă și de discuție („Da, pune alerta", „Da, notează"), din propuneri.js;
 // din 26.10 (partea 3) și ale reviziei, actului și raportului programat („Da, programează", „Da, trec actul"), din programari.js.
-// Din 28.10 și numele butonului „Sursă externă" și părțile răspunsului („Din sursă externă"), din sursa_externa.js.
+// Din 28.10 și numele butonului „Sursă externă" și titlul surselor de sub răspuns („Surse de pe internet"), din sursa_externa.js.
 const ECRAN = (PAG + '\n' + JS + '\n' + ['ai_raport.js', 'reports.js', 'soferi_masini.js', 'azi_la_tine.js', 'cereri_echipa.js', 'propuneri.js', 'programari.js', 'sursa_externa.js'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
   .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 const pe = (t) => ECRAN.indexOf(t) >= 0;

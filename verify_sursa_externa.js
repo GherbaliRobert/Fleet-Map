@@ -81,7 +81,8 @@ T('ce s-a găsit: doar textul de după rezultate („Caut pe internet." nu e ră
 T('sursele: întâi cele citate, fără dubluri, fără „javascript:"', rc.surse.map((s) => s.url).join(' | ') === 'https://exemplu.com/logan | https://www.auto-test.ro/logan' && rc.surse[1].site === 'auto-test.ro', rc.surse.map((s) => s.url).join(' | '));
 T('o eroare a căutării se vede (max_uses_exceeded, unavailable…)', SE.citesteRaspuns([{ type: 'web_search_tool_result', tool_use_id: 'a', content: { type: 'web_search_tool_result_error', error_code: 'unavailable' } }]).erori[0] === 'unavailable');
 const pm = SE.pentruModel(rc);
-T('pentru RA Insight: ce s-a căutat, ce s-a găsit, sursele (site + titlu), fragmentele citate și cum să le scrie', pm.gasit === rc.text && pm.surse.length === 2 && pm.fragmente.length === 2 && /„Din sursă externă”, cu site-ul lângă fiecare cifră/.test(pm.atentie) && !JSON.stringify(pm).includes('encrypted'));
+T('pentru RA Insight: ce s-a căutat, ce s-a găsit, sursele (site + titlu), fragmentele citate și cum să le scrie (fără titlu deasupra)', pm.gasit === rc.text && pm.surse.length === 2 && pm.fragmente.length === 2 &&
+  /după ce spui ce arată aplicația, cu site-ul în paranteză lângă fiecare cifră, fără titlu deasupra/.test(pm.atentie) && !/Din sursă externă/.test(pm.atentie) && !JSON.stringify(pm).includes('encrypted'));
 T('căutarea care n-a mers → RA Insight răspunde din aplicație și spune într-o propoziție', /^Căutarea pe internet n-a mers acum\./.test(SE.pentruModel({ eroare: true, cautari: [], surse: [], citate: [], text: '' }).mesaj));
 const pe = SE.pentruEcran(rc, Date.UTC(2026, 9, 28, 8, 42));   // 28.10, după schimbarea orei: 08:42 UTC = 10:42 la noi
 T('pentru ecran: „Surse de pe internet", „Căutat pe internet la 10:42 · 2 căutări" (ora României), sursele, „Ce am căutat: …"', pe.titlu === 'Surse de pe internet' && pe.text === 'Căutat pe internet la 10:42 · 2 căutări' &&
@@ -92,7 +93,17 @@ T('insigna: „1 întrebare · sursă externă, 2 căutări" (la noi, fără „
 T('textele pentru noi: modelul primește / NU primește / neverificat', /^Haiku 5\.5 primește căutarea pe internet \(verificat pe /.test(SE.textModel({ model: 'claude-haiku-5-5', nume: 'Haiku 5.5', ok: true, la: Date.now() })) &&
   /NU primește căutarea pe internet, deci butonul nu apare nimănui\. .*AI_MODEL_SURSA/.test(SE.textModel({ nume: 'Haiku 5.5', ok: false })) && /^Modelul nu a fost încă verificat/.test(SE.textModel(null)));
 T('instrucțiunile apelului de căutare: română, scurt, doar din ce a găsit, fără persoane, ziua de azi', /răspunde în română, scurt/.test(SE.instructiuniCautare(Date.now())) && /Nu căuta persoane/.test(SE.instructiuniCautare(Date.now())) && /Azi e \d+ [a-z]+ \d{4}\./.test(SE.instructiuniCautare(Date.now())));
-T('instrucțiunile lui RA Insight: întâi aplicația, două părți („Din flota ta" / „Din sursă externă"), fără datele firmei în căutare', /Întâi uneltele aplicației/.test(SE.INSTRUCTIUNI) && /\*\*Din flota ta\*\*/.test(SE.INSTRUCTIUNI) && /\*\*Din sursă externă\*\*/.test(SE.INSTRUCTIUNI) && /NICIODATĂ numere de înmatriculare/.test(SE.INSTRUCTIUNI));
+// Alin, 29.10: „scoate din text: Din sursă externă" — fără titluri deasupra părților; ordinea și site-ul lângă cifră rămân.
+T('instrucțiunile lui RA Insight: întâi aplicația, apoi internetul cu site-ul lângă cifră, FĂRĂ titluri de parte, fără datele firmei în căutare', /Întâi uneltele aplicației/.test(SE.INSTRUCTIUNI) &&
+  /spune întâi ce arată aplicația .* apoi ce a găsit căutarea, cu site-ul în paranteză lângă fiecare cifră/.test(SE.INSTRUCTIUNI) && /Fără titluri deasupra părților/.test(SE.INSTRUCTIUNI) &&
+  !/Din flota ta|Din sursă externă/.test(SE.INSTRUCTIUNI) && /NICIODATĂ numere de înmatriculare/.test(SE.INSTRUCTIUNI));
+const FT = SE.faraTitluri;
+T('titlul scris din obișnuință pleacă: singur pe rând (bold, „##", cu sau fără diacritice) sau în fața textului', FT('**Din sursă externă**\nUngaria are vinietă (cebia.com).') === 'Ungaria are vinietă (cebia.com).' &&
+  FT('## Din flota ta\nB 154 UIP a mers 1.240 km.\n\n**Din sursă externă:**\nVinieta: 6.900 HUF (vintrica.com).') === 'B 154 UIP a mers 1.240 km.\n\nVinieta: 6.900 HUF (vintrica.com).' &&
+  FT('**Din sursă externă:** Vinieta costă 6.900 HUF (x.ro).') === 'Vinieta costă 6.900 HUF (x.ro).' && FT('De pe internet: Euro 6 din 2014 (norme.ro).') === 'Euro 6 din 2014 (norme.ro).' &&
+  FT('Din sursa externa\nText') === 'Text', FT('## Din flota ta\nB 154 UIP a mers 1.240 km.\n\n**Din sursă externă:**\nVinieta: 6.900 HUF (vintrica.com).'));
+T('…o propoziție care doar începe cu aceleași cuvinte rămâne, iar un text fără titluri rămâne întocmai (și spațiile lui)', FT('Din flota ta, trei mașini au mers peste 1.000 km.') === 'Din flota ta, trei mașini au mers peste 1.000 km.' &&
+  FT('Din sursă externă reiese că taxa a crescut.') === 'Din sursă externă reiese că taxa a crescut.' && FT('**Concluzie:** ok\n\n\n• a ') === '**Concluzie:** ok\n\n\n• a ' && FT(null) === '' && FT('') === '');
 
 // ─── 4. Cererea către Anthropic (ai.js), cu fetch înlocuit — nu pleacă nimic ───────────────────────
 console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căutării');
@@ -362,6 +373,9 @@ async function peServer() {
     const conv = await json('GET', '/api/insight/conversatii/' + r.j.conversatieId, ck);
     const ult = (conv.j.mesaje || []).filter((m) => m.rol !== 'user').pop();
     T('…conversația redeschisă păstrează sursele (ale omului, 12 luni, ca restul)', ult && ult.extra && ult.extra.sursa && ult.extra.sursa.surse.length === 2);
+    // Modelul a scris „**Din sursă externă**" din obișnuință (ca în conversațiile din 28–29.10): omul nu-l mai vede (Alin, 29.10).
+    T('…titlul „Din sursă externă" scris de model pleacă din răspuns și din conversația redeschisă', !/Din sursă externă/.test(r.j.reply) && /^Consumul mixt declarat e 4,9 l\/100 km/.test(r.j.reply) &&
+      ult && !/Din sursă externă/.test(ult.text) && /^Consumul mixt/.test(ult.text), JSON.stringify({ reply: r.j.reply, salvat: ult && ult.text }));
     let au = (await json('GET', '/api/admin/ai-usage', S)).j;
     let rand = (au.rows || []).find((x) => x.id === co.id);
     T('…„RA Insight · control": pe firmă, 1 întrebare cu sursă externă, 2 căutări, costul lor (doar numere)', rand && rand.sursa && rand.sursa.intrebari === 1 && rand.sursa.cautari === 2 && rand.sursa.costLei > 0, JSON.stringify(rand && rand.sursa));

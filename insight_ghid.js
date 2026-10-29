@@ -213,7 +213,7 @@ const SECTIUNI = [
     pasi: [
       'În casetă, lângă „+", apasă „Sursă externă": se face albastru și arată câte întrebări cu sursă externă mai are firma luna asta.',
       'Scrie întrebarea, de pildă ce consum normal are un anumit model de mașină, cât costă rovinieta pentru un camion sau ce spune o lege. RA Insight se uită întâi în aplicație și caută pe internet doar ce nu e acolo.',
-      'Răspunsul are două părți: „Din flota ta" (din aplicație) și „Din sursă externă" (de pe internet, cu site-ul lângă fiecare cifră). Dedesubt stau sursele, cu linkul lor, și ce s-a căutat.',
+      'Răspunsul spune întâi ce arată aplicația, apoi ce s-a găsit pe internet, cu site-ul lângă fiecare cifră. Dedesubt stau „Surse de pe internet", cu linkul lor, și ce s-a căutat.',
       'O discuție nouă pornește cu butonul oprit, ca să nu se consume din greșeală.'
     ],
     detalii: 'Căutarea pleacă fără datele firmei: aplicația oprește orice căutare cu un număr de înmatriculare, numele unui om, o adresă, un telefon sau un email, iar RA Insight nu caută persoane. ' +

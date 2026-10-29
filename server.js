@@ -5509,6 +5509,7 @@ async function _raInsight(req, res, opts) {
       } catch (e) { /* rămâne răspunsul dintâi, cu cifrele spuse mai jos */ }
     }
     reply = insight.litereRomanesti(reply);   // ultima plasă, mereu (și ş/ţ cu sedilă → ș/ț)
+    reply = sursaExterna.faraTitluri(reply);  // fără „Din sursă externă" / „Din flota ta" deasupra părților (Alin, 29.10)
     if (rescris && !o.proba && req.companyId != null) db.noteazaCorectura(req.companyId, Object.assign({ ramas: lipsa.length > 0 }, corectat)).catch(() => {});
     // Proba modelelor: fără firmă pe rând (nu intră în consumul și în panourile clientului), cu felul ei.
     if (o.proba) db.recordAiUsage(null, 'proba_modele', _agg, userId, model).catch(() => {});
@@ -5942,10 +5943,11 @@ app.get('/api/insight/conversatii/:id', requireAuth, withScope, requireFeature('
     const mesaje = await db.mesajeConversatie(c.id, userId, 200);
     // Insigna mesajelor de dinainte de antet (19.10) se completează aici, din textul ei — pagina are o singură formă.
     // Răspunsurile salvate înainte de 20.10 pot avea litere din alt alfabet: se curăță la citire (litere.js), ca nicio
-    // conversație veche să nu le mai arate. Ce a scris omul rămâne cum l-a scris.
+    // conversație veche să nu le mai arate. La fel titlul „Din sursă externă" al răspunsurilor din 28–29.10. Ce a scris
+    // omul rămâne cum l-a scris.
     mesaje.forEach(function (m) {
       if (m.extra && m.extra.insigna) m.extra.insigna = pachete.insignaCompleta(m.extra.insigna);
-      if (m.rol !== 'user') m.text = insight.litereRomanesti(m.text);
+      if (m.rol !== 'user') m.text = sursaExterna.faraTitluri(insight.litereRomanesti(m.text));
     });
     // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează"), din rândul propunerii. Un mesaj
     // poate avea și mai multe cartonașe (`propuneri`, partea 3: „două lucruri deodată, aprobate pe rând").

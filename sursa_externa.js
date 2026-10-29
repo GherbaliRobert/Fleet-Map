@@ -156,9 +156,31 @@ const INSTRUCTIUNI = 'SURSĂ EXTERNĂ PORNITĂ: omul a pornit „Sursă externă
   'în aplicație (prețuri, reguli, legi, informații generale despre mașini). Întâi uneltele aplicației; pe internet doar dacă răspunsul nu e în ' +
   'ele. „Unde e”, „câți km”, consumul flotei rămân răspunsuri din aplicație. În căutare scrie doar subiectul general: NICIODATĂ numere de ' +
   'înmatriculare, nume de oameni sau de firme-client, adrese, telefoane, emailuri sau cifrele firmei. Nu căuta persoane. Când ai folosit-o, ' +
-  'scrie răspunsul în două părți: „**Din flota ta**” (doar din uneltele aplicației; lipsește dacă n-ai folosit niciuna) și „**Din sursă ' +
-  'externă**” (doar din ce a găsit căutarea, cu site-ul în paranteză lângă fiecare cifră). Cifrele de pe internet nu se amestecă cu cele ale ' +
-  'flotei. Sursele întregi le arată aplicația sub răspuns.';
+  'spune întâi ce arată aplicația (doar dacă ai folosit uneltele ei), apoi ce a găsit căutarea, cu site-ul în paranteză lângă fiecare cifră ' +
+  'de pe internet. Fără titluri deasupra părților: aplicația arată singură că s-a căutat pe internet. Cifrele de pe internet nu se amestecă ' +
+  'cu cele ale flotei. Sursele întregi le arată aplicația sub răspuns.';
+// Titlurile de parte pe care RA Insight le scria până pe 29.10 (Alin: „scoate din text: Din sursă externă"). Un rând care e
+// doar titlul pleacă; un titlu urmat de text pe același rând („**Din sursă externă:** Vinieta…") lasă textul. O propoziție
+// care doar începe cu aceleași cuvinte („Din flota ta, trei mașini…") rămâne.
+const TITLURI_VECHI = ['din sursa externa', 'din flota ta', 'de pe internet'];
+function _titlu(s) {
+  return TITLURI_VECHI.indexOf(String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[*_#]/g, '').replace(/[\s:]+$/, '').trim()) >= 0;
+}
+function faraTitluri(text) {
+  const t = String(text == null ? '' : text);
+  let schimbat = false;
+  const randuri = t.split('\n').map(function (r) {
+    if (_titlu(r)) { schimbat = true; return null; }
+    const ingrosat = /^\s*(?:#{1,6}\s*)?(\*\*|__)(.+?)\1\s*:?\s*(\S.*)$/.exec(r);
+    if (ingrosat && _titlu(ingrosat[2])) { schimbat = true; return ingrosat[3]; }
+    const cuDouaPuncte = /^\s*(?:#{1,6}\s*)?([^:\n]{3,40}):\s+(\S.*)$/.exec(r);
+    if (cuDouaPuncte && _titlu(cuDouaPuncte[1])) { schimbat = true; return cuDouaPuncte[2]; }
+    return r;
+  }).filter(function (r) { return r !== null; });
+  // Un text fără titluri rămâne întocmai (și spațiile lui).
+  return schimbat ? randuri.join('\n').replace(/\n{3,}/g, '\n\n').trim() : t;
+}
 // Instrucțiunile apelului de căutare (care nu vede nimic din flotă).
 function instructiuniCautare(acum) {
   return 'Ești unealta de căutare a lui RA Insight, asistentul unei aplicații românești de monitorizare a flotelor. Primești o căutare. ' +
@@ -215,12 +237,11 @@ function pentruModel(r) {
     cautat: r.cautari, gasit: r.text || null,
     surse: r.surse.map(function (s) { return { site: s.site, titlu: s.titlu }; }),
     fragmente: r.citate.map(function (c) { return c.citat; }).filter(Boolean),
-    atentie: 'Informația vine de pe internet, nu din aplicație. Scrie-o în partea „Din sursă externă”, cu site-ul lângă fiecare cifră, și nu o ' +
-      'amesteca cu cifrele flotei. Dacă nu s-a găsit nimic util, spune asta pe scurt.',
+    atentie: 'Informația vine de pe internet, nu din aplicație. Scrie-o după ce spui ce arată aplicația, cu site-ul în paranteză lângă fiecare ' +
+      'cifră, fără titlu deasupra, și nu o amesteca cu cifrele flotei. Dacă nu s-a găsit nimic util, spune asta pe scurt.',
   };
 }
-// Ce arată pagina sub răspuns (și se păstrează în conversație): „Surse de pe internet" (titlul altul decât partea „Din sursă
-// externă" din text), sursele, când și ce s-a căutat.
+// Ce arată pagina sub răspuns (și se păstrează în conversație): „Surse de pe internet", sursele, când și ce s-a căutat.
 function pentruEcran(r, la) {
   if (!r || !r.cautari || !r.cautari.length) return null;
   const q = r.cautari.slice(0, CAUTARI_MAX);
@@ -251,5 +272,5 @@ function textFirma(st, oprita, acum) {
 module.exports = {
   NUME, EXPLICATIE, CAUTARI_MAX, PE_PACHET, STARI, TEXT_STARI, DESCRIERE_STARI, LUNGIME_MAX, SURSE_MAX, REFUZATE_MAX, MOTIVE,
   UNEALTA, INSTRUCTIUNI, starePlatforma, peLuna, stare, textButon, textNota, textTerminate, pentruPagina, verifica,
-  instructiuniCautare, citesteRaspuns, pentruModel, pentruEcran, textModel, textFirma, reincarcare,
+  instructiuniCautare, citesteRaspuns, pentruModel, pentruEcran, textModel, textFirma, reincarcare, faraTitluri,
 };

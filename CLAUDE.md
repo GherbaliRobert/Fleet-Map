@@ -1072,7 +1072,9 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   pagina; plus modelul: `model.ok === false` = nu apare nimănui), `PE_PACHET` (Basic 10 / Pro 30 / Business 50 de întrebări pe lună, pe firmă;
   Start și regula veche 0), `verifica` (ce n-are voie să plece: numere de înmatriculare — regula și numerele flotei —, numele șoferilor și ale
   oamenilor firmei, adrese cu număr, telefoane, emailuri, IMEI / CNP / cont, VIN, căutări de persoane; numele firmei NU se oprește),
-  `UNEALTA`, `INSTRUCTIUNI` (două părți: „**Din flota ta**" / „**Din sursă externă**", site-ul lângă fiecare cifră), `instructiuniCautare`,
+  `UNEALTA`, `INSTRUCTIUNI` (întâi ce arată aplicația, apoi ce a găsit căutarea, cu site-ul lângă fiecare cifră — FĂRĂ titluri de parte: Alin,
+  29.10, „scoate din text: Din sursă externă"; `faraTitluri` scoate titlul rămas din obișnuință din răspuns, în `_raInsight`, și din
+  conversațiile redeschise), `instructiuniCautare`,
   `citesteRaspuns` (blocurile API: `server_tool_use`, `web_search_tool_result`, citările; sursele citate întâi, fără dubluri, doar http/https,
   textul doar de după ultimele rezultate), `pentruModel`, `pentruEcran` („Surse de pe internet", „Căutat pe internet la …", „Ce am căutat: …"),
   `pentruPagina` (`nume`, `contor` „7 din 10", `nota`; fără bani), `textModel`, `textFirma`. NU scrie texte de-ale ei în pagină.
