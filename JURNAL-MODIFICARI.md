@@ -513,7 +513,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-10-29
 
-### AMÂNDOI · „Schimbă aparatul": aparatul nou preia mașina, istoricul rămâne
+### AMÂNDOI · „Schimbă aparatul": aparatul nou preia mașina, istoricul rămâne — `bed013c`
 
 Robert (29.10): *„avem o logică în spate în cazul în care un dispozitiv se defectează, încât să rămânem și cu istoricul acelei
 mașini?"* Nu aveam: în aplicație mașina ERA aparatul (cheia ei e IMEI-ul). Un aparat nou însemna o mașină nouă, goală, iar cea
