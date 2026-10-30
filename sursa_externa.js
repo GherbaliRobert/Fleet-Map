@@ -249,6 +249,31 @@ function pentruEcran(r, la) {
     text: 'Căutat pe internet la ' + _fmtOra.format(new Date(la || Date.now())) + ' · ' + cant(q.length, 'căutare', 'căutări'),
     ceAmCautat: 'Ce am căutat: ' + q.map(function (x) { return '„' + x + '”'; }).join(', ') };
 }
+// Rândul „✓" de sub un răspuns cu toate cifrele găsite (30.10; Alin: „da" — la vinieta din Ungaria scria „din aplicație", deși
+// nicio cifră nu venea de acolo): spune de unde au venit chiar cifrele. d = { aplicatie, sursa } = unde s-au găsit (serverul le
+// caută separat); fără căutare pe internet = din rapoarte, ca până acum.
+const TEXT_VERIFICAT = {
+  aplicatie: 'Cifrele le-am luat din rapoarte.',
+  sursa: 'Cifrele le-am luat din sursele de mai sus.',
+  amandoua: 'Cifrele le-am luat din aplicație și din sursele de mai sus.',
+};
+function textVerificat(d) {
+  d = d || {};
+  if (d.sursa && d.aplicatie) return TEXT_VERIFICAT.amandoua;
+  return d.sursa ? TEXT_VERIFICAT.sursa : TEXT_VERIFICAT.aplicatie;
+}
+// De unde au venit cifrele unui răspuns: `cifre` = textele cifrelor din răspuns, `lipsaAplicatie` / `lipsaSursa` = cele negăsite
+// în datele aplicației / în ce a găsit căutarea (cifre.negasite pe fiecare, pe server). O cifră găsită doar în amândouă la un loc
+// (o socoteală între ele, de pildă tariful de pe internet × mașinile din aplicație) = din amândouă.
+function deUndeCifrele(cifre, lipsaAplicatie, lipsaSursa) {
+  let aplicatie = false, sursa = false;
+  (cifre || []).forEach(function (t) {
+    const inApp = (lipsaAplicatie || []).indexOf(t) < 0, inNet = (lipsaSursa || []).indexOf(t) < 0;
+    if (inApp || !inNet) aplicatie = true;
+    if (inNet || !inApp) sursa = true;
+  });
+  return { aplicatie: aplicatie, sursa: sursa };
+}
 
 // ─── Textele pentru noi și pentru administratorul firmei ───────────────────────────────────────────────────────────────
 // Modelul primește căutarea? m = { model, nume, ok: true | false | null, la, eroare }.
@@ -273,4 +298,5 @@ module.exports = {
   NUME, EXPLICATIE, CAUTARI_MAX, PE_PACHET, STARI, TEXT_STARI, DESCRIERE_STARI, LUNGIME_MAX, SURSE_MAX, REFUZATE_MAX, MOTIVE,
   UNEALTA, INSTRUCTIUNI, starePlatforma, peLuna, stare, textButon, textNota, textTerminate, pentruPagina, verifica,
   instructiuniCautare, citesteRaspuns, pentruModel, pentruEcran, textModel, textFirma, reincarcare, faraTitluri,
+  TEXT_VERIFICAT, textVerificat, deUndeCifrele,
 };

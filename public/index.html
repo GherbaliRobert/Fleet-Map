@@ -12319,7 +12319,9 @@ const pozitii = await r.json();</code></pre>
           bub.appendChild(acts);
         }
         if (Array.isArray(x.probleme) && x.probleme.length) bub.appendChild(window._chatProbleme(x.probleme));
-        if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode(x.sursa ? 'Cifrele le-am luat din aplicație și din sursele de mai sus.' : 'Cifrele le-am luat din rapoarte.')); bub.appendChild(ok); }
+        // Rândul „✓": textul îl scrie serverul (de unde au venit chiar cifrele — sursa_externa.textVerificat, 30.10); mesajele salvate
+        // înainte de 30.10 n-au textul și rămân cum erau.
+        if (x.verificat) { var ok = el('div', 'chat-ok'); ok.innerHTML = '<i class="fas fa-circle-check"></i>'; ok.appendChild(document.createTextNode(x.verificatText || (x.sursa ? 'Cifrele le-am luat din aplicație și din sursele de mai sus.' : 'Cifrele le-am luat din rapoarte.'))); bub.appendChild(ok); }
         if (window._insightExtra) { var vv = window._insightExtra({ verificare: x.verificare, nota: x.nota }, null, 'verificare'); if (vv.childNodes.length) bub.appendChild(vv); }
         if (window._insightExtra) { var aa = window._insightExtra({ alege: x.alege }, function (t) { window.insightTrimite(t, { buton: true }); }, 'alege'); if (aa.childNodes.length) bub.appendChild(aa); }
         var surse = Array.isArray(x.sources) ? x.sources : [];
@@ -12387,7 +12389,7 @@ const pozitii = await r.json();</code></pre>
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
               limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, nota: j.nota, insigna: j.insigna, sursa: j.sursa } };
+              verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa } };
           S.mesaje.push(m);
           if (box) {
             box.appendChild(bulaAi(m));

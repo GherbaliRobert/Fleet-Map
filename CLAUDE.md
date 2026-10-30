@@ -776,7 +776,11 @@ Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în 
 **Hotărâri de după (15.10):** (1) **harta (Localizare) rămâne CUM E** — Alin, după simularea „Azi / Propun": „NU. Lăsăm așa cum
 este". NU propune din nou simplificarea altor ecrane din proprie inițiativă; doar dacă o cere el, pe un ecran anume. (2) **Asistentul
 AI al fondatorilor** (restanți, facturi, cel mai profitabil client) se face **după ce terminăm RA Insight** — macheta din 15.10 e
-făcută, dar nu se construiește înainte („hai să lăsăm AI-ul pentru fondator pentru când terminăm RA Insight"). (3) Când explici unde
+făcută, dar nu se construiește înainte („hai să lăsăm AI-ul pentru fondator pentru când terminăm RA Insight"). **Macheta refăcută pe
+29.10 (https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt) e aprobată întreagă pe 30.10:** pe „Acasă" (caseta + „Azi la noi", cel mult 5
+rânduri, în ordinea din machetă), discuția pe pagina ei, conversațiile fiecărui fondator doar ale lui, FĂRĂ „Luni la noi" (Alin: „nu vreau
+asta"), întâi etapa 1 (vede și răspunde), apoi etapa 2 (pașii cu „Da"); telefonul = Robert. Se construiește pas cu pas, la „da"-ul lui
+Alin. Reperele anonime și „Acte pentru transport" se reiau după capitolul Facturare (30.10). (3) Când explici unde
 se vede ceva, spune ÎNTÂI cu ce cont (fondator / administratorul firmei / om al firmei) și dă poze cu locul marcat, nu doar drumul în
 cuvinte — „explică ca la proști: unde intru, ce fac, toți pașii".
 Pe ecranul gol erau ~35 de butoane și casete; acum ~12. **Nicio funcție nu s-a pierdut: s-a mutat într-un singur loc** — „+", „⋯"
@@ -1077,7 +1081,14 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   conversațiile redeschise), `instructiuniCautare`,
   `citesteRaspuns` (blocurile API: `server_tool_use`, `web_search_tool_result`, citările; sursele citate întâi, fără dubluri, doar http/https,
   textul doar de după ultimele rezultate), `pentruModel`, `pentruEcran` („Surse de pe internet", „Căutat pe internet la …", „Ce am căutat: …"),
-  `pentruPagina` (`nume`, `contor` „7 din 10", `nota`; fără bani), `textModel`, `textFirma`. NU scrie texte de-ale ei în pagină.
+  `pentruPagina` (`nume`, `contor` „7 din 10", `nota`; fără bani), `textModel`, `textFirma`, `TEXT_VERIFICAT` / `textVerificat` /
+  `deUndeCifrele` (rândul „✓", mai jos). NU scrie texte de-ale ei în pagină.
+- **Rândul „✓" de sub răspuns spune de unde au venit chiar cifrele (30.10; Alin: „da" — la vinieta din Ungaria scria „din aplicație", deși
+  nicio cifră nu venea de acolo):** `_raInsight` ține separat `dateAplicatie` (uneltele aplicației + rapoartele făcute deja) și `dateSursa`
+  (ce a întors unealta `sursa_externa`); `_verificaRaspunsul(…, surse)` caută cifrele în fiecare (`cifre.negasite`) → `deUndeCifrele` (o
+  cifră găsită doar în amândouă la un loc = din amândouă) → `verificatText` = `textVerificat`: doar internet „Cifrele le-am luat din sursele
+  de mai sus.", amândouă „…din aplicație și din sursele de mai sus.", fără internet „…din rapoarte.". În răspuns și în mesajul salvat; pagina
+  doar îl arată (`x.verificatText ||` textul vechi, pentru mesajele de dinainte de 30.10).
 - **Căutarea = un apel SEPARAT: `ai.cautaExtern`** — doar textul căutării (nimic din flotă sau din discuție), `web_search_20250305` (cea cu
   „filtrare dinamică" cere execuție de cod), `max_uses` 3, `user_location` DOAR fusul orar (`ai.LOC_CAUTARE`: Europe/Bucharest — Anthropic refuză țara „RO": 400 „Country code RO
   is not supported", prinsă de Alin pe 29.10 la prima probă adevărată; la orice 400 de loc, `_refuzLoc` trimite o dată fără loc), „pause_turn" (ce a
@@ -1098,8 +1109,8 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   (`db.sursaExternaLunaToate`); „Stare producție" → rândul `sursa_externa` (cu drumul spre Console › Settings › Capabilities la eroarea „web
   search is not enabled").
 - **Pagina:** butonul `#insp-sursa` lângă „+" (`insightSursa`; `S.sursa` se stinge la `insightNou` / `insightDeschide`), `#insp-sursa-nota`,
-  `blocSursa` (textContent, linkuri doar http/https, `rel="noopener noreferrer nofollow"`, altă filă), „Cifrele le-am luat din aplicație și din
-  sursele de mai sus", rândul firmei în „Pachet și conturi" (`insightSursaFirma`), `_aiuSursa` + `raxAiSursa` + coloana „Sursă externă" în
+  `blocSursa` (textContent, linkuri doar http/https, `rel="noopener noreferrer nofollow"`, altă filă), rândul „✓" din `verificatText`,
+  rândul firmei în „Pachet și conturi" (`insightSursaFirma`), `_aiuSursa` + `raxAiSursa` + coloana „Sursă externă" în
   RA Insight · control. Culorile (albastru pornit, linkuri, roșul nostru) au pereche pe ambele teme, MĂSURATE în probă. Pe ≤ 860 px butonul se
   strânge la glob + „7 din 10". Ghidul: capitolul `sursa_externa`; Confidențialitate: fraza „Sursă externă (căutare pe internet)". Telefonul —
   la APK-ul următor (Robert).
@@ -1108,7 +1119,7 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
   cele 200") și rândul „Întrebări cu „Sursă externă”" din comparație (explicația = `EXPLICATIE`). Spuse ca parte din întrebările pachetului
   (o întrebare cu sursă externă se numără și ca o întrebare liberă), FĂRĂ rând de preț, nici în aplicație. Pagina publică le copiază (3c).
   Oferta, contractul și factura NU o pomenesc (promisiune semnată; doar dacă hotărăsc ei). Dacă o oprim pentru firme, rândurile ies și de aici.
-- Păzit de **`verify_sursa_externa.js`** (în `npm test`; 132, pe server pornit, cu modelul, căutarea și Models API simulate), `verify_insight_ghid.js`.
+- Păzit de **`verify_sursa_externa.js`** (în `npm test`; 141, pe server pornit, cu modelul, căutarea și Models API simulate), `verify_insight_ghid.js`.
 
 ## Ofertare Live — DE CONTINUAT (customizare)
 Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
@@ -3023,6 +3034,10 @@ reface când se schimbă așezarea. Regulile care au reparat ce s-a măsurat —
   panoul cu conversații din RA Insight (`.insp-st`, ≤ 860 px) stau închise împinse în stânga (`translateX(-100%…)`); umbra lor trecea de
   margine și se vedea ca o fâșie gri (~15 / ~25 px, tema deschisă). Umbra stă doar pe deschis (`#navrail.open`, `.insp.st-deschis .insp-st`).
   Un sertar nou: la fel — `verify_ecrane.js` (7) caută orice regulă cu `translateX(-1xx%)` și umbră.
+- **Paginile merg până jos (30.10; Alin: „da").** Rândul de jos cu versiunea / API a plecat demult, dar locul lui (`--footer-h`, 32 px) rămăsese
+  în `inset`-ul lui `.modal-overlay.as-view`: o bandă deschisă sub fiecare pagină din meniu, pe calculator și pe telefon. Acum jos stă doar zona
+  sigură a telefonului (`var(--sab)`), iar `--footer-h` nu mai există. MĂSURAT: 32 px goi → 0 (1366 și 390 px); bula RA Insight nu acoperă nimic
+  la 800 / 1024 / 1366 px, cu lista derulată până jos. NU pune înapoi un loc rezervat jos fără un rând care să-l ocupe. Păzit de `verify_ecrane.js` (8).
 - Păzit de **`verify_ecrane.js`** (în `npm test`; fără browser: regulile de mai sus + `_navCaSertar` rulat în vm), `verify_cereri_echipa.js`.
 
 ## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)

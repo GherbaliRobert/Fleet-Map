@@ -121,5 +121,13 @@ T('panoul cu conversații din RA Insight pe telefon: umbra doar deschis (.insp.s
   /\.insp-st, \.insp\.st-ascuns \.insp-st \{[^}]*transform: translateX\(-104%\);[^}]*box-shadow: none; \}/.test(CSS) &&
   /\.insp\.st-deschis \.insp-st \{ transform: none; box-shadow: 0 0 40px rgba\(0,0,0,\.35\); \}/.test(CSS));
 
+// 30.10 (Alin: „da"). Rândul de jos cu versiunea / API a plecat demult, dar locul lui (32 px, --footer-h) rămăsese: o bandă
+// deschisă sub fiecare pagină (RA Insight, Rapoarte, Setări…), pe calculator și pe telefon. MĂSURAT în browser (1366 și 390 px):
+// 32 px goi înainte, 0 după. Paginile merg acum până jos, peste zona sigură a telefonului (--sab).
+console.log('\n8. Paginile merg până jos (fără locul rândului scos)');
+T('paginile (.modal-overlay.as-view) se opresc doar la zona sigură a telefonului, nu cu 32 px mai sus',
+  /\.modal-overlay\.as-view \{\s*inset: calc\(var\(--topbar-h\) \+ var\(--sat\)\) 0 var\(--sab\) var\(--navrail-w\);/.test(CSS));
+T('…iar locul rândului scos nu mai e în foi (--footer-h)', !/--footer-h/.test(CSS + '\n' + MT + '\n' + _stiluri(PAG)));
+
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

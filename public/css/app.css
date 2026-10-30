@@ -25,7 +25,6 @@
       --detail-width: 380px;
       --topbar-h: 56px;
       --navrail-w: 212px;
-      --footer-h: 32px;
       /* iOS safe-area: notch/status bar (sus) + home indicator (jos) */
       --sat: env(safe-area-inset-top, 0px);
       --sab: env(safe-area-inset-bottom, 0px);
@@ -254,12 +253,10 @@
     .view { display: none; height: 100%; }
     .view.active { display: flex; }
 
-    /* Footer */
-    /* footer-bar eliminat (versiune/API nu mai apare) */
-
-    /* Modal afișat ca panou inline (în zona de conținut) */
+    /* Modal afișat ca panou inline (în zona de conținut). Jos, doar zona sigură a telefonului: rândul cu versiunea/API de dedesubt
+       a plecat demult, iar locul lui (32 px) rămăsese gol pe toate paginile, ca o bandă deschisă (Alin, 30.10: „da"). */
     .modal-overlay.as-view {
-      inset: calc(var(--topbar-h) + var(--sat)) 0 calc(var(--footer-h) + var(--sab)) var(--navrail-w);
+      inset: calc(var(--topbar-h) + var(--sat)) 0 var(--sab) var(--navrail-w);
       position: fixed; background: var(--bg-darkest); backdrop-filter: none;
       display: flex; align-items: flex-start; justify-content: center; padding: 18px; overflow: auto; z-index: 15;
     }

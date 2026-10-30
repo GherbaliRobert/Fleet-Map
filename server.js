@@ -4682,7 +4682,9 @@ function _insightContext(fisa, gasite, ctx, peImei, notite) {
 // regăsesc în datele citite (după rescriere — `lipsa`, socotită de _raInsight) și `confirmat` = răspunsul are cifre ale
 // flotei și toate se regăsesc (rândul mic „✓ Cifrele le-am luat din rapoarte"). Cifrele greu de crezut nu mai stau aici: sunt
 // probleme (probleme.js), cu butoanele lor. null = nimic de spus. O SINGURĂ funcție — o cheamă _raInsight.
-function _verificaRaspunsul(reply, message, dateCitite, citite, lipsa) {
+// `surse` = { aplicatie, sursa } (30.10): ce au întors uneltele aplicației și ce a găsit „Sursă externă", ca rândul „✓" să spună
+// de unde au venit chiar cifrele (`dinAplicatie` / `dinSursa`; o cifră găsită doar în amândouă la un loc = din amândouă).
+function _verificaRaspunsul(reply, message, dateCitite, citite, lipsa, surse) {
   const out = {};
   try {
     const ceruta = aiRaport.perioadaDin(insight.norm(message), Date.now());
@@ -4695,7 +4697,14 @@ function _verificaRaspunsul(reply, message, dateCitite, citite, lipsa) {
   else {
     try {
       const deVazut = cifre.cifreleRaspunsului(reply).filter(function (c) { return c.fel !== 'timp' && !(c.zec === 0 && c.v <= cifre.MICI); });
-      if (deVazut.length && (dateCitite || []).length) out.confirmat = true;
+      if (deVazut.length && (dateCitite || []).length) {
+        out.confirmat = true;
+        if (surse && Array.isArray(surse.sursa) && surse.sursa.length) {
+          const d = sursaExterna.deUndeCifrele(deVazut.map(function (c) { return c.text; }),
+            cifre.negasite(reply, surse.aplicatie || [], message), cifre.negasite(reply, surse.sursa, message));
+          out.dinAplicatie = d.aplicatie; out.dinSursa = d.sursa;
+        }
+      }
     } catch (e) { /* fără confirmare */ }
   }
   return Object.keys(out).length ? out : null;
@@ -5480,9 +5489,11 @@ async function _raInsight(req, res, opts) {
 
     // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite) — și rapoartele făcute deja.
     const dateCitite = gata ? gata.pentruModel.slice() : [];
+    // Aceleași date, despărțite: ale aplicației și ce a găsit „Sursă externă" — pentru rândul „✓" de sub răspuns (30.10).
+    const dateAplicatie = dateCitite.slice(), dateSursa = [];
     Object.keys(toolHandlers).forEach(function (k) {
       const f = toolHandlers[k];
-      toolHandlers[k] = async function (input) { const r = await f(input); dateCitite.push(r); return r; };
+      toolHandlers[k] = async function (input) { const r = await f(input); dateCitite.push(r); (k === 'sursa_externa' ? dateSursa : dateAplicatie).push(r); return r; };
     });
 
     let notite = '';
@@ -5607,7 +5618,7 @@ async function _raInsight(req, res, opts) {
     }
     // „Am găsit o problemă" în locul benzii „De verificat" (Alin, 15.10): problemele găsite de aplicație în date, iar o cifră
     // rămasă negăsită după rescriere se spune pe față, ca problemă — nu „verifică tu".
-    const verificare = _verificaRaspunsul(reply, message, dateCitite, citite, lipsa);
+    const verificare = _verificaRaspunsul(reply, message, dateCitite, citite, lipsa, { aplicatie: dateAplicatie, sursa: dateSursa });
     if (verificare && verificare.cifre) gasiteProbleme.push({ fel: 'cifra', grav: 'galben', titlu: 'Nu am găsit în rapoarte: ' + verificare.cifre.join(', '),
       dovada: 'Cifra nu apare în datele citite și nu se poate socoti din ele. N-o lua drept sigură.',
       butoane: uniqSources[0] ? [{ fel: 'raport', text: 'Deschide „' + uniqSources[0].label + '”', tip: uniqSources[0].type, imei: uniqSources[0].imei, de: uniqSources[0].from, pana: uniqSources[0].to }] : [] });
@@ -5616,6 +5627,7 @@ async function _raInsight(req, res, opts) {
     const sursaEcran = sursaGasit ? sursaExterna.pentruEcran(sursaGasit, Date.now()) : null;
     const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null, sursa: sursaEcran ? sursaEcran.cautari.length : 0 });
     const extraAi = { probleme: problemeGasite.length ? problemeGasite : undefined, verificat: verificare && verificare.confirmat ? true : undefined,
+      verificatText: verificare && verificare.confirmat ? sursaExterna.textVerificat({ aplicatie: verificare.dinAplicatie !== false, sursa: !!verificare.dinSursa }) : undefined,
       nota: verificare && verificare.perioada ? verificare.perioada : undefined, insigna: insigna, rapoarte: gata ? gata.carduri : undefined,
       sursa: sursaEcran || undefined };
     const s = await salveaza(reply, Object.assign({ source: 'ai', sources: uniqSources, inteles: inteles, alege: alege, urmari: urmari }, extraAi), ctxNou);

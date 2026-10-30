@@ -104,6 +104,23 @@ T('titlul scris din obișnuință pleacă: singur pe rând (bold, „##", cu sau
   FT('Din sursa externa\nText') === 'Text', FT('## Din flota ta\nB 154 UIP a mers 1.240 km.\n\n**Din sursă externă:**\nVinieta: 6.900 HUF (vintrica.com).'));
 T('…o propoziție care doar începe cu aceleași cuvinte rămâne, iar un text fără titluri rămâne întocmai (și spațiile lui)', FT('Din flota ta, trei mașini au mers peste 1.000 km.') === 'Din flota ta, trei mașini au mers peste 1.000 km.' &&
   FT('Din sursă externă reiese că taxa a crescut.') === 'Din sursă externă reiese că taxa a crescut.' && FT('**Concluzie:** ok\n\n\n• a ') === '**Concluzie:** ok\n\n\n• a ' && FT(null) === '' && FT('') === '');
+// Rândul „✓" de sub răspuns (30.10; Alin: „da" — la vinieta din Ungaria scria „din aplicație", deși nicio cifră nu venea de acolo):
+// spune de unde au venit chiar cifrele, căutate separat în datele aplicației și în ce a găsit căutarea (cifre.negasite pe fiecare).
+{
+  const TV = SE.TEXT_VERIFICAT, CF = require('./cifre');
+  const dateApp = [{ vehicule: [{ nr: 'B 154 UIP', consum_fisa_l100: 7.5 }] }], dateNet = [SE.pentruModel(SE.citesteRaspuns(CAUTARE.content))];
+  const unde = (t) => SE.deUndeCifrele(CF.cifreleRaspunsului(t).filter((c) => c.fel !== 'timp' && !(c.zec === 0 && c.v <= CF.MICI)).map((c) => c.text),
+    CF.negasite(t, dateApp), CF.negasite(t, dateNet));
+  T('rândul „✓": fără internet „din rapoarte", doar de pe internet „din sursele de mai sus", din amândouă „din aplicație și din sursele de mai sus"',
+    SE.textVerificat({}) === TV.aplicatie && SE.textVerificat({ aplicatie: true }) === 'Cifrele le-am luat din rapoarte.' &&
+    SE.textVerificat({ sursa: true }) === 'Cifrele le-am luat din sursele de mai sus.' && SE.textVerificat({ aplicatie: true, sursa: true }) === 'Cifrele le-am luat din aplicație și din sursele de mai sus.');
+  T('…de unde au venit: doar internet; fișa + internet = amândouă; doar fișa = aplicația; o socoteală între ele = amândouă',
+    SE.textVerificat(unde('Dacia declară 4,9 l/100 km (exemplu.com).')) === TV.sursa &&
+    SE.textVerificat(unde('În fișă scrie 7,5 l/100 km, iar Dacia declară 4,9 l/100 km (exemplu.com).')) === TV.amandoua &&
+    SE.textVerificat(unde('În fișă scrie 7,5 l/100 km.')) === TV.aplicatie &&
+    SE.textVerificat(SE.deUndeCifrele(['260 lei'], ['260 lei'], ['260 lei'])) === TV.amandoua && SE.textVerificat(SE.deUndeCifrele([], [], [])) === TV.aplicatie,
+    JSON.stringify([unde('Dacia declară 4,9 l/100 km (exemplu.com).'), unde('În fișă scrie 7,5 l/100 km.')]));
+}
 
 // ─── 4. Cererea către Anthropic (ai.js), cu fetch înlocuit — nu pleacă nimic ───────────────────────
 console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căutării');
@@ -191,7 +208,10 @@ console.log('\n4. Cererea către Anthropic: un apel separat, doar textul căută
   const lista = w.children.find((c) => c.tag === 'ol');
   T('…rulat: o sursă bună (titlul ca text, nu ca HTML), cea cu „javascript:" sărită, „Ce am căutat" dedesubt', lista && lista.children.length === 1 && lista.children[0].children[0].href === 'https://exemplu.com/logan' &&
     lista.children[0].children[0].textContent === '<b>Logan</b>' && w.children.some((c) => c.className === 'chat-se-q'));
-  T('„Cifrele le-am luat din aplicație și din sursele de mai sus" când răspunsul are surse', /x\.sursa \? 'Cifrele le-am luat din aplicație și din sursele de mai sus\.' : 'Cifrele le-am luat din rapoarte\.'/.test(bloc));
+  // Din 30.10 textul rândului „✓" îl scrie serverul (de unde au venit chiar cifrele); textul vechi rămâne doar pentru mesajele salvate înainte.
+  T('rândul „✓": textul serverului (verificatText, și în răspunsul pe loc); cel vechi doar pentru mesajele de dinainte de 30.10',
+    /createTextNode\(x\.verificatText \|\| \(x\.sursa \? 'Cifrele le-am luat din aplicație și din sursele de mai sus\.' : 'Cifrele le-am luat din rapoarte\.'\)\)/.test(bloc) &&
+    /verificat: j\.verificat, verificatText: j\.verificatText,/.test(bloc));
   T('„Pachet și conturi": rândul firmei, cu comutatorul (PUT /api/insight/sursa-externa) și textele serverului', /if \(j\.sursa\) \{/.test(bloc) && /cere\('PUT', '\/api\/insight\/sursa-externa', \{ pornita: !!on \}\)/.test(bloc) && /el\('div', 'pkc-se-t', j\.sursa\.text\)/.test(bloc));
   T('„RA Insight · control": comutatorul în trei stări, modelul, coloana „Sursă externă" pe fiecare firmă', /function _aiuSursa\(se\)/.test(PAG) && /fetch\('\/api\/admin\/insight\/sursa-externa', \{ method: 'PUT'/.test(PAG) &&
     /<th class="n" title="[^"]*">Sursă externă<\/th>/.test(PAG) && /_aiuControale\(d\.pachete, d\.sursa\)/.test(PAG) && /colspan="7"/.test(PAG));
@@ -368,11 +388,13 @@ async function peServer() {
       /^Căutat pe internet la \d\d:\d\d · 2 căutări$/.test(r.j.sursa.text) && /^Ce am căutat: „consum normal Dacia Logan 1\.5 dCi”, „Dacia Logan dCi consum mixt”$/.test(r.j.sursa.ceAmCautat), JSON.stringify(r.j.sursa));
     T('…insigna: „1 întrebare · sursă externă, 2 căutări"', r.j.insigna && r.j.insigna.detaliu === '1 întrebare · sursă externă, 2 căutări', JSON.stringify(r.j.insigna));
     T('…cifrele de pe internet se regăsesc (nu „Nu am găsit în rapoarte")', r.j.verificat === true && !(r.j.probleme || []).some((p) => p.fel === 'cifra'), JSON.stringify({ v: r.j.verificat, p: r.j.probleme }));
+    T('…și rândul „✓" spune „Cifrele le-am luat din sursele de mai sus." (nicio cifră din aplicație, 30.10)', r.j.verificatText === SE.TEXT_VERIFICAT.sursa, JSON.stringify(r.j.verificatText));
     q = await quota(ck);
     T('…butonul arată pe loc „9 din 10" (s-a numărat o întrebare cu sursă externă)', q && q.contor === '9 din 10', JSON.stringify(q));
     const conv = await json('GET', '/api/insight/conversatii/' + r.j.conversatieId, ck);
     const ult = (conv.j.mesaje || []).filter((m) => m.rol !== 'user').pop();
-    T('…conversația redeschisă păstrează sursele (ale omului, 12 luni, ca restul)', ult && ult.extra && ult.extra.sursa && ult.extra.sursa.surse.length === 2);
+    T('…conversația redeschisă păstrează sursele (ale omului, 12 luni, ca restul) și rândul „✓"', ult && ult.extra && ult.extra.sursa && ult.extra.sursa.surse.length === 2 &&
+      ult.extra.verificatText === SE.TEXT_VERIFICAT.sursa);
     // Modelul a scris „**Din sursă externă**" din obișnuință (ca în conversațiile din 28–29.10): omul nu-l mai vede (Alin, 29.10).
     T('…titlul „Din sursă externă" scris de model pleacă din răspuns și din conversația redeschisă', !/Din sursă externă/.test(r.j.reply) && /^Consumul mixt declarat e 4,9 l\/100 km/.test(r.j.reply) &&
       ult && !/Din sursă externă/.test(ult.text) && /^Consumul mixt/.test(ult.text), JSON.stringify({ reply: r.j.reply, salvat: ult && ult.text }));

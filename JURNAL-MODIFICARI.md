@@ -220,11 +220,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Alin: reperele anonime — RA Insight „învață" din toate flotele. Adăugat pe 08.10 (Alin: „mi-o ții minte… vedem dacă
   o mai facem").** Comparații de felul „flota ta consumă cu 12% peste flotele asemănătoare", din cifre adunate de la toți
   clienții, fără nume, numere sau locuri. Dacă o facem: o etapă separată, după capitolul AI, și o clauză în contract
-  verificată de jurist (datele sunt ale clienților).
+  verificată de jurist (datele sunt ale clienților). **30.10 (Alin: „da”): se reia după capitolul Facturare.**
 - [ ] **Alin: ramura „Acte pentru transport". Adăugat pe 08.10, propusă de Alin, încă nehotărâtă.** „Am camionul X, șoferul Y,
   duc marfa Z la Cluj — ce acte îmi trebuie?": RA Insight pune laolaltă ce știe aplicația (mașina, permisul, actele) și
   regulile (aviz, CMR, cod UIT, ADR, ATP…). Recomandarea mea: după ce aducem internetul în RA Insight, cu lista de reguli
-  verificată de un specialist în transport și cu sursa pe fiecare răspuns.
+  verificată de un specialist în transport și cu sursa pe fiecare răspuns. **30.10 (Alin: „da”): se reia după capitolul Facturare.**
 - [x] **HOTĂRÂT (09.10): fără MCP** (Alin, la întrebarea 5 din „Traiectoria RA Insight": *„da, atât, fără MCP"* — RA Insight
   numește șoferii, dar nu legăm RA Track de ChatGPT / Claude ale clientului). **Voi: hotărârile despre MCP (asistentul AI al clientului legat de RA Track, ca la Sezamo). Adăugat pe 08.10.**
   Analiza pe criterii: `docs/RA-Track-MCP-Analiza.pdf` (5 pagini). De hotărât, pe scurt: (1) întâi întrebăm 15–20 de
@@ -437,7 +437,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: telefonul și „Sursă externă" (APK-ul următor). Adăugat pe 28.10.** Pe web e gata; pe telefon: butonul „Sursă externă"
   lângă „+" (din `/api/ai/quota` → `sursa`: `nume`, `contor`, `nota`, `poate`; fără `sursa`, nu apare), `sursa: true` trimis cu
   întrebarea cât e pornit (o discuție nouă pornește cu el oprit) și, sub răspuns, blocul „Surse de pe internet" (`sursa` din răspuns:
-  titlul, sursele cu linkul, „Ce am căutat"). Până atunci telefonul nu caută pe internet.
+  titlul, sursele cu linkul, „Ce am căutat"). Până atunci telefonul nu caută pe internet. **30.10:** rândul „✓” de sub răspuns ia textul
+  din `verificatText` (de la server: „din rapoarte” / „din sursele de mai sus” / „din aplicație și din sursele de mai sus”), nu scris în telefon.
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -446,9 +447,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [x] **HOTĂRÂT (29.10): din macheta asistentului fondatorilor** (https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt) — „Azi la noi” cel mult
   5 rânduri, în ordinea din machetă (Alin: „da”); fără „Luni la noi” („nu vreau asta”); întâi etapa 1 (vede și răspunde), apoi etapa 2 (pașii
   cu „Da”) („da”). Nimic construit.
-- [ ] **Alin: macheta asistentului fondatorilor — întrebările 1 și 5. Adăugat pe 29.10.** (1) Stă pe „Acasă” (caseta și „Azi la noi”,
-  deasupra cartonașelor), iar discuția se deschide pe pagina ei? (5) Fiecare fondator își vede doar conversațiile lui? Recomand da la
-  amândouă.
+- [x] **HOTĂRÂT (30.10): macheta asistentului fondatorilor e aprobată întreagă** (Alin: „1. da, 2. da") — stă pe „Acasă” (caseta și
+  „Azi la noi”, deasupra cartonașelor), discuția se deschide pe pagina ei, iar fiecare fondator își vede doar conversațiile lui.
+  **Alin: macheta asistentului fondatorilor — întrebările 1 și 5. Adăugat pe 29.10.**
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -519,6 +520,42 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-10-30
+
+### AMÂNDOI · Rândul „✓" de sub răspuns spune de unde au venit cifrele
+
+**Ce am schimbat:** Alin (30.10, „4. da", după poza din 29.10). Sub un răspuns care a căutat pe internet, rândul mic verde spunea mereu
+„Cifrele le-am luat din aplicație și din sursele de mai sus" — și la vinieta din Ungaria, unde nicio cifră nu venea din aplicație. Acum
+aplicația caută fiecare cifră separat, în datele aplicației și în ce a găsit căutarea: doar de pe internet → „Cifrele le-am luat din
+sursele de mai sus."; din amândouă → ca până acum; doar din aplicație → „Cifrele le-am luat din rapoarte.". Textul îl scrie serverul și se
+păstrează în conversație; răspunsurile salvate înainte de azi rămân cum erau. Păzit de verify_sursa_externa.js (141).
+
+**Ce vede fondatorul:** la o întrebare doar despre internet, rândul spune „din sursele de mai sus".
+
+**Ce vede clientul:** la fel, la firmele cu Basic, Pro sau Business, cu „Sursă externă" pornită.
+
+### AMÂNDOI · Paginile merg până jos: a plecat banda goală de jumătate de centimetru
+
+**Ce am schimbat:** Alin (30.10, „5. da"). Sub fiecare pagină din meniu (RA Insight, Rapoarte, Setări, Management…) rămăsese jos o fâșie
+goală de 32 px — locul unui rând cu versiunea aplicației, scos demult. Măsurat în browser, pe calculator (1366 px) și pe telefon (390 px):
+32 px înainte, 0 după. Bula RA Insight din colț nu acoperă nimic nici acum (măsurat la 800, 1024 și 1366 px, cu 24 de mașini în listă,
+derulat până jos). Păzit de verify_ecrane.js (24).
+
+**Ce vede fondatorul:** paginile merg până la marginea de jos a ecranului.
+
+**Ce vede clientul:** la fel.
+
+### FONDATOR · Asistentul fondatorilor: macheta aprobată întreagă (nimic construit încă)
+
+**Ce am schimbat:** nimic în aplicație. Alin (30.10): la 1 „da" (stă pe „Acasă", discuția pe pagina ei), la 5 „da" (fiecare fondator își
+vede doar conversațiile lui) — cu răspunsurile din 29.10 (2 da, 3 nu — fără „Luni la noi", 4 da), macheta e aprobată întreagă. Tot pe
+30.10: reperele anonime și „Acte pentru transport" se reiau după capitolul Facturare. Etapele construcției i-au fost explicate; începe la
+„da"-ul lui.
+
+**Ce vede fondatorul:** nimic nou încă.
+
+**Ce vede clientul:** nimic.
 
 ## 2026-10-29
 
@@ -648,12 +685,12 @@ Păzit de verify_ecrane.js (7): un sertar împins în stânga nu mai poate purta
 ### Găsit pe drum azi, întrebat (nu reparat)
 - **Banda goală de jos (~0,5 cm):** rândul de jos al aplicației (versiunea, API) a fost scos cândva, dar locul lui (32 px) a rămas gol,
   jos, pe ecranele deschise ca pagină (RA Insight, Rapoarte…), pe calculator și pe telefon. Se vede mai ales pe telefon, cu panoul din RA
-  Insight deschis: sub umbra întunecată rămâne o bandă deschisă. Întrebat pe 29.10.
+  Insight deschis: sub umbra întunecată rămâne o bandă deschisă. Întrebat pe 29.10; **30.10: „da", făcut** (vezi 30.10).
 - **„Sursă externă" lipsea din ce primește fiecare pachet** (aplicație și site). Întrebat; Alin: „da, dar nu le punem preț extra" — făcut azi
   (mai sus).
 - **Rândul de sub răspuns la întrebările doar de pe internet:** sub „Surse de pe internet" scrie „Cifrele le-am luat din aplicație și din
   sursele de mai sus", deși nicio cifră nu vine din aplicație (vinieta din Ungaria). Propus: „Cifrele le-am luat din sursele de mai sus" când
-  toate cifrele sunt de pe internet. Alin a cerut întâi explicația — trimisă cu poză; de hotărât.
+  toate cifrele sunt de pe internet. Alin a cerut întâi explicația — trimisă cu poză; **30.10: „da", făcut** (vezi 30.10).
 
 ---
 
