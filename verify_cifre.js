@@ -105,7 +105,8 @@ T('problemele sunt O piesă (_chatProbleme), cu textul pus ca text, iar butoanel
 T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo); nota perioadei tot prin _insightExtra',
   (PAG.match(/window\._chatProbleme\(x\.probleme\)/g) || []).length === 1 && /_insightExtra\(\{ verificare: x\.verificare, nota: x\.nota \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG));
 // Din 28.10 răspunsul proaspăt poartă și sursele „Sursei externe" (`sursa`), după insignă.
-T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /probleme: j\.probleme,\s*verificat: j\.verificat, nota: j\.nota, insigna: j\.insigna, sursa: j\.sursa \}/.test(PAG));
+// 30.10: și textul rândului „✓" (de unde au venit cifrele — verificatText, de la server) pleacă pe răspunsul proaspăt.
+T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /probleme: j\.probleme,\s*verificat: j\.verificat, verificatText: j\.verificatText, nota: j\.nota, insigna: j\.insigna, sursa: j\.sursa \}/.test(PAG));
 T('„✓ Cifrele le-am luat din rapoarte" doar când serverul spune `verificat`', /if \(x\.verificat\) \{ var ok = el\('div', 'chat-ok'\);/.test(PAG) && /Cifrele le-am luat din rapoarte\./.test(PAG));
 T('ramura Combustibil spune „De verificat" sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));
 T('textul problemei are culoarea textului (contrast sigur pe ambele teme); roșul și chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată',
