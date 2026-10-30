@@ -832,6 +832,13 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   factura automată; ținut minte o oră), `db.aparateFaraFirma` (transmit în ultimele 7 zile), `stocMod.alerte`, `_emailVerdict` (comun cu
   „Stare producție"), „Date emitent" (nume + CUI, regula facturii automate) și `_soldAnthropic`. NU scrie a doua socoteală a vreunuia. Ruta:
   `GET /api/admin/azi-la-noi` (requireSuperadmin; ținută minte 2 minute, `?proaspat=1` fără memorie). Fără model, deci fără cost.
+- **Cifrele de sub „Companii" (cartonaș și chat) = regulile filtrelor din Companii** (30.10, Alin: „da acum"): `/api/admin/counts` numără
+  „fără contract" cu `contracte.faraContract(stareDosar, statusAcces)` (NU „dosar incomplet"), restanța pe facturi (`neplata.stareNeplata`,
+  faza „avertisment") și suspendatele separat (`companies_suspendate`, accesul oprit de noi sau pentru neplată); pagina (`_adashStareCompanii`)
+  și telefonul (FounderHome) doar le scriu. `contracte.faraContract` e legată prin probă de `_coEsteFaraContract` (verify_companii.js) și de
+  `faraContract` din mobile/src/lib/companii.ts (verify_telefon_lot5.js).
+- **Bulina „Cereri demo" = cererile noi numărate de server** (`GET /api/admin/demo-requests/numar` → `window._demoReqNumara`): la pornire
+  (fondatori, apoi la 2 minute), la anunțul `demo_request` și după fiecare încărcare a listei — NU din lista filtrată a paginii.
 - **Clicurile: O funcție, `window._asfDu(tinta)`** (firma + filă, neasignate, facturare + secțiune, emitent, secțiune). Textele de la server
   se pun ca TEXT (`textGros` → noduri `<b>`); innerHTML doar cu bucăți scrise în pagină.
 - **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul), 3 cifrele verificate + analiza
@@ -1219,7 +1226,10 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   căutările „Sursei externe"), pe model, la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
   `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
   `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic = setarea `anthropic_sold` (`PUT /api/admin/insight/sold`),
-  zilele = sold ÷ (costul lunii pe toată platforma ÷ ziua lunii). Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
+  `_soldAnthropic` (30.10, Alin: „da acum"): rămas = suma scrisă − costul de la scrierea ei (`db.costAiDeLa(la)`, toată platforma, pe
+  model), zilele = rămas ÷ (costul ultimelor `SOLD_RITM_ZILE` = 7 zile ÷ 7); întoarce `{ usd: rămas, scris, la, cheltuit, peZi, zile, ritmZile }`.
+  O socoteală pentru „RA Insight · control" și „Azi la noi". NU pune înapoi „luna ÷ ziua lunii" (pe 1 nu știa nimic) și nici suma neatinsă.
+  Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
 - **Pasul 5, oferta → contract → firmă → factură:** prețurile de listă = `tarife_lista.pkBasic / pkPro / pkBusiness` („Prețurile
   noastre"), citite DOAR prin `pachete.preturiLista` (serverul: `_preturiPachete`; gol / 0 / text → prețul din cod, niciodată 0).
   În ofertă: cartea 3, `of-aiPachet` (pornește pe Start; din 15.10 ASCUNS, sub cele patru cartonașe) + `of-pPachet` (propus din listă prin `_ofPropunePachet`, negociabil) —

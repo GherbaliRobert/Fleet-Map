@@ -23,6 +23,13 @@ if (process.argv.indexOf('--faza=seed') >= 0) {
     await db.createInvoice({ companyId: co, series: 'RAT', number: 950, year: an, fullNumber: 'RAT-' + an + '-00950', type: 'invoice', status: 'issued',
       issueDate: scadenta - 15 * ZI, dueDate: scadenta, periodStart: scadenta - 45 * ZI, periodEnd: scadenta - 15 * ZI,
       subtotal: 1025.49, vatAmount: 215.35, total: 1240.84, lines: [{ desc: 'Abonament monitorizare GPS', qty: 1, unitPrice: 1025.49, net: 1025.49 }] });
+    // Soldul Anthropic (30.10, Alin: „da acum"): 20 $ scriși acum 20 de zile. Cheltuieli pe Haiku 4.5 (1 $ la un milion de
+    // tokeni intrați): 5 $ ÎNAINTE de scriere (nu se scad), 3 $ acum 15 zile și 3,5 $ acum 3 zile (se scad) → rămân 13,50 $;
+    // ritmul ultimelor 7 zile = 3,5 $ ÷ 7 = 0,50 $ pe zi → 27 de zile. Socoteala veche spunea 20 $.
+    await db.setSetting('anthropic_sold', JSON.stringify({ usd: 20, la: acum - 20 * ZI }));
+    for (const [zile, tokeni] of [[25, 5000000], [15, 3000000], [3, 3500000]]) {
+      await db.pool.query("INSERT INTO ai_usage (company_id, kind, model, input_tokens, output_tokens, created_at) VALUES (NULL, 'proba_modele', 'claude-haiku-4-5', $1, 0, NOW() - make_interval(days => $2))", [tokeni, zile]);
+    }
     console.log('SEED ' + JSON.stringify({ co, an }));
     await db.closeDb();
     process.exit(0);
@@ -101,7 +108,7 @@ r = A.randuri({ acum: ACUM, firma: { emailEroare: 'Brevo refuză adresa serverul
 T('firma noastră: emailul, „Date emitent" și soldul, pe rând', r.randuri.length === 3 &&
   r.randuri[0].text === 'Emailurile nu pleacă. Brevo refuză adresa serverului nostru.' &&
   r.randuri[1].text === '„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.' &&
-  r.randuri[2].text === 'Soldul Anthropic: 4,10 $; la cheltuiala de acum ajunge cam 12 zile.', JSON.stringify(r.randuri.map((x) => x.text)));
+  r.randuri[2].text === 'Soldul Anthropic: mai sunt cam 4,10 $, cât pentru 12 zile la cheltuiala de acum.', JSON.stringify(r.randuri.map((x) => x.text)));
 T('… spre Stare producție, Date emitent, RA Insight · control', r.randuri[0].tinta.tab === 'dashboard' && r.randuri[1].tinta.fel === 'emitent' && r.randuri[2].tinta.tab === 'agents');
 T('soldul de 20 de zile nu e de văzut (pragul e 14)', A.randuri({ acum: ACUM, firma: { soldUsd: 9, soldZile: 20 } }).randuri.length === 0 && A.ZILE_SOLD === 14);
 
@@ -150,6 +157,7 @@ T('o eroare de server nu lasă pagina goală: mesaj + „Reîncarcă"', /Nu am p
 T('o cerere veche întârziată nu suprascrie una nouă (tura)', /if \(tura !== _tura\) return;/.test(bloc));
 
 // Cele 4 cifre: ACEEAȘI socoteală ca pe cartonașe — funcțiile comune, rulate, dau exact ce scriau cartonașele înainte.
+function taieBucata(src, start, capat) { const a = src.indexOf(start); if (a < 0) return ''; const b = src.indexOf(capat, a + start.length); return b < 0 ? '' : src.slice(a, b + capat.length); }
 function taieFunctia(src, nume) {
   const i = src.indexOf('function ' + nume + '(');
   if (i < 0) return '';
@@ -175,6 +183,13 @@ const useri = [[], [{ last_login: 1 }], [{ last_login: null }, { last_login: 2 }
 T('Utilizatori (la noi): aceeași scriere ca înainte, pe 4 cazuri', f._usrStareAcasa && useri.every((l) => f._adashStareHtml(f._usrStareAcasa(l, false)) === vechiUseri(l)),
   f._usrStareAcasa ? useri.map((l) => f._adashStareHtml(f._usrStareAcasa(l, false))).join(' | ') : 'lipsește');
 const vizibil = (h) => String(h).replace(/<[^>]+>/g, '');
+// 30.10 (Alin: „da acum"): firmele suspendate se spun SEPARAT — una suspendată de noi, fără nicio factură neplătită, nu e „restanță".
+const scrieCo = (fc, rs, su) => f._adashStareCompanii ? vizibil(f._adashStareHtml(f._adashStareCompanii({ companies_fara_contract: fc, companies_restante: rs, companies_suspendate: su }))) : '';
+T('Companii: suspendatele separat — „1 suspendată", „2 suspendate", „20 de suspendate"; fără ele, scrierea de dinainte',
+  scrieCo(0, 0, 1) === '0 fără contract · 0 restanțe · 1 suspendată' && scrieCo(1, 2, 2) === '1 fără contract · 2 restanțe · 2 suspendate' &&
+  scrieCo(0, 0, 20) === '0 fără contract · 0 restanțe · 20 de suspendate' && scrieCo(0, 0, 0) === 'toate în regulă' && scrieCo(2, 0, 0) === '2 fără contract · 0 restanțe',
+  [scrieCo(0, 0, 1), scrieCo(1, 2, 2), scrieCo(0, 0, 20), scrieCo(0, 0, 0), scrieCo(2, 0, 0)].join(' | '));
+T('… iar suspendata e roșie', f._adashStareCompanii && /<span style="color:var\(--red\);">1 suspendată<\/span>$/.test(f._adashStareHtml(f._adashStareCompanii({ companies_suspendate: 1 }))));
 const arhive = [[{ purge_zile: 3, purge_total_zile: 30 }, { purge_zile: 20, purge_total_zile: 30 }], [{ istoric_sters: true }], [{ istoric_sters: true }, { istoric_sters: true }], [{ purge_zile: 25, purge_total_zile: 30 }]];
 T('Arhivate: „pe ducă" (portocaliu), „s-a șters", „păstrat 30 de zile"', f._adashStareArhiva && (function () {
   const a = arhive.map((rows) => f._adashStareArhiva(rows));
@@ -187,6 +202,19 @@ const ac = html.indexOf('window._acasaCifre = async function') > 0 ? html.slice(
 T('… și cifrele din chat (`_acasaCifre`) tot pe ele, din aceleași surse', /\/api\/admin\/counts/.test(ac) && /_adashStareCompanii\(c\)/.test(ac) && /_usrStareAcasa\(/.test(ac) && /_adashStareArhiva\(/.test(ac));
 T('… cu aceleași nume ca pe cartonașe', ['Companii', 'Utilizatori', 'Dispozitive active', 'Arhivate'].every((n) => ac.indexOf("l: '" + n + "'") > 0));
 T('cartonașele vechi rămân (pentru `showView(\'administrare\')` fără secțiune)', /<div id="admin-dash">/.test(html) && /window\.raxAdminHome = function/.test(html));
+
+// Bulina „Cereri demo" (30.10, Alin: „da acum"): o numără serverul, de la pornire și la fiecare cerere nouă — nu din lista filtrată.
+{
+  const numara = taieBucata(html, 'window._demoReqNumara = async function () {', '\n    };');
+  T('bulina „Cereri demo": `_demoReqNumara` cere numărul cererilor noi de la server și îl pune în ambele locuri',
+    /fetch\('\/api\/admin\/demo-requests\/numar'/.test(numara) && /\['rax-demoreq-badge', 'nav-demoreq-badge'\]/.test(numara), numara.slice(0, 300));
+  T('… o cere de la pornire (doar la fondatori), apoi la 2 minute',
+    /if \(currentUser\.role === 'superadmin' && window\._demoReqNumara\) \{ window\._demoReqNumara\(\); setInterval\(window\._demoReqNumara, 120000\); \}/.test(html));
+  T('… și la fiecare anunț de cerere nouă (cu lista reîncărcată dacă e deschisă)',
+    /notif\.type === 'demo_request' && window\._demoReqNumara\) \{\s*window\._demoReqNumara\(\);/.test(html));
+  const lista = taieBucata(html, 'window.raxLoadDemoReq = async function () {', 'var tabs = ');
+  T('… iar lista paginii NU mai numără bulina din ce arată fila aleasă', /window\._demoReqNumara\(\);/.test(lista) && !/status === 'new'; \}\)\.length/.test(lista), lista.slice(0, 400));
+}
 
 sect('3. Culorile, pe ambele teme (contrast ≥ 4,5 pentru text)');
 const css = citeste('public/css/app.css');
@@ -242,7 +270,13 @@ async function peServer() {
     const fe = (j.randuri || []).filter((x) => x.fel === 'firma').map((x) => x.text);
     T('emailul nepus se spune (aceeași socoteală ca „Stare producție")', fe.indexOf('Emailurile nu pleacă. Serverul n-are Brevo sau SMTP pus.') >= 0, JSON.stringify(fe));
     T('„Date emitent" goale se spun (regula facturii automate: numele + CUI-ul)', fe.indexOf('„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.') >= 0, JSON.stringify(fe));
-    T('fără sold Anthropic pus, nicio grijă inventată', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)));
+    // Soldul Anthropic: ce s-a cheltuit DE LA scrierea lui se scade; zilele, la ritmul ultimelor 7 zile (pregătirea: 20 $ acum 20 de zile).
+    const usage = await cere('GET', '/api/admin/ai-usage', S);
+    const sold = ((usage.j || {}).pachete || {}).sold || {};
+    T('soldul: din 20 $ scriși acum 20 de zile s-au scăzut cei 6,50 $ cheltuiți de atunci (nu și cei 5 $ de dinainte) → 13,50 $',
+      sold.scris === 20 && Math.abs(sold.cheltuit - 6.5) < 0.005 && Math.abs(sold.usd - 13.5) < 0.005, JSON.stringify(sold));
+    T('… iar zilele = ce a rămas ÷ cheltuiala pe zi a ultimelor 7 zile (0,50 $) = 27', sold.zile === 27 && Math.abs(sold.peZi - 0.5) < 0.0001 && sold.ritmZile === 7, JSON.stringify(sold));
+    T('27 de zile nu sunt de văzut în „Azi la noi" (pragul e 14): nicio grijă inventată', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)));
     // Clientul
     const co = await cere('POST', '/api/companies', S, { name: 'Firma Client SRL' });
     const u = await cere('POST', '/api/users', S, { username: 'client.admin@proba.ro', full_name: 'Ion Client', role: 'company_admin', company_id: co.j.id });
@@ -263,11 +297,35 @@ async function peServer() {
     T('aparatele care transmit fără firmă: câte, spre „Neasignate", cu IMEI-urile', ra && ra.text === '**2 aparate** transmit și n-au firmă.' && ra.tinta.fel === 'neasignate' &&
       ra.tinta.imeis.indexOf('TEST111') >= 0 && ra.tinta.imeis.indexOf('TEST222') >= 0 && ra.tinta.firma === null, JSON.stringify(ra));
     T('„5 de văzut"', r.j.deVazut === 5 && r.j.deVazutText === '5 de văzut', r.j.deVazutText);
+    // Cifrele de sub „Companii" (30.10, Alin: „da acum"): regulile filtrelor din Companii. Trans Expres (factura întârziată) e
+    // restanță; o firmă suspendată de NOI, fără nicio factură, e „suspendată" — nu și restanță; o firmă fără contract e „fără contract".
+    const c0 = (await cere('GET', '/api/admin/counts', S)).j || {};
+    T('/api/admin/counts: factura întârziată = o restanță; nimic suspendat încă', Number(c0.companies_restante) === 1 && Number(c0.companies_suspendate) === 0 &&
+      Number(c0.companies_fara_contract) >= 2, JSON.stringify(c0));
+    const sus = await cere('PUT', '/api/companies/' + co.j.id + '/suspend', S, { suspend: true, reason: 'Probă: suspendată de noi' });
+    T('fondatorul suspendă de mână firma clientului (fără nicio factură)', sus.s === 200, JSON.stringify(sus.j).slice(0, 200));
+    const c1 = (await cere('GET', '/api/admin/counts', S)).j || {};
+    T('… ea apare la „suspendate", NU la „restanțe" (până pe 30.10 restanțele le numărau și pe ele)', Number(c1.companies_suspendate) === 1 &&
+      Number(c1.companies_restante) === Number(c0.companies_restante) && Number(c1.companies_fara_contract) === Number(c0.companies_fara_contract), JSON.stringify(c1));
     // Ce am scos în funcții comune merge ca înainte.
     const h = await cere('GET', '/api/admin/health', S);
     T('„Stare producție" merge (verdictul emailului e acum `_emailVerdict`)', h.s === 200 && JSON.stringify(h.j).indexOf('"smtp"') >= 0, JSON.stringify(h.j).slice(0, 200));
     const ce = await cere('POST', '/api/admin/contracts/check-expiry', S, {});
     T('anunțul zilnic al contractelor merge (termenele de montaj sunt acum `_termeneMontaj`)', ce.s === 200, JSON.stringify(ce.j).slice(0, 200));
+    // Bulina „Cereri demo" (30.10): o cerere nouă de pe site se numără oricare ar fi fila deschisă; după respingere, dispare.
+    let nd = await cere('GET', '/api/admin/demo-requests/numar', S);
+    T('bulina „Cereri demo": zero cereri noi la început', nd.s === 200 && nd.j.noi === 0, JSON.stringify(nd.j));
+    const dr = await cere('POST', '/api/public/demo-request', null, { name: 'Maria Pop', company: 'Logistic Sud SRL', email: 'maria.pop@proba.ro', wants_demo: true, consent: true, ts: Date.now() - 20000 });
+    T('o cerere de cont demo vine de pe site', dr.s === 200 && dr.j.ok === true, JSON.stringify(dr.j));
+    nd = await cere('GET', '/api/admin/demo-requests/numar', S);
+    const aprobate = await cere('GET', '/api/admin/demo-requests?status=approved', S);
+    T('… bulina o numără (1), chiar dacă pagina stă pe fila „Aprobate", unde lista e goală', nd.j.noi === 1 && Array.isArray(aprobate.j) && aprobate.j.length === 0, JSON.stringify([nd.j, aprobate.j && aprobate.j.length]));
+    const noua = ((await cere('GET', '/api/admin/demo-requests?status=new', S)).j || [])[0];
+    const rj = noua ? await cere('POST', '/api/admin/demo-requests/' + noua.id + '/reject', S, {}) : { s: 0 };
+    nd = await cere('GET', '/api/admin/demo-requests/numar', S);
+    T('… iar după „Respinge", bulina se stinge (0)', rj.s === 200 && nd.j.noi === 0, JSON.stringify([rj.s, nd.j]));
+    const ndC = await cere('GET', '/api/admin/demo-requests/numar', C);
+    T('numărul cererilor demo e doar pentru fondatori (clientul, aici cu firma suspendată de noi, nu-l primește)', ndC.s >= 400 && ndC.j.noi === undefined, ndC.s + ' ' + JSON.stringify(ndC.j));
   } finally {
     srv.kill();
     await sleep(400);

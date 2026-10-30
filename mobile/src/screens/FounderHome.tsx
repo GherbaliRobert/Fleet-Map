@@ -61,10 +61,12 @@ export function FounderHome() {
   function sub(k: string): { t: ComponentChildren; warn: boolean } | null {
     if (!c) return null;
     if (k === 'companies') {
-      const fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0;
-      if (!fc && !rs) return { t: 'toate în regulă', warn: false };
+      // Cifrele le numără serverul cu regulile filtrelor din Companii (fără contract / restanță / suspendate — 30.10).
+      const fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0, su = Number(c.companies_suspendate) || 0;
+      if (!fc && !rs && !su) return { t: 'toate în regulă', warn: false };
       return {
-        t: <><span style={'color:' + (fc ? 'var(--fd-bad)' : 'var(--text-muted)')}>{fc} fără contract</span> · <span style={'color:' + (rs ? 'var(--fd-warn)' : 'var(--text-muted)')}>{rs}{rs === 1 ? ' restanță' : ' restanțe'}</span></>,
+        t: <><span style={'color:' + (fc ? 'var(--fd-bad)' : 'var(--text-muted)')}>{fc} fără contract</span> · <span style={'color:' + (rs ? 'var(--fd-warn)' : 'var(--text-muted)')}>{rs}{rs === 1 ? ' restanță' : ' restanțe'}</span>
+          {su > 0 && <> · <span style="color:var(--fd-bad)">{nrDe(su, 'suspendată', 'suspendate')}</span></>}</>,
         warn: false,
       };
     }

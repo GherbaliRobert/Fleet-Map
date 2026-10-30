@@ -523,6 +523,26 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-10-30
 
+### FONDATOR · Cele trei găsite la pasul 1, reparate: „fără contract", soldul Anthropic, bulina „Cereri demo"
+
+**Ce am schimbat:** Alin (30.10): „1. da acum". (1) **Cifrele de sub „Companii"** (cartonașul vechi și cifra din chatul fondatorilor)
+se numără acum cu regulile filtrelor din pagina Companii: „fără contract" = niciun contract, sau unul încheiat la o firmă care intră în
+continuare (o firmă cu contract semnat căreia îi lipsește doar acordul GDPR NU mai e „fără contract"); „restanțe" = firmele cu o factură
+trecută de scadență; firmele suspendate (de noi sau pentru neplată) se spun separat, „1 suspendată", doar când există. Regula „fără
+contract" stă o dată pe server (`contracte.faraContract`) și e legată prin probă de filtrul din pagină și de cel de pe telefon. (2) **Soldul
+Anthropic** scade singur ce s-a cheltuit de când l-ați scris, iar zilele se socotesc la ritmul ultimelor 7 zile (până acum: suma scrisă,
+neatinsă, împărțită la ritmul lunii — pe 1 ale lunii nu știa nimic). Exemplu din probă: 20 $ scriși acum 20 de zile, 6,50 $ cheltuiți de
+atunci → „~13,50 $, ajunge ~27 de zile". În „RA Insight · control" cifra mare e ce a rămas, iar dedesubt scrie „din 20 $ scriși pe …".
+(3) **Bulina „Cereri demo"** din meniu numără cererile noi de la server: apare de la pornire, la fiecare cerere nouă și se stinge după
+„Aprobă" / „Respinge", oricare ar fi fila deschisă (până acum apărea doar după ce deschideai pagina și dispărea pe fila „Aprobate"). Păzit
+de verify_asistent_fondatori.js (109, pe server pornit: o firmă suspendată de mână nu mai e restanță; soldul cu cheltuieli înainte și după
+scriere; o cerere demo de pe site), verify_companii.js, verify_telefon_lot5.js, verify_insight_panou.js.
+
+**Ce vede fondatorul:** sub „Companii": „1 fără contract · 1 restanță · 1 suspendată" (cu cifrele adevărate); în „RA Insight · control",
+soldul rămas și din ce sumă scrisă; bulina roșie lângă „Cereri demo" de cum intră în aplicație.
+
+**Ce vede clientul:** nimic (toate trei sunt ecrane ale noastre).
+
 ### FONDATOR · Asistentul fondatorilor, pasul 1: „Acasă" e un chat, cu „Azi la noi" ca prim mesaj
 
 **Ce am schimbat:** Alin (30.10): „DA. Vreau să fie tot un chat… nu te apuca să editezi până nu-mi arăți cum va fi vizual"; după macheta

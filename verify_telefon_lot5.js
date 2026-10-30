@@ -1624,6 +1624,22 @@ async function parteaContracte() {
       /\(\(loc\.query \|\| \{\}\) as any\)\.oferta/.test(citeste('mobile/src/screens/ClientNou.tsx')), u);
   }
   T('numele vechi au plecat („Dosarul clientului", „Client nou" pe rând)', !/> Dosarul clientului</.test(ofSrc) && !/\/> Client nou<\/button>/.test(ofSrc));
+  // „Fără contract" pe telefon (filtrul registrului) = regula serverului (`contracte.faraContract`), care numără și cifra de sub „Companii" de pe
+  // „Acasă" (30.10). Web-ul e legat de aceeași regulă în verify_companii.js. Rulate pe dosare REALE (`stareDosar`) și pe toate accesele.
+  if (CO) {
+    const CJ = require('./contracts.js'), acumF = Date.now(), plina = { cui: 'RO1', address: 'Str. 1', legal_rep: { name: 'Ion Pop' } };
+    const dosareF = [CJ.stareDosar(plina, null, acumF), CJ.stareDosar(plina, { status: 'trimis' }, acumF),
+      CJ.stareDosar(plina, { status: 'activ', signed_at: acumF, has_file: true }, acumF), CJ.stareDosar(plina, { status: 'incheiat' }, acumF),
+      CJ.stareDosar({ is_demo: true }, null, acumF), null];
+    const nep = [];
+    dosareF.forEach((d) => ['active', 'grace', 'expired'].forEach((a) => {
+      const tel = CO.faraContract({ is_demo: false, dosar: d, access: { status: a } }), srv = CJ.faraContract(d, a);
+      if (tel !== srv) nep.push((d ? d.nivel : 'null') + '/' + a + ': telefon ' + tel + ', server ' + srv);
+    }));
+    T('„fără contract": telefonul (`faraContract`) și serverul (`contracte.faraContract`) spun la fel pe ' + dosareF.length * 3 + ' cazuri', nep.length === 0, nep.join(' | '));
+    const acasa = citeste('mobile/src/screens/FounderHome.tsx');
+    T('„Acasă" pe telefon spune și suspendatele (companies_suspendate), ca pe web', /companies_suspendate/.test(acasa) && /nrDe\(su, 'suspendată', 'suspendate'\)/.test(acasa));
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
   sect('3.6 Ce nu trebuia atins');

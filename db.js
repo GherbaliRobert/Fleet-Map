@@ -4994,6 +4994,18 @@ async function costAiLunaToata() {
        FROM ai_usage WHERE created_at >= date_trunc('month', NOW()) GROUP BY model`);
   return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
 }
+// Costul AI (USD) al TUTUROR rândurilor de la o clipă (ms) încoace, pe model, cu aceeași formulă (`_costUsdRand`) — soldul
+// Anthropic (30.10): ce s-a cheltuit de când l-am scris și ritmul ultimelor 7 zile. Fereastra se socotește față de NOW() al bazei
+// (ca `date_trunc('month', NOW())` de mai sus), nu din ceasul serverului, ca fusul orar al coloanei să nu mute nimic.
+async function costAiDeLa(ms) {
+  const sec = Math.max(0, (Date.now() - (Number(ms) || 0)) / 1000);
+  const r = await pool.query(
+    `SELECT model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
+       FROM ai_usage WHERE created_at >= NOW() - make_interval(secs => $1::double precision) GROUP BY model`, [sec]);
+  return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
+}
 // Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
 async function raspunsuriReguliLunaToate() {
   const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
@@ -6872,6 +6884,11 @@ async function listDemoRequests(opts) {
   const q = await pool.query(`SELECT * FROM demo_requests ${where} ORDER BY created_at DESC LIMIT ${lim}`, params);
   return q.rows;
 }
+// Bulina „Cereri demo" din meniu (30.10): câte cereri sunt încă noi, oricare ar fi fila deschisă în pagină.
+async function demoRequestsNoi() {
+  const q = await pool.query("SELECT COUNT(*)::int AS n FROM demo_requests WHERE status = 'new'");
+  return Number((q.rows[0] || {}).n) || 0;
+}
 async function getDemoRequestById(id) {
   const q = await pool.query('SELECT * FROM demo_requests WHERE id = $1', [parseInt(id)]);
   return q.rows[0] || null;
@@ -7076,7 +7093,7 @@ module.exports = {
   treceCerereEchipa, interventiiCalendar,
   getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
-  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata,
+  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
@@ -7099,7 +7116,7 @@ module.exports = {
   listParteneriMontaj, upsertPartenerMontaj, deletePartenerMontaj,
   listMontaje, getMontaj, upsertMontaj, deleteMontaj, setContractMontaj, lucrariMontajIntre, lucrariPeContracte,
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
-  createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
+  createDemoRequest, listDemoRequests, demoRequestsNoi, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, firmeCuFlotaGrea, listRemorci, getRemorca, createRemorca, updateRemorca, deleteRemorca, atasezaRemorca,
   creeazaPlan, actualizeazaPlan, getPlan, listPlanuri, trimitePlan, planIncarcat, planProblema, stergePlan,

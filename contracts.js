@@ -290,6 +290,17 @@ function _text(lipsuri) {
   return lipsuri.map(function (k) { return ETICHETE[k] || k; }).join(', ');
 }
 
+// „Fără contract" = nicio hârtie în vigoare sau pe drum: niciun contract, SAU unul încheiat la o firmă care intră în
+// continuare (accesul neoprit). NU „dosar incomplet": o firmă cu contract semnat căreia îi lipsește doar acordul GDPR
+// are contract. Aceeași regulă ca banda roșie din Contracte, filtrul „Fără contract" din Companii (web
+// `_coEsteFaraContract`, telefon `faraContract`) și cifra de sub „Companii" de pe „Acasă" (/api/admin/counts) — legate
+// prin probă (verify_companii.js). `dosar` = ce întoarce `stareDosar` (demo → nivel 'demo' → nu).
+function faraContract(dosar, statusAcces) {
+  if (!dosar) return false;
+  if (dosar.nivel === 'lipsa') return true;
+  return dosar.nivel === 'incheiat' && statusAcces !== 'expired';
+}
+
 // Până când se mai poate anunța rezilierea, ca să prindă termenul. Contract pe 12 luni cu 30 de zile
 // preaviz: dacă expiră pe 1 iunie, ultima zi în care se poate denunța e 2 mai. La unul care se
 // reînnoiește singur, contează termenul CURENT (vezi `sfarsitCurent`), nu primul.
@@ -576,7 +587,7 @@ module.exports = {
   CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
   MONTAJ_ZILE_DUPA_AVANS, AVANS_ZILE_RENUNTARE,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,
-  calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat,
+  calcSfarsit, sfarsitContract, sfarsitCurent, areGdpr, stareDosar, faraContract, ultimaZiDePreaviz, deAnuntat,
   facAnexa, dinAnexaDePastrat, anexaInVigoare,
   MONTAJ_AVERTIZARE_ZILE, masiniDeMontat, avansContract, termenMontaj, termenText, montateText
 };

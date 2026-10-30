@@ -4106,18 +4106,24 @@ async function _asiguraLocAdmin(u) {
 }
 // Tabloul nostru (pasul 4): de la cât din plasă ne anunță aplicația (și o dată când o atinge).
 const PLASA_ANUNT_PROCENT = 60;
-// Soldul de la Anthropic: îl scriem noi, de mână (Anthropic nu-l dă printr-o cerere), cu ziua; aplicația socotește, după
-// ritmul lunii, pentru câte zile mai ajunge. { usd, la, zile } sau null.
+// Soldul de la Anthropic: îl scriem noi, de mână (Anthropic nu-l dă printr-o cerere), cu ziua. Ce s-a cheltuit DE ATUNCI se
+// scade singur (Alin, 30.10: „da acum" — până atunci 20 $ scriși pe 10.10 rămâneau 20 $ și zilele ieșeau prea multe), iar
+// zilele = ce a rămas ÷ cheltuiala pe zi a ultimelor 7 zile (ritmul de acum; „luna asta ÷ ziua lunii" nu știa nimic pe 1).
+// { usd: rămas, scris, la, cheltuit (de la `la`), peZi, zile } sau null. O singură socoteală: „Azi la noi" și „RA Insight · control".
+const SOLD_RITM_ZILE = 7;
 async function _soldAnthropic() {
   let s = null; try { s = JSON.parse((await db.getSetting('anthropic_sold')) || 'null'); } catch (e) { s = null; }
   if (!s || !(Number(s.usd) >= 0)) return null;
-  let zile = null;
+  const doi = function (n) { return Math.round(n * 100) / 100; };
+  const scris = Number(s.usd), la = Number(s.la) || null;
+  let cheltuit = 0, peZi = null, zile = null;
+  try { if (la) cheltuit = await db.costAiDeLa(la); } catch (e) { cheltuit = 0; }
+  const ramas = Math.max(0, scris - cheltuit);
   try {
-    const cost = await db.costAiLunaToata(), zi = new Date().getUTCDate();
-    const peZi = cost / Math.max(1, zi);
-    if (peZi > 0) zile = Math.floor(Number(s.usd) / peZi);
-  } catch (e) {}
-  return { usd: Math.round(Number(s.usd) * 100) / 100, la: Number(s.la) || null, zile: zile };
+    peZi = (await db.costAiDeLa(Date.now() - SOLD_RITM_ZILE * 86400000)) / SOLD_RITM_ZILE;
+    if (peZi > 0) zile = Math.floor(ramas / peZi);
+  } catch (e) { peZi = null; }
+  return { usd: doi(ramas), scris: doi(scris), la: la, cheltuit: doi(cheltuit), peZi: peZi == null ? null : Math.round(peZi * 10000) / 10000, zile: zile, ritmZile: SOLD_RITM_ZILE };
 }
 // Anunțul pentru noi: o firmă a trecut de 60% din plasă, sau a atins-o (de acum răspunde pe butoane până pe 1). O dată pe
 // firmă, pe lună și pe prag (cheia stă în setări, ca o repornire să nu-l repete). Fără firma demo.
@@ -8106,8 +8112,11 @@ app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
         (SELECT COUNT(*)::int FROM users WHERE company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo)) AS users,
         (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS active_devices,
         (SELECT COUNT(*)::int FROM devices WHERE status = 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS archived_devices`);
-      // Cartonașul „Companii" nu spunea decât un număr. Fondatorul vrea să vadă din „Acasă" dacă e
-      // ceva de rezolvat: câte firme au dosarul incomplet și câte au restanță sau sunt suspendate.
+      // Cartonașul „Companii" nu spunea decât un număr. Fondatorul vrea să vadă din „Acasă" dacă e ceva de rezolvat — cu
+      // ACELEAȘI reguli ca filtrele din Companii (Alin, 30.10: „da acum"; până atunci „fără contract" număra orice dosar
+      // incomplet, iar „restanțe" și firmele suspendate de noi, fără nicio factură neplătită): „fără contract" =
+      // `contracte.faraContract`, „restanță" = o factură trecută de scadență, în avertisment (`neplata.stareNeplata`),
+      // „suspendate" = accesul oprit (de noi sau pentru neplată), numărate separat.
       const out = Object.assign({}, r.rows[0]);
       try {
         const [lista, dos, facturi] = await Promise.all([
@@ -8116,14 +8125,17 @@ app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
           db.facturiNeachitateToate().catch(function () { return {}; })
         ]);
         const acum = Date.now();
-        let faraContract = 0, restante = 0;
+        let faraContract = 0, restante = 0, suspendate = 0;
         (lista || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
-          const d = contracte.stareDosar(c, dos[c.id] || null, acum);
-          if (d && d.text) faraContract++;
-          if (stareAcces(c, facturi[c.id] || [], acum).status !== 'active') restante++;
+          const f = facturi[c.id] || [];
+          const acc = stareAcces(c, f, acum);
+          if (contracte.faraContract(contracte.stareDosar(c, dos[c.id] || null, acum), acc.status)) faraContract++;
+          if (neplata.stareNeplata(f, acum).faza === 'avertisment') restante++;
+          if (acc.status === 'expired') suspendate++;
         });
         out.companies_fara_contract = faraContract;
         out.companies_restante = restante;
+        out.companies_suspendate = suspendate;
       } catch (e) { /* fără rândul de sub cifră, cartonașul rămâne cu numărul */ }
       return res.json(out);
     }
@@ -20075,6 +20087,11 @@ app.delete('/api/mail/primite/:id', requireAuth, requireSuperadmin, async (req, 
 app.get('/api/admin/demo-requests', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listDemoRequests({ status: req.query.status || null })); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Bulina din meniu (30.10, Alin: „da acum"): câte cereri sunt NOI — se numără de la pornire și la fiecare cerere nouă, nu din lista
+// filtrată a paginii (pe fila „Aprobate" bulina dispărea, deși așteptau cereri).
+app.get('/api/admin/demo-requests/numar', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json({ noi: await db.demoRequestsNoi() }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Aprobare = se creează un cont propriu pentru solicitant, în compania demo, cu termen ales de super-admin.
 app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin, async (req, res) => {

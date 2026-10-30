@@ -160,7 +160,8 @@ function firmaNoastra(f) {
     r.push({ fel: 'firma', nivel: 'w', text: '„Date emitent” incomplete: ' + (l.length === 1 ? 'lipsește ' : 'lipsesc ') + ult + '. Fără ele nu pleacă nicio factură.', buton: 'Date emitent', tinta: { fel: 'emitent' } });
   }
   if (f.soldZile != null && f.soldZile < ZILE_SOLD) {
-    r.push({ fel: 'firma', nivel: f.soldZile < 5 ? 'r' : 'n', text: 'Soldul Anthropic: ' + dolari(f.soldUsd) + '; la cheltuiala de acum ajunge cam ' + numar(Math.max(0, Math.floor(f.soldZile)), 'zi', 'zile') + '.',
+    // `soldUsd` = ce a RĂMAS din suma scrisă, după ce s-a cheltuit de atunci (serverul, `_soldAnthropic`, 30.10) — de aici „cam".
+    r.push({ fel: 'firma', nivel: f.soldZile < 5 ? 'r' : 'n', text: 'Soldul Anthropic: mai sunt cam ' + dolari(f.soldUsd) + ', cât pentru ' + numar(Math.max(0, Math.floor(f.soldZile)), 'zi', 'zile') + ' la cheltuiala de acum.',
       buton: 'RA Insight · control', tinta: { fel: 'sectiune', tab: 'agents' } });
   }
   return r;

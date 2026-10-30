@@ -4075,6 +4075,8 @@ const pozitii = await r.json();</code></pre>
       if (currentUser.role === 'superadmin' && window._mailNumara) { window._mailNumara(); setInterval(window._mailNumara, 120000); }
       // „Cereri de la clienți" (22.10): bulina cu cererile încă nepreluate — doar la fondatori.
       if (currentUser.role === 'superadmin' && window._cereriNumara) { window._cereriNumara(); setInterval(window._cereriNumara, 120000); }
+      // „Cereri demo" (30.10): bulina cu cererile noi, de la pornire — nu abia după ce deschizi pagina.
+      if (currentUser.role === 'superadmin' && window._demoReqNumara) { window._demoReqNumara(); setInterval(window._demoReqNumara, 120000); }
       if ('serviceWorker' in navigator) {
         // auto-update: dacă pagina e deja controlată de un SW vechi și apare o versiune nouă, reîncarcă o singură dată
         var __wasControlled = !!navigator.serviceWorker.controller;
@@ -4291,8 +4293,8 @@ const pozitii = await r.json();</code></pre>
         setNum('adash-n-users', c.users);
         setNum('adash-n-active', c.active_devices);
         setNum('adash-n-archived', c.archived_devices);
-        // Sub cifră, starea: „1 fără contract · 0 restanțe". Vezi din „Acasă" dacă e ceva de
-        // rezolvat, fără să deschizi secțiunea.
+        // Sub cifră, starea: „1 fără contract · 0 restanțe" (+ „1 suspendată" când e cazul). Vezi din „Acasă" dacă e
+        // ceva de rezolvat, fără să deschizi secțiunea.
         var sub = document.getElementById('adash-s-companies');
         if (sub) sub.innerHTML = _adashStareHtml(_adashStareCompanii(c));
         _adashArhiva(Number(c.archived_devices) || 0);
@@ -4301,10 +4303,13 @@ const pozitii = await r.json();</code></pre>
     // Rândul de stare de sub cifre: O socoteală, două desene — cartonașele de aici și cele 4 cifre din primul mesaj al
     // asistentului fondatorilor (macheta „tot un chat", Alin, 30.10). Bucățile: [{ t, ton }] — ton 'r' roșu, 'w' portocaliu,
     // 'm' gri, '' fără culoare a lui.
+    // Cifrele le numără serverul cu regulile filtrelor din Companii (fără contract / restanță / suspendate — Alin, 30.10).
     function _adashStareCompanii(c) {
-      var fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0;
-      if (!fc && !rs) return [{ t: 'toate în regulă', ton: '' }];
-      return [{ t: fc + ' fără contract', ton: fc ? 'r' : 'm' }, { t: rs + (rs === 1 ? ' restanță' : ' restanțe'), ton: rs ? 'w' : 'm' }];
+      var fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0, su = Number(c.companies_suspendate) || 0;
+      if (!fc && !rs && !su) return [{ t: 'toate în regulă', ton: '' }];
+      var parti = [{ t: fc + ' fără contract', ton: fc ? 'r' : 'm' }, { t: rs + (rs === 1 ? ' restanță' : ' restanțe'), ton: rs ? 'w' : 'm' }];
+      if (su) parti.push({ t: su + (su === 1 ? ' suspendată' : (su % 100 >= 1 && su % 100 <= 19 ? ' ' : ' de ') + 'suspendate'), ton: 'r' });
+      return parti;
     }
     // Rândul de stare al cartonașului „Arhivate" + portocaliul lui. Cifra singură nu spune nimic:
     // ce contează la un aparat arhivat e cât mai are istoricul până se șterge definitiv (30 de zile de
@@ -15051,6 +15056,10 @@ const pozitii = await r.json();</code></pre>
       else if (notif && notif.type === 'cerere_echipa' && window._cereriNumara) {
         window._cereriNumara();
         var tc = document.getElementById('admin-tab-cereri'); if (tc && tc.style.display !== 'none' && window.raxLoadCereri) window.raxLoadCereri();
+      }
+      else if (notif && notif.type === 'demo_request' && window._demoReqNumara) {
+        window._demoReqNumara();
+        var td = document.getElementById('admin-tab-demoreq'); if (td && td.style.display !== 'none' && window.raxLoadDemoReq) window.raxLoadDemoReq();
       }
     }
 
@@ -29987,8 +29996,10 @@ const pozitii = await r.json();</code></pre>
         + t('Încasăm luna asta', _aiuLei(venit), parti.length ? esc(parti.join(' · ')) : 'nicio firmă pe un pachet încă')
         + t('Ne costă (real)', _aiuLei(cost), 'plata către model')
         + t('Ne rămân', '<span style="color:' + (ramane >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramane) + '</span>', venit > 0 ? Math.round((ramane / venit) * 100) + '% din încasări' : '—')
-        + t('Sold Anthropic', sold ? '$' + Number(sold.usd).toLocaleString('ro-RO') : '—',
-            (sold ? (sold.zile != null ? 'la ritmul de azi, ~' + sold.zile + (sold.zile % 100 >= 20 || (sold.zile % 100 === 0 && sold.zile) ? ' de' : '') + ' zile' : 'fără cheltuieli luna asta') + (sold.la ? ' · scris pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '') : 'nescris')
+        // Soldul: ce a mai rămas din suma scrisă, după ce s-a cheltuit de atunci (serverul, 30.10); zilele, la ritmul ultimelor 7 zile.
+        + t('Sold Anthropic', sold ? '~$' + Number(sold.usd).toLocaleString('ro-RO') : '—',
+            (sold ? (sold.zile != null ? 'ajunge ~' + sold.zile + (sold.zile % 100 >= 20 || (sold.zile % 100 === 0 && sold.zile) ? ' de' : '') + ' zile' : 'fără cheltuieli în ultimele ' + (sold.ritmZile || 7) + ' zile')
+              + (sold.la ? ' · din $' + Number(sold.scris != null ? sold.scris : sold.usd).toLocaleString('ro-RO') + ' scriși pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '') : 'nescris')
             + ' · <button class="aiu-pk-l" onclick="raxAiSold()">' + (sold ? 'schimbă' : 'scrie-l') + '</button>')
         + '</div>';
     }
@@ -30121,7 +30132,7 @@ const pozitii = await r.json();</code></pre>
       return '<div class="aiu-pk-r">' + parti.join(' · ') + '</div>';
     }
     window.raxAiSold = async function () {
-      var v = await raConfirm('Soldul îl găsiți în contul Anthropic (Billing). Aplicația socotește, după ce s-a cheltuit luna asta, pentru câte zile mai ajunge.', { title: 'Soldul de la Anthropic', danger: false, okLabel: 'Salvează', icon: 'fa-wallet', field: { label: 'Soldul, în dolari', value: '' } });
+      var v = await raConfirm('Soldul îl găsiți în contul Anthropic (Billing). De azi încolo aplicația scade singură ce se cheltuie și socotește, după ritmul ultimelor 7 zile, pentru câte zile mai ajunge.', { title: 'Soldul de la Anthropic', danger: false, okLabel: 'Salvează', icon: 'fa-wallet', field: { label: 'Soldul, în dolari', value: '' } });
       if (v === false) return;
       try {
         var j = await fetch('/api/admin/insight/sold', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ usd: String(v).replace(',', '.').trim() }) }).then(function (r) { return r.json(); });
@@ -30289,6 +30300,18 @@ const pozitii = await r.json();</code></pre>
     // Filele (Toate / Noi / Aprobate / Respinse). Prin funcție: atributul care scria direct în `_demoReqFilter` scria,
     // de fapt, o variabilă nouă pe `window`, nu pe asta de aici — filele nu filtrau nimic (30.09).
     window.raxDemoReqFiltru = function (f) { _demoReqFilter = f || ''; raxLoadDemoReq(); };
+    // Bulina din meniu = cererile încă NOI, numărate de server (30.10, Alin: „da acum"): de la pornire, la fiecare cerere nouă și
+    // după fiecare aprobare / respingere — nu din lista filtrată a paginii (pe fila „Aprobate" bulina dispărea, deși așteptau cereri).
+    // Aceeași bulină, în două locuri: rândul din meniul nostru și cel din meniul vechi (ascuns).
+    window._demoReqNumara = async function () {
+      var j = null;
+      try { j = await fetch('/api/admin/demo-requests/numar', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!j) return;
+      var n = Number(j.noi) || 0;
+      ['rax-demoreq-badge', 'nav-demoreq-badge'].forEach(function (id) {
+        var b = $(id); if (b) { b.style.display = n ? 'inline-block' : 'none'; b.textContent = String(n); }
+      });
+    };
     // Simulatorul de poziții demo merge doar cât timp există un cont demo valabil. Fără banda asta,
     // super-adminul care deschide flota demo ar vedea cinci camioane înghețate fără să înțeleagă de ce.
     async function _demoSimStrip() {
@@ -30324,11 +30347,7 @@ const pozitii = await r.json();</code></pre>
       var list = [];
       try { list = await fetch('/api/admin/demo-requests' + (_demoReqFilter ? '?status=' + _demoReqFilter : ''), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
       if (!Array.isArray(list)) list = [];
-      var nNew = list.filter(function (r) { return r.status === 'new'; }).length;
-      // Aceeasi bulina, in doua locuri: randul din meniul nostru si cel din meniul vechi (ascuns).
-      ['rax-demoreq-badge', 'nav-demoreq-badge'].forEach(function (id) {
-        var b = $(id); if (b) { b.style.display = nNew ? 'inline-block' : 'none'; b.textContent = String(nNew); }
-      });
+      window._demoReqNumara();
 
       var tabs = [['', 'Toate'], ['new', 'Noi'], ['approved', 'Aprobate'], ['rejected', 'Respinse']].map(function (t) {
         return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="raxDemoReqFiltru(\'' + t[0] + '\')">' + t[1] + '</button>';

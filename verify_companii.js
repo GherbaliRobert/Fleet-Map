@@ -167,6 +167,39 @@ T('cea cu dosarul complet, nu', co.faraContract(F({ dosar: { nivel: 'ok', etiche
 T('demo-ul nu intră la „fără contract"', co.faraContract(F({ is_demo: true, dosar: { nivel: 'lipsa', text: 'x' } })) === false);
 T('restanța în derulare se recunoaște', co.restanta(F({ neplata: { faza: 'avertisment', zilePanaLaSuspendare: 5 } })) === true);
 T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } })) === true);
+// Cifra de sub „Companii" de pe „Acasă" (/api/admin/counts) numără pe server cu `contracte.faraContract` (Alin, 30.10: „da acum" —
+// număra orice dosar incomplet). Aceeași regulă ca filtrul din pagină: rulate pe aceleași dosare REALE (`stareDosar`) și accese.
+{
+  const contracteJs = require('./contracts.js');
+  const acumC = Date.now(), ZI_C = 86400000;
+  const firmaPlina = { cui: 'RO123', address: 'Str. 1', legal_rep: { name: 'Ion Pop' } };
+  const dosare = [
+    contracteJs.stareDosar(firmaPlina, null, acumC),                                                            // lipsă
+    contracteJs.stareDosar({}, null, acumC),                                                                    // lipsă, firmă goală
+    contracteJs.stareDosar(firmaPlina, { status: 'ciorna' }, acumC),                                            // nesemnat
+    contracteJs.stareDosar(firmaPlina, { status: 'activ', signed_at: acumC - ZI_C, has_file: true, start_at: acumC - ZI_C, months: 24 }, acumC), // fără GDPR → incomplet
+    contracteJs.stareDosar(firmaPlina, { status: 'activ', signed_at: acumC - ZI_C, has_file: true, has_gdpr_file: true, start_at: acumC - ZI_C, months: 24 }, acumC),
+    contracteJs.stareDosar(firmaPlina, { status: 'incheiat' }, acumC),                                          // încheiat
+    contracteJs.stareDosar({ is_demo: true }, null, acumC),                                                     // demo
+    null
+  ];
+  const accese = ['active', 'grace', 'expired'];
+  const nepotriviri = [];
+  dosare.forEach((d) => accese.forEach((a) => {
+    const pagina = co.faraContract(F({ dosar: d, access: { status: a } }));
+    const server = contracteJs.faraContract(d, a);
+    if (pagina !== server) nepotriviri.push((d ? d.nivel : 'null') + '/' + a + ': pagina ' + pagina + ', server ' + server);
+  }));
+  T('„fără contract": pagina (`_coEsteFaraContract`) și serverul (`contracte.faraContract`) spun la fel pe ' + (dosare.length * accese.length) + ' cazuri',
+    nepotriviri.length === 0, nepotriviri.join(' | '));
+  T('… contractul semnat căruia îi lipsește doar acordul GDPR NU e „fără contract"', dosare[3].nivel === 'incomplet' && contracteJs.faraContract(dosare[3], 'active') === false,
+    dosare[3].nivel + ' / ' + dosare[3].text);
+  const ruta = (server.match(/app\.get\('\/api\/admin\/counts'[\s\S]*?\n\}\);/) || [''])[0];
+  T('/api/admin/counts numără „fără contract" cu `contracte.faraContract`, restanța pe facturi (avertisment), suspendatele separat',
+    /contracte\.faraContract\(contracte\.stareDosar\(c, dos\[c\.id\] \|\| null, acum\), acc\.status\)/.test(ruta) &&
+    /neplata\.stareNeplata\(f, acum\)\.faza === 'avertisment'/.test(ruta) && /acc\.status === 'expired'\) suspendate\+\+/.test(ruta) &&
+    /companies_suspendate = suspendate/.test(ruta) && !/d && d\.text/.test(ruta) && !/status !== 'active'\) restante\+\+/.test(ruta));
+}
 const filtruLiniste = co.filtre.filter(f => f.id === 'liniste')[0].f;
 T('firma fără semnal de 20 de zile e prinsă', filtruLiniste(F({ ultimaActivitate: Date.now() - 20 * 86400000 })) === true);
 T('cea care a transmis azi, nu', filtruLiniste(F({ ultimaActivitate: Date.now() })) === false);
