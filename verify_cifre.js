@@ -102,8 +102,8 @@ T('chatul nu mai scrie „De verificat" și nu-i mai cere omului să verifice ci
 T('problemele sunt O piesă (_chatProbleme), cu textul pus ca text, iar butoanele duc la locul exact (Traseu, fișa, raportul)',
   /window\._chatProbleme = function \(lista\)/.test(PAG) && /h\.appendChild\(document\.createTextNode\(String\(p\.titlu \|\| ''\)\)\)/.test(PAG) && /d\.textContent = String\(p\.dovada\)/.test(PAG) &&
   /if \(b\.fel === 'traseu'\) return window\.insightLaTraseu\(b\);/.test(PAG) && /switchEditTab\(b\.fila, t\)/.test(PAG) && /rinOpenReport\(b\.tip, b\.imei \|\| '', b\.de, b\.pana\)/.test(PAG));
-T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo); nota perioadei tot prin _insightExtra',
-  (PAG.match(/window\._chatProbleme\(x\.probleme\)/g) || []).length === 1 && /_insightExtra\(\{ verificare: x\.verificare, nota: x\.nota \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG));
+T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo; pe verticala Fondator, în chatul asistentului — 30.10); nota perioadei tot prin _insightExtra',
+  (PAG.match(/window\._chatProbleme\(x\.probleme\)/g) || []).length === 1 && /_insightExtra\(\{ verificare: x\.verificare, nota: x\.nota \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\(window\._asfVerticalaNoastra && window\._asfVerticalaNoastra\(\) \? 'asistent' : 'insight'\); \};/.test(PAG));
 // Din 28.10 răspunsul proaspăt poartă și sursele „Sursei externe" (`sursa`), după insignă.
 // 30.10: și textul rândului „✓" (de unde au venit cifrele — verificatText, de la server) pleacă pe răspunsul proaspăt.
 T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /probleme: j\.probleme,\s*verificat: j\.verificat, verificatText: j\.verificatText, nota: j\.nota, insigna: j\.insigna, sursa: j\.sursa \}/.test(PAG));
