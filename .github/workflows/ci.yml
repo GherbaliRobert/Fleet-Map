@@ -50,6 +50,7 @@ jobs:
           node --check preaviz.js
           node --check pachete.js
           node --check azi_la_tine.js
+          node --check azi_la_noi.js
           node --check soferi_masini.js
           node --check cereri_echipa.js
           node --check propuneri.js

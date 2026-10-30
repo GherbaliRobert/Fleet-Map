@@ -384,7 +384,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('piesele chatului sunt scrise O DATĂ și le folosește secțiunea — singurul chat din pagină (fără caseta bulei, fără fila AI Raport)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatUrmari\(/g) || []).length >= 2 &&
     (PAG.match(/window\._chatActiuni = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatActiuni\(/g) || []).length >= 1 && (PAG.match(/window\._CHAT_PERIOADE = \[/g) || []).length === 1 && (SECT_INS.match(/window\._CHAT_PERIOADE,/g) || []).length >= 1 &&
     PAG.indexOf('id="rax-ai-input"') < 0 && PAG.indexOf('id="rin-input"') < 0 && PAG.indexOf('id="rep-tab-insight"') < 0 && PAG.indexOf("fetch('/api/reports/ai-raport'") < 0);
-  T('bula din colț duce în secțiune, pe ACEEAȘI conversație (o singură conversație curentă)', /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG) &&
+  T('bula din colț duce în secțiune, pe ACEEAȘI conversație (o singură conversație curentă); pe verticala Fondator, în chatul asistentului fondatorilor (30.10)', /window\.raxToggleAI = function \(\) \{ showView\(window\._asfVerticalaNoastra && window\._asfVerticalaNoastra\(\) \? 'asistent' : 'insight'\); \};/.test(PAG) &&
     /if \(!S\.conv && window\._raxConvId && S\.ramura === 'general'\) \{ await window\.insightDeschide\(window\._raxConvId\); return; \}/.test(PAG) && (PAG.match(/window\._raxConvId/g) || []).length >= 4);
   // notițele firmei
   const n0 = await json('GET', '/api/insight/notite', ckSef);

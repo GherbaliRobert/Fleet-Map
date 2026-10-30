@@ -156,7 +156,9 @@
         <div class="nav-group" data-vert="fondator" data-group="gestiune">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-warehouse"></i><span>Gestiune</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge"></i><span>Acasă</span></button>
+            <!-- „Acasă" = chatul asistentului fondatorilor (macheta „tot un chat", Alin, 30.10). Cartonașele vechi (raxAdminHome)
+                 rămân pentru `showView('administrare')` fără secțiune; cele 4 cifre ale lor stau acum în primul mesaj. -->
+            <button class="nav-item nav-sub" data-view="asistent" onclick="navGo(this, function(){ showView('asistent'); })"><i class="fas fa-gauge"></i><span>Acasă</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('devices'); })"><i class="fas fa-microchip"></i><span>Dispozitive</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('inventar'); })"><i class="fas fa-clipboard-list"></i><span>Inventar dispozitive</span></button>
@@ -3335,6 +3337,8 @@ const pozitii = await r.json();</code></pre>
   <div id="agenti-view" class="modal-overlay"></div>
   <!-- RA Insight — secțiunea proprie (populată de renderInsightPage) -->
   <div id="insight-view" class="modal-overlay"></div>
+  <!-- Asistentul fondatorilor („Acasă" pe verticala Fondator; macheta „tot un chat", Alin, 30.10) — blocul „asistentul fondatorilor". -->
+  <div id="asistent-view" class="modal-overlay"></div>
   <div id="incarcare-view" class="modal-overlay"></div>
 
   <div id="fuel-stats-modal" class="modal-overlay">
@@ -4290,21 +4294,32 @@ const pozitii = await r.json();</code></pre>
         // Sub cifră, starea: „1 fără contract · 0 restanțe". Vezi din „Acasă" dacă e ceva de
         // rezolvat, fără să deschizi secțiunea.
         var sub = document.getElementById('adash-s-companies');
-        if (sub) {
-          var fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0;
-          sub.innerHTML = (fc || rs)
-            ? '<span style="color:' + (fc ? 'var(--red)' : 'var(--text-muted)') + ';">' + fc + ' fără contract</span>'
-              + ' · <span style="color:' + (rs ? 'var(--orange)' : 'var(--text-muted)') + ';">' + rs + (rs === 1 ? ' restanță' : ' restanțe') + '</span>'
-            : 'toate în regulă';
-        }
+        if (sub) sub.innerHTML = _adashStareHtml(_adashStareCompanii(c));
         _adashArhiva(Number(c.archived_devices) || 0);
       } catch (e) {}
+    }
+    // Rândul de stare de sub cifre: O socoteală, două desene — cartonașele de aici și cele 4 cifre din primul mesaj al
+    // asistentului fondatorilor (macheta „tot un chat", Alin, 30.10). Bucățile: [{ t, ton }] — ton 'r' roșu, 'w' portocaliu,
+    // 'm' gri, '' fără culoare a lui.
+    function _adashStareCompanii(c) {
+      var fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0;
+      if (!fc && !rs) return [{ t: 'toate în regulă', ton: '' }];
+      return [{ t: fc + ' fără contract', ton: fc ? 'r' : 'm' }, { t: rs + (rs === 1 ? ' restanță' : ' restanțe'), ton: rs ? 'w' : 'm' }];
     }
     // Rândul de stare al cartonașului „Arhivate" + portocaliul lui. Cifra singură nu spune nimic:
     // ce contează la un aparat arhivat e cât mai are istoricul până se șterge definitiv (30 de zile de
     // la arhivare, cum scrie în contract — cifra vine de la server). Lista mare o cerem DOAR dacă
     // există aparate arhivate — la zero n-are rost. Portocaliul se aprinde doar când chiar e ceva de
     // rezolvat, nu din construcție.
+    function _adashStareArhiva(rows) {
+      if (!Array.isArray(rows) || !rows.length) return { warn: false, parti: [] };
+      var peDuca = rows.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
+      var sters = rows.filter(function (d) { return !!d.istoric_sters; }).length;
+      if (peDuca) return { warn: true, parti: [{ t: peDuca + ' cu istoricul pe ducă', ton: 'w' }] };
+      if (sters === rows.length) return { warn: false, parti: [{ t: sters === 1 ? 'istoricul s-a șters' : 'istoricul lor s-a șters', ton: '' }] };
+      var zp = (rows[0] && rows[0].purge_total_zile) || 0;
+      return { warn: false, parti: zp ? [{ t: 'istoric păstrat ' + _arhZile(zp) + ' de la arhivare', ton: '' }] : [] };
+    }
     async function _adashArhiva(n) {
       var card = document.querySelector('#admin-dash .adash-card[data-card="archived"]');
       var sub = document.getElementById('adash-s-archived');
@@ -4314,19 +4329,27 @@ const pozitii = await r.json();</code></pre>
       try {
         var rows = await fetch('/api/archived-devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (!Array.isArray(rows)) return;
-        var peDucă = rows.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
-        var sters = rows.filter(function (d) { return !!d.istoric_sters; }).length;
-        if (peDucă) {
-          sub.innerHTML = '<span style="color:var(--orange);">' + peDucă + ' cu istoricul pe ducă</span>';
-          if (card) card.classList.add('adash-warn');
-        } else if (sters === rows.length) {
-          sub.textContent = sters === 1 ? 'istoricul s-a șters' : 'istoricul lor s-a șters';
-        } else {
-          var zp = (rows[0] && rows[0].purge_total_zile) || 0;
-          sub.textContent = zp ? 'istoric păstrat ' + _arhZile(zp) + ' de la arhivare' : '';
-        }
+        var st = _adashStareArhiva(rows);
+        sub.innerHTML = _adashStareHtml(st.parti);
+        if (st.warn && card) card.classList.add('adash-warn');
       } catch (e) {}
     }
+    // Cele 4 cifre de azi, pentru primul mesaj al asistentului fondatorilor (macheta „tot un chat", Alin, 30.10: „2. da" — în
+    // locul cartonașelor mari). ACELEAȘI surse și socoteli ca pe cartonașe (/api/admin/counts, `_adashStareCompanii`,
+    // `_usrStareAcasa`, `_adashStareArhiva`); pagina asistentului doar le desenează. NU scrie a doua socoteală.
+    window._acasaCifre = async function () {
+      var cere = function (u) { return fetch(u, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); };
+      var c = (await cere('/api/admin/counts')) || {};
+      var useri = []; try { useri = (await cere('/api/users')) || []; } catch (e) {}
+      var arh = { parti: [] };
+      if (Number(c.archived_devices) > 0) { try { arh = _adashStareArhiva(await cere('/api/archived-devices')); } catch (e) {} }
+      return [
+        { k: 'companies', n: c.companies, l: 'Companii', ic: 'fa-building', parti: _adashStareCompanii(c) },
+        { k: 'users', n: c.users, l: 'Utilizatori', ic: 'fa-users', parti: _usrStareAcasa(Array.isArray(useri) ? useri : [], false) },
+        { k: 'devices', n: c.active_devices, l: 'Dispozitive active', ic: 'fa-satellite-dish', parti: [] },
+        { k: 'archived', n: c.archived_devices, l: 'Arhivate', ic: 'fa-box-archive', parti: arh.parti }
+      ];
+    };
     window.loadAdminDash = loadAdminDash;
     window.loadUsers = loadUsers; // raxAdminTab('users') îl apelează prin window.* → trebuie expus (altfel tabul depindea doar de preload)
 
@@ -4911,14 +4934,25 @@ const pozitii = await r.json();</code></pre>
     // Sub numărul de pe cartonașul „Utilizatori" (Acasă), starea — ca la Companii. Vezi dintr-o
     // privire dacă e ceva de rezolvat, fără să deschizi secțiunea. „Fără acces" apare doar în
     // privirea clientului: la fondator ar fi o grijă din gospodăria altuia.
-    function _usrCardAcasa(toti, eClient) {
-      var sub = document.getElementById('adash-s-users'); if (!sub) return;
+    // Rândul de stare de sub cifrele de pe „Acasă", desenat pentru cartonașe (Companii, Utilizatori, Arhivate) din bucățile
+    // [{ t, ton }] — ton 'r' roșu, 'w' portocaliu, 'm' gri, '' fără culoare a lui. Stă aici, în blocul pastilelor, ca proba
+    // utilizatorilor să-l aibă în cutia ei; cartonașele de mai sus îl cheamă din același loc (aceeași parte a paginii).
+    function _adashStareHtml(parti) {
+      var CUL = { r: 'var(--red)', w: 'var(--orange)', m: 'var(--text-muted)' };
+      return (parti || []).map(function (p) { return CUL[p.ton] ? '<span style="color:' + CUL[p.ton] + ';">' + esc(p.t) + '</span>' : esc(p.t); }).join(' · ');
+    }
+    // Bucățile (ca `_adashStareCompanii`): le desenează cartonașul de aici și cifra „Utilizatori" din chatul fondatorilor.
+    function _usrStareAcasa(toti, eClient) {
       var nic = toti.filter(_usrNiciodata).length;
       var fa = eClient ? toti.filter(_usrFaraAcces).length : 0;
       var parti = [];
-      if (nic) parti.push('<span style="color:var(--orange);">' + nic + (nic === 1 ? ' n-a intrat niciodată' : ' n-au intrat niciodată') + '</span>');
-      if (fa) parti.push('<span style="color:var(--orange);">' + fa + ' fără acces</span>');
-      sub.innerHTML = parti.length ? parti.join(' · ') : (toti.length ? 'toți au intrat' : '');
+      if (nic) parti.push({ t: nic + (nic === 1 ? ' n-a intrat niciodată' : ' n-au intrat niciodată'), ton: 'w' });
+      if (fa) parti.push({ t: fa + ' fără acces', ton: 'w' });
+      return parti.length ? parti : (toti.length ? [{ t: 'toți au intrat', ton: '' }] : []);
+    }
+    function _usrCardAcasa(toti, eClient) {
+      var sub = document.getElementById('adash-s-users'); if (!sub) return;
+      sub.innerHTML = _adashStareHtml(_usrStareAcasa(toti, eClient));
     }
     // ── sfârșit „pastilele de utilizatori" ──
     function renderUsersGrouped() {
@@ -5797,7 +5831,12 @@ const pozitii = await r.json();</code></pre>
     window.vertSchimba = function (ochi) {
       try { window.localStorage.setItem(SET_OCHI_CHEIE, ochi === 'firma' ? 'firma' : 'fondator'); } catch (e) {}
       vertAplica();
-      try { showView(ochi === 'firma' ? 'localizare' : 'administrare'); } catch (e) {}
+      try { showView(ochi === 'firma' ? 'localizare' : 'asistent'); } catch (e) {}
+    };
+    // Suntem pe verticala noastră (Fondator)? Atunci „Acasă" și bula verde din colț duc în chatul asistentului fondatorilor
+    // (macheta „tot un chat", Alin, 30.10: „3. da"); pe verticala Partener bula rămâne RA Insight-ul clienților.
+    window._asfVerticalaNoastra = function () {
+      return !!(window.currentUser && currentUser.isSuper) && vertCurenta(true, setOchiCitit(window.localStorage)) === 'fondator';
     };
 
     // Unde aterizezi când intri în cont sau dai refresh. VERTICALA hotărăște:
@@ -5826,7 +5865,7 @@ const pozitii = await r.json();</code></pre>
       if (_raportDinAdresa()) return;
       var suntemNoi = !!(window.currentUser && currentUser.isSuper);
       if (vertCurenta(suntemNoi, setOchiCitit(window.localStorage)) === 'fondator') {
-        try { showView('administrare'); } catch (e) {}   // deschide „Acasă" (openUsersModal → raxAdminHome)
+        try { showView('asistent'); } catch (e) {}   // deschide „Acasă" = chatul asistentului fondatorilor (30.10)
         return;
       }
       prefDeschideEcranul(ecranAles);   // gol / „localizare" = rămâi pe hartă, care e ecranul de start
@@ -13627,6 +13666,109 @@ const pozitii = await r.json();</code></pre>
       }
     })();
     // ── sfârșit „secțiunea RA Insight" ──
+    // ── începe „asistentul fondatorilor" ──
+    // Macheta „tot un chat" (Alin, 30.10: „1. da, 2. da, 3. da"): pe verticala Fondator, „Acasă" e chatul asistentului. Etapa 1,
+    // pasul 1: primul mesaj — salutul, cele 4 cifre de azi (aceleași ca pe cartonașele vechi: `window._acasaCifre`) și „Azi la
+    // noi" (de la server, pe reguli, fără model: GET /api/admin/azi-la-noi → azi_la_noi.js). Caseta de întrebat (pasul 2) și
+    // conversațiile (pasul 4) vin după. Stilurile sunt ale chatului RA Insight (.insp-*, .azi-*, .chat-*). Pagina NU socotește:
+    // textele vin de la server și se pun ca TEXT (îngroșatul prin noduri <b>, fără innerHTML).
+    (function () {
+      var $i = function (id) { return document.getElementById(id); };
+      function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = String(txt); return e; }
+      function textGros(t) {
+        var f = document.createDocumentFragment();
+        String(t || '').split(/(\*\*[^*]+\*\*)/).forEach(function (p) {
+          if (!p) return;
+          var m = /^\*\*([^*]+)\*\*$/.exec(p);
+          f.appendChild(m ? el('b', null, m[1]) : document.createTextNode(p));
+        });
+        return f;
+      }
+      // Unde duce un clic. `tinta` vine de la server (rândurile din „Azi la noi") sau din cifre ({ fel: 'sectiune', tab }).
+      // UN loc, ca rândurile și cifrele să ducă la fel; întâi secțiunea (Administrarea), apoi ce e înăuntrul ei.
+      window._asfDu = function (t) {
+        t = t || {};
+        var dupa = function (fn) { setTimeout(function () { try { fn(); } catch (e) {} }, 240); };
+        if (t.fel === 'firma' && t.id != null) { goSistem('companies'); dupa(function () { window.raxOpenCompanyDetail(t.id, t.fila || 'stare'); }); return; }
+        if (t.fel === 'neasignate') { showView('administrare'); dupa(function () { window.raxDevDeschideNeasignate({ imeis: t.imeis || [], firma: t.firma != null ? t.firma : null }); }); return; }
+        if (t.fel === 'facturare') { goSistem('billing'); if (t.sectiune) dupa(function () { window.raxInvSectiune(t.sectiune); }); return; }
+        if (t.fel === 'emitent') { goSistem('billing'); dupa(function () { window.raxEditIssuer(); }); return; }
+        if (t.fel === 'sectiune' && /^[a-z]+$/.test(t.tab || '')) goSistem(t.tab);
+      };
+      function bula() {
+        var row = el('div', 'insp-a');
+        var av = el('div', 'av asf-av'); av.innerHTML = '<i class="fas fa-briefcase"></i>'; row.appendChild(av);
+        var bub = el('div', 'bub'); row.appendChild(bub);
+        return { row: row, bub: bub };
+      }
+      function cifre(bub, lista) {
+        var w = el('div', 'asf-cif');
+        (lista || []).forEach(function (c) {
+          var b = el('button', 'c'); b.type = 'button'; b.title = 'Deschide ' + c.l;
+          b.onclick = function () { window._asfDu({ fel: 'sectiune', tab: c.k }); };
+          b.appendChild(el('b', null, c.n == null ? '–' : c.n));
+          var l = el('span', 'l'); l.innerHTML = '<i class="fas ' + (/^fa-[a-z-]+$/.test(c.ic || '') ? c.ic : 'fa-circle') + '"></i>'; l.appendChild(document.createTextNode(c.l)); b.appendChild(l);
+          var s = el('span', 's');
+          (c.parti || []).forEach(function (p, i) { if (i) s.appendChild(document.createTextNode(' · ')); s.appendChild(el('span', p.ton === 'r' || p.ton === 'w' ? p.ton : null, p.t)); });
+          b.appendChild(s);
+          var sg = el('span', 'sg'); sg.innerHTML = '<i class="fas fa-chevron-right"></i>'; b.appendChild(sg);
+          w.appendChild(b);
+        });
+        bub.appendChild(w);
+      }
+      function aziLaNoi(bub, j) {
+        var w = el('div', 'azi');
+        var cap = el('div', 'azi-cap'); cap.appendChild(el('span', 'azi-tit', 'Azi la noi')); cap.appendChild(el('span', 'azi-cand', j.deVazutText || ''));
+        w.appendChild(cap);
+        if (!(j.randuri || []).length) w.appendChild(el('div', 'azi-gol', j.gol || ''));
+        (j.randuri || []).forEach(function (r) {
+          var row = el('button', 'azi-r apas'); row.type = 'button';
+          row.onclick = function () { window._asfDu(r.tinta); };
+          row.appendChild(el('span', 'azi-st ' + (/^[rwbn]$/.test(r.nivel) ? r.nivel : 'n')));
+          var tx = el('span', 'azi-tx'); tx.appendChild(textGros(r.text)); row.appendChild(tx);
+          var pp = el('span', 'azi-prop', r.buton || ''); pp.appendChild(el('i', 'fas fa-chevron-right')); row.appendChild(pp);
+          w.appendChild(row);
+        });
+        bub.appendChild(w);
+      }
+      var _tura = 0;
+      window.renderAsistentPage = async function () {
+        var host = $i('asistent-view'); if (!host) return;
+        try { var fb = $i('rax-fabs'); if (fb) fb.style.display = 'none'; } catch (e) {}
+        if (!host._gata) {
+          host.innerHTML = '<div class="insp st-ascuns asf" id="asf"><div class="insp-dr-col">' +
+            '<div class="insp-top"><div class="insp-titlu" id="asf-titlu"></div></div>' +
+            '<main class="insp-main"><div class="insp-msgs" id="asf-msgs"></div></main></div></div>';
+          host._gata = true;
+        }
+        var tura = ++_tura;
+        var box = $i('asf-msgs'); if (!box) return;
+        var b = bula();
+        var ins0 = window._chatInsigna({ fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' }); if (ins0) b.bub.appendChild(ins0);
+        b.bub.appendChild(el('div', 'insp-txt', 'Se încarcă…'));
+        box.innerHTML = ''; box.appendChild(b.row);
+        var j = null, lista = [];
+        try { var r = await fetch('/api/admin/azi-la-noi', { credentials: 'same-origin' }); j = r.ok ? await r.json() : null; } catch (e) {}
+        try { lista = await window._acasaCifre(); } catch (e) {}
+        if (tura !== _tura) return;
+        var t = $i('asf-titlu'); if (t) t.textContent = (j && j.zi) || '';
+        b = bula();
+        var ins = window._chatInsigna({ fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' + (j && j.ora ? ' · la ' + j.ora : '') });
+        if (ins) b.bub.appendChild(ins);
+        if (!j) {
+          b.bub.appendChild(el('div', 'insp-txt', 'Nu am putut încărca „Azi la noi”. Încearcă din nou.'));
+          var br = el('button', 'chat-pas'); br.type = 'button'; br.innerHTML = '<i class="fas fa-rotate-right"></i>'; br.appendChild(document.createTextNode('Reîncarcă'));
+          br.onclick = function () { window.renderAsistentPage(); };
+          var bw = el('div', 'asf-bt'); bw.appendChild(br); b.bub.appendChild(bw);
+        } else {
+          var tx = el('div', 'insp-txt'); tx.appendChild(textGros(j.salut || '')); b.bub.appendChild(tx);
+          if (lista && lista.length) cifre(b.bub, lista);
+          aziLaNoi(b.bub, j);
+        }
+        box.innerHTML = ''; box.appendChild(b.row);
+      };
+    })();
+    // ── sfârșit „asistentul fondatorilor" ──
     // „Deschide raportul": cardul raportului, cu mașina și perioada din răspuns (scadențele au selectorul lor de lună).
     async function rinOpenReport(type, imei, from, to) {
       repShowTab('generate');
@@ -15027,8 +15169,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', insight: 'insight-view', incarcare: 'incarcare-view', administrare: 'users-modal', hotspot: 'hotspot-view', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', insight: 'renderInsightPage', incarcare: 'renderIncarcarePage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', insight: 'insight-view', asistent: 'asistent-view', incarcare: 'incarcare-view', administrare: 'users-modal', hotspot: 'hotspot-view', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', insight: 'renderInsightPage', asistent: 'renderAsistentPage', incarcare: 'renderIncarcarePage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     // O SINGURĂ grupă deschisă deodată (Robert, 08.10: „când deschidem un meniu, vreau ca celălalt să se
@@ -15339,7 +15481,7 @@ const pozitii = await r.json();</code></pre>
       // doar la clic pe rând. Dacă nu există rând pentru ecranul ăsta (ex. „administrare", care are
       // secțiuni), `_navAprinde` nu stinge nimic — aprinde apoi `_raxSideActive`, pe secțiune.
       if (window._navAprinde) window._navAprinde(document.querySelector('#navrail .nav-item[data-view="' + name + '"]'));
-      if (name !== 'insight' && window._raxUpdateFabs) { try { window._raxUpdateFabs(); } catch (e) {} }   // bula RA Insight revine când ieși din secțiune
+      if (name !== 'insight' && name !== 'asistent' && window._raxUpdateFabs) { try { window._raxUpdateFabs(); } catch (e) {} }   // bula revine când ieși din chat (RA Insight sau asistentul fondatorilor)
       if (window.innerWidth <= 1100) closeNavrail();   // sertarul de pe telefon și cel de pe tabletă (cu fișa deschisă) se închid la alegere
     }
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
@@ -22743,7 +22885,7 @@ const pozitii = await r.json();</code></pre>
       var ni = $('nav-insight'); if (ni) ni.style.display = (feats.ai_assistant !== false) ? '' : 'none';
       // Simulatorul de încărcare: modulul firmei (după flotă sau ales de noi); noi îl vedem mereu.
       var nc = $('nav-incarcare'); if (nc) nc.style.display = (me.isSuper || (feats.incarcare === true && ((me.permissions && me.permissions.manageFleet) || me.role === 'dispatcher'))) ? '' : 'none';
-      if (typeof currentView !== 'undefined' && currentView === 'insight') $('rax-fabs').style.display = 'none';
+      if (typeof currentView !== 'undefined' && (currentView === 'insight' || currentView === 'asistent')) $('rax-fabs').style.display = 'none';
       _aziVerifica();
     }
     window._raxUpdateFabs = updateFabs;   // showView o cheamă când ieși din secțiunea RA Insight
@@ -23054,7 +23196,8 @@ const pozitii = await r.json();</code></pre>
     // Nu mai e un chat al ei: te duce în secțiunea RA Insight, pe conversația la care ai rămas (window._raxConvId). Punctul mov
     // = „Azi la tine" are ceva nou (un rând care cere atenție, nevăzut încă) de la ultima deschidere. Ce ai văzut se ține în
     // browser — o comoditate, nu o evidență: fără el, punctul apare din nou și atât.
-    window.raxToggleAI = function () { showView('insight'); };
+    // Pe verticala Fondator, bula te aduce în chatul asistentului fondatorilor (Alin, 30.10: „3. da"); altfel, în RA Insight.
+    window.raxToggleAI = function () { showView(window._asfVerticalaNoastra && window._asfVerticalaNoastra() ? 'asistent' : 'insight'); };
     window._raxNrI = function (n) { n = Number(n) || 0; var r = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((r === 0 && n) || r >= 20 ? ' de ' : ' ') + 'întrebări'; };
     function _aziCheie() { return 'ra_azi_vazut_' + ((me && me.username) || ''); }
     function _aziCitite() { try { var v = JSON.parse(localStorage.getItem(_aziCheie()) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }

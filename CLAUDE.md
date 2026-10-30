@@ -814,6 +814,33 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
 - Telefonul (aplicația lui Robert) rămâne cum e până la APK-ul următor. Păzit de `verify_un_singur_insight.js` (secțiunea 3),
   `verify_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js` (ghidul spune „+", „Pagini", „Mai multe").
 
+### Asistentul fondatorilor — etapa 1, pasul 1 (30.10; Alin: „vreau să fie tot un chat" → macheta „tot un chat", „1. da, 2. da, 3. da")
+Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 29–30.10: https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt).
+- **„Acasă" pe verticala Fondator = chatul asistentului** (`showView('asistent')`, panoul `#asistent-view`, blocul „asistentul fondatorilor"
+  din pagină, cu stilurile chatului RA Insight; avatarul verde, nu mov). Aterizarea după autentificare și trecerea pe verticala Fondator duc
+  acolo; **bula verde, pe verticala Fondator, la fel** (`window._asfVerticalaNoastra`); pe Partener și la clienți bula rămâne RA Insight.
+  Cartonașele vechi (`raxAdminHome`) rămân doar pentru `showView('administrare')` fără secțiune. Clientul nu vede nimic nou.
+- **Primul mesaj:** salutul (al omului), cele 4 cifre de azi (`window._acasaCifre` — ACELEAȘI socoteli ca pe cartonașe: `_adashStareCompanii`,
+  `_usrStareAcasa`, `_adashStareArhiva`; cartonașele le desenează prin `_adashStareHtml`, care stă în blocul „pastilele de utilizatori", ca
+  proba utilizatorilor s-o aibă; un clic → pagina lor) și „Azi la noi".
+- **„Azi la noi": regulile și textele în `azi_la_noi.js`** (curat): cel mult `MAX_RANDURI` = 5, în `ORDINEA` bani → clienți → contracte →
+  montaj → de facturat → aparate → firma; un fel cu mai multe lucruri = UN rând strâns; `ZILE_LA_SEMNAT` = 7, `ZILE_SOLD` = 14. Datele le
+  adună `_aziLaNoiDate` (server.js) CU REGULILE CARE EXISTĂ: neplata (restanțele), `cereriEchipaToate` (stare „trimisa"), `listDemoRequests`
+  („new", doar firma — fără date personale), `contracte.deAnuntat` (ca anunțul zilnic), contractele „trimis" după `sent_at`,
+  `montaj.stareConfirmare` pe ziua de mâine, `_termeneMontaj` (comună cu anunțul zilnic — stă ÎNAINTEA reperului „Escape HTML minimal":
+  verify_drum.js decupează anunțul până acolo), `_deFacturatMontaj`, `_abonamenteNeemise` (`_abonamentulLunii` + `facturaAbonamentLuna`, ca
+  factura automată; ținut minte o oră), `db.aparateFaraFirma` (transmit în ultimele 7 zile), `stocMod.alerte`, `_emailVerdict` (comun cu
+  „Stare producție"), „Date emitent" (nume + CUI, regula facturii automate) și `_soldAnthropic`. NU scrie a doua socoteală a vreunuia. Ruta:
+  `GET /api/admin/azi-la-noi` (requireSuperadmin; ținută minte 2 minute, `?proaspat=1` fără memorie). Fără model, deci fără cost.
+- **Clicurile: O funcție, `window._asfDu(tinta)`** (firma + filă, neasignate, facturare + secțiune, emitent, secțiune). Textele de la server
+  se pun ca TEXT (`textGros` → noduri `<b>`); innerHTML doar cu bucăți scrise în pagină.
+- **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul), 3 cifrele verificate + analiza
+  atentă, 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da") și etapa 3 (telefonul, Robert). Fiecare la „da"-ul
+  lui Alin, cu machetă întâi dacă se schimbă ce se vede.
+- Păzit de **`verify_asistent_fondatori.js`** (în `npm test`; 93, pe server pornit, cu o factură întârziată pusă în bază și o cerere de la
+  un client), plus `verify_acasa.js`, `verify_setari.js` (aterizarea), `verify_insight.js` și `verify_un_singur_insight.js` (bula),
+  `verify_utilizatori.js`, `verify_arhiva.js`, `verify_drum.js`.
+
 ### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
 Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:
 - **„Am găsit o problemă" în locul benzii „De verificat"** (Alin: „ce să verific? Am AI… îmi zice clar dacă e greșit ceva… mă duce
@@ -2909,6 +2936,8 @@ interfață CAN — deci hotărai cu mai puțin în față. **A fost șters, nu 
 
 ## Administrare: „Acasă" e tablou, nu loc de lucru (decizie Alin, 17.09)
 
+- **Din 30.10, pe verticala Fondator, „Acasă" e chatul asistentului fondatorilor** (vezi „Asistentul fondatorilor — etapa 1, pasul 1");
+  cele 4 cifre de mai jos stau în primul lui mesaj, din aceleași socoteli. Ce urmează aici rămâne regula cartonașelor (`raxAdminHome`).
 - **Cartonașele de pe „Acasă" sunt SUMAR**: cifra + starea, plus un rând **„Vezi detalii →"**
   (`.adash-go`). Un clic (pe rând sau pe cartonaș) duce în **pagina** secțiunii — exact unde duce și
   meniul din stânga. `raxDashCard(name)` nu face altceva decât `raxAdminTab(name)`.

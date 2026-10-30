@@ -98,7 +98,7 @@ T('după o cerere, o întrebare nouă („și consumul?") NU e luată drept cont
 
 // ─── 3. Pagina ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n3. Pagina');
-T('bula din colț duce în secțiune; fereastra ei mică și chatul ei au plecat', /window\.raxToggleAI = function \(\) \{ showView\('insight'\); \};/.test(PAG) && PAG.indexOf('id="rax-ai-overlay"') < 0 && PAG.indexOf('raxSendAI') < 0 && PAG.indexOf("fetch('/api/ai/reports-agent'") < 0);
+T('bula din colț duce în secțiune (pe verticala Fondator, în chatul asistentului fondatorilor — 30.10); fereastra ei mică și chatul ei au plecat', /window\.raxToggleAI = function \(\) \{ showView\(window\._asfVerticalaNoastra && window\._asfVerticalaNoastra\(\) \? 'asistent' : 'insight'\); \};/.test(PAG) && PAG.indexOf('id="rax-ai-overlay"') < 0 && PAG.indexOf('raxSendAI') < 0 && PAG.indexOf("fetch('/api/ai/reports-agent'") < 0);
 T('punctul mov: „Azi la tine" verificat cel mult o dată la 5 minute, doar cu cont, cheile văzute ținute în browser (cu try/catch)', /if \(!\(me && me\.aiCont && appVisible\(\)\)/.test(PAG) && /Date\.now\(\) - _aziUltima < 5 \* 60000/.test(PAG) && /try \{ localStorage\.setItem\(_aziCheie\(\)/.test(PAG) && /#rax-main-fab\.are-nou::after/.test(CSS));
 T('„Agenți AI" iese din meniu pentru cine are cont RA Insight (colegii fără cont îl păstrează)', /na\.style\.display = \(feats\.agents !== false && me\.permissions && me\.permissions\.viewReports && !me\.aiCont\) \? '' : 'none';/.test(PAG));
 const SECT = (PAG.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];

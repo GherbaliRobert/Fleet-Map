@@ -4765,6 +4765,35 @@ body.dark .rep-rezumat { border-left-color: #a78bfa; }
 .azi-prop { font-size: 12px; font-weight: 800; color: #166534; white-space: nowrap; }
 .azi-prop i { font-size: 10px; margin-left: 4px; }
 body.dark .azi-prop { color: #4ade80; }
+/* Asistentul fondatorilor (30.10, macheta „tot un chat"): „Acasă" pe verticala Fondator, pe stilurile chatului RA Insight. Avatarul
+   e verde (al casei), ca să nu se confunde cu RA Insight (mov). Cele 4 cifre de azi stau în primul mesaj; rândurile „Azi la noi" ca
+   „Azi la tine". Culorile au pereche pe ambele teme, măsurate de verify_asistent_fondatori.js. */
+#asistent-view.as-view { padding: 0; align-items: stretch; overflow: hidden; }
+.insp-a .av.asf-av { color: #166534; background: color-mix(in srgb, #16a34a 16%, transparent); }
+body.dark .insp-a .av.asf-av { color: #3FE07D; background: color-mix(in srgb, #3FE07D 16%, transparent); }
+.asf-cif { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
+.asf-cif .c { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-panel); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.asf-cif .c:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.asf-cif .c:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.asf-cif b { font-size: 20px; font-weight: 800; line-height: 1.15; color: var(--text-primary); }
+.asf-cif .l { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.asf-cif .l i { font-size: 11px; color: var(--text-muted); }
+.asf-cif .s { min-height: 15px; font-size: 11.5px; line-height: 1.35; color: var(--text-secondary); }
+.asf-cif .s .r { color: #b91c1c; font-weight: 700; }
+.asf-cif .s .w { color: #c2410c; font-weight: 700; }
+body.dark .asf-cif .s .r { color: #f87171; }
+body.dark .asf-cif .s .w { color: #fb923c; }
+.asf-cif .sg { position: absolute; top: 11px; right: 11px; font-size: 10px; color: var(--text-muted); }
+.asf .azi-st.n { background: #64748b; }
+body.dark .asf .azi-st.n { background: #8A93A3; }
+.asf .bub .azi { margin: 2px 0 4px; }
+.asf-bt { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+@media (max-width: 600px) {
+  .asf-cif { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .asf .bub .azi-r { grid-template-columns: 9px minmax(0, 1fr); row-gap: 3px; align-items: start; }
+  .asf .bub .azi-r .azi-st { margin-top: 6px; }
+  .asf .bub .azi-r .azi-prop { grid-column: 2; justify-self: start; }
+}
 .chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; max-width: 680px; }
 .chat-prop { border: 1px solid var(--border); border-left: 3px solid #6d28d9; border-radius: 12px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 10px; }
 body.dark .chat-prop { border-left-color: #a78bfa; }

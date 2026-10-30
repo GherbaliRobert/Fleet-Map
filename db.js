@@ -3165,6 +3165,14 @@ async function stocDupaSerii(serii) {
 }
 // ─── „Aparate noi transmit" (30.09) ──────────────────────────────────────────────────────────────
 // Aparatele fără firmă, nearhivate, încă neanunțate, care s-au conectat în ultimele 24 de ore.
+// Aparatele din „Neasignate" (fără firmă, nearhivate) care au transmis în ultimele 7 zile, cu firma propusă la anunț
+// (`anuntat_firma`) — pentru „Azi la noi", primul mesaj al asistentului fondatorilor (30.10). Ușoară: fără poziții.
+async function aparateFaraFirma() {
+  const r = await pool.query(
+    `SELECT imei, anuntat_firma FROM devices WHERE company_id IS NULL AND status IS DISTINCT FROM 'archived'
+        AND last_seen IS NOT NULL AND last_seen > NOW() - INTERVAL '7 days' ORDER BY imei`);
+  return r.rows.map(function (x) { return { imei: x.imei, anuntat_firma: x.anuntat_firma == null ? null : Number(x.anuntat_firma) }; });
+}
 async function aparateNoiDeAnuntat() {
   const r = await pool.query(
     `SELECT imei FROM devices WHERE company_id IS NULL AND status IS DISTINCT FROM 'archived' AND anuntat_nou_la IS NULL
@@ -7059,7 +7067,7 @@ module.exports = {
   drumDateToate, getPartenerMontaj, listContracteMontaj, getContractMontaj, nextContractMontajNumber, salveazaContractMontaj,
   stergeContractMontaj, setContractMontajFile, getContractMontajFile, marcheazaContractMontajTrimis, toateLucrarileMontaj,
   listStoc, getStoc, stocDupaSerie, seriiExistenteInStoc, adaugaStoc, mutaStoc, editStoc, stergeStoc, firmeCuContractIncheiat,
-  stocImeiuri, stocDupaSerii, aparateNoiDeAnuntat, aparateInNeasignate, marcheazaAparateAnuntate, migreazaAparateNoiAnuntate,
+  stocImeiuri, stocDupaSerii, aparateFaraFirma, aparateNoiDeAnuntat, aparateInNeasignate, marcheazaAparateAnuntate, migreazaAparateNoiAnuntate,
   puneModelGpsDacaLipseste, lucrariMontateNefacturate,
   listeCompat, puneListaCompat,
   recordAiUsage, noteazaCorectura, corecturiLuna,

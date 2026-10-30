@@ -2346,6 +2346,19 @@ async function _emailStareAcum() {
   const e = nou('esuatLa');
   return { reusitLa: Number(nou('reusitLa').reusitLa) || 0, esuatLa: Number(e.esuatLa) || 0, eroare: e.eroare || null };
 }
+// Emailul pleacă? O SINGURĂ socoteală (scoasă din „Stare producție" pe 30.10), citită și de „Azi la noi" (asistentul
+// fondatorilor): `pus` = are cale (Brevo / SMTP); `picat` = ultimul email n-a plecat; `vfPicat` = la verificarea fără email
+// Brevo a refuzat serverul (rețeaua picată nu se socotește); `m` = motivul pe înțeles (mailer.motiv).
+async function _emailVerdict() {
+  const pus = !!(mailer && mailer.enabled());
+  const es = await _emailStareAcum();
+  const ss = await _emailStareSalvata();
+  const vf = ss && ss.verificare ? ss.verificare : null;
+  const picat = pus && es.esuatLa > es.reusitLa;
+  const vfPicat = !!(pus && !picat && vf && vf.ok === false && Number(vf.la) > es.reusitLa && mailer.motiv(vf.eroare).fel !== 'retea');
+  const m = picat ? mailer.motiv(es.eroare) : (vfPicat ? mailer.motiv(vf.eroare) : null);
+  return { pus: pus, es: es, vf: vf, picat: picat, vfPicat: vfPicat, m: m };
+}
 async function _dupaEmail(r) {
   try {
     if (_emailUltimOk !== !!r.ok || Date.now() - _emailScrisLa > 60000) {
@@ -2507,12 +2520,10 @@ async function contractExpiryTick() {
   // MONTAJ_AVERTIZARE_ZILE înainte și la depășire — o dată fiecare, pe termenul ăla. Clientul nu primește nimic.
   raport.montaj = [];
   try {
-    const dd = await db.drumDateToate(contracte.MONTAJ_EXECUTAT);
     const zi = function (ms) { return new Date(ms).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
-    for (const c of lista) {
+    for (const x of await _termeneMontaj(lista, acum)) {
+      const c = x.c, t = x.t;
       try {
-        const t = contracte.termenMontaj(c, contracte.avansContract((dd.avans || {})[c.company_id], c), (dd.montaje[c.id] || {}).montate, acum);
-        if (!t || (t.stare !== 'curand' && t.stare !== 'depasit')) continue;
         const cheie = 'montaj_termen_' + t.stare + ':' + c.id + ':' + t.pana;
         if (await db.notificationKeyExists(cheie, 24 * 120)) continue;
         const firma = c.company_name || ('#' + c.company_id);
@@ -2528,6 +2539,20 @@ async function contractExpiryTick() {
     }
   } catch (e) { /* fără numărători, fără anunț — nu inventăm */ }
   return raport;
+}
+// Termenele de montaj de văzut (curând / depășit) ale contractelor date: O socoteală, a anunțului zilnic de mai sus și a lui
+// „Azi la noi" (asistentul fondatorilor, 30.10). Întoarce [{ c, t }] — t de la contracte.termenMontaj. Stă ÎNAINTEA reperului
+// „Escape HTML minimal": verify_drum.js rulează anunțul zilnic decupat până acolo, cu ea cu tot.
+async function _termeneMontaj(lista, acum) {
+  const dd = await db.drumDateToate(contracte.MONTAJ_EXECUTAT);
+  const out = [];
+  for (const c of lista || []) {
+    try {
+      const t = contracte.termenMontaj(c, contracte.avansContract((dd.avans || {})[c.company_id], c), (dd.montaje[c.id] || {}).montate, acum);
+      if (t && (t.stare === 'curand' || t.stare === 'depasit')) out.push({ c: c, t: t });
+    } catch (e) { /* per contract, best-effort */ }
+  }
+  return out;
 }
 
 // Escape HTML minimal pentru email-uri (valori dinamice companie/emitent).
@@ -7391,6 +7416,133 @@ async function _anuleazaPropunere3(req, res, a) {
 // (agents.esteFaraSemnal / esteLiber, pragurile firmei) și lista de termene a ramurii (_ramMentenanta, preaviz.js). Fără
 // model; nu se numără pe niciun pachet. Ținut minte 2 minute pe om (o deschidere a secțiunii nu reface tot). Noi (super-admin)
 // nu avem o flotă a noastră: răspunsul e gol.
+// ── „Azi la noi" (asistentul fondatorilor, etapa 1, pasul 1; macheta „tot un chat", Alin, 30.10: „1. da, 2. da, 3. da") ──
+// Primul mesaj al chatului de pe „Acasă" (verticala Fondator): ce cere o mână de om azi, cel mult 5 rânduri, în ordinea
+// hotărâtă. Regulile și textele stau în azi_la_noi.js (curat); aici se ADUNĂ datele, cu regulile care există deja: neplata
+// (restanțele, ca accesul), cererile clienților și de cont demo, contractele (contracte.deAnuntat, ca anunțul zilnic; „trimis la
+// semnat" de peste 7 zile), montajul (montaj.stareConfirmare pe ziua de mâine; termenele din _termeneMontaj, ca anunțul zilnic),
+// montajul de facturat (_deFacturatMontaj), abonamentul lunii (_abonamentulLunii + facturaAbonamentLuna, ca factura automată),
+// aparatele fără firmă, stocul sub prag (stocMod.alerte), emailul (_emailVerdict, ca „Stare producție"), „Date emitent" (numele
+// + CUI-ul, regula facturii automate) și soldul Anthropic (_soldAnthropic). Același pentru toți fondatorii (doar salutul e al
+// omului); ținut minte 2 minute. Fără model, deci fără cost. Un pas care cade nu oprește restul (rândul lui lipsește).
+const aziLaNoi = require('./azi_la_noi');
+let _aziLaNoiMem = { la: 0, d: null };
+let _abonNeemiseMem = { la: 0, luna: '', l: [] };
+function _msData(v) { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) && n > 1e11 ? n : (Date.parse(v) || null); }
+// Abonamentul lunii încă neemis (pe ora României): firmele cu mașini pornite care, după ziua lor de facturare (factura automată)
+// sau după 1 (de mână), n-au factura lunii, deși luna are ce factura. Socoteala facturii e grea (aparatele firmei) → ținută minte o oră.
+async function _abonamenteNeemise(acum) {
+  const z = _ziRo(acum), an = +z.slice(0, 4), luna = +z.slice(5, 7), zi = +z.slice(8, 10);
+  const numeLuna = abonament.LUNI[luna - 1];
+  if (_abonNeemiseMem.luna === z.slice(0, 7) && acum - _abonNeemiseMem.la < 3600000) return { l: _abonNeemiseMem.l, luna: numeLuna };
+  const l = [];
+  if (zi >= 2) {
+    const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; });
+    const venit = await _venitLunarToate(firme);
+    let iss = {}; try { iss = ((await getSystemSettings()).invoice_issuer) || {}; } catch (e) {}
+    for (const co of firme) {
+      try {
+        if (!(venit.firme[co.id] > 0)) continue;
+        const din = co.auto_invoice === true ? Math.max(1, Math.min(parseInt(co.billing_day, 10) || 1, 28)) : 1;
+        if (zi <= din) continue;
+        if (await _abonamentulLunii(co.id, { an: an, luna: luna }, true)) continue;
+        const f = await facturaAbonamentLuna(co, an, luna, _issuerVatRate(iss));
+        if (!f || !f.lines || !f.lines.length || !(Number(f.total) > 0)) continue;
+        l.push({ companyId: co.id, firma: co.name });
+      } catch (e) { /* per firmă, best-effort */ }
+    }
+  }
+  _abonNeemiseMem = { la: acum, luna: z.slice(0, 7), l: l };
+  return { l: l, luna: numeLuna };
+}
+async function _aziLaNoiDate(acum) {
+  const d = { acum: acum };
+  const pas = async function (nume, fn) { try { await fn(); } catch (e) { console.warn('[azi-la-noi] ' + nume + ': ' + e.message); } };
+  let inVigoare = [];
+  await pas('facturi', async function () {
+    const toate = (await db.facturiNeachitateToate()) || {};
+    d.facturi = [];
+    Object.keys(toate).forEach(function (cid) {
+      const rows = (toate[cid] || []).filter(neplata.seCere);
+      const st = neplata.stareNeplata(rows, acum);
+      if (!st || st.faza === 'ok') return;
+      rows.forEach(function (f) {
+        const z = neplata.zileDeLaScadenta(f, acum);
+        if (!(Number(f.due_date) < acum) || z == null) return;
+        d.facturi.push({ companyId: Number(cid), firma: f.company_name || ('#' + cid), numar: f.full_number || ('#' + f.id), totalRon: Number(f.total) || 0,
+          moneda: f.currency || 'RON', zileIntarziere: Math.max(0, z), zilePanaLaOprire: st.faza === 'suspendat' ? -1 : Math.max(0, st.zilePanaLaSuspendare) });
+      });
+    });
+  });
+  await pas('cereri', async function () {
+    d.cereri = ((await db.cereriEchipaToate('deschise')) || []).filter(function (c) { return c.stare === 'trimisa'; })
+      .map(function (c) { return { nr: c.id, firma: c.company_name || ('#' + c.company_id), titlu: c.titlu || cereriEchipa.titlu(c.problema), la: _msData(c.creat_la) || acum }; });
+  });
+  await pas('demo', async function () {
+    // Fără date personale (ca anunțul lor): doar firma, dacă a scris-o.
+    d.demo = ((await db.listDemoRequests({ status: 'new', limit: 50 })) || []).map(function (r) { return { nume: r.company || '', la: _msData(r.created_at) || acum }; });
+  });
+  await pas('contracte', async function () {
+    inVigoare = (await db.contracteInVigoare()) || [];
+    d.contracteExpira = [];
+    inVigoare.forEach(function (c) {
+      const a = contracte.deAnuntat(c, acum);
+      if (a) d.contracteExpira.push({ companyId: c.company_id, firma: c.company_name || ('#' + c.company_id), sfarsit: a.sfarsit, ultimaZiPreaviz: a.preavizPana || null, trecut: !!a.trecut, preavizTrecut: !!a.preavizTrecut });
+    });
+    d.contracteTrimise = ((await db.contracteToate(500)) || []).filter(function (c) { return c.status === 'trimis' && c.sent_at; })
+      .map(function (c) { return { companyId: c.company_id, firma: c.company_name || ('#' + c.company_id), trimisLa: _msData(c.sent_at) }; })
+      .filter(function (c) { return c.trimisLa; });
+  });
+  await pas('montaj', async function () {
+    const maine = cereriEchipa.ziPlus(_ziRo(acum), 1);
+    d.montajMaine = ((await db.montajeProgramate(300)) || []).map(_mjcLucrareCal)
+      .filter(function (l) { return l.zi === maine && l.conf === 'de_confirmat'; })
+      .map(function (l) { return { companyId: l.company_id, firma: l.company_name || ('#' + l.company_id), instalator: l.partener_nume || '', masini: l.masini, lipsa: [l.confirmat_client ? null : 'client', l.confirmat_instalator ? null : 'instalator'].filter(Boolean) }; });
+    d.termenMontaj = (await _termeneMontaj(inVigoare, acum)).map(function (x) {
+      return { companyId: x.c.company_id, firma: x.c.company_name || ('#' + x.c.company_id), depasit: x.t.stare === 'depasit',
+        text: contracte.termenText(x.t) + ' (' + contracte.montateText(x.t.montate, x.t.deMontat) + ')' };
+    });
+  });
+  await pas('de facturat', async function () {
+    const df = await _deFacturatMontaj(acum);
+    d.montajDeFacturat = ((df && df.gata) || []).map(function (g) {
+      return { companyId: g.company_id, firma: g.company_name || ('#' + g.company_id), masini: g.masini, perioada: (g.perioade || []).map(function (p) { return p.eticheta; }).filter(Boolean).join(', ') };
+    });
+  });
+  await pas('abonament', async function () { const a = await _abonamenteNeemise(acum); d.abonamentNeemis = a.l; d.luna = a.luna; });
+  await pas('aparate', async function () {
+    const l = (await db.aparateFaraFirma()) || [];
+    if (!l.length) return;
+    const ids = Array.from(new Set(l.map(function (x) { return x.anuntat_firma; })));
+    let firma = null;
+    if (ids.length === 1 && ids[0] != null) { const co = await db.getCompanyById(ids[0]); if (co) firma = { id: co.id, nume: co.name }; }
+    d.aparateNoi = { n: l.length, imeis: l.map(function (x) { return x.imei; }), firma: firma };
+  });
+  await pas('stoc', async function () {
+    const r = await Promise.all([db.listStoc(), db.firmeCuContractIncheiat(), _stocPraguri()]);
+    const al = stocMod.alerte(r[0], r[2], r[1], acum);
+    d.stocSubPrag = ((al && al.subMinim) || []).map(function (x) { const e = montaj.echipament(x.tip); return { model: e ? e.et : x.tip, buc: Number(x.depozit) || 0, prag: Number(x.minim) || 0 }; });
+  });
+  await pas('firma', async function () {
+    const v = await _emailVerdict();
+    const emailEroare = !v.pus ? 'Serverul n-are Brevo sau SMTP pus.' : ((v.picat || v.vfPicat) && v.m ? v.m.scurt : null);
+    let iss = {}; try { iss = ((await getSystemSettings()).invoice_issuer) || {}; } catch (e) {}
+    const lipsa = []; if (!iss.name) lipsa.push('numele firmei'); if (!iss.cui) lipsa.push('CUI-ul');
+    const s = await _soldAnthropic();
+    d.firma = { emailEroare: emailEroare, emitentLipsa: lipsa, soldUsd: s ? s.usd : null, soldZile: s ? s.zile : null };
+  });
+  return d;
+}
+// Doar fondatorii; ?proaspat=1 = fără memoria de 2 minute (butonul „Reîncarcă" al paginii și probele).
+app.get('/api/admin/azi-la-noi', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const acum = Date.now();
+    if (!_aziLaNoiMem.d || acum - _aziLaNoiMem.la > 2 * 60000 || String(req.query.proaspat || '') === '1') _aziLaNoiMem = { la: acum, d: await _aziLaNoiDate(acum) };
+    const a = getAuth(req); let nume = '';
+    try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; } catch (e) {}
+    res.json(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 const aziLaTine = require('./azi_la_tine');
 const AZI_TINUT_MS = 2 * 60000;
 const _aziTinut = new Map();
@@ -18934,15 +19086,9 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // Din 28.10 rândul spune și ce a răspuns Brevo la verificarea de la pornire (fără email trimis) și ultimul email care a plecat, dar
   // n-a ajuns (livrare.js) — „verde" nu mai înseamnă doar „a plecat".
   {
-    const pus = !!(mailer && mailer.enabled());
-    const es = await _emailStareAcum();
-    const ss = await _emailStareSalvata();
-    const vf = ss && ss.verificare ? ss.verificare : null;
-    const picat = pus && es.esuatLa > es.reusitLa;
-    const vfPicat = pus && !picat && vf && vf.ok === false && Number(vf.la) > es.reusitLa && mailer.motiv(vf.eroare).fel !== 'retea';
+    const { pus, es, vf, picat, vfPicat, m } = await _emailVerdict();   // aceeași socoteală ca „Azi la noi" (30.10)
     const cand = function (t) { return new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
     const cale = pus ? (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') : '';
-    const m = picat ? mailer.motiv(es.eroare) : (vfPicat ? mailer.motiv(vf.eroare) : null);
     let liv = { rau: null, bun: null }; try { if (pus) liv = await db.ultimeleLivrari(); } catch (e) {}
     const tRau = liv.rau ? Number(liv.rau.stare_la || liv.rau.trimis_la) : 0, tBun = liv.bun ? Number(liv.bun.stare_la || liv.bun.trimis_la) : 0;
     const nelivrat = pus && !picat && !vfPicat && liv.rau && tRau > tBun;

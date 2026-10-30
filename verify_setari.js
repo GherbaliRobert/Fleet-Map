@@ -231,9 +231,10 @@ if (k1 > 0 && k2 > k1) {
     C3.aterizeaza(ecranAles);
     return C3.unde();
   };
-  T('noi aterizam pe Acasa, nu pe harta', ateriza(true, null, null) === 'administrare', ateriza(true, null, null));
+  // „Acasă" = chatul asistentului fondatorilor (macheta „tot un chat", Alin, 30.10), nu mai e pagina cu cartonașe.
+  T('noi aterizam pe Acasa (chatul asistentului), nu pe harta', ateriza(true, null, null) === 'asistent', ateriza(true, null, null));
   T('chiar daca preferinta zice altceva (ecranele ei nici nu se vad la noi)',
-    ateriza(true, null, 'rapoarte') === 'administrare', ateriza(true, null, 'rapoarte'));
+    ateriza(true, null, 'rapoarte') === 'asistent', ateriza(true, null, 'rapoarte'));
   T('pe verticala partenerului aterizam pe harta', ateriza(true, 'firma', null) === 'localizare', ateriza(true, 'firma', null));
   T('clientul, la fel', ateriza(false, null, null) === 'localizare', ateriza(false, null, null));
   // Preferinta lui e a lui: daca si-a ales alt ecran de pornire, aia ramane.

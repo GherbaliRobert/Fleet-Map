@@ -129,7 +129,10 @@ T('cartonașul există', !!cardArh);
 T('și NU poartă „adash-warn" scris în pagină', !/adash-warn/.test(cardArh), cardArh.slice(0, 60));
 T('are rândul de stare, ca celelalte', /adash-sub" id="adash-s-archived"/.test(cardArh));
 T('cartonașul nu mai promite „2 ani"', !/istoric păstrat 2 ani/.test(html));
-T('portocaliul se aprinde din cod, doar când e ceva', /if \(peDucă\) \{[\s\S]{0,260}classList\.add\('adash-warn'\)/.test(html));
+// Din 30.10 starea se socotește într-o funcție comună (`_adashStareArhiva`, citită și de cifrele din chatul fondatorilor): ea spune
+// `warn` doar când e ceva pe ducă, iar cartonașul aprinde portocaliul doar atunci.
+T('portocaliul se aprinde din cod, doar când e ceva', /if \(peDuca\) return \{ warn: true, parti: \[\{ t: peDuca \+ ' cu istoricul pe ducă', ton: 'w' \}\] \};/.test(html) &&
+  /if \(st\.warn && card\) card\.classList\.add\('adash-warn'\);/.test(html));
 T('și se stinge la fel de ușor', /if \(card\) card\.classList\.remove\('adash-warn'\);/.test(html));
 T('lista mare se cere DOAR dacă există arhivate', /if \(!n \|\| !sub\) return;/.test(html));
 

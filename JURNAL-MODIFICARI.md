@@ -523,6 +523,34 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-10-30
 
+### FONDATOR · Asistentul fondatorilor, pasul 1: „Acasă" e un chat, cu „Azi la noi" ca prim mesaj
+
+**Ce am schimbat:** Alin (30.10): „DA. Vreau să fie tot un chat… nu te apuca să editezi până nu-mi arăți cum va fi vizual"; după macheta
+„tot un chat" (https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw): „1. da, 2. da, 3. da". Pe verticala Fondator, „Acasă" deschide acum
+chatul asistentului (aceleași stiluri ca RA Insight). Primul mesaj: salutul, cele 4 cifre de azi (Companii, Utilizatori, Dispozitive
+active, Arhivate — aceleași socoteli ca pe cartonașele vechi, un clic te duce în pagina lor) și „Azi la noi": cel mult 5 lucruri care cer o
+mână de om, în ordinea hotărâtă — facturi trecute de scadență, cereri nepreluate de la clienți și de cont demo, contracte care expiră sau
+stau la semnat de peste 7 zile, montajul de mâine neconfirmat și termenul de 30 de zile, montaj gata de facturat și abonamentul lunii
+neemis, aparate care transmit fără firmă și stocul sub prag, emailul care nu pleacă, „Date emitent" incomplete și soldul Anthropic sub 14
+zile. Un clic pe rând te duce exact acolo. Merge pe reguli (azi_la_noi.js), fără model: nu costă nimic. Bula verde din colț, pe verticala
+Fondator, te aduce în chat; pe verticala Partener rămâne RA Insight. După autentificare, fondatorul aterizează în chat. Verdictul
+emailului („Stare producție") și termenele de montaj (anunțul zilnic) au ieșit în funcții comune, ca „Azi la noi" să nu le socotească a
+doua oară. Caseta de întrebat vine la pasul 2, conversațiile la pasul 4. Păzit de verify_asistent_fondatori.js (93, inclusiv pe server
+pornit, cu o factură întârziată și o cerere de la un client).
+
+**Ce vede fondatorul:** apasă „Acasă" (sau bula verde): chatul, cu cifrele de azi și „Azi la noi"; rândurile duc la factura firmei, la
+cereri, la contract, la calendarul de montaj, la „Montaj de facturat", la Neasignate, la Stoc, la „Stare producție", la „Date emitent".
+
+**Ce vede clientul:** nimic nou (meniul și bula lui rămân cum erau; ruta „Azi la noi" îi răspunde 403).
+
+- **Găsit pe drum, întrebat (nu reparat):** (1) Pe cartonașul și cifra „Companii", „N fără contract" numără ORICE dosar incomplet (CUI,
+  sediu, reprezentant, PDF semnat, acord GDPR), nu doar firmele fără contract — o firmă cu contract semnat, dar fără acordul GDPR separat,
+  apare „1 fără contract"; iar „restanțe" numără și firmele suspendate de mână, fără nicio factură neplătită. (2) Zilele soldului Anthropic
+  se socotesc din suma pusă de mână, fără să scadă ce s-a cheltuit de atunci: pus 20 $ pe 10.10, cheltuiți 6 $ până pe 30.10 → aplicația
+  socotește tot cu 20 $ (~66 de zile în loc de ~46), deci „Azi la noi" (sub 14 zile) poate anunța prea târziu. (3) Bulina roșie de lângă
+  „Cereri demo" din meniu apare doar după ce deschizi pagina și numără doar lista filtrată (cu filtrul pe „Aprobate" dispare, deși există
+  cereri noi). „Azi la noi" arată oricum cererile noi.
+
 ### AMÂNDOI · Rândul „✓" de sub răspuns spune de unde au venit cifrele
 
 **Ce am schimbat:** Alin (30.10, „4. da", după poza din 29.10). Sub un răspuns care a căutat pe internet, rândul mic verde spunea mereu
