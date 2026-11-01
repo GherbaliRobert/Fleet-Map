@@ -188,7 +188,9 @@ function rezultatUnealta(c) {
     const zi = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
     const azi = zi(Date.now());
     const n2 = cereri().length;
-    coada([unealta('combustibil', { from: azi.slice(0, 8) + '01', to: azi }), text('Consumul e socotit din fișă.')]);
+    // De pe 1 până azi — iar pe 1 ale lunii, de ieri (drumul de probă e ieri; altfel perioada n-ar avea niciun drum, 01.11).
+    const deLa = [azi.slice(0, 8) + '01', zi(ieri)].sort()[0];
+    coada([unealta('combustibil', { from: deLa, to: azi }), text('Consumul e socotit din fișă.')]);
     await json('POST', '/api/insight/intreaba', ck, { message: 'Ce consum am avut luna asta?' });
     const r3 = rezultatUnealta(cereri()[n2 + 1]) || {};
     const m3 = (r3.masini || [])[0] || {};

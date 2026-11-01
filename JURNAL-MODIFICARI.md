@@ -544,8 +544,18 @@ cu tabelul și butonul spre pagina potrivită (fișa firmei, Facturare, Calendar
 
 **Ce vede clientul:** nimic (caseta și rutele ei sunt doar ale fondatorilor; clientului îi răspund 403).
 
-- **Găsit pe drum, întrebat (nu reparat):** în RA Insight (la clienți), rândul verde „✓ Cifrele le-am luat din…" are pe tema deschisă un
+- **Găsit pe drum, întrebat (nu reparat):** (1) În RA Insight (la clienți), rândul verde „✓ Cifrele le-am luat din…" are pe tema deschisă un
   contrast de 4,46 — puțin sub pragul de 4,5 pe care îl cerem peste tot. La asistentul fondatorilor l-am pus deja pe verdele mai închis.
+  (2) **Trecerea la un pachet RA Insight mai mare chiar pe 1 ale lunii.** Confirmarea semnată spune „pentru toată luna se adaugă diferența
+  de 10 lei, pe factura din 1 decembrie", dar factura din decembrie n-o pune (aplicația socotește noiembrie întreg la Pro). Dacă factura lui
+  noiembrie a plecat dimineața pe Basic, cei 10 lei nu se mai facturează niciodată, iar hârtia semnată spune altceva decât factura. Din a
+  doua zi a lunii totul e corect (de pe 2 noiembrie: diferența pe 29 de zile, 9,67 lei, pe factura din decembrie). Prinsă de
+  verify_pachete.js, care pică doar pe 1 ale lunii.
+- **Probele care picau doar la început de lună (01.11), reparate — aplicația era bună:** trei probe își puneau datele „de acum 2–5 zile" sau
+  „pe 15 ale lunii trecute" și le căutau în luna sau săptămâna de acum; pe 1 noiembrie nimereau în octombrie sau în altă săptămână
+  (verify_ramuri.js — orele săptămânii dinainte se compară acum cu raportul pe acea săptămână; verify_proba_reparatii.js — pe 1 ale lunii
+  întreabă de ieri; verify_propuneri.js — RA Drive pe luna drumurilor, așteptând luna socotită). Au picat la fel și pe versiunea deja
+  publicată, deci nu din lucrul de azi.
 
 ## 2026-10-30
 

@@ -439,7 +439,14 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const incR = [].concat(...vH.map((x) => (x.incalcari || []).map((c) => x.sofer + '|' + x.zi + '|' + c)));
   T('încălcările = ale raportului (o singură: luni, condus continuu peste 4h30)', (h1.j.incalcari || []).length === 1 && JSON.stringify((h1.j.incalcari || []).map((x) => x.nume + '|' + x.zi + '|' + x.ce)) === JSON.stringify(incR) && /^condus continuu 5h/.test(h1.j.incalcari[0].ce) && h1.j.incalcari[0].zi === luniT, JSON.stringify([h1.j.incalcari, incR]));
   T('Gheorghe: 2 zile, cea mai lungă miercuri (peste 8 h, în regulă), fără pauză cel mai mult luni; Ion: „nu se aplică" (autoturism)', sh('Gheorghe Marin').zile === 2 && sh('Gheorghe Marin').ziMax.zi === ziPlus(luniT, 2) && sh('Gheorghe Marin').ziMax.sec > 8 * 3600 && sh('Gheorghe Marin').continuuMax.zi === luniT && sh('Gheorghe Marin').supus === true && sh('Ion Popescu').supus === false && sh('Ion Popescu').incalcari === 0, JSON.stringify([sh('Gheorghe Marin').ziMax, sh('Gheorghe Marin').continuuMax, sh('Ion Popescu').supus]));
-  T('săptămâna dinainte (cu două în urmă): camionul 1 h și ceva → „+… față de …"', h1.j.inainte && h1.j.inainte.condusSec > 3600 && h1.j.inainte.condusSec < 2 * 3600 && /^\+/.test(h1.j.fata.text) && h1.j.fata.text.indexOf(h1.j.inainte.eticheta) > 0, JSON.stringify([h1.j.inainte, h1.j.fata]));
+  // Săptămâna dinainte se compară cu raportul pe ACEA săptămână: în primele zile ale lunii, drumurile din secțiunea 3 (pe 15 ale lunii
+  // trecute) cad tot în ea (01.11: Loganul și Caddy-ul pe 15.10, în 12–18 octombrie), deci totalul flotei nu e doar camionul.
+  const rHT = (await json('GET', '/api/reports/hos?from=' + encodeURIComponent(new Date(SD.inceput(luniTT)).toISOString()) + '&to=' + encodeURIComponent(deH), ckSef)).j;
+  const vHT = (rHT && rHT.valori) || [];
+  const ghT = vHT.filter((x) => x.sofer === 'Gheorghe Marin').reduce((a, x) => a + x.condusSec, 0);
+  T('săptămâna dinainte (cu două în urmă): aceleași ore ca raportul pe săptămâna aceea — camionul lui Gheorghe 1 h și ceva — și „+… față de …"', h1.j.inainte &&
+    h1.j.inainte.condusSec === vHT.reduce((a, x) => a + x.condusSec, 0) && ghT > 3600 && ghT < 2 * 3600 && /^\+/.test(h1.j.fata.text) && h1.j.fata.text.indexOf(h1.j.inainte.eticheta) > 0,
+    JSON.stringify([h1.j.inainte, h1.j.fata, ghT, vHT.map((x) => [x.sofer, x.zi, x.condusSec])]));
   T('recomandarea: încălcarea lui Gheorghe, cu ziua, și că e o estimare din GPS', /^Gheorghe Marin: o încălcare a Reg\. 561 — condus continuu 5h/.test(((h1.j.recomandari || [])[0] || {}).text || '') && /estimare din GPS/.test(((h1.j.recomandari || [])[0] || {}).text || ''), JSON.stringify(h1.j.recomandari));
   T('lista săptămânilor: 4, cea de acum întâi („Săptămâna asta · …")', (h1.j.saptamani || []).length === 4 && h1.j.saptamani[0].saptamana === luniAcum && /^Săptămâna asta · /.test(h1.j.saptamani[0].optiune) && h1.j.saptamani[1].saptamana === luniT && /^Săptămâna trecută · /.test(h1.j.saptamani[1].optiune), JSON.stringify(h1.j.saptamani));
   const hG = await hcPagina(ckSef, '?saptamana=' + luniT + '&grupa=' + grC.id);

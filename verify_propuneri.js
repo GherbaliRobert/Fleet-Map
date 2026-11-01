@@ -264,14 +264,19 @@ const oraRO = (ms) => new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Euro
     (pd.dovezi || []).some((d) => d.text === 'De azi, RA Drive compară cum a condus în cele 30 de zile de dinainte și de după discuție.') && r1.j.insigna.eticheta === d2.j.insigna.eticheta, d2.text.slice(0, 400));
   T('…dispecerul (fără „modifică flota") vede propunerea, fără „Da"', ((await json('POST', '/api/insight/intreaba', dan.ck, { message: 'Notează că am vorbit cu Ion Popescu', nou: true })).j.propunere || {}).poate === false);
   const da2 = await json('POST', '/api/insight/actiuni/' + pd.id + '/aplica', ana.ck, { campuri: { nota: 'viteză pe A2' } });
-  const sd = await json('GET', '/api/insight/safe-drive', ana.ck);
+  // RA Drive pe luna drumurilor Loganului (cel mai nou: acum 2 zile) — în primele zile ale lunii, luna de acum n-are încă niciun drum,
+  // deci niciun șofer pe listă (01.11). Pagina se întreabă din nou cât luna se pregătește, ca în aplicație.
+  const lunaDrum = require('./safe_drive').lunaDe(acum - 2 * Z);
+  const sdPagina = async (ck) => { let r = null; for (let i = 0; i < 60; i++) { r = await json('GET', '/api/insight/safe-drive?luna=' + lunaDrum, ck); if (r.status !== 200 || !r.j.pregatire) break; await sleep(1000); } return r; };
+  const sd = await sdPagina(ana.ck);
   const disc = (await json('GET', '/api/audit?limit=60', S)).j.filter((x) => x.action === 'create' && x.entity === 'safe_drive_discutie' && x.details && x.details.prin === 'RA Insight')[0];
   T('„Da" (cu „Schimbă": „viteză pe A2"): discuția e în RA Drive, pe Ion, cu nota; în jurnal „prin RA Insight"', da2.status === 200 && /^Gata\. Am notat discuția cu \*\*Ion Popescu\*\* de azi, \d{2}:\d{2}\.$/.test(da2.j.propunere.gata.text) &&
     da2.j.propunere.randuri[2].v === 'viteză pe A2' && da2.j.propunere.gata.buton.ramura === 'safedrive' && !!disc && Number(disc.details.sofer) === ion.id, da2.text.slice(0, 300) + ' ' + JSON.stringify(disc));
-  T('…RA Drive o vede (aceeași tabelă ca butonul „Am vorbit cu el")', sd.status === 200 && (sd.j.pregatire || (sd.j.soferi || []).some((s) => s.id === ion.id && s.discutie && s.discutie.nota === 'viteză pe A2')), JSON.stringify((sd.j.soferi || []).map((s) => [s.nume, s.discutie])).slice(0, 300));
+  T('…RA Drive o vede (aceeași tabelă ca butonul „Am vorbit cu el")', sd.status === 200 && !sd.j.pregatire && sd.j.lunaAleasa === lunaDrum && (sd.j.soferi || []).some((s) => s.id === ion.id && s.discutie && s.discutie.nota === 'viteză pe A2'), JSON.stringify([sd.j.lunaAleasa, sd.j.pregatire, (sd.j.soferi || []).map((s) => [s.nume, s.discutie])]).slice(0, 300));
   const an3 = await json('POST', '/api/insight/actiuni/' + pd.id + '/anuleaza', ana.ck);
-  const sd2 = await json('GET', '/api/insight/safe-drive', ana.ck);
-  T('„Anulează": discuția iese din RA Drive', an3.status === 200 && an3.j.text === 'Am anulat: discuția cu Ion Popescu nu mai e în RA Drive.' && (sd2.j.pregatire || !(sd2.j.soferi || []).some((s) => s.id === ion.id && s.discutie)), an3.text.slice(0, 200));
+  const sd2 = await sdPagina(ana.ck);
+  T('„Anulează": discuția iese din RA Drive (Ion rămâne pe listă, fără discuție)', an3.status === 200 && an3.j.text === 'Am anulat: discuția cu Ion Popescu nu mai e în RA Drive.' && !sd2.j.pregatire &&
+    (sd2.j.soferi || []).some((s) => s.id === ion.id) && !(sd2.j.soferi || []).some((s) => s.id === ion.id && s.discutie), an3.text.slice(0, 200) + ' ' + JSON.stringify((sd2.j.soferi || []).map((s) => [s.nume, s.discutie])).slice(0, 200));
 
   // c) pachetul și fondatorul
   const coS = (await json('POST', '/api/companies', S, { name: 'Firma Start SRL' })).j;

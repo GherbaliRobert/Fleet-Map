@@ -135,7 +135,8 @@ const ACT = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'lib', 'activi
 T('„Istoric activitate" scrie românește descărcarea istoricului complet (web și telefon, la fel)', /device_history: 'istoricul complet al mașinii'/.test(HTML) && /device_history: 'istoricul complet al mașinii'/.test(ACT));
 const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 T('uneltele de rapoarte se dau doar cui are dreptul la rapoarte', /if \(cuRapoarte\) tools\.push\(\{\s*name: 'run_report'/.test(SRV));
-T('ușa nouă a secțiunii stă sub plafonul de întrebări AI pe minut', /const isAi = p\.indexOf\('\/api\/ai\/'\) === 0 \|\| p === '\/api\/insight\/intreaba';/.test(SRV));
+// Din 01.11 plafonul cuprinde și caseta asistentului fondatorilor (pasul 2), care poate chema modelul.
+T('ușa nouă a secțiunii stă sub plafonul de întrebări AI pe minut (și caseta asistentului fondatorilor)', /const isAi = p\.indexOf\('\/api\/ai\/'\) === 0 \|\| p === '\/api\/insight\/intreaba' \|\| p === '\/api\/admin\/asistent\/intreaba';/.test(SRV));
 T('„Asistent AI" de pe telefonul vechi trece prin ACELAȘI RA Insight', /app\.post\('\/api\/ai\/chat',[^\n]*_raInsight\(req, res/.test(SRV));
 T('o singură funcție răspunde (trei uși, un asistent)', (SRV.match(/_raInsight\(req, res, \{/g) || []).length === 3, (SRV.match(/_raInsight\(req, res, \{/g) || []).length);
 

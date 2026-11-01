@@ -520,7 +520,10 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   `verify_insight.js` (secțiunea 7).
 - ⚠ **Probele pe server pornit merg pe ceasul ADEVĂRAT**: zilele datelor de probă se socotesc față de azi
   (`insight.perioada({ period: 'last_week' }, Date.now())`, `inceputZiRO`), NU se scriu de mână. Două probe scrise pe
-  02.10 cu „21–27 septembrie" picau de pe 06.10 la orice livrare.
+  02.10 cu „21–27 septembrie" picau de pe 06.10 la orice livrare. Și invers: datele „de acum 2–5 zile" cad, în primele zile ale lunii,
+  în luna trecută — o probă le caută în luna / săptămâna în care CHIAR sunt, nu în „luna de acum" (01.11: verify_propuneri.js,
+  verify_proba_reparatii.js, verify_ramuri.js picau doar pe 1–2 ale lunii; verify_pachete.js pică pe 1 ale lunii din cauza unei
+  probleme adevărate, trecerea la un pachet mai mare chiar pe 1 — nehotărât, vezi jurnalul din 01.11).
 
 ## Rapoartele citesc TOATĂ perioada (Alin, 05.10: „rezolvăm acum")
 Rapoartele citeau cel mult 50.000 de poziții pe mașină (cele mai vechi), fără să spună — cam o lună a unei mașini care
