@@ -841,12 +841,43 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   (fondatori, apoi la 2 minute), la anunțul `demo_request` și după fiecare încărcare a listei — NU din lista filtrată a paginii.
 - **Clicurile: O funcție, `window._asfDu(tinta)`** (firma + filă, neasignate, facturare + secțiune, emitent, secțiune). Textele de la server
   se pun ca TEXT (`textGros` → noduri `<b>`); innerHTML doar cu bucăți scrise în pagină.
-- **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul), 3 cifrele verificate + analiza
-  atentă, 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da") și etapa 3 (telefonul, Robert). Fiecare la „da"-ul
-  lui Alin, cu machetă întâi dacă se schimbă ce se vede.
+- **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul) — FĂCUT pe 01.11, vezi mai jos; 3
+  cifrele verificate + analiza atentă, 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da") și etapa 3 (telefonul,
+  Robert). Fiecare la „da"-ul lui Alin, cu machetă întâi dacă se schimbă ce se vede.
 - Păzit de **`verify_asistent_fondatori.js`** (în `npm test`; 93, pe server pornit, cu o factură întârziată pusă în bază și o cerere de la
   un client), plus `verify_acasa.js`, `verify_setari.js` (aterizarea), `verify_insight.js` și `verify_un_singur_insight.js` (bula),
   `verify_utilizatori.js`, `verify_arhiva.js`, `verify_drum.js`.
+
+### Asistentul fondatorilor — etapa 1, pasul 2 (01.11; Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta „tot un chat")
+- **Regulile și TEXTELE stau în `asistent_fondatori.js`** (curat; 3 formatatoare ținute minte): `intelege(text, { acum, ctx, analiza, firme })`
+  (subiectul — `SUBIECTE`, în ordine; firma — `firmeDin`, numele fără SRL, cel mai lung câștigă; perioada — `perioadaCalendar` pentru montaje /
+  contracte, care privește și înainte, `perioadaTrecuta` pentru încasări, pe regula rapoartelor; „luna asta" se citește AICI: pe 1 ale lunii
+  rapoartele o fac „azi"; null = e a modelului: `insight.esteAnaliza`, peste `MAX_CUVINTE_PE_LOC` = 14 cuvinte, niciun subiect),
+  `perioadaComparata` (luna de acum ↔ ACELEAȘI zile din luna dinainte, nu luna întreagă), `raspunde(u, date, acum)` (titlul, tabelul — cel mult
+  `MAX_RANDURI` = 10, `incaText` —, fraza, butoanele cu `tinta`, `urmari`, `verificat`, `context`), `textSimplu`, `UNELTE` + `SURSA_UNELTE` +
+  `dupaModel` (insigna și butoanele din uneltele CHIAR rulate), `instructiuni` (partea fixă, în cache) / `contextIntrebare` (ziua), `INTREBARI_GATA`,
+  `PERIOADE`, `PE_LOC`, `faraModel`, `eroareModel`. Continuările: o întrebare care e DOAR o perioadă (`_doarPerioada` = regula rapoartelor + cuvintele
+  viitorului) sau doar o firmă păstrează subiectul de dinainte; firma de dinainte rămâne DOAR la o continuare, o întrebare întreagă e despre toate.
+  NU scrie texte de-ale asistentului în pagină.
+- **Datele: `_asfDate(u, acum)`** (server.js), cu socotelile care există: `_restanteAcum` (comună cu „Azi la noi"), `_stareFirmeToate` (comună cu
+  `/api/admin/counts` — `contracte.faraContract` apare O DATĂ în server), `_venitLunarToate`, `_mjcLucrareCal` (zilele pe ora României, fără cele
+  anulate), contractele (`sfarsitCurent`, `ultimaZiDePreaviz`), `stocMod.sumar` + pragurile, cererile, cererile demo (FĂRĂ date personale),
+  `_deFacturatMontaj`, `_abonamenteNeemise`, `db.platiIntre`. Uneltele modelului (`_asfUnelte`) citesc tot de acolo (+ `db.facturiEmise`).
+- **Rutele (requireSuperadmin):** `POST /api/admin/asistent/intreaba { text, context, istoric }` — contextul se CURĂȚĂ (subiect cunoscut, perioada
+  ca numere, firmele doar dintre cele din bază); pe reguli întâi, apoi modelul (`ai.runAgent`, instrucțiunile fixe cu `cache_control`, 10 unelte,
+  `_asfIstoric`: alte roluri aruncate întâi, ultimele 6, începe cu omul), răspunsul prin `insight.litereRomanesti`; consumul = un rând `asistent`, fără
+  firmă (în afara `AI_BILLABLE_KINDS`; intră în soldul Anthropic). Fără cheie → `faraModel`; modelul căzut → `eroareModel` (nu 500). În `RL_AI`.
+  `GET /api/admin/asistent/meta` → `{ perioade, firme }` (pentru „+"); întrebările gata făcute vin în `/api/admin/azi-la-noi` (`intrebari`).
+- **Pagina** (blocul „asistentul fondatorilor"): primul mesaj stă în `#asf-prim` (`display: contents`) și se reface la fiecare intrare pe „Acasă";
+  discuția de dedesubt (`S.mesaje`, `S.ctx`) rămâne cât stă pagina deschisă — se păstrează pe server abia la pasul 4. O singură cerere de întrebare
+  (`asfTrimite`), `bulaRaspuns` desenează tot ca TEXT (tabelul cu `el('td')`, `data-col` pentru telefon, îngroșatul prin `textGros`), butoanele prin
+  `_asfDu(tinta)`. Piesele comune ale chatului (`_chatUrmari`, `_chatAlege`, `_chatActiuni`, `_chatInsigna`, `_chatPuneInText`) — NU le scrie a doua
+  oară. „⋯" = „Conversație nouă", cu nota că discuția nu se păstrează încă. Răspunsul modelului NU are rândul „✓" (cifrele verificate = pasul 3).
+- **Telefonul (≤ 600 px, măsurat 01.11):** rândul de tabel devine cartonaș (prima celulă îngroșată, celelalte cu `attr(data-col)` în față) — cu 5
+  coloane „Stare" ieșea din chenar; caseta are textul scurt din machetă (`TEXT_SCURT`, prin `matchMedia`) — cel lung se rupea pe două rânduri, tăiat;
+  butonul ↓ stă deasupra casetei, oricât de înaltă (`arataJos` îl mută). Rândul „✓" pe verdele închis `#166534` (cel al RA Insight, #15803d, iese 4,46).
+- Păzit de **`verify_asistent_intreaba.js`** (în `npm test`; pe server pornit, cu datele puse în bază de faza `--faza=seed`, modelul simulat și faza
+  `--faza=consum` după oprire), plus `verify_asistent_fondatori.js` și `verify_companii.js` (starea firmelor, o socoteală).
 
 ### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
 Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:

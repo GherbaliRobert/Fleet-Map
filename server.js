@@ -1340,7 +1340,8 @@ app.use((req, res, next) => {
   const a = getAuth(req);
   const id = (a && a.userId) ? ('u' + a.userId) : ('ip' + clientIp(req));
   // RA Insight are și ușa nouă a secțiunii (02.10): fără ea aici, întrebările de acolo ar fi scăpat de plafonul AI.
-  const isAi = p.indexOf('/api/ai/') === 0 || p === '/api/insight/intreaba';
+  // …și caseta asistentului fondatorilor (30.10), care poate chema modelul.
+  const isAi = p.indexOf('/api/ai/') === 0 || p === '/api/insight/intreaba' || p === '/api/admin/asistent/intreaba';
   const max = isAi ? RL_AI : RL_GEN;
   const key = id + (isAi ? ':ai' : ':gen');
   const now = Date.now();
@@ -7461,25 +7462,29 @@ async function _abonamenteNeemise(acum) {
   _abonNeemiseMem = { la: acum, luna: z.slice(0, 7), l: l };
   return { l: l, luna: numeLuna };
 }
+// Facturile trecute de scadență, cu regulile neplății (neplata.js) — O socoteală pentru rândul „bani" din „Azi la noi" și pentru
+// asistentul fondatorilor („Cine e restant?", unealta `restante`). `zilePanaLaOprire` -1 = accesul e deja oprit.
+async function _restanteAcum(acum) {
+  const toate = (await db.facturiNeachitateToate()) || {};
+  const out = [];
+  Object.keys(toate).forEach(function (cid) {
+    const rows = (toate[cid] || []).filter(neplata.seCere);
+    const st = neplata.stareNeplata(rows, acum);
+    if (!st || st.faza === 'ok') return;
+    rows.forEach(function (f) {
+      const z = neplata.zileDeLaScadenta(f, acum);
+      if (!(Number(f.due_date) < acum) || z == null) return;
+      out.push({ companyId: Number(cid), firma: f.company_name || ('#' + cid), numar: f.full_number || ('#' + f.id), totalRon: Number(f.total) || 0,
+        moneda: f.currency || 'RON', zileIntarziere: Math.max(0, z), zilePanaLaOprire: st.faza === 'suspendat' ? -1 : Math.max(0, st.zilePanaLaSuspendare) });
+    });
+  });
+  return out;
+}
 async function _aziLaNoiDate(acum) {
   const d = { acum: acum };
   const pas = async function (nume, fn) { try { await fn(); } catch (e) { console.warn('[azi-la-noi] ' + nume + ': ' + e.message); } };
   let inVigoare = [];
-  await pas('facturi', async function () {
-    const toate = (await db.facturiNeachitateToate()) || {};
-    d.facturi = [];
-    Object.keys(toate).forEach(function (cid) {
-      const rows = (toate[cid] || []).filter(neplata.seCere);
-      const st = neplata.stareNeplata(rows, acum);
-      if (!st || st.faza === 'ok') return;
-      rows.forEach(function (f) {
-        const z = neplata.zileDeLaScadenta(f, acum);
-        if (!(Number(f.due_date) < acum) || z == null) return;
-        d.facturi.push({ companyId: Number(cid), firma: f.company_name || ('#' + cid), numar: f.full_number || ('#' + f.id), totalRon: Number(f.total) || 0,
-          moneda: f.currency || 'RON', zileIntarziere: Math.max(0, z), zilePanaLaOprire: st.faza === 'suspendat' ? -1 : Math.max(0, st.zilePanaLaSuspendare) });
-      });
-    });
-  });
+  await pas('facturi', async function () { d.facturi = await _restanteAcum(acum); });
   await pas('cereri', async function () {
     d.cereri = ((await db.cereriEchipaToate('deschise')) || []).filter(function (c) { return c.stare === 'trimisa'; })
       .map(function (c) { return { nr: c.id, firma: c.company_name || ('#' + c.company_id), titlu: c.titlu || cereriEchipa.titlu(c.problema), la: _msData(c.creat_la) || acum }; });
@@ -7546,7 +7551,233 @@ app.get('/api/admin/azi-la-noi', requireAuth, requireSuperadmin, async (req, res
     if (!_aziLaNoiMem.d || acum - _aziLaNoiMem.la > 2 * 60000 || String(req.query.proaspat || '') === '1') _aziLaNoiMem = { la: acum, d: await _aziLaNoiDate(acum) };
     const a = getAuth(req); let nume = '';
     try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; } catch (e) {}
-    res.json(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume })));
+    // Întrebările gata făcute de sub „Azi la noi" (pasul 2) vin tot de aici: pagina nu-și scrie textele.
+    res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume })), { intrebari: asistentF.INTREBARI_GATA }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ── Asistentul fondatorilor, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta „tot un chat") ──────────────
+// Regulile, textele și uneltele modelului stau în asistent_fondatori.js (curat). Aici doar datele, adunate cu socotelile care există
+// deja (_restanteAcum, _stareFirmeToate, _venitLunarToate, calendarul de montaj, contractele, stocul, _deFacturatMontaj,
+// _abonamenteNeemise) — ACELEAȘI pentru răspunsul pe loc și pentru uneltele modelului (`_asfDate`). Modelul răspunde pe contul nostru:
+// fel „asistent", fără firmă pe rând, în afara AI_BILLABLE_KINDS (se vede în soldul Anthropic). Doar fondatorii.
+const asistentF = require('./asistent_fondatori');
+async function _asfDate(u, acum) {
+  const ZI = 86400000;
+  if (u.s === 'restanti') return { facturi: await _restanteAcum(acum) };
+  if (u.s === 'incasari') {
+    const plati = function (rows) { return (rows || []).map(function (p) { return { companyId: p.company_id, firma: p.company_name || ('#' + p.company_id), suma: Number(p.amount_ron) || 0, la: Number(p.la) || null }; }); };
+    const ina = asistentF.perioadaComparata(u, acum);
+    const r = await Promise.all([db.platiIntre(u.de, u.pana), db.platiIntre(ina.de, ina.pana)]);
+    return { plati: plati(r[0]), inainte: { fraza: ina.fraza, plati: plati(r[1]) } };
+  }
+  if (u.s === 'montaje') {
+    // Ziua lucrării pe ora României, ca în Calendarul de montaj; zilele anulate nu se numără (stau în istoric).
+    const de = _ziRo(u.de), pana = _ziRo(u.pana);
+    const brute = await db.lucrariMontajIntre(u.de - ZI, u.pana + ZI);
+    return { lucrari: brute.filter(function (l) { const z = l.data_lucrare ? _ziRo(l.data_lucrare) : ''; return l.status !== montaj.STARE_ANULAT && z >= de && z < pana; }).map(function (l) {
+      const x = _mjcLucrareCal(l);
+      return { companyId: x.company_id, firma: x.company_name || ('#' + x.company_id), instalator: x.partener_nume || '', masini: x.masini, la: Number(l.data_lucrare), zi: x.zi,
+        status: x.status, conf: x.conf, confirmatClient: x.confirmat_client, confirmatInstalator: x.confirmat_instalator };
+    }) };
+  }
+  if (u.s === 'contracte') {
+    return { contracte: ((await db.contracteInVigoare()) || []).map(function (c) {
+      return { companyId: c.company_id, firma: c.company_name || ('#' + c.company_id), numar: c.number, sfarsit: Number(contracte.sfarsitCurent(c, acum)) || null,
+        preaviz: Number(contracte.ultimaZiDePreaviz(c, acum)) || null, autoRenew: !!c.auto_renew };
+    }) };
+  }
+  if (u.s === 'nesemnate') {
+    return { contracte: ((await db.contracteToate(500)) || []).filter(function (c) { return !c.is_demo && ['ciorna', 'aprobat', 'trimis'].indexOf(c.status) >= 0; }).map(function (c) {
+      return { companyId: c.company_id, firma: c.company_name || ('#' + c.company_id), numar: c.number, status: c.status, eticheta: contracte.ETICHETE_STARE[c.status] || c.status,
+        trimisLa: c.status === 'trimis' ? _msData(c.sent_at) : null, facutLa: _msData(c.created_at) };
+    }) };
+  }
+  if (u.s === 'stoc') {
+    // Pe modele (stoc.sumar), cu stocul minim ales de noi (Stoc echipamente › praguri) — și modelele cu prag, dar fără nicio bucată.
+    const r = await Promise.all([db.listStoc(), _stocPraguri()]);
+    const s = stocMod.sumar(r[0]), minim = (r[1] && r[1].minim) || {};
+    Object.keys(minim).forEach(function (k) { if (!s[k] && Number(minim[k]) > 0) s[k] = { depozit: 0, instalator: 0, inchiriate: 0, vandute: 0 }; });
+    return { modele: Object.keys(s).map(function (k) {
+      const x = s[k], prag = Number(minim[k]) || 0, e = montaj.echipament(k);
+      return { tip: k, model: (e && montaj.numeScurt(k)) || k, depozit: x.depozit, instalator: x.instalator, inchiriate: x.inchiriate, vandute: x.vandute, prag: prag, subPrag: prag > 0 && x.depozit < prag };
+    }) };
+  }
+  if (u.s === 'cereri') {
+    return { cereri: ((await db.cereriEchipaToate('deschise')) || []).map(function (c) {
+      return { nr: c.id, companyId: c.company_id, firma: c.company_name || ('#' + c.company_id), titlu: c.titlu || cereriEchipa.titlu(c.problema), stare: c.stare,
+        stareText: cereriEchipa.ETICHETE[c.stare] || c.stare, la: _msData(c.creat_la) || acum };
+    }) };
+  }
+  if (u.s === 'demo') {
+    // Fără date personale (ca anunțul lor și ca „Azi la noi"): doar firma, dacă a scris-o.
+    return { cereri: ((await db.listDemoRequests({ status: 'new', limit: 50 })) || []).map(function (r) {
+      return { firma: r.company || '', ce: r.wants_demo ? 'cont demo' : 'mesaj din formular', la: _msData(r.created_at) || acum };
+    }) };
+  }
+  if (u.s === 'aparate') {
+    const l = (await db.aparateFaraFirma()) || [];
+    const nume = {};
+    for (const id of Array.from(new Set(l.map(function (x) { return x.anuntat_firma; }).filter(function (x) { return x != null; })))) {
+      const co = await db.getCompanyById(id); if (co) nume[id] = co.name;
+    }
+    return { aparate: l.map(function (x) { return { imei: x.imei, firmaId: x.anuntat_firma != null && nume[x.anuntat_firma] ? x.anuntat_firma : null, firma: x.anuntat_firma != null ? (nume[x.anuntat_firma] || null) : null }; }) };
+  }
+  if (u.s === 'de_facturat') {
+    const r = await Promise.all([_deFacturatMontaj(acum), _abonamenteNeemise(acum)]);
+    return {
+      montaj: ((r[0] && r[0].gata) || []).map(function (g) {
+        return { companyId: g.company_id, firma: g.company_name || ('#' + g.company_id), masini: g.masini, perioada: (g.perioade || []).map(function (p) { return p.eticheta; }).filter(Boolean).join(', ') };
+      }),
+      abonamente: (r[1].l || []).map(function (a) { return { companyId: a.companyId, firma: a.firma }; }), luna: r[1].luna
+    };
+  }
+  if (u.s === 'venit') {
+    const lista = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; });
+    const v = await _venitLunarToate(lista);
+    return { firme: lista.map(function (c) { return { id: c.id, firma: c.name, lei: Number((v.firme || {})[c.id]) || 0 }; }) };
+  }
+  if (u.s === 'firme') return { firme: await _stareFirmeToate(acum) };
+  return {};
+}
+// Uneltele modelului (asistentF.UNELTE): aceleași date, ca obiecte scurte; `folosite` = ce a citit (insigna și butoanele de sub
+// răspuns se fac din uneltele chiar rulate). Zilele vin „AAAA-LL-ZZ", pe ora României.
+function _asfZiMs(s, capat) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
+  return m ? insight.inceputZiRO(+m[1], +m[2] - 1, +m[3] + (capat ? 1 : 0)) : null;
+}
+function _asfUnelte(acum, folosite) {
+  const per = function (i, implicit) {
+    const de = _asfZiMs(i.de), pana = _asfZiMs(i.pana, true);
+    return de != null && pana != null && pana > de ? { de: de, pana: Math.min(pana, de + 400 * 86400000) } : implicit;
+  };
+  const cuFirma = function (nume, f) { return !f || insight.norm(nume || '').indexOf(insight.norm(f)) >= 0; };
+  const zi = function (ms) { return ms ? _ziRo(ms) : null; };
+  const lunaAsta = function () { const r = insight.perioada({ period: 'this_month' }, acum); return { de: Date.parse(r.from), pana: Date.parse(r.to) }; };
+  const h = {
+    restante: async function () {
+      return { facturi: (await _restanteAcum(acum)).map(function (f) {
+        return { firma: f.firma, factura: f.numar, suma: f.totalRon, moneda: f.moneda, zile_intarziere: f.zileIntarziere, zile_pana_la_oprirea_accesului: f.zilePanaLaOprire };
+      }) };
+    },
+    incasari: async function (i) {
+      const p = per(i, lunaAsta());
+      const plati = ((await db.platiIntre(p.de, p.pana)) || []).map(function (r) { return { firma: r.company_name, suma: Number(r.amount_ron) || 0, zi: zi(Number(r.la)) }; });
+      return { de: zi(p.de), pana: zi(p.pana - 1), total_lei: Math.round(plati.reduce(function (s, x) { return s + x.suma; }, 0) * 100) / 100, plati: plati.slice(0, 200) };
+    },
+    facturi: async function (i) {
+      const p = per(i, null);
+      const rows = await db.facturiEmise({ firma: String(i.firma || '').trim().slice(0, 60) || null, de: p ? p.de : null, pana: p ? p.pana : null });
+      return { facturi: rows.map(function (f) {
+        return { firma: f.company_name, numar: f.full_number, fel: f.type === 'proforma' ? 'proformă' : 'factură', stare: f.status, suma: Number(f.total) || 0, moneda: f.currency,
+          emisa: zi(Number(f.issue_date)), scadenta: zi(Number(f.due_date)), platita: zi(Number(f.paid_at)) };
+      }) };
+    },
+    montaje: async function (i) {
+      const p = per(i, asistentF.perioadaCalendar('saptamana asta', acum, false));
+      const d = await _asfDate({ s: 'montaje', de: p.de, pana: p.pana }, acum);
+      return { de: zi(p.de), pana: zi(p.pana - 1), lucrari: d.lucrari.map(function (l) {
+        return { zi: l.zi, firma: l.firma, instalator: l.instalator || null, masini: l.masini, stare: l.status, confirmat_de_client: l.confirmatClient, confirmat_de_instalator: l.confirmatInstalator };
+      }) };
+    },
+    contracte: async function (i) {
+      const f = String(i.firma || '').trim();
+      return { contracte: ((await db.contracteToate(500)) || []).filter(function (c) { return !c.is_demo && cuFirma(c.company_name, f); }).slice(0, 150).map(function (c) {
+        const activ = c.status === 'activ';
+        return { firma: c.company_name, numar: c.number, stare: contracte.ETICHETE_STARE[c.status] || c.status, semnat: zi(_msData(c.signed_at)),
+          expira: activ ? zi(Number(contracte.sfarsitCurent(c, acum))) : null, preaviz_pana_pe: activ ? zi(Number(contracte.ultimaZiDePreaviz(c, acum))) : null, se_reinnoieste_singur: !!c.auto_renew };
+      }) };
+    },
+    firme: async function (i) {
+      const f = String(i.firma || '').trim();
+      const r = await Promise.all([_stareFirmeToate(acum), _venitLunarToate()]);
+      return { firme: r[0].filter(function (x) { return cuFirma(x.firma, f); }).map(function (x) {
+        return { firma: x.firma, venit_lunar_lei: Number((r[1].firme || {})[x.id]) || 0, aparate: x.aparate, fara_contract: x.faraContract, restanta: x.restanta, suspendata: x.suspendata };
+      }) };
+    },
+    stoc: async function () {
+      const d = await _asfDate({ s: 'stoc' }, acum);
+      return { modele: d.modele.map(function (m) { return { model: m.model, in_depozit: m.depozit, la_instalatori: m.instalator, montate_inchiriate: m.inchiriate, montate_vandute: m.vandute, stoc_minim: m.prag || null }; }) };
+    },
+    cereri: async function () {
+      const d = await _asfDate({ s: 'cereri' }, acum);
+      return { cereri: d.cereri.map(function (c) { return { nr: c.nr, firma: c.firma, problema: c.titlu, stare: c.stareText, din: zi(c.la) }; }) };
+    },
+    de_facturat: async function () { return _asfDate({ s: 'de_facturat' }, acum); },
+    azi_la_noi: async function () {
+      const r = aziLaNoi.randuri(Object.assign({}, await _aziLaNoiDate(acum), { acum: acum }));
+      return { randuri: (r.randuri || []).map(function (x) { return String(x.text || '').replace(/\*\*/g, ''); }), de_vazut: r.deVazut };
+    }
+  };
+  Object.keys(h).forEach(function (k) { const f = h[k]; h[k] = async function (i) { folosite.push(k); return f(i || {}); }; });
+  return h;
+}
+// Discuția de până acum, trimisă de pagină (pasul 4 o va ține pe server): doar mesajele omului și ale asistentului (alte roluri se
+// aruncă ÎNAINTE de numărat), ultimele 6, doar textul, tăiat; începe cu omul, rolurile alternează.
+function _asfIstoric(l) {
+  const out = [];
+  (Array.isArray(l) ? l : []).map(function (m) {
+    const rol = m && m.rol === 'assistant' ? 'assistant' : (m && m.rol === 'user' ? 'user' : null);
+    return { rol: rol, t: String((m && m.text) || '').replace(/\s+/g, ' ').trim().slice(0, 1500) };
+  }).filter(function (m) { return m.rol && m.t; }).slice(-6).forEach(function (m) {
+    const rol = m.rol, t = m.t;
+    if (!out.length && rol !== 'user') return;
+    if (out.length && out[out.length - 1].role === rol) out[out.length - 1].content += '\n' + t; else out.push({ role: rol, content: t });
+  });
+  if (out.length && out[out.length - 1].role === 'user') out.pop();   // întrebarea nouă vine separat
+  return out;
+}
+app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Scrie o întrebare.' });
+    const acum = Date.now();
+    const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return { id: c.id, nume: c.name }; });
+    // Ce a întors răspunsul de dinainte (pentru „Și luna trecută?"), curățat: subiectul cunoscut, perioada ca numere, firmele DOAR
+    // dintre cele care există (numele luate din bază, nu din pagină).
+    let ctx = null;
+    if (b.context && typeof b.context === 'object' && asistentF.SURSE[b.context.s]) {
+      const c = b.context;
+      ctx = { s: c.s };
+      if (Number(c.de) > 0 && Number(c.pana) > Number(c.de)) { ctx.de = Number(c.de); ctx.pana = Number(c.pana); ctx.eticheta = String(c.eticheta || '').slice(0, 80); }
+      if (Array.isArray(c.firme)) ctx.firme = c.firme.map(function (f) { return firme.filter(function (x) { return x.id === Number(f && f.id); })[0]; }).filter(Boolean).slice(0, 5);
+    }
+    const u = asistentF.intelege(text, { acum: acum, ctx: ctx, analiza: insight.esteAnaliza(text), firme: firme });
+    if (u) {
+      const r = asistentF.raspunde(u, await _asfDate(u, acum), acum);
+      return res.json(Object.assign(r, { copiere: asistentF.textSimplu(r) }));
+    }
+    if (!ai || !ai.aiEnabled()) return res.json(asistentF.faraModel());
+    const folosite = [];
+    const userId = (getAuth(req) || {}).userId || null;
+    const model = ai.AI_AGENT_MODEL;
+    const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+    const onUsage = function (us) { Object.keys(_agg).forEach(function (k) { _agg[k] += Number(us && us[k]) || 0; }); };
+    const system = [
+      { type: 'text', text: asistentF.instructiuni(insight.SCRISUL), cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: asistentF.contextIntrebare(acum) }
+    ];
+    let result = null;
+    try {
+      result = await ai.runAgent({ system: system, messages: _asfIstoric(b.istoric).concat([{ role: 'user', content: text }]), tools: asistentF.UNELTE,
+        toolHandlers: _asfUnelte(acum, folosite), model: model, maxTokens: 900, maxIters: 6, onUsage: onUsage });
+    } catch (e) {
+      console.warn('[asistent] modelul n-a răspuns:', e.message);
+    }
+    // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit).
+    if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(null, 'asistent', _agg, userId, model).catch(function () {});
+    if (!result || !result.text) return res.json(asistentF.eroareModel());
+    const dm = asistentF.dupaModel(folosite);
+    const reply = insight.litereRomanesti(result.text);
+    res.json({ fel: 'ai', insigna: dm.insigna, text: reply, butoane: dm.butoane, urmari: [], copiere: reply });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „+" din caseta asistentului: firmele (doar numele, fără demo) și perioadele pe care le înțeleg regulile — pagina nu-și scrie listele.
+app.get('/api/admin/asistent/meta', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; })
+      .map(function (c) { return { id: c.id, nume: c.name }; }).sort(function (a, b) { return String(a.nume || '').localeCompare(String(b.nume || ''), 'ro'); });
+    res.json({ perioade: asistentF.PERIOADE, firme: firme });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 const aziLaTine = require('./azi_la_tine');
@@ -8099,6 +8330,25 @@ app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res
     return reportExport.sendReport(res, report, 'xlsx');
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Starea fiecărei firme (fără demo), cu regulile filtrelor din Companii — O socoteală pentru cifrele de sub „Companii"
+// (/api/admin/counts) și pentru asistentul fondatorilor („câte firme…", unealta `firme`): „fără contract" = `contracte.faraContract`
+// (niciun contract sau unul încheiat cu acces; NU „dosar incomplet"), restanța = o factură trecută de scadență, în avertisment
+// (`neplata.stareNeplata`), suspendată = accesul oprit (de noi sau pentru neplată).
+async function _stareFirmeToate(acum) {
+  const [lista, dos, facturi] = await Promise.all([
+    db.getCompanies(),
+    db.contractsByCompany().catch(function () { return {}; }),
+    db.facturiNeachitateToate().catch(function () { return {}; })
+  ]);
+  return (lista || []).filter(function (c) { return !c.is_demo; }).map(function (c) {
+    const f = facturi[c.id] || [];
+    const acc = stareAcces(c, f, acum);
+    return { id: c.id, firma: c.name, aparate: Number(c.device_count) || 0, contract: dos[c.id] || null,
+      faraContract: contracte.faraContract(contracte.stareDosar(c, dos[c.id] || null, acum), acc.status),
+      restanta: neplata.stareNeplata(f, acum).faza === 'avertisment',
+      suspendata: acc.status === 'expired' };
+  });
+}
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
 // Numărătoare rapidă pentru cardurile din panou (COUNT-uri indexate; evită încărcarea listei complete de
 // vehicule cu join LATERAL pe poziții — care era lentă pe baza mare de poziții din producție).
@@ -8119,23 +8369,10 @@ app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
       // „suspendate" = accesul oprit (de noi sau pentru neplată), numărate separat.
       const out = Object.assign({}, r.rows[0]);
       try {
-        const [lista, dos, facturi] = await Promise.all([
-          db.getCompanies(),
-          db.contractsByCompany().catch(function () { return {}; }),
-          db.facturiNeachitateToate().catch(function () { return {}; })
-        ]);
-        const acum = Date.now();
-        let faraContract = 0, restante = 0, suspendate = 0;
-        (lista || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
-          const f = facturi[c.id] || [];
-          const acc = stareAcces(c, f, acum);
-          if (contracte.faraContract(contracte.stareDosar(c, dos[c.id] || null, acum), acc.status)) faraContract++;
-          if (neplata.stareNeplata(f, acum).faza === 'avertisment') restante++;
-          if (acc.status === 'expired') suspendate++;
-        });
-        out.companies_fara_contract = faraContract;
-        out.companies_restante = restante;
-        out.companies_suspendate = suspendate;
+        const st = await _stareFirmeToate(Date.now());
+        out.companies_fara_contract = st.filter(function (f) { return f.faraContract; }).length;
+        out.companies_restante = st.filter(function (f) { return f.restanta; }).length;
+        out.companies_suspendate = st.filter(function (f) { return f.suspendata; }).length;
       } catch (e) { /* fără rândul de sub cifră, cartonașul rămâne cu numărul */ }
       return res.json(out);
     }

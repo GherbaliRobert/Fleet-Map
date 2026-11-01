@@ -1196,5 +1196,7 @@ module.exports = {
   rezumatTabel,
   SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, ALEGERI_RAPORT, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,
   intelege, contextul, inteles, raspunde, neinteles, urmari, perioadaDin, perioadaImplicita, perioadaAnterioara, perioadaDinainte,
+  // „Și luna trecută?” = textul spune DOAR o perioadă — și pentru asistentul fondatorilor (asistent_fondatori.js, 30.10).
+  doarPerioada: _doarPerioada,
   subiectDin, nr, cant, _numar, PENTRU_INSIGHT,
 };

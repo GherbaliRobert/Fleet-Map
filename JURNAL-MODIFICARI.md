@@ -521,6 +521,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-01
+
+### FONDATOR · Asistentul fondatorilor, pasul 2: caseta „Întreabă orice"
+
+**Ce am schimbat:** Alin (30.10): „2. da". Pe „Acasă" (verticala Fondator), sub „Azi la noi" stau trei întrebări gata făcute („Cine e
+restant?", „Încasări luna asta", „Montaje săptămâna asta"), iar jos caseta „Întreabă orice despre firmă…", cu „+" (Firma, Perioada) — ca
+în macheta „tot un chat". Întrebările obișnuite primesc răspuns **pe loc**, pe reguli, fără model și fără cost (eticheta verde INSTANT):
+titlul cu cifra, un tabel (cel mult 10 rânduri, restul „… și încă N rânduri"), o frază, butonul spre ecranul potrivit și „✓ Cifrele le-am
+luat din …". Subiectele: restanții, încasările (luna de acum se compară cu aceleași zile din luna dinainte), ce e de facturat, montajele,
+contractele care expiră și cele nesemnate, stocul (cu pragul minim), cererile de la clienți și cele de cont demo (fără nume, email sau
+telefon), aparatele fără firmă, venitul lunar, starea firmelor. Merg și continuările: „Și luna trecută?", „și mâine?", „Și la Agro Nord?".
+Restul („de ce", „compară", „ce să fac", întrebările lungi) merge la **model** (eticheta mov ANALIZĂ), care citește aceleași date, cu zece
+unelte care doar citesc; costul e al nostru (cam 0,5 bani pe întrebare, se vede în soldul Anthropic), nu al vreunui client. Socotelile sunt
+cele care există deja: restanțele = aceleași ca în „Azi la noi", starea firmelor = aceleași cifre ca sub „Companii". Discuția nu se
+păstrează încă (vine la pasul 4): rămâne cât stă pagina deschisă, iar „⋯" → „Conversație nouă" o șterge. Pe telefon, rândurile tabelului
+devin cartonașe, iar caseta are textul scurt din machetă. Păzit de verify_asistent_intreaba.js (pe server pornit, cu date de probă și
+modelul simulat — nu se cheltuie nimic), plus verify_asistent_fondatori.js și verify_companii.js.
+
+**Ce vede fondatorul:** pe „Acasă", sub „Azi la noi", trei întrebări cu un clic; jos, caseta. Răspunsul vine dedesubt, în același chat,
+cu tabelul și butonul spre pagina potrivită (fișa firmei, Facturare, Calendarul de montaj, Contracte, Stoc, Cereri, Neasignate).
+
+**Ce vede clientul:** nimic (caseta și rutele ei sunt doar ale fondatorilor; clientului îi răspund 403).
+
+- **Găsit pe drum, întrebat (nu reparat):** în RA Insight (la clienți), rândul verde „✓ Cifrele le-am luat din…" are pe tema deschisă un
+  contrast de 4,46 — puțin sub pragul de 4,5 pe care îl cerem peste tot. La asistentul fondatorilor l-am pus deja pe verdele mai închis.
+
 ## 2026-10-30
 
 ### FONDATOR · Cele trei găsite la pasul 1, reparate: „fără contract", soldul Anthropic, bulina „Cereri demo"

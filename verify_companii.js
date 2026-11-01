@@ -194,11 +194,19 @@ T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } 
     nepotriviri.length === 0, nepotriviri.join(' | '));
   T('… contractul semnat căruia îi lipsește doar acordul GDPR NU e „fără contract"', dosare[3].nivel === 'incomplet' && contracteJs.faraContract(dosare[3], 'active') === false,
     dosare[3].nivel + ' / ' + dosare[3].text);
+  // Socoteala stă O DATĂ, în `_stareFirmeToate` (30.10, pasul 2 al asistentului fondatorilor: „Câte firme…", unealta `firme`), iar
+  // ruta doar numără ce întoarce ea.
   const ruta = (server.match(/app\.get\('\/api\/admin\/counts'[\s\S]*?\n\}\);/) || [''])[0];
-  T('/api/admin/counts numără „fără contract" cu `contracte.faraContract`, restanța pe facturi (avertisment), suspendatele separat',
-    /contracte\.faraContract\(contracte\.stareDosar\(c, dos\[c\.id\] \|\| null, acum\), acc\.status\)/.test(ruta) &&
-    /neplata\.stareNeplata\(f, acum\)\.faza === 'avertisment'/.test(ruta) && /acc\.status === 'expired'\) suspendate\+\+/.test(ruta) &&
-    /companies_suspendate = suspendate/.test(ruta) && !/d && d\.text/.test(ruta) && !/status !== 'active'\) restante\+\+/.test(ruta));
+  const stareFirme = (server.match(/async function _stareFirmeToate\(acum\) \{[\s\S]*?\n\}/) || [''])[0];
+  T('starea firmelor (`_stareFirmeToate`): „fără contract" cu `contracte.faraContract`, restanța pe facturi (avertisment), suspendata separat',
+    /contracte\.faraContract\(contracte\.stareDosar\(c, dos\[c\.id\] \|\| null, acum\), acc\.status\)/.test(stareFirme) &&
+    /restanta: neplata\.stareNeplata\(f, acum\)\.faza === 'avertisment'/.test(stareFirme) && /suspendata: acc\.status === 'expired'/.test(stareFirme) &&
+    /filter\(function \(c\) \{ return !c\.is_demo; \}\)/.test(stareFirme), stareFirme.slice(0, 200));
+  T('/api/admin/counts numără din ea — fără contract, restanțe, suspendate separat — și nu mai are socoteala veche',
+    /const st = await _stareFirmeToate\(Date\.now\(\)\);/.test(ruta) && /companies_fara_contract = st\.filter\(function \(f\) \{ return f\.faraContract; \}\)\.length/.test(ruta) &&
+    /companies_restante = st\.filter\(function \(f\) \{ return f\.restanta; \}\)\.length/.test(ruta) && /companies_suspendate = st\.filter\(function \(f\) \{ return f\.suspendata; \}\)\.length/.test(ruta) &&
+    !/d && d\.text/.test(ruta) && !/status !== 'active'\) restante\+\+/.test(ruta), ruta.slice(0, 200));
+  T('… și e singura socoteală a stării firmelor din server (o cheamă ruta și asistentul fondatorilor)', (server.match(/contracte\.faraContract\(/g) || []).length === 1);
 }
 const filtruLiniste = co.filtre.filter(f => f.id === 'liniste')[0].f;
 T('firma fără semnal de 20 de zile e prinsă', filtruLiniste(F({ ultimaActivitate: Date.now() - 20 * 86400000 })) === true);

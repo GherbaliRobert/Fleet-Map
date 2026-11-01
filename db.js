@@ -2148,6 +2148,31 @@ async function getPayments(companyId, limit) {
   const r = await pool.query('SELECT * FROM payments WHERE company_id = $1 ORDER BY created_at DESC LIMIT $2', [companyId, lim]);
   return r.rows;
 }
+// Plățile încasate într-un interval (ms; ziua plății = `paid_at`, altfel când s-a trecut), cu firma — asistentul fondatorilor (30.10):
+// „Încasări luna asta" și unealta `incasari`. Fără firma demo.
+async function platiIntre(de, pana) {
+  const r = await pool.query(
+    `SELECT p.id, p.company_id, p.amount_ron, COALESCE(p.paid_at, p.created_at) AS la, p.method, c.name AS company_name
+       FROM payments p LEFT JOIN companies c ON c.id = p.company_id
+      WHERE COALESCE(p.paid_at, p.created_at) >= $1 AND COALESCE(p.paid_at, p.created_at) < $2 AND COALESCE(c.is_demo, false) = false
+      ORDER BY la ASC, p.id ASC LIMIT 2000`, [Number(de) || 0, Number(pana) || Date.now()]);
+  return r.rows;
+}
+// Facturile și proformele emise (fără ciorne), cel mult 200 — unealta `facturi` a asistentului fondatorilor. `firma` = o parte din nume;
+// `de` / `pana` = ziua emiterii (ms). Fără firma demo.
+async function facturiEmise(o) {
+  o = o || {};
+  const cond = ["i.status IS DISTINCT FROM 'draft'", 'COALESCE(c.is_demo, false) = false'], args = [];
+  if (o.firma) { args.push('%' + String(o.firma).replace(/[%_\\]/g, '') + '%'); cond.push('c.name ILIKE $' + args.length); }
+  if (o.de != null) { args.push(Number(o.de)); cond.push('i.issue_date >= $' + args.length); }
+  if (o.pana != null) { args.push(Number(o.pana)); cond.push('i.issue_date < $' + args.length); }
+  const r = await pool.query(
+    `SELECT i.id, i.company_id, i.full_number, i.type, i.status, i.issue_date, i.due_date, i.total, i.currency, i.paid_at, i.fel, i.luna,
+            c.name AS company_name
+       FROM invoices i LEFT JOIN companies c ON c.id = i.company_id
+      WHERE ${cond.join(' AND ')} ORDER BY i.issue_date DESC NULLS LAST, i.id DESC LIMIT 200`, args);
+  return r.rows;
+}
 // Toate plățile + numele companiei + total încasat — pentru tabelul de facturare (super-admin).
 async function getAllPayments(limit) {
   const lim = Math.min(parseInt(limit) || 500, 2000);
@@ -7097,7 +7122,7 @@ module.exports = {
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,
-  recordPayment, getPayments, getAllPayments,
+  recordPayment, getPayments, getAllPayments, platiIntre, facturiEmise,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic, incaseazaProforma,
   montajeNelibere, rezervaMontajePeProforma, elibereazaMontajeleFacturii,
   montajeProgramate, montajeIstoric, anuleazaMontaj, confirmaMontaj, setMontajReprogramat, stocLaInstalator,
