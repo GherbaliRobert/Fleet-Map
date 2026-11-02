@@ -181,7 +181,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   de pildă, aparatul nou preia ziua de pornire a celui vechi. Pe 03.10 nu era hotărâtă nici în jurnal, nici în cod.
   **29.10: „Schimbă aparatul" face exact asta** (Robert: „1 da, 2 acum") — aparatul nou preia mașina, cu ziua ei de pornire;
   nicio zi nu se mai plătește de două ori. De bifat, dacă sunteți de acord că asta e regula.
-- [ ] **Voi: datele firmei, pe site. Adăugat pe 02.10.** Pe Termeni și Confidențialitate scrie încă „[NUME FIRMĂ SRL]",
+- [x] **BIFAT pe 02.11 (Robert: „nu pui nimic… fără date publice"; telefonul de probă a ieșit, contactul = emailul și formularul): Voi: datele firmei, pe site. Adăugat pe 02.10.** Pe Termeni și Confidențialitate scrie încă „[NUME FIRMĂ SRL]",
   „[CUI]", „[adresă]", „[contact@ratrack.ro]" — le vede oricine, și Google. Pe prima pagină telefonul e „+40 7XX XXX XXX",
   iar butoanele Facebook și LinkedIn din subsol nu duc nicăieri. Dați-mi numele firmei, CUI-ul, Reg. Com., adresa și
   telefonul (aceleași ca în „Date emitent") și adresele paginilor de Facebook / LinkedIn, dacă există, și le pun eu.
@@ -193,7 +193,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   primește încă nimic: domeniul n-are căsuță de email) și paginile de Facebook / LinkedIn.
   **03.10 (seara):** telefonul din ANAF NU se pune (Robert: „nu") — rămâne de dat alt număr; butoanele Facebook și
   LinkedIn au fost scoase din subsol până există paginile (Robert: „da"); emailul: „mai stăm puțin".
-- [ ] **Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
+- [x] **BIFAT pe 02.11 (Robert: „exact așa, nu punem nimic public"): Voi: numărul de WhatsApp pentru suport. Adăugat pe 02.10 (seara), găsit când am scris ghidul aplicației.** În
   fereastra „Suport clienți" (iconița căști din bara de sus), butonul WhatsApp duce la +40 700 000 000 — un număr de probă:
   clientul care apasă scrie nimănui. Dați-mi numărul real (sau spuneți-mi să scot butonul) și îl pun.
   **23.10:** fereastra veche a plecat cu tot cu butonul (în locul ei, „Anunță echipa RA Track"). Dacă vreți un telefon sau un WhatsApp
@@ -522,6 +522,22 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-02
+
+### AMÂNDOI · Parola schimbată închide celelalte sesiuni; site-ul fără telefon; formularul ajunge la contact@
+
+**Ce am schimbat:** Robert (02.11): „rezolvă"; „nu pui nimic… fără date publice"; „solicitările ne vin pe mailul de contact… fă fluxul ăsta să meargă".
+(1) **Parola.** Când cineva își schimbă parola, rămâne deschis doar locul din care a schimbat-o; celelalte sesiuni web, tokenurile de telefon și legăturile lor live se închid pe loc. Prin linkul de parolă (parolă uitată) se închide tot. Cheile de integrare rămân. Până acum, un telefon pierdut mergea mai departe până la 90 de zile, oricâte parole ai fi schimbat.
+(2) **Telefonul de pe site** („+40 7XX XXX XXX", un număr de probă) a ieșit de pe prima pagină, din blocul de contact și din subsol. Rămân emailul contact@ratrack.ro, formularul și datele firmei din subsol.
+(3) **Formularul.** Cererea intra în „Cereri demo", dar emailul pleca doar dacă pe server era setată o adresă de suport, iar „Răspunde" nu ajungea la cel care a scris. Acum emailul pleacă mereu la adresa de contact (noreply@ devine contact@), cu „Răspuns la" = cel care a scris și cu firma în subiect. Dacă emailul nu pleacă, cererea rămâne în „Cereri demo", iar „Stare producție" arată eroarea.
+(4) **Pagini pentru contabil și jurist**, ca documente pe care le puteți descărca: https://claude.ai/artifact/9AP5MpNqwkewiTd13jihcW și https://claude.ai/artifact/QWecuBahtYR2gdYnKustrz. Sunt private până le partajați.
+Păzit de verify_parola_sesiuni.js și verify_formular_site.js (noi, în `npm test`; Brevo fals).
+
+**Ce vede fondatorul:** la schimbarea parolei, mesajul „Celelalte dispozitive au ieșit din cont". În Mail, „Primite", cererile din site, pe contact@.
+
+**Ce vede clientul:** același mesaj la parolă. Pe site, doar emailul și formularul.
+
+- **Rămâne de verificat pe ratrack.ro:** drumul Brevo → contact@ → „Primite" se vede doar cu contul de fondator. Dacă în Brevo blocarea adreselor e încă pornită, emailul nu pleacă.
+- **Găsit pe drum, de întrebat:** al doilea mesaj de pe aceeași adresă, în 24 de ore, e aruncat pe tăcute: omul citește „Am primit mesajul", dar la noi nu ajunge nimic.
 
 ### AMÂNDOI · Telefonul: cele trei găsite la lotul 2 (Robert: „după lotul 4")
 
@@ -13576,7 +13592,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   Un client care se uita acolo o să observe. Istoricul unui camion arhivat îl mai poate cere doar prin noi.
   (Tehnic, serverul încă îi dă traseul unui aparat arhivat dacă îi știe IMEI-ul — n-are niciun buton pentru asta.)
 
-- [ ] **(eu) Parola schimbată nu scoate afară celelalte sesiuni.** Un telefon pierdut rămâne logat până la 90 de zile
+- [x] **REZOLVAT (02.11; Robert: „rezolvă"): (eu) Parola schimbată nu scoate afară celelalte sesiuni.** Un telefon pierdut rămâne logat până la 90 de zile
   după ce omul își schimbă parola din „Contul meu". Parola nouă ar trebui să închidă tot, în afară de sesiunea de acum.
 
 - [ ] **(eu) Patru reguli de pe server, găsite la lotul 2 (24.09):** un rol căruia firma i-a tăiat „Editare grupe"

@@ -116,9 +116,9 @@ export function ContulMeu() {
     setSchimb(true);
     setMsgParola({ t: 'Se schimbă…' });
     try {
-      await Api.changePassword(p0, p1);
+      const r = await Api.changePassword(p0, p1);
       setP0(''); setP1(''); setP2('');
-      setMsgParola({ t: 'Parola a fost schimbată ✓', fel: 'bun' });
+      setMsgParola({ t: (r.mesaj || 'Parola a fost schimbată') + ' ✓', fel: 'bun' });
     } catch (e: any) {
       // 400 / 403 / 429 — niciodată 401, deci omul NU e delogat dacă greșește parola de acum.
       setMsgParola({ t: (e && e.message) || 'Nu s-a putut schimba parola.', fel: 'rau' });

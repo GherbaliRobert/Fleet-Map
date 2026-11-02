@@ -1389,7 +1389,7 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-10-28', amprenta: '257b55ffde86', prio: '1.0', freq: 'weekly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-11-02', amprenta: '507ad447c0b8', prio: '1.0', freq: 'weekly' },
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-21', amprenta: '0fcf3771ed21', prio: '0.8', freq: 'monthly' },
@@ -1975,7 +1975,7 @@ async function apiKeyAuth(req, res, next) {
       const user = await db.getUserByApiKey(hashApiKey(key));
       // Tokenul mobil trăiește 90 de zile — fără verificarea asta, un cont demo expirat ar rămâne logat pe telefon.
       if (user && user.active !== false && !userAccessExpired(user)) {
-        req.apiAuth = { userId: user.id, username: user.username, role: user.role, companyId: user.company_id, viaApiKey: true };
+        req.apiAuth = { userId: user.id, username: user.username, role: user.role, companyId: user.company_id, viaApiKey: true, keyId: user.key_id };
       }
     }
   } catch (e) { /* cheie invalidă → tratat ca neautentificat */ }
@@ -10565,6 +10565,8 @@ app.post('/api/auth/set-password', async (req, res) => {
     }
     const hash = await bcrypt.hash(String(password), 10);
     await db.consumeUserResetToken(u.id, hash);
+    // Linkul e calea celui care și-a uitat parola sau și-a pierdut telefonul: tot ce era deschis cu parola veche iese din cont.
+    await _inchideDupaParola(u.id, {});
     res.json({ ok: true, username: u.username });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -10632,15 +10634,25 @@ async function notifyDemoRequest(row) {
       try { await sendPushToUser(u.id, { title: n.title, body: n.body, data: { type: 'demo_request', notifId: n.id } }); } catch (e) {}
     }
   } catch (e) { console.warn('[DEMO-REQ] notificare:', e.message); }
-  // Email de alertă către noi — best-effort, doar dacă SMTP e configurat.
+  // Emailul către noi: formularul de pe site e singura cale de contact publică (Robert, 02.11: fără telefon pe site), deci merge
+  // MEREU la adresa noastră de contact (fără SUPPORT_EMAIL setat, plecat nimic până pe 02.11), iar „Răspunde" ajunge la cel care a scris.
+  // Un email care n-a plecat se vede în „Stare producție" (mailer.setLaRezultat); cererea rămâne oricum în „Cereri demo".
   try {
-    const to = process.env.DEMO_REQUEST_EMAIL || process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null));
-    if (to && channels.emailConfigured && channels.emailConfigured()) {
-      await channels.sendEmailTo(to, 'RA Track — cerere nouă din formular',
-        [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
-         'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || '')].join('\n'), null, null, { jurnal: { fel: 'formular' } });
+    const to = process.env.DEMO_REQUEST_EMAIL || (await _adresaSuport());
+    if (to && mailer && mailer.enabled()) {
+      const un = (s) => String(s || '').replace(/[\r\n]+/g, ' ').trim();
+      const cine = un(row.company) || un(row.name) || row.email;
+      const r = await mailer.send({
+        to: to, replyTo: row.email,
+        subject: (row.wants_demo ? 'Cerere de cont demo' : 'Mesaj din site') + ' · ' + cine,
+        text: [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
+          'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || ''), '',
+          row.wants_demo ? 'Se aprobă din Administrare → Cereri demo. „Răspunde" la acest email ajunge la cel care a scris.' : '„Răspunde" la acest email ajunge la cel care a scris.'].join('\n'),
+        jurnal: { fel: 'formular' },
+      });
+      if (r && r.ok === false) console.warn('[DEMO-REQ] emailul către noi n-a plecat:', r.error);
     }
-  } catch (e) { /* best-effort */ }
+  } catch (e) { console.warn('[DEMO-REQ] email:', e.message); }
 }
 
 app.post('/api/auth/forgot-password', async (req, res) => {
@@ -18130,8 +18142,10 @@ app.post('/api/me/password', requireAuth, async (req, res) => {
     if (noua === veche) return res.status(400).json({ error: 'Parola nouă e aceeași cu cea de acum.' });
     await db.updateUserPassword(a.userId, await bcrypt.hash(noua, 10));
     _parolaIncercari.delete(a.userId);
-    auditReq(req, 'update', 'parola', a.userId);
-    res.json({ ok: true });
+    // Rămâne deschis doar locul din care s-a schimbat parola; restul (un telefon pierdut, altă filă) iese din cont.
+    const inchise = await _inchideDupaParola(a.userId, req.apiAuth ? { keyId: req.apiAuth.keyId } : { sid: req.sessionID });
+    auditReq(req, 'update', 'parola', a.userId, inchise);
+    res.json({ ok: true, inchise: inchise, mesaj: inchise.sesiuni + inchise.telefoane > 0 ? 'Parola a fost schimbată. Celelalte dispozitive au ieșit din cont.' : 'Parola a fost schimbată.' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Numele afișat și telefonul. Adresa de email NU se schimbă de aici: ea e și numele de utilizator,
@@ -21645,6 +21659,27 @@ function _inchideLegaturileCheii(keyId) {
   }
   return n;
 }
+// Parola schimbată închide ce era deschis cu cea veche, în afară de locul din care s-a schimbat (`pastreaza`: { sid } sau { keyId }):
+// sesiunile web, tokenurile de telefon și legăturile lor live. Până pe 02.11, un telefon pierdut rămânea în cont până la 90 de zile.
+// Cheile de integrare (fără „mobile:" în nume) nu țin de parolă: rămân, se revocă separat. O eroare aici nu întoarce schimbarea parolei.
+async function _inchideDupaParola(userId, pastreaza) {
+  const p = pastreaza || {};
+  let rez = { sesiuni: 0, telefoane: 0, chei: [] };
+  try { rez = await db.inchideSesiuniDupaParola(userId, { sid: p.sid || null, keyId: p.keyId != null ? p.keyId : null }); }
+  catch (e) { console.warn('[AUTH] nu am putut închide sesiunile după schimbarea parolei (' + userId + '):', e.message); }
+  invalidateAccessCache(userId);
+  if (typeof wss !== 'undefined' && wss) {
+    for (const c of wss.clients) {
+      if (Number(c._userId) !== Number(userId)) continue;
+      if (p.sid && c._sid === p.sid) continue;
+      if (p.keyId != null && Number(c._keyId) === Number(p.keyId)) continue;
+      if (c._keyId != null && rez.chei.indexOf(Number(c._keyId)) < 0) continue;   // cheie de integrare: rămâne
+      try { c.send(JSON.stringify({ type: 'error', data: { error: 'Neautorizat' } })); } catch (e) {}
+      try { c.close(); } catch (e) {}
+    }
+  }
+  return { sesiuni: rez.sesiuni, telefoane: rez.telefoane };
+}
 async function _taieAccesulUtilizatorului(userId, motiv) {
   // Sesiunile web ale omului, din magazinul de sesiuni (userId stă în JSON-ul sesiunii).
   try { await db.pool.query("DELETE FROM user_sessions WHERE sess->>'userId' = $1", [String(userId)]); }
@@ -21764,6 +21799,7 @@ wss.on('connection', (ws, req) => {
       return ws.close();
     }
     ws._userId = req.session.userId;
+    ws._sid = req.sessionID;   // ca schimbarea parolei să lase deschisă doar sesiunea din care s-a făcut
     try {
       // rol + companie FRESH din DB (sesiunile vechi pot avea rol învechit)
       let role = req.session.role, companyId = req.session.companyId;

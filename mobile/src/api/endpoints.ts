@@ -68,7 +68,7 @@ export const Api = {
   saveProfile: (b: { full_name?: string; phone?: string; functie?: string }) => api<{ ok: boolean; full_name: string; phone: string; functie: string }>('/api/me/profile', { method: 'PUT', body: b }),
   // Se cere parola de acum: o sesiune lăsată deschisă nu devine preluarea contului. Răspunsurile de refuz
   // sunt 400/403/429 (niciodată 401), deci omul nu e delogat dacă greșește parola veche.
-  changePassword: (veche: string, noua: string) => api<{ ok: boolean }>('/api/me/password', { method: 'POST', body: { veche, noua } }),
+  changePassword: (veche: string, noua: string) => api<{ ok: boolean; mesaj?: string }>('/api/me/password', { method: 'POST', body: { veche, noua } }),
   // Preferințele de pe CONT (tema, harta, ecranul de pornire…): aceleași ca pe web. PUT-ul schimbă doar cheile trimise.
   uiPrefs: () => api<{ effective: Record<string, any>; userPrefs?: Record<string, any>; source?: Record<string, string> }>('/api/me/ui-prefs'),
   saveUiPrefs: (patch: Record<string, any>) => api<{ ok: boolean }>('/api/me/ui-prefs', { method: 'PUT', body: patch }),

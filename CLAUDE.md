@@ -373,6 +373,7 @@ Confidențialitate.
   corectate, lista e goală.
 - **Termeni / Confidențialitate:** „Ultima actualizare" e data FIXĂ = `modificat` (`<time datetime>`), nu ziua de
   azi din browser — cum era până pe 03.10, o dată falsă pe un document legal. Schimbi textul → schimbi amândouă.
+- **Contactul public = emailul și formularul, fără telefon** (Robert, 02.11: „fără date publice"). Formularul (`/api/public/demo-request` → `notifyDemoRequest`) trimite MEREU la `DEMO_REQUEST_EMAIL`, altfel `_adresaSuport()` (noreply@ devine contact@), cu „Răspuns la" = cel care a scris; cererea rămâne în „Cereri demo" și dacă emailul nu pleacă. Telefonul din formular e al vizitatorului. NU pune telefon sau WhatsApp pe pagini: `verify_formular_site.js` pică.
 - **Fiecare pagină publică:** titlu (≤ 70), descriere, adresă canonică, UN `<h1>`, Nunito, iconiță și bannerul de
   cookie-uri (`/js/consent.js`).
 - **Întrebările din datele pentru Google (FAQPage) sunt IDENTICE cu cele de pe pagină**, cuvânt cu cuvânt, în aceeași
@@ -2499,6 +2500,9 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
 - **Pagina `set-password.html` cere `PAROLA_MIN`** (10), exact ca serverul — scria „min 6". Legate prin
   `verify_utilizatori.js`; dacă schimbi cifra într-o parte, proba pică.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
+
+### Parola schimbată închide restul (02.11; Robert: „rezolvă")
+`_inchideDupaParola(userId, pastreaza)` (server.js) + `db.inchideSesiuniDupaParola`: la `POST /api/me/password` rămâne doar locul din care s-a schimbat (`{ sid }` sau `{ keyId }`), la `POST /api/auth/set-password` nu rămâne nimic. Se închid sesiunile web, tokenurile de telefon (numele cheii începe cu `mobile:`) și legăturile lor live (`ws._sid`, `ws._keyId`). Cheile de integrare rămân. Mesajul vine de la server (`mesaj`). O cale NOUĂ care schimbă parola cheamă funcția asta. Păzit de `verify_parola_sesiuni.js` (în `npm test`).
 
 ### Suportul se face azi intrând cu contul clientului — de rezolvat (Alin, 18.09)
 Procesul de depanare hotărât: când un client spune că nu-i merge ceva, îi cerem **contul și parola** și

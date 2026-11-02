@@ -5666,6 +5666,14 @@ async function getUserByApiKey(keyHash) {
   return row || null;
 }
 
+// După o parolă schimbată: închide sesiunile web și tokenurile de telefon ale omului, în afară de cele din care s-a schimbat.
+// Cheile de integrare nu se ating (tokenurile de telefon au numele „mobile:…"). Numărătoarea vine din RETURNING (PGlite n-are rowCount).
+async function inchideSesiuniDupaParola(userId, o) {
+  const sid = (o && o.sid) || null, keyId = o && o.keyId != null ? Number(o.keyId) : null;
+  const s = await pool.query("DELETE FROM user_sessions WHERE sess->>'userId' = $1 AND ($2::text IS NULL OR sid <> $2::text) RETURNING sid", [String(userId), sid]);
+  const k = await pool.query("UPDATE api_keys SET revoked = true WHERE user_id = $1 AND name LIKE 'mobile:%' AND revoked = false AND ($2::int IS NULL OR id <> $2::int) RETURNING id", [userId, keyId]);
+  return { sesiuni: s.rows.length, telefoane: k.rows.length, chei: k.rows.map((r) => Number(r.id)) };
+}
 async function revokeApiKey(id) {
   await pool.query('UPDATE api_keys SET revoked = true WHERE id = $1', [id]);
 }
@@ -7204,6 +7212,7 @@ module.exports = {
   aiJosPeFirma,
   istoricCoada,
   getLastPositions,
+  inchideSesiuniDupaParola,
   getUserByUsername,
   createUser,
   getUsers,

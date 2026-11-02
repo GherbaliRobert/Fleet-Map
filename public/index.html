@@ -6782,7 +6782,7 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/me/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ veche: p0.value, noua: p1.value }) });
         var d = await r.json();
         if (!r.ok) zi(d.error || 'Nu s-a putut schimba parola.');
-        else { p0.value = p1.value = p2.value = ''; zi('Parola a fost schimbată ✓', true); }
+        else { p0.value = p1.value = p2.value = ''; zi((d.mesaj || 'Parola a fost schimbată') + ' ✓', true); }
       } catch (e) { zi('Eroare: ' + ((e && e.message) || e)); }
       if (btn) btn.disabled = false;
     }
