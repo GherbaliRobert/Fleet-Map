@@ -135,10 +135,11 @@ export function Menu() {
 
         {u?.isSuper && (
           <>
-            {/* Verticala fondatorului, ca bara din stânga de pe web: Gestiune · AI & Module · Business · Sistem, în aceeași
+            {/* Verticala fondatorului, ca bara din stânga de pe web: Gestiune · Module · Business · Sistem, în aceeași
                 ordine, cu aceleași nume și aceleași iconițe de grupă (depozit, piesă de puzzle, servietă, roți dințate).
                 „Platformă (super-admin)" a plecat: „super-admin" e jargon, scos de pe web pe 17.09. „Asistenți AI" (tokeni
-                pe tip) a ieșit și el, ca pe web — aceleași date, puse mai bine, sunt în „Utilizare RA Insight". */}
+                pe tip) a ieșit și el, ca pe web — aceleași date, puse mai bine, sunt în „RA Insight · control" (sus, ca pe web, nu într-o grupă). */}
+            {item('sparkles', 'RA Insight · control', () => loc.route('/admin/ai-usage'))}
             <div class="mn-sec" style="display:flex;align-items:center;gap:6px"><Icon name="warehouse" size={13} /> Gestiune</div>
             {item('gauge', 'Acasă', () => loc.route('/admin/home'))}
             {item('cpu', 'Dispozitive', () => loc.route('/admin/devices'))}
@@ -149,8 +150,7 @@ export function Menu() {
             {/* Cutie, nu coș de gunoi: arhivarea nu șterge nimic. */}
             {item('archive', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
 
-            <div class="mn-sec" style="display:flex;align-items:center;gap:6px"><Icon name="puzzle" size={13} /> AI &amp; Module</div>
-            {item('sparkles', 'Utilizare RA Insight', () => loc.route('/admin/ai-usage'))}
+            <div class="mn-sec" style="display:flex;align-items:center;gap:6px"><Icon name="puzzle" size={13} /> Module</div>
             {item('disc', 'Tahograf', () => loc.route('/admin/tahograf-firme'))}
             {item('truck', 'e-Transport', () => loc.route('/admin/etransport-firme'))}
 

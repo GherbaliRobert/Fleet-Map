@@ -5,6 +5,7 @@ import { showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { de } from '../lib/contracte';
+import { rutaFisa } from '../lib/companii';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './admin.css';
 import './detail.css';
@@ -327,8 +328,16 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         <button class="fm-tgl" onClick={() => modul('agents')} role="switch" aria-checked={!!feats.agents}>
           <span class="lbl">Agenți AI<small>cei 6 agenți (Watch / Dispatch / …)</small></span><span class={'sw' + (feats.agents ? ' on' : '')} />
         </button>
-        <div class="co-note">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții individuali + limita AI se setează din „Module &amp; limite" (fila Detalii).</div>
+        <div class="co-note">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții se pornesc și se opresc din fila „Acces”.</div>
 
+        {/* Cota pe cont = regula VECHE: doar pe firmele scrise deja așa (`ai_regula_veche`). Pe un pachet (și Start e un pachet),
+            salvarea ar muta firma pe regula veche și i-ar schimba factura — serverul o și refuză. */}
+        {!ov.ai_regula_veche && <>
+          <div class="fm-sec" style="margin-top:16px">RA Insight</div>
+          <div class="co-note">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>
+          <button class="fm-btn" onClick={() => loc.route(rutaFisa(id, 'acces'), true)}><Icon name="layers" size={15} /> Deschide „Acces”</button>
+        </>}
+        {!!ov.ai_regula_veche && <>
         <div class="fm-sec" style="margin-top:16px">RA Insight — conturi și fond de întrebări</div>
         <div class="co-note" style="margin:0 0 8px">Acum, pe server: <b>{aiqAcum}</b></div>
         <div class="frm">
@@ -342,6 +351,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
           <button class="fm-btn acc" disabled={busy === 'aiq'} onClick={salveazaAiq}><Icon name="check" size={15} /> Salvează</button>
           <div class="co-note" style="margin:0">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>
         </div>
+        </>}
       </div>
 
       {/* Păstrarea istoricului (24.09) — ca pe web (_raxPastrareHtml). Fără regulă sau fără păstrare de la server

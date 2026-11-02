@@ -3,36 +3,29 @@ import { useLocation } from 'preact-iso';
 import type { ComponentChildren } from 'preact';
 import { Preferences } from '@capacitor/preferences';
 import { Api } from '../api/endpoints';
+import { showToast } from '../app/store';
 import { Icon, type IconName } from '../components/Icon';
-import { AntetFondator, Banda, adresaFirmei } from '../components/FondatorUi';
+import { Confirma } from '../components/FlotaUi';
+import { AntetFondator, adresaFirmei } from '../components/FondatorUi';
+import { Gros } from '../components/InsightText';
 import {
-  nr, intrebari, lunaNume, costLunaLei, cifreLuna, costFirmaLei, profitFirmaLei,
-  estimare, costLunaIstLei, baniLuna, profitLunaIst, neincasatLunaLei, luniCuViata, statIstoric,
+  nr, intrebari, lunaNume, lei, tilePachete, atentie, randFirma, planSursa, textFaraInsight, NIMIC_ATENTIE, NICIO_FIRMA, NOTA_CONTROL,
+  estimare, costLunaIstLei, baniLuna, profitLunaIst, neincasatLunaLei, luniCuViata, statIstoric, type Atentie,
 } from '../components/insightBani';
+import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './admin.css';
 import './fondator.css';
 
-// „Utilizare RA Insight" (AI & Module) — dashboard-ul de pe web (raxLoadAiUsage), pe o coloană: avertismentele,
-// banii lunii curente, clienții, istoricul pe 12 luni (buton „Istoric", oprit din start, alegerea se ține minte) și
-// „Firmă cu firmă". Aceleași cifre după care se face factura; toate sumele în lei și €, după cursul trimis de server.
-// Telefonul nu socotește bani: vezi components/insightBani.ts (serverul câștigă când trimite cifra gata socotită).
+// „RA Insight · control" (fondatorii), ca pe web (raxLoadAiUsage): patru cifre sus, „Ce cere atenție", un rând pe firmă cu amănuntul la
+// o apăsare, soldul Anthropic, „Sursă externă" pe toată platforma și istoricul pe 12 luni (buton „Istoric", oprit din start, alegerea
+// se ține minte). Toate sumele în lei și €, după cursul trimis de server. Telefonul nu socotește bani: vezi components/insightBani.ts.
+// „Proba modelelor" și „Cheia Anthropic" rămân pe web (cer un ecran mare, respectiv Dashboard platformă, pe care telefonul nu-l are).
 const PREF_ISTORIC = 'raAiuIstoric';
 const n = (v: any) => Number(v) || 0;
 
 function Lei({ v, fx }: { v: any; fx: number }) {
   return <>{nr(v)} lei <span style="font-weight:400;color:var(--text-muted);font-size:.82em">({nr(n(v) / fx)} €)</span></>;
 }
-function dataScurta(t: any) { if (!t) return '—'; try { return new Date(t).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' }); } catch { return '—'; } }
-
-// Starea firmei, în trei cuvinte. Ordinea contează: „fond terminat" bate „folosește".
-function stare(r: any): { t: string; c: string } {
-  if (!r.enabled) return { t: 'fără RA Insight', c: 'var(--text-muted)' };
-  if (r.epuizat) return { t: 'fond terminat', c: 'var(--fd-bad)' };
-  if (r.used > 0) return { t: 'folosește', c: 'var(--fd-ok)' };
-  if (r.conturi > 0) return { t: 'conturi date, zero întrebări', c: 'var(--fd-warn)' };
-  return { t: 'niciun cont dat', c: 'var(--fd-warn)' };
-}
-
 function Kpi({ cap, icon, val, sub, jos, ton, lat }: { cap: string; icon: IconName; val: ComponentChildren; sub?: ComponentChildren; jos?: ComponentChildren; ton?: string; lat?: boolean }) {
   return (
     <div class={'fd-kpi' + (ton ? ' ' + ton : '') + (lat ? ' lat' : '')}>
@@ -90,17 +83,15 @@ export function AiUsage() {
   const [d, setD] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [ist, setIst] = useState(false);
-  const [deschise, setDeschise] = useState<Record<string, boolean>>({});
+  const [deschis, setDeschis] = useState<Record<string, boolean>>({});
+  const [foaie, setFoaie] = useState<{ fel: 'sold' } | { fel: 'sursa'; x: any } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useInapoiInchide(!!foaie, () => { setFoaie(null); return true; });
 
   function reload() {
     setErr('');
-    Api.aiUsage().then((x) => {
-      setD(x);
-      // Desfăcute din start firmele care CHIAR au RA Insight — pentru ele venim aici. Restul, strânse.
-      const o: Record<string, boolean> = {};
-      ((x && x.rows) || []).forEach((r: any) => { o[String(r.id)] = !!(r.enabled || r.used > 0); });
-      setDeschise(o);
-    }).catch((e: any) => setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'indisponibil')));
+    Api.aiUsage().then((x) => { setD(x); })
+      .catch((e: any) => setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'indisponibil')));
   }
   useEffect(() => {
     reload();
@@ -111,141 +102,151 @@ export function AiUsage() {
     const v = !ist; setIst(v);
     Preferences.set({ key: PREF_ISTORIC, value: v ? '1' : '0' }).catch(() => {});
   }
+  // Soldul îl scriem noi, o dată (web: raxAiSold); de atunci serverul scade ce se cheltuie.
+  async function salveazaSold(v?: string) {
+    setBusy(true);
+    try { await Api.insightSold(String(v == null ? '' : v).replace(',', '.').trim()); setFoaie(null); reload(); }
+    catch (e: any) { showToast((e && e.message) || 'Eroare', true); }
+    setBusy(false);
+  }
+  // „Sursă externă" pe toată platforma (web: raxAiSursa): serverul întreabă pe loc Anthropic dacă modelul primește căutarea.
+  async function puneSursa(x: any) {
+    setBusy(true);
+    try {
+      const j = await Api.adminSursaExterna(x.k);
+      setFoaie(null);
+      showToast('Sursă externă: ' + x.t + '. ' + (j.model || ''), j.modelOk === false);
+      reload();
+    } catch (e: any) { showToast((e && e.message) || 'Eroare', true); }
+    setBusy(false);
+  }
 
   const s = (d && d.summary) || {};
   const rows: any[] = (d && d.rows) || [];
   const istoric: any[] = (d && d.istoric) || [];
   const fx = n(d && d.fxEur) || 5;
-  const toateDeschise = rows.length > 0 && rows.every((r) => deschise[String(r.id)]);
-  function toate(on: boolean) { const o: Record<string, boolean> = {}; rows.forEach((r) => { o[String(r.id)] = on; }); setDeschise(o); }
-
-  // ── Avertismentele: ce nu e în regulă și trebuie spus tare ──
-  const cuPret = rows.filter((x) => n(x.pretCont) > 0).length;
-  const cuModul = rows.filter((x) => x.enabled).length;
-  const costLuna = costLunaLei(s, fx);
-  // Prețul pe cont se pune din fișa firmei, fila „Abonament & plăți" (pe web: Conturi & Abonamente — ecran pe care
-  // telefonul nu-l are). O singură firmă fără preț → banda o deschide direct; mai multe → lista de firme.
-  const faraPret = rows.filter((x) => x.enabled && !(n(x.pretCont) > 0));
-  const spreFaraPret = () => loc.route(faraPret.length === 1 ? adresaFirmei(faraPret[0].id, 'abonament') : '/admin/companies');
-  const UNDE_PRET = <>din <b>Companii → firma → Abonament &amp; plăți</b></>;
-
-  // ── Cifrele lunii curente (toate sumele din insightBani.ts, ca să le prindă proba de paritate cu web-ul) ──
-  const cl = cifreLuna(s, istoric, fx);
-  const venit = cl.venitLei, profit = cl.profitLei, marja = cl.marja, peCont = cl.peContLei, peIntrebare = cl.peIntrebareLei, tnd = cl.tendinta;
-  const conturi = n(s.conturi);
-  const conturiAcum = rows.reduce((a, x) => a + n(x.conturi), 0);
-  const nrInt = n(s.totalCalls), fond = n(s.fond);
-  const pct = fond > 0 ? Math.min(100, Math.round((nrInt / fond) * 100)) : null;
-  const culFond = fond && nrInt >= fond ? 'var(--red)' : pct != null && pct >= 80 ? 'var(--orange)' : 'var(--accent)';
+  const p = d && d.pachete;
+  const cuInsight = rows.filter((x) => x.enabled);
+  const lista: Atentie[] = d ? atentie(p, s, rows, fx) : [];
+  const fara = textFaraInsight(rows);
+  const se = planSursa(d && d.sursa, fx);
 
   // ── Istoricul ──
   const luni = luniCuViata(istoric);
   const st = statIstoric(luni, fx, d && d.istoricStat);
   const neincasatTot = st.neincasatLei;
-
-  // Butonul spre fila „Abonament & plăți" a firmei, unde se pune prețul pe cont și fondul de întrebări.
-  const spreAbonament = (r: any) => (
-    <button type="button" class="fd-btn acc" style="margin-top:6px" onClick={() => loc.route(adresaFirmei(r.id, 'abonament'))}>
-      <Icon name="coins" size={14} /> Deschide Abonament &amp; plăți
-    </button>
-  );
-
-  function socoteala(r: any) {
-    const l: ComponentChildren[] = [];
-    if (r.peCont > 0 && r.conturi === 0 && r.deFacturat === 0) {
-      l.push(<>Firma are RA Insight în ofertă, dar <b>nu a dat niciun cont</b> — deocamdată nu poate întreba nimeni și nu se facturează nimic.</>);
-      l.push(<>Un cont ar aduce {intrebari(r.peCont)} pe lună{r.pretCont > 0 ? <>, la <Lei v={r.pretCont} fx={fx} /></> : null}. Se aprinde din <b>Utilizatori</b>, de administratorul firmei.</>);
-    } else if (r.peCont > 0) {
-      l.push(<><b>{r.conturi}</b> {r.conturi === 1 ? 'cont' : 'conturi'} × <b>{intrebari(r.peCont)}</b> = <b>{intrebari(r.fond)}</b> pe lună</>);
-      if (r.deFacturat > r.conturi) l.push(<>Se facturează <b>{r.deFacturat}</b> conturi — atâtea a avut <b>cel mult</b> luna asta (unul a fost stins pe parcurs, dar l-a folosit)</>);
-      if (r.pretCont > 0) l.push(<><b>{r.deFacturat}</b> × <Lei v={r.pretCont} fx={fx} /> = <Lei v={r.venitLei} fx={fx} /> pe lună</>);
-      else l.push(<><span style="color:var(--fd-warn)">Fără preț pe cont în contract — nu se facturează nimic.</span> Se pune din fișa firmei, fila <b>Abonament &amp; plăți</b>.<br />{spreAbonament(r)}</>);
-    } else if (r.vechi) {
-      l.push(<>Contract vechi, cu <b>cotă fixă pe firmă</b>: {intrebari(r.fond)} pe lună, indiferent de câte conturi are.</>);
-      l.push(<>La reînnoire se trece pe conturi.</>);
-    } else if (r.enabled) {
-      l.push(<><span style="color:var(--fd-warn)">Fără fond stabilit — întreabă <b>nelimitat</b>, pe banii noștri.</span> Se pune din fișa firmei, fila <b>Abonament &amp; plăți</b>.<br />{spreAbonament(r)}</>);
-    } else {
-      l.push(<>Firma nu are RA Insight în ofertă.</>);
-    }
-    return l.map((x) => <div style="margin:3px 0">• {x}</div>);
-  }
-  function oameni(r: any) {
-    if (!r.oameni || !r.oameni.length) return <div style="color:var(--text-muted)">Niciun cont cu RA Insight.</div>;
-    return r.oameni.map((o: any) => (
-      <div style="display:flex;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border);flex-wrap:wrap">
-        <span style="flex:1 1 140px;min-width:0;overflow-wrap:anywhere">{o.nume}</span>
-        {o.loc
-          ? (o.activ ? <span style="color:var(--fd-ok);font-weight:700">● cont</span> : <span style="color:var(--text-muted)">● cont, om dezactivat</span>)
-          : <span style="color:var(--fd-bad);font-weight:700">fără cont</span>}
-        <span style={o.used ? '' : 'color:var(--text-muted)'}>{intrebari(o.used)}</span>
-        <span style="color:var(--text-muted)">{dataScurta(o.lastUsed)}</span>
-      </div>
-    ));
-  }
-  function semnale(r: any) {
-    const l: { c: string; t: ComponentChildren }[] = [];
-    if (r.folosFaraCont) l.push({ c: 'var(--fd-bad)', t: r.folosFaraCont + (r.folosFaraCont === 1 ? ' om a întrebat fără să aibă cont' : ' oameni au întrebat fără să aibă cont') + ' — ar trebui să fie imposibil, verifică.' });
-    if (r.epuizat) l.push({ c: 'var(--fd-bad)', t: 'Fondul lunii s-a terminat. Clientul primește doar întrebările gratuite până pe 1.' });
-    else if (r.pct != null && r.pct >= 80) l.push({ c: 'var(--fd-warn)', t: 'A consumat ' + r.pct + '% din fond — mai are ' + intrebari(r.ramase) + '.' });
-    if (r.contFaraFolos) l.push({ c: 'var(--fd-warn)', t: r.contFaraFolos + (r.contFaraFolos === 1 ? ' cont plătit, nefolosit' : ' conturi plătite, nefolosite') + ' luna asta — merită un telefon.' });
-    if (r.contPeInactiv) l.push({ c: 'var(--text-muted)', t: r.contPeInactiv + (r.contPeInactiv === 1 ? ' cont e pe un om dezactivat' : ' conturi sunt pe oameni dezactivați') + ' — nu se facturează.' });
-    return l.map((x) => <div style={'color:' + x.c + ';margin-top:6px;font-size:12.5px;line-height:1.45'}><Icon name="alertO" size={13} style="vertical-align:-2px;margin-right:4px" />{x.t}</div>);
-  }
+  // O firmă fără preț pe cont: banda duce în fișa ei, la „Abonament & plăți"; mai multe: lista de firme.
+  const spreFirme = (l: any[]) => loc.route(l.length === 1 ? adresaFirmei(l[0].id, 'abonament') : '/admin/companies');
 
   return (
     <div class="screen">
-      <AntetFondator titlu="Utilizare RA Insight" onBack={() => loc.route('/meniu')} onRefresh={reload} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <AntetFondator titlu="RA Insight · control" onBack={() => loc.route('/meniu')} onRefresh={reload} />
+      <div class="content has-tabbar" style="padding:12px 12px 24px">
         {err && <div class="adm-empty" style="color:var(--red)">Eroare: {err}</div>}
         {!d && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {d && (
           <>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-              <span class="fd-sec" style="margin:0;flex:1 1 auto"><Icon name="sparkles" size={13} /> RA Insight — dashboard</span>
+            <div class="aiu-tile">
+              {tilePachete(p, fx).map((t) => (
+                <div class="aiu-tila">
+                  <div class="k">{t.k}</div>
+                  <div class={'v' + (t.ton ? ' ' + t.ton : '')}>{t.v}</div>
+                  <div class="s">{t.s}{t.buton ? <> · <button type="button" class="aiu-l" onClick={() => setFoaie({ fel: 'sold' })}>{t.buton}</button></> : null}</div>
+                </div>
+              ))}
+            </div>
+
+            <div class="fd-sec">Ce cere atenție</div>
+            {lista.length === 0 ? (
+              <div class="aiu-at ok"><Icon name="check" size={15} /><span>{NIMIC_ATENTIE}</span></div>
+            ) : lista.map((a) => (
+              <div class={'aiu-at ' + a.ton}>
+                <Icon name={a.ton === 'bad' ? 'alert' : 'alertO'} size={15} />
+                <span><Gros text={a.t} /></span>
+                {a.firma != null ? <button type="button" class="fd-btn" onClick={() => loc.route(adresaFirmei(a.firma))}>Deschide firma</button> : null}
+                {a.spreAbonament && a.spreAbonament.length ? <button type="button" class="fd-btn" onClick={() => spreFirme(a.spreAbonament as any[])}>Deschide</button> : null}
+              </div>
+            ))}
+
+            <div class="fd-sec">Firmă cu firmă</div>
+            {cuInsight.length === 0 && <div class="fd-note aiu-nota">{NICIO_FIRMA}</div>}
+            {cuInsight.map((x) => {
+              const r = randFirma(x, fx);
+              const e = !!deschis[String(r.id)];
+              return (
+                <div class="fd-card aiu-firma" key={r.id}>
+                  <button type="button" class="aiu-firma-cap" aria-expanded={e ? 'true' : 'false'} onClick={() => setDeschis((m) => ({ ...m, [String(r.id)]: !e }))}>
+                    <Icon name={e ? 'arrowDown' : 'chevronR'} size={15} />
+                    <b>{r.nume}</b>
+                    <span class={'fd-pill' + (r.vechi ? ' aiu-nota' : ' on')}>{r.pachet}</span>
+                  </button>
+                  <div class="aiu-firma-fol">
+                    {r.bara != null ? <div class="fd-fond"><div class={'aiu-b ' + r.baraTon} style={'width:' + r.bara + '%'} /></div> : null}
+                    <span>{r.folosite}</span>
+                  </div>
+                  <dl class="aiu-kv">
+                    <div><dt>Instant</dt><dd>{r.instant}</dd></div>
+                    <div><dt>Sursă externă</dt><dd>{r.sursa}</dd></div>
+                    <div><dt>Ne costă</dt><dd>{r.cost}</dd></div>
+                    <div><dt>Ne rămân</dt><dd class={r.ramanOk ? 'ok' : 'bad'}><b>{r.raman}</b></dd></div>
+                  </dl>
+                  {e && (
+                    <div class="aiu-det">
+                      {r.pachetRand ? (
+                        <div class="aiu-pk-r">
+                          <b>{r.pachetRand.nume}</b> · <span class={'t-' + r.pachetRand.plasaTon}>{r.pachetRand.plasa}</span>
+                          {r.pachetRand.raman ? <> · <Gros text={r.pachetRand.raman} /></> : null}
+                        </div>
+                      ) : null}
+                      {r.semnale.map((z) => <div class={'aiu-sem t-' + z.ton}><Icon name="alertO" size={13} />{z.t}</div>)}
+                      <div class="fd-sec aiu-t">Cum iese cifra</div>
+                      {r.socoteala.map((t) => <div class="aiu-soc">• <Gros text={t} /></div>)}
+                      <div class="fd-sec aiu-t">Cine are cont</div>
+                      {r.oameni.length === 0 ? <div class="t-mut">Niciun cont cu RA Insight.</div> : r.oameni.map((o: any) => (
+                        <div class="aiu-om">
+                          <span class="aiu-om-n">{o.nume}</span>
+                          <span class={'t-' + o.ton}>{o.stare}</span>
+                          <span class={o.usedTon ? 't-mut' : ''}>{o.folosite}</span>
+                          <span class="t-mut">{o.data}</span>
+                        </div>
+                      ))}
+                      {r.facturat ? <>
+                        <div class="fd-sec aiu-t">Ce am facturat pe RA Insight</div>
+                        <div><Gros text={r.facturat.t} />{r.facturat.platit ? <> — <span class="t-ok">a plătit tot</span></> : null}</div>
+                      </> : null}
+                      <div class="aiu-ult">{r.ultima}</div>
+                      <button type="button" class="fd-btn" onClick={() => loc.route(adresaFirmei(r.id))}>Deschide firma</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {fara ? <div class="fd-note aiu-nota">{fara}</div> : null}
+
+            <div class="fd-sec">Controale</div>
+            <div class="aiu-ctl">
+              <button type="button" class="fd-btn" onClick={() => setFoaie({ fel: 'sold' })}><Icon name="coins" size={14} /> Soldul Anthropic</button>
               <button type="button" class={'fd-btn' + (ist ? ' primary' : '')} onClick={comutaIstoric}><Icon name="chart" size={14} /> Istoric{ist ? '' : ' (oprit)'}</button>
-              <button type="button" class="fd-btn" onClick={() => toate(!toateDeschise)}>{toateDeschise ? 'Strânge toate' : 'Desfășoară toate'}</button>
             </div>
-
-            {cuModul > 0 && cuPret === 0 && (
-              <Banda ton="bad" onClick={spreFaraPret}><b>Nicio firmă nu plătește RA Insight.</b> {intrebari(nrInt)} luna asta ne costă <Lei v={costLuna} fx={fx} />, fără niciun venit. Prețul pe cont se pune pe fiecare firmă, {UNDE_PRET}.</Banda>
-            )}
-            {!(cuModul > 0 && cuPret === 0) && cuModul > cuPret && (
-              <Banda ton="warn" onClick={spreFaraPret}>{cuModul - cuPret}{cuModul - cuPret === 1 ? ' firmă are RA Insight fără preț pe cont' : ' firme au RA Insight fără preț pe cont'} — întreabă pe gratis. Se pune {UNDE_PRET}.</Banda>
-            )}
-            {n(s.epuizate) > 0 && (
-              <Banda ton="bad">{s.epuizate}{s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat'} fondul lunii — primesc doar întrebările gratuite până pe 1.</Banda>
-            )}
-
-            <div class="fd-sec">Banii, luna curentă</div>
-            <div class="fd-kpis">
-              <Kpi lat cap="Încasăm" icon="download" val={<Lei v={venit} fx={fx} />} ton={venit > 0 ? 'ok' : ''}
-                sub={conturi > 0 ? <>{conturi} {conturi === 1 ? 'cont' : 'conturi'}{peCont ? ' × ' + nr(peCont) + ' lei în medie' : ''}</> : 'niciun cont de facturat'}
-                jos={tnd ? <><span style={'font-weight:700;color:' + (tnd.pct >= 0 ? 'var(--fd-ok)' : 'var(--fd-bad)')}>{tnd.pct >= 0 ? '▲ +' : '▼ '}{tnd.pct}%</span> față de luna trecută{tnd.estimat ? <span style="color:var(--fd-warn)"> (estimat)</span> : null}</> : undefined} />
-              <Kpi cap="Ne costă" icon="cpu" val={<Lei v={costLuna} fx={fx} />}
-                sub={<>{intrebari(nrInt)}{peIntrebare ? ' · ' + nr(peIntrebare) + ' lei una' : ''}</>} jos="plata către model" />
-              <Kpi cap="Profit" icon="coins" val={<Lei v={profit} fx={fx} />} ton={venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad'}
-                sub={venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui'} jos="din RA Insight, nu din tot RA Track" />
-            </div>
-
-            <div class="fd-sec">Clienții</div>
-            <div class="fd-kpis">
-              <Kpi cap="Firme cu RA Insight" icon="building" val={<>{n(s.withFeature)} <span class="mic">din {n(s.companies)}</span></>}
-                sub={n(s.active) + ' îl folosesc efectiv'}
-                jos={cuPret < n(s.withFeature) ? <span style="color:var(--fd-warn)">{n(s.withFeature) - cuPret} fără preț pe cont</span> : 'toate au preț pe cont'} />
-              <Kpi cap="Conturi de facturat" icon="idCard" val={String(conturi)}
-                sub={<>{conturiAcum}{conturiAcum === 1 ? ' aprins acum' : ' aprinse acum'}{conturi > conturiAcum ? ' · ' + (conturi - conturiAcum) + (conturi - conturiAcum === 1 ? ' stins' : ' stinse') + ' pe parcurs' : ''}</>}
-                jos={peCont ? <>un cont aduce <Lei v={peCont} fx={fx} /></> : 'fără preț pe cont'} />
-              <Kpi lat cap="Întrebări" icon="report" val={<>{nrInt}{fond ? <span class="mic"> din {fond}</span> : null}</>} ton={fond && nrInt >= fond ? 'bad' : ''}
-                sub={fond ? <div class="fd-fond"><div style={'width:' + pct + '%;background:' + culFond} /></div> : 'fără fond stabilit'}
-                jos={fond ? (nrInt >= fond ? 'fondul s-a terminat' : (fond - nrInt) + ' rămase din fondul lunii') : 'nimeni nu e limitat'} />
-            </div>
+            {se ? (
+              <div class="aiu-se">
+                <div class="aiu-se-h"><Icon name="globe" size={15} /><b>{se.titlu}</b><span>{se.sub}</span></div>
+                <div class="aiu-se-b">
+                  {se.stari.map((x: any) => (
+                    <button type="button" class={'fd-btn' + (x.al ? ' primary' : '')} aria-pressed={x.al ? 'true' : undefined} onClick={() => { if (!x.al) setFoaie({ fel: 'sursa', x }); }}>{x.t}</button>
+                  ))}
+                </div>
+                {se.model ? <div class={'aiu-se-m' + (se.modelRau ? ' t-bad' : '')}>{se.model}</div> : null}
+                {se.eroare ? <div class="aiu-se-m t-bad">{se.eroare}</div> : null}
+                <div class="aiu-se-m">{se.luna}</div>
+              </div>
+            ) : null}
 
             {ist && (
               luni.length === 0 ? (
                 <>
                   <div class="fd-sec">Istoric</div>
-                  <div class="fd-note">Încă nu e nimic de arătat aici. Se umple singur: <b>luna curentă</b> apare imediat ce prima firmă are un cont de RA Insight cu preț în contract, iar <b>lunile trecute</b>, pe măsură ce ies facturile.</div>
+                  <div class="fd-note aiu-nota">Încă nu e nimic de arătat aici. Se umple singur: <b>luna curentă</b> apare imediat ce prima firmă are un cont de RA Insight cu preț în contract, iar <b>lunile trecute</b>, pe măsură ce ies facturile.</div>
                 </>
               ) : (
                 <>
@@ -290,72 +291,25 @@ export function AiUsage() {
                       </div>
                     </div>
                   </div>
-                  <div class="fd-note">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din conturile aprinse (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>
+                  <div class="fd-note aiu-nota">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din conturile aprinse (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>
                 </>
               )
             )}
 
-            <div class="fd-sec">Firmă cu firmă</div>
-            {rows.length === 0 && <div class="adm-empty">Nicio companie.</div>}
-            {rows.map((r) => {
-              const sg = stare(r);
-              const e = !!deschise[String(r.id)];
-              const pctR = r.pct == null ? null : Math.min(100, r.pct);
-              const cul = r.epuizat ? 'var(--red)' : r.pct != null && r.pct >= 80 ? 'var(--orange)' : 'var(--accent)';
-              const costR = costFirmaLei(r, fx);
-              const profitR = profitFirmaLei(r, fx);
-              return (
-                <div class="fd-card" key={r.id}>
-                  <button type="button" onClick={() => setDeschise((m) => ({ ...m, [String(r.id)]: !e }))}
-                    style="display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:transparent;border:none;padding:0;font-family:inherit;color:var(--text-primary);flex-wrap:wrap">
-                    <span style="flex:1 1 auto;min-width:0;font-weight:800;font-size:15px;overflow-wrap:anywhere">{r.name}</span>
-                    <span class="fd-pill" style={'color:' + sg.c + ';border-color:' + sg.c}>{sg.t}</span>
-                    <Icon name={e ? 'arrowDown' : 'chevronR'} size={16} color="var(--text-muted)" />
-                  </button>
-                  <div class="meta">
-                    {r.conturi} {r.conturi === 1 ? 'cont' : 'conturi'}
-                    {r.deFacturat > r.conturi ? <span style="color:var(--fd-warn)"> ({r.deFacturat} de facturat)</span> : null}
-                  </div>
-                  {r.enabled && (
-                    <>
-                      {pctR == null
-                        ? <div style="font-size:12.5px;color:var(--text-muted);margin-top:6px">{intrebari(r.used)} · fără fond stabilit</div>
-                        : <div style="margin-top:6px"><div style="font-size:12.5px"><b>{r.used}</b> din {intrebari(r.fond)} <span style="color:var(--text-muted)">· {r.pct}%</span></div><div class="fd-fond"><div style={'width:' + pctR + '%;background:' + cul} /></div></div>}
-                      <div style="display:flex;gap:4px 12px;flex-wrap:wrap;font-size:12.5px;margin-top:6px">
-                        {n(r.venitLei) > 0 ? <span>încasăm <b><Lei v={r.venitLei} fx={fx} /></b></span> : <span style="color:var(--text-muted)">nu se facturează</span>}
-                        <span style="color:var(--text-muted)">ne costă <Lei v={costR} fx={fx} /></span>
-                        {n(r.venitLei) > 0 ? <span>profit <b style={'color:' + (profitR >= 0 ? 'var(--fd-ok)' : 'var(--fd-bad)')}><Lei v={profitR} fx={fx} /></b></span> : null}
-                      </div>
-                    </>
-                  )}
-                  {semnale(r)}
-                  {e && (
-                    <div class="fd-det" style="font-size:12.5px;line-height:1.5;padding-top:8px">
-                      <div class="fd-sec" style="margin:4px 0 4px">Cum iese cifra</div>
-                      {socoteala(r)}
-                      {r.enabled && (<><div class="fd-sec" style="margin:12px 0 4px">Cine are cont</div>{oameni(r)}</>)}
-                      {n(r.facturatLei) ? (
-                        <>
-                          <div class="fd-sec" style="margin:12px 0 4px">Ce am facturat pe RA Insight</div>
-                          <div>În ultimele 12 luni: <b><Lei v={r.facturatLei} fx={fx} /></b>
-                            {n(r.incasatLei) !== n(r.facturatLei)
-                              ? <> — a intrat în cont: <b><Lei v={r.incasatLei} fx={fx} /></b>, restul e neplătit</>
-                              : <> — <span style="color:var(--fd-ok)">a plătit tot</span></>}
-                          </div>
-                        </>
-                      ) : null}
-                      <div style="margin-top:8px;color:var(--text-muted);font-size:11.5px">Ultima întrebare: {dataScurta(r.lastUsed)} · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div class="fd-note" style="margin-top:12px">
-              Cifrele fără etichetă de istoric sunt ale lunii curente și se reînnoiesc pe 1. „Conturi de facturat" = câte conturi a avut firma <b>cel mult</b> luna asta — regula din contract. Cei 6 agenți AI merg pe reguli fixe, nu costă tokeni și nu apar aici; se configurează din pagina <b>Agenți AI</b> din meniu.
-            </div>
+            <div class="fd-note aiu-nota" style="margin-top:12px">{NOTA_CONTROL}</div>
           </>
         )}
       </div>
+      {foaie && foaie.fel === 'sold' ? (
+        <Confirma title="Soldul de la Anthropic" okLabel="Salvează" busy={busy}
+          text="Soldul îl găsiți în contul Anthropic (Billing). De azi încolo aplicația scade singură ce se cheltuie și socotește, după ritmul ultimelor 7 zile, pentru câte zile mai ajunge."
+          field={{ label: 'Soldul, în dolari', value: '', type: 'number' }}
+          onCancel={() => setFoaie(null)} onOk={(v) => salveazaSold(v)} />
+      ) : null}
+      {foaie && foaie.fel === 'sursa' ? (
+        <Confirma title={'Sursă externă: ' + foaie.x.t + '?'} text={foaie.x.d} okLabel="Da" busy={busy}
+          onCancel={() => setFoaie(null)} onOk={() => puneSursa(foaie.x)} />
+      ) : null}
     </div>
   );
 }

@@ -436,9 +436,14 @@ function PaginaGhid({ l }: { l: LaPagina }) {
 }
 
 // O pagină de la Basic, deschisă pe Start: ce e în ea și de la ce pachet merge, fără să ceară nimic serverului.
-export function PaginaIncuiata({ k }: { k: string }) {
+export function PaginaIncuiata({ k, laPachete }: { k: string; laPachete?: () => void }) {
   const r = ramuraDupa(k);
-  return <div class="sdp"><div class="insp-card insp-incuiat"><h3>{(r && r.et) || 'Ramura'}</h3><div>{TEXT_INCUIAT}</div></div></div>;
+  return (
+    <div class="sdp"><div class="insp-card insp-incuiat">
+      <h3>{(r && r.et) || 'Ramura'}</h3><div>{TEXT_INCUIAT}</div>
+      {laPachete ? <div class="insp-card-b"><ButonProp text="Vezi pachetele" ic="layers" onClick={laPachete} /></div> : null}
+    </div></div>
+  );
 }
 export function PaginaRamura({ k, l, scrisoareId }: { k: string; l: LaPagina; scrisoareId: number | null }) {
   if (LUNARE[k]) return <PaginaPerioada key={k} k={k} l={l} />;

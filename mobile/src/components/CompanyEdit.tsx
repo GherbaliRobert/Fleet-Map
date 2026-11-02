@@ -4,6 +4,9 @@ import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { contacte, type Contact, MODULE_FIRMA, MOD_ALES, MOD_INAPOI, modulAutoText } from '../lib/companii';
+import { NOTA_PACHET_FIRMA, acumPachetFirma, butonPachetFirma, confirmarePachetFirma, peRegulaVeche } from '../lib/insightPachet';
+import { Confirma } from './FlotaUi';
+import { Gros } from './InsightText';
 import '../screens/admin.css';
 import '../screens/detail.css';
 import '../screens/firma.css';
@@ -145,6 +148,8 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
   const [ags, setAgs] = useState<string[]>([]);
   const [lim, setLim] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pkAles, setPkAles] = useState<any | null>(null);   // pachetul de confirmat
+  useInapoiInchide(!!pkAles, () => { setPkAles(null); return true; });
 
   // Răspunsul serverului e adevărul: comutatoarele și „automat / ales de noi".
   function dupaRaspuns(r: any) {
@@ -196,6 +201,17 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
     try { await Api.saveCompanySettingsOf(companyId, { enabled_agents: arr }); showToast('Agent ' + (on ? 'activat' : 'dezactivat')); }
     catch (e: any) { setAgs(prev); showToast(e?.message || 'Eroare', true); }
   }
+  // Pachetul RA Insight al firmei (web: raxCfgPachet). Serverul îl scrie și scoate regula veche, pe cont.
+  async function punePachet(p: any) {
+    setPkAles(null);
+    try {
+      const j: any = await Api.saveCompanySettingsOf(companyId, { ai_pachet: { cod: p.cod } });
+      const a = j && j.ai_pachet;
+      setCfg((c: any) => Object.assign({}, c, { ai_pachet: a ? { cod: a.cod, nume: p.nume, pretRON: a.pretRON, deLa: a.de_la } : null }));
+      showToast('Pachet RA Insight ' + p.nume);
+      onChanged();
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
+  }
   async function salveazaLimita() {
     const v = lim.trim();
     const l = v === '' ? null : Math.max(0, parseInt(v) || 0);
@@ -218,6 +234,18 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
           <div class="fm-sec" style="margin-top:0">Oferta firmei</div>
           <button class="fm-btn acc" onClick={onOferta}><Icon name="coins" size={15} /> Vezi / schimbă oferta</button>
           <div class="co-note">Prețul și modulele vin din oferta semnată. Tot ce e mai jos le suprascrie, pe firma asta.</div>
+
+          {/* Pachetul RA Insight: îl punem noi, de aici. Lista, prețurile de listă și pachetul firmei vin de la server. */}
+          {Array.isArray(cfg.pachete) && <>
+            <div class="fm-sec">Pachet RA Insight</div>
+            <div class="co-pk">
+              {cfg.pachete.map((p: any) => {
+                const al = !!(cfg.ai_pachet && cfg.ai_pachet.cod === p.cod);
+                return <button class={'fm-btn' + (al ? ' acc' : '')} aria-pressed={al ? 'true' : undefined} onClick={() => { if (!al) setPkAles(p); }}>{butonPachetFirma(p)}</button>;
+              })}
+            </div>
+            <div class="co-note"><Gros text={acumPachetFirma(cfg)} /> {NOTA_PACHET_FIRMA}</div>
+          </>}
 
           <div class="fm-sec">Module (acces funcții)</div>
           {MODULE_FIRMA.map((m) => (
@@ -251,7 +279,9 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
             );
           })}
 
-          <div class="fm-sec">Limită AI lunară (cereri / prompturi)</div>
+          {/* Limita AI lunară e a regulii VECHI: pe o firmă cu pachet (și Start e un pachet) ar muta-o pe regula veche și i-ar schimba factura. */}
+          {peRegulaVeche(cfg) && <>
+          <div class="fm-sec">Limită AI lunară (regula veche, pe cont)</div>
           <div style="display:flex;gap:8px;align-items:center">
             <input class="fm-in" style="flex:1" type="number" inputMode="numeric" min="0" step="10" value={lim}
               placeholder="ex: 500 — gol = nelimitat" onInput={(e: any) => setLim(e.target.value)} />
@@ -260,8 +290,12 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
           <div class="co-note">{areFond
             ? 'Firma are fond RA Insight — limita asta nu se mai aplică.'
             : 'Număr maxim de cereri AI (prompturi) la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.'}</div>
+          </>}
         </div>
       )}
+      {pkAles && (() => { const c = confirmarePachetFirma(pkAles); return (
+        <Confirma title={c.titlu} text={c.text} okLabel={c.ok} onCancel={() => setPkAles(null)} onOk={() => punePachet(pkAles)} />
+      ); })()}
     </>
   );
 }

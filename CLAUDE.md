@@ -942,8 +942,7 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul; jos, de unde dă firma conturile — `_aiuUndeConturi`: pe pachet din
   „Pachet și conturi", pe regula veche din Utilizatori) → `_aiuControale` → istoricul (buton). **Panoul vechi „Mai multe cifre" a ieșit
   pe 19.10** (punctul 5, cu Alin): `_aiuKpiuri`, `_aiuCard`, `_aiuTendinta`, `_aiuSageata`, `_aiuStare`, `raxAiToate`, `raxAiMaiMulte`.
-  Telefonul de azi încă le arată: formulele lor stau ca REFERINTA în `verify_insight_bani.js` (copiate întocmai), până la APK-ul cu
-  pagina nouă. NU pune panoul înapoi în pagină (proba pică).
+  Pe telefon au ieșit pe 02.11 (lotul 3; intră cu APK-ul următor). NU pune panoul înapoi în pagină (proba pică).
 - „Proba modelelor" primește `verificare: { perioada, cifre, rescris }` (doar la probă) — câte răspunsuri au avut cifre greșite.
 - **Rămase la Alin, după acestea** (19.10: „5 și 6 lasă-le după"): (5) ce e vechi pe pagina noastră — făcut pe 19.10 (panoul vechi,
   costul AI din „Dashboard platformă", „din Utilizatori" în amănunt); (6) „atribuirea, mesajul, dă atribui" = **pasul 2 al Capitolului
@@ -971,6 +970,7 @@ ieșit; `/ai` duce în `/insight`; ruta veche `/api/ai/chat` rămâne pentru tel
 - **`RAMURI_PE_TELEFON`** = paginile construite pe telefon: butonul spre o pagină care nu e în listă nu se desenează, iar un `pagina` din răspuns se ignoră. O pagină nouă pe telefon se adaugă acolo.
 - **Unde telefonul face dinadins altfel:** tastatura nu se deschide singură după răspuns; copiază / 👍 / 👎 stau la vedere; amănuntul pachetului se deschide la apăsare; „Sursă externă" = globul + „7 din 10". Casetele au 16 px.
 - `client.ts` ține în `ApiError.data` corpul erorii (`propunere` la 409, `reply` la 404).
+- **Pachetele (lotul 3):** `/insight/pachete`, `/insight/pachet`; `lib/insightPachet.ts` + `components/InsightPachet.tsx`, legate de pagină prin `verify_telefon_pachete.js`. Oferta trimite `aiPachet` / `pPachet`. `AiUsage.tsx` = „RA Insight · control"; „Ne rămân" e singura cifră socotită pe telefon (serverul n-o trimite), cu formula paginii, legată în `verify_insight_bani.js`. Rămân pe server cât există telefoane vechi: `cartonase` în pachet-conturi și citirea lui `aiA` în `_ofSocoteste`.
 - **Paginile (lotul 2):** `/insight/:ramura`; `lib/insightPagini.ts` face din fiecare răspuns al serverului blocuri, iar `components/InsightPagini.tsx` e SINGURUL care le desenează. Fila „AI Raport" a ieșit din Rapoarte (`InsightPanel`, `ChatScreen`, `chat.css` șterse); `/api/ai/reports-agent`, `/api/insight/presets|run` și `/api/ai/chat` rămân pe server pentru telefoanele vechi.
 
 ### Pasul 2, partea 1 (22.10): ȘOFERII PE MAȘINI — „RA Insight face, cu Da-ul tău" (Alin: „da" la flux; „Da"-ul nenumărat; de la Basic)

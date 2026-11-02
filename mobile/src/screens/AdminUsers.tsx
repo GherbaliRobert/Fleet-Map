@@ -10,6 +10,8 @@ import { faraDiacritice } from '../components/FirmaUi'; // aduce și firma.css (
 import './detail.css';
 import './admin.css';
 import { nrDe } from '../lib/numar';
+import { rutaRamura } from '../lib/insight';
+import { LINK_CONTURI, TITLU_RA, arataBagheta, arataEticheta, cuPachetFirmei, randConturi } from '../lib/insightPachet';
 
 // PAROLA NU EXISTĂ (decizie 16.09): nimeni nu scrie parola altcuiva. Contul se deschide pe o adresă de email,
 // omul primește un link și își pune singur parola. Dacă emailul nu poate pleca, serverul întoarce linkul și îl
@@ -69,6 +71,8 @@ export function AdminUsers() {
   const myUsername = me.value?.username;
   const isSuper = !!me.value?.isSuper;
   const [items, setItems] = useState<any[] | null>(null);
+  // Pachetul RA Insight al firmei (doar la administratorul ei — noi nu avem o firmă a noastră aici): conturile se dau din „Pachet și conturi".
+  const [pachetRa, setPachetRa] = useState<any | null>(null);
   const [roles, setRoles] = useState<any[]>([]);
   const [err, setErr] = useState('');
   const [editing, setEditing] = useState<any | null>(null); // {} = nou
@@ -105,6 +109,7 @@ export function AdminUsers() {
       setItems([]);
     }
     setRoles(await rolesP);
+    if (me.value?.role !== 'superadmin') { try { setPachetRa(cuPachetFirmei(me.value?.role, await Api.aiQuota())); } catch { /* fără pachet știut: rândurile rămân cum sunt */ } }
   }
   useEffect(() => { reload(); }, []);
 
@@ -420,7 +425,7 @@ export function AdminUsers() {
   const coKeys = Object.keys(coGroups).sort((a, b) => coGroups[a].name.localeCompare(coGroups[b].name, 'ro'));
   const coKey = (u: any) => (u.company_id != null ? String(u.company_id) : '_none');
   // Conturile cu RA Insight, numărate pe lista ÎNTREAGĂ (nu pe cea filtrată), ca pe web (_usrSeatsHtml).
-  const seatCount = (items || []).filter((u) => !!u.ai_seat).length;
+  const seatRand = randConturi(items || [], pachetRa);
 
   // ── Căutare, ordine, pastile, Admini/Utilizatori (ca pe web: _usrPotrivit, _usrTrece, _usrOrdoneaza) ──
   // Pastilele se socotesc pe lista ÎNTREAGĂ, nu pe ce a rămas după căutare — altfel „N-au intrat niciodată: 0"
@@ -535,10 +540,12 @@ export function AdminUsers() {
             </select>
           </div>
         )}
-        {seatCount > 0 && (
-          <div style="display:flex;gap:8px;align-items:flex-start;margin:0 2px 10px;font-size:12.5px;line-height:1.45;color:var(--text-muted)">
+        {seatRand && (
+          <div style="display:flex;gap:8px;align-items:flex-start;margin:0 2px 10px;font-size:12.5px;line-height:1.45;color:var(--text-secondary)">
             <Icon name="sparkles" size={15} color="var(--accent)" style="flex:0 0 auto;margin-top:2px" />
-            <span><b style="color:var(--text-primary)">{seatCount}</b> {seatCount === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight'} — la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.</span>
+            <span><b style="color:var(--text-primary)">{seatRand.n}</b> {seatRand.cat} {seatRand.rest}
+              {seatRand.link && <> <button type="button" class="rau-pk" onClick={() => loc.route(rutaRamura('pachet'))}>{LINK_CONTURI}</button></>}
+            </span>
           </div>
         )}
         {/* Spune de ce e gol: „n-ai pe nimeni" și „nu s-a potrivit nimeni" sunt două lucruri diferite. */}
@@ -580,6 +587,7 @@ export function AdminUsers() {
                         {vaz.niciodata && <span class="adm-pill" style={PILL_CALD}>n-a intrat niciodată</span>}
                         {faraAccesClient && <span class="adm-pill" style={PILL_CALD}>fără acces</span>}
                         {exp && <span class="adm-pill" style={exp.aproape ? PILL_CALD : ''}>{exp.text}</span>}
+                        {arataEticheta(u, pachetRa) && <span class="adm-pill rau-ra" title={TITLU_RA}>RA Insight</span>}
                       </div>
                     )}
                     <div class="sub" style="white-space:normal">
@@ -598,7 +606,8 @@ export function AdminUsers() {
                       style={'width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid ' + (vaz.niciodata ? 'var(--orange);color:var(--orange)' : 'var(--border);color:var(--text-muted)')}>
                       {linkBusy === u.id ? <div class="spin" style="width:14px;height:14px;border-width:2px" /> : <Icon name="mail" size={17} />}
                     </button>
-                    {u.role !== 'superadmin' && (
+                    {/* Bagheta: doar pe regula veche (un cont aprins se facturează) și la fondator; pe un pachet, conturile se dau din „Pachet și conturi". */}
+                    {arataBagheta(u, pachetRa) && (
                       <button type="button"
                         aria-label={u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai'}
                         title={u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai (se facturează un cont în plus)'}

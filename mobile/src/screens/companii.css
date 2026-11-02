@@ -155,3 +155,7 @@ button.co-pill { min-height: 30px; }
 .co-st .v.bad { color: var(--red); }
 .co-st .v.mut { color: var(--text-muted); }
 .co-st .d { font-size: 13px; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
+
+/* Fila „Acces": pachetul RA Insight al firmei, pe două rânduri. */
+.co-pk { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.co-pk .fm-btn { min-width: 0; }

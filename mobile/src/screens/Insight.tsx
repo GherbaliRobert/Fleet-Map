@@ -5,6 +5,9 @@ import { me, showToast } from '../app/store';
 import { Icon, type IconName } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { BulaAi, BulaOm, Urmari, type Laturi } from '../components/InsightBula';
+import { PaginaPachetConturi, PaginaPachete } from '../components/InsightPachet';
+import { ButonProp } from '../components/InsightPropunere';
+import { TEXT_ADMIN_FARA_LOC, TITLU_CONTURI, TITLU_PACHETE, arataPachetConturi, esteAdminFirma } from '../lib/insightPachet';
 import { PaginaIncuiata, PaginaRamura, type LaPagina } from '../components/InsightPagini';
 import { Gros } from '../components/InsightText';
 import { dupaInapoi, useInapoiInchide } from '../lib/inapoiFoaie';
@@ -159,7 +162,10 @@ export function Insight() {
   const loc = useLocation();
   const { params, query } = useRoute();
   const ramuraCeruta = String((params as any).ramura || '');
-  const ramura = RAMURI_PE_TELEFON.indexOf(ramuraCeruta) >= 0 ? ramuraCeruta : null;   // altă adresă = discuția
+  const admin = esteAdminFirma(me.value?.role);
+  // Altă adresă = discuția. „Pachet și conturi" și „Vezi pachetele": doar administratorul firmei (ca pe web).
+  const ramura = (ramuraCeruta === 'pachet' || ramuraCeruta === 'pachete') ? (admin ? ramuraCeruta : null)
+    : (RAMURI_PE_TELEFON.indexOf(ramuraCeruta) >= 0 ? ramuraCeruta : null);
   const idCerut = Number((query as any)?.id);
   const scrisoareId = ramura === 'scrisoare' && isFinite(idCerut) && idCerut > 0 ? idCerut : null;
   const u = me.value;
@@ -218,6 +224,8 @@ export function Insight() {
     const st = stareDinQuota(r, !!me.value?.isSuper);
     if (!st.sursaInfo || !st.sursaInfo.poate) setSursaOn(false);
   }
+  // Pachetul sau conturile s-au schimbat: contorul, „Pagini" și locul omului se citesc din nou.
+  function dupaPachet() { incarcaPachet(); incarcaLista(); incarcaNumere(); }
   async function incarcaLista(cuvant?: string) {
     const c = cuvant != null ? cuvant : cauta;
     try {
@@ -257,6 +265,8 @@ export function Insight() {
   }
   // O pagină sau „Conversație nouă" din meniu: aceeași cale, iar dintr-o pagină în alta se înlocuiește adresa.
   function deschidePagina(k: string) { du(rutaRamura(k), !!ramura); }
+  // „Vezi pachetele": pe web, o fereastră peste pagina de sub ea; aici o adresă adăugată, deci „Înapoi" duce pe pagina de sub ea.
+  function vedePachetele() { du(rutaRamura('pachete')); }
   // „Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul întrebării scris (nu pleacă singură).
   function intreabaDespre(inceput: string) {
     setConv(null); setMesaje([]); convCurenta = null; setSursaOn(false);
@@ -370,8 +380,9 @@ export function Insight() {
   // „⋯": tot ce nu stă pe ecran, într-un singur loc.
   function meniu() {
     const id = conv && conv.id;
-    setFoaie({ fel: 'alege', titlu: 'RA Insight', items: listaMeniu({ areConv: !!id, peRamura: !!ramura, poateAgenti }), nota: NOTA_MENIU, la: (x) => {
+    setFoaie({ fel: 'alege', titlu: 'RA Insight', items: listaMeniu({ areConv: !!id, peRamura: !!ramura, poateAgenti, poatePachet: arataPachetConturi(admin, stare.pachet, faraLoc) }), nota: NOTA_MENIU, la: (x) => {
       if (x.k === 'nou') nou();
+      else if (x.k === 'pachet') deschidePagina('pachet');
       else if (x.k === 'notite') deschideNotite();
       else if (x.k === 'agenti') du('/ai-agents');
       else if (x.k === 'ghid') deschidePagina('ghid');
@@ -448,6 +459,7 @@ export function Insight() {
     nota,
     propunere,
     editeaza: (t) => { setText(String(t || '')); dinButoane.current = false; setTimeout(() => { if (taRef.current) taRef.current.focus(); }, 30); },
+    pachete: admin ? vedePachetele : undefined,
   };
   // Ce pot face paginile: o întrebare nouă, un ecran al aplicației, altă pagină.
   const lPag: LaPagina = {
@@ -465,7 +477,7 @@ export function Insight() {
       onText={(v) => { dinButoane.current = false; setText(v); }} onEnter={() => trimite()} laPlus={plus} laSursa={comutaSursa} laTrimite={() => trimite()} />
   );
   const rPag = ramuraDupa(ramura);
-  const titlu = rPag ? rPag.et : (conv ? (conv.titlu || (lista.filter((c) => c.id === conv.id)[0] || {}).titlu || 'Conversație') : 'RA Insight');
+  const titlu = rPag ? rPag.et : ramura === 'pachet' ? TITLU_CONTURI : ramura === 'pachete' ? TITLU_PACHETE : (conv ? (conv.titlu || (lista.filter((c) => c.id === conv.id)[0] || {}).titlu || 'Conversație') : 'RA Insight');
   const pagDesc = paginiDeschise(paginiCerut, ramura);
   const totNumere = sumaNumere(numere, stare.pachet);
   const ult = mesaje[mesaje.length - 1];
@@ -527,17 +539,28 @@ export function Insight() {
               })}
             </div>
           ) : null}
-          {stare.fond ? <button type="button" class={'insp-fond' + (stare.fond.avert ? ' w' : '')} onClick={() => setDetaliuFond(!detaliuFond)}>{stare.fond.text}</button> : null}
+          {/* Rândul pachetului: administratorul ajunge din el în „Pachet și conturi"; ceilalți îi văd amănuntul (pe web, la mouse). */}
+          {stare.fond ? <button type="button" class={'insp-fond' + (stare.fond.avert ? ' w' : '') + (admin && stare.pachet ? ' link' : '')}
+            onClick={() => { if (admin && stare.pachet) deschidePagina('pachet'); else setDetaliuFond(!detaliuFond); }}>{stare.fond.text}</button> : null}
           {stare.fond && detaliuFond && stare.fond.detaliu ? <div class="insp-fond-d">{stare.fond.detaliu}</div> : null}
         </div>
       </aside>
 
       <main class="insp-main">
-        {faraLoc ? (
-          <div class="insp-gol-mij"><div class="insp-card"><h3>RA Insight nu e pornit pe contul tău</h3><div>{faraLoc}</div></div></div>
+        {/* „Pachet și conturi" stă ÎNAINTEA cartonașului „nu e pornit": un administrator care le-a dat colegilor toate conturile n-are
+            alt drum spre ele (din Utilizatori nu se mai dau). */}
+        {ramura === 'pachet' ? <PaginaPachetConturi laPachete={vedePachetele} onSchimbat={dupaPachet} />
+        : ramura === 'pachete' ? <PaginaPachete onSchimbat={dupaPachet} />
+        : faraLoc ? (
+          <div class="insp-gol-mij"><div class="insp-card"><h3>RA Insight nu e pornit pe contul tău</h3><div>{faraLoc}</div>
+            {admin ? <>
+              <div class="insp-card-adm">{TEXT_ADMIN_FARA_LOC}</div>
+              <div class="insp-card-b"><ButonProp text="Deschide Pachet și conturi" ic="layers" onClick={() => deschidePagina('pachet')} /></div>
+            </> : null}
+          </div></div>
         ) : ramura ? (
           !qGata && rPag && rPag.pachet ? <div class="sdp"><div class="insp-gol">Se încarcă…</div></div>
-            : ramuraIncuiata(rPag, stare.pachet) ? <PaginaIncuiata k={ramura} />
+            : ramuraIncuiata(rPag, stare.pachet) ? <PaginaIncuiata k={ramura} laPachete={admin ? vedePachetele : undefined} />
               : <PaginaRamura k={ramura} l={lPag} scrisoareId={scrisoareId} />
         ) : incarc ? (
           <div class="insp-gol-mij"><div class="spin insp-spin" /></div>

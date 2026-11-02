@@ -1,13 +1,11 @@
-// verify_insight_bani.js — „Utilizare RA Insight": telefonul arată aceleași sume ca web-ul.
+// verify_insight_bani.js — „RA Insight · control": telefonul arată aceleași sume și aceleași texte ca web-ul.
 //
 //   node verify_insight_bani.js
 //
-// Regula casei: telefonul nu socotește bani. Serverul (/api/admin/ai-usage) trimite gata socotite doar venitul,
-// costul și profitul lunii; restul cifrelor ecranului (profitul pe firmă și pe lună, totalurile istoricului, marja,
-// media pe cont, costul pe întrebare, tendința) le socotește web-ul în pagină (_aiuKpiuri, _aiuIstoric, _aiuCard,
-// _aiuStatistici, _aiuTendinta). Telefonul le are într-un singur loc, mobile/src/components/insightBani.ts, copiate
-// de pe web — până le trimite serverul (cerere la F2). Proba asta ține cele două copii legate: rulează blocul web
-// („Panoul RA Insight pe firme" din public/index.html) și insightBani.ts pe ACELEAȘI date și compară cifrele.
+// Regula casei: telefonul nu socotește bani. Serverul (/api/admin/ai-usage) trimite gata cifrele mari; puținul pe care îl socotește
+// pagina din două cifre ale lui (ce ne rămâne din total, costul unei firme pe regula veche, totalurile istoricului, marja) stă pe
+// telefon într-un singur loc, mobile/src/components/insightBani.ts, copiat de pe web. Proba ține cele două copii legate: rulează
+// blocul web („Panoul RA Insight pe firme" din public/index.html) și insightBani.ts pe ACELEAȘI date și compară cifrele și textele.
 //
 // Cum: blocul web rulează într-un vm, cu `_aiuLei` / `_aiuNr` înlocuite cu niște etichete care păstrează suma
 // NEROTUNJITĂ (⟦L:12.3456⟧). Două sume sunt „aceleași" doar dacă sunt același număr (fără zgomot de virgulă mobilă)
@@ -15,12 +13,8 @@
 // rotunjire, schimbă cifra de pe ecran (așa s-a prins marja 90% pe telefon vs. 91% pe web, când telefonul folosea
 // costul rotunjit de server). Separat, verificăm că o sumă, un număr de întrebări și o lună se scriu la fel.
 //
-// Din 19.10 (Alin, punctul 5) web-ul nu mai arată panoul vechi „Mai multe cifre" (cele șase cartonașe și o cutie pe firmă):
-// pagina e „RA Insight · control". Telefonul de azi încă le arată. Ca cifrele lui să nu rămână nepăzite până la APK-ul care
-// aduce pagina nouă pe telefon, funcțiile scoase de pe web (_aiuKpiuri, _aiuCard, _aiuTendinta, _aiuSageata, _aiuStare) stau
-// mai jos, în REFERINTA, copiate întocmai din pagină în ziua scoaterii, și rulează lângă blocul web de azi (aceleași
-// unelte: _aiuLei, _aiuKpi, _aiuEstimare…). Proba e aceeași; s-a mutat doar locul formulelor. Când telefonul trece pe pagina
-// nouă, pleacă din insightBani.ts și de aici.
+// Din 02.11 telefonul are pagina nouă (cele patru cifre, „Ce cere atenție", un rând pe firmă, „Sursă externă", istoricul), deci
+// formulele panoului vechi, ținute aici ca REFERINTA din 19.10, au plecat odată cu el, din insightBani.ts și de aici.
 //
 // Nu pornește serverul și nu are nevoie de rețea. Are nevoie de TypeScript din mobile/node_modules (e acolo
 // oricum pentru `tsc` pe aplicația de telefon).
@@ -46,119 +40,7 @@ const A = '// ─── începe „Panoul RA Insight pe firme"', Z = '// ──�
 const ia = HTML.indexOf(A), iz = HTML.indexOf(Z);
 if (ia < 0 || iz < 0 || iz < ia) { console.log('✗ nu găsesc blocul „Panoul RA Insight pe firme" în public/index.html'); process.exit(1); }
 const BLOC = HTML.slice(ia, iz);
-// Formulele panoului vechi (scos de pe web pe 19.10), copiate întocmai din public/index.html — vezi capul fișierului.
-const REFERINTA = `
-    function _aiuStare(r) {
-      if (!r.enabled) return { t: 'fără RA Insight', c: 'var(--text-muted)' };
-      if (r.epuizat) return { t: 'fond terminat', c: 'var(--red)' };
-      if (r.used > 0) return { t: 'folosește', c: 'var(--accent)' };
-      if (r.conturi > 0) return { t: 'conturi date, zero întrebări', c: 'var(--orange)' };
-      return { t: 'niciun cont dat', c: 'var(--orange)' };
-    }
-    function _aiuTendinta(ist) {
-      var l = Array.isArray(ist) ? ist : []; if (l.length < 2) return null;
-      var u = l[l.length - 1], p = l[l.length - 2];
-      var acum = u.facturatLei || _aiuEstimare(u), inainte = p.facturatLei || 0;
-      if (!(inainte > 0)) return null;
-      return { pct: Math.round(((acum - inainte) / inainte) * 100), estimat: !u.facturatLei && _aiuEstimare(u) > 0 };
-    }
-    function _aiuSageata(t) {
-      if (!t) return '';
-      var sus = t.pct >= 0;
-      return '<span style="color:' + (sus ? 'var(--accent)' : 'var(--red)') + ';font-weight:700;">'
-        + (sus ? '▲ +' : '▼ ') + t.pct + '%</span> față de luna trecută'
-        + (t.estimat ? ' <span style="color:var(--orange);">(estimat)</span>' : '');
-    }
-    function _aiuKpiuri(s, rows, ist, fx) {
-      var r = Array.isArray(rows) ? rows : [];
-      var venit = Number(s.totalVenitLei) || 0;
-      var cost = (Number(s.totalCostEur) || 0) * fx;
-      var profit = Math.round((venit - cost) * 100) / 100;
-      var conturi = Number(s.conturi) || 0;
-      var conturiAcum = r.reduce(function (a, x) { return a + (x.conturi || 0); }, 0);
-      var intrebari = Number(s.totalCalls) || 0, fond = Number(s.fond) || 0;
-      var marja = venit > 0 ? Math.round(((venit - cost) / venit) * 100) : null;
-      var peCont = conturi > 0 ? venit / conturi : null;
-      var peIntrebare = intrebari > 0 ? cost / intrebari : null;
-      var t = _aiuTendinta(ist);
-      var pct = fond > 0 ? Math.min(100, Math.round((intrebari / fond) * 100)) : null;
-      var culoareFond = fond && intrebari >= fond ? 'var(--red)' : (pct != null && pct >= 80 ? 'var(--orange)' : 'var(--accent)');
-      var cuPret = r.filter(function (x) { return x.pachet ? x.venitLei > 0 || !x.pachet.ai : x.pretCont > 0; }).length;   // ca la avertismente
-
-      return '<div class="aiu-grup">Banii, luna curentă</div><div class="aiu-kpiuri">'
-        + _aiuKpi({
-            cap: 'Încasăm', icon: 'arrow-down-to-line', val: _aiuLei(venit), ton: venit > 0 ? 'ok' : '',
-            sub: conturi > 0
-              ? conturi + ' ' + (conturi === 1 ? 'cont' : 'conturi') + (peCont ? ' × ' + _aiuNr(peCont) + ' lei în medie' : '')
-              : 'niciun cont de facturat',
-            jos: _aiuSageata(t) })
-        + _aiuKpi({
-            cap: 'Ne costă', icon: 'server', val: _aiuLei(cost),
-            sub: window._raxNrI(intrebari) + (peIntrebare ? ' · ' + _aiuNr(peIntrebare) + ' lei una' : ''),
-            jos: 'plata către model' })
-        + _aiuKpi({
-            cap: 'Profit', icon: 'piggy-bank', val: _aiuLei(profit),
-            ton: venit > 0 ? (profit >= 0 ? 'ok' : 'bad') : 'bad',
-            sub: venit > 0 ? 'marjă ' + marja + '%' : 'încă nu facturăm RA Insight nimănui',
-            jos: 'din RA Insight, nu din tot RA Track' })
-        + '</div>'
-        + '<div class="aiu-grup">Clienții</div><div class="aiu-kpiuri">'
-        + _aiuKpi({
-            cap: 'Firme cu RA Insight', icon: 'building', val: (s.withFeature || 0) + ' <span class="mic">din ' + (s.companies || 0) + '</span>',
-            sub: (s.active || 0) + ' îl folosesc efectiv',
-            jos: cuPret < (s.withFeature || 0)
-              ? '<span style="color:var(--orange);">' + ((s.withFeature || 0) - cuPret) + ' fără preț pe cont</span>'
-              : 'toate au preț pe cont' })
-        + _aiuKpi({
-            cap: 'Conturi de facturat', icon: 'id-badge', val: String(conturi),
-            sub: conturiAcum + (conturiAcum === 1 ? ' aprins acum' : ' aprinse acum')
-              + (conturi > conturiAcum ? ' · ' + (conturi - conturiAcum) + (conturi - conturiAcum === 1 ? ' stins' : ' stinse') + ' pe parcurs' : ''),
-            jos: peCont ? 'un cont aduce ' + _aiuLei(peCont) : 'fără preț pe cont' })
-        + _aiuKpi({
-            cap: 'Întrebări', icon: 'comments', val: intrebari + (fond ? ' <span class="mic">din ' + fond + '</span>' : ''),
-            ton: fond && intrebari >= fond ? 'bad' : '',
-            sub: fond
-              ? '<div class="aiu-fond"><div style="width:' + pct + '%;background:' + culoareFond + ';"></div></div>'
-              : 'fără fond stabilit',
-            jos: fond ? (intrebari >= fond ? 'fondul s-a terminat' : (fond - intrebari) + ' rămase din fondul lunii') : 'nimeni nu e limitat' })
-        + '</div>';
-    }
-    function _aiuCard(r, deschis) {
-      var st = _aiuStare(r);
-      var pct = r.pct == null ? null : Math.min(100, r.pct);
-      var culoare = r.epuizat ? 'var(--red)' : (r.pct != null && r.pct >= 80 ? 'var(--orange)' : 'var(--accent)');
-      var bara = pct == null ? '<div style="font-size:12px;color:var(--text-muted);">' + window._raxNrI(r.used) + ' · fără fond stabilit</div>'
-        : '<div style="font-size:12px;margin-bottom:4px;"><b>' + r.used + '</b> din ' + window._raxNrI(r.fond)
-          + ' <span style="color:var(--text-muted);">· ' + r.pct + '%</span></div>'
-          + '<div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + culoare + ';"></div></div>';
-      var bani = (r.venitLei > 0 ? '<span>încasăm <b>' + _aiuLei(r.venitLei) + '</b></span>' : '<span style="color:var(--text-muted);">nu se facturează</span>')
-        + '<span style="color:var(--text-muted);">ne costă ' + _aiuLei(r.costEur * _aiuFx()) + '</span>'
-        + (r.venitLei > 0 ? '<span>profit <b style="color:' + ((r.venitLei - r.costEur * _aiuFx()) >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(r.venitLei - r.costEur * _aiuFx()) + '</b></span>' : '');
-      return '<div class="aiu-card' + (deschis ? ' deschis' : '') + '" data-firma="' + r.id + '">'
-        + '<button class="aiu-cap" onclick="raxAiFirma(' + r.id + ')">'
-        +   '<span class="aiu-nume">' + esc(r.name) + '</span>'
-        +   '<span class="aiu-pastila" style="color:' + st.c + ';border-color:' + st.c + ';">' + st.t + '</span>'
-        +   '<span class="aiu-conturi">' + r.conturi + ' ' + (r.conturi === 1 ? 'cont' : 'conturi')
-        +     (r.deFacturat > r.conturi ? ' <span style="color:var(--orange);">(' + r.deFacturat + ' de facturat)</span>' : '') + '</span>'
-        +   '<i class="fas fa-chevron-down aiu-sageata"></i>'
-        + '</button>'
-        // Firma fără RA Insight n-are ce fond și ce bani să arate — două rânduri goale care fac
-        // lista mai greu de citit tocmai la firmele care nu ne interesează acum.
-        + (r.enabled ? '<div class="aiu-bara">' + bara + '</div><div class="aiu-bani">' + bani + '</div>' + _aiuPachetRand(r) : '')
-        + _aiuSemnale(r)
-        + '<div class="aiu-det" style="display:' + (deschis ? 'block' : 'none') + ';">'
-        +   '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(r)
-        +   (r.enabled ? '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(r) : '')
-        +   (r.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div>'
-              + '<div>În ultimele 12 luni: <b>' + _aiuLei(r.facturatLei) + '</b>'
-              + (r.incasatLei !== r.facturatLei
-                  ? ' — a intrat în cont: <b>' + _aiuLei(r.incasatLei) + '</b>, restul e neplătit'
-                  : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
-        +   '<div style="margin-top:8px;color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(r.lastUsed) + ' · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>'
-        + '</div></div>';
-    }
-`;
-if (/function _aiuKpiuri|function _aiuCard\b/.test(BLOC)) { console.log('✗ panoul vechi a revenit în pagină (_aiuKpiuri / _aiuCard): scoate-l din REFERINTA sau din pagină, nu din amândouă'); process.exit(1); }
+if (/function _aiuKpiuri|function _aiuCard\b/.test(BLOC)) { console.log('✗ panoul vechi a revenit în pagină (_aiuKpiuri / _aiuCard), iar telefonul nu-l mai are'); process.exit(1); }
 const mNrI = HTML.match(/window\._raxNrI = function \(n\) \{[^\n]*\};/);
 if (!mNrI) { console.log('✗ nu găsesc window._raxNrI în public/index.html'); process.exit(1); }
 
@@ -172,7 +54,7 @@ function webCtx(etichete) {
   };
   ctx.window = { raFx: () => ({ eur: CURS.v }) };
   vm.createContext(ctx);
-  vm.runInContext(mNrI[0] + '\n' + BLOC + '\n' + REFERINTA, ctx, { filename: 'index.html#ra-insight' });
+  vm.runInContext(mNrI[0] + '\n' + BLOC, ctx, { filename: 'index.html#ra-insight' });
   ctx._raxNrI = ctx.window._raxNrI;
   if (etichete) {
     // Suma rămâne în HTML nerotunjită, ca s-o putem compara ca număr.
@@ -183,7 +65,7 @@ function webCtx(etichete) {
 }
 const W = webCtx(true);    // pentru cifre
 const W0 = webCtx(false);  // pentru felul în care se scrie o sumă
-for (const f of ['_aiuKpiuri', '_aiuIstoric', '_aiuCard', '_aiuAvertismente', '_aiuStatistici', '_aiuTendinta', '_aiuEstimare', '_aiuLunaNume']) {
+for (const f of ['_aiuPachete', '_aiuAtentie', '_aiuTabel', '_aiuSursa', '_aiuIstoric', '_aiuAvertismente', '_aiuStatistici', '_aiuEstimare', '_aiuLunaNume', '_aiuSocoteala', '_aiuSemnale', '_aiuOameni', '_aiuPachetRand', '_aiuUndeConturi']) {
   if (typeof W[f] !== 'function') { console.log('✗ blocul web nu mai are funcția ' + f + ' — actualizează proba (și insightBani.ts)'); process.exit(1); }
 }
 
@@ -208,6 +90,12 @@ const r2 = (x) => Math.round(x * 100) / 100;
 const strip = (h) => String(h || '').replace(/<[^>]*>/g, '');
 // Textul unei celule tăiate după '<td' (îi punem la loc începutul, ca să plece și restul etichetei).
 const txt = (cel) => strip('<td' + (cel || '')).trim();
+// Două texte se compară fără spații și fără **: pe web, bucățile sunt lipite de marcaj, pe telefon de rânduri separate.
+const entitati = (t) => String(t || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const curat = (h) => entitati(strip(h)).replace(/Conturi & Abonamente/g, P.UNDE_PRET).replace(/\s+/g, '');
+const fara = (t) => String(t == null ? '' : t).replace(/\*\*/g, '').replace(/\s+/g, '');
+// Pe web prețul pe cont se pune din „Conturi & Abonamente", ecran pe care telefonul nu-l are: acolo, fișa firmei.
+const unde = (t) => String(t);
 function intre(s, a, b, de) { const i = s.indexOf(a, de || 0); if (i < 0) return null; const j = s.indexOf(b, i + a.length); return j < 0 ? null : s.slice(i + a.length, j); }
 const L = (h) => { const m = /⟦L:(-?[\d.e+-]+)⟧/.exec(h || ''); return m ? Number(m[1]) : null; };
 const N = (h) => { const m = /⟦N:(-?[\d.e+-]+)⟧/.exec(h || ''); return m ? Number(m[1]) : null; };
@@ -247,29 +135,57 @@ function sumar(rows, fx, istoric) {
   };
 }
 function firma(id, o) {
-  const conturi = o.conturi || 0, deFacturat = Math.max(conturi, o.deFacturat || 0);
-  const peCont = o.peCont || 0, pretCont = o.pretCont || 0;
-  const fond = peCont > 0 ? conturi * peCont : (o.fondVechi || 0);
+  const pk = o.pachet || null;   // { cod, nume, pretRON, ai, intrebari }: ca plans.pachetAi + _insightFirma
+  const conturi = o.conturi || 0, deFacturat = pk ? conturi : Math.max(conturi, o.deFacturat || 0);
+  const peCont = pk ? 0 : (o.peCont || 0), pretCont = pk ? 0 : (o.pretCont || 0);
+  const fond = pk ? pk.intrebari : (peCont > 0 ? conturi * peCont : (o.fondVechi || 0));
   const used = o.used || 0;
+  const costPlasa = o.costPlasaLei || 0;
+  const plafon = pk && pk.ai ? r2((pk.pretRON || 0) * 0.8) : 0;
   return {
-    id, name: 'Firma ' + id, enabled: o.enabled !== false, conturi, deFacturat, peCont, pretCont, fond,
-    vechi: !peCont && !!o.fondVechi, used, ramase: fond ? Math.max(0, fond - used) : null,
+    id, name: 'Firma ' + id + (o.semn || ''), enabled: o.enabled !== false, conturi, deFacturat, peCont, pretCont, fond,
+    vechi: !pk && !peCont && !!o.fondVechi, used, ramase: fond ? Math.max(0, fond - used) : null,
+    pachet: pk ? { cod: pk.cod, nume: pk.nume, pretRON: pk.pretRON, ai: pk.ai } : null,
+    plasa: pk && pk.ai ? { plafonLei: plafon, costLei: r2(costPlasa), procent: plafon > 0 ? Math.round(Math.min(9.99, costPlasa / plafon) * 100) : 0 } : null,
+    ramanLei: pk ? r2((pk.pretRON || 0) - costPlasa) : null,
     pct: fond ? Math.round((used / fond) * 100) : null, epuizat: !!fond && used >= fond,
-    costEur: r2(o.costEur || 0), venitLei: pretCont > 0 ? r2(deFacturat * pretCont) : 0,
-    lastUsed: null, contFaraFolos: 0, folosFaraCont: 0, contPeInactiv: 0, oameni: [],
+    costEur: r2(o.costEur || 0), venitLei: pk ? r2(pk.pretRON || 0) : (pretCont > 0 ? r2(deFacturat * pretCont) : 0),
+    lastUsed: o.lastUsed || null, contFaraFolos: o.contFaraFolos || 0, folosFaraCont: o.folosFaraCont || 0, contPeInactiv: o.contPeInactiv || 0, oameni: o.oameni || [],
     facturatLei: r2(o.facturatLei || 0), incasatLei: r2(o.incasatLei || 0),
+    instant: o.instant || 0, jos7: o.jos7 || 0, sursa: o.sursa || null,
   };
 }
+const SE = require('./sursa_externa');
+const OM = (id, nume, loc, activ, used, lastUsed) => ({ id, nume, loc, activ, used, lastUsed: lastUsed || null });
+const PK = {
+  start: { cod: 'start', nume: 'Start', pretRON: 0, ai: false, intrebari: 50 }, basic: { cod: 'basic', nume: 'Basic', pretRON: 10, ai: true, intrebari: 200 },
+  pro: { cod: 'pro', nume: 'Pro', pretRON: 22.5, ai: true, intrebari: 600 }, business: { cod: 'business', nume: 'Business', pretRON: 30, ai: true, intrebari: 1000 },
+};
 function luni12(lista) {
   const acum = new Date(), chei = [];
   for (let i = 11; i >= 0; i--) chei.push(new Date(Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - i, 1)).toISOString().slice(0, 7));
   return chei.map((luna, i) => Object.assign({ luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, lista[i] || {}));
 }
-function raspuns(rows, istoric, fx, cuCampuriServer) {
+// `pachete` și `sursa`, cu forma din GET /api/admin/ai-usage.
+function sumarPachete(rows, o) {
+  const cu = rows.filter((r) => r.pachet && r.enabled), peCod = { start: 0, basic: 0, pro: 0, business: 0 };
+  cu.forEach((r) => { peCod[r.pachet.cod]++; });
+  return Object.assign({
+    peCod, venitLei: r2(cu.reduce((s, r) => s + r.venitLei, 0)), costLei: r2(cu.reduce((s, r) => s + (r.plasa ? r.plasa.costLei : 0), 0)),
+    langaPlasa: cu.filter((r) => r.plasa && r.plasa.procent >= 60).map((r) => ({ id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei })).sort((a, b) => b.procent - a.procent),
+    sold: null, jos7: rows.reduce((s, r) => s + r.jos7, 0), instant: rows.reduce((s, r) => s + r.instant, 0), intrebariAi: rows.reduce((s, r) => s + r.used, 0), corecturi: null,
+  }, o || {});
+}
+function sumarSursa(o) {
+  const a = Object.assign({ stare: 'noi', model: '', modelOk: null, eroare: null, intrebari: 0, cautari: 0, costLei: 0 }, o || {});
+  a.stari = SE.STARI.map((k) => ({ k, t: SE.TEXT_STARI[k], d: SE.DESCRIERE_STARI[k] })); a.peLuna = SE.PE_PACHET;
+  return a;
+}
+function raspuns(rows, istoric, fx, cuCampuriServer, extra) {
   const s = sumar(rows, fx, istoric);
   istoric[istoric.length - 1].estimatLei = s.totalVenitLei;   // luna curentă, încă nefacturată, primește estimarea
   if (!cuCampuriServer) { delete s.totalCostLei; delete s.profitLei; }
-  return { rows, summary: s, istoric, fxEur: fx };
+  return { rows, summary: s, istoric, fxEur: fx, pachete: sumarPachete(rows, extra && extra.pachete), sursa: extra && extra.faraSursa ? null : sumarSursa(extra && extra.sursa) };
 }
 
 // Scenariile cu nume: situațiile pe care fondatorii le văd de fapt.
@@ -307,7 +223,32 @@ const SCENARII = [];
   const ist = luni12({ 10: { intrebari: 30, costEur: 1.2, facturatLei: 58, incasatLei: 58, conturi: 2 }, 11: { intrebari: 10, costEur: 0.5, facturatLei: -29, conturi: -1 } });
   SCENARII.push(['storno în luna curentă (factură negativă)', raspuns(rows, ist, 5, true)]);
 }
-SCENARII.push(['nimic: nicio firmă cu RA Insight, istoric gol', raspuns([firma(1, { enabled: false }), firma(2, { enabled: false })], luni12({}), 5.0, true)]);
+SCENARII.push(['nimic: nicio firmă cu RA Insight, istoric gol', raspuns([firma(1, { enabled: false }), firma(2, { enabled: false })], luni12({}), 5.0, true, { faraSursa: true })]);
+{
+  const azi = Date.UTC(2026, 10, 2, 9), oameni = [OM(1, 'Maria <b>Pop</b>', true, true, 12, azi), OM(2, 'Ion', true, false, 0), OM(3, 'Dan', false, true, 3, azi)];
+  const rows = [
+    firma(1, { pachet: PK.pro, conturi: 3, used: 610, costPlasaLei: 19.5, instant: 40, jos7: 3, oameni, contPeInactiv: 1, folosFaraCont: 1, lastUsed: azi, sursa: { intrebari: 3, cautari: 5, costLei: 0.26 } }),
+    firma(2, { pachet: PK.basic, conturi: 1, used: 170, costPlasaLei: 5, contFaraFolos: 1, jos7: 1, facturatLei: 30, incasatLei: 30, oameni: [OM(4, 'Ana', true, true, 0)] }),
+    firma(3, { pachet: PK.start, conturi: 1, used: 50, instant: 50, oameni: [OM(5, 'Vasile', true, true, 0)] }),
+    firma(4, { pachet: PK.business, conturi: 0, used: 0 }),
+    firma(5, { conturi: 2, peCont: 50, pretCont: 17, used: 30, costEur: 0.8, deFacturat: 3, facturatLei: 100, incasatLei: 40 }),
+    firma(6, { fondVechi: 200, used: 77, costEur: 3.05 }),
+    firma(7, { conturi: 2, peCont: 100, used: 9, costEur: 0.2 }),
+    firma(8, { used: 5, costEur: 0.1 }),
+    firma(9, { enabled: false }), firma(10, { enabled: false }),
+  ];
+  const sold = { usd: 1234.5, scris: 1300, la: azi, cheltuit: 65.5, peZi: 2, zile: 21, ritmZile: 7 };
+  SCENARII.push(['pachete: plasă atinsă, 👎, corecturi, sold, sursă cu eroare', raspuns(rows, luni12({ 11: { intrebari: 860, costEur: 3.2 } }), 5.0421, true, {
+    pachete: { sold, corecturi: { rescrise: 12, cifre: 7, litere: 3, echipament: 2, ramase: 2 } },
+    sursa: { stare: 'firme', model: 'Modelul primește căutarea.', modelOk: true, eroare: 'rețea', intrebari: 1, cautari: 21, costLei: 1.5 },
+  })]);
+  SCENARII.push(['pachete: sold fără ritm, corecturi fără nimic rămas, model refuzat', raspuns(JSON.parse(JSON.stringify(rows)), luni12({}), 4.9765, true, {
+    pachete: { sold: { usd: 100, scris: 100, la: azi, zile: null, ritmZile: 7 }, corecturi: { rescrise: 0, cifre: 0, litere: 0, echipament: 0, ramase: 0 } },
+    sursa: { stare: 'oprita', model: 'Modelul NU primește căutarea.', modelOk: false },
+  })]);
+  SCENARII.push(['pachete: sold pe 20 și 100 de zile', raspuns([firma(1, { pachet: PK.basic, conturi: 1, used: 1, costPlasaLei: 12 })], luni12({}), 5, true, { pachete: { sold: { usd: 5000, zile: 120 } } })]);
+  SCENARII.push(['o singură firmă pe regula veche, fără preț', raspuns([firma(1, { conturi: 1, peCont: 50, used: 2, costEur: 0.1 })], luni12({}), 5, true)]);
+}
 
 // Și câteva sute la întâmplare (cu sămânță fixă, ca proba să dea mereu același rezultat).
 function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -325,7 +266,13 @@ for (let k = 0; k < ALEATOARE; k++) {
     const fond = peCont ? conturi * peCont : fondVechi;
     const used = fond ? int(0, Math.round(fond * 1.1)) : int(0, 300);
     const facturat = rnd() < 0.5 ? r2(rnd() * 900) : 0;
+    const pkA = rnd() < 0.5 ? alege([PK.start, PK.basic, PK.pro, PK.business]) : null;
     rows.push(firma(i, {
+      pachet: pkA, costPlasaLei: pkA && pkA.ai ? rnd() * (pkA.pretRON * 1.2) : 0, instant: int(0, 60), jos7: rnd() < 0.2 ? int(1, 5) : 0,
+      contFaraFolos: rnd() < 0.2 ? int(1, 3) : 0, folosFaraCont: rnd() < 0.1 ? int(1, 2) : 0, contPeInactiv: rnd() < 0.1 ? int(1, 2) : 0,
+      lastUsed: rnd() < 0.5 ? Date.UTC(2026, 9, int(1, 28)) : null,
+      oameni: rnd() < 0.5 ? [OM(1, 'Om ' + i, rnd() < 0.7, rnd() < 0.8, int(0, 25), rnd() < 0.5 ? Date.UTC(2026, 9, 3) : null)] : [],
+      sursa: rnd() < 0.2 ? { intrebari: int(1, 9), cautari: int(1, 20), costLei: r2(rnd() * 3) } : null,
       enabled: rnd() < 0.85, conturi, deFacturat: conturi + (rnd() < 0.2 ? int(1, 2) : 0), peCont, fondVechi,
       pretCont: alege([0, 19, 29, 49, 59, 24.5, 33.33]), used, costEur: used * (0.004 + rnd() * 0.02),
       facturatLei: facturat, incasatLei: rnd() < 0.5 ? facturat : r2(facturat * rnd()),
@@ -337,7 +284,13 @@ for (let k = 0; k < ALEATOARE; k++) {
     const f = i === 11 ? (rnd() < 0.25 ? r2(rnd() * 600) : 0) : (rnd() < 0.8 ? r2(rnd() * 900 - (rnd() < 0.08 ? 950 : 0)) : 0);
     lista[i] = { intrebari: int(0, 500), costEur: r2(rnd() * 25), facturatLei: f, incasatLei: f > 0 && rnd() < 0.6 ? f : r2(Math.max(0, f) * rnd()), conturi: int(0, 12) };
   }
-  SCENARII.push(['aleator #' + k, raspuns(rows, luni12(lista), fx, rnd() < 0.8)]);
+  const zile = rnd() < 0.5 ? int(0, 250) : null;
+  SCENARII.push(['aleator #' + k, raspuns(rows, luni12(lista), fx, rnd() < 0.8, {
+    pachete: { sold: rnd() < 0.5 ? { usd: r2(rnd() * 2000), scris: r2(rnd() * 3000), la: rnd() < 0.8 ? Date.UTC(2026, 9, 5) : null, zile, ritmZile: 7 } : null,
+      corecturi: rnd() < 0.5 ? { rescrise: int(0, 200), cifre: int(0, 100), litere: int(0, 3), echipament: int(0, 21), ramase: int(0, 2) } : null },
+    sursa: { stare: alege(SE.STARI), model: 'Model', modelOk: alege([true, false, null]), eroare: rnd() < 0.2 ? 'x' : null, intrebari: int(0, 21), cautari: int(0, 120), costLei: r2(rnd() * 5) },
+    faraSursa: rnd() < 0.1,
+  })]);
 }
 
 // ── 3. Felul în care se scrie o sumă ─────────────────────────────────────────────────────────────────
@@ -347,7 +300,7 @@ for (const v of VALORI) T('suma ' + v, P.nr(v) === W0._aiuNr(v), 'web „' + W0.
 for (const fx of [5, 4.9765]) {
   CURS.v = fx;
   for (const v of VALORI) {
-    const tel = P.nr(v) + ' lei (' + P.nr((Number(v) || 0) / fx) + ' €)';   // <Lei> din AiUsage.tsx
+    const tel = P.lei(v, fx);
     T('„lei (€)" pentru ' + v + ' la cursul ' + fx, strip(W0._aiuLei(v)) === tel, 'web „' + strip(W0._aiuLei(v)) + '" · telefon „' + tel + '"');
   }
 }
@@ -362,30 +315,50 @@ function verifica(nume, d) {
   // răspuns; dacă o funcție a blocului ar citi cursul paginii direct, sumele în € s-ar despărți.
   CURS.v = fx + 0.37;
   W._aiuFxResp = fx; W0._aiuFxResp = fx;
-  const c = P.cifreLuna(s, ist, fx);
-  const venit = Number(s.totalVenitLei) || 0;
+  // Cele patru cifre de sus: fiecare, ca sumă nerotunjită și ca text.
+  const hp = W._aiuPachete(d.pachete), ht = W0._aiuPachete(d.pachete), tile = P.tilePachete(d.pachete, fx);
+  const tileWeb = String(ht).split('<div class="aiu-pk-t">').slice(1);
+  T(nume + ' · patru cifre sus', tileWeb.length === 4 && tile.length === 4, tileWeb.length + ' / ' + tile.length);
+  tile.forEach((t, i) => {
+    const b = tileWeb[i] || '';
+    T(nume + ' · ' + t.k + ': titlul', curat(intre(b, '<div class="k">', '</div>')) === fara(t.k));
+    T(nume + ' · ' + t.k + ': cifra', curat(intre(b, '<div class="v">', '<div class="s">')) === fara(t.v), curat(intre(b, '<div class="v">', '<div class="s">')) + ' · ' + fara(t.v));
+    T(nume + ' · ' + t.k + ': rândul de sub', curat(b.slice(b.indexOf('<div class="s">'))) === fara(t.s + (t.buton ? ' · ' + t.buton : '')), curat(b.slice(b.indexOf('<div class="s">'))) + ' · ' + fara(t.s));
+    if (t.ton) T(nume + ' · ' + t.k + ': culoarea', b.indexOf(t.ton === 'ok' ? 'var(--accent)' : 'var(--red)') >= 0);
+  });
+  const venitP = Number((d.pachete || {}).venitLei) || 0, costP = Number((d.pachete || {}).costLei) || 0;
+  const sp = String(hp).split('<div class="aiu-pk-t">').slice(1);
+  sumaEq(nume + ' · Încasăm', L(sp[0]), venitP);
+  sumaEq(nume + ' · Ne costă', L(sp[1]), costP);
+  sumaEq(nume + ' · Ne rămân', L(sp[2]), r2(venitP - costP));
 
-  // Cartonașele lunii curente.
-  const k = carduri(W._aiuKpiuri(s, rows, ist, fx));
-  sumaEq(nume + ' · Încasăm', L(k['Încasăm'] && k['Încasăm'].val), c.venitLei);
-  sumaEq(nume + ' · Ne costă', L(k['Ne costă'] && k['Ne costă'].val), c.costLei);
-  sumaEq(nume + ' · Profit', L(k['Profit'] && k['Profit'].val), c.profitLei);
-  const mj = /marjă (-?\d+)%/.exec((k['Profit'] || {}).html || '');
-  T(nume + ' · marja lunii', venit > 0 ? (mj && Number(mj[1]) === c.marja) : (!mj && c.marja == null), 'web ' + (mj && mj[1]) + ' · telefon ' + c.marja);
-  const pc = /× (⟦N:[^⟧]*⟧) lei în medie/.exec((k['Încasăm'] || {}).html || '');
-  T(nume + ' · media pe cont', pc ? aproape(N(pc[1]), c.peContLei) : !c.peContLei, 'web ' + (pc && N(pc[1])) + ' · telefon ' + c.peContLei);
-  const unCont = /un cont aduce (⟦L:[^⟧]*⟧)/.exec((k['Conturi de facturat'] || {}).html || '');
-  T(nume + ' · „un cont aduce"', unCont ? aproape(L(unCont[1]), c.peContLei) : !c.peContLei, 'web ' + (unCont && L(unCont[1])) + ' · telefon ' + c.peContLei);
-  const pi = /· (⟦N:[^⟧]*⟧) lei una/.exec((k['Ne costă'] || {}).html || '');
-  T(nume + ' · costul pe întrebare', pi ? aproape(N(pi[1]), c.peIntrebareLei) : !c.peIntrebareLei, 'web ' + (pi && N(pi[1])) + ' · telefon ' + c.peIntrebareLei);
-  const sg = /(▲ \+|▼ )(-?\d+)%<\/span> față de luna trecută/.exec((k['Încasăm'] || {}).html || '');
-  const tw = W._aiuTendinta(ist);
-  T(nume + ' · tendința', sg ? (!!c.tendinta && Number(sg[2]) === c.tendinta.pct && /\(estimat\)/.test(k['Încasăm'].html) === c.tendinta.estimat) : !c.tendinta,
-    'web ' + JSON.stringify(tw) + ' · telefon ' + JSON.stringify(c.tendinta));
-
-  // Banda „Nicio firmă nu plătește RA Insight" — costul lunii.
+  // „Ce cere atenție": aceleași rânduri, în aceeași ordine, cu aceeași culoare și cu aceeași firmă de deschis.
+  const hAt = W0._aiuAtentie(d.pachete, s, rows);
+  const atWeb = [...String(hAt).matchAll(/<div class="aiu-(?:alerta|at) (\w+)">([\s\S]*?)<\/span>((?:<button[\s\S]*?<\/button>)?)<\/div>/g)].map((m) => ({ ton: m[1], t: curat(m[2]), firma: (/raxOpenCompanyDetail\((\d+)\)/.exec(m[3]) || [])[1] || null }));
+  const atTel = P.atentie(d.pachete, s, rows, fx);
+  if (!atTel.length) T(nume + ' · „Nimic de rezolvat"', atWeb.length === 1 && atWeb[0].ton === 'ok' && atWeb[0].t === fara(P.NIMIC_ATENTIE), JSON.stringify(atWeb));
+  else {
+    T(nume + ' · câte rânduri cer atenție', atWeb.length === atTel.length, atWeb.length + ' / ' + atTel.length + ' ' + JSON.stringify(atWeb).slice(0, 400));
+    atTel.forEach((a, i) => {
+      const w = atWeb[i] || {};
+      T(nume + ' · atenție #' + i + ': textul', w.t === fara(unde(a.t)), w.t + ' // ' + fara(unde(a.t)));
+      T(nume + ' · atenție #' + i + ': culoarea', w.ton === a.ton, w.ton + ' / ' + a.ton);
+      T(nume + ' · atenție #' + i + ': firma', String(w.firma) === String(a.firma == null ? null : a.firma), w.firma + ' / ' + a.firma);
+    });
+  }
+  // Banda „Nicio firmă nu plătește RA Insight" — costul lunii, nerotunjit.
   const av = W._aiuAvertismente(s, rows);
   if (/Nicio firmă nu plătește/.test(av)) sumaEq(nume + ' · banda „nu plătește nimeni"', L(av), P.costLunaLei(s, fx));
+
+  // „Sursă externă" pe toată platforma.
+  const hSe = W0._aiuSursa(d.sursa), pSe = P.planSursa(d.sursa, fx);
+  if (!pSe) T(nume + ' · fără `sursa`, fără rând', hSe === '');
+  else {
+    const tel = pSe.titlu + pSe.sub + pSe.stari.map((x) => x.t).join('') + pSe.model + pSe.eroare + pSe.luna;
+    T(nume + ' · „Sursă externă": aceleași texte', curat(hSe) === fara(tel), curat(hSe) + ' // ' + fara(tel));
+    T(nume + ' · „Sursă externă": starea aleasă', (/<button class="rax-btn primary"[^>]*>([^<]*)</.exec(hSe) || [])[1] === (pSe.stari.find((x) => x.al) || {}).t);
+    T(nume + ' · „Sursă externă": modelul refuzat, în roșu', /aiu-se-m rau">/.test(hSe.split('</div>').slice(2, 4).join('')) === pSe.modelRau || (!!pSe.eroare), String(pSe.modelRau));
+  }
 
   // Istoricul.
   const hi = W._aiuIstoric(ist, fx);
@@ -432,16 +405,46 @@ function verifica(nume, d) {
     sumaEq(nume + ' · total profit', L(tf[5]), st.profitLei);
   }
 
-  // Firmă cu firmă.
-  rows.forEach((r) => {
-    const h = W._aiuCard(r, true);
-    const bani = intre(h, '<div class="aiu-bani">', '</div>');
-    T(nume + ' · ' + r.name + ' · are rândul de bani doar cu RA Insight', !!bani === !!r.enabled);
-    if (!bani) return;
-    sumaEq(nume + ' · ' + r.name + ' · ne costă', L(intre(bani, 'ne costă ', '</span>')), P.costFirmaLei(r, fx));
-    if (r.venitLei > 0) sumaEq(nume + ' · ' + r.name + ' · profit', L(intre(bani, 'profit <b', '</b>')), P.profitFirmaLei(r, fx));
-    else T(nume + ' · ' + r.name + ' · fără venit, fără profit', bani.indexOf('profit') < 0);
+  // Firmă cu firmă: un rând pe firmă, amănuntul dedesubt, ca _aiuTabel.
+  const hTab = W._aiuTabel(rows), hTab0 = W0._aiuTabel(rows);
+  const cu = rows.filter((r) => r.enabled);
+  if (!cu.length) T(nume + ' · nicio firmă', curat(hTab0).indexOf(fara(P.NICIO_FIRMA)) >= 0);
+  const rw = String(hTab).split('<tr class="aiu-tr"').slice(1), rw0 = String(hTab0).split('<tr class="aiu-tr"').slice(1);
+  T(nume + ' · câte rânduri de firmă', rw.length === cu.length, rw.length + ' / ' + cu.length);
+  cu.forEach((x, i) => {
+    const r = P.randFirma(x, fx), e = nume + ' · ' + x.name;
+    const cel = String(rw[i] || '').split('<td').slice(1), cel0 = String(rw0[i] || '').split('<td').slice(1);
+    const c = (k) => { const v = cel0[k] || ''; return curat('<td' + v); };
+    T(e + ' · numele', c(0) === fara(r.nume), c(0) + ' // ' + r.nume);
+    T(e + ' · pachetul', c(1) === fara(r.pachet), c(1) + ' // ' + r.pachet);
+    T(e + ' · întrebările', c(2) === fara(r.folosite), c(2) + ' // ' + r.folosite);
+    const barW = /<i style="width:(\d+)%;background:var\(--(\w+)\)/.exec(cel0[2] || '');
+    T(e + ' · bara', barW ? r.bara === Number(barW[1]) && ({ red: 'bad', orange: 'warn', purple: 'mov' })[barW[2]] === r.baraTon : r.bara == null, JSON.stringify([barW && barW[1], barW && barW[2], r.bara, r.baraTon]));
+    T(e + ' · instant', c(3) === fara(r.instant));
+    T(e + ' · sursă externă', c(4) === fara(r.sursa), c(4) + ' // ' + r.sursa);
+    T(e + ' · ne costă: textul', c(5) === fara(r.cost), c(5) + ' // ' + r.cost);
+    T(e + ' · ne rămân: textul', c(6) === fara(r.raman), c(6) + ' // ' + r.raman);
+    T(e + ' · ne rămân: culoarea', (cel0[6] || '').indexOf(r.ramanOk ? 'var(--accent)' : 'var(--red)') >= 0);
+    sumaEq(e + ' · ne costă', L(cel[5]), P.costFirmaLei(x, fx));
+    sumaEq(e + ' · ne rămân', L(cel[6]), P.ramanFirmaLei(x, fx));
+    // Amănuntul.
+    const det = String(rw0[i] || '').slice(String(rw0[i] || '').indexOf('<div class="aiu-det-in">')).split('</tbody>')[0];
+    const tel = (r.pachetRand ? r.pachetRand.nume + ' · ' + r.pachetRand.plasa + (r.pachetRand.raman ? ' · ' + r.pachetRand.raman : '') : '')
+      + r.semnale.map((z) => z.t).join('') + 'Cum iese cifra' + r.socoteala.map((t) => '• ' + t).join('') + 'Cine are cont'
+      + (r.oameni.length ? r.oameni.map((o) => o.nume + o.stare + o.folosite + o.data).join('') : 'Niciun cont cu RA Insight.')
+      + (r.facturat ? 'Ce am facturat pe RA Insight' + r.facturat.t + (r.facturat.platit ? ' — a plătit tot' : '') : '')
+      + r.ultima + 'Deschide firma';
+    T(e + ' · amănuntul: aceleași texte, în aceeași ordine', curat(det) === fara(unde(tel)), curat(det) + ' // ' + fara(unde(tel)));
+    if (r.pachetRand) {
+      const pr = W0._aiuPachetRand(x), cul = { bad: 'var(--red)', warn: 'var(--orange)', sec: 'var(--text-secondary)', mut: 'var(--text-muted)' }[r.pachetRand.plasaTon];
+      T(e + ' · plasa: culoarea', pr.indexOf(cul) >= 0, pr);
+    }
+    const sw = W0._aiuSemnale(x), culS = { bad: 'var(--red)', warn: 'var(--orange)', mut: 'var(--text-muted)' };
+    T(e + ' · semnalele: culorile', r.semnale.every((z) => sw.indexOf(culS[z.ton]) >= 0) && (r.semnale.length ? true : sw === ''), sw);
+    r.oameni.forEach((o) => T(e + ' · ' + o.nume + ': culoarea', W0._aiuOameni(x).indexOf(({ ok: 'var(--accent)', bad: 'var(--red)', mut: 'var(--text-muted)' })[o.ton]) >= 0));
   });
+  const tf = P.textFaraInsight(rows);
+  T(nume + ' · firmele fără RA Insight', tf ? curat(hTab0).endsWith(fara(tf)) : curat(hTab0).indexOf('fărăRAInsight:') < 0, tf);
 }
 
 sect('2. Scenariile pe care le văd fondatorii');
@@ -455,18 +458,12 @@ const LOAD = (() => { const i = HTML.indexOf('window.raxLoadAiUsage = async func
 T('raxLoadAiUsage există', !!LOAD);
 const iSet = LOAD.indexOf('_aiuFxResp = Number(d.fxEur)'), iSume = LOAD.indexOf('_aiuPachete(');
 T('pune cursul din răspuns înainte de primele sume (cele patru cifre de sus)', iSet > 0 && iSume > iSet, 'set ' + iSet + ' · sume ' + iSume);
+T('nota de sub pagină: aceleași cuvinte ca pe web', LOAD.indexOf(P.NOTA_CONTROL) >= 0);
 T('panoul vechi nu mai e în pagină (nici cutia „Mai multe cifre", nici cartonașele pe firme)', LOAD.indexOf('aiu-mai-box') < 0 && LOAD.indexOf('_aiuKpiuri(') < 0 && LOAD.indexOf('_aiuCard(') < 0);
 
-sect('5. Tendința de pe telefon (web-ul n-o mai arată din 19.10; cazurile erau în verify_insight_panou.js)');
-const LT = (inapoi) => { const a = new Date(); return new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - inapoi, 1)).toISOString().slice(0, 7); };
-const ML = (luna, o) => Object.assign({ luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);
-T('crește', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { facturatLei: 150 })]) || {}).pct === 50);
-T('scade', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { facturatLei: 60 })]) || {}).pct === -40);
-T('luna curentă estimată e marcată ca atare', (P.tendinta([ML(LT(1), { facturatLei: 100 }), ML(LT(0), { estimatLei: 120 })]) || {}).estimat === true);
-T('de la zero nu se calculează procent', P.tendinta([ML(LT(1), {}), ML(LT(0), { facturatLei: 50 })]) === null);
-T('cu o singură lună, nici atât', P.tendinta([ML(LT(0), { facturatLei: 50 })]) === null);
+sect('5. Cursul');
 T('_aiuFx preferă cursul din răspuns', /function _aiuFx\(\) \{ return _aiuFxResp \|\|/.test(BLOC));
 flush();
 
-console.log('\n' + (rele ? '✗ ' + rele + ' diferențe între telefon și web (din ' + (ok + rele) + ')' : '✓ Telefonul arată aceleași sume ca web-ul și ca formulele panoului vechi (' + ok + ' verificări)'));
+console.log('\n' + (rele ? '✗ ' + rele + ' diferențe între telefon și web (din ' + (ok + rele) + ')' : '✓ Telefonul arată aceleași sume și aceleași texte ca web-ul (' + ok + ' verificări)'));
 process.exit(rele ? 1 : 0);

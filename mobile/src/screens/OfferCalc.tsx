@@ -236,7 +236,6 @@ export function OfferCalc() {
     e.preventDefault();
     const act = a.getAttribute('data-act');
     if (act === 'preturi') setPreturi(true);
-    else if (act === 'pret') schimba('pAiA', String(a.getAttribute('data-val') || ''), a.getAttribute('data-atins') === '1');
     else if (act === 'canMod') comutaCan(a.getAttribute('data-val'));
     else if (act === 'aplicaRec' && !a.disabled) aplicaRecomandarea();
   }
@@ -294,7 +293,7 @@ export function OfferCalc() {
       if (!j.salvareTarife) { showToast('Tarifele nu s-au putut citi.', true); return; }
       await Api.saveSystemSettings(j.salvareTarife);
       showToast('Tarifele noastre, salvate ✓ — de aici pornesc ofertele viitoare');
-      murdarRef.current = true; programeaza();   // propunerile (grila RA Insight) se iau de acum din lista nouă
+      murdarRef.current = true; programeaza();   // propunerile (prețurile pachetelor RA Insight) se iau de acum din lista nouă
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { if (viuRef.current) setBusy(''); }
   }
@@ -408,7 +407,7 @@ export function OfferCalc() {
           )}
 
           {card('2. Flota clientului', 'car',
-            'De aici pornește tot: abonamentul lunar, cantitățile de montaj, aparatele de cumpărat și prețul unui cont de RA Insight.',
+            'De aici pornește tot: abonamentul lunar, cantitățile de montaj și aparatele de cumpărat.',
             <>
               {rand('Total vehicule', nr('nveh', 'nr', 'Total vehicule'))}
               {rand('din care cu CAN', nr('ncan', 'nr', 'din care cu CAN'), 'mașini mici — cer modul LV-CAN200')}
@@ -443,20 +442,20 @@ export function OfferCalc() {
             </>)}
 
           {card('3. Ce mai primește clientul', 'puzzle',
-            'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.',
+            'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde în pachete pe firmă: Start e inclus, iar Basic, Pro și Business au un preț fix pe lună, oricâte mașini.',
             <>
-              {tgl('aiA', 'RA Insight')}
-              <div class="of-lin" style="display:flex;align-items:center;gap:8px;margin-bottom:4px">{nr('pAiA', 'nr', 'RA Insight — preț pe cont')}<span class="of-um">lei/cont</span>{echiv('pAiA')}</div>
-              {web(res && res.html && res.html.aiA)}
-              {res && res.arata && res.arata.aiq && (
-                <div class="of-q">
-                  <div class="of-q2">
-                    <div><label>Conturi</label>{nr('aiqSeats', 'nr', 'Conturi')}</div>
-                    <div><label>Întrebări / cont</label>{sel('aiqN', 'Întrebări pe cont', 'lat')}</div>
-                  </div>
-                  {web(res.html && res.html.aiqCost, 'of-web')}
-                </div>
+              {/* Pachetul RA Insight (`aiPachet`) și prețul lui (`pPachet`): listele și propunerea de preț vin din pagina de pe server; sub ele,
+                  ce primește pachetul ales (pachete.js) și ce ne rămâne — doar pentru noi. Telefonul NU trimite vechiul `aiA`. */}
+              <div class="of-sub">RA Insight</div>
+              <div class="of-pk">
+                {((meta.aiPachet && meta.aiPachet.optiuni) || []).map((o) => (
+                  <button class={'of-b' + (String(v('aiPachet')) === o.v ? ' pri' : '')} aria-pressed={String(v('aiPachet')) === o.v} onClick={() => { if (String(v('aiPachet')) !== o.v) schimba('aiPachet', o.v); }}>{o.et}</button>
+                ))}
+              </div>
+              {res && res.arata && res.arata.pachetPret && (
+                <div class="of-lin" style="display:flex;align-items:center;gap:8px;margin-bottom:4px">{nr('pPachet', 'nr', 'RA Insight — prețul pachetului')}<span class="of-um">lei/lună</span>{echiv('pPachet')}</div>
               )}
+              {web(res && res.html && res.html.aiA)}
               {tgl('tahograf', 'Modul Tahograf', '(analiză .DDD)')}
               <div class="of-lin" style="display:flex;align-items:center;gap:8px;margin-bottom:4px">{nr('pTahograf', 'nr', 'Tahograf — preț pe vehicul')}<span class="of-um">lei/vehicul</span>{echiv('pTahograf')}</div>
               {web(res && res.html && res.html.tahograf)}

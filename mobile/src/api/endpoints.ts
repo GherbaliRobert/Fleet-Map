@@ -361,8 +361,10 @@ export const Api = {
   // Tahograf și e-Transport, privirea noastră: o firmă pe rând. Doar citire — noi nu încărcăm și nu ștergem nimic.
   tachoOverview: () => api<{ praguriLegale: { card: number; vu: number }; firme: any[] }>('/api/admin/tacho-overview'),
   etransportOverview: () => api<{ anaf: { pornit: boolean; test?: boolean }; praguri: { tacereMinute: number; curandOre: number; zileNational: number; zileIntracomunitar: number }; firme: any[] }>('/api/admin/etransport-overview'),
-  // Utilizare RA Insight pe firme: aceleași cifre după care se face factura (conturi, fond, venit, cost, istoric din facturi).
-  aiUsage: () => api<{ rows: any[]; summary: Record<string, any>; istoric: any[]; fxEur: number }>('/api/admin/ai-usage'),
+  // „RA Insight · control": aceleași cifre după care se face factura (conturi, fond, venit, cost, istoric din facturi).
+  aiUsage: () => api<{ rows: any[]; summary: Record<string, any>; istoric: any[]; fxEur: number; pachete: any; sursa: any }>('/api/admin/ai-usage'),
+  insightSold: (usd: string) => api<any>('/api/admin/insight/sold', { method: 'PUT', body: { usd } }),
+  adminSursaExterna: (stare: string) => api<{ ok: boolean; stare: string; model?: string; modelOk?: boolean | null }>('/api/admin/insight/sursa-externa', { method: 'PUT', body: { stare } }),
   // Chei API. Cheia în clar vine O SINGURĂ DATĂ, la creare. DELETE simplu = revocă (rămâne pentru audit); ?hard=1 = șterge.
   apiKeys: () => api<any[]>('/api/apikeys'),
   createApiKey: (userId: number, name: string) => api<{ id: number; name: string; prefix: string; key: string; user: string; role: string }>('/api/apikeys', { method: 'POST', body: { userId, name } }),
@@ -507,6 +509,8 @@ export const Api = {
   setUserAccess: (id: number, devices: string[], groups: number[]) => api(`/api/users/${id}/access`, { method: 'PUT', body: { devices, groups } }),
   // RA Insight pe cont (se facturează per cont aprins).
   setUserAiSeat: (id: number, on: boolean) => api<{ ok: boolean; ai_seat: boolean; seats: number }>(`/api/users/${id}/ai-seat`, { method: 'PUT', body: { on } }),
+  // „Fără limită" (null) / „Cel mult … pe lună": limita unui om, pe Pro și Business. Serverul spune dacă trece de întrebările pachetului.
+  setUserAiLimita: (id: number, limita: number | null) => api<any>(`/api/users/${id}/ai-limita`, { method: 'PUT', body: { limita } }),
   // Rolurile firmei: cele standard (cu numele date de firmă) + rolurile proprii.
   companyRoles: () => api<any[]>('/api/company-roles'),
   // ── Administrarea firmei (lotul 2): Roluri, Adrese de email, Istoric activitate, Aparate GPS ──
@@ -558,6 +562,12 @@ export const Api = {
   insightNotite: () => api<any>('/api/insight/notite'),
   saveInsightNotite: (text: string) => api<any>('/api/insight/notite', { method: 'PUT', body: { text } }),
   // Paginile din „Pagini" și ghidul: cifrele și textele le scrie serverul. `q`: luna / saptamana, grupa.
+  // Pachetele RA Insight: „Vezi pachetele", trecerea (textul de la server, bifa, 409 cu textul nou), „Pachet și conturi", „Sursă externă" pe firmă.
+  insightPachete: () => api<any>('/api/insight/pachete'),
+  insightPachetTrecere: (cod: string) => api<any>('/api/insight/pachet-trecere?cod=' + encodeURIComponent(cod)),
+  insightPachetTrecereConfirma: (b: { cod: string; text: string; acord: boolean }) => api<any>('/api/insight/pachet-trecere', { method: 'POST', body: b }),
+  insightPachetConturi: () => api<any>('/api/insight/pachet-conturi'),
+  insightSursaFirma: (pornita: boolean) => api<any>('/api/insight/sursa-externa', { method: 'PUT', body: { pornita } }),
   insightRamuri: () => api<any>('/api/insight/ramuri'),
   insightSafeDrive: (q?: Record<string, string>) => api<any>('/api/insight/safe-drive' + cuParam(q)),
   insightCombustibil: (q?: Record<string, string>) => api<any>('/api/insight/combustibil' + cuParam(q)),

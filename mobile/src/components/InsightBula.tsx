@@ -17,6 +17,7 @@ export type Laturi = {
   nota: (m: any, v: number) => void;         // 👍 / 👎
   propunere: (m: any, id: any, nou: any, urmator: any) => void;
   editeaza: (t: string) => void;             // pune întrebarea înapoi în casetă
+  pachete?: () => void;                      // „Vezi pachetele": doar administratorul firmei
 };
 
 // Copierea: fără clipboard (unele WebView-uri îl refuză), se încearcă pe calea veche.
@@ -71,12 +72,15 @@ function Inteles({ lista }: { lista: any[] }) {
     </div>
   );
 }
-// Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli" = „+". „Vezi pachetele" intră odată cu ecranul lor.
+// Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli" = „+"; „Vezi pachetele" doar la administratorul firmei.
 function CasetaLimita({ text, l }: { text: string; l: Laturi }) {
   return (
     <div class="chat-lim">
       <Md text={text} />
-      <div class="chat-lim-b"><ButonProp text="Alege ce vrei să afli" ic="plus" onClick={l.plus} /></div>
+      <div class="chat-lim-b">
+        <ButonProp text="Alege ce vrei să afli" ic="plus" onClick={l.plus} />
+        {l.pachete ? <ButonProp text="Vezi pachetele" ic="layers" onClick={l.pachete} /> : null}
+      </div>
     </div>
   );
 }

@@ -349,7 +349,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   fac", Haiku gândește mai mult, își face singur comparația și răspunde mereu în forma „Ce s-a întâmplat → De ce → Ce poți face". Recomand
   varianta 1 (la toate pachetele cu AI). Oricare ar fi, pleacă butonul „Analiza aprofundată" din RA Insight · control și bugetele de
   Sonnet din pachete.
-- [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** (1) Oferta pe telefon are încă
+- [ ] **Robert: telefonul și pachetele RA Insight (APK-ul următor). Adăugat pe 14.10 (pașii 5–6).** **02.11: codul e gata (punctele 1–4); rămâne APK-ul.** (1) Oferta pe telefon are încă
   „RA Insight — preț pe cont" și „Conturi": trebuie înlocuite cu alegerea pachetului (Start / Basic / Pro / Business) și prețul
   lui, câmpurile `aiPachet` și `pPachet` pe care le dă serverul. Până atunci, bifa veche e citită ca Basic, ca oferta să nu piardă
   RA Insight. (2) „Vezi pachetele" cu butoanele „Alege …" și fereastra de confirmare (textul de la server, bifa, „Trec la …"),
@@ -359,7 +359,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
   (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
-- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Rămân 8, 10, 11, 15 și din 7 „Pachet și conturi".** Pe web sunt gata;
+- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Rămân 15 și capătul lui 14 (ecranul Alerte).** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
@@ -523,6 +523,22 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-02
 
+### AMÂNDOI · Telefonul, lotul 3: pachetele RA Insight, conturile, oferta și „RA Insight · control" (cod gata, intră în aplicație cu APK-ul următor)
+
+**Ce am schimbat:** la client: „Vezi pachetele" (cartonașele, ce primește fiecare, comparația) cu „Alege" și confirmarea cu textul exact de la server și bifa; „Pachet și conturi" (rezumatul, cine are RA Insight, „Fără limită / Cel mult … pe lună"
+pe Pro și Business, „Sursă externă" pentru toată firma, schimbările de pachet cu PDF). Administratorul fără cont RA Insight intră și el. În Utilizatori, pe o firmă cu pachet, doar eticheta „RA Insight" și drumul spre „Pachet și conturi"; bagheta rămâne pe regula veche și la noi. La noi:
+oferta alege unul din cele patru pachete, cu prețul lui, în locul „preț pe cont" și „Conturi"; ofertele vechi se redeschid pe Basic, ca pe web. În fișa firmei, „întrebări pe cont" și limita AI apar doar pe regula veche, iar fila „Acces" alege pachetul. „Utilizare RA Insight" a devenit
+„RA Insight · control", sus în meniu: cele 4 cifre, soldul, „Ce cere atenție", un rând pe firmă, „Sursă externă", istoricul. Cartonașele vechi au ieșit. Telefoanele vechi merg în continuare: serverul le citește bifa veche ca Basic.
+Singura excepție de la „telefonul nu socotește": „Ne rămân" (totalul și procentul nu vin de la server), cu formula paginii, legată prin probă. „Proba modelelor" și „Cheia Anthropic" rămân doar pe web. Păzit de verify_telefon_pachete.js (nou, în `npm test`) și verify_insight_bani.js (rescrisă pe pagina nouă).
+
+**Încercat:** pe serverul local, la 375 px: „Vezi pachetele" și „Pachet și conturi" pe o firmă cu regula veche. Toate felurile de firmă și de om (Start, Basic, Pro, regula veche; administrator cu și fără cont, manager, fondator), prin probă, pe server pornit; nimeni de la o firmă nu primește costuri. **Neîncercat:** pe un telefon adevărat.
+
+**Ce vede fondatorul:** după APK, oferta cu pachete, fila „Acces" cu pachetul și „RA Insight · control".
+
+**Ce vede clientul:** după APK, „Vezi pachetele" și „Pachet și conturi", ca pe web, doar administratorul firmei.
+
+- **Găsit pe drum, de întrebat:** (1) În ofertă, comutatoarele Tahograf, e-Transport și agenți se desenează turtite. (2) Utilizatori, Șoferi și Grupe n-au margine laterală la 360 px: cartonașele ating marginea ecranului. (3) Pe tema deschisă, câteva etichete din Utilizatori și fișa firmei sunt sub contrastul de 4,5 (3,09–4,45).
+
 ### AMÂNDOI · Telefonul, lotul 2: paginile RA Insight; fila veche „AI Raport" scoasă (cod gata, intră în aplicație cu APK-ul următor)
 
 **Ce am schimbat:** în sertarul RA Insight, „Pagini": Șoferi pe mașini (cu „Aplică cele bifate" și „Anulează"), RA Drive (cu prețurile și „Am vorbit cu el", doar cu drepturile date de
@@ -538,7 +554,7 @@ iar rutele lor pe server pornit, prin probă. **Neîncercat:** pe un telefon ade
 
 **Ce vede clientul:** după APK, aceleași pagini ca pe web, în funcție de pachet.
 
-- **Găsit pe drum, întrebat (nu reparat):** (1) Textele de la server spun „Management › Șoferi", iar meniul telefonului spune „Administrare". (2) Pe tema deschisă a telefonului, butoanele PDF / Excel și
+- **Găsit pe drum (Robert, 02.11: „după lotul 4"):** (1) Textele de la server spun „Management › Șoferi", iar meniul telefonului spune „Administrare". (2) Pe tema deschisă a telefonului, butoanele PDF / Excel și
   cifrele din Rapoarte sunt verzi pe alb (contrast 1,73), iar etichetele din bara de jos au 4,23. (3) Atingerea anunțului „Scrisoarea de luni" deschide scrisoarea, dar anunțul rămâne necitit: serverul nu-i trimite
   numărul prin push.
 

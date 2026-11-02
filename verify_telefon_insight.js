@@ -129,15 +129,14 @@ sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
     T('„+" (' + (r ? 'cu' : 'fără') + ' rapoarte): aceleași rânduri', a.t === 'Adaugă' && J(a.l.map((x) => [x.text, x.sub, x.k])) === J(b.map((x) => [x.text, x.sub, x.k])), J(b));
   });
   T('titlurile foilor, ca pe web', ["'Adaugă'", "'Alege mașina'", "'Alege perioada'", "'Ce raport fac?'", "'RA Insight'"].every((t) => INSP.indexOf('_chatAlege(btn, ' + t) >= 0 && S.ecran.indexOf('titlu: ' + t) >= 0));
-  // „⋯": ce vine în lotul ăsta, cu aceleași cuvinte și în aceeași ordine ca pe web. „Pachet și conturi" și „Ghidul" vin cu ecranele lor.
+  // „⋯": cu aceleași cuvinte și în aceeași ordine ca pe web. Regula lui „Pachet și conturi" (administratorul firmei): verify_telefon_pachete.js.
   const meniuWeb = taie(INSP, 'window.insightMeniu = function (btn) {', "window._chatAlege(btn, 'RA Insight'");
-  const lb = L.listaMeniu({ areConv: true, poateAgenti: true }).map((x) => x.text);
+  const lb = L.listaMeniu({ areConv: true, poateAgenti: true, poatePachet: true }).map((x) => x.text);
   const laWeb = lb.map((t) => meniuWeb.indexOf("text: '" + t + "'"));
   T('meniul „⋯": fiecare rând există pe web, în aceeași ordine', laWeb.every((x) => x >= 0) && laWeb.every((x, i) => !i || x > laWeb[i - 1]), J(lb) + ' ' + J(laWeb));
   T('…fără conversație deschisă: notițele, agenții, ghidul', J(L.listaMeniu({ areConv: false, poateAgenti: true }).map((x) => x.k)) === J(['notite', 'agenti', 'ghid']) && J(L.listaMeniu({ areConv: false, poateAgenti: false }).map((x) => x.k)) === J(['notite', 'ghid']));
   T('…pe o pagină: „Conversație nouă" da, redenumirea și ștergerea nu (ca pe web: `S.ramura === \'general\'`)', J(L.listaMeniu({ areConv: true, peRamura: true, poateAgenti: true }).map((x) => x.k)) === J(['nou', 'notite', 'agenti', 'ghid']) && /var id = S\.ramura === 'general' && S\.conv && S\.conv\.id;/.test(meniuWeb));
-  T('…„Pachet și conturi" nu apare în lotul ăsta (ecranul lui vine după)', !/Pachet și conturi/.test(faraComentarii(S.lib + S.ecran + S.pagLib + S.pagini)));
-  T('…„Vezi pachetele" nu apare în lotul ăsta, nici pe cartonașul încuiat', !/Vezi pachetele/.test(faraComentarii(S.lib + S.ecran + S.pagLib + S.pagini + S.bula)));
+  T('…„Pachet și conturi" doar cu dreptul', L.listaMeniu({ areConv: true, poateAgenti: true }).every((x) => x.k !== 'pachet') && L.listaMeniu({ areConv: false, poateAgenti: false, poatePachet: true }).some((x) => x.k === 'pachet'));
   T('…nota de jos, ca pe web', INSP.indexOf(L.NOTA_MENIU) >= 0, L.NOTA_MENIU);
   T('…„Setările agenților": aceeași condiție ca pe web, duce la ecranul agenților',
     /u\.features && u\.features\.agents !== false && u\.permissions && u\.permissions\.viewReports/.test(meniuWeb) && /u\?\.features && u\.features\.agents !== false && u\?\.permissions\?\.viewReports/.test(S.ecran) && /x\.k === 'agenti'\) du\('\/ai-agents'\)/.test(S.ecran));
@@ -454,7 +453,7 @@ function parteaCererilor() {
     && /\/api\/insight\/actiuni\/'/.test(S.endpoints) && /'\/api\/insight\/actiuni\/'/.test(INSP) && /'\/feedback'/.test(S.endpoints) && /'\/feedback'/.test(INSP));
   T('serverul le are pe toate', ['/api/insight/intreaba', '/api/insight/conversatii', '/api/insight/conversatii/:id', '/api/insight/mesaje/:id/feedback', '/api/insight/notite', '/api/insight/azi', '/api/insight/rapoarte',
     '/api/insight/actiuni/:id/aplica', '/api/insight/actiuni/:id/refuza', '/api/insight/actiuni/:id/anuleaza', '/api/insight/actiuni/:id/dovezi'].every((r) => server.indexOf("'" + r + "'") >= 0));
-  T('un `pagina` din răspuns deschide pagina, ca pe web, doar dacă omul e încă pe discuție; una necunoscută se ignoră', J(L.RAMURI_PE_TELEFON) === J(LP.RAMURI.map((r) => r.k)) && L.RAMURI_PE_TELEFON.indexOf('soferi') >= 0 && /j\.pagina && RAMURI_PE_TELEFON\.indexOf\(String\(j\.pagina\)\) >= 0\) setTimeout\(\(\) => \{ if \(window\.location\.pathname === '\/insight'\) loc\.route\(rutaRamura\(j\.pagina\)\); \}, 450\)/.test(S.ecran) && /if \(j\.pagina === 'soferi'\) setTimeout\(function \(\) \{ if \(S\.ramura === 'general'\) window\.insightRamura\('soferi'\); \}, 450\);/.test(ins));
+  T('un `pagina` din răspuns deschide pagina, ca pe web, doar dacă omul e încă pe discuție; una necunoscută se ignoră', J(L.RAMURI_PE_TELEFON) === J(LP.RAMURI.map((r) => r.k).concat(['pachet'])) && L.RAMURI_PE_TELEFON.indexOf('soferi') >= 0 && /j\.pagina && RAMURI_PE_TELEFON\.indexOf\(String\(j\.pagina\)\) >= 0\) setTimeout\(\(\) => \{ if \(window\.location\.pathname === '\/insight'\) loc\.route\(rutaRamura\(j\.pagina\)\); \}, 450\)/.test(S.ecran) && /if \(j\.pagina === 'soferi'\) setTimeout\(function \(\) \{ if \(S\.ramura === 'general'\) window\.insightRamura\('soferi'\); \}, 450\);/.test(ins));
   T('la o eroare, corpul serverului ajunge în bulă (`reply`), iar conversația dispărută se uită', /if \(e\.status === 404\) \{ setConv\(null\); convCurenta = null; \}/.test(S.ecran) && /r\.s === 404\) \{ S\.conv = null; window\._raxConvId = null; \}/.test(ins) && /new ApiError\(status, \(data && data\.error\) \|\| \('Eroare ' \+ status\), data\)/.test(S.client));
   T('conversația rămâne ținută minte cât trăiește aplicația (web: _raxConvId) și se redeschide la întoarcerea pe ecran', /incarcaConv\(convCurenta\)/.test(S.ecran) && /let convCurenta/.test(S.ecran));
   T('fără cont: textul serverului, din amândouă formele (200 cu cheie, 403 cu sesiune)', L.textFaraLoc({ seatMissing: true, message: 'M' }) === 'M' && L.textFaraLoc({ error: 'ai_seat_missing', reply: 'R' }) === 'R' && L.textFaraLoc({ conversatii: [] }) === null && /e\.status === 403 \|\| e\.status === 401/.test(S.ecran));
@@ -645,6 +644,7 @@ function parteaDesenului() {
     '../app/store': { me, showToast() {} }, '../lib/export': { exportHistoryReport() {} },
     '../api/endpoints': { Api: new Proxy({}, { get: () => () => new Promise(() => {}) }) },
     '../components/FlotaUi': { Confirma: () => null }, './FlotaUi': { Confirma: () => null }, '../lib/inapoiFoaie': { useInapoiInchide() {}, dupaInapoi(f) { f(); } },
+    '../components/InsightPachet': { PaginaPachete: () => null, PaginaPachetConturi: () => null },   // paginile lor: verify_telefon_pachete.js
   };
   const mem = {};
   const inc = (rel) => {
@@ -1143,7 +1143,7 @@ async function parteaPaginilor() {
   T('foile din pagini se închid tot cu „înapoi"', /useInapoiInchide\(!!sheet,/.test(S.pagini));
   T('conversația rămâne (id și ce e scris în casetă) cât stai pe o pagină', /let ciornaMem = '';/.test(S.ecran) && /useState\(ciornaMem\)/.test(S.ecran) && /\[mesaje\.length, trimitere, ramura\]/.test(S.ecran));
   T('„Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul scris, nu trimis', /function intreabaDespre\(inceput: string\) \{[\s\S]{0,240}setText\(String\(inceput \|\| ''\)\);[\s\S]{0,160}du\('\/insight', true\);/.test(S.ecran) && !/intreabaDespre[\s\S]{0,240}trimite\(/.test(S.ecran.slice(S.ecran.indexOf('function intreabaDespre'), S.ecran.indexOf('function intreabaDespre') + 300)));
-  T('o pagină de la Basic nu cere nimic până nu știe pachetul (pe Start, cartonașul încuiat)', /!qGata && rPag && rPag\.pachet \?/.test(S.ecran) && /ramuraIncuiata\(rPag, stare\.pachet\) \? <PaginaIncuiata k=\{ramura\} \/>/.test(S.ecran));
+  T('o pagină de la Basic nu cere nimic până nu știe pachetul (pe Start, cartonașul încuiat)', /!qGata && rPag && rPag\.pachet \?/.test(S.ecran) && /ramuraIncuiata\(rPag, stare\.pachet\) \? <PaginaIncuiata k=\{ramura\} laPachete=\{admin \? vedePachetele : undefined\} \/>/.test(S.ecran));
   T('numerele: din /api/insight/ramuri, la intrare și după ce s-a schimbat ceva', /Api\.insightRamuri\(\)/.test(S.ecran) && /numere: incarcaNumere/.test(S.ecran) && /setX\(s\); l\.numere\(\);/.test(S.pagini));
   // Pe ecran: cartonașele, fără ieșire în lături.
   const cssMic = S.css.slice(S.css.indexOf('@media (max-width: 600px)'));

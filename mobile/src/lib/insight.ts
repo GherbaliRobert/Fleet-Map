@@ -24,7 +24,8 @@ export const PERIOADE = [
 
 // Paginile din „Pagini" (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine"
 // le deschid. O pagină încuiată (Start): „Actele" din „Azi la tine" pleacă drept întrebare, ca pe web.
-export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k);
+// „pachet" = „Pachet și conturi" (web: `S.ramura === 'pachet'`, doar administratorul firmei; ceilalți rămân pe discuție).
+export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k).concat(['pachet']);
 
 // Prenumele din salut. O adresă de email nu e un prenume.
 export function prenumeDin(fullName: any): string {
@@ -238,10 +239,12 @@ export function listaPlus(poateRapoarte: boolean) {
   if (poateRapoarte) l.push({ text: 'Raport', sub: 'îl fac și-l pun în Istoric', ic: 'report', k: 'r' });
   return l;
 }
-// Meniul „⋯". „Pachet și conturi" intră odată cu ecranul lui. Redenumirea și ștergerea: doar pe o conversație deschisă, nu pe o pagină.
-export function listaMeniu(o: { areConv: boolean; peRamura?: boolean; poateAgenti: boolean }) {
+// Meniul „⋯". „Pachet și conturi": administratorul firmei (web: `esteAdmin() && (S.pachet || S.faraLoc)`). Redenumirea și ștergerea:
+// doar pe o conversație deschisă, nu pe o pagină.
+export function listaMeniu(o: { areConv: boolean; peRamura?: boolean; poateAgenti: boolean; poatePachet?: boolean }) {
   const l: { text: string; ic: string; k: string; sep?: boolean; rosu?: boolean }[] = [];
   if (o.areConv || o.peRamura) l.push({ text: 'Conversație nouă', ic: 'plus', k: 'nou' });
+  if (o.poatePachet) l.push({ text: 'Pachet și conturi', ic: 'layers', k: 'pachet' });
   l.push({ text: 'Notițele firmei', ic: 'note', k: 'notite' });
   if (o.poateAgenti) l.push({ text: 'Setările agenților', ic: 'robot', k: 'agenti' });
   l.push({ text: 'Ghidul aplicației', ic: 'book', k: 'ghid' });

@@ -4,8 +4,8 @@
    Verdele aplicației (#3FE07D) nu e redefinit pe tema luminoasă: pe alb, scrisul mic verde nu se citește. De aceea
    orice text verde de aici folosește --fd-ok (mai închis pe luminos), la fel portocaliul mic (--fd-warn). */
 /* Roșul SCRISULUI pe tema închisă e mai deschis decât --red: pastila mică („casat", „defect") avea 4,36:1 (29.09). */
-:root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: #f87171; }
-:root[data-theme="light"] { --fd-ok: #0E7A3C; --fd-warn: #b45309; --fd-bad: #b91c1c; }
+:root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: #f87171; --fd-info: #60a5fa; }
+:root[data-theme="light"] { --fd-ok: #0E7A3C; --fd-warn: #b45309; --fd-bad: #b91c1c; --fd-info: #1d4ed8; }
 
 .fd-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 0 0 10px; }
 .fd-note b { color: var(--text-secondary); }
@@ -118,3 +118,51 @@
 
 /* Codul unei chei API (se arată o singură dată) */
 .fd-cheie { font-size: 13px; word-break: break-all; color: var(--fd-ok); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 8px 0; user-select: all; -webkit-user-select: all; }
+
+/* ── „RA Insight · control" (lotul 3): cele patru cifre, „Ce cere atenție", un rând pe firmă, „Sursă externă". ── */
+.aiu-tile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 4px; }
+.aiu-tila { min-width: 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.aiu-tila .k { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+.aiu-tila .v { font-size: 17px; font-weight: 800; line-height: 1.25; margin: 2px 0; color: var(--text-primary); overflow-wrap: anywhere; }
+.aiu-tila .v.ok { color: var(--fd-ok); }
+.aiu-tila .v.bad { color: var(--fd-bad); }
+.aiu-tila .s { font-size: 12px; color: var(--text-secondary); line-height: 1.4; overflow-wrap: anywhere; }
+.aiu-l { padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: var(--fd-ok); text-decoration: underline; text-underline-offset: 2px; }
+.aiu-at { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-size: 13px; line-height: 1.5; color: var(--text-primary); border: 1px solid var(--border); border-left: 3px solid #2563eb; border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; background: var(--bg-panel); }
+.aiu-at > span { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.aiu-at > svg { flex: none; color: var(--fd-info); }
+.aiu-at.ok { border-left-color: #16a34a; } .aiu-at.ok > svg { color: var(--fd-ok); }
+.aiu-at.warn { border-left-color: #d97706; } .aiu-at.warn > svg { color: var(--fd-warn); }
+.aiu-at.bad { border-left-color: #dc2626; } .aiu-at.bad > svg { color: var(--fd-bad); }
+.aiu-firma { padding: 0; }
+.aiu-firma-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; width: 100%; padding: 12px 12px 4px; text-align: left; background: transparent; border: none; font-family: inherit; color: var(--text-primary); }
+.aiu-firma-cap b { flex: 1 1 120px; min-width: 0; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.aiu-firma-cap svg { flex: none; color: var(--text-secondary); }
+.aiu-firma-fol { padding: 2px 12px; font-size: 13px; color: var(--text-secondary); }
+.aiu-b { height: 100%; }
+.aiu-b.mov { background: #a78bfa; } .aiu-b.warn { background: var(--orange); } .aiu-b.bad { background: var(--red); }
+.aiu-kv { margin: 4px 0 0; padding: 0 12px 10px; }
+.aiu-kv > div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; }
+.aiu-kv dt { color: var(--text-secondary); flex: none; }
+.aiu-kv dd { margin: 0; text-align: right; color: var(--text-primary); min-width: 0; overflow-wrap: anywhere; }
+.aiu-kv dd.ok b { color: var(--fd-ok); } .aiu-kv dd.bad b { color: var(--fd-bad); }
+.aiu-det { padding: 10px 12px 12px; border-top: 1px solid var(--border); font-size: 13px; line-height: 1.5; color: var(--text-primary); overflow-wrap: anywhere; }
+.aiu-pk-r { margin-bottom: 8px; }
+.aiu-sem { display: flex; gap: 6px; align-items: flex-start; margin-top: 5px; }
+.aiu-sem svg { flex: none; margin-top: 3px; }
+.t-ok { color: var(--fd-ok); } .t-warn { color: var(--fd-warn); } .t-bad { color: var(--fd-bad); } .t-mut, .t-sec { color: var(--text-secondary); }
+.fd-sec.aiu-t { margin: 12px 0 4px; }
+.aiu-soc { margin: 3px 0; }
+.aiu-om { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--border); }
+.aiu-om-n { flex: 1 1 100%; min-width: 0; font-weight: 700; }
+.aiu-ult { margin: 10px 0 8px; font-size: 12px; color: var(--text-secondary); }
+.aiu-ctl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.aiu-se { margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--border-light, var(--border)); border-radius: 12px; }
+.aiu-se-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; color: var(--text-primary); }
+.aiu-se-h svg { color: var(--fd-info); flex: none; }
+.aiu-se-h span { font-size: 12.5px; color: var(--text-secondary); }
+.aiu-se-b { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.aiu-se-m { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
+.aiu-se-m.t-bad { color: var(--fd-bad); }
+/* Pe tema deschisă, --text-muted iese sub 4,5 pe fundalurile de aici. */
+.aiu-nota { color: var(--text-secondary); }

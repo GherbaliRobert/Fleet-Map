@@ -135,7 +135,7 @@ const P = {
   stoc: doarSuper(StocEchipamente, 'Stoc echipamente'),   // stocul nostru: ce avem, unde e, al cui e
   tachoFirme: doarSuper(TachoOverview, 'Tahograf'),
   etransportFirme: doarSuper(EtransportOverview, 'e-Transport'),
-  aiUsage: doarSuper(AiUsage, 'Utilizare RA Insight'),
+  aiUsage: doarSuper(AiUsage, 'RA Insight · control'),
   // Serverul lasă cheile API și adminului de firmă (requireAdmin), dar pe telefon ecranul e al nostru: cheile le dăm noi.
   apiKeys: doarSuper(ApiKeys, 'Chei API'),
   audit: doarSuper(AuditLog, 'Jurnal audit'),
