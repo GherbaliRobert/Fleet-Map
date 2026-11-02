@@ -15,7 +15,7 @@ export function ButonProp({ text, ic, prim, disabled, onClick }: { text: string;
 }
 
 // „Anulează · mai ai 9:58", numărat pe ecran; la capăt butonul pleacă (serverul refuză oricum după cele 10 minute).
-function CeasAnulare({ ramasMs, disabled, onClick }: { ramasMs: number; disabled: boolean; onClick: () => void }) {
+export function CeasAnulare({ ramasMs, disabled, onClick }: { ramasMs: number; disabled: boolean; onClick: () => void }) {
   const capat = useRef(Date.now() + Math.max(0, Number(ramasMs) || 0));
   const [ramas, setRamas] = useState(capat.current - Date.now());
   useEffect(() => {

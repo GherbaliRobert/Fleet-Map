@@ -971,6 +971,7 @@ ieșit; `/ai` duce în `/insight`; ruta veche `/api/ai/chat` rămâne pentru tel
 - **`RAMURI_PE_TELEFON`** = paginile construite pe telefon: butonul spre o pagină care nu e în listă nu se desenează, iar un `pagina` din răspuns se ignoră. O pagină nouă pe telefon se adaugă acolo.
 - **Unde telefonul face dinadins altfel:** tastatura nu se deschide singură după răspuns; copiază / 👍 / 👎 stau la vedere; amănuntul pachetului se deschide la apăsare; „Sursă externă" = globul + „7 din 10". Casetele au 16 px.
 - `client.ts` ține în `ApiError.data` corpul erorii (`propunere` la 409, `reply` la 404).
+- **Paginile (lotul 2):** `/insight/:ramura`; `lib/insightPagini.ts` face din fiecare răspuns al serverului blocuri, iar `components/InsightPagini.tsx` e SINGURUL care le desenează. Fila „AI Raport" a ieșit din Rapoarte (`InsightPanel`, `ChatScreen`, `chat.css` șterse); `/api/ai/reports-agent`, `/api/insight/presets|run` și `/api/ai/chat` rămân pe server pentru telefoanele vechi.
 
 ### Pasul 2, partea 1 (22.10): ȘOFERII PE MAȘINI — „RA Insight face, cu Da-ul tău" (Alin: „da" la flux; „Da"-ul nenumărat; de la Basic)
 Construit după macheta din 21.10 (PDF-ul „Proba modelelor, garanția și machetele", capitolul 3: M1, M2, M4, M5). RA Insight

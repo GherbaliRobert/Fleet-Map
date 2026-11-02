@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import type { ReportTypeInfo, ReportResult, ReportOpts } from '../api/endpoints';
-import { vehicles, showToast, lastNotif, ecranAscuns } from '../app/store';
+import { vehicles, showToast, lastNotif, ecranAscuns, me } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
-import { InsightPanel } from '../components/InsightPanel';
+import { Gros } from '../components/InsightText';
 import { exportReport, exportHistoryReport } from '../lib/export';
 import { raCauta } from '../lib/format';
 import './reports.css';
@@ -45,7 +45,9 @@ export function Reports() {
   const [job, setJob] = useState<{ id: string; label: string; status: 'running' | 'done' | 'error'; historyId?: number } | null>(null); // badge „se generează în fundal"
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
-  const [tab, setTab] = useState<'rapoarte' | 'insight'>('rapoarte');
+  // „Rezumă cu RA Insight": rezumatul stă deasupra raportului; un raport nou îl șterge (ca pe web, #rep-rezumat).
+  const [rezumat, setRezumat] = useState<{ busy?: boolean; titlu?: boolean; text?: string } | null>(null);
+  useEffect(() => { setRezumat(null); }, [res]);
   // ── Opțiuni de raport (per tip) + interval personalizat + filtru zile/ore ──
   const [showOpts, setShowOpts] = useState(false);
   const [customFrom, setCustomFrom] = useState(''); // YYYY-MM-DD
@@ -115,6 +117,17 @@ export function Reports() {
       if (c.length >= 10) return c;   // peste 10 coloane, tabelul devine ilizibil pe telefon
       return [...c, k];
     });
+  }
+
+  // Același drum ca pe web: tabelul de pe ecran (cel mult 60 de rânduri) → /api/ai/report-summary; textul îl scrie serverul.
+  async function rezuma() {
+    const rows = (res && res.rows ? res.rows : []).slice(0, 60).map((r) => r.map((c) => (c == null ? '' : String(c))));
+    if (!rows.length) { setRezumat({ text: 'Generează întâi raportul, apoi apasă din nou.' }); return; }
+    setRezumat({ busy: true });
+    let j: any = {};
+    try { j = await Api.rezumatRaport({ columns: (res && res.columns) || [], rows }); }
+    catch (e: any) { j = (e && e.data) || { error: 'Eroare de rețea: ' + (e && e.message) }; }
+    setRezumat({ titlu: true, text: String(j.summary || j.reply || j.message || j.error || 'Nu am putut face rezumatul acum.') });
   }
 
   function toggleDay(k: string) { setFdays((c) => c.includes(k) ? c.filter((x) => x !== k) : [...c, k]); }
@@ -238,13 +251,7 @@ export function Reports() {
   return (
     <div class="screen">
       <header class="app-header"><div class="h-title">Rapoarte</div><button class="h-btn" onClick={openHist} aria-label="Istoric rapoarte"><Icon name="clock" /></button></header>
-      {/* RA Insight tăiat de firmă din rol (ecranul „insight") → fără filă; rămâne doar lista de rapoarte. */}
-      {!ecranAscuns('insight') && <div class="rp-tabs">
-        <button class={'rp-tab' + (tab === 'rapoarte' ? ' on' : '')} onClick={() => setTab('rapoarte')}><Icon name="report" size={16} /> Rapoarte</button>
-        <button class={'rp-tab' + (tab === 'insight' ? ' on' : '')} onClick={() => setTab('insight')}><Icon name="sparkles" size={16} /> RA Insight</button>
-      </div>}
       <div class="content has-tabbar">
-        {tab === 'insight' && !ecranAscuns('insight') ? <InsightPanel /> : (<>
         <div class="rp-controls">
           <button class="rp-pick" onClick={() => { setTq(''); setSheet('type'); }}>
             <Icon name="report" size={20} class="ic" />
@@ -387,6 +394,18 @@ export function Reports() {
                 {exporting === 'xlsx' ? <span class="spin" /> : <Icon name="fileBar" size={16} />} Excel
               </button>
             </div>
+            {/* Cererile în cuvinte stau în RA Insight (meniu); aici, ca pe web, doar rezumatul raportului de pe ecran. */}
+            {me.value?.features?.ai_assistant !== false && !ecranAscuns('insight') && (
+              <button class="rp-rez-btn" disabled={!!(rezumat && rezumat.busy)} title="Rezumat executiv cu RA Insight" onClick={rezuma}>
+                {rezumat && rezumat.busy ? <span class="spin" /> : <Icon name="sparkles" size={16} />} Rezumă cu RA Insight
+              </button>
+            )}
+            {rezumat && !rezumat.busy && (
+              <div class="rp-rezumat">
+                {rezumat.titlu && <div class="rp-rezumat-t"><Icon name="sparkles" size={14} /> Rezumat</div>}
+                {String(rezumat.text || '').split('\n').map((ln) => <div><Gros text={ln} /></div>)}
+              </div>
+            )}
             {res.summary && Object.keys(res.summary).length > 0 && (
               <div class="rp-summary">
                 {Object.entries(res.summary).map(([k, v]) => <div class="rp-kpi"><div class="v">{String(v)}</div><div class="l">{k}</div></div>)}
@@ -450,7 +469,6 @@ export function Reports() {
             )}
           </>
         )}
-        </>)}
       </div>
 
       {/* Sheet: tip raport */}
@@ -512,7 +530,7 @@ export function Reports() {
                   : hist.map((h) => (
                     <button class="sh-item hist-item" onClick={() => viewHist(h)}>
                       <div class="hist-main">
-                        <div class="hist-nm">{h.label || h.report_type}</div>
+                        <div class="hist-nm">{h.status === 'insight' && <span class="rh-ins" title="Cerut în cuvinte, din RA Insight"><Icon name="sparkles" size={11} /> din RA Insight</span>}{h.label || h.report_type}</div>
                         <div class="hist-sub">{fmtHist(h.generated_at)} · {h.vehicle_count || 0} veh.</div>
                       </div>
                       <span class="hist-act" onClick={(e) => histExport(h, 'xlsx', e)} aria-label="Excel">{histExp === h.id + '-xlsx' ? <span class="spin" style="width:14px;height:14px" /> : <Icon name="fileBar" size={15} />}</span>

@@ -1,33 +1,37 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useLocation } from 'preact-iso';
+import { useLocation, useRoute } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { me, showToast } from '../app/store';
 import { Icon, type IconName } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
 import { BulaAi, BulaOm, Urmari, type Laturi } from '../components/InsightBula';
+import { PaginaIncuiata, PaginaRamura, type LaPagina } from '../components/InsightPagini';
 import { Gros } from '../components/InsightText';
-import { useInapoiInchide } from '../lib/inapoiFoaie';
+import { dupaInapoi, useInapoiInchide } from '../lib/inapoiFoaie';
 import {
   CARDURI, CARDURI_REGULI, NOTA_MENIU, PERIOADE, RAMURI_PE_TELEFON,
   areAi, aziActiune, aziPrimul, butonSursa, cand, corpIntrebare, faraDiacritice, grup, listaMeniu, listaPlus, masiniAlegere, mesajDinRaspuns, mesajUrmator,
-  nivelAzi, placeholderCaseta, punInText, rutaButon, stareDinQuota, textFaraLoc, textSalut,
+  nivelAzi, placeholderCaseta, punInText, rutaButon, rutaRamura, stareDinQuota, textFaraLoc, textSalut,
 } from '../lib/insight';
+import { pagini, paginiDeschise, ramuraDupa, ramuraIncuiata, sumaNumere } from '../lib/insightPagini';
 import './admin.css';    // .fld, .frm-actions (foile)
 import './detail.css';   // .sheet*
 import './flota.css';    // Confirma
-import './chat.css';     // .chat-typing
 import './insight.css';
 
 // RA Insight pe telefon (02.11): discuția, ca secțiunea de pe web (public/index.html, blocul „secțiunea RA Insight"). Serverul
 // face tot — recunoaște mașina, ține minte, socotește, scrie textele; ecranul doar arată. Regulile de ecran stau în lib/insight.ts,
-// legate de pagină prin verify_telefon_insight.js. Paginile din „Pagini", „Vezi pachetele" și „Pachet și conturi" intră în loturile
-// următoare: un `pagina` dintr-un răspuns și butoanele spre ele se ignoră până atunci (RAMURI_PE_TELEFON).
+// legate de pagină prin verify_telefon_insight.js. O pagină din „Pagini" are adresa ei (/insight/combustibil): „Înapoi" duce la discuție.
+// „Vezi pachetele" și „Pachet și conturi" intră în loturile următoare.
 
 // Conversația deschisă rămâne ținută minte cât trăiește aplicația (web: window._raxConvId): ecranul se reface când te întorci
 // dintr-un raport, din Traseu sau din fișa mașinii. A altui om = 404, deci se pornește una nouă.
 let convCurenta: any = null;
 // Mașinile din „+", ținute minte 2 minute (web: _chatMasini).
 let masiniMem: { t: number; l: any[] } | null = null;
+// Ce e scris în casetă rămâne cât trăiește aplicația: te duci într-o pagină sau într-un raport și te întorci la întrebarea ta.
+let ciornaMem = '';
+let focusCiorna = false;   // „Întreabă RA Insight" dintr-o pagină: caseta ia cursorul când ajunge pe ecran
 
 type Rand = { text: string; sub?: string; ic?: string; pune?: string; k?: string; sep?: boolean; rosu?: boolean };
 type Foaie =
@@ -153,6 +157,11 @@ function Caseta({ taRef, text, onText, onEnter, placeholder, contor, sursa, laPl
 
 export function Insight() {
   const loc = useLocation();
+  const { params, query } = useRoute();
+  const ramuraCeruta = String((params as any).ramura || '');
+  const ramura = RAMURI_PE_TELEFON.indexOf(ramuraCeruta) >= 0 ? ramuraCeruta : null;   // altă adresă = discuția
+  const idCerut = Number((query as any)?.id);
+  const scrisoareId = ramura === 'scrisoare' && isFinite(idCerut) && idCerut > 0 ? idCerut : null;
   const u = me.value;
   const poateRapoarte = !!(u?.isSuper || u?.permissions?.viewReports);
   const poateAgenti = !!(u?.features && u.features.agents !== false && u?.permissions?.viewReports);
@@ -162,7 +171,8 @@ export function Insight() {
   const [mesaje, setMesaje] = useState<any[]>([]);
   const [lista, setLista] = useState<any[]>([]);
   const [faraLoc, setFaraLoc] = useState<string | null>(null);
-  const [text, setText] = useState('');
+  const [text, setTextS] = useState(ciornaMem);
+  const setText = (v: string) => { ciornaMem = v; setTextS(v); };
   const [trimitere, setTrimitere] = useState(false);
   const [sursaOn, setSursaOn] = useState(false);
   const [sertar, setSertar] = useState(false);
@@ -172,6 +182,9 @@ export function Insight() {
   const [detaliuFond, setDetaliuFond] = useState(false);
   const [jos, setJos] = useState(false);
   const [incarc, setIncarc] = useState(!!convCurenta);
+  const [qGata, setQGata] = useState(false);          // pachetul e știut: o pagină de la Basic poate alege dacă e încuiată
+  const [numere, setNumere] = useState<any>({});      // câte lucruri cer atenție în fiecare pagină (le numără serverul)
+  const [paginiCerut, setPaginiCerut] = useState(false);
   const convRef = useRef<any>(null); convRef.current = conv;
   const ocupat = useRef(false);
   const dinButoane = useRef(false);     // întrebarea e făcută doar din butoane → pleacă cu `buton: true`
@@ -183,11 +196,25 @@ export function Insight() {
 
   useInapoiInchide(sertar, () => { setSertar(false); return true; });
   useInapoiInchide(!!foaie, () => { setFoaie(null); return true; });
+  // Un drum pornit din sertar sau dintr-o foaie: întâi se închid ele (își scot intrarea din istoric), abia apoi se schimbă adresa,
+  // ca „Înapoi" dintr-o pagină să ducă direct la discuție.
+  const sertarRef = useRef(false); sertarRef.current = sertar;
+  const foaieRef = useRef(false); foaieRef.current = !!foaie;
+  const deMers = useRef<{ ruta: string; inlocuieste: boolean } | null>(null);
+  function du(ruta: string, inlocuieste = false) {
+    if (sertarRef.current || foaieRef.current) { deMers.current = { ruta, inlocuieste }; setSertar(false); setFoaie(null); }
+    else loc.route(ruta, inlocuieste);
+  }
+  useEffect(() => {
+    if (sertar || foaie || !deMers.current) return;
+    const d = deMers.current; deMers.current = null;
+    dupaInapoi(() => loc.route(d.ruta, d.inlocuieste));
+  }, [sertar, !!foaie]);
 
   async function incarcaPachet() {
     let r: any = null;
     try { r = await Api.aiQuota(); } catch { /* fără contor: rândul de jos nu apare */ }
-    setQ(r);
+    setQ(r); setQGata(true);
     const st = stareDinQuota(r, !!me.value?.isSuper);
     if (!st.sursaInfo || !st.sursaInfo.poate) setSursaOn(false);
   }
@@ -206,25 +233,48 @@ export function Insight() {
       }
     }
   }
-  function nou() {
-    setConv(null); setMesaje([]); convCurenta = null; setSursaOn(false); setSertar(false);
+  async function incarcaNumere() {
+    try { setNumere((await Api.insightRamuri()) || {}); } catch { setNumere({}); }   // pe Start nu se arată niciun număr
   }
-  async function deschide(id: any) {
+  function nou() {
+    setConv(null); setMesaje([]); convCurenta = null; setSursaOn(false);
+    if (ramura) du('/insight', true); else setSertar(false);
+  }
+  async function incarcaConv(id: any) {
+    setIncarc(true);
     try {
       const r: any = await Api.insightConversatie(id);
-      setConv(r.conversatie); setMesaje(r.mesaje || []); convCurenta = r.conversatie.id; setSursaOn(false); setSertar(false);
+      setConv(r.conversatie); setMesaje(r.mesaje || []); convCurenta = r.conversatie.id; setSursaOn(false);
     } catch {
       if (convCurenta === id) convCurenta = null;
       setConv(null); setMesaje([]);
     }
     setIncarc(false);
   }
+  async function deschide(id: any) {
+    await incarcaConv(id);
+    if (ramura) du('/insight', true); else setSertar(false);
+  }
+  // O pagină sau „Conversație nouă" din meniu: aceeași cale, iar dintr-o pagină în alta se înlocuiește adresa.
+  function deschidePagina(k: string) { du(rutaRamura(k), !!ramura); }
+  // „Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul întrebării scris (nu pleacă singură).
+  function intreabaDespre(inceput: string) {
+    setConv(null); setMesaje([]); convCurenta = null; setSursaOn(false);
+    setText(String(inceput || '')); dinButoane.current = false; focusCiorna = true;
+    du('/insight', true);
+  }
 
   useEffect(() => {
     incarcaPachet();
     incarcaLista('');
-    if (convCurenta) deschide(convCurenta);
+    incarcaNumere();
   }, []);
+  // Pe discuție: conversația ținută minte se redeschide (la întoarcerea dintr-un raport sau dintr-o pagină).
+  useEffect(() => {
+    if (ramura) return;
+    if (convCurenta && !(conv && conv.id === convCurenta)) incarcaConv(convCurenta); else setIncarc(false);
+    if (focusCiorna) { focusCiorna = false; setTimeout(() => { if (taRef.current) taRef.current.focus(); }, 60); }
+  }, [ramura]);
 
   // Tastatura: unde fereastra nu se strânge singură, caseta urcă deasupra ei.
   useEffect(() => {
@@ -236,7 +286,7 @@ export function Insight() {
   }, []);
 
   // Discuția se derulează jos doar când apare un mesaj nou, nu la 👍 sau la o apăsare pe un cartonaș.
-  useEffect(() => { const b = boxRef.current; if (b) { b.scrollTop = b.scrollHeight; arataJos(); } }, [mesaje.length, trimitere]);
+  useEffect(() => { const b = boxRef.current; if (b) { b.scrollTop = b.scrollHeight; arataJos(); } }, [mesaje.length, trimitere, ramura]);
   function arataJos() { const b = boxRef.current; if (b) setJos(b.scrollHeight - b.scrollTop - b.clientHeight > 220); }
 
   // `opt.buton` = întrebarea vine de pe un buton (cartonaș, continuare, alegere) sau e făcută doar din butoanele casetei: pe Basic /
@@ -267,8 +317,8 @@ export function Insight() {
       convCurenta = j.conversatieId;
     }
     setMesaje((l) => l.concat([mesajDinRaspuns(j)]));
-    // „Arată-mi potrivirea șoferilor": răspunsul rămâne în discuție, iar pagina se deschide singură — doar dacă e pe telefon.
-    if (j.pagina && RAMURI_PE_TELEFON.indexOf(String(j.pagina)) >= 0) setTimeout(() => loc.route('/insight/' + encodeURIComponent(String(j.pagina))), 450);
+    // „Arată-mi potrivirea șoferilor": răspunsul rămâne în discuție, iar pagina se deschide singură — dacă omul e încă pe discuție.
+    if (j.pagina && RAMURI_PE_TELEFON.indexOf(String(j.pagina)) >= 0) setTimeout(() => { if (window.location.pathname === '/insight') loc.route(rutaRamura(j.pagina)); }, 450);
     incarcaPachet();
     incarcaLista();
   }
@@ -320,10 +370,11 @@ export function Insight() {
   // „⋯": tot ce nu stă pe ecran, într-un singur loc.
   function meniu() {
     const id = conv && conv.id;
-    setFoaie({ fel: 'alege', titlu: 'RA Insight', items: listaMeniu({ areConv: !!id, poateAgenti }), nota: NOTA_MENIU, la: (x) => {
+    setFoaie({ fel: 'alege', titlu: 'RA Insight', items: listaMeniu({ areConv: !!id, peRamura: !!ramura, poateAgenti }), nota: NOTA_MENIU, la: (x) => {
       if (x.k === 'nou') nou();
       else if (x.k === 'notite') deschideNotite();
-      else if (x.k === 'agenti') loc.route('/ai-agents');
+      else if (x.k === 'agenti') du('/ai-agents');
+      else if (x.k === 'ghid') deschidePagina('ghid');
       else if (x.k === 'r') cereRedenumire(id);
       else if (x.k === 's') setFoaie({ fel: 'sterge', id });
     } });
@@ -383,7 +434,7 @@ export function Insight() {
     setCautaDeschis(!cautaDeschis);
   }
   function aziApasa(b: any) {
-    const a = aziActiune(b);
+    const a = aziActiune(b, stare.pachet);
     if (!a) return;
     if (a.ruta) loc.route(a.ruta);
     else if (a.trimite) trimite(a.trimite, a.buton ? { buton: true } : undefined);
@@ -398,13 +449,25 @@ export function Insight() {
     propunere,
     editeaza: (t) => { setText(String(t || '')); dinButoane.current = false; setTimeout(() => { if (taRef.current) taRef.current.focus(); }, 30); },
   };
+  // Ce pot face paginile: o întrebare nouă, un ecran al aplicației, altă pagină.
+  const lPag: LaPagina = {
+    numere: incarcaNumere,
+    act: (a) => {
+      if (a.fel === 'intreaba') intreabaDespre(a.inceput);
+      else if (a.fel === 'ecran') { const r = rutaButon({ fel: 'ecran', ecran: a.ecran }); if (r) loc.route(r); }
+      else if (a.fel === 'ramura') deschidePagina(a.k);
+    },
+  };
 
   const caseta = (
     <Caseta taRef={taRef} text={text} placeholder={placeholderCaseta(stare.peReguli, stare.pachet, poateRapoarte)} contor={stare.contor}
       sursa={butonSursa(stare.sursaInfo, stare.peReguli, sursaOn)} trimitere={trimitere}
       onText={(v) => { dinButoane.current = false; setText(v); }} onEnter={() => trimite()} laPlus={plus} laSursa={comutaSursa} laTrimite={() => trimite()} />
   );
-  const titlu = conv ? (conv.titlu || (lista.filter((c) => c.id === conv.id)[0] || {}).titlu || 'Conversație') : 'RA Insight';
+  const rPag = ramuraDupa(ramura);
+  const titlu = rPag ? rPag.et : (conv ? (conv.titlu || (lista.filter((c) => c.id === conv.id)[0] || {}).titlu || 'Conversație') : 'RA Insight');
+  const pagDesc = paginiDeschise(paginiCerut, ramura);
+  const totNumere = sumaNumere(numere, stare.pachet);
   const ult = mesaje[mesaje.length - 1];
   const urmari = ult && ult.rol !== 'user' && !trimitere && ult.extra && Array.isArray(ult.extra.urmari) ? ult.extra.urmari : [];
   let ultimulGrup: string | null = null;
@@ -412,7 +475,7 @@ export function Insight() {
   return (
     <div class={'screen insp' + (sertar ? ' st-deschis' : '')} ref={rootRef}>
       <header class="app-header">
-        <button class="h-btn" onClick={() => loc.route('/meniu')} aria-label="Înapoi"><Icon name="chevronL" /></button>
+        <button class="h-btn" onClick={() => { if (!ramura) loc.route('/meniu'); else if (history.length > 1) history.back(); else loc.route('/insight', true); }} aria-label="Înapoi"><Icon name="chevronL" /></button>
         <button class="h-btn" onClick={() => setSertar(!sertar)} title="Conversații" aria-label="Conversații"><Icon name="menu" /></button>
         <div class="h-title">{titlu}</div>
         <button class="h-btn" onClick={meniu} title="Mai multe" aria-label="Mai multe"><Icon name="ellipsis" /></button>
@@ -433,7 +496,7 @@ export function Insight() {
                 ultimulGrup = g;
                 return <>
                   {cap}
-                  <div class={'insp-conv' + (conv && conv.id === c.id ? ' act' : '')}>
+                  <div class={'insp-conv' + (!ramura && conv && conv.id === c.id ? ' act' : '')}>
                     <button type="button" class="t" onClick={() => deschide(c.id)}>{c.titlu || 'Conversație'}</button>
                     <button type="button" class="a" title="Redenumește" aria-label="Redenumește" onClick={() => { setSertar(false); cereRedenumire(c.id); }}><Icon name="edit" size={15} /></button>
                     <button type="button" class="a" title="Șterge" aria-label="Șterge" onClick={() => { setSertar(false); setFoaie({ fel: 'sterge', id: c.id }); }}><Icon name="trash" size={15} /></button>
@@ -441,17 +504,41 @@ export function Insight() {
                 </>;
               })}
         </div>
-        {stare.fond ? (
-          <div class="insp-st-jos">
-            <button type="button" class={'insp-fond' + (stare.fond.avert ? ' w' : '')} onClick={() => setDetaliuFond(!detaliuFond)}>{stare.fond.text}</button>
-            {detaliuFond && stare.fond.detaliu ? <div class="insp-fond-d">{stare.fond.detaliu}</div> : null}
-          </div>
-        ) : null}
+        <div class="insp-st-jos">
+          {/* „Pagini": închise, cu câte lucruri cer atenție în toate; deschise când omul le cere sau stă pe una din ele. */}
+          <button type="button" class={'insp-pag' + (pagDesc ? ' desc' : '')} aria-expanded={pagDesc ? 'true' : 'false'}
+            onClick={() => { const urm = !pagDesc; setPaginiCerut(urm || !!(rPag && pagini().indexOf(rPag) >= 0)); }}>
+            <Icon name="layers" size={16} /><span>Pagini</span>
+            {totNumere > 0 && !pagDesc ? <span class="insp-nr">{totNumere}</span> : null}
+            <Icon name="chevronR" size={15} class="insp-pag-s" />
+          </button>
+          {pagDesc ? (
+            <div class="insp-ramuri">
+              {pagini().map((r) => {
+                const inc = ramuraIncuiata(r, stare.pachet);
+                const n = numere && numere[r.k];
+                return (
+                  <button type="button" class={'insp-ram' + (ramura === r.k ? ' act' : '') + (inc ? ' lock' : '')} onClick={() => deschidePagina(r.k)}>
+                    <span class="ic"><Icon name={(inc ? 'lock' : r.ic) as IconName} size={15} /></span>
+                    <span class="t">{r.et}{r.sub ? <span class="insp-ram-sub">{r.sub}</span> : null}{inc ? <span class="insp-ram-pk">· Basic</span> : null}</span>
+                    {n > 0 ? <span class="insp-nr">{n}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {stare.fond ? <button type="button" class={'insp-fond' + (stare.fond.avert ? ' w' : '')} onClick={() => setDetaliuFond(!detaliuFond)}>{stare.fond.text}</button> : null}
+          {stare.fond && detaliuFond && stare.fond.detaliu ? <div class="insp-fond-d">{stare.fond.detaliu}</div> : null}
+        </div>
       </aside>
 
       <main class="insp-main">
         {faraLoc ? (
           <div class="insp-gol-mij"><div class="insp-card"><h3>RA Insight nu e pornit pe contul tău</h3><div>{faraLoc}</div></div></div>
+        ) : ramura ? (
+          !qGata && rPag && rPag.pachet ? <div class="sdp"><div class="insp-gol">Se încarcă…</div></div>
+            : ramuraIncuiata(rPag, stare.pachet) ? <PaginaIncuiata k={ramura} />
+              : <PaginaRamura k={ramura} l={lPag} scrisoareId={scrisoareId} />
         ) : incarc ? (
           <div class="insp-gol-mij"><div class="spin insp-spin" /></div>
         ) : !mesaje.length ? (

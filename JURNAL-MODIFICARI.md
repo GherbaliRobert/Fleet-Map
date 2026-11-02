@@ -359,7 +359,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
   (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
-- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Rămân 4, 8, 10, 11, 15 și din 7 „Pagini", „Pachet și conturi", „Ghid".** Pe web sunt gata;
+- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Rămân 8, 10, 11, 15 și din 7 „Pachet și conturi".** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
@@ -522,6 +522,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-02
+
+### AMÂNDOI · Telefonul, lotul 2: paginile RA Insight; fila veche „AI Raport" scoasă (cod gata, intră în aplicație cu APK-ul următor)
+
+**Ce am schimbat:** în sertarul RA Insight, „Pagini": Șoferi pe mașini (cu „Aplică cele bifate" și „Anulează"), RA Drive (cu prețurile și „Am vorbit cu el", doar cu drepturile date de
+server), Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni; Ghidul stă în „⋯". Pe Start, paginile apar încuiate, „· Basic". Lângă ele, numerele de la server. Răspunsurile,
+„Azi la tine" și butoanele le deschid ca pe web. Anunțul „Scrisoarea de luni" duce la scrisoare. Din Rapoarte a ieșit fila veche „AI Raport", iar „Rezumă cu RA Insight" și eticheta „din
+RA Insight" din Istoric au venit ca pe web; rutele vechi rămân pentru telefoanele nerefăcute. Harta din Combustibil: pe web sunt doar linkuri Google Maps, deci și aici. Paginile nu socotesc
+nimic: desenează ce trimite serverul, verificat de probă lângă funcțiile paginii (verify_telefon_insight.js).
+
+**Încercat:** pe un ecran de telefon (375 px), cu serverul local și un cont de firmă: Mentenanță & acte, RA Drive, Șoferi pe mașini. Celelalte pagini: la 360 px cu date de probă, pe ambele teme,
+iar rutele lor pe server pornit, prin probă. **Neîncercat:** pe un telefon adevărat (butonul „înapoi" al telefonului, apăsarea pe un anunț).
+
+**Ce vede fondatorul:** după APK, paginile sunt pe telefon.
+
+**Ce vede clientul:** după APK, aceleași pagini ca pe web, în funcție de pachet.
+
+- **Găsit pe drum, întrebat (nu reparat):** (1) Textele de la server spun „Management › Șoferi", iar meniul telefonului spune „Administrare". (2) Pe tema deschisă a telefonului, butoanele PDF / Excel și
+  cifrele din Rapoarte sunt verzi pe alb (contrast 1,73), iar etichetele din bara de jos au 4,23. (3) Atingerea anunțului „Scrisoarea de luni" deschide scrisoarea, dar anunțul rămâne necitit: serverul nu-i trimite
+  numărul prin push.
 
 ### AMÂNDOI · Telefonul, lotul 1: RA Insight în locul chatului vechi (cod gata, intră în aplicație cu APK-ul următor)
 

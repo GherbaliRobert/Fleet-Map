@@ -598,7 +598,7 @@ T('caseta propune contul în plus', /'Un cont în plus aduce încă ' \+ window\
 T('și numai unde e adevărat (regula pe cont), fără „50" pus de rezervă',
   /var inPlus = peCont > 0 \?/.test(sectIns) && !/questionsPerSeat \|\| 50/.test(html)
   && !/questionsPerSeat \|\| 50/.test(server)
-  && !/perSeat \|\| 50/.test(fs.readFileSync('./mobile/src/components/ChatScreen.tsx', 'utf8')));
+  && !/(perSeat|peCont|questionsPerSeat\)?) \|\| 50/.test(fs.readFileSync('./mobile/src/lib/insight.ts', 'utf8')));
 // „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește
 // nimic — RA Insight se oprește. Citit de un client, „extra" suna a factură în plus.
 T('la fond epuizat, clientul vede „oprit", nu „extra"',

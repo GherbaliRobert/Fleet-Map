@@ -1,3 +1,5 @@
+import { RAMURI, ramuraDupa, ramuraIncuiata } from './insightPagini';
+
 // Regulile ecranului RA Insight de pe telefon (02.11): ce arată un răspuns, în ce ordine, unde duce un buton, ce pleacă la
 // server. Fără JSX, fără stare, fără cereri: verify_telefon_insight.js le rulează lângă bucățile paginii (public/index.html,
 // blocul „secțiunea RA Insight" și piesele comune de deasupra lui), pe aceleași cazuri. Schimbi o regulă pe web → proba pică
@@ -20,10 +22,9 @@ export const PERIOADE = [
   { text: 'Luna trecută', pune: 'luna trecută' }, { text: 'Ultimele 30 de zile', pune: 'ultimele 30 de zile' },
 ];
 
-// Paginile din „Pagini" (ramurile) construite pe telefon. Goală în lotul ăsta: un `pagina` dintr-un răspuns se ignoră, un buton
-// `ramura` nu se desenează, iar „Actele" din „Azi la tine" pleacă drept întrebare (ca pe web, când ramura nu se poate deschide).
-// Lotul următor adaugă aici cheile (safedrive, combustibil, mentenanta, orecondus, soferi, scrisoare, ghid).
-export const RAMURI_PE_TELEFON: string[] = [];
+// Paginile din „Pagini" (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine"
+// le deschid. O pagină încuiată (Start): „Actele" din „Azi la tine" pleacă drept întrebare, ca pe web.
+export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k);
 
 // Prenumele din salut. O adresă de email nu e un prenume.
 export function prenumeDin(fullName: any): string {
@@ -99,10 +100,13 @@ export function aziPrimul(rd: any, cuAi: boolean, poateRapoarte: boolean): any {
   })[0] || null;
 }
 // Ce face rândul: { ruta } sau { trimite, buton }. „De ce?" e o întrebare pentru RA Insight (se numără), restul pleacă pe butoane.
-export function aziActiune(b: any): { ruta?: string; trimite?: string; buton?: boolean } | null {
+export function aziActiune(b: any, pachet?: any): { ruta?: string; trimite?: string; buton?: boolean } | null {
   if (!b) return null;
   if (b.fel === 'harta') return { ruta: rutaMasina((b.imeis || [])[0]) };
-  if ((b.fel === 'acte' || b.fel === 'pagina') && RAMURI_PE_TELEFON.indexOf(String(b.ramura || '')) >= 0) return { ruta: rutaRamura(b.ramura) };
+  if (b.fel === 'acte' || b.fel === 'pagina') {
+    const rm = ramuraDupa(b.ramura);
+    if (rm && !ramuraIncuiata(rm, pachet)) return { ruta: rutaRamura(rm.k) };
+  }
   if (b.fel === 'dece') return { trimite: b.trimite };
   if (b.trimite) return { trimite: b.trimite, buton: true };
   return null;
@@ -111,7 +115,7 @@ export function aziActiune(b: any): { ruta?: string; trimite?: string; buton?: b
 // ── Unde duce un buton (web: insightProblemaButon) ──
 const enc = encodeURIComponent;
 function rutaMasina(imei: any): string { return '/vehicles/' + enc(String(imei)); }
-function rutaRamura(k: any): string { return '/insight/' + enc(String(k)); }
+export function rutaRamura(k: any, id?: any): string { return '/insight/' + enc(String(k)) + (id != null && id !== '' ? '?id=' + enc(String(id)) : ''); }
 function ms(v: any): number | null {
   if (v == null || v === '') return null;
   const n = typeof v === 'number' ? v : Date.parse(String(v));
@@ -174,7 +178,7 @@ export function iconaButonProblema(fel: any): string {
 // ── Textul serverului: **îngroșat**, titluri și liste, fără HTML (web: md, mdScurt, textGros). Doar noduri, niciodată innerHTML. ──
 export interface Parte { t: string; b?: boolean; i?: boolean }
 const RE_BOLD = /\*\*([^*]+)\*\*/g;
-// *italic*, ca `aiMd` din ChatScreen: un „*" urmat de spațiu (listă) sau lipit de cifre („2*3") rămâne text.
+// *italic* (explicațiile serverului când s-a terminat fondul): un „*" urmat de spațiu (listă) sau lipit de cifre („2*3") rămâne text.
 const RE_ITALIC = /(^|[^*\w])\*([^*\s](?:[^*\n]*[^*\s])?)\*(?![*\w])/g;
 function bucati(s: string, re: RegExp, cu: (m: RegExpExecArray) => { inainte?: string; parte: string }, fel: 'b' | 'i', rest: (t: string) => Parte[]): Parte[] {
   const out: Parte[] = [];
@@ -234,13 +238,14 @@ export function listaPlus(poateRapoarte: boolean) {
   if (poateRapoarte) l.push({ text: 'Raport', sub: 'îl fac și-l pun în Istoric', ic: 'report', k: 'r' });
   return l;
 }
-// Meniul „⋯". „Pachet și conturi" și „Ghidul aplicației" intră odată cu ecranele lor.
-export function listaMeniu(o: { areConv: boolean; poateAgenti: boolean }) {
+// Meniul „⋯". „Pachet și conturi" intră odată cu ecranul lui. Redenumirea și ștergerea: doar pe o conversație deschisă, nu pe o pagină.
+export function listaMeniu(o: { areConv: boolean; peRamura?: boolean; poateAgenti: boolean }) {
   const l: { text: string; ic: string; k: string; sep?: boolean; rosu?: boolean }[] = [];
-  if (o.areConv) l.push({ text: 'Conversație nouă', ic: 'plus', k: 'nou' });
+  if (o.areConv || o.peRamura) l.push({ text: 'Conversație nouă', ic: 'plus', k: 'nou' });
   l.push({ text: 'Notițele firmei', ic: 'note', k: 'notite' });
   if (o.poateAgenti) l.push({ text: 'Setările agenților', ic: 'robot', k: 'agenti' });
-  if (o.areConv) { l.push({ text: 'Redenumește conversația', ic: 'edit', k: 'r', sep: true }); l.push({ text: 'Șterge conversația', ic: 'trash', k: 's', rosu: true }); }
+  l.push({ text: 'Ghidul aplicației', ic: 'book', k: 'ghid' });
+  if (o.areConv && !o.peRamura) { l.push({ text: 'Redenumește conversația', ic: 'edit', k: 'r', sep: true }); l.push({ text: 'Șterge conversația', ic: 'trash', k: 's', rosu: true }); }
   return l;
 }
 export const NOTA_MENIU = 'Conversațiile le vezi doar tu și se păstrează 12 luni de la ultimul mesaj.';

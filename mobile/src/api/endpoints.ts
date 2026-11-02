@@ -54,6 +54,12 @@ export function reportOptsQuery(opts?: ReportOpts): string {
   return Object.entries(opts).filter(([, v]) => v != null && v !== '').map(([k, v]) => `&${e(k)}=${e(String(v))}`).join('');
 }
 
+// `?luna=…&grupa=…` din ce e pus (o grupă goală = toate mașinile, deci nu se trimite).
+function cuParam(q?: Record<string, string>): string {
+  const p = Object.keys(q || {}).filter((k) => (q as any)[k] != null && (q as any)[k] !== '').map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(String((q as any)[k])));
+  return p.length ? '?' + p.join('&') : '';
+}
+
 export const Api = {
   mobileLogin: (username: string, password: string, device?: string) =>
     api<{ token: string } & Me>('/api/mobile/login', { method: 'POST', auth: false, body: { username, password, device } }),
@@ -551,14 +557,27 @@ export const Api = {
   insightRapoarte: () => api<any>('/api/insight/rapoarte'),
   insightNotite: () => api<any>('/api/insight/notite'),
   saveInsightNotite: (text: string) => api<any>('/api/insight/notite', { method: 'PUT', body: { text } }),
+  // Paginile din „Pagini" și ghidul: cifrele și textele le scrie serverul. `q`: luna / saptamana, grupa.
+  insightRamuri: () => api<any>('/api/insight/ramuri'),
+  insightSafeDrive: (q?: Record<string, string>) => api<any>('/api/insight/safe-drive' + cuParam(q)),
+  insightCombustibil: (q?: Record<string, string>) => api<any>('/api/insight/combustibil' + cuParam(q)),
+  insightOreCondus: (q?: Record<string, string>) => api<any>('/api/insight/ore-condus' + cuParam(q)),
+  insightMentenanta: () => api<any>('/api/insight/mentenanta'),
+  insightScrisori: () => api<any>('/api/insight/scrisori'),
+  insightScrisoare: (id: any) => api<any>('/api/insight/scrisori/' + encodeURIComponent(String(id))),
+  insightGhid: () => api<any>('/api/insight/ghid'),
+  insightSoferiMasini: () => api<any>('/api/insight/soferi-masini'),
+  insightAplicaSoferi: (schimbari: { imei: any; la: any }[]) => api<any>('/api/insight/soferi-masini/aplica', { method: 'POST', body: { schimbari } }),
+  insightSafeDrivePreturi: (preturi: any) => api<any>('/api/insight/safe-drive/preturi', { method: 'PUT', body: { preturi } }),
+  insightDiscutie: (driverId: any, nota: string) => api<any>('/api/insight/safe-drive/discutie', { method: 'POST', body: { driverId, nota } }),
+  insightScoateDiscutie: (id: any) => api<any>('/api/insight/safe-drive/discutie/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
+  // „Rezumă cu RA Insight" de sub un raport (ca pe web: tabelul de pe ecran; de la Basic îl scrie RA Insight, pe Start se face din cifre).
+  rezumatRaport: (report: { columns: any[]; rows: any[][] }) => api<any>('/api/ai/report-summary', { method: 'POST', body: { type: 'tabel', report }, timeoutMs: 180000 }),
   // Cartonașul „RA Insight face, cu Da-ul tău": aplica (cu `la` sau `campuri`), refuza, anuleaza, dovezi (pragul și mașina din „Schimbă").
   insightActiune: (id: any, fel: 'aplica' | 'refuza' | 'anuleaza' | 'dovezi', corp?: Record<string, any>) => api<any>('/api/insight/actiuni/' + encodeURIComponent(String(id)) + '/' + fel, { method: 'POST', body: corp || {} }),
-  reportsAgent: (message: string) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; sources?: any[]; disabled?: boolean; limited?: boolean; fondEpuizat?: { fond?: number; conturi?: number; peCont?: number; reinnoire?: string } }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
   // Contorul RA Insight (aceeași sursă ca bara de pe web): fondul firmei, cât a pus omul, reînnoirea, locul pe cont.
   aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string; pachet?: any; sursa?: any }>('/api/ai/quota', { timeoutMs: 20000 }),
   fx: () => api<{ eur: number; date?: string | null; source?: string }>('/api/fx', { timeoutMs: 20000 }), // curs BNR EUR→RON
-  insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
-  insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),
   // Agenți AI operaționali (RA Watch/Care/Optimize/Compliance/Client): listă + rulare + constatări.
   aiAgents: () => api<{ agents: { key: string; name: string; desc: string }[]; enabledKeys?: string[] }>('/api/agents'),
   // `companyId` (opțional) contează DOAR la super-admin (applyCompanyFilter pe server): firma aleasă în Agenți AI.

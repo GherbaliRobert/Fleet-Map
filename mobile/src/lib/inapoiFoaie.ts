@@ -39,6 +39,9 @@ function scoateIntrarea() {
   history.back();
 }
 
+// Un drum pornit când se închide o foaie: după ce foaia și-a scos intrarea din istoric, ca „înapoi" să nu dea peste ea.
+export function dupaInapoi(fn: () => void) { if (inapoiInCurs) inapoiInCurs.then(fn); else fn(); }
+
 let nr = 0;
 
 export function useInapoiInchide(deschisa: boolean, laInapoi: () => boolean) {

@@ -248,6 +248,7 @@ function Shell() {
         <Route path="/cont" component={ContulMeu} />
         <Route path="/report-schedules" component={P.schedules} />
         <Route path="/insight" component={P.insight} />
+        <Route path="/insight/:ramura" component={P.insight} />
         <Route path="/ai" component={SpreInsight} />
         <Route path="/ai-stats" component={P.aiStats} />
         <Route path="/ai-agents" component={P.aiAgents} />
