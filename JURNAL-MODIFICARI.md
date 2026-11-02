@@ -164,7 +164,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Fără asta nu știm dacă apărem la Google și pe ce căutări.
 - [ ] **Robert: Bing Webmaster Tools. Adăugat pe 02.10.** Bing nu are NICIO pagină de pe ratrack.ro. Se face în 2 minute,
   cu „Import din Google Search Console". Bing alimentează și DuckDuckGo, Yahoo și căutarea din ChatGPT și Copilot.
-- [ ] **Robert: www.ratrack.ro dă eroare (404). Adăugat pe 02.10.** O regulă de redirecționare în Cloudflare:
+- [x] **BIFAT pe 02.11 (Robert: „da"; redirecționarea merge, 301): Robert: www.ratrack.ro dă eroare (404). Adăugat pe 02.10.** O regulă de redirecționare în Cloudflare:
   www.ratrack.ro → ratrack.ro, permanentă (301).
 - [ ] **Voi: profilul firmei pe Google (Google Business Profile). Adăugat pe 02.10.** Numele, adresa, telefonul,
   programul și linkul spre site — e ce vede primul cine caută firma pe nume.
@@ -522,6 +522,23 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-02
+
+### FONDATOR · Indexul dublat de la poziții scos; capătul contractului nu mai depinde de ora calculatorului
+
+**Ce am schimbat:** Robert (02.11): „4. acum, 5. acum". (1) **Indexul dublat:** tabela cu pozițiile avea două indexuri cu aceleași rânduri,
+în sens invers, cam 80 MB în plus pe disc și scrise la fiecare poziție. L-am scos pe cel vechi; rămâne cel care oprește dublurile la o
+retrimitere. Capcana: „ultima poziție pe mașină" (pornirea serverului, raportul Scadențe) citea tocmai din cel vechi; fără schimbare, baza ar fi
+citit și sortat toate pozițiile. Am schimbat și cererile, ca să citească din cel rămas. Măsurat pe aceeași bază, 60.000 de poziții și 40 de
+mașini: aceleași rânduri, fără sortare, 42 ms față de 52 ms. Măsurătoarea e pe baza locală, fără TimescaleDB (nu rulează pe calculatorul ăsta).
+La pornire, scoaterea așteaptă cel mult 3 secunde; dacă serverul vechi încă scrie, se reia la pornirea următoare. Dacă indexul de dubluri lipsește,
+cel vechi rămâne singurul, deci se păstrează. (2) **Capătul contractului** (31 ianuarie + 2 luni) ieșea 30 martie doar pe un calculator pe ora
+României, din cauza trecerii la ora de vară; pe server (UTC) era corect și rămâne la fel. Acum se socotește pe UTC oriunde. Păzit de
+verify_index_pozitii.js (în `npm test`) și verify_contracte.js.
+
+**Ce vede fondatorul:** nimic pe ecran. În panoul de tabele din Railway, baza scade cu cam 80 MB, după prima pornire. Costul scade puțin (spațiul pe
+disc e ieftin): câștigul e mai ales la scrierea pozițiilor.
+
+**Ce vede clientul:** nimic.
 
 ### AMÂNDOI · Trecerea la un pachet RA Insight mai mare chiar pe 1 ale lunii: factura următoare adaugă diferența
 
@@ -13511,7 +13528,7 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   GPS a plecat de la client, iar ruta nu-i mai trimite nici arhivatele, nici — mai grav — aparatele altor firme,
   pe care le dădea oricui. Vezi intrarea de la 29.09.
 
-- [ ] **(eu) Data de sfârșit a unui contract depinde de ora serverului.** `contracts.js` adună lunile pe ora
+- [x] **REZOLVAT (02.11; Robert: „acum"): (eu) Data de sfârșit a unui contract depinde de ora serverului.** `contracts.js` adună lunile pe ora
   locală: pe server (UTC) iese corect, dar pe un calculator pe ora României 31 ian + 2 luni dă 30 martie (proba
   `verify_contracte.js` pică aici local, nu și pe GitHub). De trecut pe calcul în UTC, ca să nu depindă de mașină.
 

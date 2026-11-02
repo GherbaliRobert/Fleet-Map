@@ -187,10 +187,12 @@ function calcSfarsit(startAt, luni) {
   if (!startAt || !luni) return null;
   const d = new Date(Number(startAt));
   if (isNaN(d.getTime())) return null;
-  const zi = d.getDate();
-  d.setMonth(d.getMonth() + Number(luni));
+  // Pe ceasul UTC, ca serverul: rezultatul nu depinde de fusul mașinii pe care rulează (o probă pe ora României
+  // primea 30 martie, din cauza trecerii la ora de vară).
+  const zi = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + Number(luni));
   // 31 ianuarie + 1 lună = 28/29 februarie, nu 2/3 martie.
-  if (d.getDate() < zi) d.setDate(0);
+  if (d.getUTCDate() < zi) d.setUTCDate(0);
   return d.getTime();
 }
 

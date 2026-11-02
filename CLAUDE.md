@@ -544,6 +544,9 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - În probe: `RAPOARTE_PLAFON` / `RAPOARTE_PAGINA` coboară cifrele (nu le seta în producție).
 - Păzit de `verify_rapoarte_pagini.js` (în `npm test`): pe pagini = dintr-o bucată pe 11 rapoarte + statistici (și cu
   filtru), martorul vechi, avertismentul, pe server pornit cu 700 de poziții și plafonul 300.
+- **Pe poziții, UN index pe (imei, timestamp): `idx_positions_imei_ts_uniq`** (02.11, Robert: „acum"). Se citește în ambele sensuri. „Ultima poziție pe
+  mașină" se cere `ORDER BY imei DESC, timestamp DESC`; NU scrie `ORDER BY imei, timestamp DESC` (sensuri amestecate = baza sortează tot). Vechiul
+  `idx_positions_imei_ts` se scoate la pornire, cu `lock_timeout` 3 s, și se face doar dacă lipsește cel UNIQUE. Păzit de `verify_index_pozitii.js` (în `npm test`).
 - **Un formatator de dată ținut minte, NU unul la fiecare poziție** (Robert, 21.10: „rezolvă acum"). `new Intl.DateTimeFormat(…)`
   ține ~17 KB pe care procesul nu-i mai dă înapoi: făcut la fiecare poziție în `_dayKeyISO`, „Condus & repaus" pe o lună, 3
   mașini, dura 28 s și lăsa ~6 GB ocupați (acum 1,5 s, ~200 MB, aceleași cifre). `_dayKeyISO` îl ține în `_fmtZiISO`, programul

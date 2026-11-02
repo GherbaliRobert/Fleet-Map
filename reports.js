@@ -2130,7 +2130,7 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Odometru curent per vehicul (pt. km rămași la service pe km)
   const odoMap = {};
   try {
-    const rr = await db.pool.query('SELECT DISTINCT ON (imei) imei, io_data FROM positions WHERE imei = ANY($1) ORDER BY imei, timestamp DESC', [imeis]);
+    const rr = await db.pool.query('SELECT DISTINCT ON (imei) imei, io_data FROM positions WHERE imei = ANY($1) ORDER BY imei DESC, timestamp DESC', [imeis]);
     for (const row of rr.rows) { const km = _odoNow(row.io_data); if (km) odoMap[row.imei] = km; }
   } catch (e) {}
   // Documente (scadență pe DATĂ)

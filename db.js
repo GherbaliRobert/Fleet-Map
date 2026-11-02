@@ -185,12 +185,6 @@ async function initDb() {
       )
     `);
 
-    // Index pe imei + timestamp pentru query-uri rapide
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_positions_imei_ts 
-      ON positions (imei, timestamp DESC)
-    `);
-
     // Index pe timestamp pentru curățare date vechi
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_positions_ts
@@ -269,6 +263,25 @@ async function initDb() {
       } catch (e2) {
         console.warn('[DB] Index UNIQUE pe positions indisponibil → INSERT fără ON CONFLICT:', e2.message);
       }
+    }
+
+    // UN singur index pe (imei, timestamp): cel UNIQUE de mai sus. Vechiul idx_positions_imei_ts avea aceleași
+    // rânduri, în sens invers (cam 80 MB în plus și scris la fiecare poziție), iar un index se citește în ambele
+    // sensuri. „Ultima poziție pe mașină" se cere acum `ORDER BY imei DESC, timestamp DESC`, tot din el (02.11).
+    // Încercarea de scoatere așteaptă cel mult 3 s: dacă serverul vechi încă scrie, se reia la pornirea următoare.
+    // Fără UNIQUE, vechiul rămâne singurul index pe mașină, deci se face.
+    if (positionsUniqueIdx) {
+      try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL lock_timeout = '3s'");
+        await client.query('DROP INDEX IF EXISTS idx_positions_imei_ts');
+        await client.query('COMMIT');
+      } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        console.warn('[DB] Indexul dublat de pe positions n-a putut fi scos acum (se reia la pornirea următoare):', e.message);
+      }
+    } else {
+      await client.query('CREATE INDEX IF NOT EXISTS idx_positions_imei_ts ON positions (imei, timestamp DESC)');
     }
 
     // Observabilitate: jurnal de erori centralizat (persistent, înlocuiește log-ul circular in-memory).
@@ -3881,7 +3894,7 @@ async function getLastStickyCan() {
          OR (io_data->>'can_total_mileage') IS NOT NULL
          OR (io_data->>'total_odometer') IS NOT NULL
          OR (io_data->>'can_fuel_level_pct') IS NOT NULL )
-    ORDER BY imei, timestamp DESC
+    ORDER BY imei DESC, timestamp DESC
   `);
   return r.rows;
 }
@@ -4922,7 +4935,7 @@ async function getLastPositions(zile) {
       imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
     FROM positions
     WHERE timestamp > NOW() - INTERVAL '${z} days'
-    ORDER BY imei, timestamp DESC
+    ORDER BY imei DESC, timestamp DESC
   `);
   return result.rows;
 }

@@ -479,6 +479,15 @@ const cuPrel = { start_at: ian31, months: 1, end_at: C.calcSfarsit(ian31, 1), lu
 T('prelungirea se socotește de la început (31 ian + 1 + 1 = 31 martie, nu 28)',
   new Date(C.sfarsitContract(cuPrel)).getUTCDate() === 31 && new Date(C.sfarsitContract(cuPrel)).getUTCMonth() === 2,
   new Date(C.sfarsitContract(cuPrel)).toISOString().slice(0, 10));
+// Capătul nu depinde de fusul mașinii: pe ora României (cu trecerea la ora de vară) sau pe cea a New Yorkului iese ca pe server (UTC).
+{
+  const tzInainte = process.env.TZ;
+  const zile = ['2026-01-31T00:00:00Z', '2026-03-29T00:30:00Z', '2026-10-25T00:30:00Z', '2027-12-31T22:00:00Z', '2028-02-29T12:00:00Z'].map((z) => Date.parse(z));
+  const socoteste = (tz) => { process.env.TZ = tz; return zile.flatMap((z) => [1, 2, 12, 13, 24].map((l) => C.calcSfarsit(z, l))).join(','); };
+  const peUtc = socoteste('UTC');
+  T('capătul contractului iese la fel pe orice fus (Europe/Bucharest, America/New_York, UTC)', socoteste('Europe/Bucharest') === peUtc && socoteste('America/New_York') === peUtc);
+  if (tzInainte === undefined) delete process.env.TZ; else process.env.TZ = tzInainte;
+}
 T('fără prelungiri, capătul e cel scris', C.sfarsitContract({ start_at: start, months: 12, end_at: 123 }) === 123);
 T('pe durată nedeterminată nu există capăt', C.sfarsitContract({ start_at: start, months: null }) === null);
 // Reînnoirea automată: „pe perioade succesive egale", cum scrie în contract.
