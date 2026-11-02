@@ -14,6 +14,7 @@
   --mjc-mont: #cbd5e1; --mjc-mont-bg: rgba(148, 163, 184, .14); --mjc-mont-bd: rgba(148, 163, 184, .32);
   --mjc-rau: #f87171; --mjc-rau-bg: rgba(239, 68, 68, .14);
   --mjc-rosu: #ffffff; --mjc-rosu-bg: #dc2626;
+  --mjc-int: #93c5fd; --mjc-int-bg: rgba(96, 165, 250, .13); --mjc-int-bd: rgba(96, 165, 250, .36);
 }
 :root[data-theme="light"] {
   --mjc-prog: #9a3412; --mjc-prog-bg: #fff1e6; --mjc-prog-bd: #fdba74;
@@ -22,6 +23,7 @@
   --mjc-mont: #334155; --mjc-mont-bg: #eef2f6; --mjc-mont-bd: #cbd5e1;
   --mjc-rau: #b91c1c; --mjc-rau-bg: #fee2e2;
   --mjc-rosu: #ffffff; --mjc-rosu-bg: #dc2626;
+  --mjc-int: #1d4ed8; --mjc-int-bg: #e8f0fe; --mjc-int-bd: #93c5fd;
 }
 
 /* Pastilele de lângă numele partenerului: „inactiv", „contract: …" / „fără contract" */
@@ -96,6 +98,8 @@
 .mjc-l.mjc-ok { color: var(--mjc-ok); background: var(--mjc-ok-bg); border-color: var(--mjc-ok-bd); }
 .mjc-l.mjc-conf { color: var(--mjc-conf); background: var(--mjc-conf-bg); border-color: var(--mjc-conf-bd); }
 .mjc-l.mjc-mont { color: var(--mjc-mont); background: var(--mjc-mont-bg); border-color: var(--mjc-mont-bd); }
+.mjc-l.mjc-int { color: var(--mjc-int); background: var(--mjc-int-bg); border-color: var(--mjc-int-bd); }
+.mjc-l.mjc-int.gata { color: var(--mjc-mont); background: var(--mjc-mont-bg); border-color: var(--mjc-mont-bd); }
 .mjc-mai { font-size: 11px; font-weight: 800; color: var(--text-secondary); text-align: center; }
 .mjc-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 12px; color: var(--text-secondary); }
 .mjc-leg .mjc-l { font-weight: 700; }

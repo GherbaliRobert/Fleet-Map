@@ -53,6 +53,8 @@ import { OfferCalc } from './screens/OfferCalc';   // calculatorul — socotit p
 import { OurPrices } from './screens/OurPrices';   // „Prețurile noastre": cât cerem, cât ne costă, cursul
 import { DemoRequests } from './screens/DemoRequests';
 import { Mail } from './screens/Mail';
+import { AnuntaEchipa } from './screens/AnuntaEchipa';   // „Anunță echipa RA Track": fereastra clientului
+import { CereriClienti } from './screens/CereriClienti';   // „Cereri de la clienți": lista noastră
 // Operațiunile fondatorului (lotul 2b, F4): Acasă, Inventar, Tahograf și e-Transport pe firme, RA Insight, Chei API, Jurnal audit.
 import { FounderHome } from './screens/FounderHome';
 import { DeviceInventory } from './screens/DeviceInventory';
@@ -130,6 +132,7 @@ const P = {
   ourPrices: doarSuper(OurPrices, 'Prețurile noastre'),
   demoRequests: doarSuper(DemoRequests, 'Cereri demo'),
   mail: doarSuper(Mail, 'Mail'),   // panoul Mail al fondatorilor (12.10), ca pe web
+  cereriClienti: doarSuper(CereriClienti, 'Cereri de la clienți'),
   founderHome: doarSuper(FounderHome, 'Acasă'),
   inventory: doarSuper(DeviceInventory, 'Inventar dispozitive'),
   stoc: doarSuper(StocEchipamente, 'Stoc echipamente'),   // stocul nostru: ce avem, unde e, al cui e
@@ -246,6 +249,8 @@ function Shell() {
         <Route path="/admin/afisaj" component={TeamDisplay} />
         <Route path="/notif-prefs" component={NotifPrefs} />
         <Route path="/cont" component={ContulMeu} />
+        <Route path="/echipa" component={AnuntaEchipa} />
+        <Route path="/admin/cereri" component={P.cereriClienti} />
         <Route path="/report-schedules" component={P.schedules} />
         <Route path="/insight" component={P.insight} />
         <Route path="/insight/:ramura" component={P.insight} />

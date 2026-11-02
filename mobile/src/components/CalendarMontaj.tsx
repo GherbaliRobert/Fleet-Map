@@ -26,10 +26,10 @@ import {
   CAL_TEXT, MJC_ZILE, alteTipuri, anuleazaLucrarea, ceSeMonteaza, clasaLucrare, confirmaLucrarea, contractulFormularului, corpAnulare,
   corpMontata, corpMutare, corpProgramare, corpReprogramare, cuClient, cuMasini, deProgramatActive, detaliiContract, dinContract, eroarea,
   esteMontata, faraClientText, formAnulare, formLucrare, formNou, grilaLunii, incarcareText, instalatoriActivi, instalatoriFiltru,
-  instalatoriLucrare, intrebareMontata, istoricFiltrat, lucrareMontata, lucrariPeZi, lunaAlaturata, lunaText, masini, mutaLucrarea,
-  notaStocMontaj, numeFirmaContract, optiuneClient, programeazaMontaj, reprogrameazaLucrarea, stareText, stocText, termenFel, termenLinie,
-  termenPastila, tipGps, titluLucrare, toastAnulat, toastMontata, toastMutat, toastProgramat, toastReprogramat, ziCuNume, ziRo,
-  type CalContract, type CalDate, type CalIstoric, type CalLucrare, type FormAnulare, type FormLuc, type FormProg,
+  instalatoriLucrare, interventieGata, interventiiPeZi, intrebareMontata, istoricFiltrat, lucrareMontata, lucrariPeZi, lunaAlaturata, lunaText, masini, mutaLucrarea,
+  notaStocMontaj, numeFirmaContract, optiuneClient, programeazaMontaj, reprogrameazaLucrarea, stareText, stocText, subInterventie, termenFel, termenLinie,
+  termenPastila, tipGps, titluInterventie, titluLucrare, toastAnulat, toastMontata, toastMutat, toastProgramat, toastReprogramat, ziCuNume, ziRo,
+  type CalContract, type CalDate, type CalInterventie, type CalIstoric, type CalLucrare, type FormAnulare, type FormLuc, type FormProg,
 } from '../lib/calendarMontaj';
 import { Confirma } from './FlotaUi';
 import { Icon } from './Icon';
@@ -55,13 +55,14 @@ type Foaie =
   | { fel: 'reprog'; id: number; f: { zi: string; part: string } }
   | null;
 
-export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient, pre, onPreFolosit }: {
+export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient, onInterventie, pre, onPreFolosit }: {
   d: CalDate | null;                 // calendarul lunii, de la ecranul Montaj (se încarcă odată cu celelalte file)
   err?: string;
   incarcand?: boolean;               // altă lună pe drum: săgețile așteaptă
   onLuna: (luna: string) => void;
   onSchimbat: (luna?: string) => void;   // după programare / mutare / montată / anulare: ecranul reîncarcă (pe luna dată)
   onClient: (companyId: number) => void; // „La client": dosarul firmei (se cheamă din foaie — ecranul înlocuiește adresa)
+  onInterventie: (x: CalInterventie, dinFoaie: boolean) => void; // o intervenție → cererea ei, în „Cereri de la clienți"
   pre?: number | null;               // venit din drumul clientului: contractul de programat
   onPreFolosit?: () => void;
 }) {
@@ -131,8 +132,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     setMsg('');
     setFoaie({ fel: 'lucrare', id: l.id, f, start: JSON.stringify(f) });
   }
-  function peZi(zi: string, pe: CalLucrare[]) {
-    if (pe.length) { setMsg(''); setFoaie({ fel: 'zi', zi }); }
+  function peZi(zi: string, pe: CalLucrare[], inte: CalInterventie[]) {
+    if (pe.length || inte.length) { setMsg(''); setFoaie({ fel: 'zi', zi }); }
     else deschideProg(zi, null, part || null);
   }
   const setF = (f: FormProg) => { setMsg(''); setFoaie((x) => (x && x.fel === 'prog' ? { ...x, f } : x)); };
@@ -225,7 +226,9 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
 
   const g = grilaLunii(d.luna, d.azi);
   const pe = lucrariPeZi(d.lucrari, part);
-  const zileCu = Object.keys(pe).filter((zi) => zi.slice(0, 7) === d.luna).sort();
+  // Intervențiile îl țin ocupat pe instalator, dar nu sunt montaj: iconița cu căști, în zilele lor; un clic duce la cerere.
+  const inte = interventiiPeZi(d.interventii, part);
+  const zileCu = Object.keys(pe).concat(Object.keys(inte).filter((zi) => !pe[zi])).filter((zi) => zi.slice(0, 7) === d.luna).sort();
   const luna = (pas: number) => { if (!incarcand) onLuna(lunaAlaturata(d.luna, pas, d.azi)); };
   const prog = d.programate || [];
   const ist = istoricFiltrat(d, filtru);
@@ -254,14 +257,15 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
             {MJC_ZILE.map((z) => <div key={'z' + z} class="mjc-zs" aria-hidden="true">{z}</div>)}
             {Array.from({ length: g.gol }).map((_, i) => <div key={'g' + i} class="mjc-zi gol" aria-hidden="true" />)}
             {g.zile.map((z) => {
-              const l = pe[z.zi] || [];
+              const l = pe[z.zi] || [], iz = inte[z.zi] || [];
               return (
                 <button type="button" key={z.zi} class={'mjc-zi' + (z.wk ? ' wk' : '') + (z.azi ? ' azi' : '')}
-                  aria-label={l.length ? ziRo(z.zi) + ': ' + l.map((x) => titluLucrare(x, d.stari)).join('; ') : 'Programează pe ' + ziRo(z.zi)}
-                  onClick={() => peZi(z.zi, l)}>
+                  aria-label={l.length || iz.length ? ziRo(z.zi) + ': ' + l.map((x) => titluLucrare(x, d.stari)).concat(iz.map(titluInterventie)).join('; ') : 'Programează pe ' + ziRo(z.zi)}
+                  onClick={() => peZi(z.zi, l, iz)}>
                   <span class="mjc-nr">{z.nr}</span>
                   {l.slice(0, 2).map((x) => <span class={'mjc-l ' + clasaLucrare(x)}>{x.masini}</span>)}
                   {l.length > 2 && <span class="mjc-mai">+{l.length - 2}</span>}
+                  {iz.length ? <span class={'mjc-l mjc-int' + (iz.every(interventieGata) ? ' gata' : '')}><Icon name="headset" size={12} />{iz.length > 1 ? iz.length : ''}</span> : null}
                 </button>
               );
             })}
@@ -271,6 +275,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
           <span class="mjc-l mjc-ok"><b>10</b> confirmat</span>
           <span class="mjc-l mjc-conf"><b>10</b> de confirmat</span>
           <span class="mjc-l mjc-mont"><b>10</b> montat</span>
+          <span class="mjc-l mjc-int"><Icon name="headset" size={12} /> intervenție</span>
           <span>cifra = câte mașini</span>
         </div>
       </div>
@@ -281,7 +286,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
           {zileCu.map((zi) => (
             <div class="mjc-ziua" key={zi}>
               <div class="mjc-ziua-t">{ziCuNume(zi)}</div>
-              {pe[zi].map((l) => <RandLucrare l={l} stari={d.stari} onClick={() => deschideLucrare(l)} />)}
+              {(pe[zi] || []).map((l) => <RandLucrare l={l} stari={d.stari} onClick={() => deschideLucrare(l)} />)}
+              {(inte[zi] || []).map((x) => <RandInterventie x={x} onClick={() => onInterventie(x, false)} />)}
             </div>
           ))}
         </div>
@@ -329,6 +335,12 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
       {foaie && foaie.fel === 'zi' && (
         <Foaie titlu={ziCuNume(foaie.zi)} icon="calendar" onClose={inchide}>
           <div class="frm">
+            {(inte[foaie.zi] || []).length ? (
+              <div class="mjc-ziua">
+                <div class="mjc-ziua-t">Intervenții în ziua asta</div>
+                {inte[foaie.zi].map((x) => <RandInterventie x={x} onClick={() => onInterventie(x, true)} />)}
+              </div>
+            ) : null}
             <div class="mjc-ziua">
               {(pe[foaie.zi] || []).map((l) => <RandLucrare l={l} stari={d.stari} onClick={() => deschideLucrare(l)} />)}
             </div>
@@ -382,6 +394,20 @@ function RandLucrare({ l, stari, onClick }: { l: CalLucrare; stari: Record<strin
         <b>{l.company_name || '—'}</b>
         <span class="mjc-rand-s">{masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + stareText(l, stari)}</span>
         {l.conf_text && <span class={'mjc-rez mic ' + (l.conf === 'confirmat' ? 'ok' : 'conf')}>{l.conf_text}</span>}
+      </span>
+      <Icon name="chevronR" size={16} />
+    </button>
+  );
+}
+
+// O intervenție (firma, ce s-a întâmplat, intervalul, instalatorul): nu e montaj, deci fără cifra de mașini.
+function RandInterventie({ x, onClick }: { x: CalInterventie; onClick: () => void }) {
+  return (
+    <button type="button" class="mjc-rand" onClick={onClick} aria-label={titluInterventie(x)}>
+      <span class={'mjc-l mjc-int' + (interventieGata(x) ? ' gata' : '')}><Icon name="headset" size={14} /></span>
+      <span class="mjc-rand-t">
+        <b>{x.company_name || '—'}</b>
+        <span class="mjc-rand-s">{subInterventie(x)}</span>
       </span>
       <Icon name="chevronR" size={16} />
     </button>

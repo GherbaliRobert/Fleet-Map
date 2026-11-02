@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { App as CapApp } from '@capacitor/app';
-import { me, theme, toggleTheme, logout, showToast, ecranAscuns, type EcranCheie } from '../app/store';
+import { me, theme, toggleTheme, logout, ecranAscuns, lastNotif, type EcranCheie } from '../app/store';
 import { temaCont } from '../app/store';
 import { Api } from '../api/endpoints';
 import { API_BASE } from '../api/client'; // documentele legale sunt servite de server, nu împachetate în APK
 import { Icon, type IconName } from '../components/Icon';
 import { modulIncarcare, RUTA_PLANURI } from '../lib/incarcare';
+import { RUTA_CERERI_CLIENTI, TITLU_CERERI, TITLU_FEREASTRA, usaMeniu } from '../lib/cereriEchipa';
 import './menu.css';
-import './detail.css'; // pentru .sheet*
 
 export function Menu() {
   const loc = useLocation();
   const u = me.value;
   const perms = u?.permissions || {};
-  const [support, setSupport] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [sending, setSending] = useState(false);
   // Versiunea REALĂ a APK-ului (din build.gradle → variables.gradle), nu una scrisă de mână: după ea
   // verificăm ce aplicație are un client instalată. În browser nu există → subsolul rămâne fără versiune.
   const [versiune, setVersiune] = useState('');
@@ -26,18 +23,19 @@ export function Menu() {
     if (!me.value?.isSuper) return;
     Api.demoRequests('new').then((l) => setCereriNoi(Array.isArray(l) ? l.filter((r: any) => r.status === 'new').length : 0)).catch(() => {});
   }, []);
+  // …și câte cereri de la clienți sunt încă nepreluate (bulina de lângă „Cereri de la clienți"); la un anunț nou, din nou, ca pe web.
+  const [cereriEchipaNoi, setCereriEchipaNoi] = useState(0);
+  const anuntNou = lastNotif.value && lastNotif.value.type === 'cerere_echipa' ? lastNotif.value.id : 0;
+  useEffect(() => {
+    if (!me.value?.isSuper) return;
+    Api.cereriNumar().then((j) => setCereriEchipaNoi(Number(j && j.noi) || 0)).catch(() => {});
+  }, [anuntNou]);
   useEffect(() => {
     CapApp.getInfo().then((i) => setVersiune(String(i.version || '').replace(/-debug$/, ''))).catch(() => {});
   }, []);
-  // `/meniu?suport=1&ce=…` — butonul „Anunță echipa" din RA Insight, până vine fereastra cererilor: foaia de suport, cu textul
-  // serverului în casetă. Adresa se curăță, ca o întoarcere pe ecran să n-o deschidă din nou.
-  useEffect(() => {
-    const q: any = loc.query || {};
-    if (!q.suport) return;
-    setSupport(true);
-    if (q.ce) setMsg(String(q.ce));
-    loc.route('/meniu', true);
-  }, []);
+
+  // Bulina roșie de lângă un rând, cu săgeata (ca nav-demoreq-badge de pe web); fără nimic de arătat, rândul rămâne cu săgeata lui.
+  const bulina = (n: number) => (n > 0 ? <span style="display:inline-flex;align-items:center;gap:6px"><span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800">{n}</span><Icon name="chevronR" size={18} color="var(--text-muted)" /></span> : undefined);
 
   function item(icon: IconName, label: string, onClick: () => void, right?: any, cls = '') {
     return (
@@ -47,14 +45,6 @@ export function Menu() {
         {right != null ? <span class="rt">{right}</span> : <Icon name="chevronR" size={18} color="var(--text-muted)" />}
       </button>
     );
-  }
-
-  async function sendSupport() {
-    if (!msg.trim()) return;
-    setSending(true);
-    try { await Api.support(msg.trim()); showToast('Mesaj trimis. Te contactăm în curând.'); setSupport(false); setMsg(''); }
-    catch (e: any) { showToast(e?.message || 'Eroare la trimitere', true); }
-    finally { setSending(false); }
   }
 
   // Capul meniului arată numele afișat (Contul meu), ca bara de sus de pe web; emailul doar dacă nu are nume.
@@ -167,7 +157,10 @@ export function Menu() {
             {item('coins', 'Control costuri', () => loc.route('/admin/costs'))}
             {/* Bulina roșie: cererile noi, ca pe web (nav-demoreq-badge). */}
             {item('mail', 'Cereri demo', () => loc.route('/admin/demo-requests'),
-              cereriNoi > 0 ? <span style="display:inline-flex;align-items:center;gap:6px"><span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800">{cereriNoi}</span><Icon name="chevronR" size={18} color="var(--text-muted)" /></span> : undefined)}
+              bulina(cereriNoi))}
+            {/* Cererile de la clienți (23.10), ca pe web: după „Cereri demo", cu bulina celor încă nepreluate. */}
+            {item('headset', TITLU_CERERI, () => loc.route(RUTA_CERERI_CLIENTI),
+              bulina(cereriEchipaNoi))}
             {/* Panoul Mail al fondatorilor (12.10), ca pe web: imediat după „Cereri demo", în Business. */}
             {item('mail', 'Mail', () => loc.route('/admin/mail'))}
 
@@ -185,7 +178,8 @@ export function Menu() {
         {item('bell', 'Preferințe notificări', () => loc.route('/notif-prefs'))}
         {(perms.manageFleet || perms.manageUsers) && item('settings', 'Setări companie', () => loc.route('/settings'))}
         {perms.manageUsers && !u?.isSuper && item('eye', 'Afișaj pentru toți', () => loc.route('/admin/afisaj'))}
-        {item('headset', 'Suport clienți', () => setSupport(true))}
+        {/* „Anunță echipa RA Track" în locul vechii foi „Suport clienți". Noi nu trimitem cereri: fondatorul are lista lor, în Business. */}
+        {!u?.isSuper && item('headset', TITLU_FEREASTRA, () => loc.route(usaMeniu()))}
         {item('logout', 'Deconectare', () => logout(), null, 'danger')}
 
         {/* Documentele legale trebuie să fie accesibile din aplicație, nu doar de pe site: utilizatorul care
@@ -199,24 +193,6 @@ export function Menu() {
           RA Track{versiune ? ' · v' + versiune : ''}
         </div>
       </div>
-
-      {support && (
-        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) setSupport(false); }}>
-          <div class="sheet">
-            <div class="sheet-h"><b><Icon name="headset" size={18} color="var(--accent)" /> Suport clienți</b><button class="h-btn" onClick={() => setSupport(false)}><Icon name="x" /></button></div>
-            <div class="sheet-body">
-              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-                <a href="tel:+40312295000" class="mn-item" style="border-radius:9px;border:1px solid var(--border)"><Icon name="headset" size={18} class="ic" /><span class="lbl">0312 295 000</span></a>
-                <a href="mailto:contact@ratrack.ro" class="mn-item" style="border-radius:9px;border:1px solid var(--border)"><Icon name="report" size={18} class="ic" /><span class="lbl">contact@ratrack.ro</span></a>
-              </div>
-              <div class="muted" style="font-size:12.5px;margin-bottom:8px">Sau trimite-ne un mesaj direct:</div>
-              <textarea value={msg} onInput={(e) => setMsg((e.target as HTMLTextAreaElement).value)} rows={4} placeholder="Descrie problema sau întrebarea ta…"
-                style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:10px;padding:11px;font-size:15px;font-family:inherit;resize:vertical" />
-              <button class="btn btn-primary btn-block" style="margin-top:10px" disabled={sending} onClick={sendSupport}>{sending ? 'Se trimite…' : 'Trimite mesajul'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -30,7 +30,8 @@ import { CalendarMontaj } from '../components/CalendarMontaj';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { MONTAJ_TIPURI, azi, inputZi, lei, luniOptiuni, luniText, zile } from '../lib/contracte';
 import { MJ_LIPSA, MJ_LIPSURI_FIRMA, bifaRetarif, cifraFilei, mjStare, ritmText, ziLaPranz } from '../lib/montajSectiune';
-import { calendarMontaj, deProgramatActive, eroarea, type CalDate } from '../lib/calendarMontaj';
+import { calendarMontaj, deProgramatActive, eroarea, interventieGata, type CalDate } from '../lib/calendarMontaj';
+import { rutaCerere } from '../lib/cereriEchipa';
 import { rutaDosar } from '../lib/companii';
 import { nrDe } from '../lib/numar';
 import './admin.css';
@@ -271,7 +272,8 @@ export function Montaj() {
               „înapoi" din dosar să ducă direct în calendar, nu într-o foaie care nu mai e. */}
           {d != null && fila === 'calendar' && (
             <CalendarMontaj d={cal} err={calErr} incarcand={calIncarca} onLuna={incarcaLuna} onSchimbat={dupaCalendar}
-              onClient={(id) => loc.route(rutaDosar(id), true)} pre={pre} onPreFolosit={() => setPre(null)} />
+              onClient={(id) => loc.route(rutaDosar(id), true)} pre={pre} onPreFolosit={() => setPre(null)}
+              onInterventie={(x, dinFoaie) => loc.route(rutaCerere(x.cerere_id, interventieGata(x)), dinFoaie)} />
           )}
           {d != null && fila === 'parteneri' && (
             <ParteneriMontaj lista={d.parteneri} contracte={d.contracte} onSchimbat={() => { incarca(); }}

@@ -131,7 +131,17 @@ export const Api = {
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<any>(`/api/fuel-stats${q}`);
   },
-  support: (message: string) => api('/api/support', { method: 'POST', body: { message } }),
+  // „Anunță echipa RA Track" (o singură fereastră, ca pe web). Ruta veche /api/support rămâne pe server pentru telefoanele de dinainte.
+  cereriEchipa: () => api<any>('/api/cereri-echipa'),
+  trimiteCerere: (b: any) => api<any>('/api/cereri-echipa', { method: 'POST', body: b }),
+  cereriDeschise: (imeis: string) => api<any>('/api/cereri-echipa/deschise?imeis=' + encodeURIComponent(imeis)),
+  // „Cereri de la clienți" (fondatorii).
+  cereriClienti: (fel: string) => api<any>('/api/admin/cereri-echipa?fel=' + encodeURIComponent(fel)),
+  cereriNumar: () => api<{ noi: number; deschise: number }>('/api/admin/cereri-echipa/numar'),
+  cererePreiau: (id: number) => api<any>(`/api/admin/cereri-echipa/${id}/preiau`, { method: 'POST', body: {} }),
+  cereriProgrameaza: (id: number, b: any) => api<any>(`/api/admin/cereri-echipa/${id}/programeaza`, { method: 'POST', body: b }),
+  cerereRezolvat: (id: number, b: any) => api<any>(`/api/admin/cereri-echipa/${id}/rezolvat`, { method: 'POST', body: b }),
+  cerereRedeschide: (id: number) => api<any>(`/api/admin/cereri-echipa/${id}/redeschide`, { method: 'POST', body: {} }),
   // ── Administrare (CRUD) ──
   drivers: () => api<any[]>('/api/drivers'),
   driversLite: () => api<any[]>('/api/drivers/lite'),
@@ -434,6 +444,8 @@ export const Api = {
   setInstallIssue: (imei: string, flagged: boolean, note?: string | null) => api<any>(`/api/devices/${encodeURIComponent(imei)}/install-issue`, { method: 'PUT', body: { flagged, note: note || null } }),
 
   alerts: () => api<any[]>('/api/alerts'),
+  alerteViteza: (prag: string) => api<any>('/api/alerts/viteza?prag=' + encodeURIComponent(prag)),   // fraza de sub prag (26.10)
+  alerteCumSuna: () => api<{ deStare: string[]; text: string }>('/api/alerts/cum-suna'),            // alertele „de stare" (27.10)
   createAlert: (b: any) => api('/api/alerts', { method: 'POST', body: b }),
   // Modificare PARȚIALĂ (ca pe web): comutatorul trimite doar { enabled }; formularul trimite regula întreagă.
   updateAlert: (id: number, b: any) => api<any>(`/api/alerts/${id}`, { method: 'PUT', body: b }),

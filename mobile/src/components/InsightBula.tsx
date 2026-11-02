@@ -1,10 +1,12 @@
-import { useState } from 'preact/hooks';
-import { showToast } from '../app/store';
+import { useEffect, useState } from 'preact/hooks';
+import { Api } from '../api/endpoints';
+import { me, showToast } from '../app/store';
 import { exportHistoryReport } from '../lib/export';
 import { Icon, type IconName } from './Icon';
 import { CartonasPropunere, ButonProp } from './InsightPropunere';
 import { Md } from './InsightText';
 import { butonuriCuDrum, iconaButonProblema, iconaFa, linkSigur, planBula, rutaIstoric, rutaRaport, textSimplu, textSursaRaport } from '../lib/insight';
+import { imeisEchipa, seOcupaPeButon } from '../lib/cereriEchipa';
 
 // Bulele discuției RA Insight (web: bulaOm, bulaAi și piesele lor comune). Ordinea și ce se arată le hotărăște `planBula`
 // (lib/insight.ts), legată de pagină prin probă; aici doar se desenează. Tot textul de la server se pune ca TEXT.
@@ -129,21 +131,38 @@ function BlocSursa({ se }: { se: any }) {
 }
 // „Am găsit o problemă" (web: _chatProbleme): roșu = problemă reală, galben = de știut; butoanele duc exact la locul ei.
 function Probleme({ lista, l }: { lista: any[]; l: Laturi }) {
+  // Noi nu trimitem cereri: butonul „Anunță echipa" nu apare la fondator.
+  const faraEchipa = !!me.value?.isSuper;
+  const butoane = (p: any) => butonuriCuDrum(p.butoane, p).filter((b: any) => !(faraEchipa && b.fel === 'echipa'));
+  // O mașină cu o cerere deschisă pe aceeași problemă: în locul butonului, „Echipa RA Track se ocupă · cererea nr. …" (web: _echipaSeOcupa).
+  // Se citește la fiecare desenare a casetei, deci și la întoarcerea din fereastră, după trimitere (web: _echipaInlocuieste).
+  const imeis = imeisEchipa(lista.reduce((t: any[], p: any) => t.concat(butoane(p)), [])).join(',');
+  const [des, setDes] = useState<any>(null);
+  useEffect(() => {
+    if (!imeis) return;
+    let viu = true;
+    Api.cereriDeschise(imeis).then((j) => { if (viu) setDes(j); }).catch(() => {});
+    return () => { viu = false; };
+  }, [imeis]);
   return (
     <div class="chat-probs">
       {lista.map((p) => {
         const rosu = p.grav === 'rosu';
-        const bs = butonuriCuDrum(p.butoane, p);
+        const bs = butoane(p);
+        const ocupate = bs.map((b: any) => seOcupaPeButon(des && des.deschise, b));
+        const nota = ocupate.some(Boolean) && des && des.notaDupa ? des.notaDupa : p.nota;
         return (
           <div class={'chat-prob ' + (rosu ? 'rosu' : 'galben')}>
             <div class="chat-prob-t"><Icon name={rosu ? 'alertO' : 'circleInfo'} size={16} /><span>{String(p.titlu || '')}</span></div>
             {p.dovada ? <div class="chat-prob-d">{String(p.dovada)}</div> : null}
             {bs.length ? (
               <div class="chat-prob-b">
-                {bs.map((b: any, i: number) => <button type="button" class={'chat-pas' + (i === 0 ? ' chat-rap-dg' : '')} onClick={() => l.buton(b, p)}><Icon name={iconaButonProblema(b.fel) as IconName} size={14} />{String(b.text)}</button>)}
+                {bs.map((b: any, i: number) => (ocupate[i]
+                  ? <span class="chat-seocupa"><Icon name="headset" size={14} />{String(ocupate[i].seOcupa || '')}</span>
+                  : <button type="button" class={'chat-pas' + (i === 0 ? ' chat-rap-dg' : '')} onClick={() => l.buton(b, p)}><Icon name={iconaButonProblema(b.fel) as IconName} size={14} />{String(b.text)}</button>))}
               </div>
             ) : null}
-            {p.nota ? <div class="chat-prob-n">{String(p.nota)}</div> : null}
+            {p.nota ? <div class="chat-prob-n">{String(nota)}</div> : null}
           </div>
         );
       })}

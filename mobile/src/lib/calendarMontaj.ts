@@ -36,6 +36,11 @@ export type CalContract = {
   contract_id: number; company_id: number; company_name?: string | null; number?: string | null;
   termen: CalTermen | null; text: string; masini: number; programate: number; montate: number; ramase: number; tipuri: CalTip[];
 };
+// O intervenție din „Cereri de la clienți" (22.10): îl ține ocupat pe instalator, dar nu e lucrare de montaj (nici în contract, nici în facturi).
+export type CalInterventie = {
+  id: string; cerere_id: number; zi: string; partener_id?: number | null; partener_nume?: string | null; company_id?: number | null; company_name?: string | null;
+  status: string; vehicul?: string | null; interval?: string | null; text: string;
+};
 export type CalPartener = { id: number; name: string; active: boolean };
 export type CalStoc = { tip: string; eticheta: string; depozit: number; instalator: number };
 export type CalIncarcare = { masini: number; clienti: string[]; text: string };
@@ -45,6 +50,7 @@ export type CalDate = {
   // 01.10: zilele încă programate (oricare lună), istoricul, ce are fiecare instalator în fiecare zi, motivele anulării.
   programate?: CalLucrare[]; istoric?: CalIstoric[]; incarcare?: Record<string, Record<string, CalIncarcare>>; textLiber?: string;
   motive?: Record<string, string>;
+  interventii?: CalInterventie[];
 };
 
 // ─── Rutele (toate requireSuperadmin: clientul nu vede nimic de aici) ───
@@ -158,6 +164,22 @@ export function lucrariPeZi(lucrari: CalLucrare[] | null | undefined, part: stri
     (peZi[l.zi] = peZi[l.zi] || []).push(l);
   });
   return peZi;
+}
+// Intervențiile, pe zile, cu același filtru pe instalator ca lucrările (intZi de pe web).
+export function interventiiPeZi(lista: CalInterventie[] | null | undefined, part: string): Record<string, CalInterventie[]> {
+  const peZi: Record<string, CalInterventie[]> = {};
+  (lista || []).forEach((x) => {
+    if (part && String(x.partener_id || '') !== part) return;
+    (peZi[x.zi] = peZi[x.zi] || []).push(x);
+  });
+  return peZi;
+}
+export const interventieGata = (x: CalInterventie) => x.status === 'executat';
+export function titluInterventie(x: CalInterventie): string {
+  return x.text + (x.interval ? ' · ' + x.interval : '') + ' · ' + (x.partener_nume || 'instalator neales');
+}
+export function subInterventie(x: CalInterventie): string {
+  return [x.text, x.interval, x.partener_nume || 'instalator neales'].filter(Boolean).join(' · ');
 }
 // Culoarea unei zile (_mjcClasa): gri = montată, verde = au confirmat amândoi, galben = mai lipsește o confirmare.
 export function clasaLucrare(l: CalLucrare): string { return esteMontata(l.status) ? 'mjc-mont' : (l.conf === 'confirmat' ? 'mjc-ok' : 'mjc-conf'); }

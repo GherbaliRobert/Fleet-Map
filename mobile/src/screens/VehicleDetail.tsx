@@ -26,8 +26,10 @@ import { VehicleService } from '../components/VehicleService';
 import { CanFlags } from '../components/CanFlags';
 import { CanTellTales } from '../components/CanTellTales';
 import { DistribuieLocatia } from '../components/DistribuieLocatia';
+import { usaFisa } from '../lib/cereriEchipa';
 import './detail.css';
 import './admin.css';
+import './echipa.css';
 
 const HEX: Record<string, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 const CAN_LABELS: Record<string, [string, string]> = {
@@ -432,6 +434,13 @@ export function VehicleDetail() {
           )}
           {ll && <button class="d-act" onClick={() => openUrl(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}`)}><Icon name="eye" size={18} class="ic" /> Street View</button>}
         </div>
+
+        {/* „Anunță echipa RA Track", ca pe web (#detail-echipa): o mașină care nu transmite o face serverul „nu transmite". Noi nu trimitem cereri. */}
+        {!me.value?.isSuper && (
+          <button type="button" class="d-echipa" onClick={() => loc.route(usaFisa(imei))}>
+            <Icon name="headset" size={16} /><span>Ceva nu merge la aparat? <b>Anunță echipa RA Track</b></span><Icon name="chevronR" size={14} />
+          </button>
+        )}
 
         <div class="card d-detail">
           <h3 class="d-cardh">Detalii live</h3>

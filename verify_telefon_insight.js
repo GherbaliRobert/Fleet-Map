@@ -106,7 +106,7 @@ T('găsesc blocul secțiunii și piesele comune în pagină', INSP.length > 1000
 T('ecranul vechi „Asistent AI" a plecat, cu tot cu piesele lui', ['mobile/src/screens/AiChat.tsx', 'mobile/src/components/ChatScreen.tsx', 'mobile/src/components/InsightPanel.tsx', 'mobile/src/screens/chat.css'].every((f) => !fs.existsSync(path.join(ROOT, f))));
 
 const LP = modul(F.pagLib);
-const L = modul(F.lib, { './insightPagini': LP });
+const L = modul(F.lib, { './insightPagini': LP, './cereriEchipa': modul('mobile/src/lib/cereriEchipa.ts', { './numar': modul('mobile/src/lib/numar.ts') }) });
 
 sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
 {
@@ -467,7 +467,7 @@ function parteaButoanelor() {
   T('felurile din insightProblemaButon', J(feluri.slice().sort()) === J(['echipa', 'ecran', 'fisa', 'harta', 'programate', 'ramura', 'raport', 'traseu']), J(feluri));
   const E = { echipa: { fel: 'echipa', text: 'Anunță', problema: 'semnal', imei: '35' }, harta: { fel: 'harta', text: 'H', imei: '35' }, traseu: { fel: 'traseu', text: 'T', imei: '35', de: '2026-11-02T10:00:00.000Z', pana: '2026-11-02T10:30:00.000Z', lat: 44.5, lng: 26.1, eticheta: '159 km/h' },
     ecran: { fel: 'ecran', text: 'E', ecran: 'alerts' }, ramura: { fel: 'ramura', text: 'R', ramura: 'safedrive' }, programate: { fel: 'programate', text: 'P' }, fisa: { fel: 'fisa', text: 'F', imei: '35', fila: 'basic' }, raport: { fel: 'raport', text: 'R', tip: 'consumption', imei: '35', de: '2026-11-01T00:00:00.000Z', pana: '2026-11-02T00:00:00.000Z' } };
-  const AST = { echipa: /^\/meniu\?suport=1/, harta: /^\/vehicles\/35$/, traseu: /^\/vehicles\/35\/route\?de=\d+&pana=\d+&lat=44\.5&lng=26\.1&et=159%20km%2Fh$/, ecran: /^\/admin\/alerts$/, programate: /^\/report-schedules$/, fisa: /^\/vehicles\/35\?edit=fisa$/, raport: /^\/reports\?tip=consumption&imei=35&de=\d+&pana=\d+$/ };
+  const AST = { echipa: /^\/echipa\?imei=35&problema=semnal&sursa=insight$/, harta: /^\/vehicles\/35$/, traseu: /^\/vehicles\/35\/route\?de=\d+&pana=\d+&lat=44\.5&lng=26\.1&et=159%20km%2Fh$/, ecran: /^\/admin\/alerts$/, programate: /^\/report-schedules$/, fisa: /^\/vehicles\/35\?edit=fisa$/, raport: /^\/reports\?tip=consumption&imei=35&de=\d+&pana=\d+$/ };
   Object.keys(AST).forEach((k) => T('buton `' + k + '` → ' + L.rutaButon(E[k]), AST[k].test(String(L.rutaButon(E[k]))), String(L.rutaButon(E[k]))));
   T('buton `ramura`: deschide pagina', L.rutaButon(E.ramura) === '/insight/safedrive' && L.butonuriCuDrum([E.ramura, E.harta]).length === 2);
   T('…una care nu există: fără drum, nu se desenează', L.rutaButon({ fel: 'ramura', ramura: 'nu-exista', text: 'x' }) === null);
@@ -481,10 +481,10 @@ function parteaButoanelor() {
   T('Rapoartele citesc `tip`, `de`, `pana` (ca rinOpenReport)', /\.tip\)/.test(S.reports) && /as any\)\?\.de\)/.test(S.reports) && /as any\)\?\.pana\)/.test(S.reports) && /tq !== 'due'/.test(S.reports) && /type !== 'due'/.test(functie(html, 'async function rinOpenReport(type, imei, from, to)')));
   T('Traseu citește intervalul și punctul; punctul se marchează ca pe web', /as any\)\?\.de\)/.test(S.route) && /as any\)\?\.lat\)/.test(S.route) && /L\.circleMarker\(\[punctLat, punctLng\], \{ radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0\.3 \}\)/.test(S.route) && /L\.circleMarker\(\[Number\(b\.lat\), Number\(b\.lng\)\], \{ radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0\.3 \}\)/.test(COMUNE) && /replace\(\/\[<>&\]\/g, ''\)/.test(S.route));
   T('fișa mașinii: `?edit=fisa` deschide foaia, doar cui are creion', /get\('edit'\) === 'fisa'/.test(S.detaliu) && /!_cerutFisa \|\| !me\.value \|\| !canManage/.test(S.detaliu));
-  // Suportul, până vine fereastra „Anunță echipa".
-  const supp = L.rutaSuport({ titlu: 'B 1 nu transmite', dovada: 'de 3 ore' });
-  T('„Anunță echipa": drumul de suport din Meniu, cu textul serverului în casetă', supp === '/meniu?suport=1&ce=' + encodeURIComponent('B 1 nu transmite — de 3 ore') && L.rutaSuport() === '/meniu?suport=1', supp);
-  T('…Meniul îl citește, deschide foaia și curăță adresa', /if \(!q\.suport\) return;/.test(S.meniu) && /setSupport\(true\);/.test(S.meniu) && /setMsg\(String\(q\.ce\)\)/.test(S.meniu) && /loc\.route\('\/meniu', true\)/.test(S.meniu));
+  // „Anunță echipa": fereastra cererii, cu ce a scris aplicația la consum (ca insightProblemaButon). Restul: verify_telefon_echipa.js.
+  const usaConsum = L.rutaButon({ fel: 'echipa', text: 'Anunță', problema: 'consum', imei: '35' }, { dovada: 'Nivelul a stat la 22 L' });
+  T('„Anunță echipa": la consum, fereastra primește și ce a scris aplicația', usaConsum === '/echipa?imei=35&problema=consum&ce=' + encodeURIComponent('Nivelul a stat la 22 L') + '&sursa=insight', usaConsum);
+  T('…drumul vechi prin Meniu a plecat', typeof L.rutaSuport === 'undefined' && !/suport=1/.test(S.lib + S.meniu));
   T('…butonul poartă textul serverului', /\{String\(b\.text\)\}/.test(S.bula) && /text: CE\.BUTON/.test(citeste('probleme.js')));
   // Cartonașul.
   const web = functie(INSP, 'function cartonasPropunere(p, gata) {');
@@ -568,7 +568,7 @@ function parteaNavigarii() {
   T('ecranul n-are bara de file (caseta stă pe zona sigură)', !/path === '\/insight'/.test(S.app));
   T('butonul „înapoi" închide sertarul și foile, nu ecranul', /useInapoiInchide\(sertar,/.test(S.ecran) && /useInapoiInchide\(!!foaie,/.test(S.ecran));
   T('sertarul: Conversație nouă, căutare, conversațiile pe zile, Redenumește, Șterge, rândul pachetului', ['class="insp-nou"', 'class="insp-cauta-r"', 'class="insp-zi"', 'title="Redenumește"', 'title="Șterge"', 'class={\'insp-fond\''].every((x) => S.ecran.indexOf(x) >= 0));
-  T('foaia de suport din meniu rămâne calea veche (`/api/support`), până vine fereastra cererilor', /support: \(message: string\) => api\('\/api\/support'/.test(S.endpoints));
+  T('fereastra cererilor a luat locul foii de suport: telefonul nu mai cheamă `/api/support`, ruta rămâne pe server pentru telefoanele de dinainte', !/\/api\/support/.test(S.endpoints.replace(/\/\/[^\n]*/g, '')) && /app\.post\('\/api\/support'/.test(citeste('server.js')));
 }
 
 function parteaCulorilor() {

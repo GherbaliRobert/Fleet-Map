@@ -1,4 +1,5 @@
 import { RAMURI, ramuraDupa, ramuraIncuiata } from './insightPagini';
+import { usaCaseta } from './cereriEchipa';
 
 // Regulile ecranului RA Insight de pe telefon (02.11): ce arată un răspuns, în ce ordine, unde duce un buton, ce pleacă la
 // server. Fără JSX, fără stare, fără cereri: verify_telefon_insight.js le rulează lângă bucățile paginii (public/index.html,
@@ -142,17 +143,11 @@ export function rutaTraseu(b: any): string {
   if (b.eticheta) q.push('et=' + enc(String(b.eticheta)));
   return rutaMasina(b.imei) + '/route' + (q.length ? '?' + q.join('&') : '');
 }
-// „Anunță echipa": fereastra cererii vine într-un lot următor. Până atunci, drumul de suport din Meniu, cu textul serverului scris
-// deja în caseta mesajului (omul n-are de verificat nimic: doar trimite).
-export function rutaSuport(p?: any): string {
-  const ce = [p && p.titlu, p && p.dovada].filter(Boolean).join(' — ');
-  return '/meniu?suport=1' + (ce ? '&ce=' + enc(ce) : '');
-}
 // Adresa butonului, sau null: nu are unde duce pe telefon, deci nu se desenează (un buton nu promite ce n-avem încă).
 export function rutaButon(b: any, p?: any): string | null {
   if (!b) return null;
   const imei = b.imei != null && b.imei !== '' ? String(b.imei) : '';
-  if (b.fel === 'echipa') return rutaSuport(p);
+  if (b.fel === 'echipa') return usaCaseta(b, p);   // „Anunță echipa RA Track": fereastra cererii, cu ce a scris aplicația în casetă
   if (b.fel === 'harta') return imei ? rutaMasina(imei) : null;
   if (b.fel === 'traseu') return imei ? rutaTraseu(b) : null;
   if (b.fel === 'ecran') return ECRANE[String(b.ecran || '')] || null;

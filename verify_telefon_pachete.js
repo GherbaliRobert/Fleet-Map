@@ -81,7 +81,7 @@ const F = {
 const S = {}; Object.keys(F).forEach((k) => { S[k] = citeste(F[k]); });
 const L = modul(F.lib);
 const LP = modul(F.pagLib);
-const IL = modul(F.insightLib, { './insightPagini': LP });
+const IL = modul(F.insightLib, { './insightPagini': LP, './cereriEchipa': modul('mobile/src/lib/cereriEchipa.ts', { './numar': modul('mobile/src/lib/numar.ts') }) });
 
 // ─── DOM de carton: funcțiile paginii scriu în el, iar proba îi citește textele, în ordine ─────────────────────────────────────
 function nod(tag) {

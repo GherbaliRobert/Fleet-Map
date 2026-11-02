@@ -359,7 +359,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
   (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
-- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Rămân 15 și capătul lui 14 (ecranul Alerte).** Pe web sunt gata;
+- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
@@ -400,7 +400,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: telefonul și „Schimbă aparatul" (APK-ul următor). Adăugat pe 29.10.** Codul e gata (foaia
   `SchimbaAparat.tsx`, butonul pe fișa aparatului din Dispozitive, IMEI-ul aparatului montat acum în Dispozitive, Inventar și Aparate
   GPS) și trece verificarea de tipuri; rămâne APK-ul. Pe web merge de la publicare.
-- [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** Pe web e gata; pe telefon: (1) fereastra
+- [ ] **Robert: telefonul și „Anunță echipa RA Track" (APK-ul următor). Adăugat pe 23.10.** **02.11: codul e gata (punctele 1–4); rămâne APK-ul.** Pe web e gata; pe telefon: (1) fereastra
   clientului, pe aceleași rute (`GET /api/cereri-echipa` — textele, „Cererile tale", cum îl găsim; `POST /api/cereri-echipa`;
   `GET /api/cereri-echipa/deschise`), deschisă din butonul `echipa` al casetelor RA Insight (cu `nota` sub butoane și „Echipa RA Track
   se ocupă" după trimitere), din fișa mașinii și din meniu (în locul trimiterii vechi din `Menu.tsx`); butonul `harta` duce pe hartă;
@@ -522,6 +522,18 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-02
+
+### AMÂNDOI · Telefonul, lotul 4: „Anunță echipa RA Track" și ecranul Alerte (cod gata, intră în aplicație cu APK-ul următor)
+
+**Ce am schimbat:** la client: ecranul „Anunță echipa RA Track" („Cerere nouă" / „Cererile tale", confirmarea cu pașii), deschis din butonul casetelor RA Insight, din fișa mașinii și din meniu, în locul trimiterii vechi spre suport. Caseta spune apoi „Echipa RA Track se ocupă · …". La noi: „Cereri de la clienți", sub „Cereri demo", cu bulina, Deschise / Rezolvate / Toate, datele aparatului doar pentru noi, Preiau / Programez / Rezolvat / Redeschide, Sună, Deschide firma. Anunțurile duc la cerere. În Calendarul de montaj, intervențiile apar în grilă, în listă și în fereastra zilei, ca pe web; nu sunt lucrări de montaj. Pe ecranul Alerte: „sună peste 140 km/h", „sună la apariție, apoi o dată pe zi" și frazele de la server de sub prag. Serverul și pagina web nu s-au schimbat; ruta veche de suport rămâne pentru telefoanele vechi. Păzit de verify_telefon_echipa.js (nou, în `npm test`).
+
+**Încercat:** pe serverul local, la 375 px, cu un cont de firmă: o cerere trimisă pe TM 01 TRK, cu confirmarea și pașii. Partea noastră, prin probă, pe server pornit; clientul nu primește niciodată datele aparatului. **Neîncercat:** pe un telefon adevărat (tastatura, alegerea datei, „Sună").
+
+**Ce vede fondatorul:** după APK, „Cereri de la clienți" și intervențiile în calendar.
+
+**Ce vede clientul:** după APK, ecranul de cereri și ecranul Alerte cu frazele noi.
+
+- **Găsit pe drum, de întrebat:** confirmarea, emailul clientului și ghidul spun „iconița cu căști din bara de sus", dar pe telefon intrarea e în meniu. Plus: chipul „Calendar" din Montaj, pe tema deschisă, are contrast 4,45; lista Alerte n-are margine laterală la 360 px.
 
 ### AMÂNDOI · Telefonul, lotul 3: pachetele RA Insight, conturile, oferta și „RA Insight · control" (cod gata, intră în aplicație cu APK-ul următor)
 

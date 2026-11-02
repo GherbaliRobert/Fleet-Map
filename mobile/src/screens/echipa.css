@@ -1,0 +1,108 @@
+/* „Anunță echipa RA Track" și „Cereri de la clienți" pe telefon (02.11), după public/css/app.css (.ce-*, .cer-*). Tema implicită e cea
+   ÎNCHISĂ; perechile pentru tema deschisă stau sub :root[data-theme="light"], cu aceleași culori ca pe web. Textul stă pe
+   --text-secondary (--text-muted iese sub 4,5 pe tema deschisă). Fontul se moștenește (Nunito). */
+:root {
+  --ce-verde: #4ade80; --ce-verde-fund: rgba(74, 222, 128, .12); --ce-rosu: #f87171; --ce-gata-text: #06210F;
+  --ce-trimisa: #fbbf24; --ce-preluata: #c4b5fd; --ce-programata: #93c5fd; --ce-rezolvata: #86efac;
+  --cer-bara-noua: #d97706; --cer-bara-prel: #a78bfa; --cer-bara-prog: #60a5fa; --cer-prog-ic: #93c5fd;
+}
+:root[data-theme="light"] {
+  --ce-verde: #166534; --ce-verde-fund: rgba(22, 101, 52, .10); --ce-rosu: #b91c1c; --ce-gata-text: #ffffff;
+  --ce-trimisa: #b45309; --ce-preluata: #6d28d9; --ce-programata: #1d4ed8; --ce-rezolvata: #166534;
+  --cer-bara-noua: #d97706; --cer-bara-prel: #6d28d9; --cer-bara-prog: #1d4ed8; --cer-prog-ic: #1d4ed8;
+}
+
+/* Fereastra clientului: cap, file, conținutul care se derulează, butoanele jos (deasupra tastaturii). */
+.ce-ecran { min-width: 0; }
+.ce-tabs { flex: none; display: flex; gap: 4px; padding: 0 12px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.ce-tab { padding: 11px 12px; font-weight: 800; font-size: 13.5px; color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; }
+.ce-tab.on { color: var(--text-primary); border-bottom-color: var(--ce-verde); }
+.ce-b { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.ce-f { flex: none; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding: 10px 14px calc(10px + max(var(--sab), var(--ce-kb, 0px))); background: var(--bg-panel); border-top: 1px solid var(--border); }
+.ce-f .btn { flex: 1 1 auto; }
+
+.ce-camp { min-width: 0; }
+.ce-l { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); margin-bottom: 5px; }
+.ce-l2 { font-weight: 600; }
+.ce-l3 { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.ce-ro { padding: 10px 12px; border-radius: 10px; background: var(--bg-dark); border: 1px solid var(--border); line-height: 1.5; }
+.ce-in { display: block; width: 100%; min-width: 0; box-sizing: border-box; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font-size: 16px; }
+.ce-in:focus { outline: none; border-color: var(--accent); }
+.ce-ta { min-height: 76px; resize: vertical; line-height: 1.45; }
+.ce-ta2 { resize: vertical; line-height: 1.35; }
+.ce-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ce-chip { padding: 7px 12px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.ce-chip.on { border-color: var(--ce-verde); color: var(--ce-verde); background: var(--ce-verde-fund); }
+.ce-r2 { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ce-r0 { margin-top: 0; }
+.ce-tel { max-width: 220px; }
+.ce-email { font-size: 13px; }
+.ce-gri { color: var(--text-secondary); }
+.ce-nota { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+.ce-det { display: flex; gap: 8px; align-items: flex-start; border: 1px dashed var(--border-light); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.ce-det svg { flex: none; margin-top: 2px; }
+.ce-err { color: var(--ce-rosu); font-weight: 700; font-size: 13.5px; }
+
+/* Confirmarea, cu pașii */
+.ce-trimis { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; }
+.ce-trimis > svg { flex: none; color: var(--ce-verde); margin-top: 1px; }
+.ce-tl { display: flex; flex-direction: column; }
+.ce-tl-r { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; position: relative; padding-bottom: 13px; }
+.ce-tl-r:not(:last-child)::before { content: ''; position: absolute; left: 10px; top: 21px; bottom: 1px; width: 2px; background: var(--border); }
+.ce-tl-d { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-light); background: var(--bg-panel); display: grid; place-items: center; box-sizing: border-box; }
+.ce-tl-r.gata .ce-tl-d { background: var(--ce-verde); border-color: var(--ce-verde); color: var(--ce-gata-text); }
+.ce-tl-r.sarit .ce-tl-t { color: var(--text-secondary); }
+.ce-tl-t { font-weight: 800; }
+.ce-tl-s { font-size: 13px; color: var(--text-secondary); }
+
+/* „Cererile tale" */
+.ce-cr { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+.ce-cr-h { display: flex; align-items: center; gap: 8px; }
+.ce-st { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; margin-left: auto; white-space: nowrap; }
+.ce-st.trimisa { color: var(--ce-trimisa); }
+.ce-st.preluata { color: var(--ce-preluata); }
+.ce-st.programata { color: var(--ce-programata); }
+.ce-st.rezolvata { color: var(--ce-rezolvata); }
+
+/* Fișa mașinii: „Ceva nu merge la aparat?" */
+.d-echipa { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 10px; padding: 9px 12px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark); color: var(--text-secondary); font-size: 13px; line-height: 1.35; }
+.d-echipa b { color: var(--text-primary); font-weight: 800; }
+.d-echipa > svg:first-child { flex: none; color: var(--ce-verde); }
+.d-echipa > span { flex: 1; min-width: 0; }
+.d-echipa > svg:last-child { flex: none; color: var(--text-secondary); }
+
+/* „Cereri de la clienți" (fondatorii) */
+.cer-pag { padding: 12px 14px calc(28px + var(--sab)); display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--text-primary); }
+.cer-head { display: flex; gap: 6px; flex-wrap: wrap; }
+.cer-cate { font-size: 12.5px; color: var(--text-secondary); }
+.cer-item { border: 1px solid var(--border); border-left: 3px solid var(--cer-bara-noua); border-radius: 12px; background: var(--bg-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
+.cer-item.prel { border-left-color: var(--cer-bara-prel); }
+.cer-item.prog { border-left-color: var(--cer-bara-prog); }
+.cer-item.rez { border-left-color: var(--border-light); }
+.cer-item.cer-arat { box-shadow: 0 0 0 2px var(--accent); }
+.cer-cap { font-size: 14.5px; line-height: 1.5; }
+.cer-veh { color: var(--text-secondary); font-weight: 600; }
+.cer-tag { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; padding: 1px 7px; border-radius: 5px; border: 1px solid currentColor; color: var(--ce-trimisa); vertical-align: 1px; }
+.cer-tag.prel { color: var(--ce-preluata); }
+.cer-tag.prog { color: var(--ce-programata); }
+.cer-tag.rez { color: var(--ce-rezolvata); }
+.cer-meta { font-size: 12.5px; color: var(--text-secondary); }
+.cer-meta a { color: var(--ce-programata); }
+.cer-tit { font-weight: 700; }
+.cer-msg { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.cer-msg b { color: var(--text-primary); }
+.cer-auto { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; color: var(--ce-verde); font-weight: 800; }
+.cer-auto svg { flex: none; margin-top: 2px; }
+.cer-tech { padding: 8px 10px; border-radius: 9px; background: var(--bg-dark); font-size: 12.5px; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.cer-tech b { color: var(--text-primary); }
+.cer-tech .t { width: 100%; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.cer-prog-txt { font-size: 13px; line-height: 1.5; }
+.cer-prog-txt svg { color: var(--cer-prog-ic); vertical-align: -2px; }
+.cer-sub { color: var(--text-secondary); }
+.cer-form { padding: 10px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-dark); display: flex; flex-direction: column; gap: 8px; }
+.cer-form .ce-l { margin-bottom: 0; }
+.cer-ck { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.cer-ck input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); }
+.cer-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.cer-acts .ctr-btn { text-decoration: none; }
+.cer-form .cer-acts .ctr-btn { flex: 1 1 auto; }

@@ -34,15 +34,16 @@ const COND_UNIT: Record<string, string> = { maxSpeed: ' km/h', dropLiters: ' L',
 // Tipuri de alertă (prag numeric / zonă geofence / limite pe axe / fără câmpuri). Paritate cu web.
 // `empty` = ce face motorul de alerte când pragul e GOL, dacă NU folosește valoarea implicită (`def`).
 // `offWhenEmpty` = fără prag, regula nu se declanșează deloc (server.js: `cond.dropLiters && …` etc.).
-type AField = { k: string; label: string; def?: number; geofence?: boolean; empty?: string; offWhenEmpty?: boolean };
+// `nota` = sub prag, fraza serverului despre când sună de fapt regula (GET /api/alerts/viteza; 26.10).
+type AField = { k: string; label: string; def?: number; geofence?: boolean; empty?: string; offWhenEmpty?: boolean; nota?: boolean };
 type AType = { v: string; label: string; fields: AField[]; axles?: boolean };
 const OFF = { empty: 'gol = dezactivat', offWhenEmpty: true };
 // ORDINEA e cea de pe web (ALERT_TYPES din public/index.html): web-ul folosește aceeași listă și pentru
 // alegerea tipului în formular, și pentru ordinea grupelor din listă — așa că același cont vede tipurile
 // în aceeași ordine pe ambele. Un tip nou pe web se adaugă aici în același loc.
 const ALERT_TYPES: AType[] = [
-  // Viteză goală: serverul folosește pragul minim (50) plus marja (10) → alertă peste 60 km/h, nu peste 90.
-  { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90, empty: 'gol = alertă peste 60 km/h' }] },
+  // Viteză: când sună de fapt (pragul + marja motorului, și cu prag gol) o spune fraza de la server, sub câmp.
+  { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90, nota: true }] },
   { v: 'fuel_drop', label: 'Scădere combustibil (furt)', fields: [{ k: 'dropLiters', label: 'Scădere minimă (L)', def: 10, ...OFF }] },
   { v: 'ignition_on', label: 'Pornire motor', fields: [] },
   { v: 'ignition_off', label: 'Oprire motor', fields: [] },
@@ -99,6 +100,23 @@ function formCond(t: AType, src: Record<string, any> | null): Record<string, any
     for (const n of AXLES) cond['axle' + n] = al['axle' + n] ?? '';
   }
   return cond;
+}
+
+// Alertele „de stare" (27.10): tipurile și fraza vin de la server (alerte_stare.js), o dată. O eroare nu rămâne ținută minte (ca pe web).
+let _cumSuna: Promise<any> | null = null;
+function cumSunaIa(): Promise<any> {
+  if (!_cumSuna) _cumSuna = Api.alerteCumSuna().catch(() => null).then((j) => { if (!j) _cumSuna = null; return j; });
+  return _cumSuna;
+}
+function notaStare(cs: any, tip: string): string {
+  return cs && Array.isArray(cs.deStare) && cs.deStare.indexOf(tip) >= 0 ? String(cs.text || '') : '';
+}
+// Ce scrie sub numele regulii: când sună de fapt, cu cifra de la server (ca .alr-suna de pe web).
+function sunaText(a: any): string[] {
+  const l: string[] = [];
+  if (typeof a.suna_peste === 'number') l.push('sună peste ' + a.suna_peste + ' km/h');
+  if (a.cum_suna) l.push(String(a.cum_suna));
+  return l;
 }
 
 export function AdminAlerts() {
@@ -183,6 +201,20 @@ export function AdminAlerts() {
     setForm((p: any) => ({ ...p, type: v, cond: formCond(t, src) }));
   }
   const curType = typeDef(form.type);
+  // Nota de sub prag: textul îl scrie serverul, la 200 ms după ultima cifră; ce vine după ce s-a scris altceva nu se mai pune (ca alertCfNota).
+  const areNota = add && curType.fields.some((f) => f.nota);
+  const vitezaScrisa = String(form.cond.maxSpeed == null ? '' : form.cond.maxSpeed);
+  const [notaViteza, setNotaViteza] = useState('');
+  useEffect(() => {
+    if (!areNota) { setNotaViteza(''); return; }
+    let viu = true;
+    const t = setTimeout(() => {
+      Api.alerteViteza(vitezaScrisa).then((j: any) => { if (viu) setNotaViteza(String((j && j.text) || '')); }).catch(() => { if (viu) setNotaViteza(''); });
+    }, 200);
+    return () => { viu = false; clearTimeout(t); };
+  }, [areNota, vitezaScrisa]);
+  const [cumSuna, setCumSuna] = useState<any>(null);
+  useEffect(() => { if (add) cumSunaIa().then(setCumSuna); }, [add, form.type]);
   const zoneKey = (curType.fields.find((f) => f.geofence) || { k: '' }).k;
   // Zonele companiei alese — motorul caută zona în zonele companiei regulii, deci una din altă
   // companie n-ar fi găsită niciodată. Cele fără companie rămân vizibile (aceeași logică ca la vehicule).
@@ -331,6 +363,7 @@ export function AdminAlerts() {
                                 </div>
                                 <div class="fl-rn">{a.name}</div>
                                 {z ? <div class="fl-rs"><Icon name="mapPin" size={12} /> {z}</div> : null}
+                                {sunaText(a).map((t) => <div class="alr-suna">{t}</div>)}
                               </div>
                               {prag ? <span class={'fl-pill' + (prag.indexOf('nu sună') >= 0 ? ' s-soon' : '')}>{prag}</span> : null}
                             </div>
@@ -424,14 +457,16 @@ export function AdminAlerts() {
                       // Indiciul din căsuța goală spune ce face serverul CHIAR ACUM cu un prag gol — nu valoarea
                       // implicită a formularului, pe care motorul n-o folosește la viteză, combustibil, temperatură, greutate.
                       <div>
-                        <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} placeholder={f.empty || (f.def != null ? 'implicit ' + f.def : '')} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
+                        <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} placeholder={f.nota ? '' : (f.empty || (f.def != null ? 'implicit ' + f.def : ''))} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
                         {f.offWhenEmpty && (form.cond[f.k] === '' || form.cond[f.k] == null) && (
                           <div style="font-size:11.5px;margin-top:4px;color:var(--orange,#f59e0b)">Fără prag, regula nu trimite nicio alertă.</div>
                         )}
+                        {f.nota && notaViteza ? <div class="alr-cf-nota">{notaViteza}</div> : null}
                       </div>
                     )}
                   </div>
                 ))}
+                {notaStare(cumSuna, form.type) ? <div class="alr-cf-nota">{notaStare(cumSuna, form.type)}</div> : null}
                 {curType.axles && (
                   <div class="frm-row" style="flex-wrap:wrap">
                     {AXLES.map((n) => (
