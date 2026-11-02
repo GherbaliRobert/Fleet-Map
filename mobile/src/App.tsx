@@ -32,7 +32,7 @@ import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotifPrefs } from './screens/NotifPrefs';
 import { ReportSchedules } from './screens/ReportSchedules';
-import { AiChat } from './screens/AiChat';
+import { Insight } from './screens/Insight';   // RA Insight: discuția (02.11), în locul vechiului „Asistent AI"
 import { AiAssistants } from './screens/AiAssistants';
 import { AiAgents } from './screens/AiAgents';
 import { ETransport } from './screens/ETransport';
@@ -111,7 +111,7 @@ const P = {
   tahograf: pazit('tahograf', Tahograf, 'Tahograf'),
   etransport: pazit('etransport', ETransport, 'e-Transport (ANAF)'),
   etoll: pazit('tollro', EToll, 'Taxa de drum (TollRo)'),
-  aiChat: pazit('insight', AiChat, 'Asistent AI'),   // /api/ai stă pe server sub ecranul „insight"
+  insight: pazit('insight', Insight, 'RA Insight'),   // /api/insight și /api/ai stau pe server sub ecranul „insight"
   aiAgents: pazit('insight', AiAgents, 'Agenți AI'),
   aiStats: doarSuper(AiAssistants, 'Asistenți AI'),
   // Ecranele platformei: în meniu apar doar la super-admin, dar la adresă se putea ajunge și altfel (buton,
@@ -247,7 +247,8 @@ function Shell() {
         <Route path="/notif-prefs" component={NotifPrefs} />
         <Route path="/cont" component={ContulMeu} />
         <Route path="/report-schedules" component={P.schedules} />
-        <Route path="/ai" component={P.aiChat} />
+        <Route path="/insight" component={P.insight} />
+        <Route path="/ai" component={SpreInsight} />
         <Route path="/ai-stats" component={P.aiStats} />
         <Route path="/ai-agents" component={P.aiAgents} />
         <Route path="/etransport" component={P.etransport} />
@@ -294,6 +295,13 @@ function Shell() {
       {showTabs && <TabBar />}
     </>
   );
+}
+
+// Adresa veche a „Asistentului AI": anunțuri și scurtături mai pot duce aici. Înlocuim adresa, ca „Înapoi" să nu se întoarcă la ea.
+function SpreInsight() {
+  const loc = useLocation();
+  useEffect(() => { loc.route('/insight', true); }, []);
+  return null;
 }
 
 // Pagina calmă pentru un ecran la care omul n-are acces. Un „Acces interzis" sec arată a aplicație stricată;

@@ -20,7 +20,8 @@ export function onUnauthorized(cb: () => void) { _onUnauthorized = cb; }
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) { super(message); this.status = status; }
+  data: any;   // corpul răspunsului, când serverul a trimis unul (de ex. `propunere` la un 409 din RA Insight)
+  constructor(status: number, message: string, data?: any) { super(message); this.status = status; this.data = data; }
 }
 
 // Timeout GLOBAL: CapacitorHttp NU are timeout implicit → un răspuns lent (ex. raport mare) atârna LA INFINIT
@@ -72,6 +73,6 @@ export async function api<T = any>(
   }
 
   if (status === 401) { if (_onUnauthorized) _onUnauthorized(); throw new ApiError(401, (data && data.error) || 'Neautorizat'); }
-  if (status < 200 || status >= 300) throw new ApiError(status, (data && data.error) || ('Eroare ' + status));
+  if (status < 200 || status >= 300) throw new ApiError(status, (data && data.error) || ('Eroare ' + status), data);
   return data as T;
 }

@@ -221,6 +221,16 @@ export function VehicleDetail() {
     setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
   }, [full, _cerutDocs, me.value]);
 
+  // `?edit=fisa`: butonul „Completează la …" din RA Insight (web: openEditModal). Fără creion, rămâne fișa de citit.
+  const _cerutFisa = new URLSearchParams((loc.url || '').split('?')[1] || '').get('edit') === 'fisa';
+  const fisaDeschisa = useRef(false);
+  useEffect(() => {
+    if (fisaDeschisa.current || !_cerutFisa || !me.value || !canManage) return;
+    if (!full || String(full.imei) !== String(imei) || editOpen) return;
+    fisaDeschisa.current = true;
+    openEdit();
+  }, [full, _cerutFisa, me.value]);
+
   function setEF(k: string, val: any) { setEf((p) => ({ ...p, [k]: val })); }
 
   // Sondele pot sosi după ce ai deschis deja foaia de editare — le punem atunci în formular.

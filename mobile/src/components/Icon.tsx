@@ -18,6 +18,9 @@ export type IconName =
   | 'tag' | 'userPlus'
   // Stoc echipamente (fondatori): cutiile stivuite (fa-boxes-stacked de pe web) și „Mută" (fa-right-left).
   | 'boxes' | 'swap'
+  // RA Insight pe telefon (02.11): globul („Sursă externă"), trimite, „⋯", 👍 / 👎, creierașul („ținut minte"), notița, „deschide",
+  // continuarea, cerculețele de pe casete, discuția.
+  | 'globe' | 'arrowUp' | 'ellipsis' | 'thumbsUp' | 'thumbsDown' | 'brain' | 'note' | 'externalLink' | 'cornerDown' | 'circleCheck' | 'circleInfo' | 'comments'
   // Steaguri CAN (vezi can_flags.js, campul `mi`) — martori de bord, usi, lumini, transmisie.
   | 'key' | 'doorOpen' | 'lock' | 'unlock' | 'bulb' | 'shield' | 'gears' | 'fan' | 'play' | 'ban'
   | 'hand' | 'foot' | 'reverse' | 'parking' | 'circleDot' | 'arrowRight' | 'arrowDown'
@@ -233,6 +236,19 @@ const P: Record<IconName, string> = {
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
   undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
   mailOpen: '<path d="M21.2 8.4c.5.4.8 1 .8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0z"/><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>',
+  // RA Insight pe telefon (02.11).
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>',
+  arrowUp: '<path d="M12 20V5M6 11l6-6 6 6"/>',
+  ellipsis: '<circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/>',
+  thumbsUp: '<path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 18.1 20H7"/>',
+  thumbsDown: '<path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1z"/><path d="M17 14l-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 5.9 4H17"/>',
+  brain: '<path d="M12 5a3 3 0 0 0-5.9-.7A3 3 0 0 0 4 9.5a3.5 3.5 0 0 0 1 6.3A3 3 0 0 0 9 19.5a3 3 0 0 0 3-1.5z"/><path d="M12 5a3 3 0 0 1 5.9-.7A3 3 0 0 1 20 9.5a3.5 3.5 0 0 1-1 6.3 3 3 0 0 1-4 3.7 3 3 0 0 1-3-1.5z"/>',
+  note: '<path d="M4 4h16v10l-6 6H4z"/><path d="M20 14h-6v6"/>',
+  externalLink: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  cornerDown: '<path d="M5 4v7a3 3 0 0 0 3 3h11"/><path d="M14 9l5 5-5 5"/>',
+  circleCheck: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/>',
+  circleInfo: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
+  comments: '<path d="M3 5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-4 3.5V13a1 1 0 0 1-1-1z"/><path d="M19 9h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1v3l-3.5-3H11a1 1 0 0 1-1-1"/>',
 };
 
 // `sw` = grosimea conturului. Implicit 2, ca până acum. Pictogramele de bord (uși, martori,

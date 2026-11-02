@@ -963,6 +963,15 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
 - Păzit de **`verify_discutia.js`** (în `npm test`; discuția lui Alin pe server pornit, modelul simulat), `verify_cifre.js`,
   `verify_insight.js`, `verify_un_singur_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js`, `verify_acasa.js`.
 
+### Telefonul: RA Insight (02.11, lotul 1; Robert: „1. da")
+Ecranul `/insight` (`mobile/src/screens/Insight.tsx` + `components/InsightBula.tsx`, `InsightPropunere.tsx`, `InsightText.tsx`), în locul chatului vechi (`AiChat.tsx` a
+ieșit; `/ai` duce în `/insight`; ruta veche `/api/ai/chat` rămâne pentru telefoanele vechi).
+- **Regulile ecranului stau în `mobile/src/lib/insight.ts`, legate de pagină** prin `verify_telefon_insight.js` (în `npm test`), care rulează funcțiile paginii lângă ale telefonului pe aceleași cazuri
+  (`aziPrimul`, `aziButon`, `incarcaPachet`, `actualizeazaCaseta`, `md`, `_chatPuneInText`, `_chatMasini`, `bulaAi`). Schimbi una pe web → proba pică până o schimbi și pe telefon. Telefonul NU socotește și NU scrie textele serverului.
+- **`RAMURI_PE_TELEFON`** = paginile construite pe telefon: butonul spre o pagină care nu e în listă nu se desenează, iar un `pagina` din răspuns se ignoră. O pagină nouă pe telefon se adaugă acolo.
+- **Unde telefonul face dinadins altfel:** tastatura nu se deschide singură după răspuns; copiază / 👍 / 👎 stau la vedere; amănuntul pachetului se deschide la apăsare; „Sursă externă" = globul + „7 din 10". Casetele au 16 px.
+- `client.ts` ține în `ApiError.data` corpul erorii (`propunere` la 409, `reply` la 404).
+
 ### Pasul 2, partea 1 (22.10): ȘOFERII PE MAȘINI — „RA Insight face, cu Da-ul tău" (Alin: „da" la flux; „Da"-ul nenumărat; de la Basic)
 Construit după macheta din 21.10 (PDF-ul „Proba modelelor, garanția și machetele", capitolul 3: M1, M2, M4, M5). RA Insight
 PROPUNE, omul apasă „Da", aplicația face — pe calea și cu drepturile ecranului. Următoarele părți (aprobate ca ordine): (2) alerta și
@@ -1364,8 +1373,6 @@ o întrebare" măsurat pe Haiku 4.5, `aiqPana10…` în „Prețurile noastre") 
   pagină și niciun telefon nu o trimit; o trimit probele regulii vechi. Golirea (`ai_quota: null`, limita `null`) merge oricând.
 - O ofertă veche (cu `aiA` / `aiqN` / `aiqSeats`) redeschisă se socotește pe ramura ei din `_ofCalc` (`p.pAiA` — rămas în
   `_OF_PRETURI_DEF` DOAR pentru ele) și se redeschide în formular pe Basic.
-- ⚠ **Telefonul** (`mobile/src/components/ChatScreen.tsx`) mai are interfața veche de plată peste fond; nu se aprinde. Se curăță
-  la următorul APK.
 
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.

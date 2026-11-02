@@ -359,7 +359,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
   (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
-- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** Pe web sunt gata;
+- [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Rămân 4, 8, 10, 11, 15 și din 7 „Pagini", „Pachet și conturi", „Ghid".** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
   → `/api/reports/history/:id?format=xlsx`) și butonul „Raport" din `GET /api/insight/rapoarte`; (4) fila „AI Raport" scoasă
@@ -434,7 +434,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   apare nimănui.
   **29.10:** Alin a pus „Doar pentru noi" și a încercat: căutarea a picat (Anthropic nu primea țara „RO"), reparat azi. **De reîncercat după
   publicare**, cu aceeași întrebare; dacă merge, pasul lui Robert nu mai e nevoie. Dacă dă altă eroare, rândul din RA Insight · control o spune.
-- [ ] **Robert: telefonul și „Sursă externă" (APK-ul următor). Adăugat pe 28.10.** Pe web e gata; pe telefon: butonul „Sursă externă"
+- [ ] **Robert: telefonul și „Sursă externă" (APK-ul următor). Adăugat pe 28.10.** **02.11: codul e gata; rămâne APK-ul.** Pe web e gata; pe telefon: butonul „Sursă externă"
   lângă „+" (din `/api/ai/quota` → `sursa`: `nume`, `contor`, `nota`, `poate`; fără `sursa`, nu apare), `sursa: true` trimis cu
   întrebarea cât e pornit (o discuție nouă pornește cu el oprit) și, sub răspuns, blocul „Surse de pe internet" (`sursa` din răspuns:
   titlul, sursele cu linkul, „Ce am căutat"). Până atunci telefonul nu caută pe internet. **30.10:** rândul „✓” de sub răspuns ia textul
@@ -522,6 +522,28 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-02
+
+### AMÂNDOI · Telefonul, lotul 1: RA Insight în locul chatului vechi (cod gata, intră în aplicație cu APK-ul următor)
+
+**Ce am schimbat:** Robert (02.11): „1. da" (începem telefonul). Rândul din meniu „Asistent AI" a devenit „RA Insight" și duce într-un ecran nou, ca secțiunea
+de pe web: salutul, caseta cu „+" (Mașina, Perioada, Raport), trei butoane scurte, „Azi la tine", conversațiile în sertar (☰), căutarea, redenumirea, ștergerea.
+Răspunsul arată ce arată și pe web, în aceeași ordine: antetul (ANALIZĂ / INSTANT), titlul, rapoartele cerute în cuvinte (cartonașul, cu „Deschide raportul"
+și „Descarcă Excel"), propunerile cu „Da / Schimbă / Nu" și „Anulează" 10 minute (șoferul, alerta, „Am vorbit cu el", revizia, actul, raportul programat),
+„Am găsit o problemă" cu butoanele ei, rândul „✓", „Sursă externă" cu sursele, întrebările de continuare, copiază și 👍/👎. Meniul „⋯": Notițele firmei, Setările
+agenților, redenumire, ștergere. „Agenți AI" iese din meniu pentru cine are cont RA Insight. Vechea adresă a chatului duce în ecranul nou. Telefonul nu
+socotește nimic și nu scrie texte de-ale serverului. Serverul și pagina web nu s-au schimbat. Regulile ecranului stau într-un loc, legate de pagină de o probă
+care rulează aceleași funcții pe aceleași cazuri (verify_telefon_insight.js, în `npm test`).
+
+**Încercat:** pe un ecran de telefon (375 px), cu serverul local și un cont de firmă: „Azi la tine", raportul cerut în cuvinte, cartonașul alertei; nimic nu iese din
+ecran. **Neîncercat:** pe un telefon adevărat (tastatura peste casetă, linkurile deschise în browser) și cu răspunsuri de la model (local n-are cheie).
+
+**Ce vede fondatorul:** după APK, RA Insight pe telefon, cu „Fondator · fără limită" în sertar.
+
+**Ce vede clientul:** după APK, același RA Insight ca pe web. Până atunci, telefonul de azi rămâne cum e.
+
+- **Rămase pentru loturile următoare de telefon:** paginile (Șoferi pe mașini, RA Drive, Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni, Ghidul), fila
+  veche „AI Raport" din Rapoarte, „Vezi pachetele" și „Pachet și conturi", fereastra „Anunță echipa" (butonul din casete deschide deocamdată trimiterea veche spre suport).
+  Până la paginile lor, butoanele spre ele nu se arată.
 
 ### FONDATOR · Indexul dublat de la poziții scos; capătul contractului nu mai depinde de ora calculatorului
 

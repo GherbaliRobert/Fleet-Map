@@ -29,6 +29,15 @@ export function Menu() {
   useEffect(() => {
     CapApp.getInfo().then((i) => setVersiune(String(i.version || '').replace(/-debug$/, ''))).catch(() => {});
   }, []);
+  // `/meniu?suport=1&ce=…` — butonul „Anunță echipa" din RA Insight, până vine fereastra cererilor: foaia de suport, cu textul
+  // serverului în casetă. Adresa se curăță, ca o întoarcere pe ecran să n-o deschidă din nou.
+  useEffect(() => {
+    const q: any = loc.query || {};
+    if (!q.suport) return;
+    setSupport(true);
+    if (q.ce) setMsg(String(q.ce));
+    loc.route('/meniu', true);
+  }, []);
 
   function item(icon: IconName, label: string, onClick: () => void, right?: any, cls = '') {
     return (
@@ -78,10 +87,12 @@ export function Menu() {
         {vede('statistici') && item('droplet', 'Statistici consum', () => loc.route('/fuelstats'))}
         {item('coins', 'Preț combustibil', () => loc.route('/fuelprice'))}
         {perms.viewReports && vede('programari') && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
-        {u?.features?.ai_assistant && vede('insight') && item('robot', 'Asistent AI', () => loc.route('/ai'))}
+        {/* RA Insight: rândul lui, când firma are modulul (ca pe web, #nav-insight). */}
+        {u?.features?.ai_assistant !== false && vede('insight') && item('sparkles', 'RA Insight', () => loc.route('/insight'))}
         {/* Agenți AI: rând propriu, ca pe web — vizibil când modulul agenților e activ și omul are voie la rapoarte.
-            Înainte se ajungea aici doar din „Asistenți AI", ecran rămas acum doar pentru super-admin. */}
-        {u?.features?.agents !== false && perms.viewReports && vede('insight') && item('shield', 'Agenți AI', () => loc.route('/ai-agents'))}
+            Înainte se ajungea aici doar din „Asistenți AI", ecran rămas acum doar pentru super-admin. Cine are cont RA Insight
+            (`aiCont`) vede agenții în „Azi la tine", iar pagina lor o deschide din „⋯" → „Setările agenților". */}
+        {u?.features?.agents !== false && perms.viewReports && !u?.aiCont && vede('insight') && item('shield', 'Agenți AI', () => loc.route('/ai-agents'))}
 
         <div class="mn-sec">Module</div>
         {/* Tahograf și e-Transport cer pe server dreptul de rapoarte: fără el, rândul ducea într-un „Acces interzis". */}

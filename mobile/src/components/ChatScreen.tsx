@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { useLocation } from 'preact-iso';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
 import '../screens/chat.css';
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// Piese comune pentru întrebările AI de pe telefon — RA Insight (Rapoarte) și Asistent AI (chat).
+// Piese comune pentru întrebările AI din Rapoarte (InsightPanel). Discuția RA Insight are ecranul ei din 02.11 (screens/Insight.tsx).
 // Oglindesc web-ul (public/index.html: raxLoadQuota, raxSendAI), ca fondul de întrebări să se vadă
 // și să se socotească la fel, oriunde ar întreba omul.
 // Din 14.09 nu mai există nimic „peste fond": când fondul lunii s-a terminat, RA Insight se oprește
@@ -13,7 +12,7 @@ import '../screens/chat.css';
 // fondEpuizat, textul în `reply`) — nu mai cere acord și nu mai trimite prețuri pe întrebare.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-export type AiAnswer = Awaited<ReturnType<typeof Api.aiChat>>;
+export type AiAnswer = Awaited<ReturnType<typeof Api.reportsAgent>>;
 export type AiQuota = Awaited<ReturnType<typeof Api.aiQuota>>;
 
 // Același text ca serverul (MESAJ_FARA_LOC_AI din requireAiSeat). Folosit doar când serverul nu trimite
@@ -117,15 +116,6 @@ export function AiQuotaBar({ q, boxStyle }: { q: AiQuota | null; boxStyle?: Reco
   );
 }
 
-// Notă de sistem (nu e răspunsul AI-ului).
-export function AiNote({ text, style }: { text: string; style?: Record<string, string | number> }) {
-  return (
-    <div style={{ alignSelf: 'flex-start', maxWidth: '92%', background: 'var(--bg-dark)', border: '1px dashed var(--border-light)', color: 'var(--text-secondary)', borderRadius: '12px', padding: '10px 12px', fontSize: '13.5px', lineHeight: 1.5, ...(style || {}) }}>
-      {text}
-    </div>
-  );
-}
-
 // Omul nu are loc de RA Insight pe contul lui: explicăm, fără câmp de întrebare care ar da doar erori.
 // `text` = mesajul serverului, când l-a trimis (e mereu mai la zi decât copia de aici).
 export function AiSeatNotice({ text, style }: { text?: string | null; style?: Record<string, string | number> }) {
@@ -137,24 +127,8 @@ export function AiSeatNotice({ text, style }: { text?: string | null; style?: Re
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// Ecranul de chat (Asistent AI)
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-interface Msg { id: number; role: 'user' | 'assistant' | 'note'; content: string; noHist?: boolean; }
-
-export interface ChatScreenProps {
-  title: string;
-  icon: IconName;
-  intro: string;
-  suggestions: string[];
-  notActiveMsg: string;
-  // Apelul către backend, cu istoricul conversației.
-  call: (message: string, history: { role: string; content: string }[]) => Promise<AiAnswer>;
-  showQuota?: boolean; // bara „X din Y întrebări rămase" (întrebările de aici se scad din fondul firmei)
-}
-
-// Markdown minimal → HTML sigur (escape întâi, apoi **bold**, *italic* și linii noi). Folosit și de
-// caseta AI din RA Insight (InsightPanel). *Italicul* contează: explicația serverului când fondul lunii
+// Markdown minimal → HTML sigur (escape întâi, apoi **bold**, *italic* și linii noi). Folosit de
+// caseta AI din Rapoarte (InsightPanel). *Italicul* contează: explicația serverului când fondul lunii
 // s-a terminat („Întrebările rapide rămân gratuite: *unde e o mașină, …*") îl folosește — fără el,
 // clientul vedea steluțele ca atare. Un „*" urmat de spațiu (listă) sau lipit de cifre („2*3") rămâne text.
 export function aiMd(s: string): string {
@@ -163,109 +137,4 @@ export function aiMd(s: string): string {
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*\w])\*([^*\s](?:[^*\n]*[^*\s])?)\*(?![*\w])/g, '$1<em>$2</em>')
     .replace(/\n/g, '<br>');
-}
-
-// Istoricul trimis serverului: doar perechi întrebare–răspuns reale (fără note, erori sau explicații ale platformei).
-function histFrom(msgs: Msg[]) {
-  return msgs.filter((m) => m.role !== 'note' && !m.noHist).slice(-6).map((m) => ({ role: m.role, content: m.content }));
-}
-
-export function ChatScreen({ title, icon, intro, suggestions, notActiveMsg, call, showQuota = true }: ChatScreenProps) {
-  const loc = useLocation();
-  const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [seatMsg, setSeatMsg] = useState<string | null>(null); // refuzul „fără loc pe cont", primit la întrebare
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const idRef = useRef(0);
-  const quota = useAiQuota(showQuota);
-  const busy = sending;
-  const noSeat = !!seatMsg || quota.seatMissing;
-
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, sending]);
-
-  function push(role: Msg['role'], content: string, noHist?: boolean) {
-    const id = ++idRef.current;
-    setMsgs((p) => [...p, { id, role, content, noHist }]);
-    return id;
-  }
-  const scoateDinIstoric = (id: number) => setMsgs((p) => p.map((m) => (m.id === id ? { ...m, noHist: true } : m)));
-
-  async function send(text?: string) {
-    const message = (text ?? input).trim();
-    if (!message || busy || noSeat) return;
-    const history = histFrom(msgs);
-    const uid = push('user', message);
-    setInput('');
-    setSending(true);
-    try {
-      const r = await call(message, history);
-      // Pe telefon, refuzul „fără loc pe cont" vine ca răspuns 200: nu e răspuns de AI, nu intră în istoric,
-      // iar câmpul de întrebare se închide (altfel omul ar primi același refuz la fiecare mesaj).
-      const faraLoc = seatMissingText(r);
-      if (faraLoc) {
-        scoateDinIstoric(uid);
-        setSeatMsg(faraLoc);
-        push('note', faraLoc, true);
-      } else {
-        // Fond epuizat / AI neconfigurat: e un text al platformei, nu răspuns la întrebare → nu intră în istoric.
-        const explicatie = !!(r && (r.limited || r.disabled));
-        if (explicatie) scoateDinIstoric(uid);
-        push('assistant', aiAnswerText(r), explicatie);
-      }
-    } catch (e: any) {
-      scoateDinIstoric(uid);
-      if (isSeatMissing(e)) { setSeatMsg(AI_SEAT_MISSING_MSG); push('note', AI_SEAT_MISSING_MSG, true); }
-      else push('assistant', aiErrorText(e, notActiveMsg), true);
-    } finally {
-      setSending(false);
-      quota.reload(); // contorul scade imediat după întrebare
-    }
-  }
-
-  return (
-    <div class="screen">
-      <header class="app-header">
-        <button class="h-btn" onClick={() => loc.route('/meniu')}><Icon name="chevronL" /></button>
-        <div class="h-title">{title}</div>
-        <div style="width:36px" />
-      </header>
-      <div class="chat-wrap">
-        {showQuota && !noSeat && <AiQuotaBar q={quota.q} boxStyle={{ flex: '0 0 auto', borderBottom: '1px solid var(--border)' }} />}
-        <div class="chat-scroll" ref={scrollRef}>
-          {msgs.length === 0 && (
-            <div class="chat-intro">
-              <Icon name={icon} size={40} class="ic" />
-              <div>{intro}</div>
-              {noSeat
-                ? <AiSeatNotice text={seatMsg} style={{ marginTop: '14px' }} />
-                : (
-                  <div class="chat-chips">
-                    {suggestions.map((s) => <button class="chat-chip" disabled={busy} onClick={() => send(s)}>{s}</button>)}
-                  </div>
-                )}
-            </div>
-          )}
-          {msgs.map((m) => (
-            m.role === 'user'
-              ? <div class="chat-msg user">{m.content}</div>
-              : m.role === 'note'
-                ? <AiNote text={m.content} />
-                : <div class="chat-msg bot" dangerouslySetInnerHTML={{ __html: aiMd(m.content) }} />
-          ))}
-          {sending && <div class="chat-typing"><span /><span /><span /></div>}
-        </div>
-        <div class="chat-bar">
-          <input
-            value={input}
-            disabled={noSeat}
-            placeholder={noSeat ? 'RA Insight nu e pornit pe contul tău' : 'Scrie o întrebare…'}
-            onInput={(e) => setInput((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-          />
-          <button class="chat-send" disabled={busy || noSeat || !input.trim()} onClick={() => send()}><Icon name="navigate" size={20} color="#06210f" /></button>
-        </div>
-      </div>
-    </div>
-  );
 }

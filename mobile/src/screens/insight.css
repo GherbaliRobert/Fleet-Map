@@ -1,0 +1,228 @@
+/* RA Insight pe telefon (02.11) — stilurile discuției, după public/css/app.css (blocurile .insp-*, .chat-*, .azi-*).
+   Cu o singură diferență de scriere: aici tema implicită e cea ÎNCHISĂ, perechile pentru tema deschisă stau sub
+   :root[data-theme="light"]. Tot ce e culoare de text are pereche pe ambele teme, cu contrast ≥ 4,5 (măsurat de
+   verify_telefon_insight.js). --text-muted pe fundalul discuției iese 4,2 pe tema deschisă: textul stă pe --text-secondary.
+   Regulile cu nume generice stau sub .insp, ca să nu atingă alte ecrane (toate foile de stil sunt globale în aplicație). */
+.insp {
+  --i-mov: #c4b5fd; --i-mov-fund: rgba(167, 139, 250, .16); --i-verde: #86efac; --i-ok: #4ade80; --i-albastru: #93c5fd;
+  --i-rosu: #f87171; --i-galben: #fbbf24; --i-dungi-mov: #a78bfa; --i-dungi-alb: #60a5fa; --i-dungi-ok: #4ade80; --i-dungi-nota: #fbbf24;
+  --i-fond-w: #fbbf24; --i-sursa-fund: rgba(59, 130, 246, .16); --i-sursa-cant: rgba(147, 197, 253, .55); --i-sursa-text: #bfdbfe;
+  --i-st-g: #3FE07D; --i-st-r: #ef4444; --i-st-w: #fbbf24; --i-st-b: #60a5fa; --i-umbra-caseta: 0 6px 24px rgba(0, 0, 0, .35);
+  position: relative; overflow: hidden; background: var(--bg-darkest);
+}
+:root[data-theme="light"] .insp {
+  --i-mov: #6d28d9; --i-mov-fund: rgba(109, 40, 217, .13); --i-verde: #166534; --i-ok: #166534; --i-albastru: #1d4ed8;
+  --i-rosu: #b91c1c; --i-galben: #b45309; --i-dungi-mov: #6d28d9; --i-dungi-alb: #2563eb; --i-dungi-ok: #15803d; --i-dungi-nota: #b45309;
+  --i-fond-w: #92400e; --i-sursa-fund: #eff6ff; --i-sursa-cant: #93c5fd; --i-sursa-text: #1d4ed8;
+  --i-st-g: #15803d; --i-st-r: #dc2626; --i-st-w: #d97706; --i-st-b: #2563eb; --i-umbra-caseta: 0 6px 24px rgba(0, 0, 0, .08);
+}
+
+/* Sertarul cu conversațiile: închis nu poartă umbră (o umbră trece de margine și se vede ca o fâșie gri). */
+.insp-umbra { position: absolute; inset: 0; z-index: 29; background: rgba(0, 0, 0, .45); }
+.insp-st { position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); display: flex; flex-direction: column; min-height: 0;
+  padding: calc(var(--sat) + 10px) 0 var(--sab); background: var(--bg-panel); border-right: 1px solid var(--border);
+  transform: translateX(-104%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
+.insp.st-deschis .insp-st { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0, 0, 0, .35); }
+.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; color: var(--i-mov); background: var(--i-mov-fund); }
+.insp-st-tit { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 15px; color: var(--text-primary); padding: 2px 14px 8px; }
+.insp-nou { margin: 4px 10px 2px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; font-weight: 700; font-size: 14px; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); text-align: left; }
+.insp-cauta-r { margin: 0 10px 4px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); text-align: left; }
+.insp-cauta { margin: 2px 10px 4px; height: 38px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font-size: 16px; }
+.insp-lista { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px; }
+.insp-gol { padding: 14px 8px; font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.insp-zi { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin: 10px 8px 2px; }
+.insp-conv { display: flex; align-items: center; gap: 2px; border-radius: 8px; }
+.insp-conv.act { background: var(--bg-dark); }
+.insp-conv .t { flex: 1; min-width: 0; padding: 9px 4px 9px 8px; font-size: 13.5px; color: var(--text-secondary); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insp-conv.act .t { color: var(--text-primary); font-weight: 700; }
+.insp-conv .a { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; color: var(--text-secondary); }
+.insp-conv .a:active { background: var(--bg-card); }
+.insp-st-jos { border-top: 1px solid var(--border); padding: 4px 8px 8px; }
+.insp-fond { display: block; width: 100%; padding: 8px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); text-align: left; overflow-wrap: anywhere; }
+.insp-fond.w { color: var(--i-fond-w); }
+.insp-fond-d { padding: 0 8px 6px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+
+/* Partea principală: discuția derulează, caseta stă jos, pe zona sigură (ecranul n-are bara de file). */
+.insp-main { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.insp-gol-mij { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 12px calc(16px + max(var(--sab), var(--insp-kb, 0px))); }
+.insp-spin { margin: 56px auto; }
+.insp-salut { width: 100%; max-width: 780px; margin: 0 auto; text-align: center; color: var(--text-secondary); }
+.insp-salut h2 { font-size: 21px; font-weight: 800; color: var(--text-primary); margin: 6px 0 14px; overflow-wrap: anywhere; }
+.insp-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.insp-chip { font-size: 13px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 9px 14px; }
+.insp-card { max-width: 620px; margin: 24px auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; color: var(--text-secondary); line-height: 1.55; font-size: 14px; }
+.insp-card h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 16px; font-weight: 800; }
+.insp-msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 12px 8px; display: flex; flex-direction: column; gap: 16px; }
+.insp-scrie { flex: none; padding: 6px 10px calc(10px + max(var(--sab), var(--insp-kb, 0px))); }
+
+/* Întrebarea și răspunsul */
+.insp-u { align-self: flex-end; max-width: 90%; min-width: 0; display: flex; align-items: flex-start; gap: 2px; }
+.insp-u .b { min-width: 0; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary); border-radius: 20px; padding: 10px 14px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.insp-u-act { flex: none; display: flex; padding-top: 4px; }
+.insp-a { align-self: stretch; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 9px; }
+.insp-a .av { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: var(--i-mov); background: var(--i-mov-fund); margin-top: 1px; }
+.insp-a .bub { min-width: 0; color: var(--text-primary); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.insp-md-gol { height: 6px; }
+.insp-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
+.insp-md-li { padding-left: 14px; position: relative; margin: 3px 0; }
+.insp-md-li::before { content: ''; position: absolute; left: 2px; top: .72em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.insp .chat-typing { padding: 8px 2px; }
+.insp .chat-typing span { background: var(--text-secondary); }
+
+.chat-ins-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 6px; font-size: 13px; line-height: 1.3; }
+.chat-ins-cap .nm { font-weight: 800; color: var(--text-primary); }
+.chat-ins-et { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.25; }
+.chat-ins-et.ai { color: var(--i-mov); }
+.chat-ins-et.instant { color: var(--i-verde); }
+.chat-ins-det { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ins-extra { margin: 0 0 6px; }
+.ins-tit { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
+.ins-tit .mem { color: var(--i-mov); display: inline-flex; align-items: center; gap: 4px; }
+.ins-alege { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ins-alege button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 7px 10px; text-align: left; }
+.ins-alege button svg { color: var(--text-secondary); flex: none; }
+.insp-surse { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chat-nota { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+.chat-ok { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--i-ok); }
+.chat-ok svg { flex: none; margin-top: 2px; }
+
+/* Butoanele mici de sub un răspuns; pe telefon stau mereu la vedere, cu loc de apăsat. */
+.chat-ib { width: 34px; height: 34px; border-radius: 9px; color: var(--text-secondary); display: inline-grid; place-items: center; flex: none; }
+.chat-ib.on { color: #06210F; background: var(--accent); }
+.chat-ib.on.jos { color: #fff; background: var(--red); }
+.chat-act { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin-top: 6px; margin-left: -6px; }
+.chat-din { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+.chat-din svg { color: var(--i-ok); flex: none; }
+.chat-pas { display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 99px; border: 1px solid var(--border-light); background: var(--bg-panel); color: var(--text-primary); font-size: 12.5px; font-weight: 700; text-align: left; max-width: 100%; }
+.chat-pas svg { color: var(--text-secondary); flex: none; }
+.chat-pas:disabled { opacity: .55; }
+.chat-pas.chat-rap-dg { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.chat-pas.chat-rap-dg svg { color: #06210F; }
+.chat-urm { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-top: -8px; padding-bottom: 2px; flex: none; }
+.chat-urm button { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 99px; border: 1px dashed var(--border-light); color: var(--text-secondary); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.chat-urm button svg { color: var(--text-secondary); flex: none; }
+
+/* Mesajul pachetului, cartonașele de raport, sursele, problemele */
+.chat-lim { margin: 4px 0 8px; padding: 10px 13px; border-radius: 12px; border: 1px solid rgba(245, 158, 11, .55); background: rgba(245, 158, 11, .08); color: var(--text-primary); font-size: 13.5px; line-height: 1.5; }
+.chat-lim-b { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.chat-raps { display: grid; gap: 6px; min-width: 0; }
+.chat-rap { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-alb); border-radius: 12px; background: var(--bg-panel); padding: 10px 12px; margin: 8px 0 4px; display: grid; gap: 7px; min-width: 0; }
+.chat-rap-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); flex-wrap: wrap; }
+.chat-rap-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--bg-dark); color: var(--text-secondary); flex: none; }
+.chat-rap-t { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.chat-rap-p { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border-light); color: var(--text-secondary); }
+.chat-rap-n { font-size: 12.5px; color: var(--text-primary); border-left: 3px solid var(--i-dungi-nota); padding-left: 8px; }
+.chat-rap-k { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--text-primary); }
+.chat-rap-k .l { color: var(--text-secondary); margin-right: 5px; }
+.chat-rap-k b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.chat-rap-s { font-size: 12px; color: var(--text-secondary); }
+.chat-rap-b { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-se { margin-top: 10px; padding: 9px 12px; border-left: 3px solid var(--i-sursa-cant); border-radius: 10px; background: rgba(59, 130, 246, .06); }
+.chat-se-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12.5px; font-weight: 800; color: var(--i-albastru); }
+.chat-se-c { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.chat-se-l { margin: 6px 0 0 18px; padding: 0; font-size: 13px; line-height: 1.5; }
+.chat-se-l a { color: var(--i-albastru); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.chat-se-s { margin-left: 6px; font-size: 11.5px; color: var(--text-secondary); }
+.chat-se-q { margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.chat-probs { display: grid; gap: 8px; margin: 10px 0 4px; min-width: 0; }
+.chat-prob { border: 1px solid var(--border); border-left: 4px solid #dc2626; border-radius: 12px; background: var(--bg-panel); padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.chat-prob.galben { border-left-color: #d97706; }
+.chat-prob-t { display: flex; gap: 8px; align-items: flex-start; font-weight: 800; color: var(--text-primary); font-size: 14px; line-height: 1.4; }
+.chat-prob-t svg { flex: none; margin-top: 2px; color: var(--i-rosu); }
+.chat-prob.galben .chat-prob-t svg { color: var(--i-galben); }
+.chat-prob-d { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.chat-prob-b { display: flex; gap: 6px; flex-wrap: wrap; }
+.chat-prob-n { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; }
+
+/* Cartonașul „RA Insight face, cu Da-ul tău" */
+.chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; min-width: 0; }
+.chat-prop { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-mov); border-radius: 12px; background: var(--bg-panel); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.chat-prop.inchis { background: var(--bg-dark); }
+.chat-prop-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); font-size: 14.5px; flex-wrap: wrap; }
+.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--i-mov-fund); color: var(--i-mov); flex: none; }
+.chat-prop-tit { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.chat-prop-st { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.chat-prop-st.aplicata svg { color: var(--i-ok); }
+.chat-prop-sch { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 7px 10px; font-size: 13.5px; line-height: 1.45; align-items: baseline; color: var(--text-primary); }
+.chat-prop-sch .l { color: var(--text-secondary); font-weight: 700; font-size: 12.5px; }
+.chat-prop-sch .de { color: var(--text-secondary); text-decoration: line-through; }
+.chat-prop-sch .sag { color: var(--text-secondary); margin: 0 8px; }
+.chat-prop-sch .la { font-weight: 800; }
+.chat-prop-sch .la.gol { font-weight: 700; color: var(--text-secondary); }
+.chat-prop-dov { display: grid; gap: 5px; font-size: 13px; line-height: 1.45; color: var(--text-primary); padding: 9px 11px; border-radius: 10px; background: var(--bg-dark); min-width: 0; }
+.chat-prop-dov .t { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
+.chat-prop-dov > div:not(.t) { display: flex; gap: 8px; align-items: flex-start; }
+.chat-prop-dov svg { flex: none; margin-top: 2px; }
+.chat-prop-dov .ok svg { color: var(--i-ok); } .chat-prop-dov .w svg { color: var(--i-galben); } .chat-prop-dov .r svg { color: var(--i-rosu); } .chat-prop-dov .i svg { color: var(--text-secondary); }
+.chat-prop-dov.vechi { opacity: .55; }
+.chat-prop-nu { font-size: 12.5px; color: var(--text-secondary); }
+.chat-prop-b { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chat-pas.chat-prop-da { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.chat-pas.chat-prop-da svg { color: #06210F; }
+.chat-prop-sel, .chat-prop-in { padding: 8px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font-size: 16px; max-width: 100%; box-sizing: border-box; }
+.chat-prop-in.mic { width: 76px; }
+.chat-prop-in.lung { width: 100%; }
+.chat-prop-in.data { width: 148px; }
+.chat-prop-in::placeholder { color: var(--text-secondary); }
+.chat-prop-cu { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--text-primary); }
+.chat-actiuni { margin-top: 8px; }
+.chat-prop-sub { font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 8px; }
+.chat-gata { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-ok); border-radius: 12px; background: var(--bg-panel); padding: 11px 13px; display: grid; gap: 9px; min-width: 0; }
+.chat-gata.anul { border-left-color: var(--text-secondary); }
+.chat-gata-t { display: flex; gap: 8px; align-items: flex-start; font-weight: 700; color: var(--text-primary); font-size: 14px; line-height: 1.45; }
+.chat-gata-t > svg { color: var(--i-ok); flex: none; margin-top: 3px; }
+.chat-gata.anul .chat-gata-t > svg { color: var(--text-secondary); }
+.chat-gata-t b { font-weight: 800; }
+
+/* Caseta de scris */
+.chat-caseta { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 22px; padding: 10px 10px 8px 14px; box-shadow: var(--i-umbra-caseta); text-align: left; }
+.chat-caseta:focus-within { border-color: var(--accent); }
+/* 16 px în casete: sub atât, telefonul mărește pagina când apeși în ele. */
+.chat-caseta textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font-size: 16px; line-height: 1.45; max-height: 140px; padding: 2px 0 8px; }
+.chat-caseta textarea::placeholder { color: var(--text-secondary); }
+.chat-unelte { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-un { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 10px; border-radius: 99px; border: 1px solid var(--border-light); color: var(--text-secondary); font-size: 12.5px; font-weight: 700; flex: none; white-space: nowrap; }
+.chat-un.chat-plus { width: 36px; padding: 0; }
+.chat-un.chat-sursa.on { background: var(--i-sursa-fund); border-color: var(--i-sursa-cant); color: var(--i-sursa-text); }
+.chat-un.chat-sursa.gol { border-style: dashed; }
+.chat-sursa-nota { margin-top: 6px; padding: 0 4px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+.chat-cnt { margin-left: auto; min-width: 0; font-size: 12px; font-weight: 800; color: var(--text-secondary); padding: 0 4px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.2; overflow-wrap: anywhere; }
+.chat-trimite { margin-left: auto; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: #06210F; display: grid; place-items: center; flex: none; }
+.chat-cnt + .chat-trimite { margin-left: 4px; }
+.chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-light); }
+.chat-trimite:disabled { opacity: .6; }
+.chat-jos { position: absolute; left: 50%; bottom: calc(100px + max(var(--sab), var(--insp-kb, 0px))); transform: translateX(-50%); width: 38px; height: 38px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); z-index: 3; }
+
+/* „Azi la tine" */
+.insp-azi { width: 100%; text-align: left; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin: 16px 0 6px; box-sizing: border-box; }
+.azi-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.azi-tit { font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
+.azi-cand { font-size: 12px; color: var(--text-secondary); }
+.azi-gol { font-size: 13px; color: var(--text-secondary); padding: 6px 0 2px; }
+.azi-r { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; min-height: 44px; padding: 8px 4px; border-top: 1px solid var(--border); color: inherit; text-align: left; }
+.azi-cap + .azi-r { border-top: none; }
+.azi-r.apas:active { background: var(--bg-dark); }
+.azi-sg { color: var(--text-secondary); display: inline-flex; }
+.azi-dece { font-size: 12px; font-weight: 800; color: var(--i-mov); white-space: nowrap; }
+.azi-prop { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 800; color: var(--i-verde); white-space: nowrap; }
+.azi-st { width: 9px; height: 9px; border-radius: 50%; background: var(--i-st-g); }
+.azi-st.r { background: var(--i-st-r); } .azi-st.w { background: var(--i-st-w); } .azi-st.b { background: var(--i-st-b); }
+.azi-tx { font-size: 13.5px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.azi-tx b { font-weight: 800; }
+
+/* Foaia de alegere („+", Mașina, Perioada, Raport, „⋯") și notițele */
+.insp-al .sheet-body { padding-top: 6px; }
+.insp-al-cauta { width: 100%; height: 42px; margin: 4px 0 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-size: 15px; }
+.insp-al-i { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 9px 6px; border-radius: 9px; color: var(--text-primary); font-size: 14.5px; font-weight: 600; text-align: left; }
+.insp-al-i svg { flex: none; color: var(--text-secondary); }
+.insp-al-i .t { min-width: 0; overflow-wrap: anywhere; }
+.insp-al-i small { margin-left: auto; padding-left: 8px; flex: none; max-width: 48%; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-align: right; }
+.insp-al-i:active { background: var(--bg-dark); }
+.insp-al-i.rosu, .insp-al-i.rosu svg { color: var(--i-rosu); }
+.insp-al-i.sep { border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; margin-top: 4px; }
+.insp-al-gol { padding: 12px 6px; font-size: 13.5px; color: var(--text-secondary); }
+.insp-al-nota { font-size: 12px; color: var(--text-secondary); line-height: 1.45; padding: 10px 6px 2px; border-top: 1px solid var(--border); margin-top: 6px; }
+.insp-not-t { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 10px; }
+.insp-not-in { display: block; width: 100%; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-dark); color: var(--text-primary); padding: 10px 12px; font-size: 16px; line-height: 1.5; resize: vertical; }
+.insp-not-i { margin-top: 8px; font-size: 12.5px; color: var(--text-secondary); }
+.insp-not-b { margin-top: 12px; }

@@ -123,6 +123,14 @@ export function Reports() {
     Api.reportTypes().then((d) => { setCats(d.categories || []); setTypes(d.reports || []); }).catch(() => {});
     const pre = (loc.query && (loc.query as any).imei) || '';
     if (pre) setSel(String(pre).split(',').filter(Boolean));
+    // Deschis dintr-un buton din RA Insight (`?tip=&de=&pana=`, ca rinOpenReport de pe web): raportul ales și perioada lui.
+    const tq = (loc.query && (loc.query as any).tip) || '';
+    if (tq) setType(String(tq));
+    const de = Number((loc.query as any)?.de), pana = Number((loc.query as any)?.pana);
+    if (tq !== 'due' && isFinite(de) && de > 0 && isFinite(pana) && pana > 0) {
+      const zi = (ms: number) => { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+      setPeriod('custom'); setCustomFrom(zi(de)); setCustomTo(zi(pana));
+    }
     // Deschis dintr-o notificare de raport (?histId=) → încarcă raportul din Istoric și îl randează inline.
     const hq = (loc.query && (loc.query as any).histId) || '';
     if (hq) { const hid = Number(hq); if (Number.isFinite(hid)) Api.reportHistoryItem(hid).then((h: any) => { const rep = h && (h.report || h.data); if (rep) { setRes(rep); setHistId(hid); } }).catch(() => {}); }

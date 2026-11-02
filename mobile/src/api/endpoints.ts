@@ -17,6 +17,7 @@ export interface Me {
   full_name?: string | null; phone?: string | null; roleLabel?: string | null;
   functie?: string | null; // 13.10: funcția omului (apare în semnătura emailurilor din panoul Mail)
   poateDistribuiLocatia?: boolean; // 21.10: butonul „Distribuie” din fișa mașinii (aceeași regulă ca pe server)
+  aiCont?: boolean; // 15.10: are cont RA Insight — agenții îi apar în „Azi la tine", „Agenți AI" iese din meniu
 }
 // „Distribuie locația” (21.10): ce dă serverul — duratele și linkurile active (fără link: se vede doar la facere).
 export interface LocatieDurata { minute: number; text: string; }
@@ -538,10 +539,23 @@ export const Api = {
   aiStatus: () => api<{ enabled: boolean; model?: string }>('/api/ai/status'),
   aiUsageStats: (days: number) => api<{ days: number; enabled: boolean; model?: string; usage: { kind: string; input_tokens: number; output_tokens: number; calls: number; last_used: string | null }[] }>(`/api/ai/usage-stats?days=${days}`),
   // Fond epuizat: serverul răspunde cu limited + fondEpuizat și explicația în `reply` (fără niciun cost în plus).
-  aiChat: (message: string, history?: { role: string; content: string }[]) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; source?: string; disabled?: boolean; limited?: boolean; fondEpuizat?: { fond?: number; conturi?: number; peCont?: number; reinnoire?: string } }>('/api/ai/chat', { method: 'POST', body: { message, history } }),
+  // ── RA Insight (ecranul /insight), aceleași rute ca secțiunea de pe web. O SINGURĂ funcție pune întrebări. ──
+  // `corp`: message + buton / sursa + conversatieId sau nou (lib/insight.ts → corpIntrebare).
+  insightIntreaba: (corp: Record<string, any>) => api<any>('/api/insight/intreaba', { method: 'POST', body: corp, timeoutMs: 180000 }),
+  insightConversatii: (q?: string) => api<any>('/api/insight/conversatii' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  insightConversatie: (id: any) => api<any>('/api/insight/conversatii/' + encodeURIComponent(String(id))),
+  insightRedenumeste: (id: any, titlu: string) => api<any>('/api/insight/conversatii/' + encodeURIComponent(String(id)), { method: 'PUT', body: { titlu } }),
+  insightSterge: (id: any) => api<any>('/api/insight/conversatii/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
+  insightFeedback: (mesajId: any, valoare: number) => api<any>('/api/insight/mesaje/' + encodeURIComponent(String(mesajId)) + '/feedback', { method: 'POST', body: { valoare } }),
+  insightAzi: () => api<any>('/api/insight/azi'),
+  insightRapoarte: () => api<any>('/api/insight/rapoarte'),
+  insightNotite: () => api<any>('/api/insight/notite'),
+  saveInsightNotite: (text: string) => api<any>('/api/insight/notite', { method: 'PUT', body: { text } }),
+  // Cartonașul „RA Insight face, cu Da-ul tău": aplica (cu `la` sau `campuri`), refuza, anuleaza, dovezi (pragul și mașina din „Schimbă").
+  insightActiune: (id: any, fel: 'aplica' | 'refuza' | 'anuleaza' | 'dovezi', corp?: Record<string, any>) => api<any>('/api/insight/actiuni/' + encodeURIComponent(String(id)) + '/' + fel, { method: 'POST', body: corp || {} }),
   reportsAgent: (message: string) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; sources?: any[]; disabled?: boolean; limited?: boolean; fondEpuizat?: { fond?: number; conturi?: number; peCont?: number; reinnoire?: string } }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
   // Contorul RA Insight (aceeași sursă ca bara de pe web): fondul firmei, cât a pus omul, reînnoirea, locul pe cont.
-  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string }>('/api/ai/quota', { timeoutMs: 20000 }),
+  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string; pachet?: any; sursa?: any }>('/api/ai/quota', { timeoutMs: 20000 }),
   fx: () => api<{ eur: number; date?: string | null; source?: string }>('/api/fx', { timeoutMs: 20000 }), // curs BNR EUR→RON
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
   insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),

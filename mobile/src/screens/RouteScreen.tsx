@@ -129,8 +129,14 @@ export function RouteScreen() {
   // `?pana=<ms>` — deschis din Dispozitive arhivate („Istoric"): un aparat arhivat n-are date azi, deci intervalul
   // se termină la ULTIMA lui poziție (7 zile până atunci). `arhivat=1` + `nume` = eticheta „(arhivat)" din antet,
   // fiindcă aparatul nu mai e în lista de vehicule (ca pe web, archViewHistory).
+  // `?de=<ms>&pana=<ms>&lat=&lng=&et=` — deschis dintr-o problemă găsită de RA Insight: mașina, intervalul exact și punctul marcat
+  // pe hartă (viteza de 159 km/h, la 14:32), ca insightLaTraseu de pe web.
   const panaMs = Number((query as any)?.pana);
-  const dinArhiva = isFinite(panaMs) && panaMs > 0 ? { from: new Date(panaMs - 7 * 86400000).toISOString(), to: new Date(panaMs).toISOString() } : null;
+  const deMs = Number((query as any)?.de);
+  const dinArhiva = isFinite(panaMs) && panaMs > 0 ? { from: new Date(isFinite(deMs) && deMs > 0 ? deMs : panaMs - 7 * 86400000).toISOString(), to: new Date(panaMs).toISOString() } : null;
+  const punctLat = Number((query as any)?.lat), punctLng = Number((query as any)?.lng);
+  const punctCerut = (query as any)?.lat != null && (query as any)?.lng != null && isFinite(punctLat) && isFinite(punctLng);
+  const punctCentrat = useRef(false);
   const [period, setPeriod] = useState<Period>(dinArhiva ? 'custom' : 'today');
   const [rng, setRng] = useState<Range>(() => dinArhiva || range('today'));
   // „De la / Până la", ca pe web — scurtăturile Azi / Ieri / 7 zile rămân alături.
@@ -300,6 +306,19 @@ export function RouteScreen() {
       }
     } catch { /* hartă în curs de demontare */ }
   }, [pts, routes, slices, sel, snap, limit]);
+
+  // Punctul din problema găsită de RA Insight: marcat cât stai pe intervalul ei; harta se centrează pe el o singură dată.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !punctCerut || pts === null || !dinArhiva || rng.from !== dinArhiva.from || rng.to !== dinArhiva.to) return;
+    try {
+      const mk = L.circleMarker([punctLat, punctLng], { radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0.3 }).addTo(map);
+      const et = (query as any)?.et;
+      if (et) mk.bindPopup(String(et).replace(/[<>&]/g, ''));
+      if (!punctCentrat.current) { punctCentrat.current = true; map.setView([punctLat, punctLng], 15); if (et) mk.openPopup(); }
+      return () => { try { mk.remove(); } catch { /* hartă în curs de demontare */ } };
+    } catch { return; }
+  }, [pts, rng.from, rng.to]);
 
   // Punctele pe care lucrează butoanele de pe hartă: cursa apăsată, altfel tot intervalul.
   function puncteLucru(): any[] {
