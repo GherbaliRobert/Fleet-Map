@@ -95,7 +95,7 @@ const F = {
   prop: 'mobile/src/components/InsightPropunere.tsx', text: 'mobile/src/components/InsightText.tsx', css: 'mobile/src/screens/insight.css',
   app: 'mobile/src/App.tsx', meniu: 'mobile/src/screens/Menu.tsx', endpoints: 'mobile/src/api/endpoints.ts', client: 'mobile/src/api/client.ts',
   reports: 'mobile/src/screens/Reports.tsx', route: 'mobile/src/screens/RouteScreen.tsx', detaliu: 'mobile/src/screens/VehicleDetail.tsx',
-  icon: 'mobile/src/components/Icon.tsx', tokens: 'mobile/src/theme/tokens.css', push: 'mobile/src/lib/push.ts',
+  icon: 'mobile/src/components/Icon.tsx', tokens: 'mobile/src/theme/tokens.css', push: 'mobile/src/lib/push.ts', tabbar: 'mobile/src/components/tabbar.css', notifDetail: 'mobile/src/screens/NotifDetail.tsx',
   pagLib: 'mobile/src/lib/insightPagini.ts', pagini: 'mobile/src/components/InsightPagini.tsx', reportsCss: 'mobile/src/screens/reports.css', inapoi: 'mobile/src/lib/inapoiFoaie.ts',
 };
 const S = {}; Object.keys(F).forEach((k) => { S[k] = citeste(F[k]); });
@@ -554,6 +554,9 @@ function parteaNavigarii() {
   T('/ai duce la /insight (anunțuri vechi), înlocuind adresa', /<Route path="\/ai" component=\{SpreInsight\} \/>/.test(S.app) && /function SpreInsight\(\) \{[\s\S]*?loc\.route\('\/insight', true\)/.test(S.app));
   T('App.tsx nu mai încarcă ecranul vechi', !/AiChat/.test(S.app));
   T('meniul: rândul „RA Insight" duce la /insight, cu aceeași condiție ca pe web', /u\?\.features\?\.ai_assistant !== false && vede\('insight'\) && item\('sparkles', 'RA Insight', \(\) => loc\.route\('\/insight'\)\)/.test(S.meniu) && /feats\.ai_assistant !== false/.test(html));
+  T('meniul: grupa clientului se cheamă „Management", ca pe web, ca drumurile din textele serverului să existe; fondatorul își păstrează numele',
+    /<div class="mn-sec">\{u\?\.isSuper \? 'Administrare' : 'Management'\}<\/div>/.test(S.meniu) && /data-vert="partener" data-group="management">\s*<button[^>]*>.*<span>Management<\/span>/.test(html) &&
+    /Management › Alerte › Adaugă regulă/.test(citeste('propuneri.js')) && /Management › Șoferi/.test(citeste('soferi_masini.js') + html));
   T('meniul: „Asistent AI" a plecat', !/Asistent AI/.test(faraComentarii(S.meniu)) && !/route\('\/ai'\)/.test(S.meniu));
   T('meniul: „Agenți AI" iese cu `aiCont`, ca pe web', /perms\.viewReports && !u\?\.aiCont && vede\('insight'\) && item\('shield', 'Agenți AI'/.test(S.meniu) && /feats\.agents !== false && me\.permissions && me\.permissions\.viewReports && !me\.aiCont/.test(html));
   T('`aiCont` e pe tipul profilului și îl dă serverul', /aiCont\?: boolean;/.test(S.endpoints) && /aiCont: !isSuper\(a\.role\) && features\.ai_assistant !== false && aiSeat/.test(server));
@@ -593,6 +596,18 @@ function parteaCulorilor() {
     const peste = (fg, a, fond) => hex(fond).map((x, i) => fg[i] * a + x * (1 - a));
     for (const [tx, fund] of [['--i-atentie', [[249, 115, 22], 0.15]], ['--i-bun', [[34, 197, 94], 0.12]]]) { const c = contrast(hex(t[tx]), peste(fund[0], fund[1], t['--bg-panel'])); T('tema ' + nume + ': ' + tx + ' pe eticheta lui = ' + c.toFixed(2), c >= 4.5, t[tx]); }
     for (const tx of ['--i-rosu', '--i-galben']) T('tema ' + nume + ': ' + tx + ' pe cartonaș', contrast(hex(t[tx]), hex(t['--bg-panel'])) >= 4.5, t[tx]);
+  }
+  // Rapoartele și bara de jos: pe tema deschisă, verdele casei pe alb iese 1,73, iar --text-muted pe doc 4,23.
+  const rpI = vars(taie(S.reportsCss, ':root {', '}')), rpD = vars(taie(S.reportsCss, ':root[data-theme="light"] {', '}'));
+  const amesteca = (sus, a, jos) => hex(sus).map((x, i) => x * a + hex(jos)[i] * (1 - a));
+  T('Rapoarte: butoanele și cifrele folosesc perechea, tema închisă rămâne pe verdele casei, cea deschisă pe #166534', /\.rp-exp-btn \{[^}]*[^-]color: var\(--rp-verde\)/.test(S.reportsCss) && /\.rp-kpi \.v \{[^}]*[^-]color: var\(--rp-verde\)/.test(S.reportsCss) && rpI['--rp-verde'] === 'var(--accent)' && rpD['--rp-verde'] === '#166534', J([rpI, rpD]));
+  for (const [nume, verde, t] of [['închisă', tokI['--accent'], tokI], ['deschisă', rpD['--rp-verde'], tokD]]) {
+    for (const fn of ['--bg-card', '--bg-dark']) { const c = contrast(hex(verde), hex(t[fn])); T('tema ' + nume + ': verdele din Rapoarte pe ' + fn + ' = ' + c.toFixed(2), c >= 4.5, verde); }
+  }
+  T('bara de jos: doar pe tema deschisă, fără pastila activă', /:root\[data-theme="light"\] \.tab:not\(\.active\) \{\s*color: var\(--text-secondary\);/.test(S.tabbar) && /\.tab \{[^}]*color: var\(--text-muted\);/.test(S.tabbar) && /\.tab\.active \{\s*color: #06210F;/.test(S.tabbar));
+  for (const [nume, tx, t] of [['închisă', '--text-muted', tokI], ['deschisă', '--text-secondary', tokD]]) {
+    const pePanou = contrast(hex(t[tx]), hex(t['--bg-panel'])), peSticla = contrast(hex(t[tx]), amesteca(t['--bg-panel'], 0.72, t['--bg-darkest']));
+    T('tema ' + nume + ': etichetele din bara de jos = ' + pePanou.toFixed(2) + ' pe panou, ' + peSticla.toFixed(2) + ' pe sticlă', pePanou >= 4.5 && peSticla >= 4.5, t[tx]);
   }
   T('tema deschisă: INSTANT #166534, ANALIZĂ #6d28d9 (perechile de pe web)', cssD['--i-verde'] === '#166534' && cssD['--i-mov'] === '#6d28d9' && /\.chat-ins-et\.ai \{ color: #6d28d9; \}/.test(citeste('public/css/app.css')) && /\.chat-ins-et\.instant \{ color: #166534; \}/.test(citeste('public/css/app.css')));
   T('fără verde deschis pe alb: --accent nu e folosit ca text', !/(^|[^-])color: var\(--accent\)/m.test(S.css), (S.css.match(/(^|[^-])color: var\(--accent\)[^\n]*/m) || [''])[0]);
@@ -739,11 +754,19 @@ function parteaDesenului() {
 const PORT = 3531, TCP = 5531;
 const BASE = 'http://127.0.0.1:' + PORT;
 const DIR = path.join(os.tmpdir(), 'rax_telinsight_' + process.pid);
-const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl';
+const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl', FCM_LOG = DIR + '_fcm.jsonl';
 let srv = null, srvIesit = null, jurnal = '';
 function pornesteServerul() {
   fs.writeFileSync(PRELOAD, [
     "const fs = require('fs');",
+    // FCM de carton: ce ar pleca spre telefoane se scrie într-un fișier, ca proba să vadă push-ul adevărat al serverului.
+    "const Module = require('module');",
+    'const _load = Module._load;',
+    'Module._load = function (id) {',
+    "  if (id === 'firebase-admin/app') return { getApps: () => [{}], initializeApp() {}, cert: (x) => x };",
+    "  if (id === 'firebase-admin/messaging') return { getMessaging: () => ({ sendEachForMulticast: async (m) => { fs.appendFileSync(process.env.PROBA_FCM_LOG, JSON.stringify(m) + '\\n'); return { responses: m.tokens.map(() => ({ success: true })) }; } }) };",
+    '  return _load.apply(this, arguments);',
+    '};',
     'const orig = globalThis.fetch;',
     'globalThis.fetch = async function (url, opts) {',
     "  const u = String((url && url.url) || url);",
@@ -756,9 +779,11 @@ function pornesteServerul() {
     '};',
   ].join('\n'));
   fs.writeFileSync(AI_LOG, '');
+  fs.writeFileSync(FCM_LOG, '');
   const env = Object.assign({}, process.env, {
     NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_tel_insight', DEMO_DISABLED: 'true',
-    PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR, PROBA_AI_LOG: AI_LOG, EUR_RON_RATE: '5', RATE_LIMIT_ENABLED: 'false',
+    PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR, PROBA_AI_LOG: AI_LOG, PROBA_FCM_LOG: FCM_LOG, EUR_RON_RATE: '5', RATE_LIMIT_ENABLED: 'false',
+    FIREBASE_SA_JSON: JSON.stringify({ type: 'service_account', project_id: 'proba', private_key: 'proba', client_email: 'proba@proba.ro' }),
   });
   ['DATABASE_URL', 'ANTHROPIC_API_KEY', 'AI_AGENT_MODEL', 'AI_MODEL', 'AI_MODEL_APROFUNDAT', 'BREVO_API_KEY', 'SMTP_HOST'].forEach((k) => { delete env[k]; });
   srv = spawn(process.execPath, ['-r', PRELOAD, 'server.js'], { cwd: ROOT, env, stdio: ['ignore', 'ignore', 'pipe'] });
@@ -1161,7 +1186,9 @@ function parteaAnuntului() {
   T('anunțul duce la scrisoarea din el', P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === '/insight/scrisoare?id=12' && P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === L.rutaRamura('scrisoare', 12));
   T('…`data` ca text JSON, la fel; fără scrisoare: pagina', P.adresaAnunt('scrisoare_luni', J({ scrisoareId: 12 })) === '/insight/scrisoare?id=12' && P.adresaAnunt('scrisoare_luni', {}) === '/insight/scrisoare' && P.adresaAnunt('scrisoare_luni', { scrisoareId: 'x' }) === '/insight/scrisoare');
   T('…e printre anunțurile cu loc (listă, detaliu, push)', P.TIPURI_CU_LOC.indexOf('scrisoare_luni') >= 0);
-  T('…push-ul (notify nu trimite notifId, dar trimite scrisoareId): direct la scrisoare', P.adresaPush({ type: 'scrisoare_luni', scrisoareId: '12' }) === '/insight/scrisoare?id=12' && P.adresaPush({ type: 'scrisoare_luni', notifId: 7 }) === '/notif/7');
+  T('…push-ul, cu notifId: prin detaliu (care îl marchează citit); unul de dinainte, fără el: direct la scrisoare', P.adresaPush({ type: 'scrisoare_luni', notifId: '7', scrisoareId: '12' }) === '/notif/7' && P.adresaPush({ type: 'scrisoare_luni', scrisoareId: '12' }) === '/insight/scrisoare?id=12');
+  T('…detaliul marchează citit și duce la adresa anunțului', /const spre = x \? adresaAnunt\(x\.type, x\.data\) : null;\s*if \(spre\) \{\s*if \(!x\.acknowledged\) Api\.ackNotification\(Number\(id\)\)/.test(faraComentarii(S.notifDetail)));
+  T('…doar scrisoarea primește id-ul prin notify(); restul tipurilor rămân cum sunt', /const PUSH_CU_ID = new Set\(\['scrisoare_luni'\]\);/.test(server) && /_notifyPush\(n, PUSH_CU_ID\.has\(n\.type\) \? saved\.id : null\)/.test(server));
   T('…web: insightDeschideScrisoarea(data.scrisoareId), același câmp, trimis de server', /if \(d\.type === 'scrisoare_luni'\) \{ closeNotifDetail\(\); if \(window\.insightDeschideScrisoarea\) window\.insightDeschideScrisoarea\(d\.data && d\.data\.scrisoareId\); return; \}/.test(html) && /type: 'scrisoare_luni'[\s\S]{0,240}scrisoareId: id/.test(server));
   T('…pagina citește `id` din adresă', /ramura === 'scrisoare' && isFinite\(idCerut\) && idCerut > 0 \? idCerut : null/.test(S.ecran) && /<PaginaRamura k=\{ramura\} l=\{lPag\} scrisoareId=\{scrisoareId\} \/>/.test(S.ecran));
   // Fila veche din Rapoarte.
@@ -1248,6 +1275,14 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   await comparaPagina('Șoferi, după „Aplică", cu rândul „Gata"', 'soferi', sf2, { dupa: ap });
   const an = await Api.insightActiune(ap.actiuneId, 'anuleaza');
   T('…„Anulează" (ruta comună) întoarce schimbarea, cu textul serverului', !!an.text, J(an));
+  // Două telefoane: unul cu push-ul pornit pe tipul scrisorii, altul fără nimic setat (cum e azi oricine: tipul nu are rând în „Preferințe notificări").
+  const colega = await om('colega@telefon.ro', 'manager');
+  await R('PUT', '/api/users/' + colega.id + '/ai-seat', { on: true });
+  await tel('colega@telefon.ro');
+  await Api.registerDevice('token-fara-preferinte', 'android');
+  await tel('sef@telefon.ro');
+  await Api.registerDevice('token-cu-push', 'android');
+  await client.api('/api/notification-prefs', { method: 'PUT', body: { types: { scrisoare_luni: { enabled: true, push: true } } } });
   // Scrisoarea: lunea asta la 8 (ceasul probei), iar anunțul duce la ea.
   const mInainte = nModel();
   const adm = await R('POST', '/api/test/ceasuri', { acum: SD.inceput(luniAcum) + 8 * 3600000 + 60000, scrisori: true });
@@ -1263,6 +1298,25 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   const anunturi = await Api.notifications();
   const an1 = (Array.isArray(anunturi) ? anunturi : []).filter((x) => x.type === 'scrisoare_luni')[0];
   T('anunțul adevărat duce la scrisoarea lui', !!an1 && P.adresaAnunt(an1.type, an1.data) === '/insight/scrisoare?id=' + sc.id, an1 && J(an1.data));
+  // Push-ul adevărat al serverului: cu id-ul notificării, ca atingerea să treacă prin detaliu și să-l marcheze citit.
+  const pushuri = () => fs.readFileSync(FCM_LOG, 'utf8').split('\n').filter(Boolean).map((x) => JSON.parse(x)).filter((m) => m.data && m.data.type === 'scrisoare_luni');
+  for (let i = 0; i < 40 && !pushuri().length; i++) await sleep(100);
+  await sleep(300);
+  const pu = pushuri();
+  T('push-ul scrisorii: un mesaj, la cine l-a pornit, cu notifId și scrisoareId (FCM: text)', pu.length === 1 && J(pu[0].tokens) === J(['token-cu-push']) && !!an1 && pu[0].data.notifId === String(an1.id) && pu[0].data.scrisoareId === String(sc.id) && pu[0].notification.title === 'Scrisoarea de luni', J(pu));
+  T('…la telefon fără preferință pentru tipul ăsta nu pleacă nimic: regula de azi a lui notify() (fără rând în preferințe, fără push)', !pu.some((m) => m.tokens.indexOf('token-fara-preferinte') >= 0), J(pu));
+  T('…atingerea: prin detaliul anunțului', !!pu[0] && P.adresaPush(pu[0].data) === '/notif/' + an1.id, pu[0] && J(pu[0].data));
+  T('…în bază și în listă anunțul rămâne cum era (web-ul citește aceeași listă): fără notifId, cu scrisoarea', !!an1 && an1.data && an1.data.notifId === undefined && an1.data.scrisoareId === sc.id, an1 && J(an1.data));
+  const ctxPush = await Api.notifContext(an1.id);
+  T('…detaliul primește felul și scrisoarea, deci duce la aceeași adresă ca din listă', P.adresaAnunt(ctxPush.type, ctxPush.data) === '/insight/scrisoare?id=' + sc.id, J(ctxPush).slice(0, 300));
+  T('…necitit până la atingere', !an1.acknowledged && !ctxPush.acknowledged, J(an1.acknowledged));
+  await Api.ackNotification(an1.id);
+  T('…după: citit', (await Api.notifications()).filter((x) => x.id === an1.id)[0].acknowledged === true);
+  await tel('colega@telefon.ro');
+  const faraDrept = await Api.notifContext(an1.id).then(() => null, (e) => e);
+  T('…colega nu poate citi anunțul celuilalt după id', !!faraDrept && faraDrept.status === 404, faraDrept && faraDrept.status);
+  await tel('sef@telefon.ro');
+  await R('PUT', '/api/users/' + colega.id + '/ai-seat', { on: false });
   const x = await Api.insightScrisoare(sc.id);
   T('…deschisă: textul și cifrele', !!x.text && !!x.fapte, J(x).slice(0, 200));
   const web = paginaWeb('deseneazaScrisoare', { '/api/insight/scrisori': ls, ['/api/insight/scrisori/' + sc.id]: x }, { ramura: 'scrisoare' });
@@ -1308,7 +1362,7 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
 
 let terminat = false;
 function curata() {
-  for (const f of [PRELOAD, AI_LOG]) { try { fs.rmSync(f, { force: true }); } catch (e) { /* */ } }
+  for (const f of [PRELOAD, AI_LOG, FCM_LOG]) { try { fs.rmSync(f, { force: true }); } catch (e) { /* */ } }
   for (let i = 0; i < 10; i++) {
     try { fs.rmSync(DIR, { recursive: true, force: true }); if (!fs.existsSync(DIR)) return; } catch (e) { /* încă ținut de server */ }
     const t = Date.now(); while (Date.now() - t < 300) { /* Windows: fișierele se eliberează greu după oprire */ }

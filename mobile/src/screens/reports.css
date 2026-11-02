@@ -7,9 +7,13 @@
 .rp-pick .val { font-weight: 700; font-size: 14.5px; margin-top: 1px; }
 .rp-pick .mn { flex: 1; min-width: 0; }
 
+/* Textul verde: pe tema închisă, verdele casei; pe alb acela iese 1,73, deci pe tema deschisă #166534, ca peste tot în aplicație. */
+:root { --rp-verde: var(--accent); }
+:root[data-theme="light"] { --rp-verde: #166534; }
+
 .rp-export { display: flex; gap: 10px; padding: 0 14px 4px; }
 .rp-exp-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  background: var(--bg-card); border: 1px solid var(--accent); color: var(--accent);
+  background: var(--bg-card); border: 1px solid var(--accent); color: var(--rp-verde);
   border-radius: 10px; padding: 10px; font-weight: 700; font-size: 13.5px; font-family: inherit; }
 .rp-exp-btn:active { background: var(--bg-dark); }
 .rp-exp-btn:disabled { opacity: .6; }
@@ -25,7 +29,7 @@
 /* rezultate */
 .rp-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 4px 14px 12px; }
 .rp-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; }
-.rp-kpi .v { font-weight: 800; font-size: 18px; color: var(--accent); }
+.rp-kpi .v { font-weight: 800; font-size: 18px; color: var(--rp-verde); }
 .rp-kpi .l { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
 
 .rc-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 0 14px 12px; }

@@ -55,7 +55,7 @@ export function Menu() {
 
   // Ecranele pe care firma le-a tăiat din rolul omului dispar din meniu, ca pe web (data-ecran).
   const vede = (k: EcranCheie) => !ecranAscuns(k);
-  // Titlul „Administrare" apare doar dacă a rămas măcar un rând sub el.
+  // Titlul grupei apare doar dacă a rămas măcar un rând sub el.
   const FLOTA: EcranCheie[] = ['soferi', 'grupe', 'mentenanta', 'documente', 'vehicule', 'alerte'];
   const areAdmin = !!perms.manageUsers || vede('hotspot') || (!!perms.manageFleet && FLOTA.some(vede))
     || (!!perms.manageFleet && !u?.isSuper); // „Aparate GPS" nu ține de niciun ecran tăiabil: rămâne sub titlu
@@ -101,7 +101,8 @@ export function Menu() {
 
         {(perms.manageFleet || perms.manageUsers) && areAdmin && (
           <>
-            <div class="mn-sec">Administrare</div>
+            {/* La client se cheamă „Management”, ca pe web: textele serverului spun „Management › Șoferi”, „Management › Alerte › Adaugă regulă”. */}
+            <div class="mn-sec">{u?.isSuper ? 'Administrare' : 'Management'}</div>
             {perms.manageFleet && vede('soferi') && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
             {perms.manageFleet && vede('grupe') && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
             {vede('hotspot') && item('mapPin', 'Zone', () => loc.route('/admin/geofences'))}

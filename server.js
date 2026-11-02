@@ -16396,6 +16396,9 @@ function alertSummary(type, d) {
 }
 
 // Creează o notificare: stochează + WS (scopat pe imei) + canale externe (opțional)
+// Anunțurile care au un loc pe telefon și vin prin notify(): push-ul lor poartă id-ul notificării, ca la `_anuntaSuperadmini` și `_incAnunta`.
+// Telefonul (adresaPush) trece atunci prin detaliu, care marchează anunțul citit și duce la locul lui. Celelalte tipuri rămân cum sunt.
+const PUSH_CU_ID = new Set(['scrisoare_luni']);
 async function notify(n) {
   try {
     if (n.data && n.data.key) {
@@ -16405,7 +16408,7 @@ async function notify(n) {
     broadcastWs({ type: 'notification', data: saved });
     const cfg = channels.channelsConfigured();
     if (cfg.email || cfg.telegram || cfg.webhook) channels.dispatchChannels({ ...n, id: saved.id }).catch(() => {});
-    _notifyPush(n).catch(() => {}); // push NATIV (FCM) către utilizatorii eligibili, respectând preferințele
+    _notifyPush(n, PUSH_CU_ID.has(n.type) ? saved.id : null).catch(() => {}); // push NATIV (FCM) către utilizatorii eligibili, respectând preferințele
   } catch (e) { console.error('[NOTIFY]', e.message); }
 }
 // Fan-out push nativ pentru notify(): rezolvă utilizatorii țintă (userId / imei / companie) și trimite DOAR
@@ -16431,7 +16434,7 @@ function tipulReguliiStins(prefsMap, userId, data) {
   return p.push === false || p.enabled === false;
 }
 
-async function _notifyPush(n) {
+async function _notifyPush(n, notifId) {
   if (!_fcm) return;
   let users = [];
   try {
@@ -16441,7 +16444,7 @@ async function _notifyPush(n) {
   } catch (_) { return; }
   if (!users || !users.length) return;
   const prefsMap = await getPrefsMap();
-  const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
+  const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}, notifId != null ? { notifId: notifId } : {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
     // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de

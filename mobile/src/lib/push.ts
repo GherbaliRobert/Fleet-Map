@@ -88,7 +88,7 @@ export function adresaPush(data: any): string {
   const d = data || {};
   const id = d.notifId == null ? '' : String(d.notifId);
   if (TIPURI_CU_LOC.indexOf(String(d.type)) >= 0 && /^\d+$/.test(id)) return '/notif/' + id;
-  // Push-ul scrisorii vine din notify() (fără notifId, dar cu scrisoareId): direct la scrisoare.
+  // Push-ul scrisorii vine cu notifId (rândul de sus: prin detaliu, care îl marchează citit). Unul trimis înainte să-l aibă: direct la scrisoare.
   if (d.type === 'scrisoare_luni') return adresaAnunt('scrisoare_luni', d) || '/notifications';
   if (d.imei) return '/vehicles/' + encodeURIComponent(d.imei);
   return '/notifications';

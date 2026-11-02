@@ -523,6 +523,16 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-02
 
+### AMÂNDOI · Telefonul: cele trei găsite la lotul 2 (Robert: „după lotul 4")
+
+**Ce am schimbat:** (1) La client, grupa din meniu se cheamă „Management", ca pe web, deci drumurile din texte („Management › Șoferi") există; la fondatori rămâne „Administrare". (2) Pe tema deschisă, butoanele PDF / Excel și cifrele din Rapoarte (și din Statistici consum, Preț combustibil, Tahograf, care folosesc aceleași cifre) au trecut de la contrast 1,73 la 7,13, iar etichetele din bara de jos de la 4,23 la 7,34; tema întunecată nu s-a schimbat. (3) Serverul pune numărul anunțului în push-ul „Scrisoarea de luni", ca atingerea să-l marcheze citit. Azi acest push nu pleacă nimănui, deci efectul apare doar dacă hotărâți să plece. Păzit de verify_telefon_insight.js.
+
+**Ce vede fondatorul:** cu APK-ul următor, contrastul mai bun; meniul rămâne „Administrare".
+
+**Ce vede clientul:** cu APK-ul următor, „Management" în meniu și contrastul mai bun.
+
+- **Găsit pe drum, de întrebat:** (1) **Alerta de mișcare în afara programului nu sună pe telefon.** Ecranul promite „alertă (+ notificare push)", dar tipul nu e printre cele cu push și nu are rând în „Preferințe notificări": o mașină plecată la 2 noaptea apare doar în clopoțel. Verificat în cod. (2) „Scrisoarea de luni" apare doar în aplicație, la fel. (3) Mai puțin grave: atingerea unui push de alertă deschide mașina, dar anunțul rămâne necitit; „Documente vehicule" și „Adaugă alertă" de pe telefon se cheamă altfel decât în textele de la server.
+
 ### AMÂNDOI · Telefonul, lotul 4: „Anunță echipa RA Track" și ecranul Alerte (cod gata, intră în aplicație cu APK-ul următor)
 
 **Ce am schimbat:** la client: ecranul „Anunță echipa RA Track" („Cerere nouă" / „Cererile tale", confirmarea cu pașii), deschis din butonul casetelor RA Insight, din fișa mașinii și din meniu, în locul trimiterii vechi spre suport. Caseta spune apoi „Echipa RA Track se ocupă · …". La noi: „Cereri de la clienți", sub „Cereri demo", cu bulina, Deschise / Rezolvate / Toate, datele aparatului doar pentru noi, Preiau / Programez / Rezolvat / Redeschide, Sună, Deschide firma. Anunțurile duc la cerere. În Calendarul de montaj, intervențiile apar în grilă, în listă și în fereastra zilei, ca pe web; nu sunt lucrări de montaj. Pe ecranul Alerte: „sună peste 140 km/h", „sună la apariție, apoi o dată pe zi" și frazele de la server de sub prag. Serverul și pagina web nu s-au schimbat; ruta veche de suport rămâne pentru telefoanele vechi. Păzit de verify_telefon_echipa.js (nou, în `npm test`).

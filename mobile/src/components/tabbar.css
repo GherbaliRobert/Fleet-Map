@@ -95,6 +95,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Tema deschisă: --text-muted pe doc iese 4,23 la etichetele mici; --text-secondary trece de 4,5. Pastila activă își păstrează culoarea. */
+:root[data-theme="light"] .tab:not(.active) {
+  color: var(--text-secondary);
+}
+
 /* Suprafața internă = host pentru pastila highlight + zona de tap full-height. */
 .tab-in {
   position: relative;
