@@ -125,7 +125,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   inclusiv celor care au transmis doar de pe masa de probă. Ele plătesc abonament de atunci. De verificat în Dispozitive,
   la fiecare aparat nemontat încă la client, și corectat cu „✎ ziua de pornire" (golită: pornește la prima transmisie
   de după montaj). Trecerea „o singură dată" nu se rulează a doua oară.
-- [ ] **Robert: aplicația de telefon cu calendarul nou de montaj. Adăugat pe 01.10.** Codul e gata (fereastra zilei,
+- [ ] **Robert: aplicația de telefon cu calendarul nou de montaj. Adăugat pe 01.10.** **02.11: APK nou — `RA-Track-1.0.21-debug.apk`, pe Desktop (versiunea 23): loturile 1–4 (RA Insight, paginile, pachetele, „RA Insight · control", „Anunță echipa", ecranul Alerte, „Schimbă aparatul", „Sursă externă"). Rămân instalarea și încercarea pe un telefon adevărat. Dacă telefonul refuză instalarea peste versiunea veche, se dezinstalează întâi (se intră din nou în cont).** Codul e gata (fereastra zilei,
   confirmările, anularea cu motiv, istoricul, reprogramarea); trebuie construit și instalat APK-ul următor. Până atunci,
   pe telefonul vechi „Șterge ziua" e refuzat de server, cu mesajul „Ziua asta se anulează din calendar…".
   **Tot în APK-ul ăsta (01.10, seara):** traseul se descarcă în Excel, cu numele casei, în loc de CSV, iar KML-ul
