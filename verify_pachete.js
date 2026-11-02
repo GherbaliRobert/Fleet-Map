@@ -317,6 +317,44 @@ T('Start nu apare pe factură (0 lei); fără aparat pornit, nimic', !P.liniiFac
   && !P.liniiFactura({ istoric: IST, an: 2026, luna: 11 }).length);
 T('o firmă cu pachet de dinainte de istoric pornește de la pachetul ei, din ziua lui', JSON.stringify(P.istoricFirma({ ai_pachet: { cod: 'pro', pretRON: 18, de_la: 5 } })) === JSON.stringify([{ de_la: 5, cod: 'pro', pretRON: 18 }]));
 T('o schimbare nouă înlocuiește ce era programat după ea', P.adaugaIstoric(sP, { de_la: P.inceputZi(T14), cod: 'business', pretRON: 30 }).map((x) => x.cod).join() === 'pro,business');
+// Trecerea la un pachet mai mare CHIAR pe 1 ale lunii (02.11; Alin: „da"). Factura lunii pleacă noaptea, pe pachetul de dinainte;
+// trecerea confirmată la 10 pornește de la miezul nopții. Pachetul facturat în avans e cel hotărât înainte de 1 (pachete.pretAvans),
+// iar diferența pe toată luna vine pe factura următoare — cum scrie pe confirmare. Până pe 02.11, cei 10 lei nu se facturau deloc.
+(function () {
+  const ro = (an, l, z, h) => P.ziRo(an, l, z) + (h || 0) * 3600000, f = (s, an, l) => P.liniiFactura({ istoric: P.istoricFirma(s), an: an, luna: l, intreaga: true, anterioaraIntreaga: true });
+  const s0 = { ai_pachet: { cod: 'basic', pretRON: 10, de_la: ro(2026, 1, 1) } };
+  const t1 = P.trecere({ actual: pk('basic', 10), la: 'pro', pretNou: 20, conturi: 1, firma: 'Zebra SRL', acum: ro(2026, 12, 1, 10) });
+  const s1 = Object.assign({}, s0, { ai_pachet_istoric: P.adaugaIstoric(s0, { de_la: t1.deLa, cod: 'pro', pretRON: 20, hotarat_la: ro(2026, 12, 1, 10) }) });
+  T('pe 1 decembrie, la 10: confirmarea promite diferența de 10 lei pe toată luna, pe factura din 1 ianuarie',
+    t1.deLa === ro(2026, 12, 1) && /pentru toată luna se adaugă diferența de 10,00 lei fără TVA, pe factura din 1 ianuarie\./.test(t1.text), t1.text);
+  T('…factura lui decembrie rămâne Basic (în avans), oricând s-ar face', JSON.stringify(f(s1, 2026, 12)) === JSON.stringify([{ desc: 'RA Insight Basic — decembrie 2026', pret: 10 }]), JSON.stringify(f(s1, 2026, 12)));
+  T('…iar cea din 1 ianuarie pune diferența: Pro întreg + 10 lei pe 1–31.12', JSON.stringify(f(s1, 2027, 1)) === JSON.stringify([{ desc: 'RA Insight Pro — ianuarie 2027', pret: 20 },
+    { desc: 'RA Insight — trecerea la pachetul Pro, 1–31.12.2026 (31 de zile)', pret: 10 }]), JSON.stringify(f(s1, 2027, 1)));
+  const s2 = Object.assign({}, s0, { ai_pachet_istoric: P.adaugaIstoric(s0, { de_la: ro(2026, 12, 2), cod: 'pro', pretRON: 20, hotarat_la: ro(2026, 12, 2, 10) }) });
+  T('pe 2 decembrie, ca înainte: 9,68 lei pe 30 de zile', JSON.stringify(f(s2, 2027, 1)[1]) === JSON.stringify({ desc: 'RA Insight — trecerea la pachetul Pro, 2–31.12.2026 (30 de zile)', pret: 9.68 }), JSON.stringify(f(s2, 2027, 1)));
+  // Pro → Basic programat din 1 decembrie (hotărât pe 20.11), apoi înapoi pe Pro chiar pe 1: decembrie a plecat pe Basic.
+  const sJ = { ai_pachet: { cod: 'pro', pretRON: 20, de_la: ro(2026, 1, 1) }, ai_pachet_urmator: { cod: 'basic', pretRON: 10, de_la: ro(2026, 12, 1), hotarat_la: ro(2026, 11, 20, 9) } };
+  const cJ = P.consolideaza(sJ, ro(2026, 12, 1, 10)), sJ2 = Object.assign({}, cJ, { ai_pachet_istoric: P.adaugaIstoric(cJ, { de_la: ro(2026, 12, 1), cod: 'pro', pretRON: 20, hotarat_la: ro(2026, 12, 1, 10) }) });
+  T('micșorarea programată din 1, apoi înapoi pe Pro tot pe 1: decembrie rămâne Basic, ianuarie adaugă 10 lei',
+    f(sJ, 2026, 12)[0].desc === 'RA Insight Basic — decembrie 2026' && JSON.stringify(f(sJ2, 2026, 12)) === JSON.stringify(f(sJ, 2026, 12)) && f(sJ2, 2027, 1).length === 2 && f(sJ2, 2027, 1)[1].pret === 10,
+    JSON.stringify([f(sJ2, 2026, 12), f(sJ2, 2027, 1)]));
+  const sA = Object.assign({}, s0, { ai_pachet_istoric: P.adaugaIstoric(s0, { de_la: ro(2026, 12, 1), cod: 'pro', pretRON: 20, hotarat_la: ro(2026, 12, 1, 9) }) });
+  const sB = Object.assign({}, s0, { ai_pachet_istoric: P.adaugaIstoric(sA, { de_la: ro(2026, 12, 1), cod: 'business', pretRON: 30, hotarat_la: ro(2026, 12, 1, 15) }) });
+  T('două treceri pe 1 (Pro la 9, Business la 15): 20 de lei pe factura din ianuarie (10 + 10, cât promit confirmările)',
+    f(sB, 2027, 1).length === 2 && f(sB, 2027, 1)[1].pret === 20 && /Business, 1–31\.12\.2026/.test(f(sB, 2027, 1)[1].desc), JSON.stringify(f(sB, 2027, 1)));
+  const rT = P.adaugaIstoric({ ai_pachet_istoric: [{ de_la: ro(2026, 1, 1), cod: 'basic', pretRON: 10 }, { de_la: ro(2026, 10, 10), cod: 'pro', pretRON: 20, hotarat_la: ro(2026, 10, 10, 9) }] },
+    { de_la: ro(2026, 10, 5), cod: 'business', pretRON: 30, hotarat_la: ro(2026, 10, 20, 9) });
+  T('o zi din trecut pusă de noi înlocuiește tot ce era după ea (ca înainte)', rT.map((x) => x.cod).join() === 'basic,business', JSON.stringify(rT));
+  const sR = { ai_pachet_istoric: [{ de_la: ro(2026, 1, 1), cod: 'basic', pretRON: 10, hotarat_la: ro(2026, 11, 2, 9) }] };
+  T('…iar o corectură de azi cu o zi din trecut nu scoate bani pentru lunile trecute (noiembrie: doar Basic, în avans)',
+    JSON.stringify(f(sR, 2026, 11)) === JSON.stringify([{ desc: 'RA Insight Basic — noiembrie 2026', pret: 10 }]), JSON.stringify(f(sR, 2026, 11)));
+  T('intrările de dinainte de 02.11 (fără clipa hotărârii) se socotesc ca înainte', JSON.stringify(P.liniiFactura({ istoric: [{ de_la: 0, cod: 'basic', pretRON: 10 }, { de_la: ro(2026, 12, 1), cod: 'pro', pretRON: 20 }],
+    an: 2026, luna: 12, intreaga: true, anterioaraIntreaga: true })) === JSON.stringify([{ desc: 'RA Insight Pro — decembrie 2026', pret: 20 }]));
+  T('pe server, clipa hotărârii se scrie la toate trei: pachetul pus de noi, trecerea în sus, trecerea programată',
+    /adaugaIstoric\(next, ap \? \{ de_la: ap\.de_la, cod: ap\.cod, pretRON: ap\.pretRON, hotarat_la: acum \} : \{ de_la: acum, cod: 'start', pretRON: 0, hotarat_la: acum \}\)/.test(SRV)
+    && /adaugaIstoric\(next, \{ de_la: t\.deLa, cod: t\.la, pretRON: t\.pretNou, hotarat_la: Date\.now\(\) \}\)/.test(SRV)
+    && /next\.ai_pachet_urmator = \{ cod: t\.la, pretRON: t\.pretNou, de_la: t\.deLa, hotarat_la: Date\.now\(\) \}/.test(SRV));
+})();
 T('pe server: factura lunii ia pachetul din istoric (nu prețul de azi) și o singură regulă pentru rânduri',
   /pachete\.liniiFactura\(\{ istoric: pachete\.istoricFirma\(setariCo\)/.test(SRV) && /settings: Object\.assign\(\{\}, setariCo, \{ ai_pachet: null, ai_pachet_urmator: null, ai_pachet_istoric: null \}\)/.test(SRV));
 T('o singură scriere a pachetului pe firmă (_applyCompanySettingsPatch), cu istoricul la fiecare schimbare',

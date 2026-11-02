@@ -299,21 +299,35 @@ function _bani(x) { return (Number(x) || 0).toLocaleString('ro-RO', { minimumFra
 function _pePachet(p, pret) { return 'pachetul RA Insight ' + p.nume + ' (' + (p.ai ? _lei(pret) + ' pe lună, fără TVA' : 'inclus, fără cost') + ')'; }
 const FINAL_CONFIRMARE = 'Confirm, ca administrator al firmei, această schimbare. Confirmarea din aplicație ține loc de act adițional la contract.';
 
-// Istoricul pachetului unei firme, pentru factură: [{ de_la, cod, pretRON }] în ordine, cu trecerea programată (dacă e).
+// Istoricul pachetului unei firme, pentru factură: [{ de_la, cod, pretRON, hotarat_la? }] în ordine, cu trecerea programată (dacă e).
+// `hotarat_la` (din 02.11) = clipa în care s-a hotărât schimbarea (confirmarea omului / salvarea noastră); intrările de dinainte n-o au.
 // Firmele cu pachet de dinainte de istoric (pașii 1–5) pornesc de la pachetul de azi, din ziua în care l-au primit.
+function _clipa(v) { return v != null && v !== '' && Number.isFinite(Number(v)) ? Math.round(Number(v)) : null; }
 function istoricFirma(settings) {
   const s = _setari(settings);
   let l = Array.isArray(s.ai_pachet_istoric) ? s.ai_pachet_istoric.filter(function (x) { return x && dupaCod(x.cod) && Number.isFinite(Number(x.de_la)); }) : [];
   if (!l.length && s.ai_pachet && dupaCod(s.ai_pachet.cod)) l = [{ de_la: Number(s.ai_pachet.de_la) || 0, cod: s.ai_pachet.cod, pretRON: s.ai_pachet.pretRON }];
   const um = s.ai_pachet_urmator;
   if (um && dupaCod(um.cod) && Number.isFinite(Number(um.de_la))) l = l.filter(function (x) { return Number(x.de_la) < Number(um.de_la); }).concat([um]);
-  return l.map(function (x) { const p = dupaCod(x.cod), v = Number(x.pretRON); return { de_la: Number(x.de_la), cod: p.cod, pretRON: Number.isFinite(v) && v >= 0 ? r2(v) : p.pret }; })
-    .sort(function (a, b) { return a.de_la - b.de_la; });
+  return l.map(function (x) {
+    const p = dupaCod(x.cod), v = Number(x.pretRON), h = _clipa(x.hotarat_la);
+    const e = { de_la: Number(x.de_la), cod: p.cod, pretRON: Number.isFinite(v) && v >= 0 ? r2(v) : p.pret };
+    if (h != null) e.hotarat_la = h;
+    return e;
+  }).sort(function (a, b) { return a.de_la - b.de_la || (a.hotarat_la || 0) - (b.hotarat_la || 0); });
 }
 // O intrare nouă în istoric: tot ce era de la ea încolo (o trecere programată) se înlocuiește. Cel mult 60 de intrări.
+// Rămâne doar ce pornea în ACEEAȘI clipă și fusese hotărât dinainte (o trecere programată la un pachet mai mic, intrată pe 1):
+// factura lunii a plecat pe ea, deci pachetul facturat în avans (`pretAvans`) trebuie s-o mai vadă (02.11).
 function adaugaIstoric(settings, intrare) {
-  const l = istoricFirma(settings).filter(function (x) { return x.de_la < Number(intrare.de_la); });
-  l.push({ de_la: Number(intrare.de_la), cod: intrare.cod, pretRON: r2(intrare.pretRON) });
+  const de = Number(intrare.de_la), h = _clipa(intrare.hotarat_la);
+  const l = istoricFirma(settings).filter(function (x) {
+    if (x.de_la < de) return true;
+    return h != null && x.de_la === de && x.de_la <= h && (x.hotarat_la == null || x.hotarat_la <= x.de_la);
+  });
+  const e = { de_la: de, cod: intrare.cod, pretRON: r2(intrare.pretRON) };
+  if (h != null) e.hotarat_la = h;
+  l.push(e);
   return l.slice(-60);
 }
 // Trecerea programată care a ajuns la zi devine pachetul firmei (se scrie la prima schimbare de după, ca istoricul să o țină).
@@ -331,6 +345,15 @@ function pretLa(istoric, t) {
   let e = null;
   (istoric || []).forEach(function (x) { if (x.de_la <= t) e = x; });
   return e || { de_la: 0, cod: 'start', pretRON: 0 };
+}
+// Pachetul facturat ÎN AVANS pentru luna care începe la `t` (factura de pe 1). O trecere la un pachet mai mare pornește din ziua
+// confirmării, de la miezul nopții — și una confirmată chiar pe 1, când factura lunii a plecat deja pe pachetul de dinainte. O
+// schimbare care PORNEȘTE în luna asta (de la `t` încolo), dar hotărâtă după începutul ei, NU intră în avans: diferența pe toată luna
+// vine pe factura următoare, exact cum scrie pe confirmare (Alin, 02.11: „da"; până atunci cei 10 lei de pe 1 decembrie nu se mai
+// facturau). O corectură a noastră cu o zi dintr-o lună trecută rămâne ca înainte (nu scoate bani pentru lunile trecute), la fel
+// intrările fără `hotarat_la` (de dinainte de 02.11).
+function pretAvans(istoric, t) {
+  return pretLa((istoric || []).filter(function (x) { return !(x.hotarat_la > t && x.de_la >= t); }), t + 3600000);
 }
 // Zilele lunii (an, luna), din ziua `deLaZi`, strânse pe bucăți cu același pachet și același preț.
 function bucatiLuna(istoric, an, luna, deLaZi) {
@@ -356,7 +379,7 @@ function liniiFactura(o) {
   const per = function (b) { return (b.zi === b.zf ? String(b.zi) : b.zi + '–' + b.zf) + '.' + ll + '.' + P.an + ' (' + cant(b.zile, 'zi', 'zile') + ')'; };
   const out = [];
   if (o.intreaga) {
-    const e = pretLa(ist, ziRo(M.an, M.luna, 1) + 3600000);
+    const e = pretAvans(ist, ziRo(M.an, M.luna, 1));
     if (e.pretRON > 0) out.push({ desc: eticheta(dupaCod(e.cod)) + ' — ' + LUNI[M.luna - 1] + ' ' + M.an, pret: e.pretRON });
   }
   if (o.partialaZi) {
@@ -364,7 +387,7 @@ function liniiFactura(o) {
       if (b.pretRON > 0) out.push({ desc: eticheta(dupaCod(b.cod)) + ' — ' + per(b), pret: r2(b.pretRON * b.zile / nP) });
     });
   } else if (o.anterioaraIntreaga) {
-    const ref = pretLa(ist, ziRo(P.an, P.luna, 1) + 3600000);
+    const ref = pretAvans(ist, ziRo(P.an, P.luna, 1));
     bucatiLuna(ist, P.an, P.luna, 1).forEach(function (b) {
       if (b.pretRON > ref.pretRON) out.push({ desc: 'RA Insight — trecerea la pachetul ' + dupaCod(b.cod).nume + ', ' + per(b), pret: r2((b.pretRON - ref.pretRON) * b.zile / nP) });
     });
@@ -576,5 +599,5 @@ module.exports = {
   cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi,
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
   ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,
-  istoricFirma, adaugaIstoric, consolideaza, pretLa, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,
+  istoricFirma, adaugaIstoric, consolideaza, pretLa, pretAvans, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,
 };

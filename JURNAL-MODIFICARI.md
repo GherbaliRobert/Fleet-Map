@@ -521,6 +521,26 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-02
+
+### AMÂNDOI · Trecerea la un pachet RA Insight mai mare chiar pe 1 ale lunii: factura următoare adaugă diferența
+
+**Ce am schimbat:** Alin (02.11): „da" — găsită la pasul 2 al asistentului fondatorilor (verify_pachete.js pica pe 1 ale lunii).
+Exemplu: o firmă pe Basic (10 lei) trece pe Pro (20 lei) pe 1 decembrie, la 10 dimineața. Factura lui decembrie plecase noaptea, pe
+Basic. Confirmarea semnată spune „pentru toată luna se adaugă diferența de 10 lei, pe factura din 1 ianuarie”, dar factura din ianuarie
+n-o punea: trecerea pornește de la miezul nopții, iar aplicația o socotea deja facturată în avans — pierdeam 10 lei, iar factura
+contrazicea confirmarea. Acum fiecare schimbare de pachet ține minte și clipa în care s-a hotărât, iar pachetul facturat în avans pe o
+lună e cel hotărât înainte de începutul ei: o trecere confirmată chiar pe 1 vine ca diferență pe factura următoare, ca una de pe 2 —
+oricând s-ar face factura lunii. Merg și cazurile rare: o micșorare programată din 1, urmată de revenirea pe pachetul mare tot pe 1;
+două treceri în aceeași zi (Pro la 9, Business la 15: 20 de lei, cât promit cele două confirmări). O corectură a noastră cu o zi dintr-o
+lună trecută nu scoate bani pentru lunile trecute (ca înainte), iar schimbările de dinainte de azi se socotesc ca înainte. Păzit de
+verify_pachete.js (241, cu ceasul fixat pe 1 decembrie — proba nu mai pică pe 1 ale lunii).
+
+**Ce vede fondatorul:** nimic nou pe ecran; când trecerea s-a făcut pe 1, factura din luna următoare are rândul „RA Insight — trecerea
+la pachetul Pro, 1–31.12.2026 (31 de zile)”.
+
+**Ce vede clientul:** factura spune ce a confirmat: diferența pe toată luna, pe factura următoare. Textul confirmării nu se schimbă.
+
 ## 2026-11-01
 
 ### FONDATOR · Asistentul fondatorilor, pasul 2: caseta „Întreabă orice"

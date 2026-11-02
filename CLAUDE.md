@@ -1294,6 +1294,12 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `liniiFirma`): luna întreagă la pachetul de pe 1 a lunii (în avans), iar pentru luna trecută — zilele pe bucăți (firma cu
   primul aparat pornit atunci) sau diferența pe zile pentru fiecare trecere la un pachet mai mare („RA Insight — trecerea la
   pachetul Pro, 14–31.10.2026 (18 zile)"). O trecere la un pachet mai mic nu dă bani înapoi. Aceeași regulă ca abonamentul.
+  **Pachetul facturat în avans = `pachete.pretAvans`** (02.11, Alin: „da"): fiecare intrare din istoric ține și `hotarat_la` (scris de
+  server la pachetul pus de noi, la trecerea în sus și la cea programată); o schimbare care PORNEȘTE în luna facturată, dar hotărâtă
+  după începutul ei — trecerea confirmată chiar pe 1, de la miezul nopții —, NU intră în avans: diferența pe toată luna vine pe factura
+  următoare, cum scrie pe confirmare (până atunci cei 10 lei nu se mai facturau). `adaugaIstoric` păstrează intrarea din aceeași clipă
+  hotărâtă dinainte (micșorarea programată din 1). O corectură a noastră cu o zi dintr-o lună trecută nu scoate bani pentru lunile
+  trecute. NU socoti avansul cu `pretLa` la ora 1 a lunii. Păzit de `verify_pachete.js`, cu ceasul fixat pe 1 decembrie.
 - **Pasul 7, pagina pachetelor:** în aplicație = „Vezi pachetele" (`/api/insight/pachete` → `pachete` cu prețurile pentru firmă,
   `comparatie` cu prețuri, `inToate`; desenate de `insightPachete`, `.insp-pk-*`); pe site = **`/pachete-ra-insight`** (în
   `PAGINI_PUBLICE`, legată din subsolul și din banda RA Insight a primei pagini), FĂRĂ prețuri: „Inclus în orice contract" la

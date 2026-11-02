@@ -18291,7 +18291,8 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     if (body.ai_pachet === null || ap) {
       Object.assign(next, pachete.consolideaza(next, acum));
       if (ap && ap.de_la == null) ap.de_la = acum;
-      next.ai_pachet_istoric = pachete.adaugaIstoric(next, ap ? { de_la: ap.de_la, cod: ap.cod, pretRON: ap.pretRON } : { de_la: acum, cod: 'start', pretRON: 0 });
+      // `hotarat_la` (02.11): factura de pe 1 ia pachetul hotărât înainte de începutul lunii (pachete.pretAvans).
+      next.ai_pachet_istoric = pachete.adaugaIstoric(next, ap ? { de_la: ap.de_la, cod: ap.cod, pretRON: ap.pretRON, hotarat_la: acum } : { de_la: acum, cod: 'start', pretRON: 0, hotarat_la: acum });
       delete next.ai_pachet_urmator;
       if (ap) { next.ai_pachet = ap; delete next.ai_quota; } else delete next.ai_pachet;
     }
@@ -18301,11 +18302,13 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   if (body.ai_pachet_trecere && opts && opts.trecere) {
     const t = body.ai_pachet_trecere;
     Object.assign(next, pachete.consolideaza(next, Date.now()));
+    // Mai mare = de azi, de la miezul nopții; hotărât acum (`hotarat_la`), deci pe 1 ale lunii factura lunii (plecată pe pachetul de
+    // dinainte) nu-l socotește în avans — diferența pe toată luna vine pe factura următoare, cum scrie pe confirmare (02.11).
     if (t.sens === 'sus') {
-      next.ai_pachet_istoric = pachete.adaugaIstoric(next, { de_la: t.deLa, cod: t.la, pretRON: t.pretNou });
+      next.ai_pachet_istoric = pachete.adaugaIstoric(next, { de_la: t.deLa, cod: t.la, pretRON: t.pretNou, hotarat_la: Date.now() });
       next.ai_pachet = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa };
       delete next.ai_pachet_urmator; delete next.ai_quota;
-    } else if (t.sens === 'jos') next.ai_pachet_urmator = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa };
+    } else if (t.sens === 'jos') next.ai_pachet_urmator = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa, hotarat_la: Date.now() };
     else if (t.sens === 'anulare') delete next.ai_pachet_urmator;
   }
   // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
