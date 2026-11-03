@@ -4011,12 +4011,37 @@ body.dark .insp-fond.w { color: #fbbf24; }
 /* coloana discuției: derularea pe toată lățimea, textul pe 780 px la mijloc */
 .insp-msgs { overflow-y: auto; padding: 8px max(24px, calc((100% - 780px) / 2)) 12px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
 .insp-u { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-start; gap: 2px; }
-.insp-u .b { background: color-mix(in srgb, var(--text-primary) 7%, var(--bg-darkest)); color: var(--text-primary); border-radius: 20px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-width: 0; }
+/* Chatul inteligent (Alin, 02.11: „1. da, 2. da" — macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3): întrebarea omului pe
+   culoarea chatului (mov la RA Insight, verde la asistentul nostru, mai jos), semnul = cerc colorat cu steluța, care se învârte cât lucrează. */
+.insp-u .b { background: color-mix(in srgb, #7c3aed 10%, var(--bg-darkest)); color: var(--text-primary); border-radius: 20px 20px 6px 20px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-width: 0; }
+body.dark .insp-u .b { background: color-mix(in srgb, #a78bfa 15%, var(--bg-darkest)); }
 .insp-u-act { display: flex; gap: 2px; padding-top: 4px; opacity: 0; transition: opacity .12s; }
 .insp-u:hover .insp-u-act, .insp-u:focus-within .insp-u-act { opacity: 1; }
 @media (hover: none) { .insp-u-act { opacity: 1; } }
-.insp-a { align-self: stretch; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
-.insp-a .av { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); margin-top: 1px; }
+.insp-a { align-self: stretch; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+.insp-a .av { position: relative; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #fff; background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 0 0 4px color-mix(in srgb, #7c3aed 14%, transparent); margin-top: 1px; }
+body.dark .insp-a .av { color: #1e1033; background: linear-gradient(135deg, #a78bfa, #818cf8); box-shadow: 0 0 0 4px color-mix(in srgb, #a78bfa 16%, transparent); }
+.insp-a .av::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid transparent; border-top-color: #7c3aed; border-right-color: #4f46e5; opacity: 0; transition: opacity .2s; }
+body.dark .insp-a .av::before { border-top-color: #a78bfa; border-right-color: #818cf8; }
+.insp-a .av.lucreaza::before { opacity: 1; animation: chat-roata 1s linear infinite; }
+@keyframes chat-roata { to { transform: rotate(360deg); } }
+/* „Mă gândesc…" cât lucrează (luminează de la stânga la dreapta); textul răspunsului NOU apare cuvânt cu cuvânt, sub o secundă, iar ce
+   stă sub el (tabelul, butoanele, rândul „✓") apare după (window._chatScrieTreptat). Fără mișcare pentru cine a cerut-o. */
+.chat-gand { width: fit-content; font-weight: 700; font-size: 14.5px; padding-top: 5px; color: var(--text-secondary); background: linear-gradient(90deg, var(--text-secondary) 0%, var(--text-primary) 45%, var(--text-secondary) 90%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: chat-luceste 1.4s linear infinite; }
+@keyframes chat-luceste { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.chat-w { opacity: 0; transition: opacity .18s ease; }
+.chat-w.v { opacity: 1; }
+.chat-ascuns { opacity: 0; transform: translateY(4px); pointer-events: none; }
+.chat-arata { opacity: 1; transform: none; transition: opacity .25s ease, transform .25s ease; }
+.chat-intra { animation: chat-intra .22s ease-out both; }
+@keyframes chat-intra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* „· 5 secunde" lângă detaliul antetului: ACEEAȘI literă ca detaliul (12px, 600) — cu 12,5px / 400 stătea vizibil mai sus (03.11, poze). */
+.chat-ins-dur { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+@media (prefers-reduced-motion: reduce) {
+  .insp-a .av.lucreaza::before, .chat-intra { animation: none; }
+  .chat-gand { animation: none; background: none; -webkit-text-fill-color: currentColor; }
+  .chat-w, .chat-ascuns { opacity: 1; transform: none; transition: none; }
+}
 .insp-a .bub { min-width: 0; color: var(--text-primary); font-size: 14.5px; line-height: 1.62; }
 .insp-a .bub .rax-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
 .insp-a .bub .rax-md-li { padding-left: 14px; position: relative; margin: 3px 0; }
@@ -4025,12 +4050,17 @@ body.dark .insp-fond.w { color: #fbbf24; }
 .insp-a .ins-alege { margin-top: 8px; }
 .insp-surse { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .insp-salut { width: 100%; max-width: 780px; margin: 0 auto; text-align: center; color: var(--text-secondary); }
-.insp-salut h2 { font-size: 28px; font-weight: 800; color: var(--text-primary); margin: 0 0 18px; }
+.insp-salut h2 { width: fit-content; max-width: 100%; font-size: 28px; font-weight: 800; color: #6d28d9; margin: 0 auto 18px; background: linear-gradient(90deg, #6d28d9, #4338ca); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+body.dark .insp-salut h2 { color: #c4b5fd; background: linear-gradient(90deg, #c4b5fd, #a5b4fc); -webkit-background-clip: text; background-clip: text; }
 .insp-gol-mij { overflow-y: auto; min-height: 0; display: flex; align-items: center; padding: 24px; grid-row: 1 / -1; }
 /* Trei butoane scurte sub casetă (macheta „mai simplu"), în locul celor patru cartonașe. */
 .insp-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
-.insp-chip { font: inherit; font-size: 13px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
-.insp-chip:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
+.insp-chip { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 14px 6px 7px; cursor: pointer; transition: border-color .15s, transform .15s; }
+.insp-chip:hover { border-color: #7c3aed; transform: translateY(-1px); }
+body.dark .insp-chip:hover { border-color: #a78bfa; }
+/* Întrebările gata făcute: o pastilă cu iconița într-un cerc (mov la RA Insight, verde la asistentul nostru — `.chat-start`). */
+.insp-chip .ic { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 11px; color: #6d28d9; background: color-mix(in srgb, #7c3aed 12%, transparent); }
+body.dark .insp-chip .ic { color: #c4b5fd; background: color-mix(in srgb, #a78bfa 18%, transparent); }
 .insp-scrie { padding: 6px max(24px, calc((100% - 780px) / 2)) 12px; }
 .insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .insp-btn i { color: var(--text-muted); }
@@ -4265,7 +4295,7 @@ body.dark .chat-prob.galben .chat-prob-t i { color: #fbbf24; }
 .chat-prob-d { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 .chat-prob-b { display: flex; gap: 6px; flex-wrap: wrap; }
 .chat-raps { display: grid; gap: 6px; }
-.chat-ok { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: #15803d; }
+.chat-ok { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: #166534; }   /* 02.11: #15803d ieșea 4,46 pe tema deschisă */
 body.dark .chat-ok { color: #4ade80; }
 .chat-nota { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
 /* Insigna răspunsului, ca antet (Alin, 19.10: „varianta 1 — antetul"): numele, eticheta cu chenar subțire (ANALIZĂ mov /
@@ -4273,9 +4303,14 @@ body.dark .chat-ok { color: #4ade80; }
    iese sub 4,5 la literele mici ale etichetei. */
 .chat-ins-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 6px; font-size: 13px; line-height: 1.3; }
 .chat-ins-cap .nm { font-weight: 800; color: var(--text-primary); }
-.chat-ins-et { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.25; }
+.chat-ins-et { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px 2px 6px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.25; }
+/* Chatul inteligent (02.11): eticheta aleasă pe 19.10 (chenar subțire, fără fundal) primește DOAR iconița ei — fulgerul la INSTANT,
+   steluța la ANALIZĂ (Font Awesome, din CSS). */
+.chat-ins-et::before { font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 9px; letter-spacing: 0; }
 .chat-ins-et.ai { color: #6d28d9; }
+.chat-ins-et.ai::before { content: '\e2ca'; }
 .chat-ins-et.instant { color: #166534; }
+.chat-ins-et.instant::before { content: '\f0e7'; }
 body.dark .chat-ins-et.ai { color: #c4b5fd; }
 body.dark .chat-ins-et.instant { color: #86efac; }
 .chat-ins-det { font-size: 12px; font-weight: 600; color: var(--text-secondary); }   /* --text-muted pe fundalul discuției = 4,23: sub 4,5 */
@@ -4285,16 +4320,27 @@ body.dark .sdp-verif td i { color: #fbbf24; }
 .chat-urm button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 99px; border: 1px dashed var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .chat-urm button i { font-size: 11px; color: var(--text-muted); }
 .chat-urm button:hover { color: var(--text-primary); border-style: solid; border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
-.chat-caseta { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 24px; padding: 10px 10px 8px 16px; box-shadow: 0 6px 24px rgba(0,0,0,.08); text-align: left; }
-body.dark .chat-caseta { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
-.chat-caseta:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, var(--border-light)); }
+/* Întrebările gata făcute de sub „Azi la noi" (02.11): pastile pline, cu iconița într-un cerc verde — ca la RA Insight (`.insp-chip`). */
+.chat-urm.chat-start { margin-top: -4px; }
+.chat-urm.chat-start button { border-style: solid; background: var(--bg-panel); color: var(--text-primary); padding: 6px 14px 6px 7px; transition: border-color .15s, transform .15s; }
+.chat-urm.chat-start button:hover { border-color: #16a34a; transform: translateY(-1px); }
+.chat-urm.chat-start button i { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; color: #166534; background: color-mix(in srgb, #16a34a 12%, transparent); }
+body.dark .chat-urm.chat-start button:hover { border-color: #3FE07D; }
+body.dark .chat-urm.chat-start button i { color: #86efac; background: color-mix(in srgb, #3FE07D 15%, transparent); }
+.chat-caseta { background: var(--bg-panel); border: 1.5px solid var(--border-light); border-radius: 24px; padding: 10px 10px 8px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.08); text-align: left; transition: box-shadow .2s; }
+body.dark .chat-caseta { box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+/* Chatul inteligent (02.11): cât scrii, caseta primește marginea în degrade a chatului (mov la RA Insight, verde la noi) și un halou. */
+.chat-caseta:focus-within { border-color: transparent; background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #7c3aed, #4f46e5) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #7c3aed 12%, transparent), 0 8px 28px rgba(0,0,0,.08); }
+body.dark .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #a78bfa, #818cf8) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #a78bfa 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
 .chat-caseta textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 14.5px; line-height: 1.45; max-height: 140px; padding: 4px 0 10px; }
 .chat-caseta textarea::placeholder { color: var(--text-secondary); }
 .chat-unelte { display: flex; align-items: center; gap: 6px; }
 .chat-un { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .chat-un i { font-size: 12px; color: var(--text-muted); }
 .chat-un:hover { color: var(--text-primary); border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
-.chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent); color: #06210F; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; }
+.chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; transition: transform .15s; }
+.chat-trimite:not(.gol):hover { transform: translateY(-1px); }
+body.dark .chat-trimite { background: linear-gradient(135deg, #a78bfa, #818cf8); color: #1e1033; }
 .chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-light); cursor: default; }
 .chat-trimite:disabled { opacity: .6; }
 .chat-jos { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: none; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; z-index: 2; }
@@ -4729,8 +4775,8 @@ button.azi-r:hover { background: var(--bg-dark); }
 .azi-dece { font-size: 12px; font-weight: 800; color: #6d28d9; white-space: nowrap; }
 body.dark .azi-dece { color: var(--purple); }
 .azi-cap + .azi-r { border-top: none; }
-.azi-st { width: 9px; height: 9px; border-radius: 50%; background: #15803d; }
-.azi-st.r { background: #dc2626; } .azi-st.w { background: #d97706; } .azi-st.b { background: #2563eb; }
+.azi-st { width: 9px; height: 9px; border-radius: 50%; background: #15803d; box-shadow: 0 0 0 3px color-mix(in srgb, #15803d 18%, transparent); }
+.azi-st.r { background: #dc2626; box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 18%, transparent); } .azi-st.w { background: #d97706; box-shadow: 0 0 0 3px color-mix(in srgb, #d97706 18%, transparent); } .azi-st.b { background: #2563eb; box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent); }
 body.dark .azi-st { background: #3FE07D; } body.dark .azi-st.r { background: #ef4444; } body.dark .azi-st.w { background: #fbbf24; } body.dark .azi-st.b { background: #60a5fa; }
 .azi-tx { font-size: 13.5px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
 .azi-tx b { font-weight: 800; }
@@ -4769,15 +4815,29 @@ body.dark .azi-prop { color: #4ade80; }
    e verde (al casei), ca să nu se confunde cu RA Insight (mov). Cele 4 cifre de azi stau în primul mesaj; rândurile „Azi la noi" ca
    „Azi la tine". Culorile au pereche pe ambele teme, măsurate de verify_asistent_fondatori.js. */
 #asistent-view.as-view { padding: 0; align-items: stretch; overflow: hidden; }
-.insp-a .av.asf-av { color: #166534; background: color-mix(in srgb, #16a34a 16%, transparent); }
-body.dark .insp-a .av.asf-av { color: #3FE07D; background: color-mix(in srgb, #3FE07D 16%, transparent); }
+/* Asistentul nostru (02.11): același semn, în verdele casei — cerc în degrade, inelul lui verde cât lucrează. */
+.insp-a .av.asf-av { color: #fff; background: linear-gradient(135deg, #15803d, #0f766e); box-shadow: 0 0 0 4px color-mix(in srgb, #16a34a 14%, transparent); }
+body.dark .insp-a .av.asf-av { color: #06210F; background: linear-gradient(135deg, #3FE07D, #2DD4BF); box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 16%, transparent); }
+.insp-a .av.asf-av::before { border-top-color: #15803d; border-right-color: #0f766e; }
+body.dark .insp-a .av.asf-av::before { border-top-color: #3FE07D; border-right-color: #2DD4BF; }
+.asf .insp-u .b { background: color-mix(in srgb, #16a34a 11%, var(--bg-darkest)); }
+body.dark .asf .insp-u .b { background: color-mix(in srgb, #3FE07D 13%, var(--bg-darkest)); }
+.asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #16a34a, #0d9488) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #16a34a 12%, transparent), 0 8px 28px rgba(0,0,0,.08); }
+body.dark .asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #3FE07D, #2DD4BF) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
+.asf .chat-trimite, body.dark .asf .chat-trimite { background: linear-gradient(135deg, #3FE07D, #2DD4BF); color: #06210F; }
+/* Salutul: mare, în degradeul verde; „Iată cum stăm azi." dedesubt, mai mic. */
+.asf-salut { font-size: 15px; color: var(--text-secondary); }
+.asf-salut b { display: block; width: fit-content; max-width: 100%; font-size: 26px; line-height: 1.2; font-weight: 800; margin: 2px 0 2px; color: #15803d; background: linear-gradient(90deg, #15803d, #0f766e); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+body.dark .asf-salut b { color: #3FE07D; background: linear-gradient(90deg, #3FE07D, #2DD4BF); -webkit-background-clip: text; background-clip: text; }
 .asf-cif { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
 .asf-cif .c { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-panel); font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.asf-cif .c:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.asf-cif .c:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); transform: translateY(-1px); }
+.asf-cif .c { transition: border-color .15s, transform .15s; }
 .asf-cif .c:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .asf-cif b { font-size: 20px; font-weight: 800; line-height: 1.15; color: var(--text-primary); }
 .asf-cif .l { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
-.asf-cif .l i { font-size: 11px; color: var(--text-muted); }
+.asf-cif .l i { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 10px; color: #166534; background: color-mix(in srgb, #16a34a 12%, transparent); }
+body.dark .asf-cif .l i { color: #86efac; background: color-mix(in srgb, #3FE07D 15%, transparent); }
 .asf-cif .s { min-height: 15px; font-size: 11.5px; line-height: 1.35; color: var(--text-secondary); }
 .asf-cif .s .r { color: #b91c1c; font-weight: 700; }
 .asf-cif .s .w { color: #c2410c; font-weight: 700; }

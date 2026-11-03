@@ -439,6 +439,17 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   întrebarea cât e pornit (o discuție nouă pornește cu el oprit) și, sub răspuns, blocul „Surse de pe internet" (`sursa` din răspuns:
   titlul, sursele cu linkul, „Ce am căutat"). Până atunci telefonul nu caută pe internet. **30.10:** rândul „✓” de sub răspuns ia textul
   din `verificatText` (de la server: „din rapoarte” / „din sursele de mai sus” / „din aplicație și din sursele de mai sus”), nu scris în telefon.
+- [ ] **Robert: telefonul și „chatul inteligent" (APK-ul următor). Adăugat pe 03.11.** Pe web, RA Insight și asistentul nostru au aspectul
+  nou (macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3, Alin: „da" la toate). Pe telefon (`screens/Insight.tsx`,
+  `components/InsightBula.tsx`): (1) semnul rotund în degrade, mov (`#7c3aed → #4f46e5`; pe tema închisă `#a78bfa → #818cf8`, iconița
+  `#1e1033`), cu inelul care se învârte cât RA Insight lucrează, și rândul „Mă gândesc…" în locul celor trei puncte; (2) textul răspunsului
+  NOU apare cuvânt cu cuvânt, în cel mult 0,8 secunde (tabelul și butoanele când ajunge șirul la ele), dar nu la o conversație redeschisă
+  și nu când telefonul e pus pe „mai puțină mișcare"; (3) lângă antet, „· 4 secunde" la răspunsurile AI (aceleași cuvinte: „1 secundă",
+  „20 de secunde"); (4) iconițele etichetelor (steluța la ANALIZĂ, fulgerul la INSTANT), fără fundal; (5) bulele omului mov-deschis,
+  salutul în degrade, butoanele de sub salut ca pastile cu iconiță, caseta cu chenar colorat când scrii, săgeata de trimis în degrade;
+  (6) rândul „✓" pe verdele `#166534` pe tema deschisă (`#15803d` iese 4,46). Regulile sunt în pagină, în piesele comune
+  (`_chatGand`, `_chatSecunde`, `_chatScrieTreptat`) și în `app.css` (blocul „Chatul inteligent"); piesele răspunsului nu s-au schimbat,
+  deci telefonul de azi merge mai departe ca înainte.
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -520,6 +531,40 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-11-03
+
+### AMÂNDOI · Chatul inteligent: RA Insight (la clienți) și asistentul nostru, cu aspectul nou
+
+**Ce am schimbat:** Alin (02.11), la macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3: „1. da" (aspectul), „2. da" (același aspect și
+la RA Insight, la clienți), „3. da" (textul care apare treptat), „4. da" (verdele rândului „✓"), „5. da" (pasul 3 abia după). Ambele chaturi au
+acum aceeași înfățișare și aceeași mișcare, fiecare în culoarea lui (RA Insight mov, asistentul nostru verde):
+(1) **Semnul rotund în degrade**, cu un inel care se învârte cât lucrează, și rândul **„Mă gândesc…"** în locul celor trei puncte.
+(2) **Răspunsul nou apare cuvânt cu cuvânt**, în cel mult o secundă; tabelul și butoanele apar când ajunge șirul la ele. O conversație
+redeschisă se arată întreagă, pe loc. Cine are pe calculator sau pe telefon „mai puțină mișcare" vede totul pe loc, fără animații.
+(3) **Cât a durat**, lângă antet, la răspunsurile AI: „Analiză · din Facturare · 5 secunde". Răspunsurile instant nu-l au (vin pe loc).
+(4) **Etichetele** ANALIZĂ / INSTANT păstrează chenarul subțire ales pe 19.10 și primesc doar iconița (steluța, fulgerul).
+(5) Bulele omului colorate deschis, salutul mare în degrade („Bună seara, Alin!" / „Salut, Ion! Cu ce te pot ajuta?"), butoanele de sub
+salut ca pastile cu iconiță, caseta cu chenar colorat cât scrii, săgeata de trimis în degrade.
+(6) **Rândul „✓ Cifrele le-am luat din…"** la RA Insight, pe tema deschisă: verdele mai închis (`#166534`), ca la noi — era 4,46, sub pragul de
+4,5 (punctul B de pe 01.11).
+Ce NU s-a schimbat: ce scrie în răspunsuri, butoanele, cartonașele, numărătoarea întrebărilor. Telefonul de azi merge ca înainte (aspectul
+nou intră la APK-ul următor — l-am pus la „De amintit", la Robert). „Am citit: …" din machetă e, pe web, rândul existent „Din raportul…"
+(la RA Insight) și „din Facturare" din antet (la noi), plus cât a durat — fără o listă care se deschide la clic.
+Păzit de verify_chat_inteligent.js (nou, în `npm test`: piesele scrise o dată și folosite de ambele chaturi, „1 secundă / 20 de secunde",
+textul sub o secundă și oprit la „mai puțină mișcare", culorile măsurate pe ambele teme, în browser când există), plus verify_telefon_insight.js
+(piesele răspunsului, oglindite pe telefon) și verify_asistent_fondatori.js / verify_asistent_intreaba.js.
+
+**Ce vede fondatorul:** pe „Acasă", chatul asistentului cu aspectul nou (semnul verde, salutul în degrade, întrebările gata făcute ca pastile
+cu iconiță: „Cine e restant?", „Încasări luna asta", „Montaje săptămâna asta"); când întreabă ceva liber, „Mă gândesc…", apoi răspunsul care
+se scrie și „· N secunde" în antet. În RA Insight (contul de fondator) — la fel, în mov.
+
+**Ce vede clientul:** RA Insight cu aspectul nou (mov): salutul, pastilele, „Mă gândesc…", răspunsul care se scrie, cât a durat, rândul „✓"
+mai ușor de citit pe tema deschisă.
+
+- **Probă reparată pe drum (aplicația era bună):** verify_propuneri.js căuta drumurile din RA Drive în luna de „acum 2 zile" (reparat așa pe
+  01.11); pe 3–5 ale lunii, luna aceea n-avea încă niciun drum, iar proba pica. Acum caută luna singurului drum adevărat din probă (cel de
+  acum 5 zile). Pica la fel și pe versiunea publicată, deci nu din lucrul de azi.
 
 ## 2026-11-02
 

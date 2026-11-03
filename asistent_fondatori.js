@@ -27,11 +27,11 @@ const MAX_CUVINTE_PE_LOC = 14;
 // „Contracte care expiră", fără perioadă: următoarele 90 de zile.
 const ZILE_CONTRACTE = 90;
 
-// Întrebările gata făcute de sub „Azi la noi" (macheta): un clic și pleacă, ca una scrisă.
+// Întrebările gata făcute de sub „Azi la noi" (macheta): un clic și pleacă, ca una scrisă. `ic` = iconița pastilei (chatul inteligent, 02.11).
 const INTREBARI_GATA = [
-  { text: 'Cine e restant?', trimite: 'Cine e restant?' },
-  { text: 'Încasări luna asta', trimite: 'Încasări luna asta' },
-  { text: 'Montaje săptămâna asta', trimite: 'Montaje săptămâna asta' }
+  { text: 'Cine e restant?', trimite: 'Cine e restant?', ic: 'fa-coins' },
+  { text: 'Încasări luna asta', trimite: 'Încasări luna asta', ic: 'fa-chart-column' },
+  { text: 'Montaje săptămâna asta', trimite: 'Montaje săptămâna asta', ic: 'fa-calendar-days' }
 ];
 // Perioadele din „+" › Perioada: se pun în casetă cum le scrie omul, iar regulile de mai jos le înțeleg (proba le citește pe toate).
 const PERIOADE = [

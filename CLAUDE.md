@@ -886,6 +886,28 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
 - Păzit de **`verify_asistent_intreaba.js`** (în `npm test`; pe server pornit, cu datele puse în bază de faza `--faza=seed`, modelul simulat și faza
   `--faza=consum` după oprire), plus `verify_asistent_fondatori.js` și `verify_companii.js` (starea firmelor, o socoteală).
 
+### Chatul inteligent (03.11; Alin, 02.11: „1. da … 5. da" la macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3)
+Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fondatorilor (verde). Regulile — NU le strica la loc:
+- **Piesele comune stau O DATĂ în pagină** (blocul „Chatul inteligent", după `_chatStareTrimite`): `_chatMiscare()` (fals la „mai puțină mișcare"),
+  `_chatGand(avCls)` (rândul „Mă gândesc…", `role="status"`, semnul cu inelul — `av lucreaza [asf-av]`), `_chatSecunde(ms)` („1 secundă",
+  „4 secunde", „20 de secunde"), `_chatDurata(row, ms)` („· N secunde" lângă antet, DOAR la `insigna.fel === 'ai'`), `_chatScrieTreptat(row, dupa)`
+  (cuvintele în `span.chat-w`, aprinse în ordinea de pe ecran în cel mult ~0,8 s; ce stă după primul text — tabel, butoane, „✓", continuările din
+  `dupa` — apare când ajunge șirul la el). O cheamă doar `insightTrimite` și `asfTrimite`, la răspunsul ABIA VENIT; conversația redeschisă
+  (`deseneazaMain`) se desenează întreagă. NU scrie a doua variantă.
+- **Piesele răspunsului NU se schimbă** (telefonul le oglindește: `verify_telefon_insight.js` rulează `bulaAi` și compară părțile și ordinea).
+  Aspectul = CSS + piesele de mai sus, puse DUPĂ `bulaAi`. Eticheta ANALIZĂ / INSTANT rămâne cu chenar subțire, fără fundal (19.10), cu
+  `color: #6d28d9` / `#166534` scrise întocmai; iconița vine din CSS (`::before`, Font Awesome). `CARDURI` rămâne `{ t, q }`; iconițele
+  pastilelor stau separat (`CARDURI_IC`). Întrebările gata făcute ale asistentului au `ic` de la server (`INTREBARI_GATA`); `_chatUrmari` ia
+  `u.ic` doar dacă e `fa-…`.
+- **Punctele de așteptare (`rax-typing`) au plecat de la răspuns**; rămân doar la încărcarea unei pagini („Pachet și conturi", „Rezumă").
+- **„Mai puțină mișcare"** = fără inel, fără intrare, fără luminare, fără cuvinte stinse — în CSS (`@media (prefers-reduced-motion: reduce)`)
+  ȘI în JS (`_chatMiscare`). Cuvintele stinse își țin locul (`opacity`, nu `display`): nimic nu sare.
+- **`.chat-ins-dur` are aceeași literă ca `.chat-ins-det`** (12px, 600): cu 12,5px / 400 stătea vizibil mai sus (03.11, poze). Rândul „✓"
+  pe tema deschisă = `#166534` (RA Insight avea #15803d, 4,46).
+- Culorile (semnele, săgeata de trimis, salutul în degrade, iconițele pastilelor) au pereche pe ambele teme, MĂSURATE în probă.
+- Păzit de **`verify_chat_inteligent.js`** (în `npm test`; partea din browser se sare unde nu e Chromium), `verify_telefon_insight.js`,
+  `verify_asistent_fondatori.js`, `verify_asistent_intreaba.js`. Telefonul primește aspectul la APK-ul următor (Robert, „De amintit").
+
 ### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
 Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:
 - **„Am găsit o problemă" în locul benzii „De verificat"** (Alin: „ce să verific? Am AI… îmi zice clar dacă e greșit ceva… mă duce

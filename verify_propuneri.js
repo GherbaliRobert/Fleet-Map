@@ -264,9 +264,11 @@ const oraRO = (ms) => new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Euro
     (pd.dovezi || []).some((d) => d.text === 'De azi, RA Drive compară cum a condus în cele 30 de zile de dinainte și de după discuție.') && r1.j.insigna.eticheta === d2.j.insigna.eticheta, d2.text.slice(0, 400));
   T('…dispecerul (fără „modifică flota") vede propunerea, fără „Da"', ((await json('POST', '/api/insight/intreaba', dan.ck, { message: 'Notează că am vorbit cu Ion Popescu', nou: true })).j.propunere || {}).poate === false);
   const da2 = await json('POST', '/api/insight/actiuni/' + pd.id + '/aplica', ana.ck, { campuri: { nota: 'viteză pe A2' } });
-  // RA Drive pe luna drumurilor Loganului (cel mai nou: acum 2 zile) — în primele zile ale lunii, luna de acum n-are încă niciun drum,
-  // deci niciun șofer pe listă (01.11). Pagina se întreabă din nou cât luna se pregătește, ca în aplicație.
-  const lunaDrum = require('./safe_drive').lunaDe(acum - 2 * Z);
+  // RA Drive pe luna DRUMULUI Loganului — singurul drum adevărat e cel de acum 5 zile (trei poziții în 7 minute); cele de acum 3 și 2
+  // zile sunt puncte singure, fără drum. În primele zile ale lunii, luna de acum n-are încă niciun drum, deci niciun șofer pe listă:
+  // pe 01.11 proba căuta luna de „acum 2 zile" (bună pe 1–2 ale lunii), iar pe 3–5 pica (03.11). Discuția apare în orice lună în care
+  // șoferul are drum (`discutiiSafeDrive` nu e pe lună). Pagina se întreabă din nou cât luna se pregătește, ca în aplicație.
+  const lunaDrum = require('./safe_drive').lunaDe(acum - 5 * Z + 4 * 60000);
   const sdPagina = async (ck) => { let r = null; for (let i = 0; i < 60; i++) { r = await json('GET', '/api/insight/safe-drive?luna=' + lunaDrum, ck); if (r.status !== 200 || !r.j.pregatire) break; await sleep(1000); } return r; };
   const sd = await sdPagina(ana.ck);
   const disc = (await json('GET', '/api/audit?limit=60', S)).j.filter((x) => x.action === 'create' && x.entity === 'safe_drive_discutie' && x.details && x.details.prin === 'RA Insight')[0];
