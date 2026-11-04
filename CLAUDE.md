@@ -849,8 +849,9 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
 - **Clicurile: O funcție, `window._asfDu(tinta)`** (firma + filă, neasignate, facturare + secțiune, emitent, secțiune). Textele de la server
   se pun ca TEXT (`textGros` → noduri `<b>`); innerHTML doar cu bucăți scrise în pagină.
 - **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul) — FĂCUT pe 01.11, vezi mai jos; 3
-  cifrele verificate + analiza atentă — FĂCUT pe 04.11, vezi mai jos; 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da")
-  și etapa 3 (telefonul, Robert). Fiecare la „da"-ul lui Alin, cu machetă întâi dacă se schimbă ce se vede.
+  cifrele verificate + analiza atentă — FĂCUT pe 04.11, vezi mai jos; 4 conversațiile (ale fiecărui fondator, 12 luni) — FĂCUT pe 04.11, vezi mai
+  jos (etapa 1 e gata); apoi etapa 2 (pașii cu „Da") — DUPĂ capitolul Facturare (Alin, 04.11; propunerile pe reguli, fără tokeni) — și etapa 3
+  (telefonul, Robert). Fiecare la „da"-ul lui Alin, cu machetă întâi dacă se schimbă ce se vede.
 - Păzit de **`verify_asistent_fondatori.js`** (în `npm test`; 93, pe server pornit, cu o factură întârziată pusă în bază și o cerere de la
   un client), plus `verify_acasa.js`, `verify_setari.js` (aterizarea), `verify_insight.js` și `verify_un_singur_insight.js` (bula),
   `verify_utilizatori.js`, `verify_arhiva.js`, `verify_drum.js`.
@@ -870,16 +871,17 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   `/api/admin/counts` — `contracte.faraContract` apare O DATĂ în server), `_venitLunarToate`, `_mjcLucrareCal` (zilele pe ora României, fără cele
   anulate), contractele (`sfarsitCurent`, `ultimaZiDePreaviz`), `stocMod.sumar` + pragurile, cererile, cererile demo (FĂRĂ date personale),
   `_deFacturatMontaj`, `_abonamenteNeemise`, `db.platiIntre`. Uneltele modelului (`_asfUnelte`) citesc tot de acolo (+ `db.facturiEmise`).
-- **Rutele (requireSuperadmin):** `POST /api/admin/asistent/intreaba { text, context, istoric }` — contextul se CURĂȚĂ (subiect cunoscut, perioada
-  ca numere, firmele doar dintre cele din bază); pe reguli întâi, apoi modelul (`ai.runAgent`, instrucțiunile fixe cu `cache_control`, 10 unelte,
+- **Rutele (requireSuperadmin):** `POST /api/admin/asistent/intreaba { text, conversatieId }` (din pasul 4: contextul și istoricul vin din conversația
+  păstrată; ce trimite pagina ca `context` / `istoric` NU contează) — contextul se CURĂȚĂ la citire (`_asfCtxCurat`: subiect cunoscut, perioada ca
+  numere, firmele doar dintre cele din bază); pe reguli întâi, apoi modelul (`ai.runAgent`, instrucțiunile fixe cu `cache_control`, 10 unelte,
   `_asfIstoric`: alte roluri aruncate întâi, ultimele 6, începe cu omul), răspunsul prin `insight.litereRomanesti`; consumul = un rând `asistent`, fără
   firmă (în afara `AI_BILLABLE_KINDS`; intră în soldul Anthropic). Fără cheie → `faraModel`; modelul căzut → `eroareModel` (nu 500). În `RL_AI`.
   `GET /api/admin/asistent/meta` → `{ perioade, firme }` (pentru „+"); întrebările gata făcute vin în `/api/admin/azi-la-noi` (`intrebari`).
 - **Pagina** (blocul „asistentul fondatorilor"): primul mesaj stă în `#asf-prim` (`display: contents`) și se reface la fiecare intrare pe „Acasă";
-  discuția de dedesubt (`S.mesaje`, `S.ctx`) rămâne cât stă pagina deschisă — se păstrează pe server abia la pasul 4. O singură cerere de întrebare
+  discuția de dedesubt (`S.mesaje`, conversația `S.conv`) rămâne când revii pe „Acasă" (păstrată pe server din pasul 4). O singură cerere de întrebare
   (`asfTrimite`), `bulaRaspuns` desenează tot ca TEXT (tabelul cu `el('td')`, `data-col` pentru telefon, îngroșatul prin `textGros`), butoanele prin
   `_asfDu(tinta)`. Piesele comune ale chatului (`_chatUrmari`, `_chatAlege`, `_chatActiuni`, `_chatInsigna`, `_chatPuneInText`) — NU le scrie a doua
-  oară. „⋯" = „Conversație nouă", cu nota că discuția nu se păstrează încă. Rândul „✓" / „Nu am găsit…" de sub răspunsul modelului: pasul 3, mai jos.
+  oară. „⋯" = „Conversație nouă" (+ Redenumește / Șterge, din pasul 4). Rândul „✓" / „Nu am găsit…" de sub răspunsul modelului: pasul 3, mai jos.
 - **Telefonul (≤ 600 px, măsurat 01.11):** rândul de tabel devine cartonaș (prima celulă îngroșată, celelalte cu `attr(data-col)` în față) — cu 5
   coloane „Stare" ieșea din chenar; caseta are textul scurt din machetă (`TEXT_SCURT`, prin `matchMedia`) — cel lung se rupea pe două rânduri, tăiat;
   butonul ↓ stă deasupra casetei, oricât de înaltă (`arataJos` îl mută). Rândul „✓" pe verdele închis `#166534` (cel al RA Insight, #15803d, iese 4,46).
@@ -901,6 +903,26 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   săptămâna trecută) le scrie aplicația, pe ora României, ca modelul să nu le socotească.
 - Păzit de `verify_asistent_intreaba.js` (secțiunea 1b + serverul pornit: cifră găsită → „✓", 1.300 → rescris cu 500 → „✓", 500 fără nimic citit →
   „Nu am găsit…", analiza cu instrucțiunea și mai mult loc).
+
+### Asistentul fondatorilor — etapa 1, pasul 4 (04.11; Alin: „da" — conversațiile păstrate, după macheta „tot un chat"; cu el, etapa 1 e gata)
+- **Conversația e a fondatorului care a scris-o:** tabelele `asistent_conversatii` (titlu, `context`) / `asistent_mesaje` (`extra` = răspunsul ÎNTREG:
+  insigna, titlul, tabelul, butoanele, „✓", ca redeschiderea să-l deseneze ca prima dată), SEPARATE de ale lui RA Insight (`ai_conversatii`): listele,
+  căutarea și ștergerea uneia nu ating niciodată conversațiile celeilalte. În db.js FIECARE cerere (`asf*`) are `user_id` în ea — scrierea unui mesaj
+  prin `EXISTS` —, afară de ștergerea la 12 luni; numărătorile din `RETURNING id`. Conversația celuilalt fondator = 404, ca una care nu există.
+- **Rutele (requireSuperadmin):** `GET /api/admin/asistent/conversatii[?q=]` (lista + `texte` + `pastrareLuni`), `GET|PUT|DELETE
+  /api/admin/asistent/conversatii/:id`. `POST /api/admin/asistent/intreaba` face conversația la PRIMUL răspuns (titlul = `insight.titluDin(întrebare)`),
+  iar fiecare răspuns trece prin `trimite` (întrebarea, răspunsul, contextul — gol după un răspuns al modelului —, apoi `res.json` cu `conversatieId`);
+  o scriere căzută nu oprește răspunsul. `conversatieId` străin sau șters → 404 `{ stearsa: true }` (pagina începe atunci una nouă).
+- **12 luni:** `stergeConversatiiVechi` (zilnic, aceeași `LUNI_CONVERSATII_AI`) le șterge și pe ele (`db.asfStergeMaiVechiDe`, `asistent` în răspuns
+  și în audit); în probe, `/api/test/insight-imbatraneste` cu `fel: 'asistent'`. Tabelele stau în `BACKUP_EXCLUDED`.
+- **Textele listei** (nota „Conversațiile tale. Ceilalți fondatori nu le văd.", păstrarea, lista goală, „ștearsă") — `asistentF.texteConversatii(luni)`;
+  pagina doar le arată.
+- **Pagina:** stânga `.insp-st` (piesele și stilurile lui RA Insight; semnul din cap verde, `.asf .insp-stea`; nota de jos `.asf-st-jos`), sertar pe
+  telefon (☰ = `asfComutaStanga`); grupele pe zile = ACELEAȘI ca la RA Insight (`window._chatGrupZi` / `_chatCand`, date mai departe din blocul lui —
+  NU le scrie a doua oară). `asfDeschide` desenează mesajele întregi prin ACEEAȘI `bulaRaspuns`, fără „Azi la noi" deasupra (`S.vechi`, `#asf-prim`
+  ascuns) și fără textul treptat; „Conversație nouă" (`asfNou`) readuce „Azi la noi". Redenumește / Șterge din rând și din „⋯".
+- Păzit de `verify_asistent_intreaba.js` (pagina, lista desenată pe carton, serverul pornit: al doilea fondator 404, clientul 403, redenumirea,
+  căutarea în răspunsuri, ștergerea, 13 / 11 luni) și `verify_asistent_fondatori.js`.
 
 ### Chatul inteligent (03.11; Alin, 02.11: „1. da … 5. da" la macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3)
 Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fondatorilor (verde). Regulile — NU le strica la loc:

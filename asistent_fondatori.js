@@ -572,8 +572,22 @@ function eroareModel() {
     text: 'Modelul n-a răspuns acum. Încearcă din nou peste un minut. Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
 }
 
+// ─── Conversațiile păstrate (pasul 4, 04.11; Alin: „da") ────────────────────────────────────────────────────────────
+// Textele listei din stânga (☰ pe telefon) și ale meniului „⋯". Cifra lunilor o dă serverul, din contracts.js (LUNI_CONVERSATII_AI,
+// aceeași ca la RA Insight). Pagina doar le arată.
+function texteConversatii(luni) {
+  const n = Math.max(1, Math.round(Number(luni) || 12));
+  return {
+    aleTale: 'Conversațiile tale. Ceilalți fondatori nu le văd.',
+    pastrare: 'Se păstrează ' + numar(n, 'lună', 'luni') + ' de la ultimul mesaj, apoi se șterg singure.',
+    gol: 'Încă nicio conversație. Prima întrebare pe care o pui o începe.',
+    golCautare: 'Nicio conversație nu conține ce cauți.',
+    stearsa: 'Conversația nu mai există (poate a fost ștearsă din altă fereastră).'
+  };
+}
+
 module.exports = {
   INTREBARI_GATA, PERIOADE, SURSE, MAX_RANDURI, MAX_CUVINTE_PE_LOC, ZILE_CONTRACTE, SUBIECTE, UNELTE, SURSA_UNELTE,
   lei, zi, ziSapt, deCand, perioadaCalendar, perioadaTrecuta, perioadaComparata, firmeDin, intelege, raspunde, textSimplu, dupaModel, instructiuni, contextIntrebare,
-  PE_LOC, faraModel, eroareModel, cerereRescriere, verificare, analizaAtenta, TEXT_NEGASIT
+  PE_LOC, faraModel, eroareModel, cerereRescriere, verificare, analizaAtenta, TEXT_NEGASIT, texteConversatii
 };

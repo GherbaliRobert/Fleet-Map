@@ -62,11 +62,17 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   Brevo".
 - [ ] **Robert: cheile din Railway, după incidentul de securitate Railway din 21.10. Adăugat pe 04.11** (scris pe 21.10 într-o ramură care
   n-a ajuns pe ratrack.ro, `ccr-a408cf95-b4m8r3`; găsit azi). Railway le-a recomandat tuturor să-și schimbe cheile (status.railway.com,
-  incidentul QH8L8B3E). În Railway → serviciul aplicației → Variables, întâi: `SESSION_SECRET` (oricine îl are poate intra în orice cont;
-  schimbat, toată lumea reintră în cont), `ANTHROPIC_API_KEY` + `ANTHROPIC_ADMIN_KEY` (bani), `BREVO_API_KEY` (emailuri în numele nostru),
-  `MAIL_INBOUND_SECRET` (schimbat odată și în Worker-ul din Cloudflare), `FIREBASE_SA_JSON`, tokenurile ANAF dacă sunt puse. Cu grijă:
-  `BACKUP_PASSPHRASE` (copiile vechi se deschid doar cu parola veche — păstrați-o) și `VAPID_*` (schimbate, notificările din browser trebuie
-  repornite de fiecare om). Fiecare schimbare repornește aplicația: le faceți pe toate deodată.
+  incidentul QH8L8B3E). **04.11 (Alin: „dă-mi exact ce trebuie să-i dau lui Robert”) — mesajul, în ordine**, în Railway → serviciul
+  aplicației → Variables, toate deodată (fiecare schimbare repornește aplicația): (1) **de șters:** `ADMIN_PASSWORD`, dacă există — cât stă
+  acolo, contul „admin” (super-admin pe toată platforma) se redeschide la fiecare pornire, cu parola ei; (2) **de schimbat** (cheie nouă în
+  serviciul ei → în Railway → cea veche ștearsă acolo): `ANTHROPIC_API_KEY` + `ANTHROPIC_ADMIN_KEY` (bani), `BREVO_API_KEY` (emailuri în
+  numele nostru), `FIREBASE_SA_JSON` (notificări pe telefoanele clienților), `MAIL_INBOUND_SECRET` (în același timp și în Worker-ul din
+  Cloudflare, `RA_SECRET`; între timp emailurile ajung în căsuța de rezervă), `SESSION_SECRET` (semnează cookie-urile de autentificare;
+  schimbat, toată lumea reintră o dată în cont pe web) și orice altă variabilă cu KEY / SECRET / TOKEN / PASS în nume (`BACKUP_S3_*`,
+  `RAILWAY_API_TOKEN`, `CLOUDFLARE_ANALYTICS_TOKEN`, `GOOGLE_SA_JSON`, `SMTP_PASS`, tokenurile ANAF, dacă sunt puse); (3) **cu grijă:**
+  `BACKUP_PASSPHRASE` nouă, dar cea veche păstrată (copiile vechi se deschid doar cu ea); `VAPID_*` lăsate (schimbate, notificările din
+  browser se opresc la toți); baza de date — Postgres → Settings → Networking: „Public Networking” scos, dacă nu-l folosiți. La final:
+  „Stare producție” verde, un email de probă din Mail, o întrebare în RA Insight.
 - [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
   GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
   `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
@@ -224,6 +230,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   dus 0,64 $ în 16 zile (doar noi), deci ține câteva luni așa, dar cu clienți se golește repede. La 0 $, RA Insight nu mai
   răspunde cu AI nimănui. De pus mai mulți bani sau reîncărcarea automată, din consola Anthropic → Billing, și trecută suma
   nouă în cardul Anthropic (📊) din Control costuri.
+  **04.11 (Alin: „aș vrea să fiu anunțat dinainte să rămânem fără sold… neapărat, aici trebuie să stabilim o strategie”).** Găsit atunci:
+  soldul se scrie în DOUĂ locuri (cardul din Control costuri și „RA Insight · control”), iar rândul de pe „Acasă” îl citește doar pe al
+  doilea; când Anthropic refuză o întrebare pentru credit, clientul vede „RA Insight nu a putut răspunde acum”, iar noi nu aflăm. Strategia
+  propusă (aștept răspunsul): anunț pe telefon și pe „Acasă” la 14 / 7 / 3 zile rămase, alarmă pe loc la refuz (clientul primește atunci
+  răspunsuri pe butoane), un singur loc pentru sold, cu cheltuiala adevărată de la Anthropic, plus rezerva la Anthropic (Billing →
+  Auto-reload: sub 5 $, cumpără 20 $), pusă de cine are contul.
 - [ ] **Alin: reperele anonime — RA Insight „învață" din toate flotele. Adăugat pe 08.10 (Alin: „mi-o ții minte… vedem dacă
   o mai facem").** Comparații de felul „flota ta consumă cu 12% peste flotele asemănătoare", din cifre adunate de la toți
   clienții, fără nume, numere sau locuri. Dacă o facem: o etapă separată, după capitolul AI, și o clauză în contract
@@ -271,7 +283,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   serverul după fiecare publicare, pentru că Railway (planul Hobby) îi schimbă adresa. În Brevo: Settings › Security › Authorised
   IPs → opriți blocarea adreselor necunoscute. O adresă adăugată de mână nu ține: după următoarea publicare vine alta.
   Verificare: „Stare producție" → „Email" verde, cu „ultimul email plecat"; sau Business › Mail › Scrie, un email de probă către voi.
-- [ ] **Robert: Brevo — emailul programat de pe 28.10 n-a venit. Adăugat pe 28.10.** Pe 27.10, pe la 9 dimineața, am publicat o
+- [x] **BIFAT pe 04.11 (Alin: „eu am văzut că s-a rezolvat”). Robert: Brevo — emailul programat de pe 28.10 n-a venit. Adăugat pe 28.10.** Pe 27.10, pe la 9 dimineața, am publicat o
   versiune nouă (și încă una pe 28.10, la 7:27), deci Railway a dat serverului altă adresă. Dacă în Brevo blocarea adreselor
   necunoscute e încă pornită (o adresă adăugată de mână ține doar până la publicarea următoare), Brevo refuză orice email până o
   oprește cineva. De văzut întâi, cu contul de fondator:
@@ -468,6 +480,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [x] **HOTĂRÂT (30.10): macheta asistentului fondatorilor e aprobată întreagă** (Alin: „1. da, 2. da") — stă pe „Acasă” (caseta și
   „Azi la noi”, deasupra cartonașelor), discuția se deschide pe pagina ei, iar fiecare fondator își vede doar conversațiile lui.
   **Alin: macheta asistentului fondatorilor — întrebările 1 și 5. Adăugat pe 29.10.**
+- [x] **HOTĂRÂT (04.11), la analiza capitolului AI** (Alin): pasul 4 al asistentului nostru (conversațiile păstrate) — „da”, apoi capitolul AI
+  se închide; aplicația de telefon — „o s-o facă Robert”; pașii cu „Da” ai asistentului nostru — după capitolul Facturare, „dacă nu consumă
+  tokeni” (nu consumă: propunerile sunt pe reguli, apăsarea „Da” nu costă nimic); Facturare — „după ce terminăm capitolul”; înainte de
+  primul pachet vândut: reîncărcarea / strategia creditelor, juristul și o lună de probă cu o firmă adevărată — „neapărat”.
 - [x] **HOTĂRÂT (15.10): calea spre setările agenților rămâne A** (Alin: „da", după exemple): linkul „Setările agenților →" sub
   „Azi la tine", în RA Insight. Varianta B (un rând în Setări) nu se face. **Tot pe 15.10, cu macheta „mai simplu" aprobată, linkul s-a
   mutat în meniul „⋯" al lui RA Insight** (tot în RA Insight, tot fără rând în Setări).
@@ -529,7 +545,7 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ✅ „Rezumă" cere cont (14.10) · „RA Insight · control" (19.10) |
 | **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ✅ „Sursă externă" construită (28.10), căutarea reparată (29.10: Anthropic nu primea țara „RO") · ✅ pornită pentru firme (29.10, Alin) |
 | **D+½** | Analiza atentă: la „de ce / compară / ce să fac", Haiku gândește mai mult și răspunde în trei părți (Alin, 28.10: „1 da"; Sonnet scos) | ✅ 28.10 |
-| **D++** | Asistentul AI al fondatorilor — macheta „tot un chat” (aprobată 30.10) | 🔶 pasul 1 „Acasă” = chat + „Azi la noi” (30.10) · pasul 2 caseta „Întreabă orice” (01.11) · pasul 3 cifrele verificate + analiza atentă (04.11) · ⬜ pasul 4 conversațiile păstrate · ⬜ etapa 2 pașii cu „Da” · ⬜ etapa 3 telefonul (Robert) |
+| **D++** | Asistentul AI al fondatorilor — macheta „tot un chat” (aprobată 30.10) | ✅ etapa 1: pasul 1 „Acasă” = chat + „Azi la noi” (30.10) · pasul 2 caseta „Întreabă orice” (01.11) · pasul 3 cifrele verificate + analiza atentă (04.11) · pasul 4 conversațiile păstrate (04.11) · ⬜ etapa 2 pașii cu „Da” — după Facturare (Alin, 04.11) · ⬜ etapa 3 telefonul (Robert) |
 | **Chat** | Chatul inteligent: același aspect la RA Insight și la asistentul nostru (Alin, 02.11: „1–5 da”) | ✅ 03.11 |
 | **E** | Telefonul: RA Insight (meniu, conversații, ramuri, cartonașele cu „Da"), pentru APK-ul lui Robert | 🔶 cod gata, loturile 1–4 (02.11); APK 1.0.21 făcut, neîncercat pe un telefon adevărat · ⬜ aspectul nou al chatului (03.11) |
 | — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
@@ -541,6 +557,24 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-04
+
+### FONDATOR · Asistentul fondatorilor, pasul 4: conversațiile se păstrează
+
+**Ce am schimbat:** Alin (04.11: „da" la pasul 4, apoi închidem capitolul AI). După macheta „tot un chat" (aprobată 30.10): în stânga
+chatului de pe „Acasă" stau acum conversațiile fondatorului, pe zile (Azi, Ieri, Săptămâna asta, Mai demult), cu „Conversație nouă",
+„Caută în conversații" și, jos, „Conversațiile tale. Ceilalți fondatori nu le văd." Prima întrebare începe o conversație (numele ei =
+întrebarea); un clic pe una din listă o redeschide, cu răspunsurile întregi (tabelul, butoanele, „✓"). Continuările de felul „Și luna
+trecută?" merg și după redeschidere: contextul îl ține serverul, pe conversație, la fel ca istoricul pe care îl primește modelul. Pe
+rândul deschis și în „⋯": Redenumește / Șterge. Pe telefon lista se deschide din ☰. Fiecare fondator își vede doar conversațiile lui
+(ale celuilalt răspund „nu există"); se șterg singure la 12 luni de la ultimul mesaj, odată cu ale lui RA Insight, și nu intră în copii.
+Regulile: tabelele `asistent_conversatii` / `asistent_mesaje` (db.js, `user_id` în fiecare cerere), rutele `/api/admin/asistent/conversatii`
+(doar fondatorii), textele listei în `asistent_fondatori.js` (`texteConversatii`). Păzit de verify_asistent_intreaba.js (pagina, lista
+desenată, serverul pornit: al doilea fondator, redenumirea, căutarea, ștergerea, cele 12 luni) și verify_asistent_fondatori.js.
+
+**Ce vede fondatorul:** pe „Acasă", lista conversațiilor în stânga (pe telefon din ☰); „⋯" are Redenumește / Șterge și nota că se
+păstrează 12 luni. Discuția nu se mai pierde la reîncărcarea paginii.
+
+**Ce vede clientul:** nimic (asistentul e doar al fondatorilor).
 
 ### FONDATOR · Asistentul fondatorilor, pasul 3: cifrele verificate și analiza atentă
 

@@ -143,7 +143,7 @@ T('… iar „verticala noastră" = super-admin pe verticala Fondator', /window\
 T('bula se ascunde cât stai în chat, ca în RA Insight', /currentView === 'insight' \|\| currentView === 'asistent'\)\) \$\('rax-fabs'\)\.style\.display = 'none'/.test(html) &&
   /if \(name !== 'insight' && name !== 'asistent' && window\._raxUpdateFabs\)/.test(html) && /fb\.style\.display = 'none'/.test(bloc));
 T('pagina cere „Azi la noi" de la server și cifrele din aceeași socoteală ca cartonașele', /fetch\('\/api\/admin\/azi-la-noi'/.test(bloc) && /window\._acasaCifre\(\)/.test(bloc));
-T('stilurile sunt ale chatului RA Insight (insp / azi / chat)', /class="insp st-ascuns asf"/.test(bloc) && /'insp-a'/.test(bloc) && /'azi-r apas'/.test(bloc) && /window\._chatInsigna\(/.test(bloc));
+T('stilurile sunt ale chatului RA Insight (insp / azi / chat); din pasul 4, cu lista conversațiilor în stânga', /class="insp asf" id="asf"/.test(bloc) && /'insp-a'/.test(bloc) && /'azi-r apas'/.test(bloc) && /window\._chatInsigna\(/.test(bloc));
 // Textele de la server se pun ca TEXT: ce primește innerHTML e doar scris în pagină (iconițe, scheletul) — o iconiță venită din
 // date trece întâi prin /^fa-[a-z-]+$/.
 const dreapta = []; bloc.replace(/\.innerHTML\s*=\s*([^;]+);/g, (_, x) => { dreapta.push(x.trim()); return _; });

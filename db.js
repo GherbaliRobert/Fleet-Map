@@ -1732,6 +1732,34 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_aimsg_conv ON ai_mesaje(conversatie_id, id)`);
+    // ─── Asistentul fondatorilor: conversațiile păstrate (pasul 4, 04.11; Alin: „da") ───
+    // Ca la RA Insight: o conversație e a fondatorului care a scris-o (user_id în FIECARE WHERE — nici celălalt fondator n-o vede) și
+    // se șterge la 12 luni de la ultimul mesaj (contracts.js → LUNI_CONVERSATII_AI). `context` = ce a întors ultimul răspuns pe loc
+    // (subiectul, perioada, firmele), ca „Și luna trecută?" să meargă și după o redeschidere. Tabele SEPARATE de ale lui RA Insight:
+    // listele, căutarea și ștergerea uneia nu pot atinge niciodată conversațiile celeilalte. `extra` = răspunsul întreg (insigna,
+    // titlul, tabelul, butoanele, rândul „✓"), ca redeschiderea să-l deseneze ca prima dată.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asistent_conversatii (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        titlu VARCHAR(120),
+        context JSONB DEFAULT '{}',
+        creat_la TIMESTAMP DEFAULT NOW(),
+        actualizat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asfconv_user ON asistent_conversatii(user_id, actualizat_la DESC)`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asistent_mesaje (
+        id BIGSERIAL PRIMARY KEY,
+        conversatie_id BIGINT NOT NULL REFERENCES asistent_conversatii(id) ON DELETE CASCADE,
+        rol VARCHAR(12) NOT NULL,
+        text TEXT NOT NULL,
+        extra JSONB,
+        creat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asfmsg_conv ON asistent_mesaje(conversatie_id, id)`);
     // Scrisoarea de luni (RA Insight, pasul 4): ce contează din săptămâna trecută, a OMULUI care o primește (pe mașinile lui).
     // `fapte` = cifrele din ramuri; `text` = scrisoarea (RA Insight sau, de rezervă, pe reguli — `scris_de`). 12 luni, ca discuțiile.
     await client.query(`
@@ -7079,6 +7107,80 @@ async function stergeConversatiiMaiVechiDe(luni) {
   const r = await pool.query(`DELETE FROM ai_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
   return r.affectedRows || r.rowCount || 0;
 }
+// ─── Asistentul fondatorilor: conversațiile (pasul 4, 04.11) ────────────────────────────────────────────────────────
+// Aceeași regulă de fond ca la RA Insight: FIECARE citire și scriere cere `userId` și îl pune în WHERE (și scrierea unui mesaj, prin
+// EXISTS) — conversația celuilalt fondator se poartă ca una care nu există. Numărătorile vin din `RETURNING id` (PGlite n-are rowCount).
+function _asfConvRand(r) {
+  if (!r) return null;
+  let ctx = r.context;
+  if (typeof ctx === 'string') { try { ctx = JSON.parse(ctx); } catch (e) { ctx = {}; } }
+  return { id: Number(r.id), user_id: r.user_id, titlu: r.titlu, context: ctx || {}, creat_la: r.creat_la, actualizat_la: r.actualizat_la,
+    mesaje: r.mesaje != null ? Number(r.mesaje) : undefined };
+}
+async function asfConversatieNoua(userId, titlu) {
+  const r = await pool.query('INSERT INTO asistent_conversatii (user_id, titlu) VALUES ($1, $2) RETURNING *',
+    [userId, String(titlu || 'Conversație nouă').slice(0, 120)]);
+  return _asfConvRand(r.rows[0]);
+}
+async function asfConversatie(id, userId) {
+  if (!(Number(id) > 0) || userId == null) return null;
+  const r = await pool.query('SELECT * FROM asistent_conversatii WHERE id = $1 AND user_id = $2', [Number(id), userId]);
+  return _asfConvRand(r.rows[0]);
+}
+// Ultimele `limita` mesaje, în ordinea în care s-au scris.
+async function asfMesaje(convId, userId, limita) {
+  const r = await pool.query(
+    `SELECT m.id, m.rol, m.text, m.extra, m.creat_la FROM asistent_mesaje m
+       JOIN asistent_conversatii c ON c.id = m.conversatie_id
+      WHERE m.conversatie_id = $1 AND c.user_id = $2
+      ORDER BY m.id DESC LIMIT $3`, [Number(convId), userId, Math.max(1, Math.min(500, Math.round(limita || 50)))]);
+  return r.rows.reverse().map(function (m) {
+    let ex = m.extra; if (typeof ex === 'string') { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+    return { id: Number(m.id), rol: m.rol, text: m.text, extra: ex || null, creat_la: m.creat_la };
+  });
+}
+async function asfAdaugaMesaj(convId, userId, rol, text, extra) {
+  const r = await pool.query(
+    `INSERT INTO asistent_mesaje (conversatie_id, rol, text, extra)
+       SELECT $1::bigint, $3::varchar, $4::text, $5::jsonb WHERE EXISTS (SELECT 1 FROM asistent_conversatii WHERE id = $1::bigint AND user_id = $2::int) RETURNING id`,
+    [Number(convId), userId, rol === 'assistant' ? 'assistant' : 'user', String(text || '').slice(0, 20000), extra ? JSON.stringify(extra) : null]);
+  return r.rows[0] ? Number(r.rows[0].id) : null;
+}
+// Ce a întors ultimul răspuns (context; gol după un răspuns al modelului, ca în pagină până acum). Urcă mereu ora ultimei scrieri.
+async function asfActualizeaza(convId, userId, context) {
+  await pool.query('UPDATE asistent_conversatii SET actualizat_la = NOW(), context = $3::jsonb WHERE id = $1 AND user_id = $2',
+    [Number(convId), userId, JSON.stringify(context && typeof context === 'object' ? context : {})]);
+}
+// Lista fondatorului, cea mai nouă întâi. `q` caută în titlu și în textul mesajelor.
+async function asfLista(userId, optiuni) {
+  const o = optiuni || {};
+  const p = [userId];
+  let filtru = '';
+  if (o.q && String(o.q).trim()) {
+    p.push('%' + String(o.q).trim().slice(0, 100).replace(/[%_\\]/g, '\\$&') + '%');
+    filtru = ' AND (c.titlu ILIKE $2 OR EXISTS (SELECT 1 FROM asistent_mesaje m WHERE m.conversatie_id = c.id AND m.text ILIKE $2))';
+  }
+  p.push(Math.max(1, Math.min(200, Math.round(o.limita || 100))));
+  const r = await pool.query(
+    `SELECT c.*, (SELECT COUNT(*) FROM asistent_mesaje m WHERE m.conversatie_id = c.id) AS mesaje
+       FROM asistent_conversatii c WHERE c.user_id = $1${filtru}
+      ORDER BY c.actualizat_la DESC, c.id DESC LIMIT $${p.length}`, p);
+  return r.rows.map(_asfConvRand);
+}
+async function asfRedenumeste(convId, userId, titlu) {
+  const r = await pool.query('UPDATE asistent_conversatii SET titlu = $3 WHERE id = $1 AND user_id = $2 RETURNING id',
+    [Number(convId), userId, String(titlu || '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Conversație']);
+  return r.rows.length > 0;
+}
+async function asfSterge(convId, userId) {
+  const r = await pool.query('DELETE FROM asistent_conversatii WHERE id = $1 AND user_id = $2 RETURNING id', [Number(convId), userId]);
+  return r.rows.length > 0;
+}
+// Conversațiile în care nu s-a mai scris de `luni` luni (aceeași cifră ca la RA Insight). Mesajele pleacă odată cu ele.
+async function asfStergeMaiVechiDe(luni) {
+  const r = await pool.query('DELETE FROM asistent_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int) RETURNING id', [Math.max(1, Math.round(luni))]);
+  return r.rows.length;
+}
 // ─── Scrisoarea de luni: a omului care o primește (user_id în fiecare WHERE — ca la conversații) ───
 async function scrieScrisoare(o) {
   const r = await pool.query(
@@ -7122,6 +7224,8 @@ module.exports = {
   // RA Insight — conversațiile (fiecare om doar pe ale lui)
   conversatieNoua, conversatieUser, ultimaConversatieRecenta, mesajeConversatie, adaugaMesajAi, actualizeazaConversatie,
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
+  // Asistentul fondatorilor — conversațiile (fiecare fondator doar pe ale lui; pasul 4, 04.11)
+  asfConversatieNoua, asfConversatie, asfMesaje, asfAdaugaMesaj, asfActualizeaza, asfLista, asfRedenumeste, asfSterge, asfStergeMaiVechiDe,
   scrieScrisoare, auScrisoarea, scrisorileOmului, scrisoareaOmului, citesteScrisoarea, scrisoriNecitite, stergeScrisoriMaiVechiDe,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun, setScheduleStare,
   noteazaLivrare, livrariDeVerificat, actualizeazaLivrare, marcheazaLivrariAnuntate, livrariPentruRef, marcheazaDeblocata, ultimeleLivrari, stergeLivrariVechi,

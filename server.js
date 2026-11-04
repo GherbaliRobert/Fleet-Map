@@ -6136,11 +6136,12 @@ async function stergeConversatiiVechi() {
   const n = await db.stergeConversatiiMaiVechiDe(luni);
   const ns = await db.stergeScrisoriMaiVechiDe(luni);   // și scrisorile de luni: tot ale omului, tot 12 luni
   try { await db.stergeActiuniInsightMaiVechiDe(luni); } catch (e) { /* propunerile vechi rămân până data viitoare */ }
-  if (n || ns) {
-    console.log('[RA Insight] Șterse ' + n + ' conversații fără mesaje noi și ' + ns + ' scrisori de luni, mai vechi de ' + luni + ' luni');
-    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conversatii_ai', entityId: null, details: { conversatii: n, scrisori: ns, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
+  const na = await db.asfStergeMaiVechiDe(luni);   // și conversațiile asistentului fondatorilor (pasul 4, 04.11): tot 12 luni
+  if (n || ns || na) {
+    console.log('[RA Insight] Șterse ' + n + ' conversații fără mesaje noi, ' + ns + ' scrisori de luni și ' + na + ' conversații ale asistentului fondatorilor, mai vechi de ' + luni + ' luni');
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conversatii_ai', entityId: null, details: { conversatii: n, scrisori: ns, asistent: na, maiVechiDeLuni: luni }, ip: null, companyId: null }); } catch (e) {}
   }
-  return { sterse: n, scrisori: ns, luni: luni };
+  return { sterse: n, scrisori: ns, asistent: na, luni: luni };
 }
 app.post('/api/admin/insight/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await stergeConversatiiVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -6159,7 +6160,9 @@ if (process.env.SEED_TEST === '1') {
   app.post('/api/test/insight-imbatraneste', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {};
-      await db.pool.query(`UPDATE ai_conversatii SET actualizat_la = (NOW() - make_interval(months => $2::int, days => 1))::timestamp WHERE id = $1`,
+      // `fel: 'asistent'` = o conversație a asistentului fondatorilor (pasul 4); numele tabelei vine dintr-o listă fixă.
+      const tabela = b.fel === 'asistent' ? 'asistent_conversatii' : 'ai_conversatii';
+      await db.pool.query(`UPDATE ${tabela} SET actualizat_la = (NOW() - make_interval(months => $2::int, days => 1))::timestamp WHERE id = $1`,
         [parseInt(b.id) || 0, Math.max(0, parseInt(b.luni) || 0)]);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7715,8 +7718,8 @@ function _asfUnelte(acum, folosite, citite) {
   });
   return h;
 }
-// Discuția de până acum, trimisă de pagină (pasul 4 o va ține pe server): doar mesajele omului și ale asistentului (alte roluri se
-// aruncă ÎNAINTE de numărat), ultimele 6, doar textul, tăiat; începe cu omul, rolurile alternează.
+// Discuția de până acum, din conversația păstrată pe server (pasul 4, 04.11): doar mesajele omului și ale asistentului (alte roluri
+// se aruncă ÎNAINTE de numărat), ultimele 6, doar textul, tăiat; începe cu omul, rolurile alternează.
 function _asfIstoric(l) {
   const out = [];
   (Array.isArray(l) ? l : []).map(function (m) {
@@ -7730,30 +7733,52 @@ function _asfIstoric(l) {
   if (out.length && out[out.length - 1].role === 'user') out.pop();   // întrebarea nouă vine separat
   return out;
 }
+// Contextul păstrat pe conversație (ce a întors ultimul răspuns pe loc: subiectul, perioada, firmele — pentru „Și luna trecută?"),
+// curățat la fiecare citire: subiectul cunoscut, perioada ca numere, firmele DOAR dintre cele care există azi (numele din bază).
+function _asfCtxCurat(c, firme) {
+  if (!c || typeof c !== 'object' || !asistentF.SURSE[c.s]) return null;
+  const ctx = { s: c.s };
+  if (Number(c.de) > 0 && Number(c.pana) > Number(c.de)) { ctx.de = Number(c.de); ctx.pana = Number(c.pana); ctx.eticheta = String(c.eticheta || '').slice(0, 80); }
+  if (Array.isArray(c.firme)) ctx.firme = c.firme.map(function (f) { return firme.filter(function (x) { return x.id === Number(f && f.id); })[0]; }).filter(Boolean).slice(0, 5);
+  return ctx;
+}
 app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const b = req.body || {};
     const text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
     if (!text) return res.status(400).json({ error: 'Scrie o întrebare.' });
     const acum = Date.now();
-    const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return { id: c.id, nume: c.name }; });
-    // Ce a întors răspunsul de dinainte (pentru „Și luna trecută?"), curățat: subiectul cunoscut, perioada ca numere, firmele DOAR
-    // dintre cele care există (numele luate din bază, nu din pagină).
-    let ctx = null;
-    if (b.context && typeof b.context === 'object' && asistentF.SURSE[b.context.s]) {
-      const c = b.context;
-      ctx = { s: c.s };
-      if (Number(c.de) > 0 && Number(c.pana) > Number(c.de)) { ctx.de = Number(c.de); ctx.pana = Number(c.pana); ctx.eticheta = String(c.eticheta || '').slice(0, 80); }
-      if (Array.isArray(c.firme)) ctx.firme = c.firme.map(function (f) { return firme.filter(function (x) { return x.id === Number(f && f.id); })[0]; }).filter(Boolean).slice(0, 5);
+    const userId = (getAuth(req) || {}).userId || null;
+    // Conversația (pasul 4, 04.11): cea deschisă — a fondatorului; a celuilalt răspunde 404, ca una care nu există — sau una nouă,
+    // făcută la primul răspuns. Contextul („Și luna trecută?") și istoricul pentru model vin de aici; ce trimite pagina nu contează.
+    let conv = null;
+    if (b.conversatieId != null && b.conversatieId !== '') {
+      conv = await db.asfConversatie(b.conversatieId, userId);
+      if (!conv) return res.status(404).json({ error: asistentF.texteConversatii(contracte.LUNI_CONVERSATII_AI).stearsa, stearsa: true });
     }
+    const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return { id: c.id, nume: c.name }; });
+    const ctx = conv ? _asfCtxCurat(conv.context, firme) : null;
+    const salvate = conv ? await db.asfMesaje(conv.id, userId, 12) : [];
+    // Răspunsul pleacă la pagină după ce s-a scris în conversație: întrebarea, răspunsul ÎNTREG (ca redeschiderea să-l deseneze ca
+    // prima dată) și contextul lui (gol după un răspuns al modelului). O scriere căzută nu oprește răspunsul.
+    const trimite = async function (r) {
+      if (userId != null) {
+        try {
+          if (!conv) conv = await db.asfConversatieNoua(userId, insight.titluDin(text));
+          await db.asfAdaugaMesaj(conv.id, userId, 'user', text, null);
+          await db.asfAdaugaMesaj(conv.id, userId, 'assistant', String(r.copiere || r.text || r.titlu || ''), r);
+          await db.asfActualizeaza(conv.id, userId, r.context || null);
+        } catch (e) { console.warn('[asistent] conversația nu s-a putut păstra:', e.message); }
+      }
+      return res.json(Object.assign({}, r, conv ? { conversatieId: conv.id, conversatie: { id: conv.id, titlu: conv.titlu } } : {}));
+    };
     const u = asistentF.intelege(text, { acum: acum, ctx: ctx, analiza: insight.esteAnaliza(text), firme: firme });
     if (u) {
       const r = asistentF.raspunde(u, await _asfDate(u, acum), acum);
-      return res.json(Object.assign(r, { copiere: asistentF.textSimplu(r) }));
+      return trimite(Object.assign(r, { copiere: asistentF.textSimplu(r) }));
     }
-    if (!ai || !ai.aiEnabled()) return res.json(asistentF.faraModel());
+    if (!ai || !ai.aiEnabled()) return trimite(asistentF.faraModel());
     const folosite = [], citite = [];
-    const userId = (getAuth(req) || {}).userId || null;
     const model = ai.AI_AGENT_MODEL;
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
     const onUsage = function (us) { Object.keys(_agg).forEach(function (k) { _agg[k] += Number(us && us[k]) || 0; }); };
@@ -7766,7 +7791,7 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     const analiza = insight.esteAnaliza(text);
     if (analiza) system.push({ type: 'text', text: asistentF.analizaAtenta(acum) });
     const efort = analiza ? 'medium' : undefined, maxTokens = analiza ? 1100 : 900;
-    const istoric = _asfIstoric(b.istoric), unelte = _asfUnelte(acum, folosite, citite);
+    const istoric = _asfIstoric(salvate), unelte = _asfUnelte(acum, folosite, citite);
     const cere = function (mesaje, iter) {
       return ai.runAgent({ system: system, messages: mesaje, tools: asistentF.UNELTE, toolHandlers: unelte, model: model, maxTokens: maxTokens, maxIters: iter, onUsage: onUsage, efort: efort });
     };
@@ -7790,11 +7815,44 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     }
     // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit; rescrierea intră în același rând).
     if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(null, 'asistent', _agg, userId, model).catch(function () {});
-    if (!reply) return res.json(asistentF.eroareModel());
+    if (!reply) return trimite(asistentF.eroareModel());
     const dm = asistentF.dupaModel(folosite);
     reply = insight.litereRomanesti(reply);
     const v = asistentF.verificare(reply, lipsa, citite, dm.surse);
-    res.json({ fel: 'ai', insigna: dm.insigna, text: reply, butoane: dm.butoane, urmari: [], copiere: reply, verificat: v.verificat, probleme: v.probleme });
+    return trimite({ fel: 'ai', insigna: dm.insigna, text: reply, butoane: dm.butoane, urmari: [], copiere: reply, verificat: v.verificat, probleme: v.probleme });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ─── Conversațiile asistentului (pasul 4, 04.11): ale fondatorului care le-a scris — a celuilalt răspunde 404, ca una care nu există ───
+function _asfConvPublic(c) { return { id: c.id, titlu: c.titlu, creat_la: c.creat_la, actualizat_la: c.actualizat_la, mesaje: c.mesaje }; }
+app.get('/api/admin/asistent/conversatii', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const userId = (getAuth(req) || {}).userId;
+    const lista = userId != null ? await db.asfLista(userId, { q: req.query.q, limita: 100 }) : [];
+    res.json({ conversatii: lista.map(_asfConvPublic), texte: asistentF.texteConversatii(contracte.LUNI_CONVERSATII_AI), pastrareLuni: contracte.LUNI_CONVERSATII_AI });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/admin/asistent/conversatii/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const userId = (getAuth(req) || {}).userId;
+    const c = await db.asfConversatie(req.params.id, userId);
+    if (!c) return res.status(404).json({ error: asistentF.texteConversatii(contracte.LUNI_CONVERSATII_AI).stearsa });
+    res.json({ conversatie: _asfConvPublic(c), mesaje: await db.asfMesaje(c.id, userId, 200) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/admin/asistent/conversatii/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const titlu = String((req.body || {}).titlu || '').replace(/\s+/g, ' ').trim();
+    if (!titlu) return res.status(400).json({ error: 'Scrie un nume pentru conversație.' });
+    const ok = await db.asfRedenumeste(req.params.id, (getAuth(req) || {}).userId, titlu);
+    if (!ok) return res.status(404).json({ error: asistentF.texteConversatii(contracte.LUNI_CONVERSATII_AI).stearsa });
+    res.json({ ok: true, titlu: titlu.slice(0, 120) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/asistent/conversatii/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ok = await db.asfSterge(req.params.id, (getAuth(req) || {}).userId);
+    if (!ok) return res.status(404).json({ error: asistentF.texteConversatii(contracte.LUNI_CONVERSATII_AI).stearsa });
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „+" din caseta asistentului: firmele (doar numele, fără demo) și perioadele pe care le înțeleg regulile — pagina nu-și scrie listele.

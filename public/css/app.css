@@ -4822,6 +4822,12 @@ body.dark .insp-a .av.asf-av { color: #06210F; background: linear-gradient(135de
 body.dark .insp-a .av.asf-av::before { border-top-color: #3FE07D; border-right-color: #2DD4BF; }
 .asf .insp-u .b { background: color-mix(in srgb, #16a34a 11%, var(--bg-darkest)); }
 body.dark .asf .insp-u .b { background: color-mix(in srgb, #3FE07D 13%, var(--bg-darkest)); }
+/* Pasul 4 (04.11): stânga asistentului, după macheta „tot un chat" — semnul din cap în verdele casei (RA Insight îl are mov) și nota
+   de jos, cu lacătul: „Conversațiile tale. Ceilalți fondatori nu le văd." Restul (lista pe zile, ✎ / 🗑, sertarul) e al lui RA Insight. */
+.asf .insp-stea { color: #166534; background: color-mix(in srgb, #16a34a 14%, transparent); }
+body.dark .asf .insp-stea { color: #86efac; background: color-mix(in srgb, #3FE07D 15%, transparent); }
+.asf-st-jos { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px 12px; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.asf-st-jos i { margin-top: 3px; font-size: 11px; color: var(--text-secondary); }
 .asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #16a34a, #0d9488) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #16a34a 12%, transparent), 0 8px 28px rgba(0,0,0,.08); }
 body.dark .asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #3FE07D, #2DD4BF) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
 .asf .chat-trimite, body.dark .asf .chat-trimite { background: linear-gradient(135deg, #3FE07D, #2DD4BF); color: #06210F; }

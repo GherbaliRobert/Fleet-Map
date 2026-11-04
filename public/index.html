@@ -11876,6 +11876,8 @@ const pozitii = await r.json();</code></pre>
         var z = (zi0(Date.now()) - zi0(ts)) / 86400000;
         return z < 1 ? 'Azi' : (z < 2 ? 'Ieri' : (z < 7 ? 'Săptămâna asta' : 'Mai demult'));
       }
+      // Aceleași grupe și același „când" și în lista asistentului fondatorilor (pasul 4, 04.11) — scrise o dată, aici.
+      window._chatGrupZi = grup; window._chatCand = cand;
       async function cere(m, url, corp) {
         var r = await fetch(url, { method: m, credentials: 'same-origin', headers: corp ? { 'Content-Type': 'application/json' } : undefined, body: corp ? JSON.stringify(corp) : undefined });
         var j = {}; try { j = await r.json(); } catch (e) {}
@@ -13754,8 +13756,9 @@ const pozitii = await r.json();</code></pre>
     // noi" (de la server, pe reguli, fără model: GET /api/admin/azi-la-noi → azi_la_noi.js). Pasul 2 (Alin, 30.10: „2. da"): caseta
     // „Întreabă orice", cu întrebările gata făcute sub „Azi la noi" și „+" (Firma, Perioada — listele vin de la server). Răspunsul îl
     // scrie serverul (POST /api/admin/asistent/intreaba → asistent_fondatori.js): pe loc („Instant", pe reguli — titlul, tabelul,
-    // fraza, butoanele, rândul „✓") sau de la model („Analiză"). Conversațiile (pasul 4) vin după: deocamdată discuția trăiește în
-    // pagină (`S`). Stilurile sunt ale chatului RA Insight (.insp-*, .azi-*, .chat-*) și piesele comune (_chatUrmari, _chatAlege,
+    // fraza, butoanele, rândul „✓") sau de la model („Analiză"). Pasul 4 (04.11): conversațiile se păstrează pe server, ale fiecărui
+    // fondator (lista din stânga, ☰ pe telefon; 12 luni); contextul și istoricul pentru model le ține serverul, pe conversație.
+    // Stilurile sunt ale chatului RA Insight (.insp-*, .azi-*, .chat-*) și piesele comune (_chatUrmari, _chatAlege,
     // _chatActiuni, _chatPuneInText) — scrise o dată. Pagina NU socotește: textele vin de la server și se pun ca TEXT (îngroșatul prin
     // noduri <b>, fără innerHTML).
     (function () {
@@ -13818,9 +13821,99 @@ const pozitii = await r.json();</code></pre>
         bub.appendChild(w);
       }
 
-      // ── Discuția (pasul 2): ce s-a întrebat și ce s-a răspuns, cât stă pagina deschisă. `ctx` = ce a întors ultimul răspuns pe loc
-      // (subiectul, perioada, firma), trimis înapoi la întrebarea următoare („Și luna trecută?"); serverul îl curăță.
-      var S = { mesaje: [], ctx: null, trimite: false, meta: null };
+      // ── Discuția: ce s-a întrebat și ce s-a răspuns în conversația deschisă. Pasul 4 (04.11): conversația e pe server — `conv` =
+      // cea deschisă ({ id, titlu }; null = una nouă, făcută de server la prima întrebare), `vechi` = deschisă din listă (fără „Azi la
+      // noi" deasupra), `lista` / `texte` = din GET /api/admin/asistent/conversatii. Contextul („Și luna trecută?") îl ține serverul.
+      var S = { mesaje: [], trimite: false, meta: null, conv: null, vechi: false, lista: [], texte: null, zi: '', cautaT: null };
+      async function cereJ(m, url, corp) {
+        var r = await fetch(url, { method: m, credentials: 'same-origin', headers: corp ? { 'Content-Type': 'application/json' } : undefined, body: corp ? JSON.stringify(corp) : undefined });
+        var j = {}; try { j = await r.json(); } catch (e) {}
+        return { s: r.status, j: j };
+      }
+      // Titlul din bara de sus: conversația deschisă din listă, altfel ziua de azi (de la „Azi la noi").
+      function setTitlu() { var t = $i('asf-titlu'); if (t) t.textContent = S.vechi && S.conv ? (S.conv.titlu || 'Conversație') : (S.zi || ''); }
+      // Stânga: pe telefon e un sertar (☰ îl deschide, alegerea îl închide); pe calculator se poate ascunde din ☰ — ca la RA Insight.
+      function eTelefon() { return !!(window.matchMedia && window.matchMedia('(max-width: 860px)').matches); }
+      function inchideSertar() { var p = $i('asf'); if (p) p.classList.remove('st-deschis'); }
+      window.asfComutaStanga = function (v) {
+        var p = $i('asf'); if (!p) return;
+        if (eTelefon()) p.classList.toggle('st-deschis', v == null ? !p.classList.contains('st-deschis') : !!v);
+        else p.classList.toggle('st-ascuns', v == null ? !p.classList.contains('st-ascuns') : !v);
+      };
+      // Lista: ale fondatorului, cea mai nouă întâi, pe zile (grupele lui RA Insight: window._chatGrupZi), cu ✎ și 🗑 pe rând. Nota de jos
+      // și textele listei goale vin de la server (asistent_fondatori.js → texteConversatii).
+      async function incarcaLista() {
+        var q = ($i('asf-cauta') || {}).value || '';
+        var r = await cereJ('GET', '/api/admin/asistent/conversatii' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : ''));
+        if (r.s === 200) { S.lista = r.j.conversatii || []; S.texte = r.j.texte || S.texte; }
+        deseneazaLista();
+      }
+      function deseneazaLista() {
+        var T = S.texte || {};
+        var nota = $i('asf-st-nota'); if (nota) { nota.textContent = T.aleTale || ''; nota.title = T.pastrare || ''; }
+        var ls = $i('asf-lista'); if (!ls) return;
+        ls.innerHTML = '';
+        if (!S.lista.length) { ls.appendChild(el('div', 'insp-gol', ($i('asf-cauta') || {}).value ? (T.golCautare || '') : (T.gol || ''))); return; }
+        var ult = null;
+        S.lista.forEach(function (c) {
+          var g = window._chatGrupZi(c.actualizat_la);
+          if (g !== ult) { ls.appendChild(el('div', 'insp-zi', g)); ult = g; }
+          var row = el('div', 'insp-conv' + (S.conv && S.conv.id === c.id ? ' act' : ''));
+          row.tabIndex = 0; row.setAttribute('role', 'button');
+          var t = el('span', 't', c.titlu || 'Conversație'); t.title = (c.titlu || '') + ' · ' + window._chatCand(c.actualizat_la);
+          row.appendChild(t);
+          var a = el('span', 'a');
+          var bR = el('button'); bR.type = 'button'; bR.title = 'Redenumește'; bR.setAttribute('aria-label', 'Redenumește conversația');
+          bR.innerHTML = '<i class="fas fa-pen"></i>'; bR.onclick = function (e) { e.stopPropagation(); window.asfRedenumeste(c.id); };
+          var bS = el('button'); bS.type = 'button'; bS.title = 'Șterge'; bS.setAttribute('aria-label', 'Șterge conversația');
+          bS.innerHTML = '<i class="fas fa-trash"></i>'; bS.onclick = function (e) { e.stopPropagation(); window.asfSterge(c.id); };
+          a.appendChild(bR); a.appendChild(bS); row.appendChild(a);
+          row.onclick = function () { window.asfDeschide(c.id); };
+          row.onkeydown = function (e) { if (e.key === 'Enter' && e.target === row) { e.preventDefault(); window.asfDeschide(c.id); } };
+          ls.appendChild(row);
+        });
+      }
+      window.asfCautaArata = function () {
+        var c = $i('asf-cauta'); if (!c) return;
+        var arata = c.style.display === 'none';
+        c.style.display = arata ? '' : 'none';
+        if (arata) c.focus(); else if (c.value) { c.value = ''; incarcaLista(); }
+      };
+      window.asfCauta = function () { clearTimeout(S.cautaT); S.cautaT = setTimeout(incarcaLista, 250); };
+      // O conversație din listă: întrebările și răspunsurile ei, desenate întregi (fără „Azi la noi" deasupra și fără textul treptat),
+      // cu continuările ultimului răspuns. O conversație care nu mai e a ta (sau ștearsă) = mesajul serverului.
+      window.asfDeschide = async function (id) {
+        var r = await cereJ('GET', '/api/admin/asistent/conversatii/' + encodeURIComponent(id));
+        if (r.s !== 200 || !r.j.conversatie) { (window.raxToast || alert)((r.j && r.j.error) || 'Conversația nu s-a putut deschide.', 'error'); incarcaLista(); return; }
+        var box = $i('asf-msgs'), prim = $i('asf-prim'); if (!box) return;
+        S.conv = { id: r.j.conversatie.id, titlu: r.j.conversatie.titlu }; S.vechi = true; S.mesaje = [];
+        Array.prototype.slice.call(box.childNodes).forEach(function (n) { if (n !== prim) n.remove(); });
+        if (prim) prim.style.display = 'none';
+        var ultim = null;
+        (r.j.mesaje || []).forEach(function (m) {
+          if (m.rol === 'user') { box.appendChild(bulaOm(m.text)); S.mesaje.push({ rol: 'user', text: m.text }); return; }
+          ultim = m.extra || { text: m.text };
+          box.appendChild(bulaRaspuns(ultim)); S.mesaje.push({ rol: 'assistant', text: m.text });
+        });
+        if (ultim && Array.isArray(ultim.urmari) && ultim.urmari.length) box.appendChild(window._chatUrmari(ultim.urmari, function (t) { window.asfTrimite(t); }));
+        setTitlu(); deseneazaLista(); inchideSertar(); laCapat();
+      };
+      window.asfRedenumeste = async function (id) {
+        var c = S.lista.filter(function (x) { return x.id === id; })[0] || (S.conv && S.conv.id === id ? S.conv : {});
+        var nume = await raConfirm('Un nume după care o recunoști ușor în listă.', { title: 'Redenumește conversația', danger: false, okLabel: 'Salvează', icon: 'fa-pen', field: { label: 'Numele conversației', value: c.titlu || '' } });
+        if (nume === false || !String(nume).trim()) return;
+        var r = await cereJ('PUT', '/api/admin/asistent/conversatii/' + encodeURIComponent(id), { titlu: String(nume).trim() });
+        if (r.s !== 200) { (window.raxToast || alert)((r.j && r.j.error) || 'Nu s-a putut redenumi.', 'error'); return; }
+        if (S.conv && S.conv.id === id) S.conv.titlu = r.j.titlu || String(nume).trim();
+        await incarcaLista(); setTitlu();
+      };
+      window.asfSterge = async function (id) {
+        if (!await raConfirm('Conversația se șterge de tot și nu se mai poate recupera.', { title: 'Ștergi conversația?', okLabel: 'Șterge' })) return;
+        var r = await cereJ('DELETE', '/api/admin/asistent/conversatii/' + encodeURIComponent(id));
+        if (r.s !== 200) { (window.raxToast || alert)((r.j && r.j.error) || 'Nu s-a putut șterge.', 'error'); return; }
+        if (S.conv && S.conv.id === id) window.asfNou();
+        await incarcaLista();
+      };
       // Butonul ↓ apare când discuția e derulată în sus; stă deasupra casetei, oricât de înaltă ar fi (crește cu textul).
       function arataJos() {
         var b = $i('asf-msgs'), j = $i('asf-jos'); if (!b || !j) return;
@@ -13897,8 +13990,8 @@ const pozitii = await r.json();</code></pre>
         if (j.copiere) b.bub.appendChild(window._chatActiuni(j.copiere));
         return b.row;
       }
-      // Trimite o întrebare (scrisă sau de pe un buton). Pagina trimite doar textul, ce a întors răspunsul de dinainte (`context`) și
-      // ultimele mesaje (pentru model); serverul înțelege, citește și scrie răspunsul.
+      // Trimite o întrebare (scrisă sau de pe un buton). Pagina trimite doar textul și conversația deschisă (pasul 4); serverul ține
+      // contextul și istoricul, înțelege, citește, scrie răspunsul și îl păstrează în conversație (o face la prima întrebare).
       window.asfTrimite = async function (text) {
         var inp = $i('asf-input');
         var msg = String(text != null ? text : (inp ? inp.value : '')).replace(/\s+/g, ' ').trim();
@@ -13907,7 +14000,6 @@ const pozitii = await r.json();</code></pre>
         var box = $i('asf-msgs'); if (!box) return;
         S.trimite = true;
         Array.prototype.forEach.call(box.querySelectorAll('.chat-urm'), function (n) { n.remove(); });
-        var istoric = S.mesaje.slice(-6).map(function (m) { return { rol: m.rol, text: m.text }; });
         S.mesaje.push({ rol: 'user', text: msg });
         var bo = bulaOm(msg); bo.classList.add('chat-intra'); box.appendChild(bo);
         var gand = { row: window._chatGand('asf-av') }, t0 = Date.now();   // „Mă gândesc…" (chatul inteligent, 02.11)
@@ -13916,12 +14008,14 @@ const pozitii = await r.json();</code></pre>
         var j = null;
         try {
           var r = await fetch('/api/admin/asistent/intreaba', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: msg, context: S.ctx, istoric: istoric }) });
+            body: JSON.stringify({ text: msg, conversatieId: S.conv ? S.conv.id : null }) });
           try { j = await r.json(); } catch (e) { j = null; }
+          // Conversația ștearsă între timp (din altă fereastră): mesajul serverului; întrebarea următoare începe una nouă.
+          if (r.status === 404 && j && j.stearsa) S.conv = null;
           if (!r.ok || !j) j = { text: (j && j.error) || 'Asistentul nu a putut răspunde acum. Încearcă din nou.' };
         } catch (e) { j = { text: 'Eroare de rețea: ' + e.message }; }
         gand.row.remove();
-        S.ctx = j.context || null;
+        if (j.conversatieId) S.conv = { id: j.conversatieId, titlu: (j.conversatie && j.conversatie.titlu) || (S.conv && S.conv.titlu) || '' };
         S.mesaje.push({ rol: 'assistant', text: String(j.copiere || j.text || j.titlu || '') });
         var rand = bulaRaspuns(j), urm = null;
         box.appendChild(rand);
@@ -13929,6 +14023,7 @@ const pozitii = await r.json();</code></pre>
         if (Array.isArray(j.urmari) && j.urmari.length) { urm = window._chatUrmari(j.urmari, function (t) { window.asfTrimite(t); }); box.appendChild(urm); }
         window._chatScrieTreptat(rand, urm);
         laCapat();
+        incarcaLista();   // conversația (nouă sau cea de acum) urcă sus în listă, sub „Azi"
         S.trimite = false;
         var btn2 = $i('asf-trimite'); if (btn2) btn2.disabled = false;
         var inp2 = $i('asf-input'); if (inp2) { inp2.focus(); window._chatStareTrimite(inp2, btn2); }
@@ -13958,15 +14053,24 @@ const pozitii = await r.json();</code></pre>
           else window._chatAlege(btn, 'Alege perioada', (m.perioade || []).map(function (p) { return { text: p.text, pune: p.pune, fa: 'fa-calendar' }; }), pune);
         });
       };
-      // „⋯": o conversație nouă (discuția de acum se șterge, „Azi la noi" se citește din nou). Conversațiile se păstrează abia la pasul 4.
+      // „⋯": conversație nouă și, cu una deschisă, Redenumește / Șterge; dedesubt, nota păstrării (textele de la server).
       window.asfMeniu = function (btn) {
-        window._chatAlege(btn, 'Asistent', [{ text: 'Conversație nouă', fa: 'fa-plus', k: 'nou' }], function (x) { if (x.k === 'nou') window.asfNou(); },
-          'Deocamdată discuția nu se păstrează: se pierde când reîncarci pagina.');
+        var l = [{ text: 'Conversație nouă', fa: 'fa-plus', k: 'nou' }];
+        if (S.conv) l.push({ text: 'Redenumește conversația', fa: 'fa-pen', k: 'r', sep: true }, { text: 'Șterge conversația', fa: 'fa-trash', k: 's' });
+        var T = S.texte || {};
+        window._chatAlege(btn, 'Asistent', l, function (x) {
+          if (x.k === 'nou') window.asfNou();
+          else if (x.k === 'r' && S.conv) window.asfRedenumeste(S.conv.id);
+          else if (x.k === 's' && S.conv) window.asfSterge(S.conv.id);
+        }, [T.aleTale, T.pastrare].filter(Boolean).join(' '));
       };
+      // O conversație nouă: discuția de acum pleacă de pe ecran (rămâne în listă, dacă a avut întrebări), „Azi la noi" se citește din nou.
       window.asfNou = function () {
         var box = $i('asf-msgs'), prim = $i('asf-prim');
         if (box && prim) Array.prototype.slice.call(box.childNodes).forEach(function (n) { if (n !== prim) n.remove(); });
-        S.mesaje = []; S.ctx = null;
+        if (prim) prim.style.display = '';
+        S.mesaje = []; S.conv = null; S.vechi = false;
+        deseneazaLista(); inchideSertar();
         primulMesaj(true);
         var i = $i('asf-input'); if (i) i.focus();
       };
@@ -13984,7 +14088,7 @@ const pozitii = await r.json();</code></pre>
         try { var r = await fetch('/api/admin/azi-la-noi' + (proaspat ? '?proaspat=1' : ''), { credentials: 'same-origin' }); j = r.ok ? await r.json() : null; } catch (e) {}
         try { lista = await window._acasaCifre(); } catch (e) {}
         if (tura !== _tura) return;
-        var t = $i('asf-titlu'); if (t) t.textContent = (j && j.zi) || '';
+        S.zi = (j && j.zi) || ''; setTitlu();
         b = bula();
         var ins = window._chatInsigna({ fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' + (j && j.ora ? ' · la ' + j.ora : '') });
         if (ins) b.bub.appendChild(ins);
@@ -14007,8 +14111,21 @@ const pozitii = await r.json();</code></pre>
         var host = $i('asistent-view'); if (!host) return;
         try { var fb = $i('rax-fabs'); if (fb) fb.style.display = 'none'; } catch (e) {}
         if (!host._gata) {
-          host.innerHTML = '<div class="insp st-ascuns asf" id="asf"><div class="insp-dr-col">' +
-            '<div class="insp-top"><div class="insp-titlu" id="asf-titlu"></div><div class="insp-top-dr">' +
+          // Stânga (pasul 4, după macheta „tot un chat"): Asistent, „Conversație nouă", căutarea, conversațiile pe zile și nota de jos;
+          // pe telefon un sertar, deschis din ☰ (bara de sus). Aceleași piese și stiluri ca la RA Insight.
+          host.innerHTML = '<div class="insp asf" id="asf">' +
+            '<div class="insp-umbra" onclick="asfComutaStanga(false)"></div>' +
+            '<aside class="insp-st" id="asf-st" aria-label="Conversațiile tale">' +
+            '<div class="insp-st-cap"><div class="insp-st-tit"><span class="insp-stea"><i class="fas fa-wand-magic-sparkles"></i></span>Asistent</div></div>' +
+            '<button class="insp-nou" type="button" onclick="asfNou()"><i class="fas fa-plus"></i>Conversație nouă</button>' +
+            '<button class="insp-cauta-r" type="button" onclick="asfCautaArata()"><i class="fas fa-magnifying-glass"></i>Caută în conversații</button>' +
+            '<input class="insp-cauta" id="asf-cauta" type="search" placeholder="Caută în conversațiile tale" aria-label="Caută în conversațiile tale" oninput="asfCauta(this.value)" style="display:none;">' +
+            '<div class="insp-lista" id="asf-lista"></div>' +
+            '<div class="insp-st-jos asf-st-jos"><i class="fas fa-lock"></i><span id="asf-st-nota"></span></div>' +
+            '</aside>' +
+            '<div class="insp-dr-col">' +
+            '<div class="insp-top"><button type="button" class="chat-ib insp-meniu" onclick="asfComutaStanga()" title="Conversațiile tale" aria-label="Conversațiile tale"><i class="fas fa-bars"></i></button>' +
+            '<div class="insp-titlu" id="asf-titlu"></div><div class="insp-top-dr">' +
             '<button type="button" class="chat-ib" id="asf-mai" onclick="asfMeniu(this)" title="Mai multe" aria-label="Mai multe"><i class="fas fa-ellipsis"></i></button></div></div>' +
             '<main class="insp-main"><div class="insp-msgs" id="asf-msgs"><div class="asf-prim" id="asf-prim"></div></div>' +
             '<button type="button" class="chat-jos" id="asf-jos" onclick="asfLaCapat()" title="La ultimul mesaj" aria-label="La ultimul mesaj"><i class="fas fa-arrow-down"></i></button>' +
@@ -14022,7 +14139,9 @@ const pozitii = await r.json();</code></pre>
           var box = $i('asf-msgs'); if (box) box.onscroll = arataJos;
           textCaseta(); try { window.matchMedia('(max-width: 600px)').addEventListener('change', textCaseta); } catch (e) {}
         }
-        await primulMesaj(false);
+        incarcaLista();
+        // O conversație deschisă din listă rămâne cum era; altfel primul mesaj („Azi la noi") se citește din nou, iar discuția de dedesubt rămâne.
+        if (!S.vechi) await primulMesaj(false);
       };
     })();
     // ── sfârșit „asistentul fondatorilor" ──
