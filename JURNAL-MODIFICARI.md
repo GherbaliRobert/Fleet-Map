@@ -60,6 +60,13 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   API Keys → o cheie nouă; (3) Railway → serviciul aplicației → Variables: `BREVO_API_KEY` = cheia și
   `EMAIL_FROM` = `RA Track <contact@ratrack.ro>` (Robert, 12.10: „contact@"). Verificare: Administrare → Stare producție, rândul „Email": „activ —
   Brevo".
+- [ ] **Robert: cheile din Railway, după incidentul de securitate Railway din 21.10. Adăugat pe 04.11** (scris pe 21.10 într-o ramură care
+  n-a ajuns pe ratrack.ro, `ccr-a408cf95-b4m8r3`; găsit azi). Railway le-a recomandat tuturor să-și schimbe cheile (status.railway.com,
+  incidentul QH8L8B3E). În Railway → serviciul aplicației → Variables, întâi: `SESSION_SECRET` (oricine îl are poate intra în orice cont;
+  schimbat, toată lumea reintră în cont), `ANTHROPIC_API_KEY` + `ANTHROPIC_ADMIN_KEY` (bani), `BREVO_API_KEY` (emailuri în numele nostru),
+  `MAIL_INBOUND_SECRET` (schimbat odată și în Worker-ul din Cloudflare), `FIREBASE_SA_JSON`, tokenurile ANAF dacă sunt puse. Cu grijă:
+  `BACKUP_PASSPHRASE` (copiile vechi se deschid doar cu parola veche — păstrați-o) și `VAPID_*` (schimbate, notificările din browser trebuie
+  repornite de fiecare om). Fiecare schimbare repornește aplicația: le faceți pe toate deodată.
 - [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
   GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
   `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
@@ -520,10 +527,11 @@ din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (
 | **Cap. 2** | Traiectoria RA Insight, recroită după pachete | ✅ pasul 0, proba modelelor (21–22.10: rămâne Haiku 5.5) · ✅ pasul 1, un singur RA Insight (15.10; „mai simplu" 15.10; discuția refăcută 19.10; reparațiile probei 22.10) · ✅ pasul 2, „RA Insight face, cu Da-ul tău": partea 1 șoferii pe mașini (22.10), partea 2 alerta de viteză și „Am vorbit cu el" (26.10), partea 3 revizia, actul, raportul programat (26.10) · ✅ „Anunță echipa RA Track" (23.10) · ✅ garanția B, contorul corecturilor (22.10) |
 | **C** | Ramura „Potrivirea șoferilor pe mașini" (cine poate merge în locul unui șofer în concediu) | ✅ = pasul 2, partea 1 (22.10) |
 | **D** | La final: „Rezumă cu RA Insight" (cine îl are, ce consumă) + ecranul nostru de statistici RA Insight, cu întrebările și costul conturilor noastre de fondator (08.10: „da") | ✅ „Rezumă" cere cont (14.10) · „RA Insight · control" (19.10) |
-| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ✅ „Sursă externă" construită (28.10), căutarea reparată (29.10: Anthropic nu primea țara „RO") · ⬜ pornirea: încercarea noastră pe „Doar pentru noi", apoi „Pornită pentru firme" |
+| **D+** | Internetul în RA Insight: după D, cel mult 3 căutări pe întrebare, cu sursele afișate (08.10: „da"; 26.10: rămâne în capitol) | ✅ „Sursă externă" construită (28.10), căutarea reparată (29.10: Anthropic nu primea țara „RO") · ✅ pornită pentru firme (29.10, Alin) |
 | **D+½** | Analiza atentă: la „de ce / compară / ce să fac", Haiku gândește mai mult și răspunde în trei părți (Alin, 28.10: „1 da"; Sonnet scos) | ✅ 28.10 |
-| **D++** | Asistentul AI al fondatorilor (restanți, facturi, cel mai profitabil client) — macheta din 15.10 | ⬜ după RA Insight (Alin, 15.10) |
-| **E** | Telefonul: RA Insight (meniu, conversații, ramuri, cartonașele cu „Da"), pentru APK-ul lui Robert | ⬜ Robert (lista lui la „De amintit") |
+| **D++** | Asistentul AI al fondatorilor — macheta „tot un chat” (aprobată 30.10) | 🔶 pasul 1 „Acasă” = chat + „Azi la noi” (30.10) · pasul 2 caseta „Întreabă orice” (01.11) · pasul 3 cifrele verificate + analiza atentă (04.11) · ⬜ pasul 4 conversațiile păstrate · ⬜ etapa 2 pașii cu „Da” · ⬜ etapa 3 telefonul (Robert) |
+| **Chat** | Chatul inteligent: același aspect la RA Insight și la asistentul nostru (Alin, 02.11: „1–5 da”) | ✅ 03.11 |
+| **E** | Telefonul: RA Insight (meniu, conversații, ramuri, cartonașele cu „Da"), pentru APK-ul lui Robert | 🔶 cod gata, loturile 1–4 (02.11); APK 1.0.21 făcut, neîncercat pe un telefon adevărat · ⬜ aspectul nou al chatului (03.11) |
 | — | După capitol: **Facturare**, ecran cu ecran | ⬜ |
 **Găsite pe drum pe 02.10 și lăsate pe după capitol** (Alin, 05.10, ca să nu ieșim din AI): revizia „pe km" se socotește din
 contorul mașinii, nu din „Km la bord"; rapoartele descărcate își pierd diacriticele din nume; texte mărunte (fără
