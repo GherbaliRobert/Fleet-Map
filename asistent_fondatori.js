@@ -10,6 +10,7 @@
 'use strict';
 const I = require('./insight');
 const AR = require('./ai_raport');
+const C = require('./cifre');
 const { numar } = require('./contracts');
 
 const TZ = 'Europe/Bucharest';
@@ -484,7 +485,9 @@ const SURSA_UNELTE = {
   firme: { sursa: 'Companii', buton: BTN.companii }, stoc: { sursa: 'Stoc echipamente', buton: BTN.stoc }, cereri: { sursa: 'Cereri de la clienți', buton: BTN.cereri },
   azi_la_noi: { sursa: 'Azi la noi', buton: null }
 };
-// Insigna și butoanele unui răspuns al modelului, din uneltele chiar rulate (nu din ce a scris el).
+// Insigna și butoanele unui răspuns al modelului, din uneltele chiar rulate (nu din ce a scris el). `surse` = ecranele din care
+// au venit cifrele (pentru rândul „✓", la pasul 3).
+function _insiruire(l) { return l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] : (l[0] || ''); }
 function dupaModel(unelte) {
   const surse = [], butoane = [];
   (unelte || []).forEach(function (n) {
@@ -492,8 +495,51 @@ function dupaModel(unelte) {
     if (surse.indexOf(x.sursa) < 0) surse.push(x.sursa);
     if (x.buton && butoane.indexOf(x.buton) < 0) butoane.push(x.buton);
   });
-  const det = surse.length ? 'din ' + (surse.length > 1 ? surse.slice(0, -1).join(', ') + ' și ' + surse[surse.length - 1] : surse[0]) : 'din aplicație';
-  return { insigna: { fel: 'ai', nume: 'Asistent', eticheta: 'Analiză', detaliu: det }, butoane: butoane.slice(0, 3) };
+  const det = surse.length ? 'din ' + _insiruire(surse) : 'din aplicație';
+  return { insigna: { fel: 'ai', nume: 'Asistent', eticheta: 'Analiză', detaliu: det }, butoane: butoane.slice(0, 3), surse: surse };
+}
+
+// ─── Pasul 3 (04.11; Alin, 02.11: „5. da", 03.11: „da, poți începe"): cifrele verificate și analiza atentă ─────────────────────
+// Cifrele din răspunsul modelului se caută în ce au întors uneltele (cifre.negasite — aceeași regulă ca la RA Insight: sumele în lei
+// și procentele; totalurile, diferențele și procentele între două perioade se socotesc din date). O cifră negăsită → modelul își
+// rescrie O DATĂ răspunsul (`cerereRescriere`); rămasă negăsită → o spunem pe față („Nu am găsit…"), nu „verifică tu".
+function cerereRescriere(lipsa) {
+  return 'Verificarea aplicației: cifrele ' + (lipsa || []).join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot ' +
+    'socoti din ele. Scrie din nou tot răspunsul, doar cu cifre din unelte (citește din nou ce îți trebuie). Nu pomeni verificarea.';
+}
+const TEXT_NEGASIT = 'Cifra nu apare în ce am citit din aplicație și nu se poate socoti din ce am citit. N-o lua drept sigură.';
+// Ce stă sub răspunsul modelului: { verificat } — toate cifrele de verificat (lei, %, fără cifrele mici întregi) se regăsesc în
+// date; { probleme } — una a rămas negăsită după rescriere; {} — răspunsul n-are cifre de verificat (sau nu s-a citit nimic).
+function verificare(text, lipsa, citite, surse) {
+  if (lipsa && lipsa.length) {
+    return { probleme: [{ fel: 'cifra', grav: 'galben', titlu: 'Nu am găsit în datele aplicației: ' + lipsa.slice(0, 6).join(', '), dovada: TEXT_NEGASIT }] };
+  }
+  const deVazut = C.cifreleRaspunsului(text).filter(function (c) { return c.fel !== 'timp' && !(c.zec === 0 && c.v <= C.MICI); });
+  if (deVazut.length && (citite || []).length) return { verificat: 'Cifrele le-am luat din ' + (_insiruire(surse || []) || 'aplicație') + '.' };
+  return {};
+}
+// Analiza atentă (ca la RA Insight, insight.ANALIZA_ATENTA): la „de ce", „compară", „ce să fac" (insight.esteAnaliza) același model
+// gândește mai mult (efortul „medium", pus de server) și răspunde în forma fixă. Zilele perioadelor le dă aplicația (pe ora României),
+// ca modelul să nu le socotească singur. Stă în CONTEXTUL întrebării, nu în partea fixă din cache.
+function _iso(y, m0, d) { return new Date(Date.UTC(y, m0, d)).toISOString().slice(0, 10); }
+function analizaAtenta(acum) {
+  const z = _parti(Number(acum) || Date.now());
+  const dow = (new Date(Date.UTC(z.y, z.m0, z.d)).getUTCDay() + 6) % 7;   // 0 = luni
+  const zileLunaTrecuta = new Date(Date.UTC(z.y, z.m0, 0)).getUTCDate();
+  const azi = _iso(z.y, z.m0, z.d);
+  return 'ÎNTREBARE DE ANALIZĂ („de ce", „compară", „ce să fac"). Lucrează atent; forma de mai jos ține locul celei obișnuite.\n' +
+    '1. Înainte să răspunzi, citește cu uneltele datele pentru perioada întrebării ȘI pentru perioada dinainte, de aceeași lungime ' +
+    '(de pildă încasările lunii și ale lunii dinainte: unealta `incasari` de două ori, cu `de` și `pana`); pe firme, dacă ajută. ' +
+    'Zilele, pe ora României: luna asta până azi = ' + _iso(z.y, z.m0, 1) + ' – ' + azi + '; aceleași zile din luna trecută = ' +
+    _iso(z.y, z.m0 - 1, 1) + ' – ' + _iso(z.y, z.m0 - 1, Math.min(z.d, zileLunaTrecuta)) + '; luna trecută întreagă = ' + _iso(z.y, z.m0 - 1, 1) +
+    ' – ' + _iso(z.y, z.m0 - 1, zileLunaTrecuta) + '; săptămâna asta = ' + _iso(z.y, z.m0, z.d - dow) + ' – ' + azi + '; săptămâna trecută = ' +
+    _iso(z.y, z.m0, z.d - dow - 7) + ' – ' + _iso(z.y, z.m0, z.d - dow - 1) + '.\n' +
+    '2. Răspunde scurt, în forma asta:\n' +
+    '**Ce s-a întâmplat** — o frază, cu cifra principală și comparația cu perioada dinainte.\n' +
+    '**De ce** — două-trei cauze, fiecare cu cifra ei din date (firma, factura, contractul, ziua).\n' +
+    '**Ce poți face** — doi-trei pași pe care îi faceți voi în aplicație (Facturare, Companii, Contracte, Montaj, Stoc echipamente, ' +
+    'Cereri de la clienți); tu doar arăți unde, nu faci nimic.\n' +
+    'Cifrele, numai din ce au întors uneltele. Dacă datele nu ajung pentru o cauză, spune asta pe scurt; nu ghici.';
 }
 // Partea fixă a instrucțiunilor (în cache); ora și ziua vin în contextul întrebării.
 function instructiuni(scrisul) {
@@ -529,5 +575,5 @@ function eroareModel() {
 module.exports = {
   INTREBARI_GATA, PERIOADE, SURSE, MAX_RANDURI, MAX_CUVINTE_PE_LOC, ZILE_CONTRACTE, SUBIECTE, UNELTE, SURSA_UNELTE,
   lei, zi, ziSapt, deCand, perioadaCalendar, perioadaTrecuta, perioadaComparata, firmeDin, intelege, raspunde, textSimplu, dupaModel, instructiuni, contextIntrebare,
-  PE_LOC, faraModel, eroareModel
+  PE_LOC, faraModel, eroareModel, cerereRescriere, verificare, analizaAtenta, TEXT_NEGASIT
 };

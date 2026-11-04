@@ -7640,12 +7640,13 @@ async function _asfDate(u, acum) {
   return {};
 }
 // Uneltele modelului (asistentF.UNELTE): aceleași date, ca obiecte scurte; `folosite` = ce a citit (insigna și butoanele de sub
-// răspuns se fac din uneltele chiar rulate). Zilele vin „AAAA-LL-ZZ", pe ora României.
+// răspuns se fac din uneltele chiar rulate); `citite` = ce au întors (pasul 3: cifrele răspunsului se caută aici). Zilele vin
+// „AAAA-LL-ZZ", pe ora României.
 function _asfZiMs(s, capat) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
   return m ? insight.inceputZiRO(+m[1], +m[2] - 1, +m[3] + (capat ? 1 : 0)) : null;
 }
-function _asfUnelte(acum, folosite) {
+function _asfUnelte(acum, folosite, citite) {
   const per = function (i, implicit) {
     const de = _asfZiMs(i.de), pana = _asfZiMs(i.pana, true);
     return de != null && pana != null && pana > de ? { de: de, pana: Math.min(pana, de + 400 * 86400000) } : implicit;
@@ -7708,7 +7709,10 @@ function _asfUnelte(acum, folosite) {
       return { randuri: (r.randuri || []).map(function (x) { return String(x.text || '').replace(/\*\*/g, ''); }), de_vazut: r.deVazut };
     }
   };
-  Object.keys(h).forEach(function (k) { const f = h[k]; h[k] = async function (i) { folosite.push(k); return f(i || {}); }; });
+  Object.keys(h).forEach(function (k) {
+    const f = h[k];
+    h[k] = async function (i) { folosite.push(k); const r = await f(i || {}); if (Array.isArray(citite)) citite.push(r); return r; };
+  });
   return h;
 }
 // Discuția de până acum, trimisă de pagină (pasul 4 o va ține pe server): doar mesajele omului și ale asistentului (alte roluri se
@@ -7748,7 +7752,7 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
       return res.json(Object.assign(r, { copiere: asistentF.textSimplu(r) }));
     }
     if (!ai || !ai.aiEnabled()) return res.json(asistentF.faraModel());
-    const folosite = [];
+    const folosite = [], citite = [];
     const userId = (getAuth(req) || {}).userId || null;
     const model = ai.AI_AGENT_MODEL;
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
@@ -7757,19 +7761,40 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
       { type: 'text', text: asistentF.instructiuni(insight.SCRISUL), cache_control: { type: 'ephemeral' } },
       { type: 'text', text: asistentF.contextIntrebare(acum) }
     ];
+    // Analiza atentă (pasul 3, 04.11): la „de ce", „compară", „ce să fac" — aceeași regulă ca la RA Insight (insight.esteAnaliza),
+    // același model cu efortul „medium" și forma fixă, cu zilele perioadelor date de aplicație (asistentF.analizaAtenta).
+    const analiza = insight.esteAnaliza(text);
+    if (analiza) system.push({ type: 'text', text: asistentF.analizaAtenta(acum) });
+    const efort = analiza ? 'medium' : undefined, maxTokens = analiza ? 1100 : 900;
+    const istoric = _asfIstoric(b.istoric), unelte = _asfUnelte(acum, folosite, citite);
+    const cere = function (mesaje, iter) {
+      return ai.runAgent({ system: system, messages: mesaje, tools: asistentF.UNELTE, toolHandlers: unelte, model: model, maxTokens: maxTokens, maxIters: iter, onUsage: onUsage, efort: efort });
+    };
     let result = null;
-    try {
-      result = await ai.runAgent({ system: system, messages: _asfIstoric(b.istoric).concat([{ role: 'user', content: text }]), tools: asistentF.UNELTE,
-        toolHandlers: _asfUnelte(acum, folosite), model: model, maxTokens: 900, maxIters: 6, onUsage: onUsage });
-    } catch (e) {
-      console.warn('[asistent] modelul n-a răspuns:', e.message);
+    try { result = await cere(istoric.concat([{ role: 'user', content: text }]), 6); } catch (e) { console.warn('[asistent] modelul n-a răspuns:', e.message); }
+    let reply = result && result.text ? result.text : '', lipsa = [];
+    // Cifrele verificate (pasul 3): o cifră care nu se regăsește în ce au întors uneltele și nici nu se poate socoti din ele →
+    // modelul își rescrie O DATĂ răspunsul (aceeași întrebare, același rând de consum); rămasă negăsită, se spune sub răspuns.
+    if (reply) {
+      try { lipsa = cifre.negasite(reply, citite, text); } catch (e) { lipsa = []; }
+      if (lipsa.length) {
+        try {
+          const r2 = await cere(istoric.concat([{ role: 'user', content: text }, { role: 'assistant', content: reply }, { role: 'user', content: asistentF.cerereRescriere(lipsa) }]), 4);
+          if (r2 && r2.text) {
+            let l2 = lipsa;
+            try { l2 = cifre.negasite(r2.text, citite, text); } catch (e) { /* rămâne răspunsul dintâi */ }
+            if (l2.length < lipsa.length) { reply = r2.text; lipsa = l2; }
+          }
+        } catch (e) { /* rămâne răspunsul dintâi, cu cifrele spuse dedesubt */ }
+      }
     }
-    // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit).
+    // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit; rescrierea intră în același rând).
     if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(null, 'asistent', _agg, userId, model).catch(function () {});
-    if (!result || !result.text) return res.json(asistentF.eroareModel());
+    if (!reply) return res.json(asistentF.eroareModel());
     const dm = asistentF.dupaModel(folosite);
-    const reply = insight.litereRomanesti(result.text);
-    res.json({ fel: 'ai', insigna: dm.insigna, text: reply, butoane: dm.butoane, urmari: [], copiere: reply });
+    reply = insight.litereRomanesti(reply);
+    const v = asistentF.verificare(reply, lipsa, citite, dm.surse);
+    res.json({ fel: 'ai', insigna: dm.insigna, text: reply, butoane: dm.butoane, urmari: [], copiere: reply, verificat: v.verificat, probleme: v.probleme });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „+" din caseta asistentului: firmele (doar numele, fără demo) și perioadele pe care le înțeleg regulile — pagina nu-și scrie listele.

@@ -849,8 +849,8 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
 - **Clicurile: O funcție, `window._asfDu(tinta)`** (firma + filă, neasignate, facturare + secțiune, emitent, secțiune). Textele de la server
   se pun ca TEXT (`textGros` → noduri `<b>`); innerHTML doar cu bucăți scrise în pagină.
 - **Pașii următori (ordinea aprobată):** 2 caseta „Întreabă orice" (răspunsuri instant pe reguli + modelul) — FĂCUT pe 01.11, vezi mai jos; 3
-  cifrele verificate + analiza atentă, 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da") și etapa 3 (telefonul,
-  Robert). Fiecare la „da"-ul lui Alin, cu machetă întâi dacă se schimbă ce se vede.
+  cifrele verificate + analiza atentă — FĂCUT pe 04.11, vezi mai jos; 4 conversațiile (ale fiecărui fondator, 12 luni); apoi etapa 2 (pașii cu „Da")
+  și etapa 3 (telefonul, Robert). Fiecare la „da"-ul lui Alin, cu machetă întâi dacă se schimbă ce se vede.
 - Păzit de **`verify_asistent_fondatori.js`** (în `npm test`; 93, pe server pornit, cu o factură întârziată pusă în bază și o cerere de la
   un client), plus `verify_acasa.js`, `verify_setari.js` (aterizarea), `verify_insight.js` și `verify_un_singur_insight.js` (bula),
   `verify_utilizatori.js`, `verify_arhiva.js`, `verify_drum.js`.
@@ -879,12 +879,28 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   discuția de dedesubt (`S.mesaje`, `S.ctx`) rămâne cât stă pagina deschisă — se păstrează pe server abia la pasul 4. O singură cerere de întrebare
   (`asfTrimite`), `bulaRaspuns` desenează tot ca TEXT (tabelul cu `el('td')`, `data-col` pentru telefon, îngroșatul prin `textGros`), butoanele prin
   `_asfDu(tinta)`. Piesele comune ale chatului (`_chatUrmari`, `_chatAlege`, `_chatActiuni`, `_chatInsigna`, `_chatPuneInText`) — NU le scrie a doua
-  oară. „⋯" = „Conversație nouă", cu nota că discuția nu se păstrează încă. Răspunsul modelului NU are rândul „✓" (cifrele verificate = pasul 3).
+  oară. „⋯" = „Conversație nouă", cu nota că discuția nu se păstrează încă. Rândul „✓" / „Nu am găsit…" de sub răspunsul modelului: pasul 3, mai jos.
 - **Telefonul (≤ 600 px, măsurat 01.11):** rândul de tabel devine cartonaș (prima celulă îngroșată, celelalte cu `attr(data-col)` în față) — cu 5
   coloane „Stare" ieșea din chenar; caseta are textul scurt din machetă (`TEXT_SCURT`, prin `matchMedia`) — cel lung se rupea pe două rânduri, tăiat;
   butonul ↓ stă deasupra casetei, oricât de înaltă (`arataJos` îl mută). Rândul „✓" pe verdele închis `#166534` (cel al RA Insight, #15803d, iese 4,46).
 - Păzit de **`verify_asistent_intreaba.js`** (în `npm test`; pe server pornit, cu datele puse în bază de faza `--faza=seed`, modelul simulat și faza
   `--faza=consum` după oprire), plus `verify_asistent_fondatori.js` și `verify_companii.js` (starea firmelor, o socoteală).
+
+### Asistentul fondatorilor — etapa 1, pasul 3 (04.11; Alin, 02.11: „5. da", 03.11: „da, poți începe" — cifrele verificate + analiza atentă)
+- **Cifrele verificate** (doar la răspunsurile MODELULUI; cele pe loc au „✓" din `raspunde`): uneltele țin minte ce întorc (`_asfUnelte(acum,
+  folosite, citite)`), iar răspunsul trece prin **`cifre.negasite(reply, citite, text)`** — ACEEAȘI regulă ca la RA Insight (sumele în lei și
+  procentele; totalurile listelor, diferențele și procentele între două perioade se socotesc din date; cifrele mici întregi, datele, numerele de
+  factură nu se verifică). O cifră negăsită → O rescriere (`asistentF.cerereRescriere`, aceeași întrebare, același rând de consum), luată doar
+  dacă are mai puține cifre negăsite. La capăt **`asistentF.verificare(text, lipsa, citite, surse)`**: `verificat` („Cifrele le-am luat din " +
+  ecranele uneltelor rulate — `dupaModel(...).surse`) / `probleme` (galben, „Nu am găsit în datele aplicației: …", `TEXT_NEGASIT`, FĂRĂ butoane) /
+  nimic (fără cifre de verificat sau fără nimic citit). Pagina: `probleme` → caseta comună `window._chatProbleme` (fără butoane — ar duce la
+  `insightProblemaButon`), `verificat` → rândul `.chat-ok`. NU pune `brut: true` aici (literele le curăță ai.js).
+- **Analiza atentă:** `insight.esteAnaliza(text)` (regula lui RA Insight) → `asistentF.analizaAtenta(acum)` în CONTEXTUL întrebării (nu în partea
+  fixă din cache: are ziua în ea), `efort: 'medium'`, `maxTokens` 1100 (altfel 900). Forma: **Ce s-a întâmplat** → **De ce** → **Ce poți face**
+  (unde în aplicație; asistentul nu face nimic). Zilele perioadelor (luna până azi, aceleași zile din luna trecută, luna trecută, săptămâna asta,
+  săptămâna trecută) le scrie aplicația, pe ora României, ca modelul să nu le socotească.
+- Păzit de `verify_asistent_intreaba.js` (secțiunea 1b + serverul pornit: cifră găsită → „✓", 1.300 → rescris cu 500 → „✓", 500 fără nimic citit →
+  „Nu am găsit…", analiza cu instrucțiunea și mai mult loc).
 
 ### Chatul inteligent (03.11; Alin, 02.11: „1. da … 5. da" la macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3)
 Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fondatorilor (verde). Regulile — NU le strica la loc:

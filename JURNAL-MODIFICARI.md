@@ -532,6 +532,34 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-04
+
+### FONDATOR · Asistentul fondatorilor, pasul 3: cifrele verificate și analiza atentă
+
+**Ce am schimbat:** Alin (02.11: „5. da"; 03.11: „da, poți începe"). Când răspunde modelul (nu răspunsurile pe loc, care erau deja
+verificate):
+(1) **Cifrele se verifică.** Fiecare sumă în lei și fiecare procent din răspuns se caută în ce a citit asistentul din aplicație (facturi,
+încasări, contracte, firme…), inclusiv totalurile și diferențele dintre două perioade. Toate găsite → sub răspuns, ca la RA Insight,
+„✓ Cifrele le-am luat din Facturare." (sau din ecranele de unde au venit). Una negăsită → asistentul își rescrie o dată răspunsul, doar cu
+cifre din aplicație; dacă tot rămâne, sub răspuns apare caseta galbenă „Nu am găsit în datele aplicației: 2.000 lei — N-o lua drept
+sigură." Exemplu: întrebi de încasări, iar modelul scrie „1.300 lei" deși aplicația are 500 → îl rescrie cu 500 și primește „✓".
+(2) **Analiza atentă** la „de ce", „compară", „ce să fac": același model gândește mai mult și răspunde în trei părți — **Ce s-a întâmplat**
+(cifra și comparația cu perioada dinainte), **De ce** (cauzele, cu cifrele lor), **Ce poți face** (unde în aplicație). Zilele perioadelor
+(luna asta până azi, aceleași zile din luna trecută, săptămâna trecută…) i le dă aplicația, ca să nu le socotească el greșit.
+Ce costă: o întrebare de analiză cam 1–2 bani (ca în machetă); rescrierea, când e nevoie, încă o dată cât întrebarea; tot pe noi. Regula și textele stau în
+`asistent_fondatori.js` (`verificare`, `cerereRescriere`, `analizaAtenta`); verificarea cifrelor e aceeași cu a lui RA Insight (`cifre.js`).
+Păzit de verify_asistent_intreaba.js (154: regula, pagina și serverul pornit cu modelul simulat — cifră găsită, rescrisă, rămasă negăsită,
+analiza).
+
+**Ce vede fondatorul:** pe „Acasă", la întrebările scrise liber, sub răspunsul modelului: „✓ Cifrele le-am luat din…" sau caseta „Nu am găsit…";
+la „De ce au crescut încasările luna asta?", răspunsul în cele trei părți.
+
+**Ce vede clientul:** nimic (asistentul e doar al fondatorilor).
+
+- **Găsit pe drum, întrebat (nu adus):** pe GitHub stă o ramură (`ccr-a408cf95-b4m8r3`, 21–23.10) cu trei lucruri care n-au ajuns pe
+  ratrack.ro: amintirea pentru Robert să schimbe cheile din Railway după incidentul de securitate Railway din 21.10, prelungirea unui link
+  „Distribuie locația" (+15 min / +1 oră / +8 ore) și o reparație la „Starea mașinii" (adaptorul CAN în repaus arăta stări vechi).
+
 ## 2026-11-03
 
 ### AMÂNDOI · Chatul inteligent: RA Insight (la clienți) și asistentul nostru, cu aspectul nou

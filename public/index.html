@@ -13891,6 +13891,8 @@ const pozitii = await r.json();</code></pre>
           });
           b.bub.appendChild(bw);
         }
+        // Pasul 3 (04.11): o cifră a modelului negăsită în datele aplicației, spusă pe față (aceeași casetă ca la RA Insight, fără butoane).
+        if (Array.isArray(j.probleme) && j.probleme.length) b.bub.appendChild(window._chatProbleme(j.probleme.map(function (p) { return { grav: p.grav, titlu: p.titlu, dovada: p.dovada }; })));
         if (j.verificat) { var ok = el('div', 'chat-ok'); ok.appendChild(el('i', 'fas fa-circle-check')); ok.appendChild(document.createTextNode(String(j.verificat))); b.bub.appendChild(ok); }
         if (j.copiere) b.bub.appendChild(window._chatActiuni(j.copiere));
         return b.row;
