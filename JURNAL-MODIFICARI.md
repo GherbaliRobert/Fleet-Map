@@ -178,7 +178,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
   **05.11:** „Prelungește" și „Starea mașinii" sunt acum și pe ratrack.ro (aduse din ramura lui Robert în main). APK-ul următor se
   face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele,
-  regula „NOU" din meniu);
+  regula „NOU" din meniu, „Domenii" în loc de „Pagini");
   primește versiunea **1.0.23 (cod 25)**: 1.0.22 e deja pe GitHub, din ramura lui Robert, iar main scrie acum tot 1.0.22.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
