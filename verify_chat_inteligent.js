@@ -11,7 +11,9 @@
 //   4. piesele răspunsului NU se schimbă (telefonul le oglindește — verify_telefon_insight.js): eticheta aleasă pe 19.10 (chenar
 //      subțire, fără fundal) primește doar iconița; lista butoanelor de sub salut e aceeași, iconițele stau separat;
 //   5. culorile, MĂSURATE pe ambele teme: rândul „✓" (B — #15803d ieșea 4,46), semnul, butonul de trimis, salutul în degrade,
-//      iconițele pastilelor; întrebările gata făcute ale asistentului vin cu iconița de la server;
+//      iconițele pastilelor; întrebările gata făcute ale asistentului vin cu iconița de la server. Din 05.11 (Alin: „din movul
+//      ăsta, în culorile brandului") RA Insight are culorile siglei: verdele casei + negrul „cernelii" (albul pe tema închisă) —
+//      niciun mov rămas în chat;
 //   6. în browser (dacă e Chromium): cuvintele pornesc stinse și se aprind toate sub o secundă, tabelul de după apare la urmă,
 //      iar cu „mai puțină mișcare" totul e pe loc. În CI fără browser, partea asta se sare („⤼ sărit").
 'use strict';
@@ -68,7 +70,7 @@ T('CSS: inelul, intrarea, luminarea și cuvintele stinse — toate oprite la „
 T('cuvintele stinse își țin locul (opacity, nu display): nimic nu sare', /\.chat-w \{ opacity: 0;/.test(CSS) && !/\.chat-w \{[^}]*display: none/.test(CSS));
 
 console.log('\n4. Piesele răspunsului rămân (telefonul le oglindește)');
-T('eticheta aleasă pe 19.10 rămâne: chenar subțire, fără fundal (ANALIZĂ #6d28d9, INSTANT #166534)', /\.chat-ins-et\.ai \{ color: #6d28d9; \}/.test(CSS) && /\.chat-ins-et\.instant \{ color: #166534; \}/.test(CSS)
+T('eticheta aleasă pe 19.10 rămâne: chenar subțire, fără fundal (din 05.11 ANALIZĂ în negrul siglei — alb pe tema închisă —, INSTANT #166534)', /\.chat-ins-et\.ai \{ color: var\(--text-primary\); \}/.test(CSS) && /\.chat-ins-et\.instant \{ color: #166534; \}/.test(CSS) && !/body\.dark \.chat-ins-et\.ai/.test(CSS)
   && /\.chat-ins-et \{[^}]*border: 1px solid currentColor;/.test(CSS) && !/\.chat-ins-et[^{]*\{[^}]*background/.test(CSS));
 T('„· N secunde" are aceeași literă ca detaliul antetului (12px, 600): altfel stă mai sus, pe alt rând de litere (03.11, poze)',
   /\.chat-ins-dur \{ font-size: 12px; font-weight: 600; color: var\(--text-secondary\); \}/.test(CSS) && /\.chat-ins-det \{ font-size: 12px; font-weight: 600; color: var\(--text-secondary\); \}/.test(CSS));
@@ -91,25 +93,43 @@ const minim = (cul, fonduri) => Math.min.apply(null, fonduri.map((f) => contrast
 T('B: rândul „✓" pe tema deschisă = #166534 (≥ 4,5 pe orice fundal al discuției)', /\.chat-ok \{[^}]*color: #166534;/.test(CSS) && minim('#166534', FD) >= 4.5, minim('#166534', FD).toFixed(2));
 T('…și pe tema întunecată #4ade80 (≥ 4,5)', /body\.dark \.chat-ok \{ color: #4ade80; \}/.test(CSS) && minim('#4ade80', FI) >= 4.5, minim('#4ade80', FI).toFixed(2));
 const pereche = [
-  ['iconița semnului RA Insight, deschis: alb pe #7c3aed / #4f46e5', ['#ffffff', '#7c3aed'], ['#ffffff', '#4f46e5'], /\.insp-a \.av \{[^}]*color: #fff; background: linear-gradient\(135deg, #7c3aed, #4f46e5\)/],
-  ['…întunecat: #1e1033 pe #a78bfa / #818cf8', ['#1e1033', '#a78bfa'], ['#1e1033', '#818cf8'], /body\.dark \.insp-a \.av \{ color: #1e1033; background: linear-gradient\(135deg, #a78bfa, #818cf8\)/],
+  ['iconița semnului RA Insight, deschis: negru (#06210F) pe verdele casei #3FE07D / #2BB763', ['#06210F', '#3FE07D'], ['#06210F', '#2BB763'], /\.insp-a \.av \{[^}]*color: #06210F; background: linear-gradient\(135deg, #3FE07D, #2BB763\)/],
+  ['…întunecat: la fel', ['#06210F', '#3FE07D'], ['#06210F', '#2BB763'], /body\.dark \.insp-a \.av \{ color: #06210F; background: linear-gradient\(135deg, #3FE07D, #2BB763\)/],
   ['semnul nostru, deschis: alb pe #15803d / #0f766e', ['#ffffff', '#15803d'], ['#ffffff', '#0f766e'], /\.insp-a \.av\.asf-av \{ color: #fff; background: linear-gradient\(135deg, #15803d, #0f766e\)/],
   ['…întunecat: #06210F pe #3FE07D / #2DD4BF', ['#06210F', '#3FE07D'], ['#06210F', '#2DD4BF'], /body\.dark \.insp-a \.av\.asf-av \{ color: #06210F; background: linear-gradient\(135deg, #3FE07D, #2DD4BF\)/],
-  ['săgeata de trimis la RA Insight: alb pe mov', ['#ffffff', '#7c3aed'], ['#ffffff', '#4f46e5'], /\.chat-trimite \{[^}]*background: linear-gradient\(135deg, #7c3aed, #4f46e5\); color: #fff;/],
+  ['săgeata de trimis la RA Insight: negru pe verdele casei (ca butonul principal)', ['#06210F', '#3FE07D'], ['#06210F', '#2BB763'], /\.chat-trimite \{[^}]*background: linear-gradient\(135deg, #3FE07D, #2BB763\); color: #06210F;/],
+  ['…întunecat: la fel', ['#06210F', '#3FE07D'], ['#06210F', '#2BB763'], /body\.dark \.chat-trimite \{ background: linear-gradient\(135deg, #3FE07D, #2BB763\); color: #06210F; \}/],
+  ['semnul din capul listei RA Insight, deschis: bagheta verde pe negrul siglei', ['#3FE07D', '#0B0E11'], ['#3FE07D', '#0B0E11'], /\.insp-stea \{[^}]*color: #3FE07D; background: #0B0E11; \}/],
+  ['…întunecat: bagheta neagră pe verde', ['#06210F', '#3FE07D'], ['#06210F', '#3FE07D'], /body\.dark \.insp-stea \{ color: #06210F; background: #3FE07D; \}/],
+  ['„NOU" din meniu: litere verzi pe negru (deschis; și pe rândul ales, verde)', ['#3FE07D', '#0B0E11'], ['#3FE07D', '#0B0E11'], /\.nav-nou \{[^}]*background: #0B0E11; color: #3FE07D;/],
+  ['…întunecat: negru pe verde; pe rândul ales, din nou negru cu verde', ['#06210F', '#3FE07D'], ['#3FE07D', '#0B0E11'], /body\.dark \.nav-nou \{ background: #3FE07D; color: #06210F; \}\nbody\.dark \.nav-item\.active \.nav-nou \{ background: #0B0E11; color: #3FE07D; \}/],
   ['…la noi: #06210F pe verde', ['#06210F', '#3FE07D'], ['#06210F', '#2DD4BF'], /\.asf \.chat-trimite, body\.dark \.asf \.chat-trimite \{ background: linear-gradient\(135deg, #3FE07D, #2DD4BF\); color: #06210F; \}/]
 ];
 pereche.forEach(([n, a, b, re]) => { const c = Math.min(contrast(a[0], a[1]), contrast(b[0], b[1])); T(n + ' (iconiță: ≥ 4,5)', re.test(CSS) && c >= 4.5, c.toFixed(2)); });
 // Salutul în degrade: literă mare și groasă (≥ 3 pe fundal), pe ambele capete ale degradeului.
 const salut = [
-  ['salutul RA Insight, deschis (#6d28d9 → #4338ca)', ['#6d28d9', '#4338ca'], FD, /\.insp-salut h2 \{[^}]*background: linear-gradient\(90deg, #6d28d9, #4338ca\)/],
-  ['…întunecat (#c4b5fd → #a5b4fc)', ['#c4b5fd', '#a5b4fc'], FI, /body\.dark \.insp-salut h2 \{[^}]*linear-gradient\(90deg, #c4b5fd, #a5b4fc\)/],
+  ['salutul RA Insight, deschis: din negrul siglei în verde (#0B0E11 → #15803d), ca „R" și „A"', ['#0B0E11', '#15803d'], FD, /\.insp-salut h2 \{[^}]*background: linear-gradient\(90deg, #0B0E11, #15803d\)/],
+  ['…întunecat: din alb în verdele casei (#FFFFFF → #3FE07D)', ['#FFFFFF', '#3FE07D'], FI, /body\.dark \.insp-salut h2 \{[^}]*linear-gradient\(90deg, #FFFFFF, #3FE07D\)/],
   ['salutul nostru, deschis (#15803d → #0f766e)', ['#15803d', '#0f766e'], FD, /\.asf-salut b \{[^}]*linear-gradient\(90deg, #15803d, #0f766e\)/],
   ['…întunecat (#3FE07D → #2DD4BF)', ['#3FE07D', '#2DD4BF'], FI, /body\.dark \.asf-salut b \{[^}]*linear-gradient\(90deg, #3FE07D, #2DD4BF\)/]
 ];
 salut.forEach(([n, capete, fonduri, re]) => { const c = Math.min.apply(null, capete.map((x) => minim(x, fonduri))); T(n + ' — literă mare: ≥ 3', re.test(CSS) && c >= 3, c.toFixed(2)); });
-const icoane = [['iconițele pastilelor RA Insight, deschis (#6d28d9)', '#6d28d9', FD, /\.insp-chip \.ic \{[^}]*color: #6d28d9;/], ['…întunecat (#c4b5fd)', '#c4b5fd', FI, /body\.dark \.insp-chip \.ic \{ color: #c4b5fd;/],
+const icoane = [['iconițele pastilelor RA Insight, deschis (#166534)', '#166534', FD, /\.insp-chip \.ic \{[^}]*color: #166534;/], ['…întunecat (#3FE07D)', '#3FE07D', FI, /body\.dark \.insp-chip \.ic \{ color: #3FE07D;/],
+  ['ANALIZĂ, deschis (negrul textului)', '#0f172a', FD, /\.chat-ins-et\.ai \{ color: var\(--text-primary\); \}/], ['…întunecat (albul textului)', '#FFFFFF', FI, /\.chat-ins-et\.ai \{ color: var\(--text-primary\); \}/],
+  ['„ținut minte din discuție", deschis (#166534)', '#166534', FD, /\.ins-tit \.mem \{ color: #166534; \}/], ['…întunecat (#3FE07D)', '#3FE07D', FI, /body\.dark \.ins-tit \.mem \{ color: #3FE07D; \}/],
+  ['„Vezi pachetele", deschis (#166534)', '#166534', FD, /\.chat-pas\.ins \{ border-color: #16a34a; color: #166534;/], ['…întunecat (#3FE07D)', '#3FE07D', FI, /body\.dark \.chat-pas\.ins \{ border-color: #3FE07D; color: #3FE07D; \}/],
+  ['„din RA Insight" (Istoric rapoarte), deschis (#166534)', '#166534', FD, /\.rh-ins \{[^}]*color: #166534;/], ['…întunecat (#3FE07D)', '#3FE07D', FI, /body\.dark \.rh-ins \{ color: #3FE07D;/],
   ['iconițele pastilelor noastre, deschis (#166534)', '#166534', FD, /\.chat-urm\.chat-start button i \{[^}]*color: #166534;/], ['…întunecat (#86efac)', '#86efac', FI, /body\.dark \.chat-urm\.chat-start button i \{ color: #86efac;/]];
 icoane.forEach(([n, cul, fonduri, re]) => { const c = minim(cul, fonduri); T(n + ' (≥ 4,5)', re.test(CSS) && c >= 4.5, c.toFixed(2)); });
+// 05.11 (Alin: „din movul ăsta, în culorile brandului"): niciun mov rămas în regulile lui RA Insight (secțiunea, chatul, „Azi la
+// tine", paginile ramurilor, pachetele, meniul, Istoric rapoarte, „Rezumă") și nici în blocul paginii. Movul rămâne doar în afara lui
+// (comutatorul Fondator / Partener, stările cererilor, rolurile).
+const MOV = /#6d28d9|#7c3aed|#8b5cf6|#a78bfa|#c4b5fd|#5b21b6|#818cf8|#4f46e5|#a5b4fc|#4338ca|#1e1033|#160b2e|#1b1036|var\(--purple\b|rgba\(\s*124,\s*58,\s*237|rgba\(\s*167,\s*139,\s*250|rgba\(\s*109,\s*40,\s*217/i;
+const ALE_INSIGHT = /\.insp|\.chat-|\.ins-|\.azi-|\.sdp|\.nav-nou|#nav-insight|\.rh-ins|\.rep-rezumat|\.pkc-|\.rau-ra|#rax-main-fab|\.asf/;
+const cuMov = []; CSS.replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, corp) => { if (ALE_INSIGHT.test(sel) && MOV.test(corp)) cuMov.push(sel.trim().slice(-60)); return m; });
+T('niciun mov în regulile lui RA Insight (culorile siglei: verdele casei + negrul „cernelii")', cuMov.length === 0, cuMov.slice(0, 5).join(' | '));
+T('…nici în blocul paginii (secțiunea RA Insight)', INSP.length > 1000 && !MOV.test(INSP), (INSP.match(MOV) || [''])[0]);
+T('…pe tema închisă butonul de trimis GOL rămâne gri („body.dark .chat-trimite" are 2 clase + body și bătea „.chat-trimite.gol")', /body\.dark \.chat-trimite\.gol \{ background: var\(--bg-dark\); color: var\(--text-secondary\); \}/.test(CSS));
 
 (async () => {
   console.log('\n6. În browser: cuvintele se aprind sub o secundă; cu „mai puțină mișcare", pe loc');

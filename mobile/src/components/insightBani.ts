@@ -158,7 +158,7 @@ export function randFirma(x: any, fx: number) {
   return {
     id: x.id, nume: String(x.name || ''),
     pachet: x.pachet ? String(x.pachet.nume) : 'pe cont (regula veche)', vechi: !x.pachet,
-    bara: x.fond ? (pct || 0) : null, baraTon: x.epuizat ? 'bad' : ((pct || 0) >= 80 ? 'warn' : 'mov'),
+    bara: x.fond ? (pct || 0) : null, baraTon: x.epuizat ? 'bad' : ((pct || 0) >= 80 ? 'warn' : 'ok'),
     folosite: x.fond ? x.used + ' din ' + x.fond : x.used + ' · fără limită',
     instant: String(x.instant || 0),
     sursa: x.sursa && x.sursa.intrebari ? x.sursa.intrebari + ' · ' + lei(x.sursa.costLei, fx) : '—',

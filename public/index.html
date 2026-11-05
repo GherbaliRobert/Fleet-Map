@@ -12765,7 +12765,7 @@ const pozitii = await r.json();</code></pre>
         ov.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px;';
         var card = el('div');
         card.style.cssText = 'background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 24px 64px rgba(0,0,0,.4);';
-        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="fas fa-note-sticky" style="color:var(--purple);font-size:18px;"></i><b style="font-size:16px;">Notițele firmei pentru RA Insight</b></div>' +
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="fas fa-note-sticky ins-ic" style="font-size:18px;"></i><b style="font-size:16px;">Notițele firmei pentru RA Insight</b></div>' +
           '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Motorina e 7,30 lei.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>';
         var ta = el('textarea'); ta.value = j.text || ''; ta.maxLength = j.max || 1500; ta.rows = 8;
         ta.style.cssText = 'width:100%;border-radius:10px;border:1px solid var(--border-light);background:var(--bg-dark);color:var(--text-primary);padding:10px 12px;font:inherit;font-size:13.5px;line-height:1.5;resize:vertical;';
@@ -30338,7 +30338,7 @@ const pozitii = await r.json();</code></pre>
         var cost = x.pachet ? (x.plasa ? x.plasa.costLei : 0) : x.costEur * fx;
         var raman = x.ramanLei != null ? x.ramanLei : (x.venitLei - cost);
         var pct = x.pct == null ? null : Math.min(100, x.pct);
-        var bara = x.fond ? '<span class="aiu-bar"><i style="width:' + (pct || 0) + '%;background:' + (x.epuizat ? 'var(--red)' : (pct >= 80 ? 'var(--orange)' : 'var(--purple)')) + ';"></i></span>' + x.used + ' din ' + x.fond : (x.used + ' · fără limită');
+        var bara = x.fond ? '<span class="aiu-bar"><i style="width:' + (pct || 0) + '%;background:' + (x.epuizat ? 'var(--red)' : (pct >= 80 ? 'var(--orange)' : 'var(--accent)')) + ';"></i></span>' + x.used + ' din ' + x.fond : (x.used + ' · fără limită');
         var pk = x.pachet ? esc(x.pachet.nume) : '<span style="color:var(--text-muted);">pe cont (regula veche)</span>';
         return '<tr class="aiu-tr" onclick="raxAiRand(' + x.id + ')"><td><i class="fas fa-chevron-right aiu-ch" id="aiu-ch-' + x.id + '"></i><b>' + esc(x.name) + '</b></td>'
           + '<td>' + pk + '</td><td class="n">' + bara + '</td><td class="n">' + (x.instant || 0) + '</td>'
@@ -30523,7 +30523,7 @@ const pozitii = await r.json();</code></pre>
       var ov = document.getElementById('rax-pm-overlay');
       if (ov) return ov;
       ov = document.createElement('div'); ov.className = 'rax-overlay'; ov.id = 'rax-pm-overlay';
-      ov.innerHTML = '<div class="rax-card pm-card"><div class="rax-head"><h3><i class="fas fa-flask" style="color:var(--purple)"></i> Proba modelelor</h3>'
+      ov.innerHTML = '<div class="rax-card pm-card"><div class="rax-head"><h3><i class="fas fa-flask ins-ic"></i> Proba modelelor</h3>'
         + '<button class="rax-x" onclick="raxProbaModeleInchide()" aria-label="Închide">&times;</button></div><div class="rax-body" id="pm-corp"></div></div>';
       document.body.appendChild(ov);
       return ov;

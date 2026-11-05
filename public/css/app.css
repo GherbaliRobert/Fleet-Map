@@ -3926,9 +3926,11 @@ body:not(.dark) .rax-gi-pus.partiala > i, body:not(.dark) .rax-gi-pus.partiala .
 .ins-extra:empty { display: none; }
 /* „Am înțeles" = titlul scurt al răspunsului (macheta „mai simplu", 15.10): fără bule. --text-muted ieșea 4,3 pe tema deschisă. */
 .ins-tit { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
-.ins-tit .mem { color: #6d28d9; }
-body.dark .ins-tit .mem { color: var(--purple); }
+.ins-tit .mem { color: #166534; }
+body.dark .ins-tit .mem { color: #3FE07D; }
 .ins-tit .mem i { font-size: 10.5px; margin-right: 4px; }
+.ins-ic { color: #15803d; }
+body.dark .ins-ic { color: #3FE07D; }
 .ins-alege { display: flex; flex-wrap: wrap; gap: 6px; }
 .ins-alege button { font: inherit; font-size: 12px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .ins-alege button i { color: var(--text-muted); margin-right: 6px; }
@@ -3948,7 +3950,10 @@ body.dark .ins-tit .mem { color: var(--purple); }
 .insp.st-ascuns { grid-template-columns: minmax(0, 1fr); }
 .insp.st-ascuns .insp-st { display: none; }
 .insp-umbra { display: none; }
-.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, transparent); }
+/* Culorile RA Insight = ale siglei RA Track (Alin, 05.11: „din movul ăsta, în culorile brandului"): verdele casei + negrul
+   „cernelii" (albul pe tema închisă, ca „R"-ul din siglă). Verdele pe tema deschisă, ca text, e #166534 (#3FE07D pe alb = 1,7). */
+.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; color: #3FE07D; background: #0B0E11; }
+body.dark .insp-stea { color: #06210F; background: #3FE07D; }
 /* stânga */
 .insp-st { background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .insp-st-cap { display: flex; align-items: center; gap: 4px; padding: 12px 10px 6px 14px; }
@@ -4012,17 +4017,18 @@ body.dark .insp-fond.w { color: #fbbf24; }
 .insp-msgs { overflow-y: auto; padding: 8px max(24px, calc((100% - 780px) / 2)) 12px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
 .insp-u { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-start; gap: 2px; }
 /* Chatul inteligent (Alin, 02.11: „1. da, 2. da" — macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3): întrebarea omului pe
-   culoarea chatului (mov la RA Insight, verde la asistentul nostru, mai jos), semnul = cerc colorat cu steluța, care se învârte cât lucrează. */
-.insp-u .b { background: color-mix(in srgb, #7c3aed 10%, var(--bg-darkest)); color: var(--text-primary); border-radius: 20px 20px 6px 20px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-width: 0; }
-body.dark .insp-u .b { background: color-mix(in srgb, #a78bfa 15%, var(--bg-darkest)); }
+   culoarea chatului (verdele casei la RA Insight din 05.11, verde-turcoaz la asistentul nostru, mai jos), semnul = cerc colorat cu
+   steluța, care se învârte cât lucrează. */
+.insp-u .b { background: color-mix(in srgb, #3FE07D 16%, var(--bg-darkest)); color: var(--text-primary); border-radius: 20px 20px 6px 20px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-width: 0; }
+body.dark .insp-u .b { background: color-mix(in srgb, #3FE07D 13%, var(--bg-darkest)); }
 .insp-u-act { display: flex; gap: 2px; padding-top: 4px; opacity: 0; transition: opacity .12s; }
 .insp-u:hover .insp-u-act, .insp-u:focus-within .insp-u-act { opacity: 1; }
 @media (hover: none) { .insp-u-act { opacity: 1; } }
 .insp-a { align-self: stretch; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
-.insp-a .av { position: relative; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #fff; background: linear-gradient(135deg, #7c3aed, #4f46e5); box-shadow: 0 0 0 4px color-mix(in srgb, #7c3aed 14%, transparent); margin-top: 1px; }
-body.dark .insp-a .av { color: #1e1033; background: linear-gradient(135deg, #a78bfa, #818cf8); box-shadow: 0 0 0 4px color-mix(in srgb, #a78bfa 16%, transparent); }
-.insp-a .av::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid transparent; border-top-color: #7c3aed; border-right-color: #4f46e5; opacity: 0; transition: opacity .2s; }
-body.dark .insp-a .av::before { border-top-color: #a78bfa; border-right-color: #818cf8; }
+.insp-a .av { position: relative; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #06210F; background: linear-gradient(135deg, #3FE07D, #2BB763); box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 22%, transparent); margin-top: 1px; }
+body.dark .insp-a .av { color: #06210F; background: linear-gradient(135deg, #3FE07D, #2BB763); box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 16%, transparent); }
+.insp-a .av::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid transparent; border-top-color: #16a34a; border-right-color: #0B0E11; opacity: 0; transition: opacity .2s; }
+body.dark .insp-a .av::before { border-top-color: #3FE07D; border-right-color: #FFFFFF; }
 .insp-a .av.lucreaza::before { opacity: 1; animation: chat-roata 1s linear infinite; }
 @keyframes chat-roata { to { transform: rotate(360deg); } }
 /* „Mă gândesc…" cât lucrează (luminează de la stânga la dreapta); textul răspunsului NOU apare cuvânt cu cuvânt, sub o secundă, iar ce
@@ -4050,17 +4056,17 @@ body.dark .insp-a .av::before { border-top-color: #a78bfa; border-right-color: #
 .insp-a .ins-alege { margin-top: 8px; }
 .insp-surse { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .insp-salut { width: 100%; max-width: 780px; margin: 0 auto; text-align: center; color: var(--text-secondary); }
-.insp-salut h2 { width: fit-content; max-width: 100%; font-size: 28px; font-weight: 800; color: #6d28d9; margin: 0 auto 18px; background: linear-gradient(90deg, #6d28d9, #4338ca); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-body.dark .insp-salut h2 { color: #c4b5fd; background: linear-gradient(90deg, #c4b5fd, #a5b4fc); -webkit-background-clip: text; background-clip: text; }
+.insp-salut h2 { width: fit-content; max-width: 100%; font-size: 28px; font-weight: 800; color: #0B0E11; margin: 0 auto 18px; background: linear-gradient(90deg, #0B0E11, #15803d); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+body.dark .insp-salut h2 { color: #FFFFFF; background: linear-gradient(90deg, #FFFFFF, #3FE07D); -webkit-background-clip: text; background-clip: text; }
 .insp-gol-mij { overflow-y: auto; min-height: 0; display: flex; align-items: center; padding: 24px; grid-row: 1 / -1; }
 /* Trei butoane scurte sub casetă (macheta „mai simplu"), în locul celor patru cartonașe. */
 .insp-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
 .insp-chip { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px; font-weight: 700; color: var(--text-primary); background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 14px 6px 7px; cursor: pointer; transition: border-color .15s, transform .15s; }
-.insp-chip:hover { border-color: #7c3aed; transform: translateY(-1px); }
-body.dark .insp-chip:hover { border-color: #a78bfa; }
-/* Întrebările gata făcute: o pastilă cu iconița într-un cerc (mov la RA Insight, verde la asistentul nostru — `.chat-start`). */
-.insp-chip .ic { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 11px; color: #6d28d9; background: color-mix(in srgb, #7c3aed 12%, transparent); }
-body.dark .insp-chip .ic { color: #c4b5fd; background: color-mix(in srgb, #a78bfa 18%, transparent); }
+.insp-chip:hover { border-color: #16a34a; transform: translateY(-1px); }
+body.dark .insp-chip:hover { border-color: #3FE07D; }
+/* Întrebările gata făcute: o pastilă cu iconița într-un cerc verde (al casei; la asistentul nostru tot verde — `.chat-start`). */
+.insp-chip .ic { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 11px; color: #166534; background: color-mix(in srgb, #3FE07D 22%, transparent); }
+body.dark .insp-chip .ic { color: #3FE07D; background: color-mix(in srgb, #3FE07D 15%, transparent); }
 .insp-scrie { padding: 6px max(24px, calc((100% - 780px) / 2)) 12px; }
 .insp-btn { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 9px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .insp-btn i { color: var(--text-muted); }
@@ -4088,8 +4094,10 @@ body.dark .chat-sursa i { color: var(--accent); }
 .chat-pas { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 99px; border: 1px solid var(--border-light); background: var(--bg-panel); color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; }
 .chat-pas i { color: var(--text-secondary); }
 .chat-pas:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
-.chat-pas.ins { border-color: var(--purple); color: var(--purple); background: transparent; }
-.chat-pas.ins i { color: var(--purple); }
+.chat-pas.ins { border-color: #16a34a; color: #166534; background: transparent; }
+.chat-pas.ins i { color: #166534; }
+body.dark .chat-pas.ins { border-color: #3FE07D; color: #3FE07D; }
+body.dark .chat-pas.ins i { color: #3FE07D; }
 /* Contorul pachetului, lângă butonul de trimis: „34 din 50" / „îți rămân 38" */
 .chat-cnt { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--text-secondary); white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
 .chat-cnt + .chat-trimite { margin-left: 4px; }
@@ -4121,11 +4129,12 @@ body.dark .insp-pk-tau { background: var(--accent); color: #06210F; }
 body.dark .insp-pk-c li i { color: var(--accent); }
 .insp-pk-c li.nu { color: var(--text-muted); }
 .insp-pk-c li.nu i { color: var(--text-muted); }
-/* Pachetele, refăcute pe 27.10: eticheta „De aici: întrebări libere cu AI" (mov), cifrele de sus, ce adaugă față de pachetul
-   dinainte, tabelul cu tot ce include fiecare și „În toate pachetele". Mov = de aici începe AI-ul (coloana Basic, ușor nuanțată). */
-.insp-pk-c.ai { border-color: color-mix(in srgb, var(--purple) 45%, var(--border)); }
-.insp-pk-eti { display: inline-block; margin: 0 0 6px; font-size: 11px; font-weight: 800; padding: 1px 9px; border-radius: 999px; background: #6d28d9; color: #fff; }
-body.dark .insp-pk-eti { background: var(--purple); color: #160B2E; }
+/* Pachetele, refăcute pe 27.10: eticheta „De aici: întrebări libere cu AI", cifrele de sus, ce adaugă față de pachetul dinainte,
+   tabelul cu tot ce include fiecare și „În toate pachetele". Din 05.11 (culorile siglei): de aici începe AI-ul = NEGRUL siglei
+   (albul pe tema închisă), ca eticheta ANALIZĂ din discuție; verdele rămâne „Pachetul tău". Coloana Basic, ușor nuanțată. */
+.insp-pk-c.ai { border-color: color-mix(in srgb, var(--text-primary) 30%, var(--border)); }
+.insp-pk-eti { display: inline-block; margin: 0 0 6px; font-size: 11px; font-weight: 800; padding: 1px 9px; border-radius: 999px; background: #0B0E11; color: #3FE07D; }
+body.dark .insp-pk-eti { background: #FFFFFF; color: #0B0E11; }
 .insp-pk-cifre { margin: 0 0 10px; border-top: 1px solid var(--border); }
 .insp-pk-cifre > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .insp-pk-cifre dt { color: var(--text-secondary); }
@@ -4133,8 +4142,7 @@ body.dark .insp-pk-eti { background: var(--purple); color: #160B2E; }
 .insp-pk-cifre dd.nu { color: var(--text-muted); font-weight: 600; }
 .insp-pk-plus { margin: 2px 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #166534; }
 body.dark .insp-pk-plus { color: var(--accent); }
-.insp-pk-c.ai .insp-pk-plus { color: #6d28d9; }
-body.dark .insp-pk-c.ai .insp-pk-plus { color: var(--purple); }
+.insp-pk-c.ai .insp-pk-plus, body.dark .insp-pk-c.ai .insp-pk-plus { color: var(--text-primary); }
 .insp-pk-h { margin: 18px 0 8px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
 .insp-pk-tab { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); }
 .insp-pk-tab table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
@@ -4148,7 +4156,7 @@ body.dark .insp-pk-tab thead th.al { box-shadow: inset 0 -2px 0 var(--accent); }
 .insp-pk-tab tbody th small, .insp-pk-tab td small { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 500; color: var(--text-secondary); line-height: 1.4; }
 .insp-pk-tab tr.g th { background: var(--bg-panel); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); padding-block: 7px; }
 .insp-pk-tab td.v { text-align: center; font-weight: 700; width: 15%; }
-.insp-pk-tab td.v.ai, .insp-pk-tab th.p.ai { background: color-mix(in srgb, var(--purple) 8%, transparent); }
+.insp-pk-tab td.v.ai, .insp-pk-tab th.p.ai { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
 .insp-pk-tab td.v i { color: #166534; }
 body.dark .insp-pk-tab td.v i { color: var(--accent); }
 .insp-pk-tab td.v .nu { color: var(--text-muted); font-weight: 600; }
@@ -4197,8 +4205,8 @@ body.dark .chat-pas.insp-pt-ok { background: var(--accent); border-color: var(--
 .pkc-cap { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .pkc-cap h2 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text-primary); }
 /* Macheta din 15.10: sus, unul-două rânduri cu bara (în locul cartonașelor); pe rând „Fără limită" / „Cel mult … pe lună". */
-.pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #6d28d9; background: color-mix(in srgb, var(--purple) 14%, transparent); }
-body.dark .pkc-pill { color: var(--purple); }
+.pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #166534; background: color-mix(in srgb, #3FE07D 20%, transparent); }
+body.dark .pkc-pill { color: #3FE07D; background: color-mix(in srgb, #3FE07D 15%, transparent); }
 .pkc-rez { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 4px; font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
 .pkc-rez-2 { font-weight: 600; color: var(--text-secondary); font-size: 12.5px; }
 .pkc-bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin-top: 6px; }
@@ -4277,8 +4285,8 @@ body.dark .aiu-se-m.rau { color: #f87171; }
 .rau-pk { margin-left: 6px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: #166534; cursor: pointer; }
 body.dark .rau-pk { color: var(--accent); }
 /* Eticheta „RA Insight" pe rândul omului (macheta din 15.10): pe un pachet, conturile se schimbă doar din „Pachet și conturi". */
-.rau-ra { margin-left: 6px; font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; color: #6d28d9; background: color-mix(in srgb, var(--purple) 14%, transparent); white-space: nowrap; }
-body.dark .rau-ra { color: var(--purple); }
+.rau-ra { margin-left: 6px; font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; color: #166534; background: color-mix(in srgb, #3FE07D 20%, transparent); white-space: nowrap; }
+body.dark .rau-ra { color: #3FE07D; background: color-mix(in srgb, #3FE07D 15%, transparent); }
 .chat-urm { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 0 42px; }
 /* „De verificat" sub un răspuns RA Insight (cifre.js): textul pe culoarea textului (contrast sigur pe ambele teme), chihlimbarul doar
    pe chenar și pe iconiță. Alin, 08.10: „să aibă grijă cumva să nu dea greșit". */
@@ -4298,8 +4306,8 @@ body.dark .chat-prob.galben .chat-prob-t i { color: #fbbf24; }
 .chat-ok { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: #166534; }   /* 02.11: #15803d ieșea 4,46 pe tema deschisă */
 body.dark .chat-ok { color: #4ade80; }
 .chat-nota { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
-/* Insigna răspunsului, ca antet (Alin, 19.10: „varianta 1 — antetul"): numele, eticheta cu chenar subțire (ANALIZĂ mov /
-   INSTANT verde, fără fundal colorat) și, gri, detaliul. Verdele pe tema deschisă e #166534: #15803d pe fundalul discuției
+/* Insigna răspunsului, ca antet (Alin, 19.10: „varianta 1 — antetul"): numele, eticheta cu chenar subțire (ANALIZĂ în negrul
+   siglei — alb pe tema închisă — din 05.11, până atunci mov / INSTANT verde, fără fundal colorat) și, gri, detaliul. Verdele pe tema deschisă e #166534: #15803d pe fundalul discuției
    iese sub 4,5 la literele mici ale etichetei. */
 .chat-ins-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 6px; font-size: 13px; line-height: 1.3; }
 .chat-ins-cap .nm { font-weight: 800; color: var(--text-primary); }
@@ -4307,11 +4315,10 @@ body.dark .chat-ok { color: #4ade80; }
 /* Chatul inteligent (02.11): eticheta aleasă pe 19.10 (chenar subțire, fără fundal) primește DOAR iconița ei — fulgerul la INSTANT,
    steluța la ANALIZĂ (Font Awesome, din CSS). */
 .chat-ins-et::before { font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 9px; letter-spacing: 0; }
-.chat-ins-et.ai { color: #6d28d9; }
+.chat-ins-et.ai { color: var(--text-primary); }
 .chat-ins-et.ai::before { content: '\e2ca'; }
 .chat-ins-et.instant { color: #166534; }
 .chat-ins-et.instant::before { content: '\f0e7'; }
-body.dark .chat-ins-et.ai { color: #c4b5fd; }
 body.dark .chat-ins-et.instant { color: #86efac; }
 .chat-ins-det { font-size: 12px; font-weight: 600; color: var(--text-secondary); }   /* --text-muted pe fundalul discuției = 4,23: sub 4,5 */
 .sdp-verif td { font-size: 12px; color: var(--text-primary); background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b; padding: 5px 10px !important; }
@@ -4329,19 +4336,21 @@ body.dark .chat-urm.chat-start button:hover { border-color: #3FE07D; }
 body.dark .chat-urm.chat-start button i { color: #86efac; background: color-mix(in srgb, #3FE07D 15%, transparent); }
 .chat-caseta { background: var(--bg-panel); border: 1.5px solid var(--border-light); border-radius: 24px; padding: 10px 10px 8px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.08); text-align: left; transition: box-shadow .2s; }
 body.dark .chat-caseta { box-shadow: 0 8px 28px rgba(0,0,0,.4); }
-/* Chatul inteligent (02.11): cât scrii, caseta primește marginea în degrade a chatului (mov la RA Insight, verde la noi) și un halou. */
-.chat-caseta:focus-within { border-color: transparent; background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #7c3aed, #4f46e5) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #7c3aed 12%, transparent), 0 8px 28px rgba(0,0,0,.08); }
-body.dark .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #a78bfa, #818cf8) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #a78bfa 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
+/* Chatul inteligent (02.11): cât scrii, caseta primește marginea în degrade a chatului (verdele casei la RA Insight, verde-turcoaz la
+   noi) și un halou. */
+.chat-caseta:focus-within { border-color: transparent; background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #3FE07D, #15803d) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 20%, transparent), 0 8px 28px rgba(0,0,0,.08); }
+body.dark .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #3FE07D, #2BB763) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
 .chat-caseta textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 14.5px; line-height: 1.45; max-height: 140px; padding: 4px 0 10px; }
 .chat-caseta textarea::placeholder { color: var(--text-secondary); }
 .chat-unelte { display: flex; align-items: center; gap: 6px; }
 .chat-un { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .chat-un i { font-size: 12px; color: var(--text-muted); }
 .chat-un:hover { color: var(--text-primary); border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light)); }
-.chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; transition: transform .15s; }
+.chat-trimite { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #3FE07D, #2BB763); color: #06210F; display: grid; place-items: center; font-size: 15px; cursor: pointer; flex: none; transition: transform .15s; }
 .chat-trimite:not(.gol):hover { transform: translateY(-1px); }
-body.dark .chat-trimite { background: linear-gradient(135deg, #a78bfa, #818cf8); color: #1e1033; }
+body.dark .chat-trimite { background: linear-gradient(135deg, #3FE07D, #2BB763); color: #06210F; }
 .chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-light); cursor: default; }
+body.dark .chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); }   /* 05.11: „body.dark .chat-trimite" (2 clase + body) bătea „.chat-trimite.gol" — pe tema închisă butonul gol arăta plin */
 .chat-trimite:disabled { opacity: .6; }
 .chat-jos { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: none; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.18); cursor: pointer; z-index: 2; }
 .chat-jos.vizibil { display: grid; }
@@ -4419,7 +4428,8 @@ body:not(.dark) .sdp-tile.mare .et { color: #9a3412; }
 @media (min-width: 1700px) { .sdp-doua { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } }
 .sdp-sect { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px; min-width: 0; }
 .sdp-sect h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
-.sdp-sect h3 i, .sdp-cum summary i { color: var(--purple); margin-right: 4px; }
+.sdp-sect h3 i, .sdp-cum summary i { color: #15803d; margin-right: 4px; }
+body.dark .sdp-sect h3 i, body.dark .sdp-cum summary i { color: #3FE07D; }
 .sdp-scroll { overflow-x: auto; max-width: 100%; }
 .sdp-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .sdp-tab th { text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: bottom; }
@@ -4445,8 +4455,10 @@ a.sdp-loc:hover span { text-decoration: underline; }
 .sdp-ora b { display: block; width: 100%; max-width: 22px; border-radius: 4px 4px 0 0; background: var(--border-light); }
 .sdp-ora b.sus { background: var(--orange); }
 .sdp-ora span { font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
-.sdp-recbox { border: 2px solid var(--purple); border-radius: 14px; padding: 12px 16px; background: color-mix(in srgb, var(--purple) 7%, var(--bg-panel)); }
-.sdp-recbox > .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); margin-bottom: 4px; }
+.sdp-recbox { border: 2px solid #16a34a; border-radius: 14px; padding: 12px 16px; background: color-mix(in srgb, #3FE07D 9%, var(--bg-panel)); }
+body.dark .sdp-recbox { border-color: #3FE07D; background: color-mix(in srgb, #3FE07D 8%, var(--bg-panel)); }
+.sdp-recbox > .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #166534; margin-bottom: 4px; }
+body.dark .sdp-recbox > .et { color: #3FE07D; }
 .sdp-rec { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: var(--text-primary); padding: 6px 0; }
 .sdp-rec i { margin-top: 3px; color: var(--text-muted); }
 .sdp-cum summary { cursor: pointer; font-size: 14px; font-weight: 800; color: var(--text-primary); }
@@ -4508,10 +4520,13 @@ body:not(.dark) .sdp .sdp-chip.bun, body:not(.dark) .sdp-tab td.bun, body:not(.d
   .sdp-dr .sdp-sel { flex: 1 1 140px; }
   .sdp-dr .insp-btn .et { display: none; }
 }
-/* Rândul din meniu: RA Insight are eticheta „NOU" cât e nou. */
-.nav-nou { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; background: var(--purple); color: #fff; border-radius: 999px; padding: 2px 7px; }
-body.dark .nav-nou { color: #1b1036; }
-#nav-insight i { color: var(--purple); }
+/* Rândul din meniu: RA Insight are eticheta „NOU" cât e nou — în culorile siglei: negru cu litere verzi (pe tema închisă verde
+   cu litere negre; pe rândul ales, verde, eticheta rămâne neagră, altfel n-ar mai fi văzută). */
+.nav-nou { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; background: #0B0E11; color: #3FE07D; border-radius: 999px; padding: 2px 7px; }
+body.dark .nav-nou { background: #3FE07D; color: #06210F; }
+body.dark .nav-item.active .nav-nou { background: #0B0E11; color: #3FE07D; }
+#nav-insight i { color: #15803d; }
+body.dark #nav-insight i { color: #3FE07D; }
 #nav-insight.active i { color: inherit; }
 
 /* Proba modelelor (Administrare → Utilizare RA Insight, doar pentru noi): răspunsurile modelelor, una lângă alta. */
@@ -4767,8 +4782,8 @@ body.dark .ver-noua > i { color: #3FE07D; }
 button.azi-r { cursor: pointer; border-radius: 0; }
 button.azi-r:hover { background: var(--bg-dark); }
 .azi-sg { color: var(--text-secondary); font-size: 11px; }
-.azi-dece { font-size: 12px; font-weight: 800; color: #6d28d9; white-space: nowrap; }
-body.dark .azi-dece { color: var(--purple); }
+.azi-dece { font-size: 12px; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
+.azi-dece::before { content: '\e2ca'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 9.5px; margin-right: 5px; }
 .azi-cap + .azi-r { border-top: none; }
 .azi-st { width: 9px; height: 9px; border-radius: 50%; background: #15803d; box-shadow: 0 0 0 3px color-mix(in srgb, #15803d 18%, transparent); }
 .azi-st.r { background: #dc2626; box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 18%, transparent); } .azi-st.w { background: #d97706; box-shadow: 0 0 0 3px color-mix(in srgb, #d97706 18%, transparent); } .azi-st.b { background: #2563eb; box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent); }
@@ -4791,14 +4806,13 @@ body.dark .chat-rap-n { border-left-color: #fbbf24; }
 .chat-rap-b .chat-pas { margin: 0; }
 .chat-pas.chat-rap-dg { background: var(--accent); border-color: var(--accent); color: #06210F; }
 .chat-pas.chat-rap-dg i { color: #06210F; }
-#rax-main-fab.are-nou::after { content: ''; position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #7c3aed; box-shadow: 0 0 0 2px var(--bg-panel); }
-body.dark #rax-main-fab.are-nou::after { background: #a78bfa; }
-.rh-ins { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #6d28d9; background: rgba(124,58,237,.10); border: 1px solid rgba(124,58,237,.35); border-radius: 6px; padding: 2px 6px; vertical-align: middle; white-space: nowrap; }
-body.dark .rh-ins { color: #c4b5fd; background: rgba(167,139,250,.14); border-color: rgba(167,139,250,.4); }
-.rep-rezumat { margin: 0 0 12px; padding: 10px 14px; background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid #7c3aed; border-radius: 8px; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
-body.dark .rep-rezumat { border-left-color: #a78bfa; }
+#rax-main-fab.are-nou::after { content: ''; position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; background: #0B0E11; box-shadow: 0 0 0 2px var(--bg-panel); }
+.rh-ins { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #166534; background: rgba(63,224,125,.16); border: 1px solid rgba(22,163,74,.45); border-radius: 6px; padding: 2px 6px; vertical-align: middle; white-space: nowrap; }
+body.dark .rh-ins { color: #3FE07D; background: rgba(63,224,125,.12); border-color: rgba(63,224,125,.4); }
+.rep-rezumat { margin: 0 0 12px; padding: 10px 14px; background: var(--bg-dark); border: 1px solid var(--border); border-left: 3px solid #16a34a; border-radius: 8px; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
+body.dark .rep-rezumat { border-left-color: #3FE07D; }
 .rep-rezumat-t { font-weight: 800; margin-bottom: 4px; color: var(--text-primary); }
-.rep-rezumat-t i { color: #6d28d9; margin-right: 4px; }
+.rep-rezumat-t i { color: #15803d; margin-right: 4px; }
 
 /* ── Pasul 2 (22.10; macheta M1, M2, M4, M5): cartonașul „Trec șoferul pe…", „Gata" cu „Anulează", „Propunere ›" din „Azi la
    tine" și pagina „Șoferi pe mașini". Textul pe --text-primary / --text-secondary; culorile pe dungi, iconițe și chenare, cu
@@ -4881,12 +4895,12 @@ body.dark .asf .chat-ok { color: #4ade80; }
   .asf .bub .azi-r .azi-prop { grid-column: 2; justify-self: start; }
 }
 .chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; max-width: 680px; }
-.chat-prop { border: 1px solid var(--border); border-left: 3px solid #6d28d9; border-radius: 12px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 10px; }
-body.dark .chat-prop { border-left-color: #a78bfa; }
+.chat-prop { border: 1px solid var(--border); border-left: 3px solid #16a34a; border-radius: 12px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 10px; }
+body.dark .chat-prop { border-left-color: #3FE07D; }
 .chat-prop.inchis { background: var(--bg-dark); }
 .chat-prop-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); font-size: 14.5px; flex-wrap: wrap; }
-.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, #6d28d9 13%, transparent); color: #6d28d9; font-size: 12px; flex: none; }
-body.dark .chat-prop-h .ic { color: #c4b5fd; background: rgba(167,139,250,.16); }
+.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, #3FE07D 20%, transparent); color: #166534; font-size: 12px; flex: none; }
+body.dark .chat-prop-h .ic { color: #3FE07D; background: rgba(63,224,125,.15); }
 .chat-prop-tit { min-width: 0; overflow-wrap: anywhere; }
 .chat-prop-st { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
 .chat-prop-st i { margin-right: 4px; color: var(--text-secondary); }
@@ -4948,7 +4962,7 @@ body.dark .ssm-s.w { color: #fbbf24; } body.dark .ssm-s.r { color: #f87171; }
 .ssm-jos .chat-pas { margin: 0; }
 .ssm-jos-n { font-size: 12px; color: var(--text-secondary); flex: 1 1 260px; line-height: 1.45; }
 @media (max-width: 640px) { .chat-prop-sch { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .chat-prop-sch .l { margin-top: 6px; } }
-body.dark .rep-rezumat-t i { color: #a78bfa; }
+body.dark .rep-rezumat-t i { color: #3FE07D; }
 /* RA Drive (fosta „Safe Drive & costuri", 15.10): numele scurt și subtitlul lui, în stânga și în capul paginii. */
 .insp-ram-sub { margin-left: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
 .sdp-cap h2 .sdp-sub { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }

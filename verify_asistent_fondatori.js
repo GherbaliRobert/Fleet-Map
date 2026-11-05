@@ -230,9 +230,9 @@ const perechi = [
 ];
 perechi.forEach(([n, a, b]) => T(n + (a && b ? ' (' + contrast(a, b).toFixed(2) + ')' : ''), !!(a && b) && contrast(a, b) >= 4.5, a + ' pe ' + b));
 // Chatul inteligent (02.11): semnul e un cerc în degradeul verde al casei (steluța, în locul servietei) — tot verde, nu mov ca RA Insight.
-T('avatarul asistentului e verde (al casei), pe ambele teme — nu mov ca RA Insight', /\.insp-a \.av\.asf-av \{ color: #fff; background: linear-gradient\(135deg, #15803d, #0f766e\);/.test(css)
+T('avatarul asistentului e verde-turcoaz, pe ambele teme — RA Insight are verdele casei (05.11), fără mov', /\.insp-a \.av\.asf-av \{ color: #fff; background: linear-gradient\(135deg, #15803d, #0f766e\);/.test(css)
   && /body\.dark \.insp-a \.av\.asf-av \{ color: #06210F; background: linear-gradient\(135deg, #3FE07D, #2DD4BF\);/.test(css)
-  && /\.insp-a \.av \{[^}]*background: linear-gradient\(135deg, #7c3aed, #4f46e5\)/.test(css));
+  && /\.insp-a \.av \{[^}]*background: linear-gradient\(135deg, #3FE07D, #2BB763\)/.test(css));
 T('pagina e întinsă pe tot ecranul, ca RA Insight', /#asistent-view\.as-view \{ padding: 0; align-items: stretch; overflow: hidden; \}/.test(css));
 T('pe telefon: cifrele pe două coloane, butonul fiecărui rând sub text', /@media \(max-width: 600px\) \{\s*\.asf-cif \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(css) && /\.asf \.bub \.azi-r \.azi-prop \{ grid-column: 2;/.test(css));
 T('regulile noi nu ating „Azi la tine" al clienților (toate sub .asf)', !/^\.insp-a \.bub \.azi-r/m.test(css) && /^\.asf \.azi-st\.n/m.test(css));

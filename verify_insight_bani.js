@@ -422,7 +422,7 @@ function verifica(nume, d) {
     T(e + ' · pachetul', c(1) === fara(r.pachet), c(1) + ' // ' + r.pachet);
     T(e + ' · întrebările', c(2) === fara(r.folosite), c(2) + ' // ' + r.folosite);
     const barW = /<i style="width:(\d+)%;background:var\(--(\w+)\)/.exec(cel0[2] || '');
-    T(e + ' · bara', barW ? r.bara === Number(barW[1]) && ({ red: 'bad', orange: 'warn', purple: 'mov' })[barW[2]] === r.baraTon : r.bara == null, JSON.stringify([barW && barW[1], barW && barW[2], r.bara, r.baraTon]));
+    T(e + ' · bara', barW ? r.bara === Number(barW[1]) && ({ red: 'bad', orange: 'warn', accent: 'ok' })[barW[2]] === r.baraTon : r.bara == null, JSON.stringify([barW && barW[1], barW && barW[2], r.bara, r.baraTon]));
     T(e + ' · instant', c(3) === fara(r.instant));
     T(e + ' · sursă externă', c(4) === fara(r.sursa), c(4) + ' // ' + r.sursa);
     T(e + ' · ne costă: textul', c(5) === fara(r.cost), c(5) + ' // ' + r.cost);

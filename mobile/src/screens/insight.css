@@ -4,22 +4,22 @@
    verify_telefon_insight.js). --text-muted pe fundalul discuției iese 4,2 pe tema deschisă: textul stă pe --text-secondary.
    Regulile cu nume generice stau sub .insp, ca să nu atingă alte ecrane (toate foile de stil sunt globale în aplicație). */
 .insp {
-  --i-mov: #c4b5fd; --i-mov-fund: rgba(167, 139, 250, .16); --i-verde: #86efac; --i-ok: #4ade80; --i-albastru: #93c5fd;
-  --i-rosu: #f87171; --i-galben: #fbbf24; --i-dungi-mov: #a78bfa; --i-dungi-alb: #60a5fa; --i-dungi-ok: #4ade80; --i-dungi-nota: #fbbf24;
+  --i-marca: #3FE07D; --i-marca-fund: rgba(63, 224, 125, .15); --i-stea: #06210F; --i-stea-fund: #3FE07D; --i-verde: #86efac; --i-ok: #4ade80; --i-albastru: #93c5fd;
+  --i-rosu: #f87171; --i-galben: #fbbf24; --i-dungi-marca: #3FE07D; --i-dungi-alb: #60a5fa; --i-dungi-ok: #4ade80; --i-dungi-nota: #fbbf24;
   --i-fond-w: #fbbf24; --i-sursa-fund: rgba(59, 130, 246, .16); --i-sursa-cant: rgba(147, 197, 253, .55); --i-sursa-text: #bfdbfe;
   --i-st-g: #3FE07D; --i-st-r: #ef4444; --i-st-w: #fbbf24; --i-st-b: #60a5fa; --i-umbra-caseta: 0 6px 24px rgba(0, 0, 0, .35);
   --i-cap: #3FE07D; --i-rosu-text: #fca5a5; --i-atentie: #fdba74; --i-nr-fund: rgba(249, 115, 22, .15); --i-bun: #86efac; --i-w-text: #fbbf24; --i-r-text: #f87171;
-  --i-bara: #313842; --i-recbox: #1b1a2b; --i-chip-a-fund: rgba(249, 115, 22, .12); --i-chip-b-fund: rgba(34, 197, 94, .12); --i-loc: #f87171;
+  --i-bara: #313842; --i-recbox: #16241d; --i-chip-a-fund: rgba(249, 115, 22, .12); --i-chip-b-fund: rgba(34, 197, 94, .12); --i-loc: #f87171;
   --i-seocupa: #4ade80; --i-seocupa-fund: rgba(74, 222, 128, .12);
   position: relative; overflow: hidden; background: var(--bg-darkest);
 }
 :root[data-theme="light"] .insp {
-  --i-mov: #6d28d9; --i-mov-fund: rgba(109, 40, 217, .13); --i-verde: #166534; --i-ok: #166534; --i-albastru: #1d4ed8;
-  --i-rosu: #b91c1c; --i-galben: #b45309; --i-dungi-mov: #6d28d9; --i-dungi-alb: #2563eb; --i-dungi-ok: #15803d; --i-dungi-nota: #b45309;
+  --i-marca: #166534; --i-marca-fund: rgba(63, 224, 125, .2); --i-stea: #3FE07D; --i-stea-fund: #0B0E11; --i-verde: #166534; --i-ok: #166534; --i-albastru: #1d4ed8;
+  --i-rosu: #b91c1c; --i-galben: #b45309; --i-dungi-marca: #16a34a; --i-dungi-alb: #2563eb; --i-dungi-ok: #15803d; --i-dungi-nota: #b45309;
   --i-fond-w: #92400e; --i-sursa-fund: #eff6ff; --i-sursa-cant: #93c5fd; --i-sursa-text: #1d4ed8;
   --i-st-g: #15803d; --i-st-r: #dc2626; --i-st-w: #d97706; --i-st-b: #2563eb; --i-umbra-caseta: 0 6px 24px rgba(0, 0, 0, .08);
   --i-cap: #166534; --i-rosu-text: #b91c1c; --i-atentie: #9a3412; --i-nr-fund: rgba(249, 115, 22, .12); --i-bun: #166534; --i-w-text: #92400e; --i-r-text: #b91c1c;
-  --i-bara: #cbd5e1; --i-recbox: #f7f3ff; --i-chip-a-fund: rgba(249, 115, 22, .12); --i-chip-b-fund: rgba(34, 197, 94, .12); --i-loc: #b91c1c;
+  --i-bara: #cbd5e1; --i-recbox: #f0fdf4; --i-chip-a-fund: rgba(249, 115, 22, .12); --i-chip-b-fund: rgba(34, 197, 94, .12); --i-loc: #b91c1c;
   --i-seocupa: #166534; --i-seocupa-fund: rgba(22, 101, 52, .10);
 }
 
@@ -29,7 +29,7 @@
   padding: calc(var(--sat) + 10px) 0 var(--sab); background: var(--bg-panel); border-right: 1px solid var(--border);
   transform: translateX(-104%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
 .insp.st-deschis .insp-st { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0, 0, 0, .35); }
-.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; color: var(--i-mov); background: var(--i-mov-fund); }
+.insp-stea { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; color: var(--i-stea); background: var(--i-stea-fund); }
 .insp-st-tit { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 15px; color: var(--text-primary); padding: 2px 14px 8px; }
 .insp-nou { margin: 4px 10px 2px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; font-weight: 700; font-size: 14px; color: var(--text-primary); background: var(--bg-dark); border: 1px solid var(--border); text-align: left; }
 .insp-cauta-r { margin: 0 10px 4px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); text-align: left; }
@@ -66,7 +66,7 @@
 .insp-u .b { min-width: 0; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary); border-radius: 20px; padding: 10px 14px; font-weight: 600; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .insp-u-act { flex: none; display: flex; padding-top: 4px; }
 .insp-a { align-self: stretch; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 9px; }
-.insp-a .av { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: var(--i-mov); background: var(--i-mov-fund); margin-top: 1px; }
+.insp-a .av { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: #06210F; background: var(--accent); margin-top: 1px; }
 .insp-a .bub { min-width: 0; color: var(--text-primary); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .insp-md-gol { height: 6px; }
 .insp-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
@@ -81,12 +81,12 @@
 .chat-ins-cap { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 6px; font-size: 13px; line-height: 1.3; }
 .chat-ins-cap .nm { font-weight: 800; color: var(--text-primary); }
 .chat-ins-et { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.25; }
-.chat-ins-et.ai { color: var(--i-mov); }
+.chat-ins-et.ai { color: var(--text-primary); }
 .chat-ins-et.instant { color: var(--i-verde); }
 .chat-ins-det { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .ins-extra { margin: 0 0 6px; }
 .ins-tit { font-size: 12.5px; font-weight: 800; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
-.ins-tit .mem { color: var(--i-mov); display: inline-flex; align-items: center; gap: 4px; }
+.ins-tit .mem { color: var(--i-marca); display: inline-flex; align-items: center; gap: 4px; }
 .ins-alege { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ins-alege button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px; padding: 7px 10px; text-align: left; }
 .ins-alege button svg { color: var(--text-secondary); flex: none; }
@@ -147,10 +147,10 @@
 
 /* Cartonașul „RA Insight face, cu Da-ul tău" */
 .chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; min-width: 0; }
-.chat-prop { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-mov); border-radius: 12px; background: var(--bg-panel); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.chat-prop { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-marca); border-radius: 12px; background: var(--bg-panel); padding: 12px; display: grid; gap: 10px; min-width: 0; }
 .chat-prop.inchis { background: var(--bg-dark); }
 .chat-prop-h { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary); font-size: 14.5px; flex-wrap: wrap; }
-.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--i-mov-fund); color: var(--i-mov); flex: none; }
+.chat-prop-h .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--i-marca-fund); color: var(--i-marca); flex: none; }
 .chat-prop-tit { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
 .chat-prop-st { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
 .chat-prop-st.aplicata svg { color: var(--i-ok); }
@@ -214,7 +214,7 @@
 .azi-cap + .azi-r { border-top: none; }
 .azi-r.apas:active { background: var(--bg-dark); }
 .azi-sg { color: var(--text-secondary); display: inline-flex; }
-.azi-dece { font-size: 12px; font-weight: 800; color: var(--i-mov); white-space: nowrap; }
+.azi-dece { font-size: 12px; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
 .azi-prop { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 800; color: var(--i-verde); white-space: nowrap; }
 .azi-st { width: 9px; height: 9px; border-radius: 50%; background: var(--i-st-g); }
 .azi-st.r { background: var(--i-st-r); } .azi-st.w { background: var(--i-st-w); } .azi-st.b { background: var(--i-st-b); }
@@ -287,7 +287,7 @@
 .sdp-linie { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px; }
 .sdp-sect { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px; min-width: 0; }
 .sdp-sect h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
-.sdp-sect h3 svg, .sdp-cum summary svg { color: var(--i-mov); flex: none; }
+.sdp-sect h3 svg, .sdp-cum summary svg { color: var(--i-marca); flex: none; }
 .sdp-mic { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
 .sdp-et { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); margin: 10px 0 6px; }
 .sdp-loc { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-primary); padding: 7px 0; border-bottom: 1px solid var(--border); line-height: 1.4; overflow-wrap: anywhere; }
@@ -300,8 +300,8 @@
 .sdp-ora b { display: block; width: 100%; max-width: 22px; border-radius: 4px 4px 0 0; background: var(--i-bara); }
 .sdp-ora b.sus { background: var(--orange); }
 .sdp-ora span { font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
-.sdp-recbox { border: 2px solid var(--i-dungi-mov); border-radius: 14px; padding: 12px 14px; background: var(--i-recbox); min-width: 0; }
-.sdp-recbox > .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--i-mov); margin-bottom: 4px; }
+.sdp-recbox { border: 2px solid var(--i-dungi-marca); border-radius: 14px; padding: 12px 14px; background: var(--i-recbox); min-width: 0; }
+.sdp-recbox > .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--i-marca); margin-bottom: 4px; }
 .sdp-rec { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: var(--text-primary); padding: 6px 0; overflow-wrap: anywhere; }
 .sdp-rec svg { margin-top: 3px; color: var(--text-secondary); flex: none; }
 .sdp-rec.atentie svg { color: var(--i-atentie); }
@@ -393,8 +393,8 @@
 .insp-ghid-q { margin-top: 12px; }
 
 /* ── „Vezi pachetele" și trecerea (lotul 3). Pe tema deschisă verdele casei n-are contrast: --i-pk-verde. ── */
-.insp { --i-pk-verde: #4ade80; --i-pk-tau-fund: var(--accent); --i-pk-tau-text: #06210F; --i-pk-eti-fund: #a78bfa; --i-pk-eti-text: #160B2E; --i-pk-ai: rgba(167, 139, 250, .1); --i-pk-ai-cant: rgba(167, 139, 250, .45); --i-pk-urm: #fbbf24; --i-pk-urm-cant: #f59e0b; --i-pk-urm-fund: rgba(245, 158, 11, .08); --i-pk-glob: #93c5fd; }
-:root[data-theme="light"] .insp { --i-pk-verde: #166534; --i-pk-tau-fund: #166534; --i-pk-tau-text: #fff; --i-pk-eti-fund: #6d28d9; --i-pk-eti-text: #fff; --i-pk-ai: rgba(109, 40, 217, .06); --i-pk-ai-cant: rgba(109, 40, 217, .4); --i-pk-urm: #92400e; --i-pk-urm-cant: #b45309; --i-pk-urm-fund: rgba(180, 83, 9, .07); --i-pk-glob: #1d4ed8; }
+.insp { --i-pk-verde: #4ade80; --i-pk-tau-fund: var(--accent); --i-pk-tau-text: #06210F; --i-pk-eti-fund: #FFFFFF; --i-pk-eti-text: #0B0E11; --i-pk-ai: rgba(255, 255, 255, .05); --i-pk-ai-cant: rgba(255, 255, 255, .35); --i-pk-urm: #fbbf24; --i-pk-urm-cant: #f59e0b; --i-pk-urm-fund: rgba(245, 158, 11, .08); --i-pk-glob: #93c5fd; }
+:root[data-theme="light"] .insp { --i-pk-verde: #166534; --i-pk-tau-fund: #166534; --i-pk-tau-text: #fff; --i-pk-eti-fund: #0B0E11; --i-pk-eti-text: #3FE07D; --i-pk-ai: rgba(15, 23, 42, .04); --i-pk-ai-cant: rgba(15, 23, 42, .35); --i-pk-urm: #92400e; --i-pk-urm-cant: #b45309; --i-pk-urm-fund: rgba(180, 83, 9, .07); --i-pk-glob: #1d4ed8; }
 .insp-fond.link { text-decoration: underline; text-underline-offset: 3px; }
 .insp-card-adm { margin-top: 10px; font-weight: 700; color: var(--text-primary); }
 .insp-card-b { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -417,7 +417,7 @@
 .pk-cifre dd { margin: 0; font-weight: 700; color: var(--text-primary); text-align: right; }
 .pk-cifre dd.nu { color: var(--text-secondary); font-weight: 600; }
 .pk-plus { margin: 2px 0 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--i-pk-verde); }
-.pk-c.ai .pk-plus { color: var(--i-mov); }
+.pk-c.ai .pk-plus { color: var(--text-primary); }
 .pk-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .pk-ul li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; font-size: 13px; line-height: 1.45; color: var(--text-primary); }
 .pk-ul li svg { color: var(--i-pk-verde); margin-top: 3px; }
@@ -452,7 +452,7 @@
 /* ── „Pachet și conturi": un om = un cartonaș; contorul și limita pe rânduri, fără tabel lat. ── */
 .pkc-cap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .pkc-cap h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
-.pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--i-mov); background: var(--i-mov-fund); }
+.pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--i-marca); background: var(--i-marca-fund); }
 .pkc-urm { border: 1px solid var(--i-pk-urm-cant); border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; line-height: 1.45; color: var(--text-primary); background: var(--i-pk-urm-fund); }
 .pkc-rez { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel); padding: 12px 14px; display: grid; gap: 4px; font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--text-primary); }
 .pkc-rez-2 { font-weight: 600; color: var(--text-secondary); font-size: 13px; }

@@ -478,6 +478,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (6) rândul „✓" pe verdele `#166534` pe tema deschisă (`#15803d` iese 4,46). Regulile sunt în pagină, în piesele comune
   (`_chatGand`, `_chatSecunde`, `_chatScrieTreptat`) și în `app.css` (blocul „Chatul inteligent"); piesele răspunsului nu s-au schimbat,
   deci telefonul de azi merge mai departe ca înainte.
+  **05.11: fără mov.** RA Insight are acum culorile siglei (Alin: „din movul ăsta, în culorile brandului"): unde scrie mai sus mov, pe
+  telefon e verdele casei (#3FE07D, cu iconița neagră #06210F; ca text pe tema deschisă #166534), iar salutul trece din negru în verde
+  (pe tema închisă din alb în verde). Eticheta ANALIZĂ e în culoarea textului (negru / alb), INSTANT rămâne verde. Culorile de bază
+  ale telefonului (variabilele din `screens/insight.css`, `reports.css`, `admin.css`, `fondator.css`) sunt deja schimbate în cod — intră
+  cu APK-ul.
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -564,6 +569,28 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-11-05
+
+### AMÂNDOI · RA Insight în culorile RA Track (fără mov)
+*Alin, 05.11, cu o poză: „să schimbăm culorile din RA Insight din movul ăsta, în culorile brandului RA Track, și în mesajul de salut și
+peste tot unde e nevoie în RA Insight".*
+
+**Ce am schimbat:** RA Insight are acum culorile siglei „RA |": **verdele casei** și **negrul** (pe tema închisă, albul — ca „R"-ul din
+siglă). Salutul trece din negru în verde („Salut, Alin! Cu ce te pot ajuta?"); semnul răspunsului și butonul de trimis sunt cercul verde
+cu săgeata / bagheta neagră, ca butoanele principale ale aplicației; bula întrebării, pastilele de sub salut, caseta cât scrii, cartonașele
+„RA Insight face", paginile (RA Drive, Combustibil…), „din RA Insight" din Istoric rapoarte și „Rezumă" — verde. **Negrul înseamnă „se
+numără o întrebare"**: eticheta ANALIZĂ (până azi mov), „De ce?" din „Azi la tine" și eticheta „De aici: întrebări libere cu AI" din
+pachete (și pe cele două pagini de pe site). INSTANT și „Pachetul tău" rămân verzi. „NOU" din meniu e negru cu litere verzi (pe rândul
+ales, verde, se vede). Pe tema închisă butonul de trimis gol rămânea plin; acum e gri, ca pe tema deschisă. Telefonul are aceleași culori
+în cod (intră cu APK-ul următor). Movul a rămas doar în afara lui RA Insight (comutatorul Fondator / Partener, stările cererilor, rolurile).
+**Ce vede fondatorul:** în „RA Insight · control", bara întrebărilor e verde (portocalie de la 80%, roșie la capăt), ca în rest.
+**Ce vede clientul:** RA Insight în verde și negru, pe ambele teme; nimic nu s-a mutat și nu s-a schimbat altceva decât culorile.
+
+### FONDATOR · Poarta: cinci probe puse pe regula din 04.11
+**Ce am schimbat:** verificarea completă de dinaintea publicării a prins cinci probe care cereau încă forma de dinainte (cartonașul
+soldului, „Vezi pachetele" ascuns când Anthropic refuză, lista conversațiilor după scoaterea scrisorii). Aplicația era bună; probele au fost
+rescrise pe regula nouă. **Ce vede fondatorul / clientul:** nimic.
 
 ## 2026-11-04
 

@@ -127,5 +127,5 @@
 /* Utilizatori, pe o firmă cu pachet: linkul spre „Pachet și conturi" și eticheta de pe rând (ca pe web). */
 .rau-pk { margin-left: 2px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: var(--rau-pk, #3fe07d); text-align: left; }
 :root[data-theme="light"] .rau-pk { color: #166534; }
-.adm-pill.rau-ra { color: #c4b5fd; background: rgba(167, 139, 250, .16); }
-:root[data-theme="light"] .adm-pill.rau-ra { color: #6d28d9; background: rgba(109, 40, 217, .1); }
+.adm-pill.rau-ra { color: #3FE07D; background: rgba(63, 224, 125, .15); }
+:root[data-theme="light"] .adm-pill.rau-ra { color: #166534; background: rgba(63, 224, 125, .2); }

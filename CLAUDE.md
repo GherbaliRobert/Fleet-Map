@@ -741,7 +741,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 Bula duce în RA Insight, sub salut stă „Azi la tine", rapoartele se cer în cuvinte, fila „AI Raport" a ieșit din Rapoarte,
 „Agenți AI" iese din meniu pentru cine are cont RA Insight, Safe Drive se cheamă **RA Drive** („condus & costuri").
 - **Bula din colț** (`window.raxToggleAI` = `showView('insight')`): fereastra ei (`#rax-ai-overlay`) și chatul ei au fost SCOASE;
-  te duce în secțiune, pe `window._raxConvId`. **Punctul mov** (`#rax-main-fab.are-nou`): `_aziVerifica` (din `updateFabs`, cel
+  te duce în secțiune, pe `window._raxConvId`. **Punctul** (`#rax-main-fab.are-nou`; negru din 05.11, până atunci mov): `_aziVerifica` (din `updateFabs`, cel
   mult o dată la 5 minute, doar cu `me.aiCont`) cere `/api/insight/azi` și îl aprinde dacă o cheie din `chei` nu e printre cele
   văzute (`localStorage`, cu try/catch — o comoditate); „Azi la tine" desenat le marchează văzute (`window._aziVazut`).
 - **„Azi la tine"**: regulile și textele în **`azi_la_tine.js`** (curat; `randuri(d)` → `{ randuri, chei, deVazut }`), datele în
@@ -811,7 +811,7 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
   dă „Fondator · fără limită" (`S.fondator` = `currentUser.isSuper`; un client pe regula veche nelimitată: „Fără limită") — jos și
   lângă casetă (`S.contor`).
 - **Răspunsul:** „Am înțeles" = **titlu scurt** (`_insightExtra` partea `'inteles'` → `.ins-tit`, ce vine din discuție cu creierașul
-  mov), cel mult **două** butoane spre rapoarte (`surse.slice(0, 2)`), Copiază · 👍 · 👎 · „Din raportul…" la trecerea cu mouse-ul
+  verde), cel mult **două** butoane spre rapoarte (`surse.slice(0, 2)`), Copiază · 👍 · 👎 · „Din raportul…" la trecerea cu mouse-ul
   (`.insp-a .chat-act` opacity; la vedere sub `@media (hover: none)` și când 👍/👎 e dat). Sub un raport cerut (`cuRaport`): doar
   cartonașul, fără titlu și fără text; ce trebuie știut (perioada tăiată, raportul oprit înainte de capăt) vine de la server în
   `raport.note` și se scrie în cartonaș. Mesajul pachetului (`.chat-lim`): „Alege ce vrei să afli" (= „+") și, la administrator,
@@ -822,7 +822,7 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
 ### Asistentul fondatorilor — etapa 1, pasul 1 (30.10; Alin: „vreau să fie tot un chat" → macheta „tot un chat", „1. da, 2. da, 3. da")
 Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 29–30.10: https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt).
 - **„Acasă" pe verticala Fondator = chatul asistentului** (`showView('asistent')`, panoul `#asistent-view`, blocul „asistentul fondatorilor"
-  din pagină, cu stilurile chatului RA Insight; avatarul verde, nu mov). Aterizarea după autentificare și trecerea pe verticala Fondator duc
+  din pagină, cu stilurile chatului RA Insight; avatarul verde-turcoaz — RA Insight are, din 05.11, verdele casei). Aterizarea după autentificare și trecerea pe verticala Fondator duc
   acolo; **bula verde, pe verticala Fondator, la fel** (`window._asfVerticalaNoastra`); pe Partener și la clienți bula rămâne RA Insight.
   Cartonașele vechi (`raxAdminHome`) rămân doar pentru `showView('administrare')` fără secțiune. Clientul nu vede nimic nou.
 - **Primul mesaj:** salutul (al omului), cele 4 cifre de azi (`window._acasaCifre` — ACELEAȘI socoteli ca pe cartonașe: `_adashStareCompanii`,
@@ -925,7 +925,8 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   căutarea în răspunsuri, ștergerea, 13 / 11 luni) și `verify_asistent_fondatori.js`.
 
 ### Chatul inteligent (03.11; Alin, 02.11: „1. da … 5. da" la macheta https://claude.ai/artifact/PiQ5rQtLFmstUGuEZnE6S3)
-Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fondatorilor (verde). Regulile — NU le strica la loc:
+Același aspect și aceeași mișcare la RA Insight (din 05.11 în culorile siglei — vezi „RA Insight în culorile RA Track”; până atunci mov) și
+la asistentul fondatorilor (verde-turcoaz). Regulile — NU le strica la loc:
 - **Piesele comune stau O DATĂ în pagină** (blocul „Chatul inteligent", după `_chatStareTrimite`): `_chatMiscare()` (fals la „mai puțină mișcare"),
   `_chatGand(avCls)` (rândul „Mă gândesc…", `role="status"`, semnul cu inelul — `av lucreaza [asf-av]`), `_chatSecunde(ms)` („1 secundă",
   „4 secunde", „20 de secunde"), `_chatDurata(row, ms)` („· N secunde" lângă antet, DOAR la `insigna.fel === 'ai'`), `_chatScrieTreptat(row, dupa)`
@@ -934,7 +935,7 @@ Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fond
   (`deseneazaMain`) se desenează întreagă. NU scrie a doua variantă.
 - **Piesele răspunsului NU se schimbă** (telefonul le oglindește: `verify_telefon_insight.js` rulează `bulaAi` și compară părțile și ordinea).
   Aspectul = CSS + piesele de mai sus, puse DUPĂ `bulaAi`. Eticheta ANALIZĂ / INSTANT rămâne cu chenar subțire, fără fundal (19.10), cu
-  `color: #6d28d9` / `#166534` scrise întocmai; iconița vine din CSS (`::before`, Font Awesome). `CARDURI` rămâne `{ t, q }`; iconițele
+  `color: var(--text-primary)` (ANALIZĂ, din 05.11; până atunci #6d28d9) / `#166534` scrise întocmai; iconița vine din CSS (`::before`, Font Awesome). `CARDURI` rămâne `{ t, q }`; iconițele
   pastilelor stau separat (`CARDURI_IC`). Întrebările gata făcute ale asistentului au `ic` de la server (`INTREBARI_GATA`); `_chatUrmari` ia
   `u.ic` doar dacă e `fa-…`.
 - **Punctele de așteptare (`rax-typing`) au plecat de la răspuns**; rămân doar la încărcarea unei pagini („Pachet și conturi", „Rezumă").
@@ -945,6 +946,27 @@ Același aspect și aceeași mișcare la RA Insight (mov) și la asistentul fond
 - Culorile (semnele, săgeata de trimis, salutul în degrade, iconițele pastilelor) au pereche pe ambele teme, MĂSURATE în probă.
 - Păzit de **`verify_chat_inteligent.js`** (în `npm test`; partea din browser se sare unde nu e Chromium), `verify_telefon_insight.js`,
   `verify_asistent_fondatori.js`, `verify_asistent_intreaba.js`. Telefonul primește aspectul la APK-ul următor (Robert, „De amintit").
+
+### RA Insight în culorile RA Track (05.11; Alin, cu o poză: „din movul ăsta, în culorile brandului ra track, și în mesajul de salut și peste tot")
+Culorile lui RA Insight sunt ale siglei „RA |": **verdele casei** (#3FE07D, cu text/iconiță #06210F pe el; ca TEXT pe tema deschisă
+#166534, iconițe #15803d, chenare #16a34a) + **negrul „cernelii"** (#0B0E11; pe tema închisă ALBUL, ca „R"-ul din siglă). NU pune mov înapoi.
+- **Salutul** = degrade din negru în verde (#0B0E11 → #15803d; pe tema închisă #FFFFFF → #3FE07D), ca „R" și „A" din siglă. **Semnul răspunsului**,
+  **butonul de trimis** = cercul verde cu bagheta / săgeata neagră (ca butonul principal al casei); **semnul din capul listei** = bagheta verde pe
+  negru (pe tema închisă invers); **bula întrebării**, pastilele, caseta cât scrii, cartonașul „RA Insight face", „din RA Insight" din Istoric
+  rapoarte, „Rezumă", paginile ramurilor (iconițele titlurilor, „Ce recomandă"), pastilele „RA Insight" (Pachet și conturi, Utilizatori), bara
+  din „RA Insight · control" — verde.
+- **Negrul = ce consumă o întrebare:** eticheta ANALIZĂ (`var(--text-primary)`), „De ce?" din „Azi la tine" (cu steluța, ca ANALIZĂ) și eticheta
+  „De aici: întrebări libere cu AI" din pachete (aplicație și paginile publice; pe fundal închis, albă). INSTANT și „Pachetul tău" rămân verzi.
+- **„NOU" din meniu** = negru cu litere verzi; pe tema închisă verde cu litere negre, iar pe rândul ales (verde) din nou negru — altfel nu s-ar vedea.
+  **Punctul de pe bula RA Insight** (verde) = negru.
+- Pe tema închisă butonul de trimis GOL rămâne gri: `body.dark .chat-trimite` (două clase + body) bătea `.chat-trimite.gol` — de aceea
+  `body.dark .chat-trimite.gol`. La asistentul fondatorilor (`.asf .chat-trimite`) butonul gol e încă verde — nehotărât (05.11).
+- Movul rămâne DOAR în afara lui RA Insight: comutatorul Fondator / Partener, stările cererilor de la clienți, rolurile, culorile de pe hartă.
+  Pagina „Asistenți AI" (statistici, fără rând în meniu) n-a fost atinsă.
+- Telefonul: aceleași perechi, prin variabilele lui (`--i-marca`, `--i-marca-fund`, `--i-dungi-marca`, `--i-stea`, `--i-stea-fund`; ANALIZĂ =
+  `--text-primary`) — intră cu APK-ul următor (Robert).
+- Păzit de `verify_chat_inteligent.js` (culorile MĂSURATE pe ambele teme + niciun mov în regulile și în blocul lui RA Insight),
+  `verify_telefon_insight.js` (niciun mov pe telefon, perechile), `verify_telefon_pachete.js`, `verify_insight_bani.js` (bara), `verify_asistent_fondatori.js`.
 
 ### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
 Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:
@@ -993,7 +1015,8 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
   rezumatul agenților, RA Insight, conversația redeschisă) — NU pune a doua cale spre model fără ai.js și NU da `brut: true` altundeva.
 - **Insignele, ca ANTET (Alin, 19.10, din cinci variante pozate: „varianta 1 — antetul"): O regulă, `pachete.insigna(fel, { numarat,
   live })`** → `{ fel, nume: 'RA Insight', eticheta: 'Analiză' | 'Instant', detaliu, text }`: deasupra răspunsului „RA Insight", eticheta
-  cu chenar subțire, fără fundal (ANALIZĂ mov `#6d28d9` / INSTANT verde `#166534` — #15803d ieșea sub 4,5 la literele mici), detaliul gri
+  cu chenar subțire, fără fundal (ANALIZĂ în negrul siglei — alb pe tema închisă, din 05.11; până atunci mov `#6d28d9` / INSTANT verde
+  `#166534` — #15803d ieșea sub 4,5 la literele mici), detaliul gri
   („1 întrebare" — nu la noi și nu la probă —, „din rapoarte", „din datele de acum", pe Start „1 răspuns"). Fără „bonus", „gratuit", „nu se
   scade". Serverul o pune pe fiecare răspuns; pagina doar o desenează (`_chatInsigna`, PRIMA în bulă, cu textContent, fără niciun cuvânt
   al ei). Mesajele salvate pe 19.10 înainte de antet ({ fel, text }) se completează la citirea conversației (`pachete.insignaCompleta`);

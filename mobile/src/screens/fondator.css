@@ -140,7 +140,7 @@
 .aiu-firma-cap svg { flex: none; color: var(--text-secondary); }
 .aiu-firma-fol { padding: 2px 12px; font-size: 13px; color: var(--text-secondary); }
 .aiu-b { height: 100%; }
-.aiu-b.mov { background: #a78bfa; } .aiu-b.warn { background: var(--orange); } .aiu-b.bad { background: var(--red); }
+.aiu-b.ok { background: var(--accent); } .aiu-b.warn { background: var(--orange); } .aiu-b.bad { background: var(--red); }
 .aiu-kv { margin: 4px 0 0; padding: 0 12px 10px; }
 .aiu-kv > div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; }
 .aiu-kv dt { color: var(--text-secondary); flex: none; }

@@ -583,7 +583,7 @@ function parteaCulorilor() {
   const tokI = vars(taie(S.tokens, ':root, :root[data-theme="dark"] {', '}')), tokD = Object.assign({}, tokI, vars(taie(S.tokens, ':root[data-theme="light"] {', '}')));
   const cssI = vars(taie(S.css, '.insp {', '}')), cssD = Object.assign({}, cssI, vars(taie(S.css, ':root[data-theme="light"] .insp {', '}')));
   const TEME = [['închisă', Object.assign({}, tokI, cssI)], ['deschisă', Object.assign({}, tokD, cssD)]];
-  const TEXTE = ['--text-primary', '--text-secondary', '--i-mov', '--i-verde', '--i-ok', '--i-albastru', '--i-fond-w', '--i-cap', '--i-rosu-text', '--i-atentie', '--i-bun', '--i-w-text', '--i-r-text', '--i-loc'];
+  const TEXTE = ['--text-primary', '--text-secondary', '--i-marca', '--i-verde', '--i-ok', '--i-albastru', '--i-fond-w', '--i-cap', '--i-rosu-text', '--i-atentie', '--i-bun', '--i-w-text', '--i-r-text', '--i-loc'];
   const FONDURI = ['--bg-panel', '--bg-card', '--bg-dark', '--bg-darkest'];
   for (const [nume, t] of TEME) {
     for (const tx of TEXTE) for (const fn of FONDURI) {
@@ -591,7 +591,8 @@ function parteaCulorilor() {
       T('tema ' + nume + ': ' + tx + ' pe ' + fn + ' = ' + c.toFixed(2) + ' (≥ 4,5)', c >= 4.5, t[tx] + ' / ' + t[fn]);
     }
     T('tema ' + nume + ': textul închis #06210F pe verdele casei', contrast(hex('#06210F'), hex(t['--accent'])) >= 4.5);
-    for (const tx of ['--text-primary', '--text-secondary', '--i-mov', '--i-atentie', '--i-bun']) { const c = contrast(hex(t[tx]), hex(t['--i-recbox'])); T('tema ' + nume + ': ' + tx + ' pe caseta „Ce recomandă" = ' + c.toFixed(2), c >= 4.5, t[tx]); }
+    T('tema ' + nume + ': semnul din capul listei (culorile siglei) = ' + contrast(hex(t['--i-stea']), hex(t['--i-stea-fund'])).toFixed(2), contrast(hex(t['--i-stea']), hex(t['--i-stea-fund'])) >= 4.5, t['--i-stea'] + ' / ' + t['--i-stea-fund']);
+    for (const tx of ['--text-primary', '--text-secondary', '--i-marca', '--i-atentie', '--i-bun']) { const c = contrast(hex(t[tx]), hex(t['--i-recbox'])); T('tema ' + nume + ': ' + tx + ' pe caseta „Ce recomandă" = ' + c.toFixed(2), c >= 4.5, t[tx]); }
     // Etichetele colorate cu fundal translucid, puse peste panoul paginii.
     const peste = (fg, a, fond) => hex(fond).map((x, i) => fg[i] * a + x * (1 - a));
     for (const [tx, fund] of [['--i-atentie', [[249, 115, 22], 0.15]], ['--i-bun', [[34, 197, 94], 0.12]]]) { const c = contrast(hex(t[tx]), peste(fund[0], fund[1], t['--bg-panel'])); T('tema ' + nume + ': ' + tx + ' pe eticheta lui = ' + c.toFixed(2), c >= 4.5, t[tx]); }
@@ -609,7 +610,8 @@ function parteaCulorilor() {
     const pePanou = contrast(hex(t[tx]), hex(t['--bg-panel'])), peSticla = contrast(hex(t[tx]), amesteca(t['--bg-panel'], 0.72, t['--bg-darkest']));
     T('tema ' + nume + ': etichetele din bara de jos = ' + pePanou.toFixed(2) + ' pe panou, ' + peSticla.toFixed(2) + ' pe sticlă', pePanou >= 4.5 && peSticla >= 4.5, t[tx]);
   }
-  T('tema deschisă: INSTANT #166534, ANALIZĂ #6d28d9 (perechile de pe web)', cssD['--i-verde'] === '#166534' && cssD['--i-mov'] === '#6d28d9' && /\.chat-ins-et\.ai \{ color: #6d28d9; \}/.test(citeste('public/css/app.css')) && /\.chat-ins-et\.instant \{ color: #166534; \}/.test(citeste('public/css/app.css')));
+  T('INSTANT #166534 pe tema deschisă, ANALIZĂ în culoarea textului (negrul siglei; alb pe tema închisă) — perechile de pe web (05.11: fără mov)', cssD['--i-verde'] === '#166534' && /\.chat-ins-et\.ai \{ color: var\(--text-primary\); \}/.test(S.css) && /\.chat-ins-et\.ai \{ color: var\(--text-primary\); \}/.test(citeste('public/css/app.css')) && /\.chat-ins-et\.instant \{ color: #166534; \}/.test(citeste('public/css/app.css')));
+  T('niciun mov rămas în RA Insight pe telefon (culorile siglei: verde + negru)', !/#6d28d9|#7c3aed|#a78bfa|#c4b5fd|i-mov|var\(--purple\)/i.test(S.css));
   T('fără verde deschis pe alb: --accent nu e folosit ca text', !/(^|[^-])color: var\(--accent\)/m.test(S.css), (S.css.match(/(^|[^-])color: var\(--accent\)[^\n]*/m) || [''])[0]);
   T('--text-muted nu e text aici (pe tema deschisă iese 4,2 pe fundalul discuției)', !/[^-]color: var\(--text-muted\)/.test(S.css));
   T('temele: doar variabilele casei, fără body.dark și fără color-mix (WebView-uri vechi)', !/body\.dark|color-mix/.test(S.css));
@@ -1184,7 +1186,7 @@ function parteaAnuntului() {
   T('…doar unde RA Insight e pornit și neascuns din rol', /me\.value\?\.features\?\.ai_assistant !== false && !ecranAscuns\('insight'\) && \(/.test(S.reports));
   T('Istoric rapoarte: eticheta „din RA Insight", ca pe web', /h\.status === 'insight' && <span class="rh-ins"[^>]*>[\s\S]{0,60}din RA Insight/.test(S.reports) && /h\.status === 'insight' \? '<span class="rh-ins"/.test(html));
   const cssR = S.reportsCss;
-  T('…culorile ei au pereche pe ambele teme', /\.rh-ins \{[^}]*color: #c4b5fd/.test(cssR) && /:root\[data-theme="light"\] \.rh-ins \{ color: #6d28d9/.test(cssR));
+  T('…culorile ei au pereche pe ambele teme (verdele casei; pe tema deschisă #166534)', /\.rh-ins \{[^}]*color: #3FE07D/.test(cssR) && /:root\[data-theme="light"\] \.rh-ins \{ color: #166534/.test(cssR) && !/#6d28d9|#a78bfa|#c4b5fd/i.test(cssR));
 }
 
 async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
