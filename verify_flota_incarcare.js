@@ -91,8 +91,11 @@ T('semiremorcile intră în copie (BUSINESS_TABLES)', /'remorci',/.test(BT), BT.
 T('pleacă odată cu firma', /async function deleteCompany\(id\) \{[\s\S]{0,400}DELETE FROM remorci WHERE company_id = \$1/.test(dbSrc));
 T('un rând se verifică pe firmă (getRowCompany știe „remorci")', /const allow = \{[^}]*remorci: 1/.test(dbSrc));
 T('ștearsă, nu rămâne legată de nicio mașină', /async function deleteRemorca[\s\S]{0,200}UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = \$1/.test(dbSrc));
+// Căutat în TOATĂ funcția (de la 05.11 ea rupe și șoferul și grupa firmei vechi, deci e mai lungă), nu într-o fereastră de caractere.
+const iSdc = dbSrc.indexOf('async function setDeviceCompany(');
+const SDC = iSdc >= 0 ? dbSrc.slice(iSdc, dbSrc.indexOf('\n}\n', iSdc) + 2) : '';
 T('mașina mutată pe altă firmă își pierde semiremorca obișnuită (era a firmei vechi)',
-  /async function setDeviceCompany[\s\S]{0,500}inc_remorca_id = CASE WHEN company_id IS DISTINCT FROM \$2::int THEN NULL ELSE inc_remorca_id END/.test(dbSrc));
+  /inc_remorca_id = CASE WHEN company_id IS DISTINCT FROM \$2::int THEN NULL ELSE inc_remorca_id END/.test(SDC), SDC.slice(0, 200));
 T('semiremorcile pornesc și ele simulatorul (firmeCuFlotaGrea le adună)', /UNION SELECT DISTINCT company_id FROM remorci WHERE company_id IS NOT NULL/.test(dbSrc));
 
 // ─── 3. Serverul ─────────────────────────────────────────────────────────────────────────────────────────────────
