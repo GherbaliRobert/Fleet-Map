@@ -76,6 +76,21 @@ T('„tăcut de 45 min" → „Fără semnal de 45 min — …"', p.stare === 'F
 p = L.pentruPagina({ link: LINK, poz: null, nume: 'Volvo FH' }, ACUM);
 T('fără nicio poziție: o spune, nu inventează un loc', p.pozitie === null && p.stare === 'Mașina n-a transmis încă nicio poziție.' && p.actualizat === null, J(p));
 T('textul pentru un link care nu mai e bun', L.TITLU_INCHEIAT === 'Locația nu mai e distribuită' && L.TEXT_INCHEIAT === 'Linkul a expirat sau a fost oprit.');
+// „Prelungește" (Robert, 23.10: „da" la varianta c): aceleași durate, adăugate la ora de final, cel mult 8 ore înainte de acum.
+let pr = L.prelungire(ACUM + 15 * 60000, 60, ACUM);
+T('prelungirea se ADAUGĂ la ora de final: 16:15 + 1 oră = 17:15', pr.gata && pr.expiraLa === ACUM + 75 * 60000 && !pr.taiat
+  && pr.text === 'Linkul merge acum până la 17:15. Cine îl are vede singur noua oră.', J(pr));
+pr = L.prelungire(ACUM + 7 * 3600000, 480, ACUM);
+T('cel mult 8 ore înainte de acum: 23:00 + 8 ore → 00:00, și o spune', pr.gata && pr.expiraLa === ACUM + 8 * 3600000 && pr.taiat
+  && pr.text === 'Linkul merge acum până la 00:00 (cel mult 8 ore de acum). Cine îl are vede singur noua oră.', J(pr));
+pr = L.prelungire(ACUM + 8 * 3600000, 15, ACUM);
+T('deja la 8 ore înainte: nu se prelungește, cu motivul', !pr.gata && pr.text === 'Linkul merge deja până la 00:00: mai mult de 8 ore înainte nu se poate.', J(pr));
+T('un link expirat nu se prelungește (se face altul)', !L.prelungire(ACUM, 60, ACUM).gata && L.prelungire(ACUM - 1, 60, ACUM).text === L.TEXT_PRELUNGIRE_EXPIRAT
+  && L.TEXT_PRELUNGIRE_EXPIRAT === 'Linkul nu mai există: a expirat sau a fost oprit. Fă altul.');
+T('cu cât: doar duratele din listă', !L.prelungire(ACUM + 60000, 7, ACUM).gata && L.prelungire(ACUM + 60000, 7, ACUM).text === 'Alege cu cât: 15 minute, 1 oră, 8 ore.');
+T('butonul „Prelungește" doar cât mai e de câștigat cel puțin un minut', L.poatePrelungi(ACUM + 60000, ACUM) && L.poatePrelungi(ACUM + 479 * 60000, ACUM)
+  && !L.poatePrelungi(ACUM + 479.5 * 60000, ACUM) && !L.poatePrelungi(ACUM + 8 * 3600000, ACUM) && !L.poatePrelungi(ACUM, ACUM));
+T('nota de sub linkuri, din cifra codului (8 ore)', L.MAX_INAINTE_MINUTE === 480 && L.TEXT_PRELUNGIRE === 'Poți prelungi un link de câte ori vrei, cel mult 8 ore înainte.', L.TEXT_PRELUNGIRE);
 
 // ─── 2. Pagina publică ────────────────────────────────────────────────────────────────────────────────────────────
 sect('2. Pagina publică (public/locatie.html)');
@@ -108,14 +123,20 @@ T('butonul „Distribuie" stă în fișa mașinii, ascuns până știm că omul 
   /<div class="detail-actions">[\s\S]{0,900}id="detail-share-btn" onclick="locDistribuie\(\)" style="display:none"/.test(html) && /b\.style\.display = \(u && u\.poateDistribuiLocatia\) \? '' : 'none'/.test(blocApp));
 T('butonul se potrivește la fiecare mașină deschisă', /detailPanelImei = imei;\n\s*locButon\(\);/.test(html));
 T('regula „cine poate" e a serverului: /api/me dă poateDistribuiLocatia, cu aceeași funcție ca rutele',
-  /poateDistribuiLocatia: _poateDistribuiLocatia\(req\)/.test(server) && (server.match(/if \(!_poateDistribuiLocatia\(req\)\) return res\.status\(403\)/g) || []).length === 3);
+  /poateDistribuiLocatia: _poateDistribuiLocatia\(req\)/.test(server) && (server.match(/if \(!_poateDistribuiLocatia\(req\)\) return res\.status\(403\)/g) || []).length === 4);   // lista, facerea, „Oprește", „Prelungește"
 T('fereastra: alegerea duratei, linkul, Copiază, WhatsApp, linkurile active cu „Oprește"',
   /id="loc-modal"/.test(html) && /id="loc-durate"/.test(html) && /onclick="locCopiaza\(\)"/.test(html) && /onclick="locWhatsapp\(\)"/.test(html) && /id="loc-active"/.test(html) && /x\.textContent = 'Oprește'/.test(blocApp));
 T('duratele vin de la server (pagina nu le scrie)', /_loc\.durate = x\.j\.durate/.test(blocApp) && !/'15 minute'|'8 ore'|480/.test(blocApp));
 T('mesajul pentru WhatsApp e cel al serverului', /wa\.me\/\?text=' \+ encodeURIComponent\(_loc\.mesaj\)/.test(blocApp) && /_loc\.mesaj = x\.j\.mesaj/.test(blocApp));
 T('textele de la server se pun cu textContent', !/innerHTML/.test(blocApp));
 T('„Oprește" întreabă întâi', /raConfirm\('Oprești linkul\? Cine îl are nu mai vede mașina\.'/.test(blocApp));
-const clase = ['loc-modal', 'loc-masina', 'loc-intro', 'loc-et', 'loc-durate', 'loc-dur', 'loc-link-rand', 'loc-btn', 'loc-trimite', 'loc-nota', 'loc-err', 'loc-active-cap', 'loc-act', 'loc-act-t', 'loc-act-a', 'loc-act-b', 'loc-stop'];
+T('„Prelungește": pe rândul linkului, doar când serverul spune că se poate; „Cu cât?" = duratele serverului',
+  /if \(l\.poatePrelungi\) \{[\s\S]{0,200}pr\.textContent = 'Prelungește';/.test(blocApp) && /_loc\.durate\.forEach\(function \(d\) \{[\s\S]{0,160}o\.textContent = '\+' \+ d\.text;/.test(blocApp)
+  && /'\/prelungire', \{\s*method: 'POST'/.test(blocApp) && /body: JSON\.stringify\(\{ minute: minute \}\)/.test(blocApp));
+T('după prelungire: textul serverului; nota de sub linkuri vine tot de la server', /_locBine\(j\.text \|\| ''\)/.test(blocApp) && /nota\.textContent = x\.j\.prelungire \|\| ''/.test(blocApp)
+  && /id="loc-ok" role="status"/.test(html) && /id="loc-prel-nota" hidden/.test(html));
+const clase = ['loc-modal', 'loc-masina', 'loc-intro', 'loc-et', 'loc-durate', 'loc-dur', 'loc-link-rand', 'loc-btn', 'loc-trimite', 'loc-nota', 'loc-err', 'loc-active-cap', 'loc-act', 'loc-act-t', 'loc-act-a', 'loc-act-b', 'loc-stop',
+  'loc-act-bt', 'loc-prel', 'loc-prel-alege', 'loc-prel-et', 'loc-prel-d', 'loc-ok'];
 const faraStil = clase.filter((c) => css.indexOf('.' + c + ' ') < 0 && css.indexOf('.' + c + '.') < 0 && css.indexOf('.' + c + ':') < 0 && css.indexOf('.' + c + ',') < 0);
 T('fiecare piesă a ferestrei are stil în app.css (pe variabilele temei)', !faraStil.length, faraStil.join(', '));
 T('durata aleasă: fundal verde, text închis (regula casei)', /\.loc-dur\.on \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(css));
@@ -132,12 +153,17 @@ T('„Trimite” = foaia de partajare a telefonului; „Oprește” întreabă �
 T('„înapoi” pe Android închide întâi întrebarea, apoi foaia', /useInapoiInchide\(true, \(\) => \{ if \(deOprit\) \{ setDeOprit\(null\); return true; \} onClose\(\); return true; \}\)/.test(tFoaie));
 T('alt vehicul deschis → foaia se închide', /setShowMap\(false\); setDistribuie\(false\);/.test(tFisa));
 T('iconița „share” există', /\| 'share';/.test(tIcon) && /\n  share: '<circle/.test(tIcon));
-const tClase = ['dl-sheet', 'dl-masina', 'dl-intro', 'dl-et', 'dl-durate', 'dl-dur', 'dl-fa', 'dl-link', 'dl-nota', 'dl-err', 'dl-cap', 'dl-act', 'dl-act-t', 'dl-act-a', 'dl-act-b', 'dl-stop'];
+T('„Prelungește” pe telefon: aceeași rută, doar când serverul spune că se poate, duratele și textele serverului',
+  /'\/prelungire', \{ method: 'POST', body: \{ minute \} \}/.test(tApi) && /poatePrelungi\?: boolean/.test(tApi) && /\{l\.poatePrelungi && \(/.test(tFoaie)
+  && /Api\.prelungesteLocatieDistribuita\(imei, l\.id, m\)/.test(tFoaie) && /showToast\(r\.text \|\| /.test(tFoaie) && /setNotaPrel\(r\.prelungire \|\| ''\)/.test(tFoaie)
+  && /\{'\+' \+ d\.text\}/.test(tFoaie));
+const tClase = ['dl-sheet', 'dl-masina', 'dl-intro', 'dl-et', 'dl-durate', 'dl-dur', 'dl-fa', 'dl-link', 'dl-nota', 'dl-err', 'dl-cap', 'dl-act', 'dl-act-t', 'dl-act-a', 'dl-act-b', 'dl-stop',
+  'dl-act-bt', 'dl-prel', 'dl-prel-et', 'dl-prel-d'];
 const tFara = tClase.filter((c) => tCss.indexOf('.' + c + ' ') < 0 && tCss.indexOf('.' + c + '.') < 0);
 T('fiecare clasă a foii are stil; durata aleasă: fundal verde, text închis', !tFara.length && /\.dl-dur\.on \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(tCss), tFara.join(', '));
 T('clasele foii nu se bat cu cele ale hărții din Flotă (loc-)', !/\.loc-/.test(tCss) && !/class="loc-|'loc-/.test(tFoaie));
 const vGr = (citeste('mobile/android/variables.gradle').match(/appVersionName = '([^']+)'/) || [])[1], vCl = (citeste('mobile/src/api/client.ts').match(/APP_VERSIUNE = '([^']+)'/) || [])[1];
-T('versiunea aplicației e aceeași în build și în ce trimite serverului (1.0.20+)', vGr && vGr === vCl && vGr.localeCompare('1.0.20', undefined, { numeric: true }) >= 0, vGr + ' / ' + vCl);
+T('versiunea aplicației e aceeași în build și în ce trimite serverului (1.0.21+, cu „Prelungește”)', vGr && vGr === vCl && vGr.localeCompare('1.0.21', undefined, { numeric: true }) >= 0, vGr + ' / ' + vCl);
 
 // ─── 3b. Baza și copiile ──────────────────────────────────────────────────────────────────────────────────────────
 sect('3b. Baza, copiile, jurnalul');
@@ -145,7 +171,10 @@ T('tabela ține amprenta, nu tokenul', /CREATE TABLE IF NOT EXISTS locatii_distr
 T('serverul scrie în bază doar amprenta', /amprenta: locatieDistribuita\.amprenta\(token\)/.test(server) && !/creeazaLocatieDistribuita\(\{[^}]*\btoken\b[,}]/.test(server));
 T('copiile nu țin linkurile (trăiesc cel mult 8 ore)', /locatii_distribuite:/.test(taie(backup, 'BACKUP_EXCLUDED', '};')));
 T('curățenia la minut + în jurnalul de audit facerea și oprirea', /setInterval\(\(\) => db\.stergeLocatiiDistribuiteExpirate\(Date\.now\(\)\)\.catch\(\(\) => \{\}\), 60 \* 1000\)/.test(server)
-  && /auditReq\(req, 'create', 'locatie_distribuita'/.test(server) && /auditReq\(req, 'delete', 'locatie_distribuita'/.test(server));
+  && /auditReq\(req, 'create', 'locatie_distribuita'/.test(server) && /auditReq\(req, 'delete', 'locatie_distribuita'/.test(server)
+  && /auditReq\(req, 'update', 'locatie_distribuita', imei, \{ id: l\.id, minute: Number\(minute\), de_la: /.test(server));
+T('prelungirea scrie în bază doar dacă linkul e cel citit (două apăsări deodată nu trec de plafon)',
+  /UPDATE locatii_distribuite SET expira_la = \$4 WHERE id = \$1 AND imei = \$2 AND expira_la = \$3 RETURNING/.test(db));
 
 // ─── 4. Pe server pornit ──────────────────────────────────────────────────────────────────────────────────────────
 const PORT = 3497, DIR = '.locatie-distribuita-db';
@@ -247,6 +276,36 @@ const tokenDin = (link) => String(link || '').split('/locatie/')[1] || '';
   x = await A1.DEL('/api/devices/' + IM1 + '/locatie-distribuita/' + fd.j.id);
   T('a doua oprire: 404 cu motivul', x.s === 404 && /a expirat sau a fost oprit/.test(x.j.error), J(x));
 
+  // „Prelungește" (23.10)
+  const fp = await A1.POST('/api/devices/' + IM1 + '/locatie-distribuita', { minute: 15 });
+  const tokP = tokenDin(fp.j.link), urlP = '/api/devices/' + IM1 + '/locatie-distribuita/' + fp.j.id + '/prelungire';
+  x = await A1.GET('/api/devices/' + IM1 + '/locatie-distribuita');
+  const rp = x.j.active.find((l) => l.id === fp.j.id);
+  T('lista: linkul de 15 minute se poate prelungi; nota serverului', rp && rp.poatePrelungi === true && x.j.prelungire === L.TEXT_PRELUNGIRE, J(x.j));
+  x = await V1.POST(urlP, { minute: 60 });
+  const xp2 = await A2.POST(urlP, { minute: 60 });
+  const xp3 = await A1.POST('/api/devices/' + IM3 + '/locatie-distribuita/' + fp.j.id + '/prelungire', { minute: 60 });
+  T('vizualizatorul nu prelungește (403); altă firmă și altă mașină: 404', x.s === 403 && xp2.s === 404 && xp3.s === 404, J([x.s, xp2.s, xp3.s]));
+  x = await A1.POST(urlP, { minute: 7 });
+  T('cu cât: o durată din afara listei → 400, cu duratele pe nume', x.s === 400 && x.j.error === 'Alege cu cât: 15 minute, 1 oră, 8 ore.', J(x));
+  const inainte = (await pub(tokP)).j.expiraLa;
+  x = await A1.POST(urlP, { minute: 60 });
+  pb = await pub(tokP);
+  T('+1 oră: ora de final se mută cu o oră, pe ACELAȘI link; pagina publică vede singură ora nouă',
+    x.s === 200 && pb.s === 200 && pb.j.expiraLa === inainte + 3600000 && pb.j.pana === x.j.pana && x.j.text === 'Linkul merge acum până la ' + x.j.pana + '. Cine îl are vede singur noua oră.'
+    && x.j.taiat === false && x.j.poatePrelungi === true, J([x, pb.j.expiraLa - inainte]));
+  x = await D1.POST(urlP, { minute: 480 });
+  pb = await pub(tokP);
+  T('dispecerul prelungește și el; +8 ore se oprește la 8 ore de acum și o spune', x.s === 200 && x.j.taiat === true && /\(cel mult 8 ore de acum\)/.test(x.j.text)
+    && Math.abs(pb.j.expiraLa - (Date.now() + 8 * 3600000)) < 60000 && x.j.poatePrelungi === false, J([x, pb.j.expiraLa - Date.now()]));
+  x = await A1.GET('/api/devices/' + IM1 + '/locatie-distribuita');
+  const xp4 = await A1.POST(urlP, { minute: 15 });
+  T('la plafon: fără „Prelungește" în listă, iar o cerere tot trimisă → 409 cu motivul', x.j.active.find((l) => l.id === fp.j.id).poatePrelungi === false
+    && xp4.s === 409 && /mai mult de 8 ore înainte nu se poate/.test(xp4.j.error), J([x.j.active, xp4]));
+  x = await A1.DEL('/api/devices/' + IM1 + '/locatie-distribuita/' + fp.j.id);
+  const xp5 = await A1.POST(urlP, { minute: 15 });
+  T('oprit → nu se mai prelungește (404, „fă altul")', x.s === 200 && xp5.s === 404 && xp5.j.error === L.TEXT_PRELUNGIRE_EXPIRAT && (await pub(tokP)).s === 404, J(xp5));
+
   // expirarea
   const f15 = await A1.POST('/api/devices/' + IM1 + '/locatie-distribuita', { minute: 15 });
   T('linkul de 15 minute merge acum', (await pub(tokenDin(f15.j.link))).s === 200);
@@ -257,6 +316,8 @@ const tokenDin = (link) => String(link || '').split('/locatie/')[1] || '';
   x = await S.POST('/api/test/ceasuri', { acum: Date.now() + 61 * 60000, locatii: true });
   pb = await pub(tok);
   T('după o oră: și cel de o oră s-a dus', x.j.locatiiSterse === 1 && pb.s === 404, J([x.j.locatiiSterse, pb.s]));
+  x = await A1.POST('/api/devices/' + IM1 + '/locatie-distribuita/' + f.j.id + '/prelungire', { minute: 60 });
+  T('expirat → nu se prelungește (404)', x.s === 404 && x.j.error === L.TEXT_PRELUNGIRE_EXPIRAT, J(x));
   x = await A1.GET('/api/devices/' + IM1 + '/locatie-distribuita');
   T('lista e goală din nou', x.j.active.length === 0, J(x.j.active));
 
@@ -273,12 +334,16 @@ const tokenDin = (link) => String(link || '').split('/locatie/')[1] || '';
   await S.PUT('/api/devices/' + IM3 + '/company', { company_id: T2 });
   pb = await pub(tokenDin(fm.j.link));
   T('mașina mutată pe altă firmă: linkul făcut de firma veche se oprește pe loc', pb.s === 404, pb.s);
+  x = await S.POST('/api/devices/' + IM3 + '/locatie-distribuita/' + fm.j.id + '/prelungire', { minute: 60 });
+  T('linkul firmei vechi nu se prelungește nici de noi (404)', x.s === 404, J(x));
   const tokArh = tokenDin(facute[0].j.link);
   T('linkul mașinii care va fi arhivată merge', (await pub(tokArh)).s === 200);
   await S.PUT('/api/devices/' + IM2 + '/status', { status: 'archived' });
   pb = await pub(tokArh);
   x = await S.POST('/api/devices/' + IM2 + '/locatie-distribuita', { minute: 15 });
   T('mașina arhivată: linkurile se opresc pe loc și nu se mai fac altele', pb.s === 404 && x.s >= 400, J([pb.s, x.s]));
+  x = await S.POST('/api/devices/' + IM2 + '/locatie-distribuita/' + facute[1].j.id + '/prelungire', { minute: 15 });
+  T('mașina arhivată: linkurile ei nu se prelungesc', x.s === 400 && /arhivată/.test(x.j.error), J(x));
   // noi (super-admin) facem link pe orice mașină a unei firme, iar el arată firma mașinii
   const fs1 = await S.POST('/api/devices/' + IM1 + '/locatie-distribuita', { minute: 15 });
   pb = await pub(tokenDin(fs1.j.link));

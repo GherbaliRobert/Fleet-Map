@@ -8,7 +8,7 @@ import './distribuieLocatia.css';
 // „Distribuie locația" (Robert, 21.10): foaia din fișa mașinii, ca pe web (fereastra „Distribuie locația live").
 // Aceleași rute, aceleași reguli — duratele, textul mesajului, orele și „cine poate" le dă serverul
 // (locatie_distribuita.js). Foaia doar le arată. Linkul se vede o singură dată, când e făcut: în bază stă doar
-// amprenta lui, deci nu se poate arăta din nou — se face altul.
+// amprenta lui, deci nu se poate arăta din nou — se face altul. „Prelungește" (23.10) mută ora de final a aceluiași link.
 const BTN_GHOST = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
 
 export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume: string; onClose: () => void }) {
@@ -19,6 +19,8 @@ export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume:
   const [busy, setBusy] = useState(false);
   const [facut, setFacut] = useState<{ id: number; link: string; mesaj: string; text: string } | null>(null);
   const [deOprit, setDeOprit] = useState<LocatieActiva | null>(null);
+  const [prel, setPrel] = useState<number | null>(null);      // linkul la care e deschisă alegerea „Cu cât?"
+  const [notaPrel, setNotaPrel] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
 
   // „Înapoi" pe Android: întâi întrebarea de oprire, apoi foaia.
@@ -30,6 +32,7 @@ export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume:
       setDurate(d);
       setMinute((m) => (m != null && d.some((x) => x.minute === m)) ? m : ((d.find((x) => x.minute === 60) || d[0] || { minute: null }) as any).minute);
       setActive(Array.isArray(r.active) ? r.active : []);
+      setNotaPrel(r.prelungire || '');
     }).catch((e: any) => setErr(e?.message || 'Nu am putut citi linkurile.'));
   }
   useEffect(incarca, [imei]);
@@ -67,6 +70,16 @@ export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume:
     if (!facut) return;
     const url = 'https://wa.me/?text=' + encodeURIComponent(facut.mesaj);
     try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); }
+  }
+  async function prelungeste(l: LocatieActiva, m: number) {
+    setBusy(true); setErr('');
+    try {
+      const r = await Api.prelungesteLocatieDistribuita(imei, l.id, m);
+      showToast(r.text || 'Linkul s-a prelungit.');
+      setPrel(null);
+      if (facut && facut.id === l.id) setFacut({ ...facut, text: 'Linkul merge până la ' + r.pana + '.' });
+    } catch (e: any) { setErr(e?.message || 'Nu am putut prelungi linkul.'); }
+    finally { setBusy(false); incarca(); }
   }
   async function opreste(l: LocatieActiva) {
     setBusy(true); setErr('');
@@ -123,9 +136,25 @@ export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume:
                 <div class="dl-act-a">{'Până la ' + l.pana + ' · ' + l.ramas}</div>
                 <div class="dl-act-b">{'Făcut la ' + l.creat + (l.creatDe ? ' de ' + (l.alMeu ? 'tine' : l.creatDe) : '') + (facut && l.id === facut.id ? ' · cel de mai sus' : '')}</div>
               </div>
-              <button class="btn dl-stop" style={BTN_GHOST} disabled={busy} onClick={() => setDeOprit(l)}>Oprește</button>
+              <div class="dl-act-bt">
+                {l.poatePrelungi && (
+                  <button class="btn dl-stop" style={BTN_GHOST + (prel === l.id ? ';border-color:var(--accent)' : '')} disabled={busy}
+                    aria-expanded={prel === l.id} onClick={() => setPrel(prel === l.id ? null : l.id)}>Prelungește</button>
+                )}
+                <button class="btn dl-stop" style={BTN_GHOST} disabled={busy} onClick={() => { if (prel === l.id) setPrel(null); setDeOprit(l); }}>Oprește</button>
+              </div>
+              {l.poatePrelungi && prel === l.id && (
+                <div class="dl-prel">
+                  <span class="dl-prel-et">Cu cât?</span>
+                  {durate.map((d) => (
+                    <button key={d.minute} type="button" class="btn dl-prel-d" style={BTN_GHOST} disabled={busy}
+                      onClick={() => prelungeste(l, d.minute)}>{'+' + d.text}</button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
+          {active.length > 0 && notaPrel && <div class="dl-nota">{notaPrel}</div>}
         </div>
       </div>
       {deOprit && (
