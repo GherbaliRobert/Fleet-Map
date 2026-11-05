@@ -555,7 +555,7 @@ function parteaNavigarii() {
   T('/insight e păzit ca web-ul (ecranul „insight" tăiat din rol → pagina calmă)', /insight: pazit\('insight', Insight, 'RA Insight'\)/.test(S.app) && /<Route path="\/insight" component=\{P\.insight\} \/>/.test(S.app));
   T('/ai duce la /insight (anunțuri vechi), înlocuind adresa', /<Route path="\/ai" component=\{SpreInsight\} \/>/.test(S.app) && /function SpreInsight\(\) \{[\s\S]*?loc\.route\('\/insight', true\)/.test(S.app));
   T('App.tsx nu mai încarcă ecranul vechi', !/AiChat/.test(S.app));
-  T('meniul: rândul „RA Insight" duce la /insight, cu aceeași condiție ca pe web', /u\?\.features\?\.ai_assistant !== false && vede\('insight'\) && item\('sparkles', 'RA Insight', \(\) => loc\.route\('\/insight'\)\)/.test(S.meniu) && /feats\.ai_assistant !== false/.test(html));
+  T('meniul: rândul „RA Insight" duce la /insight, cu aceeași condiție ca pe web (și cheia lui pentru „NOU", din 05.11)', /u\?\.features\?\.ai_assistant !== false && vede\('insight'\) && item\('sparkles', 'RA Insight', \(\) => loc\.route\('\/insight'\), undefined, '', 'insight'\)/.test(S.meniu) && /feats\.ai_assistant !== false/.test(html));
   T('meniul: grupa clientului se cheamă „Management", ca pe web, ca drumurile din textele serverului să existe; fondatorul își păstrează numele',
     /<div class="mn-sec">\{u\?\.isSuper \? 'Administrare' : 'Management'\}<\/div>/.test(S.meniu) && /data-vert="partener" data-group="management">\s*<button[^>]*>.*<span>Management<\/span>/.test(html) &&
     /Management › Alerte › Adaugă regulă/.test(citeste('propuneri.js')) && /Management › Șoferi/.test(citeste('soferi_masini.js') + html));
@@ -655,7 +655,8 @@ function parteaDesenului() {
     for (const ext of ['.ts', '.tsx']) if (fs.existsSync(path.join(ROOT, baza + ext))) return baza + ext;
     return baza;
   };
-  const me = { value: { full_name: 'Alin Tîlvăr', permissions: { viewReports: true }, features: {}, isSuper: false } };
+  // Din 05.11 prenumele din salut îl dă serverul (/api/me → prenume); ecranul doar îl scrie.
+  const me = { value: { full_name: 'Alin Tîlvăr', prenume: 'Alin', permissions: { viewReports: true }, features: {}, isSuper: false } };
   const ruta = { params: {}, query: {} };
   const stubs = {
     preact, 'preact/hooks': hooks, 'preact/jsx-runtime': jsxRt,

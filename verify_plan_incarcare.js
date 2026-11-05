@@ -251,7 +251,7 @@ T('rutele ecranelor sunt cele trei adrese (App.tsx)',
   /<Route path="\/incarcare\/plan\/:id" component=\{PlanSofer\} \/>/.test(M.app));
 T('simulatorul de pe telefon deschide planul din adresă (?plan=), ca anunțurile', /\(\(loc\.query \|\| \{\}\) as any\)\.plan/.test(M.simulator) && /Api\.planIncarcare\(Number\(planDinAdresa\)\)/.test(M.simulator));
 T('meniul: „Simulator încărcare" pentru cine face planuri (ca pe web), „Planurile de încărcare" pentru oricine din firmă',
-  /modulIncarcare\(u\) && \(u\?\.isSuper \|\| perms\.manageFleet \|\| u\?\.role === 'dispatcher'\) && item\('boxes', 'Simulator încărcare', \(\) => loc\.route\('\/incarcare'\)\)/.test(M.meniu) &&
+  /modulIncarcare\(u\) && \(u\?\.isSuper \|\| perms\.manageFleet \|\| u\?\.role === 'dispatcher'\) && item\('boxes', 'Simulator încărcare', \(\) => loc\.route\('\/incarcare'\), undefined, '', 'incarcare'\)/.test(M.meniu) &&
   /modulIncarcare\(u\) && item\('clipboard', 'Planurile de încărcare', \(\) => loc\.route\(RUTA_PLANURI\)\)/.test(M.meniu));
 T('…iar regula „cine face planuri" e aceeași pe server, pe web și pe telefon (cine modifică flota sau e dispecer)',
   /const _incDispecer = \(req\) => req\.isSuper \|\| permReq\(req, 'manageFleet'\) \|\| getAuth\(req\)\.role === 'dispatcher';/.test(server) &&
