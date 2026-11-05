@@ -227,6 +227,7 @@ const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": paș
 const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
 const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
 const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
+const soldAi = require('./sold_ai');             // banii pentru AI, la zi (04.11): soldul Anthropic, anunțurile, alarma refuzului
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
@@ -1393,7 +1394,7 @@ const PAGINI_PUBLICE = [
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-10-21', amprenta: '0fcf3771ed21', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-10-29', amprenta: '81b905cd9595', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-04', amprenta: '940c38a3237b', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-28', amprenta: '520b27e09dd4', prio: '0.3', freq: 'yearly' },
@@ -4107,25 +4108,137 @@ async function _asiguraLocAdmin(u) {
 }
 // Tabloul nostru (pasul 4): de la cât din plasă ne anunță aplicația (și o dată când o atinge).
 const PLASA_ANUNT_PROCENT = 60;
-// Soldul de la Anthropic: îl scriem noi, de mână (Anthropic nu-l dă printr-o cerere), cu ziua. Ce s-a cheltuit DE ATUNCI se
-// scade singur (Alin, 30.10: „da acum" — până atunci 20 $ scriși pe 10.10 rămâneau 20 $ și zilele ieșeau prea multe), iar
-// zilele = ce a rămas ÷ cheltuiala pe zi a ultimelor 7 zile (ritmul de acum; „luna asta ÷ ziua lunii" nu știa nimic pe 1).
-// { usd: rămas, scris, la, cheltuit (de la `la`), peZi, zile } sau null. O singură socoteală: „Azi la noi" și „RA Insight · control".
-const SOLD_RITM_ZILE = 7;
+// ─── Banii pentru AI, la zi (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon…
+// să avem control total pe tokeni și bani, după ce schimbă Robert cheile") ───
+// Regulile și TEXTELE stau în sold_ai.js (curat); aici se adună cifrele. Soldul îl scriem noi, de mână, într-un SINGUR loc
+// („RA Insight · control" → PUT /api/admin/insight/sold; setarea `anthropic_sold` = { usd, la }), iar aplicația scade singură ce s-a
+// cheltuit de atunci: pe zilele încheiate cea mai mare dintre cifra Anthropic (cheia de administrare, Admin API) și socoteala
+// aplicației, azi socoteala aplicației. Reîncărcarea automată de la Anthropic, dacă e pornită: setarea `anthropic_reincarcare`.
+// O socoteală pentru „Azi la noi" (banda), „RA Insight · control", „Control costuri", anunțuri și „Stare producție".
+const SOLD_RITM_ZILE = soldAi.RITM_ZILE;
+async function _leiPeDolar() { return (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum()); }
+async function _reincarcareAnthropic() {
+  try { const v = JSON.parse((await db.getSetting('anthropic_reincarcare')) || 'null'); return v && Number(v.cumpara) > 0 ? { sub: Math.max(0, Number(v.sub) || 0), cumpara: Number(v.cumpara) } : null; } catch (e) { return null; }
+}
+let _soldEroareA = null;   // ultima eroare a cifrei Anthropic (pentru „De unde vin cifrele")
 async function _soldAnthropic() {
   let s = null; try { s = JSON.parse((await db.getSetting('anthropic_sold')) || 'null'); } catch (e) { s = null; }
   if (!s || !(Number(s.usd) >= 0)) return null;
-  const doi = function (n) { return Math.round(n * 100) / 100; };
-  const scris = Number(s.usd), la = Number(s.la) || null;
-  let cheltuit = 0, peZi = null, zile = null;
-  try { if (la) cheltuit = await db.costAiDeLa(la); } catch (e) { cheltuit = 0; }
-  const ramas = Math.max(0, scris - cheltuit);
-  try {
-    peZi = (await db.costAiDeLa(Date.now() - SOLD_RITM_ZILE * 86400000)) / SOLD_RITM_ZILE;
-    if (peZi > 0) zile = Math.floor(ramas / peZi);
-  } catch (e) { peZi = null; }
-  return { usd: doi(ramas), scris: doi(scris), la: la, cheltuit: doi(cheltuit), peZi: peZi == null ? null : Math.round(peZi * 10000) / 10000, zile: zile, ritmZile: SOLD_RITM_ZILE };
+  const acum = Date.now(), la = Number(s.la) || acum;
+  let noiPeZi = {}, noi7 = 0, realPeZi = null;
+  try { noiPeZi = await db.costAiPeZile(Math.min(la, acum - SOLD_RITM_ZILE * 86400000)); } catch (e) { noiPeZi = {}; }
+  try { noi7 = await db.costAiDeLa(acum - SOLD_RITM_ZILE * 86400000); } catch (e) { noi7 = 0; }
+  // Socoteala aplicației de la scriere: zilele de dinainte de ziua scrierii nu intră; ziua scrierii doar de la clipa ei.
+  const ziLa = soldAi.ziUtc(la);
+  const deLa = {}; Object.keys(noiPeZi).forEach(function (z) { if (z > ziLa) deLa[z] = noiPeZi[z]; });
+  try { const z0 = await db.costAiPeZile(la); if (z0[ziLa] != null) deLa[ziLa] = z0[ziLa]; } catch (e) {}
+  // Cifra Anthropic: zilele încheiate, de la cea mai veche dintre ziua de după scriere și ultimele 7 zile, până azi la 00:00 UTC.
+  if (process.env.ANTHROPIC_ADMIN_KEY) {
+    const azi0 = Date.parse(soldAi.ziUtc(acum) + 'T00:00:00Z');
+    const de = Math.min(Date.parse(ziLa + 'T00:00:00Z') + 86400000, azi0 - SOLD_RITM_ZILE * 86400000);
+    if (de < azi0) {
+      const r = await fetchAnthropicSpend(new Date(de).toISOString().replace(/\.\d{3}Z$/, 'Z'), new Date(azi0).toISOString().replace(/\.\d{3}Z$/, 'Z')).catch(function (e) { return { configured: true, error: e.message }; });
+      if (r && r.configured && !r.error) { realPeZi = r.byDay || {}; _soldEroareA = null; } else _soldEroareA = (r && r.error) || null;
+    } else realPeZi = {};
+  }
+  const o = soldAi.sold({ scris: s.usd, la: la, acum: acum, noiPeZi: deLa, realPeZi: realPeZi, noi7: noi7, reincarcare: await _reincarcareAnthropic() });
+  return Object.assign(o, soldAi.cartonas(o));
 }
+// Anthropic refuză? ai.js spune ce s-a întâmplat la fiecare cerere (ai.setLaStare); aici se ține starea — în memorie și în setarea
+// `ai_refuz` ({ fel, la, ultimaLa, refuzate, status, eroare, anuntatLa }), ca o repornire s-o păstreze —, ne anunță pe noi (în aplicație
+// și pe telefon, cel mult o dată la 6 ore pe același fel; un fel nou anunță pe loc) și se stinge la primul răspuns bun, cu un anunț
+// „RA Insight răspunde din nou cu AI". Lista modelelor (verificarea cheii) stinge doar alarma cheii: merge și fără credit.
+let _aiRefuz = null, _aiRefuzCitit = false, _aiRefuzScrisLa = 0, _aiOkLa = 0, _aiRefuzAnunt = false;
+async function _aiRefuzAcum() {
+  if (!_aiRefuzCitit) { try { const v = await db.getSetting('ai_refuz'); _aiRefuz = v ? JSON.parse(v) : null; } catch (e) { _aiRefuz = null; } _aiRefuzCitit = true; }
+  return _aiRefuz;
+}
+async function _dupaAnthropic(ev) {
+  try {
+    const acum = Date.now();
+    const r = await _aiRefuzAcum();
+    if (ev && ev.ok) {
+      if (!ev.doarCheie) _aiOkLa = acum;
+      if (!r || (ev.doarCheie && r.fel !== 'cheie' && r.fel !== 'cont')) return;
+      _aiRefuz = null;
+      await db.setSetting('ai_refuz', '');
+      if (r.anuntatLa) {
+        const a = soldAi.anuntRevenire(r, acum);
+        await _anuntaSuperadmini(await _superadmini(), 'ai_refuz_gata', a.nivel, a.titlu, a.text, { ai: true, fel: r.fel });
+      }
+      return;
+    }
+    if (!ev || !ev.refuz) return;
+    const nou = !r || r.fel !== ev.refuz;
+    const st = nou ? { fel: ev.refuz, la: acum, ultimaLa: acum, refuzate: 1, status: ev.status || null, eroare: String(ev.eroare || '').slice(0, 300), anuntatLa: 0 }
+      : Object.assign({}, r, { ultimaLa: acum, refuzate: (Number(r.refuzate) || 0) + (ev.verificare ? 0 : 1) });
+    _aiRefuz = st;
+    const deAnuntat = !_aiRefuzAnunt && (nou || acum - (Number(st.anuntatLa) || 0) >= soldAi.PAUZA_ALARMA_MS);
+    if (deAnuntat) { st.anuntatLa = acum; _aiRefuzAnunt = true; }
+    if (nou || deAnuntat || acum - _aiRefuzScrisLa > 60000) { _aiRefuzScrisLa = acum; await db.setSetting('ai_refuz', JSON.stringify(st)); }
+    if (deAnuntat) {
+      try {
+        const a = soldAi.anuntRefuz(st, acum);
+        await _anuntaSuperadmini(await _superadmini(), 'ai_refuz', a.nivel, a.titlu, a.text, { ai: true, fel: st.fel });
+      } finally { _aiRefuzAnunt = false; }
+    }
+  } catch (e) { /* starea nu are voie să strice cererea */ }
+}
+async function _superadmini() { try { return (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) { return []; } }
+// Cheia, verificată la pornire și din oră în oră (în probe doar cu AI_VERIFICARE_LA_MS: modelul simulat răspunde la orice cerere).
+async function _verificaCheiaAnthropic() { if (!ai || !ai.aiEnabled()) return { ok: null }; return ai.verificaCheia(); }
+// Întrebările lunii pe firmele cu pachet cu AI — O socoteală pentru anunțul de la 80% / 100%, banda de pe „Acasă" și „Ce cere
+// atenție": aceleași cifre ca bara din „RA Insight · control" (întrebările pachetului; rândurile lunii din ai_usage, felurile numărate).
+async function _intrebariFirmeAi() {
+  const r = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany()]);
+  const pe = {}; (r[1] || []).forEach(function (u) { if (u.company_id != null) pe[u.company_id] = Number(u.questions) || 0; });
+  return (r[0] || []).filter(function (c) { return !c.is_demo && c.id !== demoCompanyId; }).map(function (c) {
+    const p = _pachetCo(c); if (!p || !p.ai || !_firmaAreAi(c)) return null;
+    return { id: c.id, name: c.name, nume: p.nume, cod: p.cod, folosite: pe[c.id] || 0, intrebari: p.intrebari };
+  }).filter(Boolean);
+}
+// Anunțurile dinainte (la 15 minute, cu plasa): soldul la 14 / 7 / 3 zile și terminat (o dată pe prag și pe soldul scris), firmele la
+// 80% și la 100% din întrebări (o dată pe firmă, pe lună și pe prag). Cheile stau în setarea `ai_anunturi`, ca o repornire să nu le repete.
+async function soldAnuntTick() {
+  const out = { sold: null, firme: [] };
+  let st = {}; try { st = JSON.parse((await db.getSetting('ai_anunturi')) || '{}') || {}; } catch (e) { st = {}; }
+  const luna = new Date().toISOString().slice(0, 7);
+  let sold = null; try { sold = await _soldAnthropic(); } catch (e) {}
+  const pr = soldAi.pragSold(sold);
+  const facuteS = (Array.isArray(st.sold) ? st.sold : []).filter(function (k) { return sold && String(k).indexOf(sold.la + '|') === 0; });
+  if (pr != null && facuteS.indexOf(sold.la + '|' + pr) < 0) {
+    const a = soldAi.anuntSold(sold, pr, await _leiPeDolar());
+    try { await _anuntaSuperadmini(await _superadmini(), 'ai_sold', a.nivel, a.titlu, a.text, { ai: true, prag: pr }); out.sold = pr; st.ultim = { titlu: a.titlu, la: Date.now() }; } catch (e) {}
+    soldAi.cheiSold(sold, pr).forEach(function (k) { if (facuteS.indexOf(k) < 0) facuteS.push(k); });
+  }
+  const facuteF = (Array.isArray(st.firme) ? st.firme : []).filter(function (k) { return String(k).indexOf('|' + luna + '|') > 0; });
+  let firme = []; try { firme = soldAi.firmeAproape(await _intrebariFirmeAi()); } catch (e) {}
+  for (const f of firme) {
+    const p = soldAi.pragIntrebari(f), cheie = f.id + '|' + luna + '|' + p;
+    if (!p || facuteF.indexOf(cheie) >= 0) continue;
+    const a = soldAi.anuntIntrebari(f);
+    try { await _anuntaSuperadmini(await _superadmini(), 'ai_intrebari', a.nivel, a.titlu, a.text, { ai: true, company_id: f.id, procent: f.pct }); out.firme.push(cheie); st.ultim = { titlu: a.titlu, la: Date.now() }; } catch (e) {}
+    facuteF.push(cheie);
+    if (p === 100) { const k80 = f.id + '|' + luna + '|' + soldAi.PROCENT_INTREBARI; if (facuteF.indexOf(k80) < 0) facuteF.push(k80); }
+  }
+  try { await db.setSetting('ai_anunturi', JSON.stringify({ sold: facuteS, firme: facuteF, ultim: st.ultim || null })); } catch (e) {}
+  return out;
+}
+// O dată (04.11): soldul scris până acum în „Control costuri" (credite + ziua, de pe 16.10) trece în locul unic, dacă e mai nou decât
+// cel din „RA Insight · control". După asta, „Control costuri" citește tot de aici.
+async function _soldUnLoc() {
+  try {
+    if (await db.getSetting('sold_un_loc')) return;
+    const c = parseFloat(await db.getSetting('anthropic_credit_usd')), d = String((await db.getSetting('anthropic_credit_date')) || '');
+    let s = null; try { s = JSON.parse((await db.getSetting('anthropic_sold')) || 'null'); } catch (e) { s = null; }
+    if (Number.isFinite(c) && c > 0 && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const la = Date.parse(d + 'T00:00:00Z');
+      if (!s || !(Number(s.la) >= la)) await db.setSetting('anthropic_sold', JSON.stringify({ usd: Math.round(c * 100) / 100, la: la, din: 'control_costuri' }));
+    }
+    await db.setSetting('sold_un_loc', String(Date.now()));
+  } catch (e) { console.warn('[sold] mutarea soldului din Control costuri:', e.message); }
+}
+ai.setLaStare(_dupaAnthropic);   // ce spune Anthropic la fiecare cerere ajunge în _dupaAnthropic (alarma refuzului)
 // Anunțul pentru noi: o firmă a trecut de 60% din plasă, sau a atins-o (de acum răspunde pe butoane până pe 1). O dată pe
 // firmă, pe lună și pe prag (cheia stă în setări, ca o repornire să nu-l repete). Fără firma demo.
 async function plasaAnuntTick() {
@@ -4442,6 +4555,8 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
         .map(function (r) { return { id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei }; })
         .sort(function (a, b) { return b.procent - a.procent; }),
       sold: await _soldAnthropic(),
+      // Firmele între 80% și 99% din întrebările lunii (04.11) — aceeași socoteală ca anunțul și banda de pe „Acasă" (_intrebariFirmeAi).
+      aproape: soldAi.atentieIntrebari(await _intrebariFirmeAi().catch(function () { return []; })),
       // „Ce cere atenție" (15.10): 👎 pe toată platforma în ultimele 7 zile și partea răspunsurilor instant din luna asta.
       jos7: Object.keys(josPeFirma).reduce(function (s, k) { return s + josPeFirma[k]; }, 0),
       instant: Object.keys(reguliPeFirma).reduce(function (s, k) { return s + reguliPeFirma[k]; }, 0),
@@ -4455,11 +4570,19 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     const sursaSum = { stare: plat.stare, la: plat.la, stari: sursaExterna.STARI.map(function (k) { return { k: k, t: sursaExterna.TEXT_STARI[k], d: sursaExterna.DESCRIERE_STARI[k] }; }),
       model: sursaExterna.textModel(modS), modelOk: modS ? modS.ok : null, eroare: _sursaEroare && Date.now() - _sursaEroare.la < 86400000 ? _sursaEroare.eroare : null,
       intrebari: seTot.intrebari, cautari: seTot.cautari, costLei: Math.round(seTot.usd * kLei * 100) / 100, peLuna: sursaExterna.PE_PACHET };
+    // „Anthropic, la zi" (04.11): soldul, de unde vin cifrele, luna după Anthropic și după aplicație, tokenii, cheia, alarma refuzului.
+    const lunaA = process.env.ANTHROPIC_ADMIN_KEY ? await fetchAnthropicSpend().catch(function () { return null; }) : null;
+    let ultimAnunt = null; try { ultimAnunt = (JSON.parse((await db.getSetting('ai_anunturi')) || '{}') || {}).ultim || null; } catch (e) {}
+    const bani = soldAi.panou({ sold: pacheteSum.sold, refuz: await _aiRefuzAcum(), cheie: !!(ai && ai.aiEnabled()), okLa: _aiOkLa || null,
+      adminCheie: !!process.env.ANTHROPIC_ADMIN_KEY, eroareAnthropic: (lunaA && lunaA.error) || _soldEroareA || null,
+      luna: { anthropic: lunaA && lunaA.configured && !lunaA.error ? lunaA.spentUsd : null, noi: await db.costAiLunaToata().catch(function () { return 0; }) },
+      peFel: await db.aiLunaPeFel().catch(function () { return []; }), ultimAnunt: ultimAnunt, leiPeDolar: kLei, acum: Date.now() });
     // Luna curentă, încă nefacturată, primește estimarea — altfel dashboard-ul ar arăta gol tocmai
     // în luna despre care știm cel mai mult.
     const lunaAsta = _lunaAcum();
     istoric.forEach(function (m) { if (m.luna === lunaAsta) m.estimatLei = venitLei; });
     res.json({
+      bani: bani,
       rows: rows.sort(function (a, b) { return (b.used - a.used) || (b.deFacturat - a.deFacturat); }),
       summary: {
         companies: rows.length,
@@ -4601,6 +4724,8 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
     auditReq(req, 'ai_report', 'assistant', null, { type: req.body.type });
     res.json({ summary });
   } catch (e) {
+    // Anthropic refuză (04.11): rezumatul pe reguli, cu textul pentru client (fără cauză); noi am aflat deja (alarma refuzului).
+    if (e && e.refuzAnthropic) { const rep = (req.body && req.body.report) || {}; return res.json({ summary: soldAi.TEXT_REZUMAT + '\n\n' + aiRaport.rezumatTabel(rep.columns, rep.rows), reguli: true }); }
     res.status(500).json({ error: 'AI: ' + e.message });
   }
 });
@@ -4762,19 +4887,23 @@ function _insightInteles(sources, folosite, gasite, areIstoric, inPlus) {
 // discutat pe reguli stă în contextul conversației (`ctx.ar`), ca „și luna trecută?" să meargă. Pe Start se numără doar
 // răspunsurile date (o întrebare neînțeleasă nu se numără). Cu `incearca` (un buton pe Basic / Pro / Business, unde
 // butoanele n-au limită): ce nu înțeleg regulile nu primește răspuns aici (întoarce false) și merge la RA Insight.
+// `faraModel` (04.11) = textul pentru client când Anthropic refuză (creditul, limita, cheia — sold_ai.TEXT_CLIENT): răspunsul vine tot pe
+// reguli, nu se numără nicăieri (e vina noastră, nu a lui), iar textul se spune o dată pe discuție. Atunci `sp` poate lipsi (fondatorii,
+// regula veche pe cont).
 async function _insightPeReguli(req, res, x) {
-  const sp = x.sp, st = sp.st;
-  const start = !sp.pachet.ai;
-  let pachetInfo = _pachetPeEcran(st);
+  const sp = x.sp || null, st = sp ? sp.st : null;
+  const start = !!(sp && !sp.pachet.ai);
+  let pachetInfo = st ? _pachetPeEcran(st) : undefined;
   // `limita` = tot răspunsul e mesajul pachetului; `pachetMesaj` = mesajul pachetului pus înaintea răspunsului. Ecranul le
   // arată în caseta de avertizare; telefonul vechi citește doar `reply`, în care sunt deja.
   async function gata(reply, extra, ctxNou) {
     const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
     const ins = e.limita ? undefined : pachete.insigna('instant', { numarat: start });
-    const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st.cod,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins }, ctxNou || x.ctx);
+    // `faraModel` (04.11): mesajul e al refuzului lui Anthropic, nu al pachetului — caseta nu arată „Vezi pachetele" (nu e vina clientului).
+    const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st ? st.cod : undefined,
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined }, ctxNou || x.ctx);
     return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: pachetInfo,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins });
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined });
   }
   if (start && st.blocat) return gata(pachete.textBlocat(st, Date.now()), { limita: true });
   const ctxAr = (x.ctx && x.ctx.ar) || {};
@@ -4792,7 +4921,9 @@ async function _insightPeReguli(req, res, x) {
     // O întrebare liberă („de ce", „compară", „ce să fac") nu se poate pe reguli: pe Start spunem de la ce pachet merge,
     // iar când luna s-a oprit, de ce și până când.
     const pi = out.motiv === 'pentru_insight';
-    const text = pi ? (start ? pachete.textDoarButoane() : pachete.textBlocat(st, Date.now())) : out.text;
+    // Anthropic refuză (04.11): o întrebare pe care regulile n-o înțeleg primește tot textul pentru client, deasupra (de ce nu răspund acum).
+    if (x.faraModel && !pi) return gata(x.faraModel + '\n\n' + out.text, { alege: Array.isArray(out.alege) ? out.alege : [], sources: sursa(out.sursa), pachetMesaj: x.faraModel }, Object.assign(ctxNou, { faraModelSpus: true }));
+    const text = pi ? (x.faraModel || (start ? pachete.textDoarButoane() : pachete.textBlocat(st, Date.now()))) : out.text;
     return gata(text, { alege: Array.isArray(out.alege) ? out.alege : [], sources: sursa(out.sursa), limita: pi }, ctxNou);
   }
   const r = out.raspuns || {};
@@ -4800,10 +4931,11 @@ async function _insightPeReguli(req, res, x) {
   if (Array.isArray(r.tiles) && r.tiles.length > 1) reply += '\n\n' + r.tiles.map(function (t) { return t.et + ': **' + t.val + '**'; }).join(' · ');
   (r.sugestii || []).forEach(function (sg) { if (sg && sg.text) reply += '\n\n' + sg.text; });
   // Când luna s-a oprit, primul răspuns pe butoane din discuție spune de ce și până când; următoarele, doar răspunsul.
-  const opritCheie = st.blocat ? st.motiv + '|' + new Date().toISOString().slice(0, 7) : null;
+  const opritCheie = st && st.blocat ? st.motiv + '|' + new Date().toISOString().slice(0, 7) : null;
   let pachetMesaj = null;
-  if (!start && opritCheie && (x.ctx || {}).opritSpus !== opritCheie) { pachetMesaj = pachete.textBlocat(st, Date.now()); reply = pachetMesaj + '\n\n' + reply; ctxNou.opritSpus = opritCheie; }
-  pachetInfo = await _numaraRaspunsReguli(req, sp, out._u && out._u.subiect, x.usa || 'insight');
+  if (x.faraModel) { if (!(x.ctx || {}).faraModelSpus) { pachetMesaj = x.faraModel; reply = pachetMesaj + '\n\n' + reply; ctxNou.faraModelSpus = true; } }
+  else if (!start && opritCheie && (x.ctx || {}).opritSpus !== opritCheie) { pachetMesaj = pachete.textBlocat(st, Date.now()); reply = pachetMesaj + '\n\n' + reply; ctxNou.opritSpus = opritCheie; }
+  if (sp && !x.faraModel) pachetInfo = await _numaraRaspunsReguli(req, sp, out._u && out._u.subiect, x.usa || 'insight');
   return gata(reply, { inteles: out.inteles || [], sources: sursa(out.sursa), urmari: Array.isArray(r.urmari) ? r.urmari : [], pachetMesaj: pachetMesaj }, ctxNou);
 }
 // ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10) ──────────────────────────────────────────────────
@@ -5159,14 +5291,15 @@ async function _raInsight(req, res, opts) {
     // Cererea de dinainte nu mai e „în discuție" după o întrebare: „și săptămâna dinainte?" privește întrebarea.
     else if (ctx.cmd) { ctx = Object.assign({}, ctx); delete ctx.cmd; }
     // Rapoartele făcute deja, fără RA Insight (Start, luna oprită, cheia lipsă): cartonașele, plus de ce nu vine și judecata.
-    async function doarRapoartele(motiv) {
-      const ins = pachete.insigna('instant', { numarat: !!(gata.sp && !gata.sp.pachet.ai) });
+    // `faraModel` (04.11) = motivul e refuzul lui Anthropic (nu pachetul): nu se numără nimic și caseta nu arată „Vezi pachetele".
+    async function doarRapoartele(motiv, faraModel) {
+      const ins = pachete.insigna('instant', { numarat: !faraModel && !!(gata.sp && !gata.sp.pachet.ai) });
       let pachetInfo;
-      if (gata.sp) pachetInfo = await _numaraRaspunsReguli(req, gata.sp, gata.subiect, o.usa || 'insight');
+      if (gata.sp && !faraModel) pachetInfo = await _numaraRaspunsReguli(req, gata.sp, gata.subiect, o.usa || 'insight');
       const reply = gata.reply + '\n\n' + motiv;
-      const sv = await salveaza(reply, { source: 'reguli', inteles: gata.inteles, rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachetMesaj: motiv }, gata.ctxNou);
+      const sv = await salveaza(reply, { source: 'reguli', inteles: gata.inteles, rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachetMesaj: motiv, faraModel: faraModel ? true : undefined }, gata.ctxNou);
       return res.json({ reply: reply, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: gata.inteles, alege: [], urmari: [], sources: [],
-        rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachet: pachetInfo, pachetMesaj: motiv });
+        rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachet: pachetInfo, pachetMesaj: motiv, faraModel: faraModel ? true : undefined });
     }
 
     // 1) Răspuns rapid, LOCAL și GRATUIT — doar la întrebări despre ACUM („unde e", „care sunt oprite", „câți km azi").
@@ -5366,6 +5499,9 @@ async function _raInsight(req, res, opts) {
           masini: r.masini.slice(0, 12).map(function (m) { return { masina: m.eticheta, km: m.km, scor: m.scor, manevre_la_100_km: m.laSuta, cost_lei: m.cost.total, fata: m.fata ? m.fata.text : null }; }),
           soferi: r.soferi.slice(0, 12).map(function (x) { return { sofer: x.nume, masini: x.masini, km: x.km, scor: x.scor, manevre_la_100_km: x.laSuta, cost_lei: x.cost.total, fata: x.fata ? x.fata.text : null, discutie: x.discutie ? { zi: x.discutie.zi, rezultat: x.discutie.comparatie ? x.discutie.comparatie.text : null } : null }; }),
           unde: r.locuri.map(function (x) { return (x.adresa || 'o zonă fără adresă găsită') + ': ' + x.n + ' manevre bruște'; }),
+          // Prețurile pe manevră (04.11): ale firmei sau de pornire (o estimare RA Track) și unde se schimbă — ca omul să afle de la RA Insight.
+          preturi_pe_manevra: { ale_firmei: !!(r.preturi && r.preturi.proprii), unde_se_schimba: condus.UNDE_PRETURI, cine_le_schimba: 'administratorul sau managerul firmei',
+            atentie: 'Costurile sunt o estimare. Când omul întreabă de prețuri sau cifrele i se par prea mari ori prea mici, spune-i că le poate pune pe ale firmei și unde (unde_se_schimba).' },
           cand: r.ferestre.map(function (x) { return x.text + ': ' + x.n + ' manevre bruște'; }),
           recomandari: r.recomandari.map(function (x) { return x.text; }),
           atentie: 'Costurile sunt ESTIMATE (combustibil × prețul lui + un preț pe manevră, pus de firmă). Spune asta când dai cifrele. Omul le vede și pe pagina „RA Drive" din RA Insight.',
@@ -5557,10 +5693,23 @@ async function _raInsight(req, res, opts) {
     };
     // `brut`: textul vine așa cum l-a scris modelul, ca literele străine să ceară întâi o rescriere (mai jos); orice alt drum
     // primește textul deja curățat de ai.js (litere.js).
-    const result = await ai.runAgent({
-      system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
-      model: model, maxTokens: 1100, maxIters: 8, onUsage: onUsage, brut: true, efort: efort
-    });
+    let result;
+    try {
+      result = await ai.runAgent({
+        system, messages: istoric.concat([{ role: 'user', content: message }]), tools, toolHandlers,
+        model: model, maxTokens: 1100, maxIters: 8, onUsage: onUsage, brut: true, efort: efort
+      });
+    } catch (e) {
+      // Anthropic refuză (04.11): creditul terminat, limita de cheltuieli, cheia respinsă. Noi am aflat deja (ai.js → _dupaAnthropic);
+      // clientul primește răspunsul pe reguli (rapoartele deja făcute, sau ce înțeleg regulile), fără cauză, fără să se numere.
+      if (e && e.refuzAnthropic && !o.proba) {
+        if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(req.companyId, 'insight', _agg, userId, model).catch(() => {});
+        if (gata) return await doarRapoartele(soldAi.TEXT_CLIENT, true);
+        let sp = null; if (req.companyId != null) { try { sp = await _starePachet(req.companyId, userId); } catch (e2) { sp = null; } }
+        return await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa, faraModel: soldAi.TEXT_CLIENT });
+      }
+      throw e;
+    }
     let reply = result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.';
     // Cifrele, verificate fără să-l punem pe om să verifice (Alin, 15.10: „ce să verific? Am AI… îmi zice clar dacă e greșit
     // ceva"): o cifră care nu se regăsește în date și nici nu se poate socoti din ele → RA Insight își rescrie O DATĂ răspunsul,
@@ -5869,9 +6018,23 @@ async function _trimiteConfirmarePachet(rand, co, u) {
   return rez;
 }
 // Soldul de la Anthropic (pasul 4): îl scriem noi, din pagina lor de facturare; ziua o pune serverul.
+// Locul UNIC al soldului (04.11): „RA Insight · control" și „Control costuri" scriu tot aici. `reincarcare` (opțional) = ce e pornit la
+// Anthropic (Settings → Billing → Auto-reload): { sub, cumpara } în dolari, sau null = oprită; netrimisă = rămâne cum era.
 app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const v = req.body && req.body.usd;
+    const b = req.body || {}, v = b.usd;
+    if (b.reincarcare !== undefined) {
+      const r = b.reincarcare;
+      if (r === null || r === false) await db.setSetting('anthropic_reincarcare', '');
+      else {
+        const sub = Number(r && r.sub), cumpara = Number(r && r.cumpara);
+        if (!(Number.isFinite(sub) && sub >= 0 && sub <= 100000 && Number.isFinite(cumpara) && cumpara > 0 && cumpara <= 100000))
+          return res.status(400).json({ error: 'Reîncărcarea: „sub cât" (0 sau mai mult) și „cât cumpără" (peste 0), în dolari.' });
+        await db.setSetting('anthropic_reincarcare', JSON.stringify({ sub: Math.round(sub * 100) / 100, cumpara: Math.round(cumpara * 100) / 100, la: Date.now() }));
+      }
+      auditReq(req, 'update', 'anthropic_reincarcare', null, { pornita: !(r === null || r === false) });
+    }
+    if (v === undefined) return res.json({ ok: true, sold: await _soldAnthropic() });
     if (v === null || v === '') { await db.setSetting('anthropic_sold', ''); return res.json({ ok: true, sold: null }); }
     const usd = Number(v);
     if (!Number.isFinite(usd) || usd < 0 || usd > 1000000) return res.status(400).json({ error: 'Soldul e o sumă în dolari (0 sau mai mult).' });
@@ -6267,7 +6430,10 @@ async function _sdLuna(req, o) {
     luni: luni, lunaAleasa: lunaAleasa, grupe: f.grupe, grupaAleasa: grupa,
     de: safeDrive.inceput(L.de), pana: Math.min(acum, safeDrive.inceput(safeDrive.urmatoarea(L.pana))),   // perioada citită (RA Insight o verifică)
     praguri: { limita: condus.PRAGURI.limita, accel: condus.PRAGURI.accel, frana: condus.PRAGURI.frana, viraj: condus.PRAGURI.viraj, ralantiMin: condus.RALANTI_MIN_S / 60 },
-    preturi: { clase: condus.CLASE, valori: preturi, implicite: condus.PRETURI_IMPLICITE, poateSchimba: req.companyId != null && permReq(req, 'manageFleet') },
+    preturi: { clase: condus.CLASE, valori: preturi, implicite: condus.PRETURI_IMPLICITE, poateSchimba: req.companyId != null && permReq(req, 'manageFleet'),
+      // Ale firmei sau de pornire, și unde se schimbă (04.11): textul la vedere pe pagină, pe web și pe telefon (condus.textPreturi).
+      proprii: condus.preturiProprii(f.cs.safe_drive && f.cs.safe_drive.preturi),
+      nota: condus.textPreturi(condus.preturiProprii(f.cs.safe_drive && f.cs.safe_drive.preturi), req.companyId != null && permReq(req, 'manageFleet')), unde: condus.UNDE_PRETURI },
     poateNota: permReq(req, 'manageFleet'),
   };
   const imeis = f.masini.map(function (m) { return m.imei; });
@@ -6498,7 +6664,7 @@ async function _ramCombustibil(req, o) {
   o = o || {};
   const acum = Date.now();
   const f = await _ramFlota(req);
-  // o.perioada: o săptămână dată (Scrisoarea de luni), cu aceleași câmpuri; o.interval: perioada exactă cerută lui RA Insight.
+  // o.perioada: o săptămână dată, cu aceleași câmpuri; o.interval: perioada exactă cerută lui RA Insight.
   const p = o.perioada || (o.interval ? _ramInterval(f, o, acum) : _ramPerioada(f, o, acum));
   let devs = f.devices; if (p.grupa != null) devs = devs.filter(function (d) { return d.group_id === p.grupa; });
   const masini = devs.map(function (d) { return { imei: d.imei, eticheta: f.etPe[d.imei] }; });
@@ -6581,131 +6747,23 @@ app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_as
   catch (e) { console.warn('[ORE DE CONDUS]', e.message); res.status(500).json({ error: 'Ore de condus: ' + e.message }); }
 });
 
-// ═══ RA Insight → Scrisoarea de luni (pasul 4) ═══
-// Lunea la 8, fiecare om cu loc RA Insight primește ce contează din săptămâna trecută: drumul și combustibilul, Safe Drive,
-// orele de condus, actele și reviziile. Cifrele vin din ACELEAȘI funcții ca ramurile, pe mașinile LUI (aceeași regulă de acces);
-// textul îl scrie RA Insight DOAR din ele — iar dacă scrie o cifră care nu e în ele, sau nu se poate (fără cheie, eroare), rămâne
-// textul pe reguli (ramuri.textScrisoare). Nu se scade din fondul clientului: consumul se scrie ca 'scrisoare', în afara
-// AI_BILLABLE_KINDS (îl plătim noi; planul din 02.10: sub 25 de bani pe lună pe firmă).
-const SCRISOARE_ORA = 8;   // lunea la 8, ora României
-// Cererea unui om, pentru o treabă de fundal: aceleași câmpuri pe care le pune withScope (firma, mașinile la care are acces).
-async function _cerereOm(u) {
-  return { companyId: u.company_id, isSuper: false, allowedImeis: await getAllowedImeiSet(u.id, u.role, u.company_id),
-    auth: { userId: u.id, role: u.role, username: u.username } };
-}
-async function _fapteScrisoare(req, acum, opt) {
-  const faraSafeDrive = !!(opt && opt.faraSafeDrive);   // pachetul Start: fără ramuri, deci fără socoteala grea de Safe Drive
-  const f = await _ramFlota(req);
-  if (!f.devices.length) return null;
-  const iso = function (ms) { return new Date(ms).toISOString(); };
-  const azi = condus.zi(acum), luniAcum = _ziPlus(azi, -condus.ziSapt(azi)), luni = _ziPlus(luniAcum, -7);
-  const de = safeDrive.inceput(luni), pana = safeDrive.inceput(luniAcum), deI = safeDrive.inceput(_ziPlus(luni, -7));
-  const eticheta = insight.etichetaPerioadei(iso(de), iso(pana), acum), etInainte = insight.etichetaPerioadei(iso(deI), iso(de), acum);
-  const cb = await _ramCombustibil(req, { perioada: { cheie: 'sapt-' + luni, de: de, pana: pana, deI: deI, panaI: de, panaAzi: false, eticheta: eticheta, etInainte: etInainte, grupa: null }, asteptaMs: 180000 });
-  const hc = await _ramOreCondus(req, { saptamana: luni, asteptaMs: 180000 });
-  // Safe Drive: zilele săptămânii și ale celei dinainte (socotite întâi, dacă lipsesc — tura de noapte face doar 3 zile).
-  let sd = null;
-  if (!faraSafeDrive) {
-    const sf = await _sdFlota(req), imeis = sf.masini.map(function (m) { return m.imei; });
-    const a = await _sdAsigura(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6), acum);
-    if (a.ramase) await Promise.race([a.gata, new Promise(function (ok) { setTimeout(ok, 180000); })]);
-    const zile = await db.citesteZileCondus(imeis, _ziPlus(luni, -7), _ziPlus(luni, 6));
-    sd = safeDrive.saptamana({ masini: sf.masini, soferi: sf.soferi, preturi: condus.preturi(sf.cs.safe_drive && sf.cs.safe_drive.preturi),
-      zile: zile.filter(function (r) { return r.zi >= luni; }), zileInainte: zile.filter(function (r) { return r.zi < luni; }) });
-  }
-  const mt = await _ramMentenanta(req);
-  return ramuri.fapteScrisoare({ luni: luni, eticheta: eticheta, etInainte: etInainte, masini: f.devices.length,
-    cb: cb.pregatire ? null : cb, hc: hc.pregatire ? null : hc, sd: sd, mt: mt });
-}
-// Textul scrisorii: RA Insight (din fapte), cu paza cifrelor; altfel cel pe reguli. { text, scrisDe }
-async function _scrieScrisoarea(fapte, companyId, opt) {
-  const rezerva = { text: ramuri.textScrisoare(fapte), scrisDe: 'reguli' };
-  if (!ai.aiEnabled() || (opt && opt.faraAi)) return rezerva;   // pachetul Start: scrisoarea pe reguli
+// ═══ RA Insight → Scrisoarea de luni: SCOASĂ pe 04.11 (Alin: „o scoatem de tot… fiecare are acces să întrebe ce dorește") ═══
+// Spunea același lucru ca „Azi la tine", care stă sub salut ori de câte ori deschizi RA Insight; cine vrea ceva lunea pe email are
+// rapoartele programate. Au plecat: tura de luni, pagina din „Pagini", anunțul, rândul din pachete (aplicație + site). Scrisorile deja
+// trimise se șterg o dată, la pornire (`_scrisoriSterse`): nu le mai poate deschide nimeni. Telefonul vechi (care încă are pagina) primește
+// pe rutele de mai jos 410, cu textul de dedesubt, în locul unei erori.
+const SCRISOARE_SCOASA = 'Scrisoarea de luni nu mai există: ce spunea găsești oricând în „Azi la tine”, sub salutul din RA Insight, iar rapoartele de luni le poți programa din Rapoarte.';
+app.get('/api/insight/scrisori', requireAuth, (req, res) => res.status(410).json({ error: SCRISOARE_SCOASA, scoasa: true }));
+app.get('/api/insight/scrisori/:id', requireAuth, (req, res) => res.status(410).json({ error: SCRISOARE_SCOASA, scoasa: true }));
+async function _scrisoriSterse() {
   try {
-    const text = await ai.callClaude({
-      system: [{ type: 'text', text: ramuri.instructiuniScrisoare(), cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: 'FAPTELE (JSON):\n' + JSON.stringify(fapte) }],
-      maxTokens: 700, model: ai.AI_MODEL,
-      onUsage: function (u, m) { db.recordAiUsage(companyId, 'scrisoare', u, null, m).catch(function () {}); },
-    });
-    const v = ramuri.textulTrece(text, fapte);
-    if (v.ok) return { text: insight.litereRomanesti(String(text).trim()), scrisDe: 'model' };   // fără litere din alt alfabet (19.10)
-    console.warn('[SCRISOARE] textul lui RA Insight nu trece (' + v.motiv + ') — rămâne cel pe reguli');
-  } catch (e) { console.warn('[SCRISOARE] RA Insight n-a putut scrie: ' + e.message); }
-  return rezerva;
+    if (await db.getSetting('scrisori_sterse')) return;
+    const r = await db.pool.query('DELETE FROM scrisori_luni RETURNING id');
+    await db.pool.query("DELETE FROM notifications WHERE type = 'scrisoare_luni'");   // și anunțurile lor: duceau la o scrisoare care nu mai e
+    await db.setSetting('scrisori_sterse', String(Date.now()));
+    if (r.rows.length) { console.log('[RA Insight] Scrisoarea de luni a fost scoasă: șterse ' + r.rows.length + ' scrisori'); try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'scrisori_luni', entityId: null, details: { sterse: r.rows.length, motiv: 'scrisoarea de luni scoasă (04.11)' }, ip: null, companyId: null }); } catch (e) {} }
+  } catch (e) { console.warn('[RA Insight] scrisorile vechi nu s-au putut șterge:', e.message); }
 }
-// Lunea de la 8 încolo (DOAR lunea: în altă zi nu pleacă nimic — nici după o livrare în mijlocul săptămânii), pentru săptămâna
-// trecută: oamenii cu loc RA Insight care n-au încă scrisoarea ei. Oamenii cu aceleași mașini primesc ACEEAȘI scrisoare (o
-// singură socoteală, un singur text). Firmă fără drum și fără nimic de rezolvat → nimic.
-let _scrisoareMerge = false;
-const _scrisoareFacute = new Set();   // firmă|săptămână, deja trecută pe la rândul ei (în memorie: la repornire se reia o dată)
-async function scrisoareaDeLuniTick(acum) {
-  const t = acum || Date.now();
-  const azi = condus.zi(t), luniAcum = _ziPlus(azi, -condus.ziSapt(azi)), luni = _ziPlus(luniAcum, -7);
-  if (azi !== luniAcum) return { nuELuni: true, saptamana: luni };
-  if (t < safeDrive.inceput(luniAcum) + SCRISOARE_ORA * 3600000) return { devreme: true, saptamana: luni };
-  if (_scrisoareMerge) return { merge: true };
-  _scrisoareMerge = true;
-  const out = { saptamana: luni, firme: 0, scrisori: 0, model: 0, reguli: 0, faraNimic: 0 };
-  try {
-    const firme = (await db.getCompanies()).filter(function (co) { return co.id !== demoCompanyId && plans && plans.featuresFor(co).ai_assistant; });
-    for (const co of firme) {
-      const cheie = co.id + '|' + luni;
-      if (_scrisoareFacute.has(cheie)) continue;
-      try {
-        const st = await _accessStatusCached(co.id);
-        if (st && st.status === 'expired') { _scrisoareFacute.add(cheie); continue; }
-        const cuLoc = "SELECT id, username, full_name, role, company_id, access_until FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false";
-        let r = await db.pool.query(cuLoc, [co.id]);
-        const pF = _pachetCo(co);
-        // Pachetele (14.10): pe o firmă fără niciun cont dat, locul pachetului e al administratorului (pe Start, doar el) —
-        // îl primește acum, ca la prima deschidere a lui RA Insight, și primește și scrisoarea.
-        if (pF && !r.rows.length) {
-          const a = await db.pool.query("SELECT id, role, company_id, ai_seat FROM users WHERE company_id = $1 AND role IN ('company_admin','admin') AND active IS NOT false ORDER BY id LIMIT 1", [co.id]);
-          if (a.rows[0] && await _asiguraLocAdmin(a.rows[0])) r = await db.pool.query(cuLoc, [co.id]);
-        }
-        const oameni = r.rows.filter(function (u) { return !u.access_until || Number(u.access_until) > t; });
-        const au = await db.auScrisoarea(oameni.map(function (u) { return u.id; }), luni);
-        const grupe = {};
-        for (const u of oameni.filter(function (x) { return !au.has(x.id); })) {
-          const req = await _cerereOm(u);
-          const k = req.allowedImeis == null ? '*' : _ramCheieImei(Array.from(req.allowedImeis));
-          (grupe[k] || (grupe[k] = { req: req, oameni: [] })).oameni.push(u);
-        }
-        out.firme++;
-        for (const k of Object.keys(grupe)) {
-          const g = grupe[k];
-          const fapte = await _fapteScrisoare(g.req, t, { faraSafeDrive: !!(pF && !pF.ramuri) });
-          if (!fapte || fapte.nimic) { out.faraNimic += g.oameni.length; continue; }
-          const sc = await _scrieScrisoarea(fapte, co.id, { faraAi: !!(pF && !pF.ai) });
-          for (const u of g.oameni) {
-            const id = await db.scrieScrisoare({ userId: u.id, companyId: co.id, saptamana: luni, eticheta: fapte.eticheta, fapte: fapte, text: sc.text, scrisDe: sc.scrisDe });
-            if (!id) continue;
-            out.scrisori++; out[sc.scrisDe === 'model' ? 'model' : 'reguli']++;
-            await notify({ type: 'scrisoare_luni', severity: 'info', title: 'Scrisoarea de luni', userId: u.id, companyId: co.id,
-              body: 'Ce contează din săptămâna ' + fapte.eticheta + ' — de la RA Insight.', data: { key: 'scrisoare_' + u.id + '_' + luni, scrisoareId: id } });
-          }
-        }
-        _scrisoareFacute.add(cheie);
-      } catch (e) { console.warn('[SCRISOARE] firma ' + co.id + ': ' + e.message); }
-    }
-  } finally { _scrisoareMerge = false; }
-  return out;
-}
-app.get('/api/insight/scrisori', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
-  try {
-    const l = await db.scrisorileOmului(req.auth.userId, 26);
-    res.json({ scrisori: l.map(function (x) { return { id: x.id, saptamana: x.saptamana, eticheta: x.eticheta, citita: !!x.citita_la, creat_la: x.creat_la }; }), ora: SCRISOARE_ORA });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/api/insight/scrisori/:id', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
-  try {
-    const x = await db.scrisoareaOmului(req.auth.userId, parseInt(req.params.id, 10) || 0);
-    if (!x) return res.status(404).json({ error: 'Scrisoarea nu există.' });   // a altcuiva = ca una care nu există
-    await db.citesteScrisoarea(req.auth.userId, x.id);
-    res.json({ id: x.id, saptamana: x.saptamana, eticheta: x.eticheta, text: insight.litereRomanesti(x.text), fapte: x.fapte, scrisDe: x.scris_de, creat_la: x.creat_la });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
 
 // ─── „Azi la tine" (Capitolul 2, pasul 1 — Alin, 15.10): prima privire în RA Insight ────────────────────────────────────
 // ─── Pasul 2 al Capitolului 2: „RA Insight face, cu Da-ul tău" — partea 1, ȘOFERII PE MAȘINI (Alin, 22.10: „da") ──────────
@@ -7483,6 +7541,13 @@ async function _restanteAcum(acum) {
   });
   return out;
 }
+// Banda banilor pentru AI (04.11), sub cele patru cifre, mereu la vedere: soldul la zi (sau alarma refuzului) și firmele trecute de 80%
+// din întrebările lunii. Aceleași socoteli ca „RA Insight · control" și anunțurile. Socotită la FIECARE cerere (nu ține minte 2 minute ca
+// restul lui „Azi la noi"): un refuz al lui Anthropic trebuie să se vadă pe loc.
+async function _bandaAi(acum) {
+  const f = soldAi.firmeAproape(await _intrebariFirmeAi().catch(function () { return []; }));
+  return soldAi.banda({ cheie: !!(ai && ai.aiEnabled()), refuz: await _aiRefuzAcum(), sold: await _soldAnthropic(), firme: f, leiPeDolar: await _leiPeDolar(), acum: acum });
+}
 async function _aziLaNoiDate(acum) {
   const d = { acum: acum };
   const pas = async function (nume, fn) { try { await fn(); } catch (e) { console.warn('[azi-la-noi] ' + nume + ': ' + e.message); } };
@@ -7542,8 +7607,7 @@ async function _aziLaNoiDate(acum) {
     const emailEroare = !v.pus ? 'Serverul n-are Brevo sau SMTP pus.' : ((v.picat || v.vfPicat) && v.m ? v.m.scurt : null);
     let iss = {}; try { iss = ((await getSystemSettings()).invoice_issuer) || {}; } catch (e) {}
     const lipsa = []; if (!iss.name) lipsa.push('numele firmei'); if (!iss.cui) lipsa.push('CUI-ul');
-    const s = await _soldAnthropic();
-    d.firma = { emailEroare: emailEroare, emitentLipsa: lipsa, soldUsd: s ? s.usd : null, soldZile: s ? s.zile : null };
+    d.firma = { emailEroare: emailEroare, emitentLipsa: lipsa };
   });
   return d;
 }
@@ -7555,7 +7619,8 @@ app.get('/api/admin/azi-la-noi', requireAuth, requireSuperadmin, async (req, res
     const a = getAuth(req); let nume = '';
     try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; } catch (e) {}
     // Întrebările gata făcute de sub „Azi la noi" (pasul 2) vin tot de aici: pagina nu-și scrie textele.
-    res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume })), { intrebari: asistentF.INTREBARI_GATA }));
+    let bandaAi = null; try { bandaAi = await _bandaAi(acum); } catch (e) { console.warn('[azi-la-noi] banda AI: ' + e.message); }
+    res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume, ai: bandaAi })), { intrebari: asistentF.INTREBARI_GATA }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ── Asistentul fondatorilor, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta „tot un chat") ──────────────
@@ -7795,8 +7860,8 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     const cere = function (mesaje, iter) {
       return ai.runAgent({ system: system, messages: mesaje, tools: asistentF.UNELTE, toolHandlers: unelte, model: model, maxTokens: maxTokens, maxIters: iter, onUsage: onUsage, efort: efort });
     };
-    let result = null;
-    try { result = await cere(istoric.concat([{ role: 'user', content: text }]), 6); } catch (e) { console.warn('[asistent] modelul n-a răspuns:', e.message); }
+    let result = null, refuz = null;
+    try { result = await cere(istoric.concat([{ role: 'user', content: text }]), 6); } catch (e) { refuz = (e && e.refuzAnthropic) || null; console.warn('[asistent] modelul n-a răspuns:', e.message); }
     let reply = result && result.text ? result.text : '', lipsa = [];
     // Cifrele verificate (pasul 3): o cifră care nu se regăsește în ce au întors uneltele și nici nu se poate socoti din ele →
     // modelul își rescrie O DATĂ răspunsul (aceeași întrebare, același rând de consum); rămasă negăsită, se spune sub răspuns.
@@ -7815,7 +7880,8 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     }
     // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit; rescrierea intră în același rând).
     if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(null, 'asistent', _agg, userId, model).catch(function () {});
-    if (!reply) return trimite(asistentF.eroareModel());
+    // Anthropic a refuzat (04.11): fondatorului i se spune de ce și ce e de făcut (textele lui sold_ai), nu doar „n-a răspuns".
+    if (!reply) return trimite(asistentF.eroareModel(refuz ? soldAi.textRefuz(refuz).scurt + ' ' + soldAi.textRefuz(refuz).ceFaci : null));
     const dm = asistentF.dupaModel(folosite);
     reply = insight.litereRomanesti(reply);
     const v = asistentF.verificare(reply, lipsa, citite, dm.surse);
@@ -7949,7 +8015,6 @@ app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assist
   try { const s = await _sdLuna(req, { doarGata: true }); if (!s.gol && !s.pregatire) out.safedrive = (s.recomandari || []).filter(function (x) { return x.fel === 'atentie'; }).length; } catch (e) { /* fără număr */ }
   try { const c = await _ramCombustibil(req, { doarGata: true }); if (!c.gol && !c.pregatire) out.combustibil = (c.scaderi || []).length + (c.pesteNorma || []).length; } catch (e) { /* fără număr */ }
   try { const h = await _ramOreCondus(req, { doarGata: true }); if (!h.gol && !h.pregatire) out.orecondus = (h.incalcari || []).length; } catch (e) { /* fără număr */ }
-  try { if (req.auth && req.auth.userId) { const n = await db.scrisoriNecitite(req.auth.userId); if (n) out.scrisoare = n; } } catch (e) { /* fără număr */ }
   try { if (!req.isSuper && req.companyId != null) { const s = await _soferiDate(req); if (s.an.deRezolvat.length) out.soferi = s.an.deRezolvat.length; } } catch (e) { /* fără număr */ }
   res.json(out);
 });
@@ -14276,8 +14341,7 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
     if (b.railway_volume_gb !== undefined) { const n = parseFloat(b.railway_volume_gb); if (Number.isFinite(n) && n > 0 && n <= 4096) await db.setSetting('railway_volume_gb', String(n)); } // plafon volum Railway pt. panoul de capacitate DB
     if (b.anthropic_monthly_budget !== undefined) { const n = parseFloat(b.anthropic_monthly_budget); if (Number.isFinite(n) && n >= 0 && n <= 1000000) await db.setSetting('anthropic_monthly_budget', String(n)); } // buget lunar Anthropic (USD) pt. „disponibil = buget − cheltuit"
-    if (b.anthropic_credit_usd !== undefined) { const n = parseFloat(b.anthropic_credit_usd); if (Number.isFinite(n) && n >= 0 && n <= 1000000) await db.setSetting('anthropic_credit_usd', String(n)); } // sold credite Anthropic la data baseline (USD)
-    if (b.anthropic_credit_date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(b.anthropic_credit_date))) await db.setSetting('anthropic_credit_date', String(b.anthropic_credit_date)); // data la care soldul de credite era cel de mai sus
+    // Soldul Anthropic NU se mai scrie de aici (04.11): are un singur loc, PUT /api/admin/insight/sold („RA Insight · control").
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
       const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : COTA_TVA_IMPLICITA;
@@ -15950,8 +16014,9 @@ app.post('/api/documents/scan', requireAuth, requireEdit('documente'), withScope
     auditReq(req, 'scan', 'document', null, { sursa: r.sursa, tip: r.tipDetectat, campuri: Object.keys(r.campuri).length });
     res.json(r);
   } catch (err) {
-    // Mesajele din docscan sunt scrise pentru oameni („PDF-ul e o scanare fără text...") — le dăm mai departe.
-    res.status(400).json({ error: err.message });
+    // Mesajele din docscan sunt scrise pentru oameni („PDF-ul e o scanare fără text...") — le dăm mai departe. Refuzul lui Anthropic
+    // (04.11) primește textul pentru client, fără cauză (noi am aflat deja).
+    res.status(400).json({ error: err && err.refuzAnthropic ? soldAi.TEXT_POZA : err.message });
   }
 });
 
@@ -16493,7 +16558,7 @@ function alertSummary(type, d) {
 // Creează o notificare: stochează + WS (scopat pe imei) + canale externe (opțional)
 // Anunțurile care au un loc pe telefon și vin prin notify(): push-ul lor poartă id-ul notificării, ca la `_anuntaSuperadmini` și `_incAnunta`.
 // Telefonul (adresaPush) trece atunci prin detaliu, care marchează anunțul citit și duce la locul lui. Celelalte tipuri rămân cum sunt.
-const PUSH_CU_ID = new Set(['scrisoare_luni']);
+const PUSH_CU_ID = new Set([]);   // tipurile al căror push poartă id-ul anunțului (era doar scrisoarea de luni, scoasă pe 04.11)
 async function notify(n) {
   try {
     if (n.data && n.data.key) {
@@ -19504,7 +19569,17 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('anaf', 'ANAF (e-Factura / e-Transport)', _anafTok ? (_anafTest ? 'warn' : 'ok') : 'info',
     _anafTok ? (_anafTest ? 'token setat, dar rulează în mediul de TEST (implicit) → pune ANAF_EFACTURA_TEST=false / ANAF_ETRANSPORT_TEST=false pentru trimiteri reale' : 'mediu de PRODUCȚIE')
       : 'fără token SPV → modulele ANAF rămân demonstrative');
-  add('ai', 'Cheie AI (Anthropic)', isSet(process.env.ANTHROPIC_API_KEY) ? 'ok' : 'info', isSet(process.env.ANTHROPIC_API_KEY) ? 'setată' : 'nesetată → asistentul liber și rezumatele AI sunt oprite');
+  // Anthropic (04.11): cheia, refuzul de acum (creditul terminat, limita, cheia respinsă) și soldul la zi — aceleași texte ca banda de pe
+  // „Acasă" (sold_ai.randSold). Soldul nescris e doar „info" (nu înroșește ecranul); unul pe terminate, da.
+  try {
+    const r = ai && ai.aiEnabled() ? await _aiRefuzAcum() : null;
+    if (!ai || !ai.aiEnabled()) add('ai', 'Cheie AI (Anthropic)', 'info', 'nesetată → asistentul liber și rezumatele AI sunt oprite');
+    else if (r) add('ai', 'Cheie AI (Anthropic)', 'crit', soldAi.randSold({ cheie: true, refuz: r, acum: Date.now() }).text.replace(/\*\*/g, ''));
+    else {
+      const so = await _soldAnthropic(), rs = soldAi.randSold({ cheie: true, sold: so, leiPeDolar: await _leiPeDolar(), acum: Date.now() });
+      add('ai', 'Cheie AI (Anthropic)', !so ? 'info' : (rs.nivel === 'r' ? 'crit' : (rs.nivel === 'w' ? 'warn' : 'ok')), 'setată · ' + rs.text.replace(/\*\*/g, ''));
+    }
+  } catch (e) { add('ai', 'Cheie AI (Anthropic)', ai && ai.aiEnabled() ? 'ok' : 'info', ai && ai.aiEnabled() ? 'setată' : 'nesetată'); }
   // „Sursă externă" în RA Insight (28.10): comutatorul nostru, dacă modelul primește căutarea pe internet, ultima căutare cu eroare.
   try {
     const plat = await _sursaPlatforma(), modS = await _sursaModelCitit();
@@ -19841,7 +19916,9 @@ app.get('/api/admin/costs/gsc', requireAuth, requireSuperadmin, async (req, res)
 });
 // Anthropic: cheltuiala lunii curente (USD) din Admin API cost_report. DOAR cu ANTHROPIC_ADMIN_KEY (cheie ADMIN sk-ant-admin01, separată de cea runtime din ai.js).
 const _anthSpendCache = new Map(); // startingAt -> { at, data } — TTL 60s, ca panoul + cardul să nu lovească de 2x cost_report (anti rate-limit 429)
-async function fetchAnthropicSpend(startingAtISO) {
+// `endingAtISO` (04.11, soldul „la zi"): capătul, exclus — implicit mâine la 00:00 UTC. Întoarce și `byDay` ({ 'AAAA-LL-ZZ': usd }, din
+// ziua fiecărei găleți), ca soldul să ia cifra Anthropic zi cu zi.
+async function fetchAnthropicSpend(startingAtISO, endingAtISO) {
   const ADMIN_KEY = process.env.ANTHROPIC_ADMIN_KEY;
   if (!ADMIN_KEY) return { configured: false };
   // `amount` e documentat în CENȚI (string zecimal): USD = cenți / 100. Override prin env dacă verificarea cu Consola arată altfel.
@@ -19850,18 +19927,18 @@ async function fetchAnthropicSpend(startingAtISO) {
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
   const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
   const startingAt = startingAtISO || startOfMonth.toISOString().replace(/\.\d{3}Z$/, 'Z');
-  const endingAt = endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const endingAt = endingAtISO || endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
   if (Date.parse(startingAt) >= Date.parse(endingAt)) return { configured: true, spentUsd: 0 }; // interval invalid (dată în viitor) → 0 cheltuit, fără apel API
   // Un interval care începe AZI (creditul trecut pe ziua de azi, sau 1 ale lunii) e refuzat de Anthropic cu 400 „ending date
   // must be after starting date" — costul vine pe zile încheiate. Nimic raportat încă = 0 cheltuit, fără apel (16.10, Robert:
   // „Credite 4.08 la 16-Oct" dădea eroare în locul soldului).
   if (Date.parse(startingAt) >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0)) return { configured: true, spentUsd: 0 };
-  const _ck = startingAt; const _cc = _anthSpendCache.get(_ck);
+  const _ck = startingAt + '|' + endingAt; const _cc = _anthSpendCache.get(_ck);
   if (_cc && (Date.now() - _cc.at) < 60000) return _cc.data; // rezultat proaspăt din cache
   const BASE = 'https://api.anthropic.com/v1/organizations/cost_report';
   const headers = { 'x-api-key': ADMIN_KEY, 'anthropic-version': '2023-06-01' };
   try {
-    let totalCents = 0; const byWorkspace = {}; let page = null; let sawNonUsd = false; let guard = 0;
+    let totalCents = 0; const byWorkspace = {}; const byDay = {}; let page = null; let sawNonUsd = false; let guard = 0;
     do {
       const url = new URL(BASE);
       url.searchParams.set('starting_at', startingAt);
@@ -19870,7 +19947,7 @@ async function fetchAnthropicSpend(startingAtISO) {
       url.searchParams.set('limit', '31');            // default e 7 → ar trunchia luna la ultimele 7 zile
       url.searchParams.append('group_by[]', 'workspace_id');
       if (page) url.searchParams.set('page', page);
-      const res = await fetch(url, { headers: headers });
+      const res = await fetch(url, { headers: headers, signal: AbortSignal.timeout(10000) });
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) return { configured: true, spentUsd: 0, error: 'Cheia Anthropic nu e acceptată de Admin API. Folosește o cheie ADMIN (prefix „sk-ant-admin01-…") în ANTHROPIC_ADMIN_KEY, nu una standard „sk-ant-api03-…". (HTTP ' + res.status + ')' };
         if (res.status === 429) return { configured: true, spentUsd: 0, error: 'Anthropic Admin API: prea multe cereri (429). Reîncearcă peste un minut.' };
@@ -19881,6 +19958,7 @@ async function fetchAnthropicSpend(startingAtISO) {
       const data = Array.isArray(body && body.data) ? body.data : [];
       for (const bucket of data) {
         const results = Array.isArray(bucket && bucket.results) ? bucket.results : [];
+        const zi = String((bucket && bucket.starting_at) || '').slice(0, 10);
         for (const item of results) {
           if (!item) continue;
           if (item.currency && item.currency !== 'USD') { sawNonUsd = true; continue; }
@@ -19889,6 +19967,7 @@ async function fetchAnthropicSpend(startingAtISO) {
           const cents = parseFloat(raw);
           if (!Number.isFinite(cents)) continue;
           totalCents += cents;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(zi)) byDay[zi] = (byDay[zi] || 0) + cents;
           const wsKey = item.workspace_id || 'default';
           byWorkspace[wsKey] = (byWorkspace[wsKey] || 0) + cents;
         }
@@ -19898,7 +19977,8 @@ async function fetchAnthropicSpend(startingAtISO) {
     } while (page && guard < 50);
     const round2 = function (c) { return Math.round((c / CENTS_PER_USD) * 100) / 100; };
     const byWorkspaceUsd = {}; for (const k of Object.keys(byWorkspace)) byWorkspaceUsd[k] = round2(byWorkspace[k]);
-    const out = { configured: true, spentUsd: round2(totalCents), byWorkspace: byWorkspaceUsd };
+    const byDayUsd = {}; for (const k of Object.keys(byDay)) byDayUsd[k] = byDay[k] / CENTS_PER_USD;
+    const out = { configured: true, spentUsd: round2(totalCents), byWorkspace: byWorkspaceUsd, byDay: byDayUsd };
     if (sawNonUsd) out.error = 'Atenție: unele costuri nu sunt în USD și au fost ignorate.';
     if (!out.error) _anthSpendCache.set(_ck, { at: Date.now(), data: out }); // cache doar rezultate reușite
     return out;
@@ -19912,21 +19992,11 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     let budget = 0; try { const v = parseFloat(await db.getSetting('anthropic_monthly_budget')); if (Number.isFinite(v) && v >= 0) budget = v; } catch (e) {}
     let available = null;
     if (spend.configured && !spend.error && budget > 0) available = Math.max(0, Math.round((budget - spend.spentUsd) * 100) / 100);
-    // SOLD credite (Anthropic n-are API de sold): credite setate la o dată − cheltuit de la acea dată → sold rămas care scade singur.
-    let creditUsd = 0, creditDate = null, spentSince = null, soldRemaining = null, soldError = null;
-    try { const c = parseFloat(await db.getSetting('anthropic_credit_usd')); if (Number.isFinite(c) && c >= 0) creditUsd = c; } catch (e) {}
-    try { creditDate = (await db.getSetting('anthropic_credit_date')) || null; } catch (e) {}
-    const creditConfigured = creditUsd > 0 && !!creditDate;
-    if (creditConfigured) {
-      if (!spend.configured) soldError = 'Cheia Admin Anthropic lipsește.';
-      else if (spend.error) soldError = spend.error;
-      else {
-        const since = await fetchAnthropicSpend(creditDate + 'T00:00:00Z');
-        if (since.configured && !since.error) { spentSince = since.spentUsd; soldRemaining = Math.max(0, Math.round((creditUsd - since.spentUsd) * 100) / 100); }
-        else soldError = since.error || 'Nu am putut citi cheltuiala de la data setată.';
-      }
-    }
-    res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, creditConfigured: creditConfigured, spentSince: spentSince, soldRemaining: soldRemaining, soldError: soldError }));
+    // SOLDUL (04.11): același ca în „RA Insight · control" și pe „Acasă" (_soldAnthropic — locul unic), nu o a doua socoteală. Câmpurile
+    // vechi (creditUsd, creditDate, spentSince, soldRemaining) rămân pentru telefonul de azi (CostControl), până la APK-ul următor.
+    const so = await _soldAnthropic();
+    res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: so ? so.scris : 0, creditDate: so && so.la ? new Date(so.la).toISOString().slice(0, 10) : null,
+      creditConfigured: !!so, spentSince: so ? so.cheltuit : null, soldRemaining: so ? so.usd : null, soldError: null, sold: so }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail") ─────────────────
@@ -21594,8 +21664,9 @@ if (process.env.SEED_TEST === '1') {
   app.post('/api/test/ceasuri', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {}, acum = Number(b.acum) || Date.now();
-      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum), scrisori: b.scrisori ? await scrisoareaDeLuniTick(acum) : undefined,
+      res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum),
         plasa: b.plasa ? await plasaAnuntTick() : undefined,
+        sold: b.sold ? await soldAnuntTick() : undefined, cheie: b.cheie ? await _verificaCheiaAnthropic() : undefined,
         locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined,
         livrare: b.livrare ? await livrareEmailTick(acum) : undefined,
         verificareEmail: b.verificareEmail ? await _verificaEmailServer() : undefined,
@@ -22289,11 +22360,8 @@ async function start() {
     .catch(e => console.warn('[SAFE DRIVE] tura de noapte amânată:', e.message));
   setInterval(runSafeDrive, 30 * 60 * 1000);
 
-  // Scrisoarea de luni: lunea de la 8 (ora României), pentru săptămâna trecută; o dată pe om. Verificată la 15 minute.
-  const runScrisoare = () => scrisoareaDeLuniTick().then(r => { if (r && r.scrisori) console.log('[SCRISOARE] ' + r.scrisori + ' scrisori pentru săptămâna ' + r.saptamana + ' (RA Insight: ' + r.model + ', pe reguli: ' + r.reguli + ')'); })
-    .catch(e => console.warn('[SCRISOARE] amânată:', e.message));
-  setTimeout(runScrisoare, 10 * 60 * 1000);
-  setInterval(runScrisoare, 15 * 60 * 1000);
+  // Scrisoarea de luni a fost scoasă (04.11): scrisorile deja trimise se șterg o dată.
+  _scrisoriSterse().catch(() => {});
 
   // Workere Faza 4: detecție automată curse + alerte expirare documente
   setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);
@@ -22369,6 +22437,15 @@ async function start() {
   setInterval(() => montajDeFacturatTick().catch(() => {}), 60 * 60 * 1000);
   // Pachetele RA Insight (pasul 4): anunțul pentru noi la 60% din plasă și la plasă — la 15 minute.
   setInterval(() => plasaAnuntTick().catch(() => {}), 15 * 60 * 1000);
+  // Banii pentru AI (04.11): soldul pus într-un singur loc (o dată, din „Control costuri"), anunțurile la 14 / 7 / 3 zile și la 80% / 100%
+  // din întrebări — la 15 minute; cheia Anthropic verificată la pornire și din oră în oră (în probe doar cu AI_VERIFICARE_LA_MS pus).
+  _soldUnLoc().catch(() => {});
+  setTimeout(() => soldAnuntTick().catch(() => {}), 3 * 60 * 1000);
+  setInterval(() => soldAnuntTick().catch(() => {}), 15 * 60 * 1000);
+  if (process.env.NODE_ENV !== 'test' || process.env.AI_VERIFICARE_LA_MS) {
+    setTimeout(() => _verificaCheiaAnthropic().catch(() => {}), Number(process.env.AI_VERIFICARE_LA_MS) || 30 * 1000);
+    setInterval(() => _verificaCheiaAnthropic().catch(() => {}), 60 * 60 * 1000);
+  }
   // Emailul (28.10): Brevo primește serverul? — la pornire (fără să trimită nimic), apoi din oră în oră. Emailurile care au plecat:
   // la 5 minute Brevo e întrebat dacă au ajuns; urma lor (30 de zile, fără conținut) se curăță o dată pe zi.
   setTimeout(() => _verificaEmailServer().catch(() => {}), Number(process.env.EMAIL_VERIFICARE_LA_MS) || 20 * 1000);

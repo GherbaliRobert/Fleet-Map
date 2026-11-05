@@ -156,15 +156,28 @@ const SECTIUNI = [
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei', 'instant', 'insigna']
   },
   {
-    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Șoferi pe mașini, RA Drive, Combustibil, Mentenanță, Ore de condus, Scrisoarea de luni', unde: 'Meniu → RA Insight → Pagini',
+    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Șoferi pe mașini, RA Drive, Combustibil, Mentenanță, Ore de condus', unde: 'Meniu → RA Insight → Pagini',
     pasi: [
-      'Jos în stânga apasă „Pagini" și alege: „Șoferi pe mașini", „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte", „Ore de condus" sau „Scrisoarea de luni".',
+      'Jos în stânga apasă „Pagini" și alege: „Șoferi pe mașini", „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte" sau „Ore de condus".',
       'Sus alegi luna (la „Ore de condus", săptămâna) și mașinile: toată flota sau o grupă.',
-      'Numărul de lângă „Pagini" (și de lângă fiecare pagină) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen sau o scrisoare necitită).',
+      'Numărul de lângă „Pagini" (și de lângă fiecare pagină) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen).',
       '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
     ],
-    detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Scrisoarea de luni vine lunea la 8, cu un anunț, și nu se scade nici ea din fond.',
-    cuvinte: ['ramura', 'ramuri', 'pagini', 'ra drive', 'safe drive', 'scrisoarea de luni', 'scrisoare', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+    detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Ce cere atenție azi apare și în „Azi la tine", sub salut, de câte ori deschizi RA Insight.',
+    cuvinte: ['ramura', 'ramuri', 'pagini', 'ra drive', 'safe drive', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+  },
+  {
+    // Prețurile pe manevră din RA Drive (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului").
+    // RA Drive nu e un agent: e o pagină din RA Insight. Drumul e același ca în condus.UNDE_PRETURI și ca rândul de pe pagină.
+    cheie: 'ra_drive_preturi', titlu: 'RA Drive: prețul unei manevre bruște (cât costă o frânare, o accelerare, un viraj)', unde: 'Meniu → RA Insight → Pagini → RA Drive → „Cum se socotește"',
+    pasi: [
+      'Meniu → RA Insight. Jos în stânga apasă „Pagini" și alege „RA Drive".',
+      'Coboară până jos și deschide „Cum se socotește".',
+      'La „Prețul unei manevre bruște (lei)" scrie prețul pentru fiecare fel de mașină (autoturism, dubă, camion / autobuz) și fiecare manevră (frânare, accelerare, viraj).',
+      'Apasă „Salvează prețurile". „Înapoi la prețurile de pornire" pune la loc estimarea RA Track.'
+    ],
+    detalii: 'Prețurile le schimbă administratorul sau managerul firmei; ceilalți le văd. Cele de pornire sunt o estimare RA Track (combustibilul aruncat, frânele și anvelopele tocite): de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism. Sub cifrele mari ale paginii scrie mereu dacă prețurile sunt ale firmei sau cele de pornire.',
+    cuvinte: ['pret manevra', 'pretul manevrei', 'preturile manevrelor', 'pretul franarii', 'cost franare', 'cat costa o franare', 'schimb preturile', 'preturi ra drive', 'preturile din ra drive', 'manevre bruste']
   },
   {
     // Pasul 2 (22.10): „RA Insight face, cu Da-ul tău" — partea 1, șoferii pe mașini.

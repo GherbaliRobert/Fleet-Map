@@ -388,7 +388,7 @@ function titluDin(text, masini) {
   return t.length > 70 ? t.slice(0, 67).replace(/\s+\S*$/, '') + '…' : t;
 }
 
-// Cum scrie RA Insight — ACELEAȘI reguli în discuție și în Scrisoarea de luni (Alin, 08.10, la „Cât de grabă e afacerea
+// Cum scrie RA Insight — ACELEAȘI reguli în discuție și în asistentul fondatorilor (Alin, 08.10, la „Cât de grabă e afacerea
 // lui?": „nu poți să scrii așa greșit"). Stau în partea fixă a instrucțiunilor (cea din cache).
 const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu experiență care vorbește cu patronul: propoziții scurte, ' +
   'cu diacritice, cuvinte obișnuite. Fără expresii traduse cuvânt cu cuvânt, fără cuvinte inventate, fără întrebări retorice, fără ' +
@@ -402,7 +402,7 @@ const litere = require('./litere.js');
 const areLitereStraine = litere.areLitereStraine, litereRomanesti = litere.litereRomanesti;
 
 // ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „păi voi nu ați verificat dacă are, eu vă plătesc"). ACEEAȘI regulă în RA Insight,
-// în „Rezumă cu RA Insight", în rezumatul agenților și în Scrisoarea de luni — un singur loc.
+// în „Rezumă cu RA Insight" și în rezumatul agenților — un singur loc.
 const ECHIPAMENTUL = 'ECHIPAMENTUL: aparatul GPS, senzorii (de combustibil, de temperatură), legătura cu calculatorul mașinii și montajul sunt treaba ' +
   'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor", „verifică aparatul", ' +
   '„sună instalatorul") și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat".';

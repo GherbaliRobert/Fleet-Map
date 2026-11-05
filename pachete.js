@@ -460,13 +460,13 @@ function _sursaRand(cod) { return cant(_sursaPeLuna(cod), 'întrebare', 'întreb
 const DESCRIERE = {
   start: { titlu: 'Răspunsuri pe loc, din rapoarte.', pentru: 'Pentru orice firmă, din prima zi.', plus: 'Ce primești',
     include: ['Răspunsuri pe loc, din rapoarte: unde e o mașină, câți km a făcut, unde a stat, ce acte expiră',
-      'Rapoarte cerute în cuvinte, puse în Istoric rapoarte', '„Azi la tine”: ce cere atenție azi, fără să întrebi', 'Scrisoarea de luni'] },
+      'Rapoarte cerute în cuvinte, puse în Istoric rapoarte', '„Azi la tine”: ce cere atenție azi, fără să întrebi'] },
   basic: { titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.', eticheta: 'De aici: întrebări libere cu AI',
     plus: 'În plus față de Start',
     include: ['Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”', '„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică',
       'Sursă externă: caută și pe internet ce nu e în aplicație, cu site-ul lângă fiecare cifră (' + _sursaRand('basic') + ')',
       'Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat',
-      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini', 'Scrisoarea de luni scrisă de RA Insight'] },
+      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini'] },
   pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',
     include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Sursă externă: ' + _sursaRand('pro'),
       'Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”'] },
@@ -532,7 +532,6 @@ function comparatie(o) {
     { grup: 'Întrebări și răspunsuri', randuri: intrebari },
     { grup: 'Lucrează pentru tine', randuri: [
       { t: '„Azi la tine”', d: 'Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără', v: pe(function () { return da(true); }) },
-      { t: 'Scrisoarea de luni', d: 'Săptămâna trecută și ce e de rezolvat, în fiecare luni dimineața', v: pe(function (p) { return tx(p.ai ? 'scrisă de RA Insight' : 'din cifre'); }) },
       { t: 'RA Insight face, cu „Da”-ul tău', d: 'Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.',
         v: pe(function (p) { return da(p.ramuri); }) },
       { t: 'Paginile RA Insight', d: 'RA Drive (condus & costuri) · Combustibil · Ore de condus · Mentenanță & acte · Șoferi pe mașini', v: pe(function (p) { return da(p.ramuri); }) },

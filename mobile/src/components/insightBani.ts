@@ -39,8 +39,11 @@ function dataScurta(t: any): string { return t ? new Date(t).toLocaleDateString(
 
 // ── Cele patru cifre de sus (web: _aiuPachete) ──
 const NUME_PK: Record<string, string> = { start: 'Start', basic: 'Basic', pro: 'Pro', business: 'Business' };
+// Din 04.11 rândul vine gata de la server (`sold.sub`, sold_ai.cartonas — aceeași socoteală ca pe web și pe „Acasă"); socoteala de mai jos
+// rămâne doar pentru un server de dinainte.
 export function textSold(sold: any): string {
   if (!sold) return 'nescris';
+  if (typeof sold.sub === 'string') return sold.sub;
   const z = sold.zile;
   return (z != null ? 'ajunge ~' + z + (z % 100 >= 20 || (z % 100 === 0 && z) ? ' de' : '') + ' zile' : 'fără cheltuieli în ultimele ' + (sold.ritmZile || 7) + ' zile')
     + (sold.la ? ' · din $' + Number(sold.scris != null ? sold.scris : sold.usd).toLocaleString('ro-RO') + ' scriși pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '');
@@ -55,7 +58,7 @@ export function tilePachete(p: any, fx: number): Tila[] {
     { k: 'Încasăm luna asta', v: lei(venit, fx), s: parti.length ? parti.join(' · ') : 'nicio firmă pe un pachet încă' },
     { k: 'Ne costă (real)', v: lei(cost, fx), s: 'plata către model' },
     { k: 'Ne rămân', v: lei(ramane, fx), s: venit > 0 ? Math.round((ramane / venit) * 100) + '% din încasări' : '—', ton: ramane >= 0 ? 'ok' : 'bad' },
-    { k: 'Sold Anthropic', v: sold ? '~$' + Number(sold.usd).toLocaleString('ro-RO') : '—', s: textSold(sold), buton: sold ? 'schimbă' : 'scrie-l' },
+    { k: 'Sold Anthropic', v: sold ? (typeof sold.cifra === 'string' ? sold.cifra : '~$' + Number(sold.usd).toLocaleString('ro-RO')) : '—', s: textSold(sold), buton: sold ? 'schimbă' : 'scrie-l' },
   ];
 }
 

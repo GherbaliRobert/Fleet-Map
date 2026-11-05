@@ -370,7 +370,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)?(?:, meniu: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
   // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
   // Pasul 2, partea 1 (22.10): „Șoferi pe mașini" e o pagină livrată, de la pachetul Basic (`pachet: true`), cu pagina ei.
-  T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte, Șoferi pe mașini); cele nelivrate nu; discuția nu e printre ele', RAM.length === 8 &&
+  T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte, Șoferi pe mașini); cele nelivrate nu; discuția nu e printre ele (Scrisoarea de luni a ieșit pe 04.11)', RAM.length === 7 && !RAM.some((r) => r.k === 'scrisoare') &&
     ['safedrive', 'combustibil', 'mentenanta', 'soferi'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
     /\{ k: 'soferi', et: 'Șoferi pe mașini', ic: 'fa-people-arrows', gata: true, pachet: true \}/.test(PAG) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
@@ -435,7 +435,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('„cât am dat pe motorină" → unealta combustibil; modelul primește litrii, costul, sursa și spusa „estimați"', qc.status === 200 && /cost_lei/.test(rezC) && /l_la_100_km/.test(rezC) && /sursa/.test(rezC) && /estima/i.test(rezC) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezC), rezC.slice(0, 240));
   T('…cu aceeași lună și aceleași mașini ca pagina Combustibil', pagC.status === 200 && !pagC.j.pregatire && rezC.indexOf(pagC.j.eticheta) >= 0 && (pagC.j.masini || []).length > 0 && (pagC.j.masini || []).every((m) => rezC.indexOf(m.eticheta) >= 0), pagC.status + ' ' + (pagC.j.eticheta || pagC.text.slice(0, 120)));
   T('…iar „Am înțeles" spune Combustibil și luna', (qc.j.inteles || []).some((x) => x.text === 'Combustibil') && (qc.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagC.j.eticheta), JSON.stringify(qc.j.inteles));
-  T('pagina și RA Insight cer cifrele prin ACEEAȘI funcție (_ramCombustibil: pagina, unealta, numărul ramurii, scrisoarea de luni)', (SRV.match(/await _ramCombustibil\(req, /g) || []).length === 4 && /UNELTE:[\s\S]*combustibil — /.test(String(cc.system[0].text)));
+  T('pagina și RA Insight cer cifrele prin ACEEAȘI funcție (_ramCombustibil: pagina, unealta, numărul ramurii)', (SRV.match(/await _ramCombustibil\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*combustibil — /.test(String(cc.system[0].text)));
   // Ore de condus (pasul 4): ACEEAȘI funcție ca pagina (_ramOreCondus), din raportul „Condus & repaus"
   coada([unealta('ore_condus', {}), text('**Ore de condus** — săptămâna asta.')]);
   const qh = await json('POST', '/api/insight/intreaba', ckSef, { message: 'câte ore a condus Ion săptămâna asta?', nou: true });
@@ -453,7 +453,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const rezM = JSON.stringify((cm.messages || []).slice(-1)[0]);
   T('„ce acte expiră" → unealta mentenanta_acte; modelul primește ce a trecut de termen, ce urmează și preavizul', qm.status === 200 && /trecute_de_termen/.test(rezM) && /urmeaza/.test(rezM) && /preaviz/.test(rezM), rezM.slice(0, 240));
   T('…iar „Am înțeles" spune Mentenanță & acte', (qm.j.inteles || []).some((x) => x.text === 'Mentenanță & acte'), JSON.stringify(qm.j.inteles));
-  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, scrisoarea de luni, „Azi la tine")', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 5);
+  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, „Azi la tine")', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
   // un raport tăiat din rol nu se scoate nici prin RA Insight
   await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: ['consumption'] });
   coada([unealta('run_report', { type: 'consumption', vehicle: 'B 154 UIP', period: 'last_week' }), text('Nu ai acces la raportul de consum.')]);
@@ -468,37 +468,15 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('…fără niciun text din conversații', ['KILOMETIR', '538 de vizite', 'Ce probleme', 'Motorina', 'șofer nou'].every((w) => stt.text.indexOf(w) < 0), stt.text.slice(0, 300));
   T('clientul nu are acces la statistici', (await json('GET', '/api/admin/insight/statistici', ckSef)).status === 403);
 
-  // ─── 8. Scrisoarea de luni, cu modelul simulat: RA Insight o scrie DOAR din fapte; o cifră inventată → textul pe reguli ───
-  console.log('\n8. Scrisoarea de luni: scrisă de RA Insight din fapte, cu paza cifrelor, fără să se scadă din fond');
+  // ─── 8. Scrisoarea de luni: scoasă pe 04.11 (Alin: „o scoatem de tot") — lunea la 8 nu mai pleacă nimic spre model ───
+  console.log('\n8. Scrisoarea de luni: scoasă — nicio cerere către model lunea, nicio scrisoare');
   const SDj = require('./safe_drive'), Cj = require('./condus');
   const ziP = (z, n) => { const d = new Date(z + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-  const aziS = Cj.zi(Date.now()), luniS = ziP(aziS, -Cj.ziSapt(aziS)), luniTrec = ziP(luniS, -7);
-  // B 154 UIP a mers și săptămâna trecută (marți, 20 de minute).
-  const tT = SDj.inceput(ziP(luniTrec, 1)) + 10 * 3600000;
-  for (let k = 0; k < 20; k++) await json('POST', '/api/test/simulate', S, { imei: DEV[0].imei, name: DEV[0].name, speed: 70, io: { ignition: 1 }, ts: new Date(tT + k * 60000).toISOString(), lat: 45.6 + k * 0.01, lng: 21.2 });
-  const folositeInainte = await folosite();
-  const acum1 = SDj.inceput(luniS) + 8 * 3600000 + 60000;   // lunea asta la 8 și un minut (scrisoarea pleacă doar lunea)
-  coada([text('Săptămâna trecută flota a mers bine. Ai economisit 999 de lei la combustibil și nicio problemă la orele de condus. De făcut săptămâna asta:\n• Nimic urgent.\n• Uită-te la Safe Drive.')]);
+  const aziS = Cj.zi(Date.now()), luniS = ziP(aziS, -Cj.ziSapt(aziS));
   const nCereri1 = cereri().length;
-  const tk1 = await json('POST', '/api/test/ceasuri', S, { acum: acum1, scrisori: true });
-  const cS = cereri().slice(nCereri1);
-  const ls1 = await json('GET', '/api/insight/scrisori', ckSef);
-  const sc1 = ls1.j.scrisori && ls1.j.scrisori.find((x) => x.saptamana === luniTrec);
-  const sc1d = sc1 ? (await json('GET', '/api/insight/scrisori/' + sc1.id, ckSef)).j : {};
-  T('RA Insight primește FAPTELE săptămânii trecute (o singură cerere pentru oamenii cu aceleași mașini), cu instrucțiunile scrisorii', tk1.status === 200 && cS.length === 1 && /Scrisoarea de luni/.test(contextul(cS[0])) && /FAPTELE \(JSON\)/.test(textulCererii(cS[0])) && textulCererii(cS[0]).indexOf(sc1d.eticheta || '#') >= 0, JSON.stringify([tk1.j.scrisori, cS.length]));
-  T('o cifră care nu e în fapte („999 de lei") → scrisoarea rămâne cea pe reguli, cu cifrele aplicației', !!sc1 && sc1d.scrisDe === 'reguli' && (sc1d.text || '').indexOf('999') < 0 && /^Săptămâna trecută \(/.test(sc1d.text || '') && tk1.j.scrisori.reguli >= 1 && tk1.j.scrisori.model === 0, JSON.stringify([sc1d.scrisDe, (sc1d.text || '').slice(0, 120)]));
-  // Săptămâna de acum, ca și cum ar fi lunea viitoare la 8: RA Insight scrie fără cifre străine → scrisoarea lui.
-  const acum2 = SDj.inceput(ziP(luniS, 7)) + 8 * 3600000 + 60000;
-  const etS = I.etichetaPerioadei(new Date(SDj.inceput(luniS)).toISOString(), new Date(SDj.inceput(ziP(luniS, 7))).toISOString(), acum2);
-  const BUN = 'Săptămâna ' + etS + ' a fost liniștită pentru flotă: n-au fost încălcări ale orelor de condus și nimic neobișnuit la combustibil.\n\nDe făcut săptămâna asta:\n• Aruncă o privire în Safe Drive.\n• Verifică actele care urmează.';
-  coada([text(BUN)]);
-  const tk2 = await json('POST', '/api/test/ceasuri', S, { acum: acum2, scrisori: true });
-  const ls2 = await json('GET', '/api/insight/scrisori', ckSef);
-  const sc2 = ls2.j.scrisori && ls2.j.scrisori.find((x) => x.saptamana === luniS);
-  const sc2d = sc2 ? (await json('GET', '/api/insight/scrisori/' + sc2.id, ckSef)).j : {};
-  T('fără cifre străine → scrisoarea e cea scrisă de RA Insight, întocmai', tk2.status === 200 && !!sc2 && sc2d.scrisDe === 'model' && sc2d.text === BUN && tk2.j.scrisori.model >= 1, JSON.stringify([tk2.j.scrisori, sc2d.scrisDe, etS]));
-  T('colegul (aceleași mașini) primește aceeași scrisoare, fără o a doua cerere către model', ((await json('GET', '/api/insight/scrisori', ckColeg)).j.scrisori || []).length === 2);
-  T('scrisorile NU se scad din fondul de întrebări al firmei (le plătim noi)', (await folosite()) === folositeInainte, folositeInainte + ' → ' + (await folosite()));
+  const tk1 = await json('POST', '/api/test/ceasuri', S, { acum: SDj.inceput(luniS) + 8 * 3600000 + 60000, scrisori: true });
+  T('lunea la 8: nicio tură de scrisori și nicio cerere către model', tk1.status === 200 && tk1.j.scrisori === undefined && cereri().length === nCereri1, JSON.stringify(tk1.j).slice(0, 200));
+  T('…iar telefonul vechi primește 410, cu unde găsește același lucru', (await json('GET', '/api/insight/scrisori', ckSef)).status === 410);
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

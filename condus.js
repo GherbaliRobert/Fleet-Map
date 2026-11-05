@@ -222,6 +222,21 @@ function preturi(salvate) {
   });
   return out;
 }
+// Prețurile pe manevră: ale firmei sau cele de pornire? (04.11) — și UNDE se schimbă (Alin: „să le spună oamenilor că și le pot schimba…
+// trebuie să știm exact, intră în agentul RA Drive sau unde? să-i explicăm clientului"). Un singur text, pe pagina RA Drive (la vedere,
+// sub cifrele mari, pe web și pe telefon), în ghid și în unealta lui RA Insight. RA Drive nu e un agent: e o pagină din RA Insight.
+const UNDE_PRETURI = 'RA Insight → Pagini → RA Drive → jos, „Cum se socotește” → „Prețul unei manevre bruște (lei)” → „Salvează prețurile”';
+function preturiProprii(salvate) {
+  const p = preturi(salvate);
+  return CLASE.some(function (c) { return ['frana', 'accel', 'viraj'].some(function (e) { return p[c.k][e] !== PRETURI_IMPLICITE[c.k][e]; }); });
+}
+function textPreturi(proprii, poateSchimba) {
+  const lei2 = function (x) { return Number(x).toFixed(2).replace('.', ','); };
+  const ale = proprii ? 'Prețurile pe manevră sunt ale firmei.'
+    : 'Prețurile pe manevră sunt cele de pornire, o estimare RA Track (de pildă ' + lei2(PRETURI_IMPLICITE.camion.frana) + ' lei o frânare bruscă la un camion, ' + lei2(PRETURI_IMPLICITE.autoturism.frana) + ' lei la un autoturism).';
+  return ale + (poateSchimba ? ' Le schimbi jos pe pagină, în „Cum se socotește”: scrii prețul fiecărei manevre și apeși „Salvează prețurile”.'
+    : ' Le schimbă administratorul sau managerul firmei, jos pe pagină, în „Cum se socotește”.');
+}
 // Litrii unei mașini, din sumele ei: m = { l100 (consumul, L/100 km), lph (L/h la ralanti, fără contor CAN) }.
 function litri(t, m) {
   return {
@@ -343,4 +358,5 @@ module.exports = {
   PRAGURI, MERS, PAS_MAX_KM, RALANTI_MIN_S, CELULA_GRADE, PARTE_AER, CLASE, PRETURI_IMPLICITE, ZILE_SAPT,
   scor, notaDin, areScor, scorFlota, zi, ora, ziSapt, soferLa, celula, gol, agregator, insumeaza, manevre, laSuta,
   clasa, preturi, litri, costuri, adunaCosturi, locuri, ferestre, comparatie, recomandari, explicatii, lei,
+  UNDE_PRETURI, preturiProprii, textPreturi,
 };

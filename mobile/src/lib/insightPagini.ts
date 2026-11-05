@@ -1,6 +1,6 @@
 // Paginile din RA Insight pe telefon (lotul 2, 02.11): ce arată fiecare, în ce ordine — scoase din ce dă serverul. Fără JSX, fără
 // stare, fără cereri: verify_telefon_insight.js rulează funcțiile paginii web (deseneazaSafeDrive, deseneazaCombustibil,
-// deseneazaOreCondus, deseneazaMentenanta, deseneazaScrisoare, deseneazaSoferi, deseneazaGhid) pe un DOM de carton, lângă astea, pe
+// deseneazaOreCondus, deseneazaMentenanta, deseneazaSoferi, deseneazaGhid) pe un DOM de carton, lângă astea, pe
 // aceleași răspunsuri, și cere aceleași texte. Aici nu se socotește nimic: cifrele și propozițiile vin de la server (safe_drive.js,
 // ramuri.js, soferi_masini.js); aici doar se formatează, ca pe web, și se pun în ordine.
 // Pe telefon, un rând de tabel e un cartonaș (CSS: `data-col`), deci nimic nu iese în lături. Ce pe web stă „la trecerea cu
@@ -15,7 +15,7 @@ export const RAMURI: Ramura[] = [
   { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'wrench', pachet: true },
   { k: 'orecondus', et: 'Ore de condus', ic: 'clock', pachet: true },
   { k: 'ghid', et: 'Ghidul aplicației', ic: 'book', meniu: true },
-  { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'mail' },
+  // („Scrisoarea de luni" a ieșit pe 04.11, ca pe web.)
 ];
 export function ramuraDupa(k: any): Ramura | null { return RAMURI.filter((r) => r.k === k)[0] || null; }
 export function pagini(): Ramura[] { return RAMURI.filter((r) => !r.meniu); }
@@ -56,7 +56,6 @@ export type Bloc =
   | { b: 'ore'; coloane: { h: number; proc: number; sus: boolean; n: number }[] }
   | { b: 'cum'; cheie: string; explicatii: { titlu: string; text: string }[]; preturi?: any }
   | { b: 'nota'; text: string }
-  | { b: 'scris'; et: string; bucati: ({ t: string; b?: boolean } | { ul: string[] })[]; nota?: string }
   | { b: 'butoane'; butoane: Buton[] }
   | { b: 'rec'; fel: string; text: string }
   | { b: 'rand'; nr: string; text: string; w?: boolean }
@@ -105,6 +104,8 @@ export function planSafeDrive(j: any): Plan {
     ['gauge', 'Viteză', c.viteza, 'combustibil în plus, peste ' + lim + ' km/h'],
     ['clock', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + ' ore']] as any[]).forEach((x) => tiles.push({ ic: x[0], et: x[1], val: sdLei(x[2]), sub: x[3] }));
   p.blocuri.push({ b: 'tiles', tiles });
+  // Prețurile pe manevră (04.11): ale firmei sau de pornire și unde se schimbă — același rând ca pe web, cu textul serverului.
+  if (j.preturi && j.preturi.nota) p.blocuri.push({ b: 'nota', text: j.preturi.nota });
   p.blocuri.push({ b: 'linie', spans: [
     'Scorul flotei: ' + (f.scor == null ? '—' : f.scor + ' · ' + f.nota) + (fa.scor ? ' (' + fa.scor + ')' : ''),
     'Manevre bruște la 100 km: ' + sdNr(f.laSuta, 1) + (fa.laSuta ? ' (' + fa.laSuta + ')' : ''),
@@ -299,40 +300,6 @@ export function planMentenanta(j: any): Plan {
   return p;
 }
 
-// ── Scrisoarea de luni (web: deseneazaScrisoare): lista, apoi scrisoarea aleasă (la deschidere se socotește citită). ──
-export function scrisoareAleasa(lista: any[], id: any): any { return lista.filter((x) => x.id === id)[0] || lista[0]; }
-export function planScrisoare(lst: any, ales: any, x: any, eroare?: string): Plan {
-  const lista: any[] = lst.scrisori || [];
-  const sel: Select | null = lista.length > 1 ? { fel: 'scrisoare', aria: 'Săptămâna', val: ales ? String(ales.id) : '', optiuni: lista.map((s) => ({ v: String(s.id), t: 'Săptămâna ' + s.eticheta + (s.citita ? '' : ' · nouă') })) } : null;
-  const p: Plan = { ic: 'mail', titlu: 'Scrisoarea de luni', selecte: selecte(sel), blocuri: [] };
-  if (!lista.length) {
-    p.blocuri.push({ b: 'card', h3: 'Prima scrisoare vine luni la ' + (lst.ora || 8), text: 'În fiecare luni dimineață, RA Insight îți scrie ce contează din săptămâna trecută: drumul și combustibilul, cum s-a condus, orele de condus, actele și reviziile care vin — și ce e de făcut. O găsești aici și primești un anunț.' });
-    return p;
-  }
-  if (eroare) { p.blocuri.push({ b: 'card', text: eroare }); return p; }
-  if (!x) return p;
-  const bucati: ({ t: string; b?: boolean } | { ul: string[] })[] = [];
-  String(x.text || '').split(/\n\s*\n/).forEach((bucata) => {
-    const rnd = bucata.split('\n'), puncte = rnd.filter((l) => /^\s*•\s+/.test(l));
-    const titlu = rnd.filter((l) => !/^\s*•\s+/.test(l)).join(' ').trim();
-    if (titlu) bucati.push({ t: titlu, b: puncte.length > 0 });
-    if (puncte.length) bucati.push({ ul: puncte.map((l) => l.replace(/^\s*•\s+/, '')) });
-  });
-  p.blocuri.push({ b: 'scris', et: 'De la RA Insight · săptămâna ' + (x.eticheta || ''), bucati, nota: x.scrisDe !== 'model' ? 'Scrisă din cifre, pe reguli (RA Insight n-a putut-o scrie de data asta).' : undefined });
-  const f = x.fapte || {};
-  const tiles: Tile[] = [];
-  const tile = (ic: string, et: string, val: string, sub: string, ram: string[] | null, st?: string) => tiles.push({ ic, et, val, sub: sub || undefined, st: st || undefined, link: ram ? { text: 'Vezi în ' + ram[1], act: { fel: 'ramura', k: ram[0] } } : undefined });
-  if (f.drum) tile('route', 'Drum', sdNr(f.drum.km) + ' km', f.drum.masini === 1 ? 'o mașină a mers' : f.drum.masini + ' mașini au mers', null);
-  if (f.combustibil) tile('droplet', 'Combustibil', sdLei(f.combustibil.lei), sdCant(f.combustibil.litri, 'litru', 'litri') + (f.combustibil.fata ? ' · ' + f.combustibil.fata : ''), ['combustibil', 'Combustibil'], f.combustibil.scaderiTotal || (f.combustibil.pesteNorma || []).length ? 'atentie' : '');
-  if (f.safeDrive) tile('shield', 'Condusul a costat în plus', f.safeDrive.lei ? '~' + sdLei(f.safeDrive.lei) : '0 lei', f.safeDrive.scor != null ? 'scorul flotei: ' + f.safeDrive.scor + ' · ' + f.safeDrive.nota : '', ['safedrive', 'RA Drive']);
-  if (f.oreCondus) tile('clock', 'Ore de condus', f.oreCondus.total, f.oreCondus.incalcariTotal ? (f.oreCondus.incalcariTotal === 1 ? 'o încălcare' : f.oreCondus.incalcariTotal + ' încălcări') : (f.oreCondus.seAplica ? 'nicio încălcare' : 'Reg. 561 nu se aplică'), ['orecondus', 'Ore de condus'], f.oreCondus.incalcariTotal ? 'rosu' : '');
-  if (f.acte) tile('wrench', 'Acte și revizii', String((f.acte.trecuteTotal || 0) + (f.acte.urmeazaTotal || 0)), (f.acte.trecuteTotal ? (f.acte.trecuteTotal === 1 ? 'unul trecut de termen' : f.acte.trecuteTotal + ' trecute de termen') : 'nimic trecut de termen') + (f.acte.urmeazaTotal ? ' · ' + (f.acte.urmeazaTotal === 1 ? 'unul vine' : f.acte.urmeazaTotal + ' vin') + ' săptămâna asta' : ''), ['mentenanta', 'Mentenanță & acte'], f.acte.trecuteTotal ? 'rosu' : (f.acte.urmeazaTotal ? 'atentie' : ''));
-  p.blocuri.push({ b: 'tiles', trei: true, tiles });
-  p.blocuri.push({ b: 'butoane', butoane: [{ text: 'Întreabă RA Insight despre săptămâna asta', ic: 'sparkles', act: { fel: 'intreaba', inceput: 'Despre săptămâna ' + (x.eticheta || '') + ': ' } }] });
-  p.blocuri.push({ b: 'nota', text: 'Cifrele sunt cele din ramuri, pe mașinile la care ai acces. O păstrăm 12 luni.' });
-  return p;
-}
-
 // ── Șoferi pe mașini (web: deseneazaSoferi) ──
 export interface BifaSofer { imei: any; la: any; dupa?: any }
 export function planSoferi(j: any): Plan & { propuneri: BifaSofer[]; intro: string; faraSoferi?: boolean; jos: string; nuStie: string } {
@@ -417,7 +384,6 @@ export function textePlan(p: any): string[] {
         if (P.poateSchimba) { pune(TEXT_PRETURI.salveaza); pune(TEXT_PRETURI.pornire); } else pune(TEXT_PRETURI.citit);
       }
     }
-    else if (b.b === 'scris') { pune(b.et); b.bucati.forEach((x: any) => { if (x.ul) x.ul.forEach(pune); else pune(x.t); }); pune(b.nota); }
     else if (b.b === 'butoane') b.butoane.forEach((x: Buton) => pune(x.text));
     else if (b.b === 'rand') { pune(b.nr); pune(b.text); }
     else if (b.b === 'intro') pune(b.text);

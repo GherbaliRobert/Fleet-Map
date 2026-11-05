@@ -125,8 +125,8 @@ T('…scrisul nu mai dă „Verifică…" ca exemplu de recomandare și cere num
 T('literele din alt alfabet se recunosc și se trec în litere românești („октомбrie" → „octombrie"); diacriticele românești rămân',
   INSd.areLitereStraine('Consum (октомбrie 2026)') && !INSd.areLitereStraine('ș ț ă î â Ș Ț') && INSd.litereRomanesti('Consum real acum (октомбrie 2026, până azi)') === 'Consum real acum (octombrie 2026, până azi)' &&
   INSd.litereRomanesti('Октомбрие') === 'Octombrie' && INSd.litereRomanesti('fără schimbări') === 'fără schimbări');
-T('…pe server: un răspuns cu litere străine se rescrie o dată, iar ce rămâne se curăță; și Scrisoarea de luni se curăță',
-  /const strain = insight\.areLitereStraine\(reply\);/.test(SRVd) && /\n    reply = insight\.litereRomanesti\(reply\);/.test(SRVd) && /text: insight\.litereRomanesti\(String\(text\)\.trim\(\)\), scrisDe: 'model'/.test(SRVd) &&
+T('…pe server: un răspuns cu litere străine se rescrie o dată, iar ce rămâne se curăță (Scrisoarea de luni a ieșit pe 04.11)',
+  /const strain = insight\.areLitereStraine\(reply\);/.test(SRVd) && /\n    reply = insight\.litereRomanesti\(reply\);/.test(SRVd) && !/scrisDe: 'model'/.test(SRVd) &&
   (SRVd.match(/brut: true/g) || []).length === 2);
 T('…completarea se face la citirea conversației (pe server), nu în pagină', /m\.extra\.insigna = pachete\.insignaCompleta\(m\.extra\.insigna\)/.test(SRVd));
 const SRC_K = fs.readFileSync(path.join(__dirname, 'pachete.js'), 'utf8');
@@ -148,8 +148,9 @@ T('meniul fondatorului: „RA Insight · control" sus, mereu la vedere (nu într
   /<span>Module<\/span>/.test(PAG) && PAG.indexOf('<span>Utilizare RA Insight</span>') < 0 && /agents: 'RA Insight · control'/.test(PAG));
 const LOAD = PAG.slice(PAG.indexOf('window.raxLoadAiUsage = async function'), PAG.indexOf('// ─── sfârșit „Panoul RA Insight pe firme"'));
 // Din 19.10 (punctul 5) panoul vechi „Mai multe cifre" a ieșit: pagina e doar asta, plus istoricul pe luni (buton).
-T('pagina pe un ecran: patru cifre, ce cere atenție, firmă cu firmă, controalele, istoricul; panoul vechi „Mai multe cifre" nu mai e',
-  /box\.innerHTML = _aiuPachete\(d\.pachete\)\s*\+ _aiuAtentie\(d\.pachete, s, rows\)\s*\+ _aiuTabel\(rows\)\s*\+ _aiuControale\(d\.pachete, d\.sursa\)\s*\+ '<div class="aiu-ist-box">'/.test(LOAD) && LOAD.indexOf('aiu-mai-box') < 0 && PAG.indexOf('raxAiMaiMulte') < 0);
+// Din 04.11 între cifre și „Ce cere atenție" stă „Anthropic, la zi" (_aiuBani: soldul, tokenii, cheia, alarma refuzului).
+T('pagina pe un ecran: patru cifre, „Anthropic, la zi", ce cere atenție, firmă cu firmă, controalele, istoricul; panoul vechi „Mai multe cifre" nu mai e',
+  /box\.innerHTML = _aiuPachete\(d\.pachete\)\s*\+ _aiuBani\(d\.bani\)\s*\+ _aiuAtentie\(d\.pachete, s, rows\)\s*\+ _aiuTabel\(rows\)\s*\+ _aiuControale\(d\.pachete, d\.sursa\)\s*\+ '<div class="aiu-ist-box">'/.test(LOAD) && LOAD.indexOf('aiu-mai-box') < 0 && PAG.indexOf('raxAiMaiMulte') < 0);
 const CTL = PAG.slice(PAG.indexOf('function _aiuControale('), PAG.indexOf('function _aiuPachetRand('));
 // Din 28.10 fără „Analiza aprofundată" (Sonnet scos; analiza atentă pe Haiku merge singură, fără buton).
 T('controalele, toate într-un loc: proba modelelor, soldul și cheia Anthropic, istoricul — fără „Analiza aprofundată"', ['raxProbaModele()', 'raxAiSold()', "goSistem('dashboard')", 'raxAiIstoric()'].every((x) => CTL.indexOf(x) >= 0) &&

@@ -6,13 +6,13 @@ import { Icon, type IconName } from './Icon';
 import { CeasAnulare, ButonProp } from './InsightPropunere';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import {
-  EVENIMENTE_PRET, TEXT_INCUIAT, TEXT_PRETURI, inceputGhid, legaBife, linkHarta, planCombustibil, planMentenanta, planOreCondus, planSafeDrive, planScrisoare, planSoferi,
-  ramuraDupa, scrisoareAleasa, sdNr, textAplica,
+  EVENIMENTE_PRET, TEXT_INCUIAT, TEXT_PRETURI, inceputGhid, legaBife, linkHarta, planCombustibil, planMentenanta, planOreCondus, planSafeDrive, planSoferi,
+  ramuraDupa, sdNr, textAplica,
   type Act, type Bloc, type BifaStare, type Buton, type Cel, type Plan, type Select, type Tile,
 } from '../lib/insightPagini';
 
 // Paginile din RA Insight (web: deseneazaSoferi, deseneazaSafeDrive, deseneazaCombustibil, deseneazaMentenanta, deseneazaOreCondus,
-// deseneazaScrisoare, deseneazaGhid, deseneazaIncuiata). Ce arată o pagină hotărăște planul ei (lib/insightPagini.ts); aici se cer
+// deseneazaGhid, deseneazaIncuiata). Ce arată o pagină hotărăște planul ei (lib/insightPagini.ts); aici se cer
 // datele, se desenează și se trimit apăsările. Tot textul de la server se pune ca TEXT.
 
 export type LaPagina = {
@@ -159,13 +159,6 @@ function BlocUna({ b, l, bife, reia }: { b: Bloc; l: LaPagina; bife?: { stare: B
       </details>
     );
     case 'nota': return <div class="sdp-nota"><Icon name="circleInfo" size={14} /><span>{b.text}</span></div>;
-    case 'scris': return (
-      <div class="sdp-sect sdp-scris">
-        <div class="sdp-et">{b.et}</div>
-        {b.bucati.map((x: any) => (x.ul ? <ul>{x.ul.map((t: string) => <li>{t}</li>)}</ul> : <p class={x.b ? 'b' : undefined}>{x.t}</p>))}
-        {b.nota ? <div class="sdp-mic">{b.nota}</div> : null}
-      </div>
-    );
     case 'butoane': return <div class="sdp-btns">{b.butoane.map((x) => <ButonPagina b={x} l={l} />)}</div>;
     case 'rand': return <div class={'ssm-rand' + (b.w ? ' w' : '')}><b>{b.nr}</b>{b.text}</div>;
     case 'intro': return <div class="ssm-intro">{b.text}</div>;
@@ -291,47 +284,6 @@ function PaginaMentenanta({ l }: { l: LaPagina }) {
   return <div class="sdp">{err != null ? <Eroare h3="Mentenanță & acte nu s-a putut deschide" text={err} /> : !j ? <SeIncarca /> : <PlanDesenat p={planMentenanta(j)} l={l} />}</div>;
 }
 
-// ── Scrisoarea de luni: lista, apoi scrisoarea aleasă; citită, numărul de lângă pagină scade. ──
-let scrisoareMem: number | null = null;
-function PaginaScrisoare({ l, id }: { l: LaPagina; id: number | null }) {
-  const [lst, setLst] = useState<any | null>(null);
-  const [x, setX] = useState<any | null>(null);
-  const [errX, setErrX] = useState<string | undefined>(undefined);
-  const [err, setErr] = useState<string | null>(null);
-  const [ales, setAles] = useState<number | null>(id != null ? id : scrisoareMem);
-  useEffect(() => {
-    let viu = true;
-    setX(null); setErrX(undefined);
-    (async () => {
-      try {
-        const r: any = await Api.insightScrisori();
-        if (!viu) return;
-        const refuz = faraAcces(r);
-        if (refuz != null) { setErr(refuz); return; }
-        setLst(r);
-        const a = scrisoareAleasa(r.scrisori || [], ales);
-        if (!a) return;
-        scrisoareMem = a.id;
-        if (a.id !== ales) setAles(a.id);
-        try {
-          const s = await Api.insightScrisoare(a.id);
-          if (!viu) return;
-          setX(s); l.numere();
-        } catch (e: any) { if (viu) setErrX((e && e.message) || 'Scrisoarea nu s-a putut deschide.'); }
-      } catch (e: any) { if (viu) setErr(textEroare(e)); }
-    })();
-    return () => { viu = false; };
-  }, [ales]);
-  const a = lst ? scrisoareAleasa(lst.scrisori || [], ales) : null;
-  return (
-    <div class="sdp">
-      {err != null ? <Eroare h3="Scrisoarea de luni nu s-a putut deschide" text={err} /> : !lst ? <SeIncarca /> : (
-        <PlanDesenat p={planScrisoare(lst, a, x, errX)} l={l} laSelect={(_s, v) => setAles(Number(v))} />
-      )}
-    </div>
-  );
-}
-
 // ── Șoferi pe mașini: toată flota deodată; bifezi și apeși „Aplică". Nimic nu se schimbă fără apăsare. ──
 function PaginaSoferi({ l }: { l: LaPagina }) {
   const [j, setJ] = useState<any | null>(null);
@@ -445,10 +397,9 @@ export function PaginaIncuiata({ k, laPachete }: { k: string; laPachete?: () => 
     </div></div>
   );
 }
-export function PaginaRamura({ k, l, scrisoareId }: { k: string; l: LaPagina; scrisoareId: number | null }) {
+export function PaginaRamura({ k, l }: { k: string; l: LaPagina }) {
   if (LUNARE[k]) return <PaginaPerioada key={k} k={k} l={l} />;
   if (k === 'mentenanta') return <PaginaMentenanta l={l} />;
-  if (k === 'scrisoare') return <PaginaScrisoare l={l} id={scrisoareId} />;
   if (k === 'soferi') return <PaginaSoferi l={l} />;
   if (k === 'ghid') return <PaginaGhid l={l} />;
   return null;

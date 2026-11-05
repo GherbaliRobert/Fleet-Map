@@ -72,7 +72,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `RAILWAY_API_TOKEN`, `CLOUDFLARE_ANALYTICS_TOKEN`, `GOOGLE_SA_JSON`, `SMTP_PASS`, tokenurile ANAF, dacă sunt puse); (3) **cu grijă:**
   `BACKUP_PASSPHRASE` nouă, dar cea veche păstrată (copiile vechi se deschid doar cu ea); `VAPID_*` lăsate (schimbate, notificările din
   browser se opresc la toți); baza de date — Postgres → Settings → Networking: „Public Networking” scos, dacă nu-l folosiți. La final:
-  „Stare producție” verde, un email de probă din Mail, o întrebare în RA Insight.
+  „Stare producție” verde, un email de probă din Mail, o întrebare în RA Insight. **Din 04.11 aplicația verifică singură cheia Anthropic**
+  la pornire și din oră în oră: dacă cheia nouă nu e bună, pe „Acasă” apare banda roșie „Anthropic nu primește cheia aplicației” și
+  vine un anunț pe telefon, în cel mult un minut de la repornire.
 - [ ] **Robert (doar dacă vrei APK-ul de pe GitHub cu notificări): secretul `GOOGLE_SERVICES_JSON`. Adăugat pe 21.10.**
   GitHub → depozitul Fleet-Map → Settings → Secrets and variables → Actions → New repository secret: numele
   `GOOGLE_SERVICES_JSON`, valoarea = tot conținutul fișierului `google-services.json` de pe calculatorul tău. Fără el, APK-ul
@@ -216,16 +218,18 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   lună), dar azi nu trimite nimic la ANAF — îl trecem „în pregătire", fără preț?; (2) numărul-șablon „+40 7XX" de pe
   prima pagină: îl ascundem până aveți alt număr?; (3) cu ce flote începem: mixte locale sau transportatori cu camioane?;
   (4) cardurile de combustibil rămân scoase?; (5) prețuri publice pe site sau doar un calculator de economii?
-- [ ] **Alin: prețurile de pornire din RA Drive (fostul Safe Drive). Adăugat pe 06.10.** Cât costă o manevră bruscă (frânare / accelerare /
+- [x] **HOTĂRÂT pe 04.11 (Alin: „da", cu condiția ca clientul să afle unde le schimbă). Alin: prețurile de pornire din RA Drive (fostul Safe Drive). Adăugat pe 06.10.** Cât costă o manevră bruscă (frânare / accelerare /
   viraj), în lei: autoturism 0,20 / 0,15 / 0,10; dubă 0,40 / 0,30 / 0,20; camion 1,50 / 1,00 / 0,50. Sunt estimarea mea
-  (combustibilul aruncat + tocirea frânelor și a anvelopelor). Le confirmi sau îmi dai cifrele tale? Fiecare firmă și le
-  poate schimba oricum, din Safe Drive → „Cum se socotește".
+  (combustibilul aruncat + tocirea frânelor și a anvelopelor). **Rămân acestea.** Unde le schimbă clientul (RA Drive nu e un agent, e o
+  pagină din RA Insight): RA Insight → „Pagini” → RA Drive → jos, „Cum se socotește” → „Prețul unei manevre bruște (lei)” → „Salvează
+  prețurile” (administratorul sau managerul firmei). Din 04.11 îi spun asta pagina (un rând sub cifrele mari), ghidul și RA Insight.
 - [x] **FĂCUT (16.10): cheia Admin Anthropic e pusă și merge** (captura lui Robert: cardul Anthropic arată „Folosit luna: $0.64 ·
   sold rămas $4.90”, deci și creditele sunt trecute). **Robert + voi: cât ne costă inteligența artificială, la Anthropic. Adăugat pe 08.10.** În Business → Control costuri,
   cardul Anthropic arată „Folosit luna: $…" și „sold rămas: $…" (din factura reală a Anthropic: întrebările clienților,
   ale noastre, Scrisoarea de luni, citirea actelor). Dacă acolo scrie „necesită cheie Admin", Robert pune pe server cheia de
   administrare Anthropic (o cheie „Admin", alta decât cea pe care o folosește RA Insight). Apoi, în fereastra cardului (📊),
-  treceți creditele cumpărate și ziua în care le-ați cumpărat: soldul scade singur.
+  treceți creditele cumpărate și ziua în care le-ați cumpărat: soldul scade singur. *(Din 04.11 soldul se scrie într-un singur loc,
+  „RA Insight · control” → „Scrie soldul”; cardul din Control costuri îl arată pe același.)*
 - [ ] **Voi: creditele Anthropic, înainte de primii clienți cu RA Insight. Adăugat pe 16.10.** Soldul e 4,90 $; luna asta s-au
   dus 0,64 $ în 16 zile (doar noi), deci ține câteva luni așa, dar cu clienți se golește repede. La 0 $, RA Insight nu mai
   răspunde cu AI nimănui. De pus mai mulți bani sau reîncărcarea automată, din consola Anthropic → Billing, și trecută suma
@@ -236,6 +240,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   propusă (aștept răspunsul): anunț pe telefon și pe „Acasă” la 14 / 7 / 3 zile rămase, alarmă pe loc la refuz (clientul primește atunci
   răspunsuri pe butoane), un singur loc pentru sold, cu cheltuiala adevărată de la Anthropic, plus rezerva la Anthropic (Billing →
   Auto-reload: sub 5 $, cumpără 20 $), pusă de cine are contul.
+  **04.11, după răspuns (Alin: „1. da, 2. da"): partea aplicației e gata** (soldul la zi pe „Acasă” și în „RA Insight · control”, anunțurile la
+  14 / 7 / 3 zile și la 80% / 100% din întrebările unei firme, alarma pe loc când Anthropic refuză). **Rămâne la voi, în ordinea asta:**
+  (1) cine are contul Anthropic pornește rezerva: console.anthropic.com → Settings → Billing → Auto-reload → sub 5 $, cumpără 20 $;
+  (2) în aplicație, „RA Insight · control” → „Scrie soldul” (cifra din Billing) și → „Reîncărcarea automată” → „5 / 20”. Soldul scris de
+  Robert pe 16.10 în Control costuri s-a mutat singur aici; scrieți-l din nou, ca să fie cel de azi.
 - [ ] **Alin: reperele anonime — RA Insight „învață" din toate flotele. Adăugat pe 08.10 (Alin: „mi-o ții minte… vedem dacă
   o mai facem").** Comparații de felul „flota ta consumă cu 12% peste flotele asemănătoare", din cifre adunate de la toți
   clienții, fără nume, numere sau locuri. Dacă o facem: o etapă separată, după capitolul AI, și o clauză în contract
@@ -531,7 +540,7 @@ de traseu = cam 50 de fișiere Excel) — „O facem acum": butonul „Descarcă
 **Acum: capitolul Inteligență artificială** (Alin, 05.10: *„aici suntem în capitolul inteligență artificială… nu trecem la
 facturi până nu terminăm capitolul ăsta"*). Pașii: 1. RA Insight recunoaște numerele și ține minte ✅ (02.10) · 2. secțiunea
 din meniu + „AI Raport" ✅ (02.10) · plafonul de poziții din rapoarte ✅ (06.10) · 3. Safe Drive & costuri ✅ (06.10) ·
-4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni ✅ (07.10).
+4. Combustibil, Mentenanță & acte, Ore de condus, Scrisoarea de luni ✅ (07.10; scrisoarea scoasă pe 04.11, Alin: „o scoatem de tot”) · banii pentru AI la zi (soldul, anunțurile, alarma refuzului) ✅ (04.11).
 **De aici, pe etape (Alin, 07.10: „organizează etapizat tot ce ți-am dat… să nu uităm"):**
 
 | Etapa | Ce | Unde e |
@@ -557,6 +566,53 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-04
+
+### FONDATOR · Banii pentru AI, la zi: soldul Anthropic pe „Acasă" și în „RA Insight · control", anunțurile, alarma când Anthropic refuză
+*Alin, 04.11: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon… să avem control total pe tokeni și
+bani, după ce schimbă Robert cheile" + „1. da" (anunțurile, alarma, un singur loc pentru sold), „2. da" (rezerva la Anthropic).*
+
+**Ce am schimbat:**
+- **Un singur loc pentru sold:** „RA Insight · control” → „Scrie soldul”. Cardul Anthropic din Control costuri arată același sold (soldul
+  scris acolo pe 16.10 s-a mutat singur, o dată). Aplicația scade din el ce s-a cheltuit: pe zilele încheiate, cifra Anthropic (cheia de
+  administrare) sau socoteala aplicației, cea mai mare dintre ele; azi, socoteala aplicației. Cu reîncărcarea automată trecută, pune și ea
+  creditul cumpărat (ca să nu anunțe degeaba un sold terminat).
+- **Pe „Acasă”, sub cele patru cifre, o bandă mereu la vedere:** „Sold Anthropic, la zi: ~44,05 $ (≈ 203 lei) · ajunge ~23 de zile”, plus
+  firmele trecute de 80% din întrebările lunii. Portocalie sub 14 zile, roșie la 3 zile, la sold terminat, fără cheie sau când Anthropic
+  refuză. Rândul vechi de sold din „Azi la noi” a plecat (stă în bandă).
+- **În „RA Insight · control”, blocul nou „Anthropic, la zi”:** soldul, cât mai ajunge, de unde vin cifrele, luna după Anthropic și după
+  aplicație, tokenii lunii, cheia, anunțurile și tabelul „Pe ce s-au dus banii luna asta” (întrebările clienților, asistentul nostru, actele
+  citite din poză, proba modelelor, căutările); butoanele „Scrie soldul” și „Reîncărcarea automată”. „Ce cere atenție” arată și firmele între
+  80% și 99% din întrebări.
+- **Anunțurile pentru noi** (în aplicație și pe telefon): soldul la 14, 7 și 3 zile și terminat (o dată pe prag); o firmă la 80% și la 100%
+  din întrebările lunii (o dată pe lună).
+- **Alarma pe loc:** când Anthropic refuză (creditul terminat, limita de cheltuieli, cheia respinsă, contul oprit), aflăm imediat — banda
+  roșie, anunț pe telefon (cel mult unul la 6 ore), „Stare producție” roșu —, iar când merge din nou, un anunț „RA Insight răspunde din nou
+  cu AI”. Cheia se verifică și singură, la pornire și din oră în oră (după schimbarea cheilor de către Robert, aflăm într-un minut).
+- **Clientul, în timpul unui refuz:** primește răspunsuri pe butoane, cu „Întrebările libere nu merg acum; echipa RA Track a fost anunțată”,
+  fără cauză, fără „Vezi pachetele” și fără să i se numere. La fel „Rezumă cu RA Insight” (rezumatul pe reguli) și citirea pozelor.
+  Asistentul nostru spune cauza și ce e de făcut.
+- Reper: `sold_ai.js` (regulile și textele), `_soldAnthropic` / `_dupaAnthropic` / `soldAnuntTick` (server.js), `ai.js` (refuzul și
+  verificarea cheii). Probat de `verify_sold_ai.js` (în `npm test`; Anthropic simulat).
+
+**Ce vede fondatorul:** pe „Acasă”, banda cu soldul la zi și firmele aproape de capătul întrebărilor; în „RA Insight · control”, blocul
+„Anthropic, la zi”; anunțuri pe telefon. **Ce vede clientul:** nimic nou cât merge totul; la un refuz, răspunsuri pe butoane, cu un text politicos.
+
+### AMÂNDOI · Scrisoarea de luni scoasă
+*Alin, 04.11: „o scoatem de tot… fiecare are acces să întrebe ce dorește despre flotă".*
+
+**Ce am schimbat:** fără tura de luni, fără pagina ei din „Pagini” (web și telefon), fără anunț, fără rândul din pachete (aplicație și pagina
+de pe site, `/pachete-ra-insight`) și din ghid. Scrisorile deja trimise și anunțurile lor se șterg o dată, la pornire. Telefonul vechi primește,
+în locul paginii, textul „Scrisoarea de luni nu mai există: ce spunea găsești oricând în «Azi la tine»…”.
+**Ce vede fondatorul:** nimic de făcut. **Ce vede clientul:** pagina „Scrisoarea de luni” nu mai e; „Azi la tine” rămâne.
+
+### CLIENT · RA Drive: clientul află unde își schimbă prețurile pe manevră
+*Alin, 04.11: „să le spună RA Insight oamenilor că și le pot schimba… intră în agentul RA Drive sau unde? să-i explicăm clientului".*
+
+**Ce am schimbat:** pe pagina RA Drive, sub cifrele mari, un rând: prețurile sunt cele de pornire (o estimare RA Track, de pildă 1,50 lei o
+frânare bruscă la un camion) sau ale firmei, și unde se schimbă („Cum se socotește”, jos pe pagină) — ori cine le schimbă, la cine n-are
+dreptul. Ghidul are capitolul „RA Drive: prețul unei manevre bruște”, iar RA Insight primește drumul în unealta RA Drive. Telefonul arată
+același rând (APK-ul următor).
+**Ce vede fondatorul:** nimic. **Ce vede clientul:** rândul nou pe RA Drive; RA Insight îi spune drumul când întreabă.
 
 ### FONDATOR · Asistentul fondatorilor, pasul 4: conversațiile se păstrează
 

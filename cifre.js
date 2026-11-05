@@ -1,7 +1,7 @@
 // cifre.js — cifrele în care omul trebuie să aibă încredere (Alin, 08.10: „să aibă grijă cumva să nu dea greșit").
 //
 //   1. numere(text)            — cifrele dintr-un text sau dintr-un JSON („4.230" = patru mii, „12,3", „06.10" = două cifre).
-//                                O folosesc Scrisoarea de luni (ramuri.textulTrece) și verificarea răspunsurilor de mai jos.
+//                                O folosește verificarea răspunsurilor de mai jos (până pe 04.11 și Scrisoarea de luni, scoasă).
 //   2. negasite(text, date)    — cifrele „flotei" (cu unitate: km, litri, lei, %, l/100 km, km/h) din răspunsul lui RA Insight
 //                                care NU se găsesc în datele pe care le-a citit — nici ca atare, nici socotite din ele
 //                                (totaluri, diferențe și procente între două perioade, litri la 100 km, lei pe litru).

@@ -21,10 +21,9 @@ let registered = false;
 //   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
 //   • termenul de montaj („Montaj, mai sunt N zile" / „Termenul de montaj a trecut") → calendarul, pe contractul din
 //     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
-//   • „Scrisoarea de luni" → scrisoarea din anunț, în RA Insight (web: insightDeschideScrisoarea).
 //   • cererile (23.10): `cerere_echipa` → „Cereri de la clienți", la noi; `cerere_preluata|programata|rezolvata` → „Cererile tale",
 //     la client (web: notifCerere). Adresele sunt scrise aici ca text; proba le leagă de lib/cereriEchipa.ts.
-export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou', 'scrisoare_luni', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata'];
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata'];
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
 export function dateAnunt(d: any): any {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -40,7 +39,6 @@ export function adresaAnunt(tip: any, date: any): string | null {
   if (tip === 'mail_nou') return '/admin/mail';   // „Email nou" (panoul Mail, etapa 2) → Mail, fila Primite
   if (tip === 'cerere_echipa') return '/admin/cereri';
   if (tip === 'cerere_preluata' || tip === 'cerere_programata' || tip === 'cerere_rezolvata') return '/echipa?fila=lista';
-  if (tip === 'scrisoare_luni') { const sc = idFirma(d.scrisoareId); return '/insight/scrisoare' + (sc != null ? '?id=' + sc : ''); }
   if (tip === 'aparate_noi') {
     const imeis = (Array.isArray(d.imeis) ? d.imeis : []).map((x: any) => String(x == null ? '' : x).trim()).filter(Boolean);
     const firma = idFirma(d.company_id);
@@ -88,8 +86,6 @@ export function adresaPush(data: any): string {
   const d = data || {};
   const id = d.notifId == null ? '' : String(d.notifId);
   if (TIPURI_CU_LOC.indexOf(String(d.type)) >= 0 && /^\d+$/.test(id)) return '/notif/' + id;
-  // Push-ul scrisorii vine cu notifId (rândul de sus: prin detaliu, care îl marchează citit). Unul trimis înainte să-l aibă: direct la scrisoare.
-  if (d.type === 'scrisoare_luni') return adresaAnunt('scrisoare_luni', d) || '/notifications';
   if (d.imei) return '/vehicles/' + encodeURIComponent(d.imei);
   return '/notifications';
 }

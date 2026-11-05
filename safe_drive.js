@@ -143,21 +143,6 @@ function _peSoferi(o, peImei, randuri) {
       masini: parti.filter(function (x) { return x.t.km >= 0.5 || x.t.condusSec >= 60; }).map(function (x) { return x.imei; }) };
   });
 }
-// O săptămână pe scurt (Scrisoarea de luni): cât a costat condusul, scorul, șoferii care costă cel mai mult — din ACELEAȘI
-// zile și cu aceleași funcții ca luna din pagină. o = { masini, soferi, preturi, zile, zileInainte (săptămâna dinainte) }.
-function saptamana(o) {
-  const peImei = {}; o.masini.forEach(function (m) { peImei[m.imei] = m; });
-  const al = function (r) { return !!peImei[r.imei]; };
-  const randuri = (o.zile || []).filter(al), randuriI = (o.zileInainte || []).filter(al);
-  const flota = _rezumat(_peMasini(o, randuri));
-  const inainte = randuriI.length ? _rezumat(_peMasini(o, randuriI)) : null;
-  const soferi = _peSoferi(o, peImei, randuri).filter(function (s) { return s.id && (s.t.km > 0.05 || condus.manevre(s.t)); }).map(function (s) {
-    return { id: s.id, nume: o.soferi[s.id] || 'Șofer care nu mai e în firmă', cost: Math.round(s.cost.total), km: Math.round(s.t.km),
-      laSuta: rot(condus.laSuta(condus.manevre(s.t), s.t.km), 1) };
-  }).sort(function (a, b) { return b.cost - a.cost || b.km - a.km; });
-  return { cost: Math.round(flota.cost.total), costPe: flota.cost, scor: flota.scor, nota: flota.nota, km: flota.km, laSuta: flota.laSuta, ralantiOre: flota.ralantiOre,
-    inainte: inainte ? { cost: Math.round(inainte.cost.total), scor: inainte.scor } : null, soferi: soferi };
-}
 function alcatuieste(o) {
   const L = luna(o.luna), Li = luna(lunaDinainte(o.luna));
   const peImei = {}; o.masini.forEach(function (m) { peImei[m.imei] = m; });
@@ -265,5 +250,5 @@ function rot(x, z) { if (x == null || !isFinite(x)) return null; const f = Math.
 module.exports = {
   PROASPAT_AZI_MS, INAINTE_MS, ZILE_DISCUTIE,
   inceput, urmatoarea, zileIntre, luna, lunaDinainte, lunaDe, etichetaLunii,
-  deSocotit, siruri, masina, socotesteMasina, locuriLunii, alcatuieste, saptamana,
+  deSocotit, siruri, masina, socotesteMasina, locuriLunii, alcatuieste,
 };

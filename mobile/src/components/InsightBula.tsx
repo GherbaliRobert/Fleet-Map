@@ -75,13 +75,13 @@ function Inteles({ lista }: { lista: any[] }) {
   );
 }
 // Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli" = „+"; „Vezi pachetele" doar la administratorul firmei.
-function CasetaLimita({ text, l }: { text: string; l: Laturi }) {
+function CasetaLimita({ text, l, faraPachete }: { text: string; l: Laturi; faraPachete?: boolean }) {
   return (
     <div class="chat-lim">
       <Md text={text} />
       <div class="chat-lim-b">
         <ButonProp text="Alege ce vrei să afli" ic="plus" onClick={l.plus} />
-        {l.pachete ? <ButonProp text="Vezi pachetele" ic="layers" onClick={l.pachete} /> : null}
+        {l.pachete && !faraPachete ? <ButonProp text="Vezi pachetele" ic="layers" onClick={l.pachete} /> : null}
       </div>
     </div>
   );
@@ -180,7 +180,7 @@ export function BulaAi({ m, l }: { m: any; l: Laturi }) {
       <div class="bub">
         {plan.insigna ? <Insigna ins={plan.insigna} /> : null}
         {plan.inteles.length ? <div class="ins-extra"><Inteles lista={plan.inteles} /></div> : null}
-        {plan.limita != null ? <CasetaLimita text={plan.limita} l={l} /> : null}
+        {plan.limita != null ? <CasetaLimita text={plan.limita} l={l} faraPachete={plan.faraPachete} /> : null}
         {plan.carduri.length ? <div class="chat-raps">{plan.carduri.map((rp) => <CartonasRaport rp={rp} l={l} />)}</div> : null}
         {plan.text ? <div class="insp-txt"><Md text={plan.text} /></div> : null}
         {plan.sursa ? <BlocSursa se={plan.sursa} /> : null}

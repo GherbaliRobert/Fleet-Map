@@ -5072,6 +5072,29 @@ async function costAiDeLa(ms) {
        FROM ai_usage WHERE created_at >= NOW() - make_interval(secs => $1::double precision) GROUP BY model`, [sec]);
   return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
 }
+// Soldul Anthropic „la zi" (04.11): costul aplicației de la o clipă (ms) încoace, PE ZILE UTC ({ 'AAAA-LL-ZZ': usd }, ca zilele lui
+// Anthropic), pe model, cu aceeași formulă (`_costUsdRand`). Prima zi cuprinde doar partea de după clipa dată.
+async function costAiPeZile(ms) {
+  const sec = Math.max(0, (Date.now() - (Number(ms) || 0)) / 1000);
+  const r = await pool.query(
+    `SELECT to_char(created_at, 'YYYY-MM-DD') AS zi, model, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
+       FROM ai_usage WHERE created_at >= NOW() - make_interval(secs => $1::double precision) GROUP BY 1, model`, [sec]);
+  const out = {};
+  r.rows.forEach(function (x) { out[x.zi] = (out[x.zi] || 0) + _costUsdRand(x); });
+  return out;
+}
+// „RA Insight · control" → „Anthropic, la zi" (04.11): luna de acum pe FELURI (întrebările clienților, asistentul nostru, actele citite,
+// proba modelelor…): câte cereri, tokenii și costul (pe modelul fiecărui rând). Doar numere.
+async function aiLunaPeFel() {
+  const r = await pool.query(
+    `SELECT kind, model, COUNT(*)::int AS calls, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens, COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens, COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            COALESCE(SUM(cautari),0)::int AS cautari
+       FROM ai_usage WHERE created_at >= date_trunc('month', NOW()) GROUP BY kind, model`);
+  return _strangePeModele(r.rows, function (x) { return x.kind || 'altele'; });
+}
 // Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
 async function raspunsuriReguliLunaToate() {
   const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
@@ -7181,35 +7204,7 @@ async function asfStergeMaiVechiDe(luni) {
   const r = await pool.query('DELETE FROM asistent_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int) RETURNING id', [Math.max(1, Math.round(luni))]);
   return r.rows.length;
 }
-// ─── Scrisoarea de luni: a omului care o primește (user_id în fiecare WHERE — ca la conversații) ───
-async function scrieScrisoare(o) {
-  const r = await pool.query(
-    `INSERT INTO scrisori_luni (user_id, company_id, saptamana, eticheta, fapte, text, scris_de) VALUES ($1,$2,$3,$4,$5,$6,$7)
-     ON CONFLICT (user_id, saptamana) DO NOTHING RETURNING id`,
-    [o.userId, o.companyId != null ? o.companyId : null, o.saptamana, String(o.eticheta || '').slice(0, 80), JSON.stringify(o.fapte || {}), String(o.text || ''), o.scrisDe || 'reguli']);
-  return r.rows[0] ? r.rows[0].id : null;
-}
-async function auScrisoarea(userIds, saptamana) {   // cine are deja scrisoarea săptămânii
-  if (!userIds.length) return new Set();
-  const r = await pool.query('SELECT user_id FROM scrisori_luni WHERE saptamana = $1 AND user_id = ANY($2::int[])', [saptamana, userIds]);
-  return new Set(r.rows.map(function (x) { return x.user_id; }));
-}
-async function scrisorileOmului(userId, limita) {
-  const r = await pool.query(`SELECT id, saptamana, eticheta, scris_de, citita_la, creat_la FROM scrisori_luni WHERE user_id = $1 ORDER BY saptamana DESC LIMIT $2`,
-    [userId, Math.max(1, Math.min(60, limita || 26))]);
-  return r.rows;
-}
-async function scrisoareaOmului(userId, id) {
-  const r = await pool.query('SELECT * FROM scrisori_luni WHERE id = $1 AND user_id = $2', [id, userId]);
-  return r.rows[0] || null;
-}
-async function citesteScrisoarea(userId, id) {
-  await pool.query('UPDATE scrisori_luni SET citita_la = NOW() WHERE id = $1 AND user_id = $2 AND citita_la IS NULL', [id, userId]);
-}
-async function scrisoriNecitite(userId) {
-  const r = await pool.query('SELECT COUNT(*)::int AS n FROM scrisori_luni WHERE user_id = $1 AND citita_la IS NULL', [userId]);
-  return r.rows[0] ? r.rows[0].n : 0;
-}
+// ─── Scrisoarea de luni: SCOASĂ pe 04.11 (tabela rămâne, goală; serverul șterge o dată ce era în ea). Rămâne doar ștergerea la 12 luni. ───
 async function stergeScrisoriMaiVechiDe(luni) {
   const r = await pool.query(`DELETE FROM scrisori_luni WHERE creat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
   return r.affectedRows || r.rowCount || 0;
@@ -7226,7 +7221,7 @@ module.exports = {
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
   // Asistentul fondatorilor — conversațiile (fiecare fondator doar pe ale lui; pasul 4, 04.11)
   asfConversatieNoua, asfConversatie, asfMesaje, asfAdaugaMesaj, asfActualizeaza, asfLista, asfRedenumeste, asfSterge, asfStergeMaiVechiDe,
-  scrieScrisoare, auScrisoarea, scrisorileOmului, scrisoareaOmului, citesteScrisoarea, scrisoriNecitite, stergeScrisoriMaiVechiDe,
+  stergeScrisoriMaiVechiDe,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun, setScheduleStare,
   noteazaLivrare, livrariDeVerificat, actualizeazaLivrare, marcheazaLivrariAnuntate, livrariPentruRef, marcheazaDeblocata, ultimeleLivrari, stergeLivrariVechi,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
@@ -7243,7 +7238,7 @@ module.exports = {
   treceCerereEchipa, interventiiCalendar,
   getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
-  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa,
+  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa, costAiPeZile, aiLunaPeFel,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyOferta,

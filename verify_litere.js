@@ -104,11 +104,10 @@ console.log('\n2. ai.js: orice răspuns al modelului trece prin litere.js');
     bruturi.length === 2 && bruturi.every((x) => x > iRa && x < iDupa) && /\n    reply = insight\.litereRomanesti\(reply\);/.test(SRV.slice(iRa, iDupa)), JSON.stringify({ n: bruturi.length }));
   T('„Rezumă cu RA Insight" și rezumatul agenților primesc regulile de scris ale lui RA Insight (litere românești, echipamentul e treaba noastră)',
     (SRV.match(/insight\.SCRISUL, insight\.ECHIPAMENTUL\]\.join\('\\n\\n'\)/g) || []).length === 2);
-  T('Scrisoarea de luni: aceleași reguli, plus curățarea ei', /require\('\.\/insight'\)\.ECHIPAMENTUL/.test(fs.readFileSync(path.join(__dirname, 'ramuri.js'), 'utf8')) &&
-    /text: insight\.litereRomanesti\(String\(text\)\.trim\(\)\), scrisDe: 'model'/.test(SRV));
+  // Scrisoarea de luni a ieșit pe 04.11: nu mai are ce curăța (nici scrisul, nici citirea ei).
+  T('Scrisoarea de luni nu mai e (nici scrisul, nici citirea ei)', !/scrisDe: 'model'/.test(SRV) && !/fapte: x\.fapte/.test(SRV));
   // Din 29.10 aceeași citire scoate și titlul „Din sursă externă" (sursaExterna.faraTitluri), peste literele curățate.
-  T('mesajele salvate înainte (ca cel cu „октомбrie" din poza lui Alin) se curăță la citire; ce a scris omul rămâne', /if \(m\.rol !== 'user'\) m\.text = sursaExterna\.faraTitluri\(insight\.litereRomanesti\(m\.text\)\);/.test(SRV) &&
-    /text: insight\.litereRomanesti\(x\.text\), fapte: x\.fapte/.test(SRV));
+  T('mesajele salvate înainte (ca cel cu „октомбrie" din poza lui Alin) se curăță la citire; ce a scris omul rămâne', /if \(m\.rol !== 'user'\) m\.text = sursaExterna\.faraTitluri\(insight\.litereRomanesti\(m\.text\)\);/.test(SRV));
   T('…și nu mai ajung nici în istoricul pe care îl citește modelul la întrebarea următoare',
     I.istoricPentruModel([{ rol: 'user', text: 'consum?' }, { rol: 'assistant', text: 'Pe октомбrie: 7 l.' }, { rol: 'user', text: 'și ieri?' }])[1].content === 'Pe octombrie: 7 l.');
 

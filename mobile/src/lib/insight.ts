@@ -261,7 +261,7 @@ export function mesajDinRaspuns(j: any) {
     extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
       propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
       limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-      verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa } };
+      verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa, faraModel: j.faraModel } };
 }
 // Pasul următor după „Da": mesajul nou de la server (web: adaugaUrmator).
 export function mesajUrmator(u: any) {
@@ -318,7 +318,8 @@ export function planBula(m: any) {
   if (alege.length) ordine.push('alege');
   if (surse.length) ordine.push('surse');
   ordine.push('jos');
-  return { insigna, inteles, limita, carduri, text, sursa, propunere, propuneri: mai, actiuni, probleme, verificat, nota, alege, surse, voteaza, dinRaport, ordine };
+  // `faraPachete` (04.11): mesajul refuzului lui Anthropic — caseta fără „Vezi pachetele" (web: `!x.faraModel`).
+  return { insigna, inteles, limita, faraPachete: !!x.faraModel, carduri, text, sursa, propunere, propuneri: mai, actiuni, probleme, verificat, nota, alege, surse, voteaza, dinRaport, ordine };
 }
 export function textSursaRaport(s: any): string { return 'Deschide „' + (s.label || s.type) + '”' + (s.vehicle ? ' · ' + s.vehicle : ''); }
 // Refuzul „fără loc pe cont" vine ca 200 pe telefon (cheie / token) și ca 403 pe cookie: textul serverului, din amândouă.

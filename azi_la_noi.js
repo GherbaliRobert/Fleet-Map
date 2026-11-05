@@ -10,7 +10,6 @@ const { numar } = require('./contracts');
 
 const MAX_RANDURI = 5;
 const ZILE_LA_SEMNAT = 7;     // un contract trimis la semnat care stă de peste 7 zile (macheta, punctul 3)
-const ZILE_SOLD = 14;         // soldul Anthropic care mai ajunge mai puțin de 14 zile
 const ORDINEA = ['bani', 'clienti', 'contracte', 'montaj', 'facturat', 'aparate', 'firma'];
 
 // Formatatoare ținute minte (verify_formatoare.js le numără): ziua din bara de sus și ora din antet, pe ora României.
@@ -159,11 +158,7 @@ function firmaNoastra(f) {
     const l = f.emitentLipsa, ult = l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] : l[0];
     r.push({ fel: 'firma', nivel: 'w', text: '„Date emitent” incomplete: ' + (l.length === 1 ? 'lipsește ' : 'lipsesc ') + ult + '. Fără ele nu pleacă nicio factură.', buton: 'Date emitent', tinta: { fel: 'emitent' } });
   }
-  if (f.soldZile != null && f.soldZile < ZILE_SOLD) {
-    // `soldUsd` = ce a RĂMAS din suma scrisă, după ce s-a cheltuit de atunci (serverul, `_soldAnthropic`, 30.10) — de aici „cam".
-    r.push({ fel: 'firma', nivel: f.soldZile < 5 ? 'r' : 'n', text: 'Soldul Anthropic: mai sunt cam ' + dolari(f.soldUsd) + ', cât pentru ' + numar(Math.max(0, Math.floor(f.soldZile)), 'zi', 'zile') + ' la cheltuiala de acum.',
-      buton: 'RA Insight · control', tinta: { fel: 'sectiune', tab: 'agents' } });
-  }
+  // Soldul Anthropic NU mai stă aici (04.11): are banda lui, mereu la vedere, sub cele patru cifre (`d.ai`, din sold_ai.js).
   return r;
 }
 
@@ -182,12 +177,15 @@ function randuri(d) {
   ].filter(Boolean);
   toate.sort((a, b) => ORDINEA.indexOf(a.fel) - ORDINEA.indexOf(b.fel));   // stabil: în interiorul unui fel rămâne ordinea de sus
   const arata = toate.slice(0, MAX_RANDURI);
+  // Banda banilor pentru AI (04.11, sold_ai.js → `d.ai`): stă deasupra, mereu la vedere, deci nu intră în cele 5 rânduri; când e roșie
+  // sau portocalie, se numără la „de văzut", ca titlul să nu spună „totul e în regulă" lângă un sold pe terminate.
+  const extra = d.ai && (d.ai.nivel === 'r' || d.ai.nivel === 'w') ? 1 : 0, n = toate.length + extra;
   return {
     zi: ziua(acum), ora: ora(acum), salut: salut(d.nume, acum),
-    randuri: arata, deVazut: toate.length,
-    deVazutText: !toate.length ? 'totul e în regulă' : (toate.length > MAX_RANDURI ? toate.length + ' de văzut · primele ' + MAX_RANDURI : (toate.length === 1 ? '1 de văzut' : toate.length + ' de văzut')),
-    gol: 'Nimic nu cere atenție azi.',
+    randuri: arata, deVazut: n, ai: d.ai || null,
+    deVazutText: !n ? 'totul e în regulă' : (toate.length > MAX_RANDURI ? n + ' de văzut · primele ' + MAX_RANDURI : (n === 1 ? '1 de văzut' : n + ' de văzut')),
+    gol: extra ? 'Altceva nu cere atenție azi.' : 'Nimic nu cere atenție azi.',
   };
 }
 
-module.exports = { MAX_RANDURI, ZILE_LA_SEMNAT, ZILE_SOLD, ORDINEA, randuri, salut, ziua, ora, lei, dolari, deCand, prenume };
+module.exports = { MAX_RANDURI, ZILE_LA_SEMNAT, ORDINEA, randuri, salut, ziua, ora, zz, lei, dolari, deCand, prenume };

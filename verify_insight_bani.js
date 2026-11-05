@@ -185,7 +185,10 @@ function raspuns(rows, istoric, fx, cuCampuriServer, extra) {
   const s = sumar(rows, fx, istoric);
   istoric[istoric.length - 1].estimatLei = s.totalVenitLei;   // luna curentă, încă nefacturată, primește estimarea
   if (!cuCampuriServer) { delete s.totalCostLei; delete s.profitLei; }
-  return { rows, summary: s, istoric, fxEur: fx, pachete: sumarPachete(rows, extra && extra.pachete), sursa: extra && extra.faraSursa ? null : sumarSursa(extra && extra.sursa) };
+  const pk = sumarPachete(rows, extra && extra.pachete);
+  // Soldul vine de la server cu textele cartonașului gata scrise (04.11, sold_ai.cartonas — ca _soldAnthropic): web și telefon doar le arată.
+  if (pk && pk.sold) Object.assign(pk.sold, require('./sold_ai').cartonas(pk.sold));
+  return { rows, summary: s, istoric, fxEur: fx, pachete: pk, sursa: extra && extra.faraSursa ? null : sumarSursa(extra && extra.sursa) };
 }
 
 // Scenariile cu nume: situațiile pe care fondatorii le văd de fapt.

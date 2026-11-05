@@ -731,7 +731,7 @@ function parteaDesenului() {
   const cazuri = fixturiPagini(RAU);
   for (const [nume, plan] of [
     ['RA Drive', LPg.planSafeDrive(cazuri.safedrive)], ['Combustibil', LPg.planCombustibil(cazuri.combustibil)], ['Ore de condus', LPg.planOreCondus(cazuri.orecondus)],
-    ['Mentenanță', LPg.planMentenanta(cazuri.mentenanta)], ['Scrisoarea', LPg.planScrisoare(cazuri.scrisori, cazuri.scrisori.scrisori[0], cazuri.scrisoare)], ['Șoferi', LPg.planSoferi(cazuri.soferi)],
+    ['Mentenanță', LPg.planMentenanta(cazuri.mentenanta)], ['Șoferi', LPg.planSoferi(cazuri.soferi)],
   ]) {
     const ht = r(h(PG.PlanDesenat, { p: plan, l: lp }));
     T(nume + ': textul serverului rămâne text (niciun <img>)', ht.indexOf('<img') < 0 && ht.indexOf('&lt;img') >= 0, ht.slice(0, 300));
@@ -926,7 +926,7 @@ async function parteaServerului() {
   T('fondatorul: „Fondator · fără limită"', L.stareDinQuota(qs, true).contor === 'Fondator · fără limită' && L.stareDinQuota(qs, true).fond.text === 'Fondator · fără limită', J(qs).slice(0, 200));
   T('…„Azi la tine": gol, cu `platforma`', (await Api.insightAzi()).platforma === true);
   await paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om });
-  T('ZERO cereri către model din partea telefonului (în afară de scrisoarea de luni, pe care o scrie serverul, luni la 8: ' + modelScrisoare + ')', nModel() - modelScrisoare === 0, String(nModel()));
+  T('ZERO cereri către model din partea telefonului (Scrisoarea de luni, care se scria lunea, a ieșit pe 04.11)', nModel() === 0, String(nModel()));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -964,7 +964,7 @@ function paginaWeb(fn, rute, Sw, arg) {
   const bucati = ['function el(tag, cls, text)', 'function sdLei(n)', 'function sdNr(x, z)', 'function sdCel(tr, text, cls)', 'function sdTabel(capete)', 'function sdSect(gazda, titlu, ic)', 'function sdIar(main, j)',
     'function sdCant(n, unu, multi)', 'function cbIar(main, j)', 'function hcIar(main, j)', 'function butonProp(text, ic, prim)', 'function ceasAnulare(btn, ramasMs)', 'async function anuleazaActiune(id)',
     'async function deseneazaSafeDrive(main, luna, singur)', 'async function deseneazaMentenanta(main)', 'async function deseneazaCombustibil(main, luna, singur)', 'async function deseneazaOreCondus(main, saptamana, singur)',
-    'async function deseneazaScrisoare(main, id)', 'async function deseneazaSoferi(main, dupa)', 'async function deseneazaGhid(main)', 'function deseneazaIncuiata(main)', 'function esteAdmin()'];
+    'async function deseneazaSoferi(main, dupa)', 'async function deseneazaGhid(main)', 'function deseneazaIncuiata(main)', 'function esteAdmin()'];
   const cod = bucati.map((b) => functie(INSP, b)).join('\n') + '\nreturn ' + fn + ';';
   const main = nodCarton('main'), ids = {};
   const cere = async (m, url) => {
@@ -1116,20 +1116,6 @@ async function parteaPaginilor() {
   await comparaPagina('Șoferi, fără nimic de propus', 'soferi', cu(C.soferi, { propuneri: [], faraPropunere: [], inRegula: [], deCompletat: [] }));
   await comparaPagina('Șoferi, fără șoferi', 'soferi', { texte: { intro: 'Intro' }, faraSoferi: true });
   await comparaPagina('Șoferi, fondator', 'soferi', { platforma: true });
-  // Scrisoarea (două cereri: lista, apoi scrisoarea).
-  const scrisoare = async (lista, x, id, nume, err) => {
-    const { f, main } = paginaWeb('deseneazaScrisoare', Object.assign({ '/api/insight/scrisori': lista }, x ? { ['/api/insight/scrisori/' + ((id != null && (lista.scrisori || []).some((s) => s.id === id)) ? id : ((lista.scrisori || [])[0] || {}).id)]: err ? { __s: 404, j: { error: err } } : x } : {}), { ramura: 'scrisoare' });
-    await f(main, id);
-    const ales = LP.scrisoareAleasa(lista.scrisori || [], id);
-    const a = texteDom(main), b = LP.textePlan(LP.planScrisoare(lista, ales, err ? null : x, err));
-    T('Scrisoarea, ' + nume + ': aceleași texte (' + a.length + ')', J(a) === J(b), J(a).slice(0, 500) + ' / ' + J(b).slice(0, 500));
-  };
-  await scrisoare(C.scrisori, C.scrisoare, null, 'cea mai nouă');
-  await scrisoare(C.scrisori, C.scrisoare, 10, 'alta, din anunț');
-  await scrisoare(C.scrisori, C.scrisoare, 999, 'id necunoscut: cea mai nouă');
-  await scrisoare({ ora: 8, scrisori: [C.scrisori.scrisori[0]] }, cu(C.scrisoare, { scrisDe: 'model', fapte: { drum: { km: 1, masini: 1 }, safeDrive: { lei: 0 }, oreCondus: { total: '1h', seAplica: false }, acte: {} } }), null, 'una singură, scrisă de model');
-  await scrisoare({ ora: 8, scrisori: [] }, null, null, 'nicio scrisoare');
-  await scrisoare(C.scrisori, C.scrisoare, null, 'scrisoarea nu se deschide', 'Scrisoarea nu există.');
   // Ghidul: lista și capitolul deschis.
   const SECT = [{ cheie: 'a', titlu: 'Capitol A', unde: 'Meniu', pasi: ['Unu', 'Doi'], detalii: 'Detalii A' }, { cheie: 'b', titlu: 'Capitol B', pasi: [] }];
   const g = paginaWeb('deseneazaGhid', { '/api/insight/ghid': { sectiuni: SECT } }, { ramura: 'ghid' });
@@ -1157,9 +1143,9 @@ async function parteaPaginilor() {
   T('fără `|| 1,5` sau alte prețuri de rezervă: prețurile vin din `valori`', /P\.valori/.test(S.pagini) && !/preturi\s*\|\|\s*\{\s*\w+:/.test(codPag));
   T('„Pregătesc…" se reia singură, la aceleași pauze ca pe web', /j\.pregatire \? 2500 : 4000/.test(functie(INSP, 'function sdIar(main, j)')) && /p\.reia = 2500/.test(S.pagLib) && /p\.reia = 4000/.test(S.pagLib) && /setTimeout\(aduce, p\.reia\)/.test(S.pagini));
   T('prețurile și „Am vorbit cu el": doar cu dreptul dat de server', /j\.poateNota/.test(S.pagLib) && /P\.poateSchimba/.test(S.pagini) && /poateNota: permReq\(req, 'manageFleet'\)/.test(server));
-  T('rutele paginilor sunt cele ale web-ului', ["'/api/insight/safe-drive'", "'/api/insight/combustibil'", "'/api/insight/ore-condus'", "'/api/insight/mentenanta'", "'/api/insight/scrisori'", "'/api/insight/ghid'", "'/api/insight/soferi-masini'", "'/api/insight/ramuri'", "'/api/insight/safe-drive/preturi'", "'/api/insight/safe-drive/discutie'"].every((r) => S.endpoints.indexOf(r) >= 0 && INSP.indexOf(r) >= 0));
+  T('rutele paginilor sunt cele ale web-ului', ["'/api/insight/safe-drive'", "'/api/insight/combustibil'", "'/api/insight/ore-condus'", "'/api/insight/mentenanta'", "'/api/insight/ghid'", "'/api/insight/soferi-masini'", "'/api/insight/ramuri'", "'/api/insight/safe-drive/preturi'", "'/api/insight/safe-drive/discutie'"].every((r) => S.endpoints.indexOf(r) >= 0 && INSP.indexOf(r) >= 0));
   T('textul „Am vorbit cu el": aceleași cuvinte în foaie', ['De azi, RA Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', 'Da, am vorbit', 'O notă scurtă (nu e obligatorie)', 'Discuția dispare din RA Drive (de exemplu, dacă ai trecut-o din greșeală).', 'Scoți discuția?', 'Discuția s-a trecut ✓', 'Prețurile s-au salvat ✓', 'Prețurile de pornire s-au pus la loc ✓'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
-  T('erorile paginilor: aceleași titluri ca pe web', ['RA Drive nu s-a putut deschide', 'Combustibil nu s-a putut deschide', 'Ore de condus nu s-a putut deschide', 'Mentenanță & acte nu s-a putut deschide', 'Scrisoarea de luni nu s-a putut deschide', 'Pagina nu s-a putut deschide'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
+  T('erorile paginilor: aceleași titluri ca pe web', ['RA Drive nu s-a putut deschide', 'Combustibil nu s-a putut deschide', 'Ore de condus nu s-a putut deschide', 'Mentenanță & acte nu s-a putut deschide', 'Pagina nu s-a putut deschide'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
 
   sect('13.2 /insight: pagina și discuția, „Înapoi"');
   T('pagina are adresa ei, păzită ca discuția', /<Route path="\/insight\/:ramura" component=\{P\.insight\} \/>/.test(S.app));
@@ -1169,7 +1155,7 @@ async function parteaPaginilor() {
   T('conversația rămâne (id și ce e scris în casetă) cât stai pe o pagină', /let ciornaMem = '';/.test(S.ecran) && /useState\(ciornaMem\)/.test(S.ecran) && /\[mesaje\.length, trimitere, ramura\]/.test(S.ecran));
   T('„Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul scris, nu trimis', /function intreabaDespre\(inceput: string\) \{[\s\S]{0,240}setText\(String\(inceput \|\| ''\)\);[\s\S]{0,160}du\('\/insight', true\);/.test(S.ecran) && !/intreabaDespre[\s\S]{0,240}trimite\(/.test(S.ecran.slice(S.ecran.indexOf('function intreabaDespre'), S.ecran.indexOf('function intreabaDespre') + 300)));
   T('o pagină de la Basic nu cere nimic până nu știe pachetul (pe Start, cartonașul încuiat)', /!qGata && rPag && rPag\.pachet \?/.test(S.ecran) && /ramuraIncuiata\(rPag, stare\.pachet\) \? <PaginaIncuiata k=\{ramura\} laPachete=\{admin \? vedePachetele : undefined\} \/>/.test(S.ecran));
-  T('numerele: din /api/insight/ramuri, la intrare și după ce s-a schimbat ceva', /Api\.insightRamuri\(\)/.test(S.ecran) && /numere: incarcaNumere/.test(S.ecran) && /setX\(s\); l\.numere\(\);/.test(S.pagini));
+  T('numerele: din /api/insight/ramuri, la intrare și după ce s-a schimbat ceva', /Api\.insightRamuri\(\)/.test(S.ecran) && /numere: incarcaNumere/.test(S.ecran) && /l\.numere\(\);/.test(S.pagini));
   // Pe ecran: cartonașele, fără ieșire în lături.
   const cssMic = S.css.slice(S.css.indexOf('@media (max-width: 600px)'));
   T('tabelele paginilor, sub 600 px: un cartonaș pe rând, cu numele coloanei', /\.sdp-tab thead \{ display: none; \}/.test(cssMic) && /td\[data-col\]::before \{ content: attr\(data-col\)/.test(cssMic) && /data-col=\{col \|\| undefined\}/.test(S.pagini));
@@ -1180,17 +1166,12 @@ async function parteaPaginilor() {
 function grupaUna() { return { id: null, eticheta: 'Toată flota' }; }
 
 function parteaAnuntului() {
-  sect('13.3 Anunțul „Scrisoarea de luni" și Rapoartele');
+  sect('13.3 Rapoartele (anunțul „Scrisoarea de luni" a ieșit pe 04.11)');
   const P = modul(F.push, { '@capacitor/core': { Capacitor: { isNativePlatform: () => false, getPlatform: () => 'web' } }, '../api/endpoints': { Api: {} }, '../app/store': { showToast: () => {} },
     './factura': { rutaFactura: () => '/billing' }, './contracte': { RUTA_NEASIGNATE: '/x' }, './calendarMontaj': { rutaCalendarMontaj: () => '/y' }, './incarcare': { rutaPlanSofer: () => '/z', rutaPlanSimulator: () => '/z', RUTA_PLANURI: '/z' } });
-  T('anunțul duce la scrisoarea din el', P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === '/insight/scrisoare?id=12' && P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === L.rutaRamura('scrisoare', 12));
-  T('…`data` ca text JSON, la fel; fără scrisoare: pagina', P.adresaAnunt('scrisoare_luni', J({ scrisoareId: 12 })) === '/insight/scrisoare?id=12' && P.adresaAnunt('scrisoare_luni', {}) === '/insight/scrisoare' && P.adresaAnunt('scrisoare_luni', { scrisoareId: 'x' }) === '/insight/scrisoare');
-  T('…e printre anunțurile cu loc (listă, detaliu, push)', P.TIPURI_CU_LOC.indexOf('scrisoare_luni') >= 0);
-  T('…push-ul, cu notifId: prin detaliu (care îl marchează citit); unul de dinainte, fără el: direct la scrisoare', P.adresaPush({ type: 'scrisoare_luni', notifId: '7', scrisoareId: '12' }) === '/notif/7' && P.adresaPush({ type: 'scrisoare_luni', scrisoareId: '12' }) === '/insight/scrisoare?id=12');
+  T('Scrisoarea de luni a ieșit (04.11): anunțul ei nu mai are loc pe telefon, iar pagina nu-l mai așteaptă', P.TIPURI_CU_LOC.indexOf('scrisoare_luni') < 0 && P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === null &&
+    !/scrisoare/.test(S.ecran) && /const PUSH_CU_ID = new Set\(\[\]\);/.test(server));
   T('…detaliul marchează citit și duce la adresa anunțului', /const spre = x \? adresaAnunt\(x\.type, x\.data\) : null;\s*if \(spre\) \{\s*if \(!x\.acknowledged\) Api\.ackNotification\(Number\(id\)\)/.test(faraComentarii(S.notifDetail)));
-  T('…doar scrisoarea primește id-ul prin notify(); restul tipurilor rămân cum sunt', /const PUSH_CU_ID = new Set\(\['scrisoare_luni'\]\);/.test(server) && /_notifyPush\(n, PUSH_CU_ID\.has\(n\.type\) \? saved\.id : null\)/.test(server));
-  T('…web: insightDeschideScrisoarea(data.scrisoareId), același câmp, trimis de server', /if \(d\.type === 'scrisoare_luni'\) \{ closeNotifDetail\(\); if \(window\.insightDeschideScrisoarea\) window\.insightDeschideScrisoarea\(d\.data && d\.data\.scrisoareId\); return; \}/.test(html) && /type: 'scrisoare_luni'[\s\S]{0,240}scrisoareId: id/.test(server));
-  T('…pagina citește `id` din adresă', /ramura === 'scrisoare' && isFinite\(idCerut\) && idCerut > 0 \? idCerut : null/.test(S.ecran) && /<PaginaRamura k=\{ramura\} l=\{lPag\} scrisoareId=\{scrisoareId\} \/>/.test(S.ecran));
   // Fila veche din Rapoarte.
   T('fila „RA Insight" din Rapoarte a plecat (cererile în cuvinte stau în RA Insight)', !/InsightPanel|rp-tabs|setTab|tab === 'insight'/.test(S.reports) && !/\.rp-tabs|\.rp-tab\b|\.insight-/.test(S.reportsCss));
   T('…și ce folosea doar ea: rutele din endpoints.ts; pe server rămân, pentru telefoanele vechi', !/reportsAgent|insightPresets|insightRun|aiChat/.test(S.endpoints) && /app\.post\('\/api\/ai\/reports-agent'/.test(server) && /app\.get\('\/api\/insight\/presets'/.test(server) && /app\.post\('\/api\/insight\/run'/.test(server));
@@ -1275,60 +1256,12 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   await comparaPagina('Șoferi, după „Aplică", cu rândul „Gata"', 'soferi', sf2, { dupa: ap });
   const an = await Api.insightActiune(ap.actiuneId, 'anuleaza');
   T('…„Anulează" (ruta comună) întoarce schimbarea, cu textul serverului', !!an.text, J(an));
-  // Două telefoane: unul cu push-ul pornit pe tipul scrisorii, altul fără nimic setat (cum e azi oricine: tipul nu are rând în „Preferințe notificări").
-  const colega = await om('colega@telefon.ro', 'manager');
-  await R('PUT', '/api/users/' + colega.id + '/ai-seat', { on: true });
-  await tel('colega@telefon.ro');
-  await Api.registerDevice('token-fara-preferinte', 'android');
-  await tel('sef@telefon.ro');
-  await Api.registerDevice('token-cu-push', 'android');
-  await client.api('/api/notification-prefs', { method: 'PUT', body: { types: { scrisoare_luni: { enabled: true, push: true } } } });
-  // Scrisoarea: lunea asta la 8 (ceasul probei), iar anunțul duce la ea.
-  const mInainte = nModel();
-  const adm = await R('POST', '/api/test/ceasuri', { acum: SD.inceput(luniAcum) + 8 * 3600000 + 60000, scrisori: true });
-  modelScrisoare = nModel() - mInainte;
-  T('scrisoarea de luni se scrie (ceasul probei)', adm.s === 200, J(adm.j).slice(0, 200));
-  const ls = await Api.insightScrisori();
-  const sc = (ls.scrisori || [])[0] || {};
-  T('Scrisoarea: lista, cu săptămâna și „nouă"', !!sc.id && sc.citita === false, J(ls).slice(0, 200));
-  const nr2 = await Api.insightRamuri();
-  T('…numărul de lângă ea = necitite', nr2.scrisoare === 1, J(nr2));
-  const P = modul(F.push, { '@capacitor/core': { Capacitor: { isNativePlatform: () => false, getPlatform: () => 'web' } }, '../api/endpoints': { Api: {} }, '../app/store': { showToast: () => {} },
-    './factura': { rutaFactura: () => '/billing' }, './contracte': { RUTA_NEASIGNATE: '/x' }, './calendarMontaj': { rutaCalendarMontaj: () => '/y' }, './incarcare': { rutaPlanSofer: () => '/z', rutaPlanSimulator: () => '/z', RUTA_PLANURI: '/z' } });
-  const anunturi = await Api.notifications();
-  const an1 = (Array.isArray(anunturi) ? anunturi : []).filter((x) => x.type === 'scrisoare_luni')[0];
-  T('anunțul adevărat duce la scrisoarea lui', !!an1 && P.adresaAnunt(an1.type, an1.data) === '/insight/scrisoare?id=' + sc.id, an1 && J(an1.data));
-  // Push-ul adevărat al serverului: cu id-ul notificării, ca atingerea să treacă prin detaliu și să-l marcheze citit.
-  const pushuri = () => fs.readFileSync(FCM_LOG, 'utf8').split('\n').filter(Boolean).map((x) => JSON.parse(x)).filter((m) => m.data && m.data.type === 'scrisoare_luni');
-  for (let i = 0; i < 40 && !pushuri().length; i++) await sleep(100);
-  await sleep(300);
-  const pu = pushuri();
-  T('push-ul scrisorii: un mesaj, la cine l-a pornit, cu notifId și scrisoareId (FCM: text)', pu.length === 1 && J(pu[0].tokens) === J(['token-cu-push']) && !!an1 && pu[0].data.notifId === String(an1.id) && pu[0].data.scrisoareId === String(sc.id) && pu[0].notification.title === 'Scrisoarea de luni', J(pu));
-  T('…la telefon fără preferință pentru tipul ăsta nu pleacă nimic: regula de azi a lui notify() (fără rând în preferințe, fără push)', !pu.some((m) => m.tokens.indexOf('token-fara-preferinte') >= 0), J(pu));
-  T('…atingerea: prin detaliul anunțului', !!pu[0] && P.adresaPush(pu[0].data) === '/notif/' + an1.id, pu[0] && J(pu[0].data));
-  T('…în bază și în listă anunțul rămâne cum era (web-ul citește aceeași listă): fără notifId, cu scrisoarea', !!an1 && an1.data && an1.data.notifId === undefined && an1.data.scrisoareId === sc.id, an1 && J(an1.data));
-  const ctxPush = await Api.notifContext(an1.id);
-  T('…detaliul primește felul și scrisoarea, deci duce la aceeași adresă ca din listă', P.adresaAnunt(ctxPush.type, ctxPush.data) === '/insight/scrisoare?id=' + sc.id, J(ctxPush).slice(0, 300));
-  T('…necitit până la atingere', !an1.acknowledged && !ctxPush.acknowledged, J(an1.acknowledged));
-  await Api.ackNotification(an1.id);
-  T('…după: citit', (await Api.notifications()).filter((x) => x.id === an1.id)[0].acknowledged === true);
-  await tel('colega@telefon.ro');
-  const faraDrept = await Api.notifContext(an1.id).then(() => null, (e) => e);
-  T('…colega nu poate citi anunțul celuilalt după id', !!faraDrept && faraDrept.status === 404, faraDrept && faraDrept.status);
-  await tel('sef@telefon.ro');
-  await R('PUT', '/api/users/' + colega.id + '/ai-seat', { on: false });
-  const x = await Api.insightScrisoare(sc.id);
-  T('…deschisă: textul și cifrele', !!x.text && !!x.fapte, J(x).slice(0, 200));
-  const web = paginaWeb('deseneazaScrisoare', { '/api/insight/scrisori': ls, ['/api/insight/scrisori/' + sc.id]: x }, { ramura: 'scrisoare' });
-  await web.f(web.main, sc.id);
-  T('…aceleași texte ca pagina web, pe scrisoarea adevărată', J(texteDom(web.main)) === J(LP.textePlan(LP.planScrisoare(ls, sc, x))), J(texteDom(web.main)).slice(0, 400));
-  T('…citită, numărul scade', !(await Api.insightRamuri()).scrisoare);
   const gh = await Api.insightGhid();
   T('Ghidul: capitolele, cu titlu', (gh.sectiuni || []).length > 5 && gh.sectiuni.every((g) => g.cheie && g.titlu));
 
   // Omul fără cont: 200 cu seatMissing pe telefon, nimic de arătat.
   await tel('dispecer@telefon.ro');
-  for (const [nume, f] of [['RA Drive', () => Api.insightSafeDrive()], ['Combustibil', () => Api.insightCombustibil()], ['Ore de condus', () => Api.insightOreCondus()], ['Mentenanță', () => Api.insightMentenanta()], ['Șoferi', () => Api.insightSoferiMasini()], ['Scrisori', () => Api.insightScrisori()], ['numere', () => Api.insightRamuri()]]) {
+  for (const [nume, f] of [['RA Drive', () => Api.insightSafeDrive()], ['Combustibil', () => Api.insightCombustibil()], ['Ore de condus', () => Api.insightOreCondus()], ['Mentenanță', () => Api.insightMentenanta()], ['Șoferi', () => Api.insightSoferiMasini()], ['numere', () => Api.insightRamuri()]]) {
     const r = await f();
     T('fără cont, ' + nume + ': refuzul cu textul serverului, fără date', r.seatMissing === true && /Pachet și conturi/.test(String(r.message)) && !r.masini && !r.scrisori && !r.soferi && !r.randuri, J(r).slice(0, 160));
   }
@@ -1342,15 +1275,12 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   await tel('sef@start.ro');
   const qS = await Api.aiQuota();
   const stS = L.stareDinQuota(qS, false);
-  T('Start: pachetul fără ramuri, deci paginile sunt încuiate; scrisoarea și ghidul, nu', !!stS.pachet && stS.pachet.ramuri === false && ['soferi', 'safedrive', 'combustibil', 'mentenanta', 'orecondus'].every((k) => LP.ramuraIncuiata(LP.ramuraDupa(k), stS.pachet)) && !LP.ramuraIncuiata(LP.ramuraDupa('scrisoare'), stS.pachet) && !LP.ramuraIncuiata(LP.ramuraDupa('ghid'), stS.pachet), J(stS.pachet));
+  T('Start: pachetul fără ramuri, deci paginile sunt încuiate; ghidul, nu', !!stS.pachet && stS.pachet.ramuri === false && ['soferi', 'safedrive', 'combustibil', 'mentenanta', 'orecondus'].every((k) => LP.ramuraIncuiata(LP.ramuraDupa(k), stS.pachet)) && !LP.ramuraIncuiata(LP.ramuraDupa('ghid'), stS.pachet), J(stS.pachet));
   T('…„Actele" din „Azi la tine" pleacă drept întrebare', J(L.aziActiune({ fel: 'acte', ramura: 'mentenanta', trimite: 'Ce expiră?' }, stS.pachet)) === J({ trimite: 'Ce expiră?', buton: true }));
   for (const [nume, f] of [['RA Drive', () => Api.insightSafeDrive()], ['Combustibil', () => Api.insightCombustibil()], ['Ore de condus', () => Api.insightOreCondus()], ['Mentenanță', () => Api.insightMentenanta()], ['Șoferi', () => Api.insightSoferiMasini()], ['numere', () => Api.insightRamuri()]]) {
     let e = null; try { await f(); } catch (x2) { e = x2; }
     T('Start, ' + nume + ': 403 de la server, cu mesajul lui', e && e.status === 403 && e.message === 'ramuri_pachet' && /Basic/.test((e.data || {}).message || ''), e && J({ s: e.status, m: e.message, d: e.data }));
   }
-  const lsS = await Api.insightScrisori();
-  T('Start, Scrisoarea: se poate deschide (fără nicio scrisoare încă)', Array.isArray(lsS.scrisori), J(lsS));
-  T('…cartonașul „prima vine luni la 8"', /Prima scrisoare vine luni la 8/.test(LP.textePlan(LP.planScrisoare(lsS, null, null)).join('|')));
 
   // Fondatorul: Șoferi pe mașini n-are flotă.
   client.setAuthToken((await Api.mobileLogin('admin', 'test1234', 'proba')).token);

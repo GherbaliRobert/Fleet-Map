@@ -582,7 +582,10 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - **Ștergerea:** zilele pleacă odată cu pozițiile (`stergeIstoricAparat`, `stergeIstoricMaiVechiDe`,
   `deleteDeviceCompletely`); `zile_condus` e în `BACKUP_EXCLUDED` (se reface), `istoric_soferi` și
   `safe_drive_discutii` în `BUSINESS_TABLES`.
-- Prețurile de pornire (`PRETURI_IMPLICITE`) sunt o estimare a mea — la „De amintit", de confirmat cu Alin.
+- Prețurile de pornire (`PRETURI_IMPLICITE`) sunt o estimare a mea; **Alin, 04.11: „da”, rămân** — cu condiția ca clientul să afle unde le
+  schimbă: `condus.textPreturi` / `preturiProprii` / `UNDE_PRETURI` → `preturi.nota` în `_sdLuna`, rândul de sub cifrele mari (web și telefon,
+  `planSafeDrive`), capitolul de ghid `ra_drive_preturi` și `preturi_pe_manevra` în unealta `safe_drive`. RA Drive nu e un agent: e o pagină
+  din RA Insight.
 - Păzit de `verify_safe_drive.js` (în `npm test`; cifrele = EcoDrive / Ralanti pe o lună, server pornit) și
   `verify_insight.js` (unealta).
 
@@ -602,16 +605,11 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
 - **Ore de condus = raportul `hos`** (rHos), pe săptămână (`_ramSaptamana`: acum + 3 înapoi). **rHos pune fiecare zi pe
   șoferul de atunci** (`istoric_soferi`, `condus.soferLa`), o mașină cu doi șoferi se citește pentru fiecare (memoria rămâne
   pe un șofer). Pragurile din „Cum se socotește" sunt LEGATE de codul rHos în probă. `valori` = zilele ca numere.
-- **Scrisoarea de luni:** `_fapteScrisoare` (aceleași funcții, pe mașinile omului — `_cerereOm` ca withScope) →
-  `ramuri.fapteScrisoare` → `_scrieScrisoarea`: RA Insight (`ai.callClaude`, instrucțiunile fixe în cache) DOAR din fapte;
-  **`ramuri.textulTrece` oprește orice cifră care nu e în fapte** (afară de `CIFRE_MEREU`: 100, 561, 2006) → atunci textul
-  pe reguli (`textScrisoare`). Consumul = fel `'scrisoare'`, în afara `AI_BILLABLE_KINDS` (îl plătim noi). **Pleacă DOAR
-  lunea, de la 8** (`scrisoareaDeLuniTick`, la 15 min): o livrare în mijlocul săptămânii nu trimite nimic. O scrisoare pe
-  aceleași mașini (un singur text), una pe om și săptămână (`UNIQUE (user_id, saptamana)`), anunț `scrisoare_luni` →
-  `insightDeschideScrisoarea`. Tabela `scrisori_luni`: a omului (user_id în WHERE), 12 luni (`stergeConversatiiVechi`),
-  în `BACKUP_EXCLUDED`. Fără drum și fără nimic de rezolvat → nicio scrisoare.
-- În probe: `/api/test/ceasuri { acum, scrisori: true }` pornește trecerea cu ceasul probei. Proba RA Insight are modelul
-  simulat; a ramurilor merge fără model (textul pe reguli).
+- **Scrisoarea de luni: SCOASĂ pe 04.11** (Alin: „o scoatem de tot… fiecare are acces să întrebe ce dorește despre flotă”): fără tură, fără
+  pagină (web și telefon), fără anunț, fără rândul din pachete (aplicație + `/pachete-ra-insight`) și din ghid; `ramuri.fapteScrisoare` /
+  `textulTrece` și `safeDrive.saptamana` au plecat cu ea. Scrisorile deja trimise și anunțurile `scrisoare_luni` se șterg o dată, la pornire
+  (`_scrisoriSterse`, setarea `scrisori_sterse`); tabela `scrisori_luni` rămâne, goală. `/api/insight/scrisori[/:id]` răspund 410 cu
+  `SCRISOARE_SCOASA` (telefonul vechi încă are pagina). NU o pune la loc: „Azi la tine” spune același lucru, oricând.
 - Păzit de `verify_ramuri.js` (în `npm test`), `verify_insight.js`, `verify_safe_drive.js`, `verify_insight_ghid.js`.
 
 ### Etapa A (07.10): cele 5 găsite pe drum + AI Raport înțelege (Alin: „rezolvă acum")
@@ -682,7 +680,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - Păzit de `verify_ai_raport.js` (151), `verify_insight.js` (137), `verify_insight_ghid.js`.
 
 ### Etapa B+ (08.10): cifrele se verifică, perioada e exactă, consumul greu de crezut e spus (Alin: „da")
-- **Regula stă în `cifre.js`** (curat): `numere` (cititorul de cifre, folosit și de Scrisoarea de luni — `ramuri.textulTrece`),
+- **Regula stă în `cifre.js`** (curat): `numere` (cititorul de cifre),
   `negasite(text, date)` (cifrele cu unitate din răspuns care nu se regăsesc în ce au întors uneltele, nici socotite: totalul
   și partea din total ale unei liste, diferențe și procente între locuri DIFERITE, l/100 km, lei pe litru / pe km),
   `perioadaDiferita` (capetele ±1 h; „până acum" = „până acum"), `consumDeVerificat` (3 / 40 l/100 km, camion 10 / 70, preț
@@ -831,14 +829,16 @@ Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 
   `_usrStareAcasa`, `_adashStareArhiva`; cartonașele le desenează prin `_adashStareHtml`, care stă în blocul „pastilele de utilizatori", ca
   proba utilizatorilor s-o aibă; un clic → pagina lor) și „Azi la noi".
 - **„Azi la noi": regulile și textele în `azi_la_noi.js`** (curat): cel mult `MAX_RANDURI` = 5, în `ORDINEA` bani → clienți → contracte →
-  montaj → de facturat → aparate → firma; un fel cu mai multe lucruri = UN rând strâns; `ZILE_LA_SEMNAT` = 7, `ZILE_SOLD` = 14. Datele le
+  montaj → de facturat → aparate → firma; un fel cu mai multe lucruri = UN rând strâns; `ZILE_LA_SEMNAT` = 7. Datele le
   adună `_aziLaNoiDate` (server.js) CU REGULILE CARE EXISTĂ: neplata (restanțele), `cereriEchipaToate` (stare „trimisa"), `listDemoRequests`
   („new", doar firma — fără date personale), `contracte.deAnuntat` (ca anunțul zilnic), contractele „trimis" după `sent_at`,
   `montaj.stareConfirmare` pe ziua de mâine, `_termeneMontaj` (comună cu anunțul zilnic — stă ÎNAINTEA reperului „Escape HTML minimal":
   verify_drum.js decupează anunțul până acolo), `_deFacturatMontaj`, `_abonamenteNeemise` (`_abonamentulLunii` + `facturaAbonamentLuna`, ca
   factura automată; ținut minte o oră), `db.aparateFaraFirma` (transmit în ultimele 7 zile), `stocMod.alerte`, `_emailVerdict` (comun cu
-  „Stare producție"), „Date emitent" (nume + CUI, regula facturii automate) și `_soldAnthropic`. NU scrie a doua socoteală a vreunuia. Ruta:
+  „Stare producție") și „Date emitent" (nume + CUI, regula facturii automate). NU scrie a doua socoteală a vreunuia. Ruta:
   `GET /api/admin/azi-la-noi` (requireSuperadmin; ținută minte 2 minute, `?proaspat=1` fără memorie). Fără model, deci fără cost.
+  **Soldul Anthropic NU mai e un rând aici (04.11):** stă în banda de sus, `ai` din răspuns (`_bandaAi`, socotită la FIECARE cerere, nu ținută
+  minte 2 minute — un refuz trebuie să se vadă pe loc); banda roșie / portocalie se numără la „de văzut”. Vezi „Banii pentru AI, la zi”.
 - **Cifrele de sub „Companii" (cartonaș și chat) = regulile filtrelor din Companii** (30.10, Alin: „da acum"): `/api/admin/counts` numără
   „fără contract" cu `contracte.faraContract(stareDosar, statusAcces)` (NU „dosar incomplet"), restanța pe facturi (`neplata.stareNeplata`,
   faza „avertisment") și suspendatele separat (`companies_suspendate`, accesul oprit de noi sau pentru neplată); pagina (`_adashStareCompanii`)
@@ -1211,6 +1211,38 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
 - Păzit de `verify_pachete.js` (esteAnaliza, instrucțiunea pe Basic, ruta veche 404) și `verify_proba_modele.js` (`_corp` „medium" = 4.700 de
   tokeni pe Haiku 5.5 cu 1.100 ceruți; pe server: întrebarea obișnuită „low", „Compară…" „medium").
 
+### Banii pentru AI, la zi (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon… control total pe tokeni și bani, după ce schimbă Robert cheile” + „1. da”, „2. da”)
+- **Regulile și TEXTELE stau în `sold_ai.js`** (curat): `felRefuz(status, text)` (credit / limita / cheie / cont; prea multe cereri, serverul
+  ocupat sau o cerere greșită NU sunt refuzuri), `REFUZ` + `textRefuz`, `TEXT_CLIENT` / `TEXT_REZUMAT` / `TEXT_POZA` (fără cauză), `cheltuitDeLa`,
+  `ritmPeZi`, `sold` (cu reîncărcarea automată: de câte ori soldul ar fi trecut sub `sub`, se pune `cumpara`), `pragSold` (14 / 7 / 3 / 0;
+  niciunul cu reîncărcarea pornită) + `cheiSold`, `anuntSold`, `firmeAproape` (procentul rotunjit ca bara din tabel) / `pragIntrebari` /
+  `anuntIntrebari` / `atentieIntrebari` (80–99%), `anuntRefuz` / `anuntRevenire`, `banda` (Acasă), `cartonas` + `panou` (control). Fără
+  formatatoare proprii (folosește `ora` / `zz` din azi_la_noi). NU scrie texte de-ale lui în pagină.
+- **Un singur loc pentru sold:** setarea `anthropic_sold` = { usd, la }, scrisă DOAR de `PUT /api/admin/insight/sold` (și `reincarcare`:
+  { sub, cumpara } | null → setarea `anthropic_reincarcare`). „Control costuri” (`/api/admin/costs/anthropic`, cardul și fereastra) arată
+  ACELAȘI sold (`sold`, plus câmpurile vechi pentru telefonul de azi) și deschide aceeași fereastră (`raxAiSold(raxOpenAnthropicDetail)`);
+  câmpurile lui de credite au plecat, iar ce era scris acolo s-a mutat o dată (`_soldUnLoc`, setarea `sold_un_loc`, cel mai nou câștigă).
+- **`_soldAnthropic()` — O socoteală, la zi:** de la scriere, pe ZILE UTC (ca Anthropic): ziua scrierii și azi = socoteala aplicației
+  (`db.costAiPeZile`); fiecare zi încheiată = cea mai mare dintre cifra Anthropic (`fetchAnthropicSpend(de, pana)` → `byDay`, cu cheia de
+  administrare, până azi la 00:00) și socoteala aplicației; ritmul = media ultimelor 7 zile, cea mai mare dintre cele două. Întoarce și
+  `cifra` / `sub` (cartonașul, gata scris). Folosită de banda de pe „Acasă”, control, „Control costuri”, anunțuri și „Stare producție”.
+- **Pe „Acasă” (asistentul fondatorilor):** banda `.asf-ai` (`bandaAi`, sub cele patru cifre): soldul la zi sau alarma, plus firmele ≥ 80%;
+  un clic → „RA Insight · control”. **În „RA Insight · control”:** blocul „Anthropic, la zi” (`_aiuBani(d.bani)`, între cartonașe și „Ce cere
+  atenție”), butoanele „Scrie soldul” și „Reîncărcarea automată” (`raxAiReincarcare`, „5 / 20”); „Ce cere atenție” primește `pachete.aproape`.
+- **Anunțurile** (`soldAnuntTick`, la 15 minute; în probe `/api/test/ceasuri { sold: true }`): `ai_sold` (o dată pe prag și pe soldul scris),
+  `ai_intrebari` (o dată pe firmă, lună și prag; 100% marchează și 80%), cheile în setarea `ai_anunturi`. Firmele = `_intrebariFirmeAi()` —
+  O socoteală (pachet cu AI, rândurile lunii din ai_usage), în anunț, pe „Acasă” și în control.
+- **Alarma refuzului:** `ai.js` recunoaște refuzul în `_rawCall` (`soldAi.felRefuz`; eroarea poartă `refuzAnthropic`) și spune fiecare
+  rezultat unui SINGUR ascultător (`ai.setLaStare(_dupaAnthropic)`). Starea: setarea `ai_refuz` ({ fel, la, ultimaLa, refuzate, anuntatLa });
+  anunț `ai_refuz` pe loc la un fel nou, apoi cel mult o dată la 6 ore; primul răspuns bun o stinge, cu anunț `ai_refuz_gata`. Lista modelelor
+  (`ai.verificaCheia`, la pornire și din oră în oră — în probe doar cu `AI_VERIFICARE_LA_MS`; și `modelPrimesteCautarea`) stinge doar alarma
+  cheii. „Stare producție”, rândul `ai`: refuzul = roșu; soldul nescris = „info”.
+- **Clientul, la refuz:** `_raInsight` prinde refuzul la `ai.runAgent` → `_insightPeReguli({ faraModel: soldAi.TEXT_CLIENT })` (sau
+  `doarRapoartele(…, true)`): răspunsul pe reguli, fără să se numere, cu `faraModel: true` → caseta fără „Vezi pachetele” (web: `!x.faraModel`;
+  telefon: `faraPachete`). „Rezumă cu RA Insight” = rezumatul pe reguli cu `TEXT_REZUMAT`; citirea pozei = `TEXT_POZA`; asistentul nostru =
+  `eroareModel(motiv)`, cu cauza și ce e de făcut. O cale NOUĂ spre model trece prin ai.js (deci prin `_rawCall`) și își alege textul de refuz.
+- Păzit de **`verify_sold_ai.js`** (în `npm test`; Anthropic simulat: mesajele, lista modelelor, raportul de costuri).
+
 ### „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe internet")
 Propunerea cu pozele: https://claude.ai/artifact/UrAv6wx6VBRPazhpKnNosw. RA Insight răspunde din aplicație; cu butonul „Sursă externă" pornit
 caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă externă", NICIODATĂ „Internet"**; explicația spune că „caută pe internet".
@@ -1334,10 +1366,8 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany(db.AI_KINDS_COST_FIRMA)` (cu scrisoarea de luni și
   căutările „Sursei externe"), pe model, la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul
   `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
-  `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic = setarea `anthropic_sold` (`PUT /api/admin/insight/sold`),
-  `_soldAnthropic` (30.10, Alin: „da acum"): rămas = suma scrisă − costul de la scrierea ei (`db.costAiDeLa(la)`, toată platforma, pe
-  model), zilele = rămas ÷ (costul ultimelor `SOLD_RITM_ZILE` = 7 zile ÷ 7); întoarce `{ usd: rămas, scris, la, cheltuit, peZi, zile, ritmZile }`.
-  O socoteală pentru „RA Insight · control" și „Azi la noi". NU pune înapoi „luna ÷ ziua lunii" (pe 1 nu știa nimic) și nici suma neatinsă.
+  `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic: vezi „Banii pentru AI, la zi” (04.11) — un singur loc, `_soldAnthropic`, la zi.
+  NU pune înapoi „luna ÷ ziua lunii" (pe 1 nu știa nimic) și nici suma neatinsă.
   Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
 - **Pasul 5, oferta → contract → firmă → factură:** prețurile de listă = `tarife_lista.pkBasic / pkPro / pkBusiness` („Prețurile
   noastre"), citite DOAR prin `pachete.preturiLista` (serverul: `_preturiPachete`; gol / 0 / text → prețul din cod, niciodată 0).

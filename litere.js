@@ -1,7 +1,7 @@
 'use strict';
 // ─── Literele: orice text scris de AI ajunge la client DOAR cu litere românești (Alin, 19–20.10: „sunt fatale pentru noi")
 // O SINGURĂ regulă, folosită de ai.js (orice răspuns al modelului, pe orice drum: RA Insight, „Rezumă cu RA Insight",
-// rezumatul agenților, Scrisoarea de luni), de RA Insight (care cere întâi o rescriere) și la citirea mesajelor vechi.
+// rezumatul agenților, asistentul fondatorilor), de RA Insight (care cere întâi o rescriere) și la citirea mesajelor vechi.
 // Curat: fără bază de date, fără rețea.
 //   • străin = o literă din alt alfabet decât cel latin (chirilic, grec, arab, chinez…) sau o literă latină „lată"
 //     (full-width). Literele latine cu semne rămân: ă, â, î, ș, ț, dar și Š din „Škoda" sau ü din „Müller".

@@ -166,8 +166,6 @@ export function Insight() {
   // Altă adresă = discuția. „Pachet și conturi" și „Vezi pachetele": doar administratorul firmei (ca pe web).
   const ramura = (ramuraCeruta === 'pachet' || ramuraCeruta === 'pachete') ? (admin ? ramuraCeruta : null)
     : (RAMURI_PE_TELEFON.indexOf(ramuraCeruta) >= 0 ? ramuraCeruta : null);
-  const idCerut = Number((query as any)?.id);
-  const scrisoareId = ramura === 'scrisoare' && isFinite(idCerut) && idCerut > 0 ? idCerut : null;
   const u = me.value;
   const poateRapoarte = !!(u?.isSuper || u?.permissions?.viewReports);
   const poateAgenti = !!(u?.features && u.features.agents !== false && u?.permissions?.viewReports);
@@ -561,7 +559,7 @@ export function Insight() {
         ) : ramura ? (
           !qGata && rPag && rPag.pachet ? <div class="sdp"><div class="insp-gol">Se încarcă…</div></div>
             : ramuraIncuiata(rPag, stare.pachet) ? <PaginaIncuiata k={ramura} laPachete={admin ? vedePachetele : undefined} />
-              : <PaginaRamura k={ramura} l={lPag} scrisoareId={scrisoareId} />
+              : <PaginaRamura k={ramura} l={lPag} />
         ) : incarc ? (
           <div class="insp-gol-mij"><div class="spin insp-spin" /></div>
         ) : !mesaje.length ? (

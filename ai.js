@@ -4,6 +4,7 @@ const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 // Modelul agentului RA Insight — separat, ca să poată fi urcat pe Sonnet fără a atinge chat-ul rapid. Default = modelul de bază (Haiku).
 const AI_AGENT_MODEL = process.env.AI_AGENT_MODEL || AI_MODEL;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+const soldAi = require('./sold_ai');
 const ANTHROPIC_MODELE_URL = 'https://api.anthropic.com/v1/models/';
 // Orice text scris de model ajunge la om DOAR cu litere românești (Alin, 20.10: „sunt fatale pentru noi"): callClaude și
 // runAgent îl curăță aici, o dată pentru toate drumurile (litere.js). `brut: true` îl lasă cum e — doar RA Insight îl cere,
@@ -82,6 +83,14 @@ function setKey(k) { runtimeKey = (k && String(k).trim()) || null; }
 function hasKey() { return !!runtimeKey; }
 function aiEnabled() { return !!runtimeKey; }
 
+// Ce a spus Anthropic la fiecare cerere (04.11, Alin: „control total… după ce schimbă Robert cheile"): un singur ascultător, pus de
+// server (setLaStare), care ține starea și ne anunță când Anthropic refuză (creditul terminat, limita de cheltuieli, cheia respinsă —
+// sold_ai.felRefuz). ai.js doar spune ce s-a întâmplat: { ok: true } sau { refuz, status, eroare }; eroarea aruncată poartă
+// `refuzAnthropic` (felul), ca RA Insight să răspundă clientului pe butoane în locul unei erori.
+let _laStare = null;
+function setLaStare(fn) { _laStare = typeof fn === 'function' ? fn : null; }
+function _stare(ev) { if (_laStare) { try { _laStare(ev); } catch (e) { /* starea nu are voie să strice cererea */ } } }
+
 async function _rawCall(body) {
   if (!runtimeKey) { const e = new Error('AI neconfigurat (lipsește cheia Anthropic)'); e.code = 'NO_KEY'; throw e; }
   const res = await fetch(ANTHROPIC_URL, {
@@ -97,9 +106,26 @@ async function _rawCall(body) {
     const t = await res.text().catch(() => '');
     const e = new Error('AI ' + res.status + ': ' + t.slice(0, 300));
     e.status = res.status;
+    const fel = soldAi.felRefuz(res.status, t);
+    if (fel) { e.refuzAnthropic = fel; _stare({ refuz: fel, status: res.status, eroare: t.slice(0, 300) }); }
     throw e;
   }
+  _stare({ ok: true });
   return res.json();
+}
+// Primește Anthropic cheia? (04.11) — Models API, gratuit, fără nimic din aplicație. La pornire și din oră în oră: după o schimbare de
+// chei aflăm în cel mult un minut, fără să aștepte o întrebare a unui client. Un răspuns bun stinge doar alarma cheii (nu și pe cea a
+// creditului: lista modelelor merge și fără credit). { ok: true | false | null, fel, eroare } — null = rețeaua n-a răspuns.
+async function verificaCheia() {
+  if (!runtimeKey) return { ok: null, eroare: 'cheia Anthropic lipsește' };
+  try {
+    const res = await fetch(ANTHROPIC_MODELE_URL.replace(/\/$/, '') + '?limit=1', { method: 'GET', headers: { 'x-api-key': runtimeKey, 'anthropic-version': '2023-06-01' } });
+    if (res.ok) { _stare({ ok: true, doarCheie: true }); return { ok: true }; }
+    const t = await res.text().catch(() => '');
+    const fel = soldAi.felRefuz(res.status, t);
+    if (fel) _stare({ refuz: fel, status: res.status, eroare: t.slice(0, 300), verificare: true });
+    return { ok: false, fel: fel, eroare: 'Anthropic ' + res.status + ': ' + t.slice(0, 200) };
+  } catch (e) { return { ok: null, eroare: String((e && e.message) || e).slice(0, 200) }; }
 }
 
 async function callClaude({ system, messages, maxTokens = 800, model, onUsage, brut }) {
@@ -232,7 +258,13 @@ async function modelPrimesteCautarea(model) {
   if (!runtimeKey) return { model: m, ok: null, eroare: 'cheia Anthropic lipsește' };
   try {
     const res = await fetch(ANTHROPIC_MODELE_URL + encodeURIComponent(m), { method: 'GET', headers: { 'x-api-key': runtimeKey, 'anthropic-version': '2023-06-01' } });
-    if (!res.ok) { const t = await res.text().catch(() => ''); return { model: m, ok: null, eroare: 'Anthropic ' + res.status + ': ' + t.slice(0, 200) }; }
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      const fel = soldAi.felRefuz(res.status, t);
+      if (fel) _stare({ refuz: fel, status: res.status, eroare: t.slice(0, 300), verificare: true });
+      return { model: m, ok: null, eroare: 'Anthropic ' + res.status + ': ' + t.slice(0, 200) };
+    }
+    _stare({ ok: true, doarCheie: true });
     const j = await res.json();
     const ws = j && j.capabilities && j.capabilities.server_tools && j.capabilities.server_tools.web_search;
     if (!ws || typeof ws.supported !== 'boolean') return { model: m, ok: null, eroare: 'răspunsul Anthropic nu spune' };
@@ -241,4 +273,4 @@ async function modelPrimesteCautarea(model) {
 }
 
 module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT,
-  MODELE, pret, EFORT, _corp, _text, PRET_CAUTARE_USD, AI_SURSA_MODEL, CAUTARE_UNEALTA, LOC_CAUTARE, cautaExtern, modelPrimesteCautarea };
+  MODELE, pret, EFORT, _corp, _text, PRET_CAUTARE_USD, AI_SURSA_MODEL, CAUTARE_UNEALTA, LOC_CAUTARE, cautaExtern, modelPrimesteCautarea, setLaStare, verificaCheia };

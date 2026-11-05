@@ -104,13 +104,13 @@ T('aparatele care transmit fără firmă, cu firma propusă', r.randuri[0].text 
 r = A.randuri({ acum: ACUM, stocSubPrag: [{ model: 'Teltonika FMC130', buc: 2, prag: 5 }] });
 T('stocul sub prag', r.randuri[0].text === 'Stocul de **Teltonika FMC130** a scăzut la 2 bucăți (pragul: 5).' && r.randuri[0].tinta.tab === 'stoc', r.randuri[0].text);
 
+// Soldul Anthropic NU mai e un rând aici din 04.11: are banda lui, mereu la vedere, sub cele patru cifre (sold_ai.js, verify_sold_ai.js).
 r = A.randuri({ acum: ACUM, firma: { emailEroare: 'Brevo refuză adresa serverului nostru.', emitentLipsa: ['numele firmei', 'CUI-ul'], soldUsd: 4.1, soldZile: 12.4 } });
-T('firma noastră: emailul, „Date emitent" și soldul, pe rând', r.randuri.length === 3 &&
+T('firma noastră: emailul și „Date emitent", pe rând (soldul are banda lui)', r.randuri.length === 2 &&
   r.randuri[0].text === 'Emailurile nu pleacă. Brevo refuză adresa serverului nostru.' &&
-  r.randuri[1].text === '„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.' &&
-  r.randuri[2].text === 'Soldul Anthropic: mai sunt cam 4,10 $, cât pentru 12 zile la cheltuiala de acum.', JSON.stringify(r.randuri.map((x) => x.text)));
-T('… spre Stare producție, Date emitent, RA Insight · control', r.randuri[0].tinta.tab === 'dashboard' && r.randuri[1].tinta.fel === 'emitent' && r.randuri[2].tinta.tab === 'agents');
-T('soldul de 20 de zile nu e de văzut (pragul e 14)', A.randuri({ acum: ACUM, firma: { soldUsd: 9, soldZile: 20 } }).randuri.length === 0 && A.ZILE_SOLD === 14);
+  r.randuri[1].text === '„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.', JSON.stringify(r.randuri.map((x) => x.text)));
+T('… spre Stare producție și Date emitent', r.randuri[0].tinta.tab === 'dashboard' && r.randuri[1].tinta.fel === 'emitent');
+T('soldul nu mai e niciodată un rând (nici pe terminate) și nici pragul vechi de 14 zile', A.randuri({ acum: ACUM, firma: { soldUsd: 1, soldZile: 1 } }).randuri.length === 0 && typeof A.ZILE_SOLD === 'undefined');
 
 // Ordinea și tăietura: firma noastră (pusă prima în date) iese ultima; peste 5, „N de văzut · primele 5".
 r = A.randuri({ acum: ACUM, firma: { emitentLipsa: ['CUI-ul'] }, stocSubPrag: [{ model: 'FMC130', buc: 1, prag: 3 }], montajDeFacturat: [{ firma: 'X', masini: 2 }],
@@ -279,7 +279,10 @@ async function peServer() {
     T('soldul: din 20 $ scriși acum 20 de zile s-au scăzut cei 6,50 $ cheltuiți de atunci (nu și cei 5 $ de dinainte) → 13,50 $',
       sold.scris === 20 && Math.abs(sold.cheltuit - 6.5) < 0.005 && Math.abs(sold.usd - 13.5) < 0.005, JSON.stringify(sold));
     T('… iar zilele = ce a rămas ÷ cheltuiala pe zi a ultimelor 7 zile (0,50 $) = 27', sold.zile === 27 && Math.abs(sold.peZi - 0.5) < 0.0001 && sold.ritmZile === 7, JSON.stringify(sold));
-    T('27 de zile nu sunt de văzut în „Azi la noi" (pragul e 14): nicio grijă inventată', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)));
+    // Banda banilor pentru AI (04.11): proba pornește serverul FĂRĂ cheia Anthropic, deci banda spune asta, roșu (cu cheie și sold, banda e
+    // probată în verify_sold_ai.js). Soldul de mai sus rămâne socotit în „RA Insight · control".
+    T('soldul nu e un rând în „Azi la noi": banda de sus spune, roșu, că serverul n-are cheia Anthropic', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)) && j.ai && j.ai.nivel === 'r' &&
+      /^\*\*Cheia Anthropic nu e pusă pe server\.\*\*/.test((j.ai.randuri[0] || {}).text || ''), JSON.stringify(j.ai));
     // Clientul
     const co = await cere('POST', '/api/companies', S, { name: 'Firma Client SRL' });
     const u = await cere('POST', '/api/users', S, { username: 'client.admin@proba.ro', full_name: 'Ion Client', role: 'company_admin', company_id: co.j.id });
@@ -299,7 +302,7 @@ async function peServer() {
     const ra = (r.j.randuri || []).find((x) => x.fel === 'aparate');
     T('aparatele care transmit fără firmă: câte, spre „Neasignate", cu IMEI-urile', ra && ra.text === '**2 aparate** transmit și n-au firmă.' && ra.tinta.fel === 'neasignate' &&
       ra.tinta.imeis.indexOf('TEST111') >= 0 && ra.tinta.imeis.indexOf('TEST222') >= 0 && ra.tinta.firma === null, JSON.stringify(ra));
-    T('„5 de văzut"', r.j.deVazut === 5 && r.j.deVazutText === '5 de văzut', r.j.deVazutText);
+    T('„6 de văzut" (cele 5 rânduri + banda roșie a cheii Anthropic)', r.j.deVazut === 6 && r.j.deVazutText === '6 de văzut', r.j.deVazutText);
     // Cifrele de sub „Companii" (30.10, Alin: „da acum"): regulile filtrelor din Companii. Trans Expres (factura întârziată) e
     // restanță; o firmă suspendată de NOI, fără nicio factură, e „suspendată" — nu și restanță; o firmă fără contract e „fără contract".
     const c0 = (await cere('GET', '/api/admin/counts', S)).j || {};

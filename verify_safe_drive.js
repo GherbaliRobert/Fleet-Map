@@ -277,6 +277,19 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('culorile de stare au pereche pe tema deschisă (portocaliu și verde închise)', /body:not\(\.dark\) \.sdp \.sdp-chip\.atentie[^{]*\{ color: #9a3412; \}/.test(CSS) && /body:not\(\.dark\) \.sdp \.sdp-chip\.bun[^{]*\{ color: #166534; \}/.test(CSS));
   T('tabelele se derulează în cutia lor (pagina nu iese din ecran pe telefon)', /\.sdp-scroll \{ overflow-x: auto; max-width: 100%; \}/.test(CSS) && /\.sdp \{ overflow-y: auto; min-height: 0; min-width: 0;/.test(CSS));
 
+  // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului"): de unde vin și unde se
+  // schimbă — un singur text (condus.textPreturi / UNDE_PRETURI), la vedere pe pagină (web + telefon), în ghid și în unealta lui RA Insight.
+  const tp0 = C.textPreturi(false, true), tp1 = C.textPreturi(true, false);
+  T('prețurile: textul spune dacă sunt de pornire (cu un exemplu) sau ale firmei și unde se schimbă / cine le schimbă', /cele de pornire, o estimare RA Track \(de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism\)/.test(tp0) &&
+    /„Cum se socotește”/.test(tp0) && /„Salvează prețurile”/.test(tp0) && /^Prețurile pe manevră sunt ale firmei\. Le schimbă administratorul sau managerul firmei/.test(tp1), tp0 + ' | ' + tp1);
+  T('…„ale firmei" = măcar un preț diferit de cel de pornire', C.preturiProprii(null) === false && C.preturiProprii({ camion: { frana: 2 } }) === true && C.preturiProprii({ camion: { frana: 1.5 } }) === false);
+  T('…pagina îl pune la vedere, sub cifrele mari (textul serverului, ca text), iar telefonul la fel', /pag\.appendChild\(tl\);\s*\/\/ Prețurile pe manevră[\s\S]{0,260}if \(j\.preturi && j\.preturi\.nota\) \{ var pn = el\('div', 'sdp-nota'\);[^}]*document\.createTextNode\(j\.preturi\.nota\)/.test(bloc) &&
+    /p\.blocuri\.push\(\{ b: 'tiles', tiles \}\);\s*\/\/ Prețurile[^\n]*\n\s*if \(j\.preturi && j\.preturi\.nota\) p\.blocuri\.push\(\{ b: 'nota', text: j\.preturi\.nota \}\);/.test(fs.readFileSync(path.join(__dirname, 'mobile/src/lib/insightPagini.ts'), 'utf8')));
+  T('…RA Insight o primește în unealta safe_drive (ale firmei sau de pornire, unde se schimbă, cine)', /preturi_pe_manevra: \{ ale_firmei: !!\(r\.preturi && r\.preturi\.proprii\), unde_se_schimba: condus\.UNDE_PRETURI/.test(SRV));
+  const GH = require('./insight_ghid');
+  T('…iar ghidul are drumul (și RA Insight îl găsește la „unde schimb prețul frânării")', (GH.cauta('unde schimb pretul franarii in ra drive')[0] || {}).cheie === 'ra_drive_preturi' &&
+    /„Cum se socotește"/.test((GH.SECTIUNI.filter((x) => x.cheie === 'ra_drive_preturi')[0] || {}).unde || ''));
+
   const PORT = 3297, TCP = 5297;
   const DIR = path.join(os.tmpdir(), 'rax_safedrive_' + Date.now());
   const BU = 'http://127.0.0.1:' + PORT;
@@ -408,6 +421,10 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('…iar costul manevrelor se socotește cu ele (B 154 UIP: ' + m3.frana + ' × 0,5 + ' + m3.accel + ' × 0,15 + ' + m3.viraj + ' × 0,10)', m3.cost && m3.cost.manevre === Math.round((m3.frana * 0.5 + m3.accel * 0.15 + m3.viraj * 0.1) * 100) / 100 && p3.j.preturi.valori.autoturism.frana === 0.5, JSON.stringify(m3.cost));
   const pAlt2 = await pagina(ckAlt, LUNA);
   T('…doar în firma lui: cealaltă firmă are tot prețurile de pornire', pAlt2.j.preturi && pAlt2.j.preturi.valori.autoturism.frana === 0.2);
+  T('…și nota de sus spune „ale firmei" la șef și „de pornire" la cealaltă firmă', p3.j.preturi && p3.j.preturi.proprii === true && /^Prețurile pe manevră sunt ale firmei\. Le schimbi/.test(p3.j.preturi.nota || '') &&
+    pAlt2.j.preturi.proprii === false && /cele de pornire/.test(pAlt2.j.preturi.nota || ''), (p3.j.preturi || {}).nota + ' | ' + (pAlt2.j.preturi || {}).nota);
+  const pDs = await pagina(ckDisp, LUNA);
+  T('…dispecerul (fără drept de schimbare) află cine le schimbă', pDs.status !== 200 || /Le schimbă administratorul sau managerul firmei/.test((pDs.j.preturi || {}).nota || ''), pDs.status + ' ' + ((pDs.j.preturi || {}).nota || ''));
 
   // Schimbul de șofer nu mută zilele trecute — nici în pagină, nici în raport
   await json('PUT', '/api/devices/' + V[0] + '/assign', ckSef, { driver_id: mihai.id });

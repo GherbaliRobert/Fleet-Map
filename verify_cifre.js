@@ -50,9 +50,8 @@ T('„la 100 km" e mereu pe voie', C.negasite('6,8 L la 100 km', [{ l: 6.8 }]).l
 T('semnele de îngroșare nu ascund cifra și nu se lipesc de unitate („**734** km", „**734 km**" → „734 km")',
   JSON.stringify(C.negasite('**734** km și **734 km**.', DATE)) === '["734 km"]', JSON.stringify(C.negasite('**734** km și **734 km**.', DATE)));
 T('cifrele cu unitate se recunosc: km, l/100 km, litri, lei, %', C.cifreleRaspunsului('8,5 l/100 km, 42,3 litri, 199 lei, +14%, 1.234,5 km').map((c) => c.fel).join(',') === 'l100,litri,lei,pct,km');
-T('Scrisoarea de luni citește cifrele cu același cititor (cifre.numere)', /const _numere = require\('\.\/cifre'\)\.numere;/.test(fs.readFileSync(path.join(__dirname, 'ramuri.js'), 'utf8')) &&
-  R.textulTrece('Săptămâna trecută flota a mers 538 km și a consumat 36,6 litri. '.repeat(3), { km: 538, litri: 36.6 }).ok &&
-  !R.textulTrece('Săptămâna trecută flota a mers 999 km și a consumat 36,6 litri. '.repeat(3), { km: 538, litri: 36.6 }).ok);
+// Scrisoarea de luni (care citea cifrele cu același cititor) a ieșit pe 04.11: paza ei (ramuri.textulTrece) a plecat odată cu ea.
+T('Scrisoarea de luni nu mai e: nici paza ei în ramuri.js', typeof R.textulTrece === 'undefined' && !/require\('\.\/cifre'\)/.test(fs.readFileSync(path.join(__dirname, 'ramuri.js'), 'utf8')));
 
 // ─── 2. Perioada ───────────────────────────────────────────────────────────────────────────────────
 console.log('\n2. Perioada: „1–7 octombrie" e 1–7');

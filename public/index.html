@@ -11833,8 +11833,8 @@ const pozitii = await r.json();</code></pre>
         { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true, pachet: true },
         { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true, pachet: true },
         // `meniu: true` = stă în meniul „⋯", nu sub „Pagini" (macheta „mai simplu", 15.10).
-        { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true, meniu: true },
-        { k: 'scrisoare', et: 'Scrisoarea de luni', ic: 'fa-envelope-open-text', gata: true }
+        { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true, meniu: true }
+        // (Aici stătea „Scrisoarea de luni", scoasă pe 04.11 — Alin: „o scoatem de tot"; „Azi la tine" spune același lucru, oricând.)
       ];
       window._insightRamuri = RAMURI;
       // Paginile de sub „Pagini ▸" din stânga: ramurile livrate, fără discuție și fără ce stă în meniul „⋯".
@@ -12101,7 +12101,6 @@ const pozitii = await r.json();</code></pre>
         if (S.ramura === 'combustibil') return deseneazaCombustibil(main, S.cbLuna);
         if (S.ramura === 'mentenanta') return deseneazaMentenanta(main);
         if (S.ramura === 'orecondus') return deseneazaOreCondus(main, S.hcSapt);
-        if (S.ramura === 'scrisoare') return deseneazaScrisoare(main, S.scId);
         if (!S.mesaje.length) {
           // Conversație nouă: „Salut, Alin! Cu ce te pot ajuta?", caseta, trei butoane scurte, apoi „Azi la tine".
           main.innerHTML = '<div class="insp-gol-mij"><div class="insp-salut" id="insp-salut"></div></div>';
@@ -12412,7 +12411,8 @@ const pozitii = await r.json();</code></pre>
           var lim = el('div', 'chat-lim'); lim.innerHTML = md(x.limita ? textAi : x.pachetMesaj);
           var lc = el('div', 'chat-lim-b');
           var bp = el('button', 'chat-pas'); bp.type = 'button'; bp.innerHTML = '<i class="fas fa-plus"></i>'; bp.appendChild(document.createTextNode('Alege ce vrei să afli')); bp.onclick = function () { window.insightPlus(bp); }; lc.appendChild(bp);
-          if (esteAdmin()) { var bv = el('button', 'chat-pas ins'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); }; lc.appendChild(bv); }
+          // La refuzul lui Anthropic (`faraModel`, 04.11) nu e vina clientului: fără „Vezi pachetele".
+          if (esteAdmin() && !x.faraModel) { var bv = el('button', 'chat-pas ins'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); }; lc.appendChild(bv); }
           lim.appendChild(lc); bub.appendChild(lim);
           if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
         }
@@ -12509,7 +12509,7 @@ const pozitii = await r.json();</code></pre>
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
               limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa } };
+              verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa, faraModel: j.faraModel } };
           S.mesaje.push(m);
           if (box) {
             var rand = bulaAi(m), urm = null;
@@ -12894,6 +12894,9 @@ const pozitii = await r.json();</code></pre>
           t.appendChild(et); t.appendChild(el('div', 'val', sdLei(x[2]))); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
         });
         pag.appendChild(tl);
+        // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba"): ale firmei sau de pornire și unde se schimbă, la
+        // vedere — textul vine de la server (condus.textPreturi); telefonul pune același rând (planSafeDrive).
+        if (j.preturi && j.preturi.nota) { var pn = el('div', 'sdp-nota'); pn.innerHTML = '<i class="fas fa-tags"></i> '; pn.appendChild(document.createTextNode(j.preturi.nota)); pag.appendChild(pn); }
         // Rândul scorului: scorul flotei, manevrele la 100 km, km — cu luna dinainte alături
         var lin = el('div', 'sdp-linie');
         lin.appendChild(el('span', null, 'Scorul flotei: ' + (f.scor == null ? '—' : f.scor + ' · ' + f.nota) + (fa.scor ? ' (' + fa.scor + ')' : '')));
@@ -13319,78 +13322,6 @@ const pozitii = await r.json();</code></pre>
         pag.appendChild(nota);
         if (singur) pag.scrollTop = sus;
       }
-      // ─── Ramura „Scrisoarea de luni" (pasul 4): ce contează din săptămâna trecută, scris de RA Insight ───
-      // Scrisorile sunt ale omului (le face serverul lunea la 8, din aceleași cifre ca ramurile); pagina le arată, cu textContent.
-      async function deseneazaScrisoare(main, id) {
-        var tok = S.scTok = (S.scTok || 0) + 1;
-        main.innerHTML = '<div class="sdp"><div class="insp-gol">Se încarcă…</div></div>';
-        var r = await cere('GET', '/api/insight/scrisori');
-        if (tok !== S.scTok || S.ramura !== 'scrisoare') return;
-        var pag = el('div', 'sdp'), j = r.j || {};
-        main.innerHTML = ''; main.appendChild(pag);
-        if (r.s !== 200) {
-          var c0 = el('div', 'insp-card'); c0.appendChild(el('h3', null, 'Scrisoarea de luni nu s-a putut deschide'));
-          c0.appendChild(el('div', null, j.message || j.error || 'Încearcă din nou peste un minut.')); pag.appendChild(c0); return;
-        }
-        var lista = j.scrisori || [];
-        var cap = el('div', 'sdp-cap');
-        var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-envelope-open-text"></i> '; h2.appendChild(document.createTextNode('Scrisoarea de luni')); cap.appendChild(h2);
-        var dr = el('div', 'sdp-dr');
-        if (lista.length > 1) {
-          var sel = el('select', 'sdp-sel'); sel.setAttribute('aria-label', 'Săptămâna');
-          lista.forEach(function (x) { var o = el('option', null, 'Săptămâna ' + x.eticheta + (x.citita ? '' : ' · nouă')); o.value = String(x.id); sel.appendChild(o); });
-          sel.onchange = function () { S.scId = Number(sel.value); deseneazaScrisoare(main, S.scId); };
-          dr.appendChild(sel);
-        }
-        cap.appendChild(dr); pag.appendChild(cap);
-        if (!lista.length) {
-          var g0 = el('div', 'insp-card'); g0.appendChild(el('h3', null, 'Prima scrisoare vine luni la ' + (j.ora || 8)));
-          g0.appendChild(el('div', null, 'În fiecare luni dimineață, RA Insight îți scrie ce contează din săptămâna trecută: drumul și combustibilul, cum s-a condus, orele de condus, actele și reviziile care vin — și ce e de făcut. O găsești aici și primești un anunț.'));
-          pag.appendChild(g0); return;
-        }
-        var ales = lista.filter(function (x) { return x.id === id; })[0] || lista[0];
-        S.scId = ales.id; if (sel) sel.value = String(ales.id);
-        var rs = await cere('GET', '/api/insight/scrisori/' + encodeURIComponent(ales.id));
-        if (tok !== S.scTok || S.ramura !== 'scrisoare') return;
-        var x = rs.j || {};
-        if (rs.s !== 200) { pag.appendChild(el('div', 'insp-card', x.error || 'Scrisoarea nu s-a putut deschide.')); return; }
-        var sc = el('div', 'sdp-sect sdp-scris');
-        sc.appendChild(el('div', 'sdp-et', 'De la RA Insight · săptămâna ' + (x.eticheta || '')));
-        String(x.text || '').split(/\n\s*\n/).forEach(function (bucata) {
-          var rnd = bucata.split('\n'), puncte = rnd.filter(function (l) { return /^\s*•\s+/.test(l); });
-          var titlu = rnd.filter(function (l) { return !/^\s*•\s+/.test(l); }).join(' ').trim();
-          if (titlu) sc.appendChild(el('p', puncte.length ? 'b' : null, titlu));
-          if (puncte.length) { var ul = el('ul'); puncte.forEach(function (l) { ul.appendChild(el('li', null, l.replace(/^\s*•\s+/, ''))); }); sc.appendChild(ul); }
-        });
-        if (x.scrisDe !== 'model') sc.appendChild(el('div', 'sdp-mic', 'Scrisă din cifre, pe reguli (RA Insight n-a putut-o scrie de data asta).'));
-        pag.appendChild(sc);
-        // Cifrele săptămânii, cu drumul spre ramura fiecăreia (aceleași cifre ca acolo)
-        var f = x.fapte || {}, tl = el('div', 'sdp-tiles trei');
-        var tile = function (ic, et, val, sub, ram, st) {
-          var t = el('div', 'sdp-tile' + (st ? ' st-' + st : '')), e = el('div', 'et'); e.innerHTML = '<i class="fas ' + ic + '"></i> '; e.appendChild(document.createTextNode(et));
-          t.appendChild(e); t.appendChild(el('div', 'val', val)); if (sub) t.appendChild(el('div', 'sub', sub));
-          if (ram) { var b = el('button', 'sdp-link', 'Vezi în ' + ram[1]); b.onclick = function () { window.insightRamura(ram[0]); }; t.appendChild(b); }
-          tl.appendChild(t);
-        };
-        if (f.drum) tile('fa-road', 'Drum', sdNr(f.drum.km) + ' km', f.drum.masini === 1 ? 'o mașină a mers' : f.drum.masini + ' mașini au mers', null);
-        if (f.combustibil) tile('fa-gas-pump', 'Combustibil', sdLei(f.combustibil.lei), sdCant(f.combustibil.litri, 'litru', 'litri') + (f.combustibil.fata ? ' · ' + f.combustibil.fata : ''), ['combustibil', 'Combustibil'], f.combustibil.scaderiTotal || f.combustibil.pesteNorma.length ? 'atentie' : '');
-        if (f.safeDrive) tile('fa-shield-halved', 'Condusul a costat în plus', f.safeDrive.lei ? '~' + sdLei(f.safeDrive.lei) : '0 lei', f.safeDrive.scor != null ? 'scorul flotei: ' + f.safeDrive.scor + ' · ' + f.safeDrive.nota : '', ['safedrive', 'RA Drive']);
-        if (f.oreCondus) tile('fa-stopwatch', 'Ore de condus', f.oreCondus.total, f.oreCondus.incalcariTotal ? (f.oreCondus.incalcariTotal === 1 ? 'o încălcare' : f.oreCondus.incalcariTotal + ' încălcări') : (f.oreCondus.seAplica ? 'nicio încălcare' : 'Reg. 561 nu se aplică'), ['orecondus', 'Ore de condus'], f.oreCondus.incalcariTotal ? 'rosu' : '');
-        if (f.acte) tile('fa-screwdriver-wrench', 'Acte și revizii', String((f.acte.trecuteTotal || 0) + (f.acte.urmeazaTotal || 0)), (f.acte.trecuteTotal ? (f.acte.trecuteTotal === 1 ? 'unul trecut de termen' : f.acte.trecuteTotal + ' trecute de termen') : 'nimic trecut de termen') + (f.acte.urmeazaTotal ? ' · ' + (f.acte.urmeazaTotal === 1 ? 'unul vine' : f.acte.urmeazaTotal + ' vin') + ' săptămâna asta' : ''), ['mentenanta', 'Mentenanță & acte'], f.acte.trecuteTotal ? 'rosu' : (f.acte.urmeazaTotal ? 'atentie' : ''));
-        pag.appendChild(tl);
-        var bt = el('div', 'sdp-btns');
-        var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight despre săptămâna asta';
-        bQ.onclick = function () { window.insightIntreabaDespre('Despre săptămâna ' + (x.eticheta || '') + ': '); }; bt.appendChild(bQ); pag.appendChild(bt);
-        var nota = el('div', 'sdp-nota'); nota.innerHTML = '<i class="fas fa-circle-info"></i> ';
-        nota.appendChild(document.createTextNode('Cifrele sunt cele din ramuri, pe mașinile la care ai acces. O păstrăm 12 luni.'));
-        pag.appendChild(nota);
-        incarcaNumere();   // s-a citit: numărul de lângă ramură scade
-      }
-      // Din anunțul „Scrisoarea de luni": deschide secțiunea pe scrisoarea din anunț.
-      window.insightDeschideScrisoarea = function (id) {
-        S.ramura = 'scrisoare'; S.scId = id ? Number(id) : null;
-        if (typeof showView === 'function') showView('insight'); else { deseneazaRamuri(); deseneazaMain(); }
-      };
       // Ecranul unde se rezolvă un rând (Documente / Mentenanță / Șoferi) — aceleași ecrane ca din meniul Management.
       window.insightRezolva = function (ecran) { if (window.goManage) goManage(ecran); };
       // „Întreabă RA Insight" din orice ramură: deschide discuția cu începutul întrebării scris.
@@ -13805,6 +13736,20 @@ const pozitii = await r.json();</code></pre>
         });
         bub.appendChild(w);
       }
+      // Banda banilor pentru AI (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon"):
+      // soldul Anthropic la zi — sau alarma, dacă Anthropic refuză — și firmele trecute de 80% din întrebările lunii. Mereu la vedere, sub
+      // cele patru cifre; culoarea și textele vin de la server (sold_ai.banda). Un clic → „RA Insight · control".
+      function bandaAi(bub, a) {
+        var niv = /^(ok|b|w|r)$/.test(a.nivel || '') ? a.nivel : 'ok';
+        var b = el('button', 'asf-ai ' + niv); b.type = 'button'; b.title = 'Deschide ' + (a.buton || 'RA Insight · control');
+        b.onclick = function () { window._asfDu(a.tinta || { fel: 'sectiune', tab: 'agents' }); };
+        var ic = el('span', 'ic'); ic.innerHTML = '<i class="fas ' + (niv === 'r' ? 'fa-triangle-exclamation' : 'fa-wallet') + '"></i>'; b.appendChild(ic);
+        var tx = el('span', 'tx');
+        (a.randuri || []).forEach(function (r) { var d = el('span', 'ln'); d.appendChild(textGros(r.text)); tx.appendChild(d); });
+        b.appendChild(tx);
+        var sg = el('span', 'sg', a.buton || ''); sg.appendChild(el('i', 'fas fa-chevron-right')); b.appendChild(sg);
+        bub.appendChild(b);
+      }
       function aziLaNoi(bub, j) {
         var w = el('div', 'azi');
         var cap = el('div', 'azi-cap'); cap.appendChild(el('span', 'azi-tit', 'Azi la noi')); cap.appendChild(el('span', 'azi-cand', j.deVazutText || ''));
@@ -14100,6 +14045,7 @@ const pozitii = await r.json();</code></pre>
         } else {
           var tx = el('div', 'insp-txt asf-salut'); tx.appendChild(textGros(j.salut || '')); b.bub.appendChild(tx);   // salutul mare, în degrade (02.11)
           if (lista && lista.length) cifre(b.bub, lista);
+          if (j.ai) bandaAi(b.bub, j.ai);
           aziLaNoi(b.bub, j);
         }
         prim.innerHTML = ''; prim.appendChild(b.row);
@@ -15133,8 +15079,8 @@ const pozitii = await r.json();</code></pre>
       if (!d || d.error) { body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc((d && d.error) || 'Eroare la încărcare') + '</div>'; return; }
       // Notificare de raport → nu are eveniment GPS; deschide direct raportul din Istoric (nu modalul de hartă).
       if (d.type === 'report_ready' || d.type === 'report_error') { closeNotifDetail(); notifOpenReport((d.data && d.data.historyId != null) ? d.data.historyId : ''); return; }
-      // Scrisoarea de luni → secțiunea RA Insight, pe scrisoarea din anunț (n-are hartă).
-      if (d.type === 'scrisoare_luni') { closeNotifDetail(); if (window.insightDeschideScrisoarea) window.insightDeschideScrisoarea(d.data && d.data.scrisoareId); return; }
+      // Scrisoarea de luni a fost scoasă (04.11): un anunț vechi rămas duce doar în RA Insight (n-are hartă).
+      if (d.type === 'scrisoare_luni') { closeNotifDetail(); if (typeof showView === 'function') showView('insight'); return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
       var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
       var isFuel = !isIdle && ((d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || ''))); // scădere/furt combustibil → loc + de la/la + cantitate
@@ -28332,13 +28278,13 @@ const pozitii = await r.json();</code></pre>
       }).catch(function () {});
       if ($id('rax-cx-anthropic')) fetch('/api/admin/costs/anthropic', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
         var host = $id('rax-cx-anthropic'); if (!host) return;
-        if (!d.configured) { host.innerHTML = '<div style="font-size:10.5px;color:var(--text-muted);"><i class="fas fa-robot" style="margin-right:4px;"></i>Cheltuială: necesită cheie Admin (vezi 📊)</div>'; return; }
+        if (!d.configured) { host.innerHTML = '<div style="font-size:10.5px;color:var(--text-muted);"><i class="fas fa-robot" style="margin-right:4px;"></i>Cheltuială: necesită cheie Admin (vezi 📊)' + (d.sold ? ' · sold <b style="color:var(--accent);">' + esc(d.sold.cifra) + '</b>' : '') + '</div>'; return; }
         if (d.error) { host.innerHTML = '<div style="font-size:10.5px;color:var(--red);">Anthropic: token invalid (vezi 📊)</div>'; return; }
-        var spent = Number(d.spentUsd || 0), sold = d.soldRemaining;
+        var spent = Number(d.spentUsd || 0), so = d.sold;
         var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Folosit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
-        if (sold != null) line += ' · <span style="color:var(--text-muted);">sold rămas </span><b style="color:var(--accent);">$' + Number(sold).toFixed(2) + '</b>';
-        else if (d.creditConfigured) line += ' · <span style="color:#f59e0b;cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="' + esc(d.soldError || 'Eroare la calculul soldului') + '">sold: eroare (vezi 📊)</span>';
-        else line += ' · <span style="color:var(--accent);cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="Setează soldul de credite ca să apară aici">sold: setează →</span>';
+        // Soldul (04.11): același ca în „RA Insight · control" și pe „Acasă" — locul unic; textul vine gata de la server.
+        if (so) line += ' · <span style="color:var(--text-muted);">sold </span><b style="color:var(--accent);">' + esc(so.cifra) + '</b>';
+        else line += ' · <span style="color:var(--accent);cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="Scrie soldul ca să apară aici">sold: scrie-l →</span>';
         line += '</div>';
         host.innerHTML = line;
       }).catch(function () {});
@@ -28592,50 +28538,27 @@ const pozitii = await r.json();</code></pre>
       var d;
       try { d = await fetch('/api/admin/costs/anthropic', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
       catch (e) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      // Soldul (04.11): un singur loc — același ca în „RA Insight · control" și pe „Acasă"; aici doar se vede, iar „Scrie soldul" deschide
+      // aceeași fereastră (raxAiSold). Câmpurile de dinainte (credite + ziua) au plecat: erau al doilea loc, pe care „Acasă" nu-l citea.
+      var so = d.sold;
+      var soldHtml = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-coins"></i> Sold credite</div>'
+        + (so
+          ? '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:12px;color:var(--text-muted);">Sold, la zi</span><span style="font-size:22px;font-weight:800;color:var(--accent);">' + esc(so.cifra) + '</span></div>'
+            + '<div style="font-size:11px;color:var(--text-muted);">' + esc(so.sub) + '</div>'
+          : '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;">Soldul nu e scris. Anthropic nu-l dă printr-o cerere: luați cifra din contul Anthropic (Settings → Billing) și scrieți-o o dată; de acolo încolo aplicația scade singură ce se cheltuie.</div>')
+        + '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxAiSold(raxOpenAnthropicDetail)"><i class="fas fa-wallet"></i> Scrie soldul</button><span style="font-size:11px;color:var(--text-muted);">Același sold ca în RA Insight · control și pe „Acasă”.</span></div></div>';
       if (!d.configured) {
-        body.innerHTML = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>cheltuiala reală</b>, adaugă în env <code>ANTHROPIC_ADMIN_KEY</code> — o cheie de tip <b>Admin</b> (prefix „sk-ant-admin01-…"), creată la console.anthropic.com → Settings → Admin keys. NU cheia API obișnuită folosită de asistentul AI.</div>';
+        body.innerHTML = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;margin-bottom:12px;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>cheltuiala reală</b>, adaugă în env <code>ANTHROPIC_ADMIN_KEY</code> — o cheie de tip <b>Admin</b> (prefix „sk-ant-admin01-…"), creată la console.anthropic.com → Settings → Admin keys. NU cheia API obișnuită folosită de asistentul AI.</div>' + soldHtml;
         return;
       }
       var spent = Number(d.spentUsd || 0);
-      var creditUsd = Number(d.creditUsd || 0), creditDate = d.creditDate || '', sold = d.soldRemaining, spentSince = d.spentSince;
       var errHtml = d.error ? '<div class="rax-co-meta" style="color:var(--red);margin-bottom:10px;font-size:11.5px;">' + esc(d.error) + '</div>' : '';
       var bw = d.byWorkspace || {}; var wsKeys = Object.keys(bw).filter(function (k) { return bw[k] > 0; });
       var wsHtml = wsKeys.length > 1 ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Pe workspace:</div>' + wsKeys.map(function (k) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>' + esc(k === 'default' ? 'Workspace principal' : k) + '</span><b>$' + Number(bw[k]).toFixed(2) + '</b></div>'; }).join('') + '</div>' : '';
-      var soldBlock;
-      if (sold != null) {
-        var usedPct = creditUsd > 0 ? Math.min(100, Math.round((creditUsd - sold) / creditUsd * 100)) : 0;
-        var soldCol = usedPct > 90 ? 'var(--red)' : (usedPct > 70 ? '#f59e0b' : 'var(--accent)');
-        soldBlock =
-          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:12px;color:var(--text-muted);">Sold rămas</span><span style="font-size:22px;font-weight:800;color:' + soldCol + ';">$' + Number(sold).toFixed(2) + '</span></div>' +
-          '<div style="height:8px;background:var(--bg-dark);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:5px;"><div style="height:100%;width:' + usedPct + '%;background:' + soldCol + ';"></div></div>' +
-          '<div style="font-size:11px;color:var(--text-muted);">din <b>$' + creditUsd.toFixed(2) + '</b> setate la ' + esc(creditDate) + ' · cheltuit de atunci: <b>$' + (spentSince != null ? Number(spentSince).toFixed(2) : '—') + '</b></div>';
-      } else if (d.creditConfigured && d.soldError) {
-        soldBlock = '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;color:var(--red);"><i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>Credit setat (<b>$' + Number(d.creditUsd || 0).toFixed(2) + '</b> la ' + esc(d.creditDate || '') + '), dar nu am putut calcula soldul rămas: ' + esc(d.soldError) + '</div>';
-      } else {
-        soldBlock = '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;">Setează soldul de credite + data → vezi „sold rămas = credite − cheltuit de la acea dată", care scade singur. (Anthropic n-are API de sold; ia cifra din Console → <b>Credits</b>.)</div>';
-      }
       body.innerHTML = errHtml +
         '<div style="font-size:30px;font-weight:800;color:var(--accent);line-height:1;">$' + spent.toFixed(2) + '</div>' +
         '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 16px;">cheltuit luna aceasta (USD)</div>' +
-        '<div style="border-top:1px solid var(--border);padding-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-coins"></i> Sold credite</div>' +
-        soldBlock +
-        '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;"><span style="font-size:11px;color:var(--text-muted);">Credite ($):</span><input id="rax-ancredit" class="rax-field" type="number" min="0" step="0.01" value="' + (creditUsd || '') + '" placeholder="ex. 4.92" style="width:90px;margin:0;"><span style="font-size:11px;color:var(--text-muted);">la data:</span><input id="rax-ancreditdate" class="rax-field" type="date" value="' + esc(creditDate) + '" max="' + new Date().toISOString().slice(0, 10) + '" style="width:150px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicCredit()">Salvează</button></div></div>' +
-        wsHtml;
-    };
-    window.raxSaveAnthropicCredit = async function () {
-      var c = parseFloat((document.getElementById('rax-ancredit') || {}).value);
-      var dt = (document.getElementById('rax-ancreditdate') || {}).value;
-      if (!Number.isFinite(c) || c < 0) { if (window.raxToast) raxToast('Sold invalid', 'error'); return; }
-      var _today = new Date().toISOString().slice(0, 10);
-      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { dt = _today; } // implicit azi dacă data lipsește
-      if (dt > _today) dt = _today; // nu permite date în viitor (ar da interval invalid la cost_report)
-      try {
-        var r = await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_credit_usd: c, anthropic_credit_date: dt }) });
-        var j = await r.json().catch(function () { return {}; });
-        if (!r.ok) { if (window.raxToast) raxToast(j.error || ('Eroare ' + r.status), 'error'); return; }
-        if (window.raxToast) raxToast('Sold salvat ✓', 'success');
-        raxOpenAnthropicDetail();
-      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+        soldHtml + wsHtml;
     };
     // ═══ Ofertare Live: configurator de preț + oferte salvate + export PDF (super-admin) ═══
     // ── începe „Calculatorul de ofertă" ────────────────────────────────────────────────────────
@@ -30367,10 +30290,8 @@ const pozitii = await r.json();</code></pre>
         + t('Încasăm luna asta', _aiuLei(venit), parti.length ? esc(parti.join(' · ')) : 'nicio firmă pe un pachet încă')
         + t('Ne costă (real)', _aiuLei(cost), 'plata către model')
         + t('Ne rămân', '<span style="color:' + (ramane >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramane) + '</span>', venit > 0 ? Math.round((ramane / venit) * 100) + '% din încasări' : '—')
-        // Soldul: ce a mai rămas din suma scrisă, după ce s-a cheltuit de atunci (serverul, 30.10); zilele, la ritmul ultimelor 7 zile.
-        + t('Sold Anthropic', sold ? '~$' + Number(sold.usd).toLocaleString('ro-RO') : '—',
-            (sold ? (sold.zile != null ? 'ajunge ~' + sold.zile + (sold.zile % 100 >= 20 || (sold.zile % 100 === 0 && sold.zile) ? ' de' : '') + ' zile' : 'fără cheltuieli în ultimele ' + (sold.ritmZile || 7) + ' zile')
-              + (sold.la ? ' · din $' + Number(sold.scris != null ? sold.scris : sold.usd).toLocaleString('ro-RO') + ' scriși pe ' + new Date(sold.la).toLocaleDateString('ro-RO') : '') : 'nescris')
+        // Soldul la zi (04.11): cifra și rândul de sub ea vin gata de la server (sold_ai.cartonas — aceeași socoteală ca pe „Acasă").
+        + t('Sold Anthropic', sold ? esc(sold.cifra) : '—', (sold ? esc(sold.sub) : 'nescris')
             + ' · <button class="aiu-pk-l" onclick="raxAiSold()">' + (sold ? 'schimbă' : 'scrie-l') + '</button>')
         + '</div>';
     }
@@ -30383,6 +30304,8 @@ const pozitii = await r.json();</code></pre>
         l.push({ ton: x.procent >= 100 ? 'bad' : 'warn', t: '<b>' + esc(x.name) + '</b> e la ' + x.procent + '% din plasă (pachet ' + esc(x.nume) + ', ' + _aiuLei(x.plafonLei) + ')' + (x.procent >= 100 ? ' — pe butoane până pe 1' : ''), b: deschide(x.id) });
       });
       r.filter(function (x) { return x.epuizat; }).forEach(function (x) { l.push({ ton: 'bad', t: '<b>' + esc(x.name) + '</b>: întrebările lunii s-au terminat — până pe 1 răspunde doar pe butoane', b: deschide(x.id) }); });
+      // Firmele între 80% și 99% din întrebările lunii (04.11): textul vine gata de la server (sold_ai.atentieIntrebari).
+      (Array.isArray(p.aproape) ? p.aproape : []).forEach(function (x) { l.push({ ton: x.ton === 'bad' ? 'bad' : 'warn', t: esc(x.t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'), b: x.id != null ? deschide(x.id) : '' }); });
       if (Number(p.jos7) > 0) {
         var cine = r.filter(function (x) { return x.jos7 > 0; }).sort(function (a, b) { return b.jos7 - a.jos7; }).slice(0, 4).map(function (x) { return esc(x.name) + ' (' + x.jos7 + ')'; });
         l.push({ ton: 'warn', t: '<b>' + p.jos7 + (p.jos7 === 1 ? ' răspuns a primit' : ' răspunsuri au primit') + ' 👎</b> în ultimele 7 zile' + (cine.length ? ': ' + cine.join(', ') : '') + '. Textul lor nu-l vedem — e al omului; aflăm doar câte.' });
@@ -30502,11 +30425,45 @@ const pozitii = await r.json();</code></pre>
       if (r.ramanLei != null && r.pachet.ai) parti.push('ne rămân <b>' + _aiuLei(r.ramanLei) + '</b>');
       return '<div class="aiu-pk-r">' + parti.join(' · ') + '</div>';
     }
-    window.raxAiSold = async function () {
-      var v = await raConfirm('Soldul îl găsiți în contul Anthropic (Billing). De azi încolo aplicația scade singură ce se cheltuie și socotește, după ritmul ultimelor 7 zile, pentru câte zile mai ajunge.', { title: 'Soldul de la Anthropic', danger: false, okLabel: 'Salvează', icon: 'fa-wallet', field: { label: 'Soldul, în dolari', value: '' } });
+    // „Anthropic, la zi" (04.11; Alin: „să avem control total pe tokeni și bani, după ce schimbă Robert cheile"): alarma refuzului, soldul,
+    // cât mai ajunge, de unde vin cifrele, luna după Anthropic și după aplicație, tokenii, cheia, anunțurile și pe ce s-au dus banii. Textele
+    // vin de la server (sold_ai.panou); aici doar se arată. Soldul se scrie într-un singur loc: aici (și cartonașul de sus, același buton).
+    var _aiuBaniDate = null;
+    function _aiuBani(b) {
+      _aiuBaniDate = b || null;
+      if (!b) return '';
+      var h = '<div class="aiu-grup">Anthropic, la zi</div>';
+      if (b.alarma) h += '<div class="aiu-at bad"><i class="fas fa-triangle-exclamation"></i><span><b>' + esc(b.alarma.titlu) + '.</b> ' + esc(b.alarma.text) + ' ' + esc(b.alarma.ceFaci) + '</span></div>';
+      h += '<div class="aiu-bani">' + (b.randuri || []).map(function (r) {
+        return '<div class="aiu-bani-r' + (r.ton === 'bad' || r.ton === 'warn' ? ' ' + r.ton : '') + '"><div class="k">' + esc(r.k) + '</div><div class="v">' + esc(r.v) + '</div><div class="s">' + esc(r.s) + '</div></div>';
+      }).join('') + '</div>';
+      if ((b.peFel || []).length) h += '<div class="aiu-grup">' + esc(b.titluPeFel || '') + '</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Ce</th><th class="n">Cereri</th><th class="n">Tokeni (citiți / scriși)</th><th class="n">Cost</th></tr></thead><tbody>'
+        + b.peFel.map(function (x) { return '<tr><td>' + esc(x.nume) + '</td><td class="n">' + esc(x.cereri) + '</td><td class="n">' + esc(x.tokeni) + '</td><td class="n">' + esc(x.cost) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      return h + '<div class="aiu-bani-jos"><button class="rax-btn" onclick="raxAiSold()"><i class="fas fa-wallet"></i> Scrie soldul</button>'
+        + '<button class="rax-btn" onclick="raxAiReincarcare()"><i class="fas fa-rotate"></i> Reîncărcarea automată</button><span>' + esc(b.nota || '') + '</span></div>';
+    }
+    // `dupa` (04.11): ce se reîncarcă după salvare — implicit pagina „RA Insight · control"; din „Control costuri", fereastra lui.
+    window.raxAiSold = async function (dupa) {
+      var v = await raConfirm('Soldul îl găsiți în contul Anthropic (Settings → Billing). De acum încolo aplicația scade singură ce se cheltuie și socotește, după ritmul ultimelor 7 zile, pentru câte zile mai ajunge.', { title: 'Soldul de la Anthropic', danger: false, okLabel: 'Salvează', icon: 'fa-wallet', field: { label: 'Soldul, în dolari', value: '' } });
       if (v === false) return;
       try {
         var j = await fetch('/api/admin/insight/sold', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ usd: String(v).replace(',', '.').trim() }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        if (typeof dupa === 'function') dupa(); else raxLoadAiUsage();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    // Reîncărcarea automată de la Anthropic (04.11, Alin: „2. da"): aceleași două sume ca în contul Anthropic, ca aplicația să pună și ea
+    // creditul cumpărat și să nu anunțe degeaba un sold terminat. Gol = oprită.
+    window.raxAiReincarcare = async function () {
+      var b = _aiuBaniDate || {}, cum = b.reincarcare || null;
+      var v = await raConfirm('Pornită în contul Anthropic (Settings → Billing → Auto-reload)? Scrieți aici aceleași două sume: sub cât scade soldul și cât cumpără Anthropic atunci. Gol = oprită.', { title: 'Reîncărcarea automată', danger: false, okLabel: 'Salvează', icon: 'fa-rotate',
+        field: { label: 'Sub cât / cât cumpără, în dolari', value: cum ? String(cum.sub).replace('.', ',') + ' / ' + String(cum.cumpara).replace('.', ',') : '', placeholder: '5 / 20' } });
+      if (v === false) return;
+      var nr = String(v).match(/\d+(?:[.,]\d+)?/g) || [];
+      if (String(v).trim() && nr.length !== 2) { (window.raxToast || alert)('Scrieți două sume, de pildă „5 / 20".', 'error'); return; }
+      var corp = { reincarcare: nr.length === 2 ? { sub: Number(nr[0].replace(',', '.')), cumpara: Number(nr[1].replace(',', '.')) } : null };
+      try {
+        var j = await fetch('/api/admin/insight/sold', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) }).then(function (r) { return r.json(); });
         if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
         raxLoadAiUsage();
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
@@ -30543,6 +30500,7 @@ const pozitii = await r.json();</code></pre>
       _aiuFxResp = Number(d.fxEur) || null;
       var fx = _aiuFx();
       box.innerHTML = _aiuPachete(d.pachete)
+        + _aiuBani(d.bani)
         + _aiuAtentie(d.pachete, s, rows)
         + _aiuTabel(rows)
         + _aiuControale(d.pachete, d.sursa)

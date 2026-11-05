@@ -567,9 +567,10 @@ function faraModel() {
   return { fel: 'instant', insigna: { fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' },
     text: 'La întrebarea asta răspunde modelul, iar cheia lui nu e pusă pe server. Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
 }
-function eroareModel() {
+// `motiv` (04.11) = de ce a refuzat Anthropic și ce e de făcut (sold_ai.textRefuz): fondatorul află cauza, nu doar „n-a răspuns".
+function eroareModel(motiv) {
   return { fel: 'instant', insigna: { fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' },
-    text: 'Modelul n-a răspuns acum. Încearcă din nou peste un minut. Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
+    text: (motiv ? String(motiv).trim() + ' ' : 'Modelul n-a răspuns acum. Încearcă din nou peste un minut. ') + 'Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
 }
 
 // ─── Conversațiile păstrate (pasul 4, 04.11; Alin: „da") ────────────────────────────────────────────────────────────
