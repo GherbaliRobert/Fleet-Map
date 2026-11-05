@@ -586,6 +586,11 @@ merge zilnic: „km luna trecută" număra doar o parte, „Ultima locație" ie�
   schimbă: `condus.textPreturi` / `preturiProprii` / `UNDE_PRETURI` → `preturi.nota` în `_sdLuna`, rândul de sub cifrele mari (web și telefon,
   `planSafeDrive`), capitolul de ghid `ra_drive_preturi` și `preturi_pe_manevra` în unealta `safe_drive`. RA Drive nu e un agent: e o pagină
   din RA Insight.
+- **Butonul „Editează prețurile” (05.11; Alin: „scrie că în «Cum se socotește», dar n-am niciun buton… să vadă clientul cum face”):**
+  `condus.BUTON_PRETURI` → `preturi.buton`; stă lângă rândul prețurilor DOAR cu `poateSchimba` (administratorul sau managerul firmei —
+  fondatorul n-are firmă, deci vede doar cine le schimbă) și deschide „Cum se socotește” chiar la prețuri, cu cursorul în prima casetă
+  (`insightSdLaPreturi` pe web, `laPreturi` pe telefon). NU e un al doilea loc al prețurilor: duce la singurul. `UNDE_PRETURI`, textul
+  rândului, ghidul și unealta spun drumul prin buton.
 - Păzit de `verify_safe_drive.js` (în `npm test`; cifrele = EcoDrive / Ralanti pe o lună, server pornit) și
   `verify_insight.js` (unealta).
 
@@ -670,7 +675,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
 - **Secțiunea:** stânga `.insp-st` (pe telefon sertar: `st-deschis` + `.insp-umbra`; pe calculator se ascunde: `st-ascuns`)
   — `insightComutaStanga(v)`, `inchideSertar()`; dreapta `.insp-dr-col` = bara `.insp-top` (titlul din `setTitlu()`, ⋯ =
   `insightMeniu`, din 15.10) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
-  salutul cu prenumele (`prenume()`, din `currentUser.full_name`) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU e
+  salutul cu prenumele (`prenume()` = `currentUser.prenume`, de la server — vezi „Prenumele din salut”) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU e
   printre ramuri (din 15.10 lista e `pagini()`, sub „Pagini ▸" — vezi „RA Insight, mai simplu").
 - ⚠ `.insp-top .insp-meniu` are `.insp-top` în față: `.chat-ib` (mai jos în fișier) l-ar arăta pe calculator.
 - ⚠ **Capcană de unealtă, prinsă pe 08.10:** un script Python cu șir NE-brut transformă `\b` din JavaScript în caracterul
@@ -790,7 +795,8 @@ se vede ceva, spune ÎNTÂI cu ce cont (fondator / administratorul firmei / om a
 cuvinte — „explică ca la proști: unde intru, ce fac, toți pașii".
 Pe ecranul gol erau ~35 de butoane și casete; acum ~12. **Nicio funcție nu s-a pierdut: s-a mutat într-un singur loc** — „+", „⋯"
 sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc pentru același lucru = ce am scos).
-- **Salutul:** „Salut, {prenume}! Cu ce te pot ajuta?" (`prenume()`, din `currentUser.full_name`), fără iconița mare și paragraful.
+- **Salutul:** „Salut, {prenume}! Cu ce te pot ajuta?" (`prenume()` = `currentUser.prenume`, de la server — vezi „Prenumele din salut”),
+  fără iconița mare și paragraful.
 - **Caseta: un singur „+"** (`insightPlus` → `insightAlegeMasina` / `insightAlegePerioada` / `insightAlegeRaport`, Raport doar cu
   `poateRapoarte()`). Sub ea **trei butoane scurte** (`CARDURI` / `CARDURI_REGULI`: `{ t, q }` — pe ecran `t`, pleacă `q`, cu `buton`).
   Fără nota „Vede doar mașinile…" sub casetă (stă în ghid).
@@ -960,13 +966,25 @@ Culorile lui RA Insight sunt ale siglei „RA |": **verdele casei** (#3FE07D, cu
 - **„NOU" din meniu** = negru cu litere verzi; pe tema închisă verde cu litere negre, iar pe rândul ales (verde) din nou negru — altfel nu s-ar vedea.
   **Punctul de pe bula RA Insight** (verde) = negru.
 - Pe tema închisă butonul de trimis GOL rămâne gri: `body.dark .chat-trimite` (două clase + body) bătea `.chat-trimite.gol` — de aceea
-  `body.dark .chat-trimite.gol`. La asistentul fondatorilor (`.asf .chat-trimite`) butonul gol e încă verde — nehotărât (05.11).
+  `body.dark .chat-trimite.gol`. La asistentul fondatorilor la fel (05.11, Alin: „rezolvă acum”): `.asf .chat-trimite` (scrisă mai jos,
+  aceeași putere) bătea `.chat-trimite.gol` — de aceea `.asf .chat-trimite.gol`, pe ambele teme. Proba MĂSOARĂ amândouă chaturile.
 - Movul rămâne DOAR în afara lui RA Insight: comutatorul Fondator / Partener, stările cererilor de la clienți, rolurile, culorile de pe hartă.
   Pagina „Asistenți AI" (statistici, fără rând în meniu) n-a fost atinsă.
 - Telefonul: aceleași perechi, prin variabilele lui (`--i-marca`, `--i-marca-fund`, `--i-dungi-marca`, `--i-stea`, `--i-stea-fund`; ANALIZĂ =
   `--text-primary`) — intră cu APK-ul următor (Robert).
 - Păzit de `verify_chat_inteligent.js` (culorile MĂSURATE pe ambele teme + niciun mov în regulile și în blocul lui RA Insight),
   `verify_telefon_insight.js` (niciun mov pe telefon, perechile), `verify_telefon_pachete.js`, `verify_insight_bani.js` (bara), `verify_asistent_fondatori.js`.
+
+### Prenumele din salut (05.11; Alin: „îmi apare «Salut! Cu ce te pot ajuta?»… să-i apară prenumele, la fel și în asistentul fondatorilor”)
+- **O regulă, pe server: `prenume.js` → `prenumeDin(numele din fișă, adresa)`**: (1) cuvântul din nume care e un prenume ȘTIUT (`LISTA`:
+  românești, maghiare, germane; comparate fără diacritice) — „Tilvar Alin” → „Alin”; (2) altfel primul cuvânt, dacă nu e un cuvânt de birou
+  (`GENERICE`: „Administrator”, „Dispecer”…); (3) fără nume, din adresa de email, doar o bucată care e prenume știut („alin.tilvar@…” →
+  „Alin”; „office@…”, „admin” → nimic, salutul e „Salut!”). MAJUSCULELE și literele mici se îndreaptă („TILVAR ALIN” → „Alin”).
+- `/api/me` dă `prenume` (din `full_name` + `username`); pagina (`prenume()` din RA Insight) și telefonul (`textSalut(u.prenume)`) doar îl
+  scriu; salutul asistentului nostru (`azi_la_noi.salut(nume, acum, email)`) ia aceeași regulă. NU tăia „primul cuvânt din nume” pentru un
+  salut în altă parte. Un prenume pe care lista nu-l știe și care nu stă primul → îl adaugi în `LISTA`.
+- Păzit de **`verify_prenume.js`** (în `npm test`), `verify_un_singur_insight.js` (`/api/me` pe server pornit), `verify_telefon_insight.js`,
+  `verify_asistent_fondatori.js`.
 
 ### Discuția refăcută (19.10; Alin, cu șase poze: „plină de erori… ceream bani înapoi" → macheta, „1. da", „4. da")
 Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le strica la loc:

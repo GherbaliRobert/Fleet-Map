@@ -48,7 +48,7 @@ const GENERICE = new Set(['admin', 'administrator', 'administrare', 'manager', '
   'director', 'office', 'birou', 'firma', 'cont', 'test', 'demo', 'user', 'utilizator', 'operator', 'client', 'suport', 'support', 'info', 'contact',
   'logistica', 'transport', 'depozit', 'sef', 'service', 'flota', 'echipa', 'vanzari', 'achizitii', 'secretariat', 'receptie']);
 function fara(s) {
-  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[șş]/g, 's').replace(/[țţ]/g, 't').toLowerCase();
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[șş]/g, 's').replace(/[țţ]/g, 't').toLowerCase();
 }
 const STIUTE = new Map();
 LISTA.forEach(function (p) { STIUTE.set(fara(p), p); });

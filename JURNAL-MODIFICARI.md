@@ -176,6 +176,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   fără notificări push, iar telefonul cere dezinstalarea celui vechi.
   **23.10 (după-amiaza):** APK 1.0.22 — tot ce e în 1.0.21, plus „Starea mașinii" cu adaptorul în repaus (nota, fără stări
   vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
+  **05.11:** „Prelungește" și „Starea mașinii" sunt acum și pe ratrack.ro (aduse din ramura lui Robert în main). APK-ul următor se
+  face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele);
+  primește versiunea **1.0.23 (cod 25)**: 1.0.22 e deja pe GitHub, din ramura lui Robert, iar main scrie acum tot 1.0.22.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
   socoteala când e gata factura montajului pentru client. Necompletat înseamnă lunar.
@@ -596,6 +599,42 @@ ales, verde, se vede). Pe tema închisă butonul de trimis gol rămânea plin; a
 **Ce am schimbat:** verificarea completă de dinaintea publicării a prins cinci probe care cereau încă forma de dinainte (cartonașul
 soldului, „Vezi pachetele" ascuns când Anthropic refuză, lista conversațiilor după scoaterea scrisorii). Aplicația era bună; probele au fost
 rescrise pe regula nouă. **Ce vede fondatorul / clientul:** nimic.
+
+### CLIENT · RA Drive: butonul „Editează prețurile"
+*Alin, 05.11: „scrie că în secțiunea «Cum se socotește», dar n-am niciun buton — «Editează prețurile», ceva de genul ăsta, să vadă clientul
+cum face".*
+
+**Ce am schimbat:** sub cifrele mari ale paginii RA Drive, lângă rândul cu prețurile pe manevră, stă acum butonul **„Editează prețurile"**.
+Un clic deschide „Cum se socotește" chiar la tabelul „Prețul unei manevre bruște (lei)" și pune cursorul în prima casetă; acolo omul scrie
+prețurile și apasă „Salvează prețurile". Rândul spune: „Le poți schimba după cum consideri: apasă «Editează prețurile», scrie prețul
+fiecărei manevre și apasă «Salvează prețurile»." Ghidul aplicației și RA Insight („unde schimb prețul frânării?") spun același drum.
+Pe telefon, la fel (cu APK-ul următor). **Ce vede fondatorul:** butonul NU apare (contul nostru n-are firmă); rândul spune cine le schimbă:
+„administratorul sau managerul firmei, din contul lui". Ca să-l vezi, intri cu contul administratorului unei firme. **Ce vede clientul:**
+administratorul și managerul văd butonul; ceilalți oameni ai firmei văd doar cine le schimbă.
+
+### AMÂNDOI · Salutul cu prenumele, și la asistentul nostru
+*Alin, 05.11: „«Salut! Cu ce te pot ajuta?» îmi apare în verticala Partener. Aș vrea să-i apară prenumele… la fel și în asistentul
+fondatorilor".*
+
+**Ce am schimbat:** prenumele îl alege acum serverul, după o singură regulă, pentru RA Insight (toți clienții și noi, pe Partener) și
+pentru „Bună dimineața, …!" de pe „Acasă" la noi. Din numele scris în cont alege prenumele chiar dacă numele de familie stă întâi
+(„Tilvar Alin" → „Salut, Alin!"); scris cu majuscule, îl scrie normal. Fără nume în cont, îl ia din adresa de email
+(alin.tilvar@… → „Alin"). Un cont numit „Administrator" sau o adresă ca office@ rămân la „Salut!" (fără un nume inventat). Până azi
+se lua primul cuvânt din nume, iar o adresă de email nu dădea nimic — de aceea vedeai „Salut!" gol. Telefonul, la fel, cu APK-ul următor.
+**Ce vede fondatorul:** „Salut, Alin!" în RA Insight și „Bună dimineața, Alin!" pe „Acasă". **Ce vede clientul:** salutul cu prenumele lui.
+
+### FONDATOR · Butonul de trimis gri și la asistentul nostru
+*Găsit pe drum la culorile RA Insight; Alin: „rezolvă acum".*
+
+**Ce am schimbat:** pe „Acasă", la asistentul nostru, butonul de trimis e gri cât caseta e goală și se aprinde (verde) când scrii — ca la
+RA Insight, pe ambele teme. **Ce vede clientul:** nimic.
+
+### AMÂNDOI · Două lucrări ale lui Robert, publicate
+*Alin, 05.11: „ok… noi suntem amândoi cofondatori și avem acces să facem asta".*
+
+**Ce am schimbat:** „Prelungește" la „Distribuie locația" și „Starea mașinii" cu adaptorul CAN în repaus (Robert, 23.10) stăteau pe
+ramura lui de lucru: le-am adus în aplicația de pe ratrack.ro, peste tot ce s-a schimbat de atunci, și le-am verificat din nou. Ce fac,
+la 23.10 (mai jos). Pe telefon le aveau deja APK-urile de test 1.0.21 / 1.0.22. **Ce vede fondatorul / clientul:** cele două, ca la 23.10.
 
 ## 2026-11-04
 
