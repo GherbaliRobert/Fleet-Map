@@ -419,6 +419,9 @@ export const Api = {
   saveSystemSettings: (b: any) => api<any>('/api/admin/system-settings', { method: 'PUT', body: b }),
   createDriver: (b: any) => api('/api/drivers', { method: 'POST', body: b }),
   updateDriver: (id: number, b: any) => api(`/api/drivers/${id}`, { method: 'PUT', body: b }),
+  // Istoricul șoferi ↔ mașini (05.11): textele, ordinea și nota le scrie serverul (soferi_masini.randIstoric).
+  istoricSoferiMasina: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/istoric-soferi`),
+  istoricMasiniSofer: (id: number) => api<any>(`/api/drivers/${id}/istoric-masini`),
   deleteDriver: (id: number) => api(`/api/drivers/${id}`, { method: 'DELETE' }),
   groupsAll: () => api<any[]>('/api/groups'),
   createGroup: (b: any) => api('/api/groups', { method: 'POST', body: b }),

@@ -53,6 +53,9 @@
 .vp-follow-badge > i { color: var(--accent); }
 .vp-follow-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vp-follow-badge b { color: var(--accent); }
+/* Pe tema deschisă verdele casei pe alb abia se citește (1,7): numărul ia verdele închis al textelor (#166534). */
+body:not(.dark) .vp-follow-badge b { color: #166534; }
+.vp-follow-badge .vp-fb-nume { font-size: inherit; font-weight: 600; color: var(--text-muted); }
 .vp-follow-badge button {
   -webkit-appearance: none; appearance: none; cursor: pointer; border: none;
   width: 24px; height: 24px; border-radius: 50%; background: var(--bg-dark);

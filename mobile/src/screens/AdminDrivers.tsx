@@ -9,6 +9,7 @@ import { me, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { Cautare, Confirma } from '../components/FlotaUi';
 import { VehicleArt, vehCatOf } from '../components/VehicleArt';
+import { IstoricSoferi } from '../components/IstoricSoferi';
 import { flota, numar, uitaFlota } from '../components/flotaCommon';
 import { salveazaDeLaServer } from '../lib/export';
 import './detail.css';
@@ -266,6 +267,8 @@ export function AdminDrivers() {
                     ) : <div class="fld-note" style="color:var(--text-muted)">Nebifat — fără încadrare. Categoriile se iau de pe permis, rubrica 9.</div>}
                   </div>
                 )}
+                {/* Istoricul mașinilor șoferului (05.11, ca pe web), doar la un șofer existent. */}
+                {form.id != null && <IstoricSoferi cheie={String(form.id)} cere={() => Api.istoricMasiniSofer(Number(form.id))} fel="sofer" />}
                 {isSuper && form.id == null && (
                   <div class="fld"><label>Companie <span class="req">*</span></label>
                     <select value={f.company_id} onChange={(e) => set('company_id', (e.target as HTMLSelectElement).value)}>

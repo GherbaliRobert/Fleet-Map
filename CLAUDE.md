@@ -3214,8 +3214,25 @@ caută forma în tot panoul.
 - Balonul de la clic pe o mașină (Localizare, `public/js/vehicle-popup.js`): **titlul = numărul de înmatriculare** (`titluVehicul`: numărul →
   denumirea → IMEI-ul); primul rând = **„Denumire"** (numele din fișă), doar când e altceva decât numărul (`denumireSub`); rândul „Nr.
   înmatriculare" a ieșit. „Vehicul" (marca + modelul din fișă) se ascunde când scrie exact cât denumirea (`vehiculSeRepeta`, și după ce sosește
-  fișa, în `applyFull`). Fișa mașinii (panoul din dreapta) și telefonul aveau deja numărul sus. Banda „Urmărești: …" scrie încă denumirea
-  (întrebat pe 05.11). Păzit de `verify_balon_harta.js` (în `npm test`; codul balonului rulat pe o hartă de carton).
+  fișa, în `applyFull`). Fișa mașinii (panoul din dreapta) și telefonul aveau deja numărul sus. **Banda „Urmărești"** (05.11, Alin: „fă asta")
+  = `renderBadge(titlu, denumire)`: „Urmărești: B 268 ROY · VW CADDY" (numărul pe tema deschisă `#166534`). Păzit de `verify_balon_harta.js`
+  (în `npm test`; codul balonului rulat pe o hartă de carton).
+
+## Șoferii pe mașini: firma și istoricul (05.11; Alin, cu o poză: șoferul pus din fișă rămânea „Nealocat")
+- **Salvarea fișei mașinii CITEȘTE răspunsul lui `/assign`** (`saveDevice`): refuzul („Șoferul ales nu e în firma acestei mașini.") se arată,
+  fereastra rămâne deschisă. NU trimite o cerere fără să te uiți la răspuns.
+- **Lista de șoferi / grupe din fișă = ale firmei mașinii** (`populateEditGroupsDrivers(groupId, driverId, companyId)`; grupele platformei doar
+  la noi, ca `_soferGrupaAleFirmei`); telefonul: `soferiFirmei` (VehicleDetail.tsx). Lista Șoferi (`driverVehicles`) nu leagă un șofer de
+  mașina altei firme — aceeași regulă ca `getDeviceFull` și rapoartele.
+- **Mutarea pe altă firmă (`db.setDeviceCompany`) rupe șoferul și grupa firmei vechi** (grupele platformei rămân) și închide rândul din
+  istoric. Legăturile rămase de dinainte se rup la pornire (`db.curataLegaturiAltaFirma`, înaintea `semanaIstoricSoferi`, cu rând în audit).
+  O cale NOUĂ care mută o mașină pe altă firmă trece prin `setDeviceCompany`.
+- **Istoricul:** `GET /api/devices/:imei/istoric-soferi` (`canAccessImei`) și `GET /api/drivers/:id/istoric-masini` (`ownsRow`; mașinile
+  filtrate cu `canAccessImei`), din `istoric_soferi` — DOAR legăturile din aceeași firmă (`db.istoricSoferiMasina` / `istoricMasiniSofer`: o
+  firmă nu vede șoferii firmei de dinainte a mașinii), cel deschis întâi. Textele: `soferi_masini.ISTORIC` + `randIstoric` („de la început →
+  acum", „12.10, 09:14 → acum" · „24 de zile", sub un minut = „sub un minut"; ora din `cereri_echipa`). Web: `istoricIncarca` /
+  `istoricDeseneaza` (text, `.vist*` pe variabilele temei); telefon: `components/IstoricSoferi.tsx`. Ecranele nu scriu textele.
+- Păzit de **`verify_soferi_istoric.js`** (în `npm test`; pe server pornit, cu o legătură veche pusă în bază înainte de pornire).
 
 ## Alertele: contactul și marja de viteză (Alin, 26.10: „1. da, 2. da")
 - **Pornire / oprire motor = la SCHIMBAREA contactului, o dată:** `_schimbariContact(anterior, records)` (server.js) citește poziția vie

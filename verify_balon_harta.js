@@ -9,7 +9,9 @@
 //   2. primul rând = „Denumire" (numele din fișă), doar când e altceva decât numărul; rândul „Nr. înmatriculare" nu mai există;
 //   3. „Vehicul" (marca + modelul din fișă) nu repetă denumirea („VW Caddy" / „VW Caddy"), nici la deschidere, nici după
 //      ce sosește fișa; când spune altceva („Caddy Ion" / „VW Caddy"), rămâne;
-//   4. textul din fișă se scrie ca text (fără HTML strecurat).
+//   4. textul din fișă se scrie ca text (fără HTML strecurat);
+//   5. banda „Urmărești" (după butonul „Urmărește") scrie tot numărul, cu denumirea după el, stinsă (Alin, 05.11: „fă asta");
+//      pe tema deschisă numărul e pe verdele închis al textelor (verdele casei pe alb abia se citește).
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -26,6 +28,7 @@ const SRC = fs.readFileSync(path.join(__dirname, 'public/js/vehicle-popup.js'), 
 async function balon(dev, full) {
   const devices = new Map([[dev.imei, dev]]);
   const els = {};
+  const creat = [];
   let continut = '';
   const popup = { setLatLng() { return this; }, setContent(h) { continut = h; return this; }, isOpen() { return true; } };
   const harta = { openPopup() {}, on() {}, closePopup() {} };
@@ -33,7 +36,7 @@ async function balon(dev, full) {
   const win = { getLeafletMap: () => harta, getMarkersMap: () => markere, getDevicesMap: () => devices, isDeviceOnline: () => true };
   const ctx = {
     window: win,
-    document: { getElementById: (id) => els[id] || null, addEventListener() {}, querySelectorAll: () => [], body: { appendChild() {} }, createElement: () => ({ style: {} }) },
+    document: { getElementById: (id) => els[id] || null, addEventListener() {}, querySelectorAll: () => [], body: { appendChild() {} }, createElement: () => { const e = { style: {} }; creat.push(e); return e; } },
     L: { popup: () => popup },
     fetch: () => Promise.resolve({ json: () => Promise.resolve(full || { error: 'fără fișă' }) }),
     Date, Math, String, Number, isFinite, isNaN, Promise, console,
@@ -51,6 +54,8 @@ async function balon(dev, full) {
   const rand = (et) => { const m = new RegExp('<tr><td>' + et + '</td><td[^>]*>([^<]*)</td></tr>').exec(html); return m ? m[1] : null; };
   return {
     html, titlu, denumire: rand('Denumire'), nrInm: /Nr\. înmatriculare/.test(html),
+    win, creat,
+    banda: () => { win.vpSetFollow(dev.imei); const b = creat[creat.length - 1]; return b ? String(b.innerHTML || '') : ''; },
     vehLaDeschidere: rv ? (rv[1] ? 'ascuns' : 'vizibil') : 'lipsă',
     vehDupaFisa: els['vp-vehrow-' + dev.imei].style.display === 'none' ? 'ascuns' : 'vizibil',
     vehText: els['vp-veh-' + dev.imei].textContent,
@@ -82,6 +87,19 @@ async function balon(dev, full) {
   console.log('\n4. Textul din fișă se scrie ca text');
   const g = await balon({ imei: '867', name: 'Duba <b>1</b>', plate: 'B <i>2</i>' }, null);
   T('fără HTML strecurat în titlu sau în „Denumire"', g.html.indexOf('<b>1</b>') < 0 && g.html.indexOf('<i>2</i>') < 0 && /B &lt;i&gt;2&lt;\/i&gt;/.test(g.html) && /Duba &lt;b&gt;1&lt;\/b&gt;/.test(g.html), g.titlu);
+
+  console.log('\n5. Banda „Urmărești": numărul, apoi denumirea');
+  const ba = (await balon({ imei: '871', name: 'VW CADDY', plate: 'B 268 ROY' }, null)).banda();
+  T('„Urmărești: B 268 ROY · VW CADDY" (numărul îngroșat, denumirea stinsă după el)', /Urmărești: <b>B 268 ROY<\/b><small class="vp-fb-nume"> · VW CADDY<\/small>/.test(ba), ba);
+  const bb = (await balon({ imei: '872', name: 'Logan', plate: '' }, null)).banda();
+  T('fără număr: „Urmărești: Logan", fără a doua parte', /Urmărești: <b>Logan<\/b><\/span>/.test(bb) && bb.indexOf('vp-fb-nume') < 0, bb);
+  const bc = (await balon({ imei: '873', name: 'B 268 ROY', plate: 'B 268 ROY' }, null)).banda();
+  T('numele = numărul: o singură dată', /Urmărești: <b>B 268 ROY<\/b><\/span>/.test(bc) && bc.indexOf('vp-fb-nume') < 0, bc);
+  const bd = (await balon({ imei: '874', name: 'Duba <b>1</b>', plate: 'B <i>2</i>' }, null)).banda();
+  T('și aici textul din fișă se scrie ca text', bd.indexOf('<i>2</i>') < 0 && bd.indexOf('<b>1</b>') < 0, bd);
+  const CSS = fs.readFileSync(path.join(__dirname, 'public/css/vehicle-popup.css'), 'utf8');
+  T('pe tema deschisă numărul din bandă e pe verdele închis (#166534), denumirea pe culoarea stinsă a temei',
+    /body:not\(\.dark\) \.vp-follow-badge b \{ color: #166534; \}/.test(CSS) && /\.vp-follow-badge \.vp-fb-nume \{[^}]*color: var\(--text-muted\);/.test(CSS));
 
   console.log('\n' + (rele ? '✗' : '✓') + ' verify_balon_harta: ' + ok + ' trecute, ' + rele + ' picate');
   process.exit(rele ? 1 : 0);

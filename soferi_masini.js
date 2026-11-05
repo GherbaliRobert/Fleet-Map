@@ -480,7 +480,34 @@ function cerere(text, soferi, fisa) {
   return null;
 }
 
+// ─── Istoricul: ce șoferi a avut o mașină, pe ce mașini a fost un șofer (05.11) ────────────────────────────────
+// Alin: „aș vrea ca șoferul să aibă istoric pe ce mașini a fost pus — la fel și în vehicule, să am un istoric pe fiecare mașină de
+// ce șoferi a fost condusă". Rândurile vin din istoric_soferi (scris la fiecare schimbare, din 06.10); aici doar textele.
+// `de_la` = 0 = primul șofer al mașinii, socotit „de la început" (așa îi pun și rapoartele zilele de dinainte).
+const _ore = require('./cereri_echipa');
+const ISTORIC = {
+  masina: 'Istoricul șoferilor', sofer: 'Istoricul mașinilor',
+  golMasina: 'Mașina n-a avut încă niciun șofer trecut în aplicație.',
+  golSofer: 'Șoferul n-a fost încă trecut pe nicio mașină.',
+  nota: 'Fiecare schimbare de șofer rămâne aici. Primul șofer al unei mașini e socotit „de la început", cum îl iau și rapoartele.',
+  inceput: 'de la început', acum: 'acum', arhivata: 'arhivată'
+};
+// „azi, 10:42" / „ieri, 16:20" / „14.10, 09:15" în anul de acum; din alt an, ziua întreagă („14.10.2025").
+function _candIstoric(ms, acum) {
+  return _ore.ziua(ms).slice(0, 4) === _ore.ziua(acum).slice(0, 4) ? _ore.cand(ms, acum) : _ore.dataLunga(ms);
+}
+function randIstoric(r, acum) {
+  const a = acum != null ? Number(acum) : Date.now();
+  const de = Number(r && r.de_la) || 0, pana = r && r.pana_la != null ? Number(r.pana_la) : null;
+  return {
+    deLa: de, panaLa: pana, curent: pana == null,
+    text: (de > 0 ? _candIstoric(de, a) : ISTORIC.inceput) + ' → ' + (pana == null ? ISTORIC.acum : _candIstoric(pana, a)),
+    durata: de > 0 ? (((pana == null ? a : pana) - de) >= 60000 ? _ore.durata(((pana == null ? a : pana) - de) / 60000) : 'sub un minut') : ''
+  };
+}
+
 module.exports = {
+  ISTORIC, randIstoric,
   ANULARE_MIN, PROPUNERE_ORE, RECENT_ZILE, TEXTE, ACOPERA,
   categoriaCeruta, acopera, acoperitoare, verdict, analiza, rezumat, propunerePereche, propunerePentru, propunereScoate,
   gata, jurnalText, pasulUrmator, caleText, nuSeSchimba, cerere, pareCerere, eDaScris, gasesteSoferi

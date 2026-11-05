@@ -252,19 +252,22 @@
 
   // ── Stare follow (deținută aici; inline-ul doar citește window._followImei și apelează vpClearFollow) ──
   if (typeof window._followImei === 'undefined') window._followImei = null;
+  // Banda „Urmărești" scrie NUMĂRUL, ca titlul balonului (Alin, 05.11: „o rezolvăm acum" — cu 10 Caddy nu știi pe care îl
+  // urmărești); denumirea stă după el, mai stinsă, doar când e altceva decât numărul.
   window.vpSetFollow = function (imei) {
     window._followImei = imei;
     var d = DEVS() && DEVS().get(imei);
-    renderBadge((d && (d.name || imei)) || imei);
+    renderBadge(titluVehicul(d, imei), denumireSub(d));
   };
   window.vpClearFollow = function () {
     window._followImei = null;
     var b = el('vp-follow-badge'); if (b) b.parentNode && b.parentNode.removeChild(b);
   };
-  function renderBadge(name) {
+  function renderBadge(titlu, denumire) {
     var b = el('vp-follow-badge');
     if (!b) { b = document.createElement('div'); b.id = 'vp-follow-badge'; b.className = 'vp-follow-badge'; document.body.appendChild(b); }
-    b.innerHTML = '<i class="fas fa-crosshairs"></i> <span>Urmărești: <b>' + esc(name) + '</b></span> <button title="Oprește urmărirea" onclick="vpClearFollow()">&times;</button>';
+    b.innerHTML = '<i class="fas fa-crosshairs"></i> <span>Urmărești: <b>' + esc(titlu) + '</b>' +
+      (denumire ? '<small class="vp-fb-nume"> · ' + esc(denumire) + '</small>' : '') + '</span> <button title="Oprește urmărirea" onclick="vpClearFollow()">&times;</button>';
   }
 
   // Hook-uri pe hartă: drag manual oprește follow-ul; închiderea balonului resetează starea „deschis".

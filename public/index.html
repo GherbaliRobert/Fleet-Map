@@ -709,7 +709,9 @@
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „FMS" la camioane cu FMC650 + FMS Gateway — altfel datele CAN (RPM, combustibil, temperatură, sarcină pe axe) pot fi decodate greșit. Se aplică pachetelor noi.</div>
           </div>
           <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
-          <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select></div>
+          <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select><div class="vist-nota" id="edit-driver-nota" hidden></div></div>
+          <!-- Istoricul șoferilor (05.11; Alin: „să am un istoric pe fiecare mașină de ce șoferi a fost condusă"). Textele vin de la server. -->
+          <div class="form-group" style="grid-column:1/-1;"><div id="edit-istoric-soferi"></div></div>
         </div>
 
         <div class="vsec">Date tehnice</div>
@@ -2413,6 +2415,8 @@ const pozitii = await r.json();</code></pre>
               <div id="drv-cats" class="drv-cats"></div>
               <div id="drv-class"></div>
             </div>
+            <!-- Istoricul mașinilor șoferului (05.11; Alin: „șoferul să aibă istoric pe ce mașini a fost pus"). Doar la un șofer existent. -->
+            <div id="drv-istoric" style="grid-column:1/-1;" hidden></div>
             <label class="super-only"><span>Companie *</span><select id="drv-company" style="font-family:inherit;padding:6px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);width:100%;"></select></label>
             <div style="display:flex;align-items:flex-end;gap:6px;">
               <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
@@ -8250,10 +8254,12 @@ const pozitii = await r.json();</code></pre>
     }
     // Vehiculele pe care e pus șoferul. Legătura există deja (devices.driver_id), dar nu se vedea
     // nicăieri dinspre șofer. Citim din ce e încărcat: vehAll (tab-ul Vehicule) sau harta live.
-    function driverVehicles(driverId) {
+    function driverVehicles(driverId, driverCompanyId) {
       const out = [], seen = new Set();
       const add = d => {
         if (!d || d.status === 'archived' || String(d.driver_id) !== String(driverId)) return;
+        // Ca fișa mașinii și rapoartele (05.11): un șofer al altei firme nu e șoferul mașinii.
+        if (driverCompanyId != null && d.company_id !== undefined && String(d.company_id) !== String(driverCompanyId)) return;
         const key = d.imei || d.plate;
         if (!key || seen.has(key)) return;
         seen.add(key);
@@ -8303,7 +8309,7 @@ const pozitii = await r.json();</code></pre>
           : `<div class="drv-line"><i class="fas fa-id-card"></i><span>${esc(L.num) || '—'}</span></div>` + catRow
             + (L.st === 'nodate' || L.st === 'none' ? '<span class="drv-pill none" style="margin-top:5px;">fără dată de expirare</span>'
               : `<div><span class="drv-pill ${L.st}">${L.st === 'exp' ? 'expirat de ' + (-L.days) + ' zile' : L.st === 'soon' ? (L.days === 0 ? 'expiră azi' : 'mai are ' + L.days + (L.days === 1 ? ' zi' : ' zile')) : 'până ' + L.date}</span></div>`);
-        const vs = driverVehicles(d.id);
+        const vs = driverVehicles(d.id, d.company_id);
         const veh = vs.length
           ? `<span class="drv-vch">${vehicleSilhouetteSVG(vs[0].cat, 'currentColor', 20)}<span>${esc(vs[0].label)}</span></span>${vs.length > 1 ? `<span class="drv-vmore">+${vs.length - 1}</span>` : ''}`
           : '<span class="drv-none">nealocat</span>';
@@ -8397,6 +8403,7 @@ const pozitii = await r.json();</code></pre>
         _form.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Anulează editarea';
+      istoricIncarca(document.getElementById('drv-istoric'), '/api/drivers/' + encodeURIComponent(d.id) + '/istoric-masini', 'sofer');
     }
     function resetDriverForm() {
       ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(clearField);
@@ -8411,6 +8418,7 @@ const pozitii = await r.json();</code></pre>
       var _form = document.getElementById('drv-form');
       if (_form) { _form.style.border = ''; _form.style.borderRadius = ''; _form.style.padding = ''; _form.style.background = ''; }
       var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Golește';
+      var _ist = document.getElementById('drv-istoric'); if (_ist) { _ist.textContent = ''; _ist.hidden = true; _ist.dataset.url = ''; }
     }
     // Redimensionează imaginea client-side (max 400px, JPEG ~0.82) → poză mică în DB, încărcare rapidă.
     function drvPhotoPick(input) {
@@ -10675,17 +10683,75 @@ const pozitii = await r.json();</code></pre>
     });
 
     // Populează grup + șofer în formularul de editare vehicul
-    async function populateEditGroupsDrivers(groupId, driverId) {
+    // Doar șoferii și grupele FIRMEI MAȘINII (05.11; Alin: șoferul pus din fișă rămânea „Nealocat"). La noi (super-admin) lista avea
+    // șoferii tuturor firmelor, iar serverul refuză unul din altă firmă — salvarea tăcea și mașina rămânea fără șofer. Grupele
+    // platformei (fără firmă) doar la noi, ca pe server (_soferGrupaAleFirmei).
+    async function populateEditGroupsDrivers(groupId, driverId, companyId) {
       try {
         const [groups, drivers] = await Promise.all([
           (await fetch('/api/groups')).json(),
           (await fetch('/api/drivers')).json()
         ]);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const co = companyId == null || companyId === '' ? null : String(companyId);
+        const laNoi = !!(currentUser && currentUser.isSuper);
+        const grupe = (Array.isArray(groups) ? groups : []).filter(g => g.company_id == null ? laNoi : (co != null && String(g.company_id) === co));
+        const soferi = co == null ? [] : (Array.isArray(drivers) ? drivers : []).filter(d => String(d.company_id) === co);
         document.getElementById('edit-group').innerHTML = '<option value="">-- Fără grup --</option>' +
-          groups.map(g => `<option value="${g.id}" ${String(g.id)===String(groupId||'')?'selected':''}>${g.name}</option>`).join('');
+          grupe.map(g => `<option value="${g.id}" ${String(g.id)===String(groupId||'')?'selected':''}>${esc(g.name)}</option>`).join('');
         document.getElementById('edit-driver').innerHTML = '<option value="">-- Fără șofer --</option>' +
-          drivers.map(d => `<option value="${d.id}" ${String(d.id)===String(driverId||'')?'selected':''}>${d.name}</option>`).join('');
+          soferi.map(d => `<option value="${d.id}" ${String(d.id)===String(driverId||'')?'selected':''}>${esc(d.name)}</option>`).join('');
+        const nota = document.getElementById('edit-driver-nota');
+        if (nota) {
+          nota.textContent = co == null ? 'Mașina nu e pe nicio firmă: șoferul se pune după ce o treci pe o firmă.'
+            : (!soferi.length ? 'Firma mașinii n-are încă șoferi: îi adaugi din Management → Șoferi.' : '');
+          nota.hidden = !nota.textContent;
+        }
       } catch (e) {}
+    }
+    // Istoricul (05.11): ce șoferi a avut mașina / pe ce mașini a fost șoferul. Textele și ordinea vin de la server; aici doar se pun
+    // pe ecran, ca text. `fel` = 'masina' (rândul = șoferul) sau 'sofer' (rândul = mașina).
+    function istoricDeseneaza(box, j, fel) {
+      if (!box) return;
+      box.textContent = '';
+      if (!j || !Array.isArray(j.randuri)) { box.hidden = true; return; }
+      const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+      const d = el('details', 'vist'); d.open = true;
+      const sm = el('summary', 'vist-t');
+      sm.appendChild(el('i', 'fas fa-clock-rotate-left'));
+      sm.appendChild(el('span', null, (j.titlu || 'Istoric') + (j.randuri.length ? ' (' + j.randuri.length + ')' : '')));
+      d.appendChild(sm);
+      if (!j.randuri.length) d.appendChild(el('div', 'vist-gol', j.gol || ''));
+      else {
+        const ls = el('div', 'vist-ls');
+        j.randuri.forEach(r => {
+          const row = el('div', 'vist-r' + (r.curent ? ' acum' : ''));
+          const cine = el('div', 'vist-cine');
+          cine.appendChild(el('b', null, r.cine || '—'));
+          if (fel === 'sofer' && r.nume) cine.appendChild(el('span', 'vist-sub', r.nume));
+          if (r.arhivata) cine.appendChild(el('span', 'vist-arh', r.arhivata));
+          row.appendChild(cine);
+          const cand = el('div', 'vist-cand');
+          cand.appendChild(el('span', null, r.text || ''));
+          if (r.durata) cand.appendChild(el('small', null, r.durata));
+          row.appendChild(cand);
+          ls.appendChild(row);
+        });
+        d.appendChild(ls);
+      }
+      if (j.nota) d.appendChild(el('div', 'vist-nota', j.nota));
+      box.appendChild(d);
+      box.hidden = false;
+    }
+    async function istoricIncarca(box, url, fel) {
+      if (!box) return;
+      box.textContent = ''; box.hidden = true;
+      const cerut = url; box.dataset.url = cerut;
+      try {
+        const r = await fetch(url);
+        if (!r.ok || box.dataset.url !== cerut) return;   // între timp s-a deschis altă mașină / alt șofer
+        istoricDeseneaza(box, await r.json(), fel);
+      } catch (e) { /* fără istoric, fișa merge mai departe */ }
     }
 
     // ═══ Sonde combustibil (Escort / EuroSens Dominator / EuroSens Degree) ═══
@@ -21260,7 +21326,8 @@ const pozitii = await r.json();</code></pre>
           setv('edit-odo-base', dev.odo_base_km != null && dev.odo_base_km !== '' ? Math.round(dev.odo_base_km) : '');
           setIconPicker(dev.icon || iconFromType(dev.vehicle_type) || 'car'); setv('edit-notes', dev.notes);
           if (dev.color) setv('edit-color', dev.color);
-          await populateEditGroupsDrivers(dev.group_id, dev.driver_id);
+          await populateEditGroupsDrivers(dev.group_id, dev.driver_id, dev.company_id);
+          istoricIncarca(document.getElementById('edit-istoric-soferi'), '/api/devices/' + encodeURIComponent(imei) + '/istoric-soferi', 'masina');
           await incUmple(dev);   // fila „Încărcare" — înainte de aplicaVizibilitateTaburi, care se uită la felul ales
 
           // Truck config
@@ -21344,8 +21411,9 @@ const pozitii = await r.json();</code></pre>
         return;
       }
 
-      // Grup + șofer (atribuire)
-      await fetch('/api/devices/' + imei + '/assign', {
+      // Grup + șofer (atribuire). Răspunsul se CITEȘTE (05.11): un refuz al serverului („Șoferul ales nu e în firma acestei mașini.")
+      // tăcea, fereastra se închidea ca după o salvare, iar mașina rămânea fără șofer („Nealocat" pe hartă).
+      const _ra = await fetch('/api/devices/' + imei + '/assign', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -21353,6 +21421,11 @@ const pozitii = await r.json();</code></pre>
           driver_id: parseInt(document.getElementById('edit-driver').value) || null
         })
       });
+      if (!_ra.ok) {
+        let _e = {}; try { _e = await _ra.json(); } catch (e) { /* fără corp */ }
+        alert((_e.error || 'Șoferul sau grupa nu s-au putut salva.') + ' Restul fișei s-a salvat.');
+        return;
+      }
 
       // Interfață CAN (doar super-admin) — endpoint dedicat, invalidează cache-ul de iface → pachetele noi se decodează corect.
       var _cifEl = document.getElementById('edit-can-interface');

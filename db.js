@@ -3823,12 +3823,39 @@ async function _purgeDeviceFeed(imeis) {
 async function setDeviceCompany(imei, companyId) {
   // Altă firmă = alt abonament: ziua de pornire se șterge și se pune din nou la prima transmisie pe firma
   // nouă (28.09). Pe aceeași firmă (o salvare repetată) nu se atinge.
+  // Tot la altă firmă (05.11): șoferul și grupa firmei vechi nu rămân pe mașină — un șofer al altei firme nu poate fi pus
+  // pe ea (/assign îl refuză), fișa scria „Nealocat", iar o grupă a firmei vechi ar fi dat acces oamenilor ei. Grupele
+  // platformei (fără firmă) rămân. Rândul deschis din istoricul șoferilor se închide.
+  const vechi = await pool.query('SELECT company_id, driver_id FROM devices WHERE imei = $1', [imei]);
+  const v = vechi.rows[0];
+  const altaFirma = !!v && String(v.company_id == null ? '' : v.company_id) !== String(companyId || '');
   await pool.query(
     `UPDATE devices SET abonament_de_la = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE abonament_de_la END,
             inc_remorca_id = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE inc_remorca_id END,
+            driver_id = CASE WHEN company_id IS DISTINCT FROM $2::int THEN NULL ELSE driver_id END,
+            group_id = CASE WHEN company_id IS DISTINCT FROM $2::int
+                             AND EXISTS (SELECT 1 FROM device_groups g WHERE g.id = devices.group_id AND g.company_id IS NOT NULL)
+                            THEN NULL ELSE group_id END,
             company_id = $2::int
       WHERE imei = $1`, [imei, companyId || null]);
+  if (altaFirma && v.driver_id != null) { try { await schimbaSoferIstoric(imei, null, Date.now()); } catch (e) { /* istoricul nu oprește mutarea */ } }
   await _purgeDeviceFeed([imei]);
+}
+// Legăturile rămase de pe vremea când mutarea pe altă firmă nu le rupea (05.11): un șofer sau o grupă a ALTEI firme pe o mașină.
+// Nimic din aplicație nu le mai folosea (fișa scria „Nealocat", rapoartele le săreau), dar salvarea fișei pica pe tăcute. Se
+// rup la pornire; grupele platformei (fără firmă) rămân. Întoarce mașinile atinse, pentru jurnal.
+async function curataLegaturiAltaFirma(acum) {
+  const t = acum != null ? Number(acum) : Date.now();
+  const s = await pool.query(`UPDATE devices d SET driver_id = NULL
+     WHERE d.driver_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM drivers dr WHERE dr.id = d.driver_id AND dr.company_id IS NOT DISTINCT FROM d.company_id)
+     RETURNING d.imei`);
+  for (const x of s.rows) await pool.query('UPDATE istoric_soferi SET pana_la = $2 WHERE imei = $1 AND pana_la IS NULL', [x.imei, t]);
+  const g = await pool.query(`UPDATE devices d SET group_id = NULL
+     WHERE d.group_id IS NOT NULL
+       AND EXISTS (SELECT 1 FROM device_groups g WHERE g.id = d.group_id AND g.company_id IS NOT NULL AND g.company_id IS DISTINCT FROM d.company_id)
+     RETURNING d.imei`);
+  return { soferi: s.rows.map((x) => x.imei), grupe: g.rows.map((x) => x.imei) };
 }
 // Adopție ATOMICĂ: setează compania DOAR dacă device-ul e încă neasignat (company_id NULL). Întoarce true dacă
 // CHIAR această cerere a făcut adopția → închide cursa a două companii care adoptă simultan același IMEI neasignat.
@@ -4531,6 +4558,26 @@ async function semanaIstoricSoferi() {
      WHERE d.driver_id IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM istoric_soferi s WHERE s.imei = d.imei AND s.pana_la IS NULL)`);
   return r.rowCount || 0;
+}
+// Istoricul pe ecran (05.11): ce șoferi a avut o mașină / pe ce mașini a fost un șofer. Doar legăturile din ACEEAȘI firmă: o mașină
+// mutată la altă firmă nu-i arată noii firme șoferii celei vechi, iar șoferul vede doar mașinile firmei lui. Cel deschis întâi.
+async function istoricSoferiMasina(imei) {
+  const r = await pool.query(`SELECT s.id, s.driver_id, s.de_la, s.pana_la, dr.name
+       FROM istoric_soferi s
+       JOIN devices d ON d.imei = s.imei
+       JOIN drivers dr ON dr.id = s.driver_id AND dr.company_id IS NOT DISTINCT FROM d.company_id
+      WHERE s.imei = $1
+      ORDER BY (s.pana_la IS NULL) DESC, s.de_la DESC, s.id DESC LIMIT 200`, [imei]);
+  return r.rows.map((x) => ({ driver_id: x.driver_id, nume: x.name, de_la: Number(x.de_la) || 0, pana_la: x.pana_la == null ? null : Number(x.pana_la) }));
+}
+async function istoricMasiniSofer(driverId) {
+  const r = await pool.query(`SELECT s.id, s.imei, s.de_la, s.pana_la, d.name, d.plate, d.status
+       FROM istoric_soferi s
+       JOIN drivers dr ON dr.id = s.driver_id
+       JOIN devices d ON d.imei = s.imei AND d.company_id IS NOT DISTINCT FROM dr.company_id
+      WHERE s.driver_id = $1
+      ORDER BY (s.pana_la IS NULL) DESC, s.de_la DESC, s.id DESC LIMIT 200`, [driverId]);
+  return r.rows.map((x) => ({ imei: x.imei, nume: x.name, plate: x.plate, arhivata: x.status === 'archived', de_la: Number(x.de_la) || 0, pana_la: x.pana_la == null ? null : Number(x.pana_la) }));
 }
 async function istoricSoferi(imeis) {
   if (!Array.isArray(imeis) || !imeis.length) return [];
@@ -7349,7 +7396,7 @@ module.exports = {
   cleanupExpiredSessions,
   deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
-  schimbaSoferIstoric, inchideSoferiIstoric, semanaIstoricSoferi, istoricSoferi,
+  schimbaSoferIstoric, inchideSoferiIstoric, semanaIstoricSoferi, istoricSoferi, istoricSoferiMasina, istoricMasiniSofer, curataLegaturiAltaFirma,
   scrieZileCondus, citesteZileCondus, zileCondusStare, adaugaDiscutieSafeDrive, discutiiSafeDrive, stergeDiscutieSafeDrive, restaureazaActe,
   aparateCuIstoricDeSters, stergeIstoricAparat, aparatePentruPastrare, stergeIstoricMaiVechiDe, scoateBucatiMaiVechiDe,
   stergeAuditMaiVechiDe,

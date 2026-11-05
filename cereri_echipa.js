@@ -275,7 +275,7 @@ function emailClient(c, pas) {
 module.exports = {
   LIMITA_ORA, TERMEN, LA_FIECARE_PAS, BUTON, NOTA_CASETA, NOTA_DUPA, NOTA_TRIMISA, NOTA_LISTA, STARI, ETICHETE, PASI, PROBLEME,
   SURSE, CAND, INTERVALE, DATE_TRIMISE, DATE_TRIMISE_FARA_MASINA,
-  cand, ziua, ziScrisa, ziPlus, ziLucratoareDupa, durata, curata, lipsa, titlu, ceSemnal, vehicul, vehiculLung, textCand, sursaText, deTrimisText,
+  cand, ziua, dataLunga, ziScrisa, ziPlus, ziLucratoareDupa, durata, curata, lipsa, titlu, ceSemnal, vehicul, vehiculLung, textCand, sursaText, deTrimisText,
   confirmare, seOcupa, pasi, pentruClient, dateAparat, pareRezolvata, pentruNoi, mesajProgramare, intervalText,
   anuntNoi, emailNoi, anuntClient, emailClient
 };

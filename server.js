@@ -14166,6 +14166,29 @@ async function _soferGrupaAleFirmei(imei, driverRaw, groupRaw, req) {
   return { driverId: s.id, groupId: g.id };
 }
 
+// Istoricul șoferilor unei mașini / al mașinilor unui șofer (05.11; Alin: „șoferul să aibă istoric pe ce mașini a fost pus — la fel
+// în vehicule"). Din istoric_soferi, doar legăturile din aceeași firmă; textele le scrie soferi_masini.js (randIstoric).
+app.get('/api/devices/:imei/istoric-soferi', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const acum = Date.now();
+    const randuri = (await db.istoricSoferiMasina(req.params.imei)).map((r) => Object.assign({ driver_id: r.driver_id, cine: r.nume }, soferiMasini.randIstoric(r, acum)));
+    res.json({ titlu: soferiMasini.ISTORIC.masina, gol: soferiMasini.ISTORIC.golMasina, nota: soferiMasini.ISTORIC.nota, randuri: randuri });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/drivers/:id/istoric-masini', requireAuth, withScope, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Șofer invalid.' });
+    if (!(await ownsRow(req, 'drivers', id))) return res.status(403).json({ error: 'Acces interzis' });
+    const acum = Date.now();
+    const randuri = (await db.istoricMasiniSofer(id)).filter((r) => canAccessImei(req, r.imei)).map((r) => Object.assign({
+      imei: r.imei, cine: r.plate || r.nume || r.imei, nume: r.plate && r.nume && r.nume !== r.plate ? r.nume : '', arhivata: r.arhivata ? soferiMasini.ISTORIC.arhivata : ''
+    }, soferiMasini.randIstoric(r, acum)));
+    res.json({ titlu: soferiMasini.ISTORIC.sofer, gol: soferiMasini.ISTORIC.golSofer, nota: soferiMasini.ISTORIC.nota, randuri: randuri });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe".
 // Separat de /assign fiindcă acela scrie ȘI driver_id: mutarea între grupe ar rămâne fără șofer.
 app.put('/api/devices/:imei/group', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
@@ -22089,6 +22112,15 @@ async function start() {
   await db.migreazaPornireaAbonamentelor();   // o singură dată: aparatele care transmiteau deja rămân pe luna întreagă
   await db.migreazaAparateNoiAnuntate();      // o singură dată: ce era deja în „Neasignate" nu se anunță ca „nou" (30.09)
   await db.migreazaTermeneEtransport(etr.termenDinFormular);   // o singură dată: termenele UIT pe miezul nopții României (23.10)
+  // Legăturile rămase de pe vremea când mutarea unei mașini pe altă firmă nu le rupea (05.11): șoferul / grupa altei firme. ÎNAINTEA
+  // istoricului, ca un șofer al altei firme să nu primească un rând nou.
+  try {
+    const l = await db.curataLegaturiAltaFirma(Date.now());
+    if (l.soferi.length || l.grupe.length) {
+      console.log('[SOFERI] Legături cu altă firmă rupte: ' + l.soferi.length + ' șoferi, ' + l.grupe.length + ' grupe');
+      try { db.logAudit({ userId: null, username: 'sistem', action: 'update', entity: 'device', entityId: null, details: { legaturi_alta_firma: true, soferi: l.soferi.slice(0, 50), grupe: l.grupe.slice(0, 50) }, ip: null, companyId: null }); } catch (e) {}
+    }
+  } catch (e) { console.warn('[SOFERI] legăturile cu altă firmă:', e.message); }
   try { const n = await db.semanaIstoricSoferi(); if (n) console.log('[SAFE DRIVE] Istoricul șoferilor pornit pentru ' + n + ' mașini'); } catch (e) { console.warn('[SAFE DRIVE] istoricul șoferilor:', e.message); }
   await _incarcaAbonamente();  // ce aparate au deja ziua de pornire a abonamentului (factura pe zile, 28.09)
   initVapid();

@@ -178,7 +178,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
   **05.11:** „Prelungește" și „Starea mașinii" sunt acum și pe ratrack.ro (aduse din ramura lui Robert în main). APK-ul următor se
   face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele,
-  regula „NOU" din meniu, „Domenii" în loc de „Pagini");
+  regula „NOU" din meniu, „Domenii" în loc de „Pagini", lista de șoferi a firmei și istoricul șoferi ↔ mașini);
   primește versiunea **1.0.23 (cod 25)**: 1.0.22 e deja pe GitHub, din ramura lui Robert, iar main scrie acum tot 1.0.22.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
@@ -666,6 +666,35 @@ denumirea; când spune altceva („Caddy Ion" / „VW Caddy"), rămâne. O mași
 (butonul „Detalii") și telefonul aveau deja numărul sus. **Ce vede fondatorul:** pe hartă, numărul sus în fereastra oricărei mașini.
 **Ce vede clientul:** la fel.
 
+### AMÂNDOI · Banda „Urmărești" scrie numărul de înmatriculare
+*Alin, 05.11: „fă asta" (la întrebarea: banda scria „Urmărești: VW CADDY", deci la 10 Caddy nu știi pe care îl urmărești).*
+
+**Ce am schimbat:** după „Urmărește" din fereastra unei mașini, banda de jos scrie „Urmărești: B 268 ROY · VW CADDY" — numărul îngroșat,
+denumirea după el, mai stinsă. Pe tema deschisă numărul e pe verdele închis al textelor (verdele deschis pe alb abia se citea). Telefonul
+scria deja numărul. **Ce vede fondatorul / clientul:** la fel, pe harta de pe calculator.
+
+### AMÂNDOI · Șoferul pus din fișa mașinii se salvează (sau spune de ce nu) + istoricul șoferi ↔ mașini
+*Alin, 05.11, cu o poză (B 112 RFG, „Șofer: Nealocat"): „am pus șofer pe mașină… în Șoferi apare înregistrat, iar pe hartă îmi apare
+șofer nealocat" + „aș vrea ca șoferul să aibă istoric pe ce mașini a fost pus — la fel și în vehicule".*
+
+**Cauza:** la salvarea fișei mașinii, aplicația trimitea șoferul ales, dar nu se uita la răspuns. Serverul refuză un șofer din altă firmă
+decât a mașinii (corect), însă fereastra se închidea ca după o salvare reușită, iar mașina rămânea fără șofer. La noi, fondatorii, lista
+din fișă avea șoferii TUTUROR firmelor, deci era ușor să alegi unul de la altă firmă. Separat, o mașină mutată pe altă firmă își păstra
+șoferul (și grupa) firmei vechi: harta scria „Nealocat", dar lista Șoferi o arăta tot pe mașină.
+
+**Ce am schimbat:**
+- În fișa mașinii, lista de șoferi (și de grupe) are doar ce e al firmei mașinii; sub ea, un rând spune de ce e goală (mașina fără firmă /
+  firma fără șoferi). Dacă serverul refuză ceva, apare motivul și fereastra rămâne deschisă (restul fișei e salvat).
+- Mașina mutată pe altă firmă pierde șoferul și grupa firmei vechi (grupele platformei rămân). Legăturile rămase așa de dinainte s-au rupt
+  o dată, la pornire, cu un rând în jurnalul de audit. Lista Șoferi nu mai pune un șofer pe mașina altei firme.
+- **Istoricul:** în fișa mașinii, sub „Șofer", „Istoricul șoferilor" (cine a condus-o, de când până când, cât); în fișa șoferului, „Istoricul
+  mașinilor". Primul șofer al unei mașini apare „de la început" (așa îl socotesc și rapoartele). Aplicația ține minte schimbările din 06.10.
+- Pe telefon: aceeași listă doar cu șoferii firmei și același istoric, de la versiunea următoare.
+
+**Ce vede fondatorul:** în fișa unei mașini, doar șoferii firmei ei și istoricul; o eroare spusă pe față. **Ce vede clientul:** la fel —
+istoricul în fișa mașinii și în fișa șoferului (Management → Vehicule / Șoferi).
+
+## 2026-11-04
 ## 2026-11-04
 
 ### FONDATOR · Banii pentru AI, la zi: soldul Anthropic pe „Acasă" și în „RA Insight · control", anunțurile, alarma când Anthropic refuză

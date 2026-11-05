@@ -7,6 +7,7 @@ import { reverseGeocode } from '../api/geocode';
 import { statusOf, usesTachograph } from '../lib/status';
 import { fmtDateTime, fmtDuration, fmtAgo, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
+import { IstoricSoferi } from '../components/IstoricSoferi';
 import { MiniMap } from '../components/MiniMap';
 import { MapModal } from '../components/MapModal';
 import { WorkSchedEditor } from '../components/WorkSchedEditor';
@@ -94,6 +95,13 @@ function liveStatus(v: any, off: number): { cls: string; text: string; detail: s
 // Câmp în grila „Detalii live": etichetă + valoare (opțional full-width / colorat).
 function G({ label, value, cls, full }: { label: string; value: any; cls?: string; full?: boolean }) {
   return <div class={'g' + (full ? ' full' : '')}><span class="gl">{label}</span><span class={'gv ' + (cls || '')}>{value}</span></div>;
+}
+
+// Șoferii firmei mașinii (05.11): la noi lista are șoferii tuturor firmelor, iar /assign îl refuză pe unul din altă firmă.
+// O mașină fără firmă nu primește șofer.
+export function soferiFirmei(drivers: any[], companyId: any): any[] {
+  if (companyId == null || companyId === '') return [];
+  return (Array.isArray(drivers) ? drivers : []).filter((d) => String(d && d.company_id) === String(companyId));
 }
 
 export function VehicleDetail() {
@@ -575,10 +583,12 @@ export function VehicleDetail() {
                   </details>
                 )}
                 <div class="fld"><label>Șofer alocat</label>
+                  {/* Doar șoferii firmei mașinii (05.11, ca pe web): serverul refuză un șofer al altei firme. */}
                   <select value={ef.driver_id} onChange={(e) => setEF('driver_id', (e.target as HTMLSelectElement).value)}>
                     <option value="">Nealocat</option>
-                    {drivers.map((d) => <option value={String(d.id)}>{d.name}</option>)}
+                    {soferiFirmei(drivers, (full as any)?.company_id).map((d) => <option value={String(d.id)}>{d.name}</option>)}
                   </select>
+                  <IstoricSoferi cheie={imei} cere={() => Api.istoricSoferiMasina(imei)} fel="masina" />
                 </div>
                 <div class="fld"><label>Grupă</label>
                   <select value={ef.group_id} onChange={(e) => setEF('group_id', (e.target as HTMLSelectElement).value)}>
