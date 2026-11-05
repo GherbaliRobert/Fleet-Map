@@ -359,10 +359,13 @@ perechi.forEach(([n, a, b]) => T(n + (a && b ? ' (' + contrast(a, b).toFixed(2) 
 T('primul mesaj e în șirul discuției (înveliș fără cutie)', /\.asf-prim \{ display: contents; \}/.test(css));
 T('pasul 4: semnul din capul listei în verdele casei, pe ambele teme; nota de jos pe text-secondary (perechea măsurată mai sus)', /\.asf \.insp-stea \{ color: #166534;/.test(css) &&
   /body\.dark \.asf \.insp-stea \{ color: #86efac;/.test(css) && /\.asf-st-jos \{[^}]*color: var\(--text-secondary\);/.test(css));
-T('un tabel lat se derulează în chenarul lui, nu pagina', /\.asf-tab \{[^}]*overflow-x: auto;/.test(css) && /\.asf-tab \.dr \{[^}]*text-align: right;/.test(css));
-T('pe telefon un rând de tabel = un cartonaș, cu numele coloanei în fața valorii (după regulile pasului 1)', /@media \(max-width: 600px\) \{\s*\.asf-cif \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(css) &&
-  /\.asf-tab table, \.asf-tab tbody, \.asf-tab tr, \.asf-tab td \{ display: block; \}/.test(css) && /\.asf-tab thead \{ display: none; \}/.test(css) &&
-  /\.asf-tab td:not\(:first-child\)::before \{ content: attr\(data-col\) ': ';/.test(css) && /\.asf-tab td, \.asf-tab td\.dr \{[^}]*text-align: left; white-space: normal; \}/.test(css));
+// Din 05.11 tabelul din răspunsurile lui RA Insight (`.rax-md-tab`, din md()) are ACELEAȘI reguli, pe aceleași rânduri de CSS.
+T('un tabel lat se derulează în chenarul lui, nu pagina (și tabelul din RA Insight)', /\.asf-tab, \.rax-md-tab \{[^}]*overflow-x: auto;/.test(css) && /\.asf-tab \.dr \{[^}]*text-align: right;/.test(css));
+T('pe telefon un rând de tabel = un cartonaș, cu numele coloanei în fața valorii (după regulile pasului 1; la fel în RA Insight)', /@media \(max-width: 600px\) \{\s*\.asf-cif \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(css) &&
+  /\.asf-tab table, \.asf-tab tbody, \.asf-tab tr, \.asf-tab td, \.rax-md-tab table, \.rax-md-tab tbody, \.rax-md-tab tr, \.rax-md-tab td \{ display: block; \}/.test(css) &&
+  /\.asf-tab thead, \.rax-md-tab thead \{ display: none; \}/.test(css) &&
+  /\.asf-tab td:not\(:first-child\)::before, \.rax-md-tab td:not\(:first-child\)::before \{ content: attr\(data-col\) ': ';/.test(css) &&
+  /\.asf-tab td, \.asf-tab td\.dr, \.rax-md-tab td \{[^}]*text-align: left; white-space: normal; \}/.test(css));
 const serverSrc = citeste('server.js');
 T('plafonul de întrebări AI pe minut cuprinde și caseta asistentului', /p === '\/api\/admin\/asistent\/intreaba'/.test(serverSrc));
 T('rutele asistentului sunt doar ale fondatorilor', /app\.post\('\/api\/admin\/asistent\/intreaba', requireAuth, requireSuperadmin,/.test(serverSrc) && /app\.get\('\/api\/admin\/asistent\/meta', requireAuth, requireSuperadmin,/.test(serverSrc));
