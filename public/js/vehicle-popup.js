@@ -94,19 +94,36 @@
     return (isFinite(v) && v >= 5 && v <= 200) ? Math.round(v) : 0;
   }
 
+  // Titlul balonului = NUMĂRUL DE ÎNMATRICULARE (Alin, 05.11: „o flotă poate avea 10 Caddy, omul din grabă nu se mai uită jos
+  // să vadă numărul"); fără număr, denumirea; fără nimic, IMEI-ul. Denumirea coboară pe primul rând, în locul numărului.
+  // „Vehicul" (marca + modelul din fișă) nu se repetă când scrie exact cât denumirea („VW Caddy" / „VW Caddy").
+  function acelasi(a, b) {
+    var x = String(a == null ? '' : a).replace(/\s+/g, ' ').trim().toLowerCase();
+    return !!x && x === String(b == null ? '' : b).replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  function titluVehicul(d, imei) { return String((d && d.plate) || '').trim() || String((d && d.name) || '').trim() || imei; }
+  function denumireSub(d) {
+    var plate = String((d && d.plate) || '').trim(), name = String((d && d.name) || '').trim();
+    return plate && name && !acelasi(name, plate) ? name : '';
+  }
+  function vehiculSeRepeta(d, veh) {
+    var name = String((d && d.name) || '').trim();
+    return acelasi(veh, name) || acelasi(veh, (d && d.plate) || '');
+  }
+
   function buildHtml(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return '';
     var f = fullCache[imei] || {};
     var b = liveBits(d);
-    var name = d.name || imei;
-    var plate = d.plate || '';
+    var titlu = titluVehicul(d, imei);
+    var denumire = denumireSub(d);
     var ll = (d.latitude != null && d.longitude != null) ? (d.latitude + ',' + d.longitude) : '';
     var veh = [f.brand, f.model].filter(Boolean).join(' ') || d.vehicle_type || '—';
     var driver = f.driver_name || '';
 
     var rows = '';
-    if (plate) rows += row('Nr. înmatriculare', '<b style="color:var(--accent)">' + esc(plate) + '</b>');
-    rows += row('Vehicul', esc(veh), 'vp-veh-' + imei);
+    if (denumire) rows += row('Denumire', esc(denumire));
+    rows += '<tr id="vp-vehrow-' + imei + '"' + (vehiculSeRepeta(d, veh) ? ' style="display:none"' : '') + '><td>Vehicul</td><td id="vp-veh-' + imei + '">' + esc(veh) + '</td></tr>';
     rows += row('Șofer', driver ? esc(driver) : '<span style="color:var(--text-muted)">…</span>', 'vp-drv-' + imei);
     rows += row('Adresă', '<span style="color:var(--text-muted)">se încarcă…</span>', 'vp-adr-' + imei);
     var _splim0 = spdLimitOf(d);
@@ -122,7 +139,7 @@
       '<div class="vp-card">' +
         '<div class="vp-head">' +
           '<span class="vp-dot" id="vp-dot-' + imei + '" style="background:' + b.dot + ';box-shadow:0 0 7px ' + b.dot + '"></span>' +
-          '<div class="vp-head-txt"><div class="vp-name">' + esc(name) + '</div><div class="vp-status" id="vp-status-' + imei + '">' + esc(b.status) + '</div></div>' +
+          '<div class="vp-head-txt"><div class="vp-name">' + esc(titlu) + '</div><div class="vp-status" id="vp-status-' + imei + '">' + esc(b.status) + '</div></div>' +
         '</div>' +
         '<table class="vp-table">' + rows + '</table>' +
         '<div class="vp-actions">' +
@@ -182,6 +199,7 @@
     var f = fullCache[imei]; if (!f) return;
     var veh = [f.brand, f.model].filter(Boolean).join(' ') || f.vehicle_type || '—';
     var vc = el('vp-veh-' + imei); if (vc) vc.textContent = veh;
+    var vr = el('vp-vehrow-' + imei), dv = DEVS() && DEVS().get(imei); if (vr) vr.style.display = vehiculSeRepeta(dv, veh) ? 'none' : '';
     var dc = el('vp-drv-' + imei); if (dc) { dc.textContent = f.driver_name || 'Nealocat'; dc.style.color = f.driver_name ? 'var(--text-primary)' : 'var(--text-muted)'; }
     renderDur(imei);
   }

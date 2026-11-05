@@ -157,7 +157,7 @@ T('„Anulează" ține 10 minute; o propunere neapăsată, o zi', SM.ANULARE_MIN
 
 // ─── 2. Pagina ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n2. Pagina: ramura, cartonașul, „Gata" cu „Anulează"');
-T('„Șoferi pe mașini" e o pagină din „Pagini", de la Basic (pe Start apare încuiată), cu iconița din machetă',
+T('„Șoferi pe mașini" e o pagină din „Domenii", de la Basic (pe Start apare încuiată), cu iconița din machetă',
   /\{ k: 'soferi', et: 'Șoferi pe mașini', ic: 'fa-people-arrows', gata: true, pachet: true \}/.test(PAG) && /if \(S\.ramura === 'soferi'\) return deseneazaSoferi\(main\);/.test(PAG));
 T('cartonașul se desenează din ce dă serverul, ca text (și îngroșatul din „Gata", prin textGros, fără HTML), cu Da / Schimbă / Nu; „Da" oprit fără drept',
   /function cartonasPropunere\(p, gata\)/.test(PAG) && /if \(!p\.poate\) \{ bDa\.disabled = true;/.test(PAG) && /butonProp\('Schimbă', 'fa-pen'\)/.test(PAG) && /butonProp\('Nu', 'fa-xmark'\)/.test(PAG) &&

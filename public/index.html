@@ -11850,12 +11850,12 @@ const pozitii = await r.json();</code></pre>
         { k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true, pachet: true },
         { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true, pachet: true },
         { k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true, pachet: true },
-        // `meniu: true` = stă în meniul „⋯", nu sub „Pagini" (macheta „mai simplu", 15.10).
+        // `meniu: true` = stă în meniul „⋯", nu sub „Domenii" (macheta „mai simplu", 15.10; „Pagini" până pe 05.11).
         { k: 'ghid', et: 'Ghidul aplicației', ic: 'fa-graduation-cap', gata: true, meniu: true }
         // (Aici stătea „Scrisoarea de luni", scoasă pe 04.11 — Alin: „o scoatem de tot"; „Azi la tine" spune același lucru, oricând.)
       ];
       window._insightRamuri = RAMURI;
-      // Paginile de sub „Pagini ▸" din stânga: ramurile livrate, fără discuție și fără ce stă în meniul „⋯".
+      // Paginile de sub „Domenii ▸" din stânga (până pe 05.11 „Pagini"): ramurile livrate, fără discuție și fără ce stă în meniul „⋯".
       function pagini() { return RAMURI.filter(function (r) { return r.gata && r.k !== 'general' && !r.meniu; }); }
       // Conversația nouă (macheta „mai simplu", Alin 15.10: „1. da"): salutul scurt, caseta, trei butoane scurte sub ea.
       var CARDURI = [
@@ -11916,7 +11916,7 @@ const pozitii = await r.json();</code></pre>
         deseneazaMain();
       };
       // Macheta „mai simplu" (Alin, 15.10: „1. da"): stânga = RA Insight, „Conversație nouă", căutarea (un rând), conversațiile pe
-      // zile, „Pagini ▸" (ramurile, la nevoie) și un rând cu pachetul, jos; dreapta = bara de sus (titlul discuției și „⋯", unde
+      // zile, „Domenii ▸" (ramurile, la nevoie) și un rând cu pachetul, jos; dreapta = bara de sus (titlul discuției și „⋯", unde
       // stau pachetul, notițele, agenții, ghidul, redenumirea) și #insp-main, unde desenează discuția și paginile ramurilor.
       // Pe telefon stânga e un sertar (☰).
       function schelet(host) {
@@ -11930,7 +11930,7 @@ const pozitii = await r.json();</code></pre>
           '<input class="insp-cauta" id="insp-cauta" type="search" placeholder="Caută în conversațiile tale" oninput="insightCauta(this.value)" style="display:none;">' +
           '<div class="insp-lista" id="insp-lista"></div>' +
           '<div class="insp-st-jos">' +
-          '<button class="insp-pag" id="insp-pag" type="button" onclick="insightPagini()" aria-expanded="false"><i class="fas fa-layer-group"></i><span>Pagini</span><span class="insp-nr" id="insp-pag-nr" style="display:none;"></span><i class="fas fa-chevron-right insp-pag-s"></i></button>' +
+          '<button class="insp-pag" id="insp-pag" type="button" onclick="insightPagini()" aria-expanded="false"><i class="fas fa-layer-group"></i><span>Domenii</span><span class="insp-nr" id="insp-pag-nr" style="display:none;"></span><i class="fas fa-chevron-right insp-pag-s"></i></button>' +
           '<div id="insp-ramuri" style="display:none;"></div>' +
           '<button class="insp-fond" id="insp-fond" type="button" style="display:none;"></button></div>' +
           '</aside>' +
@@ -12045,7 +12045,7 @@ const pozitii = await r.json();</code></pre>
         else { S.faraLoc = null; S.lista = (r.j && r.j.conversatii) || []; }
         deseneazaLista();
       }
-      // „Pagini ▸": închise, cu câte lucruri cer atenție în toate; deschise când omul le cere sau stă pe una din ele.
+      // „Domenii ▸": închise, cu câte lucruri cer atenție în toate; deschise când omul le cere sau stă pe una din ele.
       function paginiDeschise() { var r = RAMURI.filter(function (x) { return x.k === S.ramura; })[0]; return !!(S.paginiDeschise || (r && pagini().indexOf(r) >= 0)); }
       window.insightPagini = function () {
         S.paginiDeschise = !paginiDeschise();
@@ -13602,7 +13602,7 @@ const pozitii = await r.json();</code></pre>
         if ((u.urmari || []).length) box.appendChild(window._chatUrmari(u.urmari, function (t) { window.insightTrimite(t, { buton: true }); }));
         box.scrollTop = box.scrollHeight; arataJos();
       }
-      // Pagina „Șoferi pe mașini" (în „Pagini", de la Basic): toată flota deodată, bifezi ce vrei și apeși „Aplică".
+      // Pagina „Șoferi pe mașini" (în „Domenii", de la Basic): toată flota deodată, bifezi ce vrei și apeși „Aplică".
       async function deseneazaSoferi(main, dupa) {
         var tok = S.smTok = (S.smTok || 0) + 1;
         if (!main.querySelector('.ssm')) main.innerHTML = '<div class="sdp ssm"><div class="insp-gol">Se încarcă…</div></div>';

@@ -647,6 +647,25 @@ Simulatorul de încărcare (12.10) au trecut demult de 15 zile, deci de azi nu m
 următor (azi meniul telefonului nu are niciun „NOU"). **Ce vede fondatorul:** meniul fără „NOU" la RA Insight și la Simulator; la un rând
 nou de-acum încolo, „NOU" 15 zile. **Ce vede clientul:** la fel.
 
+### CLIENT · RA Insight: „Pagini" se numește acum „Domenii"
+*Alin, 05.11: „denumirea Pagini din RA Insight — hai să-i găsim altă denumire" → la propunerea „Domenii": „da".*
+
+**Ce am schimbat:** butonul din stânga lui RA Insight (cel care deschide RA Drive, Combustibil, Ore de condus, Mentenanță & acte,
+Șoferi pe mașini) se numește „Domenii", pe calculator și pe telefon (de la APK-ul următor). La fel în ghidul aplicației, în rândul
+care spune clientului unde își schimbă prețurile din RA Drive și în comparația pachetelor („Domeniile RA Insight"), în aplicație și pe
+pagina publică a pachetelor. **Ce vede fondatorul:** în RA Insight (verticala Partener) „Domenii" în loc de „Pagini". **Ce vede
+clientul:** la fel, plus „Domeniile RA Insight" în „Vezi pachetele" și pe ratrack.ro/pachete-ra-insight.
+
+### AMÂNDOI · Harta: numărul de înmatriculare e titlul ferestrei unei mașini
+*Alin, 05.11, cu o poză: „la titlu apare VW Caddy scris mare — vreau numărul de înmatriculare acolo… o flotă poate avea 10 Caddy, omul
+din grabă nu se mai uită jos să vadă numărul; în loc de nr. de înmatriculare mai jos, denumirea mașinii".*
+
+**Ce am schimbat:** la clic pe o mașină pe hartă (Localizare), fereastra are sus, mare, numărul („B 268 ROY"); pe primul rând,
+„Denumire: VW Caddy" (numele din fișă). Rândul „Vehicul" (marca și modelul din fișă) nu mai apare când spune exact același lucru ca
+denumirea; când spune altceva („Caddy Ion" / „VW Caddy"), rămâne. O mașină fără număr are sus denumirea, ca până acum. Fișa mașinii
+(butonul „Detalii") și telefonul aveau deja numărul sus. **Ce vede fondatorul:** pe hartă, numărul sus în fereastra oricărei mașini.
+**Ce vede clientul:** la fel.
+
 ## 2026-11-04
 
 ### FONDATOR · Banii pentru AI, la zi: soldul Anthropic pe „Acasă" și în „RA Insight · control", anunțurile, alarma când Anthropic refuză

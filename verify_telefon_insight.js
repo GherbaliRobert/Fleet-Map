@@ -722,7 +722,7 @@ function parteaDesenului() {
   const scr = r(h(E.Insight, {}));
   T('ecranul, la intrare: salutul, caseta, butoanele, sertarul, „⋯"', ['Salut, Alin! Cu ce te pot ajuta?', 'Ce probleme are flota?', 'Km săptămâna trecută', 'Ce acte expiră?', 'Scrie o întrebare sau cere un raport…', 'Conversație nouă', 'Caută în conversații', 'aria-label="Mai multe"', 'aria-label="Conversații"', 'chat-caseta'].every((x) => scr.indexOf(x) >= 0), scr.slice(0, 600));
   T('…ecran de sine stătător: fără bara de file în el', scr.indexOf('tabbar') < 0 && /screen insp/.test(scr));
-  T('…în sertar, „Pagini" (închise la început)', /class="insp-pag"/.test(scr) && />Pagini</.test(scr) && scr.indexOf('insp-ramuri') < 0);
+  T('…în sertar, „Domenii" (închise la început; „Pagini" până pe 05.11)', /class="insp-pag"/.test(scr) && />Domenii</.test(scr) && !/>Pagini</.test(scr) && scr.indexOf('insp-ramuri') < 0);
   // O pagină are adresa ei: titlul pe bara de sus, fără caseta discuției.
   ruta.params = { ramura: 'combustibil' };
   const scrP = r(h(E.Insight, {}));

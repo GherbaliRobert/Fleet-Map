@@ -7,7 +7,7 @@
 // mouse-ul" (din ce e făcut costul, litrii × prețul, cât e peste fișă) stă aici sub cifră: un telefon n-are mouse.
 
 export interface Ramura { k: string; et: string; ic: string; pachet?: boolean; sub?: string; meniu?: boolean }
-// Ramurile, în ordinea de pe web (RAMURI din „secțiunea RA Insight"). `pachet` = de la Basic în sus; `meniu` = stă în „⋯", nu în „Pagini".
+// Ramurile, în ordinea de pe web (RAMURI din „secțiunea RA Insight"). `pachet` = de la Basic în sus; `meniu` = stă în „⋯", nu în „Domenii".
 export const RAMURI: Ramura[] = [
   { k: 'soferi', et: 'Șoferi pe mașini', ic: 'swap', pachet: true },
   { k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'shield', pachet: true },
@@ -21,7 +21,7 @@ export function ramuraDupa(k: any): Ramura | null { return RAMURI.filter((r) => 
 export function pagini(): Ramura[] { return RAMURI.filter((r) => !r.meniu); }
 // De la Basic în sus: pe Start rândul e încuiat, cu „· Basic" (web: ramuraIncuiata).
 export function ramuraIncuiata(r: Ramura | null, pachet: any): boolean { return !!(r && r.pachet && pachet && !pachet.ramuri); }
-// Suma de lângă „Pagini", cât sunt închise: câte lucruri cer atenție, fără ce e încuiat.
+// Suma de lângă „Domenii", cât sunt închise: câte lucruri cer atenție, fără ce e încuiat.
 export function sumaNumere(numere: any, pachet: any): number {
   let tot = 0;
   pagini().forEach((r) => { const n = numere && numere[r.k]; if (n > 0 && !ramuraIncuiata(r, pachet)) tot += n; });

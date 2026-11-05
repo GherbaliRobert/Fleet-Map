@@ -534,7 +534,7 @@ function comparatie(o) {
       { t: '„Azi la tine”', d: 'Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără', v: pe(function () { return da(true); }) },
       { t: 'RA Insight face, cu „Da”-ul tău', d: 'Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.',
         v: pe(function (p) { return da(p.ramuri); }) },
-      { t: 'Paginile RA Insight', d: 'RA Drive (condus & costuri) · Combustibil · Ore de condus · Mentenanță & acte · Șoferi pe mașini', v: pe(function (p) { return da(p.ramuri); }) },
+      { t: 'Domeniile RA Insight', d: 'RA Drive (condus & costuri) · Combustibil · Ore de condus · Mentenanță & acte · Șoferi pe mașini', v: pe(function (p) { return da(p.ramuri); }) },
     ] },
   ];
 }

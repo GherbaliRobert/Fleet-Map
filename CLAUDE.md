@@ -676,7 +676,7 @@ statistici RA Insight pentru noi → **E** telefonul. Apoi Facturare.
   — `insightComutaStanga(v)`, `inchideSertar()`; dreapta `.insp-dr-col` = bara `.insp-top` (titlul din `setTitlu()`, ⋯ =
   `insightMeniu`, din 15.10) + `#insp-main` (discuția sau pagina ramurii — renderele ramurilor scriu tot acolo). Fără mesaje =
   salutul cu prenumele (`prenume()` = `currentUser.prenume`, de la server — vezi „Prenumele din salut”) + caseta + `CARDURI`. „Întreabă orice" (`general`) NU e
-  printre ramuri (din 15.10 lista e `pagini()`, sub „Pagini ▸" — vezi „RA Insight, mai simplu").
+  printre ramuri (din 15.10 lista e `pagini()`, sub „Domenii ▸" — vezi „RA Insight, mai simplu").
 - ⚠ `.insp-top .insp-meniu` are `.insp-top` în față: `.chat-ib` (mai jos în fișier) l-ar arăta pe calculator.
 - ⚠ **Capcană de unealtă, prinsă pe 08.10:** un script Python cu șir NE-brut transformă `\b` din JavaScript în caracterul
   „backspace" — expresia arată la fel, dar nu mai potrivește nimic. Inserările se scriu cu șiruri brute (`r'''…'''`) și se
@@ -794,7 +794,7 @@ Alin. Reperele anonime și „Acte pentru transport" se reiau după capitolul Fa
 se vede ceva, spune ÎNTÂI cu ce cont (fondator / administratorul firmei / om al firmei) și dă poze cu locul marcat, nu doar drumul în
 cuvinte — „explică ca la proști: unde intru, ce fac, toți pașii".
 Pe ecranul gol erau ~35 de butoane și casete; acum ~12. **Nicio funcție nu s-a pierdut: s-a mutat într-un singur loc** — „+", „⋯"
-sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc pentru același lucru = ce am scos).
+sau „Domenii ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc pentru același lucru = ce am scos).
 - **Salutul:** „Salut, {prenume}! Cu ce te pot ajuta?" (`prenume()` = `currentUser.prenume`, de la server — vezi „Prenumele din salut”),
   fără iconița mare și paragraful.
 - **Caseta: un singur „+"** (`insightPlus` → `insightAlegeMasina` / `insightAlegePerioada` / `insightAlegeRaport`, Raport doar cu
@@ -808,7 +808,7 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
   (cu modulul `agents` și `viewReports`), Ghidul aplicației, Redenumește / Șterge conversația (cu una deschisă); pe telefon și
   „Conversație nouă". Nota despre păstrarea conversațiilor = al 5-lea argument al `_chatAlege` (`nota`); `sep` pe un rând = linie
   deasupra. Iconița de notițe, pastila pachetului de sus, butonul de închidere și ✎ de pe telefon au fost SCOASE.
-- **Stânga:** Conversație nouă, „Caută în conversații" (un rând → caseta), conversațiile pe zile, **„Pagini ▸"** (`pagini()` =
+- **Stânga:** Conversație nouă, „Caută în conversații" (un rând → caseta), conversațiile pe zile, **„Domenii ▸"** (`pagini()` =
   ramurile livrate, fără `general` și fără `meniu: true` — ghidul stă în „⋯"; închise, cu suma numerelor; deschise când stai pe una —
   `insightPagini`, `paginiDeschise()`) și **un rând cu pachetul** (`deseneazaPachet`: `nume · scurt`, amănuntul — `text`, `textOm`,
   `reincarcare` — în `title`; administratorul ajunge din el în „Pachet și conturi"). Regula veche, pe cont, tot pe un rând (textele ei
@@ -823,7 +823,11 @@ sau „Pagini ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea loc
   `raport.note` și se scrie în cartonaș. Mesajul pachetului (`.chat-lim`): „Alege ce vrei să afli" (= „+") și, la administrator,
   „Vezi pachetele".
 - Telefonul (aplicația lui Robert) rămâne cum e până la APK-ul următor. Păzit de `verify_un_singur_insight.js` (secțiunea 3),
-  `verify_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js` (ghidul spune „+", „Pagini", „Mai multe").
+  `verify_insight.js`, `verify_pachete.js`, `verify_insight_ghid.js` (ghidul spune „+", „Domenii", „Mai multe").
+- **„Domenii", nu „Pagini" (05.11; Alin: „hai să-i găsim altă denumire" → „Domenii", „da"):** numele de pe ecran (web și telefon), din ghid
+  („Meniu → RA Insight → Domenii"), din drumul spre prețurile RA Drive (`condus.UNDE_PRETURI`) și rândul „Domeniile RA Insight" din pachete
+  (aplicație + `/pachete-ra-insight`). Numele tehnice rămân (`pagini()`, `insightPagini`, `insp-pag`, `insightPagini.ts`, `InsightPagini.tsx`).
+  NU scrie „Pagini" ca nume în ce vede omul — păzit de `verify_un_singur_insight.js` și `verify_telefon_insight.js`.
 
 ### Asistentul fondatorilor — etapa 1, pasul 1 (30.10; Alin: „vreau să fie tot un chat" → macheta „tot un chat", „1. da, 2. da, 3. da")
 Macheta: https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw (prima, aprobată pe 29–30.10: https://claude.ai/artifact/7BNXNDMpvZ8gmcDHqoj3Vt).
@@ -3205,6 +3209,13 @@ caută forma în tot panoul.
   puse (altfel Leaflet aruncă o eroare și fișa nu se mai deschidea pe calculator); adresa din fișă scrie atunci „—".
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+
+## Harta: balonul unei mașini — numărul în titlu (05.11; Alin: „o flotă poate avea 10 Caddy, omul din grabă nu se uită jos")
+- Balonul de la clic pe o mașină (Localizare, `public/js/vehicle-popup.js`): **titlul = numărul de înmatriculare** (`titluVehicul`: numărul →
+  denumirea → IMEI-ul); primul rând = **„Denumire"** (numele din fișă), doar când e altceva decât numărul (`denumireSub`); rândul „Nr.
+  înmatriculare" a ieșit. „Vehicul" (marca + modelul din fișă) se ascunde când scrie exact cât denumirea (`vehiculSeRepeta`, și după ce sosește
+  fișa, în `applyFull`). Fișa mașinii (panoul din dreapta) și telefonul aveau deja numărul sus. Banda „Urmărești: …" scrie încă denumirea
+  (întrebat pe 05.11). Păzit de `verify_balon_harta.js` (în `npm test`; codul balonului rulat pe o hartă de carton).
 
 ## Alertele: contactul și marja de viteză (Alin, 26.10: „1. da, 2. da")
 - **Pornire / oprire motor = la SCHIMBAREA contactului, o dată:** `_schimbariContact(anterior, records)` (server.js) citește poziția vie

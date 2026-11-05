@@ -156,22 +156,22 @@ const SECTIUNI = [
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei', 'instant', 'insigna']
   },
   {
-    cheie: 'ramuri_insight', titlu: 'Paginile RA Insight: Șoferi pe mașini, RA Drive, Combustibil, Mentenanță, Ore de condus', unde: 'Meniu → RA Insight → Pagini',
+    cheie: 'ramuri_insight', titlu: 'Domeniile RA Insight: Șoferi pe mașini, RA Drive, Combustibil, Mentenanță, Ore de condus', unde: 'Meniu → RA Insight → Domenii',
     pasi: [
-      'Jos în stânga apasă „Pagini" și alege: „Șoferi pe mașini", „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte" sau „Ore de condus".',
+      'Jos în stânga apasă „Domenii" și alege: „Șoferi pe mașini", „RA Drive" (condus & costuri), „Combustibil", „Mentenanță & acte" sau „Ore de condus".',
       'Sus alegi luna (la „Ore de condus", săptămâna) și mașinile: toată flota sau o grupă.',
-      'Numărul de lângă „Pagini" (și de lângă fiecare pagină) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen).',
+      'Numărul de lângă „Domenii" (și de lângă fiecare domeniu) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen).',
       '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
     ],
-    detalii: 'Paginile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Ce cere atenție azi apare și în „Azi la tine", sub salut, de câte ori deschizi RA Insight.',
-    cuvinte: ['ramura', 'ramuri', 'pagini', 'ra drive', 'safe drive', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
+    detalii: 'Domeniile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Ce cere atenție azi apare și în „Azi la tine", sub salut, de câte ori deschizi RA Insight.',
+    cuvinte: ['ramura', 'ramuri', 'domenii', 'domeniile', 'pagini', 'ra drive', 'safe drive', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
   },
   {
     // Prețurile pe manevră din RA Drive (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului").
     // RA Drive nu e un agent: e o pagină din RA Insight. Drumul e același ca în condus.UNDE_PRETURI și ca rândul de pe pagină.
-    cheie: 'ra_drive_preturi', titlu: 'RA Drive: prețul unei manevre bruște (cât costă o frânare, o accelerare, un viraj)', unde: 'Meniu → RA Insight → Pagini → RA Drive → „Editează prețurile"',
+    cheie: 'ra_drive_preturi', titlu: 'RA Drive: prețul unei manevre bruște (cât costă o frânare, o accelerare, un viraj)', unde: 'Meniu → RA Insight → Domenii → RA Drive → „Editează prețurile"',
     pasi: [
-      'Meniu → RA Insight. Jos în stânga apasă „Pagini" și alege „RA Drive".',
+      'Meniu → RA Insight. Jos în stânga apasă „Domenii" și alege „RA Drive".',
       'Sub cifrele mari, lângă rândul cu prețurile, apasă „Editează prețurile": se deschide „Cum se socotește", chiar la prețuri.',
       'La „Prețul unei manevre bruște (lei)" scrie prețul pentru fiecare fel de mașină (autoturism, dubă, camion / autobuz) și fiecare manevră (frânare, accelerare, viraj).',
       'Apasă „Salvează prețurile". „Înapoi la prețurile de pornire" pune la loc estimarea RA Track.'
@@ -181,13 +181,13 @@ const SECTIUNI = [
   },
   {
     // Pasul 2 (22.10): „RA Insight face, cu Da-ul tău" — partea 1, șoferii pe mașini.
-    cheie: 'soferi_masini', titlu: 'Șoferii pe mașini, cu RA Insight: propunerea și „Da"', unde: 'Meniu → RA Insight → Pagini → „Șoferi pe mașini"',
+    cheie: 'soferi_masini', titlu: 'Șoferii pe mașini, cu RA Insight: propunerea și „Da"', unde: 'Meniu → RA Insight → Domenii → „Șoferi pe mașini"',
     pasi: [
       'În discuție scrie, de pildă, „Pune-l pe Mihai Ionescu pe B 77 TIR", sau apasă „Propunere" pe un rând din „Azi la tine".',
       'RA Insight arată propunerea: ce se schimbă, de ce se potrivește (categoriile și valabilitatea permisului, dacă șoferul e liber) și ce nu se schimbă.',
       'Apasă „Da, trece-l" ca s-o faci, „Schimbă" ca să alegi alt șofer liber, sau „Nu". Fără „Da" nu se schimbă nimic.',
       'După „Da", „Anulează" ține 10 minute; apoi schimbi din fișa mașinii, ca de obicei.',
-      'Toată flota deodată: Pagini → „Șoferi pe mașini"; bifezi ce vrei și apeși „Aplică cele bifate".'
+      'Toată flota deodată: Domenii → „Șoferi pe mașini"; bifezi ce vrei și apeși „Aplică cele bifate".'
     ],
     detalii: 'Se face exact ca din Management → Vehicule → fișa mașinii → Șofer, cu aceleași drepturi: cine nu poate schimba vehiculele vede propunerea, dar butonul „Da" e oprit. În jurnal scrie „prin RA Insight". ' +
       'Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic. Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișele șoferilor.',

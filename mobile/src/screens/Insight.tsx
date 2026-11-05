@@ -24,7 +24,7 @@ import './insight.css';
 
 // RA Insight pe telefon (02.11): discuția, ca secțiunea de pe web (public/index.html, blocul „secțiunea RA Insight"). Serverul
 // face tot — recunoaște mașina, ține minte, socotește, scrie textele; ecranul doar arată. Regulile de ecran stau în lib/insight.ts,
-// legate de pagină prin verify_telefon_insight.js. O pagină din „Pagini" are adresa ei (/insight/combustibil): „Înapoi" duce la discuție.
+// legate de pagină prin verify_telefon_insight.js. O pagină din „Domenii" are adresa ei (/insight/combustibil): „Înapoi" duce la discuție.
 // „Vezi pachetele" și „Pachet și conturi" intră în loturile următoare.
 
 // Conversația deschisă rămâne ținută minte cât trăiește aplicația (web: window._raxConvId): ecranul se reface când te întorci
@@ -222,7 +222,7 @@ export function Insight() {
     const st = stareDinQuota(r, !!me.value?.isSuper);
     if (!st.sursaInfo || !st.sursaInfo.poate) setSursaOn(false);
   }
-  // Pachetul sau conturile s-au schimbat: contorul, „Pagini" și locul omului se citesc din nou.
+  // Pachetul sau conturile s-au schimbat: contorul, „Domenii" și locul omului se citesc din nou.
   function dupaPachet() { incarcaPachet(); incarcaLista(); incarcaNumere(); }
   async function incarcaLista(cuvant?: string) {
     const c = cuvant != null ? cuvant : cauta;
@@ -515,10 +515,10 @@ export function Insight() {
               })}
         </div>
         <div class="insp-st-jos">
-          {/* „Pagini": închise, cu câte lucruri cer atenție în toate; deschise când omul le cere sau stă pe una din ele. */}
+          {/* „Domenii" (până pe 05.11 „Pagini"): închise, cu câte lucruri cer atenție în toate; deschise când omul le cere sau stă pe una din ele. */}
           <button type="button" class={'insp-pag' + (pagDesc ? ' desc' : '')} aria-expanded={pagDesc ? 'true' : 'false'}
             onClick={() => { const urm = !pagDesc; setPaginiCerut(urm || !!(rPag && pagini().indexOf(rPag) >= 0)); }}>
-            <Icon name="layers" size={16} /><span>Pagini</span>
+            <Icon name="layers" size={16} /><span>Domenii</span>
             {totNumere > 0 && !pagDesc ? <span class="insp-nr">{totNumere}</span> : null}
             <Icon name="chevronR" size={15} class="insp-pag-s" />
           </button>

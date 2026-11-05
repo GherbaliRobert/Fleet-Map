@@ -118,7 +118,7 @@ const cel = (r) => r.v.map((x) => x.da === true ? '✓' : x.da === false ? '—'
 T('comparația: conturi, întrebări libere (Basic „la comun”), răspunsuri pe loc, pagini și „Da"-ul de la Basic, „Azi la tine" peste tot',
   cel(rand(cmpS, 'Conturi RA Insight')) === '1 | 2 | până la 5 | nelimitate' && cel(rand(cmpS, 'Întrebări libere, cu AI')) === '— | 200 pe lună | 600 pe lună | 1.000 pe lună' &&
   rand(cmpS, 'Întrebări libere, cu AI').v[1].mic === 'la comun' && cel(rand(cmpS, 'Răspunsuri pe loc, din rapoarte')) === '50 pe lună | fără limită | fără limită | fără limită' &&
-  cel(rand(cmpS, 'Paginile RA Insight')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, 'RA Insight face, cu „Da”-ul tău')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, '„Azi la tine”')) === '✓ | ✓ | ✓ | ✓',
+  cel(rand(cmpS, 'Domeniile RA Insight')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, 'RA Insight face, cu „Da”-ul tău')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, '„Azi la tine”')) === '✓ | ✓ | ✓ | ✓',
   JSON.stringify(cmpS.map((g) => g.randuri.map((r) => r.t + ': ' + cel(r)))));
 T('…prețul pe o întrebare liberă doar în aplicație: 5 bani / 3,3 bani / 3 bani la prețurile de listă (Start: —); pe site lipsește',
   cel(rand(cmpA, 'Preț pe o întrebare liberă')) === '— | 5 bani | 3,3 bani | 3 bani' && !rand(cmpS, 'Preț pe o întrebare liberă') &&

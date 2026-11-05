@@ -23,7 +23,7 @@ export const PERIOADE = [
   { text: 'Luna trecută', pune: 'luna trecută' }, { text: 'Ultimele 30 de zile', pune: 'ultimele 30 de zile' },
 ];
 
-// Paginile din „Pagini" (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine"
+// Paginile din „Domenii" (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine"
 // le deschid. O pagină încuiată (Start): „Actele" din „Azi la tine" pleacă drept întrebare, ca pe web.
 // „pachet" = „Pachet și conturi" (web: `S.ramura === 'pachet'`, doar administratorul firmei; ceilalți rămân pe discuție).
 export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k).concat(['pachet']);

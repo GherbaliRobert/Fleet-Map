@@ -9,7 +9,7 @@
 //   3. pagina: bula duce în secțiune (fără chatul ei), „Agenți AI" iese din meniu pentru cine are cont RA Insight, „Azi la
 //      tine" și cartonașul raportului se desenează din ce dă serverul (curățat), Istoric rapoarte are eticheta „din RA Insight",
 //      „Rezumă cu RA Insight" scrie deasupra raportului, ramura se cheamă RA Drive;
-//      macheta „mai simplu" (Alin, 15.10: „1. da, 2. da"): salutul scurt, „+", „⋯", „Pagini ▸", „Azi la tine" pe trei rânduri
+//      macheta „mai simplu" (Alin, 15.10: „1. da, 2. da"): salutul scurt, „+", „⋯", „Domenii ▸" (până pe 05.11 „Pagini"), „Azi la tine" pe trei rânduri
 //      apăsate o dată, pachetul pe un rând, „Fondator · fără limită", răspunsul cu titlu și cel mult două butoane;
 //   4. serverul: o singură scriere în Istoric (_istoricRaport), cererea înaintea răspunsului rapid, /api/me spune `aiCont`;
 //   5. pe server pornit, cu modelul simulat: cererea de raport → Istoric (status „insight"), cartonaș, Excel, continuări, alegerea
@@ -117,7 +117,16 @@ T('salutul scurt cu prenumele: „Salut, Alin! Cu ce te pot ajuta?" (fără icon
 T('trei butoane scurte sub casetă (pe butoane, primul e pe reguli), în locul celor patru cartonașe', (SECT.match(/\{ t: '[^']+', q: '[^']+' \}/g) || []).length === 4 && /el\('button', 'insp-chip', c\.t\)/.test(SECT) && SECT.indexOf('insp-card-q') < 0);
 T('caseta: un singur „+" (Mașina, Perioada, Raport), fără butoanele de pe vremuri', /onclick="insightPlus\(this\)"/.test(SECT) && /window\.insightPlus = function \(btn\)/.test(SECT) && SECT.indexOf('onclick="insightAlegeMasina(this)"') < 0 && SECT.indexOf('insightAlegeRamura') < 0 && SECT.indexOf('insp-b-ramuri') < 0);
 T('„⋯": pachetul (doar administratorul — și când n-are încă un cont al lui), notițele, agenții, ghidul, redenumirea; nota despre păstrare în el', /window\.insightMeniu = function \(btn\)/.test(SECT) && /if \(esteAdmin\(\) && \(S\.pachet \|\| S\.faraLoc\)\) l\.push\(\{ text: 'Pachet și conturi'/.test(SECT) && /l\.push\(\{ text: 'Notițele firmei'/.test(SECT) && /l\.push\(\{ text: 'Ghidul aplicației'/.test(SECT) && /'Conversațiile le vezi doar tu și se păstrează 12 luni de la ultimul mesaj\.'\);/.test(SECT) && SECT.indexOf('insp-pastrare') < 0 && SECT.indexOf('onclick="insightNotite()"') < 0);
-T('„Pagini ▸": ramurile, închise, cu suma lucrurilor de văzut; ghidul nu e printre ele (stă în „⋯")', /function pagini\(\) \{ return RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general' && !r\.meniu; \}\); \}/.test(SECT) && /k: 'ghid', [^}]*meniu: true/.test(SECT) && /window\.insightPagini = function/.test(SECT));
+T('„Domenii ▸" (până pe 05.11 „Pagini"; Alin: „da"): ramurile, închise, cu suma lucrurilor de văzut; ghidul nu e printre ele (stă în „⋯")', /function pagini\(\) \{ return RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general' && !r\.meniu; \}\); \}/.test(SECT) && /k: 'ghid', [^}]*meniu: true/.test(SECT) && /window\.insightPagini = function/.test(SECT) &&
+  /<span>Domenii<\/span><span class="insp-nr" id="insp-pag-nr"/.test(SECT) && !/<span>Pagini<\/span>/.test(SECT));
+{
+  // Numele „Domenii" e același peste tot unde îl vede omul: ghidul, drumul spre prețurile RA Drive, pachetele (aplicație + site).
+  const GHID = fs.readFileSync(path.join(__dirname, 'insight_ghid.js'), 'utf8'), PK = fs.readFileSync(path.join(__dirname, 'pachete.js'), 'utf8'),
+    PUB = fs.readFileSync(path.join(__dirname, 'public/pachete-ra-insight.html'), 'utf8');
+  T('„Domenii" și în ghid, în drumul spre prețurile RA Drive și la pachete (aplicație + site); „Pagini" nicăieri ca nume',
+    /RA Insight → Domenii → RA Drive/.test(require('./condus').UNDE_PRETURI) && /apasă „Domenii"/.test(GHID) && !/„Pagini"|→ Pagini/.test(GHID) &&
+    /t: 'Domeniile RA Insight'/.test(PK) && !/Paginile RA Insight/.test(PK) && /Domeniile RA Insight<small>/.test(PUB) && !/Paginile RA Insight/.test(PUB));
+}
 T('pachetul pe un rând („Basic · 188 din 200"), amănuntul la mouse, administratorul ajunge din el în „Pachet și conturi"', /box\.textContent = p\.nume \+ ' · ' \+ String\(p\.scurt \|\| ''\);/.test(SECT) && /box\.title = \[p\.text, p\.textOm, p\.reincarcare\]/.test(SECT) && SECT.indexOf('insp-pk-top') < 0 && SECT.indexOf('Pachet și conturi →') < 0);
 T('noi, fondatorii (fără pachet): contorul scrie „Fondator · fără limită", și jos, și lângă casetă', /return S\.fondator \? 'Fondator · fără limită' : 'Fără limită';/.test(SECT) && /S\.fondator = !!\(window\.currentUser && window\.currentUser\.isSuper\);/.test(SECT) && /c\.textContent = S\.contor \|\| '';/.test(SECT));
 T('un răspuns: titlu scurt („Am înțeles" fără bule), cel mult două butoane spre rapoarte; Copiază · 👍 · 👎 la trecerea cu mouse-ul (la vedere pe telefon)', PAG.indexOf("r.className = 'ins-tit'") > 0 && PAG.indexOf("'Am înțeles:'") < 0 && /surse\.slice\(0, 2\)\.forEach/.test(SECT) && /\.insp-a \.chat-act \{ opacity: 0;/.test(CSS) && /@media \(hover: none\) \{ \.insp-a \.chat-act \{ opacity: 1; \} \}/.test(CSS) && SECT.indexOf('insp-nota') < 0);

@@ -3974,7 +3974,7 @@ body.dark .insp-stea { color: #06210F; background: #3FE07D; }
 .insp-cauta-r:hover { background: var(--bg-dark); color: var(--text-primary); }
 .insp-cauta { margin: 2px 10px 4px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 10px; font: inherit; font-size: 12.5px; }
 #insp-ramuri { padding: 2px 0 6px; max-height: 40vh; overflow-y: auto; }
-/* „Pagini ▸" (macheta „mai simplu"): ramurile, închise; un rând care se deschide. */
+/* „Domenii ▸" (macheta „mai simplu"; „Pagini" până pe 05.11): ramurile, închise; un rând care se deschide. */
 .insp-pag { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 9px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 800; color: var(--text-primary); cursor: pointer; text-align: left; }
 .insp-pag > i:first-child { width: 24px; text-align: center; color: var(--text-secondary); font-size: 12px; }
 .insp-pag:hover { background: var(--bg-dark); }

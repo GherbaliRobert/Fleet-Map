@@ -228,7 +228,7 @@ function preturi(salvate) {
 // 05.11 (Alin: „scrie că în «Cum se socotește», dar n-am niciun buton — «Editează prețurile», ceva de genul ăsta, să vadă clientul cum
 // face"): lângă rând stă butonul BUTON_PRETURI (doar la cine le poate schimba), care deschide „Cum se socotește” chiar la prețuri.
 const BUTON_PRETURI = 'Editează prețurile';
-const UNDE_PRETURI = 'RA Insight → Pagini → RA Drive → „' + BUTON_PRETURI + '” (sub cifrele mari) → scrii prețul fiecărei manevre → „Salvează prețurile”';
+const UNDE_PRETURI = 'RA Insight → Domenii → RA Drive → „' + BUTON_PRETURI + '” (sub cifrele mari) → scrii prețul fiecărei manevre → „Salvează prețurile”';
 function preturiProprii(salvate) {
   const p = preturi(salvate);
   return CLASE.some(function (c) { return ['frana', 'accel', 'viraj'].some(function (e) { return p[c.k][e] !== PRETURI_IMPLICITE[c.k][e]; }); });
