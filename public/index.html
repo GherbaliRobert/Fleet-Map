@@ -11849,7 +11849,8 @@ const pozitii = await r.json();</code></pre>
       var CARDURI_REGULI = [{ t: 'Ce a făcut flota ieri?', q: 'Ce a făcut flota ieri?' }].concat(CARDURI.slice(1));
       // Iconița fiecărui buton (chatul inteligent, 02.11) — separat de listă, care e aceeași pe telefon.
       var CARDURI_IC = { 'Ce probleme are flota?': 'fa-triangle-exclamation', 'Km săptămâna trecută': 'fa-route', 'Ce acte expiră?': 'fa-file-signature', 'Ce a făcut flota ieri?': 'fa-clock-rotate-left' };
-      function prenume() { var u = window.currentUser || {}; var f = String(u.full_name || '').trim().split(/\s+/)[0] || ''; return f && f.indexOf('@') < 0 ? f : ''; }
+      // Prenumele din salut (05.11): îl dă serverul (/api/me → prenume, regula din prenume.js: „Tilvar Alin" → „Alin", fără nume din email).
+      function prenume() { var u = window.currentUser || {}; return String(u.prenume || '').trim(); }
       function $i(id) { return document.getElementById(id); }
       function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
       function md(t) {
@@ -12896,7 +12897,16 @@ const pozitii = await r.json();</code></pre>
         pag.appendChild(tl);
         // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba"): ale firmei sau de pornire și unde se schimbă, la
         // vedere — textul vine de la server (condus.textPreturi); telefonul pune același rând (planSafeDrive).
-        if (j.preturi && j.preturi.nota) { var pn = el('div', 'sdp-nota'); pn.innerHTML = '<i class="fas fa-tags"></i> '; pn.appendChild(document.createTextNode(j.preturi.nota)); pag.appendChild(pn); }
+        // 05.11 (Alin: „n-am niciun buton — «Editează prețurile», să vadă clientul cum face"): lângă rând, butonul (doar cine le poate
+        // schimba; eticheta de la server) deschide „Cum se socotește” chiar la prețuri și pune cursorul în prima casetă.
+        if (j.preturi && j.preturi.nota) {
+          var pn = el('div', 'sdp-nota sdp-nota-pret'), pt = el('span'); pt.innerHTML = '<i class="fas fa-tags"></i> '; pt.appendChild(document.createTextNode(j.preturi.nota)); pn.appendChild(pt);
+          if (j.preturi.poateSchimba && j.preturi.buton) {
+            var bP = el('button', 'insp-btn prim'); bP.type = 'button'; bP.innerHTML = '<i class="fas fa-pen"></i> '; bP.appendChild(document.createTextNode(j.preturi.buton));
+            bP.onclick = function () { window.insightSdLaPreturi(pag); }; pn.appendChild(bP);
+          }
+          pag.appendChild(pn);
+        }
         // Rândul scorului: scorul flotei, manevrele la 100 km, km — cu luna dinainte alături
         var lin = el('div', 'sdp-linie');
         lin.appendChild(el('span', null, 'Scorul flotei: ' + (f.scor == null ? '—' : f.scor + ' · ' + f.nota) + (fa.scor ? ' (' + fa.scor + ')' : '')));
@@ -12985,7 +12995,7 @@ const pozitii = await r.json();</code></pre>
         var det = el('details', 'sdp-sect sdp-cum'); var sum = el('summary'); sum.innerHTML = '<i class="fas fa-calculator"></i> '; sum.appendChild(document.createTextNode('Cum se socotește')); det.appendChild(sum);
         (j.explicatii || []).forEach(function (x) { var p = el('p'); p.appendChild(el('b', null, x.titlu + '. ')); p.appendChild(document.createTextNode(x.text)); det.appendChild(p); });
         var P = j.preturi || {}, ev = [['frana', 'Frânare bruscă'], ['accel', 'Accelerare bruscă'], ['viraj', 'Viraj brusc']];
-        det.appendChild(el('div', 'sdp-et', 'Prețul unei manevre bruște (lei)'));
+        det.appendChild(el('div', 'sdp-et sdp-et-pret', 'Prețul unei manevre bruște (lei)'));
         var tP = sdTabel([['Felul mașinii']].concat(ev.map(function (e) { return [e[1], 'n']; })));
         (P.clase || []).forEach(function (cl) {
           var tr = el('tr'); sdCel(tr, cl.et);
@@ -13346,6 +13356,15 @@ const pozitii = await r.json();</code></pre>
         var r = await cere('DELETE', '/api/insight/safe-drive/discutie/' + encodeURIComponent(id));
         if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu s-a putut scoate.', 'error'); return; }
         var main = $i('insp-main'); if (main && S.ramura === 'safedrive') deseneazaSafeDrive(main, S.sdLuna, true);
+      };
+      // „Editează prețurile” (05.11): deschide „Cum se socotește”, coboară la prețuri și pune cursorul în prima casetă. Nu e un al doilea
+      // loc pentru prețuri: duce la singurul loc în care se schimbă.
+      window.insightSdLaPreturi = function (pag) {
+        var det = pag && pag.querySelector('details.sdp-cum'); if (!det) return;
+        det.open = true; S.sdCumDeschis = true;
+        var tinta = det.querySelector('.sdp-et-pret') || det, inp = det.querySelector('input.sdp-pret');
+        try { tinta.scrollIntoView({ block: 'start', behavior: window._chatMiscare && window._chatMiscare() ? 'smooth' : 'auto' }); } catch (e) { tinta.scrollIntoView(); }
+        if (inp) setTimeout(function () { try { inp.focus({ preventScroll: true }); inp.select(); } catch (e) {} }, 350);
       };
       window.insightSdPreturi = async function (det, laPornire) {
         var p = {};

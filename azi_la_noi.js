@@ -38,9 +38,11 @@ function deCand(la, acum) {
 }
 function zz(ms) { const s = _fmtZi.formatToParts(new Date(ms)); const d = s.find((p) => p.type === 'day'), m = s.find((p) => p.type === 'month'); return (d ? d.value : '') + ' ' + (m ? m.value : ''); }
 
-function prenume(nume) { return String(nume || '').trim().split(/\s+/)[0] || ''; }
-function salut(nume, acum) {
-  const h = oraRo(acum), p = prenume(nume);
+// Prenumele (05.11): O regulă, în prenume.js — cuvântul din nume care e un prenume („Tilvar Alin" → „Alin"), altfel primul cuvânt,
+// fără nume din adresa de email („alin.tilvar@…" → „Alin"). Aceeași ca la „Salut, Alin!" din RA Insight (/api/me → prenume).
+function prenume(nume, email) { return require('./prenume').prenumeDin(nume, email); }
+function salut(nume, acum, email) {
+  const h = oraRo(acum), p = prenume(nume, email);
   const s = h >= 5 && h < 11 ? 'Bună dimineața' : (h >= 11 && h < 18 ? 'Bună ziua' : 'Bună seara');
   return '**' + s + (p ? ', ' + p : '') + '!** Iată cum stăm azi.';
 }
@@ -181,7 +183,7 @@ function randuri(d) {
   // sau portocalie, se numără la „de văzut", ca titlul să nu spună „totul e în regulă" lângă un sold pe terminate.
   const extra = d.ai && (d.ai.nivel === 'r' || d.ai.nivel === 'w') ? 1 : 0, n = toate.length + extra;
   return {
-    zi: ziua(acum), ora: ora(acum), salut: salut(d.nume, acum),
+    zi: ziua(acum), ora: ora(acum), salut: salut(d.nume, acum, d.email),
     randuri: arata, deVazut: n, ai: d.ai || null,
     deVazutText: !n ? 'totul e în regulă' : (toate.length > MAX_RANDURI ? n + ' de văzut · primele ' + MAX_RANDURI : (n === 1 ? '1 de văzut' : n + ' de văzut')),
     gol: extra ? 'Altceva nu cere atenție azi.' : 'Nimic nu cere atenție azi.',

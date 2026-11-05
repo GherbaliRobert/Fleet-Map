@@ -141,8 +141,10 @@ sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
   T('…„Setările agenților": aceeași condiție ca pe web, duce la ecranul agenților',
     /u\.features && u\.features\.agents !== false && u\.permissions && u\.permissions\.viewReports/.test(meniuWeb) && /u\?\.features && u\.features\.agents !== false && u\?\.permissions\?\.viewReports/.test(S.ecran) && /x\.k === 'agenti'\) du\('\/ai-agents'\)/.test(S.ecran));
   // Salutul, rulat pe web.
-  const prenumeWeb = (full) => new Function('window', functie(INSP, 'function prenume()') + '; return (prenume() ? "Salut, " + prenume() + "! " : "Salut! ") + "Cu ce te pot ajuta?";')({ currentUser: { full_name: full } });
-  ['Alin Tîlvăr', '  Ion  ', '', null, 'alin@firma.ro', 'Maria-Ana Pop'].forEach((f) => T('salutul pentru ' + J(f), L.textSalut(f) === prenumeWeb(f), L.textSalut(f)));
+  // Din 05.11 prenumele vine de la server (/api/me → prenume, prenume.js); pagina și telefonul doar îl scriu, la fel.
+  const prenumeWeb = (p) => new Function('window', functie(INSP, 'function prenume()') + '; return (prenume() ? "Salut, " + prenume() + "! " : "Salut! ") + "Cu ce te pot ajuta?";')({ currentUser: { prenume: p, full_name: 'Tilvar Alin' } });
+  ['Alin', '  Ion  ', '', null, 'Ana-Maria'].forEach((p) => T('salutul pentru prenumele ' + J(p), L.textSalut(p) === prenumeWeb(p), L.textSalut(p)));
+  T('…prenumele vine de la server, nu din nume (pagina și telefonul)', /return String\(u\.prenume \|\| ''\)\.trim\(\);/.test(functie(INSP, 'function prenume()')) && /textSalut\(u\?\.prenume\)/.test(S.ecran) && !/prenumeDin/.test(S.lib));
   T('rapoartele din „+": de la server, cu textul pus în casetă', /Api\.insightRapoarte\(\)/.test(S.ecran) && /pune: String\(x\.pune \|\| ''\)/.test(S.ecran) && /'\/api\/insight\/rapoarte'/.test(S.endpoints));
 }
 

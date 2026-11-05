@@ -228,6 +228,7 @@ const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: 
 const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
 const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
 const soldAi = require('./sold_ai');             // banii pentru AI, la zi (04.11): soldul Anthropic, anunțurile, alarma refuzului
+const prenumeMod = require('./prenume');         // prenumele din salut (05.11): „Tilvar Alin" → „Alin"; fără nume, din email
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
@@ -3128,6 +3129,8 @@ app.get('/api/me', async (req, res) => {
     // Drepturile trimise interfeței sunt cele EFECTIVE (rol minus ce a tăiat firma). Altfel ecranul
     // ar arăta butoane pe care serverul le refuză — adică ar părea stricat.
     username: a.username, full_name: fullName, role: a.role,
+    // Prenumele din „Salut, Alin!" (05.11): O regulă, pe server (prenume.js) — pagina și telefonul doar îl scriu.
+    prenume: prenumeMod.prenumeDin(fullName, a.username),
     permissions: drepturiEfective(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     roleLabel: numeRol(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     // Ce ecrane și ce rapoarte are voie să vadă — interfața ascunde restul din meniu, ca omul să nu
@@ -6433,7 +6436,8 @@ async function _sdLuna(req, o) {
     preturi: { clase: condus.CLASE, valori: preturi, implicite: condus.PRETURI_IMPLICITE, poateSchimba: req.companyId != null && permReq(req, 'manageFleet'),
       // Ale firmei sau de pornire, și unde se schimbă (04.11): textul la vedere pe pagină, pe web și pe telefon (condus.textPreturi).
       proprii: condus.preturiProprii(f.cs.safe_drive && f.cs.safe_drive.preturi),
-      nota: condus.textPreturi(condus.preturiProprii(f.cs.safe_drive && f.cs.safe_drive.preturi), req.companyId != null && permReq(req, 'manageFleet')), unde: condus.UNDE_PRETURI },
+      nota: condus.textPreturi(condus.preturiProprii(f.cs.safe_drive && f.cs.safe_drive.preturi), req.companyId != null && permReq(req, 'manageFleet')), unde: condus.UNDE_PRETURI,
+      buton: condus.BUTON_PRETURI },   // 05.11: butonul de lângă rând (doar cu poateSchimba) deschide „Cum se socotește” la prețuri
     poateNota: permReq(req, 'manageFleet'),
   };
   const imeis = f.masini.map(function (m) { return m.imei; });
@@ -7616,11 +7620,11 @@ app.get('/api/admin/azi-la-noi', requireAuth, requireSuperadmin, async (req, res
   try {
     const acum = Date.now();
     if (!_aziLaNoiMem.d || acum - _aziLaNoiMem.la > 2 * 60000 || String(req.query.proaspat || '') === '1') _aziLaNoiMem = { la: acum, d: await _aziLaNoiDate(acum) };
-    const a = getAuth(req); let nume = '';
-    try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; } catch (e) {}
+    const a = getAuth(req); let nume = '', email = (a && a.username) || '';
+    try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; email = (u && (u.username || u.email)) || email; } catch (e) {}
     // Întrebările gata făcute de sub „Azi la noi" (pasul 2) vin tot de aici: pagina nu-și scrie textele.
     let bandaAi = null; try { bandaAi = await _bandaAi(acum); } catch (e) { console.warn('[azi-la-noi] banda AI: ' + e.message); }
-    res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume, ai: bandaAi })), { intrebari: asistentF.INTREBARI_GATA }));
+    res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume, email: email, ai: bandaAi })), { intrebari: asistentF.INTREBARI_GATA }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ── Asistentul fondatorilor, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta „tot un chat") ──────────────

@@ -107,6 +107,16 @@ function Preturi({ P, l, laSalvat }: { P: any; l: LaPagina; laSalvat: () => void
     </>
   );
 }
+// „Editează prețurile” (05.11, RA Drive): deschide „Cum se socotește”, coboară la prețuri și pune cursorul în prima casetă — duce la
+// singurul loc în care se schimbă prețurile, nu e un al doilea.
+function laPreturi() {
+  mem.cum['safedrive'] = true;
+  const det = document.querySelector('details.sdp-cum') as HTMLDetailsElement | null; if (!det) return;
+  det.open = true;
+  const tinta = (det.querySelector('.sdp-et') || det) as HTMLElement, inp = det.querySelector('input.sdp-pret') as HTMLInputElement | null;
+  tinta.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  if (inp) setTimeout(() => { try { inp.focus({ preventScroll: true }); inp.select(); } catch (e) { /* nimic */ } }, 350);
+}
 function BlocUna({ b, l, bife, reia }: { b: Bloc; l: LaPagina; bife?: { stare: BifaStare[]; schimba: (i: number, v: boolean) => void }; reia?: () => void }) {
   switch (b.b) {
     case 'card': return <div class="insp-card">{b.h3 ? <h3>{b.h3}</h3> : null}<div>{b.text}</div></div>;
@@ -158,7 +168,12 @@ function BlocUna({ b, l, bife, reia }: { b: Bloc; l: LaPagina; bife?: { stare: B
         {b.preturi ? <Preturi P={b.preturi} l={l} laSalvat={() => reia && reia()} /> : null}
       </details>
     );
-    case 'nota': return <div class="sdp-nota"><Icon name="circleInfo" size={14} /><span>{b.text}</span></div>;
+    case 'nota': return (
+      <div class={'sdp-nota' + (b.buton ? ' sdp-nota-pret' : '')}>
+        <Icon name="circleInfo" size={14} /><span>{b.text}</span>
+        {b.buton ? <button type="button" class="insp-btn prim" onClick={laPreturi}><Icon name="edit" size={14} /><span>{b.buton}</span></button> : null}
+      </div>
+    );
     case 'butoane': return <div class="sdp-btns">{b.butoane.map((x) => <ButonPagina b={x} l={l} />)}</div>;
     case 'rand': return <div class={'ssm-rand' + (b.w ? ' w' : '')}><b>{b.nr}</b>{b.text}</div>;
     case 'intro': return <div class="ssm-intro">{b.text}</div>;

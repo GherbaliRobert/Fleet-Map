@@ -28,13 +28,10 @@ export const PERIOADE = [
 // „pachet" = „Pachet și conturi" (web: `S.ramura === 'pachet'`, doar administratorul firmei; ceilalți rămân pe discuție).
 export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k).concat(['pachet']);
 
-// Prenumele din salut. O adresă de email nu e un prenume.
-export function prenumeDin(fullName: any): string {
-  const f = String(fullName || '').trim().split(/\s+/)[0] || '';
-  return f && f.indexOf('@') < 0 ? f : '';
-}
-export function textSalut(fullName: any): string {
-  const p = prenumeDin(fullName);
+// Salutul (05.11): prenumele îl dă serverul (/api/me → prenume, regula din prenume.js: „Tilvar Alin" → „Alin", fără nume din email),
+// ca pe web. Telefonul nu-l mai socotește din nume.
+export function textSalut(prenume: any): string {
+  const p = String(prenume || '').trim();
   return (p ? 'Salut, ' + p + '! ' : 'Salut! ') + 'Cu ce te pot ajuta?';
 }
 

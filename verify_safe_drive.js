@@ -280,15 +280,24 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului"): de unde vin și unde se
   // schimbă — un singur text (condus.textPreturi / UNDE_PRETURI), la vedere pe pagină (web + telefon), în ghid și în unealta lui RA Insight.
   const tp0 = C.textPreturi(false, true), tp1 = C.textPreturi(true, false);
-  T('prețurile: textul spune dacă sunt de pornire (cu un exemplu) sau ale firmei și unde se schimbă / cine le schimbă', /cele de pornire, o estimare RA Track \(de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism\)/.test(tp0) &&
-    /„Cum se socotește”/.test(tp0) && /„Salvează prețurile”/.test(tp0) && /^Prețurile pe manevră sunt ale firmei\. Le schimbă administratorul sau managerul firmei/.test(tp1), tp0 + ' | ' + tp1);
+  T('prețurile: textul spune dacă sunt de pornire (cu un exemplu) sau ale firmei și cum se schimbă (butonul „Editează prețurile”, 05.11) / cine le schimbă', /cele de pornire, o estimare RA Track \(de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism\)/.test(tp0) &&
+    /apasă „Editează prețurile”/.test(tp0) && /„Salvează prețurile”/.test(tp0) && /^Prețurile pe manevră sunt ale firmei\. Le schimbă administratorul sau managerul firmei, din contul lui: „Editează prețurile”/.test(tp1) && C.BUTON_PRETURI === 'Editează prețurile', tp0 + ' | ' + tp1);
   T('…„ale firmei" = măcar un preț diferit de cel de pornire', C.preturiProprii(null) === false && C.preturiProprii({ camion: { frana: 2 } }) === true && C.preturiProprii({ camion: { frana: 1.5 } }) === false);
-  T('…pagina îl pune la vedere, sub cifrele mari (textul serverului, ca text), iar telefonul la fel', /pag\.appendChild\(tl\);\s*\/\/ Prețurile pe manevră[\s\S]{0,260}if \(j\.preturi && j\.preturi\.nota\) \{ var pn = el\('div', 'sdp-nota'\);[^}]*document\.createTextNode\(j\.preturi\.nota\)/.test(bloc) &&
-    /p\.blocuri\.push\(\{ b: 'tiles', tiles \}\);\s*\/\/ Prețurile[^\n]*\n\s*if \(j\.preturi && j\.preturi\.nota\) p\.blocuri\.push\(\{ b: 'nota', text: j\.preturi\.nota \}\);/.test(fs.readFileSync(path.join(__dirname, 'mobile/src/lib/insightPagini.ts'), 'utf8')));
+  const PG_TEL = fs.readFileSync(path.join(__dirname, 'mobile/src/lib/insightPagini.ts'), 'utf8'), CMP_TEL = fs.readFileSync(path.join(__dirname, 'mobile/src/components/InsightPagini.tsx'), 'utf8');
+  T('…pagina îl pune la vedere, sub cifrele mari (textul serverului, ca text), iar telefonul la fel', /pag\.appendChild\(tl\);\s*\/\/ Prețurile pe manevră[\s\S]{0,600}if \(j\.preturi && j\.preturi\.nota\) \{\s*var pn = el\('div', 'sdp-nota sdp-nota-pret'\)[^\n]*document\.createTextNode\(j\.preturi\.nota\)/.test(bloc) &&
+    /if \(j\.preturi && j\.preturi\.nota\) p\.blocuri\.push\(\{ b: 'nota', text: j\.preturi\.nota, buton: j\.preturi\.poateSchimba && j\.preturi\.buton \? String\(j\.preturi\.buton\) : undefined \}\);/.test(PG_TEL));
+  // „Editează prețurile” (05.11; Alin: „n-am niciun buton… să vadă clientul cum face"): doar la cine le poate schimba, eticheta de la server,
+  // duce la SINGURUL loc al prețurilor („Cum se socotește”, deschis, cu cursorul în prima casetă) — pe web și pe telefon.
+  T('„Editează prețurile”: butonul stă lângă rând doar cu poateSchimba, cu eticheta serverului, și deschide „Cum se socotește” la prețuri',
+    /if \(j\.preturi\.poateSchimba && j\.preturi\.buton\) \{[\s\S]{0,300}bP\.onclick = function \(\) \{ window\.insightSdLaPreturi\(pag\); \};/.test(bloc) &&
+    /window\.insightSdLaPreturi = function \(pag\) \{[\s\S]{0,200}det\.open = true; S\.sdCumDeschis = true;[\s\S]{0,200}\.sdp-et-pret[\s\S]{0,400}inp\.focus/.test(PAG) && /buton: condus\.BUTON_PRETURI/.test(SRV) && /el\('div', 'sdp-et sdp-et-pret', 'Prețul unei manevre bruște \(lei\)'\)/.test(bloc));
+  T('…pe telefon la fel: butonul din rândul prețurilor deschide „Cum se socotește” (mem.cum) și duce la prima casetă', /\{b\.buton \? <button type="button" class="insp-btn prim" onClick=\{laPreturi\}>/.test(CMP_TEL) &&
+    /function laPreturi\(\) \{\s*mem\.cum\['safedrive'\] = true;[\s\S]{0,200}det\.open = true;[\s\S]{0,300}inp\.focus/.test(CMP_TEL));
+  T('…butonul nu iese verde pe verde (iconița ia culoarea butonului) și rândul se rupe pe ecranul îngust', /\.sdp-nota-pret \.insp-btn i \{ color: inherit;/.test(CSS) && /\.sdp-nota-pret \{ display: flex; flex-wrap: wrap;/.test(CSS));
   T('…RA Insight o primește în unealta safe_drive (ale firmei sau de pornire, unde se schimbă, cine)', /preturi_pe_manevra: \{ ale_firmei: !!\(r\.preturi && r\.preturi\.proprii\), unde_se_schimba: condus\.UNDE_PRETURI/.test(SRV));
   const GH = require('./insight_ghid');
   T('…iar ghidul are drumul (și RA Insight îl găsește la „unde schimb prețul frânării")', (GH.cauta('unde schimb pretul franarii in ra drive')[0] || {}).cheie === 'ra_drive_preturi' &&
-    /„Cum se socotește"/.test((GH.SECTIUNI.filter((x) => x.cheie === 'ra_drive_preturi')[0] || {}).unde || ''));
+    /„Editează prețurile"/.test((GH.SECTIUNI.filter((x) => x.cheie === 'ra_drive_preturi')[0] || {}).unde || ''));
 
   const PORT = 3297, TCP = 5297;
   const DIR = path.join(os.tmpdir(), 'rax_safedrive_' + Date.now());
@@ -421,7 +430,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('…iar costul manevrelor se socotește cu ele (B 154 UIP: ' + m3.frana + ' × 0,5 + ' + m3.accel + ' × 0,15 + ' + m3.viraj + ' × 0,10)', m3.cost && m3.cost.manevre === Math.round((m3.frana * 0.5 + m3.accel * 0.15 + m3.viraj * 0.1) * 100) / 100 && p3.j.preturi.valori.autoturism.frana === 0.5, JSON.stringify(m3.cost));
   const pAlt2 = await pagina(ckAlt, LUNA);
   T('…doar în firma lui: cealaltă firmă are tot prețurile de pornire', pAlt2.j.preturi && pAlt2.j.preturi.valori.autoturism.frana === 0.2);
-  T('…și nota de sus spune „ale firmei" la șef și „de pornire" la cealaltă firmă', p3.j.preturi && p3.j.preturi.proprii === true && /^Prețurile pe manevră sunt ale firmei\. Le schimbi/.test(p3.j.preturi.nota || '') &&
+  T('…și nota de sus spune „ale firmei" la șef și „de pornire" la cealaltă firmă', p3.j.preturi && p3.j.preturi.proprii === true && /^Prețurile pe manevră sunt ale firmei\. Le poți schimba după cum consideri: apasă „Editează prețurile”/.test(p3.j.preturi.nota || '') && p3.j.preturi.buton === 'Editează prețurile' &&
     pAlt2.j.preturi.proprii === false && /cele de pornire/.test(pAlt2.j.preturi.nota || ''), (p3.j.preturi || {}).nota + ' | ' + (pAlt2.j.preturi || {}).nota);
   const pDs = await pagina(ckDisp, LUNA);
   T('…dispecerul (fără drept de schimbare) află cine le schimbă', pDs.status !== 200 || /Le schimbă administratorul sau managerul firmei/.test((pDs.j.preturi || {}).nota || ''), pDs.status + ' ' + ((pDs.j.preturi || {}).nota || ''));

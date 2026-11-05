@@ -239,6 +239,10 @@ const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean)
   T('pregătire: firma pe Basic, patru mașini, administratorul cu cont, managerul fără', !!(coB.id && adm.ck && man.ck));
   const me1 = await json('GET', '/api/me', adm.ck), me2 = await json('GET', '/api/me', man.ck), me0 = await json('GET', '/api/me', S);
   T('/api/me: `aiCont` la administratorul cu cont (meniul fără „Agenți AI"), nu la manager și nu la noi', me1.j.aiCont === true && me2.j.aiCont === false && me0.j.aiCont === false, [me1.j.aiCont, me2.j.aiCont, me0.j.aiCont].join(','));
+  // Prenumele din „Salut, …!" (05.11): îl dă serverul — „Tilvar Alin" (ca în acte) → „Alin"; contul „admin" fără nume → fără prenume.
+  await json('PUT', '/api/me/profile', adm.ck, { full_name: 'Tilvar Alin' });
+  const meP = (await json('GET', '/api/me', adm.ck)).j;
+  T('/api/me: prenumele din regulă („Tilvar Alin" → „Alin"); contul „admin" nu primește unul', meP.prenume === 'Alin' && meP.full_name === 'Tilvar Alin' && me0.j.prenume === '', JSON.stringify([meP.prenume, me0.j.prenume, me0.j.full_name]));
 
   const q0 = (await json('GET', '/api/ai/quota', adm.ck)).j;
   // a) cererea de raport

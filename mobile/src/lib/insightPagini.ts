@@ -55,7 +55,7 @@ export type Bloc =
   | { b: 'loc'; text: string; lat: any; lng: any }
   | { b: 'ore'; coloane: { h: number; proc: number; sus: boolean; n: number }[] }
   | { b: 'cum'; cheie: string; explicatii: { titlu: string; text: string }[]; preturi?: any }
-  | { b: 'nota'; text: string }
+  | { b: 'nota'; text: string; buton?: string }   // buton (05.11): „Editează prețurile” — deschide „Cum se socotește” la prețuri
   | { b: 'butoane'; butoane: Buton[] }
   | { b: 'rec'; fel: string; text: string }
   | { b: 'rand'; nr: string; text: string; w?: boolean }
@@ -104,8 +104,9 @@ export function planSafeDrive(j: any): Plan {
     ['gauge', 'Viteză', c.viteza, 'combustibil în plus, peste ' + lim + ' km/h'],
     ['clock', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + ' ore']] as any[]).forEach((x) => tiles.push({ ic: x[0], et: x[1], val: sdLei(x[2]), sub: x[3] }));
   p.blocuri.push({ b: 'tiles', tiles });
-  // Prețurile pe manevră (04.11): ale firmei sau de pornire și unde se schimbă — același rând ca pe web, cu textul serverului.
-  if (j.preturi && j.preturi.nota) p.blocuri.push({ b: 'nota', text: j.preturi.nota });
+  // Prețurile pe manevră (04.11): ale firmei sau de pornire și unde se schimbă — același rând ca pe web, cu textul serverului;
+  // din 05.11 și butonul „Editează prețurile” (eticheta de la server), doar la cine le poate schimba.
+  if (j.preturi && j.preturi.nota) p.blocuri.push({ b: 'nota', text: j.preturi.nota, buton: j.preturi.poateSchimba && j.preturi.buton ? String(j.preturi.buton) : undefined });
   p.blocuri.push({ b: 'linie', spans: [
     'Scorul flotei: ' + (f.scor == null ? '—' : f.scor + ' · ' + f.nota) + (fa.scor ? ' (' + fa.scor + ')' : ''),
     'Manevre bruște la 100 km: ' + sdNr(f.laSuta, 1) + (fa.laSuta ? ' (' + fa.laSuta + ')' : ''),
@@ -369,7 +370,8 @@ export function textePlan(p: any): string[] {
     if (b.b === 'card' || b.b === 'pregatire') { pune(b.h3); pune(b.text); if (b.procent != null) pune(b.procent + '%'); }
     else if (b.b === 'tiles') b.tiles.forEach((t: Tile) => { pune(t.et); pune(t.val); pune(t.sub); if (t.chip) pune(t.chip.text); if (t.link) pune(t.link.text); });
     else if (b.b === 'linie') b.spans.forEach(pune);
-    else if (b.b === 'mic' || b.b === 'et' || b.b === 'nota' || b.b === 'loc' || b.b === 'rec') pune(b.text);
+    else if (b.b === 'nota') { pune(b.text); if (b.buton) pune(b.buton); }   // 05.11: „Editează prețurile”, după rând (ca pe web)
+    else if (b.b === 'mic' || b.b === 'et' || b.b === 'loc' || b.b === 'rec') pune(b.text);
     else if (b.b === 'recbox') { pune('Ce recomandă RA Insight'); b.reco.forEach((r: any) => pune(r.text)); b.butoane.forEach((x: Buton) => pune(x.text)); }
     else if (b.b === 'sect') { pune(b.titlu); b.copii.forEach(umbla); }
     else if (b.b === 'tabel') { b.capete.forEach((c: any) => pune(c.t)); b.randuri.forEach((r: Rand) => { r.celule.forEach((c) => c.linii.forEach(lin)); if (r.verif) pune(r.verif); }); }

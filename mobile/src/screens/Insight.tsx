@@ -565,7 +565,7 @@ export function Insight() {
         ) : !mesaje.length ? (
           <div class="insp-gol-mij">
             <div class="insp-salut">
-              <h2>{textSalut(u?.full_name)}</h2>
+              <h2>{textSalut(u?.prenume)}</h2>
               {caseta}
               <div class="insp-chips">
                 {(stare.peReguli ? CARDURI_REGULI : CARDURI).map((c) => <button type="button" class="insp-chip" onClick={() => trimite(c.q, { buton: true })}>{c.t}</button>)}

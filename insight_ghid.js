@@ -169,14 +169,14 @@ const SECTIUNI = [
   {
     // Prețurile pe manevră din RA Drive (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului").
     // RA Drive nu e un agent: e o pagină din RA Insight. Drumul e același ca în condus.UNDE_PRETURI și ca rândul de pe pagină.
-    cheie: 'ra_drive_preturi', titlu: 'RA Drive: prețul unei manevre bruște (cât costă o frânare, o accelerare, un viraj)', unde: 'Meniu → RA Insight → Pagini → RA Drive → „Cum se socotește"',
+    cheie: 'ra_drive_preturi', titlu: 'RA Drive: prețul unei manevre bruște (cât costă o frânare, o accelerare, un viraj)', unde: 'Meniu → RA Insight → Pagini → RA Drive → „Editează prețurile"',
     pasi: [
       'Meniu → RA Insight. Jos în stânga apasă „Pagini" și alege „RA Drive".',
-      'Coboară până jos și deschide „Cum se socotește".',
+      'Sub cifrele mari, lângă rândul cu prețurile, apasă „Editează prețurile": se deschide „Cum se socotește", chiar la prețuri.',
       'La „Prețul unei manevre bruște (lei)" scrie prețul pentru fiecare fel de mașină (autoturism, dubă, camion / autobuz) și fiecare manevră (frânare, accelerare, viraj).',
       'Apasă „Salvează prețurile". „Înapoi la prețurile de pornire" pune la loc estimarea RA Track.'
     ],
-    detalii: 'Prețurile le schimbă administratorul sau managerul firmei; ceilalți le văd. Cele de pornire sunt o estimare RA Track (combustibilul aruncat, frânele și anvelopele tocite): de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism. Sub cifrele mari ale paginii scrie mereu dacă prețurile sunt ale firmei sau cele de pornire.',
+    detalii: 'Prețurile le schimbă administratorul sau managerul firmei, din contul lor (doar ei văd butonul „Editează prețurile"); ceilalți le văd. Cele de pornire sunt o estimare RA Track (combustibilul aruncat, frânele și anvelopele tocite): de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism. Sub cifrele mari ale paginii scrie mereu dacă prețurile sunt ale firmei sau cele de pornire.',
     cuvinte: ['pret manevra', 'pretul manevrei', 'preturile manevrelor', 'pretul franarii', 'cost franare', 'cat costa o franare', 'schimb preturile', 'preturi ra drive', 'preturile din ra drive', 'manevre bruste']
   },
   {

@@ -130,6 +130,7 @@ const cuMov = []; CSS.replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, corp) => { if (A
 T('niciun mov în regulile lui RA Insight (culorile siglei: verdele casei + negrul „cernelii")', cuMov.length === 0, cuMov.slice(0, 5).join(' | '));
 T('…nici în blocul paginii (secțiunea RA Insight)', INSP.length > 1000 && !MOV.test(INSP), (INSP.match(MOV) || [''])[0]);
 T('…pe tema închisă butonul de trimis GOL rămâne gri („body.dark .chat-trimite" are 2 clase + body și bătea „.chat-trimite.gol")', /body\.dark \.chat-trimite\.gol \{ background: var\(--bg-dark\); color: var\(--text-secondary\); \}/.test(CSS));
+T('…și la asistentul nostru (05.11): „.asf .chat-trimite.gol" pe ambele teme', /\.asf \.chat-trimite\.gol, body\.dark \.asf \.chat-trimite\.gol \{ background: var\(--bg-dark\); color: var\(--text-secondary\); \}/.test(CSS));
 
 (async () => {
   console.log('\n6. În browser: cuvintele se aprind sub o secundă; cu „mai puțină mișcare", pe loc');
@@ -167,6 +168,16 @@ T('…pe tema închisă butonul de trimis GOL rămâne gri („body.dark .chat-t
       T('„Mă gândesc…": semnul se învârte (av lucreaza asf-av), role="status"', g.av === 'av lucreaza asf-av' && g.text === 'Mă gândesc…' && g.rol === 'status', JSON.stringify(g));
       T('cât a durat, lângă antet: „· 4 secunde"', g.dur === '· 4 secunde', g.dur);
       await pg.close();
+      // Butonul de trimis GOL e gri în AMBELE chaturi, pe ambele teme (05.11; Alin: „rezolvă acum") — măsurat cu toată foaia de stil:
+      // pe tema închisă „body.dark .chat-trimite" bătea „.chat-trimite.gol", iar la noi „.asf .chat-trimite" (scrisă mai jos) la fel.
+      const pg2 = await br.newPage(), rez = {};
+      for (const dark of [false, true]) {
+        await pg2.setContent('<html><head><style>' + CSS + '</style></head><body class="' + (dark ? 'dark' : '') + '"><div class="insp"><button id="a" class="chat-trimite gol">x</button><button id="b" class="chat-trimite">x</button></div>' +
+          '<div class="asf"><button id="c" class="chat-trimite gol">x</button><button id="d" class="chat-trimite">x</button></div></body></html>');
+        rez[dark ? 'inchisa' : 'deschisa'] = await pg2.evaluate(() => ['a', 'b', 'c', 'd'].map((id) => getComputedStyle(document.getElementById(id)).backgroundImage === 'none' ? 'gri' : 'plin'));
+      }
+      T('butonul de trimis: gol = gri, cu text = plin — la RA Insight și la noi, pe ambele teme (măsurat)', JSON.stringify(rez) === JSON.stringify({ deschisa: ['gri', 'plin', 'gri', 'plin'], inchisa: ['gri', 'plin', 'gri', 'plin'] }), JSON.stringify(rez));
+      await pg2.close();
     } catch (e) { T('partea din browser a mers până la capăt', false, e.message); }
     await br.close();
   }

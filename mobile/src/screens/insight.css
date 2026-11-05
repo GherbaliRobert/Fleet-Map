@@ -315,6 +315,11 @@
 .sdp-prog b { display: block; height: 100%; background: var(--accent); transition: width .4s; }
 .sdp-nota { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 .sdp-nota svg { flex: none; margin-top: 2px; }
+/* Rândul prețurilor pe manevră + „Editează prețurile” (05.11): pe telefon butonul trece sub text, cât tot rândul. */
+.sdp-nota-pret { flex-wrap: wrap; }
+.sdp-nota-pret > span { flex: 1 1 200px; min-width: 0; }
+.sdp-nota-pret .insp-btn { flex: 1 1 100%; justify-content: center; min-height: 40px; }
+.sdp-nota-pret .insp-btn svg { margin-top: 0; }
 
 /* Tabelele paginilor: pe ecran lat, tabel; pe telefon, un cartonaș pe rând (eticheta coloanei în față, ca asistentul fondatorilor). */
 .sdp-tab { width: 100%; border-collapse: collapse; font-size: 13px; }

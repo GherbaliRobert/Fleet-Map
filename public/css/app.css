@@ -4472,6 +4472,11 @@ body.dark .sdp-recbox > .et { color: #3FE07D; }
 .sdp-prog b { display: block; height: 100%; background: var(--accent); transition: width .4s; }
 .sdp-nota { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 .sdp-nota i { color: var(--text-muted); margin-right: 4px; }
+/* Rândul prețurilor pe manevră + butonul „Editează prețurile” (05.11): textul la stânga, butonul la dreapta; pe ecran îngust, dedesubt. */
+.sdp-nota-pret { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.sdp-nota-pret > span { flex: 1 1 320px; min-width: 0; }
+.sdp-nota-pret .insp-btn { flex: none; }
+.sdp-nota-pret .insp-btn i { color: inherit; margin-right: 0; }
 /* Starea: portocaliu = atenție (cost mai mare, manevre multe), verde = bine. Tema închisă: culori deschise; cea deschisă: închise. */
 .sdp .sdp-chip.atentie, .sdp-tab td.atentie, .sdp-rec.atentie i { color: #fdba74; }
 .sdp-tab td.rosu { color: #fca5a5; font-weight: 700; }
@@ -4840,6 +4845,8 @@ body.dark .asf .insp-stea { color: #86efac; background: color-mix(in srgb, #3FE0
 .asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #16a34a, #0d9488) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #16a34a 12%, transparent), 0 8px 28px rgba(0,0,0,.08); }
 body.dark .asf .chat-caseta:focus-within { background: linear-gradient(var(--bg-panel), var(--bg-panel)) padding-box, linear-gradient(120deg, #3FE07D, #2DD4BF) border-box; box-shadow: 0 0 0 4px color-mix(in srgb, #3FE07D 14%, transparent), 0 8px 28px rgba(0,0,0,.4); }
 .asf .chat-trimite, body.dark .asf .chat-trimite { background: linear-gradient(135deg, #3FE07D, #2DD4BF); color: #06210F; }
+/* 05.11 (Alin: „rezolvă acum"): gol = gri și la noi, ca la RA Insight — „.asf .chat-trimite" (scrisă mai jos, aceeași putere) bătea „.chat-trimite.gol". */
+.asf .chat-trimite.gol, body.dark .asf .chat-trimite.gol { background: var(--bg-dark); color: var(--text-secondary); }
 /* Salutul: mare, în degradeul verde; „Iată cum stăm azi." dedesubt, mai mic. */
 .asf-salut { font-size: 15px; color: var(--text-secondary); }
 .asf-salut b { display: block; width: fit-content; max-width: 100%; font-size: 26px; line-height: 1.2; font-weight: 800; margin: 2px 0 2px; color: #15803d; background: linear-gradient(90deg, #15803d, #0f766e); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
