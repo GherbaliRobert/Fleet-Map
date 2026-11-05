@@ -9,6 +9,9 @@
 .mn-item .ic { color: var(--accent); flex: 0 0 auto; width: 24px; text-align: center; }
 .mn-item .lbl { flex: 1; font-weight: 600; font-size: 15px; }
 .mn-item .rt { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+/* „NOU" (05.11): aceleași culori ca pe web — pe tema închisă verde cu litere negre, pe cea deschisă negru cu litere verzi. */
+.mn-item .mn-nou { flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: .06em; background: #3FE07D; color: #06210F; border-radius: 999px; padding: 2px 7px; }
+:root[data-theme="light"] .mn-item .mn-nou { background: #0B0E11; color: #3FE07D; }
 .mn-item.danger .ic, .mn-item.danger .lbl { color: var(--red); }
 .mn-soon { opacity: .5; }
 .mn-soon .tag { font-size: 10px; font-weight: 800; color: var(--text-muted); border: 1px solid var(--border); border-radius: 10px; padding: 2px 7px; }

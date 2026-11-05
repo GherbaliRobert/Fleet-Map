@@ -487,7 +487,7 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - Păzit de `verify_insight.js` (în `npm test`) și `verify_paritate_telefon.js`.
 
 ### Pasul 2 (02.10): secțiunea din meniu, notițele, ghidul, „AI Raport" gratuit
-- **Rândul din meniu:** `#nav-insight` (data-view="insight", eticheta „NOU"), arătat de `updateFabs` când firma are
+- **Rândul din meniu:** `#nav-insight` (data-view="insight"; „NOU" doar 15 zile — vezi „„NOU" din meniu"), arătat de `updateFabs` când firma are
   `ai_assistant`; vederea `insight-view` → `renderInsightPage` (blocul „secțiunea RA Insight", între sentinele). Bula din
   colț se ascunde cât ești în secțiune. **Discuția e una: `window._raxConvId`**, comună bulei și secțiunii — NU ține o a
   doua conversație curentă. Ramurile cu `gata: false` nu se arată; se aprind când se livrează pagina lor.
@@ -3175,6 +3175,15 @@ Rândul aprins din bara din stânga trebuie să fie ecranul deschis, **oricum ai
 - **Orice rând nou din meniu trebuie ori să cheme `navGo(this, …)`, ori să poarte `data-view`.** Șase
   rânduri ale clientului (Localizare, Traseu, Rapoarte, Agenți AI, Hotspot, Setări) chemau direct
   `showView(...)` — la client verdele stătea înțepenit pe „Localizare". Păzit de `verify_acasa.js`.
+
+### „NOU" din meniu: 15 zile de la publicare, apoi pleacă singur (05.11; Alin: „să apară când aducem ceva nou în meniu, dar să dispară după 15 zile de la implementare… 1. da, 2. da, 3. da")
+- **O listă, pe server: `meniu_nou.js`** — `RANDURI` (`{ cheie, de_la: 'AAAA-LL-ZZ', ce }`, ziua în care rândul a ajuns pe ratrack.ro), `ZILE_NOU` = 15
+  (ziua publicării + încă 14, pe zilele României — `zileDeLa`, cu miezul nopții din `insight.inceputZiRO` / `perioada`), `noi(acum)`. `/api/me` → `meniuNou`.
+- **Un rând NOU în meniu = o intrare în `RANDURI`, cu ziua publicării.** Pe web rândul are `id="nav-<cheie>"`: `window._meniuNou` (chemată din `showApp`)
+  pune și scoate `.nav-nou`; pe telefon `item(…, '<cheie>')` în Menu.tsx (`.mn-nou`, aceleași culori). NU scrie „NOU" de mână în meniu — proba pică.
+  RA Insight (02.10) și Simulatorul (12.10) au rămas în listă, fără etichetă (Alin: „acum când intrăm nu trebuie să mai apară").
+- E DOAR eticheta din meniu. Punctul de pe bula RA Insight e altceva („Azi la tine" are ceva nou, la clienții cu cont RA Insight).
+- Păzit de **`verify_meniu_nou.js`** (în `npm test`; funcția paginii rulată în browser), `verify_un_singur_insight.js` (`/api/me` pe server pornit).
 
 ## Capcană: un atribut `onclick` / `oninput` vede doar `window` (30.09)
 Panoul de administrare trăiește într-o funcție (`(function () { … })()`): variabilele lui (`_giState`,

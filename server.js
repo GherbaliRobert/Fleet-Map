@@ -229,6 +229,7 @@ const pachete = require('./pachete');            // pachetele RA Insight (14.10)
 const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
 const soldAi = require('./sold_ai');             // banii pentru AI, la zi (04.11): soldul Anthropic, anunțurile, alarma refuzului
 const prenumeMod = require('./prenume');         // prenumele din salut (05.11): „Tilvar Alin" → „Alin"; fără nume, din email
+const meniuNou = require('./meniu_nou');         // „NOU" din meniu (05.11): 15 zile de la publicare, apoi pleacă singur
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
@@ -3133,6 +3134,8 @@ app.get('/api/me', async (req, res) => {
     username: a.username, full_name: fullName, role: a.role,
     // Prenumele din „Salut, Alin!" (05.11): O regulă, pe server (prenume.js) — pagina și telefonul doar îl scriu.
     prenume: prenumeMod.prenumeDin(fullName, a.username),
+    // „NOU" din meniu (05.11): cheile rândurilor încă noi (meniu_nou.js, 15 zile de la publicare); pagina și telefonul doar le arată.
+    meniuNou: meniuNou.noi(Date.now()),
     permissions: drepturiEfective(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     roleLabel: numeRol(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     // Ce ecrane și ce rapoarte are voie să vadă — interfața ascunde restul din meniu, ca omul să nu

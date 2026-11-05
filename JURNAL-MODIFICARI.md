@@ -177,7 +177,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **23.10 (după-amiaza):** APK 1.0.22 — tot ce e în 1.0.21, plus „Starea mașinii" cu adaptorul în repaus (nota, fără stări
   vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
   **05.11:** „Prelungește" și „Starea mașinii" sunt acum și pe ratrack.ro (aduse din ramura lui Robert în main). APK-ul următor se
-  face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele);
+  face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele,
+  regula „NOU" din meniu);
   primește versiunea **1.0.23 (cod 25)**: 1.0.22 e deja pe GitHub, din ramura lui Robert, iar main scrie acum tot 1.0.22.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
@@ -635,6 +636,16 @@ RA Insight, pe ambele teme. **Ce vede clientul:** nimic.
 **Ce am schimbat:** „Prelungește" la „Distribuie locația" și „Starea mașinii" cu adaptorul CAN în repaus (Robert, 23.10) stăteau pe
 ramura lui de lucru: le-am adus în aplicația de pe ratrack.ro, peste tot ce s-a schimbat de atunci, și le-am verificat din nou. Ce fac,
 la 23.10 (mai jos). Pe telefon le aveau deja APK-urile de test 1.0.21 / 1.0.22. **Ce vede fondatorul / clientul:** cele două, ca la 23.10.
+
+### AMÂNDOI · „NOU" din meniu: 15 zile de la publicare, apoi dispare singur
+*Alin, 05.11: „vreau ca regula în aplicație să apară atunci când aducem ceva nou în meniu, dar să dispară după 15 zile de la
+implementare" + „1. da, de când am făcut noi astea… nu trebuie să mai apară NOU acum când intrăm", „2. da", „3. da".*
+
+**Ce am schimbat:** eticheta „NOU" de lângă un rând din meniu nu mai e scrisă de mână: aplicația ține minte ziua în care fiecare rând
+nou a ajuns pe ratrack.ro și arată eticheta 15 zile (ziua publicării și încă 14), apoi o scoate singură. RA Insight (pus pe 02.10) și
+Simulatorul de încărcare (12.10) au trecut demult de 15 zile, deci de azi nu mai au „NOU". Același lucru pe telefon, de la APK-ul
+următor (azi meniul telefonului nu are niciun „NOU"). **Ce vede fondatorul:** meniul fără „NOU" la RA Insight și la Simulator; la un rând
+nou de-acum încolo, „NOU" 15 zile. **Ce vede clientul:** la fel.
 
 ## 2026-11-04
 

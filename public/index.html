@@ -99,7 +99,7 @@
         <button data-vert="partener" data-ecran="traseu" class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
         <!-- RA Insight are rândul lui (Alin, 02.10: „scoatem RA Insight din meniul Agenți AI și îl trecem separat în
              meniu"). Se arată când firma are modulul (updateFabs); fără cont RA Insight, pagina spune cum îl primești. -->
-        <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-insight" data-view="insight" onclick="showView('insight')" style="display:none;"><i class="fas fa-wand-magic-sparkles"></i><span>RA Insight</span><span class="nav-nou">NOU</span></button>
+        <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-insight" data-view="insight" onclick="showView('insight')" style="display:none;"><i class="fas fa-wand-magic-sparkles"></i><span>RA Insight</span></button>
         <div class="nav-group" data-vert="partener" data-group="analize">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
@@ -128,7 +128,7 @@
         </div>
         <!-- Simulatorul de încărcare (12.10): se arată când firma are modulul (updateFabs) — pornit singur la firmele cu
              camioane, dube sau semiremorci, sau ales de noi din fereastra firmei, fila „Acces". -->
-        <button data-vert="partener" class="nav-item" id="nav-incarcare" data-view="incarcare" onclick="showView('incarcare')" style="display:none;"><i class="fas fa-boxes-stacked"></i><span>Simulator încărcare</span><span class="nav-nou">NOU</span></button>
+        <button data-vert="partener" class="nav-item" id="nav-incarcare" data-view="incarcare" onclick="showView('incarcare')" style="display:none;"><i class="fas fa-boxes-stacked"></i><span>Simulator încărcare</span></button>
         <!-- ═══ Verticala NOASTRĂ ═══
              Panoul de admin avea meniul LUI, înăuntru: intrai în „Administrare", apăsai „Panou
              admin" și dădeai peste încă un meniu, cu 16 rânduri. Două meniuri, unul în altul, plus
@@ -4028,6 +4028,21 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit „prezența" ──
 
+    // „NOU" din meniu (05.11): cheile rândurilor încă noi le dă serverul (/api/me → meniuNou, regula din meniu_nou.js: 15 zile de la
+    // publicare). Pagina doar pune eticheta pe `#nav-<cheie>` și o scoate de pe celelalte. NU scrie „NOU" de mână în meniu.
+    window._meniuNou = function (chei) {
+      var lista = Array.isArray(chei) ? chei.map(String) : [];
+      Array.prototype.forEach.call(document.querySelectorAll('.nav-item .nav-nou'), function (s) {
+        var b = s.closest('.nav-item'), k = b && b.id ? b.id.replace(/^nav-/, '') : '';
+        if (lista.indexOf(k) < 0) s.remove();
+      });
+      lista.forEach(function (k) {
+        var b = document.getElementById('nav-' + k);
+        if (!b || b.querySelector('.nav-nou')) return;
+        var s = document.createElement('span'); s.className = 'nav-nou'; s.textContent = 'NOU'; b.appendChild(s);
+      });
+    };
+
     async function checkAuth() {
       try {
         const res = await fetch('/api/me');
@@ -4053,6 +4068,7 @@ const pozitii = await r.json();</code></pre>
       // adică super-adminul nu-și primea coloanele lui, iar butonul „Salvează în fișă" de la Taxa de
       // drum nu apărea NICIODATĂ. O singură sursă, pusă unde intrăm în aplicație.
       window.currentUser = currentUser;
+      window._meniuNou(currentUser && currentUser.meniuNou);
       ascundeEcraneTaiate();
       vertAplica();   // meniul se așază pe verticala potrivită: a noastră sau a partenerului
       prezPornit();

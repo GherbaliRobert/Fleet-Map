@@ -243,6 +243,9 @@ const nModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boolean)
   await json('PUT', '/api/me/profile', adm.ck, { full_name: 'Tilvar Alin' });
   const meP = (await json('GET', '/api/me', adm.ck)).j;
   T('/api/me: prenumele din regulă („Tilvar Alin" → „Alin"); contul „admin" nu primește unul', meP.prenume === 'Alin' && meP.full_name === 'Tilvar Alin' && me0.j.prenume === '', JSON.stringify([meP.prenume, me0.j.prenume, me0.j.full_name]));
+  // „NOU" din meniu (05.11): lista vine de la server, aceeași pentru client și pentru noi (regula din meniu_nou.js).
+  const nouAzi = require('./meniu_nou').noi(Date.now());
+  T('/api/me: `meniuNou` = rândurile încă noi după regulă (la client și la noi)', JSON.stringify(meP.meniuNou) === JSON.stringify(nouAzi) && JSON.stringify(me0.j.meniuNou) === JSON.stringify(nouAzi), JSON.stringify([meP.meniuNou, me0.j.meniuNou, nouAzi]));
 
   const q0 = (await json('GET', '/api/ai/quota', adm.ck)).j;
   // a) cererea de raport

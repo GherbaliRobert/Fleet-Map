@@ -360,7 +360,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // ─── 7. Pasul 2: secțiunea proprie ──────────────────────────────────────────────────────────────────
   console.log('\n7. Pasul 2: secțiunea din meniu, notițele firmei, ghidul, drepturile din rol, statisticile fără text');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  T('rândul „RA Insight" din meniu (cu eticheta NOU) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
+  T('rândul „RA Insight" din meniu („NOU” doar 15 zile, din meniu_nou.js) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
   T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde" (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
   // Ramurile livrate (pasul 3: Safe Drive; pasul 4: Combustibil, Mentenanță & acte…) se arată și au pagina lor;
   // cele încă nelivrate (gata: false) rămân ascunse.

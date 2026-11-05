@@ -37,11 +37,15 @@ export function Menu() {
   // Bulina roșie de lângă un rând, cu săgeata (ca nav-demoreq-badge de pe web); fără nimic de arătat, rândul rămâne cu săgeata lui.
   const bulina = (n: number) => (n > 0 ? <span style="display:inline-flex;align-items:center;gap:6px"><span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800">{n}</span><Icon name="chevronR" size={18} color="var(--text-muted)" /></span> : undefined);
 
-  function item(icon: IconName, label: string, onClick: () => void, right?: any, cls = '') {
+  // „NOU" (05.11): rândurile noi le spune serverul (/api/me → meniuNou; 15 zile de la publicare), ca pe web (#nav-<cheie>).
+  // Un rând nou din meniu primește aici, ca ultim argument, aceeași cheie ca în meniu_nou.js. NU scrie „NOU" de mână.
+  const noi: string[] = Array.isArray(u?.meniuNou) ? u!.meniuNou!.map(String) : [];
+  function item(icon: IconName, label: string, onClick: () => void, right?: any, cls = '', nou?: string) {
     return (
       <button class={'mn-item ' + cls} onClick={onClick}>
         <Icon name={icon} size={20} class="ic" />
         <span class="lbl">{label}</span>
+        {nou && noi.indexOf(nou) >= 0 ? <span class="mn-nou">NOU</span> : null}
         {right != null ? <span class="rt">{right}</span> : <Icon name="chevronR" size={18} color="var(--text-muted)" />}
       </button>
     );
@@ -78,7 +82,7 @@ export function Menu() {
         {item('coins', 'Preț combustibil', () => loc.route('/fuelprice'))}
         {perms.viewReports && vede('programari') && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
         {/* RA Insight: rândul lui, când firma are modulul (ca pe web, #nav-insight). */}
-        {u?.features?.ai_assistant !== false && vede('insight') && item('sparkles', 'RA Insight', () => loc.route('/insight'))}
+        {u?.features?.ai_assistant !== false && vede('insight') && item('sparkles', 'RA Insight', () => loc.route('/insight'), undefined, '', 'insight')}
         {/* Agenți AI: rând propriu, ca pe web — vizibil când modulul agenților e activ și omul are voie la rapoarte.
             Înainte se ajungea aici doar din „Asistenți AI", ecran rămas acum doar pentru super-admin. Cine are cont RA Insight
             (`aiCont`) vede agenții în „Azi la tine", iar pagina lor o deschide din „⋯" → „Setările agenților". */}
@@ -95,7 +99,7 @@ export function Menu() {
         {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
         {/* Simulatorul de încărcare (12.10), ca pe web: îl deschide cine poate modifica flota și dispecerul firmei. Planurile
             primite le găsește oricine din firmă — șoferul își vede aici planul trimis de dispecer. */}
-        {modulIncarcare(u) && (u?.isSuper || perms.manageFleet || u?.role === 'dispatcher') && item('boxes', 'Simulator încărcare', () => loc.route('/incarcare'))}
+        {modulIncarcare(u) && (u?.isSuper || perms.manageFleet || u?.role === 'dispatcher') && item('boxes', 'Simulator încărcare', () => loc.route('/incarcare'), undefined, '', 'incarcare')}
         {modulIncarcare(u) && item('clipboard', 'Planurile de încărcare', () => loc.route(RUTA_PLANURI))}
         {perms.viewReports && vede('hotspot') && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 

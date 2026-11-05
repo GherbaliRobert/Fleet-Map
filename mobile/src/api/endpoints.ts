@@ -16,6 +16,7 @@ export interface Me {
   // de firmă („Operator depou", roluri proprii) — null când firma n-a redenumit nimic.
   full_name?: string | null; phone?: string | null; roleLabel?: string | null;
   prenume?: string; // 05.11: prenumele din „Salut, Alin!" (regula serverului, prenume.js: „Tilvar Alin" → „Alin", fără nume din email)
+  meniuNou?: string[]; // 05.11: rândurile din meniu care poartă „NOU" (regula serverului, meniu_nou.js: 15 zile de la publicare)
   functie?: string | null; // 13.10: funcția omului (apare în semnătura emailurilor din panoul Mail)
   poateDistribuiLocatia?: boolean; // 21.10: butonul „Distribuie” din fișa mașinii (aceeași regulă ca pe server)
   aiCont?: boolean; // 15.10: are cont RA Insight — agenții îi apar în „Azi la tine", „Agenți AI" iese din meniu
