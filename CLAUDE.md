@@ -3248,6 +3248,17 @@ reface când se schimbă așezarea. Regulile care au reparat ce s-a măsurat —
   la 800 / 1024 / 1366 px, cu lista derulată până jos. NU pune înapoi un loc rezervat jos fără un rând care să-l ocupe. Păzit de `verify_ecrane.js` (8).
 - Păzit de **`verify_ecrane.js`** (în `npm test`; fără browser: regulile de mai sus + `_navCaSertar` rulat în vm), `verify_cereri_echipa.js`.
 
+## „Starea mașinii" (plăcuțele CAN): adaptorul în repaus (Robert, 23.10: „2")
+VW Caddy parcat arăta „Ambreiaj: Apăsat" și „Frână de mână: Eliberată" lângă „Adaptor CAN în repaus: Da": cu mașina
+oprită, adaptorul doarme, iar în mesaj rămâne ce a citit înainte de luarea contactului. Dacia Logan arăta „în repaus" în MERS.
+- **O regulă, în `can_flags.js`:** `mergeMasina(flat)` (contactul aparatului GPS — `ignition`, care nu depinde de adaptor; fără
+  el, turația sau viteza) și `inRepaus(flat)` = adaptorul o spune ȘI mașina nu merge. `benzi` întoarce `repaus`: în repaus
+  ascunde `REPAUS_ASCUNSE` (frâna de mână, frâna de picior, ambreiajul) și pagina / telefonul scriu `REPAUS_TEXT`; în mers,
+  plăcuța „Adaptor CAN în repaus" NU se arată (semnalul e greșit). `flat` = valorile aparatului + steagurile aplatizate.
+- Pagina primește regula serializată (`_CANFLAGS_JS`: `mergeMasina`, `inRepaus`, `benzi`); telefonul are copia ei în
+  `mobile/src/lib/canflags.ts` (`canMerge`, `canInRepaus`, `canBenzi(cat, flat, io)`, rezerva `REPAUS_IMPLICIT`; catalogul salvat
+  `can_flags_v4`). NU scrie a treia copie. Păzit de `verify_can_flags.js` (16: aceleași cazuri pe server, în pagină și pe telefon).
+
 ## „Distribuie locația" — linkul live al unei mașini, ca pe WhatsApp (Robert, 21.10)
 Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore → linkul `/locatie/<token>`, pe care îl deschide oricine,
 fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, cartonaș jos pe telefon / în stânga pe calculator).

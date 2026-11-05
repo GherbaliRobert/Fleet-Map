@@ -53,7 +53,7 @@ export function CanFlags({ io }: { io: any }) {
     if (nedecodate.has(f.key) && ((f.key.startsWith('_sf_') && areSf) || (f.key.startsWith('_cf_') && areCf))) necitite++;
   });
 
-  const b = canBenzi(cat, flat);
+  const b = canBenzi(cat, flat, io);
   const gol = !b.stare.length && !b.martori.length && !b.deschis.length && !b.active.length;
 
   // Pictograma: la treaptă litera E starea, deci desenăm caseta cu litera primită.
@@ -106,6 +106,8 @@ export function CanFlags({ io }: { io: any }) {
         <span class="cfm-hint">doar ce e activ acum</span>
       </div>
 
+      {/* Adaptorul doarme: frâna de mână și pedalele ar fi fost cele de dinainte de oprire — nu se arată, iar nota spune de ce. */}
+      {b.repaus && cat.repaus && cat.repaus.text && <div class="cfm-note"><Icon name="sleepMoon" size={14} sw={1.8} /> {cat.repaus.text}</div>}
       {gol && <div class="cfm-ok"><Icon name="check" size={14} sw={2} /> Totul închis, niciun martor aprins</div>}
 
       <Banda cheie="stare" titlu="" icon="gauge" lista={b.stare} mare />
