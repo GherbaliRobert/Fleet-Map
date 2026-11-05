@@ -389,7 +389,7 @@ T('pasul 4: fiecare răspuns trece prin `trimite` (întâi se păstrează în co
 T('pasul 4: conversațiile asistentului se șterg la 12 luni, odată cu ale lui RA Insight (aceeași cifră)', /const na = await db\.asfStergeMaiVechiDe\(luni\);/.test(serverSrc) &&
   /const luni = contracte\.LUNI_CONVERSATII_AI;/.test(serverSrc));
 const dbSrc = citeste('db.js');
-const blocAsfDb = dbSrc.slice(dbSrc.indexOf('// ─── Asistentul fondatorilor: conversațiile (pasul 4, 04.11)'), dbSrc.indexOf('// ─── Scrisoarea de luni: a omului care o primește'));
+const blocAsfDb = dbSrc.slice(dbSrc.indexOf('// ─── Asistentul fondatorilor: conversațiile (pasul 4, 04.11)'), dbSrc.indexOf('// ─── Scrisoarea de luni: SCOASĂ pe 04.11'));
 const fAsf = blocAsfDb.split('async function ').slice(1);
 T('pasul 4: în db.js, fiecare cerere a conversațiilor asistentului are user_id în ea (afară de ștergerea la 12 luni)', fAsf.length === 9 &&
   fAsf.filter((f) => f.indexOf('asfStergeMaiVechiDe(') !== 0).every((f) => /user_id/.test(f)), fAsf.map((f) => f.slice(0, 22)).join(' | '));
