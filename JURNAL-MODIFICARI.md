@@ -694,7 +694,16 @@ din fișă avea șoferii TUTUROR firmelor, deci era ușor să alegi unul de la a
 **Ce vede fondatorul:** în fișa unei mașini, doar șoferii firmei ei și istoricul; o eroare spusă pe față. **Ce vede clientul:** la fel —
 istoricul în fișa mașinii și în fișa șoferului (Management → Vehicule / Șoferi).
 
-## 2026-11-04
+### CLIENT · RA Insight: un tabel din răspuns se vede ca tabel
+*Găsit la verificarea pe toate ecranele (Alin, 05.11: „să se vadă bine pe telefon și pe toate ecranele… totul").*
+
+**Cauza:** când RA Insight răspundea cu un tabel (de pildă mașinile una sub alta, cu km și consum), pagina nu-l recunoștea și îl arăta
+ca text, cu bare verticale: „| B 268 ROY | 1.240 | 7,1 |".
+
+**Ce am schimbat:** tabelul apare ca tabel, în chenarul lui, ca la asistentul nostru. Pe telefon (ecran îngust) fiecare rând devine un
+cartonaș, cu numele coloanei în fața fiecărei cifre. Aplicația de telefon la fel, de la versiunea următoare. **Ce vede fondatorul:** în
+RA Insight (verticala Partener), la fel ca clientul. **Ce vede clientul:** tabelele din răspunsuri, citibile.
+
 ## 2026-11-04
 
 ### FONDATOR · Banii pentru AI, la zi: soldul Anthropic pe „Acasă" și în „RA Insight · control", anunțurile, alarma când Anthropic refuză

@@ -1073,6 +1073,7 @@ Ecranul `/insight` (`mobile/src/screens/Insight.tsx` + `components/InsightBula.t
 ieșit; `/ai` duce în `/insight`; ruta veche `/api/ai/chat` rămâne pentru telefoanele vechi).
 - **Regulile ecranului stau în `mobile/src/lib/insight.ts`, legate de pagină** prin `verify_telefon_insight.js` (în `npm test`), care rulează funcțiile paginii lângă ale telefonului pe aceleași cazuri
   (`aziPrimul`, `aziButon`, `incarcaPachet`, `actualizeazaCaseta`, `md`, `_chatPuneInText`, `_chatMasini`, `bulaAi`). Schimbi una pe web → proba pică până o schimbi și pe telefon. Telefonul NU socotește și NU scrie textele serverului.
+- **Tabelele din răspuns (05.11):** `md` (pagina) face din „| … |" + rândul „|---|" un tabel `.rax-md-tab` (stilurile tabelului asistentului nostru, `.asf-tab`; pe ≤ 600 px rândul devine cartonaș, numele coloanei din `data-col`); telefonul: blocul `tab` din `mdBlocuri` → `InsightText` (`.insp-md-tab`). Un rând fără „|---|" dedesubt rămâne text. Până pe 05.11 tabelul apărea cu barele, ca text.
 - **`RAMURI_PE_TELEFON`** = paginile construite pe telefon: butonul spre o pagină care nu e în listă nu se desenează, iar un `pagina` din răspuns se ignoră. O pagină nouă pe telefon se adaugă acolo.
 - **Unde telefonul face dinadins altfel:** tastatura nu se deschide singură după răspuns; copiază / 👍 / 👎 stau la vedere; amănuntul pachetului se deschide la apăsare; „Sursă externă" = globul + „7 din 10". Casetele au 16 px.
 - `client.ts` ține în `ApiError.data` corpul erorii (`propunere` la 409, `reply` la 404).

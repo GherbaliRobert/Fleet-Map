@@ -11937,16 +11937,33 @@ const pozitii = await r.json();</code></pre>
       function prenume() { var u = window.currentUser || {}; return String(u.prenume || '').trim(); }
       function $i(id) { return document.getElementById(id); }
       function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+      // Tabelele din răspuns (05.11, la verificarea pe toate ecranele): „| a | b |" urmat de „|---|---|" = un tabel adevărat, în
+      // chenarul lui (ca tabelul asistentului nostru: pe telefon un rând devine cartonaș, cu numele coloanei în față). Înainte apăreau
+      // barele, ca text. Telefonul face la fel (mdBlocuri, fel „tab"), legat de verify_telefon_insight.js.
       function md(t) {
         var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
         var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
-        return esc(t || '').split('\n').map(function (ln) {
-          var l = ln.replace(/\s+$/, ''), tr = l.trim();
-          if (tr === '') return '<div style="height:6px"></div>';
-          if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
-          if (/^[•\-*]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-*]\s+/, '')) + '</div>';
-          return '<div>' + bold(l) + '</div>';
-        }).join('');
+        var rand = function (l) { var tr = l.trim(); return tr.length > 1 && tr.charAt(0) === '|'; };
+        var cel = function (l) { return l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (c) { return c.trim(); }); };
+        var sep = function (l) { return rand(l) && cel(l).every(function (x) { return /^:?-{2,}:?$/.test(x); }); };
+        var lin = esc(t || '').split('\n'), out = [];
+        for (var i = 0; i < lin.length; i++) {
+          if (rand(lin[i]) && i + 1 < lin.length && sep(lin[i + 1])) {
+            var cap = cel(lin[i]), rs = [];
+            for (i += 2; i < lin.length && rand(lin[i]); i++) rs.push(cel(lin[i]));
+            i--;
+            out.push('<div class="rax-md-tab"><table><thead><tr>' + cap.map(function (c) { return '<th>' + bold(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+              rs.map(function (r) { return '<tr>' + r.map(function (c, k) { return '<td data-col="' + String(cap[k] || '').replace(/\*\*/g, '').replace(/"/g, '&quot;') + '">' + bold(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+              '</tbody></table></div>');
+            continue;
+          }
+          var l = lin[i].replace(/\s+$/, ''), tr = l.trim();
+          if (tr === '') { out.push('<div style="height:6px"></div>'); continue; }
+          if (/^#{1,6}\s+/.test(tr)) { out.push('<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>'); continue; }
+          if (/^[•\-*]\s+/.test(tr)) { out.push('<div class="rax-md-li">' + bold(tr.replace(/^[•\-*]\s+/, '')) + '</div>'); continue; }
+          out.push('<div>' + bold(l) + '</div>');
+        }
+        return out.join('');
       }
       // „azi, 12:56" / „ieri" / „28 sept." — și grupele din stânga: Azi / Ieri / Săptămâna asta / Mai demult.
       function zi0(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }

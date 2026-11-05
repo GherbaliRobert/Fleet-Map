@@ -72,6 +72,22 @@
 .insp-md-h { font-weight: 800; font-size: 15px; margin: 2px 0 4px; }
 .insp-md-li { padding-left: 14px; position: relative; margin: 3px 0; }
 .insp-md-li::before { content: ''; position: absolute; left: 2px; top: .72em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+/* Un tabel din răspuns (05.11, ca .rax-md-tab pe web): în chenarul lui; pe ecranul telefonului un rând = un cartonaș, cu numele
+   coloanei în față (`data-col`). */
+.insp-md-tab { margin: 8px 0 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); overflow-x: auto; }
+.insp-md-tab table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.4; }
+.insp-md-tab th { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.insp-md-tab td { padding: 9px 12px; border-top: 1px solid var(--border); color: var(--text-primary); vertical-align: top; }
+.insp-md-tab tbody tr:first-child td { border-top: 0; }
+@media (max-width: 600px) {
+  .insp-md-tab table, .insp-md-tab tbody, .insp-md-tab tr, .insp-md-tab td { display: block; }
+  .insp-md-tab thead { display: none; }
+  .insp-md-tab tr { padding: 9px 12px; border-top: 1px solid var(--border); }
+  .insp-md-tab tbody tr:first-child { border-top: 0; }
+  .insp-md-tab td { padding: 1px 0; border: 0; }
+  .insp-md-tab td:first-child { font-weight: 700; }
+  .insp-md-tab td:not(:first-child)::before { content: attr(data-col) ': '; color: var(--text-secondary); font-weight: 600; }
+}
 .chat-typing { align-self: flex-start; display: flex; gap: 4px; padding: 8px 2px; }
 .chat-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-secondary); animation: insp-ct 1s infinite; }
 .chat-typing span:nth-child(2) { animation-delay: .15s; }

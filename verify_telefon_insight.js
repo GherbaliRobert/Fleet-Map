@@ -268,11 +268,16 @@ async function parteaTextului() {
   const pHtml = (p) => p.map((x) => (x.b ? '<strong>' + esc(x.t) + '</strong>' : (x.i ? '<em>' + esc(x.t) + '</em>' : esc(x.t)))).join('');
   const telMd = (t) => L.mdBlocuri(t).map((b) => {
     if (b.fel === 'gol') return '<div style="height:6px"></div>';
+    if (b.fel === 'tab') return '<div class="rax-md-tab"><table><thead><tr>' + b.cap.map((c) => '<th>' + pHtml(c) + '</th>').join('') + '</tr></thead><tbody>' +
+      b.randuri.map((r) => '<tr>' + r.map((c, k) => '<td data-col="' + esc(b.coloane[k] || '').replace(/"/g, '&quot;') + '">' + pHtml(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>';
     if (b.fel === 'h') return '<div class="rax-md-h">' + pHtml(b.parti) + '</div>';
     if (b.fel === 'li') return '<div class="rax-md-li">' + pHtml(b.parti) + '</div>';
     return '<div>' + pHtml(b.parti) + '</div>';
   }).join('');
-  ['Simplu.', '**Gros** și subțire **iar**', '## Titlu **gros**\nRând', '- unu\n• doi\n* trei', 'A\n\nB', '<script>alert(1)</script> & **<b>x</b>**', 'Cost: 2 * 3 lei', '', null, 'rând cu spații la coadă   \n  rând cu spații în față'].forEach((c) => {
+  ['Simplu.', '**Gros** și subțire **iar**', '## Titlu **gros**\nRând', '- unu\n• doi\n* trei', 'A\n\nB', '<script>alert(1)</script> & **<b>x</b>**', 'Cost: 2 * 3 lei', '', null, 'rând cu spații la coadă   \n  rând cu spații în față',
+    // Tabelele din răspuns (05.11): un tabel adevărat pe amândouă; o bară singură sau fără rândul de liniuțe rămâne text.
+    'Consumul:\n\n| Mașina | Km | Consum |\n|---|---|---|\n| B 154 UIP · **Logan** | 1.284 | 6,9 l/100 km |\n| B 268 ROY | 2.016 | 8,4 l/100 km |\n\nGata.',
+    '| Coloana „a" | <b>b</b> |\n| :--- | ---: |\n| x & y | 2 * 3 |', '| doar o bară |\nfără liniuțe', 'a | b\n---|---\n1 | 2'].forEach((c) => {
     T('md ' + J(c) + ': aceleași blocuri ca pe web', telMd(c) === webMd(c), telMd(c) + ' / ' + webMd(c));
   });
   T('*italic*, ca `aiMd` (explicația serverului când s-a terminat fondul)', J(L.partiMd('Rămân gratuite: *unde e o mașină, câți km*.')) === J([{ t: 'Rămân gratuite: ' }, { t: 'unde e o mașină, câți km', i: true }, { t: '.' }]), J(L.partiMd('Rămân gratuite: *unde e o mașină, câți km*.')));

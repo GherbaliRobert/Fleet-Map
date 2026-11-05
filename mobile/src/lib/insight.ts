@@ -193,14 +193,29 @@ export function partiMd(s: any): Parte[] {
   const italic = (t: string): Parte[] => bucati(t, RE_ITALIC, (m) => ({ inainte: m[1], parte: m[2] }), 'i', (x) => (x ? [{ t: x }] : []));
   return bucati(String(s == null ? '' : s), RE_BOLD, (m) => ({ parte: m[1] }), 'b', italic);
 }
-export function mdBlocuri(t: any): { fel: 'gol' | 'h' | 'li' | 'p'; parti: Parte[] }[] {
-  return String(t || '').split('\n').map((ln) => {
-    const l = ln.replace(/\s+$/, ''), tr = l.trim();
-    if (tr === '') return { fel: 'gol' as const, parti: [] };
-    if (/^#{1,6}\s+/.test(tr)) return { fel: 'h' as const, parti: partiMd(tr.replace(/^#{1,6}\s+/, '')) };
-    if (/^[•\-*]\s+/.test(tr)) return { fel: 'li' as const, parti: partiMd(tr.replace(/^[•\-*]\s+/, '')) };
-    return { fel: 'p' as const, parti: partiMd(l) };
-  });
+// Un bloc al răspunsului. `tab` (05.11) = un tabel din răspuns („| a | b |" + „|---|---|"), ca pe web (md): capul, numele coloanelor
+// (fără steluțe, pentru cartonașul de pe telefon) și rândurile.
+export type BlocMd = { fel: 'gol' | 'h' | 'li' | 'p'; parti: Parte[] } | { fel: 'tab'; parti: Parte[]; cap: Parte[][]; coloane: string[]; randuri: Parte[][][] };
+export function mdBlocuri(t: any): BlocMd[] {
+  const lin = String(t || '').split('\n'), out: BlocMd[] = [];
+  const rand = (l: string) => { const tr = l.trim(); return tr.length > 1 && tr.charAt(0) === '|'; };
+  const cel = (l: string) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  const sep = (l: string) => rand(l) && cel(l).every((x) => /^:?-{2,}:?$/.test(x));
+  for (let i = 0; i < lin.length; i++) {
+    if (rand(lin[i]) && i + 1 < lin.length && sep(lin[i + 1])) {
+      const cap = cel(lin[i]), rs: string[][] = [];
+      for (i += 2; i < lin.length && rand(lin[i]); i++) rs.push(cel(lin[i]));
+      i--;
+      out.push({ fel: 'tab', parti: [], cap: cap.map((c) => partiMd(c)), coloane: cap.map((c) => c.replace(/\*\*/g, '')), randuri: rs.map((r) => r.map((c) => partiMd(c))) });
+      continue;
+    }
+    const l = lin[i].replace(/\s+$/, ''), tr = l.trim();
+    if (tr === '') { out.push({ fel: 'gol', parti: [] }); continue; }
+    if (/^#{1,6}\s+/.test(tr)) { out.push({ fel: 'h', parti: partiMd(tr.replace(/^#{1,6}\s+/, '')) }); continue; }
+    if (/^[•\-*]\s+/.test(tr)) { out.push({ fel: 'li', parti: partiMd(tr.replace(/^[•\-*]\s+/, '')) }); continue; }
+    out.push({ fel: 'p', parti: partiMd(l) });
+  }
+  return out;
 }
 // Ce se copiază: fără steluțe și fără diez (web: _chatTextSimplu).
 export function textSimplu(t: any): string {

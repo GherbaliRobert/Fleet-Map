@@ -13,6 +13,13 @@ export function Md({ text }: { text: any }) {
     <>
       {mdBlocuri(text).map((b) => {
         if (b.fel === 'gol') return <div class="insp-md-gol" />;
+        // Un tabel din răspuns (05.11, ca pe web): în chenarul lui; pe telefon un rând = un cartonaș, cu numele coloanei în față.
+        if (b.fel === 'tab') return (
+          <div class="insp-md-tab"><table>
+            <thead><tr>{b.cap.map((c) => <th><Bucati parti={c} /></th>)}</tr></thead>
+            <tbody>{b.randuri.map((r) => <tr>{r.map((c, k) => <td data-col={b.coloane[k] || ''}><Bucati parti={c} /></td>)}</tr>)}</tbody>
+          </table></div>
+        );
         return <div class={b.fel === 'h' ? 'insp-md-h' : (b.fel === 'li' ? 'insp-md-li' : undefined)}><Bucati parti={b.parti} /></div>;
       })}
     </>
