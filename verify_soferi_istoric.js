@@ -9,7 +9,8 @@
 //      mașinii; istoricul în fișa mașinii și a șoferului, pus ca text; lista Șoferi nu leagă un șofer de mașina altei firme;
 //      telefonul: lista din fișă tot doar cu șoferii firmei; fișa șoferului (06.11, Alin: „când dau să mut șoferul pe altă companie
 //      nu mă lasă"): firma schimbată de noi se mută pe calea „Mută între companii", după o întrebare (funcția paginii, rulată);
-//      la noi, fișa mașinii spune a cui e lista de șoferi;
+//      la noi, fișa mașinii spune a cui e lista de șoferi; fișa șoferului rearanjată (06.11): „Companie" sus, „Anulează" + „Salvează"
+//      jos, în dreapta;
 //   2. textele istoricului (soferi_masini.randIstoric): „de la început → acum", „12.10, 09:14 → acum · 24 de zile", anul altui an;
 //   3. pe server pornit: legăturile vechi cu altă firmă se rup la pornire (cu jurnal), refuzul unui șofer din altă firmă, istoricul
 //      după două schimbări, mutarea mașinii pe altă firmă (șoferul și grupa firmei vechi pleacă, istoricul se închide), cine vede ce.
@@ -131,6 +132,17 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     /istoricMasiniSofer: \(id: number\) => api<any>\(`\/api\/drivers\/\$\{id\}\/istoric-masini`\)/.test(EP) && IST.indexOf('Istoricul șoferilor') < 0 && IST.indexOf('Istoricul mașinilor') < 0);
   const CSS = citeste('public/css/app.css');
   T('istoricul pe culorile temei (fără culori de text scrise de mână)', /\.vist \{[^}]*background: var\(--bg-dark\);/.test(CSS) && /\.vist-cine b \{[^}]*color: var\(--text-primary\);/.test(CSS) && /\.vist-cand \{[^}]*color: var\(--text-secondary\);/.test(CSS));
+
+  // Fișa șoferului rearanjată (06.11, Alin: „da" la macheta casetelor): „Companie" sus, „Anulează" + „Salvează" jos, în dreapta.
+  const FORM = (PAG.match(/<div class="admin-add" id="drv-form"[\s\S]*?\n {10}<\/div>\n {8}<\/div>/) || [''])[0];
+  const iTitlu = FORM.indexOf('id="drv-form-title"'), iFirma = FORM.indexOf('id="drv-company"'), iNume = FORM.indexOf('id="drv-name"'), iJos = FORM.indexOf('class="drv-jos"');
+  T('fișa șoferului: „Companie" imediat sub titlu, pe toată lățimea, înaintea numelui (doar la fondator)',
+    iTitlu > 0 && iFirma > iTitlu && iFirma < iNume && /<label class="super-only" style="grid-column:1\/-1;"><span>Companie \*<\/span><select id="drv-company"/.test(FORM));
+  T('…jos, în dreapta: „Anulează" apoi „Salvează" (fără ↺)', iJos > iNume && /<button type="button" class="btn-sm" id="drv-reset-btn" onclick="anuleazaSofer\(\)">Anulează<\/button>\s*<button type="button" class="btn-sm btn-primary" onclick="saveDriver\(\)"><i class="fas fa-save"><\/i> <span id="drv-btn">Adaugă<\/span><\/button>/.test(FORM) && FORM.indexOf('↺') < 0);
+  const anuleaza = (PAG.match(/function anuleazaSofer\(\) \{[\s\S]*?\n {4}\}/) || [''])[0];
+  T('…„Anulează" golește fișa și o închide, fără să salveze', /resetDriverForm\(\);/.test(anuleaza) && /f\.style\.display = 'none'/.test(anuleaza) && !/fetch\(/.test(anuleaza));
+  T('…rândul de jos: butoane de 42 px, cât jumătate fiecare pe telefon', /#drv-form \.drv-jos \.btn-sm \{ height: 42px;/.test(PAG) && /@media \(max-width: 480px\) \{ #drv-form \.drv-jos \.btn-sm \{ flex: 1 1 0; min-width: 0; \} \}/.test(PAG));
+  T('…„Categorii permis" scris ca celelalte etichete ale fișei', /font-size:12\.5px;font-weight:700;color:var\(--text-secondary\);">Categorii permis<\/span>/.test(FORM));
 
   console.log('\n2. Textele istoricului');
   const S = require('./soferi_masini');

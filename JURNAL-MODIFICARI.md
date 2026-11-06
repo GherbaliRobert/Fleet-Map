@@ -583,6 +583,33 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-06
 
+### AMÂNDOI · Casetele și listele derulante, într-un singur fel în toată aplicația; fișa șoferului rearanjată
+*Alin, 06.11, cu trei poze (fișa șoferului, lista „Companie", lista „Tip combustibil"): „casetele… și dropdown-urile… hai să le
+modernizăm, că sunt din anii 2000". După analiză: „1. da, 2. da, 3. da".*
+
+**Ce era:** 56 de feluri de casete (8 înălțimi, 6 rotunjiri, 3 fundaluri); lista care se deschide era a sistemului (cea albastră, pe
+Windows); pe tema închisă, casetele din Alerte și Mentenanță ieșeau gri, ale sistemului.
+
+**Ce am schimbat:**
+- O singură formă pentru toate casetele din aplicația web: fundalul panoului, chenar subțire, colțuri de 10 px, valoarea îngroșată,
+  inelul verde când scrii; aceeași săgeată la toate listele.
+- În formulare (fișa mașinii, fișa șoferului, Alerte, Mentenanță, Documente, Utilizatori, programările de rapoarte, Setări, „Anunță
+  echipa"): casete de 42 px și etichetele la fel. În barele de filtre și în tabele rămân strânse.
+- Lista care se deschide e a aplicației în Chrome și Edge (calculator și Android): culorile aplicației, fontul ei, rânduri aerisite, ce
+  e ales în verde, cu bifă. Pe Safari (iPhone, Mac) și Firefox rămâne lista sistemului, cu caseta nouă.
+- Un nume lung într-o listă îngustă se taie cu „…" (nu mai iese din chenar); o listă nu-și mai schimbă lățimea când alegi altceva.
+- Lista cu căutare a vehiculelor (Alerte, Mentenanță, Rapoarte…): aceeași săgeată și aceeași listă deschisă.
+- Fișa șoferului: „Companie" sus (doar la noi), „Anulează" și „Salvează" jos, în dreapta. „Anulează" închide fișa fără să salveze
+  (în locul lui ↺).
+- Corectura analizei de dimineață: datele (expirări, perioade) folosesc deja calendarul aplicației, nu pe al Chrome-ului — în cutia de
+  probe nu se încărca. Nu e nimic de făcut acolo.
+
+**Ce vede fondatorul:** ecranele noastre (Companii, Dispozitive, Facturare…) cu aceleași casete și liste; fișa șoferului cu „Companie" sus.
+**Ce vede clientul:** la fel, pe ecranele lui (Management, Rapoarte, Setări…). Reper: `app.css` (blocul de la capăt), `js/campuri.js`,
+`verify_campuri.js`.
+
+---
+
 ### FONDATOR · Firma unui șofer se schimbă din fișa lui (caseta „Companie" nu mai minte)
 *Alin, 06.11, cu poza listei Șoferi: „Gherbali e pe Unitip Test, Popescu tot pe Unitip Test… de ce Gherbali apare alocat și celălalt
 nealocat?" și „când dau să mut șoferul pe altă companie nu mă lasă — mașina e pe Compania mea și șoferul pe Unitip Test, o fi asta

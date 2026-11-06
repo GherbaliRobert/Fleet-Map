@@ -3,6 +3,8 @@
 <head>
   <!-- Analytics (GA4) se încarcă DOAR după consimțământ explicit — vezi public/js/consent.js. -->
   <script src="/js/consent.js"></script>
+  <!-- Listele derulante desenate de aplicație: butonul dinăuntru (de ce — în fișier). Sus, ca să prindă listele de la început. -->
+  <script src="/js/campuri.js"></script>
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -346,7 +348,7 @@
         <div id="history-playback" style="display:none;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
           <button class="history-btn primary" id="hp-play" onclick="hpToggle()" title="Redă / Pauză"><i class="fas fa-play"></i></button>
           <input type="range" id="hp-slider" min="0" max="0" value="0" oninput="hpSeek(this.value)" style="flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;">
-          <select id="hp-speed" onchange="hpSetSpeed(this.value)" style="padding:7px;border-radius:6px;background:var(--bg-dark);color:var(--text-primary);border:1px solid var(--border);font-size:12px;">
+          <select id="hp-speed" onchange="hpSetSpeed(this.value)" style="padding-top:7px;padding-bottom:7px;font-size:12px;">
             <option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option>
           </select>
           <span id="hp-readout" style="font-size:12px;color:var(--text-primary);white-space:nowrap;"></span>
@@ -647,8 +649,8 @@
           <label>IMEI</label>
           <input type="hidden" id="edit-imei">
           <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="edit-imei-aparat" disabled style="font-family:inherit;color:var(--text-muted);flex:1;min-width:0;">
-            <button type="button" class="btn-sm" id="edit-schimba-aparat" style="display:none;white-space:nowrap;height:38px;" onclick="aparatSchimba()"><i class="fas fa-right-left"></i> Schimbă aparatul</button>
+            <input type="text" id="edit-imei-aparat" disabled style="color:var(--text-muted);flex:1;min-width:0;">
+            <button type="button" class="btn-sm" id="edit-schimba-aparat" style="display:none;white-space:nowrap;height:42px;border-radius:10px;" onclick="aparatSchimba()"><i class="fas fa-right-left"></i> Schimbă aparatul</button>
           </div>
           <div id="edit-aparat-nota" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:5px;"></div>
         </div>
@@ -772,7 +774,7 @@
             </div>
             <input type="hidden" id="edit-icon" value="car">
           </div>
-          <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#3FE07D" style="height:38px;padding:2px;"></div>
+          <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#3FE07D" style="height:42px;padding:2px;"></div>
         </div>
         <div class="form-group"><label>Note</label><textarea id="edit-notes" rows="2" style="width:100%;resize:vertical;"></textarea></div>
       </div>
@@ -1042,7 +1044,7 @@
         <div id="dash-company-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
           <i class="fas fa-building" style="color:var(--accent);"></i>
           <span style="font-size:12px;color:var(--text-secondary);">Companie:</span>
-          <select id="dash-company-filter" onchange="setSuperCompany(this.value)" style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);min-width:180px;"></select>
+          <select id="dash-company-filter" onchange="setSuperCompany(this.value)" style="font-size:12px;padding-top:5px;padding-bottom:5px;min-width:180px;"></select>
         </div>
         <!-- HERO KPI (4 carduri mari) + bară status -->
         <div id="dash-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px;"></div>
@@ -2240,7 +2242,7 @@ const pozitii = await r.json();</code></pre>
           <div id="veh-add-form" style="display:none;background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:10px;">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-info-circle" style="color:var(--accent);"></i> Pre-înregistrezi un vehicul după IMEI. Când trackerul cu acel IMEI se conectează, se leagă automat. Detaliile complete le pui apoi din „Editare".</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr) auto;gap:8px;align-items:end;">
-              <label style="font-size:11px;">IMEI *<input type="text" id="veh-new-imei" placeholder="ex: 350612..." style="font-family:inherit;"></label>
+              <label style="font-size:11px;">IMEI *<input type="text" id="veh-new-imei" placeholder="ex: 350612..."></label>
               <label style="font-size:11px;">Nume<input type="text" id="veh-new-name"></label>
               <label style="font-size:11px;">Nr. înmatriculare<input type="text" id="veh-new-plate" style="text-transform:uppercase;"></label>
               <button class="btn-sm btn-primary" onclick="createVehicle()"><i class="fas fa-save"></i> Salvează</button>
@@ -2264,6 +2266,11 @@ const pozitii = await r.json();</code></pre>
 
           #atab-drivers .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
           #atab-drivers .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          /* Fișa șoferului: „Anulează" + „Salvează" jos, în dreapta (Alin, 06.11: „da"); pe telefon, unul lângă altul, cât jumătate. */
+          #drv-form .drv-jos { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; padding-top: 6px; }
+          #drv-form .drv-jos .btn-sm { height: 42px; min-width: 120px; padding: 0 18px; border-radius: 10px; font-size: 14px; font-weight: 700; gap: 8px; }
+          #drv-form .drv-jos .btn-sm.btn-primary { min-width: 150px; background: var(--accent); border: 1px solid var(--accent); color: #06210F; font-weight: 800; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          @media (max-width: 480px) { #drv-form .drv-jos .btn-sm { flex: 1 1 0; min-width: 0; } }
           #drv-search { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-family: inherit; font-size: 13px; }
           #drv-co-filter { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); padding: 0 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; }
           #drv-count { font-size: 12px; font-weight: 800; color: var(--drv-ink); background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
@@ -2391,6 +2398,8 @@ const pozitii = await r.json();</code></pre>
               <i class="fas fa-user-plus" id="drv-form-icon" style="color:var(--accent);"></i>
               <span id="drv-form-title-text">Adaugă șofer nou</span>
             </div>
+            <!-- „Companie" sus (Alin, 06.11: „da"): firma se alege întâi — de ea țin mașinile pe care îl poți pune. Doar fondatorul. -->
+            <label class="super-only" style="grid-column:1/-1;"><span>Companie *</span><select id="drv-company" style="width:100%;"></select></label>
             <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:4px 0;">
               <div style="position:relative;flex-shrink:0;">
                 <img id="drv-photo-preview" src="" alt="" style="display:none;width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
@@ -2411,16 +2420,15 @@ const pozitii = await r.json();</code></pre>
             <label><span>Nr. permis</span><input type="text" id="drv-license"></label>
             <label><span>Expirare permis</span><input type="date" id="drv-expiry"></label>
             <div style="grid-column:1/-1;">
-              <span style="font-size:12px;color:var(--text-secondary);">Categorii permis</span>
+              <span style="display:block;margin-bottom:7px;font-size:12.5px;font-weight:700;color:var(--text-secondary);">Categorii permis</span>
               <div id="drv-cats" class="drv-cats"></div>
               <div id="drv-class"></div>
             </div>
             <!-- Istoricul mașinilor șoferului (05.11; Alin: „șoferul să aibă istoric pe ce mașini a fost pus"). Doar la un șofer existent. -->
             <div id="drv-istoric" style="grid-column:1/-1;" hidden></div>
-            <label class="super-only"><span>Companie *</span><select id="drv-company" style="font-family:inherit;padding:6px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);width:100%;"></select></label>
-            <div style="display:flex;align-items:flex-end;gap:6px;">
-              <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
-              <button class="btn-sm" id="drv-reset-btn" onclick="resetDriverForm()" title="Golește">↺</button>
+            <div class="drv-jos">
+              <button type="button" class="btn-sm" id="drv-reset-btn" onclick="anuleazaSofer()">Anulează</button>
+              <button type="button" class="btn-sm btn-primary" onclick="saveDriver()"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
             </div>
           </div>
         </div>
@@ -3663,9 +3671,9 @@ const pozitii = await r.json();</code></pre>
         <button class="report-period-btn" onclick="setReportPeriod('week', this)">Saptamana</button>
         <button class="report-period-btn" onclick="setReportPeriod('month', this)">Luna</button>
         <span style="color:var(--text-muted);font-size:12px;margin:0 4px;">sau</span>
-        <input type="date" id="report-from" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">
+        <input type="date" id="report-from" style="padding:6px 10px;font-size:12px;">
         <span style="color:var(--text-muted);font-size:12px;">→</span>
-        <input type="date" id="report-to" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">
+        <input type="date" id="report-to" style="padding:6px 10px;font-size:12px;">
         <button onclick="generateReport()" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#06210F;border:none;cursor:pointer;font-size:12px;font-weight:600;">
           <i class="fas fa-sync-alt"></i> Genereaza
         </button>
@@ -6920,7 +6928,7 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       var modeSel = allowInherit ?
         ('<div style="margin-bottom:10px;"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Program pentru ' + (kind === 'group' ? 'această grupă' : 'acest vehicul') + '</label>' +
-          '<select class="ws-mode" onchange="usWsToggleMode(this, \'' + containerId + '\')" style="width:100%;padding:8px;">' +
+          '<select class="ws-mode" onchange="usWsToggleMode(this, \'' + containerId + '\')" style="width:100%;padding-top:8px;padding-bottom:8px;">' +
           '<option value="inherit"' + (mode === 'inherit' ? ' selected' : '') + '>Moștenește programul companiei</option>' +
           '<option value="own"' + (mode === 'own' ? ' selected' : '') + '>Program propriu</option>' +
           '<option value="off"' + (mode === 'off' ? ' selected' : '') + '>Fără supraveghere (niciodată)</option>' +
@@ -8403,7 +8411,6 @@ const pozitii = await r.json();</code></pre>
         _form.style.background = 'rgba(63,224,125,0.06)';
         _form.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Anulează editarea';
       istoricIncarca(document.getElementById('drv-istoric'), '/api/drivers/' + encodeURIComponent(d.id) + '/istoric-masini', 'sofer');
     }
     function resetDriverForm() {
@@ -8418,8 +8425,12 @@ const pozitii = await r.json();</code></pre>
       var _fi = document.getElementById('drv-form-icon'); if (_fi) _fi.className = 'fas fa-user-plus';
       var _form = document.getElementById('drv-form');
       if (_form) { _form.style.border = ''; _form.style.borderRadius = ''; _form.style.padding = ''; _form.style.background = ''; }
-      var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Golește';
       var _ist = document.getElementById('drv-istoric'); if (_ist) { _ist.textContent = ''; _ist.hidden = true; _ist.dataset.url = ''; }
+    }
+    // „Anulează" (Alin, 06.11: „da" — în locul lui ↺): golește fișa și o închide, fără să salveze nimic.
+    function anuleazaSofer() {
+      resetDriverForm();
+      var f = document.getElementById('drv-form'); if (f) f.style.display = 'none';
     }
     // Redimensionează imaginea client-side (max 400px, JPEG ~0.82) → poză mică în DB, încărcare rapidă.
     function drvPhotoPick(input) {
@@ -8706,14 +8717,14 @@ const pozitii = await r.json();</code></pre>
             : `<div id="alert-cf-${f.k}" style="padding:9px;border:1px dashed var(--border);border-radius:8px;">Nicio zonă definită${coSel && coSel !== '__all__' ? ' pentru compania aleasă' : ''} — creează una în Zone.</div>`}
           </div>`;
         } else {
-          html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
+          html += `<label style="display:flex;flex-direction:column;"><span>${f.label}</span>
             <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"${f.empty ? ` placeholder="${f.empty}"` : ''}${f.nota ? ' oninput="alertCfNota()"' : ''}></label>`;
           // Sub „Viteză max": când sună de fapt regula (pragul + marja motorului) — fraza vine de la server.
           if (f.nota) html += `<div id="alert-cf-nota" class="alr-cf-nota"></div>`;
         }
       }
       if (def.axles) {
-        html += [1,2,3,4,5].map(n => `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Limită axa ${n} (kg)</span><input type="number" id="alert-cf-axle${n}" placeholder="ex: 10000"></label>`).join('');
+        html += [1,2,3,4,5].map(n => `<label style="display:flex;flex-direction:column;"><span>Limită axa ${n} (kg)</span><input type="number" id="alert-cf-axle${n}" placeholder="ex: 10000"></label>`).join('');
       }
       box.innerHTML = html;
       alertZonesCount();
@@ -10797,7 +10808,7 @@ const pozitii = await r.json();</code></pre>
       { v: 'generic',       label: 'Generic / personalizat',           source: '',                  mode: 'direct' }
     ];
     const FUEL_SOURCES = ['analog_input_1','analog_input_2','lls_fuel_level_1','lls_fuel_level_2','ble_fuel_level_1','ble_fuel_level_2','ble_fuel_level_3','ble_fuel_level_4','ble_fuel_frequency_1','ble_fuel_frequency_2','ble_fuel_frequency_3','ble_fuel_frequency_4','can_fuel_level_liters','fms_fuel_level'];
-    const _fsInput = 'padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-dark);color:var(--text,#222);';
+    const _fsInput = 'padding:7px 10px;';   // aspectul vine din forma comună a casetelor (app.css, „Casetele și listele derulante”)
     function fuelCalRowHtml(raw, liters) {
       return `<div class="fs-cal-row" style="display:flex;gap:6px;align-items:center;">
         <input type="number" step="any" class="fs-cal-raw" value="${raw!=null?raw:''}" placeholder="brut" style="flex:1;${_fsInput}">
@@ -11443,7 +11454,7 @@ const pozitii = await r.json();</code></pre>
           // opts.field = o singură întrebare suplimentară, chiar în fereastră (ex. „cât a costat?"),
           // ca să nu fie nevoie de încă un formular pentru un singur număr. Fără field, se comportă
           // exact ca înainte: răspunde true/false.
-          (opts.field ? '<div style="text-align:left;margin:-8px 0 18px;"><label style="display:block;font-size:11.5px;font-weight:700;color:var(--text-secondary,#475569);margin-bottom:6px;">' + String(opts.field.label || '') + '</label><input id="rac-field" type="' + (opts.field.type || 'text') + '" value="' + String(opts.field.value == null ? '' : opts.field.value).replace(/"/g, '&quot;') + '" placeholder="' + String(opts.field.placeholder || '').replace(/"/g, '&quot;') + '" style="width:100%;height:38px;border-radius:9px;border:1px solid var(--border,#e2e8f0);background:var(--bg-dark,#f1f5f9);color:var(--text-primary,#0f172a);padding:0 11px;font-size:13.5px;font-family:inherit;"></div>' : '') +
+          (opts.field ? '<div style="text-align:left;margin:-8px 0 18px;"><label style="display:block;font-size:11.5px;font-weight:700;color:var(--text-secondary,#475569);margin-bottom:6px;">' + String(opts.field.label || '') + '</label><input id="rac-field" type="' + (opts.field.type || 'text') + '" value="' + String(opts.field.value == null ? '' : opts.field.value).replace(/"/g, '&quot;') + '" placeholder="' + String(opts.field.placeholder || '').replace(/"/g, '&quot;') + '" style="width:100%;height:42px;padding:0 14px;font-size:14px;"></div>' : '') +
           '<div style="display:flex;gap:8px;justify-content:center;"><button id="rac-cancel" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;background:transparent;color:var(--text-primary);border:1px solid var(--border);">' + (opts.cancelLabel || 'Anulează') + '</button><button id="rac-ok" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;border:none;color:' + (danger ? '#fff' : '#06210F') + ';background:' + accent + ';">' + (opts.okLabel || (danger ? 'Confirmă' : 'OK')) + '</button></div>';
         ov.appendChild(card); document.body.appendChild(ov);
         // Cu field: „da" întoarce ce s-a scris (șir, poate gol), „nu" întoarce false. Fără field,
@@ -14618,7 +14629,7 @@ const pozitii = await r.json();</code></pre>
       var pv = (data && data.perVehicle) || [];
       if (!pv.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
       host.style.display = 'block';
-      var ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;min-width:220px;';
+      var ss = 'padding-top:7px;padding-bottom:7px;font-size:13px;cursor:pointer;min-width:220px;';   // aspectul: forma comună a casetelor (app.css)
       var gl = (data && data.groupLabel) || 'Vehicul', glL = gl.toLowerCase();   // fără iconiță: eticheta se citește singură
       var opts = '<option value="">▦ Sumar — general</option>' + pv.map(function (v, i) { return '<option value="' + i + '">' + _repEsc(v.vehicul) + '</option>'; }).join('');
       host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><span style="font-size:12px;color:var(--text-muted);font-weight:700;">Vezi ' + glL + ':</span><select id="rep-vehsel" onchange="repVehSelect(this.value)" style="' + ss + '">' + opts + '</select></div><div id="rep-vehsum">' + ((data && data.noVehSummary) ? '' : _repVehSummaryHtml(pv, gl, data && data.summaryTotals)) + '</div>';
@@ -14688,8 +14699,8 @@ const pozitii = await r.json();</code></pre>
           + ' <span style="opacity:.7;">pag. ' + (_repPage + 1) + '/' + tp + '</span>'
         : ' · ' + total + ' rânduri';
       cnt.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">Rânduri/pagină: '
-        + '<select onchange="_repSetPageSize(this.value)" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:3px 6px;font-size:12px;">' + opts + '</select>'
-        + '<input type="number" min="1" max="10000" placeholder="custom" value="' + (isCustom ? _repPageSize : '') + '" onchange="if(this.value)_repSetPageSize(this.value)" style="width:66px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:3px 6px;font-size:12px;" title="Custom rânduri/pagină">'
+        + '<select onchange="_repSetPageSize(this.value)" style="padding-top:3px;padding-bottom:3px;font-size:12px;">' + opts + '</select>'
+        + '<input type="number" min="1" max="10000" placeholder="custom" value="' + (isCustom ? _repPageSize : '') + '" onchange="if(this.value)_repSetPageSize(this.value)" style="width:66px;padding:3px 6px;font-size:12px;" title="Custom rânduri/pagină">'
         + nav + '</span>';
     }
     function _repSetPageSize(v) { _repPageSize = (String(v) === '0') ? 0 : (parseInt(v, 10) > 0 ? parseInt(v, 10) : 50); _repPage = 0; _repRenderTable(); }
@@ -15548,7 +15559,7 @@ const pozitii = await r.json();</code></pre>
         return `<tr style="border-top:1px solid var(--border);" data-key="${t.key}">
           <td style="padding:8px 10px;">${t.label}</td>
           <td style="text-align:center;"><input type="checkbox" class="pf-en" ${enabled?'checked':''}></td>
-          <td style="text-align:center;">${t.threshold ? `<input type="number" class="pf-thr" value="${thr}" style="width:74px;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--bg-dark);color:var(--text,#222);"> <span style="color:var(--text-muted);font-size:11px;">${t.unit||''}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+          <td style="text-align:center;">${t.threshold ? `<input type="number" class="pf-thr" value="${thr}" style="width:74px;padding:4px;"> <span style="color:var(--text-muted);font-size:11px;">${t.unit||''}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
           <td style="text-align:center;"><input type="checkbox" class="pf-email" ${p.email?'checked':''}></td>
           <td style="text-align:center;"><input type="checkbox" class="pf-push" ${push?'checked':''}></td>
         </tr>`;
@@ -21098,9 +21109,9 @@ const pozitii = await r.json();</code></pre>
       const row = document.createElement('div');
       row.className = 'calibration-row';
       row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-      row.innerHTML = '<input type="number" step="0.01" placeholder="Voltaj (V)" class="cal-voltage" value="' + (voltage || '') + '" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">' +
+      row.innerHTML = '<input type="number" step="0.01" placeholder="Voltaj (V)" class="cal-voltage" value="' + (voltage || '') + '" style="flex:1;padding:6px 8px;font-size:12px;">' +
         '<span style="color:var(--text-muted);font-size:11px;">→</span>' +
-        '<input type="number" step="0.1" placeholder="Litri" class="cal-liters" value="' + (liters || '') + '" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">' +
+        '<input type="number" step="0.1" placeholder="Litri" class="cal-liters" value="' + (liters || '') + '" style="flex:1;padding:6px 8px;font-size:12px;">' +
         '<button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px 8px;"><i class="fas fa-trash"></i></button>';
       container.appendChild(row);
     }
@@ -23859,7 +23870,7 @@ const pozitii = await r.json();</code></pre>
         // ─── Cheie AI (gestionată DOAR de super-admin, aici) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-key"></i> Cheie AI (Anthropic)</div>';
         html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">'
-          + '<input id="rax-dash-aikey" type="password" placeholder="' + (d.aiEnabled ? '•••••••• (schimbă cheia)' : 'sk-ant-...') + '" style="flex:1;min-width:200px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px 11px;font-size:13px;">'
+          + '<input id="rax-dash-aikey" type="password" placeholder="' + (d.aiEnabled ? '•••••••• (schimbă cheia)' : 'sk-ant-...') + '" style="flex:1;min-width:200px;padding:8px 11px;font-size:13px;">'
           + '<button class="rax-btn primary" onclick="raxDashSaveKey()"><i class="fas fa-key"></i> Salvează</button></div>';
         html += '<div id="rax-dash-aikey-msg" style="font-size:11px;margin-bottom:12px;color:var(--text-muted);">Status: ' + (d.aiEnabled ? '<span style="color:var(--accent)">● activ</span> — asistentul liber și agenții AI funcționează' : '● inactiv — adaugă cheia pentru întrebări libere/rezumate (întrebările rapide merg oricum)') + '</div>';
 
@@ -23906,7 +23917,7 @@ const pozitii = await r.json();</code></pre>
         // ─── Debug IO — mapare per vehicul (super-admin) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:6px 0 6px;"><i class="fas fa-microchip"></i> Debug IO — mapare per vehicul</div>';
         html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Vezi IO-urile brute (io_NNN) trimise de tracker și mapează-le la nume utile. Pentru combustibil → conversie brut→litri după capacitatea rezervorului.</div>';
-        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><select id="rax-io-veh" onchange="raxIoDebug(this.value)" style="flex:1;min-width:180px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 10px;font-size:13px;"><option value="">— se încarcă vehiculele —</option></select><button class="rax-btn" onclick="var v=document.getElementById(\'rax-io-veh\').value; if(v) raxIoDebug(v);"><i class="fas fa-rotate"></i> Reîncarcă</button></div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><select id="rax-io-veh" onchange="raxIoDebug(this.value)" style="flex:1;min-width:180px;padding-top:7px;padding-bottom:7px;font-size:13px;"><option value="">— se încarcă vehiculele —</option></select><button class="rax-btn" onclick="var v=document.getElementById(\'rax-io-veh\').value; if(v) raxIoDebug(v);"><i class="fas fa-rotate"></i> Reîncarcă</button></div>';
         html += '<div id="rax-io-debug-body"><div class="rax-co-meta">Alege un vehicul pentru a vedea IO-urile.</div></div>';
         // ─── Gestionare rapidă (scurtături) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:18px 0 6px;"><i class="fas fa-bolt"></i> Gestionare rapidă</div>';
@@ -23958,11 +23969,11 @@ const pozitii = await r.json();</code></pre>
         var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         box.innerHTML =
           '<div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">Anunț global (banner pentru toți userii — gol = fără banner)</div>' +
-          '<textarea id="rax-sys-ann" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px;font-size:13px;" placeholder="ex: Mentenanță programată duminică 02:00–03:00…">' + esc(s.announcement || '') + '</textarea></div>' +
+          '<textarea id="rax-sys-ann" rows="2" style="width:100%;box-sizing:border-box;padding:8px;font-size:13px;" placeholder="ex: Mentenanță programată duminică 02:00–03:00…">' + esc(s.announcement || '') + '</textarea></div>' +
           '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rax-sys-agents" ' + (s.agents_auto ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);"> Agenți AI automat (din oră în oră)</label>' +
-            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag offline (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
-            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Viteză implicită (km/h): <input type="number" id="rax-sys-spd" value="' + (s.default_speed_limit || 90) + '" min="10" max="200" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag offline (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;padding:4px 6px;"></label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Viteză implicită (km/h): <input type="number" id="rax-sys-spd" value="' + (s.default_speed_limit || 90) + '" min="10" max="200" style="width:72px;padding:4px 6px;"></label>' +
           '</div>' +
           '<button class="rax-btn primary" onclick="raxSysSave()"><i class="fas fa-save"></i> Salvează setările</button> <span id="rax-sys-msg" style="font-size:11px;color:var(--text-muted);margin-left:8px;"></span>';
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
@@ -24029,7 +24040,7 @@ const pozitii = await r.json();</code></pre>
         // Interfața CAN: FMS (FMC650/camioane) vs standard LV-CAN — schimbă cum se decodează datele CAN.
         html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;">' +
           '<span style="font-size:12px;font-weight:600;"><i class="fas fa-microchip"></i> Interfață CAN:</span>' +
-          '<select id="rax-io-iface" onchange="raxSetCanIface(\'' + esc(imei) + '\', this.value)" style="background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 9px;font-size:12px;">' +
+          '<select id="rax-io-iface" onchange="raxSetCanIface(\'' + esc(imei) + '\', this.value)" style="padding-top:5px;padding-bottom:5px;font-size:12px;">' +
             '<option value=""' + (!d.can_interface ? ' selected' : '') + '>Standard / LV-CAN (implicit)</option>' +
             '<option value="fms"' + (d.can_interface === 'fms' ? ' selected' : '') + '>FMS / J1939 (FMC650, camioane)</option>' +
           '</select>' +
@@ -34567,7 +34578,7 @@ const pozitii = await r.json();</code></pre>
       var coPick = isSuperUser()
         ? '<div style="display:flex;align-items:center;gap:7px;background:var(--bg-dark);border:1px solid var(--border);border-radius:9px;padding:5px 9px;">'
           + '<i class="fas fa-building" style="color:var(--accent);font-size:12px;"></i>'
-          + '<select id="agp-company-filter" onchange="setSuperCompany(this.value)" title="Pentru ce companie vezi agenții și setezi pragurile" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;min-width:150px;"></select></div>'
+          + '<select id="agp-company-filter" onchange="setSuperCompany(this.value)" title="Pentru ce companie vezi agenții și setezi pragurile" style="font-size:12px;padding-top:3px;padding-bottom:3px;cursor:pointer;min-width:150px;"></select></div>'
         : '';
       body.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
         + '<div class="agp-sub" style="margin:0;flex:1;min-width:200px;">Echipa ta de agenți care monitorizează flota automat. Apasă un agent pentru pagina lui.</div>'
@@ -34946,12 +34957,12 @@ const pozitii = await r.json();</code></pre>
             var v = (saved != null) ? saved : (f.def === '' ? '' : f.def);
             var opts = f.options.slice();
             if (v !== '' && v != null && !opts.some(function (o) { return String(o.v) === String(v); })) opts.unshift({ v: v, t: v + ' (curent)' });
-            control = '<select id="agp-th-' + f.key + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;cursor:pointer;">'
+            control = '<select id="agp-th-' + f.key + '" style="padding-top:9px;padding-bottom:9px;font-size:13px;cursor:pointer;">'
               + opts.map(function (o) { return '<option value="' + o.v + '"' + (String(o.v) === String(v) ? ' selected' : '') + '>' + o.t + '</option>'; }).join('')
               + '</select>';
           } else {
             var vn = (saved != null) ? saved : '';
-            control = '<input id="agp-th-' + f.key + '" type="number" min="' + f.min + '" max="' + f.max + '" step="1" value="' + vn + '" placeholder="' + (f.def === '' ? 'gol = dezactivat' : ('implicit ' + f.def)) + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;">';
+            control = '<input id="agp-th-' + f.key + '" type="number" min="' + f.min + '" max="' + f.max + '" step="1" value="' + vn + '" placeholder="' + (f.def === '' ? 'gol = dezactivat' : ('implicit ' + f.def)) + '" style="padding:9px 11px;font-size:13px;">';
           }
           return '<label style="display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;">'
             + '<span>' + f.label + ' <span style="color:var(--text-muted);font-weight:600;">(' + f.unit + ')</span></span>'

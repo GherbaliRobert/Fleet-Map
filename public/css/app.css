@@ -5169,3 +5169,138 @@ body.dark .aiu-bani-r.warn .v { color: #fbbf24; } body.dark .aiu-bani-r.bad .v {
 .vist-cand small { font-size: 11px; color: var(--text-muted); }
 .vist-gol, .vist-nota { margin-top: 6px; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
 #edit-driver-nota { margin-top: 4px; }
+
+/* ═══ Casetele și listele derulante: UN SINGUR FEL, în toată aplicația (Alin, 06.11: „1 da, 2 da") ═════════════════════
+   Alin, cu trei poze (fișa șoferului, lista „Companie", lista „Tip combustibil"): „casetele… și dropdown-urile… hai să le
+   modernizăm, că sunt din anii 2000". Măsurat înainte (06.11, 42 de ecrane × 2 lățimi): 56 de feluri de casete — 8
+   înălțimi, 6 rotunjiri, 3 fundaluri, lista albastră a sistemului —, iar pe tema închisă casetele din Alerte și din
+   Mentenanță ieșeau gri, ale sistemului.
+   ACUM, peste tot:
+   – caseta: fundalul panoului, chenar subțire, colțuri de 10 px, valoarea îngroșată, inelul verde când scrii în ea;
+   – săgeata listei: una singură, desenată de noi;
+   – în formulare (fișa mașinii, fișa șoferului, Alerte, Mentenanță, Documente, Utilizatori, Setări, „Anunță echipa"…):
+     42 px; în barele de filtre și în tabele își păstrează mărimea strânsă;
+   – lista care se deschide: a aplicației în Chrome și Edge („appearance: base-select"), cu bifa verde pe ce e ales; în
+     Safari și Firefox rămâne lista sistemului, cu caseta de mai sus.
+   Cum se citesc selectorii (scriși cu reguli imbricate, „&"):
+   – `:is(#ra-campuri, html) :is(#ra-campuri, body)` în față cântărește cât DOUĂ id-uri (nu există niciun #ra-campuri:
+     prinde orice din pagină), ca să bată regulile vechi scrise pe id-ul ferestrei (`#admin-modal input`,
+     `#user-edit-modal input:not(…)`, `#alert-form input`…) fără `!important`. De aceea și regulile de STARE (deschis,
+     ales, „activ") se scriu tot aici, cu aceeași greutate — altfel le-ar călca forma de mai jos;
+   – `:where(:not(…))` = casetele care își păstrează forma lor (din interiorul unei „cutii" desenate de altcineva: caseta
+     de chat, căutarea de pe hartă, celulele din programul de lucru, calendarul…). O casetă nouă de felul ăsta intră în
+     listă sau primește clasa `camp-liber`. Lista e scrisă de 4 ori mai jos (1, 2, 3, 4) — o schimbi în toate.
+   ⚠ Stilul pus în linie (style="…") bate orice foaie de stil: pe o casetă NU se mai scriu în linie fundalul, chenarul,
+   colțurile, culoarea sau fontul (păzit de verify_campuri.js).
+   ⚠ Fiecare listă derulantă primește înăuntru un buton al nostru (js/campuri.js): fără el, în lista nouă, un text lung
+   ieșea din chenar și săgeata dispărea. */
+:root {
+  --camp-h: 42px; --camp-r: 10px; --camp-bd-sub: #94a3b8;
+  --camp-sageata: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --camp-opt-sub: #f1f5f9; --camp-ales: #166534; --camp-bifa: #15803d;
+  --camp-umbra: 0 18px 44px rgba(15, 23, 42, .16), 0 3px 8px rgba(15, 23, 42, .08);
+}
+body.dark {
+  --camp-bd-sub: #4b5563;
+  --camp-sageata: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A93A3' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --camp-opt-sub: #20262E; --camp-ales: #3FE07D; --camp-bifa: #3FE07D;
+  --camp-umbra: 0 18px 44px rgba(0, 0, 0, .55), 0 3px 8px rgba(0, 0, 0, .35);
+}
+
+/* 1. Caseta, oriunde: fundalul, chenarul, colțurile, valoarea. Mărimea o lasă fiecăruia (în afară de formulare, la 3). */
+:is(#ra-campuri, html) :is(#ra-campuri, body) :is(input:where(:not([type]), [type=text], [type=email], [type=tel], [type=number], [type=password], [type=search], [type=url], [type=date], [type=datetime-local], [type=time], [type=month], [type=week]), select, textarea):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
+  background-color: var(--bg-panel); border: 1.5px solid var(--border-light); border-radius: var(--camp-r);
+  color: var(--text-primary); font-family: inherit; font-weight: 600; outline: none; box-shadow: none;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+  &:is(textarea) { font-weight: 500; line-height: 1.5; }
+  &:hover:not(:disabled):not(:focus):not([readonly]) { border-color: var(--camp-bd-sub); }
+  &:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  &::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+  &:disabled { background-color: var(--bg-dark); color: var(--text-muted); border-color: var(--border); cursor: not-allowed; opacity: 1; }
+  /* Doar citire (linkul de copiat, IMEI-ul aparatului…). NU caseta calendarului: flatpickr o face „readonly" ca să nu scrii
+     în ea, dar se apasă — stă imediat după caseta ascunsă .flatpickr-input. */
+  &[readonly]:not(.flatpickr-input + input):not(.rep-dt-input) { background-color: var(--bg-dark); color: var(--text-secondary); border-color: var(--border); }
+  @media (prefers-reduced-motion: reduce) { transition: none; }
+}
+/* Stările listelor „cu căutare" și ale calendarului (deschis) — cu aceeași greutate, altfel forma de sus le-ar călca. */
+:is(#ra-campuri, html) :is(#ra-campuri, body) :is(.ss-wrap.ss-open .ss-input, .rep-dt-input.active) {
+  border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* 2. Lista derulantă închisă: săgeata noastră (pe browserele fără lista nouă rămâne desenată ca fundal). */
+:is(#ra-campuri, html) :is(#ra-campuri, body) select:not([multiple]):not([size]):not(.flatpickr-monthDropdown-months):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
+  -webkit-appearance: none; appearance: none; cursor: pointer; text-overflow: ellipsis;
+  background-image: var(--camp-sageata); background-repeat: no-repeat; background-position: right 13px center; background-size: 12px 12px;
+  /* Locul săgeții e al nostru: bate și o margine scrisă în linie (un text lung ar fi intrat sub săgeată). */
+  padding-left: 12px; padding-right: 36px !important;
+  &:disabled { cursor: not-allowed; }
+  &:invalid { color: var(--text-muted); }
+}
+
+/* 3. În formulare: 42 px, aceleași margini înăuntru, etichetele la fel. */
+:is(#ra-campuri, html) :is(#ra-campuri, body) :is(.form-group, .admin-add, .add-user-form, .doc-form, .sch-form, .pref-f, .ce-win, #user-edit-modal, #apikeys-modal) :is(input:where(:not([type]), [type=text], [type=email], [type=tel], [type=number], [type=password], [type=search], [type=url], [type=date], [type=datetime-local], [type=time], [type=month], [type=week]), select, textarea):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
+  height: var(--camp-h); min-height: var(--camp-h); padding-top: 0; padding-bottom: 0; box-sizing: border-box; font-size: 14px;
+  &:is(input):not(.ss-input):not(.rep-dt-input) { padding-left: 14px; padding-right: 14px; }
+  &:is(select) { padding-left: 14px; }
+  &:is(textarea) { height: auto; min-height: 84px; padding: 10px 14px; }
+}
+:is(#ra-campuri, html) :is(#ra-campuri, body) {
+  & .form-group > label, & .admin-add > label > span:first-child { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); letter-spacing: .1px; }
+  & .form-group > label { margin-bottom: 7px; }
+  & .admin-add { gap: 14px 16px; }
+  & .admin-add label { gap: 7px; }
+}
+
+/* 4. Lista care se deschide — a aplicației (Chrome, Edge). Butonul dinăuntru (js/campuri.js) ține textul ales, tăiat cu „…"
+   când nu încape, și lățimea celei mai lungi opțiuni. */
+@supports (appearance: base-select) {
+  :is(#ra-campuri, html) :is(#ra-campuri, body) select:not([multiple]):not([size]):not(.flatpickr-monthDropdown-months):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
+    background-image: none; padding-right: 12px !important; align-items: center;
+    &, &::picker(select) { appearance: base-select; }
+    & > button.camp-sel { all: unset; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 1 1 auto; min-width: 0; cursor: inherit; }
+    & > button.camp-sel > * { grid-area: 1 / 1; min-width: 0; }
+    & > button.camp-sel > selectedcontent { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    & > button.camp-sel > .camp-sel-m { display: block; visibility: hidden; height: 0; overflow: hidden; white-space: pre; }
+    &::picker-icon {
+      content: ''; width: 7px; height: 7px; flex: none; margin-left: 10px; margin-right: 2px;
+      border: solid var(--text-muted); border-width: 0 2.2px 2.2px 0; border-radius: 1px;
+      transform: translateY(-2px) rotate(45deg); transition: transform .18s ease; }
+    &:open::picker-icon { transform: translateY(2px) rotate(225deg); }
+    &::picker(select) {
+      background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px;
+      padding: 6px; margin-block: 6px; box-shadow: var(--camp-umbra); max-height: min(360px, 55vh); overflow-y: auto;
+      opacity: 0; translate: 0 -4px;
+      transition: opacity .14s ease, translate .14s ease, display .14s allow-discrete, overlay .14s allow-discrete; }
+    &:open::picker(select) { opacity: 1; translate: 0 0; @starting-style { opacity: 0; translate: 0 -4px; } }
+    & option {
+      display: flex; align-items: center; gap: 10px; min-height: 38px; box-sizing: border-box; padding: 8px 12px;
+      border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1.35;
+      color: var(--text-primary); }
+    & option:hover, & option:focus-visible { background: var(--camp-opt-sub); outline: none; }
+    & option:checked { background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel)); color: var(--camp-ales); font-weight: 700; }
+    & option::checkmark { order: 1; margin-left: auto; color: var(--camp-bifa); font-weight: 800; }
+    & option[value=""] { color: var(--text-muted); }
+    & option:disabled { color: var(--text-muted); cursor: default; background: none; }
+    & optgroup { font-size: 12px; font-weight: 800; color: var(--text-muted); }
+    /* Pe ecranele atinse cu degetul (telefon, tabletă): rânduri de 44 px, cât cere un deget. */
+    @media (pointer: coarse) { & option { min-height: 44px; font-size: 15px; } }
+    @media (prefers-reduced-motion: reduce) { &::picker(select), &::picker-icon { transition: none; } }
+  }
+}
+
+/* Alegerea iconiței din fișa mașinii (un buton desenat ca o casetă): la fel ca o casetă, 42 px. */
+:is(#ra-campuri, html) :is(#ra-campuri, body) .icon-select-trigger {
+  min-height: var(--camp-h); background-color: var(--bg-panel); border: 1.5px solid var(--border-light); border-radius: var(--camp-r); }
+:is(#ra-campuri, html) :is(#ra-campuri, body) :is(.icon-select-trigger:hover, .icon-select.open .icon-select-trigger) { border-color: var(--accent); }
+
+/* 5. Lista „cu căutare" a vehiculelor (.ss-*, a noastră de dinainte): aceeași săgeată și aceeași listă deschisă. */
+:is(#ra-campuri, html) :is(#ra-campuri, body) {
+  & .ss-wrap::after {
+    content: ''; right: 15px; width: 7px; height: 7px; font-size: 0;
+    border: solid var(--text-muted); border-width: 0 2.2px 2.2px 0; border-radius: 1px; transform: translateY(-70%) rotate(45deg); }
+  & .ss-wrap.ss-open::after { border-color: var(--text-muted); transform: translateY(-25%) rotate(225deg); }
+  & .ss-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: var(--camp-umbra); }
+  & .ss-item { position: relative; padding: 9px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  & .ss-item:hover, & .ss-item.ss-active { background: var(--camp-opt-sub); }
+  & .ss-item.ss-sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel)); color: var(--camp-ales); font-weight: 700; padding-right: 32px; }
+  & .ss-item.ss-sel::after { content: '✓'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--camp-bifa); font-weight: 800; }
+}

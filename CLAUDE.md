@@ -88,6 +88,29 @@ Așa a trăit „Restaurează" din Dispozitive arhivate (Alin, 17.09).
   **NU scrie a 13-a copie** de fundal verde.
 - Se prinde măsurând, nu privind: contrastul text/fundal, pe AMÂNDOUĂ temele.
 
+## Casetele și listele derulante: UN SINGUR FEL (Alin, 06.11: „1 da, 2 da")
+Alin, cu trei poze: „casetele… și dropdown-urile… sunt din anii 2000". Măsurat înainte: 56 de feluri de casete și lista albastră a sistemului.
+- **O regulă, la capătul `app.css`** (blocul „Casetele și listele derulante"), pentru orice casetă (input de text, select, textarea):
+  fundalul panoului, chenar `--border-light`, colțuri 10 px, valoarea 600, inelul verde la focus, săgeata noastră (`--camp-sageata`, pe
+  ambele teme). În formulare (`.form-group`, `.admin-add`, `.add-user-form`, `.doc-form`, `.sch-form`, `.pref-f`, `.ce-win`,
+  `#user-edit-modal`, `#apikeys-modal`): 42 px (`--camp-h`); în barele de filtre și în tabele își păstrează mărimea.
+- **Prefixul `:is(#ra-campuri, html) :is(#ra-campuri, body)`** = greutatea a două id-uri: bate regulile vechi pe id-ul ferestrei
+  (`#admin-modal input`…) fără `!important`. Regulile de STARE (lista cu căutare deschisă, calendarul activ) se scriu în bloc, cu
+  aceeași greutate — altfel forma le calcă.
+- **Excepțiile** (o casetă din interiorul unei „cutii" desenate de altcineva: chatul, căutarea hărții, celulele programului de lucru,
+  calendarul…) = lista `:where(:not(…))`, scrisă de 4 ori, IDENTICĂ (proba le compară). O casetă nouă de felul ăsta intră acolo sau
+  primește clasa `camp-liber`.
+- **NU scrie în linie** (`style="…"`) fundal / chenar / colțuri / culoare / font pe o casetă: bate orice foaie de stil (așa rămăseseră
+  21). Pe o listă, marginea în linie doar sus / jos — dreapta e a săgeții (`padding-right … !important`).
+- **Lista care se deschide = „appearance: base-select"** (Chrome / Edge 135+), doar în `@supports`; Safari și Firefox păstrează lista
+  sistemului. **`js/campuri.js`** (în `<head>`) pune în fiecare listă `<button class="camp-sel"><selectedcontent>` + măsura
+  (`.camp-sel-m`, textele tuturor opțiunilor, ascunse): fără el, un text lung ieșea din chenar și săgeata dispărea, iar o listă fără
+  lățime se făcea cât textul ales. ⚠ Butonul se ține minte pe listă (`_campSel`) și se pune ÎNAPOI pe ACELAȘI după un `innerHTML`:
+  Chrome nu mai umple un `<selectedcontent>` nou în aceeași listă (măsurat 06.11).
+- Caseta calendarului (flatpickr o face „readonly") NU e stinsă: `:not(.flatpickr-input + input)`. Chenarul de 1,5 px, Chrome îl desenează de 1 px.
+- **Fișa șoferului** (punctul 3): „Companie" sus, „Anulează" (`anuleazaSofer`: golește și închide) + „Salvează" jos, în dreapta (`.drv-jos`).
+- Păzit de `verify_campuri.js` (5–8, în browser pe ambele teme) și `verify_soferi_istoric.js` (fișa șoferului).
+
 ## Export rapoarte (Excel & PDF) — branding (OBLIGATORIU)
 
 **Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Track.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.
