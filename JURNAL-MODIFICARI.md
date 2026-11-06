@@ -581,6 +581,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-06
+
+### FONDATOR · Firma unui șofer se schimbă din fișa lui (caseta „Companie" nu mai minte)
+*Alin, 06.11, cu poza listei Șoferi: „Gherbali e pe Unitip Test, Popescu tot pe Unitip Test… de ce Gherbali apare alocat și celălalt
+nealocat?" și „când dau să mut șoferul pe altă companie nu mă lasă — mașina e pe Compania mea și șoferul pe Unitip Test, o fi asta
+problema?"*
+
+**Cauza:** da, asta era. Un șofer se pune doar pe mașinile firmei lui: B 112 RFG e pe „Compania mea", Popescu pe „Unitip Test"; Gherbali
+apare pus fiindcă mașina lui, B 204 UIP, e tot pe Unitip Test. Iar mutarea șoferului nu mergea: în fișa șoferului, caseta „Companie" se
+vedea și la un șofer existent, dar firma pleca spre server doar la un șofer NOU — „Salvează" trecea fără nicio eroare, iar șoferul rămânea
+pe firma veche.
+
+**Ce am schimbat:**
+- Fișa șoferului (Management → Șoferi → creionul): firma aleasă la „Companie" chiar se schimbă, după o întrebare care spune de unde și
+  unde și, dacă șoferul e pus pe o mașină, că iese de pe ea (mașina rămâne la firma ei). E aceeași mutare ca în Companii → „Mută între
+  companii"; la capăt, „Șoferul e acum la „…" ✓".
+- La deschiderea fișei, caseta arată firma de ACUM a șoferului (la un șofer fără firmă rămânea firma șoferului deschis înainte, iar
+  salvarea l-ar fi mutat acolo).
+- Fișa mașinii, la noi: sub lista de șoferi, „Apar doar șoferii firmei „Compania mea", a mașinii. Un șofer de la altă firmă îl muți întâi
+  din fișa lui (Management → Șoferi → creionul → Companie)."
+
+**Ce vede fondatorul:** mutarea din fișa șoferului merge; în fișa mașinii, a cui e lista de șoferi. **Ce vede clientul:** nimic nou
+(caseta „Companie" și nota sunt doar ale noastre; clientul are o singură firmă).
+
+---
+
 ## 2026-11-05
 
 ### AMÂNDOI · RA Insight în culorile RA Track (fără mov)

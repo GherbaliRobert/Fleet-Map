@@ -8386,7 +8386,8 @@ const pozitii = await r.json();</code></pre>
       dtSet('drv-expiry', d.license_expiry ? d.license_expiry.slice(0,10) : '');
       _drvCats = String(d.license_categories || '').split(',').map(s => s.trim()).filter(Boolean);
       renderDrvCats();
-      var _coSel = document.getElementById('drv-company'); if (_coSel && d.company_id != null) _coSel.value = d.company_id;
+      // Firma de ACUM a șoferului (fără firmă = casetă goală): altfel caseta rămânea pe firma șoferului deschis înainte, iar salvarea l-ar fi mutat.
+      var _coSel = document.getElementById('drv-company'); if (_coSel) _coSel.value = d.company_id != null ? String(d.company_id) : '';
       document.getElementById('drv-photo').value = '';
       drvPhotoSet(d.photo_b64 || '');
       document.getElementById('drv-btn').textContent = 'Salvează';
@@ -8463,11 +8464,35 @@ const pozitii = await r.json();</code></pre>
       };
       if (!body.name) return alert('Numele e obligatoriu');
       if (currentUser && currentUser.isSuper && !id) { const coSel = document.getElementById('drv-company'); if (!coSel || !coSel.value) return alert('Alege compania pentru noul șofer'); body.company_id = parseInt(coSel.value); }
+      // Firma unui șofer EXISTENT (06.11; Alin: „când dau să mut șoferul pe altă companie nu mă lasă"). Caseta „Companie" se vedea și la
+      // editare, dar firma pleca doar la un șofer nou: salvarea trecea, iar șoferul rămânea pe firma veche. Acum firma schimbată de noi se
+      // mută pe ACEEAȘI cale ca Companii → „Mută între companii" (PUT /api/drivers/:id/company: iese de pe mașinile firmei vechi, rândul
+      // din istoric se închide), după o întrebare care spune ce mașini lasă. NU face a doua cale de mutare.
+      let mutaLa = null, firmaNoua = '';
+      if (currentUser && currentUser.isSuper && id) {
+        const coSel = document.getElementById('drv-company');
+        const d0 = (_driversAll || []).find(x => String(x.id) === String(id));
+        if (coSel && coSel.value && d0 && String(coSel.value) !== String(d0.company_id == null ? '' : d0.company_id)) {
+          const opt = coSel.options && coSel.options[coSel.selectedIndex];
+          firmaNoua = opt ? opt.text : '';
+          const lasa = driverVehicles(d0.id, d0.company_id).map(v => v.label);
+          const intreb = 'Muți șoferul „' + (d0.name || '') + '”' + (d0.company_name ? ' de la „' + d0.company_name + '”' : '') + ' la „' + firmaNoua + '”?'
+            + (lasa.length ? ' Iese de pe ' + lasa.join(', ') + ' (mașina rămâne la firma ei).' : '')
+            + ' Apoi îl pui pe o mașină a firmei noi, din fișa mașinii.';
+          if (!await raConfirm(intreb, { okLabel: 'Mută' })) return;
+          mutaLa = parseInt(coSel.value);
+        }
+      }
       const res = await fetch('/api/drivers' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      if (mutaLa != null) {
+        const rm = await fetch('/api/drivers/' + encodeURIComponent(id) + '/company', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ company_id: mutaLa }) });
+        if (!rm.ok) { const e = await rm.json().catch(()=>({})); await loadDrivers(); return alert((e.error || 'Firma șoferului nu s-a putut schimba.') + ' Restul fișei s-a salvat.'); }
+      }
       resetDriverForm();
       var _f = document.getElementById('drv-form'); if (_f) _f.style.display = 'none';   // salvat → se închide
       await loadDrivers();
+      if (mutaLa != null && window.raxToast) raxToast('Șoferul e acum la „' + firmaNoua + '” ✓', 'success');
     }
     async function deleteDriver(id) {
       if (!await raConfirm('Ștergi acest șofer?', { okLabel: 'Șterge' })) return;
@@ -10703,8 +10728,12 @@ const pozitii = await r.json();</code></pre>
           soferi.map(d => `<option value="${d.id}" ${String(d.id)===String(driverId||'')?'selected':''}>${esc(d.name)}</option>`).join('');
         const nota = document.getElementById('edit-driver-nota');
         if (nota) {
+          // La noi (fondatorii) lista Șoferi amestecă firmele: aici spunem a cui e lista din fișă (06.11 — Alin nu vedea de ce Popescu,
+          // de la altă firmă decât mașina, nu se poate pune pe ea).
+          const firma = laNoi && co != null ? (((await ensureAdminCompanies()) || []).find(c => String(c.id) === co) || {}).name : '';
           nota.textContent = co == null ? 'Mașina nu e pe nicio firmă: șoferul se pune după ce o treci pe o firmă.'
-            : (!soferi.length ? 'Firma mașinii n-are încă șoferi: îi adaugi din Management → Șoferi.' : '');
+            : (!soferi.length ? 'Firma mașinii n-are încă șoferi: îi adaugi din Management → Șoferi.'
+              : (firma ? 'Apar doar șoferii firmei „' + firma + '”, a mașinii. Un șofer de la altă firmă îl muți întâi din fișa lui (Management → Șoferi → creionul → Companie).' : ''));
           nota.hidden = !nota.textContent;
         }
       } catch (e) {}

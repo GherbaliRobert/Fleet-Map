@@ -3224,7 +3224,13 @@ caută forma în tot panoul.
   fereastra rămâne deschisă. NU trimite o cerere fără să te uiți la răspuns.
 - **Lista de șoferi / grupe din fișă = ale firmei mașinii** (`populateEditGroupsDrivers(groupId, driverId, companyId)`; grupele platformei doar
   la noi, ca `_soferGrupaAleFirmei`); telefonul: `soferiFirmei` (VehicleDetail.tsx). Lista Șoferi (`driverVehicles`) nu leagă un șofer de
-  mașina altei firme — aceeași regulă ca `getDeviceFull` și rapoartele.
+  mașina altei firme — aceeași regulă ca `getDeviceFull` și rapoartele. La noi, nota de sub listă spune a cui e („Apar doar șoferii firmei
+  „X", a mașinii…" — 06.11, Alin nu vedea de ce Popescu, de la altă firmă, nu se poate pune).
+- **Firma unui ȘOFER se schimbă pe O cale: `PUT /api/drivers/:id/company`** (`db.setDriverCompany`: iese de pe mașinile firmei vechi, rândul
+  din istoric se închide) — o cheamă Companii → „Mută între companii" și, din 06.11, fișa șoferului (`saveDriver`: fondatorul schimbă caseta
+  „Companie" → întrebare cu mașinile pe care le lasă → fișa, apoi mutarea). Alin: „când dau să mut șoferul pe altă companie nu mă lasă" —
+  caseta pleca spre server doar la un șofer NOU. `PUT /api/drivers/:id` NU schimbă firma; `editDriver` pune în casetă firma de ACUM (goală
+  la un șofer fără firmă). Telefonul arată caseta doar la un șofer nou.
 - **Mutarea pe altă firmă (`db.setDeviceCompany`) rupe șoferul și grupa firmei vechi** (grupele platformei rămân) și închide rândul din
   istoric. Legăturile rămase de dinainte se rup la pornire (`db.curataLegaturiAltaFirma`, înaintea `semanaIstoricSoferi`, cu rând în audit).
   O cale NOUĂ care mută o mașină pe altă firmă trece prin `setDeviceCompany`.

@@ -7,7 +7,9 @@
 // Ce păzește:
 //   1. pagina: salvarea fișei CITEȘTE răspunsul atribuirii (refuzul nu mai tace); lista de șoferi / grupe din fișă = ale firmei
 //      mașinii; istoricul în fișa mașinii și a șoferului, pus ca text; lista Șoferi nu leagă un șofer de mașina altei firme;
-//      telefonul: lista din fișă tot doar cu șoferii firmei;
+//      telefonul: lista din fișă tot doar cu șoferii firmei; fișa șoferului (06.11, Alin: „când dau să mut șoferul pe altă companie
+//      nu mă lasă"): firma schimbată de noi se mută pe calea „Mută între companii", după o întrebare (funcția paginii, rulată);
+//      la noi, fișa mașinii spune a cui e lista de șoferi;
 //   2. textele istoricului (soferi_masini.randIstoric): „de la început → acum", „12.10, 09:14 → acum · 24 de zile", anul altui an;
 //   3. pe server pornit: legăturile vechi cu altă firmă se rup la pornire (cu jurnal), refuzul unui șofer din altă firmă, istoricul
 //      după două schimbări, mutarea mașinii pe altă firmă (șoferul și grupa firmei vechi pleacă, istoricul se închide), cine vede ce.
@@ -64,6 +66,56 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     /g\.company_id == null \? laNoi : \(co != null && String\(g\.company_id\) === co\)/.test(pop) && /\$\{esc\(d\.name\)\}/.test(pop) && /\$\{esc\(g\.name\)\}/.test(pop) &&
     /populateEditGroupsDrivers\(dev\.group_id, dev\.driver_id, dev\.company_id\)/.test(PAG));
   T('…și spune de ce lista e goală (mașina fără firmă / firma fără șoferi)', /Mașina nu e pe nicio firmă: șoferul se pune după ce o treci pe o firmă\./.test(pop) && /Firma mașinii n-are încă șoferi: îi adaugi din Management → Șoferi\./.test(pop));
+  T('…iar la noi (lista Șoferi amestecă firmele) spune a cui e lista și de unde muți un șofer de la altă firmă (06.11)',
+    /const firma = laNoi && co != null \? \(\(\(await ensureAdminCompanies\(\)\) \|\| \[\]\)\.find\(c => String\(c\.id\) === co\) \|\| \{\}\)\.name : '';/.test(pop) &&
+    /'Apar doar șoferii firmei „' \+ firma \+ '”, a mașinii\. Un șofer de la altă firmă îl muți întâi din fișa lui \(Management → Șoferi → creionul → Companie\)\.'/.test(pop));
+
+  // Fișa șoferului (06.11; Alin: „când dau să mut șoferul pe altă companie nu mă lasă"): caseta „Companie" se vedea la editare, dar
+  // firma pleca doar la un șofer nou. Funcția paginii, RULATĂ pe cazuri, cu ce trimite spre server.
+  const vm = require('vm');
+  const saveDrv = (PAG.match(/async function saveDriver\(\) \{[\s\S]*?\n    \}\n/) || [''])[0];
+  async function salveazaSofer(caz) {
+    const el = {};
+    const pune = (k, v) => { el[k] = { value: v, style: {} }; };
+    pune('drv-id', caz.id); pune('drv-name', 'POPESCU IONUT'); pune('drv-phone', ''); pune('drv-email', ''); pune('drv-license', '1234');
+    pune('drv-expiry', ''); pune('drv-photo-data', ''); el['drv-form'] = { style: {} };
+    const firme = { 1: 'Compania mea', 2: 'Unitip Test' };
+    el['drv-company'] = { value: caz.co, options: [{ text: firme[caz.co] || '' }], selectedIndex: 0 };
+    const cereri = [], intrebari = [], alerte = [], mesaje = [];
+    const ctx = {
+      document: { getElementById: (k) => el[k] || null }, currentUser: { isSuper: !!caz.super }, _drvCats: ['B'],
+      _driversAll: [{ id: 7, name: 'POPESCU IONUT', company_id: 2, company_name: 'Unitip Test' }],
+      driverVehicles: (id, co) => (String(id) === '7' && String(co) === '2' ? (caz.masini || []).map((m) => ({ label: m })) : []),
+      raConfirm: async (t, o) => { intrebari.push([t, o && o.okLabel]); return caz.raspuns !== false; },
+      fetch: async (u, o) => { cereri.push({ u, m: o.method, b: JSON.parse(o.body) }); return { ok: true, json: async () => ({ ok: true }) }; },
+      alert: (t) => { alerte.push(t); }, resetDriverForm: () => {}, loadDrivers: async () => {}, encodeURIComponent, parseInt, String, JSON,
+    };
+    ctx.window = { raxToast: (t) => mesaje.push(t) }; ctx.raxToast = ctx.window.raxToast;
+    vm.createContext(ctx);
+    vm.runInContext(saveDrv + '\nthis.__salveaza = saveDriver;', ctx);
+    await ctx.__salveaza();
+    return { cereri, intrebari, alerte, mesaje };
+  }
+  const m1 = await salveazaSofer({ super: true, id: '7', co: '1' });
+  T('fișa șoferului, fondatorul, firma schimbată: întâi fișa (fără firmă în ea), apoi mutarea pe calea „Mută între companii"',
+    m1.cereri.length === 2 && m1.cereri[0].u === '/api/drivers/7' && m1.cereri[0].m === 'PUT' && !('company_id' in m1.cereri[0].b) &&
+    m1.cereri[1].u === '/api/drivers/7/company' && m1.cereri[1].m === 'PUT' && m1.cereri[1].b.company_id === 1 && m1.alerte.length === 0, JSON.stringify(m1));
+  T('…după o întrebare care spune de unde și unde („Mută"), iar la capăt „Șoferul e acum la „Compania mea" ✓"', m1.intrebari.length === 1 &&
+    m1.intrebari[0][0] === 'Muți șoferul „POPESCU IONUT” de la „Unitip Test” la „Compania mea”? Apoi îl pui pe o mașină a firmei noi, din fișa mașinii.' &&
+    m1.intrebari[0][1] === 'Mută' && m1.mesaje[0] === 'Șoferul e acum la „Compania mea” ✓', JSON.stringify([m1.intrebari, m1.mesaje]));
+  const m2 = await salveazaSofer({ super: true, id: '7', co: '1', masini: ['B 204 UIP'] });
+  T('…un șofer pus pe o mașină: întrebarea spune că iese de pe ea și că mașina rămâne la firma ei',
+    m2.intrebari.length === 1 && m2.intrebari[0][0].indexOf(' Iese de pe B 204 UIP (mașina rămâne la firma ei).') > 0, JSON.stringify(m2.intrebari));
+  const m3 = await salveazaSofer({ super: true, id: '7', co: '1', raspuns: false });
+  T('…„Nu" la întrebare: nu pleacă nimic spre server', m3.cereri.length === 0 && m3.intrebari.length === 1, JSON.stringify(m3));
+  const m4 = await salveazaSofer({ super: true, id: '7', co: '2' });
+  T('aceeași firmă: doar fișa, fără întrebare și fără mutare', m4.cereri.length === 1 && m4.cereri[0].u === '/api/drivers/7' && m4.intrebari.length === 0, JSON.stringify(m4));
+  const m5 = await salveazaSofer({ super: false, id: '7', co: '1' });
+  T('clientul (caseta „Companie" nu e a lui): doar fișa, fără firmă', m5.cereri.length === 1 && !('company_id' in m5.cereri[0].b) && m5.intrebari.length === 0, JSON.stringify(m5));
+  const m6 = await salveazaSofer({ super: true, id: '', co: '1' });
+  T('șofer nou (fondatorul): firma pleacă odată cu el, ca înainte', m6.cereri.length === 1 && m6.cereri[0].u === '/api/drivers' && m6.cereri[0].m === 'POST' && m6.cereri[0].b.company_id === 1, JSON.stringify(m6));
+  T('la deschiderea fișei, caseta ia firma de ACUM a șoferului (fără firmă = goală, nu firma celui deschis înainte)',
+    /var _coSel = document\.getElementById\('drv-company'\); if \(_coSel\) _coSel\.value = d\.company_id != null \? String\(d\.company_id\) : '';/.test(PAG));
   T('istoricul: în fișa mașinii și în fișa șoferului, desenat ca text (fără innerHTML)', /istoricIncarca\(document\.getElementById\('edit-istoric-soferi'\), '\/api\/devices\/' \+ encodeURIComponent\(imei\) \+ '\/istoric-soferi', 'masina'\)/.test(PAG) &&
     /istoricIncarca\(document\.getElementById\('drv-istoric'\), '\/api\/drivers\/' \+ encodeURIComponent\(d\.id\) \+ '\/istoric-masini', 'sofer'\)/.test(PAG) &&
     /id="edit-istoric-soferi"/.test(PAG) && /id="drv-istoric"/.test(PAG) && !/innerHTML/.test((PAG.match(/function istoricDeseneaza\(box, j, fel\) \{[\s\S]*?\n    \}\n/) || [''])[0]));
@@ -167,6 +219,16 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     T('…și rândul șoferului de atunci s-a închis la mutare (vede din nou Alfa, dacă se întoarce)', h3.randuri && h3.randuri.length === 0, JSON.stringify(h3.randuri));
     const hc2 = await cere('GET', '/api/devices/' + V + '/istoric-soferi', C);
     T('clientul Alfa nu mai vede istoricul mașinii mutate (403)', hc2.s === 403, hc2.s);
+
+    // Firma unui șofer (06.11): o mută doar fondatorul, pe calea pe care o cheamă acum și fișa șoferului; mutat la firma mașinii, se pune.
+    const mc = await cere('PUT', '/api/drivers/' + SD.db1 + '/company', C, { company_id: SD.fa });
+    T('clientul nu mută șoferi între firme (403)', mc.s === 403, mc.s);
+    const inainte = await cere('PUT', '/api/devices/' + W + '/assign', S1, { driver_id: SD.db1, group_id: SD.gp });
+    const ms2 = await cere('PUT', '/api/drivers/' + SD.db1 + '/company', S1, { company_id: SD.fa });
+    const pw = await cere('PUT', '/api/devices/' + W + '/assign', S1, { driver_id: SD.db1, group_id: SD.gp });
+    const fw2 = (await cere('GET', '/api/devices/' + W + '/full', S1)).j;
+    T('șoferul altei firme e refuzat pe mașină; mutat la firma ei (cum face acum fișa lui), se pune și fișa mașinii îl arată',
+      inainte.s === 404 && ms2.s === 200 && pw.s === 200 && fw2.driver_name === 'Vasile Beta', JSON.stringify([inainte.s, ms2.s, pw.s, fw2.driver_name]));
   } finally {
     try { srv.kill(); } catch (e) {}
     await sleep(700); curata();
