@@ -44,7 +44,7 @@ export function AuditLog() {
   return (
     <div class="screen">
       <AntetFondator titlu="Jurnal audit" onBack={() => loc.route('/meniu')} onRefresh={() => { setOpen({}); incarca(0); }} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {rows == null && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {rows != null && err && lista.length === 0 && <div class="adm-empty">{err}</div>}
         {rows != null && !err && lista.length === 0 && <div class="adm-empty">Nicio intrare.</div>}

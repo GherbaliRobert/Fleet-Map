@@ -487,7 +487,7 @@ export function AdminDevices() {
     <div class="screen">
       <AntetFondator titlu="Dispozitive" onBack={() => (history.length > 1 ? history.back() : loc.route('/meniu'))}
         dreapta={<button class="h-btn" onClick={openAdd} aria-label="Adaugă dispozitiv"><Icon name="plus" /></button>} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {/* Modul strict: starea recepției, spusă o dată, sus. */}
         {strict === true && <Banda ton="ok" icon="shield"><b>Mod strict ACTIV</b> — doar IMEI-urile pre-înregistrate sunt acceptate; trackerele necunoscute sunt respinse la conectare (nu se stochează nimic).</Banda>}
         {strict === false && <Banda ton="info" icon="shield">Mod strict OPRIT — orice tracker se poate conecta (auto-descoperire).</Banda>}

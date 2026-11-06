@@ -72,7 +72,7 @@ export function TachoOverview() {
   return (
     <div class="screen">
       <AntetFondator titlu="Tahograf" onBack={() => loc.route('/meniu')} onRefresh={reload} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {err && <div class="adm-empty" style="color:var(--red)">Eroare: {err}</div>}
         {!d && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {d && (

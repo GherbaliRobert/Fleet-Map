@@ -3302,6 +3302,13 @@ reface când se schimbă așezarea. Regulile care au reparat ce s-a măsurat —
   în `inset`-ul lui `.modal-overlay.as-view`: o bandă deschisă sub fiecare pagină din meniu, pe calculator și pe telefon. Acum jos stă doar zona
   sigură a telefonului (`var(--sab)`), iar `--footer-h` nu mai există. MĂSURAT: 32 px goi → 0 (1366 și 390 px); bula RA Insight nu acoperă nimic
   la 800 / 1024 / 1366 px, cu lista derulată până jos. NU pune înapoi un loc rezervat jos fără un rând care să-l ocupe. Păzit de `verify_ecrane.js` (8).
+- **Telefonul (aplicația lui Robert), 05.11 — marginea ecranului = clasa `marg`.** `.content` (theme/global.css) n-are margini: hărțile și
+  listele pe toată lățimea (Meniul, Notificările) își țin forma. Un ecran cu cartonașe / casete / butoane pune `content … marg` (14 px pe
+  lângă, 12 px sus; `.mn-sec` aliniat cu cartonașele) sau padding-ul lui. Până pe 05.11, 24 de fișiere de ecran (Setări, Șoferi, Alerte,
+  Facturare, Acasă la fondator…) stăteau lipite de marginea telefonului — prinse cu o verificare nouă a măsurătorii: o cutie rotunjită sau
+  un text la mai puțin de 6 px de margine. Un ecran NOU pe telefon: `marg`. Tot atunci: pașii de la „Client nou” pe ≤ 430 px stau cu cifra
+  deasupra numelui (`.co-pas` în coloană, fiecare cât îi trebuie — „Contractul”, „Administratorul” se tăiau), iar în Facturare (fondator)
+  rândul firmei (`bill-co`) are „auto” și „Facturile firmei” dedesubt (numele se tăia).
 - Păzit de **`verify_ecrane.js`** (în `npm test`; fără browser: regulile de mai sus + `_navCaSertar` rulat în vm), `verify_cereri_echipa.js`.
 
 ## „Starea mașinii" (plăcuțele CAN): adaptorul în repaus (Robert, 23.10: „2")

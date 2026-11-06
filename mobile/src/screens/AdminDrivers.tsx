@@ -148,7 +148,7 @@ export function AdminDrivers() {
         <div class="h-title">Șoferi</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         {isSuper && companies.length > 0 && (
           <div class="adm-filter">
             <select value={fco} onChange={(e) => setFco((e.target as HTMLSelectElement).value)}>

@@ -116,7 +116,7 @@ export function ReportSchedules() {
         <div class="h-title">Rapoarte programate</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {items != null && items.length === 0 && !err && <div class="adm-empty"><Icon name="calendar" size={40} class="ic" /><div>Nicio programare încă.</div></div>}

@@ -93,7 +93,7 @@ export function DemoRequests() {
         <div class="h-title">Cereri demo</div>
         <button class="h-btn" onClick={reload} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {!isSuper && <div class="adm-empty" style="color:var(--red)">Doar super-adminul poate acorda conturi demo.</div>}
         {isSuper && (
           <>

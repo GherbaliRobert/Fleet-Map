@@ -178,7 +178,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   vechi; „în repaus" nu mai apare la o mașină în mers). La fel: de pe GitHub („APK de test 1.0.22"), de DEBUG, fără push.
   **05.11:** „Prelungește" și „Starea mașinii" sunt acum și pe ratrack.ro (aduse din ramura lui Robert în main). APK-ul următor se
   face din main și are tot ce s-a adunat de pe 02.11 (RA Insight în verde, „Editează prețurile" pe RA Drive, salutul cu prenumele,
-  regula „NOU" din meniu, „Domenii" în loc de „Pagini", lista de șoferi a firmei și istoricul șoferi ↔ mașini);
+  regula „NOU" din meniu, „Domenii" în loc de „Pagini", lista de șoferi a firmei și istoricul șoferi ↔ mașini, tabelele din
+  răspunsurile RA Insight, marginea pe cele 24 de ecrane care stăteau lipite de marginea telefonului, pașii întregi la „Client nou" și
+  numele firmelor întregi în Facturare);
   primește versiunea **1.0.23 (cod 25)**: 1.0.22 e deja pe GitHub, din ramura lui Robert, iar main scrie acum tot 1.0.22.
 - [ ] **Voi: la fiecare instalator, scrieți în fișa lui cât de des vă facturează. Adăugat pe 30.09 (seara).**
   Business → Montaj → Parteneri → fișa lui → „Ne facturează": lunar sau săptămânal. După asta își face aplicația
@@ -703,6 +705,28 @@ ca text, cu bare verticale: „| B 268 ROY | 1.240 | 7,1 |".
 **Ce am schimbat:** tabelul apare ca tabel, în chenarul lui, ca la asistentul nostru. Pe telefon (ecran îngust) fiecare rând devine un
 cartonaș, cu numele coloanei în fața fiecărei cifre. Aplicația de telefon la fel, de la versiunea următoare. **Ce vede fondatorul:** în
 RA Insight (verticala Partener), la fel ca clientul. **Ce vede clientul:** tabelele din răspunsuri, citibile.
+
+### AMÂNDOI · Aplicația de telefon: ecranele nu mai stau lipite de marginea telefonului
+*Alin, 05.11: „mai verifică și ca totul să se vadă bine pe telefon și pe toate ecranele… să fie responsive. Totul."*
+
+**Cum am verificat:** am trecut aplicația web prin toate ecranele (contul unui administrator de firmă și contul nostru), pe 13 lățimi, de
+la telefon (360 px) la monitor mare (1920 px), și aplicația de telefon pe 360, 390 și 412 px. Pe web n-a ieșit nimic nou de reparat: ce a
+apărut e lăsat dinadins (textele lungi din jurnalul de audit, harta de la Traseu, meniurile deschise peste conținut), iar butoanele care
+cad sub bula din colț se pot scoate de sub ea derulând. Pe telefon au ieșit trei lucruri.
+
+**Ce am schimbat (aplicația de telefon, de la versiunea următoare):**
+- **24 de ecrane stăteau lipite de marginea telefonului** — cartonașele, casetele de căutare și butoanele atingeau marginea din stânga și
+  din dreapta: Setări, Șoferi, Grupe, Mentenanță, Alerte, Acte, Utilizatori, Tahograf, e-Transport, Facturile mele, Rapoarte programate,
+  Webhook-uri, Preferințe notificări; la noi Acasă, Dispozitive, Arhivate, Platformă, Costuri, Cereri demo, Inventar, Tahograf și
+  e-Transport pe firme, Chei API, Jurnal, Facturare. Acum au toate aceeași margine ca restul ecranelor (14 px), plus puțin aer sub bara de
+  sus. Harta, Meniul și Notificările rămân pe toată lățimea, cum sunt gândite.
+- **„Client nou": pașii de sus** scriau „Contract…" și „Adminis…" pe orice telefon. Acum cifra stă deasupra numelui și se văd întregi:
+  Firma, Contractul, Administratorul.
+- **Facturare (la noi): numele firmei** se tăia („Transport Ion…"), din cauza căsuței „auto" și a butonului „Facturile firmei" de pe
+  același rând. Acum cele două stau sub nume, iar numele și restanța se văd întregi.
+
+**Ce vede fondatorul:** pe telefon, ecranele noastre (Acasă, Facturare, Dispozitive…) cu margine; „Client nou" cu pașii întregi.
+**Ce vede clientul:** pe telefon, Setări, Șoferi, Alerte, Mentenanță, Acte, Facturile mele etc. cu margine, nu lipite de marginea ecranului.
 
 ## 2026-11-04
 

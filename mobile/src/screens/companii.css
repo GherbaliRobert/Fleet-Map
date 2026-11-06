@@ -122,6 +122,12 @@ button.co-pill { min-height: 30px; }
 .co-pas.gata { color: var(--co-ok); }
 .co-pas.gata .n { background: rgba(63,224,125,.18); color: var(--co-ok); }
 .co-pas span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Pe telefon (05.11): cifra deasupra numelui și fiecare pas cât îi trebuie — pe un rând „Contractul" și „Administratorul"
+   se tăiau („Contract…", „Adminis…") la orice lățime de telefon. Măsurat: la 360 px încap toate trei, întregi. */
+@media (max-width: 430px) {
+  .co-pas { flex: 1 1 auto; flex-direction: column; gap: 4px; padding: 7px 6px; text-align: center; }
+  .co-pas span.t { overflow: visible; text-overflow: clip; }
+}
 
 .co-msg { font-size: 13px; line-height: 1.45; margin-top: 6px; }
 .co-msg.bun { color: var(--co-ok); }

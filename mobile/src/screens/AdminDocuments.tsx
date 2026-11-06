@@ -178,7 +178,7 @@ export function AdminDocuments() {
         <div class="h-title">Documente vehicule</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:40px">
+      <div class="content has-tabbar marg" style="padding-bottom:40px">
         <Seg value={view} onChange={(v) => setView(v as any)} items={[
           { k: 'valid', label: 'Valabile', icon: 'shield' },
           { k: 'hist', label: 'Istoric', icon: 'clock' },

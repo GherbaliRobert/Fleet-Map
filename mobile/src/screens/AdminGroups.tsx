@@ -101,7 +101,7 @@ export function AdminGroups() {
         <div class="h-title">Grupe</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         {list != null && !err && <div class="fl-count" style="margin:0 2px 10px">{n}{n === 1 ? ' grupă' : ' grupe'}</div>}
         {err && <div class="fl-empty" style="color:var(--red)">{err}</div>}
         {list == null && !err && <div class="fl-empty"><div class="spin" style="margin:0 auto" /></div>}

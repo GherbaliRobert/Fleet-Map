@@ -329,7 +329,7 @@ function TahografEcran() {
           <div class="h-title">Tahograf</div>
           <div style="width:36px" />
         </header>
-        <div class="content has-tabbar" style="padding-bottom:24px">
+        <div class="content has-tabbar marg" style="padding-bottom:24px">
           <div class="th-note">
             Aici e ecranul firmei. Situația pe firme (cine e în urmă cu descărcările, cine are modulul) o vezi în <b>AI & Module → Tahograf</b>.
             <br /><br />Fișierele le încarcă firma.
@@ -347,7 +347,7 @@ function TahografEcran() {
         <div class="h-title">Tahograf</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {!err && (
           <div class="th-tabs patru">

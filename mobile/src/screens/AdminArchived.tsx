@@ -123,7 +123,7 @@ export function AdminArchived() {
   return (
     <div class="screen">
       <AntetFondator titlu="Dispozitive arhivate" onBack={() => loc.route('/meniu')} onRefresh={reload} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {items != null && items.length === 0 && !err && (

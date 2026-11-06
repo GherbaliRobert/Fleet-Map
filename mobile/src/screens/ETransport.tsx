@@ -133,7 +133,7 @@ function ETransportEcran() {
         <div class="h-title">e-Transport (ANAF)</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {isSuper ? (
           <>
             {banda}

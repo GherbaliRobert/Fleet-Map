@@ -129,5 +129,35 @@ T('paginile (.modal-overlay.as-view) se opresc doar la zona sigură a telefonulu
   /\.modal-overlay\.as-view \{\s*inset: calc\(var\(--topbar-h\) \+ var\(--sat\)\) 0 var\(--sab\) var\(--navrail-w\);/.test(CSS));
 T('…iar locul rândului scos nu mai e în foi (--footer-h)', !/--footer-h/.test(CSS + '\n' + MT + '\n' + _stiluri(PAG)));
 
+// 05.11 (Alin: „mai verifică și ca totul să se vadă bine pe telefon și pe toate ecranele… totul"). Aplicația de telefon,
+// rulată în browser ca un telefon de 360 / 390 / 412 px, ecran cu ecran (client + fondator), cu o verificare nouă: o cutie
+// rotunjită (cartonaș, casetă, buton) sau un text care stă la mai puțin de 6 px de marginea ecranului. `.content` n-are margini
+// (hărțile și listele pe toată lățimea își țin forma), iar 25 de ecrane nu și le puneau singure: totul stătea lipit de margine.
+console.log('\n9. Telefonul: marginea ecranelor, pașii de la „Client nou", rândul firmei din Facturare');
+const TEL = (f) => citeste('mobile/src/' + f);
+const G = TEL('theme/global.css');
+T('o singură regulă pentru margine: `.content.marg` = 14 px pe lângă + 12 px sus; titlurile de secțiune se aliniază cu cartonașele',
+  /\.content\.marg \{ padding-left: 14px; padding-right: 14px; padding-top: 12px; \}/.test(G) &&
+  /\.content\.marg \.mn-sec \{ padding-left: 2px; padding-right: 2px; \}/.test(G));
+T('…iar `.content` rămâne fără margini (hărțile, Meniul, Notificările pe toată lățimea)', /\.content \{ flex: 1; min-height: 0; overflow-y: auto;[^}]*\}/.test(G) &&
+  !/\.content \{[^}]*padding/.test(G));
+const CU_MARG = ['AdminDrivers', 'AdminGroups', 'AdminMaintenance', 'AdminAlerts', 'AdminUsers', 'NotifPrefs', 'ETransport', 'Tahograf',
+  'AdminDocuments', 'Billing', 'Settings', 'ReportSchedules', 'AdminWebhooks', 'FounderHome', 'AdminDevices', 'PlatformDashboard',
+  'CostControl', 'DemoRequests', 'DeviceInventory', 'TachoOverview', 'EtransportOverview', 'ApiKeys', 'AuditLog', 'AdminArchived'];
+const faraMarg = CU_MARG.filter((f) => {
+  const s = TEL('screens/' + f + '.tsx');
+  const toate = s.match(/<div class="content[^"]*"/g) || [];
+  return !toate.length || toate.some((c) => !/\bmarg\b/.test(c));
+});
+T('cele ' + CU_MARG.length + (CU_MARG.length % 100 === 0 || CU_MARG.length % 100 >= 20 ? ' de' : '') + ' fișiere de ecran găsite lipite de margine poartă `marg` pe fiecare `.content` al lor (și în starea de încărcare / eroare)',
+  !faraMarg.length, faraMarg.join(', '));
+const CO = TEL('screens/companii.css');
+T('„Client nou", pe telefon: cifra deasupra numelui și fiecare pas cât îi trebuie („Contractul", „Administratorul" întregi)',
+  /@media \(max-width: 430px\) \{\s*\.co-pas \{ flex: 1 1 auto; flex-direction: column;[^}]*\}\s*\.co-pas span\.t \{ overflow: visible; text-overflow: clip; \}/.test(CO));
+const BI = TEL('screens/Billing.tsx'), BC = TEL('screens/billing.css');
+T('Facturare (fondator), pe telefon: numele firmei întreg, „auto" și „Facturile firmei" dedesubt',
+  /<div class="adm-item bill-co"/.test(BI) && /<div class="bill-co-act">[\s\S]{0,400}auto<\/label>[\s\S]{0,700}Facturile firmei<\/button>\s*<\/div>/.test(BI) &&
+  /\.bill-co \.nm, \.bill-co \.sub \{ white-space: normal; overflow-wrap: anywhere; \}/.test(BC) && /\.bill-co-act \{[^}]*flex: 1 1 100%;[^}]*\}/.test(BC));
+
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

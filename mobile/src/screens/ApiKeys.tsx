@@ -91,7 +91,7 @@ export function ApiKeys() {
     <div class="screen">
       <AntetFondator titlu="Chei API" onBack={() => loc.route('/meniu')}
         dreapta={<button class="h-btn" onClick={() => setDocs(true)} aria-label="Documentație API"><Icon name="book" size={20} /></button>} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         <div class="fd-note">
           O cheie API permite accesul programatic și moștenește rolul + accesul pe vehicule al utilizatorului asociat.
           Trimite cheia în header: <b>Authorization: Bearer &lt;cheie&gt;</b> sau <b>X-API-Key: &lt;cheie&gt;</b>.

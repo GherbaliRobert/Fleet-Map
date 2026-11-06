@@ -131,7 +131,7 @@ export function Settings() {
         <div class="h-title">Setări companie</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         {canFleet && (
           <div class="pf-card">
             <h3>Prețuri combustibil (lei/L)</h3>

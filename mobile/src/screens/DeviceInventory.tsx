@@ -119,7 +119,7 @@ export function DeviceInventory() {
   return (
     <div class="screen">
       <AntetFondator titlu="Inventar dispozitive" onBack={() => loc.route('/meniu')} onRefresh={() => reload()} />
-      <div class="content has-tabbar" style="padding-bottom:24px">
+      <div class="content has-tabbar marg" style="padding-bottom:24px">
         <input class="fd-search" value={q} onInput={(e: any) => { setQ(e.target.value); setCate(PAS); }} placeholder="Caută firmă / număr / IMEI / model / cartelă…" />
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
           <span style="font-size:12.5px;color:var(--text-muted);font-weight:700">

@@ -147,7 +147,7 @@ export function CostControl() {
         <div class="h-title">Control costuri</div>
         <button class="h-btn" onClick={() => { reload(); loadFin(); }} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <button style={seg(tab === 'finance')} onClick={() => setTab('finance')}>Cash-flow</button>
           <button style={seg(tab === 'ledger')} onClick={() => setTab('ledger')}>Costuri</button>

@@ -75,7 +75,7 @@ export function PlatformDashboard() {
         <div class="h-title">Dashboard platformă</div>
         <button class="h-btn" onClick={reload} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
-      <div class="content has-tabbar pf-dash" style="padding-bottom:24px">
+      <div class="content has-tabbar pf-dash marg" style="padding-bottom:24px">
         {err && <div class="adm-empty" style="color:var(--fd-bad)">{err}</div>}
         {!err && (
           <>

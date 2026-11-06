@@ -112,13 +112,13 @@ function MyBilling() {
       .then((d) => setData(d || { invoices: [] }))
       .catch((e: any) => { setErr(e?.status === 403 ? 'Nu ai dreptul de a vedea facturile.' : (e?.message || 'Eroare la încărcare')); setData({ invoices: [] }); });
   }, []);
-  if (err) return <div class="content has-tabbar"><div class="adm-empty" style="color:var(--red)">{err}</div></div>;
-  if (!data) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
+  if (err) return <div class="content has-tabbar marg"><div class="adm-empty" style="color:var(--red)">{err}</div></div>;
+  if (!data) return <div class="content has-tabbar marg"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
   const a = data.access || {};
   const sm = ACCESS_CLIENT[a.status] || ACCESS_CLIENT.active;
   const inv: any[] = data.invoices || [];
   return (
-    <div class="content has-tabbar" style="padding-bottom:96px">
+    <div class="content has-tabbar marg" style="padding-bottom:96px">
       <div class="bill-banner" style={`border-left:4px solid ${sm[1]}`}>
         <div class="st" style={`color:${sm[1]}`}>{sm[0]}</div>
         {a.status === 'grace' && a.mesaj ? <div class="sub" style="line-height:1.5">{a.mesaj}</div> : null}
@@ -224,7 +224,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
     catch (e: any) { showToast(e?.message || 'Eroare', true); }
   }
 
-  if (companies == null) return <div class="content has-tabbar"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
+  if (companies == null) return <div class="content has-tabbar marg"><div class="adm-empty"><div class="spin" style="margin:0 auto" /></div></div>;
 
   const cos = companies.slice().sort((a, b) => accessOf(a)[2] - accessOf(b)[2]);
   const badge = (on: boolean, l: string) => <span style={`font-size:11px;font-weight:700;color:${on ? 'var(--fl-ok)' : 'var(--text-muted)'}`}>{l}</span>;
@@ -232,7 +232,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
   const docsSect = documenteSectiune(invoices, sect);
 
   return (
-    <div class="content has-tabbar" style="padding-bottom:96px">
+    <div class="content has-tabbar marg" style="padding-bottom:96px">
       <div style="display:flex;gap:8px;margin-bottom:6px">
         <button class="btn btn-primary" style="flex:1" onClick={() => { setPreg(null); setGen({ cid: null, fel: 'abonament' }); }}><Icon name="report" size={16} color="#06210f" /> Generează factură</button>
         <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setPay({})} aria-label="Încasare fără factură"><Icon name="plus" size={16} /></button>
@@ -253,7 +253,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
           const sm = accessOf(c);
           const platit = Number(c.paid_total) || 0;
           return (
-            <div class="adm-item" style="cursor:default">
+            <div class="adm-item bill-co" style="cursor:default">
               <span class="ic-wrap"><Icon name="truck" size={19} /></span>
               <span class="mid">
                 <div class="nm">{c.name}</div>
@@ -262,11 +262,14 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
                 <div class="sub">Factura restantă: {restantaOf(c)}</div>
                 <div class="sub">Total plătit: {platit ? fmtMoney(platit) : '—'}</div>
               </span>
-              <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);margin-right:6px" onClick={(e: any) => e.stopPropagation()}><input type="checkbox" checked={c.auto_invoice === true} onChange={(e: any) => toggleAuto(c.id, e.target.checked)} />auto</label>
-              {/* Ca pe web (805fe10): pe rând, „Facturile firmei" — fila Facturi din fișă, unde ✓ trece factura restantă pe
-                  plătită. „Încasare" de aici înregistra o încasare FĂRĂ factură, iar factura rămânea „emisă" și firma se
-                  suspenda deși plătise. Încasarea fără factură rămâne doar pe „+" de sus. */}
-              <button class="btn" style="padding:6px 11px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);white-space:nowrap" onClick={() => loc.route(rutaFisa(c.id, 'facturi'))}>Facturile firmei</button>
+              {/* 05.11: „auto" și „Facturile firmei" stau sub nume — pe același rând numele se tăia („Transport Ion…"). */}
+              <div class="bill-co-act">
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted)" onClick={(e: any) => e.stopPropagation()}><input type="checkbox" checked={c.auto_invoice === true} onChange={(e: any) => toggleAuto(c.id, e.target.checked)} />auto</label>
+                {/* Ca pe web (805fe10): pe rând, „Facturile firmei" — fila Facturi din fișă, unde ✓ trece factura restantă pe
+                    plătită. „Încasare" de aici înregistra o încasare FĂRĂ factură, iar factura rămânea „emisă" și firma se
+                    suspenda deși plătise. Încasarea fără factură rămâne doar pe „+" de sus. */}
+                <button class="btn" style="padding:6px 11px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);white-space:nowrap" onClick={() => loc.route(rutaFisa(c.id, 'facturi'))}>Facturile firmei</button>
+              </div>
             </div>
           );
         })}

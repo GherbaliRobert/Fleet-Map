@@ -52,6 +52,12 @@ button.bill-sursa { cursor: pointer; }
 .bill-linie { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
 .bill-ment { font-weight: 600; white-space: pre-wrap; }
 .bill-totinc { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: -2px 0 8px; }
+/* Rândul unei firme (Facturare, fondator; 05.11): numele și restanța întregi, pe mai multe rânduri dacă trebuie; „auto" și
+   „Facturile firmei" dedesubt, aliniate cu textul (iconița 38 px + golul 12 px). Pe același rând numele se tăia la 360 px. */
+.bill-co { flex-wrap: wrap; row-gap: 10px; }
+.bill-co .mid { flex: 1 1 calc(100% - 50px); }
+.bill-co .nm, .bill-co .sub { white-space: normal; overflow-wrap: anywhere; }
+.bill-co-act { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 100%; padding-left: 50px; }
 .bill-totinc b { color: var(--fl-ok); }
 
 /* „Previzualizează" + „Emite" (lotul 5): pe un rând când încap, altfel unul sub altul, fiecare pe toată lățimea. */

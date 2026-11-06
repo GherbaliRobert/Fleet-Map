@@ -488,7 +488,7 @@ export function AdminUsers() {
         <div class="h-title">Utilizatori</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         {notice && (
           <div role={notice.err ? 'alert' : 'status'} style={'display:flex;gap:10px;align-items:flex-start;padding:11px 12px;margin-bottom:10px;border-radius:10px;font-size:13px;line-height:1.45;border:1px solid ' + (notice.err ? 'var(--red)' : 'var(--accent)') + ';background:' + (notice.err ? 'rgba(240,90,90,.10)' : 'rgba(63,224,125,.10)')}>
             <Icon name={notice.err ? 'alert' : 'mail'} size={18} color={notice.err ? 'var(--red)' : 'var(--accent)'} />

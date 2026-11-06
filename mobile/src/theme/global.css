@@ -32,6 +32,12 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
 .app-header .h-btn:active { background: var(--bg-dark); }
 .content { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .content.has-tabbar { padding-bottom: calc(var(--tabbar-h) + var(--sab) + 8px); }
+/* Marginea ecranului (05.11; Alin: „totul să se vadă bine pe telefon"). `.content` n-are margini: hărțile și listele pe toată
+   lățimea (Meniul, Notificările) își țin forma. Ecranele cu cartonașe, casete și butoane poartă `marg` — aceeași margine ca
+   ecranele care și-o puneau singure (14 px). Fără ea, 25 de ecrane stăteau lipite de marginea telefonului (măsurat la 360 px).
+   Titlurile de secțiune (`.mn-sec`) au 16 px ai lor, gândiți pentru rândurile pe toată lățimea: aici se aliniază cu cartonașele. */
+.content.marg { padding-left: 14px; padding-right: 14px; padding-top: 12px; }
+.content.marg .mn-sec { padding-left: 2px; padding-right: 2px; }
 
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); }
 .muted { color: var(--text-muted); }

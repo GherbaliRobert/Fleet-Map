@@ -96,7 +96,7 @@ export function AdminMaintenance() {
         <div class="h-title">Mentenanță</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar marg" style="padding-bottom:96px">
         <Seg value={view} onChange={(v) => setView(v as any)} items={[
           { k: 'agenda', label: 'De făcut', icon: 'list' },
           { k: 'done', label: 'Făcute', icon: 'check' },
