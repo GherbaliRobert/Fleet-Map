@@ -497,9 +497,12 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   **Mai multe întrebări deodată și ce s-a ÎNTÂMPLAT azi → Analiză** (10.11; Alin, cu poze: „Pe unde a umblat azi? / Câți km a făcut azi? /
   Care sunt cele mai frecvente locații?" primea pe „Instant" doar km-ii flotei): `insight.maiMulteIntrebari` (două „?" sau două rânduri care
   întreabă) și `ISTORIC_ZI` (pe unde, umblat, traseu, drumul, a fost / a stat / a oprit, opririle, staționări, frecvente, cursele, vizitat).
-  „Unde e", „care sunt oprite / pe drum", „câți km azi" rămân Instant. **Mașina din discuție rămâne** și la Instant: fără mașină în întrebare,
-  ia `ctx.masini` (prin `peImei`), cât întrebarea nu e despre flotă — `aiRaport.despreFlota` (aceleași `TOATA_FLOTA` / `RANG` / `DESPRE_FLOTA`
-  ca la rapoartele cerute). Păzit de `verify_insight.js` (3 + serverul pornit).
+  „Unde e", „care sunt oprite / pe drum", „câți km azi" rămân Instant. **Două feluri de întrebare într-o propoziție** („Cât a mers azi și unde
+  e?") → Analiză: `fleetQuick.acoperaTot` (toate felurile din `detectIntents`; trece doar unul, sau „unde" lângă o listă care arată deja locul —
+  oprite, în mers, cea mai rapidă). **Mașina din discuție rămâne** și la Instant: fără mașină în întrebare, ia `ctx.masini` (prin `peImei`), DOAR la
+  „unde e" / „câți km a făcut", la singular (`insight.peMasinaDinDiscutie`: „care sunt oprite", „unde sunt", „cât au mers" = flota), și cât întrebarea
+  nu e despre flotă — `aiRaport.despreFlota` (aceleași `TOATA_FLOTA` / `RANG` / `DESPRE_FLOTA` ca la rapoartele cerute). Păzit de `verify_insight.js`
+  (3 + serverul pornit).
 - **Zilele săptămânii și weekendul: O regulă, `insight.ziuaSaptamanii(text, acum)`** (14.10, Alin: „rezolvăm"), folosită de
   `potrivitPentruRapid` (orice zi a săptămânii → nu e rapid) și de `ai_raport.perioadaDin` (ÎNAINTEA lui „azi", ca „de luni
   până azi" să fie săptămâna). „duminică" = cea mai apropiată (azi, dacă azi e duminică), „…trecută" = cea dinainte de azi,

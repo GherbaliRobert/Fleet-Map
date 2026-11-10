@@ -5317,11 +5317,13 @@ async function _raInsight(req, res, opts) {
       const intent = fleetQuick ? fleetQuick.detectIntent(message) : null;
       // Mașina din discuție (Alin, 10.11): „Câți km a făcut azi?" după „Unde e B 204 UIP?" e despre ea, nu despre toată flota — aceeași
       // regulă ca la rapoartele cerute („mașina rămâne în discuție"), cât întrebarea nu vorbește de flotă („toate", „care mașină", „cine").
-      const dinDiscutie = (!gasite.masini.length && mesaje.length && Array.isArray(ctx.masini) && ctx.masini.length && !aiRaport.despreFlota(message))
+      // Doar la „unde e" / „câți km a făcut" la singular (`peMasinaDinDiscutie`): „Care sunt oprite?" rămâne despre toată flota.
+      const dinDiscutie = (!gasite.masini.length && mesaje.length && Array.isArray(ctx.masini) && ctx.masini.length
+          && insight.peMasinaDinDiscutie(message, intent) && !aiRaport.despreFlota(message))
         ? ctx.masini.map(function (i) { return peImei[i]; }).filter(Boolean) : [];
       const masiniRapid = gasite.masini.length ? gasite.masini : dinDiscutie;
       const peMasini = masiniRapid.length > 0;
-      if (!o.proba && !gata && intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
+      if (!o.proba && !gata && intent && fleetQuick.acoperaTot(message) && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
         const doar = peMasini ? new Set(masiniRapid.map(function (v) { return v.imei; })) : null;
         let snap = _fleetSnapshot(req, doar ? 100000 : undefined);
         if (doar) { const total = snap.filter(function (v) { return doar.has(v.imei); }); snap = total; Object.defineProperty(snap, 'totalFlota', { value: total.length, enumerable: false }); }

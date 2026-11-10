@@ -105,6 +105,17 @@ T('întrebarea lui Alin, pe trei rânduri („Pe unde a umblat azi? / Câți km 
 T('mai multe întrebări într-un rând („Câți km a făcut azi? Și unde e acum?") → NU rapid (răspunsul rapid știe una)', !rapid('Câți km a făcut azi? Și unde e acum?') && I.maiMulteIntrebari('Câți km a făcut azi? Și unde e acum?'));
 T('ce s-a întâmplat azi (pe unde a umblat, unde a fost / a stat, opririle, cursele, traseul, drumul) → NU rapid',
   ['Pe unde a umblat azi?', 'Unde a fost Loganul azi?', 'unde a stat azi', 'Care au fost opririle de azi?', 'Ce curse a făcut azi?', 'Arată-mi traseul de azi', 'drumul de azi al lui B 154 UIP', 'cele mai frecvente locații'].every((q) => !rapid(q)));
+// Două feluri de întrebare într-o propoziție (10.11): „Cât a mers azi și unde e?" — km-ii nu spun locul → RA Insight. Listele cu
+// mașini (oprite, în mers, cea mai rapidă) arată deja locul, deci „Unde sunt mașinile oprite?" rămâne rapid.
+const FQ = require('./fleet_quick');
+T('„Cât a mers azi și unde e?", „Care sunt oprite și care merg?", „Status flotă și unde sunt?" → răspunsul rapid NU le acoperă',
+  ['Cât a mers azi și unde e?', 'Care sunt oprite și care merg?', 'Status flotă și unde sunt?'].every((q) => !FQ.acoperaTot(q)), JSON.stringify(['Cât a mers azi și unde e?', 'Care sunt oprite și care merg?'].map(FQ.detectIntents)));
+T('…dar „Unde sunt mașinile oprite?", „Care e cel mai rapid și unde e?", „Câți km a făcut azi?" — da (o listă cu locul, ori o singură întrebare)',
+  ['Unde sunt mașinile oprite?', 'Care e cel mai rapid și unde e?', 'Câți km a făcut azi?', 'Unde e acum?'].every((q) => FQ.acoperaTot(q)));
+// Mașina din discuție, doar la „unde e" / „câți km a făcut", la singular: „Care sunt oprite?" rămâne despre toată flota.
+T('mașina din discuție: „Unde e?", „Câți km a făcut azi?", „Locația lui" — da; „Unde sunt?", „Câți km au făcut azi?", „Care sunt oprite?" — nu',
+  I.peMasinaDinDiscutie('Unde e?', 'where') && I.peMasinaDinDiscutie('Câți km a făcut azi?', 'distance') && I.peMasinaDinDiscutie('Locația lui', 'where')
+  && !I.peMasinaDinDiscutie('Unde sunt?', 'where') && !I.peMasinaDinDiscutie('Câți km au făcut azi?', 'distance') && !I.peMasinaDinDiscutie('Care sunt oprite?', 'stopped'));
 T('…dar „acum" rămâne rapid: „Unde e acum?", „Care sunt oprite?", „care sunt pe drum acum", „Câți km a făcut azi?", un salut pe rândul de sus',
   ['Unde e acum?', 'Care sunt oprite?', 'care sunt pe drum acum', 'Câți km a făcut azi?', 'Salut\nunde e B 154 UIP?'].every((q) => rapid(q)));
 // Zilele săptămânii (Alin, 14.10): „Unde a fost Loganul duminică?" primea unde e ACUM, „în weekend" — „Distanță azi: 0 km".
@@ -360,6 +371,11 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   coada([text('Azi, B 154 UIP a mers prin Cluj-Napoca: 12 km, două opriri.')]);
   const q7d = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Pe unde a umblat azi?\n\nCâți km a făcut azi?\n\nCare sunt cele mai frecvente locații?', conversatieId: q7.j.conversatieId });
   T('întrebarea lui Alin, cu trei părți → RA Insight (analiza), nu răspunsul rapid', q7d.j.source === 'ai' && cereri().length === nCereri + 1, q7d.j.source);
+  const q7e = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Care sunt oprite?', conversatieId: q7.j.conversatieId });
+  T('„Care sunt oprite?" după o discuție despre B 154 UIP → rapid, despre TOATĂ flota (nu doar despre mașina discutată)', q7e.j.source === 'local' && (q7e.j.inteles || [])[0] && q7e.j.inteles[0].text === 'toată flota' && cereri().length === nCereri + 1, JSON.stringify([q7e.j.source, q7e.j.inteles]));
+  coada([text('B 154 UIP a mers 12 km azi și stă acum în Cluj-Napoca.')]);
+  const q7f = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Cât a mers azi și unde e?', conversatieId: q7.j.conversatieId });
+  T('„Cât a mers azi și unde e?" (două întrebări într-o propoziție) → RA Insight, nu răspunsul rapid cu doar km-ii', q7f.j.source === 'ai' && cereri().length === nCereri + 2, q7f.j.source);
 
   // j) ușa veche a telefonului: „Asistent AI" = RA Insight
   coada([text('Răspuns pe telefonul vechi.')]);

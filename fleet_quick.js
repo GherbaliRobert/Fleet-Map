@@ -14,6 +14,21 @@ const INTENTS = [
   { key: 'status', kw: ['status flota', 'rezumat flota', 'situatia flotei', 'cum sta flota', 'overview', 'sumar', 'pe scurt'] }
 ];
 
+// Toate felurile de întrebare dintr-un mesaj, în ordinea listei. Răspunsul rapid știe UNUL; „Cât a mers azi și unde e?" are două
+// răspunsuri diferite (km-ii nu spun locul) și merge la RA Insight (Alin, 10.11: „să citească mai bine întrebările"). Excepția:
+// „unde sunt cele oprite / care merg / cel mai rapid" — listele acelea arată deja și locul fiecărei mașini.
+const ARATA_LOCUL = { stopped: true, moving: true, fastest: true };
+function detectIntents(message) {
+  const m = norm(message); if (!m) return [];
+  return INTENTS.filter(function (it) { return it.kw.some(function (k) { return m.indexOf(norm(k)) >= 0; }); }).map(function (it) { return it.key; });
+}
+function acoperaTot(message) {
+  const l = detectIntents(message);
+  if (l.length <= 1) return true;
+  const alta = l.filter(function (k) { return k !== 'where'; });
+  return l.length === 2 && alta.length === 1 && !!ARATA_LOCUL[alta[0]];
+}
+
 function detectIntent(message) {
   const m = norm(message); if (!m) return null;
   for (const it of INTENTS) for (const k of it.kw) if (m.indexOf(norm(k)) >= 0) return it.key;
@@ -94,4 +109,4 @@ function answer(intent, ctx) {
   return { reply: reply + notaTaiere, source: 'local' };
 }
 
-module.exports = { detectIntent, answer };
+module.exports = { detectIntent, detectIntents, acoperaTot, answer };

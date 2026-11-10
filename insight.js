@@ -354,6 +354,10 @@ function maiMulteIntrebari(text) {
   const randuri = s.split(/\n/).map(norm).filter(Boolean);
   return randuri.filter(function (r) { return /\?$/.test(r) || INCEPE_INTREBARE.test(r); }).length >= 2;
 }
+// Mașina din discuție, la răspunsul rapid (10.11): doar o întrebare despre O mașină — „unde e", „câți km a făcut" —, la singular.
+// „Care sunt oprite", „unde sunt", „cât au mers", „care merg" sunt despre flotă, oricât s-ar fi vorbit înainte de o mașină.
+const LA_PLURAL = /(^|[^a-z])(sunt|au|merg|stau|lor)([^a-z]|$)/;
+function peMasinaDinDiscutie(text, intent) { return (intent === 'where' || intent === 'distance') && !LA_PLURAL.test(norm(text)); }
 function potrivitPentruRapid(text, gasite, areContext) {
   const t = norm(text);
   if (!t) return false;
@@ -526,5 +530,5 @@ module.exports = {
   totaluriPeMasina, celeMaiMari, vorbeDespreEchipament,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, oraRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
-  potrivitPentruRapid, maiMulteIntrebari, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, ANALIZA_ATENTA, esteAnaliza, areLitereStraine, litereRomanesti,
+  potrivitPentruRapid, maiMulteIntrebari, peMasinaDinDiscutie, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, ANALIZA_ATENTA, esteAnaliza, areLitereStraine, litereRomanesti,
 };

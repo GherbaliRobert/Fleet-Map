@@ -595,7 +595,9 @@ când să treacă de la instant la analiză… să se prindă din prima.”*
 - Ce s-a întâmplat azi (pe unde a umblat, unde a fost / a stat, opririle, cursele, traseul, locurile frecvente) → Analiză: e istoric, se citește
   din rapoarte. „Unde e acum”, „care sunt oprite”, „câți km a făcut azi” rămân Instant (gratuit).
 - Mașina despre care s-a vorbit rămâne și la Instant: „Câți km a făcut azi?” după „Unde e B 204 UIP?” răspunde despre ea; „toate mașinile”,
-  „care mașină”, „cine” — despre flotă.
+  „care mașină”, „cine”, „care sunt oprite”, „unde sunt” — despre flotă.
+- Două întrebări într-o propoziție („Cât a mers azi și unde e?”) → Analiză: răspunsul instant știa doar una (dădea km-ii, fără loc).
+  „Unde sunt mașinile oprite?” rămâne Instant: lista lor arată deja și locul.
 - Proba lui RA Insight socotește „săptămâna trecută” din data de azi (avea scris de mână „septembrie / octombrie” și pica de pe 09.11).
 
 **Ce vede fondatorul:** nimic nou pe ecranele noastre. **Ce vede clientul:** întrebările de felul ăsta primesc din prima un răspuns pe
