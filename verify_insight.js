@@ -99,6 +99,14 @@ T('întrebarea lui Alin scrisă CORECT („kilometri … săptămâna trecută")
 T('„km și consum azi" → NU rapid (răspunsul rapid știe doar km)', !rapid('km si consum azi'));
 T('o continuare („și ieri?") într-o discuție → NU rapid', !rapid('si ieri?', true));
 T('„unde e Loganul?" cu trei Logan → NU rapid (întâi se lămurește care)', !rapid('unde e loganul?'));
+// Alin, 10.11 (o discuție cu poze): trei întrebări deodată, despre ce a făcut mașina azi, primeau pe „Instant" doar km-ii flotei.
+T('întrebarea lui Alin, pe trei rânduri („Pe unde a umblat azi? / Câți km a făcut azi? / Care sunt cele mai frecvente locații?") → NU rapid',
+  !rapid('Pe unde a umblat azi?\n\nCâți km a făcut azi?\n\nCare sunt cele mai frecvente locații?', true));
+T('mai multe întrebări într-un rând („Câți km a făcut azi? Și unde e acum?") → NU rapid (răspunsul rapid știe una)', !rapid('Câți km a făcut azi? Și unde e acum?') && I.maiMulteIntrebari('Câți km a făcut azi? Și unde e acum?'));
+T('ce s-a întâmplat azi (pe unde a umblat, unde a fost / a stat, opririle, cursele, traseul, drumul) → NU rapid',
+  ['Pe unde a umblat azi?', 'Unde a fost Loganul azi?', 'unde a stat azi', 'Care au fost opririle de azi?', 'Ce curse a făcut azi?', 'Arată-mi traseul de azi', 'drumul de azi al lui B 154 UIP', 'cele mai frecvente locații'].every((q) => !rapid(q)));
+T('…dar „acum" rămâne rapid: „Unde e acum?", „Care sunt oprite?", „care sunt pe drum acum", „Câți km a făcut azi?", un salut pe rândul de sus',
+  ['Unde e acum?', 'Care sunt oprite?', 'care sunt pe drum acum', 'Câți km a făcut azi?', 'Salut\nunde e B 154 UIP?'].every((q) => rapid(q)));
 // Zilele săptămânii (Alin, 14.10): „Unde a fost Loganul duminică?" primea unde e ACUM, „în weekend" — „Distanță azi: 0 km".
 T('„duminică", „în weekend", „de luni până acum", „marțea trecută" → NU rapid (altă zi decât acum)',
   !rapid('Unde a fost B 154 UIP duminică?') && !rapid('Câți kilometri a făcut B 154 UIP în weekend?') && !rapid('Câți km de luni până acum?') && !rapid('ce a făcut flota marțea trecută'));
@@ -259,7 +267,9 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('unealta de rapoarte primește numărul cum l-a scris omul și știe și „month"', (c1[0].tools || []).some((t) => t.name === 'run_report' && t.input_schema.properties.month && t.input_schema.properties.group));
   const rez = (c1[1].messages || []).slice(-1)[0];
   T('raportul a rulat pe B 154 UIP („B154UIP" a fost recunoscut), nu „nu apare"', JSON.stringify(rez).indexOf('B 154 UIP · Dacia Logan 3') >= 0 && JSON.stringify(rez).indexOf('Nicio mașină') < 0, JSON.stringify(rez).slice(0, 200));
-  T('sursa: Index km / ore, pe B 154 UIP, săptămâna trecută', (q1.j.sources || []).length === 1 && q1.j.sources[0].imei === DEV[0].imei && q1.j.sources[0].label === 'Index km / ore' && /septembrie|octombrie/.test(q1.j.sources[0].perioada || ''), JSON.stringify(q1.j.sources));
+  // Săptămâna trecută se socotește față de AZI (ceasul adevărat): scrisă de mână „septembrie|octombrie", proba pica de pe 09.11.
+  const _sapT = I.perioada({ period: 'last_week' }, Date.now()), sapTrecuta = I.etichetaPerioadei(_sapT.from, _sapT.to, Date.now());
+  T('sursa: Index km / ore, pe B 154 UIP, săptămâna trecută (' + sapTrecuta + ')', (q1.j.sources || []).length === 1 && q1.j.sources[0].imei === DEV[0].imei && q1.j.sources[0].label === 'Index km / ore' && q1.j.sources[0].perioada === sapTrecuta, JSON.stringify(q1.j.sources));
   const inteles1 = (q1.j.inteles || []).map((x) => x.tip + ':' + x.text);
   T('„Am înțeles": mașina, perioada și raportul', inteles1.includes('masina:B 154 UIP · Dacia Logan 3') && inteles1.some((x) => /^perioada:\d/.test(x)) && inteles1.includes('subiect:Index km / ore'), inteles1.join(' | '));
   T('conversația s-a păstrat (are id)', Number(q1.j.conversatieId) > 0 && Number(q1.j.mesajId) > 0);
@@ -341,6 +351,15 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   coada([text('Săptămâna trecută: 538 de vizite.')]);
   const q8 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți kilometri a făcut B 154 UIP săptămâna trecută?', nou: true });
   T('cu altă perioadă, aceeași întrebare merge la RA Insight (nu primește km-ii de azi)', q8.j.source === 'ai' && cereri().length === inainte + 1, q8.j.source);
+  // Mașina din discuție rămâne (Alin, 10.11): după „Unde e B 154 UIP?", „Câți km a făcut azi?" e despre ea, nu despre toată flota.
+  const nCereri = cereri().length;
+  const q7b = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți km a făcut azi?', conversatieId: q7.j.conversatieId });
+  T('„Câți km a făcut azi?" după „Unde e B 154 UIP?" → rapid, despre B 154 UIP (mașina din discuție), fără model', q7b.j.source === 'local' && (q7b.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|azi' && cereri().length === nCereri, JSON.stringify([q7b.j.source, q7b.j.inteles]));
+  const q7c = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți km au făcut toate mașinile azi?', conversatieId: q7.j.conversatieId });
+  T('…„toate mașinile" → iar toată flota', q7c.j.source === 'local' && (q7c.j.inteles || [])[0] && q7c.j.inteles[0].text === 'toată flota', JSON.stringify(q7c.j.inteles));
+  coada([text('Azi, B 154 UIP a mers prin Cluj-Napoca: 12 km, două opriri.')]);
+  const q7d = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Pe unde a umblat azi?\n\nCâți km a făcut azi?\n\nCare sunt cele mai frecvente locații?', conversatieId: q7.j.conversatieId });
+  T('întrebarea lui Alin, cu trei părți → RA Insight (analiza), nu răspunsul rapid', q7d.j.source === 'ai' && cereri().length === nCereri + 1, q7d.j.source);
 
   // j) ușa veche a telefonului: „Asistent AI" = RA Insight
   coada([text('Răspuns pe telefonul vechi.')]);

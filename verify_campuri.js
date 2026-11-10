@@ -156,12 +156,17 @@ T('etichetele câmpurilor de la Alerte (viteza, axele) ca celelalte etichete ale
   // Ca în pagină: app.css întâi, apoi o regulă veche scrisă pe id-ul ferestrei (cum sunt cele din index.html), apoi scriptul.
   await pg.setContent('<!doctype html><html><head><style>' + css + '</style><style>' +
     '#admin-modal input, #admin-modal select { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font-size: 13px; }' +
+    '.admin-add label { display:flex; flex-direction:column; gap:3px; }' +   // ca în pagină (index.html): eticheta deasupra, caseta pe toată lățimea
     '</style><script>' + JS + '</script></head><body><div id="admin-modal">' +
-    '<div class="admin-add" style="display:grid;grid-template-columns:1fr 1fr;width:420px">' +
+    '<div class="admin-add" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);width:420px">' +
     '<label><span>Nume</span><input id="nume" type="text" value="Gherbali Robert"></label>' +
     '<label><span>Companie</span><select id="firma"><option value="">— alege —</option><option value="1">Compania mea</option><option value="2" selected>Construcții Vest Logistic Internațional SRL</option></select></label>' +
     '</div>' +
     '<p><select id="auto"><option>Scurt</option><option>O opțiune mult mai lungă</option></select> <span id="dupa">după</span></p>' +
+    // Ca lista firmei din Dispozitive: într-un tabel îngust (care se derulează), cu `max-width` de 160 px.
+    '<div style="width:300px;overflow-x:auto"><table style="width:100%"><tr><td>MAN TGX 18.510<br>B 77 TIR</td><td>350000000096003</td>' +
+    '<td><select id="tabel" style="max-width:160px"><option selected>— neasignat —</option><option>Transport Ionescu SRL</option><option>Construcții Vest Logistic Internațional SRL</option></select></td>' +
+    '<td>acum 2 minute</td><td><button>Respinge</button></td></tr></table></div>' +
     '<p><input id="cauta" type="search" placeholder="Caută" style="width:200px"></p>' +
     '<p><input type="hidden" class="flatpickr-input"><input id="zi" type="text" readonly value="06.11.2026"> <input id="link" type="text" readonly value="https://ratrack.ro/locatie/x"></p>' +
     '</div></body></html>');
@@ -191,6 +196,15 @@ T('etichetele câmpurilor de la Alerte (viteza, axele) ca celelalte etichete ale
     T('…și urmează alegerile de după', (await pg.evaluate(() => document.querySelector('#firma selectedcontent').textContent)) === 'Unitip Test');
     const w1 = (await st('auto')).w; await pg.evaluate(() => { document.getElementById('auto').selectedIndex = 1; }); const w2 = (await st('auto')).w;
     T('o listă fără lățime scrisă are lățimea celei mai lungi opțiuni: nu sare bara când alegi altceva', w1 === w2 && w1 > 150, w1 + ' / ' + w2);
+    // 10.11: lista din tabel se strângea la 60 px (butonul dinăuntru era o grilă, pe care Chrome n-o socotea). Ca lista veche: cât cea mai
+    // lungă opțiune, până la `max-width`; ce nu încape se taie cu „…".
+    const tb = await pg.evaluate(() => { const s = document.getElementById('tabel'), sc = s.querySelector('selectedcontent');
+      return { w: Math.round(s.getBoundingClientRect().width), txt: sc && sc.textContent, cut: sc && sc.scrollWidth > sc.clientWidth }; });
+    T('într-un tabel îngust, lista NU se strânge: are lățimea ei (aici 160 px, cât îi dă max-width), „— neasignat —" întreg', tb.w === 160 && tb.txt === '— neasignat —' && tb.cut === false, JSON.stringify(tb));
+    await pg.evaluate(() => { document.getElementById('tabel').selectedIndex = 2; });
+    const tb2 = await pg.evaluate(() => { const s = document.getElementById('tabel'), sc = s.querySelector('selectedcontent');
+      return { w: Math.round(s.getBoundingClientRect().width), cut: sc && sc.scrollWidth > sc.clientWidth, el: sc && getComputedStyle(sc).textOverflow }; });
+    T('…iar un nume mai lung decât 160 px se taie cu „…", fără să lățească lista', tb2.w === 160 && tb2.cut === true && tb2.el === 'ellipsis', JSON.stringify(tb2));
     await pg.click('#firma'); await pg.waitForTimeout(250);
     const pk = await pg.evaluate(() => { const s = document.getElementById('firma'); const c = getComputedStyle(s, '::picker(select)'); const o = s.querySelector('option:checked'); const co = getComputedStyle(o);
       return { deschis: s.matches(':open'), rad: c.borderTopLeftRadius, bg: c.backgroundColor, culoare: co.color, fw: co.fontWeight }; });

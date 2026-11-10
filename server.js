@@ -5315,9 +5315,14 @@ async function _raInsight(req, res, opts) {
     //    de AZI ai întregii flote. Acum: altă perioadă, alt subiect sau o continuare a discuției → RA Insight.
     try {
       const intent = fleetQuick ? fleetQuick.detectIntent(message) : null;
-      const peMasini = gasite.masini.length > 0;
+      // Mașina din discuție (Alin, 10.11): „Câți km a făcut azi?" după „Unde e B 204 UIP?" e despre ea, nu despre toată flota — aceeași
+      // regulă ca la rapoartele cerute („mașina rămâne în discuție"), cât întrebarea nu vorbește de flotă („toate", „care mașină", „cine").
+      const dinDiscutie = (!gasite.masini.length && mesaje.length && Array.isArray(ctx.masini) && ctx.masini.length && !aiRaport.despreFlota(message))
+        ? ctx.masini.map(function (i) { return peImei[i]; }).filter(Boolean) : [];
+      const masiniRapid = gasite.masini.length ? gasite.masini : dinDiscutie;
+      const peMasini = masiniRapid.length > 0;
       if (!o.proba && !gata && intent && insight.potrivitPentruRapid(message, gasite, mesaje.length > 0) && !(peMasini && intent === 'status')) {
-        const doar = peMasini ? new Set(gasite.masini.map(function (v) { return v.imei; })) : null;
+        const doar = peMasini ? new Set(masiniRapid.map(function (v) { return v.imei; })) : null;
         let snap = _fleetSnapshot(req, doar ? 100000 : undefined);
         if (doar) { const total = snap.filter(function (v) { return doar.has(v.imei); }); snap = total; Object.defineProperty(snap, 'totalFlota', { value: total.length, enumerable: false }); }
         try { if (geocode) await geocode.warm(snap.map(v => ({ lat: Number(v.lat), lng: Number(v.lng) }))); } catch (e) {}
@@ -5328,7 +5333,7 @@ async function _raInsight(req, res, opts) {
           azi = await db.getTripsSummaryForImeis(doar ? Array.from(doar) : allImeis, z.from, z.to);
         } catch (e) { /* fără sumarul curselor */ }
         const aq = fleetQuick.answer(intent, { snapshot: snap, today: azi, now: Date.now(), total: snap.totalFlota });
-        const inteles = (peMasini ? gasite.masini.map(function (v) { return { tip: 'masina', text: insight.eticheta(v) }; }) : [{ tip: 'masina', text: 'toată flota' }])
+        const inteles = (peMasini ? masiniRapid.map(function (v) { return { tip: 'masina', text: insight.eticheta(v) }; }) : [{ tip: 'masina', text: 'toată flota' }])
           .concat([{ tip: 'perioada', text: intent === 'distance' ? 'azi' : 'acum' }]);
         const insL = pachete.insigna('instant', { live: true });
         const s = await salveaza(aq.reply, { source: 'local', inteles: inteles, insigna: insL }, peMasini ? Object.assign({}, ctx, { masini: Array.from(doar) }) : ctx);

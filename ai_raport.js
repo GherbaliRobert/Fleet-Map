@@ -1191,7 +1191,12 @@ function urmariComanda(u) {
   return out.map(function (t) { return { text: t, trimite: t }; });
 }
 
+// O întrebare despre toată flota („toate mașinile", „care mașină", „cine", „cele mai multe") — mașina din discuție nu se mai ține.
+// Aceeași regulă ca mai sus, în `intelege`; o folosește și răspunsul rapid al lui RA Insight (10.11).
+function despreFlota(text) { const t = I.norm(text); return TOATA_FLOTA.test(t) || RANG.test(t) || DESPRE_FLOTA.test(t); }
+
 module.exports = {
+  despreFlota,
   CERE_RAPORT, NUME_RAPOARTE, RAPOARTE_CU_ALEGERI, RAPOARTE_PROPUSE, comanda, contextulComenzii, urmariComanda, numeRaportDin, zileleDin, MAX_PERIOADE,
   rezumatTabel,
   SUBIECTE, ALTE_RAPOARTE, INTREBARI_GATA, ALEGERI_RAPORT, PE_MASINA, PE_FLOTA, MAX_ZILE, ZILE_LOCATIE,

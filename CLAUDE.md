@@ -107,6 +107,10 @@ Alin, cu trei poze: „casetele… și dropdown-urile… sunt din anii 2000". M�
   (`.camp-sel-m`, textele tuturor opțiunilor, ascunse): fără el, un text lung ieșea din chenar și săgeata dispărea, iar o listă fără
   lățime se făcea cât textul ales. ⚠ Butonul se ține minte pe listă (`_campSel`) și se pune ÎNAPOI pe ACELAȘI după un `innerHTML`:
   Chrome nu mai umple un `<selectedcontent>` nou în aceeași listă (măsurat 06.11).
+- **Butonul din listă e un BLOC (textul ales + măsura, una sub alta), NU o grilă** (10.11): pe grilă Chrome nu numără măsura, iar lista
+  se strângea când pagina o măsoară — lista firmei din Dispozitive ieșea de 60 px în loc de 160, alegerea perioadei din RA Insight de
+  290 în loc de 336. Acum lista are, ca lista veche, cel puțin lățimea celei mai lungi opțiuni (până la `max-width`) și se taie cu „…"
+  doar unde i se dă o lățime mai mică. Măsurat pe 212 liste (42 de ecrane, 6 lățimi), față de lista veche; unealta nu e în depozit.
 - Caseta calendarului (flatpickr o face „readonly") NU e stinsă: `:not(.flatpickr-input + input)`. Chenarul de 1,5 px, Chrome îl desenează de 1 px.
 - **Fișa șoferului** (punctul 3): „Companie" sus, „Anulează" (`anuleazaSofer`: golește și închide) + „Salvează" jos, în dreapta (`.drv-jos`).
 - Păzit de `verify_campuri.js` (5–8, în browser pe ambele teme) și `verify_soferi_istoric.js` (fișa șoferului).
@@ -490,6 +494,12 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
   despre săptămâna trecută primea km-ii de AZI ai întregii flote. Pe o mașină anume („unde e B 154 UIP") răspunde doar despre ea.
   **Fără emoji** (Alin, 20.10: „📍 🚚 🟠" nu arăta profesionist lângă insigne): titlu îngroșat, mașina, rânduri cu „•"; ora pe ora
   ROMÂNIEI (`fmtTime` cu `timeZone: 'Europe/Bucharest'` — serverul e pe UTC, „ultima poziție" ieșea cu 3 ore în urmă). Păzit de `verify_tarife.js`.
+  **Mai multe întrebări deodată și ce s-a ÎNTÂMPLAT azi → Analiză** (10.11; Alin, cu poze: „Pe unde a umblat azi? / Câți km a făcut azi? /
+  Care sunt cele mai frecvente locații?" primea pe „Instant" doar km-ii flotei): `insight.maiMulteIntrebari` (două „?" sau două rânduri care
+  întreabă) și `ISTORIC_ZI` (pe unde, umblat, traseu, drumul, a fost / a stat / a oprit, opririle, staționări, frecvente, cursele, vizitat).
+  „Unde e", „care sunt oprite / pe drum", „câți km azi" rămân Instant. **Mașina din discuție rămâne** și la Instant: fără mașină în întrebare,
+  ia `ctx.masini` (prin `peImei`), cât întrebarea nu e despre flotă — `aiRaport.despreFlota` (aceleași `TOATA_FLOTA` / `RANG` / `DESPRE_FLOTA`
+  ca la rapoartele cerute). Păzit de `verify_insight.js` (3 + serverul pornit).
 - **Zilele săptămânii și weekendul: O regulă, `insight.ziuaSaptamanii(text, acum)`** (14.10, Alin: „rezolvăm"), folosită de
   `potrivitPentruRapid` (orice zi a săptămânii → nu e rapid) și de `ai_raport.perioadaDin` (ÎNAINTEA lui „azi", ca „de luni
   până azi" să fie săptămâna). „duminică" = cea mai apropiată (azi, dacă azi e duminică), „…trecută" = cea dinainte de azi,

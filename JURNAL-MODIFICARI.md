@@ -581,6 +581,46 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-10
+
+### CLIENT · RA Insight: întrebarea cu mai multe părți și ce a făcut o mașină azi merg pe „Analiză”; mașina din discuție rămâne
+*Alin, 10.11, cu două poze dintr-o discuție: după „Spune-mi locația Loganului B 204 UIP”, întrebarea „Pe unde a umblat azi? / Câți km a făcut
+azi? / Care sunt cele mai frecvente locații?” a primit pe „Instant” doar km-ii de azi ai TOATEI flote. „Vreau ca RA Insight să identifice din prima
+când să treacă de la instant la analiză… să se prindă din prima.”*
+
+**Cauza:** răspunsul instant se aprindea pe cuvântul „câți km” și nu vedea nici celelalte două întrebări, nici mașina din discuție.
+
+**Ce am schimbat:**
+- Mai multe întrebări într-un mesaj (două semne de întrebare sau mai multe rânduri care întreabă) → Analiză.
+- Ce s-a întâmplat azi (pe unde a umblat, unde a fost / a stat, opririle, cursele, traseul, locurile frecvente) → Analiză: e istoric, se citește
+  din rapoarte. „Unde e acum”, „care sunt oprite”, „câți km a făcut azi” rămân Instant (gratuit).
+- Mașina despre care s-a vorbit rămâne și la Instant: „Câți km a făcut azi?” după „Unde e B 204 UIP?” răspunde despre ea; „toate mașinile”,
+  „care mașină”, „cine” — despre flotă.
+- Proba lui RA Insight socotește „săptămâna trecută” din data de azi (avea scris de mână „septembrie / octombrie” și pica de pe 09.11).
+
+**Ce vede fondatorul:** nimic nou pe ecranele noastre. **Ce vede clientul:** întrebările de felul ăsta primesc din prima un răspuns pe
+„Analiză” (o întrebare din pachet); cele simple despre acum rămân „Instant”. Reper: `insight.js` (`maiMulteIntrebari`, `ISTORIC_ZI`),
+`server.js` (răspunsul rapid), `verify_insight.js`.
+
+### AMÂNDOI · Listele derulante noi: nu se mai strâng mai mult decât cele vechi
+*Verificarea de după lucrarea din 06.11, înainte de publicare: am măsurat 212 liste (42 de ecrane, 6 lățimi de ecran), noile față de cele
+vechi.*
+
+**Ce era:** câteva liste noi ieșeau mai înguste decât cele vechi, cu textul tăiat — lista firmei de pe fiecare rând din Dispozitive (60 px
+în loc de 160: se vedea „— nea…"), alegerea săptămânii din RA Insight → Ore de condus, pe telefon.
+
+**Ce am schimbat:**
+- O listă are din nou, ca înainte, cel puțin lățimea celei mai lungi opțiuni (cât îi permite locul ei); se taie cu „…" doar unde i se dă o
+  lățime mai mică.
+- „Anunță echipa": lista mașinii e mai lată pe calculator, ca „Fără mașină — o întrebare pentru echipă" să încapă întreg.
+- Dispozitive: lista firmei de pe rând e puțin mai lată (180 px), ca „— neasignat —" să încapă și pe telefon.
+- Programările de rapoarte, pe telefon: o casetă pe rând („Foaie de parcurs", „Ziua precedentă" se tăiau în două coloane).
+
+**Ce vede fondatorul:** în Dispozitive, lista firmei pe fiecare rând, întreagă. **Ce vede clientul:** listele din RA Insight, „Anunță
+echipa" și programările de rapoarte, întregi. Reper: `app.css` (blocul „Casetele și listele derulante"), `verify_campuri.js`.
+
+---
+
 ## 2026-11-06
 
 ### AMÂNDOI · Casetele și listele derulante, într-un singur fel în toată aplicația; fișa șoferului rearanjată

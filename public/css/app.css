@@ -2388,6 +2388,8 @@ body.dark .sch-debloc { border-color: #f87171; color: #f87171; }
 .sch-empty div { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
 .sch-empty span { font-size: 12px; display: block; margin-top: 4px; }
 @media (max-width: 720px) { .sch-grid { grid-template-columns: 1fr 1fr; } .sch-item .sic { display: none; } }
+/* Pe telefon, o casetă pe rând: în două coloane, „Foaie de parcurs" și „Ziua precedentă" se tăiau (măsurat 10.11, la 360 și 412 px). */
+@media (max-width: 480px) { .sch-grid { grid-template-columns: 1fr; } .sch-grid > .rep-f { grid-column: 1 / -1 !important; } }   /* `span 2` (scris pe rând) ar face o a doua coloană */
 
 /* „Poziția mea" — punct albastru cu halou pulsatoriu (dispozitivul de pe care urmărești) */
 .viewer-me { position: relative; }
@@ -5005,6 +5007,8 @@ body.dark .rep-rezumat-t i { color: #3FE07D; }
 .ce-ta { display: block; width: 100%; box-sizing: border-box; min-height: 56px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13.5px; resize: vertical; }
 .ce-in { padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-darkest); color: var(--text-primary); font: inherit; font-size: 13.5px; max-width: 100%; box-sizing: border-box; }
 .ce-lung { width: 310px; }
+/* Lista mașinii: „Fără mașină — o întrebare pentru echipă" nu încăpea în 310 px (măsurat 10.11). */
+select.ce-lung { width: min(100%, 420px); }
 .ce-tel { width: 140px; }
 .ce-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ce-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--border-light); background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
@@ -5251,13 +5255,16 @@ body.dark {
 }
 
 /* 4. Lista care se deschide — a aplicației (Chrome, Edge). Butonul dinăuntru (js/campuri.js) ține textul ales, tăiat cu „…"
-   când nu încape, și lățimea celei mai lungi opțiuni. */
+   când nu încape, și lățimea celei mai lungi opțiuni.
+   ⚠ Butonul e un BLOC (textul ales + măsura, una sub alta), NU o grilă: așa lista are, ca lista veche, cel puțin lățimea celei
+   mai lungi opțiuni când pagina o măsoară (un tabel, un rând), și se taie cu „…" doar când i se dă o lățime mai mică. Pe grilă
+   (oricum i-ai scrie coloana) Chrome nu numără măsura: lista firmei din Dispozitive se strângea la 60 px, alegerea perioadei din
+   RA Insight la 290 (măsurat 10.11, pe 6 lățimi, față de lista veche). */
 @supports (appearance: base-select) {
   :is(#ra-campuri, html) :is(#ra-campuri, body) select:not([multiple]):not([size]):not(.flatpickr-monthDropdown-months):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
     background-image: none; padding-right: 12px !important; align-items: center;
     &, &::picker(select) { appearance: base-select; }
-    & > button.camp-sel { all: unset; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 1 1 auto; min-width: 0; cursor: inherit; }
-    & > button.camp-sel > * { grid-area: 1 / 1; min-width: 0; }
+    & > button.camp-sel { all: unset; display: block; flex: 1 1 auto; min-width: 0; cursor: inherit; }
     & > button.camp-sel > selectedcontent { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     & > button.camp-sel > .camp-sel-m { display: block; visibility: hidden; height: 0; overflow: hidden; white-space: pre; }
     &::picker-icon {

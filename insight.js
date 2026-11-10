@@ -342,13 +342,27 @@ function etichetaPerioadei(from, to, acum) {
 // rapid pleacă numai dacă întrebarea nu cere altă perioadă, alt subiect sau o continuare a discuției.
 const ALTA_PERIOADA = /(^|[^a-z])(ieri|alaltaieri|saptaman\w*|luna|lunii|lunile|anul|anului|zile|zilele|ultim\w*|trecut\w*|precedent\w*|ianuarie|februarie|martie|aprilie|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|\d{1,2}[.\/-]\d{1,2})([^a-z]|$)/;
 const ALT_SUBIECT = /(consum|combustib|motorin|benzin|litri|cost|bani|lei\b|ralanti|aliment|scor|franar|acceler|condus|pauz|revizi|\bitp\b|\brca\b|service|document|expir|alert|problem|de ce|compar|\bore\b)/;
+// Ce s-a ÎNTÂMPLAT într-o zi nu e „acum", chiar fără altă perioadă scrisă (Alin, 10.11, cu o discuție: „Pe unde a umblat azi? Câți
+// km a făcut azi? Care sunt cele mai frecvente locații?" primea pe „Instant" doar km-ii de azi ai TOATEI flote): drumul, opririle,
+// locurile, cursele sunt istoric — le citește RA Insight din rapoarte. „Unde e", „care sunt oprite", „care sunt pe drum" rămân „acum".
+const ISTORIC_ZI = /(pe unde|umbla|trase(u|e)|\brut(a|e|ele)\b|\bdrum(ul|uri|urile)\b|\b(a|au) (fost|stat|oprit|trecut)\b|oprir|stationar|frecvent|\bcurs(a|e|ele|ei)\b|vizit)/;
+// Mai multe întrebări deodată (două semne de întrebare, ori două rânduri care întreabă fiecare ceva): răspunsul rapid știe UNA.
+const INCEPE_INTREBARE = /^(cat|cati|cate|care|unde|ce|cum|cine|cand|de ce|pe unde|ai|are|a |au )/;
+function maiMulteIntrebari(text) {
+  const s = String(text == null ? '' : text);
+  if ((s.match(/\?/g) || []).length >= 2) return true;
+  const randuri = s.split(/\n/).map(norm).filter(Boolean);
+  return randuri.filter(function (r) { return /\?$/.test(r) || INCEPE_INTREBARE.test(r); }).length >= 2;
+}
 function potrivitPentruRapid(text, gasite, areContext) {
   const t = norm(text);
   if (!t) return false;
   if (gasite && (gasite.grupe.length || gasite.ambigue.length)) return false;
+  if (maiMulteIntrebari(text)) return false;
   if (ALTA_PERIOADA.test(t)) return false;
   if (ziuaSaptamanii(text)) return false;              // „duminică", „în weekend", „de luni" — altă zi decât acum
   if (ALT_SUBIECT.test(t)) return false;
+  if (ISTORIC_ZI.test(t)) return false;
   // o continuare („și ieri?", „dar Loganul?") ține de discuție, nu de o întrebare nouă
   if (areContext && /^(si|dar|iar|apoi|ok|bine)\b/.test(t)) return false;
   return true;
@@ -512,5 +526,5 @@ module.exports = {
   totaluriPeMasina, celeMaiMari, vorbeDespreEchipament,
   norm, compact, cuvinte, radacina, fisaFlotei, eticheta, gasesteInText, rezolva,
   inceputZiRO, oraRO, perioada, etichetaPerioadei, PERIOADE, LUNI, ziuaSaptamanii,
-  potrivitPentruRapid, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, ANALIZA_ATENTA, esteAnaliza, areLitereStraine, litereRomanesti,
+  potrivitPentruRapid, maiMulteIntrebari, istoricPentruModel, titluDin, SCRISUL, ECHIPAMENTUL, ANALIZA_ATENTA, esteAnaliza, areLitereStraine, litereRomanesti,
 };
