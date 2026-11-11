@@ -5174,6 +5174,114 @@ body.dark .aiu-bani-r.warn .v { color: #fbbf24; } body.dark .aiu-bani-r.bad .v {
 .vist-gol, .vist-nota { margin-top: 6px; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
 #edit-driver-nota { margin-top: 4px; }
 
+/* ═══ Fișa vehiculului pe file (Alin, 10.11: „1. da, 2. da, 3. da" la macheta https://claude.ai/artifact/6fE8EMcgCU6dnbN3iRLedH) ═══
+   Filele în stânga, în două grupe („Mașina", „Mai mult"); pe ecranele de până la 768 px, un rând de butoane rotunde sus. „Anulează" și
+   „Salvează" stau MEREU jos, în dreapta: fereastra are înălțime fixă și se derulează doar fila — până pe 10.11 „Salvează" era la capătul
+   unei file cu 37 de câmpuri, după cam două ecrane și jumătate de derulat (măsurat). Sus scrie ce mașină editezi: numărul, apoi numele.
+   Butoanele de jos sunt cele ale casei (`.ra-camp .rax-btn` / `.rax-btn.primary`) — aici doar înălțimea. Comportamentul: lângă
+   `switchEditTab` (index.html). Păzit de verify_fisa_vehicul.js. */
+#edit-modal > .modal.vf {
+  width: min(1040px, 96vw); max-width: none; height: min(86vh, 760px); max-height: none;
+  padding: 0; overflow: hidden; border-radius: 16px;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+}
+#edit-modal .vf-cap { display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px 22px; border-bottom: 1px solid var(--border); }
+#edit-modal .vf-cap-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+#edit-modal .vf-cap h2 { display: block; margin: 0; font-size: 17px; font-weight: 800; color: var(--text-primary); }
+#edit-modal .vf-sub { font-size: 13px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#edit-modal .vf-sub:empty { display: none; }
+#edit-modal .vf-sub b { color: var(--text-primary); font-weight: 800; }
+#edit-modal .vf-x {
+  margin-left: auto; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border-light);
+  background: transparent; color: var(--text-secondary); font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+#edit-modal .vf-x:hover { color: var(--text-primary); border-color: var(--text-muted); }
+#edit-modal .vf-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+#edit-modal .vf-corp { display: grid; grid-template-columns: 228px minmax(0, 1fr); min-height: 0; }
+#edit-modal .vf-nav {
+  position: relative; display: flex; flex-direction: column; gap: 2px; overflow-y: auto;
+  padding: 14px 10px 18px; background: var(--bg-dark); border-right: 1px solid var(--border);
+}
+#edit-modal .vf-grup { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); padding: 10px 12px 6px; }
+#edit-modal .vf-desp { flex: 0 0 auto; height: 1px; margin: 10px 2px 6px; background: var(--border); }
+#edit-modal .vf-nav .edit-tab {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 11px;
+  min-height: 40px; padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--text-secondary);
+}
+#edit-modal .vf-nav .edit-tab i { width: 18px; text-align: center; font-size: 14px; color: var(--text-muted); }
+#edit-modal .vf-nav .edit-tab:hover { background: var(--camp-opt-sub); color: var(--text-primary); }
+#edit-modal .vf-nav .edit-tab.active { background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel)); color: var(--camp-ales); font-weight: 800; }
+#edit-modal .vf-nav .edit-tab.active i { color: var(--camp-bifa); }
+#edit-modal .vf-nav .edit-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* „+ arată toate filele" (doar noi, când o filă e ascunsă pentru vehiculul ăsta) */
+#edit-modal .vf-toate { all: unset; cursor: pointer; margin: 10px 12px 0; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+#edit-modal .vf-toate:hover { color: var(--text-primary); }
+
+#edit-modal .vf-main { min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 22px 26px 26px; }
+#edit-modal .vf-pcap { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 18px; }
+#edit-modal .vf-pcap > div { flex: 1 1 auto; min-width: 0; }
+#edit-modal .vf-pcap h3 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+#edit-modal .vf-pcap p { margin: 4px 0 0; font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--text-secondary); }
+#edit-modal .vf-sect { margin: 22px 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); }
+#edit-modal .vf-pcap + .vf-sect { margin-top: 0; }
+#edit-modal .vgrid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px 18px; }
+#edit-modal .vgrid2 > .form-group { margin-bottom: 0; min-width: 0; }
+#edit-modal .vgrid2 > .vf-lat { grid-column: 1 / -1; }
+#edit-modal .vf-axe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+#edit-modal .vf-axe > .form-group { margin-bottom: 0; }
+#edit-modal .vf-imei { display: flex; align-items: center; gap: 8px; }
+#edit-modal .vf-hint { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+#edit-modal .vf-info { margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; background: var(--bg-dark); font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+#edit-modal .vf-eti { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+#edit-modal .vf-doar { margin-left: 4px; padding: 1px 6px; border: 1px solid currentColor; border-radius: 5px; font-size: 10.5px; font-weight: 700; color: var(--camp-ales); }
+#edit-modal .vf-bifa { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; color: var(--text-primary); }
+#edit-modal .vf-bifa input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+#edit-modal .vf-jos { display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 22px; border-top: 1px solid var(--border); background: var(--bg-panel); }
+#edit-modal .vf-jos-txt { min-width: 0; margin-right: auto; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+#edit-modal .vf-jos-txt.schimbat { color: #c2410c; }
+body.dark #edit-modal .vf-jos-txt.schimbat { color: #fdba74; }
+#edit-modal .vf-jos-txt.schimbat::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+#edit-modal .vf-jos .rax-btn { min-height: 42px; min-width: 120px; padding: 0 18px; font-size: 14px; }
+#edit-modal .vf-jos .rax-btn.primary { min-width: 150px; font-weight: 800; }
+
+/* Telefon și tabletă îngustă: ca toate ferestrele de aici, foaie de jos de 90% din ecran (regulile de sus au !important) — dar cu
+   înălțime FIXĂ, ca butoanele să stea jos. Filele = un rând de butoane rotunde care se derulează; jos, butoanele pe jumătate fiecare. */
+@media (max-width: 768px) {
+  #edit-modal.modal-overlay { align-items: flex-end; }
+  #edit-modal > .modal.vf {
+    width: 100% !important; max-width: 100% !important; height: 90dvh; max-height: 90dvh !important;
+    padding: 0 !important; border: none; border-radius: 16px 16px 0 0 !important;
+  }
+  #edit-modal .vf-cap { padding: 12px 12px 10px 16px; }
+  #edit-modal .vf-cap h2 { font-size: 16px; }
+  #edit-modal .vf-corp { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  #edit-modal .vf-nav {
+    flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 8px; padding: 10px 14px;
+    border-right: none; border-bottom: 1px solid var(--border); scrollbar-width: none;
+  }
+  #edit-modal .vf-nav::-webkit-scrollbar { display: none; }
+  #edit-modal .vf-grup { display: none; }
+  #edit-modal .vf-desp { flex: 0 0 1px; height: auto; align-self: stretch; margin: 4px 2px; background: var(--border-light); }
+  #edit-modal .vf-nav .edit-tab {
+    flex: 0 0 auto; min-height: 38px; padding: 0 14px; gap: 8px; border-radius: 999px; white-space: nowrap;
+    border: 1.5px solid var(--border-light); background: var(--bg-panel); font-size: 13.5px;
+  }
+  #edit-modal .vf-nav .edit-tab.active { border-color: transparent; background: var(--accent); color: #06210F; }
+  #edit-modal .vf-nav .edit-tab.active i { color: #06210F; }
+  #edit-modal .vf-toate { flex: 0 0 auto; align-self: center; margin: 0 4px; white-space: nowrap; }
+  #edit-modal .vf-main { padding: 16px 16px 20px; }
+  #edit-modal .vf-pcap h3 { font-size: 17px; }
+  #edit-modal .vgrid2 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #edit-modal .vf-axe { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #edit-modal .vf-jos { flex-wrap: wrap; gap: 8px; padding: 10px 14px calc(10px + var(--sab, 0px)); }
+  #edit-modal .vf-jos-txt { flex: 1 0 100%; margin-right: 0; font-size: 12.5px; }
+  #edit-modal .vf-jos-txt:not(.schimbat):not(.nota) { display: none; }
+  #edit-modal .vf-jos .rax-btn, #edit-modal .vf-jos .rax-btn.primary { flex: 1 1 0; min-width: 0; }
+}
+
+
 /* ═══ Casetele și listele derulante: UN SINGUR FEL, în toată aplicația (Alin, 06.11: „1 da, 2 da") ═════════════════════
    Alin, cu trei poze (fișa șoferului, lista „Companie", lista „Tip combustibil"): „casetele… și dropdown-urile… hai să le
    modernizăm, că sunt din anii 2000". Măsurat înainte (06.11, 42 de ecrane × 2 lățimi): 56 de feluri de casete — 8
@@ -5311,3 +5419,4 @@ body.dark {
   & .ss-item.ss-sel { background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel)); color: var(--camp-ales); font-weight: 700; padding-right: 32px; }
   & .ss-item.ss-sel::after { content: '✓'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--camp-bifa); font-weight: 800; }
 }
+

@@ -58,7 +58,11 @@ T('eroarea de GPS e galbenă și spune „Nu-l lua în calcul"', P.problemaVitez
 T('pragul: limita din fișă, altfel 130 km/h (90 la camioane)', P.pragViteza({ limita: 110 }).kmh === 110 && P.pragViteza({ camion: true }).kmh === 90 && P.pragViteza({}).kmh === 130);
 T('fișa mașinii: „anii de înmatriculare" privește anul; „ce consum" nu privește fișa', P.campuriCerute('vreau sa stiu anii de inmatriculare a masinilor').join() === 'anul de fabricație' && P.campuriCerute('ce consum a avut').length === 0);
 const pf = P.problemaFisa('anul de fabricație', [{ nr: 'B 112 RFG', imei: '1', necompletat: ['anul de fabricație'] }, { nr: 'B 154 UIP', imei: '2' }, { nr: 'B 268 ROY', imei: '3', necompletat: ['anul de fabricație'] }]);
-T('…ce lipsește, pe nume, cu butonul spre fila „Detalii vehicul" a fiecărei mașini', pf.grav === 'galben' && /\(2 mașini\)/.test(pf.titlu) && pf.butoane.length === 2 && pf.butoane.every((b) => b.fel === 'fisa' && b.fila === 'basic') && /B 112 RFG, B 268 ROY/.test(pf.dovada), JSON.stringify(pf));
+// Din 10.11 fișa e pe file: anul, marca, modelul, combustibilul stau în „Date tehnice", rezervorul în „Consum și limite".
+T('…ce lipsește, pe nume, cu butonul spre fila unde stă câmpul („Date tehnice") a fiecărei mașini', pf.grav === 'galben' && /\(2 mașini\)/.test(pf.titlu) && pf.butoane.length === 2 && pf.butoane.every((b) => b.fel === 'fisa' && b.fila === 'tehnice') && /B 112 RFG, B 268 ROY/.test(pf.dovada) && /fila „Date tehnice"/.test(pf.dovada), JSON.stringify(pf));
+const pr = P.problemaFisa('rezervorul', [{ nr: 'B 77 TIR', imei: '4', necompletat: ['rezervorul'] }]);
+T('…rezervorul → fila „Consum și limite"; fiecare filă numită există în fișă (data-tab)', pr.butoane[0].fila === 'consum' && /fila „Consum și limite"/.test(pr.dovada) &&
+  ['tehnice', 'consum'].every((k) => fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').indexOf('data-tab="' + k + '"') >= 0), JSON.stringify(pr));
 T('cel mult ' + P.MAX_PROBLEME + ' probleme sub un răspuns, întâi cele roșii, fără dubluri', P.ordoneaza([{ fel: 'a', grav: 'galben', titlu: '1' }, { fel: 'b', grav: 'rosu', titlu: '2' }, { fel: 'b', grav: 'rosu', titlu: '2' }]).map((x) => x.titlu).join() === '2,1');
 const SRC_P = fs.readFileSync(path.join(__dirname, 'probleme.js'), 'utf8');
 T('probleme.js e curat (fără bază, fără rețea, fără model) și fără caractere de control', !/require\('\.\/db|require\('pg|fetch\(|callClaude/.test(SRC_P) && !/[\x00-\x08]/.test(SRC_P));

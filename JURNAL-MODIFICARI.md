@@ -581,6 +581,34 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-11
+
+### AMÂNDOI · Fișa vehiculului pe file: filele în stânga, „Salvează" mereu jos
+*Alin, 06.11 (a treia propunere: fișa mașinii pe file, întâi macheta) și 10.11, la machetă: „1. Da 2. da 3. da" — filele în stânga cu
+„Salvează" jos, modelul GPS și cartela SIM lângă IMEI, fișa se deschide pe „General".*
+
+**Ce era:** o filă lungă, „Detalii vehicul" (identificarea, datele tehnice, consumul, administrativul — una sub alta) și încă 7 file pe un
+rând sus; „Salvează" stătea la capătul formularului, după derulare; pe telefon, rândul de file ieșea din ecran.
+
+**Ce am schimbat:**
+- Fereastra mai lată (până la 1.040 px), cu filele în stânga, în două grupe: „Mașina" (General, Date tehnice, Consum și limite,
+  Administrativ) și „Mai mult" (Camion, Încărcare, Sonda combustibil, Sonde (avansat), Documente, Service, Program de lucru).
+- „Anulează" și „Salvează" stau mereu jos, în dreapta, oricât ai derula; „Salvează" păstrează toate filele deodată. În stânga lor:
+  „Ai modificări nesalvate." când ai schimbat ceva; la Documente, Service și Program de lucru, că acolo se salvează din fereastra lor.
+- Modelul GPS și cartela SIM stau lângă IMEI, în General → „Aparatul GPS".
+- Fișa se deschide mereu pe „General"; sub titlu, numărul și numele mașinii. Fiecare filă are titlul ei și o frază despre ce e acolo.
+- Pe telefon: fișa vine de jos, filele sunt pastile pe un rând care se derulează, câmpurile una sub alta, cele două butoane jos.
+- „Config Camion" se cheamă „Camion", „Program" — „Program de lucru". RA Insight și ghidul spun fila nouă („completează în fila „Date
+  tehnice"", rezervorul — „Consum și limite").
+- Câmpurile și ce se salvează sunt aceleași (nimic nou în bază).
+
+**Ce vede fondatorul:** aceeași fișă nouă; ca până acum, „+ arată toate filele" și modelul GPS / SIM, pe care le scriem doar noi.
+**Ce vede clientul:** fișa nouă, oriunde se deschide (Management → Vehicule, butoanele din RA Insight); modelul GPS și SIM-ul — doar de
+citit, ca înainte. Reper: `index.html` (`#edit-modal`, `switchEditTab`), `app.css` (blocul „Fișa vehiculului pe file"), `probleme.js`
+(fila fiecărui câmp), `verify_fisa_vehicul.js`.
+
+---
+
 ## 2026-11-10
 
 ### CLIENT · RA Insight: întrebarea cu mai multe părți și ce a făcut o mașină azi merg pe „Analiză”; mașina din discuție rămâne

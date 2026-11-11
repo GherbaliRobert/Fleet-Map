@@ -167,15 +167,19 @@ function problemaViteza(vd, o) {
 
 // ─── 4. Fișa mașinii necompletată (Alin, 15.10: „anii de înmatriculare" → „nu sunt disponibili în RA Track") ─────────────
 // Când omul întreabă de un câmp din fișă (anul, marca, modelul, combustibilul, rezervorul) și la unele mașini lipsește,
-// i se spune pe față la care și primește butonul spre fila „Detalii vehicul" a fiecăreia. Textul e întrebarea normalizată
+// i se spune pe față la care și primește butonul spre fila din fișa mașinii unde stă câmpul (din 10.11 fișa e pe file:
+// marca, modelul, anul, combustibilul — „Date tehnice"; rezervorul — „Consum și limite"). Textul e întrebarea normalizată
 // (fără diacritice, litere mici); `masini` = [{ nr, imei, necompletat: [nume câmp] }] din list_vehicles.
 const CAMPURI_FISA = [
-  ['anul de fabricație', /\b(an|anul|anii|anilor)\b|fabricat|inmatricul/],
-  ['marca', /\bmarc(a|i|ile|ilor)\b/],
-  ['modelul', /\bmodel(ul|e|ele|elor)?\b/],
-  ['combustibilul', /\b(combustibil\w*|motorina|benzina|gpl|carburant\w*)\b/],
-  ['rezervorul', /\brezervor\w*\b/],
+  ['anul de fabricație', /\b(an|anul|anii|anilor)\b|fabricat|inmatricul/, 'tehnice'],
+  ['marca', /\bmarc(a|i|ile|ilor)\b/, 'tehnice'],
+  ['modelul', /\bmodel(ul|e|ele|elor)?\b/, 'tehnice'],
+  ['combustibilul', /\b(combustibil\w*|motorina|benzina|gpl|carburant\w*)\b/, 'tehnice'],
+  ['rezervorul', /\brezervor\w*\b/, 'consum'],
 ];
+// Numele filelor, ca pe ecran (data-tab → ce scrie pe buton).
+const FILE_FISA = { tehnice: 'Date tehnice', consum: 'Consum și limite' };
+function filaCampului(camp) { const c = CAMPURI_FISA.find(function (x) { return x[0] === camp; }); return c ? c[2] : 'tehnice'; }
 function campuriCerute(t) { return CAMPURI_FISA.filter(function (c) { return c[1].test(String(t || '')); }).map(function (c) { return c[0]; }); }
 function problemaFisa(camp, masini) {
   const lista = (masini || []).filter(function (m) { return m && Array.isArray(m.necompletat) && m.necompletat.indexOf(camp) >= 0; });
@@ -184,8 +188,8 @@ function problemaFisa(camp, masini) {
     fel: 'fisa', grav: 'galben',
     titlu: 'Nu e completat în fișa mașinii: ' + camp + (lista.length > 1 ? ' (' + lista.length + ' mașini)' : ''),
     dovada: lista.slice(0, 8).map(function (m) { return m.nr; }).join(', ') + (lista.length > 8 ? ' și încă ' + (lista.length - 8) : '') +
-      '. Se completează din fișa mașinii, fila „Detalii vehicul".',
-    butoane: lista.slice(0, 3).map(function (m) { return { fel: 'fisa', text: 'Completează la ' + m.nr, imei: m.imei, fila: 'basic' }; })
+      '. Se completează din fișa mașinii, fila „' + FILE_FISA[filaCampului(camp)] + '".',
+    butoane: lista.slice(0, 3).map(function (m) { return { fel: 'fisa', text: 'Completează la ' + m.nr, imei: m.imei, fila: filaCampului(camp) }; })
   };
 }
 

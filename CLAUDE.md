@@ -115,6 +115,25 @@ Alin, cu trei poze: „casetele… și dropdown-urile… sunt din anii 2000". M�
 - **Fișa șoferului** (punctul 3): „Companie" sus, „Anulează" (`anuleazaSofer`: golește și închide) + „Salvează" jos, în dreapta (`.drv-jos`).
 - Păzit de `verify_campuri.js` (5–8, în browser pe ambele teme) și `verify_soferi_istoric.js` (fișa șoferului).
 
+## Fișa vehiculului pe file (Alin, 10.11: „1. Da 2. da 3. da", după macheta din 06.11)
+`#edit-modal > .modal.vf`: capul (titlul + `#vf-sub` = numărul îngroșat · numele, `_vfSub`, prin textContent), filele în STÂNGA (`.vf-nav`, două
+grupe: „Mașina" = general, tehnice, consum, administrativ; „Mai mult" = truck „Camion", incarcare, calibration, sensors, documents, service,
+workschedule „Program de lucru"), conținutul (`.vf-main`, singurul care se derulează) și **jos, mereu la vedere, „Anulează" + „Salvează"**
+(`.vf-jos ra-camp` — familia butoanelor, NU a 13-a copie de verde).
+- **Câmpurile au aceleași id-uri** (`saveDevice` le citește pe toate deodată, din toate filele). Proba cere ca fiecare id citit de `saveDevice`
+  să existe O dată. Modelul GPS și SIM-ul stau în General → „Aparatul GPS", lângă IMEI.
+- **Se deschide pe „General"** (`openEditModal` → `switchEditTab('general')`); `'basic'` (numele vechi al primei file) → General, ca
+  butoanele vechi să meargă.
+- **Rândul de jos** (`_vfJos`): „Ai modificări nesalvate." după o literă (ascultători `input`/`change` pe `.vf-main`, fără Documente / Service /
+  Program — se salvează din fereastra lor, `_VF_NOTE`). O valoare pusă din COD (pictograma, scanarea talonului) cheamă `window._vfAtins()`.
+- **Fila fiecărui câmp, în RA Insight:** `probleme.js` → `CAMPURI_FISA` (al treilea element = fila), `filaCampului` → butonul `fila` și textul
+  „fila „Date tehnice"". Muți un câmp pe altă filă → schimbi și acolo (`verify_discutia.js` cere ca fila să existe în pagină).
+- **CSS:** blocul „Fișa vehiculului pe file" stă ÎNAINTEA blocului „Casetele și listele derulante" (acela trebuie să rămână ultimul). Pe
+  ≤ 768 px fișa vine de jos și filele devin pastile pe un rând care se derulează; regulile globale ale ferestrelor de telefon au `!important`,
+  de aceea și ale fișei (`#edit-modal > .modal.vf`). Fără stiluri în linie pe fereastră și pe limitele pe axe (`.vf-axe`).
+- Păzit de **`verify_fisa_vehicul.js`** (în `npm test`; partea din browser — lățimi, butoanele la vedere, contrastul pe ambele teme — se sare
+  fără Chromium), plus `verify_discutia.js`, `verify_insight_ghid.js`, `verify_flota_incarcare.js`.
+
 ## Export rapoarte (Excel & PDF) — branding (OBLIGATORIU)
 
 **Orice raport descărcat (Excel sau PDF), de ORICE tip, poartă numele brandat și logo-ul RA Track.** Regula e centralizată și se aplică automat la toate cele ~25 de rapoarte din catalog — nu o ocoli și nu o duplica per raport.

@@ -599,371 +599,372 @@
   <div class="navrail-backdrop" id="navrail-backdrop" onclick="closeNavrail()"></div>
 
   <!-- Edit Device Modal -->
+  <!-- Fișa vehiculului pe file (Alin, 10.11: „1. da, 2. da, 3. da" la macheta https://claude.ai/artifact/6fE8EMcgCU6dnbN3iRLedH):
+       filele în stânga (pe telefon, butoane rotunde sus), „Anulează" și „Salvează" mereu jos, sus ce mașină editezi (numărul,
+       apoi numele). Câmpurile au aceleași id-uri ca înainte: le citesc saveDevice, scanarea actelor, RA Insight („Completează").
+       Stilul stă în app.css, blocul „Fișa vehiculului pe file"; comportamentul lângă switchEditTab. -->
   <div id="edit-modal" class="modal-overlay">
-    <div class="modal" style="width:700px;max-width:95vw;max-height:92vh;overflow-y:auto;">
-      <h2>
-        <span><i class="fas fa-pen" style="margin-right:8px;color:var(--orange);"></i> Editare vehicul</span>
-        <button class="close-btn" onclick="closeEditModal()" style="position:static;font-size:18px;">&#10005;</button>
-      </h2>
-
-      <!-- Tabs -->
-      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
-        <button class="edit-tab active" data-tab="basic" onclick="switchEditTab('basic', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-primary);font-size:13px;cursor:pointer;border-bottom:2px solid var(--accent);font-weight:600;">
-          <i class="fas fa-info-circle"></i> Detalii vehicul
-        </button>
-        <button class="edit-tab" data-tab="truck" onclick="switchEditTab('truck', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-truck"></i> Config Camion
-        </button>
-        <button class="edit-tab" data-tab="incarcare" onclick="switchEditTab('incarcare', this)" style="display:none;padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-boxes-stacked"></i> Încărcare
-        </button>
-        <button class="edit-tab" data-tab="calibration" onclick="switchEditTab('calibration', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-tint"></i> Sonda combustibil
-        </button>
-        <button class="edit-tab" data-tab="sensors" onclick="switchEditTab('sensors', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-gas-pump"></i> Sonde (avansat)
-        </button>
-        <button class="edit-tab" data-tab="documents" data-ecran="documente" onclick="switchEditTab('documents', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-file-contract"></i> Documente
-        </button>
-        <button class="edit-tab" data-tab="service" onclick="switchEditTab('service', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-wrench"></i> Service
-        </button>
-        <button class="edit-tab" data-tab="workschedule" onclick="switchEditTab('workschedule', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-user-clock"></i> Program
-        </button>
+    <div class="modal vf" role="dialog" aria-modal="true" aria-labelledby="vf-titlu">
+      <div class="vf-cap">
+        <div class="vf-cap-t">
+          <h2 id="vf-titlu">Editare vehicul</h2>
+          <div class="vf-sub" id="vf-sub"></div>
+        </div>
+        <button type="button" class="vf-x" onclick="closeEditModal()" aria-label="Închide">&#10005;</button>
       </div>
+      <div class="vf-corp">
+        <nav class="vf-nav" aria-label="Filele fișei">
+          <div class="vf-grup">Mașina</div>
+          <button type="button" class="edit-tab active" data-tab="general" onclick="switchEditTab('general', this)"><i class="fas fa-circle-info"></i><span>General</span></button>
+          <button type="button" class="edit-tab" data-tab="tehnice" onclick="switchEditTab('tehnice', this)"><i class="fas fa-gears"></i><span>Date tehnice</span></button>
+          <button type="button" class="edit-tab" data-tab="consum" onclick="switchEditTab('consum', this)"><i class="fas fa-gas-pump"></i><span>Consum și limite</span></button>
+          <button type="button" class="edit-tab" data-tab="administrativ" onclick="switchEditTab('administrativ', this)"><i class="fas fa-folder-open"></i><span>Administrativ</span></button>
+          <span class="vf-desp" aria-hidden="true"></span>
+          <div class="vf-grup">Mai mult</div>
+          <button type="button" class="edit-tab" data-tab="truck" onclick="switchEditTab('truck', this)"><i class="fas fa-truck"></i><span>Camion</span></button>
+          <button type="button" class="edit-tab" data-tab="incarcare" onclick="switchEditTab('incarcare', this)" style="display:none;"><i class="fas fa-boxes-stacked"></i><span>Încărcare</span></button>
+          <button type="button" class="edit-tab" data-tab="calibration" onclick="switchEditTab('calibration', this)"><i class="fas fa-tint"></i><span>Sonda combustibil</span></button>
+          <button type="button" class="edit-tab" data-tab="sensors" onclick="switchEditTab('sensors', this)"><i class="fas fa-sliders"></i><span>Sonde (avansat)</span></button>
+          <button type="button" class="edit-tab" data-tab="documents" data-ecran="documente" onclick="switchEditTab('documents', this)"><i class="fas fa-file-contract"></i><span>Documente</span></button>
+          <button type="button" class="edit-tab" data-tab="service" onclick="switchEditTab('service', this)"><i class="fas fa-wrench"></i><span>Service</span></button>
+          <button type="button" class="edit-tab" data-tab="workschedule" onclick="switchEditTab('workschedule', this)"><i class="fas fa-user-clock"></i><span>Program de lucru</span></button>
+        </nav>
+        <div class="vf-main" id="vf-main">
 
-      <!-- Tab: Detalii vehicul -->
-      <div id="edit-tab-basic" class="edit-tab-content">
-        <style>
-          #edit-tab-basic .vsec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
-          #edit-tab-basic .vgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-          #edit-tab-basic .vgrid2 .form-group{margin-bottom:0;}
-          /* #8 mobil: colapsează la 1 coloană (câmpurile + label-urile lungi se înghesuiau sub ~400px) */
-          @media (max-width: 480px){ #edit-tab-basic .vgrid2{grid-template-columns:1fr;} }
-        </style>
-        <!-- `edit-imei` = CHEIA mașinii (o citesc salvarea, actele, reviziile…). Pe ecran stă aparatul montat ACUM: după
-             „Schimbă aparatul" (29.10) cele două diferă. Butonul — doar noi. -->
-        <div class="form-group">
-          <label>IMEI</label>
-          <input type="hidden" id="edit-imei">
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="edit-imei-aparat" disabled style="color:var(--text-muted);flex:1;min-width:0;">
-            <button type="button" class="btn-sm" id="edit-schimba-aparat" style="display:none;white-space:nowrap;height:42px;border-radius:10px;" onclick="aparatSchimba()"><i class="fas fa-right-left"></i> Schimbă aparatul</button>
-          </div>
-          <div id="edit-aparat-nota" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:5px;"></div>
-        </div>
-
-        <div class="vsec">Identificare</div>
-        <div class="vgrid2">
-          <div class="form-group"><label>Nume vehicul</label><input type="text" id="edit-name" placeholder="ex: Dacia Logan #1"></div>
-          <div class="form-group"><label>Număr înmatriculare</label><input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;"></div>
-          <div class="form-group"><label>Număr identificare (VIN)</label><input type="text" id="edit-vin" placeholder="ex: WVWZZZ..." maxlength="17" style="text-transform:uppercase;"></div>
-          <div class="form-group"><label>Categorie</label>
-            <select id="edit-vehicle-type" onchange="onVehicleTypeChange()">
-              <option value="">-- Selectează --</option>
-              <option value="Auto">Auto</option>
-              <option value="Autotractor">Autotractor</option>
-              <option value="Camion">Camion</option>
-              <option value="TIR">TIR</option>
-              <option value="Duba">Dubă</option>
-              <option value="Autobuz">Autobuz</option>
-              <option value="Motocicleta">Motocicletă</option>
-              <option value="Remorca">Remorcă</option>
-              <option value="Remorcă tehnologică">Remorcă tehnologică</option>
-              <option value="Tractor">Tractor</option>
-              <option value="Utilaj">Utilaj</option>
-              <option value="Buldoexcavator">Buldoexcavator</option>
-              <option value="Motostivuitor">Motostivuitor</option>
-              <option value="Combină agricolă">Combină agricolă</option>
-              <option value="Automixt">Automixt</option>
-              <option value="Grup electrogen">Grup electrogen</option>
-              <option value="Barcă">Barcă</option>
-              <option value="Ambulanță">Ambulanță</option>
-              <option value="Electric">Electric</option>
-              <option value="Plug-in hibrid">Plug-in hibrid</option>
-              <option value="Hibrid">Hibrid</option>
-              <option value="CNG/GPL">CNG/GPL</option>
-              <option value="Altul">Altul</option>
-            </select>
-          </div>
-          <div class="form-group" id="edit-ignition-group" style="display:none;"><label>Sursă contact (ignition) <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
-            <select id="edit-ignition-source">
-              <option value="auto">Automat (din tracker)</option>
-              <option value="din1">DIN1 (intrare digitală 1)</option>
-            </select>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (sursa de ignition setată greșit pe tracker).</div>
-          </div>
-          <div class="form-group" id="edit-transport-group" style="display:none;"><label>Tab „Transport" <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal;">
-              <input type="checkbox" id="edit-show-transport" style="width:18px;height:18px;accent-color:var(--accent);">
-              <span>Afișează tab-ul „Transport" în fișa acestui vehicul</span>
-            </label>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Debifează pentru vehiculele care nu fac transporturi (tab-ul dispare din panoul de detaliu).</div>
-          </div>
-          <div class="form-group" id="edit-caniface-group" style="display:none;"><label>Interfață CAN <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
-            <select id="edit-can-interface">
-              <option value="">Automat / LV-CAN (implicit)</option>
-              <option value="fms">FMS / J1939 (FMC650, camioane)</option>
-              <option value="tacho">Tahograf direct (DSRC)</option>
-            </select>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „FMS" la camioane cu FMC650 + FMS Gateway — altfel datele CAN (RPM, combustibil, temperatură, sarcină pe axe) pot fi decodate greșit. Se aplică pachetelor noi.</div>
-          </div>
-          <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
-          <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select><div class="vist-nota" id="edit-driver-nota" hidden></div></div>
-          <!-- Istoricul șoferilor (05.11; Alin: „să am un istoric pe fiecare mașină de ce șoferi a fost condusă"). Textele vin de la server. -->
-          <div class="form-group" style="grid-column:1/-1;"><div id="edit-istoric-soferi"></div></div>
-        </div>
-
-        <div class="vsec">Date tehnice</div>
-        <div class="vgrid2">
-          <div class="form-group"><label>Marcă</label><input type="text" id="edit-brand" placeholder="ex: Volvo"></div>
-          <div class="form-group"><label>Model</label><input type="text" id="edit-model" placeholder="ex: FH16"></div>
-          <div class="form-group"><label>An fabricație</label><input type="number" id="edit-year" placeholder="ex: 2019"></div>
-          <div class="form-group"><label>Tip combustibil</label>
-            <select id="edit-fuel-type">
-              <option value="">--</option>
-              <option value="Motorina">Motorină</option>
-              <option value="Benzina">Benzină</option>
-              <option value="GPL">GPL</option>
-              <option value="Electric">Electric</option>
-              <option value="Hibrid">Hibrid</option>
-              <option value="Altul">Altul</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Cilindree (cm³)</label><input type="number" id="edit-displacement" placeholder="ex: 12800"></div>
-          <div class="form-group"><label>Putere (KW)</label><input type="number" id="edit-power-kw" placeholder="ex: 397"></div>
-          <div class="form-group"><label>Serie motor</label><input type="text" id="edit-engine-serial"></div>
-          <div class="form-group"><label>Grad poluare</label>
-            <select id="edit-emission-class"><option value="">--</option><option value="Euro 3">Euro 3</option><option value="Euro 4">Euro 4</option><option value="Euro 5">Euro 5</option><option value="Euro 6">Euro 6</option><option value="Non-Euro">Non-Euro</option><option value="Electric">Electric</option></select>
-          </div>
-          <div class="form-group"><label>Dimensiune anvelopă</label><input type="text" id="edit-tire-size" placeholder="ex: 315/80 R22.5"></div>
-          <div class="form-group"><label>Locuri pasageri</label><input type="number" id="edit-passenger-seats" placeholder="ex: 3"></div>
-        </div>
-
-        <div class="vsec">Operațional & consum</div>
-        <div class="vgrid2">
-          <div class="form-group"><label>Viteza limită (km/h)</label><input type="number" id="edit-speed-limit" placeholder="ex: 90"></div>
-          <div class="form-group"><label>Capacitate rezervor (L)</label><input type="number" id="edit-tank-capacity" placeholder="ex: 400"></div>
-          <div class="form-group"><label>Volum util GPL (L)</label><input type="number" id="edit-lpg-volume" placeholder="ex: 0"></div>
-          <div class="form-group"><label>Sarcină utilă (kg)</label><input type="number" id="edit-payload" placeholder="ex: 24000"></div>
-          <div class="form-group"><label>Interval temperatură — min (°C)</label><input type="number" id="edit-temp-min" placeholder="ex: -20 (frigorific)"></div>
-          <div class="form-group"><label>Interval temperatură — max (°C)</label><input type="number" id="edit-temp-max" placeholder="ex: -16"></div>
-          <div class="form-group"><label>Consum oraș (l/100km)</label><input type="number" step="0.1" id="edit-cons-city" placeholder="ex: 35"></div>
-          <div class="form-group"><label>Consum afară (l/100km)</label><input type="number" step="0.1" id="edit-cons-road" placeholder="ex: 28"></div>
-          <div class="form-group"><label>Consum staționar (l/h)</label><input type="number" step="0.1" id="edit-cons-idle" placeholder="ex: 2"></div>
-          <div class="form-group"><label>Categorie taxă drum</label><input type="text" id="edit-road-tax" placeholder="ex: 3-4 axe"></div>
-          <div class="form-group" style="grid-column:1 / -1;"><label>Km reali de pe bord <span style="color:var(--text-muted);font-weight:400;font-size:11px;">(index manual — pune km actuali de pe bord; au prioritate peste CAN și merg înainte cu GPS-ul. Util și pe mașini cu CAN greșit/blocat. Re-introdu oricând ca să re-sincronizezi.)</span></label><input type="number" id="edit-odo-base" placeholder="ex: 33571"></div>
-        </div>
-
-        <div class="vsec">Administrativ & afișare</div>
-        <div class="vgrid2">
-          <div class="form-group"><label>Centru de cost</label><input type="text" id="edit-cost-center" placeholder="ex: Șantier Nord"></div>
-          <div class="form-group"><label>Număr inventar</label><input type="text" id="edit-inventory"></div>
-          <!-- Echipament GPS (nu vehicul): apar în „Inventar dispozitive" din Administrare. Nu vin de la tracker. -->
-          <div class="form-group"><label>Model dispozitiv GPS</label><input type="text" id="edit-gps-model" placeholder="ex: FMB140"></div>
-          <div class="form-group"><label>Număr cartelă SIM</label><input type="text" id="edit-sim-number" placeholder="ex: 0757036943"></div>
-          <div class="form-group" style="grid-column:1 / -1;"><label>Pictogramă</label>
-            <div class="icon-select" id="icon-select">
-              <button type="button" class="icon-select-trigger" id="icon-select-trigger" onclick="toggleIconPicker(event)" aria-haspopup="listbox" aria-expanded="false">
-                <span class="icon-select-current" id="icon-select-current"></span>
-                <i class="fas fa-chevron-down icon-select-caret"></i>
-              </button>
-              <div id="edit-icon-picker" class="icon-picker" style="display:none;"></div>
+          <!-- Fila: General — identificarea, șoferul și grupa, aparatul GPS -->
+          <div id="edit-tab-general" class="edit-tab-content">
+            <div class="vf-pcap"><div><h3>General</h3><p>Numele, numărul, cine conduce mașina și aparatul montat.</p></div></div>
+            <div class="vf-sect">Identificare</div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Nume vehicul</label><input type="text" id="edit-name" placeholder="ex: Dacia Logan #1"></div>
+              <div class="form-group"><label>Număr înmatriculare</label><input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;"></div>
+              <div class="form-group"><label>Număr identificare (VIN)</label><input type="text" id="edit-vin" placeholder="ex: WVWZZZ..." maxlength="17" style="text-transform:uppercase;"></div>
+              <div class="form-group"><label>Categorie</label>
+                <select id="edit-vehicle-type" onchange="onVehicleTypeChange()">
+                  <option value="">-- Selectează --</option>
+                  <option value="Auto">Auto</option>
+                  <option value="Autotractor">Autotractor</option>
+                  <option value="Camion">Camion</option>
+                  <option value="TIR">TIR</option>
+                  <option value="Duba">Dubă</option>
+                  <option value="Autobuz">Autobuz</option>
+                  <option value="Motocicleta">Motocicletă</option>
+                  <option value="Remorca">Remorcă</option>
+                  <option value="Remorcă tehnologică">Remorcă tehnologică</option>
+                  <option value="Tractor">Tractor</option>
+                  <option value="Utilaj">Utilaj</option>
+                  <option value="Buldoexcavator">Buldoexcavator</option>
+                  <option value="Motostivuitor">Motostivuitor</option>
+                  <option value="Combină agricolă">Combină agricolă</option>
+                  <option value="Automixt">Automixt</option>
+                  <option value="Grup electrogen">Grup electrogen</option>
+                  <option value="Barcă">Barcă</option>
+                  <option value="Ambulanță">Ambulanță</option>
+                  <option value="Electric">Electric</option>
+                  <option value="Plug-in hibrid">Plug-in hibrid</option>
+                  <option value="Hibrid">Hibrid</option>
+                  <option value="CNG/GPL">CNG/GPL</option>
+                  <option value="Altul">Altul</option>
+                </select>
+              </div>
             </div>
-            <input type="hidden" id="edit-icon" value="car">
+            <div class="vf-sect">Șofer și grupă</div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Grup <span class="vf-eti">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
+              <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select><div class="vist-nota" id="edit-driver-nota" hidden></div></div>
+              <!-- Istoricul șoferilor (05.11; Alin: „să am un istoric pe fiecare mașină de ce șoferi a fost condusă"). Textele vin de la server. -->
+              <div class="form-group vf-lat"><div id="edit-istoric-soferi"></div></div>
+            </div>
+            <div class="vf-sect">Aparatul GPS</div>
+            <div class="vgrid2">
+              <!-- `edit-imei` = CHEIA mașinii (o citesc salvarea, actele, reviziile…). Pe ecran stă aparatul montat ACUM: după
+                   „Schimbă aparatul" (29.10) cele două diferă. Butonul — doar noi. -->
+              <div class="form-group vf-lat">
+                <label>IMEI</label>
+                <input type="hidden" id="edit-imei">
+                <div class="vf-imei">
+                  <input type="text" id="edit-imei-aparat" disabled style="color:var(--text-muted);flex:1;min-width:0;">
+                  <button type="button" class="btn-sm" id="edit-schimba-aparat" style="display:none;white-space:nowrap;height:42px;border-radius:10px;" onclick="aparatSchimba()"><i class="fas fa-right-left"></i> Schimbă aparatul</button>
+                </div>
+                <div id="edit-aparat-nota" class="vf-hint" style="display:none;"></div>
+              </div>
+              <!-- Echipament GPS (nu vehicul): apar în „Inventar dispozitive" din Administrare. Nu vin de la tracker. Le scriem doar noi. -->
+              <div class="form-group"><label>Model dispozitiv GPS</label><input type="text" id="edit-gps-model" placeholder="ex: FMB140"></div>
+              <div class="form-group"><label>Număr cartelă SIM</label><input type="text" id="edit-sim-number" placeholder="ex: 0757036943"></div>
+              <div class="form-group" id="edit-ignition-group" style="display:none;"><label>Sursă contact (ignition) <span class="vf-doar">super-admin</span></label>
+                <select id="edit-ignition-source">
+                  <option value="auto">Automat (din tracker)</option>
+                  <option value="din1">DIN1 (intrare digitală 1)</option>
+                </select>
+                <div class="vf-hint">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (sursa de ignition setată greșit pe tracker).</div>
+              </div>
+              <div class="form-group" id="edit-caniface-group" style="display:none;"><label>Interfață CAN <span class="vf-doar">super-admin</span></label>
+                <select id="edit-can-interface">
+                  <option value="">Automat / LV-CAN (implicit)</option>
+                  <option value="fms">FMS / J1939 (FMC650, camioane)</option>
+                  <option value="tacho">Tahograf direct (DSRC)</option>
+                </select>
+                <div class="vf-hint">Alege „FMS" la camioane cu FMC650 + FMS Gateway — altfel datele CAN (RPM, combustibil, temperatură, sarcină pe axe) pot fi decodate greșit. Se aplică pachetelor noi.</div>
+              </div>
+            </div>
           </div>
-          <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#3FE07D" style="height:42px;padding:2px;"></div>
+
+          <!-- Fila: Date tehnice — ce scrie în talon -->
+          <div id="edit-tab-tehnice" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Date tehnice</h3><p>Marca, modelul și motorul, ca în talon.</p></div></div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Marcă</label><input type="text" id="edit-brand" placeholder="ex: Volvo"></div>
+              <div class="form-group"><label>Model</label><input type="text" id="edit-model" placeholder="ex: FH16"></div>
+              <div class="form-group"><label>An fabricație</label><input type="number" id="edit-year" placeholder="ex: 2019"></div>
+              <div class="form-group"><label>Tip combustibil</label>
+                <select id="edit-fuel-type">
+                  <option value="">--</option>
+                  <option value="Motorina">Motorină</option>
+                  <option value="Benzina">Benzină</option>
+                  <option value="GPL">GPL</option>
+                  <option value="Electric">Electric</option>
+                  <option value="Hibrid">Hibrid</option>
+                  <option value="Altul">Altul</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Cilindree (cm³)</label><input type="number" id="edit-displacement" placeholder="ex: 12800"></div>
+              <div class="form-group"><label>Putere (KW)</label><input type="number" id="edit-power-kw" placeholder="ex: 397"></div>
+              <div class="form-group"><label>Serie motor</label><input type="text" id="edit-engine-serial"></div>
+              <div class="form-group"><label>Grad poluare</label>
+                <select id="edit-emission-class"><option value="">--</option><option value="Euro 3">Euro 3</option><option value="Euro 4">Euro 4</option><option value="Euro 5">Euro 5</option><option value="Euro 6">Euro 6</option><option value="Non-Euro">Non-Euro</option><option value="Electric">Electric</option></select>
+              </div>
+              <div class="form-group"><label>Dimensiune anvelopă</label><input type="text" id="edit-tire-size" placeholder="ex: 315/80 R22.5"></div>
+              <div class="form-group"><label>Locuri pasageri</label><input type="number" id="edit-passenger-seats" placeholder="ex: 3"></div>
+            </div>
+          </div>
+
+          <!-- Fila: Consum și limite -->
+          <div id="edit-tab-consum" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Consum și limite</h3><p>Consumul din fișă, rezervorul și limitele mașinii. Le folosesc rapoartele.</p></div></div>
+            <div class="vf-sect">Consum</div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Consum oraș (l/100km)</label><input type="number" step="0.1" id="edit-cons-city" placeholder="ex: 35"></div>
+              <div class="form-group"><label>Consum afară (l/100km)</label><input type="number" step="0.1" id="edit-cons-road" placeholder="ex: 28"></div>
+              <div class="form-group"><label>Consum staționar (l/h)</label><input type="number" step="0.1" id="edit-cons-idle" placeholder="ex: 2"></div>
+              <div class="form-group"><label>Capacitate rezervor (L)</label><input type="number" id="edit-tank-capacity" placeholder="ex: 400"></div>
+              <div class="form-group"><label>Volum util GPL (L)</label><input type="number" id="edit-lpg-volume" placeholder="ex: 0"></div>
+            </div>
+            <div class="vf-sect">Limite</div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Viteza limită (km/h)</label><input type="number" id="edit-speed-limit" placeholder="ex: 90"></div>
+              <div class="form-group"><label>Sarcină utilă (kg)</label><input type="number" id="edit-payload" placeholder="ex: 24000"></div>
+              <div class="form-group"><label>Interval temperatură — min (°C)</label><input type="number" id="edit-temp-min" placeholder="ex: -20 (frigorific)"></div>
+              <div class="form-group"><label>Interval temperatură — max (°C)</label><input type="number" id="edit-temp-max" placeholder="ex: -16"></div>
+              <div class="form-group"><label>Categorie taxă drum</label><input type="text" id="edit-road-tax" placeholder="ex: 3-4 axe"></div>
+            </div>
+            <div class="vf-sect">Kilometraj</div>
+            <div class="vgrid2">
+              <div class="form-group vf-lat"><label>Km reali de pe bord</label><input type="number" id="edit-odo-base" placeholder="ex: 33571">
+                <div class="vf-hint">Pune km de acum de pe bord: au prioritate peste CAN și merg înainte cu GPS-ul. Util și la mașinile cu CAN greșit sau blocat. Îi scrii din nou oricând, ca să-i potrivești.</div></div>
+            </div>
+          </div>
+
+          <!-- Fila: Administrativ — evidența internă și cum apare mașina pe hartă -->
+          <div id="edit-tab-administrativ" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Administrativ</h3><p>Evidența voastră internă și cum apare mașina pe hartă.</p></div></div>
+            <div class="vf-sect">Evidență</div>
+            <div class="vgrid2">
+              <div class="form-group"><label>Centru de cost</label><input type="text" id="edit-cost-center" placeholder="ex: Șantier Nord"></div>
+              <div class="form-group"><label>Număr inventar</label><input type="text" id="edit-inventory"></div>
+            </div>
+            <div class="vf-sect">Pe hartă</div>
+            <div class="vgrid2">
+              <div class="form-group vf-lat"><label>Pictogramă</label>
+                <div class="icon-select" id="icon-select">
+                  <button type="button" class="icon-select-trigger" id="icon-select-trigger" onclick="toggleIconPicker(event)" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="icon-select-current" id="icon-select-current"></span>
+                    <i class="fas fa-chevron-down icon-select-caret"></i>
+                  </button>
+                  <div id="edit-icon-picker" class="icon-picker" style="display:none;"></div>
+                </div>
+                <input type="hidden" id="edit-icon" value="car">
+              </div>
+              <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#3FE07D" style="height:42px;padding:2px;"></div>
+              <div class="form-group vf-lat" id="edit-transport-group" style="display:none;"><label>Tab „Transport" <span class="vf-doar">super-admin</span></label>
+                <label class="vf-bifa">
+                  <input type="checkbox" id="edit-show-transport">
+                  <span>Afișează tab-ul „Transport" în fișa acestui vehicul</span>
+                </label>
+                <div class="vf-hint">Debifează pentru vehiculele care nu fac transporturi (tab-ul dispare din panoul de detaliu).</div>
+              </div>
+            </div>
+            <div class="vf-sect">Note</div>
+            <div class="vgrid2">
+              <div class="form-group vf-lat"><textarea id="edit-notes" rows="3" aria-label="Note" style="width:100%;resize:vertical;"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Fila: Camion — greutățile, osiile, costurile -->
+          <div id="edit-tab-truck" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Camion</h3><p>Greutățile și osiile, pentru alertele de supraîncărcare și încărcătură; prețul combustibilului și costul pe tonă-km.</p></div></div>
+            <div class="vgrid2">
+              <div class="form-group">
+                <label>Tară (kg) <span class="vf-eti">detectată automat</span></label>
+                <input type="number" id="edit-tare" placeholder="ex: 18000">
+              </div>
+              <div class="form-group">
+                <label>Limită legală (kg)</label>
+                <input type="number" id="edit-max-legal" placeholder="ex: 32000">
+              </div>
+              <div class="form-group">
+                <label>Limită constructivă (kg)</label>
+                <input type="number" id="edit-max-construct" placeholder="ex: 41000">
+              </div>
+              <div class="form-group">
+                <label>Preț combustibil (RON/L)</label>
+                <input type="number" step="0.01" id="edit-fuel-price" placeholder="ex: 7.85">
+              </div>
+            </div>
+            <div class="vf-sect">Limite pe axă (kg)</div>
+            <div class="vf-axe">
+              <div class="form-group"><label>Axa 1</label><input type="number" id="edit-axle1" placeholder="9000"></div>
+              <div class="form-group"><label>Axa 2</label><input type="number" id="edit-axle2" placeholder="9000"></div>
+              <div class="form-group"><label>Axa 3</label><input type="number" id="edit-axle3" placeholder="13000"></div>
+              <div class="form-group"><label>Axa 4</label><input type="number" id="edit-axle4" placeholder="13000"></div>
+              <div class="form-group"><label>Axa 5</label><input type="number" id="edit-axle5" placeholder=""></div>
+            </div>
+            <div class="vf-sect">Costuri</div>
+            <div class="vgrid2">
+              <div class="form-group">
+                <label>Cost pe tonă-km (RON)</label>
+                <input type="number" step="0.01" id="edit-cost-tonkm" placeholder="ex: 0.85">
+              </div>
+            </div>
+          </div>
+
+          <!-- Fila: Încărcare (simulatorul de încărcare, Robert 12.10) — cifrele obișnuite vin de la server (/api/incarcare/meta) -->
+          <div id="edit-tab-incarcare" class="edit-tab-content" style="display:none;">
+            <style>
+              #edit-tab-incarcare .inc-sec{font-size:12px;font-weight:800;margin:22px 0 10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
+              #edit-tab-incarcare .inc-g{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 18px;}
+              #edit-tab-incarcare .inc-g .form-group{margin-bottom:0;}
+              #edit-tab-incarcare .inc-sub{font-size:12px;color:var(--text-muted);margin-top:6px;}
+              @media (max-width: 480px){ #edit-tab-incarcare .inc-g{grid-template-columns:1fr 1fr;} }
+            </style>
+            <div class="vf-pcap"><div><h3>Încărcare</h3><p>Simulatorul de încărcare folosește cifrele de aici, ca să nu le scrii la fiecare plan. Alege felul vehiculului — se pun cifrele obișnuite —, apoi corectează-le după fișa tehnică a mașinii.</p></div></div>
+            <div class="inc-g" style="grid-template-columns:2fr 1fr;align-items:end;">
+              <div class="form-group"><label>Felul vehiculului</label><select id="edit-inc-fel" onchange="incFelSchimbat()"></select></div>
+              <div class="form-group"><button type="button" class="btn-sm" id="edit-inc-obisnuite" onclick="incPuneObisnuite(true)" style="width:100%;height:42px;font-size:13px;font-weight:700;border-radius:10px;"><i class="fas fa-rotate"></i> Pune cifrele obișnuite</button></div>
+            </div>
+            <div id="edit-inc-caroserie">
+              <div class="inc-sec">Caroseria (interior, în metri)</div>
+              <div class="inc-g">
+                <div class="form-group"><label>Lungime</label><input type="number" step="0.01" id="edit-inc-lungime"></div>
+                <div class="form-group"><label>Lățime</label><input type="number" step="0.01" id="edit-inc-latime"></div>
+                <div class="form-group"><label>Înălțime</label><input type="number" step="0.01" id="edit-inc-inaltime"></div>
+              </div>
+            </div>
+            <div class="inc-sec">Axele (în metri)</div>
+            <div class="inc-g">
+              <div class="form-group"><label>Ampatament</label><input type="number" step="0.01" id="edit-inc-ampatament"></div>
+              <div class="form-group" id="edit-inc-axa-caroserie-g"><label>De la axa față la caroserie</label><input type="number" step="0.01" id="edit-inc-axa-caroserie"></div>
+              <div class="form-group" id="edit-inc-sa-axa-g"><label>Șaua în fața axei motoare</label><input type="number" step="0.01" id="edit-inc-sa-axa"></div>
+            </div>
+            <div class="inc-sec">Tara pe axe (kg)</div>
+            <div class="inc-g">
+              <div class="form-group"><label>Pe axa față</label><input type="number" id="edit-inc-tara-fata"></div>
+              <div class="form-group"><label>Pe axa din spate</label><input type="number" id="edit-inc-tara-spate"></div>
+            </div>
+            <div id="edit-inc-remorca-g">
+              <div class="inc-sec" id="edit-inc-remorca-et">Semiremorca obișnuită</div>
+              <div class="form-group" style="margin-bottom:0;"><select id="edit-inc-remorca"></select></div>
+              <div class="inc-sub" id="edit-inc-remorca-sub"></div>
+            </div>
+            <div class="inc-sub" style="margin-top:14px;">Sarcina utilă se scrie în „Consum și limite”; limitele pe axe, în „Camion”.</div>
+          </div>
+
+          <!-- Fila: Sonda combustibil (calibrarea rezervorului) -->
+          <div id="edit-tab-calibration" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Sonda de combustibil</h3><p>Tabelul de calibrare al rezervorului: tensiunea sondei → litri.</p></div></div>
+            <div class="vf-info">
+              Calibrarea sondei litrometrice (Escort TD-150 sau asemănătoare): introdu perechi tensiune (AIN1) → litri, de exemplu
+              0,5 V = 0 L, 1,2 V = 10 L. Între puncte, aplicația socotește în linie dreaptă.
+            </div>
+
+            <div id="calibration-rows" style="display:flex;flex-direction:column;gap:6px;">
+              <!-- Rândurile se adaugă din cod -->
+            </div>
+
+            <button type="button" onclick="addCalibrationRow()" class="btn btn-secondary" style="margin-top:8px;padding:6px 12px;font-size:12px;">
+              <i class="fas fa-plus"></i> Adaugă punct
+            </button>
+
+            <div class="vf-info" style="margin-top:12px;margin-bottom:0;">
+              <strong>Exemplu de calibrare, VW T5 (rezervor de 80 L):</strong><br>
+              0,5 V = 0 L, 1,2 V = 10 L, 2,0 V = 20 L, 2,8 V = 30 L, 3,6 V = 40 L, 4,4 V = 50 L, 5,1 V = 60 L, 5,9 V = 70 L, 6,7 V = 80 L
+            </div>
+          </div>
+
+          <!-- Fila: Sonde (avansat) -->
+          <div id="edit-tab-sensors" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Sonde (avansat)</h3><p>Mai multe sonde sau mai multe rezervoare.</p></div></div>
+            <div class="vf-info">
+              Mapează sondele litrometrice / senzorii IoT (Escort, EuroSens Dominator, EuroSens Degree) la câmpurile dispozitivului.
+              Nivelul normalizat (litri) e folosit în rapoarte, alerte și detecția de scădere combustibil.
+            </div>
+            <div id="fuel-sensors-list"></div>
+            <button type="button" class="btn-sm" onclick="addFuelSensor()" style="margin-top:6px;"><i class="fas fa-plus"></i> Adaugă sondă</button>
+          </div>
+
+          <!-- Stil modern pt. inputurile din Documente + Service -->
+          <style>
+            #edit-tab-documents .doc-form, #edit-tab-service .doc-form{ background:var(--bg-dark); padding:14px; border-radius:12px; }
+            #edit-tab-documents .doc-form label:not(.svc-check), #edit-tab-service .doc-form label:not(.svc-check){ display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--text-muted); }
+            #edit-tab-documents .doc-form input:not([type=checkbox]), #edit-tab-documents .doc-form select,
+            #edit-tab-service .doc-form input:not([type=checkbox]), #edit-tab-service .doc-form select{
+              width:100%; box-sizing:border-box; padding:10px 12px; font-family:inherit; font-size:13px;
+              color:var(--text-primary); background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+              transition:border-color .15s, box-shadow .15s;
+            }
+            #edit-tab-documents .doc-form input:not([type=checkbox]):focus, #edit-tab-documents .doc-form select:focus,
+            #edit-tab-service .doc-form input:not([type=checkbox]):focus, #edit-tab-service .doc-form select:focus{
+              outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(34,197,94,.18);
+            }
+            #edit-tab-documents .doc-actions, #edit-tab-service .doc-actions{ display:flex; align-items:flex-end; }
+            #edit-tab-documents .doc-actions .btn-sm, #edit-tab-service .doc-actions .btn-sm{ width:100%; padding:11px 12px; border-radius:10px; }
+            /* Câmp completat din act — omul vede ce n-a scris el; marcajul dispare la prima editare manuală. */
+            .scan-filled{ border-color:var(--accent) !important; box-shadow:0 0 0 2px rgba(34,197,94,.14); }
+            #doc-scan-zone:hover{ border-color:var(--accent); }
+          </style>
+
+          <!-- Fila: Documente -->
+          <!-- Aceleași rânduri ca în Management → Documente și ACEEAȘI fereastră de scris. Aici era un
+               formular al lui, plus singura scanare din aplicație — ascunsă, deci nefolosită. -->
+          <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Documente</h3><p>Actele mașinii: ITP, RCA, rovinietă și celelalte.</p></div></div>
+            <div id="veh-docs-list"></div>
+          </div>
+
+          <!-- Fila: Service -->
+          <!-- Aceleași lucrări ca în Management → Mentenanță, aceleași rânduri, ACEEAȘI fereastră de
+               scris. Aici era un formular al lui, mai sărac: nu putea pune repetarea (deci lucrarea nu
+               se mai reprograma niciodată singură), nu avea descriere, nu se putea modifica, iar starea
+               scria „planificat" și după trei luni de întârziere. -->
+          <div id="edit-tab-service" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Service</h3><p>Reviziile și lucrările programate ale mașinii.</p></div>
+              <span class="ra-camp"><button type="button" class="rax-btn primary" onclick="mntAddForVehicle()"><i class="fas fa-plus"></i> Adaugă lucrare</button></span></div>
+            <div id="veh-service-list"></div>
+          </div>
+
+          <!-- Fila: Program de lucru -->
+          <div id="edit-tab-workschedule" class="edit-tab-content" style="display:none;">
+            <div class="vf-pcap"><div><h3>Program de lucru</h3><p>Primești o alertă când mașina merge în afara programului.</p></div></div>
+            <div id="veh-worksched"></div>
+          </div>
         </div>
-        <div class="form-group"><label>Note</label><textarea id="edit-notes" rows="2" style="width:100%;resize:vertical;"></textarea></div>
       </div>
-
-      <!-- Tab: Truck Config -->
-      <div id="edit-tab-truck" class="edit-tab-content" style="display:none;">
-        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
-          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
-          Configureaza limitele si tara pentru camioane. Folosit pentru alerte supraincarcare si calcul incarcatura.
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-group">
-            <label>Tară (kg) <span style="color:var(--text-muted);font-size:10px;">auto-detect</span></label>
-            <input type="number" id="edit-tare" placeholder="ex: 18000">
-          </div>
-          <div class="form-group">
-            <label>Limită legală (kg)</label>
-            <input type="number" id="edit-max-legal" placeholder="ex: 32000">
-          </div>
-          <div class="form-group">
-            <label>Limită constructivă (kg)</label>
-            <input type="number" id="edit-max-construct" placeholder="ex: 41000">
-          </div>
-          <div class="form-group">
-            <label>Preț combustibil (RON/L)</label>
-            <input type="number" step="0.01" id="edit-fuel-price" placeholder="ex: 7.85">
-          </div>
-        </div>
-
-        <div style="font-size:12px;font-weight:600;margin:8px 0;color:var(--text-secondary);">
-          <i class="fas fa-weight-hanging" style="color:var(--orange);"></i> Limite per axa (kg)
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">
-          <div class="form-group">
-            <label style="font-size:10px;">Axa 1</label>
-            <input type="number" id="edit-axle1" placeholder="9000" style="padding:6px;font-size:12px;">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px;">Axa 2</label>
-            <input type="number" id="edit-axle2" placeholder="9000" style="padding:6px;font-size:12px;">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px;">Axa 3</label>
-            <input type="number" id="edit-axle3" placeholder="13000" style="padding:6px;font-size:12px;">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px;">Axa 4</label>
-            <input type="number" id="edit-axle4" placeholder="13000" style="padding:6px;font-size:12px;">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px;">Axa 5</label>
-            <input type="number" id="edit-axle5" placeholder="" style="padding:6px;font-size:12px;">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Cost per tona-km (RON)</label>
-          <input type="number" step="0.01" id="edit-cost-tonkm" placeholder="ex: 0.85">
-        </div>
-      </div>
-
-      <!-- Tab: Încărcare (simulatorul de încărcare, Robert 12.10) — cifrele obișnuite vin de la server (/api/incarcare/meta) -->
-      <div id="edit-tab-incarcare" class="edit-tab-content" style="display:none;">
-        <style>
-          #edit-tab-incarcare .inc-sec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--text-secondary);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
-          #edit-tab-incarcare .inc-g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-          #edit-tab-incarcare .inc-g .form-group{margin-bottom:0;}
-          #edit-tab-incarcare .inc-nota{background:var(--bg-dark);padding:10px 12px;border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.45;}
-          #edit-tab-incarcare .inc-sub{font-size:11px;color:var(--text-muted);margin-top:6px;}
-          @media (max-width: 480px){ #edit-tab-incarcare .inc-g{grid-template-columns:1fr 1fr;} }
-        </style>
-        <div class="inc-nota"><i class="fas fa-info-circle" style="color:var(--text-muted);"></i>
-          Simulatorul de încărcare folosește cifrele de aici, ca să nu le scrii la fiecare plan. Alege felul vehiculului — se pun cifrele obișnuite —, apoi corectează-le după fișa tehnică a mașinii.</div>
-        <div class="inc-g" style="grid-template-columns:2fr 1fr;margin-top:12px;align-items:end;">
-          <div class="form-group"><label>Felul vehiculului</label><select id="edit-inc-fel" onchange="incFelSchimbat()"></select></div>
-          <div class="form-group"><button type="button" class="btn-sm" id="edit-inc-obisnuite" onclick="incPuneObisnuite(true)" style="width:100%;height:38px;font-size:12px;font-weight:700;"><i class="fas fa-rotate"></i> Pune cifrele obișnuite</button></div>
-        </div>
-        <div id="edit-inc-caroserie">
-          <div class="inc-sec">Caroseria (interior, în metri)</div>
-          <div class="inc-g">
-            <div class="form-group"><label>Lungime</label><input type="number" step="0.01" id="edit-inc-lungime"></div>
-            <div class="form-group"><label>Lățime</label><input type="number" step="0.01" id="edit-inc-latime"></div>
-            <div class="form-group"><label>Înălțime</label><input type="number" step="0.01" id="edit-inc-inaltime"></div>
-          </div>
-        </div>
-        <div class="inc-sec">Axele (în metri)</div>
-        <div class="inc-g">
-          <div class="form-group"><label>Ampatament</label><input type="number" step="0.01" id="edit-inc-ampatament"></div>
-          <div class="form-group" id="edit-inc-axa-caroserie-g"><label>De la axa față la caroserie</label><input type="number" step="0.01" id="edit-inc-axa-caroserie"></div>
-          <div class="form-group" id="edit-inc-sa-axa-g"><label>Șaua în fața axei motoare</label><input type="number" step="0.01" id="edit-inc-sa-axa"></div>
-        </div>
-        <div class="inc-sec">Tara pe axe (kg)</div>
-        <div class="inc-g">
-          <div class="form-group"><label>Pe axa față</label><input type="number" id="edit-inc-tara-fata"></div>
-          <div class="form-group"><label>Pe axa din spate</label><input type="number" id="edit-inc-tara-spate"></div>
-        </div>
-        <div id="edit-inc-remorca-g">
-          <div class="inc-sec" id="edit-inc-remorca-et">Semiremorca obișnuită</div>
-          <div class="form-group" style="margin-bottom:0;"><select id="edit-inc-remorca"></select></div>
-          <div class="inc-sub" id="edit-inc-remorca-sub"></div>
-        </div>
-        <div class="inc-sub" style="margin-top:14px;">Sarcina utilă se scrie în „Detalii vehicul”; limitele pe axe, în „Config Camion”.</div>
-      </div>
-
-      <!-- Tab: Tank Calibration -->
-      <div id="edit-tab-calibration" class="edit-tab-content" style="display:none;">
-        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
-          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
-          Calibrare sonda litrometrica (Escort TD-150 sau similar). Introdu perechi Voltaj (AIN1) → Litri.
-          Exemplu: 0.5V = 0L, 1.2V = 10L, etc. Sistemul va folosi interpolare liniara.
-        </div>
-
-        <div id="calibration-rows" style="display:flex;flex-direction:column;gap:6px;">
-          <!-- Rows se adauga dinamic -->
-        </div>
-
-        <button type="button" onclick="addCalibrationRow()" class="btn btn-secondary" style="margin-top:8px;padding:6px 12px;font-size:12px;">
-          <i class="fas fa-plus"></i> Adauga punct
+      <div class="vf-jos ra-camp">
+        <div class="vf-jos-txt" id="vf-jos-txt" aria-live="polite"></div>
+        <button type="button" class="rax-btn vf-anul" onclick="closeEditModal()">Anulează</button>
+        <button type="button" class="rax-btn primary vf-salv" onclick="saveDevice()">
+          <i class="fas fa-save"></i> Salvează
         </button>
-
-        <div style="margin-top:12px;padding:10px;background:var(--bg-dark);border-radius:8px;font-size:11px;color:var(--text-muted);">
-          <strong style="color:var(--accent);">Exemplu calibrare VW T5 (80L tank):</strong><br>
-          0.5V=0L, 1.2V=10L, 2.0V=20L, 2.8V=30L, 3.6V=40L, 4.4V=50L, 5.1V=60L, 5.9V=70L, 6.7V=80L
-        </div>
       </div>
-
-      <!-- Tab: Sonde (avansat) -->
-      <div id="edit-tab-sensors" class="edit-tab-content" style="display:none;">
-        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
-          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
-          Mapează sondele litrometrice / senzorii IoT (Escort, EuroSens Dominator, EuroSens Degree) la câmpurile dispozitivului.
-          Nivelul normalizat (litri) e folosit în rapoarte, alerte și detecția de scădere combustibil.
-        </div>
-        <div id="fuel-sensors-list"></div>
-        <button type="button" class="btn-sm" onclick="addFuelSensor()" style="margin-top:6px;"><i class="fas fa-plus"></i> Adaugă sondă</button>
-      </div>
-
-      <!-- Stil modern pt. inputurile din Documente + Service -->
-      <style>
-        #edit-tab-documents .doc-form, #edit-tab-service .doc-form{ background:var(--bg-dark); padding:14px; border-radius:12px; }
-        #edit-tab-documents .doc-form label:not(.svc-check), #edit-tab-service .doc-form label:not(.svc-check){ display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--text-muted); }
-        #edit-tab-documents .doc-form input:not([type=checkbox]), #edit-tab-documents .doc-form select,
-        #edit-tab-service .doc-form input:not([type=checkbox]), #edit-tab-service .doc-form select{
-          width:100%; box-sizing:border-box; padding:10px 12px; font-family:inherit; font-size:13px;
-          color:var(--text-primary); background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
-          transition:border-color .15s, box-shadow .15s;
-        }
-        #edit-tab-documents .doc-form input:not([type=checkbox]):focus, #edit-tab-documents .doc-form select:focus,
-        #edit-tab-service .doc-form input:not([type=checkbox]):focus, #edit-tab-service .doc-form select:focus{
-          outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(34,197,94,.18);
-        }
-        #edit-tab-documents .doc-actions, #edit-tab-service .doc-actions{ display:flex; align-items:flex-end; }
-        #edit-tab-documents .doc-actions .btn-sm, #edit-tab-service .doc-actions .btn-sm{ width:100%; padding:11px 12px; border-radius:10px; }
-        /* Câmp completat din act — omul vede ce n-a scris el; marcajul dispare la prima editare manuală. */
-        .scan-filled{ border-color:var(--accent) !important; box-shadow:0 0 0 2px rgba(34,197,94,.14); }
-        #doc-scan-zone:hover{ border-color:var(--accent); }
-      </style>
-
-      <!-- Tab: Documente -->
-      <!-- Aceleași rânduri ca în Management → Documente și ACEEAȘI fereastră de scris. Aici era un
-           formular al lui, plus singura scanare din aplicație — ascunsă, deci nefolosită. -->
-      <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
-        <div style="display:flex;align-items:center;gap:9px;margin:4px 0 12px;flex-wrap:wrap;">
-          <div style="font-size:12px;font-weight:700;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-        </div>
-        <div id="veh-docs-list"></div>
-      </div>
-
-      <!-- Tab: Service -->
-      <!-- Aceleași lucrări ca în Management → Mentenanță, aceleași rânduri, ACEEAȘI fereastră de
-           scris. Aici era un formular al lui, mai sărac: nu putea pune repetarea (deci lucrarea nu
-           se mai reprograma niciodată singură), nu avea descriere, nu se putea modifica, iar starea
-           scria „planificat" și după trei luni de întârziere. -->
-      <div id="edit-tab-service" class="edit-tab-content" style="display:none;">
-        <div style="display:flex;align-items:center;gap:9px;margin:4px 0 12px;">
-          <div style="font-size:12px;font-weight:700;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță <span id="veh-svc-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-          <button class="btn-sm btn-primary" style="margin-left:auto;width:auto;" onclick="mntAddForVehicle()"><i class="fas fa-plus"></i> Adaugă lucrare</button>
-        </div>
-        <div id="veh-service-list"></div>
-      </div>
-
-      <div id="edit-tab-workschedule" class="edit-tab-content" style="display:none;">
-        <div id="veh-worksched"></div>
-      </div>
-
-      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
-        <i class="fas fa-save"></i> Salvează
-      </button>
     </div>
   </div>
 
@@ -7576,7 +7577,7 @@ const pozitii = await r.json();</code></pre>
           '<span class="sim-axv ' + TON(a.ton) + '">' + esc(a.text) + '</span></div><div class="sim-bar"><div class="' + TON(a.ton) + '" style="width:' + Math.max(0, Math.min(100, a.pct || 0)) + '%"></div></div></div>').join('') +
           '<div class="sim-tot"><span>Masa totală</span><span class="' + TON(R.masa.ton) + '">' + esc(R.masa.text) + '</span></div>' +
           R.mesaje.map((m) => '<div class="sim-msg ' + TON(m.fel) + '">' + esc(m.text) + '</div>').join('') : '<span class="sim-mut">' + esc(S.eroare || '') + '</span>') +
-          '<span class="sim-mut">Limitele vin din fișa vehiculului (Config Camion); tara și locul axelor, din fila „Încărcare”.</span>';
+          '<span class="sim-mut">Limitele vin din fișa vehiculului (fila „Camion”); tara și locul axelor, din fila „Încărcare”.</span>';
         deseneaza();
       }
       window.simVedere = function (v) { S.view = v; rezultat(); };
@@ -19151,7 +19152,7 @@ const pozitii = await r.json();</code></pre>
             } else if (ain1 !== undefined) {
               fuelHtml += '<div style="padding:10px;background:var(--bg-dark);border-radius:6px;margin-bottom:6px;font-size:11px;color:var(--text-muted);">' +
                 '<i class="fas fa-exclamation-circle" style="color:var(--orange);"></i> ' +
-                'Sonda trimite ' + (ain1/1000).toFixed(2) + ' V pe AIN1 dar nu e calibrata. <strong>Editeaza vehiculul</strong> → tab <strong>Sonda combustibil</strong> pentru a adauga perechi voltaj→litri.' +
+                'Sonda trimite ' + (ain1/1000).toFixed(2).replace('.', ',') + ' V pe AIN1, dar nu e calibrată. <strong>Editează vehiculul</strong> → fila <strong>Sonda combustibil</strong>, ca să adaugi perechi tensiune → litri.' +
               '</div>';
             }
 
@@ -20594,7 +20595,7 @@ const pozitii = await r.json();</code></pre>
     // ─── Ce file se văd în fișa vehiculului ──────────────────────────────────────────────────────
     // O fișă cu șapte file, dintre care patru n-au sens pentru mașina din față, e mai greu de citit
     // decât una cu trei. Regula are două straturi:
-    //   1. AUTOMAT, după vehicul: „Config Camion" doar la vehicule care au mase și axe de configurat;
+    //   1. AUTOMAT, după vehicul: fila „Camion" doar la vehicule care au mase și axe de configurat;
     //      filele de sonde doar la vehiculele care CHIAR au sonde.
     //   2. Comutator per companie (super-admin): scoate fila de tot, pentru clienți care n-o folosesc.
     //
@@ -20637,7 +20638,7 @@ const pozitii = await r.json();</code></pre>
       return { caroserie: !f || f.caroserie !== false, sa: tractor, felRemorca: tractor ? 'semiremorca' : 'remorca' };
     }
     // Cifrele obișnuite ale felului peste valori (text, ca în căsuțe). Se schimbă căsuțele goale și cele rămase cu cifra
-    // felului DINAINTE (neatinse de om); `peste` = toate. Sarcina utilă (în „Detalii vehicul") — doar goală sau neatinsă.
+    // felului DINAINTE (neatinse de om); `peste` = toate. Sarcina utilă (în „Consum și limite") — doar goală sau neatinsă.
     function _incObisnuite(val, fel, felVechi, peste, meta) {
       const out = Object.assign({}, val), f = _incFelDin(meta, fel), v = _incFelDin(meta, felVechi);
       if (!f) return out;
@@ -20763,7 +20764,7 @@ const pozitii = await r.json();</code></pre>
           b = document.createElement('button');
           b.id = 'edit-tabs-all';
           b.type = 'button';
-          b.style.cssText = 'margin-left:auto;background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;padding:10px 8px;';
+          b.className = 'vf-toate';
           b.title = 'Filele ascunse pentru că nu se potrivesc acestui vehicul (super-admin)';
           b.textContent = '+ arată toate filele';
           b.onclick = function () { _taburiToate = true; aplicaVizibilitateTaburi(dev); };
@@ -20776,26 +20777,62 @@ const pozitii = await r.json();</code></pre>
       // vizibil fără niciun tab activ, ceea ce arată ca o defecțiune.
       const activ = document.querySelector('.edit-tab.active');
       if (activ && activ.style.display === 'none') {
-        const primul = document.querySelector('.edit-tab[data-tab="basic"]');
-        if (primul) switchEditTab('basic', primul);
+        switchEditTab('general');
       }
     }
 
+    // ─── Fișa vehiculului pe file (Alin, 10.11: „1. da, 2. da, 3. da" la macheta cu filele în stânga) ───
+    // Nota de jos: pe filele care se salvează din fereastra lor o spune; pe celelalte, „Ai modificări nesalvate" după
+    // prima schimbare. O schimbare = o literă scrisă, o listă aleasă, o pictogramă, un câmp completat din act.
+    var _VF_NOTE = {
+      documents: 'Actele se salvează din fereastra lor. „Salvează" păstrează restul fișei.',
+      service: 'Lucrările se salvează din fereastra lor. „Salvează" păstrează restul fișei.',
+      workschedule: 'Programul se salvează cu butonul lui. „Salvează" păstrează restul fișei.',
+    };
+    var _vfSchimbat = false;
+    function _vfJos() {
+      var txt = document.getElementById('vf-jos-txt'); if (!txt) return;
+      var activ = document.querySelector('#edit-modal .edit-tab.active');
+      var nota = _VF_NOTE[activ ? activ.getAttribute('data-tab') : ''] || '';
+      txt.classList.toggle('schimbat', _vfSchimbat && !nota);
+      txt.classList.toggle('nota', !!nota);
+      txt.textContent = nota || (_vfSchimbat ? 'Ai modificări nesalvate.' : '„Salvează" păstrează toate filele deodată.');
+    }
+    window._vfAtins = function () { if (!_vfSchimbat) { _vfSchimbat = true; _vfJos(); } };
+    // Sus, ce mașină editezi: numărul (îngroșat), apoi numele — „o flotă poate avea 10 Caddy" (Alin, 05.11).
+    function _vfSub(plate, name) {
+      var el = document.getElementById('vf-sub'); if (!el) return;
+      el.textContent = '';
+      var nr = String(plate || '').trim(), nume = String(name || '').trim();
+      if (!nr && !nume) return;
+      var b = document.createElement('b'); b.textContent = nr || nume; el.appendChild(b);
+      if (nr && nume && nume.toUpperCase() !== nr.toUpperCase()) el.appendChild(document.createTextNode(' · ' + nume));
+    }
+    ['input', 'change'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) {
+        var t = e.target;
+        if (!t || !t.closest || !t.closest('#edit-modal .vf-main')) return;
+        if (t.closest('#edit-tab-documents, #edit-tab-service, #edit-tab-workschedule')) return;   // se salvează din fereastra lor
+        window._vfAtins();
+      }, true);
+    });
+
     function switchEditTab(tab, btn) {
-      document.querySelectorAll('.edit-tab').forEach(t => {
-        t.classList.remove('active');
-        t.style.color = 'var(--text-muted)';
-        t.style.borderBottomColor = 'transparent';
-        t.style.fontWeight = '400';
+      if (tab === 'basic') tab = 'general';   // numele vechi al primei file (legăturile de dinainte de 10.11)
+      document.querySelectorAll('#edit-modal .edit-tab').forEach(function (t) {
+        var on = t.getAttribute('data-tab') === tab;
+        t.classList.toggle('active', on);
+        if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
       });
-      btn.classList.add('active');
-      btn.style.color = 'var(--text-primary)';
-      btn.style.borderBottomColor = 'var(--accent)';
-      btn.style.fontWeight = '600';
-      document.querySelectorAll('.edit-tab-content').forEach(c => c.style.display = 'none');
-      document.getElementById('edit-tab-' + tab).style.display = 'block';
+      document.querySelectorAll('#edit-modal .edit-tab-content').forEach(function (c) { c.style.display = 'none'; });
+      var p = document.getElementById('edit-tab-' + tab); if (p) p.style.display = 'block';
+      var main = document.getElementById('vf-main'); if (main) main.scrollTop = 0;
+      // Pe telefon filele sunt un rând care se derulează: cea aleasă vine la vedere.
+      var b = document.querySelector('#edit-modal .edit-tab[data-tab="' + tab + '"]'), nav = b && b.parentNode;
+      if (nav && nav.scrollWidth > nav.clientWidth + 1) nav.scrollLeft = Math.max(0, b.offsetLeft - 14);
       if (tab === 'documents') loadVehicleDocuments();
       else if (tab === 'service') loadVehicleService();
+      _vfJos();
     }
 
     // ─── Documente & service per vehicul ───
@@ -20861,7 +20898,7 @@ const pozitii = await r.json();</code></pre>
       brand: { id: 'edit-brand', et: 'Marca' }, model: { id: 'edit-model', et: 'Model' }, year: { id: 'edit-year', et: 'An' },
       fuel_type: { id: 'edit-fuel-type', et: 'Combustibil' }, displacement: { id: 'edit-displacement', et: 'Cilindree' },
       power_kw: { id: 'edit-power-kw', et: 'Putere (kW)' }, passenger_seats: { id: 'edit-passenger-seats', et: 'Locuri' },
-      tare_weight: { id: 'edit-tare', et: 'Masă proprie (Config Camion)' }, max_weight_legal: { id: 'edit-max-legal', et: 'Masă maximă (Config Camion)' },
+      tare_weight: { id: 'edit-tare', et: 'Masă proprie (fila Camion)' }, max_weight_legal: { id: 'edit-max-legal', et: 'Masă maximă (fila Camion)' },
       vehicle_type: { id: 'edit-vehicle-type', et: 'Categorie (propusă din talon)' },
     };
     const _incBadge = (v) => v >= 0.85 ? '<span style="color:var(--accent);font-size:10.5px;">sigur</span>'
@@ -20975,6 +21012,7 @@ const pozitii = await r.json();</code></pre>
           if (el) {
             // Fișa e deschisă: completăm câmpul, iar omul o salvează cu butonul ei.
             el.value = val; el.classList.add('scan-filled');
+            if (window._vfAtins) window._vfAtins();
             el.addEventListener('input', () => el.classList.remove('scan-filled'), { once: true });
             inFisa++;
             if (k === 'vehicle_type' && typeof onVehicleTypeChange === 'function') onVehicleTypeChange();
@@ -21192,6 +21230,7 @@ const pozitii = await r.json();</code></pre>
     function pickIcon(val) {
       const hid = document.getElementById('edit-icon');
       if (hid) hid.value = val;
+      if (window._vfAtins) window._vfAtins();
       renderIconPicker();
       closeIconPicker();
     }
@@ -21322,9 +21361,10 @@ const pozitii = await r.json();</code></pre>
       _taburiToate = false;   // portița e per-vehicul, nu o setare care rămâne
       document.querySelectorAll('.scan-filled').forEach(el => el.classList.remove('scan-filled'));
 
-      // Reset to basic tab
-      const basicBtn = document.querySelector('.edit-tab[data-tab="basic"]');
-      if (basicBtn) switchEditTab('basic', basicBtn);
+      // Se deschide mereu pe „General" (Alin, 10.11: „3. da"), fără „modificări nesalvate" de la mașina dinainte.
+      _vfSchimbat = false;
+      _vfSub('', '');
+      switchEditTab('general');
 
       // Clear calibration rows
       document.getElementById('calibration-rows').innerHTML = '';
@@ -21357,6 +21397,7 @@ const pozitii = await r.json();</code></pre>
           var _cifSel = document.getElementById('edit-can-interface'); if (_cifSel) _cifSel.value = dev.can_interface || '';
           var _cifGrp = document.getElementById('edit-caniface-group'); if (_cifGrp) _cifGrp.style.display = _isSuper ? '' : 'none';
           document.getElementById('edit-plate').value = dev.plate || '';
+          _vfSub(dev.plate, dev.name);
           // Fișă vehicul extinsă (paritate AROBS)
           const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
           setv('edit-vin', dev.vin); setv('edit-brand', dev.brand); setv('edit-model', dev.model);

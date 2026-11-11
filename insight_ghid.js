@@ -69,7 +69,7 @@ const SECTIUNI = [
     pasi: [
       'Management → Șoferi → „Adaugă șofer": nume, telefon, email, permisul (număr, expirare, categorii) → „Adaugă".',
       'Ca să-i dai o mașină: Management → Vehicule → creionul de pe rândul mașinii → „Editare vehicul".',
-      'În fila „Detalii vehicul", la „Șofer", alege-l și apasă „Salvează".',
+      'În fila „General", la „Șofer", alege-l și apasă „Salvează" (jos, în dreapta).',
       'Sau din RA Insight: scrie cui dai mașina (de pildă: pune-l pe Mihai pe B 77 TIR), verifici propunerea și apeși „Da".'
     ],
     detalii: 'Când permisul expiră în cel mult 30 de zile, lângă șofer apare „mai are N zile".',
@@ -258,7 +258,7 @@ const SECTIUNI = [
       'Bifează „Activează supravegherea programului de lucru".',
       'Bifează zilele, pune orele și toleranța → „Salvează programul".'
     ],
-    detalii: 'Primești alertă când o mașină se mișcă în afara programului. Se poate schimba pe grupă sau pe mașină (fila „Program" din fișa mașinii).',
+    detalii: 'Primești alertă când o mașină se mișcă în afara programului. Se poate schimba pe grupă sau pe mașină (fila „Program de lucru" din fișa mașinii).',
     cuvinte: ['program de lucru', 'programul de lucru', 'ore de lucru', 'in afara programului', 'weekend', 'noaptea']
   },
   {
