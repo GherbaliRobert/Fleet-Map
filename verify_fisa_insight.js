@@ -263,6 +263,12 @@ const mesajeCererii = (c) => (c.messages || []).map((m) => typeof m.content === 
     const nP = cereri().length;
     await json('POST', '/api/test/fise-noaptea', S, { acum: Date.now() + 4 * 86400000 });
     T('firma pe Start (fără AI): nicio fișă, nicio cerere către model', (await json('GET', '/api/test/fisa/' + idP, S)).j.fisa === null && cereri().length === nP);
+    // Alin, 11.11 („ascunde, da"): pe Start RA Insight nu-și face fișă, deci nici nu o promite — blocul din Preferințe lipsește,
+    // iar „ce știi despre mine?" merge mai departe ca orice întrebare liberă. Pe Pro blocul e la vedere.
+    const gP = await json('GET', '/api/insight/fisa', P);
+    T('Start: blocul din Preferințe lipsește (activ: false); pe Pro e la vedere', gP.status === 200 && gP.j.activ === false && gP.j.are === false && g1.j.activ === true, JSON.stringify(gP.j) + ' · Pro: ' + g1.j.activ);
+    const ceP = await intreaba(P, 'Ce știi despre mine?');
+    T('Start: „ce știi despre mine?" nu primește textul fișei (nu promite o fișă care nu se face)', ceP.status === 200 && ceP.j.source !== 'fisa' && !/Îmi fac singur, peste noapte/.test(ceP.j.reply || ''), (ceP.j.source || '') + ' · ' + (ceP.j.reply || '').slice(0, 140));
   } catch (e) {
     rau++; console.log('  ✗ proba a crăpat: ' + ((e && e.stack) || e));
   }

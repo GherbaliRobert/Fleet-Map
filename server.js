@@ -1400,7 +1400,7 @@ const PAGINI_PUBLICE = [
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-05', amprenta: '108b5ea2c720', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: '19a8dd110323', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: '20706821984e', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -3982,11 +3982,11 @@ async function _fondEpuizat(req) {
     fondEpuizat: {
       fond: st.questions, conturi: st.seats, peCont: st.questionsPerSeat, reinnoire: st.periodEnd
     },
-    reply: '**Fondul de întrebări al lunii s-a terminat.**\n\n' +
+    reply: '**Întrebările lunii s-au terminat.**\n\n' +
       '• Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse' +
       (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
-      '• Se reînnoiește pe **' + reinnoire + '**.\n' +
-      '• Întrebările rapide rămân gratuite: unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.' +
+      '• Se reînnoiesc pe **' + reinnoire + '**.\n' +
+      '• Până atunci răspund pe loc: unde e o mașină, care sunt oprite, care merg acum, câți km azi, starea flotei.' +
       // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont. La o firmă pe forma VECHE
       // (cotă fixă, `questions`), un cont în plus NU aduce nicio întrebare — iar fraza, cu „50" pus
       // de rezervă, îi promitea exact asta (găsit 23.09). Acum se spune doar unde e adevărat.
@@ -4692,7 +4692,7 @@ async function _regulileFonduluiAi(req, res) {
   } catch (e) {
     // Fondul nu s-a putut citi: întrebarea NU pleacă. Mai bine un „încearcă din nou" decât o
     // întrebare care scapă neverificată din fondul lunii.
-    const m = 'Nu am putut verifica fondul de întrebări al firmei. Încearcă din nou peste un minut.';
+    const m = 'Nu am putut verifica câte întrebări mai are firma. Încearcă din nou peste un minut.';
     return res.status(503).json({ error: m, reply: m });
   }
 }
@@ -5296,7 +5296,9 @@ async function _raInsight(req, res, opts) {
     // Fișa, cerută în discuție (11.11): „ce știi despre mine?" o arată; „uită că …" scoate doar ce se potrivește; „uită tot" NU
     // șterge nimic — ștergerea totală e doar în Setări → Preferințe (Alin: omul se poate referi doar la discuția de acum); „uită
     // asta" îi spune cum șterge discuția. Pe reguli, pe loc, nu se numără.
-    const cf = (!o.proba && userId != null) ? fisaInsight.cerere(mesajOm) : null;
+    // Pe Start (fără AI) RA Insight nu-și face fișă (Alin, 11.11): „ce știi despre mine?" merge mai departe, ca orice întrebare liberă.
+    let cf = (!o.proba && userId != null) ? fisaInsight.cerere(mesajOm) : null;
+    if (cf && !(await _fisaActiva(req.companyId, fisaOm))) cf = null;
     if (cf) {
       let replyF;
       if (cf.fel === 'ce_stii') replyF = fisaInsight.textCeStii(fisaOm);
@@ -6406,10 +6408,19 @@ async function _scrieFisa(userId, companyId, pana) {
 }
 // Setări → Preferințe (11.11): ce spune blocul „RA Insight · ce știe despre tine" și butonul care șterge tot (cu confirmare). Doar
 // fișa omului care întreabă; textele le dă serverul.
+// Fișa e de la pachetul Basic (Alin, 11.11: „ascunde [pe Start], da"): pe Start nu se scrie, deci blocul din Preferințe lipsește și
+// „ce știi despre mine?" nu e o cerere a fișei — afară de o fișă rămasă de pe un pachet de dinainte (se poate citi și șterge).
+async function _fisaActiva(companyId, fisaOm) {
+  if (!fisaInsight.goala(fisaOm)) return true;
+  if (companyId == null) return false;
+  try { return _firmaAreAi(await db.getCompanyById(companyId)); } catch (e) { return false; }
+}
 app.get('/api/insight/fisa', requireAuth, async (req, res) => {
   try {
     const f = await db.getFisaAi(req.auth.userId);
-    res.json({ are: !fisaInsight.goala(f), randuri: f ? f.randuri.length : 0, nume: f ? f.nume.length : 0,
+    let cid = null;
+    try { cid = await resolveCompanyId(req.auth || {}); } catch (e) { cid = null; }
+    res.json({ are: !fisaInsight.goala(f), activ: await _fisaActiva(cid, f), randuri: f ? f.randuri.length : 0, nume: f ? f.nume.length : 0,
       explicatie: fisaInsight.TEXTE.explicatie, confirmare: fisaInsight.TEXTE.confirmare });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

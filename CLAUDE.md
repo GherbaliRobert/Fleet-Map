@@ -549,10 +549,18 @@ Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Rapor
 - `.insp` are `grid-template-columns: minmax(0, 1fr)` (și `.insp-corp` la fel): fără el, coloana crește după cel mai lat
   rând și pe telefon secțiunea ieșea din ecran (645 px într-un ecran de 390). Pe ≤ 860 px capul se rupe pe două rânduri.
 - **Notițele firmei:** `settings.insight_notite` (≤ 1.500), `GET/PUT /api/insight/notite` — scrie doar `manageUsers`. Intră
-  în CONTEXTUL întrebării (`_insightContext`), NU în partea fixă din cache.
+  în CONTEXTUL întrebării (`_insightContext`), NU în partea fixă din cache. Un text pe FIRMĂ (nu pe cont): ce trebuie să știe RA Insight
+  despre toată firma; fișa (mai jos) e a fiecărui om. Exemplele din fereastră NU pun prețuri (prețul motorinei stă în Setări → Prețuri
+  combustibil, de unde îl iau rapoartele — Alin, 11.11: „Camioanele nu pleacă în cursă duminica." în locul „Motorina e 7,30 lei.").
 - **Ghidul:** `insight_ghid.js` (`SECTIUNI`, `cauta`, `publice`), citit gratuit (`GET /api/insight/ghid`) și folosit de unealta
   `cauta_in_ghid`. Fiecare nume citat („Adaugă șofer") trebuie să existe pe ecran — `verify_insight_ghid.js` le caută pe toate.
   Schimbi un buton → schimbi și ghidul. Un cuvânt-cheie scurt se potrivește doar întreg (+ terminație): „act" NU în „facturile".
+- **Cuvintele noastre nu ajung la client (Alin, 11.11: „…tokeni, fără tokeni, gratuit, nu consumă… ghidul să nu ne facă de râs").** În
+  ce vede clientul (ghidul, ecranele, telefonul, oferta și contractul): fără „gratuit", „tokeni", „fondul (de întrebări)", „nu se numără",
+  „nu se scade", „fără AI", „să nu se consume", „adminul", nume de modele. Ce se scade din pachet se spune O dată, în capitolul
+  `ra_insight` din ghid: „Din pachet se scad doar răspunsurile ANALIZĂ; restul e inclus."; în rest, „inclus în pachet". Ecranele NOASTRE
+  (RA Insight · control, Control costuri, Stare producție) le pot folosi. Păzit de `verify_insight_ghid.js` (secțiunea 5: ghidul întreg +
+  locurile scoase de pe ecrane, telefon și hârtii).
 - **`run_report` respectă rapoartele tăiate din rol** (`poateRaport`) — înainte RA Insight le rula oricum.
 - **Statisticile pentru noi** (`GET /api/admin/insight/statistici`, super-admin): numere (răspunsuri, 👍/👎, conversații,
   rapoartele rulate) — NICIODATĂ textul conversațiilor. Ecranul lor vine cu ramurile.
@@ -1335,8 +1343,12 @@ Fără pagină „Memoria mea", fără memoria firmei, fără butoane noi în ch
   să nu revină). Scris în discuție, „uită tot" NU șterge nimic (Alin: omul se poate referi doar la discuția de acum). NU pune o a doua cale de ștergere totală.
 - „Scoate din firmă" spune că pleacă și discuțiile cu RA Insight, și ce a învățat despre om. La o plecare (Alin → George) fișa NU trece: George
   își face fișa lui (Alin, 11.11). Confidențialitate: paragraful „Ce ține minte RA Insight" + rândul din „Cât păstrăm datele".
+- **Pe Start, fără fișă (Alin, 11.11: „ascunde, da — dar și de pe paginile publice"):** acolo RA Insight nu-și face fișă (n-are AI), deci nici
+  n-o promite: `_fisaActiva(companyId, fisa)` (= fișa nu e goală SAU `_firmaAreAi`) → `GET /api/insight/fisa` dă `activ` (blocul din
+  Preferințe lipsește la `activ: false`), iar comenzile fișei din `_raInsight` („ce știi despre mine?"…) nu răspund — întrebarea merge mai
+  departe. O fișă rămasă de pe un pachet de dinainte se poate citi și șterge. Ghidul și Confidențialitatea spun „de la pachetul Basic".
 - Telefonul: totul merge prin server; blocul din Preferințe vine cu APK-ul următor (Robert). Păzit de **`verify_fisa_insight.js`** (în `npm test`;
-  52, pe server pornit, cu modelul simulat), `verify_insight_ghid.js` (capitolul `fisa_insight`), `verify_site_public.js`.
+  54, pe server pornit, cu modelul simulat; și Start), `verify_insight_ghid.js` (capitolul `fisa_insight`), `verify_site_public.js`.
 
 ### Banii pentru AI, la zi (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon… control total pe tokeni și bani, după ce schimbă Robert cheile” + „1. da”, „2. da”)
 - **Regulile și TEXTELE stau în `sold_ai.js`** (curat): `felRefuz(status, text)` (credit / limita / cheie / cont; prea multe cereri, serverul
@@ -1584,7 +1596,8 @@ o întrebare" măsurat pe Haiku 4.5, `aiqPana10…` în „Prețurile noastre") 
 `tarife_lista` la prima salvare. NU construi lucruri noi pe ea. Ce rămâne în cod, pentru firmele deja pe cont (`ai_quota`):
 - Fondul lunii = conturi aprinse × întrebări pe cont (`questionsPerSeat`; 0 = nelimitat), factura pe vârful lunii (`seatsPeak`),
   „RA Insight — conturi (N × preț)". Peste fond NU se vinde nimic (comutatoarele vechi `overage*` se aruncă; `acceptExtra` e
-  ignorat — păzit de `verify_paritate_telefon.js`). Clientul vede „oprit până pe …" și „fără niciun cost în plus".
+  ignorat — păzit de `verify_paritate_telefon.js`). Clientul vede „Întrebările lunii s-au terminat: până pe … doar răspunsuri pe loc,
+  fără niciun cost în plus" (din 11.11 fără „fondul", Alin: nu există încă firme pe regula asta — „suntem în dezvoltare").
 - „Un cont în plus aduce încă N" se scrie DOAR pe regula pe cont, cu cifra firmei — fără `|| 50` de rezervă.
 - **Casetele ei din fișa firmei** („Întrebări / cont / lună" în „Abonament & plăți", „Limită AI lunară" în „Acces") se arată DOAR pe
   firmele aflate deja pe regula veche (fișa dă `ai_regula_veche`; în „Acces", `!s.pachet`). Pe o firmă cu pachet (și Start e un pachet)

@@ -83,7 +83,7 @@ function Notite({ f, onInchide }: { f: Extract<Foaie, { fel: 'notite' }>; onInch
       <div class="sheet">
         <div class="sheet-h"><b>Notițele firmei pentru RA Insight</b><button class="h-btn" onClick={onInchide} aria-label="Închide"><Icon name="x" /></button></div>
         <div class="sheet-body">
-          <div class="insp-not-t">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Motorina e 7,30 lei.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>
+          <div class="insp-not-t">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Camioanele nu pleacă în cursă duminica.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>
           <textarea class="insp-not-in" rows={8} value={text} maxLength={f.max || 1500} readOnly={!f.poateScrie} aria-label="Notițele firmei" onInput={(e) => setText((e.target as HTMLTextAreaElement).value)} />
           {!f.poateScrie ? <div class="insp-not-i">Le scrie administratorul firmei.</div> : null}
           <div class="frm-actions insp-not-b">

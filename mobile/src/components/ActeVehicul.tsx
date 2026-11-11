@@ -434,7 +434,7 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
                 {pot && pot.stare === 'strain' && <div class="fl-banner s-soon" style="margin-bottom:8px"><span class="ic"><Icon name="alertO" size={15} /></span><span>Pe act scrie <b>{pot.plate}</b>, dar nu găsesc mașina asta în flotă. Alege tu vehiculul.</span></div>}
                 {randuri.length ? (
                   <>
-                    <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">Am citit din act ({prop.sursa === 'pdf-text' ? 'text din PDF, gratuit' : 'citire AI'}) — debifează ce nu vrei:</div>
+                    <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">Am citit din act — debifează ce nu vrei:</div>
                     {randuri.map((k) => (
                       <label style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)">
                         <input type="checkbox" style="width:20px;height:20px;flex:0 0 20px" checked={!!bife[k]} onChange={(e) => setBife((p) => ({ ...p, [k]: (e.target as HTMLInputElement).checked }))} />

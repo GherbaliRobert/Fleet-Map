@@ -700,7 +700,7 @@ function renderOfertaPdf(doc, o) {
   } else if (o.aiA && Number(o.pretCont) > 0) {
     conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
       + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
-      + 'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.');
+      + 'Când se termină întrebările lunii, până la reînnoire RA Insight răspunde doar pe loc — nu există costuri suplimentare.');
   }
   // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA") — doar dacă oferta are montaj. Pusă ULTIMA în
   // cod, pe locul 2: imediat după plata costului unic, înaintea abonamentului și a RA Insight.

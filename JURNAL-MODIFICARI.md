@@ -499,7 +499,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Robert: telefonul și fișa lui RA Insight (APK-ul următor). Adăugat pe 11.11.** Fișa merge deja și pe telefon, fiindcă stă pe
   server („ce știi despre mine?", „uită că …", „Unde e Loganul?"). Pe telefon lipsește doar blocul din Preferințe: „RA Insight · ce știe
   despre tine”, cu explicația (`GET /api/insight/fisa` → `explicatie`) și butonul „Șterge tot ce știe despre mine”, cu confirmarea
-  (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`).
+  (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`) și doar cu
+  `activ: true` (pe Start blocul lipsește — Alin, 11.11). Tot cu APK-ul ăsta pleacă și textele corectate pe 11.11: actul citit fără
+  „gratuit" / „citire AI", exemplul din notițele firmei, mesajul de la capătul lunii pe regula veche.
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -588,6 +590,38 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-11
+
+### CLIENT · Ghidul și textele pentru client, fără „gratuit", „fondul de întrebări", „nu se numără"; pe Start, fără fișă
+*Alin, 11.11: „vezi să nu fi scăpat ceva cu tokeni, fără tokeni, gratuit, nu consumă, cuvinte din astea cheie pe care clienții noștri nu
+trebuie să le vadă… ghidul să nu ne facă pe noi fondatorii de râs. Fă o analiză." Apoi: „1. da", „3. da", „4. ascunde, da — dar și de pe
+paginile publice", iar la 2 („prin RA Insight" în Istoric activitate): „e necesar?" — nu e; fraza a ieșit din ghid. Despre ofertele și
+contractele vechi: „nu există contracte vechi… suntem în dezvoltare" — deci și ele, fără „fond".*
+
+**Ce am schimbat:**
+- **Ghidul aplicației:** 9 locuri cu „gratuit", „nu se numără", „fondul de întrebări", „fără AI", „să nu se consume" — rescrise. Ce se
+  scade din pachet se spune O dată, în capitolul RA Insight: „Din pachet se scad doar răspunsurile ANALIZĂ; restul e inclus."; în rest,
+  „inclus în pachet". „Tokeni" nu apărea nicăieri în ce vede clientul.
+- **Tot în ghid, rămase în urmă:** eticheta ANALIZĂ nu mai e numită „mov"; la capătul lunii RA Insight „răspunde doar pe loc" (scria „se
+  oprește" — greșit); „În jurnal scrie «prin RA Insight»" a ieșit (clientul nu vedea asta nicăieri); fișa „de la pachetul Basic";
+  Preferințe pomenește și ștergerea fișei; conturile pe pachete (Start doar administratorul, Basic 2, Pro 5, Business oricâte);
+  „adminul" → „administratorul".
+- **Ecranele (web și telefon):** la încărcarea unui act, „Am citit din act — debifează ce nu vrei" (fără „text din PDF, gratuit" /
+  „citire AI"); butonul „Întreabă RA Insight" din domenii, la trecerea cu mouse-ul: „(o întrebare din pachet)"; eroarea „Nu am putut
+  verifica câte întrebări mai are firma."; pe regula veche, pe cont: „Întrebările lunii s-au terminat: până pe … doar răspunsuri pe loc,
+  fără niciun cost în plus" (contorul și mesajul din discuție). Oferta și contractul pe regula veche: fără „fond".
+- **Notițele firmei:** exemplul „Motorina e 7,30 lei." → „Camioanele nu pleacă în cursă duminica." Prețul motorinei are locul lui în
+  Setări → Prețuri combustibil, de unde îl iau rapoartele; scris și în notițe, cu altă cifră, RA Insight ar fi avut două prețuri.
+- **Pe Start, fără fișă:** acolo RA Insight nu-și face fișă (n-are AI), deci nici n-o promite — blocul din Preferințe lipsește (`activ:
+  false`, `_fisaActiva`), iar „ce știi despre mine?" merge mai departe ca orice întrebare liberă. O fișă rămasă de pe un pachet de dinainte
+  se poate citi și șterge. Confidențialitate: „De la pachetul Basic, … RA Insight își face singur … o fișă scurtă".
+- Probe: `verify_insight_ghid.js` (5: cuvintele, regula spusă o dată, ecranele, telefonul și hârtiile), `verify_fisa_insight.js` (Start),
+  `verify_tarife.js`, `verify_telefon_insight.js`, `verify_site_public.js` (amprenta Confidențialității).
+
+**Ce vede fondatorul:** pe ecranele noastre (RA Insight · control, Control costuri, Stare producție) nimic nu se schimbă — acolo cuvintele
+noastre rămân.
+
+**Ce vede clientul:** ghidul și ecranele de mai sus, fără „gratuit", „fond" sau „nu se numără"; pe Start, blocul fișei din Preferințe nu
+mai apare.
 
 ### CLIENT · RA Insight ține minte ce discută fiecare om cu el (fișa lui)
 *Alin, 10–11.11: „ca RA Insight să memoreze cam ce discută fiecare user cu el… să-și facă o idee ce i se potrivește", „ne complicăm…

@@ -5641,7 +5641,8 @@ const pozitii = await r.json();</code></pre>
       if (!u.aiCont) { box.innerHTML = ''; return; }
       var j = null;
       try { var r = await fetch('/api/insight/fisa', { credentials: 'same-origin' }); if (r.ok) j = await r.json(); } catch (e) { j = null; }
-      if (!j) { box.innerHTML = ''; return; }
+      // Pe Start RA Insight nu-și face fișă (Alin, 11.11: „ascunde, da”): blocul lipsește, afară de o fișă rămasă de pe un pachet de dinainte.
+      if (!j || j.activ === false) { box.innerHTML = ''; return; }
       box.innerHTML = '<div class="pref-gr"><div class="set-sec-h"><i class="fas fa-wand-magic-sparkles"></i> RA Insight · ce știe despre tine</div>' +
         '<p class="set-note" id="pref-ins-t"></p>' +
         '<div class="pref-act"><button class="btn-sm pref-ins-sterge" onclick="prefInsightSterge(this)"><i class="fas fa-eraser"></i> Șterge tot ce știe despre mine</button>' +
@@ -12140,7 +12141,7 @@ const pozitii = await r.json();</code></pre>
         var peCont = Number(q.questionsPerSeat) || 0;
         var inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + window._raxNrI(peCont) + ' pe lună.' : '';
         var opr = q.blocked || q.remaining <= 0;
-        box.textContent = opr ? 'Fondul lunii s-a terminat: oprit până pe ' + reset + ', fără niciun cost în plus.' : 'Întrebări · ' + q.remaining + ' din ' + window._raxNrI(q.questions);
+        box.textContent = opr ? 'Întrebările lunii s-au terminat: până pe ' + reset + ' doar răspunsuri pe loc, fără niciun cost în plus.' : 'Întrebări · ' + q.remaining + ' din ' + window._raxNrI(q.questions);
         box.title = inPlus; box.className = 'insp-fond' + (opr ? ' w' : ''); box.onclick = null;
         box.style.display = '';
       }
@@ -12944,7 +12945,7 @@ const pozitii = await r.json();</code></pre>
         var card = el('div');
         card.style.cssText = 'background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 24px 64px rgba(0,0,0,.4);';
         card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="fas fa-note-sticky ins-ic" style="font-size:18px;"></i><b style="font-size:16px;">Notițele firmei pentru RA Insight</b></div>' +
-          '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Motorina e 7,30 lei.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>';
+          '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">Regulile casei, pe care RA Insight le folosește la fiecare răspuns. De exemplu: „Camioanele nu pleacă în cursă duminica.”, „Grupa Distribuție = cele 8 dube.”, „La noi săptămâna de lucru e luni–sâmbătă.” Le văd toți cei cu RA Insight din firmă — nu scrie aici date personale.</div>';
         var ta = el('textarea'); ta.value = j.text || ''; ta.maxLength = j.max || 1500; ta.rows = 8;
         ta.style.cssText = 'width:100%;border-radius:10px;border:1px solid var(--border-light);background:var(--bg-dark);color:var(--text-primary);padding:10px 12px;font:inherit;font-size:13.5px;line-height:1.5;resize:vertical;';
         if (!j.poateScrie) { ta.readOnly = true; }
@@ -13038,7 +13039,7 @@ const pozitii = await r.json();</code></pre>
           dr.appendChild(sg);
         }
         var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
-        bQ.title = 'Întreabă RA Insight despre luna asta (se numără din fondul de întrebări)';
+        bQ.title = 'Întreabă RA Insight despre luna asta (o întrebare din pachet)';
         bQ.onclick = function () { window.insightSdIntreaba(j); };
         dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
         if (j.pregatire) {
@@ -13217,7 +13218,7 @@ const pozitii = await r.json();</code></pre>
         var h2 = el('h2'); h2.innerHTML = '<i class="fas fa-screwdriver-wrench"></i> '; h2.appendChild(document.createTextNode('Mentenanță & acte')); cap.appendChild(h2);
         var dr = el('div', 'sdp-dr');
         var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
-        bQ.title = 'Întreabă RA Insight despre acte și revizii (se numără din fondul de întrebări)';
+        bQ.title = 'Întreabă RA Insight despre acte și revizii (o întrebare din pachet)';
         bQ.onclick = function () { window.insightIntreabaDespre('Despre acte și revizii: '); };
         dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
         var z = j.rezumat || {}, rd = j.randuri || [];
@@ -13291,7 +13292,7 @@ const pozitii = await r.json();</code></pre>
           dr.appendChild(sg);
         }
         var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
-        bQ.title = 'Întreabă RA Insight despre combustibil (se numără din fondul de întrebări)';
+        bQ.title = 'Întreabă RA Insight despre combustibil (o întrebare din pachet)';
         bQ.onclick = function () { window.insightIntreabaDespre('Despre combustibil, ' + (j.eticheta || '') + ': '); };
         dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
         if (j.pregatire) {
@@ -13420,7 +13421,7 @@ const pozitii = await r.json();</code></pre>
           dr.appendChild(sg);
         }
         var bQ = el('button', 'insp-btn'); bQ.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i><span class="et"> Întreabă RA Insight</span>';
-        bQ.title = 'Întreabă RA Insight despre orele de condus (se numără din fondul de întrebări)';
+        bQ.title = 'Întreabă RA Insight despre orele de condus (o întrebare din pachet)';
         bQ.onclick = function () { window.insightIntreabaDespre('Despre orele de condus, ' + (j.eticheta || '') + ': '); };
         dr.appendChild(bQ); cap.appendChild(dr); pag.appendChild(cap);
         if (j.pregatire) {
@@ -21012,7 +21013,7 @@ const pozitii = await r.json();</code></pre>
       rez.innerHTML =
         '<div style="background:var(--bg-dark);border:1px solid var(--accent);border-radius:12px;padding:12px;">' +
         _docScanVehBanner() +
-        '<div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fas fa-clipboard-check" style="color:var(--accent);"></i> Am citit din act (' + (r.sursa === 'pdf-text' ? 'text din PDF, gratuit' : 'citire AI') + ') — debifează ce nu vrei:</div>' +
+        '<div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fas fa-clipboard-check" style="color:var(--accent);"></i> Am citit din act — debifează ce nu vrei:</div>' +
         randuri.map((x, i) =>
           '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:12.5px;cursor:pointer;">' +
           // Se bifează TOT ce s-a citit, cu o singură excepție: câmpurile pe care le-ai completat

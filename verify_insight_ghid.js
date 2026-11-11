@@ -125,5 +125,39 @@ T('unealta lui RA Insight caută în ACELAȘI ghid', /const gasite = insightGhid
 T('ecranul ghidului citește ruta (nu are o copie a textelor)', /\/api\/insight\/ghid/.test(PAG) && PAG.indexOf('Un șofer nou și mașina lui') < 0);
 T('fiecare capitol are titlu, loc, cel puțin doi pași și cuvinte de căutare', SECT.every((s) => s.titlu && s.unde && s.pasi.length >= 2) && G.SECTIUNI.every((s) => (s.cuvinte || []).length >= 3));
 
+// ─── 5. Cuvintele noastre nu ajung la client ───────────────────────────────────────────────────────
+// Alin, 11.11: „să nu fi scăpat ceva cu tokeni, fără tokeni, gratuit, nu consumă… ghidul să nu ne facă pe noi fondatorii de râs".
+// Ce se scade din pachet se spune O dată, pe față, în capitolul RA Insight; în rest: „inclus în pachet", nu „nu se numără".
+console.log('\n5. Fără cuvintele noastre („gratuit", „tokeni", „fondul", „nu se numără"…) în ce vede clientul');
+const INTERZISE = [/gratuit/i, /gratis/i, /token/i, /nu se num[aă]r/i, /nu se scad/i, /\bfond(ul|ului)?\b/i, /f[aă]r[aă] AI\b/i, /se consume|nu consum/i,
+  /\badminul\b/i, /\bmov\b/i, /Haiku|Sonnet|Anthropic|model de limbaj/i, /\bcache\b/i, /pe reguli/i];
+const vazute = [];
+SECT.forEach((s) => {
+  [s.titlu, s.unde].concat(s.pasi).concat([s.detalii || '']).forEach((t) => {
+    INTERZISE.forEach((re) => { const m = String(t).match(re); if (m) vazute.push(s.cheie + ': „' + m[0] + '"'); });
+  });
+});
+T('ghidul (titluri, drumuri, pași, amănunte) nu are niciunul dintre cuvintele noastre', vazute.length === 0, vazute.join(' | '));
+const REGULA_PACHET = 'Din pachet se scad doar răspunsurile ANALIZĂ; restul e inclus.';
+const cuRegula = SECT.filter((s) => [s.unde].concat(s.pasi).concat([s.detalii || '']).join(' ').indexOf(REGULA_PACHET) >= 0).map((s) => s.cheie);
+T('ce se scade din pachet se spune o singură dată, în capitolul RA Insight', cuRegula.length === 1 && cuRegula[0] === 'ra_insight', cuRegula.join(','));
+T('eticheta ANALIZĂ nu mai e numită „mov" (din 05.11 e în negrul siglei)', SECT.every((s) => !/mov/i.test(s.detalii || '')));
+T('capătul lunii: RA Insight răspunde pe loc până pe 1 (nu „se oprește")', /până pe 1 RA Insight răspunde doar pe loc/.test(G.SECTIUNI.find((s) => s.cheie === 'ra_insight').detalii) && SECT.every((s) => !/se oprește până pe 1/.test(s.detalii || '')));
+T('fișa: de la pachetul Basic (pe Start RA Insight nu-și face fișă)', /^De la pachetul Basic/.test(G.SECTIUNI.find((s) => s.cheie === 'fisa_insight').pasi[0]));
+// Aceleași cuvinte, scoase și de pe ecranele din jurul lui RA Insight, din telefon și de pe hârtiile ofertei / contractului (11.11).
+const SCOASE = [
+  // (pe ecranele noastre — RA Insight · control — „fondul” rămâne: acolo e vorba între noi)
+  ['public/index.html', ['text din PDF, gratuit', "'citire AI'", '(se numără din fondul de întrebări)', 'Fondul lunii s-a terminat: oprit până pe', '„Motorina e 7,30 lei.”']],
+  ['mobile/src/components/ActeVehicul.tsx', ['text din PDF, gratuit', "'citire AI'"]],
+  ['mobile/src/lib/insight.ts', ['Fondul lunii s-a terminat: oprit până pe']],
+  ['mobile/src/screens/Insight.tsx', ['„Motorina e 7,30 lei.”']],
+  ['server.js', ['Întrebările rapide rămân gratuite', 'Fondul de întrebări al lunii', 'Nu am putut verifica fondul de întrebări']],
+  ['report_export.js', ['Când fondul de întrebări']],
+  ['contract_pdf.js', ['într-un fond comun', 'la epuizarea fondului']],
+];
+const ramase = [];
+SCOASE.forEach(([f, texte]) => { const c = fs.readFileSync(path.join(__dirname, f), 'utf8'); texte.forEach((t) => { if (c.indexOf(t) >= 0) ramase.push(f + ': „' + t + '"'); }); });
+T('ecranele, telefonul și hârtiile nu mai spun „gratuit" / „fondul de întrebări" / exemplul cu motorina', ramase.length === 0, ramase.join(' | '));
+
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

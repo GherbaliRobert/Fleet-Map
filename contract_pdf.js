@@ -403,8 +403,8 @@ function scrieContract(doc, date) {
       (areServicii ? ' (numărul din Anexa nr. 1 e cel de la semnare). ' : '. ') +
       // 0 = NELIMITAT, exact ca pe firmă. Înainte un 0 se scria „50 de întrebări".
       (nIntrebari > 0
-        ? 'Fiecare cont aduce ' + C.numar(nIntrebari, 'întrebare', 'întrebări') + ' pe lună, într-un fond comun al Beneficiarului; ' +
-          'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.'
+        ? 'Fiecare cont aduce ' + C.numar(nIntrebari, 'întrebare', 'întrebări') + ' pe lună, la comun pentru toți utilizatorii Beneficiarului; ' +
+          'după ce se termină, până la reînnoirea lunară RA Insight răspunde doar pe loc, fără costuri suplimentare.'
         : 'Numărul de întrebări nu este limitat.'));
   }
   // Pachetul RA Insight (14.10, pasul 5): pachetul ales, prețurile celorlalte și clauza de trecere din aplicație.

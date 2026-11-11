@@ -66,7 +66,7 @@ export function randFond(q: any, pachet: any, contor: string): { text: string; d
   const peCont = Number(q.questionsPerSeat) || 0;
   const inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + nrI(peCont) + ' pe lună.' : '';
   const opr = !!(q.blocked || q.remaining <= 0);
-  return { text: opr ? 'Fondul lunii s-a terminat: oprit până pe ' + reset + ', fără niciun cost în plus.' : 'Întrebări · ' + q.remaining + ' din ' + nrI(q.questions), detaliu: inPlus, avert: opr };
+  return { text: opr ? 'Întrebările lunii s-au terminat: până pe ' + reset + ' doar răspunsuri pe loc, fără niciun cost în plus.' : 'Întrebări · ' + q.remaining + ' din ' + nrI(q.questions), detaliu: inPlus, avert: opr };
 }
 export function stareDinQuota(q: any, fondator: boolean) {
   const bun = !!(q && !q.error);

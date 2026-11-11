@@ -573,8 +573,9 @@ T('câmpurile vechi se aruncă din baza de date la prima salvare',
 T('fondul epuizat = blocat', /blocked: used >= fond,/.test(server));
 T('și se explică, nu se dă doar o eroare', /async function _fondEpuizat\(req\)/.test(server));
 T('spune câte întrebări erau incluse', /Firma a folosit toate cele/.test(server));
-T('spune când se reînnoiește', /Se reînnoiește pe/.test(server));
-T('spune ce rămâne gratuit', /Întrebările rapide rămân gratuite/.test(server));
+T('spune când se reînnoiesc', /Se reînnoiesc pe/.test(server));
+// Fără „gratuit" și fără „fond" în ce vede clientul (Alin, 11.11): spune ce merge mai departe, nu ce „nu costă".
+T('spune ce merge mai departe: răspunsurile pe loc', /Până atunci răspund pe loc: unde e o mașină/.test(server) && !/Întrebările rapide rămân gratuite|Fondul de întrebări al lunii/.test(server));
 T('propune un CONT în plus', /Un cont în plus aduce încă/.test(server));
 T('și NU pomenește niciun preț',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
@@ -588,7 +589,7 @@ T('poarta fondului e chemată din toate căile de AI (RA Insight, cu toate ușil
   (server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length === 2 &&
   (server.match(/proba: \{ model: m \}/g) || []).length === 1,
   String((server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
-T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
+T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica câte întrebări mai are firma/.test(server));
 // Pe ecran, caseta nu spune „la epuizare se oprește" sec, ci ce poate face omul. Din 15.10 o scrie caseta din stânga a secțiunii
 // RA Insight (bula din colț nu mai are bara ei: duce în secțiune), deci se caută în blocul secțiunii.
 const sectIns = (html.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
@@ -601,8 +602,8 @@ T('și numai unde e adevărat (regula pe cont), fără „50" pus de rezervă',
   && !/(perSeat|peCont|questionsPerSeat\)?) \|\| 50/.test(fs.readFileSync('./mobile/src/lib/insight.ts', 'utf8')));
 // „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește
 // nimic — RA Insight se oprește. Citit de un client, „extra" suna a factură în plus.
-T('la fond epuizat, clientul vede „oprit", nu „extra"',
-  !/fa-circle-exclamation"><\/i> extra</.test(html) && /oprit până pe ' \+ reset/.test(sectIns));
+T('la întrebări terminate, clientul vede „până pe … doar răspunsuri pe loc", nu „extra" (și nici „fondul", Alin 11.11)',
+  !/fa-circle-exclamation"><\/i> extra</.test(html) && /Întrebările lunii s-au terminat: până pe ' \+ reset \+ ' doar răspunsuri pe loc/.test(sectIns) && !/Fondul lunii s-a terminat/.test(sectIns));
 T('și i se spune că NU plătește nimic în plus', /fără niciun cost în plus/.test(sectIns));
 T('oferta acceptată nu mai scrie niciun preț pe întrebare',
   /patch\.ai_quota = n > 0 \? \{ questionsPerSeat: n, seatPriceRON: seatPrice \} : null;/.test(server));

@@ -50,7 +50,7 @@ const SECTIUNI = [
       'Apasă „Deschide raportul" ca să-l vezi întreg, sau „Descarcă Excel".',
       'Continuă scurt, din butoanele de sub el: același raport pentru toată flota sau pentru perioada dinainte.'
     ],
-    detalii: 'Merge cu oricare dintre rapoartele la care ai acces în Rapoarte (afară de Hotspot și CAN detaliat, unde zona și semnalele se aleg în Rapoarte). Cererea clară se face fără AI: de la Basic nu se numără, pe Start se numără din cele 50 de răspunsuri. În Istoric stă 7 zile, cu eticheta „din RA Insight".',
+    detalii: 'Merge cu oricare dintre rapoartele la care ai acces în Rapoarte (afară de Hotspot și CAN detaliat, unde zona și semnalele se aleg în Rapoarte). Raportul cerut vine pe loc (INSTANT): de la Basic e inclus în pachet; pe Start intră în cele 50 de răspunsuri ale lunii. În Istoric stă 7 zile, cu eticheta „din RA Insight".',
     cuvinte: ['raport cerut', 'cere un raport', 'foaie de parcurs', 'fa-mi raportul', 'genereaza raportul', 'raport in istoric', 'ai raport']
   },
   {
@@ -128,7 +128,7 @@ const SECTIUNI = [
     cuvinte: ['zona', 'zone', 'hotspot', 'geofence', 'cerc', 'poligon']
   },
   {
-    cheie: 'utilizatori', titlu: 'Un coleg nou în aplicație', unde: 'Setări → Utilizatori (adminul firmei)',
+    cheie: 'utilizatori', titlu: 'Un coleg nou în aplicație', unde: 'Setări → Utilizatori (administratorul firmei)',
     pasi: [
       'La „Adaugă utilizator" scrie emailul, numele, telefonul și alege rolul (Admin companie, Manager, Dispecer, Viewer) → „Adaugă utilizator".',
       'Omul primește pe email un link și își pune singur parola. Dacă emailul n-a plecat, aplicația îți arată linkul ca să i-l trimiți tu.',
@@ -141,18 +141,18 @@ const SECTIUNI = [
   {
     cheie: 'ra_insight', titlu: 'RA Insight: cine îl are și cum se folosește', unde: 'Meniu → RA Insight (sau bula rotundă din colț, care te duce acolo)',
     pasi: [
-      'La o conversație nouă, sub salut, „Azi la tine" arată cel mult trei lucruri găsite azi de agenți (mașini fără semnal, scăderi de combustibil, acte care expiră, ziua de ieri); apeși rândul și te duce unde trebuie. Nu se numără.',
-      'Adminul firmei îl dă colegilor dintr-un singur loc: RA Insight → butonul cu trei puncte → „Pachet și conturi" (sau Setări → Utilizatori → „Schimbă în Pachet și conturi"); pornește comutatorul de pe rândul omului. Prețul pachetului rămâne același, oricâte conturi dă, până la numărul pachetului.',
+      'La o conversație nouă, sub salut, „Azi la tine" arată cel mult trei lucruri găsite azi de agenți (mașini fără semnal, scăderi de combustibil, acte care expiră, ziua de ieri); apeși rândul și te duce unde trebuie.',
+      'Administratorul firmei îl dă colegilor dintr-un singur loc: RA Insight → butonul cu trei puncte → „Pachet și conturi" (sau Setări → Utilizatori → „Schimbă în Pachet și conturi"); pornește comutatorul de pe rândul omului. Prețul pachetului nu se schimbă oricâte conturi dă, în limita pachetului: Start doar administratorul, Basic 2 conturi, Pro 5, Business oricâte.',
       'Pe Pro și Business, tot acolo alege pentru fiecare om „Fără limită" sau „Cel mult…" întrebări pe lună.',
       'În meniul „RA Insight" scrie întrebarea în casetă; spune mașina după număr, nume sau șofer — sau apasă „+" și alege „Mașina", „Perioada" ori „Raport".',
       'Continuă discuția: scrie („și săptămâna dinainte?") sau apasă una dintre întrebările gata scrise de sub răspuns; „Conversație nouă" o ia de la capăt.',
       'Conversațiile rămân în stânga, cu „Caută în conversații"; le vezi doar tu, 12 luni. Pe telefon, stânga se deschide din butonul cu trei linii.',
-      'Butonul cu trei puncte, sus în dreapta, are „Pachet și conturi" (adminul firmei), „Notițele firmei", „Setările agenților", „Ghidul aplicației" și redenumirea conversației.'
+      'Butonul cu trei puncte, sus în dreapta, are „Pachet și conturi" (administratorul firmei), „Notițele firmei", „Setările agenților", „Ghidul aplicației" și redenumirea conversației.'
     ],
-    detalii: 'Jos în stânga (și lângă casetă) vezi câte întrebări mai are firma luna asta; când se termină, RA Insight se oprește până pe 1, fără niciun cost în plus. ' +
-      'Deasupra fiecărui răspuns scrie cine a răspuns: lângă numele RA Insight, o etichetă mov ANALIZĂ (analiza lui RA Insight; s-a numărat o întrebare) sau verde INSTANT (răspuns dat de aplicație din rapoarte sau din datele de acum). Răspunsurile rapide („unde e…", „câți km azi") sunt și ele instant. ' +
+    detalii: 'Jos în stânga (și lângă casetă) vezi câte întrebări mai are firma luna asta. Când se termină, până pe 1 RA Insight răspunde doar pe loc (unde e o mașină, km, staționări, rapoarte), fără niciun cost în plus. ' +
+      'Deasupra fiecărui răspuns scrie cine a răspuns: lângă numele RA Insight, eticheta ANALIZĂ (RA Insight a analizat datele; scrie „1 întrebare") sau eticheta verde INSTANT (răspuns dat pe loc de aplicație, din rapoarte sau din datele de acum). Din pachet se scad doar răspunsurile ANALIZĂ; restul e inclus. Răspunsurile rapide („unde e…", „câți km azi") sunt și ele instant. ' +
       'Când aplicația găsește o problemă în date (o viteză mare, un consum care nu se poate măsura, o eroare de GPS, o fișă necompletată), o arată într-un chenar sub răspuns, cu butonul spre locul exact (harta la minutul acela, fișa mașinii, raportul). ' +
-      'Când treci cu mouse-ul peste un răspuns: îl copiezi, îl notezi (👍 / 👎) și vezi din ce rapoarte vin cifrele. „Notițele firmei" (din butonul cu trei puncte) = regulile casei, scrise de admin.',
+      'Când treci cu mouse-ul peste un răspuns: îl copiezi, îl notezi (👍 / 👎) și vezi din ce rapoarte vin cifrele. „Notițele firmei" (din butonul cu trei puncte) = ce trebuie să știe RA Insight despre toată firma (de pildă „La noi săptămâna de lucru e luni–sâmbătă"), scrise de administrator.',
     cuvinte: ['ra insight', 'asistent', 'intrebari', 'fond', 'cont', 'conversatie', 'notitele firmei', 'instant', 'insigna']
   },
   {
@@ -163,7 +163,7 @@ const SECTIUNI = [
       'Numărul de lângă „Domenii" (și de lângă fiecare domeniu) = câte lucruri cer atenție acolo (de exemplu actele trecute de termen).',
       '„Întreabă RA Insight" deschide o discuție despre ce vezi; „Cum se socotește" spune de unde vine fiecare cifră.'
     ],
-    detalii: 'Domeniile nu se scad din fondul de întrebări: cifrele le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte. Ce cere atenție azi apare și în „Azi la tine", sub salut, de câte ori deschizi RA Insight.',
+    detalii: 'Cifrele din domenii le socotește aplicația, din aceleași rapoarte ca ecranul Rapoarte, și sunt incluse în pachet; doar „Întreabă RA Insight" pornește o analiză. Ce cere atenție azi apare și în „Azi la tine", sub salut, de câte ori deschizi RA Insight.',
     cuvinte: ['ramura', 'ramuri', 'domenii', 'domeniile', 'pagini', 'ra drive', 'safe drive', 'ore de condus', 'mentenanta si acte', 'cat a costat condusul']
   },
   {
@@ -189,8 +189,8 @@ const SECTIUNI = [
       'După „Da", „Anulează" ține 10 minute; apoi schimbi din fișa mașinii, ca de obicei.',
       'Toată flota deodată: Domenii → „Șoferi pe mașini"; bifezi ce vrei și apeși „Aplică cele bifate".'
     ],
-    detalii: 'Se face exact ca din Management → Vehicule → fișa mașinii → Șofer, cu aceleași drepturi: cine nu poate schimba vehiculele vede propunerea, dar butonul „Da" e oprit. În jurnal scrie „prin RA Insight". ' +
-      'Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic. Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișele șoferilor.',
+    detalii: 'Se face exact ca din Management → Vehicule → fișa mașinii → Șofer, cu aceleași drepturi: cine nu poate schimba vehiculele vede propunerea, dar butonul „Da" e oprit. ' +
+      'Propunerile și „Da"-ul sunt incluse în pachet, de la Basic. Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișele șoferilor.',
     cuvinte: ['soferi pe masini', 'potrivirea soferilor', 'potrivire', 'trece soferul', 'pune-l pe', 'pune soferul', 'alt sofer', 'permis nepotrivit', 'permis expirat', 'fara sofer', 'propunere', 'anuleaza', 'da-ul']
   },
   {
@@ -204,7 +204,7 @@ const SECTIUNI = [
       'După „Da", „Anulează" ține 10 minute; apoi alerta se oprește din Management → Alerte, iar discuția se scoate din RA Drive.'
     ],
     detalii: 'Alerta se pune ca din Management → Alerte → „Adaugă regulă" și ajunge la cei care primesc azi alertele firmei; ca toate alertele de viteză, sună cu 10 km/h peste prag. Din discuție se pun doar alerte de viteză; celelalte feluri (zone, combustibil, ralanti) se pun din Alerte. ' +
-      'Cine nu poate schimba alertele vede propunerea, dar „Da" e oprit; la discuție, la fel, pentru cine nu poate modifica flota. Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic.',
+      'Cine nu poate schimba alertele vede propunerea, dar „Da" e oprit; la discuție, la fel, pentru cine nu poate modifica flota. Propunerile și „Da"-ul sunt incluse în pachet, de la Basic.',
     cuvinte: ['anunta-ma', 'alerta din discutie', 'alerta de viteza cu ra insight', 'pune alerta', 'am vorbit cu', 'noteaza discutia', 'am discutat cu', 'noteaza ca am vorbit']
   },
   {
@@ -217,7 +217,7 @@ const SECTIUNI = [
       'Apasă „Da, programează" (la act, „Da, trec actul"), „Schimbă" ca să potrivești ce e pe cartonaș, sau „Nu". După „Da", „Anulează" ține 10 minute.'
     ],
     detalii: 'Se fac exact ca din Management → Mentenanță, Management → Documente și Rapoarte → Programări, cu drepturile acelor ecrane: cine nu le poate schimba vede propunerea, dar „Da" e oprit. ' +
-      'Rapoartele săptămânale pleacă lunea, cele lunare pe 1 ale lunii. Propunerile și „Da"-ul nu se numără ca întrebări; merg de la pachetul Basic.',
+      'Rapoartele săptămânale pleacă lunea, cele lunare pe 1 ale lunii. Propunerile și „Da"-ul sunt incluse în pachet, de la Basic.',
     cuvinte: ['programeaza revizia', 'revizie din discutie', 'programeaza un act', 'trece itp', 'trece rca', 'raport programat', 'trimite-mi in fiecare', 'programeaza raportul', 'schimb de ulei']
   },
   {
@@ -227,17 +227,17 @@ const SECTIUNI = [
       'În casetă, lângă „+", apasă „Sursă externă": se face albastru și arată câte întrebări cu sursă externă mai are firma luna asta.',
       'Scrie întrebarea, de pildă ce consum normal are un anumit model de mașină, cât costă rovinieta pentru un camion sau ce spune o lege. RA Insight se uită întâi în aplicație și caută pe internet doar ce nu e acolo.',
       'Răspunsul spune întâi ce arată aplicația, apoi ce s-a găsit pe internet, cu site-ul lângă fiecare cifră. Dedesubt stau „Surse de pe internet", cu linkul lor, și ce s-a căutat.',
-      'O discuție nouă pornește cu butonul oprit, ca să nu se consume din greșeală.'
+      'O discuție nouă pornește cu butonul oprit: căutarea pe internet pornește doar când vrei tu.'
     ],
     detalii: 'Căutarea pleacă fără datele firmei: aplicația oprește orice căutare cu un număr de înmatriculare, numele unui om, o adresă, un telefon sau un email, iar RA Insight nu caută persoane. ' +
-      'Basic are 10 întrebări cu sursă externă pe lună, Pro 30, Business 50; se numără doar când s-a căutat chiar și se reîncarcă pe 1. Administratorul firmei o poate opri pentru toți, din RA Insight → „Pachet și conturi".',
+      'Basic are 10 întrebări cu sursă externă pe lună, Pro 30, Business 50; se numără doar întrebările la care s-a căutat chiar pe internet și se reîncarcă pe 1. Administratorul firmei o poate opri pentru toți, din RA Insight → „Pachet și conturi".',
     cuvinte: ['sursa externa', 'internet', 'pe internet', 'cauta pe internet', 'caute pe internet', 'de pe internet', 'cautare pe internet', 'pe net', 'google', 'surse']
   },
   {
     // Fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js): ce ține minte, cum o vezi, cum îl faci să uite.
     cheie: 'fisa_insight', titlu: 'Ce ține minte RA Insight despre tine', unde: 'Meniu → RA Insight; ștergerea: Setări → Preferințe',
     pasi: [
-      'RA Insight își face singur, peste noapte, o fișă scurtă din discuțiile tale: ce mașini te interesează, cum le numești („Loganul"), cum îți place răspunsul. N-ai nimic de apăsat.',
+      'De la pachetul Basic, RA Insight își face singur, peste noapte, o fișă scurtă din discuțiile tale: ce mașini te interesează, cum le numești („Loganul"), cum îți place răspunsul. N-ai nimic de apăsat.',
       'Ca s-o vezi, scrie-i în RA Insight „ce știi despre mine?".',
       'Ca să uite ceva anume, scrie-i „uită că …" (de pildă „uită că Loganul e B 204 UIP"): scoate doar ce se potrivește.',
       'Ca să uite tot, intră în Setări → Preferințe și apasă „Șterge tot ce știe despre mine", apoi confirmă. Discuțiile rămân.'
@@ -275,7 +275,7 @@ const SECTIUNI = [
     cuvinte: ['program de lucru', 'programul de lucru', 'ore de lucru', 'in afara programului', 'weekend', 'noaptea']
   },
   {
-    cheie: 'facturi', titlu: 'Facturile firmei', unde: 'Setări → Facturile mele (adminul firmei)',
+    cheie: 'facturi', titlu: 'Facturile firmei', unde: 'Setări → Facturile mele (administratorul firmei)',
     pasi: [
       'Vezi lista facturilor și proformelor, cu scadența și starea.',
       'Apasă „Vezi" sau „Descarcă (PDF)" pe rând.'
@@ -288,9 +288,9 @@ const SECTIUNI = [
     pasi: [
       'Cu cont RA Insight, ce au găsit agenții azi vezi în RA Insight, la „Azi la tine"; pagina lor se deschide din butonul cu trei puncte, „Setările agenților".',
       'Apasă un agent → „Deschide agentul" ca să vezi ce a găsit.',
-      '„Rulează" verifică acum; „Praguri" schimbă limitele (adminul firmei).'
+      '„Rulează" verifică acum; „Praguri" schimbă limitele (administratorul firmei).'
     ],
-    detalii: 'RA Watch (paznic: fără semnal, furt de combustibil, ralanti), RA Dispatch (mașini libere), RA Care (acte, revizii), RA Optimize (stilul de condus), RA Compliance (ore de condus), RA Client (sinteza zilei). Lucrează singuri, gratuit; îi pornește echipa RA Track.',
+    detalii: 'RA Watch (paznic: fără semnal, furt de combustibil, ralanti), RA Dispatch (mașini libere), RA Care (acte, revizii), RA Optimize (stilul de condus), RA Compliance (ore de condus), RA Client (sinteza zilei). Lucrează singuri și sunt incluși în abonament; îi pornește echipa RA Track.',
     cuvinte: ['agenti', 'agent', 'ra watch', 'ra care', 'ra optimize', 'ra compliance', 'ra dispatch', 'ra client', 'praguri']
   },
   {
@@ -315,7 +315,7 @@ const SECTIUNI = [
     cheie: 'preferinte', titlu: 'Tema, harta de pornire, sunetele', unde: 'Setări → Preferințe (și iconița lună/soare din bară)',
     pasi: [
       'Iconița lună/soare din bară schimbă tema; alegerea rămâne pe contul tău.',
-      'În Preferințe alegi: tema, harta cu care pornești, ecranul de pornire, sunetul alertelor și cât stau pe ecran.'
+      'În Preferințe alegi: tema, harta cu care pornești, ecranul de pornire, sunetul alertelor și cât stau pe ecran. Cu cont RA Insight (de la pachetul Basic), tot acolo ștergi ce știe RA Insight despre tine.'
     ],
     detalii: 'Tot acolo îți schimbi parola (minimum 10 caractere, litere și cifre).',
     cuvinte: ['tema', 'intunecat', 'deschis', 'preferinte', 'sunet', 'parola mea', 'harta implicita']
