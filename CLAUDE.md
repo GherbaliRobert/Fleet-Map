@@ -422,6 +422,11 @@ Confidențialitate.
 - **Contactul public = emailul și formularul, fără telefon** (Robert, 02.11: „fără date publice"). Formularul (`/api/public/demo-request` → `notifyDemoRequest`) trimite MEREU la `DEMO_REQUEST_EMAIL`, altfel `_adresaSuport()` (noreply@ devine contact@), cu „Răspuns la" = cel care a scris; cererea rămâne în „Cereri demo" și dacă emailul nu pleacă. Telefonul din formular e al vizitatorului. NU pune telefon sau WhatsApp pe pagini: `verify_formular_site.js` pică.
 - **Fiecare pagină publică:** titlu (≤ 70), descriere, adresă canonică, UN `<h1>`, Nunito, iconiță și bannerul de
   cookie-uri (`/js/consent.js`).
+- **Numele furnizorilor stă DOAR în Confidențialitate (Alin, 11.11: „nu am văzut nicăieri să scrie cineva ce agent e folosit… e treaba
+  noastră internă").** Paginile de prezentare spun „furnizorul nostru de inteligență artificială", nu „Claude / Anthropic"; Confidențialitatea
+  îl numește (legea cere să spunem cui dăm datele). Paginile legale fără cuvintele englezești ale șablonului (procesator, DPA, SCC, bcrypt,
+  multi-tenant, CDN / DNS / proxy, credențiale, retenție, „scopat", tracking) — Alin: „vezi pe unde mai sunt greșeli de genul acesta". Păzit de
+  `verify_site_public.js` (3e).
 - **Întrebările din datele pentru Google (FAQPage) sunt IDENTICE cu cele de pe pagină**, cuvânt cu cuvânt, în aceeași
   ordine, pe toate paginile (pe întrebările frecvente erau 10 din 11, rezumate, până pe 03.10). Schimbi o întrebare
   pe pagină → o schimbi și în bloc.

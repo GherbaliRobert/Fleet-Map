@@ -335,6 +335,25 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   check(/href="\/pachete-ra-insight"/.test(html), '/: lipsește legătura spre comparația pachetelor (/pachete-ra-insight)');
 }
 
+// ── 3e. Numele furnizorilor și cuvintele de șablon (11.11, Alin) ─────────────────────────────────────────────────────
+// „Nu am văzut nicăieri să scrie cineva ce agent e folosit… e treaba noastră internă": numele furnizorului de AI stă DOAR în
+// Confidențialitate (acolo legea cere să spunem cui dăm datele). Și „pe unde mai sunt greșeli de genul acesta" („scopat"): pe paginile
+// legale nu rămân cuvintele englezești ale șablonului (procesator, DPA, SCC, bcrypt, multi-tenant, CDN / DNS / proxy, credențiale, retenție).
+{
+  for (const p of PAGINI) {
+    if (p.cale === '/confidentialitate') continue;
+    const v = faraMarcaj(HTML[p.cale] || '');
+    check(!/Anthropic|Claude|model de limbaj/i.test(v), p.cale + ': numele furnizorului de AI e treaba noastră internă — stă doar în Confidențialitate');
+  }
+  const SABLON = /scopat|\bprocesator|subprocesator|\(DPA\)|\(SCC\)|bcrypt|multi-tenant|credențial|retenți|\btracking\b|\bCDN\b|\bDNS\b|\bproxy\b|Real-time/i;
+  for (const p of PAGINI) {
+    const v = faraMarcaj(HTML[p.cale] || '');
+    const m = v.match(SABLON);
+    check(!m, p.cale + ': cuvânt de șablon / din engleză pe pagină: „' + (m ? m[0] : '') + '"');
+  }
+  check(/Anthropic/.test(faraMarcaj(HTML['/confidentialitate'] || '')), '/confidentialitate: trebuie să spună cui trimitem datele pentru AI (Anthropic) — legea o cere');
+}
+
 // ── 4. Pe serverul pornit ───────────────────────────────────────────────────────────────────────────
 (async () => {
   if (!BASE) {

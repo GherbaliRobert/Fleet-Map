@@ -518,7 +518,7 @@ export function AdminUsers() {
               <select class="fm-in" value={ordine} onChange={(e) => setOrdine((e.target as HTMLSelectElement).value as any)} aria-label="Ordinea în listă">
                 <option value="nume">Ordine: nume</option>
                 <option value="rol">Ordine: rol</option>
-                <option value="logare">Ordine: ultima logare</option>
+                <option value="logare">Ordine: ultima intrare în cont</option>
               </select>
             </div>
             <div class="fm-chips">

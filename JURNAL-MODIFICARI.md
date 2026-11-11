@@ -38,7 +38,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   fără datele firmei) și felul în care arătăm sursele sub răspuns — Anthropic cere ca sursele să fie arătate, iar când textul e scris
   de RA Insight din ele, „cum sfătuiește juristul".
   **Din 11.11, și fișa lui RA Insight:** paragraful nou din Confidențialitate („Ce ține minte RA Insight”: fișa scurtă făcută din discuțiile
-  fiecărui om, cine o vede, ce nu intră în ea, cât se păstrează — cât timp omul are cont — și cum se șterge).
+  fiecărui om, cine o vede, ce nu intră în ea, cât se păstrează — cât timp omul are cont — și cum se șterge). **Tot din 11.11:** numele
+  furnizorului de AI (Anthropic) a rămas doar în Confidențialitate (Alin: „e treaba noastră internă") — ajunge acolo felul firmei („un furnizor
+  de inteligență artificială din SUA") sau trebuie numele?
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -590,6 +592,33 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-11
+
+### CLIENT · Site: numele furnizorului de AI scos de pe paginile de prezentare; paginile legale și câteva ecrane, fără cuvinte englezești
+*Alin, 11.11, despre „Claude, de la Anthropic" de pe site: „ESTE NECESAR? … e treaba noastră internă"; despre „scopat" din
+Confidențialitate: „păi vezi pe unde mai sunt greșeli de genul acesta".*
+
+**Ce am schimbat:**
+- **Agenți AI și Pachete RA Insight:** fără „un model de limbaj (Claude, de la Anthropic)"; la „Ce date vede RA Insight?" scrie acum
+  „furnizorului nostru de inteligență artificială" (și în datele pentru Google, cuvânt cu cuvânt). Numele rămâne DOAR în Confidențialitate:
+  acolo legea cere să spunem cui dăm datele și că pleacă în afara UE.
+- **Confidențialitate:** „procesator", „(DPA)", „tracking", „subprocesatori", „CDN / securitate / DNS … (proxy)", „rezumate/extrase",
+  „context minim necesar, scopat pe accesul utilizatorului", „bcrypt", „multi-tenant", „(SCC)", „&", „tratăm securitatea ca prioritate" —
+  spuse pe românește (de pildă „Trimitem doar datele de care e nevoie pentru răspuns, din ce are voie să vadă utilizatorul."). Golurile
+  dintre paranteze pătrate rămân la jurist.
+- **Termeni:** „credențialelor" → „datelor de autentificare", „(procesator)" și „(DPA)" scoase, „politicii de retenție" → „cum scrie în
+  Politica de confidențialitate", barele („suspenda/închide", „dispozitive/rețea", „șoferilor/vehiculelor") → „și" / „sau".
+- **Prima pagină:** eticheta „Real-time" → „În timp real".
+- **Aplicația (ce vede clientul):** fișa vehiculului — „Automat (din aparatul GPS)" și „aparatul GPS citește contactul din altă sursă" (în
+  locul „sursa de ignition setată greșit pe tracker"); Analize statistice — „Se încarcă…" (era „Se incarca dashboard..."); ciclul de transport
+  — „Verifică dacă tara (masa vehiculului gol) și sarcinile pe axe sunt completate…" (era fără diacritice; „tara" e masa proprie, nu
+  „țara"); fișa de pe hartă — „Alege un vehicul.", „Fără semnal", „Alege perioada.", „Alege o mașină."; Utilizatori — „Ordine: ultima
+  intrare în cont" (și pe telefon).
+- Probă: `verify_site_public.js` (3e: numele furnizorului de AI doar în Confidențialitate, care trebuie să-l spună; niciun cuvânt de șablon
+  pe paginile publice), amprentele și datele paginilor schimbate (prima pagină, Agenți AI, Pachete, Termeni, Confidențialitate).
+
+**Ce vede fondatorul:** nimic nou; ecranele noastre (Control costuri, RA Insight · control, Dashboard platformă) păstrează numele Anthropic.
+
+**Ce vede clientul:** paginile publice și ecranele de mai sus, fără nume de furnizori și fără cuvinte englezești de șablon.
 
 ### CLIENT · Ghidul și textele pentru client, fără „gratuit", „fondul de întrebări", „nu se numără"; pe Start, fără fișă
 *Alin, 11.11: „vezi să nu fi scăpat ceva cu tokeni, fără tokeni, gratuit, nu consumă, cuvinte din astea cheie pe care clienții noștri nu

@@ -411,7 +411,7 @@
               <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="raxOpenIoDetails()" title="Vezi semnificațiile codurilor IO Teltonika"><i class="fas fa-circle-info"></i> Ce înseamnă?</button>
             </div>
             <div id="detail-io-content">
-              <p style="color:var(--text-muted);font-size:12px;">Selecteaza un vehicul.</p>
+              <p style="color:var(--text-muted);font-size:12px;">Alege un vehicul.</p>
             </div>
           </div>
         </div>
@@ -693,10 +693,10 @@
               <div class="form-group"><label>Număr cartelă SIM</label><input type="text" id="edit-sim-number" placeholder="ex: 0757036943"></div>
               <div class="form-group" id="edit-ignition-group" style="display:none;"><label>Sursă contact (ignition) <span class="vf-doar">super-admin</span></label>
                 <select id="edit-ignition-source">
-                  <option value="auto">Automat (din tracker)</option>
+                  <option value="auto">Automat (din aparatul GPS)</option>
                   <option value="din1">DIN1 (intrare digitală 1)</option>
                 </select>
-                <div class="vf-hint">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (sursa de ignition setată greșit pe tracker).</div>
+                <div class="vf-hint">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (aparatul GPS citește contactul din altă sursă).</div>
               </div>
               <div class="form-group" id="edit-caniface-group" style="display:none;"><label>Interfață CAN <span class="vf-doar">super-admin</span></label>
                 <select id="edit-can-interface">
@@ -1037,7 +1037,7 @@
       <!-- Loading -->
       <div id="dash-loading" style="text-align:center;padding:40px;color:var(--text-muted);">
         <i class="fas fa-spinner fa-spin fa-2x"></i>
-        <div style="margin-top:12px;">Se incarca dashboard...</div>
+        <div style="margin-top:12px;">Se încarcă…</div>
       </div>
 
       <!-- KPI Cards -->
@@ -1191,7 +1191,7 @@
         <div id="transport-no-data" style="display:none;text-align:center;padding:30px;color:var(--text-muted);">
           <i class="fas fa-inbox fa-2x" style="margin-bottom:12px;"></i>
           <div>Niciun ciclu de transport detectat</div>
-          <div style="font-size:11px;margin-top:6px;">Verifica daca tara este setata si sarcinile pe axe sunt disponibile</div>
+          <div style="font-size:11px;margin-top:6px;">Verifică dacă tara (masa vehiculului gol) și sarcinile pe axe sunt completate în fișa vehiculului.</div>
         </div>
       </div>
     </div>
@@ -1786,7 +1786,7 @@
         <select id="users-sort" class="rax-field" onchange="_usrSort(this.value)" aria-label="Ordinea în listă">
           <option value="nume">Ordine: nume</option>
           <option value="rol">Ordine: rol</option>
-          <option value="logare">Ordine: ultima logare</option>
+          <option value="logare">Ordine: ultima intrare în cont</option>
         </select>
       </div>
       <div id="users-pastile" class="rau-pastile"></div>
@@ -18641,7 +18641,7 @@ const pozitii = await r.json();</code></pre>
         return '<i class="fas fa-link" style="margin-right:6px;opacity:.75;"></i>Conectat';
       }
       if (level === undefined || level === null) return '-';
-      const labels = ['Fara semnal', 'Foarte slab', 'Slab', 'Mediu', 'Bun', 'Excelent'];
+      const labels = ['Fără semnal', 'Foarte slab', 'Slab', 'Mediu', 'Bun', 'Excelent'];
       const bars = Math.min(level, 5);
       let html = '<span style="display:inline-flex;gap:2px;margin-right:6px;">';
       for (let i = 0; i < 5; i++) {
@@ -19353,7 +19353,7 @@ const pozitii = await r.json();</code></pre>
 
       const from = document.getElementById('detail-history-from').value;
       const to = document.getElementById('detail-history-to').value;
-      if (!from || !to) return alert('Selecteaza perioada');
+      if (!from || !to) return alert('Alege perioada.');
 
       dtSet('history-from', from);
       dtSet('history-to', to);
@@ -19361,12 +19361,12 @@ const pozitii = await r.json();</code></pre>
     }
 
     function exportCSVFromDetail() {
-      if (!detailPanelImei) return alert('Selecteaza un dispozitiv');
+      if (!detailPanelImei) return alert('Alege o mașină.');
       selectedImei = detailPanelImei;
 
       const from = document.getElementById('detail-history-from').value;
       const to = document.getElementById('detail-history-to').value;
-      if (!from || !to) return alert('Selecteaza perioada');
+      if (!from || !to) return alert('Alege perioada.');
 
       dtSet('history-from', from);
       dtSet('history-to', to);
