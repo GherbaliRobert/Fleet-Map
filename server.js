@@ -227,6 +227,7 @@ const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": paș
 const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
 const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
 const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
+const fisaInsight = require('./fisa_insight'); // fișa lui RA Insight despre fiecare om (11.11): scrisă noaptea, citită la fiecare întrebare
 const soldAi = require('./sold_ai');             // banii pentru AI, la zi (04.11): soldul Anthropic, anunțurile, alarma refuzului
 const prenumeMod = require('./prenume');         // prenumele din salut (05.11): „Tilvar Alin" → „Alin"; fără nume, din email
 const meniuNou = require('./meniu_nou');         // „NOU" din meniu (05.11): 15 zile de la publicare, apoi pleacă singur
@@ -1399,7 +1400,7 @@ const PAGINI_PUBLICE = [
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-05', amprenta: '108b5ea2c720', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-10-09', amprenta: '7fef90d3fdaf', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-10-28', amprenta: '520b27e09dd4', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: '19a8dd110323', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -4774,6 +4775,10 @@ function _insightInstructiuni(cuRapoarte) {
       'după șofer („mașina lui Ion") sau după grupă. În unelte scrie exact ce a spus omul — aplicația recunoaște mașina. Dacă unealta ' +
       'răspunde că se potrivesc mai multe mașini, întreabă-l scurt pe care o vrea și nu alege tu. Nu spune că o mașină „nu apare" ' +
       'înainte să fi încercat cu ce a scris omul (număr, nume sau șofer).',
+    'CORECTURILE: dacă omul îți spune că ai greșit („ți-am zis doar Loganul B 204"), recunoaște scurt și cere-ți scuze („Ai dreptate, scuze."), ' +
+      'apoi răspunde exact la ce a cerut, fără altă explicație. Ce ți-a spus atunci ține-l până la capătul discuției. Despre om ai și o FIȘĂ ' +
+      '(mai jos, dacă există), scrisă de tine din discuțiile trecute: folosește-o ca să-l înțelegi (ce mașină înseamnă un nume, cum vrea ' +
+      'răspunsul), niciodată ca sursă de cifre.',
     'DISCUȚIA: vezi mesajele de mai înainte. O întrebare scurtă care continuă discuția („și săptămâna dinainte?", „dar celălalt?", ' +
       'sau doar numele unei mașini) se leagă de ce s-a vorbit: aceeași mașină, aceeași perioadă, același subiect, dacă omul nu spune ' +
       'altceva. Dacă o întrebare de mai înainte a rămas fără răspuns (de pildă lipsea mașina), răspunde acum la ea — nu-l întreba din nou ce vrea. ' +
@@ -4818,7 +4823,7 @@ function _insightInstructiuni(cuRapoarte) {
   ].filter(Boolean).join('\n\n');
 }
 // Partea care se schimbă la fiecare întrebare: ora, ce mașini a pomenit omul, ce s-a discutat până acum.
-function _insightContext(fisa, gasite, ctx, peImei, notite) {
+function _insightContext(fisa, gasite, ctx, peImei, notite, fisaOm) {
   const z = new Date().toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const descrie = function (v) {
     const parti = [];
@@ -4838,6 +4843,9 @@ function _insightContext(fisa, gasite, ctx, peImei, notite) {
   if (disc.length) r.push('Din discuția de până acum — ' + disc.join('; ') + '.');
   // Regulile casei, scrise o dată de administratorul firmei („motorina e 7,30 lei", „la noi săptămâna e luni–sâmbătă").
   if (notite) r.push('Notițele firmei (scrise de administratorul ei — ține cont de ele ca de regulile casei):\n' + notite);
+  // Fișa omului (11.11): a lui, scrisă noaptea din discuțiile lui; aici, nu în partea fixă (e a fiecărui om și se schimbă zilnic).
+  const fo = fisaInsight.pentruModel(fisaOm);
+  if (fo) r.push(fo);
   return r.join('\n');
 }
 // „Am înțeles": ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
@@ -5237,8 +5245,8 @@ async function _cautaSursaExterna(req, cautare) {
 async function _raInsight(req, res, opts) {
   const o = opts || {};
   try {
-    const message = ((req.body && req.body.message) || '').toString().slice(0, 2000).trim();
-    if (!message) return res.status(400).json({ error: 'Mesaj gol' });
+    const mesajOm = ((req.body && req.body.message) || '').toString().slice(0, 2000).trim();   // ce a scris omul (așa se salvează)
+    if (!mesajOm) return res.status(400).json({ error: 'Mesaj gol' });
     const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
     const cuRapoarte = permReq(req, 'viewReports');
     const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
@@ -5264,18 +5272,47 @@ async function _raInsight(req, res, opts) {
     }
     const mesaje = conv ? await db.mesajeConversatie(conv.id, userId, INSIGHT_ISTORIC_MESAJE + 2) : [];
     let ctx = (conv && conv.context) || {};
-    const gasite = insight.gasesteInText(message, fisa);
+    // Fișa omului (11.11; fisa_insight.js): ce a învățat RA Insight despre el din discuțiile trecute. Cum numește el mașinile
+    // („Loganul" = B 204 UIP) intră în textul cu care lucrează aplicația, doar când textul nu numește deja limpede o mașină.
+    let fisaOm = null;
+    if (userId != null && !o.proba) { try { fisaOm = await db.getFisaAi(userId); } catch (e) { fisaOm = null; } }
+    const gasiteOm = insight.gasesteInText(mesajOm, fisa);
+    const cuNume = fisaInsight.aplicaNume(mesajOm, fisaOm, fisa, gasiteOm);
+    const message = cuNume.text;
+    const gasite = cuNume.schimbat ? insight.gasesteInText(message, fisa) : gasiteOm;
 
     // Salvează schimbul (întrebare + răspuns) și ce s-a discutat. Fără om (nu se întâmplă azi) nu se ține nimic.
     async function salveaza(reply, extra, ctxNou) {
       if (userId == null || o.proba) return { convId: null, mesajId: null };   // proba modelelor nu scrie în conversațiile nimănui
       try {
-        if (!conv) conv = await db.conversatieNoua(userId, req.companyId, insight.titluDin(message, gasite.masini), 'general');
-        await db.adaugaMesajAi(conv.id, 'user', message, null);
+        if (!conv) conv = await db.conversatieNoua(userId, req.companyId, insight.titluDin(mesajOm, gasite.masini), 'general');
+        await db.adaugaMesajAi(conv.id, 'user', mesajOm, null);
         const mesajId = await db.adaugaMesajAi(conv.id, 'assistant', reply, extra);
         await db.actualizeazaConversatie(conv.id, userId, { context: ctxNou || ctx });
         return { convId: conv.id, mesajId: mesajId };
       } catch (e) { console.warn('[RA Insight] conversația nu s-a salvat:', e.message); return { convId: conv ? conv.id : null, mesajId: null }; }
+    }
+
+    // Fișa, cerută în discuție (11.11): „ce știi despre mine?" o arată; „uită că …" scoate doar ce se potrivește; „uită tot" NU
+    // șterge nimic — ștergerea totală e doar în Setări → Preferințe (Alin: omul se poate referi doar la discuția de acum); „uită
+    // asta" îi spune cum șterge discuția. Pe reguli, pe loc, nu se numără.
+    const cf = (!o.proba && userId != null) ? fisaInsight.cerere(mesajOm) : null;
+    if (cf) {
+      let replyF;
+      if (cf.fel === 'ce_stii') replyF = fisaInsight.textCeStii(fisaOm);
+      else if (cf.fel === 'uita_tot') replyF = fisaInsight.TEXTE.uitaTot;
+      else if (cf.fel === 'uita_discutia') replyF = fisaInsight.TEXTE.discutia;
+      else {
+        const rez = fisaInsight.uita(fisaOm, cf.ce);
+        if (rez.scoase.length && !rez.prea) {
+          await db.schimbaFisaAi(userId, rez.fisa);
+          auditReq(req, 'ai_fisa_uita', 'user', userId, { scoase: rez.scoase.length });
+        }
+        replyF = fisaInsight.textUitat(rez);
+      }
+      const insF = pachete.insigna('instant', { fisa: true });
+      const svF = await salveaza(replyF, { source: 'fisa', insigna: insF }, ctx);
+      return res.json({ reply: replyF, source: 'fisa', conversatieId: svF.convId, mesajId: svF.mesajId, alege: [], urmari: [], sources: [], insigna: insF });
     }
 
     // 0) Un raport cerut în cuvinte („fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută"): pe reguli, întreg, în
@@ -5683,7 +5720,7 @@ async function _raInsight(req, res, opts) {
     try { if (req.companyId != null) notite = String((await db.getCompanySettings(req.companyId)).insight_notite || '').trim(); } catch (e) { /* fără notițe */ }
     const system = [
       { type: 'text', text: _insightInstructiuni(cuRapoarte), cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: _insightContext(fisa, gasite, ctx, peImei, notite) }
+      { type: 'text', text: _insightContext(fisa, gasite, ctx, peImei, notite, fisaOm) }
     ];
     if (gata) system.push({ type: 'text', text: 'RAPOARTE FĂCUTE ACUM: aplicația a făcut deja, pentru întrebarea asta, rapoartele de mai jos (omul le vede ca ' +
       'cartonașe deasupra răspunsului tău, cu cifrele de sus). Fă ce a cerut omul cu ele (comparația, explicația); nu rula din nou aceleași rapoarte ' +
@@ -6324,6 +6361,74 @@ async function stergeConversatiiVechi() {
 app.post('/api/admin/insight/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await stergeConversatiiVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ═══ Fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js) ═══
+// Noaptea (2–6, ora României), o dată pe zi: pentru fiecare om cu discuții noi (de după pragul fișei lui, până la începutul zilei de
+// azi) RA Insight își completează fișa — câteva rânduri + cum numește omul mașinile. Doar firmele cu AI (de la Basic), doar oamenii cu
+// cont RA Insight, fără demo și fără noi. Consumul = un rând 'fisa' (ne costă pe noi, nu e o întrebare a firmei). Fișa NU pleacă odată
+// cu conversațiile șterse la 12 luni (Alin, 11.11: „aș vrea să păstrăm cumva fișa"); pleacă cu contul sau din Setări → Preferințe.
+let _fiseNoapteZi = null;
+async function fiseInsightNoaptea(acum, fortat) {
+  const t = acum || Date.now(), zi = condus.zi(t), ora = condus.ora(t);
+  if (!fortat && (_fiseNoapteZi === zi || ora < 2 || ora >= 6)) return { sarit: true };
+  if (!ai.aiEnabled()) return { sarit: true, motiv: 'fara_cheie' };
+  _fiseNoapteZi = zi;
+  const pana = Date.parse(insight.perioada({ period: 'today' }, t).from);   // începutul zilei de azi, ora României (ms)
+  const oameni = await db.fiseDeScris(pana);
+  let scrise = 0;
+  for (const om of oameni) {
+    try { if (await _scrieFisa(om.user_id, om.company_id, pana)) scrise++; }
+    catch (e) { console.warn('[RA Insight] fișa omului ' + om.user_id + ' amânată:', e.message); }
+  }
+  if (scrise) console.log('[RA Insight] Fișe scrise peste noapte: ' + scrise + ' din ' + oameni.length);
+  return { oameni: oameni.length, scrise: scrise };
+}
+async function _scrieFisa(userId, companyId, pana) {
+  if (companyId == null || companyId === demoCompanyId) return false;
+  const u = await db.getUserById(userId);
+  if (!u || !u.ai_seat || u.active === false || u.role === 'superadmin') return false;
+  const co = await db.getCompanyById(companyId);
+  if (!_firmaAreAi(co)) return false;
+  const veche = await db.getFisaAi(userId);
+  const mesaje = await db.mesajePentruFisa(userId, pana, fisaInsight.MAX_MESAJE_NOAPTE);
+  if (!mesaje.length) return false;
+  const masini = (await db.getDevices(companyId)).filter(function (d) { return d.status !== 'archived' && !DEMO_SET.has(d.imei); })
+    .map(function (d) { return { nr: d.plate || '', nume: d.name || '' }; });
+  const raspuns = await ai.callClaude({
+    system: fisaInsight.instructiuni(), messages: [{ role: 'user', content: fisaInsight.cerereNoapte(veche, masini, mesaje) }],
+    maxTokens: 900, model: ai.AI_AGENT_MODEL,
+    onUsage: function (us, m) { db.recordAiUsage(companyId, 'fisa', us, userId, m).catch(function () {}); }
+  });
+  const j = fisaInsight.dinRaspuns(raspuns);
+  if (!j) return false;   // un răspuns necitibil: pragul rămâne, se reîncearcă noaptea următoare
+  await db.puneFisaAi(userId, companyId, fisaInsight.curata(j, masini.map(function (m) { return m.nr; })), pana);
+  return true;
+}
+// Setări → Preferințe (11.11): ce spune blocul „RA Insight · ce știe despre tine" și butonul care șterge tot (cu confirmare). Doar
+// fișa omului care întreabă; textele le dă serverul.
+app.get('/api/insight/fisa', requireAuth, async (req, res) => {
+  try {
+    const f = await db.getFisaAi(req.auth.userId);
+    res.json({ are: !fisaInsight.goala(f), randuri: f ? f.randuri.length : 0, nume: f ? f.nume.length : 0,
+      explicatie: fisaInsight.TEXTE.explicatie, confirmare: fisaInsight.TEXTE.confirmare });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/insight/fisa', requireAuth, async (req, res) => {
+  try {
+    const avea = await db.stergeFisaAi(req.auth.userId);
+    auditReq(req, 'ai_fisa_stearsa', 'user', req.auth.userId, { avea: avea });
+    res.json({ ok: true, sters: avea, mesaj: avea ? fisaInsight.TEXTE.sters : fisaInsight.TEXTE.nimicDeSters });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+if (process.env.SEED_TEST === '1') {
+  // Doar pentru probe: tura de noapte a fișelor, pornită de mână, cu ceasul dat; și fișa unui om, citită direct.
+  app.post('/api/test/fise-noaptea', requireAuth, requireSuperadmin, async (req, res) => {
+    try { res.json(await fiseInsightNoaptea(Number((req.body || {}).acum) || Date.now(), true)); } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.get('/api/test/fisa/:userId', requireAuth, requireSuperadmin, async (req, res) => {
+    try { res.json({ fisa: await db.getFisaAi(parseInt(req.params.userId) || 0) }); } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+}
 // Doar pentru probe (SEED_TEST=1): mută ultima scriere a unei conversații cu N luni în urmă, ca proba să
 // verifice ștergerea fără să aștepte un an.
 if (process.env.SEED_TEST === '1') {
@@ -22430,6 +22535,10 @@ async function start() {
   const runInsightPurge = () => stergeConversatiiVechi().catch(e => console.warn('[RA Insight] ștergere amânată:', e.message));
   setTimeout(runInsightPurge, 100 * 1000);
   setInterval(runInsightPurge, 24 * 60 * 60 * 1000);
+
+  // Fișa lui RA Insight despre fiecare om (11.11): o dată pe noapte, între 2 și 6. Verificată la jumătate de oră.
+  const runFise = () => fiseInsightNoaptea().catch(e => console.warn('[RA Insight] fișele de noapte amânate:', e.message));
+  setInterval(runFise, 30 * 60 * 1000);
 
   // Safe Drive: tura de noapte (ultimele 3 zile, o dată pe zi, între 2 și 6). Verificată la jumătate de oră.
   const runSafeDrive = () => safeDriveNoaptea().then(r => { if (r && r.gata) r.gata.then(() => console.log('[SAFE DRIVE] Noaptea: ' + r.masini + ' mașini, ' + r.de + '…' + r.pana)); })

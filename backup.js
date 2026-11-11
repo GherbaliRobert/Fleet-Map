@@ -72,6 +72,7 @@ const BACKUP_EXCLUDED = {
   liste_compat: 'listele Teltonika (ce aparat merge pe ce mașină): se reîncarcă din fișierele lor, iar copia de pornire stă în depozit (liste/teltonika.json.gz)',
   ai_conversatii: 'conversațiile cu RA Insight: sunt ale omului care le-a scris și se șterg la 12 luni — nu le ținem și în copii, unde ar trăi mai mult decât promitem',
   ai_mesaje: 'mesajele conversațiilor RA Insight: același motiv ca ai_conversatii',
+  ai_fise: 'fișa lui RA Insight despre fiecare om (11.11): e a omului și se reface din discuțiile lui — nu o ținem și în copii',
   asistent_conversatii: 'conversațiile fondatorilor cu asistentul lor: sunt ale fondatorului care le-a scris și se șterg la 12 luni, ca cele cu RA Insight — nu le ținem și în copii',
   asistent_mesaje: 'mesajele conversațiilor asistentului fondatorilor: același motiv ca asistent_conversatii',
   scrisori_luni: 'scrisorile de luni ale RA Insight: sunt ale omului care le primește și se șterg la 12 luni, ca discuțiile — nu le ținem și în copii',

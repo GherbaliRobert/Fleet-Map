@@ -1312,6 +1312,32 @@ singur lucru de făcut, să ne anunțe; aplicația pune singură în cerere maș
 - Păzit de `verify_pachete.js` (esteAnaliza, instrucțiunea pe Basic, ruta veche 404) și `verify_proba_modele.js` (`_corp` „medium" = 4.700 de
   tokeni pe Haiku 5.5 cu 1.100 ceruți; pe server: întrebarea obișnuită „low", „Compară…" „medium").
 
+### Fișa lui RA Insight despre fiecare om (11.11; Alin: „să memoreze cam ce discută fiecare user cu el… ne complicăm… RA Insight e despre simplificare")
+Fără pagină „Memoria mea", fără memoria firmei, fără butoane noi în chat: RA Insight își face singur o fișă scurtă despre fiecare om.
+- **Regulile și TEXTELE stau în `fisa_insight.js`** (curat): `curata` (cel mult `MAX_RANDURI` = 15 rânduri de ≤ 160 de caractere; `SENSIBIL` —
+  telefon, email, CNP, IBAN, parolă, sănătate, religie, politică — nu intră; „nume" doar cu numerele firmei), `instructiuni` / `cerereNoapte`
+  (scrierea de noapte, doar JSON), `pentruModel` (contextul întrebării), `aplicaNume` (cum numește omul mașinile, pus în textul cu care lucrează
+  aplicația — DOAR când textul nu numește deja limpede o mașină și nu are un număr scris; doar mașinile la care are acces), `cerere` („ce știi
+  despre mine?", „uită că …", „uită tot", „uită asta"; „uită-te la…" NU e o cerere), `uita`, textele (`TEXTE`, `textCeStii`, `textUitat`).
+- **Tabela `ai_fise`** (user_id = cheia, `ON DELETE CASCADE`, în `BACKUP_EXCLUDED`): rândurile, numele, `pana_la` = până unde au fost citite
+  discuțiile. **NU pleacă odată cu conversațiile șterse la 12 luni** (Alin: „aș vrea să păstrăm cumva fișa") — rămâne cât omul are cont.
+- **Scrierea: noaptea** (`fiseInsightNoaptea`, 2–6 ora României, o dată pe zi, verificată la 30 de minute): oamenii cu mesaje de după pragul lor și
+  dinaintea zilei de azi (`db.fiseDeScris` / `mesajePentruFisa`, cel mult `MAX_MESAJE_NOAPTE` = 60, răspunsurile tăiate la 600 de caractere) →
+  `_scrieFisa`: doar firmele cu AI (`_firmaAreAi`), doar cu cont RA Insight, fără demo și fără noi; o cerere către model (`AI_AGENT_MODEL`), consumul
+  = rând `fisa` (în `AI_KINDS_COST_FIRMA`, NU în `AI_BILLABLE_KINDS`). O discuție ștearsă în aceeași zi nu ajunge în fișă. În probe:
+  `/api/test/fise-noaptea { acum }`, `/api/test/fisa/:userId`.
+- **Citirea: în `_raInsight`**, ÎNAINTEA tuturor drumurilor: `mesajOm` = ce a scris omul (așa se SALVEAZĂ), `message` = textul cu numele puse
+  (cu el lucrează regulile și modelul). Cererile fișei (`fisaInsight.cerere`) — pe reguli, pe loc, nu se numără, insigna „Instant · din ce știu
+  despre tine" (`pachete.insigna('instant', { fisa: true })`). Fișa intră în CONTEXTUL întrebării (`_insightContext(…, fisaOm)`), niciodată în
+  partea fixă; partea fixă are regula corecturii („Ai dreptate, scuze." + răspunsul exact) și „fișa nu e sursă de cifre".
+- **Ștergerea totală: DOAR din Setări → Preferințe** (blocul `#pref-insight`, `prefInsightDeseneaza` / `prefInsightSterge`, doar cu `aiCont`,
+  textele de la `GET /api/insight/fisa`; `DELETE /api/insight/fisa` → `db.stergeFisaAi`: golește și mută pragul la acum, ca discuțiile de dinainte
+  să nu revină). Scris în discuție, „uită tot" NU șterge nimic (Alin: omul se poate referi doar la discuția de acum). NU pune o a doua cale de ștergere totală.
+- „Scoate din firmă" spune că pleacă și discuțiile cu RA Insight, și ce a învățat despre om. La o plecare (Alin → George) fișa NU trece: George
+  își face fișa lui (Alin, 11.11). Confidențialitate: paragraful „Ce ține minte RA Insight" + rândul din „Cât păstrăm datele".
+- Telefonul: totul merge prin server; blocul din Preferințe vine cu APK-ul următor (Robert). Păzit de **`verify_fisa_insight.js`** (în `npm test`;
+  52, pe server pornit, cu modelul simulat), `verify_insight_ghid.js` (capitolul `fisa_insight`), `verify_site_public.js`.
+
 ### Banii pentru AI, la zi (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon… control total pe tokeni și bani, după ce schimbă Robert cheile” + „1. da”, „2. da”)
 - **Regulile și TEXTELE stau în `sold_ai.js`** (curat): `felRefuz(status, text)` (credit / limita / cheie / cont; prea multe cereri, serverul
   ocupat sau o cerere greșită NU sunt refuzuri), `REFUZ` + `textRefuz`, `TEXT_CLIENT` / `TEXT_REZUMAT` / `TEXT_POZA` (fără cauză), `cheltuitDeLa`,

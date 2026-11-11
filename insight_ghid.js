@@ -234,6 +234,19 @@ const SECTIUNI = [
     cuvinte: ['sursa externa', 'internet', 'pe internet', 'cauta pe internet', 'caute pe internet', 'de pe internet', 'cautare pe internet', 'pe net', 'google', 'surse']
   },
   {
+    // Fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js): ce ține minte, cum o vezi, cum îl faci să uite.
+    cheie: 'fisa_insight', titlu: 'Ce ține minte RA Insight despre tine', unde: 'Meniu → RA Insight; ștergerea: Setări → Preferințe',
+    pasi: [
+      'RA Insight își face singur, peste noapte, o fișă scurtă din discuțiile tale: ce mașini te interesează, cum le numești („Loganul"), cum îți place răspunsul. N-ai nimic de apăsat.',
+      'Ca s-o vezi, scrie-i în RA Insight „ce știi despre mine?".',
+      'Ca să uite ceva anume, scrie-i „uită că …" (de pildă „uită că Loganul e B 204 UIP"): scoate doar ce se potrivește.',
+      'Ca să uite tot, intră în Setări → Preferințe și apasă „Șterge tot ce știe despre mine", apoi confirmă. Discuțiile rămân.'
+    ],
+    detalii: 'Fișa o vede doar RA Insight: nici administratorul firmei, nici echipa RA Track. Cifrele flotei nu intră în ea — le citește mereu proaspăt din aplicație. ' +
+      'Scris într-o discuție, „uită tot" nu șterge nimic, ca să nu se piardă din greșeală; o discuție ștearsă în aceeași zi nu ajunge în fișă. Fișa rămâne cât ai cont.',
+    cuvinte: ['tine minte', 'memorie', 'memoria', 'fisa', 'ce stii despre mine', 'uita', 'sa uite', 'ce a retinut', 'invata', 'retine']
+  },
+  {
     cheie: 'roluri', titlu: 'Ce poate face fiecare rol', unde: 'Setări → Roluri',
     pasi: [
       'Alege rolul din stânga și dă-i numele de la voi din firmă.',

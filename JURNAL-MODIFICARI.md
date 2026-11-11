@@ -37,6 +37,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   **Din 28.10, și „Sursă externă":** fraza nouă din Confidențialitate (RA Insight caută pe internet prin Anthropic, la cererea omului,
   fără datele firmei) și felul în care arătăm sursele sub răspuns — Anthropic cere ca sursele să fie arătate, iar când textul e scris
   de RA Insight din ele, „cum sfătuiește juristul".
+  **Din 11.11, și fișa lui RA Insight:** paragraful nou din Confidențialitate („Ce ține minte RA Insight”: fișa scurtă făcută din discuțiile
+  fiecărui om, cine o vede, ce nu intră în ea, cât se păstrează — cât timp omul are cont — și cum se șterge).
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -494,6 +496,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (pe tema închisă din alb în verde). Eticheta ANALIZĂ e în culoarea textului (negru / alb), INSTANT rămâne verde. Culorile de bază
   ale telefonului (variabilele din `screens/insight.css`, `reports.css`, `admin.css`, `fondator.css`) sunt deja schimbate în cod — intră
   cu APK-ul.
+- [ ] **Robert: telefonul și fișa lui RA Insight (APK-ul următor). Adăugat pe 11.11.** Fișa merge deja și pe telefon, fiindcă stă pe
+  server („ce știi despre mine?", „uită că …", „Unde e Loganul?"). Pe telefon lipsește doar blocul din Preferințe: „RA Insight · ce știe
+  despre tine”, cu explicația (`GET /api/insight/fisa` → `explicatie`) și butonul „Șterge tot ce știe despre mine”, cu confirmarea
+  (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`).
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -582,6 +588,30 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-11
+
+### CLIENT · RA Insight ține minte ce discută fiecare om cu el (fișa lui)
+*Alin, 10–11.11: „ca RA Insight să memoreze cam ce discută fiecare user cu el… să-și facă o idee ce i se potrivește", „ne complicăm…
+RA Insight este despre simplificare". Apoi: „da" — fișa rămâne cât omul are cont, ștergerea totală doar din Setări → Preferințe, cu
+confirmare, în discuție doar lucruri anume, rândul în „Scoate din firmă", fișa lui Alin nu trece la George („se face alta").*
+
+**Ce am schimbat:**
+- Peste noapte, RA Insight citește discuțiile din ziua aceea ale fiecărui om și își completează o fișă scurtă despre el (cel mult 15
+  rânduri): ce mașini îl interesează și cum le numește („Loganul" = B 204 UIP), ce urmărește, cum îi place răspunsul, unde l-a corectat.
+- La fiecare întrebare o citește. „Unde e Loganul?" răspunde direct despre B 204 UIP, fără să mai întrebe care Logan.
+- Când omul îl corectează („ai greșit, ți-am zis doar Loganul B 204"), RA Insight își cere scuze și răspunde exact la ce a cerut.
+- În discuție: „ce știi despre mine?" arată fișa; „uită că …" scoate doar ce se potrivește; „uită tot" NU șterge nimic (îi spune unde e
+  butonul); „uită asta" îi spune cum șterge discuția de acum. Toate pe loc, fără să se numere.
+- Setări → Preferințe: blocul „RA Insight · ce știe despre tine", cu butonul „Șterge tot ce știe despre mine" și confirmare. După
+  ștergere, RA Insight învață doar din discuțiile de după.
+- Fișa rămâne cât omul are cont (nu pleacă odată cu discuțiile șterse după 12 luni); pleacă odată cu contul. În fișă nu intră cifrele
+  flotei, telefoane, emailuri, CNP sau ce ține de sănătate. O vede doar RA Insight, pentru omul acela.
+- „Scoate din firmă" spune acum că pleacă și discuțiile cu RA Insight, și ce a învățat despre om. Confidențialitate: un paragraf nou.
+- Doar la firmele cu AI (de la Basic). Costul (cam 0,1–0,3 bani de om, în nopțile după care a vorbit cu RA Insight) e al nostru, nu se
+  numără din pachet.
+
+**Ce vede fondatorul:** nimic nou pe ecranele noastre; în „RA Insight · control", costul fișelor intră la „Ne costă".
+**Ce vede clientul:** răspunsuri care țin cont de el; blocul din Preferințe; rândul nou din „Scoate din firmă". Reper: `fisa_insight.js`,
+`server.js` (`fiseInsightNoaptea`, `_raInsight`), `verify_fisa_insight.js`.
 
 ### AMÂNDOI · Fișa vehiculului pe file: filele în stânga, „Salvează" mereu jos
 *Alin, 06.11 (a treia propunere: fișa mașinii pe file, întâi macheta) și 10.11, la machetă: „1. Da 2. da 3. da" — filele în stânga cu

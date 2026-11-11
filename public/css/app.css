@@ -3120,6 +3120,13 @@ body.dark .sch-debloc { border-color: #f87171; color: #f87171; }
     .pref-msg { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
     .pref-msg.bun { color: var(--accent); }
     .pref-msg.rau { color: var(--red); }
+    /* RA Insight · ce știe despre tine (11.11): blocul stă singur în #pref-insight, deci e „ultimul copil" — fără regula asta
+       își pierdea spațiul de dedesubt și „Afișaj" se lipea de buton. Butonul care șterge tot e roșu pe chenar, nu plin (se mai
+       întreabă o dată). */
+    #pref-insight > .pref-gr { margin-bottom: 22px; }
+    .pref-act .btn-sm.pref-ins-sterge { background: transparent; border: 1.5px solid #dc2626; color: #b91c1c; font-weight: 800; }
+    .pref-act .btn-sm.pref-ins-sterge i { color: inherit; }
+    body.dark .pref-act .btn-sm.pref-ins-sterge { border-color: #f87171; color: #fca5a5; }
     .pref-parola { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
     .pref-parola .pref-t { margin-bottom: 9px; }
     @media (max-width: 620px) {

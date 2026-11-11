@@ -569,13 +569,14 @@ function publice(o) {
 // gri, detaliul — dacă s-a numărat și de unde vine. Fără „bonus", „gratuit", „nu se scade". Pe Start (unde și răspunsurile
 // instant se numără, din 50) detaliul e „1 răspuns". `text` = propoziția întreagă, pentru cine citește doar text.
 const INSIGNA = { nume: 'RA Insight', ai: 'Analiză', instant: 'Instant' };
-// fel = 'ai' | 'instant'; o = { numarat, live, sursa }
+// fel = 'ai' | 'instant'; o = { numarat, live, sursa, propunere, fisa }
 function insigna(fel, o) {
   o = o || {};
   const ai = fel === 'ai';
   const eticheta = ai ? INSIGNA.ai : INSIGNA.instant;
   // „propunere" (pasul 2, 22.10): un cartonaș care pregătește o schimbare — pe reguli, nu se numără (Alin: „da").
-  let detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.propunere ? 'propunere' : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte')));
+  // „fisa" (11.11): „ce știi despre mine?", „uită că …" — din fișa omului, pe loc.
+  let detaliu = ai ? (o.numarat ? '1 întrebare' : '') : (o.propunere ? 'propunere' : (o.fisa ? 'din ce știu despre tine' : (o.numarat ? '1 răspuns' : (o.live ? 'din datele de acum' : 'din rapoarte'))));
   // „Sursă externă" (28.10): câte căutări pe internet a făcut răspunsul (`sursa` = numărul lor; 0 / lipsă = niciuna).
   const n = Math.round(Number(o.sursa) || 0);
   if (ai && n > 0) detaliu = (detaliu ? detaliu + ' · ' : '') + 'sursă externă, ' + cant(n, 'căutare', 'căutări');
@@ -587,7 +588,7 @@ function insigna(fel, o) {
 function insignaCompleta(x) {
   if (!x || typeof x !== 'object' || !x.fel || x.eticheta) return x;
   const det = String(x.text || '').split(' · ').slice(1).join(' · ');
-  return insigna(x.fel, { numarat: det === '1 întrebare' || det === '1 răspuns', live: det === 'din datele de acum', propunere: det === 'propunere' });
+  return insigna(x.fel, { numarat: det === '1 întrebare' || det === '1 răspuns', live: det === 'din datele de acum', propunere: det === 'propunere', fisa: det === 'din ce știu despre tine' });
 }
 
 module.exports = {

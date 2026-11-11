@@ -2900,6 +2900,8 @@ const pozitii = await r.json();</code></pre>
                   <p class="set-note">Numele de aici e cel care apare sus, în bară, și în istoricul de activitate. Adresa de email e totodată numele tău de utilizator — pe aceea o schimbă doar administratorul firmei.</p>
                   <div id="pref-cont"></div>
                 </div>
+                <!-- RA Insight · ce știe despre tine (11.11): SINGURUL loc din care se șterge tot ce a învățat RA Insight despre om. -->
+                <div id="pref-insight"></div>
                 <div id="pref-restul"><div class="pref-load">Se încarcă…</div></div>
               </div>
 
@@ -4818,7 +4820,8 @@ const pozitii = await r.json();</code></pre>
       var ce = _usrCeAveaText(await _usrCeAvea(u));
       if (!await raConfirm(
         'Contul lui „' + nume + '" dispare de tot. Dacă omul se întoarce, îi faci cont nou.' +
-        (ce ? '\n\nAvea: ' + ce + '.\n\nNotează-le acum, dacă le dai altcuiva — se șterg odată cu contul.' : ''),
+        (ce ? '\n\nAvea: ' + ce + '.\n\nNotează-le acum, dacă le dai altcuiva — se șterg odată cu contul.' : '') +
+        '\n\nDiscuțiile lui cu RA Insight și ce a învățat RA Insight despre el se șterg și ele.',
         { title: 'Scoți pe „' + nume + '" din firmă?', okLabel: 'Scoate din firmă' })) return;
       var r = await fetch('/api/users/' + id, { method: 'DELETE', credentials: 'same-origin' });
       if (!r.ok) {
@@ -5627,6 +5630,37 @@ const pozitii = await r.json();</code></pre>
         '</div>';
     }
     // ── sfârșit „Preferințele mele" ──
+
+    // ── RA Insight · ce știe despre tine (11.11; fisa_insight.js) ──
+    // Alin: „ștergerea totală doar din Setări → Preferințe, cu confirmare; în discuție doar lucruri anume" — în discuție, „uită tot" NU
+    // șterge nimic (omul se poate referi doar la discuția de acum). Doar cu cont RA Insight. Textele (explicația, confirmarea, ce s-a
+    // întâmplat) le dă serverul; pagina le pune cu textContent.
+    async function prefInsightDeseneaza() {
+      var box = document.getElementById('pref-insight'); if (!box) return;
+      var u = window.currentUser || {};
+      if (!u.aiCont) { box.innerHTML = ''; return; }
+      var j = null;
+      try { var r = await fetch('/api/insight/fisa', { credentials: 'same-origin' }); if (r.ok) j = await r.json(); } catch (e) { j = null; }
+      if (!j) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div class="pref-gr"><div class="set-sec-h"><i class="fas fa-wand-magic-sparkles"></i> RA Insight · ce știe despre tine</div>' +
+        '<p class="set-note" id="pref-ins-t"></p>' +
+        '<div class="pref-act"><button class="btn-sm pref-ins-sterge" onclick="prefInsightSterge(this)"><i class="fas fa-eraser"></i> Șterge tot ce știe despre mine</button>' +
+        '<span id="pref-ins-msg" class="pref-msg"></span></div></div>';
+      document.getElementById('pref-ins-t').textContent = j.explicatie || '';
+      box._confirmare = j.confirmare || '';
+    }
+    window.prefInsightSterge = async function (btn) {
+      var box = document.getElementById('pref-insight');
+      if (!await raConfirm((box && box._confirmare) || '', { title: 'Ștergi ce știe RA Insight despre tine?', okLabel: 'Șterge tot' })) return;
+      var msg = document.getElementById('pref-ins-msg');
+      if (btn) btn.disabled = true;
+      try {
+        var r = await fetch('/api/insight/fisa', { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (msg) { msg.className = 'pref-msg ' + (r.ok ? 'bun' : 'rau'); msg.textContent = r.ok ? (j.mesaj || '') : (j.error || ('Eroare ' + r.status)); }
+      } catch (e) { if (msg) { msg.className = 'pref-msg rau'; msg.textContent = 'Nu s-a putut șterge. Încearcă din nou.'; } }
+      if (btn) btn.disabled = false;
+    };
 
     // Valoarea unei preferințe, aici și acum. `hpUiPrefs` e ce a venit de la server la intrarea în
     // cont; până sosește (sau dacă cererea a picat), rămâne ce scrie în catalog.
@@ -6744,6 +6778,7 @@ const pozitii = await r.json();</code></pre>
 
       var cont = document.getElementById('pref-cont');
       if (cont) cont.innerHTML = prefContHtml(window.currentUser || {});
+      prefInsightDeseneaza();
 
       var box = document.getElementById('pref-restul');
       if (box) box.innerHTML = '<div class="pref-load">Se încarcă…</div>';

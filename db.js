@@ -1732,6 +1732,19 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_aimsg_conv ON ai_mesaje(conversatie_id, id)`);
+    // Fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js): câteva rânduri + cum numește el mașinile, scrise NOAPTEA din
+    // discuțiile lui. E a omului (user_id = cheia; pleacă odată cu contul) și NU pleacă odată cu conversațiile șterse la 12 luni.
+    // `pana_la` = până unde au fost citite discuțiile (începutul zilei, ora României, la scrierea de noapte).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_fise (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        company_id INTEGER,
+        randuri JSONB DEFAULT '[]',
+        nume JSONB DEFAULT '[]',
+        pana_la TIMESTAMP,
+        actualizat_la TIMESTAMP DEFAULT NOW()
+      )
+    `);
     // ─── Asistentul fondatorilor: conversațiile păstrate (pasul 4, 04.11; Alin: „da") ───
     // Ca la RA Insight: o conversație e a fondatorului care a scris-o (user_id în FIECARE WHERE — nici celălalt fondator n-o vede) și
     // se șterge la 12 luni de la ultimul mesaj (contracts.js → LUNI_CONVERSATII_AI). `context` = ce a întors ultimul răspuns pe loc
@@ -2028,7 +2041,8 @@ async function recordAiUsage(companyId, kind, usage, userId, model) {
 const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
 // Ce intră în costul unei firme (plasa pachetului, „Ne costă"): întrebările ei, scrisoarea de luni și căutările pe internet ale
 // „Sursei externe" (un rând aparte pe întrebare, felul 'sursa_externa' — nu e o întrebare în plus, dar se plătește).
-const AI_KINDS_COST_FIRMA = AI_BILLABLE_KINDS.concat(['scrisoare', 'sursa_externa']);
+// 'fisa' (11.11) = scrierea de noapte a fișei fiecărui om: ne costă pe noi, nu e o întrebare a firmei.
+const AI_KINDS_COST_FIRMA = AI_BILLABLE_KINDS.concat(['scrisoare', 'sursa_externa', 'fisa']);
 // ─── Costul consumului AI se socotește pe MODELUL care a răspuns (Robert, 12.10) ───
 // RA Insight a trecut pe Haiku 5.5, de 10 ori mai ieftin decât Haiku 4.5. Tokenii adunați la un loc și socotiți cu
 // prețul unui singur model ar fi dat panouri greșite de zece ori. Aici se adună pe (cheie, model), costul fiecărui
@@ -7185,6 +7199,61 @@ async function stergeConversatiiMaiVechiDe(luni) {
   const r = await pool.query(`DELETE FROM ai_conversatii WHERE actualizat_la < NOW() - make_interval(months => $1::int)`, [Math.max(1, Math.round(luni))]);
   return r.affectedRows || r.rowCount || 0;
 }
+// ─── Fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js) ──────────────────────────────────────────────────
+// A omului: FIECARE citire și scriere cere `userId`. Scrierea de noapte ia mesajele de după `pana_la` și dinaintea capătului dat
+// (începutul zilei de azi, ora României): o discuție ștearsă în aceeași zi nu ajunge niciodată în fișă. Timpul se trece prin
+// to_timestamp(…)::timestamp, la fel ca NOW() în coloanele fără fus.
+function _fisaRand(r) {
+  if (!r) return null;
+  const j = function (v) { if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = []; } } return Array.isArray(v) ? v : []; };
+  return { user_id: r.user_id, company_id: r.company_id, randuri: j(r.randuri), nume: j(r.nume), pana_la: r.pana_la, actualizat_la: r.actualizat_la };
+}
+async function getFisaAi(userId) {
+  if (userId == null) return null;
+  const r = await pool.query('SELECT * FROM ai_fise WHERE user_id = $1', [userId]);
+  return _fisaRand(r.rows[0]);
+}
+async function puneFisaAi(userId, companyId, f, panaMs) {
+  await pool.query(`INSERT INTO ai_fise (user_id, company_id, randuri, nume, pana_la, actualizat_la)
+      VALUES ($1, $2, $3::jsonb, $4::jsonb, to_timestamp($5::double precision / 1000)::timestamp, NOW())
+    ON CONFLICT (user_id) DO UPDATE SET company_id = EXCLUDED.company_id, randuri = EXCLUDED.randuri, nume = EXCLUDED.nume,
+      pana_la = EXCLUDED.pana_la, actualizat_la = NOW()`,
+  [userId, companyId == null ? null : companyId, JSON.stringify((f && f.randuri) || []), JSON.stringify((f && f.nume) || []), Number(panaMs)]);
+}
+// „uită că …": schimbă doar rândurile și numele, nu și până unde s-a citit.
+async function schimbaFisaAi(userId, f) {
+  const r = await pool.query('UPDATE ai_fise SET randuri = $2::jsonb, nume = $3::jsonb, actualizat_la = NOW() WHERE user_id = $1 RETURNING user_id',
+    [userId, JSON.stringify((f && f.randuri) || []), JSON.stringify((f && f.nume) || [])]);
+  return r.rows.length > 0;
+}
+// „Șterge tot ce știe despre mine" (Setări → Preferințe). Rândul pleacă de tot: fișa se reface din discuțiile de după ștergere.
+// `pana_la` rămâne ca prag în rândul gol, ca discuțiile de dinainte să nu ajungă din nou în fișă.
+async function stergeFisaAi(userId) {
+  const r = await pool.query(`UPDATE ai_fise SET randuri = '[]'::jsonb, nume = '[]'::jsonb, pana_la = NOW()::timestamp, actualizat_la = NOW()
+    WHERE user_id = $1 AND (jsonb_array_length(randuri) > 0 OR jsonb_array_length(nume) > 0) RETURNING user_id`, [userId]);
+  if (!r.rows.length) {
+    // Fără fișă (sau goală): ține minte totuși pragul, ca discuțiile de până acum să nu mai intre.
+    await pool.query(`INSERT INTO ai_fise (user_id, company_id, pana_la) VALUES ($1, (SELECT company_id FROM users WHERE id = $1), NOW()::timestamp)
+      ON CONFLICT (user_id) DO UPDATE SET pana_la = NOW()::timestamp, actualizat_la = NOW()`, [userId]);
+  }
+  return r.rows.length > 0;
+}
+// Cine are discuții de citit (de după pragul lui, dinaintea capătului).
+async function fiseDeScris(panaMs) {
+  const r = await pool.query(`SELECT c.user_id, MAX(c.company_id) AS company_id
+      FROM ai_mesaje m JOIN ai_conversatii c ON c.id = m.conversatie_id LEFT JOIN ai_fise f ON f.user_id = c.user_id
+     WHERE m.creat_la < to_timestamp($1::double precision / 1000)::timestamp AND (f.pana_la IS NULL OR m.creat_la >= f.pana_la)
+     GROUP BY c.user_id ORDER BY c.user_id`, [Number(panaMs)]);
+  return r.rows.map(function (x) { return { user_id: x.user_id, company_id: x.company_id == null ? null : Number(x.company_id) }; });
+}
+// Mesajele omului de citit noaptea: cele mai noi `max`, apoi în ordinea în care au fost scrise.
+async function mesajePentruFisa(userId, panaMs, max) {
+  const r = await pool.query(`SELECT m.rol, m.text, m.creat_la
+      FROM ai_mesaje m JOIN ai_conversatii c ON c.id = m.conversatie_id LEFT JOIN ai_fise f ON f.user_id = c.user_id
+     WHERE c.user_id = $1 AND m.creat_la < to_timestamp($2::double precision / 1000)::timestamp AND (f.pana_la IS NULL OR m.creat_la >= f.pana_la)
+     ORDER BY m.creat_la DESC, m.id DESC LIMIT $3`, [userId, Number(panaMs), Math.max(1, Math.round(max) || 60)]);
+  return r.rows.reverse();
+}
 // ─── Asistentul fondatorilor: conversațiile (pasul 4, 04.11) ────────────────────────────────────────────────────────
 // Aceeași regulă de fond ca la RA Insight: FIECARE citire și scriere cere `userId` și îl pune în WHERE (și scrierea unui mesaj, prin
 // EXISTS) — conversația celuilalt fondator se poartă ca una care nu există. Numărătorile vin din `RETURNING id` (PGlite n-are rowCount).
@@ -7274,6 +7343,7 @@ module.exports = {
   // RA Insight — conversațiile (fiecare om doar pe ale lui)
   conversatieNoua, conversatieUser, ultimaConversatieRecenta, mesajeConversatie, adaugaMesajAi, actualizeazaConversatie,
   listaConversatii, redenumesteConversatie, stergeConversatie, feedbackMesajAi, stergeConversatiiMaiVechiDe,
+  getFisaAi, puneFisaAi, schimbaFisaAi, stergeFisaAi, fiseDeScris, mesajePentruFisa,
   // Asistentul fondatorilor — conversațiile (fiecare fondator doar pe ale lui; pasul 4, 04.11)
   asfConversatieNoua, asfConversatie, asfMesaje, asfAdaugaMesaj, asfActualizeaza, asfLista, asfRedenumeste, asfSterge, asfStergeMaiVechiDe,
   stergeScrisoriMaiVechiDe,

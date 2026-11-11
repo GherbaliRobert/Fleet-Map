@@ -48,6 +48,11 @@ const EXEMPLE = {
   'Pune-l pe Mihai Ionescu pe B 77 TIR': 'exemplu de cerere scrisă de om (pasul 2, șoferii pe mașini)',
   'Anunță-mă când Loganul trece de 130 km/h': 'exemplu de cerere scrisă de om (pasul 2, partea 2: alerta)',
   'Notează că am vorbit cu Ion Popescu despre viteză': 'exemplu de cerere scrisă de om (pasul 2, partea 2: „Am vorbit cu el")',
+  // Fișa lui RA Insight despre fiecare om (11.11): ce scrie omul în discuție și un nume pe care îl dă el unei mașini.
+  'Loganul': 'exemplu de nume dat de om unei mașini (fișa)',
+  'ce știi despre mine?': 'exemplu de întrebare scrisă de om (fișa)',
+  'uită că ': 'începutul unei cereri scrise de om („uită că …", fișa)',
+  'uită că Loganul e B 204 UIP': 'exemplu de cerere scrisă de om (fișa)',
 };
 const citate = [];
 SECT.forEach((s) => {
