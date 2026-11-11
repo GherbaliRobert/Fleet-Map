@@ -446,7 +446,8 @@ function formularWeb(cookie, eSuper, proprii) {
   // Firma NU are voie să depășească: se oprește, cu explicația.
   const opritChat = await json('POST', '/api/ai/chat', telIon, { message: Q });
   const opritInsight = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q });
-  T('„Asistent AI" se oprește la epuizare, cu explicația fondului', opritChat.j.limited === true && !!opritChat.j.fondEpuizat && /Fondul de întrebări/.test(opritChat.j.reply || ''), opritChat.text.slice(0, 120));
+  // 11.11 (Alin): clientul nu mai citește „Fondul de întrebări” — „Întrebările lunii s-au terminat”, apoi ce merge mai departe (pe loc).
+  T('„Asistent AI" se oprește la epuizare, cu explicația (fără „fond”)', opritChat.j.limited === true && !!opritChat.j.fondEpuizat && /Întrebările lunii s-au terminat/.test(opritChat.j.reply || '') && /Până atunci răspund pe loc/.test(opritChat.j.reply || '') && !/[Ff]ond/.test(opritChat.j.reply || ''), opritChat.text.slice(0, 120));
   T('exact ca RA Insight (aceleași câmpuri)', chei(opritChat.j) === chei(opritInsight.j) && !!opritInsight.j.fondEpuizat, chei(opritChat.j) + ' | ' + chei(opritInsight.j));
   T('nu mai scrie „contactați administratorul platformei"', !/administratorul platformei/.test(opritChat.text));
   T('nimic nu pleacă spre model, nimic nu se numără', apeluriAi() === 1 && (await folosite()) === 2, apeluriAi() + ' / ' + (await folosite()));
