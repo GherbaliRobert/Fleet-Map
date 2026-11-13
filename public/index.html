@@ -15049,7 +15049,11 @@ const pozitii = await r.json();</code></pre>
         const isPlan = /^plan_(incarcare|incarcat|problema)$/.test(n.type);
         // „Anunță echipa RA Track" (22.10): noi → „Cereri de la clienți"; clientul → „Cererile tale".
         const isCerere = /^cerere_(echipa|preluata|programata|rezolvata)$/.test(n.type);
-        const clickAttr = isCerere
+        // „Au mai rămas … întrebări" (administratorul firmei, 13.11) → RA Insight, „Pachet și conturi" (n-are hartă).
+        const isPachet = !!(nd && nd.pachet);
+        const clickAttr = isPachet
+          ? `onclick="openNotifDetail(${Number(n.id)})" title="Deschide RA Insight → Pachet și conturi"`
+          : isCerere
           ? `onclick="notifCerere(${Number(n.id)})" title="Deschide cererea"`
           : isPlan
           ? `onclick="notifPlan(${Number(n.id)}, '${n.type}')" title="Deschide planul de încărcare"`
@@ -15064,6 +15068,8 @@ const pozitii = await r.json();</code></pre>
           : `onclick="openNotifDetail(${n.id})" title="Vezi pe hartă ce s-a întâmplat"`;
         const footIcon = isReport
           ? '<i class="fas fa-file-lines" style="color:var(--accent);opacity:.8;"></i>'
+          : isPachet
+          ? '<i class="fas fa-layer-group" style="color:var(--accent);opacity:.8;"></i>'
           : '<i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i>';
         const reportBtn = (n.type === 'report_ready')
           ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifGoReports()"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
