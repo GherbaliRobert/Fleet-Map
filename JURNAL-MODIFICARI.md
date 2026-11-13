@@ -402,6 +402,9 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   `GET /api/insight/pachete` dă acum, pe fiecare pachet, `eticheta`, `cifre` (conturi, întrebări libere, răspunsuri pe loc), `plus`
   (titlul listei: „Ce primești" / „În plus față de …") și `include` = ce ADAUGĂ față de pachetul dinainte; plus `comparatie` (tabelul pe
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
+  **13.11:** APK-ul următor ia și (5) „Abonament & plăți" fără caseta „Agenți AI" și cu rândul „+ RA Insight Pro" în prețul lunar, (6) anunțul
+  de 80% care duce în „Pachet și conturi". ⚠ În „Abonament & plăți" rămăsese pe 11.11 un nume scos odată cu regula veche: APK-ul nu s-ar fi
+  putut face (`tsc` pica). Reparat pe 13.11; telefonul trece acum `tsc --noEmit` întreg.
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
